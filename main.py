@@ -25,10 +25,12 @@ load_dotenv()
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev-only-change-in-production")
 
-# الاتصال بقاعدة البيانات: ‎DATABASE_URL‎ (PostgreSQL) — تحويل ‎postgres://‎ لـ ‎psycopg2 (Heroku)‎
+# الاتصال بقاعدة البيانات: ‎DATABASE_URL‎ (PostgreSQL) — ‎Flask/SQLAlchemy‎ متزامن (ليس ‎asyncpg‎)
 _database_url = os.getenv("DATABASE_URL", "sqlite:///cartflow.db")
 if _database_url.startswith("postgres://"):
     _database_url = _database_url.replace("postgres://", "postgresql://", 1)
+if _database_url.startswith("postgresql+asyncpg://"):
+    _database_url = _database_url.replace("postgresql+asyncpg://", "postgresql+psycopg://", 1)
 app.config["SQLALCHEMY_DATABASE_URI"] = _database_url
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db.init_app(app)
