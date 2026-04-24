@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CartFlow — Merchant Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    /* إعداد ألوان زد (بنفسجي/أبيض) — توافق بصري مع منصة Zid */
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            zid: {
+              50: "#f5f3ff",
+              100: "#ede9fe",
+              200: "#ddd6fe",
+              300: "#c4b5fd",
+              400: "#a78bfa",
+              500: "#7c3aed",
+              600: "#5b2d8b",
+              700: "#4c1d95",
+              800: "#3b0764",
+              900: "#2e1065",
+            },
+          },
+        },
+      },
+    };
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>body { font-family: "Inter", system-ui, sans-serif; }</style>
+</head>
+<body class="min-h-screen bg-slate-50 text-slate-800">
+  <div class="flex min-h-screen">
+    <!-- الشريط الجانبي: تنقل رئيسي للوحة التاجر -->
+    <aside class="w-64 shrink-0 border-r border-zid-200 bg-white shadow-sm">
+      <div class="flex h-16 items-center border-b border-zid-100 px-6">
+        <span class="text-xl font-bold tracking-tight text-zid-600">CartFlow</span>
+      </div>
+      <nav class="p-4 space-y-1">
+        <a href="#" class="flex items-center gap-3 rounded-lg bg-zid-100 px-4 py-3 text-sm font-medium text-zid-700">
+          <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
+          Dashboard
+        </a>
+        <a href="#" class="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-slate-600 hover:bg-zid-50 hover:text-zid-700">
+          <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.435 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>
+          WhatsApp Settings
+        </a>
+        <a href="#" class="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-slate-600 hover:bg-zid-50 hover:text-zid-700">
+          <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+          Templates
+        </a>
+      </nav>
+    </aside>
+
+    <!-- المحتوى الرئيسي: عنوان + شبكة إحصائيات -->
+    <div class="flex-1 min-w-0">
+      <header class="h-16 border-b border-zid-100 bg-white px-8 flex items-center justify-between">
+        <h1 class="text-lg font-semibold text-slate-900">Merchant Dashboard</h1>
+        <span class="text-sm text-slate-500">Zid</span>
+      </header>
+      <main class="p-8">
+        <p class="text-slate-600 text-sm max-w-2xl mb-8">Overview of your cart recovery performance and messaging activity.</p>
+        <!-- شبكة الإحصائيات: السلات المسترجعة، الإيراد، الرسائل المرسلة -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div class="rounded-2xl border border-zid-100 bg-white p-6 shadow-sm">
+            <p class="text-sm font-medium text-slate-500">Total Carts</p>
+            <p class="mt-2 text-3xl font-bold text-zid-600">{{ total_carts }}</p>
+            <p class="mt-1 text-xs text-slate-400">All abandoned carts tracked in CartFlow</p>
+          </div>
+          <div class="rounded-2xl border border-zid-100 bg-gradient-to-br from-zid-50 to-white p-6 shadow-sm">
+            <p class="text-sm font-medium text-slate-500">Total Revenue</p>
+            <p class="mt-2 text-3xl font-bold text-zid-700">SAR {{ "%.2f"|format(total_revenue) }}</p>
+            <p class="mt-1 text-xs text-slate-400">Sum of cart value for recovered carts</p>
+          </div>
+          <div class="rounded-2xl border border-zid-100 bg-white p-6 shadow-sm sm:col-span-2 lg:col-span-1">
+            <p class="text-sm font-medium text-slate-500">Recovered Carts</p>
+            <p class="mt-2 text-3xl font-bold text-zid-600">{{ recovered_carts }}</p>
+            <p class="mt-1 text-xs text-slate-400">Carts with status &quot;Recovered&quot;</p>
+          </div>
+        </div>
+
+        <!-- جدول آخر 5 سلات متروكة: عميل — قيمة — حالة — رسالة الذكاء الاصطناعي -->
+        <section class="mt-10" aria-labelledby="recent-carts-heading">
+          <h2 id="recent-carts-heading" class="text-base font-semibold text-slate-900 mb-4">Last 5 Abandoned Carts</h2>
+          <div class="overflow-x-auto rounded-2xl border border-zid-100 bg-white shadow-sm">
+            <table class="min-w-full text-left text-sm">
+              <thead>
+                <tr class="border-b border-zid-100 bg-zid-50/80 text-slate-600">
+                  <th class="px-4 py-3 font-medium">Customer</th>
+                  <th class="px-4 py-3 font-medium">Value (SAR)</th>
+                  <th class="px-4 py-3 font-medium">Status</th>
+                  <th class="px-4 py-3 font-medium">AI Message</th>
+                  <th class="px-4 py-3 font-medium w-32">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for c in recent_carts %}
+                <tr class="border-b border-slate-100 last:border-0">
+                  <td class="px-4 py-3 text-slate-800">{{ c.customer_name or "—" }}</td>
+                  <td class="px-4 py-3 font-medium text-zid-700">{{ "%.2f"|format(c.cart_value or 0) }}</td>
+                  <td class="px-4 py-3">
+                    {# Pending: رمادي — Sent: أزرق — Recovered: أخضر #}
+                    <span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium
+                      {% if c.status == 'Recovered' %}bg-emerald-100 text-emerald-800
+                      {% elif c.status == 'Sent' %}bg-blue-100 text-blue-800
+                      {% else %}bg-slate-100 text-slate-700{% endif %}">
+                      {{ c.status }}
+                    </span>
+                  </td>
+                  <td class="px-4 py-3 text-slate-600 max-w-md whitespace-pre-wrap break-words text-xs leading-relaxed">
+                    {{ c.generated_message or "—" }}
+                  </td>
+                  <td class="px-4 py-3">
+                    {% if c.status != 'Recovered' %}
+                    <button type="button" data-send-url="{{ url_for('send_cart_manual', row_id=c.id) }}"
+                      class="text-xs font-medium text-zid-600 hover:text-zid-800 border border-zid-200 rounded-lg px-2.5 py-1.5 hover:bg-zid-50">
+                      Send Manually
+                    </button>
+                    {% else %}
+                    <span class="text-xs text-slate-400">—</span>
+                    {% endif %}
+                  </td>
+                </tr>
+                {% else %}
+                <tr>
+                  <td colspan="5" class="px-4 py-8 text-center text-slate-500">No abandoned carts yet.</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+  <script>
+    document.querySelectorAll("[data-send-url]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const url = btn.getAttribute("data-send-url");
+        try {
+          const r = await fetch(url, { method: "POST" });
+          const j = await r.json();
+          if (j.ok) {
+            window.location.reload();
+          } else {
+            window.alert("Send failed" + (j.error ? ": " + j.error : ""));
+          }
+        } catch (e) {
+          window.alert("Request failed: " + e);
+        }
+      });
+    });
+  </script>
+</body>
+</html>

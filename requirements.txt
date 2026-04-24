@@ -1,0 +1,7 @@
+flask
+gunicorn
+requests
+python-dotenv
+flask-sqlalchemy
+psycopg2-binary
+anthropic
