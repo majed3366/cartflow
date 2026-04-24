@@ -109,22 +109,29 @@ def _track_objection_cors(resp: Response) -> Response:
 def track_objection():
     if request.method == "OPTIONS":
         return _track_objection_cors(Response("", status=204))
-    data = request.get_json(silent=True) or {}
-    t = (data.get("type") or "").strip()
+    # جسم آمن: ‎request.json.get("type")‎ عند وُجود ‎JSON‎
+    body = request.get_json(silent=True)
+    if body is None:
+        body = request.json if request.json is not None else {}
+    if not isinstance(body, dict):
+        body = {}
+    t = (body.get("type") or "").strip()
     if t not in ("price", "quality"):
         r = jsonify({"ok": False, "error": "invalid_type"})
         r.status_code = 400
         return _track_objection_cors(r)
     try:
-        row = ObjectionTrack(object_type=t)
+        db.create_all()
+        now = datetime.utcnow()
+        row = ObjectionTrack(object_type=t, created_at=now)
         db.session.add(row)
         db.session.commit()
-    except SQLAlchemyError:
+    except Exception as e:  # noqa: BLE001
         db.session.rollback()
-        r = jsonify({"ok": False, "error": "database_error"})
+        r = jsonify({"ok": False, "error": str(e)})
         r.status_code = 500
         return _track_objection_cors(r)
-    return _track_objection_cors(jsonify({"ok": True, "id": row.id}))
+    return _track_objection_cors(jsonify({"ok": True}))
 
 
 # تسمية مودل Claude (يمكن تغييره من البيئة)
