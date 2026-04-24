@@ -17,6 +17,17 @@ def health():
     return jsonify({"ok": True, "service": "cartflow"})
 
 
+@bp.get("/debug/db")
+def debug_db():
+    uri = str(current_app.config.get("SQLALCHEMY_DATABASE_URI") or "")
+    return jsonify(
+        {
+            "database_url_prefix": uri[:20],
+            "is_sqlite": uri.lower().startswith("sqlite:"),
+        }
+    )
+
+
 _INIT_DB_KEY = "dev-init"
 
 
