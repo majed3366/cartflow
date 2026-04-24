@@ -53,6 +53,24 @@ from routes.ops import bp as ops_bp  # noqa: E402
 
 app.register_blueprint(ops_bp)
 
+# تطوير فقط — مسجل على ‎app‎ مباشرة لضمان ظهوره مع ‎gunicorn main:app‎
+from services.ai_message_builder import build_abandoned_cart_message  # noqa: E402
+
+
+@app.get("/dev/run-flow")
+def dev_run_flow():
+    from routes.ops import get_mock_abandoned_cart
+
+    cart = get_mock_abandoned_cart()
+    message = build_abandoned_cart_message(cart)
+    return jsonify(
+        {
+            "cart": cart,
+            "message": message,
+        }
+    )
+
+
 # تسمية مودل Claude (يمكن تغييره من البيئة)
 DEFAULT_CLAUDE_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-3-5-sonnet-20241022")
 
