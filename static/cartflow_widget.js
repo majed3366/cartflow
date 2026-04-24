@@ -87,24 +87,37 @@
         row.appendChild(bQ);
         w.appendChild(row);
 
+        var objectionDone = false;
+        function hideObjectionButtons() {
+          if (row && row.parentNode) {
+            row.parentNode.removeChild(row);
+          }
+        }
+
         const priceBtn = document.getElementById("cf-price-btn");
         const qualityBtn = document.getElementById("cf-quality-btn");
         if (priceBtn) {
           priceBtn.addEventListener("click", function () {
-            console.log("objection_price");
-            if (p2) {
-              p2.textContent =
-                "أفهمك 👌 كثير يهتمون بالسعر… لكن غالبًا اللي ياخذونه يرجعون له مرة ثانية لأنه فعلاً يستاهل قيمته.";
+            if (objectionDone) {
+              return;
             }
+            objectionDone = true;
+            console.log("objection_price");
+            p2.textContent =
+              "أفهمك 👌 كثير يهتمون بالسعر… لكن غالبًا اللي ياخذونه يرجعون له مرة ثانية لأنه فعلاً يستاهل قيمته.";
+            hideObjectionButtons();
           });
         }
         if (qualityBtn) {
           qualityBtn.addEventListener("click", function () {
-            console.log("objection_quality");
-            if (p2) {
-              p2.textContent =
-                "واضح إنك تهتم بالجودة 👍 وهذا اختيار ذكي… المنتج هذا من أكثر الأشياء اللي الناس ترجع تشتريه بسبب جودته.";
+            if (objectionDone) {
+              return;
             }
+            objectionDone = true;
+            console.log("objection_quality");
+            p2.textContent =
+              "واضح إنك تهتم بالجودة 👍 وهذا اختيار ذكي… المنتج هذا من أكثر الأشياء اللي الناس ترجع تشتريه بسبب جودته.";
+            hideObjectionButtons();
           });
         }
       },
