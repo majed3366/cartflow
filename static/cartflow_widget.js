@@ -152,11 +152,77 @@
             function onPriceActivity() {
               clearPriceFollowUp();
             }
+            function copyCouponCode() {
+              var code = "SAVE10";
+              function copyFallback() {
+                var ta = document.createElement("textarea");
+                ta.value = code;
+                ta.setAttribute("readonly", "");
+                ta.style.cssText = "position:fixed;left:-9999px";
+                document.body.appendChild(ta);
+                ta.select();
+                try {
+                  if (document.execCommand("copy")) {
+                    console.log("coupon_copied");
+                  }
+                } catch (e) {}
+                document.body.removeChild(ta);
+              }
+              if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard
+                  .writeText(code)
+                  .then(function () {
+                    console.log("coupon_copied");
+                  })
+                  .catch(function () {
+                    copyFallback();
+                  });
+              } else {
+                copyFallback();
+              }
+            }
             function showFollowIfStillIdle() {
               clearPriceFollowUp();
-              if (p2 && w && w.parentNode) {
-                p2.textContent = followText;
+              if (!p2 || !w || !w.parentNode) {
+                return;
               }
+              p2.textContent = followText;
+              var rowFollow = document.createElement("div");
+              rowFollow.style.cssText =
+                "display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-start;margin-top:4px;";
+              var fNo = document.createElement("button");
+              fNo.type = "button";
+              fNo.textContent = "لا";
+              fNo.style.cssText = btnStyle;
+              fNo.addEventListener("click", function (ev) {
+                ev.stopPropagation();
+                if (w && w.parentNode) {
+                  w.parentNode.removeChild(w);
+                }
+              });
+              var fYes = document.createElement("button");
+              fYes.type = "button";
+              fYes.textContent = "نعم";
+              fYes.style.cssText = btnStyle;
+              fYes.addEventListener("click", function (ev) {
+                ev.stopPropagation();
+                if (rowFollow && rowFollow.parentNode) {
+                  rowFollow.parentNode.removeChild(rowFollow);
+                }
+                p2.textContent = "هذا كودك: SAVE10";
+                var copyBtn = document.createElement("button");
+                copyBtn.type = "button";
+                copyBtn.textContent = "نسخ الكود";
+                copyBtn.style.cssText = btnStyle;
+                copyBtn.addEventListener("click", function (e) {
+                  e.stopPropagation();
+                  copyCouponCode();
+                });
+                w.appendChild(copyBtn);
+              });
+              rowFollow.appendChild(fYes);
+              rowFollow.appendChild(fNo);
+              w.appendChild(rowFollow);
             }
             priceIdleTid = setTimeout(showFollowIfStillIdle, delayMs);
             document.addEventListener("mousemove", onPriceActivity, true);
