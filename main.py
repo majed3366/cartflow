@@ -620,8 +620,8 @@ def zid_webhook():
 
 @app.get("/")
 def home():
-    # جذر التطبيق: استجابة بسيطة (تضمين في لوحة زد دون الاعتماد على ‎/dashboard‎ أو قاعدة البيانات)
-    return jsonify({"status": "app is running"})
+    # صفحة HTML للمراجعين/لوحة زد (بدون قاعدة بيانات)
+    return render_template("landing.html")
 
 
 # لا نستدعي ‎_ensure_db_schema()‎ عند التحميل — يتجنب الاتصال بقاعدة البيانات عند إقلاع ‎Gunicorn‎
