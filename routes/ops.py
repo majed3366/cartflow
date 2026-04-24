@@ -2,9 +2,10 @@
 """صحة الخدمة ومسارات اختبار زد (مرحلة التطوير)."""
 from __future__ import annotations
 
-from flask import Blueprint, jsonify, current_app
+from flask import Blueprint, jsonify, current_app, request
 from sqlalchemy.exc import SQLAlchemyError
 
+from extensions import db
 from integrations.zid_client import fetch_abandoned_carts
 from models import Store
 
@@ -16,11 +17,59 @@ def health():
     return jsonify({"ok": True, "service": "cartflow"})
 
 
+_INIT_DB_KEY = "dev-init"
+
+
+@bp.get("/admin/init-db")
+def admin_init_db():
+    if (request.args.get("key") or "").strip() != _INIT_DB_KEY:
+        return jsonify({"ok": False, "error": "forbidden"}), 403
+    try:
+        db.create_all()
+    except SQLAlchemyError as e:
+        current_app.logger.warning("admin init-db: %s", e)
+        return (
+            jsonify(
+                {
+                    "ok": False,
+                    "error": "create_all_failed",
+                }
+            ),
+            500,
+        )
+    return jsonify(
+        {
+            "ok": True,
+            "message": "database initialized",
+        }
+    )
+
+
+def _is_schema_error(exc: SQLAlchemyError) -> bool:
+    """Missing table/column/relation — engine is up, schema not created or mismatch."""
+    msg = (str(getattr(exc, "orig", None) or exc) or "").lower()
+    if "no such table" in msg or "no such column" in msg:
+        return True
+    if "relation" in msg and "does not exist" in msg:
+        return True
+    return False
+
+
 @bp.get("/test/zid/abandoned-carts")
 def test_zid_abandoned_carts():
     try:
         store = Store.query.filter_by(is_active=True).first()
     except SQLAlchemyError as e:
+        if _is_schema_error(e):
+            return (
+                jsonify(
+                    {
+                        "ok": False,
+                        "error": "no_database_schema",
+                    }
+                ),
+                200,
+            )
         current_app.logger.warning("test abandoned-carts: db error %s", e)
         return (
             jsonify(
