@@ -136,25 +136,62 @@
             p2.textContent =
               "أفهمك 👌 كثير يهتمون بالسعر… لكن غالبًا اللي ياخذونه يرجعون له مرة ثانية لأنه فعلاً يستاهل قيمته.";
             hideObjectionButtons();
-            // 2–4) ‎6–8‎ ث: إن بقي مستخدماً بلا ‎move/scroll‎ — رسالة تالية (بدون خصم بعد)
-            var delayMs = 6000 + Math.floor(Math.random() * 2001);
+            // 2) ثابت 8 ث: التردد — أثناءه أي نشاط أو انتقال يُلغي عرض العرض
+            var delayMs = 8000;
             var followText =
               "لو حاب، أقدر أعطيك كود بسيط يساعدك تبدأ 🙌";
-            var priceIdleTid = null;
-            function clearPriceFollowUp() {
-              if (priceIdleTid !== null) {
-                clearTimeout(priceIdleTid);
-                priceIdleTid = null;
+            var startHref = location.href;
+            var priceHesTid = null;
+            var priceUrlPoll = null;
+            var couponOfferOff = false;
+            function isCheckoutPath() {
+              var u = (location.href || "").toLowerCase();
+              var p = (location.pathname + location.search + location.hash).toLowerCase();
+              if (p.indexOf("checkout") >= 0) {
+                return true;
               }
-              document.removeEventListener("mousemove", onPriceActivity, true);
-              window.removeEventListener("scroll", onPriceActivity, true);
+              if (p.indexOf("check-out") >= 0) {
+                return true;
+              }
+              if (u.indexOf("checkout") >= 0) {
+                return true;
+              }
+              return false;
             }
-            function onPriceActivity() {
-              clearPriceFollowUp();
+            function clearPriceHesitation() {
+              if (priceHesTid !== null) {
+                clearTimeout(priceHesTid);
+                priceHesTid = null;
+              }
+              if (priceUrlPoll !== null) {
+                clearInterval(priceUrlPoll);
+                priceUrlPoll = null;
+              }
+              document.removeEventListener("mousemove", onHesActivity, true);
+              document.removeEventListener("click", onDocClickOutside, true);
+              window.removeEventListener("scroll", onHesActivity, true);
+              window.removeEventListener("popstate", onHesActivity);
+              window.removeEventListener("hashchange", onHesActivity);
+            }
+            function onHesActivity() {
+              couponOfferOff = true;
+              clearPriceHesitation();
+            }
+            function onDocClickOutside(e) {
+              if (!w || w.contains(e.target)) {
+                return;
+              }
+              onHesActivity();
             }
             function showFollowIfStillIdle() {
-              clearPriceFollowUp();
+              clearPriceHesitation();
+              if (couponOfferOff) {
+                return;
+              }
               if (!p2 || !w || !w.parentNode) {
+                return;
+              }
+              if (isCheckoutPath()) {
                 return;
               }
               p2.textContent = followText;
@@ -228,9 +265,25 @@
               rowFollow.appendChild(fNo);
               w.appendChild(rowFollow);
             }
-            priceIdleTid = setTimeout(showFollowIfStillIdle, delayMs);
-            document.addEventListener("mousemove", onPriceActivity, true);
-            window.addEventListener("scroll", onPriceActivity, true);
+            if (isCheckoutPath()) {
+              couponOfferOff = true;
+            } else {
+              priceHesTid = setTimeout(showFollowIfStillIdle, delayMs);
+              document.addEventListener("mousemove", onHesActivity, true);
+              document.addEventListener("click", onDocClickOutside, true);
+              window.addEventListener("scroll", onHesActivity, true);
+              window.addEventListener("popstate", onHesActivity);
+              window.addEventListener("hashchange", onHesActivity);
+              priceUrlPoll = setInterval(function () {
+                if (location.href !== startHref) {
+                  onHesActivity();
+                  return;
+                }
+                if (isCheckoutPath()) {
+                  onHesActivity();
+                }
+              }, 350);
+            }
           });
         }
         if (qualityBtn) {
