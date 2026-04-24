@@ -28,6 +28,23 @@ def debug_db():
     )
 
 
+# تطوير فقط — بيانات سلة وهمية للواجهات/التدفق
+@bp.get("/dev/mock-cart")
+def dev_mock_cart():
+    return jsonify(
+        {
+            "id": "cart_123",
+            "customer_name": "محمد",
+            "phone": "0500000000",
+            "cart_value": 250,
+            "cart_url": "https://example.com/cart/123",
+            "items": [
+                {"name": "عطر فاخر", "price": 250},
+            ],
+        }
+    )
+
+
 _INIT_DB_KEY = "dev-init"
 
 
