@@ -134,6 +134,34 @@ def track_objection():
     return _track_objection_cors(jsonify({"ok": True}))
 
 
+_MSG_WA_PRICE = (
+    "هلا 👋 لاحظنا إن السعر كان ممكن يكون سبب التردد… حبيت أقول لك إن المنتج هذا من أكثر الأشياء اللي الناس ترجع تشتريه لأنه فعلاً يستاهل."
+)
+_MSG_WA_QUALITY = (
+    "هلا 👋 واضح إنك تهتم بالجودة… وهذا اختيار ممتاز 👍 المنتج هذا معروف إنه من أكثر المنتجات اللي الناس تثق فيها وترجع له."
+)
+
+
+@app.get("/dev/send-whatsapp-test")
+def dev_send_whatsapp_test():
+    try:
+        row = (
+            ObjectionTrack.query.order_by(ObjectionTrack.created_at.desc()).first()
+        )
+    except SQLAlchemyError:
+        return jsonify({"ok": False, "error": "database_error"}), 500
+    if row is None:
+        return jsonify({"ok": False, "error": "no_objection"}), 404
+    t = (row.object_type or "").strip()
+    if t == "price":
+        msg = _MSG_WA_PRICE
+    elif t == "quality":
+        msg = _MSG_WA_QUALITY
+    else:
+        return jsonify({"ok": False, "error": "unknown_type"}), 400
+    return jsonify({"message": msg})
+
+
 # تسمية مودل Claude (يمكن تغييره من البيئة)
 DEFAULT_CLAUDE_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-3-5-sonnet-20241022")
 
