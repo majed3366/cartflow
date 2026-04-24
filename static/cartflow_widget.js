@@ -114,8 +114,11 @@
             objectionDone = true;
             console.log("objection_price");
             postObjection("price");
-            p2.textContent =
-              "أفهمك 👌 كثير يهتمون بالسعر… لكن غالبًا اللي ياخذونه يرجعون له مرة ثانية لأنه فعلاً يستاهل قيمته.";
+            // محاكاة فقط — عشوائي ‎new / returning‎ دون حفظ
+            var isReturning = Math.random() < 0.5;
+            p2.textContent = isReturning
+              ? "بما إنك عميلنا 🙏 هذا كود خاص لك: SAVE15"
+              : "حياك 🙌 أول طلب لك؟ هذا كود ترحيبي: WELCOME10";
             hideObjectionButtons();
           });
         }
