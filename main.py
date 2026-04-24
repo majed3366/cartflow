@@ -49,13 +49,14 @@ ZID_PROFILE_API = os.getenv("ZID_PROFILE_API_URL", "https://api.zid.sa/v1/manage
 # --- دعم القراءة من الحقول العامة (يُستدعى قبل ‎extract_cart_url‎) ---
 
 
-# --- ‎CSP: السماح بتضمين التطبيق داخل لوحة زد (بدون ‎X-Frame-Options: DENY‎) ---
+# --- تضمين من لوحة زد (iframe): رؤوس لجميع الردود (لا تعديلات على المسارات) ---
+# ‎X-Frame-Options: ALLOWALL‎ ليست قيمة معيارية؛ المتصفحات تتجاهلها عادة — ‎CSP frame-ancestors‎ فعلياً
 @app.after_request
 def set_embed_csp(response: Response) -> Response:
-    # ‎frame-ancestors‎ يسمح بـ ‎https://web.zid.sa‎ فقط
-    csp = "frame-ancestors 'self' https://web.zid.sa"
-    response.headers["Content-Security-Policy"] = csp
-    response.headers.pop("X-Frame-Options", None)
+    response.headers["X-Frame-Options"] = "ALLOWALL"
+    response.headers["Content-Security-Policy"] = (
+        "frame-ancestors https://*.zid.sa https://zid.sa;"
+    )
     return response
 
 
