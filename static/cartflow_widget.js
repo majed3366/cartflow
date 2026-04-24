@@ -66,6 +66,7 @@
           w.removeChild(w.lastChild);
         }
         var p2 = document.createElement("p");
+        p2.id = "cf-objection-msg";
         p2.style.cssText = "margin:0 0 8px 0;";
         p2.textContent = "تمام 👌 وش أكثر شيء متردد فيه؟";
         w.appendChild(p2);
@@ -91,11 +92,19 @@
         if (priceBtn) {
           priceBtn.addEventListener("click", function () {
             console.log("objection_price");
+            if (p2) {
+              p2.textContent =
+                "أفهمك 👌 كثير يهتمون بالسعر… لكن غالبًا اللي ياخذونه يرجعون له مرة ثانية لأنه فعلاً يستاهل قيمته.";
+            }
           });
         }
         if (qualityBtn) {
           qualityBtn.addEventListener("click", function () {
             console.log("objection_quality");
+            if (p2) {
+              p2.textContent =
+                "واضح إنك تهتم بالجودة 👍 وهذا اختيار ذكي… المنتج هذا من أكثر الأشياء اللي الناس ترجع تشتريه بسبب جودته.";
+            }
           });
         }
       },
