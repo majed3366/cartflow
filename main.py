@@ -140,52 +140,63 @@ def save_or_update_store(zid_store_id: str, access_token: str) -> None:
     db.session.commit()
 
 
+# يجب أن يطابق ‎redirect_uri‎ في طلب التفويض وفي لوحة تطبيق زد
+ZID_OAUTH_CALLBACK_REDIRECT_URI = "https://smartreplyai.net/auth/callback"
+ZID_OAUTH_TOKEN_ENDPOINT = f"{ZID_OAUTH_BASE}/oauth/token"
+
+
 def zid_token_exchange_by_code(code: str) -> tuple[dict, int]:
-    # استبدال ‎code‎ بـ ‎access_token‎ (زد) وحفظ ‎Store‎ — نتيجة قابلة لـ ‎Flask / FastAPI‎
-    client_id = (os.getenv("CLIENT_ID") or "").strip()
-    client_secret = (os.getenv("CLIENT_SECRET") or "").strip()
-    if not client_id or not client_secret:
-        return ({"ok": False, "error": "oauth_not_configured"}, 500)
+    # تبادل رمز التفويض مع ‎https://oauth.zid.sa/oauth/token‎ — إرجاع رد زد كما هو (نجاح أو خطأ)
+    client_id = (os.getenv("ZID_CLIENT_ID") or "").strip()
+    client_secret = (os.getenv("ZID_CLIENT_SECRET") or "").strip()
+    missing: list[str] = []
+    if not client_id:
+        missing.append("ZID_CLIENT_ID")
+    if not client_secret:
+        missing.append("ZID_CLIENT_SECRET")
+    if missing:
+        return (
+            {
+                "error": "OAuth is not configured: set the following in the server environment",
+                "missing_environment_variables": missing,
+            },
+            500,
+        )
     payload: dict[str, str] = {
         "grant_type": "authorization_code",
         "client_id": client_id,
         "client_secret": client_secret,
+        "redirect_uri": ZID_OAUTH_CALLBACK_REDIRECT_URI,
         "code": code,
     }
-    redir = (os.getenv("OAUTH_REDIRECT_URI") or "").strip()
-    if redir:
-        payload["redirect_uri"] = redir
     try:
         tr = requests.post(
-            f"{ZID_OAUTH_BASE}/oauth/token",
+            ZID_OAUTH_TOKEN_ENDPOINT,
             data=payload,
             timeout=30,
         )
-    except requests.RequestException:
-        return ({"ok": False, "error": "token_request_failed"}, 502)
-    if tr.status_code // 100 != 2:
-        print("[Zid OAuth] token endpoint HTTP error", tr.status_code)
-        return ({"ok": False, "error": "token_exchange_failed"}, 400)
+    except requests.RequestException as e:
+        return (
+            {
+                "error": "Failed to reach Zid OAuth token endpoint",
+                "detail": str(e),
+            },
+            502,
+        )
     try:
-        data = tr.json()
+        body: Any = tr.json()
     except Exception:  # noqa: BLE001
-        return ({"ok": False, "error": "invalid_token_response"}, 400)
-    if not isinstance(data, dict):
-        return ({"ok": False, "error": "invalid_token_response"}, 400)
-    access_token = data.get("access_token")
-    if not access_token or not isinstance(access_token, str):
-        return ({"ok": False, "error": "missing_access_token"}, 400)
-    zid = _parse_zid_store_id_from_token(data)
-    if not zid:
-        zid = _fetch_zid_store_id_from_profile(access_token)
-    if not zid:
-        return ({"ok": False, "error": "store_id_unresolved"}, 400)
-    try:
-        save_or_update_store(zid, access_token)
-    except SQLAlchemyError:
-        db.session.rollback()
-        return ({"ok": False, "error": "db_error"}, 500)
-    return ({"ok": True}, 200)
+        return (
+            {
+                "error": "Zid returned a non-JSON response",
+                "http_status": tr.status_code,
+                "raw": (tr.text or "")[:4000],
+            },
+            tr.status_code,
+        )
+    if isinstance(body, dict):
+        return (body, tr.status_code)
+    return ({"response": body}, tr.status_code)
 
 
 def _as_float(v: Any, default: float = 0.0) -> float:
