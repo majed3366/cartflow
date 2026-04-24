@@ -46,21 +46,25 @@ def admin_init_db():
 
 
 # تطوير فقط — لاختبار ‎/test/zid/abandoned-carts‎؛ احذفه أو اقفله قبل الإنتاج
-@bp.post("/dev/set-token")
+@bp.route("/dev/set-token", methods=["GET", "POST"])
 def dev_set_token():
-    data = request.get_json(silent=True) or {}
-    zid = (data.get("zid_store_id") or "").strip()
-    token = (data.get("access_token") or "").strip()
-    if not zid or not token:
-        return (
-            jsonify(
-                {
-                    "ok": False,
-                    "error": "zid_store_id and access_token are required",
-                }
-            ),
-            400,
-        )
+    if request.method == "GET":
+        zid = "test-store"
+        token = "TEST_TOKEN"
+    else:
+        data = request.get_json(silent=True) or {}
+        zid = (data.get("zid_store_id") or "").strip()
+        token = (data.get("access_token") or "").strip()
+        if not zid or not token:
+            return (
+                jsonify(
+                    {
+                        "ok": False,
+                        "error": "zid_store_id and access_token are required",
+                    }
+                ),
+                400,
+            )
     try:
         row = Store.query.filter_by(zid_store_id=zid).first()
         if row is None:
@@ -86,6 +90,8 @@ def dev_set_token():
             ),
             500,
         )
+    if request.method == "GET":
+        return jsonify({"ok": True})
     return jsonify({"ok": True, "zid_store_id": zid, "is_active": True})
 
 
