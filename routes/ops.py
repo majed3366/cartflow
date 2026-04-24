@@ -8,8 +8,23 @@ from sqlalchemy.exc import SQLAlchemyError
 from extensions import db
 from integrations.zid_client import fetch_abandoned_carts
 from models import Store
+from services.ai_message_builder import build_abandoned_cart_message
 
 bp = Blueprint("ops", __name__)
+
+
+def get_mock_abandoned_cart() -> dict:
+    """نفس بيانات ‎GET /dev/mock-cart‎ — لإعادة الاستخدام دون ‎HTTP‎ داخلي."""
+    return {
+        "id": "cart_123",
+        "customer_name": "محمد",
+        "phone": "0500000000",
+        "cart_value": 250,
+        "cart_url": "https://example.com/cart/123",
+        "items": [
+            {"name": "عطر فاخر", "price": 250},
+        ],
+    }
 
 
 @bp.get("/health")
@@ -31,16 +46,18 @@ def debug_db():
 # تطوير فقط — بيانات سلة وهمية للواجهات/التدفق
 @bp.get("/dev/mock-cart")
 def dev_mock_cart():
+    return jsonify(get_mock_abandoned_cart())
+
+
+# تطوير فقط — اختبار بناء الرسالة من بيانات السلة الوهمية
+@bp.get("/dev/run-flow")
+def dev_run_flow():
+    cart = get_mock_abandoned_cart()
+    message = build_abandoned_cart_message(cart)
     return jsonify(
         {
-            "id": "cart_123",
-            "customer_name": "محمد",
-            "phone": "0500000000",
-            "cart_value": 250,
-            "cart_url": "https://example.com/cart/123",
-            "items": [
-                {"name": "عطر فاخر", "price": 250},
-            ],
+            "cart": cart,
+            "message": message,
         }
     )
 
