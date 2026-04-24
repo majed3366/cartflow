@@ -77,6 +77,8 @@ def dev_set_token():
                 400,
             )
     try:
+        # ‎SQLite‎ / نسخة تطوير: تأكد من الجداول دون ‎create_all()‎ عند إقلاع التطبيق
+        db.create_all()
         row = Store.query.filter_by(zid_store_id=zid).first()
         if row is None:
             row = Store(
