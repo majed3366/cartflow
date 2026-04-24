@@ -145,21 +145,25 @@ _MSG_WA_QUALITY = (
 @app.get("/dev/send-whatsapp-test")
 def dev_send_whatsapp_test():
     try:
-        row = (
-            ObjectionTrack.query.order_by(ObjectionTrack.created_at.desc()).first()
-        )
-    except SQLAlchemyError:
-        return jsonify({"ok": False, "error": "database_error"}), 500
-    if row is None:
-        return jsonify({"ok": False, "error": "no_objection"}), 404
-    t = (row.object_type or "").strip()
-    if t == "price":
-        msg = _MSG_WA_PRICE
-    elif t == "quality":
-        msg = _MSG_WA_QUALITY
-    else:
-        return jsonify({"ok": False, "error": "unknown_type"}), 400
-    return jsonify({"message": msg})
+        db.create_all()
+        row = ObjectionTrack.query.order_by(
+            ObjectionTrack.created_at.desc()
+        ).first()
+        if row is None:
+            return jsonify({"ok": False, "error": "no_objection"}), 404
+        t = (row.object_type or "").strip()
+        if t == "price":
+            msg = _MSG_WA_PRICE
+        elif t == "quality":
+            msg = _MSG_WA_QUALITY
+        else:
+            return jsonify({"ok": False, "error": "unknown_type"}), 400
+        return jsonify({"ok": True, "message": msg})
+    except Exception as e:  # noqa: BLE001
+        db.session.rollback()
+        r = jsonify({"ok": False, "error": str(e)})
+        r.status_code = 500
+        return r
 
 
 # تسمية مودل Claude (يمكن تغييره من البيئة)
