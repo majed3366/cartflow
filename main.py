@@ -73,6 +73,31 @@ def dev_run_flow():
     )
 
 
+_DEV_WIDGET_TEST_HTML = """<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CartFlow widget test</title>
+</head>
+<body>
+<p style="font:14px system-ui;padding:1rem">اختبار الويدجت: 3 ث ثم 20 ث هدوء — تظهر الفقاعة.</p>
+<script>
+if (location.pathname.indexOf("/cart") < 0) {
+  try { history.replaceState(null, "", "/dev/widget-test/cart"); } catch (e) {}
+}
+</script>
+<script src="/static/cartflow_widget.js"></script>
+</body>
+</html>"""
+
+
+@app.get("/dev/widget-test")
+@app.get("/dev/widget-test/cart")
+def dev_widget_test():
+    return Response(_DEV_WIDGET_TEST_HTML, mimetype="text/html; charset=utf-8")
+
+
 # تسمية مودل Claude (يمكن تغييره من البيئة)
 DEFAULT_CLAUDE_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-3-5-sonnet-20241022")
 
