@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-نصوص واتساب للاسترجاع — ليست نسخة من الودجيت ولا من ‎ai_message_builder‎.
+نصوص واتساب للاسترجاع — قصيرة (٢–٣ أسطر)، لغة بسيطة وطنية.
 تُرجع نصاً فقط؛ لا إرسال فعلي.
 """
 from __future__ import annotations
@@ -20,16 +20,20 @@ def _first_name(cart: Optional[Mapping[str, Any]]) -> Optional[str]:
     return raw.split()[0]
 
 
+def _cta(cart: Mapping[str, Any]) -> str:
+    u = (cart.get("cart_url") or cart.get("checkout_url") or "").strip()
+    if u:
+        return f"تبي تكمل؟ ادخل السلة: {u}"
+    return "تبي تكمل؟ رجع لسلة المشتريات واضغط إكمال الطلب."
+
+
 def build_whatsapp_recovery_message(
     customer_type: str,
     objection_type: str,
     cart: Optional[Mapping[str, Any]] = None,
 ) -> str:
     """
-    يبني رسالة واتساب دافئة، شخصية، بلهجة تصلح للسعودية.
-    - عميل جديد: ترحيب أخف وكوبون أخف
-    - عائد: تقدير أوضح وكوبون أقوى
-    - سعر / جودة: زوايا نصيّة مختلفة بالكامل عن الودجيت
+    ٢–٣ أسطر: ترحيب/وضع (جديد/عائد) + سعر/جودة + كوبون، ثم دعوة واضحة للرجوع للسلة.
     """
     ct = (customer_type or "").strip().lower()
     ot = (objection_type or "").strip().lower()
@@ -38,8 +42,8 @@ def build_whatsapp_recovery_message(
 
     if ct not in VALID_CUSTOMER or ot not in VALID_OBJECTION:
         if ot == "quality":
-            return _quality_fallback(who)
-        return _price_fallback(who)
+            return _quality_fallback(who, cart)
+        return _price_fallback(who, cart)
 
     if ct == "returning" and ot == "price":
         return _returning_price(who, cart)
@@ -50,63 +54,50 @@ def build_whatsapp_recovery_message(
     return _new_quality(who, cart)
 
 
-def _greet(who: Optional[str], default_open: str) -> str:
+def _open(who: Optional[str], line: str) -> str:
     if who:
-        return f"حياك الله يا {who}.\n{default_open}"
-    return f"{default_open}\n"
+        return f"يا {who}، {line}"
+    return line
 
 
-def _price_fallback(who: Optional[str]) -> str:
-    t = f"يا {who}، " if who else ""
-    return (
-        f"{t}نبي نطمّنك: اللي اخترتَه يستاهل—ولو بغيت تغيّر رايك "
-        f"لاحقاً تقدر تتصل علينا. شكراً لأنك معنا."
-    )
+def _price_fallback(who: Optional[str], cart: Mapping[str, Any]) -> str:
+    a = _open(who, "نبي تكمّل اختيارك—ميزانك يهمنّا.")
+    return f"{a}\n{_cta(cart)}"
 
 
-def _quality_fallback(who: Optional[str]) -> str:
-    t = f"يا {who}، " if who else ""
-    return (
-        f"{t}نختار موردينا بعناية—ودوم نحب نسمع رأيك لو في أي استفسار عن القطعة."
-    )
+def _quality_fallback(who: Optional[str], cart: Mapping[str, Any]) -> str:
+    a = _open(who, "للتأكد من الجودة: ردّي هنا، وإن حاب تكمل—تحت أمرك.")
+    return f"{a}\n{_cta(cart)}"
 
 
-def _returning_price(who: Optional[str], _cart: Mapping[str, Any]) -> str:
-    # كوبون أقوى: مختلف عن ‎SAVE10 / WELCOME‎ في الودجيت
-    line = _greet(
+def _returning_price(who: Optional[str], cart: Mapping[str, Any]) -> str:
+    # راجع + سعر: كود أقوى
+    a = _open(
         who,
-        "نورتنا مرّة ثانية، وما ننسى اللي اختارناك قبل. "
-        "لو السعر يوم كان يمّا على بالك: حطينا لك مزايا خاصة للي رجعوا—استخدم: BACK20",
+        "نورتنا مرّة ثانية—نقدّرك. كود خاص: BACK20",
     )
-    return line.strip() + (
-        "\n\nنقدّر وقفتك معنا وما نبي يفوتك عرض يناسب ميزانيتك—اكتب لي لو تحب تعدّل الطلب."
-    )
+    return f"{a}\n{_cta(cart)}"
 
 
-def _returning_quality(who: Optional[str], _cart: Mapping[str, Any]) -> str:
-    line = _greet(
+def _returning_quality(who: Optional[str], cart: Mapping[str, Any]) -> str:
+    a = _open(
         who,
-        "رجوعك لنا بحد ذاته يعني إنك تثق باللي نوصله لك. "
-        "نفس الخامة ونفس الشي اللي دوم تطلبه—نضيفه لك بخصم تقدير: AMEEN18",
+        "ثقتك واجب علينا. خصم تقدير: AMEEN18",
     )
-    return line.strip() + "\n\nلو بغيت مواصفات أدق لأي قطعة، بعث لي باسم المنتج وأنا ردّي فوري."
+    return f"{a}\n{_cta(cart)}"
 
 
-def _new_price(who: Optional[str], _cart: Mapping[str, Any]) -> str:
-    line = _greet(
+def _new_price(who: Optional[str], cart: Mapping[str, Any]) -> str:
+    a = _open(
         who,
-        "مسرورين بزيارة أولى لك عندنا. ميزان السعر مهم؟ ومن حقّك—وهذي مفاجأة خفيفة: FIRST8",
+        "هلا فيك—أول مرة؟ مفاجأة خفيفة: FIRST8",
     )
-    return line.strip() + (
-        "\n\nما نحب الضغط: إذا بغيت توازن السعر والكمية، قلّي وأنا أرتّب لك اقتراح واضح."
-    )
+    return f"{a}\n{_cta(cart)}"
 
 
-def _new_quality(who: Optional[str], _cart: Mapping[str, Any]) -> str:
-    line = _greet(
+def _new_quality(who: Optional[str], cart: Mapping[str, Any]) -> str:
+    a = _open(
         who,
-        "أهلاً فيك—أول خطوة معنا نبيها تطمّنك. جودة القطع عندنا خط أحمر، "
-        "وإذا بغيت تتأكد: هذي لمسة بسيطة منا TRUST5",
+        "ودّنا ترتاح من الجودة. كود بسيط: TRUST5",
     )
-    return line.strip() + "\n\nاسأل عن التفصيلة اللي تبغاها: صور ومواصفات—أنا هنا."
-
+    return f"{a}\n{_cta(cart)}"

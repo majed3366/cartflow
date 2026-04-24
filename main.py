@@ -167,7 +167,10 @@ def dev_send_whatsapp_test():
         return r
 
 
-_WHATSAPP_TEST_CART = {"customer_name": "ماجد"}
+_WHATSAPP_TEST_CART = {
+    "customer_name": "ماجد",
+    "cart_url": "https://example.com/cart",
+}
 
 
 @app.get("/dev/whatsapp-message-test")
