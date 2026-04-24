@@ -1,12 +1,12 @@
 /**
  * CartFlow — minimal cart helper bubble (no framework, no backend).
- * Injects after 3s; on /cart/* only; shows after 20s inactivity.
+ * Injects after 3s; on /cart/* only; shows after 8s inactivity.
  */
 (function () {
   "use strict";
 
   var ARM_DELAY_MS = 3000;
-  var IDLE_MS = 20000;
+  var IDLE_MS = 8000;
   var shown = false;
   var idleTimer = null;
   var events = ["mousemove", "keydown", "scroll", "click", "touchstart"];
@@ -58,13 +58,31 @@
     p.style.cssText = "margin:0 0 8px 0;";
     p.textContent = "تبغى أساعدك تكمل طلبك؟ 👋";
 
-    var btn = document.createElement("button");
-    btn.type = "button";
-    btn.textContent = "نعم";
-    btn.setAttribute("aria-label", "نعم");
-    btn.style.cssText = btnStyle;
-    // مستمع واضح — ‎click‎ على الزر (مع إيقاف الانتشار)
-    btn.addEventListener(
+    var row0 = document.createElement("div");
+    row0.style.cssText =
+      "display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-start;margin-top:2px;";
+
+    var btnYes = document.createElement("button");
+    btnYes.type = "button";
+    btnYes.textContent = "نعم";
+    btnYes.setAttribute("aria-label", "نعم");
+    btnYes.style.cssText = btnStyle;
+
+    var btnNo = document.createElement("button");
+    btnNo.type = "button";
+    btnNo.textContent = "لا";
+    btnNo.setAttribute("aria-label", "لا");
+    btnNo.style.cssText = btnStyle;
+    btnNo.addEventListener("click", function (ev) {
+      ev.stopPropagation();
+      ev.preventDefault();
+      if (w && w.parentNode) {
+        w.parentNode.removeChild(w);
+      }
+    });
+
+    // مستمع ‎نعم‎ — تتابع نفس تدفق الاعتراض
+    btnYes.addEventListener(
       "click",
       function onYes(ev) {
         if (w.getAttribute("data-cf-yes") === "1") return;
@@ -139,8 +157,10 @@
       false
     );
 
+    row0.appendChild(btnYes);
+    row0.appendChild(btnNo);
     w.appendChild(p);
-    w.appendChild(btn);
+    w.appendChild(row0);
     document.body.appendChild(w);
   }
 
