@@ -25,8 +25,10 @@ load_dotenv()
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev-only-change-in-production")
 
-# الاتصال بقاعدة البيانات: ‎DATABASE_URL‎ (PostgreSQL) — ‎Flask/SQLAlchemy‎ متزامن (ليس ‎asyncpg‎)
-_database_url = os.getenv("DATABASE_URL", "sqlite:///cartflow.db")
+# قاعدة البيانات: ‎DATABASE_URL‎ من Railway/البيئة فقط (بدون تثبيت مضيف يدوي)
+# إن وُجد ‎DATABASE_URL‎ نستخدمه كما يعطيه النظام؛ وإلا ‎SQLite‎ للتطوير المحلي
+_db = os.getenv("DATABASE_URL")
+_database_url = (_db or "").strip() or "sqlite:///local.db"
 if _database_url.startswith("postgres://"):
     _database_url = _database_url.replace("postgres://", "postgresql://", 1)
 if _database_url.startswith("postgresql+asyncpg://"):
