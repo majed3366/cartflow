@@ -132,12 +132,35 @@
             objectionDone = true;
             console.log("objection_price");
             postObjection("price");
-            // محاكاة فقط — عشوائي ‎new / returning‎ دون حفظ
-            var isReturning = Math.random() < 0.5;
-            p2.textContent = isReturning
-              ? "بما إنك عميلنا 🙏 هذا كود خاص لك: SAVE15"
-              : "حياك 🙌 أول طلب لك؟ هذا كود ترحيبي: WELCOME10";
+            // 1) وِجه فقط — بلا خصم
+            p2.textContent =
+              "أفهمك 👌 كثير يهتمون بالسعر… لكن غالبًا اللي ياخذونه يرجعون له مرة ثانية لأنه فعلاً يستاهل قيمته.";
             hideObjectionButtons();
+            // 2–4) ‎6–8‎ ث: إن بقي مستخدماً بلا ‎move/scroll‎ — رسالة تالية (بدون خصم بعد)
+            var delayMs = 6000 + Math.floor(Math.random() * 2001);
+            var followText =
+              "لو حاب، أقدر أعطيك كود بسيط يساعدك تبدأ 🙌";
+            var priceIdleTid = null;
+            function clearPriceFollowUp() {
+              if (priceIdleTid !== null) {
+                clearTimeout(priceIdleTid);
+                priceIdleTid = null;
+              }
+              document.removeEventListener("mousemove", onPriceActivity, true);
+              window.removeEventListener("scroll", onPriceActivity, true);
+            }
+            function onPriceActivity() {
+              clearPriceFollowUp();
+            }
+            function showFollowIfStillIdle() {
+              clearPriceFollowUp();
+              if (p2 && w && w.parentNode) {
+                p2.textContent = followText;
+              }
+            }
+            priceIdleTid = setTimeout(showFollowIfStillIdle, delayMs);
+            document.addEventListener("mousemove", onPriceActivity, true);
+            window.addEventListener("scroll", onPriceActivity, true);
           });
         }
         if (qualityBtn) {
