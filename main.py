@@ -81,7 +81,7 @@ _DEV_WIDGET_TEST_HTML = """<!doctype html>
 <title>CartFlow widget test</title>
 </head>
 <body>
-<p style="font:14px system-ui;padding:1rem">اختبار الويدجت: 3 ث ثم 20 ث هدوء — تظهر الفقاعة.</p>
+<p style="font:14px system-ui;padding:1rem">اختبار الويدجت: 3 ث ثم 8 ث هدوء — تظهر الفقاعة.</p>
 <script>
 if (location.pathname.indexOf("/cart") < 0) {
   try { history.replaceState(null, "", "/dev/widget-test/cart"); } catch (e) {}
