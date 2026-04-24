@@ -15,7 +15,7 @@ import requests  # طلبات ‎HTTP‎ / ‎Zid / واتساب‎
 from dotenv import load_dotenv
 from extensions import db
 from flask import Flask, request, render_template, jsonify, redirect, url_for, Response
-from sqlalchemy import func, inspect, text
+from sqlalchemy import func
 from sqlalchemy.exc import SQLAlchemyError
 
 # تحميل متغيرات البيئة من ملف ‎.env (إن وُجد) قبل إنشاء التطبيق
@@ -493,22 +493,12 @@ def upsert_abandoned_cart_from_payload(payload: dict) -> Tuple[bool, str, Option
 
 
 def _ensure_db_schema() -> None:
-    # ‎create_all‎ + أعمدة مفقودة في قواعد قديمة
-    db.create_all()
-    insp = inspect(db.engine)
-    if "abandoned_carts" not in insp.get_table_names():
-        return
-    col_names = {c["name"] for c in insp.get_columns("abandoned_carts")}
-    alters: list[tuple[str, str]] = []
-    if "generated_message" not in col_names:
-        alters.append(("generated_message", "TEXT"))
-    if "cart_url" not in col_names:
-        alters.append(("cart_url", "TEXT"))
-    if not alters:
-        return
-    with db.engine.begin() as conn:
-        for col, typ in alters:
-            conn.execute(text(f"ALTER TABLE abandoned_carts ADD COLUMN {col} {typ}"))
+    # معطّل عمداً: لا ‎db.create_all()‎ ولا ترقية مخطط عند الإقلاع — حتى يعمل التطبيق بدون اتصال بقاعدة البيانات.
+    # عند الحاجة، نفّذ إنشاء الجداول عبر سكربت ترحيل/يدوي، أو أعد تفعيل الكود أدناه داخل بيئة فيها ‎DB‎:
+    #   db.create_all()
+    #   insp = inspect(db.engine)
+    #   ...
+    return
 
 
 # --- المسارات ---
@@ -633,9 +623,7 @@ def home():
     return redirect(url_for("dashboard"))
 
 
-# إنشاء/ترقية الجداول
-with app.app_context():
-    _ensure_db_schema()
+# لا نستدعي ‎_ensure_db_schema()‎ عند التحميل — يتجنب الاتصال بقاعدة البيانات عند إقلاع ‎Gunicorn‎
 
 if __name__ == "__main__":
     # تشغيل وضع التطوير فقط؛ في الإنتاج: ‎gunicorn main:app‎
