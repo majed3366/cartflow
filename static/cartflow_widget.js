@@ -152,35 +152,6 @@
             function onPriceActivity() {
               clearPriceFollowUp();
             }
-            function copyCouponCode() {
-              var code = "SAVE10";
-              function copyFallback() {
-                var ta = document.createElement("textarea");
-                ta.value = code;
-                ta.setAttribute("readonly", "");
-                ta.style.cssText = "position:fixed;left:-9999px";
-                document.body.appendChild(ta);
-                ta.select();
-                try {
-                  if (document.execCommand("copy")) {
-                    console.log("coupon_copied");
-                  }
-                } catch (e) {}
-                document.body.removeChild(ta);
-              }
-              if (navigator.clipboard && navigator.clipboard.writeText) {
-                navigator.clipboard
-                  .writeText(code)
-                  .then(function () {
-                    console.log("coupon_copied");
-                  })
-                  .catch(function () {
-                    copyFallback();
-                  });
-              } else {
-                copyFallback();
-              }
-            }
             function showFollowIfStillIdle() {
               clearPriceFollowUp();
               if (!p2 || !w || !w.parentNode) {
@@ -216,7 +187,40 @@
                 copyBtn.style.cssText = btnStyle;
                 copyBtn.addEventListener("click", function (e) {
                   e.stopPropagation();
-                  copyCouponCode();
+                  function onCopySuccess() {
+                    copyBtn.textContent = "تم النسخ ✅";
+                    console.log("coupon_copied");
+                  }
+                  function fallbackCopy() {
+                    var inp = document.createElement("input");
+                    inp.setAttribute("type", "text");
+                    inp.value = "SAVE10";
+                    inp.setAttribute("readonly", "");
+                    inp.style.cssText = "position:fixed;left:-9999px;opacity:0";
+                    document.body.appendChild(inp);
+                    inp.select();
+                    inp.setSelectionRange(0, 99999);
+                    try {
+                      if (document.execCommand("copy")) {
+                        onCopySuccess();
+                      }
+                    } catch (err) {}
+                    if (inp.parentNode) {
+                      document.body.removeChild(inp);
+                    }
+                  }
+                  if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard
+                      .writeText("SAVE10")
+                      .then(function () {
+                        onCopySuccess();
+                      })
+                      .catch(function () {
+                        fallbackCopy();
+                      });
+                  } else {
+                    fallbackCopy();
+                  }
                 });
                 w.appendChild(copyBtn);
               });
