@@ -14,7 +14,7 @@ import anthropic  # مكتبة Anthropic الرسمية لطلبات Claude
 import requests  # طلبات ‎HTTP‎ / ‎Zid / واتساب‎
 from dotenv import load_dotenv
 from extensions import db
-from flask import Flask, request, render_template, jsonify, redirect, url_for, Response
+from flask import Flask, request, render_template, jsonify, Response
 from sqlalchemy import func
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -619,8 +619,8 @@ def zid_webhook():
 
 @app.get("/")
 def home():
-    # إعادة توجيه من الجذر إلى لوحة التحكم
-    return redirect(url_for("dashboard"))
+    # جذر التطبيق: استجابة بسيطة (تضمين في لوحة زد دون الاعتماد على ‎/dashboard‎ أو قاعدة البيانات)
+    return jsonify({"status": "app is running"})
 
 
 # لا نستدعي ‎_ensure_db_schema()‎ عند التحميل — يتجنب الاتصال بقاعدة البيانات عند إقلاع ‎Gunicorn‎
