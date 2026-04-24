@@ -2,12 +2,10 @@
 """
 CartFlow — تطبيق Flask الرئيسي لاستقبال الويبهوك ولوحة التاجر.
 """
-import base64
-import hashlib
-import hmac
 import os
 import json
 import traceback
+from datetime import datetime, timezone, timedelta
 from typing import Any, Optional, Tuple
 
 import anthropic  # مكتبة Anthropic الرسمية لطلبات Claude
@@ -15,6 +13,7 @@ import requests  # طلبات ‎HTTP‎ / ‎Zid / واتساب‎
 from dotenv import load_dotenv
 from extensions import db
 from flask import Flask, request, render_template, jsonify, Response
+from integrations.zid_client import exchange_code_for_token, verify_webhook_signature
 from sqlalchemy import func
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -38,7 +37,10 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db.init_app(app)
 
 # تسجيل النماذج (يجب بعد ‎init_app‎)
-from models import AbandonedCart, Store  # noqa: E402
+from models import AbandonedCart, Store, RecoveryEvent  # noqa: E402
+from routes.ops import bp as ops_bp  # noqa: E402
+
+app.register_blueprint(ops_bp)
 
 # تسمية مودل Claude (يمكن تغييره من البيئة)
 DEFAULT_CLAUDE_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-3-5-sonnet-20241022")
@@ -58,23 +60,6 @@ def set_embed_csp(response: Response) -> Response:
         "frame-ancestors https://*.zid.sa https://zid.sa;"
     )
     return response
-
-
-def verify_zid_webhook_signature(
-    body: bytes, header_sig: Optional[str], secret: str
-) -> bool:
-    # ‎HMAC-SHA256‎ للجسد الخام — مقارنة آمنة (لا تسجيل الأسرار)
-    if not secret or not body or not header_sig or not header_sig.strip():
-        return False
-    mac = hmac.new(secret.encode("utf-8"), body, hashlib.sha256)
-    hexd = mac.hexdigest()
-    b64d = base64.b64encode(mac.digest()).decode("ascii")
-    s = header_sig.strip()
-    if s.lower().startswith("sha256="):
-        s = s[7:].strip()
-    if hmac.compare_digest(hexd, s) or hmac.compare_digest(b64d, s):
-        return True
-    return False
 
 
 def _parse_zid_store_id_from_token(data: dict[str, Any]) -> Optional[str]:
@@ -126,77 +111,48 @@ def _fetch_zid_store_id_from_profile(access_token: str) -> Optional[str]:
     return None
 
 
-def save_or_update_store(zid_store_id: str, access_token: str) -> None:
-    sid = (zid_store_id or "").strip()
-    if not sid:
+def save_or_update_store_from_token_response(data: dict[str, Any]) -> None:
+    """يحفظ ‎access_token / refresh_token / انتهاء الصلاحية‎ دون تسجيل أسرار."""
+    access = (data.get("access_token") or "").strip()
+    if not access:
         return
-    row = Store.query.filter_by(zid_store_id=sid).first()
+    zid = _parse_zid_store_id_from_token(data) or _fetch_zid_store_id_from_profile(
+        access
+    )
+    refresh: Optional[str] = None
+    r = data.get("refresh_token")
+    if r is not None and str(r).strip():
+        refresh = str(r).strip()
+    exp: Optional[datetime] = None
+    ei = data.get("expires_in")
+    if isinstance(ei, (int, float)):
+        exp = datetime.now(timezone.utc) + timedelta(seconds=float(ei))
+
+    if zid:
+        row = Store.query.filter_by(zid_store_id=zid).first()
+    else:
+        row = (
+            Store.query.filter(Store.zid_store_id.is_(None))  # type: ignore[union-attr]
+            .order_by(Store.id.desc())
+            .first()
+        )
     if row is None:
-        row = Store(zid_store_id=sid, access_token=access_token, is_active=True)
+        row = Store(
+            zid_store_id=zid,
+            access_token=access,
+            refresh_token=refresh,
+            token_expires_at=exp,
+            is_active=True,
+        )
         db.session.add(row)
     else:
-        row.access_token = access_token
+        row.zid_store_id = zid or row.zid_store_id
+        row.access_token = access
+        if refresh is not None:
+            row.refresh_token = refresh
+        row.token_expires_at = exp
         row.is_active = True
     db.session.commit()
-
-
-# يجب أن يطابق ‎redirect_uri‎ في طلب التفويض وفي لوحة تطبيق زد
-ZID_OAUTH_CALLBACK_REDIRECT_URI = "https://smartreplyai.net/auth/callback"
-ZID_OAUTH_TOKEN_ENDPOINT = f"{ZID_OAUTH_BASE}/oauth/token"
-
-
-def zid_token_exchange_by_code(code: str) -> tuple[dict, int]:
-    # تبادل رمز التفويض مع ‎https://oauth.zid.sa/oauth/token‎ — إرجاع رد زد كما هو (نجاح أو خطأ)
-    client_id = (os.getenv("ZID_CLIENT_ID") or "").strip()
-    client_secret = (os.getenv("ZID_CLIENT_SECRET") or "").strip()
-    missing: list[str] = []
-    if not client_id:
-        missing.append("ZID_CLIENT_ID")
-    if not client_secret:
-        missing.append("ZID_CLIENT_SECRET")
-    if missing:
-        return (
-            {
-                "error": "OAuth is not configured: set the following in the server environment",
-                "missing_environment_variables": missing,
-            },
-            500,
-        )
-    payload: dict[str, str] = {
-        "grant_type": "authorization_code",
-        "client_id": client_id,
-        "client_secret": client_secret,
-        "redirect_uri": ZID_OAUTH_CALLBACK_REDIRECT_URI,
-        "code": code,
-    }
-    try:
-        tr = requests.post(
-            ZID_OAUTH_TOKEN_ENDPOINT,
-            data=payload,
-            timeout=30,
-        )
-    except requests.RequestException as e:
-        return (
-            {
-                "error": "Failed to reach Zid OAuth token endpoint",
-                "detail": str(e),
-            },
-            502,
-        )
-    try:
-        body: Any = tr.json()
-    except Exception:  # noqa: BLE001
-        return (
-            {
-                "error": "Zid returned a non-JSON response",
-                "http_status": tr.status_code,
-                "raw": (tr.text or "")[:4000],
-            },
-            tr.status_code,
-        )
-    if isinstance(body, dict):
-        return (body, tr.status_code)
-    return ({"response": body}, tr.status_code)
 
 
 def _as_float(v: Any, default: float = 0.0) -> float:
@@ -448,18 +404,18 @@ def normalize_zid_cart_fields(payload: dict) -> dict[str, Any]:
     is_rec = data.get("is_recovered")
     st_raw = _as_str(p.get("status") or data.get("status")).lower()
     if isinstance(is_rec, bool) and is_rec:
-        status = "Recovered"
+        status = "recovered"
     elif st_raw in ("recovered", "completed", "paid", "success"):
-        status = "Recovered"
+        status = "recovered"
     elif st_raw in ("sent", "message_sent", "delivered"):
-        status = "Sent"
+        status = "sent"
     else:
-        status = "Pending"
+        status = "detected"
 
     cart_url = extract_cart_url(payload)
 
     return {
-        "cart_id": cart_id,
+        "zid_cart_id": cart_id,
         "customer_name": customer_name,
         "customer_phone": customer_phone,
         "cart_value": cart_value,
@@ -469,36 +425,38 @@ def normalize_zid_cart_fields(payload: dict) -> dict[str, Any]:
 
 
 def upsert_abandoned_cart_from_payload(payload: dict) -> Tuple[bool, str, Optional[AbandonedCart]]:
-    # إدراج أو تحديث سجل ‎AbandonedCart‎ حسب ‎cart_id‎ ثم ‎commit‎
+    # إدراج أو تحديث ‎AbandonedCart‎ حسب ‎zid_cart_id‎
     fields = normalize_zid_cart_fields(payload)
-    if not fields["cart_id"]:
-        return False, "missing cart_id", None
-    row = AbandonedCart.query.filter_by(cart_id=fields["cart_id"]).first()
+    if not fields["zid_cart_id"]:
+        return False, "missing zid_cart_id", None
+    row = AbandonedCart.query.filter_by(zid_cart_id=fields["zid_cart_id"]).first()
     if row is None:
         row = AbandonedCart(
-            cart_id=fields["cart_id"],
+            zid_cart_id=fields["zid_cart_id"],
             customer_name=fields["customer_name"],
             customer_phone=fields["customer_phone"],
             cart_value=fields["cart_value"],
             status=fields["status"],
-            cart_url=fields.get("cart_url") or "",
+            cart_url=fields.get("cart_url") or None,
         )
+        AbandonedCart.set_raw(row, payload)
         db.session.add(row)
     else:
         row.customer_name = fields["customer_name"] or row.customer_name
         row.customer_phone = fields["customer_phone"] or row.customer_phone
-        if fields["cart_value"] != 0.0 or row.cart_value == 0.0:
+        if fields["cart_value"] != 0.0 or row.cart_value is None or row.cart_value == 0.0:
             row.cart_value = fields["cart_value"]
         if fields.get("cart_url"):
             row.cart_url = fields["cart_url"]
-        # ‎Recovered‎ أعلى أولوية — لا نعيد ‎Pending‎ فوق ‎Sent‎ أثناء تكرار الويبهوك
+        AbandonedCart.set_raw(row, payload)
         new = fields["status"]
-        if new == "Recovered":
-            row.status = "Recovered"
-        elif new == "Sent":
-            row.status = "Sent"
+        if new == "recovered":
+            row.status = "recovered"
+            row.recovered_at = datetime.now(timezone.utc)
+        elif new == "sent":
+            row.status = "sent"
         else:
-            if row.status not in ("Sent", "Recovered"):
+            if row.status not in ("sent", "recovered"):
                 row.status = new
     db.session.commit()
     return True, "ok", row
@@ -513,16 +471,47 @@ def _ensure_db_schema() -> None:
     return
 
 
+# --- ويبهوك: إخفاء أسرار داخل ‎JSON‎ للتخزين الآمن ---
+
+def _redact_secrets_for_log(obj: Any) -> Any:
+    if isinstance(obj, dict):
+        out: dict[str, Any] = {}
+        for k, v in obj.items():
+            kl = (k or "").lower()
+            if any(
+                x in kl
+                for x in ("token", "secret", "password", "authorization", "bearer", "api_key")
+            ):
+                out[k] = "***"
+            else:
+                out[k] = _redact_secrets_for_log(v)
+        return out
+    if isinstance(obj, list):
+        return [_redact_secrets_for_log(x) for x in obj[:80]]
+    return obj
+
+
 # --- المسارات ---
 
 @app.get("/auth/callback")
 def auth_callback():
-    # ‎OAuth 2.0‎: بدون ‎code‎ نثبت أن المسار يعمل؛ مع ‎code‎ نستبدل برمز زد
+    # ‎OAuth 2.0‎: بدون ‎code‎ — تأكيد المسار؛ مع ‎code‎ — تبادل واستبدال الرموز دون إرجاع ‎access_token‎ للعميل
     code = (request.args.get("code") or "").strip()
     if not code:
         return jsonify({"status": "callback route exists"})
-    body, status = zid_token_exchange_by_code(code)
-    return jsonify(body), status
+    body, status = exchange_code_for_token(code)
+    if 200 <= status < 300 and isinstance(body, dict) and (body.get("access_token") or "").strip():
+        try:
+            save_or_update_store_from_token_response(body)
+        except SQLAlchemyError:
+            db.session.rollback()
+            return jsonify({"ok": False, "error": "failed_to_persist_store"}), 500
+        return jsonify({"ok": True, "message": "connected"}), 200
+    if 200 <= status < 300 and isinstance(body, dict):
+        return jsonify({"ok": False, "error": "no_access_token_in_response"}), status
+    if isinstance(body, dict):
+        return jsonify(body), status
+    return jsonify({"error": "invalid_token_response_format"}), status
 
 
 @app.route("/dashboard", methods=["GET"])
@@ -531,13 +520,15 @@ def dashboard():
     total_carts = AbandonedCart.query.count()
     rev = (
         db.session.query(func.coalesce(func.sum(AbandonedCart.cart_value), 0.0))
-        .filter(AbandonedCart.status == "Recovered")
+        .filter(AbandonedCart.status == "recovered")
         .scalar()
     )
     total_revenue = float(rev) if rev is not None else 0.0
-    recovered = AbandonedCart.query.filter_by(status="Recovered").count()
+    recovered = AbandonedCart.query.filter_by(status="recovered").count()
     recent_carts = (
-        AbandonedCart.query.order_by(AbandonedCart.created_at.desc()).limit(5).all()
+        AbandonedCart.query.order_by(AbandonedCart.last_seen_at.desc())
+        .limit(5)
+        .all()
     )
     return render_template(
         "index.html",
@@ -554,78 +545,56 @@ def send_cart_manual(row_id: int):
     row = db.session.get(AbandonedCart, row_id)
     if row is None:
         return jsonify({"ok": False, "error": "not_found"}), 404
-    if row.status == "Recovered":
+    if row.status == "recovered":
         return jsonify({"ok": False, "error": "already_recovered"}), 400
     cart_link = (row.cart_url or os.getenv("WHATSAPP_FALLBACK_CART_URL") or "https://example.com/cart").strip()
-    msg = row.generated_message or DEFAULT_RECOVERY_SMS
+    msg = DEFAULT_RECOVERY_SMS
     ok, err, _r = send_whatsapp_message(row.customer_phone, msg, cart_link)
     if ok:
-        if row.status != "Recovered":
-            row.status = "Sent"
+        if row.status != "recovered":
+            row.status = "sent"
         db.session.commit()
     return jsonify({"ok": ok, "error": err})
 
 
 @app.route("/webhook/zid", methods=["POST"])
 def zid_webhook():
-    # التحقق من ‎X-Zid-Signature‎ قبل أي معالجة
-    raw = request.get_data()
-    secret = (os.getenv("ZID_WEBHOOK_SECRET") or "").strip()
-    sig = request.headers.get("X-Zid-Signature")
-    if not secret or not verify_zid_webhook_signature(raw, sig, secret):
+    if not verify_webhook_signature(request):
         return jsonify({"error": "unauthorized"}), 401
+    raw = request.get_data()
     try:
         payload = json.loads(raw.decode("utf-8")) if raw else {}
     except (json.JSONDecodeError, UnicodeDecodeError):
         payload = {}
     if not isinstance(payload, dict):
         payload = {}
-
-    print("[Zid Webhook]", json.dumps(payload, ensure_ascii=False, indent=2))
+    app.logger.info(
+        "zid_webhook received, top_keys=%s", list(payload.keys())[:32]
+    )
     out: dict[str, Any] = {"ok": True}
-    if not isinstance(payload, dict):
-        return jsonify(out), 200
     try:
-        ok, err, row = upsert_abandoned_cart_from_payload(payload)
-        if not ok:
-            out["ok"] = False
-            out["message"] = err
-        elif row is not None:
-            # ‎Recovered‎: سجل مكتمل — بلا توليد ولا واتساب
-            if row.status == "Recovered":
-                pass
-            # ‎Sent‎: تم الإرسال مسبقاً (تجنّب تكرار ‎Claude/واتساب)‎
-            elif row.status == "Sent":
-                pass
-            else:
-                cart_items = extract_cart_items_summary(payload)
-                ai = generate_recovery_message(
-                    row.customer_name,
-                    cart_items,
-                    float(row.cart_value or 0.0),
-                )
-                row.generated_message = ai
-                db.session.add(row)
-                db.session.commit()
-                # إرسال ‎CTA + إكمال الشراء‎ ثم ‎Sent‎ عند نجاح ‎Graph API‎
-                cart_link = (row.cart_url or extract_cart_url(payload) or "").strip()
-                w_ok, w_err, _wa = send_whatsapp_message(
-                    row.customer_phone,
-                    row.generated_message or DEFAULT_RECOVERY_SMS,
-                    cart_link,
-                )
-                if w_ok:
-                    row.status = "Sent"
-                    db.session.add(row)
-                    db.session.commit()
-                else:
-                    out["whatsapp_error"] = w_err
+        rj = _redact_secrets_for_log(payload)
+        pl: Optional[str] = None
+        if rj is not None:
+            pl = (json.dumps(rj, ensure_ascii=False))[:8000]
+        ev = RecoveryEvent(
+            store_id=None,
+            abandoned_cart_id=None,
+            event_type=(_as_str(payload.get("event") or "zid.webhook"))[:128] or "zid.webhook",
+            payload=pl,
+        )
+        db.session.add(ev)
+        db.session.commit()
+    except SQLAlchemyError as e:
+        db.session.rollback()
+        app.logger.warning("zid_webhook: could not log recovery event: %s", e)
+    try:
+        ok, err, _row = upsert_abandoned_cart_from_payload(payload)
+        if not ok and err:
+            out["cart_note"] = err
     except SQLAlchemyError:
         db.session.rollback()
-        out["ok"] = False
-        out["message"] = "db_error"
-        out["error"] = traceback.format_exc()
-        print("[Zid Webhook DB Error]", out["error"])
+        app.logger.warning("zid_webhook: cart upsert failed", exc_info=True)
     return jsonify(out), 200
 
 

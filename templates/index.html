@@ -79,11 +79,11 @@
           <div class="rounded-2xl border border-zid-100 bg-white p-6 shadow-sm sm:col-span-2 lg:col-span-1">
             <p class="text-sm font-medium text-slate-500">Recovered Carts</p>
             <p class="mt-2 text-3xl font-bold text-zid-600">{{ recovered_carts }}</p>
-            <p class="mt-1 text-xs text-slate-400">Carts with status &quot;Recovered&quot;</p>
+            <p class="mt-1 text-xs text-slate-400">Carts with status &quot;recovered&quot;</p>
           </div>
         </div>
 
-        <!-- جدول آخر 5 سلات متروكة: عميل — قيمة — حالة — رسالة الذكاء الاصطناعي -->
+        <!-- جدول آخر 5 سلات: عميل — قيمة — حالة — نص خام مختصر -->
         <section class="mt-10" aria-labelledby="recent-carts-heading">
           <h2 id="recent-carts-heading" class="text-base font-semibold text-slate-900 mb-4">Last 5 Abandoned Carts</h2>
           <div class="overflow-x-auto rounded-2xl border border-zid-100 bg-white shadow-sm">
@@ -93,7 +93,7 @@
                   <th class="px-4 py-3 font-medium">Customer</th>
                   <th class="px-4 py-3 font-medium">Value (SAR)</th>
                   <th class="px-4 py-3 font-medium">Status</th>
-                  <th class="px-4 py-3 font-medium">AI Message</th>
+                  <th class="px-4 py-3 font-medium">Raw payload (preview)</th>
                   <th class="px-4 py-3 font-medium w-32">Action</th>
                 </tr>
               </thead>
@@ -103,19 +103,19 @@
                   <td class="px-4 py-3 text-slate-800">{{ c.customer_name or "—" }}</td>
                   <td class="px-4 py-3 font-medium text-zid-700">{{ "%.2f"|format(c.cart_value or 0) }}</td>
                   <td class="px-4 py-3">
-                    {# Pending: رمادي — Sent: أزرق — Recovered: أخضر #}
+                    {# detected: رمادي — sent: أزرق — recovered: أخضر #}
                     <span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium
-                      {% if c.status == 'Recovered' %}bg-emerald-100 text-emerald-800
-                      {% elif c.status == 'Sent' %}bg-blue-100 text-blue-800
+                      {% if c.status == 'recovered' %}bg-emerald-100 text-emerald-800
+                      {% elif c.status == 'sent' %}bg-blue-100 text-blue-800
                       {% else %}bg-slate-100 text-slate-700{% endif %}">
                       {{ c.status }}
                     </span>
                   </td>
                   <td class="px-4 py-3 text-slate-600 max-w-md whitespace-pre-wrap break-words text-xs leading-relaxed">
-                    {{ c.generated_message or "—" }}
+                    {% if c.raw_payload %}{{ c.raw_payload[:200] }}{% if c.raw_payload|length > 200 %}…{% endif %}{% else %}—{% endif %}
                   </td>
                   <td class="px-4 py-3">
-                    {% if c.status != 'Recovered' %}
+                    {% if c.status != 'recovered' %}
                     <button type="button" data-send-url="{{ url_for('send_cart_manual', row_id=c.id) }}"
                       class="text-xs font-medium text-zid-600 hover:text-zid-800 border border-zid-200 rounded-lg px-2.5 py-1.5 hover:bg-zid-50">
                       Send Manually
