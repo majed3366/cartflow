@@ -35,14 +35,38 @@
     p.style.cssText = "margin:0 0 8px 0;";
     p.textContent = "تبغى أساعدك تكمل طلبك؟ 👋";
 
+    var btnStyle =
+      "cursor:pointer;border:0;border-radius:8px;padding:6px 14px;font:inherit;" +
+      "font-weight:600;background:#7c3aed;color:#fff;";
+
     var btn = document.createElement("button");
     btn.type = "button";
     btn.textContent = "نعم";
-    btn.style.cssText =
-      "cursor:pointer;border:0;border-radius:8px;padding:6px 14px;font:inherit;" +
-      "font-weight:600;background:#7c3aed;color:#fff;";
+    btn.style.cssText = btnStyle;
     btn.addEventListener("click", function () {
       console.log("user_interested");
+      p.textContent = "تمام 👌 وش أكثر شيء متردد فيه؟";
+      btn.remove();
+      var row = document.createElement("div");
+      row.style.cssText =
+        "display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-start;margin-top:6px;";
+      var bPrice = document.createElement("button");
+      bPrice.type = "button";
+      bPrice.textContent = "السعر";
+      bPrice.style.cssText = btnStyle;
+      bPrice.addEventListener("click", function () {
+        console.log("objection_price");
+      });
+      var bQ = document.createElement("button");
+      bQ.type = "button";
+      bQ.textContent = "الجودة";
+      bQ.style.cssText = btnStyle;
+      bQ.addEventListener("click", function () {
+        console.log("objection_quality");
+      });
+      row.appendChild(bPrice);
+      row.appendChild(bQ);
+      w.appendChild(row);
     });
 
     w.appendChild(p);
