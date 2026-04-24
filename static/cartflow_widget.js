@@ -37,9 +37,11 @@
       "cursor:pointer;border:0;border-radius:8px;padding:6px 14px;font:inherit;" +
       "font-weight:600;background:#7c3aed;color:#fff;";
 
-    // يمنع السرقة من مستمعي النقر على ‎body/document‎ بعد أن يتصاعد من الزر
+    // إيقاف الانتشار فقط لنقرة مباشرة على الحاوية — لا تُلغى نقرات الأبناء
     w.addEventListener("click", function (ev) {
-      ev.stopPropagation();
+      if (ev.target === w) {
+        ev.stopPropagation();
+      }
     }, false);
 
     var p = document.createElement("p");
@@ -71,26 +73,31 @@
         row.style.cssText =
           "display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-start;margin-top:4px;";
         var bPrice = document.createElement("button");
+        bPrice.id = "cf-price-btn";
         bPrice.type = "button";
         bPrice.textContent = "السعر";
         bPrice.style.cssText = btnStyle;
-        bPrice.addEventListener("click", function (e) {
-          e.stopPropagation();
-          e.preventDefault();
-          console.log("objection_price");
-        });
         var bQ = document.createElement("button");
+        bQ.id = "cf-quality-btn";
         bQ.type = "button";
         bQ.textContent = "الجودة";
         bQ.style.cssText = btnStyle;
-        bQ.addEventListener("click", function (e) {
-          e.stopPropagation();
-          e.preventDefault();
-          console.log("objection_quality");
-        });
         row.appendChild(bPrice);
         row.appendChild(bQ);
         w.appendChild(row);
+
+        const priceBtn = document.getElementById("cf-price-btn");
+        const qualityBtn = document.getElementById("cf-quality-btn");
+        if (priceBtn) {
+          priceBtn.addEventListener("click", function () {
+            console.log("objection_price");
+          });
+        }
+        if (qualityBtn) {
+          qualityBtn.addEventListener("click", function () {
+            console.log("objection_quality");
+          });
+        }
       },
       false
     );
