@@ -57,6 +57,7 @@ app.register_blueprint(ops_bp)
 
 # تطوير فقط — مسجل على ‎app‎ مباشرة لضمان ظهوره مع ‎gunicorn main:app‎
 from services.ai_message_builder import build_abandoned_cart_message  # noqa: E402
+from services.whatsapp_recovery import build_whatsapp_recovery_message  # noqa: E402
 
 
 @app.get("/dev/run-flow")
@@ -164,6 +165,22 @@ def dev_send_whatsapp_test():
         r = jsonify({"ok": False, "error": str(e)})
         r.status_code = 500
         return r
+
+
+_WHATSAPP_TEST_CART = {"customer_name": "ماجد"}
+
+
+@app.get("/dev/whatsapp-message-test")
+def dev_whatsapp_message_test():
+    c = _WHATSAPP_TEST_CART
+    return jsonify(
+        {
+            "new_price": build_whatsapp_recovery_message("new", "price", c),
+            "new_quality": build_whatsapp_recovery_message("new", "quality", c),
+            "returning_price": build_whatsapp_recovery_message("returning", "price", c),
+            "returning_quality": build_whatsapp_recovery_message("returning", "quality", c),
+        }
+    )
 
 
 # تسمية مودل Claude (يمكن تغييره من البيئة)
