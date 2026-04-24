@@ -45,6 +45,50 @@ def admin_init_db():
     )
 
 
+# تطوير فقط — لاختبار ‎/test/zid/abandoned-carts‎؛ احذفه أو اقفله قبل الإنتاج
+@bp.post("/dev/set-token")
+def dev_set_token():
+    data = request.get_json(silent=True) or {}
+    zid = (data.get("zid_store_id") or "").strip()
+    token = (data.get("access_token") or "").strip()
+    if not zid or not token:
+        return (
+            jsonify(
+                {
+                    "ok": False,
+                    "error": "zid_store_id and access_token are required",
+                }
+            ),
+            400,
+        )
+    try:
+        row = Store.query.filter_by(zid_store_id=zid).first()
+        if row is None:
+            row = Store(
+                zid_store_id=zid,
+                access_token=token,
+                is_active=True,
+            )
+            db.session.add(row)
+        else:
+            row.access_token = token
+            row.is_active = True
+        db.session.commit()
+    except SQLAlchemyError as e:
+        db.session.rollback()
+        current_app.logger.warning("dev set-token: %s", e)
+        return (
+            jsonify(
+                {
+                    "ok": False,
+                    "error": "database_error",
+                }
+            ),
+            500,
+        )
+    return jsonify({"ok": True, "zid_store_id": zid, "is_active": True})
+
+
 def _is_schema_error(exc: SQLAlchemyError) -> bool:
     """Missing table/column/relation — engine is up, schema not created or mismatch."""
     msg = (str(getattr(exc, "orig", None) or exc) or "").lower()
