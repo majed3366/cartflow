@@ -50,7 +50,7 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db.init_app(app)
 
 # تسجيل النماذج (يجب بعد ‎init_app‎)
-from models import AbandonedCart, Store, RecoveryEvent  # noqa: E402
+from models import AbandonedCart, ObjectionTrack, Store, RecoveryEvent  # noqa: E402
 from routes.ops import bp as ops_bp  # noqa: E402
 
 app.register_blueprint(ops_bp)
@@ -96,6 +96,35 @@ if (location.pathname.indexOf("/cart") < 0) {
 @app.get("/dev/widget-test/cart")
 def dev_widget_test():
     return Response(_DEV_WIDGET_TEST_HTML, mimetype="text/html; charset=utf-8")
+
+
+def _track_objection_cors(resp: Response) -> Response:
+    resp.headers["Access-Control-Allow-Origin"] = "*"
+    resp.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
+    resp.headers["Access-Control-Allow-Headers"] = "Content-Type"
+    return resp
+
+
+@app.route("/track/objection", methods=["POST", "OPTIONS"])
+def track_objection():
+    if request.method == "OPTIONS":
+        return _track_objection_cors(Response("", status=204))
+    data = request.get_json(silent=True) or {}
+    t = (data.get("type") or "").strip()
+    if t not in ("price", "quality"):
+        r = jsonify({"ok": False, "error": "invalid_type"})
+        r.status_code = 400
+        return _track_objection_cors(r)
+    try:
+        row = ObjectionTrack(object_type=t)
+        db.session.add(row)
+        db.session.commit()
+    except SQLAlchemyError:
+        db.session.rollback()
+        r = jsonify({"ok": False, "error": "database_error"})
+        r.status_code = 500
+        return _track_objection_cors(r)
+    return _track_objection_cors(jsonify({"ok": True, "id": row.id}))
 
 
 # تسمية مودل Claude (يمكن تغييره من البيئة)

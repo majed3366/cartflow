@@ -15,6 +15,16 @@
     return /\/cart/i.test(window.location.pathname + window.location.search);
   }
 
+  function postObjection(type) {
+    var base = (window.CARTFLOW_API_BASE || "").toString().replace(/\/$/, "");
+    var url = base ? base + "/track/objection" : "/track/objection";
+    fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: type }),
+    }).catch(function () {});
+  }
+
   function showBubble() {
     if (shown) return;
     shown = true;
@@ -103,6 +113,7 @@
             }
             objectionDone = true;
             console.log("objection_price");
+            postObjection("price");
             p2.textContent =
               "أفهمك 👌 كثير يهتمون بالسعر… لكن غالبًا اللي ياخذونه يرجعون له مرة ثانية لأنه فعلاً يستاهل قيمته.";
             hideObjectionButtons();
@@ -115,6 +126,7 @@
             }
             objectionDone = true;
             console.log("objection_quality");
+            postObjection("quality");
             p2.textContent =
               "واضح إنك تهتم بالجودة 👍 وهذا اختيار ذكي… المنتج هذا من أكثر الأشياء اللي الناس ترجع تشتريه بسبب جودته.";
             hideObjectionButtons();

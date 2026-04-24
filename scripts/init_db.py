@@ -20,7 +20,13 @@ load_dotenv()
 
 from main import app  # noqa: E402
 from extensions import db  # noqa: E402
-from models import Store, AbandonedCart, MessageLog, RecoveryEvent  # noqa: F401, E402
+from models import (  # noqa: F401, E402
+    AbandonedCart,
+    MessageLog,
+    ObjectionTrack,
+    RecoveryEvent,
+    Store,
+)
 
 
 def main() -> None:

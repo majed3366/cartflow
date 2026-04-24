@@ -90,6 +90,18 @@ class MessageLog(db.Model):
     )
 
 
+class ObjectionTrack(db.Model):
+    """متابعة اختيار ‎objection‎ من الودجيت (سعر/جودة)."""
+    __tablename__ = "objection_tracks"
+
+    id = db.Column(db.Integer, primary_key=True)
+    # عمود ‎SQL‎ ‎:type‎ — ‎"price"‎ / ‎"quality"‎
+    object_type = db.Column("type", db.String(20), nullable=False, index=True)
+    created_at = db.Column(
+        db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
+    )
+
+
 class RecoveryEvent(db.Model):
     __tablename__ = "recovery_events"
 
