@@ -24,6 +24,8 @@ load_dotenv()
 # إنشاء كائن تطبيق Flask — نقطة دخول WSGI لـ Gunicorn: ‎app‎
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev-only-change-in-production")
+# ‎jsonify‎: نفس ‎json.dumps(..., ensure_ascii=False)‎ — عرض العربية مباشرة
+app.json.ensure_ascii = False
 
 # قاعدة البيانات: ‎DATABASE_URL‎ من Railway (يُحقن تلقائياً عند ربط ‎Postgres‎) — لا hardcode
 # ‎‎postgres.railway.internal‎ يأتي داخل ‎URL‎ فقط، لا تُلصقه يدوياً في الكود
