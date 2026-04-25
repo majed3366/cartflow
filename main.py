@@ -592,6 +592,14 @@ def api_recovery_settings_get():
         return r
 
 
+@app.get("/dev/recovery-settings-read-test")
+def dev_recovery_settings_read_test():
+    """
+    نفس ‎GET /api/recovery-settings‎ (استدعاء مباشر لنفس الدالة).
+    """
+    return api_recovery_settings_get()
+
+
 @app.get("/dev/recovery-settings-api-test")
 def dev_recovery_settings_api_test():
     """
