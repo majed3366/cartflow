@@ -298,6 +298,31 @@ def dev_recovery_duplicate_test():
     )
 
 
+@app.get("/dev/recovery-settings-test")
+def dev_recovery_settings_test():
+    """
+    آخر ‎Store‎: حقول ‎recovery_*‎ (بدون واتساب / بدون تغيير منطق الاسترجاع).
+    """
+    try:
+        db.create_all()
+        row = Store.query.order_by(Store.id.desc()).first()
+        if row is None:
+            return jsonify({"ok": False, "error": "no_store"}), 404
+        return jsonify(
+            {
+                "ok": True,
+                "recovery_delay": row.recovery_delay,
+                "recovery_delay_unit": row.recovery_delay_unit,
+                "recovery_attempts": row.recovery_attempts,
+            }
+        )
+    except Exception as e:  # noqa: BLE001
+        db.session.rollback()
+        r = jsonify({"ok": False, "error": str(e)})
+        r.status_code = 500
+        return r
+
+
 @app.get("/dev/create-test-objection")
 def dev_create_test_objection():
     """
