@@ -8,7 +8,7 @@ import tempfile
 import traceback
 from types import SimpleNamespace
 from datetime import datetime, timedelta, timezone
-from typing import Any, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 import anthropic  # مكتبة Anthropic الرسمية لطلبات Claude
 import requests  # طلبات ‎HTTP‎ / ‎Zid / واتساب‎
@@ -178,6 +178,46 @@ _WHATSAPP_TEST_CART = {
 
 # ‎/dev/recovery-settings-test‎ — سجل ‎Store‎ اختباري عند عدم وجود بيانات
 _DEV_RECOVERY_SETTINGS_STORE_ZID = "dev-recovery-settings-test"
+_VALID_RECOVERY_UNITS = frozenset({"minutes", "hours", "days"})
+
+
+def _dev_apply_recovery_settings_update(
+    recovery_delay: Any, recovery_delay_unit: Any, recovery_attempts: Any
+) -> Tuple[Dict[str, Any], int]:
+    """
+    نفس منطق ‎POST /dev/recovery-settings-update‎ — تعديل أحدث ‎Store‎ بعد التحقق.
+    """
+    if (
+        recovery_delay is None
+        or recovery_delay_unit is None
+        or recovery_attempts is None
+    ):
+        return {"ok": False, "error": "missing_fields"}, 400
+    try:
+        rd_i = int(recovery_delay)
+        ra_i = int(recovery_attempts)
+    except (TypeError, ValueError):
+        return {"ok": False, "error": "invalid_number"}, 400
+    if rd_i < 1:
+        return {"ok": False, "error": "recovery_delay_min_1"}, 400
+    if ra_i < 1:
+        return {"ok": False, "error": "recovery_attempts_min_1"}, 400
+    unit = (str(recovery_delay_unit) if recovery_delay_unit is not None else "").strip().lower()
+    if unit not in _VALID_RECOVERY_UNITS:
+        return {"ok": False, "error": "invalid_recovery_delay_unit"}, 400
+    row = Store.query.order_by(Store.id.desc()).first()
+    if row is None:
+        return {"ok": False, "error": "no_store"}, 404
+    row.recovery_delay = rd_i
+    row.recovery_delay_unit = unit
+    row.recovery_attempts = ra_i
+    db.session.commit()
+    return {
+        "ok": True,
+        "recovery_delay": row.recovery_delay,
+        "recovery_delay_unit": row.recovery_delay_unit,
+        "recovery_attempts": row.recovery_attempts,
+    }, 200
 
 # ‎/dev/recovery-flow-test?type=…‎ — بدون قراءة من ‎DB‎
 _RECOVERY_TEST_SCENARIOS = {
@@ -482,44 +522,37 @@ def dev_recovery_settings_update():
     """
     يحدّث أحدث ‎Store‎ — ‎recovery_delay / unit / recovery_attempts‎ (تجارب فقط).
     """
-    _valid_units = frozenset({"minutes", "hours", "days"})
     try:
         db.create_all()
         body = request.get_json(silent=True)
         if not isinstance(body, dict):
             return jsonify({"ok": False, "error": "json_object_required"}), 400
-        rd = body.get("recovery_delay")
-        ru = body.get("recovery_delay_unit")
-        ra = body.get("recovery_attempts")
-        if rd is None or ru is None or ra is None:
-            return jsonify({"ok": False, "error": "missing_fields"}), 400
-        try:
-            rd_i = int(rd)
-            ra_i = int(ra)
-        except (TypeError, ValueError):
-            return jsonify({"ok": False, "error": "invalid_number"}), 400
-        if rd_i < 1:
-            return jsonify({"ok": False, "error": "recovery_delay_min_1"}), 400
-        if ra_i < 1:
-            return jsonify({"ok": False, "error": "recovery_attempts_min_1"}), 400
-        unit = (str(ru) if ru is not None else "").strip().lower()
-        if unit not in _valid_units:
-            return jsonify({"ok": False, "error": "invalid_recovery_delay_unit"}), 400
-        row = Store.query.order_by(Store.id.desc()).first()
-        if row is None:
-            return jsonify({"ok": False, "error": "no_store"}), 404
-        row.recovery_delay = rd_i
-        row.recovery_delay_unit = unit
-        row.recovery_attempts = ra_i
-        db.session.commit()
-        return jsonify(
-            {
-                "ok": True,
-                "recovery_delay": row.recovery_delay,
-                "recovery_delay_unit": row.recovery_delay_unit,
-                "recovery_attempts": row.recovery_attempts,
-            }
+        data, code = _dev_apply_recovery_settings_update(
+            body.get("recovery_delay"),
+            body.get("recovery_delay_unit"),
+            body.get("recovery_attempts"),
         )
+        r = jsonify(data)
+        r.status_code = code
+        return r
+    except Exception as e:  # noqa: BLE001
+        db.session.rollback()
+        r = jsonify({"ok": False, "error": str(e)})
+        r.status_code = 500
+        return r
+
+
+@app.get("/dev/recovery-settings-update-test")
+def dev_recovery_settings_update_test():
+    """
+    يستدعي نفس تعديل الإعدادات: ‎10 / minutes / 1‎ — من غير ‎JSON‎ (للمتصفح/السريع).
+    """
+    try:
+        db.create_all()
+        data, code = _dev_apply_recovery_settings_update(10, "minutes", 1)
+        r = jsonify(data)
+        r.status_code = code
+        return r
     except Exception as e:  # noqa: BLE001
         db.session.rollback()
         r = jsonify({"ok": False, "error": str(e)})
