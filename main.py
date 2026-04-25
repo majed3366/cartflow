@@ -1363,6 +1363,12 @@ def dashboard():
     )
 
 
+@app.get("/dashboard/recovery-settings")
+def dashboard_recovery_settings():
+    """صفحة بسيطة لضبط ‎recovery_*‎ — تحمّل/تحفظ عبر ‎/api/recovery-settings‎."""
+    return render_template("recovery_settings.html")
+
+
 @app.post("/api/carts/<int:row_id>/send")
 def send_cart_manual(row_id: int):
     # إعادة إرسال يدوي للتجريب: نفس ‎send_whatsapp_message‎ ثم ‎Sent‎
