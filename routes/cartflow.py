@@ -20,6 +20,41 @@ router = APIRouter(prefix="/api/cartflow", tags=["cartflow"])
 SENT_STATUSES = frozenset({"sent_real", "mock_sent"})
 
 
+def compute_recovery_analytics(store_slug: str) -> dict[str, Any]:
+    """
+    نفس تجميعات ‎GET /api/cartflow/analytics/{store_slug}‎ (بدون ‎ok / revenue‎).
+    ‎store_slug‎ مُطبَّع كما في المسار.
+    """
+    ss = (store_slug or "").strip()[:255]
+    if not ss:
+        raise ValueError("empty store slug")
+    db.create_all()
+    base = db.session.query(CartRecoveryLog).filter(CartRecoveryLog.store_slug == ss)
+
+    total_attempts = base.count()
+    sent_real = base.filter(CartRecoveryLog.status == "sent_real").count()
+    failed_final = base.filter(CartRecoveryLog.status == "failed_final").count()
+    stopped_converted = base.filter(
+        CartRecoveryLog.status == "stopped_converted"
+    ).count()
+
+    steps: dict[str, dict[str, int]] = {}
+    for n, key in ((1, "step1"), (2, "step2"), (3, "step3")):
+        sub = base.filter(CartRecoveryLog.step == n)
+        sent = sub.filter(CartRecoveryLog.status.in_(SENT_STATUSES)).count()
+        conv = sub.filter(CartRecoveryLog.status == "stopped_converted").count()
+        steps[key] = {"sent": sent, "converted": conv}
+
+    return {
+        "store_slug": ss,
+        "total_attempts": total_attempts,
+        "sent_real": sent_real,
+        "failed_final": failed_final,
+        "stopped_converted": stopped_converted,
+        "steps": steps,
+    }
+
+
 @router.get("/analytics/{store_slug}")
 def get_recovery_analytics(
     store_slug: str = Path(..., min_length=1, max_length=255, description="معرّف المتجر"),
@@ -32,38 +67,17 @@ def get_recovery_analytics(
         return j({"ok": False, "error": "store_slug_required"}, 400)
 
     try:
-        db.create_all()
-        base = db.session.query(CartRecoveryLog).filter(
-            CartRecoveryLog.store_slug == ss
-        )
-
-        total_attempts = base.count()
-        sent_real = base.filter(CartRecoveryLog.status == "sent_real").count()
-        failed_final = base.filter(CartRecoveryLog.status == "failed_final").count()
-        stopped_converted = base.filter(
-            CartRecoveryLog.status == "stopped_converted"
-        ).count()
-
-        steps: dict[str, dict[str, int]] = {}
-        for n, key in ((1, "step1"), (2, "step2"), (3, "step3")):
-            sub = base.filter(CartRecoveryLog.step == n)
-            sent = sub.filter(CartRecoveryLog.status.in_(SENT_STATUSES)).count()
-            conv = sub.filter(CartRecoveryLog.status == "stopped_converted").count()
-            steps[key] = {"sent": sent, "converted": conv}
-
+        data = compute_recovery_analytics(ss)
         return j(
             {
                 "ok": True,
-                "store_slug": ss,
-                "total_attempts": total_attempts,
-                "sent_real": sent_real,
-                "failed_final": failed_final,
-                "stopped_converted": stopped_converted,
+                **data,
                 "revenue_recovered": 0.0,
-                "steps": steps,
             }
         )
-    except SQLAlchemyError as e:
+    except (ValueError, SQLAlchemyError) as e:
         db.session.rollback()
         log.warning("cartflow analytics: %s", e)
+        if isinstance(e, ValueError):
+            return j({"ok": False, "error": "store_slug_required"}, 400)
         return j({"ok": False, "error": "query_failed"}, 500)
