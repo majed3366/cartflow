@@ -317,6 +317,43 @@ def dev_recovery_delay_verify():
     )
 
 
+@app.get("/dev/recovery-attempts-verify")
+def dev_recovery_attempts_verify():
+    """
+    سلة ثابتة: ‎sent_count=0‎ ثم ‎1‎ مع ‎recovery_attempts=1‎ — ‎should_send_whatsapp‎ فقط، بدون واتساب.
+    """
+    now = datetime.now(timezone.utc)
+    last = now - timedelta(minutes=3)
+    store = SimpleNamespace(
+        recovery_delay=2,
+        recovery_delay_unit="minutes",
+        recovery_attempts=1,
+    )
+    return jsonify(
+        {
+            "ok": True,
+            "first_attempt": {
+                "should_send": should_send_whatsapp(
+                    last,
+                    user_returned_to_site=False,
+                    now=now,
+                    store=store,
+                    sent_count=0,
+                )
+            },
+            "second_attempt": {
+                "should_send": should_send_whatsapp(
+                    last,
+                    user_returned_to_site=False,
+                    now=now,
+                    store=store,
+                    sent_count=1,
+                )
+            },
+        }
+    )
+
+
 @app.get("/dev/recovery-duplicate-test")
 def dev_recovery_duplicate_test():
     """
