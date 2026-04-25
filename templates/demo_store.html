@@ -164,6 +164,26 @@
         if (id) addLine(id);
       });
 
+      function cartHasItems() {
+        return lines.length > 0;
+      }
+
+      window.addEventListener("beforeunload", function () {
+        if (!cartHasItems()) {
+          return;
+        }
+        try {
+          window.replyaiTrack({ event: "cart_abandoned" });
+        } catch (e) {
+          /* ignore */
+        }
+        try {
+          console.log("cart_abandoned triggered");
+        } catch (e2) {
+          /* ignore */
+        }
+      });
+
       render();
       emitCartUpdated();
     })();
