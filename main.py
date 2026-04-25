@@ -245,6 +245,33 @@ def dev_should_send_test():
     return jsonify({"recent": recent, "idle": idle})
 
 
+@app.get("/dev/recovery-timing-test")
+def dev_recovery_timing_test():
+    """
+    أزمنة ‎should_send_whatsapp‎ فقط (بدون واتساب) — للتجارب.
+    """
+    now = datetime.now(timezone.utc)
+    last_recent = now - timedelta(minutes=1)
+    last_idle = now - timedelta(minutes=3)
+    return jsonify(
+        {
+            "ok": True,
+            "cases": {
+                "recent_activity": {
+                    "should_send": should_send_whatsapp(
+                        last_recent, user_returned_to_site=False, now=now
+                    ),
+                },
+                "idle_activity": {
+                    "should_send": should_send_whatsapp(
+                        last_idle, user_returned_to_site=False, now=now
+                    ),
+                },
+            },
+        }
+    )
+
+
 @app.get("/dev/create-test-objection")
 def dev_create_test_objection():
     """
