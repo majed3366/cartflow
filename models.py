@@ -18,6 +18,12 @@ class Store(db.Model):
     refresh_token = db.Column(db.Text, nullable=True)
     token_expires_at = db.Column(db.DateTime, nullable=True)
     is_active = db.Column(db.Boolean, default=True, nullable=False)
+    # إعدادات الاسترجاع (لاحقاً) — بدون واجهة بعد
+    recovery_delay = db.Column(db.Integer, default=2, nullable=False)
+    recovery_delay_unit = db.Column(
+        db.String(20), default="minutes", nullable=False
+    )
+    recovery_attempts = db.Column(db.Integer, default=1, nullable=False)
     created_at = db.Column(
         db.DateTime, default=lambda: datetime.now(timezone.utc)
     )
