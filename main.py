@@ -691,9 +691,29 @@ async def _delayed_recovery_after_cart_abandoned(delay_seconds: float) -> None:
     """ينتظر ‎recovery_delay‎ ثم يسجّل — لا إرسال واتساب في هذه المرحلة."""
     try:
         await asyncio.sleep(delay_seconds)
-        log.info("recovery triggered after delay")
+        print("recovery triggered after delay")
     except asyncio.CancelledError:
         raise
+
+
+async def handle_cart_abandoned(background_tasks: BackgroundTasks) -> dict[str, Any]:
+    print("entered recovery handler")
+    log.info("cart abandoned received")
+    try:
+        db.create_all()
+        _ensure_default_store_for_recovery()
+        store = db.session.query(Store).order_by(Store.id.desc()).first()
+    except Exception:  # noqa: BLE001
+        db.session.rollback()
+        store = None
+    print("store settings loaded")
+    delay_s = float(recovery_delay_to_seconds(store))
+    print("starting delay task")
+    background_tasks.add_task(_delayed_recovery_after_cart_abandoned, delay_s)
+    return {
+        "recovery_scheduled": True,
+        "recovery_delay_seconds": delay_s,
+    }
 
 
 @app.post("/api/cart-event")
@@ -714,21 +734,7 @@ async def api_cart_event(request: Request, background_tasks: BackgroundTasks):
         "event": payload.get("event"),
     }
     if payload.get("event") == "cart_abandoned":
-        print("entered recovery handler")
-        log.info("cart abandoned received")
-        try:
-            db.create_all()
-            _ensure_default_store_for_recovery()
-            store = db.session.query(Store).order_by(Store.id.desc()).first()
-        except Exception:  # noqa: BLE001
-            db.session.rollback()
-            store = None
-        print("store settings loaded")
-        delay_s = float(recovery_delay_to_seconds(store))
-        print("starting delay task")
-        background_tasks.add_task(_delayed_recovery_after_cart_abandoned, delay_s)
-        out["recovery_scheduled"] = True
-        out["recovery_delay_seconds"] = delay_s
+        out.update(await handle_cart_abandoned(background_tasks))
     return j(out, 200)
 
 
