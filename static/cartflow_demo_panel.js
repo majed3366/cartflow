@@ -71,7 +71,7 @@
 
   function isClientConverted() {
     try {
-      return window.sessionStorage.getItem(CARTFLOW_DEMO_CONVERTED) === "1";
+      return window.sessionStorage.getItem(CARTFLOW_CONVERTED_KEY) === "1";
     } catch (e) {
       return false;
     }
@@ -80,9 +80,9 @@
   function setClientConverted(v) {
     try {
       if (v) {
-        window.sessionStorage.setItem(CARTFLOW_DEMO_CONVERTED, "1");
+        window.sessionStorage.setItem(CARTFLOW_CONVERTED_KEY, "1");
       } else {
-        window.sessionStorage.removeItem(CARTFLOW_DEMO_CONVERTED);
+        window.sessionStorage.removeItem(CARTFLOW_CONVERTED_KEY);
       }
     } catch (e) {
       /* ignore */
@@ -95,7 +95,7 @@
     setText("cf-demo-store", store);
     setText("cf-demo-session", session);
     if (isClientConverted()) {
-      setText("cf-demo-conversion", "marked (this tab)");
+      setText("cf-demo-conversion", "converted");
     } else {
       setText("cf-demo-conversion", "not marked");
     }
@@ -135,7 +135,7 @@
             setText("cf-demo-current-step", "—");
           }
           if (last.status === "stopped_converted") {
-            setText("cf-demo-conversion", "stopped_converted (log)");
+            setText("cf-demo-conversion", "converted");
           }
         }
         var list = el("cf-demo-logs");
@@ -180,7 +180,7 @@
 
   function triggerAbandon() {
     try {
-      if (window.sessionStorage.getItem("cartflow_converted") === "1") {
+      if (window.sessionStorage.getItem(CARTFLOW_CONVERTED_KEY) === "1") {
         console.log("cartflow demo: skip cart-event (converted)");
         return Promise.resolve();
       }
