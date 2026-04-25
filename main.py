@@ -714,6 +714,7 @@ async def api_cart_event(request: Request, background_tasks: BackgroundTasks):
         "event": payload.get("event"),
     }
     if payload.get("event") == "cart_abandoned":
+        print("entered recovery handler")
         log.info("cart abandoned received")
         try:
             db.create_all()
@@ -722,7 +723,9 @@ async def api_cart_event(request: Request, background_tasks: BackgroundTasks):
         except Exception:  # noqa: BLE001
             db.session.rollback()
             store = None
+        print("store settings loaded")
         delay_s = float(recovery_delay_to_seconds(store))
+        print("starting delay task")
         background_tasks.add_task(_delayed_recovery_after_cart_abandoned, delay_s)
         out["recovery_scheduled"] = True
         out["recovery_delay_seconds"] = delay_s
