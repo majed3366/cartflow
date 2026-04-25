@@ -3,9 +3,11 @@
 CartFlow — تطبيق FastAPI الرئيسي لاستقبال الويبهوك ولوحة التاجر.
 """
 import asyncio
+import hashlib
 import json
 import logging
 import os
+import threading
 import tempfile
 import traceback
 from types import SimpleNamespace
@@ -687,6 +689,32 @@ def api_recovery_settings_get():
         return j({"ok": False, "error": str(e)}, 500)
 
 
+# جلسة واحدة = استرجاع واحد (وضع مؤقّت في الذاكرة لكل عملية)
+_recovery_started_by_session: dict[str, bool] = {}
+_recovery_session_lock = threading.Lock()
+
+
+def _session_key_for_recovery(payload: dict[str, Any]) -> str:
+    """يُفضّل ‎session_id / cart_id‎ من الحمولة؛ وإلا بصمة ثابتة لمحتوى ‎cart‎."""
+    sid = payload.get("session_id")
+    if isinstance(sid, str) and sid.strip():
+        return sid.strip()
+    cid = payload.get("cart_id")
+    if isinstance(cid, str) and cid.strip():
+        return cid.strip()
+    cart = payload.get("cart")
+    raw = json.dumps(cart if cart is not None else [], sort_keys=True, default=str)
+    return "fp:" + hashlib.sha256(raw.encode("utf-8")).hexdigest()[:32]
+
+
+def _try_claim_recovery_session(session_key: str) -> bool:
+    with _recovery_session_lock:
+        if _recovery_started_by_session.get(session_key):
+            return False
+        _recovery_started_by_session[session_key] = True
+        return True
+
+
 async def _delayed_recovery_after_cart_abandoned(delay_seconds: float) -> None:
     """ينتظر ‎recovery_delay‎ ثم يسجّل — لا إرسال واتساب في هذه المرحلة."""
     try:
@@ -696,7 +724,16 @@ async def _delayed_recovery_after_cart_abandoned(delay_seconds: float) -> None:
         raise
 
 
-async def handle_cart_abandoned(background_tasks: BackgroundTasks) -> dict[str, Any]:
+async def handle_cart_abandoned(
+    background_tasks: BackgroundTasks, payload: dict[str, Any]
+) -> dict[str, Any]:
+    session_key = _session_key_for_recovery(payload)
+    if not _try_claim_recovery_session(session_key):
+        print("recovery already scheduled, skipping")
+        return {
+            "recovery_scheduled": False,
+            "recovery_skipped": True,
+        }
     print("entered recovery handler")
     log.info("cart abandoned received")
     try:
@@ -734,7 +771,7 @@ async def api_cart_event(request: Request, background_tasks: BackgroundTasks):
         "event": payload.get("event"),
     }
     if payload.get("event") == "cart_abandoned":
-        out.update(await handle_cart_abandoned(background_tasks))
+        out.update(await handle_cart_abandoned(background_tasks, payload))
     return j(out, 200)
 
 

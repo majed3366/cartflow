@@ -18,10 +18,33 @@
     return base ? base + "/api/cart-event" : "/api/cart-event";
   }
 
+  var CARTFLOW_SESSION_KEY = "cartflow_recovery_session_id";
+
+  function getRecoverySessionId() {
+    var s;
+    try {
+      s = window.sessionStorage.getItem(CARTFLOW_SESSION_KEY);
+    } catch (e) {
+      s = null;
+    }
+    if (s) {
+      return s;
+    }
+    s =
+      typeof window.crypto !== "undefined" && window.crypto.randomUUID
+        ? "s_" + window.crypto.randomUUID()
+        : "s_" + String(Date.now()) + "_" + String(Math.random());
+    try {
+      window.sessionStorage.setItem(CARTFLOW_SESSION_KEY, s);
+    } catch (e2) {}
+    return s;
+  }
+
   function sendCartAbandonedToBackend(source) {
     var body = JSON.stringify({
       event: "cart_abandoned",
       source: source,
+      session_id: getRecoverySessionId(),
       cart: window.cart,
     });
     var url = apiCartEventUrl();
