@@ -55,6 +55,14 @@ from services.whatsapp_send import send_whatsapp, should_send_whatsapp  # noqa: 
 log = logging.getLogger("cartflow")
 
 
+def _is_development_mode() -> bool:
+    """
+    ‎/dev/‎: يُسمح به فقط في التطوير. على الإنتاج ضع ‎ENV=production‎
+    (أو أي قيمة غير ‎development‎). الافتراضي عند عدم الضبط: ‎development‎ ليُمكِّن المحلية.
+    """
+    return (os.getenv("ENV", "development") or "").strip().lower() == "development"
+
+
 def _app_test_client() -> Any:
     """يُستورد ‎TestClient‎ عند الاستدعاء فقط (تخفيف أعباء الاستيراد عند الإقلاع)."""
     from fastapi.testclient import TestClient
@@ -76,6 +84,16 @@ async def set_embed_csp_middleware(request: Request, call_next: Any) -> Any:
         return response
     finally:
         remove_scoped_session()
+
+
+@app.middleware("http")
+async def no_dev_in_production(request: Request, call_next: Any) -> Any:
+    """يُنفَّذ أوّل مسار؛ ‎404‎ لـ ‎/dev‎ و ‎/dev/*‎ عندما ‎ENV‎ ليس ‎development‎."""
+    p = request.url.path
+    if p == "/dev" or p.startswith("/dev/"):
+        if not _is_development_mode():
+            return Response(status_code=404)
+    return await call_next(request)
 
 
 def _app_route_get_exists(path: str) -> bool:
