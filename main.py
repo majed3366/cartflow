@@ -2,6 +2,7 @@
 """
 CartFlow — تطبيق FastAPI الرئيسي لاستقبال الويبهوك ولوحة التاجر.
 """
+import asyncio
 import json
 import logging
 import os
@@ -14,7 +15,7 @@ from typing import Any, Dict, Optional, Tuple
 import anthropic
 import requests
 from dotenv import load_dotenv
-from fastapi import FastAPI, Request
+from fastapi import BackgroundTasks, FastAPI, Request
 from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -50,7 +51,11 @@ app.include_router(ops_router)
 
 from services.ai_message_builder import build_abandoned_cart_message  # noqa: E402
 from services.whatsapp_recovery import build_whatsapp_recovery_message  # noqa: E402
-from services.whatsapp_send import send_whatsapp, should_send_whatsapp  # noqa: E402
+from services.whatsapp_send import (  # noqa: E402
+    recovery_delay_to_seconds,
+    send_whatsapp,
+    should_send_whatsapp,
+)
 
 log = logging.getLogger("cartflow")
 
@@ -657,10 +662,21 @@ def api_recovery_settings_get():
         return j({"ok": False, "error": str(e)}, 500)
 
 
+async def _delayed_recovery_after_cart_abandoned(delay_seconds: float) -> None:
+    """ينتظر ‎recovery_delay‎ ثم يسجّل — لا إرسال واتساب في هذه المرحلة."""
+    try:
+        await asyncio.sleep(delay_seconds)
+        log.info("recovery triggered after delay")
+    except asyncio.CancelledError:
+        raise
+
+
 @app.post("/api/cart-event")
-async def api_cart_event(request: Request):
+async def api_cart_event(request: Request, background_tasks: BackgroundTasks):
     """
-    أحداث سلة من الواجهة (مثل ‎cart_abandoned‎) — للتتبع والتجارب فقط. بدون واتساب.
+    أحداث سلة من الواجهة (مثل ‎cart_abandoned‎).
+    عند ‎cart_abandoned‎: لا إرسال فوري — جدولة مهمة مؤجّلة حسب ‎Store.recovery_delay / recovery_delay_unit‎.
+    بدون واتساب.
     """
     try:
         payload = await request.json()
@@ -673,10 +689,17 @@ async def api_cart_event(request: Request):
         "event": payload.get("event"),
     }
     if payload.get("event") == "cart_abandoned":
-        print("cart abandoned received")
-        recovery_message = "يبدو أنك نسيت سلتك 🛒 هل تحب أكمل لك الطلب؟"
-        out["recovery_message"] = recovery_message
-        print("recovery message created")
+        log.info("cart abandoned received")
+        try:
+            db.create_all()
+            store = db.session.query(Store).order_by(Store.id.desc()).first()
+        except Exception:  # noqa: BLE001
+            db.session.rollback()
+            store = None
+        delay_s = float(recovery_delay_to_seconds(store))
+        background_tasks.add_task(_delayed_recovery_after_cart_abandoned, delay_s)
+        out["recovery_scheduled"] = True
+        out["recovery_delay_seconds"] = delay_s
     return j(out, 200)
 
 

@@ -45,6 +45,13 @@ def _min_quiet_from_store_settings(store: Optional[Any]) -> timedelta:
     return timedelta(minutes=total_minutes)
 
 
+def recovery_delay_to_seconds(store: Optional[Any]) -> float:
+    """
+    يحوّل ‎recovery_delay + recovery_delay_unit‎ إلى ثوانٍ (نفس منطق ‎_min_quiet_from_store_settings‎).
+    """
+    return _min_quiet_from_store_settings(store).total_seconds()
+
+
 def _max_recovery_attempts(store: Optional[Any]) -> int:
     """الحد الأقصى لرسائل الاسترجاع (افتراضي ‎1‎ عند غياب ‎store‎ أو الحقل)."""
     if store is None:
