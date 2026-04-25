@@ -36,10 +36,11 @@ class RecoveryIsolationTests(unittest.TestCase):
         _reset_recovery_memory()
         self.client = TestClient(app)
 
+    @patch("main._persist_cart_recovery_log")
     @patch("main.send_whatsapp_mock")
     @patch("main.recovery_delay_to_seconds", return_value=0.0)
     def test_demo_then_demo2_same_session_both_schedule(
-        self, _mock_delay: object, _mock_wa: object
+        self, _mock_delay: object, _mock_wa: object, _mock_persist: object
     ) -> None:
         _mock_wa.return_value = {"ok": True}
         sid = "isol-session-verify-1"

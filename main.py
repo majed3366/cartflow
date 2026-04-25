@@ -46,7 +46,13 @@ _static = os.path.join(_ROOT, "static")
 if os.path.isdir(_static):
     app.mount("/static", StaticFiles(directory=_static), name="static")
 
-from models import AbandonedCart, ObjectionTrack, Store, RecoveryEvent  # noqa: E402
+from models import (  # noqa: E402
+    AbandonedCart,
+    CartRecoveryLog,
+    ObjectionTrack,
+    RecoveryEvent,
+    Store,
+)
 from routes.ops import router as ops_router  # noqa: E402
 
 app.include_router(ops_router)
@@ -704,22 +710,64 @@ def _normalize_store_slug(payload: dict[str, Any]) -> str:
     return "default"
 
 
+def _session_part_from_payload(payload: dict[str, Any]) -> str:
+    """بصمة الجلسة/السلة (نفس الجزء الثاني من ‎recovery_key‎)."""
+    sid = payload.get("session_id")
+    if isinstance(sid, str) and sid.strip():
+        return sid.strip()
+    cid = payload.get("cart_id")
+    if isinstance(cid, str) and cid.strip():
+        return cid.strip()
+    cart = payload.get("cart")
+    raw = json.dumps(cart if cart is not None else [], sort_keys=True, default=str)
+    return "fp:" + hashlib.sha256(raw.encode("utf-8")).hexdigest()[:32]
+
+
 def _recovery_key_from_payload(payload: dict[str, Any]) -> str:
     """مفتاح عزل الاسترجاع: ‎store_slug + session_id‎ (أو ‎cart_id / بصمة السلة‎ عند الغياب)."""
     store_slug = _normalize_store_slug(payload)
-    sid = payload.get("session_id")
-    if isinstance(sid, str) and sid.strip():
-        session_id = sid.strip()
-    else:
-        cid = payload.get("cart_id")
-        if isinstance(cid, str) and cid.strip():
-            session_id = cid.strip()
-        else:
-            cart = payload.get("cart")
-            raw = json.dumps(cart if cart is not None else [], sort_keys=True, default=str)
-            session_id = "fp:" + hashlib.sha256(raw.encode("utf-8")).hexdigest()[:32]
-    recovery_key = f"{store_slug}:{session_id}"
-    return recovery_key
+    return f"{store_slug}:{_session_part_from_payload(payload)}"
+
+
+def _cart_id_str_from_payload(payload: dict[str, Any]) -> Optional[str]:
+    c = payload.get("cart_id")
+    if c is None:
+        return None
+    s = str(c).strip()
+    return s if s else None
+
+
+def _default_recovery_message() -> str:
+    return "يبدو أنك نسيت سلتك 🛒 هل تحب أكمل لك الطلب؟"
+
+
+def _persist_cart_recovery_log(
+    *,
+    store_slug: str,
+    session_id: str,
+    cart_id: Optional[str],
+    phone: Optional[str],
+    message: str,
+    status: str,
+    sent_at: Optional[datetime] = None,
+) -> None:
+    try:
+        db.create_all()
+        row = CartRecoveryLog(
+            store_slug=store_slug[:255],
+            session_id=session_id[:512],
+            cart_id=(cart_id[:255] if cart_id else None),
+            phone=(phone[:100] if phone else None),
+            message=message or "",
+            status=status[:50],
+            created_at=datetime.now(timezone.utc),
+            sent_at=sent_at,
+        )
+        db.session.add(row)
+        db.session.commit()
+    except Exception as e:  # noqa: BLE001
+        db.session.rollback()
+        log.warning("CartRecoveryLog persist failed: %s", e)
 
 
 def _try_claim_recovery_session(recovery_key: str) -> bool:
@@ -733,10 +781,18 @@ def _try_claim_recovery_session(recovery_key: str) -> bool:
         return True
 
 
+_MOCK_RECOVERY_PHONE = "0500000000"
+
+
 async def _delayed_recovery_after_cart_abandoned(
-    recovery_key: str, delay_seconds: float
+    recovery_key: str,
+    delay_seconds: float,
+    store_slug: str,
+    session_id: str,
+    cart_id: Optional[str],
 ) -> None:
     """ينتظر ‎recovery_delay‎ ثم محاكاة واتساب وهمية لكل ‎recovery_key‎ مرة واحدة."""
+    recovery_message = _default_recovery_message()
     try:
         await asyncio.sleep(delay_seconds)
     except asyncio.CancelledError:
@@ -746,8 +802,29 @@ async def _delayed_recovery_after_cart_abandoned(
             return
         _session_recovery_logged[recovery_key] = True
     print("recovery triggered after delay")
-    recovery_message = "يبدو أنك نسيت سلتك 🛒 هل تحب أكمل لك الطلب؟"
-    send_whatsapp_mock("0500000000", recovery_message)
+    try:
+        send_whatsapp_mock(_MOCK_RECOVERY_PHONE, recovery_message)
+    except Exception as e:  # noqa: BLE001
+        _persist_cart_recovery_log(
+            store_slug=store_slug,
+            session_id=session_id,
+            cart_id=cart_id,
+            phone=_MOCK_RECOVERY_PHONE,
+            message=recovery_message,
+            status="failed",
+        )
+        log.warning("send_whatsapp_mock: %s", e)
+        raise
+    now = datetime.now(timezone.utc)
+    _persist_cart_recovery_log(
+        store_slug=store_slug,
+        session_id=session_id,
+        cart_id=cart_id,
+        phone=_MOCK_RECOVERY_PHONE,
+        message=recovery_message,
+        status="mock_sent",
+        sent_at=now,
+    )
     with _recovery_session_lock:
         _session_recovery_sent[recovery_key] = True
     print("recovery marked as sent")
@@ -760,9 +837,20 @@ async def handle_cart_abandoned(
     print("store:", store_slug)
     recovery_key = _recovery_key_from_payload(payload)
     print("recovery key:", recovery_key)
+    session_id_log = _session_part_from_payload(payload)
+    cart_id_log = _cart_id_str_from_payload(payload)
+    msg_log = _default_recovery_message()
     with _recovery_session_lock:
         if _session_recovery_sent.get(recovery_key):
             print("recovery already sent, skipping")
+            _persist_cart_recovery_log(
+                store_slug=store_slug,
+                session_id=session_id_log,
+                cart_id=cart_id_log,
+                phone=None,
+                message=msg_log,
+                status="skipped_delay",
+            )
             return {
                 "recovery_scheduled": False,
                 "recovery_skipped": True,
@@ -770,6 +858,14 @@ async def handle_cart_abandoned(
             }
     if not _try_claim_recovery_session(recovery_key):
         print("recovery already scheduled, skipping")
+        _persist_cart_recovery_log(
+            store_slug=store_slug,
+            session_id=session_id_log,
+            cart_id=cart_id_log,
+            phone=None,
+            message=msg_log,
+            status="skipped_duplicate",
+        )
         return {
             "recovery_scheduled": False,
             "recovery_skipped": True,
@@ -789,7 +885,12 @@ async def handle_cart_abandoned(
     delay_s = float(recovery_delay_to_seconds(store))
     print("starting delay task")
     background_tasks.add_task(
-        _delayed_recovery_after_cart_abandoned, recovery_key, delay_s
+        _delayed_recovery_after_cart_abandoned,
+        recovery_key,
+        delay_s,
+        store_slug,
+        session_id_log,
+        cart_id_log,
     )
     return {
         "recovery_scheduled": True,
@@ -1869,6 +1970,52 @@ def demo_store2(request: Request):
             "demo_data_store": "demo2",
         },
     )
+
+
+@app.get("/dev/recovery-logs/{store_slug}")
+def dev_recovery_logs(store_slug: str) -> Any:
+    """آخر ‎20‎ سجل استرجاع لجلسة حسب ‎store_slug‎ (تجارب فقط، ‎ENV=development‎)."""
+    try:
+        db.create_all()
+        slug = (store_slug or "").strip()
+        rows = (
+            db.session.query(CartRecoveryLog)
+            .filter(CartRecoveryLog.store_slug == slug)
+            .order_by(CartRecoveryLog.created_at.desc())
+            .limit(20)
+            .all()
+        )
+
+        def _iso(dt: Optional[datetime]) -> Optional[str]:
+            if dt is None:
+                return None
+            if dt.tzinfo is None:
+                return dt.replace(tzinfo=timezone.utc).isoformat()
+            return dt.isoformat()
+
+        return j(
+            {
+                "ok": True,
+                "store_slug": slug,
+                "logs": [
+                    {
+                        "id": r.id,
+                        "store_slug": r.store_slug,
+                        "session_id": r.session_id,
+                        "cart_id": r.cart_id,
+                        "phone": r.phone,
+                        "message": r.message,
+                        "status": r.status,
+                        "created_at": _iso(r.created_at),
+                        "sent_at": _iso(r.sent_at),
+                    }
+                    for r in rows
+                ],
+            }
+        )
+    except Exception as e:  # noqa: BLE001
+        db.session.rollback()
+        return j({"ok": False, "error": str(e)}, 500)
 
 
 @app.get("/")

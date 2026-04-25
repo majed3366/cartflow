@@ -126,6 +126,23 @@ class ObjectionTrack(Base):
     last_activity_at = Column(DateTime, nullable=True)
 
 
+class CartRecoveryLog(Base):
+    """تسجيل محاولات الاسترجاع (وهمي/تخطٍ) دون الاعتماد على واتساب حقيقي."""
+    __tablename__ = "cart_recovery_logs"
+
+    id = Column(Integer, primary_key=True)
+    store_slug = Column(String(255), nullable=False, index=True)
+    session_id = Column(String(512), nullable=False, index=True)
+    cart_id = Column(String(255), nullable=True, index=True)
+    phone = Column(String(100), nullable=True)
+    message = Column(Text, default="", nullable=False)
+    status = Column(String(50), nullable=False, index=True)
+    created_at = Column(
+        DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
+    )
+    sent_at = Column(DateTime, nullable=True)
+
+
 class RecoveryEvent(Base):
     __tablename__ = "recovery_events"
 
