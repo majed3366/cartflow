@@ -17,6 +17,7 @@ from fastapi.testclient import TestClient
 
 from main import (
     _recovery_session_lock,
+    _session_recovery_converted,
     _session_recovery_logged,
     _session_recovery_sent,
     _session_recovery_started,
@@ -29,6 +30,7 @@ def _reset_recovery_memory() -> None:
         _session_recovery_started.clear()
         _session_recovery_logged.clear()
         _session_recovery_sent.clear()
+        _session_recovery_converted.clear()
 
 
 class RecoveryIsolationTests(unittest.TestCase):

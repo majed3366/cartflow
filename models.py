@@ -137,6 +137,7 @@ class CartRecoveryLog(Base):
     phone = Column(String(100), nullable=True)
     message = Column(Text, default="", nullable=False)
     status = Column(String(50), nullable=False, index=True)
+    step = Column(Integer, nullable=True, index=True)
     created_at = Column(
         DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
     )

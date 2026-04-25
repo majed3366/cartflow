@@ -696,11 +696,19 @@ def api_recovery_settings_get():
         return j({"ok": False, "error": str(e)}, 500)
 
 
-# جلسة واحدة = مهمة تأخير واحدة + سجل واحد + ‎recovery_sent‎ (لكل عملية ‎worker‎)
+# جلسة واحدة = تسلسل استرجاع + ‎sent‎ عند اكتمال الخطوات (لكل عملية ‎worker‎)
 _session_recovery_started: dict[str, bool] = {}
 _session_recovery_logged: dict[str, bool] = {}
 _session_recovery_sent: dict[str, bool] = {}
+_session_recovery_converted: dict[str, bool] = {}
 _recovery_session_lock = threading.Lock()
+
+# خطوات الرسالة (وهمي): تذكير → قيمة → إلحاح
+_RECOVERY_SEQUENCE_STEPS: tuple[tuple[int, str], ...] = (
+    (1, "يبدو أنك نسيت سلتك 🛒"),
+    (2, "المنتج اللي اخترته عليه طلب عالي"),
+    (3, "ممكن يخلص قريب 👀"),
+)
 
 
 def _normalize_store_slug(payload: dict[str, Any]) -> str:
@@ -737,8 +745,28 @@ def _cart_id_str_from_payload(payload: dict[str, Any]) -> Optional[str]:
     return s if s else None
 
 
+def _recovery_message_for_step(step: int) -> str:
+    for s, t in _RECOVERY_SEQUENCE_STEPS:
+        if s == step:
+            return t
+    return _RECOVERY_SEQUENCE_STEPS[0][1]
+
+
 def _default_recovery_message() -> str:
-    return "يبدو أنك نسيت سلتك 🛒 هل تحب أكمل لك الطلب؟"
+    """نص الخطوة ‎1‎ (للتوافق مع السجلات السابقة/التخطي)."""
+    return _recovery_message_for_step(1)
+
+
+def _is_user_converted(recovery_key: str) -> bool:
+    with _recovery_session_lock:
+        return bool(_session_recovery_converted.get(recovery_key))
+
+
+def _mark_user_converted_for_payload(payload: dict[str, Any]) -> None:
+    key = _recovery_key_from_payload(payload)
+    with _recovery_session_lock:
+        _session_recovery_converted[key] = True
+    log.info("user_converted recorded for recovery_key=%s", key)
 
 
 def _persist_cart_recovery_log(
@@ -750,6 +778,7 @@ def _persist_cart_recovery_log(
     message: str,
     status: str,
     sent_at: Optional[datetime] = None,
+    step: Optional[int] = None,
 ) -> None:
     try:
         db.create_all()
@@ -760,6 +789,7 @@ def _persist_cart_recovery_log(
             phone=(phone[:100] if phone else None),
             message=message or "",
             status=status[:50],
+            step=step,
             created_at=datetime.now(timezone.utc),
             sent_at=sent_at,
         )
@@ -784,15 +814,17 @@ def _try_claim_recovery_session(recovery_key: str) -> bool:
 _MOCK_RECOVERY_PHONE = "0500000000"
 
 
-async def _delayed_recovery_after_cart_abandoned(
+async def _run_recovery_sequence_after_cart_abandoned(
     recovery_key: str,
     delay_seconds: float,
     store_slug: str,
     session_id: str,
     cart_id: Optional[str],
 ) -> None:
-    """ينتظر ‎recovery_delay‎ ثم محاكاة واتساب وهمية لكل ‎recovery_key‎ مرة واحدة."""
-    recovery_message = _default_recovery_message()
+    """
+    ينتظر ‎delay_seconds‎ ثم يمرّ بثلاث خطوات؛ بين كل خطوة والتالية نفس المدة.
+    وهمي ‎(mock)‎ فقط؛ يتوقف إذا وُسِم المستخدم بأنه حوّل.
+    """
     try:
         await asyncio.sleep(delay_seconds)
     except asyncio.CancelledError:
@@ -801,33 +833,69 @@ async def _delayed_recovery_after_cart_abandoned(
         if _session_recovery_logged.get(recovery_key):
             return
         _session_recovery_logged[recovery_key] = True
-    print("recovery triggered after delay")
-    try:
-        send_whatsapp_mock(_MOCK_RECOVERY_PHONE, recovery_message)
-    except Exception as e:  # noqa: BLE001
+    print("recovery triggered after delay (sequence)")
+
+    for step_num, text in _RECOVERY_SEQUENCE_STEPS:
+        if _is_user_converted(recovery_key):
+            print("recovery sequence stopped: user converted (before step %s)" % step_num)
+            _persist_cart_recovery_log(
+                store_slug=store_slug,
+                session_id=session_id,
+                cart_id=cart_id,
+                phone=None,
+                message=text,
+                status="skipped_converted",
+                step=step_num,
+            )
+            return
+        if step_num > 1:
+            try:
+                await asyncio.sleep(delay_seconds)
+            except asyncio.CancelledError:
+                raise
+            if _is_user_converted(recovery_key):
+                print(
+                    "recovery sequence stopped: user converted (after wait, step %s)"
+                    % step_num
+                )
+                _persist_cart_recovery_log(
+                    store_slug=store_slug,
+                    session_id=session_id,
+                    cart_id=cart_id,
+                    phone=None,
+                    message=text,
+                    status="skipped_converted",
+                    step=step_num,
+                )
+                return
+        try:
+            send_whatsapp_mock(_MOCK_RECOVERY_PHONE, text)
+        except Exception as e:  # noqa: BLE001
+            _persist_cart_recovery_log(
+                store_slug=store_slug,
+                session_id=session_id,
+                cart_id=cart_id,
+                phone=_MOCK_RECOVERY_PHONE,
+                message=text,
+                status="failed",
+                step=step_num,
+            )
+            log.warning("send_whatsapp_mock: %s", e)
+            raise
+        now = datetime.now(timezone.utc)
         _persist_cart_recovery_log(
             store_slug=store_slug,
             session_id=session_id,
             cart_id=cart_id,
             phone=_MOCK_RECOVERY_PHONE,
-            message=recovery_message,
-            status="failed",
+            message=text,
+            status="mock_sent",
+            sent_at=now,
+            step=step_num,
         )
-        log.warning("send_whatsapp_mock: %s", e)
-        raise
-    now = datetime.now(timezone.utc)
-    _persist_cart_recovery_log(
-        store_slug=store_slug,
-        session_id=session_id,
-        cart_id=cart_id,
-        phone=_MOCK_RECOVERY_PHONE,
-        message=recovery_message,
-        status="mock_sent",
-        sent_at=now,
-    )
     with _recovery_session_lock:
         _session_recovery_sent[recovery_key] = True
-    print("recovery marked as sent")
+    print("recovery marked as sent (sequence complete)")
 
 
 async def handle_cart_abandoned(
@@ -840,6 +908,21 @@ async def handle_cart_abandoned(
     session_id_log = _session_part_from_payload(payload)
     cart_id_log = _cart_id_str_from_payload(payload)
     msg_log = _default_recovery_message()
+    if _is_user_converted(recovery_key):
+        print("recovery skipped: user already converted")
+        _persist_cart_recovery_log(
+            store_slug=store_slug,
+            session_id=session_id_log,
+            cart_id=cart_id_log,
+            phone=None,
+            message=msg_log,
+            status="skipped_converted",
+        )
+        return {
+            "recovery_scheduled": False,
+            "recovery_skipped": True,
+            "recovery_state": "converted",
+        }
     with _recovery_session_lock:
         if _session_recovery_sent.get(recovery_key):
             print("recovery already sent, skipping")
@@ -885,7 +968,7 @@ async def handle_cart_abandoned(
     delay_s = float(recovery_delay_to_seconds(store))
     print("starting delay task")
     background_tasks.add_task(
-        _delayed_recovery_after_cart_abandoned,
+        _run_recovery_sequence_after_cart_abandoned,
         recovery_key,
         delay_s,
         store_slug,
@@ -917,6 +1000,9 @@ async def api_cart_event(request: Request, background_tasks: BackgroundTasks):
         "ok": True,
         "event": payload.get("event"),
     }
+    if payload.get("user_converted") is True or payload.get("event") == "user_converted":
+        _mark_user_converted_for_payload(payload)
+        out["user_converted_tracked"] = True
     if payload.get("event") == "cart_abandoned":
         out.update(await handle_cart_abandoned(background_tasks, payload))
     return j(out, 200)
@@ -2006,6 +2092,7 @@ def dev_recovery_logs(store_slug: str) -> Any:
                         "phone": r.phone,
                         "message": r.message,
                         "status": r.status,
+                        "step": r.step,
                         "created_at": _iso(r.created_at),
                         "sent_at": _iso(r.sent_at),
                     }
