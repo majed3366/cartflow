@@ -59,16 +59,23 @@ app.include_router(ops_router)
 
 from services.ai_message_builder import build_abandoned_cart_message  # noqa: E402
 from services.whatsapp_recovery import build_whatsapp_recovery_message  # noqa: E402
+from services.whatsapp_queue import (  # noqa: E402
+    enqueue_recovery_and_wait,
+    start_whatsapp_queue_worker,
+)
 from services.whatsapp_send import (  # noqa: E402
     recovery_uses_real_whatsapp,
     recovery_delay_to_seconds,
     send_whatsapp,
-    send_whatsapp_mock,
-    send_whatsapp_real,
     should_send_whatsapp,
 )
 
 log = logging.getLogger("cartflow")
+
+
+@app.on_event("startup")
+async def _startup_whatsapp_queue() -> None:
+    await start_whatsapp_queue_worker()
 
 
 def _is_development_mode() -> bool:
@@ -853,8 +860,8 @@ async def _run_recovery_sequence_after_cart_abandoned(
 ) -> None:
     """
     ينتظر ‎delay_seconds‎ ثم يمرّ بثلاث خطوات؛ بين كل خطوة والتالية نفس المدة.
-    ‎PRODUCTION_MODE + WHATSAPP_*‎: إرسال فعلي (‎sent_real / failed_real‎)؛ وإلا وهمي (‎mock_sent‎).
-    يتوقف إذا وُسِم المستخدم بأنه حوّل أو فشل إرسال خطوة.
+    الإرسال عبر طابور (لا يُرسل مباشرة) مع إعادة المحاولة: ‎queued → sent_real/mock_sent‎ أو
+    ‎failed_retry / failed_final‎. يتوقف عند التحويل أو عند ‎failed_final‎.
     """
     try:
         await asyncio.sleep(delay_seconds)
@@ -925,32 +932,28 @@ async def _run_recovery_sequence_after_cart_abandoned(
             return
         phone = _recovery_destination_phone()
         use_real = recovery_uses_real_whatsapp()
-        st_out = "mock_sent"
-        sent_at_out: Optional[datetime] = None
-        try:
-            if use_real:
-                result = send_whatsapp_real(phone, text)
-                if result.get("ok"):
-                    st_out, sent_at_out = "sent_real", datetime.now(timezone.utc)
-                else:
-                    st_out = "failed_real"
-            else:
-                send_whatsapp_mock(phone, text)
-                st_out, sent_at_out = "mock_sent", datetime.now(timezone.utc)
-        except Exception as e:  # noqa: BLE001
-            st_out = "failed_real" if use_real else "failed"
-            log.warning("recovery whatsapp send: %s", e, exc_info=True)
         _persist_cart_recovery_log(
             store_slug=store_slug,
             session_id=session_id,
             cart_id=cart_id,
             phone=phone,
             message=text,
-            status=st_out,
-            sent_at=sent_at_out,
+            status="queued",
             step=step_num,
         )
-        if st_out in ("failed", "failed_real"):
+        res = await enqueue_recovery_and_wait(
+            store_slug=store_slug,
+            session_id=session_id,
+            cart_id=cart_id,
+            phone=phone,
+            message=text,
+            step=step_num,
+            recovery_key=recovery_key,
+            use_real=use_real,
+        )
+        if res == "stopped":
+            return
+        if res == "failed_final":
             break
     with _recovery_session_lock:
         _session_recovery_sent[recovery_key] = True
