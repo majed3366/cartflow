@@ -718,27 +718,32 @@ def dev_platform_readiness_test():
             jg = g.json()
         except Exception:  # noqa: BLE001
             jg = None
-        recovery_settings_api_ready = bool(isinstance(jg, dict) and "ok" in jg)
-
+        # ‎bool()‎ + ‎all([...])‎ — قيم ‎bool‎ فقط (لا ‎a and b and …‎ قد تُرجع آخر كائن غير ‎bool‎).
+        recovery_settings_api_ready = bool(
+            isinstance(jg, dict) and "ok" in jg
+        )
         d = tc.get("/dashboard/recovery-settings")
-        dashboard_flow_ready = d.status_code == 200 and b"recovery_delay" in d.content
-
+        dashboard_flow_ready = bool(
+            d.status_code == 200 and (b"recovery_delay" in (d.content or b""))
+        )
         s_src = getsource(send_whatsapp)
-        whatsapp_send_is_mocked = (
+        whatsapp_send_is_mocked = bool(
             "no provider" in s_src.lower() and "logger" in s_src
         )
-
         _now = datetime.now(timezone.utc)
         _last = _now - timedelta(minutes=3)
-        recovery_logic_ready = should_send_whatsapp(
-            _last, user_returned_to_site=False, now=_now, store=None, sent_count=0
+        recovery_logic_ready = bool(
+            should_send_whatsapp(
+                _last, user_returned_to_site=False, now=_now, store=None, sent_count=0
+            )
         )
-
-        all_ok = (
-            recovery_settings_api_ready
-            and dashboard_flow_ready
-            and whatsapp_send_is_mocked
-            and recovery_logic_ready
+        all_ok = all(
+            [
+                recovery_settings_api_ready,
+                dashboard_flow_ready,
+                whatsapp_send_is_mocked,
+                recovery_logic_ready,
+            ]
         )
         return j(
             {
