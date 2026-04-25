@@ -542,6 +542,31 @@ def dev_recovery_settings_update():
         return r
 
 
+@app.post("/api/recovery-settings")
+def api_recovery_settings():
+    """
+    واجهة ‎API‎ — تحديث أحدث ‎Store‎ (نفس التحقق والمنطق مثل ‎/dev/recovery-settings-update‎).
+    """
+    try:
+        db.create_all()
+        body = request.get_json(silent=True)
+        if not isinstance(body, dict):
+            return jsonify({"ok": False, "error": "json_object_required"}), 400
+        data, code = _dev_apply_recovery_settings_update(
+            body.get("recovery_delay"),
+            body.get("recovery_delay_unit"),
+            body.get("recovery_attempts"),
+        )
+        r = jsonify(data)
+        r.status_code = code
+        return r
+    except Exception as e:  # noqa: BLE001
+        db.session.rollback()
+        r = jsonify({"ok": False, "error": str(e)})
+        r.status_code = 500
+        return r
+
+
 @app.get("/dev/recovery-settings-update-test")
 def dev_recovery_settings_update_test():
     """
