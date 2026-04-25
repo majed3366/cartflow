@@ -116,8 +116,7 @@ def send_whatsapp(phone: str, message: str) -> Dict[str, Any]:
     return {"ok": True}
 
 
-def send_whatsapp_mock(phone: str, message: str) -> Dict[str, Any]:
-    """واتساب وهمي — طباعة فقط، دون مزوّد."""
+def send_whatsapp_mock(phone, message):
     print("sending whatsapp to:", phone)
     print("message:", message)
     return {"ok": True}
