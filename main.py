@@ -175,6 +175,13 @@ _WHATSAPP_TEST_CART = {
     "cart_url": "https://example.com/cart",
 }
 
+# ‎/dev/recovery-flow-test?type=…‎ — بدون قراءة من ‎DB‎
+_RECOVERY_TEST_SCENARIOS = {
+    "price_new": ("price", "new"),
+    "quality_new": ("quality", "new"),
+    "price_returning": ("price", "returning"),
+}
+
 # إضافة أعمدة ‎ObjectionTrack‎ اختيارية — جداول قديمة: ‎ALTER‎ (مرة لكل عملية بعد الإقلاع)
 _objection_extras_ensured = False
 
@@ -271,8 +278,34 @@ def dev_create_test_objection():
 def dev_recovery_flow_test():
     """
     تدفق كامل: آخر objection + نص الاسترجاع + ‎should_send‎ (سكون مُدخَّل) + ‎send_whatsapp‎ وهمي.
+    ‎?type=price_new|quality_new|price_returning‎ — مُنطَق ثابت دون ‎DB‎.
     """
     try:
+        sc = (request.args.get("type") or "").strip()
+        if sc:
+            if sc not in _RECOVERY_TEST_SCENARIOS:
+                return jsonify({"ok": False, "error": "invalid_type"}), 400
+            t, customer_type = _RECOVERY_TEST_SCENARIOS[sc]
+            cart = {
+                "customer_name": "ماجد",
+                "cart_url": "https://example.com/cart",
+            }
+            message = build_whatsapp_recovery_message(customer_type, t, cart)
+            now = datetime.now(timezone.utc)
+            last = now - timedelta(minutes=3)
+            should_send = should_send_whatsapp(
+                last, user_returned_to_site=False, now=now
+            )
+            if should_send:
+                send_whatsapp(phone="0500000000", message=message)
+            return jsonify(
+                {
+                    "ok": True,
+                    "scenario": sc,
+                    "message": message,
+                    "should_send": should_send,
+                }
+            )
         db.create_all()
         _ensure_objection_track_test_columns()
         row = ObjectionTrack.query.order_by(
