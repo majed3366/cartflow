@@ -6,6 +6,7 @@ import os
 import json
 import tempfile
 import traceback
+from types import SimpleNamespace
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional, Tuple
 
@@ -270,6 +271,47 @@ def dev_recovery_timing_test():
                         last_idle, user_returned_to_site=False, now=now
                     ),
                 },
+            },
+        }
+    )
+
+
+@app.get("/dev/recovery-delay-verify")
+def dev_recovery_delay_verify():
+    """
+    استيثاق تأثير ‎recovery_delay‎: سكون ‎2‎ د مع حد ‎1‎ د ‎=‎ يُرسل، مع حد ‎5‎ د ‎=‎ لا.
+    ‎Store‎ مُمثّل بـ ‎SimpleNamespace‎ (نفس حقول ‎Store.recovery_*‎).
+    """
+    now = datetime.now(timezone.utc)
+    last = now - timedelta(minutes=2)
+    store_fast = SimpleNamespace(
+        recovery_delay=1,
+        recovery_delay_unit="minutes",
+        recovery_attempts=1,
+    )
+    store_slow = SimpleNamespace(
+        recovery_delay=5,
+        recovery_delay_unit="minutes",
+        recovery_attempts=1,
+    )
+    return jsonify(
+        {
+            "ok": True,
+            "case_fast": {
+                "should_send": should_send_whatsapp(
+                    last,
+                    user_returned_to_site=False,
+                    now=now,
+                    store=store_fast,
+                )
+            },
+            "case_slow": {
+                "should_send": should_send_whatsapp(
+                    last,
+                    user_returned_to_site=False,
+                    now=now,
+                    store=store_slow,
+                )
             },
         }
     )
