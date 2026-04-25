@@ -596,8 +596,30 @@ def api_recovery_settings_get():
 def dev_recovery_settings_read_test():
     """
     نفس ‎GET /api/recovery-settings‎ (استدعاء مباشر لنفس الدالة).
+    إن لم يوجد ‎Store‎: إنشاء تجريبي ‎15 / minutes / 2‎.
     """
-    return api_recovery_settings_get()
+    try:
+        db.create_all()
+        if Store.query.order_by(Store.id.desc()).first() is None:
+            _row = Store(
+                zid_store_id=_DEV_RECOVERY_SETTINGS_STORE_ZID,
+                recovery_delay=15,
+                recovery_delay_unit="minutes",
+                recovery_attempts=2,
+            )
+            db.session.add(_row)
+            try:
+                db.session.commit()
+            except IntegrityError:
+                db.session.rollback()
+            if Store.query.order_by(Store.id.desc()).first() is None:
+                return jsonify({"ok": False, "error": "no_store"}), 500
+        return api_recovery_settings_get()
+    except Exception as e:  # noqa: BLE001
+        db.session.rollback()
+        r = jsonify({"ok": False, "error": str(e)})
+        r.status_code = 500
+        return r
 
 
 @app.get("/dev/recovery-settings-api-test")
