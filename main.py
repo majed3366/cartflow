@@ -53,9 +53,11 @@ from models import (  # noqa: E402
     RecoveryEvent,
     Store,
 )
+from routes.cartflow import router as cartflow_router  # noqa: E402
 from routes.ops import router as ops_router  # noqa: E402
 
 app.include_router(ops_router)
+app.include_router(cartflow_router)
 
 from services.ai_message_builder import build_abandoned_cart_message  # noqa: E402
 from services.whatsapp_recovery import build_whatsapp_recovery_message  # noqa: E402
