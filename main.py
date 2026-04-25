@@ -89,6 +89,30 @@ def _app_route_get_exists(path: str) -> bool:
     return False
 
 
+def _minimal_get_request(path: str) -> Request:
+    """
+    ‎Request‎ بسيط لاستدعاء ‎view‎ مباشراً.
+    ‎(بدل ‎TestClient‎: يتجنّب طلبات ‎ASGI‎ مُتداخلة + ضرب السجلات على ‎Railway‎.
+    """
+    bpath = path.encode("utf-8")
+    return Request(
+        {
+            "type": "http",
+            "asgi": {"version": "3.0", "spec_version": "2.3"},
+            "http_version": "1.1",
+            "method": "GET",
+            "path": path,
+            "raw_path": bpath,
+            "root_path": "",
+            "scheme": "http",
+            "query_string": b"",
+            "headers": [],
+            "client": ("127.0.0.1", 0),
+            "server": ("testserver", 80),
+        }
+    )
+
+
 @app.get("/dev/run-flow")
 def dev_run_flow():
     from routes.ops import get_mock_abandoned_cart
@@ -708,20 +732,24 @@ def dev_recovery_dashboard_test():
 def dev_platform_readiness_test():
     """
     فحوص سريعة: ‎API‎، لوحة، ‎send_whatsapp‎ وهمي، ‎should_send_whatsapp‎.
+    بدون ‎TestClient‎ — استدعاء مباشر فقط (طلب ‎HTTP‎ واحد = سجل وصول واحد).
     """
     from inspect import getsource  # stdlib (لا يتعارض مع ‎sqlalchemy.inspect‎)
 
-    tc = _app_test_client()
-    recovery_resp = tc.get("/api/recovery-settings")
-    jg = recovery_resp.json()
-    # ‎"ok"‎: التحقق من وجود المفتاح دون ‎"ok" in jg‎ (نفس معنى ‎dict‎ لـ ‎API‎).
-    _missing = object()
+    api_r = api_recovery_settings_get()
+    try:
+        jg = json.loads((api_r.body or b"{}").decode("utf-8"))
+    except (json.JSONDecodeError, UnicodeError):
+        jg = None
     recovery_settings_api_ready = bool(
-        isinstance(jg, dict) and jg.get("ok", _missing) is not _missing
+        isinstance(jg, dict) and (jg.get("ok") is True)
     )
-    d = tc.get("/dashboard/recovery-settings")
+    d = dashboard_recovery_settings(
+        _minimal_get_request("/dashboard/recovery-settings")
+    )
+    dct = d.body or b""
     dashboard_flow_ready = bool(
-        d.status_code == 200 and (b"recovery_delay" in (d.content or b""))
+        d.status_code == 200 and (b"recovery_delay" in dct)
     )
     s_src = getsource(send_whatsapp)
     whatsapp_send_is_mocked = bool(
