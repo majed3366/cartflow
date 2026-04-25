@@ -23,8 +23,8 @@ def _first_name(cart: Optional[Mapping[str, Any]]) -> Optional[str]:
 def _cta(cart: Mapping[str, Any]) -> str:
     u = (cart.get("cart_url") or cart.get("checkout_url") or "").strip()
     if u:
-        return f"تبي تكمل؟ ادخل السلة: {u}"
-    return "تبي تكمل؟ رجع لسلة المشتريات واضغط إكمال الطلب."
+        return f"لسا اختيارك بانتظارك—وإن بغيت تخلّص الطلب من هنا: {u}"
+    return "لسا السلّة محفوظة. وإن بغيت تكمل اليوم، رجع لها من الموقع وأكد الطلب."
 
 
 def build_whatsapp_recovery_message(
@@ -61,12 +61,12 @@ def _open(who: Optional[str], line: str) -> str:
 
 
 def _price_fallback(who: Optional[str], cart: Mapping[str, Any]) -> str:
-    a = _open(who, "نبي تكمّل اختيارك—ميزانك يهمنّا.")
+    a = _open(who, "نبي تكمّل اختيارك براحتك—وإن في شي يروّس، قول، نناقشه سوا.")
     return f"{a}\n{_cta(cart)}"
 
 
 def _quality_fallback(who: Optional[str], cart: Mapping[str, Any]) -> str:
-    a = _open(who, "للتأكد من الجودة: ردّي هنا، وإن حاب تكمل—تحت أمرك.")
+    a = _open(who, "وإن باقي ببالك الريبة: ردّي هنا ونطمّنك. قدامنا وقت.")
     return f"{a}\n{_cta(cart)}"
 
 
@@ -74,7 +74,7 @@ def _returning_price(who: Optional[str], cart: Mapping[str, Any]) -> str:
     # راجع + سعر: كود أقوى
     a = _open(
         who,
-        "نورتنا مرّة ثانية—نقدّرك. كود خاص: BACK20",
+        "رجعت؟ اشتقنا. خذ هدية خفيفة ويا السعر: BACK20",
     )
     return f"{a}\n{_cta(cart)}"
 
@@ -82,7 +82,7 @@ def _returning_price(who: Optional[str], cart: Mapping[str, Any]) -> str:
 def _returning_quality(who: Optional[str], cart: Mapping[str, Any]) -> str:
     a = _open(
         who,
-        "ثقتك واجب علينا. خصم تقدير: AMEEN18",
+        "نبيك ترتاح. ثقتك بقلوبنا—خصم منّا: AMEEN18",
     )
     return f"{a}\n{_cta(cart)}"
 
@@ -90,7 +90,7 @@ def _returning_quality(who: Optional[str], cart: Mapping[str, Any]) -> str:
 def _new_price(who: Optional[str], cart: Mapping[str, Any]) -> str:
     a = _open(
         who,
-        "هلا فيك—أول مرة؟ مفاجأة خفيفة: FIRST8",
+        "هلا فيك—نبي نبدأ معك على مرتاح. مفاجأة بسيطة: FIRST8",
     )
     return f"{a}\n{_cta(cart)}"
 
@@ -98,6 +98,6 @@ def _new_price(who: Optional[str], cart: Mapping[str, Any]) -> str:
 def _new_quality(who: Optional[str], cart: Mapping[str, Any]) -> str:
     a = _open(
         who,
-        "ودّنا ترتاح من الجودة. كود بسيط: TRUST5",
+        "نفهم اللي في البال. جرّب براحتك—وإن ما عجب؟ وياك: TRUST5",
     )
     return f"{a}\n{_cta(cart)}"
