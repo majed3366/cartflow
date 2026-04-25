@@ -1853,6 +1853,24 @@ def demo_store(request: Request):
     )
 
 
+@app.get("/demo/store2")
+@app.get("/demo/store2/cart")
+def demo_store2(request: Request):
+    """نفس صفحة المتجر التجريبي مع ‎store_slug=demo2‎ لاختبار عزل الاسترجاع."""
+    return templates.TemplateResponse(
+        request,
+        "demo_store.html",
+        {
+            "request": request,
+            "demo_store_slug": "demo2",
+            "demo_cart_key": "demo2_cart",
+            "demo_page_title": "Demo store 2",
+            "demo_h1": "Demo store 2 (isolation test)",
+            "demo_data_store": "demo2",
+        },
+    )
+
+
 @app.get("/")
 def home(request: Request):
     # صفحة HTML للمراجعين/لوحة زد (بدون قاعدة بيانات)

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Demo store — CartFlow</title>
+  <title>{{ demo_page_title|default('Demo store') }} — CartFlow</title>
   <style>
     * { box-sizing: border-box; }
     body {
@@ -64,9 +64,10 @@
   </style>
 </head>
 <body>
+  <script>window.CARTFLOW_STORE_SLUG = "{{ demo_store_slug|default('demo') }}";</script>
   <script>
     try {
-      window.cart = JSON.parse(localStorage.getItem("demo_cart") || "[]");
+      window.cart = JSON.parse(localStorage.getItem("{{ demo_cart_key|default('demo_cart') }}") || "[]");
     } catch (e) {
       if (!window.cart) {
         window.cart = [];
@@ -84,7 +85,7 @@
   </script>
   {% include "partials/cart_abandon_tracking.html" %}
   <script>
-    var DEMO_CART_KEY = "demo_cart";
+    var DEMO_CART_KEY = "{{ demo_cart_key|default('demo_cart') }}";
 
     function persistCart() {
       try {
@@ -134,8 +135,8 @@
     }
   </script>
 
-  <h1>Demo store</h1>
-  <p class="sub">Internal only — <code>window.cart</code> is the only cart source; list below mirrors it.</p>
+  <h1>{{ demo_h1|default('Demo store') }}</h1>
+  <p class="sub">Internal only — <code>window.cart</code> is the only cart source; list below mirrors it. Store slug: <code>{{ demo_store_slug|default('demo') }}</code></p>
 
   <div class="grid">
     <div class="card">
@@ -159,12 +160,12 @@
     <h2>Cart</h2>
     <ul id="cart-list"></ul>
     <button type="button" class="btn-clear" onclick="clearCart()">Clear cart</button>
-    <p class="note">Widget prompt arms only on this page when <code>window.cart.length &gt; 0</code> and after idle. Cart persists in <code>localStorage</code> (<code>demo_cart</code>).</p>
+    <p class="note">Widget prompt arms only on this page when <code>window.cart.length &gt; 0</code> and after idle. Cart persists in <code>localStorage</code> (<code>{{ demo_cart_key|default('demo_cart') }}</code>).</p>
   </div>
 
   <script>
     renderCart();
   </script>
-  <script src="/static/widget_loader.js" data-store="demo"></script>
+  <script src="/static/widget_loader.js" data-store="{{ demo_data_store|default('demo') }}"></script>
 </body>
 </html>
