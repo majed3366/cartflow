@@ -354,6 +354,64 @@ def dev_recovery_attempts_verify():
     )
 
 
+@app.get("/dev/recovery-unit-verify")
+def dev_recovery_unit_verify():
+    """
+    تحويل ‎recovery_delay_unit‎ (دقائق / ساعات / أيام) عبر ‎should_send_whatsapp‎ — بدون واتساب.
+    """
+    now = datetime.now(timezone.utc)
+    last_minutes = now - timedelta(minutes=2)
+    last_hours = now - timedelta(minutes=30)
+    last_days = now - timedelta(hours=2)
+    st_m = SimpleNamespace(
+        recovery_delay=1,
+        recovery_delay_unit="minutes",
+        recovery_attempts=1,
+    )
+    st_h = SimpleNamespace(
+        recovery_delay=1,
+        recovery_delay_unit="hours",
+        recovery_attempts=1,
+    )
+    st_d = SimpleNamespace(
+        recovery_delay=1,
+        recovery_delay_unit="days",
+        recovery_attempts=1,
+    )
+    return jsonify(
+        {
+            "ok": True,
+            "minutes_case": {
+                "should_send": should_send_whatsapp(
+                    last_minutes,
+                    user_returned_to_site=False,
+                    now=now,
+                    store=st_m,
+                    sent_count=0,
+                )
+            },
+            "hours_case": {
+                "should_send": should_send_whatsapp(
+                    last_hours,
+                    user_returned_to_site=False,
+                    now=now,
+                    store=st_h,
+                    sent_count=0,
+                )
+            },
+            "days_case": {
+                "should_send": should_send_whatsapp(
+                    last_days,
+                    user_returned_to_site=False,
+                    now=now,
+                    store=st_d,
+                    sent_count=0,
+                )
+            },
+        }
+    )
+
+
 @app.get("/dev/recovery-duplicate-test")
 def dev_recovery_duplicate_test():
     """
