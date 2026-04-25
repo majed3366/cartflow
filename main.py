@@ -668,13 +668,16 @@ async def api_cart_event(request: Request):
         payload = None
     if not isinstance(payload, dict):
         payload = {}
-    return j(
-        {
-            "ok": True,
-            "event": payload.get("event"),
-        },
-        200,
-    )
+    out: dict[str, Any] = {
+        "ok": True,
+        "event": payload.get("event"),
+    }
+    if payload.get("event") == "cart_abandoned":
+        log.info("cart abandoned received")
+        recovery_message = "يبدو أنك نسيت سلتك 🛒 هل تحب أكمل لك الطلب؟"
+        out["recovery_message"] = recovery_message
+        log.info("recovery message created")
+    return j(out, 200)
 
 
 @app.get("/dev/recovery-settings-read-test")
