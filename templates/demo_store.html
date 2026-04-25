@@ -54,15 +54,37 @@
     .cart ul { margin: 0; padding-left: 1.25rem; }
     .empty { color: #a1a1aa; font-size: 0.9rem; }
     .note { margin-top: 0.75rem; font-size: 0.875rem; color: #71717a; }
+    .btn-clear {
+      margin-top: 0.75rem;
+      width: auto;
+      background: #e4e4e7;
+      color: #18181b;
+    }
+    .btn-clear:hover { filter: brightness(0.97); }
   </style>
 </head>
 <body>
   {% include "partials/cart_abandon_tracking.html" %}
   <script>
-    window.cart = [];
+    var DEMO_CART_KEY = "demo_cart";
 
-    console.log("cart reset");
+    try {
+      window.cart = JSON.parse(localStorage.getItem("demo_cart") || "[]");
+    } catch (e) {
+      window.cart = [];
+    }
+    if (!Array.isArray(window.cart)) {
+      window.cart = [];
+    }
     console.log("cart state:", window.cart);
+
+    function persistCart() {
+      try {
+        localStorage.setItem(DEMO_CART_KEY, JSON.stringify(window.cart));
+      } catch (e) {
+        /* private mode / quota */
+      }
+    }
 
     function renderCart() {
       var ul = document.getElementById("cart-list");
@@ -76,7 +98,7 @@
         ul.appendChild(li);
         return;
       }
-      window.cart.forEach(function (item, i) {
+      window.cart.forEach(function (item) {
         var row = document.createElement("li");
         row.textContent = (item && item.name ? item.name : "Item") + " — " + (item && item.price != null ? item.price : "—") + " SAR";
         ul.appendChild(row);
@@ -86,8 +108,20 @@
     function addToCart(product) {
       window.cart = window.cart || [];
       window.cart.push(product);
+      persistCart();
       console.log("cart state:", window.cart);
       renderCart();
+    }
+
+    function clearCart() {
+      try {
+        localStorage.removeItem(DEMO_CART_KEY);
+      } catch (e) {
+        /* ignore */
+      }
+      window.cart = [];
+      renderCart();
+      console.log("cart state:", window.cart);
     }
   </script>
 
@@ -115,7 +149,8 @@
   <div class="cart">
     <h2>Cart</h2>
     <ul id="cart-list"></ul>
-    <p class="note">Widget prompt arms only on this page when <code>window.cart.length &gt; 0</code> and after idle.</p>
+    <button type="button" class="btn-clear" onclick="clearCart()">Clear cart</button>
+    <p class="note">Widget prompt arms only on this page when <code>window.cart.length &gt; 0</code> and after idle. Cart persists in <code>localStorage</code> (<code>demo_cart</code>).</p>
   </div>
 
   <script>
