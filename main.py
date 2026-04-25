@@ -575,6 +575,57 @@ def dev_recovery_settings_update_test():
         return r
 
 
+@app.get("/dev/recovery-settings-live-verify")
+def dev_recovery_settings_live_verify():
+    """
+    يثبّت ‎10‎ د ‎+‎ دقائق على أحدث ‎Store‎، ثم ‎should_send_whatsapp(last = now-5d)‎ ينبغي ‎false‎.
+    """
+    try:
+        db.create_all()
+        if Store.query.order_by(Store.id.desc()).first() is None:
+            _row = Store(
+                zid_store_id=_DEV_RECOVERY_SETTINGS_STORE_ZID,
+                recovery_delay=2,
+                recovery_delay_unit="minutes",
+                recovery_attempts=1,
+            )
+            db.session.add(_row)
+            try:
+                db.session.commit()
+            except IntegrityError:
+                db.session.rollback()
+            if Store.query.order_by(Store.id.desc()).first() is None:
+                return jsonify({"ok": False, "error": "no_store"}), 500
+        data, code = _dev_apply_recovery_settings_update(10, "minutes", 1)
+        if code != 200:
+            r = jsonify(data)
+            r.status_code = code
+            return r
+        row = Store.query.order_by(Store.id.desc()).first()
+        now = datetime.now(timezone.utc)
+        last = now - timedelta(minutes=5)
+        ss = should_send_whatsapp(
+            last,
+            user_returned_to_site=False,
+            now=now,
+            store=row,
+            sent_count=0,
+        )
+        return jsonify(
+            {
+                "ok": True,
+                "recovery_delay": data["recovery_delay"],
+                "recovery_delay_unit": data["recovery_delay_unit"],
+                "should_send": ss,
+            }
+        )
+    except Exception as e:  # noqa: BLE001
+        db.session.rollback()
+        r = jsonify({"ok": False, "error": str(e)})
+        r.status_code = 500
+        return r
+
+
 @app.get("/dev/create-test-objection")
 def dev_create_test_objection():
     """
