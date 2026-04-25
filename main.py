@@ -388,8 +388,10 @@ def dev_recovery_flow_test():
             message = build_whatsapp_recovery_message(customer_type, t, cart)
             now = datetime.now(timezone.utc)
             last = now - timedelta(minutes=3)
+            db.create_all()
+            st = Store.query.order_by(Store.id.desc()).first()
             should_send = should_send_whatsapp(
-                last, user_returned_to_site=False, now=now
+                last, user_returned_to_site=False, now=now, store=st
             )
             if should_send:
                 send_whatsapp(phone="0500000000", message=message)
@@ -426,8 +428,9 @@ def dev_recovery_flow_test():
         last = row.last_activity_at
         if last is None:
             last = now - timedelta(minutes=3)
+        st = Store.query.order_by(Store.id.desc()).first()
         should_send = should_send_whatsapp(
-            last, user_returned_to_site=False, now=now
+            last, user_returned_to_site=False, now=now, store=st
         )
         send_result = None
         if should_send:
