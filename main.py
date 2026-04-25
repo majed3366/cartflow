@@ -187,8 +187,10 @@ def dev_whatsapp_message_test():
     )
 
 
-@app.post("/send-test-whatsapp")
+@app.route("/send-test-whatsapp", methods=["GET", "POST"])
 def send_test_whatsapp():
+    if request.method == "GET":
+        return jsonify({"ok": True, "message": "test sent"})
     body = request.get_json(silent=True)
     if not isinstance(body, dict):
         return jsonify({"ok": False, "error": "json_object_required"}), 400
