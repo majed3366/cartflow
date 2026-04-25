@@ -673,10 +673,10 @@ async def api_cart_event(request: Request):
         "event": payload.get("event"),
     }
     if payload.get("event") == "cart_abandoned":
-        log.info("cart abandoned received")
+        print("cart abandoned received")
         recovery_message = "يبدو أنك نسيت سلتك 🛒 هل تحب أكمل لك الطلب؟"
         out["recovery_message"] = recovery_message
-        log.info("recovery message created")
+        print("recovery message created")
     return j(out, 200)
 
 
