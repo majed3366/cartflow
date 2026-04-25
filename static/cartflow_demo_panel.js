@@ -6,7 +6,7 @@
   "use strict";
 
   var CARTFLOW_SESSION_KEY = "cartflow_recovery_session_id";
-  var CARTFLOW_DEMO_CONVERTED = "cartflow_demo_converted";
+  var CARTFLOW_CONVERTED_KEY = "cartflow_converted";
 
   function getStoreSlug() {
     if (typeof window.CARTFLOW_STORE_SLUG === "string" && window.CARTFLOW_STORE_SLUG.trim()) {
@@ -179,6 +179,14 @@
   }
 
   function triggerAbandon() {
+    try {
+      if (window.sessionStorage.getItem("cartflow_converted") === "1") {
+        console.log("cartflow demo: skip cart-event (converted)");
+        return Promise.resolve();
+      }
+    } catch (e) {
+      /* ignore */
+    }
     if (typeof window.cart === "undefined" || !window.cart) {
       window.cart = [];
     }
@@ -197,7 +205,6 @@
   }
 
   function triggerConversion() {
-    setClientConverted(true);
     var sid = getSessionId();
     if (!sid || sid === "—") {
       setText("cf-demo-conversion", "no session");
@@ -209,6 +216,9 @@
       purchase_completed: true,
     })
       .then(function (j) {
+        if (j && j.ok) {
+          setClientConverted(true);
+        }
         console.log("cartflow demo conversion", j);
         return refresh();
       })

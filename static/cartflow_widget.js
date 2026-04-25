@@ -5,6 +5,14 @@
 (function () {
   "use strict";
 
+  function isSessionConverted() {
+    try {
+      return window.sessionStorage.getItem("cartflow_converted") === "1";
+    } catch (e) {
+      return false;
+    }
+  }
+
   var ARM_DELAY_MS = 3000;
   var IDLE_MS = 8000;
   var shown = false;
@@ -15,8 +23,12 @@
     return /\/cart/i.test(window.location.pathname + window.location.search);
   }
 
+  /** إذا وُسِمّت الجلسة كمُحوّلة: لا فقاعة ولا اعتماد على السلة. */
   /** في ‎/demo/‎: الفقاعة فقط عند ‎window.cart.length > 0‎. باقي الصفحات: السلوك السابق. */
   function haveCartForWidget() {
+    if (isSessionConverted()) {
+      return false;
+    }
     var p = (window.location.pathname || "") + (window.location.search || "");
     if (p.indexOf("/demo/") < 0) {
       return true;
@@ -41,6 +53,9 @@
   }
 
   function showBubble() {
+    if (isSessionConverted()) {
+      return;
+    }
     if (shown) return;
     if (!haveCartForWidget()) {
       return;
@@ -329,12 +344,18 @@
   }
 
   function resetIdle() {
+    if (isSessionConverted()) {
+      return;
+    }
     if (shown) return;
     clearTimeout(idleTimer);
     idleTimer = setTimeout(showBubble, IDLE_MS);
   }
 
   function arm() {
+    if (isSessionConverted()) {
+      return;
+    }
     if (!isCartPage()) return;
     events.forEach(function (e) {
       document.addEventListener(e, resetIdle, true);

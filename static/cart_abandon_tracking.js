@@ -19,8 +19,18 @@
   }
 
   var CARTFLOW_SESSION_KEY = "cartflow_recovery_session_id";
+  var CARTFLOW_CONVERTED_KEY = "cartflow_converted";
   // يُلزِم id واحداً لكل تبويب حتى عند تزامن ‎beforeunload + visibility‎ أو فشل ‎sessionStorage‎
   var _cachedRecoverySessionId = null;
+
+  function cartflowIsSessionConverted() {
+    try {
+      return window.sessionStorage.getItem(CARTFLOW_CONVERTED_KEY) === "1";
+    } catch (e) {
+      return false;
+    }
+  }
+  window.cartflowIsSessionConverted = cartflowIsSessionConverted;
 
   function getRecoverySessionId() {
     if (_cachedRecoverySessionId) {
@@ -48,6 +58,9 @@
   }
 
   function sendCartAbandonedToBackend(source) {
+    if (cartflowIsSessionConverted()) {
+      return;
+    }
     var storeSlug =
       typeof window.CARTFLOW_STORE_SLUG !== "undefined" &&
       window.CARTFLOW_STORE_SLUG !== null &&
@@ -89,6 +102,9 @@
   var _abandonEventSentToBackend = false;
 
   function onCartAbandoned(source) {
+    if (cartflowIsSessionConverted()) {
+      return;
+    }
     if (typeof window.cart === "undefined" || window.cart === null) {
       window.cart = [];
     } else if (!Array.isArray(window.cart)) {

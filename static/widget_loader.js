@@ -5,7 +5,24 @@
 (function () {
   "use strict";
 
+  function cartflowBlockWidgetAfterConversion() {
+    try {
+      if (
+        typeof window.cartflowIsSessionConverted === "function" &&
+        window.cartflowIsSessionConverted()
+      ) {
+        return true;
+      }
+      return window.sessionStorage.getItem("cartflow_converted") === "1";
+    } catch (e) {
+      return false;
+    }
+  }
+
   function loadWidget() {
+    if (cartflowBlockWidgetAfterConversion()) {
+      return;
+    }
     try {
       var p = (location.pathname || "").replace(/\/$/, "") || "/";
       if (p === "/demo/store") {
