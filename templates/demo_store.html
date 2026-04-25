@@ -88,6 +88,10 @@
     (function () {
       "use strict";
 
+      if (typeof window.replyaiTrack !== "function") {
+        window.replyaiTrack = function () {};
+      }
+
       var products = {
         "demo-1": { name: "Sample Hoodie", price: 99 },
         "demo-2": { name: "Sample Mug", price: 29 },
@@ -164,5 +168,6 @@
       emitCartUpdated();
     })();
   </script>
+  <script src="/static/widget_loader.js" data-store="demo"></script>
 </body>
 </html>

@@ -1679,6 +1679,7 @@ async def zid_webhook(request: Request):
 
 
 @app.get("/demo/store")
+@app.get("/demo/store/cart")
 def demo_store(request: Request):
     """متجر وهمي للتجارب الداخلية (ويدجت / أحداث سلة — بدون منصات حقيقية)."""
     return templates.TemplateResponse(
