@@ -15,6 +15,21 @@
     return /\/cart/i.test(window.location.pathname + window.location.search);
   }
 
+  /** في ‎/demo/‎: الفقاعة فقط عند ‎window.cart.length > 0‎. باقي الصفحات: السلوك السابق. */
+  function haveCartForWidget() {
+    var p = (window.location.pathname || "") + (window.location.search || "");
+    if (p.indexOf("/demo/") < 0) {
+      return true;
+    }
+    if (typeof window.cart === "undefined" || window.cart === null) {
+      return false;
+    }
+    if (!Array.isArray(window.cart)) {
+      return false;
+    }
+    return window.cart.length > 0;
+  }
+
   function postObjection(type) {
     var base = (window.CARTFLOW_API_BASE || "").toString().replace(/\/$/, "");
     var url = base ? base + "/track/objection" : "/track/objection";
@@ -27,6 +42,9 @@
 
   function showBubble() {
     if (shown) return;
+    if (!haveCartForWidget()) {
+      return;
+    }
     shown = true;
     clearTimeout(idleTimer);
     events.forEach(function (e) {

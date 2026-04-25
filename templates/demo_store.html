@@ -43,27 +43,56 @@
       color: #fff;
     }
     button:hover { filter: brightness(1.05); }
-    .note {
+    .cart {
       margin-top: 1.5rem;
-      font-size: 0.875rem;
-      color: #71717a;
+      background: #fff;
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,.08);
     }
+    .cart h2 { font-size: 0.95rem; margin: 0 0 0.5rem 0; }
+    .cart ul { margin: 0; padding-left: 1.25rem; }
+    .empty { color: #a1a1aa; font-size: 0.9rem; }
+    .note { margin-top: 0.75rem; font-size: 0.875rem; color: #71717a; }
   </style>
 </head>
 <body>
   {% include "partials/cart_abandon_tracking.html" %}
   <script>
-    window.cart = window.cart || [];
+    window.cart = [];
+
+    console.log("cart reset");
+    console.log("cart state:", window.cart);
+
+    function renderCart() {
+      var ul = document.getElementById("cart-list");
+      if (!ul) return;
+      window.cart = window.cart || [];
+      ul.innerHTML = "";
+      if (window.cart.length === 0) {
+        var li = document.createElement("li");
+        li.className = "empty";
+        li.textContent = "No items yet.";
+        ul.appendChild(li);
+        return;
+      }
+      window.cart.forEach(function (item, i) {
+        var row = document.createElement("li");
+        row.textContent = (item && item.name ? item.name : "Item") + " — " + (item && item.price != null ? item.price : "—") + " SAR";
+        ul.appendChild(row);
+      });
+    }
 
     function addToCart(product) {
       window.cart = window.cart || [];
       window.cart.push(product);
       console.log("cart state:", window.cart);
+      renderCart();
     }
   </script>
 
   <h1>Demo store</h1>
-  <p class="sub">Internal only — global <code>window.cart</code> only; check console.</p>
+  <p class="sub">Internal only — <code>window.cart</code> is the only cart source; list below mirrors it.</p>
 
   <div class="grid">
     <div class="card">
@@ -83,8 +112,15 @@
     </div>
   </div>
 
-  <p class="note">Cart is <code>window.cart</code> only — not driven by the list above.</p>
+  <div class="cart">
+    <h2>Cart</h2>
+    <ul id="cart-list"></ul>
+    <p class="note">Widget prompt arms only on this page when <code>window.cart.length &gt; 0</code> and after idle.</p>
+  </div>
 
+  <script>
+    renderCart();
+  </script>
   <script src="/static/widget_loader.js" data-store="demo"></script>
 </body>
 </html>
