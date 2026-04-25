@@ -272,6 +272,32 @@ def dev_recovery_timing_test():
     )
 
 
+@app.get("/dev/recovery-duplicate-test")
+def dev_recovery_duplicate_test():
+    """
+    تكرار لنفس «السلة»: المحاولة الأولى — سكون ≥ دقيقتين يُسمح بالإرسال.
+    بعدها نُمثّل تسجيل لمسة/إرسال (آخر نشاط = ‎now‎) فينخفض الإرسال لاحقاً بمنطق ‎should_send_whatsapp‎ فقط.
+    """
+    now = datetime.now(timezone.utc)
+    first_last = now - timedelta(minutes=3)
+    first = should_send_whatsapp(
+        first_last, user_returned_to_site=False, now=now
+    )
+    # محاكاة: نفس السلة لكن بعد تسجيل الاسترجاع «آخر نشاط» = الآن (ضمن ‎2‎ د) → لا إرسال ثانٍ
+    second = should_send_whatsapp(now, user_returned_to_site=False, now=now)
+    return jsonify(
+        {
+            "ok": True,
+            "first_attempt": {
+                "should_send": first,
+            },
+            "second_attempt": {
+                "should_send": second,
+            },
+        }
+    )
+
+
 @app.get("/dev/create-test-objection")
 def dev_create_test_objection():
     """
