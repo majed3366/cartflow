@@ -711,62 +711,44 @@ def dev_platform_readiness_test():
     """
     from inspect import getsource  # stdlib (لا يتعارض مع ‎sqlalchemy.inspect‎)
 
-    try:
-        tc = _app_test_client()
-        g = tc.get("/api/recovery-settings")
-        try:
-            jg = g.json()
-        except Exception:  # noqa: BLE001
-            jg = None
-        # ‎"ok"‎: التحقق من وجود المفتاح دون ‎"ok" in jg‎ (نفس معنى ‎dict‎ لـ ‎API‎).
-        _missing = object()
-        recovery_settings_api_ready = bool(
-            isinstance(jg, dict) and jg.get("ok", _missing) is not _missing
+    tc = _app_test_client()
+    recovery_resp = tc.get("/api/recovery-settings")
+    jg = recovery_resp.json()
+    # ‎"ok"‎: التحقق من وجود المفتاح دون ‎"ok" in jg‎ (نفس معنى ‎dict‎ لـ ‎API‎).
+    _missing = object()
+    recovery_settings_api_ready = bool(
+        isinstance(jg, dict) and jg.get("ok", _missing) is not _missing
+    )
+    d = tc.get("/dashboard/recovery-settings")
+    dashboard_flow_ready = bool(
+        d.status_code == 200 and (b"recovery_delay" in (d.content or b""))
+    )
+    s_src = getsource(send_whatsapp)
+    whatsapp_send_is_mocked = bool(
+        "no provider" in s_src.lower() and "logger" in s_src
+    )
+    _now = datetime.now(timezone.utc)
+    _last = _now - timedelta(minutes=3)
+    recovery_logic_ready = bool(
+        should_send_whatsapp(
+            _last, user_returned_to_site=False, now=_now, store=None, sent_count=0
         )
-        d = tc.get("/dashboard/recovery-settings")
-        dashboard_flow_ready = bool(
-            d.status_code == 200 and (b"recovery_delay" in (d.content or b""))
-        )
-        s_src = getsource(send_whatsapp)
-        whatsapp_send_is_mocked = bool(
-            "no provider" in s_src.lower() and "logger" in s_src
-        )
-        _now = datetime.now(timezone.utc)
-        _last = _now - timedelta(minutes=3)
-        recovery_logic_ready = bool(
-            should_send_whatsapp(
-                _last, user_returned_to_site=False, now=_now, store=None, sent_count=0
-            )
-        )
-        all_ok = all(
-            [
-                recovery_settings_api_ready,
-                dashboard_flow_ready,
-                whatsapp_send_is_mocked,
-                recovery_logic_ready,
-            ]
-        )
-        return j(
-            {
-                "ok": all_ok,
-                "recovery_settings_api_ready": recovery_settings_api_ready,
-                "dashboard_flow_ready": dashboard_flow_ready,
-                "whatsapp_send_is_mocked": whatsapp_send_is_mocked,
-                "recovery_logic_ready": recovery_logic_ready,
-            }
-        )
-    except Exception as e:  # noqa: BLE001
-        return j(
-            {
-                "ok": False,
-                "error": str(e),
-                "recovery_settings_api_ready": False,
-                "dashboard_flow_ready": False,
-                "whatsapp_send_is_mocked": False,
-                "recovery_logic_ready": False,
-            },
-            500,
-        )
+    )
+    all_ok = all(
+        [
+            recovery_settings_api_ready,
+            dashboard_flow_ready,
+            whatsapp_send_is_mocked,
+            recovery_logic_ready,
+        ]
+    )
+    return {
+        "ok": all_ok,
+        "recovery_settings_api_ready": recovery_settings_api_ready,
+        "dashboard_flow_ready": dashboard_flow_ready,
+        "whatsapp_send_is_mocked": whatsapp_send_is_mocked,
+        "recovery_logic_ready": recovery_logic_ready,
+    }
 
 
 @app.get("/dev/recovery-dashboard-render-test")
