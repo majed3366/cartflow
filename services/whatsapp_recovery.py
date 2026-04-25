@@ -71,37 +71,24 @@ def _quality_fallback(who: Optional[str], cart: Mapping[str, Any]) -> str:
 
 
 def _returning_price(who: Optional[str], cart: Mapping[str, Any]) -> str:
-    # راجع + سعر: كود أقوى
-    a = _open(
-        who,
-        "رجعت؟ السعر؟\n"
-        "BACK20—الصقه واضغط تحديث بالسلّة. بعدها كمّل الطلب.",
-    )
-    return f"{a}\n{_cta(cart)}"
+    g = f"هلا {who} 👋 " if who else "هلا 👋 "
+    u = (cart.get("cart_url") or cart.get("checkout_url") or "").strip() or "https://example.com/cart"
+    return f"{g}نورتنا مرّة ثانية\nعشانك عميلنا، هذا كود خاص لك: BACK20\nخلّها ما تفوتك 👇\n{u}"
 
 
 def _returning_quality(who: Optional[str], cart: Mapping[str, Any]) -> str:
-    a = _open(
-        who,
-        "رجعت؟ الجودة؟\n"
-        "AMEEN18 يريّح المبلغ—جرّب. طبّق الكود—ثم كمّل.",
-    )
-    return f"{a}\n{_cta(cart)}"
+    g = f"هلا {who} 👋 " if who else "هلا 👋 "
+    u = (cart.get("cart_url") or cart.get("checkout_url") or "").strip() or "https://example.com/cart"
+    return f"{g}رجعت لنا وهذا يسعدنا\nهذا كود تقدير بسيط لك: AMEEN18\nخلّها ما تفوتك 👇\n{u}"
 
 
 def _new_price(who: Optional[str], cart: Mapping[str, Any]) -> str:
-    a = _open(
-        who,
-        "أول؟ السعر؟\n"
-        "FIRST8—فعّل الكود. بعدها اختم من السلّة.",
-    )
-    return f"{a}\n{_cta(cart)}"
+    g = f"هلا {who} 👋 " if who else "هلا 👋 "
+    u = (cart.get("cart_url") or cart.get("checkout_url") or "").strip() or "https://example.com/cart"
+    return f"{g}أول طلب لك معنا؟\nإذا السعر هو اللي وقفك، هذا كود بسيط يساعدك: FIRST8\nخلّها ما تفوتك 👇\n{u}"
 
 
 def _new_quality(who: Optional[str], cart: Mapping[str, Any]) -> str:
-    a = _open(
-        who,
-        "أول؟ الجودة؟\n"
-        "TRUST5 يريّح المبلغ—الصقه. بعدها اختم فوراً.",
-    )
-    return f"{a}\n{_cta(cart)}"
+    g = f"هلا {who} 👋 " if who else "هلا 👋 "
+    u = (cart.get("cart_url") or cart.get("checkout_url") or "").strip() or "https://example.com/cart"
+    return f"{g}واضح إنك تهتم بالجودة\nهذا كود بسيط يسهّل عليك القرار: TRUST5\nخلّها ما تفوتك 👇\n{u}"
