@@ -737,6 +737,13 @@ def _recovery_key_from_payload(payload: dict[str, Any]) -> str:
     return f"{store_slug}:{_session_part_from_payload(payload)}"
 
 
+def _recovery_key_from_store_and_session(store_slug: str, session_id: str) -> str:
+    """نفس ‎recovery_key‎ المستخدم في أحداث السلة — لـ ‎POST /api/conversion‎."""
+    return _recovery_key_from_payload(
+        {"store": store_slug, "session_id": session_id}
+    )
+
+
 def _cart_id_str_from_payload(payload: dict[str, Any]) -> Optional[str]:
     c = payload.get("cart_id")
     if c is None:
@@ -767,6 +774,15 @@ def _mark_user_converted_for_payload(payload: dict[str, Any]) -> None:
     with _recovery_session_lock:
         _session_recovery_converted[key] = True
     log.info("user_converted recorded for recovery_key=%s", key)
+
+
+def _mark_session_converted(store_slug: str, session_id: str) -> str:
+    """يضبط تحويلاً للجلسة (شراء مكتمل). يُرجع ‎recovery_key‎."""
+    key = _recovery_key_from_store_and_session(store_slug, session_id)
+    with _recovery_session_lock:
+        _session_recovery_converted[key] = True
+    log.info("conversion recorded for recovery_key=%s", key)
+    return key
 
 
 def _persist_cart_recovery_log(
@@ -834,6 +850,19 @@ async def _run_recovery_sequence_after_cart_abandoned(
             return
         _session_recovery_logged[recovery_key] = True
     print("recovery triggered after delay (sequence)")
+    if _is_user_converted(recovery_key):
+        print("recovery sequence stopped: user converted (after initial delay, before step 1)")
+        t1 = _recovery_message_for_step(1)
+        _persist_cart_recovery_log(
+            store_slug=store_slug,
+            session_id=session_id,
+            cart_id=cart_id,
+            phone=None,
+            message=t1,
+            status="stopped_converted",
+            step=1,
+        )
+        return
 
     for step_num, text in _RECOVERY_SEQUENCE_STEPS:
         if _is_user_converted(recovery_key):
@@ -844,7 +873,7 @@ async def _run_recovery_sequence_after_cart_abandoned(
                 cart_id=cart_id,
                 phone=None,
                 message=text,
-                status="skipped_converted",
+                status="stopped_converted",
                 step=step_num,
             )
             return
@@ -864,10 +893,21 @@ async def _run_recovery_sequence_after_cart_abandoned(
                     cart_id=cart_id,
                     phone=None,
                     message=text,
-                    status="skipped_converted",
+                    status="stopped_converted",
                     step=step_num,
                 )
                 return
+        if _is_user_converted(recovery_key):
+            _persist_cart_recovery_log(
+                store_slug=store_slug,
+                session_id=session_id,
+                cart_id=cart_id,
+                phone=None,
+                message=text,
+                status="stopped_converted",
+                step=step_num,
+            )
+            return
         try:
             send_whatsapp_mock(_MOCK_RECOVERY_PHONE, text)
         except Exception as e:  # noqa: BLE001
@@ -916,7 +956,7 @@ async def handle_cart_abandoned(
             cart_id=cart_id_log,
             phone=None,
             message=msg_log,
-            status="skipped_converted",
+            status="stopped_converted",
         )
         return {
             "recovery_scheduled": False,
@@ -1000,12 +1040,46 @@ async def api_cart_event(request: Request, background_tasks: BackgroundTasks):
         "ok": True,
         "event": payload.get("event"),
     }
-    if payload.get("user_converted") is True or payload.get("event") == "user_converted":
+    if (
+        payload.get("user_converted") is True
+        or payload.get("event") == "user_converted"
+        or payload.get("purchase_completed") is True
+    ):
         _mark_user_converted_for_payload(payload)
-        out["user_converted_tracked"] = True
+        out["conversion_tracked"] = True
     if payload.get("event") == "cart_abandoned":
         out.update(await handle_cart_abandoned(background_tasks, payload))
     return j(out, 200)
+
+
+@app.post("/api/conversion")
+async def api_conversion(request: Request) -> Any:
+    """
+    يعلّم جلسة كمُحوّلة (شراء مكتمل) — يوقف تسلسل الاسترجاع.
+    جسم: ‎store_slug‎، ‎session_id‎؛ ‎purchase_completed: true‎ اختياري للتحقق.
+    """
+    try:
+        body = await request.json()
+    except Exception:  # noqa: BLE001
+        body = None
+    if not isinstance(body, dict):
+        return j({"ok": False, "error": "json_object_required"}, 400)
+    ss = body.get("store_slug")
+    sid = body.get("session_id")
+    if not isinstance(ss, str) or not str(ss).strip():
+        return j({"ok": False, "error": "store_slug_required"}, 400)
+    if not isinstance(sid, str) or not str(sid).strip():
+        return j({"ok": False, "error": "session_id_required"}, 400)
+    if "purchase_completed" in body and body.get("purchase_completed") is not True:
+        return j({"ok": False, "error": "purchase_completed_must_be_true"}, 400)
+    key = _mark_session_converted(str(ss).strip(), str(sid).strip())
+    return j(
+        {
+            "ok": True,
+            "purchase_completed": True,
+            "recovery_key": key,
+        }
+    )
 
 
 @app.get("/dev/recovery-settings-read-test")
