@@ -477,6 +477,56 @@ def dev_recovery_settings_test():
         return r
 
 
+@app.post("/dev/recovery-settings-update")
+def dev_recovery_settings_update():
+    """
+    يحدّث أحدث ‎Store‎ — ‎recovery_delay / unit / recovery_attempts‎ (تجارب فقط).
+    """
+    _valid_units = frozenset({"minutes", "hours", "days"})
+    try:
+        db.create_all()
+        body = request.get_json(silent=True)
+        if not isinstance(body, dict):
+            return jsonify({"ok": False, "error": "json_object_required"}), 400
+        rd = body.get("recovery_delay")
+        ru = body.get("recovery_delay_unit")
+        ra = body.get("recovery_attempts")
+        if rd is None or ru is None or ra is None:
+            return jsonify({"ok": False, "error": "missing_fields"}), 400
+        try:
+            rd_i = int(rd)
+            ra_i = int(ra)
+        except (TypeError, ValueError):
+            return jsonify({"ok": False, "error": "invalid_number"}), 400
+        if rd_i < 1:
+            return jsonify({"ok": False, "error": "recovery_delay_min_1"}), 400
+        if ra_i < 1:
+            return jsonify({"ok": False, "error": "recovery_attempts_min_1"}), 400
+        unit = (str(ru) if ru is not None else "").strip().lower()
+        if unit not in _valid_units:
+            return jsonify({"ok": False, "error": "invalid_recovery_delay_unit"}), 400
+        row = Store.query.order_by(Store.id.desc()).first()
+        if row is None:
+            return jsonify({"ok": False, "error": "no_store"}), 404
+        row.recovery_delay = rd_i
+        row.recovery_delay_unit = unit
+        row.recovery_attempts = ra_i
+        db.session.commit()
+        return jsonify(
+            {
+                "ok": True,
+                "recovery_delay": row.recovery_delay,
+                "recovery_delay_unit": row.recovery_delay_unit,
+                "recovery_attempts": row.recovery_attempts,
+            }
+        )
+    except Exception as e:  # noqa: BLE001
+        db.session.rollback()
+        r = jsonify({"ok": False, "error": str(e)})
+        r.status_code = 500
+        return r
+
+
 @app.get("/dev/create-test-objection")
 def dev_create_test_objection():
     """
