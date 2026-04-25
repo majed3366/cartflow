@@ -567,6 +567,38 @@ def api_recovery_settings():
         return r
 
 
+@app.get("/dev/recovery-settings-api-test")
+def dev_recovery_settings_api_test():
+    """
+    نفس جسم ‎POST /api/recovery-settings‎ — ‎15 / minutes / 2‎ عبر ‎_dev_apply_recovery_settings_update‎.
+    """
+    try:
+        db.create_all()
+        if Store.query.order_by(Store.id.desc()).first() is None:
+            _row = Store(
+                zid_store_id=_DEV_RECOVERY_SETTINGS_STORE_ZID,
+                recovery_delay=2,
+                recovery_delay_unit="minutes",
+                recovery_attempts=1,
+            )
+            db.session.add(_row)
+            try:
+                db.session.commit()
+            except IntegrityError:
+                db.session.rollback()
+            if Store.query.order_by(Store.id.desc()).first() is None:
+                return jsonify({"ok": False, "error": "no_store"}), 500
+        data, code = _dev_apply_recovery_settings_update(15, "minutes", 2)
+        r = jsonify(data)
+        r.status_code = code
+        return r
+    except Exception as e:  # noqa: BLE001
+        db.session.rollback()
+        r = jsonify({"ok": False, "error": str(e)})
+        r.status_code = 500
+        return r
+
+
 @app.get("/dev/recovery-settings-update-test")
 def dev_recovery_settings_update_test():
     """
