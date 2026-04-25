@@ -697,17 +697,28 @@ _session_recovery_sent: dict[str, bool] = {}
 _recovery_session_lock = threading.Lock()
 
 
+def _normalize_store_slug(payload: dict[str, Any]) -> str:
+    raw = payload.get("store")
+    if isinstance(raw, str) and raw.strip():
+        return raw.strip()
+    return "default"
+
+
 def _session_key_for_recovery(payload: dict[str, Any]) -> str:
-    """المفتاح الأساسي ‎session_id‎ ثم ‎cart_id‎ ثم بصمة ‎cart‎."""
+    """مفتاح فريد لكل ‎store_slug + جلسة/بصمة سلة‎."""
+    store_slug = _normalize_store_slug(payload)
     sid = payload.get("session_id")
     if isinstance(sid, str) and sid.strip():
-        return sid.strip()
-    cid = payload.get("cart_id")
-    if isinstance(cid, str) and cid.strip():
-        return cid.strip()
-    cart = payload.get("cart")
-    raw = json.dumps(cart if cart is not None else [], sort_keys=True, default=str)
-    return "fp:" + hashlib.sha256(raw.encode("utf-8")).hexdigest()[:32]
+        base = sid.strip()
+    else:
+        cid = payload.get("cart_id")
+        if isinstance(cid, str) and cid.strip():
+            base = cid.strip()
+        else:
+            cart = payload.get("cart")
+            raw = json.dumps(cart if cart is not None else [], sort_keys=True, default=str)
+            base = "fp:" + hashlib.sha256(raw.encode("utf-8")).hexdigest()[:32]
+    return f"{store_slug}:{base}"
 
 
 def _try_claim_recovery_session(session_key: str) -> bool:
@@ -744,6 +755,8 @@ async def _delayed_recovery_after_cart_abandoned(
 async def handle_cart_abandoned(
     background_tasks: BackgroundTasks, payload: dict[str, Any]
 ) -> dict[str, Any]:
+    store_slug = _normalize_store_slug(payload)
+    print("store:", store_slug)
     session_key = _session_key_for_recovery(payload)
     with _recovery_session_lock:
         if _session_recovery_sent.get(session_key):
@@ -787,7 +800,8 @@ async def handle_cart_abandoned(
 async def api_cart_event(request: Request, background_tasks: BackgroundTasks):
     """
     أحداث سلة من الواجهة (مثل ‎cart_abandoned‎).
-    عند ‎cart_abandoned‎: لا إرسال فوري — جدولة مهمة مؤجّلة حسب ‎Store.recovery_delay / recovery_delay_unit‎.
+    يقبل ‎store‎ (معرّف المتجر/السياق) مع ‎session_id‎ و‎cart‎.
+    عند ‎cart_abandoned‎: لا إرسال فوري — جدولة مؤجّلة حسب ‎Store.recovery_*‎؛ مفتاح الاسترجاع ‎store + session‎.
     بدون واتساب.
     """
     try:

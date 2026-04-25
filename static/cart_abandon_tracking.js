@@ -48,8 +48,15 @@
   }
 
   function sendCartAbandonedToBackend(source) {
+    var storeSlug =
+      typeof window.CARTFLOW_STORE_SLUG !== "undefined" &&
+      window.CARTFLOW_STORE_SLUG !== null &&
+      String(window.CARTFLOW_STORE_SLUG).trim() !== ""
+        ? String(window.CARTFLOW_STORE_SLUG).trim()
+        : "demo";
     var body = JSON.stringify({
       event: "cart_abandoned",
+      store: storeSlug,
       source: source,
       session_id: getRecoverySessionId(),
       cart: window.cart,
