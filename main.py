@@ -56,6 +56,7 @@ from services.whatsapp_recovery import build_whatsapp_recovery_message  # noqa: 
 from services.whatsapp_send import (  # noqa: E402
     recovery_delay_to_seconds,
     send_whatsapp,
+    send_whatsapp_mock,
     should_send_whatsapp,
 )
 
@@ -723,7 +724,7 @@ def _try_claim_recovery_session(session_key: str) -> bool:
 async def _delayed_recovery_after_cart_abandoned(
     session_key: str, delay_seconds: float
 ) -> None:
-    """ينتظر ‎recovery_delay‎ ثم سطر سجل واحد لكل ‎session_key‎ — لا واتساب."""
+    """ينتظر ‎recovery_delay‎ ثم محاكاة واتساب وهمية لكل ‎session_key‎ مرة واحدة."""
     try:
         await asyncio.sleep(delay_seconds)
     except asyncio.CancelledError:
@@ -733,6 +734,8 @@ async def _delayed_recovery_after_cart_abandoned(
             return
         _session_recovery_logged[session_key] = True
     print("recovery triggered after delay")
+    recovery_message = "يبدو أنك نسيت سلتك 🛒 هل تحب أكمل لك الطلب؟"
+    send_whatsapp_mock("0500000000", recovery_message)
     with _recovery_session_lock:
         _session_recovery_sent[session_key] = True
     print("recovery marked as sent")

@@ -114,3 +114,10 @@ def send_whatsapp(phone: str, message: str) -> Dict[str, Any]:
     """
     logger.info("send_whatsapp (no provider): phone=%r, message=%s", phone, message)
     return {"ok": True}
+
+
+def send_whatsapp_mock(phone: str, message: str) -> Dict[str, Any]:
+    """واتساب وهمي — طباعة فقط، دون مزوّد."""
+    print("sending whatsapp to:", phone)
+    print("message:", message)
+    return {"ok": True}
