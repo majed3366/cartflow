@@ -3,7 +3,8 @@
  */
 (function () {
   "use strict";
-  if (typeof window.cart === "undefined" || window.cart === null) {
+  window.cart = window.cart || [];
+  if (!Array.isArray(window.cart)) {
     window.cart = [];
   }
   if (typeof window.replyaiTrack !== "function") {
@@ -47,7 +48,11 @@
   }
 
   function onCartAbandoned(source) {
-    if (!window.cart || window.cart.length === 0) {
+    window.cart = window.cart || [];
+    if (!Array.isArray(window.cart)) {
+      window.cart = [];
+    }
+    if (window.cart.length === 0) {
       return;
     }
     console.log("cart_abandoned triggered");

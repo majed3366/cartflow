@@ -89,10 +89,13 @@
     (function () {
       "use strict";
 
-      if (!Array.isArray(window.cart)) {
-        window.cart = [];
+      function ensureCart() {
+        window.cart = window.cart || [];
+        if (!Array.isArray(window.cart)) {
+          window.cart = [];
+        }
       }
-      var lines = window.cart;
+      ensureCart();
 
       var products = {
         "demo-1": { name: "Sample Hoodie", price: 99 },
@@ -101,14 +104,15 @@
       };
 
       function emitCartUpdated() {
-        var subtotal = lines.reduce(function (s, l) {
+        var c = window.cart;
+        var subtotal = c.reduce(function (s, l) {
           return s + l.price * l.quantity;
         }, 0);
         var detail = {
-          items: lines.map(function (l) {
+          items: c.map(function (l) {
             return { id: l.id, name: l.name, price: l.price, quantity: l.quantity };
           }),
-          lineCount: lines.reduce(function (n, l) { return n + l.quantity; }, 0),
+          lineCount: c.reduce(function (n, l) { return n + l.quantity; }, 0),
           subtotal: Math.round(subtotal * 100) / 100
         };
         var ev = new CustomEvent("cart_updated", { detail: detail, bubbles: true });
@@ -117,38 +121,46 @@
       }
 
       function render() {
+        var c = window.cart;
         var ul = document.getElementById("cart-list");
         var sum = document.getElementById("cart-summary");
         ul.innerHTML = "";
-        if (lines.length === 0) {
-          var li = document.createElement("li");
-          li.className = "empty";
-          li.textContent = "No items yet.";
-          ul.appendChild(li);
+        if (c.length === 0) {
+          var li0 = document.createElement("li");
+          li0.className = "empty";
+          li0.textContent = "No items yet.";
+          ul.appendChild(li0);
           sum.textContent = "";
         } else {
-          lines.forEach(function (l) {
+          c.forEach(function (l) {
             var li = document.createElement("li");
             li.textContent = l.name + " × " + l.quantity + " — " + (l.price * l.quantity).toFixed(2) + " SAR";
             ul.appendChild(li);
           });
-          var t = lines.reduce(function (s, l) { return s + l.price * l.quantity; }, 0);
+          var t = c.reduce(function (s, l) { return s + l.price * l.quantity; }, 0);
           sum.textContent = "Subtotal: " + t.toFixed(2) + " SAR";
         }
       }
 
       function addLine(id) {
+        ensureCart();
         var p = products[id];
         if (!p) return;
         var found = null;
-        for (var i = 0; i < lines.length; i++) {
-          if (lines[i].id === id) { found = lines[i]; break; }
+        for (var i = 0; i < window.cart.length; i++) {
+          if (window.cart[i].id === id) { found = window.cart[i]; break; }
         }
         if (found) {
           found.quantity += 1;
         } else {
-          lines.push({ id: id, name: p.name, price: p.price, quantity: 1 });
+          window.cart.push({
+            id: id,
+            name: p.name,
+            price: p.price,
+            quantity: 1
+          });
         }
+        console.log("cart state:", window.cart);
         render();
         emitCartUpdated();
       }
