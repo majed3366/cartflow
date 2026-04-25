@@ -6,7 +6,7 @@ import os
 import json
 import tempfile
 import traceback
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Optional, Tuple
 
 import anthropic  # مكتبة Anthropic الرسمية لطلبات Claude
@@ -58,7 +58,7 @@ app.register_blueprint(ops_bp)
 # تطوير فقط — مسجل على ‎app‎ مباشرة لضمان ظهوره مع ‎gunicorn main:app‎
 from services.ai_message_builder import build_abandoned_cart_message  # noqa: E402
 from services.whatsapp_recovery import build_whatsapp_recovery_message  # noqa: E402
-from services.whatsapp_send import send_whatsapp  # noqa: E402
+from services.whatsapp_send import send_whatsapp, should_send_whatsapp  # noqa: E402
 
 
 @app.get("/dev/run-flow")
@@ -185,6 +185,15 @@ def dev_whatsapp_message_test():
             "returning_quality": build_whatsapp_recovery_message("returning", "quality", c),
         }
     )
+
+
+@app.get("/dev/should-send-test")
+def dev_should_send_test():
+    # محاكاة: نشاط حديث (< دقيقتين) مقابل سكون ≥ دقيقتين
+    now = datetime.now(timezone.utc)
+    recent = should_send_whatsapp(now - timedelta(minutes=1), now=now)
+    idle = should_send_whatsapp(now - timedelta(minutes=3), now=now)
+    return jsonify({"recent": recent, "idle": idle})
 
 
 @app.route("/send-test-whatsapp", methods=["GET", "POST"])
