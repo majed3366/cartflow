@@ -57,10 +57,10 @@ log = logging.getLogger("cartflow")
 
 def _is_development_mode() -> bool:
     """
-    ‎/dev/‎: يُسمح به فقط في التطوير. على الإنتاج ضع ‎ENV=production‎
-    (أو أي قيمة غير ‎development‎). الافتراضي عند عدم الضبط: ‎development‎ ليُمكِّن المحلية.
+    ‎/dev/‎ يعمل فقط عند ‎ENV=development‎ صراحةً. غير ذلك = إنتاج (ويمكن ترك ‎ENV‎
+    غير مضبوط). محلياً: أضف ‎ENV=development‎ إلى ‎.env‎.
     """
-    return (os.getenv("ENV", "development") or "").strip().lower() == "development"
+    return (os.getenv("ENV") or "").strip().lower() == "development"
 
 
 def _app_test_client() -> Any:
