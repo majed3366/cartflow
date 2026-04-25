@@ -622,6 +622,65 @@ def dev_recovery_settings_read_test():
         return r
 
 
+@app.get("/dev/recovery-dashboard-test")
+def dev_recovery_dashboard_test():
+    """
+    محاكاة لوحة: ‎GET /api/recovery-settings‎ ثم ‎POST‎ ثم ‎GET‎ (عبر ‎test_client‎).
+    """
+    try:
+        db.create_all()
+        tc = app.test_client()
+        j = tc.get("/api/recovery-settings").get_json()
+        if not j or not j.get("ok"):
+            if Store.query.order_by(Store.id.desc()).first() is None:
+                _row = Store(
+                    zid_store_id=_DEV_RECOVERY_SETTINGS_STORE_ZID,
+                    recovery_delay=15,
+                    recovery_delay_unit="minutes",
+                    recovery_attempts=2,
+                )
+                db.session.add(_row)
+                try:
+                    db.session.commit()
+                except IntegrityError:
+                    db.session.rollback()
+            j = tc.get("/api/recovery-settings").get_json()
+        if not j or not j.get("ok"):
+            return jsonify({"ok": False, "error": "no_store"}), 500
+        before = {
+            "recovery_delay": j["recovery_delay"],
+            "recovery_delay_unit": j["recovery_delay_unit"],
+            "recovery_attempts": j["recovery_attempts"],
+        }
+        r_post = tc.post(
+            "/api/recovery-settings",
+            json={
+                "recovery_delay": 20,
+                "recovery_delay_unit": "minutes",
+                "recovery_attempts": 2,
+            },
+        )
+        j_post = r_post.get_json()
+        if not j_post or not j_post.get("ok"):
+            return jsonify(
+                {"ok": False, "error": j_post.get("error", "post_failed") if j_post else "post_failed"}
+            ), 400
+        j2 = tc.get("/api/recovery-settings").get_json()
+        if not j2 or not j2.get("ok"):
+            return jsonify({"ok": False, "error": "read_after_failed"}), 500
+        after = {
+            "recovery_delay": j2["recovery_delay"],
+            "recovery_delay_unit": j2["recovery_delay_unit"],
+            "recovery_attempts": j2["recovery_attempts"],
+        }
+        return jsonify({"ok": True, "before": before, "after": after})
+    except Exception as e:  # noqa: BLE001
+        db.session.rollback()
+        r = jsonify({"ok": False, "error": str(e)})
+        r.status_code = 500
+        return r
+
+
 @app.get("/dev/recovery-settings-api-test")
 def dev_recovery_settings_api_test():
     """
