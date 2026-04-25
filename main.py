@@ -54,10 +54,12 @@ from models import (  # noqa: E402
     Store,
 )
 from routes.cartflow import router as cartflow_router  # noqa: E402
+from routes.demo_panel import router as demo_panel_router  # noqa: E402
 from routes.ops import router as ops_router  # noqa: E402
 
 app.include_router(ops_router)
 app.include_router(cartflow_router)
+app.include_router(demo_panel_router, prefix="/demo")
 
 from services.ai_message_builder import build_abandoned_cart_message  # noqa: E402
 from services.whatsapp_recovery import build_whatsapp_recovery_message  # noqa: E402
@@ -2127,6 +2129,7 @@ async def zid_webhook(request: Request):
     return j(out, 200)
 
 
+@app.get("/demo/cart")
 @app.get("/demo/store")
 @app.get("/demo/store/cart")
 def demo_store(request: Request):

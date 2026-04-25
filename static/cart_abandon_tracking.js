@@ -115,4 +115,7 @@
       onCartAbandoned("visibility");
     }
   });
+
+  /* للوحة ‎/demo*‎: معرفة الجلسة نفسه بدون تكرار المنطق */
+  window.cartflowGetSessionId = getRecoverySessionId;
 })();

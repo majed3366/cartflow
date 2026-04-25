@@ -204,10 +204,13 @@ class CartRecoverySequenceBehaviorTests(unittest.TestCase):
                 pass
 
     def test_demo_store_page_exists(self) -> None:
-        """Manual flow uses /demo/store/cart (alias of /demo/store). /demo/cart is not defined."""
-        r = self.client.get("/demo/store/cart")
-        self.assertEqual(200, r.status_code)
-        self.assertIn(b"window.cart", r.content)
+        """Demo cart: /demo/cart, /demo/store/cart, /demo/store2/cart include cart + demo panel."""
+        for path in ("/demo/cart", "/demo/store/cart", "/demo/store2/cart"):
+            r = self.client.get(path)
+            self.assertEqual(200, r.status_code, path)
+            self.assertIn(b"window.cart", r.content)
+            self.assertIn(b"cf-demo-panel", r.content)
+            self.assertIn(b"cartflow_demo_panel.js", r.content)
 
 
 if __name__ == "__main__":
