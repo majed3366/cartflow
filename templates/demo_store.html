@@ -43,142 +43,48 @@
       color: #fff;
     }
     button:hover { filter: brightness(1.05); }
-    .cart {
+    .note {
       margin-top: 1.5rem;
-      background: #fff;
-      border-radius: 12px;
-      padding: 1rem 1.25rem;
-      box-shadow: 0 1px 3px rgba(0,0,0,.08);
+      font-size: 0.875rem;
+      color: #71717a;
     }
-    .cart h2 { font-size: 0.95rem; margin: 0 0 0.5rem 0; }
-    .cart ul { margin: 0; padding-left: 1.25rem; }
-    .cart .meta { color: #71717a; font-size: 0.875rem; margin-top: 0.5rem; }
-    .empty { color: #a1a1aa; font-size: 0.9rem; }
   </style>
 </head>
 <body>
   {% include "partials/cart_abandon_tracking.html" %}
-  <h1>Demo store</h1>
-  <p class="sub">Internal only — simulates cart; no checkout or platform calls.</p>
+  <script>
+    window.cart = window.cart || [];
 
-  <div class="grid" id="products">
-    <div class="card" data-id="demo-1">
+    function addToCart(product) {
+      window.cart = window.cart || [];
+      window.cart.push(product);
+      console.log("cart state:", window.cart);
+    }
+  </script>
+
+  <h1>Demo store</h1>
+  <p class="sub">Internal only — global <code>window.cart</code> only; check console.</p>
+
+  <div class="grid">
+    <div class="card">
       <h2>Sample Hoodie</h2>
       <div class="price">99.00 SAR</div>
-      <button type="button" class="add-btn">Add to cart</button>
+      <button type="button" onclick="addToCart({ name: 'Sample Hoodie', price: 99 })">Add to cart</button>
     </div>
-    <div class="card" data-id="demo-2">
+    <div class="card">
       <h2>Sample Mug</h2>
       <div class="price">29.00 SAR</div>
-      <button type="button" class="add-btn">Add to cart</button>
+      <button type="button" onclick="addToCart({ name: 'Sample Mug', price: 29 })">Add to cart</button>
     </div>
-    <div class="card" data-id="demo-3">
+    <div class="card">
       <h2>Sample Notebook</h2>
       <div class="price">19.00 SAR</div>
-      <button type="button" class="add-btn">Add to cart</button>
+      <button type="button" onclick="addToCart({ name: 'Sample Notebook', price: 19 })">Add to cart</button>
     </div>
   </div>
 
-  <div class="cart">
-    <h2>Cart (simulated in browser)</h2>
-    <ul id="cart-list"></ul>
-    <p class="meta" id="cart-summary"></p>
-  </div>
+  <p class="note">Cart is <code>window.cart</code> only — not driven by the list above.</p>
 
-  <script>
-    (function () {
-      "use strict";
-
-      function ensureCart() {
-        window.cart = window.cart || [];
-        if (!Array.isArray(window.cart)) {
-          window.cart = [];
-        }
-      }
-      ensureCart();
-
-      var products = {
-        "demo-1": { name: "Sample Hoodie", price: 99 },
-        "demo-2": { name: "Sample Mug", price: 29 },
-        "demo-3": { name: "Sample Notebook", price: 19 }
-      };
-
-      function emitCartUpdated() {
-        var c = window.cart;
-        var subtotal = c.reduce(function (s, l) {
-          return s + l.price * l.quantity;
-        }, 0);
-        var detail = {
-          items: c.map(function (l) {
-            return { id: l.id, name: l.name, price: l.price, quantity: l.quantity };
-          }),
-          lineCount: c.reduce(function (n, l) { return n + l.quantity; }, 0),
-          subtotal: Math.round(subtotal * 100) / 100
-        };
-        var ev = new CustomEvent("cart_updated", { detail: detail, bubbles: true });
-        window.dispatchEvent(ev);
-        document.dispatchEvent(ev);
-      }
-
-      function render() {
-        var c = window.cart;
-        var ul = document.getElementById("cart-list");
-        var sum = document.getElementById("cart-summary");
-        ul.innerHTML = "";
-        if (c.length === 0) {
-          var li0 = document.createElement("li");
-          li0.className = "empty";
-          li0.textContent = "No items yet.";
-          ul.appendChild(li0);
-          sum.textContent = "";
-        } else {
-          c.forEach(function (l) {
-            var li = document.createElement("li");
-            li.textContent = l.name + " × " + l.quantity + " — " + (l.price * l.quantity).toFixed(2) + " SAR";
-            ul.appendChild(li);
-          });
-          var t = c.reduce(function (s, l) { return s + l.price * l.quantity; }, 0);
-          sum.textContent = "Subtotal: " + t.toFixed(2) + " SAR";
-        }
-      }
-
-      function addLine(id) {
-        ensureCart();
-        var p = products[id];
-        if (!p) return;
-        var found = null;
-        for (var i = 0; i < window.cart.length; i++) {
-          if (window.cart[i].id === id) { found = window.cart[i]; break; }
-        }
-        if (found) {
-          found.quantity += 1;
-        } else {
-          window.cart.push({
-            id: id,
-            name: p.name,
-            price: p.price,
-            quantity: 1
-          });
-        }
-        console.log("cart state:", window.cart);
-        render();
-        emitCartUpdated();
-      }
-
-      document.getElementById("products").addEventListener("click", function (e) {
-        var btn = e.target && e.target.closest && e.target.closest(".add-btn");
-        if (!btn) return;
-        e.preventDefault();
-        var card = btn.closest(".card");
-        if (!card) return;
-        var id = card.getAttribute("data-id");
-        if (id) addLine(id);
-      });
-
-      render();
-      emitCartUpdated();
-    })();
-  </script>
   <script src="/static/widget_loader.js" data-store="demo"></script>
 </body>
 </html>
