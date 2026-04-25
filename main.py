@@ -728,6 +728,31 @@ def dev_recovery_dashboard_test():
         return j({"ok": False, "error": str(e)}, 500)
 
 
+def _ensure_dev_readiness_store() -> bool:
+    """
+    لمسار ‎/dev/platform-readiness-test‎ فقط: تضمين ‎Store‎ اختباري عند عدم وجود سجل
+    (نفس فكرة ‎/dev/recovery-settings-test‎) حتى ‎GET/POST /api/recovery-settings‎
+    ينجحان على ‎Railway‎.
+    """
+    db.create_all()
+    row = db.session.query(Store).order_by(Store.id.desc()).first()
+    if row is not None:
+        return True
+    row = Store(
+        zid_store_id=_DEV_RECOVERY_SETTINGS_STORE_ZID,
+        recovery_delay=2,
+        recovery_delay_unit="minutes",
+        recovery_attempts=1,
+    )
+    db.session.add(row)
+    try:
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        row = db.session.query(Store).order_by(Store.id.desc()).first()
+    return row is not None
+
+
 @app.get("/dev/platform-readiness-test")
 def dev_platform_readiness_test():
     """
@@ -736,14 +761,29 @@ def dev_platform_readiness_test():
     """
     from inspect import getsource  # stdlib (لا يتعارض مع ‎sqlalchemy.inspect‎)
 
-    api_r = api_recovery_settings_get()
-    try:
-        jg = json.loads((api_r.body or b"{}").decode("utf-8"))
-    except (json.JSONDecodeError, UnicodeError):
-        jg = None
-    recovery_settings_api_ready = bool(
-        isinstance(jg, dict) and (jg.get("ok") is True)
-    )
+    if not _ensure_dev_readiness_store():
+        get_ok = False
+        post_ok = False
+    else:
+        api_r = api_recovery_settings_get()
+        try:
+            jg = json.loads((api_r.body or b"{}").decode("utf-8"))
+        except (json.JSONDecodeError, UnicodeError):
+            jg = None
+        get_ok = bool(isinstance(jg, dict) and (jg.get("ok") is True))
+        post_ok = False
+        if get_ok and isinstance(jg, dict):
+            pbody, pcode = _dev_apply_recovery_settings_update(
+                jg.get("recovery_delay"),
+                jg.get("recovery_delay_unit"),
+                jg.get("recovery_attempts"),
+            )
+            post_ok = bool(
+                pcode == 200
+                and isinstance(pbody, dict)
+                and pbody.get("ok") is True
+            )
+    recovery_settings_api_ready = bool(get_ok and post_ok)
     d = dashboard_recovery_settings(
         _minimal_get_request("/dashboard/recovery-settings")
     )
