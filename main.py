@@ -718,9 +718,10 @@ def dev_platform_readiness_test():
             jg = g.json()
         except Exception:  # noqa: BLE001
             jg = None
-        # ‎bool()‎ + ‎all([...])‎ — قيم ‎bool‎ فقط (لا ‎a and b and …‎ قد تُرجع آخر كائن غير ‎bool‎).
+        # ‎"ok"‎: التحقق من وجود المفتاح دون ‎"ok" in jg‎ (نفس معنى ‎dict‎ لـ ‎API‎).
+        _missing = object()
         recovery_settings_api_ready = bool(
-            isinstance(jg, dict) and "ok" in jg
+            isinstance(jg, dict) and jg.get("ok", _missing) is not _missing
         )
         d = tc.get("/dashboard/recovery-settings")
         dashboard_flow_ready = bool(
