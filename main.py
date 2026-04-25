@@ -689,9 +689,10 @@ def api_recovery_settings_get():
         return j({"ok": False, "error": str(e)}, 500)
 
 
-# جلسة واحدة = مهمة تأخير واحدة + سجل واحد بعد انتهاء الانتظار (لكل عملية ‎worker‎)
+# جلسة واحدة = مهمة تأخير واحدة + سجل واحد + ‎recovery_sent‎ (لكل عملية ‎worker‎)
 _session_recovery_started: dict[str, bool] = {}
 _session_recovery_logged: dict[str, bool] = {}
+_session_recovery_sent: dict[str, bool] = {}
 _recovery_session_lock = threading.Lock()
 
 
@@ -732,17 +733,29 @@ async def _delayed_recovery_after_cart_abandoned(
             return
         _session_recovery_logged[session_key] = True
     print("recovery triggered after delay")
+    with _recovery_session_lock:
+        _session_recovery_sent[session_key] = True
+    print("recovery marked as sent")
 
 
 async def handle_cart_abandoned(
     background_tasks: BackgroundTasks, payload: dict[str, Any]
 ) -> dict[str, Any]:
     session_key = _session_key_for_recovery(payload)
+    with _recovery_session_lock:
+        if _session_recovery_sent.get(session_key):
+            print("recovery already sent, skipping")
+            return {
+                "recovery_scheduled": False,
+                "recovery_skipped": True,
+                "recovery_state": "sent",
+            }
     if not _try_claim_recovery_session(session_key):
         print("recovery already scheduled, skipping")
         return {
             "recovery_scheduled": False,
             "recovery_skipped": True,
+            "recovery_state": "pending",
         }
     # ‎_session_recovery_started[session_key]‎ مضبوط — قبل تحميل المتجر أو ‎add_task‎
     print("entered recovery handler")
@@ -763,6 +776,7 @@ async def handle_cart_abandoned(
     return {
         "recovery_scheduled": True,
         "recovery_delay_seconds": delay_s,
+        "recovery_state": "scheduled",
     }
 
 
