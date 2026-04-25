@@ -1678,6 +1678,16 @@ async def zid_webhook(request: Request):
     return j(out, 200)
 
 
+@app.get("/demo/store")
+def demo_store(request: Request):
+    """متجر وهمي للتجارب الداخلية (ويدجت / أحداث سلة — بدون منصات حقيقية)."""
+    return templates.TemplateResponse(
+        request,
+        "demo_store.html",
+        {"request": request},
+    )
+
+
 @app.get("/")
 def home(request: Request):
     # صفحة HTML للمراجعين/لوحة زد (بدون قاعدة بيانات)

@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Demo store — CartFlow</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+      background: #f4f4f5;
+      color: #18181b;
+      padding: 1.5rem;
+      max-width: 900px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    h1 { font-size: 1.25rem; margin: 0 0 0.25rem 0; }
+    .sub { color: #71717a; font-size: 0.875rem; margin-bottom: 1.5rem; }
+    .grid {
+      display: grid;
+      gap: 1rem;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    }
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 1rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,.08);
+    }
+    .card h2 { font-size: 1rem; margin: 0 0 0.5rem 0; }
+    .price { font-weight: 600; color: #3f3f46; margin-bottom: 0.75rem; }
+    button {
+      width: 100%;
+      cursor: pointer;
+      border: 0;
+      border-radius: 8px;
+      padding: 0.5rem 0.75rem;
+      font: inherit;
+      font-weight: 600;
+      background: #7c3aed;
+      color: #fff;
+    }
+    button:hover { filter: brightness(1.05); }
+    .cart {
+      margin-top: 1.5rem;
+      background: #fff;
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,.08);
+    }
+    .cart h2 { font-size: 0.95rem; margin: 0 0 0.5rem 0; }
+    .cart ul { margin: 0; padding-left: 1.25rem; }
+    .cart .meta { color: #71717a; font-size: 0.875rem; margin-top: 0.5rem; }
+    .empty { color: #a1a1aa; font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+  <h1>Demo store</h1>
+  <p class="sub">Internal only — simulates cart; no checkout or platform calls.</p>
+
+  <div class="grid" id="products">
+    <div class="card" data-id="demo-1">
+      <h2>Sample Hoodie</h2>
+      <div class="price">99.00 SAR</div>
+      <button type="button" class="add-btn">Add to cart</button>
+    </div>
+    <div class="card" data-id="demo-2">
+      <h2>Sample Mug</h2>
+      <div class="price">29.00 SAR</div>
+      <button type="button" class="add-btn">Add to cart</button>
+    </div>
+    <div class="card" data-id="demo-3">
+      <h2>Sample Notebook</h2>
+      <div class="price">19.00 SAR</div>
+      <button type="button" class="add-btn">Add to cart</button>
+    </div>
+  </div>
+
+  <div class="cart">
+    <h2>Cart (simulated in browser)</h2>
+    <ul id="cart-list"></ul>
+    <p class="meta" id="cart-summary"></p>
+  </div>
+
+  <script>
+    (function () {
+      "use strict";
+
+      var products = {
+        "demo-1": { name: "Sample Hoodie", price: 99 },
+        "demo-2": { name: "Sample Mug", price: 29 },
+        "demo-3": { name: "Sample Notebook", price: 19 }
+      };
+
+      /** @type {Array<{ id: string, name: string, price: number, quantity: number }>} */
+      var lines = [];
+
+      function emitCartUpdated() {
+        var subtotal = lines.reduce(function (s, l) {
+          return s + l.price * l.quantity;
+        }, 0);
+        var detail = {
+          items: lines.map(function (l) {
+            return { id: l.id, name: l.name, price: l.price, quantity: l.quantity };
+          }),
+          lineCount: lines.reduce(function (n, l) { return n + l.quantity; }, 0),
+          subtotal: Math.round(subtotal * 100) / 100
+        };
+        var ev = new CustomEvent("cart_updated", { detail: detail, bubbles: true });
+        window.dispatchEvent(ev);
+        document.dispatchEvent(ev);
+      }
+
+      function render() {
+        var ul = document.getElementById("cart-list");
+        var sum = document.getElementById("cart-summary");
+        ul.innerHTML = "";
+        if (lines.length === 0) {
+          var li = document.createElement("li");
+          li.className = "empty";
+          li.textContent = "No items yet.";
+          ul.appendChild(li);
+          sum.textContent = "";
+        } else {
+          lines.forEach(function (l) {
+            var li = document.createElement("li");
+            li.textContent = l.name + " × " + l.quantity + " — " + (l.price * l.quantity).toFixed(2) + " SAR";
+            ul.appendChild(li);
+          });
+          var t = lines.reduce(function (s, l) { return s + l.price * l.quantity; }, 0);
+          sum.textContent = "Subtotal: " + t.toFixed(2) + " SAR";
+        }
+      }
+
+      function addLine(id) {
+        var p = products[id];
+        if (!p) return;
+        var found = null;
+        for (var i = 0; i < lines.length; i++) {
+          if (lines[i].id === id) { found = lines[i]; break; }
+        }
+        if (found) {
+          found.quantity += 1;
+        } else {
+          lines.push({ id: id, name: p.name, price: p.price, quantity: 1 });
+        }
+        render();
+        emitCartUpdated();
+      }
+
+      document.getElementById("products").addEventListener("click", function (e) {
+        var btn = e.target && e.target.closest && e.target.closest(".add-btn");
+        if (!btn) return;
+        e.preventDefault();
+        var card = btn.closest(".card");
+        if (!card) return;
+        var id = card.getAttribute("data-id");
+        if (id) addLine(id);
+      });
+
+      render();
+      emitCartUpdated();
+    })();
+  </script>
+</body>
+</html>
