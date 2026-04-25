@@ -546,9 +546,24 @@ def dev_recovery_settings_update():
 def dev_recovery_settings_update_test():
     """
     يستدعي نفس تعديل الإعدادات: ‎10 / minutes / 1‎ — من غير ‎JSON‎ (للمتصفح/السريع).
+    إن لم يوجد ‎Store‎: يُنشأ سجل تجريبي مثل ‎/dev/recovery-settings-test‎ ثم التحديث.
     """
     try:
         db.create_all()
+        if Store.query.order_by(Store.id.desc()).first() is None:
+            _row = Store(
+                zid_store_id=_DEV_RECOVERY_SETTINGS_STORE_ZID,
+                recovery_delay=2,
+                recovery_delay_unit="minutes",
+                recovery_attempts=1,
+            )
+            db.session.add(_row)
+            try:
+                db.session.commit()
+            except IntegrityError:
+                db.session.rollback()
+            if Store.query.order_by(Store.id.desc()).first() is None:
+                return jsonify({"ok": False, "error": "no_store"}), 500
         data, code = _dev_apply_recovery_settings_update(10, "minutes", 1)
         r = jsonify(data)
         r.status_code = code
