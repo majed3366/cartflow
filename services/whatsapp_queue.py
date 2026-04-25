@@ -12,7 +12,7 @@ import threading
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any, Dict, Optional, Tuple
 
 from services.whatsapp_send import send_whatsapp_mock, send_whatsapp_real
 
@@ -56,6 +56,16 @@ def _retry_backoff() -> float:
 _worker_start_lock = threading.Lock()
 _queue_by_loop: dict[asyncio.AbstractEventLoop, "asyncio.Queue[Tuple[RecoveryWhatsappJob, asyncio.Future[str]]]"] = {}
 _worker_task_by_loop: dict[asyncio.AbstractEventLoop, asyncio.Task[None]] = {}
+# (recovery_key, step, message) -> future لدمج الاستدعاءات المكرّرة لنفس الخطوة
+_inflight_lock = threading.Lock()
+_inflight: dict[Tuple[str, int, str], "asyncio.Future[str]"] = {}
+
+
+def _inflight_dedup_key(
+    recovery_key: str, step: int, message: str
+) -> Tuple[str, int, str]:
+    """نفس ‎(store:session) + step + message‎ — وظيفة منطقية واحدة في الطابور."""
+    return (recovery_key, step, message)
 
 
 def _q() -> "asyncio.Queue[Tuple[RecoveryWhatsappJob, asyncio.Future[str]]]":
@@ -102,6 +112,20 @@ def _is_send_ok(res: Any) -> bool:
 async def _process_one_job(
     job: RecoveryWhatsappJob, fut: "asyncio.Future[str]"
 ) -> None:
+    dedup_key = _inflight_dedup_key(
+        job.recovery_key, job.step, (job.message or "")
+    )
+    try:
+        await _do_process_one_job_body(job, fut)
+    finally:
+        with _inflight_lock:
+            if _inflight.get(dedup_key) is fut:
+                _inflight.pop(dedup_key, None)
+
+
+async def _do_process_one_job_body(
+    job: RecoveryWhatsappJob, fut: "asyncio.Future[str]"
+) -> None:
     persist = _persist()
     if not fut.cancelled() and not fut.done() and _is_converted(job.recovery_key):
         persist(
@@ -117,6 +141,21 @@ async def _process_one_job(
         return
 
     for attempt in range(1, MAX_WA_SEND_ATTEMPTS + 1):
+        if not fut.cancelled() and not fut.done() and _is_converted(job.recovery_key):
+            persist(
+                store_slug=job.store_slug,
+                session_id=job.session_id,
+                cart_id=job.cart_id,
+                phone=job.phone,
+                message=job.message,
+                status="stopped_converted",
+                step=job.step,
+            )
+            fut.set_result("stopped")
+            return
+
+        # يفسح للمورد الحلقات الأخرى (مثل ‎POST /api/conversion‎) أن تُنفّذ قبل الإرسال.
+        await asyncio.sleep(0)
         if not fut.cancelled() and not fut.done() and _is_converted(job.recovery_key):
             persist(
                 store_slug=job.store_slug,
@@ -243,6 +282,8 @@ async def enqueue_recovery_and_wait(
     """
     يدفع وظيفة وينتظر: ‎success، failed_final، stopped‎.
     يسجّل ‎main‎ ‎status=«queued»‎ عادةً قبل النداء.
+    وظيفتان بنفس (recovery_key + step + message) وفي انتظار غير مُنهٍ: الانتظار
+    لنفس المستقبل دون إدخال ثانٍ.
     """
     job = RecoveryWhatsappJob(
         store_slug=store_slug,
@@ -254,8 +295,34 @@ async def enqueue_recovery_and_wait(
         recovery_key=recovery_key,
         use_real=use_real,
     )
+    key = _inflight_dedup_key(job.recovery_key, job.step, (message or ""))
     await start_whatsapp_queue_worker()
     loop = asyncio.get_running_loop()
-    fut: "asyncio.Future[str]" = loop.create_future()
+    await_dup: Optional["asyncio.Future[str]"] = None
+    fut: Optional["asyncio.Future[str]"] = None
+    with _inflight_lock:
+        ex = _inflight.get(key)
+        if ex is not None and not ex.done():
+            await_dup = ex
+        else:
+            if ex is not None and ex.done():
+                _inflight.pop(key, None)
+            nxt: "asyncio.Future[str]" = loop.create_future()
+            _inflight[key] = nxt
+            fut = nxt
+    if await_dup is not None:
+        return await await_dup
+    assert fut is not None
     await _q().put((job, fut))
     return await fut
+
+
+def _queue_diagnostics_for_tests() -> Tuple[int, int]:
+    """(حجم طابور الحلقة الحالية, عدد مفاتيح inflight) — للاختبارات فقط."""
+    with _inflight_lock:
+        infl = len(_inflight)
+    try:
+        n = _q().qsize()
+    except Exception:  # noqa: BLE001
+        n = -1
+    return n, infl
