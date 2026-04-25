@@ -567,6 +567,31 @@ def api_recovery_settings():
         return r
 
 
+@app.get("/api/recovery-settings")
+def api_recovery_settings_get():
+    """
+    واجهة ‎API‎ — قراءة أحدث ‎Store.recovery_*‎.
+    """
+    try:
+        db.create_all()
+        row = Store.query.order_by(Store.id.desc()).first()
+        if row is None:
+            return jsonify({"ok": False, "error": "no_store"}), 404
+        return jsonify(
+            {
+                "ok": True,
+                "recovery_delay": row.recovery_delay,
+                "recovery_delay_unit": row.recovery_delay_unit,
+                "recovery_attempts": row.recovery_attempts,
+            }
+        )
+    except Exception as e:  # noqa: BLE001
+        db.session.rollback()
+        r = jsonify({"ok": False, "error": str(e)})
+        r.status_code = 500
+        return r
+
+
 @app.get("/dev/recovery-settings-api-test")
 def dev_recovery_settings_api_test():
     """
