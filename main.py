@@ -657,6 +657,26 @@ def api_recovery_settings_get():
         return j({"ok": False, "error": str(e)}, 500)
 
 
+@app.post("/api/cart-event")
+async def api_cart_event(request: Request):
+    """
+    أحداث سلة من الواجهة (مثل ‎cart_abandoned‎) — للتتبع والتجارب فقط. بدون واتساب.
+    """
+    try:
+        payload = await request.json()
+    except Exception:  # noqa: BLE001
+        payload = None
+    if not isinstance(payload, dict):
+        payload = {}
+    return j(
+        {
+            "ok": True,
+            "event": payload.get("event"),
+        },
+        200,
+    )
+
+
 @app.get("/dev/recovery-settings-read-test")
 def dev_recovery_settings_read_test():
     """
