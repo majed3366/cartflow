@@ -64,19 +64,27 @@
   </style>
 </head>
 <body>
-  {% include "partials/cart_abandon_tracking.html" %}
   <script>
-    var DEMO_CART_KEY = "demo_cart";
-
     try {
       window.cart = JSON.parse(localStorage.getItem("demo_cart") || "[]");
     } catch (e) {
-      window.cart = [];
+      if (!window.cart) {
+        window.cart = [];
+      }
+    }
+    if (typeof window.cart === "undefined" || window.cart === null) {
+      if (!window.cart) {
+        window.cart = [];
+      }
     }
     if (!Array.isArray(window.cart)) {
       window.cart = [];
     }
     console.log("cart state:", window.cart);
+  </script>
+  {% include "partials/cart_abandon_tracking.html" %}
+  <script>
+    var DEMO_CART_KEY = "demo_cart";
 
     function persistCart() {
       try {
@@ -89,27 +97,25 @@
     function renderCart() {
       var ul = document.getElementById("cart-list");
       if (!ul) return;
-      window.cart = window.cart || [];
       ul.innerHTML = "";
       if (window.cart.length === 0) {
         var li = document.createElement("li");
         li.className = "empty";
         li.textContent = "No items yet.";
         ul.appendChild(li);
-        return;
+      } else {
+        window.cart.forEach(function (item) {
+          var row = document.createElement("li");
+          row.textContent = (item && item.name ? item.name : "Item") + " — " + (item && item.price != null ? item.price : "—") + " SAR";
+          ul.appendChild(row);
+        });
       }
-      window.cart.forEach(function (item) {
-        var row = document.createElement("li");
-        row.textContent = (item && item.name ? item.name : "Item") + " — " + (item && item.price != null ? item.price : "—") + " SAR";
-        ul.appendChild(row);
-      });
+      console.log("cart state:", window.cart);
     }
 
     function addToCart(product) {
-      window.cart = window.cart || [];
       window.cart.push(product);
       persistCart();
-      console.log("cart state:", window.cart);
       renderCart();
     }
 
@@ -119,9 +125,12 @@
       } catch (e) {
         /* ignore */
       }
-      window.cart = [];
+      if (Array.isArray(window.cart)) {
+        window.cart.length = 0;
+      } else {
+        window.cart = [];
+      }
       renderCart();
-      console.log("cart state:", window.cart);
     }
   </script>
 

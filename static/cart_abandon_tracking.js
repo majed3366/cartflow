@@ -3,8 +3,9 @@
  */
 (function () {
   "use strict";
-  window.cart = window.cart || [];
-  if (!Array.isArray(window.cart)) {
+  if (typeof window.cart === "undefined" || window.cart === null) {
+    window.cart = [];
+  } else if (!Array.isArray(window.cart)) {
     window.cart = [];
   }
   if (typeof window.replyaiTrack !== "function") {
@@ -48,8 +49,9 @@
   }
 
   function onCartAbandoned(source) {
-    window.cart = window.cart || [];
-    if (!Array.isArray(window.cart)) {
+    if (typeof window.cart === "undefined" || window.cart === null) {
+      window.cart = [];
+    } else if (!Array.isArray(window.cart)) {
       window.cart = [];
     }
     if (window.cart.length === 0) {
