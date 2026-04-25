@@ -1553,8 +1553,13 @@ def dashboard(request: Request):
 @app.get("/dashboard/recovery-settings")
 def dashboard_recovery_settings(request: Request):
     """صفحة بسيطة لضبط ‎recovery_*‎ — تحمّل/تحفظ عبر ‎/api/recovery-settings‎."""
+    # ‎Starlette:‎ المعامل الأول ‎Request‎ ثم اسم القالب (لا ‎(name, dict)‎ القديم).
     return templates.TemplateResponse(
-        "recovery_settings.html", {"request": request}
+        request,
+        "recovery_settings.html",
+        {
+            "request": request,
+        },
     )
 
 
