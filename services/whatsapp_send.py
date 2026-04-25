@@ -45,31 +45,49 @@ def _min_quiet_from_store_settings(store: Optional[Any]) -> timedelta:
     return timedelta(minutes=total_minutes)
 
 
+def _max_recovery_attempts(store: Optional[Any]) -> int:
+    """الحد الأقصى لرسائل الاسترجاع (افتراضي ‎1‎ عند غياب ‎store‎ أو الحقل)."""
+    if store is None:
+        return 1
+    at = getattr(store, "recovery_attempts", None)
+    if at is None:
+        return 1
+    try:
+        v = int(at)
+    except (TypeError, ValueError):
+        return 1
+    return max(0, v)
+
+
 def should_send_whatsapp(
     last_activity_time: Optional[datetime],
     *,
     user_returned_to_site: bool = False,
     now: Optional[datetime] = None,
     store: Optional[Any] = None,
+    sent_count: int = 0,
 ) -> bool:
     """
     هل يسمح بإرسال تذكير واتساب؟ (بدون مزوّد؛ منطق فقط.)
 
     - إن رجع المستخدم للموقع (يُمثَّل مؤقتاً بـ user_returned_to_site): لا نرسل.
-    - ‎store.recovery_attempts < 1‎: لا نرسل (مُعطّل).
-    - إن لم نُسجّل نشاطاً: نسمح بالإرسال (لاحقاً يرتبط بتتبع فعلي).
+    - ‎max_recovery_attempts < 1‎: لا نرسل (مُعطّل).
+    - إن ‎sent_count >= max_recovery_attempts‎: لا نرسل (نفد الحد).
+    - إن لم نُسجّل نشاطاً: نسمح بالإرسال (لاحقاً يرتبط بتتبع فعلي) إن بقي في الحد.
     - وإلا يلزم أن يمر زمن سكون ‎>=‎ الحد المضبوط (من ‎Store‎ أو افتراضياً ‎2‎ دقيقة).
     """
     if user_returned_to_site:
         return False
-    if store is not None:
-        at = getattr(store, "recovery_attempts", None)
-        if at is not None:
-            try:
-                if int(at) < 1:
-                    return False
-            except (TypeError, ValueError):
-                pass
+    try:
+        sc = int(sent_count)
+    except (TypeError, ValueError):
+        sc = 0
+    sc = max(0, sc)
+    max_a = _max_recovery_attempts(store)
+    if max_a < 1:
+        return False
+    if sc >= max_a:
+        return False
     if last_activity_time is None:
         return True
     t = now if now is not None else datetime.now(timezone.utc)
