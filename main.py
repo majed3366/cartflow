@@ -60,9 +60,11 @@ app.include_router(ops_router)
 from services.ai_message_builder import build_abandoned_cart_message  # noqa: E402
 from services.whatsapp_recovery import build_whatsapp_recovery_message  # noqa: E402
 from services.whatsapp_send import (  # noqa: E402
+    recovery_uses_real_whatsapp,
     recovery_delay_to_seconds,
     send_whatsapp,
     send_whatsapp_mock,
+    send_whatsapp_real,
     should_send_whatsapp,
 )
 
@@ -830,6 +832,18 @@ def _try_claim_recovery_session(recovery_key: str) -> bool:
 _MOCK_RECOVERY_PHONE = "0500000000"
 
 
+def _recovery_destination_phone() -> str:
+    """
+    رقم الوجهة لرسائل الاسترجاع.
+    ‎WHATSAPP_RECOVERY_TO_PHONE‎ اختياري: للاختبار بأرقام ‎WABA‎ الخاصة بك فقط قبل العملاء.
+    بدون ضبط: نفس الرقم الوهمي السابق (سلوك قديم).
+    """
+    o = (os.getenv("WHATSAPP_RECOVERY_TO_PHONE") or "").strip()
+    if o:
+        return o[:100]
+    return _MOCK_RECOVERY_PHONE
+
+
 async def _run_recovery_sequence_after_cart_abandoned(
     recovery_key: str,
     delay_seconds: float,
@@ -839,7 +853,8 @@ async def _run_recovery_sequence_after_cart_abandoned(
 ) -> None:
     """
     ينتظر ‎delay_seconds‎ ثم يمرّ بثلاث خطوات؛ بين كل خطوة والتالية نفس المدة.
-    وهمي ‎(mock)‎ فقط؛ يتوقف إذا وُسِم المستخدم بأنه حوّل.
+    ‎PRODUCTION_MODE + WHATSAPP_*‎: إرسال فعلي (‎sent_real / failed_real‎)؛ وإلا وهمي (‎mock_sent‎).
+    يتوقف إذا وُسِم المستخدم بأنه حوّل أو فشل إرسال خطوة.
     """
     try:
         await asyncio.sleep(delay_seconds)
@@ -908,31 +923,35 @@ async def _run_recovery_sequence_after_cart_abandoned(
                 step=step_num,
             )
             return
+        phone = _recovery_destination_phone()
+        use_real = recovery_uses_real_whatsapp()
+        st_out = "mock_sent"
+        sent_at_out: Optional[datetime] = None
         try:
-            send_whatsapp_mock(_MOCK_RECOVERY_PHONE, text)
+            if use_real:
+                result = send_whatsapp_real(phone, text)
+                if result.get("ok"):
+                    st_out, sent_at_out = "sent_real", datetime.now(timezone.utc)
+                else:
+                    st_out = "failed_real"
+            else:
+                send_whatsapp_mock(phone, text)
+                st_out, sent_at_out = "mock_sent", datetime.now(timezone.utc)
         except Exception as e:  # noqa: BLE001
-            _persist_cart_recovery_log(
-                store_slug=store_slug,
-                session_id=session_id,
-                cart_id=cart_id,
-                phone=_MOCK_RECOVERY_PHONE,
-                message=text,
-                status="failed",
-                step=step_num,
-            )
-            log.warning("send_whatsapp_mock: %s", e)
-            raise
-        now = datetime.now(timezone.utc)
+            st_out = "failed_real" if use_real else "failed"
+            log.warning("recovery whatsapp send: %s", e, exc_info=True)
         _persist_cart_recovery_log(
             store_slug=store_slug,
             session_id=session_id,
             cart_id=cart_id,
-            phone=_MOCK_RECOVERY_PHONE,
+            phone=phone,
             message=text,
-            status="mock_sent",
-            sent_at=now,
+            status=st_out,
+            sent_at=sent_at_out,
             step=step_num,
         )
+        if st_out in ("failed", "failed_real"):
+            break
     with _recovery_session_lock:
         _session_recovery_sent[recovery_key] = True
     print("recovery marked as sent (sequence complete)")

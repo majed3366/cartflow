@@ -41,9 +41,10 @@ class CartRecoverySequenceBehaviorTests(unittest.TestCase):
 
     @patch("main._persist_cart_recovery_log")
     @patch("main.send_whatsapp_mock")
+    @patch("main.recovery_uses_real_whatsapp", return_value=False)
     @patch("main.recovery_delay_to_seconds", return_value=0.0)
     def test_1_normal_sequence_three_steps_once(
-        self, _d: object, mock_send: object, _p: object
+        self, _d: object, _ur: object, mock_send: object, _p: object
     ) -> None:
         """step1, step2, step3 each sent once; no duplicate sends."""
         mock_send.return_value = {"ok": True}
@@ -61,9 +62,10 @@ class CartRecoverySequenceBehaviorTests(unittest.TestCase):
 
     @patch("main._persist_cart_recovery_log")
     @patch("main.send_whatsapp_mock")
+    @patch("main.recovery_uses_real_whatsapp", return_value=False)
     @patch("main.recovery_delay_to_seconds", return_value=0.0)
     def test_2_duplicate_protection_no_resend(
-        self, _d: object, mock_send: object, _p: object
+        self, _d: object, _ur: object, mock_send: object, _p: object
     ) -> None:
         """Multiple abandons for same session: only one full sequence of 3 sends."""
         mock_send.return_value = {"ok": True}
@@ -78,9 +80,10 @@ class CartRecoverySequenceBehaviorTests(unittest.TestCase):
 
     @patch("main._persist_cart_recovery_log")
     @patch("main.send_whatsapp_mock")
+    @patch("main.recovery_uses_real_whatsapp", return_value=False)
     @patch("main.recovery_delay_to_seconds", return_value=0.0)
     def test_3_store_isolation_demo_and_demo2(
-        self, _d: object, mock_send: object, _p: object
+        self, _d: object, _ur: object, mock_send: object, _p: object
     ) -> None:
         """demo and demo2: separate recovery; 3 sends each, 6 total."""
         mock_send.return_value = {"ok": True}
@@ -104,9 +107,10 @@ class CartRecoverySequenceBehaviorTests(unittest.TestCase):
 
     @patch("main._persist_cart_recovery_log")
     @patch("main.send_whatsapp_mock")
+    @patch("main.recovery_uses_real_whatsapp", return_value=False)
     @patch("main.recovery_delay_to_seconds", return_value=0.0)
     def test_4_conversion_stops_after_step1(
-        self, _d: object, mock_send: object, mock_persist: object
+        self, _d: object, _ur: object, mock_send: object, mock_persist: object
     ) -> None:
         """After step1 mock, conversion → no steps 2–3; persist logs stopped_converted."""
         states: list[str] = []
@@ -137,9 +141,10 @@ class CartRecoverySequenceBehaviorTests(unittest.TestCase):
         self.assertIn("mock_sent", states)
 
     @patch("main.send_whatsapp_mock")
+    @patch("main.recovery_uses_real_whatsapp", return_value=False)
     @patch("main.recovery_delay_to_seconds", return_value=0.0)
     def test_5_dev_recovery_logs_includes_fields(
-        self, _d: object, _mock_wa: object
+        self, _d: object, _ur: object, _mock_wa: object
     ) -> None:
         """GET /dev/recovery-logs/{store_slug} includes step, status, message, timestamps."""
         _mock_wa.return_value = {"ok": True}

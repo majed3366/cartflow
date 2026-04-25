@@ -2,12 +2,16 @@
 """
 واتساب: إرسال (ستُربط بمزود لاحقاً) — حالياً تسجيل فقط.
 توقيت «متى نرسل؟» — يدعم حقول ‎Store.recovery_*‎ عند تمرير ‎store‎.
+إرسال فعلي اختياري عبر ‎WHATSAPP_API_URL + WHATSAPP_API_KEY‎ عند ‎PRODUCTION_MODE‎.
 """
 from __future__ import annotations
 
 import logging
+import os
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional
+
+import requests
 
 logger = logging.getLogger(__name__)
 
@@ -120,3 +124,76 @@ def send_whatsapp_mock(phone, message):
     print("sending whatsapp to:", phone)
     print("message:", message)
     return {"ok": True}
+
+
+def is_production_mode() -> bool:
+    """وضع إنتاج للاسترجاع: ‎PRODUCTION_MODE‎ = ‎true / 1 / yes‎ (حساس لحالة الأحرف)."""
+    v = (os.getenv("PRODUCTION_MODE") or "").strip().lower()
+    return v in ("1", "true", "yes", "on")
+
+
+def whatsapp_real_configured() -> bool:
+    """يُرجع ‎True‎ إن وُجد ‎URL‎ ومفتاح غير فارغين."""
+    u = (os.getenv("WHATSAPP_API_URL") or "").strip()
+    k = (os.getenv("WHATSAPP_API_KEY") or "").strip()
+    return bool(u and k)
+
+
+def recovery_uses_real_whatsapp() -> bool:
+    """
+    يستخدم الإرسال الفعلي فقط عند ‎PRODUCTION_MODE‎ + ضبط المزوّد.
+    بدون الاثنين: بقاء الوهمي دون رفع خطأ.
+    """
+    if not is_production_mode():
+        return False
+    if not whatsapp_real_configured():
+        logger.info(
+            "PRODUCTION_MODE set but WHATSAPP_API_URL/WHATSAPP_API_KEY missing — using mock"
+        )
+        return False
+    return True
+
+
+def send_whatsapp_real(phone: str, message: str) -> Dict[str, Any]:
+    """
+    يرسل عبر ‎POST‎ إلى ‎WHATSAPP_API_URL‎ بجسم ‎JSON‎ عام:
+    ‎{ \"phone\": ..., \"message\": ... }‎ مع ‎Authorization: Bearer <KEY>‎.
+
+    يُناسب واجهة مخصّصة أو ‎webhook proxy‎؛ اضبط المزوّد أو عدّل الحمولة لاحقاً.
+    """
+    url = (os.getenv("WHATSAPP_API_URL") or "").strip()
+    key = (os.getenv("WHATSAPP_API_KEY") or "").strip()
+    if not url or not key:
+        return {"ok": False, "error": "not_configured"}
+    p = (phone or "").strip()
+    body_text = (message or "").strip()
+    try:
+        r = requests.post(
+            url,
+            json={"phone": p, "message": body_text},
+            headers={
+                "Authorization": f"Bearer {key}",
+                "Content-Type": "application/json",
+            },
+            timeout=60,
+        )
+        if 200 <= r.status_code < 300:
+            return {
+                "ok": True,
+                "status_code": r.status_code,
+            }
+        logger.warning(
+            "WhatsApp API non-success: %s %s", r.status_code, r.text[:1000]
+        )
+        return {
+            "ok": False,
+            "error": "http_error",
+            "status_code": r.status_code,
+            "body": r.text[:2000],
+        }
+    except requests.RequestException as e:  # noqa: BLE001
+        logger.warning("WhatsApp API request failed: %s", e, exc_info=True)
+        return {"ok": False, "error": str(e)}
+    except (OSError, TypeError, ValueError) as e:  # noqa: BLE001
+        logger.warning("WhatsApp send unexpected error: %s", e, exc_info=True)
+        return {"ok": False, "error": str(e)}

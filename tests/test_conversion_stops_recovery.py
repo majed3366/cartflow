@@ -57,10 +57,11 @@ class ConversionStopsAsyncSequenceTests(unittest.TestCase):
     def setUp(self) -> None:
         _reset()
 
-    @patch("main.send_whatsapp_mock")
+    @patch("main.recovery_uses_real_whatsapp", return_value=False)
     @patch("main._persist_cart_recovery_log")
+    @patch("main.send_whatsapp_mock")
     def test_no_sends_if_converted_after_initial_delay(
-        self, _mock_persist: object, mock_send: object
+        self, mock_send: object, _mock_persist: object, _ur: object
     ) -> None:
         _reset()
         main._mark_session_converted("demo", "no-send-1")
