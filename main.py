@@ -196,6 +196,48 @@ def dev_should_send_test():
     return jsonify({"recent": recent, "idle": idle})
 
 
+@app.get("/dev/recovery-flow-test")
+def dev_recovery_flow_test():
+    """
+    تدفق كامل: آخر objection + نص الاسترجاع + ‎should_send‎ (سكون مُدخَّل) + ‎send_whatsapp‎ وهمي.
+    """
+    try:
+        db.create_all()
+        row = ObjectionTrack.query.order_by(
+            ObjectionTrack.created_at.desc()
+        ).first()
+        if row is None:
+            return jsonify({"ok": False, "error": "no_objection"}), 404
+        t = (row.object_type or "").strip()
+        if t not in ("price", "quality"):
+            return jsonify({"ok": False, "error": "unknown_type"}), 400
+        # نوع العميل غير مخزّن في ‎ObjectionTrack‎ — للتجربة: جديد
+        customer_type = "new"
+        cart = dict(_WHATSAPP_TEST_CART)
+        message = build_whatsapp_recovery_message(customer_type, t, cart)
+        now = datetime.now(timezone.utc)
+        last = now - timedelta(minutes=3)
+        should_send = should_send_whatsapp(
+            last, user_returned_to_site=False, now=now
+        )
+        send_result = None
+        if should_send:
+            send_result = send_whatsapp(phone="0500000000", message=message)
+        return jsonify(
+            {
+                "ok": True,
+                "should_send": should_send,
+                "message": message,
+                "send_result": send_result,
+            }
+        )
+    except Exception as e:  # noqa: BLE001
+        db.session.rollback()
+        r = jsonify({"ok": False, "error": str(e)})
+        r.status_code = 500
+        return r
+
+
 @app.route("/send-test-whatsapp", methods=["GET", "POST"])
 def send_test_whatsapp():
     if request.method == "GET":
