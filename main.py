@@ -1,65 +1,84 @@
 # -*- coding: utf-8 -*-
 """
-CartFlow — تطبيق Flask الرئيسي لاستقبال الويبهوك ولوحة التاجر.
+CartFlow — تطبيق FastAPI الرئيسي لاستقبال الويبهوك ولوحة التاجر.
 """
-import os
 import json
+import logging
+import os
 import tempfile
 import traceback
 from types import SimpleNamespace
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional, Tuple
 
-import anthropic  # مكتبة Anthropic الرسمية لطلبات Claude
-import requests  # طلبات ‎HTTP‎ / ‎Zid / واتساب‎
+import anthropic
+import requests
 from dotenv import load_dotenv
-from extensions import db
-from flask import Flask, request, render_template, jsonify, Response
+from fastapi import FastAPI, Request
+from fastapi.responses import Response
+from fastapi.testclient import TestClient
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+
+from extensions import db, init_database, remove_scoped_session
 from integrations.zid_client import exchange_code_for_token, verify_webhook_signature
+from json_response import UTF8JSONResponse, j
 from sqlalchemy import func, inspect, text
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
-# تحميل متغيرات البيئة من ملف ‎.env (إن وُجد) قبل إنشاء التطبيق
 load_dotenv()
 
-# إنشاء كائن تطبيق Flask — نقطة دخول WSGI لـ Gunicorn: ‎app‎
-app = Flask(__name__)
-app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev-only-change-in-production")
-# ‎jsonify‎: نفس ‎json.dumps(..., ensure_ascii=False)‎ — عرض العربية مباشرة
-app.json.ensure_ascii = False
+import models  # noqa: F401, E402
+init_database()
 
-# قاعدة البيانات: ‎DATABASE_URL‎ من Railway (يُحقن تلقائياً عند ربط ‎Postgres‎) — لا hardcode
-# ‎‎postgres.railway.internal‎ يأتي داخل ‎URL‎ فقط، لا تُلصقه يدوياً في الكود
-# إن غاب ‎DATABASE_URL‎: ‎SQLite‎ مؤقتاً ‎/tmp/cartflow.db‎ (على ‎Windows‎: مجلد ‎%TEMP%‎)
-_db = os.getenv("DATABASE_URL")
-_database_url = (_db or "").strip()
-if not _database_url:
-    if os.name == "nt":
-        _p = os.path.abspath(
-            os.path.join(tempfile.gettempdir(), "cartflow.db")
-        ).replace("\\", "/")
-        _database_url = "sqlite:///" + _p
-    else:
-        # أربع شرطات: ‎sqlite://‎ + ‎/tmp/cartflow.db‎
-        _database_url = "sqlite:////tmp/cartflow.db"
-if _database_url.startswith("postgres://"):
-    _database_url = _database_url.replace("postgres://", "postgresql://", 1)
-if _database_url.startswith("postgresql+asyncpg://"):
-    _database_url = _database_url.replace("postgresql+asyncpg://", "postgresql+psycopg://", 1)
-app.config["SQLALCHEMY_DATABASE_URI"] = _database_url
-app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-db.init_app(app)
+app = FastAPI(
+    default_response_class=UTF8JSONResponse,
+    title="CartFlow",
+)
+app.state.secret_key = os.getenv("SECRET_KEY", "dev-only-change-in-production")
+templates = Jinja2Templates(directory="templates")
+_ROOT = os.path.dirname(os.path.abspath(__file__))
+_static = os.path.join(_ROOT, "static")
+if os.path.isdir(_static):
+    app.mount("/static", StaticFiles(directory=_static), name="static")
 
-# تسجيل النماذج (يجب بعد ‎init_app‎)
 from models import AbandonedCart, ObjectionTrack, Store, RecoveryEvent  # noqa: E402
-from routes.ops import bp as ops_bp  # noqa: E402
+from routes.ops import router as ops_router  # noqa: E402
 
-app.register_blueprint(ops_bp)
+app.include_router(ops_router)
 
-# تطوير فقط — مسجل على ‎app‎ مباشرة لضمان ظهوره مع ‎gunicorn main:app‎
 from services.ai_message_builder import build_abandoned_cart_message  # noqa: E402
 from services.whatsapp_recovery import build_whatsapp_recovery_message  # noqa: E402
 from services.whatsapp_send import send_whatsapp, should_send_whatsapp  # noqa: E402
+
+log = logging.getLogger("cartflow")
+
+
+@app.middleware("http")
+async def set_embed_csp_middleware(request: Request, call_next: Any) -> Any:
+    try:
+        response = await call_next(request)
+    except Exception:  # noqa: BLE001
+        raise
+    else:
+        response.headers["X-Frame-Options"] = "ALLOWALL"
+        response.headers["Content-Security-Policy"] = (
+            "frame-ancestors https://*.zid.sa https://zid.sa;"
+        )
+        return response
+    finally:
+        remove_scoped_session()
+
+
+def _app_route_get_exists(path: str) -> bool:
+    for r in app.routes:
+        p = getattr(r, "path", None)
+        if p != path:
+            continue
+        m = getattr(r, "methods", None) or set()
+        if "GET" in m:
+            return True
+    return False
 
 
 @app.get("/dev/run-flow")
@@ -68,7 +87,7 @@ def dev_run_flow():
 
     cart = get_mock_abandoned_cart()
     message = build_abandoned_cart_message(cart)
-    return jsonify(
+    return j(
         {
             "cart": cart,
             "message": message,
@@ -98,7 +117,9 @@ if (location.pathname.indexOf("/cart") < 0) {
 @app.get("/dev/widget-test")
 @app.get("/dev/widget-test/cart")
 def dev_widget_test():
-    return Response(_DEV_WIDGET_TEST_HTML, mimetype="text/html; charset=utf-8")
+    return Response(
+        content=_DEV_WIDGET_TEST_HTML, media_type="text/html; charset=utf-8"
+    )
 
 
 def _track_objection_cors(resp: Response) -> Response:
@@ -108,21 +129,23 @@ def _track_objection_cors(resp: Response) -> Response:
     return resp
 
 
-@app.route("/track/objection", methods=["POST", "OPTIONS"])
-def track_objection():
+@app.api_route("/track/objection", methods=["POST", "OPTIONS"])
+async def track_objection(request: Request):
     if request.method == "OPTIONS":
-        return _track_objection_cors(Response("", status=204))
-    # جسم آمن: ‎request.json.get("type")‎ عند وُجود ‎JSON‎
-    body = request.get_json(silent=True)
-    if body is None:
-        body = request.json if request.json is not None else {}
+        return _track_objection_cors(
+            Response(status_code=204, content=b"")
+        )
+    try:
+        body = await request.json()
+    except Exception:  # noqa: BLE001
+        body = None
     if not isinstance(body, dict):
         body = {}
     t = (body.get("type") or "").strip()
     if t not in ("price", "quality"):
-        r = jsonify({"ok": False, "error": "invalid_type"})
-        r.status_code = 400
-        return _track_objection_cors(r)
+        return _track_objection_cors(
+            j({"ok": False, "error": "invalid_type"}, 400)
+        )
     try:
         db.create_all()
         _ensure_objection_track_test_columns()
@@ -132,10 +155,10 @@ def track_objection():
         db.session.commit()
     except Exception as e:  # noqa: BLE001
         db.session.rollback()
-        r = jsonify({"ok": False, "error": str(e)})
-        r.status_code = 500
-        return _track_objection_cors(r)
-    return _track_objection_cors(jsonify({"ok": True}))
+        return _track_objection_cors(
+            j({"ok": False, "error": str(e)}, 500)
+        )
+    return _track_objection_cors(j({"ok": True}))
 
 
 _MSG_WA_PRICE = (
@@ -151,24 +174,22 @@ def dev_send_whatsapp_test():
     try:
         db.create_all()
         _ensure_objection_track_test_columns()
-        row = ObjectionTrack.query.order_by(
+        row = db.session.query(ObjectionTrack).order_by(
             ObjectionTrack.created_at.desc()
         ).first()
         if row is None:
-            return jsonify({"ok": False, "error": "no_objection"}), 404
+            return j({"ok": False, "error": "no_objection"}, 404)
         t = (row.object_type or "").strip()
         if t == "price":
             msg = _MSG_WA_PRICE
         elif t == "quality":
             msg = _MSG_WA_QUALITY
         else:
-            return jsonify({"ok": False, "error": "unknown_type"}), 400
-        return jsonify({"ok": True, "message": msg})
+            return j({"ok": False, "error": "unknown_type"}, 400)
+        return j({"ok": True, "message": msg})
     except Exception as e:  # noqa: BLE001
         db.session.rollback()
-        r = jsonify({"ok": False, "error": str(e)})
-        r.status_code = 500
-        return r
+        return j({"ok": False, "error": str(e)}, 500)
 
 
 _WHATSAPP_TEST_CART = {
@@ -205,7 +226,7 @@ def _dev_apply_recovery_settings_update(
     unit = (str(recovery_delay_unit) if recovery_delay_unit is not None else "").strip().lower()
     if unit not in _VALID_RECOVERY_UNITS:
         return {"ok": False, "error": "invalid_recovery_delay_unit"}, 400
-    row = Store.query.order_by(Store.id.desc()).first()
+    row = db.session.query(Store).order_by(Store.id.desc()).first()
     if row is None:
         return {"ok": False, "error": "no_store"}, 404
     row.recovery_delay = rd_i
@@ -270,7 +291,7 @@ def _ensure_objection_track_test_columns() -> None:
 @app.get("/dev/whatsapp-message-test")
 def dev_whatsapp_message_test():
     c = _WHATSAPP_TEST_CART
-    return jsonify(
+    return j(
         {
             "new_price": build_whatsapp_recovery_message("new", "price", c),
             "new_quality": build_whatsapp_recovery_message("new", "quality", c),
@@ -286,7 +307,7 @@ def dev_should_send_test():
     now = datetime.now(timezone.utc)
     recent = should_send_whatsapp(now - timedelta(minutes=1), now=now)
     idle = should_send_whatsapp(now - timedelta(minutes=3), now=now)
-    return jsonify({"recent": recent, "idle": idle})
+    return j({"recent": recent, "idle": idle})
 
 
 @app.get("/dev/recovery-timing-test")
@@ -297,7 +318,7 @@ def dev_recovery_timing_test():
     now = datetime.now(timezone.utc)
     last_recent = now - timedelta(minutes=1)
     last_idle = now - timedelta(minutes=3)
-    return jsonify(
+    return j(
         {
             "ok": True,
             "cases": {
@@ -334,7 +355,7 @@ def dev_recovery_delay_verify():
         recovery_delay_unit="minutes",
         recovery_attempts=1,
     )
-    return jsonify(
+    return j(
         {
             "ok": True,
             "case_fast": {
@@ -369,7 +390,7 @@ def dev_recovery_attempts_verify():
         recovery_delay_unit="minutes",
         recovery_attempts=1,
     )
-    return jsonify(
+    return j(
         {
             "ok": True,
             "first_attempt": {
@@ -418,7 +439,7 @@ def dev_recovery_unit_verify():
         recovery_delay_unit="days",
         recovery_attempts=1,
     )
-    return jsonify(
+    return j(
         {
             "ok": True,
             "minutes_case": {
@@ -465,7 +486,7 @@ def dev_recovery_duplicate_test():
     )
     # محاكاة: نفس السلة لكن بعد تسجيل الاسترجاع «آخر نشاط» = الآن (ضمن ‎2‎ د) → لا إرسال ثانٍ
     second = should_send_whatsapp(now, user_returned_to_site=False, now=now)
-    return jsonify(
+    return j(
         {
             "ok": True,
             "first_attempt": {
@@ -486,7 +507,7 @@ def dev_recovery_settings_test():
     """
     try:
         db.create_all()
-        row = Store.query.order_by(Store.id.desc()).first()
+        row = db.session.query(Store).order_by(Store.id.desc()).first()
         if row is None:
             row = Store(
                 zid_store_id=_DEV_RECOVERY_SETTINGS_STORE_ZID,
@@ -499,10 +520,10 @@ def dev_recovery_settings_test():
                 db.session.commit()
             except IntegrityError:
                 db.session.rollback()
-                row = Store.query.order_by(Store.id.desc()).first()
+                row = db.session.query(Store).order_by(Store.id.desc()).first()
             if row is None:
-                return jsonify({"ok": False, "error": "no_store"}), 500
-        return jsonify(
+                return j({"ok": False, "error": "no_store"}, 500)
+        return j(
             {
                 "ok": True,
                 "recovery_delay": row.recovery_delay,
@@ -512,59 +533,55 @@ def dev_recovery_settings_test():
         )
     except Exception as e:  # noqa: BLE001
         db.session.rollback()
-        r = jsonify({"ok": False, "error": str(e)})
-        r.status_code = 500
-        return r
+        return j({"ok": False, "error": str(e)}, 500)
 
 
 @app.post("/dev/recovery-settings-update")
-def dev_recovery_settings_update():
+async def dev_recovery_settings_update(request: Request):
     """
     يحدّث أحدث ‎Store‎ — ‎recovery_delay / unit / recovery_attempts‎ (تجارب فقط).
     """
     try:
         db.create_all()
-        body = request.get_json(silent=True)
+        try:
+            body = await request.json()
+        except Exception:  # noqa: BLE001
+            body = None
         if not isinstance(body, dict):
-            return jsonify({"ok": False, "error": "json_object_required"}), 400
+            return j({"ok": False, "error": "json_object_required"}, 400)
         data, code = _dev_apply_recovery_settings_update(
             body.get("recovery_delay"),
             body.get("recovery_delay_unit"),
             body.get("recovery_attempts"),
         )
-        r = jsonify(data)
-        r.status_code = code
-        return r
+        return j(data, code)
     except Exception as e:  # noqa: BLE001
         db.session.rollback()
-        r = jsonify({"ok": False, "error": str(e)})
-        r.status_code = 500
-        return r
+        return j({"ok": False, "error": str(e)}, 500)
 
 
 @app.post("/api/recovery-settings")
-def api_recovery_settings():
+async def api_recovery_settings(request: Request):
     """
     واجهة ‎API‎ — تحديث أحدث ‎Store‎ (نفس التحقق والمنطق مثل ‎/dev/recovery-settings-update‎).
     """
     try:
         db.create_all()
-        body = request.get_json(silent=True)
+        try:
+            body = await request.json()
+        except Exception:  # noqa: BLE001
+            body = None
         if not isinstance(body, dict):
-            return jsonify({"ok": False, "error": "json_object_required"}), 400
+            return j({"ok": False, "error": "json_object_required"}, 400)
         data, code = _dev_apply_recovery_settings_update(
             body.get("recovery_delay"),
             body.get("recovery_delay_unit"),
             body.get("recovery_attempts"),
         )
-        r = jsonify(data)
-        r.status_code = code
-        return r
+        return j(data, code)
     except Exception as e:  # noqa: BLE001
         db.session.rollback()
-        r = jsonify({"ok": False, "error": str(e)})
-        r.status_code = 500
-        return r
+        return j({"ok": False, "error": str(e)}, 500)
 
 
 @app.get("/api/recovery-settings")
@@ -574,10 +591,10 @@ def api_recovery_settings_get():
     """
     try:
         db.create_all()
-        row = Store.query.order_by(Store.id.desc()).first()
+        row = db.session.query(Store).order_by(Store.id.desc()).first()
         if row is None:
-            return jsonify({"ok": False, "error": "no_store"}), 404
-        return jsonify(
+            return j({"ok": False, "error": "no_store"}, 404)
+        return j(
             {
                 "ok": True,
                 "recovery_delay": row.recovery_delay,
@@ -587,9 +604,7 @@ def api_recovery_settings_get():
         )
     except Exception as e:  # noqa: BLE001
         db.session.rollback()
-        r = jsonify({"ok": False, "error": str(e)})
-        r.status_code = 500
-        return r
+        return j({"ok": False, "error": str(e)}, 500)
 
 
 @app.get("/dev/recovery-settings-read-test")
@@ -600,7 +615,7 @@ def dev_recovery_settings_read_test():
     """
     try:
         db.create_all()
-        if Store.query.order_by(Store.id.desc()).first() is None:
+        if db.session.query(Store).order_by(Store.id.desc()).first() is None:
             _row = Store(
                 zid_store_id=_DEV_RECOVERY_SETTINGS_STORE_ZID,
                 recovery_delay=15,
@@ -612,27 +627,25 @@ def dev_recovery_settings_read_test():
                 db.session.commit()
             except IntegrityError:
                 db.session.rollback()
-            if Store.query.order_by(Store.id.desc()).first() is None:
-                return jsonify({"ok": False, "error": "no_store"}), 500
+            if db.session.query(Store).order_by(Store.id.desc()).first() is None:
+                return j({"ok": False, "error": "no_store"}, 500)
         return api_recovery_settings_get()
     except Exception as e:  # noqa: BLE001
         db.session.rollback()
-        r = jsonify({"ok": False, "error": str(e)})
-        r.status_code = 500
-        return r
+        return j({"ok": False, "error": str(e)}, 500)
 
 
 @app.get("/dev/recovery-dashboard-test")
 def dev_recovery_dashboard_test():
     """
-    محاكاة لوحة: ‎GET /api/recovery-settings‎ ثم ‎POST‎ ثم ‎GET‎ (عبر ‎test_client‎).
+    محاكاة لوحة: ‎GET /api/recovery-settings‎ ثم ‎POST‎ ثم ‎GET‎ (عبر ‎TestClient‎).
     """
     try:
         db.create_all()
-        tc = app.test_client()
-        j = tc.get("/api/recovery-settings").get_json()
-        if not j or not j.get("ok"):
-            if Store.query.order_by(Store.id.desc()).first() is None:
+        tc = TestClient(app)
+        jdata = tc.get("/api/recovery-settings").json()
+        if not jdata or not jdata.get("ok"):
+            if db.session.query(Store).order_by(Store.id.desc()).first() is None:
                 _row = Store(
                     zid_store_id=_DEV_RECOVERY_SETTINGS_STORE_ZID,
                     recovery_delay=15,
@@ -644,13 +657,13 @@ def dev_recovery_dashboard_test():
                     db.session.commit()
                 except IntegrityError:
                     db.session.rollback()
-            j = tc.get("/api/recovery-settings").get_json()
-        if not j or not j.get("ok"):
-            return jsonify({"ok": False, "error": "no_store"}), 500
+            jdata = tc.get("/api/recovery-settings").json()
+        if not jdata or not jdata.get("ok"):
+            return j({"ok": False, "error": "no_store"}, 500)
         before = {
-            "recovery_delay": j["recovery_delay"],
-            "recovery_delay_unit": j["recovery_delay_unit"],
-            "recovery_attempts": j["recovery_attempts"],
+            "recovery_delay": jdata["recovery_delay"],
+            "recovery_delay_unit": jdata["recovery_delay_unit"],
+            "recovery_attempts": jdata["recovery_attempts"],
         }
         r_post = tc.post(
             "/api/recovery-settings",
@@ -660,25 +673,27 @@ def dev_recovery_dashboard_test():
                 "recovery_attempts": 2,
             },
         )
-        j_post = r_post.get_json()
+        j_post = r_post.json()
         if not j_post or not j_post.get("ok"):
-            return jsonify(
-                {"ok": False, "error": j_post.get("error", "post_failed") if j_post else "post_failed"}
-            ), 400
-        j2 = tc.get("/api/recovery-settings").get_json()
+            return j(
+                {
+                    "ok": False,
+                    "error": j_post.get("error", "post_failed") if j_post else "post_failed",
+                },
+                400,
+            )
+        j2 = tc.get("/api/recovery-settings").json()
         if not j2 or not j2.get("ok"):
-            return jsonify({"ok": False, "error": "read_after_failed"}), 500
+            return j({"ok": False, "error": "read_after_failed"}, 500)
         after = {
             "recovery_delay": j2["recovery_delay"],
             "recovery_delay_unit": j2["recovery_delay_unit"],
             "recovery_attempts": j2["recovery_attempts"],
         }
-        return jsonify({"ok": True, "before": before, "after": after})
+        return j({"ok": True, "before": before, "after": after})
     except Exception as e:  # noqa: BLE001
         db.session.rollback()
-        r = jsonify({"ok": False, "error": str(e)})
-        r.status_code = 500
-        return r
+        return j({"ok": False, "error": str(e)}, 500)
 
 
 @app.get("/dev/platform-readiness-test")
@@ -689,13 +704,16 @@ def dev_platform_readiness_test():
     from inspect import getsource  # stdlib (لا يتعارض مع ‎sqlalchemy.inspect‎)
 
     try:
-        tc = app.test_client()
+        tc = TestClient(app)
         g = tc.get("/api/recovery-settings")
-        jg = g.get_json(silent=True) if g.is_json else None
+        try:
+            jg = g.json()
+        except Exception:  # noqa: BLE001
+            jg = None
         recovery_settings_api_ready = bool(isinstance(jg, dict) and "ok" in jg)
 
         d = tc.get("/dashboard/recovery-settings")
-        dashboard_flow_ready = d.status_code == 200 and b"recovery_delay" in d.data
+        dashboard_flow_ready = d.status_code == 200 and b"recovery_delay" in d.content
 
         s_src = getsource(send_whatsapp)
         whatsapp_send_is_mocked = (
@@ -714,7 +732,7 @@ def dev_platform_readiness_test():
             and whatsapp_send_is_mocked
             and recovery_logic_ready
         )
-        return jsonify(
+        return j(
             {
                 "ok": all_ok,
                 "recovery_settings_api_ready": recovery_settings_api_ready,
@@ -724,7 +742,7 @@ def dev_platform_readiness_test():
             }
         )
     except Exception as e:  # noqa: BLE001
-        r = jsonify(
+        return j(
             {
                 "ok": False,
                 "error": str(e),
@@ -732,10 +750,9 @@ def dev_platform_readiness_test():
                 "dashboard_flow_ready": False,
                 "whatsapp_send_is_mocked": False,
                 "recovery_logic_ready": False,
-            }
+            },
+            500,
         )
-        r.status_code = 500
-        return r
 
 
 @app.get("/dev/recovery-dashboard-render-test")
@@ -744,14 +761,10 @@ def dev_recovery_dashboard_render_test():
     يتحقق من مسار ‎/dashboard/recovery-settings‎ وأن الرد ‎HTML‎.
     """
     try:
-        route_exists = any(
-            getattr(r, "rule", None) == "/dashboard/recovery-settings"
-            and "GET" in (r.methods or set())
-            for r in app.url_map.iter_rules()
-        )
-        tc = app.test_client()
+        route_exists = _app_route_get_exists("/dashboard/recovery-settings")
+        tc = TestClient(app)
         resp = tc.get("/dashboard/recovery-settings")
-        head = (resp.data or b"")[:3000]
+        head = (resp.content or b"")[:3000]
         head_l = head.lstrip().lower()
         ct = (resp.headers.get("Content-Type") or "").lower()
         returns_html = bool(
@@ -763,7 +776,7 @@ def dev_recovery_dashboard_render_test():
             )
         )
         ok = bool(route_exists and returns_html)
-        return jsonify(
+        return j(
             {
                 "ok": ok,
                 "route_exists": route_exists,
@@ -771,16 +784,15 @@ def dev_recovery_dashboard_render_test():
             }
         )
     except Exception as e:  # noqa: BLE001
-        r = jsonify(
+        return j(
             {
                 "ok": False,
                 "error": str(e),
                 "route_exists": False,
                 "returns_html": False,
-            }
+            },
+            500,
         )
-        r.status_code = 500
-        return r
 
 
 @app.get("/dev/recovery-settings-api-test")
@@ -790,7 +802,7 @@ def dev_recovery_settings_api_test():
     """
     try:
         db.create_all()
-        if Store.query.order_by(Store.id.desc()).first() is None:
+        if db.session.query(Store).order_by(Store.id.desc()).first() is None:
             _row = Store(
                 zid_store_id=_DEV_RECOVERY_SETTINGS_STORE_ZID,
                 recovery_delay=2,
@@ -802,17 +814,13 @@ def dev_recovery_settings_api_test():
                 db.session.commit()
             except IntegrityError:
                 db.session.rollback()
-            if Store.query.order_by(Store.id.desc()).first() is None:
-                return jsonify({"ok": False, "error": "no_store"}), 500
+            if db.session.query(Store).order_by(Store.id.desc()).first() is None:
+                return j({"ok": False, "error": "no_store"}, 500)
         data, code = _dev_apply_recovery_settings_update(15, "minutes", 2)
-        r = jsonify(data)
-        r.status_code = code
-        return r
+        return j(data, code)
     except Exception as e:  # noqa: BLE001
         db.session.rollback()
-        r = jsonify({"ok": False, "error": str(e)})
-        r.status_code = 500
-        return r
+        return j({"ok": False, "error": str(e)}, 500)
 
 
 @app.get("/dev/recovery-settings-update-test")
@@ -823,7 +831,7 @@ def dev_recovery_settings_update_test():
     """
     try:
         db.create_all()
-        if Store.query.order_by(Store.id.desc()).first() is None:
+        if db.session.query(Store).order_by(Store.id.desc()).first() is None:
             _row = Store(
                 zid_store_id=_DEV_RECOVERY_SETTINGS_STORE_ZID,
                 recovery_delay=2,
@@ -835,17 +843,13 @@ def dev_recovery_settings_update_test():
                 db.session.commit()
             except IntegrityError:
                 db.session.rollback()
-            if Store.query.order_by(Store.id.desc()).first() is None:
-                return jsonify({"ok": False, "error": "no_store"}), 500
+            if db.session.query(Store).order_by(Store.id.desc()).first() is None:
+                return j({"ok": False, "error": "no_store"}, 500)
         data, code = _dev_apply_recovery_settings_update(10, "minutes", 1)
-        r = jsonify(data)
-        r.status_code = code
-        return r
+        return j(data, code)
     except Exception as e:  # noqa: BLE001
         db.session.rollback()
-        r = jsonify({"ok": False, "error": str(e)})
-        r.status_code = 500
-        return r
+        return j({"ok": False, "error": str(e)}, 500)
 
 
 @app.get("/dev/recovery-settings-live-verify")
@@ -855,7 +859,7 @@ def dev_recovery_settings_live_verify():
     """
     try:
         db.create_all()
-        if Store.query.order_by(Store.id.desc()).first() is None:
+        if db.session.query(Store).order_by(Store.id.desc()).first() is None:
             _row = Store(
                 zid_store_id=_DEV_RECOVERY_SETTINGS_STORE_ZID,
                 recovery_delay=2,
@@ -867,14 +871,12 @@ def dev_recovery_settings_live_verify():
                 db.session.commit()
             except IntegrityError:
                 db.session.rollback()
-            if Store.query.order_by(Store.id.desc()).first() is None:
-                return jsonify({"ok": False, "error": "no_store"}), 500
+            if db.session.query(Store).order_by(Store.id.desc()).first() is None:
+                return j({"ok": False, "error": "no_store"}, 500)
         data, code = _dev_apply_recovery_settings_update(10, "minutes", 1)
         if code != 200:
-            r = jsonify(data)
-            r.status_code = code
-            return r
-        row = Store.query.order_by(Store.id.desc()).first()
+            return j(data, code)
+        row = db.session.query(Store).order_by(Store.id.desc()).first()
         now = datetime.now(timezone.utc)
         last = now - timedelta(minutes=5)
         ss = should_send_whatsapp(
@@ -884,7 +886,7 @@ def dev_recovery_settings_live_verify():
             store=row,
             sent_count=0,
         )
-        return jsonify(
+        return j(
             {
                 "ok": True,
                 "recovery_delay": data["recovery_delay"],
@@ -894,9 +896,7 @@ def dev_recovery_settings_live_verify():
         )
     except Exception as e:  # noqa: BLE001
         db.session.rollback()
-        r = jsonify({"ok": False, "error": str(e)})
-        r.status_code = 500
-        return r
+        return j({"ok": False, "error": str(e)}, 500)
 
 
 @app.get("/dev/create-test-objection")
@@ -920,25 +920,23 @@ def dev_create_test_objection():
         )
         db.session.add(row)
         db.session.commit()
-        return jsonify({"ok": True, "objection_id": row.id})
+        return j({"ok": True, "objection_id": row.id})
     except Exception as e:  # noqa: BLE001
         db.session.rollback()
-        r = jsonify({"ok": False, "error": str(e)})
-        r.status_code = 500
-        return r
+        return j({"ok": False, "error": str(e)}, 500)
 
 
 @app.get("/dev/recovery-flow-test")
-def dev_recovery_flow_test():
+def dev_recovery_flow_test(request: Request):
     """
     تدفق كامل: آخر objection + نص الاسترجاع + ‎should_send‎ (سكون مُدخَّل) + ‎send_whatsapp‎ وهمي.
     ‎?type=price_new|quality_new|price_returning‎ — مُنطَق ثابت دون ‎DB‎.
     """
     try:
-        sc = (request.args.get("type") or "").strip()
+        sc = (request.query_params.get("type") or "").strip()
         if sc:
             if sc not in _RECOVERY_TEST_SCENARIOS:
-                return jsonify({"ok": False, "error": "invalid_type"}), 400
+                return j({"ok": False, "error": "invalid_type"}, 400)
             t, customer_type = _RECOVERY_TEST_SCENARIOS[sc]
             cart = {
                 "customer_name": "ماجد",
@@ -948,13 +946,13 @@ def dev_recovery_flow_test():
             now = datetime.now(timezone.utc)
             last = now - timedelta(minutes=3)
             db.create_all()
-            st = Store.query.order_by(Store.id.desc()).first()
+            st = db.session.query(Store).order_by(Store.id.desc()).first()
             should_send = should_send_whatsapp(
                 last, user_returned_to_site=False, now=now, store=st
             )
             if should_send:
                 send_whatsapp(phone="0500000000", message=message)
-            return jsonify(
+            return j(
                 {
                     "ok": True,
                     "scenario": sc,
@@ -964,14 +962,14 @@ def dev_recovery_flow_test():
             )
         db.create_all()
         _ensure_objection_track_test_columns()
-        row = ObjectionTrack.query.order_by(
+        row = db.session.query(ObjectionTrack).order_by(
             ObjectionTrack.created_at.desc()
         ).first()
         if row is None:
-            return jsonify({"ok": False, "error": "no_objection"}), 404
+            return j({"ok": False, "error": "no_objection"}, 404)
         t = (row.object_type or "").strip()
         if t not in ("price", "quality"):
-            return jsonify({"ok": False, "error": "unknown_type"}), 400
+            return j({"ok": False, "error": "unknown_type"}, 400)
         ct = (row.customer_type or "new").strip().lower()
         if ct not in ("new", "returning"):
             ct = "new"
@@ -987,7 +985,7 @@ def dev_recovery_flow_test():
         last = row.last_activity_at
         if last is None:
             last = now - timedelta(minutes=3)
-        st = Store.query.order_by(Store.id.desc()).first()
+        st = db.session.query(Store).order_by(Store.id.desc()).first()
         should_send = should_send_whatsapp(
             last, user_returned_to_site=False, now=now, store=st
         )
@@ -996,7 +994,7 @@ def dev_recovery_flow_test():
             send_result = send_whatsapp(
                 phone=row.customer_phone or "0500000000", message=message
             )
-        return jsonify(
+        return j(
             {
                 "ok": True,
                 "should_send": should_send,
@@ -1006,25 +1004,29 @@ def dev_recovery_flow_test():
         )
     except Exception as e:  # noqa: BLE001
         db.session.rollback()
-        r = jsonify({"ok": False, "error": str(e)})
-        r.status_code = 500
-        return r
+        return j({"ok": False, "error": str(e)}, 500)
 
 
-@app.route("/send-test-whatsapp", methods=["GET", "POST"])
-def send_test_whatsapp():
-    if request.method == "GET":
-        return jsonify({"ok": True, "message": "test sent"})
-    body = request.get_json(silent=True)
+@app.get("/send-test-whatsapp")
+def send_test_whatsapp_get():
+    return j({"ok": True, "message": "test sent"})
+
+
+@app.post("/send-test-whatsapp")
+async def send_test_whatsapp_post(request: Request):
+    try:
+        body = await request.json()
+    except Exception:  # noqa: BLE001
+        body = None
     if not isinstance(body, dict):
-        return jsonify({"ok": False, "error": "json_object_required"}), 400
+        return j({"ok": False, "error": "json_object_required"}, 400)
     phone = (body.get("phone") or "").strip()
     message = body.get("message")
     if not phone or message is None:
-        return jsonify({"ok": False, "error": "phone_and_message_required"}), 400
+        return j({"ok": False, "error": "phone_and_message_required"}, 400)
     if not isinstance(message, str):
         message = str(message)
-    return jsonify(send_whatsapp(phone, message))
+    return j(send_whatsapp(phone, message))
 
 
 # تسمية مودل Claude (يمكن تغييره من البيئة)
@@ -1036,15 +1038,7 @@ ZID_PROFILE_API = os.getenv("ZID_PROFILE_API_URL", "https://api.zid.sa/v1/manage
 # --- دعم القراءة من الحقول العامة (يُستدعى قبل ‎extract_cart_url‎) ---
 
 
-# --- تضمين من لوحة زد (iframe): رؤوس لجميع الردود (لا تعديلات على المسارات) ---
-# ‎X-Frame-Options: ALLOWALL‎ ليست قيمة معيارية؛ المتصفحات تتجاهلها عادة — ‎CSP frame-ancestors‎ فعلياً
-@app.after_request
-def set_embed_csp(response: Response) -> Response:
-    response.headers["X-Frame-Options"] = "ALLOWALL"
-    response.headers["Content-Security-Policy"] = (
-        "frame-ancestors https://*.zid.sa https://zid.sa;"
-    )
-    return response
+# (رؤوس ‎CSP / X-Frame-Options‎: الوسيط ‎set_embed_csp_middleware‎ في أعلى ‎main.py‎)
 
 
 def _parse_zid_store_id_from_token(data: dict[str, Any]) -> Optional[str]:
@@ -1114,10 +1108,10 @@ def save_or_update_store_from_token_response(data: dict[str, Any]) -> None:
         exp = datetime.now(timezone.utc) + timedelta(seconds=float(ei))
 
     if zid:
-        row = Store.query.filter_by(zid_store_id=zid).first()
+        row = db.session.query(Store).filter_by(zid_store_id=zid).first()
     else:
         row = (
-            Store.query.filter(Store.zid_store_id.is_(None))  # type: ignore[union-attr]
+            db.session.query(Store).filter(Store.zid_store_id.is_(None))  # type: ignore[union-attr]
             .order_by(Store.id.desc())
             .first()
         )
@@ -1414,7 +1408,7 @@ def upsert_abandoned_cart_from_payload(payload: dict) -> Tuple[bool, str, Option
     fields = normalize_zid_cart_fields(payload)
     if not fields["zid_cart_id"]:
         return False, "missing zid_cart_id", None
-    row = AbandonedCart.query.filter_by(zid_cart_id=fields["zid_cart_id"]).first()
+    row = db.session.query(AbandonedCart).filter_by(zid_cart_id=fields["zid_cart_id"]).first()
     if row is None:
         row = AbandonedCart(
             zid_cart_id=fields["zid_cart_id"],
@@ -1479,55 +1473,65 @@ def _redact_secrets_for_log(obj: Any) -> Any:
 # --- المسارات ---
 
 @app.get("/auth/callback")
-def auth_callback():
+def auth_callback(request: Request):
     # ‎OAuth 2.0‎: بدون ‎code‎ — تأكيد المسار؛ مع ‎code‎ — تبادل واستبدال الرموز دون إرجاع ‎access_token‎ للعميل
-    code = (request.args.get("code") or "").strip()
+    code = (request.query_params.get("code") or "").strip()
     if not code:
-        return jsonify({"status": "callback route exists"})
+        return j({"status": "callback route exists"})
     body, status = exchange_code_for_token(code)
     if 200 <= status < 300 and isinstance(body, dict) and (body.get("access_token") or "").strip():
         try:
             save_or_update_store_from_token_response(body)
         except SQLAlchemyError:
             db.session.rollback()
-            return jsonify({"ok": False, "error": "failed_to_persist_store"}), 500
-        return jsonify({"ok": True, "message": "connected"}), 200
+            return j({"ok": False, "error": "failed_to_persist_store"}, 500)
+        return j({"ok": True, "message": "connected"}, 200)
     if 200 <= status < 300 and isinstance(body, dict):
-        return jsonify({"ok": False, "error": "no_access_token_in_response"}), status
+        return j({"ok": False, "error": "no_access_token_in_response"}, status)
     if isinstance(body, dict):
-        return jsonify(body), status
-    return jsonify({"error": "invalid_token_response_format"}), status
+        return j(body, status)
+    return j({"error": "invalid_token_response_format"}, status)
 
 
-@app.route("/dashboard", methods=["GET"])
-def dashboard():
+@app.get("/dashboard")
+def dashboard(request: Request):
     # تجميع إحصائيات + آخر 5 سلات (حسب ‎created_at‎ تنازلياً)
-    total_carts = AbandonedCart.query.count()
+    total_carts = db.session.query(AbandonedCart).count()
     rev = (
         db.session.query(func.coalesce(func.sum(AbandonedCart.cart_value), 0.0))
         .filter(AbandonedCart.status == "recovered")
         .scalar()
     )
     total_revenue = float(rev) if rev is not None else 0.0
-    recovered = AbandonedCart.query.filter_by(status="recovered").count()
+    recovered = (
+        db.session.query(AbandonedCart)
+        .filter_by(status="recovered")
+        .count()
+    )
     recent_carts = (
-        AbandonedCart.query.order_by(AbandonedCart.last_seen_at.desc())
+        db.session.query(AbandonedCart)
+        .order_by(AbandonedCart.last_seen_at.desc())
         .limit(5)
         .all()
     )
-    return render_template(
+    return templates.TemplateResponse(
         "index.html",
-        total_carts=total_carts,
-        total_revenue=total_revenue,
-        recovered_carts=recovered,
-        recent_carts=recent_carts,
+        {
+            "request": request,
+            "total_carts": total_carts,
+            "total_revenue": total_revenue,
+            "recovered_carts": recovered,
+            "recent_carts": recent_carts,
+        },
     )
 
 
 @app.get("/dashboard/recovery-settings")
-def dashboard_recovery_settings():
+def dashboard_recovery_settings(request: Request):
     """صفحة بسيطة لضبط ‎recovery_*‎ — تحمّل/تحفظ عبر ‎/api/recovery-settings‎."""
-    return render_template("recovery_settings.html")
+    return templates.TemplateResponse(
+        "recovery_settings.html", {"request": request}
+    )
 
 
 @app.post("/api/carts/<int:row_id>/send")
@@ -1535,9 +1539,9 @@ def send_cart_manual(row_id: int):
     # إعادة إرسال يدوي للتجريب: نفس ‎send_whatsapp_message‎ ثم ‎Sent‎
     row = db.session.get(AbandonedCart, row_id)
     if row is None:
-        return jsonify({"ok": False, "error": "not_found"}), 404
+        return j({"ok": False, "error": "not_found"}, 404)
     if row.status == "recovered":
-        return jsonify({"ok": False, "error": "already_recovered"}), 400
+        return j({"ok": False, "error": "already_recovered"}, 400)
     cart_link = (row.cart_url or os.getenv("WHATSAPP_FALLBACK_CART_URL") or "https://example.com/cart").strip()
     msg = DEFAULT_RECOVERY_SMS
     ok, err, _r = send_whatsapp_message(row.customer_phone, msg, cart_link)
@@ -1545,23 +1549,21 @@ def send_cart_manual(row_id: int):
         if row.status != "recovered":
             row.status = "sent"
         db.session.commit()
-    return jsonify({"ok": ok, "error": err})
+    return j({"ok": ok, "error": err})
 
 
-@app.route("/webhook/zid", methods=["POST"])
-def zid_webhook():
-    if not verify_webhook_signature(request):
-        return jsonify({"error": "unauthorized"}), 401
-    raw = request.get_data()
+@app.post("/webhook/zid")
+async def zid_webhook(request: Request):
+    raw = await request.body()
+    if not verify_webhook_signature(request, raw_body=raw):
+        return j({"error": "unauthorized"}, 401)
     try:
         payload = json.loads(raw.decode("utf-8")) if raw else {}
     except (json.JSONDecodeError, UnicodeDecodeError):
         payload = {}
     if not isinstance(payload, dict):
         payload = {}
-    app.logger.info(
-        "zid_webhook received, top_keys=%s", list(payload.keys())[:32]
-    )
+    log.info("zid_webhook received, top_keys=%s", list(payload.keys())[:32])
     out: dict[str, Any] = {"ok": True}
     try:
         rj = _redact_secrets_for_log(payload)
@@ -1578,29 +1580,31 @@ def zid_webhook():
         db.session.commit()
     except SQLAlchemyError as e:
         db.session.rollback()
-        app.logger.warning("zid_webhook: could not log recovery event: %s", e)
+        log.warning("zid_webhook: could not log recovery event: %s", e)
     try:
         ok, err, _row = upsert_abandoned_cart_from_payload(payload)
         if not ok and err:
             out["cart_note"] = err
     except SQLAlchemyError:
         db.session.rollback()
-        app.logger.warning("zid_webhook: cart upsert failed", exc_info=True)
-    return jsonify(out), 200
+        log.warning("zid_webhook: cart upsert failed", exc_info=True)
+    return j(out, 200)
 
 
 @app.get("/")
-def home():
+def home(request: Request):
     # صفحة HTML للمراجعين/لوحة زد (بدون قاعدة بيانات)
-    return render_template("landing.html")
+    return templates.TemplateResponse("landing.html", {"request": request})
 
 
 # لا نستدعي ‎_ensure_db_schema()‎ عند التحميل — يتجنب الاتصال بقاعدة البيانات عند إقلاع ‎Gunicorn‎
 
 if __name__ == "__main__":
-    # تشغيل وضع التطوير فقط؛ في الإنتاج: ‎gunicorn main:app‎
-    app.run(
+    import uvicorn
+
+    uvicorn.run(
+        "main:app",
         host=os.getenv("FLASK_HOST", "127.0.0.1"),
         port=int(os.getenv("FLASK_PORT", "5000")),
-        debug=os.getenv("FLASK_DEBUG", "false").lower() == "true",
+        reload=os.getenv("FLASK_DEBUG", "false").lower() == "true",
     )

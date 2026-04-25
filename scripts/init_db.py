@@ -18,8 +18,8 @@ from dotenv import load_dotenv  # noqa: E402
 
 load_dotenv()
 
-from main import app  # noqa: E402
-from extensions import db  # noqa: E402
+import models  # noqa: F401, E402
+from extensions import db, init_database  # noqa: E402
 from models import (  # noqa: F401, E402
     AbandonedCart,
     MessageLog,
@@ -30,9 +30,9 @@ from models import (  # noqa: F401, E402
 
 
 def main() -> None:
-    with app.app_context():
-        db.create_all()
-        print("init_db: create_all() finished.")
+    init_database()
+    db.create_all()
+    print("init_db: create_all() finished.")
 
 
 if __name__ == "__main__":

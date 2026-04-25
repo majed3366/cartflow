@@ -1,9 +1,10 @@
-flask
+fastapi
+uvicorn[standard]
 alembic
 gunicorn
 requests
 python-dotenv
-flask-sqlalchemy
+sqlalchemy>=2
 psycopg2-binary
 anthropic
 psycopg[binary]

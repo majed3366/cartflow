@@ -13,9 +13,9 @@ from typing import Any, Optional, Tuple, TYPE_CHECKING
 import requests
 
 if TYPE_CHECKING:
-    from flask import Request as FlaskRequest
+    from starlette.requests import Request as StarletteRequest
 else:
-    FlaskRequest = Any
+    StarletteRequest = Any
 
 ZID_OAUTH_BASE = (os.getenv("ZID_OAUTH_BASE") or "https://oauth.zid.sa").rstrip("/")
 OAUTH_REDIRECT_URI = (os.getenv("OAUTH_REDIRECT_URI") or "").strip() or (
@@ -136,8 +136,13 @@ def fetch_orders(store: Any) -> Tuple[dict, int]:
     return ({"data": body}, r.status_code)
 
 
-def verify_webhook_signature(req: "FlaskRequest", raw_body: Optional[bytes] = None) -> bool:
-    body = req.get_data() if raw_body is None else raw_body
+def verify_webhook_signature(
+    req: "StarletteRequest", raw_body: Optional[bytes] = None
+) -> bool:
+    if raw_body is not None:
+        body = raw_body
+    else:
+        return False
     header_sig: Optional[str] = req.headers.get("X-Zid-Signature")
     secret = (os.getenv("ZID_WEBHOOK_SECRET") or "").strip()
     if not secret or not body or not (header_sig or "").strip():

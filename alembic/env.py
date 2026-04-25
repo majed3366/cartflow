@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-بيئة ‎Alembic‎ — ‎DATABASE_URL‎ مثل ‎main.py‎ (بدون تحميل تطبيق ‎Flask‎ كامل).
+بيئة ‎Alembic‎ — ‎DATABASE_URL‎ مثل ‎main.py‎ (بدون استيراد ‎ASGI app‎ كاملاً).
 """
 from __future__ import annotations
 
@@ -21,14 +21,14 @@ from dotenv import load_dotenv  # noqa: E402
 
 load_dotenv()
 
-from extensions import db  # noqa: E402
+from extensions import Base  # noqa: E402
 import models  # noqa: F401, E402
 
 config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-target_metadata = db.metadata
+target_metadata = Base.metadata
 
 
 def get_database_url() -> str:
