@@ -681,6 +681,63 @@ def dev_recovery_dashboard_test():
         return r
 
 
+@app.get("/dev/platform-readiness-test")
+def dev_platform_readiness_test():
+    """
+    فحوص سريعة: ‎API‎، لوحة، ‎send_whatsapp‎ وهمي، ‎should_send_whatsapp‎.
+    """
+    from inspect import getsource  # stdlib (لا يتعارض مع ‎sqlalchemy.inspect‎)
+
+    try:
+        tc = app.test_client()
+        g = tc.get("/api/recovery-settings")
+        jg = g.get_json(silent=True) if g.is_json else None
+        recovery_settings_api_ready = bool(isinstance(jg, dict) and "ok" in jg)
+
+        d = tc.get("/dashboard/recovery-settings")
+        dashboard_flow_ready = d.status_code == 200 and b"recovery_delay" in d.data
+
+        s_src = getsource(send_whatsapp)
+        whatsapp_send_is_mocked = (
+            "no provider" in s_src.lower() and "logger" in s_src
+        )
+
+        _now = datetime.now(timezone.utc)
+        _last = _now - timedelta(minutes=3)
+        recovery_logic_ready = should_send_whatsapp(
+            _last, user_returned_to_site=False, now=_now, store=None, sent_count=0
+        )
+
+        all_ok = (
+            recovery_settings_api_ready
+            and dashboard_flow_ready
+            and whatsapp_send_is_mocked
+            and recovery_logic_ready
+        )
+        return jsonify(
+            {
+                "ok": all_ok,
+                "recovery_settings_api_ready": recovery_settings_api_ready,
+                "dashboard_flow_ready": dashboard_flow_ready,
+                "whatsapp_send_is_mocked": whatsapp_send_is_mocked,
+                "recovery_logic_ready": recovery_logic_ready,
+            }
+        )
+    except Exception as e:  # noqa: BLE001
+        r = jsonify(
+            {
+                "ok": False,
+                "error": str(e),
+                "recovery_settings_api_ready": False,
+                "dashboard_flow_ready": False,
+                "whatsapp_send_is_mocked": False,
+                "recovery_logic_ready": False,
+            }
+        )
+        r.status_code = 500
+        return r
+
+
 @app.get("/dev/recovery-settings-api-test")
 def dev_recovery_settings_api_test():
     """
