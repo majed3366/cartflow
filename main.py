@@ -738,6 +738,51 @@ def dev_platform_readiness_test():
         return r
 
 
+@app.get("/dev/recovery-dashboard-render-test")
+def dev_recovery_dashboard_render_test():
+    """
+    يتحقق من مسار ‎/dashboard/recovery-settings‎ وأن الرد ‎HTML‎.
+    """
+    try:
+        route_exists = any(
+            getattr(r, "rule", None) == "/dashboard/recovery-settings"
+            and "GET" in (r.methods or set())
+            for r in app.url_map.iter_rules()
+        )
+        tc = app.test_client()
+        resp = tc.get("/dashboard/recovery-settings")
+        head = (resp.data or b"")[:3000]
+        head_l = head.lstrip().lower()
+        ct = (resp.headers.get("Content-Type") or "").lower()
+        returns_html = bool(
+            resp.status_code == 200
+            and "text/html" in ct
+            and (
+                head_l.startswith(b"<!doctype")
+                or head_l.startswith(b"<html")
+            )
+        )
+        ok = bool(route_exists and returns_html)
+        return jsonify(
+            {
+                "ok": ok,
+                "route_exists": route_exists,
+                "returns_html": returns_html,
+            }
+        )
+    except Exception as e:  # noqa: BLE001
+        r = jsonify(
+            {
+                "ok": False,
+                "error": str(e),
+                "route_exists": False,
+                "returns_html": False,
+            }
+        )
+        r.status_code = 500
+        return r
+
+
 @app.get("/dev/recovery-settings-api-test")
 def dev_recovery_settings_api_test():
     """
