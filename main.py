@@ -16,7 +16,7 @@ from extensions import db
 from flask import Flask, request, render_template, jsonify, Response
 from integrations.zid_client import exchange_code_for_token, verify_webhook_signature
 from sqlalchemy import func, inspect, text
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 # تحميل متغيرات البيئة من ملف ‎.env (إن وُجد) قبل إنشاء التطبيق
 load_dotenv()
@@ -175,6 +175,9 @@ _WHATSAPP_TEST_CART = {
     "cart_url": "https://example.com/cart",
 }
 
+# ‎/dev/recovery-settings-test‎ — سجل ‎Store‎ اختباري عند عدم وجود بيانات
+_DEV_RECOVERY_SETTINGS_STORE_ZID = "dev-recovery-settings-test"
+
 # ‎/dev/recovery-flow-test?type=…‎ — بدون قراءة من ‎DB‎
 _RECOVERY_TEST_SCENARIOS = {
     "price_new": ("price", "new"),
@@ -302,12 +305,26 @@ def dev_recovery_duplicate_test():
 def dev_recovery_settings_test():
     """
     آخر ‎Store‎: حقول ‎recovery_*‎ (بدون واتساب / بدون تغيير منطق الاسترجاع).
+    إن لم يوجد متجر: يُنشأ سجل تجريبي بإعدادات افتراضية.
     """
     try:
         db.create_all()
         row = Store.query.order_by(Store.id.desc()).first()
         if row is None:
-            return jsonify({"ok": False, "error": "no_store"}), 404
+            row = Store(
+                zid_store_id=_DEV_RECOVERY_SETTINGS_STORE_ZID,
+                recovery_delay=2,
+                recovery_delay_unit="minutes",
+                recovery_attempts=1,
+            )
+            db.session.add(row)
+            try:
+                db.session.commit()
+            except IntegrityError:
+                db.session.rollback()
+                row = Store.query.order_by(Store.id.desc()).first()
+            if row is None:
+                return jsonify({"ok": False, "error": "no_store"}), 500
         return jsonify(
             {
                 "ok": True,
