@@ -19,8 +19,13 @@
   }
 
   var CARTFLOW_SESSION_KEY = "cartflow_recovery_session_id";
+  // يُلزِم id واحداً لكل تبويب حتى عند تزامن ‎beforeunload + visibility‎ أو فشل ‎sessionStorage‎
+  var _cachedRecoverySessionId = null;
 
   function getRecoverySessionId() {
+    if (_cachedRecoverySessionId) {
+      return _cachedRecoverySessionId;
+    }
     var s;
     try {
       s = window.sessionStorage.getItem(CARTFLOW_SESSION_KEY);
@@ -28,12 +33,14 @@
       s = null;
     }
     if (s) {
+      _cachedRecoverySessionId = s;
       return s;
     }
     s =
       typeof window.crypto !== "undefined" && window.crypto.randomUUID
         ? "s_" + window.crypto.randomUUID()
         : "s_" + String(Date.now()) + "_" + String(Math.random());
+    _cachedRecoverySessionId = s;
     try {
       window.sessionStorage.setItem(CARTFLOW_SESSION_KEY, s);
     } catch (e2) {}
@@ -71,6 +78,9 @@
       });
   }
 
+  // منع طلبين لنفس التبويب (مثلاً ‎hidden‎ ثم ‎beforeunload‎) — جدولة استرجاع واحدة
+  var _abandonEventSentToBackend = false;
+
   function onCartAbandoned(source) {
     if (typeof window.cart === "undefined" || window.cart === null) {
       window.cart = [];
@@ -80,6 +90,10 @@
     if (window.cart.length === 0) {
       return;
     }
+    if (_abandonEventSentToBackend) {
+      return;
+    }
+    _abandonEventSentToBackend = true;
     console.log("cart_abandoned triggered");
     window.replyaiTrack({ event: "cart_abandoned" });
     console.log("sending cart_abandoned to backend");

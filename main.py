@@ -689,13 +689,14 @@ def api_recovery_settings_get():
         return j({"ok": False, "error": str(e)}, 500)
 
 
-# جلسة واحدة = استرجاع واحد (وضع مؤقّت في الذاكرة لكل عملية)
-_recovery_started_by_session: dict[str, bool] = {}
+# جلسة واحدة = مهمة تأخير واحدة + سجل واحد بعد انتهاء الانتظار (لكل عملية ‎worker‎)
+_session_recovery_started: dict[str, bool] = {}
+_session_recovery_logged: dict[str, bool] = {}
 _recovery_session_lock = threading.Lock()
 
 
 def _session_key_for_recovery(payload: dict[str, Any]) -> str:
-    """يُفضّل ‎session_id / cart_id‎ من الحمولة؛ وإلا بصمة ثابتة لمحتوى ‎cart‎."""
+    """المفتاح الأساسي ‎session_id‎ ثم ‎cart_id‎ ثم بصمة ‎cart‎."""
     sid = payload.get("session_id")
     if isinstance(sid, str) and sid.strip():
         return sid.strip()
@@ -708,20 +709,29 @@ def _session_key_for_recovery(payload: dict[str, Any]) -> str:
 
 
 def _try_claim_recovery_session(session_key: str) -> bool:
+    """
+    يضبط ‎recovery_started‎ لـ ‎session_key‎ قبل جدولة المهمة — يُستدعى مزامناً فقط.
+    """
     with _recovery_session_lock:
-        if _recovery_started_by_session.get(session_key):
+        if _session_recovery_started.get(session_key):
             return False
-        _recovery_started_by_session[session_key] = True
+        _session_recovery_started[session_key] = True
         return True
 
 
-async def _delayed_recovery_after_cart_abandoned(delay_seconds: float) -> None:
-    """ينتظر ‎recovery_delay‎ ثم يسجّل — لا إرسال واتساب في هذه المرحلة."""
+async def _delayed_recovery_after_cart_abandoned(
+    session_key: str, delay_seconds: float
+) -> None:
+    """ينتظر ‎recovery_delay‎ ثم سطر سجل واحد لكل ‎session_key‎ — لا واتساب."""
     try:
         await asyncio.sleep(delay_seconds)
-        print("recovery triggered after delay")
     except asyncio.CancelledError:
         raise
+    with _recovery_session_lock:
+        if _session_recovery_logged.get(session_key):
+            return
+        _session_recovery_logged[session_key] = True
+    print("recovery triggered after delay")
 
 
 async def handle_cart_abandoned(
@@ -734,6 +744,7 @@ async def handle_cart_abandoned(
             "recovery_scheduled": False,
             "recovery_skipped": True,
         }
+    # ‎_session_recovery_started[session_key]‎ مضبوط — قبل تحميل المتجر أو ‎add_task‎
     print("entered recovery handler")
     log.info("cart abandoned received")
     try:
@@ -746,7 +757,9 @@ async def handle_cart_abandoned(
     print("store settings loaded")
     delay_s = float(recovery_delay_to_seconds(store))
     print("starting delay task")
-    background_tasks.add_task(_delayed_recovery_after_cart_abandoned, delay_s)
+    background_tasks.add_task(
+        _delayed_recovery_after_cart_abandoned, session_key, delay_s
+    )
     return {
         "recovery_scheduled": True,
         "recovery_delay_seconds": delay_s,
