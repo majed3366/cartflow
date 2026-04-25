@@ -57,6 +57,7 @@
   </style>
 </head>
 <body>
+  {% include "partials/cart_abandon_tracking.html" %}
   <h1>Demo store</h1>
   <p class="sub">Internal only — simulates cart; no checkout or platform calls.</p>
 
@@ -88,18 +89,16 @@
     (function () {
       "use strict";
 
-      if (typeof window.replyaiTrack !== "function") {
-        window.replyaiTrack = function () {};
+      if (!Array.isArray(window.cart)) {
+        window.cart = [];
       }
+      var lines = window.cart;
 
       var products = {
         "demo-1": { name: "Sample Hoodie", price: 99 },
         "demo-2": { name: "Sample Mug", price: 29 },
         "demo-3": { name: "Sample Notebook", price: 19 }
       };
-
-      /** @type {Array<{ id: string, name: string, price: number, quantity: number }>} */
-      var lines = [];
 
       function emitCartUpdated() {
         var subtotal = lines.reduce(function (s, l) {
@@ -162,26 +161,6 @@
         if (!card) return;
         var id = card.getAttribute("data-id");
         if (id) addLine(id);
-      });
-
-      function cartHasItems() {
-        return lines.length > 0;
-      }
-
-      window.addEventListener("beforeunload", function () {
-        if (!cartHasItems()) {
-          return;
-        }
-        try {
-          window.replyaiTrack({ event: "cart_abandoned" });
-        } catch (e) {
-          /* ignore */
-        }
-        try {
-          console.log("cart_abandoned triggered");
-        } catch (e2) {
-          /* ignore */
-        }
       });
 
       render();
