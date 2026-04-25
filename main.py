@@ -254,7 +254,29 @@ _WHATSAPP_TEST_CART = {
 
 # ‎/dev/recovery-settings-test‎ — سجل ‎Store‎ اختباري عند عدم وجود بيانات
 _DEV_RECOVERY_SETTINGS_STORE_ZID = "dev-recovery-settings-test"
+# عند فرد ‎DB‎: سجل بـ ‎zid‎ ثابت (لتفادي تعدد ‎NULL‎ مع ‎UNIQUE‎) — آمن عند تزامن أول طلبات.
+CARTFLOW_DEFAULT_RECOVERY_STORE_ZID = "cartflow-default-recovery"
 _VALID_RECOVERY_UNITS = frozenset({"minutes", "hours", "days"})
+
+
+def _ensure_default_store_for_recovery() -> None:
+    """
+    ينشئ ‎Store‎ افتراضياً عند عدم وجود أي سطر — للإنتاج وواجهة الاسترجاع.
+    ‎recovery_delay=1، minutes، recovery_attempts=1‎. عند تزامن: ‎IntegrityError‎ ثم نُبقى السطر الحالي.
+    """
+    if db.session.query(Store).order_by(Store.id.desc()).first() is not None:
+        return
+    row = Store(
+        zid_store_id=CARTFLOW_DEFAULT_RECOVERY_STORE_ZID,
+        recovery_delay=1,
+        recovery_delay_unit="minutes",
+        recovery_attempts=1,
+    )
+    db.session.add(row)
+    try:
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
 
 
 def _dev_apply_recovery_settings_update(
@@ -281,6 +303,8 @@ def _dev_apply_recovery_settings_update(
     unit = (str(recovery_delay_unit) if recovery_delay_unit is not None else "").strip().lower()
     if unit not in _VALID_RECOVERY_UNITS:
         return {"ok": False, "error": "invalid_recovery_delay_unit"}, 400
+    db.create_all()
+    _ensure_default_store_for_recovery()
     row = db.session.query(Store).order_by(Store.id.desc()).first()
     if row is None:
         return {"ok": False, "error": "no_store"}, 404
@@ -646,9 +670,10 @@ def api_recovery_settings_get():
     """
     try:
         db.create_all()
+        _ensure_default_store_for_recovery()
         row = db.session.query(Store).order_by(Store.id.desc()).first()
         if row is None:
-            return j({"ok": False, "error": "no_store"}, 404)
+            return j({"ok": False, "error": "no_store"}, 500)
         return j(
             {
                 "ok": True,
@@ -692,6 +717,7 @@ async def api_cart_event(request: Request, background_tasks: BackgroundTasks):
         log.info("cart abandoned received")
         try:
             db.create_all()
+            _ensure_default_store_for_recovery()
             store = db.session.query(Store).order_by(Store.id.desc()).first()
         except Exception:  # noqa: BLE001
             db.session.rollback()
