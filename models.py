@@ -100,6 +100,12 @@ class ObjectionTrack(db.Model):
     created_at = db.Column(
         db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
     )
+    # حقول اختيارية (تُملأ من ‎/dev/create-test-objection‎ فقط؛ ‎/track/objection‎ يتركها ‎None‎)
+    customer_name = db.Column(db.String(500), nullable=True)
+    customer_phone = db.Column(db.String(100), nullable=True)
+    cart_url = db.Column(db.String(2048), nullable=True)
+    customer_type = db.Column(db.String(20), nullable=True)
+    last_activity_at = db.Column(db.DateTime, nullable=True)
 
 
 class RecoveryEvent(db.Model):

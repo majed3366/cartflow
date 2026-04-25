@@ -15,7 +15,7 @@ from dotenv import load_dotenv
 from extensions import db
 from flask import Flask, request, render_template, jsonify, Response
 from integrations.zid_client import exchange_code_for_token, verify_webhook_signature
-from sqlalchemy import func
+from sqlalchemy import func, inspect, text
 from sqlalchemy.exc import SQLAlchemyError
 
 # تحميل متغيرات البيئة من ملف ‎.env (إن وُجد) قبل إنشاء التطبيق
@@ -124,6 +124,7 @@ def track_objection():
         return _track_objection_cors(r)
     try:
         db.create_all()
+        _ensure_objection_track_test_columns()
         now = datetime.utcnow()
         row = ObjectionTrack(object_type=t, created_at=now)
         db.session.add(row)
@@ -148,6 +149,7 @@ _MSG_WA_QUALITY = (
 def dev_send_whatsapp_test():
     try:
         db.create_all()
+        _ensure_objection_track_test_columns()
         row = ObjectionTrack.query.order_by(
             ObjectionTrack.created_at.desc()
         ).first()
@@ -173,6 +175,46 @@ _WHATSAPP_TEST_CART = {
     "cart_url": "https://example.com/cart",
 }
 
+# إضافة أعمدة ‎ObjectionTrack‎ اختيارية — جداول قديمة: ‎ALTER‎ (مرة لكل عملية بعد الإقلاع)
+_objection_extras_ensured = False
+
+
+def _ensure_objection_track_test_columns() -> None:
+    """للتنمية/الإنتاج: ‎objection_tracks‎ يتوسّع بأعمدة اختيارية بلا فقد بيانات."""
+    global _objection_extras_ensured
+    if _objection_extras_ensured:
+        return
+    try:
+        insp = inspect(db.engine)
+        if not insp.has_table("objection_tracks"):
+            return
+    except (OSError, SQLAlchemyError):
+        return
+    existing = {c["name"] for c in insp.get_columns("objection_tracks")}
+    dname = (db.engine.dialect.name or "").lower()
+    t_dt = "TIMESTAMP WITH TIME ZONE" if dname in ("postgresql", "postgres") else "DATETIME"
+    specs = (
+        ("customer_name", "VARCHAR(500)"),
+        ("customer_phone", "VARCHAR(100)"),
+        ("cart_url", "VARCHAR(2048)"),
+        ("customer_type", "VARCHAR(20)"),
+        ("last_activity_at", t_dt),
+    )
+    for name, typ in specs:
+        if name in existing:
+            continue
+        try:
+            db.session.execute(text(f"ALTER TABLE objection_tracks ADD COLUMN {name} {typ}"))
+        except (OSError, SQLAlchemyError):
+            db.session.rollback()
+            return
+    try:
+        db.session.commit()
+    except (OSError, SQLAlchemyError):
+        db.session.rollback()
+        return
+    _objection_extras_ensured = True
+
 
 @app.get("/dev/whatsapp-message-test")
 def dev_whatsapp_message_test():
@@ -196,6 +238,35 @@ def dev_should_send_test():
     return jsonify({"recent": recent, "idle": idle})
 
 
+@app.get("/dev/create-test-objection")
+def dev_create_test_objection():
+    """
+    ينشئ ‎ObjectionTrack‎ اختباري (تجارب ‎/dev/recovery-flow-test‎ فقط) — بدون واتساب.
+    """
+    try:
+        db.create_all()
+        _ensure_objection_track_test_columns()
+        now = datetime.now(timezone.utc)
+        last = now - timedelta(minutes=3)
+        row = ObjectionTrack(
+            object_type="price",
+            created_at=now,
+            customer_name="ماجد",
+            customer_phone="0500000000",
+            cart_url="https://example.com/cart",
+            customer_type="new",
+            last_activity_at=last,
+        )
+        db.session.add(row)
+        db.session.commit()
+        return jsonify({"ok": True, "objection_id": row.id})
+    except Exception as e:  # noqa: BLE001
+        db.session.rollback()
+        r = jsonify({"ok": False, "error": str(e)})
+        r.status_code = 500
+        return r
+
+
 @app.get("/dev/recovery-flow-test")
 def dev_recovery_flow_test():
     """
@@ -203,6 +274,7 @@ def dev_recovery_flow_test():
     """
     try:
         db.create_all()
+        _ensure_objection_track_test_columns()
         row = ObjectionTrack.query.order_by(
             ObjectionTrack.created_at.desc()
         ).first()
@@ -211,18 +283,29 @@ def dev_recovery_flow_test():
         t = (row.object_type or "").strip()
         if t not in ("price", "quality"):
             return jsonify({"ok": False, "error": "unknown_type"}), 400
-        # نوع العميل غير مخزّن في ‎ObjectionTrack‎ — للتجربة: جديد
-        customer_type = "new"
-        cart = dict(_WHATSAPP_TEST_CART)
+        ct = (row.customer_type or "new").strip().lower()
+        if ct not in ("new", "returning"):
+            ct = "new"
+        customer_type = ct
+        cart = {
+            "customer_name": row.customer_name
+            or _WHATSAPP_TEST_CART.get("customer_name", ""),
+            "cart_url": row.cart_url
+            or _WHATSAPP_TEST_CART.get("cart_url", ""),
+        }
         message = build_whatsapp_recovery_message(customer_type, t, cart)
         now = datetime.now(timezone.utc)
-        last = now - timedelta(minutes=3)
+        last = row.last_activity_at
+        if last is None:
+            last = now - timedelta(minutes=3)
         should_send = should_send_whatsapp(
             last, user_returned_to_site=False, now=now
         )
         send_result = None
         if should_send:
-            send_result = send_whatsapp(phone="0500000000", message=message)
+            send_result = send_whatsapp(
+                phone=row.customer_phone or "0500000000", message=message
+            )
         return jsonify(
             {
                 "ok": True,
