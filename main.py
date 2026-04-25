@@ -16,7 +16,6 @@ import requests
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request
 from fastapi.responses import Response
-from fastapi.testclient import TestClient
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -31,13 +30,15 @@ load_dotenv()
 import models  # noqa: F401, E402
 init_database()
 
+# ASGI مُعطى ‎uvicorn / Railway‎: ‎uvicorn main:app --host 0.0.0.0 --port $PORT‎
 app = FastAPI(
     default_response_class=UTF8JSONResponse,
     title="CartFlow",
 )
 app.state.secret_key = os.getenv("SECRET_KEY", "dev-only-change-in-production")
-templates = Jinja2Templates(directory="templates")
 _ROOT = os.path.dirname(os.path.abspath(__file__))
+# مسار مُطلَق: يعمل حتى اختلاف ‎working directory‎ على ‎Railway / Docker‎
+templates = Jinja2Templates(directory=os.path.join(_ROOT, "templates"))
 _static = os.path.join(_ROOT, "static")
 if os.path.isdir(_static):
     app.mount("/static", StaticFiles(directory=_static), name="static")
@@ -52,6 +53,13 @@ from services.whatsapp_recovery import build_whatsapp_recovery_message  # noqa: 
 from services.whatsapp_send import send_whatsapp, should_send_whatsapp  # noqa: E402
 
 log = logging.getLogger("cartflow")
+
+
+def _app_test_client() -> Any:
+    """يُستورد ‎TestClient‎ عند الاستدعاء فقط (تخفيف أعباء الاستيراد عند الإقلاع)."""
+    from fastapi.testclient import TestClient
+
+    return TestClient(app)
 
 
 @app.middleware("http")
@@ -642,7 +650,7 @@ def dev_recovery_dashboard_test():
     """
     try:
         db.create_all()
-        tc = TestClient(app)
+        tc = _app_test_client()
         jdata = tc.get("/api/recovery-settings").json()
         if not jdata or not jdata.get("ok"):
             if db.session.query(Store).order_by(Store.id.desc()).first() is None:
@@ -704,7 +712,7 @@ def dev_platform_readiness_test():
     from inspect import getsource  # stdlib (لا يتعارض مع ‎sqlalchemy.inspect‎)
 
     try:
-        tc = TestClient(app)
+        tc = _app_test_client()
         g = tc.get("/api/recovery-settings")
         try:
             jg = g.json()
@@ -762,7 +770,7 @@ def dev_recovery_dashboard_render_test():
     """
     try:
         route_exists = _app_route_get_exists("/dashboard/recovery-settings")
-        tc = TestClient(app)
+        tc = _app_test_client()
         resp = tc.get("/dashboard/recovery-settings")
         head = (resp.content or b"")[:3000]
         head_l = head.lstrip().lower()
@@ -1597,14 +1605,15 @@ def home(request: Request):
     return templates.TemplateResponse("landing.html", {"request": request})
 
 
-# لا نستدعي ‎_ensure_db_schema()‎ عند التحميل — يتجنب الاتصال بقاعدة البيانات عند إقلاع ‎Gunicorn‎
+# لا نستدعي ‎_ensure_db_schema()‎ عند التحميل — يتجنب الاتصال بقاعدة البيانات عند الإقلاع (أي ‎ASGI server‎)
 
 if __name__ == "__main__":
     import uvicorn
 
+    _port = os.getenv("PORT") or os.getenv("FLASK_PORT", "5000")
     uvicorn.run(
         "main:app",
         host=os.getenv("FLASK_HOST", "127.0.0.1"),
-        port=int(os.getenv("FLASK_PORT", "5000")),
+        port=int(_port),
         reload=os.getenv("FLASK_DEBUG", "false").lower() == "true",
     )

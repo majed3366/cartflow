@@ -27,7 +27,7 @@ from sqlalchemy.orm import (
 )
 from sqlalchemy.engine import Engine
 
-# ‎db‎: واجهة ‎session / engine / create_all‎ (مماثل لأسلوب ‎Flask-SQLAlchemy‎ سابقاً)
+# ‎db‎: واجهة ‎session / engine / create_all‎ (نمط ORM شائع مع ‎SQLAlchemy‎)
 if TYPE_CHECKING:  # pragma: no cover
     from sqlalchemy.orm import Session
 
