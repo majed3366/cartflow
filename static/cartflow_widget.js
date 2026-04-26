@@ -58,6 +58,27 @@
     { sub: "price_cheaper_alternative", label: "أريد خيار أرخص" },
   ];
 
+  var CARTFLOW_REASON_PERSONALIZE_DEFAULT =
+    "📌 سيتم تخصيص المتابعة بناءً على اختيارك";
+  var CARTFLOW_REASON_PERSONALIZE_BY_PRICE_SUB = {
+    price_discount_request: "📲 سيتم تجهيز عرض مناسب لك",
+    price_budget_issue: "📲 سيتم اقتراح خيار يناسب ميزانيتك",
+    price_cheaper_alternative: "📲 سيتم عرض خيار أرخص مشابه",
+  };
+
+  function reasonPersonalizationSublineFor(rkey) {
+    if (rkey === "price" && typeof window.cartflowGetReasonSubTag === "function") {
+      var s = window.cartflowGetReasonSubTag();
+      if (s) {
+        var t = CARTFLOW_REASON_PERSONALIZE_BY_PRICE_SUB[String(s)];
+        if (t) {
+          return t;
+        }
+      }
+    }
+    return CARTFLOW_REASON_PERSONALIZE_DEFAULT;
+  }
+
   /** عرض ‎/demo/‎: نتيجة متوقعة (وصف فقط — بدون أرقام ولا تتبع) */
   var CARTFLOW_DEMO_OUTCOME_BY_PRICE_SUB = {
     price_discount_request: [
@@ -1034,6 +1055,23 @@
         : CARTFLOW_REASON_ACTION_ORDER.quality;
     }
 
+    function appendReasonPersonalizationBlock(rkey) {
+      var box = document.createElement("div");
+      box.setAttribute("data-cf-reason-confirm", "1");
+      box.setAttribute("aria-live", "polite");
+      box.style.cssText =
+        "margin:0 0 10px 0;padding:8px 10px;border-radius:8px;background:rgba(255,255,255,.08);";
+      var l1 = document.createElement("div");
+      l1.style.cssText = "font-weight:700;font-size:13px;margin:0 0 6px 0;";
+      l1.textContent = "✔ تم تسجيل سبب التردد";
+      var l2 = document.createElement("p");
+      l2.style.cssText = "margin:0;font-size:12px;line-height:1.5;opacity:0.92;";
+      l2.textContent = reasonPersonalizationSublineFor(rkey);
+      box.appendChild(l1);
+      box.appendChild(l2);
+      w.appendChild(box);
+    }
+
     function actionButtonText(rkey, flow, actionId) {
       var d = CARTFLOW_ACTIONS[actionId];
       if (!d) {
@@ -1109,6 +1147,7 @@
         return;
       }
       stripContentKeepChrome();
+      appendReasonPersonalizationBlock(rkey);
       if (isDemoPath()) {
         (function () {
           var gsub =
@@ -1357,10 +1396,7 @@
 
     function showOtherSuccessView() {
       stripContentKeepChrome();
-      var ps = document.createElement("p");
-      ps.style.cssText = "margin:0 0 10px 0;font-size:14px;line-height:1.55;";
-      ps.textContent = "تم تسجيل ملاحظتك، وبنحاول نساعدك بأفضل خيار.";
-      w.appendChild(ps);
+      appendReasonPersonalizationBlock("other");
       var succ = document.createElement("div");
       succ.style.cssText = rowStyleCol;
       var bH2 = document.createElement("button");

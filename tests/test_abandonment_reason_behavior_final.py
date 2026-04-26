@@ -65,7 +65,8 @@ class AbandonmentReasonBehaviorFinalTests(unittest.TestCase):
             self.assertIn(needle, self.widget_src, needle[:20])
         self.assertIn("رجوع", self.widget_src)
         self.assertIn("تحويل لصاحب المتجر", self.widget_src)
-        self.assertIn("تم تسجيل ملاحظتك، وبنحاول نساعدك بأفضل خيار.", self.widget_src)
+        self.assertIn("✔ تم تسجيل سبب التردد", self.widget_src)
+        self.assertIn("appendReasonPersonalizationBlock", self.widget_src)
 
     def test_3_post_and_cart_recovery_reason_and_tag_key(self) -> None:
         """Each POST updates CartRecoveryReason; source sets sessionStorage key."""
@@ -175,8 +176,8 @@ class AbandonmentReasonBehaviorFinalTests(unittest.TestCase):
         )
         self.assertIsNotNone(alog)
         self.assertEqual("other", alog.reason)
-        # Widget shows success and does not close bubble on this path
-        self.assertIn("تم تسجيل ملاحظتك، وبنحاول نساعدك بأفضل خيار.", self.widget_src)
+        # Widget shows personalization confirmation; does not close bubble on this path
+        self.assertIn("data-cf-reason-confirm", self.widget_src)
         self.assertIn("showOtherSuccessView", self.widget_src)
 
     def test_6_merchant_handoff_human_support(self) -> None:
