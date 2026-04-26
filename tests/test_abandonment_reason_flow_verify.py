@@ -47,6 +47,10 @@ class AbandonmentReasonFlowVerifyTests(unittest.TestCase):
         ):
             self.assertIn(label, src, f"missing option: {label}")
         self.assertIn("وش أكثر شيء مخليك متردد؟ تبيني أساعدك", src)
+        self.assertIn("اكتب السبب أو اطلب تحويلك لصاحب المتجر", src)
+        self.assertIn("تحويل لصاحب المتجر", src)
+        self.assertIn("REASON_REPLIES", src)
+        self.assertIn("أفهمك، السعر مهم", src)
 
     def test_2_normal_options_post_and_persist(self) -> None:
         """Test 2: each standard reason is accepted and stored with matching reason value."""
@@ -139,28 +143,26 @@ class AbandonmentReasonFlowVerifyTests(unittest.TestCase):
         # May be null without merchant settings; shape is still valid
         self.assertIn("whatsapp_url", j)
 
-    def test_5_visibility_rule_whatsapp_button_only_in_other_branch(self) -> None:
+    def test_5_handoff_button_only_in_other_branch(self) -> None:
         """
-        Test 5: the literal WhatsApp CTA is only created under the "سبب آخر" path,
-        not on the first screen.
+        Test 5: merchant handoff label only under "سبب آخر"; no legacy WhatsApp CTA string.
         """
         with open(_WIDGET_JS, encoding="utf-8") as f:
             s = f.read()
-        self.assertEqual(1, s.count("تواصل عبر واتساب"), "expected single CTA string")
+        self.assertEqual(0, s.count("تواصل عبر واتساب"))
+        self.assertEqual(1, s.count("تحويل لصاحب المتجر"))
         i_branch = s.find("if (o.r === \"_other\")")
-        i_cta = s.find("تواصل عبر واتساب")
+        i_hand = s.find("تحويل لصاحب المتجر")
         self.assertNotEqual(-1, i_branch)
-        self.assertNotEqual(-1, i_cta)
-        self.assertLess(i_branch, i_cta)
-        # First screen: yes/no only — not the WA CTA label
+        self.assertNotEqual(-1, i_hand)
+        self.assertLess(i_branch, i_hand)
         p0 = s.find("p0.textContent =")
         i_first_q = s.find("تبي أساعدك تكمل طلبك؟")
         self.assertNotEqual(-1, p0)
         self.assertNotEqual(-1, i_first_q)
         self.assertEqual(
             -1,
-            s[i_first_q : i_first_q + 400].find("تواصل عبر واتساب"),
-            "CTA must not sit next to the first question",
+            s[i_first_q : i_first_q + 400].find("تحويل لصاحب المتجر"),
         )
 
 
