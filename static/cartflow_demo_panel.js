@@ -316,6 +316,9 @@
           return refresh();
         }
         if (j.recovery_scheduled) {
+          if (typeof window.cartflowDemoArmStoreWidget === "function") {
+            window.cartflowDemoArmStoreWidget();
+          }
           if (!sequenceSteps || sequenceSteps.length === 0) {
             return loadSequence().then(function () {
               applyPanelFromScheduledResponse(j);
@@ -360,6 +363,14 @@
   }
 
   function clearStateForStartScenario() {
+    try {
+      window.sessionStorage.removeItem("cartflow_demo_store_widget_armed");
+    } catch (e) {
+      /* ignore */
+    }
+    if (typeof window.cartflowDemoDisarmStoreWidget === "function") {
+      window.cartflowDemoDisarmStoreWidget();
+    }
     _pendingDemoScheduled = null;
     var cartKey =
       typeof window.CARTFLOW_DEMO_CART_KEY === "string" &&
@@ -458,6 +469,9 @@
           return refresh();
         }
         if (j.recovery_scheduled) {
+          if (typeof window.cartflowDemoArmStoreWidget === "function") {
+            window.cartflowDemoArmStoreWidget();
+          }
           if (!sequenceSteps || sequenceSteps.length === 0) {
             return loadSequence().then(function () {
               applyPanelFromScheduledResponse(j);
@@ -519,6 +533,7 @@
       window.sessionStorage.removeItem(REASON_SUB_TAG_KEY);
       window.sessionStorage.removeItem(CARTFLOW_CONVERTED_KEY);
       window.sessionStorage.removeItem(CARTFLOW_SESSION_KEY);
+      window.sessionStorage.removeItem("cartflow_demo_store_widget_armed");
     } catch (e) {
       /* ignore */
     }

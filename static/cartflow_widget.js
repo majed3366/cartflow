@@ -9,10 +9,13 @@
   var IDLE_MS = 8000;
   var REASON_TAG_KEY = "cartflow_reason_tag";
   var REASON_SUB_TAG_KEY = "cartflow_reason_sub_tag";
+  var DEMO_STORE_WIDGET_ARMED_KEY = "cartflow_demo_store_widget_armed";
   var shown = false;
   var idleTimer = null;
   var step1Ready = false;
   var step1Poll = null;
+  var armListenersAttached = false;
+  var demoStoreBubbleDismissed = false;
   var events = ["mousemove", "keydown", "scroll", "click", "touchstart"];
 
   var BTN_BACK = "رجوع";
@@ -384,6 +387,92 @@
     return false;
   }
 
+  /** صفحة المنتجات ‎/demo/store‎ فقط (ليس ‎/demo/store/cart‎). */
+  function isDemoStoreProductPage() {
+    var path = (window.location.pathname || "").replace(/\/+$/, "") || "/";
+    return path === "/demo/store";
+  }
+
+  function applyBubbleLayout(el) {
+    if (isNarrowViewport()) {
+      el.style.top = "max(8px, env(safe-area-inset-top, 0px))";
+      el.style.bottom = "auto";
+      el.style.right = "8px";
+      el.style.left = "auto";
+      el.style.maxWidth = "min(300px, calc(100vw - 16px))";
+    } else {
+      el.style.top = "auto";
+      el.style.bottom = "max(12px, env(safe-area-inset-bottom, 0px))";
+      el.style.right = "12px";
+      el.style.left = "auto";
+      el.style.maxWidth = "320px";
+    }
+  }
+
+  function readDemoStoreWidgetArmed() {
+    try {
+      return window.sessionStorage.getItem(DEMO_STORE_WIDGET_ARMED_KEY) === "1";
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function isNarrowViewport() {
+    return window.matchMedia && window.matchMedia("(max-width: 640px)").matches;
+  }
+
+  function removeFabIfAny() {
+    var existing = document.querySelector("[data-cartflow-fab]");
+    if (existing && existing.parentNode) {
+      existing.parentNode.removeChild(existing);
+    }
+  }
+
+  function removeCartflowBubbleDom() {
+    var nodes = document.querySelectorAll("[data-cartflow-bubble], [data-cartflow-fab]");
+    var i;
+    for (i = 0; i < nodes.length; i++) {
+      var n = nodes[i];
+      if (n.parentNode) {
+        n.parentNode.removeChild(n);
+      }
+    }
+  }
+
+  function detachArmListeners() {
+    if (!armListenersAttached) {
+      return;
+    }
+    armListenersAttached = false;
+    events.forEach(function (e) {
+      document.removeEventListener(e, resetIdle, true);
+    });
+  }
+
+  function attachArmListenersOnce() {
+    if (armListenersAttached) {
+      return;
+    }
+    armListenersAttached = true;
+    events.forEach(function (e) {
+      document.addEventListener(e, resetIdle, true);
+    });
+  }
+
+  function runArmBody() {
+    if (isSessionConverted() || !isCartPage()) {
+      return;
+    }
+    if (isDemoStoreProductPage() && !readDemoStoreWidgetArmed()) {
+      return;
+    }
+    if (isDemoPath()) {
+      step1Ready = true;
+    }
+    attachArmListenersOnce();
+    ensureStep1ThenStartIdle();
+  }
+
   function getStoreSlug() {
     if (
       typeof window.CARTFLOW_STORE_SLUG !== "undefined" &&
@@ -657,6 +746,14 @@
     if (isSessionConverted() || !step1Ready) {
       return;
     }
+    if (isDemoStoreProductPage()) {
+      if (!readDemoStoreWidgetArmed()) {
+        return;
+      }
+      if (demoStoreBubbleDismissed) {
+        return;
+      }
+    }
     if (shown) {
       return;
     }
@@ -664,6 +761,7 @@
       return;
     }
     shown = true;
+    removeFabIfAny();
     if (step1Poll !== null) {
       clearInterval(step1Poll);
       step1Poll = null;
@@ -678,10 +776,11 @@
     w.setAttribute("lang", "ar");
     w.setAttribute("data-cartflow-bubble", "1");
     w.style.cssText =
-      "position:fixed;right:12px;bottom:12px;z-index:2147483640;max-width:320px;" +
+      "position:fixed;z-index:2147483640;" +
       "padding:10px 12px;border-radius:12px;background:#1e1b4b;color:#f5f3ff;" +
       "font:14px/1.4 system-ui,-apple-system,'Segoe UI',sans-serif;box-shadow:0 4px 16px rgba(0,0,0,.2);" +
       "pointer-events:auto;touch-action:manipulation;isolation:isolate;";
+    applyBubbleLayout(w);
 
     w.addEventListener(
       "click",
@@ -692,6 +791,98 @@
       },
       false
     );
+
+    var chromeBtnStyle =
+      "cursor:pointer;border:0;border-radius:6px;padding:2px 8px;font:inherit;font-size:16px;line-height:1;" +
+      "font-weight:700;background:rgba(255,255,255,.12);color:#f5f3ff;min-width:32px;touch-action:manipulation;";
+
+    var chrome = document.createElement("div");
+    chrome.setAttribute("data-cf-chrome", "1");
+    chrome.style.cssText =
+      "display:flex;justify-content:flex-end;align-items:center;gap:6px;margin:0 0 8px 0;";
+
+    function stripContentKeepChrome() {
+      var ch = w.children;
+      var i;
+      for (i = ch.length - 1; i >= 0; i--) {
+        var node = ch[i];
+        if (node.getAttribute("data-cf-chrome") !== "1") {
+          w.removeChild(node);
+        }
+      }
+    }
+
+    function mountMinimizedFab() {
+      removeFabIfAny();
+      var fab = document.createElement("button");
+      fab.type = "button";
+      fab.setAttribute("data-cartflow-fab", "1");
+      fab.setAttribute("aria-label", "توسيع CartFlow");
+      fab.textContent = "💬";
+      fab.style.cssText =
+        "position:fixed;z-index:2147483639;padding:0;margin:0;width:44px;height:44px;border-radius:50%;" +
+        "border:0;background:#7c3aed;color:#fff;font-size:20px;line-height:1;cursor:pointer;" +
+        "box-shadow:0 2px 12px rgba(0,0,0,.2);touch-action:manipulation;pointer-events:auto;";
+      if (isNarrowViewport()) {
+        fab.style.left = "max(8px, env(safe-area-inset-left, 0px))";
+        fab.style.bottom = "max(72px, env(safe-area-inset-bottom, 0px))";
+        fab.style.top = "auto";
+        fab.style.right = "auto";
+      } else {
+        fab.style.right = "max(12px, env(safe-area-inset-right, 0px))";
+        fab.style.bottom = "max(12px, env(safe-area-inset-bottom, 0px))";
+        fab.style.left = "auto";
+        fab.style.top = "auto";
+      }
+      fab.addEventListener("click", function (ev) {
+        ev.stopPropagation();
+        ev.preventDefault();
+        if (fab.parentNode) {
+          fab.parentNode.removeChild(fab);
+        }
+        document.body.appendChild(w);
+        applyBubbleLayout(w);
+      });
+      document.body.appendChild(fab);
+    }
+
+    var btnMin = document.createElement("button");
+    btnMin.type = "button";
+    btnMin.setAttribute("aria-label", "تصغير");
+    btnMin.textContent = "−";
+    btnMin.style.cssText = chromeBtnStyle;
+    btnMin.addEventListener("click", function (ev) {
+      ev.stopPropagation();
+      ev.preventDefault();
+      if (w.parentNode) {
+        w.parentNode.removeChild(w);
+      }
+      mountMinimizedFab();
+    });
+
+    var btnClose = document.createElement("button");
+    btnClose.type = "button";
+    btnClose.setAttribute("aria-label", "إخفاء");
+    btnClose.textContent = "×";
+    btnClose.style.cssText = chromeBtnStyle;
+    btnClose.addEventListener("click", function (ev) {
+      ev.stopPropagation();
+      ev.preventDefault();
+      removeFabIfAny();
+      if (w.parentNode) {
+        w.parentNode.removeChild(w);
+      }
+      if (isDemoStoreProductPage()) {
+        shown = false;
+        demoStoreBubbleDismissed = true;
+        clearTimeout(idleTimer);
+        idleTimer = null;
+      }
+    });
+
+    chrome.appendChild(btnMin);
+    chrome.appendChild(btnClose);
+    w.appendChild(chrome);
 
     var p0 = document.createElement("p");
     p0.style.cssText = "margin:0 0 8px 0;";
@@ -713,8 +904,15 @@
     btnN.addEventListener("click", function (ev) {
       ev.stopPropagation();
       ev.preventDefault();
+      removeFabIfAny();
       if (w && w.parentNode) {
         w.parentNode.removeChild(w);
+      }
+      if (isDemoStoreProductPage()) {
+        shown = false;
+        demoStoreBubbleDismissed = true;
+        clearTimeout(idleTimer);
+        idleTimer = null;
       }
     });
 
@@ -750,9 +948,7 @@
     function showDiscountStubPanel(rkey) {
       var def = CARTFLOW_ACTIONS.discount_offer;
       var msg = (def && def.discountMessage) || "";
-      while (w.lastChild) {
-        w.removeChild(w.lastChild);
-      }
+      stripContentKeepChrome();
       var pex = document.createElement("p");
       pex.style.cssText = "margin:0 0 10px 0;font-size:14px;line-height:1.55;";
       pex.textContent = msg;
@@ -774,9 +970,7 @@
     }
 
     function showAlternativesPanel(rkey, flow) {
-      while (w.lastChild) {
-        w.removeChild(w.lastChild);
-      }
+      stripContentKeepChrome();
       var pex = document.createElement("p");
       pex.style.cssText = "margin:0 0 10px 0;font-size:14px;line-height:1.55;";
       pex.textContent = flow.explain;
@@ -802,9 +996,7 @@
       if (!flow) {
         return;
       }
-      while (w.lastChild) {
-        w.removeChild(w.lastChild);
-      }
+      stripContentKeepChrome();
       var p = document.createElement("p");
       p.style.cssText = "margin:0 0 10px 0;font-size:14px;line-height:1.55;";
       p.textContent = flow.message;
@@ -861,9 +1053,7 @@
     function showPriceSubMenu() {
       setReasonTag(null);
       setReasonSubTag(null);
-      while (w.lastChild) {
-        w.removeChild(w.lastChild);
-      }
+      stripContentKeepChrome();
       var psub = document.createElement("p");
       psub.style.cssText = "margin:0 0 8px 0;font-size:14px;line-height:1.5;";
       psub.textContent = "وش يناسب وضعك بالنسبة للسعر؟";
@@ -901,9 +1091,7 @@
     }
 
     function mountOtherForm() {
-      while (w.lastChild) {
-        w.removeChild(w.lastChild);
-      }
+      stripContentKeepChrome();
       var p2o = document.createElement("p");
       p2o.style.cssText = "margin:0 0 8px 0;";
       p2o.textContent = "اكتب السبب أو اطلب تحويلك لصاحب المتجر";
@@ -967,9 +1155,7 @@
     }
 
     function showOtherSuccessView() {
-      while (w.lastChild) {
-        w.removeChild(w.lastChild);
-      }
+      stripContentKeepChrome();
       var ps = document.createElement("p");
       ps.style.cssText = "margin:0 0 10px 0;font-size:14px;line-height:1.55;";
       ps.textContent = "تم تسجيل ملاحظتك، وبنحاول نساعدك بأفضل خيار.";
@@ -1023,9 +1209,7 @@
 
     function renderReasonList() {
       setReasonTag(null);
-      while (w.lastChild) {
-        w.removeChild(w.lastChild);
-      }
+      stripContentKeepChrome();
       var p2 = document.createElement("p");
       p2.style.cssText = "margin:0 0 8px 0;";
       p2.textContent = "وش أكثر شيء مخليك متردد؟ تبيني أساعدك";
@@ -1086,6 +1270,14 @@
     if (isSessionConverted() || !step1Ready) {
       return;
     }
+    if (isDemoStoreProductPage()) {
+      if (!readDemoStoreWidgetArmed()) {
+        return;
+      }
+      if (demoStoreBubbleDismissed) {
+        return;
+      }
+    }
     if (shown) {
       return;
     }
@@ -1094,17 +1286,29 @@
   }
 
   function arm() {
-    if (isSessionConverted() || !isCartPage()) {
-      return;
-    }
-    if (isDemoPath()) {
-      step1Ready = true;
-    }
-    events.forEach(function (e) {
-      document.addEventListener(e, resetIdle, true);
-    });
-    ensureStep1ThenStartIdle();
+    runArmBody();
   }
+
+  window.cartflowDemoArmStoreWidget = function () {
+    try {
+      window.sessionStorage.setItem(DEMO_STORE_WIDGET_ARMED_KEY, "1");
+    } catch (e) {}
+    demoStoreBubbleDismissed = false;
+    runArmBody();
+  };
+
+  window.cartflowDemoDisarmStoreWidget = function () {
+    try {
+      window.sessionStorage.removeItem(DEMO_STORE_WIDGET_ARMED_KEY);
+    } catch (e) {}
+    demoStoreBubbleDismissed = false;
+    clearTimeout(idleTimer);
+    idleTimer = null;
+    removeFabIfAny();
+    removeCartflowBubbleDom();
+    shown = false;
+    detachArmListeners();
+  };
 
   setTimeout(arm, ARM_DELAY_MS);
 })();
