@@ -49,8 +49,11 @@ class AbandonmentReasonFlowVerifyTests(unittest.TestCase):
         self.assertIn("وش أكثر شيء مخليك متردد؟ تبيني أساعدك", src)
         self.assertIn("اكتب السبب أو اطلب تحويلك لصاحب المتجر", src)
         self.assertIn("تحويل لصاحب المتجر", src)
-        self.assertIn("REASON_REPLIES", src)
+        self.assertIn("REASON_FLOWS", src)
         self.assertIn("أفهمك، السعر مهم", src)
+        self.assertIn("الضمان مهم خصوصًا للأجهزة 👍", src)
+        self.assertIn("showStandardActionView", src)
+        self.assertIn("renderReasonList", src)
 
     def test_2_normal_options_post_and_persist(self) -> None:
         """Test 2: each standard reason is accepted and stored with matching reason value."""
@@ -150,12 +153,13 @@ class AbandonmentReasonFlowVerifyTests(unittest.TestCase):
         with open(_WIDGET_JS, encoding="utf-8") as f:
             s = f.read()
         self.assertEqual(0, s.count("تواصل عبر واتساب"))
-        self.assertEqual(1, s.count("تحويل لصاحب المتجر"))
-        i_branch = s.find("if (o.r === \"_other\")")
-        i_hand = s.find("تحويل لصاحب المتجر")
+        # Label reused (BTN_HANDOFF) in standard actions, other form, and success
+        self.assertGreaterEqual(s.count("تحويل لصاحب المتجر"), 1)
+        i_branch = s.find("function mountOtherForm")
+        i_hand_in_block = s.find("تحويل", i_branch)
         self.assertNotEqual(-1, i_branch)
-        self.assertNotEqual(-1, i_hand)
-        self.assertLess(i_branch, i_hand)
+        self.assertNotEqual(-1, i_hand_in_block)
+        self.assertLess(i_branch, i_hand_in_block)
         p0 = s.find("p0.textContent =")
         i_first_q = s.find("تبي أساعدك تكمل طلبك؟")
         self.assertNotEqual(-1, p0)

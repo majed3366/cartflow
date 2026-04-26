@@ -16,12 +16,12 @@ from schema_widget import ensure_store_widget_schema
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _WIDGET = os.path.join(_ROOT, "static", "cartflow_widget.js")
 
-_EXPECTED_REPLIES = {
+_EXPECTED_MESSAGE_SNIPPETS = {
     "price": "أفهمك، السعر مهم",
     "quality": "أكيد الجودة مهمة",
     "warranty": "الضمان مهم خصوصًا للأجهزة",
     "shipping": "الشحن مهم",
-    "thinking": "خذ وقتك، وإذا احتجت مقارنة",
+    "thinking": "خذ راحتك",
 }
 
 
@@ -39,14 +39,14 @@ class AbandonmentReasonBehaviorFinalTests(unittest.TestCase):
     def test_1_widget_stays_open_after_reason(self) -> None:
         """
         No bubble dismiss on option pick: only 'لا' removes the bubble from DOM.
-        showStandardResponse uses showReasonMessageOnly (clears children, keeps w).
+        showStandardResponse leads to showStandardActionView (no bubble remove).
         """
         # Single parent remove is for the "لا" path only
         n_close = self.widget_src.count("w.parentNode.removeChild(w)")
         self.assertEqual(1, n_close, "only 'لا' should close the whole bubble")
         # Standard path: no parentNode.removeChild near showStandardResponse
         self.assertIn("function showStandardResponse", self.widget_src)
-        self.assertIn("showReasonMessageOnly", self.widget_src)
+        self.assertIn("function showStandardActionView", self.widget_src)
         start = self.widget_src.find("function showStandardResponse")
         self.assertNotEqual(-1, start)
         self.assertNotIn(
@@ -58,9 +58,12 @@ class AbandonmentReasonBehaviorFinalTests(unittest.TestCase):
         self.assertIn("widget_loader.js", (r.text or ""))
 
     def test_2_response_message_per_reason(self) -> None:
-        """REASON_REPLIES contains full expected text for each standard key."""
-        for _rkey, needle in _EXPECTED_REPLIES.items():
+        """REASON_FLOWS message + actions + back for each standard key."""
+        self.assertIn("REASON_FLOWS", self.widget_src)
+        for _rkey, needle in _EXPECTED_MESSAGE_SNIPPETS.items():
             self.assertIn(needle, self.widget_src, needle[:20])
+        self.assertIn("رجوع", self.widget_src)
+        self.assertIn("تحويل لصاحب المتجر", self.widget_src)
         self.assertIn("تم تسجيل ملاحظتك، وبنحاول نساعدك بأفضل خيار.", self.widget_src)
 
     def test_3_post_and_cart_recovery_reason_and_tag_key(self) -> None:
@@ -107,20 +110,20 @@ class AbandonmentReasonBehaviorFinalTests(unittest.TestCase):
             self.assertEqual(rkey, alog.reason)
 
     def test_4_other_path_ui(self) -> None:
-        """سبب آخر: textarea, two buttons, no 'تواصل عبر واتساب'."""
+        """سبب آخر: textarea, buttons, no 'تواصل عبر واتساب'."""
         s = self.widget_src
         self.assertEqual(0, s.count("تواصل عبر واتساب"))
-        i_o = s.find("if (o.r === \"_other\")")
+        i_o = s.find("function mountOtherForm")
         i_ta = s.find("createElement(\"textarea\"")
-        i_send = s.find("bSend.textContent =")
-        i_hand = s.find("تحويل لصاحب المتجر")
-        self.assertNotEqual(-1, i_o, "_other branch")
-        self.assertLess(i_o, i_ta)
-        self.assertLess(i_o, i_send)
-        self.assertLess(i_o, i_hand)
-        # Button labels (file is UTF-8; avoid fragile substring for إرسال alone)
-        self.assertIn("bSend.textContent", s)
-        self.assertIn("bHandoff.textContent", s)
+        i_send = s.find("bSend.textContent =", i_o)
+        i_ho = s.find("bHandoffO", i_o)
+        self.assertNotEqual(-1, i_o, "other form")
+        self.assertNotEqual(-1, s.find("createElement(\"textarea\"", i_o))
+        self.assertNotEqual(-1, i_send)
+        self.assertNotEqual(-1, i_ho)
+        self.assertNotEqual(-1, s.find("إرسال السبب", i_o))
+        self.assertIn("showOtherSuccessView", s)
+        self.assertIn("bSend.type", s)
         self.assertIn("اكتب السبب أو اطلب تحويلك لصاحب المتجر", s)
 
     def test_5_send_other_persist_and_message(self) -> None:
@@ -158,7 +161,7 @@ class AbandonmentReasonBehaviorFinalTests(unittest.TestCase):
         self.assertEqual("other", alog.reason)
         # Widget shows success and does not close bubble on this path
         self.assertIn("تم تسجيل ملاحظتك، وبنحاول نساعدك بأفضل خيار.", self.widget_src)
-        self.assertIn("showReasonMessageOnly", self.widget_src)
+        self.assertIn("showOtherSuccessView", self.widget_src)
 
     def test_6_merchant_handoff_human_support(self) -> None:
         """human_support stored; public-config for WhatsApp; widget continues."""
