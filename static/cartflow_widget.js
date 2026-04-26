@@ -58,6 +58,35 @@
     { sub: "price_cheaper_alternative", label: "أريد خيار أرخص" },
   ];
 
+  /** عرض ‎/demo/‎: نتيجة متوقعة (وصف فقط — بدون أرقام ولا تتبع) */
+  var CARTFLOW_DEMO_OUTCOME_BY_PRICE_SUB = {
+    price_discount_request: [
+      "🎯 العميل يرجع لإكمال الطلب باستخدام الخصم",
+    ],
+    price_budget_issue: [
+      "🎯 يتم تحويله لمنتج يناسب ميزانيته",
+    ],
+    price_cheaper_alternative: [
+      "🎯 يتم توجيهه لخيار أرخص بدل الخروج",
+    ],
+  };
+  var CARTFLOW_DEMO_OUTCOME_BY_REASON = {
+    quality: ["🎯 يتم إزالة التردد وإكمال الطلب بثقة"],
+    shipping: ["🎯 يطمئن لسرعة التوصيل ويكمل الشراء"],
+    warranty: ["🎯 يفهم الضمان ويكمّل الطلب براحة"],
+    thinking: ["🎯 يرتاح ثم يرجع لإكمال الطلب حين يناسبه"],
+  };
+
+  function demoConversionOutcomeLines(rkey, subTag) {
+    if (rkey === "price") {
+      if (!subTag) {
+        return null;
+      }
+      return CARTFLOW_DEMO_OUTCOME_BY_PRICE_SUB[String(subTag)] || null;
+    }
+    return CARTFLOW_DEMO_OUTCOME_BY_REASON[rkey] || null;
+  }
+
   var DESC_KEYS = [
     "description",
     "desc",
@@ -1042,11 +1071,13 @@
           if (gsub) {
             u += "&sub_category=" + encodeURIComponent(String(gsub));
           }
+          var strip = document.createElement("div");
+          strip.setAttribute("data-cf-demo-merchant-hint", "1");
+          strip.setAttribute("aria-label", "معاينة ونتيجة متوقعة (عرض فقط)");
+          strip.style.cssText =
+            "margin:0 0 12px 0;padding:10px 10px;border-radius:10px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.12);";
           var previewBox = document.createElement("div");
           previewBox.setAttribute("data-cf-wa-preview", "1");
-          previewBox.setAttribute("aria-label", "معاينة رسالة مخصصة (عرض فقط)");
-          previewBox.style.cssText =
-            "margin:0 0 12px 0;padding:10px 10px;border-radius:10px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.12);";
           var ht = document.createElement("div");
           ht.style.cssText = "font-weight:700;margin:0 0 8px 0;font-size:13px;";
           ht.textContent = "📲 ماذا سيصل للعميل:";
@@ -1055,7 +1086,34 @@
           msgEl.textContent = "…";
           previewBox.appendChild(ht);
           previewBox.appendChild(msgEl);
-          w.appendChild(previewBox);
+          strip.appendChild(previewBox);
+
+          var outLines = demoConversionOutcomeLines(rkey, gsub);
+          var outcomeHead = document.createElement("div");
+          outcomeHead.style.cssText =
+            "font-weight:700;margin:10px 0 8px 0;padding-top:10px;border-top:1px solid rgba(255,255,255,.16);font-size:13px;";
+          outcomeHead.setAttribute("data-cf-demo-outcome", "1");
+          outcomeHead.textContent = "📈 النتيجة المتوقعة:";
+          var outcomeBody = document.createElement("div");
+          outcomeBody.style.cssText = "font-size:13px;line-height:1.55;opacity:0.95;";
+          if (outLines && outLines.length) {
+            var oi;
+            for (oi = 0; oi < outLines.length; oi++) {
+              var op = document.createElement("p");
+              op.style.cssText =
+                oi > 0 ? "margin:6px 0 0 0" : "margin:0";
+              op.textContent = String(outLines[oi] || "");
+              outcomeBody.appendChild(op);
+            }
+          } else {
+            var op0 = document.createElement("p");
+            op0.style.cssText = "margin:0";
+            op0.textContent = "—";
+            outcomeBody.appendChild(op0);
+          }
+          strip.appendChild(outcomeHead);
+          strip.appendChild(outcomeBody);
+          w.appendChild(strip);
           fetch(u, { method: "GET" })
             .then(function (r) {
               return r.json().then(
