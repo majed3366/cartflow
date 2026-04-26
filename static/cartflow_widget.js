@@ -16,6 +16,7 @@
 
   var BTN_BACK = "رجوع";
   var BTN_HANDOFF = "تحويل لصاحب المتجر";
+  var BTN_RETURN_CART = "العودة للسلة";
 
   var DESC_KEYS = [
     "description",
@@ -147,9 +148,9 @@
     var ctx = buildProductContext();
     var n = ctx.name;
     var a1s = {
-      price: "تفاصيل إضافية",
-      quality: "تفاصيل الجودة",
-      warranty: "شرح الضمان",
+      price: "خيارات أخرى",
+      quality: "تفاصيل أكثر",
+      warranty: "تفاصيل الضمان",
       shipping: "تفاصيل الشحن",
       thinking: "نصيحة سريعة",
     };
@@ -535,6 +536,48 @@
   var rowStyleCol =
     "display:flex;flex-direction:column;gap:6px;width:100%;align-items:stretch;";
 
+  /**
+   * Scroll to cart / checkout on the host page (no widget close).
+   * Tries common ids/selectors; falls back to first cart-like section.
+   */
+  function scrollToCartOrCheckout() {
+    var selectors = [
+      "#cart",
+      "#Cart",
+      "#shopping-cart",
+      "#shopify-section-cart",
+      "#checkout",
+      "[data-cartflow-cart]",
+      "[data-cart-section]",
+      "[id*='cart' i]:not([id*='cartflow' i])",
+    ];
+    var i;
+    var el;
+    for (i = 0; i < selectors.length; i++) {
+      try {
+        el = document.querySelector(selectors[i]);
+      } catch (e) {
+        el = null;
+      }
+      if (el && el.scrollIntoView) {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+        if (el.focus) {
+          try {
+            el.focus({ preventScroll: true });
+          } catch (e2) {
+            el.focus();
+          }
+        }
+        return;
+      }
+    }
+    el = document.querySelector("form[action*='checkout' i], [name='checkout']");
+    if (el && el.scrollIntoView) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+  }
+
   function showBubble() {
     if (isSessionConverted() || !step1Ready) {
       return;
@@ -666,9 +709,21 @@
         renderReasonList();
       });
 
+      var bCart = document.createElement("button");
+      bCart.type = "button";
+      bCart.textContent = BTN_RETURN_CART;
+      bCart.setAttribute("aria-label", BTN_RETURN_CART);
+      bCart.style.cssText = btnStyle;
+      bCart.addEventListener("click", function (e) {
+        e.stopPropagation();
+        e.preventDefault();
+        scrollToCartOrCheckout();
+      });
+
       rowA.appendChild(b1);
       rowA.appendChild(b2);
       rowA.appendChild(bBack2);
+      rowA.appendChild(bCart);
       w.appendChild(rowA);
     }
 
