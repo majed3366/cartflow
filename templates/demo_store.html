@@ -283,6 +283,104 @@
       touch-action: manipulation;
     }
     .cf-store-intro-dismiss:hover { background: rgba(255, 255, 255, 0.95); }
+    .cf-demo-guide {
+      position: fixed;
+      z-index: 2147483620;
+      top: max(12px, env(safe-area-inset-top, 0px));
+      inset-inline-start: max(12px, env(safe-area-inset-left, 0px));
+      max-width: min(300px, calc(100vw - 24px));
+      pointer-events: none;
+      font: 13px/1.45 "Segoe UI", system-ui, -apple-system, sans-serif;
+    }
+    .cf-demo-guide-inner {
+      pointer-events: auto;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 0.65rem 0.75rem 0.75rem;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+      color: var(--ink);
+    }
+    .cf-demo-guide-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      margin-bottom: 0.35rem;
+    }
+    .cf-demo-guide-title {
+      font-size: 0.68rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--muted);
+    }
+    .cf-demo-guide-close {
+      border: 0;
+      background: #f5f5f4;
+      color: var(--muted);
+      width: 1.65rem;
+      height: 1.65rem;
+      border-radius: 6px;
+      font-size: 1rem;
+      line-height: 1;
+      cursor: pointer;
+      padding: 0;
+      flex-shrink: 0;
+    }
+    .cf-demo-guide-close:hover { background: #e7e5e4; }
+    .cf-demo-guide-step {
+      margin: 0 0 0.5rem 0;
+      font-size: 0.88rem;
+      font-weight: 700;
+      line-height: 1.4;
+    }
+    .cf-demo-guide-dots {
+      display: flex;
+      gap: 6px;
+      justify-content: center;
+      margin-bottom: 0.5rem;
+    }
+    .cf-demo-guide-dots span {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #d6d3d1;
+      transition: background 0.2s ease, transform 0.2s ease;
+    }
+    .cf-demo-guide-next {
+      width: 100%;
+      border: 0;
+      border-radius: 8px;
+      padding: 0.4rem 0.75rem;
+      font: inherit;
+      font-weight: 800;
+      font-size: 0.78rem;
+      cursor: pointer;
+      background: var(--accent);
+      color: #fff;
+    }
+    .cf-demo-guide-next:hover { background: var(--accent-hover); }
+    .cf-demo-wa-hint {
+      position: fixed;
+      z-index: 2147483619;
+      bottom: max(100px, env(safe-area-inset-bottom, 0px));
+      inset-inline-start: max(12px, env(safe-area-inset-left, 0px));
+      inset-inline-end: max(12px, env(safe-area-inset-right, 0px));
+      max-width: 340px;
+      margin-inline: auto;
+      pointer-events: none;
+    }
+    .cf-demo-wa-hint-inner {
+      pointer-events: auto;
+      background: #1e1b4b;
+      color: #f5f3ff;
+      border-radius: 12px;
+      padding: 0.65rem 0.85rem;
+      font-size: 0.82rem;
+      line-height: 1.45;
+      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.15);
+    }
   </style>
 </head>
 <body>
@@ -317,6 +415,14 @@
       }
     }
 
+    function demoNotifyCartUpdated() {
+      try {
+        document.dispatchEvent(new CustomEvent("cf-demo-cart-updated", { bubbles: true }));
+      } catch (e) {
+        /* ignore */
+      }
+    }
+
     function renderCart() {
       var ul = document.getElementById("cart-list");
       if (!ul) return;
@@ -344,6 +450,7 @@
       window.cart.push(Object.assign({}, product));
       persistCart();
       renderCart();
+      demoNotifyCartUpdated();
     }
 
     function clearCart() {
@@ -367,6 +474,7 @@
       });
       persistCart();
       renderCart();
+      demoNotifyCartUpdated();
     }
     window.cartflowDemoSetCart = cartflowDemoSetCart;
   </script>
@@ -602,6 +710,7 @@
     })();
   </script>
   <script src="/static/cartflow_demo_panel.js" defer></script>
+  <script src="/static/cartflow_demo_guide.js" defer></script>
   <script src="/static/widget_loader.js" data-store="{{ demo_data_store|default('demo') }}"></script>
 </body>
 </html>

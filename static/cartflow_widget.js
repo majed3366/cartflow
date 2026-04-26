@@ -635,6 +635,19 @@
     return /\/demo\//i.test(p);
   }
 
+  function emitDemoGuideEvent(name, detail) {
+    if (!isDemoPath()) {
+      return;
+    }
+    try {
+      document.dispatchEvent(
+        new CustomEvent(name, { bubbles: true, detail: detail || {} })
+      );
+    } catch (e) {
+      /* ignore */
+    }
+  }
+
   function fetchReadyThen(cb) {
     if (isDemoPath()) {
       step1Ready = true;
@@ -1045,6 +1058,10 @@
             setReasonTag("price");
             setReasonSubTag(sub);
             mountProductAwareView("price");
+            emitDemoGuideEvent("cartflow-demo-reason-confirmed", {
+              reason: "price",
+              sub_category: sub,
+            });
           }
         })
         .catch(function () {});
@@ -1121,6 +1138,10 @@
           .then(function (j) {
             if (j && j.ok) {
               setReasonTag("other");
+              emitDemoGuideEvent("cartflow-demo-reason-confirmed", {
+                reason: "other",
+                sub_category: null,
+              });
               showOtherSuccessView();
             } else {
               bSend.removeAttribute("disabled");
@@ -1202,6 +1223,10 @@
         .then(function (j) {
           if (j && j.ok) {
             mountProductAwareView(rkey);
+            emitDemoGuideEvent("cartflow-demo-reason-confirmed", {
+              reason: rkey,
+              sub_category: null,
+            });
           }
         })
         .catch(function () {});
@@ -1257,6 +1282,7 @@
       }
       w.setAttribute("data-cf-yes", "1");
       renderReasonList();
+      emitDemoGuideEvent("cartflow-demo-reason-list-visible", {});
     }, false);
 
     row0.appendChild(btnY);
@@ -1264,6 +1290,7 @@
     w.appendChild(p0);
     w.appendChild(row0);
     document.body.appendChild(w);
+    emitDemoGuideEvent("cartflow-demo-bubble-visible", {});
   }
 
   function resetIdle() {
