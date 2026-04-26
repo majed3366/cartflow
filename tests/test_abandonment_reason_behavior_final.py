@@ -1,0 +1,196 @@
+# -*- coding: utf-8 -*-
+"""
+Final verification: abandonment reason widget behavior (source + API + storage).
+Complements browser checks on /demo/cart.
+"""
+from __future__ import annotations
+
+import os
+import unittest
+
+from main import app
+from extensions import db
+from models import AbandonmentReasonLog, CartRecoveryReason
+from schema_widget import ensure_store_widget_schema
+
+_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_WIDGET = os.path.join(_ROOT, "static", "cartflow_widget.js")
+
+_EXPECTED_REPLIES = {
+    "price": "أفهمك، السعر مهم",
+    "quality": "أكيد الجودة مهمة",
+    "warranty": "الضمان مهم خصوصًا للأجهزة",
+    "shipping": "الشحن مهم",
+    "thinking": "خذ وقتك، وإذا احتجت مقارنة",
+}
+
+
+class AbandonmentReasonBehaviorFinalTests(unittest.TestCase):
+    """Test 1–6: widget open, response copy, storage, other flow, send, handoff."""
+
+    def setUp(self) -> None:
+        from fastapi.testclient import TestClient
+
+        self.client = TestClient(app)
+        ensure_store_widget_schema(db)
+        with open(_WIDGET, encoding="utf-8") as f:
+            self.widget_src = f.read()
+
+    def test_1_widget_stays_open_after_reason(self) -> None:
+        """
+        No bubble dismiss on option pick: only 'لا' removes the bubble from DOM.
+        showStandardResponse uses showReasonMessageOnly (clears children, keeps w).
+        """
+        # Single parent remove is for the "لا" path only
+        n_close = self.widget_src.count("w.parentNode.removeChild(w)")
+        self.assertEqual(1, n_close, "only 'لا' should close the whole bubble")
+        # Standard path: no parentNode.removeChild near showStandardResponse
+        self.assertIn("function showStandardResponse", self.widget_src)
+        self.assertIn("showReasonMessageOnly", self.widget_src)
+        start = self.widget_src.find("function showStandardResponse")
+        self.assertNotEqual(-1, start)
+        self.assertNotIn(
+            "parentNode.removeChild(w)", self.widget_src[start : start + 420]
+        )
+        # Demo page for manual step 1
+        r = self.client.get("/demo/cart")
+        self.assertEqual(200, r.status_code)
+        self.assertIn("widget_loader.js", (r.text or ""))
+
+    def test_2_response_message_per_reason(self) -> None:
+        """REASON_REPLIES contains full expected text for each standard key."""
+        for _rkey, needle in _EXPECTED_REPLIES.items():
+            self.assertIn(needle, self.widget_src, needle[:20])
+        self.assertIn("تم تسجيل ملاحظتك، وبنحاول نساعدك بأفضل خيار.", self.widget_src)
+
+    def test_3_post_and_cart_recovery_reason_and_tag_key(self) -> None:
+        """Each POST updates CartRecoveryReason; source sets sessionStorage key."""
+        self.assertIn("cartflow_reason_tag", self.widget_src)
+        self.assertIn("setReasonTag", self.widget_src)
+        for i, (rkey, rlabel) in enumerate(
+            [
+                ("price", "p"),
+                ("quality", "q"),
+                ("warranty", "w"),
+                ("shipping", "s"),
+                ("thinking", "t"),
+            ]
+        ):
+            part = f"crr-3-final-{i}-{rkey}"
+            r = self.client.post(
+                "/api/cartflow/reason",
+                json={
+                    "store_slug": "demo",
+                    "session_id": part,
+                    "reason": rkey,
+                },
+            )
+            self.assertEqual(200, r.status_code, f"{rlabel} {r.text}")
+            self.assertTrue((r.json() or {}).get("ok"), rkey)
+            crr = (
+                db.session.query(CartRecoveryReason)
+                .filter(
+                    CartRecoveryReason.store_slug == "demo",
+                    CartRecoveryReason.session_id == part,
+                )
+                .first()
+            )
+            self.assertIsNotNone(crr, f"CartRecoveryReason {rkey}")
+            self.assertEqual(rkey, crr.reason)
+            alog = (
+                db.session.query(AbandonmentReasonLog)
+                .filter(AbandonmentReasonLog.session_id == part)
+                .order_by(AbandonmentReasonLog.id.desc())
+                .first()
+            )
+            self.assertIsNotNone(alog)
+            self.assertEqual(rkey, alog.reason)
+
+    def test_4_other_path_ui(self) -> None:
+        """سبب آخر: textarea, two buttons, no 'تواصل عبر واتساب'."""
+        s = self.widget_src
+        self.assertEqual(0, s.count("تواصل عبر واتساب"))
+        i_o = s.find("if (o.r === \"_other\")")
+        i_ta = s.find("createElement(\"textarea\"")
+        i_send = s.find("bSend.textContent =")
+        i_hand = s.find("تحويل لصاحب المتجر")
+        self.assertNotEqual(-1, i_o, "_other branch")
+        self.assertLess(i_o, i_ta)
+        self.assertLess(i_o, i_send)
+        self.assertLess(i_o, i_hand)
+        # Button labels (file is UTF-8; avoid fragile substring for إرسال alone)
+        self.assertIn("bSend.textContent", s)
+        self.assertIn("bHandoff.textContent", s)
+        self.assertIn("اكتب السبب أو اطلب تحويلك لصاحب المتجر", s)
+
+    def test_5_send_other_persist_and_message(self) -> None:
+        """reason=other, custom_text in DB; confirmation copy in widget."""
+        session_id = "final-5-other"
+        custom = "نص اختباري"
+        r = self.client.post(
+            "/api/cartflow/reason",
+            json={
+                "store_slug": "demo",
+                "session_id": session_id,
+                "reason": "other",
+                "custom_text": custom,
+            },
+        )
+        self.assertEqual(200, r.status_code, r.text)
+        self.assertTrue((r.json() or {}).get("ok"))
+        crr = (
+            db.session.query(CartRecoveryReason)
+            .filter(
+                CartRecoveryReason.session_id == session_id,
+            )
+            .first()
+        )
+        self.assertIsNotNone(crr)
+        self.assertEqual("other", crr.reason)
+        self.assertEqual(custom, (crr.custom_text or "").strip())
+        alog = (
+            db.session.query(AbandonmentReasonLog)
+            .filter(AbandonmentReasonLog.session_id == session_id)
+            .order_by(AbandonmentReasonLog.id.desc())
+            .first()
+        )
+        self.assertIsNotNone(alog)
+        self.assertEqual("other", alog.reason)
+        # Widget shows success and does not close bubble on this path
+        self.assertIn("تم تسجيل ملاحظتك، وبنحاول نساعدك بأفضل خيار.", self.widget_src)
+        self.assertIn("showReasonMessageOnly", self.widget_src)
+
+    def test_6_merchant_handoff_human_support(self) -> None:
+        """human_support stored; public-config for WhatsApp; widget continues."""
+        session_id = "final-6-handoff"
+        r = self.client.post(
+            "/api/cartflow/reason",
+            json={
+                "store_slug": "demo",
+                "session_id": session_id,
+                "reason": "human_support",
+            },
+        )
+        self.assertEqual(200, r.status_code, r.text)
+        j = r.json() or {}
+        self.assertTrue(j.get("ok"))
+        crr = (
+            db.session.query(CartRecoveryReason)
+            .filter(CartRecoveryReason.session_id == session_id)
+            .first()
+        )
+        self.assertIsNotNone(crr)
+        self.assertEqual("human_support", crr.reason)
+        g = self.client.get(
+            "/api/cartflow/public-config", params={"store_slug": "demo"}
+        )
+        self.assertEqual(200, g.status_code)
+        jg = g.json() or {}
+        self.assertTrue(jg.get("ok"))
+        self.assertIn("whatsapp_url", jg)
+        # Handoff: postReason then fetch public-config in widget
+        self.assertIn("postReason({ reason: \"human_support\" })", self.widget_src)
+
+
+if __name__ == "__main__":
+    unittest.main()
