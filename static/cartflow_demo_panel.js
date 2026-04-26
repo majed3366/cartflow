@@ -10,6 +10,14 @@
   var REASON_TAG_KEY = "cartflow_reason_tag";
   var REASON_SUB_TAG_KEY = "cartflow_reason_sub_tag";
 
+  var demoScenarioActive = false;
+  window.cartflowDemoIsScenarioActive = function () {
+    return demoScenarioActive;
+  };
+  window.cartflowDemoSetScenarioActive = function (v) {
+    demoScenarioActive = !!v;
+  };
+
   function getStoreSlug() {
     if (typeof window.CARTFLOW_STORE_SLUG === "string" && window.CARTFLOW_STORE_SLUG.trim()) {
       return window.CARTFLOW_STORE_SLUG.trim();
@@ -316,6 +324,7 @@
           return refresh();
         }
         if (j.recovery_scheduled) {
+          demoScenarioActive = true;
           if (typeof window.cartflowDemoArmStoreWidget === "function") {
             window.cartflowDemoArmStoreWidget();
           }
@@ -333,6 +342,7 @@
           return refresh();
         }
         _pendingDemoScheduled = null;
+        demoScenarioActive = false;
         return refresh().then(function () {
           applyPanelFromSkippedResponseIfBlank(j);
         });
@@ -363,14 +373,6 @@
   }
 
   function clearStateForStartScenario() {
-    try {
-      window.sessionStorage.removeItem("cartflow_demo_store_widget_armed");
-    } catch (e) {
-      /* ignore */
-    }
-    if (typeof window.cartflowDemoDisarmStoreWidget === "function") {
-      window.cartflowDemoDisarmStoreWidget();
-    }
     _pendingDemoScheduled = null;
     var cartKey =
       typeof window.CARTFLOW_DEMO_CART_KEY === "string" &&
@@ -406,6 +408,7 @@
       setClientConverted(false);
     }
     logDemo("Start Demo Scenario clicked");
+    demoScenarioActive = true;
     clearStateForStartScenario();
     var pick = null;
     if (window.CF_DEMO_PRODUCTS) {
@@ -456,6 +459,7 @@
       })
       .then(function (res) {
         if (res && res.body && res.body._aborted) {
+          demoScenarioActive = false;
           return;
         }
         var j = (res && res.body) || {};
@@ -465,10 +469,12 @@
           body: j,
         });
         if (!res || !res.ok) {
+          demoScenarioActive = false;
           setText("cf-demo-last-status", "http_error_" + (res.status || 0));
           return refresh();
         }
         if (j.recovery_scheduled) {
+          demoScenarioActive = true;
           if (typeof window.cartflowDemoArmStoreWidget === "function") {
             window.cartflowDemoArmStoreWidget();
           }
@@ -488,6 +494,7 @@
           return refresh();
         }
         _pendingDemoScheduled = null;
+        demoScenarioActive = false;
         return refresh()
           .then(function () {
             applyPanelFromSkippedResponseIfBlank(j);
@@ -517,6 +524,7 @@
   }
 
   function resetDemoSession() {
+    demoScenarioActive = false;
     _pendingDemoScheduled = null;
     var cartKey =
       typeof window.CARTFLOW_DEMO_CART_KEY === "string" &&

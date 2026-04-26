@@ -635,6 +635,13 @@
     return /\/demo\//i.test(p);
   }
 
+  function isDemoScenarioActive() {
+    return (
+      typeof window.cartflowDemoIsScenarioActive === "function" &&
+      window.cartflowDemoIsScenarioActive()
+    );
+  }
+
   function emitDemoGuideEvent(name, detail) {
     if (!isDemoPath()) {
       return;
@@ -768,7 +775,13 @@
       }
     }
     if (shown) {
-      return;
+      if (
+        document.querySelector("[data-cartflow-bubble]") ||
+        document.querySelector("[data-cartflow-fab]")
+      ) {
+        return;
+      }
+      shown = false;
     }
     if (!haveCartForWidget()) {
       return;
@@ -867,6 +880,9 @@
     btnMin.addEventListener("click", function (ev) {
       ev.stopPropagation();
       ev.preventDefault();
+      if (isDemoStoreProductPage() && isDemoScenarioActive()) {
+        return;
+      }
       if (w.parentNode) {
         w.parentNode.removeChild(w);
       }
@@ -917,6 +933,9 @@
     btnN.addEventListener("click", function (ev) {
       ev.stopPropagation();
       ev.preventDefault();
+      if (isDemoStoreProductPage() && isDemoScenarioActive()) {
+        return;
+      }
       removeFabIfAny();
       if (w && w.parentNode) {
         w.parentNode.removeChild(w);
@@ -1325,6 +1344,9 @@
   };
 
   window.cartflowDemoDisarmStoreWidget = function () {
+    if (isDemoScenarioActive()) {
+      return;
+    }
     try {
       window.sessionStorage.removeItem(DEMO_STORE_WIDGET_ARMED_KEY);
     } catch (e) {}
@@ -1336,6 +1358,39 @@
     shown = false;
     detachArmListeners();
   };
+
+  function ensureDemoStoreBubbleVisible() {
+    if (!isDemoStoreProductPage()) {
+      return;
+    }
+    if (!isDemoScenarioActive()) {
+      return;
+    }
+    if (!readDemoStoreWidgetArmed()) {
+      return;
+    }
+    if (demoStoreBubbleDismissed) {
+      return;
+    }
+    if (!haveCartForWidget()) {
+      return;
+    }
+    if (isSessionConverted() || !step1Ready) {
+      return;
+    }
+    if (
+      document.querySelector("[data-cartflow-bubble]") ||
+      document.querySelector("[data-cartflow-fab]")
+    ) {
+      return;
+    }
+    shown = false;
+    showBubble();
+  }
+
+  if (isDemoStoreProductPage()) {
+    setInterval(ensureDemoStoreBubbleVisible, 2500);
+  }
 
   setTimeout(arm, ARM_DELAY_MS);
 })();

@@ -497,6 +497,9 @@
     window.cartflowDemoSetCart = cartflowDemoSetCart;
 
     window.cfDemoReplayExperience = function () {
+      if (typeof window.cartflowDemoSetScenarioActive === "function") {
+        window.cartflowDemoSetScenarioActive(false);
+      }
       try {
         window.sessionStorage.removeItem("cf_store_intro_dismissed");
         window.sessionStorage.removeItem("cf_demo_guide_dismissed");
