@@ -59,7 +59,7 @@
   ];
 
   var CARTFLOW_REASON_PERSONALIZE_DEFAULT =
-    "📌 سيتم تخصيص المتابعة بناءً على اختيارك";
+    "📌 سيتم تخصيص المتابعة بناءً على اختيار العميل";
 
   var DESC_KEYS = [
     "description",
