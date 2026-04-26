@@ -37,6 +37,42 @@ class DemoPanelApiTests(unittest.TestCase):
         self.assertIn("logs", j)
         self.assertIsInstance(j["logs"], list)
 
+    def test_whatsapp_preview_price_sub(self) -> None:
+        r = self.client.get(
+            "/demo/cartflow/whatsapp-preview",
+            params={"reason": "price", "sub_category": "price_discount_request"},
+        )
+        self.assertEqual(200, r.status_code, r.text)
+        j = r.json()
+        self.assertTrue(j.get("ok"), j)
+        self.assertIn("عندك كود خصم", (j.get("message") or ""))
+
+    def test_whatsapp_preview_reason_without_sub(self) -> None:
+        r = self.client.get(
+            "/demo/cartflow/whatsapp-preview",
+            params={"reason": "quality"},
+        )
+        self.assertEqual(200, r.status_code, r.text)
+        j = r.json()
+        self.assertTrue(j.get("ok"), j)
+        self.assertIn("جودة", (j.get("message") or ""))
+
+    def test_whatsapp_preview_rejects_price_without_sub(self) -> None:
+        r = self.client.get(
+            "/demo/cartflow/whatsapp-preview",
+            params={"reason": "price"},
+        )
+        self.assertEqual(400, r.status_code, r.text)
+        j = r.json()
+        self.assertFalse(j.get("ok"), j)
+
+    def test_whatsapp_preview_rejects_unknown(self) -> None:
+        r = self.client.get(
+            "/demo/cartflow/whatsapp-preview",
+            params={"reason": "not_a_reason_key"},
+        )
+        self.assertEqual(400, r.status_code, r.text)
+
 
 if __name__ == "__main__":
     unittest.main()

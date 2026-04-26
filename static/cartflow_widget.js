@@ -1029,6 +1029,56 @@
         return;
       }
       stripContentKeepChrome();
+      if (isDemoPath()) {
+        (function () {
+          var gsub =
+            rkey === "price" && typeof window.cartflowGetReasonSubTag === "function"
+              ? window.cartflowGetReasonSubTag()
+              : null;
+          var u =
+            (apiBase() || "") +
+            "/demo/cartflow/whatsapp-preview?reason=" +
+            encodeURIComponent(rkey);
+          if (gsub) {
+            u += "&sub_category=" + encodeURIComponent(String(gsub));
+          }
+          var previewBox = document.createElement("div");
+          previewBox.setAttribute("data-cf-wa-preview", "1");
+          previewBox.setAttribute("aria-label", "معاينة رسالة مخصصة (عرض فقط)");
+          previewBox.style.cssText =
+            "margin:0 0 12px 0;padding:10px 10px;border-radius:10px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.12);";
+          var ht = document.createElement("div");
+          ht.style.cssText = "font-weight:700;margin:0 0 8px 0;font-size:13px;";
+          ht.textContent = "📲 ماذا سيصل للعميل:";
+          var msgEl = document.createElement("p");
+          msgEl.style.cssText = "margin:0;font-size:13px;line-height:1.55;opacity:0.95;";
+          msgEl.textContent = "…";
+          previewBox.appendChild(ht);
+          previewBox.appendChild(msgEl);
+          w.appendChild(previewBox);
+          fetch(u, { method: "GET" })
+            .then(function (r) {
+              return r.json().then(
+                function (j) {
+                  return { j: j != null ? j : {}, ok: r.ok };
+                },
+                function () {
+                  return { j: {}, ok: false };
+                }
+              );
+            })
+            .then(function (x) {
+              if (x && x.j && x.j.ok && x.j.message) {
+                msgEl.textContent = String(x.j.message);
+              } else {
+                msgEl.textContent = "—";
+              }
+            })
+            .catch(function () {
+              msgEl.textContent = "—";
+            });
+        })();
+      }
       var p = document.createElement("p");
       p.style.cssText = "margin:0 0 10px 0;font-size:14px;line-height:1.55;";
       p.textContent = flow.message;

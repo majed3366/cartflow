@@ -26,6 +26,23 @@ DEMO_RECOVERY_STEPS: tuple[tuple[int, str], ...] = (
 
 DEMO_STORE_SLUGS = frozenset({"demo", "demo2"})
 
+# عرض فقط: نصوص وهمية لما قد يُرسل عبر واتساب (بدون إرسال فعلي).
+WHATSAPP_DEMO_PREVIEW_BY_PRICE_SUB: dict[str, str] = {
+    "price_discount_request": (
+        "عندك كود خصم خاص 🎁 استخدمه الآن وكمّل طلبك 👇"
+    ),
+    "price_budget_issue": (
+        "لو السعر أعلى من ميزانيتك، هذا خيار قريب منه بسعر أقل 👇"
+    ),
+    "price_cheaper_alternative": "هذا منتج مشابه بسعر أفضل 👇",
+}
+WHATSAPP_DEMO_PREVIEW_BY_REASON: dict[str, str] = {
+    "quality": "هذا المنتج موضح بجودة عالية، تحب أشرح لك أكثر؟",
+    "shipping": "الشحن سريع ويوصلك خلال أيام قليلة 👍",
+    "warranty": "نراسلك بملخص الضمان والتفاصيل المهمة لهذا المنتج 👇",
+    "thinking": "خذ راحتك — نراسلك بلطف عندما تكون جاهزاً لإكمال طلبك 👇",
+}
+
 router = APIRouter()
 
 
@@ -37,6 +54,34 @@ def _iso(dt: Any) -> Optional[str]:
 
         return dt.replace(tzinfo=timezone.utc).isoformat()  # type: ignore[union-attr]
     return dt.isoformat()  # type: ignore[union-attr]
+
+
+def _whatsapp_preview_message(reason: str, sub_category: Optional[str]) -> Optional[str]:
+    r = (reason or "").strip().lower()[:32]
+    if r == "price":
+        s = (sub_category or "").strip().lower()[:64]
+        if not s:
+            return None
+        return WHATSAPP_DEMO_PREVIEW_BY_PRICE_SUB.get(s)
+    return WHATSAPP_DEMO_PREVIEW_BY_REASON.get(r)
+
+
+@router.get("/cartflow/whatsapp-preview", tags=["demo"])
+def get_demo_whatsapp_preview(
+    reason: str = Query(..., min_length=1, max_length=32),
+    sub_category: str = Query(default=""),
+) -> Any:
+    """
+    معاينة نص (لا إرسال): يُطابق ‎reason‎ و‎sub_category‎ عند ‎price‎.
+    """
+    s = (sub_category or "").strip() or None
+    msg = _whatsapp_preview_message(reason, s)
+    if msg is None:
+        return j(
+            {"ok": False, "error": "unknown_reason_or_sub", "message": None},
+            400,
+        )
+    return j({"ok": True, "message": msg, "reason": reason.strip().lower()[:32]})
 
 
 @router.get("/cartflow/sequence", tags=["demo"])
