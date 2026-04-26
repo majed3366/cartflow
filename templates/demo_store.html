@@ -49,6 +49,24 @@
       cursor: pointer;
     }
     .btn-scenario:hover { filter: brightness(1.05); }
+    .topbar-actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.45rem 0.6rem;
+    }
+    .btn-replay {
+      background: transparent;
+      color: #fafaf9;
+      border: 1px solid #57534e;
+      border-radius: 999px;
+      padding: 0.4rem 0.95rem;
+      font: inherit;
+      font-weight: 700;
+      font-size: 0.78rem;
+      cursor: pointer;
+    }
+    .btn-replay:hover { background: rgba(255, 255, 255, 0.08); border-color: #78716c; }
     .wrap { max-width: 1120px; margin: 0 auto; padding: 1.5rem 1.25rem 2.5rem; }
     .hero {
       margin-bottom: 1.75rem;
@@ -477,20 +495,47 @@
       demoNotifyCartUpdated();
     }
     window.cartflowDemoSetCart = cartflowDemoSetCart;
+
+    window.cfDemoReplayExperience = function () {
+      try {
+        window.sessionStorage.removeItem("cf_store_intro_dismissed");
+        window.sessionStorage.removeItem("cf_demo_guide_dismissed");
+        window.sessionStorage.removeItem("cartflow_demo_store_widget_armed");
+      } catch (e) {
+        /* ignore */
+      }
+      if (typeof window.cartflowDemoDisarmStoreWidget === "function") {
+        window.cartflowDemoDisarmStoreWidget();
+      }
+      try {
+        document.dispatchEvent(new CustomEvent("cf-demo-replay-reset", { bubbles: true }));
+      } catch (e) {
+        /* ignore */
+      }
+      var bar = document.getElementById("cf-store-intro");
+      if (bar) {
+        bar.classList.add("cf-store-intro--visible");
+        bar.removeAttribute("hidden");
+      }
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    };
   </script>
   <div class="topbar">
     <div class="topbar-inner">
       <div>
         <span class="brand">CartFlow <span class="tag">نموذج واجهة</span></span>
       </div>
-      <button type="button" class="btn-scenario" id="cf-btn-start-scenario" title="يصفّر الجلسة ويضيف سماعة ويُطلق الخطوة 1">بدء سيناريو التجربة</button>
+      <div class="topbar-actions">
+        <button type="button" class="btn-replay" id="cf-btn-replay-demo" title="إعادة عرض الإرشادات والشريط العلوي">إعادة التجربة</button>
+        <button type="button" class="btn-scenario" id="cf-btn-start-scenario" title="يصفّر الجلسة ويضيف سماعة ويُطلق الخطوة 1">بدء سيناريو التجربة</button>
+      </div>
     </div>
   </div>
   <div class="cf-store-intro" id="cf-store-intro" hidden>
-    <p class="cf-store-intro-text">جرب كيف يسترجع CartFlow العملاء تلقائيًا 👇</p>
+    <p class="cf-store-intro-text">جرب كيف نرجّع الفرصة لما العميل يتردد 👇</p>
     <div class="cf-store-intro-actions">
       <button type="button" class="cf-intro-cta" id="cf-store-intro-cta">ابدأ التجربة</button>
-      <p class="cf-store-intro-hint">سيتم إضافة منتج وتشغيل التجربة تلقائيًا</p>
+      <p class="cf-store-intro-hint">بضغطة: منتج في السلة وتجربة حيّة — بدون تعقيد</p>
     </div>
     <button type="button" class="cf-store-intro-dismiss" id="cf-store-intro-dismiss" aria-label="إغلاق">×</button>
   </div>
@@ -702,10 +747,25 @@
           });
         }
       }
+      function wireReplay() {
+        var replay = document.getElementById("cf-btn-replay-demo");
+        if (replay) {
+          replay.addEventListener("click", function () {
+            if (typeof window.cfDemoReplayExperience === "function") {
+              window.cfDemoReplayExperience();
+            }
+          });
+        }
+      }
+
       if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", initStoreIntro);
+        document.addEventListener("DOMContentLoaded", function () {
+          initStoreIntro();
+          wireReplay();
+        });
       } else {
         initStoreIntro();
+        wireReplay();
       }
     })();
   </script>

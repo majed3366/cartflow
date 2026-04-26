@@ -10,18 +10,19 @@
   }
 
   var STEPS = [
-    "نضيف منتج للسلة الآن",
-    "لاحظ كيف النظام يتابع العميل تلقائيًا",
-    "الآن يتم تحديد سبب التردد",
-    "بناءً على اختيار العميل، يتم تجهيز رسالة واتساب مخصصة",
+    "كل منتج في السلة = فرصة بيع تستحق المتابعة",
+    "لاحظ كيف ما نخلي العميل يطلع بسهولة",
+    "نفهم تردّده… ونحوّله إلى خطوة بدل ما يضيع",
+    "🎯 كل عميل يحصل على حل مناسب له",
   ];
 
-  var WA_INTRO =
-    "📲 في المرحلة التالية، سيتم إرسال رسالة واتساب مخصصة بناءً على هذا السبب";
+  var OUTCOME_INTRO =
+    "📲 العميل ما يضيع… نكمل معه تلقائيًا حسب سبب تردده";
+  var OUTCOME_TAGLINE = "🎯 كل عميل يحصل على حل مناسب له";
   var SUB_EXAMPLES = {
-    price_discount_request: "مثال: سيتم إرسال كود خصم.",
-    price_budget_issue: "مثال: سيتم اقتراح منتج أرخص.",
-    price_cheaper_alternative: "مثال: سيتم اقتراح منتجات أرخص مناسبة.",
+    price_discount_request: "عرض يلائم وضعه — ويقرّب قراره بدون ضغط.",
+    price_budget_issue: "نقترح له خياراً أنسب لميزانيته — بلطف.",
+    price_cheaper_alternative: "نرشّح له بديلاً يلبي توقّعه — بسرعة.",
   };
 
   var DISMISS_KEY = "cf_demo_guide_dismissed";
@@ -108,11 +109,15 @@
       body.innerHTML = "";
       var p0 = document.createElement("p");
       p0.style.cssText = "margin:0 0 6px 0;font-weight:700;";
-      p0.textContent = WA_INTRO;
+      p0.textContent = OUTCOME_INTRO;
       body.appendChild(p0);
+      var pTag = document.createElement("p");
+      pTag.style.cssText = "margin:0 0 8px 0;font-size:0.84rem;opacity:0.95;line-height:1.4;";
+      pTag.textContent = OUTCOME_TAGLINE;
+      body.appendChild(pTag);
       if (extra) {
         var p1 = document.createElement("p");
-        p1.style.cssText = "margin:0;font-size:0.78rem;opacity:0.92;";
+        p1.style.cssText = "margin:0;font-size:0.78rem;opacity:0.9;";
         p1.textContent = extra;
         body.appendChild(p1);
       }
@@ -144,12 +149,12 @@
     root.className = "cf-demo-guide";
     root.setAttribute("dir", "rtl");
     root.setAttribute("lang", "ar");
-    root.setAttribute("aria-label", "خطوات التجربة");
+    root.setAttribute("aria-label", "إرشاد التجربة");
 
     var inner =
       '<div class="cf-demo-guide-inner">' +
       '<div class="cf-demo-guide-head">' +
-      '<span class="cf-demo-guide-title">خطوات التجربة</span>' +
+      '<span class="cf-demo-guide-title">شو راح تلاحظ؟</span>' +
       '<button type="button" class="cf-demo-guide-close" data-cf-guide-dismiss aria-label="إخفاء">×</button>' +
       "</div>" +
       '<p class="cf-demo-guide-step" data-cf-guide-step-text></p>' +
@@ -222,6 +227,29 @@
       var d = (ev && ev.detail) || {};
       bumpMin(3);
       showWaHint(d);
+    });
+
+    document.addEventListener("cf-demo-replay-reset", function () {
+      try {
+        window.sessionStorage.removeItem(DISMISS_KEY);
+      } catch (e) {
+        /* ignore */
+      }
+      stepIdx = cartHasItems() ? 1 : 0;
+      clearAuto();
+      if (waHint) {
+        clearTimeout(waHint._hideT);
+        waHint.setAttribute("hidden", "");
+        waHint.style.opacity = "";
+        waHint.style.transform = "";
+      }
+      if (root) {
+        root.removeAttribute("hidden");
+        paint();
+        scheduleAuto();
+      } else {
+        mount();
+      }
     });
   }
 
