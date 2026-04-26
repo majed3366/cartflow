@@ -373,7 +373,15 @@
   }
 
   function isCartPage() {
-    return /\/cart/i.test(window.location.pathname + window.location.search);
+    var path = (window.location.pathname || "");
+    var p = path + (window.location.search || "");
+    if (/\/cart/i.test(p)) {
+      return true;
+    }
+    if (path === "/demo/store" || path.indexOf("/demo/store/") === 0) {
+      return true;
+    }
+    return false;
   }
 
   function getStoreSlug() {

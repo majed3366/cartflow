@@ -1,120 +1,220 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>{{ demo_page_title|default('Demo store') }} — CartFlow</title>
+  <title>{{ demo_page_title|default('CartFlow — متجر تجريبي') }}</title>
   <style>
     * { box-sizing: border-box; }
+    :root {
+      --bg: #faf8f5;
+      --ink: #1c1917;
+      --muted: #57534e;
+      --line: #e7e5e4;
+      --card: #fff;
+      --accent: #7c3aed;
+      --accent-hover: #6d28d9;
+    }
     body {
       margin: 0;
-      font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
-      background: #f4f4f5;
-      color: #18181b;
-      padding: 1.5rem;
-      max-width: 900px;
+      font: 16px/1.5 "Segoe UI", system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+    }
+    .topbar {
+      background: #1c1917;
+      color: #fafaf9;
+      padding: 0.6rem 1.25rem;
+    }
+    .topbar-inner {
+      max-width: 1120px;
+      margin: 0 auto;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem 1rem;
+    }
+    .brand { font-weight: 800; font-size: 1rem; letter-spacing: -0.02em; }
+    .tag { font-size: 0.75rem; color: #a8a29e; font-weight: 500; }
+    .btn-scenario {
+      background: #f59e0b;
+      color: #1c1917;
+      border: 0;
+      border-radius: 999px;
+      padding: 0.45rem 1.1rem;
+      font: inherit;
+      font-weight: 800;
+      font-size: 0.8rem;
+      cursor: pointer;
+    }
+    .btn-scenario:hover { filter: brightness(1.05); }
+    .wrap { max-width: 1120px; margin: 0 auto; padding: 1.5rem 1.25rem 2.5rem; }
+    .hero {
+      margin-bottom: 1.75rem;
+    }
+    .hero h1 {
+      margin: 0 0 0.35rem 0;
+      font-size: 1.75rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+    }
+    .sub {
+      color: var(--muted);
+      font-size: 0.95rem;
+      margin: 0 0 0.75rem 0;
+    }
+    .store-note {
+      font-size: 0.8rem;
+      color: #a8a29e;
+    }
+    .store-note code { background: #f5f5f4; padding: 0.1em 0.3em; border-radius: 4px; }
+    .grid {
+      display: grid;
+      gap: 1.1rem;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    }
+    .card {
+      background: var(--card);
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      padding: 1rem 1.1rem 1.1rem;
+      display: flex;
+      flex-direction: column;
+      min-height: 10rem;
+      box-shadow: 0 1px 2px rgba(0,0,0,.04);
+    }
+    .card .pcat {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #8b5cf6;
+      font-weight: 600;
+      margin-bottom: 0.35rem;
+    }
+    .card h2 { font-size: 0.95rem; margin: 0 0 0.4rem 0; font-weight: 700; line-height: 1.3; }
+    .card p.desc {
+      flex: 1;
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin: 0 0 0.5rem 0;
+      line-height: 1.5;
+    }
+    .card .ex {
+      font-size: 0.72rem;
+      color: #78716c;
+      margin: 0 0 0.2rem 0;
+      line-height: 1.35;
+    }
+    .card .meta { font-size: 0.7rem; color: #a8a29e; }
+    .card .price { font-weight: 800; color: #1c1917; font-size: 1.1rem; margin: 0.4rem 0; }
+    .add-btn {
+      margin-top: auto;
+      width: 100%;
+      border: 0;
+      border-radius: 8px;
+      padding: 0.55rem 0.75rem;
+      background: var(--accent);
+      color: #fff;
+      font: inherit;
+      font-weight: 700;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+    .add-btn:hover { background: var(--accent-hover); }
+    .cart {
+      margin-top: 1.75rem;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 1.1rem 1.2rem 1.25rem;
+    }
+    .cart h2 { font-size: 0.9rem; margin: 0 0 0.5rem 0; font-weight: 700; }
+    .cart ul { margin: 0; padding: 0 0 0 1.1rem; }
+    .empty { color: #a8a29e; font-size: 0.9rem; }
+    .btn-clear {
+      margin-top: 0.65rem;
+      width: auto;
+      background: #f5f5f4;
+      color: var(--ink);
+      border: 1px solid #e7e5e4;
+    }
+    .cf-details {
+      margin-top: 1.25rem;
+      max-width: 1120px;
       margin-left: auto;
       margin-right: auto;
     }
-    h1 { font-size: 1.25rem; margin: 0 0 0.25rem 0; }
-    .sub { color: #71717a; font-size: 0.875rem; margin-bottom: 1.5rem; }
-    .grid {
-      display: grid;
-      gap: 1rem;
-      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-    }
-    .card {
-      background: #fff;
-      border-radius: 12px;
-      padding: 1rem;
-      box-shadow: 0 1px 3px rgba(0,0,0,.08);
-    }
-    .card h2 { font-size: 1rem; margin: 0 0 0.5rem 0; }
-    .price { font-weight: 600; color: #3f3f46; margin-bottom: 0.75rem; }
-    button {
-      width: 100%;
-      cursor: pointer;
-      border: 0;
-      border-radius: 8px;
-      padding: 0.5rem 0.75rem;
-      font: inherit;
+    .cf-details[open] .cf-summary { border-radius: 10px 10px 0 0; }
+    .cf-summary {
+      list-style: none;
+      background: #292524;
+      color: #d6d3d1;
+      font-size: 0.7rem;
       font-weight: 600;
-      background: #7c3aed;
-      color: #fff;
+      padding: 0.4rem 0.75rem;
+      border-radius: 10px;
+      cursor: pointer;
+      user-select: none;
     }
-    button:hover { filter: brightness(1.05); }
-    .cart {
-      margin-top: 1.5rem;
-      background: #fff;
-      border-radius: 12px;
-      padding: 1rem 1.25rem;
-      box-shadow: 0 1px 3px rgba(0,0,0,.08);
-    }
-    .cart h2 { font-size: 0.95rem; margin: 0 0 0.5rem 0; }
-    .cart ul { margin: 0; padding-left: 1.25rem; }
-    .empty { color: #a1a1aa; font-size: 0.9rem; }
-    .note { margin-top: 0.75rem; font-size: 0.875rem; color: #71717a; }
-    .btn-clear {
-      margin-top: 0.75rem;
-      width: auto;
-      background: #e4e4e7;
-      color: #18181b;
-    }
-    .btn-clear:hover { filter: brightness(0.97); }
+    .cf-summary::-webkit-details-marker { display: none; }
+    .cf-details[open] .cf-summary { border: 0; }
     .cf-demo-panel {
-      margin-top: 1.5rem;
-      background: #1e1b4b;
-      color: #e0e7ff;
-      border-radius: 12px;
-      padding: 1rem 1.1rem;
-      font-size: 0.85rem;
+      background: #1c1917;
+      color: #d6d3d1;
+      font-size: 0.7rem;
+      line-height: 1.4;
+      padding: 0.5rem 0.75rem 0.9rem;
+      border-radius: 0 0 10px 10px;
     }
     .cf-demo-panel h2 {
-      font-size: 0.95rem;
-      margin: 0 0 0.5rem 0;
-      color: #c4b5fd;
+      font-size: 0.72rem;
+      margin: 0 0 0.4rem 0;
+      color: #a8a29e;
+      font-weight: 600;
     }
     .cf-demo-grid {
       display: grid;
-      grid-template-columns: 140px 1fr;
-      gap: 0.35rem 0.75rem;
-      margin-bottom: 0.75rem;
+      grid-template-columns: 86px 1fr;
+      gap: 0.2rem 0.5rem;
     }
-    .cf-demo-grid div:nth-child(odd) { color: #a5b4fc; }
+    .cf-demo-grid div:nth-child(odd) { color: #78716c; }
     .cf-demo-msg {
-      background: #312e81;
-      border-radius: 8px;
-      padding: 0.75rem 0.9rem;
-      margin: 0.5rem 0 0.75rem 0;
-      min-height: 2.5rem;
-      line-height: 1.4;
+      background: #292524;
+      border-radius: 6px;
+      padding: 0.45rem 0.5rem;
+      margin: 0.35rem 0;
+      min-height: 1.5rem;
+      max-height: 3.5rem;
+      overflow: auto;
     }
     .cf-demo-btns {
       display: flex;
       flex-wrap: wrap;
-      gap: 0.4rem;
-      margin: 0.5rem 0 0.75rem 0;
+      gap: 0.25rem;
+      margin: 0.3rem 0 0.45rem 0;
     }
     .cf-demo-btns button {
       width: auto;
-      background: #6366f1;
-      font-size: 0.8rem;
-      padding: 0.4rem 0.55rem;
+      background: #44403c;
+      color: #fafaf9;
+      font-size: 0.6rem;
+      padding: 0.25rem 0.4rem;
+      border: 0;
+      border-radius: 4px;
+      cursor: pointer;
     }
-    .cf-demo-btns button:hover { filter: brightness(1.08); }
-    .cf-btn-reset-demo {
-      background: #b45309 !important;
-    }
-    .cf-btn-reset-demo:hover { filter: brightness(1.1); }
+    .cf-btn-reset-demo { background: #7c2d12 !important; }
+    .cf-btn-start { background: #0d9488 !important; color: #f0fdfa !important; font-weight: 800 !important; }
     .cf-demo-logs {
-      max-height: 10rem;
+      max-height: 5.5rem;
       overflow: auto;
       margin: 0;
-      padding-left: 1.1rem;
-      color: #c7d2fe;
-      font-size: 0.8rem;
+      padding-right: 1rem;
+      color: #a8a29e;
+      font-size: 0.6rem;
     }
-    .cf-demo-logs li { margin: 0.2rem 0; }
+    .cf-demo-logs li { margin: 0.1rem 0; }
   </style>
 </head>
 <body>
@@ -136,7 +236,6 @@
     if (!Array.isArray(window.cart)) {
       window.cart = [];
     }
-    console.log("cart state:", window.cart);
   </script>
   {% include "partials/cart_abandon_tracking.html" %}
   <script>
@@ -157,20 +256,24 @@
       if (window.cart.length === 0) {
         var li = document.createElement("li");
         li.className = "empty";
-        li.textContent = "No items yet.";
+        li.textContent = "السلة فارغة. أضف منتجاً لعرضه هنا ولمحاكاة استرجاع CartFlow.";
         ul.appendChild(li);
       } else {
         window.cart.forEach(function (item) {
           var row = document.createElement("li");
-          row.textContent = (item && item.name ? item.name : "Item") + " — " + (item && item.price != null ? item.price : "—") + " SAR";
+          var line =
+            (item && item.name ? item.name : "Item") +
+            " — " +
+            (item && item.price != null ? item.price : "—") +
+            " ريال";
+          row.textContent = line;
           ul.appendChild(row);
         });
       }
-      console.log("cart state:", window.cart);
     }
 
     function addToCart(product) {
-      window.cart.push(product);
+      window.cart.push(Object.assign({}, product));
       persistCart();
       renderCart();
     }
@@ -188,89 +291,179 @@
       }
       renderCart();
     }
-  </script>
 
-  <h1>{{ demo_h1|default('Demo store') }}</h1>
-  <p class="sub">Internal only — <code>window.cart</code> is the only cart source; list below mirrors it. Store slug: <code>{{ demo_store_slug|default('demo') }}</code></p>
+    function cartflowDemoSetCart(items) {
+      if (!Array.isArray(items)) return;
+      window.cart = items.map(function (x) {
+        return Object.assign({}, x);
+      });
+      persistCart();
+      renderCart();
+    }
+    window.cartflowDemoSetCart = cartflowDemoSetCart;
+  </script>
+  <div class="topbar">
+    <div class="topbar-inner">
+      <div>
+        <span class="brand">CartFlow <span class="tag">نموذج واجهة</span></span>
+      </div>
+      <button type="button" class="btn-scenario" id="cf-btn-start-scenario" title="يصفّر الجلسة ويضيف سماعة ويُطلق الخطوة 1">بدء سيناريو التجربة</button>
+    </div>
+  </div>
+  <div class="wrap">
+  <div class="hero">
+    <h1>{{ demo_h1|default('واجهة جاهزة للتجارب') }}</h1>
+    <p class="sub">واجهة مبسّطة تُمثّل كتالوجاً حقيقياً مع <strong>نفس سلوك CartFlow</strong> (ودجت بعد السكون أو من لوحة المطوّر).</p>
+    <p class="store-note">المتجر: <code>{{ demo_store_slug|default('demo') }}</code> — السلة من <code>localStorage</code> (<code>{{ demo_cart_key|default('demo_cart') }}</code>)</p>
+  </div>
   <script>
     (function () {
       window.CF_DEMO_PRODUCTS = {
+        earbuds: {
+          name: "TrueSound — سماعة لاسلكية",
+          price: 199,
+          description: "تجربة صوتية متوازنة بعزل مريح لليوم. بطارية تدوم طويلاً مع عدة غطاء تثبيت.",
+          category: "إلكترونيات",
+          warranty_info: "ضمان سنة ضد عيوب التصنيع. التحقق من الـ IMEI/الرقم عند الاستلام.",
+          shipping_info: "شحن 2–5 أيام عمل حسب المدينة. تتبع يُرسل لرسالة واتساب."
+        },
         hoodie: {
-          name: "Sample Hoodie",
-          price: 99,
-          description: "هودي قطني مريح للاستخدام اليومي، تصميم عملي ومناسب للجو البارد.",
-          category: "ملابس",
-          warranty_info: "ضمان جودة ضد عيوب التصنيع.",
-          shipping_info: "الشحن خلال 2 إلى 5 أيام عمل حسب المدينة.",
+          name: "Luxe — هودي صوفي",
+          price: 149,
+          description: "هودي قطني مريح للاستخدام اليومي، تصميم عملي ومناسب للجو البارد. يتناسب للعمل والنزهات.",
+          category: "أزياء",
+          warranty_info: "ضمان جودة ضد عيوب التصنيع (الخياطة/اللون) خلال 14 يوم استلام.",
+          shipping_info: "الشحن خلال 2 إلى 5 أيام عمل حسب المدينة."
         },
-        mug: {
-          name: "Sample Mug",
-          price: 29,
-          description: "كوب سيراميك بسعة مناسبة للمشروبات الساخنة والباردة.",
-          category: "أواني",
-          warranty_info: "يغطي الكسر أثناء الشحن فقط عند اختيار تغليف مُوسَّم من المتجر.",
-          shipping_info: "الشحن خلال 2 إلى 5 أيام عمل حسب المدينة.",
+        perfume: {
+          name: "Amber Oud — عطر",
+          price: 289,
+          description: "مزيج دافئ من خشب العود والعنبر. يتفتح على الجلد ويمنح حضوراً طويل المدى.",
+          category: "عطور",
+          warranty_info: "لا يقبل الاسترجاع بعد فتح فيلم الاحكام. التحقق من تخزين مناسب (بارد وجاف).",
+          shipping_info: "يُشحن مع تغليف حماية حسب الوزن (عادة 1–3 أيام عمل داخل الرياض/جدة/الظهران)."
         },
-        notebook: {
-          name: "Sample Notebook",
-          price: 19,
-          description: "دفتر ملاحظات بورق سميك يناسب الدراسة والعمل.",
-          category: "قرطاسية",
-          warranty_info: "ضمان أسبوع لعيوب الطباعة والتجليد.",
-          shipping_info: "الشحن خلال 2 إلى 5 أيام عمل حسب المدينة.",
+        watch: {
+          name: "Raven — حزام ووتش جلد",
+          price: 85,
+          description: "حزام جلد مُحكم مع إبزيم غير مُزعج. يمشي فتحات معيار 20–22مم لمعظم الوجوه.",
+          category: "إكسسوارات",
+          warranty_info: "ضمان 3 أشهر لعيوب الربط. لا يشمل الاستعمال الخاطئ أو المياه دون تصنيف ماء.",
+          shipping_info: "شحن خفيف 1–3 أيام عمل. يُوضع بظرف مُرَنٍّ."
         },
+        charger: {
+          name: "Nano 20W — رأس شحن سريع",
+          price: 75,
+          description: "رأس مدمج مُصغّر للحقيبة. يوافق بروفيل USB‑PD 20W للهواتف المتوافقة.",
+          category: "إلكترونيات",
+          warranty_info: "ضمان سنة: استبدال عند عيوب الاخراج. لا يشمل البرق/الوصلات بلا علامتنا.",
+          shipping_info: "شحن بري 2–4 أيام عمل. يشحن مُغلفاً مُنفرداً عن السوائل/العطور."
+        },
+        wallet: {
+          name: "Mira — محفظة سفر",
+          price: 65,
+          description: "نحيفة بجيوب للبطاقات والنقد. مُصمّمة لتقليل الانتفاخ في الجيب.",
+          category: "إكسسوارات",
+          warranty_info: "6 أشهر على عيوب الخياطة والفتحات. لا يشمل الاستلام الرطب.",
+          shipping_info: "2–4 أيام عمل. يُرجع غير مُسْتَهْلَك بنفس الظرف."
+        }
       };
     })();
   </script>
   <div class="grid">
-    <div class="card">
-      <h2>Sample Hoodie</h2>
-      <div class="price">99.00 SAR</div>
-      <button type="button" onclick="addToCart(window.CF_DEMO_PRODUCTS.hoodie)">Add to cart</button>
+    <div class="card" id="p-earbuds">
+      <span class="pcat">إلكترونيات</span>
+      <h2>TrueSound — سماعة لاسلكية</h2>
+      <p class="desc" lang="ar">تجربة صوتية متوازنة، عزل مريح، وعمر بطارية يناسب الاستعمال اليومي.</p>
+      <p class="ex" lang="ar">ضمان سنة ضد عيوب التصنيع. شحن 2–5 أيام عمل.</p>
+      <div class="meta">للمزامنة مع اختبارات الاسترجاع في CartFlow</div>
+      <div class="price">199 ريال</div>
+      <button type="button" class="add-btn" onclick="addToCart(window.CF_DEMO_PRODUCTS.earbuds)">أضف للسلة</button>
     </div>
-    <div class="card">
-      <h2>Sample Mug</h2>
-      <div class="price">29.00 SAR</div>
-      <button type="button" onclick="addToCart(window.CF_DEMO_PRODUCTS.mug)">Add to cart</button>
+    <div class="card" id="p-hoodie">
+      <span class="pcat">أزياء</span>
+      <h2>Luxe — هودي صوفي</h2>
+      <p class="desc" lang="ar">خامة مريحة مع قصّه عملي للوقت البرّاد دون مبالغة في الحجم.</p>
+      <p class="ex" lang="ar">ضمان جودة خلال 14 يوم. شحن 2–5 أيام.</p>
+      <div class="meta">نموذج أزياء مع بيانات كاملة</div>
+      <div class="price">149 ريال</div>
+      <button type="button" class="add-btn" onclick="addToCart(window.CF_DEMO_PRODUCTS.hoodie)">أضف للسلة</button>
     </div>
-    <div class="card">
-      <h2>Sample Notebook</h2>
-      <div class="price">19.00 SAR</div>
-      <button type="button" onclick="addToCart(window.CF_DEMO_PRODUCTS.notebook)">Add to cart</button>
+    <div class="card" id="p-perfume">
+      <span class="pcat">عطور</span>
+      <h2>Amber Oud</h2>
+      <p class="desc" lang="ar">مسار عطري بُني على العنبر وخفّة الورد على خلفية خشب.</p>
+      <p class="ex" lang="ar">يُراعى الاسترجاع قبل فتح الاحكام. شحن حسب الوزن.</p>
+      <div class="meta">مناسب لعرض سبب &quot;السعر/العطر&quot; في الودجت</div>
+      <div class="price">289 ريال</div>
+      <button type="button" class="add-btn" onclick="addToCart(window.CF_DEMO_PRODUCTS.perfume)">أضف للسلة</button>
+    </div>
+    <div class="card" id="p-watch">
+      <span class="pcat">إكسسوارات</span>
+      <h2>Raven — حزام ووتش جلد</h2>
+      <p class="desc" lang="ar">لون متعادل مع معدن غير مُلمع يُلائم الوجه الرسمي واليومي.</p>
+      <p class="ex" lang="ar">ضمان 3 أشهر. شحن خفيف 1–3 أيام.</p>
+      <div class="meta">إثبات الضمان والوصف</div>
+      <div class="price">85 ريال</div>
+      <button type="button" class="add-btn" onclick="addToCart(window.CF_DEMO_PRODUCTS.watch)">أضف للسلة</button>
+    </div>
+    <div class="card" id="p-charger">
+      <span class="pcat">إلكترونيات</span>
+      <h2>Nano 20W</h2>
+      <p class="desc" lang="ar">حل شحن مدمج للرحلات. يوافق PD حتى 20W للمتوافق.</p>
+      <p class="ex" lang="ar">ضمان سنة. تُرسل مُنفصلة عن إرسال سريع/عطور.</p>
+      <div class="meta">منتج تكميلي صغير الحجم</div>
+      <div class="price">75 ريال</div>
+      <button type="button" class="add-btn" onclick="addToCart(window.CF_DEMO_PRODUCTS.charger)">أضف للسلة</button>
+    </div>
+    <div class="card" id="p-wallet">
+      <span class="pcat">إكسسوارات</span>
+      <h2>Mira — محفظة سفر</h2>
+      <p class="desc" lang="ar">نحف الحجم بجيوب مُنظّمة. يتجنّب الانتفاخ بما يوافق الجيب الأمامي.</p>
+      <p class="ex" lang="ar">6 أشهر ثبات خياطة. شحن 2–4 أيام.</p>
+      <div class="meta">أسلوب مقدّم للويبينار</div>
+      <div class="price">65 ريال</div>
+      <button type="button" class="add-btn" onclick="addToCart(window.CF_DEMO_PRODUCTS.wallet)">أضف للسلة</button>
     </div>
   </div>
 
-  <div class="cart">
-    <h2>Cart</h2>
+  <div class="cart" id="cart">
+    <h2>السلة</h2>
     <ul id="cart-list"></ul>
-    <button type="button" class="btn-clear" onclick="clearCart()">Clear cart</button>
-    <p class="note">Widget prompt arms only on this page when <code>window.cart.length &gt; 0</code> and after idle. Cart persists in <code>localStorage</code> (<code>{{ demo_cart_key|default('demo_cart') }}</code>).</p>
+    <button type="button" class="add-btn btn-clear" onclick="clearCart()">إفراغ السلة</button>
+  </div>
   </div>
 
-  <div class="cf-demo-panel" id="cf-demo-panel">
-    <h2>CartFlow (demo panel)</h2>
+  <div class="cf-details">
+    <details>
+      <summary class="cf-summary" id="cf-dev-summary">CartFlow — أدوات المطوّر (طي)</summary>
+      <div class="cf-demo-panel" id="cf-demo-panel">
+    <h2>مراقبة الجلسة (تجارب داخلية)</h2>
     <div class="cf-demo-grid">
       <div>store_slug</div><div id="cf-demo-store">—</div>
       <div>session_id</div><div id="cf-demo-session">—</div>
       <div>current step</div><div id="cf-demo-current-step">—</div>
       <div>queue / last log</div><div id="cf-demo-queue">—</div>
-      <div>last WhatsApp line</div><div id="cf-demo-last-wa">—</div>
+      <div>last WA line</div><div id="cf-demo-last-wa">—</div>
       <div>last log status</div><div id="cf-demo-last-status">—</div>
       <div>conversion</div><div id="cf-demo-conversion">—</div>
     </div>
-    <div>Recovery message (copy)</div>
+    <div>نص الاسترجاع (للعرض)</div>
     <div class="cf-demo-msg" id="cf-demo-recovery-message" lang="ar" dir="rtl">—</div>
     <div class="cf-demo-btns">
-      <button type="button" class="cf-btn-reset-demo" id="cf-btn-reset-demo" title="New session id, clear cart &amp; reason tags — avoids skipped_duplicate for retesting">Reset demo session</button>
+      <button type="button" class="cf-btn-reset-demo" id="cf-btn-reset-demo" title="جلسة جديدة وتفريغ — يقلل التكرار لاختبارات">Reset demo session</button>
+      <button type="button" class="cf-btn-start" id="cf-btn-start-in-panel" title="نفس الزر في الشريط العلوي">بدء سيناريو التجربة</button>
       <button type="button" id="cf-btn-abandon">Trigger abandoned cart</button>
-      <button type="button" id="cf-btn-s1" title="Displays the step 1 recovery copy in the widget (backend sends all steps after abandon)">Trigger step1</button>
-      <button type="button" id="cf-btn-s2" title="Displays the step 2 recovery copy in the widget">Trigger step2</button>
-      <button type="button" id="cf-btn-s3" title="Displays the step 3 recovery copy in the widget">Trigger step3</button>
+      <button type="button" id="cf-btn-s1" title="عرض نص الخطوة 1">Trigger step1</button>
+      <button type="button" id="cf-btn-s2">Trigger step2</button>
+      <button type="button" id="cf-btn-s3">Trigger step3</button>
       <button type="button" id="cf-btn-convert">Mark as converted</button>
       <button type="button" id="cf-btn-refresh">Refresh logs</button>
     </div>
-    <div>Latest recovery logs (up to 10, this session)</div>
+    <div>آخر السجلات (10)</div>
     <ul class="cf-demo-logs" id="cf-demo-logs"></ul>
+  </div>
+    </details>
   </div>
 
   <script>

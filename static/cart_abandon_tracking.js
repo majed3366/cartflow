@@ -32,6 +32,24 @@
   }
   window.cartflowIsSessionConverted = cartflowIsSessionConverted;
 
+  /**
+   * يسمح ببدء ‎Start Demo Scenario‎: مسح الـ ‎cache‎ وضبط ‎session_id‎ (لا يغيّر منطق الاسترجاع).
+   */
+  function resetRecoverySessionIdForDemo(newId) {
+    _cachedRecoverySessionId = null;
+    try {
+      if (newId) {
+        window.sessionStorage.setItem(CARTFLOW_SESSION_KEY, newId);
+        _cachedRecoverySessionId = newId;
+      } else {
+        window.sessionStorage.removeItem(CARTFLOW_SESSION_KEY);
+      }
+    } catch (e) {
+      /* ignore */
+    }
+  }
+  window.cartflowResetRecoverySessionIdForDemo = resetRecoverySessionIdForDemo;
+
   function getRecoverySessionId() {
     if (_cachedRecoverySessionId) {
       return _cachedRecoverySessionId;

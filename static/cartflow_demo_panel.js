@@ -352,6 +352,136 @@
     }
   }
 
+  function newDemoSessionId() {
+    if (typeof window.crypto !== "undefined" && window.crypto.randomUUID) {
+      return "s_" + window.crypto.randomUUID();
+    }
+    return "s_" + String(Date.now()) + "_" + String(Math.random());
+  }
+
+  function clearStateForStartScenario() {
+    _pendingDemoScheduled = null;
+    var cartKey =
+      typeof window.CARTFLOW_DEMO_CART_KEY === "string" &&
+      window.CARTFLOW_DEMO_CART_KEY.trim()
+        ? String(window.CARTFLOW_DEMO_CART_KEY).trim()
+        : "demo_cart";
+    try {
+      localStorage.removeItem(cartKey);
+    } catch (e) {
+      /* ignore */
+    }
+    try {
+      window.sessionStorage.removeItem(REASON_TAG_KEY);
+      window.sessionStorage.removeItem(REASON_SUB_TAG_KEY);
+      window.sessionStorage.removeItem(CARTFLOW_CONVERTED_KEY);
+    } catch (e) {
+      /* ignore */
+    }
+    var newSid = newDemoSessionId();
+    if (typeof window.cartflowResetRecoverySessionIdForDemo === "function") {
+      window.cartflowResetRecoverySessionIdForDemo(newSid);
+    } else {
+      try {
+        window.sessionStorage.setItem(CARTFLOW_SESSION_KEY, newSid);
+      } catch (e) {
+        /* ignore */
+      }
+    }
+  }
+
+  function startDemoScenario() {
+    if (isClientConverted()) {
+      setClientConverted(false);
+    }
+    logDemo("Start Demo Scenario clicked");
+    clearStateForStartScenario();
+    var pick = null;
+    if (window.CF_DEMO_PRODUCTS) {
+      pick = window.CF_DEMO_PRODUCTS.earbuds || window.CF_DEMO_PRODUCTS.hoodie;
+    }
+    if (!pick) {
+      pick = { name: "CartFlow demo item", price: 1, description: "—" };
+    } else {
+      pick = Object.assign({}, pick);
+    }
+    if (typeof window.cartflowDemoSetCart === "function") {
+      window.cartflowDemoSetCart([pick]);
+    } else {
+      if (typeof window.cart === "undefined" || !window.cart) {
+        window.cart = [];
+      }
+      window.cart = [pick];
+      try {
+        var k = window.CARTFLOW_DEMO_CART_KEY || "demo_cart";
+        localStorage.setItem(k, JSON.stringify(window.cart));
+      } catch (e) {
+        /* ignore */
+      }
+    }
+    logDemo(
+      "Start scenario — cart length",
+      window.cart.length,
+      "store_slug",
+      getStoreSlug(),
+      "session_id",
+      getSessionId()
+    );
+    return loadSequence()
+      .then(function () {
+        var store = getStoreSlug();
+        var session = getSessionId();
+        if (!session || session === "—") {
+          setText("cf-demo-last-status", "error_no_session");
+          return { ok: false, status: 0, body: { _aborted: true } };
+        }
+        var body = {
+          event: "cart_abandoned",
+          store: store,
+          session_id: session,
+          cart: window.cart,
+        };
+        return postJson("/api/cart-event", body);
+      })
+      .then(function (res) {
+        if (res && res.body && res.body._aborted) {
+          return;
+        }
+        var j = (res && res.body) || {};
+        logDemo("API response (Start Demo Scenario)", {
+          httpOk: res.ok,
+          status: res.status,
+          body: j,
+        });
+        if (!res || !res.ok) {
+          setText("cf-demo-last-status", "http_error_" + (res.status || 0));
+          return refresh();
+        }
+        if (j.recovery_scheduled) {
+          if (!sequenceSteps || sequenceSteps.length === 0) {
+            return loadSequence().then(function () {
+              applyPanelFromScheduledResponse(j);
+              pollPanelRefresh(0);
+              nudgeWidgetIdle();
+              showRecoveryMessageForStep(1);
+              return refresh();
+            });
+          }
+          applyPanelFromScheduledResponse(j);
+          pollPanelRefresh(0);
+          nudgeWidgetIdle();
+          showRecoveryMessageForStep(1);
+          return refresh();
+        }
+        _pendingDemoScheduled = null;
+        return refresh()
+          .then(function () {
+            applyPanelFromSkippedResponseIfBlank(j);
+            showRecoveryMessageForStep(1);
+          });
+      });
+  }
+
   function triggerConversion() {
     var sid = getSessionId();
     if (!sid || sid === "—") {
@@ -392,16 +522,15 @@
     } catch (e) {
       /* ignore */
     }
-    var newSid;
-    if (typeof window.crypto !== "undefined" && window.crypto.randomUUID) {
-      newSid = "s_" + window.crypto.randomUUID();
+    var newSid = newDemoSessionId();
+    if (typeof window.cartflowResetRecoverySessionIdForDemo === "function") {
+      window.cartflowResetRecoverySessionIdForDemo(newSid);
     } else {
-      newSid = "s_" + String(Date.now()) + "_" + String(Math.random());
-    }
-    try {
-      window.sessionStorage.setItem(CARTFLOW_SESSION_KEY, newSid);
-    } catch (e) {
-      /* ignore */
+      try {
+        window.sessionStorage.setItem(CARTFLOW_SESSION_KEY, newSid);
+      } catch (e) {
+        /* ignore */
+      }
     }
     try {
       if (Array.isArray(window.cart)) {
@@ -421,6 +550,10 @@
 
   function wire() {
     var b;
+    b = el("cf-btn-start-scenario");
+    if (b) b.addEventListener("click", function () { void startDemoScenario(); });
+    b = el("cf-btn-start-in-panel");
+    if (b) b.addEventListener("click", function () { void startDemoScenario(); });
     b = el("cf-btn-reset-demo");
     if (b) b.addEventListener("click", function () { resetDemoSession(); });
     b = el("cf-btn-abandon");

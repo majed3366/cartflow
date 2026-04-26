@@ -2167,10 +2167,21 @@ async def zid_webhook(request: Request):
 @app.get("/demo/store/cart")
 def demo_store(request: Request):
     """متجر وهمي للتجارب الداخلية (ويدجت / أحداث سلة — بدون منصات حقيقية)."""
+    p = (request.url.path or "").rstrip("/") or "/"
+    if p == "/demo/cart" or p.endswith("/store/cart"):
+        title = "CartFlow — سلة (تجربة)"
+        h1 = "واجهة سلة + استرجاع (تجربة داخلية)"
+    else:
+        title = "CartFlow — متجر تجريبي"
+        h1 = "متجر وهمي — جاهز لعرض CartFlow"
     return templates.TemplateResponse(
         request,
         "demo_store.html",
-        {"request": request},
+        {
+            "request": request,
+            "demo_page_title": title,
+            "demo_h1": h1,
+        },
     )
 
 

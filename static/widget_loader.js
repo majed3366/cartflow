@@ -1,6 +1,5 @@
 /**
- * يحمّل ‎cartflow_widget.js‎ بعد اكتمال الصفحة. يضبط المسار ليشمل ‎/cart‎
- * حتى يعمل ‎isCartPage()‎ في الويدجت دون تعديل ملف الويدجت.
+ * يحمّل ‎cartflow_widget.js‎ بعد اكتمال الصفحة. صفحات ‎/demo/*‎ (مثل ‎/demo/store‎) تُعرَف عبر ‎isCartPage()‎.
  */
 (function () {
   "use strict";
@@ -22,14 +21,6 @@
   function loadWidget() {
     if (cartflowBlockWidgetAfterConversion()) {
       return;
-    }
-    try {
-      var p = (location.pathname || "").replace(/\/$/, "") || "/";
-      if (p === "/demo/store") {
-        history.replaceState(null, "", "/demo/store/cart");
-      }
-    } catch (e) {
-      /* ignore */
     }
     var s = document.createElement("script");
     s.src = "/static/cartflow_widget.js";

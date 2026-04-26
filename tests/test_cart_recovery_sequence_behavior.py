@@ -204,8 +204,8 @@ class CartRecoverySequenceBehaviorTests(unittest.TestCase):
                 pass
 
     def test_demo_store_page_exists(self) -> None:
-        """Demo cart: /demo/cart, /demo/store/cart, /demo/store2/cart include cart + demo panel."""
-        for path in ("/demo/cart", "/demo/store/cart", "/demo/store2/cart"):
+        """Demo cart: /demo/cart, /demo/store, /demo/store/cart, /demo/store2/cart include cart + demo panel."""
+        for path in ("/demo/cart", "/demo/store", "/demo/store/cart", "/demo/store2/cart"):
             r = self.client.get(path)
             self.assertEqual(200, r.status_code, path)
             self.assertIn(b"window.cart", r.content)
@@ -217,6 +217,8 @@ class CartRecoverySequenceBehaviorTests(unittest.TestCase):
         self.assertIn("CARTFLOW_DEMO_CART_KEY", t)
         self.assertIn("هودي قطني مريح", t)
         self.assertIn("warranty_info", t)
+        self.assertIn("CF_DEMO_PRODUCTS", t)
+        self.assertIn("بدء سيناريو التجربة", t)
 
 
 if __name__ == "__main__":
