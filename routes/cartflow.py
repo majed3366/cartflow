@@ -14,6 +14,7 @@ from extensions import db
 from json_response import j
 from models import AbandonmentReasonLog, CartRecoveryLog, CartRecoveryReason, Store
 from schema_widget import ensure_store_widget_schema
+from services.cartflow_whatsapp_mock import build_mock_whatsapp_message
 
 log = logging.getLogger("cartflow")
 
@@ -114,6 +115,69 @@ def _ready_after_step1(store_slug: str, session_id: str) -> bool:
         )
     )
     return base.first() is not None
+
+
+@router.post("/generate-whatsapp-message")
+async def post_generate_whatsapp_message(request: Request) -> Any:
+    """
+    نص ‎Mock‎ لمتابعة واتساب حسب ‎reason‎ / ‎sub_category‎ (لا إرسال ولا ‎DB‎).
+    """
+    try:
+        body: Any
+        try:
+            body = await request.json()
+        except Exception:  # noqa: BLE001
+            body = None
+        if not isinstance(body, dict):
+            return j({"ok": False, "error": "json_object_required"}, 400)
+        ss = (str(body.get("store_slug", "")) or "").strip()[:255]
+        sid = (str(body.get("session_id", "")) or "").strip()[:512]
+        reason = (str(body.get("reason", "")) or "").strip().lower()[:32]
+        sub_raw = body.get("sub_category")
+        sub_cat: Optional[str] = None
+        if sub_raw is not None and (str(sub_raw) or "").strip():
+            sub_cat = (str(sub_raw) or "").strip()[:64]
+        p_name = body.get("product_name")
+        p_price = body.get("product_price")
+        c_url = body.get("cart_url")
+        name_s = (str(p_name) if p_name is not None else "") or ""
+        price_s = (str(p_price) if p_price is not None else "") or ""
+        url_s = (str(c_url) if c_url is not None else "") or ""
+        if not ss or not sid:
+            return j({"ok": False, "error": "store_slug_session_required"}, 400)
+        if not reason or reason not in REASON_CHOICES:
+            return j({"ok": False, "error": "invalid_reason"}, 400)
+        if reason == "price":
+            if not sub_cat or sub_cat not in PRICE_SUB_CATEGORIES:
+                return j(
+                    {"ok": False, "error": "sub_category_required_or_invalid"},
+                    400,
+                )
+        else:
+            if sub_cat is not None:
+                return j({"ok": False, "error": "sub_category_not_applicable"}, 400)
+        try:
+            msg = build_mock_whatsapp_message(
+                reason=reason,
+                sub_category=sub_cat,
+                product_name=name_s.strip() or None,
+                product_price=price_s.strip() or None,
+                cart_url=url_s.strip() or None,
+            )
+        except ValueError as e:
+            err = (str(e) or "").strip() or "invalid"
+            return j({"ok": False, "error": err}, 400)
+        return j(
+            {
+                "ok": True,
+                "message": msg,
+                "reason": reason,
+                "sub_category": sub_cat,
+            }
+        )
+    except (OSError, TypeError) as e:
+        log.warning("generate whatsapp message: %s", e)
+        return j({"ok": False, "error": "failed"}, 500)
 
 
 @router.get("/ready")

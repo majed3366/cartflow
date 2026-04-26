@@ -589,6 +589,54 @@
     });
   }
 
+  function buildWhatsappGeneratePayload(rkey) {
+    var ctx = buildProductContext();
+    var gsub =
+      rkey === "price" && typeof window.cartflowGetReasonSubTag === "function"
+        ? window.cartflowGetReasonSubTag()
+        : null;
+    var href = "#";
+    try {
+      if (typeof window.location !== "undefined" && window.location.href) {
+        href = String(window.location.href);
+      }
+    } catch (e) {
+      href = "#";
+    }
+    var body = {
+      store_slug: getStoreSlug(),
+      session_id: getSessionId(),
+      reason: rkey,
+      product_name: ctx.name || "",
+      product_price: ctx.priceLabel || "",
+      cart_url: href,
+    };
+    if (gsub) {
+      body.sub_category = String(gsub);
+    }
+    return body;
+  }
+
+  function postGenerateWhatsappMessage(payload) {
+    var url = apiBase()
+      ? apiBase() + "/api/cartflow/generate-whatsapp-message"
+      : "/api/cartflow/generate-whatsapp-message";
+    return fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }).then(function (r) {
+      return r.json().then(
+        function (j) {
+          return { ok: r.ok, j: j != null ? j : {} };
+        },
+        function () {
+          return { ok: r.ok, j: {} };
+        }
+      );
+    });
+  }
+
   function handoffToMerchant(optionalButton) {
     if (optionalButton) {
       optionalButton.setAttribute("disabled", "true");
@@ -1050,59 +1098,62 @@
       }
       stripContentKeepChrome();
       appendReasonPersonalizationBlock(rkey);
-      if (isDemoPath()) {
-        (function () {
-          var gsub =
-            rkey === "price" && typeof window.cartflowGetReasonSubTag === "function"
-              ? window.cartflowGetReasonSubTag()
-              : null;
-          var u =
-            (apiBase() || "") +
-            "/demo/cartflow/whatsapp-preview?reason=" +
-            encodeURIComponent(rkey);
-          if (gsub) {
-            u += "&sub_category=" + encodeURIComponent(String(gsub));
-          }
-          var strip = document.createElement("div");
-          strip.setAttribute("data-cf-demo-merchant-hint", "1");
-          strip.setAttribute("aria-label", "تجربة استرجاع (عرض فقط)");
-          strip.style.cssText =
-            "margin:0 0 12px 0;padding:10px 10px;border-radius:10px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.12);";
-          var previewBox = document.createElement("div");
-          previewBox.setAttribute("data-cf-wa-preview", "1");
-          var ht = document.createElement("div");
-          ht.style.cssText = "font-weight:700;margin:0 0 8px 0;font-size:13px;";
-          ht.textContent = "📲 رسالة واتساب (تجربة حقيقية)";
-          var msgEl = document.createElement("p");
-          msgEl.style.cssText = "margin:0;font-size:13px;line-height:1.55;opacity:0.95;";
-          msgEl.textContent = "…";
-          previewBox.appendChild(ht);
-          previewBox.appendChild(msgEl);
-          strip.appendChild(previewBox);
-          w.appendChild(strip);
-          fetch(u, { method: "GET" })
-            .then(function (r) {
-              return r.json().then(
-                function (j) {
-                  return { j: j != null ? j : {}, ok: r.ok };
-                },
-                function () {
-                  return { j: {}, ok: false };
-                }
-              );
-            })
-            .then(function (x) {
-              if (x && x.j && x.j.ok && x.j.message) {
-                msgEl.textContent = String(x.j.message);
-              } else {
-                msgEl.textContent = "—";
-              }
-            })
-            .catch(function () {
-              msgEl.textContent = "—";
-            });
-        })();
-      }
+      (function () {
+        var payload = buildWhatsappGeneratePayload(rkey);
+        var strip = document.createElement("div");
+        strip.setAttribute("data-cf-wa-mock-preview", "1");
+        strip.setAttribute("aria-label", "معاينة واتساب تجريبية");
+        strip.style.cssText =
+          "margin:0 0 12px 0;padding:10px 10px;border-radius:10px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.12);";
+        var previewBox = document.createElement("div");
+        previewBox.setAttribute("data-cf-wa-preview", "1");
+        var ht = document.createElement("div");
+        ht.style.cssText = "font-weight:700;margin:0 0 8px 0;font-size:13px;";
+        ht.textContent = "📲 رسالة واتساب (تجربة حقيقية)";
+        var msgEl = document.createElement("p");
+        msgEl.style.cssText =
+          "margin:0 0 10px 0;font-size:13px;line-height:1.55;opacity:0.95;white-space:pre-line;word-break:break-word;";
+        msgEl.textContent = "…";
+        previewBox.appendChild(ht);
+        previewBox.appendChild(msgEl);
+        var bMock = document.createElement("button");
+        bMock.type = "button";
+        bMock.textContent = "📤 إرسال عبر واتساب";
+        bMock.setAttribute("data-cf-wa-mock-send", "1");
+        bMock.setAttribute("aria-label", "محاكاة إرسال واتساب");
+        bMock.style.cssText = btnStyle;
+        var mockStatus = document.createElement("p");
+        mockStatus.setAttribute("data-cf-wa-mock-status", "1");
+        mockStatus.style.cssText =
+          "margin:8px 0 0 0;font-size:12px;line-height:1.45;opacity:0.95;display:none;";
+        bMock.addEventListener("click", function (ev) {
+          ev.stopPropagation();
+          ev.preventDefault();
+          try {
+            console.log("mock whatsapp sent");
+          } catch (e) {}
+          mockStatus.textContent = "تمت محاكاة إرسال الرسالة بنجاح ✅";
+          mockStatus.style.display = "block";
+          bMock.setAttribute("disabled", "true");
+        });
+        previewBox.appendChild(bMock);
+        previewBox.appendChild(mockStatus);
+        strip.appendChild(previewBox);
+        w.appendChild(strip);
+        postGenerateWhatsappMessage(payload)
+          .then(function (x) {
+            if (x && x.j && x.j.ok && x.j.message) {
+              msgEl.textContent = String(x.j.message);
+            } else {
+              msgEl.textContent = "تعذر تجهيز رسالة واتساب التجريبية حالياً.";
+              bMock.setAttribute("disabled", "true");
+            }
+          })
+          .catch(function () {
+            msgEl.textContent = "تعذر تجهيز رسالة واتساب التجريبية حالياً.";
+            bMock.setAttribute("disabled", "true");
+          });
+      })();
       var p = document.createElement("p");
       p.style.cssText = "margin:0 0 10px 0;font-size:14px;line-height:1.55;";
       p.textContent = flow.message;
