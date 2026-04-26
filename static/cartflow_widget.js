@@ -59,7 +59,7 @@
   ];
 
   var CARTFLOW_REASON_PERSONALIZE_DEFAULT =
-    "📌 سيتم تخصيص المتابعة بناءً على اختيار العميل";
+    "تم تجهيز رسالة متابعة مناسبة بناءً على سبب التردد";
 
   var DESC_KEYS = [
     "description",
@@ -1109,7 +1109,7 @@
         previewBox.setAttribute("data-cf-wa-preview", "1");
         var ht = document.createElement("div");
         ht.style.cssText = "font-weight:700;margin:0 0 8px 0;font-size:13px;";
-        ht.textContent = "📲 رسالة واتساب (تجربة حقيقية)";
+        ht.textContent = "📱 نموذج رسالة واتساب جاهزة للإرسال";
         var msgEl = document.createElement("p");
         msgEl.style.cssText =
           "margin:0 0 10px 0;font-size:13px;line-height:1.55;opacity:0.95;white-space:pre-line;word-break:break-word;";
