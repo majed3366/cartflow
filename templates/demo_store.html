@@ -215,6 +215,74 @@
       font-size: 0.6rem;
     }
     .cf-demo-logs li { margin: 0.1rem 0; }
+    .cf-store-intro {
+      display: none;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 0.65rem 1rem;
+      flex-wrap: wrap;
+      padding: 0.65rem 2.75rem 0.65rem 1rem;
+      background: linear-gradient(135deg, #ede9fe 0%, #faf5ff 100%);
+      border-bottom: 1px solid #ddd6fe;
+      position: relative;
+    }
+    .cf-store-intro.cf-store-intro--visible {
+      display: flex;
+    }
+    .cf-store-intro-text {
+      margin: 0;
+      font-size: 0.92rem;
+      font-weight: 800;
+      color: #1e1b4b;
+      line-height: 1.35;
+      flex: 1 1 220px;
+    }
+    .cf-store-intro-actions {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 0.25rem;
+    }
+    .cf-intro-cta {
+      border: 0;
+      border-radius: 999px;
+      padding: 0.45rem 1.15rem;
+      font: inherit;
+      font-weight: 800;
+      font-size: 0.82rem;
+      cursor: pointer;
+      background: var(--accent);
+      color: #fff;
+      white-space: nowrap;
+      touch-action: manipulation;
+    }
+    .cf-intro-cta:hover { background: var(--accent-hover); }
+    .cf-store-intro-hint {
+      margin: 0;
+      font-size: 0.7rem;
+      color: var(--muted);
+      line-height: 1.35;
+      max-width: 16rem;
+      text-align: end;
+    }
+    .cf-store-intro-dismiss {
+      position: absolute;
+      top: 0.4rem;
+      inset-inline-end: 0.35rem;
+      width: 1.85rem;
+      height: 1.85rem;
+      border: 0;
+      border-radius: 8px;
+      padding: 0;
+      font: inherit;
+      font-size: 1.15rem;
+      line-height: 1;
+      cursor: pointer;
+      color: #57534e;
+      background: rgba(255, 255, 255, 0.65);
+      touch-action: manipulation;
+    }
+    .cf-store-intro-dismiss:hover { background: rgba(255, 255, 255, 0.95); }
   </style>
 </head>
 <body>
@@ -310,6 +378,14 @@
       <button type="button" class="btn-scenario" id="cf-btn-start-scenario" title="يصفّر الجلسة ويضيف سماعة ويُطلق الخطوة 1">بدء سيناريو التجربة</button>
     </div>
   </div>
+  <div class="cf-store-intro" id="cf-store-intro" hidden>
+    <p class="cf-store-intro-text">جرب كيف يسترجع CartFlow العملاء تلقائيًا 👇</p>
+    <div class="cf-store-intro-actions">
+      <button type="button" class="cf-intro-cta" id="cf-store-intro-cta">ابدأ التجربة</button>
+      <p class="cf-store-intro-hint">سيتم إضافة منتج وتشغيل التجربة تلقائيًا</p>
+    </div>
+    <button type="button" class="cf-store-intro-dismiss" id="cf-store-intro-dismiss" aria-label="إغلاق">×</button>
+  </div>
   <div class="wrap">
   <div class="hero">
     <h1>{{ demo_h1|default('واجهة جاهزة للتجارب') }}</h1>
@@ -370,7 +446,7 @@
       };
     })();
   </script>
-  <div class="grid">
+  <div class="grid" id="cf-demo-products">
     <div class="card" id="p-earbuds">
       <span class="pcat">إلكترونيات</span>
       <h2>TrueSound — سماعة لاسلكية</h2>
@@ -468,6 +544,62 @@
 
   <script>
     renderCart();
+  </script>
+  <script>
+    (function () {
+      var INTRO_KEY = "cf_store_intro_dismissed";
+      function showIntroBar(bar) {
+        bar.classList.add("cf-store-intro--visible");
+        bar.removeAttribute("hidden");
+      }
+      function hideIntroBar(bar) {
+        bar.classList.remove("cf-store-intro--visible");
+        bar.setAttribute("hidden", "");
+        try {
+          sessionStorage.setItem(INTRO_KEY, "1");
+        } catch (e) {
+          /* ignore */
+        }
+      }
+      function initStoreIntro() {
+        var bar = document.getElementById("cf-store-intro");
+        if (!bar) {
+          return;
+        }
+        try {
+          if (sessionStorage.getItem(INTRO_KEY) === "1") {
+            return;
+          }
+        } catch (e) {
+          /* ignore */
+        }
+        showIntroBar(bar);
+        var dismiss = document.getElementById("cf-store-intro-dismiss");
+        var cta = document.getElementById("cf-store-intro-cta");
+        if (dismiss) {
+          dismiss.addEventListener("click", function () {
+            hideIntroBar(bar);
+          });
+        }
+        if (cta) {
+          cta.addEventListener("click", function () {
+            var grid = document.getElementById("cf-demo-products");
+            if (grid && grid.scrollIntoView) {
+              grid.scrollIntoView({ behavior: "smooth", block: "start" });
+            }
+            if (typeof window.cartflowStartDemoScenario === "function") {
+              void window.cartflowStartDemoScenario();
+            }
+            hideIntroBar(bar);
+          });
+        }
+      }
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", initStoreIntro);
+      } else {
+        initStoreIntro();
+      }
+    })();
   </script>
   <script src="/static/cartflow_demo_panel.js" defer></script>
   <script src="/static/widget_loader.js" data-store="{{ demo_data_store|default('demo') }}"></script>

@@ -563,6 +563,8 @@
     }
   }
 
+  window.cartflowStartDemoScenario = startDemoScenario;
+
   function wire() {
     var b;
     b = el("cf-btn-start-scenario");
