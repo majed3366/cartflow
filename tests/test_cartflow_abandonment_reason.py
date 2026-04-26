@@ -5,7 +5,7 @@ import unittest
 
 from main import app
 from extensions import db
-from models import CartRecoveryLog, Store
+from models import CartRecoveryLog, CartRecoveryReason, Store
 from schema_widget import ensure_store_widget_schema
 
 
@@ -64,6 +64,27 @@ class TestCartflowAbandonmentReason(unittest.TestCase):
         )
         self.assertEqual(200, r1.status_code)
         self.assertTrue((r1.json() or {}).get("after_step1"))
+
+    def test_cart_recovery_reason_upsert(self) -> None:
+        ensure_store_widget_schema(db)
+        sid = "crr-upsert-1"
+        for rkey in ("price", "warranty"):
+            r = self.client.post(
+                "/api/cartflow/reason",
+                json={"store_slug": "demo", "session_id": sid, "reason": rkey},
+            )
+            self.assertEqual(200, r.status_code, r.text)
+            self.assertTrue((r.json() or {}).get("ok"))
+        crr = (
+            db.session.query(CartRecoveryReason)
+            .filter(
+                CartRecoveryReason.store_slug == "demo",
+                CartRecoveryReason.session_id == sid,
+            )
+            .first()
+        )
+        self.assertIsNotNone(crr)
+        self.assertEqual("warranty", crr.reason)
 
     def test_public_config_whatsapp(self) -> None:
         ensure_store_widget_schema(db)

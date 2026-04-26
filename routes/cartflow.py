@@ -3,14 +3,16 @@
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timezone
 from typing import Any, Optional
 
 from fastapi import APIRouter, Path, Query, Request
+from sqlalchemy import and_
 from sqlalchemy.exc import SQLAlchemyError
 
 from extensions import db
 from json_response import j
-from models import AbandonmentReasonLog, CartRecoveryLog, Store
+from models import AbandonmentReasonLog, CartRecoveryLog, CartRecoveryReason, Store
 from schema_widget import ensure_store_widget_schema
 
 log = logging.getLogger("cartflow")
@@ -204,6 +206,31 @@ async def post_abandonment_reason(request: Request) -> Any:
             custom_text=custom,
         )
         db.session.add(row)
+        now = datetime.now(timezone.utc)
+        crr = (
+            db.session.query(CartRecoveryReason)
+            .filter(
+                and_(
+                    CartRecoveryReason.store_slug == ss,
+                    CartRecoveryReason.session_id == sid,
+                )
+            )
+            .first()
+        )
+        if crr is not None:
+            crr.reason = reason
+            crr.custom_text = custom
+            crr.updated_at = now
+        else:
+            db.session.add(
+                CartRecoveryReason(
+                    store_slug=ss,
+                    session_id=sid,
+                    reason=reason,
+                    custom_text=custom,
+                    updated_at=now,
+                )
+            )
         db.session.commit()
         return j({"ok": True})
     except (SQLAlchemyError, OSError) as e:

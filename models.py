@@ -141,6 +141,26 @@ class AbandonmentReasonLog(Base):
     )
 
 
+class CartRecoveryReason(Base):
+    """
+    آخر سبب اختيار لكل ‎(store_slug, session_id)‎ — يُستعمل لاحقاً لتخصيص رسائل الاسترجاع.
+    """
+
+    __tablename__ = "cart_recovery_reasons"
+
+    id = Column(Integer, primary_key=True)
+    store_slug = Column(String(255), nullable=False, index=True)
+    session_id = Column(String(512), nullable=False, index=True)
+    reason = Column(String(32), nullable=False, index=True)
+    custom_text = Column(Text, nullable=True)
+    updated_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+
+
 class CartRecoveryLog(Base):
     """تسجيل محاولات الاسترجاع (وهمي/تخطٍ) دون الاعتماد على واتساب حقيقي."""
     __tablename__ = "cart_recovery_logs"
