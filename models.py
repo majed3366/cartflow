@@ -49,6 +49,8 @@ class Store(Base):
     )
     message_logs = relationship("MessageLog", backref="store", lazy="dynamic")
     recovery_events = relationship("RecoveryEvent", backref="store", lazy="dynamic")
+    # اختياري: رابط واتساب الدعم للعميل (ودجت السبب) — ‎VARCHAR(2048)‎ عند الترقية
+    whatsapp_support_url = Column(String(2048), nullable=True)
 
 
 class AbandonedCart(Base):
@@ -124,6 +126,19 @@ class ObjectionTrack(Base):
     cart_url = Column(String(2048), nullable=True)
     customer_type = Column(String(20), nullable=True)
     last_activity_at = Column(DateTime, nullable=True)
+
+
+class AbandonmentReasonLog(Base):
+    __tablename__ = "abandonment_reason_logs"
+
+    id = Column(Integer, primary_key=True)
+    store_slug = Column(String(255), nullable=False, index=True)
+    session_id = Column(String(512), nullable=False, index=True)
+    reason = Column(String(32), nullable=False, index=True)
+    custom_text = Column(Text, nullable=True)
+    created_at = Column(
+        DateTime, default=lambda: datetime.now(timezone.utc)
+    )
 
 
 class CartRecoveryLog(Base):

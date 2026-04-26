@@ -49,6 +49,12 @@
         <input id="recovery_attempts" name="recovery_attempts" type="number" min="1" step="1"
           class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-zid-500 focus:outline-none focus:ring-1 focus:ring-zid-500" required />
       </div>
+      <div>
+        <label class="block text-sm font-medium text-slate-700" for="whatsapp_support_url">WhatsApp support link (optional)</label>
+        <input id="whatsapp_support_url" name="whatsapp_support_url" type="url" inputmode="url" autocomplete="off" placeholder="https://wa.me/9665..."
+          class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-zid-500 focus:outline-none focus:ring-1 focus:ring-zid-500" />
+        <p class="mt-1 text-xs text-slate-500">Used when customers choose to contact you from the cart widget.</p>
+      </div>
       <button type="submit" id="saveBtn"
         class="w-full rounded-lg bg-zid-600 py-2.5 text-sm font-medium text-white hover:bg-zid-500 focus:outline-none focus:ring-2 focus:ring-zid-500 focus:ring-offset-1">
         Save
@@ -70,6 +76,9 @@
             document.getElementById("recovery_delay").value = x.data.recovery_delay;
             document.getElementById("recovery_delay_unit").value = x.data.recovery_delay_unit;
             document.getElementById("recovery_attempts").value = x.data.recovery_attempts;
+            if (x.data.whatsapp_support_url) {
+              document.getElementById("whatsapp_support_url").value = x.data.whatsapp_support_url;
+            }
             hideMsg();
           } else {
             showErr(x.data.error || "Failed to load settings (e.g. no store yet).");
@@ -84,6 +93,7 @@
           recovery_delay: parseInt(document.getElementById("recovery_delay").value, 10),
           recovery_delay_unit: document.getElementById("recovery_delay_unit").value,
           recovery_attempts: parseInt(document.getElementById("recovery_attempts").value, 10),
+          whatsapp_support_url: (document.getElementById("whatsapp_support_url") && document.getElementById("whatsapp_support_url").value) || "",
         };
         fetch("/api/recovery-settings", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
           .then(function (r) { return r.json().then(function (d) { return { status: r.status, data: d }; }); })

@@ -73,8 +73,13 @@ from services.whatsapp_send import (  # noqa: E402
     send_whatsapp,
     should_send_whatsapp,
 )
+from schema_widget import ensure_store_widget_schema
 
 log = logging.getLogger("cartflow")
+
+
+def _ensure_store_widget_schema() -> None:
+    ensure_store_widget_schema(db)
 
 
 @app.on_event("startup")
@@ -302,7 +307,12 @@ def _ensure_default_store_for_recovery() -> None:
 
 
 def _dev_apply_recovery_settings_update(
-    recovery_delay: Any, recovery_delay_unit: Any, recovery_attempts: Any
+    recovery_delay: Any,
+    recovery_delay_unit: Any,
+    recovery_attempts: Any,
+    *,
+    whatsapp_support_url: Any = None,
+    update_whatsapp: bool = False,
 ) -> Tuple[Dict[str, Any], int]:
     """
     نفس منطق ‎POST /dev/recovery-settings-update‎ — تعديل أحدث ‎Store‎ بعد التحقق.
@@ -325,6 +335,7 @@ def _dev_apply_recovery_settings_update(
     unit = (str(recovery_delay_unit) if recovery_delay_unit is not None else "").strip().lower()
     if unit not in _VALID_RECOVERY_UNITS:
         return {"ok": False, "error": "invalid_recovery_delay_unit"}, 400
+    _ensure_store_widget_schema()
     db.create_all()
     _ensure_default_store_for_recovery()
     row = db.session.query(Store).order_by(Store.id.desc()).first()
@@ -333,12 +344,23 @@ def _dev_apply_recovery_settings_update(
     row.recovery_delay = rd_i
     row.recovery_delay_unit = unit
     row.recovery_attempts = ra_i
+    if update_whatsapp:
+        if whatsapp_support_url is None or (
+            isinstance(whatsapp_support_url, str) and not (whatsapp_support_url or "").strip()
+        ):
+            row.whatsapp_support_url = None
+        else:
+            row.whatsapp_support_url = str(whatsapp_support_url).strip()[:2048]
     db.session.commit()
+    wa: Optional[str] = getattr(row, "whatsapp_support_url", None)
+    if not (isinstance(wa, str) and wa.strip()):
+        wa = None
     return {
         "ok": True,
         "recovery_delay": row.recovery_delay,
         "recovery_delay_unit": row.recovery_delay_unit,
         "recovery_attempts": row.recovery_attempts,
+        "whatsapp_support_url": wa,
     }, 200
 
 # ‎/dev/recovery-flow-test?type=…‎ — بدون قراءة من ‎DB‎
@@ -650,10 +672,13 @@ async def dev_recovery_settings_update(request: Request):
             body = None
         if not isinstance(body, dict):
             return j({"ok": False, "error": "json_object_required"}, 400)
+        uw = "whatsapp_support_url" in body
         data, code = _dev_apply_recovery_settings_update(
             body.get("recovery_delay"),
             body.get("recovery_delay_unit"),
             body.get("recovery_attempts"),
+            whatsapp_support_url=body.get("whatsapp_support_url") if uw else None,
+            update_whatsapp=uw,
         )
         return j(data, code)
     except Exception as e:  # noqa: BLE001
@@ -674,10 +699,13 @@ async def api_recovery_settings(request: Request):
             body = None
         if not isinstance(body, dict):
             return j({"ok": False, "error": "json_object_required"}, 400)
+        uw = "whatsapp_support_url" in body
         data, code = _dev_apply_recovery_settings_update(
             body.get("recovery_delay"),
             body.get("recovery_delay_unit"),
             body.get("recovery_attempts"),
+            whatsapp_support_url=body.get("whatsapp_support_url") if uw else None,
+            update_whatsapp=uw,
         )
         return j(data, code)
     except Exception as e:  # noqa: BLE001
@@ -691,17 +719,22 @@ def api_recovery_settings_get():
     واجهة ‎API‎ — قراءة أحدث ‎Store.recovery_*‎.
     """
     try:
+        _ensure_store_widget_schema()
         db.create_all()
         _ensure_default_store_for_recovery()
         row = db.session.query(Store).order_by(Store.id.desc()).first()
         if row is None:
             return j({"ok": False, "error": "no_store"}, 500)
+        wa: Optional[str] = getattr(row, "whatsapp_support_url", None)
+        if not (isinstance(wa, str) and wa.strip()):
+            wa = None
         return j(
             {
                 "ok": True,
                 "recovery_delay": row.recovery_delay,
                 "recovery_delay_unit": row.recovery_delay_unit,
                 "recovery_attempts": row.recovery_attempts,
+                "whatsapp_support_url": wa,
             }
         )
     except Exception as e:  # noqa: BLE001
