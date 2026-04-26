@@ -43,6 +43,7 @@
   }
 
   var sequenceSteps = [];
+  var _pendingDemoScheduled = null;
 
   function loadSequence() {
     return fetch(api("/demo/cartflow/sequence"))
@@ -122,11 +123,23 @@
         }
         var logs = j.logs || [];
         if (logs.length === 0) {
-          setText("cf-demo-last-status", "—");
-          setText("cf-demo-queue", "—");
-          setText("cf-demo-last-wa", "—");
-          setText("cf-demo-current-step", "—");
+          if (_pendingDemoScheduled) {
+            setText("cf-demo-last-status", "scheduled");
+            setText("cf-demo-queue", _pendingDemoScheduled.queue);
+            setText("cf-demo-last-wa", _pendingDemoScheduled.wa);
+            setText("cf-demo-current-step", "pending (sequence running)");
+            setText("cf-demo-recovery-message", _pendingDemoScheduled.msg);
+          } else {
+            setText("cf-demo-last-status", "—");
+            setText("cf-demo-queue", "—");
+            setText("cf-demo-last-wa", "—");
+            setText("cf-demo-current-step", "—");
+            setText("cf-demo-recovery-message", "—");
+          }
         } else {
+          if (_pendingDemoScheduled) {
+            _pendingDemoScheduled = null;
+          }
           last = logs[0];
           setText("cf-demo-last-status", last.status != null ? last.status : "—");
           setText("cf-demo-queue", last.status || "—");
@@ -161,6 +174,8 @@
         }
         if (last && last.message) {
           setText("cf-demo-recovery-message", last.message);
+        } else if (logs && logs.length === 0 && _pendingDemoScheduled) {
+          /* recovery line already set with pending state */
         } else {
           setText("cf-demo-recovery-message", "—");
         }
@@ -170,24 +185,106 @@
       });
   }
 
+  function logDemo() {
+    var args = ["[cartflow demo]"].concat(
+      Array.prototype.slice.call(arguments)
+    );
+    try {
+      console.log.apply(console, args);
+    } catch (e) {
+      /* ignore */
+    }
+  }
+
   function postJson(url, body) {
     return fetch(api(url), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
-    }).then(function (r) {
-      return r.json();
-    });
+    })
+      .then(function (r) {
+        return r
+          .json()
+          .then(
+            function (j) {
+              return { ok: r.ok, status: r.status, body: j != null ? j : {} };
+            },
+            function () {
+              return { ok: r.ok, status: r.status, body: {} };
+            }
+          );
+      })
+      .catch(function (err) {
+        logDemo("postJson fetch error", err);
+        return { ok: false, status: 0, body: { _fetch_error: String(err) } };
+      });
+  }
+
+  function getFirstStepMessage() {
+    if (sequenceSteps[0] && sequenceSteps[0].message) {
+      return String(sequenceSteps[0].message);
+    }
+    return "—";
+  }
+
+  function applyPanelFromScheduledResponse(demoRes) {
+    var sec =
+      demoRes && demoRes.recovery_delay_seconds != null
+        ? String(demoRes.recovery_delay_seconds)
+        : "—";
+    var msg = getFirstStepMessage();
+    _pendingDemoScheduled = {
+      queue: "queued (delay " + sec + "s) — DB will update when sequence runs",
+      msg: msg,
+      wa: msg,
+    };
+    setText("cf-demo-last-status", "scheduled");
+    setText("cf-demo-queue", _pendingDemoScheduled.queue);
+    setText("cf-demo-last-wa", _pendingDemoScheduled.wa);
+    setText("cf-demo-current-step", "pending (sequence running)");
+    setText("cf-demo-recovery-message", msg);
+  }
+
+  function applyPanelFromSkippedResponseIfBlank(demoRes) {
+    if (!demoRes || !demoRes.recovery_skipped) {
+      return;
+    }
+    var n = el("cf-demo-last-status");
+    var t = n && n.textContent ? n.textContent.trim() : "—";
+    if (t !== "—" && t !== "" && t !== "error") {
+      return;
+    }
+    if (demoRes.recovery_state === "converted") {
+      setText("cf-demo-last-status", "skipped_converted");
+      setText("cf-demo-queue", "recovery_skipped (converted on server)");
+      return;
+    }
+    if (demoRes.recovery_state === "sent") {
+      setText("cf-demo-last-status", "skipped_delay");
+    }
+    if (demoRes.recovery_state === "pending") {
+      setText("cf-demo-last-status", "skipped_duplicate");
+    }
+  }
+
+  function pollPanelRefresh(attempt) {
+    var max = 8;
+    if (attempt >= max) {
+      return;
+    }
+    setTimeout(function () {
+      void refresh();
+      pollPanelRefresh(attempt + 1);
+    }, 450 * (1 + attempt));
   }
 
   function triggerAbandon() {
-    try {
-      if (window.sessionStorage.getItem(CARTFLOW_CONVERTED_KEY) === "1") {
-        console.log("cartflow demo: skip cart-event (converted)");
-        return Promise.resolve();
-      }
-    } catch (e) {
-      /* ignore */
+    if (isClientConverted()) {
+      logDemo("trigger blocked: sessionStorage", CARTFLOW_CONVERTED_KEY, "=1");
+      setText("cf-demo-last-status", "blocked_converted");
+      setText("cf-demo-queue", "Use “Reset demo session” or clear cartflow_converted to retest");
+      setText("cf-demo-recovery-message", "—");
+      return Promise.resolve();
     }
     if (typeof window.cart === "undefined" || !window.cart) {
       window.cart = [];
@@ -195,15 +292,64 @@
     if (!Array.isArray(window.cart) || window.cart.length === 0) {
       window.cart.push({ name: "Demo line item", price: 1 });
     }
-    return postJson("/api/cart-event", {
+    var store = getStoreSlug();
+    var session = getSessionId();
+    logDemo("Trigger abandoned cart clicked");
+    logDemo("cart length", window.cart.length, "store_slug", store, "session_id", session);
+    if (!session || session === "—") {
+      logDemo("abandon aborted: no session_id");
+      setText("cf-demo-last-status", "error_no_session");
+      return Promise.resolve();
+    }
+    var body = {
       event: "cart_abandoned",
-      store: getStoreSlug(),
-      session_id: getSessionId(),
+      store: store,
+      session_id: session,
       cart: window.cart,
-    }).then(function (j) {
-      console.log("cartflow demo abandon", j);
-      return refresh();
-    });
+    };
+    return postJson("/api/cart-event", body)
+      .then(function (res) {
+        var j = (res && res.body) || {};
+        logDemo("API response", { httpOk: res.ok, status: res.status, body: j });
+        if (!res.ok) {
+          setText("cf-demo-last-status", "http_error_" + (res.status || 0));
+          return refresh();
+        }
+        if (j.recovery_scheduled) {
+          if (!sequenceSteps || sequenceSteps.length === 0) {
+            return loadSequence().then(function () {
+              applyPanelFromScheduledResponse(j);
+              pollPanelRefresh(0);
+              nudgeWidgetIdle();
+              return refresh();
+            });
+          }
+          applyPanelFromScheduledResponse(j);
+          pollPanelRefresh(0);
+          nudgeWidgetIdle();
+          return refresh();
+        }
+        _pendingDemoScheduled = null;
+        return refresh().then(function () {
+          applyPanelFromSkippedResponseIfBlank(j);
+        });
+      });
+  }
+
+  function nudgeWidgetIdle() {
+    try {
+      document.documentElement.dispatchEvent(
+        new MouseEvent("click", { bubbles: true, cancelable: true })
+      );
+    } catch (e) {
+      try {
+        var ev = document.createEvent("MouseEvents");
+        ev.initEvent("click", true, true);
+        document.documentElement.dispatchEvent(ev);
+      } catch (e2) {
+        /* ignore */
+      }
+    }
   }
 
   function triggerConversion() {
@@ -216,21 +362,18 @@
       store_slug: getStoreSlug(),
       session_id: sid,
       purchase_completed: true,
-    })
-      .then(function (j) {
-        if (j && j.ok) {
-          setClientConverted(true);
-        }
-        console.log("cartflow demo conversion", j);
-        return refresh();
-      })
-      .catch(function (e) {
-        console.log(e);
-        return refresh();
-      });
+    }).then(function (res) {
+      var j = (res && res.body) || {};
+      if (j && j.ok) {
+        setClientConverted(true);
+      }
+      logDemo("API response (conversion)", { httpOk: res.ok, status: res.status, body: j });
+      return refresh();
+    });
   }
 
   function resetDemoSession() {
+    _pendingDemoScheduled = null;
     var cartKey =
       typeof window.CARTFLOW_DEMO_CART_KEY === "string" &&
       window.CARTFLOW_DEMO_CART_KEY.trim()
