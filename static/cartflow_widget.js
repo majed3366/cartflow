@@ -60,104 +60,6 @@
 
   var CARTFLOW_REASON_PERSONALIZE_DEFAULT =
     "📌 سيتم تخصيص المتابعة بناءً على اختيارك";
-  var CARTFLOW_REASON_PERSONALIZE_BY_PRICE_SUB = {
-    price_discount_request: "📲 سيتم تجهيز عرض مناسب لك",
-    price_budget_issue: "📲 سيتم اقتراح خيار يناسب ميزانيتك",
-    price_cheaper_alternative: "📲 سيتم عرض خيار أرخص مشابه",
-  };
-
-  function reasonPersonalizationSublineFor(rkey) {
-    if (rkey === "price" && typeof window.cartflowGetReasonSubTag === "function") {
-      var s = window.cartflowGetReasonSubTag();
-      if (s) {
-        var t = CARTFLOW_REASON_PERSONALIZE_BY_PRICE_SUB[String(s)];
-        if (t) {
-          return t;
-        }
-      }
-    }
-    return CARTFLOW_REASON_PERSONALIZE_DEFAULT;
-  }
-
-  /** عرض ‎/demo/‎: نتيجة متوقعة (وصف فقط — بدون أرقام ولا تتبع) */
-  var CARTFLOW_DEMO_OUTCOME_BY_PRICE_SUB = {
-    price_discount_request: [
-      "🎯 العميل يرجع لإكمال الطلب باستخدام الخصم",
-    ],
-    price_budget_issue: [
-      "🎯 يتم تحويله لمنتج يناسب ميزانيته",
-    ],
-    price_cheaper_alternative: [
-      "🎯 يتم توجيهه لخيار أرخص بدل الخروج",
-    ],
-  };
-  var CARTFLOW_DEMO_OUTCOME_BY_REASON = {
-    quality: ["🎯 يتم إزالة التردد وإكمال الطلب بثقة"],
-    shipping: ["🎯 يطمئن لسرعة التوصيل ويكمل الشراء"],
-    warranty: ["🎯 يفهم الضمان ويكمّل الطلب براحة"],
-    thinking: ["🎯 يرتاح ثم يرجع لإكمال الطلب حين يناسبه"],
-  };
-
-  function demoConversionOutcomeLines(rkey, subTag) {
-    if (rkey === "price") {
-      if (!subTag) {
-        return null;
-      }
-      return CARTFLOW_DEMO_OUTCOME_BY_PRICE_SUB[String(subTag)] || null;
-    }
-    return CARTFLOW_DEMO_OUTCOME_BY_REASON[rkey] || null;
-  }
-
-  /** محاكاة بصرية (عرض فقط) بعد معاينة واتساب */
-  var CARTFLOW_DEMO_JOURNEY_STEPS = [
-    "🟢 العميل فتح الرسالة",
-    "🟢 ضغط على الرابط",
-    "🟢 رجع للمتجر",
-  ];
-
-  function runDemoJourneySimulation(strip) {
-    if (!strip || !strip.isConnected) {
-      return;
-    }
-    var wrap = document.createElement("div");
-    wrap.setAttribute("data-cf-demo-journey", "1");
-    wrap.style.cssText =
-      "margin:10px 0 0 0;padding-top:10px;border-top:1px solid rgba(255,255,255,.1);";
-    var note = document.createElement("p");
-    note.setAttribute("data-cf-demo-journey-note", "1");
-    note.style.cssText =
-      "margin:0 0 8px 0;font-size:11px;opacity:0.75;line-height:1.4;display:none;";
-    note.textContent = "تم فتح الرابط قبل 3 ثوانٍ";
-    wrap.appendChild(note);
-    var delayMs = 520;
-    var i = 0;
-    function step() {
-      if (!strip.isConnected) {
-        return;
-      }
-      if (i >= CARTFLOW_DEMO_JOURNEY_STEPS.length) {
-        return;
-      }
-      var line = document.createElement("p");
-      line.style.cssText =
-        "margin:0 0 4px 0;font-size:12px;line-height:1.5;opacity:0;";
-      line.textContent = CARTFLOW_DEMO_JOURNEY_STEPS[i];
-      wrap.appendChild(line);
-      requestAnimationFrame(function () {
-        line.style.transition = "opacity 0.32s ease";
-        line.style.opacity = "0.95";
-      });
-      if (i === 1) {
-        note.style.display = "block";
-      }
-      i += 1;
-      if (i < CARTFLOW_DEMO_JOURNEY_STEPS.length) {
-        setTimeout(step, delayMs);
-      }
-    }
-    strip.appendChild(wrap);
-    setTimeout(step, 360);
-  }
 
   var DESC_KEYS = [
     "description",
@@ -1066,7 +968,7 @@
       l1.textContent = "✔ تم تسجيل سبب التردد";
       var l2 = document.createElement("p");
       l2.style.cssText = "margin:0;font-size:12px;line-height:1.5;opacity:0.92;";
-      l2.textContent = reasonPersonalizationSublineFor(rkey);
+      l2.textContent = CARTFLOW_REASON_PERSONALIZE_DEFAULT;
       box.appendChild(l1);
       box.appendChild(l2);
       w.appendChild(box);
@@ -1177,32 +1079,6 @@
           previewBox.appendChild(ht);
           previewBox.appendChild(msgEl);
           strip.appendChild(previewBox);
-
-          var outLines = demoConversionOutcomeLines(rkey, gsub);
-          var outcomeHead = document.createElement("div");
-          outcomeHead.style.cssText =
-            "font-weight:700;margin:10px 0 8px 0;padding-top:10px;border-top:1px solid rgba(255,255,255,.16);font-size:13px;";
-          outcomeHead.setAttribute("data-cf-demo-outcome", "1");
-          outcomeHead.textContent = "👀 ماذا سيحدث بعدها";
-          var outcomeBody = document.createElement("div");
-          outcomeBody.style.cssText = "font-size:13px;line-height:1.55;opacity:0.95;";
-          if (outLines && outLines.length) {
-            var oi;
-            for (oi = 0; oi < outLines.length; oi++) {
-              var op = document.createElement("p");
-              op.style.cssText =
-                oi > 0 ? "margin:6px 0 0 0" : "margin:0";
-              op.textContent = String(outLines[oi] || "");
-              outcomeBody.appendChild(op);
-            }
-          } else {
-            var op0 = document.createElement("p");
-            op0.style.cssText = "margin:0";
-            op0.textContent = "—";
-            outcomeBody.appendChild(op0);
-          }
-          strip.appendChild(outcomeHead);
-          strip.appendChild(outcomeBody);
           w.appendChild(strip);
           fetch(u, { method: "GET" })
             .then(function (r) {
@@ -1221,11 +1097,9 @@
               } else {
                 msgEl.textContent = "—";
               }
-              runDemoJourneySimulation(strip);
             })
             .catch(function () {
               msgEl.textContent = "—";
-              runDemoJourneySimulation(strip);
             });
         })();
       }
