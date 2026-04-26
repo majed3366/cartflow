@@ -18,10 +18,10 @@ _WIDGET = os.path.join(_ROOT, "static", "cartflow_widget.js")
 
 _EXPECTED_MESSAGE_SNIPPETS = {
     "price": "أفهمك، السعر مهم",
-    "quality": "أكيد الجودة مهمة",
-    "warranty": "الضمان مهم خصوصًا للأجهزة",
-    "shipping": "الشحن مهم",
-    "thinking": "خذ راحتك",
+    "quality": "نأكد لك اهتمامك بالجودة",
+    "warranty": "معلومات الضمان غير موضحة",
+    "shipping": "مدة الشحن تختلف",
+    "thinking": "خذ وقتك",
 }
 
 
@@ -58,8 +58,9 @@ class AbandonmentReasonBehaviorFinalTests(unittest.TestCase):
         self.assertIn("widget_loader.js", (r.text or ""))
 
     def test_2_response_message_per_reason(self) -> None:
-        """REASON_FLOWS message + actions + back for each standard key."""
-        self.assertIn("REASON_FLOWS", self.widget_src)
+        """getProductAwareCopy + fallback substrings + actions + back for each key."""
+        self.assertIn("getProductAwareCopy", self.widget_src)
+        self.assertIn("buildProductContext", self.widget_src)
         for _rkey, needle in _EXPECTED_MESSAGE_SNIPPETS.items():
             self.assertIn(needle, self.widget_src, needle[:20])
         self.assertIn("رجوع", self.widget_src)

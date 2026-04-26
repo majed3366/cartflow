@@ -14,46 +14,317 @@
   var step1Poll = null;
   var events = ["mousemove", "keydown", "scroll", "click", "touchstart"];
 
-  var REASON_FLOWS = {
-    price: {
-      message:
-        "أفهمك، السعر مهم. المنتج قيمته مقابل الجودة والاستخدام 👍 تبي تفاصيل أو التحويل؟",
-      explain:
-        "تقدر تقارن بين العروض، وصاحب المتجر يوضح لك تفاصيل التسعير والعروض إذا احتجت.",
-      a1: "تفاصيل إضافية",
-    },
-    quality: {
-      message:
-        "أكيد الجودة مهمة. المنتج مختار بعناية 👍 تبي تفاصيل عن الجودة أو التحويل؟",
-      explain:
-        "راجع وصف المنتج والتقييمات بتمعن، وصاحب المتجر يرد على أي سؤال عن الجودة أو الاسترجاع.",
-      a1: "تفاصيل الجودة",
-    },
-    warranty: {
-      message:
-        "الضمان مهم خصوصًا للأجهزة 👍 تبي أوضح لك أو أحولك للمتجر؟",
-      explain:
-        "سياسة الضمان تتضمّن الاستبدال أو الصيانة حسب المنتج. راجع تفاصيل الضمان على صفحة المنتج لأدق المعلومات.",
-      a1: "شرح الضمان",
-    },
-    shipping: {
-      message:
-        "الشحن مهم. تقدر تتأكد من المدة والمنطقة قبل الطلب 👍 تبي تفاصيل أو التحويل؟",
-      explain:
-        "تظهر مدة الشحن ورسوم التوصيل عند إتمام الطلب. صاحب المتجر يساعدك لو بغيت تفصيل إضافي.",
-      a1: "تفاصيل الشحن",
-    },
-    thinking: {
-      message:
-        "خذ راحتك. إذا بغيت مقارنة أو توضيح، أنا حاضر 👍 تبي نصيحة سريعة أو التحويل؟",
-      explain:
-        "تقدر تكمّل الطلب لاحقاً، وإن احتجت مقارنة بين المنتجات اطلب من المتجر يرشّح لك حسب ميزانيتك.",
-      a1: "نصيحة سريعة",
-    },
-  };
-
   var BTN_BACK = "رجوع";
   var BTN_HANDOFF = "تحويل لصاحب المتجر";
+
+  var DESC_KEYS = [
+    "description",
+    "desc",
+    "body",
+    "long_description",
+    "details",
+    "summary",
+  ];
+  var CAT_KEYS = [
+    "category",
+    "category_name",
+    "product_category",
+    "cat",
+  ];
+  var WARR_KEYS = ["warranty", "warranty_info", "guarantee", "warrantyText"];
+  var SHIP_KEYS = [
+    "shipping",
+    "shipping_info",
+    "delivery_info",
+    "shipping_text",
+  ];
+
+  function strTrim(s) {
+    if (s == null) {
+      return "";
+    }
+    return String(s).replace(/\s+/g, " ").trim();
+  }
+
+  function firstLineOrClip(s, maxLen) {
+    var t = strTrim(s);
+    if (!t) {
+      return "";
+    }
+    var one = t.split(/\n/)[0];
+    var out = strTrim(one);
+    if (out.length > maxLen) {
+      out = out.slice(0, maxLen - 1) + "…";
+    }
+    return out;
+  }
+
+  function pickField(obj, keys) {
+    if (!obj || typeof obj !== "object") {
+      return "";
+    }
+    var i;
+    for (i = 0; i < keys.length; i++) {
+      var v = obj[keys[i]];
+      if (v != null && strTrim(v) !== "") {
+        return strTrim(v);
+      }
+    }
+    return "";
+  }
+
+  function formatPriceRiyal(line) {
+    if (!line || typeof line !== "object") {
+      return "";
+    }
+    var p = line.price;
+    if (p == null || p === "") {
+      return "";
+    }
+    if (typeof p === "number" && isFinite(p)) {
+      if (p % 1 === 0) {
+        return String(Math.round(p)) + " ريال";
+      }
+      return p.toFixed(2) + " ريال";
+    }
+    var t = strTrim(p);
+    if (t !== "") {
+      if (/[٠-٩0-9]/.test(t) && !/ريال|SAR|sr\b/i.test(t)) {
+        return t + " ريال";
+      }
+      return t;
+    }
+    return "";
+  }
+
+  function getCartLineItems() {
+    if (typeof window.cart === "undefined" || window.cart === null) {
+      return [];
+    }
+    if (!Array.isArray(window.cart)) {
+      return [];
+    }
+    return window.cart;
+  }
+
+  function buildProductContext() {
+    var items = getCartLineItems();
+    var line = items.length && items[0] && typeof items[0] === "object"
+      ? items[0]
+      : null;
+    var name = "هذا المنتج";
+    if (line && strTrim(line.name) !== "") {
+      name = strTrim(line.name);
+    }
+    var desc = line ? pickField(line, DESC_KEYS) : "";
+    var category = line ? pickField(line, CAT_KEYS) : "";
+    var warranty = line ? pickField(line, WARR_KEYS) : "";
+    var shipping = line ? pickField(line, SHIP_KEYS) : "";
+    var priceLabel = line ? formatPriceRiyal(line) : "";
+    var descForQuote = firstLineOrClip(desc, 140);
+    var descForQuality = firstLineOrClip(desc, 220);
+    var multi = items.length > 1;
+    return {
+      line: line,
+      name: name,
+      priceLabel: priceLabel,
+      description: desc,
+      descForQuote: descForQuote,
+      descForQuality: descForQuality,
+      category: category,
+      warranty: warranty,
+      shipping: shipping,
+      hasWarranty: strTrim(warranty) !== "",
+      hasShipping: strTrim(shipping) !== "",
+      multi: multi,
+      extraItemsNote: multi
+        ? " (وفي سلتك منتجات أخرى أيضاً.)"
+        : "",
+    };
+  }
+
+  function getProductAwareCopy(rkey) {
+    var ctx = buildProductContext();
+    var n = ctx.name;
+    var a1s = {
+      price: "تفاصيل إضافية",
+      quality: "تفاصيل الجودة",
+      warranty: "شرح الضمان",
+      shipping: "تفاصيل الشحن",
+      thinking: "نصيحة سريعة",
+    };
+    var a1 = a1s[rkey] || "تفاصيل";
+    if (rkey === "price") {
+      if (ctx.priceLabel) {
+        if (ctx.descForQuote) {
+          return {
+            message:
+              "سعر " +
+              n +
+              " هو " +
+              ctx.priceLabel +
+              "، ومناسب لأنه " +
+              ctx.descForQuote +
+              " تبي أشوف لك خيار أنسب؟" +
+              ctx.extraItemsNote,
+            explain: buildPriceExplain(ctx),
+            a1: a1,
+          };
+        }
+        return {
+          message:
+            "سعر " + n + " هو " + ctx.priceLabel + ". تبي أشوف لك خيار أنسب؟" +
+            ctx.extraItemsNote,
+          explain: buildPriceExplain(ctx),
+          a1: a1,
+        };
+      }
+      return {
+        message:
+          "أفهمك، السعر مهم. " +
+          (n && n !== "هذا المنتج"
+            ? "نتكلّم عن " + n + " — "
+            : "") +
+          "نقدر نراجع لك قيمة مقابل الاستخدام 👍 تبي تفاصيل أو التحويل؟" +
+          ctx.extraItemsNote,
+        explain: buildPriceExplain(ctx),
+        a1: a1,
+      };
+    }
+    if (rkey === "quality") {
+      if (ctx.descForQuality) {
+        return {
+          message:
+            n +
+            " موضح في وصفه: " +
+            ctx.descForQuality +
+            ". هذا يساعدك تتأكد من الجودة قبل الشراء." +
+            ctx.extraItemsNote,
+          explain: buildQualityExplain(ctx),
+          a1: a1,
+        };
+      }
+      return {
+        message:
+          "نأكد لك اهتمامك بالجودة. إذا مافي وصف مفصّل داخل بيانات السلة، راجع صفحة المنتج، أو اطلب التفصيل من المتجر." +
+          ctx.extraItemsNote,
+        explain: buildQualityExplain(ctx),
+        a1: a1,
+      };
+    }
+    if (rkey === "warranty") {
+      if (ctx.hasWarranty) {
+        return {
+          message:
+            "حسب بيانات المنتج في السلة: " +
+            firstLineOrClip(ctx.warranty, 200) +
+            " 👍 تبي أوضح لك أو أحولك للمتجر؟" +
+            ctx.extraItemsNote,
+          explain: buildWarrantyExplain(ctx),
+          a1: a1,
+        };
+      }
+      return {
+        message:
+          "معلومات الضمان غير موضحة هنا، أقدر أحولك لصاحب المتجر للتأكد." +
+          ctx.extraItemsNote,
+        explain: buildWarrantyExplain(ctx),
+        a1: a1,
+      };
+    }
+    if (rkey === "shipping") {
+      if (ctx.hasShipping) {
+        return {
+          message:
+            "حسب بيانات المنتج: " +
+            firstLineOrClip(ctx.shipping, 200) +
+            " تقدر تتأكد من التفاصيل قبل إتمام الطلب أيضاً." +
+            ctx.extraItemsNote,
+          explain: buildShippingExplain(ctx),
+          a1: a1,
+        };
+      }
+      return {
+        message:
+          "مدة الشحن تختلف حسب المدينة، وتقدر تتأكد منها قبل إتمام الطلب." +
+          ctx.extraItemsNote,
+        explain: buildShippingExplain(ctx),
+        a1: a1,
+      };
+    }
+    if (rkey === "thinking") {
+      return {
+        message: buildThinkingMessage(ctx),
+        explain: buildThinkingExplain(ctx),
+        a1: a1,
+      };
+    }
+    return {
+      message: "شكراً لملاحظتك." + ctx.extraItemsNote,
+      explain: "تقدر ترجع لاحقاً أو تتواصل مع المتجر.",
+      a1: a1,
+    };
+  }
+
+  function buildPriceExplain(ctx) {
+    var parts = [];
+    if (ctx.description) {
+      parts.push("من وصف المنتج في السلة: " + firstLineOrClip(ctx.description, 300));
+    }
+    if (ctx.category) {
+      parts.push("الفئة: " + ctx.category + ".");
+    }
+    if (parts.length === 0) {
+      return "تقدر تطلب من صاحب المتجر توضيح سعر وعروض مخصصة حسب اختيارك.";
+    }
+    return parts.join(" ");
+  }
+
+  function buildQualityExplain(ctx) {
+    if (ctx.description) {
+      return "تفصيل أطول من الوصف: " + firstLineOrClip(ctx.description, 400);
+    }
+    if (ctx.category) {
+      return "الفئة المسجّلة: " + ctx.category + " — راجع تفاصيل المنتج على متجرك.";
+    }
+    return "اقرأ تقييمات وصفحات المنتج لأنسب قرار بخصوص الجودة، أو راسل المتجر.";
+  }
+
+  function buildWarrantyExplain(ctx) {
+    if (ctx.hasWarranty) {
+      return "بيانات الضمان الظاهرة في سلة: " + strTrim(ctx.warranty);
+    }
+    return "ما في حقل ضمان مرفوع ببيانات المنتج في السلة. صاحب المتجر يوضح السياسة مباشرة.";
+  }
+
+  function buildShippingExplain(ctx) {
+    if (ctx.hasShipping) {
+      return "تفصيل أطول: " + firstLineOrClip(ctx.shipping, 400);
+    }
+    return "تفاصيل الشحن والمدد غالباً تظهر عند إدخال العنوان عند إتمام الطلب. صاحب المتجر يوضح لك حسب منطقتك إذا بغيت.";
+  }
+
+  function buildThinkingMessage(ctx) {
+    if (strTrim(ctx.name) !== "هذا المنتج" || strTrim(ctx.descForQuote) !== "") {
+      var t =
+        "خذ وقتك. إذا محتار بشأن " + ctx.name + "، أقدر أساعدك تقارنه أو أوضح لك أهم مزاياه.";
+      if (ctx.descForQuote) {
+        t += " من وصفه: " + ctx.descForQuote;
+      }
+      return t + ctx.extraItemsNote;
+    }
+    return (
+      "خذ وقتك. إذا بغيت توضيح بخصوص منتجك في السلة، أنا حاضر. تبي نصيحة سريعة أو التحويل؟" +
+      ctx.extraItemsNote
+    );
+  }
+
+  function buildThinkingExplain(ctx) {
+    if (ctx.description) {
+      return "لخصّينا من وصف " + ctx.name + ": " + firstLineOrClip(ctx.description, 300);
+    }
+    return "تقدر تكمّل لاحقاً — أو اطلب من المتجر يرشّح لك أقرب خيار لاحتياجك.";
+  }
 
   function isSessionConverted() {
     try {
@@ -330,7 +601,7 @@
     });
 
     function showStandardActionView(rkey) {
-      var flow = REASON_FLOWS[rkey];
+      var flow = getProductAwareCopy(rkey);
       if (!flow) {
         return;
       }

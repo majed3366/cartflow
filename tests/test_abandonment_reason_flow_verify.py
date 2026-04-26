@@ -49,9 +49,10 @@ class AbandonmentReasonFlowVerifyTests(unittest.TestCase):
         self.assertIn("وش أكثر شيء مخليك متردد؟ تبيني أساعدك", src)
         self.assertIn("اكتب السبب أو اطلب تحويلك لصاحب المتجر", src)
         self.assertIn("تحويل لصاحب المتجر", src)
-        self.assertIn("REASON_FLOWS", src)
+        self.assertIn("getProductAwareCopy", src)
+        self.assertIn("buildProductContext", src)
         self.assertIn("أفهمك، السعر مهم", src)
-        self.assertIn("الضمان مهم خصوصًا للأجهزة 👍", src)
+        self.assertIn("معلومات الضمان غير موضحة هنا", src)
         self.assertIn("showStandardActionView", src)
         self.assertIn("renderReasonList", src)
 
