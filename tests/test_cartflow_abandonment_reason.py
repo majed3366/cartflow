@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import annotations
 
+import uuid
 import unittest
 
 from main import app
@@ -67,15 +68,16 @@ class TestCartflowAbandonmentReason(unittest.TestCase):
 
     def test_ready_step1(self) -> None:
         ensure_store_widget_schema(db)
+        sid = "rs1-" + uuid.uuid4().hex
         r0 = self.client.get(
             "/api/cartflow/ready",
-            params={"store_slug": "rstore", "session_id": "rs1"},
+            params={"store_slug": "rstore", "session_id": sid},
         )
         self.assertEqual(200, r0.status_code)
         self.assertFalse((r0.json() or {}).get("after_step1"))
         log = CartRecoveryLog(
             store_slug="rstore",
-            session_id="rs1",
+            session_id=sid,
             message="m",
             status="mock_sent",
             step=1,
@@ -84,7 +86,7 @@ class TestCartflowAbandonmentReason(unittest.TestCase):
         db.session.commit()
         r1 = self.client.get(
             "/api/cartflow/ready",
-            params={"store_slug": "rstore", "session_id": "rs1"},
+            params={"store_slug": "rstore", "session_id": sid},
         )
         self.assertEqual(200, r1.status_code)
         self.assertTrue((r1.json() or {}).get("after_step1"))

@@ -7,6 +7,8 @@
 
   var CARTFLOW_SESSION_KEY = "cartflow_recovery_session_id";
   var CARTFLOW_CONVERTED_KEY = "cartflow_converted";
+  var REASON_TAG_KEY = "cartflow_reason_tag";
+  var REASON_SUB_TAG_KEY = "cartflow_reason_sub_tag";
 
   function getStoreSlug() {
     if (typeof window.CARTFLOW_STORE_SLUG === "string" && window.CARTFLOW_STORE_SLUG.trim()) {
@@ -228,8 +230,56 @@
       });
   }
 
+  function resetDemoSession() {
+    var cartKey =
+      typeof window.CARTFLOW_DEMO_CART_KEY === "string" &&
+      window.CARTFLOW_DEMO_CART_KEY.trim()
+        ? String(window.CARTFLOW_DEMO_CART_KEY).trim()
+        : "demo_cart";
+    try {
+      localStorage.removeItem(cartKey);
+    } catch (e) {
+      /* ignore */
+    }
+    try {
+      window.sessionStorage.removeItem(REASON_TAG_KEY);
+      window.sessionStorage.removeItem(REASON_SUB_TAG_KEY);
+      window.sessionStorage.removeItem(CARTFLOW_CONVERTED_KEY);
+      window.sessionStorage.removeItem(CARTFLOW_SESSION_KEY);
+    } catch (e) {
+      /* ignore */
+    }
+    var newSid;
+    if (typeof window.crypto !== "undefined" && window.crypto.randomUUID) {
+      newSid = "s_" + window.crypto.randomUUID();
+    } else {
+      newSid = "s_" + String(Date.now()) + "_" + String(Math.random());
+    }
+    try {
+      window.sessionStorage.setItem(CARTFLOW_SESSION_KEY, newSid);
+    } catch (e) {
+      /* ignore */
+    }
+    try {
+      if (Array.isArray(window.cart)) {
+        window.cart.length = 0;
+      } else {
+        window.cart = [];
+      }
+    } catch (e) {
+      /* ignore */
+    }
+    try {
+      location.reload();
+    } catch (e) {
+      /* ignore */
+    }
+  }
+
   function wire() {
     var b;
+    b = el("cf-btn-reset-demo");
+    if (b) b.addEventListener("click", function () { resetDemoSession(); });
     b = el("cf-btn-abandon");
     if (b) b.addEventListener("click", function () { void triggerAbandon(); });
     b = el("cf-btn-s1");

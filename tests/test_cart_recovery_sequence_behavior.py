@@ -211,6 +211,12 @@ class CartRecoverySequenceBehaviorTests(unittest.TestCase):
             self.assertIn(b"window.cart", r.content)
             self.assertIn(b"cf-demo-panel", r.content)
             self.assertIn(b"cartflow_demo_panel.js", r.content)
+        r0 = self.client.get("/demo/cart")
+        t = r0.text or ""
+        self.assertIn("Reset demo session", t)
+        self.assertIn("CARTFLOW_DEMO_CART_KEY", t)
+        self.assertIn("هودي قطني مريح", t)
+        self.assertIn("warranty_info", t)
 
 
 if __name__ == "__main__":

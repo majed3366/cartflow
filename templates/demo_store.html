@@ -102,6 +102,10 @@
       padding: 0.4rem 0.55rem;
     }
     .cf-demo-btns button:hover { filter: brightness(1.08); }
+    .cf-btn-reset-demo {
+      background: #b45309 !important;
+    }
+    .cf-btn-reset-demo:hover { filter: brightness(1.1); }
     .cf-demo-logs {
       max-height: 10rem;
       overflow: auto;
@@ -115,6 +119,7 @@
 </head>
 <body>
   <script>window.CARTFLOW_STORE_SLUG = "{{ demo_store_slug|default('demo') }}";</script>
+  <script>window.CARTFLOW_DEMO_CART_KEY = "{{ demo_cart_key|default('demo_cart') }}";</script>
   <script>
     try {
       window.cart = JSON.parse(localStorage.getItem("{{ demo_cart_key|default('demo_cart') }}") || "[]");
@@ -187,22 +192,51 @@
 
   <h1>{{ demo_h1|default('Demo store') }}</h1>
   <p class="sub">Internal only — <code>window.cart</code> is the only cart source; list below mirrors it. Store slug: <code>{{ demo_store_slug|default('demo') }}</code></p>
-
+  <script>
+    (function () {
+      window.CF_DEMO_PRODUCTS = {
+        hoodie: {
+          name: "Sample Hoodie",
+          price: 99,
+          description: "هودي قطني مريح للاستخدام اليومي، تصميم عملي ومناسب للجو البارد.",
+          category: "ملابس",
+          warranty_info: "ضمان جودة ضد عيوب التصنيع.",
+          shipping_info: "الشحن خلال 2 إلى 5 أيام عمل حسب المدينة.",
+        },
+        mug: {
+          name: "Sample Mug",
+          price: 29,
+          description: "كوب سيراميك بسعة مناسبة للمشروبات الساخنة والباردة.",
+          category: "أواني",
+          warranty_info: "يغطي الكسر أثناء الشحن فقط عند اختيار تغليف مُوسَّم من المتجر.",
+          shipping_info: "الشحن خلال 2 إلى 5 أيام عمل حسب المدينة.",
+        },
+        notebook: {
+          name: "Sample Notebook",
+          price: 19,
+          description: "دفتر ملاحظات بورق سميك يناسب الدراسة والعمل.",
+          category: "قرطاسية",
+          warranty_info: "ضمان أسبوع لعيوب الطباعة والتجليد.",
+          shipping_info: "الشحن خلال 2 إلى 5 أيام عمل حسب المدينة.",
+        },
+      };
+    })();
+  </script>
   <div class="grid">
     <div class="card">
       <h2>Sample Hoodie</h2>
       <div class="price">99.00 SAR</div>
-      <button type="button" onclick="addToCart({ name: 'Sample Hoodie', price: 99 })">Add to cart</button>
+      <button type="button" onclick="addToCart(window.CF_DEMO_PRODUCTS.hoodie)">Add to cart</button>
     </div>
     <div class="card">
       <h2>Sample Mug</h2>
       <div class="price">29.00 SAR</div>
-      <button type="button" onclick="addToCart({ name: 'Sample Mug', price: 29 })">Add to cart</button>
+      <button type="button" onclick="addToCart(window.CF_DEMO_PRODUCTS.mug)">Add to cart</button>
     </div>
     <div class="card">
       <h2>Sample Notebook</h2>
       <div class="price">19.00 SAR</div>
-      <button type="button" onclick="addToCart({ name: 'Sample Notebook', price: 19 })">Add to cart</button>
+      <button type="button" onclick="addToCart(window.CF_DEMO_PRODUCTS.notebook)">Add to cart</button>
     </div>
   </div>
 
@@ -227,6 +261,7 @@
     <div>Recovery message (copy)</div>
     <div class="cf-demo-msg" id="cf-demo-recovery-message" lang="ar" dir="rtl">—</div>
     <div class="cf-demo-btns">
+      <button type="button" class="cf-btn-reset-demo" id="cf-btn-reset-demo" title="New session id, clear cart &amp; reason tags — avoids skipped_duplicate for retesting">Reset demo session</button>
       <button type="button" id="cf-btn-abandon">Trigger abandoned cart</button>
       <button type="button" id="cf-btn-s1" title="Displays the step 1 recovery copy in the widget (backend sends all steps after abandon)">Trigger step1</button>
       <button type="button" id="cf-btn-s2" title="Displays the step 2 recovery copy in the widget">Trigger step2</button>
