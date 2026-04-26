@@ -87,6 +87,57 @@
     return CARTFLOW_DEMO_OUTCOME_BY_REASON[rkey] || null;
   }
 
+  /** محاكاة بصرية (عرض فقط) بعد معاينة واتساب */
+  var CARTFLOW_DEMO_JOURNEY_STEPS = [
+    "🟢 العميل فتح الرسالة",
+    "🟢 ضغط على الرابط",
+    "🟢 رجع للمتجر",
+  ];
+
+  function runDemoJourneySimulation(strip) {
+    if (!strip || !strip.isConnected) {
+      return;
+    }
+    var wrap = document.createElement("div");
+    wrap.setAttribute("data-cf-demo-journey", "1");
+    wrap.style.cssText =
+      "margin:10px 0 0 0;padding-top:10px;border-top:1px solid rgba(255,255,255,.1);";
+    var note = document.createElement("p");
+    note.setAttribute("data-cf-demo-journey-note", "1");
+    note.style.cssText =
+      "margin:0 0 8px 0;font-size:11px;opacity:0.75;line-height:1.4;display:none;";
+    note.textContent = "تم فتح الرابط قبل 3 ثوانٍ";
+    wrap.appendChild(note);
+    var delayMs = 520;
+    var i = 0;
+    function step() {
+      if (!strip.isConnected) {
+        return;
+      }
+      if (i >= CARTFLOW_DEMO_JOURNEY_STEPS.length) {
+        return;
+      }
+      var line = document.createElement("p");
+      line.style.cssText =
+        "margin:0 0 4px 0;font-size:12px;line-height:1.5;opacity:0;";
+      line.textContent = CARTFLOW_DEMO_JOURNEY_STEPS[i];
+      wrap.appendChild(line);
+      requestAnimationFrame(function () {
+        line.style.transition = "opacity 0.32s ease";
+        line.style.opacity = "0.95";
+      });
+      if (i === 1) {
+        note.style.display = "block";
+      }
+      i += 1;
+      if (i < CARTFLOW_DEMO_JOURNEY_STEPS.length) {
+        setTimeout(step, delayMs);
+      }
+    }
+    strip.appendChild(wrap);
+    setTimeout(step, 360);
+  }
+
   var DESC_KEYS = [
     "description",
     "desc",
@@ -1073,14 +1124,14 @@
           }
           var strip = document.createElement("div");
           strip.setAttribute("data-cf-demo-merchant-hint", "1");
-          strip.setAttribute("aria-label", "معاينة ونتيجة متوقعة (عرض فقط)");
+          strip.setAttribute("aria-label", "تجربة استرجاع (عرض فقط)");
           strip.style.cssText =
             "margin:0 0 12px 0;padding:10px 10px;border-radius:10px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.12);";
           var previewBox = document.createElement("div");
           previewBox.setAttribute("data-cf-wa-preview", "1");
           var ht = document.createElement("div");
           ht.style.cssText = "font-weight:700;margin:0 0 8px 0;font-size:13px;";
-          ht.textContent = "📲 ماذا سيصل للعميل:";
+          ht.textContent = "📲 رسالة واتساب (تجربة حقيقية)";
           var msgEl = document.createElement("p");
           msgEl.style.cssText = "margin:0;font-size:13px;line-height:1.55;opacity:0.95;";
           msgEl.textContent = "…";
@@ -1093,7 +1144,7 @@
           outcomeHead.style.cssText =
             "font-weight:700;margin:10px 0 8px 0;padding-top:10px;border-top:1px solid rgba(255,255,255,.16);font-size:13px;";
           outcomeHead.setAttribute("data-cf-demo-outcome", "1");
-          outcomeHead.textContent = "📈 النتيجة المتوقعة:";
+          outcomeHead.textContent = "👀 ماذا سيحدث بعدها";
           var outcomeBody = document.createElement("div");
           outcomeBody.style.cssText = "font-size:13px;line-height:1.55;opacity:0.95;";
           if (outLines && outLines.length) {
@@ -1131,9 +1182,11 @@
               } else {
                 msgEl.textContent = "—";
               }
+              runDemoJourneySimulation(strip);
             })
             .catch(function () {
               msgEl.textContent = "—";
+              runDemoJourneySimulation(strip);
             });
         })();
       }

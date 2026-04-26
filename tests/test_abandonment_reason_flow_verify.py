@@ -30,8 +30,9 @@ class AbandonmentReasonFlowVerifyTests(unittest.TestCase):
         """Test 1: /demo/cart loads; widget source contains first message and all options."""
         r = self.client.get("/demo/cart")
         self.assertEqual(200, r.status_code, r.text)
-        body = (r.text or "")[:20000]
-        self.assertIn("widget_loader.js", body)
+        full = r.text or ""
+        body = full[:20000]
+        self.assertIn("widget_loader.js", full)
         self.assertIn("/static/", body)
 
         with open(_WIDGET_JS, encoding="utf-8") as f:

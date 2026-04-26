@@ -41,9 +41,9 @@ class AbandonmentReasonBehaviorFinalTests(unittest.TestCase):
         No bubble dismiss on option pick: only 'لا' removes the bubble from DOM.
         showStandardResponse leads to mountProductAwareView (no bubble remove).
         """
-        # Single parent remove is for the "لا" path only
+        # Whole bubble is removed for minimize, "لا", and × only — not for reason pick
         n_close = self.widget_src.count("w.parentNode.removeChild(w)")
-        self.assertEqual(1, n_close, "only 'لا' should close the whole bubble")
+        self.assertEqual(3, n_close, "minimize, No, and × remove the bubble from DOM")
         # Standard path: no parentNode.removeChild near showStandardResponse
         self.assertIn("function showStandardResponse", self.widget_src)
         self.assertIn("function mountProductAwareView", self.widget_src)

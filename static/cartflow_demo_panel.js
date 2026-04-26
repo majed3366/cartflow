@@ -602,12 +602,11 @@
   }
 
   function onReady() {
-    if (!el("cf-demo-panel")) {
-      return;
+    if (el("cf-demo-panel")) {
+      loadSequence().then(function () {
+        return refresh();
+      });
     }
-    loadSequence().then(function () {
-      return refresh();
-    });
     wire();
   }
 })();

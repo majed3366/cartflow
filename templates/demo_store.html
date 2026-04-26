@@ -37,18 +37,6 @@
     }
     .brand { font-weight: 800; font-size: 1rem; letter-spacing: -0.02em; }
     .tag { font-size: 0.75rem; color: #a8a29e; font-weight: 500; }
-    .btn-scenario {
-      background: #f59e0b;
-      color: #1c1917;
-      border: 0;
-      border-radius: 999px;
-      padding: 0.45rem 1.1rem;
-      font: inherit;
-      font-weight: 800;
-      font-size: 0.8rem;
-      cursor: pointer;
-    }
-    .btn-scenario:hover { filter: brightness(1.05); }
     .topbar-actions {
       display: flex;
       flex-wrap: wrap;
@@ -157,82 +145,6 @@
       color: var(--ink);
       border: 1px solid #e7e5e4;
     }
-    .cf-details {
-      margin-top: 1.25rem;
-      max-width: 1120px;
-      margin-left: auto;
-      margin-right: auto;
-    }
-    .cf-details[open] .cf-summary { border-radius: 10px 10px 0 0; }
-    .cf-summary {
-      list-style: none;
-      background: #292524;
-      color: #d6d3d1;
-      font-size: 0.7rem;
-      font-weight: 600;
-      padding: 0.4rem 0.75rem;
-      border-radius: 10px;
-      cursor: pointer;
-      user-select: none;
-    }
-    .cf-summary::-webkit-details-marker { display: none; }
-    .cf-details[open] .cf-summary { border: 0; }
-    .cf-demo-panel {
-      background: #1c1917;
-      color: #d6d3d1;
-      font-size: 0.7rem;
-      line-height: 1.4;
-      padding: 0.5rem 0.75rem 0.9rem;
-      border-radius: 0 0 10px 10px;
-    }
-    .cf-demo-panel h2 {
-      font-size: 0.72rem;
-      margin: 0 0 0.4rem 0;
-      color: #a8a29e;
-      font-weight: 600;
-    }
-    .cf-demo-grid {
-      display: grid;
-      grid-template-columns: 86px 1fr;
-      gap: 0.2rem 0.5rem;
-    }
-    .cf-demo-grid div:nth-child(odd) { color: #78716c; }
-    .cf-demo-msg {
-      background: #292524;
-      border-radius: 6px;
-      padding: 0.45rem 0.5rem;
-      margin: 0.35rem 0;
-      min-height: 1.5rem;
-      max-height: 3.5rem;
-      overflow: auto;
-    }
-    .cf-demo-btns {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.25rem;
-      margin: 0.3rem 0 0.45rem 0;
-    }
-    .cf-demo-btns button {
-      width: auto;
-      background: #44403c;
-      color: #fafaf9;
-      font-size: 0.6rem;
-      padding: 0.25rem 0.4rem;
-      border: 0;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-    .cf-btn-reset-demo { background: #7c2d12 !important; }
-    .cf-btn-start { background: #0d9488 !important; color: #f0fdfa !important; font-weight: 800 !important; }
-    .cf-demo-logs {
-      max-height: 5.5rem;
-      overflow: auto;
-      margin: 0;
-      padding-right: 1rem;
-      color: #a8a29e;
-      font-size: 0.6rem;
-    }
-    .cf-demo-logs li { margin: 0.1rem 0; }
     .cf-store-intro {
       display: none;
       align-items: flex-start;
@@ -529,8 +441,7 @@
         <span class="brand">CartFlow <span class="tag">نموذج واجهة</span></span>
       </div>
       <div class="topbar-actions">
-        <button type="button" class="btn-replay" id="cf-btn-replay-demo" title="إعادة عرض الإرشادات والشريط العلوي">إعادة التجربة</button>
-        <button type="button" class="btn-scenario" id="cf-btn-start-scenario" title="يصفّر الجلسة ويضيف سماعة ويُطلق الخطوة 1">بدء سيناريو التجربة</button>
+        <button type="button" class="btn-replay" id="cf-btn-replay-demo" title="إعادة عرض المقدّمة ومسار التجربة">إعادة التجربة</button>
       </div>
     </div>
   </div>
@@ -545,7 +456,7 @@
   <div class="wrap">
   <div class="hero">
     <h1>{{ demo_h1|default('واجهة جاهزة للتجارب') }}</h1>
-    <p class="sub">واجهة مبسّطة تُمثّل كتالوجاً حقيقياً مع <strong>نفس سلوك CartFlow</strong> (ودجت بعد السكون أو من لوحة المطوّر).</p>
+    <p class="sub">واجهة مبسّطة تُمثّل كتالوجاً حقيقياً مع <strong>نفس سلوك CartFlow</strong> (ودجت يظهر بعد لحظة تردد كأي زائر).</p>
     <p class="store-note">المتجر: <code>{{ demo_store_slug|default('demo') }}</code> — السلة من <code>localStorage</code> (<code>{{ demo_cart_key|default('demo_cart') }}</code>)</p>
   </div>
   <script>
@@ -664,38 +575,6 @@
     <ul id="cart-list"></ul>
     <button type="button" class="add-btn btn-clear" onclick="clearCart()">إفراغ السلة</button>
   </div>
-  </div>
-
-  <div class="cf-details">
-    <details>
-      <summary class="cf-summary" id="cf-dev-summary">CartFlow — أدوات المطوّر (طي)</summary>
-      <div class="cf-demo-panel" id="cf-demo-panel">
-    <h2>مراقبة الجلسة (تجارب داخلية)</h2>
-    <div class="cf-demo-grid">
-      <div>store_slug</div><div id="cf-demo-store">—</div>
-      <div>session_id</div><div id="cf-demo-session">—</div>
-      <div>current step</div><div id="cf-demo-current-step">—</div>
-      <div>queue / last log</div><div id="cf-demo-queue">—</div>
-      <div>last WA line</div><div id="cf-demo-last-wa">—</div>
-      <div>last log status</div><div id="cf-demo-last-status">—</div>
-      <div>conversion</div><div id="cf-demo-conversion">—</div>
-    </div>
-    <div>نص الاسترجاع (للعرض)</div>
-    <div class="cf-demo-msg" id="cf-demo-recovery-message" lang="ar" dir="rtl">—</div>
-    <div class="cf-demo-btns">
-      <button type="button" class="cf-btn-reset-demo" id="cf-btn-reset-demo" title="جلسة جديدة وتفريغ — يقلل التكرار لاختبارات">Reset demo session</button>
-      <button type="button" class="cf-btn-start" id="cf-btn-start-in-panel" title="نفس الزر في الشريط العلوي">بدء سيناريو التجربة</button>
-      <button type="button" id="cf-btn-abandon">Trigger abandoned cart</button>
-      <button type="button" id="cf-btn-s1" title="عرض نص الخطوة 1">Trigger step1</button>
-      <button type="button" id="cf-btn-s2">Trigger step2</button>
-      <button type="button" id="cf-btn-s3">Trigger step3</button>
-      <button type="button" id="cf-btn-convert">Mark as converted</button>
-      <button type="button" id="cf-btn-refresh">Refresh logs</button>
-    </div>
-    <div>آخر السجلات (10)</div>
-    <ul class="cf-demo-logs" id="cf-demo-logs"></ul>
-  </div>
-    </details>
   </div>
 
   <script>
