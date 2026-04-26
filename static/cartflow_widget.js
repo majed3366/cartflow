@@ -1120,8 +1120,10 @@
         bMock.type = "button";
         bMock.textContent = "📤 إرسال عبر واتساب";
         bMock.setAttribute("data-cf-wa-mock-send", "1");
-        bMock.setAttribute("aria-label", "محاكاة إرسال واتساب");
+        bMock.setAttribute("aria-label", "فتح واتساب مع الرسالة المجهّزة");
         bMock.style.cssText = btnStyle;
+        bMock.setAttribute("disabled", "true");
+        var generatedCore = null;
         var mockStatus = document.createElement("p");
         mockStatus.setAttribute("data-cf-wa-mock-status", "1");
         mockStatus.style.cssText =
@@ -1129,12 +1131,31 @@
         bMock.addEventListener("click", function (ev) {
           ev.stopPropagation();
           ev.preventDefault();
+          if (!generatedCore) {
+            return;
+          }
+          var cartUrl = "#";
+          if (payload && payload.cart_url && String(payload.cart_url).trim()) {
+            cartUrl = String(payload.cart_url).trim();
+          }
+          var fullText =
+            "👋 مرحباً\n\n" +
+            String(generatedCore) +
+            "\n\n🛒 رابط السلة:\n" +
+            cartUrl;
+          var wurl = "https://wa.me/?text=" + encodeURIComponent(fullText);
           try {
-            console.log("mock whatsapp sent");
-          } catch (e) {}
-          mockStatus.textContent = "تمت محاكاة إرسال الرسالة بنجاح ✅";
+            window.open(wurl, "_blank", "noopener,noreferrer");
+          } catch (e) {
+            /* ignore */
+          }
+          try {
+            console.log("whatsapp compose opened");
+          } catch (e) {
+            /* ignore */
+          }
+          mockStatus.textContent = "تم فتح واتساب لإرسال الرسالة ✅";
           mockStatus.style.display = "block";
-          bMock.setAttribute("disabled", "true");
         });
         previewBox.appendChild(bMock);
         previewBox.appendChild(mockStatus);
@@ -1143,15 +1164,15 @@
         postGenerateWhatsappMessage(payload)
           .then(function (x) {
             if (x && x.j && x.j.ok && x.j.message) {
-              msgEl.textContent = String(x.j.message);
+              generatedCore = String(x.j.message);
+              msgEl.textContent = generatedCore;
+              bMock.removeAttribute("disabled");
             } else {
               msgEl.textContent = "تعذر تجهيز رسالة واتساب التجريبية حالياً.";
-              bMock.setAttribute("disabled", "true");
             }
           })
           .catch(function () {
             msgEl.textContent = "تعذر تجهيز رسالة واتساب التجريبية حالياً.";
-            bMock.setAttribute("disabled", "true");
           });
       })();
       var p = document.createElement("p");
