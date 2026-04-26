@@ -39,14 +39,14 @@ class AbandonmentReasonBehaviorFinalTests(unittest.TestCase):
     def test_1_widget_stays_open_after_reason(self) -> None:
         """
         No bubble dismiss on option pick: only 'لا' removes the bubble from DOM.
-        showStandardResponse leads to showStandardActionView (no bubble remove).
+        showStandardResponse leads to mountProductAwareView (no bubble remove).
         """
         # Single parent remove is for the "لا" path only
         n_close = self.widget_src.count("w.parentNode.removeChild(w)")
         self.assertEqual(1, n_close, "only 'لا' should close the whole bubble")
         # Standard path: no parentNode.removeChild near showStandardResponse
         self.assertIn("function showStandardResponse", self.widget_src)
-        self.assertIn("function showStandardActionView", self.widget_src)
+        self.assertIn("function mountProductAwareView", self.widget_src)
         start = self.widget_src.find("function showStandardResponse")
         self.assertNotEqual(-1, start)
         self.assertNotIn(
@@ -70,6 +70,8 @@ class AbandonmentReasonBehaviorFinalTests(unittest.TestCase):
     def test_3_post_and_cart_recovery_reason_and_tag_key(self) -> None:
         """Each POST updates CartRecoveryReason; source sets sessionStorage key."""
         self.assertIn("cartflow_reason_tag", self.widget_src)
+        self.assertIn("cartflow_reason_sub_tag", self.widget_src)
+        self.assertIn("setReasonSubTag", self.widget_src)
         self.assertIn("setReasonTag", self.widget_src)
         for i, (rkey, rlabel) in enumerate(
             [
@@ -81,13 +83,16 @@ class AbandonmentReasonBehaviorFinalTests(unittest.TestCase):
             ]
         ):
             part = f"crr-3-final-{i}-{rkey}"
+            body: dict = {
+                "store_slug": "demo",
+                "session_id": part,
+                "reason": rkey,
+            }
+            if rkey == "price":
+                body["sub_category"] = "price_discount_request"
             r = self.client.post(
                 "/api/cartflow/reason",
-                json={
-                    "store_slug": "demo",
-                    "session_id": part,
-                    "reason": rkey,
-                },
+                json=body,
             )
             self.assertEqual(200, r.status_code, f"{rlabel} {r.text}")
             self.assertTrue((r.json() or {}).get("ok"), rkey)
@@ -101,6 +106,10 @@ class AbandonmentReasonBehaviorFinalTests(unittest.TestCase):
             )
             self.assertIsNotNone(crr, f"CartRecoveryReason {rkey}")
             self.assertEqual(rkey, crr.reason)
+            if rkey == "price":
+                self.assertEqual("price_discount_request", (crr.sub_category or "").strip())
+            else:
+                self.assertIsNone(crr.sub_category)
             alog = (
                 db.session.query(AbandonmentReasonLog)
                 .filter(AbandonmentReasonLog.session_id == part)
@@ -109,6 +118,12 @@ class AbandonmentReasonBehaviorFinalTests(unittest.TestCase):
             )
             self.assertIsNotNone(alog)
             self.assertEqual(rkey, alog.reason)
+            if rkey == "price":
+                self.assertEqual(
+                    "price_discount_request", (alog.sub_category or "").strip()
+                )
+            else:
+                self.assertIsNone(alog.sub_category)
 
     def test_4_other_path_ui(self) -> None:
         """سبب آخر: textarea, buttons, no 'تواصل عبر واتساب'."""

@@ -24,6 +24,15 @@ REASON_CHOICES = frozenset(
     {"price", "quality", "warranty", "shipping", "thinking", "other", "human_support"}
 )
 
+# فرع ‎السعر‎: يُلزم مع ‎reason=price‎
+PRICE_SUB_CATEGORIES = frozenset(
+    {
+        "price_discount_request",
+        "price_budget_issue",
+        "price_cheaper_alternative",
+    }
+)
+
 
 SENT_STATUSES = frozenset({"sent_real", "mock_sent"})
 
@@ -183,11 +192,27 @@ async def post_abandonment_reason(request: Request) -> Any:
         ss = (str(body.get("store_slug", "")) or "").strip()[:255]
         sid = (str(body.get("session_id", "")) or "").strip()[:512]
         reason = (str(body.get("reason", "")) or "").strip().lower()[:32]
+        sub_raw = body.get("sub_category")
+        sub_cat: Optional[str] = None
+        if sub_raw is not None and (str(sub_raw) or "").strip():
+            sub_cat = (str(sub_raw) or "").strip()[:64]
         custom_raw = body.get("custom_text")
         if not ss or not sid or not reason:
             return j({"ok": False, "error": "store_slug_session_reason_required"}, 400)
         if reason not in REASON_CHOICES:
             return j({"ok": False, "error": "invalid_reason"}, 400)
+        if reason == "price":
+            if not sub_cat or sub_cat not in PRICE_SUB_CATEGORIES:
+                return j(
+                    {
+                        "ok": False,
+                        "error": "sub_category_required_or_invalid",
+                    },
+                    400,
+                )
+        else:
+            if sub_cat is not None:
+                return j({"ok": False, "error": "sub_category_not_applicable"}, 400)
         custom: Optional[str] = None
         if reason in ("other", "human_support"):
             c = (
@@ -199,10 +224,12 @@ async def post_abandonment_reason(request: Request) -> Any:
             custom = c if c else None
         elif custom_raw is not None and (str(custom_raw) or "").strip():
             return j({"ok": False, "error": "custom_text_not_applicable"}, 400)
+        sub_for_row: Optional[str] = sub_cat if reason == "price" else None
         row = AbandonmentReasonLog(
             store_slug=ss,
             session_id=sid,
             reason=reason,
+            sub_category=sub_for_row,
             custom_text=custom,
         )
         db.session.add(row)
@@ -219,6 +246,7 @@ async def post_abandonment_reason(request: Request) -> Any:
         )
         if crr is not None:
             crr.reason = reason
+            crr.sub_category = sub_for_row
             crr.custom_text = custom
             crr.updated_at = now
         else:
@@ -227,6 +255,7 @@ async def post_abandonment_reason(request: Request) -> Any:
                     store_slug=ss,
                     session_id=sid,
                     reason=reason,
+                    sub_category=sub_for_row,
                     custom_text=custom,
                     updated_at=now,
                 )

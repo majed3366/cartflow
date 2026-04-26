@@ -56,7 +56,11 @@ class AbandonmentReasonFlowVerifyTests(unittest.TestCase):
         self.assertIn("خيارات أخرى", src)
         self.assertIn("أفهمك، السعر مهم", src)
         self.assertIn("معلومات الضمان غير موضحة هنا", src)
-        self.assertIn("showStandardActionView", src)
+        self.assertIn("mountProductAwareView", src)
+        self.assertIn("REASON_SUB_TAG_KEY", src)
+        self.assertIn("cartflow_reason_sub_tag", src)
+        self.assertIn("CARTFLOW_REASON_ACTION_ORDER", src)
+        self.assertIn("showPriceSubMenu", src)
         self.assertIn("renderReasonList", src)
 
     def test_2_normal_options_post_and_persist(self) -> None:
@@ -69,14 +73,14 @@ class AbandonmentReasonFlowVerifyTests(unittest.TestCase):
             ("flow-p2-5", "أفكر", "thinking"),
         ]
         for session_id, _ar_label, rkey in mapping:
-            r = self.client.post(
-                "/api/cartflow/reason",
-                json={
-                    "store_slug": "demo",
-                    "session_id": session_id,
-                    "reason": rkey,
-                },
-            )
+            payload = {
+                "store_slug": "demo",
+                "session_id": session_id,
+                "reason": rkey,
+            }
+            if rkey == "price":
+                payload["sub_category"] = "price_cheaper_alternative"
+            r = self.client.post("/api/cartflow/reason", json=payload)
             self.assertEqual(200, r.status_code, r.text)
             self.assertTrue((r.json() or {}).get("ok"), session_id)
             row = (
@@ -90,6 +94,12 @@ class AbandonmentReasonFlowVerifyTests(unittest.TestCase):
             )
             self.assertIsNotNone(row, f"no row for {rkey} {session_id}")
             self.assertEqual(rkey, row.reason)
+            if rkey == "price":
+                self.assertEqual(
+                    "price_cheaper_alternative", (row.sub_category or "").strip()
+                )
+            else:
+                self.assertIsNone(row.sub_category)
             self.assertIsNone(row.custom_text)
 
     def test_3_other_reason_custom_text_persisted(self) -> None:

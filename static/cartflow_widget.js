@@ -8,6 +8,7 @@
   var ARM_DELAY_MS = 3000;
   var IDLE_MS = 8000;
   var REASON_TAG_KEY = "cartflow_reason_tag";
+  var REASON_SUB_TAG_KEY = "cartflow_reason_sub_tag";
   var shown = false;
   var idleTimer = null;
   var step1Ready = false;
@@ -17,6 +18,42 @@
   var BTN_BACK = "رجوع";
   var BTN_HANDOFF = "تحويل لصاحب المتجر";
   var BTN_RETURN_CART = "العودة للسلة";
+
+  /**
+   * ترتيب أزرار الاستجابة (قابل لاحقاً لربط لوحة/‏JSON دون بثّق أزرار مبعثرة).
+   * price: تضم ‎discount_offer‎ ثم الباقي. باقي الأسباب: من ‎alternatives‎ (نص مرتبط بالمنتج).
+   */
+  var CARTFLOW_REASON_ACTION_ORDER = {
+    price: [
+      "discount_offer",
+      "alternatives",
+      "merchant_handoff",
+      "back",
+      "return_to_cart",
+    ],
+    quality: ["alternatives", "merchant_handoff", "back", "return_to_cart"],
+    warranty: ["alternatives", "merchant_handoff", "back", "return_to_cart"],
+    shipping: ["alternatives", "merchant_handoff", "back", "return_to_cart"],
+    thinking: ["alternatives", "merchant_handoff", "back", "return_to_cart"],
+  };
+
+  var CARTFLOW_ACTIONS = {
+    discount_offer: {
+      label: "🎁 عرض / خصم",
+      discountMessage:
+        "حالياً ما فيه عرض ظاهر، لكن أقدر أتحقق لك أو أحولك للمتجر 👍",
+    },
+    alternatives: { useFlowA1: true, label: "خيارات أخرى" },
+    merchant_handoff: { useStaticLabel: "handoff" },
+    back: { useStaticLabel: "back" },
+    return_to_cart: { useStaticLabel: "return_to_cart" },
+  };
+
+  var CARTFLOW_PRICE_SUB_OPTIONS = [
+    { sub: "price_discount_request", label: "أبحث عن كود خصم" },
+    { sub: "price_budget_issue", label: "السعر أعلى من ميزانيتي" },
+    { sub: "price_cheaper_alternative", label: "أريد خيار أرخص" },
+  ];
 
   var DESC_KEYS = [
     "description",
@@ -357,10 +394,28 @@
     return "—";
   }
 
+  function setReasonSubTag(sub) {
+    try {
+      if (sub) {
+        window.sessionStorage.setItem(REASON_SUB_TAG_KEY, String(sub));
+      } else {
+        window.sessionStorage.removeItem(REASON_SUB_TAG_KEY);
+      }
+    } catch (e) {
+      /* ignore */
+    }
+  }
+
   function setReasonTag(tag) {
     try {
       if (tag) {
         window.sessionStorage.setItem(REASON_TAG_KEY, String(tag));
+        if (String(tag) !== "price") {
+          window.sessionStorage.removeItem(REASON_SUB_TAG_KEY);
+        }
+      } else {
+        window.sessionStorage.removeItem(REASON_TAG_KEY);
+        window.sessionStorage.removeItem(REASON_SUB_TAG_KEY);
       }
     } catch (e) {
       /* ignore */
@@ -371,6 +426,15 @@
     window.cartflowGetReasonTag = function () {
       try {
         return window.sessionStorage.getItem(REASON_TAG_KEY) || null;
+      } catch (e) {
+        return null;
+      }
+    };
+  }
+  if (typeof window.cartflowGetReasonSubTag !== "function") {
+    window.cartflowGetReasonSubTag = function () {
+      try {
+        return window.sessionStorage.getItem(REASON_SUB_TAG_KEY) || null;
       } catch (e) {
         return null;
       }
@@ -407,6 +471,9 @@
     };
     if (payload.custom_text != null && String(payload.custom_text) !== "") {
       body.custom_text = String(payload.custom_text);
+    }
+    if (payload.sub_category != null && String(payload.sub_category) !== "") {
+      body.sub_category = String(payload.sub_category);
     }
     return fetch(url, {
       method: "POST",
@@ -643,7 +710,86 @@
       }
     });
 
-    function showStandardActionView(rkey) {
+    function getReasonActionOrder(rkey) {
+      return CARTFLOW_REASON_ACTION_ORDER[rkey]
+        ? CARTFLOW_REASON_ACTION_ORDER[rkey]
+        : CARTFLOW_REASON_ACTION_ORDER.quality;
+    }
+
+    function actionButtonText(rkey, flow, actionId) {
+      var d = CARTFLOW_ACTIONS[actionId];
+      if (!d) {
+        return "…";
+      }
+      if (d.useFlowA1) {
+        return (flow && flow.a1) ? flow.a1 : d.label;
+      }
+      if (d.useStaticLabel === "handoff") {
+        return BTN_HANDOFF;
+      }
+      if (d.useStaticLabel === "back") {
+        return BTN_BACK;
+      }
+      if (d.useStaticLabel === "return_to_cart") {
+        return BTN_RETURN_CART;
+      }
+      if (d.label) {
+        return d.label;
+      }
+      return "…";
+    }
+
+    function showDiscountStubPanel(rkey) {
+      var def = CARTFLOW_ACTIONS.discount_offer;
+      var msg = (def && def.discountMessage) || "";
+      while (w.lastChild) {
+        w.removeChild(w.lastChild);
+      }
+      var pex = document.createElement("p");
+      pex.style.cssText = "margin:0 0 10px 0;font-size:14px;line-height:1.55;";
+      pex.textContent = msg;
+      w.appendChild(pex);
+      var rowB = document.createElement("div");
+      rowB.style.cssText = rowStyleCol;
+      var bBack1 = document.createElement("button");
+      bBack1.type = "button";
+      bBack1.textContent = BTN_BACK;
+      bBack1.setAttribute("aria-label", "رجوع لاستجابة المنتج");
+      bBack1.style.cssText = btnStyle;
+      bBack1.addEventListener("click", function (e2) {
+        e2.stopPropagation();
+        e2.preventDefault();
+        mountProductAwareView(rkey);
+      });
+      rowB.appendChild(bBack1);
+      w.appendChild(rowB);
+    }
+
+    function showAlternativesPanel(rkey, flow) {
+      while (w.lastChild) {
+        w.removeChild(w.lastChild);
+      }
+      var pex = document.createElement("p");
+      pex.style.cssText = "margin:0 0 10px 0;font-size:14px;line-height:1.55;";
+      pex.textContent = flow.explain;
+      w.appendChild(pex);
+      var rowB = document.createElement("div");
+      rowB.style.cssText = rowStyleCol;
+      var bBack1 = document.createElement("button");
+      bBack1.type = "button";
+      bBack1.textContent = BTN_BACK;
+      bBack1.setAttribute("aria-label", "رجوع للعروض");
+      bBack1.style.cssText = btnStyle;
+      bBack1.addEventListener("click", function (e2) {
+        e2.stopPropagation();
+        e2.preventDefault();
+        mountProductAwareView(rkey);
+      });
+      rowB.appendChild(bBack1);
+      w.appendChild(rowB);
+    }
+
+    function mountProductAwareView(rkey) {
       var flow = getProductAwareCopy(rkey);
       if (!flow) {
         return;
@@ -657,74 +803,93 @@
       w.appendChild(p);
       var rowA = document.createElement("div");
       rowA.style.cssText = rowStyleCol;
+      var order = getReasonActionOrder(rkey);
+      var k;
+      for (k = 0; k < order.length; k++) {
+        (function (actionId) {
+          if (!CARTFLOW_ACTIONS[actionId]) {
+            return;
+          }
+          var b = document.createElement("button");
+          b.type = "button";
+          b.textContent = actionButtonText(rkey, flow, actionId);
+          b.style.cssText = btnStyle;
+          b.addEventListener("click", function (e) {
+            e.stopPropagation();
+            e.preventDefault();
+            if (actionId === "alternatives") {
+              showAlternativesPanel(rkey, flow);
+            } else if (actionId === "discount_offer" && rkey === "price") {
+              showDiscountStubPanel(rkey);
+            } else if (actionId === "discount_offer") {
+              return;
+            } else if (actionId === "merchant_handoff") {
+              handoffToMerchant(b);
+            } else if (actionId === "back") {
+              setReasonTag(null);
+              renderReasonList();
+            } else if (actionId === "return_to_cart") {
+              scrollToCartOrCheckout();
+            }
+          });
+          rowA.appendChild(b);
+        })(order[k]);
+      }
+      w.appendChild(rowA);
+    }
 
-      var b1 = document.createElement("button");
-      b1.type = "button";
-      b1.textContent = flow.a1;
-      b1.style.cssText = btnStyle;
-      b1.addEventListener("click", function (e) {
-        e.stopPropagation();
-        e.preventDefault();
-        while (w.lastChild) {
-          w.removeChild(w.lastChild);
-        }
-        var pex = document.createElement("p");
-        pex.style.cssText = "margin:0 0 10px 0;font-size:14px;line-height:1.55;";
-        pex.textContent = flow.explain;
-        w.appendChild(pex);
-        var rowB = document.createElement("div");
-        rowB.style.cssText = rowStyleCol;
-        var bBack1 = document.createElement("button");
-        bBack1.type = "button";
-        bBack1.textContent = BTN_BACK;
-        bBack1.setAttribute("aria-label", "رجوع للعروض");
-        bBack1.style.cssText = btnStyle;
-        bBack1.addEventListener("click", function (e2) {
-          e2.stopPropagation();
-          e2.preventDefault();
-          showStandardActionView(rkey);
-        });
-        rowB.appendChild(bBack1);
-        w.appendChild(rowB);
+    function postPriceWithSubCategory(sub) {
+      postReason({ reason: "price", sub_category: sub })
+        .then(function (j) {
+          if (j && j.ok) {
+            setReasonTag("price");
+            setReasonSubTag(sub);
+            mountProductAwareView("price");
+          }
+        })
+        .catch(function () {});
+    }
+
+    function showPriceSubMenu() {
+      setReasonTag(null);
+      setReasonSubTag(null);
+      while (w.lastChild) {
+        w.removeChild(w.lastChild);
+      }
+      var psub = document.createElement("p");
+      psub.style.cssText = "margin:0 0 8px 0;font-size:14px;line-height:1.5;";
+      psub.textContent = "وش يناسب وضعك بالنسبة للسعر؟";
+      w.appendChild(psub);
+      var rsub = document.createElement("div");
+      rsub.style.cssText = rowStyleCol;
+      CARTFLOW_PRICE_SUB_OPTIONS.forEach(function (o) {
+        var bs = document.createElement("button");
+        bs.type = "button";
+        bs.textContent = o.label;
+        bs.style.cssText = btnStyle;
+        (function (sub) {
+          bs.addEventListener("click", function (e) {
+            e.stopPropagation();
+            e.preventDefault();
+            postPriceWithSubCategory(sub);
+          });
+        })(o.sub);
+        rsub.appendChild(bs);
       });
-
-      var b2 = document.createElement("button");
-      b2.type = "button";
-      b2.textContent = BTN_HANDOFF;
-      b2.style.cssText = btnStyle;
-      b2.addEventListener("click", function (e) {
+      var bPBack = document.createElement("button");
+      bPBack.type = "button";
+      bPBack.textContent = BTN_BACK;
+      bPBack.setAttribute("aria-label", "رجوع لقائمة الأسباب");
+      bPBack.style.cssText = btnStyle;
+      bPBack.addEventListener("click", function (e) {
         e.stopPropagation();
         e.preventDefault();
-        handoffToMerchant(b2);
-      });
-
-      var bBack2 = document.createElement("button");
-      bBack2.type = "button";
-      bBack2.textContent = BTN_BACK;
-      bBack2.setAttribute("aria-label", "رجوع لاختيار السبب");
-      bBack2.style.cssText = btnStyle;
-      bBack2.addEventListener("click", function (e) {
-        e.stopPropagation();
-        e.preventDefault();
+        setReasonTag(null);
+        setReasonSubTag(null);
         renderReasonList();
       });
-
-      var bCart = document.createElement("button");
-      bCart.type = "button";
-      bCart.textContent = BTN_RETURN_CART;
-      bCart.setAttribute("aria-label", BTN_RETURN_CART);
-      bCart.style.cssText = btnStyle;
-      bCart.addEventListener("click", function (e) {
-        e.stopPropagation();
-        e.preventDefault();
-        scrollToCartOrCheckout();
-      });
-
-      rowA.appendChild(b1);
-      rowA.appendChild(b2);
-      rowA.appendChild(bBack2);
-      rowA.appendChild(bCart);
-      w.appendChild(rowA);
+      rsub.appendChild(bPBack);
+      w.appendChild(rsub);
     }
 
     function mountOtherForm() {
@@ -842,13 +1007,14 @@
       postReason({ reason: rkey })
         .then(function (j) {
           if (j && j.ok) {
-            showStandardActionView(rkey);
+            mountProductAwareView(rkey);
           }
         })
         .catch(function () {});
     }
 
     function renderReasonList() {
+      setReasonTag(null);
       while (w.lastChild) {
         w.removeChild(w.lastChild);
       }
@@ -880,6 +1046,8 @@
           e.preventDefault();
           if (o.r === "_other") {
             mountOtherForm();
+          } else if (o.r === "price") {
+            showPriceSubMenu();
           } else {
             showStandardResponse(o.r);
           }

@@ -135,6 +135,7 @@ class AbandonmentReasonLog(Base):
     store_slug = Column(String(255), nullable=False, index=True)
     session_id = Column(String(512), nullable=False, index=True)
     reason = Column(String(32), nullable=False, index=True)
+    sub_category = Column(String(64), nullable=True, index=True)
     custom_text = Column(Text, nullable=True)
     created_at = Column(
         DateTime, default=lambda: datetime.now(timezone.utc)
@@ -152,6 +153,7 @@ class CartRecoveryReason(Base):
     store_slug = Column(String(255), nullable=False, index=True)
     session_id = Column(String(512), nullable=False, index=True)
     reason = Column(String(32), nullable=False, index=True)
+    sub_category = Column(String(64), nullable=True, index=True)
     custom_text = Column(Text, nullable=True)
     updated_at = Column(
         DateTime,

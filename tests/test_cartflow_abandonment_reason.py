@@ -23,10 +23,34 @@ class TestCartflowAbandonmentReason(unittest.TestCase):
                 "store_slug": "demo",
                 "session_id": "s-test-1",
                 "reason": "price",
+                "sub_category": "price_discount_request",
             },
         )
         self.assertEqual(200, r.status_code, r.text)
         self.assertTrue((r.json() or {}).get("ok"))
+
+    def test_post_reason_price_requires_sub(self) -> None:
+        ensure_store_widget_schema(db)
+        r = self.client.post(
+            "/api/cartflow/reason",
+            json={"store_slug": "demo", "session_id": "s-no-sub", "reason": "price"},
+        )
+        self.assertEqual(400, r.status_code, r.text)
+        self.assertFalse((r.json() or {}).get("ok"))
+
+    def test_post_reason_sub_rejected_for_non_price(self) -> None:
+        ensure_store_widget_schema(db)
+        r = self.client.post(
+            "/api/cartflow/reason",
+            json={
+                "store_slug": "demo",
+                "session_id": "s-extra",
+                "reason": "warranty",
+                "sub_category": "price_discount_request",
+            },
+        )
+        self.assertEqual(400, r.status_code, r.text)
+        self.assertFalse((r.json() or {}).get("ok"))
 
     def test_post_reason_other_requires_text(self) -> None:
         ensure_store_widget_schema(db)
@@ -68,13 +92,23 @@ class TestCartflowAbandonmentReason(unittest.TestCase):
     def test_cart_recovery_reason_upsert(self) -> None:
         ensure_store_widget_schema(db)
         sid = "crr-upsert-1"
-        for rkey in ("price", "warranty"):
-            r = self.client.post(
-                "/api/cartflow/reason",
-                json={"store_slug": "demo", "session_id": sid, "reason": rkey},
-            )
-            self.assertEqual(200, r.status_code, r.text)
-            self.assertTrue((r.json() or {}).get("ok"))
+        r1 = self.client.post(
+            "/api/cartflow/reason",
+            json={
+                "store_slug": "demo",
+                "session_id": sid,
+                "reason": "price",
+                "sub_category": "price_budget_issue",
+            },
+        )
+        self.assertEqual(200, r1.status_code, r1.text)
+        self.assertTrue((r1.json() or {}).get("ok"))
+        r2 = self.client.post(
+            "/api/cartflow/reason",
+            json={"store_slug": "demo", "session_id": sid, "reason": "warranty"},
+        )
+        self.assertEqual(200, r2.status_code, r2.text)
+        self.assertTrue((r2.json() or {}).get("ok"))
         crr = (
             db.session.query(CartRecoveryReason)
             .filter(
@@ -85,6 +119,7 @@ class TestCartflowAbandonmentReason(unittest.TestCase):
         )
         self.assertIsNotNone(crr)
         self.assertEqual("warranty", crr.reason)
+        self.assertIsNone(crr.sub_category)
 
     def test_public_config_whatsapp(self) -> None:
         ensure_store_widget_schema(db)
