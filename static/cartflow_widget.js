@@ -655,6 +655,7 @@
     }
     attachArmListenersOnce();
     ensureStep1ThenStartIdle();
+    prefetchDashboardPrimaryReason();
   }
 
   function getStoreSlug() {
@@ -855,13 +856,67 @@
     }
   }
 
+  var _cfDashPrimaryCache = null;
+
+  function prefetchDashboardPrimaryReason() {
+    var slug = getStoreSlug();
+    var b = (apiBase() || "").toString().replace(/\/$/, "");
+    var path =
+      (b ? b + "/api/cartflow/primary-recovery-reason" : "/api/cartflow/primary-recovery-reason") +
+      "?store_slug=" +
+      encodeURIComponent(slug);
+    fetch(path, { method: "GET", credentials: "same-origin" })
+      .then(function (r) {
+        return r.json();
+      })
+      .then(function (j) {
+        if (j && j.ok && j.primary_reason) {
+          var p = String(j.primary_reason).trim();
+          _cfDashPrimaryCache = p;
+          if (!window.__cfPrimaryByStore) {
+            window.__cfPrimaryByStore = {};
+          }
+          window.__cfPrimaryByStore[slug] = p;
+        }
+      })
+      .catch(function () {
+        /* keep cache null until buildWhatsappMessage default */
+      });
+  }
+
+  function getPrimaryRecoveryReason(storeId) {
+    var sid =
+      storeId != null && String(storeId).replace(/\s/g, "") !== ""
+        ? String(storeId).trim()
+        : getStoreSlug();
+    if (window.__cfPrimaryByStore && window.__cfPrimaryByStore[sid]) {
+      return String(window.__cfPrimaryByStore[sid]);
+    }
+    if (_cfDashPrimaryCache != null && _cfDashPrimaryCache !== "") {
+      return String(_cfDashPrimaryCache);
+    }
+    return "price";
+  }
+
   /**
    * مصدر واحد لنص واتساب في المعاينة — النوع + رابط واحد فقط.
    * opts: reason, sub_category, generatedCore (الـ API cart_url لا يُدمَج هنا)
    */
   function buildWhatsappMessage(opts) {
-    var reason = opts.reason || "";
+    var reason = (opts && opts.reason != null) ? String(opts.reason).trim() : "";
     var sub_category = (opts.sub_category || "").trim();
+    if (!reason || reason === "auto") {
+      var primaryReason = getPrimaryRecoveryReason(getStoreSlug());
+      try {
+        console.log("PRIMARY_REASON_FROM_DASHBOARD", primaryReason);
+      } catch (e) {
+        /* ignore */
+      }
+      reason = primaryReason;
+    }
+    if (reason === "price" && !sub_category) {
+      sub_category = "price_discount_request";
+    }
     var generatedCore =
       opts.generatedCore != null ? String(opts.generatedCore) : "";
     var type = "cart";
@@ -1658,7 +1713,7 @@
       }
       (function () {
         var payload = buildWhatsappGeneratePayload(rkey);
-        var waReason = rkey;
+        var waReason = rkey === "auto" ? "" : rkey;
         var waSub =
           payload && payload.sub_category
             ? String(payload.sub_category).trim()
@@ -1770,18 +1825,6 @@
               }
               if (x.j.resolved_sub_category !== undefined && x.j.resolved_sub_category !== null) {
                 waSub = String(x.j.resolved_sub_category).trim();
-              }
-              if (rkey === "auto") {
-                try {
-                  console.log(
-                    "PRIMARY_REASON_FROM_DASHBOARD",
-                    x.j.primary_reason_log != null
-                      ? x.j.primary_reason_log
-                      : x.j.resolved_reason
-                  );
-                } catch (e) {
-                  /* ignore */
-                }
               }
               bMock.removeAttribute("disabled");
               if (
@@ -2555,6 +2598,7 @@
     });
   }
 
+  setTimeout(prefetchDashboardPrimaryReason, 0);
   setTimeout(arm, ARM_DELAY_MS);
 })();
 

@@ -18,7 +18,10 @@ from services.cartflow_whatsapp_mock import (
     build_mock_whatsapp_message,
     get_merchant_whatsapp_e164_for_store,
 )
-from services.recovery_decision import resolve_auto_whatsapp_reason
+from services.recovery_decision import (
+    get_primary_recovery_reason,
+    resolve_auto_whatsapp_reason,
+)
 
 log = logging.getLogger("cartflow")
 
@@ -119,6 +122,28 @@ def _ready_after_step1(store_slug: str, session_id: str) -> bool:
         )
     )
     return base.first() is not None
+
+
+@router.get("/primary-recovery-reason")
+def primary_recovery_reason(
+    store_slug: str = Query(..., min_length=1, max_length=255),
+) -> Any:
+    """
+    أكثر ‎reason‎ تكراراً لمتجر (لوحة ‎CartRecoveryReason‎) — للودجت قبل بناء نص واتساب.
+    """
+    try:
+        db.create_all()
+        ss = (store_slug or "").strip()[:255]
+        if not ss:
+            return j({"ok": False, "error": "store_slug_required"}, 400)
+        pr = get_primary_recovery_reason(ss)
+        if not pr or pr not in REASON_CHOICES:
+            pr = "price"
+        return j({"ok": True, "primary_reason": pr})
+    except (SQLAlchemyError, OSError) as e:
+        db.session.rollback()
+        log.warning("primary-recovery-reason: %s", e)
+        return j({"ok": True, "primary_reason": "price"})
 
 
 @router.post("/generate-whatsapp-message")

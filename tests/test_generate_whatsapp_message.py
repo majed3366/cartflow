@@ -122,6 +122,15 @@ class GenerateWhatsappMessageTests(unittest.TestCase):
         self.assertIn("resolved_reason", j)
         self.assertIn("primary_reason_log", j)
 
+    def test_get_primary_recovery_reason_endpoint(self) -> None:
+        r = self.client.get(
+            "/api/cartflow/primary-recovery-reason?store_slug=test_slug_pr"
+        )
+        self.assertEqual(200, r.status_code, r.text)
+        j = r.json()
+        self.assertTrue(j.get("ok"), j)
+        self.assertEqual("price", j.get("primary_reason"))
+
 
 if __name__ == "__main__":
     unittest.main()
