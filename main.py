@@ -49,6 +49,7 @@ if os.path.isdir(_static):
 from models import (  # noqa: E402
     AbandonedCart,
     CartRecoveryLog,
+    CartRecoveryReason,
     ObjectionTrack,
     RecoveryEvent,
     Store,
@@ -2059,35 +2060,170 @@ def auth_callback(request: Request):
     return j({"error": "invalid_token_response_format"}, status)
 
 
+_REASON_LABELS_AR: dict[str, str] = {
+    "price": "السعر",
+    "warranty": "الضمان",
+    "shipping": "الشحن",
+    "thinking": "التفكير",
+    "quality": "الجودة",
+    "other": "سبب آخر",
+    "human_support": "دعم بشري",
+}
+
+
+def _format_reason_ts(dt: Optional[datetime]) -> str:
+    if dt is None:
+        return "—"
+    d = dt
+    if d.tzinfo is None:
+        d = d.replace(tzinfo=timezone.utc)
+    return d.strftime("%Y-%m-%d %H:%M")
+
+
 @app.get("/dashboard")
 def dashboard(request: Request):
-    # تجميع إحصائيات + آخر 5 سلات (حسب ‎created_at‎ تنازلياً)
-    total_carts = db.session.query(AbandonedCart).count()
-    rev = (
-        db.session.query(func.coalesce(func.sum(AbandonedCart.cart_value), 0.0))
-        .filter(AbandonedCart.status == "recovered")
-        .scalar()
-    )
-    total_revenue = float(rev) if rev is not None else 0.0
-    recovered = (
-        db.session.query(AbandonedCart)
-        .filter_by(status="recovered")
-        .count()
-    )
-    recent_carts = (
-        db.session.query(AbandonedCart)
-        .order_by(AbandonedCart.last_seen_at.desc())
-        .limit(5)
-        .all()
-    )
+    """
+    لوحة V1: أداء مالي (سلات مسترجعة) + أسباب تردد من ‎CartRecoveryReason‎ + بث مباشر.
+    """
+    use_mock = False
+    total_carts = 0
+    total_revenue = 0.0
+    recovered = 0
+    conversion_pct = 0.0
+    reason_counts: dict[str, int] = {
+        "price": 0,
+        "warranty": 0,
+        "shipping": 0,
+        "thinking": 0,
+    }
+    live_rows: list[dict[str, Any]] = []
+    try:
+        db.create_all()
+        total_carts = int(db.session.query(AbandonedCart).count() or 0)
+        rev = (
+            db.session.query(func.coalesce(func.sum(AbandonedCart.cart_value), 0.0))
+            .filter(AbandonedCart.status == "recovered")
+            .scalar()
+        )
+        total_revenue = float(rev) if rev is not None else 0.0
+        recovered = int(
+            db.session.query(AbandonedCart)
+            .filter_by(status="recovered")
+            .count()
+        )
+        if total_carts > 0:
+            conversion_pct = round(100.0 * float(recovered) / float(total_carts), 1)
+    except (SQLAlchemyError, OSError) as e:
+        log.warning("dashboard: db read failed, using mock: %s", e)
+        db.session.rollback()
+        use_mock = True
+    if not use_mock:
+        try:
+            # أسباب التردد — آخر اختيار لكل جلسة في ‎cart_recovery_reasons‎
+            groups = (
+                db.session.query(
+                    CartRecoveryReason.reason,
+                    func.count(CartRecoveryReason.id).label("c"),
+                )
+                .group_by(CartRecoveryReason.reason)
+                .all()
+            )
+            for rkey, c in groups:
+                k = (rkey or "").strip().lower()
+                if k in reason_counts:
+                    reason_counts[k] = int(c)
+            q_live = (
+                db.session.query(CartRecoveryReason)
+                .order_by(CartRecoveryReason.updated_at.desc())
+                .limit(12)
+            )
+            for r in q_live:
+                k = (r.reason or "").strip().lower()
+                label = _REASON_LABELS_AR.get(
+                    k, (r.reason or "—")
+                )
+                product_hint = (r.custom_text or "").strip() or "—"
+                if len(product_hint) > 48:
+                    product_hint = product_hint[:45] + "…"
+                live_rows.append(
+                    {
+                        "session_id": (r.session_id or "")[:32]
+                        + ("…" if r.session_id and len(r.session_id) > 32 else ""),
+                        "reason_key": k,
+                        "reason_ar": label,
+                        "product": product_hint,
+                        "time_str": _format_reason_ts(r.updated_at),
+                    }
+                )
+            crr_total = int(
+                db.session.query(func.count(CartRecoveryReason.id)).scalar() or 0
+            )
+            if total_carts == 0 and crr_total == 0:
+                use_mock = True
+        except (SQLAlchemyError, OSError) as e2:
+            log.warning("dashboard: crr read failed, using mock: %s", e2)
+            db.session.rollback()
+            use_mock = True
+    if use_mock:
+        total_carts = 48
+        total_revenue = 12450.0
+        recovered = 23
+        conversion_pct = 47.9
+        reason_counts = {
+            "price": 12,
+            "warranty": 5,
+            "shipping": 3,
+            "thinking": 7,
+        }
+        live_rows = [
+            {
+                "session_id": "dem…sess_01",
+                "reason_key": "price",
+                "reason_ar": "السعر",
+                "product": "سماعة",
+                "time_str": "2026-04-20 14:32",
+            },
+            {
+                "session_id": "dem…sess_02",
+                "reason_key": "warranty",
+                "reason_ar": "الضمان",
+                "product": "—",
+                "time_str": "2026-04-20 13:10",
+            },
+            {
+                "session_id": "dem…sess_03",
+                "reason_key": "shipping",
+                "reason_ar": "الشحن",
+                "product": "أريد التوصيل لجدة",
+                "time_str": "2026-04-20 11:00",
+            },
+        ]
+    reason_bar = []
+    rmax = max(reason_counts.values()) if reason_counts else 1
+    if rmax < 1:
+        rmax = 1
+    for k in ("price", "warranty", "shipping", "thinking"):
+        cnt = int(reason_counts.get(k, 0))
+        reason_bar.append(
+            {
+                "key": k,
+                "label": _REASON_LABELS_AR.get(k, k),
+                "count": cnt,
+                "width_pct": min(100.0, round(100.0 * float(cnt) / float(rmax), 1)),
+            }
+        )
     return templates.TemplateResponse(
-        "index.html",
+        request,
+        "dashboard_v1.html",
         {
             "request": request,
+            "using_mock": use_mock,
             "total_carts": total_carts,
             "total_revenue": total_revenue,
             "recovered_carts": recovered,
-            "recent_carts": recent_carts,
+            "conversion_pct": conversion_pct,
+            "reason_bar": reason_bar,
+            "live_feed": live_rows,
         },
     )
 
