@@ -29,6 +29,13 @@
   /** مصدر فتح الودجت — نص الترحيب فقط */
   var TRIGGER_SOURCE_CART = "cart";
   var TRIGGER_SOURCE_EXIT_INTENT = "exit_intent";
+  var lastExitIntentEvent = "—";
+  var lastOpenTriggerForDebug = "—";
+  var mobileExitInactivityTimer = null;
+  var mobileScrollUpT0 = 0;
+  var mobileScrollUpAnchorY = 0;
+  var mobileGlobalMaxY = 0;
+  var mobileScrollLastY = 0;
   var events = ["mousemove", "keydown", "scroll", "click", "touchstart"];
 
   var BTN_BACK = "رجوع";
@@ -991,6 +998,7 @@
       return;
     }
     shown = true;
+    lastOpenTriggerForDebug = openSource;
     removeFabIfAny();
     if (step1Poll !== null) {
       clearInterval(step1Poll);
@@ -1961,10 +1969,58 @@
     showBubble(TRIGGER_SOURCE_CART);
   }
 
+  function getExitScrollY() {
+    if (typeof window.pageYOffset === "number") {
+      return window.pageYOffset;
+    }
+    if (document.documentElement && typeof document.documentElement.scrollTop === "number") {
+      return document.documentElement.scrollTop;
+    }
+    if (document.body && typeof document.body.scrollTop === "number") {
+      return document.body.scrollTop;
+    }
+    return 0;
+  }
+
+  function syncExitDebugPanel() {
+    if (!isDemoStoreProductPage()) {
+      return;
+    }
+    var elEv = document.getElementById("cf-exit-intent-event");
+    var elCart = document.getElementById("cf-exit-cart-length");
+    var elMan = document.getElementById("cf-exit-manual-closed");
+    var elW = document.getElementById("cf-exit-widget-visible");
+    var elTr = document.getElementById("cf-exit-trigger-source");
+    if (elEv) {
+      elEv.textContent = String(lastExitIntentEvent);
+    }
+    if (elCart) {
+      elCart.textContent = String(exitIntentCartLengthLog());
+    }
+    if (elMan) {
+      elMan.textContent = isDemoStoreProductPage() && demoStoreBubbleDismissed
+        ? "true"
+        : "false";
+    }
+    if (elW) {
+      elW.textContent = isWidgetDomVisible() ? "true" : "false";
+    }
+    if (elTr) {
+      elTr.textContent = String(lastOpenTriggerForDebug);
+    }
+  }
+
   function clearExitInactivity() {
     if (exitInactivityTimer) {
       clearTimeout(exitInactivityTimer);
       exitInactivityTimer = null;
+    }
+  }
+
+  function clearMobileExitInactivity() {
+    if (mobileExitInactivityTimer) {
+      clearTimeout(mobileExitInactivityTimer);
+      mobileExitInactivityTimer = null;
     }
   }
 
@@ -1990,8 +2046,46 @@
     return true;
   }
 
+  function resetMobileExitInactivity() {
+    clearMobileExitInactivity();
+    if (!isNarrowViewport()) {
+      return;
+    }
+    if (exitIntentUsed) {
+      return;
+    }
+    if (!isCartPage() || !haveCartForWidget()) {
+      return;
+    }
+    if (isDemoStoreProductPage() && demoStoreBubbleDismissed) {
+      return;
+    }
+    if (document.querySelector("[data-cartflow-bubble]")) {
+      return;
+    }
+    mobileExitInactivityTimer = setTimeout(function () {
+      mobileExitInactivityTimer = null;
+      if (!canFireExitIntent()) {
+        return;
+      }
+      lastExitIntentEvent = "inactivity";
+      syncExitDebugPanel();
+      try {
+        console.log("mobile inactivity fired");
+        console.log("mobile exit intent fired");
+      } catch (e) {
+        /* ignore */
+      }
+      scheduleExitIntent("inactivity");
+    }, 10000);
+  }
+
   function resetExitInactivity() {
     clearExitInactivity();
+    if (isNarrowViewport()) {
+      resetMobileExitInactivity();
+      return;
+    }
     if (exitIntentUsed) {
       return;
     }
@@ -2010,11 +2104,17 @@
       if (!canFireExitIntent()) {
         return;
       }
-      scheduleExitIntent();
+      lastExitIntentEvent = "inactivity";
+      syncExitDebugPanel();
+      scheduleExitIntent("inactivity");
     }, waitMs);
   }
 
-  function scheduleExitIntent() {
+  function scheduleExitIntent(eventTag) {
+    if (typeof eventTag === "string" && eventTag) {
+      lastExitIntentEvent = eventTag;
+    }
+    syncExitDebugPanel();
     if (exitIntentUsed) {
       return;
     }
@@ -2054,6 +2154,13 @@
     }
     if (!canFireExitIntent()) {
       return;
+    }
+    if (isNarrowViewport()) {
+      try {
+        console.log("mobile exit intent fired");
+      } catch (e) {
+        /* ignore */
+      }
     }
     try {
       console.log("exit intent fired");
@@ -2177,55 +2284,121 @@
   }
 
   function initExitIntent() {
-    exitLastScrollY = window.pageYOffset || document.documentElement.scrollTop;
+    var yInit = getExitScrollY();
+    exitLastScrollY = yInit;
     exitLastScrollT = Date.now();
-    exitMaxScrollDepth = exitLastScrollY;
+    exitMaxScrollDepth = yInit;
+    mobileScrollLastY = yInit;
+    mobileGlobalMaxY = yInit;
+    mobileScrollUpT0 = 0;
+    mobileScrollUpAnchorY = 0;
 
-    document.addEventListener(
-      "scroll",
-      function () {
-        var y = window.pageYOffset || document.documentElement.scrollTop;
-        var t = Date.now();
-        var dt = t - exitLastScrollT;
-        if (y > exitMaxScrollDepth) {
-          exitMaxScrollDepth = y;
-        }
-        if (dt > 0 && y < exitLastScrollY && exitMaxScrollDepth > 300) {
-          var v = (exitLastScrollY - y) / dt;
-          if (v > 0.35 && exitLastScrollY - y > 18) {
-            scheduleExitIntent();
-          }
-        }
-        exitLastScrollY = y;
-        exitLastScrollT = t;
+    function handleExitScroll() {
+      var y = getExitScrollY();
+      var t = Date.now();
+      if (isNarrowViewport()) {
         resetExitInactivity();
-      },
-      { passive: true }
-    );
+        mobileGlobalMaxY = Math.max(mobileGlobalMaxY, y);
+        if (mobileGlobalMaxY < 300) {
+          mobileScrollLastY = y;
+          return;
+        }
+        if (y < mobileScrollLastY) {
+          if (mobileScrollUpT0 === 0) {
+            mobileScrollUpT0 = t;
+            mobileScrollUpAnchorY = mobileScrollLastY;
+          }
+          if (t - mobileScrollUpT0 > 1000) {
+            mobileScrollUpT0 = t;
+            mobileScrollUpAnchorY = mobileScrollLastY;
+          }
+          if (
+            mobileScrollUpAnchorY - y >= 120 &&
+            t - mobileScrollUpT0 <= 1000
+          ) {
+            lastExitIntentEvent = "scroll-up";
+            syncExitDebugPanel();
+            try {
+              console.log("mobile scroll-up fired");
+              console.log("mobile exit intent fired");
+            } catch (e) {
+              /* ignore */
+            }
+            scheduleExitIntent("scroll-up");
+            mobileScrollUpT0 = 0;
+          }
+        } else if (y > mobileScrollLastY) {
+          mobileScrollUpT0 = 0;
+        }
+        mobileScrollLastY = y;
+        return;
+      }
+      var dt = t - exitLastScrollT;
+      if (y > exitMaxScrollDepth) {
+        exitMaxScrollDepth = y;
+      }
+      if (dt > 0 && y < exitLastScrollY && exitMaxScrollDepth > 300) {
+        var v = (exitLastScrollY - y) / dt;
+        if (v > 0.35 && exitLastScrollY - y > 18) {
+          lastExitIntentEvent = "scroll-up";
+          syncExitDebugPanel();
+          scheduleExitIntent("scroll-up");
+        }
+      }
+      exitLastScrollY = y;
+      exitLastScrollT = t;
+      resetExitInactivity();
+    }
 
-    var exitActivity = [
-      "touchstart",
-      "pointerdown",
-      "click",
-      "keydown",
-    ];
-    exitActivity.forEach(function (ev) {
+    window.addEventListener("scroll", handleExitScroll, { passive: true, capture: true });
+    document.addEventListener("scroll", handleExitScroll, { passive: true, capture: true });
+
+    if (isNarrowViewport()) {
       document.addEventListener(
-        ev,
+        "touchstart",
         function () {
           resetExitInactivity();
         },
         { passive: true, capture: true }
       );
-    });
+      document.addEventListener(
+        "touchmove",
+        function () {
+          resetExitInactivity();
+        },
+        { passive: true, capture: true }
+      );
+    } else {
+      ["pointerdown", "click", "keydown", "touchstart"].forEach(function (ev) {
+        document.addEventListener(
+          ev,
+          function () {
+            resetExitInactivity();
+          },
+          { passive: true, capture: true }
+        );
+      });
+    }
 
     document.addEventListener("visibilitychange", function () {
       if (document.hidden) {
         exitTabWasHidden = true;
+        if (isNarrowViewport()) {
+          lastExitIntentEvent = "visibility_hidden";
+          syncExitDebugPanel();
+        }
       } else {
         if (exitTabWasHidden) {
           exitTabWasHidden = false;
-          scheduleExitIntent();
+          if (isNarrowViewport()) {
+            try {
+              console.log("mobile visibility fired");
+              console.log("mobile exit intent fired");
+            } catch (e) {
+              /* ignore */
+            }
+          }
+          scheduleExitIntent("visibility");
         }
       }
       resetExitInactivity();
@@ -2237,12 +2410,15 @@
     if (isCartPage() && haveCartForWidget()) {
       resetExitInactivity();
     }
+    syncExitDebugPanel();
     try {
       console.log(
         "[CartFlow] exit intent listeners registered",
         window.location.pathname,
         "isCartPage:",
-        isCartPage()
+        isCartPage(),
+        "narrow:",
+        isNarrowViewport()
       );
     } catch (e) {
       /* ignore */
@@ -2251,6 +2427,7 @@
 
   if (isDemoStoreProductPage()) {
     setInterval(ensureDemoStoreBubbleVisible, 2500);
+    setInterval(syncExitDebugPanel, 400);
   }
 
   if (isDemoPath()) {
