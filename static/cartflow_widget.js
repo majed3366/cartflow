@@ -36,6 +36,7 @@
   var mobileScrollUpAnchorY = 0;
   var mobileGlobalMaxY = 0;
   var mobileScrollLastY = 0;
+  var mobileExitLastScrollY = 0;
   var events = ["mousemove", "keydown", "scroll", "click", "touchstart"];
 
   var BTN_BACK = "رجوع";
@@ -1983,9 +1984,6 @@
   }
 
   function syncExitDebugPanel() {
-    if (!isDemoStoreProductPage()) {
-      return;
-    }
     var elEv = document.getElementById("cf-exit-intent-event");
     var elCart = document.getElementById("cf-exit-cart-length");
     var elMan = document.getElementById("cf-exit-manual-closed");
@@ -2076,7 +2074,7 @@
       } catch (e) {
         /* ignore */
       }
-      scheduleExitIntent("inactivity");
+      triggerExitIntent("inactivity");
     }, 10000);
   }
 
@@ -2127,6 +2125,49 @@
     var delay = 300 + Math.random() * 500;
     exitIntentScheduleTimer = setTimeout(function () {
       exitIntentScheduleTimer = null;
+      if (!canFireExitIntent()) {
+        return;
+      }
+      presentExitIntent();
+    }, delay);
+  }
+
+  function triggerExitIntent(type) {
+    if (!isNarrowViewport()) {
+      return;
+    }
+    if (type) {
+      lastExitIntentEvent = String(type);
+    }
+    if (!haveCartForWidget()) {
+      return;
+    }
+    if (document.querySelector("[data-cartflow-bubble]")) {
+      return;
+    }
+    if (isDemoStoreProductPage() && demoStoreBubbleDismissed) {
+      return;
+    }
+    if (!canFireExitIntent()) {
+      return;
+    }
+    try {
+      window.widgetVisible = isWidgetDomVisible();
+      window.manualClosed = isDemoStoreProductPage()
+        ? demoStoreBubbleDismissed
+        : false;
+    } catch (e) {
+      /* ignore */
+    }
+    lastOpenTriggerForDebug = TRIGGER_SOURCE_EXIT_INTENT;
+    syncExitDebugPanel();
+    try {
+      console.log("exit intent fired:", type);
+    } catch (e) {
+      /* ignore */
+    }
+    var delay = 300 + Math.random() * 400;
+    setTimeout(function () {
       if (!canFireExitIntent()) {
         return;
       }
@@ -2284,76 +2325,37 @@
   }
 
   function initExitIntent() {
+    try {
+      console.log("initExitIntent called");
+    } catch (e) {
+      /* ignore */
+    }
     var yInit = getExitScrollY();
     exitLastScrollY = yInit;
     exitLastScrollT = Date.now();
     exitMaxScrollDepth = yInit;
-    mobileScrollLastY = yInit;
-    mobileGlobalMaxY = yInit;
-    mobileScrollUpT0 = 0;
-    mobileScrollUpAnchorY = 0;
-
-    function handleExitScroll() {
-      var y = getExitScrollY();
-      var t = Date.now();
-      if (isNarrowViewport()) {
-        resetExitInactivity();
-        mobileGlobalMaxY = Math.max(mobileGlobalMaxY, y);
-        if (mobileGlobalMaxY < 300) {
-          mobileScrollLastY = y;
-          return;
-        }
-        if (y < mobileScrollLastY) {
-          if (mobileScrollUpT0 === 0) {
-            mobileScrollUpT0 = t;
-            mobileScrollUpAnchorY = mobileScrollLastY;
-          }
-          if (t - mobileScrollUpT0 > 1000) {
-            mobileScrollUpT0 = t;
-            mobileScrollUpAnchorY = mobileScrollLastY;
-          }
-          if (
-            mobileScrollUpAnchorY - y >= 120 &&
-            t - mobileScrollUpT0 <= 1000
-          ) {
-            lastExitIntentEvent = "scroll-up";
-            syncExitDebugPanel();
-            try {
-              console.log("mobile scroll-up fired");
-              console.log("mobile exit intent fired");
-            } catch (e) {
-              /* ignore */
-            }
-            scheduleExitIntent("scroll-up");
-            mobileScrollUpT0 = 0;
-          }
-        } else if (y > mobileScrollLastY) {
-          mobileScrollUpT0 = 0;
-        }
-        mobileScrollLastY = y;
-        return;
-      }
-      var dt = t - exitLastScrollT;
-      if (y > exitMaxScrollDepth) {
-        exitMaxScrollDepth = y;
-      }
-      if (dt > 0 && y < exitLastScrollY && exitMaxScrollDepth > 300) {
-        var v = (exitLastScrollY - y) / dt;
-        if (v > 0.35 && exitLastScrollY - y > 18) {
-          lastExitIntentEvent = "scroll-up";
-          syncExitDebugPanel();
-          scheduleExitIntent("scroll-up");
-        }
-      }
-      exitLastScrollY = y;
-      exitLastScrollT = t;
-      resetExitInactivity();
-    }
-
-    window.addEventListener("scroll", handleExitScroll, { passive: true, capture: true });
-    document.addEventListener("scroll", handleExitScroll, { passive: true, capture: true });
+    mobileExitLastScrollY = yInit;
 
     if (isNarrowViewport()) {
+      function handleNarrowScroll() {
+        resetExitInactivity();
+        var currentY = getExitScrollY();
+        if (
+          mobileExitLastScrollY - currentY > 120 &&
+          mobileExitLastScrollY > 300
+        ) {
+          try {
+            console.log("mobile scroll-up fired");
+            console.log("mobile exit intent fired");
+          } catch (e) {
+            /* ignore */
+          }
+          triggerExitIntent("scroll_up");
+        }
+        mobileExitLastScrollY = currentY;
+      }
+      window.addEventListener("scroll", handleNarrowScroll, { passive: true, capture: true });
+      document.addEventListener("scroll", handleNarrowScroll, { passive: true, capture: true });
       document.addEventListener(
         "touchstart",
         function () {
@@ -2369,6 +2371,27 @@
         { passive: true, capture: true }
       );
     } else {
+      function handleDesktopScroll() {
+        var y = getExitScrollY();
+        var t = Date.now();
+        var dt = t - exitLastScrollT;
+        if (y > exitMaxScrollDepth) {
+          exitMaxScrollDepth = y;
+        }
+        if (dt > 0 && y < exitLastScrollY && exitMaxScrollDepth > 300) {
+          var v = (exitLastScrollY - y) / dt;
+          if (v > 0.35 && exitLastScrollY - y > 18) {
+            lastExitIntentEvent = "scroll-up";
+            syncExitDebugPanel();
+            scheduleExitIntent("scroll-up");
+          }
+        }
+        exitLastScrollY = y;
+        exitLastScrollT = t;
+        resetExitInactivity();
+      }
+      window.addEventListener("scroll", handleDesktopScroll, { passive: true, capture: true });
+      document.addEventListener("scroll", handleDesktopScroll, { passive: true, capture: true });
       ["pointerdown", "click", "keydown", "touchstart"].forEach(function (ev) {
         document.addEventListener(
           ev,
@@ -2381,23 +2404,42 @@
     }
 
     document.addEventListener("visibilitychange", function () {
-      if (document.hidden) {
-        exitTabWasHidden = true;
-        if (isNarrowViewport()) {
+      if (isNarrowViewport()) {
+        if (document.visibilityState === "hidden") {
+          exitTabWasHidden = true;
           lastExitIntentEvent = "visibility_hidden";
+          try {
+            console.log("mobile tab hidden");
+          } catch (e) {
+            /* ignore */
+          }
           syncExitDebugPanel();
-        }
-      } else {
-        if (exitTabWasHidden) {
-          exitTabWasHidden = false;
-          if (isNarrowViewport()) {
+        } else if (document.visibilityState === "visible") {
+          try {
+            console.log("mobile tab returned");
+          } catch (e) {
+            /* ignore */
+          }
+          if (exitTabWasHidden) {
+            exitTabWasHidden = false;
             try {
-              console.log("mobile visibility fired");
               console.log("mobile exit intent fired");
             } catch (e) {
               /* ignore */
             }
+            triggerExitIntent("visibility");
           }
+        }
+        resetExitInactivity();
+        return;
+      }
+      if (document.hidden) {
+        exitTabWasHidden = true;
+      } else {
+        if (exitTabWasHidden) {
+          exitTabWasHidden = false;
+          lastExitIntentEvent = "visibility";
+          syncExitDebugPanel();
           scheduleExitIntent("visibility");
         }
       }
@@ -2423,6 +2465,15 @@
     } catch (e) {
       /* ignore */
     }
+  }
+
+  function bootExitIntent() {
+    initExitIntent();
+  }
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", bootExitIntent);
+  } else {
+    bootExitIntent();
   }
 
   if (isDemoStoreProductPage()) {
@@ -2491,8 +2542,6 @@
       }, 0);
     });
   }
-
-  initExitIntent();
 
   setTimeout(arm, ARM_DELAY_MS);
 })();
