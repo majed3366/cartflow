@@ -26,6 +26,9 @@
   var exitLastScrollT = 0;
   var exitMaxScrollDepth = 0;
   var exitTabWasHidden = false;
+  /** مصدر فتح الودجت — نص الترحيب فقط */
+  var TRIGGER_SOURCE_CART = "cart";
+  var TRIGGER_SOURCE_EXIT_INTENT = "exit_intent";
   var events = ["mousemove", "keydown", "scroll", "click", "touchstart"];
 
   var BTN_BACK = "رجوع";
@@ -952,7 +955,11 @@
     }
   }
 
-  function showBubble() {
+  function showBubble(triggerSource) {
+    var openSource =
+      triggerSource === TRIGGER_SOURCE_EXIT_INTENT
+        ? TRIGGER_SOURCE_EXIT_INTENT
+        : TRIGGER_SOURCE_CART;
     if (isSessionConverted() || !step1Ready) {
       return;
     }
@@ -1258,7 +1265,10 @@
 
     var p0 = document.createElement("p");
     p0.style.cssText = "margin:0 0 8px 0;";
-    p0.textContent = "تبي أساعدك تكمل طلبك؟";
+    p0.textContent =
+      openSource === TRIGGER_SOURCE_EXIT_INTENT
+        ? "هلا أقدر أخدمك بشيء؟"
+        : "تبي أساعدك تكمل طلبك؟";
 
     var row0 = document.createElement("div");
     row0.style.cssText =
@@ -1823,7 +1833,7 @@
       /* ignore */
     }
     idleTimer = setTimeout(function () {
-      showBubble();
+      showBubble(TRIGGER_SOURCE_CART);
       try {
         var widgetVisible = isWidgetDomVisible();
         console.log("widget visible:", widgetVisible);
@@ -1883,14 +1893,14 @@
       clearTimeout(idleTimer);
       idleTimer = null;
       if (!shown) {
-        showBubble();
+        showBubble(TRIGGER_SOURCE_CART);
       } else {
         var hasDom =
           document.querySelector("[data-cartflow-bubble]") ||
           document.querySelector("[data-cartflow-fab]");
         if (!hasDom) {
           shown = false;
-          showBubble();
+          showBubble(TRIGGER_SOURCE_CART);
         }
       }
       try {
@@ -1941,7 +1951,7 @@
       return;
     }
     shown = false;
-    showBubble();
+    showBubble(TRIGGER_SOURCE_CART);
   }
 
   function clearExitInactivity() {
@@ -2068,7 +2078,7 @@
         if (document.querySelector("[data-cartflow-fab]")) {
           return;
         }
-        showBubble();
+        showBubble(TRIGGER_SOURCE_EXIT_INTENT);
       }, 0);
       return;
     }
@@ -2085,7 +2095,7 @@
       ) {
         return;
       }
-      showBubble();
+      showBubble(TRIGGER_SOURCE_EXIT_INTENT);
     });
   }
 
@@ -2111,7 +2121,7 @@
     exitIntentUsed = true;
     runArmBody();
     if (isDemoPath()) {
-      showBubble();
+      showBubble(TRIGGER_SOURCE_EXIT_INTENT);
     } else {
       fetchReadyThen(function () {
         if (
@@ -2123,7 +2133,7 @@
         ) {
           return;
         }
-        showBubble();
+        showBubble(TRIGGER_SOURCE_EXIT_INTENT);
       });
     }
   }
@@ -2236,14 +2246,14 @@
           clearTimeout(idleTimer);
           idleTimer = null;
           if (!shown) {
-            showBubble();
+            showBubble(TRIGGER_SOURCE_CART);
           } else {
             var d =
               document.querySelector("[data-cartflow-bubble]") ||
               document.querySelector("[data-cartflow-fab]");
             if (!d) {
               shown = false;
-              showBubble();
+              showBubble(TRIGGER_SOURCE_CART);
             }
           }
           try {
