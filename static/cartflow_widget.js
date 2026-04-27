@@ -2362,18 +2362,13 @@
       });
     }
   }
-
-  function startCartflowExitIntentEngine() {
-    function go() {
-      CartflowExitIntentController();
+  try {
+    if (typeof window !== "undefined") {
+      window.CartflowExitIntentController = CartflowExitIntentController;
     }
-    if (document.readyState === "loading") {
-      document.addEventListener("DOMContentLoaded", go);
-    } else {
-      go();
-    }
+  } catch (e) {
+    /* ignore */
   }
-  startCartflowExitIntentEngine();
 
   if (isDemoStoreProductPage()) {
     setInterval(ensureDemoStoreBubbleVisible, 2500);
@@ -2441,4 +2436,40 @@
   }
 
   setTimeout(arm, ARM_DELAY_MS);
+})();
+
+/**
+ * Exit intent: guaranteed init (also when main bundle ran before document ready on /demo/store).
+ * Uses window.CartflowExitIntentController from the main IIFE.
+ */
+(function () {
+  try {
+    console.log("EXIT ENGINE FORCE INIT");
+    var c = function () {
+      if (typeof window.CartflowExitIntentController === "function") {
+        window.CartflowExitIntentController();
+      } else {
+        console.error("EXIT ENGINE: CartflowExitIntentController not on window");
+      }
+    };
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", function () {
+        try {
+          console.log("EXIT ENGINE INIT AFTER DOM");
+          c();
+        } catch (e) {
+          console.error("EXIT ENGINE ERROR", e);
+        }
+      });
+    } else {
+      try {
+        console.log("EXIT ENGINE INIT IMMEDIATE");
+        c();
+      } catch (e) {
+        console.error("EXIT ENGINE ERROR", e);
+      }
+    }
+  } catch (e) {
+    console.error("EXIT ENGINE ERROR", e);
+  }
 })();
