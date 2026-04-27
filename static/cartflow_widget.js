@@ -972,13 +972,20 @@
       }
     }
     if (shown) {
-      if (
-        document.querySelector("[data-cartflow-bubble]") ||
-        document.querySelector("[data-cartflow-fab]")
-      ) {
+      if (document.querySelector("[data-cartflow-bubble]")) {
         return;
       }
-      shown = false;
+      var openFab = document.querySelector("[data-cartflow-fab]");
+      if (openFab) {
+        if (openSource === TRIGGER_SOURCE_EXIT_INTENT) {
+          removeFabIfAny();
+          shown = false;
+        } else {
+          return;
+        }
+      } else {
+        shown = false;
+      }
     }
     if (!haveCartForWidget()) {
       return;
@@ -1267,7 +1274,7 @@
     p0.style.cssText = "margin:0 0 8px 0;";
     p0.textContent =
       openSource === TRIGGER_SOURCE_EXIT_INTENT
-        ? "هلا أقدر أخدمك بشيء؟"
+        ? "هلا 👋 أقدر أخدمك بشيء؟"
         : "تبي أساعدك تكمل طلبك؟";
 
     var row0 = document.createElement("div");
@@ -2027,25 +2034,17 @@
     }, delay);
   }
 
-  function exitFabPulse(fab) {
-    if (!fab) {
-      return;
-    }
+  function exitIntentCartLengthLog() {
     try {
-      var prev = fab.style.animation;
-      fab.style.animation = "none";
-      void fab.offsetWidth;
-      fab.style.animation =
-        "cfFabPulse 0.7s ease-in-out 2, cfFabDot 0.55s ease-in-out 2";
-      setTimeout(function () {
-        if (fab && fab.isConnected) {
-          fab.style.animation =
-            prev ||
-            "cfFabPulse 2.2s ease-in-out infinite, cfFabDot 1.6s ease-in-out infinite";
-        }
-      }, 1500);
+      if (typeof window.cart === "undefined" || window.cart === null) {
+        return 0;
+      }
+      if (!Array.isArray(window.cart)) {
+        return 0;
+      }
+      return window.cart.length;
     } catch (e) {
-      /* ignore */
+      return 0;
     }
   }
 
@@ -2056,26 +2055,52 @@
     if (!canFireExitIntent()) {
       return;
     }
-    var fab = document.querySelector("[data-cartflow-fab]");
-    if (fab) {
-      exitIntentUsed = true;
-      exitFabPulse(fab);
+    try {
+      console.log("exit intent fired");
+      console.log("cart length:", exitIntentCartLengthLog());
+      console.log(
+        "manual closed:",
+        isDemoStoreProductPage() ? demoStoreBubbleDismissed : false
+      );
+    } catch (e) {
+      /* ignore */
+    }
+
+    if (document.querySelector("[data-cartflow-bubble]")) {
       return;
     }
+
+    if (isDemoStoreProductPage() && typeof window.cartflowDemoArmStoreWidget === "function") {
+      window.cartflowDemoArmStoreWidget();
+    } else {
+      runArmBody();
+    }
+    clearTimeout(idleTimer);
+    idleTimer = null;
+
+    if (isSessionConverted() || !haveCartForWidget()) {
+      return;
+    }
+    if (isDemoStoreProductPage() && demoStoreBubbleDismissed) {
+      return;
+    }
+
     exitIntentUsed = true;
-    runArmBody();
+    try {
+      console.log("showing widget from exit intent");
+    } catch (e) {
+      /* ignore */
+    }
+
     if (isDemoPath()) {
+      if (!step1Ready) {
+        step1Ready = true;
+      }
       setTimeout(function () {
         if (isSessionConverted() || !haveCartForWidget()) {
           return;
         }
         if (isDemoStoreProductPage() && demoStoreBubbleDismissed) {
-          return;
-        }
-        if (document.querySelector("[data-cartflow-bubble]")) {
-          return;
-        }
-        if (document.querySelector("[data-cartflow-fab]")) {
           return;
         }
         showBubble(TRIGGER_SOURCE_EXIT_INTENT);
@@ -2087,12 +2112,6 @@
         return;
       }
       if (isDemoStoreProductPage() && demoStoreBubbleDismissed) {
-        return;
-      }
-      if (
-        document.querySelector("[data-cartflow-bubble]") ||
-        document.querySelector("[data-cartflow-fab]")
-      ) {
         return;
       }
       showBubble(TRIGGER_SOURCE_EXIT_INTENT);
@@ -2112,24 +2131,43 @@
     if (document.querySelector("[data-cartflow-bubble]")) {
       return;
     }
-    var fabL = document.querySelector("[data-cartflow-fab]");
-    if (fabL) {
-      exitIntentUsed = true;
-      exitFabPulse(fabL);
-      return;
+    try {
+      console.log("exit intent fired (page leave)");
+      console.log("cart length:", exitIntentCartLengthLog());
+      console.log(
+        "manual closed:",
+        isDemoStoreProductPage() ? demoStoreBubbleDismissed : false
+      );
+    } catch (e) {
+      /* ignore */
     }
+
+    if (isDemoStoreProductPage() && typeof window.cartflowDemoArmStoreWidget === "function") {
+      window.cartflowDemoArmStoreWidget();
+    } else {
+      runArmBody();
+    }
+    clearTimeout(idleTimer);
+    idleTimer = null;
+
     exitIntentUsed = true;
-    runArmBody();
+    try {
+      console.log("showing widget from exit intent");
+    } catch (e) {
+      /* ignore */
+    }
+
     if (isDemoPath()) {
+      if (!step1Ready) {
+        step1Ready = true;
+      }
       showBubble(TRIGGER_SOURCE_EXIT_INTENT);
     } else {
       fetchReadyThen(function () {
         if (
           isSessionConverted() ||
           !haveCartForWidget() ||
-          (isDemoStoreProductPage() && demoStoreBubbleDismissed) ||
-          document.querySelector("[data-cartflow-bubble]") ||
-          document.querySelector("[data-cartflow-fab]")
+          (isDemoStoreProductPage() && demoStoreBubbleDismissed)
         ) {
           return;
         }
@@ -2198,6 +2236,16 @@
 
     if (isCartPage() && haveCartForWidget()) {
       resetExitInactivity();
+    }
+    try {
+      console.log(
+        "[CartFlow] exit intent listeners registered",
+        window.location.pathname,
+        "isCartPage:",
+        isCartPage()
+      );
+    } catch (e) {
+      /* ignore */
     }
   }
 
