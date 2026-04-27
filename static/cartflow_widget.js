@@ -398,19 +398,91 @@
     return path === "/demo/store";
   }
 
+  function ensureMobileUxStyles() {
+    if (document.getElementById("cf-widget-mobile-ux")) {
+      return;
+    }
+    var s = document.createElement("style");
+    s.id = "cf-widget-mobile-ux";
+    s.textContent =
+      "@keyframes cfFabPulse{0%,100%{box-shadow:0 2px 14px rgba(0,0,0,.28);}50%{box-shadow:0 6px 24px rgba(124,58,237,.5);}}@keyframes cfFabDot{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.85;transform:scale(1.15);}}";
+    document.head.appendChild(s);
+  }
+
   function applyBubbleLayout(el) {
+    if (!el) {
+      return;
+    }
     if (isNarrowViewport()) {
-      el.style.top = "max(8px, env(safe-area-inset-top, 0px))";
-      el.style.bottom = "auto";
+      el.style.top = "auto";
+      el.style.bottom = "max(8px, env(safe-area-inset-bottom, 0px))";
       el.style.right = "8px";
-      el.style.left = "auto";
-      el.style.maxWidth = "min(300px, calc(100vw - 16px))";
+      el.style.left = "8px";
+      el.style.maxWidth = "100%";
+      el.style.maxHeight = "min(65vh, calc(100dvh - 16px))";
+      el.style.minHeight = "0";
+      el.style.width = "auto";
+      el.style.display = "flex";
+      el.style.flexDirection = "column";
+      el.style.overflowX = "hidden";
+      el.style.overflowY = "auto";
+      el.style.overscrollBehavior = "contain";
+      el.style.setProperty("-webkit-overflow-scrolling", "touch");
+      el.style.setProperty("border-radius", "12px 12px 0 0", "");
+      el.style.touchAction = "pan-y";
+      if (el._cfDragY) {
+        el.style.transform =
+          "translate3d(0, " + String(-el._cfDragY) + "px, 0)";
+      } else {
+        el.style.transform = "";
+      }
     } else {
       el.style.top = "auto";
       el.style.bottom = "max(12px, env(safe-area-inset-bottom, 0px))";
       el.style.right = "12px";
       el.style.left = "auto";
       el.style.maxWidth = "320px";
+      el.style.maxHeight = "";
+      el.style.minHeight = "";
+      el.style.width = "";
+      el.style.display = "";
+      el.style.flexDirection = "";
+      el.style.overflowX = "";
+      el.style.overflowY = "visible";
+      el.style.overscrollBehavior = "";
+      el.style.setProperty("-webkit-overflow-scrolling", "");
+      el.style.setProperty("border-radius", "12px", "");
+      el.style.touchAction = "manipulation";
+      el.style.transform = "";
+      el._cfDragY = 0;
+    }
+    var c = el._cfChrome;
+    if (c) {
+      if (isNarrowViewport()) {
+        c.style.position = "sticky";
+        c.style.top = "0";
+        c.style.zIndex = "4";
+        c.style.flexShrink = "0";
+        c.style.background = "#1e1b4b";
+        c.style.margin = "0 -12px 8px -12px";
+        c.style.padding = "0 12px 6px 12px";
+        c.style.width = "calc(100% + 24px)";
+        c.style.maxWidth = "none";
+        c.style.boxShadow = "0 10px 16px -10px rgba(0,0,0,0.28)";
+        c.style.alignSelf = "stretch";
+      } else {
+        c.style.position = "";
+        c.style.top = "";
+        c.style.zIndex = "";
+        c.style.flexShrink = "";
+        c.style.background = "";
+        c.style.margin = "0 0 8px 0";
+        c.style.padding = "";
+        c.style.width = "100%";
+        c.style.maxWidth = "";
+        c.style.boxShadow = "";
+        c.style.alignSelf = "";
+      }
     }
   }
 
@@ -461,6 +533,13 @@
     var i;
     for (i = 0; i < nodes.length; i++) {
       var n = nodes[i];
+      if (typeof n._cfCleanup === "function") {
+        try {
+          n._cfCleanup();
+        } catch (e) {
+          /* ignore */
+        }
+      }
       if (n.parentNode) {
         n.parentNode.removeChild(n);
       }
@@ -817,10 +896,11 @@
   }
 
   var btnStyle =
-    "cursor:pointer;border:0;border-radius:8px;padding:6px 14px;font:inherit;" +
-    "font-weight:600;background:#7c3aed;color:#fff;";
+    "cursor:pointer;border:0;border-radius:8px;padding:10px 16px;font:inherit;" +
+    "font-weight:600;background:#7c3aed;color:#fff;min-height:44px;box-sizing:border-box;" +
+    "touch-action:manipulation;";
   var rowStyleCol =
-    "display:flex;flex-direction:column;gap:6px;width:100%;align-items:stretch;";
+    "display:flex;flex-direction:column;gap:10px;width:100%;align-items:stretch;";
 
   /**
    * Scroll to cart / checkout on the host page (no widget close).
@@ -899,16 +979,17 @@
       document.removeEventListener(e, resetIdle, true);
     });
 
+    ensureMobileUxStyles();
     var w = document.createElement("div");
     w.setAttribute("dir", "rtl");
     w.setAttribute("lang", "ar");
     w.setAttribute("data-cartflow-bubble", "1");
+    w._cfDragY = 0;
     w.style.cssText =
-      "position:fixed;z-index:2147483640;" +
+      "position:fixed;z-index:2147483640;box-sizing:border-box;" +
       "padding:10px 12px;border-radius:12px;background:#1e1b4b;color:#f5f3ff;" +
       "font:14px/1.4 system-ui,-apple-system,'Segoe UI',sans-serif;box-shadow:0 4px 16px rgba(0,0,0,.2);" +
-      "pointer-events:auto;touch-action:manipulation;isolation:isolate;";
-    applyBubbleLayout(w);
+      "pointer-events:auto;isolation:isolate;";
 
     w.addEventListener(
       "click",
@@ -921,13 +1002,105 @@
     );
 
     var chromeBtnStyle =
-      "cursor:pointer;border:0;border-radius:6px;padding:2px 8px;font:inherit;font-size:16px;line-height:1;" +
-      "font-weight:700;background:rgba(255,255,255,.12);color:#f5f3ff;min-width:32px;touch-action:manipulation;";
+      "cursor:pointer;border:0;border-radius:8px;padding:0 12px;font:inherit;font-size:18px;line-height:1;" +
+      "font-weight:700;background:rgba(255,255,255,.12);color:#f5f3ff;min-width:44px;min-height:44px;" +
+      "box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;" +
+      "touch-action:manipulation;";
 
     var chrome = document.createElement("div");
     chrome.setAttribute("data-cf-chrome", "1");
-    chrome.style.cssText =
-      "display:flex;justify-content:flex-end;align-items:center;gap:6px;margin:0 0 8px 0;";
+    w._cfChrome = chrome;
+    if (isNarrowViewport()) {
+      chrome.style.cssText =
+        "display:flex;flex-direction:row;align-items:stretch;justify-content:space-between;gap:10px;" +
+        "width:100%;margin:0 0 8px 0;box-sizing:border-box;";
+    } else {
+      chrome.style.cssText =
+        "display:flex;justify-content:flex-end;align-items:center;gap:8px;" +
+        "width:100%;margin:0 0 8px 0;box-sizing:border-box;";
+    }
+
+    function getMaxDragPx() {
+      return Math.max(0, Math.round(window.innerHeight * 0.28));
+    }
+
+    var dragPtrActive = false;
+    var dragStartClientY = 0;
+    var dragStartOffset = 0;
+
+    var _cfTouchMoveOpts = { capture: true, passive: false };
+
+    function endDrag() {
+      dragPtrActive = false;
+      document.removeEventListener("mousemove", onDragPointerMove, true);
+      document.removeEventListener("mouseup", onDragPointerEnd, true);
+      document.removeEventListener("touchmove", onDragPointerMove, _cfTouchMoveOpts);
+      document.removeEventListener("touchend", onDragPointerEnd, true);
+      document.removeEventListener("touchcancel", onDragPointerEnd, true);
+    }
+
+    function onDragPointerMove(ev) {
+      if (!dragPtrActive) {
+        return;
+      }
+      var p = ev.touches && ev.touches[0] ? ev.touches[0] : ev;
+      if (!p) {
+        return;
+      }
+      var dy = p.clientY - dragStartClientY;
+      var next = dragStartOffset - dy;
+      var m = getMaxDragPx();
+      if (next < 0) {
+        next = 0;
+      }
+      if (next > m) {
+        next = m;
+      }
+      w._cfDragY = next;
+      w.style.transform =
+        next > 0 ? "translate3d(0, " + String(-next) + "px, 0)" : "";
+      if (ev.cancelable) {
+        ev.preventDefault();
+      }
+    }
+
+    function onDragPointerEnd() {
+      endDrag();
+    }
+
+    if (isNarrowViewport()) {
+      var handle = document.createElement("div");
+      handle.setAttribute("data-cf-drag-handle", "1");
+      handle.setAttribute("aria-label", "سحب لتحريك النافذة");
+      handle.style.cssText =
+        "flex:1 1 auto;min-height:44px;min-width:48px;cursor:grab;user-select:none;-webkit-user-select:none;" +
+        "touch-action:none;display:flex;align-items:center;opacity:0.75;";
+      var grip = document.createElement("span");
+      grip.setAttribute("aria-hidden", "true");
+      grip.textContent = "⋮⋮";
+      grip.style.cssText = "font-size:14px;letter-spacing:1px;";
+      handle.appendChild(grip);
+      function onHandleDown(ev) {
+        if (ev.type === "mousedown" && ev.button !== 0) {
+          return;
+        }
+        dragPtrActive = true;
+        var p = ev.touches && ev.touches[0] ? ev.touches[0] : ev;
+        dragStartClientY = p.clientY;
+        dragStartOffset = w._cfDragY || 0;
+        if (ev.cancelable) {
+          ev.preventDefault();
+        }
+        document.addEventListener("mousemove", onDragPointerMove, true);
+        document.addEventListener("mouseup", onDragPointerEnd, true);
+        document.addEventListener("touchmove", onDragPointerMove, _cfTouchMoveOpts);
+        document.addEventListener("touchend", onDragPointerEnd, true);
+        document.addEventListener("touchcancel", onDragPointerEnd, true);
+      }
+      handle.addEventListener("mousedown", onHandleDown, false);
+      handle.addEventListener("touchstart", onHandleDown, { passive: false });
+      chrome.appendChild(handle);
+    }
 
     function stripContentKeepChrome() {
       var ch = w.children;
@@ -940,34 +1113,79 @@
       }
     }
 
+    function onWinResize() {
+      if (!w) {
+        return;
+      }
+      if (!w.isConnected) {
+        return;
+      }
+      var m = getMaxDragPx();
+      if (w._cfDragY > m) {
+        w._cfDragY = m;
+      }
+      if (w._cfDragY > 0) {
+        w.style.transform =
+          "translate3d(0, " + String(-w._cfDragY) + "px, 0)";
+      } else {
+        w.style.transform = "";
+      }
+      applyBubbleLayout(w);
+    }
+
+    w._cfCleanup = function () {
+      endDrag();
+      window.removeEventListener("resize", onWinResize);
+      window.removeEventListener("orientationchange", onWinResize);
+    };
+    window.addEventListener("resize", onWinResize, { passive: true });
+    window.addEventListener("orientationchange", onWinResize, { passive: true });
+
     function mountMinimizedFab() {
       removeFabIfAny();
+      ensureMobileUxStyles();
       var fab = document.createElement("button");
       fab.type = "button";
       fab.setAttribute("data-cartflow-fab", "1");
       fab.setAttribute("aria-label", "توسيع CartFlow");
-      fab.textContent = "💬";
       fab.style.cssText =
-        "position:fixed;z-index:2147483639;padding:0;margin:0;width:44px;height:44px;border-radius:50%;" +
+        "position:fixed;z-index:2147483639;padding:0;margin:0;min-width:48px;min-height:48px;" +
+        "width:48px;height:48px;border-radius:50%;" +
         "border:0;background:#7c3aed;color:#fff;font-size:20px;line-height:1;cursor:pointer;" +
-        "box-shadow:0 2px 12px rgba(0,0,0,.2);touch-action:manipulation;pointer-events:auto;";
+        "box-shadow:0 2px 14px rgba(0,0,0,.28);touch-action:manipulation;pointer-events:auto;" +
+        "display:flex;align-items:center;justify-content:center;position:relative;" +
+        "animation:cfFabPulse 2.2s ease-in-out infinite;";
       if (isNarrowViewport()) {
-        fab.style.left = "max(8px, env(safe-area-inset-left, 0px))";
-        fab.style.bottom = "max(72px, env(safe-area-inset-bottom, 0px))";
+        fab.style.right = "max(12px, env(safe-area-inset-right, 0px))";
+        fab.style.left = "auto";
+        fab.style.bottom = "max(12px, env(safe-area-inset-bottom, 0px))";
         fab.style.top = "auto";
-        fab.style.right = "auto";
       } else {
         fab.style.right = "max(12px, env(safe-area-inset-right, 0px))";
         fab.style.bottom = "max(12px, env(safe-area-inset-bottom, 0px))";
         fab.style.left = "auto";
         fab.style.top = "auto";
       }
+      var fabIcon = document.createElement("span");
+      fabIcon.textContent = "💬";
+      fabIcon.style.cssText = "line-height:1;";
+      fab.appendChild(fabIcon);
+      var actDot = document.createElement("span");
+      actDot.setAttribute("aria-hidden", "true");
+      actDot.title = "نشاط";
+      actDot.style.cssText =
+        "position:absolute;top:5px;right:5px;width:8px;height:8px;border-radius:50%;" +
+        "background:#34d399;border:2px solid #1e1b4a;box-sizing:border-box;pointer-events:none;" +
+        "animation:cfFabDot 1.6s ease-in-out infinite;";
+      fab.appendChild(actDot);
       fab.addEventListener("click", function (ev) {
         ev.stopPropagation();
         ev.preventDefault();
         if (fab.parentNode) {
           fab.parentNode.removeChild(fab);
         }
+        w._cfDragY = 0;
+        w.style.transform = "";
         document.body.appendChild(w);
         applyBubbleLayout(w);
       });
@@ -988,6 +1206,7 @@
       if (w.parentNode) {
         w.parentNode.removeChild(w);
       }
+      endDrag();
       mountMinimizedFab();
     });
 
@@ -1000,6 +1219,9 @@
       ev.stopPropagation();
       ev.preventDefault();
       removeFabIfAny();
+      if (typeof w._cfCleanup === "function") {
+        w._cfCleanup();
+      }
       if (w.parentNode) {
         w.parentNode.removeChild(w);
       }
@@ -1011,9 +1233,20 @@
       }
     });
 
-    chrome.appendChild(btnMin);
-    chrome.appendChild(btnClose);
+    var btnGroup = document.createElement("div");
+    btnGroup.style.cssText =
+      "display:flex;flex-direction:row;align-items:center;gap:8px;flex-shrink:0;";
+    btnGroup.appendChild(btnMin);
+    btnGroup.appendChild(btnClose);
+    if (isNarrowViewport()) {
+      chrome.appendChild(btnGroup);
+    } else {
+      chrome.appendChild(btnMin);
+      chrome.appendChild(btnClose);
+    }
     w.appendChild(chrome);
+
+    applyBubbleLayout(w);
 
     var p0 = document.createElement("p");
     p0.style.cssText = "margin:0 0 8px 0;";
@@ -1021,7 +1254,7 @@
 
     var row0 = document.createElement("div");
     row0.style.cssText =
-      "display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-start;margin-top:2px;";
+      "display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-start;margin-top:2px;";
 
     var btnY = document.createElement("button");
     btnY.type = "button";
@@ -1039,6 +1272,9 @@
         return;
       }
       removeFabIfAny();
+      if (typeof w._cfCleanup === "function") {
+        w._cfCleanup();
+      }
       if (w && w.parentNode) {
         w.parentNode.removeChild(w);
       }
@@ -1501,7 +1737,8 @@
       var row = document.createElement("div");
       row.setAttribute("data-cf-reason-row", "1");
       row.style.cssText =
-        "display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-start;margin-top:4px;max-height:220px;overflow-y:auto;";
+        "display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-start;margin-top:4px;max-height:220px;overflow-y:auto;" +
+        "-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:2px 0;";
 
       var options = [
         { label: "السعر", r: "price" },
