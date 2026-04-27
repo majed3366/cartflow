@@ -20,17 +20,9 @@
   var step1Poll = null;
   var armListenersAttached = false;
   var demoStoreBubbleDismissed = false;
-  var exitIntentScheduleTimer = null;
-  var exitInactivityTimer = null;
-  var exitLastScrollY = 0;
-  var exitLastScrollT = 0;
-  var exitMaxScrollDepth = 0;
-  var exitTabWasHidden = false;
   /** مصدر فتح الودجت — نص الترحيب فقط */
   var TRIGGER_SOURCE_CART = "cart";
   var TRIGGER_SOURCE_EXIT_INTENT = "exit_intent";
-  var mobileExitInactivityTimer = null;
-  var mobileExitLastScrollY = 0;
   var events = ["mousemove", "keydown", "scroll", "click", "touchstart"];
 
   var BTN_BACK = "رجوع";
@@ -562,6 +554,16 @@
     );
   }
 
+  function syncCartflowExitFlags() {
+    try {
+      window.cartflowWidgetVisible = isWidgetDomVisible();
+      window.cartflowManualClosed = isDemoStoreProductPage() && demoStoreBubbleDismissed;
+    } catch (e) {
+      window.cartflowWidgetVisible = false;
+      window.cartflowManualClosed = false;
+    }
+  }
+
   function nudgeWidgetIdle() {
     try {
       document.documentElement.dispatchEvent(
@@ -788,7 +790,6 @@
       reason: rkey,
       product_name: ctx.name || "",
       product_price: ctx.priceLabel || "",
-      // لـ API فقط — لا يُستعمل لبناء نص واتساب (انظر getLinkByType في المعاينة)
       cart_url: href,
     };
     if (gsub) {
@@ -834,6 +835,62 @@
     } catch (e2) {
       return base;
     }
+  }
+
+  /**
+   * مصدر واحد لنص واتساب في المعاينة — النوع + رابط واحد فقط.
+   * opts: reason, sub_category, generatedCore (الـ API cart_url لا يُدمَج هنا)
+   */
+  function buildWhatsappMessage(opts) {
+    var reason = opts.reason || "";
+    var sub_category = (opts.sub_category || "").trim();
+    var generatedCore =
+      opts.generatedCore != null ? String(opts.generatedCore) : "";
+    var type = "cart";
+    if (
+      reason === "price" &&
+      (sub_category === "price_budget_issue" ||
+        sub_category === "price_cheaper_alternative")
+    ) {
+      type = "alternatives";
+    } else if (reason === "price" && sub_category === "price_discount_request") {
+      type = "cart";
+    } else if (
+      reason === "quality" ||
+      reason === "warranty" ||
+      reason === "shipping" ||
+      reason === "thinking" ||
+      reason === "other" ||
+      reason === "human_support"
+    ) {
+      type = "product";
+    } else if (reason === "price") {
+      type = "cart";
+    }
+    var label;
+    var url;
+    if (type === "cart") {
+      label = "🛒 رابط السلة:";
+      url = resolveWhatsappCartUrlString();
+    } else if (type === "alternatives") {
+      label = "🔄 تصفح البدائل:";
+      url = "https://smartreplyai.net/demo/store";
+    } else {
+      label = "📦 رابط المنتج:";
+      url = resolveWhatsappProductUrlString() || resolveWhatsappCartUrlString();
+    }
+    try {
+      console.log("WHATSAPP_BUILD", {
+        reason: reason,
+        sub_category: sub_category,
+        type: type,
+      });
+    } catch (e) {
+      /* ignore */
+    }
+    return (
+      "👋 مرحباً\n\n" + generatedCore + "\n\n" + label + "\n" + url
+    );
   }
 
   function postGenerateWhatsappMessage(payload) {
@@ -1083,9 +1140,6 @@
       }
     }
     shown = true;
-    if (openSource === TRIGGER_SOURCE_EXIT_INTENT && isDemoStoreProductPage()) {
-      setDemoStoreExitIntentShown();
-    }
     removeFabIfAny();
     if (step1Poll !== null) {
       clearInterval(step1Poll);
@@ -1559,72 +1613,15 @@
           }
           convHint.innerHTML = "";
           convHint.style.display = "none";
-          var reason = rkey;
-          var sub_category =
+          var sc =
             payload && payload.sub_category
               ? String(payload.sub_category).trim()
               : "";
-          var message_type = "cart";
-          if (reason === "price" && sub_category === "price_cheaper_alternative") {
-            message_type = "alternatives";
-          } else if (reason === "price" && sub_category === "price_budget_issue") {
-            message_type = "alternatives";
-          } else if (reason === "price" && sub_category === "price_discount_request") {
-            message_type = "cart";
-          } else if (reason === "quality") {
-            message_type = "product";
-          } else if (reason === "warranty") {
-            message_type = "product";
-          } else if (reason === "shipping") {
-            message_type = "product";
-          } else if (reason === "thinking") {
-            message_type = "product";
-          } else if (reason === "price") {
-            message_type = "cart";
-          } else if (reason === "other" || reason === "human_support") {
-            message_type = "product";
-          }
-          try {
-            console.log("reason:", reason);
-            console.log("sub_category:", sub_category);
-            console.log("message_type:", message_type);
-          } catch (e) {
-            /* ignore */
-          }
-          var cart_url = resolveWhatsappCartUrlString();
-          var product_url = resolveWhatsappProductUrlString();
-          function getLinkByType(type) {
-            if (type === "cart") {
-              return {
-                label: "🛒 رابط السلة:",
-                url: cart_url,
-              };
-            }
-            if (type === "alternatives") {
-              return {
-                label: "🔄 تصفح البدائل:",
-                url: "https://smartreplyai.net/demo/store",
-              };
-            }
-            if (type === "product") {
-              return {
-                label: "📦 رابط المنتج:",
-                url: product_url || cart_url,
-              };
-            }
-            return {
-              label: "🛒 رابط السلة:",
-              url: cart_url,
-            };
-          }
-          var link = getLinkByType(message_type);
-          var finalMessage =
-            "👋 مرحباً\n\n" +
-            String(generatedCore) +
-            "\n\n" +
-            link.label +
-            "\n" +
-            link.url;
+          var finalMessage = buildWhatsappMessage({
+            reason: rkey,
+            sub_category: sc,
+            generatedCore: generatedCore,
+          });
           var wurl = buildWaMeComposeUrl(finalMessage, merchantE164);
           try {
             window.open(wurl, "_blank", "noopener,noreferrer");
@@ -2169,7 +2166,6 @@
     demoStoreBubbleDismissed = false;
     clearTimeout(idleTimer);
     idleTimer = null;
-    removeExitIntentPromptModal();
     removeFabIfAny();
     removeCartflowBubbleDom();
     shown = false;
@@ -2202,33 +2198,6 @@
     showBubble(TRIGGER_SOURCE_CART);
   }
 
-  function getExitScrollY() {
-    if (typeof window.pageYOffset === "number") {
-      return window.pageYOffset;
-    }
-    if (document.documentElement && typeof document.documentElement.scrollTop === "number") {
-      return document.documentElement.scrollTop;
-    }
-    if (document.body && typeof document.body.scrollTop === "number") {
-      return document.body.scrollTop;
-    }
-    return 0;
-  }
-
-  function clearExitInactivity() {
-    if (exitInactivityTimer) {
-      clearTimeout(exitInactivityTimer);
-      exitInactivityTimer = null;
-    }
-  }
-
-  function clearMobileExitInactivity() {
-    if (mobileExitInactivityTimer) {
-      clearTimeout(mobileExitInactivityTimer);
-      mobileExitInactivityTimer = null;
-    }
-  }
-
   /**
    * ‎/demo/store‎: خروج ذكي لزائر التصفّح (بدون شرط سلة) مرة لكل جلسة تخزين.
    * باقي صفحات السلة: يشترط وجود أصناف في السلة كسابق.
@@ -2242,13 +2211,10 @@
       return false;
     }
     if (isDemoStoreProductPage()) {
-      if (readDemoStoreExitIntentShown()) {
-        return false;
-      }
       if (demoStoreBubbleDismissed) {
         return false;
       }
-      if (document.querySelector("[data-cartflow-bubble]")) {
+      if (isWidgetDomVisible()) {
         return false;
       }
       return true;
@@ -2294,400 +2260,120 @@
     });
   }
 
-  /** طبقة وسيطة على ‎/demo/store‎: نافذة موافقة قبل فتح الودجت. */
-  function canShowExitIntentPrompt() {
-    if (!isDemoStoreProductPage()) {
-      return false;
-    }
-    if (isSessionConverted()) {
-      return false;
-    }
-    if (!isCartPage()) {
-      return false;
-    }
-    if (readDemoStoreExitPromptResolved()) {
-      return false;
-    }
-    if (demoStoreBubbleDismissed) {
-      return false;
-    }
-    if (isWidgetDomVisible()) {
-      return false;
-    }
-    return true;
-  }
-
-  function canFireExitIntentTrigger() {
-    if (isDemoStoreProductPage()) {
-      return canShowExitIntentPrompt();
-    }
-    return canShowExitIntentWidget();
-  }
-
-  function removeExitIntentPromptModal() {
-    var el = document.getElementById("cf-exit-intent-prompt");
-    if (el && el.parentNode) {
-      el.parentNode.removeChild(el);
-    }
-    try {
-      document.body.style.overflow = "";
-    } catch (e) {
-      /* ignore */
-    }
-  }
-
-  function showExitIntentPromptModal() {
-    if (document.getElementById("cf-exit-intent-prompt")) {
-      return;
-    }
-    var overlay = document.createElement("div");
-    overlay.id = "cf-exit-intent-prompt";
-    overlay.setAttribute("dir", "rtl");
-    overlay.setAttribute("lang", "ar");
-    overlay.setAttribute("role", "dialog");
-    overlay.setAttribute("aria-modal", "true");
-    overlay.style.cssText =
-      "position:fixed;inset:0;z-index:2147483638;display:flex;align-items:center;justify-content:center;" +
-      "padding:max(16px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(16px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));" +
-      "box-sizing:border-box;background:rgba(15,23,42,0.45);";
-    var card = document.createElement("div");
-    card.style.cssText =
-      "position:relative;max-width:min(360px,calc(100vw - 32px));width:100%;box-sizing:border-box;" +
-      "background:#1e1b4b;color:#f5f3ff;border-radius:14px;padding:16px 16px 14px;" +
-      "box-shadow:0 12px 40px rgba(0,0,0,0.35);font:15px/1.5 system-ui,-apple-system,'Segoe UI',sans-serif;";
-    var btnBase =
-      "cursor:pointer;border:0;border-radius:10px;padding:10px 14px;font:inherit;font-weight:600;" +
-      "min-height:44px;min-width:88px;touch-action:manipulation;box-sizing:border-box;";
-    var closeX = document.createElement("button");
-    closeX.type = "button";
-    closeX.setAttribute("aria-label", "إغلاق");
-    closeX.textContent = "×";
-    closeX.style.cssText =
-      "position:absolute;top:6px;inset-inline-start:8px;width:40px;height:40px;padding:0;border:0;border-radius:8px;" +
-      "background:rgba(255,255,255,0.1);color:#f5f3ff;font-size:22px;line-height:1;cursor:pointer;";
-    var p = document.createElement("p");
-    p.style.cssText = "margin:8px 8px 14px 0;text-align:right;";
-    p.textContent = "هلا 👋 أقدر أخدمك بشيء قبل ما تطلع؟";
-    var row = document.createElement("div");
-    row.style.cssText =
-      "display:flex;flex-direction:row;flex-wrap:wrap;gap:10px;justify-content:flex-end;margin-top:4px;";
-    var bNo = document.createElement("button");
-    bNo.type = "button";
-    bNo.textContent = "لا";
-    bNo.style.cssText = btnBase + "background:rgba(255,255,255,0.12);color:#f5f3ff;";
-    var bYes = document.createElement("button");
-    bYes.type = "button";
-    bYes.textContent = "نعم";
-    bYes.style.cssText = btnBase + "background:#7c3aed;color:#fff;";
-    function closeWithoutWidget() {
-      setDemoStoreExitPromptResolved();
-      removeExitIntentPromptModal();
-    }
-    function onYes() {
-      setDemoStoreExitPromptResolved();
-      removeExitIntentPromptModal();
-      setTimeout(function () {
-        openExitIntentWidget();
-      }, 0);
-    }
-    closeX.addEventListener("click", function (e) {
-      e.stopPropagation();
-      e.preventDefault();
-      closeWithoutWidget();
-    });
-    bNo.addEventListener("click", function (e) {
-      e.stopPropagation();
-      e.preventDefault();
-      closeWithoutWidget();
-    });
-    bYes.addEventListener("click", function (e) {
-      e.stopPropagation();
-      e.preventDefault();
-      onYes();
-    });
-    overlay.addEventListener("click", function (e) {
-      if (e.target === overlay) {
-        closeWithoutWidget();
-      }
-    });
-    try {
-      document.body.style.overflow = "hidden";
-    } catch (e) {
-      /* ignore */
-    }
-    row.appendChild(bNo);
-    row.appendChild(bYes);
-    card.appendChild(closeX);
-    card.appendChild(p);
-    card.appendChild(row);
-    overlay.appendChild(card);
-    document.body.appendChild(overlay);
-  }
-
-  function tryShowExitIntentPrompt() {
-    if (!isDemoStoreProductPage()) {
-      return;
-    }
-    if (!canShowExitIntentPrompt()) {
-      return;
-    }
-    if (document.getElementById("cf-exit-intent-prompt")) {
-      return;
-    }
-    showExitIntentPromptModal();
-  }
-
-  function resetMobileExitInactivity() {
-    clearMobileExitInactivity();
-    if (!isNarrowViewport()) {
-      return;
-    }
-    if (!isCartPage()) {
-      return;
-    }
-    if (!isDemoStoreProductPage() && !haveCartForWidget()) {
-      return;
-    }
-    if (isDemoStoreProductPage() && demoStoreBubbleDismissed) {
-      return;
-    }
-    if (isWidgetDomVisible()) {
-      return;
-    }
-    mobileExitInactivityTimer = setTimeout(function () {
-      mobileExitInactivityTimer = null;
-      if (!canFireExitIntentTrigger()) {
-        return;
-      }
-      try {
-        console.log("mobile inactivity fired");
-      } catch (e) {
-        /* ignore */
-      }
-      scheduleExitIntent();
-    }, 10000);
-  }
-
-  function resetExitInactivity() {
-    clearExitInactivity();
-    if (isNarrowViewport()) {
-      resetMobileExitInactivity();
-      return;
-    }
-    if (!isCartPage()) {
-      return;
-    }
-    if (!isDemoStoreProductPage() && !haveCartForWidget()) {
-      return;
-    }
-    if (isDemoStoreProductPage() && demoStoreBubbleDismissed) {
-      return;
-    }
-    if (isWidgetDomVisible()) {
-      return;
-    }
-    var waitMs = 10000 + Math.random() * 5000;
-    exitInactivityTimer = setTimeout(function () {
-      exitInactivityTimer = null;
-      if (!canFireExitIntentTrigger()) {
-        return;
-      }
-      scheduleExitIntent();
-    }, waitMs);
-  }
-
-  function scheduleExitIntent() {
-    if (!canFireExitIntentTrigger()) {
-      return;
-    }
-    if (exitIntentScheduleTimer) {
-      return;
-    }
-    var delay = 300 + Math.random() * 500;
-    exitIntentScheduleTimer = setTimeout(function () {
-      exitIntentScheduleTimer = null;
-      if (!canFireExitIntentTrigger()) {
-        return;
-      }
-      if (isDemoStoreProductPage()) {
-        tryShowExitIntentPrompt();
-      } else {
-        openExitIntentWidget();
-      }
-    }, delay);
-  }
-
-  function tryExitIntentOnPageLeave() {
-    if (isDemoStoreProductPage()) {
-      if (!canShowExitIntentPrompt()) {
-        return;
-      }
-      tryShowExitIntentPrompt();
-      return;
-    }
-    if (!canShowExitIntentWidget()) {
+  function openCartflowWidgetFromTrigger(trigger) {
+    if (trigger !== "exit_intent") {
       return;
     }
     openExitIntentWidget();
   }
 
-  function initExitIntent() {
-    try {
-      console.log("initExitIntent called");
-    } catch (e) {
-      /* ignore */
+  function getScrollYForExit() {
+    if (typeof window.pageYOffset === "number") {
+      return window.pageYOffset;
     }
-    var yInit = getExitScrollY();
-    exitLastScrollY = yInit;
-    exitLastScrollT = Date.now();
-    exitMaxScrollDepth = yInit;
-    mobileExitLastScrollY = yInit;
-
-    if (isNarrowViewport()) {
-      function handleNarrowScroll() {
-        resetExitInactivity();
-        var currentY = getExitScrollY();
-        if (
-          mobileExitLastScrollY - currentY > 120 &&
-          mobileExitLastScrollY > 300
-        ) {
-          try {
-            console.log("mobile scroll-up fired");
-          } catch (e) {
-            /* ignore */
-          }
-          scheduleExitIntent();
-        }
-        mobileExitLastScrollY = currentY;
-      }
-      window.addEventListener("scroll", handleNarrowScroll, { passive: true, capture: true });
-      document.addEventListener("scroll", handleNarrowScroll, { passive: true, capture: true });
-      document.addEventListener(
-        "touchstart",
-        function () {
-          resetExitInactivity();
-        },
-        { passive: true, capture: true }
-      );
-      document.addEventListener(
-        "touchmove",
-        function () {
-          resetExitInactivity();
-        },
-        { passive: true, capture: true }
-      );
-    } else {
-      function handleDesktopScroll() {
-        var y = getExitScrollY();
-        var t = Date.now();
-        var dt = t - exitLastScrollT;
-        if (y > exitMaxScrollDepth) {
-          exitMaxScrollDepth = y;
-        }
-        if (dt > 0 && y < exitLastScrollY && exitMaxScrollDepth > 300) {
-          var v = (exitLastScrollY - y) / dt;
-          if (v > 0.35 && exitLastScrollY - y > 18) {
-            scheduleExitIntent();
-          }
-        }
-        exitLastScrollY = y;
-        exitLastScrollT = t;
-        resetExitInactivity();
-      }
-      window.addEventListener("scroll", handleDesktopScroll, { passive: true, capture: true });
-      document.addEventListener("scroll", handleDesktopScroll, { passive: true, capture: true });
-      document.addEventListener(
-        "mouseout",
-        function (e) {
-          if (isNarrowViewport()) {
-            return;
-          }
-          if (!isDemoStoreProductPage()) {
-            return;
-          }
-          if (typeof e.clientY !== "number" || e.clientY > 0) {
-            return;
-          }
-          if (!canFireExitIntentTrigger()) {
-            return;
-          }
-          scheduleExitIntent();
-        },
-        true
-      );
-      ["pointerdown", "click", "keydown", "touchstart"].forEach(function (ev) {
-        document.addEventListener(
-          ev,
-          function () {
-            resetExitInactivity();
-          },
-          { passive: true, capture: true }
-        );
-      });
+    if (document.documentElement && typeof document.documentElement.scrollTop === "number") {
+      return document.documentElement.scrollTop;
     }
+    if (document.body && typeof document.body.scrollTop === "number") {
+      return document.body.scrollTop;
+    }
+    return 0;
+  }
 
-    document.addEventListener("visibilitychange", function () {
-      if (isNarrowViewport()) {
-        if (document.visibilityState === "hidden") {
-          exitTabWasHidden = true;
-          try {
-            console.log("mobile tab hidden");
-          } catch (e) {
-            /* ignore */
-          }
-        } else if (document.visibilityState === "visible") {
-          try {
-            console.log("mobile tab returned");
-          } catch (e) {
-            /* ignore */
-          }
-          if (exitTabWasHidden) {
-            exitTabWasHidden = false;
-            scheduleExitIntent();
-          }
-        }
-        resetExitInactivity();
+  function CartflowExitIntentController() {
+    if (!isCartPage()) {
+      return;
+    }
+    var triggered = false;
+    var inactivityTimer = null;
+    function canTrigger() {
+      syncCartflowExitFlags();
+      if (triggered) {
+        return false;
+      }
+      if (window.cartflowWidgetVisible) {
+        return false;
+      }
+      if (window.cartflowManualClosed) {
+        return false;
+      }
+      if (isSessionConverted()) {
+        return false;
+      }
+      if (!isDemoStoreProductPage() && !haveCartForWidget()) {
+        return false;
+      }
+      return canShowExitIntentWidget();
+    }
+    function fire(type) {
+      if (!canTrigger()) {
         return;
       }
-      if (document.hidden) {
-        exitTabWasHidden = true;
-      } else {
-        if (exitTabWasHidden) {
-          exitTabWasHidden = false;
-          scheduleExitIntent();
-        }
+      triggered = true;
+      try {
+        console.log("EXIT_INTENT_FIRED:", type);
+      } catch (e) {
+        /* ignore */
       }
-      resetExitInactivity();
-    });
-
-    window.addEventListener("pagehide", tryExitIntentOnPageLeave, { capture: true });
-    window.addEventListener("beforeunload", tryExitIntentOnPageLeave, { capture: true });
-
-    if (isCartPage() && (isDemoStoreProductPage() || haveCartForWidget())) {
-      resetExitInactivity();
+      openCartflowWidgetFromTrigger("exit_intent");
     }
-    try {
-      console.log(
-        "[CartFlow] exit intent listeners registered",
-        window.location.pathname,
-        "isCartPage:",
-        isCartPage(),
-        "narrow:",
-        isNarrowViewport()
+    function resetTimer() {
+      if (inactivityTimer) {
+        clearTimeout(inactivityTimer);
+        inactivityTimer = null;
+      }
+      inactivityTimer = setTimeout(function () {
+        inactivityTimer = null;
+        fire("inactivity");
+      }, 10000);
+    }
+    ["touchstart", "touchmove", "scroll", "mousemove", "keydown"].forEach(function (ev) {
+      document.addEventListener(
+        ev,
+        function () {
+          resetTimer();
+        },
+        { passive: true, capture: true }
       );
-    } catch (e) {
-      /* ignore */
+    });
+    resetTimer();
+    var lastY = getScrollYForExit();
+    function onScroll() {
+      resetTimer();
+      var y = getScrollYForExit();
+      if (lastY - y > 120 && lastY > 300) {
+        fire("scroll_up");
+      }
+      lastY = y;
+    }
+    window.addEventListener("scroll", onScroll, { passive: true, capture: true });
+    document.addEventListener("scroll", onScroll, { passive: true, capture: true });
+    document.addEventListener("visibilitychange", function () {
+      if (document.visibilityState === "visible") {
+        fire("visibility_return");
+      }
+    });
+    var root = document.documentElement;
+    if (root) {
+      root.addEventListener("mouseleave", function (e) {
+        if (typeof e.clientY === "number" && e.clientY <= 0) {
+          fire("mouse_leave");
+        }
+      });
     }
   }
 
-  function bootExitIntent() {
-    initExitIntent();
+  function startCartflowExitIntentEngine() {
+    function go() {
+      CartflowExitIntentController();
+    }
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", go);
+    } else {
+      go();
+    }
   }
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", bootExitIntent);
-  } else {
-    bootExitIntent();
-  }
+  startCartflowExitIntentEngine();
 
   if (isDemoStoreProductPage()) {
     setInterval(ensureDemoStoreBubbleVisible, 2500);
@@ -2696,7 +2382,6 @@
   if (isDemoPath()) {
     document.addEventListener("cf-demo-cart-updated", function () {
       setTimeout(function () {
-        resetExitInactivity();
         runArmBody();
         nudgeWidgetIdle();
         if (cartWidgetFallbackTimer) {
