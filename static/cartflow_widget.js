@@ -18,6 +18,14 @@
   var step1Poll = null;
   var armListenersAttached = false;
   var demoStoreBubbleDismissed = false;
+  /** خروج ذكي: مرة واحدة لكل جلسة صفحة، دون الاستهزاء */
+  var exitIntentUsed = false;
+  var exitIntentScheduleTimer = null;
+  var exitInactivityTimer = null;
+  var exitLastScrollY = 0;
+  var exitLastScrollT = 0;
+  var exitMaxScrollDepth = 0;
+  var exitTabWasHidden = false;
   var events = ["mousemove", "keydown", "scroll", "click", "touchstart"];
 
   var BTN_BACK = "رجوع";
@@ -1936,6 +1944,253 @@
     showBubble();
   }
 
+  function clearExitInactivity() {
+    if (exitInactivityTimer) {
+      clearTimeout(exitInactivityTimer);
+      exitInactivityTimer = null;
+    }
+  }
+
+  function canFireExitIntent() {
+    if (exitIntentUsed) {
+      return false;
+    }
+    if (isSessionConverted()) {
+      return false;
+    }
+    if (!isCartPage()) {
+      return false;
+    }
+    if (!haveCartForWidget()) {
+      return false;
+    }
+    if (isDemoStoreProductPage() && demoStoreBubbleDismissed) {
+      return false;
+    }
+    if (document.querySelector("[data-cartflow-bubble]")) {
+      return false;
+    }
+    return true;
+  }
+
+  function resetExitInactivity() {
+    clearExitInactivity();
+    if (exitIntentUsed) {
+      return;
+    }
+    if (!isCartPage() || !haveCartForWidget()) {
+      return;
+    }
+    if (isDemoStoreProductPage() && demoStoreBubbleDismissed) {
+      return;
+    }
+    if (document.querySelector("[data-cartflow-bubble]")) {
+      return;
+    }
+    var waitMs = 10000 + Math.random() * 5000;
+    exitInactivityTimer = setTimeout(function () {
+      exitInactivityTimer = null;
+      if (!canFireExitIntent()) {
+        return;
+      }
+      scheduleExitIntent();
+    }, waitMs);
+  }
+
+  function scheduleExitIntent() {
+    if (exitIntentUsed) {
+      return;
+    }
+    if (!canFireExitIntent()) {
+      return;
+    }
+    if (exitIntentScheduleTimer) {
+      return;
+    }
+    var delay = 300 + Math.random() * 500;
+    exitIntentScheduleTimer = setTimeout(function () {
+      exitIntentScheduleTimer = null;
+      if (!canFireExitIntent()) {
+        return;
+      }
+      presentExitIntent();
+    }, delay);
+  }
+
+  function exitFabPulse(fab) {
+    if (!fab) {
+      return;
+    }
+    try {
+      var prev = fab.style.animation;
+      fab.style.animation = "none";
+      void fab.offsetWidth;
+      fab.style.animation =
+        "cfFabPulse 0.7s ease-in-out 2, cfFabDot 0.55s ease-in-out 2";
+      setTimeout(function () {
+        if (fab && fab.isConnected) {
+          fab.style.animation =
+            prev ||
+            "cfFabPulse 2.2s ease-in-out infinite, cfFabDot 1.6s ease-in-out infinite";
+        }
+      }, 1500);
+    } catch (e) {
+      /* ignore */
+    }
+  }
+
+  function presentExitIntent() {
+    if (exitIntentUsed) {
+      return;
+    }
+    if (!canFireExitIntent()) {
+      return;
+    }
+    var fab = document.querySelector("[data-cartflow-fab]");
+    if (fab) {
+      exitIntentUsed = true;
+      exitFabPulse(fab);
+      return;
+    }
+    exitIntentUsed = true;
+    runArmBody();
+    if (isDemoPath()) {
+      setTimeout(function () {
+        if (isSessionConverted() || !haveCartForWidget()) {
+          return;
+        }
+        if (isDemoStoreProductPage() && demoStoreBubbleDismissed) {
+          return;
+        }
+        if (document.querySelector("[data-cartflow-bubble]")) {
+          return;
+        }
+        if (document.querySelector("[data-cartflow-fab]")) {
+          return;
+        }
+        showBubble();
+      }, 0);
+      return;
+    }
+    fetchReadyThen(function () {
+      if (isSessionConverted() || !haveCartForWidget()) {
+        return;
+      }
+      if (isDemoStoreProductPage() && demoStoreBubbleDismissed) {
+        return;
+      }
+      if (
+        document.querySelector("[data-cartflow-bubble]") ||
+        document.querySelector("[data-cartflow-fab]")
+      ) {
+        return;
+      }
+      showBubble();
+    });
+  }
+
+  function tryExitIntentOnPageLeave() {
+    if (exitIntentUsed) {
+      return;
+    }
+    if (isSessionConverted() || !isCartPage() || !haveCartForWidget()) {
+      return;
+    }
+    if (isDemoStoreProductPage() && demoStoreBubbleDismissed) {
+      return;
+    }
+    if (document.querySelector("[data-cartflow-bubble]")) {
+      return;
+    }
+    var fabL = document.querySelector("[data-cartflow-fab]");
+    if (fabL) {
+      exitIntentUsed = true;
+      exitFabPulse(fabL);
+      return;
+    }
+    exitIntentUsed = true;
+    runArmBody();
+    if (isDemoPath()) {
+      showBubble();
+    } else {
+      fetchReadyThen(function () {
+        if (
+          isSessionConverted() ||
+          !haveCartForWidget() ||
+          (isDemoStoreProductPage() && demoStoreBubbleDismissed) ||
+          document.querySelector("[data-cartflow-bubble]") ||
+          document.querySelector("[data-cartflow-fab]")
+        ) {
+          return;
+        }
+        showBubble();
+      });
+    }
+  }
+
+  function initExitIntent() {
+    exitLastScrollY = window.pageYOffset || document.documentElement.scrollTop;
+    exitLastScrollT = Date.now();
+    exitMaxScrollDepth = exitLastScrollY;
+
+    document.addEventListener(
+      "scroll",
+      function () {
+        var y = window.pageYOffset || document.documentElement.scrollTop;
+        var t = Date.now();
+        var dt = t - exitLastScrollT;
+        if (y > exitMaxScrollDepth) {
+          exitMaxScrollDepth = y;
+        }
+        if (dt > 0 && y < exitLastScrollY && exitMaxScrollDepth > 300) {
+          var v = (exitLastScrollY - y) / dt;
+          if (v > 0.35 && exitLastScrollY - y > 18) {
+            scheduleExitIntent();
+          }
+        }
+        exitLastScrollY = y;
+        exitLastScrollT = t;
+        resetExitInactivity();
+      },
+      { passive: true }
+    );
+
+    var exitActivity = [
+      "touchstart",
+      "pointerdown",
+      "click",
+      "keydown",
+    ];
+    exitActivity.forEach(function (ev) {
+      document.addEventListener(
+        ev,
+        function () {
+          resetExitInactivity();
+        },
+        { passive: true, capture: true }
+      );
+    });
+
+    document.addEventListener("visibilitychange", function () {
+      if (document.hidden) {
+        exitTabWasHidden = true;
+      } else {
+        if (exitTabWasHidden) {
+          exitTabWasHidden = false;
+          scheduleExitIntent();
+        }
+      }
+      resetExitInactivity();
+    });
+
+    window.addEventListener("pagehide", tryExitIntentOnPageLeave, { capture: true });
+    window.addEventListener("beforeunload", tryExitIntentOnPageLeave, { capture: true });
+
+    if (isCartPage() && haveCartForWidget()) {
+      resetExitInactivity();
+    }
+  }
+
   if (isDemoStoreProductPage()) {
     setInterval(ensureDemoStoreBubbleVisible, 2500);
   }
@@ -1943,6 +2198,7 @@
   if (isDemoPath()) {
     document.addEventListener("cf-demo-cart-updated", function () {
       setTimeout(function () {
+        resetExitInactivity();
         runArmBody();
         nudgeWidgetIdle();
         if (cartWidgetFallbackTimer) {
@@ -2000,6 +2256,8 @@
       }, 0);
     });
   }
+
+  initExitIntent();
 
   setTimeout(arm, ARM_DELAY_MS);
 })();
