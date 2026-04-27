@@ -7,6 +7,8 @@
 
   var ARM_DELAY_MS = 3000;
   var IDLE_MS = 8000;
+  /** على ‎/demo/store‎ عند تفعيل الودجت: عرض أسرع (ثانية تقريباً) */
+  var DEMO_ARMED_IDLE_MS = 1600;
   var REASON_TAG_KEY = "cartflow_reason_tag";
   var REASON_SUB_TAG_KEY = "cartflow_reason_sub_tag";
   var DEMO_STORE_WIDGET_ARMED_KEY = "cartflow_demo_store_widget_armed";
@@ -420,6 +422,29 @@
     }
   }
 
+  function isWidgetDomVisible() {
+    return !!(
+      document.querySelector("[data-cartflow-bubble]") ||
+      document.querySelector("[data-cartflow-fab]")
+    );
+  }
+
+  function nudgeWidgetIdle() {
+    try {
+      document.documentElement.dispatchEvent(
+        new MouseEvent("click", { bubbles: true, cancelable: true })
+      );
+    } catch (e) {
+      try {
+        var evn = document.createEvent("MouseEvents");
+        evn.initEvent("click", true, true);
+        document.documentElement.dispatchEvent(evn);
+      } catch (e2) {
+        /* ignore */
+      }
+    }
+  }
+
   function isNarrowViewport() {
     return window.matchMedia && window.matchMedia("(max-width: 640px)").matches;
   }
@@ -467,7 +492,21 @@
       return;
     }
     if (isDemoStoreProductPage() && !readDemoStoreWidgetArmed()) {
-      return;
+      if (isDemoPath() && haveCartForWidget()) {
+        try {
+          window.sessionStorage.setItem(DEMO_STORE_WIDGET_ARMED_KEY, "1");
+        } catch (e) {
+          /* ignore */
+        }
+        demoStoreBubbleDismissed = false;
+        try {
+          console.log("widget armed (auto, cart)");
+        } catch (e) {
+          /* ignore */
+        }
+      } else {
+        return;
+      }
     }
     if (isDemoPath()) {
       step1Ready = true;
@@ -1529,19 +1568,93 @@
       return;
     }
     clearTimeout(idleTimer);
-    idleTimer = setTimeout(showBubble, IDLE_MS);
+    var delay =
+      isDemoStoreProductPage() && readDemoStoreWidgetArmed()
+        ? DEMO_ARMED_IDLE_MS
+        : IDLE_MS;
+    try {
+      console.log("widget triggered");
+    } catch (e) {
+      /* ignore */
+    }
+    idleTimer = setTimeout(function () {
+      showBubble();
+      try {
+        var widgetVisible = isWidgetDomVisible();
+        console.log("widget visible:", widgetVisible);
+      } catch (e) {
+        /* ignore */
+      }
+    }, delay);
   }
 
   function arm() {
     runArmBody();
   }
 
+  var armFallbackTimer = null;
+  var cartWidgetFallbackTimer = null;
+
   window.cartflowDemoArmStoreWidget = function () {
     try {
       window.sessionStorage.setItem(DEMO_STORE_WIDGET_ARMED_KEY, "1");
-    } catch (e) {}
+    } catch (e) {
+      /* ignore */
+    }
     demoStoreBubbleDismissed = false;
+    try {
+      console.log("widget armed");
+    } catch (e) {
+      /* ignore */
+    }
     runArmBody();
+    nudgeWidgetIdle();
+    if (armFallbackTimer) {
+      clearTimeout(armFallbackTimer);
+      armFallbackTimer = null;
+    }
+    armFallbackTimer = setTimeout(function () {
+      armFallbackTimer = null;
+      if (isWidgetDomVisible()) {
+        try {
+          var wvCheck = isWidgetDomVisible();
+          console.log("widget visible:", wvCheck);
+        } catch (e) {
+          /* ignore */
+        }
+        return;
+      }
+      if (!isDemoStoreProductPage() || !readDemoStoreWidgetArmed()) {
+        return;
+      }
+      if (demoStoreBubbleDismissed || !haveCartForWidget() || isSessionConverted() || !step1Ready) {
+        return;
+      }
+      try {
+        console.log("widget triggered (arm fallback)");
+      } catch (e) {
+        /* ignore */
+      }
+      clearTimeout(idleTimer);
+      idleTimer = null;
+      if (!shown) {
+        showBubble();
+      } else {
+        var hasDom =
+          document.querySelector("[data-cartflow-bubble]") ||
+          document.querySelector("[data-cartflow-fab]");
+        if (!hasDom) {
+          shown = false;
+          showBubble();
+        }
+      }
+      try {
+        var widgetVisible = isWidgetDomVisible();
+        console.log("widget visible:", widgetVisible);
+      } catch (e) {
+        /* ignore */
+      }
+    }, 1800);
   };
 
   window.cartflowDemoDisarmStoreWidget = function () {
@@ -1564,10 +1677,7 @@
     if (!isDemoStoreProductPage()) {
       return;
     }
-    if (!isDemoScenarioActive()) {
-      return;
-    }
-    if (!readDemoStoreWidgetArmed()) {
+    if (!readDemoStoreWidgetArmed() && !isDemoScenarioActive()) {
       return;
     }
     if (demoStoreBubbleDismissed) {
@@ -1591,6 +1701,67 @@
 
   if (isDemoStoreProductPage()) {
     setInterval(ensureDemoStoreBubbleVisible, 2500);
+  }
+
+  if (isDemoPath()) {
+    document.addEventListener("cf-demo-cart-updated", function () {
+      setTimeout(function () {
+        runArmBody();
+        nudgeWidgetIdle();
+        if (cartWidgetFallbackTimer) {
+          clearTimeout(cartWidgetFallbackTimer);
+          cartWidgetFallbackTimer = null;
+        }
+        cartWidgetFallbackTimer = setTimeout(function () {
+          cartWidgetFallbackTimer = null;
+          if (!isDemoStoreProductPage()) {
+            return;
+          }
+          if (!haveCartForWidget()) {
+            return;
+          }
+          if (isWidgetDomVisible()) {
+            return;
+          }
+          if (isSessionConverted() || !step1Ready) {
+            return;
+          }
+          if (demoStoreBubbleDismissed) {
+            return;
+          }
+          if (!readDemoStoreWidgetArmed()) {
+            runArmBody();
+          }
+          if (!readDemoStoreWidgetArmed()) {
+            return;
+          }
+          try {
+            console.log("widget triggered (cart fallback)");
+          } catch (e) {
+            /* ignore */
+          }
+          clearTimeout(idleTimer);
+          idleTimer = null;
+          if (!shown) {
+            showBubble();
+          } else {
+            var d =
+              document.querySelector("[data-cartflow-bubble]") ||
+              document.querySelector("[data-cartflow-fab]");
+            if (!d) {
+              shown = false;
+              showBubble();
+            }
+          }
+          try {
+            var widgetVisible = isWidgetDomVisible();
+            console.log("widget visible:", widgetVisible);
+          } catch (e) {
+            /* ignore */
+          }
+        }, 3000);
+      }, 0);
+    });
   }
 
   setTimeout(arm, ARM_DELAY_MS);
