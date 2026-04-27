@@ -789,11 +789,98 @@
       product_name: ctx.name || "",
       product_price: ctx.priceLabel || "",
       cart_url: href,
+      has_cart: haveCartForWidget(),
     };
     if (gsub) {
       body.sub_category = String(gsub);
     }
     return body;
+  }
+
+  /**
+   * نوع الرابط المرفق مرة واحدة في نص واتساب: سلة / بدائل / منتج.
+   */
+  function detectWhatsappLinkType(rkey, payload) {
+    var r = (rkey || "").toLowerCase();
+    var sub = payload && payload.sub_category ? String(payload.sub_category).trim() : "";
+    if (r === "price" && sub === "price_cheaper_alternative") {
+      return "alternatives";
+    }
+    if (r === "price") {
+      return haveCartForWidget() ? "cart" : "product";
+    }
+    return "product";
+  }
+
+  function getAlternativesBrowseUrl() {
+    try {
+      return String(window.location.origin || "").replace(/\/$/, "") + "/demo/store";
+    } catch (e) {
+      return "https://smartreplyai.net/demo/store";
+    }
+  }
+
+  function getWhatsappCartUrlForPayload(payload) {
+    var p = (window.location.pathname || "") + (window.location.search || "");
+    if (p.indexOf("/demo/") >= 0) {
+      try {
+        return String(window.location.origin || "").replace(/\/$/, "") + "/demo/store#cart";
+      } catch (e) {
+        return "https://smartreplyai.net/demo/store#cart";
+      }
+    }
+    if (payload && payload.cart_url) {
+      var c = String(payload.cart_url).trim();
+      if (c && c !== "#") {
+        return c;
+      }
+    }
+    try {
+      return String(window.location.href || "#");
+    } catch (e2) {
+      return "#";
+    }
+  }
+
+  function getWhatsappProductUrl() {
+    var line = buildProductContext().line;
+    var base = "";
+    try {
+      base =
+        String(window.location.origin || "") +
+        String(window.location.pathname || "").replace(/\/$/, "");
+    } catch (e) {
+      return "#";
+    }
+    if (line && line.id) {
+      return base + "#" + String(line.id).replace(/^#/, "");
+    }
+    try {
+      var h = String(window.location.href || "");
+      var hash = h.indexOf("#");
+      return hash >= 0 ? h.slice(0, hash) : h;
+    } catch (e2) {
+      return base;
+    }
+  }
+
+  function getWhatsappLinkLabelAndUrl(linkType, payload) {
+    if (linkType === "alternatives") {
+      return {
+        label: "🔄 تصفح البدائل:",
+        url: getAlternativesBrowseUrl(),
+      };
+    }
+    if (linkType === "cart") {
+      return {
+        label: "🛒 رابط السلة:",
+        url: getWhatsappCartUrlForPayload(payload),
+      };
+    }
+    return {
+      label: "📦 رابط المنتج:",
+      url: getWhatsappProductUrl(),
+    };
   }
 
   function postGenerateWhatsappMessage(payload) {
@@ -1519,15 +1606,15 @@
           }
           convHint.innerHTML = "";
           convHint.style.display = "none";
-          var cartUrl = "#";
-          if (payload && payload.cart_url && String(payload.cart_url).trim()) {
-            cartUrl = String(payload.cart_url).trim();
-          }
+          var linkType = detectWhatsappLinkType(rkey, payload);
+          var linkPart = getWhatsappLinkLabelAndUrl(linkType, payload);
           var fullText =
             "👋 مرحباً\n\n" +
             String(generatedCore) +
-            "\n\n🛒 رابط السلة:\n" +
-            cartUrl;
+            "\n\n" +
+            linkPart.label +
+            "\n" +
+            linkPart.url;
           var wurl = buildWaMeComposeUrl(fullText, merchantE164);
           try {
             window.open(wurl, "_blank", "noopener,noreferrer");
