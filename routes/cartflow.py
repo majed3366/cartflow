@@ -14,7 +14,10 @@ from extensions import db
 from json_response import j
 from models import AbandonmentReasonLog, CartRecoveryLog, CartRecoveryReason, Store
 from schema_widget import ensure_store_widget_schema
-from services.cartflow_whatsapp_mock import build_mock_whatsapp_message
+from services.cartflow_whatsapp_mock import (
+    build_mock_whatsapp_message,
+    get_merchant_whatsapp_e164_for_store,
+)
 
 log = logging.getLogger("cartflow")
 
@@ -173,6 +176,7 @@ async def post_generate_whatsapp_message(request: Request) -> Any:
                 "message": msg,
                 "reason": reason,
                 "sub_category": sub_cat,
+                "merchant_whatsapp_e164": get_merchant_whatsapp_e164_for_store(ss),
             }
         )
     except (OSError, TypeError) as e:

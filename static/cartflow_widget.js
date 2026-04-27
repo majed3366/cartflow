@@ -637,6 +637,18 @@
     });
   }
 
+  /**
+   * ‎wa.me/{digits}?text=‎ عند وجود رقم متجر (‎E.164‎ بلا +) وإلا ‎wa.me/?text=‎.
+   */
+  function buildWaMeComposeUrl(fullText, merchantE164Raw) {
+    var enc = encodeURIComponent(fullText);
+    var d = merchantE164Raw && String(merchantE164Raw).replace(/\D/g, "");
+    if (d) {
+      return "https://wa.me/" + d + "?text=" + enc;
+    }
+    return "https://wa.me/?text=" + enc;
+  }
+
   function handoffToMerchant(optionalButton) {
     if (optionalButton) {
       optionalButton.setAttribute("disabled", "true");
@@ -1124,6 +1136,7 @@
         bMock.style.cssText = btnStyle;
         bMock.setAttribute("disabled", "true");
         var generatedCore = null;
+        var merchantE164 = null;
         var mockStatus = document.createElement("p");
         mockStatus.setAttribute("data-cf-wa-mock-status", "1");
         mockStatus.style.cssText =
@@ -1143,7 +1156,7 @@
             String(generatedCore) +
             "\n\n🛒 رابط السلة:\n" +
             cartUrl;
-          var wurl = "https://wa.me/?text=" + encodeURIComponent(fullText);
+          var wurl = buildWaMeComposeUrl(fullText, merchantE164);
           try {
             window.open(wurl, "_blank", "noopener,noreferrer");
           } catch (e) {
@@ -1167,6 +1180,12 @@
               generatedCore = String(x.j.message);
               msgEl.textContent = generatedCore;
               bMock.removeAttribute("disabled");
+              if (
+                x.j.merchant_whatsapp_e164 != null &&
+                String(x.j.merchant_whatsapp_e164) !== ""
+              ) {
+                merchantE164 = String(x.j.merchant_whatsapp_e164);
+              }
             } else {
               msgEl.textContent = "تعذر تجهيز رسالة واتساب التجريبية حالياً.";
             }

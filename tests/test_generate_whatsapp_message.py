@@ -14,16 +14,16 @@ class GenerateWhatsappMessageTests(unittest.TestCase):
     def setUp(self) -> None:
         self.client = TestClient(app)
 
-    def test_build_price_discount_mentions_product(self) -> None:
+    def test_build_price_discount_no_cart_in_body(self) -> None:
         t = build_mock_whatsapp_message(
             reason="price",
             sub_category="price_discount_request",
             product_name="سماعة",
             cart_url="https://x/cart",
         )
-        self.assertIn("كود خصم", t)
-        self.assertIn("سماعة", t)
-        self.assertIn("https://x/cart", t)
+        self.assertIn("عرض مناسب", t)
+        self.assertNotIn("رابط السلة", t, t)
+        self.assertNotIn("https://x", t, t)
 
     def test_post_requires_session(self) -> None:
         r = self.client.post(
@@ -48,6 +48,8 @@ class GenerateWhatsappMessageTests(unittest.TestCase):
         j = r.json()
         self.assertTrue(j.get("ok"), j)
         self.assertIn("ميزانيتك", (j.get("message") or ""), j)
+        self.assertIn("merchant_whatsapp_e164", j)
+        self.assertIsNone(j.get("merchant_whatsapp_e164"))
 
     def test_post_warranty(self) -> None:
         r = self.client.post(
@@ -60,7 +62,9 @@ class GenerateWhatsappMessageTests(unittest.TestCase):
             },
         )
         self.assertEqual(200, r.status_code, r.text)
-        self.assertIn("ضمان", (r.json().get("message") or ""))
+        m = r.json().get("message") or ""
+        self.assertIn("الضمان", m, m)
+        self.assertIn("قبل إكمال الطلب", m, m)
 
     def test_post_thinking(self) -> None:
         r = self.client.post(
