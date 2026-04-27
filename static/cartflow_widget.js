@@ -12,6 +12,7 @@
   var REASON_TAG_KEY = "cartflow_reason_tag";
   var REASON_SUB_TAG_KEY = "cartflow_reason_sub_tag";
   var DEMO_STORE_WIDGET_ARMED_KEY = "cartflow_demo_store_widget_armed";
+  var DEMO_STORE_EXIT_INTENT_SHOWN_KEY = "cartflow_demo_store_exit_intent_shown";
   var shown = false;
   var idleTimer = null;
   var step1Ready = false;
@@ -505,6 +506,30 @@
     }
   }
 
+  function readDemoStoreExitIntentShown() {
+    try {
+      return window.sessionStorage.getItem(DEMO_STORE_EXIT_INTENT_SHOWN_KEY) === "1";
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function setDemoStoreExitIntentShown() {
+    try {
+      window.sessionStorage.setItem(DEMO_STORE_EXIT_INTENT_SHOWN_KEY, "1");
+    } catch (e) {
+      /* ignore */
+    }
+  }
+
+  function clearDemoStoreExitIntentShown() {
+    try {
+      window.sessionStorage.removeItem(DEMO_STORE_EXIT_INTENT_SHOWN_KEY);
+    } catch (e) {
+      /* ignore */
+    }
+  }
+
   function isWidgetDomVisible() {
     return !!(
       document.querySelector("[data-cartflow-bubble]") ||
@@ -988,9 +1013,14 @@
       }
     }
     if (!haveCartForWidget()) {
-      return;
+      if (!(openSource === TRIGGER_SOURCE_EXIT_INTENT && isDemoStoreProductPage())) {
+        return;
+      }
     }
     shown = true;
+    if (openSource === TRIGGER_SOURCE_EXIT_INTENT && isDemoStoreProductPage()) {
+      setDemoStoreExitIntentShown();
+    }
     removeFabIfAny();
     if (step1Poll !== null) {
       clearInterval(step1Poll);
@@ -1690,7 +1720,11 @@
       bBackO.addEventListener("click", function (e4) {
         e4.stopPropagation();
         e4.preventDefault();
-        renderReasonList();
+        if (typeof w._cfOnBackToEntry === "function") {
+          w._cfOnBackToEntry();
+        } else {
+          renderReasonList();
+        }
       });
       row2.appendChild(bSend);
       row2.appendChild(bHandoffO);
@@ -1729,7 +1763,11 @@
       bR.addEventListener("click", function (e) {
         e.stopPropagation();
         e.preventDefault();
-        renderReasonList();
+        if (typeof w._cfOnBackToEntry === "function") {
+          w._cfOnBackToEntry();
+        } else {
+          renderReasonList();
+        }
       });
       succ.appendChild(bH2);
       succ.appendChild(bAgain);
@@ -1753,6 +1791,7 @@
     }
 
     function renderReasonList() {
+      w._cfOnBackToEntry = null;
       setReasonTag(null);
       stripContentKeepChrome();
       var p2 = document.createElement("p");
@@ -1795,6 +1834,74 @@
       w.appendChild(row);
     }
 
+    function renderBrowsingGeneralOptions() {
+      w._cfOnBackToEntry = function () {
+        renderBrowsingGeneralOptions();
+      };
+      setReasonTag(null);
+      stripContentKeepChrome();
+      var p2 = document.createElement("p");
+      p2.style.cssText = "margin:0 0 8px 0;font-size:14px;line-height:1.5;";
+      p2.textContent = "اختر وش يهمّك، أو تقدر تتواصل مباشرة مع المتجر";
+      w.appendChild(p2);
+      var row = document.createElement("div");
+      row.style.cssText = rowStyleCol;
+      var opts = [
+        { label: "أبحث عن منتج", action: "products" },
+        { label: "عندي سؤال", action: "question" },
+        { label: "أريد عرض / خصم", action: "discount" },
+        { label: "تحويل لصاحب المتجر", action: "handoff" }
+      ];
+      opts.forEach(function (o) {
+        var b = document.createElement("button");
+        b.type = "button";
+        b.textContent = o.label;
+        b.style.cssText = btnStyle;
+        b.addEventListener("click", function (e) {
+          e.stopPropagation();
+          e.preventDefault();
+          if (o.action === "products") {
+            var grid = document.getElementById("cf-demo-products");
+            if (grid && grid.scrollIntoView) {
+              grid.scrollIntoView({ behavior: "smooth", block: "start" });
+            }
+            emitDemoGuideEvent("cartflow-demo-browsing-option", { option: "products" });
+          } else if (o.action === "question") {
+            mountOtherForm();
+          } else if (o.action === "discount") {
+            var defD = CARTFLOW_ACTIONS.discount_offer;
+            var msgD =
+              (defD && defD.discountMessage) ||
+              "نقدر نرشّح لك عروضاً وخصومات عند التوفر — تقدر تكمل عبر واتساب مع المتجر.";
+            stripContentKeepChrome();
+            var pd = document.createElement("p");
+            pd.style.cssText = "margin:0 0 10px 0;font-size:14px;line-height:1.55;";
+            pd.textContent = msgD;
+            w.appendChild(pd);
+            var rB = document.createElement("div");
+            rB.style.cssText = rowStyleCol;
+            var bBackD = document.createElement("button");
+            bBackD.type = "button";
+            bBackD.textContent = BTN_BACK;
+            bBackD.style.cssText = btnStyle;
+            bBackD.addEventListener("click", function (e2) {
+              e2.stopPropagation();
+              e2.preventDefault();
+              renderBrowsingGeneralOptions();
+            });
+            rB.appendChild(bBackD);
+            w.appendChild(rB);
+            emitDemoGuideEvent("cartflow-demo-browsing-option", { option: "discount" });
+          } else if (o.action === "handoff") {
+            handoffToMerchant(b);
+            emitDemoGuideEvent("cartflow-demo-browsing-option", { option: "handoff" });
+          }
+        });
+        row.appendChild(b);
+      });
+      w.appendChild(row);
+    }
+
     btnY.addEventListener("click", function (ev) {
       ev.stopPropagation();
       ev.preventDefault();
@@ -1802,8 +1909,17 @@
         return;
       }
       w.setAttribute("data-cf-yes", "1");
-      renderReasonList();
-      emitDemoGuideEvent("cartflow-demo-reason-list-visible", {});
+      if (
+        openSource === TRIGGER_SOURCE_EXIT_INTENT &&
+        isDemoStoreProductPage() &&
+        !haveCartForWidget()
+      ) {
+        renderBrowsingGeneralOptions();
+        emitDemoGuideEvent("cartflow-demo-browsing-options-visible", {});
+      } else {
+        renderReasonList();
+        emitDemoGuideEvent("cartflow-demo-reason-list-visible", {});
+      }
     }, false);
 
     row0.appendChild(btnY);
@@ -1926,6 +2042,7 @@
     try {
       window.sessionStorage.removeItem(DEMO_STORE_WIDGET_ARMED_KEY);
     } catch (e) {}
+    clearDemoStoreExitIntentShown();
     demoStoreBubbleDismissed = false;
     clearTimeout(idleTimer);
     idleTimer = null;
@@ -1989,8 +2106,9 @@
   }
 
   /**
-   * شروط عرض الودجت بسبب exit intent: سلة + صفحة سلة/متجر + لم يغلق × + لا فقاعة مفتوحة.
-   * الـ FAB لا يعيق (يُعامل كغير مرئي للغرض من الخروج الذكي).
+   * ‎/demo/store‎: خروج ذكي لزائر التصفّح (بدون شرط سلة) مرة لكل جلسة تخزين.
+   * باقي صفحات السلة: يشترط وجود أصناف في السلة كسابق.
+   * الـ FAB لا يعيق.
    */
   function canShowExitIntentWidget() {
     if (isSessionConverted()) {
@@ -1999,10 +2117,19 @@
     if (!isCartPage()) {
       return false;
     }
-    if (!haveCartForWidget()) {
-      return false;
+    if (isDemoStoreProductPage()) {
+      if (readDemoStoreExitIntentShown()) {
+        return false;
+      }
+      if (demoStoreBubbleDismissed) {
+        return false;
+      }
+      if (document.querySelector("[data-cartflow-bubble]")) {
+        return false;
+      }
+      return true;
     }
-    if (isDemoStoreProductPage() && demoStoreBubbleDismissed) {
+    if (!haveCartForWidget()) {
       return false;
     }
     if (document.querySelector("[data-cartflow-bubble]")) {
@@ -2048,7 +2175,10 @@
     if (!isNarrowViewport()) {
       return;
     }
-    if (!isCartPage() || !haveCartForWidget()) {
+    if (!isCartPage()) {
+      return;
+    }
+    if (!isDemoStoreProductPage() && !haveCartForWidget()) {
       return;
     }
     if (isDemoStoreProductPage() && demoStoreBubbleDismissed) {
@@ -2077,7 +2207,10 @@
       resetMobileExitInactivity();
       return;
     }
-    if (!isCartPage() || !haveCartForWidget()) {
+    if (!isCartPage()) {
+      return;
+    }
+    if (!isDemoStoreProductPage() && !haveCartForWidget()) {
       return;
     }
     if (isDemoStoreProductPage() && demoStoreBubbleDismissed) {
@@ -2185,6 +2318,25 @@
       }
       window.addEventListener("scroll", handleDesktopScroll, { passive: true, capture: true });
       document.addEventListener("scroll", handleDesktopScroll, { passive: true, capture: true });
+      document.addEventListener(
+        "mouseout",
+        function (e) {
+          if (isNarrowViewport()) {
+            return;
+          }
+          if (!isDemoStoreProductPage()) {
+            return;
+          }
+          if (typeof e.clientY !== "number" || e.clientY > 0) {
+            return;
+          }
+          if (!canShowExitIntentWidget()) {
+            return;
+          }
+          scheduleExitIntent();
+        },
+        true
+      );
       ["pointerdown", "click", "keydown", "touchstart"].forEach(function (ev) {
         document.addEventListener(
           ev,
@@ -2233,7 +2385,7 @@
     window.addEventListener("pagehide", tryExitIntentOnPageLeave, { capture: true });
     window.addEventListener("beforeunload", tryExitIntentOnPageLeave, { capture: true });
 
-    if (isCartPage() && haveCartForWidget()) {
+    if (isCartPage() && (isDemoStoreProductPage() || haveCartForWidget())) {
       resetExitInactivity();
     }
     try {
