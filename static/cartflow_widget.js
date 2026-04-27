@@ -772,6 +772,24 @@
 
   function buildWhatsappGeneratePayload(rkey) {
     var ctx = buildProductContext();
+    if (rkey === "auto") {
+      var hrefAuto = "#";
+      try {
+        if (typeof window.location !== "undefined" && window.location.href) {
+          hrefAuto = String(window.location.href);
+        }
+      } catch (e) {
+        hrefAuto = "#";
+      }
+      return {
+        store_slug: getStoreSlug(),
+        session_id: getSessionId(),
+        reason: "auto",
+        product_name: ctx.name || "",
+        product_price: ctx.priceLabel || "",
+        cart_url: hrefAuto,
+      };
+    }
     var gsub =
       rkey === "price" && typeof window.cartflowGetReasonSubTag === "function"
         ? window.cartflowGetReasonSubTag()
@@ -1612,14 +1630,39 @@
     }
 
     function mountProductAwareView(rkey) {
-      var flow = getProductAwareCopy(rkey);
+      var flow;
+      if (rkey === "auto") {
+        flow = {
+          message:
+            "نُخصّص رسالة المتابعة حسب أكثر أسباب التردد شيوعاً في متجرك (بيانات CartRecoveryReason).",
+          explain:
+            "يُستنتج السبب الأساسي من لوحة التحليلات؛ عند غياب البيانات يُستخدم تركيز السعر/الخصم.",
+          a1: "تفاصيل",
+        };
+      } else {
+        flow = getProductAwareCopy(rkey);
+      }
       if (!flow) {
         return;
       }
       stripContentKeepChrome();
-      appendReasonPersonalizationBlock(rkey);
+      if (rkey === "auto") {
+        var phAuto = document.createElement("p");
+        phAuto.style.cssText =
+          "margin:0 0 10px 0;font-size:13px;line-height:1.5;opacity:0.95;";
+        phAuto.textContent =
+          "📊 وضع القرار التلقائي: يُقرأ السبب الأكثر تكراراً من لوحة CartFlow ثم تُبنى رسالة واتساب التجريبية.";
+        widgetBody.appendChild(phAuto);
+      } else {
+        appendReasonPersonalizationBlock(rkey);
+      }
       (function () {
         var payload = buildWhatsappGeneratePayload(rkey);
+        var waReason = rkey;
+        var waSub =
+          payload && payload.sub_category
+            ? String(payload.sub_category).trim()
+            : "";
         var strip = document.createElement("div");
         strip.setAttribute("data-cf-wa-mock-preview", "1");
         strip.setAttribute("aria-label", "معاينة واتساب تجريبية");
@@ -1672,13 +1715,9 @@
           }
           convHint.innerHTML = "";
           convHint.style.display = "none";
-          var sc =
-            payload && payload.sub_category
-              ? String(payload.sub_category).trim()
-              : "";
           var finalMessage = buildWhatsappMessage({
-            reason: rkey,
-            sub_category: sc,
+            reason: waReason,
+            sub_category: waSub,
             generatedCore: generatedCore,
           });
           var wurl = buildWaMeComposeUrl(finalMessage, merchantE164);
@@ -1726,6 +1765,24 @@
             if (x && x.j && x.j.ok && x.j.message) {
               generatedCore = String(x.j.message);
               msgEl.textContent = generatedCore;
+              if (x.j.resolved_reason) {
+                waReason = String(x.j.resolved_reason);
+              }
+              if (x.j.resolved_sub_category !== undefined && x.j.resolved_sub_category !== null) {
+                waSub = String(x.j.resolved_sub_category).trim();
+              }
+              if (rkey === "auto") {
+                try {
+                  console.log(
+                    "PRIMARY_REASON_FROM_DASHBOARD",
+                    x.j.primary_reason_log != null
+                      ? x.j.primary_reason_log
+                      : x.j.resolved_reason
+                  );
+                } catch (e) {
+                  /* ignore */
+                }
+              }
               bMock.removeAttribute("disabled");
               if (
                 x.j.merchant_whatsapp_e164 != null &&
@@ -2101,6 +2158,13 @@
     row0.appendChild(btnN);
     widgetBody.appendChild(p0);
     widgetBody.appendChild(row0);
+    try {
+      window.cartflowDevMountProductViewAuto = function () {
+        mountProductAwareView("auto");
+      };
+    } catch (e) {
+      /* ignore */
+    }
     document.body.appendChild(w);
     emitDemoGuideEvent("cartflow-demo-bubble-visible", {});
   }

@@ -18,6 +18,7 @@ from services.cartflow_whatsapp_mock import (
     build_mock_whatsapp_message,
     get_merchant_whatsapp_e164_for_store,
 )
+from services.recovery_decision import resolve_auto_whatsapp_reason
 
 log = logging.getLogger("cartflow")
 
@@ -135,10 +136,11 @@ async def post_generate_whatsapp_message(request: Request) -> Any:
             return j({"ok": False, "error": "json_object_required"}, 400)
         ss = (str(body.get("store_slug", "")) or "").strip()[:255]
         sid = (str(body.get("session_id", "")) or "").strip()[:512]
-        reason = (str(body.get("reason", "")) or "").strip().lower()[:32]
+        reason_raw = (str(body.get("reason", "")) or "").strip().lower()[:32]
+        is_auto = reason_raw == "auto"
         sub_raw = body.get("sub_category")
         sub_cat: Optional[str] = None
-        if sub_raw is not None and (str(sub_raw) or "").strip():
+        if not is_auto and sub_raw is not None and (str(sub_raw) or "").strip():
             sub_cat = (str(sub_raw) or "").strip()[:64]
         p_name = body.get("product_name")
         p_price = body.get("product_price")
@@ -148,17 +150,25 @@ async def post_generate_whatsapp_message(request: Request) -> Any:
         url_s = (str(c_url) if c_url is not None else "") or ""
         if not ss or not sid:
             return j({"ok": False, "error": "store_slug_session_required"}, 400)
-        if not reason or reason not in REASON_CHOICES:
-            return j({"ok": False, "error": "invalid_reason"}, 400)
-        if reason == "price":
-            if not sub_cat or sub_cat not in PRICE_SUB_CATEGORIES:
-                return j(
-                    {"ok": False, "error": "sub_category_required_or_invalid"},
-                    400,
-                )
+        used_analytics = False
+        if is_auto:
+            reason, sub_cat, primary_log, used_analytics = resolve_auto_whatsapp_reason(
+                ss
+            )
         else:
-            if sub_cat is not None:
-                return j({"ok": False, "error": "sub_category_not_applicable"}, 400)
+            reason = reason_raw
+            if not reason or reason not in REASON_CHOICES:
+                return j({"ok": False, "error": "invalid_reason"}, 400)
+            if reason == "price":
+                if not sub_cat or sub_cat not in PRICE_SUB_CATEGORIES:
+                    return j(
+                        {"ok": False, "error": "sub_category_required_or_invalid"},
+                        400,
+                    )
+            else:
+                if sub_cat is not None:
+                    return j({"ok": False, "error": "sub_category_not_applicable"}, 400)
+            primary_log = reason
         try:
             msg = build_mock_whatsapp_message(
                 reason=reason,
@@ -176,6 +186,10 @@ async def post_generate_whatsapp_message(request: Request) -> Any:
                 "message": msg,
                 "reason": reason,
                 "sub_category": sub_cat,
+                "resolved_reason": reason,
+                "resolved_sub_category": sub_cat,
+                "primary_reason_log": primary_log,
+                "used_dashboard_primary": bool(is_auto and used_analytics),
                 "merchant_whatsapp_e164": get_merchant_whatsapp_e164_for_store(ss),
             }
         )

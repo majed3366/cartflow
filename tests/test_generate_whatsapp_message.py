@@ -88,6 +88,40 @@ class GenerateWhatsappMessageTests(unittest.TestCase):
         )
         self.assertEqual(400, r.status_code, r.text)
 
+    def test_post_auto_default_no_db_uses_price_discount(self) -> None:
+        slug = "test_auto_isolated_empty_slug"
+        r = self.client.post(
+            "/api/cartflow/generate-whatsapp-message",
+            json={
+                "store_slug": slug,
+                "session_id": "auto_session_1",
+                "reason": "auto",
+                "product_name": "سماعة",
+            },
+        )
+        self.assertEqual(200, r.status_code, r.text)
+        j = r.json()
+        self.assertTrue(j.get("ok"), j)
+        self.assertEqual("price", j.get("resolved_reason"), j)
+        self.assertEqual("price_discount_request", j.get("resolved_sub_category"), j)
+        self.assertIn("عرض مناسب", (j.get("message") or ""), j)
+        self.assertFalse(j.get("used_dashboard_primary"), j)
+
+    def test_post_auto_ok(self) -> None:
+        r = self.client.post(
+            "/api/cartflow/generate-whatsapp-message",
+            json={
+                "store_slug": "demo",
+                "session_id": "s_auto",
+                "reason": "auto",
+            },
+        )
+        self.assertEqual(200, r.status_code, r.text)
+        j = r.json()
+        self.assertTrue(j.get("ok"), j)
+        self.assertIn("resolved_reason", j)
+        self.assertIn("primary_reason_log", j)
+
 
 if __name__ == "__main__":
     unittest.main()
