@@ -788,8 +788,8 @@
       reason: rkey,
       product_name: ctx.name || "",
       product_price: ctx.priceLabel || "",
+      // لـ API فقط — لا يُستعمل لبناء نص واتساب (انظر getLinkByType في المعاينة)
       cart_url: href,
-      has_cart: haveCartForWidget(),
     };
     if (gsub) {
       body.sub_category = String(gsub);
@@ -797,42 +797,14 @@
     return body;
   }
 
-  /**
-   * نوع الرابط المرفق مرة واحدة في نص واتساب: سلة / بدائل / منتج.
-   */
-  function detectWhatsappLinkType(rkey, payload) {
-    var r = (rkey || "").toLowerCase();
-    var sub = payload && payload.sub_category ? String(payload.sub_category).trim() : "";
-    if (r === "price" && sub === "price_cheaper_alternative") {
-      return "alternatives";
-    }
-    if (r === "price") {
-      return haveCartForWidget() ? "cart" : "product";
-    }
-    return "product";
-  }
-
-  function getAlternativesBrowseUrl() {
-    try {
-      return String(window.location.origin || "").replace(/\/$/, "") + "/demo/store";
-    } catch (e) {
-      return "https://smartreplyai.net/demo/store";
-    }
-  }
-
-  function getWhatsappCartUrlForPayload(payload) {
+  /** روابط باث واتساب — لا تعتمد على ‎payload.cart_url‎ (قيمة الـ API فقط). */
+  function resolveWhatsappCartUrlString() {
     var p = (window.location.pathname || "") + (window.location.search || "");
     if (p.indexOf("/demo/") >= 0) {
       try {
         return String(window.location.origin || "").replace(/\/$/, "") + "/demo/store#cart";
       } catch (e) {
         return "https://smartreplyai.net/demo/store#cart";
-      }
-    }
-    if (payload && payload.cart_url) {
-      var c = String(payload.cart_url).trim();
-      if (c && c !== "#") {
-        return c;
       }
     }
     try {
@@ -842,7 +814,7 @@
     }
   }
 
-  function getWhatsappProductUrl() {
+  function resolveWhatsappProductUrlString() {
     var line = buildProductContext().line;
     var base = "";
     try {
@@ -850,7 +822,7 @@
         String(window.location.origin || "") +
         String(window.location.pathname || "").replace(/\/$/, "");
     } catch (e) {
-      return "#";
+      return resolveWhatsappCartUrlString();
     }
     if (line && line.id) {
       return base + "#" + String(line.id).replace(/^#/, "");
@@ -862,25 +834,6 @@
     } catch (e2) {
       return base;
     }
-  }
-
-  function getWhatsappLinkLabelAndUrl(linkType, payload) {
-    if (linkType === "alternatives") {
-      return {
-        label: "🔄 تصفح البدائل:",
-        url: getAlternativesBrowseUrl(),
-      };
-    }
-    if (linkType === "cart") {
-      return {
-        label: "🛒 رابط السلة:",
-        url: getWhatsappCartUrlForPayload(payload),
-      };
-    }
-    return {
-      label: "📦 رابط المنتج:",
-      url: getWhatsappProductUrl(),
-    };
   }
 
   function postGenerateWhatsappMessage(payload) {
@@ -1606,16 +1559,73 @@
           }
           convHint.innerHTML = "";
           convHint.style.display = "none";
-          var linkType = detectWhatsappLinkType(rkey, payload);
-          var linkPart = getWhatsappLinkLabelAndUrl(linkType, payload);
-          var fullText =
+          var reason = rkey;
+          var sub_category =
+            payload && payload.sub_category
+              ? String(payload.sub_category).trim()
+              : "";
+          var message_type = "cart";
+          if (reason === "price" && sub_category === "price_cheaper_alternative") {
+            message_type = "alternatives";
+          } else if (reason === "price" && sub_category === "price_budget_issue") {
+            message_type = "alternatives";
+          } else if (reason === "price" && sub_category === "price_discount_request") {
+            message_type = "cart";
+          } else if (reason === "quality") {
+            message_type = "product";
+          } else if (reason === "warranty") {
+            message_type = "product";
+          } else if (reason === "shipping") {
+            message_type = "product";
+          } else if (reason === "thinking") {
+            message_type = "product";
+          } else if (reason === "price") {
+            message_type = "cart";
+          } else if (reason === "other" || reason === "human_support") {
+            message_type = "product";
+          }
+          try {
+            console.log("reason:", reason);
+            console.log("sub_category:", sub_category);
+            console.log("message_type:", message_type);
+          } catch (e) {
+            /* ignore */
+          }
+          var cart_url = resolveWhatsappCartUrlString();
+          var product_url = resolveWhatsappProductUrlString();
+          function getLinkByType(type) {
+            if (type === "cart") {
+              return {
+                label: "🛒 رابط السلة:",
+                url: cart_url,
+              };
+            }
+            if (type === "alternatives") {
+              return {
+                label: "🔄 تصفح البدائل:",
+                url: "https://smartreplyai.net/demo/store",
+              };
+            }
+            if (type === "product") {
+              return {
+                label: "📦 رابط المنتج:",
+                url: product_url || cart_url,
+              };
+            }
+            return {
+              label: "🛒 رابط السلة:",
+              url: cart_url,
+            };
+          }
+          var link = getLinkByType(message_type);
+          var finalMessage =
             "👋 مرحباً\n\n" +
             String(generatedCore) +
             "\n\n" +
-            linkPart.label +
+            link.label +
             "\n" +
-            linkPart.url;
-          var wurl = buildWaMeComposeUrl(fullText, merchantE164);
+            link.url;
+          var wurl = buildWaMeComposeUrl(finalMessage, merchantE164);
           try {
             window.open(wurl, "_blank", "noopener,noreferrer");
           } catch (e) {
