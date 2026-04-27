@@ -1137,16 +1137,33 @@
         bMock.setAttribute("disabled", "true");
         var generatedCore = null;
         var merchantE164 = null;
+        var convFeedbackT1 = null;
+        var convFeedbackT2 = null;
         var mockStatus = document.createElement("p");
         mockStatus.setAttribute("data-cf-wa-mock-status", "1");
         mockStatus.style.cssText =
           "margin:8px 0 0 0;font-size:12px;line-height:1.45;opacity:0.95;display:none;";
+        var convHint = document.createElement("div");
+        convHint.setAttribute("data-cf-wa-conversion-feedback", "1");
+        convHint.setAttribute("aria-hidden", "true");
+        convHint.style.cssText =
+          "display:none;flex-direction:column;gap:4px;margin:8px 0 0 0;padding:6px 8px;border-radius:6px;border:1px solid rgba(34,197,94,0.35);background:rgba(34,197,94,0.08);";
         bMock.addEventListener("click", function (ev) {
           ev.stopPropagation();
           ev.preventDefault();
           if (!generatedCore) {
             return;
           }
+          if (convFeedbackT1) {
+            clearTimeout(convFeedbackT1);
+            convFeedbackT1 = null;
+          }
+          if (convFeedbackT2) {
+            clearTimeout(convFeedbackT2);
+            convFeedbackT2 = null;
+          }
+          convHint.innerHTML = "";
+          convHint.style.display = "none";
           var cartUrl = "#";
           if (payload && payload.cart_url && String(payload.cart_url).trim()) {
             cartUrl = String(payload.cart_url).trim();
@@ -1169,9 +1186,31 @@
           }
           mockStatus.textContent = "تم فتح واتساب لإرسال الرسالة ✅";
           mockStatus.style.display = "block";
+          convFeedbackT1 = setTimeout(function () {
+            if (!strip.isConnected) {
+              return;
+            }
+            var p1 = document.createElement("p");
+            p1.style.cssText =
+              "margin:0;font-size:11.5px;line-height:1.4;color:#86efac;font-weight:600;";
+            p1.textContent = "💰 تم استرجاع عميل محتمل";
+            convHint.appendChild(p1);
+            convHint.style.display = "flex";
+            convFeedbackT2 = setTimeout(function () {
+              if (!strip.isConnected) {
+                return;
+              }
+              var p2 = document.createElement("p");
+              p2.style.cssText =
+                "margin:0;font-size:11.5px;line-height:1.4;color:#a7f3d0;opacity:0.95;font-weight:500;";
+              p2.textContent = "🟢 العميل عاد إلى السلة";
+              convHint.appendChild(p2);
+            }, 1200);
+          }, 1200);
         });
         previewBox.appendChild(bMock);
         previewBox.appendChild(mockStatus);
+        previewBox.appendChild(convHint);
         strip.appendChild(previewBox);
         w.appendChild(strip);
         postGenerateWhatsappMessage(payload)
