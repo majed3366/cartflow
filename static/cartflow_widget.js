@@ -18,8 +18,6 @@
   var step1Poll = null;
   var armListenersAttached = false;
   var demoStoreBubbleDismissed = false;
-  /** خروج ذكي: مرة واحدة لكل جلسة صفحة، دون الاستهزاء */
-  var exitIntentUsed = false;
   var exitIntentScheduleTimer = null;
   var exitInactivityTimer = null;
   var exitLastScrollY = 0;
@@ -29,13 +27,7 @@
   /** مصدر فتح الودجت — نص الترحيب فقط */
   var TRIGGER_SOURCE_CART = "cart";
   var TRIGGER_SOURCE_EXIT_INTENT = "exit_intent";
-  var lastExitIntentEvent = "—";
-  var lastOpenTriggerForDebug = "—";
   var mobileExitInactivityTimer = null;
-  var mobileScrollUpT0 = 0;
-  var mobileScrollUpAnchorY = 0;
-  var mobileGlobalMaxY = 0;
-  var mobileScrollLastY = 0;
   var mobileExitLastScrollY = 0;
   var events = ["mousemove", "keydown", "scroll", "click", "touchstart"];
 
@@ -999,7 +991,6 @@
       return;
     }
     shown = true;
-    lastOpenTriggerForDebug = openSource;
     removeFabIfAny();
     if (step1Poll !== null) {
       clearInterval(step1Poll);
@@ -1983,31 +1974,6 @@
     return 0;
   }
 
-  function syncExitDebugPanel() {
-    var elEv = document.getElementById("cf-exit-intent-event");
-    var elCart = document.getElementById("cf-exit-cart-length");
-    var elMan = document.getElementById("cf-exit-manual-closed");
-    var elW = document.getElementById("cf-exit-widget-visible");
-    var elTr = document.getElementById("cf-exit-trigger-source");
-    if (elEv) {
-      elEv.textContent = String(lastExitIntentEvent);
-    }
-    if (elCart) {
-      elCart.textContent = String(exitIntentCartLengthLog());
-    }
-    if (elMan) {
-      elMan.textContent = isDemoStoreProductPage() && demoStoreBubbleDismissed
-        ? "true"
-        : "false";
-    }
-    if (elW) {
-      elW.textContent = isWidgetDomVisible() ? "true" : "false";
-    }
-    if (elTr) {
-      elTr.textContent = String(lastOpenTriggerForDebug);
-    }
-  }
-
   function clearExitInactivity() {
     if (exitInactivityTimer) {
       clearTimeout(exitInactivityTimer);
@@ -2022,10 +1988,11 @@
     }
   }
 
-  function canFireExitIntent() {
-    if (exitIntentUsed) {
-      return false;
-    }
+  /**
+   * شروط عرض الودجت بسبب exit intent: سلة + صفحة سلة/متجر + لم يغلق × + لا فقاعة مفتوحة.
+   * الـ FAB لا يعيق (يُعامل كغير مرئي للغرض من الخروج الذكي).
+   */
+  function canShowExitIntentWidget() {
     if (isSessionConverted()) {
       return false;
     }
@@ -2044,12 +2011,41 @@
     return true;
   }
 
+  /** نفس تسلسل التهيئة كما بعد add to cart، ثم showBubble(exit_intent) فقط. */
+  function openExitIntentWidget() {
+    if (!canShowExitIntentWidget()) {
+      return;
+    }
+    if (isDemoPath()) {
+      if (!step1Ready) {
+        step1Ready = true;
+      }
+    }
+    if (isDemoStoreProductPage() && typeof window.cartflowDemoArmStoreWidget === "function") {
+      window.cartflowDemoArmStoreWidget();
+    } else {
+      runArmBody();
+    }
+    clearTimeout(idleTimer);
+    idleTimer = null;
+    if (!canShowExitIntentWidget()) {
+      return;
+    }
+    if (isDemoPath()) {
+      showBubble(TRIGGER_SOURCE_EXIT_INTENT);
+      return;
+    }
+    fetchReadyThen(function () {
+      if (!canShowExitIntentWidget()) {
+        return;
+      }
+      showBubble(TRIGGER_SOURCE_EXIT_INTENT);
+    });
+  }
+
   function resetMobileExitInactivity() {
     clearMobileExitInactivity();
     if (!isNarrowViewport()) {
-      return;
-    }
-    if (exitIntentUsed) {
       return;
     }
     if (!isCartPage() || !haveCartForWidget()) {
@@ -2063,18 +2059,15 @@
     }
     mobileExitInactivityTimer = setTimeout(function () {
       mobileExitInactivityTimer = null;
-      if (!canFireExitIntent()) {
+      if (!canShowExitIntentWidget()) {
         return;
       }
-      lastExitIntentEvent = "inactivity";
-      syncExitDebugPanel();
       try {
         console.log("mobile inactivity fired");
-        console.log("mobile exit intent fired");
       } catch (e) {
         /* ignore */
       }
-      triggerExitIntent("inactivity");
+      scheduleExitIntent();
     }, 10000);
   }
 
@@ -2082,9 +2075,6 @@
     clearExitInactivity();
     if (isNarrowViewport()) {
       resetMobileExitInactivity();
-      return;
-    }
-    if (exitIntentUsed) {
       return;
     }
     if (!isCartPage() || !haveCartForWidget()) {
@@ -2099,24 +2089,15 @@
     var waitMs = 10000 + Math.random() * 5000;
     exitInactivityTimer = setTimeout(function () {
       exitInactivityTimer = null;
-      if (!canFireExitIntent()) {
+      if (!canShowExitIntentWidget()) {
         return;
       }
-      lastExitIntentEvent = "inactivity";
-      syncExitDebugPanel();
-      scheduleExitIntent("inactivity");
+      scheduleExitIntent();
     }, waitMs);
   }
 
-  function scheduleExitIntent(eventTag) {
-    if (typeof eventTag === "string" && eventTag) {
-      lastExitIntentEvent = eventTag;
-    }
-    syncExitDebugPanel();
-    if (exitIntentUsed) {
-      return;
-    }
-    if (!canFireExitIntent()) {
+  function scheduleExitIntent() {
+    if (!canShowExitIntentWidget()) {
       return;
     }
     if (exitIntentScheduleTimer) {
@@ -2125,203 +2106,18 @@
     var delay = 300 + Math.random() * 500;
     exitIntentScheduleTimer = setTimeout(function () {
       exitIntentScheduleTimer = null;
-      if (!canFireExitIntent()) {
+      if (!canShowExitIntentWidget()) {
         return;
       }
-      presentExitIntent();
+      openExitIntentWidget();
     }, delay);
-  }
-
-  function triggerExitIntent(type) {
-    if (!isNarrowViewport()) {
-      return;
-    }
-    if (type) {
-      lastExitIntentEvent = String(type);
-    }
-    if (!haveCartForWidget()) {
-      return;
-    }
-    if (document.querySelector("[data-cartflow-bubble]")) {
-      return;
-    }
-    if (isDemoStoreProductPage() && demoStoreBubbleDismissed) {
-      return;
-    }
-    if (!canFireExitIntent()) {
-      return;
-    }
-    try {
-      window.widgetVisible = isWidgetDomVisible();
-      window.manualClosed = isDemoStoreProductPage()
-        ? demoStoreBubbleDismissed
-        : false;
-    } catch (e) {
-      /* ignore */
-    }
-    lastOpenTriggerForDebug = TRIGGER_SOURCE_EXIT_INTENT;
-    syncExitDebugPanel();
-    try {
-      console.log("exit intent fired:", type);
-    } catch (e) {
-      /* ignore */
-    }
-    var delay = 300 + Math.random() * 400;
-    setTimeout(function () {
-      if (!canFireExitIntent()) {
-        return;
-      }
-      presentExitIntent();
-    }, delay);
-  }
-
-  function exitIntentCartLengthLog() {
-    try {
-      if (typeof window.cart === "undefined" || window.cart === null) {
-        return 0;
-      }
-      if (!Array.isArray(window.cart)) {
-        return 0;
-      }
-      return window.cart.length;
-    } catch (e) {
-      return 0;
-    }
-  }
-
-  function presentExitIntent() {
-    if (exitIntentUsed) {
-      return;
-    }
-    if (!canFireExitIntent()) {
-      return;
-    }
-    if (isNarrowViewport()) {
-      try {
-        console.log("mobile exit intent fired");
-      } catch (e) {
-        /* ignore */
-      }
-    }
-    try {
-      console.log("exit intent fired");
-      console.log("cart length:", exitIntentCartLengthLog());
-      console.log(
-        "manual closed:",
-        isDemoStoreProductPage() ? demoStoreBubbleDismissed : false
-      );
-    } catch (e) {
-      /* ignore */
-    }
-
-    if (document.querySelector("[data-cartflow-bubble]")) {
-      return;
-    }
-
-    if (isDemoStoreProductPage() && typeof window.cartflowDemoArmStoreWidget === "function") {
-      window.cartflowDemoArmStoreWidget();
-    } else {
-      runArmBody();
-    }
-    clearTimeout(idleTimer);
-    idleTimer = null;
-
-    if (isSessionConverted() || !haveCartForWidget()) {
-      return;
-    }
-    if (isDemoStoreProductPage() && demoStoreBubbleDismissed) {
-      return;
-    }
-
-    exitIntentUsed = true;
-    try {
-      console.log("showing widget from exit intent");
-    } catch (e) {
-      /* ignore */
-    }
-
-    if (isDemoPath()) {
-      if (!step1Ready) {
-        step1Ready = true;
-      }
-      setTimeout(function () {
-        if (isSessionConverted() || !haveCartForWidget()) {
-          return;
-        }
-        if (isDemoStoreProductPage() && demoStoreBubbleDismissed) {
-          return;
-        }
-        showBubble(TRIGGER_SOURCE_EXIT_INTENT);
-      }, 0);
-      return;
-    }
-    fetchReadyThen(function () {
-      if (isSessionConverted() || !haveCartForWidget()) {
-        return;
-      }
-      if (isDemoStoreProductPage() && demoStoreBubbleDismissed) {
-        return;
-      }
-      showBubble(TRIGGER_SOURCE_EXIT_INTENT);
-    });
   }
 
   function tryExitIntentOnPageLeave() {
-    if (exitIntentUsed) {
+    if (!canShowExitIntentWidget()) {
       return;
     }
-    if (isSessionConverted() || !isCartPage() || !haveCartForWidget()) {
-      return;
-    }
-    if (isDemoStoreProductPage() && demoStoreBubbleDismissed) {
-      return;
-    }
-    if (document.querySelector("[data-cartflow-bubble]")) {
-      return;
-    }
-    try {
-      console.log("exit intent fired (page leave)");
-      console.log("cart length:", exitIntentCartLengthLog());
-      console.log(
-        "manual closed:",
-        isDemoStoreProductPage() ? demoStoreBubbleDismissed : false
-      );
-    } catch (e) {
-      /* ignore */
-    }
-
-    if (isDemoStoreProductPage() && typeof window.cartflowDemoArmStoreWidget === "function") {
-      window.cartflowDemoArmStoreWidget();
-    } else {
-      runArmBody();
-    }
-    clearTimeout(idleTimer);
-    idleTimer = null;
-
-    exitIntentUsed = true;
-    try {
-      console.log("showing widget from exit intent");
-    } catch (e) {
-      /* ignore */
-    }
-
-    if (isDemoPath()) {
-      if (!step1Ready) {
-        step1Ready = true;
-      }
-      showBubble(TRIGGER_SOURCE_EXIT_INTENT);
-    } else {
-      fetchReadyThen(function () {
-        if (
-          isSessionConverted() ||
-          !haveCartForWidget() ||
-          (isDemoStoreProductPage() && demoStoreBubbleDismissed)
-        ) {
-          return;
-        }
-        showBubble(TRIGGER_SOURCE_EXIT_INTENT);
-      });
-    }
+    openExitIntentWidget();
   }
 
   function initExitIntent() {
@@ -2346,11 +2142,10 @@
         ) {
           try {
             console.log("mobile scroll-up fired");
-            console.log("mobile exit intent fired");
           } catch (e) {
             /* ignore */
           }
-          triggerExitIntent("scroll_up");
+          scheduleExitIntent();
         }
         mobileExitLastScrollY = currentY;
       }
@@ -2381,9 +2176,7 @@
         if (dt > 0 && y < exitLastScrollY && exitMaxScrollDepth > 300) {
           var v = (exitLastScrollY - y) / dt;
           if (v > 0.35 && exitLastScrollY - y > 18) {
-            lastExitIntentEvent = "scroll-up";
-            syncExitDebugPanel();
-            scheduleExitIntent("scroll-up");
+            scheduleExitIntent();
           }
         }
         exitLastScrollY = y;
@@ -2407,13 +2200,11 @@
       if (isNarrowViewport()) {
         if (document.visibilityState === "hidden") {
           exitTabWasHidden = true;
-          lastExitIntentEvent = "visibility_hidden";
           try {
             console.log("mobile tab hidden");
           } catch (e) {
             /* ignore */
           }
-          syncExitDebugPanel();
         } else if (document.visibilityState === "visible") {
           try {
             console.log("mobile tab returned");
@@ -2422,12 +2213,7 @@
           }
           if (exitTabWasHidden) {
             exitTabWasHidden = false;
-            try {
-              console.log("mobile exit intent fired");
-            } catch (e) {
-              /* ignore */
-            }
-            triggerExitIntent("visibility");
+            scheduleExitIntent();
           }
         }
         resetExitInactivity();
@@ -2438,9 +2224,7 @@
       } else {
         if (exitTabWasHidden) {
           exitTabWasHidden = false;
-          lastExitIntentEvent = "visibility";
-          syncExitDebugPanel();
-          scheduleExitIntent("visibility");
+          scheduleExitIntent();
         }
       }
       resetExitInactivity();
@@ -2452,7 +2236,6 @@
     if (isCartPage() && haveCartForWidget()) {
       resetExitInactivity();
     }
-    syncExitDebugPanel();
     try {
       console.log(
         "[CartFlow] exit intent listeners registered",
@@ -2478,7 +2261,6 @@
 
   if (isDemoStoreProductPage()) {
     setInterval(ensureDemoStoreBubbleVisible, 2500);
-    setInterval(syncExitDebugPanel, 400);
   }
 
   if (isDemoPath()) {

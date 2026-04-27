@@ -311,43 +311,6 @@
       line-height: 1.45;
       box-shadow: 0 4px 18px rgba(0, 0, 0, 0.15);
     }
-    .cf-exit-debug {
-      display: none;
-      position: fixed;
-      z-index: 2147483610;
-      bottom: max(8px, env(safe-area-inset-bottom, 0px));
-      inset-inline-end: max(8px, env(safe-area-inset-right, 0px));
-      max-width: min(280px, calc(100vw - 16px));
-      background: rgba(28, 25, 23, 0.92);
-      color: #fafaf9;
-      border-radius: 10px;
-      padding: 0.5rem 0.65rem;
-      font: 0.65rem/1.35 ui-monospace, monospace;
-      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
-      pointer-events: none;
-    }
-    @media (max-width: 640px) {
-      .cf-exit-debug { display: block; }
-    }
-    .cf-exit-debug .cf-exit-debug-title {
-      font-weight: 800;
-      margin: 0 0 0.35rem 0;
-      color: #a8a29e;
-      text-transform: uppercase;
-      font-size: 0.6rem;
-      letter-spacing: 0.04em;
-    }
-    .cf-exit-debug .row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.2rem 0.5rem;
-      margin: 0.1rem 0;
-    }
-    .cf-exit-debug .k { color: #a8a29e; }
-    .cf-exit-debug code {
-      color: #fef3c7;
-      word-break: break-all;
-    }
   </style>
 </head>
 <body>
@@ -688,14 +651,6 @@
       }
     })();
   </script>
-  <div id="cf-exit-debug" class="cf-exit-debug" aria-hidden="true" lang="en" dir="ltr">
-    <div class="cf-exit-debug-title">Exit intent · debug (mobile)</div>
-    <div class="row"><span class="k">exit_intent_event</span> <code id="cf-exit-intent-event">—</code></div>
-    <div class="row"><span class="k">cart_length</span> <code id="cf-exit-cart-length">—</code></div>
-    <div class="row"><span class="k">manual_closed</span> <code id="cf-exit-manual-closed">—</code></div>
-    <div class="row"><span class="k">widget_visible</span> <code id="cf-exit-widget-visible">—</code></div>
-    <div class="row"><span class="k">trigger_source</span> <code id="cf-exit-trigger-source">—</code></div>
-  </div>
   <script src="/static/cartflow_demo_panel.js" defer></script>
   <script src="/static/cartflow_demo_guide.js" defer></script>
   <script src="/static/widget_loader.js" data-store="{{ demo_data_store|default('demo') }}"></script>
