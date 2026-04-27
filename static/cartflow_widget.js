@@ -13,6 +13,7 @@
   var REASON_SUB_TAG_KEY = "cartflow_reason_sub_tag";
   var DEMO_STORE_WIDGET_ARMED_KEY = "cartflow_demo_store_widget_armed";
   var DEMO_STORE_EXIT_INTENT_SHOWN_KEY = "cartflow_demo_store_exit_intent_shown";
+  var DEMO_STORE_EXIT_PROMPT_RESOLVED_KEY = "cartflow_demo_store_exit_prompt_resolved";
   var shown = false;
   var idleTimer = null;
   var step1Ready = false;
@@ -525,6 +526,30 @@
   function clearDemoStoreExitIntentShown() {
     try {
       window.sessionStorage.removeItem(DEMO_STORE_EXIT_INTENT_SHOWN_KEY);
+    } catch (e) {
+      /* ignore */
+    }
+  }
+
+  function readDemoStoreExitPromptResolved() {
+    try {
+      return window.sessionStorage.getItem(DEMO_STORE_EXIT_PROMPT_RESOLVED_KEY) === "1";
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function setDemoStoreExitPromptResolved() {
+    try {
+      window.sessionStorage.setItem(DEMO_STORE_EXIT_PROMPT_RESOLVED_KEY, "1");
+    } catch (e) {
+      /* ignore */
+    }
+  }
+
+  function clearDemoStoreExitPromptResolved() {
+    try {
+      window.sessionStorage.removeItem(DEMO_STORE_EXIT_PROMPT_RESOLVED_KEY);
     } catch (e) {
       /* ignore */
     }
@@ -2043,9 +2068,11 @@
       window.sessionStorage.removeItem(DEMO_STORE_WIDGET_ARMED_KEY);
     } catch (e) {}
     clearDemoStoreExitIntentShown();
+    clearDemoStoreExitPromptResolved();
     demoStoreBubbleDismissed = false;
     clearTimeout(idleTimer);
     idleTimer = null;
+    removeExitIntentPromptModal();
     removeFabIfAny();
     removeCartflowBubbleDom();
     shown = false;
@@ -2170,6 +2197,149 @@
     });
   }
 
+  /** طبقة وسيطة على ‎/demo/store‎: نافذة موافقة قبل فتح الودجت. */
+  function canShowExitIntentPrompt() {
+    if (!isDemoStoreProductPage()) {
+      return false;
+    }
+    if (isSessionConverted()) {
+      return false;
+    }
+    if (!isCartPage()) {
+      return false;
+    }
+    if (readDemoStoreExitPromptResolved()) {
+      return false;
+    }
+    if (demoStoreBubbleDismissed) {
+      return false;
+    }
+    if (isWidgetDomVisible()) {
+      return false;
+    }
+    return true;
+  }
+
+  function canFireExitIntentTrigger() {
+    if (isDemoStoreProductPage()) {
+      return canShowExitIntentPrompt();
+    }
+    return canShowExitIntentWidget();
+  }
+
+  function removeExitIntentPromptModal() {
+    var el = document.getElementById("cf-exit-intent-prompt");
+    if (el && el.parentNode) {
+      el.parentNode.removeChild(el);
+    }
+    try {
+      document.body.style.overflow = "";
+    } catch (e) {
+      /* ignore */
+    }
+  }
+
+  function showExitIntentPromptModal() {
+    if (document.getElementById("cf-exit-intent-prompt")) {
+      return;
+    }
+    var overlay = document.createElement("div");
+    overlay.id = "cf-exit-intent-prompt";
+    overlay.setAttribute("dir", "rtl");
+    overlay.setAttribute("lang", "ar");
+    overlay.setAttribute("role", "dialog");
+    overlay.setAttribute("aria-modal", "true");
+    overlay.style.cssText =
+      "position:fixed;inset:0;z-index:2147483638;display:flex;align-items:center;justify-content:center;" +
+      "padding:max(16px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(16px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));" +
+      "box-sizing:border-box;background:rgba(15,23,42,0.45);";
+    var card = document.createElement("div");
+    card.style.cssText =
+      "position:relative;max-width:min(360px,calc(100vw - 32px));width:100%;box-sizing:border-box;" +
+      "background:#1e1b4b;color:#f5f3ff;border-radius:14px;padding:16px 16px 14px;" +
+      "box-shadow:0 12px 40px rgba(0,0,0,0.35);font:15px/1.5 system-ui,-apple-system,'Segoe UI',sans-serif;";
+    var btnBase =
+      "cursor:pointer;border:0;border-radius:10px;padding:10px 14px;font:inherit;font-weight:600;" +
+      "min-height:44px;min-width:88px;touch-action:manipulation;box-sizing:border-box;";
+    var closeX = document.createElement("button");
+    closeX.type = "button";
+    closeX.setAttribute("aria-label", "إغلاق");
+    closeX.textContent = "×";
+    closeX.style.cssText =
+      "position:absolute;top:6px;inset-inline-start:8px;width:40px;height:40px;padding:0;border:0;border-radius:8px;" +
+      "background:rgba(255,255,255,0.1);color:#f5f3ff;font-size:22px;line-height:1;cursor:pointer;";
+    var p = document.createElement("p");
+    p.style.cssText = "margin:8px 8px 14px 0;text-align:right;";
+    p.textContent = "هلا 👋 أقدر أخدمك بشيء قبل ما تطلع؟";
+    var row = document.createElement("div");
+    row.style.cssText =
+      "display:flex;flex-direction:row;flex-wrap:wrap;gap:10px;justify-content:flex-end;margin-top:4px;";
+    var bNo = document.createElement("button");
+    bNo.type = "button";
+    bNo.textContent = "لا";
+    bNo.style.cssText = btnBase + "background:rgba(255,255,255,0.12);color:#f5f3ff;";
+    var bYes = document.createElement("button");
+    bYes.type = "button";
+    bYes.textContent = "نعم";
+    bYes.style.cssText = btnBase + "background:#7c3aed;color:#fff;";
+    function closeWithoutWidget() {
+      setDemoStoreExitPromptResolved();
+      removeExitIntentPromptModal();
+    }
+    function onYes() {
+      setDemoStoreExitPromptResolved();
+      removeExitIntentPromptModal();
+      setTimeout(function () {
+        openExitIntentWidget();
+      }, 0);
+    }
+    closeX.addEventListener("click", function (e) {
+      e.stopPropagation();
+      e.preventDefault();
+      closeWithoutWidget();
+    });
+    bNo.addEventListener("click", function (e) {
+      e.stopPropagation();
+      e.preventDefault();
+      closeWithoutWidget();
+    });
+    bYes.addEventListener("click", function (e) {
+      e.stopPropagation();
+      e.preventDefault();
+      onYes();
+    });
+    overlay.addEventListener("click", function (e) {
+      if (e.target === overlay) {
+        closeWithoutWidget();
+      }
+    });
+    try {
+      document.body.style.overflow = "hidden";
+    } catch (e) {
+      /* ignore */
+    }
+    row.appendChild(bNo);
+    row.appendChild(bYes);
+    card.appendChild(closeX);
+    card.appendChild(p);
+    card.appendChild(row);
+    overlay.appendChild(card);
+    document.body.appendChild(overlay);
+  }
+
+  function tryShowExitIntentPrompt() {
+    if (!isDemoStoreProductPage()) {
+      return;
+    }
+    if (!canShowExitIntentPrompt()) {
+      return;
+    }
+    if (document.getElementById("cf-exit-intent-prompt")) {
+      return;
+    }
+    showExitIntentPromptModal();
+  }
+
   function resetMobileExitInactivity() {
     clearMobileExitInactivity();
     if (!isNarrowViewport()) {
@@ -2184,12 +2354,12 @@
     if (isDemoStoreProductPage() && demoStoreBubbleDismissed) {
       return;
     }
-    if (document.querySelector("[data-cartflow-bubble]")) {
+    if (isWidgetDomVisible()) {
       return;
     }
     mobileExitInactivityTimer = setTimeout(function () {
       mobileExitInactivityTimer = null;
-      if (!canShowExitIntentWidget()) {
+      if (!canFireExitIntentTrigger()) {
         return;
       }
       try {
@@ -2216,13 +2386,13 @@
     if (isDemoStoreProductPage() && demoStoreBubbleDismissed) {
       return;
     }
-    if (document.querySelector("[data-cartflow-bubble]")) {
+    if (isWidgetDomVisible()) {
       return;
     }
     var waitMs = 10000 + Math.random() * 5000;
     exitInactivityTimer = setTimeout(function () {
       exitInactivityTimer = null;
-      if (!canShowExitIntentWidget()) {
+      if (!canFireExitIntentTrigger()) {
         return;
       }
       scheduleExitIntent();
@@ -2230,7 +2400,7 @@
   }
 
   function scheduleExitIntent() {
-    if (!canShowExitIntentWidget()) {
+    if (!canFireExitIntentTrigger()) {
       return;
     }
     if (exitIntentScheduleTimer) {
@@ -2239,14 +2409,25 @@
     var delay = 300 + Math.random() * 500;
     exitIntentScheduleTimer = setTimeout(function () {
       exitIntentScheduleTimer = null;
-      if (!canShowExitIntentWidget()) {
+      if (!canFireExitIntentTrigger()) {
         return;
       }
-      openExitIntentWidget();
+      if (isDemoStoreProductPage()) {
+        tryShowExitIntentPrompt();
+      } else {
+        openExitIntentWidget();
+      }
     }, delay);
   }
 
   function tryExitIntentOnPageLeave() {
+    if (isDemoStoreProductPage()) {
+      if (!canShowExitIntentPrompt()) {
+        return;
+      }
+      tryShowExitIntentPrompt();
+      return;
+    }
     if (!canShowExitIntentWidget()) {
       return;
     }
@@ -2330,7 +2511,7 @@
           if (typeof e.clientY !== "number" || e.clientY > 0) {
             return;
           }
-          if (!canShowExitIntentWidget()) {
+          if (!canFireExitIntentTrigger()) {
             return;
           }
           scheduleExitIntent();
