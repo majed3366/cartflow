@@ -1358,11 +1358,6 @@
         shown = false;
       }
     }
-    if (!haveCartForWidget()) {
-      if (!(openSource === TRIGGER_SOURCE_EXIT_INTENT && isDemoStoreProductPage())) {
-        return;
-      }
-    }
     shown = true;
     removeFabIfAny();
     if (step1Poll !== null) {
