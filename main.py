@@ -526,18 +526,16 @@ def dev_recovery_delay_verify():
 
 
 @app.get("/dev/config-system-verify")
-def dev_config_system_verify():
-    """التحقق من طبقة الإعداد المعزولة (ENV=development فقط عبر وسيط no_dev_in_production)."""
-    cfg = get_cartflow_config()
-    return j(
-        {
-            "ok": True,
-            "config_loaded": True,
-            "recovery_delay_minutes": cfg["recovery_delay_minutes"],
-            "whatsapp_recovery_enabled": cfg["whatsapp_recovery_enabled"],
-            "enabled_recovery_reasons": cfg["enabled_recovery_reasons"],
-        }
-    )
+def config_system_verify():
+    config = get_cartflow_config()
+
+    return {
+        "ok": True,
+        "config_loaded": True,
+        "recovery_delay_minutes": config["recovery_delay_minutes"],
+        "whatsapp_recovery_enabled": config["whatsapp_recovery_enabled"],
+        "enabled_recovery_reasons": config["enabled_recovery_reasons"],
+    }
 
 
 @app.get("/dev/recovery-attempts-verify")
