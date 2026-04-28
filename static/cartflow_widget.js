@@ -14,8 +14,6 @@
   /** Layer D: سبب متروك السلة (مفاتيح منفصلة عن سبب الخطّة الأساسية) */
   var SESSION_ABANDON_REASON_TAG_KEY = "cartflow_abandon_reason_tag";
   var SESSION_ABANDON_CUSTOM_REASON_KEY = "cartflow_abandon_custom_reason";
-  /** يمنع إعادة فتح رسالة استرجاع السلة بعد لا تريد مساعدة ثم الرجوع للمحادثة */
-  var CART_RECOVERY_SUPPRESS_KEY = "cartflow_suppress_cart_recovery";
   var DEMO_STORE_WIDGET_ARMED_KEY = "cartflow_demo_store_widget_armed";
   var DEMO_STORE_EXIT_INTENT_SHOWN_KEY = "cartflow_demo_store_exit_intent_shown";
   var DEMO_STORE_EXIT_PROMPT_RESOLVED_KEY = "cartflow_demo_store_exit_prompt_resolved";
@@ -651,6 +649,17 @@
     if (isSessionConverted() || !isCartPage()) {
       return;
     }
+    if (haveCartForWidget()) {
+      clearStaleRecoveryGatesOnCartActivity();
+      try {
+        console.log(
+          "CARTFLOW RECOVERY:",
+          "gates cleared on cart arm (suppress key + demo dismiss)"
+        );
+      } catch (eL) {
+        /* ignore */
+      }
+    }
     if (isDemoStoreProductPage() && !readDemoStoreWidgetArmed()) {
       if (isDemoPath() && haveCartForWidget()) {
         try {
@@ -770,19 +779,19 @@
     }
   }
 
-  function readCartRecoverySuppressed() {
+  function clearCartRecoverySuppressed() {
     try {
-      return window.sessionStorage.getItem(CART_RECOVERY_SUPPRESS_KEY) === "1";
+      window.sessionStorage.removeItem("cartflow_suppress_cart_recovery");
     } catch (e) {
-      return false;
+      /* ignore */
     }
   }
 
-  function writeCartRecoverySuppressed() {
-    try {
-      window.sessionStorage.setItem(CART_RECOVERY_SUPPRESS_KEY, "1");
-    } catch (e) {
-      /* ignore */
+  /** جاهزية الاسترجاع بعد إضافة للسلة أو جلسة جديدة (لا يعطّل المحادثة نهائياً) */
+  function clearStaleRecoveryGatesOnCartActivity() {
+    clearCartRecoverySuppressed();
+    if (isDemoStoreProductPage() && isDemoPath()) {
+      demoStoreBubbleDismissed = false;
     }
   }
 
@@ -1399,10 +1408,8 @@
       }
       return;
     }
-    if (openSource === TRIGGER_SOURCE_CART) {
-      if (!hasCartItems || readCartRecoverySuppressed()) {
-        return;
-      }
+    if (openSource === TRIGGER_SOURCE_CART && !hasCartItems) {
+      return;
     }
     if (isSessionConverted() || !step1Ready) {
       return;
@@ -2849,11 +2856,6 @@
     if (shown) {
       return;
     }
-    if (readCartRecoverySuppressed()) {
-      clearTimeout(idleTimer);
-      idleTimer = null;
-      return;
-    }
     clearTimeout(idleTimer);
     idleTimer = null;
     if (!haveCartForWidget()) {
@@ -2901,9 +2903,6 @@
         /* ignore */
       }
       if (!shouldSend) {
-        return;
-      }
-      if (readCartRecoverySuppressed()) {
         return;
       }
       showBubble(TRIGGER_SOURCE_CART);
