@@ -15,6 +15,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional, Tuple
 
 import anthropic
+from pydantic import BaseModel
 import requests
 from dotenv import load_dotenv
 from fastapi import BackgroundTasks, FastAPI, Query, Request
@@ -136,6 +137,28 @@ from services.cartflow_whatsapp_mock import REASON_CHOICES as CF_REASON_CHOICES
 from services.recovery_decision import get_primary_recovery_reason
 
 log = logging.getLogger("cartflow")
+
+
+class WhatsAppDecisionTestPayload(BaseModel):
+    phone: str
+    reason_tag: str = "price_high"
+
+
+@app.post("/dev/whatsapp-decision-test")
+def dev_whatsapp_decision_test(body: WhatsAppDecisionTestPayload) -> Any:
+    """
+    تجارب فقط (‎ENV=development‎ عبر وسيط — مسار‎ /dev/‎): قرار مسترجع + إرسال واتساب مباشرة.
+    """
+    result = decide_recovery_action(body.reason_tag)
+    message = result["message"]
+    send_whatsapp(body.phone, message)
+    return {
+        "ok": True,
+        "reason_tag": body.reason_tag,
+        "action": result["action"],
+        "message": message,
+        "sent": True,
+    }
 
 
 def _ensure_store_widget_schema() -> None:
