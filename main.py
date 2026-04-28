@@ -74,6 +74,7 @@ from services.whatsapp_send import (  # noqa: E402
     send_whatsapp,
     should_send_whatsapp,
 )
+from config_system import get_cartflow_config
 from schema_widget import ensure_store_widget_schema
 from services.cartflow_whatsapp_mock import REASON_CHOICES as CF_REASON_CHOICES
 from services.recovery_decision import get_primary_recovery_reason
@@ -520,6 +521,21 @@ def dev_recovery_delay_verify():
                     store=store_slow,
                 )
             },
+        }
+    )
+
+
+@app.get("/dev/config-system-verify")
+def dev_config_system_verify():
+    """التحقق من طبقة الإعداد المعزولة (ENV=development فقط عبر وسيط no_dev_in_production)."""
+    cfg = get_cartflow_config()
+    return j(
+        {
+            "ok": True,
+            "config_loaded": True,
+            "recovery_delay_minutes": cfg["recovery_delay_minutes"],
+            "whatsapp_recovery_enabled": cfg["whatsapp_recovery_enabled"],
+            "enabled_recovery_reasons": cfg["enabled_recovery_reasons"],
         }
     )
 
