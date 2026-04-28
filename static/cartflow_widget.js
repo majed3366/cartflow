@@ -11,6 +11,10 @@
   var DEMO_ARMED_IDLE_MS = 1600;
   var REASON_TAG_KEY = "cartflow_reason_tag";
   var REASON_SUB_TAG_KEY = "cartflow_reason_sub_tag";
+  /** Layer D: سبب متروك السلة (واجهة فقط؛ مفاتيح منفصلة عن سبب الخطّة الأساسية) */
+  var LAYER_D_OFFER_SHOWN_KEY = "cartflow_layer_d_offer_shown";
+  var SESSION_ABANDON_REASON_TAG_KEY = "cartflow_abandon_reason_tag";
+  var SESSION_ABANDON_CUSTOM_REASON_KEY = "cartflow_abandon_custom_reason";
   var DEMO_STORE_WIDGET_ARMED_KEY = "cartflow_demo_store_widget_armed";
   var DEMO_STORE_EXIT_INTENT_SHOWN_KEY = "cartflow_demo_store_exit_intent_shown";
   var DEMO_STORE_EXIT_PROMPT_RESOLVED_KEY = "cartflow_demo_store_exit_prompt_resolved";
@@ -722,6 +726,50 @@
         return null;
       }
     };
+  }
+
+  function readLayerDOfferShown() {
+    try {
+      return window.sessionStorage.getItem(LAYER_D_OFFER_SHOWN_KEY) === "1";
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function writeLayerDOfferShown() {
+    try {
+      window.sessionStorage.setItem(LAYER_D_OFFER_SHOWN_KEY, "1");
+    } catch (e) {
+      /* ignore */
+    }
+  }
+
+  function persistSessionAbandonReason(reasonTag, customTextOptional) {
+    try {
+      window.sessionStorage.setItem(
+        SESSION_ABANDON_REASON_TAG_KEY,
+        String(reasonTag)
+      );
+      if (customTextOptional != null && strTrim(customTextOptional) !== "") {
+        window.sessionStorage.setItem(
+          SESSION_ABANDON_CUSTOM_REASON_KEY,
+          strTrim(customTextOptional)
+        );
+      } else if (String(reasonTag) !== "other") {
+        try {
+          window.sessionStorage.removeItem(SESSION_ABANDON_CUSTOM_REASON_KEY);
+        } catch (eRm) {
+          /* ignore */
+        }
+      }
+    } catch (e) {
+      /* ignore */
+    }
+    try {
+      console.log("ABANDONMENT REASON:", String(reasonTag));
+    } catch (eLog) {
+      /* ignore */
+    }
   }
 
   function haveCartForWidget() {
@@ -1706,6 +1754,107 @@
       body.appendChild(sec);
     }
 
+    function mountLayerDAbandonIfEligible() {
+      if (openSource !== TRIGGER_SOURCE_CART) {
+        return;
+      }
+      if (readLayerDOfferShown()) {
+        return;
+      }
+
+      var wrap = document.createElement("div");
+      wrap.setAttribute("data-cf-layer-d-abandon", "1");
+      wrap.style.cssText = "margin:0 0 10px 0;";
+
+      function showLayerDAckAfterPick(wrapEl) {
+        while (wrapEl.firstChild) {
+          wrapEl.removeChild(wrapEl.firstChild);
+        }
+        var ack = document.createElement("p");
+        ack.style.cssText =
+          "margin:0;font-size:13px;line-height:1.5;opacity:0.95;";
+        ack.textContent =
+          "شكراً 🙏 نقدّر وقتك؛ تقدر تكمّل الحوار من الأزرار تحت وقت ما تريد.";
+        wrapEl.appendChild(ack);
+      }
+
+      function mountOtherTextUi(wrapEl) {
+        while (wrapEl.firstChild) {
+          wrapEl.removeChild(wrapEl.firstChild);
+        }
+        var hint = document.createElement("div");
+        hint.style.cssText = "margin:0 0 8px 0;font-size:13px;line-height:1.45;";
+        hint.textContent = "اكتب السبب";
+        wrapEl.appendChild(hint);
+        var ta = document.createElement("textarea");
+        ta.setAttribute("rows", "3");
+        ta.setAttribute("aria-label", "سبب آخر");
+        ta.style.cssText =
+          "width:100%;box-sizing:border-box;border-radius:8px;border:0;padding:8px;font:inherit;" +
+          "color:#1e1b4b;resize:vertical;min-height:3.5em;margin-bottom:8px;";
+        wrapEl.appendChild(ta);
+        var bSend = document.createElement("button");
+        bSend.type = "button";
+        bSend.textContent = "إرسال";
+        bSend.style.cssText = btnStyle;
+        bSend.addEventListener("click", function (ev2) {
+          ev2.stopPropagation();
+          ev2.preventDefault();
+          var txt = strTrim((ta.value || ""));
+          if (!txt) {
+            return;
+          }
+          persistSessionAbandonReason("other", txt);
+          bSend.setAttribute("disabled", "true");
+          showLayerDAckAfterPick(wrapEl);
+        });
+        wrapEl.appendChild(bSend);
+      }
+
+      function buildChoices() {
+        while (wrap.firstChild) {
+          wrap.removeChild(wrap.firstChild);
+        }
+        var rowCh = document.createElement("div");
+        rowCh.style.cssText =
+          "display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-start;margin:0;padding:2px 0;" +
+          "max-height:220px;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;";
+        var layerOpts = [
+          { tag: "price_high", label: "السعر مرتفع" },
+          { tag: "quality_uncertainty", label: "غير متأكد من الجودة" },
+          { tag: "shipping_cost", label: "تكلفة الشحن" },
+          { tag: "delivery_time", label: "مدة التوصيل" },
+          { tag: "warranty", label: "الضمان" },
+          { tag: "_other", label: "سبب آخر" },
+        ];
+        var idx;
+        for (idx = 0; idx < layerOpts.length; idx++) {
+          (function (opt) {
+            var bChip = document.createElement("button");
+            bChip.type = "button";
+            bChip.textContent = opt.label;
+            bChip.style.cssText = btnStyle;
+            bChip.addEventListener("click", function (e) {
+              e.stopPropagation();
+              e.preventDefault();
+              if (opt.tag === "_other") {
+                mountOtherTextUi(wrap);
+              } else {
+                persistSessionAbandonReason(opt.tag, null);
+                showLayerDAckAfterPick(wrap);
+              }
+            });
+            rowCh.appendChild(bChip);
+          })(layerOpts[idx]);
+        }
+        wrap.appendChild(rowCh);
+      }
+
+      buildChoices();
+      widgetBody.appendChild(wrap);
+      writeLayerDOfferShown();
+    }
+
     var p0 = document.createElement("p");
     p0.style.cssText = "margin:0 0 8px 0;";
     p0.textContent =
@@ -2383,6 +2532,7 @@
     row0.appendChild(btnY);
     row0.appendChild(btnN);
     widgetBody.appendChild(p0);
+    mountLayerDAbandonIfEligible();
     widgetBody.appendChild(row0);
     try {
       window.cartflowDevMountProductViewAuto = function () {
