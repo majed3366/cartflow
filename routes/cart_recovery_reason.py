@@ -111,6 +111,9 @@ async def post_widget_cart_recovery_reason(request: Request) -> Any:
             )
 
         db.session.commit()
+        print(
+            f"[REASON SAVED] store={ss} session={sid} reason={reason_tag} custom={custom_reason}"
+        )
         return j({"ok": True, "saved": True})
     except (SQLAlchemyError, OSError) as e:
         db.session.rollback()
