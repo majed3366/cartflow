@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 """
 Validation: WhatsApp queue + retry (order, success, retry, final fail, conversion, dedup).
+
+Cart abandonment calls ``main.send_whatsapp`` (Layer D.3); queue retries / ``sent_real`` are
+covered via direct ``enqueue_recovery_and_wait`` tests.
 """
 from __future__ import annotations
 
@@ -12,7 +15,9 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 
 from main import app
+import services.whatsapp_queue as whatsapp_queue
 from services.whatsapp_queue import (
+    MAX_WA_SEND_ATTEMPTS,
     _queue_diagnostics_for_tests,
     enqueue_recovery_and_wait,
     start_whatsapp_queue_worker,
@@ -35,25 +40,24 @@ class WhatsappQueueValidationTests(unittest.IsolatedAsyncioTestCase):
         os.environ["WHATSAPP_QUEUE_RETRY_BACKOFF_SECONDS"] = "0"
 
     @patch("main._persist_cart_recovery_log")
-    @patch("services.whatsapp_queue.send_whatsapp_real")
-    @patch("main.recovery_uses_real_whatsapp", return_value=True)
+    @patch("main.send_whatsapp")
     @patch("main.recovery_delay_to_seconds", return_value=0.0)
     def test_1_queued_before_send(
-        self, _d: object, _ur: object, mock_real: object, mock_persist: object
+        self, _d: object, mock_send: object, mock_persist: object
     ) -> None:
-        """Trigger recovery: log status=queued before any API send (first step)."""
+        """Abandoned cart: log queued before send_whatsapp."""
         order: list = []
 
         def track_persist(*_a, **kw) -> None:
             st = kw.get("status", "")
             order.append(f"persist:{st}")
 
-        def track_send(_phone: str, _message: str) -> dict:
+        def track_sw(_phone: str, _message: str) -> dict:
             order.append("send")
             return {"ok": True}
 
         mock_persist.side_effect = track_persist
-        mock_real.side_effect = track_send
+        mock_send.side_effect = track_sw
         client = TestClient(app)
         client.post(
             "/api/cart-event",
@@ -67,15 +71,8 @@ class WhatsappQueueValidationTests(unittest.IsolatedAsyncioTestCase):
             "queued must be logged before send",
         )
 
-    @patch("main._persist_cart_recovery_log")
-    @patch("services.whatsapp_queue.send_whatsapp_real")
-    @patch("main.recovery_uses_real_whatsapp", return_value=True)
-    @patch("main.recovery_delay_to_seconds", return_value=0.0)
-    def test_2_successful_send_sent_real(
-        self, _d: object, _ur: object, mock_real: object, mock_persist: object
-    ) -> None:
-        """Worker runs send; log includes sent_real."""
-        mock_real.return_value = {"ok": True}
+    async def test_2_successful_send_sent_real(self) -> None:
+        """Worker calls send_whatsapp_real; persistence gets sent_real."""
         statuses: list = []
 
         def cap(**kw) -> None:
@@ -83,25 +80,25 @@ class WhatsappQueueValidationTests(unittest.IsolatedAsyncioTestCase):
             if s:
                 statuses.append(s)
 
-        mock_persist.side_effect = cap
-        client = TestClient(app)
-        client.post(
-            "/api/cart-event",
-            json=_abandon("qval-2", "s2"),
-        )
+        with patch.object(
+            whatsapp_queue, "send_whatsapp_real", return_value={"ok": True}
+        ):
+            with patch("main._persist_cart_recovery_log", side_effect=cap):
+                await start_whatsapp_queue_worker()
+                await enqueue_recovery_and_wait(
+                    store_slug="qval-2",
+                    session_id="s2-q",
+                    cart_id=None,
+                    phone="0500000000",
+                    message="m",
+                    step=1,
+                    recovery_key="qval-2:s2-q",
+                    use_real=True,
+                )
         self.assertIn("sent_real", statuses, statuses)
-        self.assertIn("queued", statuses)
-        mock_real.assert_called()
 
-    @patch("main._persist_cart_recovery_log")
-    @patch("services.whatsapp_queue.send_whatsapp_real")
-    @patch("main.recovery_uses_real_whatsapp", return_value=True)
-    @patch("main.recovery_delay_to_seconds", return_value=0.0)
-    def test_3_retry_on_failure_and_failed_retry_status(
-        self, _d: object, _ur: object, mock_real: object, mock_persist: object
-    ) -> None:
-        """Force API failure: up to 3 attempts, failed_retry appears."""
-        mock_real.return_value = {"ok": False, "error": "forced_fail"}
+    async def test_3_retry_on_failure_and_failed_retry_status(self) -> None:
+        """Forced API failure: up to MAX attempts; failed_retry recorded."""
         statuses: list = []
 
         def cap(**kw) -> None:
@@ -109,54 +106,61 @@ class WhatsappQueueValidationTests(unittest.IsolatedAsyncioTestCase):
             if s:
                 statuses.append(s)
 
-        mock_persist.side_effect = cap
-        client = TestClient(app)
-        client.post(
-            "/api/cart-event",
-            json=_abandon("qval-3", "s3"),
-        )
-        self.assertEqual(mock_real.call_count, 3, "three attempts for one job")
-        self.assertIn("failed_retry", statuses, statuses)
-        self.assertIn("failed_final", statuses, statuses)
+        with patch.object(
+            whatsapp_queue,
+            "send_whatsapp_real",
+            return_value={"ok": False, "error": "forced_fail"},
+        ) as mock_real:
+            with patch("main._persist_cart_recovery_log", side_effect=cap):
+                await start_whatsapp_queue_worker()
+                await enqueue_recovery_and_wait(
+                    store_slug="qval-3",
+                    session_id="s3-q",
+                    cart_id=None,
+                    phone="0500000000",
+                    message="m",
+                    step=1,
+                    recovery_key="qval-3:s3-q",
+                    use_real=True,
+                )
 
-    @patch("main._persist_cart_recovery_log")
-    @patch("services.whatsapp_queue.send_whatsapp_real")
-    @patch("main.recovery_uses_real_whatsapp", return_value=True)
-    @patch("main.recovery_delay_to_seconds", return_value=0.0)
-    def test_4_failed_final_after_max_retries(
-        self, _d: object, _ur: object, mock_real: object, mock_persist: object
-    ) -> None:
-        """With failures kept, exactly one failed_final in logs per failed step job."""
-        mock_real.return_value = {"ok": False}
+        self.assertEqual(mock_real.call_count, MAX_WA_SEND_ATTEMPTS)
+        self.assertIn("failed_retry", statuses)
+        self.assertIn("failed_final", statuses)
+
+    async def test_4_failed_final_after_max_retries(self) -> None:
+        """Repeated failures yield exactly one failed_final per exhausted job."""
         st_out: list = []
 
-        def cap(**kw) -> None:
+        def cap_collect(**kw) -> None:
             s = kw.get("status", "")
             if s:
                 st_out.append(s)
 
-        mock_persist.side_effect = cap
-        client = TestClient(app)
-        client.post(
-            "/api/cart-event",
-            json=_abandon("qval-4", "s4"),
-        )
-        self.assertEqual(
-            st_out.count("failed_final"), 1, f"one failed_final; got {st_out!r}"
-        )
-        self.assertIn("failed_retry", st_out, st_out)
+        with patch.object(whatsapp_queue, "send_whatsapp_real", return_value={"ok": False}):
+            with patch("main._persist_cart_recovery_log", side_effect=cap_collect):
+                await start_whatsapp_queue_worker()
+                await enqueue_recovery_and_wait(
+                    store_slug="qval-4",
+                    session_id="s4-q",
+                    cart_id=None,
+                    phone="0500000000",
+                    message="m",
+                    step=1,
+                    recovery_key="qval-4:s4-q",
+                    use_real=True,
+                )
+
+        self.assertEqual(st_out.count("failed_final"), 1, f"one failed_final; got {st_out!r}")
+        self.assertIn("failed_retry", st_out)
 
     @patch("main._persist_cart_recovery_log", autospec=True)
-    @patch("services.whatsapp_queue.send_whatsapp_real", autospec=True)
-    @patch("main.recovery_uses_real_whatsapp", return_value=True)
+    @patch("main.send_whatsapp", autospec=True)
     @patch("main.recovery_delay_to_seconds", return_value=0.0)
     def test_5_conversion_stop_before_send(
-        self, _d: object, _ur: object, mock_real: object, mock_persist: object
+        self, _d: object, mock_send: object, mock_persist: object
     ) -> None:
-        """
-        POST /api/conversion (same store_slug + session_id) before cart abandons:
-        recovery is skipped, log includes stopped_converted, no WhatsApp send.
-        """
+        """Convert first; abandon does not call send_whatsapp."""
         client = TestClient(app)
         r = client.post(
             "/api/conversion",
@@ -173,21 +177,15 @@ class WhatsappQueueValidationTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(200, out.status_code, out.text)
         j = out.json()
-        self.assertIn(
-            j.get("recovery_state"),
-            ("converted",),
-        )
+        self.assertEqual(j.get("recovery_state"), "converted")
         self.assertTrue(j.get("recovery_skipped"), j)
         st = [c.kwargs.get("status") for c in mock_persist.call_args_list if c.kwargs]
-        self.assertIn("stopped_converted", st, st)
-        mock_real.assert_not_called()
+        self.assertIn("stopped_converted", st)
+        mock_send.assert_not_called()
 
-    async def test_5b_worker_stops_after_cooperative_yield(
-        self,
-    ) -> None:
+    async def test_5b_worker_stops_after_cooperative_yield(self) -> None:
         """
-        If already converted when the job runs, queue worker does not call the API
-        (see asyncio.sleep(0) + pre-send check in whatsapp_queue); log = stopped_converted.
+        Already converted when the job runs: worker skips API (pre-send check).
         """
         with patch("main._persist_cart_recovery_log", autospec=True) as mock_p:
             with patch("services.whatsapp_queue.send_whatsapp_real") as mock_r:
@@ -203,14 +201,12 @@ class WhatsappQueueValidationTests(unittest.IsolatedAsyncioTestCase):
                         recovery_key="a:b",
                         use_real=True,
                     )
-                self.assertEqual(o, "stopped", o)
+                self.assertEqual(o, "stopped")
         mock_r.assert_not_called()
         st = [c.kwargs.get("status") for c in mock_p.call_args_list if c.kwargs]
-        self.assertIn("stopped_converted", st, st)
+        self.assertIn("stopped_converted", st)
 
-    async def test_6_duplicate_protection_merges_enqueue(
-        self,
-    ) -> None:
+    async def test_6_duplicate_protection_merges_enqueue(self) -> None:
         c = [0]
 
         def count_send(
@@ -220,7 +216,7 @@ class WhatsappQueueValidationTests(unittest.IsolatedAsyncioTestCase):
             return {"ok": True}
 
         with patch("main._persist_cart_recovery_log"):
-            with patch("services.whatsapp_queue._one_send", side_effect=count_send):
+            with patch.object(whatsapp_queue, "_one_send", side_effect=count_send):
                 await start_whatsapp_queue_worker()
                 t1 = asyncio.create_task(
                     enqueue_recovery_and_wait(
@@ -247,9 +243,9 @@ class WhatsappQueueValidationTests(unittest.IsolatedAsyncioTestCase):
                     )
                 )
                 r1, r2 = await asyncio.gather(t1, t2)
-        self.assertEqual(r1, "success", r1)
-        self.assertEqual(r2, "success", r2)
-        self.assertEqual(c[0], 1, "one logical _one_send for two duplicate enqueues")
+        self.assertEqual(r1, "success")
+        self.assertEqual(r2, "success")
+        self.assertEqual(c[0], 1)
         nq, ni = _queue_diagnostics_for_tests()
-        self.assertEqual(ni, 0, "inflight map cleared after completion")
-        self.assertEqual(nq, 0, "queue drained after completion")
+        self.assertEqual(ni, 0)
+        self.assertEqual(nq, 0)
