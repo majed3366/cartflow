@@ -941,32 +941,6 @@
     return { label: label, url: url };
   }
 
-  /**
-   * يزيل من جسم الرسالة القادم من الـ API أي سطور رابط سلة/بدائل مكررة
-   * حتى لا يظهر ‎🛒 رابط السلة‎ بعد البناء عندما ‎type === \"alternatives\"‎.
-   */
-  function stripMisplacedCartArtifactsFromCore(core, type) {
-    var s = core != null ? String(core) : "";
-    if (type !== "alternatives") {
-      return s;
-    }
-    var lines = s.split("\n");
-    var out = [];
-    var i;
-    for (i = 0; i < lines.length; i++) {
-      var line = lines[i];
-      var t = line.trim();
-      if (/رابط السلة|🛒\s*رابط|تصفح البدائل|🔄\s*تصفح/.test(line)) {
-        continue;
-      }
-      if (/^https?:\/\//i.test(t) && /cart|#cart/i.test(t)) {
-        continue;
-      }
-      out.push(lines[i]);
-    }
-    return out.join("\n").trim();
-  }
-
   function getPersuasionMessage(reason) {
     if (reason === "price") {
       return (
@@ -1001,7 +975,7 @@
 
   /**
    * مصدر واحد لنص واتساب في المعاينة — النوع + رابط واحد فقط.
-   * opts: reason, sub_category, generatedCore (الـ API cart_url لا يُدمَج هنا)
+   * opts: reason, sub_category (نص المعاينة من الـ API لا يُلحق هنا لتفادي التكرار)
    */
   function buildWhatsappMessage(opts) {
     var reason = (opts && opts.reason != null) ? String(opts.reason).trim() : "";
@@ -1035,8 +1009,6 @@
     if (reason === "price" && !sub_category && !appliedDashboardFallback) {
       sub_category = "price_discount_request";
     }
-    var generatedCoreRaw =
-      opts.generatedCore != null ? String(opts.generatedCore) : "";
     var type = "cart";
     if (
       reason === "price" &&
@@ -1064,17 +1036,10 @@
     } catch (e) {
       /* ignore */
     }
-    var generatedCore = stripMisplacedCartArtifactsFromCore(generatedCoreRaw, type);
     var persuasionText = getPersuasionMessage(reason);
     var intro = "👋 مرحباً\n\n" + persuasionText;
     var finalMessage =
-      intro +
-      "\n\n" +
-      generatedCore +
-      "\n\n" +
-      link.label +
-      "\n" +
-      link.url;
+      intro + "\n\n" + link.label + "\n" + link.url;
     try {
       console.log("WHATSAPP_BUILD", {
         reason: reason,
@@ -1899,7 +1864,6 @@
             var finalMessage = buildWhatsappMessage({
               reason: effectiveReason,
               sub_category: effectiveSub,
-              generatedCore: generatedCore,
             });
             var wurl = buildWaMeComposeUrl(finalMessage, merchantE164);
             try {
@@ -1970,13 +1934,16 @@
           .then(function (x) {
             if (x && x.j && x.j.ok && x.j.message) {
               generatedCore = String(x.j.message);
-              msgEl.textContent = generatedCore;
               if (x.j.resolved_reason) {
                 waReason = String(x.j.resolved_reason);
               }
               if (x.j.resolved_sub_category !== undefined && x.j.resolved_sub_category !== null) {
                 waSub = String(x.j.resolved_sub_category).trim();
               }
+              msgEl.textContent = buildWhatsappMessage({
+                reason: waReason,
+                sub_category: waSub,
+              });
               bMock.removeAttribute("disabled");
               if (
                 x.j.merchant_whatsapp_e164 != null &&
