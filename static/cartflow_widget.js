@@ -1812,14 +1812,12 @@
         bChat.addEventListener("click", function (evRet) {
           evRet.stopPropagation();
           evRet.preventDefault();
-          writeCartRecoverySuppressed();
           stripContentKeepChrome();
-          var pNeutral = document.createElement("p");
-          pNeutral.setAttribute("data-cf-layer-neutral-chat", "1");
-          pNeutral.style.cssText = "margin:0;font-size:14px;line-height:1.55;";
-          pNeutral.textContent =
-            "تقدر تكمل تصفّح المتجر؛ أنا هنا إذا احتجت أي شيء.";
-          widgetBody.appendChild(pNeutral);
+          var pRec = document.createElement("p");
+          pRec.style.cssText = "margin:0 0 8px 0;";
+          pRec.textContent = "تبي أساعدك تكمل طلبك؟";
+          widgetBody.appendChild(pRec);
+          mountLayerDAbandonIfEligible();
         });
         rowReturn.appendChild(bChat);
         widgetBody.appendChild(pNk);
