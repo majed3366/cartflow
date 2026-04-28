@@ -6,4 +6,5 @@ builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"
 
 [deploy]
+# Same as python -m uvicorn main:app … — PORT من البيئة (Railway)، الافتراضي 8000 محلياً
 startCommand = "python start.py"

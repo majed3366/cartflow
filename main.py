@@ -40,10 +40,19 @@ app = FastAPI(
     title="CartFlow",
     root_path="",
 )
-app.add_middleware(
-    TrustedHostMiddleware,
-    allowed_hosts=["*"],
-)
+
+
+@app.get("/__runtime")
+def runtime_check():
+    import os
+
+    return {
+        "ok": True,
+        "runtime_file": __file__,
+        "cwd": os.getcwd(),
+        "port": os.environ.get("PORT"),
+        "routes": [route.path for route in app.routes],
+    }
 
 
 @app.get("/dev/routes")
@@ -60,10 +69,17 @@ def config_system_verify():
     return {
         "ok": True,
         "config_loaded": True,
+        "store_slug": "demo",
         "recovery_delay_minutes": config["recovery_delay_minutes"],
         "whatsapp_recovery_enabled": config["whatsapp_recovery_enabled"],
         "enabled_recovery_reasons": config["enabled_recovery_reasons"],
     }
+
+
+app.add_middleware(
+    TrustedHostMiddleware,
+    allowed_hosts=["*"],
+)
 
 
 app.state.secret_key = os.getenv("SECRET_KEY", "dev-only-change-in-production")
