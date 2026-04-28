@@ -967,6 +967,22 @@
     return out.join("\n").trim();
   }
 
+  function getPersuasionMessage(reason) {
+    if (reason === "price") {
+      return "نقدر نقترح لك خيار قريب يناسب ميزانيتك 💸";
+    }
+
+    if (reason === "quality") {
+      return "هذا المنتج عليه ضمان وجودة عالية 👍";
+    }
+
+    if (reason === "shipping") {
+      return "الشحن سريع ويوصل خلال أيام 🚚";
+    }
+
+    return "موجود لك خيارات مناسبة 👌";
+  }
+
   /**
    * مصدر واحد لنص واتساب في المعاينة — النوع + رابط واحد فقط.
    * opts: reason, sub_category, generatedCore (الـ API cart_url لا يُدمَج هنا)
@@ -1033,8 +1049,11 @@
       /* ignore */
     }
     var generatedCore = stripMisplacedCartArtifactsFromCore(generatedCoreRaw, type);
+    var persuasionText = getPersuasionMessage(reason);
+    var intro = "👋 مرحباً\n\n" + persuasionText;
     var finalMessage =
-      "👋 مرحباً\n\n" +
+      intro +
+      "\n\n" +
       generatedCore +
       "\n\n" +
       link.label +
