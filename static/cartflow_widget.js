@@ -974,6 +974,7 @@
   function buildWhatsappMessage(opts) {
     var reason = (opts && opts.reason != null) ? String(opts.reason).trim() : "";
     var sub_category = (opts.sub_category || "").trim();
+    var appliedDashboardFallback = false;
     // TEST MODE: force no reason
     if (window._cfForceNoReason === true) {
       console.log("FORCING NO REASON (TEST MODE)");
@@ -981,11 +982,12 @@
       sub_category = null;
     }
 
-    // Only apply fallback if truly no reason
+    // Fallback from dashboard
     if (!reason || reason === "unknown") {
       if (window._cfPrimaryReason) {
         reason = window._cfPrimaryReason;
-        sub_category = null; // reset to avoid wrong mapping
+        sub_category = null; // IMPORTANT: reset old logic
+        appliedDashboardFallback = true;
         console.log("PRIMARY_REASON_FROM_DASHBOARD", reason);
       }
     }
@@ -998,7 +1000,7 @@
       }
       reason = primaryReason;
     }
-    if (reason === "price" && !sub_category) {
+    if (reason === "price" && !sub_category && !appliedDashboardFallback) {
       sub_category = "price_discount_request";
     }
     var generatedCoreRaw =
