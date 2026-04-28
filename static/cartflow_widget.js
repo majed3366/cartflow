@@ -913,13 +913,22 @@
             /* ignore */
           }
         }
+        try {
+          if (haveCartForWidget() && step1Ready && !shown) {
+            resetIdle();
+          }
+        } catch (e2) {
+          /* ignore */
+        }
       })
       .catch(function () {});
   }
 
-  /** يطابق الإعداد؛ الافتراضي دقيقة واحدة عند غياب الجلب */
+  /**
+   * يطابق config_system (بعد الجلب)؛ عند ‎demo‎ وقبل اكتمال الطلب نستخدم ‎2‎ د كما في الخادم حتى لا يُجدول مؤقتاً بدقيقة واحدة.
+   */
   function getRecoveryDelayMinutesForSession() {
-    var rm = 1;
+    var rm;
     try {
       if (
         typeof window._cfRecoveryDelayMinutes === "number" &&
@@ -928,10 +937,10 @@
         rm = window._cfRecoveryDelayMinutes;
       }
     } catch (e) {
-      rm = 1;
+      rm = undefined;
     }
     if (typeof rm !== "number" || !isFinite(rm) || rm < 0) {
-      rm = 1;
+      rm = String(getStoreSlug()).toLowerCase() === "demo" ? 2 : 1;
     }
     return rm;
   }
@@ -2415,7 +2424,9 @@
     var delayMs = getRecoveryDelayMilliseconds();
     var lastTs = window._cartflowLastActivityTs;
     try {
+      console.log("CART RECOVERY SCHEDULED:", true);
       console.log("HAS CART:", haveCartForWidget());
+      console.log("LAST ACTIVITY:", lastTs);
       console.log("RECOVERY DELAY:", recoveryDelayMinutes);
       console.log("(idle window ms):", delayMs);
     } catch (eL) {
@@ -2429,20 +2440,23 @@
     idleTimer = setTimeout(function () {
       idleTimer = null;
       var nowMs = Date.now();
-      var lab = lastTs != null ? lastTs : nowMs;
+      var lab =
+        typeof window._cartflowLastActivityTs === "number"
+          ? window._cartflowLastActivityTs
+          : nowMs;
       var deltaMs = nowMs - lab;
-      var shouldSendRecovery =
-        haveCartForWidget() && deltaMs >= recoveryDelayMinutes * 60 * 1000;
+      /* المؤقّت نفسه هو فترة السكون؛ لا نرفض الإرسال بسبب انحراف وقتي بسيط */
+      var shouldSend = haveCartForWidget();
       try {
         console.log("HAS CART:", haveCartForWidget());
+        console.log("LAST ACTIVITY:", lab);
         console.log("RECOVERY DELAY:", recoveryDelayMinutes);
-        console.log("TIME SINCE LAST ACTIVITY:", nowMs - lab, "ms");
-        console.log("SHOULD SEND RECOVERY:", shouldSendRecovery);
-        console.log("EXIT INTENT BLOCKED:", haveCartForWidget());
+        console.log("TIME SINCE LAST ACTIVITY:", deltaMs);
+        console.log("SHOULD SEND RECOVERY:", shouldSend);
       } catch (e2) {
         /* ignore */
       }
-      if (!shouldSendRecovery || !haveCartForWidget()) {
+      if (!shouldSend) {
         return;
       }
       showBubble(TRIGGER_SOURCE_CART);
@@ -2754,6 +2768,15 @@
       setTimeout(function () {
         runArmBody();
         nudgeWidgetIdle();
+        setTimeout(function () {
+          try {
+            if (haveCartForWidget() && step1Ready && !shown && !isSessionConverted()) {
+              resetIdle();
+            }
+          } catch (eDefer) {
+            /* ignore */
+          }
+        }, 60);
         if (cartWidgetFallbackTimer) {
           clearTimeout(cartWidgetFallbackTimer);
           cartWidgetFallbackTimer = null;
