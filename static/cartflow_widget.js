@@ -1774,7 +1774,7 @@
         ack.style.cssText =
           "margin:0;font-size:13px;line-height:1.5;opacity:0.95;";
         ack.textContent =
-          "شكراً 🙏 نقدّر وقتك؛ تقدر تكمّل الحوار من الأزرار تحت وقت ما تريد.";
+          "شكراً 🙏 سجلنا ملاحظتك؛ تقدر تتواصل وقت ما تحتاج.";
         wrapEl.appendChild(ack);
       }
 
@@ -1815,6 +1815,11 @@
         while (wrap.firstChild) {
           wrap.removeChild(wrap.firstChild);
         }
+        var hintHead = document.createElement("div");
+        hintHead.setAttribute("data-cf-layer-d-hint", "1");
+        hintHead.style.cssText =
+          "font-weight:700;font-size:14px;margin:0 0 12px 0;line-height:1.45;";
+        hintHead.textContent = "اختار السبب فقط";
         var rowCh = document.createElement("div");
         rowCh.style.cssText =
           "display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-start;margin:0;padding:2px 0;" +
@@ -1826,7 +1831,9 @@
           { tag: "delivery_time", label: "مدة التوصيل" },
           { tag: "warranty", label: "الضمان" },
           { tag: "_other", label: "سبب آخر" },
+          { tag: "no_help", label: "ما أحتاج مساعدة الآن" },
         ];
+        wrap.appendChild(hintHead);
         var idx;
         for (idx = 0; idx < layerOpts.length; idx++) {
           (function (opt) {
@@ -1839,6 +1846,14 @@
               e.preventDefault();
               if (opt.tag === "_other") {
                 mountOtherTextUi(wrap);
+              } else if (opt.tag === "no_help") {
+                persistSessionAbandonReason("no_help", null);
+                stripContentKeepChrome();
+                var pNk = document.createElement("p");
+                pNk.setAttribute("data-cf-layer-d-no-help", "1");
+                pNk.style.cssText = "margin:0;font-size:14px;line-height:1.55;";
+                pNk.textContent = "تمام 👍 إذا احتجت أي شيء أنا موجود";
+                widgetBody.appendChild(pNk);
               } else {
                 persistSessionAbandonReason(opt.tag, null);
                 showLayerDAckAfterPick(wrap);
@@ -1862,39 +1877,44 @@
         ? "هلا 👋 أقدر أخدمك بشيء؟"
         : "تبي أساعدك تكمل طلبك؟";
 
-    var row0 = document.createElement("div");
-    row0.style.cssText =
-      "display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-start;margin-top:2px;";
+    var row0 = null;
+    var btnY = null;
+    var btnN = null;
+    if (openSource === TRIGGER_SOURCE_EXIT_INTENT) {
+      row0 = document.createElement("div");
+      row0.style.cssText =
+        "display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-start;margin-top:2px;";
 
-    var btnY = document.createElement("button");
-    btnY.type = "button";
-    btnY.textContent = "نعم";
-    btnY.style.cssText = btnStyle;
+      btnY = document.createElement("button");
+      btnY.type = "button";
+      btnY.textContent = "نعم";
+      btnY.style.cssText = btnStyle;
 
-    var btnN = document.createElement("button");
-    btnN.type = "button";
-    btnN.textContent = "لا";
-    btnN.style.cssText = btnStyle;
-    btnN.addEventListener("click", function (ev) {
-      ev.stopPropagation();
-      ev.preventDefault();
-      if (isDemoStoreProductPage() && isDemoScenarioActive()) {
-        return;
-      }
-      removeFabIfAny();
-      if (typeof w._cfCleanup === "function") {
-        w._cfCleanup();
-      }
-      if (w && w.parentNode) {
-        w.parentNode.removeChild(w);
-      }
-      if (isDemoStoreProductPage()) {
-        shown = false;
-        demoStoreBubbleDismissed = true;
-        clearTimeout(idleTimer);
-        idleTimer = null;
-      }
-    });
+      btnN = document.createElement("button");
+      btnN.type = "button";
+      btnN.textContent = "لا";
+      btnN.style.cssText = btnStyle;
+      btnN.addEventListener("click", function (ev) {
+        ev.stopPropagation();
+        ev.preventDefault();
+        if (isDemoStoreProductPage() && isDemoScenarioActive()) {
+          return;
+        }
+        removeFabIfAny();
+        if (typeof w._cfCleanup === "function") {
+          w._cfCleanup();
+        }
+        if (w && w.parentNode) {
+          w.parentNode.removeChild(w);
+        }
+        if (isDemoStoreProductPage()) {
+          shown = false;
+          demoStoreBubbleDismissed = true;
+          clearTimeout(idleTimer);
+          idleTimer = null;
+        }
+      });
+    }
 
     function getReasonActionOrder(rkey) {
       return CARTFLOW_REASON_ACTION_ORDER[rkey]
@@ -2509,31 +2529,37 @@
       widgetBody.appendChild(row);
     }
 
-    btnY.addEventListener("click", function (ev) {
-      ev.stopPropagation();
-      ev.preventDefault();
-      if (w.getAttribute("data-cf-yes") === "1") {
-        return;
-      }
-      w.setAttribute("data-cf-yes", "1");
-      if (
-        openSource === TRIGGER_SOURCE_EXIT_INTENT &&
-        isDemoStoreProductPage() &&
-        !haveCartForWidget()
-      ) {
-        renderBrowsingGeneralOptions();
-        emitDemoGuideEvent("cartflow-demo-browsing-options-visible", {});
-      } else {
-        renderReasonList();
-        emitDemoGuideEvent("cartflow-demo-reason-list-visible", {});
-      }
-    }, false);
+    if (btnY) {
+      btnY.addEventListener("click", function (ev) {
+        ev.stopPropagation();
+        ev.preventDefault();
+        if (w.getAttribute("data-cf-yes") === "1") {
+          return;
+        }
+        w.setAttribute("data-cf-yes", "1");
+        if (
+          openSource === TRIGGER_SOURCE_EXIT_INTENT &&
+          isDemoStoreProductPage() &&
+          !haveCartForWidget()
+        ) {
+          renderBrowsingGeneralOptions();
+          emitDemoGuideEvent("cartflow-demo-browsing-options-visible", {});
+        } else {
+          renderReasonList();
+          emitDemoGuideEvent("cartflow-demo-reason-list-visible", {});
+        }
+      }, false);
+    }
 
-    row0.appendChild(btnY);
-    row0.appendChild(btnN);
+    if (row0 && btnY && btnN) {
+      row0.appendChild(btnY);
+      row0.appendChild(btnN);
+    }
     widgetBody.appendChild(p0);
     mountLayerDAbandonIfEligible();
-    widgetBody.appendChild(row0);
+    if (row0) {
+      widgetBody.appendChild(row0);
+    }
     try {
       window.cartflowDevMountProductViewAuto = function () {
         mountProductAwareView("auto");
