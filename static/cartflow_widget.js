@@ -2047,6 +2047,60 @@
         widgetBody.appendChild(rowD);
       }
 
+      function mountWarrantyObjectionFollowUp() {
+        persistSessionAbandonReason("warranty", null);
+        stripContentKeepChrome();
+
+        function replaceBodyWithSingleMessage(msg) {
+          stripContentKeepChrome();
+          var pOut = document.createElement("p");
+          pOut.setAttribute("data-cf-warranty-followup-msg", "1");
+          pOut.style.cssText = "margin:0;font-size:14px;line-height:1.55;";
+          pOut.textContent = msg;
+          widgetBody.appendChild(pOut);
+        }
+
+        var intro = document.createElement("p");
+        intro.setAttribute("data-cf-warranty-followup-intro", "1");
+        intro.style.cssText = "margin:0 0 12px 0;font-size:14px;line-height:1.55;";
+        intro.textContent =
+          "أتفهمك 👍 الضمان مهم ويعطيك راحة بال. أقدر أوضح لك التفاصيل أو سياسة الضمان.";
+
+        var rowW = document.createElement("div");
+        rowW.setAttribute("data-cf-warranty-followup-buttons", "1");
+        rowW.style.cssText = rowStyleCol;
+
+        function addWFBtn(label, onActivate) {
+          var bx = document.createElement("button");
+          bx.type = "button";
+          bx.textContent = label;
+          bx.style.cssText = btnStyle;
+          bx.addEventListener("click", function (ev) {
+            ev.stopPropagation();
+            ev.preventDefault();
+            onActivate();
+          });
+          rowW.appendChild(bx);
+        }
+
+        addWFBtn("كم مدة الضمان؟", function () {
+          replaceBodyWithSingleMessage(
+            "مدة الضمان تختلف حسب المنتج، وغالباً تكون محددة لضمان جودة الاستخدام 👍"
+          );
+        });
+        addWFBtn("ماذا يشمل الضمان؟", function () {
+          replaceBodyWithSingleMessage(
+            "الضمان عادة يشمل عيوب التصنيع أو المشاكل غير المتوقعة أثناء الاستخدام 👍"
+          );
+        });
+        addWFBtn("لا شكراً، لا أحتاج مساعدة", function () {
+          finishNoHelpLayerDFlow();
+        });
+
+        widgetBody.appendChild(intro);
+        widgetBody.appendChild(rowW);
+      }
+
       function mountOtherTextUi(wrapEl) {
         while (wrapEl.firstChild) {
           wrapEl.removeChild(wrapEl.firstChild);
@@ -2123,6 +2177,8 @@
                 mountShippingObjectionFollowUp();
               } else if (opt.tag === "delivery_time") {
                 mountDeliveryObjectionFollowUp();
+              } else if (opt.tag === "warranty") {
+                mountWarrantyObjectionFollowUp();
               } else if (opt.tag === "no_help") {
                 finishNoHelpLayerDFlow();
               } else {
