@@ -899,6 +899,51 @@
   }
 
   /**
+   * رابط واحد نهائي حسب ‎type‎ — لا تُستخرج التسمية/الرابط من أي مكان آخر.
+   */
+  function getLinkByType(type) {
+    var label;
+    var url;
+    if (type === "cart") {
+      label = "🛒 رابط السلة:";
+      url = resolveWhatsappCartUrlString();
+    } else if (type === "alternatives") {
+      label = "🔄 تصفح البدائل:";
+      url = "https://smartreplyai.net/demo/store";
+    } else {
+      label = "📦 رابط المنتج:";
+      url = resolveWhatsappProductUrlString() || resolveWhatsappCartUrlString();
+    }
+    return { label: label, url: url };
+  }
+
+  /**
+   * يزيل من جسم الرسالة القادم من الـ API أي سطور رابط سلة/بدائل مكررة
+   * حتى لا يظهر ‎🛒 رابط السلة‎ بعد البناء عندما ‎type === \"alternatives\"‎.
+   */
+  function stripMisplacedCartArtifactsFromCore(core, type) {
+    var s = core != null ? String(core) : "";
+    if (type !== "alternatives") {
+      return s;
+    }
+    var lines = s.split("\n");
+    var out = [];
+    var i;
+    for (i = 0; i < lines.length; i++) {
+      var line = lines[i];
+      var t = line.trim();
+      if (/رابط السلة|🛒\s*رابط|تصفح البدائل|🔄\s*تصفح/.test(line)) {
+        continue;
+      }
+      if (/^https?:\/\//i.test(t) && /cart|#cart/i.test(t)) {
+        continue;
+      }
+      out.push(lines[i]);
+    }
+    return out.join("\n").trim();
+  }
+
+  /**
    * مصدر واحد لنص واتساب في المعاينة — النوع + رابط واحد فقط.
    * opts: reason, sub_category, generatedCore (الـ API cart_url لا يُدمَج هنا)
    */
@@ -917,7 +962,7 @@
     if (reason === "price" && !sub_category) {
       sub_category = "price_discount_request";
     }
-    var generatedCore =
+    var generatedCoreRaw =
       opts.generatedCore != null ? String(opts.generatedCore) : "";
     var type = "cart";
     if (
@@ -940,30 +985,34 @@
     } else if (reason === "price") {
       type = "cart";
     }
-    var label;
-    var url;
-    if (type === "cart") {
-      label = "🛒 رابط السلة:";
-      url = resolveWhatsappCartUrlString();
-    } else if (type === "alternatives") {
-      label = "🔄 تصفح البدائل:";
-      url = "https://smartreplyai.net/demo/store";
-    } else {
-      label = "📦 رابط المنتج:";
-      url = resolveWhatsappProductUrlString() || resolveWhatsappCartUrlString();
+    var link = getLinkByType(type);
+    try {
+      Object.freeze(link);
+    } catch (e) {
+      /* ignore */
     }
+    var generatedCore = stripMisplacedCartArtifactsFromCore(generatedCoreRaw, type);
+    var finalMessage =
+      "👋 مرحباً\n\n" +
+      generatedCore +
+      "\n\n" +
+      link.label +
+      "\n" +
+      link.url;
     try {
       console.log("WHATSAPP_BUILD", {
         reason: reason,
         sub_category: sub_category,
         type: type,
       });
+      console.log("FINAL_LINK_USED", link);
+      if (type === "alternatives" && String(link.url).indexOf("cart") >= 0) {
+        console.error("WRONG LINK USED FOR ALTERNATIVES", link);
+      }
     } catch (e) {
       /* ignore */
     }
-    return (
-      "👋 مرحباً\n\n" + generatedCore + "\n\n" + label + "\n" + url
-    );
+    return finalMessage;
   }
 
   function postGenerateWhatsappMessage(payload) {
