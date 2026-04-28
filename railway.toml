@@ -1,0 +1,9 @@
+# Railway config-as-code: root repo, Dockerfile build, FastAPI entry main:app
+# Deploy root directory must be the repository root (not a subdirectory).
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+startCommand = "uvicorn main:app --host 0.0.0.0 --port $PORT"
