@@ -47,6 +47,14 @@ def get_primary_recovery_reason(store_slug: str) -> Optional[str]:
     return rk
 
 
+def get_primary_recovery_reason_for_store(store_id: str) -> Optional[str]:
+    """
+    نفس ‎get_primary_recovery_reason‎ — ‎store_id‎ هنا هو مفتاح المتجر كما في عمود ‎store_slug‎
+    في ‎CartRecoveryReason‎ (مثل ‎demo‎)، وليس ‎Store.id‎ الرقمي.
+    """
+    return get_primary_recovery_reason(store_id)
+
+
 def get_primary_recovery_reason_by_store_id(store_id: int) -> Optional[str]:
     """
     نفس ‎get_primary_recovery_reason‎ باستخدام ‎Store.id‎: يُطابق ‎zid_store_id‎ (أو افتراضي) كـ ‎store_slug‎.

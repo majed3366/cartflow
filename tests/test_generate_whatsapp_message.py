@@ -131,6 +131,13 @@ class GenerateWhatsappMessageTests(unittest.TestCase):
         self.assertTrue(j.get("ok"), j)
         self.assertEqual("price", j.get("primary_reason"))
 
+    def test_api_recovery_primary_reason(self) -> None:
+        r = self.client.get("/api/recovery/primary-reason?store_id=test_recovery_slug")
+        self.assertEqual(200, r.status_code, r.text)
+        j = r.json()
+        self.assertEqual("price", j.get("primary_reason"), j)
+        self.assertIn("primary_reason", j)
+
 
 if __name__ == "__main__":
     unittest.main()

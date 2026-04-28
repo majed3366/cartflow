@@ -17,7 +17,7 @@ from typing import Any, Dict, Optional, Tuple
 import anthropic
 import requests
 from dotenv import load_dotenv
-from fastapi import BackgroundTasks, FastAPI, Request
+from fastapi import BackgroundTasks, FastAPI, Query, Request
 from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -75,12 +75,34 @@ from services.whatsapp_send import (  # noqa: E402
     should_send_whatsapp,
 )
 from schema_widget import ensure_store_widget_schema
+from services.cartflow_whatsapp_mock import REASON_CHOICES as CF_REASON_CHOICES
+from services.recovery_decision import get_primary_recovery_reason
 
 log = logging.getLogger("cartflow")
 
 
 def _ensure_store_widget_schema() -> None:
     ensure_store_widget_schema(db)
+
+
+@app.get("/api/recovery/primary-reason")
+def api_recovery_primary_reason(
+    store_id: str = Query(..., min_length=1, max_length=255),
+) -> Any:
+    """
+    أكثر سبب تردد من ‎CartRecoveryReason‎ لهذا المتجر (نفس مفتاح ‎store_slug‎ في الجدول).
+    """
+    try:
+        db.create_all()
+        slug = (store_id or "").strip()[:255]
+        pr = get_primary_recovery_reason(slug)
+        if not pr or pr not in CF_REASON_CHOICES:
+            pr = "price"
+        return j({"primary_reason": pr})
+    except (SQLAlchemyError, OSError) as e:
+        db.session.rollback()
+        log.warning("api_recovery_primary_reason: %s", e)
+        return j({"primary_reason": "price"})
 
 
 @app.on_event("startup")

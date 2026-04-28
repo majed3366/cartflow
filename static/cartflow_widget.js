@@ -858,30 +858,37 @@
 
   var _cfDashPrimaryCache = null;
 
-  function prefetchDashboardPrimaryReason() {
-    var slug = getStoreSlug();
+  /** GET /api/recovery/primary-reason — يحدّث الكاش لمفتاح المتجر (= store_slug). */
+  function fetchDashboardPrimaryReasonFromApi(storeKey) {
+    var sk =
+      storeKey != null && String(storeKey).replace(/\s/g, "") !== ""
+        ? String(storeKey).trim()
+        : getStoreSlug();
     var b = (apiBase() || "").toString().replace(/\/$/, "");
     var path =
-      (b ? b + "/api/cartflow/primary-recovery-reason" : "/api/cartflow/primary-recovery-reason") +
-      "?store_slug=" +
-      encodeURIComponent(slug);
-    fetch(path, { method: "GET", credentials: "same-origin" })
+      (b ? b + "/api/recovery/primary-reason" : "/api/recovery/primary-reason") +
+      "?store_id=" +
+      encodeURIComponent(sk);
+    return fetch(path, { method: "GET", credentials: "same-origin" })
       .then(function (r) {
         return r.json();
       })
-      .then(function (j) {
-        if (j && j.ok && j.primary_reason) {
-          var p = String(j.primary_reason).trim();
-          _cfDashPrimaryCache = p;
-          if (!window.__cfPrimaryByStore) {
-            window.__cfPrimaryByStore = {};
-          }
-          window.__cfPrimaryByStore[slug] = p;
+      .then(function (data) {
+        var pr =
+          data && data.primary_reason
+            ? String(data.primary_reason).trim()
+            : "price";
+        _cfDashPrimaryCache = pr;
+        if (!window.__cfPrimaryByStore) {
+          window.__cfPrimaryByStore = {};
         }
-      })
-      .catch(function () {
-        /* keep cache null until buildWhatsappMessage default */
+        window.__cfPrimaryByStore[sk] = pr;
+        return pr;
       });
+  }
+
+  function prefetchDashboardPrimaryReason() {
+    fetchDashboardPrimaryReasonFromApi(getStoreSlug()).catch(function () {});
   }
 
   function getPrimaryRecoveryReason(storeId) {
@@ -1819,45 +1826,71 @@
           }
           convHint.innerHTML = "";
           convHint.style.display = "none";
-          var finalMessage = buildWhatsappMessage({
-            reason: waReason,
-            sub_category: waSub,
-            generatedCore: generatedCore,
-          });
-          var wurl = buildWaMeComposeUrl(finalMessage, merchantE164);
-          try {
-            window.open(wurl, "_blank", "noopener,noreferrer");
-          } catch (e) {
-            /* ignore */
-          }
-          try {
-            console.log("whatsapp compose opened");
-          } catch (e) {
-            /* ignore */
-          }
-          mockStatus.textContent = "تم فتح واتساب لإرسال الرسالة ✅";
-          mockStatus.style.display = "block";
-          convFeedbackT1 = setTimeout(function () {
-            if (!strip.isConnected) {
-              return;
+          function openWhatsappCompose(effectiveReason, effectiveSub) {
+            var finalMessage = buildWhatsappMessage({
+              reason: effectiveReason,
+              sub_category: effectiveSub,
+              generatedCore: generatedCore,
+            });
+            var wurl = buildWaMeComposeUrl(finalMessage, merchantE164);
+            try {
+              window.open(wurl, "_blank", "noopener,noreferrer");
+            } catch (e) {
+              /* ignore */
             }
-            var p1 = document.createElement("p");
-            p1.style.cssText =
-              "margin:0;font-size:11.5px;line-height:1.4;color:#86efac;font-weight:600;";
-            p1.textContent = "💰 تم استرجاع عميل محتمل";
-            convHint.appendChild(p1);
-            convHint.style.display = "flex";
-            convFeedbackT2 = setTimeout(function () {
+            try {
+              console.log("whatsapp compose opened");
+            } catch (e) {
+              /* ignore */
+            }
+            mockStatus.textContent = "تم فتح واتساب لإرسال الرسالة ✅";
+            mockStatus.style.display = "block";
+            convFeedbackT1 = setTimeout(function () {
               if (!strip.isConnected) {
                 return;
               }
-              var p2 = document.createElement("p");
-              p2.style.cssText =
-                "margin:0;font-size:11.5px;line-height:1.4;color:#a7f3d0;opacity:0.95;font-weight:500;";
-              p2.textContent = "🟢 العميل عاد إلى السلة";
-              convHint.appendChild(p2);
+              var p1 = document.createElement("p");
+              p1.style.cssText =
+                "margin:0;font-size:11.5px;line-height:1.4;color:#86efac;font-weight:600;";
+              p1.textContent = "💰 تم استرجاع عميل محتمل";
+              convHint.appendChild(p1);
+              convHint.style.display = "flex";
+              convFeedbackT2 = setTimeout(function () {
+                if (!strip.isConnected) {
+                  return;
+                }
+                var p2 = document.createElement("p");
+                p2.style.cssText =
+                  "margin:0;font-size:11.5px;line-height:1.4;color:#a7f3d0;opacity:0.95;font-weight:500;";
+                p2.textContent = "🟢 العميل عاد إلى السلة";
+                convHint.appendChild(p2);
+              }, 1200);
             }, 1200);
-          }, 1200);
+          }
+          var needDashboardReason =
+            !waReason || waReason === "auto";
+          if (needDashboardReason) {
+            fetchDashboardPrimaryReasonFromApi(getStoreSlug())
+              .then(function (pr) {
+                try {
+                  console.log("PRIMARY_REASON_FROM_DASHBOARD", pr);
+                } catch (e) {
+                  /* ignore */
+                }
+                openWhatsappCompose(pr, waSub);
+              })
+              .catch(function () {
+                var fb = getPrimaryRecoveryReason(getStoreSlug());
+                try {
+                  console.log("PRIMARY_REASON_FROM_DASHBOARD", fb);
+                } catch (e) {
+                  /* ignore */
+                }
+                openWhatsappCompose(fb, waSub);
+              });
+          } else {
+            openWhatsappCompose(waReason, waSub);
+          }
         });
         previewBox.appendChild(bMock);
         previewBox.appendChild(mockStatus);
