@@ -1877,6 +1877,60 @@
         widgetBody.appendChild(rowQ);
       }
 
+      function mountShippingObjectionFollowUp() {
+        persistSessionAbandonReason("shipping_cost", null);
+        stripContentKeepChrome();
+
+        function replaceBodyWithSingleMessage(msg) {
+          stripContentKeepChrome();
+          var pOut = document.createElement("p");
+          pOut.setAttribute("data-cf-shipping-followup-msg", "1");
+          pOut.style.cssText = "margin:0;font-size:14px;line-height:1.55;";
+          pOut.textContent = msg;
+          widgetBody.appendChild(pOut);
+        }
+
+        var intro = document.createElement("p");
+        intro.setAttribute("data-cf-shipping-followup-intro", "1");
+        intro.style.cssText = "margin:0 0 12px 0;font-size:14px;line-height:1.55;";
+        intro.textContent =
+          "أتفهمك 👍 تكلفة الشحن ممكن تأثر. أقدر أوضح لك الخيارات أو العروض المتاحة.";
+
+        var rowS = document.createElement("div");
+        rowS.setAttribute("data-cf-shipping-followup-buttons", "1");
+        rowS.style.cssText = rowStyleCol;
+
+        function addSFBtn(label, onActivate) {
+          var bx = document.createElement("button");
+          bx.type = "button";
+          bx.textContent = label;
+          bx.style.cssText = btnStyle;
+          bx.addEventListener("click", function (ev) {
+            ev.stopPropagation();
+            ev.preventDefault();
+            onActivate();
+          });
+          rowS.appendChild(bx);
+        }
+
+        addSFBtn("هل فيه شحن مجاني؟", function () {
+          replaceBodyWithSingleMessage(
+            "أحياناً يكون فيه عروض شحن مجاني حسب الطلب أو قيمة السلة 👍"
+          );
+        });
+        addSFBtn("كم تكلفة الشحن بالضبط؟", function () {
+          replaceBodyWithSingleMessage(
+            "تكلفة الشحن تعتمد على المدينة وطريقة التوصيل، وتظهر لك قبل إتمام الطلب."
+          );
+        });
+        addSFBtn("لا شكراً، لا أحتاج مساعدة", function () {
+          finishNoHelpLayerDFlow();
+        });
+
+        widgetBody.appendChild(intro);
+        widgetBody.appendChild(rowS);
+      }
+
       function mountOtherTextUi(wrapEl) {
         while (wrapEl.firstChild) {
           wrapEl.removeChild(wrapEl.firstChild);
@@ -1949,6 +2003,8 @@
                 mountPriceObjectionFollowUp();
               } else if (opt.tag === "quality_uncertainty") {
                 mountQualityObjectionFollowUp();
+              } else if (opt.tag === "shipping_cost") {
+                mountShippingObjectionFollowUp();
               } else if (opt.tag === "no_help") {
                 finishNoHelpLayerDFlow();
               } else {
