@@ -21,6 +21,7 @@ from fastapi import BackgroundTasks, FastAPI, Query, Request
 from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from extensions import db, init_database, remove_scoped_session
 from integrations.zid_client import exchange_code_for_token, verify_webhook_signature
@@ -33,10 +34,15 @@ load_dotenv()
 import models  # noqa: F401, E402
 init_database()
 
-# ASGI مُعطى ‎uvicorn / Railway‎: ‎uvicorn main:app --host 0.0.0.0 --port $PORT‎
+# ASGI مُعطى ‎uvicorn / Railway‎: ‎python start.py‎ یا ‎uvicorn main:app‎ — ‎root_path‎ فارغ لعدم احتساب مسار خلف وكيل.
 app = FastAPI(
     default_response_class=UTF8JSONResponse,
     title="CartFlow",
+    root_path="",
+)
+app.add_middleware(
+    TrustedHostMiddleware,
+    allowed_hosts=["*"],
 )
 app.state.secret_key = os.getenv("SECRET_KEY", "dev-only-change-in-production")
 _ROOT = os.path.dirname(os.path.abspath(__file__))
