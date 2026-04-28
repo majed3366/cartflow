@@ -527,7 +527,7 @@ def dev_recovery_delay_verify():
 
 @app.get("/dev/config-system-verify")
 def config_system_verify():
-    config = get_cartflow_config()
+    config = get_cartflow_config(store_slug="demo")
 
     return {
         "ok": True,
