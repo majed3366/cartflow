@@ -419,6 +419,19 @@
     document.head.appendChild(s);
   }
 
+  function ensureChatBodyLayoutStyles() {
+    if (document.getElementById("cf-chat-body-layout")) {
+      return;
+    }
+    var st = document.createElement("style");
+    st.id = "cf-chat-body-layout";
+    st.textContent =
+      ".cartflow-widget-body.chat-body,.cartflow-widget-body{position:relative;box-sizing:border-box;min-width:0;padding-bottom:60px;}" +
+      "[data-cf-layer-d-return-row]{position:relative;width:100%;display:flex;justify-content:center;align-items:center;margin-top:8px;flex-shrink:0;box-sizing:border-box;z-index:2;}" +
+      "[data-cf-layer-d-chat-return]{position:relative;z-index:5;max-width:100%;box-sizing:border-box;}";
+    document.head.appendChild(st);
+  }
+
   function applyBubbleLayout(el) {
     if (!el) {
       return;
@@ -1430,6 +1443,7 @@
     });
 
     ensureMobileUxStyles();
+    ensureChatBodyLayoutStyles();
     var w = document.createElement("div");
     w.setAttribute("dir", "rtl");
     w.setAttribute("lang", "ar");
@@ -1601,6 +1615,7 @@
     function mountMinimizedFab() {
       removeFabIfAny();
       ensureMobileUxStyles();
+      ensureChatBodyLayoutStyles();
       var fab = document.createElement("button");
       fab.type = "button";
       fab.setAttribute("data-cartflow-fab", "1");
@@ -1704,7 +1719,7 @@
     w.appendChild(chrome);
 
     var widgetBody = document.createElement("div");
-    widgetBody.className = "cartflow-widget-body";
+    widgetBody.className = "cartflow-widget-body chat-body";
     widgetBody.style.cssText = "min-width:0;box-sizing:border-box;";
     w.appendChild(widgetBody);
 
@@ -1784,8 +1799,10 @@
         stripContentKeepChrome();
         var pNk = document.createElement("p");
         pNk.setAttribute("data-cf-layer-d-no-help", "1");
-        pNk.style.cssText = "margin:0 0 10px 0;font-size:14px;line-height:1.55;";
+        pNk.style.cssText = "margin:0 0 8px 0;font-size:14px;line-height:1.55;";
         pNk.textContent = "تمام 👍 إذا احتجت أي شيء أنا موجود";
+        var rowReturn = document.createElement("div");
+        rowReturn.setAttribute("data-cf-layer-d-return-row", "1");
         var bChat = document.createElement("button");
         bChat.type = "button";
         bChat.setAttribute("data-cf-layer-d-chat-return", "1");
@@ -1804,8 +1821,9 @@
             "تقدر تكمل تصفّح المتجر؛ أنا هنا إذا احتجت أي شيء.";
           widgetBody.appendChild(pNeutral);
         });
+        rowReturn.appendChild(bChat);
         widgetBody.appendChild(pNk);
-        widgetBody.appendChild(bChat);
+        widgetBody.appendChild(rowReturn);
       }
 
       function mountPriceObjectionFollowUp() {
