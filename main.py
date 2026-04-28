@@ -74,7 +74,6 @@ from services.whatsapp_send import (  # noqa: E402
     send_whatsapp,
     should_send_whatsapp,
 )
-from config_system import get_cartflow_config
 from schema_widget import ensure_store_widget_schema
 from services.cartflow_whatsapp_mock import REASON_CHOICES as CF_REASON_CHOICES
 from services.recovery_decision import get_primary_recovery_reason
@@ -527,15 +526,23 @@ def dev_recovery_delay_verify():
 
 @app.get("/dev/config-system-verify")
 def config_system_verify():
-    config = get_cartflow_config(store_slug="demo")
+    try:
+        from config_system import get_cartflow_config
 
-    return {
-        "ok": True,
-        "config_loaded": True,
-        "recovery_delay_minutes": config["recovery_delay_minutes"],
-        "whatsapp_recovery_enabled": config["whatsapp_recovery_enabled"],
-        "enabled_recovery_reasons": config["enabled_recovery_reasons"],
-    }
+        config = get_cartflow_config(store_slug="demo")
+
+        return {
+            "ok": True,
+            "config_loaded": True,
+            "recovery_delay_minutes": config["recovery_delay_minutes"],
+            "whatsapp_recovery_enabled": config["whatsapp_recovery_enabled"],
+            "enabled_recovery_reasons": config["enabled_recovery_reasons"],
+        }
+    except Exception as e:  # noqa: BLE001
+        return {
+            "ok": False,
+            "error": str(e),
+        }
 
 
 @app.get("/dev/routes")
