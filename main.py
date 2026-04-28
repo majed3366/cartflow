@@ -15,10 +15,9 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional, Tuple
 
 import anthropic
-from pydantic import BaseModel
 import requests
 from dotenv import load_dotenv
-from fastapi import BackgroundTasks, FastAPI, Query, Request
+from fastapi import BackgroundTasks, Body, FastAPI, Query, Request
 from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -91,6 +90,29 @@ def decision_check(reason_tag: str = "price_high"):
     }
 
 
+@app.post("/dev/whatsapp-decision-test")
+def whatsapp_decision_test(payload: dict = Body(...)) -> dict[str, Any]:
+    """تجربة قرار الواتساب + إرسال مباشر (يسجَّل أيضاً خارج ‎ENV=development‎ لمطابقة ‎/decision-check‎)."""
+    from decision_engine import decide_recovery_action
+    from services.whatsapp_send import send_whatsapp
+
+    phone = payload.get("phone")
+    reason_tag = payload.get("reason_tag")
+
+    result = decide_recovery_action(reason_tag)
+    message = result["message"]
+
+    send_whatsapp(phone, message)
+
+    return {
+        "ok": True,
+        "reason_tag": reason_tag,
+        "action": result["action"],
+        "message": message,
+        "sent": True,
+    }
+
+
 app.add_middleware(
     TrustedHostMiddleware,
     allowed_hosts=["*"],
@@ -137,28 +159,6 @@ from services.cartflow_whatsapp_mock import REASON_CHOICES as CF_REASON_CHOICES
 from services.recovery_decision import get_primary_recovery_reason
 
 log = logging.getLogger("cartflow")
-
-
-class WhatsAppDecisionTestPayload(BaseModel):
-    phone: str
-    reason_tag: str = "price_high"
-
-
-@app.post("/dev/whatsapp-decision-test")
-def dev_whatsapp_decision_test(body: WhatsAppDecisionTestPayload) -> Any:
-    """
-    تجارب فقط (‎ENV=development‎ عبر وسيط — مسار‎ /dev/‎): قرار مسترجع + إرسال واتساب مباشرة.
-    """
-    result = decide_recovery_action(body.reason_tag)
-    message = result["message"]
-    send_whatsapp(body.phone, message)
-    return {
-        "ok": True,
-        "reason_tag": body.reason_tag,
-        "action": result["action"],
-        "message": message,
-        "sent": True,
-    }
 
 
 def _ensure_store_widget_schema() -> None:
@@ -223,9 +223,9 @@ async def set_embed_csp_middleware(request: Request, call_next: Any) -> Any:
 
 @app.middleware("http")
 async def no_dev_in_production(request: Request, call_next: Any) -> Any:
-    """يُنفَّذ أوّل مسار؛ ‎404‎ لـ ‎/dev‎ و ‎/dev/*‎ عندما ‎ENV‎ ليس ‎development‎."""
+    """يُنفَّذ أوّل مسار؛ ‎404‎ لـ ‎/dev‎ و ‎/dev/*‎ عندما ‎ENV‎ ليس ‎development‎ (استثناء: تجربة واتساب/قرار مسجّلة مع ‎/decision-check‎ في ‎Swagger‎)."""
     p = request.url.path
-    if p == "/dev" or p.startswith("/dev/"):
+    if p == "/dev" or (p.startswith("/dev/") and p != "/dev/whatsapp-decision-test"):
         if not _is_development_mode():
             return Response(status_code=404)
     return await call_next(request)
