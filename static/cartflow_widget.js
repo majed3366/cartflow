@@ -1759,6 +1759,70 @@
         wrapEl.appendChild(ack);
       }
 
+      function finishNoHelpLayerDFlow() {
+        persistSessionAbandonReason("no_help", null);
+        stripContentKeepChrome();
+        var pNk = document.createElement("p");
+        pNk.setAttribute("data-cf-layer-d-no-help", "1");
+        pNk.style.cssText = "margin:0;font-size:14px;line-height:1.55;";
+        pNk.textContent = "تمام 👍 إذا احتجت أي شيء أنا موجود";
+        widgetBody.appendChild(pNk);
+      }
+
+      function mountPriceObjectionFollowUp() {
+        persistSessionAbandonReason("price_high", null);
+        stripContentKeepChrome();
+
+        function replaceBodyWithSingleMessage(msg) {
+          stripContentKeepChrome();
+          var pOut = document.createElement("p");
+          pOut.setAttribute("data-cf-price-followup-msg", "1");
+          pOut.style.cssText = "margin:0;font-size:14px;line-height:1.55;";
+          pOut.textContent = msg;
+          widgetBody.appendChild(pOut);
+        }
+
+        var intro = document.createElement("p");
+        intro.setAttribute("data-cf-price-followup-intro", "1");
+        intro.style.cssText = "margin:0 0 12px 0;font-size:14px;line-height:1.55;";
+        intro.textContent =
+          "أفهمك 👍 السعر مهم. أقدر أساعدك بثلاث طرق:";
+
+        var rowPf = document.createElement("div");
+        rowPf.setAttribute("data-cf-price-followup-buttons", "1");
+        rowPf.style.cssText = rowStyleCol;
+
+        function addPfBtn(label, onActivate) {
+          var bx = document.createElement("button");
+          bx.type = "button";
+          bx.textContent = label;
+          bx.style.cssText = btnStyle;
+          bx.addEventListener("click", function (ev) {
+            ev.stopPropagation();
+            ev.preventDefault();
+            onActivate();
+          });
+          rowPf.appendChild(bx);
+        }
+
+        addPfBtn("رشّح لي خيار أقل سعر", function () {
+          replaceBodyWithSingleMessage(
+            "أكيد 👍 أعطني لحظة وأرشح لك خيار مناسب بسعر أقل."
+          );
+        });
+        addPfBtn("وضّح لي القيمة", function () {
+          replaceBodyWithSingleMessage(
+            "أكيد. هذا المنتج يتميز بالجودة والضمان والمواصفات مقارنة بسعره."
+          );
+        });
+        addPfBtn("لا شكراً، لا أحتاج مساعدة", function () {
+          finishNoHelpLayerDFlow();
+        });
+
+        widgetBody.appendChild(intro);
+        widgetBody.appendChild(rowPf);
+      }
+
       function mountOtherTextUi(wrapEl) {
         while (wrapEl.firstChild) {
           wrapEl.removeChild(wrapEl.firstChild);
@@ -1827,14 +1891,10 @@
               e.preventDefault();
               if (opt.tag === "_other") {
                 mountOtherTextUi(wrap);
+              } else if (opt.tag === "price_high") {
+                mountPriceObjectionFollowUp();
               } else if (opt.tag === "no_help") {
-                persistSessionAbandonReason("no_help", null);
-                stripContentKeepChrome();
-                var pNk = document.createElement("p");
-                pNk.setAttribute("data-cf-layer-d-no-help", "1");
-                pNk.style.cssText = "margin:0;font-size:14px;line-height:1.55;";
-                pNk.textContent = "تمام 👍 إذا احتجت أي شيء أنا موجود";
-                widgetBody.appendChild(pNk);
+                finishNoHelpLayerDFlow();
               } else {
                 persistSessionAbandonReason(opt.tag, null);
                 showLayerDAckAfterPick(wrap);
