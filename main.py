@@ -47,6 +47,22 @@ def ping():
     return {"ok": True}
 
 
+@app.get("/config-check")
+def config_check():
+    from config_system import get_cartflow_config
+
+    config = get_cartflow_config(store_slug="demo")
+
+    return {
+        "ok": True,
+        "config_loaded": True,
+        "store_slug": "demo",
+        "recovery_delay_minutes": config["recovery_delay_minutes"],
+        "whatsapp_recovery_enabled": config["whatsapp_recovery_enabled"],
+        "enabled_recovery_reasons": config["enabled_recovery_reasons"],
+    }
+
+
 @app.get("/dev/routes")
 def list_routes():
     return [route.path for route in app.routes]
