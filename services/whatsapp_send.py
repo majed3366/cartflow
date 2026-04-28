@@ -179,10 +179,19 @@ def should_send_whatsapp(
 
 def send_whatsapp(phone: str, message: str) -> Dict[str, Any]:
     """
-    يرسل رسالة واتساب. حالياً لا يرسل فعلياً — يطابق الرسالة في الـ logging فقط.
+    إرسال واتساب: عند ضبط ‎WHATSAPP_API_URL + WHATSAPP_API_KEY‎ يُمرَّر إلى ‎send_whatsapp_real‎
+    ويعود بنتيجة المزود؛ وإلا تسجيل فقط بدون ادّعاء إرسال فعلي (‎ok: False‎، ‎not_configured‎).
     """
-    logger.info("send_whatsapp (no provider): phone=%r, message=%s", phone, message)
-    return {"ok": True}
+    if whatsapp_real_configured():
+        return send_whatsapp_real(phone, message)
+    logger.info(
+        "send_whatsapp (no HTTP provider): phone=%r, message=%s", phone, message
+    )
+    return {
+        "ok": False,
+        "error": "not_configured",
+        "hint": "Set WHATSAPP_API_URL and WHATSAPP_API_KEY for confirmed delivery.",
+    }
 
 
 def send_whatsapp_mock(phone, message):
@@ -243,10 +252,19 @@ def send_whatsapp_real(phone: str, message: str) -> Dict[str, Any]:
             timeout=60,
         )
         if 200 <= r.status_code < 300:
-            return {
+            out: Dict[str, Any] = {
                 "ok": True,
                 "status_code": r.status_code,
             }
+            try:
+                data = r.json()
+            except ValueError:
+                txt = (r.text or "").strip()
+                if txt:
+                    out["provider_body_preview"] = txt[:2000]
+                return out
+            out["provider_response"] = data
+            return out
         logger.warning(
             "WhatsApp API non-success: %s %s", r.status_code, r.text[:1000]
         )

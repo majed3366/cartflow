@@ -102,14 +102,18 @@ def whatsapp_decision_test(payload: dict = Body(...)) -> dict[str, Any]:
     result = decide_recovery_action(reason_tag)
     message = result["message"]
 
-    send_whatsapp(phone, message)
-
+    send_result = send_whatsapp(phone, message)
+    print("[WHATSAPP TEST] phone=", phone)
+    print("[WHATSAPP TEST] message=", message)
+    print("[WHATSAPP TEST] result=", send_result)
+    sent_ok = isinstance(send_result, dict) and send_result.get("ok") is True
     return {
         "ok": True,
         "reason_tag": reason_tag,
         "action": result["action"],
         "message": message,
-        "sent": True,
+        "send_result": send_result,
+        "sent": sent_ok,
     }
 
 
