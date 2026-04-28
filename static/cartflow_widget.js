@@ -11,8 +11,7 @@
   var DEMO_ARMED_IDLE_MS = 1600;
   var REASON_TAG_KEY = "cartflow_reason_tag";
   var REASON_SUB_TAG_KEY = "cartflow_reason_sub_tag";
-  /** Layer D: سبب متروك السلة (واجهة فقط؛ مفاتيح منفصلة عن سبب الخطّة الأساسية) */
-  var LAYER_D_OFFER_SHOWN_KEY = "cartflow_layer_d_offer_shown";
+  /** Layer D: سبب متروك السلة (مفاتيح منفصلة عن سبب الخطّة الأساسية) */
   var SESSION_ABANDON_REASON_TAG_KEY = "cartflow_abandon_reason_tag";
   var SESSION_ABANDON_CUSTOM_REASON_KEY = "cartflow_abandon_custom_reason";
   var DEMO_STORE_WIDGET_ARMED_KEY = "cartflow_demo_store_widget_armed";
@@ -726,22 +725,6 @@
         return null;
       }
     };
-  }
-
-  function readLayerDOfferShown() {
-    try {
-      return window.sessionStorage.getItem(LAYER_D_OFFER_SHOWN_KEY) === "1";
-    } catch (e) {
-      return false;
-    }
-  }
-
-  function writeLayerDOfferShown() {
-    try {
-      window.sessionStorage.setItem(LAYER_D_OFFER_SHOWN_KEY, "1");
-    } catch (e) {
-      /* ignore */
-    }
   }
 
   function persistSessionAbandonReason(reasonTag, customTextOptional) {
@@ -1758,13 +1741,11 @@
       if (openSource !== TRIGGER_SOURCE_CART) {
         return;
       }
-      if (readLayerDOfferShown()) {
-        return;
-      }
 
       var wrap = document.createElement("div");
       wrap.setAttribute("data-cf-layer-d-abandon", "1");
-      wrap.style.cssText = "margin:0 0 10px 0;";
+      wrap.style.cssText =
+        "display:block;width:100%;box-sizing:border-box;margin:0 0 10px 0;";
 
       function showLayerDAckAfterPick(wrapEl) {
         while (wrapEl.firstChild) {
@@ -1867,7 +1848,6 @@
 
       buildChoices();
       widgetBody.appendChild(wrap);
-      writeLayerDOfferShown();
     }
 
     var p0 = document.createElement("p");
