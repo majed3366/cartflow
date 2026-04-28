@@ -14,6 +14,8 @@
   /** Layer D: سبب متروك السلة (مفاتيح منفصلة عن سبب الخطّة الأساسية) */
   var SESSION_ABANDON_REASON_TAG_KEY = "cartflow_abandon_reason_tag";
   var SESSION_ABANDON_CUSTOM_REASON_KEY = "cartflow_abandon_custom_reason";
+  /** يمنع إعادة فتح رسالة استرجاع السلة بعد لا تريد مساعدة ثم الرجوع للمحادثة */
+  var CART_RECOVERY_SUPPRESS_KEY = "cartflow_suppress_cart_recovery";
   var DEMO_STORE_WIDGET_ARMED_KEY = "cartflow_demo_store_widget_armed";
   var DEMO_STORE_EXIT_INTENT_SHOWN_KEY = "cartflow_demo_store_exit_intent_shown";
   var DEMO_STORE_EXIT_PROMPT_RESOLVED_KEY = "cartflow_demo_store_exit_prompt_resolved";
@@ -755,6 +757,22 @@
     }
   }
 
+  function readCartRecoverySuppressed() {
+    try {
+      return window.sessionStorage.getItem(CART_RECOVERY_SUPPRESS_KEY) === "1";
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function writeCartRecoverySuppressed() {
+    try {
+      window.sessionStorage.setItem(CART_RECOVERY_SUPPRESS_KEY, "1");
+    } catch (e) {
+      /* ignore */
+    }
+  }
+
   function haveCartForWidget() {
     if (isSessionConverted()) {
       return false;
@@ -1368,8 +1386,10 @@
       }
       return;
     }
-    if (openSource === TRIGGER_SOURCE_CART && !hasCartItems) {
-      return;
+    if (openSource === TRIGGER_SOURCE_CART) {
+      if (!hasCartItems || readCartRecoverySuppressed()) {
+        return;
+      }
     }
     if (isSessionConverted() || !step1Ready) {
       return;
@@ -1764,9 +1784,28 @@
         stripContentKeepChrome();
         var pNk = document.createElement("p");
         pNk.setAttribute("data-cf-layer-d-no-help", "1");
-        pNk.style.cssText = "margin:0;font-size:14px;line-height:1.55;";
+        pNk.style.cssText = "margin:0 0 10px 0;font-size:14px;line-height:1.55;";
         pNk.textContent = "تمام 👍 إذا احتجت أي شيء أنا موجود";
+        var bChat = document.createElement("button");
+        bChat.type = "button";
+        bChat.setAttribute("data-cf-layer-d-chat-return", "1");
+        bChat.setAttribute("aria-label", "رجوع للمحادثة");
+        bChat.textContent = "رجوع للمحادثة";
+        bChat.style.cssText = btnStyle;
+        bChat.addEventListener("click", function (evRet) {
+          evRet.stopPropagation();
+          evRet.preventDefault();
+          writeCartRecoverySuppressed();
+          stripContentKeepChrome();
+          var pNeutral = document.createElement("p");
+          pNeutral.setAttribute("data-cf-layer-neutral-chat", "1");
+          pNeutral.style.cssText = "margin:0;font-size:14px;line-height:1.55;";
+          pNeutral.textContent =
+            "تقدر تكمل تصفّح المتجر؛ أنا هنا إذا احتجت أي شيء.";
+          widgetBody.appendChild(pNeutral);
+        });
         widgetBody.appendChild(pNk);
+        widgetBody.appendChild(bChat);
       }
 
       function mountPriceObjectionFollowUp() {
@@ -1931,6 +1970,60 @@
         widgetBody.appendChild(rowS);
       }
 
+      function mountDeliveryObjectionFollowUp() {
+        persistSessionAbandonReason("delivery_time", null);
+        stripContentKeepChrome();
+
+        function replaceBodyWithSingleMessage(msg) {
+          stripContentKeepChrome();
+          var pOut = document.createElement("p");
+          pOut.setAttribute("data-cf-delivery-followup-msg", "1");
+          pOut.style.cssText = "margin:0;font-size:14px;line-height:1.55;";
+          pOut.textContent = msg;
+          widgetBody.appendChild(pOut);
+        }
+
+        var intro = document.createElement("p");
+        intro.setAttribute("data-cf-delivery-followup-intro", "1");
+        intro.style.cssText = "margin:0 0 12px 0;font-size:14px;line-height:1.55;";
+        intro.textContent =
+          "أتفهمك 👍 وقت التوصيل مهم. أقدر أوضح لك المدة أو الخيارات المتاحة.";
+
+        var rowD = document.createElement("div");
+        rowD.setAttribute("data-cf-delivery-followup-buttons", "1");
+        rowD.style.cssText = rowStyleCol;
+
+        function addDFBtn(label, onActivate) {
+          var bx = document.createElement("button");
+          bx.type = "button";
+          bx.textContent = label;
+          bx.style.cssText = btnStyle;
+          bx.addEventListener("click", function (ev) {
+            ev.stopPropagation();
+            ev.preventDefault();
+            onActivate();
+          });
+          rowD.appendChild(bx);
+        }
+
+        addDFBtn("كم يستغرق التوصيل؟", function () {
+          replaceBodyWithSingleMessage(
+            "عادةً يستغرق التوصيل من يومين إلى عدة أيام حسب المدينة 👍"
+          );
+        });
+        addDFBtn("هل فيه توصيل سريع؟", function () {
+          replaceBodyWithSingleMessage(
+            "في بعض الحالات يتوفر توصيل أسرع حسب المنطقة 👍"
+          );
+        });
+        addDFBtn("لا شكراً، لا أحتاج مساعدة", function () {
+          finishNoHelpLayerDFlow();
+        });
+
+        widgetBody.appendChild(intro);
+        widgetBody.appendChild(rowD);
+      }
+
       function mountOtherTextUi(wrapEl) {
         while (wrapEl.firstChild) {
           wrapEl.removeChild(wrapEl.firstChild);
@@ -2005,6 +2098,8 @@
                 mountQualityObjectionFollowUp();
               } else if (opt.tag === "shipping_cost") {
                 mountShippingObjectionFollowUp();
+              } else if (opt.tag === "delivery_time") {
+                mountDeliveryObjectionFollowUp();
               } else if (opt.tag === "no_help") {
                 finishNoHelpLayerDFlow();
               } else {
@@ -2738,6 +2833,11 @@
     if (shown) {
       return;
     }
+    if (readCartRecoverySuppressed()) {
+      clearTimeout(idleTimer);
+      idleTimer = null;
+      return;
+    }
     clearTimeout(idleTimer);
     idleTimer = null;
     if (!haveCartForWidget()) {
@@ -2785,6 +2885,9 @@
         /* ignore */
       }
       if (!shouldSend) {
+        return;
+      }
+      if (readCartRecoverySuppressed()) {
         return;
       }
       showBubble(TRIGGER_SOURCE_CART);
