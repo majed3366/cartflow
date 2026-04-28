@@ -55,6 +55,11 @@ def runtime_check():
     }
 
 
+@app.get("/ping")
+def ping():
+    return {"ok": True}
+
+
 @app.get("/dev/routes")
 def list_routes():
     return [route.path for route in app.routes]

@@ -1,4 +1,4 @@
-"""Same process as: python -m uvicorn main:app --host 0.0.0.0 --port <PORT> (PORT from env, default 8000)."""
+"""Entrypoint: same as python -m uvicorn main:app --host 0.0.0.0 --port 8000."""
 
 import os
 import sys
