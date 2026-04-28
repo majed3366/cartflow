@@ -751,6 +751,51 @@
     };
   }
 
+  function persistCartRecoveryReasonBackend(reasonTag, customTextOptional) {
+    try {
+      var b = apiBase();
+      var u = b ? b + "/api/cart-recovery/reason" : "/api/cart-recovery/reason";
+      var payload = {
+        store_slug: getStoreSlug(),
+        session_id: getSessionId(),
+        reason_tag: String(reasonTag),
+      };
+      if (customTextOptional != null && strTrim(customTextOptional) !== "") {
+        payload.custom_reason = strTrim(customTextOptional);
+      }
+      fetch(u, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      })
+        .then(function (r) {
+          if (!r.ok) {
+            try {
+              console.warn("CART_RECOVERY_REASON_SAVE_FAILED", r.status);
+            } catch (ew) {
+              /* ignore */
+            }
+          }
+          return r.json().catch(function () {
+            return {};
+          });
+        })
+        .catch(function (err) {
+          try {
+            console.warn("CART_RECOVERY_REASON_SAVE_FAILED", err);
+          } catch (ec) {
+            /* ignore */
+          }
+        });
+    } catch (ex) {
+      try {
+        console.warn("CART_RECOVERY_REASON_SAVE_FAILED", ex);
+      } catch (ez) {
+        /* ignore */
+      }
+    }
+  }
+
   function persistSessionAbandonReason(reasonTag, customTextOptional) {
     try {
       window.sessionStorage.setItem(
@@ -777,6 +822,7 @@
     } catch (eLog) {
       /* ignore */
     }
+    persistCartRecoveryReasonBackend(reasonTag, customTextOptional);
   }
 
   function clearCartRecoverySuppressed() {

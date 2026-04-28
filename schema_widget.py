@@ -12,6 +12,78 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 log = logging.getLogger("cartflow")
 
 _store_abandonment_schema_ensured = False
+_recovery_reason_widget_cols_ensured = False
+
+
+def ensure_recovery_reason_widget_schema(db: Any) -> None:
+    """
+    أعمدة ‎source / created_at‎ على ‎cart_recovery_reasons‎ (ودجت الطبقة ‎D‎).
+    """
+    global _recovery_reason_widget_cols_ensured
+    if _recovery_reason_widget_cols_ensured:
+        return
+    try:
+        db.create_all()
+        insp = inspect(db.engine)
+        if not insp.has_table("cart_recovery_reasons"):
+            return
+        dialect = getattr(getattr(db.engine, "dialect", None), "name", "") or ""
+        created_sql_type = (
+            "TIMESTAMP(0) WITH TIME ZONE"
+            if dialect == "postgresql"
+            else "DATETIME"
+        )
+        cols = {c["name"] for c in insp.get_columns("cart_recovery_reasons")}
+        if "source" not in cols:
+            try:
+                if dialect == "postgresql":
+                    stmt = (
+                        "ALTER TABLE cart_recovery_reasons "
+                        "ADD COLUMN IF NOT EXISTS source VARCHAR(32) DEFAULT 'widget'"
+                    )
+                else:
+                    stmt = (
+                        "ALTER TABLE cart_recovery_reasons "
+                        "ADD COLUMN source VARCHAR(32) DEFAULT 'widget'"
+                    )
+                db.session.execute(text(stmt))
+                db.session.commit()
+            except (OSError, SQLAlchemyError, IntegrityError):
+                db.session.rollback()
+        cols = {
+            c["name"]
+            for c in inspect(db.engine).get_columns("cart_recovery_reasons")
+        }
+        if "created_at" not in cols:
+            try:
+                if dialect == "postgresql":
+                    stmt = (
+                        "ALTER TABLE cart_recovery_reasons ADD COLUMN IF NOT EXISTS "
+                        "created_at " + created_sql_type
+                    )
+                else:
+                    stmt = (
+                        "ALTER TABLE cart_recovery_reasons ADD COLUMN created_at "
+                        + created_sql_type
+                    )
+                db.session.execute(text(stmt))
+                db.session.commit()
+            except (OSError, SQLAlchemyError, IntegrityError):
+                db.session.rollback()
+            try:
+                db.session.execute(
+                    text(
+                        "UPDATE cart_recovery_reasons SET created_at = updated_at "
+                        "WHERE created_at IS NULL"
+                    )
+                )
+                db.session.commit()
+            except (OSError, SQLAlchemyError, IntegrityError):
+                db.session.rollback()
+        _recovery_reason_widget_cols_ensured = True
+    except (OSError, SQLAlchemyError) as e:
+        db.session.rollback()
+        log.debug("recovery_reason_widget_schema: %s", e)
 
 
 def _ensure_reason_subcategory_columns(db: Any) -> None:
@@ -47,6 +119,7 @@ def _ensure_reason_subcategory_columns(db: Any) -> None:
 def ensure_store_widget_schema(db: Any) -> None:
     """يُنادى من مسارات ‎API‎ (لا يعتمد على ‎main‎)."""
     _ensure_reason_subcategory_columns(db)
+    ensure_recovery_reason_widget_schema(db)
     global _store_abandonment_schema_ensured
     if _store_abandonment_schema_ensured:
         return

@@ -100,11 +100,13 @@ from models import (  # noqa: E402
     Store,
 )
 from routes.cartflow import router as cartflow_router  # noqa: E402
+from routes.cart_recovery_reason import router as cart_recovery_reason_router  # noqa: E402
 from routes.demo_panel import router as demo_panel_router  # noqa: E402
 from routes.ops import router as ops_router  # noqa: E402
 
 app.include_router(ops_router)
 app.include_router(cartflow_router)
+app.include_router(cart_recovery_reason_router)
 app.include_router(demo_panel_router, prefix="/demo")
 
 from services.ai_message_builder import build_abandoned_cart_message  # noqa: E402

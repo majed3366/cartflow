@@ -152,9 +152,16 @@ class CartRecoveryReason(Base):
     id = Column(Integer, primary_key=True)
     store_slug = Column(String(255), nullable=False, index=True)
     session_id = Column(String(512), nullable=False, index=True)
-    reason = Column(String(32), nullable=False, index=True)
+    # وسوم الطبقة ‎D‎ للودجت (مثل ‎price_high‎) أطول من ‎slug‎ القديم
+    reason = Column(String(64), nullable=False, index=True)
     sub_category = Column(String(64), nullable=True, index=True)
     custom_text = Column(Text, nullable=True)
+    source = Column(String(32), default="widget", nullable=False)
+    created_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
     updated_at = Column(
         DateTime,
         default=lambda: datetime.now(timezone.utc),

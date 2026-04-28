@@ -364,6 +364,8 @@ async def post_abandonment_reason(request: Request) -> Any:
                     reason=reason,
                     sub_category=sub_for_row,
                     custom_text=custom,
+                    source="legacy_api",
+                    created_at=now,
                     updated_at=now,
                 )
             )
