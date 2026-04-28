@@ -2111,37 +2111,51 @@
         widgetBody.appendChild(rowW);
       }
 
-      function mountOtherTextUi(wrapEl) {
-        while (wrapEl.firstChild) {
-          wrapEl.removeChild(wrapEl.firstChild);
-        }
-        var hint = document.createElement("div");
-        hint.style.cssText = "margin:0 0 8px 0;font-size:13px;line-height:1.45;";
-        hint.textContent = "اكتب السبب";
-        wrapEl.appendChild(hint);
+      function mountOtherCustomReasonFlow() {
+        stripContentKeepChrome();
+
         var ta = document.createElement("textarea");
-        ta.setAttribute("rows", "3");
-        ta.setAttribute("aria-label", "سبب آخر");
+        ta.setAttribute("rows", "4");
+        ta.setAttribute("aria-label", "سبب التردّد");
+        ta.setAttribute(
+          "placeholder",
+          "اكتب السبب اللي مخليك متردد..."
+        );
         ta.style.cssText =
-          "width:100%;box-sizing:border-box;border-radius:8px;border:0;padding:8px;font:inherit;" +
-          "color:#1e1b4b;resize:vertical;min-height:3.5em;margin-bottom:8px;";
-        wrapEl.appendChild(ta);
+          "width:100%;box-sizing:border-box;border-radius:8px;border:0;padding:10px;margin:0 0 10px 0;" +
+          "font:inherit;color:#1e1b4b;resize:vertical;min-height:4.5em;";
+
+        var rowSend = document.createElement("div");
+        rowSend.setAttribute("data-cf-layer-d-other-send", "1");
+        rowSend.style.cssText = rowStyleCol;
+
         var bSend = document.createElement("button");
         bSend.type = "button";
         bSend.textContent = "إرسال";
         bSend.style.cssText = btnStyle;
-        bSend.addEventListener("click", function (ev2) {
-          ev2.stopPropagation();
-          ev2.preventDefault();
+        function submitOtherReason() {
           var txt = strTrim((ta.value || ""));
           if (!txt) {
             return;
           }
           persistSessionAbandonReason("other", txt);
           bSend.setAttribute("disabled", "true");
-          showLayerDAckAfterPick(wrapEl);
+          stripContentKeepChrome();
+          var pTh = document.createElement("p");
+          pTh.setAttribute("data-cf-layer-d-other-thanks", "1");
+          pTh.style.cssText = "margin:0 0 8px 0;font-size:14px;line-height:1.55;";
+          pTh.textContent = "أفهمك 👍 شكراً لمشاركتك السبب";
+          widgetBody.appendChild(pTh);
+          appendReturnToRecoveryChatButtonRow();
+        }
+        bSend.addEventListener("click", function (ev2) {
+          ev2.stopPropagation();
+          ev2.preventDefault();
+          submitOtherReason();
         });
-        wrapEl.appendChild(bSend);
+        rowSend.appendChild(bSend);
+        widgetBody.appendChild(ta);
+        widgetBody.appendChild(rowSend);
       }
 
       function buildChoices() {
@@ -2178,7 +2192,7 @@
               e.stopPropagation();
               e.preventDefault();
               if (opt.tag === "_other") {
-                mountOtherTextUi(wrap);
+                mountOtherCustomReasonFlow();
               } else if (opt.tag === "price_high") {
                 mountPriceObjectionFollowUp();
               } else if (opt.tag === "quality_uncertainty") {
