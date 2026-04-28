@@ -538,6 +538,11 @@ def config_system_verify():
     }
 
 
+@app.get("/dev/routes")
+def list_routes():
+    return [route.path for route in app.routes]
+
+
 @app.get("/dev/recovery-attempts-verify")
 def dev_recovery_attempts_verify():
     """
