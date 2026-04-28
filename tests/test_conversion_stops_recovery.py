@@ -59,7 +59,7 @@ class ConversionStopsAsyncSequenceTests(unittest.TestCase):
 
     @patch("main.recovery_uses_real_whatsapp", return_value=False)
     @patch("main._persist_cart_recovery_log")
-    @patch("services.whatsapp_queue.send_whatsapp_mock")
+    @patch("main.send_whatsapp")
     def test_no_sends_if_converted_after_initial_delay(
         self, mock_send: object, _mock_persist: object, _ur: object
     ) -> None:

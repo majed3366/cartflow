@@ -39,7 +39,7 @@ class RecoveryIsolationTests(unittest.TestCase):
         self.client = TestClient(app)
 
     @patch("main._persist_cart_recovery_log")
-    @patch("services.whatsapp_queue.send_whatsapp_mock")
+    @patch("main.send_whatsapp")
     @patch("main.recovery_uses_real_whatsapp", return_value=False)
     @patch("main.recovery_delay_to_seconds", return_value=0.0)
     def test_demo_then_demo2_same_session_both_schedule(

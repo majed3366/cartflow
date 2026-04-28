@@ -124,10 +124,7 @@ app.include_router(demo_panel_router, prefix="/demo")
 
 from services.ai_message_builder import build_abandoned_cart_message  # noqa: E402
 from services.whatsapp_recovery import build_whatsapp_recovery_message  # noqa: E402
-from services.whatsapp_queue import (  # noqa: E402
-    enqueue_recovery_and_wait,
-    start_whatsapp_queue_worker,
-)
+from services.whatsapp_queue import start_whatsapp_queue_worker  # noqa: E402
 from services.whatsapp_send import (  # noqa: E402
     recovery_uses_real_whatsapp,
     recovery_delay_to_seconds,
@@ -832,11 +829,15 @@ _session_recovery_sent: dict[str, bool] = {}
 _session_recovery_converted: dict[str, bool] = {}
 _recovery_session_lock = threading.Lock()
 
-# خطوات الرسالة (وهمي): تذكير → قيمة → إلحاح
+# خطوة إضافية منطقية (سابقاً كان عندها خطوتان أخريان) — لسجلات «توقفت بعد الأولى»
 _RECOVERY_SEQUENCE_STEPS: tuple[tuple[int, str], ...] = (
     (1, "يبدو أنك نسيت سلتك 🛒"),
     (2, "المنتج اللي اخترته عليه طلب عالي"),
     (3, "ممكن يخلص قريب 👀"),
+)
+
+_DEFAULT_DECISION_FALLBACK_MESSAGE = (
+    "لاحظنا إنك مهتم 👌 حاب نساعدك تكمل الطلب؟"
 )
 
 
@@ -891,6 +892,32 @@ def _recovery_message_for_step(step: int) -> str:
 def _default_recovery_message() -> str:
     """نص الخطوة ‎1‎ (للتوافق مع السجلات السابقة/التخطي)."""
     return _recovery_message_for_step(1)
+
+
+def _reason_tag_for_session(store_slug: str, session_id: str) -> Optional[str]:
+    """آخر ‎reason_tag‎ محفوظ في ‎cart_recovery_reasons‎ لهذه الجلسة، أو ‎None‎."""
+    ss = (store_slug or "").strip()[:255]
+    sid = (session_id or "").strip()[:512]
+    if not ss or not sid:
+        return None
+    try:
+        db.create_all()
+        row = (
+            db.session.query(CartRecoveryReason)
+            .filter(
+                CartRecoveryReason.store_slug == ss,
+                CartRecoveryReason.session_id == sid,
+            )
+            .order_by(CartRecoveryReason.updated_at.desc())
+            .first()
+        )
+        if row is None:
+            return None
+        tag = (row.reason or "").strip()
+        return tag if tag else None
+    except Exception:  # noqa: BLE001
+        db.session.rollback()
+        return None
 
 
 def _is_user_converted(recovery_key: str) -> bool:
@@ -979,9 +1006,8 @@ async def _run_recovery_sequence_after_cart_abandoned(
     cart_id: Optional[str],
 ) -> None:
     """
-    ينتظر ‎delay_seconds‎ ثم يمرّ بثلاث خطوات؛ بين كل خطوة والتالية نفس المدة.
-    الإرسال عبر طابور (لا يُرسل مباشرة) مع إعادة المحاولة: ‎queued → sent_real/mock_sent‎ أو
-    ‎failed_retry / failed_final‎. يتوقف عند التحويل أو عند ‎failed_final‎.
+    ينتظر ‎delay_seconds‎ ثم يرسل رسالة واتساب واحدة: نص من محرّك القراءة حسب ‎reason_tag‎
+    المحفوظ، أو رسالة احتياطية. إرسال عبر ‎send_whatsapp‎ (بدون خطوات إضافية ولا تأخيرات جديدة).
     """
     try:
         await asyncio.sleep(delay_seconds)
@@ -991,7 +1017,7 @@ async def _run_recovery_sequence_after_cart_abandoned(
         if _session_recovery_logged.get(recovery_key):
             return
         _session_recovery_logged[recovery_key] = True
-    print("recovery triggered after delay (sequence)")
+    print("recovery triggered after delay (single message, decision engine)")
     if _is_user_converted(recovery_key):
         print("recovery sequence stopped: user converted (after initial delay, before step 1)")
         t1 = _recovery_message_for_step(1)
@@ -1006,78 +1032,64 @@ async def _run_recovery_sequence_after_cart_abandoned(
         )
         return
 
-    for step_num, text in _RECOVERY_SEQUENCE_STEPS:
-        if _is_user_converted(recovery_key):
-            print("recovery sequence stopped: user converted (before step %s)" % step_num)
-            _persist_cart_recovery_log(
-                store_slug=store_slug,
-                session_id=session_id,
-                cart_id=cart_id,
-                phone=None,
-                message=text,
-                status="stopped_converted",
-                step=step_num,
-            )
-            return
-        if step_num > 1:
-            try:
-                await asyncio.sleep(delay_seconds)
-            except asyncio.CancelledError:
-                raise
-            if _is_user_converted(recovery_key):
-                print(
-                    "recovery sequence stopped: user converted (after wait, step %s)"
-                    % step_num
-                )
-                _persist_cart_recovery_log(
-                    store_slug=store_slug,
-                    session_id=session_id,
-                    cart_id=cart_id,
-                    phone=None,
-                    message=text,
-                    status="stopped_converted",
-                    step=step_num,
-                )
-                return
-        if _is_user_converted(recovery_key):
-            _persist_cart_recovery_log(
-                store_slug=store_slug,
-                session_id=session_id,
-                cart_id=cart_id,
-                phone=None,
-                message=text,
-                status="stopped_converted",
-                step=step_num,
-            )
-            return
-        phone = _recovery_destination_phone()
-        use_real = recovery_uses_real_whatsapp()
+    step_num = 1
+    reason_tag = _reason_tag_for_session(store_slug, session_id)
+    if reason_tag is not None:
+        text = decide_recovery_action(reason_tag)["message"]
+    else:
+        text = _DEFAULT_DECISION_FALLBACK_MESSAGE
+
+    phone = _recovery_destination_phone()
+    _persist_cart_recovery_log(
+        store_slug=store_slug,
+        session_id=session_id,
+        cart_id=cart_id,
+        phone=phone,
+        message=text,
+        status="queued",
+        step=step_num,
+    )
+    if _is_user_converted(recovery_key):
         _persist_cart_recovery_log(
             store_slug=store_slug,
             session_id=session_id,
             cart_id=cart_id,
-            phone=phone,
+            phone=None,
             message=text,
-            status="queued",
+            status="stopped_converted",
             step=step_num,
         )
-        res = await enqueue_recovery_and_wait(
+        return
+
+    send_whatsapp(phone, text)
+
+    now = datetime.now(timezone.utc)
+    _persist_cart_recovery_log(
+        store_slug=store_slug,
+        session_id=session_id,
+        cart_id=cart_id,
+        phone=phone,
+        message=text,
+        status="mock_sent",
+        sent_at=now,
+        step=step_num,
+    )
+    # إن كان التحويل أثناء الإرسال: سلوك شبيه بالتخطي بعد خطوة أولى
+    if _is_user_converted(recovery_key):
+        _persist_cart_recovery_log(
             store_slug=store_slug,
             session_id=session_id,
             cart_id=cart_id,
-            phone=phone,
-            message=text,
-            step=step_num,
-            recovery_key=recovery_key,
-            use_real=use_real,
+            phone=None,
+            message=_recovery_message_for_step(2),
+            status="stopped_converted",
+            step=2,
         )
-        if res == "stopped":
-            return
-        if res == "failed_final":
-            break
+        return
+
     with _recovery_session_lock:
         _session_recovery_sent[recovery_key] = True
-    print("recovery marked as sent (sequence complete)")
+    print("recovery marked as sent (single message)")
 
 
 async def handle_cart_abandoned(

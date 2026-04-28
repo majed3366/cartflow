@@ -2,10 +2,10 @@
 """
 Cart recovery sequence behavior (API-level; mirrors manual /demo/store/cart flows).
 
-Test 1: full 3-step mock send once each.
+Test 1: single decision-engine recovery message per abandon.
 Test 2: duplicate cart_abandoned does not re-send.
 Test 3: demo vs demo2 isolation (separate keys / sends).
-Test 4: conversion after step1 blocks steps 2–3; stopped_converted in logs.
+Test 4: conversion during first send; stopped_converted logged for tail step.
 Test 5: GET /dev/recovery-logs/{store_slug} shape (ENV=development).
 """
 from __future__ import annotations
@@ -40,20 +40,20 @@ class CartRecoverySequenceBehaviorTests(unittest.TestCase):
         self.client = TestClient(app)
 
     @patch("main._persist_cart_recovery_log")
-    @patch("services.whatsapp_queue.send_whatsapp_mock")
+    @patch("main.send_whatsapp")
     @patch("main.recovery_uses_real_whatsapp", return_value=False)
     @patch("main.recovery_delay_to_seconds", return_value=0.0)
     def test_1_normal_sequence_three_steps_once(
         self, _d: object, _ur: object, mock_send: object, _p: object
     ) -> None:
-        """step1, step2, step3 each sent once; no duplicate sends."""
+        """One recovery message per scheduled run; no duplicate sends."""
         mock_send.return_value = {"ok": True}
         r = self.client.post(
             "/api/cart-event",
             json=_abandon("demo", "seq-normal-1"),
         )
         self.assertEqual(r.status_code, 200, r.text)
-        self.assertEqual(3, mock_send.call_count)
+        self.assertEqual(1, mock_send.call_count)
         msgs = [c[0][1] for c in mock_send.call_args_list]
         self.assertEqual(len(msgs), len(set(msgs)), "duplicate message text")
         for m in msgs:
@@ -61,31 +61,31 @@ class CartRecoverySequenceBehaviorTests(unittest.TestCase):
             self.assertTrue(len(m) > 0)
 
     @patch("main._persist_cart_recovery_log")
-    @patch("services.whatsapp_queue.send_whatsapp_mock")
+    @patch("main.send_whatsapp")
     @patch("main.recovery_uses_real_whatsapp", return_value=False)
     @patch("main.recovery_delay_to_seconds", return_value=0.0)
     def test_2_duplicate_protection_no_resend(
         self, _d: object, _ur: object, mock_send: object, _p: object
     ) -> None:
-        """Multiple abandons for same session: only one full sequence of 3 sends."""
+        """Multiple abandons for same session: only one send when first run completes."""
         mock_send.return_value = {"ok": True}
         body = _abandon("demo", "seq-dup-1")
         self.assertTrue(self.client.post("/api/cart-event", json=body).json()["recovery_scheduled"])
-        self.assertEqual(3, mock_send.call_count)
+        self.assertEqual(1, mock_send.call_count)
         r2 = self.client.post("/api/cart-event", json=body).json()
         self.assertEqual("sent", r2.get("recovery_state"), "sequence already completed")
-        self.assertEqual(3, mock_send.call_count, "no extra sends on duplicate post")
+        self.assertEqual(1, mock_send.call_count, "no extra sends on duplicate post")
         r3 = self.client.post("/api/cart-event", json=body).json()
-        self.assertEqual(3, mock_send.call_count, "still no extra sends")
+        self.assertEqual(1, mock_send.call_count, "still no extra sends")
 
     @patch("main._persist_cart_recovery_log")
-    @patch("services.whatsapp_queue.send_whatsapp_mock")
+    @patch("main.send_whatsapp")
     @patch("main.recovery_uses_real_whatsapp", return_value=False)
     @patch("main.recovery_delay_to_seconds", return_value=0.0)
     def test_3_store_isolation_demo_and_demo2(
         self, _d: object, _ur: object, mock_send: object, _p: object
     ) -> None:
-        """demo and demo2: separate recovery; 3 sends each, 6 total."""
+        """demo and demo2: separate recovery; one send each, 2 total."""
         mock_send.return_value = {"ok": True}
         sid = "shared-sid-iso"
         r1 = self.client.post(
@@ -98,7 +98,7 @@ class CartRecoverySequenceBehaviorTests(unittest.TestCase):
         )
         self.assertTrue(r1.json().get("recovery_scheduled"))
         self.assertTrue(r2.json().get("recovery_scheduled"))
-        self.assertEqual(6, mock_send.call_count)
+        self.assertEqual(2, mock_send.call_count)
         # keys differ
         self.assertNotEqual(
             main._recovery_key_from_payload(_abandon("demo", sid)),
@@ -106,13 +106,13 @@ class CartRecoverySequenceBehaviorTests(unittest.TestCase):
         )
 
     @patch("main._persist_cart_recovery_log")
-    @patch("services.whatsapp_queue.send_whatsapp_mock")
+    @patch("main.send_whatsapp")
     @patch("main.recovery_uses_real_whatsapp", return_value=False)
     @patch("main.recovery_delay_to_seconds", return_value=0.0)
     def test_4_conversion_stops_after_step1(
         self, _d: object, _ur: object, mock_send: object, mock_persist: object
     ) -> None:
-        """After step1 mock, conversion → no steps 2–3; persist logs stopped_converted."""
+        """After first mock send, conversion → tail step logged as stopped_converted."""
         states: list[str] = []
 
         def on_persist(*_a, **kw) -> None:
@@ -140,7 +140,7 @@ class CartRecoverySequenceBehaviorTests(unittest.TestCase):
         self.assertIn("stopped_converted", states)
         self.assertIn("mock_sent", states)
 
-    @patch("services.whatsapp_queue.send_whatsapp_mock")
+    @patch("main.send_whatsapp")
     @patch("main.recovery_uses_real_whatsapp", return_value=False)
     @patch("main.recovery_delay_to_seconds", return_value=0.0)
     def test_5_dev_recovery_logs_includes_fields(
