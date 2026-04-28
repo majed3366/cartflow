@@ -656,6 +656,7 @@
     attachArmListenersOnce();
     ensureStep1ThenStartIdle();
     prefetchDashboardPrimaryReason();
+    prefetchConfigRecoveryDelay();
   }
 
   function getStoreSlug() {
@@ -727,17 +728,17 @@
     if (isSessionConverted()) {
       return false;
     }
-    var p = (window.location.pathname || "") + (window.location.search || "");
-    if (p.indexOf("/demo/") < 0) {
-      return true;
-    }
-    if (typeof window.cart === "undefined" || window.cart === null) {
+    try {
+      if (typeof window.cart === "undefined" || window.cart === null) {
+        return false;
+      }
+      if (!Array.isArray(window.cart)) {
+        return false;
+      }
+      return window.cart.length > 0;
+    } catch (e) {
       return false;
     }
-    if (!Array.isArray(window.cart)) {
-      return false;
-    }
-    return window.cart.length > 0;
   }
 
   function apiBase() {
@@ -894,6 +895,49 @@
 
   function prefetchDashboardPrimaryReason() {
     fetchDashboardPrimaryReasonFromApi(getStoreSlug()).catch(function () {});
+  }
+
+  /** GET /config-check — تأخير الاسترجاع بالدقائق (طبقة الإعداد)، قراءة فقط. */
+  function prefetchConfigRecoveryDelay() {
+    var b = (apiBase() || "").toString().replace(/\/$/, "");
+    var u = (b ? b + "/config-check" : "/config-check");
+    fetch(u, { method: "GET", credentials: "same-origin" })
+      .then(function (r) {
+        return r.json();
+      })
+      .then(function (j) {
+        if (j && typeof j.recovery_delay_minutes === "number") {
+          try {
+            window._cfRecoveryDelayMinutes = j.recovery_delay_minutes;
+          } catch (e) {
+            /* ignore */
+          }
+        }
+      })
+      .catch(function () {});
+  }
+
+  /** يطابق الإعداد؛ الافتراضي دقيقة واحدة عند غياب الجلب */
+  function getRecoveryDelayMinutesForSession() {
+    var rm = 1;
+    try {
+      if (
+        typeof window._cfRecoveryDelayMinutes === "number" &&
+        isFinite(window._cfRecoveryDelayMinutes)
+      ) {
+        rm = window._cfRecoveryDelayMinutes;
+      }
+    } catch (e) {
+      rm = 1;
+    }
+    if (typeof rm !== "number" || !isFinite(rm) || rm < 0) {
+      rm = 1;
+    }
+    return rm;
+  }
+
+  function getRecoveryDelayMilliseconds() {
+    return getRecoveryDelayMinutesForSession() * 60 * 1000;
   }
 
   function getPrimaryRecoveryReason(storeId) {
@@ -1270,6 +1314,23 @@
       triggerSource === TRIGGER_SOURCE_EXIT_INTENT
         ? TRIGGER_SOURCE_EXIT_INTENT
         : TRIGGER_SOURCE_CART;
+    var hasCartItems = haveCartForWidget();
+    try {
+      console.log("HAS CART:", hasCartItems);
+    } catch (eLog) {
+      /* ignore */
+    }
+    if (openSource === TRIGGER_SOURCE_EXIT_INTENT && hasCartItems) {
+      try {
+        console.log("EXIT INTENT BLOCKED:", true);
+      } catch (eLog2) {
+        /* ignore */
+      }
+      return;
+    }
+    if (openSource === TRIGGER_SOURCE_CART && !hasCartItems) {
+      return;
+    }
     if (isSessionConverted() || !step1Ready) {
       return;
     }
@@ -2346,16 +2407,49 @@
       return;
     }
     clearTimeout(idleTimer);
-    var delay =
-      isDemoStoreProductPage() && readDemoStoreWidgetArmed()
-        ? DEMO_ARMED_IDLE_MS
-        : IDLE_MS;
+    idleTimer = null;
+    if (!haveCartForWidget()) {
+      return;
+    }
+    try {
+      window._cartflowLastActivityTs = Date.now();
+    } catch (eTs) {
+      /* ignore */
+    }
+    var recoveryDelayMinutes = getRecoveryDelayMinutesForSession();
+    var delayMs = getRecoveryDelayMilliseconds();
+    var lastTs = window._cartflowLastActivityTs;
+    try {
+      console.log("HAS CART:", haveCartForWidget());
+      console.log("RECOVERY DELAY:", recoveryDelayMinutes);
+      console.log("(idle window ms):", delayMs);
+    } catch (eL) {
+      /* ignore */
+    }
     try {
       console.log("widget triggered");
     } catch (e) {
       /* ignore */
     }
     idleTimer = setTimeout(function () {
+      idleTimer = null;
+      var nowMs = Date.now();
+      var lab = lastTs != null ? lastTs : nowMs;
+      var deltaMs = nowMs - lab;
+      var shouldSendRecovery =
+        haveCartForWidget() && deltaMs >= recoveryDelayMinutes * 60 * 1000;
+      try {
+        console.log("HAS CART:", haveCartForWidget());
+        console.log("RECOVERY DELAY:", recoveryDelayMinutes);
+        console.log("TIME SINCE LAST ACTIVITY:", nowMs - lab, "ms");
+        console.log("SHOULD SEND RECOVERY:", shouldSendRecovery);
+        console.log("EXIT INTENT BLOCKED:", haveCartForWidget());
+      } catch (e2) {
+        /* ignore */
+      }
+      if (!shouldSendRecovery || !haveCartForWidget()) {
+        return;
+      }
       showBubble(TRIGGER_SOURCE_CART);
       try {
         var widgetVisible = isWidgetDomVisible();
@@ -2363,7 +2457,7 @@
       } catch (e) {
         /* ignore */
       }
-    }, delay);
+    }, delayMs);
   }
 
   function arm() {
@@ -2488,6 +2582,14 @@
     if (isSessionConverted()) {
       return false;
     }
+    if (haveCartForWidget()) {
+      try {
+        console.log("EXIT INTENT BLOCKED:", true);
+      } catch (e0) {
+        /* ignore */
+      }
+      return false;
+    }
     if (!isCartPage()) {
       return false;
     }
@@ -2499,9 +2601,6 @@
         return false;
       }
       return true;
-    }
-    if (!haveCartForWidget()) {
-      return false;
     }
     if (document.querySelector("[data-cartflow-bubble]")) {
       return false;
@@ -2581,7 +2680,7 @@
       if (isSessionConverted()) {
         return false;
       }
-      if (!isDemoStoreProductPage() && !haveCartForWidget()) {
+      if (haveCartForWidget()) {
         return false;
       }
       return canShowExitIntentWidget();
