@@ -55,11 +55,8 @@ def config_check():
 
     return {
         "ok": True,
-        "config_loaded": True,
         "store_slug": "demo",
         "recovery_delay_minutes": config["recovery_delay_minutes"],
-        "whatsapp_recovery_enabled": config["whatsapp_recovery_enabled"],
-        "enabled_recovery_reasons": config["enabled_recovery_reasons"],
     }
 
 
