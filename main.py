@@ -44,6 +44,28 @@ app.add_middleware(
     TrustedHostMiddleware,
     allowed_hosts=["*"],
 )
+
+
+@app.get("/dev/routes")
+def list_routes():
+    return [route.path for route in app.routes]
+
+
+@app.get("/dev/config-system-verify")
+def config_system_verify():
+    from config_system import get_cartflow_config
+
+    config = get_cartflow_config(store_slug="demo")
+
+    return {
+        "ok": True,
+        "config_loaded": True,
+        "recovery_delay_minutes": config["recovery_delay_minutes"],
+        "whatsapp_recovery_enabled": config["whatsapp_recovery_enabled"],
+        "enabled_recovery_reasons": config["enabled_recovery_reasons"],
+    }
+
+
 app.state.secret_key = os.getenv("SECRET_KEY", "dev-only-change-in-production")
 _ROOT = os.path.dirname(os.path.abspath(__file__))
 # مسار مُطلَق: يعمل حتى اختلاف ‎working directory‎ على ‎Railway / Docker‎
@@ -528,32 +550,6 @@ def dev_recovery_delay_verify():
             },
         }
     )
-
-
-@app.get("/dev/config-system-verify")
-def config_system_verify():
-    try:
-        from config_system import get_cartflow_config
-
-        config = get_cartflow_config(store_slug="demo")
-
-        return {
-            "ok": True,
-            "config_loaded": True,
-            "recovery_delay_minutes": config["recovery_delay_minutes"],
-            "whatsapp_recovery_enabled": config["whatsapp_recovery_enabled"],
-            "enabled_recovery_reasons": config["enabled_recovery_reasons"],
-        }
-    except Exception as e:  # noqa: BLE001
-        return {
-            "ok": False,
-            "error": str(e),
-        }
-
-
-@app.get("/dev/routes")
-def list_routes():
-    return [route.path for route in app.routes]
 
 
 @app.get("/dev/recovery-attempts-verify")
