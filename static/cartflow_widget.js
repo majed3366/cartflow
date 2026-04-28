@@ -1789,25 +1789,7 @@
       wrap.style.cssText =
         "display:block;width:100%;box-sizing:border-box;margin:0 0 10px 0;";
 
-      function showLayerDAckAfterPick(wrapEl) {
-        while (wrapEl.firstChild) {
-          wrapEl.removeChild(wrapEl.firstChild);
-        }
-        var ack = document.createElement("p");
-        ack.style.cssText =
-          "margin:0;font-size:13px;line-height:1.5;opacity:0.95;";
-        ack.textContent =
-          "شكراً 🙏 سجلنا ملاحظتك؛ تقدر تتواصل وقت ما تحتاج.";
-        wrapEl.appendChild(ack);
-      }
-
-      function finishNoHelpLayerDFlow() {
-        persistSessionAbandonReason("no_help", null);
-        stripContentKeepChrome();
-        var pNk = document.createElement("p");
-        pNk.setAttribute("data-cf-layer-d-no-help", "1");
-        pNk.style.cssText = "margin:0 0 8px 0;font-size:14px;line-height:1.55;";
-        pNk.textContent = "تمام 👍 إذا احتجت أي شيء أنا موجود";
+      function appendReturnToRecoveryChatButtonRow() {
         var rowReturn = document.createElement("div");
         rowReturn.setAttribute("data-cf-layer-d-return-row", "1");
         var bChat = document.createElement("button");
@@ -1827,8 +1809,31 @@
           mountLayerDAbandonIfEligible();
         });
         rowReturn.appendChild(bChat);
-        widgetBody.appendChild(pNk);
         widgetBody.appendChild(rowReturn);
+      }
+
+      function showLayerDAckAfterPick(wrapEl) {
+        while (wrapEl.firstChild) {
+          wrapEl.removeChild(wrapEl.firstChild);
+        }
+        var ack = document.createElement("p");
+        ack.style.cssText =
+          "margin:0 0 8px 0;font-size:13px;line-height:1.5;opacity:0.95;";
+        ack.textContent =
+          "شكراً 🙏 سجلنا ملاحظتك؛ تقدر تتواصل وقت ما تحتاج.";
+        wrapEl.appendChild(ack);
+        appendReturnToRecoveryChatButtonRow();
+      }
+
+      function finishNoHelpLayerDFlow() {
+        persistSessionAbandonReason("no_help", null);
+        stripContentKeepChrome();
+        var pNk = document.createElement("p");
+        pNk.setAttribute("data-cf-layer-d-no-help", "1");
+        pNk.style.cssText = "margin:0 0 8px 0;font-size:14px;line-height:1.55;";
+        pNk.textContent = "تمام 👍 إذا احتجت أي شيء أنا موجود";
+        widgetBody.appendChild(pNk);
+        appendReturnToRecoveryChatButtonRow();
       }
 
       function mountPriceObjectionFollowUp() {
@@ -1839,9 +1844,10 @@
           stripContentKeepChrome();
           var pOut = document.createElement("p");
           pOut.setAttribute("data-cf-price-followup-msg", "1");
-          pOut.style.cssText = "margin:0;font-size:14px;line-height:1.55;";
+          pOut.style.cssText = "margin:0 0 8px 0;font-size:14px;line-height:1.55;";
           pOut.textContent = msg;
           widgetBody.appendChild(pOut);
+          appendReturnToRecoveryChatButtonRow();
         }
 
         var intro = document.createElement("p");
@@ -1893,9 +1899,10 @@
           stripContentKeepChrome();
           var pOut = document.createElement("p");
           pOut.setAttribute("data-cf-quality-followup-msg", "1");
-          pOut.style.cssText = "margin:0;font-size:14px;line-height:1.55;";
+          pOut.style.cssText = "margin:0 0 8px 0;font-size:14px;line-height:1.55;";
           pOut.textContent = msg;
           widgetBody.appendChild(pOut);
+          appendReturnToRecoveryChatButtonRow();
         }
 
         var intro = document.createElement("p");
@@ -1947,9 +1954,10 @@
           stripContentKeepChrome();
           var pOut = document.createElement("p");
           pOut.setAttribute("data-cf-shipping-followup-msg", "1");
-          pOut.style.cssText = "margin:0;font-size:14px;line-height:1.55;";
+          pOut.style.cssText = "margin:0 0 8px 0;font-size:14px;line-height:1.55;";
           pOut.textContent = msg;
           widgetBody.appendChild(pOut);
+          appendReturnToRecoveryChatButtonRow();
         }
 
         var intro = document.createElement("p");
@@ -2001,9 +2009,10 @@
           stripContentKeepChrome();
           var pOut = document.createElement("p");
           pOut.setAttribute("data-cf-delivery-followup-msg", "1");
-          pOut.style.cssText = "margin:0;font-size:14px;line-height:1.55;";
+          pOut.style.cssText = "margin:0 0 8px 0;font-size:14px;line-height:1.55;";
           pOut.textContent = msg;
           widgetBody.appendChild(pOut);
+          appendReturnToRecoveryChatButtonRow();
         }
 
         var intro = document.createElement("p");
@@ -2055,9 +2064,10 @@
           stripContentKeepChrome();
           var pOut = document.createElement("p");
           pOut.setAttribute("data-cf-warranty-followup-msg", "1");
-          pOut.style.cssText = "margin:0;font-size:14px;line-height:1.55;";
+          pOut.style.cssText = "margin:0 0 8px 0;font-size:14px;line-height:1.55;";
           pOut.textContent = msg;
           widgetBody.appendChild(pOut);
+          appendReturnToRecoveryChatButtonRow();
         }
 
         var intro = document.createElement("p");
