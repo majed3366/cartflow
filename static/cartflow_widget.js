@@ -883,6 +883,11 @@
           window.__cfPrimaryByStore = {};
         }
         window.__cfPrimaryByStore[sk] = pr;
+        try {
+          window._cfPrimaryReason = pr;
+        } catch (e) {
+          /* ignore */
+        }
         return pr;
       });
   }
@@ -897,10 +902,22 @@
         ? String(storeId).trim()
         : getStoreSlug();
     if (window.__cfPrimaryByStore && window.__cfPrimaryByStore[sid]) {
-      return String(window.__cfPrimaryByStore[sid]);
+      var v1 = String(window.__cfPrimaryByStore[sid]);
+      try {
+        window._cfPrimaryReason = v1;
+      } catch (e) {
+        /* ignore */
+      }
+      return v1;
     }
     if (_cfDashPrimaryCache != null && _cfDashPrimaryCache !== "") {
-      return String(_cfDashPrimaryCache);
+      var v2 = String(_cfDashPrimaryCache);
+      try {
+        window._cfPrimaryReason = v2;
+      } catch (e) {
+        /* ignore */
+      }
+      return v2;
     }
     return "price";
   }
@@ -957,6 +974,25 @@
   function buildWhatsappMessage(opts) {
     var reason = (opts && opts.reason != null) ? String(opts.reason).trim() : "";
     var sub_category = (opts.sub_category || "").trim();
+    if (window._cfForceNoReason === true) {
+      try {
+        console.log("FORCING NO REASON (TEST MODE)");
+      } catch (e) {
+        /* ignore */
+      }
+      reason = null;
+      sub_category = null;
+    }
+    if (!reason) {
+      if (window._cfPrimaryReason) {
+        reason = window._cfPrimaryReason;
+        try {
+          console.log("PRIMARY_REASON_FROM_DASHBOARD", reason);
+        } catch (e) {
+          /* ignore */
+        }
+      }
+    }
     if (!reason || reason === "auto") {
       var primaryReason = getPrimaryRecoveryReason(getStoreSlug());
       try {
