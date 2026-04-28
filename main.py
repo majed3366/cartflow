@@ -29,6 +29,8 @@ from json_response import UTF8JSONResponse, j
 from sqlalchemy import func, inspect, text
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
+from decision_engine import decide_recovery_action
+
 load_dotenv()
 
 import models  # noqa: F401, E402
@@ -79,8 +81,6 @@ def config_system_verify():
 
 @app.get("/decision-check")
 def decision_check(reason_tag: str = "price_high"):
-    from services.decision_engine import decide_recovery_action
-
     result = decide_recovery_action(reason_tag)
     return {
         "ok": True,
@@ -203,9 +203,9 @@ async def set_embed_csp_middleware(request: Request, call_next: Any) -> Any:
 
 @app.middleware("http")
 async def no_dev_in_production(request: Request, call_next: Any) -> Any:
-    """يُنفَّذ أوّل مسار؛ ‎404‎ لـ ‎/dev‎ و ‎/dev/*‎ و ‎/decision-check‎ عندما ‎ENV‎ ليس ‎development‎."""
+    """يُنفَّذ أوّل مسار؛ ‎404‎ لـ ‎/dev‎ و ‎/dev/*‎ عندما ‎ENV‎ ليس ‎development‎."""
     p = request.url.path
-    if p == "/dev" or p.startswith("/dev/") or p == "/decision-check":
+    if p == "/dev" or p.startswith("/dev/"):
         if not _is_development_mode():
             return Response(status_code=404)
     return await call_next(request)
