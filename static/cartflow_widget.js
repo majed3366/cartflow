@@ -974,23 +974,19 @@
   function buildWhatsappMessage(opts) {
     var reason = (opts && opts.reason != null) ? String(opts.reason).trim() : "";
     var sub_category = (opts.sub_category || "").trim();
+    // TEST MODE: force no reason
     if (window._cfForceNoReason === true) {
-      try {
-        console.log("FORCING NO REASON (TEST MODE)");
-      } catch (e) {
-        /* ignore */
-      }
+      console.log("FORCING NO REASON (TEST MODE)");
       reason = null;
       sub_category = null;
     }
-    if (!reason) {
+
+    // Only apply fallback if truly no reason
+    if (!reason || reason === "unknown") {
       if (window._cfPrimaryReason) {
         reason = window._cfPrimaryReason;
-        try {
-          console.log("PRIMARY_REASON_FROM_DASHBOARD", reason);
-        } catch (e) {
-          /* ignore */
-        }
+        sub_category = null; // reset to avoid wrong mapping
+        console.log("PRIMARY_REASON_FROM_DASHBOARD", reason);
       }
     }
     if (!reason || reason === "auto") {
