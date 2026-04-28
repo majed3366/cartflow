@@ -13,16 +13,34 @@ from typing import Any, Dict, Optional
 
 import requests
 
+from config_system import get_cartflow_config
+
 logger = logging.getLogger(__name__)
 
 
-def _min_quiet_from_store_settings(store: Optional[Any]) -> timedelta:
+def _resolved_store_slug(store: Optional[Any]) -> Optional[str]:
+    """مفتاح ‎CartFlow‎: ‎slug‎ أو ‎zid_store_id‎ عند حضور سلسلة."""
+    if store is None:
+        return None
+    sl = getattr(store, "slug", None)
+    if isinstance(sl, str) and sl.strip():
+        return sl.strip()[:255]
+    zid = getattr(store, "zid_store_id", None)
+    if isinstance(zid, str) and zid.strip():
+        return zid.strip()[:255]
+    return None
+
+
+def _recovery_config(store: Optional[Any]) -> Dict[str, Any]:
+    """طبقة ‎Layer C‎ — قراءة فقط؛ ‎demo‎ عندما لا يوجد كائن متجر."""
+    if store is None:
+        return get_cartflow_config(store_slug="demo")
+    return get_cartflow_config(store_slug=_resolved_store_slug(store))
+
+
+def _min_quiet_from_store_legacy(store: Optional[Any]) -> timedelta:
     """
-    يحوّل ‎recovery_delay + recovery_delay_unit‎ إلى ‎timedelta‎.
-    الافتراضي ‎2‎ دقيقة عند غياب الضبط أو ‎store‎.
-    - minutes: recovery_delay
-    - hours: recovery_delay * 60
-    - days: recovery_delay * 1440
+    منطق زمن السكون قبل حقن الإعداد من ‎config_system‎ (انسجام مع الواجهات الاختبارية بدون slug).
     """
     if store is None:
         return timedelta(minutes=2)
@@ -47,6 +65,50 @@ def _min_quiet_from_store_settings(store: Optional[Any]) -> timedelta:
     else:
         total_minutes = d
     return timedelta(minutes=total_minutes)
+
+
+def _min_quiet_from_store_settings(store: Optional[Any]) -> timedelta:
+    """
+    يحوّل ‎recovery_delay + recovery_delay_unit‎ إلى ‎timedelta‎.
+    عند وجود مفتاح متجر (‎slug / zid_store_id‎) يُطبَّق جزء الدقائق من ‎get_cartflow_config‎.
+    وإلا يُستخدم المنطق السابق لعدم تحطيم الاختبارات بالوسائط الموصوفة بدون هوية متجر.
+    """
+    slug = None if store is None else _resolved_store_slug(store)
+
+    if store is None:
+        cfg = _recovery_config(None)
+        recovery_delay_minutes = int(cfg.get("recovery_delay_minutes", 1))
+        return timedelta(minutes=max(0, recovery_delay_minutes))
+
+    if slug is None:
+        return _min_quiet_from_store_legacy(store)
+
+    raw_unit = getattr(store, "recovery_delay_unit", None) or "minutes"
+    if isinstance(raw_unit, str):
+        unit = raw_unit.strip().lower()
+    else:
+        unit = "minutes"
+
+    cfg = _recovery_config(store)
+    recovery_delay_minutes_cfg = max(0, int(cfg.get("recovery_delay_minutes", 1)))
+
+    if unit == "hours" or unit == "days":
+        delay = getattr(store, "recovery_delay", None)
+        if delay is None:
+            d = 2
+        else:
+            try:
+                d = int(delay)
+            except (TypeError, ValueError):
+                d = 2
+        d = max(0, d)
+        if unit == "hours":
+            total_minutes = d * 60
+        else:
+            total_minutes = d * 1440
+        return timedelta(minutes=total_minutes)
+
+    return timedelta(minutes=recovery_delay_minutes_cfg)
 
 
 def recovery_delay_to_seconds(store: Optional[Any]) -> float:
@@ -88,6 +150,9 @@ def should_send_whatsapp(
     - وإلا يلزم أن يمر زمن سكون ‎>=‎ الحد المضبوط (من ‎Store‎ أو افتراضياً ‎2‎ دقيقة).
     """
     if user_returned_to_site:
+        return False
+    cfg = _recovery_config(store)
+    if not cfg.get("whatsapp_recovery_enabled", True):
         return False
     try:
         sc = int(sent_count)
