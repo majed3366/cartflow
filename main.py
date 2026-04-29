@@ -1321,6 +1321,7 @@ async def api_cart_event(request: Request, background_tasks: BackgroundTasks):
         payload = None
     if not isinstance(payload, dict):
         payload = {}
+    print("[CF API] event received")
     out: dict[str, Any] = {
         "ok": True,
         "event": payload.get("event"),
@@ -1333,6 +1334,7 @@ async def api_cart_event(request: Request, background_tasks: BackgroundTasks):
         _mark_user_converted_for_payload(payload)
         out["conversion_tracked"] = True
     if payload.get("event") == "cart_abandoned":
+        print("[CF API] processing event")
         out.update(await handle_cart_abandoned(background_tasks, payload))
     return j(out, 200)
 

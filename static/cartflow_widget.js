@@ -1436,6 +1436,11 @@
   }
 
   function showBubble(triggerSource) {
+    try {
+      console.log("[CF FRONT] trigger detected", triggerSource);
+    } catch (eCfTrig) {
+      /* ignore */
+    }
     var openSource =
       triggerSource === TRIGGER_SOURCE_EXIT_INTENT
         ? TRIGGER_SOURCE_EXIT_INTENT
@@ -1483,6 +1488,11 @@
       } else {
         shown = false;
       }
+    }
+    try {
+      console.log("[CF FRONT] widget should open", triggerSource);
+    } catch (eCfOpen) {
+      /* ignore */
     }
     shown = true;
     removeFabIfAny();
