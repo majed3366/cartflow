@@ -53,7 +53,11 @@ def decide_recovery_action(reason_tag: str | None) -> RecoveryActionResult:
         },
         "warranty": {
             "action": "reassure_warranty",
-            "message": "المنتج عليه ضمان 👍 يضمن لك راحة الاستخدام",
+            "message": (
+                "أكيد 👍 الضمان مهم\n"
+                "المنتج عليه ضمان يغطي عيوب التصنيع ويعطيك أمان أكثر\n"
+                "تحب أشرح لك كيف يشملك الضمان؟"
+            ),
         },
         "other": {
             "action": "generic_followup",
