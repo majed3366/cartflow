@@ -1004,6 +1004,8 @@ _session_recovery_logged: dict[str, bool] = {}
 _session_recovery_sent: dict[str, bool] = {}
 _session_recovery_converted: dict[str, bool] = {}
 _session_recovery_returned: dict[str, bool] = {}
+_session_recovery_send_count: dict[str, int] = {}
+_MAX_RECOVERY_ATTEMPTS = 1
 _recovery_session_lock = threading.Lock()
 
 # خطوة إضافية منطقية (سابقاً كان عندها خطوتان أخريان) — لسجلات «توقفت بعد الأولى»
@@ -1339,6 +1341,27 @@ async def _run_recovery_sequence_after_cart_abandoned(
         )
         return
 
+    max_recovery_attempts = _MAX_RECOVERY_ATTEMPTS
+    with _recovery_session_lock:
+        sent_count = _session_recovery_send_count.get(recovery_key, 0)
+    allowed = sent_count < max_recovery_attempts
+    print("[ATTEMPT CONTROL]")
+    print("session_id=", session_id)
+    print("sent_count=", sent_count)
+    print("allowed=", allowed)
+    if not allowed:
+        print("[ATTEMPT BLOCKED]")
+        _persist_cart_recovery_log(
+            store_slug=store_slug,
+            session_id=session_id,
+            cart_id=cart_id,
+            phone=None,
+            message=text,
+            status="skipped_attempt_limit",
+            step=step_num,
+        )
+        return
+
     wa_result = send_whatsapp(
         phone,
         text,
@@ -1352,6 +1375,8 @@ async def _run_recovery_sequence_after_cart_abandoned(
     success = isinstance(wa_result, dict) and wa_result.get("ok") is True
     if success:
         print("[DELAY SEND EXECUTED]")
+        with _recovery_session_lock:
+            _session_recovery_send_count[recovery_key] = sent_count + 1
     if not success:
         _persist_cart_recovery_log(
             store_slug=store_slug,
