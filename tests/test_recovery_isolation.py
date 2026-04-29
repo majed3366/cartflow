@@ -41,7 +41,7 @@ class RecoveryIsolationTests(unittest.TestCase):
     @patch("main._persist_cart_recovery_log")
     @patch("main.send_whatsapp")
     @patch("main.recovery_uses_real_whatsapp", return_value=False)
-    @patch("main.recovery_delay_to_seconds", return_value=0.0)
+    @patch("main.get_recovery_delay", return_value=0)
     def test_demo_then_demo2_same_session_both_schedule(
         self, _mock_delay: object, _ur: object, _mock_wa: object, _mock_persist: object
     ) -> None:

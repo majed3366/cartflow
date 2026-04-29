@@ -42,7 +42,7 @@ class CartRecoverySequenceBehaviorTests(unittest.TestCase):
     @patch("main._persist_cart_recovery_log")
     @patch("main.send_whatsapp")
     @patch("main.recovery_uses_real_whatsapp", return_value=False)
-    @patch("main.recovery_delay_to_seconds", return_value=0.0)
+    @patch("main.get_recovery_delay", return_value=0)
     def test_1_normal_sequence_three_steps_once(
         self, _d: object, _ur: object, mock_send: object, _p: object
     ) -> None:
@@ -63,7 +63,7 @@ class CartRecoverySequenceBehaviorTests(unittest.TestCase):
     @patch("main._persist_cart_recovery_log")
     @patch("main.send_whatsapp")
     @patch("main.recovery_uses_real_whatsapp", return_value=False)
-    @patch("main.recovery_delay_to_seconds", return_value=0.0)
+    @patch("main.get_recovery_delay", return_value=0)
     def test_2_duplicate_protection_no_resend(
         self, _d: object, _ur: object, mock_send: object, _p: object
     ) -> None:
@@ -81,7 +81,7 @@ class CartRecoverySequenceBehaviorTests(unittest.TestCase):
     @patch("main._persist_cart_recovery_log")
     @patch("main.send_whatsapp")
     @patch("main.recovery_uses_real_whatsapp", return_value=False)
-    @patch("main.recovery_delay_to_seconds", return_value=0.0)
+    @patch("main.get_recovery_delay", return_value=0)
     def test_3_store_isolation_demo_and_demo2(
         self, _d: object, _ur: object, mock_send: object, _p: object
     ) -> None:
@@ -108,7 +108,7 @@ class CartRecoverySequenceBehaviorTests(unittest.TestCase):
     @patch("main._persist_cart_recovery_log")
     @patch("main.send_whatsapp")
     @patch("main.recovery_uses_real_whatsapp", return_value=False)
-    @patch("main.recovery_delay_to_seconds", return_value=0.0)
+    @patch("main.get_recovery_delay", return_value=0)
     def test_4_conversion_stops_after_step1(
         self, _d: object, _ur: object, mock_send: object, mock_persist: object
     ) -> None:
@@ -142,7 +142,7 @@ class CartRecoverySequenceBehaviorTests(unittest.TestCase):
 
     @patch("main.send_whatsapp")
     @patch("main.recovery_uses_real_whatsapp", return_value=False)
-    @patch("main.recovery_delay_to_seconds", return_value=0.0)
+    @patch("main.get_recovery_delay", return_value=0)
     def test_5_dev_recovery_logs_includes_fields(
         self, _d: object, _ur: object, _mock_wa: object
     ) -> None:

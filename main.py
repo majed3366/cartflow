@@ -170,9 +170,9 @@ app.include_router(demo_panel_router, prefix="/demo")
 from services.ai_message_builder import build_abandoned_cart_message  # noqa: E402
 from services.whatsapp_recovery import build_whatsapp_recovery_message  # noqa: E402
 from services.whatsapp_queue import start_whatsapp_queue_worker  # noqa: E402
+from services.recovery_delay import get_recovery_delay  # noqa: E402
 from services.whatsapp_send import (  # noqa: E402
     recovery_uses_real_whatsapp,
-    recovery_delay_to_seconds,
     send_whatsapp,
     should_send_whatsapp,
 )
@@ -1204,7 +1204,9 @@ async def handle_cart_abandoned(
         db.session.rollback()
         store = None
     print("store settings loaded")
-    delay_s = float(recovery_delay_to_seconds(store))
+    reason_tag = _reason_tag_for_session(store_slug, session_id_log)
+    config = None  # future: dashboard may pass recovery_delays overrides
+    delay_s = float(get_recovery_delay(reason_tag, store_config=config))
     print("starting delay task")
     background_tasks.add_task(
         _run_recovery_sequence_after_cart_abandoned,

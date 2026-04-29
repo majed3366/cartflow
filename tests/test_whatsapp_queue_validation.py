@@ -41,7 +41,7 @@ class WhatsappQueueValidationTests(unittest.IsolatedAsyncioTestCase):
 
     @patch("main._persist_cart_recovery_log")
     @patch("main.send_whatsapp")
-    @patch("main.recovery_delay_to_seconds", return_value=0.0)
+    @patch("main.get_recovery_delay", return_value=0)
     def test_1_queued_before_send(
         self, _d: object, mock_send: object, mock_persist: object
     ) -> None:
@@ -156,7 +156,7 @@ class WhatsappQueueValidationTests(unittest.IsolatedAsyncioTestCase):
 
     @patch("main._persist_cart_recovery_log", autospec=True)
     @patch("main.send_whatsapp", autospec=True)
-    @patch("main.recovery_delay_to_seconds", return_value=0.0)
+    @patch("main.get_recovery_delay", return_value=0)
     def test_5_conversion_stop_before_send(
         self, _d: object, mock_send: object, mock_persist: object
     ) -> None:
