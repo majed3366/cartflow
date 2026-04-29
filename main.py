@@ -110,7 +110,11 @@ async def whatsapp_webhook(request: Request):
 
 @app.post("/dev/whatsapp-decision-test")
 def whatsapp_decision_test(payload: dict = Body(...)) -> dict[str, Any]:
-    """تجربة قرار الواتساب + إرسال مباشر (يسجَّل أيضاً خارج ‎ENV=development‎ لمطابقة ‎/decision-check‎)."""
+    """تجربة قرار الواتساب + إرسال مباشر (يسجَّل أيضاً خارج ‎ENV=development‎ لمطابقة ‎/decision-check‎).
+
+    لا يُستخدم لتقييم تأخير الاسترجاع: الإرسال هنا يتخطّى مسار السلة و‎should_send_whatsapp‎.
+    لاختبار التأخير والجدولة استخدم فقط ‎POST /api/cart-event‎ مع ‎event=cart_abandoned‎ والسبب من مسار الويدجت.
+    """
     from decision_engine import decide_recovery_action
     from services.whatsapp_send import send_whatsapp, WA_TRACE_DELAY_UNSPECIFIED
 
@@ -179,6 +183,7 @@ from services.whatsapp_queue import start_whatsapp_queue_worker  # noqa: E402
 from services.recovery_delay import get_recovery_delay  # noqa: E402
 from services.whatsapp_send import (  # noqa: E402
     WA_TRACE_DELAY_UNSPECIFIED,
+    _recovery_delay_minutes_from_store,
     emit_recovery_wa_send_trace,
     recovery_uses_real_whatsapp,
     send_whatsapp,
@@ -947,15 +952,17 @@ def _default_recovery_message() -> str:
     return _recovery_message_for_step(1)
 
 
-def _reason_tag_for_session(store_slug: str, session_id: str) -> Optional[str]:
-    """آخر ‎reason_tag‎ محفوظ في ‎cart_recovery_reasons‎ لهذه الجلسة، أو ‎None‎."""
+def _cart_recovery_reason_latest_row(
+    store_slug: str, session_id: str,
+) -> Optional[CartRecoveryReason]:
+    """آخر صف ‎CartRecoveryReason‎ لهذه الجلسة، أو ‎None‎."""
     ss = (store_slug or "").strip()[:255]
     sid = (session_id or "").strip()[:512]
     if not ss or not sid:
         return None
     try:
         db.create_all()
-        row = (
+        return (
             db.session.query(CartRecoveryReason)
             .filter(
                 CartRecoveryReason.store_slug == ss,
@@ -964,10 +971,37 @@ def _reason_tag_for_session(store_slug: str, session_id: str) -> Optional[str]:
             .order_by(CartRecoveryReason.updated_at.desc())
             .first()
         )
-        if row is None:
-            return None
-        tag = (row.reason or "").strip()
-        return tag if tag else None
+    except Exception:  # noqa: BLE001
+        db.session.rollback()
+        return None
+
+
+def _reason_tag_for_session(store_slug: str, session_id: str) -> Optional[str]:
+    """آخر ‎reason_tag‎ محفوظ في ‎cart_recovery_reasons‎ لهذه الجلسة، أو ‎None‎."""
+    row = _cart_recovery_reason_latest_row(store_slug, session_id)
+    if row is None:
+        return None
+    tag = (row.reason or "").strip()
+    return tag if tag else None
+
+
+def _last_activity_utc_from_recovery_row(
+    row: Optional[CartRecoveryReason],
+) -> Optional[datetime]:
+    """‎updated_at‎ من صف السبب كـ ‎UTC‎ (منطق السكون لـ ‎should_send_whatsapp‎)."""
+    if row is None or row.updated_at is None:
+        return None
+    dt = row.updated_at
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
+
+
+def _load_latest_store_for_recovery() -> Optional[Store]:
+    try:
+        db.create_all()
+        _ensure_default_store_for_recovery()
+        return db.session.query(Store).order_by(Store.id.desc()).first()
     except Exception:  # noqa: BLE001
         db.session.rollback()
         return None
@@ -1059,8 +1093,8 @@ async def _run_recovery_sequence_after_cart_abandoned(
     cart_id: Optional[str],
 ) -> None:
     """
-    ينتظر ‎delay_seconds‎ ثم يرسل رسالة واتساب واحدة: نص من محرّك القراءة حسب ‎reason_tag‎
-    المحفوظ، أو رسالة احتياطية. إرسال عبر ‎send_whatsapp‎ (بدون خطوات إضافية ولا تأخيرات جديدة).
+    ينتظر ‎delay_seconds‎ ثم يطبّق ‎should_send_whatsapp‎ على آخر نشاط السبب؛ عند السماح فقط يرسل عبر ‎send_whatsapp‎.
+    نص الرسالة من محرّك القراءة حسب ‎reason_tag‎ المحفوظ، أو رسالة احتياطية.
     """
     try:
         await asyncio.sleep(delay_seconds)
@@ -1086,11 +1120,44 @@ async def _run_recovery_sequence_after_cart_abandoned(
         return
 
     step_num = 1
-    reason_tag = _reason_tag_for_session(store_slug, session_id)
-    if reason_tag is not None:
+    reason_row = _cart_recovery_reason_latest_row(store_slug, session_id)
+    rt_raw = (reason_row.reason or "").strip() if reason_row else ""
+    if rt_raw:
+        reason_tag = rt_raw
         text = decide_recovery_action(reason_tag)["message"]
     else:
+        reason_tag = None
         text = _DEFAULT_DECISION_FALLBACK_MESSAGE
+
+    store_obj = _load_latest_store_for_recovery()
+    last_activity = _last_activity_utc_from_recovery_row(reason_row)
+    now = datetime.now(timezone.utc)
+    delay_minutes = _recovery_delay_minutes_from_store(store_obj)
+    should_send = should_send_whatsapp(
+        last_activity,
+        user_returned_to_site=False,
+        now=now,
+        store=store_obj,
+        sent_count=0,
+    )
+    print("[CARTFLOW DELAY CHECK]")
+    print("reason_tag=", reason_tag)
+    print("last_activity=", last_activity)
+    print("now=", now)
+    print("delay_minutes=", delay_minutes)
+    print("should_send=", should_send)
+
+    if not should_send:
+        _persist_cart_recovery_log(
+            store_slug=store_slug,
+            session_id=session_id,
+            cart_id=cart_id,
+            phone=None,
+            message=text,
+            status="skipped_delay_gate",
+            step=step_num,
+        )
+        return
 
     phone = _recovery_destination_phone()
     _persist_cart_recovery_log(
@@ -1120,9 +1187,9 @@ async def _run_recovery_sequence_after_cart_abandoned(
         reason_tag=reason_tag,
         wa_trace_path=__file__,
         wa_trace_session_id=session_id,
-        wa_trace_last_activity=None,
-        wa_trace_recovery_delay_minutes=delay_seconds / 60.0,
-        wa_trace_delay_passed=WA_TRACE_DELAY_UNSPECIFIED,
+        wa_trace_last_activity=last_activity,
+        wa_trace_recovery_delay_minutes=delay_minutes,
+        wa_trace_delay_passed=True,
     )
 
     now = datetime.now(timezone.utc)
