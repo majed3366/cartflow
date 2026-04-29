@@ -9,6 +9,11 @@
   var IDLE_MS = 8000;
   /** على ‎/demo/store‎ عند تفعيل الودجت: عرض أسرع (ثانية تقريباً) */
   var DEMO_ARMED_IDLE_MS = 1600;
+  /**
+   * وقت السكون قبل إظهار الفقاعة بعد نشاط السلة — واجهة فقط؛ لا يُستخدم لتأخير واتساب.
+   * يمكن تجاوزه: window.CARTFLOW_WIDGET_UI_IDLE_MS (بالمللي ثانية).
+   */
+  var WIDGET_CART_UI_IDLE_MS = 120000;
   var REASON_TAG_KEY = "cartflow_reason_tag";
   var REASON_SUB_TAG_KEY = "cartflow_reason_sub_tag";
   /** Layer D: سبب متروك السلة (مفاتيح منفصلة عن سبب الخطّة الأساسية) */
@@ -1064,6 +1069,19 @@
 
   function getRecoveryDelayMilliseconds() {
     return getRecoveryDelayMinutesForSession() * 60 * 1000;
+  }
+
+  /** مهلة عرض الودجيت بعد آخر نشاط سلة (لا علاقة لها بتأخير الإرسال على الخادم). */
+  function getWidgetCartUiIdleMs() {
+    try {
+      var o = window.CARTFLOW_WIDGET_UI_IDLE_MS;
+      if (typeof o === "number" && isFinite(o) && o >= 0) {
+        return o;
+      }
+    } catch (e) {
+      /* ignore */
+    }
+    return WIDGET_CART_UI_IDLE_MS;
   }
 
   function getPrimaryRecoveryReason(storeId) {
@@ -3002,21 +3020,10 @@
     } catch (eTs) {
       /* ignore */
     }
-    var recoveryDelayMinutes = getRecoveryDelayMinutesForSession();
-    var delayMs = getRecoveryDelayMilliseconds();
-    var lastTs = window._cartflowLastActivityTs;
+    var delayMs = getWidgetCartUiIdleMs();
     try {
-      console.log("CART RECOVERY SCHEDULED:", true);
-      console.log("HAS CART:", haveCartForWidget());
-      console.log("LAST ACTIVITY:", lastTs);
-      console.log("RECOVERY DELAY:", recoveryDelayMinutes);
-      console.log("(idle window ms):", delayMs);
+      console.log("[CF FRONT] cart UI idle timer ms=", delayMs);
     } catch (eL) {
-      /* ignore */
-    }
-    try {
-      console.log("widget triggered");
-    } catch (e) {
       /* ignore */
     }
     idleTimer = setTimeout(function () {
@@ -3027,14 +3034,14 @@
           ? window._cartflowLastActivityTs
           : nowMs;
       var deltaMs = nowMs - lab;
-      /* المؤقّت نفسه هو فترة السكون؛ لا نرفض الإرسال بسبب انحراف وقتي بسيط */
       var shouldSend = haveCartForWidget();
       try {
+        console.log("[CF FRONT] widget triggered by timer");
         console.log("HAS CART:", haveCartForWidget());
         console.log("LAST ACTIVITY:", lab);
-        console.log("RECOVERY DELAY:", recoveryDelayMinutes);
+        console.log("UI idle timer ms:", delayMs);
         console.log("TIME SINCE LAST ACTIVITY:", deltaMs);
-        console.log("SHOULD SEND RECOVERY:", shouldSend);
+        console.log("SHOULD SHOW WIDGET:", shouldSend);
       } catch (e2) {
         /* ignore */
       }
