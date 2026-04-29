@@ -112,7 +112,7 @@ async def whatsapp_webhook(request: Request):
 def whatsapp_decision_test(payload: dict = Body(...)) -> dict[str, Any]:
     """تجربة قرار الواتساب + إرسال مباشر (يسجَّل أيضاً خارج ‎ENV=development‎ لمطابقة ‎/decision-check‎)."""
     from decision_engine import decide_recovery_action
-    from services.whatsapp_send import send_whatsapp
+    from services.whatsapp_send import send_whatsapp, WA_TRACE_DELAY_UNSPECIFIED
 
     phone = payload.get("phone")
     reason_tag = payload.get("reason_tag")
@@ -120,7 +120,13 @@ def whatsapp_decision_test(payload: dict = Body(...)) -> dict[str, Any]:
     result = decide_recovery_action(reason_tag)
     message = result["message"]
 
-    send_result = send_whatsapp(phone, message, reason_tag=reason_tag)
+    send_result = send_whatsapp(
+        phone,
+        message,
+        reason_tag=reason_tag,
+        wa_trace_path=__file__,
+        wa_trace_delay_passed=WA_TRACE_DELAY_UNSPECIFIED,
+    )
     print("[WHATSAPP TEST] phone=", phone)
     print("[WHATSAPP TEST] message=", message)
     print("[WHATSAPP TEST] result=", send_result)
@@ -172,6 +178,8 @@ from services.whatsapp_recovery import build_whatsapp_recovery_message  # noqa: 
 from services.whatsapp_queue import start_whatsapp_queue_worker  # noqa: E402
 from services.recovery_delay import get_recovery_delay  # noqa: E402
 from services.whatsapp_send import (  # noqa: E402
+    WA_TRACE_DELAY_UNSPECIFIED,
+    emit_recovery_wa_send_trace,
     recovery_uses_real_whatsapp,
     send_whatsapp,
     should_send_whatsapp,
@@ -1106,7 +1114,16 @@ async def _run_recovery_sequence_after_cart_abandoned(
         )
         return
 
-    send_whatsapp(phone, text, reason_tag=reason_tag)
+    send_whatsapp(
+        phone,
+        text,
+        reason_tag=reason_tag,
+        wa_trace_path=__file__,
+        wa_trace_session_id=session_id,
+        wa_trace_last_activity=None,
+        wa_trace_recovery_delay_minutes=delay_seconds / 60.0,
+        wa_trace_delay_passed=WA_TRACE_DELAY_UNSPECIFIED,
+    )
 
     now = datetime.now(timezone.utc)
     _persist_cart_recovery_log(
@@ -1659,7 +1676,13 @@ def dev_recovery_flow_test(request: Request):
                 last, user_returned_to_site=False, now=now, store=st
             )
             if should_send:
-                send_whatsapp(phone="0500000000", message=message)
+                send_whatsapp(
+                    phone="0500000000",
+                    message=message,
+                    wa_trace_path=__file__,
+                    wa_trace_last_activity=last,
+                    wa_trace_delay_passed=True,
+                )
             return j(
                 {
                     "ok": True,
@@ -1700,7 +1723,11 @@ def dev_recovery_flow_test(request: Request):
         send_result = None
         if should_send:
             send_result = send_whatsapp(
-                phone=row.customer_phone or "0500000000", message=message
+                phone=row.customer_phone or "0500000000",
+                message=message,
+                wa_trace_path=__file__,
+                wa_trace_last_activity=last,
+                wa_trace_delay_passed=True,
             )
         return j(
             {
@@ -1734,7 +1761,14 @@ async def send_test_whatsapp_post(request: Request):
         return j({"ok": False, "error": "phone_and_message_required"}, 400)
     if not isinstance(message, str):
         message = str(message)
-    return j(send_whatsapp(phone, message))
+    return j(
+        send_whatsapp(
+            phone,
+            message,
+            wa_trace_path=__file__,
+            wa_trace_delay_passed=WA_TRACE_DELAY_UNSPECIFIED,
+        )
+    )
 
 
 # تسمية مودل Claude (يمكن تغييره من البيئة)
@@ -1983,6 +2017,10 @@ def send_whatsapp_message(
     }
     url = f"{base}/{phone_id}/messages"
     try:
+        emit_recovery_wa_send_trace(
+            path_file=__file__,
+            delay_passed=WA_TRACE_DELAY_UNSPECIFIED,
+        )
         resp = requests.post(
             url,
             json=payload,
@@ -2024,6 +2062,10 @@ def generate_recovery_message(customer_name: str, cart_items: str, cart_value: f
     )
     # عميل ‎Messages API‎
     try:
+        emit_recovery_wa_send_trace(
+            path_file=__file__,
+            delay_passed=WA_TRACE_DELAY_UNSPECIFIED,
+        )
         client = anthropic.Anthropic(api_key=key)
         msg = client.messages.create(
             model=DEFAULT_CLAUDE_MODEL,

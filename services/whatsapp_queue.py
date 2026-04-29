@@ -14,7 +14,11 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional, Tuple
 
-from services.whatsapp_send import send_whatsapp_mock, send_whatsapp_real
+from services.whatsapp_send import (
+    WA_TRACE_DELAY_UNSPECIFIED,
+    send_whatsapp_mock,
+    send_whatsapp_real,
+)
 
 logger = logging.getLogger("cartflow.whatsapp_queue")
 
@@ -90,10 +94,21 @@ def _is_converted(key: str) -> bool:
     return _is_user_converted(key)
 
 
-def _one_send(use_real: bool, phone: str, message: str) -> Dict[str, Any]:
+def _one_send(
+    use_real: bool,
+    phone: str,
+    message: str,
+    *,
+    trace_session_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    trace_kw: Dict[str, Any] = {
+        "wa_trace_path": os.path.abspath(__file__),
+        "wa_trace_session_id": trace_session_id,
+        "wa_trace_delay_passed": WA_TRACE_DELAY_UNSPECIFIED,
+    }
     if use_real:
-        return send_whatsapp_real(phone, message)
-    out = send_whatsapp_mock(phone, message)
+        return send_whatsapp_real(phone, message, **trace_kw)
+    out = send_whatsapp_mock(phone, message, **trace_kw)
     if isinstance(out, dict):
         return out
     return {"ok": bool(out)}
@@ -170,7 +185,12 @@ async def _do_process_one_job_body(
             return
 
         try:
-            r = _one_send(job.use_real, job.phone, job.message)
+            r = _one_send(
+                job.use_real,
+                job.phone,
+                job.message,
+                trace_session_id=job.session_id,
+            )
             ok = _is_send_ok(r)
         except Exception as e:  # noqa: BLE001
             logger.warning("wa queue send: %s", e, exc_info=True)

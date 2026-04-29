@@ -210,7 +210,7 @@ class WhatsappQueueValidationTests(unittest.IsolatedAsyncioTestCase):
         c = [0]
 
         def count_send(
-            _use_real: object, _phone: str, _message: str
+            _use_real: object, _phone: str, _message: str, **_kw: object
         ) -> dict:  # noqa: ARG001
             c[0] += 1
             return {"ok": True}

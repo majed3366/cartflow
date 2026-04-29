@@ -16,6 +16,38 @@ from config_system import get_cartflow_config
 
 logger = logging.getLogger(__name__)
 
+# Temporary dev-only tracing for recovery sends (set ENV=development or WA_RECOVERY_SEND_TRACE=1).
+WA_TRACE_DELAY_UNSPECIFIED = object()
+
+
+def wa_recovery_trace_enabled() -> bool:
+    env = (os.getenv("ENV") or "").strip().lower()
+    flag = (os.getenv("WA_RECOVERY_SEND_TRACE") or "").strip().lower()
+    return env == "development" or flag in ("1", "true", "yes", "on")
+
+
+def emit_recovery_wa_send_trace(
+    *,
+    path_file: str,
+    reason_tag: Any = None,
+    session_id: Any = None,
+    last_activity: Any = None,
+    recovery_delay_minutes: Any = None,
+    delay_passed: Any = WA_TRACE_DELAY_UNSPECIFIED,
+) -> None:
+    if not wa_recovery_trace_enabled():
+        return
+    if delay_passed is WA_TRACE_DELAY_UNSPECIFIED:
+        dp = "NO_DELAY_CHECK"
+    else:
+        dp = delay_passed
+    print("[WA SEND PATH]", path_file)
+    print("[WA SEND REASON]", reason_tag)
+    print("[WA SEND SESSION]", session_id)
+    print("[WA SEND LAST_ACTIVITY]", last_activity)
+    print("[WA SEND DELAY_MINUTES]", recovery_delay_minutes)
+    print("[WA SEND PASSED_DELAY_CHECK]", dp)
+
 
 def _resolved_store_slug(store: Optional[Any]) -> Optional[str]:
     """مفتاح ‎CartFlow‎: ‎slug‎ أو ‎zid_store_id‎ عند حضور سلسلة."""
@@ -229,6 +261,11 @@ def send_whatsapp(
     message: str,
     *,
     reason_tag: Optional[str] = None,
+    wa_trace_path: Optional[str] = None,
+    wa_trace_session_id: Optional[str] = None,
+    wa_trace_last_activity: Optional[Any] = None,
+    wa_trace_recovery_delay_minutes: Optional[Any] = None,
+    wa_trace_delay_passed: Any = WA_TRACE_DELAY_UNSPECIFIED,
 ) -> Dict[str, Any]:
     """
     إرسال واتساب عبر Twilio Conversation API (REST).
@@ -257,6 +294,15 @@ def send_whatsapp(
     if not body_text:
         return {"ok": False, "error": "empty_message"}
 
+    emit_recovery_wa_send_trace(
+        path_file=wa_trace_path or __file__,
+        reason_tag=reason_tag,
+        session_id=wa_trace_session_id,
+        last_activity=wa_trace_last_activity,
+        recovery_delay_minutes=wa_trace_recovery_delay_minutes,
+        delay_passed=wa_trace_delay_passed,
+    )
+
     try:
         client = Client(sid, token)
         msg = client.messages.create(
@@ -278,7 +324,24 @@ def send_whatsapp(
         return {"ok": False, "error": str(e)}
 
 
-def send_whatsapp_mock(phone, message):
+def send_whatsapp_mock(
+    phone: str,
+    message: str,
+    *,
+    wa_trace_path: Optional[str] = None,
+    wa_trace_session_id: Optional[str] = None,
+    wa_trace_last_activity: Optional[Any] = None,
+    wa_trace_recovery_delay_minutes: Optional[Any] = None,
+    wa_trace_delay_passed: Any = WA_TRACE_DELAY_UNSPECIFIED,
+) -> Dict[str, Any]:
+    emit_recovery_wa_send_trace(
+        path_file=wa_trace_path or __file__,
+        reason_tag=None,
+        session_id=wa_trace_session_id,
+        last_activity=wa_trace_last_activity,
+        recovery_delay_minutes=wa_trace_recovery_delay_minutes,
+        delay_passed=wa_trace_delay_passed,
+    )
     print("sending whatsapp to:", phone)
     print("message:", message)
     return {"ok": True}
@@ -318,8 +381,9 @@ def send_whatsapp_real(
     message: str,
     *,
     reason_tag: Optional[str] = None,
+    **kwargs: Any,
 ) -> Dict[str, Any]:
     """
     مطابق لـ‎ ``send_whatsapp`` (‎Twilio‎) — اسم قديم يستخدمه طابور الاسترجاع.
     """
-    return send_whatsapp(phone, message, reason_tag=reason_tag)
+    return send_whatsapp(phone, message, reason_tag=reason_tag, **kwargs)
