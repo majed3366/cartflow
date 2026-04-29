@@ -29,7 +29,11 @@ def decide_recovery_action(reason_tag: str | None) -> RecoveryActionResult:
         },
         "quality": {
             "action": "show_social_proof",
-            "message": "واضح إن الجودة تهمك 👍 المنتج عليه تقييمات ممتازة وتجارب إيجابية",
+            "message": (
+                "واضح إن الجودة تهمك 👍\n"
+                "المنتج عليه تجارب ممتازة، وكثير يمدحونه من ناحية الاستخدام\n"
+                "إذا تحب أشاركك أبرز المميزات؟"
+            ),
         },
         "shipping": {
             "action": "highlight_shipping",
