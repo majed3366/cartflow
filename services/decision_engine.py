@@ -45,7 +45,11 @@ def decide_recovery_action(reason_tag: str | None) -> RecoveryActionResult:
         },
         "delivery": {
             "action": "reassure_delivery",
-            "message": "التوصيل عادة سريع 👍 ونحرص يكون بأفضل وقت ممكن",
+            "message": (
+                "صحيح 👍 التوصيل مهم\n"
+                "غالبًا نوصل خلال فترة مناسبة، وأقدر أتأكد لك من الوقت المتوقع لمدينتك\n"
+                "تحب أشيّك لك الآن؟"
+            ),
         },
         "warranty": {
             "action": "reassure_warranty",
