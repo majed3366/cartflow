@@ -91,27 +91,11 @@ def decision_check(reason_tag: str = "price_high"):
 
 
 @app.post("/webhook/whatsapp")
-async def webhook_whatsapp(request: Request) -> dict[str, Any]:
-    """وارد واتساب (اختبار الالتزام فقط — لا تخزين بعد)."""
-    incoming_message = ""
-    try:
-        ct = (request.headers.get("content-type") or "").lower()
-        if "application/json" in ct:
-            data = await request.json()
-            if isinstance(data, dict):
-                incoming_message = str(
-                    data.get("Body")
-                    or data.get("body")
-                    or data.get("message")
-                    or data.get("text")
-                    or ""
-                ).strip()
-        else:
-            form = await request.form()
-            incoming_message = str(form.get("Body") or form.get("body") or "").strip()
-    except Exception as exc:  # noqa: BLE001
-        incoming_message = f"<parse_error: {exc}>"
-    print("[WA REPLY]", incoming_message)
+async def whatsapp_webhook(request: Request) -> dict[str, Any]:
+    """وارد واتساب من Twilio Sandbox (‎WHEN A MESSAGE COMES IN‎ → ‎POST‎ لهذا المسار)."""
+    form = await request.form()
+    message = form.get("Body")
+    print("[WA REPLY]", message)
     return {"ok": True}
 
 
