@@ -196,6 +196,86 @@ from services.recovery_decision import get_primary_recovery_reason
 log = logging.getLogger("cartflow")
 
 
+def _dev_delay_test_minutes_for_reason(reason_tag: str) -> int:
+    """مهلات اختبار معزولة فقط — لا تؤثر على الإنتاج أو محرك القرار."""
+    tag = (reason_tag or "").strip().lower()
+    if tag == "shipping":
+        return 2
+    if tag == "price" or tag.startswith("price"):
+        return 5
+    return 2
+
+
+async def _run_dev_cartflow_delay_test_send(
+    delay_seconds: float,
+    phone: str,
+    reason_tag: str,
+) -> None:
+    await asyncio.sleep(delay_seconds)
+    try:
+        decision = decide_recovery_action(reason_tag)
+        message = decision["message"]
+    except Exception:  # noqa: BLE001 — تجربة عزل فقط
+        message = ""
+    result = send_whatsapp(
+        phone,
+        message,
+        reason_tag=reason_tag,
+        wa_trace_path=__file__,
+        wa_trace_delay_passed=WA_TRACE_DELAY_UNSPECIFIED,
+    )
+    sent_at = datetime.now(timezone.utc)
+    print("[DEV DELAY TEST SEND]")
+    print("sent_at=", sent_at.isoformat())
+    print("phone=", phone)
+    print("result=", result)
+
+
+@app.post("/dev/cartflow-delay-test")
+async def dev_cartflow_delay_test(
+    background_tasks: BackgroundTasks,
+    payload: Dict[str, Any] = Body(...),
+) -> Any:
+    """
+    تجربة تأخير معزولة: جدولة إرسال واتساب بعد دقائق حسب ‎reason_tag‎ — لا يمس مسار السلة/الودجت.
+    يعمل فقط عند ‎ENV=development‎.
+    """
+    if not _is_development_mode():
+        return Response(status_code=404)
+    phone = (payload.get("phone") or "").strip()
+    reason_tag = (payload.get("reason_tag") or "").strip()
+    if not phone:
+        return j({"ok": False, "error": "phone_required"}, 400)
+    if not reason_tag:
+        return j({"ok": False, "error": "reason_tag_required"}, 400)
+    delay_minutes = _dev_delay_test_minutes_for_reason(reason_tag)
+    delay_seconds = float(delay_minutes * 60)
+    scheduled_at = datetime.now(timezone.utc)
+    send_after = scheduled_at + timedelta(seconds=delay_seconds)
+    print("[DEV DELAY TEST]")
+    print("reason_tag=", reason_tag)
+    print("delay_minutes=", delay_minutes)
+    print("scheduled_at=", scheduled_at.isoformat())
+    print("send_after=", send_after.isoformat())
+    background_tasks.add_task(
+        _run_dev_cartflow_delay_test_send,
+        delay_seconds,
+        phone,
+        reason_tag,
+    )
+    return j(
+        {
+            "ok": True,
+            "reason_tag": reason_tag,
+            "delay_minutes": delay_minutes,
+            "delay_seconds": delay_seconds,
+            "scheduled_at": scheduled_at.isoformat(),
+            "send_after": send_after.isoformat(),
+        },
+        200,
+    )
+
+
 def _ensure_store_widget_schema() -> None:
     ensure_store_widget_schema(db)
 
