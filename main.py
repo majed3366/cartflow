@@ -211,6 +211,7 @@ async def _run_dev_cartflow_delay_test_send(
     phone: str,
     reason_tag: str,
     simulate_user_return: bool,
+    simulate_purchase: bool,
 ) -> None:
     await asyncio.sleep(delay_seconds)
     try:
@@ -221,8 +222,8 @@ async def _run_dev_cartflow_delay_test_send(
 
     # مطابقة منطق منع الإزعاج قبل الإرسال — مسار تجربة فقط (لا recovery_key إنتاجي).
     user_returned_to_site = bool(simulate_user_return)
-    purchase_completed = False
-    should_send = (not user_returned_to_site) and (not purchase_completed)
+    purchase_completed = bool(simulate_purchase)
+    should_send = not (user_returned_to_site or purchase_completed)
     session_id_log = "(dev-delay-test)"
     print("[ANTI SPAM CHECK]")
     print("session_id=", session_id_log)
@@ -230,7 +231,10 @@ async def _run_dev_cartflow_delay_test_send(
     print("purchase_completed=", purchase_completed)
     print("should_send=", should_send)
     if not should_send:
-        print("[DEV DELAY TEST] anti-spam blocked send (simulate_user_return)")
+        if purchase_completed:
+            print("[DEV DELAY TEST] anti-spam blocked send (simulate_purchase)")
+        else:
+            print("[DEV DELAY TEST] anti-spam blocked send (simulate_user_return)")
         return
 
     result = send_whatsapp(
@@ -255,11 +259,12 @@ async def dev_cartflow_delay_test(
     """
     تجربة تأخير معزولة: جدولة إرسال واتساب بعد دقائق حسب ‎reason_tag‎ — لا يمس مسار السلة/الودجت.
     مسموح في الإنتاج تحققاً من الجدولة (نفس استثناء الميدلوير لـ ‎/dev/cartflow-delay-test‎).
-    جسم اختياري: ‎simulate_user_return: true‎ لمحاكاة رجوع المستخدم واختبار منع الإزعاج دون تفاعل حقيقي.
+    جسم اختياري: ‎simulate_user_return: true‎ لمحاكاة رجوع المستخدم؛ ‎simulate_purchase: true‎ لمحاكاة إتمام الشراء — اختبار منع الإزعاج دون تفاعل حقيقي.
     """
     phone = (payload.get("phone") or "").strip()
     reason_tag = (payload.get("reason_tag") or "").strip()
     simulate_user_return = payload.get("simulate_user_return") is True
+    simulate_purchase = payload.get("simulate_purchase") is True
     if not phone:
         return j({"ok": False, "error": "phone_required"}, 400)
     if not reason_tag:
@@ -274,12 +279,14 @@ async def dev_cartflow_delay_test(
     print("scheduled_at=", scheduled_at.isoformat())
     print("send_after=", send_after.isoformat())
     print("simulate_user_return=", simulate_user_return)
+    print("simulate_purchase=", simulate_purchase)
     background_tasks.add_task(
         _run_dev_cartflow_delay_test_send,
         delay_seconds,
         phone,
         reason_tag,
         simulate_user_return,
+        simulate_purchase,
     )
     return j(
         {
@@ -290,6 +297,7 @@ async def dev_cartflow_delay_test(
             "scheduled_at": scheduled_at.isoformat(),
             "send_after": send_after.isoformat(),
             "simulate_user_return": simulate_user_return,
+            "simulate_purchase": simulate_purchase,
         },
         200,
     )
