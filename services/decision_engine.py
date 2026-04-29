@@ -61,7 +61,10 @@ def decide_recovery_action(reason_tag: str | None) -> RecoveryActionResult:
         },
         "other": {
             "action": "generic_followup",
-            "message": "حسّينا إنك متردد 👌 إذا حاب نساعدك نكمل الطلب احنا جاهزين",
+            "message": (
+                "أفهم إن فيه شيء معين مخليك متردد 👍\n"
+                "قول لي وش اللي في بالك، وبحاول أساعدك بأفضل حل"
+            ),
         },
     }
 
