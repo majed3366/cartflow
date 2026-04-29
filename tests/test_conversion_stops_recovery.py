@@ -25,6 +25,9 @@ def _reset() -> None:
         main._session_recovery_returned.clear()
         main._session_recovery_send_count.clear()
         main._dev_delay_test_send_count.clear()
+    from services.recovery_session_phone import recovery_phone_memory_clear
+
+    recovery_phone_memory_clear()
 
 
 class ConversionApiTests(unittest.TestCase):

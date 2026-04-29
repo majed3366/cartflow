@@ -26,6 +26,7 @@ from main import (
     _session_recovery_started,
     app,
 )
+from services.recovery_session_phone import recovery_phone_memory_clear
 
 
 def _reset_recovery_memory() -> None:
@@ -37,6 +38,7 @@ def _reset_recovery_memory() -> None:
         _session_recovery_returned.clear()
         _session_recovery_send_count.clear()
         _dev_delay_test_send_count.clear()
+    recovery_phone_memory_clear()
 
 
 class RecoveryIsolationTests(unittest.TestCase):

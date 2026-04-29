@@ -15,6 +15,10 @@ from extensions import db
 from json_response import j
 from models import CartRecoveryReason
 from schema_widget import ensure_store_widget_schema
+from services.recovery_session_phone import (
+    record_recovery_customer_phone,
+    recovery_key_for_reason_session,
+)
 
 log = logging.getLogger("cartflow")
 
@@ -124,6 +128,13 @@ async def post_widget_cart_recovery_reason(request: Request) -> Any:
             )
 
         db.session.commit()
+        rk = recovery_key_for_reason_session(ss, sid)
+        if "phone" in body:
+            record_recovery_customer_phone(rk, reason_phone_update)
+            if reason_phone_update:
+                print("[PHONE ATTACHED]")
+                print("session_id=", sid)
+                print("phone=", reason_phone_update)
         print(
             f"[REASON SAVED] store={ss} session={sid} reason={reason_tag} custom={custom_reason}"
         )

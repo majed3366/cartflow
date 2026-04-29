@@ -1257,21 +1257,32 @@ def _strip_recovery_phone(raw: Optional[Any]) -> str:
 
 def _resolve_recovery_session_phone(
     *,
+    recovery_key: str,
     reason_row: Optional[CartRecoveryReason],
     abandon_event_phone: Optional[str],
-) -> str:
+) -> Tuple[str, str]:
     """
-    رقم واتساب للجلسة: ‎cart_abandoned‎ أو صف ‎CartRecoveryReason.customer_phone‎، ثم الافتراضي التجريبي/البيئة.
+    أولاً ‎cart_abandoned‎، ثم ذاكرة الخادم، ثم ‎DB‎، ثم الافتراضي التجريبي/البيئة.
+    يُرجع ‎(الرقم, مصدر قصير للسجلات)‎.
     """
-    for cand in (
-        _strip_recovery_phone(abandon_event_phone),
-        _strip_recovery_phone(
-            getattr(reason_row, "customer_phone", None) if reason_row else None
-        ),
-    ):
-        if cand:
-            return cand
-    return _strip_recovery_phone(_recovery_destination_phone())
+    from services.recovery_session_phone import get_recovery_customer_phone
+
+    ep = _strip_recovery_phone(abandon_event_phone)
+    if ep:
+        return ep, "cart_event_payload"
+
+    mem = _strip_recovery_phone(get_recovery_customer_phone(recovery_key))
+    if mem:
+        return mem, "persisted_memory"
+
+    dbp = _strip_recovery_phone(
+        getattr(reason_row, "customer_phone", None) if reason_row else None
+    )
+    if dbp:
+        return dbp, "db_reason_row"
+
+    fallback = _strip_recovery_phone(_recovery_destination_phone())
+    return fallback, "default_destination"
 
 
 async def _run_recovery_sequence_after_cart_abandoned(
@@ -1354,10 +1365,15 @@ async def _run_recovery_sequence_after_cart_abandoned(
         )
         return
 
-    phone = _resolve_recovery_session_phone(
+    phone, phone_src = _resolve_recovery_session_phone(
+        recovery_key=recovery_key,
         reason_row=reason_row,
         abandon_event_phone=abandon_event_phone,
     )
+    if phone_src in ("persisted_memory", "db_reason_row"):
+        print("[PHONE RETRIEVED]")
+        print("session_id=", session_id)
+        print("phone=", phone)
     if not phone:
         print("[NO PHONE] skipping send")
         _persist_cart_recovery_log(
@@ -1371,6 +1387,7 @@ async def _run_recovery_sequence_after_cart_abandoned(
         )
         return
     print("[PHONE ATTACHED]")
+    print("session_id=", session_id)
     print("phone=", phone)
     _persist_cart_recovery_log(
         store_slug=store_slug,
@@ -1543,6 +1560,10 @@ async def handle_cart_abandoned(
     raw_phone = payload.get("phone")
     if isinstance(raw_phone, str) and raw_phone.strip():
         abandon_evt_phone = raw_phone.strip()[:100]
+    if abandon_evt_phone:
+        from services.recovery_session_phone import record_recovery_customer_phone
+
+        record_recovery_customer_phone(recovery_key, abandon_evt_phone)
     msg_log = _default_recovery_message()
     if _is_user_converted(recovery_key):
         print("recovery skipped: user already converted")
