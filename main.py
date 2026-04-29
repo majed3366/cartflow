@@ -238,10 +238,8 @@ async def dev_cartflow_delay_test(
 ) -> Any:
     """
     تجربة تأخير معزولة: جدولة إرسال واتساب بعد دقائق حسب ‎reason_tag‎ — لا يمس مسار السلة/الودجت.
-    يعمل فقط عند ‎ENV=development‎.
+    مسموح في الإنتاج تحققاً من الجدولة (نفس استثناء الميدلوير لـ ‎/dev/cartflow-delay-test‎).
     """
-    if not _is_development_mode():
-        return Response(status_code=404)
     phone = (payload.get("phone") or "").strip()
     reason_tag = (payload.get("reason_tag") or "").strip()
     if not phone:
@@ -313,6 +311,15 @@ def _is_development_mode() -> bool:
     return (os.getenv("ENV") or "").strip().lower() == "development"
 
 
+# مسارات ‎/dev‎ مسموحة في الإنتاج رغم ‎ENV‎ (تحقق يدوي / مراقبة؛ باقي ‎/dev‎ محظور).
+_DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT = frozenset(
+    {
+        "/dev/whatsapp-decision-test",
+        "/dev/cartflow-delay-test",
+    }
+)
+
+
 def _app_test_client() -> Any:
     """يُستورد ‎TestClient‎ عند الاستدعاء فقط (تخفيف أعباء الاستيراد عند الإقلاع)."""
     from fastapi.testclient import TestClient
@@ -338,9 +345,11 @@ async def set_embed_csp_middleware(request: Request, call_next: Any) -> Any:
 
 @app.middleware("http")
 async def no_dev_in_production(request: Request, call_next: Any) -> Any:
-    """يُنفَّذ أوّل مسار؛ ‎404‎ لـ ‎/dev‎ و ‎/dev/*‎ عندما ‎ENV‎ ليس ‎development‎ (استثناء: تجربة واتساب/قرار مسجّلة مع ‎/decision-check‎ في ‎Swagger‎)."""
+    """يُنفَّذ أوّل مسار؛ ‎404‎ لـ ‎/dev‎ و ‎/dev/*‎ عندما ‎ENV‎ ليس ‎development‎ (استثناءات: ‎whatsapp-decision-test‎، ‎cartflow-delay-test‎)."""
     p = request.url.path
-    if p == "/dev" or (p.startswith("/dev/") and p != "/dev/whatsapp-decision-test"):
+    if p == "/dev" or (
+        p.startswith("/dev/") and p not in _DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT
+    ):
         if not _is_development_mode():
             return Response(status_code=404)
     return await call_next(request)
