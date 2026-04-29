@@ -154,6 +154,8 @@ class CartRecoveryReason(Base):
     session_id = Column(String(512), nullable=False, index=True)
     # وسوم الطبقة ‎D‎ للودجت (مثل ‎price_high‎) أطول من ‎slug‎ القديم
     reason = Column(String(64), nullable=False, index=True)
+    # اختياري: رقم واتساب للعميل (من ‎POST /api/cart-recovery/reason‎) لمسار الإرسال
+    customer_phone = Column(String(100), nullable=True)
     sub_category = Column(String(64), nullable=True, index=True)
     custom_text = Column(Text, nullable=True)
     source = Column(String(32), default="widget", nullable=False)

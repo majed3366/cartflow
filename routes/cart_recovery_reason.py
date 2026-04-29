@@ -78,6 +78,14 @@ async def post_widget_cart_recovery_reason(request: Request) -> Any:
 
         now = datetime.now(timezone.utc)
 
+        reason_phone_update: Optional[str] = None
+        if "phone" in body:
+            pr = body.get("phone")
+            if pr is None or not str(pr).strip():
+                reason_phone_update = None
+            else:
+                reason_phone_update = str(pr).strip()[:100]
+
         row = (
             db.session.query(CartRecoveryReason)
             .filter(
@@ -96,6 +104,8 @@ async def post_widget_cart_recovery_reason(request: Request) -> Any:
             row.custom_text = custom_reason
             row.source = "widget"
             row.updated_at = now
+            if "phone" in body:
+                row.customer_phone = reason_phone_update
         else:
             db.session.add(
                 CartRecoveryReason(
@@ -104,6 +114,9 @@ async def post_widget_cart_recovery_reason(request: Request) -> Any:
                     reason=reason_tag,
                     sub_category=sub_cat,
                     custom_text=custom_reason,
+                    customer_phone=(
+                        reason_phone_update if "phone" in body else None
+                    ),
                     source="widget",
                     created_at=now,
                     updated_at=now,

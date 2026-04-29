@@ -116,10 +116,37 @@ def _ensure_reason_subcategory_columns(db: Any) -> None:
         log.debug("schema_widget sub_category: %s", e)
 
 
+def _ensure_recovery_reason_customer_phone_column(db: Any) -> None:
+    """عمود ‎customer_phone‎ على ‎cart_recovery_reasons‎ (اختبار/مسار الواتساب)."""
+    try:
+        db.create_all()
+        insp = inspect(db.engine)
+        if not insp.has_table("cart_recovery_reasons"):
+            return
+        col_names = {c["name"] for c in insp.get_columns("cart_recovery_reasons")}
+        if "customer_phone" in col_names:
+            return
+        stmt = (
+            "ALTER TABLE cart_recovery_reasons "
+            "ADD COLUMN customer_phone VARCHAR(100)"
+        )
+        db.session.execute(text(stmt))
+        db.session.commit()
+    except (OSError, SQLAlchemyError, IntegrityError):
+        db.session.rollback()
+        log.debug("schema_widget customer_phone: column add skipped or failed")
+
+
+def ensure_cart_recovery_reason_phone_schema(db: Any) -> None:
+    """يُصدَّر للاستدعاء من ‎main‎ قبل استعلام ‎CartRecoveryReason‎."""
+    _ensure_recovery_reason_customer_phone_column(db)
+
+
 def ensure_store_widget_schema(db: Any) -> None:
     """يُنادى من مسارات ‎API‎ (لا يعتمد على ‎main‎)."""
     _ensure_reason_subcategory_columns(db)
     ensure_recovery_reason_widget_schema(db)
+    _ensure_recovery_reason_customer_phone_column(db)
     global _store_abandonment_schema_ensured
     if _store_abandonment_schema_ensured:
         return
