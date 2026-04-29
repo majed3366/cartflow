@@ -37,7 +37,11 @@ def decide_recovery_action(reason_tag: str | None) -> RecoveryActionResult:
         },
         "shipping": {
             "action": "highlight_shipping",
-            "message": "بخصوص الشحن 👍 أحياناً يكون فيه عروض أو خيارات مناسبة",
+            "message": (
+                "أتفهمك 👍 تكلفة الشحن تفرق\n"
+                "أحيانًا يكون فيه خيارات أفضل أو عروض على الشحن\n"
+                "تحب أشوف لك الأنسب لك؟"
+            ),
         },
         "delivery": {
             "action": "reassure_delivery",
