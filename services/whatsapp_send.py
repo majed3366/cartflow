@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-واتساب: إرسال (ستُربط بمزود لاحقاً) — حالياً تسجيل فقط.
+واتساب للاسترجاع: الإرسال الفعلي عبر Twilio (‎TWILIO_*‎).
 توقيت «متى نرسل؟» — يدعم حقول ‎Store.recovery_*‎ عند تمرير ‎store‎.
-إرسال فعلي اختياري عبر ‎WHATSAPP_API_URL + WHATSAPP_API_KEY‎ عند ‎PRODUCTION_MODE‎.
 """
 from __future__ import annotations
 
@@ -11,7 +10,7 @@ import os
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional
 
-import requests
+from twilio.rest import Client
 
 from config_system import get_cartflow_config
 
@@ -177,21 +176,81 @@ def should_send_whatsapp(
     return True
 
 
+def _normalize_twilio_whatsapp_from(raw: str) -> str:
+    """يضمن صيغة ‎whatsapp:+E164‎ المطلوبة لـ Twilio."""
+    r = (raw or "").strip()
+    if not r:
+        return ""
+    rl = r.lower()
+    if rl.startswith("whatsapp:"):
+        return r.strip()
+    if r.startswith("+"):
+        return f"whatsapp:{r}"
+    digits = "".join(c for c in r if c.isdigit())
+    if not digits:
+        return ""
+    return f"whatsapp:+{digits}"
+
+
+def _normalize_twilio_whatsapp_to(phone: str) -> str:
+    """من حقل رقم أرضي إلى عنوان Twilio ‎whatsapp:+...‎"""
+    raw = (phone or "").strip()
+    rl = raw.lower()
+    if rl.startswith("whatsapp:"):
+        rest = raw.split(":", 1)[1].strip()
+        if rest.startswith("+"):
+            return f"whatsapp:{rest}"
+        digits = "".join(c for c in rest if c.isdigit())
+        return f"whatsapp:+{digits}" if digits else ""
+    digits = "".join(c for c in raw.replace("+", "").replace(" ", "").replace("-", "") if c.isdigit())
+    if not digits:
+        return ""
+    return f"whatsapp:+{digits}"
+
+
 def send_whatsapp(phone: str, message: str) -> Dict[str, Any]:
     """
-    إرسال واتساب: عند ضبط ‎WHATSAPP_API_URL + WHATSAPP_API_KEY‎ يُمرَّر إلى ‎send_whatsapp_real‎
-    ويعود بنتيجة المزود؛ وإلا تسجيل فقط بدون ادّعاء إرسال فعلي (‎ok: False‎، ‎not_configured‎).
+    إرسال واتساب عبر Twilio Conversation API (REST).
+    المتغيرات: TWILIO_ACCOUNT_SID، TWILIO_AUTH_TOKEN، TWILIO_WHATSAPP_FROM.
     """
-    if whatsapp_real_configured():
-        return send_whatsapp_real(phone, message)
-    logger.info(
-        "send_whatsapp (no HTTP provider): phone=%r, message=%s", phone, message
-    )
-    return {
-        "ok": False,
-        "error": "not_configured",
-        "hint": "Set WHATSAPP_API_URL and WHATSAPP_API_KEY for confirmed delivery.",
-    }
+    sid = (os.getenv("TWILIO_ACCOUNT_SID") or "").strip()
+    token = (os.getenv("TWILIO_AUTH_TOKEN") or "").strip()
+    from_raw = (os.getenv("TWILIO_WHATSAPP_FROM") or "").strip()
+
+    if not sid or not token or not from_raw:
+        return {
+            "ok": False,
+            "error": "twilio_not_configured",
+            "hint": "Set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_WHATSAPP_FROM.",
+        }
+
+    from_number = _normalize_twilio_whatsapp_from(from_raw)
+    if not from_number:
+        return {"ok": False, "error": "twilio_invalid_from"}
+
+    to_addr = _normalize_twilio_whatsapp_to(phone)
+    if not to_addr:
+        return {"ok": False, "error": "invalid_phone"}
+
+    body_text = (message or "").strip()
+    if not body_text:
+        return {"ok": False, "error": "empty_message"}
+
+    try:
+        client = Client(sid, token)
+        msg = client.messages.create(
+            from_=from_number,
+            body=body_text,
+            to=to_addr,
+        )
+        return {
+            "ok": True,
+            "sid": msg.sid,
+            "status": getattr(msg, "status", None),
+        }
+    except Exception as e:  # noqa: BLE001 — إرجاع خطأ المزود للمتصل
+        logger.warning("Twilio WhatsApp send failed: %s", e, exc_info=True)
+        return {"ok": False, "error": str(e)}
 
 
 def send_whatsapp_mock(phone, message):
@@ -207,22 +266,23 @@ def is_production_mode() -> bool:
 
 
 def whatsapp_real_configured() -> bool:
-    """يُرجع ‎True‎ إن وُجد ‎URL‎ ومفتاح غير فارغين."""
-    u = (os.getenv("WHATSAPP_API_URL") or "").strip()
-    k = (os.getenv("WHATSAPP_API_KEY") or "").strip()
-    return bool(u and k)
+    """‎True‎ عند ضبط اعتمادات Twilio الكاملة."""
+    sid = (os.getenv("TWILIO_ACCOUNT_SID") or "").strip()
+    token = (os.getenv("TWILIO_AUTH_TOKEN") or "").strip()
+    frm = (os.getenv("TWILIO_WHATSAPP_FROM") or "").strip()
+    return bool(sid and token and frm)
 
 
 def recovery_uses_real_whatsapp() -> bool:
     """
-    يستخدم الإرسال الفعلي فقط عند ‎PRODUCTION_MODE‎ + ضبط المزوّد.
+    يستخدم الإرسال الفعلي فقط عند ‎PRODUCTION_MODE‎ + ضبط Twilio.
     بدون الاثنين: بقاء الوهمي دون رفع خطأ.
     """
     if not is_production_mode():
         return False
     if not whatsapp_real_configured():
         logger.info(
-            "PRODUCTION_MODE set but WHATSAPP_API_URL/WHATSAPP_API_KEY missing — using mock"
+            "PRODUCTION_MODE set but TWILIO_ACCOUNT_SID/TWILIO_AUTH_TOKEN/TWILIO_WHATSAPP_FROM missing — using mock"
         )
         return False
     return True
@@ -230,53 +290,6 @@ def recovery_uses_real_whatsapp() -> bool:
 
 def send_whatsapp_real(phone: str, message: str) -> Dict[str, Any]:
     """
-    يرسل عبر ‎POST‎ إلى ‎WHATSAPP_API_URL‎ بجسم ‎JSON‎ عام:
-    ‎{ \"phone\": ..., \"message\": ... }‎ مع ‎Authorization: Bearer <KEY>‎.
-
-    يُناسب واجهة مخصّصة أو ‎webhook proxy‎؛ اضبط المزوّد أو عدّل الحمولة لاحقاً.
+    مطابق لـ‎ ``send_whatsapp`` (‎Twilio‎) — اسم قديم يستخدمه طابور الاسترجاع.
     """
-    url = (os.getenv("WHATSAPP_API_URL") or "").strip()
-    key = (os.getenv("WHATSAPP_API_KEY") or "").strip()
-    if not url or not key:
-        return {"ok": False, "error": "not_configured"}
-    p = (phone or "").strip()
-    body_text = (message or "").strip()
-    try:
-        r = requests.post(
-            url,
-            json={"phone": p, "message": body_text},
-            headers={
-                "Authorization": f"Bearer {key}",
-                "Content-Type": "application/json",
-            },
-            timeout=60,
-        )
-        if 200 <= r.status_code < 300:
-            out: Dict[str, Any] = {
-                "ok": True,
-                "status_code": r.status_code,
-            }
-            try:
-                data = r.json()
-            except ValueError:
-                txt = (r.text or "").strip()
-                if txt:
-                    out["provider_body_preview"] = txt[:2000]
-                return out
-            out["provider_response"] = data
-            return out
-        logger.warning(
-            "WhatsApp API non-success: %s %s", r.status_code, r.text[:1000]
-        )
-        return {
-            "ok": False,
-            "error": "http_error",
-            "status_code": r.status_code,
-            "body": r.text[:2000],
-        }
-    except requests.RequestException as e:  # noqa: BLE001
-        logger.warning("WhatsApp API request failed: %s", e, exc_info=True)
-        return {"ok": False, "error": str(e)}
-    except (OSError, TypeError, ValueError) as e:  # noqa: BLE001
-        logger.warning("WhatsApp send unexpected error: %s", e, exc_info=True)
-        return {"ok": False, "error": str(e)}
+    return send_whatsapp(phone, message)
