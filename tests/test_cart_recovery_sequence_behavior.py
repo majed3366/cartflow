@@ -124,7 +124,7 @@ class CartRecoverySequenceBehaviorTests(unittest.TestCase):
 
         _n = [0]
 
-        def after_step1(phone: str, message: str) -> dict:
+        def after_step1(phone: str, message: str, **_kw: object) -> dict:
             _n[0] += 1
             if _n[0] == 1:
                 main._mark_session_converted("demo", "conv-mid-1")

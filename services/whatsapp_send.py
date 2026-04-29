@@ -208,7 +208,12 @@ def _normalize_twilio_whatsapp_to(phone: str) -> str:
     return f"whatsapp:+{digits}"
 
 
-def send_whatsapp(phone: str, message: str) -> Dict[str, Any]:
+def send_whatsapp(
+    phone: str,
+    message: str,
+    *,
+    reason_tag: Optional[str] = None,
+) -> Dict[str, Any]:
     """
     إرسال واتساب عبر Twilio Conversation API (REST).
     المتغيرات: TWILIO_ACCOUNT_SID، TWILIO_AUTH_TOKEN، TWILIO_WHATSAPP_FROM.
@@ -236,6 +241,7 @@ def send_whatsapp(phone: str, message: str) -> Dict[str, Any]:
     if not body_text:
         return {"ok": False, "error": "empty_message"}
 
+    print("[WA SENT]", reason_tag, phone)
     try:
         client = Client(sid, token)
         msg = client.messages.create(
@@ -288,8 +294,13 @@ def recovery_uses_real_whatsapp() -> bool:
     return True
 
 
-def send_whatsapp_real(phone: str, message: str) -> Dict[str, Any]:
+def send_whatsapp_real(
+    phone: str,
+    message: str,
+    *,
+    reason_tag: Optional[str] = None,
+) -> Dict[str, Any]:
     """
     مطابق لـ‎ ``send_whatsapp`` (‎Twilio‎) — اسم قديم يستخدمه طابور الاسترجاع.
     """
-    return send_whatsapp(phone, message)
+    return send_whatsapp(phone, message, reason_tag=reason_tag)

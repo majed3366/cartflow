@@ -90,6 +90,31 @@ def decision_check(reason_tag: str = "price_high"):
     }
 
 
+@app.post("/webhook/whatsapp")
+async def webhook_whatsapp(request: Request) -> dict[str, Any]:
+    """وارد واتساب (اختبار الالتزام فقط — لا تخزين بعد)."""
+    incoming_message = ""
+    try:
+        ct = (request.headers.get("content-type") or "").lower()
+        if "application/json" in ct:
+            data = await request.json()
+            if isinstance(data, dict):
+                incoming_message = str(
+                    data.get("Body")
+                    or data.get("body")
+                    or data.get("message")
+                    or data.get("text")
+                    or ""
+                ).strip()
+        else:
+            form = await request.form()
+            incoming_message = str(form.get("Body") or form.get("body") or "").strip()
+    except Exception as exc:  # noqa: BLE001
+        incoming_message = f"<parse_error: {exc}>"
+    print("[WA REPLY]", incoming_message)
+    return {"ok": True}
+
+
 @app.post("/dev/whatsapp-decision-test")
 def whatsapp_decision_test(payload: dict = Body(...)) -> dict[str, Any]:
     """تجربة قرار الواتساب + إرسال مباشر (يسجَّل أيضاً خارج ‎ENV=development‎ لمطابقة ‎/decision-check‎)."""
@@ -102,7 +127,7 @@ def whatsapp_decision_test(payload: dict = Body(...)) -> dict[str, Any]:
     result = decide_recovery_action(reason_tag)
     message = result["message"]
 
-    send_result = send_whatsapp(phone, message)
+    send_result = send_whatsapp(phone, message, reason_tag=reason_tag)
     print("[WHATSAPP TEST] phone=", phone)
     print("[WHATSAPP TEST] message=", message)
     print("[WHATSAPP TEST] result=", send_result)
@@ -1088,7 +1113,7 @@ async def _run_recovery_sequence_after_cart_abandoned(
         )
         return
 
-    send_whatsapp(phone, text)
+    send_whatsapp(phone, text, reason_tag=reason_tag)
 
     now = datetime.now(timezone.utc)
     _persist_cart_recovery_log(

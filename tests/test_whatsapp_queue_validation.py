@@ -52,7 +52,7 @@ class WhatsappQueueValidationTests(unittest.IsolatedAsyncioTestCase):
             st = kw.get("status", "")
             order.append(f"persist:{st}")
 
-        def track_sw(_phone: str, _message: str) -> dict:
+        def track_sw(_phone: str, _message: str, **_kw: object) -> dict:
             order.append("send")
             return {"ok": True}
 
