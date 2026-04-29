@@ -90,6 +90,11 @@ def decision_check(reason_tag: str = "price_high"):
     }
 
 
+@app.get("/webhook/whatsapp")
+def whatsapp_webhook_get():
+    return PlainTextResponse("WEBHOOK OK")
+
+
 @app.post("/webhook/whatsapp")
 async def whatsapp_webhook(request: Request):
     form = await request.form()
