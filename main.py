@@ -1256,8 +1256,8 @@ async def _run_recovery_sequence_after_cart_abandoned(
     ينتظر ‎delay_seconds‎ ثم يطبّق ‎should_send_whatsapp‎ على آخر نشاط السبب؛ عند السماح فقط يرسل عبر ‎send_whatsapp‎.
     نص الرسالة من محرّك القراءة حسب ‎reason_tag‎ المحفوظ، أو رسالة احتياطية.
     """
-    delay_minutes = delay_seconds / 60.0
-    print("[DELAY STARTED]", delay_minutes)
+    scheduled_recovery_delay_minutes = delay_seconds / 60.0
+    print("[DELAY STARTED]", scheduled_recovery_delay_minutes)
     print("[DELAY WAITING]")
     try:
         await asyncio.sleep(delay_seconds)
@@ -1375,6 +1375,7 @@ async def _run_recovery_sequence_after_cart_abandoned(
     print("[ATTEMPT CONTROL]")
     print("session_id=", session_id)
     print("sent_count=", sent_count)
+    print("max_recovery_attempts=", max_recovery_attempts)
     print("allowed=", allowed)
     if not allowed:
         print("[ATTEMPT BLOCKED]")
@@ -1385,6 +1386,41 @@ async def _run_recovery_sequence_after_cart_abandoned(
             phone=None,
             message=text,
             status="skipped_attempt_limit",
+            step=step_num,
+        )
+        return
+
+    user_returned_to_site = _is_user_returned(recovery_key)
+    purchase_completed = _is_user_converted(recovery_key)
+    pro_allowed = (
+        (not user_returned_to_site)
+        and (not purchase_completed)
+        and (sent_count < max_recovery_attempts)
+    )
+    print("[CARTFLOW PRO LOGIC]")
+    print("session_id=", session_id)
+    print("reason_tag=", reason_tag)
+    print("delay_minutes=", scheduled_recovery_delay_minutes)
+    print("delay_passed=", True)
+    print("user_returned_to_site=", user_returned_to_site)
+    print("purchase_completed=", purchase_completed)
+    print("sent_count=", sent_count)
+    print("allowed=", pro_allowed)
+    if not pro_allowed:
+        print("[CARTFLOW PRO LOGIC] blocked before send")
+        if purchase_completed:
+            pro_st = "stopped_converted"
+        elif user_returned_to_site:
+            pro_st = "skipped_anti_spam"
+        else:
+            pro_st = "skipped_attempt_limit"
+        _persist_cart_recovery_log(
+            store_slug=store_slug,
+            session_id=session_id,
+            cart_id=cart_id,
+            phone=None,
+            message=text,
+            status=pro_st,
             step=step_num,
         )
         return
