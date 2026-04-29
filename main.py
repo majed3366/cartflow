@@ -18,7 +18,7 @@ import anthropic
 import requests
 from dotenv import load_dotenv
 from fastapi import BackgroundTasks, Body, FastAPI, Query, Request
-from fastapi.responses import Response
+from fastapi.responses import JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.trustedhost import TrustedHostMiddleware
@@ -91,12 +91,13 @@ def decision_check(reason_tag: str = "price_high"):
 
 
 @app.post("/webhook/whatsapp")
-async def whatsapp_webhook(request: Request) -> dict[str, Any]:
-    """وارد واتساب من Twilio Sandbox (‎WHEN A MESSAGE COMES IN‎ → ‎POST‎ لهذا المسار)."""
+async def whatsapp_webhook(request: Request):
     form = await request.form()
     message = form.get("Body")
+    from_number = form.get("From")
     print("[WA REPLY]", message)
-    return {"ok": True}
+    print("[WA FROM]", from_number)
+    return JSONResponse(content={"ok": True})
 
 
 @app.post("/dev/whatsapp-decision-test")
