@@ -131,6 +131,19 @@ def _max_recovery_attempts(store: Optional[Any]) -> int:
     return max(0, v)
 
 
+def _recovery_delay_minutes_from_store(store: Optional[Any]) -> int:
+    """عدد الدقائق الكامل فقط (بدون الاعتماد على ثوانٍ في شرط الإرسال)."""
+    td = _min_quiet_from_store_settings(store)
+    return max(0, int(td // timedelta(minutes=1)))
+
+
+def _naive_utc(dt: datetime) -> datetime:
+    """مقارنة آمنة: ‎last_activity‎ مفترض تخزينه كـ ‎UTC‎."""
+    if dt.tzinfo is None:
+        return dt
+    return dt.astimezone(timezone.utc).replace(tzinfo=None)
+
+
 def should_send_whatsapp(
     last_activity_time: Optional[datetime],
     *,
@@ -165,13 +178,16 @@ def should_send_whatsapp(
         return False
     if last_activity_time is None:
         return True
-    t = now if now is not None else datetime.now(timezone.utc)
-    if last_activity_time.tzinfo is None:
-        last = last_activity_time.replace(tzinfo=timezone.utc)
-    else:
-        last = last_activity_time
-    min_quiet = _min_quiet_from_store_settings(store)
-    if t - last < min_quiet:
+    recovery_delay_minutes = _recovery_delay_minutes_from_store(store)
+    t = now if now is not None else datetime.utcnow()
+    t = _naive_utc(t)
+    last_activity = _naive_utc(last_activity_time)
+    delay_passed = t >= (last_activity + timedelta(minutes=recovery_delay_minutes))
+    print("last_activity:", last_activity)
+    print("now:", t)
+    print("delay_minutes:", recovery_delay_minutes)
+    print("should_send:", delay_passed)
+    if not delay_passed:
         return False
     return True
 
