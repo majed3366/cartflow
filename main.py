@@ -1176,10 +1176,14 @@ async def _run_recovery_sequence_after_cart_abandoned(
     ينتظر ‎delay_seconds‎ ثم يطبّق ‎should_send_whatsapp‎ على آخر نشاط السبب؛ عند السماح فقط يرسل عبر ‎send_whatsapp‎.
     نص الرسالة من محرّك القراءة حسب ‎reason_tag‎ المحفوظ، أو رسالة احتياطية.
     """
+    delay_minutes = delay_seconds / 60.0
+    print("[DELAY STARTED]", delay_minutes)
+    print("[DELAY WAITING]")
     try:
         await asyncio.sleep(delay_seconds)
     except asyncio.CancelledError:
         raise
+    print("[DELAY FINISHED]")
     with _recovery_session_lock:
         if _session_recovery_logged.get(recovery_key):
             return
@@ -1228,6 +1232,7 @@ async def _run_recovery_sequence_after_cart_abandoned(
     print("should_send=", should_send)
 
     if not should_send:
+        print("[DELAY BLOCKED] skipping send")
         _persist_cart_recovery_log(
             store_slug=store_slug,
             session_id=session_id,
@@ -1272,6 +1277,8 @@ async def _run_recovery_sequence_after_cart_abandoned(
         wa_trace_delay_passed=True,
     )
     success = isinstance(wa_result, dict) and wa_result.get("ok") is True
+    if success:
+        print("[DELAY SEND EXECUTED]")
     if not success:
         _persist_cart_recovery_log(
             store_slug=store_slug,
@@ -1315,7 +1322,7 @@ async def _run_recovery_sequence_after_cart_abandoned(
 
 
 async def handle_cart_abandoned(
-    background_tasks: BackgroundTasks, payload: dict[str, Any]
+    _background_tasks: BackgroundTasks, payload: dict[str, Any]
 ) -> dict[str, Any]:
     store_slug = _normalize_store_slug(payload)
     print("store:", store_slug)
@@ -1386,13 +1393,14 @@ async def handle_cart_abandoned(
     config = None  # future: dashboard may pass recovery_delays overrides
     delay_s = float(get_recovery_delay(reason_tag, store_config=config))
     print("starting delay task")
-    background_tasks.add_task(
-        _run_recovery_sequence_after_cart_abandoned,
-        recovery_key,
-        delay_s,
-        store_slug,
-        session_id_log,
-        cart_id_log,
+    asyncio.create_task(
+        _run_recovery_sequence_after_cart_abandoned(
+            recovery_key,
+            delay_s,
+            store_slug,
+            session_id_log,
+            cart_id_log,
+        )
     )
     return {
         "recovery_scheduled": True,
