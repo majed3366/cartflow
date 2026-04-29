@@ -105,6 +105,18 @@
     return String(s).replace(/\s+/g, " ").trim();
   }
 
+  /** سجلات واجهة فقط؛ لا تأثير على خوادم الاسترجاع أو التأخير. */
+  function logWidgetFlow(step, reasonTag, selectedOption) {
+    try {
+      console.log("[WIDGET FLOW]");
+      console.log("step=", step != null ? String(step) : "");
+      console.log("reason_tag=", reasonTag != null ? String(reasonTag) : "");
+      console.log("selected_option=", selectedOption != null ? String(selectedOption) : "");
+    } catch (e) {
+      /* ignore */
+    }
+  }
+
   function firstLineOrClip(s, maxLen) {
     var t = strTrim(s);
     if (!t) {
@@ -1853,9 +1865,18 @@
       body.appendChild(sec);
     }
 
-    function mountLayerDAbandonIfEligible() {
+      function mountLayerDAbandonIfEligible() {
       if (openSource !== TRIGGER_SOURCE_CART) {
         return;
+      }
+      if (w.getAttribute("data-cf-cart-affirm-help") !== "1") {
+        return;
+      }
+
+      function remountCartReasonChoicesFromFollowUp() {
+        logWidgetFlow("reason_menu_back", "", "رجوع_للقائمة_السابقة");
+        stripContentKeepChrome();
+        mountLayerDAbandonIfEligible();
       }
 
       var wrap = document.createElement("div");
@@ -1876,10 +1897,6 @@
           evRet.stopPropagation();
           evRet.preventDefault();
           stripContentKeepChrome();
-          var pRec = document.createElement("p");
-          pRec.style.cssText = "margin:0 0 8px 0;";
-          pRec.textContent = "تبي أساعدك تكمل طلبك؟";
-          widgetBody.appendChild(pRec);
           mountLayerDAbandonIfEligible();
         });
         rowReturn.appendChild(bChat);
@@ -1911,6 +1928,7 @@
       }
 
       function mountPriceObjectionFollowUp() {
+        logWidgetFlow("price_followup_ui", "price_high", "open");
         persistSessionAbandonReason("price_high", null);
         stripContentKeepChrome();
 
@@ -1928,7 +1946,7 @@
         intro.setAttribute("data-cf-price-followup-intro", "1");
         intro.style.cssText = "margin:0 0 12px 0;font-size:14px;line-height:1.55;";
         intro.textContent =
-          "أفهمك 👍 السعر مهم. أقدر أساعدك بثلاث طرق:";
+          "أفهمك، السعر مهم 👍 أقدر أساعدك بثلاث طرق:";
 
         var rowPf = document.createElement("div");
         rowPf.setAttribute("data-cf-price-followup-buttons", "1");
@@ -1947,18 +1965,27 @@
           rowPf.appendChild(bx);
         }
 
-        addPfBtn("رشّح لي خيار أقل سعر", function () {
+        addPfBtn("رشّح لي خيار بسعر أقل", function () {
+          logWidgetFlow("price_followup_pick", "price_high", "خيار_أقل_سعر");
           replaceBodyWithSingleMessage(
             "أكيد 👍 أعطني لحظة وأرشح لك خيار مناسب بسعر أقل."
           );
         });
-        addPfBtn("وضّح لي القيمة", function () {
+        addPfBtn("وضح لي قيمة المنتج", function () {
+          logWidgetFlow("price_followup_pick", "price_high", "قيمة_المنتج");
           replaceBodyWithSingleMessage(
-            "أكيد. هذا المنتج يتميز بالجودة والضمان والمواصفات مقارنة بسعره."
+            "أكيد 👍 هذا المنتج يتميز بالجودة والضمان والمواصفات مقارنة بسعره."
           );
         });
-        addPfBtn("لا شكراً، لا أحتاج مساعدة", function () {
-          finishNoHelpLayerDFlow();
+        addPfBtn("أبغى كود خصم", function () {
+          logWidgetFlow("price_followup_pick", "price_high", "كود_خصم");
+          replaceBodyWithSingleMessage(
+            "تمام 👍 أتحقق من أكواد الخصم أو العروض المتاحة عند المتجر حسب وقت طلبك."
+          );
+        });
+        addPfBtn("رجوع للقائمة السابقة", function () {
+          logWidgetFlow("price_followup_nav", "price_high", "رجوع_للقائمة");
+          remountCartReasonChoicesFromFollowUp();
         });
 
         widgetBody.appendChild(intro);
@@ -1966,6 +1993,7 @@
       }
 
       function mountQualityObjectionFollowUp() {
+        logWidgetFlow("quality_followup_ui", "quality_uncertainty", "open");
         persistSessionAbandonReason("quality_uncertainty", null);
         stripContentKeepChrome();
 
@@ -1983,7 +2011,7 @@
         intro.setAttribute("data-cf-quality-followup-intro", "1");
         intro.style.cssText = "margin:0 0 12px 0;font-size:14px;line-height:1.55;";
         intro.textContent =
-          "أفهمك 👍 الجودة تهم أي شخص. أقدر أوضح لك التفاصيل أو أريك تجارب عملاء.";
+          "أفهمك، الجودة تهم 👍 أقدر أساعدك بهالثلاثة:";
 
         var rowQ = document.createElement("div");
         rowQ.setAttribute("data-cf-quality-followup-buttons", "1");
@@ -2002,18 +2030,27 @@
           rowQ.appendChild(bx);
         }
 
-        addQFBtn("وضّح لي جودة المنتج", function () {
+        addQFBtn("وضّح لي لماذا المنتج جودته عالية", function () {
+          logWidgetFlow("quality_followup_pick", "quality_uncertainty", "تفاصيل_الجودة");
           replaceBodyWithSingleMessage(
-            "المنتج يتميز بخامات عالية وجودة تصنيع تضمن استخدام طويل."
+            "المنتج يتميز بخامات واضحة وفحوص جودة تضمن أداء ممتاز لفترة أطول."
           );
         });
-        addQFBtn("هل فيه تقييمات أو آراء؟", function () {
+        addQFBtn("في تقييمات أو تجارب عملاء؟", function () {
+          logWidgetFlow("quality_followup_pick", "quality_uncertainty", "تقييمات");
           replaceBodyWithSingleMessage(
-            "نعم 👍 كثير من العملاء كانوا راضين عن المنتج وتجربتهم كانت إيجابية."
+            "نعم 👍 كثير من العملاء شاركوا تجاربهم وكانت آراؤهم غالباً إيجابية."
           );
         });
-        addQFBtn("لا شكراً، لا أحتاج مساعدة", function () {
-          finishNoHelpLayerDFlow();
+        addQFBtn("قارن لي نقاط القوّة قبل ما أقرر", function () {
+          logWidgetFlow("quality_followup_pick", "quality_uncertainty", "مقارنة");
+          replaceBodyWithSingleMessage(
+            "تمام 👍 أقدّم لك صورة مختصرة تضمن الأفضل لميزانيتك من ناحية الموثوقية."
+          );
+        });
+        addQFBtn("رجوع للقائمة السابقة", function () {
+          logWidgetFlow("quality_followup_nav", "quality_uncertainty", "رجوع_للقائمة");
+          remountCartReasonChoicesFromFollowUp();
         });
 
         widgetBody.appendChild(intro);
@@ -2021,6 +2058,7 @@
       }
 
       function mountShippingObjectionFollowUp() {
+        logWidgetFlow("shipping_followup_ui", "shipping_cost", "open");
         persistSessionAbandonReason("shipping_cost", null);
         stripContentKeepChrome();
 
@@ -2038,7 +2076,7 @@
         intro.setAttribute("data-cf-shipping-followup-intro", "1");
         intro.style.cssText = "margin:0 0 12px 0;font-size:14px;line-height:1.55;";
         intro.textContent =
-          "أتفهمك 👍 تكلفة الشحن ممكن تأثر. أقدر أوضح لك الخيارات أو العروض المتاحة.";
+          "متفهم 👍 الشحن جزء من التكلفة الكاملة؛ تقدّر تعتمد واحد هذي الخطوات:";
 
         var rowS = document.createElement("div");
         rowS.setAttribute("data-cf-shipping-followup-buttons", "1");
@@ -2057,18 +2095,27 @@
           rowS.appendChild(bx);
         }
 
-        addSFBtn("هل فيه شحن مجاني؟", function () {
+        addSFBtn("هل فيه خيار توصيل أقل أو عرض شحن مجاني؟", function () {
+          logWidgetFlow("shipping_followup_pick", "shipping_cost", "عروض_شحن");
           replaceBodyWithSingleMessage(
-            "أحياناً يكون فيه عروض شحن مجاني حسب الطلب أو قيمة السلة 👍"
+            "أحياناً يكون فيه عروض شحن مخفّض أو مجاني حسب قيمة السلة 👍 نقدّر نشيّكه مع متجركم."
           );
         });
-        addSFBtn("كم تكلفة الشحن بالضبط؟", function () {
+        addSFBtn("كم يتراوح وقت التحضير قبل الإرسال؟", function () {
+          logWidgetFlow("shipping_followup_pick", "shipping_cost", "توصيف_التجهيز");
           replaceBodyWithSingleMessage(
-            "تكلفة الشحن تعتمد على المدينة وطريقة التوصيل، وتظهر لك قبل إتمام الطلب."
+            "غالباً يتم التجهيز بين يوم وعدة أيام حسب المتجر ومخزونه، ثم تُحمَّل شركة الشحن."
           );
         });
-        addSFBtn("لا شكراً، لا أحتاج مساعدة", function () {
-          finishNoHelpLayerDFlow();
+        addSFBtn("وضّح لي تأثير تكلفة الشحن الكلّي", function () {
+          logWidgetFlow("shipping_followup_pick", "shipping_cost", "تأثير_التكلفة");
+          replaceBodyWithSingleMessage(
+            "تظهر رسوم الوصول قبل تأكيد الطلب وبيمكنك مقارنتها لتختار أفضل وقت لك 👍."
+          );
+        });
+        addSFBtn("رجوع للقائمة السابقة", function () {
+          logWidgetFlow("shipping_followup_nav", "shipping_cost", "رجوع_للقائمة");
+          remountCartReasonChoicesFromFollowUp();
         });
 
         widgetBody.appendChild(intro);
@@ -2076,6 +2123,7 @@
       }
 
       function mountDeliveryObjectionFollowUp() {
+        logWidgetFlow("delivery_followup_ui", "delivery_time", "open");
         persistSessionAbandonReason("delivery_time", null);
         stripContentKeepChrome();
 
@@ -2093,7 +2141,7 @@
         intro.setAttribute("data-cf-delivery-followup-intro", "1");
         intro.style.cssText = "margin:0 0 12px 0;font-size:14px;line-height:1.55;";
         intro.textContent =
-          "أتفهمك 👍 وقت التوصيل مهم. أقدر أوضح لك المدة أو الخيارات المتاحة.";
+          "التوقيت مهم 👍 هذا ثلاث نقرات لتفهم وقت وصول الطلب أكثر بدقة:";
 
         var rowD = document.createElement("div");
         rowD.setAttribute("data-cf-delivery-followup-buttons", "1");
@@ -2112,18 +2160,27 @@
           rowD.appendChild(bx);
         }
 
-        addDFBtn("كم يستغرق التوصيل؟", function () {
+        addDFBtn("كم أقصى مدة قبل التسليم المتوقعة؟", function () {
+          logWidgetFlow("delivery_followup_pick", "delivery_time", "حد_التسليم");
           replaceBodyWithSingleMessage(
-            "عادةً يستغرق التوصيل من يومين إلى عدة أيام حسب المدينة 👍"
+            "عادة بين يومين وعدّة أيام حسب المدينة وشركة الشحن المعتمدة 👍 كامل التفاصيل تظهر عند المتجر وقت الدفع."
           );
         });
-        addDFBtn("هل فيه توصيل سريع؟", function () {
+        addDFBtn("هل في توصيل سريع؟", function () {
+          logWidgetFlow("delivery_followup_pick", "delivery_time", "توصيل_سريع");
           replaceBodyWithSingleMessage(
-            "في بعض الحالات يتوفر توصيل أسرع حسب المنطقة 👍"
+            "أحياناً يتوفر خيار تنفيذ أو شحن مستعجل وفق المتجر وبعض المناطق 👍"
           );
         });
-        addDFBtn("لا شكراً، لا أحتاج مساعدة", function () {
-          finishNoHelpLayerDFlow();
+        addDFBtn("كم يمكن أن يمتد التجهيز قبل الشحن فعلاً؟", function () {
+          logWidgetFlow("delivery_followup_pick", "delivery_time", "تجهيز");
+          replaceBodyWithSingleMessage(
+            "بيوم إلى يومَي عمل عادة لتجهيز ومغادرة المستودع، ثم تُحمَّل شحنتك."
+          );
+        });
+        addDFBtn("رجوع للقائمة السابقة", function () {
+          logWidgetFlow("delivery_followup_nav", "delivery_time", "رجوع_للقائمة");
+          remountCartReasonChoicesFromFollowUp();
         });
 
         widgetBody.appendChild(intro);
@@ -2131,6 +2188,7 @@
       }
 
       function mountWarrantyObjectionFollowUp() {
+        logWidgetFlow("warranty_followup_ui", "warranty", "open");
         persistSessionAbandonReason("warranty", null);
         stripContentKeepChrome();
 
@@ -2148,7 +2206,7 @@
         intro.setAttribute("data-cf-warranty-followup-intro", "1");
         intro.style.cssText = "margin:0 0 12px 0;font-size:14px;line-height:1.55;";
         intro.textContent =
-          "أتفهمك 👍 الضمان مهم ويعطيك راحة بال. أقدر أوضح لك التفاصيل أو سياسة الضمان.";
+          "الضمان يعطي راحة بال 👍 اختر واحدة وأوضّح لك أكثر قبل ما تقرر:";
 
         var rowW = document.createElement("div");
         rowW.setAttribute("data-cf-warranty-followup-buttons", "1");
@@ -2167,18 +2225,27 @@
           rowW.appendChild(bx);
         }
 
-        addWFBtn("كم مدة الضمان؟", function () {
+        addWFBtn("كم مدة الضمان المعتادة؟", function () {
+          logWidgetFlow("warranty_followup_pick", "warranty", "مدة_الضمان");
           replaceBodyWithSingleMessage(
-            "مدة الضمان تختلف حسب المنتج، وغالباً تكون محددة لضمان جودة الاستخدام 👍"
+            "تختلف حسب نوع المنتج والمتجر، وغالباً تُبيَّن وقت الشراء وبطاقة الضمان 👍"
           );
         });
-        addWFBtn("ماذا يشمل الضمان؟", function () {
+        addWFBtn("وش يشمل الضمان ووش ما يغطيه؟", function () {
+          logWidgetFlow("warranty_followup_pick", "warranty", "نطاق_التغطية");
           replaceBodyWithSingleMessage(
-            "الضمان عادة يشمل عيوب التصنيع أو المشاكل غير المتوقعة أثناء الاستخدام 👍"
+            "عادة يغطّي عيوب التصنيع والأعطال غير المتوقعة ضمن الشروط المعلنة؛ استثناءات مثل سوء الاستخدام تُبيَّن سياسياً 👍."
           );
         });
-        addWFBtn("لا شكراً، لا أحتاج مساعدة", function () {
-          finishNoHelpLayerDFlow();
+        addWFBtn("وش أسوي عملياً لو احتجت لمطابقة ضمان لاحقاً؟", function () {
+          logWidgetFlow("warranty_followup_pick", "warranty", "إجراءات_المطالبة");
+          replaceBodyWithSingleMessage(
+            "احفظ الإيصال وصور الوضع وبادر على خط الدعم المذكور عند المتجر؛ يختصر معالجة طلبك 👍."
+          );
+        });
+        addWFBtn("رجوع للقائمة السابقة", function () {
+          logWidgetFlow("warranty_followup_nav", "warranty", "رجوع_للقائمة");
+          remountCartReasonChoicesFromFollowUp();
         });
 
         widgetBody.appendChild(intro);
@@ -2240,7 +2307,7 @@
         hintHead.setAttribute("data-cf-layer-d-hint", "1");
         hintHead.style.cssText =
           "font-weight:700;font-size:14px;margin:0 0 12px 0;line-height:1.45;";
-        hintHead.textContent = "اختار السبب فقط";
+        hintHead.textContent = "وش اللي مخليك متردد؟";
         var rowCh = document.createElement("div");
         rowCh.style.cssText =
           "display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-start;margin:0;padding:2px 0;" +
@@ -2265,6 +2332,11 @@
             bChip.addEventListener("click", function (e) {
               e.stopPropagation();
               e.preventDefault();
+              logWidgetFlow(
+                "layer_d_reason_pick",
+                String(opt.tag),
+                String(opt.label)
+              );
               if (opt.tag === "_other") {
                 mountOtherCustomReasonFlow();
               } else if (opt.tag === "price_high") {
@@ -2304,7 +2376,10 @@
     var row0 = null;
     var btnY = null;
     var btnN = null;
-    if (openSource === TRIGGER_SOURCE_EXIT_INTENT) {
+    if (
+      openSource === TRIGGER_SOURCE_EXIT_INTENT ||
+      openSource === TRIGGER_SOURCE_CART
+    ) {
       row0 = document.createElement("div");
       row0.style.cssText =
         "display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-start;margin-top:2px;";
@@ -2324,6 +2399,7 @@
         if (isDemoStoreProductPage() && isDemoScenarioActive()) {
           return;
         }
+        logWidgetFlow("first_prompt_pick", "", "لا");
         removeFabIfAny();
         if (typeof w._cfCleanup === "function") {
           w._cfCleanup();
@@ -2968,6 +3044,12 @@
         ) {
           renderBrowsingGeneralOptions();
           emitDemoGuideEvent("cartflow-demo-browsing-options-visible", {});
+        } else if (openSource === TRIGGER_SOURCE_CART) {
+          logWidgetFlow("first_prompt_pick", "", "نعم");
+          stripContentKeepChrome();
+          w.setAttribute("data-cf-cart-affirm-help", "1");
+          mountLayerDAbandonIfEligible();
+          emitDemoGuideEvent("cartflow-demo-reason-list-visible", {});
         } else {
           renderReasonList();
           emitDemoGuideEvent("cartflow-demo-reason-list-visible", {});
