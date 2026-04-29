@@ -16,6 +16,7 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 
 from main import (
+    _dev_delay_test_send_count,
     _recovery_session_lock,
     _session_recovery_converted,
     _session_recovery_logged,
@@ -35,6 +36,7 @@ def _reset_recovery_memory() -> None:
         _session_recovery_converted.clear()
         _session_recovery_returned.clear()
         _session_recovery_send_count.clear()
+        _dev_delay_test_send_count.clear()
 
 
 class RecoveryIsolationTests(unittest.TestCase):

@@ -24,6 +24,7 @@ def _reset() -> None:
         main._session_recovery_converted.clear()
         main._session_recovery_returned.clear()
         main._session_recovery_send_count.clear()
+        main._dev_delay_test_send_count.clear()
 
 
 class ConversionApiTests(unittest.TestCase):

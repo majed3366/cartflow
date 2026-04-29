@@ -206,6 +206,14 @@ def _dev_delay_test_minutes_for_reason(reason_tag: str) -> int:
     return 2
 
 
+_DEV_DELAY_TEST_MAX_RECOVERY_ATTEMPTS = 1
+_dev_delay_test_send_count: dict[str, int] = {}
+
+
+def _dev_delay_test_attempt_key(phone: str, reason_tag: str) -> str:
+    return f"{phone}:{reason_tag}"
+
+
 async def _run_dev_cartflow_delay_test_send(
     delay_seconds: float,
     phone: str,
@@ -237,6 +245,21 @@ async def _run_dev_cartflow_delay_test_send(
             print("[DEV DELAY TEST] anti-spam blocked send (simulate_user_return)")
         return
 
+    attempt_key = _dev_delay_test_attempt_key(phone, reason_tag)
+    max_recovery_attempts = _DEV_DELAY_TEST_MAX_RECOVERY_ATTEMPTS
+    with _recovery_session_lock:
+        sent_count = _dev_delay_test_send_count.get(attempt_key, 0)
+    allowed = sent_count < max_recovery_attempts
+    print("[ATTEMPT CONTROL]")
+    print("key=", attempt_key)
+    print("sent_count=", sent_count)
+    print("max_recovery_attempts=", max_recovery_attempts)
+    print("allowed=", allowed)
+    if not allowed:
+        print("[ATTEMPT BLOCKED]")
+        print("[DEV DELAY TEST] attempt control blocked send")
+        return
+
     result = send_whatsapp(
         phone,
         message,
@@ -244,6 +267,10 @@ async def _run_dev_cartflow_delay_test_send(
         wa_trace_path=__file__,
         wa_trace_delay_passed=WA_TRACE_DELAY_UNSPECIFIED,
     )
+    success = isinstance(result, dict) and result.get("ok") is True
+    if success:
+        with _recovery_session_lock:
+            _dev_delay_test_send_count[attempt_key] = sent_count + 1
     sent_at = datetime.now(timezone.utc)
     print("[DEV DELAY TEST SEND]")
     print("sent_at=", sent_at.isoformat())
