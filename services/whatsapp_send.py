@@ -241,7 +241,6 @@ def send_whatsapp(
     if not body_text:
         return {"ok": False, "error": "empty_message"}
 
-    print("[WA SENT]", reason_tag, phone)
     try:
         client = Client(sid, token)
         msg = client.messages.create(
@@ -249,11 +248,15 @@ def send_whatsapp(
             body=body_text,
             to=to_addr,
         )
-        return {
+        twilio_status = getattr(msg, "status", None)
+        result: Dict[str, Any] = {
             "ok": True,
             "sid": msg.sid,
-            "status": getattr(msg, "status", None),
+            "status": twilio_status,
         }
+        print("[WA SENT]", phone, result)
+        print("[WA STATUS]", twilio_status)
+        return result
     except Exception as e:  # noqa: BLE001 — إرجاع خطأ المزود للمتصل
         logger.warning("Twilio WhatsApp send failed: %s", e, exc_info=True)
         return {"ok": False, "error": str(e)}
