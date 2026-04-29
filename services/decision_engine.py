@@ -21,7 +21,11 @@ def decide_recovery_action(reason_tag: str | None) -> RecoveryActionResult:
     mapping: dict[str, RecoveryActionResult] = {
         "price_high": {
             "action": "offer_alternative",
-            "message": "حسّينا أن السعر كان مرتفع شوي 👌 حاب أرشح لك خيار قريب بسعر أقل؟",
+            "message": (
+                "واضح إن السعر مهم لك 👌\n"
+                "في خيار قريب بنفس الفكرة لكن بسعر أقل، ممكن يكون أنسب لك 👍\n"
+                "تحب أرسله لك؟"
+            ),
         },
         "quality": {
             "action": "show_social_proof",
