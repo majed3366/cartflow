@@ -210,6 +210,7 @@ async def _run_dev_cartflow_delay_test_send(
     delay_seconds: float,
     phone: str,
     reason_tag: str,
+    simulate_user_return: bool,
 ) -> None:
     await asyncio.sleep(delay_seconds)
     try:
@@ -217,6 +218,21 @@ async def _run_dev_cartflow_delay_test_send(
         message = decision["message"]
     except Exception:  # noqa: BLE001 — تجربة عزل فقط
         message = ""
+
+    # مطابقة منطق منع الإزعاج قبل الإرسال — مسار تجربة فقط (لا recovery_key إنتاجي).
+    user_returned_to_site = bool(simulate_user_return)
+    purchase_completed = False
+    should_send = (not user_returned_to_site) and (not purchase_completed)
+    session_id_log = "(dev-delay-test)"
+    print("[ANTI SPAM CHECK]")
+    print("session_id=", session_id_log)
+    print("user_returned_to_site=", user_returned_to_site)
+    print("purchase_completed=", purchase_completed)
+    print("should_send=", should_send)
+    if not should_send:
+        print("[DEV DELAY TEST] anti-spam blocked send (simulate_user_return)")
+        return
+
     result = send_whatsapp(
         phone,
         message,
@@ -239,9 +255,11 @@ async def dev_cartflow_delay_test(
     """
     تجربة تأخير معزولة: جدولة إرسال واتساب بعد دقائق حسب ‎reason_tag‎ — لا يمس مسار السلة/الودجت.
     مسموح في الإنتاج تحققاً من الجدولة (نفس استثناء الميدلوير لـ ‎/dev/cartflow-delay-test‎).
+    جسم اختياري: ‎simulate_user_return: true‎ لمحاكاة رجوع المستخدم واختبار منع الإزعاج دون تفاعل حقيقي.
     """
     phone = (payload.get("phone") or "").strip()
     reason_tag = (payload.get("reason_tag") or "").strip()
+    simulate_user_return = payload.get("simulate_user_return") is True
     if not phone:
         return j({"ok": False, "error": "phone_required"}, 400)
     if not reason_tag:
@@ -255,11 +273,13 @@ async def dev_cartflow_delay_test(
     print("delay_minutes=", delay_minutes)
     print("scheduled_at=", scheduled_at.isoformat())
     print("send_after=", send_after.isoformat())
+    print("simulate_user_return=", simulate_user_return)
     background_tasks.add_task(
         _run_dev_cartflow_delay_test_send,
         delay_seconds,
         phone,
         reason_tag,
+        simulate_user_return,
     )
     return j(
         {
@@ -269,6 +289,7 @@ async def dev_cartflow_delay_test(
             "delay_seconds": delay_seconds,
             "scheduled_at": scheduled_at.isoformat(),
             "send_after": send_after.isoformat(),
+            "simulate_user_return": simulate_user_return,
         },
         200,
     )
