@@ -159,7 +159,7 @@ def should_send_whatsapp(
     - ‎max_recovery_attempts < 1‎: لا نرسل (مُعطّل).
     - إن ‎sent_count >= max_recovery_attempts‎: لا نرسل (نفد الحد).
     - إن لم نُسجّل نشاطاً: نسمح بالإرسال (لاحقاً يرتبط بتتبع فعلي) إن بقي في الحد.
-    - وإلا يلزم أن يمر زمن سكون ‎>=‎ الحد المضبوط (من ‎Store‎ أو افتراضياً ‎2‎ دقيقة).
+    - وإلا: لا إرسال إلا إذا ‎now‎ (‎UTC‎) ‎>= last_activity‎ (‎UTC‎) + ‎recovery_delay بالدقائق‎ الكاملة فقط.
     """
     if user_returned_to_site:
         return False
