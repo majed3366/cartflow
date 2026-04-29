@@ -974,6 +974,7 @@ _session_recovery_started: dict[str, bool] = {}
 _session_recovery_logged: dict[str, bool] = {}
 _session_recovery_sent: dict[str, bool] = {}
 _session_recovery_converted: dict[str, bool] = {}
+_session_recovery_returned: dict[str, bool] = {}
 _recovery_session_lock = threading.Lock()
 
 # خطوة إضافية منطقية (سابقاً كان عندها خطوتان أخريان) — لسجلات «توقفت بعد الأولى»
@@ -1115,6 +1116,18 @@ def _mark_session_converted(store_slug: str, session_id: str) -> str:
         _session_recovery_converted[key] = True
     log.info("conversion recorded for recovery_key=%s", key)
     return key
+
+
+def _is_user_returned(recovery_key: str) -> bool:
+    with _recovery_session_lock:
+        return bool(_session_recovery_returned.get(recovery_key))
+
+
+def _mark_user_returned_for_payload(payload: dict[str, Any]) -> None:
+    key = _recovery_key_from_payload(payload)
+    with _recovery_session_lock:
+        _session_recovery_returned[key] = True
+    log.info("user_returned_to_site recorded for recovery_key=%s", key)
 
 
 def _persist_cart_recovery_log(
@@ -1271,6 +1284,28 @@ async def _run_recovery_sequence_after_cart_abandoned(
             phone=None,
             message=text,
             status="stopped_converted",
+            step=step_num,
+        )
+        return
+
+    user_returned_to_site = _is_user_returned(recovery_key)
+    purchase_completed = _is_user_converted(recovery_key)
+    should_send_anti_spam = (not user_returned_to_site) and (not purchase_completed)
+    print("[ANTI SPAM CHECK]")
+    print("session_id=", session_id)
+    print("user_returned_to_site=", user_returned_to_site)
+    print("purchase_completed=", purchase_completed)
+    print("should_send=", should_send_anti_spam)
+    if not should_send_anti_spam:
+        _persist_cart_recovery_log(
+            store_slug=store_slug,
+            session_id=session_id,
+            cart_id=cart_id,
+            phone=None,
+            message=text,
+            status=(
+                "stopped_converted" if purchase_completed else "skipped_anti_spam"
+            ),
             step=step_num,
         )
         return
@@ -1437,6 +1472,8 @@ async def api_cart_event(request: Request, background_tasks: BackgroundTasks):
         "ok": True,
         "event": payload.get("event"),
     }
+    if payload.get("user_returned_to_site") is True:
+        _mark_user_returned_for_payload(payload)
     if (
         payload.get("user_converted") is True
         or payload.get("event") == "user_converted"

@@ -22,6 +22,7 @@ def _reset() -> None:
         main._session_recovery_logged.clear()
         main._session_recovery_sent.clear()
         main._session_recovery_converted.clear()
+        main._session_recovery_returned.clear()
 
 
 class ConversionApiTests(unittest.TestCase):

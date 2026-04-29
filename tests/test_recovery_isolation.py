@@ -19,6 +19,7 @@ from main import (
     _recovery_session_lock,
     _session_recovery_converted,
     _session_recovery_logged,
+    _session_recovery_returned,
     _session_recovery_sent,
     _session_recovery_started,
     app,
@@ -31,6 +32,7 @@ def _reset_recovery_memory() -> None:
         _session_recovery_logged.clear()
         _session_recovery_sent.clear()
         _session_recovery_converted.clear()
+        _session_recovery_returned.clear()
 
 
 class RecoveryIsolationTests(unittest.TestCase):
