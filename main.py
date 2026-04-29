@@ -1229,6 +1229,7 @@ async def handle_cart_abandoned(
     recovery_key = _recovery_key_from_payload(payload)
     print("recovery key:", recovery_key)
     session_id_log = _session_part_from_payload(payload)
+    print("[SESSION]", session_id_log)
     cart_id_log = _cart_id_str_from_payload(payload)
     msg_log = _default_recovery_message()
     if _is_user_converted(recovery_key):

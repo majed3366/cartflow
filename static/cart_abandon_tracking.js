@@ -50,6 +50,32 @@
   }
   window.cartflowResetRecoverySessionIdForDemo = resetRecoverySessionIdForDemo;
 
+  /**
+   * Delay-testing helper only (manual/console): new cart-abandon session without changing server duplicate protection.
+   * Clears localStorage replyai_session if present; forces new session id in sessionStorage.
+   * Call from DevTools before each delay run: cartflowFreshSessionForDelayTest()
+   */
+  function freshRecoverySessionForDelayTest() {
+    try {
+      localStorage.removeItem("replyai_session");
+    } catch (eRmLocal) {
+      /* ignore */
+    }
+    var nid =
+      typeof window.crypto !== "undefined" && window.crypto.randomUUID
+        ? "s_" + window.crypto.randomUUID()
+        : "s_" + String(Date.now()) + "_" + String(Math.random());
+    resetRecoverySessionIdForDemo(nid);
+    _abandonEventSentToBackend = false;
+    try {
+      console.log("[CF TEST] cartflowFreshSessionForDelayTest session_id=", nid);
+    } catch (eLog) {
+      /* ignore */
+    }
+    return nid;
+  }
+  window.cartflowFreshSessionForDelayTest = freshRecoverySessionForDelayTest;
+
   function getRecoverySessionId() {
     if (_cachedRecoverySessionId) {
       return _cachedRecoverySessionId;
