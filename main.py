@@ -1070,7 +1070,7 @@ def _try_claim_recovery_session(recovery_key: str) -> bool:
         return True
 
 
-_MOCK_RECOVERY_PHONE = "0500000000"
+_MOCK_RECOVERY_PHONE = "966501234567"
 
 
 def _recovery_destination_phone() -> str:
@@ -1181,7 +1181,7 @@ async def _run_recovery_sequence_after_cart_abandoned(
         )
         return
 
-    send_whatsapp(
+    wa_result = send_whatsapp(
         phone,
         text,
         reason_tag=reason_tag,
@@ -1191,6 +1191,19 @@ async def _run_recovery_sequence_after_cart_abandoned(
         wa_trace_recovery_delay_minutes=delay_minutes,
         wa_trace_delay_passed=True,
     )
+    success = isinstance(wa_result, dict) and wa_result.get("ok") is True
+    if not success:
+        _persist_cart_recovery_log(
+            store_slug=store_slug,
+            session_id=session_id,
+            cart_id=cart_id,
+            phone=phone,
+            message=text,
+            status="whatsapp_failed",
+            step=step_num,
+        )
+        print("recovery NOT marked as sent due to failure")
+        return
 
     now = datetime.now(timezone.utc)
     _persist_cart_recovery_log(
@@ -1218,7 +1231,7 @@ async def _run_recovery_sequence_after_cart_abandoned(
 
     with _recovery_session_lock:
         _session_recovery_sent[recovery_key] = True
-    print("recovery marked as sent (single message)")
+    print("recovery marked as sent")
 
 
 async def handle_cart_abandoned(
@@ -1708,7 +1721,7 @@ def dev_create_test_objection():
             object_type="price",
             created_at=now,
             customer_name="ماجد",
-            customer_phone="0500000000",
+            customer_phone="966501234567",
             cart_url="https://example.com/cart",
             customer_type="new",
             last_activity_at=last,
@@ -1747,7 +1760,7 @@ def dev_recovery_flow_test(request: Request):
             )
             if should_send:
                 send_whatsapp(
-                    phone="0500000000",
+                    phone="966501234567",
                     message=message,
                     wa_trace_path=__file__,
                     wa_trace_last_activity=last,
@@ -1793,7 +1806,7 @@ def dev_recovery_flow_test(request: Request):
         send_result = None
         if should_send:
             send_result = send_whatsapp(
-                phone=row.customer_phone or "0500000000",
+                phone=row.customer_phone or "966501234567",
                 message=message,
                 wa_trace_path=__file__,
                 wa_trace_last_activity=last,

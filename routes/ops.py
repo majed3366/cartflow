@@ -23,7 +23,7 @@ def get_mock_abandoned_cart() -> dict:
     return {
         "id": "cart_123",
         "customer_name": "محمد",
-        "phone": "0500000000",
+        "phone": "966501234567",
         "cart_value": 250,
         "cart_url": "https://example.com/cart/123",
         "items": [

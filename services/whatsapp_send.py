@@ -311,6 +311,7 @@ def send_whatsapp(
             to=to_addr,
         )
         twilio_status = getattr(msg, "status", None)
+        print("WhatsApp sent successfully:", getattr(msg, "sid", None))
         result: Dict[str, Any] = {
             "ok": True,
             "sid": msg.sid,
@@ -320,6 +321,7 @@ def send_whatsapp(
         print("[WA STATUS]", twilio_status)
         return result
     except Exception as e:  # noqa: BLE001 — إرجاع خطأ المزود للمتصل
+        print("Twilio WhatsApp send failed:", str(e))
         logger.warning("Twilio WhatsApp send failed: %s", e, exc_info=True)
         return {"ok": False, "error": str(e)}
 
