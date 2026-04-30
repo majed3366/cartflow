@@ -20,10 +20,12 @@ router = APIRouter()
 
 def get_mock_abandoned_cart() -> dict:
     """نفس بيانات ‎GET /dev/mock-cart‎ — لإعادة الاستخدام دون ‎HTTP‎ داخلي."""
+    from main import DEV_TEST_PHONE
+
     return {
         "id": "cart_123",
         "customer_name": "محمد",
-        "phone": "966579706669",
+        "phone": DEV_TEST_PHONE,
         "cart_value": 250,
         "cart_url": "https://example.com/cart/123",
         "items": [

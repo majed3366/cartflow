@@ -10,6 +10,7 @@ When tests pass: isolation between demo and demo2 is confirmed (no cross-store
 """
 from __future__ import annotations
 
+import os
 import unittest
 from unittest.mock import patch
 
@@ -45,6 +46,14 @@ class RecoveryIsolationTests(unittest.TestCase):
     def setUp(self) -> None:
         _reset_recovery_memory()
         self.client = TestClient(app)
+        self._prev_env = os.environ.get("ENV")
+        os.environ["ENV"] = "development"
+
+    def tearDown(self) -> None:
+        if getattr(self, "_prev_env", None) is None:
+            os.environ.pop("ENV", None)
+        else:
+            os.environ["ENV"] = self._prev_env  # type: ignore[assignment]
 
     @patch("main._persist_cart_recovery_log")
     @patch("main.send_whatsapp")

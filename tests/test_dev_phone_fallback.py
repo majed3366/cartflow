@@ -1,104 +1,54 @@
 # -*- coding: utf-8 -*-
-"""سلوك ‎_resolve_recovery_session_phone‎ — احتياطي رقم التطوير فقط."""
+"""مسار ‎get_recovery_phone‎ — جلسة، احتياطي تطوير، أو إنتاج عبر ‎WHATSAPP_RECOVERY_TO_PHONE‎."""
 from __future__ import annotations
 
-from types import SimpleNamespace
+import pytest
 
-from main import _dev_rewrite_stale_recovery_phone, _resolve_recovery_session_phone
+from main import (
+    DEV_TEST_PHONE,
+    _assert_recovery_phone_not_stale_forbidden,
+    get_recovery_phone,
+)
 
 
-def test_real_phone_from_cart_payload_skips_dev_fallback(monkeypatch) -> None:
+def test_session_phone_used(monkeypatch) -> None:
+    monkeypatch.delenv("ENV", raising=False)
+    monkeypatch.delenv("WHATSAPP_RECOVERY_TO_PHONE", raising=False)
+    p = get_recovery_phone("sid-1", "9665111222333")
+    assert p == "9665111222333"
+
+
+def test_dev_fallback_when_no_session_phone(monkeypatch) -> None:
     monkeypatch.setenv("ENV", "development")
-    phone, src = _resolve_recovery_session_phone(
-        recovery_key="test-key",
-        reason_row=None,
-        abandon_event_phone="9665111222333",
-    )
-    assert phone == "9665111222333"
-    assert src == "cart_event_payload"
-
-
-def test_dev_env_uses_test_fallback_when_no_session_phone(monkeypatch) -> None:
-    monkeypatch.setenv("ENV", "development")
-    phone, src = _resolve_recovery_session_phone(
-        recovery_key="test-key",
-        reason_row=None,
-        abandon_event_phone=None,
-    )
-    assert phone == "966579706669"
-    assert src == "dev_fallback"
+    monkeypatch.delenv("WHATSAPP_RECOVERY_TO_PHONE", raising=False)
+    p = get_recovery_phone("sid-2", None)
+    assert p == DEV_TEST_PHONE
 
 
 def test_dev_short_env_dev(monkeypatch) -> None:
     monkeypatch.setenv("ENV", "dev")
-    phone, src = _resolve_recovery_session_phone(
-        recovery_key="test-key",
-        reason_row=None,
-        abandon_event_phone=None,
-    )
-    assert phone == "966579706669"
-    assert src == "dev_fallback"
+    monkeypatch.delenv("WHATSAPP_RECOVERY_TO_PHONE", raising=False)
+    p = get_recovery_phone("sid-3", None)
+    assert p == DEV_TEST_PHONE
 
 
-def test_db_reason_phone_skips_fallback(monkeypatch) -> None:
-    monkeypatch.setenv("ENV", "development")
-    row = SimpleNamespace(customer_phone="9665000111222")
-    phone, src = _resolve_recovery_session_phone(
-        recovery_key="test-key",
-        reason_row=row,
-        abandon_event_phone=None,
-    )
-    assert phone == "9665000111222"
-    assert src == "db_reason_row"
-
-
-def test_unset_env_no_dev_fallback(monkeypatch) -> None:
+def test_prod_no_session_requires_env_override(monkeypatch) -> None:
     monkeypatch.delenv("ENV", raising=False)
-    phone, src = _resolve_recovery_session_phone(
-        recovery_key="test-key",
-        reason_row=None,
-        abandon_event_phone=None,
-    )
-    assert phone == "966501234567"
-    assert src == "default_destination"
+    monkeypatch.delenv("WHATSAPP_RECOVERY_TO_PHONE", raising=False)
+    assert get_recovery_phone("sid-4", None) is None
 
 
-def test_dev_rewrites_legacy_mock_db_phone(monkeypatch) -> None:
-    monkeypatch.setenv("ENV", "development")
-    row = SimpleNamespace(customer_phone="966501234567")
-    phone, src = _resolve_recovery_session_phone(
-        recovery_key="test-key",
-        reason_row=row,
-        abandon_event_phone=None,
-    )
-    assert phone == "966501234567"
-    assert src == "db_reason_row"
-    phone2, src2 = _dev_rewrite_stale_recovery_phone(phone, src)
-    assert phone2 == "966579706669"
-    assert src2 == "dev_fallback"
+def test_prod_env_override(monkeypatch) -> None:
+    monkeypatch.delenv("ENV", raising=False)
+    monkeypatch.setenv("WHATSAPP_RECOVERY_TO_PHONE", "9665999888777")
+    assert get_recovery_phone("sid-5", None) == "9665999888777"
 
 
-def test_dev_rewrites_legacy_mock_05_local_form(monkeypatch) -> None:
-    monkeypatch.setenv("ENV", "development")
-    row = SimpleNamespace(customer_phone="0501234567")
-    phone, src = _resolve_recovery_session_phone(
-        recovery_key="test-key",
-        reason_row=row,
-        abandon_event_phone=None,
-    )
-    phone2, src2 = _dev_rewrite_stale_recovery_phone(phone, src)
-    assert phone2 == "966579706669"
-    assert src2 == "dev_fallback"
+def test_forbidden_literal_raises() -> None:
+    with pytest.raises(RuntimeError, match="STALE PHONE BUG"):
+        _assert_recovery_phone_not_stale_forbidden("966501234567")
 
 
-def test_dev_rewrites_legacy_mock_plus_prefix(monkeypatch) -> None:
-    monkeypatch.setenv("ENV", "development")
-    row = SimpleNamespace(customer_phone="+966 501 234 567")
-    phone, src = _resolve_recovery_session_phone(
-        recovery_key="test-key",
-        reason_row=row,
-        abandon_event_phone=None,
-    )
-    phone2, src2 = _dev_rewrite_stale_recovery_phone(phone, src)
-    assert phone2 == "966579706669"
-    assert src2 == "dev_fallback"
+def test_forbidden_local_form_raises() -> None:
+    with pytest.raises(RuntimeError, match="STALE PHONE BUG"):
+        _assert_recovery_phone_not_stale_forbidden("0501234567")

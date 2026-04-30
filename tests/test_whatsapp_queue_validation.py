@@ -14,7 +14,7 @@ from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
-from main import app
+from main import DEV_TEST_PHONE, app
 import services.whatsapp_queue as whatsapp_queue
 from services.whatsapp_queue import (
     MAX_WA_SEND_ATTEMPTS,
@@ -38,6 +38,14 @@ class WhatsappQueueValidationTests(unittest.IsolatedAsyncioTestCase):
     def setUp(self) -> None:
         _reset_recovery_memory()
         os.environ["WHATSAPP_QUEUE_RETRY_BACKOFF_SECONDS"] = "0"
+        self._prev_env = os.environ.get("ENV")
+        os.environ["ENV"] = "development"
+
+    def tearDown(self) -> None:
+        if getattr(self, "_prev_env", None) is None:
+            os.environ.pop("ENV", None)
+        else:
+            os.environ["ENV"] = self._prev_env  # type: ignore[assignment]
 
     @patch("main._persist_cart_recovery_log")
     @patch("main.send_whatsapp")
@@ -89,7 +97,7 @@ class WhatsappQueueValidationTests(unittest.IsolatedAsyncioTestCase):
                     store_slug="qval-2",
                     session_id="s2-q",
                     cart_id=None,
-                    phone="966579706669",
+                    phone=DEV_TEST_PHONE,
                     message="m",
                     step=1,
                     recovery_key="qval-2:s2-q",
@@ -117,7 +125,7 @@ class WhatsappQueueValidationTests(unittest.IsolatedAsyncioTestCase):
                     store_slug="qval-3",
                     session_id="s3-q",
                     cart_id=None,
-                    phone="966579706669",
+                    phone=DEV_TEST_PHONE,
                     message="m",
                     step=1,
                     recovery_key="qval-3:s3-q",
@@ -144,7 +152,7 @@ class WhatsappQueueValidationTests(unittest.IsolatedAsyncioTestCase):
                     store_slug="qval-4",
                     session_id="s4-q",
                     cart_id=None,
-                    phone="966579706669",
+                    phone=DEV_TEST_PHONE,
                     message="m",
                     step=1,
                     recovery_key="qval-4:s4-q",

@@ -1258,22 +1258,8 @@ def _try_claim_recovery_session(recovery_key: str) -> bool:
         return True
 
 
-_PROD_DEFAULT_RECOVERY_PHONE = "966501234567"
-_DEV_FALLBACK_RECOVERY_PHONE = "966579706669"
-
-
-def _recovery_destination_phone() -> str:
-    """
-    رقم الوجهة لرسائل الاسترجاع.
-    ‎WHATSAPP_RECOVERY_TO_PHONE‎ اختياري: للاختبار بأرقام ‎WABA‎ الخاصة بك فقط قبل العملاء.
-    بدون ضبط: في التطوير ‎966579706669‎؛ في الإنتاج الرقم الوهمي السابق (سلوك قديم).
-    """
-    o = (os.getenv("WHATSAPP_RECOVERY_TO_PHONE") or "").strip()
-    if o:
-        return o[:100]
-    if _dev_phone_fallback_enabled():
-        return _DEV_FALLBACK_RECOVERY_PHONE
-    return _PROD_DEFAULT_RECOVERY_PHONE
+DEV_TEST_PHONE = "966579706669"
+_FORBIDDEN_STALE_RECOVERY_E164 = "966501234567"
 
 
 def _strip_recovery_phone(raw: Optional[Any]) -> str:
@@ -1283,8 +1269,8 @@ def _strip_recovery_phone(raw: Optional[Any]) -> str:
     return s[:100] if s else ""
 
 
-def _recovery_sa_e164_digits(raw: str) -> str:
-    """توحيد أشكال جوال سعودي شائعة (‎966…‎، ‎05…‎، ‎5XXXXXXXX‎) لمطابقة الرقم الوهمي القديم."""
+def _recovery_digits_normalized_sa(raw: str) -> str:
+    """توحيد أشكال جوال سعودي شائعة لاكتشاف الرقم المحظور القديم."""
     d = "".join(c for c in (raw or "") if c.isdigit())
     if not d:
         return ""
@@ -1297,73 +1283,40 @@ def _recovery_sa_e164_digits(raw: str) -> str:
     return d
 
 
-def _legacy_mock_recovery_digits_normalized() -> str:
-    return _recovery_sa_e164_digits(_PROD_DEFAULT_RECOVERY_PHONE)
-
-
-def _resolve_recovery_session_phone(
-    *,
-    recovery_key: str,
-    reason_row: Optional[CartRecoveryReason],
-    abandon_event_phone: Optional[str],
-) -> Tuple[str, str]:
+def get_recovery_phone(
+    session_id: str, session_phone: Optional[str] = None
+) -> Optional[str]:
     """
-    أولاً ‎cart_abandoned‎، ثم ذاكرة الخادم، ثم ‎DB‎، ثم الافتراضي التجريبي/البيئة.
-    يُرجع ‎(الرقم, مصدر قصير للسجلات)‎.
+    مصدر وحيد لرقم واتساب الاسترجاع قبل الإرسال (عدا رقم الجلسة الفعلي من الحدث/الذاكرة/السبب).
+    الإنتاج بدون جلسة وبدون ‎WHATSAPP_RECOVERY_TO_PHONE‎: لا إرسال (‎None‎).
     """
-    from services.recovery_session_phone import get_recovery_customer_phone
+    sp = _strip_recovery_phone(session_phone)
+    if sp:
+        print("[PHONE SOURCE] source=session phone=", sp)
+        return sp[:100]
 
-    ep = _strip_recovery_phone(abandon_event_phone)
-    if ep:
-        return ep, "cart_event_payload"
+    if _dev_phone_fallback_enabled():
+        print("[PHONE SOURCE] source=dev_fallback phone=", DEV_TEST_PHONE)
+        print("[DEV PHONE USED] phone=", DEV_TEST_PHONE)
+        return DEV_TEST_PHONE
 
-    mem = _strip_recovery_phone(get_recovery_customer_phone(recovery_key))
-    if mem:
-        return mem, "persisted_memory"
+    env_dest = (os.getenv("WHATSAPP_RECOVERY_TO_PHONE") or "").strip()
+    if env_dest:
+        eo = env_dest[:100]
+        print("[PHONE SOURCE] source=real phone=", eo)
+        return eo
 
-    dbp = _strip_recovery_phone(
-        getattr(reason_row, "customer_phone", None) if reason_row else None
-    )
-    if dbp:
-        return dbp, "db_reason_row"
-
-    fallback = _strip_recovery_phone(_recovery_destination_phone())
-    if (
-        _dev_phone_fallback_enabled()
-        and fallback == _DEV_FALLBACK_RECOVERY_PHONE
-    ):
-        return fallback, "dev_fallback"
-    return fallback, "default_destination"
+    print("[NO PHONE] skipping send")
+    return None
 
 
-def _dev_rewrite_stale_recovery_phone(phone: str, phone_src: str) -> Tuple[str, str]:
-    """في التطوير فقط: صفوف/ذاكرة تحوي الرقم الوهمي القديم تُوجَّه لخط الاختبار."""
-    if not _dev_phone_fallback_enabled():
-        return phone, phone_src
-    legacy = _legacy_mock_recovery_digits_normalized()
-    if legacy and _recovery_sa_e164_digits(phone) == legacy:
-        return _DEV_FALLBACK_RECOVERY_PHONE, "dev_fallback"
-    return phone, phone_src
-
-
-def _log_recovery_send_phone(*, phone: str, phone_src: str) -> None:
-    env_override = bool((os.getenv("WHATSAPP_RECOVERY_TO_PHONE") or "").strip())
-    if phone_src in ("cart_event_payload", "persisted_memory", "db_reason_row"):
-        src_log = "session"
-    elif phone_src == "dev_fallback":
-        src_log = "dev_fallback"
-    elif phone_src == "default_destination" and env_override:
-        src_log = "real"
-    elif phone_src == "default_destination":
-        src_log = "hardcoded"
-    else:
-        src_log = "session"
-    print("[PHONE SOURCE]")
-    print(f"source={src_log}")
-    print(f"phone={phone}")
-    if phone_src == "dev_fallback":
-        print("[DEV PHONE USED]")
-        print(f"phone={phone}")
+def _assert_recovery_phone_not_stale_forbidden(phone: str) -> None:
+    if phone == _FORBIDDEN_STALE_RECOVERY_E164:
+        raise RuntimeError("STALE PHONE BUG: 966501234567 is forbidden")
+    norm_p = _recovery_digits_normalized_sa(phone)
+    norm_f = _recovery_digits_normalized_sa(_FORBIDDEN_STALE_RECOVERY_E164)
+    if norm_p and norm_f and norm_p == norm_f:
+        raise RuntimeError("STALE PHONE BUG: 966501234567 is forbidden")
 
 
 async def _run_recovery_sequence_after_cart_abandoned(
@@ -1446,18 +1399,33 @@ async def _run_recovery_sequence_after_cart_abandoned(
         )
         return
 
-    phone, phone_src = _resolve_recovery_session_phone(
-        recovery_key=recovery_key,
-        reason_row=reason_row,
-        abandon_event_phone=abandon_event_phone,
-    )
-    phone, phone_src = _dev_rewrite_stale_recovery_phone(phone, phone_src)
-    if phone_src in ("persisted_memory", "db_reason_row"):
+    from services.recovery_session_phone import get_recovery_customer_phone
+
+    session_phone: Optional[str] = None
+    session_src: Optional[str] = None
+    ep = _strip_recovery_phone(abandon_event_phone)
+    if ep:
+        session_phone = ep
+        session_src = "cart_event_payload"
+    else:
+        mem = _strip_recovery_phone(get_recovery_customer_phone(recovery_key))
+        if mem:
+            session_phone = mem
+            session_src = "persisted_memory"
+        elif reason_row is not None:
+            dbp = _strip_recovery_phone(getattr(reason_row, "customer_phone", None))
+            if dbp:
+                session_phone = dbp
+                session_src = "db_reason_row"
+
+    if session_src in ("persisted_memory", "db_reason_row"):
         print("[PHONE RETRIEVED]")
         print("session_id=", session_id)
-        print("phone=", phone)
+        print("phone=", session_phone)
+
+    phone = get_recovery_phone(session_id, session_phone)
+
     if not phone:
-        print("[NO PHONE] skipping send")
         _persist_cart_recovery_log(
             store_slug=store_slug,
             session_id=session_id,
@@ -1571,10 +1539,10 @@ async def _run_recovery_sequence_after_cart_abandoned(
         )
         return
 
-    print("[PHONE SOURCE TRACE]")
+    _assert_recovery_phone_not_stale_forbidden(phone)
+    print("[FINAL PHONE BEFORE SEND]")
     print("session_id=", session_id)
     print("phone=", phone)
-    _log_recovery_send_phone(phone=phone, phone_src=phone_src)
     wa_result = send_whatsapp(
         phone,
         text,
@@ -2131,7 +2099,7 @@ def dev_create_test_objection():
             object_type="price",
             created_at=now,
             customer_name="ماجد",
-            customer_phone="966579706669",
+            customer_phone=DEV_TEST_PHONE,
             cart_url="https://example.com/cart",
             customer_type="new",
             last_activity_at=last,
@@ -2170,7 +2138,7 @@ def dev_recovery_flow_test(request: Request):
             )
             if should_send:
                 send_whatsapp(
-                    phone="966579706669",
+                    phone=DEV_TEST_PHONE,
                     message=message,
                     wa_trace_path=__file__,
                     wa_trace_last_activity=last,
@@ -2216,7 +2184,7 @@ def dev_recovery_flow_test(request: Request):
         send_result = None
         if should_send:
             send_result = send_whatsapp(
-                phone=row.customer_phone or "966579706669",
+                phone=row.customer_phone or DEV_TEST_PHONE,
                 message=message,
                 wa_trace_path=__file__,
                 wa_trace_last_activity=last,
