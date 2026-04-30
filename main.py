@@ -568,6 +568,43 @@ _DEV_RECOVERY_SETTINGS_STORE_ZID = "dev-recovery-settings-test"
 CARTFLOW_DEFAULT_RECOVERY_STORE_ZID = "cartflow-default-recovery"
 _VALID_RECOVERY_UNITS = frozenset({"minutes", "hours", "days"})
 
+_STORE_RECOVERY_TEMPLATE_KEYS: tuple[str, ...] = (
+    "template_price",
+    "template_shipping",
+    "template_quality",
+    "template_delivery",
+    "template_warranty",
+    "template_other",
+)
+_MAX_STORE_TEMPLATE_CHARS = 65535
+
+
+def _coerce_store_template_column_value(raw: Any) -> Optional[str]:
+    """‎NULL‎ أو فارغ بعد ‎strip‎ = لا قالب مخصص (العرض يستخدم الافتراضي المدمج)."""
+    if raw is None:
+        return None
+    s = str(raw).strip()
+    if not s:
+        return None
+    return s[:_MAX_STORE_TEMPLATE_CHARS]
+
+
+def _apply_recovery_template_fields_from_body(row: Any, body: Dict[str, Any]) -> None:
+    """يحدّث حقول القالب على سطر المتجر فقط للمفاتيح الظاهرة في ‎body‎."""
+    for key in _STORE_RECOVERY_TEMPLATE_KEYS:
+        if key not in body:
+            continue
+        setattr(row, key, _coerce_store_template_column_value(body.get(key)))
+
+
+def _recovery_template_fields_for_api(row: Any) -> Dict[str, str]:
+    """قيم للوحة والـ ‎API‎ — سلسلة فارغة عند ‎NULL‎ لعرض ‎textarea‎."""
+    out: Dict[str, str] = {}
+    for key in _STORE_RECOVERY_TEMPLATE_KEYS:
+        v = getattr(row, key, None)
+        out[key] = v.strip() if isinstance(v, str) and v.strip() else ""
+    return out
+
 
 def _ensure_default_store_for_recovery() -> None:
     """
@@ -596,6 +633,7 @@ def _dev_apply_recovery_settings_update(
     *,
     whatsapp_support_url: Any = None,
     update_whatsapp: bool = False,
+    request_body: Optional[Dict[str, Any]] = None,
 ) -> Tuple[Dict[str, Any], int]:
     """
     نفس منطق ‎POST /dev/recovery-settings-update‎ — تعديل أحدث ‎Store‎ بعد التحقق.
@@ -634,17 +672,21 @@ def _dev_apply_recovery_settings_update(
             row.whatsapp_support_url = None
         else:
             row.whatsapp_support_url = str(whatsapp_support_url).strip()[:2048]
+    if request_body is not None:
+        _apply_recovery_template_fields_from_body(row, request_body)
     db.session.commit()
     wa: Optional[str] = getattr(row, "whatsapp_support_url", None)
     if not (isinstance(wa, str) and wa.strip()):
         wa = None
-    return {
+    payload: Dict[str, Any] = {
         "ok": True,
         "recovery_delay": row.recovery_delay,
         "recovery_delay_unit": row.recovery_delay_unit,
         "recovery_attempts": row.recovery_attempts,
         "whatsapp_support_url": wa,
-    }, 200
+    }
+    payload.update(_recovery_template_fields_for_api(row))
+    return payload, 200
 
 # ‎/dev/recovery-flow-test?type=…‎ — بدون قراءة من ‎DB‎
 _RECOVERY_TEST_SCENARIOS = {
@@ -981,6 +1023,7 @@ async def dev_recovery_settings_update(request: Request):
             body.get("recovery_attempts"),
             whatsapp_support_url=body.get("whatsapp_support_url") if uw else None,
             update_whatsapp=uw,
+            request_body=body,
         )
         return j(data, code)
     except Exception as e:  # noqa: BLE001
@@ -1008,6 +1051,7 @@ async def api_recovery_settings(request: Request):
             body.get("recovery_attempts"),
             whatsapp_support_url=body.get("whatsapp_support_url") if uw else None,
             update_whatsapp=uw,
+            request_body=body,
         )
         return j(data, code)
     except Exception as e:  # noqa: BLE001
@@ -1030,15 +1074,15 @@ def api_recovery_settings_get():
         wa: Optional[str] = getattr(row, "whatsapp_support_url", None)
         if not (isinstance(wa, str) and wa.strip()):
             wa = None
-        return j(
-            {
-                "ok": True,
-                "recovery_delay": row.recovery_delay,
-                "recovery_delay_unit": row.recovery_delay_unit,
-                "recovery_attempts": row.recovery_attempts,
-                "whatsapp_support_url": wa,
-            }
-        )
+        payload = {
+            "ok": True,
+            "recovery_delay": row.recovery_delay,
+            "recovery_delay_unit": row.recovery_delay_unit,
+            "recovery_attempts": row.recovery_attempts,
+            "whatsapp_support_url": wa,
+        }
+        payload.update(_recovery_template_fields_for_api(row))
+        return j(payload)
     except Exception as e:  # noqa: BLE001
         db.session.rollback()
         return j({"ok": False, "error": str(e)}, 500)
