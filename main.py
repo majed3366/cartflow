@@ -1771,9 +1771,14 @@ async def _run_recovery_sequence_after_cart_abandoned(
         )
     except asyncio.CancelledError:
         raise
-    except Exception as e:
-        print("[RECOVERY TASK ERROR]", str(e))
-        return None
+    except SystemExit:
+        raise
+    except KeyboardInterrupt:
+        raise
+    except BaseException as e:
+        # ‎ExceptionGroup‎ يورث من ‎BaseException‎ لا من ‎Exception‎ — ضروري لمنع انهيار ‎TaskGroup‎.
+        print("[RECOVERY TASK CAUGHT ERROR]", str(e))
+    print("[RECOVERY TASK COMPLETED SAFELY]")
 
 
 async def handle_cart_abandoned(
