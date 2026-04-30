@@ -1258,20 +1258,22 @@ def _try_claim_recovery_session(recovery_key: str) -> bool:
         return True
 
 
-_MOCK_RECOVERY_PHONE = "966501234567"
-_DEV_TEST_FALLBACK_PHONE = "966579706669"
+_PROD_DEFAULT_RECOVERY_PHONE = "966501234567"
+_DEV_FALLBACK_RECOVERY_PHONE = "966579706669"
 
 
 def _recovery_destination_phone() -> str:
     """
     رقم الوجهة لرسائل الاسترجاع.
     ‎WHATSAPP_RECOVERY_TO_PHONE‎ اختياري: للاختبار بأرقام ‎WABA‎ الخاصة بك فقط قبل العملاء.
-    بدون ضبط: نفس الرقم الوهمي السابق (سلوك قديم).
+    بدون ضبط: في التطوير ‎966579706669‎؛ في الإنتاج الرقم الوهمي السابق (سلوك قديم).
     """
     o = (os.getenv("WHATSAPP_RECOVERY_TO_PHONE") or "").strip()
     if o:
         return o[:100]
-    return _MOCK_RECOVERY_PHONE
+    if _dev_phone_fallback_enabled():
+        return _DEV_FALLBACK_RECOVERY_PHONE
+    return _PROD_DEFAULT_RECOVERY_PHONE
 
 
 def _strip_recovery_phone(raw: Optional[Any]) -> str:
@@ -1307,17 +1309,17 @@ def _resolve_recovery_session_phone(
     if dbp:
         return dbp, "db_reason_row"
 
-    if _dev_phone_fallback_enabled():
-        dev_p = _strip_recovery_phone(_DEV_TEST_FALLBACK_PHONE)
-        if dev_p:
-            try:
-                print("[DEV PHONE USED]")
-                print("phone=", dev_p)
-            except Exception:
-                pass
-            return dev_p, "dev_fallback"
-
     fallback = _strip_recovery_phone(_recovery_destination_phone())
+    if (
+        _dev_phone_fallback_enabled()
+        and fallback == _DEV_FALLBACK_RECOVERY_PHONE
+    ):
+        try:
+            print("[DEV PHONE USED]")
+            print("phone=", fallback)
+        except Exception:
+            pass
+        return fallback, "dev_fallback"
     return fallback, "default_destination"
 
 
