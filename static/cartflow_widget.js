@@ -1129,8 +1129,97 @@
     }
   }
 
+  /** لقطعة سلة بسيطة لاكتشاف إضافة/تعديل بعد رفض المساعدة */
+  function cartflowCartFingerprint() {
+    try {
+      if (typeof window.cart === "undefined" || window.cart === null) {
+        return "";
+      }
+      if (!Array.isArray(window.cart)) {
+        return "";
+      }
+      return window.cart
+        .map(function (it) {
+          if (!it || typeof it !== "object") {
+            return "";
+          }
+          var id = it.id != null ? String(it.id) : "";
+          var q = it.quantity != null ? String(it.quantity) : "";
+          return id + "x" + q;
+        })
+        .join("|");
+    } catch (eFp) {
+      return "";
+    }
+  }
+
+  function cartflowMarkUserRejectedHelp() {
+    try {
+      window._cartflowUserRejectedHelp = true;
+      window._cartflowRejectionTimestamp = Date.now();
+      window._cartflowRejectCartFingerprint = cartflowCartFingerprint();
+      console.log("[USER REJECTED HELP] timestamp=", window._cartflowRejectionTimestamp);
+    } catch (eMr) {
+      /* ignore */
+    }
+  }
+
+  function cartflowTryResetHelpRejectionIfNewIntent() {
+    try {
+      if (window._cartflowUserRejectedHelp !== true) {
+        return;
+      }
+      var fpNow = cartflowCartFingerprint();
+      var fpRej =
+        typeof window._cartflowRejectCartFingerprint === "undefined"
+          ? ""
+          : String(window._cartflowRejectCartFingerprint);
+      if (fpNow !== fpRej) {
+        window._cartflowUserRejectedHelp = false;
+        console.log("[BEHAVIOR RESET] reason=new_intent_detected");
+      }
+    } catch (eRs) {
+      /* ignore */
+    }
+  }
+
+  /** بعد الرفض: مهلة 30 ثانية، ثم إبقاء الإيقاف حتى تتغير السلة (بدون إعادة فتح فورية). */
+  function cartflowHelpRejectionBlocksBubbleShow() {
+    try {
+      if (window._cartflowUserRejectedHelp !== true) {
+        return false;
+      }
+      var rt = window._cartflowRejectionTimestamp;
+      if (typeof rt === "number" && Date.now() - rt < 30000) {
+        try {
+          console.log("[CF FRONT] skip showBubble: rejection cooldown");
+        } catch (eCd) {
+          /* ignore */
+        }
+        return true;
+      }
+      var fpNow = cartflowCartFingerprint();
+      var fpRej =
+        typeof window._cartflowRejectCartFingerprint === "undefined"
+          ? ""
+          : String(window._cartflowRejectCartFingerprint);
+      if (fpNow === fpRej) {
+        try {
+          console.log("[CF FRONT] skip showBubble: no new cart intent after rejection");
+        } catch (eSm) {
+          /* ignore */
+        }
+        return true;
+      }
+    } catch (eBl) {
+      /* ignore */
+    }
+    return false;
+  }
+
   /** جاهزية الاسترجاع بعد إضافة للسلة أو جلسة جديدة (لا يعطّل المحادثة نهائياً) */
   function clearStaleRecoveryGatesOnCartActivity() {
+    cartflowTryResetHelpRejectionIfNewIntent();
     clearCartRecoverySuppressed();
     if (isDemoStoreProductPage() && isDemoPath()) {
       demoStoreBubbleDismissed = false;
@@ -1754,6 +1843,10 @@
     } catch (eCfTrig) {
       /* ignore */
     }
+    cartflowTryResetHelpRejectionIfNewIntent();
+    if (cartflowHelpRejectionBlocksBubbleShow()) {
+      return;
+    }
     var openSource =
       triggerSource === TRIGGER_SOURCE_EXIT_INTENT
         ? TRIGGER_SOURCE_EXIT_INTENT
@@ -2204,6 +2297,7 @@
       }
 
       function finishNoHelpLayerDFlow() {
+        cartflowMarkUserRejectedHelp();
         logWidgetFlow("layer_d_no_help_ui", "no_help", "open");
         persistSessionAbandonReason("no_help", null);
         stripContentKeepChrome();
@@ -3435,6 +3529,7 @@
     if (isSessionConverted() || !step1Ready) {
       return;
     }
+    cartflowTryResetHelpRejectionIfNewIntent();
     if (isDemoStoreProductPage()) {
       if (!readDemoStoreWidgetArmed()) {
         return;
