@@ -1216,7 +1216,12 @@
     if (s.widgetShown) {
       return false;
     }
-    if (s.userRejectedHelp === true) {
+    if (ts === TRIGGER_SOURCE_CART && s.userRejectedHelp === true) {
+      try {
+        console.log("[BLOCK INITIAL MESSAGE - USER REJECTED]");
+      } catch (eBlk) {
+        /* ignore */
+      }
       var rt = s.rejectionTimestamp;
       if (typeof rt === "number" && Date.now() - rt < 30000) {
         try {
