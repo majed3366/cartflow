@@ -76,3 +76,29 @@ def test_dev_rewrites_legacy_mock_db_phone(monkeypatch) -> None:
     phone2, src2 = _dev_rewrite_stale_recovery_phone(phone, src)
     assert phone2 == "966579706669"
     assert src2 == "dev_fallback"
+
+
+def test_dev_rewrites_legacy_mock_05_local_form(monkeypatch) -> None:
+    monkeypatch.setenv("ENV", "development")
+    row = SimpleNamespace(customer_phone="0501234567")
+    phone, src = _resolve_recovery_session_phone(
+        recovery_key="test-key",
+        reason_row=row,
+        abandon_event_phone=None,
+    )
+    phone2, src2 = _dev_rewrite_stale_recovery_phone(phone, src)
+    assert phone2 == "966579706669"
+    assert src2 == "dev_fallback"
+
+
+def test_dev_rewrites_legacy_mock_plus_prefix(monkeypatch) -> None:
+    monkeypatch.setenv("ENV", "development")
+    row = SimpleNamespace(customer_phone="+966 501 234 567")
+    phone, src = _resolve_recovery_session_phone(
+        recovery_key="test-key",
+        reason_row=row,
+        abandon_event_phone=None,
+    )
+    phone2, src2 = _dev_rewrite_stale_recovery_phone(phone, src)
+    assert phone2 == "966579706669"
+    assert src2 == "dev_fallback"

@@ -1283,6 +1283,24 @@ def _strip_recovery_phone(raw: Optional[Any]) -> str:
     return s[:100] if s else ""
 
 
+def _recovery_sa_e164_digits(raw: str) -> str:
+    """توحيد أشكال جوال سعودي شائعة (‎966…‎، ‎05…‎، ‎5XXXXXXXX‎) لمطابقة الرقم الوهمي القديم."""
+    d = "".join(c for c in (raw or "") if c.isdigit())
+    if not d:
+        return ""
+    while d.startswith("00"):
+        d = d[2:]
+    if len(d) == 10 and d.startswith("0"):
+        return "966" + d[1:]
+    if len(d) == 9 and d.startswith("5"):
+        return "966" + d
+    return d
+
+
+def _legacy_mock_recovery_digits_normalized() -> str:
+    return _recovery_sa_e164_digits(_PROD_DEFAULT_RECOVERY_PHONE)
+
+
 def _resolve_recovery_session_phone(
     *,
     recovery_key: str,
@@ -1322,7 +1340,8 @@ def _dev_rewrite_stale_recovery_phone(phone: str, phone_src: str) -> Tuple[str, 
     """في التطوير فقط: صفوف/ذاكرة تحوي الرقم الوهمي القديم تُوجَّه لخط الاختبار."""
     if not _dev_phone_fallback_enabled():
         return phone, phone_src
-    if phone == _PROD_DEFAULT_RECOVERY_PHONE:
+    legacy = _legacy_mock_recovery_digits_normalized()
+    if legacy and _recovery_sa_e164_digits(phone) == legacy:
         return _DEV_FALLBACK_RECOVERY_PHONE, "dev_fallback"
     return phone, phone_src
 
@@ -1339,15 +1358,12 @@ def _log_recovery_send_phone(*, phone: str, phone_src: str) -> None:
         src_log = "hardcoded"
     else:
         src_log = "session"
-    try:
-        print("[PHONE SOURCE]")
-        print(f"source={src_log}")
+    print("[PHONE SOURCE]")
+    print(f"source={src_log}")
+    print(f"phone={phone}")
+    if phone_src == "dev_fallback":
+        print("[DEV PHONE USED]")
         print(f"phone={phone}")
-        if phone_src == "dev_fallback":
-            print("[DEV PHONE USED]")
-            print(f"phone={phone}")
-    except Exception:
-        pass
 
 
 async def _run_recovery_sequence_after_cart_abandoned(
@@ -1555,6 +1571,10 @@ async def _run_recovery_sequence_after_cart_abandoned(
         )
         return
 
+    print("[PHONE SOURCE TRACE]")
+    print("session_id=", session_id)
+    print("phone=", phone)
+    _log_recovery_send_phone(phone=phone, phone_src=phone_src)
     wa_result = send_whatsapp(
         phone,
         text,
