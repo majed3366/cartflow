@@ -172,6 +172,8 @@ class CartRecoveryReason(Base):
         onupdate=lambda: datetime.now(timezone.utc),
         nullable=False,
     )
+    user_rejected_help = Column(Boolean, default=False, nullable=False)
+    rejection_timestamp = Column(DateTime, nullable=True)
 
 
 class CartRecoveryLog(Base):

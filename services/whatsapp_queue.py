@@ -142,6 +142,8 @@ async def _do_process_one_job_body(
     job: RecoveryWhatsappJob, fut: "asyncio.Future[str]"
 ) -> None:
     persist = _persist()
+    from main import _recovery_should_skip_whatsapp_for_session
+
     if not fut.cancelled() and not fut.done() and _is_converted(job.recovery_key):
         persist(
             store_slug=job.store_slug,
@@ -182,6 +184,22 @@ async def _do_process_one_job_body(
                 step=job.step,
             )
             fut.set_result("stopped")
+            return
+
+        if _recovery_should_skip_whatsapp_for_session(
+            job.store_slug, job.session_id
+        ):
+            print("[SKIP WA - USER REJECTED HELP]")
+            persist(
+                store_slug=job.store_slug,
+                session_id=job.session_id,
+                cart_id=job.cart_id,
+                phone=None,
+                message=job.message,
+                status="skipped_user_rejected_help",
+                step=job.step,
+            )
+            fut.set_result("skipped")
             return
 
         try:

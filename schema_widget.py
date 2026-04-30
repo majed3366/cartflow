@@ -13,6 +13,67 @@ log = logging.getLogger("cartflow")
 
 _store_abandonment_schema_ensured = False
 _recovery_reason_widget_cols_ensured = False
+_recovery_reason_rejection_cols_ensured = False
+
+
+def _ensure_recovery_reason_rejection_columns(db: Any) -> None:
+    """أعمدة ‎user_rejected_help / rejection_timestamp‎ لمسار ‎no_help‎ السلوكي."""
+    global _recovery_reason_rejection_cols_ensured
+    if _recovery_reason_rejection_cols_ensured:
+        return
+    try:
+        db.create_all()
+        insp = inspect(db.engine)
+        if not insp.has_table("cart_recovery_reasons"):
+            return
+        dialect = getattr(getattr(db.engine, "dialect", None), "name", "") or ""
+        ts_sql_type = (
+            "TIMESTAMP(0) WITH TIME ZONE"
+            if dialect == "postgresql"
+            else "DATETIME"
+        )
+        cols = {c["name"] for c in insp.get_columns("cart_recovery_reasons")}
+        if "user_rejected_help" not in cols:
+            try:
+                if dialect == "postgresql":
+                    stmt = (
+                        "ALTER TABLE cart_recovery_reasons "
+                        "ADD COLUMN IF NOT EXISTS user_rejected_help BOOLEAN "
+                        "DEFAULT FALSE NOT NULL"
+                    )
+                else:
+                    stmt = (
+                        "ALTER TABLE cart_recovery_reasons "
+                        "ADD COLUMN user_rejected_help BOOLEAN DEFAULT 0 NOT NULL"
+                    )
+                db.session.execute(text(stmt))
+                db.session.commit()
+            except (OSError, SQLAlchemyError, IntegrityError):
+                db.session.rollback()
+        cols = {
+            c["name"]
+            for c in inspect(db.engine).get_columns("cart_recovery_reasons")
+        }
+        if "rejection_timestamp" not in cols:
+            try:
+                if dialect == "postgresql":
+                    stmt = (
+                        "ALTER TABLE cart_recovery_reasons ADD COLUMN IF NOT EXISTS "
+                        "rejection_timestamp " + ts_sql_type
+                    )
+                else:
+                    stmt = (
+                        "ALTER TABLE cart_recovery_reasons ADD COLUMN "
+                        "rejection_timestamp " + ts_sql_type
+                    )
+                db.session.execute(text(stmt))
+                db.session.commit()
+            except (OSError, SQLAlchemyError, IntegrityError):
+                db.session.rollback()
+        _recovery_reason_rejection_cols_ensured = True
+    except (OSError, SQLAlchemyError) as e:
+        db.session.rollback()
+        log.debug("recovery_reason_rejection_schema: %s", e)
 
 
 def ensure_recovery_reason_widget_schema(db: Any) -> None:
@@ -142,11 +203,17 @@ def ensure_cart_recovery_reason_phone_schema(db: Any) -> None:
     _ensure_recovery_reason_customer_phone_column(db)
 
 
+def ensure_cart_recovery_reason_rejection_schema(db: Any) -> None:
+    """يُصدَّر للاستدعاء من ‎main‎ و‎cart-recovery/reason‎ قبل تحديث أعلام الرفض."""
+    _ensure_recovery_reason_rejection_columns(db)
+
+
 def ensure_store_widget_schema(db: Any) -> None:
     """يُنادى من مسارات ‎API‎ (لا يعتمد على ‎main‎)."""
     _ensure_reason_subcategory_columns(db)
     ensure_recovery_reason_widget_schema(db)
     _ensure_recovery_reason_customer_phone_column(db)
+    _ensure_recovery_reason_rejection_columns(db)
     global _store_abandonment_schema_ensured
     if _store_abandonment_schema_ensured:
         return

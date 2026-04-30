@@ -1128,9 +1128,13 @@ def _cart_recovery_reason_latest_row(
     if not ss or not sid:
         return None
     try:
-        from schema_widget import ensure_cart_recovery_reason_phone_schema
+        from schema_widget import (
+            ensure_cart_recovery_reason_phone_schema,
+            ensure_cart_recovery_reason_rejection_schema,
+        )
 
         ensure_cart_recovery_reason_phone_schema(db)
+        ensure_cart_recovery_reason_rejection_schema(db)
         db.create_all()
         return (
             db.session.query(CartRecoveryReason)
@@ -1144,6 +1148,49 @@ def _cart_recovery_reason_latest_row(
     except Exception:  # noqa: BLE001
         db.session.rollback()
         return None
+
+
+def _recovery_row_user_rejected_help(row: Optional[CartRecoveryReason]) -> bool:
+    if row is None:
+        return False
+    try:
+        return row.user_rejected_help is True
+    except Exception:  # noqa: BLE001
+        return getattr(row, "user_rejected_help", False) is True
+
+
+def _clear_user_rejected_help_for_session(store_slug: str, session_id: str) -> None:
+    ss = (store_slug or "").strip()[:255]
+    sid = (session_id or "").strip()[:512]
+    if not ss or not sid:
+        return
+    try:
+        from schema_widget import ensure_cart_recovery_reason_rejection_schema
+
+        ensure_cart_recovery_reason_rejection_schema(db)
+        db.create_all()
+        row = (
+            db.session.query(CartRecoveryReason)
+            .filter(
+                CartRecoveryReason.store_slug == ss,
+                CartRecoveryReason.session_id == sid,
+            )
+            .first()
+        )
+        if row is None:
+            return
+        row.user_rejected_help = False
+        row.rejection_timestamp = None
+        db.session.commit()
+    except Exception:  # noqa: BLE001
+        db.session.rollback()
+
+
+def _recovery_should_skip_whatsapp_for_session(
+    store_slug: str, session_id: str,
+) -> bool:
+    row = _cart_recovery_reason_latest_row(store_slug, session_id)
+    return _recovery_row_user_rejected_help(row)
 
 
 def _reason_tag_for_session(store_slug: str, session_id: str) -> Optional[str]:
@@ -1429,6 +1476,19 @@ async def _run_recovery_sequence_after_cart_abandoned(
 
     step_num = 1
     reason_row = _cart_recovery_reason_latest_row(store_slug, session_id)
+    if _recovery_row_user_rejected_help(reason_row):
+        print("[SKIP WA - USER REJECTED HELP]")
+        skip_msg = _default_recovery_message()
+        _persist_cart_recovery_log(
+            store_slug=store_slug,
+            session_id=session_id,
+            cart_id=cart_id,
+            phone=None,
+            message=skip_msg,
+            status="skipped_user_rejected_help",
+            step=step_num,
+        )
+        return
     rt_raw = (reason_row.reason or "").strip() if reason_row else ""
     if rt_raw:
         reason_tag = rt_raw
@@ -1596,6 +1656,20 @@ async def _run_recovery_sequence_after_cart_abandoned(
             phone=None,
             message=text,
             status=pro_st,
+            step=step_num,
+        )
+        return
+
+    reason_row_send = _cart_recovery_reason_latest_row(store_slug, session_id)
+    if _recovery_row_user_rejected_help(reason_row_send):
+        print("[SKIP WA - USER REJECTED HELP]")
+        _persist_cart_recovery_log(
+            store_slug=store_slug,
+            session_id=session_id,
+            cart_id=cart_id,
+            phone=None,
+            message=text,
+            status="skipped_user_rejected_help",
             step=step_num,
         )
         return
@@ -1783,6 +1857,13 @@ async def api_cart_event(request: Request, background_tasks: BackgroundTasks):
     ):
         _mark_user_converted_for_payload(payload)
         out["conversion_tracked"] = True
+    if payload.get("event") == "add_to_cart":
+        _clear_user_rejected_help_for_session(
+            _normalize_store_slug(payload),
+            _session_part_from_payload(payload),
+        )
+        print("[BEHAVIOR RESET]")
+        out["behavior_reset"] = True
     if payload.get("event") == "cart_abandoned":
         print("[CF API] processing event")
         out.update(await handle_cart_abandoned(background_tasks, payload))

@@ -1088,6 +1088,23 @@
             return {};
           });
         })
+        .then(function (j) {
+          try {
+            if (j && j.ok === true && j.user_rejected_help === true) {
+              if (window.CartFlowState) {
+                window.CartFlowState.userRejectedHelp = true;
+                window.CartFlowState.rejectionTimestamp = Date.now();
+              }
+              console.log("[USER REJECTED HELP]");
+              if (typeof window.cartflowLogCartflowState === "function") {
+                window.cartflowLogCartflowState();
+              }
+            }
+          } catch (eSyncUrh) {
+            /* ignore */
+          }
+          return j;
+        })
         .catch(function (err) {
           try {
             console.warn("CART_RECOVERY_REASON_SAVE_FAILED", err);

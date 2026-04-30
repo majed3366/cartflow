@@ -64,6 +64,37 @@
     window.replyaiTrack = function () {};
   }
 
+  function notifyBackendAddToCartIntent() {
+    if (cartflowIsSessionConverted()) {
+      return;
+    }
+    var storeSlug =
+      typeof window.CARTFLOW_STORE_SLUG !== "undefined" &&
+      window.CARTFLOW_STORE_SLUG !== null &&
+      String(window.CARTFLOW_STORE_SLUG).trim() !== ""
+        ? String(window.CARTFLOW_STORE_SLUG).trim()
+        : "demo";
+    var cartArr =
+      typeof window.cart !== "undefined" && window.cart !== null && Array.isArray(window.cart)
+        ? window.cart
+        : [];
+    var body = JSON.stringify({
+      event: "add_to_cart",
+      store: storeSlug,
+      session_id: getRecoverySessionId(),
+      cart: cartArr,
+    });
+    try {
+      fetch(apiCartEventUrl(), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: body,
+      }).catch(function () {});
+    } catch (eNfy) {
+      /* ignore */
+    }
+  }
+
   /** إعادة تفعيل الويدجت بعد رفض المساعدة عند ‎add_to_cart‎ (وتجربة ‎demo‎ عبر ‎cf-demo-cart-updated‎). */
   (function wrapReplyaiTrackForBehaviorReset() {
     var prevTrack = window.replyaiTrack;
@@ -75,6 +106,7 @@
           payload.event === "add_to_cart"
         ) {
           window.cartflowRegisterNewIntent("add_to_cart");
+          notifyBackendAddToCartIntent();
         }
       } catch (eBr) {
         /* ignore */
@@ -90,6 +122,7 @@
     function () {
       try {
         window.cartflowRegisterNewIntent("add_to_cart");
+        notifyBackendAddToCartIntent();
       } catch (eCf) {
         /* ignore */
       }

@@ -108,6 +108,9 @@ async def post_widget_cart_recovery_reason(request: Request) -> Any:
             row.custom_text = custom_reason
             row.source = "widget"
             row.updated_at = now
+            if reason_tag == "no_help":
+                row.user_rejected_help = True
+                row.rejection_timestamp = now
             if "phone" in body:
                 row.customer_phone = reason_phone_update
         else:
@@ -124,6 +127,8 @@ async def post_widget_cart_recovery_reason(request: Request) -> Any:
                     source="widget",
                     created_at=now,
                     updated_at=now,
+                    user_rejected_help=reason_tag == "no_help",
+                    rejection_timestamp=now if reason_tag == "no_help" else None,
                 )
             )
 
@@ -138,7 +143,10 @@ async def post_widget_cart_recovery_reason(request: Request) -> Any:
         print(
             f"[REASON SAVED] store={ss} session={sid} reason={reason_tag} custom={custom_reason}"
         )
-        return j({"ok": True, "saved": True})
+        resp_ok: dict[str, Any] = {"ok": True, "saved": True}
+        if reason_tag == "no_help":
+            resp_ok["user_rejected_help"] = True
+        return j(resp_ok)
     except (SQLAlchemyError, OSError) as e:
         db.session.rollback()
         log.warning("cart-recovery/reason widget: %s", e)
