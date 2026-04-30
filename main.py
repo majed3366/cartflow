@@ -1685,6 +1685,7 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
         reason_tag=reason_tag,
         wa_trace_path=__file__,
         wa_trace_session_id=session_id,
+        wa_trace_store_slug=store_slug,
         wa_trace_last_activity=last_activity,
         wa_trace_recovery_delay_minutes=delay_minutes,
         wa_trace_delay_passed=True,

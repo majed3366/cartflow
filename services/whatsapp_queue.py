@@ -100,10 +100,12 @@ def _one_send(
     message: str,
     *,
     trace_session_id: Optional[str] = None,
+    trace_store_slug: Optional[str] = None,
 ) -> Dict[str, Any]:
     trace_kw: Dict[str, Any] = {
         "wa_trace_path": os.path.abspath(__file__),
         "wa_trace_session_id": trace_session_id,
+        "wa_trace_store_slug": trace_store_slug,
         "wa_trace_delay_passed": WA_TRACE_DELAY_UNSPECIFIED,
     }
     if use_real:
@@ -208,6 +210,7 @@ async def _do_process_one_job_body(
                 job.phone,
                 job.message,
                 trace_session_id=job.session_id,
+                trace_store_slug=job.store_slug,
             )
             ok = _is_send_ok(r)
         except Exception as e:  # noqa: BLE001

@@ -10,6 +10,7 @@ import os
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional
 
+from sqlalchemy import and_
 from twilio.rest import Client
 
 from config_system import get_cartflow_config
@@ -18,6 +19,59 @@ logger = logging.getLogger(__name__)
 
 # Temporary dev-only tracing for recovery sends (set ENV=development or WA_RECOVERY_SEND_TRACE=1).
 WA_TRACE_DELAY_UNSPECIFIED = object()
+
+
+def _cart_recovery_user_rejected_help_db(
+    store_slug: str, session_id: str
+) -> bool:
+    """قراءة فقط — لا تُعدّل مسار الإرسال عند فشل الاستعلام."""
+    ss = (store_slug or "").strip()[:255]
+    sid = (session_id or "").strip()[:512]
+    if not ss or not sid:
+        return False
+    try:
+        from extensions import db
+        from models import CartRecoveryReason
+        from schema_widget import ensure_cart_recovery_reason_rejection_schema
+
+        ensure_cart_recovery_reason_rejection_schema(db)
+        db.create_all()
+        row = (
+            db.session.query(CartRecoveryReason)
+            .filter(
+                and_(
+                    CartRecoveryReason.store_slug == ss,
+                    CartRecoveryReason.session_id == sid,
+                )
+            )
+            .first()
+        )
+        if row is None:
+            return False
+        return getattr(row, "user_rejected_help", False) is True
+    except Exception:  # noqa: BLE001
+        try:
+            from extensions import db as _db
+
+            _db.session.rollback()
+        except Exception:
+            pass
+        return False
+
+
+def _blocked_send_whatsapp_if_user_rejected_help(
+    wa_trace_store_slug: Optional[str],
+    wa_trace_session_id: Optional[str],
+) -> Optional[Dict[str, Any]]:
+    """أعلى مستوى قبل تنفيذ الإرسال — يفعّل فقط مع ‎store + session‎ في السياق."""
+    ss = (wa_trace_store_slug or "").strip()[:255]
+    sid = (wa_trace_session_id or "").strip()[:512]
+    if not ss or not sid:
+        return None
+    if _cart_recovery_user_rejected_help_db(ss, sid):
+        print("[BLOCK WA - USER REJECTED HELP]")
+        return {"ok": False, "error": "user_rejected_help"}
+    return None
 
 
 def wa_recovery_trace_enabled() -> bool:
@@ -289,6 +343,7 @@ def send_whatsapp(
     reason_tag: Optional[str] = None,
     wa_trace_path: Optional[str] = None,
     wa_trace_session_id: Optional[str] = None,
+    wa_trace_store_slug: Optional[str] = None,
     wa_trace_last_activity: Optional[Any] = None,
     wa_trace_recovery_delay_minutes: Optional[Any] = None,
     wa_trace_delay_passed: Any = WA_TRACE_DELAY_UNSPECIFIED,
@@ -297,6 +352,12 @@ def send_whatsapp(
     إرسال واتساب عبر Twilio Conversation API (REST).
     المتغيرات: TWILIO_ACCOUNT_SID، TWILIO_AUTH_TOKEN، TWILIO_WHATSAPP_FROM.
     """
+    blocked = _blocked_send_whatsapp_if_user_rejected_help(
+        wa_trace_store_slug, wa_trace_session_id
+    )
+    if blocked is not None:
+        return blocked
+
     sid = (os.getenv("TWILIO_ACCOUNT_SID") or "").strip()
     token = (os.getenv("TWILIO_AUTH_TOKEN") or "").strip()
     from_raw = (os.getenv("TWILIO_WHATSAPP_FROM") or "").strip()
@@ -358,10 +419,17 @@ def send_whatsapp_mock(
     *,
     wa_trace_path: Optional[str] = None,
     wa_trace_session_id: Optional[str] = None,
+    wa_trace_store_slug: Optional[str] = None,
     wa_trace_last_activity: Optional[Any] = None,
     wa_trace_recovery_delay_minutes: Optional[Any] = None,
     wa_trace_delay_passed: Any = WA_TRACE_DELAY_UNSPECIFIED,
 ) -> Dict[str, Any]:
+    blocked = _blocked_send_whatsapp_if_user_rejected_help(
+        wa_trace_store_slug, wa_trace_session_id
+    )
+    if blocked is not None:
+        return blocked
+
     emit_recovery_wa_send_trace(
         path_file=wa_trace_path or __file__,
         reason_tag=None,
