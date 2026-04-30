@@ -1435,7 +1435,7 @@ def _assert_forbidden_stale_recovery_phone(phone: str) -> None:
         raise RuntimeError("Forbidden stale test phone")
 
 
-async def _run_recovery_sequence_after_cart_abandoned(
+async def _run_recovery_sequence_after_cart_abandoned_impl(
     recovery_key: str,
     delay_seconds: float,
     store_slug: str,
@@ -1488,7 +1488,9 @@ async def _run_recovery_sequence_after_cart_abandoned(
             status="skipped_user_rejected_help",
             step=step_num,
         )
-        return
+        print("[RECOVERY TASK EXIT CLEANLY]")
+        print("reason=user_rejected_help")
+        return None
     rt_raw = (reason_row.reason or "").strip() if reason_row else ""
     if rt_raw:
         reason_tag = rt_raw
@@ -1672,7 +1674,9 @@ async def _run_recovery_sequence_after_cart_abandoned(
             status="skipped_user_rejected_help",
             step=step_num,
         )
-        return
+        print("[RECOVERY TASK EXIT CLEANLY]")
+        print("reason=user_rejected_help")
+        return None
 
     _assert_forbidden_stale_recovery_phone(phone)
     wa_result = send_whatsapp(
@@ -1730,6 +1734,31 @@ async def _run_recovery_sequence_after_cart_abandoned(
     with _recovery_session_lock:
         _session_recovery_sent[recovery_key] = True
     print("recovery marked as sent")
+
+
+async def _run_recovery_sequence_after_cart_abandoned(
+    recovery_key: str,
+    delay_seconds: float,
+    store_slug: str,
+    session_id: str,
+    cart_id: Optional[str],
+    abandon_event_phone: Optional[str] = None,
+) -> None:
+    """مدخل آمن: أي خطأ داخل المهمة المؤجّلة لا يصعد إلى ‎TaskGroup‎ / وسيط الطلب."""
+    try:
+        await _run_recovery_sequence_after_cart_abandoned_impl(
+            recovery_key,
+            delay_seconds,
+            store_slug,
+            session_id,
+            cart_id,
+            abandon_event_phone,
+        )
+    except asyncio.CancelledError:
+        raise
+    except Exception as e:
+        print("[RECOVERY TASK ERROR]", str(e))
+        return None
 
 
 async def handle_cart_abandoned(
