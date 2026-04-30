@@ -2204,14 +2204,65 @@
       }
 
       function finishNoHelpLayerDFlow() {
+        logWidgetFlow("layer_d_no_help_ui", "no_help", "open");
         persistSessionAbandonReason("no_help", null);
         stripContentKeepChrome();
         var pNk = document.createElement("p");
         pNk.setAttribute("data-cf-layer-d-no-help", "1");
         pNk.style.cssText = "margin:0 0 8px 0;font-size:14px;line-height:1.55;";
-        pNk.textContent = "تمام 👍 إذا احتجت أي شيء أنا موجود";
+        pNk.textContent =
+          "تقدر تكمل تصفّح المتجر؛ أنا هنا إذا احتجت أي شيء.";
         widgetBody.appendChild(pNk);
-        appendReturnToRecoveryChatButtonRow();
+
+        var rowNk = document.createElement("div");
+        rowNk.setAttribute("data-cf-layer-d-no-help-buttons", "1");
+        rowNk.style.cssText = rowStyleCol;
+
+        function dismissAssistBubble(evDismiss) {
+          if (evDismiss) {
+            evDismiss.stopPropagation();
+            evDismiss.preventDefault();
+          }
+          if (isDemoStoreProductPage() && isDemoScenarioActive()) {
+            return;
+          }
+          logWidgetFlow("layer_d_no_help_nav", "no_help", "إغلاق_المساعد");
+          removeFabIfAny();
+          if (typeof w._cfCleanup === "function") {
+            w._cfCleanup();
+          }
+          if (w && w.parentNode) {
+            w.parentNode.removeChild(w);
+          }
+          if (isDemoStoreProductPage()) {
+            shown = false;
+            setCartflowWidgetShownFlag(false);
+            demoStoreBubbleDismissed = true;
+            clearTimeout(idleTimer);
+            idleTimer = null;
+          }
+        }
+
+        var bBackMenu = document.createElement("button");
+        bBackMenu.type = "button";
+        bBackMenu.textContent = "رجوع للقائمة السابقة";
+        bBackMenu.style.cssText = btnStyle;
+        bBackMenu.addEventListener("click", function (ev) {
+          ev.stopPropagation();
+          ev.preventDefault();
+          logWidgetFlow("layer_d_no_help_nav", "no_help", "رجوع_للقائمة");
+          remountCartReasonChoicesFromFollowUp();
+        });
+
+        var bCloseAssist = document.createElement("button");
+        bCloseAssist.type = "button";
+        bCloseAssist.textContent = "إغلاق المساعد";
+        bCloseAssist.style.cssText = btnStyle;
+        bCloseAssist.addEventListener("click", dismissAssistBubble);
+
+        rowNk.appendChild(bBackMenu);
+        rowNk.appendChild(bCloseAssist);
+        widgetBody.appendChild(rowNk);
       }
 
       function mountPriceObjectionFollowUp() {
