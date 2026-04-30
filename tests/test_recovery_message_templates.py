@@ -33,9 +33,17 @@ def test_template_unknown_falls_back_default() -> None:
 
 
 def test_decide_recovery_action_uses_template_message() -> None:
-    r = decide_recovery_action("shipping_cost")
+    r = decide_recovery_action("shipping_cost", store=None)
     assert r["action"] == "highlight_shipping"
     assert r["message"] == WHATSAPP_REASON_TEMPLATES["shipping"]
+
+
+def test_decide_recovery_action_respects_store_template() -> None:
+    class _S:
+        template_shipping = "شحن مخصص من المتجر"
+
+    r = decide_recovery_action("shipping_cost", store=_S())
+    assert r["message"] == "شحن مخصص من المتجر"
 
 
 def test_template_selected_log_lines() -> None:
@@ -43,9 +51,32 @@ def test_template_selected_log_lines() -> None:
     with redirect_stdout(buf):
         resolve_whatsapp_recovery_template_message("delivery_time")
     out = buf.getvalue()
-    assert "[TEMPLATE SELECTED]" in out
+    assert "[TEMPLATE SOURCE]" in out
     assert "delivery_time" in out
+    assert "source=" in out
     assert WHATSAPP_REASON_TEMPLATES["delivery"] in out
+
+
+def test_store_template_overrides_builtin() -> None:
+    class _FakeStore:
+        template_price = "رسالة مخصصة من لوحة التحكم"
+
+    msg = resolve_whatsapp_recovery_template_message(
+        "price_high",
+        store=_FakeStore(),
+    )
+    assert msg == "رسالة مخصصة من لوحة التحكم"
+
+
+def test_empty_store_template_falls_back() -> None:
+    class _FakeStore:
+        template_price = "   "
+
+    msg = resolve_whatsapp_recovery_template_message(
+        "price",
+        store=_FakeStore(),
+    )
+    assert msg == WHATSAPP_REASON_TEMPLATES["price"]
 
 
 @pytest.mark.parametrize(

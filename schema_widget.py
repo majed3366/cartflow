@@ -208,12 +208,50 @@ def ensure_cart_recovery_reason_rejection_schema(db: Any) -> None:
     _ensure_recovery_reason_rejection_columns(db)
 
 
+def _ensure_store_whatsapp_recovery_template_columns(db: Any) -> None:
+    """أعمدة قوالب واتساب الاسترجاع على ‎stores‎ — تُستدعى دائماً (فحص أعمدة ‎idempotent‎)."""
+    try:
+        db.create_all()
+        insp = inspect(db.engine)
+        if not insp.has_table("stores"):
+            return
+        dialect = getattr(getattr(db.engine, "dialect", None), "name", "") or ""
+        existing = {c["name"] for c in insp.get_columns("stores")}
+        text_sql = "TEXT"
+        for col in (
+            "template_price",
+            "template_shipping",
+            "template_quality",
+            "template_delivery",
+            "template_warranty",
+            "template_other",
+        ):
+            if col in existing:
+                continue
+            try:
+                if dialect == "postgresql":
+                    stmt = (
+                        f"ALTER TABLE stores ADD COLUMN IF NOT EXISTS {col} {text_sql}"
+                    )
+                else:
+                    stmt = f"ALTER TABLE stores ADD COLUMN {col} {text_sql}"
+                db.session.execute(text(stmt))
+                db.session.commit()
+            except (OSError, SQLAlchemyError, IntegrityError):
+                db.session.rollback()
+            existing = {c["name"] for c in insp.get_columns("stores")}
+    except (OSError, SQLAlchemyError) as e:
+        db.session.rollback()
+        log.debug("schema_widget store recovery templates: %s", e)
+
+
 def ensure_store_widget_schema(db: Any) -> None:
     """يُنادى من مسارات ‎API‎ (لا يعتمد على ‎main‎)."""
     _ensure_reason_subcategory_columns(db)
     ensure_recovery_reason_widget_schema(db)
     _ensure_recovery_reason_customer_phone_column(db)
     _ensure_recovery_reason_rejection_columns(db)
+    _ensure_store_whatsapp_recovery_template_columns(db)
     global _store_abandonment_schema_ensured
     if _store_abandonment_schema_ensured:
         return
@@ -225,7 +263,9 @@ def ensure_store_widget_schema(db: Any) -> None:
             if "whatsapp_support_url" not in existing:
                 try:
                     db.session.execute(
-                        text("ALTER TABLE stores ADD COLUMN whatsapp_support_url VARCHAR(2048)")
+                        text(
+                            "ALTER TABLE stores ADD COLUMN whatsapp_support_url VARCHAR(2048)"
+                        )
                     )
                     db.session.commit()
                 except (OSError, SQLAlchemyError, IntegrityError):

@@ -5,7 +5,7 @@
 """
 from __future__ import annotations
 
-from typing import TypedDict
+from typing import Any, TypedDict
 
 from services.recovery_message_templates import resolve_whatsapp_recovery_template_message
 
@@ -23,7 +23,11 @@ _REASON_ACTION_SYNONYMS: dict[str, str] = {
 }
 
 
-def decide_recovery_action(reason_tag: str | None) -> RecoveryActionResult:
+def decide_recovery_action(
+    reason_tag: str | None,
+    *,
+    store: Any = None,
+) -> RecoveryActionResult:
     """
     يحوّل وسم السبب المحفوظ إلى إجراء مقترح ونص متابعة (واتساب لاحقاً).
     """
@@ -42,7 +46,7 @@ def decide_recovery_action(reason_tag: str | None) -> RecoveryActionResult:
 
     action = action_map.get(action_lookup, action_map.get(key, "default"))
 
-    message = resolve_whatsapp_recovery_template_message(reason_tag)
+    message = resolve_whatsapp_recovery_template_message(reason_tag, store=store)
 
     return {"action": action, "message": message}
 
@@ -62,5 +66,5 @@ if __name__ == "__main__":
         "unknown_tag",
         "",
     ):
-        _r: RecoveryActionResult = decide_recovery_action(_tag)
+        _r: RecoveryActionResult = decide_recovery_action(_tag, store=None)
         print(_tag, "->", _r)

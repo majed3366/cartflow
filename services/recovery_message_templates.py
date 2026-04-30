@@ -4,7 +4,7 @@
 """
 from __future__ import annotations
 
-from typing import Optional
+from typing import Any, Dict, Optional
 
 WHATSAPP_REASON_TEMPLATES: dict[str, str] = {
     "price": (
@@ -31,6 +31,30 @@ DEFAULT_WHATSAPP_TEMPLATE_MESSAGE = (
     "لاحظنا إنك مهتم 👌 حاب نساعدك تكمل الطلب؟"
 )
 
+# مفتاح القالب المنطقي ← عمود ‎Store‎ (لوحة التحكم لاحقاً)
+_STORE_TEMPLATE_COLUMN_BY_CANON: Dict[str, str] = {
+    "price": "template_price",
+    "shipping": "template_shipping",
+    "quality": "template_quality",
+    "delivery": "template_delivery",
+    "warranty": "template_warranty",
+    "other": "template_other",
+}
+
+
+def _store_dashboard_template(store: Any, canon_key: Optional[str]) -> Optional[str]:
+    """نص من المتجر إن وُجد وغير فارغ؛ وإلا ‎None‎."""
+    if store is None or not canon_key:
+        return None
+    attr = _STORE_TEMPLATE_COLUMN_BY_CANON.get(canon_key)
+    if not attr:
+        return None
+    raw = getattr(store, attr, None)
+    if raw is None:
+        return None
+    s = str(raw).strip()
+    return s if s else None
+
 
 def _canonical_template_key(reason_tag: Optional[str]) -> Optional[str]:
     """يحوّل وسوم الواجهة (‎price_high‎، ‎shipping_cost‎…) إلى مفتاح القالب."""
@@ -54,9 +78,13 @@ def _canonical_template_key(reason_tag: Optional[str]) -> Optional[str]:
     return None
 
 
-def resolve_whatsapp_recovery_template_message(reason_tag: Optional[str]) -> str:
+def resolve_whatsapp_recovery_template_message(
+    reason_tag: Optional[str],
+    *,
+    store: Any = None,
+) -> str:
     """
-    ‎message = templates.get(canonical_key, default_message)‎ مع تسجيل الاختيار.
+    ‎message = store_template_for_reason or default_template_for_reason‎.
     """
     canon = _canonical_template_key(reason_tag)
     raw = (reason_tag or "").strip().lower()
@@ -64,11 +92,17 @@ def resolve_whatsapp_recovery_template_message(reason_tag: Optional[str]) -> str
     msg = WHATSAPP_REASON_TEMPLATES.get(lookup)
     if msg is None and canon is not None:
         msg = WHATSAPP_REASON_TEMPLATES.get(canon)
-    final = msg if msg else DEFAULT_WHATSAPP_TEMPLATE_MESSAGE
+    default_message = msg if msg else DEFAULT_WHATSAPP_TEMPLATE_MESSAGE
+
+    store_override = _store_dashboard_template(store, canon)
+    final = store_override if store_override else default_message
+    source = "dashboard" if store_override else "default"
+
     rt_log = reason_tag if reason_tag is not None else ""
     try:
-        print("[TEMPLATE SELECTED]")
+        print("[TEMPLATE SOURCE]")
         print("reason_tag=", rt_log)
+        print("source=", source)
         print("message=", final)
     except Exception:
         pass

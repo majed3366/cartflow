@@ -1214,14 +1214,25 @@ def _last_activity_utc_from_recovery_row(
     return dt.astimezone(timezone.utc)
 
 
-def _load_latest_store_for_recovery() -> Optional[Store]:
+def _load_store_row_for_recovery(store_slug: Optional[str] = None) -> Optional[Store]:
+    """صف ‎Store‎ للاسترجاع: تطابق ‎zid_store_id‎ مع ‎store‎ من الحمولة إن وُجد، وإلا آخر سطر."""
     try:
         db.create_all()
+        _ensure_store_widget_schema()
         _ensure_default_store_for_recovery()
+        ss = (store_slug or "").strip()
+        if ss:
+            row = db.session.query(Store).filter_by(zid_store_id=ss).first()
+            if row is not None:
+                return row
         return db.session.query(Store).order_by(Store.id.desc()).first()
     except Exception:  # noqa: BLE001
         db.session.rollback()
         return None
+
+
+def _load_latest_store_for_recovery() -> Optional[Store]:
+    return _load_store_row_for_recovery(None)
 
 
 def _is_user_converted(recovery_key: str) -> bool:
@@ -1492,14 +1503,14 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
         print("reason=user_rejected_help")
         return None
     rt_raw = (reason_row.reason or "").strip() if reason_row else ""
+    store_obj = _load_store_row_for_recovery(store_slug)
     if rt_raw:
         reason_tag = rt_raw
-        text = decide_recovery_action(reason_tag)["message"]
+        text = decide_recovery_action(reason_tag, store=store_obj)["message"]
     else:
         reason_tag = None
         text = _DEFAULT_DECISION_FALLBACK_MESSAGE
 
-    store_obj = _load_latest_store_for_recovery()
     last_activity = _last_activity_utc_from_recovery_row(reason_row)
     now = datetime.now(timezone.utc)
     delay_minutes = _recovery_delay_minutes_from_store(store_obj)

@@ -53,6 +53,13 @@ class Store(Base):
     recovery_events = relationship("RecoveryEvent", backref="store", lazy="dynamic")
     # اختياري: رابط واتساب الدعم للعميل (ودجت السبب) — ‎VARCHAR(2048)‎ عند الترقية
     whatsapp_support_url = Column(String(2048), nullable=True)
+    # قوالب واتساب استرجاع قابلة للتهيئة من لوحة التحكم — فارغ = القالب الافتراضي المدمج
+    template_price = Column(Text, nullable=True)
+    template_shipping = Column(Text, nullable=True)
+    template_quality = Column(Text, nullable=True)
+    template_delivery = Column(Text, nullable=True)
+    template_warranty = Column(Text, nullable=True)
+    template_other = Column(Text, nullable=True)
 
 
 class AbandonedCart(Base):
