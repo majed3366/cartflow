@@ -2253,50 +2253,65 @@
       }
 
       function mountOtherCustomReasonFlow() {
+        logWidgetFlow("layer_d_other_ui", "other", "open");
+        persistSessionAbandonReason("other", null);
         stripContentKeepChrome();
 
-        var ta = document.createElement("textarea");
-        ta.setAttribute("rows", "4");
-        ta.setAttribute("aria-label", "سبب التردّد");
-        ta.setAttribute(
-          "placeholder",
-          "اكتب السبب اللي مخليك متردد..."
-        );
-        ta.style.cssText =
-          "width:100%;box-sizing:border-box;border-radius:8px;border:0;padding:10px;margin:0 0 10px 0;" +
-          "font:inherit;color:#1e1b4b;resize:vertical;min-height:4.5em;";
+        var intro = document.createElement("p");
+        intro.setAttribute("data-cf-layer-d-other-intro", "1");
+        intro.style.cssText = "margin:0 0 12px 0;font-size:14px;line-height:1.55;";
+        intro.textContent =
+          "تمام 👍 كيف نخدمك؟";
 
-        var rowSend = document.createElement("div");
-        rowSend.setAttribute("data-cf-layer-d-other-send", "1");
-        rowSend.style.cssText = rowStyleCol;
+        var row = document.createElement("div");
+        row.setAttribute("data-cf-layer-d-other-actions", "1");
+        row.style.cssText = rowStyleCol;
 
-        var bSend = document.createElement("button");
-        bSend.type = "button";
-        bSend.textContent = "إرسال";
-        bSend.style.cssText = btnStyle;
-        function submitOtherReason() {
-          var txt = strTrim((ta.value || ""));
-          if (!txt) {
-            return;
-          }
-          persistSessionAbandonReason("other", txt);
-          bSend.setAttribute("disabled", "true");
-          stripContentKeepChrome();
-          var pTh = document.createElement("p");
-          pTh.setAttribute("data-cf-layer-d-other-thanks", "1");
-          pTh.style.cssText = "margin:0 0 8px 0;font-size:14px;line-height:1.55;";
-          pTh.textContent = "أفهمك 👍 شكراً لمشاركتك السبب";
-          widgetBody.appendChild(pTh);
-          appendReturnToRecoveryChatButtonRow();
+        function addOBtn(label, onActivate) {
+          var bx = document.createElement("button");
+          bx.type = "button";
+          bx.textContent = label;
+          bx.style.cssText = btnStyle;
+          bx.addEventListener("click", function (ev) {
+            ev.stopPropagation();
+            ev.preventDefault();
+            onActivate();
+          });
+          row.appendChild(bx);
         }
-        bSend.addEventListener("click", function (ev2) {
-          ev2.stopPropagation();
-          ev2.preventDefault();
-          submitOtherReason();
+
+        addOBtn("عندي سؤال عن المنتج", function () {
+          logWidgetFlow("layer_d_other_pick", "other", "سؤال_عن_المنتج");
+          w._cfOnBackToEntry = function () {
+            mountOtherCustomReasonFlow();
+          };
+          mountOtherForm();
         });
-        rowSend.appendChild(bSend);
-        widgetBody.appendChild(ta);
-        widgetBody.appendChild(rowSend);
+        addOBtn("أحتاج مساعدة بالطلب", function () {
+          logWidgetFlow("layer_d_other_pick", "other", "مساعدة_بالطلب");
+          stripContentKeepChrome();
+          scrollToCartOrCheckout();
+          var pOk = document.createElement("p");
+          pOk.setAttribute("data-cf-layer-d-other-order-help", "1");
+          pOk.style.cssText = "margin:0 0 8px 0;font-size:14px;line-height:1.55;";
+          pOk.textContent =
+            "تمام 👍 حاولنا نوصّلك لمنطقة السلة أو الدفع.";
+          widgetBody.appendChild(pOk);
+          appendReturnToRecoveryChatButtonRow();
+        });
+        addOBtn("رجوع للمحادثة", function () {
+          logWidgetFlow("layer_d_other_nav", "other", "رجوع_للمحادثة");
+          w._cfOnBackToEntry = null;
+          renderReasonList();
+        });
+        addOBtn("رجوع للقائمة السابقة", function () {
+          logWidgetFlow("layer_d_other_nav", "other", "رجوع_للقائمة");
+          w._cfOnBackToEntry = null;
+          remountCartReasonChoicesFromFollowUp();
+        });
+
+        widgetBody.appendChild(intro);
+        widgetBody.appendChild(row);
       }
 
       function buildChoices() {
@@ -2318,7 +2333,7 @@
           { tag: "shipping_cost", label: "تكلفة الشحن" },
           { tag: "delivery_time", label: "مدة التوصيل" },
           { tag: "warranty", label: "الضمان" },
-          { tag: "_other", label: "سبب آخر" },
+          { tag: "_other", label: "سبب آخر / أحتاج أتحدث معك" },
           { tag: "no_help", label: "ما أحتاج مساعدة الآن" },
         ];
         wrap.appendChild(hintHead);
