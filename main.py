@@ -367,6 +367,12 @@ def _is_development_mode() -> bool:
     return (os.getenv("ENV") or "").strip().lower() == "development"
 
 
+def _dev_phone_fallback_enabled() -> bool:
+    """رقم اختبار واتساب فقط — ‎ENV=dev‎ أو ‎development‎؛ لا يُفعَّل في الإنتاج."""
+    env = (os.getenv("ENV") or "").strip().lower()
+    return env in ("dev", "development")
+
+
 # مسارات ‎/dev‎ مسموحة في الإنتاج رغم ‎ENV‎ (تحقق يدوي / مراقبة؛ باقي ‎/dev‎ محظور).
 _DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT = frozenset(
     {
@@ -1253,6 +1259,7 @@ def _try_claim_recovery_session(recovery_key: str) -> bool:
 
 
 _MOCK_RECOVERY_PHONE = "966501234567"
+_DEV_TEST_FALLBACK_PHONE = "966579706669"
 
 
 def _recovery_destination_phone() -> str:
@@ -1299,6 +1306,16 @@ def _resolve_recovery_session_phone(
     )
     if dbp:
         return dbp, "db_reason_row"
+
+    if _dev_phone_fallback_enabled():
+        dev_p = _strip_recovery_phone(_DEV_TEST_FALLBACK_PHONE)
+        if dev_p:
+            try:
+                print("[DEV PHONE USED]")
+                print("phone=", dev_p)
+            except Exception:
+                pass
+            return dev_p, "dev_fallback"
 
     fallback = _strip_recovery_phone(_recovery_destination_phone())
     return fallback, "default_destination"
