@@ -35,7 +35,22 @@ def test_dev_short_env_dev(monkeypatch) -> None:
 def test_prod_no_session_requires_env_override(monkeypatch) -> None:
     monkeypatch.delenv("ENV", raising=False)
     monkeypatch.delenv("WHATSAPP_RECOVERY_TO_PHONE", raising=False)
+    monkeypatch.delenv("ENABLE_DEV_PHONE_FALLBACK", raising=False)
     assert get_recovery_phone("sid-4", None) is None
+
+
+def test_enable_dev_phone_fallback_flag_without_env(monkeypatch) -> None:
+    monkeypatch.delenv("ENV", raising=False)
+    monkeypatch.delenv("WHATSAPP_RECOVERY_TO_PHONE", raising=False)
+    monkeypatch.setenv("ENABLE_DEV_PHONE_FALLBACK", "true")
+    assert get_recovery_phone("sid-railway", None) == DEV_TEST_PHONE
+
+
+def test_enable_dev_phone_fallback_flag_false(monkeypatch) -> None:
+    monkeypatch.delenv("ENV", raising=False)
+    monkeypatch.delenv("WHATSAPP_RECOVERY_TO_PHONE", raising=False)
+    monkeypatch.setenv("ENABLE_DEV_PHONE_FALLBACK", "false")
+    assert get_recovery_phone("sid-flag-off", None) is None
 
 
 def test_prod_env_override(monkeypatch) -> None:

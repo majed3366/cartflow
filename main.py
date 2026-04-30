@@ -368,7 +368,7 @@ def _is_development_mode() -> bool:
 
 
 def _dev_phone_fallback_enabled() -> bool:
-    """رقم اختبار واتساب فقط — ‎ENV=dev‎ أو ‎development‎؛ لا يُفعَّل في الإنتاج."""
+    """جزء من احتياطي ‎DEV_TEST_PHONE‎ — مع ‎ENABLE_DEV_PHONE_FALLBACK‎ انظر ‎_recovery_dev_phone_fallback_active‎."""
     env = (os.getenv("ENV") or "").strip().lower()
     return env in ("dev", "development")
 
@@ -1262,6 +1262,13 @@ DEV_TEST_PHONE = "966579706669"
 _FORBIDDEN_STALE_RECOVERY_E164 = "966501234567"
 
 
+def _recovery_dev_phone_fallback_active() -> bool:
+    """احتياطي ‎DEV_TEST_PHONE‎: ‎ENV=dev|development‎ أو ‎ENABLE_DEV_PHONE_FALLBACK=true‎ صراحةً."""
+    if (os.getenv("ENABLE_DEV_PHONE_FALLBACK") or "").strip().lower() == "true":
+        return True
+    return _dev_phone_fallback_enabled()
+
+
 def _strip_recovery_phone(raw: Optional[Any]) -> str:
     if raw is None:
         return ""
@@ -1288,14 +1295,15 @@ def get_recovery_phone(
 ) -> Optional[str]:
     """
     مصدر وحيد لرقم واتساب الاسترجاع قبل الإرسال (عدا رقم الجلسة الفعلي من الحدث/الذاكرة/السبب).
-    الإنتاج بدون جلسة وبدون ‎WHATSAPP_RECOVERY_TO_PHONE‎: لا إرسال (‎None‎).
+    بدون رقم جلسة: ‎DEV_TEST_PHONE‎ إذا ‎ENV=dev|development‎ أو ‎ENABLE_DEV_PHONE_FALLBACK=true‎؛
+    وإلا ‎WHATSAPP_RECOVERY_TO_PHONE‎؛ وإلا لا إرسال (‎None‎).
     """
     sp = _strip_recovery_phone(session_phone)
     if sp:
         print("[PHONE SOURCE] source=session phone=", sp)
         return sp[:100]
 
-    if _dev_phone_fallback_enabled():
+    if _recovery_dev_phone_fallback_active():
         print("[PHONE SOURCE] source=dev_fallback phone=", DEV_TEST_PHONE)
         print("[DEV PHONE USED] phone=", DEV_TEST_PHONE)
         return DEV_TEST_PHONE
