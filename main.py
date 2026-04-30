@@ -18,7 +18,7 @@ import anthropic
 import requests
 from dotenv import load_dotenv
 from fastapi import BackgroundTasks, Body, FastAPI, Query, Request
-from fastapi.responses import PlainTextResponse, Response
+from fastapi.responses import HTMLResponse, PlainTextResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.trustedhost import TrustedHostMiddleware
@@ -3302,7 +3302,15 @@ def dev_recovery_logs(store_slug: str) -> Any:
 @app.get("/")
 def home(request: Request):
     # صفحة HTML للمراجعين/لوحة زد (بدون قاعدة بيانات)
-    return templates.TemplateResponse("landing.html", {"request": request})
+    try:
+        # تحميل + رندر متزامنان لالتقاط أخطاء القالب/‎include‎ قبل الإرسال (تجنّب ‎500‎ لاحقاً)
+        tpl = templates.env.get_template("landing.html")
+        html = tpl.render({"request": request})
+        print("[LANDING TEMPLATE LOADED]")
+        return HTMLResponse(content=html, status_code=200)
+    except Exception as e:  # noqa: BLE001
+        print("[LANDING TEMPLATE ERROR]", str(e))
+        return HTMLResponse("Landing page error", status_code=200)
 
 
 # لا نستدعي ‎_ensure_db_schema()‎ عند التحميل — يتجنب الاتصال بقاعدة البيانات عند الإقلاع (أي ‎ASGI server‎)
