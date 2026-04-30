@@ -218,6 +218,24 @@ async def _do_process_one_job_body(
             ok = False
             r = e
 
+        if (
+            not ok
+            and isinstance(r, dict)
+            and r.get("error") == "user_rejected_help"
+        ):
+            print("skipped_user_rejected_help = True")
+            persist(
+                store_slug=job.store_slug,
+                session_id=job.session_id,
+                cart_id=job.cart_id,
+                phone=None,
+                message=job.message,
+                status="skipped_user_rejected_help",
+                step=job.step,
+            )
+            fut.set_result("skipped")
+            return
+
         if ok:
             now = datetime.now(timezone.utc)
             st = "sent_real" if job.use_real else "mock_sent"

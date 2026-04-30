@@ -1696,6 +1696,20 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
         with _recovery_session_lock:
             _session_recovery_send_count[recovery_key] = sent_count + 1
     if not success:
+        if isinstance(wa_result, dict) and wa_result.get("error") == "user_rejected_help":
+            print("skipped_user_rejected_help = True")
+            _persist_cart_recovery_log(
+                store_slug=store_slug,
+                session_id=session_id,
+                cart_id=cart_id,
+                phone=None,
+                message=text,
+                status="skipped_user_rejected_help",
+                step=step_num,
+            )
+            print("[RECOVERY TASK EXIT CLEANLY]")
+            print("reason=user_rejected_help_send_guard")
+            return
         _persist_cart_recovery_log(
             store_slug=store_slug,
             session_id=session_id,
