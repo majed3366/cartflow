@@ -2241,9 +2241,17 @@
       if (w.getAttribute("data-cf-cart-affirm-help") !== "1") {
         return;
       }
+      if (w.getAttribute("data-cf-layer-d-no-help-active") === "1") {
+        return;
+      }
 
       function remountCartReasonChoicesFromFollowUp() {
         logWidgetFlow("reason_menu_back", "", "رجوع_للقائمة_السابقة");
+        try {
+          w.removeAttribute("data-cf-layer-d-no-help-active");
+        } catch (eRmNoHelpFlg) {
+          /* ignore */
+        }
         stripContentKeepChrome();
         mountLayerDAbandonIfEligible();
       }
@@ -2286,14 +2294,26 @@
       }
 
       function finishNoHelpLayerDFlow() {
+        try {
+          window._cartflowUserRejectedHelp = true;
+          window._cartflowRejectionTimestamp = Date.now();
+          window._cartflowRejectCartFingerprint = cartflowCartFingerprint();
+          console.log("[USER REJECTED HELP]");
+        } catch (eRejectFlags) {
+          /* ignore */
+        }
+        try {
+          w.setAttribute("data-cf-layer-d-no-help-active", "1");
+        } catch (eNoHelpAttr) {
+          /* ignore */
+        }
         logWidgetFlow("layer_d_no_help_ui", "no_help", "open");
         persistSessionAbandonReason("no_help", null);
         stripContentKeepChrome();
         var pNk = document.createElement("p");
         pNk.setAttribute("data-cf-layer-d-no-help", "1");
         pNk.style.cssText = "margin:0 0 8px 0;font-size:14px;line-height:1.55;";
-        pNk.textContent =
-          "تقدر تكمل تصفّح المتجر؛ أنا هنا إذا احتجت أي شيء.";
+        pNk.textContent = "تمام، أنا هنا إذا احتجت أي شيء.";
         widgetBody.appendChild(pNk);
 
         var rowNk = document.createElement("div");
@@ -2785,15 +2805,6 @@
               } else if (opt.tag === "warranty") {
                 mountWarrantyObjectionFollowUp();
               } else if (opt.tag === "no_help") {
-                try {
-                  window._cartflowUserRejectedHelp = true;
-                  window._cartflowRejectionTimestamp = Date.now();
-                  window._cartflowRejectCartFingerprint =
-                    cartflowCartFingerprint();
-                  console.log("[USER REJECTED HELP]");
-                } catch (eNoHelpUi) {
-                  /* ignore */
-                }
                 finishNoHelpLayerDFlow();
               } else {
                 persistSessionAbandonReason(opt.tag, null);
