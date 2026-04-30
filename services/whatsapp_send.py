@@ -103,8 +103,21 @@ def _min_quiet_from_store_settings(store: Optional[Any]) -> timedelta:
     يحوّل ‎recovery_delay + recovery_delay_unit‎ إلى ‎timedelta‎.
     عند وجود مفتاح متجر (‎slug / zid_store_id‎) يُطبَّق جزء الدقائق من ‎get_cartflow_config‎.
     وإلا يُستخدم المنطق السابق لعدم تحطيم الاختبارات بالوسائط الموصوفة بدون هوية متجر.
+
+    عند ضبط ‎Store.recovery_delay_minutes‎ (غير ‎NULL‎) يُستخدم كمدة بالدقائق مع احتياطي ‎2‎ عند القيمة ‎0‎.
     """
     slug = None if store is None else _resolved_store_slug(store)
+
+    if store is not None:
+        raw_dm = getattr(store, "recovery_delay_minutes", None)
+        if raw_dm is not None:
+            try:
+                dm = max(0, int(raw_dm))
+            except (TypeError, ValueError):
+                dm = None
+            if dm is not None:
+                eff_mins = dm if dm > 0 else 2
+                return timedelta(minutes=eff_mins)
 
     if store is None:
         cfg = _recovery_config(None)
@@ -166,7 +179,20 @@ def _max_recovery_attempts(store: Optional[Any]) -> int:
 def _recovery_delay_minutes_from_store(store: Optional[Any]) -> int:
     """عدد الدقائق الكامل فقط (بدون الاعتماد على ثوانٍ في شرط الإرسال)."""
     td = _min_quiet_from_store_settings(store)
-    return max(0, int(td // timedelta(minutes=1)))
+    mins = max(0, int(td // timedelta(minutes=1)))
+    try:
+        slug = _resolved_store_slug(store)
+        store_label = slug if slug else ""
+        if not store_label and store is not None:
+            zid = getattr(store, "zid_store_id", None)
+            if isinstance(zid, str) and zid.strip():
+                store_label = zid.strip()[:255]
+        print("[DELAY CONFIG]")
+        print("store=", store_label)
+        print("delay_minutes=", mins)
+    except Exception:
+        pass
+    return mins
 
 
 def _naive_utc(dt: datetime) -> datetime:

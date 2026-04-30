@@ -743,6 +743,25 @@ def dev_recovery_timing_test():
     )
 
 
+@app.get("/dev/store-delay")
+def dev_store_delay():
+    """قراءة ‎recovery_delay_minutes‎ من آخر ‎Store‎؛ ‎ENV=development‎ فقط."""
+    if not _is_development_mode():
+        return Response(status_code=404)
+    row = db.session.query(Store).order_by(Store.id.desc()).first()
+    if row is None:
+        return {"delay": 2}
+    raw = getattr(row, "recovery_delay_minutes", None)
+    if raw is None:
+        return {"delay": 2}
+    try:
+        v = max(0, int(raw))
+    except (TypeError, ValueError):
+        return {"delay": 2}
+    eff = v if v > 0 else 2
+    return {"delay": eff}
+
+
 @app.get("/dev/recovery-delay-verify")
 def dev_recovery_delay_verify():
     """
