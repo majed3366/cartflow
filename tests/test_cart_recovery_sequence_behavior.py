@@ -38,14 +38,6 @@ class CartRecoverySequenceBehaviorTests(unittest.TestCase):
     def setUp(self) -> None:
         _reset_recovery_memory()
         self.client = TestClient(app)
-        self._prev_env = os.environ.get("ENV")
-        os.environ["ENV"] = "development"
-
-    def tearDown(self) -> None:
-        if getattr(self, "_prev_env", None) is None:
-            os.environ.pop("ENV", None)
-        else:
-            os.environ["ENV"] = self._prev_env  # type: ignore[assignment]
 
     @patch("main._persist_cart_recovery_log")
     @patch("main.send_whatsapp")
@@ -102,7 +94,7 @@ class CartRecoverySequenceBehaviorTests(unittest.TestCase):
         )
         r2 = self.client.post(
             "/api/cart-event",
-            json=_abandon("demo2", sid),
+            json={**_abandon("demo2", sid), "phone": "9665444555666"},
         )
         self.assertTrue(r1.json().get("recovery_scheduled"))
         self.assertTrue(r2.json().get("recovery_scheduled"))

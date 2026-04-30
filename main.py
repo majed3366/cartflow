@@ -367,12 +367,6 @@ def _is_development_mode() -> bool:
     return (os.getenv("ENV") or "").strip().lower() == "development"
 
 
-def _dev_phone_fallback_enabled() -> bool:
-    """جزء من احتياطي ‎DEV_TEST_PHONE‎ — مع ‎ENABLE_DEV_PHONE_FALLBACK‎ انظر ‎_recovery_dev_phone_fallback_active‎."""
-    env = (os.getenv("ENV") or "").strip().lower()
-    return env in ("dev", "development")
-
-
 # مسارات ‎/dev‎ مسموحة في الإنتاج رغم ‎ENV‎ (تحقق يدوي / مراقبة؛ باقي ‎/dev‎ محظور).
 _DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT = frozenset(
     {
@@ -1258,15 +1252,11 @@ def _try_claim_recovery_session(recovery_key: str) -> bool:
         return True
 
 
-DEV_TEST_PHONE = "966579706669"
+_VERIFIED_WA_RECOVERY_PHONE_SOURCES = frozenset(
+    {"customer_profile", "checkout", "abandoned_cart", "order_platform"}
+)
+
 _FORBIDDEN_STALE_RECOVERY_E164 = "966501234567"
-
-
-def _recovery_dev_phone_fallback_active() -> bool:
-    """احتياطي ‎DEV_TEST_PHONE‎: ‎ENV=dev|development‎ أو ‎ENABLE_DEV_PHONE_FALLBACK=true‎ صراحةً."""
-    if (os.getenv("ENABLE_DEV_PHONE_FALLBACK") or "").strip().lower() == "true":
-        return True
-    return _dev_phone_fallback_enabled()
 
 
 def _strip_recovery_phone(raw: Optional[Any]) -> str:
@@ -1290,41 +1280,112 @@ def _recovery_digits_normalized_sa(raw: str) -> str:
     return d
 
 
-def get_recovery_phone(
-    session_id: str, session_phone: Optional[str] = None
-) -> Optional[str]:
-    """
-    مصدر وحيد لرقم واتساب الاسترجاع قبل الإرسال (عدا رقم الجلسة الفعلي من الحدث/الذاكرة/السبب).
-    بدون رقم جلسة: ‎DEV_TEST_PHONE‎ إذا ‎ENV=dev|development‎ أو ‎ENABLE_DEV_PHONE_FALLBACK=true‎؛
-    وإلا ‎WHATSAPP_RECOVERY_TO_PHONE‎؛ وإلا لا إرسال (‎None‎).
-    """
-    sp = _strip_recovery_phone(session_phone)
-    if sp:
-        print("[PHONE SOURCE] source=session phone=", sp)
-        return sp[:100]
-
-    if _recovery_dev_phone_fallback_active():
-        print("[PHONE SOURCE] source=dev_fallback phone=", DEV_TEST_PHONE)
-        print("[DEV PHONE USED] phone=", DEV_TEST_PHONE)
-        return DEV_TEST_PHONE
-
-    env_dest = (os.getenv("WHATSAPP_RECOVERY_TO_PHONE") or "").strip()
-    if env_dest:
-        eo = env_dest[:100]
-        print("[PHONE SOURCE] source=real phone=", eo)
-        return eo
-
-    print("[NO PHONE] skipping send")
-    return None
+def _cartflow_demo_test_phone() -> str:
+    raw = (os.getenv("CARTFLOW_DEMO_TEST_PHONE") or "").strip()
+    return (raw if raw else "966579706669")[:100]
 
 
-def _assert_recovery_phone_not_stale_forbidden(phone: str) -> None:
+def _is_demo_store_slug(store_slug: str) -> bool:
+    return (store_slug or "").strip().lower() == "demo"
+
+
+def _recovery_store_id_label(store_obj: Optional[Any], store_slug: str) -> str:
+    if store_obj is not None:
+        zid = getattr(store_obj, "zid_store_id", None)
+        if isinstance(zid, str) and zid.strip():
+            return zid.strip()[:255]
+        sid = getattr(store_obj, "id", None)
+        if sid is not None:
+            return str(sid)
+    return (store_slug or "").strip() or ""
+
+
+def _map_verified_recovery_phone_from_session(
+    *,
+    abandon_event_phone: Optional[str],
+    recovery_key: str,
+    reason_row: Optional[CartRecoveryReason],
+) -> Tuple[Optional[str], str]:
+    from services.recovery_session_phone import get_recovery_customer_phone
+
+    ep = _strip_recovery_phone(abandon_event_phone)
+    if ep:
+        return ep, "abandoned_cart"
+    mem = _strip_recovery_phone(get_recovery_customer_phone(recovery_key))
+    if mem:
+        return mem, "customer_profile"
+    if reason_row is not None:
+        dbp = _strip_recovery_phone(getattr(reason_row, "customer_phone", None))
+        if dbp:
+            return dbp, "customer_profile"
+    return None, "none"
+
+
+def _resolve_cartflow_recovery_phone(
+    *,
+    store_slug: str,
+    session_id: str,
+    cart_id: Optional[str],
+    store_obj: Optional[Store],
+    abandon_event_phone: Optional[str],
+    recovery_key: str,
+    reason_row: Optional[CartRecoveryReason],
+) -> Tuple[Optional[str], str, bool]:
+    """يُرجع ‎(الرقم، مصدر السجل، مسموح بالإرسال)‎ حسب قواعد الإنتاج ومتجر ‎demo‎."""
+    demo_cfg = _cartflow_demo_test_phone()
+    phone, source = _map_verified_recovery_phone_from_session(
+        abandon_event_phone=abandon_event_phone,
+        recovery_key=recovery_key,
+        reason_row=reason_row,
+    )
+
+    if phone is None and _is_demo_store_slug(store_slug):
+        phone = demo_cfg if demo_cfg else None
+        source = "demo_config"
+
+    allowed = False
+    if not phone:
+        allowed = False
+    elif source == "demo_config":
+        allowed = _is_demo_store_slug(store_slug) and bool(phone)
+    elif source in _VERIFIED_WA_RECOVERY_PHONE_SOURCES:
+        if not _is_demo_store_slug(store_slug) and phone == demo_cfg:
+            allowed = False
+        else:
+            allowed = True
+    else:
+        allowed = False
+
+    return phone, source, allowed
+
+
+def _log_phone_resolution(
+    *,
+    store_id: str,
+    store_slug: str,
+    session_id: str,
+    cart_id: Optional[str],
+    source: str,
+    phone: Optional[str],
+    allowed_to_send: bool,
+) -> None:
+    print("[PHONE RESOLUTION]")
+    print("store_id=", store_id)
+    print("store=", store_slug)
+    print("session_id=", session_id)
+    print("cart_id=", cart_id if cart_id is not None else "")
+    print("source=", source)
+    print("phone=", phone if phone else "")
+    print("allowed_to_send=", allowed_to_send)
+
+
+def _assert_forbidden_stale_recovery_phone(phone: str) -> None:
     if phone == _FORBIDDEN_STALE_RECOVERY_E164:
-        raise RuntimeError("STALE PHONE BUG: 966501234567 is forbidden")
+        raise RuntimeError("Forbidden stale test phone")
     norm_p = _recovery_digits_normalized_sa(phone)
     norm_f = _recovery_digits_normalized_sa(_FORBIDDEN_STALE_RECOVERY_E164)
     if norm_p and norm_f and norm_p == norm_f:
-        raise RuntimeError("STALE PHONE BUG: 966501234567 is forbidden")
+        raise RuntimeError("Forbidden stale test phone")
 
 
 async def _run_recovery_sequence_after_cart_abandoned(
@@ -1407,46 +1468,38 @@ async def _run_recovery_sequence_after_cart_abandoned(
         )
         return
 
-    from services.recovery_session_phone import get_recovery_customer_phone
+    phone, phone_source, allowed_to_send = _resolve_cartflow_recovery_phone(
+        store_slug=store_slug,
+        session_id=session_id,
+        cart_id=cart_id,
+        store_obj=store_obj,
+        abandon_event_phone=abandon_event_phone,
+        recovery_key=recovery_key,
+        reason_row=reason_row,
+    )
+    store_id_label = _recovery_store_id_label(store_obj, store_slug)
+    _log_phone_resolution(
+        store_id=store_id_label,
+        store_slug=store_slug,
+        session_id=session_id,
+        cart_id=cart_id,
+        source=phone_source,
+        phone=phone,
+        allowed_to_send=allowed_to_send,
+    )
 
-    session_phone: Optional[str] = None
-    session_src: Optional[str] = None
-    ep = _strip_recovery_phone(abandon_event_phone)
-    if ep:
-        session_phone = ep
-        session_src = "cart_event_payload"
-    else:
-        mem = _strip_recovery_phone(get_recovery_customer_phone(recovery_key))
-        if mem:
-            session_phone = mem
-            session_src = "persisted_memory"
-        elif reason_row is not None:
-            dbp = _strip_recovery_phone(getattr(reason_row, "customer_phone", None))
-            if dbp:
-                session_phone = dbp
-                session_src = "db_reason_row"
-
-    if session_src in ("persisted_memory", "db_reason_row"):
-        print("[PHONE RETRIEVED]")
-        print("session_id=", session_id)
-        print("phone=", session_phone)
-
-    phone = get_recovery_phone(session_id, session_phone)
-
-    if not phone:
+    if not phone or not allowed_to_send:
+        print("[NO VERIFIED PHONE] skipping send")
         _persist_cart_recovery_log(
             store_slug=store_slug,
             session_id=session_id,
             cart_id=cart_id,
             phone=None,
             message=text,
-            status="skipped_no_phone",
+            status="skipped_no_verified_phone",
             step=step_num,
         )
         return
-    print("[PHONE ATTACHED]")
-    print("session_id=", session_id)
-    print("phone=", phone)
     _persist_cart_recovery_log(
         store_slug=store_slug,
         session_id=session_id,
@@ -1547,10 +1600,7 @@ async def _run_recovery_sequence_after_cart_abandoned(
         )
         return
 
-    _assert_recovery_phone_not_stale_forbidden(phone)
-    print("[FINAL PHONE BEFORE SEND]")
-    print("session_id=", session_id)
-    print("phone=", phone)
+    _assert_forbidden_stale_recovery_phone(phone)
     wa_result = send_whatsapp(
         phone,
         text,
@@ -2107,7 +2157,7 @@ def dev_create_test_objection():
             object_type="price",
             created_at=now,
             customer_name="ماجد",
-            customer_phone=DEV_TEST_PHONE,
+            customer_phone=_cartflow_demo_test_phone(),
             cart_url="https://example.com/cart",
             customer_type="new",
             last_activity_at=last,
@@ -2146,7 +2196,7 @@ def dev_recovery_flow_test(request: Request):
             )
             if should_send:
                 send_whatsapp(
-                    phone=DEV_TEST_PHONE,
+                    phone=_cartflow_demo_test_phone(),
                     message=message,
                     wa_trace_path=__file__,
                     wa_trace_last_activity=last,
@@ -2192,7 +2242,7 @@ def dev_recovery_flow_test(request: Request):
         send_result = None
         if should_send:
             send_result = send_whatsapp(
-                phone=row.customer_phone or DEV_TEST_PHONE,
+                phone=row.customer_phone or _cartflow_demo_test_phone(),
                 message=message,
                 wa_trace_path=__file__,
                 wa_trace_last_activity=last,
