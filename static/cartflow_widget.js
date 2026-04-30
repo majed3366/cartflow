@@ -28,6 +28,13 @@
   var step1Poll = null;
   var armListenersAttached = false;
   var demoStoreBubbleDismissed = false;
+  /** خروج ذكي مع سلة: إرفاق بعد تأكيد وجود أصناف فقط؛ لا يغيّر مؤقّت الدقيقتين. */
+  var cartSmartExitAttached = false;
+  var cartSmartExitPollInterval = null;
+  var cartSmartExitLastMouseY = null;
+  var cartSmartExitScrollLastY = 0;
+  var cartSmartExitInactivityTimer = null;
+  var cartSmartExitLastFireTs = 0;
   /** مصدر فتح الودجت — نص الترحيب فقط */
   var TRIGGER_SOURCE_CART = "cart";
   var TRIGGER_SOURCE_EXIT_INTENT = "exit_intent";
@@ -411,10 +418,26 @@
     if (/\/cart/i.test(p)) {
       return true;
     }
+    if (/\/checkout/i.test(p)) {
+      return true;
+    }
     if (path === "/demo/store" || path.indexOf("/demo/store/") === 0) {
       return true;
     }
     return false;
+  }
+
+  function getScrollYForExit() {
+    if (typeof window.pageYOffset === "number") {
+      return window.pageYOffset;
+    }
+    if (document.documentElement && typeof document.documentElement.scrollTop === "number") {
+      return document.documentElement.scrollTop;
+    }
+    if (document.body && typeof document.body.scrollTop === "number") {
+      return document.body.scrollTop;
+    }
+    return 0;
   }
 
   /** صفحة المنتجات ‎/demo/store‎ فقط (ليس ‎/demo/store/cart‎). */
@@ -662,6 +685,178 @@
     });
   }
 
+  function setCartflowWidgetShownFlag(on) {
+    try {
+      window._cartflowWidgetShown = !!on;
+    } catch (e) {
+      /* ignore */
+    }
+  }
+
+  function resetCartSmartExitInactivityTimer() {
+    if (!isNarrowViewport()) {
+      return;
+    }
+    if (cartSmartExitInactivityTimer) {
+      clearTimeout(cartSmartExitInactivityTimer);
+      cartSmartExitInactivityTimer = null;
+    }
+    cartSmartExitInactivityTimer = setTimeout(function () {
+      cartSmartExitInactivityTimer = null;
+      fireCartSmartExitFromIntent("inactivity");
+    }, 27000);
+  }
+
+  function onCartSmartExitScrollProbe() {
+    if (!isNarrowViewport()) {
+      return;
+    }
+    resetCartSmartExitInactivityTimer();
+    var y = getScrollYForExit();
+    if (cartSmartExitScrollLastY - y > 100 && y < 200) {
+      fireCartSmartExitFromIntent("scroll");
+    }
+    cartSmartExitScrollLastY = y;
+  }
+
+  function onCartSmartExitMouseMove(ev) {
+    if (isNarrowViewport()) {
+      return;
+    }
+    if (typeof ev.clientY !== "number") {
+      return;
+    }
+    var y = ev.clientY;
+    if (
+      cartSmartExitLastMouseY !== null &&
+      cartSmartExitLastMouseY > 75 &&
+      y <= 56 &&
+      cartSmartExitLastMouseY - y >= 6
+    ) {
+      fireCartSmartExitFromIntent("desktop");
+    }
+    cartSmartExitLastMouseY = y;
+  }
+
+  function onCartSmartExitPopstate() {
+    fireCartSmartExitFromIntent("mobile-back");
+  }
+
+  function onCartSmartExitVisibility() {
+    if (document.visibilityState === "hidden") {
+      fireCartSmartExitFromIntent("visibility");
+    }
+  }
+
+  function fireCartSmartExitFromIntent(type) {
+    var now = Date.now();
+    if (now - cartSmartExitLastFireTs < 900) {
+      return;
+    }
+    if (!isCartPage()) {
+      return;
+    }
+    if (!haveCartForWidget() || isSessionConverted()) {
+      return;
+    }
+    if (!step1Ready && !isDemoPath()) {
+      return;
+    }
+    if (isDemoStoreProductPage()) {
+      if (!readDemoStoreWidgetArmed()) {
+        return;
+      }
+      if (demoStoreBubbleDismissed) {
+        return;
+      }
+    }
+    syncCartflowExitFlags();
+    if (shown) {
+      return;
+    }
+    try {
+      if (window._cartflowWidgetShown) {
+        return;
+      }
+    } catch (eW) {
+      /* ignore */
+    }
+    if (isWidgetDomVisible()) {
+      return;
+    }
+    cartSmartExitLastFireTs = now;
+    try {
+      console.log("[EXIT INTENT TRIGGER]");
+      console.log("type=" + String(type));
+    } catch (eLog) {
+      /* ignore */
+    }
+    clearTimeout(idleTimer);
+    idleTimer = null;
+    showBubble(TRIGGER_SOURCE_CART);
+  }
+
+  function maybeAttachCartSmartExitIntent() {
+    if (cartSmartExitAttached) {
+      return;
+    }
+    if (!isCartPage()) {
+      return;
+    }
+    if (!haveCartForWidget()) {
+      return;
+    }
+    if (isSessionConverted()) {
+      return;
+    }
+    cartSmartExitAttached = true;
+    cartSmartExitScrollLastY = getScrollYForExit();
+    cartSmartExitLastMouseY = null;
+    document.addEventListener(
+      "mousemove",
+      onCartSmartExitMouseMove,
+      { passive: true, capture: true }
+    );
+    window.addEventListener("popstate", onCartSmartExitPopstate, false);
+    window.addEventListener(
+      "scroll",
+      onCartSmartExitScrollProbe,
+      { passive: true, capture: true }
+    );
+    document.addEventListener(
+      "scroll",
+      onCartSmartExitScrollProbe,
+      { passive: true, capture: true }
+    );
+    document.addEventListener("visibilitychange", onCartSmartExitVisibility, false);
+    ["touchstart", "touchmove", "keydown"].forEach(function (evName) {
+      document.addEventListener(
+        evName,
+        resetCartSmartExitInactivityTimer,
+        { passive: true, capture: true }
+      );
+    });
+    resetCartSmartExitInactivityTimer();
+  }
+
+  function scheduleCartSmartExitPollUntilCart() {
+    if (cartSmartExitPollInterval !== null || cartSmartExitAttached) {
+      return;
+    }
+    cartSmartExitPollInterval = setInterval(function () {
+      if (!isCartPage() || isSessionConverted()) {
+        clearInterval(cartSmartExitPollInterval);
+        cartSmartExitPollInterval = null;
+        return;
+      }
+      if (haveCartForWidget()) {
+        maybeAttachCartSmartExitIntent();
+        clearInterval(cartSmartExitPollInterval);
+        cartSmartExitPollInterval = null;
+      }
+    }, 2500);
+  }
+
   function runArmBody() {
     if (isSessionConverted() || !isCartPage()) {
       return;
@@ -701,6 +896,11 @@
     ensureStep1ThenStartIdle();
     prefetchDashboardPrimaryReason();
     prefetchConfigRecoveryDelay();
+    if (haveCartForWidget()) {
+      maybeAttachCartSmartExitIntent();
+    } else if (isCartPage()) {
+      scheduleCartSmartExitPollUntilCart();
+    }
   }
 
   function getStoreSlug() {
@@ -1512,11 +1712,13 @@
         if (openSource === TRIGGER_SOURCE_EXIT_INTENT) {
           removeFabIfAny();
           shown = false;
+          setCartflowWidgetShownFlag(false);
         } else {
           return;
         }
       } else {
         shown = false;
+        setCartflowWidgetShownFlag(false);
       }
     }
     try {
@@ -1525,6 +1727,7 @@
       /* ignore */
     }
     shown = true;
+    setCartflowWidgetShownFlag(true);
     removeFabIfAny();
     if (step1Poll !== null) {
       clearInterval(step1Poll);
@@ -1792,6 +1995,7 @@
       }
       if (isDemoStoreProductPage()) {
         shown = false;
+        setCartflowWidgetShownFlag(false);
         demoStoreBubbleDismissed = true;
         clearTimeout(idleTimer);
         idleTimer = null;
@@ -2424,6 +2628,7 @@
         }
         if (isDemoStoreProductPage()) {
           shown = false;
+          setCartflowWidgetShownFlag(false);
           demoStoreBubbleDismissed = true;
           clearTimeout(idleTimer);
           idleTimer = null;
@@ -3212,6 +3417,7 @@
           document.querySelector("[data-cartflow-fab]");
         if (!hasDom) {
           shown = false;
+          setCartflowWidgetShownFlag(false);
           showBubble(TRIGGER_SOURCE_CART);
         }
       }
@@ -3236,9 +3442,14 @@
     demoStoreBubbleDismissed = false;
     clearTimeout(idleTimer);
     idleTimer = null;
+    if (cartSmartExitPollInterval !== null) {
+      clearInterval(cartSmartExitPollInterval);
+      cartSmartExitPollInterval = null;
+    }
     removeFabIfAny();
     removeCartflowBubbleDom();
     shown = false;
+    setCartflowWidgetShownFlag(false);
     detachArmListeners();
   };
 
@@ -3265,6 +3476,7 @@
       return;
     }
     shown = false;
+    setCartflowWidgetShownFlag(false);
     showBubble(TRIGGER_SOURCE_CART);
   }
 
@@ -3340,19 +3552,6 @@
       return;
     }
     openExitIntentWidget();
-  }
-
-  function getScrollYForExit() {
-    if (typeof window.pageYOffset === "number") {
-      return window.pageYOffset;
-    }
-    if (document.documentElement && typeof document.documentElement.scrollTop === "number") {
-      return document.documentElement.scrollTop;
-    }
-    if (document.body && typeof document.body.scrollTop === "number") {
-      return document.body.scrollTop;
-    }
-    return 0;
   }
 
   function CartflowExitIntentController() {
@@ -3453,6 +3652,7 @@
     document.addEventListener("cf-demo-cart-updated", function () {
       setTimeout(function () {
         runArmBody();
+        maybeAttachCartSmartExitIntent();
         nudgeWidgetIdle();
         setTimeout(function () {
           try {
@@ -3505,6 +3705,7 @@
               document.querySelector("[data-cartflow-fab]");
             if (!d) {
               shown = false;
+              setCartflowWidgetShownFlag(false);
               showBubble(TRIGGER_SOURCE_CART);
             }
           }
