@@ -5,6 +5,16 @@
 (function () {
   "use strict";
 
+  window.CartFlowState =
+    window.CartFlowState ||
+    {
+      hasCart: false,
+      widgetShown: false,
+      userRejectedHelp: false,
+      rejectionTimestamp: null,
+      lastIntentAt: null,
+    };
+
   var ARM_DELAY_MS = 3000;
   var IDLE_MS = 8000;
   /** على ‎/demo/store‎ عند تفعيل الودجت: عرض أسرع (ثانية تقريباً) */
@@ -686,8 +696,10 @@
   }
 
   function setCartflowWidgetShownFlag(on) {
+    var bit = !!on;
     try {
-      window._cartflowWidgetShown = !!on;
+      window._cartflowWidgetShown = bit;
+      window.CartFlowState.widgetShown = bit;
     } catch (e) {
       /* ignore */
     }
@@ -1129,86 +1141,125 @@
     }
   }
 
-  /** لقطعة سلة بسيطة لاكتشاف إضافة/تعديل بعد رفض المساعدة */
-  function cartflowCartFingerprint() {
+  function cartflowSyncHasCartFromCart() {
     try {
-      if (typeof window.cart === "undefined" || window.cart === null) {
-        return "";
-      }
-      if (!Array.isArray(window.cart)) {
-        return "";
-      }
-      return window.cart
-        .map(function (it) {
-          if (!it || typeof it !== "object") {
-            return "";
-          }
-          var id = it.id != null ? String(it.id) : "";
-          var q = it.quantity != null ? String(it.quantity) : "";
-          return id + "x" + q;
-        })
-        .join("|");
-    } catch (eFp) {
-      return "";
-    }
-  }
-
-  function cartflowTryResetHelpRejectionIfNewIntent() {
-    try {
-      if (window._cartflowUserRejectedHelp !== true) {
-        return;
-      }
-      var fpNow = cartflowCartFingerprint();
-      var fpRej =
-        typeof window._cartflowRejectCartFingerprint === "undefined"
-          ? ""
-          : String(window._cartflowRejectCartFingerprint);
-      if (fpNow !== fpRej) {
-        window._cartflowUserRejectedHelp = false;
-        console.log("[BEHAVIOR RESET] reason=new_intent_detected");
-      }
-    } catch (eRs) {
+      window.CartFlowState.hasCart = haveCartForWidget();
+    } catch (eSyn) {
       /* ignore */
     }
   }
 
-  /** بعد الرفض: مهلة 30 ثانية، ثم إبقاء الإيقاف حتى تتغير السلة (بدون إعادة فتح فورية). */
-  function cartflowHelpRejectionBlocksBubbleShow() {
+  function cartflowSyncWidgetShownForState() {
     try {
-      if (window._cartflowUserRejectedHelp !== true) {
-        return false;
-      }
-      var rt = window._cartflowRejectionTimestamp;
+      var domBubble = !!document.querySelector("[data-cartflow-bubble]");
+      var domFab = !!document.querySelector("[data-cartflow-fab]");
+      window.CartFlowState.widgetShown = domBubble || domFab;
+    } catch (eWs) {
+      /* ignore */
+    }
+  }
+
+  function cartflowLogCartflowState() {
+    var s = window.CartFlowState;
+    if (!s) {
+      return;
+    }
+    try {
+      console.log("[CARTFLOW STATE]");
+      console.log("hasCart=" + s.hasCart);
+      console.log("widgetShown=" + s.widgetShown);
+      console.log("userRejectedHelp=" + s.userRejectedHelp);
+      console.log(
+        "lastIntentAt=" +
+          (s.lastIntentAt != null ? String(s.lastIntentAt) : "")
+      );
+    } catch (eLc) {
+      /* ignore */
+    }
+  }
+
+  try {
+    window.cartflowLogCartflowState = cartflowLogCartflowState;
+  } catch (eExLog) {
+    /* ignore */
+  }
+
+  function cartflowCanShowWidget(triggerSource) {
+    var ts =
+      triggerSource === TRIGGER_SOURCE_EXIT_INTENT
+        ? TRIGGER_SOURCE_EXIT_INTENT
+        : TRIGGER_SOURCE_CART;
+    cartflowSyncHasCartFromCart();
+    cartflowSyncWidgetShownForState();
+    cartflowLogCartflowState();
+    var s = window.CartFlowState;
+    if (!s) {
+      return false;
+    }
+    if (s.widgetShown) {
+      return false;
+    }
+    if (s.userRejectedHelp === true) {
+      var rt = s.rejectionTimestamp;
       if (typeof rt === "number" && Date.now() - rt < 30000) {
         try {
           console.log("[CF FRONT] skip showBubble: rejection cooldown");
         } catch (eCd) {
           /* ignore */
         }
-        return true;
       }
-      var fpNow = cartflowCartFingerprint();
-      var fpRej =
-        typeof window._cartflowRejectCartFingerprint === "undefined"
-          ? ""
-          : String(window._cartflowRejectCartFingerprint);
-      if (fpNow === fpRej) {
-        try {
-          console.log("[CF FRONT] skip showBubble: no new cart intent after rejection");
-        } catch (eSm) {
-          /* ignore */
-        }
-        return true;
-      }
-    } catch (eBl) {
-      /* ignore */
+      return false;
     }
-    return false;
+    if (ts === TRIGGER_SOURCE_CART) {
+      return s.hasCart === true;
+    }
+    return s.hasCart !== true;
+  }
+
+  function cartflowRegisterNewIntent(kind) {
+    var st = window.CartFlowState;
+    if (!st || kind !== "add_to_cart") {
+      return;
+    }
+    st.hasCart = true;
+    st.lastIntentAt = Date.now();
+    if (st.userRejectedHelp === true) {
+      st.userRejectedHelp = false;
+      st.rejectionTimestamp = null;
+      console.log("[BEHAVIOR RESET] reason=add_to_cart");
+    }
+    cartflowSyncHasCartFromCart();
+    cartflowLogCartflowState();
+  }
+
+  try {
+    window.cartflowRegisterNewIntent = cartflowRegisterNewIntent;
+  } catch (eReg) {
+    /* ignore */
+  }
+
+  function cartflowRejectHelp() {
+    var st = window.CartFlowState;
+    if (!st) {
+      return;
+    }
+    st.userRejectedHelp = true;
+    st.rejectionTimestamp = Date.now();
+    console.log("[USER REJECTED HELP]");
+    cartflowLogCartflowState();
+    if (typeof window._cartflowApplyNoHelpUi === "function") {
+      window._cartflowApplyNoHelpUi();
+    }
+  }
+
+  try {
+    window.cartflowRejectHelp = cartflowRejectHelp;
+  } catch (eRj) {
+    /* ignore */
   }
 
   /** جاهزية الاسترجاع بعد إضافة للسلة أو جلسة جديدة (لا يعطّل المحادثة نهائياً) */
   function clearStaleRecoveryGatesOnCartActivity() {
-    cartflowTryResetHelpRejectionIfNewIntent();
     clearCartRecoverySuppressed();
     if (isDemoStoreProductPage() && isDemoPath()) {
       demoStoreBubbleDismissed = false;
@@ -1828,13 +1879,14 @@
 
   function showBubble(triggerSource) {
     try {
+      window._cartflowApplyNoHelpUi = null;
+    } catch (eClrNk) {
+      /* ignore */
+    }
+    try {
       console.log("[CF FRONT] trigger detected", triggerSource);
     } catch (eCfTrig) {
       /* ignore */
-    }
-    cartflowTryResetHelpRejectionIfNewIntent();
-    if (cartflowHelpRejectionBlocksBubbleShow()) {
-      return;
     }
     var openSource =
       triggerSource === TRIGGER_SOURCE_EXIT_INTENT
@@ -1885,6 +1937,11 @@
         shown = false;
         setCartflowWidgetShownFlag(false);
       }
+    }
+    cartflowSyncHasCartFromCart();
+    cartflowSyncWidgetShownForState();
+    if (!cartflowCanShowWidget(openSource)) {
+      return;
     }
     try {
       console.log("[CF FRONT] widget should open", triggerSource);
@@ -2293,15 +2350,7 @@
         appendReturnToRecoveryChatButtonRow();
       }
 
-      function finishNoHelpLayerDFlow() {
-        try {
-          window._cartflowUserRejectedHelp = true;
-          window._cartflowRejectionTimestamp = Date.now();
-          window._cartflowRejectCartFingerprint = cartflowCartFingerprint();
-          console.log("[USER REJECTED HELP]");
-        } catch (eRejectFlags) {
-          /* ignore */
-        }
+      window._cartflowApplyNoHelpUi = function applyNoHelpUi() {
         try {
           w.setAttribute("data-cf-layer-d-no-help-active", "1");
         } catch (eNoHelpAttr) {
@@ -2365,7 +2414,7 @@
         rowNk.appendChild(bBackMenu);
         rowNk.appendChild(bCloseAssist);
         widgetBody.appendChild(rowNk);
-      }
+      };
 
       function mountPriceObjectionFollowUp() {
         logWidgetFlow("price_followup_ui", "price_high", "open");
@@ -2805,7 +2854,7 @@
               } else if (opt.tag === "warranty") {
                 mountWarrantyObjectionFollowUp();
               } else if (opt.tag === "no_help") {
-                finishNoHelpLayerDFlow();
+                cartflowRejectHelp();
               } else {
                 persistSessionAbandonReason(opt.tag, null);
                 showLayerDAckAfterPick(wrap);
@@ -3537,7 +3586,6 @@
     if (isSessionConverted() || !step1Ready) {
       return;
     }
-    cartflowTryResetHelpRejectionIfNewIntent();
     if (isDemoStoreProductPage()) {
       if (!readDemoStoreWidgetArmed()) {
         return;

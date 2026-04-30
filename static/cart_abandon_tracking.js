@@ -3,6 +3,58 @@
  */
 (function () {
   "use strict";
+  window.CartFlowState =
+    window.CartFlowState ||
+    {
+      hasCart: false,
+      widgetShown: false,
+      userRejectedHelp: false,
+      rejectionTimestamp: null,
+      lastIntentAt: null,
+    };
+
+  function cartflowBootstrapLogState() {
+    var s = window.CartFlowState;
+    if (!s) {
+      return;
+    }
+    try {
+      console.log("[CARTFLOW STATE]");
+      console.log("hasCart=" + s.hasCart);
+      console.log("widgetShown=" + s.widgetShown);
+      console.log("userRejectedHelp=" + s.userRejectedHelp);
+      console.log(
+        "lastIntentAt=" +
+          (s.lastIntentAt != null ? String(s.lastIntentAt) : "")
+      );
+    } catch (eBl) {
+      /* ignore */
+    }
+  }
+
+  function cartflowBootstrapRegisterNewIntent(kind) {
+    var s = window.CartFlowState;
+    if (!s || kind !== "add_to_cart") {
+      return;
+    }
+    s.hasCart = true;
+    s.lastIntentAt = Date.now();
+    if (s.userRejectedHelp === true) {
+      s.userRejectedHelp = false;
+      s.rejectionTimestamp = null;
+      console.log("[BEHAVIOR RESET] reason=add_to_cart");
+    }
+    cartflowBootstrapLogState();
+  }
+
+  if (typeof window.cartflowRejectHelp !== "function") {
+    window.cartflowRejectHelp = function () {};
+  }
+
+  if (typeof window.cartflowRegisterNewIntent !== "function") {
+    window.cartflowRegisterNewIntent = cartflowBootstrapRegisterNewIntent;
+  }
+
   if (typeof window.cart === "undefined" || window.cart === null) {
     window.cart = [];
   } else if (!Array.isArray(window.cart)) {
@@ -20,11 +72,9 @@
         if (
           payload &&
           typeof payload === "object" &&
-          payload.event === "add_to_cart" &&
-          window._cartflowUserRejectedHelp === true
+          payload.event === "add_to_cart"
         ) {
-          window._cartflowUserRejectedHelp = false;
-          console.log("[BEHAVIOR RESET] reason=add_to_cart");
+          window.cartflowRegisterNewIntent("add_to_cart");
         }
       } catch (eBr) {
         /* ignore */
@@ -39,10 +89,7 @@
     "cf-demo-cart-updated",
     function () {
       try {
-        if (window._cartflowUserRejectedHelp === true) {
-          window._cartflowUserRejectedHelp = false;
-          console.log("[BEHAVIOR RESET] reason=add_to_cart");
-        }
+        window.cartflowRegisterNewIntent("add_to_cart");
       } catch (eCf) {
         /* ignore */
       }
