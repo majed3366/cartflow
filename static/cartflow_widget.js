@@ -134,6 +134,21 @@
     }
   }
 
+  /** مسار تحويل داخل الودجت (عرض فقط). */
+  function logWidgetConversionFlow(reasonTag, selectedOption) {
+    try {
+      var so = selectedOption != null ? String(selectedOption) : "";
+      console.log(
+        "[WIDGET CONVERSION FLOW] reason_tag=" +
+          String(reasonTag != null ? reasonTag : "") +
+          " selected_option=" +
+          so
+      );
+    } catch (eConv) {
+      /* ignore */
+    }
+  }
+
   function firstLineOrClip(s, maxLen) {
     var t = strTrim(s);
     if (!t) {
@@ -2570,24 +2585,135 @@
 
       function mountShippingObjectionFollowUp() {
         logWidgetFlow("shipping_followup_ui", "shipping_cost", "open");
+        logWidgetConversionFlow("shipping_cost", "open");
         persistSessionAbandonReason("shipping_cost", null);
         stripContentKeepChrome();
 
-        function replaceBodyWithSingleMessage(msg) {
-          stripContentKeepChrome();
+        function cartLineNumericPrice(line) {
+          if (!line || typeof line !== "object") {
+            return null;
+          }
+          var p = line.price;
+          if (typeof p === "number" && isFinite(p)) {
+            return p;
+          }
+          if (p == null || strTrim(String(p)) === "") {
+            return null;
+          }
+          var m = String(p).replace(/[^\d.,]/g, "").replace(/,/g, ".");
+          var n = parseFloat(m);
+          return isFinite(n) ? n : null;
+        }
+
+        function pickLowestPriceCartLine(items) {
+          if (!items || !items.length) {
+            return null;
+          }
+          var best = null;
+          var bestP = Infinity;
+          var i;
+          for (i = 0; i < items.length; i++) {
+            var pn = cartLineNumericPrice(items[i]);
+            if (pn != null && pn < bestP) {
+              bestP = pn;
+              best = items[i];
+            }
+          }
+          if (best != null) {
+            return best;
+          }
+          return items[0];
+        }
+
+        function getOptionalMerchantShippingOfferText() {
+          try {
+            var w = window.CARTFLOW_SHIPPING_OFFER_TEXT;
+            if (w != null && strTrim(String(w)) !== "") {
+              return firstLineOrClip(String(w), 400);
+            }
+          } catch (eSo) {
+            /* ignore */
+          }
+          var ctx = buildProductContext();
+          var sh = ctx.shipping;
+          if (!sh) {
+            return "";
+          }
+          var t = strTrim(sh);
+          if (
+            /عرض|مجاني|خصم|%|توصيل مجاني|شحن مجاني|مجّاني/i.test(t)
+          ) {
+            return firstLineOrClip(t, 280);
+          }
+          return "";
+        }
+
+        function appendShippingFollowUpMsgParagraph(text) {
           var pOut = document.createElement("p");
           pOut.setAttribute("data-cf-shipping-followup-msg", "1");
-          pOut.style.cssText = "margin:0 0 8px 0;font-size:14px;line-height:1.55;";
-          pOut.textContent = msg;
+          pOut.style.cssText =
+            "margin:0 0 10px 0;font-size:14px;line-height:1.55;white-space:pre-line;";
+          pOut.textContent = text;
           widgetBody.appendChild(pOut);
+        }
+
+        function appendShippingConversionProductCard(line, caption) {
+          if (!line || typeof line !== "object") {
+            return;
+          }
+          var name = strTrim(line.name) || "منتج في سلتك";
+          var pl = formatPriceRiyal(line);
+          var box = document.createElement("div");
+          box.setAttribute("data-cf-shipping-conversion-product", "1");
+          box.style.cssText =
+            "margin:10px 0;padding:10px;border-radius:8px;background:rgba(124,58,237,.09);" +
+            "font-size:13px;line-height:1.5;";
+          if (caption && strTrim(caption) !== "") {
+            var cap = document.createElement("div");
+            cap.style.cssText = "font-weight:700;margin-bottom:4px;";
+            cap.textContent = caption;
+            box.appendChild(cap);
+          }
+          var row = document.createElement("div");
+          row.textContent = name + (pl ? " — " + pl : "");
+          box.appendChild(row);
+          widgetBody.appendChild(box);
+        }
+
+        function appendShippingContinuePurchaseCTA(optionKey) {
+          var btn = document.createElement("button");
+          btn.type = "button";
+          btn.setAttribute("data-cf-shipping-conversion-cta", "1");
+          btn.textContent = "كمّل الطلب والدفع 👇";
+          btn.style.cssText = btnStyle;
+          btn.addEventListener("click", function (evCta) {
+            evCta.stopPropagation();
+            evCta.preventDefault();
+            logWidgetConversionFlow(
+              "shipping_cost",
+              String(optionKey) + "_cta_continue"
+            );
+            scrollToCartOrCheckout();
+          });
+          widgetBody.appendChild(btn);
+        }
+
+        function mountShippingConversionAnswer(responseMsg, optionKey, extrasFn) {
+          stripContentKeepChrome();
+          appendShippingFollowUpMsgParagraph(responseMsg);
+          if (typeof extrasFn === "function") {
+            extrasFn();
+          }
+          appendShippingContinuePurchaseCTA(optionKey);
           appendReturnToRecoveryChatButtonRow();
         }
 
         var intro = document.createElement("p");
         intro.setAttribute("data-cf-shipping-followup-intro", "1");
-        intro.style.cssText = "margin:0 0 12px 0;font-size:14px;line-height:1.55;";
+        intro.style.cssText =
+          "margin:0 0 12px 0;font-size:14px;line-height:1.55;white-space:pre-line;";
         intro.textContent =
-          "متفهم 👍 الشحن جزء من التكلفة الكاملة؛ تقدّر تعتمد واحد هذي الخطوات:";
+          "متفهم 👍 كثير يهتمون بتكلفة الشحن\nخلني أساعدك تختار الأنسب لك بسرعة:";
 
         var rowS = document.createElement("div");
         rowS.setAttribute("data-cf-shipping-followup-buttons", "1");
@@ -2606,26 +2732,71 @@
           rowS.appendChild(bx);
         }
 
-        addSFBtn("هل فيه خيار توصيل أقل أو عرض شحن مجاني؟", function () {
-          logWidgetFlow("shipping_followup_pick", "shipping_cost", "عروض_شحن");
-          replaceBodyWithSingleMessage(
-            "أحياناً يكون فيه عروض شحن مخفّض أو مجاني حسب قيمة السلة 👍 نقدّر نشيّكه مع متجركم."
+        addSFBtn("أبغى أقل تكلفة الآن", function () {
+          logWidgetFlow("shipping_followup_pick", "shipping_cost", "اقل_تكلفة");
+          logWidgetConversionFlow("shipping_cost", "اقل_تكلفة");
+          mountShippingConversionAnswer(
+            "تمام 👍 خلني أرشح لك خيار قريب بسعر أقل 👇",
+            "اقل_تكلفة",
+            function () {
+              var items = getCartLineItems();
+              var low = pickLowestPriceCartLine(items);
+              if (low) {
+                appendShippingConversionProductCard(low, "مناسب لأقل تكلفة ضمن سلتك");
+              } else {
+                appendShippingFollowUpMsgParagraph(
+                  "كمّل من السلة أو الدفع لمقارنة الخيارات وتقليل التكلفة قدر الإمكان."
+                );
+              }
+            }
           );
         });
-        addSFBtn("كم يتراوح وقت التحضير قبل الإرسال؟", function () {
-          logWidgetFlow("shipping_followup_pick", "shipping_cost", "توصيف_التجهيز");
-          replaceBodyWithSingleMessage(
-            "غالباً يتم التجهيز بين يوم وعدة أيام حسب المتجر ومخزونه، ثم تُحمَّل شركة الشحن."
+
+        addSFBtn("أبغى أسرع توصيل", function () {
+          logWidgetFlow("shipping_followup_pick", "shipping_cost", "اسرع_توصيل");
+          logWidgetConversionFlow("shipping_cost", "اسرع_توصيل");
+          mountShippingConversionAnswer(
+            "تمام 👍 هذا الخيار يساعدك تكمل الطلب بأسرع طريقة ممكنة 👇",
+            "اسرع_توصيل",
+            function () {
+              var ctx = buildProductContext();
+              var line = ctx.line;
+              if (line) {
+                appendShippingConversionProductCard(line, "منتجك الحالي في السلة");
+              }
+              appendShippingFollowUpMsgParagraph(
+                "خطوة الدفع تعرض مدد الشحن المتاحة بحسب عنوانك 👍"
+              );
+            }
           );
         });
-        addSFBtn("وضّح لي تأثير تكلفة الشحن الكلّي", function () {
-          logWidgetFlow("shipping_followup_pick", "shipping_cost", "تأثير_التكلفة");
-          replaceBodyWithSingleMessage(
-            "تظهر رسوم الوصول قبل تأكيد الطلب وبيمكنك مقارنتها لتختار أفضل وقت لك 👍."
+
+        addSFBtn("عندكم عرض شحن؟", function () {
+          logWidgetFlow("shipping_followup_pick", "shipping_cost", "عرض_شحن");
+          logWidgetConversionFlow("shipping_cost", "عرض_شحن");
+          var offer = getOptionalMerchantShippingOfferText();
+          mountShippingConversionAnswer(
+            "أحيانًا فيه عروض أو خيارات أوفر 👌 خلني أساعدك تشوف الأنسب 👇",
+            "عرض_شحن",
+            function () {
+              if (offer) {
+                appendShippingFollowUpMsgParagraph("📦 " + offer);
+              } else {
+                appendShippingFollowUpMsgParagraph(
+                  "غالبًا تظهر عروض الشحن أو الخيارات الأوفر حسب عنوانك عند الدفع؛ كمّل الطلب لتمرّ على خطوة الشحن وتختار الأنسب."
+                );
+              }
+              var ctx = buildProductContext();
+              if (ctx.line) {
+                appendShippingConversionProductCard(ctx.line, "تابع مع هذا الطلب");
+              }
+            }
           );
         });
+
         addSFBtn("رجوع للقائمة السابقة", function () {
           logWidgetFlow("shipping_followup_nav", "shipping_cost", "رجوع_للقائمة");
+          logWidgetConversionFlow("shipping_cost", "رجوع_للقائمة");
           remountCartReasonChoicesFromFollowUp();
         });
 
