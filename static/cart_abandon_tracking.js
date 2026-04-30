@@ -11,6 +11,45 @@
   if (typeof window.replyaiTrack !== "function") {
     window.replyaiTrack = function () {};
   }
+
+  /** إعادة تفعيل الويدجت بعد رفض المساعدة عند ‎add_to_cart‎ (وتجربة ‎demo‎ عبر ‎cf-demo-cart-updated‎). */
+  (function wrapReplyaiTrackForBehaviorReset() {
+    var prevTrack = window.replyaiTrack;
+    window.replyaiTrack = function (payload) {
+      try {
+        if (
+          payload &&
+          typeof payload === "object" &&
+          payload.event === "add_to_cart" &&
+          window._cartflowUserRejectedHelp === true
+        ) {
+          window._cartflowUserRejectedHelp = false;
+          console.log("[BEHAVIOR RESET] reason=add_to_cart");
+        }
+      } catch (eBr) {
+        /* ignore */
+      }
+      if (typeof prevTrack === "function") {
+        return prevTrack.apply(this, arguments);
+      }
+    };
+  })();
+
+  document.addEventListener(
+    "cf-demo-cart-updated",
+    function () {
+      try {
+        if (window._cartflowUserRejectedHelp === true) {
+          window._cartflowUserRejectedHelp = false;
+          console.log("[BEHAVIOR RESET] reason=add_to_cart");
+        }
+      } catch (eCf) {
+        /* ignore */
+      }
+    },
+    false
+  );
+
   console.log("abandon tracking active");
 
   function apiCartEventUrl() {

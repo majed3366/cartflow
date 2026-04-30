@@ -1158,6 +1158,7 @@
       window._cartflowUserRejectedHelp = true;
       window._cartflowRejectionTimestamp = Date.now();
       window._cartflowRejectCartFingerprint = cartflowCartFingerprint();
+      console.log("[USER REJECTED HELP]");
       console.log("[USER REJECTED HELP] timestamp=", window._cartflowRejectionTimestamp);
     } catch (eMr) {
       /* ignore */
