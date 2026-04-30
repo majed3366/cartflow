@@ -693,8 +693,66 @@
     }
   }
 
+  /** سطح المكتب يبقى على ‎640px‎؛ الإشارات اللمسية تشمل أجهزة عريضة اللمس. */
+  function isMobileSmartExitSignals() {
+    if (isNarrowViewport()) {
+      return true;
+    }
+    try {
+      if (typeof navigator !== "undefined" && navigator.maxTouchPoints > 0) {
+        return true;
+      }
+    } catch (e) {
+      /* ignore */
+    }
+    return false;
+  }
+
+  function isMobileSmartExitClient() {
+    return isMobileSmartExitSignals();
+  }
+
+  function getScrollYCartSmartExit() {
+    try {
+      var vv = window.visualViewport;
+      if (vv && typeof vv.pageTop === "number") {
+        return vv.pageTop;
+      }
+    } catch (eVv) {
+      /* ignore */
+    }
+    return getScrollYForExit();
+  }
+
+  function logMobileExitIntentIfApplicable(exitSignalType) {
+    var map = {
+      "mobile-back": "back",
+      visibility: "visibility",
+      inactivity: "inactivity",
+      scroll: "scroll-up",
+    };
+    var lt = map[exitSignalType];
+    if (!lt || !isMobileSmartExitClient()) {
+      return;
+    }
+    try {
+      console.log("[MOBILE EXIT INTENT]");
+      console.log("type=" + lt);
+      console.log("has_cart=" + (haveCartForWidget() ? "1" : "0"));
+      var ws = false;
+      try {
+        ws = !!window._cartflowWidgetShown;
+      } catch (eWs) {
+        /* ignore */
+      }
+      console.log("widget_shown=" + (ws ? "1" : "0"));
+    } catch (eLog) {
+      /* ignore */
+    }
+  }
+
   function resetCartSmartExitInactivityTimer() {
-    if (!isNarrowViewport()) {
+    if (!isMobileSmartExitSignals()) {
       return;
     }
     if (cartSmartExitInactivityTimer) {
@@ -708,12 +766,12 @@
   }
 
   function onCartSmartExitScrollProbe() {
-    if (!isNarrowViewport()) {
+    if (!isMobileSmartExitSignals()) {
       return;
     }
     resetCartSmartExitInactivityTimer();
-    var y = getScrollYForExit();
-    if (cartSmartExitScrollLastY - y > 100 && y < 200) {
+    var y = getScrollYCartSmartExit();
+    if (cartSmartExitScrollLastY - y > 80 && y < 280) {
       fireCartSmartExitFromIntent("scroll");
     }
     cartSmartExitScrollLastY = y;
@@ -748,7 +806,11 @@
     }
   }
 
-  function fireCartSmartExitFromIntent(type) {
+  function fireCartSmartExitFromIntent(exitSignalType, deferDepth) {
+    deferDepth = deferDepth || 0;
+    if (deferDepth > 10) {
+      return;
+    }
     var now = Date.now();
     if (now - cartSmartExitLastFireTs < 900) {
       return;
@@ -760,6 +822,9 @@
       return;
     }
     if (!step1Ready && !isDemoPath()) {
+      fetchReadyThen(function () {
+        fireCartSmartExitFromIntent(exitSignalType, deferDepth + 1);
+      });
       return;
     }
     if (isDemoStoreProductPage()) {
@@ -786,8 +851,11 @@
     }
     cartSmartExitLastFireTs = now;
     try {
-      console.log("[EXIT INTENT TRIGGER]");
-      console.log("type=" + String(type));
+      logMobileExitIntentIfApplicable(exitSignalType);
+      if (exitSignalType === "desktop") {
+        console.log("[EXIT INTENT TRIGGER]");
+        console.log("type=desktop");
+      }
     } catch (eLog) {
       /* ignore */
     }
@@ -810,14 +878,14 @@
       return;
     }
     cartSmartExitAttached = true;
-    cartSmartExitScrollLastY = getScrollYForExit();
+    cartSmartExitScrollLastY = getScrollYCartSmartExit();
     cartSmartExitLastMouseY = null;
     document.addEventListener(
       "mousemove",
       onCartSmartExitMouseMove,
       { passive: true, capture: true }
     );
-    window.addEventListener("popstate", onCartSmartExitPopstate, false);
+    window.addEventListener("popstate", onCartSmartExitPopstate, true);
     window.addEventListener(
       "scroll",
       onCartSmartExitScrollProbe,
@@ -828,8 +896,19 @@
       onCartSmartExitScrollProbe,
       { passive: true, capture: true }
     );
-    document.addEventListener("visibilitychange", onCartSmartExitVisibility, false);
-    ["touchstart", "touchmove", "keydown"].forEach(function (evName) {
+    try {
+      if (window.visualViewport) {
+        window.visualViewport.addEventListener(
+          "scroll",
+          onCartSmartExitScrollProbe,
+          { passive: true }
+        );
+      }
+    } catch (eVVa) {
+      /* ignore */
+    }
+    document.addEventListener("visibilitychange", onCartSmartExitVisibility, true);
+    ["touchstart", "touchmove", "keydown", "pointerdown"].forEach(function (evName) {
       document.addEventListener(
         evName,
         resetCartSmartExitInactivityTimer,
@@ -1560,6 +1639,10 @@
   function fetchReadyThen(cb) {
     if (isDemoPath()) {
       step1Ready = true;
+      cb();
+      return;
+    }
+    if (step1Ready) {
       cb();
       return;
     }
