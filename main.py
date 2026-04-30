@@ -1314,13 +1314,40 @@ def _resolve_recovery_session_phone(
         _dev_phone_fallback_enabled()
         and fallback == _DEV_FALLBACK_RECOVERY_PHONE
     ):
-        try:
-            print("[DEV PHONE USED]")
-            print("phone=", fallback)
-        except Exception:
-            pass
         return fallback, "dev_fallback"
     return fallback, "default_destination"
+
+
+def _dev_rewrite_stale_recovery_phone(phone: str, phone_src: str) -> Tuple[str, str]:
+    """في التطوير فقط: صفوف/ذاكرة تحوي الرقم الوهمي القديم تُوجَّه لخط الاختبار."""
+    if not _dev_phone_fallback_enabled():
+        return phone, phone_src
+    if phone == _PROD_DEFAULT_RECOVERY_PHONE:
+        return _DEV_FALLBACK_RECOVERY_PHONE, "dev_fallback"
+    return phone, phone_src
+
+
+def _log_recovery_send_phone(*, phone: str, phone_src: str) -> None:
+    env_override = bool((os.getenv("WHATSAPP_RECOVERY_TO_PHONE") or "").strip())
+    if phone_src in ("cart_event_payload", "persisted_memory", "db_reason_row"):
+        src_log = "session"
+    elif phone_src == "dev_fallback":
+        src_log = "dev_fallback"
+    elif phone_src == "default_destination" and env_override:
+        src_log = "real"
+    elif phone_src == "default_destination":
+        src_log = "hardcoded"
+    else:
+        src_log = "session"
+    try:
+        print("[PHONE SOURCE]")
+        print(f"source={src_log}")
+        print(f"phone={phone}")
+        if phone_src == "dev_fallback":
+            print("[DEV PHONE USED]")
+            print(f"phone={phone}")
+    except Exception:
+        pass
 
 
 async def _run_recovery_sequence_after_cart_abandoned(
@@ -1408,6 +1435,7 @@ async def _run_recovery_sequence_after_cart_abandoned(
         reason_row=reason_row,
         abandon_event_phone=abandon_event_phone,
     )
+    phone, phone_src = _dev_rewrite_stale_recovery_phone(phone, phone_src)
     if phone_src in ("persisted_memory", "db_reason_row"):
         print("[PHONE RETRIEVED]")
         print("session_id=", session_id)
@@ -2083,7 +2111,7 @@ def dev_create_test_objection():
             object_type="price",
             created_at=now,
             customer_name="ماجد",
-            customer_phone="966501234567",
+            customer_phone="966579706669",
             cart_url="https://example.com/cart",
             customer_type="new",
             last_activity_at=last,
@@ -2122,7 +2150,7 @@ def dev_recovery_flow_test(request: Request):
             )
             if should_send:
                 send_whatsapp(
-                    phone="966501234567",
+                    phone="966579706669",
                     message=message,
                     wa_trace_path=__file__,
                     wa_trace_last_activity=last,
@@ -2168,7 +2196,7 @@ def dev_recovery_flow_test(request: Request):
         send_result = None
         if should_send:
             send_result = send_whatsapp(
-                phone=row.customer_phone or "966501234567",
+                phone=row.customer_phone or "966579706669",
                 message=message,
                 wa_trace_path=__file__,
                 wa_trace_last_activity=last,

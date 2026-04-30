@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
-from main import _resolve_recovery_session_phone
+from main import _dev_rewrite_stale_recovery_phone, _resolve_recovery_session_phone
 
 
 def test_real_phone_from_cart_payload_skips_dev_fallback(monkeypatch) -> None:
@@ -61,3 +61,18 @@ def test_unset_env_no_dev_fallback(monkeypatch) -> None:
     )
     assert phone == "966501234567"
     assert src == "default_destination"
+
+
+def test_dev_rewrites_legacy_mock_db_phone(monkeypatch) -> None:
+    monkeypatch.setenv("ENV", "development")
+    row = SimpleNamespace(customer_phone="966501234567")
+    phone, src = _resolve_recovery_session_phone(
+        recovery_key="test-key",
+        reason_row=row,
+        abandon_event_phone=None,
+    )
+    assert phone == "966501234567"
+    assert src == "db_reason_row"
+    phone2, src2 = _dev_rewrite_stale_recovery_phone(phone, src)
+    assert phone2 == "966579706669"
+    assert src2 == "dev_fallback"
