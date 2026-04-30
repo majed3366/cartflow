@@ -1153,18 +1153,6 @@
     }
   }
 
-  function cartflowMarkUserRejectedHelp() {
-    try {
-      window._cartflowUserRejectedHelp = true;
-      window._cartflowRejectionTimestamp = Date.now();
-      window._cartflowRejectCartFingerprint = cartflowCartFingerprint();
-      console.log("[USER REJECTED HELP]");
-      console.log("[USER REJECTED HELP] timestamp=", window._cartflowRejectionTimestamp);
-    } catch (eMr) {
-      /* ignore */
-    }
-  }
-
   function cartflowTryResetHelpRejectionIfNewIntent() {
     try {
       if (window._cartflowUserRejectedHelp !== true) {
@@ -2298,7 +2286,6 @@
       }
 
       function finishNoHelpLayerDFlow() {
-        cartflowMarkUserRejectedHelp();
         logWidgetFlow("layer_d_no_help_ui", "no_help", "open");
         persistSessionAbandonReason("no_help", null);
         stripContentKeepChrome();
@@ -2798,6 +2785,15 @@
               } else if (opt.tag === "warranty") {
                 mountWarrantyObjectionFollowUp();
               } else if (opt.tag === "no_help") {
+                try {
+                  window._cartflowUserRejectedHelp = true;
+                  window._cartflowRejectionTimestamp = Date.now();
+                  window._cartflowRejectCartFingerprint =
+                    cartflowCartFingerprint();
+                  console.log("[USER REJECTED HELP]");
+                } catch (eNoHelpUi) {
+                  /* ignore */
+                }
                 finishNoHelpLayerDFlow();
               } else {
                 persistSessionAbandonReason(opt.tag, null);
