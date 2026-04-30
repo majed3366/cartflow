@@ -1,10 +1,13 @@
 # -*- coding: utf-8 -*-
 """
 محرّك قرار أساسي للاسترجاع — نسخة Layer D.2 (بدون إرسال واتساب بعد).
+نص الرسالة يُختار من ‎recovery_message_templates‎؛ الإجراء ‎action‎ يبقى كما كان.
 """
 from __future__ import annotations
 
 from typing import TypedDict
+
+from services.recovery_message_templates import resolve_whatsapp_recovery_template_message
 
 
 class RecoveryActionResult(TypedDict):
@@ -12,69 +15,36 @@ class RecoveryActionResult(TypedDict):
     message: str
 
 
+# وسوم بديلة من ودجت الطبقة ‎D‎ أو لوحة التجربة → نفس الإجراء الأساسي
+_REASON_ACTION_SYNONYMS: dict[str, str] = {
+    "shipping_cost": "shipping",
+    "quality_uncertainty": "quality",
+    "delivery_time": "delivery",
+}
+
+
 def decide_recovery_action(reason_tag: str | None) -> RecoveryActionResult:
     """
     يحوّل وسم السبب المحفوظ إلى إجراء مقترح ونص متابعة (واتساب لاحقاً).
     """
     key = (reason_tag or "").strip().lower()
+    action_lookup = _REASON_ACTION_SYNONYMS.get(key, key)
 
-    mapping: dict[str, RecoveryActionResult] = {
-        "price_high": {
-            "action": "offer_alternative",
-            "message": (
-                "واضح إن السعر مهم لك 👌\n"
-                "في خيار قريب بنفس الفكرة لكن بسعر أقل، ممكن يكون أنسب لك 👍\n"
-                "تحب أرسله لك؟"
-            ),
-        },
-        "quality": {
-            "action": "show_social_proof",
-            "message": (
-                "واضح إن الجودة تهمك 👍\n"
-                "المنتج عليه تجارب ممتازة، وكثير يمدحونه من ناحية الاستخدام\n"
-                "إذا تحب أشاركك أبرز المميزات؟"
-            ),
-        },
-        "shipping": {
-            "action": "highlight_shipping",
-            "message": (
-                "أتفهمك 👍 تكلفة الشحن تفرق\n"
-                "أحيانًا يكون فيه خيارات أفضل أو عروض على الشحن\n"
-                "تحب أشوف لك الأنسب لك؟"
-            ),
-        },
-        "delivery": {
-            "action": "reassure_delivery",
-            "message": (
-                "صحيح 👍 التوصيل مهم\n"
-                "غالبًا نوصل خلال فترة مناسبة، وأقدر أتأكد لك من الوقت المتوقع لمدينتك\n"
-                "تحب أشيّك لك الآن؟"
-            ),
-        },
-        "warranty": {
-            "action": "reassure_warranty",
-            "message": (
-                "أكيد 👍 الضمان مهم\n"
-                "المنتج عليه ضمان يغطي عيوب التصنيع ويعطيك أمان أكثر\n"
-                "تحب أشرح لك كيف يشملك الضمان؟"
-            ),
-        },
-        "other": {
-            "action": "generic_followup",
-            "message": (
-                "أفهم إن فيه شيء معين مخليك متردد 👍\n"
-                "قول لي وش اللي في بالك، وبحاول أساعدك بأفضل حل"
-            ),
-        },
+    action_map: dict[str, str] = {
+        "price": "offer_alternative",
+        "price_high": "offer_alternative",
+        "quality": "show_social_proof",
+        "shipping": "highlight_shipping",
+        "delivery": "reassure_delivery",
+        "warranty": "reassure_warranty",
+        "other": "generic_followup",
     }
 
-    return mapping.get(
-        key,
-        {
-            "action": "default",
-            "message": "لاحظنا إنك مهتم 👌 حاب نساعدك تكمل الطلب؟",
-        },
-    )
+    action = action_map.get(action_lookup, action_map.get(key, "default"))
+
+    message = resolve_whatsapp_recovery_template_message(reason_tag)
+
+    return {"action": action, "message": message}
 
 
 if __name__ == "__main__":
