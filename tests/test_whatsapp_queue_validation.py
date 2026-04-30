@@ -22,7 +22,10 @@ from services.whatsapp_queue import (
     enqueue_recovery_and_wait,
     start_whatsapp_queue_worker,
 )
-from tests.test_recovery_isolation import _reset_recovery_memory
+from tests.test_recovery_isolation import (
+    _post_recovery_reason_for_session,
+    _reset_recovery_memory,
+)
 
 
 def _abandon(store: str, session_id: str) -> dict:
@@ -60,6 +63,7 @@ class WhatsappQueueValidationTests(unittest.IsolatedAsyncioTestCase):
         mock_persist.side_effect = track_persist
         mock_send.side_effect = track_sw
         client = TestClient(app)
+        _post_recovery_reason_for_session(client, "qval-1", "s1")
         client.post(
             "/api/cart-event",
             json=_abandon("qval-1", "s1"),

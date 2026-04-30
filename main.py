@@ -1678,6 +1678,32 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
         print("reason=user_rejected_help")
         return None
 
+    if not reason_tag:
+        print("[SKIP WA - MISSING REASON_TAG]")
+        _persist_cart_recovery_log(
+            store_slug=store_slug,
+            session_id=session_id,
+            cart_id=cart_id,
+            phone=None,
+            message=text,
+            status="skipped_missing_reason_tag",
+            step=step_num,
+        )
+        return None
+
+    if not last_activity:
+        print("[SKIP WA - MISSING LAST_ACTIVITY]")
+        _persist_cart_recovery_log(
+            store_slug=store_slug,
+            session_id=session_id,
+            cart_id=cart_id,
+            phone=None,
+            message=text,
+            status="skipped_missing_last_activity",
+            step=step_num,
+        )
+        return None
+
     _assert_forbidden_stale_recovery_phone(phone)
     wa_result = send_whatsapp(
         phone,
