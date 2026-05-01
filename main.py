@@ -3038,6 +3038,52 @@ def _format_reason_ts(dt: Optional[datetime]) -> str:
     return d.strftime("%Y-%m-%d %H:%M")
 
 
+def _recovery_sales_trend_last_7_days() -> list[dict[str, Any]]:
+    """
+    مجموع ‎cart_value‎ للسلات ‎status=recovered‎ حسب يوم ‎recovered_at‎ (UTC)؛ ‎7‎ أيام متتالية حتى اليوم.
+    """
+    today = datetime.now(timezone.utc).date()
+    start_day = today - timedelta(days=6)
+    day_keys = [(start_day + timedelta(days=i)).isoformat() for i in range(7)]
+    totals: dict[str, float] = {k: 0.0 for k in day_keys}
+    start_dt = datetime.combine(start_day, datetime.min.time()).replace(
+        tzinfo=timezone.utc
+    )
+    end_dt = datetime.combine(today + timedelta(days=1), datetime.min.time()).replace(
+        tzinfo=timezone.utc
+    )
+    try:
+        db.create_all()
+        q = (
+            db.session.query(AbandonedCart.recovered_at, AbandonedCart.cart_value)
+            .filter(AbandonedCart.status == "recovered")
+            .filter(AbandonedCart.recovered_at.isnot(None))
+            .filter(AbandonedCart.recovered_at >= start_dt)
+            .filter(AbandonedCart.recovered_at < end_dt)
+        )
+        for recovered_at, cart_value in q.all():
+            dt = recovered_at
+            if dt is None:
+                continue
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            else:
+                dt = dt.astimezone(timezone.utc)
+            dk = dt.date().isoformat()
+            if dk in totals:
+                totals[dk] += float(cart_value or 0.0)
+    except (SQLAlchemyError, OSError, TypeError, ValueError) as e:
+        db.session.rollback()
+        log.warning("recovery-trend: %s", e)
+    return [{"date": k, "value": round(totals[k], 2)} for k in day_keys]
+
+
+@app.get("/api/dashboard/recovery-trend")
+def api_dashboard_recovery_trend():
+    """قراءة فقط — اتجاه المبيعات المسترجعة (مجموع قيمة السلة) لآخر ‎7‎ أيام."""
+    return _recovery_sales_trend_last_7_days()
+
+
 @app.get("/dashboard")
 def dashboard(request: Request):
     """
