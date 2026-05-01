@@ -1,0 +1,58 @@
+<aside class="w-56 shrink-0 border-l border-zid-100 bg-white shadow-sm">
+  <div class="flex h-14 items-center border-b border-zid-100 px-4">
+    <span class="text-lg font-bold text-zid-600">CartFlow</span>
+  </div>
+  <nav class="space-y-1 p-3 text-sm" aria-label="لوحة التحكم">
+    <a
+      href="/dashboard"
+      data-dash-nav="dashboard"
+      class="flex rounded-lg px-3 py-2.5 text-slate-600 transition-colors hover:bg-zid-50"
+      >لوحة التحكم</a
+    >
+    <div class="px-3 pb-1 pt-3 text-[11px] font-bold tracking-wide text-zid-600">
+      CartFlow ⚡
+    </div>
+    <a
+      href="/dashboard/recovery-settings"
+      data-dash-nav="recovery"
+      class="flex rounded-lg px-3 py-2.5 text-slate-600 transition-colors hover:bg-zid-50"
+      >إعدادات الاسترجاع</a
+    >
+    <a
+      href="/dashboard/recovery-settings#templates"
+      data-dash-nav="templates"
+      class="mr-2 flex rounded-lg px-3 py-2 text-xs text-slate-600 transition-colors hover:bg-zid-50"
+      >نمط الرسائل</a
+    >
+  </nav>
+</aside>
+<script>
+  (function () {
+    function applyDashboardNavActive() {
+      var path = window.location.pathname || "";
+      var hash = (window.location.hash || "").replace(/^#/, "").toLowerCase();
+      var dashEl = document.querySelector('[data-dash-nav="dashboard"]');
+      var recEl = document.querySelector('[data-dash-nav="recovery"]');
+      var tplEl = document.querySelector('[data-dash-nav="templates"]');
+      var mainIdle =
+        "flex rounded-lg px-3 py-2.5 text-slate-600 transition-colors hover:bg-zid-50";
+      var mainOn =
+        "flex rounded-lg px-3 py-2.5 font-medium bg-zid-100 text-zid-800 transition-colors";
+      var subIdle =
+        "mr-2 flex rounded-lg px-3 py-2 text-xs text-slate-600 transition-colors hover:bg-zid-50";
+      var subOn =
+        "mr-2 flex rounded-lg px-3 py-2 text-xs font-medium bg-zid-100 text-zid-800 transition-colors";
+
+      var isDash = /^\/dashboard\/?$/.test(path);
+      var isRecovery = path.indexOf("/dashboard/recovery-settings") === 0;
+      var isTemplates = isRecovery && hash === "templates";
+
+      if (dashEl) dashEl.className = isDash ? mainOn : mainIdle;
+      if (recEl) recEl.className = !isTemplates && isRecovery ? mainOn : mainIdle;
+      if (tplEl) tplEl.className = isTemplates ? subOn : subIdle;
+    }
+
+    applyDashboardNavActive();
+    window.addEventListener("hashchange", applyDashboardNavActive);
+  })();
+</script>

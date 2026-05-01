@@ -21,11 +21,12 @@
     body { font-family: "IBM Plex Sans Arabic", system-ui, sans-serif; }
   </style>
 </head>
-<body class="min-h-screen bg-gradient-to-b from-zid-50/90 to-slate-50 text-slate-800 px-4 py-5">
+<body class="min-h-screen bg-slate-50 text-slate-800">
   {% include "partials/cart_abandon_tracking.html" %}
-  <div class="mx-auto max-w-2xl">
-    <a href="/dashboard" class="mb-3 inline-block text-xs font-medium text-zid-600 hover:text-zid-700 hover:underline">← العودة للوحة التحكم</a>
-
+  <div class="flex min-h-screen">
+    {% include "partials/dashboard_sidebar.html" %}
+    <div class="min-w-0 flex-1 bg-gradient-to-b from-zid-50/90 to-slate-50 px-4 py-5">
+      <div class="mx-auto max-w-2xl">
     <header class="mb-4">
       <h1 class="text-lg font-bold text-zid-900">إعدادات الاسترجاع</h1>
       <p class="mt-0.5 text-[11px] leading-relaxed text-slate-500">مدة الانتظار قبل رسائل الاسترجاع، عدد المحاولات، وقوالب الرسائل.</p>
@@ -68,7 +69,7 @@
       </section>
 
       <!-- نمط رسائل الاكتشاف -->
-      <section class="rounded-xl border border-violet-100 bg-white/90 p-4 shadow-sm ring-1 ring-violet-100/60">
+      <section id="templates" tabindex="-1" class="scroll-mt-20 rounded-xl border border-violet-100 bg-white/90 p-4 shadow-sm ring-1 ring-violet-100/60">
         <h2 class="mb-1 text-sm font-bold text-zid-800">نمط الرسائل</h2>
         <p class="mb-3 text-[10px] leading-snug text-slate-500">بعد الموافقة على الاقتراح: مساعد عرض المنتجات في الودجت (منفصل عن رسالة الخروج قبل السلة وقوالب واتساب).</p>
         <div class="space-y-2.5">
@@ -237,6 +238,8 @@
         حفظ الإعدادات
       </button>
     </form>
+      </div>
+    </div>
   </div>
   <script>
     (function () {
