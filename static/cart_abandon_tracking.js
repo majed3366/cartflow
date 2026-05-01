@@ -44,6 +44,18 @@
       s.rejectionTimestamp = null;
       console.log("[BEHAVIOR RESET] reason=add_to_cart");
     }
+    try {
+      if (
+        typeof window.matchMedia === "function" &&
+        window.matchMedia("(max-width: 767px)").matches
+      ) {
+        console.log("[ADD TO CART MONITORING STARTED]");
+        console.log("device=mobile");
+        console.log("show_widget=false");
+      }
+    } catch (eMob) {
+      /* ignore */
+    }
     cartflowBootstrapLogState();
   }
 
