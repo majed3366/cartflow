@@ -236,7 +236,6 @@
               {% set ns.top_count = r.count %}
             {% endif %}
           {% endfor %}
-          <span id="dashTopHesitationReason" class="sr-only" data-reason="{{ ns.top_key }}" aria-hidden="true"></span>
           <div class="mb-4 rounded-xl border border-slate-200/70 px-4 py-3 text-sm leading-relaxed text-slate-700 shadow-sm md:mb-3 md:px-3.5 md:py-2.5 md:text-xs" style="background-color: #f8fafc" role="note">
             <p class="font-medium">
               {% if ns.top_key == 'price' %}
@@ -267,17 +266,34 @@
               {% endif %}
             </a>
           </div>
-          <button type="button" id="recoveryTrendSuggestToggle" class="mb-4 inline-flex w-full items-center justify-center rounded-lg border border-dashed border-[rgba(108,92,231,0.45)] bg-white px-3 py-2 text-xs font-semibold leading-snug text-[#6C5CE7] shadow-sm transition-colors hover:bg-[rgba(245,243,255,0.85)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#6C5CE7]/35 sm:w-auto md:text-[13px] md:py-2 md:px-4">
-            اقتراح رسالة تلقائيًا ✨
-          </button>
-          <div id="recoveryTrendSuggestPanel" class="mb-4 hidden rounded-xl border border-[rgba(108,92,231,0.22)] bg-[#f5f3ff]/90 px-3 py-3 shadow-sm ring-1 ring-[rgba(108,92,231,0.08)] backdrop-blur-[2px] md:px-4 md:py-3.5" aria-live="polite">
-            <p class="mb-2 text-[11px] font-semibold text-slate-800 md:text-xs">رسالة مقترحة</p>
-            <div id="recoveryTrendSuggestBody" class="mb-3 whitespace-pre-wrap rounded-lg border border-[rgba(108,92,231,0.12)] bg-white/80 px-3 py-2.5 text-[11px] leading-relaxed text-slate-700 md:text-[13px] md:leading-relaxed"></div>
-            <div class="flex flex-wrap gap-2">
-              <button type="button" id="recoveryTrendSuggestCopy" class="inline-flex flex-1 items-center justify-center rounded-lg border border-[rgba(108,92,231,0.45)] bg-white px-3 py-2 text-[11px] font-semibold text-[#6C5CE7] shadow-sm transition-colors hover:bg-[rgba(108,92,231,0.08)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#6C5CE7]/35 sm:flex-none md:text-xs">
+          <div id="recoveryTrendSolutionBlock" class="mb-4 rounded-xl border border-[rgba(108,92,231,0.22)] bg-[#f5f3ff] px-4 py-4 shadow-sm ring-1 ring-[rgba(108,92,231,0.12)] md:mb-5 md:px-5 md:py-4">
+            <p class="mb-3 border-b border-[rgba(108,92,231,0.2)] pb-2 text-xs font-bold leading-snug text-slate-800 md:text-sm">📌 الحل المقترح</p>
+            <div id="recoveryTrendSuggestBody" class="mb-4 whitespace-pre-wrap rounded-lg border border-[rgba(108,92,231,0.12)] bg-white/70 px-3 py-3 text-[11px] leading-relaxed text-slate-700 md:text-[13px] md:leading-relaxed md:px-3.5 md:py-3">
+              {% if ns.top_key == 'price' %}
+واضح إن السعر يهمك 👌
+في خيار قريب بنفس الفكرة بسعر أقل، ممكن يكون أنسب لك 👍
+              {% elif ns.top_key == 'shipping' %}
+بالنسبة للشحن 👌
+التوصيل سريع وما ياخذ وقت طويل، وتقدر تشوف التفاصيل قبل إتمام الطلب 👍
+              {% elif ns.top_key == 'warranty' %}
+المنتج عليه ضمان واضح 👌
+ولو صار أي شيء، نقدر نساعدك بالاستبدال حسب سياسة المتجر 👍
+              {% elif ns.top_key == 'thinking' %}
+إذا محتار، أقدر أساعدك تختار الأنسب لك 👌
+خلنا نشوف أفضل خيار لك.
+              {% elif ns.top_key == 'quality' %}
+جودة المنتج مهمة 👌
+هذا الخيار مختار بعناية، ولو فيه أي مشكلة نقدر نساعدك حسب سياسة المتجر 👍
+              {% else %}
+أقدر أساعدك تختار الأنسب لك 👌
+خلنا نراجع الخيارات المتاحة.
+              {% endif %}
+            </div>
+            <div class="flex flex-wrap gap-2 border-t border-[rgba(108,92,231,0.12)] pt-3">
+              <button type="button" id="recoveryTrendSuggestCopy" class="inline-flex flex-1 items-center justify-center rounded-lg border border-[rgba(108,92,231,0.45)] bg-white px-3 py-2 text-[11px] font-semibold text-[#6C5CE7] shadow-sm transition-colors hover:bg-[rgba(108,92,231,0.1)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#6C5CE7]/35 sm:flex-none md:text-xs">
                 نسخ الرسالة
               </button>
-              <a id="recoveryTrendSuggestEdit" href="/dashboard/cartflow-messages#cf-msg-template-price" class="inline-flex flex-1 items-center justify-center rounded-lg border border-[rgba(108,92,231,0.45)] bg-transparent px-3 py-2 text-center text-[11px] font-semibold text-[#6C5CE7] shadow-sm transition-colors hover:bg-[rgba(108,92,231,0.08)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#6C5CE7]/35 sm:flex-none md:text-xs">
+              <a href="/dashboard/cartflow-messages#cf-msg-template-{{ ns.top_key }}" class="inline-flex flex-1 items-center justify-center rounded-lg border border-[rgba(108,92,231,0.45)] bg-white/80 px-3 py-2 text-center text-[11px] font-semibold text-[#6C5CE7] shadow-sm transition-colors hover:bg-[rgba(108,92,231,0.1)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#6C5CE7]/35 sm:flex-none md:text-xs">
                 تعديل الرسالة
               </a>
             </div>
@@ -737,48 +753,9 @@
   </script>
   <script>
     (function () {
-      var toggle = document.getElementById("recoveryTrendSuggestToggle");
-      var panel = document.getElementById("recoveryTrendSuggestPanel");
       var bodyEl = document.getElementById("recoveryTrendSuggestBody");
       var copyBtn = document.getElementById("recoveryTrendSuggestCopy");
-      var editEl = document.getElementById("recoveryTrendSuggestEdit");
       var toast = document.getElementById("recoveryTrendCopyToast");
-      var reasonEl = document.getElementById("dashTopHesitationReason");
-
-      var suggestCopy = {
-        price:
-          "واضح إن السعر يهمك 👌\nفي خيار قريب بنفس الفكرة بسعر أقل، ممكن يكون أنسب لك 👍",
-        shipping:
-          "بالنسبة للشحن 👌\nالتوصيل سريع وما ياخذ وقت طويل، وتقدر تشوف التفاصيل قبل إتمام الطلب 👍",
-        warranty:
-          "المنتج عليه ضمان واضح 👌\nولو صار أي شيء، نقدر نساعدك بالاستبدال حسب سياسة المتجر 👍",
-        thinking:
-          "إذا محتار، أقدر أساعدك تختار الأنسب لك 👌\nخلنا نشوف أفضل خيار لك.",
-        quality:
-          "جودة المنتج مهمة 👌\nهذا الخيار مختار بعناية، ولو فيه أي مشكلة نقدر نساعدك حسب سياسة المتجر 👍",
-        _fallback:
-          "أقدر أساعدك تختار الأنسب لك 👌\nخلنا نراجع الخيارات المتاحة.",
-      };
-
-      function topReason() {
-        var raw = reasonEl ? String(reasonEl.getAttribute("data-reason") || "").trim().toLowerCase() : "";
-        var ok = ["price", "shipping", "warranty", "thinking", "quality"];
-        return ok.indexOf(raw) !== -1 ? raw : "thinking";
-      }
-
-      function suggestText(reason) {
-        var t = suggestCopy[reason];
-        return typeof t === "string" ? t : suggestCopy._fallback;
-      }
-
-      function refreshPanel() {
-        var r = topReason();
-        bodyEl.textContent = suggestText(r);
-        editEl.setAttribute(
-          "href",
-          "/dashboard/cartflow-messages#cf-msg-template-" + r
-        );
-      }
 
       function showCopyToast() {
         if (!toast) return;
@@ -790,14 +767,7 @@
         }, 2200);
       }
 
-      if (!toggle || !panel || !bodyEl || !copyBtn || !editEl) return;
-
-      toggle.addEventListener("click", function () {
-        panel.classList.toggle("hidden");
-        if (!panel.classList.contains("hidden")) {
-          refreshPanel();
-        }
-      });
+      if (!bodyEl || !copyBtn) return;
 
       copyBtn.addEventListener("click", function () {
         var text = bodyEl.textContent || "";
