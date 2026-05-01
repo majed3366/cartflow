@@ -62,6 +62,37 @@
         </div>
       </div>
 
+      <div class="recovery-templates-ar space-y-4 border-t border-slate-100 pt-6" dir="rtl" lang="ar">
+        <h2 class="text-sm font-bold text-slate-800">نمط الرسائل</h2>
+        <p class="text-xs text-slate-500">يؤثر على أسطر المساعدة القصيرة في الودجت (مثل اقتراح المنتجات قبل السلة). لا يغيّر منطق الاسترجاع أو واتساب.</p>
+        <div>
+          <label class="block text-sm font-medium text-slate-700" for="template_tone">اختر أسلوب الرسائل</label>
+          <select id="template_tone" name="template_tone"
+            class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-zid-500 focus:outline-none focus:ring-1 focus:ring-zid-500">
+            <option value="friendly">ودي</option>
+            <option value="formal">رسمي</option>
+            <option value="sales">بيع مباشر</option>
+          </select>
+        </div>
+        <fieldset class="space-y-2">
+          <legend class="text-sm font-medium text-slate-700">وضع النص</legend>
+          <label class="flex cursor-pointer items-center gap-2 text-sm text-slate-800">
+            <input type="radio" name="template_mode" value="preset" id="template_mode_preset" class="h-4 w-4 border-slate-300 text-zid-600 focus:ring-zid-500" checked />
+            استخدام أسلوب جاهز
+          </label>
+          <label class="flex cursor-pointer items-center gap-2 text-sm text-slate-800">
+            <input type="radio" name="template_mode" value="custom" id="template_mode_custom" class="h-4 w-4 border-slate-300 text-zid-600 focus:ring-zid-500" />
+            كتابة نص مخصص
+          </label>
+        </fieldset>
+        <div id="template_custom_wrap" class="hidden space-y-1">
+          <label class="block text-sm font-medium text-slate-700" for="template_custom_text">النص المخصص (اختياري)</label>
+          <textarea id="template_custom_text" name="template_custom_text" rows="4"
+            placeholder="اكتب النص الذي تريد استخدامه بدلاً من النص الافتراضي..."
+            class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-zid-500 focus:outline-none focus:ring-1 focus:ring-zid-500 resize-y"></textarea>
+        </div>
+      </div>
+
       <div class="recovery-templates-ar space-y-4 border-t border-slate-100 pt-6" dir="rtl" lang="ar" aria-labelledby="recovery-templates-heading">
         <h2 id="recovery-templates-heading" class="text-sm font-bold text-slate-800">رسائل استعادة السلة</h2>
         <p class="text-xs text-slate-500">اترك الحقل فارغاً لاستخدام النص الافتراضي للنظام.</p>
@@ -128,6 +159,44 @@
         });
       }
 
+      function syncTemplateCustomVisibility() {
+        var wrap = document.getElementById("template_custom_wrap");
+        var custom = document.getElementById("template_mode_custom");
+        if (!wrap || !custom) return;
+        wrap.classList.toggle("hidden", !custom.checked);
+      }
+
+      function fillTemplateControl(data) {
+        var toneEl = document.getElementById("template_tone");
+        var allowedTones = ["friendly", "formal", "sales"];
+        var tone = typeof data.template_tone === "string" ? data.template_tone : "friendly";
+        if (allowedTones.indexOf(tone) < 0) tone = "friendly";
+        if (toneEl) toneEl.value = tone;
+        var mode = typeof data.template_mode === "string" ? data.template_mode : "preset";
+        var presetRadio = document.getElementById("template_mode_preset");
+        var customRadio = document.getElementById("template_mode_custom");
+        if (presetRadio && customRadio) {
+          if (mode === "custom") {
+            customRadio.checked = true;
+            presetRadio.checked = false;
+          } else {
+            presetRadio.checked = true;
+            customRadio.checked = false;
+          }
+        }
+        var ta = document.getElementById("template_custom_text");
+        if (ta) ta.value = typeof data.template_custom_text === "string" ? data.template_custom_text : "";
+        syncTemplateCustomVisibility();
+      }
+
+      function attachTemplateControlListeners() {
+        var presetRadio = document.getElementById("template_mode_preset");
+        var customRadio = document.getElementById("template_mode_custom");
+        if (presetRadio) presetRadio.addEventListener("change", syncTemplateCustomVisibility);
+        if (customRadio) customRadio.addEventListener("change", syncTemplateCustomVisibility);
+      }
+
+      attachTemplateControlListeners();
       fetch("/api/recovery-settings")
         .then(function (r) { return r.json().then(function (d) { return { status: r.status, data: d }; }); })
         .then(function (x) {
@@ -137,6 +206,7 @@
             document.getElementById("recovery_attempts").value = x.data.recovery_attempts;
             document.getElementById("whatsapp_support_url").value = x.data.whatsapp_support_url || "";
             fillTemplates(x.data);
+            fillTemplateControl(x.data);
             hideMsg();
           } else {
             showErr(x.data.error || "Failed to load settings (e.g. no store yet).");
@@ -157,11 +227,23 @@
           var el = document.getElementById(k);
           body[k] = el ? el.value : "";
         });
+        body.template_mode =
+          document.getElementById("template_mode_custom") &&
+          document.getElementById("template_mode_custom").checked
+            ? "custom"
+            : "preset";
+        body.template_tone = document.getElementById("template_tone")
+          ? document.getElementById("template_tone").value
+          : "friendly";
+        body.template_custom_text = document.getElementById("template_custom_text")
+          ? document.getElementById("template_custom_text").value
+          : "";
         fetch("/api/recovery-settings", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
           .then(function (r) { return r.json().then(function (d) { return { status: r.status, data: d }; }); })
           .then(function (x) {
             if (x.data.ok) {
               fillTemplates(x.data);
+              fillTemplateControl(x.data);
               showOk();
             } else {
               showErr(x.data.error || "Save failed");

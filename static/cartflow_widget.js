@@ -124,6 +124,63 @@
     return String(s).replace(/\s+/g, " ").trim();
   }
 
+  /** من لوحة الاسترجاع: نمط نص المساعدة القصير (اكتشاف ما قبل السلة). */
+  var widgetTemplateMode = "preset";
+  var widgetTemplateTone = "friendly";
+  var widgetTemplateCustomText = "";
+  var DISCOVERY_HELPER_SECOND_LINE =
+    "تقدر تختار اللي يناسبك وتضيفه للسلة بسهولة 👍";
+  var TONE_DISCOVERY_FIRST_LINE = {
+    friendly: "جبت لك خيارات مناسبة 👇",
+    formal: "تم توفير خيارات مناسبة لك 👇",
+    sales: "هذه أفضل الخيارات لك الآن 👇",
+  };
+
+  function applyTemplateConfigFromReady(j) {
+    try {
+      if (!j || typeof j !== "object") {
+        return;
+      }
+      var m = j.template_mode;
+      if (m === "preset" || m === "custom") {
+        widgetTemplateMode = m;
+      }
+      var t = j.template_tone;
+      if (t === "friendly" || t === "formal" || t === "sales") {
+        widgetTemplateTone = t;
+      }
+      if (typeof j.template_custom_text === "string") {
+        widgetTemplateCustomText = j.template_custom_text;
+      }
+    } catch (eTpl) {
+      /* ignore */
+    }
+  }
+
+  function getExitDiscoveryIntroText() {
+    try {
+      if (
+        widgetTemplateMode === "custom" &&
+        strTrim(widgetTemplateCustomText) !== ""
+      ) {
+        return String(widgetTemplateCustomText).replace(/\r\n/g, "\n");
+      }
+      var tone =
+        widgetTemplateTone in TONE_DISCOVERY_FIRST_LINE
+          ? widgetTemplateTone
+          : "friendly";
+      return (
+        TONE_DISCOVERY_FIRST_LINE[tone] + "\n" + DISCOVERY_HELPER_SECOND_LINE
+      );
+    } catch (eIntro) {
+      return (
+        TONE_DISCOVERY_FIRST_LINE.friendly +
+        "\n" +
+        DISCOVERY_HELPER_SECOND_LINE
+      );
+    }
+  }
+
   /** سجلات واجهة فقط؛ لا تأثير على خوادم الاسترجاع أو التأخير. */
   function logWidgetFlow(step, reasonTag, selectedOption) {
     try {
@@ -1800,6 +1857,7 @@
         return resp.json();
       })
       .then(function (cfg) {
+        applyTemplateConfigFromReady(cfg);
         if (cfg && cfg.whatsapp_url) {
           window.open(
             cfg.whatsapp_url,
@@ -1864,6 +1922,7 @@
         return r.json();
       })
       .then(function (j) {
+        applyTemplateConfigFromReady(j);
         if (j && j.after_step1) {
           step1Ready = true;
           if (step1Poll !== null) {
@@ -2429,8 +2488,7 @@
       introDisc.setAttribute("data-cf-exit-discovery-intro", "1");
       introDisc.style.cssText =
         "margin:0 0 12px 0;font-size:14px;line-height:1.55;white-space:pre-line;";
-      introDisc.textContent =
-        "جبت لك خيارات مناسبة 👇\nتقدر تختار اللي يناسبك وتضيفه للسلة بسهولة 👍";
+      introDisc.textContent = getExitDiscoveryIntroText();
       widgetBody.appendChild(introDisc);
       var picks = collectDiscoveryProductCandidates(3);
       var pi;

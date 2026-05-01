@@ -60,6 +60,10 @@ class Store(Base):
     template_delivery = Column(Text, nullable=True)
     template_warranty = Column(Text, nullable=True)
     template_other = Column(Text, nullable=True)
+    # واجهة الودجت: نمط الرسائل (قيمة افتراضية = سلوك النظام الحالي)
+    template_mode = Column(String(32), default="preset", nullable=False)
+    template_tone = Column(String(32), default="friendly", nullable=False)
+    template_custom_text = Column(Text, nullable=True)
 
 
 class AbandonedCart(Base):

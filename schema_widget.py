@@ -245,6 +245,67 @@ def _ensure_store_whatsapp_recovery_template_columns(db: Any) -> None:
         log.debug("schema_widget store recovery templates: %s", e)
 
 
+def _ensure_store_template_control_columns(db: Any) -> None:
+    """أعمدة ‎template_mode / template_tone / template_custom_text‎ على ‎stores‎."""
+    try:
+        db.create_all()
+        insp = inspect(db.engine)
+        if not insp.has_table("stores"):
+            return
+        dialect = getattr(getattr(db.engine, "dialect", None), "name", "") or ""
+        existing = {c["name"] for c in insp.get_columns("stores")}
+        if "template_mode" not in existing:
+            try:
+                if dialect == "postgresql":
+                    stmt = (
+                        "ALTER TABLE stores ADD COLUMN IF NOT EXISTS template_mode "
+                        "VARCHAR(32) DEFAULT 'preset' NOT NULL"
+                    )
+                else:
+                    stmt = (
+                        "ALTER TABLE stores ADD COLUMN template_mode "
+                        "VARCHAR(32) DEFAULT 'preset' NOT NULL"
+                    )
+                db.session.execute(text(stmt))
+                db.session.commit()
+            except (OSError, SQLAlchemyError, IntegrityError):
+                db.session.rollback()
+            existing = {c["name"] for c in insp.get_columns("stores")}
+        if "template_tone" not in existing:
+            try:
+                if dialect == "postgresql":
+                    stmt = (
+                        "ALTER TABLE stores ADD COLUMN IF NOT EXISTS template_tone "
+                        "VARCHAR(32) DEFAULT 'friendly' NOT NULL"
+                    )
+                else:
+                    stmt = (
+                        "ALTER TABLE stores ADD COLUMN template_tone "
+                        "VARCHAR(32) DEFAULT 'friendly' NOT NULL"
+                    )
+                db.session.execute(text(stmt))
+                db.session.commit()
+            except (OSError, SQLAlchemyError, IntegrityError):
+                db.session.rollback()
+            existing = {c["name"] for c in insp.get_columns("stores")}
+        if "template_custom_text" not in existing:
+            try:
+                if dialect == "postgresql":
+                    stmt = (
+                        "ALTER TABLE stores ADD COLUMN IF NOT EXISTS "
+                        "template_custom_text TEXT"
+                    )
+                else:
+                    stmt = "ALTER TABLE stores ADD COLUMN template_custom_text TEXT"
+                db.session.execute(text(stmt))
+                db.session.commit()
+            except (OSError, SQLAlchemyError, IntegrityError):
+                db.session.rollback()
+    except (OSError, SQLAlchemyError) as e:
+        db.session.rollback()
+        log.debug("schema_widget template control: %s", e)
+
+
 def ensure_store_widget_schema(db: Any) -> None:
     """يُنادى من مسارات ‎API‎ (لا يعتمد على ‎main‎)."""
     _ensure_reason_subcategory_columns(db)
@@ -252,6 +313,7 @@ def ensure_store_widget_schema(db: Any) -> None:
     _ensure_recovery_reason_customer_phone_column(db)
     _ensure_recovery_reason_rejection_columns(db)
     _ensure_store_whatsapp_recovery_template_columns(db)
+    _ensure_store_template_control_columns(db)
     global _store_abandonment_schema_ensured
     if _store_abandonment_schema_ensured:
         return

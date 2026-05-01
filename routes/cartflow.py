@@ -22,6 +22,7 @@ from services.recovery_decision import (
     get_primary_recovery_reason,
     resolve_auto_whatsapp_reason,
 )
+from services.store_template_control import template_control_fields_for_api
 
 log = logging.getLogger("cartflow")
 
@@ -236,10 +237,13 @@ def cartflow_ready(
     except (OSError, SQLAlchemyError):
         db.session.rollback()
     try:
+        row = db.session.query(Store).order_by(Store.id.desc()).first()
+        tpl = template_control_fields_for_api(row)
         return j(
             {
                 "ok": True,
                 "after_step1": _ready_after_step1(store_slug, session_id),
+                **tpl,
             }
         )
     except (SQLAlchemyError, OSError) as e:
@@ -271,7 +275,8 @@ def cartflow_public_config(
             w = getattr(row, "whatsapp_support_url", None)
             if isinstance(w, str) and w.strip():
                 wa = w.strip()[:2048]
-        return j({"ok": True, "whatsapp_url": wa})
+        tpl = template_control_fields_for_api(row)
+        return j({"ok": True, "whatsapp_url": wa, **tpl})
     except (SQLAlchemyError, OSError) as e:
         db.session.rollback()
         log.warning("cartflow public-config: %s", e)
