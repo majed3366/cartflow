@@ -30,6 +30,24 @@
   </style>
 </head>
 <body class="min-h-screen bg-slate-50 text-slate-800 antialiased">
+{% macro dash_insight_card(reason_key, title, bullets, edit_label, edit_href) -%}
+{% set pid = 'dash-insight-' ~ reason_key %}
+<button type="button"
+  class="dash-insight-toggle mt-2 inline-flex items-center rounded-lg border border-zid-200/90 bg-white px-2.5 py-1 text-[11px] font-medium leading-snug text-zid-700 shadow-sm transition-colors hover:border-zid-400 hover:bg-zid-50 focus:outline-none focus:ring-2 focus:ring-zid-400/35 md:text-[10px]"
+  aria-expanded="false"
+  aria-controls="{{ pid }}">
+  اقتراحات التحسين
+</button>
+<div id="{{ pid }}" class="dash-insight-panel mt-2 hidden rounded-lg border border-zid-100/90 bg-gradient-to-br from-zid-50 to-violet-50/60 px-3 py-2.5 shadow-sm ring-1 ring-zid-100/50 md:px-2.5 md:py-2" role="region" aria-label="{{ title }}">
+  <p class="text-[12px] font-bold leading-snug text-zid-900 md:text-[11px]">{{ title }}</p>
+  <ul class="mr-1 mt-2 space-y-1.5 text-[11px] leading-relaxed text-slate-700 md:text-[10px]">
+    {% for line in bullets %}
+    <li class="flex gap-2"><span class="shrink-0 text-zid-500" aria-hidden="true">•</span><span>{{ line }}</span></li>
+    {% endfor %}
+  </ul>
+  <a href="{{ edit_href }}" class="mt-2 inline-flex text-[10px] font-medium text-zid-700 underline decoration-zid-300 underline-offset-2 hover:text-zid-900 hover:decoration-zid-500 md:text-[9px]">{{ edit_label }}</a>
+</div>
+{%- endmacro %}
   <div class="flex min-h-screen flex-col md:flex-row">
     {% include "partials/dashboard_sidebar.html" %}
 
@@ -84,30 +102,40 @@
                 <div class="h-full rounded-full bg-zid-500 transition-all" style="width: {{ r.width_pct }}%"></div>
               </div>
               {% if r.key == "price" %}
-              <a href="/dashboard/cartflow-messages#cf-msg-template-price"
-                class="mt-2 inline-flex items-center rounded-lg border border-zid-200/90 bg-white px-2.5 py-1 text-[11px] font-medium leading-snug text-zid-700 shadow-sm transition-colors hover:border-zid-400 hover:bg-zid-50 focus:outline-none focus:ring-2 focus:ring-zid-400/35 md:text-[10px]">
-                تحسين رسالة السعر
-              </a>
+              {{ dash_insight_card("price", "ماذا تفعل مع اعتراض السعر؟", [
+                "أبرز القيمة مقابل السعر",
+                "اعرض خيارًا أرخص",
+                "جرّب كود خصم محدود",
+                "عدّل رسالة السعر",
+              ], "تعديل رسالة السعر", "/dashboard/cartflow-messages#cf-msg-template-price") }}
               {% elif r.key == "shipping" %}
-              <a href="/dashboard/cartflow-messages#cf-msg-template-shipping"
-                class="mt-2 inline-flex items-center rounded-lg border border-zid-200/90 bg-white px-2.5 py-1 text-[11px] font-medium leading-snug text-zid-700 shadow-sm transition-colors hover:border-zid-400 hover:bg-zid-50 focus:outline-none focus:ring-2 focus:ring-zid-400/35 md:text-[10px]">
-                تحسين رسالة الشحن
-              </a>
+              {{ dash_insight_card("shipping", "ماذا تفعل مع اعتراض الشحن؟", [
+                "وضّح تكلفة الشحن قبل الدفع",
+                "جرّب عرض شحن مجاني فوق مبلغ معين",
+                "أبرز سرعة التوصيل",
+                "عدّل رسالة الشحن",
+              ], "تعديل رسالة الشحن", "/dashboard/cartflow-messages#cf-msg-template-shipping") }}
               {% elif r.key == "quality" %}
-              <a href="/dashboard/cartflow-messages#cf-msg-template-quality"
-                class="mt-2 inline-flex items-center rounded-lg border border-zid-200/90 bg-white px-2.5 py-1 text-[11px] font-medium leading-snug text-zid-700 shadow-sm transition-colors hover:border-zid-400 hover:bg-zid-50 focus:outline-none focus:ring-2 focus:ring-zid-400/35 md:text-[10px]">
-                تحسين رسالة الجودة
-              </a>
+              {{ dash_insight_card("quality", "ماذا تفعل مع اعتراض الجودة؟", [
+                "أبرز المواصفات ومصادر الجودة",
+                "اعرض تقييمات أو آراء عملاء",
+                "وضّح الضمان أو الاعتماد",
+                "عدّل رسالة الجودة",
+              ], "تعديل رسالة الجودة", "/dashboard/cartflow-messages#cf-msg-template-quality") }}
               {% elif r.key == "thinking" %}
-              <a href="/dashboard/cartflow-messages#cf-msg-template-thinking"
-                class="mt-2 inline-flex items-center rounded-lg border border-zid-200/90 bg-white px-2.5 py-1 text-[11px] font-medium leading-snug text-zid-700 shadow-sm transition-colors hover:border-zid-400 hover:bg-zid-50 focus:outline-none focus:ring-2 focus:ring-zid-400/35 md:text-[10px]">
-                تحسين رسالة التردد
-              </a>
+              {{ dash_insight_card("thinking", "ماذا تفعل مع العملاء المترددين؟", [
+                "اعرض أفضل خيار مبيعًا",
+                "قلل عدد الخيارات",
+                "استخدم رسالة مساعدة قصيرة",
+                "عدّل رسالة التردد",
+              ], "تعديل رسالة التردد", "/dashboard/cartflow-messages#cf-msg-template-thinking") }}
               {% elif r.key == "warranty" %}
-              <a href="/dashboard/cartflow-messages#cf-msg-template-warranty"
-                class="mt-2 inline-flex items-center rounded-lg border border-zid-200/90 bg-white px-2.5 py-1 text-[11px] font-medium leading-snug text-zid-700 shadow-sm transition-colors hover:border-zid-400 hover:bg-zid-50 focus:outline-none focus:ring-2 focus:ring-zid-400/35 md:text-[10px]">
-                تحسين رسالة الضمان
-              </a>
+              {{ dash_insight_card("warranty", "ماذا تفعل مع اعتراض الضمان؟", [
+                "أبرز مدة الضمان",
+                "وضّح سياسة الاستبدال",
+                "أضف طمأنة قبل الدفع",
+                "عدّل رسالة الضمان",
+              ], "تعديل رسالة الضمان", "/dashboard/cartflow-messages#cf-msg-template-warranty") }}
               {% endif %}
             </div>
             {% endfor %}
@@ -149,5 +177,19 @@
       </main>
     </div>
   </div>
+  <script>
+    (function () {
+      document.querySelectorAll(".dash-insight-toggle").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          var id = btn.getAttribute("aria-controls");
+          var panel = id ? document.getElementById(id) : null;
+          if (!panel) return;
+          var open = btn.getAttribute("aria-expanded") === "true";
+          btn.setAttribute("aria-expanded", open ? "false" : "true");
+          panel.classList.toggle("hidden", open);
+        });
+      });
+    })();
+  </script>
 </body>
 </html>
