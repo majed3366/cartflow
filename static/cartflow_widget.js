@@ -2480,6 +2480,9 @@
           } else if (flowKind === "shipping") {
             logWidgetFlow("shipping_followup_nav", "shipping_cost", "رجوع_للقائمة");
             logWidgetConversionFlow("shipping_cost", "رجوع_للقائمة");
+          } else if (flowKind === "quality") {
+            logWidgetFlow("quality_followup_nav", "quality_uncertainty", "رجوع_للقائمة");
+            logWidgetConversionFlow("quality", "رجوع_للقائمة");
           }
           cfClearFlowStack();
           stripContentKeepChrome();
@@ -2920,67 +2923,194 @@
 
       function mountQualityObjectionFollowUp() {
         logWidgetFlow("quality_followup_ui", "quality_uncertainty", "open");
+        logWidgetConversionFlow("quality", "open");
         persistSessionAbandonReason("quality_uncertainty", null);
-        stripContentKeepChrome();
 
-        function replaceBodyWithSingleMessage(msg) {
-          stripContentKeepChrome();
+        function pickQualityDisplayLines(maxN) {
+          var items = getCartLineItems();
+          if (!items || !items.length) {
+            return [];
+          }
+          var n = typeof maxN === "number" ? maxN : 2;
+          n = Math.min(Math.max(n, 1), 2);
+          return items.slice(0, n);
+        }
+
+        function appendQualityFollowUpMsgParagraph(text) {
           var pOut = document.createElement("p");
           pOut.setAttribute("data-cf-quality-followup-msg", "1");
-          pOut.style.cssText = "margin:0 0 8px 0;font-size:14px;line-height:1.55;";
-          pOut.textContent = msg;
+          pOut.style.cssText =
+            "margin:0 0 10px 0;font-size:14px;line-height:1.55;white-space:pre-line;";
+          pOut.textContent = text;
           widgetBody.appendChild(pOut);
-          appendReturnToRecoveryChatButtonRow();
         }
 
-        var intro = document.createElement("p");
-        intro.setAttribute("data-cf-quality-followup-intro", "1");
-        intro.style.cssText = "margin:0 0 12px 0;font-size:14px;line-height:1.55;";
-        intro.textContent =
-          "أفهمك، الجودة تهم 👍 أقدر أساعدك بهالثلاثة:";
+        function appendQualityProductCard(line, caption) {
+          if (!line || typeof line !== "object") {
+            return;
+          }
+          var name = strTrim(line.name) || "منتج في سلتك";
+          var pl = formatPriceRiyal(line);
+          var box = document.createElement("div");
+          box.setAttribute("data-cf-quality-conversion-product", "1");
+          box.style.cssText =
+            "margin:10px 0;padding:10px;border-radius:8px;background:rgba(124,58,237,.09);" +
+            "font-size:13px;line-height:1.5;";
+          if (caption && strTrim(caption) !== "") {
+            var cap = document.createElement("div");
+            cap.style.cssText = "font-weight:700;margin-bottom:4px;";
+            cap.textContent = caption;
+            box.appendChild(cap);
+          }
+          var row = document.createElement("div");
+          row.textContent = name + (pl ? " — " + pl : "");
+          box.appendChild(row);
+          widgetBody.appendChild(box);
+        }
 
-        var rowQ = document.createElement("div");
-        rowQ.setAttribute("data-cf-quality-followup-buttons", "1");
-        rowQ.style.cssText = rowStyleCol;
-
-        function addQFBtn(label, onActivate) {
-          var bx = document.createElement("button");
-          bx.type = "button";
-          bx.textContent = label;
-          bx.style.cssText = btnStyle;
-          bx.addEventListener("click", function (ev) {
-            ev.stopPropagation();
-            ev.preventDefault();
-            onActivate();
+        function appendQualityContinueCTA(optionKey) {
+          var btn = document.createElement("button");
+          btn.type = "button";
+          btn.setAttribute("data-cf-quality-conversion-cta", "1");
+          btn.textContent = "كمّل الطلب والدفع 👇";
+          btn.style.cssText = btnStyle;
+          btn.addEventListener("click", function (evCta) {
+            evCta.stopPropagation();
+            evCta.preventDefault();
+            logWidgetConversionFlow(
+              "quality",
+              String(optionKey) + "_cta_continue"
+            );
+            scrollToCartOrCheckout();
           });
-          rowQ.appendChild(bx);
+          widgetBody.appendChild(btn);
         }
 
-        addQFBtn("وضّح لي لماذا المنتج جودته عالية", function () {
-          logWidgetFlow("quality_followup_pick", "quality_uncertainty", "تفاصيل_الجودة");
-          replaceBodyWithSingleMessage(
-            "المنتج يتميز بخامات واضحة وفحوص جودة تضمن أداء ممتاز لفترة أطول."
-          );
-        });
-        addQFBtn("في تقييمات أو تجارب عملاء؟", function () {
-          logWidgetFlow("quality_followup_pick", "quality_uncertainty", "تقييمات");
-          replaceBodyWithSingleMessage(
-            "نعم 👍 كثير من العملاء شاركوا تجاربهم وكانت آراؤهم غالباً إيجابية."
-          );
-        });
-        addQFBtn("قارن لي نقاط القوّة قبل ما أقرر", function () {
-          logWidgetFlow("quality_followup_pick", "quality_uncertainty", "مقارنة");
-          replaceBodyWithSingleMessage(
-            "تمام 👍 أقدّم لك صورة مختصرة تضمن الأفضل لميزانيتك من ناحية الموثوقية."
-          );
-        });
-        addQFBtn("رجوع للقائمة السابقة", function () {
-          logWidgetFlow("quality_followup_nav", "quality_uncertainty", "رجوع_للقائمة");
-          remountCartReasonChoicesFromFollowUp();
-        });
+        function mountQualityConversionStep(responseMsg, optionKey, extrasFn) {
+          stripContentKeepChrome();
+          cfSetNavStep("quality_results_" + String(optionKey));
+          if (responseMsg && strTrim(responseMsg) !== "") {
+            appendQualityFollowUpMsgParagraph(responseMsg);
+          }
+          if (typeof extrasFn === "function") {
+            extrasFn();
+          }
+          appendQualityContinueCTA(optionKey);
+          appendObjectionFlowNavRow("quality");
+        }
 
-        widgetBody.appendChild(intro);
-        widgetBody.appendChild(rowQ);
+        function renderQualityOptionsScreen() {
+          stripContentKeepChrome();
+          cfSetNavStep("quality_options");
+          var introEl = document.createElement("p");
+          introEl.setAttribute("data-cf-quality-followup-intro", "1");
+          introEl.style.cssText =
+            "margin:0 0 12px 0;font-size:14px;line-height:1.55;white-space:pre-line;";
+          introEl.textContent =
+            "واضح إن الجودة تهمك 👍\nخلني أأكد لك قبل ما تقرر:";
+
+          var rowQ = document.createElement("div");
+          rowQ.setAttribute("data-cf-quality-followup-buttons", "1");
+          rowQ.style.cssText = rowStyleCol;
+
+          function addQFBtn(label, onActivate) {
+            var bx = document.createElement("button");
+            bx.type = "button";
+            bx.textContent = label;
+            bx.style.cssText = btnStyle;
+            bx.addEventListener("click", function (ev) {
+              ev.stopPropagation();
+              ev.preventDefault();
+              onActivate();
+            });
+            rowQ.appendChild(bx);
+          }
+
+          addQFBtn("هل عليه ضمان؟", function () {
+            cfPushFlow(renderQualityOptionsScreen);
+            logWidgetFlow(
+              "quality_followup_pick",
+              "quality_uncertainty",
+              "ضمان"
+            );
+            logWidgetConversionFlow("quality", "ضمان");
+            mountQualityConversionStep(
+              "نعم 👍 المتجر يبيّن ضمان المنتج في الصفحة والسلة؛ راجع السطر وتكمّل وأنت مطمئن.",
+              "ضمان",
+              function () {
+                var lines = pickQualityDisplayLines(2);
+                var j;
+                for (j = 0; j < lines.length; j++) {
+                  appendQualityProductCard(lines[j], null);
+                }
+                if (!lines.length) {
+                  appendQualityFollowUpMsgParagraph(
+                    "أضف المنتج للسلة لتشوف التفاصيل وتكمّل الطلب."
+                  );
+                }
+              }
+            );
+          });
+
+          addQFBtn("كيف جودته مقارنة بغيره؟", function () {
+            cfPushFlow(renderQualityOptionsScreen);
+            logWidgetFlow(
+              "quality_followup_pick",
+              "quality_uncertainty",
+              "مقارنة"
+            );
+            logWidgetConversionFlow("quality", "مقارنة");
+            mountQualityConversionStep(
+              "هذا الخيار ضمن سلتك منتقى بعناية 👌 التفاصيل والمواصفات تظهر بوضوح عند الدفع.",
+              "مقارنة",
+              function () {
+                var lines = pickQualityDisplayLines(2);
+                var j;
+                for (j = 0; j < lines.length; j++) {
+                  appendQualityProductCard(lines[j], "خيار موثوق في سلتك");
+                }
+                if (!lines.length) {
+                  appendQualityFollowUpMsgParagraph(
+                    "أضف منتجاً للسلة لمقارنة الخيارات وتكمّل الطلب."
+                  );
+                }
+              }
+            );
+          });
+
+          addQFBtn("هل فيه تقييمات؟", function () {
+            cfPushFlow(renderQualityOptionsScreen);
+            logWidgetFlow(
+              "quality_followup_pick",
+              "quality_uncertainty",
+              "تقييمات"
+            );
+            logWidgetConversionFlow("quality", "تقييمات");
+            mountQualityConversionStep(
+              "التقييمات تساعدك تقرر 👍 شوف آراء العملاء في صفحة المنتج ثم كمّل الطلب براحة.",
+              "تقييمات",
+              function () {
+                var lines = pickQualityDisplayLines(2);
+                var j;
+                for (j = 0; j < lines.length; j++) {
+                  appendQualityProductCard(lines[j], null);
+                }
+                if (!lines.length) {
+                  appendQualityFollowUpMsgParagraph(
+                    "افتح صفحة المنتج للتقييمات ثم ارجع وتكمّل من السلة."
+                  );
+                }
+              }
+            );
+          });
+
+          widgetBody.appendChild(introEl);
+          widgetBody.appendChild(rowQ);
+          appendObjectionFlowNavRow("quality");
+        }
+
+        cfClearFlowStack();
+        renderQualityOptionsScreen();
       }
 
       function mountShippingObjectionFollowUp() {
