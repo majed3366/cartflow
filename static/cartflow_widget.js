@@ -32,6 +32,8 @@
   var DEMO_STORE_WIDGET_ARMED_KEY = "cartflow_demo_store_widget_armed";
   var DEMO_STORE_EXIT_INTENT_SHOWN_KEY = "cartflow_demo_store_exit_intent_shown";
   var DEMO_STORE_EXIT_PROMPT_RESOLVED_KEY = "cartflow_demo_store_exit_prompt_resolved";
+  /** زائر بدون سلة رفض فقاعة الخروج — لا تعيد الإظهار هذه الجلسة. */
+  var EXIT_INTENT_PRE_CART_DECLINED_KEY = "cartflow_exit_intent_pre_cart_declined";
   var shown = false;
   var idleTimer = null;
   var step1Ready = false;
@@ -145,6 +147,43 @@
           so
       );
     } catch (eConv) {
+      /* ignore */
+    }
+  }
+
+  /** مسار اكتشاف منتجات قبل السلة (خروج ذكي / تصفّح فقط؛ لا تأثير على الاسترجاع). */
+  function logWidgetDiscoveryFlow(action) {
+    try {
+      console.log("[WIDGET DISCOVERY FLOW]");
+      console.log(
+        "event=exit_intent_pre_cart action=" +
+          String(action != null ? action : "")
+      );
+    } catch (eDisc) {
+      /* ignore */
+    }
+  }
+
+  function readExitIntentPreCartDeclined() {
+    try {
+      return window.sessionStorage.getItem(EXIT_INTENT_PRE_CART_DECLINED_KEY) === "1";
+    } catch (eRd) {
+      return false;
+    }
+  }
+
+  function persistExitIntentPreCartDeclined() {
+    try {
+      window.sessionStorage.setItem(EXIT_INTENT_PRE_CART_DECLINED_KEY, "1");
+    } catch (eWr) {
+      /* ignore */
+    }
+  }
+
+  function clearExitIntentPreCartDeclined() {
+    try {
+      window.sessionStorage.removeItem(EXIT_INTENT_PRE_CART_DECLINED_KEY);
+    } catch (eClrD) {
       /* ignore */
     }
   }
@@ -1935,6 +1974,18 @@
     } catch (eLog) {
       /* ignore */
     }
+    if (
+      openSource === TRIGGER_SOURCE_EXIT_INTENT &&
+      !hasCartItems &&
+      readExitIntentPreCartDeclined()
+    ) {
+      try {
+        console.log("[CF FRONT] skip showBubble exit intent: pre-cart declined");
+      } catch (eSkipDecl) {
+        /* ignore */
+      }
+      return;
+    }
     if (openSource === TRIGGER_SOURCE_EXIT_INTENT && hasCartItems) {
       try {
         console.log("EXIT INTENT BLOCKED:", true);
@@ -2280,6 +2331,138 @@
     w.appendChild(widgetBody);
 
     applyBubbleLayout(w);
+
+    function collectDiscoveryProductCandidates(maxN) {
+      var out = [];
+      var limit = typeof maxN === "number" ? maxN : 3;
+      limit = Math.min(Math.max(limit, 2), 3);
+      try {
+        var demoMap = window.CF_DEMO_PRODUCTS;
+        if (demoMap && typeof demoMap === "object") {
+          var keys = Object.keys(demoMap);
+          var i;
+          for (i = 0; i < keys.length && out.length < limit; i++) {
+            var row = demoMap[keys[i]];
+            if (row && typeof row === "object") {
+              out.push(row);
+            }
+          }
+          if (out.length) {
+            return out;
+          }
+        }
+      } catch (eDm) {
+        /* ignore */
+      }
+      try {
+        var arr = window.CARTFLOW_DISCOVERY_PRODUCTS;
+        if (Array.isArray(arr)) {
+          var j;
+          for (j = 0; j < arr.length && out.length < limit; j++) {
+            var item = arr[j];
+            if (item && typeof item === "object") {
+              out.push(item);
+            }
+          }
+        }
+      } catch (eArr) {
+        /* ignore */
+      }
+      return out;
+    }
+
+    function appendExitDiscoveryProductCard(prod) {
+      if (!prod || typeof prod !== "object") {
+        return;
+      }
+      var name = strTrim(prod.name) || "منتج";
+      var priceNum = prod.price;
+      var priceSuffix = "";
+      if (typeof priceNum === "number" && isFinite(priceNum)) {
+        if (priceNum % 1 === 0) {
+          priceSuffix = String(Math.round(priceNum)) + " ريال";
+        } else {
+          priceSuffix = priceNum.toFixed(2) + " ريال";
+        }
+      }
+      var box = document.createElement("div");
+      box.setAttribute("data-cf-exit-discovery-product", "1");
+      box.style.cssText =
+        "margin:10px 0;padding:12px;border-radius:10px;background:rgba(255,255,255,.1);" +
+        "border:1px solid rgba(255,255,255,.14);font-size:13px;line-height:1.45;";
+      var titleRow = document.createElement("div");
+      titleRow.style.cssText = "font-weight:700;margin-bottom:8px;";
+      titleRow.textContent = name + (priceSuffix ? " — " + priceSuffix : "");
+      box.appendChild(titleRow);
+      var btnAdd = document.createElement("button");
+      btnAdd.type = "button";
+      btnAdd.textContent = "أضف للسلة";
+      btnAdd.setAttribute("data-cf-exit-discovery-add", "1");
+      btnAdd.style.cssText =
+        "cursor:pointer;border:0;border-radius:10px;padding:12px 14px;font:inherit;font-weight:800;" +
+        "font-size:14px;background:linear-gradient(180deg,#c4b5fd 0%,#7c3aed 55%,#6d28d9 100%);" +
+        "color:#fff;width:100%;box-sizing:border-box;min-height:48px;touch-action:manipulation;";
+      btnAdd.addEventListener("click", function (evAdd) {
+        evAdd.stopPropagation();
+        evAdd.preventDefault();
+        try {
+          if (typeof window.addToCart === "function") {
+            window.addToCart(Object.assign({}, prod));
+          }
+        } catch (eAtc) {
+          /* ignore */
+        }
+        logWidgetDiscoveryFlow("add_to_cart_click");
+      });
+      box.appendChild(btnAdd);
+      widgetBody.appendChild(box);
+    }
+
+    function renderExitIntentProductDiscovery() {
+      stripContentKeepChrome();
+      try {
+        w.removeAttribute("data-cf-yes");
+      } catch (eRy) {
+        /* ignore */
+      }
+      var introDisc = document.createElement("p");
+      introDisc.setAttribute("data-cf-exit-discovery-intro", "1");
+      introDisc.style.cssText =
+        "margin:0 0 12px 0;font-size:14px;line-height:1.55;white-space:pre-line;";
+      introDisc.textContent =
+        "خلّيت لك خيارات مناسبة 👇\nتقدر تختار اللي يناسبك وتضيفه للسلة بسهولة 👍";
+      widgetBody.appendChild(introDisc);
+      var picks = collectDiscoveryProductCandidates(3);
+      var pi;
+      for (pi = 0; pi < picks.length; pi++) {
+        appendExitDiscoveryProductCard(picks[pi]);
+      }
+      if (!picks.length) {
+        var ph = document.createElement("p");
+        ph.setAttribute("data-cf-exit-discovery-empty", "1");
+        ph.style.cssText = "margin:0 0 10px 0;font-size:13px;line-height:1.5;opacity:0.95;";
+        ph.textContent =
+          "تصفّح منتجات المتجر من الصفحة واضغط «أضف للسلة» على اللي يعجبك 👍";
+        widgetBody.appendChild(ph);
+        try {
+          var gridEl = document.getElementById("cf-demo-products");
+          if (gridEl && gridEl.scrollIntoView) {
+            var btnScroll = document.createElement("button");
+            btnScroll.type = "button";
+            btnScroll.textContent = "انتقل للمنتجات 👇";
+            btnScroll.style.cssText = btnStyle;
+            btnScroll.addEventListener("click", function (evSc) {
+              evSc.stopPropagation();
+              evSc.preventDefault();
+              gridEl.scrollIntoView({ behavior: "smooth", block: "start" });
+            });
+            widgetBody.appendChild(btnScroll);
+          }
+        } catch (eGr) {
+          /* ignore */
+        }
+      }
+    }
 
     function openProductDiscoveryMode() {
       var body = w.querySelector(".cartflow-widget-body");
@@ -3789,10 +3972,13 @@
     }
 
     var p0 = document.createElement("p");
-    p0.style.cssText = "margin:0 0 8px 0;";
+    p0.style.cssText =
+      openSource === TRIGGER_SOURCE_EXIT_INTENT
+        ? "margin:0 0 8px 0;font-size:14px;line-height:1.55;white-space:pre-line;"
+        : "margin:0 0 8px 0;";
     p0.textContent =
       openSource === TRIGGER_SOURCE_EXIT_INTENT
-        ? "هلا 👋 أقدر أخدمك بشيء؟"
+        ? "هلا 👋\nفيه خيارات ممكن تعجبك 👍\nتحب أشوفها لك بسرعة؟"
         : "تبي أساعدك تكمل طلبك؟";
 
     var row0 = null;
@@ -3808,18 +3994,28 @@
 
       btnY = document.createElement("button");
       btnY.type = "button";
-      btnY.textContent = "نعم";
+      btnY.textContent =
+        openSource === TRIGGER_SOURCE_EXIT_INTENT
+          ? "نعم، ورّني 👌"
+          : "نعم";
       btnY.style.cssText = btnStyle;
 
       btnN = document.createElement("button");
       btnN.type = "button";
-      btnN.textContent = "لا";
+      btnN.textContent =
+        openSource === TRIGGER_SOURCE_EXIT_INTENT
+          ? "لا، أتصفح بس"
+          : "لا";
       btnN.style.cssText = btnStyle;
       btnN.addEventListener("click", function (ev) {
         ev.stopPropagation();
         ev.preventDefault();
         if (isDemoStoreProductPage() && isDemoScenarioActive()) {
           return;
+        }
+        if (openSource === TRIGGER_SOURCE_EXIT_INTENT && !haveCartForWidget()) {
+          logWidgetDiscoveryFlow("declined");
+          persistExitIntentPreCartDeclined();
         }
         logWidgetFlow("first_prompt_pick", "", "لا");
         removeFabIfAny();
@@ -4462,11 +4658,11 @@
         w.setAttribute("data-cf-yes", "1");
         if (
           openSource === TRIGGER_SOURCE_EXIT_INTENT &&
-          isDemoStoreProductPage() &&
           !haveCartForWidget()
         ) {
-          renderBrowsingGeneralOptions();
-          emitDemoGuideEvent("cartflow-demo-browsing-options-visible", {});
+          logWidgetDiscoveryFlow("accepted");
+          renderExitIntentProductDiscovery();
+          emitDemoGuideEvent("cartflow-demo-exit-discovery-visible", {});
         } else if (openSource === TRIGGER_SOURCE_CART) {
           logWidgetFlow("first_prompt_pick", "", "نعم");
           stripContentKeepChrome();
@@ -4642,6 +4838,7 @@
     } catch (e) {}
     clearDemoStoreExitIntentShown();
     clearDemoStoreExitPromptResolved();
+    clearExitIntentPreCartDeclined();
     demoStoreBubbleDismissed = false;
     clearTimeout(idleTimer);
     idleTimer = null;
@@ -4698,6 +4895,9 @@
       } catch (e0) {
         /* ignore */
       }
+      return false;
+    }
+    if (readExitIntentPreCartDeclined()) {
       return false;
     }
     if (!isCartPage()) {
