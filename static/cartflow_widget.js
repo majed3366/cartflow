@@ -2483,6 +2483,9 @@
           } else if (flowKind === "quality") {
             logWidgetFlow("quality_followup_nav", "quality_uncertainty", "رجوع_للقائمة");
             logWidgetConversionFlow("quality", "رجوع_للقائمة");
+          } else if (flowKind === "delivery") {
+            logWidgetFlow("delivery_followup_nav", "delivery_time", "رجوع_للقائمة");
+            logWidgetConversionFlow("delivery", "رجوع_للقائمة");
           }
           cfClearFlowStack();
           stripContentKeepChrome();
@@ -3393,67 +3396,210 @@
 
       function mountDeliveryObjectionFollowUp() {
         logWidgetFlow("delivery_followup_ui", "delivery_time", "open");
+        logWidgetConversionFlow("delivery", "open");
         persistSessionAbandonReason("delivery_time", null);
-        stripContentKeepChrome();
 
-        function replaceBodyWithSingleMessage(msg) {
-          stripContentKeepChrome();
+        function pickDeliveryDisplayLines(maxN) {
+          var items = getCartLineItems();
+          if (!items || !items.length) {
+            return [];
+          }
+          var n = typeof maxN === "number" ? maxN : 2;
+          n = Math.min(Math.max(n, 1), 2);
+          return items.slice(0, n);
+        }
+
+        function appendDeliveryFollowUpMsgParagraph(text) {
           var pOut = document.createElement("p");
           pOut.setAttribute("data-cf-delivery-followup-msg", "1");
-          pOut.style.cssText = "margin:0 0 8px 0;font-size:14px;line-height:1.55;";
-          pOut.textContent = msg;
+          pOut.style.cssText =
+            "margin:0 0 10px 0;font-size:14px;line-height:1.55;white-space:pre-line;";
+          pOut.textContent = text;
           widgetBody.appendChild(pOut);
-          appendReturnToRecoveryChatButtonRow();
         }
 
-        var intro = document.createElement("p");
-        intro.setAttribute("data-cf-delivery-followup-intro", "1");
-        intro.style.cssText = "margin:0 0 12px 0;font-size:14px;line-height:1.55;";
-        intro.textContent =
-          "التوقيت مهم 👍 هذا ثلاث نقرات لتفهم وقت وصول الطلب أكثر بدقة:";
+        function appendDeliveryConversionProductCard(line, caption, subtitleBelow) {
+          if (!line || typeof line !== "object") {
+            return;
+          }
+          var name = strTrim(line.name) || "منتج في سلتك";
+          var pl = formatPriceRiyal(line);
+          var box = document.createElement("div");
+          box.setAttribute("data-cf-delivery-conversion-product", "1");
+          box.style.cssText =
+            "margin:10px 0;padding:10px;border-radius:8px;background:rgba(124,58,237,.09);" +
+            "font-size:13px;line-height:1.5;";
+          if (caption != null && strTrim(String(caption)) !== "") {
+            var cap = document.createElement("div");
+            cap.style.cssText = "font-weight:700;margin-bottom:4px;";
+            cap.textContent = String(caption);
+            box.appendChild(cap);
+          }
+          var row = document.createElement("div");
+          row.textContent = name + (pl ? " — " + pl : "");
+          box.appendChild(row);
+          if (subtitleBelow != null && strTrim(String(subtitleBelow)) !== "") {
+            var sub = document.createElement("div");
+            sub.setAttribute("data-cf-delivery-product-subtitle", "1");
+            sub.style.cssText =
+              "font-size:12px;color:#475569;margin-top:8px;line-height:1.45;";
+            sub.textContent = String(subtitleBelow);
+            box.appendChild(sub);
+          }
+          widgetBody.appendChild(box);
+        }
 
-        var rowD = document.createElement("div");
-        rowD.setAttribute("data-cf-delivery-followup-buttons", "1");
-        rowD.style.cssText = rowStyleCol;
-
-        function addDFBtn(label, onActivate) {
-          var bx = document.createElement("button");
-          bx.type = "button";
-          bx.textContent = label;
-          bx.style.cssText = btnStyle;
-          bx.addEventListener("click", function (ev) {
-            ev.stopPropagation();
-            ev.preventDefault();
-            onActivate();
+        function appendDeliveryContinuePurchaseCTA(optionKey) {
+          var btn = document.createElement("button");
+          btn.type = "button";
+          btn.setAttribute("data-cf-delivery-conversion-cta", "1");
+          btn.textContent = "كمّل الطلب والدفع 👇";
+          btn.style.cssText = btnStyle;
+          btn.addEventListener("click", function (evCta) {
+            evCta.stopPropagation();
+            evCta.preventDefault();
+            logWidgetConversionFlow(
+              "delivery",
+              String(optionKey) + "_cta_continue"
+            );
+            scrollToCartOrCheckout();
           });
-          rowD.appendChild(bx);
+          widgetBody.appendChild(btn);
         }
 
-        addDFBtn("كم أقصى مدة قبل التسليم المتوقعة؟", function () {
-          logWidgetFlow("delivery_followup_pick", "delivery_time", "حد_التسليم");
-          replaceBodyWithSingleMessage(
-            "عادة بين يومين وعدّة أيام حسب المدينة وشركة الشحن المعتمدة 👍 كامل التفاصيل تظهر عند المتجر وقت الدفع."
-          );
-        });
-        addDFBtn("هل في توصيل سريع؟", function () {
-          logWidgetFlow("delivery_followup_pick", "delivery_time", "توصيل_سريع");
-          replaceBodyWithSingleMessage(
-            "أحياناً يتوفر خيار تنفيذ أو شحن مستعجل وفق المتجر وبعض المناطق 👍"
-          );
-        });
-        addDFBtn("كم يمكن أن يمتد التجهيز قبل الشحن فعلاً؟", function () {
-          logWidgetFlow("delivery_followup_pick", "delivery_time", "تجهيز");
-          replaceBodyWithSingleMessage(
-            "بيوم إلى يومَي عمل عادة لتجهيز ومغادرة المستودع، ثم تُحمَّل شحنتك."
-          );
-        });
-        addDFBtn("رجوع للقائمة السابقة", function () {
-          logWidgetFlow("delivery_followup_nav", "delivery_time", "رجوع_للقائمة");
-          remountCartReasonChoicesFromFollowUp();
-        });
+        function mountDeliveryConversionStep(responseMsg, optionKey, extrasFn) {
+          stripContentKeepChrome();
+          cfSetNavStep("delivery_results_" + String(optionKey));
+          if (responseMsg && strTrim(responseMsg) !== "") {
+            appendDeliveryFollowUpMsgParagraph(responseMsg);
+          }
+          if (typeof extrasFn === "function") {
+            extrasFn();
+          }
+          appendDeliveryContinuePurchaseCTA(optionKey);
+          appendObjectionFlowNavRow("delivery");
+        }
 
-        widgetBody.appendChild(intro);
-        widgetBody.appendChild(rowD);
+        function renderDeliveryOptionsScreen() {
+          stripContentKeepChrome();
+          cfSetNavStep("delivery_options");
+          var intro = document.createElement("p");
+          intro.setAttribute("data-cf-delivery-followup-intro", "1");
+          intro.style.cssText =
+            "margin:0 0 12px 0;font-size:14px;line-height:1.55;white-space:pre-line;";
+          intro.textContent =
+            "اتفق معك إن وقت التوصيل يهم 👍\nخلني أساعدك تختار الأنسب لك:";
+
+          var rowD = document.createElement("div");
+          rowD.setAttribute("data-cf-delivery-followup-buttons", "1");
+          rowD.style.cssText = rowStyleCol;
+
+          function addDFBtn(label, onActivate) {
+            var bx = document.createElement("button");
+            bx.type = "button";
+            bx.textContent = label;
+            bx.style.cssText = btnStyle;
+            bx.addEventListener("click", function (ev) {
+              ev.stopPropagation();
+              ev.preventDefault();
+              onActivate();
+            });
+            rowD.appendChild(bx);
+          }
+
+          addDFBtn("أبغى أسرع توصيل", function () {
+            cfPushFlow(renderDeliveryOptionsScreen);
+            logWidgetFlow(
+              "delivery_followup_pick",
+              "delivery_time",
+              "اسرع_توصيل"
+            );
+            logWidgetConversionFlow("delivery", "اسرع_توصيل");
+            mountDeliveryConversionStep(
+              "تمام 👍 هذا الخيار مناسب إذا تبغاه يوصل بأسرع وقت 👇",
+              "اسرع_توصيل",
+              function () {
+                var lines = pickDeliveryDisplayLines(2);
+                var j;
+                for (j = 0; j < lines.length; j++) {
+                  appendDeliveryConversionProductCard(
+                    lines[j],
+                    "",
+                    "مناسب لو تحتاجه بسرعة"
+                  );
+                }
+                if (!lines.length) {
+                  appendDeliveryFollowUpMsgParagraph(
+                    "أضف المنتج للسلة لتكمّل الطلب وتختار سرعة الشحن المناسبة لك."
+                  );
+                }
+              }
+            );
+          });
+
+          addDFBtn("ما عندي مشكلة أنتظر", function () {
+            cfPushFlow(renderDeliveryOptionsScreen);
+            logWidgetFlow(
+              "delivery_followup_pick",
+              "delivery_time",
+              "ما_مشكلة_انتظار"
+            );
+            logWidgetConversionFlow("delivery", "ما_مشكلة_انتظار");
+            mountDeliveryConversionStep(
+              "تمام 👍 هذا الخيار يعطيك أفضل قيمة مقابل السعر 👌",
+              "ما_مشكلة_انتظار",
+              function () {
+                var lines = pickDeliveryDisplayLines(2);
+                var j;
+                for (j = 0; j < lines.length; j++) {
+                  appendDeliveryConversionProductCard(
+                    lines[j],
+                    "",
+                    "مناسب لو الوقت مو مستعجل"
+                  );
+                }
+                if (!lines.length) {
+                  appendDeliveryFollowUpMsgParagraph(
+                    "أضف المنتج للسلة لتكمّل الطلب بأريحية أكبر."
+                  );
+                }
+              }
+            );
+          });
+
+          addDFBtn("متى يوصل بالضبط؟", function () {
+            cfPushFlow(renderDeliveryOptionsScreen);
+            logWidgetFlow(
+              "delivery_followup_pick",
+              "delivery_time",
+              "متى_يوصل"
+            );
+            logWidgetConversionFlow("delivery", "متى_يوصل");
+            mountDeliveryConversionStep(
+              "يوصل عادة خلال فترة قصيرة 👍\nوتقدر تشوف التفاصيل كاملة قبل إتمام الطلب 👌",
+              "متى_يوصل",
+              function () {
+                var lines = pickDeliveryDisplayLines(2);
+                var j;
+                for (j = 0; j < lines.length; j++) {
+                  appendDeliveryConversionProductCard(lines[j], "", "");
+                }
+                if (!lines.length) {
+                  appendDeliveryFollowUpMsgParagraph(
+                    "أضف المنتج للسلة؛ تظهر لك مدة التوصيل والتفاصيل عند إتمام الطلب."
+                  );
+                }
+              }
+            );
+          });
+
+          widgetBody.appendChild(intro);
+          widgetBody.appendChild(rowD);
+          appendObjectionFlowNavRow("delivery");
+        }
+
+        cfClearFlowStack();
+        renderDeliveryOptionsScreen();
       }
 
       function mountWarrantyObjectionFollowUp() {
