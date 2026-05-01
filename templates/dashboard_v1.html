@@ -228,7 +228,7 @@
         <section aria-labelledby="recovery-trend-heading">
           <h2 id="recovery-trend-heading" class="mb-2 border-b-2 border-zid-500/35 pb-2 text-base font-bold leading-snug text-slate-800 md:text-sm md:leading-normal">📈 تطور المبيعات المسترجعة</h2>
           <p class="mb-4 text-xs leading-relaxed text-slate-600 md:mb-3 md:text-[11px] md:text-slate-500">المبيعات المسترجعة خلال 7 أيام</p>
-          {% set hesitation_slugs = ('price', 'shipping', 'warranty', 'thinking') %}
+          {% set hesitation_slugs = ('price', 'shipping', 'warranty', 'thinking', 'quality') %}
           {% set ns = namespace(top_key='thinking', top_count=-1) %}
           {% for r in reason_bar %}
             {% if r.key in hesitation_slugs and r.count > ns.top_count %}
@@ -236,6 +236,7 @@
               {% set ns.top_count = r.count %}
             {% endif %}
           {% endfor %}
+          <span id="dashTopHesitationReason" class="sr-only" data-reason="{{ ns.top_key }}" aria-hidden="true"></span>
           <div class="mb-4 rounded-xl border border-slate-200/70 px-4 py-3 text-sm leading-relaxed text-slate-700 shadow-sm md:mb-3 md:px-3.5 md:py-2.5 md:text-xs" style="background-color: #f8fafc" role="note">
             <p class="font-medium">
               {% if ns.top_key == 'price' %}
@@ -244,6 +245,10 @@
               💡 الشحن هو أكثر سبب للتردد حالياً
               {% elif ns.top_key == 'warranty' %}
               💡 العملاء يحتاجون وضوح أكثر في الضمان
+              {% elif ns.top_key == 'quality' %}
+              💡 الجودة من أكثر نقاط التردد لدى العملاء
+              {% elif ns.top_key == 'thinking' %}
+              💡 العملاء يحتاجون دفعة لاتخاذ القرار
               {% else %}
               💡 العملاء يحتاجون دفعة لاتخاذ القرار
               {% endif %}
@@ -255,11 +260,29 @@
               👉 تحسين رسالة الشحن
               {% elif ns.top_key == 'warranty' %}
               👉 تحسين رسالة الضمان
+              {% elif ns.top_key == 'quality' %}
+              👉 تحسين رسالة الجودة
               {% else %}
               👉 تحسين رسالة التردد
               {% endif %}
             </a>
           </div>
+          <button type="button" id="recoveryTrendSuggestToggle" class="mb-4 inline-flex w-full items-center justify-center rounded-lg border border-dashed border-[rgba(108,92,231,0.45)] bg-white px-3 py-2 text-xs font-semibold leading-snug text-[#6C5CE7] shadow-sm transition-colors hover:bg-[rgba(245,243,255,0.85)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#6C5CE7]/35 sm:w-auto md:text-[13px] md:py-2 md:px-4">
+            اقتراح رسالة تلقائيًا ✨
+          </button>
+          <div id="recoveryTrendSuggestPanel" class="mb-4 hidden rounded-xl border border-[rgba(108,92,231,0.22)] bg-[#f5f3ff]/90 px-3 py-3 shadow-sm ring-1 ring-[rgba(108,92,231,0.08)] backdrop-blur-[2px] md:px-4 md:py-3.5" aria-live="polite">
+            <p class="mb-2 text-[11px] font-semibold text-slate-800 md:text-xs">رسالة مقترحة</p>
+            <div id="recoveryTrendSuggestBody" class="mb-3 whitespace-pre-wrap rounded-lg border border-[rgba(108,92,231,0.12)] bg-white/80 px-3 py-2.5 text-[11px] leading-relaxed text-slate-700 md:text-[13px] md:leading-relaxed"></div>
+            <div class="flex flex-wrap gap-2">
+              <button type="button" id="recoveryTrendSuggestCopy" class="inline-flex flex-1 items-center justify-center rounded-lg border border-[rgba(108,92,231,0.45)] bg-white px-3 py-2 text-[11px] font-semibold text-[#6C5CE7] shadow-sm transition-colors hover:bg-[rgba(108,92,231,0.08)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#6C5CE7]/35 sm:flex-none md:text-xs">
+                نسخ الرسالة
+              </button>
+              <a id="recoveryTrendSuggestEdit" href="/dashboard/cartflow-messages#cf-msg-template-price" class="inline-flex flex-1 items-center justify-center rounded-lg border border-[rgba(108,92,231,0.45)] bg-transparent px-3 py-2 text-center text-[11px] font-semibold text-[#6C5CE7] shadow-sm transition-colors hover:bg-[rgba(108,92,231,0.08)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#6C5CE7]/35 sm:flex-none md:text-xs">
+                تعديل الرسالة
+              </a>
+            </div>
+          </div>
+          <p id="recoveryTrendCopyToast" class="pointer-events-none fixed bottom-6 left-1/2 z-[60] hidden -translate-x-1/2 rounded-lg bg-slate-800 px-4 py-2 text-xs font-medium text-white shadow-lg opacity-95" role="status"></p>
           <div class="rounded-2xl border border-zid-100 bg-white p-6 shadow-sm md:p-5">
             <p id="recoveryTrendEstimateLabel" class="mb-2 hidden text-center text-[11px] font-medium leading-snug text-slate-500 md:text-xs">بيانات تقديرية لعرض الأداء</p>
             <p id="recoveryTrendRevenueHighlight" class="mb-3 text-center text-lg font-bold leading-snug md:text-xl" style="color: #16a34a"></p>
@@ -544,7 +567,15 @@
       if (!canvas || typeof Chart === "undefined") return;
       var accent = "#6C5CE7";
       var demoValues = [200, 400, 300, 600, 900, 1200, 1500];
-      var demoLabels = ["آخر 7 أيام", "آخر 7 أيام", "آخر 7 أيام", "آخر 7 أيام", "آخر 7 أيام", "آخر 7 أيام", "آخر 7 أيام"];
+      var trendDayLabels = [
+        "قبل 6 أيام",
+        "قبل 5 أيام",
+        "قبل 4 أيام",
+        "قبل 3 أيام",
+        "قبل يومين",
+        "أمس",
+        "اليوم",
+      ];
       var estimateEl = document.getElementById("recoveryTrendEstimateLabel");
       var revenueEl = document.getElementById("recoveryTrendRevenueHighlight");
 
@@ -584,7 +615,7 @@
         return g;
       }
 
-      function buildChart(labels, values, showEstimateLabel) {
+      function buildChart(values, showEstimateLabel) {
         if (estimateEl) {
           estimateEl.classList.toggle("hidden", !showEstimateLabel);
         }
@@ -592,7 +623,7 @@
         new Chart(canvas, {
           type: "line",
           data: {
-            labels: labels,
+            labels: trendDayLabels,
             datasets: [
               {
                 label: "",
@@ -635,7 +666,13 @@
                       ctx.parsed.y !== undefined && ctx.parsed.y !== null
                         ? ctx.parsed.y
                         : 0;
+                    var dayLabel =
+                      trendDayLabels[ctx.dataIndex] !== undefined
+                        ? trendDayLabels[ctx.dataIndex]
+                        : "";
+                    var prefix = dayLabel ? dayLabel + " — " : "";
                     return (
+                      prefix +
                       "المبيعات المسترجعة: " +
                       formatMoneyInt(v) +
                       " ريال"
@@ -648,11 +685,11 @@
               x: {
                 grid: { display: false },
                 ticks: {
-                  color: "#64748b",
+                  color: "#94A3B8",
                   maxRotation: 0,
                   font: {
                     family: '"IBM Plex Sans Arabic", system-ui, sans-serif',
-                    size: 10,
+                    size: 11,
                   },
                 },
               },
@@ -677,12 +714,8 @@
           return res.json();
         })
         .then(function (data) {
-          var labels = [];
           var values = [];
           if (Array.isArray(data) && data.length > 0) {
-            labels = data.map(function (d) {
-              return d.date;
-            });
             values = data.map(function (d) {
               return typeof d.value === "number" ? d.value : 0;
             });
@@ -692,14 +725,108 @@
             data.length === 0 ||
             allValuesZero(values);
           if (emptyOrZero) {
-            buildChart(demoLabels, demoValues, true);
+            buildChart(demoValues, true);
           } else {
-            buildChart(labels, values, false);
+            buildChart(values, false);
           }
         })
         .catch(function () {
-          buildChart(demoLabels, demoValues, true);
+          buildChart(demoValues, true);
         });
+    })();
+  </script>
+  <script>
+    (function () {
+      var toggle = document.getElementById("recoveryTrendSuggestToggle");
+      var panel = document.getElementById("recoveryTrendSuggestPanel");
+      var bodyEl = document.getElementById("recoveryTrendSuggestBody");
+      var copyBtn = document.getElementById("recoveryTrendSuggestCopy");
+      var editEl = document.getElementById("recoveryTrendSuggestEdit");
+      var toast = document.getElementById("recoveryTrendCopyToast");
+      var reasonEl = document.getElementById("dashTopHesitationReason");
+
+      var suggestCopy = {
+        price:
+          "واضح إن السعر يهمك 👌\nفي خيار قريب بنفس الفكرة بسعر أقل، ممكن يكون أنسب لك 👍",
+        shipping:
+          "بالنسبة للشحن 👌\nالتوصيل سريع وما ياخذ وقت طويل، وتقدر تشوف التفاصيل قبل إتمام الطلب 👍",
+        warranty:
+          "المنتج عليه ضمان واضح 👌\nولو صار أي شيء، نقدر نساعدك بالاستبدال حسب سياسة المتجر 👍",
+        thinking:
+          "إذا محتار، أقدر أساعدك تختار الأنسب لك 👌\nخلنا نشوف أفضل خيار لك.",
+        quality:
+          "جودة المنتج مهمة 👌\nهذا الخيار مختار بعناية، ولو فيه أي مشكلة نقدر نساعدك حسب سياسة المتجر 👍",
+        _fallback:
+          "أقدر أساعدك تختار الأنسب لك 👌\nخلنا نراجع الخيارات المتاحة.",
+      };
+
+      function topReason() {
+        var raw = reasonEl ? String(reasonEl.getAttribute("data-reason") || "").trim().toLowerCase() : "";
+        var ok = ["price", "shipping", "warranty", "thinking", "quality"];
+        return ok.indexOf(raw) !== -1 ? raw : "thinking";
+      }
+
+      function suggestText(reason) {
+        var t = suggestCopy[reason];
+        return typeof t === "string" ? t : suggestCopy._fallback;
+      }
+
+      function refreshPanel() {
+        var r = topReason();
+        bodyEl.textContent = suggestText(r);
+        editEl.setAttribute(
+          "href",
+          "/dashboard/cartflow-messages#cf-msg-template-" + r
+        );
+      }
+
+      function showCopyToast() {
+        if (!toast) return;
+        toast.textContent = "تم نسخ الرسالة";
+        toast.classList.remove("hidden");
+        window.clearTimeout(showCopyToast._t);
+        showCopyToast._t = window.setTimeout(function () {
+          toast.classList.add("hidden");
+        }, 2200);
+      }
+
+      if (!toggle || !panel || !bodyEl || !copyBtn || !editEl) return;
+
+      toggle.addEventListener("click", function () {
+        panel.classList.toggle("hidden");
+        if (!panel.classList.contains("hidden")) {
+          refreshPanel();
+        }
+      });
+
+      copyBtn.addEventListener("click", function () {
+        var text = bodyEl.textContent || "";
+        if (!String(text).trim()) return;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(showCopyToast).catch(function () {
+            legacyCopy(text);
+          });
+        } else {
+          legacyCopy(text);
+        }
+      });
+
+      function legacyCopy(text) {
+        var ta = document.createElement("textarea");
+        ta.value = text;
+        ta.setAttribute("readonly", "");
+        ta.style.position = "fixed";
+        ta.style.left = "-9999px";
+        document.body.appendChild(ta);
+        ta.select();
+        try {
+          document.execCommand("copy");
+          showCopyToast();
+        } catch (e) {
+          /* ignore */
+        }
+        document.body.removeChild(ta);
+      }
     })();
   </script>
 </body>
