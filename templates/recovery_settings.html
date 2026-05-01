@@ -1,168 +1,240 @@
 <!DOCTYPE html>
-<html lang="en" dir="ltr">
+<html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Recovery settings — CartFlow</title>
+  <title>إعدادات الاسترجاع — CartFlow</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
       theme: {
         extend: {
           colors: {
-            zid: { 500: "#7c3aed", 600: "#5b2d8b", 100: "#ede9fe" },
+            zid: { 500: "#7c3aed", 600: "#6d28d9", 100: "#ede9fe", 50: "#f5f3ff" },
           },
         },
       },
     };
   </script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <style>
-    body { font-family: "Inter", system-ui, sans-serif; }
-    .recovery-templates-ar { font-family: "IBM Plex Sans Arabic", system-ui, sans-serif; }
+    body { font-family: "IBM Plex Sans Arabic", system-ui, sans-serif; }
   </style>
 </head>
-<body class="min-h-screen bg-slate-50 text-slate-800 p-6">
+<body class="min-h-screen bg-gradient-to-b from-zid-50/90 to-slate-50 text-slate-800 px-4 py-5">
   {% include "partials/cart_abandon_tracking.html" %}
-  <div class="max-w-3xl mx-auto">
-    <a href="/dashboard" class="text-sm text-zid-600 hover:underline mb-6 inline-block">← Back to dashboard</a>
-    <h1 class="text-xl font-semibold text-slate-900 mb-1">Recovery settings</h1>
-    <p class="text-sm text-slate-500 mb-6">How long to wait before recovery messages, and how many to send.</p>
+  <div class="mx-auto max-w-2xl">
+    <a href="/dashboard" class="mb-3 inline-block text-xs font-medium text-zid-600 hover:text-zid-700 hover:underline">← العودة للوحة التحكم</a>
 
-    <div id="errBox" class="hidden mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"></div>
-    <div id="okBox" class="hidden mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">Saved.</div>
+    <header class="mb-4">
+      <h1 class="text-lg font-bold text-zid-900">إعدادات الاسترجاع</h1>
+      <p class="mt-0.5 text-[11px] leading-relaxed text-slate-500">مدة الانتظار قبل رسائل الاسترجاع، عدد المحاولات، وقوالب الرسائل.</p>
+    </header>
 
-    <form id="f" class="space-y-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-      <div class="space-y-4">
-        <div>
-          <label class="block text-sm font-medium text-slate-700" for="recovery_delay">Delay (number)</label>
-          <input id="recovery_delay" name="recovery_delay" type="number" min="1" step="1"
-            class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-zid-500 focus:outline-none focus:ring-1 focus:ring-zid-500" required />
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-slate-700" for="recovery_delay_unit">Unit</label>
-          <select id="recovery_delay_unit" name="recovery_delay_unit"
-            class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-zid-500 focus:outline-none focus:ring-1 focus:ring-zid-500">
-            <option value="minutes">minutes</option>
-            <option value="hours">hours</option>
-            <option value="days">days</option>
-          </select>
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-slate-700" for="recovery_attempts">Recovery attempts</label>
-          <input id="recovery_attempts" name="recovery_attempts" type="number" min="1" step="1"
-            class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-zid-500 focus:outline-none focus:ring-1 focus:ring-zid-500" required />
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-slate-700" for="whatsapp_support_url">WhatsApp support link (optional)</label>
-          <input id="whatsapp_support_url" name="whatsapp_support_url" type="url" inputmode="url" autocomplete="off" placeholder="https://wa.me/9665..."
-            class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-zid-500 focus:outline-none focus:ring-1 focus:ring-zid-500" />
-          <p class="mt-1 text-xs text-slate-500">Used when customers choose to contact you from the cart widget.</p>
-        </div>
-      </div>
+    <div id="errBox" class="mb-3 hidden rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800"></div>
+    <div id="okBox" class="mb-3 hidden rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">تم الحفظ.</div>
 
-      <div class="recovery-templates-ar space-y-4 border-t border-slate-100 pt-6" dir="rtl" lang="ar">
-        <h2 class="text-sm font-bold text-slate-800">نمط الرسائل</h2>
-        <p class="text-xs text-slate-500">بعد الموافقة على الاقتراح: أسطر المساعدة القصيرة لعرض المنتجات في الودجت (منفصلة عن رسالة الخروج قبل السلة وعن قوالب واتساب).</p>
-        <div>
-          <label class="block text-sm font-medium text-slate-700" for="template_tone">اختر أسلوب الرسائل</label>
-          <select id="template_tone" name="template_tone"
-            class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-zid-500 focus:outline-none focus:ring-1 focus:ring-zid-500">
-            <option value="friendly">ودي</option>
-            <option value="formal">رسمي</option>
-            <option value="sales">بيع مباشر</option>
-          </select>
+    <form id="f" class="space-y-3">
+      <!-- التوقيت -->
+      <section class="rounded-xl border border-violet-100 bg-white/90 p-4 shadow-sm ring-1 ring-violet-100/60">
+        <h2 class="mb-3 border-b border-violet-100 pb-2 text-sm font-bold text-zid-800">التوقيت والاتصال</h2>
+        <div class="space-y-2.5">
+          <div>
+            <label class="block text-xs font-medium text-slate-700" for="recovery_delay">مدة الانتظار قبل الإرسال</label>
+            <input id="recovery_delay" name="recovery_delay" type="number" min="1" step="1"
+              class="mt-0.5 w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm focus:border-zid-500 focus:outline-none focus:ring-1 focus:ring-zid-500" required />
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-700" for="recovery_delay_unit">وحدة الوقت</label>
+            <select id="recovery_delay_unit" name="recovery_delay_unit"
+              class="mt-0.5 w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm focus:border-zid-500 focus:outline-none focus:ring-1 focus:ring-zid-500">
+              <option value="minutes">دقائق</option>
+              <option value="hours">ساعات</option>
+              <option value="days">أيام</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-700" for="recovery_attempts">عدد محاولات الاسترجاع</label>
+            <input id="recovery_attempts" name="recovery_attempts" type="number" min="1" step="1"
+              class="mt-0.5 w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm focus:border-zid-500 focus:outline-none focus:ring-1 focus:ring-zid-500" required />
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-700" for="whatsapp_support_url">رابط دعم واتساب (اختياري)</label>
+            <input id="whatsapp_support_url" name="whatsapp_support_url" type="url" inputmode="url" autocomplete="off" placeholder="https://wa.me/9665..."
+              class="mt-0.5 w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm focus:border-zid-500 focus:outline-none focus:ring-1 focus:ring-zid-500" />
+            <p class="mt-0.5 text-[10px] leading-snug text-slate-500">يُستخدم عندما يختار العميل التواصل معك من ودجت السلة.</p>
+          </div>
         </div>
-        <fieldset class="space-y-2">
-          <legend class="text-sm font-medium text-slate-700">وضع النص</legend>
-          <label class="flex cursor-pointer items-center gap-2 text-sm text-slate-800">
-            <input type="radio" name="template_mode" value="preset" id="template_mode_preset" class="h-4 w-4 border-slate-300 text-zid-600 focus:ring-zid-500" checked />
-            استخدام أسلوب جاهز
-          </label>
-          <label class="flex cursor-pointer items-center gap-2 text-sm text-slate-800">
-            <input type="radio" name="template_mode" value="custom" id="template_mode_custom" class="h-4 w-4 border-slate-300 text-zid-600 focus:ring-zid-500" />
-            كتابة نص مخصص
-          </label>
-        </fieldset>
-        <div id="template_custom_wrap" class="hidden space-y-1">
-          <label class="block text-sm font-medium text-slate-700" for="template_custom_text">النص المخصص (اختياري)</label>
-          <textarea id="template_custom_text" name="template_custom_text" rows="4"
-            placeholder="اكتب النص الذي تريد استخدامه بدلاً من النص الافتراضي..."
-            class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-zid-500 focus:outline-none focus:ring-1 focus:ring-zid-500 resize-y"></textarea>
-        </div>
-      </div>
+      </section>
 
-      <div class="recovery-templates-ar space-y-4 border-t border-slate-100 pt-6" dir="rtl" lang="ar">
-        <h2 class="text-sm font-bold text-slate-800">رسائل الخروج قبل السلة</h2>
-        <p class="text-xs text-slate-500">الرسالة الأولى عند محاولة مغادرة الصفحة بدون منتجات في السلة فقط. لا يؤثر على رسائل استعادة السلة أو واتساب.</p>
-        <div>
-          <label class="block text-sm font-medium text-slate-700" for="exit_intent_template_tone">اختر أسلوب الرسائل</label>
-          <select id="exit_intent_template_tone" name="exit_intent_template_tone"
-            class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-zid-500 focus:outline-none focus:ring-1 focus:ring-zid-500">
-            <option value="friendly">ودي</option>
-            <option value="formal">رسمي</option>
-            <option value="sales">بيع مباشر</option>
-          </select>
+      <!-- نمط رسائل الاكتشاف -->
+      <section class="rounded-xl border border-violet-100 bg-white/90 p-4 shadow-sm ring-1 ring-violet-100/60">
+        <h2 class="mb-1 text-sm font-bold text-zid-800">نمط الرسائل</h2>
+        <p class="mb-3 text-[10px] leading-snug text-slate-500">بعد الموافقة على الاقتراح: مساعد عرض المنتجات في الودجت (منفصل عن رسالة الخروج قبل السلة وقوالب واتساب).</p>
+        <div class="space-y-2.5">
+          <div>
+            <label class="block text-xs font-medium text-slate-700" for="template_tone">اختر أسلوب الرسائل</label>
+            <select id="template_tone" name="template_tone"
+              class="mt-0.5 w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm focus:border-zid-500 focus:outline-none focus:ring-1 focus:ring-zid-500">
+              <option value="friendly">ودي</option>
+              <option value="formal">رسمي</option>
+              <option value="sales">بيع مباشر</option>
+            </select>
+          </div>
+          <fieldset class="space-y-1">
+            <legend class="text-xs font-medium text-slate-700">وضع النص</legend>
+            <label class="flex cursor-pointer items-center gap-2 text-xs text-slate-800">
+              <input type="radio" name="template_mode" value="preset" id="template_mode_preset" class="h-3.5 w-3.5 border-slate-300 text-zid-600 focus:ring-zid-500" checked />
+              استخدام أسلوب جاهز
+            </label>
+            <label class="flex cursor-pointer items-center gap-2 text-xs text-slate-800">
+              <input type="radio" name="template_mode" value="custom" id="template_mode_custom" class="h-3.5 w-3.5 border-slate-300 text-zid-600 focus:ring-zid-500" />
+              كتابة نص مخصص
+            </label>
+          </fieldset>
+          <div id="discovery_phrase_row" class="space-y-0.5">
+            <label class="block text-xs font-medium text-slate-700" for="discovery_phrase_pick">اختر عبارة جاهزة</label>
+            <select id="discovery_phrase_pick"
+              class="w-full rounded-lg border border-violet-200 bg-zid-50/50 px-2.5 py-1.5 text-xs focus:border-zid-500 focus:outline-none focus:ring-1 focus:ring-zid-500">
+              <option value="">— اختر عبارة —</option>
+              <option value="friendly" data-body="جبت لك خيارات مناسبة 👇&#10;تقدر تختار اللي يناسبك وتضيفه للسلة بسهولة 👍">ودي — جبت لك خيارات مناسبة…</option>
+              <option value="formal" data-body="تم توفير خيارات مناسبة لك 👇&#10;تقدر تختار اللي يناسبك وتضيفه للسلة بسهولة 👍">رسمي — تم توفير خيارات مناسبة…</option>
+              <option value="sales" data-body="هذه أفضل الخيارات لك الآن 👇&#10;تقدر تختار اللي يناسبك وتضيفه للسلة بسهولة 👍">بيع مباشر — أفضل الخيارات لك…</option>
+            </select>
+            <p class="text-[10px] text-slate-500">يملأ خانة النص ويحوّل الوضع إلى «نص مخصص» لتقدر تعدّل قبل الحفظ.</p>
+          </div>
+          <div id="template_custom_wrap" class="hidden space-y-0.5">
+            <label class="block text-xs font-medium text-slate-700" for="template_custom_text">النص المخصص</label>
+            <textarea id="template_custom_text" name="template_custom_text" rows="3"
+              placeholder="اكتب النص الذي تريد استخدامه…"
+              class="mt-0.5 w-full resize-y rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm focus:border-zid-500 focus:outline-none focus:ring-1 focus:ring-zid-500"></textarea>
+          </div>
         </div>
-        <fieldset class="space-y-2">
-          <legend class="text-sm font-medium text-slate-700">وضع النص</legend>
-          <label class="flex cursor-pointer items-center gap-2 text-sm text-slate-800">
-            <input type="radio" name="exit_intent_template_mode" value="preset" id="exit_intent_mode_preset" class="h-4 w-4 border-slate-300 text-zid-600 focus:ring-zid-500" checked />
-            استخدام أسلوب جاهز
-          </label>
-          <label class="flex cursor-pointer items-center gap-2 text-sm text-slate-800">
-            <input type="radio" name="exit_intent_template_mode" value="custom" id="exit_intent_mode_custom" class="h-4 w-4 border-slate-300 text-zid-600 focus:ring-zid-500" />
-            كتابة نص مخصص
-          </label>
-        </fieldset>
-        <div id="exit_intent_custom_wrap" class="hidden space-y-1">
-          <label class="block text-sm font-medium text-slate-700" for="exit_intent_custom_text">النص المخصص</label>
-          <textarea id="exit_intent_custom_text" name="exit_intent_custom_text" rows="5"
-            placeholder="النص الذي يظهر في أول رسالة لفقاعة الخروج قبل السلة..."
-            class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-zid-500 focus:outline-none focus:ring-1 focus:ring-zid-500 resize-y"></textarea>
-        </div>
-      </div>
+      </section>
 
-      <div class="recovery-templates-ar space-y-4 border-t border-slate-100 pt-6" dir="rtl" lang="ar" aria-labelledby="recovery-templates-heading">
-        <h2 id="recovery-templates-heading" class="text-sm font-bold text-slate-800">رسائل استعادة السلة</h2>
-        <p class="text-xs text-slate-500">اترك الحقل فارغاً لاستخدام النص الافتراضي للنظام.</p>
+      <!-- الخروج قبل السلة -->
+      <section class="rounded-xl border border-violet-100 bg-white/90 p-4 shadow-sm ring-1 ring-violet-100/60">
+        <h2 class="mb-1 text-sm font-bold text-zid-800">رسائل الخروج قبل السلة</h2>
+        <p class="mb-3 text-[10px] leading-snug text-slate-500">أول رسالة عند مغادرة الصفحة بدون منتجات في السلة فقط.</p>
+        <div class="space-y-2.5">
+          <div>
+            <label class="block text-xs font-medium text-slate-700" for="exit_intent_template_tone">اختر أسلوب الرسائل</label>
+            <select id="exit_intent_template_tone" name="exit_intent_template_tone"
+              class="mt-0.5 w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm focus:border-zid-500 focus:outline-none focus:ring-1 focus:ring-zid-500">
+              <option value="friendly">ودي</option>
+              <option value="formal">رسمي</option>
+              <option value="sales">بيع مباشر</option>
+            </select>
+          </div>
+          <fieldset class="space-y-1">
+            <legend class="text-xs font-medium text-slate-700">وضع النص</legend>
+            <label class="flex cursor-pointer items-center gap-2 text-xs text-slate-800">
+              <input type="radio" name="exit_intent_template_mode" value="preset" id="exit_intent_mode_preset" class="h-3.5 w-3.5 border-slate-300 text-zid-600 focus:ring-zid-500" checked />
+              استخدام أسلوب جاهز
+            </label>
+            <label class="flex cursor-pointer items-center gap-2 text-xs text-slate-800">
+              <input type="radio" name="exit_intent_template_mode" value="custom" id="exit_intent_mode_custom" class="h-3.5 w-3.5 border-slate-300 text-zid-600 focus:ring-zid-500" />
+              كتابة نص مخصص
+            </label>
+          </fieldset>
+          <div id="exit_intent_phrase_row" class="space-y-0.5">
+            <label class="block text-xs font-medium text-slate-700" for="exit_intent_phrase_pick">اختر عبارة جاهزة</label>
+            <select id="exit_intent_phrase_pick"
+              class="w-full rounded-lg border border-violet-200 bg-zid-50/50 px-2.5 py-1.5 text-xs focus:border-zid-500 focus:outline-none focus:ring-1 focus:ring-zid-500">
+              <option value="">— اختر عبارة —</option>
+              <option value="friendly" data-body="هلا 👋 فيه خيارات ممكن تعجبك، تحب أشوفها لك بسرعة؟">ودي — هلا 👋 فيه خيارات…</option>
+              <option value="formal" data-body="مرحباً، يمكنني مساعدتك في استعراض خيارات مناسبة لك.">رسمي — مرحباً، يمكنني مساعدتك…</option>
+              <option value="sales" data-body="قبل ما تطلع، عندي خيارات ممكن تناسبك أكثر.">بيع مباشر — قبل ما تطلع…</option>
+            </select>
+            <p class="text-[10px] text-slate-500">يملأ خانة النص ويحوّل الوضع إلى «نص مخصص» لتقدر تعدّل قبل الحفظ.</p>
+          </div>
+          <div id="exit_intent_custom_wrap" class="hidden space-y-0.5">
+            <label class="block text-xs font-medium text-slate-700" for="exit_intent_custom_text">النص المخصص</label>
+            <textarea id="exit_intent_custom_text" name="exit_intent_custom_text" rows="4"
+              placeholder="النص الذي يظهر في أول رسالة لفقاعة الخروج…"
+              class="mt-0.5 w-full resize-y rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm focus:border-zid-500 focus:outline-none focus:ring-1 focus:ring-zid-500"></textarea>
+          </div>
+        </div>
+      </section>
 
-        <div>
-          <label class="block text-sm font-medium text-slate-700" for="template_price">السعر</label>
-          <textarea id="template_price" name="template_price" rows="4"
-            class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-zid-500 focus:outline-none focus:ring-1 focus:ring-zid-500 resize-y"></textarea>
+      <!-- قوالب واتساب -->
+      <section class="rounded-xl border border-violet-100 bg-white/90 p-4 shadow-sm ring-1 ring-violet-100/60" aria-labelledby="recovery-templates-heading">
+        <h2 id="recovery-templates-heading" class="mb-1 text-sm font-bold text-zid-800">رسائل استعادة السلة</h2>
+        <p class="mb-3 text-[10px] leading-snug text-slate-500">اترك الحقل فارغاً للنص الافتراضي. يمكنك إدراج عبارة جاهزة ثم تعديلها.</p>
+
+        <div class="space-y-3">
+          <div class="rounded-lg border border-slate-100 bg-slate-50/50 p-2.5">
+            <label class="block text-xs font-medium text-slate-700" for="template_price">السعر</label>
+            <select data-target="template_price" class="wa-phrase-pick mt-1 w-full rounded border border-violet-200 bg-white px-2 py-1 text-[11px] text-slate-600 focus:border-zid-500 focus:outline-none">
+              <option value="">— اختر عبارة جاهزة —</option>
+              <option value="هلا 👋 لاحظنا إنك ما كمّلت الطلب — نقدر نساعدك بخطوة بسيطة إذا حاب.">ودي</option>
+              <option value="مرحباً، يمكننا مساعدتك على إتمام طلبك عند رغبتك.">رسمي</option>
+              <option value="لا تفوّت الفرصة 👌 كمّل طلبك الآن وخلينا نسهّل عليك.">بيع مباشر</option>
+            </select>
+            <textarea id="template_price" name="template_price" rows="3"
+              class="mt-1 w-full resize-y rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm focus:border-zid-500 focus:outline-none focus:ring-1 focus:ring-zid-500"></textarea>
+          </div>
+          <div class="rounded-lg border border-slate-100 bg-slate-50/50 p-2.5">
+            <label class="block text-xs font-medium text-slate-700" for="template_shipping">الشحن</label>
+            <select data-target="template_shipping" class="wa-phrase-pick mt-1 w-full rounded border border-violet-200 bg-white px-2 py-1 text-[11px] text-slate-600 focus:border-zid-500 focus:outline-none">
+              <option value="">— اختر عبارة جاهزة —</option>
+              <option value="هلا 👋 لاحظنا إنك ما كمّلت الطلب — نقدر نساعدك بخطوة بسيطة إذا حاب.">ودي</option>
+              <option value="مرحباً، يمكننا مساعدتك على إتمام طلبك عند رغبتك.">رسمي</option>
+              <option value="لا تفوّت الفرصة 👌 كمّل طلبك الآن وخلينا نسهّل عليك.">بيع مباشر</option>
+            </select>
+            <textarea id="template_shipping" name="template_shipping" rows="3"
+              class="mt-1 w-full resize-y rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm focus:border-zid-500 focus:outline-none focus:ring-1 focus:ring-zid-500"></textarea>
+          </div>
+          <div class="rounded-lg border border-slate-100 bg-slate-50/50 p-2.5">
+            <label class="block text-xs font-medium text-slate-700" for="template_quality">الجودة</label>
+            <select data-target="template_quality" class="wa-phrase-pick mt-1 w-full rounded border border-violet-200 bg-white px-2 py-1 text-[11px] text-slate-600 focus:border-zid-500 focus:outline-none">
+              <option value="">— اختر عبارة جاهزة —</option>
+              <option value="هلا 👋 لاحظنا إنك ما كمّلت الطلب — نقدر نساعدك بخطوة بسيطة إذا حاب.">ودي</option>
+              <option value="مرحباً، يمكننا مساعدتك على إتمام طلبك عند رغبتك.">رسمي</option>
+              <option value="لا تفوّت الفرصة 👌 كمّل طلبك الآن وخلينا نسهّل عليك.">بيع مباشر</option>
+            </select>
+            <textarea id="template_quality" name="template_quality" rows="3"
+              class="mt-1 w-full resize-y rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm focus:border-zid-500 focus:outline-none focus:ring-1 focus:ring-zid-500"></textarea>
+          </div>
+          <div class="rounded-lg border border-slate-100 bg-slate-50/50 p-2.5">
+            <label class="block text-xs font-medium text-slate-700" for="template_delivery">التوصيل</label>
+            <select data-target="template_delivery" class="wa-phrase-pick mt-1 w-full rounded border border-violet-200 bg-white px-2 py-1 text-[11px] text-slate-600 focus:border-zid-500 focus:outline-none">
+              <option value="">— اختر عبارة جاهزة —</option>
+              <option value="هلا 👋 لاحظنا إنك ما كمّلت الطلب — نقدر نساعدك بخطوة بسيطة إذا حاب.">ودي</option>
+              <option value="مرحباً، يمكننا مساعدتك على إتمام طلبك عند رغبتك.">رسمي</option>
+              <option value="لا تفوّت الفرصة 👌 كمّل طلبك الآن وخلينا نسهّل عليك.">بيع مباشر</option>
+            </select>
+            <textarea id="template_delivery" name="template_delivery" rows="3"
+              class="mt-1 w-full resize-y rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm focus:border-zid-500 focus:outline-none focus:ring-1 focus:ring-zid-500"></textarea>
+          </div>
+          <div class="rounded-lg border border-slate-100 bg-slate-50/50 p-2.5">
+            <label class="block text-xs font-medium text-slate-700" for="template_warranty">الضمان</label>
+            <select data-target="template_warranty" class="wa-phrase-pick mt-1 w-full rounded border border-violet-200 bg-white px-2 py-1 text-[11px] text-slate-600 focus:border-zid-500 focus:outline-none">
+              <option value="">— اختر عبارة جاهزة —</option>
+              <option value="هلا 👋 لاحظنا إنك ما كمّلت الطلب — نقدر نساعدك بخطوة بسيطة إذا حاب.">ودي</option>
+              <option value="مرحباً، يمكننا مساعدتك على إتمام طلبك عند رغبتك.">رسمي</option>
+              <option value="لا تفوّت الفرصة 👌 كمّل طلبك الآن وخلينا نسهّل عليك.">بيع مباشر</option>
+            </select>
+            <textarea id="template_warranty" name="template_warranty" rows="3"
+              class="mt-1 w-full resize-y rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm focus:border-zid-500 focus:outline-none focus:ring-1 focus:ring-zid-500"></textarea>
+          </div>
+          <div class="rounded-lg border border-slate-100 bg-slate-50/50 p-2.5">
+            <label class="block text-xs font-medium text-slate-700" for="template_other">أخرى</label>
+            <select data-target="template_other" class="wa-phrase-pick mt-1 w-full rounded border border-violet-200 bg-white px-2 py-1 text-[11px] text-slate-600 focus:border-zid-500 focus:outline-none">
+              <option value="">— اختر عبارة جاهزة —</option>
+              <option value="هلا 👋 لاحظنا إنك ما كمّلت الطلب — نقدر نساعدك بخطوة بسيطة إذا حاب.">ودي</option>
+              <option value="مرحباً، يمكننا مساعدتك على إتمام طلبك عند رغبتك.">رسمي</option>
+              <option value="لا تفوّت الفرصة 👌 كمّل طلبك الآن وخلينا نسهّل عليك.">بيع مباشر</option>
+            </select>
+            <textarea id="template_other" name="template_other" rows="3"
+              class="mt-1 w-full resize-y rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm focus:border-zid-500 focus:outline-none focus:ring-1 focus:ring-zid-500"></textarea>
+          </div>
         </div>
-        <div>
-          <label class="block text-sm font-medium text-slate-700" for="template_shipping">الشحن</label>
-          <textarea id="template_shipping" name="template_shipping" rows="4"
-            class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-zid-500 focus:outline-none focus:ring-1 focus:ring-zid-500 resize-y"></textarea>
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-slate-700" for="template_quality">الجودة</label>
-          <textarea id="template_quality" name="template_quality" rows="4"
-            class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-zid-500 focus:outline-none focus:ring-1 focus:ring-zid-500 resize-y"></textarea>
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-slate-700" for="template_delivery">التوصيل</label>
-          <textarea id="template_delivery" name="template_delivery" rows="4"
-            class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-zid-500 focus:outline-none focus:ring-1 focus:ring-zid-500 resize-y"></textarea>
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-slate-700" for="template_warranty">الضمان</label>
-          <textarea id="template_warranty" name="template_warranty" rows="4"
-            class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-zid-500 focus:outline-none focus:ring-1 focus:ring-zid-500 resize-y"></textarea>
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-slate-700" for="template_other">أخرى</label>
-          <textarea id="template_other" name="template_other" rows="4"
-            class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-zid-500 focus:outline-none focus:ring-1 focus:ring-zid-500 resize-y"></textarea>
-        </div>
-      </div>
+      </section>
 
       <button type="submit" id="saveBtn"
-        class="w-full rounded-lg bg-zid-600 py-2.5 text-sm font-medium text-white hover:bg-zid-500 focus:outline-none focus:ring-2 focus:ring-zid-500 focus:ring-offset-1">
-        Save
+        class="w-full rounded-xl bg-zid-600 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-zid-700 focus:outline-none focus:ring-2 focus:ring-zid-500 focus:ring-offset-2">
+        حفظ الإعدادات
       </button>
     </form>
   </div>
@@ -178,9 +250,20 @@
         "template_warranty",
         "template_other",
       ];
-      function showErr(t) { errBox.textContent = t || "Error"; errBox.classList.remove("hidden"); okBox.classList.add("hidden"); }
-      function showOk() { okBox.classList.remove("hidden"); errBox.classList.add("hidden"); }
-      function hideMsg() { errBox.classList.add("hidden"); okBox.classList.add("hidden"); }
+
+      function showErr(t) {
+        errBox.textContent = t || "حدث خطأ";
+        errBox.classList.remove("hidden");
+        okBox.classList.add("hidden");
+      }
+      function showOk() {
+        okBox.classList.remove("hidden");
+        errBox.classList.add("hidden");
+      }
+      function hideMsg() {
+        errBox.classList.add("hidden");
+        okBox.classList.add("hidden");
+      }
 
       function fillTemplates(data) {
         TEMPLATE_KEYS.forEach(function (k) {
@@ -193,8 +276,34 @@
       function syncTemplateCustomVisibility() {
         var wrap = document.getElementById("template_custom_wrap");
         var custom = document.getElementById("template_mode_custom");
+        var phraseRow = document.getElementById("discovery_phrase_row");
         if (!wrap || !custom) return;
-        wrap.classList.toggle("hidden", !custom.checked);
+        var isCustom = custom.checked;
+        wrap.classList.toggle("hidden", !isCustom);
+        if (phraseRow) phraseRow.classList.toggle("hidden", isCustom);
+      }
+
+      function applyTonePhrasePick(selectEl, toneSelectId, presetRadioId, customRadioId, textareaId, syncFn) {
+        if (!selectEl || selectEl.selectedIndex <= 0) return;
+        var opt = selectEl.options[selectEl.selectedIndex];
+        var body = opt.getAttribute("data-body");
+        var toneKey = selectEl.value;
+        if (!body) return;
+        try {
+          body = body.replace(/&#10;/g, "\n");
+        } catch (e) {
+          /* ignore */
+        }
+        var toneSel = document.getElementById(toneSelectId);
+        if (toneSel && toneKey) toneSel.value = toneKey;
+        var presetEl = document.getElementById(presetRadioId);
+        var customEl = document.getElementById(customRadioId);
+        if (customEl) customEl.checked = true;
+        if (presetEl) presetEl.checked = false;
+        var ta = document.getElementById(textareaId);
+        if (ta) ta.value = body;
+        selectEl.selectedIndex = 0;
+        if (typeof syncFn === "function") syncFn();
       }
 
       function fillTemplateControl(data) {
@@ -225,6 +334,19 @@
         var customRadio = document.getElementById("template_mode_custom");
         if (presetRadio) presetRadio.addEventListener("change", syncTemplateCustomVisibility);
         if (customRadio) customRadio.addEventListener("change", syncTemplateCustomVisibility);
+        var phrasePick = document.getElementById("discovery_phrase_pick");
+        if (phrasePick) {
+          phrasePick.addEventListener("change", function () {
+            applyTonePhrasePick(
+              phrasePick,
+              "template_tone",
+              "template_mode_preset",
+              "template_mode_custom",
+              "template_custom_text",
+              syncTemplateCustomVisibility
+            );
+          });
+        }
       }
 
       attachTemplateControlListeners();
@@ -232,8 +354,11 @@
       function syncExitIntentCustomVisibility() {
         var wrap = document.getElementById("exit_intent_custom_wrap");
         var custom = document.getElementById("exit_intent_mode_custom");
+        var phraseRow = document.getElementById("exit_intent_phrase_row");
         if (!wrap || !custom) return;
-        wrap.classList.toggle("hidden", !custom.checked);
+        var isCustom = custom.checked;
+        wrap.classList.toggle("hidden", !isCustom);
+        if (phraseRow) phraseRow.classList.toggle("hidden", isCustom);
       }
 
       function fillExitIntentTemplateControl(data) {
@@ -275,11 +400,40 @@
         var customRadio = document.getElementById("exit_intent_mode_custom");
         if (presetRadio) presetRadio.addEventListener("change", syncExitIntentCustomVisibility);
         if (customRadio) customRadio.addEventListener("change", syncExitIntentCustomVisibility);
+        var phrasePick = document.getElementById("exit_intent_phrase_pick");
+        if (phrasePick) {
+          phrasePick.addEventListener("change", function () {
+            applyTonePhrasePick(
+              phrasePick,
+              "exit_intent_template_tone",
+              "exit_intent_mode_preset",
+              "exit_intent_mode_custom",
+              "exit_intent_custom_text",
+              syncExitIntentCustomVisibility
+            );
+          });
+        }
       }
 
       attachExitIntentListeners();
+
+      document.querySelectorAll(".wa-phrase-pick").forEach(function (sel) {
+        sel.addEventListener("change", function () {
+          var v = sel.value;
+          if (!v) return;
+          var tid = sel.getAttribute("data-target");
+          var ta = tid ? document.getElementById(tid) : null;
+          if (ta) ta.value = v;
+          sel.selectedIndex = 0;
+        });
+      });
+
       fetch("/api/recovery-settings")
-        .then(function (r) { return r.json().then(function (d) { return { status: r.status, data: d }; }); })
+        .then(function (r) {
+          return r.json().then(function (d) {
+            return { status: r.status, data: d };
+          });
+        })
         .then(function (x) {
           if (x.data.ok) {
             document.getElementById("recovery_delay").value = x.data.recovery_delay;
@@ -291,10 +445,12 @@
             fillExitIntentTemplateControl(x.data);
             hideMsg();
           } else {
-            showErr(x.data.error || "Failed to load settings (e.g. no store yet).");
+            showErr(x.data.error || "تعذّر تحميل الإعدادات.");
           }
         })
-        .catch(function () { showErr("Network error loading settings."); });
+        .catch(function () {
+          showErr("خطأ في الشبكة أثناء التحميل.");
+        });
 
       document.getElementById("f").addEventListener("submit", function (e) {
         e.preventDefault();
@@ -303,7 +459,10 @@
           recovery_delay: parseInt(document.getElementById("recovery_delay").value, 10),
           recovery_delay_unit: document.getElementById("recovery_delay_unit").value,
           recovery_attempts: parseInt(document.getElementById("recovery_attempts").value, 10),
-          whatsapp_support_url: (document.getElementById("whatsapp_support_url") && document.getElementById("whatsapp_support_url").value) || "",
+          whatsapp_support_url:
+            (document.getElementById("whatsapp_support_url") &&
+              document.getElementById("whatsapp_support_url").value) ||
+            "",
         };
         TEMPLATE_KEYS.forEach(function (k) {
           var el = document.getElementById(k);
@@ -331,8 +490,16 @@
         body.exit_intent_custom_text = document.getElementById("exit_intent_custom_text")
           ? document.getElementById("exit_intent_custom_text").value
           : "";
-        fetch("/api/recovery-settings", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
-          .then(function (r) { return r.json().then(function (d) { return { status: r.status, data: d }; }); })
+        fetch("/api/recovery-settings", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        })
+          .then(function (r) {
+            return r.json().then(function (d) {
+              return { status: r.status, data: d };
+            });
+          })
           .then(function (x) {
             if (x.data.ok) {
               fillTemplates(x.data);
@@ -340,10 +507,12 @@
               fillExitIntentTemplateControl(x.data);
               showOk();
             } else {
-              showErr(x.data.error || "Save failed");
+              showErr(x.data.error || "فشل الحفظ");
             }
           })
-          .catch(function () { showErr("Network error while saving."); });
+          .catch(function () {
+            showErr("خطأ في الشبكة أثناء الحفظ.");
+          });
       });
     })();
   </script>
