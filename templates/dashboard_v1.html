@@ -165,7 +165,7 @@
 <div class="rounded-xl border border-zid-100 bg-gradient-to-br from-zid-50/95 to-violet-50/35 p-4 shadow-sm ring-1 ring-zid-100/50 md:p-3.5" data-dash-trigger-card="{{ reason_key }}">
   <p class="mb-3 border-b border-zid-100/70 pb-2 text-sm font-semibold leading-snug text-slate-800">سبب التردد: {{ label_ar }}</p>
   <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
-    <span class="text-[11px] font-medium text-slate-600">التفعيل <span class="text-[10px] font-normal text-slate-400">(واجهة فقط)</span></span>
+    <span class="text-[11px] font-medium text-slate-600">التفعيل</span>
     <div class="flex flex-wrap items-center gap-2">
       <span class="text-[10px] text-slate-500">غير مفعل</span>
       <label class="inline-flex cursor-pointer items-center rounded-lg border border-zid-100 bg-white px-1 py-0.5 shadow-sm">
@@ -179,7 +179,7 @@
   <label class="mb-1 block text-xs font-medium leading-snug text-slate-600" for="dash-trigger-text-{{ reason_key }}">رسالة التعامل مع هذا السبب</label>
   <textarea id="dash-trigger-text-{{ reason_key }}" rows="4" data-dash-trigger-text="{{ reason_key }}"
     class="w-full resize-y rounded-lg border border-zid-100/90 bg-white px-2.5 py-2 text-[11px] leading-relaxed text-slate-800 shadow-inner placeholder:text-slate-400 focus:border-zid-400 focus:outline-none focus:ring-1 focus:ring-zid-400/50 md:text-[10px]"></textarea>
-  <p class="mt-2 text-[10px] leading-relaxed text-slate-500 md:text-[9px]">تُستخدم هذه الرسالة عندما يتردد العميل بسبب هذا السبب.</p>
+  <p class="mt-2 text-[10px] leading-relaxed text-zid-800 md:text-[9px]" data-dash-trigger-hint="{{ reason_key }}" aria-live="polite"></p>
   <a href="/dashboard/cartflow-messages#cf-msg-template-{{ reason_key }}" class="mt-2 inline-flex text-[10px] font-medium text-zid-700 underline decoration-zid-300 underline-offset-2 hover:text-zid-900 hover:decoration-zid-500 md:text-[9px]">تعديل متقدم</a>
 </div>
 {%- endmacro %}
@@ -294,10 +294,10 @@
 
         {% set quality_rows = reason_bar | selectattr("key", "equalto", "quality") | list %}
 
-        <!-- قوالب حسب سبب التردد — واجهة فقط؛ القراءة/الحفظ محليًا بالمتصفح حتى يتوفر ربط بالخادم -->
+        <!-- قوالب حسب سبب التردد — تُحفظ على الخادم وتُستخدم في استرجاع واتساب عند التفعيل -->
         <section aria-labelledby="trigger-templates-heading">
           <h2 id="trigger-templates-heading" class="mb-4 border-b-2 border-zid-500/35 pb-2 text-base font-bold leading-snug text-slate-800 md:mb-3 md:text-sm md:leading-normal">قوالب حسب سبب التردد</h2>
-          <p class="mb-3 text-xs leading-relaxed text-slate-600 md:text-[11px] md:text-slate-500">اضبط رسالة كل سبب؛ التفعيل والنص للعرض والتجربة محليًا وليس لهما أثر على الإرسال بعد.</p>
+          <p class="mb-3 text-xs leading-relaxed text-slate-600 md:text-[11px] md:text-slate-500">اضبط رسالة كل سبب؛ عند التفعيل يُستخدم النص أدناه تلقائيًا في رسالة الاسترجاع، وعند الإيقاف يعود النظام للقالب الافتراضي أو للقوالب المتقدمة.</p>
           <div class="space-y-4 rounded-2xl border border-zid-100 bg-white p-6 shadow-sm md:space-y-3 md:p-5">
             {{ dash_trigger_card("price", "السعر") }}
             {{ dash_trigger_card("shipping", "الشحن") }}
@@ -346,7 +346,6 @@
   </div>
   <script>
     (function () {
-      var STORAGE_KEY = "cartflow_dashboard_trigger_templates_v1";
       var DEFAULTS = {
         price:
           "واضح إن السعر مهم لك 👌\nفي خيار قريب بنفس الفكرة بسعر أقل، ممكن يكون أنسب لك 👍",
@@ -357,6 +356,13 @@
         quality:
           "جودة المنتج عالية ومجربة 👌\nولو فيه أي مشكلة تقدر تستبدله بسهولة",
       };
+      var recoveryState = null;
+      var saveTimer = null;
+
+      function uiKeyToReasonTag(uiKey) {
+        if (uiKey === "thinking") return "other";
+        return uiKey;
+      }
 
       function triggerKeysOnPage() {
         var keys = [];
@@ -367,82 +373,123 @@
         return keys;
       }
 
-      function readStore() {
-        try {
-          var raw = localStorage.getItem(STORAGE_KEY);
-          return raw ? JSON.parse(raw) : {};
-        } catch (e) {
-          return {};
-        }
-      }
-
-      function writeStore(obj) {
-        try {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(obj));
-        } catch (e) {
-          /* ignore quota / private mode */
-        }
-      }
-
       function syncLabel(cb, lab) {
         if (!lab || !cb) return;
         lab.textContent = cb.checked ? "مفعل" : "غير مفعل";
       }
 
-      function applyFromStorage() {
-        var data = readStore();
-        triggerKeysOnPage().forEach(function (key) {
-          var cb = document.querySelector('[data-dash-trigger-toggle="' + key + '"]');
-          var ta = document.querySelector('[data-dash-trigger-text="' + key + '"]');
-          var lab = document.querySelector('[data-dash-trigger-label="' + key + '"]');
-          var row = data[key] || {};
+      function syncHint(cb, hintEl) {
+        if (!hintEl || !cb) return;
+        hintEl.textContent = cb.checked
+          ? "سيتم استخدام هذه الرسالة تلقائيًا"
+          : "سيتم استخدام النظام الافتراضي";
+      }
+
+      function applyTriggerTemplatesFromApi(tt) {
+        var map = tt && typeof tt === "object" ? tt : {};
+        triggerKeysOnPage().forEach(function (uiKey) {
+          var tag = uiKeyToReasonTag(uiKey);
+          var cb = document.querySelector('[data-dash-trigger-toggle="' + uiKey + '"]');
+          var ta = document.querySelector('[data-dash-trigger-text="' + uiKey + '"]');
+          var lab = document.querySelector('[data-dash-trigger-label="' + uiKey + '"]');
+          var hint = document.querySelector('[data-dash-trigger-hint="' + uiKey + '"]');
+          var row = map[tag] || {};
+          var enabled = row.enabled !== false;
+          var msg = typeof row.message === "string" ? row.message.trim() : "";
           if (cb) {
-            cb.checked = row.enabled !== false;
+            cb.checked = !!enabled;
             syncLabel(cb, lab);
+            syncHint(cb, hint);
           }
           if (ta) {
-            var t = typeof row.text === "string" ? row.text : "";
-            ta.value = t.trim() !== "" ? t : DEFAULTS[key] || "";
+            ta.value = msg !== "" ? msg : DEFAULTS[uiKey] || "";
           }
         });
       }
 
-      function persistKey(key) {
-        var data = readStore();
-        var cb = document.querySelector('[data-dash-trigger-toggle="' + key + '"]');
-        var ta = document.querySelector('[data-dash-trigger-text="' + key + '"]');
-        data[key] = {
-          enabled: cb ? !!cb.checked : true,
-          text: ta ? String(ta.value) : "",
-        };
-        writeStore(data);
+      function buildTriggerTemplatesPayload() {
+        var out = {};
+        triggerKeysOnPage().forEach(function (uiKey) {
+          var tag = uiKeyToReasonTag(uiKey);
+          var cb = document.querySelector('[data-dash-trigger-toggle="' + uiKey + '"]');
+          var ta = document.querySelector('[data-dash-trigger-text="' + uiKey + '"]');
+          out[tag] = {
+            enabled: cb ? !!cb.checked : false,
+            message: ta ? String(ta.value || "") : "",
+          };
+        });
+        return out;
+      }
+
+      function scheduleSaveTriggerTemplates() {
+        if (!recoveryState || !recoveryState.ok) return;
+        if (saveTimer) window.clearTimeout(saveTimer);
+        saveTimer = window.setTimeout(saveTriggerTemplatesToServer, 450);
+      }
+
+      async function loadRecoverySettings() {
+        try {
+          var res = await fetch("/api/recovery-settings");
+          var data = await res.json();
+          if (!data || !data.ok) return;
+          recoveryState = data;
+          applyTriggerTemplatesFromApi(data.trigger_templates || {});
+        } catch (e) {
+          /* offline */
+        }
+      }
+
+      async function saveTriggerTemplatesToServer() {
+        if (!recoveryState || !recoveryState.ok) return;
+        try {
+          var body = {
+            recovery_delay: recoveryState.recovery_delay,
+            recovery_delay_unit: recoveryState.recovery_delay_unit,
+            recovery_attempts: recoveryState.recovery_attempts,
+            trigger_templates: buildTriggerTemplatesPayload(),
+          };
+          if (
+            typeof recoveryState.whatsapp_support_url === "string" &&
+            recoveryState.whatsapp_support_url.trim() !== ""
+          ) {
+            body.whatsapp_support_url = recoveryState.whatsapp_support_url.trim();
+          }
+          var res = await fetch("/api/recovery-settings", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          });
+          var data = await res.json();
+          if (data && data.ok) recoveryState = data;
+        } catch (e) {
+          /* ignore */
+        }
       }
 
       function bind() {
-        triggerKeysOnPage().forEach(function (key) {
-          var cb = document.querySelector('[data-dash-trigger-toggle="' + key + '"]');
-          var ta = document.querySelector('[data-dash-trigger-text="' + key + '"]');
-          var lab = document.querySelector('[data-dash-trigger-label="' + key + '"]');
+        triggerKeysOnPage().forEach(function (uiKey) {
+          var cb = document.querySelector('[data-dash-trigger-toggle="' + uiKey + '"]');
+          var ta = document.querySelector('[data-dash-trigger-text="' + uiKey + '"]');
+          var lab = document.querySelector('[data-dash-trigger-label="' + uiKey + '"]');
+          var hint = document.querySelector('[data-dash-trigger-hint="' + uiKey + '"]');
           if (cb) {
             cb.addEventListener("change", function () {
               syncLabel(cb, lab);
-              persistKey(key);
+              syncHint(cb, hint);
+              scheduleSaveTriggerTemplates();
             });
           }
           if (ta) {
-            var tmr = null;
             ta.addEventListener("input", function () {
-              if (tmr) window.clearTimeout(tmr);
-              tmr = window.setTimeout(function () {
-                persistKey(key);
-              }, 350);
+              scheduleSaveTriggerTemplates();
             });
           }
         });
       }
 
-      applyFromStorage();
-      bind();
+      loadRecoverySettings().then(function () {
+        bind();
+      });
     })();
   </script>
 </body>

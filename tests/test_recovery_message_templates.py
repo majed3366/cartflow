@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import io
+import json
 from contextlib import redirect_stdout
 
 import pytest
@@ -51,6 +52,7 @@ def test_template_selected_log_lines() -> None:
     with redirect_stdout(buf):
         resolve_whatsapp_recovery_template_message("delivery_time")
     out = buf.getvalue()
+    assert "[TRIGGER TEMPLATE USED]" in out
     assert "[TEMPLATE SOURCE]" in out
     assert "delivery_time" in out
     assert "source=" in out
@@ -67,6 +69,48 @@ def test_store_template_overrides_builtin() -> None:
     )
     assert msg == "رسالة مخصصة من لوحة التحكم"
 
+
+def test_trigger_template_overrides_when_enabled() -> None:
+    class _FakeStore:
+        trigger_templates_json = json.dumps(
+            {"price": {"enabled": True, "message": "نص من القالب المشغّل"}}
+        )
+
+    msg = resolve_whatsapp_recovery_template_message(
+        "price_high",
+        store=_FakeStore(),
+    )
+    assert msg == "نص من القالب المشغّل"
+
+
+def test_trigger_wins_over_dashboard_template_column() -> None:
+    class _FakeStore:
+        template_price = "نص عمود لوحة التحكم"
+        trigger_templates_json = json.dumps(
+            {"price": {"enabled": True, "message": "أولوية القالب المشغّل"}}
+        )
+
+    msg = resolve_whatsapp_recovery_template_message("price", store=_FakeStore())
+    assert msg == "أولوية القالب المشغّل"
+
+
+def test_trigger_disabled_falls_back_to_dashboard_column() -> None:
+    class _FakeStore:
+        trigger_templates_json = json.dumps(
+            {"price": {"enabled": False, "message": "معطّل"}}
+        )
+        template_price = "من عمود لوحة التحكم"
+
+    msg = resolve_whatsapp_recovery_template_message(
+        "price",
+        store=_FakeStore(),
+    )
+    assert msg == "من عمود لوحة التحكم"
+
+
+def test_thinking_maps_to_other_builtin_template() -> None:
+    msg = resolve_whatsapp_recovery_template_message("thinking")
+    assert msg == WHATSAPP_REASON_TEMPLATES["other"]
 
 def test_empty_store_template_falls_back() -> None:
     class _FakeStore:

@@ -202,6 +202,10 @@ from services.store_widget_customization import (
     apply_widget_customization_from_body,
     widget_customization_fields_for_api,
 )
+from services.store_trigger_templates import (
+    apply_trigger_templates_from_body,
+    trigger_templates_fields_for_api,
+)
 
 log = logging.getLogger("cartflow")
 
@@ -701,6 +705,7 @@ def _dev_apply_recovery_settings_update(
             row.whatsapp_support_url = str(whatsapp_support_url).strip()[:2048]
     if request_body is not None:
         _apply_recovery_template_fields_from_body(row, request_body)
+        apply_trigger_templates_from_body(row, request_body)
         apply_template_control_from_body(row, request_body)
         apply_exit_intent_template_control_from_body(row, request_body)
         apply_widget_customization_from_body(row, request_body)
@@ -716,6 +721,7 @@ def _dev_apply_recovery_settings_update(
         "whatsapp_support_url": wa,
     }
     payload.update(_recovery_template_fields_for_api(row))
+    payload.update(trigger_templates_fields_for_api(row))
     payload.update(template_control_fields_for_api(row))
     payload.update(exit_intent_template_fields_for_api(row))
     payload.update(widget_customization_fields_for_api(row))
@@ -1117,6 +1123,7 @@ def api_recovery_settings_get():
             "whatsapp_support_url": wa,
         }
         payload.update(_recovery_template_fields_for_api(row))
+        payload.update(trigger_templates_fields_for_api(row))
         payload.update(template_control_fields_for_api(row))
         payload.update(exit_intent_template_fields_for_api(row))
         payload.update(widget_customization_fields_for_api(row))

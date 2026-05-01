@@ -208,6 +208,37 @@ def ensure_cart_recovery_reason_rejection_schema(db: Any) -> None:
     _ensure_recovery_reason_rejection_columns(db)
 
 
+def _ensure_store_trigger_templates_json_column(db: Any) -> None:
+    """عمود ‎trigger_templates_json‎ على ‎stores‎ — قوالب حسب سبب التردد للاسترجاع."""
+    try:
+        db.create_all()
+        insp = inspect(db.engine)
+        if not insp.has_table("stores"):
+            return
+        dialect = getattr(getattr(db.engine, "dialect", None), "name", "") or ""
+        existing = {c["name"] for c in insp.get_columns("stores")}
+        if "trigger_templates_json" in existing:
+            return
+        text_sql = "TEXT"
+        try:
+            if dialect == "postgresql":
+                stmt = (
+                    "ALTER TABLE stores ADD COLUMN IF NOT EXISTS "
+                    f"trigger_templates_json {text_sql}"
+                )
+            else:
+                stmt = (
+                    f"ALTER TABLE stores ADD COLUMN trigger_templates_json {text_sql}"
+                )
+            db.session.execute(text(stmt))
+            db.session.commit()
+        except (OSError, SQLAlchemyError, IntegrityError):
+            db.session.rollback()
+    except (OSError, SQLAlchemyError) as e:
+        db.session.rollback()
+        log.debug("schema_widget trigger_templates_json: %s", e)
+
+
 def _ensure_store_whatsapp_recovery_template_columns(db: Any) -> None:
     """أعمدة قوالب واتساب الاسترجاع على ‎stores‎ — تُستدعى دائماً (فحص أعمدة ‎idempotent‎)."""
     try:
@@ -440,6 +471,7 @@ def ensure_store_widget_schema(db: Any) -> None:
     _ensure_recovery_reason_customer_phone_column(db)
     _ensure_recovery_reason_rejection_columns(db)
     _ensure_store_whatsapp_recovery_template_columns(db)
+    _ensure_store_trigger_templates_json_column(db)
     _ensure_store_template_control_columns(db)
     _ensure_store_exit_intent_template_columns(db)
     _ensure_store_widget_customization_columns(db)

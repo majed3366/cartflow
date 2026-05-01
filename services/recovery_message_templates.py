@@ -6,6 +6,8 @@ from __future__ import annotations
 
 from typing import Any, Dict, Optional
 
+from services.store_trigger_templates import parse_trigger_templates_column
+
 WHATSAPP_REASON_TEMPLATES: dict[str, str] = {
     "price": (
         "وفرنا لك خيار بنفس الفكرة بسعر أقل 👌\n"
@@ -62,6 +64,9 @@ def _canonical_template_key(reason_tag: Optional[str]) -> Optional[str]:
     k = (reason_tag or "").strip().lower()
     if not k:
         return None
+    # التردد في الودجيت (‎thinking‎) يستخدم نفس سلة قالب ‎other‎ والقالب المشغّل ‎other‎.
+    if k == "thinking":
+        return "other"
     if k in WHATSAPP_REASON_TEMPLATES:
         return k
     if k == "other" or k.startswith("other"):
@@ -85,21 +90,48 @@ def resolve_whatsapp_recovery_template_message(
     store: Any = None,
 ) -> str:
     """
-    ‎message = store_template_for_reason or default_template_for_reason‎.
+    قالب مشغّل مفعّل → ‎message‎ المخصص؛ وإلا ‎template_*‎ من لوحة التحكم أو الافتراضي.
     """
     canon = _canonical_template_key(reason_tag)
-    raw = (reason_tag or "").strip().lower()
-    lookup = canon if canon is not None else raw
-    msg = WHATSAPP_REASON_TEMPLATES.get(lookup)
-    if msg is None and canon is not None:
-        msg = WHATSAPP_REASON_TEMPLATES.get(canon)
-    default_message = msg if msg else DEFAULT_WHATSAPP_TEMPLATE_MESSAGE
-
-    store_override = _store_dashboard_template(store, canon)
-    final = store_override if store_override else default_message
-    source = "dashboard" if store_override else "default"
-
     rt_log = reason_tag if reason_tag is not None else ""
+
+    trigger_template_used = False
+    final: Optional[str] = None
+    source = "default"
+
+    if canon is not None and store is not None:
+        triggers = parse_trigger_templates_column(
+            getattr(store, "trigger_templates_json", None)
+        )
+        tentry = triggers.get(canon)
+        if tentry and bool(tentry.get("enabled")):
+            msg_t = str(tentry.get("message") or "").strip()
+            if msg_t:
+                final = msg_t
+                source = "trigger"
+                trigger_template_used = True
+
+    if final is None:
+        raw = (reason_tag or "").strip().lower()
+        lookup = canon if canon is not None else raw
+        msg = WHATSAPP_REASON_TEMPLATES.get(lookup)
+        if msg is None and canon is not None:
+            msg = WHATSAPP_REASON_TEMPLATES.get(canon)
+        default_message = msg if msg else DEFAULT_WHATSAPP_TEMPLATE_MESSAGE
+
+        store_override = _store_dashboard_template(store, canon)
+        final = store_override if store_override else default_message
+        source = "dashboard" if store_override else "default"
+
+    try:
+        log_tag = canon if canon is not None else rt_log
+        print("[TRIGGER TEMPLATE USED]")
+        print("reason_tag=", log_tag)
+        print(
+            "template_enabled=" + ("true" if trigger_template_used else "false")
+        )
+    except Exception:
+        pass
     try:
         if canon == "price" and source == "default":
             print("[TEMPLATE IMPROVED] reason_tag=price")
