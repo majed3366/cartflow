@@ -28,9 +28,17 @@
   <style>
     body { font-family: "IBM Plex Sans Arabic", system-ui, sans-serif; }
 
-    .cf-reason-card {
-      width: 100%;
+    /* Hesitation reasons: strict single-column stack (no row flex / grid inside card) */
+    .cf-reasons-panel {
       display: block;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .cf-reason-card {
+      display: block;
+      width: 100%;
+      max-width: none;
       margin-bottom: 24px;
       box-sizing: border-box;
     }
@@ -40,6 +48,9 @@
     }
 
     .cf-reason-title {
+      display: block;
+      width: 100%;
+      box-sizing: border-box;
       text-align: right;
       font-weight: 700;
       font-size: 1rem;
@@ -48,6 +59,9 @@
     }
 
     .cf-reason-meta {
+      display: block;
+      width: 100%;
+      box-sizing: border-box;
       text-align: right;
       font-size: 0.8125rem;
       line-height: 1.4;
@@ -57,16 +71,35 @@
     }
 
     .cf-reason-bar {
+      display: block;
       width: 100%;
-      max-width: 100%;
+      max-width: none;
       box-sizing: border-box;
       margin-top: 8px;
+    }
+
+    .cf-reason-bar-track {
+      display: block;
+      width: 100%;
+      height: 10px;
+      border-radius: 9999px;
+      background: #f1f5f9;
+      overflow: hidden;
+      box-sizing: border-box;
+    }
+
+    .cf-reason-bar-fill {
+      display: block;
+      height: 100%;
+      border-radius: 9999px;
+      background: #7c3aed;
+      transition: width 0.2s ease;
     }
 
     .cf-insight-box {
       display: block;
       width: 100%;
-      max-width: 100%;
+      max-width: none;
       box-sizing: border-box;
       margin-top: 10px;
       margin-bottom: 0;
@@ -80,6 +113,9 @@
     }
 
     .cf-insight-title {
+      display: block;
+      width: 100%;
+      box-sizing: border-box;
       font-weight: 600;
       font-size: 13px;
       margin-bottom: 6px;
@@ -88,18 +124,21 @@
     }
 
     .cf-insight-list {
+      display: block;
+      width: 100%;
       margin: 0;
       padding: 0;
       list-style: none;
       font-size: 12px;
       line-height: 1.7;
       color: #555;
+      box-sizing: border-box;
     }
 
     .cf-insight-list li {
-      display: flex;
-      gap: 6px;
-      align-items: flex-start;
+      display: block;
+      width: 100%;
+      box-sizing: border-box;
     }
 
     .cf-insight-list li + li {
@@ -107,16 +146,15 @@
     }
 
     .cf-insight-dash {
-      flex-shrink: 0;
+      display: inline;
+      margin-inline-end: 4px;
       color: rgba(108, 92, 231, 0.42);
       font-weight: 500;
     }
 
     .cf-reason-action {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      margin-top: 10px;
+      display: inline-block;
+      margin-top: 8px;
       font-size: 12px;
       font-weight: 600;
       color: #6d28d9;
@@ -128,8 +166,10 @@
       box-shadow: 0 1px 2px rgba(108, 92, 231, 0.06);
       transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease;
       width: 100%;
-      max-width: 100%;
+      max-width: none;
       box-sizing: border-box;
+      text-align: center;
+      vertical-align: top;
     }
 
     .cf-reason-action:hover {
@@ -221,14 +261,14 @@
         <!-- أسباب التردد -->
         <section aria-labelledby="reasons-heading">
           <h2 id="reasons-heading" class="mb-4 border-b-2 border-zid-500/35 pb-2 text-base font-bold leading-snug text-slate-800 md:mb-3 md:text-sm md:leading-normal">أسباب التردد (حسب ‎CartRecoveryReason‎)</h2>
-          <div class="rounded-2xl border border-zid-100 bg-white p-6 shadow-sm md:p-5">
+          <div class="cf-reasons-panel rounded-2xl border border-zid-100 bg-white p-6 shadow-sm md:p-5">
             {% for r in reason_bar %}
             <div class="cf-reason-card">
               <div class="cf-reason-title">{{ r.label }}</div>
               <div class="cf-reason-meta">{{ r.count }} حالة</div>
               <div class="cf-reason-bar">
-                <div class="h-2.5 w-full max-w-full rounded-full bg-slate-100 overflow-hidden" role="img" aria-label="{{ r.label }}: {{ r.count }}">
-                  <div class="h-full rounded-full bg-zid-500 transition-all" style="width: {{ r.width_pct }}%"></div>
+                <div class="cf-reason-bar-track" role="img" aria-label="{{ r.label }}: {{ r.count }}">
+                  <div class="cf-reason-bar-fill" style="width: {{ r.width_pct }}%"></div>
                 </div>
               </div>
               {% if r.key == "price" %}
