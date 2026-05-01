@@ -112,10 +112,14 @@
                   <select id="discovery_phrase_pick"
                     class="rs-select w-full rounded-xl border-2 border-zid-200 bg-white px-2.5 py-2.5 text-sm font-medium text-slate-800 shadow-sm transition-all duration-150 hover:border-violet-300 hover:shadow-md focus:border-zid-500 focus:outline-none focus:ring-2 focus:ring-zid-400/40">
                   <option value="">اختر عبارة جاهزة</option>
-                  <option value="friendly" data-body="جبت لك خيارات مناسبة 👇&#10;تقدر تختار اللي يناسبك وتضيفه للسلة بسهولة 👍">ودي — جبت لك خيارات مناسبة…</option>
-                  <option value="formal" data-body="تم توفير خيارات مناسبة لك 👇&#10;تقدر تختار اللي يناسبك وتضيفه للسلة بسهولة 👍">رسمي — تم توفير خيارات مناسبة…</option>
-                  <option value="sales" data-body="هذه أفضل الخيارات لك الآن 👇&#10;تقدر تختار اللي يناسبك وتضيفه للسلة بسهولة 👍">بيع مباشر — أفضل الخيارات لك…</option>
+                  <option value="friendly" data-body="جبت لك خيارات مناسبة 👇&#10;تقدر تختار اللي يناسبك وتضيفه للسلة بسهولة 👍">🙂 ودي</option>
+                  <option value="formal" data-body="تم توفير خيارات مناسبة لك 👇&#10;تقدر تختار اللي يناسبك وتضيفه للسلة بسهولة 👍">🧾 رسمي</option>
+                  <option value="sales" data-body="هذه أفضل الخيارات لك الآن 👇&#10;تقدر تختار اللي يناسبك وتضيفه للسلة بسهولة 👍">⚡ بيع مباشر</option>
                 </select>
+                  <div id="discovery_phrase_preview" class="mt-2 hidden rounded-lg border border-violet-100 bg-zid-50/95 px-2.5 py-2 shadow-inner ring-1 ring-zid-100/50">
+                    <p class="text-[10px] font-semibold text-zid-800">مثال:</p>
+                    <p id="discovery_phrase_preview_body" class="mt-1 whitespace-pre-wrap text-[11px] leading-snug text-slate-700"></p>
+                  </div>
                   <p class="mt-1.5 text-[10px] leading-snug text-slate-600">يملأ خانة النص ويحوّل الوضع إلى «نص مخصص» لتقدر تعدّل قبل الحفظ.</p>
                 </div>
               </div>
@@ -161,10 +165,14 @@
                   <select id="exit_intent_phrase_pick"
                     class="rs-select w-full rounded-xl border-2 border-zid-200 bg-white px-2.5 py-2.5 text-sm font-medium text-slate-800 shadow-sm transition-all duration-150 hover:border-violet-300 hover:shadow-md focus:border-zid-500 focus:outline-none focus:ring-2 focus:ring-zid-400/40">
                   <option value="">اختر عبارة جاهزة</option>
-                  <option value="friendly" data-body="هلا 👋 فيه خيارات ممكن تعجبك، تحب أشوفها لك بسرعة؟">ودي — هلا 👋 فيه خيارات…</option>
-                  <option value="formal" data-body="مرحباً، يمكنني مساعدتك في استعراض خيارات مناسبة لك.">رسمي — مرحباً، يمكنني مساعدتك…</option>
-                  <option value="sales" data-body="قبل ما تطلع، عندي خيارات ممكن تناسبك أكثر.">بيع مباشر — قبل ما تطلع…</option>
+                  <option value="friendly" data-body="هلا 👋 فيه خيارات ممكن تعجبك، تحب أشوفها لك بسرعة؟">🙂 ودي</option>
+                  <option value="formal" data-body="مرحباً، يمكنني مساعدتك في استعراض خيارات مناسبة لك.">🧾 رسمي</option>
+                  <option value="sales" data-body="قبل ما تطلع، عندي خيارات ممكن تناسبك أكثر.">⚡ بيع مباشر</option>
                 </select>
+                  <div id="exit_intent_phrase_preview" class="mt-2 hidden rounded-lg border border-violet-100 bg-zid-50/95 px-2.5 py-2 shadow-inner ring-1 ring-zid-100/50">
+                    <p class="text-[10px] font-semibold text-zid-800">مثال:</p>
+                    <p id="exit_intent_phrase_preview_body" class="mt-1 whitespace-pre-wrap text-[11px] leading-snug text-slate-700"></p>
+                  </div>
                   <p class="mt-1.5 text-[10px] leading-snug text-slate-600">يملأ خانة النص ويحوّل الوضع إلى «نص مخصص» لتقدر تعدّل قبل الحفظ.</p>
                 </div>
               </div>
@@ -334,6 +342,26 @@
         if (phraseRow) phraseRow.classList.toggle("hidden", isCustom);
       }
 
+      function updatePhrasePickPreview(selectEl, previewRootId, previewBodyId) {
+        var root = document.getElementById(previewRootId);
+        var bodyEl = document.getElementById(previewBodyId);
+        if (!root || !bodyEl || !selectEl) return;
+        if (selectEl.selectedIndex <= 0) {
+          root.classList.add("hidden");
+          bodyEl.textContent = "";
+          return;
+        }
+        var opt = selectEl.options[selectEl.selectedIndex];
+        var body = opt.getAttribute("data-body");
+        if (!body) {
+          root.classList.add("hidden");
+          bodyEl.textContent = "";
+          return;
+        }
+        bodyEl.textContent = body.replace(/&#10;/g, "\n");
+        root.classList.remove("hidden");
+      }
+
       function applyTonePhrasePick(selectEl, toneSelectId, presetRadioId, customRadioId, textareaId, syncFn) {
         if (!selectEl || selectEl.selectedIndex <= 0) return;
         var opt = selectEl.options[selectEl.selectedIndex];
@@ -388,6 +416,11 @@
         var phrasePick = document.getElementById("discovery_phrase_pick");
         if (phrasePick) {
           phrasePick.addEventListener("change", function () {
+            updatePhrasePickPreview(
+              phrasePick,
+              "discovery_phrase_preview",
+              "discovery_phrase_preview_body"
+            );
             applyTonePhrasePick(
               phrasePick,
               "template_tone",
@@ -454,6 +487,11 @@
         var phrasePick = document.getElementById("exit_intent_phrase_pick");
         if (phrasePick) {
           phrasePick.addEventListener("change", function () {
+            updatePhrasePickPreview(
+              phrasePick,
+              "exit_intent_phrase_preview",
+              "exit_intent_phrase_preview_body"
+            );
             applyTonePhrasePick(
               phrasePick,
               "exit_intent_template_tone",
