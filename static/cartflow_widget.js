@@ -2945,10 +2945,26 @@
           widgetBody.appendChild(pOut);
         }
 
-        function appendQualityProductCard(line, caption) {
+        function appendQualityProductCard(line, opts) {
           if (!line || typeof line !== "object") {
             return;
           }
+          var o = opts && typeof opts === "object" ? opts : {};
+          var badgeAbove = o.badgeAbove;
+          var caption = o.caption;
+          var subtitleBelow = o.subtitleBelow;
+          var footerNote = o.footerNote;
+
+          if (badgeAbove != null && strTrim(String(badgeAbove)) !== "") {
+            var bd = document.createElement("div");
+            bd.setAttribute("data-cf-quality-product-badge", "1");
+            bd.style.cssText =
+              "font-size:12px;font-weight:700;color:#166534;margin:0 0 8px 0;padding:4px 10px;" +
+              "background:#dcfce7;border-radius:6px;display:inline-block;";
+            bd.textContent = String(badgeAbove);
+            widgetBody.appendChild(bd);
+          }
+
           var name = strTrim(line.name) || "منتج في سلتك";
           var pl = formatPriceRiyal(line);
           var box = document.createElement("div");
@@ -2956,15 +2972,31 @@
           box.style.cssText =
             "margin:10px 0;padding:10px;border-radius:8px;background:rgba(124,58,237,.09);" +
             "font-size:13px;line-height:1.5;";
-          if (caption && strTrim(caption) !== "") {
+          if (caption != null && strTrim(String(caption)) !== "") {
             var cap = document.createElement("div");
             cap.style.cssText = "font-weight:700;margin-bottom:4px;";
-            cap.textContent = caption;
+            cap.textContent = String(caption);
             box.appendChild(cap);
           }
           var row = document.createElement("div");
           row.textContent = name + (pl ? " — " + pl : "");
           box.appendChild(row);
+          if (subtitleBelow != null && strTrim(String(subtitleBelow)) !== "") {
+            var sub = document.createElement("div");
+            sub.setAttribute("data-cf-quality-product-subtitle", "1");
+            sub.style.cssText =
+              "font-size:12px;color:#475569;margin-top:8px;line-height:1.45;";
+            sub.textContent = String(subtitleBelow);
+            box.appendChild(sub);
+          }
+          if (footerNote != null && strTrim(String(footerNote)) !== "") {
+            var fn = document.createElement("div");
+            fn.setAttribute("data-cf-quality-product-foot", "1");
+            fn.style.cssText =
+              "font-size:12px;color:#92400e;margin-top:8px;font-weight:600;";
+            fn.textContent = String(footerNote);
+            box.appendChild(fn);
+          }
           widgetBody.appendChild(box);
         }
 
@@ -2972,8 +3004,12 @@
           var btn = document.createElement("button");
           btn.type = "button";
           btn.setAttribute("data-cf-quality-conversion-cta", "1");
-          btn.textContent = "كمّل الطلب والدفع 👇";
-          btn.style.cssText = btnStyle;
+          btn.textContent = "كمّل الطلب الآن 👇";
+          btn.style.cssText =
+            "cursor:pointer;border:0;border-radius:10px;padding:14px 18px;font:inherit;" +
+            "font-weight:700;font-size:15px;background:linear-gradient(180deg,#6d28d9 0%,#5b21b6 100%);" +
+            "color:#fff;min-height:48px;width:100%;box-sizing:border-box;margin-top:4px;" +
+            "box-shadow:0 2px 10px rgba(91,33,182,0.4);touch-action:manipulation;";
           btn.addEventListener("click", function (evCta) {
             evCta.stopPropagation();
             evCta.preventDefault();
@@ -3035,13 +3071,15 @@
             );
             logWidgetConversionFlow("quality", "ضمان");
             mountQualityConversionStep(
-              "نعم 👍 المتجر يبيّن ضمان المنتج في الصفحة والسلة؛ راجع السطر وتكمّل وأنت مطمئن.",
+              "هذا المنتج عليه ضمان واضح 👍\nوتفاصيله تظهر لك قبل إتمام الطلب عشان تكون مطمئن 👌",
               "ضمان",
               function () {
                 var lines = pickQualityDisplayLines(2);
                 var j;
                 for (j = 0; j < lines.length; j++) {
-                  appendQualityProductCard(lines[j], null);
+                  appendQualityProductCard(lines[j], {
+                    badgeAbove: "✔️ ضمان متوفر",
+                  });
                 }
                 if (!lines.length) {
                   appendQualityFollowUpMsgParagraph(
@@ -3061,13 +3099,15 @@
             );
             logWidgetConversionFlow("quality", "مقارنة");
             mountQualityConversionStep(
-              "هذا الخيار ضمن سلتك منتقى بعناية 👌 التفاصيل والمواصفات تظهر بوضوح عند الدفع.",
+              "هذا من الخيارات اللي يعتمد عليها 👍\nومناسب للاستخدام اليومي بدون مشاكل 👌",
               "مقارنة",
               function () {
                 var lines = pickQualityDisplayLines(2);
                 var j;
                 for (j = 0; j < lines.length; j++) {
-                  appendQualityProductCard(lines[j], "خيار موثوق في سلتك");
+                  appendQualityProductCard(lines[j], {
+                    subtitleBelow: "خيار موثوق للاستخدام اليومي",
+                  });
                 }
                 if (!lines.length) {
                   appendQualityFollowUpMsgParagraph(
@@ -3087,13 +3127,15 @@
             );
             logWidgetConversionFlow("quality", "تقييمات");
             mountQualityConversionStep(
-              "التقييمات تساعدك تقرر 👍 شوف آراء العملاء في صفحة المنتج ثم كمّل الطلب براحة.",
+              "كثير من العملاء اختاروه 👍\nوغالبًا يرجعون له مرة ثانية 👌",
               "تقييمات",
               function () {
                 var lines = pickQualityDisplayLines(2);
                 var j;
                 for (j = 0; j < lines.length; j++) {
-                  appendQualityProductCard(lines[j], null);
+                  appendQualityProductCard(lines[j], {
+                    footerNote: "⭐ تقييمات إيجابية",
+                  });
                 }
                 if (!lines.length) {
                   appendQualityFollowUpMsgParagraph(
