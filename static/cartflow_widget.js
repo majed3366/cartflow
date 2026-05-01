@@ -811,6 +811,39 @@
     }
   }
 
+  /**
+   * بعد ‎add_to_cart‎ على الجوال: لا يُسمح للفقاعة بالظهور من مسار السكون قبل مرور هذا الوقت.
+   * مسارات الخروج/الرجوع (‎mobileDeferredRevealOk‎ من ‎cart smart exit‎) غير مرتبطة بهذا الحاجز.
+   */
+  var MOBILE_POST_ADD_WIDGET_GUARD_MS = 90000;
+
+  function mobileSecondsSinceLastAddToCartForGuard() {
+    try {
+      var ts = window._cartflowMobileLastAddToCartTs;
+      if (typeof ts !== "number" || !isFinite(ts)) {
+        return null;
+      }
+      return (Date.now() - ts) / 1000;
+    } catch (eM) {
+      return null;
+    }
+  }
+
+  function logMobileWidgetDelayGuard(elapsedSec, allowed) {
+    try {
+      console.log("[MOBILE WIDGET DELAY GUARD]");
+      console.log(
+        "elapsed_seconds=" +
+          (elapsedSec != null && isFinite(elapsedSec)
+            ? String(Math.round(elapsedSec * 10) / 10)
+            : "n/a")
+      );
+      console.log("allowed_to_show=" + String(allowed));
+    } catch (eL) {
+      /* ignore */
+    }
+  }
+
   function removeFabIfAny() {
     var existing = document.querySelector("[data-cartflow-fab]");
     if (existing && existing.parentNode) {
@@ -1418,6 +1451,11 @@
     cartflowLogCartflowState();
     try {
       if (kind === "add_to_cart" && isMobileDeferCartBubbleViewport()) {
+        try {
+          window._cartflowMobileLastAddToCartTs = Date.now();
+        } catch (eTsMob) {
+          /* ignore */
+        }
         console.log("[ADD TO CART MONITORING STARTED]");
         console.log("device=mobile");
         console.log("show_widget=false");
@@ -4898,16 +4936,78 @@
       if (!shouldSend) {
         return;
       }
-      showBubble(TRIGGER_SOURCE_CART, {
-        mobileCartReveal: true,
-        mobileDeferredRevealOk: true,
-      });
-      try {
-        var widgetVisible = isWidgetDomVisible();
-        console.log("widget visible:", widgetVisible);
-      } catch (e) {
-        /* ignore */
+      function finishIdleCartBubbleReveal() {
+        showBubble(TRIGGER_SOURCE_CART, {
+          mobileCartReveal: true,
+          mobileDeferredRevealOk: true,
+        });
+        try {
+          var widgetVisible = isWidgetDomVisible();
+          console.log("widget visible:", widgetVisible);
+        } catch (e) {
+          /* ignore */
+        }
       }
+      if (!isMobileDeferCartBubbleViewport()) {
+        finishIdleCartBubbleReveal();
+        return;
+      }
+      var elapsedSec = mobileSecondsSinceLastAddToCartForGuard();
+      var guardOk =
+        elapsedSec === null ||
+        elapsedSec >= MOBILE_POST_ADD_WIDGET_GUARD_MS / 1000;
+      logMobileWidgetDelayGuard(elapsedSec, guardOk);
+      if (elapsedSec !== null && elapsedSec < MOBILE_POST_ADD_WIDGET_GUARD_MS / 1000) {
+        try {
+          console.log("[BLOCK EARLY MOBILE WIDGET]");
+          console.log("reason=too_soon_after_add_to_cart");
+        } catch (eBlk) {
+          /* ignore */
+        }
+        var lastAddTs = window._cartflowMobileLastAddToCartTs;
+        var waitMs =
+          typeof lastAddTs === "number" && isFinite(lastAddTs)
+            ? MOBILE_POST_ADD_WIDGET_GUARD_MS - (nowMs - lastAddTs)
+            : 0;
+        if (waitMs > 0) {
+          idleTimer = setTimeout(function () {
+            idleTimer = null;
+            if (!haveCartForWidget() || shown || isSessionConverted() || !step1Ready) {
+              return;
+            }
+            if (isDemoStoreProductPage()) {
+              if (!readDemoStoreWidgetArmed() || demoStoreBubbleDismissed) {
+                return;
+              }
+            }
+            var now2 = Date.now();
+            var lab2 =
+              typeof window._cartflowLastActivityTs === "number"
+                ? window._cartflowLastActivityTs
+                : now2;
+            if (now2 - lab2 < delayMs) {
+              return;
+            }
+            var elapsed2 = mobileSecondsSinceLastAddToCartForGuard();
+            var guard2Ok =
+              elapsed2 === null ||
+              elapsed2 >= MOBILE_POST_ADD_WIDGET_GUARD_MS / 1000;
+            logMobileWidgetDelayGuard(elapsed2, guard2Ok);
+            if (elapsed2 !== null && elapsed2 < MOBILE_POST_ADD_WIDGET_GUARD_MS / 1000) {
+              try {
+                console.log("[BLOCK EARLY MOBILE WIDGET]");
+                console.log("reason=too_soon_after_add_to_cart");
+              } catch (eB2) {
+                /* ignore */
+              }
+              return;
+            }
+            finishIdleCartBubbleReveal();
+          }, waitMs);
+        }
+        return;
+      }
+      finishIdleCartBubbleReveal();
     }, delayMs);
   }
 
