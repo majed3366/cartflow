@@ -58,6 +58,14 @@
       <span class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-slate-100 text-[13px] shadow-inner transition-colors group-hover:bg-white group-hover:text-zid-700" aria-hidden="true">💬</span>
       <span class="min-w-0 leading-snug">نمط الرسائل</span>
     </a>
+    <a
+      href="/dashboard/recovery-settings#widget-custom"
+      data-dash-nav="widget-custom"
+      class="group mr-2 flex items-center gap-2 rounded-lg px-3 py-2 text-xs text-slate-600 transition-colors hover:bg-zid-50 hover:shadow-sm"
+    >
+      <span class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-slate-100 text-[13px] shadow-inner transition-colors group-hover:bg-white group-hover:text-zid-700" aria-hidden="true">🎨</span>
+      <span class="min-w-0 leading-snug">تخصيص الودجيت</span>
+    </a>
   </nav>
 </aside>
 <script>
@@ -68,6 +76,7 @@
       var dashEl = document.querySelector('[data-dash-nav="dashboard"]');
       var recEl = document.querySelector('[data-dash-nav="recovery"]');
       var tplEl = document.querySelector('[data-dash-nav="templates"]');
+      var wdgEl = document.querySelector('[data-dash-nav="widget-custom"]');
       var mainIdle =
         "group flex items-center gap-2 rounded-lg px-3 py-2.5 text-slate-600 transition-colors hover:bg-zid-50 hover:shadow-sm";
       var mainOn =
@@ -80,10 +89,14 @@
       var isDash = /^\/dashboard\/?$/.test(path);
       var isRecovery = path.indexOf("/dashboard/recovery-settings") === 0;
       var isTemplates = isRecovery && hash === "templates";
+      var isWidgetCustom = isRecovery && hash === "widget-custom";
 
       if (dashEl) dashEl.className = isDash ? mainOn : mainIdle;
-      if (recEl) recEl.className = !isTemplates && isRecovery ? mainOn : mainIdle;
+      if (recEl)
+        recEl.className =
+          !isTemplates && !isWidgetCustom && isRecovery ? mainOn : mainIdle;
       if (tplEl) tplEl.className = isTemplates ? subOn : subIdle;
+      if (wdgEl) wdgEl.className = isWidgetCustom ? subOn : subIdle;
     }
 
     applyDashboardNavActive();
