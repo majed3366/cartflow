@@ -229,12 +229,10 @@
           <h2 id="recovery-trend-heading" class="mb-2 border-b-2 border-zid-500/35 pb-2 text-base font-bold leading-snug text-slate-800 md:text-sm md:leading-normal">📈 تطور المبيعات المسترجعة</h2>
           <p class="mb-4 text-xs leading-relaxed text-slate-600 md:mb-3 md:text-[11px] md:text-slate-500">المبيعات المسترجعة خلال 7 أيام</p>
           <div class="rounded-2xl border border-zid-100 bg-white p-6 shadow-sm md:p-5">
+            <p id="recoveryTrendEstimateLabel" class="mb-2 hidden text-center text-[11px] font-medium leading-snug text-slate-500 md:text-xs">بيانات تقديرية لعرض الأداء</p>
+            <p id="recoveryTrendRevenueHighlight" class="mb-3 text-center text-lg font-bold leading-snug md:text-xl" style="color: #16a34a"></p>
             <div class="relative h-56 w-full md:h-52">
               <canvas id="recoveryTrendChart" aria-label="مخطط المبيعات المسترجعة لسبعة أيام"></canvas>
-              <div id="recoveryTrendFallbackNotice" class="pointer-events-none absolute inset-x-2 bottom-1 hidden rounded-lg bg-white/95 px-2 py-2 text-center leading-relaxed shadow-sm ring-1 ring-slate-100/90 backdrop-blur-sm md:inset-x-4 md:bottom-2" aria-live="polite">
-                <p class="text-xs font-semibold text-slate-700 md:text-sm">لا توجد بيانات كافية بعد</p>
-                <p class="mt-0.5 text-[11px] text-slate-500 md:text-xs">ابدأ باستخدام CartFlow لرؤية النتائج هنا</p>
-              </div>
             </div>
           </div>
         </section>
@@ -513,10 +511,26 @@
       var canvas = document.getElementById("recoveryTrendChart");
       if (!canvas || typeof Chart === "undefined") return;
       var accent = "#6C5CE7";
-      var fillSoft = "rgba(108,92,231,0.08)";
       var demoValues = [200, 400, 300, 600, 900, 1200, 1500];
       var demoLabels = ["آخر 7 أيام", "آخر 7 أيام", "آخر 7 أيام", "آخر 7 أيام", "آخر 7 أيام", "آخر 7 أيام", "آخر 7 أيام"];
-      var noticeEl = document.getElementById("recoveryTrendFallbackNotice");
+      var estimateEl = document.getElementById("recoveryTrendEstimateLabel");
+      var revenueEl = document.getElementById("recoveryTrendRevenueHighlight");
+
+      function formatMoneyInt(n) {
+        var x = Math.round(Number(n));
+        return x.toLocaleString("en-US");
+      }
+
+      function updateRevenueHighlight(values) {
+        if (!revenueEl || !values.length) return;
+        var first = Number(values[0]);
+        var last = Number(values[values.length - 1]);
+        var delta = last - first;
+        var absPart = formatMoneyInt(Math.abs(delta));
+        var sign = delta > 0 ? "+" : delta < 0 ? "−" : "";
+        revenueEl.textContent =
+          "📈 " + sign + absPart + " ريال خلال 7 أيام";
+      }
 
       function allValuesZero(values) {
         if (!values.length) return true;
@@ -525,22 +539,36 @@
         });
       }
 
-      function buildChart(labels, values, datasetLabel, showFallbackNotice) {
-        if (noticeEl) {
-          noticeEl.classList.toggle("hidden", !showFallbackNotice);
+      function gradientFill(context) {
+        var chart = context.chart;
+        var ctx = chart.ctx;
+        var chartArea = chart.chartArea;
+        if (!chartArea) {
+          return "rgba(108,92,231,0.02)";
         }
+        var g = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+        g.addColorStop(0, "rgba(108,92,231,0.25)");
+        g.addColorStop(1, "rgba(108,92,231,0.02)");
+        return g;
+      }
+
+      function buildChart(labels, values, showEstimateLabel) {
+        if (estimateEl) {
+          estimateEl.classList.toggle("hidden", !showEstimateLabel);
+        }
+        updateRevenueHighlight(values);
         new Chart(canvas, {
           type: "line",
           data: {
             labels: labels,
             datasets: [
               {
-                label: datasetLabel,
+                label: "",
                 data: values,
                 tension: 0.3,
                 borderColor: "#6C5CE7",
-                backgroundColor: fillSoft,
-                borderWidth: 2,
+                backgroundColor: gradientFill,
+                borderWidth: 3,
                 fill: true,
                 pointBackgroundColor: accent,
                 pointBorderColor: "#ffffff",
@@ -554,15 +582,32 @@
             responsive: true,
             maintainAspectRatio: false,
             interaction: { intersect: false, mode: "index" },
+            animation: {
+              duration: 1200,
+              easing: "easeOutQuart",
+            },
             plugins: {
               legend: {
-                display: true,
-                labels: {
-                  color: "#64748b",
-                  boxWidth: 12,
-                  font: {
-                    family: '"IBM Plex Sans Arabic", system-ui, sans-serif',
-                    size: 11,
+                display: false,
+              },
+              tooltip: {
+                rtl: true,
+                titleFont: { family: '"IBM Plex Sans Arabic", system-ui, sans-serif' },
+                bodyFont: { family: '"IBM Plex Sans Arabic", system-ui, sans-serif' },
+                callbacks: {
+                  title: function () {
+                    return "";
+                  },
+                  label: function (ctx) {
+                    var v =
+                      ctx.parsed.y !== undefined && ctx.parsed.y !== null
+                        ? ctx.parsed.y
+                        : 0;
+                    return (
+                      "المبيعات المسترجعة: " +
+                      formatMoneyInt(v) +
+                      " ريال"
+                    );
                   },
                 },
               },
@@ -615,13 +660,13 @@
             data.length === 0 ||
             allValuesZero(values);
           if (emptyOrZero) {
-            buildChart(demoLabels, demoValues, "آخر 7 أيام", true);
+            buildChart(demoLabels, demoValues, true);
           } else {
-            buildChart(labels, values, "المبيعات المسترجعة", false);
+            buildChart(labels, values, false);
           }
         })
         .catch(function () {
-          buildChart(demoLabels, demoValues, "آخر 7 أيام", true);
+          buildChart(demoLabels, demoValues, true);
         });
     })();
   </script>
