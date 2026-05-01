@@ -2435,13 +2435,17 @@
         var rowNav = document.createElement("div");
         rowNav.setAttribute("data-cf-objection-flow-nav", "1");
         rowNav.style.cssText =
-          "display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;width:100%;box-sizing:border-box;";
+          "display:flex;flex-direction:row;flex-wrap:nowrap;align-items:stretch;" +
+          "gap:8px;margin-top:12px;width:100%;box-sizing:border-box;";
+
+        var btnFlex =
+          btnStyle + "flex:1 1 0;min-width:0;text-align:center;";
 
         var bBack = document.createElement("button");
         bBack.type = "button";
         bBack.setAttribute("aria-label", "رجوع خطوة للخلف");
         bBack.textContent = "⬅️ رجوع";
-        bBack.style.cssText = btnStyle;
+        bBack.style.cssText = btnFlex;
         bBack.addEventListener("click", function (evRb) {
           evRb.stopPropagation();
           evRb.preventDefault();
@@ -2464,12 +2468,19 @@
         var bHome = document.createElement("button");
         bHome.type = "button";
         bHome.setAttribute("aria-label", "القائمة الرئيسية للأسباب");
-        bHome.textContent = "🏠 القائمة الرئيسية";
-        bHome.style.cssText = btnStyle;
+        bHome.textContent = "🏠 الرئيسية";
+        bHome.style.cssText = btnFlex;
         bHome.addEventListener("click", function (evHm) {
           evHm.stopPropagation();
           evHm.preventDefault();
           logWidgetNav("home", cfGetNavStep(), "reason_menu");
+          if (flowKind === "price") {
+            logWidgetFlow("price_followup_nav", "price_high", "رجوع_للقائمة");
+            logWidgetConversionFlow("price", "رجوع_للقائمة");
+          } else if (flowKind === "shipping") {
+            logWidgetFlow("shipping_followup_nav", "shipping_cost", "رجوع_للقائمة");
+            logWidgetConversionFlow("shipping_cost", "رجوع_للقائمة");
+          }
           cfClearFlowStack();
           stripContentKeepChrome();
           mountLayerDAbandonIfEligible();
@@ -2898,13 +2909,6 @@
             );
           });
 
-          addPfBtn("رجوع للقائمة السابقة", function () {
-            cfClearFlowStack();
-            logWidgetFlow("price_followup_nav", "price_high", "رجوع_للقائمة");
-            logWidgetConversionFlow("price", "رجوع_للقائمة");
-            remountCartReasonChoicesFromFollowUp();
-          });
-
           widgetBody.appendChild(introEl);
           widgetBody.appendChild(rowPfEl);
           appendObjectionFlowNavRow("price");
@@ -3197,13 +3201,6 @@
                 }
               }
             );
-          });
-
-          addSFBtn("رجوع للقائمة السابقة", function () {
-            cfClearFlowStack();
-            logWidgetFlow("shipping_followup_nav", "shipping_cost", "رجوع_للقائمة");
-            logWidgetConversionFlow("shipping_cost", "رجوع_للقائمة");
-            remountCartReasonChoicesFromFollowUp();
           });
 
           widgetBody.appendChild(introEl);
