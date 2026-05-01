@@ -225,34 +225,34 @@
     var pcFill = widgetButtonFillHex(widgetPrimaryColor);
     if (widgetChromeStyle === "minimal") {
       return (
-        "cursor:pointer;border:2px solid " +
+        "cursor:pointer!important;border:2px solid " +
         pcRaw +
-        ";border-radius:10px;padding:10px 17px;font:inherit;font-weight:600;" +
-        "background:#ffffff;color:" +
+        "!important;border-radius:6px!important;padding:10px 17px!important;font:inherit!important;font-weight:600!important;" +
+        "background:#ffffff!important;color:" +
         pcRaw +
-        ";min-height:44px;box-sizing:border-box;touch-action:manipulation;box-shadow:none;"
+        "!important;min-height:44px!important;box-sizing:border-box!important;touch-action:manipulation!important;box-shadow:none!important;"
       );
     }
-    var rad = widgetChromeStyle === "bold" ? "14px" : "11px";
-    var padV = widgetChromeStyle === "bold" ? "14px" : "11px";
-    var padH = widgetChromeStyle === "bold" ? "21px" : "17px";
+    var rad = widgetChromeStyle === "bold" ? "16px" : "11px";
+    var padV = widgetChromeStyle === "bold" ? "15px" : "11px";
+    var padH = widgetChromeStyle === "bold" ? "23px" : "17px";
     var fw = widgetChromeStyle === "bold" ? "800" : "600";
     var shadow =
       widgetChromeStyle === "bold"
-        ? "box-shadow:0 10px 26px rgba(0,0,0,.38);"
-        : "box-shadow:0 5px 18px rgba(0,0,0,.16);";
+        ? "box-shadow:0 14px 34px rgba(0,0,0,.42)!important;"
+        : "box-shadow:0 8px 22px rgba(0,0,0,.18)!important;";
     return (
-      "cursor:pointer;border:0;border-radius:" +
+      "cursor:pointer!important;border:0!important;border-radius:" +
       rad +
-      ";padding:" +
+      "!important;padding:" +
       padV +
       " " +
       padH +
-      ";font:inherit;font-weight:" +
+      "!important;font:inherit!important;font-weight:" +
       fw +
-      ";background:" +
+      "!important;background:" +
       pcFill +
-      ";color:#fff;min-height:44px;box-sizing:border-box;touch-action:manipulation;" +
+      "!important;color:#fff!important;min-height:44px!important;box-sizing:border-box!important;touch-action:manipulation!important;" +
       shadow
     );
   }
@@ -260,9 +260,9 @@
   function widgetShellChromeCss() {
     if (widgetChromeStyle === "minimal") {
       return {
-        radius: "14px",
-        shadow: "0 1px 3px rgba(15,23,42,.06)",
-        border: "1px solid #cbd5e1",
+        radius: "6px",
+        shadow: "none",
+        border: "1px solid #e5e7eb",
         bg: "#ffffff",
         fg: "#0f172a",
       };
@@ -271,15 +271,15 @@
       return {
         radius: "18px",
         shadow:
-          "0 18px 46px rgba(0,0,0,.44), 0 6px 16px rgba(0,0,0,.28)",
-        border: "3px solid rgba(255,255,255,.38)",
-        bg: "#141026",
+          "0 22px 52px rgba(0,0,0,.52), 0 8px 22px rgba(0,0,0,.32)",
+        border: "4px solid rgba(255,255,255,.42)",
+        bg: "#120d28",
         fg: "#faf5ff",
       };
     }
     return {
       radius: "16px",
-      shadow: "0 10px 36px rgba(0,0,0,.14), 0 2px 10px rgba(0,0,0,.07)",
+      shadow: "0 10px 34px rgba(0,0,0,.13), 0 4px 12px rgba(0,0,0,.06)",
       border: "",
       bg: "#1e1b4b",
       fg: "#f5f3ff",
@@ -312,15 +312,294 @@
     );
   }
 
-  function logWidgetCustomizationApplied() {
+  var _cfWidgetDynCssInserted = false;
+
+  function ensureWidgetCustomizationDynamicCss() {
+    if (_cfWidgetDynCssInserted) {
+      return;
+    }
     try {
-      console.log("[WIDGET CUSTOMIZATION APPLIED]");
-      console.log("widget_name=" + String(widgetBrandName || ""));
-      console.log("widget_primary_color=" + String(widgetPrimaryColor || ""));
-      console.log("widget_style=" + String(widgetChromeStyle || ""));
-    } catch (eWca) {
+      var st = document.createElement("style");
+      st.id = "cartflow-widget-customization-dynamic";
+      st.textContent =
+        "[data-cartflow-bubble].cf-widget-style-bold button[data-cf-widget-primary-btn]:hover {" +
+        "filter:brightness(1.14)!important;transform:translateY(-2px) scale(1.03)!important;" +
+        "}" +
+        "[data-cartflow-bubble].cf-widget-style-modern button[data-cf-widget-primary-btn]:hover {" +
+        "filter:brightness(1.08)!important;" +
+        "}" +
+        "[data-cartflow-bubble].cf-widget-style-minimal button[data-cf-widget-primary-btn]:hover {" +
+        "background:#f8fafc!important;" +
+        "}";
+      document.head.appendChild(st);
+      _cfWidgetDynCssInserted = true;
+    } catch (eCss) {
       /* ignore */
     }
+  }
+
+  function stampPrimaryBubbleBtn(el, extraCss) {
+    if (!el || el.nodeType !== 1) {
+      return;
+    }
+    el.setAttribute("data-cf-widget-primary-btn", "1");
+    if (extraCss) {
+      el.setAttribute("data-cf-primary-extra", String(extraCss));
+    } else {
+      el.removeAttribute("data-cf-primary-extra");
+    }
+    el.style.cssText = getWidgetPrimaryButtonStyle() + (extraCss || "");
+  }
+
+  function syncWidgetCustomizationToWindow() {
+    try {
+      window.widgetBrandName = widgetBrandName || "مساعد المتجر";
+      window.widgetPrimaryColor = widgetPrimaryColor || "#6C5CE7";
+      window.widgetChromeStyle = widgetChromeStyle || "modern";
+    } catch (eWin) {
+      /* ignore */
+    }
+  }
+
+  function applyWidgetStyleClass(style, bubble) {
+    if (!bubble) {
+      return;
+    }
+    bubble.classList.remove(
+      "cf-widget-style-modern",
+      "cf-widget-style-minimal",
+      "cf-widget-style-bold"
+    );
+    var st =
+      style === "minimal" || style === "bold" ? style : "modern";
+    bubble.classList.add("cf-widget-style-" + st);
+  }
+
+  function setWidgetHeaderColor(primaryHex, bubble) {
+    if (!bubble) {
+      return;
+    }
+    var header = bubble.querySelector("[data-cf-widget-header]");
+    var title = bubble.querySelector("[data-cf-widget-title]");
+    if (!header || !title) {
+      return;
+    }
+    var pcNorm = normalizeWidgetPrimaryHexClient(primaryHex);
+    var bandRadius =
+      widgetChromeStyle === "bold"
+        ? "14px"
+        : widgetChromeStyle === "minimal"
+        ? "6px"
+        : "16px";
+    if (widgetChromeStyle === "minimal") {
+      header.style.setProperty("margin", "0 0 12px 0", "important");
+      header.style.setProperty("padding", "11px 13px", "important");
+      header.style.setProperty("border-radius", bandRadius, "important");
+      header.style.setProperty("background", "#ffffff", "important");
+      header.style.setProperty("box-shadow", "none", "important");
+      header.style.setProperty("border-bottom", "3px solid " + pcNorm, "important");
+      header.style.setProperty("border", "0", "important");
+      title.style.setProperty("color", "#0f172a", "important");
+      title.style.setProperty("font-weight", "700", "important");
+      title.style.setProperty("font-size", "15px", "important");
+    } else if (widgetChromeStyle === "bold") {
+      header.style.setProperty("margin", "0 0 12px 0", "important");
+      header.style.setProperty("padding", "14px 17px", "important");
+      header.style.setProperty("border-radius", bandRadius, "important");
+      header.style.setProperty("background", pcNorm, "important");
+      header.style.setProperty(
+        "box-shadow",
+        "inset 0 -4px 0 rgba(0,0,0,.22)",
+        "important"
+      );
+      header.style.setProperty(
+        "border",
+        "3px solid rgba(255,255,255,.45)",
+        "important"
+      );
+      var lumB = relativeLuminanceHex(pcNorm);
+      title.style.setProperty(
+        "color",
+        lumB > 0.55 ? "#0f172a" : "#ffffff",
+        "important"
+      );
+      title.style.setProperty("font-weight", "800", "important");
+      title.style.setProperty("font-size", "16px", "important");
+      title.style.setProperty(
+        "text-shadow",
+        lumB > 0.55 ? "none" : "0 2px 6px rgba(0,0,0,.35)",
+        "important"
+      );
+    } else {
+      var bandDark = shadeHex(pcNorm, -0.48);
+      var bandMid = shadeHex(pcNorm, -0.22);
+      header.style.setProperty("margin", "0 0 11px 0", "important");
+      header.style.setProperty("padding", "12px 14px", "important");
+      header.style.setProperty("border-radius", bandRadius, "important");
+      header.style.setProperty(
+        "background",
+        "linear-gradient(135deg," + bandDark + " 0%," + bandMid + " 100%)",
+        "important"
+      );
+      header.style.setProperty(
+        "box-shadow",
+        "0 4px 18px rgba(0,0,0,.15)",
+        "important"
+      );
+      header.style.setProperty("border", "0", "important");
+      var lumM = relativeLuminanceHex(bandMid);
+      title.style.setProperty(
+        "color",
+        lumM > 0.55 ? "#1e1b4b" : "#ffffff",
+        "important"
+      );
+      title.style.setProperty("font-weight", "700", "important");
+      title.style.setProperty("font-size", "15px", "important");
+    }
+    title.textContent = widgetBrandName || "مساعد المتجر";
+  }
+
+  function repaintWidgetShell(bubble) {
+    if (!bubble) {
+      return;
+    }
+    var shell = widgetShellChromeCss();
+    bubble.style.setProperty("border-radius", shell.radius, "important");
+    var sh =
+      widgetChromeStyle === "minimal" ? "none" : shell.shadow;
+    bubble.style.setProperty("box-shadow", sh, "important");
+    var bd = "none";
+    if (widgetChromeStyle === "minimal") {
+      bd = "1px solid #e5e7eb";
+    } else if (shell.border) {
+      bd = shell.border;
+    }
+    bubble.style.setProperty("border", bd, "important");
+    bubble.style.setProperty("background-color", shell.bg, "important");
+    bubble.style.setProperty("background", shell.bg, "important");
+    bubble.style.setProperty("color", shell.fg, "important");
+    var pad =
+      widgetChromeStyle === "minimal"
+        ? "14px 16px"
+        : widgetChromeStyle === "bold"
+        ? "14px 17px"
+        : "13px 15px";
+    bubble.style.setProperty("padding", pad, "important");
+  }
+
+  function repaintWidgetChromeBar(bubble, pcNorm) {
+    if (!bubble) {
+      return;
+    }
+    var chrome = bubble.querySelector("[data-cf-chrome]");
+    if (!chrome) {
+      return;
+    }
+    var chromeBorderW =
+      widgetChromeStyle === "minimal"
+        ? "1px"
+        : widgetChromeStyle === "bold"
+        ? "4px"
+        : "2px";
+    var chromeBorderCol =
+      widgetChromeStyle === "minimal" ? "#e5e7eb" : pcNorm;
+    chrome.style.setProperty(
+      "border-bottom",
+      chromeBorderW + " solid " + chromeBorderCol,
+      "important"
+    );
+    var gap = widgetChromeStyle === "bold" ? "10px" : "8px";
+    chrome.style.setProperty("gap", gap, "important");
+    chrome.style.setProperty("margin-bottom", "10px", "important");
+    chrome.style.setProperty("padding-bottom", "10px", "important");
+    var toolBtns = chrome.querySelectorAll("button");
+    var ti;
+    for (ti = 0; ti < toolBtns.length; ti++) {
+      toolBtns[ti].style.cssText = chromeToolbarBtnStyle();
+    }
+  }
+
+  function updateAllPrimaryButtons(primaryHex) {
+    void primaryHex;
+    var bubble = document.querySelector("[data-cartflow-bubble]");
+    if (!bubble) {
+      return;
+    }
+    var nodes = bubble.querySelectorAll('[data-cf-widget-primary-btn="1"]');
+    var idx;
+    for (idx = 0; idx < nodes.length; idx++) {
+      var el = nodes[idx];
+      var ex = el.getAttribute("data-cf-primary-extra");
+      stampPrimaryBubbleBtn(el, ex ? String(ex) : "");
+    }
+  }
+
+  function updateWidgetLauncherColor(primaryHex) {
+    void primaryHex;
+    var fab = document.querySelector("[data-cartflow-fab]");
+    if (!fab) {
+      return;
+    }
+    var fabFill = widgetButtonFillHex(widgetPrimaryColor);
+    fab.style.setProperty("background", fabFill, "important");
+    fab.style.setProperty("background-color", fabFill, "important");
+    var fabRad =
+      widgetChromeStyle === "minimal"
+        ? "16px"
+        : widgetChromeStyle === "bold"
+        ? "50%"
+        : "50%";
+    var fabShadow =
+      widgetChromeStyle === "minimal"
+        ? "none"
+        : widgetChromeStyle === "bold"
+        ? "0 18px 48px rgba(0,0,0,.55), 0 6px 18px rgba(0,0,0,.3)"
+        : "0 12px 34px rgba(0,0,0,.3)";
+    fab.style.setProperty("box-shadow", fabShadow, "important");
+    fab.style.setProperty("border-radius", fabRad, "important");
+    var fabBorder =
+      widgetChromeStyle === "minimal"
+        ? "2px solid rgba(15,23,42,.12)"
+        : widgetChromeStyle === "bold"
+        ? "5px solid rgba(255,255,255,.48)"
+        : "0";
+    fab.style.setProperty("border", fabBorder, "important");
+    var fabMin =
+      widgetChromeStyle === "bold" ? "56px" : widgetChromeStyle === "minimal" ? "50px" : "48px";
+    fab.style.setProperty("min-width", fabMin, "important");
+    fab.style.setProperty("min-height", fabMin, "important");
+    fab.style.setProperty("width", fabMin, "important");
+    fab.style.setProperty("height", fabMin, "important");
+  }
+
+  function applyWidgetCustomization() {
+    try {
+      console.log("[WIDGET CUSTOMIZATION APPLIED]", {
+        name: widgetBrandName,
+        color: widgetPrimaryColor,
+        style: widgetChromeStyle,
+      });
+    } catch (eLog) {
+      /* ignore */
+    }
+    syncWidgetCustomizationToWindow();
+    ensureWidgetCustomizationDynamicCss();
+    var bubble = document.querySelector("[data-cartflow-bubble]");
+    var pcNorm = normalizeWidgetPrimaryHexClient(widgetPrimaryColor);
+    if (bubble) {
+      repaintWidgetShell(bubble);
+      applyWidgetStyleClass(widgetChromeStyle, bubble);
+      setWidgetHeaderColor(widgetPrimaryColor, bubble);
+      repaintWidgetChromeBar(bubble, pcNorm);
+      updateAllPrimaryButtons(widgetPrimaryColor);
+    }
+    updateWidgetLauncherColor(widgetPrimaryColor);
+  }
+
+  try {
+    window.applyWidgetCustomization = applyWidgetCustomization;
+  } catch (eExWac) {
+    /* ignore */
   }
 
   function applyTemplateConfigFromReady(j) {
@@ -350,18 +629,28 @@
       if (typeof j.exit_intent_custom_text === "string") {
         widgetExitIntentCustomText = j.exit_intent_custom_text;
       }
-      if (typeof j.widget_name === "string") {
-        var wn = j.widget_name.trim();
-        widgetBrandName = wn ? wn.slice(0, 120) : "مساعد المتجر";
+      if ("widget_name" in j) {
+        widgetBrandName =
+          typeof j.widget_name === "string" && j.widget_name.trim()
+            ? j.widget_name.trim().slice(0, 120)
+            : "مساعد المتجر";
       }
-      if (typeof j.widget_primary_color === "string" && j.widget_primary_color.trim()) {
-        widgetPrimaryColor = normalizeWidgetPrimaryHexClient(j.widget_primary_color.trim());
+      if (
+        "widget_primary_color" in j &&
+        j.widget_primary_color != null &&
+        String(j.widget_primary_color).trim()
+      ) {
+        widgetPrimaryColor = normalizeWidgetPrimaryHexClient(
+          String(j.widget_primary_color).trim()
+        );
       }
-      var ws = j.widget_style;
-      if (ws === "modern" || ws === "minimal" || ws === "bold") {
-        widgetChromeStyle = ws;
+      if ("widget_style" in j) {
+        var ws = j.widget_style;
+        widgetChromeStyle =
+          ws === "modern" || ws === "minimal" || ws === "bold" ? ws : "modern";
       }
-      logWidgetCustomizationApplied();
+      syncWidgetCustomizationToWindow();
+      applyWidgetCustomization();
     } catch (eTpl) {
       /* ignore */
     }
@@ -2471,7 +2760,6 @@
 
     ensureMobileUxStyles();
     ensureChatBodyLayoutStyles();
-    var btnStyle = getWidgetPrimaryButtonStyle();
     var shell = widgetShellChromeCss();
     var pcNorm = normalizeWidgetPrimaryHexClient(widgetPrimaryColor);
     var shellBorderCss = shell.border ? "border:" + shell.border + ";" : "";
@@ -2809,8 +3097,10 @@
         w.style.transform = "";
         document.body.appendChild(w);
         applyBubbleLayout(w);
+        applyWidgetCustomization();
       });
       document.body.appendChild(fab);
+      applyWidgetCustomization();
     }
 
     var btnMin = document.createElement("button");
@@ -2965,26 +3255,7 @@
       btnAdd.type = "button";
       btnAdd.textContent = "أضف للسلة";
       btnAdd.setAttribute("data-cf-exit-discovery-add", "1");
-      if (widgetChromeStyle === "minimal" || widgetChromeStyle === "modern") {
-        btnAdd.style.cssText =
-          getWidgetPrimaryButtonStyle() +
-          "width:100%;font-size:14px;min-height:48px;";
-      } else {
-        var pcBtn = widgetButtonFillHex(widgetPrimaryColor);
-        var pcHi = shadeHex(pcBtn, 0.22);
-        var pcLo = shadeHex(pcBtn, -0.28);
-        btnAdd.style.cssText =
-          "cursor:pointer;border:2px solid rgba(255,255,255,.35);border-radius:14px;padding:14px 16px;font:inherit;font-weight:800;" +
-          "font-size:14px;background:linear-gradient(180deg," +
-          pcHi +
-          " 0%," +
-          pcBtn +
-          " 55%," +
-          pcLo +
-          " 100%);" +
-          "color:#fff;width:100%;box-sizing:border-box;min-height:52px;touch-action:manipulation;" +
-          "box-shadow:0 10px 26px rgba(0,0,0,.38);";
-      }
+      stampPrimaryBubbleBtn(btnAdd, "width:100%!important;font-size:14px!important;min-height:48px!important;");
       btnAdd.addEventListener("click", function (evAdd) {
         evAdd.stopPropagation();
         evAdd.preventDefault();
@@ -3039,7 +3310,7 @@
             var btnScroll = document.createElement("button");
             btnScroll.type = "button";
             btnScroll.textContent = "انتقل للمنتجات 👇";
-            btnScroll.style.cssText = btnStyle;
+            stampPrimaryBubbleBtn(btnScroll);
             btnScroll.addEventListener("click", function (evSc) {
               evSc.stopPropagation();
               evSc.preventDefault();
@@ -3078,7 +3349,7 @@
           b.type = "button";
           b.className = "cf-btn";
           b.textContent = label;
-          b.style.cssText = btnStyle;
+          stampPrimaryBubbleBtn(b);
           b.addEventListener("click", function (e) {
             e.stopPropagation();
             e.preventDefault();
@@ -3090,7 +3361,7 @@
       bBack.type = "button";
       bBack.textContent = BTN_BACK;
       bBack.setAttribute("aria-label", "رجوع لقائمة التصفح");
-      bBack.style.cssText = btnStyle;
+      stampPrimaryBubbleBtn(bBack);
       bBack.addEventListener("click", function (e) {
         e.stopPropagation();
         e.preventDefault();
@@ -3135,7 +3406,7 @@
         bChat.setAttribute("data-cf-layer-d-chat-return", "1");
         bChat.setAttribute("aria-label", "رجوع للمحادثة");
         bChat.textContent = "رجوع للمحادثة";
-        bChat.style.cssText = btnStyle;
+        stampPrimaryBubbleBtn(bChat);
         bChat.addEventListener("click", function (evRet) {
           evRet.stopPropagation();
           evRet.preventDefault();
@@ -3210,14 +3481,11 @@
           "display:flex;flex-direction:row;flex-wrap:nowrap;align-items:stretch;" +
           "gap:8px;margin-top:12px;width:100%;box-sizing:border-box;";
 
-        var btnFlex =
-          btnStyle + "flex:1 1 0;min-width:0;text-align:center;";
-
         var bBack = document.createElement("button");
         bBack.type = "button";
         bBack.setAttribute("aria-label", "رجوع خطوة للخلف");
         bBack.textContent = "⬅️ رجوع";
-        bBack.style.cssText = btnFlex;
+        stampPrimaryBubbleBtn(bBack, "flex:1 1 0;min-width:0;text-align:center;");
         bBack.addEventListener("click", function (evRb) {
           evRb.stopPropagation();
           evRb.preventDefault();
@@ -3241,7 +3509,7 @@
         bHome.type = "button";
         bHome.setAttribute("aria-label", "القائمة الرئيسية للأسباب");
         bHome.textContent = "🏠 الرئيسية";
-        bHome.style.cssText = btnFlex;
+        stampPrimaryBubbleBtn(bHome, "flex:1 1 0;min-width:0;text-align:center;");
         bHome.addEventListener("click", function (evHm) {
           evHm.stopPropagation();
           evHm.preventDefault();
@@ -3329,7 +3597,7 @@
         var bBackMenu = document.createElement("button");
         bBackMenu.type = "button";
         bBackMenu.textContent = "رجوع للقائمة السابقة";
-        bBackMenu.style.cssText = btnStyle;
+        stampPrimaryBubbleBtn(bBackMenu);
         bBackMenu.addEventListener("click", function (ev) {
           ev.stopPropagation();
           ev.preventDefault();
@@ -3340,7 +3608,7 @@
         var bCloseAssist = document.createElement("button");
         bCloseAssist.type = "button";
         bCloseAssist.textContent = "إغلاق المساعد";
-        bCloseAssist.style.cssText = btnStyle;
+        stampPrimaryBubbleBtn(bCloseAssist);
         bCloseAssist.addEventListener("click", dismissAssistBubble);
 
         rowNk.appendChild(bBackMenu);
@@ -3520,7 +3788,7 @@
           btn.type = "button";
           btn.setAttribute("data-cf-price-conversion-cta", "1");
           btn.textContent = "كمّل الطلب والدفع 👇";
-          btn.style.cssText = btnStyle;
+          stampPrimaryBubbleBtn(btn);
           btn.addEventListener("click", function (evCta) {
             evCta.stopPropagation();
             evCta.preventDefault();
@@ -3560,7 +3828,7 @@
             var b = document.createElement("button");
             b.type = "button";
             b.textContent = label;
-            b.style.cssText = btnStyle;
+            stampPrimaryBubbleBtn(b);
             b.addEventListener("click", function (ev) {
               ev.stopPropagation();
               ev.preventDefault();
@@ -3623,7 +3891,7 @@
             var bx = document.createElement("button");
             bx.type = "button";
             bx.textContent = label;
-            bx.style.cssText = btnStyle;
+            stampPrimaryBubbleBtn(bx);
             bx.addEventListener("click", function (ev) {
               ev.stopPropagation();
               ev.preventDefault();
@@ -3787,10 +4055,11 @@
           btn.type = "button";
           btn.setAttribute("data-cf-quality-conversion-cta", "1");
           btn.textContent = "كمّل الطلب الآن 👇";
-          btn.style.cssText =
-            btnStyle +
-            "width:100%;margin-top:4px;font-size:15px;font-weight:700;padding:14px 18px;border-radius:10px;" +
-            "box-shadow:0 2px 10px rgba(0,0,0,.22);min-height:48px;";
+          stampPrimaryBubbleBtn(
+            btn,
+            "width:100%!important;margin-top:4px!important;font-size:15px!important;font-weight:700!important;padding:14px 18px!important;border-radius:10px!important;" +
+              "box-shadow:0 2px 10px rgba(0,0,0,.22)!important;min-height:48px!important;"
+          );
           btn.addEventListener("click", function (evCta) {
             evCta.stopPropagation();
             evCta.preventDefault();
@@ -3834,7 +4103,7 @@
             var bx = document.createElement("button");
             bx.type = "button";
             bx.textContent = label;
-            bx.style.cssText = btnStyle;
+            stampPrimaryBubbleBtn(bx);
             bx.addEventListener("click", function (ev) {
               ev.stopPropagation();
               ev.preventDefault();
@@ -4037,7 +4306,7 @@
           btn.type = "button";
           btn.setAttribute("data-cf-shipping-conversion-cta", "1");
           btn.textContent = "كمّل الطلب والدفع 👇";
-          btn.style.cssText = btnStyle;
+          stampPrimaryBubbleBtn(btn);
           btn.addEventListener("click", function (evCta) {
             evCta.stopPropagation();
             evCta.preventDefault();
@@ -4079,7 +4348,7 @@
             var bx = document.createElement("button");
             bx.type = "button";
             bx.textContent = label;
-            bx.style.cssText = btnStyle;
+            stampPrimaryBubbleBtn(bx);
             bx.addEventListener("click", function (ev) {
               ev.stopPropagation();
               ev.preventDefault();
@@ -4225,7 +4494,7 @@
           btn.type = "button";
           btn.setAttribute("data-cf-delivery-conversion-cta", "1");
           btn.textContent = "كمّل الطلب الآن 👇";
-          btn.style.cssText = btnStyle;
+          stampPrimaryBubbleBtn(btn);
           btn.addEventListener("click", function (evCta) {
             evCta.stopPropagation();
             evCta.preventDefault();
@@ -4269,7 +4538,7 @@
             var bx = document.createElement("button");
             bx.type = "button";
             bx.textContent = label;
-            bx.style.cssText = btnStyle;
+            stampPrimaryBubbleBtn(bx);
             bx.addEventListener("click", function (ev) {
               ev.stopPropagation();
               ev.preventDefault();
@@ -4394,7 +4663,7 @@
           var bx = document.createElement("button");
           bx.type = "button";
           bx.textContent = label;
-          bx.style.cssText = btnStyle;
+          stampPrimaryBubbleBtn(bx);
           bx.addEventListener("click", function (ev) {
             ev.stopPropagation();
             ev.preventDefault();
@@ -4449,7 +4718,7 @@
           var bx = document.createElement("button");
           bx.type = "button";
           bx.textContent = label;
-          bx.style.cssText = btnStyle;
+          stampPrimaryBubbleBtn(bx);
           bx.addEventListener("click", function (ev) {
             ev.stopPropagation();
             ev.preventDefault();
@@ -4521,7 +4790,7 @@
             var bChip = document.createElement("button");
             bChip.type = "button";
             bChip.textContent = opt.label;
-            bChip.style.cssText = btnStyle;
+            stampPrimaryBubbleBtn(bChip);
             bChip.addEventListener("click", function (e) {
               e.stopPropagation();
               e.preventDefault();
@@ -4586,7 +4855,7 @@
         openSource === TRIGGER_SOURCE_EXIT_INTENT
           ? "نعم، خلني أشوف 👌"
           : "نعم";
-      btnY.style.cssText = btnStyle;
+      stampPrimaryBubbleBtn(btnY);
 
       btnN = document.createElement("button");
       btnN.type = "button";
@@ -4594,7 +4863,7 @@
         openSource === TRIGGER_SOURCE_EXIT_INTENT
           ? "لا، أتصفح بس"
           : "لا";
-      btnN.style.cssText = btnStyle;
+      stampPrimaryBubbleBtn(btnN);
       btnN.addEventListener("click", function (ev) {
         ev.stopPropagation();
         ev.preventDefault();
@@ -4683,7 +4952,7 @@
       bBack1.type = "button";
       bBack1.textContent = BTN_BACK;
       bBack1.setAttribute("aria-label", "رجوع لاستجابة المنتج");
-      bBack1.style.cssText = btnStyle;
+      stampPrimaryBubbleBtn(bBack1);
       bBack1.addEventListener("click", function (e2) {
         e2.stopPropagation();
         e2.preventDefault();
@@ -4705,7 +4974,7 @@
       bBack1.type = "button";
       bBack1.textContent = BTN_BACK;
       bBack1.setAttribute("aria-label", "رجوع للعروض");
-      bBack1.style.cssText = btnStyle;
+      stampPrimaryBubbleBtn(bBack1);
       bBack1.addEventListener("click", function (e2) {
         e2.stopPropagation();
         e2.preventDefault();
@@ -4770,7 +5039,7 @@
         bMock.textContent = "📤 إرسال عبر واتساب";
         bMock.setAttribute("data-cf-wa-mock-send", "1");
         bMock.setAttribute("aria-label", "فتح واتساب مع الرسالة المجهّزة");
-        bMock.style.cssText = btnStyle;
+        stampPrimaryBubbleBtn(bMock);
         bMock.setAttribute("disabled", "true");
         var generatedCore = null;
         var merchantE164 = null;
@@ -4916,7 +5185,7 @@
           var b = document.createElement("button");
           b.type = "button";
           b.textContent = actionButtonText(rkey, flow, actionId);
-          b.style.cssText = btnStyle;
+          stampPrimaryBubbleBtn(b);
           b.addEventListener("click", function (e) {
             e.stopPropagation();
             e.preventDefault();
@@ -4971,7 +5240,7 @@
         var bs = document.createElement("button");
         bs.type = "button";
         bs.textContent = o.label;
-        bs.style.cssText = btnStyle;
+        stampPrimaryBubbleBtn(bs);
         (function (sub) {
           bs.addEventListener("click", function (e) {
             e.stopPropagation();
@@ -4985,7 +5254,7 @@
       bPBack.type = "button";
       bPBack.textContent = BTN_BACK;
       bPBack.setAttribute("aria-label", "رجوع لقائمة الأسباب");
-      bPBack.style.cssText = btnStyle;
+      stampPrimaryBubbleBtn(bPBack);
       bPBack.addEventListener("click", function (e) {
         e.stopPropagation();
         e.preventDefault();
@@ -5015,7 +5284,7 @@
       var bSend = document.createElement("button");
       bSend.type = "button";
       bSend.textContent = "إرسال السبب";
-      bSend.style.cssText = btnStyle;
+      stampPrimaryBubbleBtn(bSend);
       bSend.addEventListener("click", function (e2) {
         e2.stopPropagation();
         e2.preventDefault();
@@ -5044,7 +5313,7 @@
       var bHandoffO = document.createElement("button");
       bHandoffO.type = "button";
       bHandoffO.textContent = BTN_HANDOFF;
-      bHandoffO.style.cssText = btnStyle;
+      stampPrimaryBubbleBtn(bHandoffO);
       bHandoffO.addEventListener("click", function (e3) {
         e3.stopPropagation();
         e3.preventDefault();
@@ -5053,7 +5322,7 @@
       var bBackO = document.createElement("button");
       bBackO.type = "button";
       bBackO.textContent = BTN_BACK;
-      bBackO.style.cssText = btnStyle;
+      stampPrimaryBubbleBtn(bBackO);
       bBackO.addEventListener("click", function (e4) {
         e4.stopPropagation();
         e4.preventDefault();
@@ -5077,7 +5346,7 @@
       var bH2 = document.createElement("button");
       bH2.type = "button";
       bH2.textContent = BTN_HANDOFF;
-      bH2.style.cssText = btnStyle;
+      stampPrimaryBubbleBtn(bH2);
       bH2.addEventListener("click", function (e) {
         e.stopPropagation();
         e.preventDefault();
@@ -5086,7 +5355,7 @@
       var bAgain = document.createElement("button");
       bAgain.type = "button";
       bAgain.textContent = "ملاحظة جديدة";
-      bAgain.style.cssText = btnStyle;
+      stampPrimaryBubbleBtn(bAgain);
       bAgain.addEventListener("click", function (e) {
         e.stopPropagation();
         e.preventDefault();
@@ -5096,7 +5365,7 @@
       bR.type = "button";
       bR.textContent = BTN_BACK;
       bR.setAttribute("aria-label", "رجوع لاختيار السبب");
-      bR.style.cssText = btnStyle;
+      stampPrimaryBubbleBtn(bR);
       bR.addEventListener("click", function (e) {
         e.stopPropagation();
         e.preventDefault();
@@ -5154,7 +5423,7 @@
         var b = document.createElement("button");
         b.type = "button";
         b.textContent = o.label;
-        b.style.cssText = btnStyle;
+        stampPrimaryBubbleBtn(b);
         b.addEventListener("click", function (e) {
           e.stopPropagation();
           e.preventDefault();
@@ -5193,7 +5462,7 @@
         var b = document.createElement("button");
         b.type = "button";
         b.textContent = o.label;
-        b.style.cssText = btnStyle;
+        stampPrimaryBubbleBtn(b);
         b.addEventListener("click", function (e) {
           e.stopPropagation();
           e.preventDefault();
@@ -5217,7 +5486,7 @@
             var bBackD = document.createElement("button");
             bBackD.type = "button";
             bBackD.textContent = BTN_BACK;
-            bBackD.style.cssText = btnStyle;
+            stampPrimaryBubbleBtn(bBackD);
             bBackD.addEventListener("click", function (e2) {
               e2.stopPropagation();
               e2.preventDefault();
@@ -5281,6 +5550,7 @@
       /* ignore */
     }
     document.body.appendChild(w);
+    applyWidgetCustomization();
     emitDemoGuideEvent("cartflow-demo-bubble-visible", {});
   }
 

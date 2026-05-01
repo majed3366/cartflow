@@ -235,6 +235,9 @@ def cartflow_ready(
 ) -> Any:
     """
     ‎true‎ عند تسجيل ‎step1‎ استرجاع واتساب (مرسَل/وهمي) لنفس ‎store_slug + session_id‎.
+
+    الجسم يتضمن حقول النمط والودجيت للعرض الأمامي، منها:
+    ‎widget_name‎، ‎widget_primary_color‎، ‎widget_style‎ (مع باقي حقول القوالب).
     """
     try:
         ensure_store_widget_schema(db)
