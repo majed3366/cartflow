@@ -22,6 +22,17 @@
     background-color: rgb(245 243 255 / 0.95);
     border-color: rgb(196 181 253 / 0.9);
   }
+  /* Deep-link flash from لوحة التحكم → رسائل استعادة السلة */
+  .cf-msg-deep-highlight {
+    outline: 2px solid rgb(124 58 237 / 0.88);
+    outline-offset: 3px;
+    box-shadow:
+      0 0 0 4px rgb(124 58 237 / 0.18),
+      0 6px 20px -8px rgb(124 58 237 / 0.35);
+    transition:
+      outline 0.2s ease,
+      box-shadow 0.2s ease;
+  }
   @media (max-width: 767px) {
     .rs-card {
       padding: 1.25rem 1rem;

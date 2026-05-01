@@ -75,7 +75,7 @@
           <h2 id="reasons-heading" class="mb-4 border-b-2 border-zid-500/35 pb-2 text-base font-bold leading-snug text-slate-800 md:mb-3 md:text-sm md:leading-normal">أسباب التردد (حسب ‎CartRecoveryReason‎)</h2>
           <div class="space-y-5 rounded-2xl border border-zid-100 bg-white p-6 shadow-sm md:space-y-4 md:p-5">
             {% for r in reason_bar %}
-            <div>
+            <div class="border-b border-slate-100 pb-4 last:border-b-0 last:pb-0 md:pb-3">
               <div class="mb-2 flex justify-between text-base leading-snug md:mb-1 md:text-sm">
                 <span class="font-medium text-slate-800">{{ r.label }}</span>
                 <span class="text-slate-500 tabular-nums">{{ r.count }}</span>
@@ -83,6 +83,32 @@
               <div class="h-2.5 rounded-full bg-slate-100 overflow-hidden" role="img" aria-label="{{ r.label }}: {{ r.count }}">
                 <div class="h-full rounded-full bg-zid-500 transition-all" style="width: {{ r.width_pct }}%"></div>
               </div>
+              {% if r.key == "price" %}
+              <a href="/dashboard/cartflow-messages#cf-msg-template-price"
+                class="mt-2 inline-flex items-center rounded-lg border border-zid-200/90 bg-white px-2.5 py-1 text-[11px] font-medium leading-snug text-zid-700 shadow-sm transition-colors hover:border-zid-400 hover:bg-zid-50 focus:outline-none focus:ring-2 focus:ring-zid-400/35 md:text-[10px]">
+                تحسين رسالة السعر
+              </a>
+              {% elif r.key == "shipping" %}
+              <a href="/dashboard/cartflow-messages#cf-msg-template-shipping"
+                class="mt-2 inline-flex items-center rounded-lg border border-zid-200/90 bg-white px-2.5 py-1 text-[11px] font-medium leading-snug text-zid-700 shadow-sm transition-colors hover:border-zid-400 hover:bg-zid-50 focus:outline-none focus:ring-2 focus:ring-zid-400/35 md:text-[10px]">
+                تحسين رسالة الشحن
+              </a>
+              {% elif r.key == "quality" %}
+              <a href="/dashboard/cartflow-messages#cf-msg-template-quality"
+                class="mt-2 inline-flex items-center rounded-lg border border-zid-200/90 bg-white px-2.5 py-1 text-[11px] font-medium leading-snug text-zid-700 shadow-sm transition-colors hover:border-zid-400 hover:bg-zid-50 focus:outline-none focus:ring-2 focus:ring-zid-400/35 md:text-[10px]">
+                تحسين رسالة الجودة
+              </a>
+              {% elif r.key == "thinking" %}
+              <a href="/dashboard/cartflow-messages#cf-msg-template-thinking"
+                class="mt-2 inline-flex items-center rounded-lg border border-zid-200/90 bg-white px-2.5 py-1 text-[11px] font-medium leading-snug text-zid-700 shadow-sm transition-colors hover:border-zid-400 hover:bg-zid-50 focus:outline-none focus:ring-2 focus:ring-zid-400/35 md:text-[10px]">
+                تحسين رسالة التردد
+              </a>
+              {% elif r.key == "warranty" %}
+              <a href="/dashboard/cartflow-messages#cf-msg-template-warranty"
+                class="mt-2 inline-flex items-center rounded-lg border border-zid-200/90 bg-white px-2.5 py-1 text-[11px] font-medium leading-snug text-zid-700 shadow-sm transition-colors hover:border-zid-400 hover:bg-zid-50 focus:outline-none focus:ring-2 focus:ring-zid-400/35 md:text-[10px]">
+                تحسين رسالة الضمان
+              </a>
+              {% endif %}
             </div>
             {% endfor %}
           </div>
