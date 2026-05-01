@@ -2455,24 +2455,261 @@
 
       function mountPriceObjectionFollowUp() {
         logWidgetFlow("price_followup_ui", "price_high", "open");
+        logWidgetConversionFlow("price", "open");
         persistSessionAbandonReason("price_high", null);
         stripContentKeepChrome();
 
-        function replaceBodyWithSingleMessage(msg) {
-          stripContentKeepChrome();
+        function cartLineNumericPrice(line) {
+          if (!line || typeof line !== "object") {
+            return null;
+          }
+          var p = line.price;
+          if (typeof p === "number" && isFinite(p)) {
+            return p;
+          }
+          if (p == null || strTrim(String(p)) === "") {
+            return null;
+          }
+          var m = String(p).replace(/[^\d.,]/g, "").replace(/,/g, ".");
+          var n = parseFloat(m);
+          return isFinite(n) ? n : null;
+        }
+
+        function pickCheapestLines(items, maxN) {
+          if (!items || !items.length) {
+            return [];
+          }
+          var arr = items.slice();
+          arr.sort(function (a, b) {
+            var pa = cartLineNumericPrice(a);
+            var pb = cartLineNumericPrice(b);
+            if (pa == null && pb == null) {
+              return 0;
+            }
+            if (pa == null) {
+              return 1;
+            }
+            if (pb == null) {
+              return -1;
+            }
+            return pa - pb;
+          });
+          return arr.slice(0, maxN);
+        }
+
+        function pickLowerPricedThanAnchor(items, anchor, maxN) {
+          if (!items || !items.length || anchor == null) {
+            return [];
+          }
+          var scored = [];
+          var i;
+          for (i = 0; i < items.length; i++) {
+            var pn = cartLineNumericPrice(items[i]);
+            if (pn != null && pn < anchor) {
+              scored.push({ line: items[i], p: pn });
+            }
+          }
+          scored.sort(function (x, y) {
+            return x.p - y.p;
+          });
+          var out = [];
+          for (i = 0; i < scored.length && out.length < maxN; i++) {
+            out.push(scored[i].line);
+          }
+          return out;
+        }
+
+        function pickLinesInBudget(items, minP, maxP, maxN) {
+          var matches = [];
+          var i;
+          for (i = 0; i < (items || []).length; i++) {
+            var pn = cartLineNumericPrice(items[i]);
+            if (pn == null) {
+              continue;
+            }
+            if (maxP != null) {
+              if (pn >= minP && pn < maxP) {
+                matches.push(items[i]);
+              }
+            } else if (pn >= minP) {
+              matches.push(items[i]);
+            }
+          }
+          var inRange = pickCheapestLines(matches, maxN);
+          if (inRange.length) {
+            return inRange;
+          }
+          return pickCheapestLines(items, maxN);
+        }
+
+        function lineDiscountStrength(line) {
+          var p = cartLineNumericPrice(line);
+          if (p == null) {
+            return -1;
+          }
+          var keys = [
+            "compare_at_price",
+            "original_price",
+            "old_price",
+            "list_price",
+          ];
+          var k;
+          for (k = 0; k < keys.length; k++) {
+            var raw = line[keys[k]];
+            var op = cartLineNumericPrice({ price: raw });
+            if (op != null && op > p) {
+              return op - p;
+            }
+          }
+          if (line.on_sale === true || line.is_on_sale === true) {
+            return 1;
+          }
+          return 0;
+        }
+
+        function pickDiscountedOrBestValue(items, maxN) {
+          var scored = [];
+          var i;
+          for (i = 0; i < (items || []).length; i++) {
+            var s = lineDiscountStrength(items[i]);
+            if (s > 0) {
+              scored.push({ line: items[i], s: s });
+            }
+          }
+          scored.sort(function (a, b) {
+            return b.s - a.s;
+          });
+          if (scored.length) {
+            var out = [];
+            for (i = 0; i < scored.length && out.length < maxN; i++) {
+              out.push(scored[i].line);
+            }
+            return out;
+          }
+          return pickCheapestLines(items, maxN);
+        }
+
+        function appendPriceFollowUpMsgParagraph(text) {
           var pOut = document.createElement("p");
           pOut.setAttribute("data-cf-price-followup-msg", "1");
-          pOut.style.cssText = "margin:0 0 8px 0;font-size:14px;line-height:1.55;";
-          pOut.textContent = msg;
+          pOut.style.cssText =
+            "margin:0 0 10px 0;font-size:14px;line-height:1.55;white-space:pre-line;";
+          pOut.textContent = text;
           widgetBody.appendChild(pOut);
+        }
+
+        function appendPriceProductCard(line, caption) {
+          if (!line || typeof line !== "object") {
+            return;
+          }
+          var name = strTrim(line.name) || "منتج في سلتك";
+          var pl = formatPriceRiyal(line);
+          var box = document.createElement("div");
+          box.setAttribute("data-cf-price-conversion-product", "1");
+          box.style.cssText =
+            "margin:10px 0;padding:10px;border-radius:8px;background:rgba(124,58,237,.09);" +
+            "font-size:13px;line-height:1.5;";
+          if (caption && strTrim(caption) !== "") {
+            var cap = document.createElement("div");
+            cap.style.cssText = "font-weight:700;margin-bottom:4px;";
+            cap.textContent = caption;
+            box.appendChild(cap);
+          }
+          var row = document.createElement("div");
+          row.textContent = name + (pl ? " — " + pl : "");
+          box.appendChild(row);
+          widgetBody.appendChild(box);
+        }
+
+        function appendPriceContinueCTA(optionKey) {
+          var btn = document.createElement("button");
+          btn.type = "button";
+          btn.setAttribute("data-cf-price-conversion-cta", "1");
+          btn.textContent = "كمّل الطلب والدفع 👇";
+          btn.style.cssText = btnStyle;
+          btn.addEventListener("click", function (evCta) {
+            evCta.stopPropagation();
+            evCta.preventDefault();
+            logWidgetConversionFlow(
+              "price",
+              String(optionKey) + "_cta_continue"
+            );
+            scrollToCartOrCheckout();
+          });
+          widgetBody.appendChild(btn);
+        }
+
+        function mountPriceConversionStep(responseMsg, optionKey, extrasFn) {
+          stripContentKeepChrome();
+          if (responseMsg && strTrim(responseMsg) !== "") {
+            appendPriceFollowUpMsgParagraph(responseMsg);
+          }
+          if (typeof extrasFn === "function") {
+            extrasFn();
+          }
+          appendPriceContinueCTA(optionKey);
+          appendReturnToRecoveryChatButtonRow();
+        }
+
+        function mountBudgetChipStep() {
+          logWidgetFlow("price_followup_pick", "price_high", "ميزانية_محددة");
+          logWidgetConversionFlow("price", "ميزانية_محددة");
+          stripContentKeepChrome();
+          appendPriceFollowUpMsgParagraph(
+            "تمام 👍 كم الميزانية اللي في بالك؟"
+          );
+          var row = document.createElement("div");
+          row.setAttribute("data-cf-price-budget-chips", "1");
+          row.style.cssText =
+            "display:flex;flex-wrap:wrap;gap:8px;margin:12px 0;width:100%;box-sizing:border-box;";
+          function bindChip(label, minP, maxP, slug) {
+            var b = document.createElement("button");
+            b.type = "button";
+            b.textContent = label;
+            b.style.cssText = btnStyle;
+            b.addEventListener("click", function (ev) {
+              ev.stopPropagation();
+              ev.preventDefault();
+              logWidgetFlow(
+                "price_followup_pick",
+                "price_high",
+                "ميزانية_" + slug
+              );
+              logWidgetConversionFlow("price", "ميزانية_" + slug);
+              var items = getCartLineItems();
+              var picked = pickLinesInBudget(items, minP, maxP, 3);
+              mountPriceConversionStep(
+                "هذه مقترحات تناسب اختيارك 👇",
+                "budget_" + slug,
+                function () {
+                  var j;
+                  for (j = 0; j < picked.length; j++) {
+                    appendPriceProductCard(picked[j], null);
+                  }
+                  if (!picked.length) {
+                    appendPriceFollowUpMsgParagraph(
+                      "جرّب تكمّل من السلة لمقارنة الخيارات المناسبة."
+                    );
+                  }
+                }
+              );
+            });
+            row.appendChild(b);
+          }
+          bindChip("أقل من 100", 0, 100, "under_100");
+          bindChip("100–200", 100, 200, "100_200");
+          bindChip("200–300", 200, 300, "200_300");
+          bindChip("300+", 300, null, "300_plus");
+          widgetBody.appendChild(row);
           appendReturnToRecoveryChatButtonRow();
         }
 
         var intro = document.createElement("p");
         intro.setAttribute("data-cf-price-followup-intro", "1");
-        intro.style.cssText = "margin:0 0 12px 0;font-size:14px;line-height:1.55;";
+        intro.style.cssText =
+          "margin:0 0 12px 0;font-size:14px;line-height:1.55;white-space:pre-line;";
         intro.textContent =
-          "أفهمك، السعر مهم 👍 أقدر أساعدك بثلاث طرق:";
+          "واضح إن السعر مهم لك 👍 خلني أساعدك توصل لأفضل خيار بسرعة:";
 
         var rowPf = document.createElement("div");
         rowPf.setAttribute("data-cf-price-followup-buttons", "1");
@@ -2491,26 +2728,61 @@
           rowPf.appendChild(bx);
         }
 
-        addPfBtn("رشّح لي خيار بسعر أقل", function () {
-          logWidgetFlow("price_followup_pick", "price_high", "خيار_أقل_سعر");
-          replaceBodyWithSingleMessage(
-            "أكيد 👍 أعطني لحظة وأرشح لك خيار مناسب بسعر أقل."
+        addPfBtn("أبغى خيار أرخص الآن", function () {
+          logWidgetFlow("price_followup_pick", "price_high", "خيار_أرخص");
+          logWidgetConversionFlow("price", "خيار_أرخص");
+          var items = getCartLineItems();
+          var anchor = items.length ? cartLineNumericPrice(items[0]) : null;
+          var picked = pickLowerPricedThanAnchor(items, anchor, 3);
+          if (!picked.length) {
+            picked = pickCheapestLines(items, 3);
+          }
+          mountPriceConversionStep(
+            "تمام 👍 خلني أرشح لك بديل قريب بسعر أقل 👇",
+            "cheaper_now",
+            function () {
+              var j;
+              for (j = 0; j < picked.length; j++) {
+                appendPriceProductCard(picked[j], null);
+              }
+              if (!picked.length) {
+                appendPriceFollowUpMsgParagraph(
+                  "أضف للسلة ثم كمّل الطلب لمقارنة أفضل الأسعار."
+                );
+              }
+            }
           );
         });
-        addPfBtn("وضح لي قيمة المنتج", function () {
-          logWidgetFlow("price_followup_pick", "price_high", "قيمة_المنتج");
-          replaceBodyWithSingleMessage(
-            "أكيد 👍 هذا المنتج يتميز بالجودة والضمان والمواصفات مقارنة بسعره."
+
+        addPfBtn("عندي ميزانية محددة", function () {
+          mountBudgetChipStep();
+        });
+
+        addPfBtn("هل فيه خصم أو عرض؟", function () {
+          logWidgetFlow("price_followup_pick", "price_high", "خصم_أو_عرض");
+          logWidgetConversionFlow("price", "خصم_أو_عرض");
+          var items = getCartLineItems();
+          var picked = pickDiscountedOrBestValue(items, 3);
+          mountPriceConversionStep(
+            "أحيانًا فيه عروض أو خيارات أوفر 👌 خلني أطلع لك الأفضل الآن 👇",
+            "discount_offer",
+            function () {
+              var j;
+              for (j = 0; j < picked.length; j++) {
+                appendPriceProductCard(picked[j], "خيار بقيمة مناسبة");
+              }
+              if (!picked.length) {
+                appendPriceFollowUpMsgParagraph(
+                  "كمّل الطلب من السلة لتظهر أي عروض أو خصومات نشطة عند الدفع."
+                );
+              }
+            }
           );
         });
-        addPfBtn("أبغى كود خصم", function () {
-          logWidgetFlow("price_followup_pick", "price_high", "كود_خصم");
-          replaceBodyWithSingleMessage(
-            "تمام 👍 أتحقق من أكواد الخصم أو العروض المتاحة عند المتجر حسب وقت طلبك."
-          );
-        });
+
         addPfBtn("رجوع للقائمة السابقة", function () {
           logWidgetFlow("price_followup_nav", "price_high", "رجوع_للقائمة");
+          logWidgetConversionFlow("price", "رجوع_للقائمة");
           remountCartReasonChoicesFromFollowUp();
         });
 
