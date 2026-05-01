@@ -3001,6 +3001,13 @@
         }
 
         function appendQualityContinueCTA(optionKey) {
+          var hint = document.createElement("p");
+          hint.setAttribute("data-cf-quality-cta-hint", "1");
+          hint.style.cssText =
+            "margin:12px 0 6px 0;font-size:13px;line-height:1.45;color:#334155;";
+          hint.textContent = "تقدر تكمل الطلب الآن بكل راحة 👍";
+          widgetBody.appendChild(hint);
+
           var btn = document.createElement("button");
           btn.type = "button";
           btn.setAttribute("data-cf-quality-conversion-cta", "1");
@@ -3071,7 +3078,7 @@
             );
             logWidgetConversionFlow("quality", "ضمان");
             mountQualityConversionStep(
-              "هذا المنتج عليه ضمان واضح 👍\nوتفاصيله تظهر لك قبل إتمام الطلب عشان تكون مطمئن 👌",
+              "هذا المنتج عليه ضمان واضح 👍\nوهو من الخيارات اللي كثير يختارونها بدون تردد 👌",
               "ضمان",
               function () {
                 var lines = pickQualityDisplayLines(2);
@@ -3099,7 +3106,7 @@
             );
             logWidgetConversionFlow("quality", "مقارنة");
             mountQualityConversionStep(
-              "هذا من الخيارات اللي يعتمد عليها 👍\nومناسب للاستخدام اليومي بدون مشاكل 👌",
+              "هذا من الخيارات اللي يعتمد عليها 👍\nومناسب للاستخدام اليومي بدون مشاكل 👌\nوكثير من العملاء يستخدمونه لنفس الغرض",
               "مقارنة",
               function () {
                 var lines = pickQualityDisplayLines(2);
@@ -3127,7 +3134,7 @@
             );
             logWidgetConversionFlow("quality", "تقييمات");
             mountQualityConversionStep(
-              "كثير من العملاء اختاروه 👍\nوغالبًا يرجعون له مرة ثانية 👌",
+              "عليه تقييمات إيجابية 👍\nوكثير من العملاء يرجعون يطلبونه مرة ثانية 👌",
               "تقييمات",
               function () {
                 var lines = pickQualityDisplayLines(2);
