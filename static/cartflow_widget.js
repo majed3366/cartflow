@@ -1034,7 +1034,10 @@
     }
     clearTimeout(idleTimer);
     idleTimer = null;
-    showBubble(TRIGGER_SOURCE_CART, { mobileCartReveal: true });
+    showBubble(TRIGGER_SOURCE_CART, {
+      mobileCartReveal: true,
+      mobileDeferredRevealOk: true,
+    });
   }
 
   function maybeAttachCartSmartExitIntent() {
@@ -2097,6 +2100,20 @@
           "[CF FRONT] skip cart bubble on mobile (use exit/timer/deferred reveal only)"
         );
       } catch (eMobSk) {
+        /* ignore */
+      }
+      return;
+    }
+    if (
+      openSource === TRIGGER_SOURCE_CART &&
+      isMobileDeferCartBubbleViewport() &&
+      revealOpts.mobileCartReveal === true &&
+      revealOpts.mobileDeferredRevealOk !== true
+    ) {
+      try {
+        console.log("[BLOCK IMMEDIATE WIDGET]");
+        console.log("reason=mobile_add_to_cart");
+      } catch (eMobBlk) {
         /* ignore */
       }
       return;
@@ -4881,7 +4898,10 @@
       if (!shouldSend) {
         return;
       }
-      showBubble(TRIGGER_SOURCE_CART, { mobileCartReveal: true });
+      showBubble(TRIGGER_SOURCE_CART, {
+        mobileCartReveal: true,
+        mobileDeferredRevealOk: true,
+      });
       try {
         var widgetVisible = isWidgetDomVisible();
         console.log("widget visible:", widgetVisible);
