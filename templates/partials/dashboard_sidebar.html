@@ -44,26 +44,26 @@
     </div>
     <a
       href="/dashboard/recovery-settings"
-      data-dash-nav="recovery"
+      data-dash-nav="cartflow-recovery"
       class="group flex items-center gap-2 rounded-lg px-3 py-2.5 text-slate-600 transition-colors hover:bg-zid-50 hover:shadow-sm"
     >
       <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-[15px] shadow-inner transition-colors group-hover:bg-white group-hover:text-zid-700" aria-hidden="true">⚙️</span>
       <span class="min-w-0 leading-snug">إعدادات الاسترجاع</span>
     </a>
     <a
-      href="/dashboard/recovery-settings#templates"
-      data-dash-nav="templates"
-      class="group mr-2 flex items-center gap-2 rounded-lg px-3 py-2 text-xs text-slate-600 transition-colors hover:bg-zid-50 hover:shadow-sm"
+      href="/dashboard/cartflow-messages"
+      data-dash-nav="cartflow-messages"
+      class="group flex items-center gap-2 rounded-lg px-3 py-2.5 text-slate-600 transition-colors hover:bg-zid-50 hover:shadow-sm"
     >
-      <span class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-slate-100 text-[13px] shadow-inner transition-colors group-hover:bg-white group-hover:text-zid-700" aria-hidden="true">💬</span>
-      <span class="min-w-0 leading-snug">نمط الرسائل</span>
+      <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-[15px] shadow-inner transition-colors group-hover:bg-white group-hover:text-zid-700" aria-hidden="true">💬</span>
+      <span class="min-w-0 leading-snug">الرسائل</span>
     </a>
     <a
-      href="/dashboard/recovery-settings#widget-custom"
-      data-dash-nav="widget-custom"
-      class="group mr-2 flex items-center gap-2 rounded-lg px-3 py-2 text-xs text-slate-600 transition-colors hover:bg-zid-50 hover:shadow-sm"
+      href="/dashboard/widget-customization"
+      data-dash-nav="cartflow-widget"
+      class="group flex items-center gap-2 rounded-lg px-3 py-2.5 text-slate-600 transition-colors hover:bg-zid-50 hover:shadow-sm"
     >
-      <span class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-slate-100 text-[13px] shadow-inner transition-colors group-hover:bg-white group-hover:text-zid-700" aria-hidden="true">🎨</span>
+      <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-[15px] shadow-inner transition-colors group-hover:bg-white group-hover:text-zid-700" aria-hidden="true">🎨</span>
       <span class="min-w-0 leading-snug">تخصيص الودجيت</span>
     </a>
   </nav>
@@ -72,35 +72,27 @@
   (function () {
     function applyDashboardNavActive() {
       var path = window.location.pathname || "";
-      var hash = (window.location.hash || "").replace(/^#/, "").toLowerCase();
       var dashEl = document.querySelector('[data-dash-nav="dashboard"]');
-      var recEl = document.querySelector('[data-dash-nav="recovery"]');
-      var tplEl = document.querySelector('[data-dash-nav="templates"]');
-      var wdgEl = document.querySelector('[data-dash-nav="widget-custom"]');
+      var recEl = document.querySelector('[data-dash-nav="cartflow-recovery"]');
+      var msgEl = document.querySelector('[data-dash-nav="cartflow-messages"]');
+      var wdgEl = document.querySelector('[data-dash-nav="cartflow-widget"]');
       var mainIdle =
         "group flex items-center gap-2 rounded-lg px-3 py-2.5 text-slate-600 transition-colors hover:bg-zid-50 hover:shadow-sm";
       var mainOn =
         "group flex items-center gap-2 rounded-lg border border-zid-300/70 border-l-4 border-l-zid-600 bg-zid-100 px-3 py-2.5 font-semibold text-zid-950 shadow-sm ring-1 ring-zid-400/30 transition-colors";
-      var subIdle =
-        "group mr-2 flex items-center gap-2 rounded-lg px-3 py-2 text-xs text-slate-600 transition-colors hover:bg-zid-50 hover:shadow-sm";
-      var subOn =
-        "group mr-2 flex items-center gap-2 rounded-lg border border-zid-300/70 border-l-4 border-l-zid-600 bg-zid-100 px-3 py-2 text-xs font-semibold text-zid-950 shadow-sm ring-1 ring-zid-400/30 transition-colors";
 
       var isDash = /^\/dashboard\/?$/.test(path);
       var isRecovery = path.indexOf("/dashboard/recovery-settings") === 0;
-      var isTemplates = isRecovery && hash === "templates";
-      var isWidgetCustom = isRecovery && hash === "widget-custom";
+      var isMessages = path.indexOf("/dashboard/cartflow-messages") === 0;
+      var isWidgetCustom = path.indexOf("/dashboard/widget-customization") === 0;
 
       if (dashEl) dashEl.className = isDash ? mainOn : mainIdle;
-      if (recEl)
-        recEl.className =
-          !isTemplates && !isWidgetCustom && isRecovery ? mainOn : mainIdle;
-      if (tplEl) tplEl.className = isTemplates ? subOn : subIdle;
-      if (wdgEl) wdgEl.className = isWidgetCustom ? subOn : subIdle;
+      if (recEl) recEl.className = isRecovery ? mainOn : mainIdle;
+      if (msgEl) msgEl.className = isMessages ? mainOn : mainIdle;
+      if (wdgEl) wdgEl.className = isWidgetCustom ? mainOn : mainIdle;
     }
 
     applyDashboardNavActive();
-    window.addEventListener("hashchange", applyDashboardNavActive);
   })();
 </script>
 <script>

@@ -3192,6 +3192,26 @@ def dashboard_recovery_settings(request: Request):
     )
 
 
+@app.get("/dashboard/cartflow-messages")
+def dashboard_cartflow_messages(request: Request):
+    """رسائل CartFlow — نفس ‎GET/POST /api/recovery-settings‎."""
+    return templates.TemplateResponse(
+        request,
+        "cartflow_messages.html",
+        {"request": request},
+    )
+
+
+@app.get("/dashboard/widget-customization")
+def dashboard_widget_customization(request: Request):
+    """تخصيص الودجيت — نفس ‎GET/POST /api/recovery-settings‎."""
+    return templates.TemplateResponse(
+        request,
+        "widget_customization.html",
+        {"request": request},
+    )
+
+
 @app.post("/api/carts/<int:row_id>/send")
 def send_cart_manual(row_id: int):
     # إعادة إرسال يدوي للتجريب: نفس ‎send_whatsapp_message‎ ثم ‎Sent‎

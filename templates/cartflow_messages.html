@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>الرسائل — CartFlow</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            zid: { 500: "#7c3aed", 600: "#6d28d9", 100: "#ede9fe", 50: "#f5f3ff" },
+          },
+        },
+      },
+    };
+  </script>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  {% include "partials/recovery_dashboard_styles.html" %}
+</head>
+<body class="min-h-screen bg-slate-50 text-slate-800 antialiased">
+  {% include "partials/cart_abandon_tracking.html" %}
+  <div class="flex min-h-screen flex-col md:flex-row">
+    {% include "partials/dashboard_sidebar.html" %}
+    <div class="min-w-0 w-full flex-1 bg-gradient-to-b from-zid-50/90 to-slate-50 px-3 pb-10 pt-14 md:min-h-screen md:px-4 md:pb-5 md:pt-4">
+      <div class="mx-auto w-full max-w-none md:max-w-2xl">
+        <header class="mb-4 md:mb-3">
+          <h1 class="text-xl font-bold leading-snug text-zid-900 md:text-lg md:leading-normal">الرسائل</h1>
+          <p class="mt-1 text-xs leading-relaxed text-slate-600 md:mt-0.5 md:text-[11px] md:leading-snug md:text-slate-500">نمط رسائل الودجيت، رسائل الخروج قبل السلة، وقوالب استعادة السلة — نفس واجهة الـ API السابقة.</p>
+        </header>
+
+        <div id="errBox" class="mb-3 hidden rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-sm leading-snug text-red-800 md:mb-2 md:text-xs"></div>
+        <div id="okBox" class="mb-3 hidden rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-sm leading-snug text-emerald-800 md:mb-2 md:text-xs">تم الحفظ.</div>
+
+        <form id="f" class="space-y-6 md:space-y-5">
+          <!-- نمط رسائل الاكتشاف -->
+          <section id="templates" tabindex="-1" class="rs-card scroll-mt-20">
+            <h2 class="rs-section-title">نمط الرسائل</h2>
+            <p class="mb-2 text-[10px] leading-snug text-slate-500">بعد الموافقة على الاقتراح: مساعد عرض المنتجات في الودجت (منفصل عن رسالة الخروج قبل السلة وقوالب واتساب).</p>
+            <div class="space-y-4 md:space-y-2">
+              <div class="rounded-xl border border-violet-100 bg-gradient-to-b from-white to-zid-50/50 p-4 shadow-sm ring-1 ring-violet-100/70 md:p-3">
+                <h3 class="mb-4 text-sm font-bold leading-snug text-zid-900 md:mb-3 md:text-xs">إعدادات الرسائل</h3>
+                <div>
+                  <label class="mb-1 block text-sm font-medium leading-snug text-slate-700 md:mb-0 md:text-xs" for="template_tone">اختر أسلوب الرسائل</label>
+                  <p class="mt-0.5 mb-1.5 text-[10px] leading-snug text-slate-600">هذا الأسلوب يحدد طريقة كتابة الرسائل الجاهزة أدناه</p>
+                  <select id="template_tone" name="template_tone"
+                    class="rs-select mt-1 w-full rounded-xl border border-slate-200 bg-zid-50/70 px-2.5 py-2.5 text-sm shadow-sm transition-all duration-150 hover:border-violet-300/90 hover:shadow-md focus:border-zid-500 focus:outline-none focus:ring-2 focus:ring-zid-500/30">
+                  <option value="friendly">ودي</option>
+                  <option value="formal">رسمي</option>
+                  <option value="sales">بيع مباشر</option>
+                </select>
+                </div>
+                <div id="discovery_phrase_row" class="mt-3 border-t border-violet-100 pt-3">
+                  <label class="mb-2 block text-sm font-semibold leading-snug text-zid-900 md:mb-1.5 md:text-xs" for="discovery_phrase_pick">اختر عبارة جاهزة (حسب الأسلوب المختار)</label>
+                  <select id="discovery_phrase_pick"
+                    class="rs-select w-full rounded-xl border-2 border-zid-200 bg-white px-2.5 py-2.5 text-sm font-medium text-slate-800 shadow-sm transition-all duration-150 hover:border-violet-300 hover:shadow-md focus:border-zid-500 focus:outline-none focus:ring-2 focus:ring-zid-400/40">
+                  <option value="" disabled selected hidden>اختر عبارة جاهزة</option>
+                </select>
+                  <div id="discovery_phrase_preview" class="mt-2 hidden rounded-lg border border-violet-100 bg-zid-50/95 px-2.5 py-2 shadow-inner ring-1 ring-zid-100/50">
+                    <p class="text-[10px] font-semibold text-zid-800">مثال:</p>
+                    <p id="discovery_phrase_preview_body" class="mt-1 whitespace-pre-wrap text-[11px] leading-snug text-slate-700"></p>
+                  </div>
+                  <p class="mt-1.5 text-[10px] leading-snug text-slate-600">يملأ خانة النص ويحوّل الوضع إلى «نص مخصص» لتقدر تعدّل قبل الحفظ.</p>
+                </div>
+              </div>
+              <fieldset class="space-y-2 rounded-lg border border-zid-100/90 bg-zid-50/40 p-3 md:space-y-1 md:p-2">
+                <legend class="mb-1 px-0.5 text-sm font-medium leading-snug text-slate-700 md:mb-0.5 md:text-xs">وضع النص</legend>
+                <label class="flex min-h-[44px] cursor-pointer items-center gap-3 rounded-md px-2 py-2 text-sm leading-snug text-slate-800 transition-colors hover:bg-white md:min-h-0 md:gap-2 md:py-1.5 md:text-xs">
+                  <input type="radio" name="template_mode" value="preset" id="template_mode_preset" class="h-4 w-4 shrink-0 border-slate-300 text-zid-600 focus:ring-zid-500 md:h-3.5 md:w-3.5" checked />
+                  استخدام أسلوب جاهز
+                </label>
+                <label class="flex min-h-[44px] cursor-pointer items-center gap-3 rounded-md px-2 py-2 text-sm leading-snug text-slate-800 transition-colors hover:bg-white md:min-h-0 md:gap-2 md:py-1.5 md:text-xs">
+                  <input type="radio" name="template_mode" value="custom" id="template_mode_custom" class="h-4 w-4 shrink-0 border-slate-300 text-zid-600 focus:ring-zid-500 md:h-3.5 md:w-3.5" />
+                  كتابة نص مخصص
+                </label>
+              </fieldset>
+              <div id="template_custom_wrap" class="hidden space-y-1">
+                <label class="mb-1 block text-sm font-medium leading-snug text-slate-700 md:mb-0 md:text-xs" for="template_custom_text">النص المخصص</label>
+                <textarea id="template_custom_text" name="template_custom_text" rows="3"
+                  placeholder="اكتب النص الذي تريد استخدامه…"
+                  class="mt-1 w-full resize-y rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm transition-colors hover:border-violet-200 focus:border-zid-500 focus:outline-none focus:ring-1 focus:ring-zid-500"></textarea>
+              </div>
+            </div>
+          </section>
+
+          <!-- رسائل الخروج قبل السلة -->
+          <section class="rs-card">
+            <h2 class="rs-section-title">رسائل الخروج قبل السلة</h2>
+            <p class="mb-2 text-[10px] leading-snug text-slate-500">أول رسالة عند مغادرة الصفحة بدون منتجات في السلة فقط.</p>
+            <div class="space-y-4 md:space-y-2">
+              <div class="rounded-xl border border-violet-100 bg-gradient-to-b from-white to-zid-50/50 p-4 shadow-sm ring-1 ring-violet-100/70 md:p-3">
+                <h3 class="mb-4 text-sm font-bold leading-snug text-zid-900 md:mb-3 md:text-xs">إعدادات الرسائل</h3>
+                <div>
+                  <label class="mb-1 block text-sm font-medium leading-snug text-slate-700 md:mb-0 md:text-xs" for="exit_intent_template_tone">اختر أسلوب الرسائل</label>
+                  <p class="mt-0.5 mb-1.5 text-[10px] leading-snug text-slate-600">هذا الأسلوب يحدد طريقة كتابة الرسائل الجاهزة أدناه</p>
+                  <select id="exit_intent_template_tone" name="exit_intent_template_tone"
+                    class="rs-select mt-1 w-full rounded-xl border border-slate-200 bg-zid-50/70 px-2.5 py-2.5 text-sm shadow-sm transition-all duration-150 hover:border-violet-300/90 hover:shadow-md focus:border-zid-500 focus:outline-none focus:ring-2 focus:ring-zid-500/30">
+                  <option value="friendly">ودي</option>
+                  <option value="formal">رسمي</option>
+                  <option value="sales">بيع مباشر</option>
+                </select>
+                </div>
+                <div id="exit_intent_phrase_row" class="mt-3 border-t border-violet-100 pt-3">
+                  <label class="mb-2 block text-sm font-semibold leading-snug text-zid-900 md:mb-1.5 md:text-xs" for="exit_intent_phrase_pick">اختر عبارة جاهزة (حسب الأسلوب المختار)</label>
+                  <select id="exit_intent_phrase_pick"
+                    class="rs-select w-full rounded-xl border-2 border-zid-200 bg-white px-2.5 py-2.5 text-sm font-medium text-slate-800 shadow-sm transition-all duration-150 hover:border-violet-300 hover:shadow-md focus:border-zid-500 focus:outline-none focus:ring-2 focus:ring-zid-400/40">
+                  <option value="" disabled selected hidden>اختر عبارة جاهزة</option>
+                </select>
+                  <div id="exit_intent_phrase_preview" class="mt-2 hidden rounded-lg border border-violet-100 bg-zid-50/95 px-2.5 py-2 shadow-inner ring-1 ring-zid-100/50">
+                    <p class="text-[10px] font-semibold text-zid-800">مثال:</p>
+                    <p id="exit_intent_phrase_preview_body" class="mt-1 whitespace-pre-wrap text-[11px] leading-snug text-slate-700"></p>
+                  </div>
+                  <p class="mt-1.5 text-[10px] leading-snug text-slate-600">يملأ خانة النص ويحوّل الوضع إلى «نص مخصص» لتقدر تعدّل قبل الحفظ.</p>
+                </div>
+              </div>
+              <fieldset class="space-y-2 rounded-lg border border-zid-100/90 bg-zid-50/40 p-3 md:space-y-1 md:p-2">
+                <legend class="mb-1 px-0.5 text-sm font-medium leading-snug text-slate-700 md:mb-0.5 md:text-xs">وضع النص</legend>
+                <label class="flex min-h-[44px] cursor-pointer items-center gap-3 rounded-md px-2 py-2 text-sm leading-snug text-slate-800 transition-colors hover:bg-white md:min-h-0 md:gap-2 md:py-1.5 md:text-xs">
+                  <input type="radio" name="exit_intent_template_mode" value="preset" id="exit_intent_mode_preset" class="h-4 w-4 shrink-0 border-slate-300 text-zid-600 focus:ring-zid-500 md:h-3.5 md:w-3.5" checked />
+                  استخدام أسلوب جاهز
+                </label>
+                <label class="flex min-h-[44px] cursor-pointer items-center gap-3 rounded-md px-2 py-2 text-sm leading-snug text-slate-800 transition-colors hover:bg-white md:min-h-0 md:gap-2 md:py-1.5 md:text-xs">
+                  <input type="radio" name="exit_intent_template_mode" value="custom" id="exit_intent_mode_custom" class="h-4 w-4 shrink-0 border-slate-300 text-zid-600 focus:ring-zid-500 md:h-3.5 md:w-3.5" />
+                  كتابة نص مخصص
+                </label>
+              </fieldset>
+              <div id="exit_intent_custom_wrap" class="hidden space-y-1">
+                <label class="mb-1 block text-sm font-medium leading-snug text-slate-700 md:mb-0 md:text-xs" for="exit_intent_custom_text">النص المخصص</label>
+                <textarea id="exit_intent_custom_text" name="exit_intent_custom_text" rows="4"
+                  placeholder="النص الذي يظهر في أول رسالة لفقاعة الخروج…"
+                  class="mt-1 w-full resize-y rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm transition-colors hover:border-violet-200 focus:border-zid-500 focus:outline-none focus:ring-1 focus:ring-zid-500"></textarea>
+              </div>
+            </div>
+          </section>
+
+          <!-- قوالب واتساب -->
+          <section class="rs-card" aria-labelledby="recovery-templates-heading">
+            <h2 id="recovery-templates-heading" class="rs-section-title">رسائل استعادة السلة</h2>
+            <p class="mb-2 text-[10px] leading-snug text-slate-500">اترك الحقل فارغاً للنص الافتراضي. يمكنك إدراج عبارة جاهزة ثم تعديلها. قوائم «اختر عبارة جاهزة» هنا تتبع نفس أسلوب «اختر أسلوب الرسائل» في قسم نمط الرسائل أعلاه.</p>
+
+            <div class="space-y-4 md:space-y-2">
+              <div class="rounded-lg border border-violet-100 bg-white p-2.5 shadow-sm ring-1 ring-zid-100/60">
+                <label class="mb-1 block text-sm font-medium leading-snug text-slate-700 md:mb-0 md:text-xs" for="template_price">السعر</label>
+                <div class="mt-1 rounded-md border border-zid-100 bg-zid-50/60 p-2">
+                  <p class="mb-1 text-[10px] font-semibold text-zid-900">اختر عبارة جاهزة</p>
+                  <select data-target="template_price" class="wa-phrase-pick rs-select w-full rounded-lg border-2 border-zid-200 bg-white px-2 py-2 text-xs font-medium text-slate-800 focus:border-zid-500 focus:outline-none focus:ring-2 focus:ring-zid-400/40">
+                    <option value="" disabled selected hidden>اختر عبارة جاهزة</option>
+                  </select>
+                </div>
+                <textarea id="template_price" name="template_price" rows="3"
+                  class="mt-2 w-full resize-y rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm transition-colors hover:border-violet-200 focus:border-zid-500 focus:outline-none focus:ring-1 focus:ring-zid-500"></textarea>
+              </div>
+              <div class="rounded-lg border border-violet-100 bg-white p-2.5 shadow-sm ring-1 ring-zid-100/60">
+                <label class="mb-1 block text-sm font-medium leading-snug text-slate-700 md:mb-0 md:text-xs" for="template_shipping">الشحن</label>
+                <div class="mt-1 rounded-md border border-zid-100 bg-zid-50/60 p-2">
+                  <p class="mb-1 text-[10px] font-semibold text-zid-900">اختر عبارة جاهزة</p>
+                  <select data-target="template_shipping" class="wa-phrase-pick rs-select w-full rounded-lg border-2 border-zid-200 bg-white px-2 py-2 text-xs font-medium text-slate-800 focus:border-zid-500 focus:outline-none focus:ring-2 focus:ring-zid-400/40">
+                    <option value="" disabled selected hidden>اختر عبارة جاهزة</option>
+                  </select>
+                </div>
+                <textarea id="template_shipping" name="template_shipping" rows="3"
+                  class="mt-2 w-full resize-y rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm transition-colors hover:border-violet-200 focus:border-zid-500 focus:outline-none focus:ring-1 focus:ring-zid-500"></textarea>
+              </div>
+              <div class="rounded-lg border border-violet-100 bg-white p-2.5 shadow-sm ring-1 ring-zid-100/60">
+                <label class="mb-1 block text-sm font-medium leading-snug text-slate-700 md:mb-0 md:text-xs" for="template_quality">الجودة</label>
+                <div class="mt-1 rounded-md border border-zid-100 bg-zid-50/60 p-2">
+                  <p class="mb-1 text-[10px] font-semibold text-zid-900">اختر عبارة جاهزة</p>
+                  <select data-target="template_quality" class="wa-phrase-pick rs-select w-full rounded-lg border-2 border-zid-200 bg-white px-2 py-2 text-xs font-medium text-slate-800 focus:border-zid-500 focus:outline-none focus:ring-2 focus:ring-zid-400/40">
+                    <option value="" disabled selected hidden>اختر عبارة جاهزة</option>
+                  </select>
+                </div>
+                <textarea id="template_quality" name="template_quality" rows="3"
+                  class="mt-2 w-full resize-y rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm transition-colors hover:border-violet-200 focus:border-zid-500 focus:outline-none focus:ring-1 focus:ring-zid-500"></textarea>
+              </div>
+              <div class="rounded-lg border border-violet-100 bg-white p-2.5 shadow-sm ring-1 ring-zid-100/60">
+                <label class="mb-1 block text-sm font-medium leading-snug text-slate-700 md:mb-0 md:text-xs" for="template_delivery">التوصيل</label>
+                <div class="mt-1 rounded-md border border-zid-100 bg-zid-50/60 p-2">
+                  <p class="mb-1 text-[10px] font-semibold text-zid-900">اختر عبارة جاهزة</p>
+                  <select data-target="template_delivery" class="wa-phrase-pick rs-select w-full rounded-lg border-2 border-zid-200 bg-white px-2 py-2 text-xs font-medium text-slate-800 focus:border-zid-500 focus:outline-none focus:ring-2 focus:ring-zid-400/40">
+                    <option value="" disabled selected hidden>اختر عبارة جاهزة</option>
+                  </select>
+                </div>
+                <textarea id="template_delivery" name="template_delivery" rows="3"
+                  class="mt-2 w-full resize-y rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm transition-colors hover:border-violet-200 focus:border-zid-500 focus:outline-none focus:ring-1 focus:ring-zid-500"></textarea>
+              </div>
+              <div class="rounded-lg border border-violet-100 bg-white p-2.5 shadow-sm ring-1 ring-zid-100/60">
+                <label class="mb-1 block text-sm font-medium leading-snug text-slate-700 md:mb-0 md:text-xs" for="template_warranty">الضمان</label>
+                <div class="mt-1 rounded-md border border-zid-100 bg-zid-50/60 p-2">
+                  <p class="mb-1 text-[10px] font-semibold text-zid-900">اختر عبارة جاهزة</p>
+                  <select data-target="template_warranty" class="wa-phrase-pick rs-select w-full rounded-lg border-2 border-zid-200 bg-white px-2 py-2 text-xs font-medium text-slate-800 focus:border-zid-500 focus:outline-none focus:ring-2 focus:ring-zid-400/40">
+                    <option value="" disabled selected hidden>اختر عبارة جاهزة</option>
+                  </select>
+                </div>
+                <textarea id="template_warranty" name="template_warranty" rows="3"
+                  class="mt-2 w-full resize-y rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm transition-colors hover:border-violet-200 focus:border-zid-500 focus:outline-none focus:ring-1 focus:ring-zid-500"></textarea>
+              </div>
+              <div class="rounded-lg border border-violet-100 bg-white p-2.5 shadow-sm ring-1 ring-zid-100/60">
+                <label class="mb-1 block text-sm font-medium leading-snug text-slate-700 md:mb-0 md:text-xs" for="template_other">أخرى</label>
+                <div class="mt-1 rounded-md border border-zid-100 bg-zid-50/60 p-2">
+                  <p class="mb-1 text-[10px] font-semibold text-zid-900">اختر عبارة جاهزة</p>
+                  <select data-target="template_other" class="wa-phrase-pick rs-select w-full rounded-lg border-2 border-zid-200 bg-white px-2 py-2 text-xs font-medium text-slate-800 focus:border-zid-500 focus:outline-none focus:ring-2 focus:ring-zid-400/40">
+                    <option value="" disabled selected hidden>اختر عبارة جاهزة</option>
+                  </select>
+                </div>
+                <textarea id="template_other" name="template_other" rows="3"
+                  class="mt-2 w-full resize-y rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm transition-colors hover:border-violet-200 focus:border-zid-500 focus:outline-none focus:ring-1 focus:ring-zid-500"></textarea>
+              </div>
+            </div>
+          </section>
+
+          <button type="submit" id="saveBtn"
+            class="mt-4 min-h-[52px] w-full rounded-xl bg-zid-600 py-3.5 text-base font-semibold leading-snug text-white shadow-sm hover:bg-zid-700 focus:outline-none focus:ring-2 focus:ring-zid-500 focus:ring-offset-2 md:mt-2 md:min-h-0 md:py-2.5 md:text-sm">
+            حفظ الإعدادات
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var errBox = document.getElementById("errBox");
+      var okBox = document.getElementById("okBox");
+      var TEMPLATE_KEYS = [
+        "template_price",
+        "template_shipping",
+        "template_quality",
+        "template_delivery",
+        "template_warranty",
+        "template_other",
+      ];
+
+      /** عبارات جاهزة لودجت الاكتشاف — حسب الأسلوب فقط (بدون تكرار أسماء الأسلوب في القائمة). */
+      var DISCOVERY_PRESET_PHRASES_BY_TONE = {
+        friendly: [
+          "هلا 👋 فيه خيارات ممكن تعجبك، تحب أشوفها لك بسرعة؟",
+          "جبت لك خيارات مناسبة 👇\nتقدر تختار اللي يناسبك وتضيفه للسلة بسهولة 👍",
+          "أقدر أساعدك تختار الأنسب لك؟",
+        ],
+        formal: [
+          "مرحباً، يمكنني مساعدتك في استعراض خيارات مناسبة لك.",
+          "تم توفير خيارات مناسبة لك.",
+          "هل ترغب بالاطلاع على الخيارات المتاحة؟",
+        ],
+        sales: [
+          "قبل ما تطلع، عندي خيارات ممكن تناسبك أكثر.",
+          "هذه أفضل الخيارات لك الآن 👇\nتقدر تختار اللي يناسبك وتضيفه للسلة بسهولة 👍",
+          "خلني أوريك الخيار الأنسب لك بسرعة.",
+        ],
+      };
+
+      /** عبارات خروج قبل السلة — حسب الأسلوب فقط. */
+      var EXIT_PRESET_PHRASES_BY_TONE = {
+        friendly: [
+          "هلا 👋 فيه خيارات ممكن تعجبك، تحب أشوفها لك بسرعة؟",
+          "جبت لك خيارات مناسبة 👇",
+          "أقدر أساعدك تختار الأنسب لك؟",
+        ],
+        formal: [
+          "مرحباً، يمكنني مساعدتك في استعراض خيارات مناسبة لك.",
+          "تم توفير خيارات مناسبة لك.",
+          "هل ترغب بالاطلاع على الخيارات المتاحة؟",
+        ],
+        sales: [
+          "قبل ما تطلع، عندي خيارات ممكن تناسبك أكثر.",
+          "هذه أفضل الخيارات لك الآن.",
+          "خلني أوريك الخيار الأنسب لك بسرعة.",
+        ],
+      };
+
+      /** قوالب واتساب — عبارات فقط حسب ‎template_tone‎ (بدون تكرار أسماء الأسلوب في القائمة). */
+      var WA_RECOVERY_PHRASES_BY_TONE = {
+        friendly: [
+          "هلا 👋 لاحظنا إنك ما كمّلت الطلب — نقدر نساعدك بخطوة بسيطة إذا حاب.",
+        ],
+        formal: ["مرحباً، يمكننا مساعدتك على إتمام طلبك عند رغبتك."],
+        sales: ["لا تفوّت الفرصة 👌 كمّل طلبك الآن وخلينا نسهّل عليك."],
+      };
+
+      function populateAllWaPhrasePicks() {
+        var toneEl = document.getElementById("template_tone");
+        if (!toneEl) return;
+        document.querySelectorAll(".wa-phrase-pick").forEach(function (sel) {
+          populatePresetPhraseSelect(sel, toneEl.value, WA_RECOVERY_PHRASES_BY_TONE);
+        });
+      }
+
+      function encodePresetBodyForAttr(text) {
+        return String(text || "")
+          .replace(/\r\n/g, "\n")
+          .replace(/\n/g, "&#10;");
+      }
+
+      function populatePresetPhraseSelect(selectEl, toneKey, phrasesByTone) {
+        if (!selectEl || !phrasesByTone) return;
+        var allowed = ["friendly", "formal", "sales"];
+        var tk =
+          allowed.indexOf(String(toneKey || "").trim()) >= 0
+            ? String(toneKey).trim()
+            : "friendly";
+        var list = phrasesByTone[tk] || phrasesByTone.friendly || [];
+        while (selectEl.firstChild) {
+          selectEl.removeChild(selectEl.firstChild);
+        }
+        var ph = document.createElement("option");
+        ph.value = "";
+        ph.textContent = "اختر عبارة جاهزة";
+        ph.disabled = true;
+        ph.hidden = true;
+        ph.selected = true;
+        selectEl.appendChild(ph);
+        list.forEach(function (fullText, idx) {
+          var o = document.createElement("option");
+          o.value = "preset_" + tk + "_" + idx;
+          o.setAttribute("data-body", encodePresetBodyForAttr(fullText));
+          o.textContent = fullText.replace(/\n/g, " ").replace(/\s+/g, " ").trim();
+          selectEl.appendChild(o);
+        });
+      }
+
+      function clearPhrasePreview(previewRootId, previewBodyId) {
+        var root = document.getElementById(previewRootId);
+        var bodyEl = document.getElementById(previewBodyId);
+        if (root) root.classList.add("hidden");
+        if (bodyEl) bodyEl.textContent = "";
+      }
+
+      function populateDiscoveryPresetPhrases() {
+        var sel = document.getElementById("discovery_phrase_pick");
+        var toneEl = document.getElementById("template_tone");
+        if (!sel || !toneEl) return;
+        populatePresetPhraseSelect(sel, toneEl.value, DISCOVERY_PRESET_PHRASES_BY_TONE);
+        clearPhrasePreview("discovery_phrase_preview", "discovery_phrase_preview_body");
+      }
+
+      function populateExitPresetPhrases() {
+        var sel = document.getElementById("exit_intent_phrase_pick");
+        var toneEl = document.getElementById("exit_intent_template_tone");
+        if (!sel || !toneEl) return;
+        populatePresetPhraseSelect(sel, toneEl.value, EXIT_PRESET_PHRASES_BY_TONE);
+        clearPhrasePreview("exit_intent_phrase_preview", "exit_intent_phrase_preview_body");
+      }
+
+      function showErr(t) {
+        errBox.textContent = t || "حدث خطأ";
+        errBox.classList.remove("hidden");
+        okBox.classList.add("hidden");
+      }
+      function showOk() {
+        okBox.classList.remove("hidden");
+        errBox.classList.add("hidden");
+      }
+      function hideMsg() {
+        errBox.classList.add("hidden");
+        okBox.classList.add("hidden");
+      }
+
+      function fillTemplates(data) {
+        TEMPLATE_KEYS.forEach(function (k) {
+          var el = document.getElementById(k);
+          if (!el) return;
+          el.value = typeof data[k] === "string" ? data[k] : "";
+        });
+      }
+
+      function syncTemplateCustomVisibility() {
+        var wrap = document.getElementById("template_custom_wrap");
+        var custom = document.getElementById("template_mode_custom");
+        var phraseRow = document.getElementById("discovery_phrase_row");
+        if (!wrap || !custom) return;
+        var isCustom = custom.checked;
+        wrap.classList.toggle("hidden", !isCustom);
+        if (phraseRow) phraseRow.classList.toggle("hidden", isCustom);
+      }
+
+      function updatePhrasePickPreview(selectEl, previewRootId, previewBodyId) {
+        var root = document.getElementById(previewRootId);
+        var bodyEl = document.getElementById(previewBodyId);
+        if (!root || !bodyEl || !selectEl) return;
+        if (selectEl.selectedIndex <= 0) {
+          root.classList.add("hidden");
+          bodyEl.textContent = "";
+          return;
+        }
+        var opt = selectEl.options[selectEl.selectedIndex];
+        var body = opt.getAttribute("data-body");
+        if (!body) {
+          root.classList.add("hidden");
+          bodyEl.textContent = "";
+          return;
+        }
+        bodyEl.textContent = body.replace(/&#10;/g, "\n");
+        root.classList.remove("hidden");
+      }
+
+      function applyTonePhrasePick(selectEl, presetRadioId, customRadioId, textareaId, syncFn, previewRootId, previewBodyId) {
+        if (!selectEl || selectEl.selectedIndex <= 0) return;
+        var opt = selectEl.options[selectEl.selectedIndex];
+        var body = opt.getAttribute("data-body");
+        if (!body) return;
+        try {
+          body = body.replace(/&#10;/g, "\n");
+        } catch (e) {
+          /* ignore */
+        }
+        var presetEl = document.getElementById(presetRadioId);
+        var customEl = document.getElementById(customRadioId);
+        if (customEl) customEl.checked = true;
+        if (presetEl) presetEl.checked = false;
+        var ta = document.getElementById(textareaId);
+        if (ta) ta.value = body;
+        selectEl.selectedIndex = 0;
+        if (previewRootId && previewBodyId) {
+          updatePhrasePickPreview(selectEl, previewRootId, previewBodyId);
+        }
+        if (typeof syncFn === "function") syncFn();
+      }
+
+      function fillTemplateControl(data) {
+        var toneEl = document.getElementById("template_tone");
+        var allowedTones = ["friendly", "formal", "sales"];
+        var tone = typeof data.template_tone === "string" ? data.template_tone : "friendly";
+        if (allowedTones.indexOf(tone) < 0) tone = "friendly";
+        if (toneEl) toneEl.value = tone;
+        var mode = typeof data.template_mode === "string" ? data.template_mode : "preset";
+        var presetRadio = document.getElementById("template_mode_preset");
+        var customRadio = document.getElementById("template_mode_custom");
+        if (presetRadio && customRadio) {
+          if (mode === "custom") {
+            customRadio.checked = true;
+            presetRadio.checked = false;
+          } else {
+            presetRadio.checked = true;
+            customRadio.checked = false;
+          }
+        }
+        var ta = document.getElementById("template_custom_text");
+        if (ta) ta.value = typeof data.template_custom_text === "string" ? data.template_custom_text : "";
+        syncTemplateCustomVisibility();
+        populateDiscoveryPresetPhrases();
+        populateAllWaPhrasePicks();
+      }
+
+      function attachTemplateControlListeners() {
+        var presetRadio = document.getElementById("template_mode_preset");
+        var customRadio = document.getElementById("template_mode_custom");
+        if (presetRadio) presetRadio.addEventListener("change", syncTemplateCustomVisibility);
+        if (customRadio) customRadio.addEventListener("change", syncTemplateCustomVisibility);
+        var toneMain = document.getElementById("template_tone");
+        if (toneMain) {
+          toneMain.addEventListener("change", function () {
+            populateDiscoveryPresetPhrases();
+            populateAllWaPhrasePicks();
+          });
+        }
+        var phrasePick = document.getElementById("discovery_phrase_pick");
+        if (phrasePick) {
+          phrasePick.addEventListener("change", function () {
+            updatePhrasePickPreview(
+              phrasePick,
+              "discovery_phrase_preview",
+              "discovery_phrase_preview_body"
+            );
+            applyTonePhrasePick(
+              phrasePick,
+              "template_mode_preset",
+              "template_mode_custom",
+              "template_custom_text",
+              syncTemplateCustomVisibility,
+              "discovery_phrase_preview",
+              "discovery_phrase_preview_body"
+            );
+          });
+        }
+        populateDiscoveryPresetPhrases();
+        populateAllWaPhrasePicks();
+      }
+
+      attachTemplateControlListeners();
+
+      function syncExitIntentCustomVisibility() {
+        var wrap = document.getElementById("exit_intent_custom_wrap");
+        var custom = document.getElementById("exit_intent_mode_custom");
+        var phraseRow = document.getElementById("exit_intent_phrase_row");
+        if (!wrap || !custom) return;
+        var isCustom = custom.checked;
+        wrap.classList.toggle("hidden", !isCustom);
+        if (phraseRow) phraseRow.classList.toggle("hidden", isCustom);
+      }
+
+      function fillExitIntentTemplateControl(data) {
+        var toneEl = document.getElementById("exit_intent_template_tone");
+        var allowedTones = ["friendly", "formal", "sales"];
+        var tone =
+          typeof data.exit_intent_template_tone === "string"
+            ? data.exit_intent_template_tone
+            : "friendly";
+        if (allowedTones.indexOf(tone) < 0) tone = "friendly";
+        if (toneEl) toneEl.value = tone;
+        var mode =
+          typeof data.exit_intent_template_mode === "string"
+            ? data.exit_intent_template_mode
+            : "preset";
+        var presetRadio = document.getElementById("exit_intent_mode_preset");
+        var customRadio = document.getElementById("exit_intent_mode_custom");
+        if (presetRadio && customRadio) {
+          if (mode === "custom") {
+            customRadio.checked = true;
+            presetRadio.checked = false;
+          } else {
+            presetRadio.checked = true;
+            customRadio.checked = false;
+          }
+        }
+        var ta = document.getElementById("exit_intent_custom_text");
+        if (ta) {
+          ta.value =
+            typeof data.exit_intent_custom_text === "string"
+              ? data.exit_intent_custom_text
+              : "";
+        }
+        syncExitIntentCustomVisibility();
+        populateExitPresetPhrases();
+      }
+
+      function attachExitIntentListeners() {
+        var presetRadio = document.getElementById("exit_intent_mode_preset");
+        var customRadio = document.getElementById("exit_intent_mode_custom");
+        if (presetRadio) presetRadio.addEventListener("change", syncExitIntentCustomVisibility);
+        if (customRadio) customRadio.addEventListener("change", syncExitIntentCustomVisibility);
+        var exitTone = document.getElementById("exit_intent_template_tone");
+        if (exitTone) {
+          exitTone.addEventListener("change", function () {
+            populateExitPresetPhrases();
+          });
+        }
+        var phrasePick = document.getElementById("exit_intent_phrase_pick");
+        if (phrasePick) {
+          phrasePick.addEventListener("change", function () {
+            updatePhrasePickPreview(
+              phrasePick,
+              "exit_intent_phrase_preview",
+              "exit_intent_phrase_preview_body"
+            );
+            applyTonePhrasePick(
+              phrasePick,
+              "exit_intent_mode_preset",
+              "exit_intent_mode_custom",
+              "exit_intent_custom_text",
+              syncExitIntentCustomVisibility,
+              "exit_intent_phrase_preview",
+              "exit_intent_phrase_preview_body"
+            );
+          });
+        }
+        populateExitPresetPhrases();
+      }
+
+      attachExitIntentListeners();
+
+      document.querySelectorAll(".wa-phrase-pick").forEach(function (sel) {
+        sel.addEventListener("change", function () {
+          if (!sel || sel.selectedIndex <= 0) return;
+          var opt = sel.options[sel.selectedIndex];
+          var body = opt.getAttribute("data-body");
+          if (!body) return;
+          try {
+            body = body.replace(/&#10;/g, "\n");
+          } catch (eWa) {
+            /* ignore */
+          }
+          var tid = sel.getAttribute("data-target");
+          var ta = tid ? document.getElementById(tid) : null;
+          if (ta) ta.value = body;
+          sel.selectedIndex = 0;
+        });
+      });
+
+      fetch("/api/recovery-settings")
+        .then(function (r) {
+          return r.json().then(function (d) {
+            return { status: r.status, data: d };
+          });
+        })
+        .then(function (x) {
+          if (x.data.ok) {
+            fillTemplates(x.data);
+            fillTemplateControl(x.data);
+            fillExitIntentTemplateControl(x.data);
+            hideMsg();
+          } else {
+            showErr(x.data.error || "تعذّر تحميل الإعدادات.");
+          }
+        })
+        .catch(function () {
+          showErr("خطأ في الشبكة أثناء التحميل.");
+        });
+
+      document.getElementById("f").addEventListener("submit", function (e) {
+        e.preventDefault();
+        hideMsg();
+        var body = {};
+        TEMPLATE_KEYS.forEach(function (k) {
+          var el = document.getElementById(k);
+          body[k] = el ? el.value : "";
+        });
+        body.template_mode =
+          document.getElementById("template_mode_custom") &&
+          document.getElementById("template_mode_custom").checked
+            ? "custom"
+            : "preset";
+        body.template_tone = document.getElementById("template_tone")
+          ? document.getElementById("template_tone").value
+          : "friendly";
+        body.template_custom_text = document.getElementById("template_custom_text")
+          ? document.getElementById("template_custom_text").value
+          : "";
+        body.exit_intent_template_mode =
+          document.getElementById("exit_intent_mode_custom") &&
+          document.getElementById("exit_intent_mode_custom").checked
+            ? "custom"
+            : "preset";
+        body.exit_intent_template_tone = document.getElementById("exit_intent_template_tone")
+          ? document.getElementById("exit_intent_template_tone").value
+          : "friendly";
+        body.exit_intent_custom_text = document.getElementById("exit_intent_custom_text")
+          ? document.getElementById("exit_intent_custom_text").value
+          : "";
+        fetch("/api/recovery-settings", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        })
+          .then(function (r) {
+            return r.json().then(function (d) {
+              return { status: r.status, data: d };
+            });
+          })
+          .then(function (x) {
+            if (x.data.ok) {
+              fillTemplates(x.data);
+              fillTemplateControl(x.data);
+              fillExitIntentTemplateControl(x.data);
+              showOk();
+            } else {
+              showErr(x.data.error || "فشل الحفظ");
+            }
+          })
+          .catch(function () {
+            showErr("خطأ في الشبكة أثناء الحفظ.");
+          });
+      });
+    })();
+  </script>
+</body>
+</html>
