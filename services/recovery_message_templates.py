@@ -8,7 +8,8 @@ from typing import Any, Dict, Optional
 
 WHATSAPP_REASON_TEMPLATES: dict[str, str] = {
     "price": (
-        "أفهمك 👍 السعر مهم... عندنا خيار مناسب بسعر أقل 👌 تحب أرسله لك؟"
+        "وفرنا لك خيار بنفس الفكرة بسعر أقل 👌\n"
+        "تقدر تكمل الطلب مباشرة من هنا 👇"
     ),
     "shipping": (
         "أتفهمك 👍 تكلفة الشحن تفرق... أحيانًا فيه عروض أو خيارات أفضل 👍 تحب أشوف لك؟"
@@ -99,6 +100,11 @@ def resolve_whatsapp_recovery_template_message(
     source = "dashboard" if store_override else "default"
 
     rt_log = reason_tag if reason_tag is not None else ""
+    try:
+        if canon == "price" and source == "default":
+            print("[TEMPLATE IMPROVED] reason_tag=price")
+    except Exception:
+        pass
     try:
         print("[TEMPLATE SOURCE]")
         print("reason_tag=", rt_log)
