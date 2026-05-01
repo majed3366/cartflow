@@ -1,8 +1,36 @@
-<aside class="w-56 shrink-0 border-l border-zid-100 bg-white shadow-sm">
-  <div class="flex h-14 items-center border-b border-zid-100 px-4">
+<div
+  id="dash-nav-overlay"
+  class="pointer-events-none fixed inset-0 z-30 bg-slate-900/35 opacity-0 transition-opacity duration-200 md:hidden"
+  aria-hidden="true"
+></div>
+
+<button
+  type="button"
+  id="dash-nav-toggle"
+  class="fixed top-3 z-50 flex h-12 min-h-[48px] w-12 items-center justify-center rounded-xl border border-zid-200 bg-white text-xl leading-none text-zid-800 shadow-md md:hidden end-4"
+  aria-expanded="false"
+  aria-controls="dash-sidebar-panel"
+  aria-label="فتح القائمة"
+>
+  ☰
+</button>
+
+<aside
+  id="dash-sidebar-panel"
+  class="fixed inset-y-0 right-0 z-40 flex h-full w-[min(17rem,calc(100vw-2rem))] max-w-[280px] translate-x-full flex-col border-l border-zid-100 bg-white shadow-xl transition-transform duration-200 ease-out md:relative md:inset-auto md:z-0 md:h-auto md:min-h-screen md:max-w-none md:w-56 md:translate-x-0 md:shadow-sm"
+>
+  <div class="flex h-14 shrink-0 items-center justify-between gap-2 border-b border-zid-100 px-4">
     <span class="text-lg font-bold text-zid-600">CartFlow</span>
+    <button
+      type="button"
+      id="dash-nav-close"
+      class="flex h-11 min-h-[44px] w-11 items-center justify-center rounded-lg text-lg text-slate-600 hover:bg-zid-50 md:hidden"
+      aria-label="إغلاق القائمة"
+    >
+      ✕
+    </button>
   </div>
-  <nav class="space-y-1 p-3 text-sm" aria-label="لوحة التحكم">
+  <nav class="grow space-y-1 overflow-y-auto p-3 text-sm" aria-label="لوحة التحكم">
     <a
       href="/dashboard"
       data-dash-nav="dashboard"
@@ -60,5 +88,88 @@
 
     applyDashboardNavActive();
     window.addEventListener("hashchange", applyDashboardNavActive);
+  })();
+</script>
+<script>
+  (function () {
+    var overlay = document.getElementById("dash-nav-overlay");
+    var toggle = document.getElementById("dash-nav-toggle");
+    var closeBtn = document.getElementById("dash-nav-close");
+    var panel = document.getElementById("dash-sidebar-panel");
+
+    function isDesktop() {
+      return window.matchMedia("(min-width: 768px)").matches;
+    }
+
+    function setMobileNavOpen(open) {
+      if (!panel || !overlay || !toggle) return;
+      if (isDesktop()) {
+        overlay.classList.add("pointer-events-none", "opacity-0");
+        overlay.classList.remove("opacity-100");
+        overlay.setAttribute("aria-hidden", "true");
+        toggle.setAttribute("aria-expanded", "false");
+        return;
+      }
+      if (open) {
+        panel.classList.remove("translate-x-full");
+        panel.classList.add("translate-x-0");
+        overlay.classList.remove("pointer-events-none", "opacity-0");
+        overlay.classList.add("opacity-100");
+        overlay.setAttribute("aria-hidden", "false");
+        toggle.setAttribute("aria-expanded", "true");
+      } else {
+        panel.classList.add("translate-x-full");
+        panel.classList.remove("translate-x-0");
+        overlay.classList.add("pointer-events-none", "opacity-0");
+        overlay.classList.remove("opacity-100");
+        overlay.setAttribute("aria-hidden", "true");
+        toggle.setAttribute("aria-expanded", "false");
+      }
+    }
+
+    function closeMobileNav() {
+      setMobileNavOpen(false);
+    }
+
+    function openMobileNav() {
+      setMobileNavOpen(true);
+    }
+
+    if (toggle) {
+      toggle.addEventListener("click", function () {
+        var expanded = toggle.getAttribute("aria-expanded") === "true";
+        setMobileNavOpen(!expanded);
+      });
+    }
+    if (closeBtn) closeBtn.addEventListener("click", closeMobileNav);
+    if (overlay) overlay.addEventListener("click", closeMobileNav);
+
+    window.addEventListener("keydown", function (e) {
+      if (e.key === "Escape") closeMobileNav();
+    });
+
+    window.addEventListener(
+      "resize",
+      function () {
+        if (isDesktop()) {
+          overlay.classList.add("pointer-events-none", "opacity-0");
+          overlay.classList.remove("opacity-100");
+          overlay.setAttribute("aria-hidden", "true");
+          if (toggle) toggle.setAttribute("aria-expanded", "false");
+        } else {
+          panel.classList.add("translate-x-full");
+          panel.classList.remove("translate-x-0");
+        }
+      },
+      { passive: true }
+    );
+
+    if (panel) {
+      panel.querySelectorAll("a").forEach(function (link) {
+        link.addEventListener("click", function () {
+          if (!isDesktop()) closeMobileNav();
+        });
+      });
+    }
   })();
 </script>
