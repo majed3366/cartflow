@@ -28,16 +28,50 @@
   <style>
     body { font-family: "IBM Plex Sans Arabic", system-ui, sans-serif; }
 
+    .cf-reason-card {
+      width: 100%;
+      display: block;
+      margin-bottom: 24px;
+      box-sizing: border-box;
+    }
+
+    .cf-reason-card:last-child {
+      margin-bottom: 0;
+    }
+
+    .cf-reason-title {
+      text-align: right;
+      font-weight: 700;
+      font-size: 1rem;
+      line-height: 1.35;
+      color: #1e293b;
+    }
+
+    .cf-reason-meta {
+      text-align: right;
+      font-size: 0.8125rem;
+      line-height: 1.4;
+      color: #64748b;
+      margin-top: 4px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .cf-reason-bar {
+      width: 100%;
+      max-width: 100%;
+      box-sizing: border-box;
+      margin-top: 8px;
+    }
+
     .cf-insight-box {
       display: block;
       width: 100%;
       max-width: 100%;
       box-sizing: border-box;
-      margin-top: 8px;
-      margin-bottom: 16px;
+      margin-top: 10px;
+      margin-bottom: 0;
       margin-left: 0;
       margin-right: 0;
-      align-self: stretch;
       background: rgba(108, 92, 231, 0.06);
       border: 1px solid rgba(108, 92, 231, 0.15);
       border-radius: 10px;
@@ -78,11 +112,11 @@
       font-weight: 500;
     }
 
-    .cf-insight-btn {
-      display: flex;
+    .cf-reason-action {
+      display: inline-flex;
       align-items: center;
       justify-content: center;
-      margin-top: 8px;
+      margin-top: 10px;
       font-size: 12px;
       font-weight: 600;
       color: #6d28d9;
@@ -90,7 +124,7 @@
       padding: 6px 12px;
       border-radius: 8px;
       border: 1px solid rgba(108, 92, 231, 0.22);
-      background: rgba(255, 255, 255, 0.85);
+      background: rgba(255, 255, 255, 0.95);
       box-shadow: 0 1px 2px rgba(108, 92, 231, 0.06);
       transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease;
       width: 100%;
@@ -98,13 +132,13 @@
       box-sizing: border-box;
     }
 
-    .cf-insight-btn:hover {
+    .cf-reason-action:hover {
       color: #5b21b6;
       border-color: rgba(108, 92, 231, 0.35);
       background: #fff;
     }
 
-    .cf-insight-btn:focus-visible {
+    .cf-reason-action:focus-visible {
       outline: 2px solid rgba(124, 58, 237, 0.45);
       outline-offset: 2px;
     }
@@ -119,8 +153,8 @@
     <li><span class="cf-insight-dash" aria-hidden="true">-</span><span>{{ line }}</span></li>
     {% endfor %}
   </ul>
-  <a href="{{ edit_href }}" class="cf-insight-btn">{{ edit_label }}</a>
 </div>
+<a href="{{ edit_href }}" class="cf-reason-action">{{ edit_label }}</a>
 {%- endmacro %}
 {% macro dash_trigger_card(reason_key, label_ar) -%}
 <div class="rounded-xl border border-zid-100 bg-gradient-to-br from-zid-50/95 to-violet-50/35 p-4 shadow-sm ring-1 ring-zid-100/50 md:p-3.5" data-dash-trigger-card="{{ reason_key }}">
@@ -187,15 +221,15 @@
         <!-- أسباب التردد -->
         <section aria-labelledby="reasons-heading">
           <h2 id="reasons-heading" class="mb-4 border-b-2 border-zid-500/35 pb-2 text-base font-bold leading-snug text-slate-800 md:mb-3 md:text-sm md:leading-normal">أسباب التردد (حسب ‎CartRecoveryReason‎)</h2>
-          <div class="space-y-5 rounded-2xl border border-zid-100 bg-white p-6 shadow-sm md:space-y-4 md:p-5">
+          <div class="rounded-2xl border border-zid-100 bg-white p-6 shadow-sm md:p-5">
             {% for r in reason_bar %}
-            <div class="w-full min-w-0 border-b border-slate-100 pb-5 last:border-b-0 last:pb-0 md:pb-4">
-              <div class="mb-2 flex justify-between text-base leading-snug md:mb-1 md:text-sm">
-                <span class="font-medium text-slate-800">{{ r.label }}</span>
-                <span class="text-slate-500 tabular-nums">{{ r.count }}</span>
-              </div>
-              <div class="h-2.5 w-full max-w-full rounded-full bg-slate-100 overflow-hidden" role="img" aria-label="{{ r.label }}: {{ r.count }}">
-                <div class="h-full rounded-full bg-zid-500 transition-all" style="width: {{ r.width_pct }}%"></div>
+            <div class="cf-reason-card">
+              <div class="cf-reason-title">{{ r.label }}</div>
+              <div class="cf-reason-meta">{{ r.count }} حالة</div>
+              <div class="cf-reason-bar">
+                <div class="h-2.5 w-full max-w-full rounded-full bg-slate-100 overflow-hidden" role="img" aria-label="{{ r.label }}: {{ r.count }}">
+                  <div class="h-full rounded-full bg-zid-500 transition-all" style="width: {{ r.width_pct }}%"></div>
+                </div>
               </div>
               {% if r.key == "price" %}
               {{ dash_reason_insight([
