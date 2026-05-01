@@ -132,9 +132,6 @@
                   <select id="discovery_phrase_pick"
                     class="rs-select w-full rounded-xl border-2 border-zid-200 bg-white px-2.5 py-2.5 text-sm font-medium text-slate-800 shadow-sm transition-all duration-150 hover:border-violet-300 hover:shadow-md focus:border-zid-500 focus:outline-none focus:ring-2 focus:ring-zid-400/40">
                   <option value="" disabled selected hidden>اختر عبارة جاهزة</option>
-                  <option value="friendly" data-body="جبت لك خيارات مناسبة 👇&#10;تقدر تختار اللي يناسبك وتضيفه للسلة بسهولة 👍">🙂 ودي</option>
-                  <option value="formal" data-body="تم توفير خيارات مناسبة لك 👇&#10;تقدر تختار اللي يناسبك وتضيفه للسلة بسهولة 👍">🧾 رسمي</option>
-                  <option value="sales" data-body="هذه أفضل الخيارات لك الآن 👇&#10;تقدر تختار اللي يناسبك وتضيفه للسلة بسهولة 👍">⚡ بيع مباشر</option>
                 </select>
                   <div id="discovery_phrase_preview" class="mt-2 hidden rounded-lg border border-violet-100 bg-zid-50/95 px-2.5 py-2 shadow-inner ring-1 ring-zid-100/50">
                     <p class="text-[10px] font-semibold text-zid-800">مثال:</p>
@@ -185,9 +182,6 @@
                   <select id="exit_intent_phrase_pick"
                     class="rs-select w-full rounded-xl border-2 border-zid-200 bg-white px-2.5 py-2.5 text-sm font-medium text-slate-800 shadow-sm transition-all duration-150 hover:border-violet-300 hover:shadow-md focus:border-zid-500 focus:outline-none focus:ring-2 focus:ring-zid-400/40">
                   <option value="" disabled selected hidden>اختر عبارة جاهزة</option>
-                  <option value="friendly" data-body="هلا 👋 فيه خيارات ممكن تعجبك، تحب أشوفها لك بسرعة؟">🙂 ودي</option>
-                  <option value="formal" data-body="مرحباً، يمكنني مساعدتك في استعراض خيارات مناسبة لك.">🧾 رسمي</option>
-                  <option value="sales" data-body="قبل ما تطلع، عندي خيارات ممكن تناسبك أكثر.">⚡ بيع مباشر</option>
                 </select>
                   <div id="exit_intent_phrase_preview" class="mt-2 hidden rounded-lg border border-violet-100 bg-zid-50/95 px-2.5 py-2 shadow-inner ring-1 ring-zid-100/50">
                     <p class="text-[10px] font-semibold text-zid-800">مثال:</p>
@@ -330,6 +324,100 @@
         "template_other",
       ];
 
+      /** عبارات جاهزة لودجت الاكتشاف — حسب الأسلوب فقط (بدون تكرار أسماء الأسلوب في القائمة). */
+      var DISCOVERY_PRESET_PHRASES_BY_TONE = {
+        friendly: [
+          "هلا 👋 فيه خيارات ممكن تعجبك، تحب أشوفها لك بسرعة؟",
+          "جبت لك خيارات مناسبة 👇\nتقدر تختار اللي يناسبك وتضيفه للسلة بسهولة 👍",
+          "أقدر أساعدك تختار الأنسب لك؟",
+        ],
+        formal: [
+          "مرحباً، يمكنني مساعدتك في استعراض خيارات مناسبة لك.",
+          "تم توفير خيارات مناسبة لك.",
+          "هل ترغب بالاطلاع على الخيارات المتاحة؟",
+        ],
+        sales: [
+          "قبل ما تطلع، عندي خيارات ممكن تناسبك أكثر.",
+          "هذه أفضل الخيارات لك الآن 👇\nتقدر تختار اللي يناسبك وتضيفه للسلة بسهولة 👍",
+          "خلني أوريك الخيار الأنسب لك بسرعة.",
+        ],
+      };
+
+      /** عبارات خروج قبل السلة — حسب الأسلوب فقط. */
+      var EXIT_PRESET_PHRASES_BY_TONE = {
+        friendly: [
+          "هلا 👋 فيه خيارات ممكن تعجبك، تحب أشوفها لك بسرعة؟",
+          "جبت لك خيارات مناسبة 👇",
+          "أقدر أساعدك تختار الأنسب لك؟",
+        ],
+        formal: [
+          "مرحباً، يمكنني مساعدتك في استعراض خيارات مناسبة لك.",
+          "تم توفير خيارات مناسبة لك.",
+          "هل ترغب بالاطلاع على الخيارات المتاحة؟",
+        ],
+        sales: [
+          "قبل ما تطلع، عندي خيارات ممكن تناسبك أكثر.",
+          "هذه أفضل الخيارات لك الآن.",
+          "خلني أوريك الخيار الأنسب لك بسرعة.",
+        ],
+      };
+
+      function encodePresetBodyForAttr(text) {
+        return String(text || "")
+          .replace(/\r\n/g, "\n")
+          .replace(/\n/g, "&#10;");
+      }
+
+      function populatePresetPhraseSelect(selectEl, toneKey, phrasesByTone) {
+        if (!selectEl || !phrasesByTone) return;
+        var allowed = ["friendly", "formal", "sales"];
+        var tk =
+          allowed.indexOf(String(toneKey || "").trim()) >= 0
+            ? String(toneKey).trim()
+            : "friendly";
+        var list = phrasesByTone[tk] || phrasesByTone.friendly || [];
+        while (selectEl.firstChild) {
+          selectEl.removeChild(selectEl.firstChild);
+        }
+        var ph = document.createElement("option");
+        ph.value = "";
+        ph.textContent = "اختر عبارة جاهزة";
+        ph.disabled = true;
+        ph.hidden = true;
+        ph.selected = true;
+        selectEl.appendChild(ph);
+        list.forEach(function (fullText, idx) {
+          var o = document.createElement("option");
+          o.value = "preset_" + tk + "_" + idx;
+          o.setAttribute("data-body", encodePresetBodyForAttr(fullText));
+          o.textContent = fullText.replace(/\n/g, " ").replace(/\s+/g, " ").trim();
+          selectEl.appendChild(o);
+        });
+      }
+
+      function clearPhrasePreview(previewRootId, previewBodyId) {
+        var root = document.getElementById(previewRootId);
+        var bodyEl = document.getElementById(previewBodyId);
+        if (root) root.classList.add("hidden");
+        if (bodyEl) bodyEl.textContent = "";
+      }
+
+      function populateDiscoveryPresetPhrases() {
+        var sel = document.getElementById("discovery_phrase_pick");
+        var toneEl = document.getElementById("template_tone");
+        if (!sel || !toneEl) return;
+        populatePresetPhraseSelect(sel, toneEl.value, DISCOVERY_PRESET_PHRASES_BY_TONE);
+        clearPhrasePreview("discovery_phrase_preview", "discovery_phrase_preview_body");
+      }
+
+      function populateExitPresetPhrases() {
+        var sel = document.getElementById("exit_intent_phrase_pick");
+        var toneEl = document.getElementById("exit_intent_template_tone");
+        if (!sel || !toneEl) return;
+        populatePresetPhraseSelect(sel, toneEl.value, EXIT_PRESET_PHRASES_BY_TONE);
+        clearPhrasePreview("exit_intent_phrase_preview", "exit_intent_phrase_preview_body");
+      }
+
       function showErr(t) {
         errBox.textContent = t || "حدث خطأ";
         errBox.classList.remove("hidden");
@@ -382,19 +470,16 @@
         root.classList.remove("hidden");
       }
 
-      function applyTonePhrasePick(selectEl, toneSelectId, presetRadioId, customRadioId, textareaId, syncFn) {
+      function applyTonePhrasePick(selectEl, presetRadioId, customRadioId, textareaId, syncFn, previewRootId, previewBodyId) {
         if (!selectEl || selectEl.selectedIndex <= 0) return;
         var opt = selectEl.options[selectEl.selectedIndex];
         var body = opt.getAttribute("data-body");
-        var toneKey = selectEl.value;
         if (!body) return;
         try {
           body = body.replace(/&#10;/g, "\n");
         } catch (e) {
           /* ignore */
         }
-        var toneSel = document.getElementById(toneSelectId);
-        if (toneSel && toneKey) toneSel.value = toneKey;
         var presetEl = document.getElementById(presetRadioId);
         var customEl = document.getElementById(customRadioId);
         if (customEl) customEl.checked = true;
@@ -402,6 +487,9 @@
         var ta = document.getElementById(textareaId);
         if (ta) ta.value = body;
         selectEl.selectedIndex = 0;
+        if (previewRootId && previewBodyId) {
+          updatePhrasePickPreview(selectEl, previewRootId, previewBodyId);
+        }
         if (typeof syncFn === "function") syncFn();
       }
 
@@ -426,6 +514,7 @@
         var ta = document.getElementById("template_custom_text");
         if (ta) ta.value = typeof data.template_custom_text === "string" ? data.template_custom_text : "";
         syncTemplateCustomVisibility();
+        populateDiscoveryPresetPhrases();
       }
 
       function attachTemplateControlListeners() {
@@ -433,6 +522,12 @@
         var customRadio = document.getElementById("template_mode_custom");
         if (presetRadio) presetRadio.addEventListener("change", syncTemplateCustomVisibility);
         if (customRadio) customRadio.addEventListener("change", syncTemplateCustomVisibility);
+        var toneMain = document.getElementById("template_tone");
+        if (toneMain) {
+          toneMain.addEventListener("change", function () {
+            populateDiscoveryPresetPhrases();
+          });
+        }
         var phrasePick = document.getElementById("discovery_phrase_pick");
         if (phrasePick) {
           phrasePick.addEventListener("change", function () {
@@ -443,14 +538,16 @@
             );
             applyTonePhrasePick(
               phrasePick,
-              "template_tone",
               "template_mode_preset",
               "template_mode_custom",
               "template_custom_text",
-              syncTemplateCustomVisibility
+              syncTemplateCustomVisibility,
+              "discovery_phrase_preview",
+              "discovery_phrase_preview_body"
             );
           });
         }
+        populateDiscoveryPresetPhrases();
       }
 
       attachTemplateControlListeners();
@@ -497,6 +594,7 @@
               : "";
         }
         syncExitIntentCustomVisibility();
+        populateExitPresetPhrases();
       }
 
       function attachExitIntentListeners() {
@@ -504,6 +602,12 @@
         var customRadio = document.getElementById("exit_intent_mode_custom");
         if (presetRadio) presetRadio.addEventListener("change", syncExitIntentCustomVisibility);
         if (customRadio) customRadio.addEventListener("change", syncExitIntentCustomVisibility);
+        var exitTone = document.getElementById("exit_intent_template_tone");
+        if (exitTone) {
+          exitTone.addEventListener("change", function () {
+            populateExitPresetPhrases();
+          });
+        }
         var phrasePick = document.getElementById("exit_intent_phrase_pick");
         if (phrasePick) {
           phrasePick.addEventListener("change", function () {
@@ -514,14 +618,16 @@
             );
             applyTonePhrasePick(
               phrasePick,
-              "exit_intent_template_tone",
               "exit_intent_mode_preset",
               "exit_intent_mode_custom",
               "exit_intent_custom_text",
-              syncExitIntentCustomVisibility
+              syncExitIntentCustomVisibility,
+              "exit_intent_phrase_preview",
+              "exit_intent_phrase_preview_body"
             );
           });
         }
+        populateExitPresetPhrases();
       }
 
       attachExitIntentListeners();
