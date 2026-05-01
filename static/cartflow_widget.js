@@ -3453,7 +3453,7 @@
           var btn = document.createElement("button");
           btn.type = "button";
           btn.setAttribute("data-cf-delivery-conversion-cta", "1");
-          btn.textContent = "كمّل الطلب والدفع 👇";
+          btn.textContent = "كمّل الطلب الآن 👇";
           btn.style.cssText = btnStyle;
           btn.addEventListener("click", function (evCta) {
             evCta.stopPropagation();
@@ -3507,60 +3507,52 @@
             rowD.appendChild(bx);
           }
 
-          addDFBtn("أبغى أسرع توصيل", function () {
+          addDFBtn("أبغى توصله بسرعة", function () {
             cfPushFlow(renderDeliveryOptionsScreen);
             logWidgetFlow(
               "delivery_followup_pick",
               "delivery_time",
-              "اسرع_توصيل"
+              "توصله_بسرعة"
             );
-            logWidgetConversionFlow("delivery", "اسرع_توصيل");
+            logWidgetConversionFlow("delivery", "توصله_بسرعة");
             mountDeliveryConversionStep(
-              "تمام 👍 هذا الخيار مناسب إذا تبغاه يوصل بأسرع وقت 👇",
-              "اسرع_توصيل",
+              "إذا كنت تحتاجه بسرعة 👍\nخلني أساعدك تكمل بأقرب خيار مناسب 👇",
+              "توصله_بسرعة",
               function () {
                 var lines = pickDeliveryDisplayLines(2);
                 var j;
                 for (j = 0; j < lines.length; j++) {
-                  appendDeliveryConversionProductCard(
-                    lines[j],
-                    "",
-                    "مناسب لو تحتاجه بسرعة"
-                  );
+                  appendDeliveryConversionProductCard(lines[j], "", "");
                 }
                 if (!lines.length) {
                   appendDeliveryFollowUpMsgParagraph(
-                    "أضف المنتج للسلة لتكمّل الطلب وتختار سرعة الشحن المناسبة لك."
+                    "أضف المنتج للسلة لتكمّل الطلب وتختار الخيار الأنسب لك عند الدفع."
                   );
                 }
               }
             );
           });
 
-          addDFBtn("ما عندي مشكلة أنتظر", function () {
+          addDFBtn("أبغى أوفر في الشحن", function () {
             cfPushFlow(renderDeliveryOptionsScreen);
             logWidgetFlow(
               "delivery_followup_pick",
               "delivery_time",
-              "ما_مشكلة_انتظار"
+              "اوفر_شحن"
             );
-            logWidgetConversionFlow("delivery", "ما_مشكلة_انتظار");
+            logWidgetConversionFlow("delivery", "اوفر_شحن");
             mountDeliveryConversionStep(
-              "تمام 👍 هذا الخيار يعطيك أفضل قيمة مقابل السعر 👌",
-              "ما_مشكلة_انتظار",
+              "إذا تبي توفر في الشحن 👍\nخلني أساعدك تختار الخيار الأنسب بدون استعجال 👇",
+              "اوفر_شحن",
               function () {
                 var lines = pickDeliveryDisplayLines(2);
                 var j;
                 for (j = 0; j < lines.length; j++) {
-                  appendDeliveryConversionProductCard(
-                    lines[j],
-                    "",
-                    "مناسب لو الوقت مو مستعجل"
-                  );
+                  appendDeliveryConversionProductCard(lines[j], "", "");
                 }
                 if (!lines.length) {
                   appendDeliveryFollowUpMsgParagraph(
-                    "أضف المنتج للسلة لتكمّل الطلب بأريحية أكبر."
+                    "أضف المنتج للسلة لمقارنة خيارات الشحن وتكمّل الطلب براحة."
                   );
                 }
               }
@@ -3576,7 +3568,7 @@
             );
             logWidgetConversionFlow("delivery", "متى_يوصل");
             mountDeliveryConversionStep(
-              "يوصل عادة خلال فترة قصيرة 👍\nوتقدر تشوف التفاصيل كاملة قبل إتمام الطلب 👌",
+              "تقدر تشوف مدة التوصيل والرسوم قبل تأكيد الطلب مباشرة 👍",
               "متى_يوصل",
               function () {
                 var lines = pickDeliveryDisplayLines(2);
@@ -3586,7 +3578,7 @@
                 }
                 if (!lines.length) {
                   appendDeliveryFollowUpMsgParagraph(
-                    "أضف المنتج للسلة؛ تظهر لك مدة التوصيل والتفاصيل عند إتمام الطلب."
+                    "أضف المنتج للسلة؛ تظهر لك مدة التوصيل والرسوم قبل تأكيد الطلب."
                   );
                 }
               }
