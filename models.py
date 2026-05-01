@@ -64,6 +64,10 @@ class Store(Base):
     template_mode = Column(String(32), default="preset", nullable=False)
     template_tone = Column(String(32), default="friendly", nullable=False)
     template_custom_text = Column(Text, nullable=True)
+    # رسالة الخروج قبل السلة (منفصلة عن قوالب واتساب وعن نص اكتشاف المنتجات)
+    exit_intent_template_mode = Column(String(32), default="preset", nullable=False)
+    exit_intent_template_tone = Column(String(32), default="friendly", nullable=False)
+    exit_intent_custom_text = Column(Text, nullable=True)
 
 
 class AbandonedCart(Base):

@@ -2,9 +2,40 @@
 from __future__ import annotations
 
 from services.store_template_control import (
+    apply_exit_intent_template_control_from_body,
     apply_template_control_from_body,
+    exit_intent_template_fields_for_api,
     template_control_fields_for_api,
 )
+
+
+class _RowExit:
+    exit_intent_template_mode = "preset"
+    exit_intent_template_tone = "friendly"
+    exit_intent_custom_text = None
+
+
+def test_exit_intent_fields_defaults() -> None:
+    d = exit_intent_template_fields_for_api(None)
+    assert d["exit_intent_template_mode"] == "preset"
+    assert d["exit_intent_custom_text"] == ""
+
+
+def test_exit_intent_apply_partial() -> None:
+    r = _RowExit()
+    apply_exit_intent_template_control_from_body(r, {"exit_intent_template_tone": "sales"})
+    assert r.exit_intent_template_tone == "sales"
+    assert r.exit_intent_template_mode == "preset"
+
+
+def test_exit_intent_fields_invalid_normalized() -> None:
+    class Bad:
+        exit_intent_template_mode = "x"
+        exit_intent_template_tone = "y"
+        exit_intent_custom_text = None
+
+    d = exit_intent_template_fields_for_api(Bad())
+    assert d["exit_intent_template_mode"] == "preset"
 
 
 class _Row:

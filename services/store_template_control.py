@@ -61,3 +61,47 @@ def template_control_fields_for_api(row: Optional[Any]) -> Dict[str, str]:
         "template_tone": tone_s,
         "template_custom_text": ct,
     }
+
+
+def apply_exit_intent_template_control_from_body(row: Any, body: Dict[str, Any]) -> None:
+    """تحديث جزئي لحقول رسالة الخروج قبل السلة."""
+    if "exit_intent_template_mode" in body:
+        m = str(body.get("exit_intent_template_mode") or "").strip().lower()
+        if m in _VALID_TEMPLATE_MODES:
+            row.exit_intent_template_mode = m
+    if "exit_intent_template_tone" in body:
+        t = str(body.get("exit_intent_template_tone") or "").strip().lower()
+        if t in _VALID_TEMPLATE_TONES:
+            row.exit_intent_template_tone = t
+    if "exit_intent_custom_text" in body:
+        row.exit_intent_custom_text = coerce_template_custom_text(
+            body.get("exit_intent_custom_text")
+        )
+
+
+def exit_intent_template_fields_for_api(row: Optional[Any]) -> Dict[str, str]:
+    if row is None:
+        return {
+            "exit_intent_template_mode": "preset",
+            "exit_intent_template_tone": "friendly",
+            "exit_intent_custom_text": "",
+        }
+    mode = getattr(row, "exit_intent_template_mode", None)
+    if not isinstance(mode, str) or mode.strip().lower() not in _VALID_TEMPLATE_MODES:
+        mode_s = "preset"
+    else:
+        mode_s = mode.strip().lower()
+    tone = getattr(row, "exit_intent_template_tone", None)
+    if not isinstance(tone, str) or tone.strip().lower() not in _VALID_TEMPLATE_TONES:
+        tone_s = "friendly"
+    else:
+        tone_s = tone.strip().lower()
+    ct_raw = getattr(row, "exit_intent_custom_text", None)
+    ct = ""
+    if isinstance(ct_raw, str) and ct_raw.strip():
+        ct = ct_raw.strip()[:_MAX_TEMPLATE_CHARS]
+    return {
+        "exit_intent_template_mode": mode_s,
+        "exit_intent_template_tone": tone_s,
+        "exit_intent_custom_text": ct,
+    }

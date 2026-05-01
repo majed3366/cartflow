@@ -64,7 +64,7 @@
 
       <div class="recovery-templates-ar space-y-4 border-t border-slate-100 pt-6" dir="rtl" lang="ar">
         <h2 class="text-sm font-bold text-slate-800">نمط الرسائل</h2>
-        <p class="text-xs text-slate-500">يؤثر على أسطر المساعدة القصيرة في الودجت (مثل اقتراح المنتجات قبل السلة). لا يغيّر منطق الاسترجاع أو واتساب.</p>
+        <p class="text-xs text-slate-500">بعد الموافقة على الاقتراح: أسطر المساعدة القصيرة لعرض المنتجات في الودجت (منفصلة عن رسالة الخروج قبل السلة وعن قوالب واتساب).</p>
         <div>
           <label class="block text-sm font-medium text-slate-700" for="template_tone">اختر أسلوب الرسائل</label>
           <select id="template_tone" name="template_tone"
@@ -89,6 +89,37 @@
           <label class="block text-sm font-medium text-slate-700" for="template_custom_text">النص المخصص (اختياري)</label>
           <textarea id="template_custom_text" name="template_custom_text" rows="4"
             placeholder="اكتب النص الذي تريد استخدامه بدلاً من النص الافتراضي..."
+            class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-zid-500 focus:outline-none focus:ring-1 focus:ring-zid-500 resize-y"></textarea>
+        </div>
+      </div>
+
+      <div class="recovery-templates-ar space-y-4 border-t border-slate-100 pt-6" dir="rtl" lang="ar">
+        <h2 class="text-sm font-bold text-slate-800">رسائل الخروج قبل السلة</h2>
+        <p class="text-xs text-slate-500">الرسالة الأولى عند محاولة مغادرة الصفحة بدون منتجات في السلة فقط. لا يؤثر على رسائل استعادة السلة أو واتساب.</p>
+        <div>
+          <label class="block text-sm font-medium text-slate-700" for="exit_intent_template_tone">اختر أسلوب الرسائل</label>
+          <select id="exit_intent_template_tone" name="exit_intent_template_tone"
+            class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-zid-500 focus:outline-none focus:ring-1 focus:ring-zid-500">
+            <option value="friendly">ودي</option>
+            <option value="formal">رسمي</option>
+            <option value="sales">بيع مباشر</option>
+          </select>
+        </div>
+        <fieldset class="space-y-2">
+          <legend class="text-sm font-medium text-slate-700">وضع النص</legend>
+          <label class="flex cursor-pointer items-center gap-2 text-sm text-slate-800">
+            <input type="radio" name="exit_intent_template_mode" value="preset" id="exit_intent_mode_preset" class="h-4 w-4 border-slate-300 text-zid-600 focus:ring-zid-500" checked />
+            استخدام أسلوب جاهز
+          </label>
+          <label class="flex cursor-pointer items-center gap-2 text-sm text-slate-800">
+            <input type="radio" name="exit_intent_template_mode" value="custom" id="exit_intent_mode_custom" class="h-4 w-4 border-slate-300 text-zid-600 focus:ring-zid-500" />
+            كتابة نص مخصص
+          </label>
+        </fieldset>
+        <div id="exit_intent_custom_wrap" class="hidden space-y-1">
+          <label class="block text-sm font-medium text-slate-700" for="exit_intent_custom_text">النص المخصص</label>
+          <textarea id="exit_intent_custom_text" name="exit_intent_custom_text" rows="5"
+            placeholder="النص الذي يظهر في أول رسالة لفقاعة الخروج قبل السلة..."
             class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-zid-500 focus:outline-none focus:ring-1 focus:ring-zid-500 resize-y"></textarea>
         </div>
       </div>
@@ -197,6 +228,56 @@
       }
 
       attachTemplateControlListeners();
+
+      function syncExitIntentCustomVisibility() {
+        var wrap = document.getElementById("exit_intent_custom_wrap");
+        var custom = document.getElementById("exit_intent_mode_custom");
+        if (!wrap || !custom) return;
+        wrap.classList.toggle("hidden", !custom.checked);
+      }
+
+      function fillExitIntentTemplateControl(data) {
+        var toneEl = document.getElementById("exit_intent_template_tone");
+        var allowedTones = ["friendly", "formal", "sales"];
+        var tone =
+          typeof data.exit_intent_template_tone === "string"
+            ? data.exit_intent_template_tone
+            : "friendly";
+        if (allowedTones.indexOf(tone) < 0) tone = "friendly";
+        if (toneEl) toneEl.value = tone;
+        var mode =
+          typeof data.exit_intent_template_mode === "string"
+            ? data.exit_intent_template_mode
+            : "preset";
+        var presetRadio = document.getElementById("exit_intent_mode_preset");
+        var customRadio = document.getElementById("exit_intent_mode_custom");
+        if (presetRadio && customRadio) {
+          if (mode === "custom") {
+            customRadio.checked = true;
+            presetRadio.checked = false;
+          } else {
+            presetRadio.checked = true;
+            customRadio.checked = false;
+          }
+        }
+        var ta = document.getElementById("exit_intent_custom_text");
+        if (ta) {
+          ta.value =
+            typeof data.exit_intent_custom_text === "string"
+              ? data.exit_intent_custom_text
+              : "";
+        }
+        syncExitIntentCustomVisibility();
+      }
+
+      function attachExitIntentListeners() {
+        var presetRadio = document.getElementById("exit_intent_mode_preset");
+        var customRadio = document.getElementById("exit_intent_mode_custom");
+        if (presetRadio) presetRadio.addEventListener("change", syncExitIntentCustomVisibility);
+        if (customRadio) customRadio.addEventListener("change", syncExitIntentCustomVisibility);
+      }
+
+      attachExitIntentListeners();
       fetch("/api/recovery-settings")
         .then(function (r) { return r.json().then(function (d) { return { status: r.status, data: d }; }); })
         .then(function (x) {
@@ -207,6 +288,7 @@
             document.getElementById("whatsapp_support_url").value = x.data.whatsapp_support_url || "";
             fillTemplates(x.data);
             fillTemplateControl(x.data);
+            fillExitIntentTemplateControl(x.data);
             hideMsg();
           } else {
             showErr(x.data.error || "Failed to load settings (e.g. no store yet).");
@@ -238,12 +320,24 @@
         body.template_custom_text = document.getElementById("template_custom_text")
           ? document.getElementById("template_custom_text").value
           : "";
+        body.exit_intent_template_mode =
+          document.getElementById("exit_intent_mode_custom") &&
+          document.getElementById("exit_intent_mode_custom").checked
+            ? "custom"
+            : "preset";
+        body.exit_intent_template_tone = document.getElementById("exit_intent_template_tone")
+          ? document.getElementById("exit_intent_template_tone").value
+          : "friendly";
+        body.exit_intent_custom_text = document.getElementById("exit_intent_custom_text")
+          ? document.getElementById("exit_intent_custom_text").value
+          : "";
         fetch("/api/recovery-settings", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
           .then(function (r) { return r.json().then(function (d) { return { status: r.status, data: d }; }); })
           .then(function (x) {
             if (x.data.ok) {
               fillTemplates(x.data);
               fillTemplateControl(x.data);
+              fillExitIntentTemplateControl(x.data);
               showOk();
             } else {
               showErr(x.data.error || "Save failed");

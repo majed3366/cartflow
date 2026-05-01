@@ -193,7 +193,9 @@ from schema_widget import ensure_store_widget_schema
 from services.cartflow_whatsapp_mock import REASON_CHOICES as CF_REASON_CHOICES
 from services.recovery_decision import get_primary_recovery_reason
 from services.store_template_control import (
+    apply_exit_intent_template_control_from_body,
     apply_template_control_from_body,
+    exit_intent_template_fields_for_api,
     template_control_fields_for_api,
 )
 
@@ -679,6 +681,7 @@ def _dev_apply_recovery_settings_update(
     if request_body is not None:
         _apply_recovery_template_fields_from_body(row, request_body)
         apply_template_control_from_body(row, request_body)
+        apply_exit_intent_template_control_from_body(row, request_body)
     db.session.commit()
     wa: Optional[str] = getattr(row, "whatsapp_support_url", None)
     if not (isinstance(wa, str) and wa.strip()):
@@ -692,6 +695,7 @@ def _dev_apply_recovery_settings_update(
     }
     payload.update(_recovery_template_fields_for_api(row))
     payload.update(template_control_fields_for_api(row))
+    payload.update(exit_intent_template_fields_for_api(row))
     return payload, 200
 
 # ‎/dev/recovery-flow-test?type=…‎ — بدون قراءة من ‎DB‎
@@ -1089,6 +1093,7 @@ def api_recovery_settings_get():
         }
         payload.update(_recovery_template_fields_for_api(row))
         payload.update(template_control_fields_for_api(row))
+        payload.update(exit_intent_template_fields_for_api(row))
         return j(payload)
     except Exception as e:  # noqa: BLE001
         db.session.rollback()

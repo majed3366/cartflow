@@ -128,6 +128,18 @@
   var widgetTemplateMode = "preset";
   var widgetTemplateTone = "friendly";
   var widgetTemplateCustomText = "";
+  /** رسالة الخروج قبل السلة — منفصلة عن نص اكتشاف المنتجات. */
+  var widgetExitIntentMode = "preset";
+  var widgetExitIntentTone = "friendly";
+  var widgetExitIntentCustomText = "";
+  var EXIT_INTENT_PRESET_BY_TONE = {
+    friendly:
+      "هلا 👋\nفيه خيارات ممكن تعجبك 👍\nتحب أشوفها لك بسرعة؟",
+    formal:
+      "مرحباً 👋\nيمكنني مساعدتك في استعراض خيارات مناسبة لك\nهل ترغب بالاطلاع عليها؟",
+    sales:
+      "قبل ما تطلع 👋\nعندي خيارات ممكن تناسبك أكثر 👌\nخلني أوريك الأفضل الآن",
+  };
   var DISCOVERY_HELPER_SECOND_LINE =
     "تقدر تختار اللي يناسبك وتضيفه للسلة بسهولة 👍";
   var TONE_DISCOVERY_FIRST_LINE = {
@@ -152,8 +164,37 @@
       if (typeof j.template_custom_text === "string") {
         widgetTemplateCustomText = j.template_custom_text;
       }
+      var em = j.exit_intent_template_mode;
+      if (em === "preset" || em === "custom") {
+        widgetExitIntentMode = em;
+      }
+      var et = j.exit_intent_template_tone;
+      if (et === "friendly" || et === "formal" || et === "sales") {
+        widgetExitIntentTone = et;
+      }
+      if (typeof j.exit_intent_custom_text === "string") {
+        widgetExitIntentCustomText = j.exit_intent_custom_text;
+      }
     } catch (eTpl) {
       /* ignore */
+    }
+  }
+
+  function getExitIntentOpeningText() {
+    try {
+      if (
+        widgetExitIntentMode === "custom" &&
+        strTrim(widgetExitIntentCustomText) !== ""
+      ) {
+        return String(widgetExitIntentCustomText).replace(/\r\n/g, "\n");
+      }
+      var tone =
+        widgetExitIntentTone in EXIT_INTENT_PRESET_BY_TONE
+          ? widgetExitIntentTone
+          : "friendly";
+      return EXIT_INTENT_PRESET_BY_TONE[tone];
+    } catch (eEi) {
+      return EXIT_INTENT_PRESET_BY_TONE.friendly;
     }
   }
 
@@ -4036,7 +4077,7 @@
         : "margin:0 0 8px 0;";
     p0.textContent =
       openSource === TRIGGER_SOURCE_EXIT_INTENT
-        ? "هلا 👋\nفيه خيارات ممكن تعجبك 👍\nتحب أشوفها لك بسرعة؟"
+        ? getExitIntentOpeningText()
         : "تبي أساعدك تكمل طلبك؟";
 
     var row0 = null;
