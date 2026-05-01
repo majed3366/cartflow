@@ -198,6 +198,10 @@ from services.store_template_control import (
     exit_intent_template_fields_for_api,
     template_control_fields_for_api,
 )
+from services.store_widget_customization import (
+    apply_widget_customization_from_body,
+    widget_customization_fields_for_api,
+)
 
 log = logging.getLogger("cartflow")
 
@@ -632,6 +636,23 @@ def _ensure_default_store_for_recovery() -> None:
         db.session.rollback()
 
 
+def _merge_recovery_settings_post_body(body: Dict[str, Any]) -> Dict[str, Any]:
+    """دمج حقول الاسترجاع مع آخر ‎Store‎ حتى تعمل التحديثات الجزئية."""
+    out = dict(body)
+    try:
+        row = db.session.query(Store).order_by(Store.id.desc()).first()
+    except (SQLAlchemyError, OSError):
+        row = None
+    if row is not None:
+        if "recovery_delay" not in body:
+            out["recovery_delay"] = row.recovery_delay
+        if "recovery_delay_unit" not in body:
+            out["recovery_delay_unit"] = row.recovery_delay_unit
+        if "recovery_attempts" not in body:
+            out["recovery_attempts"] = row.recovery_attempts
+    return out
+
+
 def _dev_apply_recovery_settings_update(
     recovery_delay: Any,
     recovery_delay_unit: Any,
@@ -682,6 +703,7 @@ def _dev_apply_recovery_settings_update(
         _apply_recovery_template_fields_from_body(row, request_body)
         apply_template_control_from_body(row, request_body)
         apply_exit_intent_template_control_from_body(row, request_body)
+        apply_widget_customization_from_body(row, request_body)
     db.session.commit()
     wa: Optional[str] = getattr(row, "whatsapp_support_url", None)
     if not (isinstance(wa, str) and wa.strip()):
@@ -696,6 +718,7 @@ def _dev_apply_recovery_settings_update(
     payload.update(_recovery_template_fields_for_api(row))
     payload.update(template_control_fields_for_api(row))
     payload.update(exit_intent_template_fields_for_api(row))
+    payload.update(widget_customization_fields_for_api(row))
     return payload, 200
 
 # ‎/dev/recovery-flow-test?type=…‎ — بدون قراءة من ‎DB‎
@@ -1026,6 +1049,7 @@ async def dev_recovery_settings_update(request: Request):
             body = None
         if not isinstance(body, dict):
             return j({"ok": False, "error": "json_object_required"}, 400)
+        body = _merge_recovery_settings_post_body(body)
         uw = "whatsapp_support_url" in body
         data, code = _dev_apply_recovery_settings_update(
             body.get("recovery_delay"),
@@ -1054,6 +1078,7 @@ async def api_recovery_settings(request: Request):
             body = None
         if not isinstance(body, dict):
             return j({"ok": False, "error": "json_object_required"}, 400)
+        body = _merge_recovery_settings_post_body(body)
         uw = "whatsapp_support_url" in body
         data, code = _dev_apply_recovery_settings_update(
             body.get("recovery_delay"),
@@ -1094,6 +1119,7 @@ def api_recovery_settings_get():
         payload.update(_recovery_template_fields_for_api(row))
         payload.update(template_control_fields_for_api(row))
         payload.update(exit_intent_template_fields_for_api(row))
+        payload.update(widget_customization_fields_for_api(row))
         return j(payload)
     except Exception as e:  # noqa: BLE001
         db.session.rollback()

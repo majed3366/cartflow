@@ -68,6 +68,10 @@ class Store(Base):
     exit_intent_template_mode = Column(String(32), default="preset", nullable=False)
     exit_intent_template_tone = Column(String(32), default="friendly", nullable=False)
     exit_intent_custom_text = Column(Text, nullable=True)
+    # تخصيص مظهر الودجيت (واجهة فقط؛ لا تأثير على منطق الاسترجاع)
+    widget_name = Column(String(255), default="مساعد المتجر", nullable=False)
+    widget_primary_color = Column(String(16), default="#6C5CE7", nullable=False)
+    widget_style = Column(String(16), default="modern", nullable=False)
 
 
 class AbandonedCart(Base):

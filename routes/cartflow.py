@@ -26,6 +26,7 @@ from services.store_template_control import (
     exit_intent_template_fields_for_api,
     template_control_fields_for_api,
 )
+from services.store_widget_customization import widget_customization_fields_for_api
 
 log = logging.getLogger("cartflow")
 
@@ -243,6 +244,7 @@ def cartflow_ready(
         row = db.session.query(Store).order_by(Store.id.desc()).first()
         tpl = template_control_fields_for_api(row)
         tpl.update(exit_intent_template_fields_for_api(row))
+        tpl.update(widget_customization_fields_for_api(row))
         return j(
             {
                 "ok": True,
@@ -281,6 +283,7 @@ def cartflow_public_config(
                 wa = w.strip()[:2048]
         tpl = template_control_fields_for_api(row)
         tpl.update(exit_intent_template_fields_for_api(row))
+        tpl.update(widget_customization_fields_for_api(row))
         return j({"ok": True, "whatsapp_url": wa, **tpl})
     except (SQLAlchemyError, OSError) as e:
         db.session.rollback()

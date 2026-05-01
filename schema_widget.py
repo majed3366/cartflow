@@ -369,6 +369,70 @@ def _ensure_store_exit_intent_template_columns(db: Any) -> None:
         log.debug("schema_widget exit intent template: %s", e)
 
 
+def _ensure_store_widget_customization_columns(db: Any) -> None:
+    """أعمدة تخصيص مظهر الودجيت (‎widget_*‎) على ‎stores‎."""
+    try:
+        db.create_all()
+        insp = inspect(db.engine)
+        if not insp.has_table("stores"):
+            return
+        dialect = getattr(getattr(db.engine, "dialect", None), "name", "") or ""
+        existing = {c["name"] for c in insp.get_columns("stores")}
+        if "widget_name" not in existing:
+            try:
+                if dialect == "postgresql":
+                    stmt = (
+                        "ALTER TABLE stores ADD COLUMN IF NOT EXISTS widget_name "
+                        "VARCHAR(255) DEFAULT 'مساعد المتجر' NOT NULL"
+                    )
+                else:
+                    stmt = (
+                        "ALTER TABLE stores ADD COLUMN widget_name VARCHAR(255) "
+                        "DEFAULT 'مساعد المتجر' NOT NULL"
+                    )
+                db.session.execute(text(stmt))
+                db.session.commit()
+            except (OSError, SQLAlchemyError, IntegrityError):
+                db.session.rollback()
+            existing = {c["name"] for c in insp.get_columns("stores")}
+        if "widget_primary_color" not in existing:
+            try:
+                if dialect == "postgresql":
+                    stmt = (
+                        "ALTER TABLE stores ADD COLUMN IF NOT EXISTS "
+                        "widget_primary_color VARCHAR(16) DEFAULT '#6C5CE7' NOT NULL"
+                    )
+                else:
+                    stmt = (
+                        "ALTER TABLE stores ADD COLUMN widget_primary_color "
+                        "VARCHAR(16) DEFAULT '#6C5CE7' NOT NULL"
+                    )
+                db.session.execute(text(stmt))
+                db.session.commit()
+            except (OSError, SQLAlchemyError, IntegrityError):
+                db.session.rollback()
+            existing = {c["name"] for c in insp.get_columns("stores")}
+        if "widget_style" not in existing:
+            try:
+                if dialect == "postgresql":
+                    stmt = (
+                        "ALTER TABLE stores ADD COLUMN IF NOT EXISTS widget_style "
+                        "VARCHAR(16) DEFAULT 'modern' NOT NULL"
+                    )
+                else:
+                    stmt = (
+                        "ALTER TABLE stores ADD COLUMN widget_style "
+                        "VARCHAR(16) DEFAULT 'modern' NOT NULL"
+                    )
+                db.session.execute(text(stmt))
+                db.session.commit()
+            except (OSError, SQLAlchemyError, IntegrityError):
+                db.session.rollback()
+    except (OSError, SQLAlchemyError) as e:
+        db.session.rollback()
+        log.debug("schema_widget widget customization: %s", e)
+
+
 def ensure_store_widget_schema(db: Any) -> None:
     """يُنادى من مسارات ‎API‎ (لا يعتمد على ‎main‎)."""
     _ensure_reason_subcategory_columns(db)
@@ -378,6 +442,7 @@ def ensure_store_widget_schema(db: Any) -> None:
     _ensure_store_whatsapp_recovery_template_columns(db)
     _ensure_store_template_control_columns(db)
     _ensure_store_exit_intent_template_columns(db)
+    _ensure_store_widget_customization_columns(db)
     global _store_abandonment_schema_ensured
     if _store_abandonment_schema_ensured:
         return

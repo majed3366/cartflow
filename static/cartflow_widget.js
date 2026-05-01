@@ -132,6 +132,10 @@
   var widgetExitIntentMode = "preset";
   var widgetExitIntentTone = "friendly";
   var widgetExitIntentCustomText = "";
+  /** تخصيص مظهر الودجيت (من لوحة الاسترجاع / جاهزية / public-config). */
+  var widgetBrandName = "مساعد المتجر";
+  var widgetPrimaryColor = "#6C5CE7";
+  var widgetChromeStyle = "modern";
   var EXIT_INTENT_PRESET_BY_TONE = {
     friendly:
       "هلا 👋\nفيه خيارات ممكن تعجبك 👍\nتحب أشوفها لك بسرعة؟",
@@ -147,6 +151,116 @@
     formal: "تم توفير خيارات مناسبة لك 👇",
     sales: "هذه أفضل الخيارات لك الآن 👇",
   };
+
+  function normalizeWidgetPrimaryHexClient(raw) {
+    var def = "#6C5CE7";
+    if (raw == null || raw === "") return def;
+    var s = String(raw).trim();
+    if (/^#[0-9A-Fa-f]{6}$/.test(s)) return "#" + s.slice(1).toUpperCase();
+    if (/^#[0-9A-Fa-f]{3}$/.test(s)) {
+      var h = s.slice(1);
+      return ("#" + h[0] + h[0] + h[1] + h[1] + h[2] + h[2]).toUpperCase();
+    }
+    var nx = String(raw).replace(/^#/, "");
+    if (/^[0-9A-Fa-f]{6}$/.test(nx)) return "#" + nx.toUpperCase();
+    return def;
+  }
+
+  function hexToRgbTuple(hex) {
+    var h = normalizeWidgetPrimaryHexClient(hex);
+    var n = parseInt(h.slice(1), 16);
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  }
+
+  function rgbToCssHex(r, g, b) {
+    function p(x) {
+      var v = Math.max(0, Math.min(255, Math.round(x)));
+      var t = v.toString(16);
+      return t.length === 1 ? "0" + t : t;
+    }
+    return "#" + p(r) + p(g) + p(b);
+  }
+
+  function shadeHex(hex, t) {
+    var rgb = hexToRgbTuple(hex);
+    function f(c) {
+      if (t >= 0) return c + (255 - c) * t;
+      return c * (1 + t);
+    }
+    return rgbToCssHex(f(rgb[0]), f(rgb[1]), f(rgb[2]));
+  }
+
+  function relativeLuminanceHex(hex) {
+    var rgb = hexToRgbTuple(hex);
+    var lin = rgb.map(function (c) {
+      c = c / 255;
+      return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+    });
+    return 0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2];
+  }
+
+  function contrastRatioAgainstWhite(bgHex) {
+    var L = relativeLuminanceHex(bgHex);
+    var Lw = 1;
+    var hi = Math.max(Lw, L);
+    var lo = Math.min(Lw, L);
+    return (hi + 0.05) / (lo + 0.05);
+  }
+
+  /** يضبط لون الزر حتى يبقى النص الأبيض مقروءاً تقريباً (‎WCAG‎ تقريبي). */
+  function widgetButtonFillHex(hex) {
+    var h = normalizeWidgetPrimaryHexClient(hex);
+    var i;
+    for (i = 0; i < 18; i++) {
+      if (contrastRatioAgainstWhite(h) >= 4.2) break;
+      h = shadeHex(h, -0.14);
+    }
+    return h;
+  }
+
+  function getWidgetPrimaryButtonStyle() {
+    var pc = widgetButtonFillHex(widgetPrimaryColor);
+    var rad =
+      widgetChromeStyle === "bold" ? "10px" : widgetChromeStyle === "minimal" ? "6px" : "8px";
+    var padV = widgetChromeStyle === "bold" ? "12px" : "10px";
+    var padH = widgetChromeStyle === "bold" ? "18px" : "16px";
+    var fw = widgetChromeStyle === "bold" ? "800" : "600";
+    var border =
+      widgetChromeStyle === "minimal" ? "1px solid rgba(255,255,255,.38)" : "0";
+    return (
+      "cursor:pointer;border:" +
+      border +
+      ";border-radius:" +
+      rad +
+      ";padding:" +
+      padV +
+      " " +
+      padH +
+      ";font:inherit;font-weight:" +
+      fw +
+      ";background:" +
+      pc +
+      ";color:#fff;min-height:44px;box-sizing:border-box;touch-action:manipulation;"
+    );
+  }
+
+  function widgetShellChromeCss() {
+    var radius =
+      widgetChromeStyle === "minimal" ? "10px" : widgetChromeStyle === "bold" ? "14px" : "12px";
+    var shadow =
+      widgetChromeStyle === "minimal"
+        ? "0 2px 8px rgba(0,0,0,.14)"
+        : widgetChromeStyle === "bold"
+        ? "0 10px 28px rgba(0,0,0,.38)"
+        : "0 4px 16px rgba(0,0,0,.22)";
+    var border =
+      widgetChromeStyle === "minimal"
+        ? "1px solid rgba(255,255,255,.12)"
+        : widgetChromeStyle === "bold"
+        ? "2px solid rgba(255,255,255,.22)"
+        : "";
+    return { radius: radius, shadow: shadow, border: border };
+  }
 
   function applyTemplateConfigFromReady(j) {
     try {
@@ -174,6 +288,17 @@
       }
       if (typeof j.exit_intent_custom_text === "string") {
         widgetExitIntentCustomText = j.exit_intent_custom_text;
+      }
+      if (typeof j.widget_name === "string") {
+        var wn = j.widget_name.trim();
+        widgetBrandName = wn ? wn.slice(0, 120) : "مساعد المتجر";
+      }
+      if (typeof j.widget_primary_color === "string" && j.widget_primary_color.trim()) {
+        widgetPrimaryColor = normalizeWidgetPrimaryHexClient(j.widget_primary_color.trim());
+      }
+      var ws = j.widget_style;
+      if (ws === "modern" || ws === "minimal" || ws === "bold") {
+        widgetChromeStyle = ws;
       }
     } catch (eTpl) {
       /* ignore */
@@ -2063,10 +2188,6 @@
     }
   }
 
-  var btnStyle =
-    "cursor:pointer;border:0;border-radius:8px;padding:10px 16px;font:inherit;" +
-    "font-weight:600;background:#7c3aed;color:#fff;min-height:44px;box-sizing:border-box;" +
-    "touch-action:manipulation;";
   var rowStyleCol =
     "display:flex;flex-direction:column;gap:10px;width:100%;align-items:stretch;";
 
@@ -2238,6 +2359,10 @@
 
     ensureMobileUxStyles();
     ensureChatBodyLayoutStyles();
+    var btnStyle = getWidgetPrimaryButtonStyle();
+    var shell = widgetShellChromeCss();
+    var pcNorm = normalizeWidgetPrimaryHexClient(widgetPrimaryColor);
+    var shellBorderCss = shell.border ? "border:" + shell.border + ";" : "";
     var w = document.createElement("div");
     w.setAttribute("dir", "rtl");
     w.setAttribute("lang", "ar");
@@ -2245,9 +2370,43 @@
     w._cfDragY = 0;
     w.style.cssText =
       "position:fixed;z-index:2147483640;box-sizing:border-box;" +
-      "padding:10px 12px;border-radius:12px;background:#1e1b4b;color:#f5f3ff;" +
-      "font:14px/1.4 system-ui,-apple-system,'Segoe UI',sans-serif;box-shadow:0 4px 16px rgba(0,0,0,.2);" +
+      "padding:10px 12px;border-radius:" +
+      shell.radius +
+      ";background:#1e1b4b;color:#f5f3ff;" +
+      "font:14px/1.4 system-ui,-apple-system,'Segoe UI',sans-serif;box-shadow:" +
+      shell.shadow +
+      ";" +
+      shellBorderCss +
       "pointer-events:auto;isolation:isolate;";
+
+    var headerBand = document.createElement("div");
+    headerBand.setAttribute("data-cf-widget-header", "1");
+    var bandDark = shadeHex(pcNorm, -0.48);
+    var bandMid = shadeHex(pcNorm, -0.22);
+    var bandRadius =
+      widgetChromeStyle === "bold" ? "10px" : widgetChromeStyle === "minimal" ? "6px" : "8px";
+    headerBand.style.cssText =
+      "margin:0 0 10px 0;padding:10px 12px;border-radius:" +
+      bandRadius +
+      ";background:linear-gradient(135deg," +
+      bandDark +
+      " 0%," +
+      bandMid +
+      " 100%);box-sizing:border-box;width:100%;";
+    var titleEl = document.createElement("div");
+    titleEl.setAttribute("data-cf-widget-title", "1");
+    titleEl.textContent = widgetBrandName || "مساعد المتجر";
+    var lumMid = relativeLuminanceHex(bandMid);
+    titleEl.style.cssText =
+      "font-weight:" +
+      (widgetChromeStyle === "bold" ? "800" : "700") +
+      ";font-size:" +
+      (widgetChromeStyle === "minimal" ? "14px" : "15px") +
+      ";line-height:1.35;margin:0;letter-spacing:-0.01em;" +
+      (lumMid > 0.55
+        ? "color:#1e1b4b;text-shadow:none;"
+        : "color:#ffffff;text-shadow:0 1px 2px rgba(0,0,0,.35);");
+    headerBand.appendChild(titleEl);
 
     w.addEventListener(
       "click",
@@ -2271,11 +2430,15 @@
     if (isNarrowViewport()) {
       chrome.style.cssText =
         "display:flex;flex-direction:row;align-items:stretch;justify-content:space-between;gap:10px;" +
-        "width:100%;margin:0 0 8px 0;box-sizing:border-box;";
+        "width:100%;margin:0 0 8px 0;box-sizing:border-box;border-bottom:2px solid " +
+        pcNorm +
+        ";padding-bottom:8px;";
     } else {
       chrome.style.cssText =
         "display:flex;justify-content:flex-end;align-items:center;gap:8px;" +
-        "width:100%;margin:0 0 8px 0;box-sizing:border-box;";
+        "width:100%;margin:0 0 8px 0;box-sizing:border-box;border-bottom:2px solid " +
+        pcNorm +
+        ";padding-bottom:8px;";
     }
 
     function getMaxDragPx() {
@@ -2417,7 +2580,9 @@
       fab.style.cssText =
         "position:fixed;z-index:2147483639;padding:0;margin:0;min-width:48px;min-height:48px;" +
         "width:48px;height:48px;border-radius:50%;" +
-        "border:0;background:#7c3aed;color:#fff;font-size:20px;line-height:1;cursor:pointer;" +
+        "border:0;background:" +
+        widgetButtonFillHex(widgetPrimaryColor) +
+        ";color:#fff;font-size:20px;line-height:1;cursor:pointer;" +
         "box-shadow:0 2px 14px rgba(0,0,0,.28);touch-action:manipulation;pointer-events:auto;" +
         "display:flex;align-items:center;justify-content:center;position:relative;" +
         "animation:cfFabPulse 2.2s ease-in-out infinite;";
@@ -2511,6 +2676,7 @@
       chrome.appendChild(btnMin);
       chrome.appendChild(btnClose);
     }
+    w.appendChild(headerBand);
     w.appendChild(chrome);
 
     var widgetBody = document.createElement("div");
@@ -2586,9 +2752,18 @@
       btnAdd.type = "button";
       btnAdd.textContent = "أضف للسلة";
       btnAdd.setAttribute("data-cf-exit-discovery-add", "1");
+      var pcBtn = widgetButtonFillHex(widgetPrimaryColor);
+      var pcHi = shadeHex(pcBtn, 0.22);
+      var pcLo = shadeHex(pcBtn, -0.28);
       btnAdd.style.cssText =
         "cursor:pointer;border:0;border-radius:10px;padding:12px 14px;font:inherit;font-weight:800;" +
-        "font-size:14px;background:linear-gradient(180deg,#c4b5fd 0%,#7c3aed 55%,#6d28d9 100%);" +
+        "font-size:14px;background:linear-gradient(180deg," +
+        pcHi +
+        " 0%," +
+        pcBtn +
+        " 55%," +
+        pcLo +
+        " 100%);" +
         "color:#fff;width:100%;box-sizing:border-box;min-height:48px;touch-action:manipulation;";
       btnAdd.addEventListener("click", function (evAdd) {
         evAdd.stopPropagation();
@@ -3386,10 +3561,9 @@
           btn.setAttribute("data-cf-quality-conversion-cta", "1");
           btn.textContent = "كمّل الطلب الآن 👇";
           btn.style.cssText =
-            "cursor:pointer;border:0;border-radius:10px;padding:14px 18px;font:inherit;" +
-            "font-weight:700;font-size:15px;background:linear-gradient(180deg,#6d28d9 0%,#5b21b6 100%);" +
-            "color:#fff;min-height:48px;width:100%;box-sizing:border-box;margin-top:4px;" +
-            "box-shadow:0 2px 10px rgba(91,33,182,0.4);touch-action:manipulation;";
+            btnStyle +
+            "width:100%;margin-top:4px;font-size:15px;font-weight:700;padding:14px 18px;border-radius:10px;" +
+            "box-shadow:0 2px 10px rgba(0,0,0,.22);min-height:48px;";
           btn.addEventListener("click", function (evCta) {
             evCta.stopPropagation();
             evCta.preventDefault();
