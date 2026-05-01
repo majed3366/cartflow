@@ -19,225 +19,265 @@
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <style>
     body { font-family: "IBM Plex Sans Arabic", system-ui, sans-serif; }
+    .rs-card {
+      border-radius: 0.75rem;
+      border: 1px solid #e9e7ef;
+      background: #fff;
+      padding: 1rem;
+      box-shadow: 0 1px 2px rgb(24 24 27 / 0.04);
+    }
+    .rs-section-title {
+      font-weight: 700;
+      font-size: 0.9375rem;
+      color: #1e1b4b;
+      padding-bottom: 0.375rem;
+      margin-bottom: 0.375rem;
+      border-bottom: 2px solid rgb(124 58 237 / 0.35);
+    }
+    .rs-select {
+      transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+    .rs-select:hover {
+      background-color: rgb(245 243 255 / 0.95);
+      border-color: rgb(196 181 253 / 0.9);
+    }
   </style>
 </head>
 <body class="min-h-screen bg-slate-50 text-slate-800">
   {% include "partials/cart_abandon_tracking.html" %}
   <div class="flex min-h-screen">
     {% include "partials/dashboard_sidebar.html" %}
-    <div class="min-w-0 flex-1 bg-gradient-to-b from-zid-50/90 to-slate-50 px-4 py-5">
+    <div class="min-w-0 flex-1 bg-gradient-to-b from-zid-50/90 to-slate-50 px-4 py-4">
       <div class="mx-auto max-w-2xl">
-    <header class="mb-4">
-      <h1 class="text-lg font-bold text-zid-900">إعدادات الاسترجاع</h1>
-      <p class="mt-0.5 text-[11px] leading-relaxed text-slate-500">مدة الانتظار قبل رسائل الاسترجاع، عدد المحاولات، وقوالب الرسائل.</p>
-    </header>
+        <header class="mb-3">
+          <h1 class="text-lg font-bold text-zid-900">إعدادات الاسترجاع</h1>
+          <p class="mt-0.5 text-[11px] leading-snug text-slate-500">مدة الانتظار قبل رسائل الاسترجاع، عدد المحاولات، وقوالب الرسائل.</p>
+        </header>
 
-    <div id="errBox" class="mb-3 hidden rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800"></div>
-    <div id="okBox" class="mb-3 hidden rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">تم الحفظ.</div>
+        <div id="errBox" class="mb-2 hidden rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800"></div>
+        <div id="okBox" class="mb-2 hidden rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">تم الحفظ.</div>
 
-    <form id="f" class="space-y-3">
-      <!-- التوقيت -->
-      <section class="rounded-xl border border-violet-100 bg-white/90 p-4 shadow-sm ring-1 ring-violet-100/60">
-        <h2 class="mb-3 border-b border-violet-100 pb-2 text-sm font-bold text-zid-800">التوقيت والاتصال</h2>
-        <div class="space-y-2.5">
-          <div>
-            <label class="block text-xs font-medium text-slate-700" for="recovery_delay">مدة الانتظار قبل الإرسال</label>
-            <input id="recovery_delay" name="recovery_delay" type="number" min="1" step="1"
-              class="mt-0.5 w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm focus:border-zid-500 focus:outline-none focus:ring-1 focus:ring-zid-500" required />
-          </div>
-          <div>
-            <label class="block text-xs font-medium text-slate-700" for="recovery_delay_unit">وحدة الوقت</label>
-            <select id="recovery_delay_unit" name="recovery_delay_unit"
-              class="mt-0.5 w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm focus:border-zid-500 focus:outline-none focus:ring-1 focus:ring-zid-500">
-              <option value="minutes">دقائق</option>
-              <option value="hours">ساعات</option>
-              <option value="days">أيام</option>
-            </select>
-          </div>
-          <div>
-            <label class="block text-xs font-medium text-slate-700" for="recovery_attempts">عدد محاولات الاسترجاع</label>
-            <input id="recovery_attempts" name="recovery_attempts" type="number" min="1" step="1"
-              class="mt-0.5 w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm focus:border-zid-500 focus:outline-none focus:ring-1 focus:ring-zid-500" required />
-          </div>
-          <div>
-            <label class="block text-xs font-medium text-slate-700" for="whatsapp_support_url">رابط دعم واتساب (اختياري)</label>
-            <input id="whatsapp_support_url" name="whatsapp_support_url" type="url" inputmode="url" autocomplete="off" placeholder="https://wa.me/9665..."
-              class="mt-0.5 w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm focus:border-zid-500 focus:outline-none focus:ring-1 focus:ring-zid-500" />
-            <p class="mt-0.5 text-[10px] leading-snug text-slate-500">يُستخدم عندما يختار العميل التواصل معك من ودجت السلة.</p>
-          </div>
-        </div>
-      </section>
+        <form id="f" class="space-y-2">
+          <!-- الوقت والاتصال -->
+          <section class="rs-card scroll-mt-4">
+            <h2 class="rs-section-title">الوقت والاتصال</h2>
+            <div class="space-y-2">
+              <div>
+                <label class="block text-xs font-medium text-slate-700" for="recovery_delay">مدة الانتظار قبل الإرسال</label>
+                <input id="recovery_delay" name="recovery_delay" type="number" min="1" step="1"
+                  class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm transition-colors hover:border-violet-200 focus:border-zid-500 focus:outline-none focus:ring-1 focus:ring-zid-500" required />
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-slate-700" for="recovery_delay_unit">وحدة الوقت</label>
+                <select id="recovery_delay_unit" name="recovery_delay_unit"
+                  class="rs-select mt-1 w-full rounded-lg border border-slate-200 bg-zid-50/70 px-2.5 py-2 text-sm focus:border-zid-500 focus:outline-none focus:ring-2 focus:ring-zid-500/30">
+                  <option value="minutes">دقائق</option>
+                  <option value="hours">ساعات</option>
+                  <option value="days">أيام</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-slate-700" for="recovery_attempts">عدد محاولات الاسترجاع</label>
+                <input id="recovery_attempts" name="recovery_attempts" type="number" min="1" step="1"
+                  class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm transition-colors hover:border-violet-200 focus:border-zid-500 focus:outline-none focus:ring-1 focus:ring-zid-500" required />
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-slate-700" for="whatsapp_support_url">رابط دعم واتساب (اختياري)</label>
+                <input id="whatsapp_support_url" name="whatsapp_support_url" type="url" inputmode="url" autocomplete="off" placeholder="https://wa.me/9665..."
+                  class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm transition-colors hover:border-violet-200 focus:border-zid-500 focus:outline-none focus:ring-1 focus:ring-zid-500" />
+                <p class="mt-1 text-[10px] leading-snug text-slate-500">يُستخدم عندما يختار العميل التواصل معك من ودجت السلة.</p>
+              </div>
+            </div>
+          </section>
 
-      <!-- نمط رسائل الاكتشاف -->
-      <section id="templates" tabindex="-1" class="scroll-mt-20 rounded-xl border border-violet-100 bg-white/90 p-4 shadow-sm ring-1 ring-violet-100/60">
-        <h2 class="mb-1 text-sm font-bold text-zid-800">نمط الرسائل</h2>
-        <p class="mb-3 text-[10px] leading-snug text-slate-500">بعد الموافقة على الاقتراح: مساعد عرض المنتجات في الودجت (منفصل عن رسالة الخروج قبل السلة وقوالب واتساب).</p>
-        <div class="space-y-2.5">
-          <div>
-            <label class="block text-xs font-medium text-slate-700" for="template_tone">اختر أسلوب الرسائل</label>
-            <select id="template_tone" name="template_tone"
-              class="mt-0.5 w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm focus:border-zid-500 focus:outline-none focus:ring-1 focus:ring-zid-500">
-              <option value="friendly">ودي</option>
-              <option value="formal">رسمي</option>
-              <option value="sales">بيع مباشر</option>
-            </select>
-          </div>
-          <fieldset class="space-y-1">
-            <legend class="text-xs font-medium text-slate-700">وضع النص</legend>
-            <label class="flex cursor-pointer items-center gap-2 text-xs text-slate-800">
-              <input type="radio" name="template_mode" value="preset" id="template_mode_preset" class="h-3.5 w-3.5 border-slate-300 text-zid-600 focus:ring-zid-500" checked />
-              استخدام أسلوب جاهز
-            </label>
-            <label class="flex cursor-pointer items-center gap-2 text-xs text-slate-800">
-              <input type="radio" name="template_mode" value="custom" id="template_mode_custom" class="h-3.5 w-3.5 border-slate-300 text-zid-600 focus:ring-zid-500" />
-              كتابة نص مخصص
-            </label>
-          </fieldset>
-          <div id="discovery_phrase_row" class="space-y-0.5">
-            <label class="block text-xs font-medium text-slate-700" for="discovery_phrase_pick">اختر عبارة جاهزة</label>
-            <select id="discovery_phrase_pick"
-              class="w-full rounded-lg border border-violet-200 bg-zid-50/50 px-2.5 py-1.5 text-xs focus:border-zid-500 focus:outline-none focus:ring-1 focus:ring-zid-500">
-              <option value="">— اختر عبارة —</option>
-              <option value="friendly" data-body="جبت لك خيارات مناسبة 👇&#10;تقدر تختار اللي يناسبك وتضيفه للسلة بسهولة 👍">ودي — جبت لك خيارات مناسبة…</option>
-              <option value="formal" data-body="تم توفير خيارات مناسبة لك 👇&#10;تقدر تختار اللي يناسبك وتضيفه للسلة بسهولة 👍">رسمي — تم توفير خيارات مناسبة…</option>
-              <option value="sales" data-body="هذه أفضل الخيارات لك الآن 👇&#10;تقدر تختار اللي يناسبك وتضيفه للسلة بسهولة 👍">بيع مباشر — أفضل الخيارات لك…</option>
-            </select>
-            <p class="text-[10px] text-slate-500">يملأ خانة النص ويحوّل الوضع إلى «نص مخصص» لتقدر تعدّل قبل الحفظ.</p>
-          </div>
-          <div id="template_custom_wrap" class="hidden space-y-0.5">
-            <label class="block text-xs font-medium text-slate-700" for="template_custom_text">النص المخصص</label>
-            <textarea id="template_custom_text" name="template_custom_text" rows="3"
-              placeholder="اكتب النص الذي تريد استخدامه…"
-              class="mt-0.5 w-full resize-y rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm focus:border-zid-500 focus:outline-none focus:ring-1 focus:ring-zid-500"></textarea>
-          </div>
-        </div>
-      </section>
+          <!-- نمط رسائل الاكتشاف -->
+          <section id="templates" tabindex="-1" class="rs-card scroll-mt-20">
+            <h2 class="rs-section-title">نمط الرسائل</h2>
+            <p class="mb-2 text-[10px] leading-snug text-slate-500">بعد الموافقة على الاقتراح: مساعد عرض المنتجات في الودجت (منفصل عن رسالة الخروج قبل السلة وقوالب واتساب).</p>
+            <div class="space-y-2">
+              <div>
+                <label class="block text-xs font-medium text-slate-700" for="template_tone">اختر أسلوب الرسائل</label>
+                <select id="template_tone" name="template_tone"
+                  class="rs-select mt-1 w-full rounded-lg border border-slate-200 bg-zid-50/70 px-2.5 py-2 text-sm focus:border-zid-500 focus:outline-none focus:ring-2 focus:ring-zid-500/30">
+                  <option value="friendly">ودي</option>
+                  <option value="formal">رسمي</option>
+                  <option value="sales">بيع مباشر</option>
+                </select>
+              </div>
+              <fieldset class="space-y-1 rounded-lg border border-zid-100/90 bg-zid-50/40 p-2">
+                <legend class="mb-0.5 px-0.5 text-xs font-medium text-slate-700">وضع النص</legend>
+                <label class="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-xs text-slate-800 transition-colors hover:bg-white">
+                  <input type="radio" name="template_mode" value="preset" id="template_mode_preset" class="h-3.5 w-3.5 border-slate-300 text-zid-600 focus:ring-zid-500" checked />
+                  استخدام أسلوب جاهز
+                </label>
+                <label class="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-xs text-slate-800 transition-colors hover:bg-white">
+                  <input type="radio" name="template_mode" value="custom" id="template_mode_custom" class="h-3.5 w-3.5 border-slate-300 text-zid-600 focus:ring-zid-500" />
+                  كتابة نص مخصص
+                </label>
+              </fieldset>
+              <div id="discovery_phrase_row" class="rounded-lg border border-violet-200 bg-gradient-to-b from-white to-zid-50/80 p-3 shadow-sm ring-1 ring-violet-100">
+                <label class="mb-1.5 block text-xs font-semibold text-zid-900" for="discovery_phrase_pick">اختر عبارة جاهزة</label>
+                <select id="discovery_phrase_pick"
+                  class="rs-select w-full rounded-lg border-2 border-zid-200 bg-white px-2.5 py-2 text-sm font-medium text-slate-800 focus:border-zid-500 focus:outline-none focus:ring-2 focus:ring-zid-400/40">
+                  <option value="">اختر عبارة جاهزة</option>
+                  <option value="friendly" data-body="جبت لك خيارات مناسبة 👇&#10;تقدر تختار اللي يناسبك وتضيفه للسلة بسهولة 👍">ودي — جبت لك خيارات مناسبة…</option>
+                  <option value="formal" data-body="تم توفير خيارات مناسبة لك 👇&#10;تقدر تختار اللي يناسبك وتضيفه للسلة بسهولة 👍">رسمي — تم توفير خيارات مناسبة…</option>
+                  <option value="sales" data-body="هذه أفضل الخيارات لك الآن 👇&#10;تقدر تختار اللي يناسبك وتضيفه للسلة بسهولة 👍">بيع مباشر — أفضل الخيارات لك…</option>
+                </select>
+                <p class="mt-1.5 text-[10px] leading-snug text-slate-600">يملأ خانة النص ويحوّل الوضع إلى «نص مخصص» لتقدر تعدّل قبل الحفظ.</p>
+              </div>
+              <div id="template_custom_wrap" class="hidden space-y-1">
+                <label class="block text-xs font-medium text-slate-700" for="template_custom_text">النص المخصص</label>
+                <textarea id="template_custom_text" name="template_custom_text" rows="3"
+                  placeholder="اكتب النص الذي تريد استخدامه…"
+                  class="mt-1 w-full resize-y rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm transition-colors hover:border-violet-200 focus:border-zid-500 focus:outline-none focus:ring-1 focus:ring-zid-500"></textarea>
+              </div>
+            </div>
+          </section>
 
-      <!-- الخروج قبل السلة -->
-      <section class="rounded-xl border border-violet-100 bg-white/90 p-4 shadow-sm ring-1 ring-violet-100/60">
-        <h2 class="mb-1 text-sm font-bold text-zid-800">رسائل الخروج قبل السلة</h2>
-        <p class="mb-3 text-[10px] leading-snug text-slate-500">أول رسالة عند مغادرة الصفحة بدون منتجات في السلة فقط.</p>
-        <div class="space-y-2.5">
-          <div>
-            <label class="block text-xs font-medium text-slate-700" for="exit_intent_template_tone">اختر أسلوب الرسائل</label>
-            <select id="exit_intent_template_tone" name="exit_intent_template_tone"
-              class="mt-0.5 w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm focus:border-zid-500 focus:outline-none focus:ring-1 focus:ring-zid-500">
-              <option value="friendly">ودي</option>
-              <option value="formal">رسمي</option>
-              <option value="sales">بيع مباشر</option>
-            </select>
-          </div>
-          <fieldset class="space-y-1">
-            <legend class="text-xs font-medium text-slate-700">وضع النص</legend>
-            <label class="flex cursor-pointer items-center gap-2 text-xs text-slate-800">
-              <input type="radio" name="exit_intent_template_mode" value="preset" id="exit_intent_mode_preset" class="h-3.5 w-3.5 border-slate-300 text-zid-600 focus:ring-zid-500" checked />
-              استخدام أسلوب جاهز
-            </label>
-            <label class="flex cursor-pointer items-center gap-2 text-xs text-slate-800">
-              <input type="radio" name="exit_intent_template_mode" value="custom" id="exit_intent_mode_custom" class="h-3.5 w-3.5 border-slate-300 text-zid-600 focus:ring-zid-500" />
-              كتابة نص مخصص
-            </label>
-          </fieldset>
-          <div id="exit_intent_phrase_row" class="space-y-0.5">
-            <label class="block text-xs font-medium text-slate-700" for="exit_intent_phrase_pick">اختر عبارة جاهزة</label>
-            <select id="exit_intent_phrase_pick"
-              class="w-full rounded-lg border border-violet-200 bg-zid-50/50 px-2.5 py-1.5 text-xs focus:border-zid-500 focus:outline-none focus:ring-1 focus:ring-zid-500">
-              <option value="">— اختر عبارة —</option>
-              <option value="friendly" data-body="هلا 👋 فيه خيارات ممكن تعجبك، تحب أشوفها لك بسرعة؟">ودي — هلا 👋 فيه خيارات…</option>
-              <option value="formal" data-body="مرحباً، يمكنني مساعدتك في استعراض خيارات مناسبة لك.">رسمي — مرحباً، يمكنني مساعدتك…</option>
-              <option value="sales" data-body="قبل ما تطلع، عندي خيارات ممكن تناسبك أكثر.">بيع مباشر — قبل ما تطلع…</option>
-            </select>
-            <p class="text-[10px] text-slate-500">يملأ خانة النص ويحوّل الوضع إلى «نص مخصص» لتقدر تعدّل قبل الحفظ.</p>
-          </div>
-          <div id="exit_intent_custom_wrap" class="hidden space-y-0.5">
-            <label class="block text-xs font-medium text-slate-700" for="exit_intent_custom_text">النص المخصص</label>
-            <textarea id="exit_intent_custom_text" name="exit_intent_custom_text" rows="4"
-              placeholder="النص الذي يظهر في أول رسالة لفقاعة الخروج…"
-              class="mt-0.5 w-full resize-y rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm focus:border-zid-500 focus:outline-none focus:ring-1 focus:ring-zid-500"></textarea>
-          </div>
-        </div>
-      </section>
+          <!-- الخروج قبل السلة -->
+          <section class="rs-card">
+            <h2 class="rs-section-title">رسائل الخروج قبل السلة</h2>
+            <p class="mb-2 text-[10px] leading-snug text-slate-500">أول رسالة عند مغادرة الصفحة بدون منتجات في السلة فقط.</p>
+            <div class="space-y-2">
+              <div>
+                <label class="block text-xs font-medium text-slate-700" for="exit_intent_template_tone">اختر أسلوب الرسائل</label>
+                <select id="exit_intent_template_tone" name="exit_intent_template_tone"
+                  class="rs-select mt-1 w-full rounded-lg border border-slate-200 bg-zid-50/70 px-2.5 py-2 text-sm focus:border-zid-500 focus:outline-none focus:ring-2 focus:ring-zid-500/30">
+                  <option value="friendly">ودي</option>
+                  <option value="formal">رسمي</option>
+                  <option value="sales">بيع مباشر</option>
+                </select>
+              </div>
+              <fieldset class="space-y-1 rounded-lg border border-zid-100/90 bg-zid-50/40 p-2">
+                <legend class="mb-0.5 px-0.5 text-xs font-medium text-slate-700">وضع النص</legend>
+                <label class="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-xs text-slate-800 transition-colors hover:bg-white">
+                  <input type="radio" name="exit_intent_template_mode" value="preset" id="exit_intent_mode_preset" class="h-3.5 w-3.5 border-slate-300 text-zid-600 focus:ring-zid-500" checked />
+                  استخدام أسلوب جاهز
+                </label>
+                <label class="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-xs text-slate-800 transition-colors hover:bg-white">
+                  <input type="radio" name="exit_intent_template_mode" value="custom" id="exit_intent_mode_custom" class="h-3.5 w-3.5 border-slate-300 text-zid-600 focus:ring-zid-500" />
+                  كتابة نص مخصص
+                </label>
+              </fieldset>
+              <div id="exit_intent_phrase_row" class="rounded-lg border border-violet-200 bg-gradient-to-b from-white to-zid-50/80 p-3 shadow-sm ring-1 ring-violet-100">
+                <label class="mb-1.5 block text-xs font-semibold text-zid-900" for="exit_intent_phrase_pick">اختر عبارة جاهزة</label>
+                <select id="exit_intent_phrase_pick"
+                  class="rs-select w-full rounded-lg border-2 border-zid-200 bg-white px-2.5 py-2 text-sm font-medium text-slate-800 focus:border-zid-500 focus:outline-none focus:ring-2 focus:ring-zid-400/40">
+                  <option value="">اختر عبارة جاهزة</option>
+                  <option value="friendly" data-body="هلا 👋 فيه خيارات ممكن تعجبك، تحب أشوفها لك بسرعة؟">ودي — هلا 👋 فيه خيارات…</option>
+                  <option value="formal" data-body="مرحباً، يمكنني مساعدتك في استعراض خيارات مناسبة لك.">رسمي — مرحباً، يمكنني مساعدتك…</option>
+                  <option value="sales" data-body="قبل ما تطلع، عندي خيارات ممكن تناسبك أكثر.">بيع مباشر — قبل ما تطلع…</option>
+                </select>
+                <p class="mt-1.5 text-[10px] leading-snug text-slate-600">يملأ خانة النص ويحوّل الوضع إلى «نص مخصص» لتقدر تعدّل قبل الحفظ.</p>
+              </div>
+              <div id="exit_intent_custom_wrap" class="hidden space-y-1">
+                <label class="block text-xs font-medium text-slate-700" for="exit_intent_custom_text">النص المخصص</label>
+                <textarea id="exit_intent_custom_text" name="exit_intent_custom_text" rows="4"
+                  placeholder="النص الذي يظهر في أول رسالة لفقاعة الخروج…"
+                  class="mt-1 w-full resize-y rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm transition-colors hover:border-violet-200 focus:border-zid-500 focus:outline-none focus:ring-1 focus:ring-zid-500"></textarea>
+              </div>
+            </div>
+          </section>
 
-      <!-- قوالب واتساب -->
-      <section class="rounded-xl border border-violet-100 bg-white/90 p-4 shadow-sm ring-1 ring-violet-100/60" aria-labelledby="recovery-templates-heading">
-        <h2 id="recovery-templates-heading" class="mb-1 text-sm font-bold text-zid-800">رسائل استعادة السلة</h2>
-        <p class="mb-3 text-[10px] leading-snug text-slate-500">اترك الحقل فارغاً للنص الافتراضي. يمكنك إدراج عبارة جاهزة ثم تعديلها.</p>
+          <!-- قوالب واتساب -->
+          <section class="rs-card" aria-labelledby="recovery-templates-heading">
+            <h2 id="recovery-templates-heading" class="rs-section-title">رسائل استعادة السلة</h2>
+            <p class="mb-2 text-[10px] leading-snug text-slate-500">اترك الحقل فارغاً للنص الافتراضي. يمكنك إدراج عبارة جاهزة ثم تعديلها.</p>
 
-        <div class="space-y-3">
-          <div class="rounded-lg border border-slate-100 bg-slate-50/50 p-2.5">
-            <label class="block text-xs font-medium text-slate-700" for="template_price">السعر</label>
-            <select data-target="template_price" class="wa-phrase-pick mt-1 w-full rounded border border-violet-200 bg-white px-2 py-1 text-[11px] text-slate-600 focus:border-zid-500 focus:outline-none">
-              <option value="">— اختر عبارة جاهزة —</option>
-              <option value="هلا 👋 لاحظنا إنك ما كمّلت الطلب — نقدر نساعدك بخطوة بسيطة إذا حاب.">ودي</option>
-              <option value="مرحباً، يمكننا مساعدتك على إتمام طلبك عند رغبتك.">رسمي</option>
-              <option value="لا تفوّت الفرصة 👌 كمّل طلبك الآن وخلينا نسهّل عليك.">بيع مباشر</option>
-            </select>
-            <textarea id="template_price" name="template_price" rows="3"
-              class="mt-1 w-full resize-y rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm focus:border-zid-500 focus:outline-none focus:ring-1 focus:ring-zid-500"></textarea>
-          </div>
-          <div class="rounded-lg border border-slate-100 bg-slate-50/50 p-2.5">
-            <label class="block text-xs font-medium text-slate-700" for="template_shipping">الشحن</label>
-            <select data-target="template_shipping" class="wa-phrase-pick mt-1 w-full rounded border border-violet-200 bg-white px-2 py-1 text-[11px] text-slate-600 focus:border-zid-500 focus:outline-none">
-              <option value="">— اختر عبارة جاهزة —</option>
-              <option value="هلا 👋 لاحظنا إنك ما كمّلت الطلب — نقدر نساعدك بخطوة بسيطة إذا حاب.">ودي</option>
-              <option value="مرحباً، يمكننا مساعدتك على إتمام طلبك عند رغبتك.">رسمي</option>
-              <option value="لا تفوّت الفرصة 👌 كمّل طلبك الآن وخلينا نسهّل عليك.">بيع مباشر</option>
-            </select>
-            <textarea id="template_shipping" name="template_shipping" rows="3"
-              class="mt-1 w-full resize-y rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm focus:border-zid-500 focus:outline-none focus:ring-1 focus:ring-zid-500"></textarea>
-          </div>
-          <div class="rounded-lg border border-slate-100 bg-slate-50/50 p-2.5">
-            <label class="block text-xs font-medium text-slate-700" for="template_quality">الجودة</label>
-            <select data-target="template_quality" class="wa-phrase-pick mt-1 w-full rounded border border-violet-200 bg-white px-2 py-1 text-[11px] text-slate-600 focus:border-zid-500 focus:outline-none">
-              <option value="">— اختر عبارة جاهزة —</option>
-              <option value="هلا 👋 لاحظنا إنك ما كمّلت الطلب — نقدر نساعدك بخطوة بسيطة إذا حاب.">ودي</option>
-              <option value="مرحباً، يمكننا مساعدتك على إتمام طلبك عند رغبتك.">رسمي</option>
-              <option value="لا تفوّت الفرصة 👌 كمّل طلبك الآن وخلينا نسهّل عليك.">بيع مباشر</option>
-            </select>
-            <textarea id="template_quality" name="template_quality" rows="3"
-              class="mt-1 w-full resize-y rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm focus:border-zid-500 focus:outline-none focus:ring-1 focus:ring-zid-500"></textarea>
-          </div>
-          <div class="rounded-lg border border-slate-100 bg-slate-50/50 p-2.5">
-            <label class="block text-xs font-medium text-slate-700" for="template_delivery">التوصيل</label>
-            <select data-target="template_delivery" class="wa-phrase-pick mt-1 w-full rounded border border-violet-200 bg-white px-2 py-1 text-[11px] text-slate-600 focus:border-zid-500 focus:outline-none">
-              <option value="">— اختر عبارة جاهزة —</option>
-              <option value="هلا 👋 لاحظنا إنك ما كمّلت الطلب — نقدر نساعدك بخطوة بسيطة إذا حاب.">ودي</option>
-              <option value="مرحباً، يمكننا مساعدتك على إتمام طلبك عند رغبتك.">رسمي</option>
-              <option value="لا تفوّت الفرصة 👌 كمّل طلبك الآن وخلينا نسهّل عليك.">بيع مباشر</option>
-            </select>
-            <textarea id="template_delivery" name="template_delivery" rows="3"
-              class="mt-1 w-full resize-y rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm focus:border-zid-500 focus:outline-none focus:ring-1 focus:ring-zid-500"></textarea>
-          </div>
-          <div class="rounded-lg border border-slate-100 bg-slate-50/50 p-2.5">
-            <label class="block text-xs font-medium text-slate-700" for="template_warranty">الضمان</label>
-            <select data-target="template_warranty" class="wa-phrase-pick mt-1 w-full rounded border border-violet-200 bg-white px-2 py-1 text-[11px] text-slate-600 focus:border-zid-500 focus:outline-none">
-              <option value="">— اختر عبارة جاهزة —</option>
-              <option value="هلا 👋 لاحظنا إنك ما كمّلت الطلب — نقدر نساعدك بخطوة بسيطة إذا حاب.">ودي</option>
-              <option value="مرحباً، يمكننا مساعدتك على إتمام طلبك عند رغبتك.">رسمي</option>
-              <option value="لا تفوّت الفرصة 👌 كمّل طلبك الآن وخلينا نسهّل عليك.">بيع مباشر</option>
-            </select>
-            <textarea id="template_warranty" name="template_warranty" rows="3"
-              class="mt-1 w-full resize-y rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm focus:border-zid-500 focus:outline-none focus:ring-1 focus:ring-zid-500"></textarea>
-          </div>
-          <div class="rounded-lg border border-slate-100 bg-slate-50/50 p-2.5">
-            <label class="block text-xs font-medium text-slate-700" for="template_other">أخرى</label>
-            <select data-target="template_other" class="wa-phrase-pick mt-1 w-full rounded border border-violet-200 bg-white px-2 py-1 text-[11px] text-slate-600 focus:border-zid-500 focus:outline-none">
-              <option value="">— اختر عبارة جاهزة —</option>
-              <option value="هلا 👋 لاحظنا إنك ما كمّلت الطلب — نقدر نساعدك بخطوة بسيطة إذا حاب.">ودي</option>
-              <option value="مرحباً، يمكننا مساعدتك على إتمام طلبك عند رغبتك.">رسمي</option>
-              <option value="لا تفوّت الفرصة 👌 كمّل طلبك الآن وخلينا نسهّل عليك.">بيع مباشر</option>
-            </select>
-            <textarea id="template_other" name="template_other" rows="3"
-              class="mt-1 w-full resize-y rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm focus:border-zid-500 focus:outline-none focus:ring-1 focus:ring-zid-500"></textarea>
-          </div>
-        </div>
-      </section>
+            <div class="space-y-2">
+              <div class="rounded-lg border border-violet-100 bg-white p-2.5 shadow-sm ring-1 ring-zid-100/60">
+                <label class="block text-xs font-medium text-slate-700" for="template_price">السعر</label>
+                <div class="mt-1 rounded-md border border-zid-100 bg-zid-50/60 p-2">
+                  <p class="mb-1 text-[10px] font-semibold text-zid-900">اختر عبارة جاهزة</p>
+                  <select data-target="template_price" class="wa-phrase-pick rs-select w-full rounded-lg border-2 border-zid-200 bg-white px-2 py-2 text-xs font-medium text-slate-800 focus:border-zid-500 focus:outline-none focus:ring-2 focus:ring-zid-400/40">
+                    <option value="">اختر عبارة جاهزة</option>
+                    <option value="هلا 👋 لاحظنا إنك ما كمّلت الطلب — نقدر نساعدك بخطوة بسيطة إذا حاب.">ودي</option>
+                    <option value="مرحباً، يمكننا مساعدتك على إتمام طلبك عند رغبتك.">رسمي</option>
+                    <option value="لا تفوّت الفرصة 👌 كمّل طلبك الآن وخلينا نسهّل عليك.">بيع مباشر</option>
+                  </select>
+                </div>
+                <textarea id="template_price" name="template_price" rows="3"
+                  class="mt-2 w-full resize-y rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm transition-colors hover:border-violet-200 focus:border-zid-500 focus:outline-none focus:ring-1 focus:ring-zid-500"></textarea>
+              </div>
+              <div class="rounded-lg border border-violet-100 bg-white p-2.5 shadow-sm ring-1 ring-zid-100/60">
+                <label class="block text-xs font-medium text-slate-700" for="template_shipping">الشحن</label>
+                <div class="mt-1 rounded-md border border-zid-100 bg-zid-50/60 p-2">
+                  <p class="mb-1 text-[10px] font-semibold text-zid-900">اختر عبارة جاهزة</p>
+                  <select data-target="template_shipping" class="wa-phrase-pick rs-select w-full rounded-lg border-2 border-zid-200 bg-white px-2 py-2 text-xs font-medium text-slate-800 focus:border-zid-500 focus:outline-none focus:ring-2 focus:ring-zid-400/40">
+                    <option value="">اختر عبارة جاهزة</option>
+                    <option value="هلا 👋 لاحظنا إنك ما كمّلت الطلب — نقدر نساعدك بخطوة بسيطة إذا حاب.">ودي</option>
+                    <option value="مرحباً، يمكننا مساعدتك على إتمام طلبك عند رغبتك.">رسمي</option>
+                    <option value="لا تفوّت الفرصة 👌 كمّل طلبك الآن وخلينا نسهّل عليك.">بيع مباشر</option>
+                  </select>
+                </div>
+                <textarea id="template_shipping" name="template_shipping" rows="3"
+                  class="mt-2 w-full resize-y rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm transition-colors hover:border-violet-200 focus:border-zid-500 focus:outline-none focus:ring-1 focus:ring-zid-500"></textarea>
+              </div>
+              <div class="rounded-lg border border-violet-100 bg-white p-2.5 shadow-sm ring-1 ring-zid-100/60">
+                <label class="block text-xs font-medium text-slate-700" for="template_quality">الجودة</label>
+                <div class="mt-1 rounded-md border border-zid-100 bg-zid-50/60 p-2">
+                  <p class="mb-1 text-[10px] font-semibold text-zid-900">اختر عبارة جاهزة</p>
+                  <select data-target="template_quality" class="wa-phrase-pick rs-select w-full rounded-lg border-2 border-zid-200 bg-white px-2 py-2 text-xs font-medium text-slate-800 focus:border-zid-500 focus:outline-none focus:ring-2 focus:ring-zid-400/40">
+                    <option value="">اختر عبارة جاهزة</option>
+                    <option value="هلا 👋 لاحظنا إنك ما كمّلت الطلب — نقدر نساعدك بخطوة بسيطة إذا حاب.">ودي</option>
+                    <option value="مرحباً، يمكننا مساعدتك على إتمام طلبك عند رغبتك.">رسمي</option>
+                    <option value="لا تفوّت الفرصة 👌 كمّل طلبك الآن وخلينا نسهّل عليك.">بيع مباشر</option>
+                  </select>
+                </div>
+                <textarea id="template_quality" name="template_quality" rows="3"
+                  class="mt-2 w-full resize-y rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm transition-colors hover:border-violet-200 focus:border-zid-500 focus:outline-none focus:ring-1 focus:ring-zid-500"></textarea>
+              </div>
+              <div class="rounded-lg border border-violet-100 bg-white p-2.5 shadow-sm ring-1 ring-zid-100/60">
+                <label class="block text-xs font-medium text-slate-700" for="template_delivery">التوصيل</label>
+                <div class="mt-1 rounded-md border border-zid-100 bg-zid-50/60 p-2">
+                  <p class="mb-1 text-[10px] font-semibold text-zid-900">اختر عبارة جاهزة</p>
+                  <select data-target="template_delivery" class="wa-phrase-pick rs-select w-full rounded-lg border-2 border-zid-200 bg-white px-2 py-2 text-xs font-medium text-slate-800 focus:border-zid-500 focus:outline-none focus:ring-2 focus:ring-zid-400/40">
+                    <option value="">اختر عبارة جاهزة</option>
+                    <option value="هلا 👋 لاحظنا إنك ما كمّلت الطلب — نقدر نساعدك بخطوة بسيطة إذا حاب.">ودي</option>
+                    <option value="مرحباً، يمكننا مساعدتك على إتمام طلبك عند رغبتك.">رسمي</option>
+                    <option value="لا تفوّت الفرصة 👌 كمّل طلبك الآن وخلينا نسهّل عليك.">بيع مباشر</option>
+                  </select>
+                </div>
+                <textarea id="template_delivery" name="template_delivery" rows="3"
+                  class="mt-2 w-full resize-y rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm transition-colors hover:border-violet-200 focus:border-zid-500 focus:outline-none focus:ring-1 focus:ring-zid-500"></textarea>
+              </div>
+              <div class="rounded-lg border border-violet-100 bg-white p-2.5 shadow-sm ring-1 ring-zid-100/60">
+                <label class="block text-xs font-medium text-slate-700" for="template_warranty">الضمان</label>
+                <div class="mt-1 rounded-md border border-zid-100 bg-zid-50/60 p-2">
+                  <p class="mb-1 text-[10px] font-semibold text-zid-900">اختر عبارة جاهزة</p>
+                  <select data-target="template_warranty" class="wa-phrase-pick rs-select w-full rounded-lg border-2 border-zid-200 bg-white px-2 py-2 text-xs font-medium text-slate-800 focus:border-zid-500 focus:outline-none focus:ring-2 focus:ring-zid-400/40">
+                    <option value="">اختر عبارة جاهزة</option>
+                    <option value="هلا 👋 لاحظنا إنك ما كمّلت الطلب — نقدر نساعدك بخطوة بسيطة إذا حاب.">ودي</option>
+                    <option value="مرحباً، يمكننا مساعدتك على إتمام طلبك عند رغبتك.">رسمي</option>
+                    <option value="لا تفوّت الفرصة 👌 كمّل طلبك الآن وخلينا نسهّل عليك.">بيع مباشر</option>
+                  </select>
+                </div>
+                <textarea id="template_warranty" name="template_warranty" rows="3"
+                  class="mt-2 w-full resize-y rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm transition-colors hover:border-violet-200 focus:border-zid-500 focus:outline-none focus:ring-1 focus:ring-zid-500"></textarea>
+              </div>
+              <div class="rounded-lg border border-violet-100 bg-white p-2.5 shadow-sm ring-1 ring-zid-100/60">
+                <label class="block text-xs font-medium text-slate-700" for="template_other">أخرى</label>
+                <div class="mt-1 rounded-md border border-zid-100 bg-zid-50/60 p-2">
+                  <p class="mb-1 text-[10px] font-semibold text-zid-900">اختر عبارة جاهزة</p>
+                  <select data-target="template_other" class="wa-phrase-pick rs-select w-full rounded-lg border-2 border-zid-200 bg-white px-2 py-2 text-xs font-medium text-slate-800 focus:border-zid-500 focus:outline-none focus:ring-2 focus:ring-zid-400/40">
+                    <option value="">اختر عبارة جاهزة</option>
+                    <option value="هلا 👋 لاحظنا إنك ما كمّلت الطلب — نقدر نساعدك بخطوة بسيطة إذا حاب.">ودي</option>
+                    <option value="مرحباً، يمكننا مساعدتك على إتمام طلبك عند رغبتك.">رسمي</option>
+                    <option value="لا تفوّت الفرصة 👌 كمّل طلبك الآن وخلينا نسهّل عليك.">بيع مباشر</option>
+                  </select>
+                </div>
+                <textarea id="template_other" name="template_other" rows="3"
+                  class="mt-2 w-full resize-y rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm transition-colors hover:border-violet-200 focus:border-zid-500 focus:outline-none focus:ring-1 focus:ring-zid-500"></textarea>
+              </div>
+            </div>
+          </section>
 
-      <button type="submit" id="saveBtn"
-        class="w-full rounded-xl bg-zid-600 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-zid-700 focus:outline-none focus:ring-2 focus:ring-zid-500 focus:ring-offset-2">
-        حفظ الإعدادات
-      </button>
-    </form>
+          <button type="submit" id="saveBtn"
+            class="mt-2 w-full rounded-xl bg-zid-600 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-zid-700 focus:outline-none focus:ring-2 focus:ring-zid-500 focus:ring-offset-2">
+            حفظ الإعدادات
+          </button>
+        </form>
       </div>
     </div>
   </div>

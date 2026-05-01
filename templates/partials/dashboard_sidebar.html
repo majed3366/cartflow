@@ -6,24 +6,30 @@
     <a
       href="/dashboard"
       data-dash-nav="dashboard"
-      class="flex rounded-lg px-3 py-2.5 text-slate-600 transition-colors hover:bg-zid-50"
-      >لوحة التحكم</a
+      class="group flex items-center gap-2 rounded-lg px-3 py-2.5 text-slate-600 transition-colors hover:bg-zid-50 hover:shadow-sm"
     >
+      <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-[15px] shadow-inner transition-colors group-hover:bg-white group-hover:text-zid-700" aria-hidden="true">🏠</span>
+      <span class="min-w-0 leading-snug">لوحة التحكم</span>
+    </a>
     <div class="px-3 pb-1 pt-3 text-[11px] font-bold tracking-wide text-zid-600">
       CartFlow ⚡
     </div>
     <a
       href="/dashboard/recovery-settings"
       data-dash-nav="recovery"
-      class="flex rounded-lg px-3 py-2.5 text-slate-600 transition-colors hover:bg-zid-50"
-      >إعدادات الاسترجاع</a
+      class="group flex items-center gap-2 rounded-lg px-3 py-2.5 text-slate-600 transition-colors hover:bg-zid-50 hover:shadow-sm"
     >
+      <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-[15px] shadow-inner transition-colors group-hover:bg-white group-hover:text-zid-700" aria-hidden="true">⚙️</span>
+      <span class="min-w-0 leading-snug">إعدادات الاسترجاع</span>
+    </a>
     <a
       href="/dashboard/recovery-settings#templates"
       data-dash-nav="templates"
-      class="mr-2 flex rounded-lg px-3 py-2 text-xs text-slate-600 transition-colors hover:bg-zid-50"
-      >نمط الرسائل</a
+      class="group mr-2 flex items-center gap-2 rounded-lg px-3 py-2 text-xs text-slate-600 transition-colors hover:bg-zid-50 hover:shadow-sm"
     >
+      <span class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-slate-100 text-[13px] shadow-inner transition-colors group-hover:bg-white group-hover:text-zid-700" aria-hidden="true">💬</span>
+      <span class="min-w-0 leading-snug">نمط الرسائل</span>
+    </a>
   </nav>
 </aside>
 <script>
@@ -35,13 +41,13 @@
       var recEl = document.querySelector('[data-dash-nav="recovery"]');
       var tplEl = document.querySelector('[data-dash-nav="templates"]');
       var mainIdle =
-        "flex rounded-lg px-3 py-2.5 text-slate-600 transition-colors hover:bg-zid-50";
+        "group flex items-center gap-2 rounded-lg px-3 py-2.5 text-slate-600 transition-colors hover:bg-zid-50 hover:shadow-sm";
       var mainOn =
-        "flex rounded-lg px-3 py-2.5 font-medium bg-zid-100 text-zid-800 transition-colors";
+        "group flex items-center gap-2 rounded-lg border border-zid-300/70 border-l-4 border-l-zid-600 bg-zid-100 px-3 py-2.5 font-semibold text-zid-950 shadow-sm ring-1 ring-zid-400/30 transition-colors";
       var subIdle =
-        "mr-2 flex rounded-lg px-3 py-2 text-xs text-slate-600 transition-colors hover:bg-zid-50";
+        "group mr-2 flex items-center gap-2 rounded-lg px-3 py-2 text-xs text-slate-600 transition-colors hover:bg-zid-50 hover:shadow-sm";
       var subOn =
-        "mr-2 flex rounded-lg px-3 py-2 text-xs font-medium bg-zid-100 text-zid-800 transition-colors";
+        "group mr-2 flex items-center gap-2 rounded-lg border border-zid-300/70 border-l-4 border-l-zid-600 bg-zid-100 px-3 py-2 text-xs font-semibold text-zid-950 shadow-sm ring-1 ring-zid-400/30 transition-colors";
 
       var isDash = /^\/dashboard\/?$/.test(path);
       var isRecovery = path.indexOf("/dashboard/recovery-settings") === 0;
