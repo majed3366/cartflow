@@ -28,18 +28,32 @@
   <style>
     body { font-family: "IBM Plex Sans Arabic", system-ui, sans-serif; }
 
-    /* Hesitation reasons: strict single-column stack (no row flex / grid inside card) */
-    .cf-reasons-panel {
+    /* Hesitation reasons — vertical cards (markup rebuilt) */
+    .cf-reasons-section {
       display: block;
       width: 100%;
       box-sizing: border-box;
+      border-radius: 16px;
+      border: 1px solid rgb(237 233 254);
+      background: rgb(248 250 252);
+      padding: 1rem;
+      box-shadow: 0 1px 2px rgb(24 24 27 / 0.04);
+    }
+
+    @media (min-width: 768px) {
+      .cf-reasons-section {
+        padding: 1.25rem;
+      }
     }
 
     .cf-reason-card {
-      display: block;
       width: 100%;
-      max-width: none;
-      margin-bottom: 24px;
+      display: block;
+      padding: 16px;
+      margin-bottom: 18px;
+      border: 1px solid rgba(108, 92, 231, 0.14);
+      border-radius: 14px;
+      background: #fff;
       box-sizing: border-box;
     }
 
@@ -47,135 +61,97 @@
       margin-bottom: 0;
     }
 
-    .cf-reason-title {
-      display: block;
-      width: 100%;
-      box-sizing: border-box;
-      text-align: right;
-      font-weight: 700;
+    .cf-reason-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .cf-reason-header strong {
       font-size: 1rem;
-      line-height: 1.35;
+      font-weight: 700;
       color: #1e293b;
     }
 
-    .cf-reason-meta {
-      display: block;
-      width: 100%;
-      box-sizing: border-box;
-      text-align: right;
+    .cf-reason-header span {
       font-size: 0.8125rem;
-      line-height: 1.4;
       color: #64748b;
-      margin-top: 4px;
       font-variant-numeric: tabular-nums;
     }
 
-    .cf-reason-bar {
-      display: block;
-      width: 100%;
-      max-width: none;
-      box-sizing: border-box;
-      margin-top: 8px;
-    }
-
-    .cf-reason-bar-track {
-      display: block;
+    .cf-reason-bar-wrap {
       width: 100%;
       height: 10px;
-      border-radius: 9999px;
-      background: #f1f5f9;
+      border-radius: 999px;
+      background: #eee;
       overflow: hidden;
+      margin-bottom: 12px;
       box-sizing: border-box;
     }
 
     .cf-reason-bar-fill {
-      display: block;
       height: 100%;
-      border-radius: 9999px;
-      background: #7c3aed;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #6c5ce7, #8e44ff);
       transition: width 0.2s ease;
+      max-width: 100%;
     }
 
     .cf-insight-box {
-      display: block;
       width: 100%;
-      max-width: none;
-      box-sizing: border-box;
+      padding: 12px;
       margin-top: 10px;
-      margin-bottom: 0;
-      margin-left: 0;
-      margin-right: 0;
+      border-radius: 12px;
       background: rgba(108, 92, 231, 0.06);
-      border: 1px solid rgba(108, 92, 231, 0.15);
-      border-radius: 10px;
-      padding: 12px 14px;
-      box-shadow: 0 1px 2px rgba(108, 92, 231, 0.04);
+      border: 1px solid rgba(108, 92, 231, 0.12);
+      box-sizing: border-box;
     }
 
     .cf-insight-title {
-      display: block;
-      width: 100%;
-      box-sizing: border-box;
       font-weight: 600;
       font-size: 13px;
-      margin-bottom: 6px;
       color: #3f3f46;
+      margin-bottom: 8px;
       line-height: 1.35;
     }
 
-    .cf-insight-list {
-      display: block;
-      width: 100%;
+    .cf-insight-box ul {
       margin: 0;
-      padding: 0;
-      list-style: none;
+      padding: 0 1rem 0 0;
+      list-style-type: disc;
+      list-style-position: outside;
       font-size: 12px;
-      line-height: 1.7;
-      color: #555;
-      box-sizing: border-box;
+      line-height: 1.65;
+      color: #444;
     }
 
-    .cf-insight-list li {
-      display: block;
-      width: 100%;
-      box-sizing: border-box;
-    }
-
-    .cf-insight-list li + li {
-      margin-top: 2px;
-    }
-
-    .cf-insight-dash {
-      display: inline;
-      margin-inline-end: 4px;
-      color: rgba(108, 92, 231, 0.42);
-      font-weight: 500;
+    .cf-insight-box li + li {
+      margin-top: 4px;
     }
 
     .cf-reason-action {
-      display: inline-block;
-      margin-top: 8px;
-      font-size: 12px;
-      font-weight: 600;
-      color: #6d28d9;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 10px;
+      padding: 8px 12px;
+      border-radius: 10px;
+      border: 1px solid rgba(108, 92, 231, 0.35);
+      color: #5b45d6;
       text-decoration: none;
-      padding: 6px 12px;
-      border-radius: 8px;
-      border: 1px solid rgba(108, 92, 231, 0.22);
-      background: rgba(255, 255, 255, 0.95);
-      box-shadow: 0 1px 2px rgba(108, 92, 231, 0.06);
-      transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease;
-      width: 100%;
-      max-width: none;
+      font-size: 13px;
+      font-weight: 600;
       box-sizing: border-box;
-      text-align: center;
-      vertical-align: top;
+      width: 100%;
+      max-width: 100%;
     }
 
     .cf-reason-action:hover {
-      color: #5b21b6;
-      border-color: rgba(108, 92, 231, 0.35);
-      background: #fff;
+      background: rgba(108, 92, 231, 0.06);
+      color: #4c36c7;
     }
 
     .cf-reason-action:focus-visible {
@@ -185,17 +161,6 @@
   </style>
 </head>
 <body class="min-h-screen bg-slate-50 text-slate-800 antialiased">
-{% macro dash_reason_insight(bullets, edit_label, edit_href) -%}
-<div class="cf-insight-box">
-  <p class="cf-insight-title"><span aria-hidden="true">💡</span> ماذا تفعل؟</p>
-  <ul class="cf-insight-list">
-    {% for line in bullets %}
-    <li><span class="cf-insight-dash" aria-hidden="true">-</span><span>{{ line }}</span></li>
-    {% endfor %}
-  </ul>
-</div>
-<a href="{{ edit_href }}" class="cf-reason-action">{{ edit_label }}</a>
-{%- endmacro %}
 {% macro dash_trigger_card(reason_key, label_ar) -%}
 <div class="rounded-xl border border-zid-100 bg-gradient-to-br from-zid-50/95 to-violet-50/35 p-4 shadow-sm ring-1 ring-zid-100/50 md:p-3.5" data-dash-trigger-card="{{ reason_key }}">
   <p class="mb-3 border-b border-zid-100/70 pb-2 text-sm font-semibold leading-snug text-slate-800">سبب التردد: {{ label_ar }}</p>
@@ -261,50 +226,70 @@
         <!-- أسباب التردد -->
         <section aria-labelledby="reasons-heading">
           <h2 id="reasons-heading" class="mb-4 border-b-2 border-zid-500/35 pb-2 text-base font-bold leading-snug text-slate-800 md:mb-3 md:text-sm md:leading-normal">أسباب التردد (حسب ‎CartRecoveryReason‎)</h2>
-          <div class="cf-reasons-panel rounded-2xl border border-zid-100 bg-white p-6 shadow-sm md:p-5">
+          <section class="cf-reasons-section">
             {% for r in reason_bar %}
             <div class="cf-reason-card">
-              <div class="cf-reason-title">{{ r.label }}</div>
-              <div class="cf-reason-meta">{{ r.count }} حالة</div>
-              <div class="cf-reason-bar">
-                <div class="cf-reason-bar-track" role="img" aria-label="{{ r.label }}: {{ r.count }}">
-                  <div class="cf-reason-bar-fill" style="width: {{ r.width_pct }}%"></div>
-                </div>
+              <div class="cf-reason-header">
+                <strong>{{ r.label }}</strong>
+                <span>{{ r.count }} حالة</span>
+              </div>
+              <div class="cf-reason-bar-wrap" role="img" aria-label="{{ r.label }}: {{ r.count }}">
+                <div class="cf-reason-bar-fill" style="width: {{ r.width_pct }}%"></div>
               </div>
               {% if r.key == "price" %}
-              {{ dash_reason_insight([
-                "أبرز القيمة مقابل السعر",
-                "اعرض خيار أرخص",
-                "أضف عرض مؤقت",
-              ], "تعديل رسالة السعر", "/dashboard/cartflow-messages#cf-msg-template-price") }}
+              <div class="cf-insight-box">
+                <div class="cf-insight-title">💡 ماذا تفعل؟</div>
+                <ul>
+                  <li>أبرز القيمة مقابل السعر</li>
+                  <li>اعرض خيار أرخص</li>
+                  <li>أضف عرض مؤقت</li>
+                </ul>
+              </div>
+              <a class="cf-reason-action" href="/dashboard/cartflow-messages#cf-msg-template-price">تعديل رسالة السعر</a>
               {% elif r.key == "shipping" %}
-              {{ dash_reason_insight([
-                "وضّح تكلفة الشحن قبل الدفع",
-                "جرّب شحنًا مجانيًا فوق مبلغ معيّن",
-                "أبرز سرعة التوصيل",
-              ], "تعديل رسالة الشحن", "/dashboard/cartflow-messages#cf-msg-template-shipping") }}
+              <div class="cf-insight-box">
+                <div class="cf-insight-title">💡 ماذا تفعل؟</div>
+                <ul>
+                  <li>وضّح تكلفة الشحن قبل الدفع</li>
+                  <li>جرّب شحنًا مجانيًا فوق مبلغ معيّن</li>
+                  <li>أبرز سرعة التوصيل</li>
+                </ul>
+              </div>
+              <a class="cf-reason-action" href="/dashboard/cartflow-messages#cf-msg-template-shipping">تعديل رسالة الشحن</a>
               {% elif r.key == "quality" %}
-              {{ dash_reason_insight([
-                "أبرز المواصفات ومصادر الجودة",
-                "اعرض تقييمات مختصرة",
-                "وضّح الضمان أو الاعتماد",
-              ], "تعديل رسالة الجودة", "/dashboard/cartflow-messages#cf-msg-template-quality") }}
+              <div class="cf-insight-box">
+                <div class="cf-insight-title">💡 ماذا تفعل؟</div>
+                <ul>
+                  <li>أبرز المواصفات ومصادر الجودة</li>
+                  <li>اعرض تقييمات مختصرة</li>
+                  <li>وضّح الضمان أو الاعتماد</li>
+                </ul>
+              </div>
+              <a class="cf-reason-action" href="/dashboard/cartflow-messages#cf-msg-template-quality">تعديل رسالة الجودة</a>
               {% elif r.key == "thinking" %}
-              {{ dash_reason_insight([
-                "اعرض أفضل خيار مبيعًا",
-                "قلّل عدد الخيارات الظاهرة",
-                "استخدم رسالة مساعدة قصيرة",
-              ], "تعديل رسالة التردد", "/dashboard/cartflow-messages#cf-msg-template-thinking") }}
+              <div class="cf-insight-box">
+                <div class="cf-insight-title">💡 ماذا تفعل؟</div>
+                <ul>
+                  <li>اعرض أفضل خيار مبيعًا</li>
+                  <li>قلّل عدد الخيارات الظاهرة</li>
+                  <li>استخدم رسالة مساعدة قصيرة</li>
+                </ul>
+              </div>
+              <a class="cf-reason-action" href="/dashboard/cartflow-messages#cf-msg-template-thinking">تعديل رسالة التردد</a>
               {% elif r.key == "warranty" %}
-              {{ dash_reason_insight([
-                "أبرز مدة الضمان بوضوح",
-                "وضّح سياسة الاستبدال باختصار",
-                "أضف جملة طمأنة قبل الدفع",
-              ], "تعديل رسالة الضمان", "/dashboard/cartflow-messages#cf-msg-template-warranty") }}
+              <div class="cf-insight-box">
+                <div class="cf-insight-title">💡 ماذا تفعل؟</div>
+                <ul>
+                  <li>أبرز مدة الضمان بوضوح</li>
+                  <li>وضّح سياسة الاستبدال باختصار</li>
+                  <li>أضف جملة طمأنة قبل الدفع</li>
+                </ul>
+              </div>
+              <a class="cf-reason-action" href="/dashboard/cartflow-messages#cf-msg-template-warranty">تعديل رسالة الضمان</a>
               {% endif %}
             </div>
             {% endfor %}
-          </div>
+          </section>
         </section>
 
         {% set quality_rows = reason_bar | selectattr("key", "equalto", "quality") | list %}
