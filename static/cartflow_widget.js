@@ -2430,7 +2430,7 @@
       introDisc.style.cssText =
         "margin:0 0 12px 0;font-size:14px;line-height:1.55;white-space:pre-line;";
       introDisc.textContent =
-        "خلّيت لك خيارات مناسبة 👇\nتقدر تختار اللي يناسبك وتضيفه للسلة بسهولة 👍";
+        "جبت لك خيارات مناسبة 👇\nتقدر تختار اللي يناسبك وتضيفه للسلة بسهولة 👍";
       widgetBody.appendChild(introDisc);
       var picks = collectDiscoveryProductCandidates(3);
       var pi;
@@ -3996,7 +3996,7 @@
       btnY.type = "button";
       btnY.textContent =
         openSource === TRIGGER_SOURCE_EXIT_INTENT
-          ? "نعم، ورّني 👌"
+          ? "نعم، خلني أشوف 👌"
           : "نعم";
       btnY.style.cssText = btnStyle;
 
