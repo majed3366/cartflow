@@ -228,6 +228,25 @@
         <section aria-labelledby="recovery-trend-heading">
           <h2 id="recovery-trend-heading" class="mb-2 border-b-2 border-zid-500/35 pb-2 text-base font-bold leading-snug text-slate-800 md:text-sm md:leading-normal">📈 تطور المبيعات المسترجعة</h2>
           <p class="mb-4 text-xs leading-relaxed text-slate-600 md:mb-3 md:text-[11px] md:text-slate-500">المبيعات المسترجعة خلال 7 أيام</p>
+          {% set hesitation_slugs = ('price', 'shipping', 'warranty', 'thinking') %}
+          {% set ns = namespace(top_key='thinking', top_count=-1) %}
+          {% for r in reason_bar %}
+            {% if r.key in hesitation_slugs and r.count > ns.top_count %}
+              {% set ns.top_key = r.key %}
+              {% set ns.top_count = r.count %}
+            {% endif %}
+          {% endfor %}
+          <div class="mb-4 rounded-xl border border-slate-200/70 px-4 py-3 text-sm font-medium leading-relaxed text-slate-700 shadow-sm md:mb-3 md:px-3.5 md:py-2.5 md:text-xs" style="background-color: #f8fafc" role="note">
+            {% if ns.top_key == 'price' %}
+            💡 أغلب العملاء كانوا مترددين بسبب السعر
+            {% elif ns.top_key == 'shipping' %}
+            💡 الشحن هو أكثر سبب للتردد حالياً
+            {% elif ns.top_key == 'warranty' %}
+            💡 العملاء يحتاجون وضوح أكثر في الضمان
+            {% else %}
+            💡 العملاء يحتاجون دفعة لاتخاذ القرار
+            {% endif %}
+          </div>
           <div class="rounded-2xl border border-zid-100 bg-white p-6 shadow-sm md:p-5">
             <p id="recoveryTrendEstimateLabel" class="mb-2 hidden text-center text-[11px] font-medium leading-snug text-slate-500 md:text-xs">بيانات تقديرية لعرض الأداء</p>
             <p id="recoveryTrendRevenueHighlight" class="mb-3 text-center text-lg font-bold leading-snug md:text-xl" style="color: #16a34a"></p>
