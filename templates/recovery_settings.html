@@ -27,7 +27,7 @@
       <div class="cf-dash-shell">
         <div class="cf-dash-hero">
           <h1>إعدادات الاسترجاع</h1>
-          <p>مدة الانتظار، عدد المحاولات، حد السلة المميزة (VIP)، وروابط واتساب — تُحفظ عبر واجهة الـ API الحالية.</p>
+          <p>مدة الانتظار، عدد المحاولات، وروابط واتساب — تُحفظ عبر واجهة الـ API الحالية. إعدادات السلال المميزة (VIP) من صفحة منفصلة.</p>
         </div>
 
         <div id="errBox" class="mb-2 hidden rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"></div>
@@ -86,14 +86,6 @@
                 </div>
                 <input type="hidden" id="recovery_attempts" name="recovery_attempts" value="1" />
               </div>
-              <div class="rounded-xl border-2 border-violet-400/55 bg-gradient-to-br from-violet-50 via-white to-white p-3.5 shadow-sm ring-1 ring-violet-200/40">
-                <label class="mb-1 block text-sm font-bold text-slate-900" for="vip_cart_threshold">حد السلة المميزة (VIP)</label>
-                <p class="mb-2 text-xs font-medium leading-relaxed text-slate-700">إذا تجاوزت السلة هذا المبلغ، يتم التعامل معها بشكل خاص</p>
-                <input id="vip_cart_threshold" name="vip_cart_threshold" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="مثال: 500 ريال"
-                  class="w-full rounded-lg border-2 border-violet-300/80 bg-white px-3 py-2.5 text-base font-semibold text-slate-900 placeholder:text-slate-400 placeholder:font-normal focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/25" />
-                <p class="mt-2 rounded-lg bg-violet-100/80 px-2.5 py-1.5 text-xs font-bold text-violet-950">مثال: 500 ريال</p>
-                <p class="mt-1.5 text-[11px] font-medium text-slate-600">اتركه فارغاً لتعطيل الميزة</p>
-              </div>
               <div>
                 <label class="mb-1 block text-sm font-semibold text-slate-800" for="whatsapp_support_url">رابط دعم واتساب (اختياري)</label>
                 <input id="whatsapp_support_url" name="whatsapp_support_url" type="url" inputmode="url" autocomplete="off" placeholder="https://wa.me/9665xxxxxxxx"
@@ -147,32 +139,6 @@
         r.addEventListener("change", syncAttemptsFromPills);
       });
 
-      var vipField = document.getElementById("vip_cart_threshold");
-      if (vipField) {
-        vipField.addEventListener("input", function () {
-          var s = String(vipField.value || "").replace(/\D/g, "");
-          if (vipField.value !== s) vipField.value = s;
-        });
-        vipField.addEventListener("keydown", function (ev) {
-          if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
-          var k = ev.key;
-          if (
-            k === "Backspace" ||
-            k === "Delete" ||
-            k === "Tab" ||
-            k === "Escape" ||
-            k === "Enter" ||
-            k === "ArrowLeft" ||
-            k === "ArrowRight" ||
-            k === "Home" ||
-            k === "End"
-          ) {
-            return;
-          }
-          if (k.length === 1 && !/[0-9]/.test(k)) ev.preventDefault();
-        });
-      }
-
       function fillTimingAndWhatsapp(data) {
         document.getElementById("recovery_delay").value = data.recovery_delay;
         document.getElementById("recovery_delay_unit").value = data.recovery_delay_unit;
@@ -185,14 +151,6 @@
         if (r) r.checked = true;
         document.getElementById("whatsapp_support_url").value = data.whatsapp_support_url || "";
         document.getElementById("store_whatsapp_number").value = data.store_whatsapp_number || "";
-        var vth = document.getElementById("vip_cart_threshold");
-        if (vth) {
-          if (data.vip_cart_threshold != null && data.vip_cart_threshold !== "") {
-            vth.value = String(data.vip_cart_threshold);
-          } else {
-            vth.value = "";
-          }
-        }
       }
 
       fetch("/api/recovery-settings")
@@ -230,14 +188,6 @@
               document.getElementById("store_whatsapp_number").value) ||
             "",
         };
-        var vipEl = document.getElementById("vip_cart_threshold");
-        var vipRaw = vipEl && vipEl.value ? String(vipEl.value).trim() : "";
-        if (vipRaw === "") {
-          body.vip_cart_threshold = null;
-        } else {
-          var vipN = parseInt(vipRaw, 10);
-          body.vip_cart_threshold = !isNaN(vipN) && vipN >= 1 ? vipN : null;
-        }
         fetch("/api/recovery-settings", {
           method: "POST",
           headers: { "Content-Type": "application/json" },

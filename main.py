@@ -3631,6 +3631,16 @@ def dashboard_recovery_settings(request: Request):
     )
 
 
+@app.get("/dashboard/vip-cart-settings")
+def dashboard_vip_cart_settings(request: Request):
+    """السلال المميزة (VIP) — نفس ‎GET/POST /api/recovery-settings‎ (حقل ‎vip_cart_threshold‎ فقط في الواجهة)."""
+    return templates.TemplateResponse(
+        request,
+        "vip_cart_settings.html",
+        {"request": request},
+    )
+
+
 @app.get("/dashboard/cartflow-messages")
 def dashboard_cartflow_messages(request: Request):
     """إعادة توجيه — الصفحة الموحّدة أصبحت منفصلة (خروج / استعادة)."""

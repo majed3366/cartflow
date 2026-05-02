@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>السلال المميزة (VIP) — CartFlow</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            zid: { 500: "#7c3aed", 600: "#6d28d9", 100: "#ede9fe", 50: "#f5f3ff" },
+          },
+        },
+      },
+    };
+  </script>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  {% include "partials/recovery_dashboard_styles.html" %}
+</head>
+<body class="min-h-screen bg-slate-50 text-slate-800 antialiased">
+  {% include "partials/cart_abandon_tracking.html" %}
+  <div class="flex min-h-screen flex-col md:flex-row">
+    {% include "partials/dashboard_sidebar.html" %}
+    <div class="min-w-0 w-full flex-1 bg-gradient-to-b from-violet-50/50 to-slate-50 px-3 pb-28 pt-14 md:min-h-screen md:px-4 md:pb-24 md:pt-4">
+      <div class="cf-dash-shell">
+        <div class="cf-dash-hero">
+          <h1>السلال عالية القيمة (VIP)</h1>
+          <p>تحكم خاص بالسلال ذات القيمة العالية — يُحفظ عبر واجهة الـ API الحالية لإعدادات الاسترجاع.</p>
+        </div>
+
+        <div id="errBox" class="mb-2 hidden rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"></div>
+        <div id="okBox" class="mb-2 hidden rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-800">تم الحفظ بنجاح</div>
+
+        <form id="f" class="cf-dash-compact space-y-3">
+          <section class="rounded-2xl border-2 border-violet-400/60 bg-gradient-to-br from-violet-50/95 via-white to-white p-4 shadow-md ring-1 ring-violet-200/50 md:p-5" aria-labelledby="vip-threshold-label">
+            <p class="mb-3 text-sm font-medium leading-relaxed text-slate-800">إذا تجاوزت السلة هذا المبلغ، سيتم التعامل معها بشكل خاص</p>
+            <label id="vip-threshold-label" class="mb-1 block text-base font-bold text-slate-900" for="vip_cart_threshold">حد السلة المميزة</label>
+            <input id="vip_cart_threshold" name="vip_cart_threshold" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="مثال: 500 ريال"
+              class="w-full rounded-xl border-2 border-violet-300/90 bg-white px-3 py-3 text-lg font-semibold text-slate-900 placeholder:text-slate-400 placeholder:font-normal focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/30" />
+            <p class="mt-2 rounded-lg bg-violet-100/90 px-3 py-2 text-sm font-bold text-violet-950">مثال: 500 ريال</p>
+            <p class="mt-2 text-xs font-medium text-slate-600">اتركه فارغاً لتعطيل الميزة</p>
+          </section>
+
+          <section class="rounded-2xl border-2 border-dashed border-violet-300/70 bg-white/80 p-4 md:p-5" aria-labelledby="vip-future-heading">
+            <h2 id="vip-future-heading" class="text-sm font-bold text-slate-800">توسعات قادمة</h2>
+            <p class="mb-4 text-xs leading-relaxed text-slate-500">مساحة محجوزة لخيارات إضافية — بدون تفعيل بعد</p>
+            <div class="grid min-h-[8rem] grid-cols-1 gap-3 sm:grid-cols-2">
+              <div class="min-h-[5.5rem] rounded-xl border border-dashed border-slate-300/80 bg-slate-50/80 p-3">
+                <p class="text-sm font-semibold text-slate-700">معالجة يدوية للسلال المميزة</p>
+                <p class="mt-1 text-[11px] text-slate-500">قريباً</p>
+              </div>
+              <div class="min-h-[5.5rem] rounded-xl border border-dashed border-slate-300/80 bg-slate-50/80 p-3">
+                <p class="text-sm font-semibold text-slate-700">تنبيه للتاجر</p>
+                <p class="mt-1 text-[11px] text-slate-500">قريباً</p>
+              </div>
+              <div class="min-h-[5.5rem] rounded-xl border border-dashed border-slate-300/80 bg-slate-50/80 p-3">
+                <p class="text-sm font-semibold text-slate-700">إشعار واتساب للمتجر</p>
+                <p class="mt-1 text-[11px] text-slate-500">قريباً</p>
+              </div>
+              <div class="min-h-[5.5rem] rounded-xl border border-dashed border-slate-300/80 bg-slate-50/80 p-3">
+                <p class="text-sm font-semibold text-slate-700">معالجة بأولوية</p>
+                <p class="mt-1 text-[11px] text-slate-500">قريباً</p>
+              </div>
+            </div>
+          </section>
+
+          <div class="cf-dash-save-wrap">
+            <button type="submit" id="saveBtn" class="cf-dash-save">💾 حفظ الإعدادات</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var errBox = document.getElementById("errBox");
+      var okBox = document.getElementById("okBox");
+      var baseFields = null;
+
+      function showErr(t) {
+        errBox.textContent = t || "حدث خطأ";
+        errBox.classList.remove("hidden");
+        okBox.classList.add("hidden");
+      }
+      function showOk() {
+        okBox.classList.remove("hidden");
+        errBox.classList.add("hidden");
+      }
+      function hideMsg() {
+        errBox.classList.add("hidden");
+        okBox.classList.add("hidden");
+      }
+
+      function applyBaseFromData(data) {
+        baseFields = {
+          recovery_delay: data.recovery_delay,
+          recovery_delay_unit: data.recovery_delay_unit,
+          recovery_attempts: data.recovery_attempts,
+          whatsapp_support_url: data.whatsapp_support_url || "",
+          store_whatsapp_number: data.store_whatsapp_number || "",
+        };
+      }
+
+      function fillVip(data) {
+        var vth = document.getElementById("vip_cart_threshold");
+        if (!vth) return;
+        if (data.vip_cart_threshold != null && data.vip_cart_threshold !== "") {
+          vth.value = String(data.vip_cart_threshold);
+        } else {
+          vth.value = "";
+        }
+      }
+
+      var vipField = document.getElementById("vip_cart_threshold");
+      if (vipField) {
+        vipField.addEventListener("input", function () {
+          var s = String(vipField.value || "").replace(/\D/g, "");
+          if (vipField.value !== s) vipField.value = s;
+        });
+        vipField.addEventListener("keydown", function (ev) {
+          if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
+          var k = ev.key;
+          if (
+            k === "Backspace" ||
+            k === "Delete" ||
+            k === "Tab" ||
+            k === "Escape" ||
+            k === "Enter" ||
+            k === "ArrowLeft" ||
+            k === "ArrowRight" ||
+            k === "Home" ||
+            k === "End"
+          ) {
+            return;
+          }
+          if (k.length === 1 && !/[0-9]/.test(k)) ev.preventDefault();
+        });
+      }
+
+      fetch("/api/recovery-settings")
+        .then(function (r) {
+          return r.json().then(function (d) {
+            return { status: r.status, data: d };
+          });
+        })
+        .then(function (x) {
+          if (x.data.ok) {
+            applyBaseFromData(x.data);
+            fillVip(x.data);
+            hideMsg();
+          } else {
+            showErr(x.data.error || "تعذّر تحميل الإعدادات.");
+          }
+        })
+        .catch(function () {
+          showErr("خطأ في الشبكة أثناء التحميل.");
+        });
+
+      document.getElementById("f").addEventListener("submit", function (e) {
+        e.preventDefault();
+        hideMsg();
+        if (!baseFields) {
+          showErr("لم تُحمَّل الإعدادات بعد.");
+          return;
+        }
+        var body = {
+          recovery_delay: parseInt(baseFields.recovery_delay, 10),
+          recovery_delay_unit: baseFields.recovery_delay_unit,
+          recovery_attempts: parseInt(baseFields.recovery_attempts, 10),
+          whatsapp_support_url: baseFields.whatsapp_support_url || "",
+          store_whatsapp_number: baseFields.store_whatsapp_number || "",
+        };
+        var vipRaw = vipField && vipField.value ? String(vipField.value).trim() : "";
+        if (vipRaw === "") {
+          body.vip_cart_threshold = null;
+        } else {
+          var vipN = parseInt(vipRaw, 10);
+          body.vip_cart_threshold = !isNaN(vipN) && vipN >= 1 ? vipN : null;
+        }
+        fetch("/api/recovery-settings", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        })
+          .then(function (r) {
+            return r.json().then(function (d) {
+              return { status: r.status, data: d };
+            });
+          })
+          .then(function (x) {
+            if (x.data.ok) {
+              applyBaseFromData(x.data);
+              fillVip(x.data);
+              showOk();
+            } else {
+              showErr(x.data.error || "فشل الحفظ");
+            }
+          })
+          .catch(function () {
+            showErr("خطأ في الشبكة أثناء الحفظ.");
+          });
+      });
+    })();
+  </script>
+</body>
+</html>
