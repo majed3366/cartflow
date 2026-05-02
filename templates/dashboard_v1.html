@@ -602,6 +602,18 @@
           <h2 id="live-heading" class="mb-2 border-b-2 border-zid-500/35 pb-1.5 text-base font-bold leading-snug text-slate-800 md:text-sm md:leading-normal">آخر النشاطات</h2>
           <div class="cf-dash-card max-w-full overflow-hidden p-0">
             {% for row in live_feed %}
+            {% set row_kind = row.kind | default("activity", true) %}
+            {% if row_kind == "vip" %}
+            <div class="flex gap-2 border-b border-violet-200/80 bg-gradient-to-l from-violet-50/95 to-white px-3 py-3 last:border-0">
+              <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-violet-100 text-lg" aria-hidden="true">💎</span>
+              <div class="min-w-0 flex-1 text-right">
+                <p class="text-[13px] font-bold leading-snug text-violet-950">{{ row.headline | default("سلة عالية القيمة تحتاج متابعة يدوية", true) }}</p>
+                <p class="mt-1 whitespace-pre-wrap text-[11px] leading-relaxed text-slate-700">{{ row.detail | default("", true) }}</p>
+                <p class="mt-1 text-[10px] font-semibold text-violet-800">إرسال يدوي — جلسة: {{ row.session_id }}</p>
+                <p class="mt-0.5 text-[11px] text-slate-500" data-cf-activity-ts="{{ row.time_str }}">{{ row.time_str }}</p>
+              </div>
+            </div>
+            {% else %}
             {% set rk = row.reason_key | default("", true) | lower %}
             {% set ic = "📌" %}
             {% if rk == "price" %}{% set ic = "💳" %}
@@ -617,6 +629,7 @@
                 <p class="mt-0.5 text-[11px] text-slate-500" data-cf-activity-ts="{{ row.time_str }}">{{ row.time_str }}</p>
               </div>
             </div>
+            {% endif %}
             {% else %}
             <p class="px-4 py-8 text-center text-sm text-slate-500">لا يوجد نشاط بعد.</p>
             {% endfor %}

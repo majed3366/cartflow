@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""VIP سلة (تحضير): عتبة على ‎Store‎ — بدون تغيير مسار الإرسال حتى التفعيل لاحقاً."""
+"""VIP سلة: عتبة على ‎Store‎ — عند ‎cart_total >= threshold‎ يفعّل ‎main‎ مسار المتابعة اليدوية (بدون استرجاع تلقائي للعميل)."""
 from __future__ import annotations
 
 from typing import Any, Dict, Optional

@@ -107,6 +107,8 @@ class AbandonedCart(Base):
         nullable=False,
     )
     recovered_at = Column(DateTime, nullable=True)
+    # سلة عالية القيمة (VIP): لا استرجاع تلقائي للعميل — متابعة يدوية
+    vip_mode = Column(Boolean, default=False, nullable=False)
 
     message_logs = relationship("MessageLog", backref="abandoned_cart", lazy="dynamic")
 

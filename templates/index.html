@@ -116,8 +116,9 @@
                     <span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium
                       {% if c.status == 'recovered' %}bg-emerald-100 text-emerald-800
                       {% elif c.status == 'sent' %}bg-blue-100 text-blue-800
+                      {% elif c.vip_mode %}bg-violet-100 text-violet-900
                       {% else %}bg-slate-100 text-slate-700{% endif %}">
-                      {{ c.status }}
+                      {% if c.vip_mode and c.status != 'recovered' %}متابعة يدوية (VIP){% else %}{{ c.status }}{% endif %}
                     </span>
                   </td>
                   <td class="px-4 py-3 text-slate-600 max-w-md whitespace-pre-wrap break-words text-xs leading-relaxed">
@@ -127,7 +128,7 @@
                     {% if c.status != 'recovered' %}
                     <button type="button" data-send-url="{{ url_for('send_cart_manual', row_id=c.id) }}"
                       class="text-xs font-medium text-zid-600 hover:text-zid-800 border border-zid-200 rounded-lg px-2.5 py-1.5 hover:bg-zid-50">
-                      Send Manually
+                      {% if c.vip_mode %}إرسال يدوي{% else %}Send Manually{% endif %}
                     </button>
                     {% else %}
                     <span class="text-xs text-slate-400">—</span>

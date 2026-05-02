@@ -223,6 +223,10 @@ from services.vip_cart import (
     is_vip_cart,
     vip_cart_threshold_fields_for_api,
 )
+from services.vip_merchant_alert import (
+    build_vip_merchant_alert_body,
+    try_send_vip_merchant_whatsapp_alert,
+)
 
 log = logging.getLogger("cartflow")
 
@@ -1403,6 +1407,96 @@ def _abandoned_cart_cart_value_for_recovery(cart_id: Optional[str]) -> Optional[
         return None
 
 
+def _activate_vip_manual_cart_handling(
+    *,
+    store_slug: str,
+    session_id: str,
+    cart_id: Optional[str],
+    cart_total: float,
+    store_obj: Optional[Any],
+    recovery_key: str,
+    reason_tag: Optional[str],
+) -> None:
+    """
+    تفعيل VIP: تعليم السلة، سجل لوحة، تنبيه تاجر، ومنع الاسترجاع التلقائي للعميل.
+    آمن عند التكرار: لا يعيد التنبيه للتاجر إذا كانت ‎vip_mode‎ مفعّلة مسبقاً.
+    """
+    _ensure_store_widget_schema()
+    th_raw = getattr(store_obj, "vip_cart_threshold", None) if store_obj is not None else None
+    cid = (str(cart_id).strip()[:255] if cart_id else "") or ""
+    already = False
+    try:
+        if cid:
+            ac = db.session.query(AbandonedCart).filter(AbandonedCart.zid_cart_id == cid).first()
+            already = ac is not None and bool(getattr(ac, "vip_mode", False))
+    except (SQLAlchemyError, OSError):
+        db.session.rollback()
+        already = False
+
+    now = datetime.now(timezone.utc)
+    time_str = now.strftime("%Y-%m-%d %H:%M:%S UTC")
+    rt_disp = (reason_tag or "").strip() or "—"
+    ar_map = {
+        "price": "السعر",
+        "warranty": "الضمان",
+        "shipping": "الشحن",
+        "thinking": "التفكير",
+        "quality": "الجودة",
+        "other": "سبب آخر",
+        "human_support": "دعم بشري",
+    }
+    reason_ar = ar_map.get(rt_disp.lower(), rt_disp)
+    if cart_total == int(cart_total):
+        val_s = str(int(cart_total))
+    else:
+        val_s = f"{cart_total:.2f}".rstrip("0").rstrip(".")
+
+    if not already:
+        log.info(
+            "[VIP MODE ACTIVATED] session_id=%s cart_total=%s threshold=%s",
+            session_id,
+            cart_total,
+            th_raw,
+        )
+        try:
+            if cid:
+                ac2 = db.session.query(AbandonedCart).filter(AbandonedCart.zid_cart_id == cid).first()
+                if ac2 is not None:
+                    ac2.vip_mode = True
+                    db.session.commit()
+        except (SQLAlchemyError, OSError) as e:
+            db.session.rollback()
+            log.warning("VIP mark abandoned cart failed: %s", e)
+
+        msg_full = "\n".join(
+            [
+                "سلة عالية القيمة تحتاج متابعة يدوية",
+                f"القيمة: {val_s} ريال",
+                f"سبب التردد: {reason_ar}",
+                f"session_id: {session_id}",
+                f"الوقت: {time_str}",
+            ]
+        )
+        _persist_cart_recovery_log(
+            store_slug=store_slug,
+            session_id=session_id,
+            cart_id=cart_id,
+            phone=None,
+            message=msg_full,
+            status="vip_manual_handling",
+            step=None,
+        )
+        try:
+            mbody = build_vip_merchant_alert_body(float(cart_total))
+            try_send_vip_merchant_whatsapp_alert(store_obj, message=mbody)
+        except Exception as e:  # noqa: BLE001
+            log.warning("VIP merchant alert failed (non-fatal): %s", e, exc_info=True)
+
+    log.info("[VIP CUSTOMER RECOVERY SKIPPED] reason=vip_manual_handling")
+    with _recovery_session_lock:
+        _session_recovery_sent[recovery_key] = True
+
+
 def _is_user_converted(recovery_key: str) -> bool:
     with _recovery_session_lock:
         return bool(_session_recovery_converted.get(recovery_key))
@@ -1693,12 +1787,24 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
     store_obj = _load_store_row_for_recovery(store_slug)
     cart_total_vip = _abandoned_cart_cart_value_for_recovery(cart_id)
     th_raw = getattr(store_obj, "vip_cart_threshold", None) if store_obj is not None else None
+    is_vip_eff = cart_total_vip is not None and is_vip_cart(cart_total_vip, store_obj)
     log.info(
         "[VIP CHECK] cart_total=%s threshold=%s is_vip=%s",
         cart_total_vip if cart_total_vip is not None else "none",
         th_raw,
-        is_vip_cart(cart_total_vip, store_obj),
+        is_vip_eff,
     )
+    if is_vip_eff:
+        _activate_vip_manual_cart_handling(
+            store_slug=store_slug,
+            session_id=session_id,
+            cart_id=cart_id,
+            cart_total=float(cart_total_vip),
+            store_obj=store_obj,
+            recovery_key=recovery_key,
+            reason_tag=rt_raw or None,
+        )
+        return None
     resolve_whatsapp_sender(store_obj)
     if multi_slot_index is not None:
         if not rt_raw:
@@ -2194,6 +2300,26 @@ async def _run_recovery_dispatch_cart_abandoned_impl(
     abandon_event_phone: Optional[str],
     abandon_monotonic: float,
 ) -> None:
+    store_row0 = _load_store_row_for_recovery(store_slug)
+    cart_tot0 = _abandoned_cart_cart_value_for_recovery(cart_id)
+    if cart_tot0 is not None and is_vip_cart(cart_tot0, store_row0):
+        log.info(
+            "[VIP CHECK] cart_total=%s threshold=%s is_vip=%s",
+            cart_tot0,
+            getattr(store_row0, "vip_cart_threshold", None) if store_row0 else None,
+            True,
+        )
+        rt0 = _reason_tag_for_session(store_slug, session_id) or None
+        _activate_vip_manual_cart_handling(
+            store_slug=store_slug,
+            session_id=session_id,
+            cart_id=cart_id,
+            cart_total=float(cart_tot0),
+            store_obj=store_row0,
+            recovery_key=recovery_key,
+            reason_tag=rt0,
+        )
+        return
     reason_tag: Optional[str] = None
     store_row: Optional[Any] = None
     for _ in range(_RECOVERY_REASON_POLL_MAX_ATTEMPTS):
@@ -2346,12 +2472,37 @@ async def handle_cart_abandoned(
     log.info("cart abandoned received")
     try:
         db.create_all()
+        _ensure_store_widget_schema()
         _ensure_default_store_for_recovery()
         store_row = _load_store_row_for_recovery(store_slug)
     except Exception:  # noqa: BLE001
         db.session.rollback()
         store_row = None
     print("store settings loaded")
+    cart_total_chk = _abandoned_cart_cart_value_for_recovery(cart_id_log)
+    if cart_total_chk is not None and is_vip_cart(cart_total_chk, store_row):
+        log.info(
+            "[VIP CHECK] cart_total=%s threshold=%s is_vip=%s",
+            cart_total_chk,
+            getattr(store_row, "vip_cart_threshold", None) if store_row else None,
+            True,
+        )
+        reason_vip = _reason_tag_for_session(store_slug, session_id_log) or None
+        _activate_vip_manual_cart_handling(
+            store_slug=store_slug,
+            session_id=session_id_log,
+            cart_id=cart_id_log,
+            cart_total=float(cart_total_chk),
+            store_obj=store_row,
+            recovery_key=recovery_key,
+            reason_tag=reason_vip,
+        )
+        return {
+            "recovery_scheduled": False,
+            "recovery_vip_manual": True,
+            "recovery_skipped": True,
+            "recovery_state": "vip_manual",
+        }
     reason_tag_sync = _reason_tag_for_session(store_slug, session_id_log)
     slots_sync = multi_message_slots_for_abandon(reason_tag_sync, store_row)
     if slots_sync:
@@ -3509,6 +3660,7 @@ def dashboard(request: Request):
         use_mock = True
     if not use_mock:
         try:
+            _ensure_store_widget_schema()
             # أسباب التردد — آخر اختيار لكل جلسة في ‎cart_recovery_reasons‎
             groups = (
                 db.session.query(
@@ -3537,6 +3689,7 @@ def dashboard(request: Request):
                     product_hint = product_hint[:45] + "…"
                 live_rows.append(
                     {
+                        "kind": "activity",
                         "session_id": (r.session_id or "")[:32]
                         + ("…" if r.session_id and len(r.session_id) > 32 else ""),
                         "reason_key": k,
@@ -3545,6 +3698,30 @@ def dashboard(request: Request):
                         "time_str": _format_reason_ts(r.updated_at),
                     }
                 )
+            vip_rows_db = (
+                db.session.query(CartRecoveryLog)
+                .filter(CartRecoveryLog.status == "vip_manual_handling")
+                .order_by(CartRecoveryLog.created_at.desc())
+                .limit(6)
+                .all()
+            )
+            vip_feed: list[dict[str, Any]] = []
+            for lg in vip_rows_db:
+                sid_disp = (lg.session_id or "")[:32] + (
+                    "…" if lg.session_id and len(lg.session_id) > 32 else ""
+                )
+                vip_feed.append(
+                    {
+                        "kind": "vip",
+                        "headline": "سلة عالية القيمة تحتاج متابعة يدوية",
+                        "detail": (lg.message or "")[:800],
+                        "session_id": sid_disp,
+                        "time_str": _format_reason_ts(lg.created_at),
+                    }
+                )
+            live_rows = vip_feed + live_rows
+            if len(live_rows) > 14:
+                live_rows = live_rows[:14]
             crr_total = int(
                 db.session.query(func.count(CartRecoveryReason.id)).scalar() or 0
             )
@@ -3567,6 +3744,14 @@ def dashboard(request: Request):
         }
         live_rows = [
             {
+                "kind": "vip",
+                "headline": "سلة عالية القيمة تحتاج متابعة يدوية",
+                "detail": "القيمة: 1200 ريال\nسبب التردد: السعر\nsession_id: demo_sess_vip\nالوقت: 2026-04-20 16:00 UTC",
+                "session_id": "dem…sess_vip",
+                "time_str": "2026-04-20 16:00",
+            },
+            {
+                "kind": "activity",
                 "session_id": "dem…sess_01",
                 "reason_key": "price",
                 "reason_ar": "السعر",
@@ -3574,6 +3759,7 @@ def dashboard(request: Request):
                 "time_str": "2026-04-20 14:32",
             },
             {
+                "kind": "activity",
                 "session_id": "dem…sess_02",
                 "reason_key": "warranty",
                 "reason_ar": "الضمان",
@@ -3581,6 +3767,7 @@ def dashboard(request: Request):
                 "time_str": "2026-04-20 13:10",
             },
             {
+                "kind": "activity",
                 "session_id": "dem…sess_03",
                 "reason_key": "shipping",
                 "reason_ar": "الشحن",
