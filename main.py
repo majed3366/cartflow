@@ -2081,7 +2081,7 @@ def _schedule_recovery_multi_slots(
 ) -> None:
     es = float(elapsed_seconds)
     try:
-        print("[MULTI MESSAGE MODE]")
+        print("[MULTI MESSAGE MODE ACTIVATED]")
         print("reason=", slots[0]["canon"])
         print("count=", len(slots))
     except Exception:  # noqa: BLE001
@@ -2091,11 +2091,7 @@ def _schedule_recovery_multi_slots(
         _session_recovery_multi_attempt_cap[recovery_key] = len(slots)
     for s in slots:
         try:
-            print("[MULTI MESSAGE SCHEDULED]")
-            print("reason=", s["canon"])
-            print("index=", s["index"])
-            print("delay=", s["delay_display"])
-            print("unit=", s["unit_display"])
+            print(f"[MULTI MESSAGE SCHEDULED] index={s['index']}")
         except Exception:  # noqa: BLE001
             pass
         remain = max(0.0, float(s["delay_seconds"]) - es)

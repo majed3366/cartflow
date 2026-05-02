@@ -32,6 +32,29 @@ def test_multi_slots_none_when_single_message_mode() -> None:
     assert multi_message_slots_for_abandon("price_high", _S()) is None
 
 
+def test_multi_slots_when_message_count_stale_but_two_messages() -> None:
+    class _S:
+        reason_templates_json = json.dumps(
+            {
+                "price": {
+                    "enabled": True,
+                    "message": "أساسية",
+                    "message_count": 1,
+                    "messages": [
+                        {"delay": 1, "unit": "minute", "text": "أولى"},
+                        {"delay": 2, "unit": "minute", "text": "ثانية"},
+                    ],
+                }
+            }
+        )
+
+    slots = multi_message_slots_for_abandon("price_high", _S())
+    assert slots is not None
+    assert len(slots) == 2
+    assert slots[0]["index"] == 1
+    assert slots[1]["index"] == 2
+
+
 def test_multi_slots_none_when_messages_missing() -> None:
     class _S:
         reason_templates_json = json.dumps(

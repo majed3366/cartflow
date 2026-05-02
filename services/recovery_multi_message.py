@@ -29,7 +29,7 @@ def multi_message_slots_for_abandon(
     store: Any,
 ) -> Optional[List[Dict[str, Any]]]:
     """
-    يُرجع قائمة خانات الجدولة إذا كان الوضع متعدّد الرسائل (‎message_count > 1‎ و‎messages‎ غير فارغة).
+    يُرجع قائمة خانات الجدولة إذا كان ‎messages‎ غير فارغة و‎max(message_count, len(messages)) > 1‎.
     وإلا ‎None‎ (المسار القديم برسالة واحدة).
     """
     canon = canonical_reason_template_key(reason_tag)
@@ -43,17 +43,19 @@ def multi_message_slots_for_abandon(
         return None
     if not bool(entry.get("enabled", True)):
         return None
-    try:
-        mc = int(entry.get("message_count") or 1)
-    except (TypeError, ValueError):
-        mc = 1
-    mc = max(1, min(3, mc))
-    if mc <= 1:
-        return None
     messages_raw = entry.get("messages")
     if messages_raw is None:
         return None
     if not isinstance(messages_raw, list) or len(messages_raw) == 0:
+        return None
+    try:
+        mc_stored = int(entry.get("message_count") or 1)
+    except (TypeError, ValueError):
+        mc_stored = 1
+    mc_stored = max(1, min(3, mc_stored))
+    msg_len = min(3, len(messages_raw))
+    mc = max(mc_stored, msg_len)
+    if mc <= 1:
         return None
 
     defaults = _DEFAULT_MULTI_DELAYS.get(
