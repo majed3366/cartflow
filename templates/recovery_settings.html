@@ -98,6 +98,12 @@
                   class="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/35" />
                 <p class="mt-1 text-[11px] leading-snug text-slate-500">سيُستخدم مستقبلاً لإرسال الرسائل من رقمك مباشرة</p>
               </div>
+              <div>
+                <label class="mb-1 block text-sm font-semibold text-slate-800" for="vip_cart_threshold">حد السلة المميزة (VIP)</label>
+                <input id="vip_cart_threshold" name="vip_cart_threshold" type="number" min="1" step="1" inputmode="numeric" autocomplete="off" placeholder="مثال: 500"
+                  class="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/35" />
+                <p class="mt-1 text-[11px] leading-snug text-slate-500">إذا تجاوزت السلة هذا المبلغ، سيتم التعامل معها بشكل خاص (قريباً)</p>
+              </div>
             </div>
           </section>
 
@@ -151,6 +157,14 @@
         if (r) r.checked = true;
         document.getElementById("whatsapp_support_url").value = data.whatsapp_support_url || "";
         document.getElementById("store_whatsapp_number").value = data.store_whatsapp_number || "";
+        var vth = document.getElementById("vip_cart_threshold");
+        if (vth) {
+          if (data.vip_cart_threshold != null && data.vip_cart_threshold !== "") {
+            vth.value = String(data.vip_cart_threshold);
+          } else {
+            vth.value = "";
+          }
+        }
       }
 
       fetch("/api/recovery-settings")
@@ -188,6 +202,14 @@
               document.getElementById("store_whatsapp_number").value) ||
             "",
         };
+        var vipEl = document.getElementById("vip_cart_threshold");
+        var vipRaw = vipEl && vipEl.value ? String(vipEl.value).trim() : "";
+        if (vipRaw === "") {
+          body.vip_cart_threshold = null;
+        } else {
+          var vipN = parseInt(vipRaw, 10);
+          body.vip_cart_threshold = !isNaN(vipN) && vipN >= 1 ? vipN : null;
+        }
         fetch("/api/recovery-settings", {
           method: "POST",
           headers: { "Content-Type": "application/json" },

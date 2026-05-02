@@ -495,6 +495,33 @@ def _ensure_store_widget_customization_columns(db: Any) -> None:
         log.debug("schema_widget widget customization: %s", e)
 
 
+def _ensure_store_vip_cart_threshold_column(db: Any) -> None:
+    """عتبة السلة المميزة (‎vip_cart_threshold‎) على ‎stores‎ — ‎NULL‎ = معطّل."""
+    try:
+        db.create_all()
+        insp = inspect(db.engine)
+        if not insp.has_table("stores"):
+            return
+        dialect = getattr(getattr(db.engine, "dialect", None), "name", "") or ""
+        existing = {c["name"] for c in insp.get_columns("stores")}
+        if "vip_cart_threshold" not in existing:
+            try:
+                if dialect == "postgresql":
+                    stmt = (
+                        "ALTER TABLE stores ADD COLUMN IF NOT EXISTS "
+                        "vip_cart_threshold INTEGER"
+                    )
+                else:
+                    stmt = "ALTER TABLE stores ADD COLUMN vip_cart_threshold INTEGER"
+                db.session.execute(text(stmt))
+                db.session.commit()
+            except (OSError, SQLAlchemyError, IntegrityError):
+                db.session.rollback()
+    except (OSError, SQLAlchemyError) as e:
+        db.session.rollback()
+        log.debug("schema_widget vip_cart_threshold: %s", e)
+
+
 def ensure_store_widget_schema(db: Any) -> None:
     """يُنادى من مسارات ‎API‎ (لا يعتمد على ‎main‎)."""
     _ensure_reason_subcategory_columns(db)
@@ -507,6 +534,7 @@ def ensure_store_widget_schema(db: Any) -> None:
     _ensure_store_template_control_columns(db)
     _ensure_store_exit_intent_template_columns(db)
     _ensure_store_widget_customization_columns(db)
+    _ensure_store_vip_cart_threshold_column(db)
     global _store_abandonment_schema_ensured
     if _store_abandonment_schema_ensured:
         return

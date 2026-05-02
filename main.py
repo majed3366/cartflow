@@ -218,6 +218,11 @@ from services.reason_template_recovery import (
     resolve_recovery_whatsapp_message_with_reason_templates,
 )
 from services.recovery_multi_message import multi_message_slots_for_abandon
+from services.vip_cart import (
+    apply_vip_cart_threshold_from_body,
+    is_vip_cart,
+    vip_cart_threshold_fields_for_api,
+)
 
 log = logging.getLogger("cartflow")
 
@@ -668,6 +673,8 @@ def _merge_recovery_settings_post_body(body: Dict[str, Any]) -> Dict[str, Any]:
             out["recovery_attempts"] = row.recovery_attempts
         if "store_whatsapp_number" not in body:
             out["store_whatsapp_number"] = getattr(row, "store_whatsapp_number", None)
+        if "vip_cart_threshold" not in body:
+            out["vip_cart_threshold"] = getattr(row, "vip_cart_threshold", None)
     return out
 
 
@@ -734,6 +741,7 @@ def _dev_apply_recovery_settings_update(
         apply_template_control_from_body(row, request_body)
         apply_exit_intent_template_control_from_body(row, request_body)
         apply_widget_customization_from_body(row, request_body)
+        apply_vip_cart_threshold_from_body(row, request_body)
     db.session.commit()
     wa: Optional[str] = getattr(row, "whatsapp_support_url", None)
     if not (isinstance(wa, str) and wa.strip()):
@@ -755,6 +763,7 @@ def _dev_apply_recovery_settings_update(
     payload.update(template_control_fields_for_api(row))
     payload.update(exit_intent_template_fields_for_api(row))
     payload.update(widget_customization_fields_for_api(row))
+    payload.update(vip_cart_threshold_fields_for_api(row))
     return payload, 200
 
 # ‎/dev/recovery-flow-test?type=…‎ — بدون قراءة من ‎DB‎
@@ -1168,6 +1177,7 @@ def api_recovery_settings_get():
         payload.update(template_control_fields_for_api(row))
         payload.update(exit_intent_template_fields_for_api(row))
         payload.update(widget_customization_fields_for_api(row))
+        payload.update(vip_cart_threshold_fields_for_api(row))
         return j(payload)
     except Exception as e:  # noqa: BLE001
         db.session.rollback()
@@ -1368,6 +1378,29 @@ def _load_store_row_for_recovery(store_slug: Optional[str] = None) -> Optional[S
 
 def _load_latest_store_for_recovery() -> Optional[Store]:
     return _load_store_row_for_recovery(None)
+
+
+def _abandoned_cart_cart_value_for_recovery(cart_id: Optional[str]) -> Optional[float]:
+    """قيمة ‎cart_value‎ من ‎abandoned_carts‎ إن وُجدت، لاستخدام ‎VIP check‎ فقط."""
+    cid = (str(cart_id).strip()[:255] if cart_id is not None else "") or ""
+    if not cid:
+        return None
+    try:
+        row = (
+            db.session.query(AbandonedCart.cart_value)
+            .filter(AbandonedCart.zid_cart_id == cid)
+            .order_by(AbandonedCart.last_seen_at.desc())
+            .first()
+        )
+    except (SQLAlchemyError, OSError):
+        db.session.rollback()
+        return None
+    if row is None or row[0] is None:
+        return None
+    try:
+        return float(row[0])
+    except (TypeError, ValueError):
+        return None
 
 
 def _is_user_converted(recovery_key: str) -> bool:
@@ -1658,6 +1691,14 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
         return None
     rt_raw = (reason_row.reason or "").strip() if reason_row else ""
     store_obj = _load_store_row_for_recovery(store_slug)
+    cart_total_vip = _abandoned_cart_cart_value_for_recovery(cart_id)
+    th_raw = getattr(store_obj, "vip_cart_threshold", None) if store_obj is not None else None
+    log.info(
+        "[VIP CHECK] cart_total=%s threshold=%s is_vip=%s",
+        cart_total_vip if cart_total_vip is not None else "none",
+        th_raw,
+        is_vip_cart(cart_total_vip, store_obj),
+    )
     resolve_whatsapp_sender(store_obj)
     if multi_slot_index is not None:
         if not rt_raw:

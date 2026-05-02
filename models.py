@@ -78,6 +78,8 @@ class Store(Base):
     widget_name = Column(String(255), default="مساعد المتجر", nullable=False)
     widget_primary_color = Column(String(16), default="#6C5CE7", nullable=False)
     widget_style = Column(String(16), default="modern", nullable=False)
+    # عتبة سلة مميزة (ريال سعودي)؛ ‎NULL‎ = معطّل — تحضير لمسار VIP لاحقاً
+    vip_cart_threshold = Column(Integer, nullable=True)
 
 
 class AbandonedCart(Base):
