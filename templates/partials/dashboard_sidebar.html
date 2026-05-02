@@ -1,3 +1,24 @@
+<style>
+  #dash-sidebar-panel {
+    background: var(--card);
+    border-color: var(--border);
+  }
+  #dash-nav-toggle,
+  #dash-theme-toggle-top {
+    background: var(--card);
+    border-color: var(--border);
+    color: var(--text);
+  }
+  #dash-nav-close {
+    color: var(--muted);
+  }
+  #dash-sidebar-panel nav a {
+    color: var(--muted);
+  }
+  [data-theme="dark"] #dash-sidebar-panel nav a:hover {
+    background: rgba(148, 163, 184, 0.14);
+  }
+</style>
 <div
   id="dash-nav-overlay"
   class="pointer-events-none fixed inset-0 z-30 bg-slate-900/35 opacity-0 transition-opacity duration-200 md:hidden"
@@ -13,6 +34,16 @@
   aria-label="فتح القائمة"
 >
   ☰
+</button>
+<button
+  type="button"
+  id="dash-theme-toggle-top"
+  class="fixed top-3 z-50 flex h-12 min-h-[48px] min-w-[48px] items-center justify-center gap-1 rounded-xl border border-zid-200 bg-white px-2 text-[11px] font-semibold leading-none text-slate-700 shadow-md md:hidden end-20"
+  aria-label="الوضع الداكن"
+  aria-checked="false"
+  role="switch"
+>
+  <span aria-hidden="true">🌙</span>
 </button>
 
 <aside
@@ -67,9 +98,74 @@
       <span class="min-w-0 leading-snug">تخصيص الودجيت</span>
     </a>
   </nav>
+  <div class="shrink-0 border-t border-zid-100 p-3 space-y-2">
+    <button
+      type="button"
+      id="dash-theme-toggle-side"
+      class="flex w-full items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-100"
+      aria-label="الوضع الداكن"
+      aria-checked="false"
+      role="switch"
+    >
+      <span>الوضع الداكن</span>
+      <span id="dash-theme-toggle-side-icon" aria-hidden="true">🌙</span>
+    </button>
+    <!-- TODO: if /logout route changes, update this href only (no backend changes). -->
+    <a
+      href="/logout"
+      class="group flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-red-600 transition-colors hover:bg-red-50"
+    >
+      <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-red-50 text-[15px]" aria-hidden="true">↪</span>
+      <span class="min-w-0 leading-snug">تسجيل الخروج</span>
+    </a>
+  </div>
 </aside>
 <script>
   (function () {
+    var KEY = "cf_theme";
+    function normTheme(v) {
+      return v === "dark" ? "dark" : "light";
+    }
+    function getTheme() {
+      try {
+        return normTheme(localStorage.getItem(KEY));
+      } catch (e) {
+        return "light";
+      }
+    }
+    function setTheme(theme) {
+      var t = normTheme(theme);
+      document.documentElement.setAttribute("data-theme", t);
+      try {
+        localStorage.setItem(KEY, t);
+      } catch (e) {
+        /* ignore */
+      }
+      var top = document.getElementById("dash-theme-toggle-top");
+      var side = document.getElementById("dash-theme-toggle-side");
+      var sideIcon = document.getElementById("dash-theme-toggle-side-icon");
+      var dark = t === "dark";
+      if (top) {
+        top.setAttribute("aria-checked", dark ? "true" : "false");
+        top.innerHTML = dark
+          ? '<span aria-hidden="true">☀️</span>'
+          : '<span aria-hidden="true">🌙</span>';
+      }
+      if (side) side.setAttribute("aria-checked", dark ? "true" : "false");
+      if (sideIcon) sideIcon.textContent = dark ? "☀️" : "🌙";
+    }
+    function toggleTheme() {
+      setTheme(getTheme() === "dark" ? "light" : "dark");
+    }
+    setTheme(getTheme());
+    var topBtn = document.getElementById("dash-theme-toggle-top");
+    var sideBtn = document.getElementById("dash-theme-toggle-side");
+    if (topBtn) topBtn.addEventListener("click", toggleTheme);
+    if (sideBtn) sideBtn.addEventListener("click", toggleTheme);
+    window.addEventListener("storage", function (e) {
+      if (e && e.key === KEY) setTheme(getTheme());
+    });
+
     function applyDashboardNavActive() {
       var path = window.location.pathname || "";
       var dashEl = document.querySelector('[data-dash-nav="dashboard"]');

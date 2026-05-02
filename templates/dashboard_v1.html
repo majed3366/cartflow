@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="ar" dir="rtl" data-theme="light">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -27,7 +27,49 @@
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;600;700&display=swap" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <style>
+    :root {
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --text: #1e293b;
+      --muted: #64748b;
+      --border: #e2e8f0;
+    }
+    [data-theme="dark"] {
+      --bg: #0f172a;
+      --card: #1e293b;
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --border: #334155;
+    }
     body { font-family: "IBM Plex Sans Arabic", system-ui, sans-serif; }
+    body {
+      background: var(--bg) !important;
+      color: var(--text) !important;
+    }
+    .bg-white {
+      background: var(--card) !important;
+    }
+    .border-slate-100,
+    .border-slate-200,
+    .border-zid-100 {
+      border-color: var(--border) !important;
+    }
+    .text-slate-900,
+    .text-slate-800,
+    .text-slate-700 {
+      color: var(--text) !important;
+    }
+    .text-slate-600,
+    .text-slate-500 {
+      color: var(--muted) !important;
+    }
+    input,
+    select,
+    textarea {
+      background: var(--card);
+      color: var(--text);
+      border-color: var(--border);
+    }
 
     /* Hesitation reasons — vertical cards (markup rebuilt) */
     .cf-reasons-section {
