@@ -1953,6 +1953,24 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
         return
 
     with _recovery_session_lock:
+        new_sent = _session_recovery_send_count.get(recovery_key, 0)
+        multi_total = _session_recovery_multi_attempt_cap.get(recovery_key)
+
+    if multi_slot_index is not None and multi_total is not None:
+        try:
+            print("[MULTI MESSAGE SENT]")
+            print("index=", int(multi_slot_index))
+            print("total=", int(multi_total))
+        except Exception:  # noqa: BLE001
+            pass
+        if new_sent >= int(multi_total):
+            with _recovery_session_lock:
+                _session_recovery_sent[recovery_key] = True
+                _session_recovery_multi_attempt_cap.pop(recovery_key, None)
+            print("[RECOVERY FULLY COMPLETED]")
+        return
+
+    with _recovery_session_lock:
         _session_recovery_sent[recovery_key] = True
     print("recovery marked as sent")
 
