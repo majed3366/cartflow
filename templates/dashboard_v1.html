@@ -177,9 +177,42 @@
       <span class="min-w-[3.25rem] rounded-md bg-white px-2 py-0.5 text-center text-[11px] font-semibold text-zid-700 ring-1 ring-zid-100/80" data-dash-trigger-label="{{ reason_key }}">مفعل</span>
     </div>
   </div>
-  <label class="mb-1 block text-xs font-medium leading-snug text-slate-600" for="dash-trigger-text-{{ reason_key }}">رسالة التعامل مع هذا السبب</label>
-  <textarea id="dash-trigger-text-{{ reason_key }}" rows="4" data-dash-trigger-text="{{ reason_key }}"
-    class="w-full resize-y rounded-lg border border-zid-100/90 bg-white px-2.5 py-2 text-[11px] leading-relaxed text-slate-800 shadow-inner placeholder:text-slate-400 focus:border-zid-400 focus:outline-none focus:ring-1 focus:ring-zid-400/50 md:text-[10px]"></textarea>
+  <div class="mb-3 flex flex-wrap items-center gap-3 border-b border-zid-100/60 pb-3">
+    <span class="text-xs font-medium text-slate-700">عدد الرسائل:</span>
+    <div class="flex flex-wrap gap-3 text-[11px] text-slate-700">
+      <label class="inline-flex cursor-pointer items-center gap-1.5 rounded-md bg-white px-2 py-1 ring-1 ring-zid-100">
+        <input type="radio" name="msgcount-{{ reason_key }}" value="1" checked data-dash-msgcount="{{ reason_key }}" class="accent-zid-600" />
+        <span>1</span>
+      </label>
+      <label class="inline-flex cursor-pointer items-center gap-1.5 rounded-md bg-white px-2 py-1 ring-1 ring-zid-100">
+        <input type="radio" name="msgcount-{{ reason_key }}" value="2" data-dash-msgcount="{{ reason_key }}" class="accent-zid-600" />
+        <span>2</span>
+      </label>
+      <label class="inline-flex cursor-pointer items-center gap-1.5 rounded-md bg-white px-2 py-1 ring-1 ring-zid-100">
+        <input type="radio" name="msgcount-{{ reason_key }}" value="3" data-dash-msgcount="{{ reason_key }}" class="accent-zid-600" />
+        <span>3</span>
+      </label>
+    </div>
+  </div>
+  {% for slot in [1, 2, 3] %}
+  <div class="mb-3 rounded-lg border border-zid-100/80 bg-white/90 p-3 shadow-inner ring-1 ring-zid-100/40 {% if slot > 1 %}hidden{% endif %}" data-dash-slot-wrap="{{ reason_key }}" data-slot-index="{{ slot }}">
+    <p class="mb-2 text-xs font-semibold text-slate-800">رسالة {{ slot }}</p>
+    <div class="mb-2 flex flex-wrap items-center gap-2">
+      <label class="flex flex-wrap items-center gap-1.5 text-[10px] font-medium text-slate-600">
+        <span class="whitespace-nowrap">التأخير</span>
+        <input type="number" min="1" step="1" value="2" data-dash-slot-delay="{{ reason_key }}" data-slot-index="{{ slot }}"
+          class="w-14 rounded border border-zid-100 px-1.5 py-1 text-[11px] text-slate-800 md:w-16" />
+      </label>
+      <select data-dash-slot-unit="{{ reason_key }}" data-slot-index="{{ slot }}" class="rounded border border-zid-100 bg-white px-2 py-1 text-[11px] text-slate-800">
+        <option value="minute">دقيقة</option>
+        <option value="hour">ساعة</option>
+      </select>
+    </div>
+    <label class="mb-1 block text-[10px] font-medium text-slate-600" for="dash-slot-text-{{ reason_key }}-{{ slot }}">نص الرسالة</label>
+    <textarea id="dash-slot-text-{{ reason_key }}-{{ slot }}" rows="4" data-dash-slot-text="{{ reason_key }}" data-slot-index="{{ slot }}"
+      class="w-full resize-y rounded-lg border border-zid-100/90 bg-white px-2.5 py-2 text-[11px] leading-relaxed text-slate-800 shadow-inner placeholder:text-slate-400 focus:border-zid-400 focus:outline-none focus:ring-1 focus:ring-zid-400/50 md:text-[10px]"></textarea>
+  </div>
+  {% endfor %}
   <p class="mt-2 text-[10px] leading-relaxed text-zid-800 md:text-[9px]" data-dash-trigger-hint="{{ reason_key }}" aria-live="polite"></p>
   <a href="/dashboard/cartflow-messages#cf-msg-template-{{ reason_key }}" class="mt-2 inline-flex text-[10px] font-medium text-zid-700 underline decoration-zid-300 underline-offset-2 hover:text-zid-900 hover:decoration-zid-500 md:text-[9px]">تعديل متقدم</a>
 </div>
@@ -444,6 +477,127 @@
       var recoveryState = null;
       var saveTimer = null;
 
+      var SLOT_DELAY_DEFAULTS = {
+        price: [
+          [2, "minute"],
+          [2, "hour"],
+          [24, "hour"],
+        ],
+        shipping: [
+          [5, "minute"],
+          [1, "hour"],
+          [12, "hour"],
+        ],
+        warranty: [
+          [5, "minute"],
+          [2, "hour"],
+          [24, "hour"],
+        ],
+        thinking: [
+          [3, "minute"],
+          [1, "hour"],
+          [24, "hour"],
+        ],
+        quality: [
+          [3, "minute"],
+          [2, "hour"],
+          [24, "hour"],
+        ],
+      };
+
+      function slotDelayDefaults(uiKey) {
+        return SLOT_DELAY_DEFAULTS[uiKey] || [
+          [3, "minute"],
+          [1, "hour"],
+          [24, "hour"],
+        ];
+      }
+
+      function selectedMessageCount(uiKey) {
+        var sel = document.querySelector(
+          'input[name="msgcount-' + uiKey + '"]:checked'
+        );
+        var v = sel ? parseInt(sel.value, 10) : 1;
+        return v >= 1 && v <= 3 ? v : 1;
+      }
+
+      function updateSlotVisibility(uiKey) {
+        var n = selectedMessageCount(uiKey);
+        for (var si = 1; si <= 3; si++) {
+          var wrap = document.querySelector(
+            '[data-dash-slot-wrap="' +
+              uiKey +
+              '"][data-slot-index="' +
+              si +
+              '"]'
+          );
+          if (wrap) wrap.classList.toggle("hidden", si > n);
+        }
+      }
+
+      function getSlotDelayEl(uiKey, slotIdx) {
+        return document.querySelector(
+          '[data-dash-slot-delay="' +
+            uiKey +
+            '"][data-slot-index="' +
+            slotIdx +
+            '"]'
+        );
+      }
+
+      function getSlotUnitEl(uiKey, slotIdx) {
+        return document.querySelector(
+          '[data-dash-slot-unit="' +
+            uiKey +
+            '"][data-slot-index="' +
+            slotIdx +
+            '"]'
+        );
+      }
+
+      function getSlotTextEl(uiKey, slotIdx) {
+        return document.querySelector(
+          '[data-dash-slot-text="' +
+            uiKey +
+            '"][data-slot-index="' +
+            slotIdx +
+            '"]'
+        );
+      }
+
+      function applyDelayUnitDefaultsForSlot(uiKey, slotIdx, force) {
+        var defs = slotDelayDefaults(uiKey);
+        var pair = defs[slotIdx - 1] || defs[defs.length - 1];
+        var dEl = getSlotDelayEl(uiKey, slotIdx);
+        var uEl = getSlotUnitEl(uiKey, slotIdx);
+        if (!dEl || !uEl || !pair) return;
+        if (force || String(dEl.value || "").trim() === "") {
+          dEl.value = String(pair[0]);
+        }
+        var want = pair[1];
+        var opts = uEl.querySelectorAll("option");
+        var ok = false;
+        for (var i = 0; i < opts.length; i++) {
+          if (opts[i].value === want) {
+            ok = true;
+            break;
+          }
+        }
+        if (force || ok) {
+          uEl.value = want;
+        }
+      }
+
+      function primaryTemplateMessage(row) {
+        if (!row || typeof row !== "object") return "";
+        var msgs = row.messages;
+        if (Array.isArray(msgs) && msgs[0] && typeof msgs[0].text === "string") {
+          var t = msgs[0].text.trim();
+          if (t) return msgs[0].text;
+        }
+        return typeof row.message === "string" ? row.message : "";
+      }
+
       function uiKeyToReasonTag(uiKey) {
         return uiKey;
       }
@@ -480,19 +634,84 @@
         triggerKeysOnPage().forEach(function (uiKey) {
           var tag = uiKeyToReasonTag(uiKey);
           var cb = document.querySelector('[data-dash-trigger-toggle="' + uiKey + '"]');
-          var ta = document.querySelector('[data-dash-trigger-text="' + uiKey + '"]');
           var lab = document.querySelector('[data-dash-trigger-label="' + uiKey + '"]');
           var hint = document.querySelector('[data-dash-trigger-hint="' + uiKey + '"]');
           var row = map[tag] || {};
           var enabled = row.enabled !== false;
-          var msg = typeof row.message === "string" ? row.message.trim() : "";
+          var legacyMsg =
+            typeof row.message === "string" ? row.message.trim() : "";
+          var msgs = Array.isArray(row.messages) ? row.messages : [];
+          var mc = parseInt(row.message_count, 10);
+          if (!(mc >= 1 && mc <= 3)) mc = msgs.length ? Math.min(3, msgs.length) : 1;
+          var rad = document.querySelector(
+            'input[name="msgcount-' + uiKey + '"][value="' + mc + '"]'
+          );
+          if (rad) rad.checked = true;
+          else {
+            var r1 = document.querySelector(
+              'input[name="msgcount-' + uiKey + '"][value="1"]'
+            );
+            if (r1) r1.checked = true;
+          }
+          var defText = DEFAULTS[uiKey] || "";
+          var defs = slotDelayDefaults(uiKey);
+          for (var si = 1; si <= 3; si++) {
+            var item =
+              msgs[si - 1] && typeof msgs[si - 1] === "object"
+                ? msgs[si - 1]
+                : {};
+            var pair = defs[si - 1] || defs[defs.length - 1];
+            var dEl = getSlotDelayEl(uiKey, si);
+            var uEl = getSlotUnitEl(uiKey, si);
+            var tEl = getSlotTextEl(uiKey, si);
+            if (dEl) {
+              var dv = item.delay;
+              if (dv !== undefined && dv !== null && String(dv).trim() !== "") {
+                dEl.value = String(dv);
+              } else {
+                dEl.value = String(pair[0]);
+              }
+            }
+            if (uEl) {
+              var uu = item.unit;
+              if (uu && String(uu).trim() !== "") {
+                var uv = String(uu).trim().toLowerCase();
+                if (uv === "minutes") uv = "minute";
+                if (uv === "hours") uv = "hour";
+                uEl.value =
+                  uv === "hour" || uv === "minute" ? uv : pair[1];
+              } else {
+                uEl.value = pair[1];
+              }
+            }
+            if (tEl) {
+              var tx =
+                typeof item.text === "string" ? item.text.trim() : "";
+              if (tx) {
+                tEl.value = item.text;
+              } else if (si === 1 && legacyMsg) {
+                tEl.value = row.message;
+              } else if (msgs.length === 0 && si === 1) {
+                tEl.value = legacyMsg !== "" ? legacyMsg : defText;
+              } else {
+                tEl.value = defText;
+              }
+            }
+          }
           if (cb) {
             cb.checked = !!enabled;
             syncLabel(cb, lab);
             syncHint(cb, hint);
           }
-          if (ta) {
-            ta.value = msg !== "" ? msg : DEFAULTS[uiKey] || "";
+          updateSlotVisibility(uiKey);
+          var cardDone = document.querySelector(
+            '[data-dash-trigger-card="' + uiKey + '"]'
+          );
+          if (cardDone) {
+            cardDone.setAttribute(
+              "data-last-msg-count",
+              String(selectedMessageCount(uiKey))
+            );
           }
         });
       }
@@ -502,10 +721,30 @@
         triggerKeysOnPage().forEach(function (uiKey) {
           var tag = uiKeyToReasonTag(uiKey);
           var cb = document.querySelector('[data-dash-trigger-toggle="' + uiKey + '"]');
-          var ta = document.querySelector('[data-dash-trigger-text="' + uiKey + '"]');
+          var mc = selectedMessageCount(uiKey);
+          var messages = [];
+          for (var si = 1; si <= mc; si++) {
+            var dEl = getSlotDelayEl(uiKey, si);
+            var uEl = getSlotUnitEl(uiKey, si);
+            var tEl = getSlotTextEl(uiKey, si);
+            var delayRaw = dEl ? parseFloat(String(dEl.value || "1"), 10) : 1;
+            if (!(delayRaw >= 1)) delayRaw = 1;
+            var unitRaw = uEl ? String(uEl.value || "minute") : "minute";
+            messages.push({
+              delay: delayRaw,
+              unit: unitRaw,
+              text: tEl ? String(tEl.value || "") : "",
+            });
+          }
+          var slot1text =
+            messages[0] && typeof messages[0].text === "string"
+              ? messages[0].text
+              : "";
           out[tag] = {
             enabled: cb ? !!cb.checked : true,
-            message: ta ? String(ta.value || "") : "",
+            message: slot1text,
+            message_count: mc,
+            messages: messages,
           };
         });
         return out;
@@ -514,12 +753,17 @@
       function mirrorTriggerTemplatesForLegacyApi(rt) {
         var o = {};
         ["price", "shipping", "warranty", "quality"].forEach(function (k) {
-          if (rt[k]) o[k] = rt[k];
+          if (rt[k]) {
+            o[k] = {
+              enabled: rt[k].enabled,
+              message: primaryTemplateMessage(rt[k]),
+            };
+          }
         });
         if (rt.thinking) {
           o.other = {
             enabled: rt.thinking.enabled,
-            message: rt.thinking.message,
+            message: primaryTemplateMessage(rt.thinking),
           };
         }
         return o;
@@ -578,7 +822,6 @@
       function bind() {
         triggerKeysOnPage().forEach(function (uiKey) {
           var cb = document.querySelector('[data-dash-trigger-toggle="' + uiKey + '"]');
-          var ta = document.querySelector('[data-dash-trigger-text="' + uiKey + '"]');
           var lab = document.querySelector('[data-dash-trigger-label="' + uiKey + '"]');
           var hint = document.querySelector('[data-dash-trigger-hint="' + uiKey + '"]');
           if (cb) {
@@ -588,10 +831,49 @@
               scheduleSaveTriggerTemplates();
             });
           }
-          if (ta) {
-            ta.addEventListener("input", function () {
-              scheduleSaveTriggerTemplates();
+          var card = document.querySelector(
+            '[data-dash-trigger-card="' + uiKey + '"]'
+          );
+          document
+            .querySelectorAll('[data-dash-msgcount="' + uiKey + '"]')
+            .forEach(function (radio) {
+              radio.addEventListener("change", function () {
+                var prev = card
+                  ? parseInt(card.getAttribute("data-last-msg-count") || "1", 10)
+                  : 1;
+                var next = selectedMessageCount(uiKey);
+                updateSlotVisibility(uiKey);
+                if (next > prev) {
+                  for (var si = prev + 1; si <= next; si++) {
+                    applyDelayUnitDefaultsForSlot(uiKey, si, true);
+                  }
+                }
+                if (card) {
+                  card.setAttribute("data-last-msg-count", String(next));
+                }
+                scheduleSaveTriggerTemplates();
+              });
             });
+          if (card) {
+            card.setAttribute(
+              "data-last-msg-count",
+              String(selectedMessageCount(uiKey))
+            );
+          }
+          for (var si = 1; si <= 3; si++) {
+            var dEl = getSlotDelayEl(uiKey, si);
+            var uEl = getSlotUnitEl(uiKey, si);
+            var tEl = getSlotTextEl(uiKey, si);
+            if (dEl) {
+              dEl.addEventListener("input", scheduleSaveTriggerTemplates);
+              dEl.addEventListener("change", scheduleSaveTriggerTemplates);
+            }
+            if (uEl) {
+              uEl.addEventListener("change", scheduleSaveTriggerTemplates);
+            }
+            if (tEl) {
+              tEl.addEventListener("input", scheduleSaveTriggerTemplates);
+            }
           }
         });
       }

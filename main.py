@@ -214,6 +214,7 @@ from services.reason_template_recovery import (
     reason_template_blocks_recovery_whatsapp,
     resolve_recovery_whatsapp_message_with_reason_templates,
 )
+from services.recovery_multi_message import multi_message_slots_for_abandon
 
 log = logging.getLogger("cartflow")
 
@@ -1151,6 +1152,8 @@ _session_recovery_sent: dict[str, bool] = {}
 _session_recovery_converted: dict[str, bool] = {}
 _session_recovery_returned: dict[str, bool] = {}
 _session_recovery_send_count: dict[str, int] = {}
+_session_recovery_multi_logged: dict[str, bool] = {}
+_session_recovery_multi_attempt_cap: dict[str, int] = {}
 _MAX_RECOVERY_ATTEMPTS = 1
 _recovery_session_lock = threading.Lock()
 
@@ -1553,6 +1556,9 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
     session_id: str,
     cart_id: Optional[str],
     abandon_event_phone: Optional[str] = None,
+    *,
+    multi_slot_index: Optional[int] = None,
+    multi_message_text: Optional[str] = None,
 ) -> None:
     """
     ينتظر ‎delay_seconds‎ ثم يطبّق ‎should_send_whatsapp‎ على آخر نشاط السبب؛ عند السماح فقط يرسل عبر ‎send_whatsapp‎.
@@ -1566,11 +1572,19 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
     except asyncio.CancelledError:
         raise
     print("[DELAY FINISHED]")
-    with _recovery_session_lock:
-        if _session_recovery_logged.get(recovery_key):
-            return
-        _session_recovery_logged[recovery_key] = True
-    print("recovery triggered after delay (single message, decision engine)")
+    if multi_slot_index is not None:
+        slot_sk = f"{recovery_key}:multi:{multi_slot_index}"
+        with _recovery_session_lock:
+            if _session_recovery_multi_logged.get(slot_sk):
+                return
+            _session_recovery_multi_logged[slot_sk] = True
+    else:
+        with _recovery_session_lock:
+            if _session_recovery_logged.get(recovery_key):
+                return
+            _session_recovery_logged[recovery_key] = True
+    if multi_slot_index is None:
+        print("recovery triggered after delay (single message, decision engine)")
     if _is_user_converted(recovery_key):
         print("recovery sequence stopped: user converted (after initial delay, before step 1)")
         t1 = _recovery_message_for_step(1)
@@ -1585,7 +1599,7 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
         )
         return
 
-    step_num = 1
+    step_num = int(multi_slot_index) if multi_slot_index is not None else 1
     reason_row = _cart_recovery_reason_latest_row(store_slug, session_id)
     if _recovery_row_user_rejected_help(reason_row):
         print("[SKIP WA - USER REJECTED HELP]")
@@ -1604,7 +1618,41 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
         return None
     rt_raw = (reason_row.reason or "").strip() if reason_row else ""
     store_obj = _load_store_row_for_recovery(store_slug)
-    if rt_raw:
+    if multi_slot_index is not None:
+        if not rt_raw:
+            reason_tag = None
+            text = _DEFAULT_DECISION_FALLBACK_MESSAGE
+            _persist_cart_recovery_log(
+                store_slug=store_slug,
+                session_id=session_id,
+                cart_id=cart_id,
+                phone=None,
+                message=text,
+                status="skipped_missing_reason_tag",
+                step=step_num,
+            )
+            return None
+        reason_tag = rt_raw
+        if reason_template_blocks_recovery_whatsapp(reason_tag, store_obj):
+            skip_tpl_msg = _default_recovery_message()
+            _persist_cart_recovery_log(
+                store_slug=store_slug,
+                session_id=session_id,
+                cart_id=cart_id,
+                phone=None,
+                message=skip_tpl_msg,
+                status="skipped_reason_template_disabled",
+                step=step_num,
+            )
+            print("[RECOVERY TASK EXIT CLEANLY]")
+            print("reason=reason_template_disabled")
+            return None
+        text = (multi_message_text or "").strip()
+        if not text:
+            text = resolve_recovery_whatsapp_message_with_reason_templates(
+                reason_tag, store=store_obj
+            )
+    elif rt_raw:
         reason_tag = rt_raw
         if reason_template_blocks_recovery_whatsapp(reason_tag, store_obj):
             skip_tpl_msg = _default_recovery_message()
@@ -1732,7 +1780,9 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
         )
         return
 
-    max_recovery_attempts = _MAX_RECOVERY_ATTEMPTS
+    max_recovery_attempts = _session_recovery_multi_attempt_cap.get(
+        recovery_key, _MAX_RECOVERY_ATTEMPTS
+    )
     with _recovery_session_lock:
         sent_count = _session_recovery_send_count.get(recovery_key, 0)
     allowed = sent_count < max_recovery_attempts
@@ -1911,6 +1961,9 @@ async def _run_recovery_sequence_after_cart_abandoned(
     session_id: str,
     cart_id: Optional[str],
     abandon_event_phone: Optional[str] = None,
+    *,
+    multi_slot_index: Optional[int] = None,
+    multi_message_text: Optional[str] = None,
 ) -> None:
     """مدخل آمن: أي خطأ داخل المهمة المؤجّلة لا يصعد إلى ‎TaskGroup‎ / وسيط الطلب."""
     try:
@@ -1921,6 +1974,8 @@ async def _run_recovery_sequence_after_cart_abandoned(
             session_id,
             cart_id,
             abandon_event_phone,
+            multi_slot_index=multi_slot_index,
+            multi_message_text=multi_message_text,
         )
     except asyncio.CancelledError:
         raise
@@ -2005,12 +2060,50 @@ async def handle_cart_abandoned(
     try:
         db.create_all()
         _ensure_default_store_for_recovery()
-        store = db.session.query(Store).order_by(Store.id.desc()).first()
+        store_row = _load_store_row_for_recovery(store_slug)
     except Exception:  # noqa: BLE001
         db.session.rollback()
-        store = None
+        store_row = None
     print("store settings loaded")
     reason_tag = _reason_tag_for_session(store_slug, session_id_log)
+    slots = multi_message_slots_for_abandon(reason_tag, store_row)
+    if slots:
+        try:
+            print("[MULTI MESSAGE MODE]")
+            print("reason=", slots[0]["canon"])
+            print("count=", len(slots))
+        except Exception:  # noqa: BLE001
+            pass
+        with _recovery_session_lock:
+            _session_recovery_multi_attempt_cap[recovery_key] = len(slots)
+        for s in slots:
+            try:
+                print("[MULTI MESSAGE SCHEDULED]")
+                print("reason=", s["canon"])
+                print("index=", s["index"])
+                print("delay=", s["delay_display"])
+                print("unit=", s["unit_display"])
+            except Exception:  # noqa: BLE001
+                pass
+            asyncio.create_task(
+                _run_recovery_sequence_after_cart_abandoned(
+                    recovery_key,
+                    float(s["delay_seconds"]),
+                    store_slug,
+                    session_id_log,
+                    cart_id_log,
+                    abandon_evt_phone,
+                    multi_slot_index=int(s["index"]),
+                    multi_message_text=str(s.get("text") or ""),
+                )
+            )
+        return {
+            "recovery_scheduled": True,
+            "recovery_multi_message": True,
+            "recovery_multi_count": len(slots),
+            "recovery_delay_seconds": float(slots[0]["delay_seconds"]),
+            "recovery_state": "scheduled",
+        }
     config = None  # future: dashboard may pass recovery_delays overrides
     delay_s = float(get_recovery_delay(reason_tag, store_config=config))
     print("starting delay task")

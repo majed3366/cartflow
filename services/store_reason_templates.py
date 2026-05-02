@@ -3,14 +3,62 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 _REASON_TAGS = frozenset({"price", "shipping", "warranty", "thinking", "quality"})
 _MAX_MESSAGE_CHARS = 65535
 
 
+def normalize_delay_unit(raw: Any) -> Optional[str]:
+    """‎minute‎ أو ‎hour‎؛ غير ذلك ‎None‎."""
+    if raw is None:
+        return None
+    s = str(raw).strip().lower()
+    if s in ("minute", "minutes", "min", "دقيقة", "دقائق"):
+        return "minute"
+    if s in ("hour", "hours", "hr", "h", "ساعة", "ساعات"):
+        return "hour"
+    return None
+
+
+def _coerce_message_count(raw: Any) -> int:
+    try:
+        v = int(raw)
+    except (TypeError, ValueError):
+        v = 1
+    return max(1, min(3, v))
+
+
+def _parse_messages_column(raw: Any) -> List[Dict[str, Any]]:
+    if raw is None or not isinstance(raw, list):
+        return []
+    out: List[Dict[str, Any]] = []
+    for item in raw[:3]:
+        if not isinstance(item, dict):
+            continue
+        dr = item.get("delay")
+        try:
+            delay_v = float(dr)
+        except (TypeError, ValueError):
+            delay_v = 1.0
+        if delay_v <= 0:
+            delay_v = 1.0
+        unit_raw = item.get("unit")
+        unit_v = normalize_delay_unit(unit_raw)
+        if unit_v is None:
+            unit_v = "minute"
+        txt_raw = item.get("text")
+        txt_v = (
+            str(txt_raw).strip()[:_MAX_MESSAGE_CHARS]
+            if txt_raw is not None
+            else ""
+        )
+        out.append({"delay": delay_v, "unit": unit_v, "text": txt_v})
+    return out
+
+
 def parse_reason_templates_column(raw: Any) -> Dict[str, Dict[str, Any]]:
-    """‎{ slug: { enabled: bool (افتراضي ‎True‎), message: str } }‎."""
+    """‎{ slug: { enabled, message, message_count?, messages? } }‎."""
     if raw is None:
         return {}
     if isinstance(raw, dict):
@@ -39,7 +87,12 @@ def parse_reason_templates_column(raw: Any) -> Dict[str, Dict[str, Any]]:
             if msg_raw is not None
             else ""
         )
-        out[tt] = {"enabled": enabled, "message": msg}
+        mc = _coerce_message_count(entry.get("message_count"))
+        messages_col = _parse_messages_column(entry.get("messages"))
+        row_d: Dict[str, Any] = {"enabled": enabled, "message": msg, "message_count": mc}
+        if messages_col:
+            row_d["messages"] = messages_col
+        out[tt] = row_d
     return out
 
 
@@ -57,7 +110,7 @@ def apply_reason_templates_from_body(row: Any, body: Dict[str, Any]) -> None:
             continue
         if not isinstance(entry, dict):
             continue
-        prev = dict(base.get(tt, {"enabled": True, "message": ""}))
+        prev = dict(base.get(tt, {"enabled": True, "message": "", "message_count": 1}))
         if "enabled" in entry:
             prev["enabled"] = bool(entry.get("enabled"))
         if "message" in entry:
@@ -65,6 +118,14 @@ def apply_reason_templates_from_body(row: Any, body: Dict[str, Any]) -> None:
             prev["message"] = (
                 str(m).strip()[:_MAX_MESSAGE_CHARS] if m is not None else ""
             )
+        if "message_count" in entry:
+            prev["message_count"] = _coerce_message_count(entry.get("message_count"))
+        if "messages" in entry:
+            parsed_msgs = _parse_messages_column(entry.get("messages"))
+            if parsed_msgs:
+                prev["messages"] = parsed_msgs
+            elif isinstance(entry.get("messages"), list) and len(entry["messages"]) == 0:
+                prev.pop("messages", None)
         base[tt] = prev
     row.reason_templates_json = json.dumps(base, ensure_ascii=False) if base else None
 
