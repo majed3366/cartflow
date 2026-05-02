@@ -27,7 +27,7 @@
       <div class="cf-dash-shell">
         <div class="cf-dash-hero">
           <h1>إعدادات الاسترجاع</h1>
-          <p>مدة الانتظار قبل الإرسال، عدد المحاولات، ورابط دعم واتساب — تُحفظ عبر نفس واجهة الـ API السابقة.</p>
+          <p>مدة الانتظار، عدد المحاولات، حد السلة المميزة (VIP)، وروابط واتساب — تُحفظ عبر واجهة الـ API الحالية.</p>
         </div>
 
         <div id="errBox" class="mb-2 hidden rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"></div>
@@ -50,18 +50,18 @@
             <div class="cf-dash-section-head">
               <h2>⏱️ إعدادات عامة (Fallback)</h2>
             </div>
-            <p class="mb-2 text-[11px] leading-snug text-slate-500">تُستخدم هذه الإعدادات فقط إذا لم يتم تحديد إعداد خاص لكل سبب من أسباب التردد.</p>
-            <div class="space-y-2.5">
+            <p class="mb-2 text-[11px] leading-snug text-slate-600">تُستخدم هذه الإعدادات فقط إذا لم يتم تحديد إعداد خاص لكل سبب من أسباب التردد.</p>
+            <div class="space-y-3">
               <div>
                 <label class="mb-1 block text-sm font-semibold text-slate-800" for="recovery_delay">مدة الانتظار قبل الإرسال</label>
-                <p class="mb-1 text-[11px] text-slate-500">كم دقيقة أو ساعة أو يوم قبل أول رسالة استرجاع؟</p>
+                <p class="mb-1 text-xs leading-snug text-slate-600">كم دقيقة أو ساعة أو يوم قبل أول رسالة استرجاع؟</p>
                 <input id="recovery_delay" name="recovery_delay" type="number" min="1" step="1" required
-                  class="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/35" />
+                  class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-base text-slate-900 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30" />
               </div>
               <div>
                 <label class="mb-1 block text-sm font-semibold text-slate-800" for="recovery_delay_unit">وحدة الوقت</label>
                 <select id="recovery_delay_unit" name="recovery_delay_unit"
-                  class="rs-select w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/35">
+                  class="rs-select w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-base text-slate-900 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30">
                   <option value="minutes">دقائق</option>
                   <option value="hours">ساعة</option>
                   <option value="days">يوم</option>
@@ -69,7 +69,7 @@
               </div>
               <div>
                 <label class="mb-1 block text-sm font-semibold text-slate-800">عدد محاولات الاسترجاع</label>
-                <p class="mb-1 text-[11px] text-slate-500">كم مرة يحاول النظام استرجاع العميل؟</p>
+                <p class="mb-1 text-xs leading-snug text-slate-600">كم مرة يحاول النظام استرجاع العميل؟</p>
                 <div class="flex flex-wrap gap-2" role="group" aria-label="عدد المحاولات">
                   <label class="cf-dash-pill relative">
                     <input type="radio" name="recovery_attempts_pick" value="1" />
@@ -86,6 +86,14 @@
                 </div>
                 <input type="hidden" id="recovery_attempts" name="recovery_attempts" value="1" />
               </div>
+              <div class="rounded-xl border-2 border-violet-400/55 bg-gradient-to-br from-violet-50 via-white to-white p-3.5 shadow-sm ring-1 ring-violet-200/40">
+                <label class="mb-1 block text-sm font-bold text-slate-900" for="vip_cart_threshold">حد السلة المميزة (VIP)</label>
+                <p class="mb-2 text-xs font-medium leading-relaxed text-slate-700">إذا تجاوزت السلة هذا المبلغ، يتم التعامل معها بشكل خاص</p>
+                <input id="vip_cart_threshold" name="vip_cart_threshold" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="مثال: 500 ريال"
+                  class="w-full rounded-lg border-2 border-violet-300/80 bg-white px-3 py-2.5 text-base font-semibold text-slate-900 placeholder:text-slate-400 placeholder:font-normal focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/25" />
+                <p class="mt-2 rounded-lg bg-violet-100/80 px-2.5 py-1.5 text-xs font-bold text-violet-950">مثال: 500 ريال</p>
+                <p class="mt-1.5 text-[11px] font-medium text-slate-600">اتركه فارغاً لتعطيل الميزة</p>
+              </div>
               <div>
                 <label class="mb-1 block text-sm font-semibold text-slate-800" for="whatsapp_support_url">رابط دعم واتساب (اختياري)</label>
                 <input id="whatsapp_support_url" name="whatsapp_support_url" type="url" inputmode="url" autocomplete="off" placeholder="https://wa.me/9665xxxxxxxx"
@@ -97,12 +105,6 @@
                 <input id="store_whatsapp_number" name="store_whatsapp_number" type="text" inputmode="tel" autocomplete="off" placeholder="+9665XXXXXXXX"
                   class="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/35" />
                 <p class="mt-1 text-[11px] leading-snug text-slate-500">سيُستخدم مستقبلاً لإرسال الرسائل من رقمك مباشرة</p>
-              </div>
-              <div>
-                <label class="mb-1 block text-sm font-semibold text-slate-800" for="vip_cart_threshold">حد السلة المميزة (VIP)</label>
-                <input id="vip_cart_threshold" name="vip_cart_threshold" type="number" min="1" step="1" inputmode="numeric" autocomplete="off" placeholder="مثال: 500"
-                  class="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/35" />
-                <p class="mt-1 text-[11px] leading-snug text-slate-500">إذا تجاوزت السلة هذا المبلغ، سيتم التعامل معها بشكل خاص (قريباً)</p>
               </div>
             </div>
           </section>
@@ -144,6 +146,32 @@
       document.querySelectorAll('input[name="recovery_attempts_pick"]').forEach(function (r) {
         r.addEventListener("change", syncAttemptsFromPills);
       });
+
+      var vipField = document.getElementById("vip_cart_threshold");
+      if (vipField) {
+        vipField.addEventListener("input", function () {
+          var s = String(vipField.value || "").replace(/\D/g, "");
+          if (vipField.value !== s) vipField.value = s;
+        });
+        vipField.addEventListener("keydown", function (ev) {
+          if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
+          var k = ev.key;
+          if (
+            k === "Backspace" ||
+            k === "Delete" ||
+            k === "Tab" ||
+            k === "Escape" ||
+            k === "Enter" ||
+            k === "ArrowLeft" ||
+            k === "ArrowRight" ||
+            k === "Home" ||
+            k === "End"
+          ) {
+            return;
+          }
+          if (k.length === 1 && !/[0-9]/.test(k)) ev.preventDefault();
+        });
+      }
 
       function fillTimingAndWhatsapp(data) {
         document.getElementById("recovery_delay").value = data.recovery_delay;
