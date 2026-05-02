@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>الرسائل — CartFlow</title>
+  <title>إعدادات الرسائل والاستعادة — CartFlow</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -26,18 +26,26 @@
     <div class="min-w-0 w-full flex-1 bg-gradient-to-b from-emerald-50/30 to-slate-50 px-3 pb-28 pt-14 md:min-h-screen md:px-4 md:pb-24 md:pt-4">
       <div class="mx-auto w-full max-w-none md:max-w-2xl">
         <div class="cf-dash-hero">
-          <h1>الرسائل</h1>
-          <p>نمط رسائل الودجيت، رسائل الخروج قبل السلة، وقوالب استعادة السلة</p>
+          <h1>إعدادات الرسائل والاستعادة</h1>
+          <p>قسمان واضحان: إعدادات رسالة قبل الخروج، وإعدادات استعادة السلة عبر واتساب.</p>
         </div>
 
         <div id="errBox" class="mb-2 hidden rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"></div>
         <div id="okBox" class="mb-2 hidden rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-800">تم الحفظ بنجاح</div>
 
         <form id="f" class="cf-dash-compact space-y-2 md:space-y-2">
-          <section id="templates" tabindex="-1" class="cf-dash-card scroll-mt-20">
-            <div class="cf-dash-section-head">
-              <h2>🎭 نمط الرسائل</h2>
+          <div class="cf-dash-card">
+            <div class="flex flex-wrap gap-2 text-xs font-semibold">
+              <a href="#exit-intent-settings" class="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1.5 text-slate-700">إعدادات رسالة قبل الخروج</a>
+              <a href="#cart-recovery-settings" class="inline-flex items-center rounded-full border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-emerald-800">إعدادات استعادة السلة</a>
             </div>
+          </div>
+
+          <section id="cart-recovery-settings" tabindex="-1" class="cf-dash-card scroll-mt-20">
+            <div class="cf-dash-section-head">
+              <h2>🎭 إعدادات استعادة السلة</h2>
+            </div>
+            <p class="mb-2 text-[11px] leading-snug text-slate-500">هذا القسم مخصص لرسائل واتساب الاسترجاع (النمط + النصوص + القوالب). إعدادات رسالة الخروج موجودة في القسم المنفصل أدناه.</p>
             <input type="hidden" id="template_tone" name="template_tone" value="friendly" />
             <p class="mb-1.5 text-[11px] leading-snug text-slate-500">يُحفظ على الخادم كرسمي / ودي / بيع مباشر؛ خيار «مرح» يوسّع عبارات «ودي» محلياً في المتصفح فقط.</p>
             <div class="grid grid-cols-2 gap-1.5">
@@ -102,7 +110,7 @@
             </div>
           </section>
 
-          <section class="cf-dash-card">
+          <section id="exit-intent-settings" class="cf-dash-card scroll-mt-20">
             <div class="cf-switch-row border-0 pb-2">
               <div>
                 <p class="text-sm font-bold text-slate-900">رسالة الخروج قبل السلة</p>
@@ -160,9 +168,10 @@
 
           <section class="cf-dash-card" aria-labelledby="recovery-templates-heading">
             <div class="cf-dash-section-head">
-              <h2 id="recovery-templates-heading">رسائل استعادة السلة</h2>
+              <h2 id="recovery-templates-heading">قوالب رسائل الاستعادة (واتساب)</h2>
             </div>
             <p class="mb-2 text-[11px] leading-snug text-slate-500">اترك الحقل فارغاً للنص الافتراضي. يمكنك إدراج عبارة جاهزة ثم تعديلها.</p>
+            <p class="mb-2 text-[11px] leading-snug text-slate-500">لإدارة القوالب حسب سبب التردد (عدد الرسائل/التأخير/التفعيل)، استخدم <a href="/dashboard#trigger-templates-heading" class="font-semibold text-emerald-700 underline underline-offset-2">إعدادات استعادة السلة</a> في لوحة التحكم.</p>
 
             <div class="space-y-2 md:space-y-2">
               <div id="cf-msg-template-price" class="scroll-mt-24 rounded-lg border border-violet-100 bg-white p-2.5 shadow-sm ring-1 ring-zid-100/60">

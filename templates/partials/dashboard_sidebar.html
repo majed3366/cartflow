@@ -87,15 +87,15 @@
       class="group flex items-center gap-2 rounded-lg px-3 py-2.5 text-slate-600 transition-colors hover:bg-zid-50 hover:shadow-sm"
     >
       <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-[15px] shadow-inner transition-colors group-hover:bg-white group-hover:text-zid-700" aria-hidden="true">💬</span>
-      <span class="min-w-0 leading-snug">الرسائل</span>
+      <span class="min-w-0 leading-snug">إعدادات رسالة قبل الخروج</span>
     </a>
     <a
-      href="/dashboard/widget-customization"
-      data-dash-nav="cartflow-widget"
+      href="/dashboard/cartflow-messages#cart-recovery-settings"
+      data-dash-nav="cartflow-recovery-messages"
       class="group flex items-center gap-2 rounded-lg px-3 py-2.5 text-slate-600 transition-colors hover:bg-zid-50 hover:shadow-sm"
     >
-      <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-[15px] shadow-inner transition-colors group-hover:bg-white group-hover:text-zid-700" aria-hidden="true">🎨</span>
-      <span class="min-w-0 leading-snug">تخصيص الودجيت</span>
+      <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-[15px] shadow-inner transition-colors group-hover:bg-white group-hover:text-zid-700" aria-hidden="true">🧩</span>
+      <span class="min-w-0 leading-snug">إعدادات استعادة السلة</span>
     </a>
   </nav>
   <div class="shrink-0 border-t border-zid-100 p-3 space-y-2">
@@ -171,7 +171,7 @@
       var dashEl = document.querySelector('[data-dash-nav="dashboard"]');
       var recEl = document.querySelector('[data-dash-nav="cartflow-recovery"]');
       var msgEl = document.querySelector('[data-dash-nav="cartflow-messages"]');
-      var wdgEl = document.querySelector('[data-dash-nav="cartflow-widget"]');
+      var recMsgEl = document.querySelector('[data-dash-nav="cartflow-recovery-messages"]');
       var mainIdle =
         "group flex items-center gap-2 rounded-lg px-3 py-2.5 text-slate-600 transition-colors hover:bg-zid-50 hover:shadow-sm";
       var mainOn =
@@ -179,13 +179,17 @@
 
       var isDash = /^\/dashboard\/?$/.test(path);
       var isRecovery = path.indexOf("/dashboard/recovery-settings") === 0;
-      var isMessages = path.indexOf("/dashboard/cartflow-messages") === 0;
-      var isWidgetCustom = path.indexOf("/dashboard/widget-customization") === 0;
+      var onMessagesPath = path.indexOf("/dashboard/cartflow-messages") === 0;
+      var isMessages = onMessagesPath;
+      var isRecoveryMessages =
+        onMessagesPath &&
+        (window.location.hash || "").indexOf("cart-recovery-settings") >= 0;
+      if (isRecoveryMessages) isMessages = false;
 
       if (dashEl) dashEl.className = isDash ? mainOn : mainIdle;
       if (recEl) recEl.className = isRecovery ? mainOn : mainIdle;
       if (msgEl) msgEl.className = isMessages ? mainOn : mainIdle;
-      if (wdgEl) wdgEl.className = isWidgetCustom ? mainOn : mainIdle;
+      if (recMsgEl) recMsgEl.className = isRecoveryMessages ? mainOn : mainIdle;
     }
 
     applyDashboardNavActive();
