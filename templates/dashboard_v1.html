@@ -506,7 +506,7 @@
       class="mt-0.5 w-full max-w-full resize-y rounded-md border border-slate-200/90 bg-white px-1.5 py-1 text-[10px] leading-relaxed text-slate-800 placeholder:text-slate-400 focus:border-emerald-500/55 focus:outline-none focus:ring-1 focus:ring-emerald-500/30"></textarea>
   </div>
   {% endfor %}
-  <a href="/dashboard/cartflow-messages#cf-msg-template-{{ reason_key }}" class="mt-1 inline-flex text-[10px] font-medium text-emerald-800 underline decoration-emerald-300/80 underline-offset-2 hover:text-emerald-950">تعديل متقدم</a>
+  <a href="/dashboard/cart-recovery-messages#cf-msg-template-{{ reason_key }}" class="mt-1 inline-flex text-[10px] font-medium text-emerald-800 underline decoration-emerald-300/80 underline-offset-2 hover:text-emerald-950">تعديل متقدم</a>
 </div>
 {%- endmacro %}
   <div class="flex min-h-screen flex-col md:flex-row">
@@ -652,7 +652,7 @@
               💡 العملاء يحتاجون دفعة لاتخاذ القرار
               {% endif %}
             </p>
-            <a href="/dashboard/cartflow-messages#{{ trend_anchor }}" class="mt-2 inline-flex items-center justify-center rounded-lg border border-[rgba(108,92,231,0.45)] px-3 py-1.5 text-xs font-semibold leading-snug text-[#6C5CE7] shadow-sm transition-colors hover:bg-[rgba(108,92,231,0.09)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#6C5CE7]/40 md:text-[11px] md:px-2.5 md:py-1">
+            <a href="/dashboard/cart-recovery-messages#{{ trend_anchor }}" class="mt-2 inline-flex items-center justify-center rounded-lg border border-[rgba(108,92,231,0.45)] px-3 py-1.5 text-xs font-semibold leading-snug text-[#6C5CE7] shadow-sm transition-colors hover:bg-[rgba(108,92,231,0.09)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#6C5CE7]/40 md:text-[11px] md:px-2.5 md:py-1">
               {% if ns.top_key == 'price' %}
               👉 تحسين رسالة السعر
               {% elif ns.top_key == 'shipping' %}
@@ -693,7 +693,7 @@
               <button type="button" id="recoveryTrendSuggestCopy" class="inline-flex flex-1 items-center justify-center rounded-lg border border-[rgba(108,92,231,0.45)] bg-white px-3 py-2 text-[11px] font-semibold text-[#6C5CE7] shadow-sm transition-colors hover:bg-[rgba(108,92,231,0.1)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#6C5CE7]/35 sm:flex-none md:text-xs">
                 نسخ الرسالة
               </button>
-              <a href="/dashboard/cartflow-messages#{{ trend_anchor }}" class="inline-flex flex-1 items-center justify-center rounded-lg border border-[rgba(108,92,231,0.45)] bg-white/80 px-3 py-2 text-center text-[11px] font-semibold text-[#6C5CE7] shadow-sm transition-colors hover:bg-[rgba(108,92,231,0.1)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#6C5CE7]/35 sm:flex-none md:text-xs">
+              <a href="/dashboard/cart-recovery-messages#{{ trend_anchor }}" class="inline-flex flex-1 items-center justify-center rounded-lg border border-[rgba(108,92,231,0.45)] bg-white/80 px-3 py-2 text-center text-[11px] font-semibold text-[#6C5CE7] shadow-sm transition-colors hover:bg-[rgba(108,92,231,0.1)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#6C5CE7]/35 sm:flex-none md:text-xs">
                 تعديل الرسالة
               </a>
             </div>

@@ -20,6 +20,7 @@ import requests
 from dotenv import load_dotenv
 from fastapi import BackgroundTasks, Body, FastAPI, Query, Request
 from fastapi.responses import HTMLResponse, PlainTextResponse, Response
+from starlette.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.trustedhost import TrustedHostMiddleware
@@ -3591,10 +3592,26 @@ def dashboard_recovery_settings(request: Request):
 
 @app.get("/dashboard/cartflow-messages")
 def dashboard_cartflow_messages(request: Request):
-    """رسائل CartFlow — نفس ‎GET/POST /api/recovery-settings‎."""
+    """إعادة توجيه — الصفحة الموحّدة أصبحت منفصلة (خروج / استعادة)."""
+    return RedirectResponse(url="/dashboard/cart-recovery-messages", status_code=302)
+
+
+@app.get("/dashboard/exit-intent-settings")
+def dashboard_exit_intent_settings(request: Request):
+    """رسالة قبل الخروج فقط — نفس ‎GET/POST /api/recovery-settings‎ (تحديث جزئي)."""
     return templates.TemplateResponse(
         request,
-        "cartflow_messages.html",
+        "exit_intent_settings.html",
+        {"request": request},
+    )
+
+
+@app.get("/dashboard/cart-recovery-messages")
+def dashboard_cart_recovery_messages(request: Request):
+    """استعادة السلة وواتساب فقط — نفس ‎GET/POST /api/recovery-settings‎."""
+    return templates.TemplateResponse(
+        request,
+        "cart_recovery_messages.html",
         {"request": request},
     )
 

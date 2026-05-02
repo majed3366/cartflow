@@ -70,9 +70,6 @@
       <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-[15px] shadow-inner transition-colors group-hover:bg-white group-hover:text-zid-700" aria-hidden="true">🏠</span>
       <span class="min-w-0 leading-snug">لوحة التحكم</span>
     </a>
-    <div class="px-3 pb-1 pt-3 text-[11px] font-bold tracking-wide text-zid-600">
-      CartFlow ⚡
-    </div>
     <a
       href="/dashboard/recovery-settings"
       data-dash-nav="cartflow-recovery"
@@ -82,20 +79,28 @@
       <span class="min-w-0 leading-snug">إعدادات الاسترجاع</span>
     </a>
     <a
-      href="/dashboard/cartflow-messages#exit-intent-settings"
-      data-dash-nav="cartflow-messages"
+      href="/dashboard/exit-intent-settings"
+      data-dash-nav="exit-intent"
       class="group flex items-center gap-2 rounded-lg px-3 py-2.5 text-slate-600 transition-colors hover:bg-zid-50 hover:shadow-sm"
     >
       <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-[15px] shadow-inner transition-colors group-hover:bg-white group-hover:text-zid-700" aria-hidden="true">💬</span>
       <span class="min-w-0 leading-snug">إعدادات رسالة قبل الخروج</span>
     </a>
     <a
-      href="/dashboard/cartflow-messages#cart-recovery-settings"
-      data-dash-nav="cartflow-recovery-messages"
+      href="/dashboard/cart-recovery-messages"
+      data-dash-nav="cart-recovery-msgs"
       class="group flex items-center gap-2 rounded-lg px-3 py-2.5 text-slate-600 transition-colors hover:bg-zid-50 hover:shadow-sm"
     >
       <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-[15px] shadow-inner transition-colors group-hover:bg-white group-hover:text-zid-700" aria-hidden="true">🧩</span>
       <span class="min-w-0 leading-snug">إعدادات استعادة السلة</span>
+    </a>
+    <a
+      href="/dashboard/widget-customization"
+      data-dash-nav="widget-customization"
+      class="group flex items-center gap-2 rounded-lg px-3 py-2.5 text-slate-600 transition-colors hover:bg-zid-50 hover:shadow-sm"
+    >
+      <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-[15px] shadow-inner transition-colors group-hover:bg-white group-hover:text-zid-700" aria-hidden="true">🎨</span>
+      <span class="min-w-0 leading-snug">تخصيص الودجيت</span>
     </a>
   </nav>
   <div class="shrink-0 border-t border-zid-100 p-3 space-y-2">
@@ -170,8 +175,9 @@
       var path = window.location.pathname || "";
       var dashEl = document.querySelector('[data-dash-nav="dashboard"]');
       var recEl = document.querySelector('[data-dash-nav="cartflow-recovery"]');
-      var msgEl = document.querySelector('[data-dash-nav="cartflow-messages"]');
-      var recMsgEl = document.querySelector('[data-dash-nav="cartflow-recovery-messages"]');
+      var exitEl = document.querySelector('[data-dash-nav="exit-intent"]');
+      var recMsgEl = document.querySelector('[data-dash-nav="cart-recovery-msgs"]');
+      var widgetEl = document.querySelector('[data-dash-nav="widget-customization"]');
       var mainIdle =
         "group flex items-center gap-2 rounded-lg px-3 py-2.5 text-slate-600 transition-colors hover:bg-zid-50 hover:shadow-sm";
       var mainOn =
@@ -179,17 +185,15 @@
 
       var isDash = /^\/dashboard\/?$/.test(path);
       var isRecovery = path.indexOf("/dashboard/recovery-settings") === 0;
-      var onMessagesPath = path.indexOf("/dashboard/cartflow-messages") === 0;
-      var isMessages = onMessagesPath;
-      var isRecoveryMessages =
-        onMessagesPath &&
-        (window.location.hash || "").indexOf("cart-recovery-settings") >= 0;
-      if (isRecoveryMessages) isMessages = false;
+      var isExitIntent = path.indexOf("/dashboard/exit-intent-settings") === 0;
+      var isCartRecovery = path.indexOf("/dashboard/cart-recovery-messages") === 0;
+      var isWidget = path.indexOf("/dashboard/widget-customization") === 0;
 
       if (dashEl) dashEl.className = isDash ? mainOn : mainIdle;
       if (recEl) recEl.className = isRecovery ? mainOn : mainIdle;
-      if (msgEl) msgEl.className = isMessages ? mainOn : mainIdle;
-      if (recMsgEl) recMsgEl.className = isRecoveryMessages ? mainOn : mainIdle;
+      if (exitEl) exitEl.className = isExitIntent ? mainOn : mainIdle;
+      if (recMsgEl) recMsgEl.className = isCartRecovery ? mainOn : mainIdle;
+      if (widgetEl) widgetEl.className = isWidget ? mainOn : mainIdle;
     }
 
     applyDashboardNavActive();

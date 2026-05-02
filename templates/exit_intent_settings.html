@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>إعدادات رسالة قبل الخروج — CartFlow</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            zid: { 500: "#7c3aed", 600: "#6d28d9", 100: "#ede9fe", 50: "#f5f3ff" },
+          },
+        },
+      },
+    };
+  </script>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  {% include "partials/recovery_dashboard_styles.html" %}
+  <style>
+    .cf-page-exit { border-radius: 1.125rem; border: 2px solid rgb(125 211 252 / 0.75); background: rgb(240 249 255 / 0.65); box-shadow: 0 1px 2px rgb(15 23 42 / 0.04); }
+  </style>
+</head>
+<body class="min-h-screen bg-slate-50 text-slate-800 antialiased" data-cf-msg-mode="exit">
+  {% include "partials/cart_abandon_tracking.html" %}
+  <div class="flex min-h-screen flex-col md:flex-row">
+    {% include "partials/dashboard_sidebar.html" %}
+    <div class="min-w-0 w-full flex-1 bg-gradient-to-b from-sky-50/40 to-slate-50 px-3 pb-28 pt-14 md:min-h-screen md:px-4 md:pb-24 md:pt-4">
+      <div class="mx-auto w-full max-w-none md:max-w-2xl">
+        <div class="cf-dash-hero">
+          <h1>إعدادات رسالة قبل الخروج</h1>
+          <p>رسالة داخل المتجر عند محاولة مغادرة الصفحة — منفصلة عن استعادة السلة وواتساب.</p>
+        </div>
+
+        <div id="errBox" class="mb-2 hidden rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"></div>
+        <div id="okBox" class="mb-2 hidden rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-800">تم الحفظ بنجاح</div>
+
+        <form id="f" class="cf-dash-compact space-y-2 md:space-y-2">
+          <section id="exit-intent-settings" tabindex="-1" class="cf-dash-card cf-page-exit scroll-mt-20">
+            <div class="cf-dash-section-head">
+              <h2>🚪 رسالة قبل الخروج</h2>
+            </div>
+            <p class="mb-2 text-[11px] leading-snug text-slate-600">أول رسالة عند مغادرة الصفحة بدون منتجات في السلة.</p>
+            <div class="space-y-2">
+              <div>
+                <label class="mb-1 block text-xs font-semibold text-slate-800" for="exit_intent_template_tone">أسلوب رسالة الخروج</label>
+                <select id="exit_intent_template_tone" name="exit_intent_template_tone"
+                  class="rs-select w-full rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/35">
+                  <option value="friendly">ودي</option>
+                  <option value="formal">رسمي</option>
+                  <option value="sales">بيع مباشر</option>
+                </select>
+              </div>
+              <div id="exit_intent_phrase_row" class="border-t border-slate-200 pt-2">
+                <label class="mb-1 block text-xs font-semibold text-slate-800" for="exit_intent_phrase_pick">عبارات جاهزة لرسالة الخروج</label>
+                <select id="exit_intent_phrase_pick" class="sr-only" tabindex="-1" aria-hidden="true">
+                  <option value="">اختر عبارة جاهزة</option>
+                </select>
+                <div id="exit_intent_bubbles" class="flex flex-col gap-1.5"></div>
+                <div id="exit_intent_phrase_preview" class="mt-1.5 hidden rounded-lg border border-violet-100 bg-zid-50/95 px-2 py-1.5">
+                  <p class="text-[10px] font-semibold text-zid-800">مثال:</p>
+                  <p id="exit_intent_phrase_preview_body" class="mt-0.5 whitespace-pre-wrap text-[11px] leading-snug text-slate-700"></p>
+                </div>
+                <p class="mt-1 text-[10px] leading-snug text-slate-500">يملأ خانة النص ويحوّل الوضع إلى «نص مخصص» لتقدر تعدّل قبل الحفظ.</p>
+              </div>
+              <div class="grid grid-cols-1 gap-1.5">
+                <label class="cf-tone-card cf-tone-choice flex cursor-pointer items-start gap-2 text-right">
+                  <input type="radio" name="exit_intent_template_mode" value="preset" id="exit_intent_mode_preset" class="mt-1 h-4 w-4 shrink-0 border-slate-300 text-emerald-600 focus:ring-emerald-500" checked />
+                  <span>
+                    <span class="block text-sm font-bold text-slate-900">استخدام أسلوب جاهز</span>
+                    <span class="mt-0.5 block text-[11px] text-slate-500">اختر من العبارات المعدّة مسبقاً</span>
+                  </span>
+                </label>
+                <label class="cf-tone-card cf-tone-choice flex cursor-pointer items-start gap-2 text-right">
+                  <input type="radio" name="exit_intent_template_mode" value="custom" id="exit_intent_mode_custom" class="mt-1 h-4 w-4 shrink-0 border-slate-300 text-emerald-600 focus:ring-emerald-500" />
+                  <span>
+                    <span class="block text-sm font-bold text-slate-900">كتابة نص مخصص</span>
+                    <span class="mt-0.5 block text-[11px] text-slate-500">اكتب رسالة الخروج بنفسك</span>
+                  </span>
+                </label>
+              </div>
+              <div id="exit_intent_custom_wrap" class="hidden space-y-1">
+                <label class="mb-1 block text-xs font-semibold text-slate-800" for="exit_intent_custom_text">النص المخصص لرسالة الخروج</label>
+                <textarea id="exit_intent_custom_text" name="exit_intent_custom_text" rows="3"
+                  placeholder="النص الذي يظهر في أول رسالة لفقاعة الخروج…"
+                  class="w-full resize-y rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/35"></textarea>
+              </div>
+            </div>
+          </section>
+
+          <div class="cf-dash-save-wrap">
+            <button type="submit" id="saveBtn" class="cf-dash-save">💾 حفظ الإعدادات</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  <script src="/static/cartflow_dashboard_messages.js"></script>
+</body>
+</html>
