@@ -7,8 +7,9 @@ import hashlib
 import json
 import logging
 import os
-import threading
 import tempfile
+import threading
+import time
 import traceback
 from types import SimpleNamespace
 from datetime import datetime, timedelta, timezone
@@ -1155,6 +1156,8 @@ _session_recovery_send_count: dict[str, int] = {}
 _session_recovery_multi_logged: dict[str, bool] = {}
 _session_recovery_multi_attempt_cap: dict[str, int] = {}
 _MAX_RECOVERY_ATTEMPTS = 1
+_RECOVERY_REASON_POLL_INTERVAL_SEC = 0.15
+_RECOVERY_REASON_POLL_MAX_ATTEMPTS = 67
 _recovery_session_lock = threading.Lock()
 
 # خطوة إضافية منطقية (سابقاً كان عندها خطوتان أخريان) — لسجلات «توقفت بعد الأولى»
@@ -1989,6 +1992,139 @@ async def _run_recovery_sequence_after_cart_abandoned(
     print("[RECOVERY TASK COMPLETED SAFELY]")
 
 
+def _schedule_recovery_multi_slots(
+    recovery_key: str,
+    slots: list[dict[str, Any]],
+    *,
+    elapsed_seconds: float,
+    store_slug: str,
+    session_id: str,
+    cart_id: Optional[str],
+    abandon_event_phone: Optional[str],
+) -> None:
+    es = float(elapsed_seconds)
+    try:
+        print("[MULTI MESSAGE MODE]")
+        print("reason=", slots[0]["canon"])
+        print("count=", len(slots))
+    except Exception:  # noqa: BLE001
+        pass
+    with _recovery_session_lock:
+        _session_recovery_multi_attempt_cap[recovery_key] = len(slots)
+    for s in slots:
+        try:
+            print("[MULTI MESSAGE SCHEDULED]")
+            print("reason=", s["canon"])
+            print("index=", s["index"])
+            print("delay=", s["delay_display"])
+            print("unit=", s["unit_display"])
+        except Exception:  # noqa: BLE001
+            pass
+        remain = max(0.0, float(s["delay_seconds"]) - es)
+        asyncio.create_task(
+            _run_recovery_sequence_after_cart_abandoned(
+                recovery_key,
+                remain,
+                store_slug,
+                session_id,
+                cart_id,
+                abandon_event_phone,
+                multi_slot_index=int(s["index"]),
+                multi_message_text=str(s.get("text") or ""),
+            )
+        )
+
+
+async def _run_recovery_dispatch_cart_abandoned_impl(
+    recovery_key: str,
+    store_slug: str,
+    session_id: str,
+    cart_id: Optional[str],
+    abandon_event_phone: Optional[str],
+    abandon_monotonic: float,
+) -> None:
+    reason_tag: Optional[str] = None
+    store_row: Optional[Any] = None
+    for _ in range(_RECOVERY_REASON_POLL_MAX_ATTEMPTS):
+        store_row = _load_store_row_for_recovery(store_slug)
+        reason_tag = _reason_tag_for_session(store_slug, session_id)
+        slots_try = multi_message_slots_for_abandon(reason_tag, store_row)
+        if slots_try is not None:
+            elapsed = time.monotonic() - abandon_monotonic
+            _schedule_recovery_multi_slots(
+                recovery_key,
+                slots_try,
+                elapsed_seconds=elapsed,
+                store_slug=store_slug,
+                session_id=session_id,
+                cart_id=cart_id,
+                abandon_event_phone=abandon_event_phone,
+            )
+            return
+        if reason_tag:
+            break
+        await asyncio.sleep(_RECOVERY_REASON_POLL_INTERVAL_SEC)
+
+    elapsed = time.monotonic() - abandon_monotonic
+    store_row = _load_store_row_for_recovery(store_slug)
+    reason_tag = _reason_tag_for_session(store_slug, session_id)
+    slots_final = multi_message_slots_for_abandon(reason_tag, store_row)
+    if slots_final is not None:
+        _schedule_recovery_multi_slots(
+            recovery_key,
+            slots_final,
+            elapsed_seconds=elapsed,
+            store_slug=store_slug,
+            session_id=session_id,
+            cart_id=cart_id,
+            abandon_event_phone=abandon_event_phone,
+        )
+        return
+
+    config = None
+    delay_s = float(get_recovery_delay(reason_tag, store_config=config))
+    remain = max(0.0, delay_s - elapsed)
+    print("starting delay task")
+    asyncio.create_task(
+        _run_recovery_sequence_after_cart_abandoned(
+            recovery_key,
+            remain,
+            store_slug,
+            session_id,
+            cart_id,
+            abandon_event_phone,
+        )
+    )
+
+
+async def _run_recovery_dispatch_cart_abandoned(
+    recovery_key: str,
+    store_slug: str,
+    session_id: str,
+    cart_id: Optional[str],
+    abandon_event_phone: Optional[str],
+    abandon_monotonic: float,
+) -> None:
+    try:
+        await _run_recovery_dispatch_cart_abandoned_impl(
+            recovery_key,
+            store_slug,
+            session_id,
+            cart_id,
+            abandon_event_phone,
+            abandon_monotonic,
+        )
+    except asyncio.CancelledError:
+        raise
+    except SystemExit:
+        raise
+    except KeyboardInterrupt:
+        raise
+    except BaseException as e:
+        print("[RECOVERY DISPATCH CAUGHT ERROR]", str(e))
+    print("[RECOVERY DISPATCH COMPLETED SAFELY]")
+
+
 async def handle_cart_abandoned(
     _background_tasks: BackgroundTasks, payload: dict[str, Any]
 ) -> dict[str, Any]:
@@ -2065,62 +2201,41 @@ async def handle_cart_abandoned(
         db.session.rollback()
         store_row = None
     print("store settings loaded")
-    reason_tag = _reason_tag_for_session(store_slug, session_id_log)
-    slots = multi_message_slots_for_abandon(reason_tag, store_row)
-    if slots:
-        try:
-            print("[MULTI MESSAGE MODE]")
-            print("reason=", slots[0]["canon"])
-            print("count=", len(slots))
-        except Exception:  # noqa: BLE001
-            pass
-        with _recovery_session_lock:
-            _session_recovery_multi_attempt_cap[recovery_key] = len(slots)
-        for s in slots:
-            try:
-                print("[MULTI MESSAGE SCHEDULED]")
-                print("reason=", s["canon"])
-                print("index=", s["index"])
-                print("delay=", s["delay_display"])
-                print("unit=", s["unit_display"])
-            except Exception:  # noqa: BLE001
-                pass
-            asyncio.create_task(
-                _run_recovery_sequence_after_cart_abandoned(
-                    recovery_key,
-                    float(s["delay_seconds"]),
-                    store_slug,
-                    session_id_log,
-                    cart_id_log,
-                    abandon_evt_phone,
-                    multi_slot_index=int(s["index"]),
-                    multi_message_text=str(s.get("text") or ""),
-                )
-            )
+    reason_tag_sync = _reason_tag_for_session(store_slug, session_id_log)
+    slots_sync = multi_message_slots_for_abandon(reason_tag_sync, store_row)
+    if slots_sync:
+        _schedule_recovery_multi_slots(
+            recovery_key,
+            slots_sync,
+            elapsed_seconds=0.0,
+            store_slug=store_slug,
+            session_id=session_id_log,
+            cart_id=cart_id_log,
+            abandon_event_phone=abandon_evt_phone,
+        )
         return {
             "recovery_scheduled": True,
             "recovery_multi_message": True,
-            "recovery_multi_count": len(slots),
-            "recovery_delay_seconds": float(slots[0]["delay_seconds"]),
+            "recovery_multi_count": len(slots_sync),
+            "recovery_delay_seconds": float(slots_sync[0]["delay_seconds"]),
             "recovery_state": "scheduled",
         }
-    config = None  # future: dashboard may pass recovery_delays overrides
-    delay_s = float(get_recovery_delay(reason_tag, store_config=config))
-    print("starting delay task")
+
+    abandon_mono = time.monotonic()
     asyncio.create_task(
-        _run_recovery_sequence_after_cart_abandoned(
+        _run_recovery_dispatch_cart_abandoned(
             recovery_key,
-            delay_s,
             store_slug,
             session_id_log,
             cart_id_log,
             abandon_evt_phone,
+            abandon_mono,
         )
     )
     return {
         "recovery_scheduled": True,
-        "recovery_delay_seconds": delay_s,
         "recovery_state": "scheduled",
+        "recovery_delay_seconds": None,
     }
 
 
