@@ -34,10 +34,23 @@
         <div id="okBox" class="mb-2 hidden rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-800">تم الحفظ بنجاح</div>
 
         <form id="f" class="cf-dash-compact space-y-2">
-          <section class="cf-dash-card">
+          <section class="rounded-2xl border-2 border-emerald-300/70 bg-emerald-50/70 p-3 shadow-sm">
             <div class="cf-dash-section-head">
-              <h2>⏱️ الوقت والاتصال</h2>
+              <h2>🎯 قوالب حسب سبب التردد (التحكم الأساسي)</h2>
             </div>
+            <p class="text-[11px] leading-snug text-emerald-900">هذه هي أولوية التحكم الأساسية في الاسترجاع لكل سبب (السعر، الشحن، الجودة...).</p>
+            <p class="mt-1 text-[11px] leading-snug text-emerald-800/90">إذا تم ضبط إعداد خاص للسبب، يتم اعتماده أولاً قبل الإعدادات العامة أدناه.</p>
+            <a
+              href="/dashboard"
+              class="mt-2 inline-flex min-h-[40px] items-center justify-center rounded-lg border border-emerald-700/30 bg-white px-3 py-1.5 text-xs font-bold text-emerald-800 hover:bg-emerald-50"
+            >فتح قوالب حسب سبب التردد</a>
+          </section>
+
+          <section class="cf-dash-card border-slate-200/80 bg-slate-50/55">
+            <div class="cf-dash-section-head">
+              <h2>⏱️ إعدادات عامة (Fallback)</h2>
+            </div>
+            <p class="mb-2 text-[11px] leading-snug text-slate-500">تُستخدم هذه الإعدادات فقط إذا لم يتم تحديد إعداد خاص لكل سبب من أسباب التردد.</p>
             <div class="space-y-2.5">
               <div>
                 <label class="mb-1 block text-sm font-semibold text-slate-800" for="recovery_delay">مدة الانتظار قبل الإرسال</label>
