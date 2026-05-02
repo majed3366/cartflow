@@ -162,16 +162,83 @@
 
     .cf-trigger-templates-shell {
       scroll-margin-top: 5rem;
+      margin-top: 0.25rem;
+    }
+
+    .cf-trigger-templates-panel {
+      border-radius: 18px;
+      border: 2px solid rgba(22, 101, 52, 0.22);
+      background: linear-gradient(165deg, #f0fdf4 0%, #ffffff 38%, #fafafa 100%);
+      box-shadow:
+        0 12px 40px -18px rgba(22, 101, 52, 0.25),
+        0 1px 0 rgba(255, 255, 255, 0.8) inset;
+      box-sizing: border-box;
+      max-width: 100%;
+      overflow-x: hidden;
+    }
+
+    .cf-trigger-templates-head {
+      border-bottom: 1px solid rgba(22, 101, 52, 0.14);
+      padding-bottom: 0.65rem;
+      margin-bottom: 0.65rem;
+    }
+
+    .cf-trigger-templates-head h2 {
+      font-size: 1.125rem;
+      font-weight: 700;
+      color: #0f172a;
+      letter-spacing: -0.01em;
+    }
+
+    .cf-trigger-templates-head p {
+      margin-top: 0.35rem;
+      font-size: 0.8125rem;
+      line-height: 1.45;
+      color: #64748b;
+    }
+
+    .cf-trigger-reason-cards {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .cf-trigger-reason-card {
+      border-radius: 12px;
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      background: rgba(255, 255, 255, 0.96);
+      padding: 0.5rem 0.65rem;
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+      box-sizing: border-box;
+      max-width: 100%;
+    }
+
+    .cf-trigger-reason-card > p:first-child {
+      margin-bottom: 0.35rem;
+      padding-bottom: 0.35rem;
+    }
+
+    .cf-trigger-save-bar {
+      position: sticky;
+      bottom: 0;
+      z-index: 30;
+      margin: 0.5rem -0.35rem -0.35rem;
+      margin-top: 0.65rem;
+      padding: 0.5rem 0.35rem 0.65rem;
+      border-top: 1px solid rgba(22, 101, 52, 0.12);
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.72) 0%, #fff 35%);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
     }
 
     .cf-dash-toggle {
       flex: 1 1 auto;
-      min-width: 7.25rem;
-      padding: 7px 12px;
+      min-width: 0;
+      padding: 6px 10px;
       border-radius: 10px;
       border: 1px solid rgba(148, 163, 184, 0.55);
-      background: rgba(255, 255, 255, 0.85);
-      color: #475569;
+      background: rgba(248, 250, 252, 0.95);
+      color: #64748b;
       font-size: 11px;
       font-weight: 600;
       line-height: 1.35;
@@ -185,75 +252,147 @@
     }
 
     .cf-dash-toggle:focus-visible {
-      outline: 2px solid rgba(108, 92, 231, 0.55);
+      outline: 2px solid rgba(22, 163, 74, 0.45);
       outline-offset: 2px;
     }
 
-    .cf-dash-toggle--active {
-      border-color: rgba(108, 92, 231, 0.65);
-      background: rgba(108, 92, 231, 0.14);
-      color: #4338ca;
-      box-shadow: 0 1px 3px rgba(108, 92, 231, 0.18);
+    .cf-dash-toggle--active.cf-dash-toggle-on {
+      border-color: rgba(22, 163, 74, 0.75);
+      background: rgba(220, 252, 231, 0.95);
+      color: #14532d;
+      box-shadow: 0 1px 3px rgba(22, 163, 74, 0.2);
+      opacity: 1;
+    }
+
+    .cf-dash-toggle--active.cf-dash-toggle-off {
+      border-color: rgba(148, 163, 184, 0.75);
+      background: rgba(241, 245, 249, 0.98);
+      color: #475569;
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
       opacity: 1;
     }
 
     .cf-dash-toggle--muted {
-      opacity: 0.52;
+      opacity: 0.45;
+      border-color: rgba(226, 232, 240, 0.95);
+      background: rgba(255, 255, 255, 0.65);
+    }
+
+    .cf-msgcount-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.35rem 0.5rem;
+      padding-top: 0.35rem;
+      margin-top: 0.35rem;
+      border-top: 1px solid rgba(226, 232, 240, 0.9);
+    }
+
+    .cf-msgcount-label {
+      display: inline-flex;
+      cursor: pointer;
+      align-items: center;
+      justify-content: center;
+      min-width: 2.25rem;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(203, 213, 225, 0.95);
+      background: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      color: #475569;
+      transition: border-color 0.12s ease, background 0.12s ease, color 0.12s ease;
+    }
+
+    .cf-msgcount-label:has(input:checked) {
+      border-color: rgba(22, 163, 74, 0.75);
+      background: rgba(220, 252, 231, 0.85);
+      color: #14532d;
+    }
+
+    .cf-msgcount-label input {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    .cf-slot-wrap {
+      margin-top: 0.35rem;
+      padding: 0.45rem 0.5rem;
+      border-radius: 10px;
+    }
+
+    .cf-slot-wrap .cf-slot-delay-row {
+      margin-bottom: 0.35rem;
+    }
+
+    @supports not selector(:has(*)) {
+      .cf-msgcount-label input:focus + span {
+        outline: 2px solid rgba(22, 163, 74, 0.35);
+        outline-offset: 2px;
+        border-radius: 4px;
+      }
     }
   </style>
 </head>
 <body class="min-h-screen bg-slate-50 text-slate-800 antialiased">
 {% macro dash_trigger_card(reason_key, label_ar) -%}
-<div class="relative rounded-lg border border-zid-100/90 bg-white/95 p-3 shadow-sm ring-1 ring-zid-100/35 md:p-2.5" data-dash-trigger-card="{{ reason_key }}">
-  <p class="mb-2 border-b border-zid-100/65 pb-1.5 text-xs font-semibold leading-snug text-slate-800">سبب التردد: {{ label_ar }}</p>
-  <div class="mb-2">
-    <span class="mb-1.5 block text-[10px] font-medium text-slate-600">حالة الإرسال</span>
-    <div class="flex flex-wrap gap-2" role="group" aria-label="حالة الإرسال لهذا السبب">
+<div class="cf-trigger-reason-card relative" data-dash-trigger-card="{{ reason_key }}">
+  <div class="flex flex-wrap items-start justify-between gap-1.5 border-b border-slate-200/80 pb-1.5">
+    <p class="min-w-0 flex-1 text-[11px] font-bold leading-snug text-slate-900">سبب التردد: {{ label_ar }}</p>
+    <div class="flex shrink-0 flex-wrap gap-1" role="group" aria-label="تفعيل الإرسال لهذا السبب">
       <button type="button" data-dash-trigger-on="{{ reason_key }}" aria-pressed="true"
-        class="cf-dash-toggle cf-dash-toggle--active">☑️ مفعل</button>
+        class="cf-dash-toggle cf-dash-toggle-on cf-dash-toggle--active">☑️ مفعل</button>
       <button type="button" data-dash-trigger-off="{{ reason_key }}" aria-pressed="false"
-        class="cf-dash-toggle cf-dash-toggle--muted">❌ غير مفعل</button>
+        class="cf-dash-toggle cf-dash-toggle-off cf-dash-toggle--muted">❌ غير مفعل</button>
     </div>
     <input type="checkbox" data-dash-trigger-toggle="{{ reason_key }}" checked tabindex="-1" class="sr-only" />
   </div>
-  <p class="mb-2 text-[10px] leading-relaxed text-slate-600 md:text-[9px]" data-dash-trigger-hint="{{ reason_key }}" aria-live="polite"></p>
-  <div class="mb-2 flex flex-wrap items-center gap-2 border-t border-zid-100/55 pt-2">
-    <span class="text-[10px] font-medium text-slate-700">عدد الرسائل:</span>
-    <div class="flex flex-wrap gap-2 text-[10px] text-slate-700">
-      <label class="inline-flex cursor-pointer items-center gap-1 rounded-md bg-zid-50/80 px-2 py-0.5 ring-1 ring-zid-100/80">
-        <input type="radio" name="msgcount-{{ reason_key }}" value="1" checked data-dash-msgcount="{{ reason_key }}" class="accent-zid-600" />
+  <p class="mt-1 text-[10px] leading-snug text-slate-600" data-dash-trigger-hint="{{ reason_key }}" aria-live="polite"></p>
+  <div class="cf-msgcount-row">
+    <span class="text-[10px] font-semibold text-slate-700">عدد الرسائل:</span>
+    <div class="flex flex-wrap gap-1" data-dash-msgcount-wrap="{{ reason_key }}">
+      <label class="cf-msgcount-label relative">
+        <input type="radio" name="msgcount-{{ reason_key }}" value="1" checked data-dash-msgcount="{{ reason_key }}" />
         <span>1</span>
       </label>
-      <label class="inline-flex cursor-pointer items-center gap-1 rounded-md bg-zid-50/80 px-2 py-0.5 ring-1 ring-zid-100/80">
-        <input type="radio" name="msgcount-{{ reason_key }}" value="2" data-dash-msgcount="{{ reason_key }}" class="accent-zid-600" />
+      <label class="cf-msgcount-label relative">
+        <input type="radio" name="msgcount-{{ reason_key }}" value="2" data-dash-msgcount="{{ reason_key }}" />
         <span>2</span>
       </label>
-      <label class="inline-flex cursor-pointer items-center gap-1 rounded-md bg-zid-50/80 px-2 py-0.5 ring-1 ring-zid-100/80">
-        <input type="radio" name="msgcount-{{ reason_key }}" value="3" data-dash-msgcount="{{ reason_key }}" class="accent-zid-600" />
+      <label class="cf-msgcount-label relative">
+        <input type="radio" name="msgcount-{{ reason_key }}" value="3" data-dash-msgcount="{{ reason_key }}" />
         <span>3</span>
       </label>
     </div>
   </div>
   {% for slot in [1, 2, 3] %}
-  <div class="mb-2 rounded-md border border-zid-100/70 bg-white px-2 py-2 shadow-inner ring-1 ring-zid-100/30 {% if slot > 1 %}hidden{% endif %}" data-dash-slot-wrap="{{ reason_key }}" data-slot-index="{{ slot }}">
-    <p class="mb-1 text-[10px] font-semibold text-slate-800">رسالة {{ slot }}</p>
-    <div class="mb-1.5 flex flex-wrap items-center gap-1.5">
+  <div class="cf-slot-wrap mb-0 border border-slate-200/75 bg-slate-50/40 {% if slot > 1 %}hidden{% endif %}" data-dash-slot-wrap="{{ reason_key }}" data-slot-index="{{ slot }}">
+    <p class="mb-0.5 text-[10px] font-semibold text-slate-800">رسالة {{ slot }}</p>
+    <div class="cf-slot-delay-row flex flex-wrap items-center gap-1">
       <label class="flex flex-wrap items-center gap-1 text-[10px] font-medium text-slate-600">
         <span class="whitespace-nowrap">التأخير</span>
         <input type="number" min="1" step="1" value="2" data-dash-slot-delay="{{ reason_key }}" data-slot-index="{{ slot }}"
-          class="w-12 rounded border border-zid-100 px-1 py-0.5 text-[10px] text-slate-800 md:w-14" />
+          class="w-11 max-w-full rounded border border-slate-200 px-1 py-0.5 text-[10px] text-slate-800" />
       </label>
-      <select data-dash-slot-unit="{{ reason_key }}" data-slot-index="{{ slot }}" class="rounded border border-zid-100 bg-white px-1.5 py-0.5 text-[10px] text-slate-800">
+      <select data-dash-slot-unit="{{ reason_key }}" data-slot-index="{{ slot }}" class="max-w-full rounded border border-slate-200 bg-white px-1 py-0.5 text-[10px] text-slate-800">
         <option value="minute">دقيقة</option>
         <option value="hour">ساعة</option>
+        <option value="day">يوم</option>
       </select>
     </div>
-    <label class="mb-0.5 block text-[10px] font-medium text-slate-600" for="dash-slot-text-{{ reason_key }}-{{ slot }}">نص الرسالة</label>
-    <textarea id="dash-slot-text-{{ reason_key }}-{{ slot }}" rows="3" data-dash-slot-text="{{ reason_key }}" data-slot-index="{{ slot }}"
-      class="w-full resize-y rounded-md border border-zid-100/90 bg-white px-2 py-1.5 text-[10px] leading-relaxed text-slate-800 shadow-inner placeholder:text-slate-400 focus:border-zid-400 focus:outline-none focus:ring-1 focus:ring-zid-400/45 md:text-[10px]"></textarea>
+    <label class="mb-0 block text-[10px] font-medium text-slate-600" for="dash-slot-text-{{ reason_key }}-{{ slot }}">نص الرسالة</label>
+    <textarea id="dash-slot-text-{{ reason_key }}-{{ slot }}" rows="2" data-dash-slot-text="{{ reason_key }}" data-slot-index="{{ slot }}"
+      class="mt-0.5 w-full max-w-full resize-y rounded-md border border-slate-200/90 bg-white px-1.5 py-1 text-[10px] leading-relaxed text-slate-800 placeholder:text-slate-400 focus:border-emerald-500/55 focus:outline-none focus:ring-1 focus:ring-emerald-500/30"></textarea>
   </div>
   {% endfor %}
-  <a href="/dashboard/cartflow-messages#cf-msg-template-{{ reason_key }}" class="mt-1.5 inline-flex text-[10px] font-medium text-zid-700 underline decoration-zid-300 underline-offset-2 hover:text-zid-900 hover:decoration-zid-500 md:text-[9px]">تعديل متقدم</a>
+  <a href="/dashboard/cartflow-messages#cf-msg-template-{{ reason_key }}" class="mt-1 inline-flex text-[10px] font-medium text-emerald-800 underline decoration-emerald-300/80 underline-offset-2 hover:text-emerald-950">تعديل متقدم</a>
 </div>
 {%- endmacro %}
   <div class="flex min-h-screen flex-col md:flex-row">
@@ -270,37 +409,8 @@
         {% endif %}
       </header>
 
-      <main class="w-full space-y-8 px-4 py-6 pb-10 md:max-w-5xl md:space-y-6 md:p-6 md:pb-6">
+      <main class="w-full space-y-6 px-4 py-6 pb-24 md:max-w-5xl md:space-y-5 md:p-6 md:pb-24">
         {% set quality_rows = reason_bar | selectattr("key", "equalto", "quality") | list %}
-
-        <section aria-labelledby="trigger-templates-heading" class="cf-trigger-templates-shell">
-          <div class="rounded-2xl border-2 border-[#6C5CE7]/28 bg-gradient-to-br from-[#faf9ff] via-white to-violet-50/35 px-5 py-5 shadow-[0_10px_40px_-14px_rgba(108,92,231,0.38)] ring-1 ring-[rgba(108,92,231,0.18)] md:px-6 md:py-5">
-            <header class="mb-4 border-b border-[rgba(108,92,231,0.22)] pb-3 md:mb-3 md:pb-2.5">
-              <h2 id="trigger-templates-heading" class="text-lg font-bold leading-snug text-slate-900 md:text-base">
-                قوالب حسب سبب التردد
-              </h2>
-              <p class="mt-2 text-sm leading-relaxed text-slate-600 md:mt-1.5 md:text-xs md:text-slate-500">
-                تحكم في رسائل كل سبب، وعدد الرسائل، وتوقيت الإرسال.
-              </p>
-            </header>
-            <div class="flex flex-col gap-2">
-              {{ dash_trigger_card("price", "السعر") }}
-              {{ dash_trigger_card("shipping", "الشحن") }}
-              {{ dash_trigger_card("warranty", "الضمان") }}
-              {{ dash_trigger_card("thinking", "التردد") }}
-              {% if quality_rows | length > 0 %}
-              {{ dash_trigger_card("quality", "الجودة") }}
-              {% endif %}
-            </div>
-            <div class="mt-3 flex flex-col gap-2 border-t border-[rgba(108,92,231,0.18)] pt-3 md:flex-row md:flex-wrap md:items-center md:justify-between md:gap-3">
-              <button type="button" id="cf-save-multi-msg-settings"
-                class="inline-flex items-center justify-center rounded-lg border border-[rgba(108,92,231,0.45)] bg-[#6C5CE7] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#5b4bd4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#6C5CE7]/45 md:text-xs md:py-2">
-                حفظ إعدادات الرسائل
-              </button>
-              <p id="cf-multi-msg-save-status" class="hidden text-sm font-medium leading-snug text-emerald-700 md:text-xs" role="status" aria-live="polite"></p>
-            </div>
-          </div>
-        </section>
 
         <!-- قسم مالي -->
         <section aria-labelledby="kpi-heading">
@@ -323,6 +433,31 @@
               <p class="mb-1 text-2xl" aria-hidden="true">📈</p>
               <p class="text-sm font-medium leading-snug text-slate-500 md:text-xs">معدل التحويل (مسترجع / إجمالي السلات الم trackّة)</p>
               <p class="mt-1 text-2xl font-bold text-emerald-700">{{ "%.1f"|format(conversion_pct) }}%</p>
+            </div>
+          </div>
+        </section>
+
+        <section aria-labelledby="trigger-templates-heading" class="cf-trigger-templates-shell">
+          <div class="cf-trigger-templates-panel px-3.5 py-3 md:px-5 md:py-4">
+            <header class="cf-trigger-templates-head">
+              <h2 id="trigger-templates-heading">قوالب حسب سبب التردد</h2>
+              <p>تحكم في رسائل كل سبب، وعدد الرسائل، وتوقيت الإرسال.</p>
+            </header>
+            <div class="cf-trigger-reason-cards">
+              {{ dash_trigger_card("price", "السعر") }}
+              {{ dash_trigger_card("shipping", "الشحن") }}
+              {{ dash_trigger_card("warranty", "الضمان") }}
+              {{ dash_trigger_card("thinking", "التردد") }}
+              {% if quality_rows | length > 0 %}
+              {{ dash_trigger_card("quality", "الجودة") }}
+              {% endif %}
+            </div>
+            <div class="cf-trigger-save-bar flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between">
+              <button type="button" id="cf-save-multi-msg-settings"
+                class="inline-flex w-full min-h-[44px] items-center justify-center rounded-xl border border-emerald-800/25 bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-emerald-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600/50 sm:w-auto sm:min-w-[12rem] md:text-sm">
+                حفظ الإعدادات
+              </button>
+              <p id="cf-multi-msg-save-status" class="hidden text-center text-xs font-semibold leading-snug text-emerald-700 sm:text-right md:text-xs" role="status" aria-live="polite"></p>
             </div>
           </div>
         </section>
@@ -739,8 +874,12 @@
                 var uv = String(uu).trim().toLowerCase();
                 if (uv === "minutes") uv = "minute";
                 if (uv === "hours") uv = "hour";
-                uEl.value =
-                  uv === "hour" || uv === "minute" ? uv : pair[1];
+                if (uv === "days") uv = "day";
+                if (uv === "hour" || uv === "minute" || uv === "day") {
+                  uEl.value = uv;
+                } else {
+                  uEl.value = pair[1];
+                }
               } else {
                 uEl.value = pair[1];
               }
@@ -791,6 +930,10 @@
             var delayRaw = dEl ? parseFloat(String(dEl.value || "1"), 10) : 1;
             if (!(delayRaw >= 1)) delayRaw = 1;
             var unitRaw = uEl ? String(uEl.value || "minute") : "minute";
+            if (unitRaw === "day") {
+              unitRaw = "hour";
+              delayRaw = delayRaw * 24;
+            }
             messages.push({
               delay: delayRaw,
               unit: unitRaw,
@@ -904,7 +1047,7 @@
             if (ok) {
               console.log("[MULTI MESSAGE SETTINGS SAVED]");
               if (statusEl) {
-                statusEl.textContent = "تم حفظ إعدادات الرسائل";
+                statusEl.textContent = "تم الحفظ بنجاح";
                 statusEl.classList.remove("hidden");
                 window.setTimeout(function () {
                   statusEl.classList.add("hidden");
