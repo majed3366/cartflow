@@ -665,6 +665,8 @@ def _merge_recovery_settings_post_body(body: Dict[str, Any]) -> Dict[str, Any]:
             out["recovery_delay_unit"] = row.recovery_delay_unit
         if "recovery_attempts" not in body:
             out["recovery_attempts"] = row.recovery_attempts
+        if "store_whatsapp_number" not in body:
+            out["store_whatsapp_number"] = getattr(row, "store_whatsapp_number", None)
     return out
 
 
@@ -675,6 +677,8 @@ def _dev_apply_recovery_settings_update(
     *,
     whatsapp_support_url: Any = None,
     update_whatsapp: bool = False,
+    store_whatsapp_number: Any = None,
+    update_store_whatsapp: bool = False,
     request_body: Optional[Dict[str, Any]] = None,
 ) -> Tuple[Dict[str, Any], int]:
     """
@@ -714,6 +718,14 @@ def _dev_apply_recovery_settings_update(
             row.whatsapp_support_url = None
         else:
             row.whatsapp_support_url = str(whatsapp_support_url).strip()[:2048]
+    if update_store_whatsapp:
+        if store_whatsapp_number is None or (
+            isinstance(store_whatsapp_number, str)
+            and not (store_whatsapp_number or "").strip()
+        ):
+            row.store_whatsapp_number = None
+        else:
+            row.store_whatsapp_number = str(store_whatsapp_number).strip()[:64]
     if request_body is not None:
         _apply_recovery_template_fields_from_body(row, request_body)
         apply_trigger_templates_from_body(row, request_body)
@@ -725,12 +737,16 @@ def _dev_apply_recovery_settings_update(
     wa: Optional[str] = getattr(row, "whatsapp_support_url", None)
     if not (isinstance(wa, str) and wa.strip()):
         wa = None
+    sw: Optional[str] = getattr(row, "store_whatsapp_number", None)
+    if not (isinstance(sw, str) and sw.strip()):
+        sw = None
     payload: Dict[str, Any] = {
         "ok": True,
         "recovery_delay": row.recovery_delay,
         "recovery_delay_unit": row.recovery_delay_unit,
         "recovery_attempts": row.recovery_attempts,
         "whatsapp_support_url": wa,
+        "store_whatsapp_number": sw,
     }
     payload.update(_recovery_template_fields_for_api(row))
     payload.update(trigger_templates_fields_for_api(row))
@@ -1070,12 +1086,15 @@ async def dev_recovery_settings_update(request: Request):
             return j({"ok": False, "error": "json_object_required"}, 400)
         body = _merge_recovery_settings_post_body(body)
         uw = "whatsapp_support_url" in body
+        us = "store_whatsapp_number" in body
         data, code = _dev_apply_recovery_settings_update(
             body.get("recovery_delay"),
             body.get("recovery_delay_unit"),
             body.get("recovery_attempts"),
             whatsapp_support_url=body.get("whatsapp_support_url") if uw else None,
             update_whatsapp=uw,
+            store_whatsapp_number=body.get("store_whatsapp_number") if us else None,
+            update_store_whatsapp=us,
             request_body=body,
         )
         return j(data, code)
@@ -1099,12 +1118,15 @@ async def api_recovery_settings(request: Request):
             return j({"ok": False, "error": "json_object_required"}, 400)
         body = _merge_recovery_settings_post_body(body)
         uw = "whatsapp_support_url" in body
+        us = "store_whatsapp_number" in body
         data, code = _dev_apply_recovery_settings_update(
             body.get("recovery_delay"),
             body.get("recovery_delay_unit"),
             body.get("recovery_attempts"),
             whatsapp_support_url=body.get("whatsapp_support_url") if uw else None,
             update_whatsapp=uw,
+            store_whatsapp_number=body.get("store_whatsapp_number") if us else None,
+            update_store_whatsapp=us,
             request_body=body,
         )
         return j(data, code)
@@ -1128,12 +1150,16 @@ def api_recovery_settings_get():
         wa: Optional[str] = getattr(row, "whatsapp_support_url", None)
         if not (isinstance(wa, str) and wa.strip()):
             wa = None
+        sw: Optional[str] = getattr(row, "store_whatsapp_number", None)
+        if not (isinstance(sw, str) and sw.strip()):
+            sw = None
         payload = {
             "ok": True,
             "recovery_delay": row.recovery_delay,
             "recovery_delay_unit": row.recovery_delay_unit,
             "recovery_attempts": row.recovery_attempts,
             "whatsapp_support_url": wa,
+            "store_whatsapp_number": sw,
         }
         payload.update(_recovery_template_fields_for_api(row))
         payload.update(trigger_templates_fields_for_api(row))
@@ -1554,6 +1580,14 @@ def _assert_forbidden_stale_recovery_phone(phone: str) -> None:
         raise RuntimeError("Forbidden stale test phone")
 
 
+def resolve_whatsapp_sender(store: Any) -> str:
+    """يحسم وضع مرسل واتساب مستقبلياً بدون تغيير مسار الإرسال الحالي."""
+    raw = getattr(store, "store_whatsapp_number", None) if store is not None else None
+    mode = "store_number_future" if isinstance(raw, str) and raw.strip() else "twilio_default"
+    log.info("[WA SENDER MODE] mode=%s", mode)
+    return mode
+
+
 async def _run_recovery_sequence_after_cart_abandoned_impl(
     recovery_key: str,
     delay_seconds: float,
@@ -1623,6 +1657,7 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
         return None
     rt_raw = (reason_row.reason or "").strip() if reason_row else ""
     store_obj = _load_store_row_for_recovery(store_slug)
+    resolve_whatsapp_sender(store_obj)
     if multi_slot_index is not None:
         if not rt_raw:
             reason_tag = None

@@ -525,6 +525,17 @@ def ensure_store_widget_schema(db: Any) -> None:
                     db.session.commit()
                 except (OSError, SQLAlchemyError, IntegrityError):
                     db.session.rollback()
+            existing = {c["name"] for c in insp.get_columns("stores")}
+            if "store_whatsapp_number" not in existing:
+                try:
+                    db.session.execute(
+                        text(
+                            "ALTER TABLE stores ADD COLUMN store_whatsapp_number VARCHAR(64)"
+                        )
+                    )
+                    db.session.commit()
+                except (OSError, SQLAlchemyError, IntegrityError):
+                    db.session.rollback()
         _store_abandonment_schema_ensured = True
     except (OSError, SQLAlchemyError) as e:
         db.session.rollback()

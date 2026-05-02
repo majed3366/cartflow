@@ -79,6 +79,12 @@
                   class="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/35" />
                 <p class="mt-1 text-[11px] leading-snug text-slate-500">يستخدم عندما يختار العميل التواصل معك</p>
               </div>
+              <div>
+                <label class="mb-1 block text-sm font-semibold text-slate-800" for="store_whatsapp_number">رقم واتساب المتجر (اختياري)</label>
+                <input id="store_whatsapp_number" name="store_whatsapp_number" type="text" inputmode="tel" autocomplete="off" placeholder="+9665XXXXXXXX"
+                  class="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/35" />
+                <p class="mt-1 text-[11px] leading-snug text-slate-500">سيُستخدم مستقبلاً لإرسال الرسائل من رقمك مباشرة</p>
+              </div>
             </div>
           </section>
 
@@ -131,6 +137,7 @@
         );
         if (r) r.checked = true;
         document.getElementById("whatsapp_support_url").value = data.whatsapp_support_url || "";
+        document.getElementById("store_whatsapp_number").value = data.store_whatsapp_number || "";
       }
 
       fetch("/api/recovery-settings")
@@ -162,6 +169,10 @@
           whatsapp_support_url:
             (document.getElementById("whatsapp_support_url") &&
               document.getElementById("whatsapp_support_url").value) ||
+            "",
+          store_whatsapp_number:
+            (document.getElementById("store_whatsapp_number") &&
+              document.getElementById("store_whatsapp_number").value) ||
             "",
         };
         fetch("/api/recovery-settings", {
