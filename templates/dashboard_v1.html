@@ -445,7 +445,6 @@
       var saveTimer = null;
 
       function uiKeyToReasonTag(uiKey) {
-        if (uiKey === "thinking") return "other";
         return uiKey;
       }
 
@@ -466,12 +465,18 @@
       function syncHint(cb, hintEl) {
         if (!hintEl || !cb) return;
         hintEl.textContent = cb.checked
-          ? "سيتم استخدام هذه الرسالة تلقائيًا"
-          : "سيتم استخدام النظام الافتراضي";
+          ? "سيتم إرسال الرسالة تلقائيًا"
+          : "لن يتم إرسال رسالة لهذا السبب";
       }
 
-      function applyTriggerTemplatesFromApi(tt) {
-        var map = tt && typeof tt === "object" ? tt : {};
+      function applyTriggerTemplatesFromApi(rt, tt) {
+        var map =
+          rt && typeof rt === "object" && Object.keys(rt).length
+            ? rt
+            : {};
+        if (!Object.keys(map).length && tt && typeof tt === "object" && tt.other) {
+          map = { thinking: tt.other };
+        }
         triggerKeysOnPage().forEach(function (uiKey) {
           var tag = uiKeyToReasonTag(uiKey);
           var cb = document.querySelector('[data-dash-trigger-toggle="' + uiKey + '"]');
@@ -492,18 +497,32 @@
         });
       }
 
-      function buildTriggerTemplatesPayload() {
+      function buildReasonTemplatesPayload() {
         var out = {};
         triggerKeysOnPage().forEach(function (uiKey) {
           var tag = uiKeyToReasonTag(uiKey);
           var cb = document.querySelector('[data-dash-trigger-toggle="' + uiKey + '"]');
           var ta = document.querySelector('[data-dash-trigger-text="' + uiKey + '"]');
           out[tag] = {
-            enabled: cb ? !!cb.checked : false,
+            enabled: cb ? !!cb.checked : true,
             message: ta ? String(ta.value || "") : "",
           };
         });
         return out;
+      }
+
+      function mirrorTriggerTemplatesForLegacyApi(rt) {
+        var o = {};
+        ["price", "shipping", "warranty", "quality"].forEach(function (k) {
+          if (rt[k]) o[k] = rt[k];
+        });
+        if (rt.thinking) {
+          o.other = {
+            enabled: rt.thinking.enabled,
+            message: rt.thinking.message,
+          };
+        }
+        return o;
       }
 
       function scheduleSaveTriggerTemplates() {
@@ -518,7 +537,10 @@
           var data = await res.json();
           if (!data || !data.ok) return;
           recoveryState = data;
-          applyTriggerTemplatesFromApi(data.trigger_templates || {});
+          applyTriggerTemplatesFromApi(
+            data.reason_templates || {},
+            data.trigger_templates || {}
+          );
         } catch (e) {
           /* offline */
         }
@@ -527,11 +549,13 @@
       async function saveTriggerTemplatesToServer() {
         if (!recoveryState || !recoveryState.ok) return;
         try {
+          var rt = buildReasonTemplatesPayload();
           var body = {
             recovery_delay: recoveryState.recovery_delay,
             recovery_delay_unit: recoveryState.recovery_delay_unit,
             recovery_attempts: recoveryState.recovery_attempts,
-            trigger_templates: buildTriggerTemplatesPayload(),
+            reason_templates: rt,
+            trigger_templates: mirrorTriggerTemplatesForLegacyApi(rt),
           };
           if (
             typeof recoveryState.whatsapp_support_url === "string" &&

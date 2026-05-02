@@ -202,9 +202,17 @@ from services.store_widget_customization import (
     apply_widget_customization_from_body,
     widget_customization_fields_for_api,
 )
+from services.store_reason_templates import (
+    apply_reason_templates_from_body,
+    reason_templates_fields_for_api,
+)
 from services.store_trigger_templates import (
     apply_trigger_templates_from_body,
     trigger_templates_fields_for_api,
+)
+from services.reason_template_recovery import (
+    reason_template_blocks_recovery_whatsapp,
+    resolve_recovery_whatsapp_message_with_reason_templates,
 )
 
 log = logging.getLogger("cartflow")
@@ -706,6 +714,7 @@ def _dev_apply_recovery_settings_update(
     if request_body is not None:
         _apply_recovery_template_fields_from_body(row, request_body)
         apply_trigger_templates_from_body(row, request_body)
+        apply_reason_templates_from_body(row, request_body)
         apply_template_control_from_body(row, request_body)
         apply_exit_intent_template_control_from_body(row, request_body)
         apply_widget_customization_from_body(row, request_body)
@@ -722,6 +731,7 @@ def _dev_apply_recovery_settings_update(
     }
     payload.update(_recovery_template_fields_for_api(row))
     payload.update(trigger_templates_fields_for_api(row))
+    payload.update(reason_templates_fields_for_api(row))
     payload.update(template_control_fields_for_api(row))
     payload.update(exit_intent_template_fields_for_api(row))
     payload.update(widget_customization_fields_for_api(row))
@@ -1124,6 +1134,7 @@ def api_recovery_settings_get():
         }
         payload.update(_recovery_template_fields_for_api(row))
         payload.update(trigger_templates_fields_for_api(row))
+        payload.update(reason_templates_fields_for_api(row))
         payload.update(template_control_fields_for_api(row))
         payload.update(exit_intent_template_fields_for_api(row))
         payload.update(widget_customization_fields_for_api(row))
@@ -1595,7 +1606,23 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
     store_obj = _load_store_row_for_recovery(store_slug)
     if rt_raw:
         reason_tag = rt_raw
-        text = decide_recovery_action(reason_tag, store=store_obj)["message"]
+        if reason_template_blocks_recovery_whatsapp(reason_tag, store_obj):
+            skip_tpl_msg = _default_recovery_message()
+            _persist_cart_recovery_log(
+                store_slug=store_slug,
+                session_id=session_id,
+                cart_id=cart_id,
+                phone=None,
+                message=skip_tpl_msg,
+                status="skipped_reason_template_disabled",
+                step=step_num,
+            )
+            print("[RECOVERY TASK EXIT CLEANLY]")
+            print("reason=reason_template_disabled")
+            return None
+        text = resolve_recovery_whatsapp_message_with_reason_templates(
+            reason_tag, store=store_obj
+        )
     else:
         reason_tag = None
         text = _DEFAULT_DECISION_FALLBACK_MESSAGE

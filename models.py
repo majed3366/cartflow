@@ -62,6 +62,8 @@ class Store(Base):
     template_other = Column(Text, nullable=True)
     # قوالب مشغّل الاسترجاع (‎reason_tag‎ → ‎enabled‎ + ‎message‎) كـ JSON
     trigger_templates_json = Column(Text, nullable=True)
+    # قوالب سبب الاسترجاع (تفعيل/تعطيل لكل سبب + نص) — لوحة التحكم ‎reason_templates‎
+    reason_templates_json = Column(Text, nullable=True)
     # واجهة الودجت: نمط الرسائل (قيمة افتراضية = سلوك النظام الحالي)
     template_mode = Column(String(32), default="preset", nullable=False)
     template_tone = Column(String(32), default="friendly", nullable=False)
