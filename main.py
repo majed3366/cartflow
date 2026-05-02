@@ -212,6 +212,7 @@ from services.store_trigger_templates import (
     trigger_templates_fields_for_api,
 )
 from services.reason_template_recovery import (
+    canonical_reason_template_key,
     reason_template_blocks_recovery_whatsapp,
     resolve_recovery_whatsapp_message_with_reason_templates,
 )
@@ -1155,6 +1156,7 @@ _session_recovery_returned: dict[str, bool] = {}
 _session_recovery_send_count: dict[str, int] = {}
 _session_recovery_multi_logged: dict[str, bool] = {}
 _session_recovery_multi_attempt_cap: dict[str, int] = {}
+_session_recovery_multi_verified_indexes: dict[str, set[int]] = {}
 _MAX_RECOVERY_ATTEMPTS = 1
 _RECOVERY_REASON_POLL_INTERVAL_SEC = 0.15
 _RECOVERY_REASON_POLL_MAX_ATTEMPTS = 67
@@ -1681,8 +1683,11 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
     last_activity = _last_activity_utc_from_recovery_row(reason_row)
     now = datetime.now(timezone.utc)
     delay_minutes = _recovery_delay_minutes_from_store(store_obj)
+    delay_gate_activity = (
+        None if multi_slot_index is not None else last_activity
+    )
     should_send = should_send_whatsapp(
-        last_activity,
+        delay_gate_activity,
         user_returned_to_site=False,
         now=now,
         store=store_obj,
@@ -1884,6 +1889,16 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
         )
         return None
 
+    if multi_slot_index is not None:
+        reason_attempt_log = canonical_reason_template_key(reason_tag) or reason_tag or ""
+        try:
+            print("[MULTI WA SEND ATTEMPT]")
+            print("reason=", reason_attempt_log)
+            print("index=", int(multi_slot_index))
+            print("text=", text)
+        except Exception:  # noqa: BLE001
+            pass
+
     _assert_forbidden_stale_recovery_phone(phone)
     wa_result = send_whatsapp(
         phone,
@@ -1896,13 +1911,59 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
         wa_trace_recovery_delay_minutes=delay_minutes,
         wa_trace_delay_passed=True,
     )
-    success = isinstance(wa_result, dict) and wa_result.get("ok") is True
+    wa_dict = wa_result if isinstance(wa_result, dict) else {}
+    ok_flag = wa_dict.get("ok") is True
+    sid_str = str(wa_dict.get("sid") or "").strip()
+    status_raw = wa_dict.get("status")
+
+    if multi_slot_index is not None:
+        try:
+            print("[MULTI WA SEND RESULT]")
+            print("index=", int(multi_slot_index))
+            print("ok=", ok_flag)
+            print("sid=", sid_str)
+            print("status=", status_raw if status_raw is not None else "")
+        except Exception:  # noqa: BLE001
+            pass
+
+    if multi_slot_index is None:
+        success = ok_flag
+    else:
+        success = ok_flag and bool(sid_str)
+        if not success:
+            try:
+                if ok_flag and not sid_str:
+                    err_out = "missing_sid"
+                else:
+                    e = wa_dict.get("error")
+                    err_out = str(e) if e is not None else "send_failed"
+                print("[MULTI MESSAGE FAILED]")
+                print("index=", int(multi_slot_index))
+                print("error=", err_out)
+            except Exception:  # noqa: BLE001
+                pass
+
     if success:
         print("[DELAY SEND EXECUTED]")
+        mt_ok: Optional[int] = None
         with _recovery_session_lock:
             _session_recovery_send_count[recovery_key] = sent_count + 1
+            if multi_slot_index is not None:
+                _session_recovery_multi_verified_indexes.setdefault(
+                    recovery_key, set()
+                ).add(int(multi_slot_index))
+                mc = _session_recovery_multi_attempt_cap.get(recovery_key)
+                mt_ok = int(mc) if mc is not None else None
+        if multi_slot_index is not None and mt_ok is not None:
+            try:
+                print("[MULTI MESSAGE SENT]")
+                print("index=", int(multi_slot_index))
+                print("total=", mt_ok)
+            except Exception:  # noqa: BLE001
+                pass
+
     if not success:
-        if isinstance(wa_result, dict) and wa_result.get("error") == "user_rejected_help":
+        if wa_dict.get("error") == "user_rejected_help":
             print("skipped_user_rejected_help = True")
             _persist_cart_recovery_log(
                 store_slug=store_slug,
@@ -1953,20 +2014,18 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
         return
 
     with _recovery_session_lock:
-        new_sent = _session_recovery_send_count.get(recovery_key, 0)
         multi_total = _session_recovery_multi_attempt_cap.get(recovery_key)
 
     if multi_slot_index is not None and multi_total is not None:
-        try:
-            print("[MULTI MESSAGE SENT]")
-            print("index=", int(multi_slot_index))
-            print("total=", int(multi_total))
-        except Exception:  # noqa: BLE001
-            pass
-        if new_sent >= int(multi_total):
+        with _recovery_session_lock:
+            verified_n = len(
+                _session_recovery_multi_verified_indexes.get(recovery_key, set())
+            )
+        if verified_n >= int(multi_total):
             with _recovery_session_lock:
                 _session_recovery_sent[recovery_key] = True
                 _session_recovery_multi_attempt_cap.pop(recovery_key, None)
+                _session_recovery_multi_verified_indexes.pop(recovery_key, None)
             print("[RECOVERY FULLY COMPLETED]")
         return
 
@@ -2028,6 +2087,7 @@ def _schedule_recovery_multi_slots(
     except Exception:  # noqa: BLE001
         pass
     with _recovery_session_lock:
+        _session_recovery_multi_verified_indexes.pop(recovery_key, None)
         _session_recovery_multi_attempt_cap[recovery_key] = len(slots)
     for s in slots:
         try:

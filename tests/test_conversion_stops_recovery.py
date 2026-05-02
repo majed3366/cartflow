@@ -24,6 +24,9 @@ def _reset() -> None:
         main._session_recovery_converted.clear()
         main._session_recovery_returned.clear()
         main._session_recovery_send_count.clear()
+        main._session_recovery_multi_logged.clear()
+        main._session_recovery_multi_attempt_cap.clear()
+        main._session_recovery_multi_verified_indexes.clear()
         main._dev_delay_test_send_count.clear()
     from services.recovery_session_phone import recovery_phone_memory_clear
 
