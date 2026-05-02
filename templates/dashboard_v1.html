@@ -425,6 +425,13 @@
             {{ dash_trigger_card("quality", "الجودة") }}
             {% endif %}
           </div>
+          <div class="mt-4 flex flex-col gap-3 border-t border-zid-100 pt-4 md:flex-row md:flex-wrap md:items-center md:justify-between">
+            <button type="button" id="cf-save-multi-msg-settings"
+              class="inline-flex items-center justify-center rounded-lg border border-[rgba(108,92,231,0.45)] bg-[#6C5CE7] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#5b4bd4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#6C5CE7]/45 md:text-xs md:py-2">
+              حفظ إعدادات الرسائل
+            </button>
+            <p id="cf-multi-msg-save-status" class="hidden text-sm font-medium leading-snug text-emerald-700 md:text-xs" role="status" aria-live="polite"></p>
+          </div>
         </section>
 
         <!-- بث مباشر -->
@@ -790,8 +797,8 @@
         }
       }
 
-      async function saveTriggerTemplatesToServer() {
-        if (!recoveryState || !recoveryState.ok) return;
+      async function persistRecoverySettingsReasonTemplates() {
+        if (!recoveryState || !recoveryState.ok) return false;
         try {
           var rt = buildReasonTemplatesPayload();
           var body = {
@@ -813,10 +820,47 @@
             body: JSON.stringify(body),
           });
           var data = await res.json();
-          if (data && data.ok) recoveryState = data;
+          if (data && data.ok) {
+            recoveryState = data;
+            return true;
+          }
+          return false;
         } catch (e) {
-          /* ignore */
+          return false;
         }
+      }
+
+      async function saveTriggerTemplatesToServer() {
+        await persistRecoverySettingsReasonTemplates();
+      }
+
+      function bindMultiMessageSaveButton() {
+        var btn = document.getElementById("cf-save-multi-msg-settings");
+        var statusEl = document.getElementById("cf-multi-msg-save-status");
+        if (!btn) return;
+        btn.addEventListener("click", async function () {
+          if (!recoveryState || !recoveryState.ok) return;
+          if (saveTimer) {
+            window.clearTimeout(saveTimer);
+            saveTimer = null;
+          }
+          btn.disabled = true;
+          try {
+            var ok = await persistRecoverySettingsReasonTemplates();
+            if (ok) {
+              console.log("[MULTI MESSAGE SETTINGS SAVED]");
+              if (statusEl) {
+                statusEl.textContent = "تم حفظ إعدادات الرسائل";
+                statusEl.classList.remove("hidden");
+                window.setTimeout(function () {
+                  statusEl.classList.add("hidden");
+                }, 5000);
+              }
+            }
+          } finally {
+            btn.disabled = false;
+          }
+        });
       }
 
       function bind() {
@@ -876,6 +920,7 @@
             }
           }
         });
+        bindMultiMessageSaveButton();
       }
 
       loadRecoverySettings().then(function () {
