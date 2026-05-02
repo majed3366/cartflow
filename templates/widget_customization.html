@@ -23,78 +23,128 @@
   {% include "partials/cart_abandon_tracking.html" %}
   <div class="flex min-h-screen flex-col md:flex-row">
     {% include "partials/dashboard_sidebar.html" %}
-    <div class="min-w-0 w-full flex-1 bg-gradient-to-b from-zid-50/90 to-slate-50 px-3 pb-10 pt-14 md:min-h-screen md:px-4 md:pb-5 md:pt-4">
-      <div class="mx-auto w-full max-w-none md:max-w-2xl">
-        <header class="mb-4 md:mb-3">
-          <h1 class="text-xl font-bold leading-snug text-zid-900 md:text-lg md:leading-normal">تخصيص الودجيت</h1>
-          <p class="mt-1 text-xs leading-relaxed text-slate-600 md:mt-0.5 md:text-[11px] md:leading-snug md:text-slate-500">اسم الودجيت واللون والشكل — يُحفظ عبر <code class="rounded bg-slate-100 px-1 text-[10px]">POST /api/recovery-settings</code> كما سبق.</p>
-        </header>
+    <div class="min-w-0 w-full flex-1 bg-gradient-to-b from-emerald-50/40 to-slate-50 px-3 pb-28 pt-14 md:min-h-screen md:px-4 md:pb-24 md:pt-4">
+      <div class="cf-dash-shell">
+        <div class="cf-dash-hero">
+          <p class="text-[11px] font-semibold opacity-90">CARTFLOW ⚡</p>
+          <h1>تخصيص الودجيت</h1>
+          <p>غيّر لون الودجيت، موضعه، والرسالة الترحيبية — يُحفظ الاسم واللون والشكل عبر الخادم؛ المعاينة تعكس الإعدادات المحفوظة والخيارات التجريبية أدناه.</p>
+        </div>
 
-        <div id="errBox" class="mb-3 hidden rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-sm leading-snug text-red-800 md:mb-2 md:text-xs"></div>
-        <div id="okBox" class="mb-3 hidden rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-sm leading-snug text-emerald-800 md:mb-2 md:text-xs">تم الحفظ.</div>
+        <div id="errBox" class="mb-2 hidden rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"></div>
+        <div id="okBox" class="mb-2 hidden rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-800">تم الحفظ بنجاح</div>
 
-        <form id="f" class="space-y-6 md:space-y-5">
-          <section class="rs-card scroll-mt-4 mb-1 mt-2 border-t-[3px] border-t-emerald-500 shadow-[0_4px_14px_-4px_rgba(16,185,129,.35)] ring-1 ring-emerald-100/90" id="widget-custom">
-            <h2 class="rs-section-title">تخصيص الودجيت</h2>
-            <p class="mb-2 text-[10px] leading-snug text-slate-500">يظهر للزائر في رأس الودجيت وأزرار المساعدة فقط؛ لا يغيّر منطق الاسترجاع أو التوقيت.</p>
-            <div class="space-y-4 md:space-y-2">
-              <div>
-                <label class="mb-1 block text-sm font-medium leading-snug text-slate-700 md:mb-0 md:text-xs" for="widget_name">اسم الودجيت</label>
-                <input id="widget_name" name="widget_name" type="text" maxlength="120"
-                  placeholder="مساعد المتجر"
-                  autocomplete="off"
-                  class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm transition-colors hover:border-violet-200 focus:border-zid-500 focus:outline-none focus:ring-1 focus:ring-zid-500" />
-              </div>
-              <div>
-                <label class="mb-1 block text-sm font-medium leading-snug text-slate-700 md:mb-0 md:text-xs" for="widget_primary_color">اللون الأساسي</label>
-                <div class="mt-1 flex flex-wrap items-center gap-3 md:gap-2">
-                  <input id="widget_primary_color" name="widget_primary_color" type="color"
-                    value="#6C5CE7"
-                    class="h-12 w-[4.5rem] cursor-pointer rounded-lg border border-slate-200 bg-white p-1 shadow-sm md:h-10 md:w-16" />
-                  <div id="widget_color_presets" class="flex flex-wrap gap-2">
-                    <button type="button" data-widget-preset="#6C5CE7" title="#6C5CE7" aria-label="بنفسجي"
-                      class="h-9 w-9 rounded-lg border border-slate-200 shadow-sm ring-offset-2 hover:ring-2 hover:ring-zid-400 focus:outline-none focus:ring-2 focus:ring-zid-500 md:h-8 md:w-8"
-                      style="background:#6C5CE7"></button>
-                    <button type="button" data-widget-preset="#00B894" title="#00B894" aria-label="أخضر"
-                      class="h-9 w-9 rounded-lg border border-slate-200 shadow-sm hover:ring-2 hover:ring-zid-400 focus:outline-none focus:ring-2 focus:ring-zid-500 md:h-8 md:w-8"
-                      style="background:#00B894"></button>
-                    <button type="button" data-widget-preset="#0984E3" title="#0984E3" aria-label="أزرق"
-                      class="h-9 w-9 rounded-lg border border-slate-200 shadow-sm hover:ring-2 hover:ring-zid-400 focus:outline-none focus:ring-2 focus:ring-zid-500 md:h-8 md:w-8"
-                      style="background:#0984E3"></button>
-                    <button type="button" data-widget-preset="#E17055" title="#E17055" aria-label="مرجاني"
-                      class="h-9 w-9 rounded-lg border border-slate-200 shadow-sm hover:ring-2 hover:ring-zid-400 focus:outline-none focus:ring-2 focus:ring-zid-500 md:h-8 md:w-8"
-                      style="background:#E17055"></button>
-                    <button type="button" data-widget-preset="#FDCB6E" title="#FDCB6E" aria-label="ذهبي فاتح"
-                      class="h-9 w-9 rounded-lg border border-slate-200 shadow-sm hover:ring-2 hover:ring-zid-400 focus:outline-none focus:ring-2 focus:ring-zid-500 md:h-8 md:w-8"
-                      style="background:#FDCB6E"></button>
-                    <button type="button" data-widget-preset="#2D3436" title="#2D3436" aria-label="رمادي داكن"
-                      class="h-9 w-9 rounded-lg border border-slate-200 shadow-sm hover:ring-2 hover:ring-zid-400 focus:outline-none focus:ring-2 focus:ring-zid-500 md:h-8 md:w-8"
-                      style="background:#2D3436"></button>
-                  </div>
+        <form id="f" class="cf-dash-compact space-y-2 md:space-y-2">
+          <section class="cf-dash-card overflow-hidden">
+            <div class="cf-dash-section-head">
+              <h2>🖥️ معاينة مباشرة</h2>
+            </div>
+            <div id="cf-widget-preview" class="rounded-xl bg-slate-900 px-3 py-3 text-white shadow-inner transition-colors">
+              <div class="mb-2 flex items-start justify-end gap-2">
+                <div id="cf-preview-avatar" class="hidden h-8 w-8 shrink-0 rounded-full border border-white/20 bg-white/10 text-center text-lg leading-8" aria-hidden="true">👤</div>
+                <div
+                  id="cf-preview-bubble"
+                  class="max-w-[85%] rounded-2xl rounded-br-md px-3 py-2 text-right text-[12px] leading-relaxed shadow-md"
+                  style="background:#6C5CE7;color:#fff"
+                >
+                  <p id="cf-preview-welcome-line" class="whitespace-pre-wrap">مرحباً! كيف يمكنني مساعدتك؟ 😊</p>
                 </div>
               </div>
-              <div>
-                <label class="mb-1 block text-sm font-medium leading-snug text-slate-700 md:mb-0 md:text-xs" for="widget_style">شكل الودجيت</label>
-                <select id="widget_style" name="widget_style"
-                  class="rs-select mt-1 w-full rounded-lg border border-slate-200 bg-zid-50/70 px-2.5 py-2 text-sm focus:border-zid-500 focus:outline-none focus:ring-2 focus:ring-zid-500/30">
-                  <option value="modern">حديث</option>
-                  <option value="minimal">بسيط</option>
-                  <option value="bold">بارز</option>
-                </select>
+              <div class="flex justify-end">
+                <span
+                  id="cf-preview-fab"
+                  class="inline-flex h-11 w-11 items-center justify-center rounded-full text-lg shadow-lg"
+                  style="background:#6C5CE7"
+                  aria-hidden="true"
+                >💬</span>
               </div>
+            </div>
+            <p class="mt-1.5 text-[10px] leading-snug text-slate-500">الموضع والوضع الداكن والأفاتار في المعاينة تُخزَّن في المتصفّح فقط ولا تُرسل للخادم.</p>
+          </section>
+
+          <section class="cf-dash-card">
+            <div class="cf-dash-section-head">
+              <h2>🎨 لون الودجيت</h2>
+            </div>
+            <input id="widget_primary_color" name="widget_primary_color" type="color" value="#6C5CE7" class="sr-only" tabindex="-1" aria-hidden="true" />
+            <div id="widget_color_dots" class="flex flex-wrap justify-center gap-2" role="list"></div>
+          </section>
+
+          <section class="cf-dash-card">
+            <div class="cf-dash-section-head">
+              <h2>📍 موضع الودجيت</h2>
+            </div>
+            <div class="grid grid-cols-2 gap-1.5">
+              <button type="button" class="cf-pos-btn cf-pos-btn--on" data-cf-pos="br">يمين أسفل</button>
+              <button type="button" class="cf-pos-btn" data-cf-pos="bl">يسار أسفل</button>
+              <button type="button" class="cf-pos-btn" data-cf-pos="tr">يمين أعلى</button>
+              <button type="button" class="cf-pos-btn" data-cf-pos="tl">يسار أعلى</button>
             </div>
           </section>
 
-          <button type="submit" id="saveBtn"
-            class="mt-4 min-h-[52px] w-full rounded-xl bg-zid-600 py-3.5 text-base font-semibold leading-snug text-white shadow-sm hover:bg-zid-700 focus:outline-none focus:ring-2 focus:ring-zid-500 focus:ring-offset-2 md:mt-2 md:min-h-0 md:py-2.5 md:text-sm">
-            حفظ الإعدادات
-          </button>
+          <section class="cf-dash-card">
+            <div class="cf-dash-section-head">
+              <h2>⚙️ خيارات إضافية</h2>
+            </div>
+            <div class="cf-switch-row">
+              <div>
+                <p class="text-sm font-semibold text-slate-800">عرض الأفاتار</p>
+                <p class="text-[11px] text-slate-500">صورة صغيرة بجانب الودجيت (معاينة)</p>
+              </div>
+              <button type="button" class="cf-switch" id="cf_prev_avatar" aria-checked="false" role="switch" aria-label="عرض الأفاتار"></button>
+            </div>
+            <div class="cf-switch-row">
+              <div>
+                <p class="text-sm font-semibold text-slate-800">الوضع الداكن</p>
+                <p class="text-[11px] text-slate-500">خلفية داكنة للمعاينة</p>
+              </div>
+              <button type="button" class="cf-switch" id="cf_prev_dark" aria-checked="false" role="switch" aria-label="الوضع الداكن"></button>
+            </div>
+          </section>
+
+          <section class="cf-dash-card">
+            <div class="cf-dash-section-head">
+              <h2>👋 رسالة الترحيب</h2>
+            </div>
+            <textarea id="cf_preview_welcome" rows="3" maxlength="500" placeholder="مرحباً! كيف يمكنني مساعدتك؟ 😊"
+              class="w-full max-w-full resize-y rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm text-slate-800 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/40"></textarea>
+            <label class="mt-3 mb-1 block text-sm font-semibold text-slate-800" for="widget_name">اسم الودجيت (يُحفظ)</label>
+            <input id="widget_name" name="widget_name" type="text" maxlength="120" placeholder="مساعد المتجر" autocomplete="off"
+              class="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/40" />
+            <label class="mt-2 mb-1 block text-sm font-semibold text-slate-800" for="widget_style">شكل الودجيت</label>
+            <select id="widget_style" name="widget_style"
+              class="rs-select w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/35">
+              <option value="modern">حديث</option>
+              <option value="minimal">بسيط</option>
+              <option value="bold">بارز</option>
+            </select>
+          </section>
+
+          <div class="cf-dash-save-wrap">
+            <button type="submit" id="saveBtn" class="cf-dash-save">💾 حفظ الإعدادات</button>
+          </div>
         </form>
       </div>
     </div>
   </div>
   <script>
     (function () {
+      var LS = {
+        pos: "cf_widget_preview_pos",
+        dark: "cf_widget_preview_dark",
+        av: "cf_widget_preview_avatar",
+        welcome: "cf_widget_preview_welcome",
+      };
+      var PRESET_COLORS = [
+        { hex: "#6C5CE7", label: "بنفسجي" },
+        { hex: "#00B894", label: "أخضر" },
+        { hex: "#0984E3", label: "أزرق" },
+        { hex: "#E17055", label: "مرجاني" },
+        { hex: "#FDCB6E", label: "ذهبي" },
+        { hex: "#2D3436", label: "رمادي" },
+        { hex: "#14532d", label: "أخضر داكن" },
+      ];
+
       var errBox = document.getElementById("errBox");
       var okBox = document.getElementById("okBox");
 
@@ -126,6 +176,102 @@
         return def;
       }
 
+      function lsGet(k, d) {
+        try {
+          var v = localStorage.getItem(k);
+          return v === null || v === "" ? d : v;
+        } catch (e) {
+          return d;
+        }
+      }
+      function lsSet(k, v) {
+        try {
+          localStorage.setItem(k, v);
+        } catch (e2) {
+          /* ignore */
+        }
+      }
+
+      function syncPreviewColor() {
+        var inp = document.getElementById("widget_primary_color");
+        var hx = inp ? normalizeWidgetColorInputHex(inp.value) : "#6C5CE7";
+        if (inp) inp.value = hx;
+        var bubble = document.getElementById("cf-preview-bubble");
+        var fab = document.getElementById("cf-preview-fab");
+        if (bubble) {
+          bubble.style.background = hx;
+          bubble.style.color = "#fff";
+        }
+        if (fab) fab.style.background = hx;
+      }
+
+      function syncPreviewWelcome() {
+        var ta = document.getElementById("cf_preview_welcome");
+        var line = document.getElementById("cf-preview-welcome-line");
+        var t = ta && ta.value.trim() ? ta.value : "مرحباً! كيف يمكنني مساعدتك؟ 😊";
+        if (line) line.textContent = t;
+      }
+
+      function syncPreviewChrome() {
+        var root = document.getElementById("cf-widget-preview");
+        var darkBtn = document.getElementById("cf_prev_dark");
+        var avBtn = document.getElementById("cf_prev_avatar");
+        var avEl = document.getElementById("cf-preview-avatar");
+        var dark = darkBtn && darkBtn.getAttribute("aria-checked") === "true";
+        var av = avBtn && avBtn.getAttribute("aria-checked") === "true";
+        if (root) {
+          root.classList.toggle("bg-slate-900", dark);
+          root.classList.toggle("text-white", dark);
+          root.classList.toggle("bg-slate-100", !dark);
+          root.classList.toggle("text-slate-800", !dark);
+        }
+        if (avEl) avEl.classList.toggle("hidden", !av);
+        document.querySelectorAll("[data-cf-pos]").forEach(function (b) {
+          var on = b.getAttribute("data-cf-pos") === lsGet(LS.pos, "br");
+          b.classList.toggle("cf-pos-btn--on", on);
+        });
+      }
+
+      function wireColorDots() {
+        var host = document.getElementById("widget_color_dots");
+        var inp = document.getElementById("widget_primary_color");
+        if (!host || !inp) return;
+        host.innerHTML = "";
+        PRESET_COLORS.forEach(function (c) {
+          var b = document.createElement("button");
+          b.type = "button";
+          b.setAttribute("aria-label", c.label);
+          b.setAttribute("data-hex", c.hex);
+          b.className = "cf-color-dot";
+          b.style.backgroundColor = c.hex;
+          b.style.color = c.hex;
+          b.addEventListener("click", function () {
+            inp.value = normalizeWidgetColorInputHex(c.hex);
+            host.querySelectorAll(".cf-color-dot").forEach(function (x) {
+              x.classList.remove("cf-color-dot--on");
+            });
+            b.classList.add("cf-color-dot--on");
+            syncPreviewColor();
+          });
+          host.appendChild(b);
+        });
+        function markDot() {
+          var cur = normalizeWidgetColorInputHex(inp.value);
+          host.querySelectorAll(".cf-color-dot").forEach(function (btn) {
+            var hx = normalizeWidgetColorInputHex(btn.getAttribute("data-hex"));
+            btn.classList.toggle("cf-color-dot--on", hx === cur);
+          });
+        }
+        if (!inp._cfColorBound) {
+          inp._cfColorBound = true;
+          inp.addEventListener("input", function () {
+            syncPreviewColor();
+            markDot();
+          });
+        }
+        markDot();
+      }
+
       function fillWidgetCustomization(data) {
         var wn = document.getElementById("widget_name");
         if (wn) {
@@ -148,15 +294,52 @@
           if (st !== "modern" && st !== "minimal" && st !== "bold") st = "modern";
           ws.value = st;
         }
+        syncPreviewColor();
+        wireColorDots();
       }
 
-      document.querySelectorAll("[data-widget-preset]").forEach(function (btn) {
-        btn.addEventListener("click", function () {
-          var hx = btn.getAttribute("data-widget-preset");
-          var inp = document.getElementById("widget_primary_color");
-          if (inp && hx) inp.value = normalizeWidgetColorInputHex(hx);
+      function loadPreviewPrefs() {
+        var pos = lsGet(LS.pos, "br");
+        var dark = lsGet(LS.dark, "0") === "1";
+        var av = lsGet(LS.av, "0") === "1";
+        var welcome = lsGet(LS.welcome, "");
+        var ta = document.getElementById("cf_preview_welcome");
+        if (ta && welcome) ta.value = welcome;
+        var dBtn = document.getElementById("cf_prev_dark");
+        var aBtn = document.getElementById("cf_prev_avatar");
+        if (dBtn) dBtn.setAttribute("aria-checked", dark ? "true" : "false");
+        if (aBtn) aBtn.setAttribute("aria-checked", av ? "true" : "false");
+        document.querySelectorAll("[data-cf-pos]").forEach(function (b) {
+          b.addEventListener("click", function () {
+            lsSet(LS.pos, b.getAttribute("data-cf-pos") || "br");
+            syncPreviewChrome();
+          });
         });
-      });
+        if (dBtn) {
+          dBtn.addEventListener("click", function () {
+            var on = dBtn.getAttribute("aria-checked") !== "true";
+            dBtn.setAttribute("aria-checked", on ? "true" : "false");
+            lsSet(LS.dark, on ? "1" : "0");
+            syncPreviewChrome();
+          });
+        }
+        if (aBtn) {
+          aBtn.addEventListener("click", function () {
+            var on = aBtn.getAttribute("aria-checked") !== "true";
+            aBtn.setAttribute("aria-checked", on ? "true" : "false");
+            lsSet(LS.av, on ? "1" : "0");
+            syncPreviewChrome();
+          });
+        }
+        if (ta) {
+          ta.addEventListener("input", function () {
+            lsSet(LS.welcome, ta.value);
+            syncPreviewWelcome();
+          });
+        }
+        syncPreviewWelcome();
+        syncPreviewChrome();
+      }
 
       fetch("/api/recovery-settings")
         .then(function (r) {
@@ -167,6 +350,7 @@
         .then(function (x) {
           if (x.data.ok) {
             fillWidgetCustomization(x.data);
+            loadPreviewPrefs();
             hideMsg();
           } else {
             showErr(x.data.error || "تعذّر تحميل الإعدادات.");

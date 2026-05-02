@@ -23,53 +23,68 @@
   {% include "partials/cart_abandon_tracking.html" %}
   <div class="flex min-h-screen flex-col md:flex-row">
     {% include "partials/dashboard_sidebar.html" %}
-    <div class="min-w-0 w-full flex-1 bg-gradient-to-b from-zid-50/90 to-slate-50 px-3 pb-10 pt-14 md:min-h-screen md:px-4 md:pb-5 md:pt-4">
-      <div class="mx-auto w-full max-w-none md:max-w-2xl">
-        <header class="mb-4 md:mb-3">
-          <h1 class="text-xl font-bold leading-snug text-zid-900 md:text-lg md:leading-normal">إعدادات الاسترجاع</h1>
-          <p class="mt-1 text-xs leading-relaxed text-slate-600 md:mt-0.5 md:text-[11px] md:leading-snug md:text-slate-500">مدة الانتظار قبل الإرسال، عدد المحاولات، ورابط دعم واتساب. الرسائل والودجيت في صفحات منفصلة ضمن CartFlow.</p>
-        </header>
+    <div class="min-w-0 w-full flex-1 bg-gradient-to-b from-emerald-50/35 to-slate-50 px-3 pb-28 pt-14 md:min-h-screen md:px-4 md:pb-24 md:pt-4">
+      <div class="cf-dash-shell">
+        <div class="cf-dash-hero">
+          <h1>إعدادات الاسترجاع</h1>
+          <p>مدة الانتظار قبل الإرسال، عدد المحاولات، ورابط دعم واتساب — تُحفظ عبر نفس واجهة الـ API السابقة.</p>
+        </div>
 
-        <div id="errBox" class="mb-3 hidden rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-sm leading-snug text-red-800 md:mb-2 md:text-xs"></div>
-        <div id="okBox" class="mb-3 hidden rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-sm leading-snug text-emerald-800 md:mb-2 md:text-xs">تم الحفظ.</div>
+        <div id="errBox" class="mb-2 hidden rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"></div>
+        <div id="okBox" class="mb-2 hidden rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-800">تم الحفظ بنجاح</div>
 
-        <form id="f" class="space-y-6 md:space-y-5">
-          <!-- الوقت والاتصال -->
-          <section class="rs-card scroll-mt-4">
-            <h2 class="rs-section-title">الوقت والاتصال</h2>
-            <div class="space-y-4 md:space-y-2">
+        <form id="f" class="cf-dash-compact space-y-2">
+          <section class="cf-dash-card">
+            <div class="cf-dash-section-head">
+              <h2>⏱️ الوقت والاتصال</h2>
+            </div>
+            <div class="space-y-2.5">
               <div>
-                <label class="mb-1 block text-sm font-medium leading-snug text-slate-700 md:mb-0 md:text-xs" for="recovery_delay">مدة الانتظار قبل الإرسال</label>
-                <input id="recovery_delay" name="recovery_delay" type="number" min="1" step="1"
-                  class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm transition-colors hover:border-violet-200 focus:border-zid-500 focus:outline-none focus:ring-1 focus:ring-zid-500" required />
+                <label class="mb-1 block text-sm font-semibold text-slate-800" for="recovery_delay">مدة الانتظار قبل الإرسال</label>
+                <p class="mb-1 text-[11px] text-slate-500">كم دقيقة أو ساعة أو يوم قبل أول رسالة استرجاع؟</p>
+                <input id="recovery_delay" name="recovery_delay" type="number" min="1" step="1" required
+                  class="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/35" />
               </div>
               <div>
-                <label class="mb-1 block text-sm font-medium leading-snug text-slate-700 md:mb-0 md:text-xs" for="recovery_delay_unit">وحدة الوقت</label>
+                <label class="mb-1 block text-sm font-semibold text-slate-800" for="recovery_delay_unit">وحدة الوقت</label>
                 <select id="recovery_delay_unit" name="recovery_delay_unit"
-                  class="rs-select mt-1 w-full rounded-lg border border-slate-200 bg-zid-50/70 px-2.5 py-2 text-sm focus:border-zid-500 focus:outline-none focus:ring-2 focus:ring-zid-500/30">
+                  class="rs-select w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/35">
                   <option value="minutes">دقائق</option>
-                  <option value="hours">ساعات</option>
-                  <option value="days">أيام</option>
+                  <option value="hours">ساعة</option>
+                  <option value="days">يوم</option>
                 </select>
               </div>
               <div>
-                <label class="mb-1 block text-sm font-medium leading-snug text-slate-700 md:mb-0 md:text-xs" for="recovery_attempts">عدد محاولات الاسترجاع</label>
-                <input id="recovery_attempts" name="recovery_attempts" type="number" min="1" step="1"
-                  class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm transition-colors hover:border-violet-200 focus:border-zid-500 focus:outline-none focus:ring-1 focus:ring-zid-500" required />
+                <label class="mb-1 block text-sm font-semibold text-slate-800">عدد محاولات الاسترجاع</label>
+                <p class="mb-1 text-[11px] text-slate-500">كم مرة يحاول النظام استرجاع العميل؟</p>
+                <div class="flex flex-wrap gap-2" role="group" aria-label="عدد المحاولات">
+                  <label class="cf-dash-pill relative">
+                    <input type="radio" name="recovery_attempts_pick" value="1" />
+                    <span>1</span>
+                  </label>
+                  <label class="cf-dash-pill relative">
+                    <input type="radio" name="recovery_attempts_pick" value="2" />
+                    <span>2</span>
+                  </label>
+                  <label class="cf-dash-pill relative">
+                    <input type="radio" name="recovery_attempts_pick" value="3" />
+                    <span>3</span>
+                  </label>
+                </div>
+                <input type="hidden" id="recovery_attempts" name="recovery_attempts" value="1" />
               </div>
               <div>
-                <label class="mb-1 block text-sm font-medium leading-snug text-slate-700 md:mb-0 md:text-xs" for="whatsapp_support_url">رابط دعم واتساب (اختياري)</label>
-                <input id="whatsapp_support_url" name="whatsapp_support_url" type="url" inputmode="url" autocomplete="off" placeholder="https://wa.me/9665..."
-                  class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm transition-colors hover:border-violet-200 focus:border-zid-500 focus:outline-none focus:ring-1 focus:ring-zid-500" />
-                <p class="mt-1 text-[10px] leading-snug text-slate-500">يُستخدم عندما يختار العميل التواصل معك من ودجت السلة.</p>
+                <label class="mb-1 block text-sm font-semibold text-slate-800" for="whatsapp_support_url">رابط دعم واتساب (اختياري)</label>
+                <input id="whatsapp_support_url" name="whatsapp_support_url" type="url" inputmode="url" autocomplete="off" placeholder="https://wa.me/9665xxxxxxxx"
+                  class="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/35" />
+                <p class="mt-1 text-[11px] leading-snug text-slate-500">يستخدم عندما يختار العميل التواصل معك</p>
               </div>
             </div>
           </section>
 
-          <button type="submit" id="saveBtn"
-            class="mt-4 min-h-[52px] w-full rounded-xl bg-zid-600 py-3.5 text-base font-semibold leading-snug text-white shadow-sm hover:bg-zid-700 focus:outline-none focus:ring-2 focus:ring-zid-500 focus:ring-offset-2 md:mt-2 md:min-h-0 md:py-2.5 md:text-sm">
-            حفظ الإعدادات
-          </button>
+          <div class="cf-dash-save-wrap">
+            <button type="submit" id="saveBtn" class="cf-dash-save">💾 حفظ الإعدادات</button>
+          </div>
         </form>
       </div>
     </div>
@@ -78,6 +93,7 @@
     (function () {
       var errBox = document.getElementById("errBox");
       var okBox = document.getElementById("okBox");
+      var hiddenAttempts = document.getElementById("recovery_attempts");
 
       function showErr(t) {
         errBox.textContent = t || "حدث خطأ";
@@ -93,10 +109,27 @@
         okBox.classList.add("hidden");
       }
 
+      function syncAttemptsFromPills() {
+        var sel = document.querySelector('input[name="recovery_attempts_pick"]:checked');
+        var v = sel ? parseInt(sel.value, 10) : 1;
+        if (!(v >= 1 && v <= 3)) v = 1;
+        if (hiddenAttempts) hiddenAttempts.value = String(v);
+      }
+
+      document.querySelectorAll('input[name="recovery_attempts_pick"]').forEach(function (r) {
+        r.addEventListener("change", syncAttemptsFromPills);
+      });
+
       function fillTimingAndWhatsapp(data) {
         document.getElementById("recovery_delay").value = data.recovery_delay;
         document.getElementById("recovery_delay_unit").value = data.recovery_delay_unit;
-        document.getElementById("recovery_attempts").value = data.recovery_attempts;
+        var ra = parseInt(data.recovery_attempts, 10);
+        if (!(ra >= 1 && ra <= 3)) ra = 1;
+        if (hiddenAttempts) hiddenAttempts.value = String(ra);
+        var r = document.querySelector(
+          'input[name="recovery_attempts_pick"][value="' + ra + '"]'
+        );
+        if (r) r.checked = true;
         document.getElementById("whatsapp_support_url").value = data.whatsapp_support_url || "";
       }
 
@@ -121,6 +154,7 @@
       document.getElementById("f").addEventListener("submit", function (e) {
         e.preventDefault();
         hideMsg();
+        syncAttemptsFromPills();
         var body = {
           recovery_delay: parseInt(document.getElementById("recovery_delay").value, 10),
           recovery_delay_unit: document.getElementById("recovery_delay_unit").value,

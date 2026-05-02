@@ -23,123 +23,148 @@
   {% include "partials/cart_abandon_tracking.html" %}
   <div class="flex min-h-screen flex-col md:flex-row">
     {% include "partials/dashboard_sidebar.html" %}
-    <div class="min-w-0 w-full flex-1 bg-gradient-to-b from-zid-50/90 to-slate-50 px-3 pb-10 pt-14 md:min-h-screen md:px-4 md:pb-5 md:pt-4">
+    <div class="min-w-0 w-full flex-1 bg-gradient-to-b from-emerald-50/30 to-slate-50 px-3 pb-28 pt-14 md:min-h-screen md:px-4 md:pb-24 md:pt-4">
       <div class="mx-auto w-full max-w-none md:max-w-2xl">
-        <header class="mb-4 md:mb-3">
-          <h1 class="text-xl font-bold leading-snug text-zid-900 md:text-lg md:leading-normal">الرسائل</h1>
-          <p class="mt-1 text-xs leading-relaxed text-slate-600 md:mt-0.5 md:text-[11px] md:leading-snug md:text-slate-500">نمط رسائل الودجيت، رسائل الخروج قبل السلة، وقوالب استعادة السلة — نفس واجهة الـ API السابقة.</p>
-        </header>
+        <div class="cf-dash-hero">
+          <h1>الرسائل</h1>
+          <p>نمط رسائل الودجيت، رسائل الخروج قبل السلة، وقوالب استعادة السلة</p>
+        </div>
 
-        <div id="errBox" class="mb-3 hidden rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-sm leading-snug text-red-800 md:mb-2 md:text-xs"></div>
-        <div id="okBox" class="mb-3 hidden rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-sm leading-snug text-emerald-800 md:mb-2 md:text-xs">تم الحفظ.</div>
+        <div id="errBox" class="mb-2 hidden rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"></div>
+        <div id="okBox" class="mb-2 hidden rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-800">تم الحفظ بنجاح</div>
 
-        <form id="f" class="space-y-6 md:space-y-5">
-          <!-- نمط رسائل الاكتشاف -->
-          <section id="templates" tabindex="-1" class="rs-card scroll-mt-20">
-            <h2 class="rs-section-title">نمط الرسائل</h2>
-            <p class="mb-2 text-[10px] leading-snug text-slate-500">بعد الموافقة على الاقتراح: مساعد عرض المنتجات في الودجت (منفصل عن رسالة الخروج قبل السلة وقوالب واتساب).</p>
-            <div class="space-y-4 md:space-y-2">
-              <div class="rounded-xl border border-violet-100 bg-gradient-to-b from-white to-zid-50/50 p-4 shadow-sm ring-1 ring-violet-100/70 md:p-3">
-                <h3 class="mb-4 text-sm font-bold leading-snug text-zid-900 md:mb-3 md:text-xs">إعدادات الرسائل</h3>
-                <div>
-                  <label class="mb-1 block text-sm font-medium leading-snug text-slate-700 md:mb-0 md:text-xs" for="template_tone">اختر أسلوب الرسائل</label>
-                  <p class="mt-0.5 mb-1.5 text-[10px] leading-snug text-slate-600">هذا الأسلوب يحدد طريقة كتابة الرسائل الجاهزة أدناه</p>
-                  <select id="template_tone" name="template_tone"
-                    class="rs-select mt-1 w-full rounded-xl border border-slate-200 bg-zid-50/70 px-2.5 py-2.5 text-sm shadow-sm transition-all duration-150 hover:border-violet-300/90 hover:shadow-md focus:border-zid-500 focus:outline-none focus:ring-2 focus:ring-zid-500/30">
-                  <option value="friendly">ودي</option>
-                  <option value="formal">رسمي</option>
-                  <option value="sales">بيع مباشر</option>
-                </select>
-                </div>
-                <div id="discovery_phrase_row" class="mt-3 border-t border-violet-100 pt-3">
-                  <label class="mb-2 block text-sm font-semibold leading-snug text-zid-900 md:mb-1.5 md:text-xs" for="discovery_phrase_pick">اختر عبارة جاهزة (حسب الأسلوب المختار)</label>
-                  <select id="discovery_phrase_pick"
-                    class="rs-select w-full rounded-xl border-2 border-zid-200 bg-white px-2.5 py-2.5 text-sm font-medium text-slate-800 shadow-sm transition-all duration-150 hover:border-violet-300 hover:shadow-md focus:border-zid-500 focus:outline-none focus:ring-2 focus:ring-zid-400/40">
-                  <option value="" disabled selected hidden>اختر عبارة جاهزة</option>
-                </select>
-                  <div id="discovery_phrase_preview" class="mt-2 hidden rounded-lg border border-violet-100 bg-zid-50/95 px-2.5 py-2 shadow-inner ring-1 ring-zid-100/50">
-                    <p class="text-[10px] font-semibold text-zid-800">مثال:</p>
-                    <p id="discovery_phrase_preview_body" class="mt-1 whitespace-pre-wrap text-[11px] leading-snug text-slate-700"></p>
-                  </div>
-                  <p class="mt-1.5 text-[10px] leading-snug text-slate-600">يملأ خانة النص ويحوّل الوضع إلى «نص مخصص» لتقدر تعدّل قبل الحفظ.</p>
-                </div>
+        <form id="f" class="cf-dash-compact space-y-2 md:space-y-2">
+          <section id="templates" tabindex="-1" class="cf-dash-card scroll-mt-20">
+            <div class="cf-dash-section-head">
+              <h2>🎭 نمط الرسائل</h2>
+            </div>
+            <input type="hidden" id="template_tone" name="template_tone" value="friendly" />
+            <p class="mb-1.5 text-[11px] leading-snug text-slate-500">يُحفظ على الخادم كرسمي / ودي / بيع مباشر؛ خيار «مرح» يوسّع عبارات «ودي» محلياً في المتصفح فقط.</p>
+            <div class="grid grid-cols-2 gap-1.5">
+              <button type="button" class="cf-tone-card text-right" data-cf-tone-card="formal" data-cf-tone-api="formal">
+                <p class="text-sm font-bold text-slate-900">رسمي 🎩</p>
+                <p class="mt-0.5 text-[11px] text-slate-500">أسلوب احترافي ومهني</p>
+              </button>
+              <button type="button" class="cf-tone-card cf-tone-card--on text-right" data-cf-tone-card="warm" data-cf-tone-api="friendly" data-cf-cheer="0">
+                <p class="text-sm font-bold text-slate-900">ودي 🤝</p>
+                <p class="mt-0.5 text-[11px] text-slate-500">أسلوب دافئ وقريب من العميل</p>
+              </button>
+              <button type="button" class="cf-tone-card text-right" data-cf-tone-card="merry" data-cf-tone-api="friendly" data-cf-cheer="1">
+                <p class="text-sm font-bold text-slate-900">مرح 😄</p>
+                <p class="mt-0.5 text-[11px] text-slate-500">أسلوب خفيف وجذاب</p>
+              </button>
+              <button type="button" class="cf-tone-card text-right" data-cf-tone-card="pers" data-cf-tone-api="sales">
+                <p class="text-sm font-bold text-slate-900">مقنع 🎯</p>
+                <p class="mt-0.5 text-[11px] text-slate-500">أسلوب يركز على إتمام البيع</p>
+              </button>
+            </div>
+
+            <div class="cf-dash-section-head mt-3">
+              <h2>✏️ وضع النص</h2>
+            </div>
+            <div class="grid grid-cols-1 gap-1.5">
+              <label class="cf-tone-card cf-tone-choice flex cursor-pointer items-start gap-2 text-right">
+                <input type="radio" name="template_mode" value="preset" id="template_mode_preset" class="mt-1 h-4 w-4 shrink-0 border-slate-300 text-emerald-600 focus:ring-emerald-500" checked />
+                <span>
+                  <span class="block text-sm font-bold text-slate-900">استخدام أسلوب جاهز</span>
+                  <span class="mt-0.5 block text-[11px] text-slate-500">اختر من العبارات المعدّة مسبقاً</span>
+                </span>
+              </label>
+              <label class="cf-tone-card cf-tone-choice flex cursor-pointer items-start gap-2 text-right">
+                <input type="radio" name="template_mode" value="custom" id="template_mode_custom" class="mt-1 h-4 w-4 shrink-0 border-slate-300 text-emerald-600 focus:ring-emerald-500" />
+                <span>
+                  <span class="block text-sm font-bold text-slate-900">كتابة نص مخصص</span>
+                  <span class="mt-0.5 block text-[11px] text-slate-500">اكتب رسالتك بنفسك بحرية كاملة</span>
+                </span>
+              </label>
+            </div>
+
+            <div id="discovery_phrase_row" class="mt-2 border-t border-slate-200 pt-2">
+              <div class="cf-dash-section-head border-0 pb-0 mb-1">
+                <h2 class="text-sm" id="cf-ready-title">💡 عبارات جاهزة (ودي)</h2>
               </div>
-              <fieldset class="space-y-2 rounded-lg border border-zid-100/90 bg-zid-50/40 p-3 md:space-y-1 md:p-2">
-                <legend class="mb-1 px-0.5 text-sm font-medium leading-snug text-slate-700 md:mb-0.5 md:text-xs">وضع النص</legend>
-                <label class="flex min-h-[44px] cursor-pointer items-center gap-3 rounded-md px-2 py-2 text-sm leading-snug text-slate-800 transition-colors hover:bg-white md:min-h-0 md:gap-2 md:py-1.5 md:text-xs">
-                  <input type="radio" name="template_mode" value="preset" id="template_mode_preset" class="h-4 w-4 shrink-0 border-slate-300 text-zid-600 focus:ring-zid-500 md:h-3.5 md:w-3.5" checked />
-                  استخدام أسلوب جاهز
-                </label>
-                <label class="flex min-h-[44px] cursor-pointer items-center gap-3 rounded-md px-2 py-2 text-sm leading-snug text-slate-800 transition-colors hover:bg-white md:min-h-0 md:gap-2 md:py-1.5 md:text-xs">
-                  <input type="radio" name="template_mode" value="custom" id="template_mode_custom" class="h-4 w-4 shrink-0 border-slate-300 text-zid-600 focus:ring-zid-500 md:h-3.5 md:w-3.5" />
-                  كتابة نص مخصص
-                </label>
-              </fieldset>
-              <div id="template_custom_wrap" class="hidden space-y-1">
-                <label class="mb-1 block text-sm font-medium leading-snug text-slate-700 md:mb-0 md:text-xs" for="template_custom_text">النص المخصص</label>
-                <textarea id="template_custom_text" name="template_custom_text" rows="3"
-                  placeholder="اكتب النص الذي تريد استخدامه…"
-                  class="mt-1 w-full resize-y rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm transition-colors hover:border-violet-200 focus:border-zid-500 focus:outline-none focus:ring-1 focus:ring-zid-500"></textarea>
+              <select id="discovery_phrase_pick" class="sr-only" aria-hidden="true" tabindex="-1">
+                <option value="">اختر عبارة جاهزة</option>
+              </select>
+              <div id="discovery_bubbles" class="flex flex-col gap-1.5"></div>
+              <div id="discovery_phrase_preview" class="mt-1.5 hidden rounded-lg border border-violet-100 bg-zid-50/95 px-2 py-1.5">
+                <p class="text-[10px] font-semibold text-zid-800">مثال:</p>
+                <p id="discovery_phrase_preview_body" class="mt-0.5 whitespace-pre-wrap text-[11px] leading-snug text-slate-700"></p>
               </div>
+              <p class="mt-1 text-[10px] leading-snug text-slate-500">يملأ خانة النص ويحوّل الوضع إلى «نص مخصص» لتقدر تعدّل قبل الحفظ.</p>
+            </div>
+
+            <div id="template_custom_wrap" class="mt-2 hidden space-y-1">
+              <label class="mb-1 block text-sm font-semibold text-slate-800" for="template_custom_text">النص المخصص</label>
+              <textarea id="template_custom_text" name="template_custom_text" rows="3"
+                placeholder="اكتب النص الذي تريد استخدامه…"
+                class="w-full resize-y rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/35"></textarea>
             </div>
           </section>
 
-          <!-- رسائل الخروج قبل السلة -->
-          <section class="rs-card">
-            <h2 class="rs-section-title">رسائل الخروج قبل السلة</h2>
-            <p class="mb-2 text-[10px] leading-snug text-slate-500">أول رسالة عند مغادرة الصفحة بدون منتجات في السلة فقط.</p>
-            <div class="space-y-4 md:space-y-2">
-              <div class="rounded-xl border border-violet-100 bg-gradient-to-b from-white to-zid-50/50 p-4 shadow-sm ring-1 ring-violet-100/70 md:p-3">
-                <h3 class="mb-4 text-sm font-bold leading-snug text-zid-900 md:mb-3 md:text-xs">إعدادات الرسائل</h3>
-                <div>
-                  <label class="mb-1 block text-sm font-medium leading-snug text-slate-700 md:mb-0 md:text-xs" for="exit_intent_template_tone">اختر أسلوب الرسائل</label>
-                  <p class="mt-0.5 mb-1.5 text-[10px] leading-snug text-slate-600">هذا الأسلوب يحدد طريقة كتابة الرسائل الجاهزة أدناه</p>
-                  <select id="exit_intent_template_tone" name="exit_intent_template_tone"
-                    class="rs-select mt-1 w-full rounded-xl border border-slate-200 bg-zid-50/70 px-2.5 py-2.5 text-sm shadow-sm transition-all duration-150 hover:border-violet-300/90 hover:shadow-md focus:border-zid-500 focus:outline-none focus:ring-2 focus:ring-zid-500/30">
+          <section class="cf-dash-card">
+            <div class="cf-switch-row border-0 pb-2">
+              <div>
+                <p class="text-sm font-bold text-slate-900">رسالة الخروج قبل السلة</p>
+                <p class="text-[11px] text-slate-500">تظهر عند محاولة الخروج</p>
+              </div>
+              <span class="inline-flex shrink-0 items-center rounded-full bg-emerald-600 px-2.5 py-1 text-[11px] font-bold text-white">مفعّل</span>
+            </div>
+            <p class="mb-2 text-[11px] leading-snug text-slate-500">أول رسالة عند مغادرة الصفحة بدون منتجات في السلة فقط.</p>
+            <div class="space-y-2">
+              <div>
+                <label class="mb-1 block text-xs font-semibold text-slate-800" for="exit_intent_template_tone">أسلوب رسالة الخروج</label>
+                <select id="exit_intent_template_tone" name="exit_intent_template_tone"
+                  class="rs-select w-full rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/35">
                   <option value="friendly">ودي</option>
                   <option value="formal">رسمي</option>
                   <option value="sales">بيع مباشر</option>
                 </select>
-                </div>
-                <div id="exit_intent_phrase_row" class="mt-3 border-t border-violet-100 pt-3">
-                  <label class="mb-2 block text-sm font-semibold leading-snug text-zid-900 md:mb-1.5 md:text-xs" for="exit_intent_phrase_pick">اختر عبارة جاهزة (حسب الأسلوب المختار)</label>
-                  <select id="exit_intent_phrase_pick"
-                    class="rs-select w-full rounded-xl border-2 border-zid-200 bg-white px-2.5 py-2.5 text-sm font-medium text-slate-800 shadow-sm transition-all duration-150 hover:border-violet-300 hover:shadow-md focus:border-zid-500 focus:outline-none focus:ring-2 focus:ring-zid-400/40">
-                  <option value="" disabled selected hidden>اختر عبارة جاهزة</option>
-                </select>
-                  <div id="exit_intent_phrase_preview" class="mt-2 hidden rounded-lg border border-violet-100 bg-zid-50/95 px-2.5 py-2 shadow-inner ring-1 ring-zid-100/50">
-                    <p class="text-[10px] font-semibold text-zid-800">مثال:</p>
-                    <p id="exit_intent_phrase_preview_body" class="mt-1 whitespace-pre-wrap text-[11px] leading-snug text-slate-700"></p>
-                  </div>
-                  <p class="mt-1.5 text-[10px] leading-snug text-slate-600">يملأ خانة النص ويحوّل الوضع إلى «نص مخصص» لتقدر تعدّل قبل الحفظ.</p>
-                </div>
               </div>
-              <fieldset class="space-y-2 rounded-lg border border-zid-100/90 bg-zid-50/40 p-3 md:space-y-1 md:p-2">
-                <legend class="mb-1 px-0.5 text-sm font-medium leading-snug text-slate-700 md:mb-0.5 md:text-xs">وضع النص</legend>
-                <label class="flex min-h-[44px] cursor-pointer items-center gap-3 rounded-md px-2 py-2 text-sm leading-snug text-slate-800 transition-colors hover:bg-white md:min-h-0 md:gap-2 md:py-1.5 md:text-xs">
-                  <input type="radio" name="exit_intent_template_mode" value="preset" id="exit_intent_mode_preset" class="h-4 w-4 shrink-0 border-slate-300 text-zid-600 focus:ring-zid-500 md:h-3.5 md:w-3.5" checked />
-                  استخدام أسلوب جاهز
+              <div id="exit_intent_phrase_row" class="border-t border-slate-200 pt-2">
+                <label class="mb-1 block text-xs font-semibold text-slate-800" for="exit_intent_phrase_pick">عبارات جاهزة</label>
+                <select id="exit_intent_phrase_pick" class="sr-only" tabindex="-1" aria-hidden="true">
+                  <option value="">اختر عبارة جاهزة</option>
+                </select>
+                <div id="exit_intent_bubbles" class="flex flex-col gap-1.5"></div>
+                <div id="exit_intent_phrase_preview" class="mt-1.5 hidden rounded-lg border border-violet-100 bg-zid-50/95 px-2 py-1.5">
+                  <p class="text-[10px] font-semibold text-zid-800">مثال:</p>
+                  <p id="exit_intent_phrase_preview_body" class="mt-0.5 whitespace-pre-wrap text-[11px] leading-snug text-slate-700"></p>
+                </div>
+                <p class="mt-1 text-[10px] leading-snug text-slate-500">يملأ خانة النص ويحوّل الوضع إلى «نص مخصص» لتقدر تعدّل قبل الحفظ.</p>
+              </div>
+              <div class="grid grid-cols-1 gap-1.5">
+                <label class="cf-tone-card cf-tone-choice flex cursor-pointer items-start gap-2 text-right">
+                  <input type="radio" name="exit_intent_template_mode" value="preset" id="exit_intent_mode_preset" class="mt-1 h-4 w-4 shrink-0 border-slate-300 text-emerald-600 focus:ring-emerald-500" checked />
+                  <span>
+                    <span class="block text-sm font-bold text-slate-900">استخدام أسلوب جاهز</span>
+                    <span class="mt-0.5 block text-[11px] text-slate-500">اختر من العبارات المعدّة مسبقاً</span>
+                  </span>
                 </label>
-                <label class="flex min-h-[44px] cursor-pointer items-center gap-3 rounded-md px-2 py-2 text-sm leading-snug text-slate-800 transition-colors hover:bg-white md:min-h-0 md:gap-2 md:py-1.5 md:text-xs">
-                  <input type="radio" name="exit_intent_template_mode" value="custom" id="exit_intent_mode_custom" class="h-4 w-4 shrink-0 border-slate-300 text-zid-600 focus:ring-zid-500 md:h-3.5 md:w-3.5" />
-                  كتابة نص مخصص
+                <label class="cf-tone-card cf-tone-choice flex cursor-pointer items-start gap-2 text-right">
+                  <input type="radio" name="exit_intent_template_mode" value="custom" id="exit_intent_mode_custom" class="mt-1 h-4 w-4 shrink-0 border-slate-300 text-emerald-600 focus:ring-emerald-500" />
+                  <span>
+                    <span class="block text-sm font-bold text-slate-900">كتابة نص مخصص</span>
+                    <span class="mt-0.5 block text-[11px] text-slate-500">اكتب رسالة الخروج بنفسك</span>
+                  </span>
                 </label>
-              </fieldset>
+              </div>
               <div id="exit_intent_custom_wrap" class="hidden space-y-1">
-                <label class="mb-1 block text-sm font-medium leading-snug text-slate-700 md:mb-0 md:text-xs" for="exit_intent_custom_text">النص المخصص</label>
-                <textarea id="exit_intent_custom_text" name="exit_intent_custom_text" rows="4"
+                <label class="mb-1 block text-xs font-semibold text-slate-800" for="exit_intent_custom_text">النص المخصص</label>
+                <textarea id="exit_intent_custom_text" name="exit_intent_custom_text" rows="3"
                   placeholder="النص الذي يظهر في أول رسالة لفقاعة الخروج…"
-                  class="mt-1 w-full resize-y rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm transition-colors hover:border-violet-200 focus:border-zid-500 focus:outline-none focus:ring-1 focus:ring-zid-500"></textarea>
+                  class="w-full resize-y rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/35"></textarea>
               </div>
             </div>
           </section>
 
-          <!-- قوالب واتساب -->
-          <section class="rs-card" aria-labelledby="recovery-templates-heading">
-            <h2 id="recovery-templates-heading" class="rs-section-title">رسائل استعادة السلة</h2>
-            <p class="mb-2 text-[10px] leading-snug text-slate-500">اترك الحقل فارغاً للنص الافتراضي. يمكنك إدراج عبارة جاهزة ثم تعديلها. قوائم «اختر عبارة جاهزة» هنا تتبع نفس أسلوب «اختر أسلوب الرسائل» في قسم نمط الرسائل أعلاه.</p>
+          <section class="cf-dash-card" aria-labelledby="recovery-templates-heading">
+            <div class="cf-dash-section-head">
+              <h2 id="recovery-templates-heading">رسائل استعادة السلة</h2>
+            </div>
+            <p class="mb-2 text-[11px] leading-snug text-slate-500">اترك الحقل فارغاً للنص الافتراضي. يمكنك إدراج عبارة جاهزة ثم تعديلها.</p>
 
-            <div class="space-y-4 md:space-y-2">
+            <div class="space-y-2 md:space-y-2">
               <div id="cf-msg-template-price" class="scroll-mt-24 rounded-lg border border-violet-100 bg-white p-2.5 shadow-sm ring-1 ring-zid-100/60">
                 <label class="mb-1 block text-sm font-medium leading-snug text-slate-700 md:mb-0 md:text-xs" for="template_price">السعر</label>
                 <div class="mt-1 rounded-md border border-zid-100 bg-zid-50/60 p-2">
@@ -209,10 +234,9 @@
             </div>
           </section>
 
-          <button type="submit" id="saveBtn"
-            class="mt-4 min-h-[52px] w-full rounded-xl bg-zid-600 py-3.5 text-base font-semibold leading-snug text-white shadow-sm hover:bg-zid-700 focus:outline-none focus:ring-2 focus:ring-zid-500 focus:ring-offset-2 md:mt-2 md:min-h-0 md:py-2.5 md:text-sm">
-            حفظ الإعدادات
-          </button>
+          <div class="cf-dash-save-wrap">
+            <button type="submit" id="saveBtn" class="cf-dash-save">💾 حفظ الإعدادات</button>
+          </div>
         </form>
       </div>
     </div>
@@ -231,11 +255,17 @@
       ];
 
       /** عبارات جاهزة لودجت الاكتشاف — حسب الأسلوب فقط (بدون تكرار أسماء الأسلوب في القائمة). */
+      var LS_CHEER = "cf_tpl_cheerful_discovery";
       var DISCOVERY_PRESET_PHRASES_BY_TONE = {
         friendly: [
           "هلا 👋 فيه خيارات ممكن تعجبك، تحب أشوفها لك بسرعة؟",
           "جبت لك خيارات مناسبة 👇\nتقدر تختار اللي يناسبك وتضيفه للسلة بسهولة 👍",
           "أقدر أساعدك تختار الأنسب لك؟",
+        ],
+        cheerful: [
+          "هيه 👋 جاهزين نضحك معاك ونختار أحلى خيار بسرعة؟ 😄",
+          "شوف الخيارات الحلوة هنا 👇\nيلا نكمّل السلة على مزاجك ✨",
+          "نبي نفرحك باختيار يناسبك — نبدأ؟ 🎉",
         ],
         formal: [
           "مرحباً، يمكنني مساعدتك في استعراض خيارات مناسبة لك.",
@@ -291,9 +321,12 @@
           .replace(/\n/g, "&#10;");
       }
 
-      function populatePresetPhraseSelect(selectEl, toneKey, phrasesByTone) {
+      function populatePresetPhraseSelect(selectEl, toneKey, phrasesByTone, extraAllowed) {
         if (!selectEl || !phrasesByTone) return;
         var allowed = ["friendly", "formal", "sales"];
+        if (extraAllowed && extraAllowed.length) {
+          allowed = allowed.concat(extraAllowed);
+        }
         var tk =
           allowed.indexOf(String(toneKey || "").trim()) >= 0
             ? String(toneKey).trim()
@@ -325,12 +358,113 @@
         if (bodyEl) bodyEl.textContent = "";
       }
 
+      function effectiveDiscoveryTone() {
+        var toneEl = document.getElementById("template_tone");
+        var b = toneEl ? String(toneEl.value || "friendly").trim() : "friendly";
+        if (b === "friendly") {
+          try {
+            if (localStorage.getItem(LS_CHEER) === "1") return "cheerful";
+          } catch (eLs) {
+            /* ignore */
+          }
+        }
+        return b;
+      }
+
+      function refreshPhraseBubbles(selectId, hostId) {
+        var sel = document.getElementById(selectId);
+        var host = document.getElementById(hostId);
+        if (!sel || !host) return;
+        host.innerHTML = "";
+        for (var i = 1; i < sel.options.length; i++) {
+          (function (idx) {
+            var opt = sel.options[idx];
+            var b = document.createElement("button");
+            b.type = "button";
+            b.className = "cf-msg-bubble";
+            b.setAttribute("type", "button");
+            b.textContent = opt.textContent;
+            b.addEventListener("click", function () {
+              sel.selectedIndex = idx;
+              sel.dispatchEvent(new Event("change", { bubbles: true }));
+              host.querySelectorAll(".cf-msg-bubble").forEach(function (x) {
+                x.classList.remove("cf-msg-bubble--on");
+              });
+              b.classList.add("cf-msg-bubble--on");
+            });
+            host.appendChild(b);
+          })(i);
+        }
+      }
+
+      function updateReadyTitle() {
+        var el = document.getElementById("cf-ready-title");
+        if (!el) return;
+        var toneEl = document.getElementById("template_tone");
+        var api = toneEl ? toneEl.value : "friendly";
+        var lab =
+          api === "formal"
+            ? "رسمي"
+            : api === "sales"
+              ? "مقنع"
+              : effectiveDiscoveryTone() === "cheerful"
+                ? "مرح"
+                : "ودي";
+        el.textContent = "💡 عبارات جاهزة (" + lab + ")";
+      }
+
+      function syncDiscoveryToneCards() {
+        var toneEl = document.getElementById("template_tone");
+        if (!toneEl) return;
+        var api = String(toneEl.value || "friendly").trim();
+        var cheer = false;
+        try {
+          cheer = localStorage.getItem(LS_CHEER) === "1";
+        } catch (e2) {
+          cheer = false;
+        }
+        document.querySelectorAll("[data-cf-tone-card]").forEach(function (btn) {
+          var a = btn.getAttribute("data-cf-tone-api");
+          var btnCheer = btn.getAttribute("data-cf-cheer") === "1";
+          var on = false;
+          if (api === "formal" && a === "formal") on = true;
+          if (api === "sales" && a === "sales") on = true;
+          if (api === "friendly" && a === "friendly") {
+            on = btnCheer === cheer;
+          }
+          btn.classList.toggle("cf-tone-card--on", on);
+        });
+        updateReadyTitle();
+      }
+
+      function applyDiscoveryToneFromCard(btn) {
+        var toneEl = document.getElementById("template_tone");
+        if (!toneEl || !btn) return;
+        var api = btn.getAttribute("data-cf-tone-api") || "friendly";
+        var cheer = btn.getAttribute("data-cf-cheer") === "1";
+        toneEl.value = api;
+        try {
+          if (api === "friendly" && cheer) localStorage.setItem(LS_CHEER, "1");
+          else localStorage.removeItem(LS_CHEER);
+        } catch (e3) {
+          /* ignore */
+        }
+        syncDiscoveryToneCards();
+        populateDiscoveryPresetPhrases();
+        populateAllWaPhrasePicks();
+      }
+
       function populateDiscoveryPresetPhrases() {
         var sel = document.getElementById("discovery_phrase_pick");
-        var toneEl = document.getElementById("template_tone");
-        if (!sel || !toneEl) return;
-        populatePresetPhraseSelect(sel, toneEl.value, DISCOVERY_PRESET_PHRASES_BY_TONE);
+        if (!sel) return;
+        populatePresetPhraseSelect(
+          sel,
+          effectiveDiscoveryTone(),
+          DISCOVERY_PRESET_PHRASES_BY_TONE,
+          ["cheerful"]
+        );
         clearPhrasePreview("discovery_phrase_preview", "discovery_phrase_preview_body");
+        refreshPhraseBubbles("discovery_phrase_pick", "discovery_bubbles");
       }
 
       function populateExitPresetPhrases() {
@@ -339,6 +473,7 @@
         if (!sel || !toneEl) return;
         populatePresetPhraseSelect(sel, toneEl.value, EXIT_PRESET_PHRASES_BY_TONE);
         clearPhrasePreview("exit_intent_phrase_preview", "exit_intent_phrase_preview_body");
+        refreshPhraseBubbles("exit_intent_phrase_pick", "exit_intent_bubbles");
       }
 
       function showErr(t) {
@@ -422,6 +557,13 @@
         var tone = typeof data.template_tone === "string" ? data.template_tone : "friendly";
         if (allowedTones.indexOf(tone) < 0) tone = "friendly";
         if (toneEl) toneEl.value = tone;
+        if (tone !== "friendly") {
+          try {
+            localStorage.removeItem(LS_CHEER);
+          } catch (eR) {
+            /* ignore */
+          }
+        }
         var mode = typeof data.template_mode === "string" ? data.template_mode : "preset";
         var presetRadio = document.getElementById("template_mode_preset");
         var customRadio = document.getElementById("template_mode_custom");
@@ -437,6 +579,7 @@
         var ta = document.getElementById("template_custom_text");
         if (ta) ta.value = typeof data.template_custom_text === "string" ? data.template_custom_text : "";
         syncTemplateCustomVisibility();
+        syncDiscoveryToneCards();
         populateDiscoveryPresetPhrases();
         populateAllWaPhrasePicks();
       }
@@ -446,13 +589,11 @@
         var customRadio = document.getElementById("template_mode_custom");
         if (presetRadio) presetRadio.addEventListener("change", syncTemplateCustomVisibility);
         if (customRadio) customRadio.addEventListener("change", syncTemplateCustomVisibility);
-        var toneMain = document.getElementById("template_tone");
-        if (toneMain) {
-          toneMain.addEventListener("change", function () {
-            populateDiscoveryPresetPhrases();
-            populateAllWaPhrasePicks();
+        document.querySelectorAll("[data-cf-tone-card]").forEach(function (btn) {
+          btn.addEventListener("click", function () {
+            applyDiscoveryToneFromCard(btn);
           });
-        }
+        });
         var phrasePick = document.getElementById("discovery_phrase_pick");
         if (phrasePick) {
           phrasePick.addEventListener("change", function () {
@@ -470,8 +611,15 @@
               "discovery_phrase_preview",
               "discovery_phrase_preview_body"
             );
+            var hb = document.getElementById("discovery_bubbles");
+            if (hb) {
+              hb.querySelectorAll(".cf-msg-bubble").forEach(function (x) {
+                x.classList.remove("cf-msg-bubble--on");
+              });
+            }
           });
         }
+        syncDiscoveryToneCards();
         populateDiscoveryPresetPhrases();
         populateAllWaPhrasePicks();
       }
@@ -551,6 +699,12 @@
               "exit_intent_phrase_preview",
               "exit_intent_phrase_preview_body"
             );
+            var hb = document.getElementById("exit_intent_bubbles");
+            if (hb) {
+              hb.querySelectorAll(".cf-msg-bubble").forEach(function (x) {
+                x.classList.remove("cf-msg-bubble--on");
+              });
+            }
           });
         }
         populateExitPresetPhrases();

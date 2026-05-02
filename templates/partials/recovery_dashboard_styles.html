@@ -52,5 +52,227 @@
       font-size: 1rem;
       line-height: 1.55;
     }
+    /* لوحات CartFlow المدمجة: حقول أصغر قليلاً */
+    #f.cf-dash-compact input:not([type="radio"]):not([type="checkbox"]):not([type="color"]):not([type="hidden"]),
+    #f.cf-dash-compact select {
+      min-height: 44px;
+      font-size: 0.9375rem;
+    }
+    #f.cf-dash-compact textarea {
+      min-height: 5.5rem;
+      font-size: 0.9375rem;
+    }
+  }
+
+  /* —— نظام CartFlow الموحد (بطاقات / تمييز / مفاتيح) —— */
+  .cf-dash-shell {
+    max-width: 28rem;
+    margin-left: auto;
+    margin-right: auto;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .cf-dash-hero {
+    border-radius: 1rem;
+    background: linear-gradient(135deg, #14532d 0%, #166534 48%, #15803d 100%);
+    color: #fff;
+    padding: 1rem 1.1rem 1.1rem;
+    margin-bottom: 0.75rem;
+    box-shadow: 0 10px 28px -12px rgba(21, 128, 61, 0.45);
+  }
+  .cf-dash-hero h1 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    line-height: 1.35;
+    letter-spacing: -0.02em;
+  }
+  .cf-dash-hero p {
+    margin-top: 0.35rem;
+    font-size: 0.8125rem;
+    line-height: 1.45;
+    opacity: 0.92;
+  }
+  .cf-dash-card {
+    border-radius: 1.125rem;
+    border: 1px solid rgb(226 232 240 / 0.95);
+    background: #fff;
+    padding: 0.75rem 0.85rem;
+    box-shadow: 0 1px 2px rgb(15 23 42 / 0.04);
+    box-sizing: border-box;
+    max-width: 100%;
+  }
+  .cf-dash-card + .cf-dash-card {
+    margin-top: 0.55rem;
+  }
+  .cf-dash-section-head {
+    display: flex;
+    align-items: baseline;
+    gap: 0.35rem;
+    margin-bottom: 0.45rem;
+    padding-bottom: 0.35rem;
+    border-bottom: 2px solid rgb(124 58 237 / 0.32);
+  }
+  .cf-dash-section-head h2 {
+    font-size: 0.9375rem;
+    font-weight: 700;
+    color: #1e1b4b;
+    margin: 0;
+  }
+  .cf-dash-save-wrap {
+    position: sticky;
+    bottom: 0;
+    z-index: 25;
+    margin-top: 0.75rem;
+    padding: 0.5rem 0 0.75rem;
+    background: linear-gradient(180deg, rgba(248, 250, 252, 0) 0%, rgb(248 250 252) 35%);
+  }
+  .cf-dash-save {
+    display: inline-flex;
+    width: 100%;
+    min-height: 48px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.875rem;
+    border: 1px solid rgba(22, 101, 52, 0.2);
+    background: #15803d;
+    color: #fff;
+    font-weight: 700;
+    font-size: 0.9375rem;
+    box-shadow: 0 2px 8px -2px rgba(22, 101, 52, 0.35);
+    transition: background 0.15s ease;
+  }
+  .cf-dash-save:hover {
+    background: #166534;
+  }
+  .cf-dash-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2.5rem;
+    padding: 0.35rem 0.65rem;
+    border-radius: 999px;
+    border: 1px solid rgb(203 213 225);
+    background: #fff;
+    font-size: 0.8125rem;
+    font-weight: 700;
+    color: #475569;
+    cursor: pointer;
+    transition: border-color 0.12s ease, background 0.12s ease, color 0.12s ease;
+  }
+  .cf-dash-pill:has(input:checked) {
+    border-color: rgba(22, 163, 74, 0.75);
+    background: rgba(220, 252, 231, 0.9);
+    color: #14532d;
+  }
+  .cf-dash-pill input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .cf-tone-card {
+    border-radius: 0.75rem;
+    border: 1px solid rgb(226 232 240);
+    background: #fff;
+    padding: 0.55rem 0.6rem;
+    text-align: right;
+    cursor: pointer;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  .cf-tone-card--on {
+    border-color: rgba(22, 163, 74, 0.75);
+    box-shadow: 0 0 0 1px rgba(22, 163, 74, 0.2);
+  }
+  .cf-tone-choice:has(input:checked) {
+    border-color: rgba(22, 163, 74, 0.75);
+    box-shadow: 0 0 0 1px rgba(22, 163, 74, 0.2);
+  }
+  .cf-msg-bubble {
+    display: block;
+    width: 100%;
+    text-align: right;
+    border-radius: 0.75rem;
+    border: 1px solid rgb(226 232 240);
+    background: rgb(248 250 252);
+    padding: 0.5rem 0.65rem;
+    font-size: 0.8125rem;
+    line-height: 1.45;
+    color: #334155;
+    cursor: pointer;
+    transition: border-color 0.12s ease, background 0.12s ease;
+  }
+  .cf-msg-bubble--on {
+    border-color: rgba(22, 163, 74, 0.75);
+    background: rgba(220, 252, 231, 0.45);
+  }
+  .cf-pos-btn {
+    border-radius: 0.65rem;
+    border: 1px solid rgb(226 232 240);
+    padding: 0.45rem 0.35rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #64748b;
+    background: #fff;
+    cursor: pointer;
+    transition: border-color 0.12s ease, color 0.12s ease;
+  }
+  .cf-pos-btn--on {
+    border-color: rgba(22, 163, 74, 0.8);
+    color: #166534;
+  }
+  .cf-color-dot {
+    width: 2rem;
+    height: 2rem;
+    border-radius: 999px;
+    border: 2px solid transparent;
+    padding: 0;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+  }
+  .cf-color-dot--on {
+    box-shadow: 0 0 0 2px #fff, 0 0 0 4px currentColor;
+    transform: scale(1.06);
+  }
+  .cf-switch-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.45rem 0;
+    border-bottom: 1px solid rgb(241 245 249);
+  }
+  .cf-switch-row:last-child {
+    border-bottom: 0;
+  }
+  .cf-switch {
+    width: 2.75rem;
+    height: 1.5rem;
+    border-radius: 999px;
+    border: none;
+    background: rgb(226 232 240);
+    position: relative;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background 0.15s ease;
+  }
+  .cf-switch[aria-checked="true"] {
+    background: #22c55e;
+  }
+  .cf-switch::after {
+    content: "";
+    position: absolute;
+    top: 2px;
+    width: 1.15rem;
+    height: 1.15rem;
+    border-radius: 999px;
+    background: #fff;
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.12);
+    transition: transform 0.15s ease;
+    right: 2px;
+  }
+  .cf-switch[aria-checked="false"]::after {
+    transform: translateX(-1.2rem);
   }
 </style>
