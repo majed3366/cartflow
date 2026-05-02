@@ -555,6 +555,32 @@
           </div>
         </section>
 
+        {% if vip_cart_priority | length > 0 %}
+        <section aria-labelledby="vip-priority-heading" class="rounded-2xl border border-violet-200 bg-gradient-to-br from-violet-50/90 to-white p-3 shadow-sm md:p-4">
+          <h2 id="vip-priority-heading" class="mb-2 flex flex-wrap items-center gap-2 border-b border-violet-300/40 pb-1.5 text-base font-bold text-violet-950 md:text-sm">
+            <span aria-hidden="true">💎</span>
+            سلال VIP — متابعة يدوية
+          </h2>
+          <p class="mb-2 text-[11px] leading-relaxed text-violet-900/80">أولوية: لا استرجاع تلقائي للعميل لهذه السلال؛ يمكن الإرسال اليدوي من هنا عند الحاجة.</p>
+          <ul class="list-none space-y-2 p-0 m-0" role="list">
+            {% for vc in vip_cart_priority %}
+            <li class="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-violet-100 bg-white/80 px-3 py-2.5">
+              <div class="min-w-0 flex-1 text-right">
+                <span class="inline-flex rounded-md bg-violet-600 px-2 py-0.5 text-[10px] font-bold text-white">VIP</span>
+                <p class="mt-1 text-sm font-semibold text-slate-900">{{ "%.0f"|format(vc.cart_value) }} ريال</p>
+                <p class="text-[10px] text-slate-500">{{ vc.cart_short }} · {{ vc.last_seen }}</p>
+              </div>
+              <button type="button" data-vip-manual-send data-cart-id="{{ vc.id }}"
+                class="shrink-0 rounded-lg border border-violet-500 bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-violet-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600/50 disabled:opacity-60">
+                إرسال يدوي
+              </button>
+              <span data-vip-send-status class="w-full text-end text-[10px] text-slate-600 md:w-auto md:flex-1"></span>
+            </li>
+            {% endfor %}
+          </ul>
+        </section>
+        {% endif %}
+
         {% set pr = reason_bar | selectattr("key", "equalto", "price") | list %}
         {% set sr = reason_bar | selectattr("key", "equalto", "shipping") | list %}
         {% set wr = reason_bar | selectattr("key", "equalto", "warranty") | list %}
@@ -1203,8 +1229,43 @@
         bindMultiMessageSaveButton();
       }
 
+      function bindVipManualSendButtons() {
+        document.querySelectorAll("[data-vip-manual-send]").forEach(function (btn) {
+          btn.addEventListener("click", function () {
+            var id = btn.getAttribute("data-cart-id");
+            if (!id) return;
+            var li = btn.closest("li");
+            var statusEl = li ? li.querySelector("[data-vip-send-status]") : null;
+            btn.disabled = true;
+            fetch("/api/carts/" + encodeURIComponent(id) + "/send", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: "{}",
+            })
+              .then(function (r) {
+                return r.json().then(function (j) {
+                  return { ok: r.ok, j: j };
+                });
+              })
+              .then(function (x) {
+                if (statusEl) {
+                  statusEl.textContent =
+                    x.j && x.j.ok ? "تم الإرسال" : (x.j && x.j.error) || "تعذر الإرسال";
+                }
+              })
+              .catch(function () {
+                if (statusEl) statusEl.textContent = "تعذر الاتصال";
+              })
+              .finally(function () {
+                btn.disabled = false;
+              });
+          });
+        });
+      }
+
       loadRecoverySettings().then(function () {
         bind();
+        bindVipManualSendButtons();
       });
     })();
   </script>

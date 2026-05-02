@@ -1407,6 +1407,23 @@ def _abandoned_cart_cart_value_for_recovery(cart_id: Optional[str]) -> Optional[
         return None
 
 
+def _vip_log_decision_override_after_engine(
+    reason_tag: Optional[str], store_obj: Optional[Any]
+) -> None:
+    """
+    يستدعي محرك القرار للقراءة فقط ويسجّل طبقة التجاوز لـ VIP (بدون تعديل المحرك أو استخدام ناتجه للإرسال).
+    """
+    try:
+        dr = decide_recovery_action(reason_tag, store=store_obj)
+        base_action = dr.get("action") if isinstance(dr, dict) else None
+        log.info(
+            "[VIP DECISION OVERRIDE] base_action=%s effective_mode=manual_handling auto_recovery_messages=disabled",
+            base_action,
+        )
+    except Exception as e:  # noqa: BLE001
+        log.warning("[VIP DECISION OVERRIDE] preview_failed err=%s", e)
+
+
 def _activate_vip_manual_cart_handling(
     *,
     store_slug: str,
@@ -1416,10 +1433,11 @@ def _activate_vip_manual_cart_handling(
     store_obj: Optional[Any],
     recovery_key: str,
     reason_tag: Optional[str],
-) -> None:
+) -> bool:
     """
     تفعيل VIP: تعليم السلة، سجل لوحة، تنبيه تاجر، ومنع الاسترجاع التلقائي للعميل.
     آمن عند التكرار: لا يعيد التنبيه للتاجر إذا كانت ‎vip_mode‎ مفعّلة مسبقاً.
+    يُرجع ‎False‎ عند فشل حرج (للسقوط إلى المسار العادي دون تعديل محرك القرار).
     """
     _ensure_store_widget_schema()
     th_raw = getattr(store_obj, "vip_cart_threshold", None) if store_obj is not None else None
@@ -1451,23 +1469,31 @@ def _activate_vip_manual_cart_handling(
     else:
         val_s = f"{cart_total:.2f}".rstrip("0").rstrip(".")
 
-    if not already:
-        log.info(
-            "[VIP MODE ACTIVATED] session_id=%s cart_total=%s threshold=%s",
-            session_id,
-            cart_total,
-            th_raw,
-        )
-        try:
-            if cid:
-                ac2 = db.session.query(AbandonedCart).filter(AbandonedCart.zid_cart_id == cid).first()
-                if ac2 is not None:
-                    ac2.vip_mode = True
-                    db.session.commit()
-        except (SQLAlchemyError, OSError) as e:
-            db.session.rollback()
-            log.warning("VIP mark abandoned cart failed: %s", e)
+    if already:
+        log.info("[VIP CUSTOMER RECOVERY SKIPPED] reason=vip_manual_handling")
+        log.info("[VIP RECOVERY BYPASSED] session_id=%s", session_id)
+        with _recovery_session_lock:
+            _session_recovery_sent[recovery_key] = True
+        return True
 
+    log.info(
+        "[VIP MODE ACTIVATED] session_id=%s cart_total=%s threshold=%s",
+        session_id,
+        cart_total,
+        th_raw,
+    )
+    try:
+        if cid:
+            ac2 = db.session.query(AbandonedCart).filter(AbandonedCart.zid_cart_id == cid).first()
+            if ac2 is not None:
+                ac2.vip_mode = True
+                db.session.commit()
+    except (SQLAlchemyError, OSError) as e:
+        db.session.rollback()
+        log.exception("[VIP ACTIVATION FAILED] session_id=%s db_vip_mark err=%s", session_id, e)
+        return False
+
+    try:
         msg_full = "\n".join(
             [
                 "سلة عالية القيمة تحتاج متابعة يدوية",
@@ -1486,15 +1512,21 @@ def _activate_vip_manual_cart_handling(
             status="vip_manual_handling",
             step=None,
         )
-        try:
-            mbody = build_vip_merchant_alert_body(float(cart_total))
-            try_send_vip_merchant_whatsapp_alert(store_obj, message=mbody)
-        except Exception as e:  # noqa: BLE001
-            log.warning("VIP merchant alert failed (non-fatal): %s", e, exc_info=True)
+    except Exception as e:  # noqa: BLE001
+        log.exception("[VIP ACTIVATION FAILED] session_id=%s persist_log err=%s", session_id, e)
+        return False
+
+    try:
+        mbody = build_vip_merchant_alert_body(float(cart_total))
+        try_send_vip_merchant_whatsapp_alert(store_obj, message=mbody)
+    except Exception as e:  # noqa: BLE001
+        log.warning("VIP merchant alert failed (non-fatal): %s", e, exc_info=True)
 
     log.info("[VIP CUSTOMER RECOVERY SKIPPED] reason=vip_manual_handling")
+    log.info("[VIP RECOVERY BYPASSED] session_id=%s", session_id)
     with _recovery_session_lock:
         _session_recovery_sent[recovery_key] = True
+    return True
 
 
 def _is_user_converted(recovery_key: str) -> bool:
@@ -1795,7 +1827,8 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
         is_vip_eff,
     )
     if is_vip_eff:
-        _activate_vip_manual_cart_handling(
+        _vip_log_decision_override_after_engine(rt_raw or None, store_obj)
+        if _activate_vip_manual_cart_handling(
             store_slug=store_slug,
             session_id=session_id,
             cart_id=cart_id,
@@ -1803,8 +1836,13 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
             store_obj=store_obj,
             recovery_key=recovery_key,
             reason_tag=rt_raw or None,
+        ):
+            return None
+        log.warning(
+            "[VIP FALLBACK] normal_recovery_continues session_id=%s recovery_key=%s",
+            session_id,
+            recovery_key,
         )
-        return None
     resolve_whatsapp_sender(store_obj)
     if multi_slot_index is not None:
         if not rt_raw:
@@ -2310,7 +2348,8 @@ async def _run_recovery_dispatch_cart_abandoned_impl(
             True,
         )
         rt0 = _reason_tag_for_session(store_slug, session_id) or None
-        _activate_vip_manual_cart_handling(
+        _vip_log_decision_override_after_engine(rt0, store_row0)
+        if _activate_vip_manual_cart_handling(
             store_slug=store_slug,
             session_id=session_id,
             cart_id=cart_id,
@@ -2318,8 +2357,13 @@ async def _run_recovery_dispatch_cart_abandoned_impl(
             store_obj=store_row0,
             recovery_key=recovery_key,
             reason_tag=rt0,
+        ):
+            return
+        log.warning(
+            "[VIP FALLBACK] normal_recovery_continues session_id=%s recovery_key=%s",
+            session_id,
+            recovery_key,
         )
-        return
     reason_tag: Optional[str] = None
     store_row: Optional[Any] = None
     for _ in range(_RECOVERY_REASON_POLL_MAX_ATTEMPTS):
@@ -2488,7 +2532,8 @@ async def handle_cart_abandoned(
             True,
         )
         reason_vip = _reason_tag_for_session(store_slug, session_id_log) or None
-        _activate_vip_manual_cart_handling(
+        _vip_log_decision_override_after_engine(reason_vip, store_row)
+        if _activate_vip_manual_cart_handling(
             store_slug=store_slug,
             session_id=session_id_log,
             cart_id=cart_id_log,
@@ -2496,13 +2541,18 @@ async def handle_cart_abandoned(
             store_obj=store_row,
             recovery_key=recovery_key,
             reason_tag=reason_vip,
+        ):
+            return {
+                "recovery_scheduled": False,
+                "recovery_vip_manual": True,
+                "recovery_skipped": True,
+                "recovery_state": "vip_manual",
+            }
+        log.warning(
+            "[VIP FALLBACK] scheduling_normal_recovery session_id=%s recovery_key=%s",
+            session_id_log,
+            recovery_key,
         )
-        return {
-            "recovery_scheduled": False,
-            "recovery_vip_manual": True,
-            "recovery_skipped": True,
-            "recovery_state": "vip_manual",
-        }
     reason_tag_sync = _reason_tag_for_session(store_slug, session_id_log)
     slots_sync = multi_message_slots_for_abandon(reason_tag_sync, store_row)
     if slots_sync:
@@ -3638,6 +3688,7 @@ def dashboard(request: Request):
         "thinking": 0,
     }
     live_rows: list[dict[str, Any]] = []
+    vip_cart_priority: list[dict[str, Any]] = []
     try:
         db.create_all()
         total_carts = int(db.session.query(AbandonedCart).count() or 0)
@@ -3722,6 +3773,24 @@ def dashboard(request: Request):
             live_rows = vip_feed + live_rows
             if len(live_rows) > 14:
                 live_rows = live_rows[:14]
+            vip_prio_q = (
+                db.session.query(AbandonedCart)
+                .filter(AbandonedCart.vip_mode.is_(True))
+                .filter(AbandonedCart.status != "recovered")
+                .order_by(AbandonedCart.last_seen_at.desc())
+                .limit(12)
+            )
+            for ac in vip_prio_q.all():
+                zid = (ac.zid_cart_id or "").strip()
+                cart_short = zid[:28] + ("…" if len(zid) > 28 else "") if zid else "—"
+                vip_cart_priority.append(
+                    {
+                        "id": ac.id,
+                        "cart_value": float(ac.cart_value or 0.0),
+                        "cart_short": cart_short or "—",
+                        "last_seen": _format_reason_ts(ac.last_seen_at),
+                    }
+                )
             crr_total = int(
                 db.session.query(func.count(CartRecoveryReason.id)).scalar() or 0
             )
@@ -3742,6 +3811,14 @@ def dashboard(request: Request):
             "shipping": 3,
             "thinking": 7,
         }
+        vip_cart_priority = [
+            {
+                "id": 901,
+                "cart_value": 1200.0,
+                "cart_short": "demo_vip_cart_zid",
+                "last_seen": "2026-04-20 16:00",
+            },
+        ]
         live_rows = [
             {
                 "kind": "vip",
@@ -3801,6 +3878,7 @@ def dashboard(request: Request):
             "conversion_pct": conversion_pct,
             "reason_bar": reason_bar,
             "live_feed": live_rows,
+            "vip_cart_priority": vip_cart_priority,
         },
     )
 
