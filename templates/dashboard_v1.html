@@ -143,6 +143,78 @@
       max-width: 100%;
     }
 
+    /* أسباب التردد — أعمدة عمودية مضغوطة */
+    .cf-reasons-vchart-wrap {
+      box-sizing: border-box;
+      width: 100%;
+      max-width: 36rem;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .cf-reasons-vchart {
+      display: flex;
+      flex-direction: row;
+      align-items: stretch;
+      justify-content: space-between;
+      gap: 0.35rem;
+      height: 168px;
+      max-height: 168px;
+      padding: 0.35rem 0.15rem 0;
+      box-sizing: border-box;
+      overflow: hidden;
+    }
+    .cf-reasons-vcol {
+      flex: 1 1 0;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+      text-align: center;
+    }
+    .cf-reasons-vtrack {
+      position: relative;
+      flex: 1 1 auto;
+      width: 100%;
+      max-width: 42px;
+      min-height: 72px;
+      max-height: 118px;
+      margin: 0 auto 4px;
+      border-radius: 8px 8px 3px 3px;
+      background: #f1f5f9;
+      box-sizing: border-box;
+    }
+    .cf-reasons-vbar-inner {
+      position: absolute;
+      inset: 4px;
+      display: flex;
+      flex-direction: column-reverse;
+      align-items: stretch;
+      justify-content: flex-start;
+    }
+    .cf-reasons-vbar {
+      width: 100%;
+      border-radius: 4px 4px 2px 2px;
+      min-height: 2px;
+      transition: height 0.2s ease;
+    }
+    .cf-reasons-vlbl {
+      font-size: 10px;
+      font-weight: 700;
+      color: #334155;
+      line-height: 1.25;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .cf-reasons-vnum {
+      font-size: 10px;
+      color: #64748b;
+      font-variant-numeric: tabular-nums;
+      margin-top: 1px;
+    }
+
     .cf-insight-box {
       width: 100%;
       padding: 12px;
@@ -451,14 +523,14 @@
         {% endif %}
       </header>
 
-      <main class="w-full space-y-6 px-4 py-6 pb-24 md:max-w-5xl md:space-y-5 md:p-6 md:pb-24">
+      <main class="w-full space-y-3 px-4 py-5 pb-24 md:max-w-5xl md:space-y-4 md:p-5 md:pb-24">
         {% set quality_rows = reason_bar | selectattr("key", "equalto", "quality") | list %}
 
         {% set feed_n = live_feed|length %}
         {% set msg_est = recovered_carts * 2 + feed_n * 3 %}
         <!-- قسم مؤشرات -->
         <section aria-labelledby="kpi-heading">
-          <h2 id="kpi-heading" class="mb-3 border-b-2 border-zid-500/35 pb-2 text-base font-bold leading-snug text-slate-800 md:text-sm md:leading-normal">لوحة التحكم</h2>
+          <h2 id="kpi-heading" class="mb-2 border-b-2 border-zid-500/35 pb-1.5 text-base font-bold leading-snug text-slate-800 md:text-sm md:leading-normal">لوحة التحكم</h2>
           <div class="grid grid-cols-2 gap-2 md:gap-3">
             <div class="rounded-2xl border border-cyan-100 bg-gradient-to-br from-cyan-50 to-white p-3 shadow-sm md:p-4">
               <p class="mb-0.5 text-lg md:text-xl" aria-hidden="true">🛒</p>
@@ -483,90 +555,6 @@
           </div>
         </section>
 
-        <!-- تطور المبيعات المسترجعة -->
-        <section aria-labelledby="recovery-trend-heading">
-          <h2 id="recovery-trend-heading" class="mb-2 border-b-2 border-zid-500/35 pb-2 text-base font-bold leading-snug text-slate-800 md:text-sm md:leading-normal">📈 تطور المبيعات المسترجعة</h2>
-          <p class="mb-4 text-xs leading-relaxed text-slate-600 md:mb-3 md:text-[11px] md:text-slate-500">المبيعات المسترجعة خلال 7 أيام</p>
-          {% set hesitation_slugs = ('price', 'shipping', 'warranty', 'thinking', 'quality') %}
-          {% set ns = namespace(top_key='thinking', top_count=-1) %}
-          {% for r in reason_bar %}
-            {% if r.key in hesitation_slugs and r.count > ns.top_count %}
-              {% set ns.top_key = r.key %}
-              {% set ns.top_count = r.count %}
-            {% endif %}
-          {% endfor %}
-          <div class="mb-4 rounded-xl border border-slate-200/70 px-4 py-3 text-sm leading-relaxed text-slate-700 shadow-sm md:mb-3 md:px-3.5 md:py-2.5 md:text-xs" style="background-color: #f8fafc" role="note">
-            <p class="font-medium">
-              {% if ns.top_key == 'price' %}
-              💡 أغلب العملاء كانوا مترددين بسبب السعر
-              {% elif ns.top_key == 'shipping' %}
-              💡 الشحن هو أكثر سبب للتردد حالياً
-              {% elif ns.top_key == 'warranty' %}
-              💡 العملاء يحتاجون وضوح أكثر في الضمان
-              {% elif ns.top_key == 'quality' %}
-              💡 الجودة من أكثر نقاط التردد لدى العملاء
-              {% elif ns.top_key == 'thinking' %}
-              💡 العملاء يحتاجون دفعة لاتخاذ القرار
-              {% else %}
-              💡 العملاء يحتاجون دفعة لاتخاذ القرار
-              {% endif %}
-            </p>
-            <a href="/dashboard/cartflow-messages#cf-msg-template-{{ ns.top_key }}" class="mt-2 inline-flex items-center justify-center rounded-lg border border-[rgba(108,92,231,0.45)] px-3 py-1.5 text-xs font-semibold leading-snug text-[#6C5CE7] shadow-sm transition-colors hover:bg-[rgba(108,92,231,0.09)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#6C5CE7]/40 md:text-[11px] md:px-2.5 md:py-1">
-              {% if ns.top_key == 'price' %}
-              👉 تحسين رسالة السعر
-              {% elif ns.top_key == 'shipping' %}
-              👉 تحسين رسالة الشحن
-              {% elif ns.top_key == 'warranty' %}
-              👉 تحسين رسالة الضمان
-              {% elif ns.top_key == 'quality' %}
-              👉 تحسين رسالة الجودة
-              {% else %}
-              👉 تحسين رسالة التردد
-              {% endif %}
-            </a>
-          </div>
-          <div id="recoveryTrendSolutionBlock" class="mb-4 rounded-xl border border-[rgba(108,92,231,0.22)] bg-[#f5f3ff] px-4 py-4 shadow-sm ring-1 ring-[rgba(108,92,231,0.12)] md:mb-5 md:px-5 md:py-4">
-            <p class="mb-3 border-b border-[rgba(108,92,231,0.2)] pb-2 text-xs font-bold leading-snug text-slate-800 md:text-sm">📌 الحل المقترح</p>
-            <div id="recoveryTrendSuggestBody" class="mb-4 whitespace-pre-wrap rounded-lg border border-[rgba(108,92,231,0.12)] bg-white/70 px-3 py-3 text-[11px] leading-relaxed text-slate-700 md:text-[13px] md:leading-relaxed md:px-3.5 md:py-3">
-              {% if ns.top_key == 'price' %}
-واضح إن السعر يهمك 👌
-في خيار قريب بنفس الفكرة بسعر أقل، ممكن يكون أنسب لك 👍
-              {% elif ns.top_key == 'shipping' %}
-بالنسبة للشحن 👌
-التوصيل سريع وما ياخذ وقت طويل، وتقدر تشوف التفاصيل قبل إتمام الطلب 👍
-              {% elif ns.top_key == 'warranty' %}
-المنتج عليه ضمان واضح 👌
-ولو صار أي شيء، نقدر نساعدك بالاستبدال حسب سياسة المتجر 👍
-              {% elif ns.top_key == 'thinking' %}
-إذا محتار، أقدر أساعدك تختار الأنسب لك 👌
-خلنا نشوف أفضل خيار لك.
-              {% elif ns.top_key == 'quality' %}
-جودة المنتج مهمة 👌
-هذا الخيار مختار بعناية، ولو فيه أي مشكلة نقدر نساعدك حسب سياسة المتجر 👍
-              {% else %}
-أقدر أساعدك تختار الأنسب لك 👌
-خلنا نراجع الخيارات المتاحة.
-              {% endif %}
-            </div>
-            <div class="flex flex-wrap gap-2 border-t border-[rgba(108,92,231,0.12)] pt-3">
-              <button type="button" id="recoveryTrendSuggestCopy" class="inline-flex flex-1 items-center justify-center rounded-lg border border-[rgba(108,92,231,0.45)] bg-white px-3 py-2 text-[11px] font-semibold text-[#6C5CE7] shadow-sm transition-colors hover:bg-[rgba(108,92,231,0.1)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#6C5CE7]/35 sm:flex-none md:text-xs">
-                نسخ الرسالة
-              </button>
-              <a href="/dashboard/cartflow-messages#cf-msg-template-{{ ns.top_key }}" class="inline-flex flex-1 items-center justify-center rounded-lg border border-[rgba(108,92,231,0.45)] bg-white/80 px-3 py-2 text-center text-[11px] font-semibold text-[#6C5CE7] shadow-sm transition-colors hover:bg-[rgba(108,92,231,0.1)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#6C5CE7]/35 sm:flex-none md:text-xs">
-                تعديل الرسالة
-              </a>
-            </div>
-          </div>
-          <p id="recoveryTrendCopyToast" class="pointer-events-none fixed bottom-6 left-1/2 z-[60] hidden -translate-x-1/2 rounded-lg bg-slate-800 px-4 py-2 text-xs font-medium text-white shadow-lg opacity-95" role="status"></p>
-          <div class="rounded-2xl border border-zid-100 bg-white p-6 shadow-sm md:p-5">
-            <p id="recoveryTrendEstimateLabel" class="mb-2 hidden text-center text-[11px] font-medium leading-snug text-slate-500 md:text-xs">بيانات تقديرية لعرض الأداء</p>
-            <p id="recoveryTrendRevenueHighlight" class="mb-3 text-center text-lg font-bold leading-snug md:text-xl" style="color: #16a34a"></p>
-            <div class="relative h-56 w-full md:h-52">
-              <canvas id="recoveryTrendChart" aria-label="مخطط المبيعات المسترجعة لسبعة أيام"></canvas>
-            </div>
-          </div>
-        </section>
-
         {% set pr = reason_bar | selectattr("key", "equalto", "price") | list %}
         {% set sr = reason_bar | selectattr("key", "equalto", "shipping") | list %}
         {% set wr = reason_bar | selectattr("key", "equalto", "warranty") | list %}
@@ -581,33 +569,37 @@
 
         <!-- أسباب التردد -->
         <section aria-labelledby="reasons-heading">
-          <h2 id="reasons-heading" class="mb-3 border-b-2 border-zid-500/35 pb-2 text-base font-bold leading-snug text-slate-800 md:text-sm md:leading-normal">أسباب التردد</h2>
-          <section class="mx-auto w-full max-w-xl rounded-2xl border border-slate-200 bg-white p-3 shadow-sm md:p-3.5">
-            {% for key, lbl, barc in [
-              ("price", "السعر", "#f97316"),
-              ("shipping", "الشحن", "#3b82f6"),
-              ("quality", "الجودة", "#9333ea"),
-              ("thinking", "الثقة", "#22c55e"),
-            ] %}
-            {% set kr = reason_bar | selectattr("key", "equalto", key) | list %}
-            {% set cnt = kr[0].count if kr | length > 0 else 0 %}
-            {% set wp = (100.0 * cnt / mx4) | round(1) if mx4 > 0 else 0 %}
-            <div class="mb-2.5 last:mb-0">
-              <div class="mb-1 flex items-center justify-between text-xs">
-                <strong class="text-slate-800">{{ lbl }}</strong>
-                <span class="text-slate-500">{{ cnt }} حالة</span>
+          <h2 id="reasons-heading" class="mb-2 border-b-2 border-zid-500/35 pb-1.5 text-base font-bold leading-snug text-slate-800 md:text-sm md:leading-normal">أسباب التردد</h2>
+          <section class="cf-reasons-vchart-wrap rounded-2xl border border-slate-200 bg-white p-3 shadow-sm md:p-3">
+            <div class="cf-reasons-vchart" role="img" aria-label="توزيع أسباب التردد">
+              {% for key, lbl, barc in [
+                ("price", "السعر", "#f97316"),
+                ("shipping", "الشحن", "#3b82f6"),
+                ("warranty", "الضمان", "#0ea5e9"),
+                ("quality", "الجودة", "#9333ea"),
+                ("thinking", "تردد", "#22c55e"),
+              ] %}
+              {% set kr = reason_bar | selectattr("key", "equalto", key) | list %}
+              {% set cnt = kr[0].count if kr | length > 0 else 0 %}
+              {% set wp = (100.0 * cnt / mx4) | round(1) if mx4 > 0 else 0 %}
+              {% set hp = (10 if (cnt > 0 and wp < 10) else wp) %}
+              <div class="cf-reasons-vcol">
+                <div class="cf-reasons-vtrack" aria-hidden="true">
+                  <div class="cf-reasons-vbar-inner">
+                    <div class="cf-reasons-vbar" style="height: {{ hp }}%; background: {{ barc }}"></div>
+                  </div>
+                </div>
+                <span class="cf-reasons-vlbl">{{ lbl }}</span>
+                <span class="cf-reasons-vnum">{{ cnt }}</span>
               </div>
-              <div class="h-2.5 w-full overflow-hidden rounded-full bg-slate-100" role="img" aria-label="{{ lbl }}: {{ cnt }}">
-                <div class="h-full rounded-full" style="width: {{ wp }}%; background: {{ barc }}"></div>
-              </div>
+              {% endfor %}
             </div>
-            {% endfor %}
           </section>
         </section>
 
         <!-- آخر النشاطات -->
         <section aria-labelledby="live-heading">
-          <h2 id="live-heading" class="mb-3 border-b-2 border-zid-500/35 pb-2 text-base font-bold leading-snug text-slate-800 md:text-sm md:leading-normal">آخر النشاطات</h2>
+          <h2 id="live-heading" class="mb-2 border-b-2 border-zid-500/35 pb-1.5 text-base font-bold leading-snug text-slate-800 md:text-sm md:leading-normal">آخر النشاطات</h2>
           <div class="cf-dash-card max-w-full overflow-hidden p-0">
             {% for row in live_feed %}
             {% set rk = row.reason_key | default("", true) | lower %}
@@ -628,6 +620,91 @@
             {% else %}
             <p class="px-4 py-8 text-center text-sm text-slate-500">لا يوجد نشاط بعد.</p>
             {% endfor %}
+          </div>
+        </section>
+
+        <!-- تطور المبيعات المسترجعة — أسفل الصفحة -->
+        <section aria-labelledby="recovery-trend-heading">
+          <h2 id="recovery-trend-heading" class="mb-2 border-b-2 border-zid-500/35 pb-1.5 text-base font-bold leading-snug text-slate-800 md:text-sm md:leading-normal">📈 تطور المبيعات المسترجعة</h2>
+          <p class="mb-2 text-xs leading-relaxed text-slate-600 md:text-[11px] md:text-slate-500">المبيعات المسترجعة خلال 7 أيام</p>
+          {% set hesitation_slugs = ('price', 'shipping', 'warranty', 'thinking', 'quality') %}
+          {% set ns = namespace(top_key='thinking', top_count=-1) %}
+          {% for r in reason_bar %}
+            {% if r.key in hesitation_slugs and r.count > ns.top_count %}
+              {% set ns.top_key = r.key %}
+              {% set ns.top_count = r.count %}
+            {% endif %}
+          {% endfor %}
+          {% set trend_anchor = 'cf-msg-template-thinking' if ns.top_key == 'thinking' else ('cf-msg-template-' ~ ns.top_key) %}
+          <div class="mb-3 rounded-xl border border-slate-200/70 px-3 py-2.5 text-sm leading-relaxed text-slate-700 shadow-sm md:px-3.5 md:py-2 md:text-xs" style="background-color: #f8fafc" role="note">
+            <p class="font-medium">
+              {% if ns.top_key == 'price' %}
+              💡 أغلب العملاء كانوا مترددين بسبب السعر
+              {% elif ns.top_key == 'shipping' %}
+              💡 الشحن هو أكثر سبب للتردد حالياً
+              {% elif ns.top_key == 'warranty' %}
+              💡 العملاء يحتاجون وضوح أكثر في الضمان
+              {% elif ns.top_key == 'quality' %}
+              💡 الجودة من أكثر نقاط التردد لدى العملاء
+              {% elif ns.top_key == 'thinking' %}
+              💡 العملاء يحتاجون دفعة لاتخاذ القرار
+              {% else %}
+              💡 العملاء يحتاجون دفعة لاتخاذ القرار
+              {% endif %}
+            </p>
+            <a href="/dashboard/cartflow-messages#{{ trend_anchor }}" class="mt-2 inline-flex items-center justify-center rounded-lg border border-[rgba(108,92,231,0.45)] px-3 py-1.5 text-xs font-semibold leading-snug text-[#6C5CE7] shadow-sm transition-colors hover:bg-[rgba(108,92,231,0.09)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#6C5CE7]/40 md:text-[11px] md:px-2.5 md:py-1">
+              {% if ns.top_key == 'price' %}
+              👉 تحسين رسالة السعر
+              {% elif ns.top_key == 'shipping' %}
+              👉 تحسين رسالة الشحن
+              {% elif ns.top_key == 'warranty' %}
+              👉 تحسين رسالة الضمان
+              {% elif ns.top_key == 'quality' %}
+              👉 تحسين رسالة الجودة
+              {% else %}
+              👉 تحسين رسالة التردد
+              {% endif %}
+            </a>
+          </div>
+          <div id="recoveryTrendSolutionBlock" class="mb-3 rounded-xl border border-[rgba(108,92,231,0.22)] bg-[#f5f3ff] px-3 py-3 shadow-sm ring-1 ring-[rgba(108,92,231,0.12)] md:px-4 md:py-3">
+            <p class="mb-2 border-b border-[rgba(108,92,231,0.2)] pb-1.5 text-xs font-bold leading-snug text-slate-800 md:text-sm">📌 الحل المقترح</p>
+            <div id="recoveryTrendSuggestBody" class="mb-3 whitespace-pre-wrap rounded-lg border border-[rgba(108,92,231,0.12)] bg-white/70 px-2.5 py-2.5 text-[11px] leading-relaxed text-slate-700 md:text-[13px] md:leading-relaxed md:px-3 md:py-2.5">
+              {% if ns.top_key == 'price' %}
+واضح إن السعر يهمك 👌
+في خيار قريب بنفس الفكرة بسعر أقل، ممكن يكون أنسب لك 👍
+              {% elif ns.top_key == 'shipping' %}
+بالنسبة للشحن 👌
+التوصيل سريع وما ياخذ وقت طويل، وتقدر تشوف التفاصيل قبل إتمام الطلب 👍
+              {% elif ns.top_key == 'warranty' %}
+المنتج عليه ضمان واضح 👌
+ولو صار أي شيء، نقدر نساعدك بالاستبدال حسب سياسة المتجر 👍
+              {% elif ns.top_key == 'thinking' %}
+إذا محتار، أقدر أساعدك تختار الأنسب لك 👌
+خلنا نشوف أفضل خيار لك.
+              {% elif ns.top_key == 'quality' %}
+جودة المنتج مهمة 👌
+هذا الخيار مختار بعناية، ولو فيه أي مشكلة نقدر نساعدك حسب سياسة المتجر 👍
+              {% else %}
+أقدر أساعدك تختار الأنسب لك 👌
+خلنا نراجع الخيارات المتاحة.
+              {% endif %}
+            </div>
+            <div class="flex flex-wrap gap-2 border-t border-[rgba(108,92,231,0.12)] pt-2">
+              <button type="button" id="recoveryTrendSuggestCopy" class="inline-flex flex-1 items-center justify-center rounded-lg border border-[rgba(108,92,231,0.45)] bg-white px-3 py-2 text-[11px] font-semibold text-[#6C5CE7] shadow-sm transition-colors hover:bg-[rgba(108,92,231,0.1)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#6C5CE7]/35 sm:flex-none md:text-xs">
+                نسخ الرسالة
+              </button>
+              <a href="/dashboard/cartflow-messages#{{ trend_anchor }}" class="inline-flex flex-1 items-center justify-center rounded-lg border border-[rgba(108,92,231,0.45)] bg-white/80 px-3 py-2 text-center text-[11px] font-semibold text-[#6C5CE7] shadow-sm transition-colors hover:bg-[rgba(108,92,231,0.1)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#6C5CE7]/35 sm:flex-none md:text-xs">
+                تعديل الرسالة
+              </a>
+            </div>
+          </div>
+          <p id="recoveryTrendCopyToast" class="pointer-events-none fixed bottom-6 left-1/2 z-[60] hidden -translate-x-1/2 rounded-lg bg-slate-800 px-4 py-2 text-xs font-medium text-white shadow-lg opacity-95" role="status"></p>
+          <div class="rounded-2xl border border-zid-100 bg-white p-4 shadow-sm md:p-4">
+            <p id="recoveryTrendEstimateLabel" class="mb-1 hidden text-center text-[11px] font-medium leading-snug text-slate-500 md:text-xs">بيانات تقديرية لعرض الأداء</p>
+            <p id="recoveryTrendRevenueHighlight" class="mb-2 text-center text-base font-bold leading-snug md:text-lg" style="color: #16a34a"></p>
+            <div class="relative h-44 w-full md:h-40">
+              <canvas id="recoveryTrendChart" aria-label="مخطط المبيعات المسترجعة لسبعة أيام"></canvas>
+            </div>
           </div>
         </section>
       </main>
