@@ -37,6 +37,46 @@
     }
   }
 
+  function cfDemoSumCartTotals(arr) {
+    if (!arr || !Array.isArray(arr)) {
+      return 0;
+    }
+    var sum = 0;
+    var anyRow = false;
+    var i;
+    var row;
+    var p;
+    var pr;
+    var qRaw;
+    var q;
+    for (i = 0; i < arr.length; i++) {
+      row = arr[i];
+      if (!row || typeof row !== "object") {
+        continue;
+      }
+      p = row.price != null ? row.price : row.unit_price != null ? row.unit_price : null;
+      if (p == null) {
+        p = row.amount != null ? row.amount : row.total;
+      }
+      if (p == null) {
+        continue;
+      }
+      pr = typeof p === "number" ? p : parseFloat(String(p));
+      if (isNaN(pr)) {
+        continue;
+      }
+      qRaw =
+        row.quantity != null ? row.quantity : row.qty != null ? row.qty : 1;
+      q = typeof qRaw === "number" ? qRaw : parseFloat(String(qRaw));
+      if (isNaN(q) || q < 0) {
+        q = 1;
+      }
+      sum += pr * q;
+      anyRow = true;
+    }
+    return anyRow ? sum : 0;
+  }
+
   function api(path) {
     return path;
   }
@@ -453,6 +493,15 @@
           event: "cart_abandoned",
           store: store,
           session_id: session,
+          cart_id: String(session).trim().slice(0, 220) + "_demo_cart",
+          cart_total: (function () {
+            var cartArr =
+              typeof window.cart !== "undefined" && window.cart != null && Array.isArray(window.cart)
+                ? window.cart
+                : [];
+            var t = cfDemoSumCartTotals(cartArr);
+            return t > 0 ? t : 1200;
+          })(),
           cart: window.cart,
         };
         return postJson("/api/cart-event", body);

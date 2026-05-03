@@ -149,6 +149,86 @@
     return base ? base + "/api/cart-event" : "/api/cart-event";
   }
 
+  var CF_CART_EVENT_ID_STORAGE_KEY = "cartflow_cart_event_id";
+
+  function getStableCartEventIdForTracking() {
+    try {
+      if (
+        typeof window.CARTFLOW_CART_ID !== "undefined" &&
+        window.CARTFLOW_CART_ID != null &&
+        String(window.CARTFLOW_CART_ID).trim()
+      ) {
+        return String(window.CARTFLOW_CART_ID).trim().slice(0, 255);
+      }
+    } catch (eCid) {
+      /* ignore */
+    }
+    var existing = null;
+    try {
+      existing = sessionStorage.getItem(CF_CART_EVENT_ID_STORAGE_KEY);
+    } catch (e1) {}
+    if (existing && String(existing).trim()) {
+      return String(existing).trim().slice(0, 255);
+    }
+    var nid =
+      typeof window.crypto !== "undefined" && window.crypto.randomUUID
+        ? "cf_cart_" + window.crypto.randomUUID()
+        : "cf_cart_" + String(Date.now()) + "_" + String(Math.random());
+    try {
+      sessionStorage.setItem(CF_CART_EVENT_ID_STORAGE_KEY, nid);
+    } catch (e2) {}
+    return nid.slice(0, 255);
+  }
+
+  function sumCartArrayTotal(cartArr) {
+    if (!cartArr || !Array.isArray(cartArr)) {
+      return 0;
+    }
+    var sum = 0;
+    var anyRow = false;
+    for (var i = 0; i < cartArr.length; i++) {
+      var row = cartArr[i];
+      if (!row || typeof row !== "object") {
+        continue;
+      }
+      var p =
+        row.price != null ? row.price : row.unit_price != null ? row.unit_price : null;
+      if (p == null) {
+        p = row.amount != null ? row.amount : row.total;
+      }
+      if (p == null) {
+        continue;
+      }
+      var pr = typeof p === "number" ? p : parseFloat(String(p));
+      if (isNaN(pr)) {
+        continue;
+      }
+      var qRaw =
+        row.quantity != null ? row.quantity : row.qty != null ? row.qty : 1;
+      var q = typeof qRaw === "number" ? qRaw : parseFloat(String(qRaw));
+      if (isNaN(q) || q < 0) {
+        q = 1;
+      }
+      sum += pr * q;
+      anyRow = true;
+    }
+    return anyRow ? sum : 0;
+  }
+
+  function getOptionalCartflowCustomerPhone() {
+    try {
+      if (
+        typeof window.CARTFLOW_CUSTOMER_PHONE === "string" &&
+        window.CARTFLOW_CUSTOMER_PHONE.trim()
+      ) {
+        return String(window.CARTFLOW_CUSTOMER_PHONE).trim().slice(0, 100);
+      }
+    } catch (ePh) {
+      /* ignore */
+    }
+    return "";
+  }
+
   var CARTFLOW_SESSION_KEY = "cartflow_recovery_session_id";
   var CARTFLOW_CONVERTED_KEY = "cartflow_converted";
   // يُلزِم id واحداً لكل تبويب حتى عند تزامن ‎beforeunload + visibility‎ أو فشل ‎sessionStorage‎
@@ -242,13 +322,25 @@
       String(window.CARTFLOW_STORE_SLUG).trim() !== ""
         ? String(window.CARTFLOW_STORE_SLUG).trim()
         : "demo";
-    var body = JSON.stringify({
+    var cartArr =
+      typeof window.cart !== "undefined" && window.cart !== null && Array.isArray(window.cart)
+        ? window.cart
+        : [];
+    var cartTotal = sumCartArrayTotal(cartArr);
+    var bodyObj = {
       event: "cart_abandoned",
       store: storeSlug,
       source: source,
       session_id: getRecoverySessionId(),
-      cart: window.cart,
-    });
+      cart_id: getStableCartEventIdForTracking(),
+      cart_total: cartTotal,
+      cart: cartArr,
+    };
+    var ph = getOptionalCartflowCustomerPhone();
+    if (ph) {
+      bodyObj.phone = ph;
+    }
+    var body = JSON.stringify(bodyObj);
     var url = apiCartEventUrl();
     var opts = {
       method: "POST",

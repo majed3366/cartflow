@@ -76,6 +76,85 @@ class VipManualHandlingTests(unittest.TestCase):
         self.assertEqual((ac.status or "").strip(), "abandoned")
 
 
+class WidgetCartAbandonVipDetectionTests(unittest.TestCase):
+    """Real POST /api/cart-event payloads with cart_total (widget-style) → VIP بدون dev endpoint."""
+
+    def setUp(self) -> None:
+        _reset_recovery_memory()
+        self.client = TestClient(app)
+
+    @patch("main.try_send_vip_merchant_whatsapp_alert", return_value={"ok": False})
+    @patch("main.send_whatsapp")
+    def test_cart_abandoned_cart_total_1200_logs_and_priority_list(self, _mock_sw: object, _mock_va: object) -> None:
+        logging.getLogger("cartflow").setLevel(logging.INFO)
+        db.create_all()
+        main._ensure_store_widget_schema()
+        slug = f"widgv_{uuid.uuid4().hex[:10]}"
+        store = Store(
+            zid_store_id=slug,
+            vip_cart_threshold=900,
+            recovery_delay=5,
+            recovery_delay_unit="minutes",
+            recovery_attempts=2,
+        )
+        db.session.add(store)
+        db.session.commit()
+
+        cid = f"wid-cart-{uuid.uuid4().hex[:10]}"
+        old_ac = db.session.query(AbandonedCart).filter_by(zid_cart_id=cid).first()
+        if old_ac:
+            db.session.delete(old_ac)
+            db.session.commit()
+
+        sid = f"wid-sess-{uuid.uuid4().hex[:8]}"
+        _post_recovery_reason_for_session(self.client, slug, sid, "price")
+
+        with self.assertLogs("cartflow", level="INFO") as alog_ctx:
+            r = self.client.post(
+                "/api/cart-event",
+                json={
+                    "event": "cart_abandoned",
+                    "store": slug,
+                    "session_id": sid,
+                    "source": "beforeunload",
+                    "cart_id": cid,
+                    "cart_total": 1200,
+                    "phone": "+966501112233",
+                    "cart": [],
+                },
+            )
+        self.assertEqual(r.status_code, 200, r.text)
+        self.assertEqual(r.json().get("recovery_state"), "vip_manual_handling")
+
+        blob = "\n".join(alog_ctx.output)
+        self.assertIn("[WIDGET CART EVENT]", blob)
+        self.assertIn("[ABANDONED CART SAVED]", blob)
+        self.assertIn("[VIP CHECK]", blob)
+        self.assertIn("[VIP MODE ACTIVATED] source=widget_cart_event", blob)
+
+        lg = (
+            db.session.query(CartRecoveryLog)
+            .filter(
+                CartRecoveryLog.cart_id == cid,
+                CartRecoveryLog.status == "vip_manual_handling",
+            )
+            .order_by(CartRecoveryLog.id.desc())
+            .first()
+        )
+        self.assertIsNotNone(lg)
+        self.assertEqual((lg.message or "").strip(), main.VIP_WIDGET_RECOVERY_LOG_MESSAGE)
+        self.assertEqual(lg.step, main.VIP_WIDGET_RECOVERY_LOG_STEP)
+
+        ac = db.session.query(AbandonedCart).filter_by(zid_cart_id=cid).one()
+        self.assertEqual(int(ac.store_id or 0), int(store.id))
+        self.assertAlmostEqual(float(ac.cart_value or 0.0), 1200.0)
+        self.assertEqual((ac.status or "").strip(), "abandoned")
+        self.assertTrue(ac.vip_mode)
+
+        prios = main._vip_priority_cart_alert_list()
+        self.assertTrue(any(int(x.get("id", 0)) == int(ac.id) for x in prios))
+
+
 class VipMerchantResolveTests(unittest.TestCase):
     def test_resolve_store_number(self) -> None:
         from services.vip_merchant_alert import resolve_merchant_whatsapp_phone

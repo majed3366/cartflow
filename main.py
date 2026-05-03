@@ -1416,7 +1416,7 @@ def _cart_total_from_abandon_payload(payload: dict[str, Any]) -> Optional[float]
     """مجموع السلة من حمولة ‎cart_abandoned‎ (قيم عليا أو أسطر ‎cart‎) لمسار ‎VIP‎."""
     if not isinstance(payload, dict):
         return None
-    for key in ("cart_value", "cart_total", "total", "total_price", "amount", "subtotal"):
+    for key in ("cart_total", "cart_value", "total", "total_price", "amount", "subtotal"):
         if key not in payload:
             continue
         raw = payload.get(key)
@@ -1488,7 +1488,14 @@ def _cart_total_for_vip_recovery(
 def _vip_log_check(cart_total: Optional[float], threshold: Any, is_vip: bool) -> None:
     ct = "none" if cart_total is None else str(cart_total)
     th = "none" if threshold is None else str(threshold)
-    log.info("[VIP CHECK]\ncart_total=%s\nthreshold=%s\nis_vip=%s", ct, th, is_vip)
+    vip_s = "true" if is_vip else "false"
+    log.info("[VIP CHECK]\ncart_total=%s\nthreshold=%s\nis_vip=%s", ct, th, vip_s)
+
+
+# رسالة وحيدة للسجل عند VIP من مسار الويدجت/‎POST‎ ‎cart-event‎ (خطوة ‎0‎ = مسار vip يدوي خارج ‎step 1‎–‎3‎).
+VIP_WIDGET_ACTIVATION_SOURCE = "widget_cart_event"
+VIP_WIDGET_RECOVERY_LOG_MESSAGE = "VIP cart detected from widget flow"
+VIP_WIDGET_RECOVERY_LOG_STEP = 0
 
 
 def _vip_recovery_decision_layer(
@@ -1517,6 +1524,9 @@ def _activate_vip_manual_cart_handling(
     store_obj: Optional[Any],
     recovery_key: str,
     reason_tag: Optional[str],
+    recovery_log_message: Optional[str] = None,
+    recovery_log_step: Optional[int] = None,
+    vip_activation_source: Optional[str] = None,
 ) -> bool:
     """
     تفعيل VIP: تعليم السلة، سجل لوحة، تنبيه تاجر، ومنع الاسترجاع التلقائي للعميل.
@@ -1567,7 +1577,15 @@ def _activate_vip_manual_cart_handling(
             _session_recovery_sent[recovery_key] = True
         return True
 
-    log.info("[VIP MODE ACTIVATED] session_id=%s cart_total=%s", session_id, cart_total)
+    if vip_activation_source:
+        log.info(
+            "[VIP MODE ACTIVATED] source=%s session_id=%s cart_total=%s",
+            vip_activation_source,
+            session_id,
+            cart_total,
+        )
+    else:
+        log.info("[VIP MODE ACTIVATED] session_id=%s cart_total=%s", session_id, cart_total)
     try:
         if cid:
             ac2 = db.session.query(AbandonedCart).filter(AbandonedCart.zid_cart_id == cid).first()
@@ -1591,14 +1609,21 @@ def _activate_vip_manual_cart_handling(
                 f"الوقت: {time_str}",
             ]
         )
+        rtlm = (recovery_log_message or "").strip()
+        if rtlm:
+            msg_for_log = rtlm
+            step_for_log = recovery_log_step
+        else:
+            msg_for_log = msg_full
+            step_for_log = None
         _persist_cart_recovery_log(
             store_slug=store_slug,
             session_id=session_id,
             cart_id=cart_id,
             phone=None,
-            message=msg_full,
+            message=msg_for_log,
             status="vip_manual_handling",
-            step=None,
+            step=step_for_log,
         )
     except Exception as e:  # noqa: BLE001
         log.exception("[VIP ACTIVATION FAILED] session_id=%s persist_log err=%s", session_id, e)
@@ -2657,6 +2682,9 @@ async def handle_cart_abandoned(
             store_obj=store_row,
             recovery_key=recovery_key,
             reason_tag=reason_vip,
+            recovery_log_message=VIP_WIDGET_RECOVERY_LOG_MESSAGE,
+            recovery_log_step=int(VIP_WIDGET_RECOVERY_LOG_STEP),
+            vip_activation_source=VIP_WIDGET_ACTIVATION_SOURCE,
         )
         if not ok_vip:
             log.warning(
@@ -2944,6 +2972,16 @@ async def api_cart_event(request: Request, background_tasks: BackgroundTasks):
         out["behavior_reset"] = True
     if payload.get("event") == "cart_abandoned":
         print("[CF API] processing event")
+        wc_id = (_cart_id_str_from_payload(payload) or "").strip() or "-"
+        wc_sid = (_session_part_from_payload(payload) or "").strip() or "-"
+        wc_tot = _cart_total_from_abandon_payload(payload)
+        wc_tot_disp = "none" if wc_tot is None else str(wc_tot)
+        log.info(
+            "[WIDGET CART EVENT]\ncart_id=%s\ncart_total=%s\nsession_id=%s",
+            wc_id,
+            wc_tot_disp,
+            wc_sid,
+        )
         out.update(await handle_cart_abandoned(background_tasks, payload))
     return j(out, 200)
 
@@ -3803,6 +3841,7 @@ def normalize_zid_cart_fields(payload: dict) -> dict[str, Any]:
         or data.get("total_price")
         or data.get("subtotal")
         or data.get("amount")
+        or p.get("cart_total")
         or p.get("cart_value")
         or p.get("total")
         or cart.get("total")
@@ -3874,6 +3913,27 @@ def upsert_abandoned_cart_from_payload(
             row.store_id = int(store.id)
         except (TypeError, ValueError):
             pass
+    evt_raw = ""
+    try:
+        evt_raw = str((payload.get("event") or "")).strip().lower()
+    except Exception:  # noqa: BLE001
+        evt_raw = ""
+    if evt_raw == "cart_abandoned":
+        if str(row.status or "").strip() != "recovered":
+            row.status = "abandoned"
+    try:
+        cv_disp = row.cart_value
+        if cv_disp is None:
+            cv_disp = fields.get("cart_value")
+        sid_out = str(row.store_id) if getattr(row, "store_id", None) is not None else "none"
+        log.info(
+            "[ABANDONED CART SAVED]\ncart_id=%s\ncart_value=%s\nstore_id=%s",
+            fields["zid_cart_id"],
+            str(cv_disp) if cv_disp is not None else "",
+            sid_out,
+        )
+    except Exception:  # noqa: BLE001
+        pass
     db.session.commit()
     return True, "ok", row
 
