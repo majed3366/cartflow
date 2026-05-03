@@ -35,7 +35,7 @@ CartFlow is a FastAPI application that:
 
 | Path / files | Purpose |
 |--------------|---------|
-| `GET /dashboard` | `dashboard_v1.html` — KPIs, reasons chart, live feed (includes VIP rows from `CartRecoveryLog`). |
+| `GET /dashboard` | `dashboard_v1.html` — KPIs, reasons chart, **VIP priority list** (`vip_cart_priority` from `AbandonedCart.vip_mode`), live feed (includes VIP rows from `CartRecoveryLog`), manual **إرسال يدوي** → `POST /api/carts/{id}/send`. |
 | `GET /dashboard/recovery-settings` | `recovery_settings.html` — delay, attempts, WhatsApp fields; **`GET`/`POST /api/recovery-settings`**. |
 | `GET /dashboard/vip-cart-settings` | `vip_cart_settings.html` — VIP threshold only; same API. |
 | `GET /dashboard/exit-intent-settings` | `exit_intent_settings.html` — exit intent copy; loads/saves via recovery settings API + `static/cartflow_dashboard_messages.js`. |
@@ -151,10 +151,11 @@ Print-style trace: **`[DELAY STARTED]`**, **`[DELAY WAITING]`**, **`[DELAY FINIS
 
 ### 4.9 VIP handling
 
-- **Threshold:** **`Store.vip_cart_threshold`**; **`services/vip_cart.is_vip_cart(cart_total, store)`**.
-- **Activation:** **`main._activate_vip_manual_cart_handling`** — sets **`AbandonedCart.vip_mode`**, writes **`CartRecoveryLog`** with **`status=vip_manual_handling`**, calls **`try_send_vip_merchant_whatsapp_alert`** (merchant only; **`wa_trace_session_id=None`** to avoid customer rejection block), sets **`_session_recovery_sent[recovery_key]`**.
-- **Entry points:** (1) **`handle_cart_abandoned`** after store load, before multi scheduling; (2) start of **`_run_recovery_dispatch_cart_abandoned_impl`**; (3) after delay in **`_run_recovery_sequence_after_cart_abandoned_impl`** via **`[VIP CHECK]`** then early return.
-- **Logs:** **`[VIP CHECK]`**, **`[VIP MODE ACTIVATED]`**, **`[VIP CUSTOMER RECOVERY SKIPPED]`**, **`[VIP MERCHANT ALERT SENT]`** (in `vip_merchant_alert.py`).
+- **Threshold:** **`Store.vip_cart_threshold`** (null → VIP ignored); cart total from **`_abandoned_cart_cart_value_for_recovery`** vs **`services/vip_cart.is_vip_cart(cart_total, store)`**. Missing **`cart_value`** → normal recovery only.
+- **Decision override (read-only):** **`main._vip_log_decision_override_after_engine`** calls **`decide_recovery_action(reason_tag, store=...)`** only to log **`[VIP DECISION OVERRIDE]`** (`effective_mode=manual_handling`, `auto_recovery_messages=disabled`). Does **not** change **`services/decision_engine.py`** or use that message for customer send.
+- **Activation:** **`main._activate_vip_manual_cart_handling`** → **`bool`**: on success (or cart already **`vip_mode`**) sets **`AbandonedCart.vip_mode`**, **`CartRecoveryLog`** with **`status=vip_manual_handling`**, merchant **`try_send_vip_merchant_whatsapp_alert`** (body: Arabic VIP high-value line from **`build_vip_merchant_alert_body`**; target: **`store_whatsapp_number`** then **`whatsapp_support_url`**), sets **`_session_recovery_sent[recovery_key]`**, logs **`[VIP RECOVERY BYPASSED]`**. On DB mark / guarded persist failure → **`False`** and **`[VIP FALLBACK]`** so the **existing** customer recovery pipeline runs unchanged.
+- **Entry points:** (1) **`handle_cart_abandoned`**; (2) **`_run_recovery_dispatch_cart_abandoned_impl`**; (3) **`_run_recovery_sequence_after_cart_abandoned_impl`** after **`[VIP CHECK]`** — each: override log → activate; if **`False`**, continue normal flow (multi-message, delay, templates, **`send_whatsapp`**).
+- **Logs:** **`[VIP CHECK]`**, **`[VIP MODE ACTIVATED]`**, **`[VIP CUSTOMER RECOVERY SKIPPED]`**, **`[VIP RECOVERY BYPASSED]`**, **`[VIP FALLBACK]`**, **`[VIP ACTIVATION FAILED]`** (on hard failures), **`[VIP MERCHANT ALERT SENT] status=...`** in **`services/vip_merchant_alert.py`** (`no_target`, `exception`, `sent`, `twilio_error`, etc.).
 
 ---
 
@@ -164,11 +165,11 @@ Print-style trace: **`[DELAY STARTED]`**, **`[DELAY WAITING]`**, **`[DELAY FINIS
 
 1. User interacts with **`cartflow_widget.js`** on the store page; widget may call **`POST /api/cart-recovery/reason`** → row in **`cart_recovery_reasons`**.
 2. Store platform (or demo) sends **`POST /api/cart-event`** with `event: cart_abandoned`, `store`, `session_id`, optional `cart_id` / `phone`.
-3. **`handle_cart_abandoned`**: conversion / duplicate / claim checks → load **`Store`** → **if VIP** (`cart_value` from **`abandoned_carts`** vs threshold): activate VIP path and **return** (no customer sequence).
+3. **`handle_cart_abandoned`**: conversion / duplicate / claim checks → load **`Store`** → **if VIP**: try activate; on success **return** (no customer sequence); on activation failure **fall through** to the same scheduling logic as non-VIP.
 4. If **multi_message_slots_for_abandon** returns slots → schedule delayed tasks per slot; else **`_run_recovery_dispatch_cart_abandoned`** waits for reason if needed, then schedules **one** delayed **`_run_recovery_sequence_after_cart_abandoned`**.
 5. After sleep: **VIP guard** again; resolve message via **reason templates** / fallbacks; **`should_send_whatsapp`** vs **`CartRecoveryReason.updated_at`**; resolve phone via **`_resolve_cartflow_recovery_phone`**; **`send_whatsapp`** (Twilio) on success path.
 6. **`_persist_cart_recovery_log`** records queued / sent / skipped / VIP rows.
-7. **Dashboard** **`GET /dashboard`** reads DB: merges **`CartRecoveryLog`** VIP rows into **`live_feed`**; KPIs from **`AbandonedCart`**, reasons from **`CartRecoveryReason`**.
+7. **Dashboard** **`GET /dashboard`** reads DB: **`vip_cart_priority`** for open VIP **`AbandonedCart`** rows; merges **`CartRecoveryLog`** VIP rows into **`live_feed`**; KPIs from **`AbandonedCart`**, reasons from **`CartRecoveryReason`**.
 
 ---
 
@@ -195,7 +196,7 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 | Log / prefix | Where |
 |----------------|--------|
 | `[CF API]` | `main.handle_cart_abandoned` / cart-event |
-| `[VIP CHECK]`, `[VIP MODE ACTIVATED]`, `[VIP CUSTOMER RECOVERY SKIPPED]` | `main.py` |
+| `[VIP CHECK]`, `[VIP MODE ACTIVATED]`, `[VIP CUSTOMER RECOVERY SKIPPED]`, `[VIP RECOVERY BYPASSED]`, `[VIP DECISION OVERRIDE]`, `[VIP FALLBACK]`, `[VIP ACTIVATION FAILED]` | `main.py` |
 | `[VIP MERCHANT ALERT SENT]` | `services/vip_merchant_alert.py` |
 | `[DELAY STARTED]`, `[DELAY WAITING]`, `[DELAY FINISHED]`, `[DELAY BLOCKED]` | `main._run_recovery_sequence_after_cart_abandoned_impl` |
 | `[CARTFLOW DELAY CHECK]`, `[CARTFLOW PRO LOGIC]` | `main.py` |
@@ -239,10 +240,20 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 | WhatsApp receive (`/webhook/whatsapp`) | 🟡 (stub / logging) |
 | Multi-message (reason templates + scheduled slots) | ✅ |
 | Per-reason delay (`get_recovery_delay` + store quiet period in `should_send_whatsapp`) | ✅ |
-| VIP (threshold, skip customer auto-recovery, merchant alert, dashboard log, `vip_mode`) | ✅ |
+| VIP (threshold, skip customer auto-recovery, merchant alert, dashboard log + priority list, `vip_mode`, override log, safe fallback) | ✅ |
 
 **Legend:** ✅ implemented and wired in code · 🟡 partial or environment-dependent · ❌ not implemented
 
 ---
 
-*This document reflects the repository layout and control flow as of the last update; verify against `main.py`, `routes/`, `services/`, and `static/` for line-level changes.*
+## 10) Recent updates (changelog)
+
+**Convention:** After substantive project changes, append a short dated entry here so this file stays the single high-level record of behavior and wiring.
+
+| Date (UTC) | Summary |
+|------------|---------|
+| 2026-05-02 | **Full VIP integration:** `_vip_log_decision_override_after_engine` (read-only `decide_recovery_action` + logs); `_activate_vip_manual_cart_handling` returns **`bool`** with **`[VIP RECOVERY BYPASSED]`** / **`[VIP FALLBACK]`** on failure; merchant alert copy and **`[VIP MERCHANT ALERT SENT] status=...`** in `services/vip_merchant_alert.py`; dashboard **`vip_cart_priority`** + **إرسال يدوي** in `templates/dashboard_v1.html`. Commit: `feat: full VIP integration (backend + whatsapp + dashboard + override)`. |
+
+---
+
+*This document reflects the repository layout and control flow as of the last update (see §10); verify against `main.py`, `routes/`, `services/`, and `static/` for line-level changes.*
