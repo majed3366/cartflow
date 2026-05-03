@@ -3914,20 +3914,6 @@ def _format_reason_ts(dt: Optional[datetime]) -> str:
     return d.strftime("%Y-%m-%d %H:%M")
 
 
-def _vip_demo_cart_fixture_list() -> list[dict[str, Any]]:
-    """صفوف تجريبية ثابتة — قسم «بيانات تجريبية» فقط؛ لا تُمزج مع الأولوية."""
-    return [
-        {
-            "id": 901,
-            "cart_value": 1200.0,
-            "cart_short": "demo_vip_cart_zid",
-            "last_seen": "2026-04-20 16:00",
-            "status": "vip_manual_handling",
-            "interactive": False,
-        }
-    ]
-
-
 def _vip_priority_cart_alert_list() -> list[dict[str, Any]]:
     """
     سلّات حقيقية لقسم «أولوية»: ‎vip_mode‎ أو ظهور ‎vip_manual_handling‎ في ‎CartRecoveryLog‎ لنفس ‎zid_cart_id‎.
@@ -4200,16 +4186,14 @@ def dashboard_recovery_settings(request: Request):
 
 @app.get("/dashboard/vip-cart-settings")
 def dashboard_vip_cart_settings(request: Request):
-    """السلال المميزة (VIP) — عتبة عبر ‎GET/POST /api/recovery-settings‎ + قسماً: أولوية (حقيقي) وتجريبي."""
+    """السلال المميزة (VIP) — عتبة عبر ‎GET/POST /api/recovery-settings‎؛ قائمة أولوية حقيقية فقط."""
     vip_priority_alerts = _vip_priority_cart_alert_list()
-    vip_demo_alerts = _vip_demo_cart_fixture_list()
     return templates.TemplateResponse(
         request,
         "vip_cart_settings.html",
         {
             "request": request,
             "vip_priority_alerts": vip_priority_alerts,
-            "vip_demo_alerts": vip_demo_alerts,
         },
     )
 

@@ -2,6 +2,7 @@
 """POST /api/dashboard/vip-cart/{id}/merchant-alert — VIP تنبيه تاجر فقط."""
 from __future__ import annotations
 
+import logging
 import unittest
 import uuid
 from unittest.mock import patch
@@ -11,6 +12,23 @@ from fastapi.testclient import TestClient
 
 from main import app
 from models import AbandonedCart, CartRecoveryLog, Store
+
+VIP_MANUAL_ALERT_TEST_MERCHANT_WHATSAPP = "+966579706669"
+
+
+def _persist_store_whatsapp_via_recovery_api(tc: unittest.TestCase, client: TestClient, phone: str) -> None:
+    """يضبط ‎store_whatsapp_number‎ عبر ‎GET‎ ثم ‎POST /api/recovery-settings‎ (نفس مسار الواجهة)."""
+    rg = client.get("/api/recovery-settings")
+    tc.assertEqual(rg.status_code, 200, rg.text)
+    body = rg.json()
+    tc.assertTrue(body.get("ok"), body)
+    body.pop("ok", None)
+    body["store_whatsapp_number"] = phone
+    rp = client.post("/api/recovery-settings", json=body)
+    tc.assertEqual(rp.status_code, 200, rp.text)
+    out = rp.json()
+    tc.assertTrue(out.get("ok"), out)
+    tc.assertEqual((out.get("store_whatsapp_number") or "").strip(), phone.strip())
 
 
 class VipDashboardMerchantAlertTests(unittest.TestCase):
@@ -28,13 +46,11 @@ class VipDashboardMerchantAlertTests(unittest.TestCase):
         mock_send.return_value = {"ok": True, "sid": "wx_1"}
         db.create_all()
 
-        store = Store(
-            zid_store_id=f"vip_manual_send_store_{uuid.uuid4().hex[:12]}",
-            store_whatsapp_number="+966501112233",
-            whatsapp_support_url=None,
-        )
+        store = Store(zid_store_id=f"vip_manual_send_store_{uuid.uuid4().hex[:12]}")
         db.session.add(store)
         db.session.commit()
+
+        _persist_store_whatsapp_via_recovery_api(self, self.client, VIP_MANUAL_ALERT_TEST_MERCHANT_WHATSAPP)
 
         uid = uuid.uuid4().hex[:10]
         ac = AbandonedCart(
@@ -59,12 +75,10 @@ class VipDashboardMerchantAlertTests(unittest.TestCase):
 
     def test_non_vip_cart_rejected(self) -> None:
         db.create_all()
-        store = Store(
-            zid_store_id=f"vip_ns_1_{uuid.uuid4().hex[:12]}",
-            store_whatsapp_number="+966501112233",
-        )
+        store = Store(zid_store_id=f"vip_ns_1_{uuid.uuid4().hex[:12]}")
         db.session.add(store)
         db.session.commit()
+
         uid = uuid.uuid4().hex[:10]
         ac = AbandonedCart(
             store_id=store.id,
@@ -104,16 +118,51 @@ class VipDashboardMerchantAlertTests(unittest.TestCase):
         self.assertEqual(r.status_code, 400)
         self.assertEqual(r.json().get("error"), "لا يوجد رقم واتساب للمتجر")
 
+    @patch("services.whatsapp_send.send_whatsapp")
+    def test_manual_send_real_path_logs_success_after_recovery_api_whatsapp(self, mock_sw) -> None:
+        """بعد ضبط ‎store_whatsapp_number‎ عبر ‎POST /api/recovery-settings‎: مسار حقيقي لـ try_send بدون لا يوجد رقم؛ سجل VIP المتوقعة."""
+        mock_sw.return_value = {"ok": True, "sid": "SM_integration_test"}
+
+        db.create_all()
+        store = Store(zid_store_id=f"vip_integration_{uuid.uuid4().hex[:12]}")
+        db.session.add(store)
+        db.session.commit()
+
+        _persist_store_whatsapp_via_recovery_api(self, self.client, VIP_MANUAL_ALERT_TEST_MERCHANT_WHATSAPP)
+
+        uid = uuid.uuid4().hex[:10]
+        ac = AbandonedCart(
+            store_id=store.id,
+            zid_cart_id=f"vip-dash-integration-{uid}",
+            cart_value=750.0,
+            status="detected",
+            vip_mode=True,
+        )
+        db.session.add(ac)
+        db.session.commit()
+
+        with self.assertLogs(level=logging.INFO) as alog_ctx:
+            r = self.client.post(f"/api/dashboard/vip-cart/{int(ac.id)}/merchant-alert", json={})
+
+        self.assertEqual(r.status_code, 200, r.text)
+        rd = r.json()
+        self.assertTrue(rd.get("ok"), rd)
+        self.assertEqual(rd.get("message"), "تم إرسال تنبيه التاجر")
+        blob = "\n".join(alog_ctx.output)
+        self.assertIn("[VIP MANUAL SEND CLICKED]", blob)
+        self.assertIn("[VIP MERCHANT ALERT ATTEMPT]", blob)
+        self.assertIn("[VIP MERCHANT ALERT SENT]", blob)
+
     @patch("main._vip_priority_cart_alert_list", return_value=[])
-    def test_vip_cart_settings_empty_priority_not_demo_but_demo_section_present(self, _prio_mock) -> None:
+    def test_vip_cart_settings_empty_priority_no_demo_section(self, _prio_mock) -> None:
         db.create_all()
         r = self.client.get("/dashboard/vip-cart-settings")
         self.assertEqual(r.status_code, 200, r.text)
         html = r.text
         empty_msg = "لا توجد سلال مميزة حقيقية حالياً"
         self.assertIn(empty_msg, html)
-        self.assertIn("demo_vip_cart_zid", html)
-        self.assertGreater(html.find("demo_vip_cart_zid"), html.find(empty_msg))
+        self.assertNotIn("demo_vip_cart_zid", html)
+        self.assertNotIn("vip-demo-heading", html)
 
     def test_vip_cart_settings_priority_from_vip_mode_and_recovery_log_union(self) -> None:
         db.create_all()
@@ -155,13 +204,10 @@ class VipDashboardMerchantAlertTests(unittest.TestCase):
 
         r = self.client.get("/dashboard/vip-cart-settings")
         self.assertEqual(r.status_code, 200, r.text)
-        html = r.text
-        self.assertIn(zid_mode, html.replace("&#39;", "'"))
-        self.assertIn(zid_log, html.replace("&#39;", "'"))
-        demo_section = html.find('id="vip-demo-heading"')
-        self.assertGreater(demo_section, 0)
-        self.assertLess(html.find(zid_mode), demo_section)
-        self.assertLess(html.find(zid_log), demo_section)
+        html = r.text.replace("&#39;", "'")
+        self.assertIn(zid_mode, html)
+        self.assertIn(zid_log, html)
+        self.assertNotIn("vip-demo-heading", html)
 
 
 if __name__ == "__main__":
