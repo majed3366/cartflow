@@ -35,9 +35,9 @@ CartFlow is a FastAPI application that:
 
 | Path / files | Purpose |
 |--------------|---------|
-| `GET /dashboard` | `dashboard_v1.html` — KPIs, reasons chart, **VIP priority list** (`vip_cart_priority` from `AbandonedCart.vip_mode`), live feed (includes VIP rows from `CartRecoveryLog`), manual **إرسال يدوي** → `POST /api/carts/{id}/send`. |
+| `GET /dashboard` | `dashboard_v1.html` — **الرئيسية**: KPIs، أسباب التردد، الرسم، **آخر النشاطات** (أسباب فقط — بدون VIP). |
 | `GET /dashboard/recovery-settings` | `recovery_settings.html` — delay, attempts, WhatsApp fields; **`GET`/`POST /api/recovery-settings`**. |
-| `GET /dashboard/vip-cart-settings` | `vip_cart_settings.html` — VIP threshold only; same API. |
+| `GET /dashboard/vip-cart-settings` | `vip_cart_settings.html` — **تنبيهات السلال المميزة** (قائمة `AbandonedCart.vip_mode` + **إرسال يدوي** → `POST /api/carts/{id}/send`) + عتبة VIP عبر نفس **`/api/recovery-settings`**. |
 | `GET /dashboard/exit-intent-settings` | `exit_intent_settings.html` — exit intent copy; loads/saves via recovery settings API + `static/cartflow_dashboard_messages.js`. |
 | `GET /dashboard/cart-recovery-messages` | `cart_recovery_messages.html` — recovery message templates. |
 | `GET /dashboard/widget-customization` | `widget_customization.html` — widget appearance. |
@@ -152,10 +152,10 @@ Print-style trace: **`[DELAY STARTED]`**, **`[DELAY WAITING]`**, **`[DELAY FINIS
 ### 4.9 VIP handling
 
 - **Threshold:** **`Store.vip_cart_threshold`** (null → VIP ignored); cart total from **`_abandoned_cart_cart_value_for_recovery`** vs **`services/vip_cart.is_vip_cart(cart_total, store)`**. Missing **`cart_value`** → normal recovery only.
-- **Decision override (read-only):** **`main._vip_log_decision_override_after_engine`** calls **`decide_recovery_action(reason_tag, store=...)`** only to log **`[VIP DECISION OVERRIDE]`** (`effective_mode=manual_handling`, `auto_recovery_messages=disabled`). Does **not** change **`services/decision_engine.py`** or use that message for customer send.
+- **Decision override (read-only):** **`main._vip_log_decision_override_after_engine`** calls **`decide_recovery_action(reason_tag, store=...)`** only to log **`[VIP DECISION OVERRIDE] decision=vip_manual_handling`** (مع `base_engine_action=...`) — لا يعدّل **`services/decision_engine.py`** ولا يُستخدم نص المحرك لإرسال العميل.
 - **Activation:** **`main._activate_vip_manual_cart_handling`** → **`bool`**: on success (or cart already **`vip_mode`**) sets **`AbandonedCart.vip_mode`**, **`CartRecoveryLog`** with **`status=vip_manual_handling`**, merchant **`try_send_vip_merchant_whatsapp_alert`** (body: Arabic VIP high-value line from **`build_vip_merchant_alert_body`**; target: **`store_whatsapp_number`** then **`whatsapp_support_url`**), sets **`_session_recovery_sent[recovery_key]`**, logs **`[VIP RECOVERY BYPASSED]`**. On DB mark / guarded persist failure → **`False`** and **`[VIP FALLBACK]`** so the **existing** customer recovery pipeline runs unchanged.
 - **Entry points:** (1) **`handle_cart_abandoned`**; (2) **`_run_recovery_dispatch_cart_abandoned_impl`**; (3) **`_run_recovery_sequence_after_cart_abandoned_impl`** after **`[VIP CHECK]`** — each: override log → activate; if **`False`**, continue normal flow (multi-message, delay, templates, **`send_whatsapp`**).
-- **Logs:** **`[VIP CHECK]`**, **`[VIP MODE ACTIVATED]`**, **`[VIP CUSTOMER RECOVERY SKIPPED]`**, **`[VIP RECOVERY BYPASSED]`**, **`[VIP FALLBACK]`**, **`[VIP ACTIVATION FAILED]`** (on hard failures), **`[VIP MERCHANT ALERT SENT] status=...`** in **`services/vip_merchant_alert.py`** (`no_target`, `exception`, `sent`, `twilio_error`, etc.).
+- **Logs:** **`[VIP ALERT]`** (`cart_total`, `threshold`, `session_id` داخل **`_activate_vip_manual_cart_handling`**), **`[VIP CHECK]`**, **`[VIP MODE ACTIVATED]`**, **`[VIP CUSTOMER RECOVERY SKIPPED]`**, **`[VIP RECOVERY BYPASSED]`**, **`[VIP FALLBACK]`**, **`[VIP ACTIVATION FAILED]`**, **`[VIP MERCHANT ALERT SENT] status=...`** في **`services/vip_merchant_alert.py`**.
 
 ---
 
@@ -169,7 +169,7 @@ Print-style trace: **`[DELAY STARTED]`**, **`[DELAY WAITING]`**, **`[DELAY FINIS
 4. If **multi_message_slots_for_abandon** returns slots → schedule delayed tasks per slot; else **`_run_recovery_dispatch_cart_abandoned`** waits for reason if needed, then schedules **one** delayed **`_run_recovery_sequence_after_cart_abandoned`**.
 5. After sleep: **VIP guard** again; resolve message via **reason templates** / fallbacks; **`should_send_whatsapp`** vs **`CartRecoveryReason.updated_at`**; resolve phone via **`_resolve_cartflow_recovery_phone`**; **`send_whatsapp`** (Twilio) on success path.
 6. **`_persist_cart_recovery_log`** records queued / sent / skipped / VIP rows.
-7. **Dashboard** **`GET /dashboard`** reads DB: **`vip_cart_priority`** for open VIP **`AbandonedCart`** rows; merges **`CartRecoveryLog`** VIP rows into **`live_feed`**; KPIs from **`AbandonedCart`**, reasons from **`CartRecoveryReason`**.
+7. **Dashboard** **`GET /dashboard`** — KPIs وأسباب ونشاط من **`AbandonedCart`** / **`CartRecoveryReason`** فقط. **قائمة VIP** تُحمّل في **`GET /dashboard/vip-cart-settings`** عبر **`_vip_cart_alerts_merchant_list()`** (بدون تكرار في الرئيسية).
 
 ---
 
@@ -196,7 +196,7 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 | Log / prefix | Where |
 |----------------|--------|
 | `[CF API]` | `main.handle_cart_abandoned` / cart-event |
-| `[VIP CHECK]`, `[VIP MODE ACTIVATED]`, `[VIP CUSTOMER RECOVERY SKIPPED]`, `[VIP RECOVERY BYPASSED]`, `[VIP DECISION OVERRIDE]`, `[VIP FALLBACK]`, `[VIP ACTIVATION FAILED]` | `main.py` |
+| `[VIP ALERT]`, `[VIP CHECK]`, `[VIP MODE ACTIVATED]`, `[VIP CUSTOMER RECOVERY SKIPPED]`, `[VIP RECOVERY BYPASSED]`, `[VIP DECISION OVERRIDE]`, `[VIP FALLBACK]`, `[VIP ACTIVATION FAILED]` | `main.py` |
 | `[VIP MERCHANT ALERT SENT]` | `services/vip_merchant_alert.py` |
 | `[DELAY STARTED]`, `[DELAY WAITING]`, `[DELAY FINISHED]`, `[DELAY BLOCKED]` | `main._run_recovery_sequence_after_cart_abandoned_impl` |
 | `[CARTFLOW DELAY CHECK]`, `[CARTFLOW PRO LOGIC]` | `main.py` |
@@ -240,7 +240,7 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 | WhatsApp receive (`/webhook/whatsapp`) | 🟡 (stub / logging) |
 | Multi-message (reason templates + scheduled slots) | ✅ |
 | Per-reason delay (`get_recovery_delay` + store quiet period in `should_send_whatsapp`) | ✅ |
-| VIP (threshold, skip customer auto-recovery, merchant alert, dashboard log + priority list, `vip_mode`, override log, safe fallback) | ✅ |
+| VIP (threshold, skip customer auto-recovery, merchant alert, `vip_mode`, VIP alerts UI on **vip-cart-settings** only, override log, safe fallback) | ✅ |
 
 **Legend:** ✅ implemented and wired in code · 🟡 partial or environment-dependent · ❌ not implemented
 
@@ -252,7 +252,8 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 
 | Date (UTC) | Summary |
 |------------|---------|
-| 2026-05-02 | **Full VIP integration:** `_vip_log_decision_override_after_engine` (read-only `decide_recovery_action` + logs); `_activate_vip_manual_cart_handling` returns **`bool`** with **`[VIP RECOVERY BYPASSED]`** / **`[VIP FALLBACK]`** on failure; merchant alert copy and **`[VIP MERCHANT ALERT SENT] status=...`** in `services/vip_merchant_alert.py`; dashboard **`vip_cart_priority`** + **إرسال يدوي** in `templates/dashboard_v1.html`. Commit: `feat: full VIP integration (backend + whatsapp + dashboard + override)`. |
+| 2026-05-02 | **Full VIP integration:** `_vip_log_decision_override_after_engine` (read-only `decide_recovery_action` + logs); `_activate_vip_manual_cart_handling` returns **`bool`** with **`[VIP RECOVERY BYPASSED]`** / **`[VIP FALLBACK]`** on failure; merchant alert copy and **`[VIP MERCHANT ALERT SENT] status=...`** in `services/vip_merchant_alert.py`. Commit: `feat: full VIP integration (backend + whatsapp + dashboard + override)`. |
+| 2026-05-02 | **VIP UI dedup + logs:** الرئيسية (`dashboard_v1`) — KPIs وأسباب ونشاط فقط (بدون VIP في الشاشة الرئيسية)؛ **تنبيهات السلال المميزة** + **إرسال يدوي** في `vip_cart_settings.html` فقط؛ إزالة دمج VIP من `live_feed`؛ **`[VIP ALERT]`** + **`decision=vip_manual_handling`** في سجلات التجاوز؛ **`_vip_cart_alerts_merchant_list()`** لصفحة السلال المميزة؛ تسمية **الرئيسية** في الشريط الجانبي وعنوان KPI. Commit: `fix: activate VIP handling + remove duplication + enforce priority behavior + rename dashboard`. |
 
 ---
 

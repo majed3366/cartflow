@@ -1417,7 +1417,7 @@ def _vip_log_decision_override_after_engine(
         dr = decide_recovery_action(reason_tag, store=store_obj)
         base_action = dr.get("action") if isinstance(dr, dict) else None
         log.info(
-            "[VIP DECISION OVERRIDE] base_action=%s effective_mode=manual_handling auto_recovery_messages=disabled",
+            "[VIP DECISION OVERRIDE] decision=vip_manual_handling base_engine_action=%s auto_recovery_messages=disabled",
             base_action,
         )
     except Exception as e:  # noqa: BLE001
@@ -1441,6 +1441,12 @@ def _activate_vip_manual_cart_handling(
     """
     _ensure_store_widget_schema()
     th_raw = getattr(store_obj, "vip_cart_threshold", None) if store_obj is not None else None
+    log.info(
+        "[VIP ALERT] cart_total=%s threshold=%s session_id=%s",
+        cart_total,
+        th_raw,
+        session_id,
+    )
     cid = (str(cart_id).strip()[:255] if cart_id else "") or ""
     already = False
     try:
@@ -3625,6 +3631,39 @@ def _format_reason_ts(dt: Optional[datetime]) -> str:
     return d.strftime("%Y-%m-%d %H:%M")
 
 
+def _vip_cart_alerts_merchant_list() -> list[dict[str, Any]]:
+    """
+    سلال ‎vip_mode‎ غير المستردة — لصفحة ‎/dashboard/vip-cart-settings‎ فقط (لا تُعرض في الرئيسية).
+    """
+    out: list[dict[str, Any]] = []
+    try:
+        _ensure_store_widget_schema()
+        db.create_all()
+        vip_prio_q = (
+            db.session.query(AbandonedCart)
+            .filter(AbandonedCart.vip_mode.is_(True))
+            .filter(AbandonedCart.status != "recovered")
+            .order_by(AbandonedCart.last_seen_at.desc())
+            .limit(24)
+        )
+        for ac in vip_prio_q.all():
+            zid = (ac.zid_cart_id or "").strip()
+            cart_short = zid[:28] + ("…" if len(zid) > 28 else "") if zid else "—"
+            out.append(
+                {
+                    "id": ac.id,
+                    "cart_value": float(ac.cart_value or 0.0),
+                    "cart_short": cart_short or "—",
+                    "last_seen": _format_reason_ts(ac.last_seen_at),
+                    "status": "vip_manual_handling",
+                }
+            )
+    except (SQLAlchemyError, OSError) as e:
+        db.session.rollback()
+        log.warning("vip_cart_alerts: db read failed: %s", e)
+    return out
+
+
 def _recovery_sales_trend_last_7_days() -> list[dict[str, Any]]:
     """
     مجموع ‎cart_value‎ للسلات ‎status=recovered‎ حسب يوم ‎recovered_at‎ (UTC)؛ ‎7‎ أيام متتالية حتى اليوم.
@@ -3688,7 +3727,6 @@ def dashboard(request: Request):
         "thinking": 0,
     }
     live_rows: list[dict[str, Any]] = []
-    vip_cart_priority: list[dict[str, Any]] = []
     try:
         db.create_all()
         total_carts = int(db.session.query(AbandonedCart).count() or 0)
@@ -3749,48 +3787,8 @@ def dashboard(request: Request):
                         "time_str": _format_reason_ts(r.updated_at),
                     }
                 )
-            vip_rows_db = (
-                db.session.query(CartRecoveryLog)
-                .filter(CartRecoveryLog.status == "vip_manual_handling")
-                .order_by(CartRecoveryLog.created_at.desc())
-                .limit(6)
-                .all()
-            )
-            vip_feed: list[dict[str, Any]] = []
-            for lg in vip_rows_db:
-                sid_disp = (lg.session_id or "")[:32] + (
-                    "…" if lg.session_id and len(lg.session_id) > 32 else ""
-                )
-                vip_feed.append(
-                    {
-                        "kind": "vip",
-                        "headline": "سلة عالية القيمة تحتاج متابعة يدوية",
-                        "detail": (lg.message or "")[:800],
-                        "session_id": sid_disp,
-                        "time_str": _format_reason_ts(lg.created_at),
-                    }
-                )
-            live_rows = vip_feed + live_rows
             if len(live_rows) > 14:
                 live_rows = live_rows[:14]
-            vip_prio_q = (
-                db.session.query(AbandonedCart)
-                .filter(AbandonedCart.vip_mode.is_(True))
-                .filter(AbandonedCart.status != "recovered")
-                .order_by(AbandonedCart.last_seen_at.desc())
-                .limit(12)
-            )
-            for ac in vip_prio_q.all():
-                zid = (ac.zid_cart_id or "").strip()
-                cart_short = zid[:28] + ("…" if len(zid) > 28 else "") if zid else "—"
-                vip_cart_priority.append(
-                    {
-                        "id": ac.id,
-                        "cart_value": float(ac.cart_value or 0.0),
-                        "cart_short": cart_short or "—",
-                        "last_seen": _format_reason_ts(ac.last_seen_at),
-                    }
-                )
             crr_total = int(
                 db.session.query(func.count(CartRecoveryReason.id)).scalar() or 0
             )
@@ -3811,22 +3809,7 @@ def dashboard(request: Request):
             "shipping": 3,
             "thinking": 7,
         }
-        vip_cart_priority = [
-            {
-                "id": 901,
-                "cart_value": 1200.0,
-                "cart_short": "demo_vip_cart_zid",
-                "last_seen": "2026-04-20 16:00",
-            },
-        ]
         live_rows = [
-            {
-                "kind": "vip",
-                "headline": "سلة عالية القيمة تحتاج متابعة يدوية",
-                "detail": "القيمة: 1200 ريال\nسبب التردد: السعر\nsession_id: demo_sess_vip\nالوقت: 2026-04-20 16:00 UTC",
-                "session_id": "dem…sess_vip",
-                "time_str": "2026-04-20 16:00",
-            },
             {
                 "kind": "activity",
                 "session_id": "dem…sess_01",
@@ -3878,7 +3861,6 @@ def dashboard(request: Request):
             "conversion_pct": conversion_pct,
             "reason_bar": reason_bar,
             "live_feed": live_rows,
-            "vip_cart_priority": vip_cart_priority,
         },
     )
 
@@ -3898,11 +3880,44 @@ def dashboard_recovery_settings(request: Request):
 
 @app.get("/dashboard/vip-cart-settings")
 def dashboard_vip_cart_settings(request: Request):
-    """السلال المميزة (VIP) — نفس ‎GET/POST /api/recovery-settings‎ (حقل ‎vip_cart_threshold‎ فقط في الواجهة)."""
+    """السلال المميزة (VIP) — عتبة عبر ‎GET/POST /api/recovery-settings‎ + قائمة تنبيهات VIP فقط هنا (بدون تكرار في الرئيسية)."""
+    vip_cart_alerts = _vip_cart_alerts_merchant_list()
+    using_mock_alerts = False
+    if not vip_cart_alerts:
+        try:
+            db.create_all()
+            n = int(db.session.query(AbandonedCart).count() or 0)
+            if n == 0:
+                using_mock_alerts = True
+                vip_cart_alerts = [
+                    {
+                        "id": 901,
+                        "cart_value": 1200.0,
+                        "cart_short": "demo_vip_cart_zid",
+                        "last_seen": "2026-04-20 16:00",
+                        "status": "vip_manual_handling",
+                    },
+                ]
+        except (SQLAlchemyError, OSError):
+            db.session.rollback()
+            using_mock_alerts = True
+            vip_cart_alerts = [
+                {
+                    "id": 901,
+                    "cart_value": 1200.0,
+                    "cart_short": "demo_vip_cart_zid",
+                    "last_seen": "2026-04-20 16:00",
+                    "status": "vip_manual_handling",
+                },
+            ]
     return templates.TemplateResponse(
         request,
         "vip_cart_settings.html",
-        {"request": request},
+        {
+            "request": request,
+            "vip_cart_alerts": vip_cart_alerts,
+            "using_mock_alerts": using_mock_alerts,
+        },
     )
 
 
