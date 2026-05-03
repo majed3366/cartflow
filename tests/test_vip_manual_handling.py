@@ -104,7 +104,7 @@ class VipMerchantResolveTests(unittest.TestCase):
 
         self.assertEqual(
             build_vip_merchant_alert_body(1200.0),
-            "تنبيه VIP: لديك سلة عالية القيمة بقيمة 1200 ريال تحتاج متابعة يدوية.",
+            "تنبيه VIP: لديك سلة بقيمة 1200 ريال تحتاج متابعة فورية.",
         )
 
 

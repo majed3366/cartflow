@@ -1488,21 +1488,21 @@ def _vip_log_check(cart_total: Optional[float], threshold: Any, is_vip: bool) ->
     log.info("[VIP CHECK]\ncart_total=%s\nthreshold=%s\nis_vip=%s", ct, th, is_vip)
 
 
-def _vip_log_decision_override_after_engine(
+def _vip_recovery_decision_layer(
     reason_tag: Optional[str], store_obj: Optional[Any]
-) -> None:
-    """
-    يستدعي محرك القرار للقراءة فقط ويسجّل طبقة التجاوز لـ VIP (بدون تعديل المحرك أو استخدام ناتجه للإرسال).
-    """
-    try:
-        dr = decide_recovery_action(reason_tag, store=store_obj)
-        base_action = dr.get("action") if isinstance(dr, dict) else None
-        log.info(
-            "[VIP DECISION OVERRIDE] decision=vip_manual_handling base_engine_action=%s auto_recovery_messages=disabled",
-            base_action,
-        )
-    except Exception as e:  # noqa: BLE001
-        log.warning("[VIP DECISION OVERRIDE] preview_failed err=%s", e)
+) -> dict[str, Any]:
+    """استدعاء طبقة قرار D.2 مع تعليم VIP — يوقف منطق رسائل العميل عند المستهلكين."""
+    return decide_recovery_action(
+        (reason_tag or "").strip() or None,
+        store=store_obj,
+        is_vip_cart_flag=True,
+    )
+
+
+def _mark_vip_customer_recovery_closed(recovery_key: str) -> None:
+    """يمنع أي جدولة أو إرسال مستقبل للعميل لهذه الجلسة بعد كشف VIP."""
+    with _recovery_session_lock:
+        _session_recovery_sent[recovery_key] = True
 
 
 def _activate_vip_manual_cart_handling(
@@ -1836,6 +1836,30 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
     ينتظر ‎delay_seconds‎ ثم يطبّق ‎should_send_whatsapp‎ على آخر نشاط السبب؛ عند السماح فقط يرسل عبر ‎send_whatsapp‎.
     نص الرسالة من محرّك القراءة حسب ‎reason_tag‎ المحفوظ، أو رسالة احتياطية.
     """
+    store_pre = _load_store_row_for_recovery(store_slug)
+    cart_total_pre = _abandoned_cart_cart_value_for_recovery(cart_id)
+    if cart_total_pre is not None and is_vip_cart(cart_total_pre, store_pre):
+        reason_row_pre = _cart_recovery_reason_latest_row(store_slug, session_id)
+        rt_pre = (reason_row_pre.reason or "").strip() if reason_row_pre else ""
+        _vip_recovery_decision_layer(rt_pre or None, store_pre)
+        ok_vip = _activate_vip_manual_cart_handling(
+            store_slug=store_slug,
+            session_id=session_id,
+            cart_id=cart_id,
+            cart_total=float(cart_total_pre),
+            store_obj=store_pre,
+            recovery_key=recovery_key,
+            reason_tag=rt_pre or None,
+        )
+        if not ok_vip:
+            log.warning(
+                "[VIP ACTIVATION FAILED] session_id=%s recovery_key=%s — pre_delay_task_blocked",
+                session_id,
+                recovery_key,
+            )
+        _mark_vip_customer_recovery_closed(recovery_key)
+        return
+
     scheduled_recovery_delay_minutes = delay_seconds / 60.0
     print("[DELAY STARTED]", scheduled_recovery_delay_minutes)
     print("[DELAY WAITING]")
@@ -1895,8 +1919,8 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
     is_vip_eff = cart_total_vip is not None and is_vip_cart(cart_total_vip, store_obj)
     _vip_log_check(cart_total_vip, th_raw, is_vip_eff)
     if is_vip_eff:
-        _vip_log_decision_override_after_engine(rt_raw or None, store_obj)
-        if _activate_vip_manual_cart_handling(
+        _vip_recovery_decision_layer(rt_raw or None, store_obj)
+        ok_vip2 = _activate_vip_manual_cart_handling(
             store_slug=store_slug,
             session_id=session_id,
             cart_id=cart_id,
@@ -1904,13 +1928,15 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
             store_obj=store_obj,
             recovery_key=recovery_key,
             reason_tag=rt_raw or None,
-        ):
-            return None
-        log.warning(
-            "[VIP FALLBACK] normal_recovery_continues session_id=%s recovery_key=%s",
-            session_id,
-            recovery_key,
         )
+        if not ok_vip2:
+            log.warning(
+                "[VIP ACTIVATION FAILED] session_id=%s recovery_key=%s — post_delay_blocked_no_customer_send",
+                session_id,
+                recovery_key,
+            )
+        _mark_vip_customer_recovery_closed(recovery_key)
+        return None
     resolve_whatsapp_sender(store_obj)
     if multi_slot_index is not None:
         if not rt_raw:
@@ -2413,8 +2439,8 @@ async def _run_recovery_dispatch_cart_abandoned_impl(
     _vip_log_check(cart_tot0, th0, is_vip0)
     if is_vip0:
         rt0 = _reason_tag_for_session(store_slug, session_id) or None
-        _vip_log_decision_override_after_engine(rt0, store_row0)
-        if _activate_vip_manual_cart_handling(
+        _vip_recovery_decision_layer(rt0, store_row0)
+        ok_vip = _activate_vip_manual_cart_handling(
             store_slug=store_slug,
             session_id=session_id,
             cart_id=cart_id,
@@ -2422,13 +2448,15 @@ async def _run_recovery_dispatch_cart_abandoned_impl(
             store_obj=store_row0,
             recovery_key=recovery_key,
             reason_tag=rt0,
-        ):
-            return
-        log.warning(
-            "[VIP FALLBACK] normal_recovery_continues session_id=%s recovery_key=%s",
-            session_id,
-            recovery_key,
         )
+        if not ok_vip:
+            log.warning(
+                "[VIP ACTIVATION FAILED] session_id=%s recovery_key=%s — dispatch_blocked_no_fallback",
+                session_id,
+                recovery_key,
+            )
+        _mark_vip_customer_recovery_closed(recovery_key)
+        return
     reason_tag: Optional[str] = None
     store_row: Optional[Any] = None
     for _ in range(_RECOVERY_REASON_POLL_MAX_ATTEMPTS):
@@ -2594,8 +2622,8 @@ async def handle_cart_abandoned(
     _vip_log_check(cart_total_chk, th_chk, is_vip_chk)
     if is_vip_chk:
         reason_vip = _reason_tag_for_session(store_slug, session_id_log) or None
-        _vip_log_decision_override_after_engine(reason_vip, store_row)
-        if _activate_vip_manual_cart_handling(
+        _vip_recovery_decision_layer(reason_vip, store_row)
+        ok_vip = _activate_vip_manual_cart_handling(
             store_slug=store_slug,
             session_id=session_id_log,
             cart_id=cart_id_log,
@@ -2603,19 +2631,21 @@ async def handle_cart_abandoned(
             store_obj=store_row,
             recovery_key=recovery_key,
             reason_tag=reason_vip,
-        ):
-            return {
-                "recovery_scheduled": False,
-                "recovery_vip_manual": True,
-                "recovery_skipped": True,
-                "customer_recovery_skipped": True,
-                "recovery_state": "vip_manual_handling",
-            }
-        log.warning(
-            "[VIP FALLBACK] scheduling_normal_recovery session_id=%s recovery_key=%s",
-            session_id_log,
-            recovery_key,
         )
+        if not ok_vip:
+            log.warning(
+                "[VIP ACTIVATION FAILED] session_id=%s recovery_key=%s — customer_recovery_blocked_no_fallback",
+                session_id_log,
+                recovery_key,
+            )
+        _mark_vip_customer_recovery_closed(recovery_key)
+        return {
+            "recovery_scheduled": False,
+            "recovery_vip_manual": True,
+            "recovery_skipped": True,
+            "customer_recovery_skipped": True,
+            "recovery_state": "vip_manual_handling",
+        }
     reason_tag_sync = _reason_tag_for_session(store_slug, session_id_log)
     slots_sync = multi_message_slots_for_abandon(reason_tag_sync, store_row)
     if slots_sync:

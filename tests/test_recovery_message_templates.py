@@ -37,6 +37,8 @@ def test_decide_recovery_action_uses_template_message() -> None:
     r = decide_recovery_action("shipping_cost", store=None)
     assert r["action"] == "highlight_shipping"
     assert r["message"] == WHATSAPP_REASON_TEMPLATES["shipping"]
+    assert r["send_customer"] is True
+    assert r["send_merchant"] is False
 
 
 def test_decide_recovery_action_respects_store_template() -> None:
@@ -45,6 +47,16 @@ def test_decide_recovery_action_respects_store_template() -> None:
 
     r = decide_recovery_action("shipping_cost", store=_S())
     assert r["message"] == "شحن مخصص من المتجر"
+    assert r["send_customer"] is True
+    assert r["send_merchant"] is False
+
+
+def test_decide_recovery_action_vip_overrides_engine() -> None:
+    r = decide_recovery_action("price_high", store=None, is_vip_cart_flag=True)
+    assert r["action"] == "vip_manual_handling"
+    assert r["message"] == ""
+    assert r["send_customer"] is False
+    assert r["send_merchant"] is True
 
 
 def test_template_selected_log_lines() -> None:
