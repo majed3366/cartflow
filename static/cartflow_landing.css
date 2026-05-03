@@ -245,26 +245,6 @@
   margin-bottom: 20px;
 }
 
-.hero .cf-btn--primary {
-  background: #22c55e;
-  box-shadow: 0 14px 32px rgba(34, 197, 94, 0.28);
-}
-
-.hero .cf-btn--primary:hover {
-  background: #16a34a;
-}
-
-.hero .cf-btn--secondary {
-  background: transparent;
-  color: #fff;
-  border: 1px solid rgba(255, 255, 255, 0.88);
-  box-shadow: none;
-}
-
-.hero .cf-btn--secondary:hover {
-  background: rgba(255, 255, 255, 0.08);
-}
-
 .hero-trust {
   position: static;
   width: auto;
@@ -399,6 +379,12 @@
     grid-template-columns: 1fr;
     gap: 24px;
     padding: 44px 20px 48px;
+  }
+  .hero-inner .hero-copy {
+    order: 1;
+  }
+  .hero-inner .hero-visual {
+    order: 2;
   }
   .hero-copy {
     max-width: 100%;
