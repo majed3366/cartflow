@@ -2685,10 +2685,12 @@ async def handle_cart_abandoned(
     }
 
 
-@app.post("/dev/create-vip-test-cart")
+@app.api_route("/dev/create-vip-test-cart", methods=["GET", "POST"])
 def dev_create_vip_test_cart() -> Any:
     """
-    ينشئ ‎AbandonedCart‎ + ‎CartRecoveryReason‎ حقيقيين لاختبار VIP بدون ودجت أو سلوك عميل.
+    ينشئ ‎AbandonedCart‎ + ‎CartRecoveryReason‎ حقيقيين و‎CartRecoveryLog.status=vip_manual_handling‎
+    لاختبار لوحة VIP (أولوية؛ زر إرسال يدوي فعّال — ‎interactive‎ لصف DB).
+    ‎GET‎ للتفعيل السريع من المتصفح؛ ‎POST‎ متوافق مع الاختبارات.
     """
     _VIP_TEST_ZID = "vip-codegen-test-cart-1"
     _VIP_TEST_SESSION = "test_vip_session"
@@ -2713,6 +2715,12 @@ def dev_create_vip_test_cart() -> Any:
             CartRecoveryReason.store_slug == slug,
             CartRecoveryReason.session_id == _VIP_TEST_SESSION,
         ).delete(synchronize_session=False)
+
+        db.session.query(CartRecoveryLog).filter(
+            CartRecoveryLog.store_slug == slug,
+            CartRecoveryLog.cart_id == _VIP_TEST_ZID,
+        ).delete(synchronize_session=False)
+
         db.session.commit()
 
         now = datetime.now(timezone.utc)
@@ -2749,6 +2757,17 @@ def dev_create_vip_test_cart() -> Any:
         )
         db.session.add(crr)
         db.session.commit()
+
+        _persist_cart_recovery_log(
+            store_slug=slug,
+            session_id=_VIP_TEST_SESSION,
+            cart_id=_VIP_TEST_ZID,
+            phone="+966501112233",
+            message="[dev] VIP test cart for dashboard priority verification",
+            status="vip_manual_handling",
+            step=None,
+        )
+
         return j({"ok": True, "cart_id": _VIP_TEST_ZID, "vip": True}, 200)
     except Exception as e:  # noqa: BLE001
         db.session.rollback()
