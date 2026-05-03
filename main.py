@@ -4104,16 +4104,22 @@ def dev_recovery_logs(store_slug: str) -> Any:
 
 @app.get("/")
 def home(request: Request):
-    # صفحة HTML للمراجعين/لوحة زد (بدون قاعدة بيانات)
-    try:
-        # تحميل + رندر متزامنان لالتقاط أخطاء القالب/‎include‎ قبل الإرسال (تجنّب ‎500‎ لاحقاً)
-        tpl = templates.env.get_template("landing.html")
-        html = tpl.render({"request": request})
-        print("[LANDING TEMPLATE LOADED]")
-        return HTMLResponse(content=html, status_code=200)
-    except Exception as e:  # noqa: BLE001
-        print("[LANDING TEMPLATE ERROR]", str(e))
-        return HTMLResponse("Landing page error", status_code=200)
+    """الصفحة العامة — واجهة تسويق CartFlow (عربي، RTL مع تخطيط مطابق للمرجع)."""
+    return templates.TemplateResponse(
+        request,
+        "cartflow_landing.html",
+        {"request": request},
+    )
+
+
+@app.get("/register")
+def register_placeholder(request: Request):
+    """صفحة تسجيل مؤقتة — روابط CTA من الصفحة العامة (بدون OTP/واتساب)."""
+    return templates.TemplateResponse(
+        request,
+        "register_placeholder.html",
+        {"request": request},
+    )
 
 
 # لا نستدعي ‎_ensure_db_schema()‎ عند التحميل — يتجنب الاتصال بقاعدة البيانات عند الإقلاع (أي ‎ASGI server‎)
