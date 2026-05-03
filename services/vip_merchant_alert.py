@@ -98,7 +98,10 @@ def build_vip_merchant_alert_body(
     rt = (reason_tag or "").strip()
     if rt:
         ar = _VIP_REASON_AR.get(rt.lower(), rt)
-        lines.extend([f"السبب: {ar}", ""])
+        reason_line = f"السبب: {ar}"
+    else:
+        reason_line = "السبب: —"
+    lines.extend([reason_line, ""])
     lines.extend(
         [
             "رابط المراجعة:",
