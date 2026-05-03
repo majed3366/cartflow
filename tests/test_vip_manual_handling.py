@@ -2,7 +2,9 @@
 """VIP manual handling: cart_abandoned skips scheduled customer WhatsApp recovery."""
 from __future__ import annotations
 
+import logging
 import unittest
+import uuid
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -11,7 +13,7 @@ from fastapi.testclient import TestClient
 import main
 from extensions import db
 from main import app
-from models import AbandonedCart
+from models import AbandonedCart, CartRecoveryLog, Store
 from tests.test_recovery_isolation import _post_recovery_reason_for_session, _reset_recovery_memory
 
 
@@ -104,7 +106,6 @@ class VipMerchantResolveTests(unittest.TestCase):
         expected = (
             "تنبيه VIP 🚨\n\n"
             "سلة عالية القيمة: 1200 ريال\n\n"
-            "السبب: —\n\n"
             "رابط المراجعة:\n"
             + link
         )

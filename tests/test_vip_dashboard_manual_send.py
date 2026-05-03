@@ -41,8 +41,9 @@ class VipDashboardMerchantAlertTests(unittest.TestCase):
         except Exception:  # noqa: BLE001
             pass
 
+    @patch("main.vip_dashboard_review_link", return_value="https://example.test/dashboard/vip-cart-settings-fixed")
     @patch("main.try_send_vip_merchant_whatsapp_alert")
-    def test_manual_send_ok_returns_arabic_success(self, mock_send) -> None:
+    def test_manual_send_ok_returns_arabic_success(self, mock_send, _mock_review_link):
         mock_send.return_value = {"ok": True, "sid": "wx_1"}
         db.create_all()
 
@@ -57,7 +58,7 @@ class VipDashboardMerchantAlertTests(unittest.TestCase):
             store_id=store.id,
             zid_cart_id=f"vip-dash-cart-1-{uid}",
             cart_value=999.0,
-            status="detected",
+            status="abandoned",
             vip_mode=True,
         )
         db.session.add(ac)
@@ -72,10 +73,52 @@ class VipDashboardMerchantAlertTests(unittest.TestCase):
         mock_send.assert_called_once()
         args, kwargs = mock_send.call_args
         msg = kwargs.get("message", "")
-        self.assertIn("تنبيه VIP 🚨", msg)
-        self.assertIn("سلة عالية القيمة:", msg)
-        self.assertIn("السبب: —", msg)
-        self.assertIn("رابط المراجعة:", msg)
+        expected_msg = (
+            "تنبيه VIP 🚨\n\n"
+            "سلة عالية القيمة: 999 ريال\n\n"
+            "رابط المراجعة:\n"
+            "https://example.test/dashboard/vip-cart-settings-fixed"
+        )
+        self.assertEqual(msg, expected_msg)
+
+    @patch("main.vip_dashboard_review_link", return_value="https://example.test/with-reason")
+    @patch("main.try_send_vip_merchant_whatsapp_alert")
+    def test_manual_send_exact_body_includes_reason_when_in_raw_payload(
+        self, mock_send: object, _mock_review_link: object
+    ) -> None:
+        import json
+
+        mock_send.return_value = {"ok": True, "sid": "wx_2"}
+        db.create_all()
+        store = Store(zid_store_id=f"vip_reason_body_{uuid.uuid4().hex[:12]}")
+        db.session.add(store)
+        db.session.commit()
+        _persist_store_whatsapp_via_recovery_api(self, self.client, VIP_MANUAL_ALERT_TEST_MERCHANT_WHATSAPP)
+
+        uid = uuid.uuid4().hex[:10]
+        ac = AbandonedCart(
+            store_id=store.id,
+            zid_cart_id=f"vip-dash-cart-reason-{uid}",
+            cart_value=250.55,
+            status="abandoned",
+            vip_mode=True,
+        )
+        ac.raw_payload = json.dumps({"reason_tag": "price"}, ensure_ascii=False)
+        db.session.add(ac)
+        db.session.commit()
+
+        r = self.client.post(f"/api/dashboard/vip-cart/{int(ac.id)}/merchant-alert", json={})
+        self.assertEqual(r.status_code, 200, r.text)
+        kwargs = mock_send.call_args[1]
+        msg = kwargs.get("message", "")
+        expected = (
+            "تنبيه VIP 🚨\n\n"
+            "سلة عالية القيمة: 250.55 ريال\n\n"
+            "السبب: السعر\n\n"
+            "رابط المراجعة:\n"
+            "https://example.test/with-reason"
+        )
+        self.assertEqual(msg, expected)
 
     def test_non_vip_cart_rejected(self) -> None:
         db.create_all()
