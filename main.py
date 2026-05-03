@@ -10,6 +10,7 @@ import os
 import tempfile
 import threading
 import time
+import uuid
 import traceback
 from types import SimpleNamespace
 from datetime import datetime, timedelta, timezone
@@ -407,6 +408,7 @@ _DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT = frozenset(
     {
         "/dev/whatsapp-decision-test",
         "/dev/cartflow-delay-test",
+        "/dev/vip-flow-verify",
     }
 )
 
@@ -436,7 +438,7 @@ async def set_embed_csp_middleware(request: Request, call_next: Any) -> Any:
 
 @app.middleware("http")
 async def no_dev_in_production(request: Request, call_next: Any) -> Any:
-    """يُنفَّذ أوّل مسار؛ ‎404‎ لـ ‎/dev‎ و ‎/dev/*‎ عندما ‎ENV‎ ليس ‎development‎ (استثناءات: ‎whatsapp-decision-test‎، ‎cartflow-delay-test‎)."""
+    """يُنفَّذ أوّل مسار؛ ‎404‎ لـ ‎/dev‎ و ‎/dev/*‎ عندما ‎ENV‎ ليس ‎development‎ (استثناءات: ‎whatsapp-decision-test‎، ‎cartflow-delay-test‎، ‎vip-flow-verify‎)."""
     p = request.url.path
     if p == "/dev" or (
         p.startswith("/dev/") and p not in _DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT
@@ -1407,6 +1409,85 @@ def _abandoned_cart_cart_value_for_recovery(cart_id: Optional[str]) -> Optional[
         return None
 
 
+def _cart_total_from_abandon_payload(payload: dict[str, Any]) -> Optional[float]:
+    """مجموع السلة من حمولة ‎cart_abandoned‎ (قيم عليا أو أسطر ‎cart‎) لمسار ‎VIP‎."""
+    if not isinstance(payload, dict):
+        return None
+    for key in ("cart_value", "cart_total", "total", "total_price", "amount", "subtotal"):
+        if key not in payload:
+            continue
+        raw = payload.get(key)
+        if raw is None:
+            continue
+        try:
+            v = float(raw)
+        except (TypeError, ValueError):
+            continue
+        if v == v and v >= 0:  # not NaN
+            return v
+    cart = payload.get("cart")
+    if isinstance(cart, list) and cart:
+        total = 0.0
+        found = False
+        for it in cart:
+            if not isinstance(it, dict):
+                continue
+            pr = it.get("price") or it.get("unit_price") or it.get("amount") or it.get("total")
+            if pr is None:
+                continue
+            try:
+                p = float(pr)
+            except (TypeError, ValueError):
+                continue
+            q_raw = it.get("quantity") or it.get("qty") or 1
+            try:
+                q = float(q_raw) if q_raw is not None else 1.0
+            except (TypeError, ValueError):
+                q = 1.0
+            total += p * max(q, 0.0)
+            found = True
+        if found and total > 0:
+            return total
+    return None
+
+
+def _persist_cart_value_from_abandon_for_vip(cart_id: Optional[str], payload: dict[str, Any]) -> None:
+    """يحدّث ‎AbandonedCart.cart_value‎ من حمولة الترك عند وجود السطر — لمسارات التأخير/المتعددة لاحقاً."""
+    pay = _cart_total_from_abandon_payload(payload)
+    cid = (str(cart_id).strip()[:255] if cart_id else "") or ""
+    if not cid or pay is None:
+        return
+    try:
+        row = db.session.query(AbandonedCart).filter_by(zid_cart_id=cid).first()
+        if row is None:
+            return
+        cur = float(row.cart_value or 0.0)
+        new_v = max(cur, float(pay))
+        if new_v != cur or row.cart_value is None:
+            row.cart_value = new_v
+            db.session.commit()
+    except (SQLAlchemyError, OSError, TypeError, ValueError):
+        db.session.rollback()
+
+
+def _cart_total_for_vip_recovery(
+    cart_id: Optional[str], payload: Optional[dict[str, Any]]
+) -> Optional[float]:
+    pl = payload if isinstance(payload, dict) else {}
+    _persist_cart_value_from_abandon_for_vip(cart_id, pl)
+    dbv = _abandoned_cart_cart_value_for_recovery(cart_id)
+    payv = _cart_total_from_abandon_payload(pl)
+    if dbv is not None and payv is not None:
+        return max(dbv, payv)
+    return dbv if dbv is not None else payv
+
+
+def _vip_log_check(cart_total: Optional[float], threshold: Any, is_vip: bool) -> None:
+    ct = "none" if cart_total is None else str(cart_total)
+    th = "none" if threshold is None else str(threshold)
+    log.info("[VIP CHECK]\ncart_total=%s\nthreshold=%s\nis_vip=%s", ct, th, is_vip)
+
+
 def _vip_log_decision_override_after_engine(
     reason_tag: Optional[str], store_obj: Optional[Any]
 ) -> None:
@@ -1440,13 +1521,6 @@ def _activate_vip_manual_cart_handling(
     يُرجع ‎False‎ عند فشل حرج (للسقوط إلى المسار العادي دون تعديل محرك القرار).
     """
     _ensure_store_widget_schema()
-    th_raw = getattr(store_obj, "vip_cart_threshold", None) if store_obj is not None else None
-    log.info(
-        "[VIP ALERT] cart_total=%s threshold=%s session_id=%s",
-        cart_total,
-        th_raw,
-        session_id,
-    )
     cid = (str(cart_id).strip()[:255] if cart_id else "") or ""
     already = False
     try:
@@ -1477,17 +1551,11 @@ def _activate_vip_manual_cart_handling(
 
     if already:
         log.info("[VIP CUSTOMER RECOVERY SKIPPED] reason=vip_manual_handling")
-        log.info("[VIP RECOVERY BYPASSED] session_id=%s", session_id)
         with _recovery_session_lock:
             _session_recovery_sent[recovery_key] = True
         return True
 
-    log.info(
-        "[VIP MODE ACTIVATED] session_id=%s cart_total=%s threshold=%s",
-        session_id,
-        cart_total,
-        th_raw,
-    )
+    log.info("[VIP MODE ACTIVATED] session_id=%s cart_total=%s", session_id, cart_total)
     try:
         if cid:
             ac2 = db.session.query(AbandonedCart).filter(AbandonedCart.zid_cart_id == cid).first()
@@ -1529,7 +1597,6 @@ def _activate_vip_manual_cart_handling(
         log.warning("VIP merchant alert failed (non-fatal): %s", e, exc_info=True)
 
     log.info("[VIP CUSTOMER RECOVERY SKIPPED] reason=vip_manual_handling")
-    log.info("[VIP RECOVERY BYPASSED] session_id=%s", session_id)
     with _recovery_session_lock:
         _session_recovery_sent[recovery_key] = True
     return True
@@ -1826,12 +1893,7 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
     cart_total_vip = _abandoned_cart_cart_value_for_recovery(cart_id)
     th_raw = getattr(store_obj, "vip_cart_threshold", None) if store_obj is not None else None
     is_vip_eff = cart_total_vip is not None and is_vip_cart(cart_total_vip, store_obj)
-    log.info(
-        "[VIP CHECK] cart_total=%s threshold=%s is_vip=%s",
-        cart_total_vip if cart_total_vip is not None else "none",
-        th_raw,
-        is_vip_eff,
-    )
+    _vip_log_check(cart_total_vip, th_raw, is_vip_eff)
     if is_vip_eff:
         _vip_log_decision_override_after_engine(rt_raw or None, store_obj)
         if _activate_vip_manual_cart_handling(
@@ -2346,13 +2408,10 @@ async def _run_recovery_dispatch_cart_abandoned_impl(
 ) -> None:
     store_row0 = _load_store_row_for_recovery(store_slug)
     cart_tot0 = _abandoned_cart_cart_value_for_recovery(cart_id)
-    if cart_tot0 is not None and is_vip_cart(cart_tot0, store_row0):
-        log.info(
-            "[VIP CHECK] cart_total=%s threshold=%s is_vip=%s",
-            cart_tot0,
-            getattr(store_row0, "vip_cart_threshold", None) if store_row0 else None,
-            True,
-        )
+    th0 = getattr(store_row0, "vip_cart_threshold", None) if store_row0 else None
+    is_vip0 = cart_tot0 is not None and is_vip_cart(cart_tot0, store_row0)
+    _vip_log_check(cart_tot0, th0, is_vip0)
+    if is_vip0:
         rt0 = _reason_tag_for_session(store_slug, session_id) or None
         _vip_log_decision_override_after_engine(rt0, store_row0)
         if _activate_vip_manual_cart_handling(
@@ -2529,14 +2588,11 @@ async def handle_cart_abandoned(
         db.session.rollback()
         store_row = None
     print("store settings loaded")
-    cart_total_chk = _abandoned_cart_cart_value_for_recovery(cart_id_log)
-    if cart_total_chk is not None and is_vip_cart(cart_total_chk, store_row):
-        log.info(
-            "[VIP CHECK] cart_total=%s threshold=%s is_vip=%s",
-            cart_total_chk,
-            getattr(store_row, "vip_cart_threshold", None) if store_row else None,
-            True,
-        )
+    cart_total_chk = _cart_total_for_vip_recovery(cart_id_log, payload)
+    th_chk = getattr(store_row, "vip_cart_threshold", None) if store_row else None
+    is_vip_chk = cart_total_chk is not None and is_vip_cart(cart_total_chk, store_row)
+    _vip_log_check(cart_total_chk, th_chk, is_vip_chk)
+    if is_vip_chk:
         reason_vip = _reason_tag_for_session(store_slug, session_id_log) or None
         _vip_log_decision_override_after_engine(reason_vip, store_row)
         if _activate_vip_manual_cart_handling(
@@ -2552,7 +2608,8 @@ async def handle_cart_abandoned(
                 "recovery_scheduled": False,
                 "recovery_vip_manual": True,
                 "recovery_skipped": True,
-                "recovery_state": "vip_manual",
+                "customer_recovery_skipped": True,
+                "recovery_state": "vip_manual_handling",
             }
         log.warning(
             "[VIP FALLBACK] scheduling_normal_recovery session_id=%s recovery_key=%s",
@@ -2595,6 +2652,111 @@ async def handle_cart_abandoned(
         "recovery_state": "scheduled",
         "recovery_delay_seconds": None,
     }
+
+
+@app.get("/dev/vip-flow-verify")
+async def dev_vip_flow_verify(request: Request) -> Any:
+    """
+    يُثبت مسار VIP (كشف، تخطي استرجاع العميل، محاولة تنبيه التاجر) دون واتساب حقيقي افتراضياً.
+    مع ‎ENV=development‎ و‎?real_whatsapp=1‎ يُستدعى الإرسال الفعلي عبر ‎try_send_vip_merchant_whatsapp_alert‎.
+    """
+    from contextlib import nullcontext
+    from unittest.mock import patch
+
+    slug_restore: Optional[str] = None
+    prev_th_restore: Any = None
+    prev_phone_restore: Any = None
+
+    real_whatsapp = _is_development_mode() and (request.query_params.get("real_whatsapp") == "1")
+    twilio_cm = (
+        nullcontext()
+        if real_whatsapp
+        else patch(
+            "main.try_send_vip_merchant_whatsapp_alert",
+            return_value={"ok": True, "sid": "vip_flow_verify_stub"},
+        )
+    )
+    try:
+        db.create_all()
+        _ensure_store_widget_schema()
+        _ensure_default_store_for_recovery()
+        store_row = _load_store_row_for_recovery(None)
+        if store_row is None:
+            return j({"ok": False, "error": "no_store"}, 500)
+        slug = (getattr(store_row, "zid_store_id", None) or "").strip() or CARTFLOW_DEFAULT_RECOVERY_STORE_ZID
+        slug_restore = slug
+        prev_th_restore = getattr(store_row, "vip_cart_threshold", None)
+        prev_phone_restore = getattr(store_row, "store_whatsapp_number", None)
+        store_row.vip_cart_threshold = 100
+        store_row.store_whatsapp_number = "+966501112233"
+        db.session.commit()
+
+        sid = f"vip-flow-sess-{uuid.uuid4().hex[:12]}"
+        cid = f"vip-flow-cart-{uuid.uuid4().hex[:10]}"
+        rk = _recovery_key_from_payload({"store": slug, "session_id": sid})
+        with _recovery_session_lock:
+            _session_recovery_started.pop(rk, None)
+            _session_recovery_sent.pop(rk, None)
+
+        ex_ac = db.session.query(AbandonedCart).filter_by(zid_cart_id=cid).first()
+        if ex_ac is not None:
+            db.session.delete(ex_ac)
+            db.session.commit()
+        ok_u, err_u, _ = upsert_abandoned_cart_from_payload(
+            {"cart_id": cid, "cart_value": 500.0, "customer_phone": "+966501112233"}
+        )
+        if not ok_u:
+            return j({"ok": False, "error": "cart_upsert_failed", "detail": err_u}, 500)
+
+        db.session.query(CartRecoveryReason).filter(
+            CartRecoveryReason.store_slug == slug,
+            CartRecoveryReason.session_id == sid,
+        ).delete(synchronize_session=False)
+        db.session.commit()
+        now_utc = datetime.now(timezone.utc)
+        db.session.add(
+            CartRecoveryReason(
+                store_slug=slug,
+                session_id=sid,
+                reason="price",
+                source="vip_flow_verify",
+                created_at=now_utc,
+                updated_at=now_utc,
+            )
+        )
+        db.session.commit()
+
+        abandon_payload: dict[str, Any] = {
+            "event": "cart_abandoned",
+            "store": slug,
+            "session_id": sid,
+            "cart_id": cid,
+            "phone": "+966501112233",
+            "cart": [{"price": 500.0, "quantity": 1}],
+        }
+        with twilio_cm:
+            h = await handle_cart_abandoned(BackgroundTasks(), abandon_payload)
+
+        vip_detected = h.get("recovery_state") == "vip_manual_handling"
+        customer_skipped = h.get("customer_recovery_skipped") is True
+        out_body: dict[str, Any] = {
+            "ok": True,
+            "vip_detected": vip_detected,
+            "customer_recovery_skipped": customer_skipped,
+            "status": "vip_manual_handling" if vip_detected else "not_vip",
+            "merchant_alert_attempted": vip_detected,
+        }
+        return j(out_body, 200)
+    finally:
+        if slug_restore:
+            try:
+                sr = _load_store_row_for_recovery(slug_restore)
+                if sr is not None:
+                    sr.vip_cart_threshold = prev_th_restore
+                    sr.store_whatsapp_number = prev_phone_restore
+                    db.session.commit()
+            except (SQLAlchemyError, OSError):
+                db.session.rollback()
 
 
 @app.post("/api/cart-event")

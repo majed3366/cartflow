@@ -65,8 +65,9 @@ class VipManualHandlingTests(unittest.TestCase):
         )
         self.assertEqual(r.status_code, 200, r.text)
         body = r.json()
-        self.assertEqual(body.get("recovery_state"), "vip_manual")
+        self.assertEqual(body.get("recovery_state"), "vip_manual_handling")
         self.assertTrue(body.get("recovery_vip_manual"))
+        self.assertTrue(body.get("customer_recovery_skipped"))
         self.assertFalse(body.get("recovery_scheduled", True))
         mock_send.assert_not_called()
 
@@ -97,6 +98,14 @@ class VipMerchantResolveTests(unittest.TestCase):
         phone, src = resolve_merchant_whatsapp_phone(st)
         self.assertEqual(phone, "966501112233")
         self.assertEqual(src, "whatsapp_support_url_wa_me")
+
+    def test_vip_merchant_alert_body_exact(self) -> None:
+        from services.vip_merchant_alert import build_vip_merchant_alert_body
+
+        self.assertEqual(
+            build_vip_merchant_alert_body(1200.0),
+            "تنبيه VIP: لديك سلة عالية القيمة بقيمة 1200 ريال تحتاج متابعة يدوية.",
+        )
 
 
 if __name__ == "__main__":

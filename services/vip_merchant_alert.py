@@ -59,7 +59,7 @@ def build_vip_merchant_alert_body(cart_total: float) -> str:
         v = str(int(cart_total))
     else:
         v = f"{cart_total:.2f}".rstrip("0").rstrip(".")
-    return f"تنبيه VIP: سلة عالية القيمة ({v} ريال) تحتاج متابعة"
+    return f"تنبيه VIP: لديك سلة عالية القيمة بقيمة {v} ريال تحتاج متابعة يدوية."
 
 
 def try_send_vip_merchant_whatsapp_alert(
@@ -75,8 +75,10 @@ def try_send_vip_merchant_whatsapp_alert(
 
     phone, src = resolve_merchant_whatsapp_phone(store)
     if not phone:
-        log.info("[VIP MERCHANT ALERT SENT] status=no_target source=%s", src)
+        log.info("[VIP MERCHANT ALERT ATTEMPT] to=none source=%s", src)
+        log.info("[VIP MERCHANT ALERT SENT] ok=false sid=none")
         return {"ok": False, "error": "no_merchant_phone", "source": src}
+    log.info("[VIP MERCHANT ALERT ATTEMPT] to=%s source=%s", phone, src)
     try:
         out = send_whatsapp(
             phone,
@@ -91,10 +93,9 @@ def try_send_vip_merchant_whatsapp_alert(
         )
     except Exception as e:  # noqa: BLE001
         log.warning("VIP merchant alert send exception: %s", e, exc_info=True)
-        log.info("[VIP MERCHANT ALERT SENT] status=exception err=%s", str(e)[:200])
+        log.info("[VIP MERCHANT ALERT SENT] ok=false sid=none err=%s", str(e)[:200])
         return {"ok": False, "error": str(e)}
     ok = isinstance(out, dict) and out.get("ok") is True
     sid = str((out or {}).get("sid") or "").strip() if isinstance(out, dict) else ""
-    st = "sent" if ok else "twilio_error"
-    log.info("[VIP MERCHANT ALERT SENT] status=%s ok=%s sid=%s", st, ok, sid or "none")
+    log.info("[VIP MERCHANT ALERT SENT] ok=%s sid=%s", ok, sid or "none")
     return out if isinstance(out, dict) else {"ok": False, "error": "invalid_result"}
