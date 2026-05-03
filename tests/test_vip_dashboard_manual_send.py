@@ -150,6 +150,7 @@ class VipDashboardMerchantAlertTests(unittest.TestCase):
         self.assertEqual(rd.get("message"), "تم إرسال تنبيه التاجر")
         blob = "\n".join(alog_ctx.output)
         self.assertIn("[VIP MANUAL SEND CLICKED]", blob)
+        self.assertIn("[VIP STORE RESOLUTION]", blob)
         self.assertIn("[VIP MERCHANT ALERT ATTEMPT]", blob)
         self.assertIn("[VIP MERCHANT ALERT SENT]", blob)
 

@@ -226,6 +226,7 @@ from services.vip_cart import (
 )
 from services.vip_merchant_alert import (
     build_vip_merchant_alert_body,
+    resolve_merchant_whatsapp_phone,
     try_send_vip_merchant_whatsapp_alert,
 )
 
@@ -412,6 +413,9 @@ _DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT = frozenset(
         "/dev/create-vip-test-cart",
     }
 )
+
+# يُكتب على ‎Store‎ نفسه المربوط بسلة ‎/dev/create-vip-test-cart‎ (لتطابق حل متجر تنبيه التاجر).
+_DEV_VIP_TEST_CART_MERCHANT_WHATSAPP = "+966579706669"
 
 
 def _app_test_client() -> Any:
@@ -2704,7 +2708,13 @@ def dev_create_vip_test_cart() -> Any:
         slug = (getattr(st, "zid_store_id", None) or "").strip() or CARTFLOW_DEFAULT_RECOVERY_STORE_ZID
         if getattr(st, "vip_cart_threshold", None) is None:
             st.vip_cart_threshold = 500
-            db.session.commit()
+
+        mw = (_DEV_VIP_TEST_CART_MERCHANT_WHATSAPP or "").strip()[:64]
+        if mw:
+            st.store_whatsapp_number = mw
+            db.session.add(st)
+
+        db.session.commit()
 
         ac_old = db.session.query(AbandonedCart).filter_by(zid_cart_id=_VIP_TEST_ZID).first()
         if ac_old is not None:
@@ -4250,6 +4260,25 @@ def _store_row_for_abandoned_cart(ac: Optional[AbandonedCart]) -> Optional[Store
     return _load_latest_store_for_recovery()
 
 
+def _resolve_store_for_vip_merchant_alert(ac: AbandonedCart) -> Optional[Store]:
+    """
+    متجر لتنبيه التاجر VIP: متجر السلة إن وفّر رقم/‎URL‎ جهة؛ وإلا آخر متجر فيه جهة اتصال
+    (‎recovery settings‎ غالباً تحدّث أحدث ‎Store‎).
+    """
+    primary = _store_row_for_abandoned_cart(ac)
+    if primary is not None:
+        phone, _ = resolve_merchant_whatsapp_phone(primary)
+        if phone:
+            return primary
+    latest = _load_latest_store_for_recovery()
+    if latest is None:
+        return primary
+    phone2, _ = resolve_merchant_whatsapp_phone(latest)
+    if phone2:
+        return latest
+    return primary
+
+
 @app.post("/api/dashboard/vip-cart/{cart_row_id}/merchant-alert")
 def api_dashboard_vip_cart_merchant_alert(cart_row_id: int):
     """إرسال واتساب للتاجر فقط (VIP) من لوحة السلال المميزة — لا عميل."""
@@ -4265,7 +4294,17 @@ def api_dashboard_vip_cart_merchant_alert(cart_row_id: int):
         if str(getattr(ac, "status", "") or "").strip() == "recovered":
             return j({"ok": False, "error": "السلة مستردة بالفعل"}, 400)
 
-        store_obj = _store_row_for_abandoned_cart(ac)
+        cart_sid = getattr(ac, "store_id", None)
+        store_obj = _resolve_store_for_vip_merchant_alert(ac)
+        resolved_id = getattr(store_obj, "id", None) if store_obj is not None else None
+        sw_raw = getattr(store_obj, "store_whatsapp_number", None) if store_obj is not None else None
+        sw_disp = (sw_raw or "").strip() if isinstance(sw_raw, str) else ""
+        log.info(
+            "[VIP STORE RESOLUTION] cart_store_id=%s resolved_store_id=%s store_whatsapp_number=%s",
+            cart_sid,
+            resolved_id,
+            sw_disp,
+        )
         if store_obj is None:
             log.warning("[VIP MERCHANT ALERT FAILED] reason=no_store")
             return j(
