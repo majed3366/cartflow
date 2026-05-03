@@ -71,7 +71,10 @@ class VipDashboardMerchantAlertTests(unittest.TestCase):
         self.assertEqual(body.get("message"), "تم إرسال تنبيه التاجر")
         mock_send.assert_called_once()
         args, kwargs = mock_send.call_args
-        self.assertIn("تنبيه VIP", kwargs.get("message", ""))
+        msg = kwargs.get("message", "")
+        self.assertIn("تنبيه VIP 🚨", msg)
+        self.assertIn("سلة عالية القيمة:", msg)
+        self.assertIn("رابط المراجعة:", msg)
 
     def test_non_vip_cart_rejected(self) -> None:
         db.create_all()

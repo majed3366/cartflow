@@ -3,11 +3,35 @@
 from __future__ import annotations
 
 import logging
+import os
 import re
 from typing import Any, Dict, Optional, Tuple
 from urllib.parse import parse_qs, urlparse
 
 log = logging.getLogger("cartflow")
+
+_VIP_REASON_AR = {
+    "price": "السعر",
+    "warranty": "الضمان",
+    "shipping": "الشحن",
+    "thinking": "التفكير",
+    "quality": "الجودة",
+    "other": "سبب آخر",
+    "human_support": "دعم بشري",
+}
+
+
+def vip_dashboard_review_link() -> str:
+    """
+    رابط صفحة السلال المميزة في لوحة CartFlow للتاجر.
+    يُفضّل ضبط ‎CARTFLOW_PUBLIC_BASE_URL‎ أو ‎PUBLIC_BASE_URL‎ على الخادم لرابط مطلق.
+    """
+    base = (
+        os.getenv("CARTFLOW_PUBLIC_BASE_URL") or os.getenv("PUBLIC_BASE_URL") or ""
+    ).strip().rstrip("/")
+    if base:
+        return f"{base}/dashboard/vip-cart-settings"
+    return "https://YOUR_APP_HOST/dashboard/vip-cart-settings"
 
 
 def _digits_only(s: str) -> str:
@@ -54,12 +78,34 @@ def resolve_merchant_whatsapp_phone(store: Any) -> Tuple[Optional[str], str]:
     return None, "url_unparsed"
 
 
-def build_vip_merchant_alert_body(cart_total: float) -> str:
+def build_vip_merchant_alert_body(
+    cart_total: float,
+    *,
+    reason_tag: Optional[str] = None,
+    dashboard_link: Optional[str] = None,
+) -> str:
     if cart_total == int(cart_total):
         v = str(int(cart_total))
     else:
         v = f"{cart_total:.2f}".rstrip("0").rstrip(".")
-    return f"تنبيه VIP: لديك سلة بقيمة {v} ريال تحتاج متابعة فورية."
+    link = (dashboard_link or "").strip() or vip_dashboard_review_link()
+    lines: list[str] = [
+        "تنبيه VIP 🚨",
+        "",
+        f"سلة عالية القيمة: {v} ريال",
+        "",
+    ]
+    rt = (reason_tag or "").strip()
+    if rt:
+        ar = _VIP_REASON_AR.get(rt.lower(), rt)
+        lines.extend([f"السبب: {ar}", ""])
+    lines.extend(
+        [
+            "رابط المراجعة:",
+            link,
+        ]
+    )
+    return "\n".join(lines)
 
 
 def try_send_vip_merchant_whatsapp_alert(

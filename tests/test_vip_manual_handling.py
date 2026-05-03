@@ -99,12 +99,35 @@ class VipMerchantResolveTests(unittest.TestCase):
         self.assertEqual(phone, "966501112233")
         self.assertEqual(src, "whatsapp_support_url_wa_me")
 
-    def test_vip_merchant_alert_body_exact(self) -> None:
+    def test_vip_merchant_alert_body_plain(self) -> None:
         from services.vip_merchant_alert import build_vip_merchant_alert_body
 
+        link = "https://example.test/dashboard/vip-cart-settings"
+        expected = (
+            "تنبيه VIP 🚨\n\n"
+            "سلة عالية القيمة: 1200 ريال\n\n"
+            "رابط المراجعة:\n"
+            + link
+        )
         self.assertEqual(
-            build_vip_merchant_alert_body(1200.0),
-            "تنبيه VIP: لديك سلة بقيمة 1200 ريال تحتاج متابعة فورية.",
+            build_vip_merchant_alert_body(1200.0, dashboard_link=link),
+            expected,
+        )
+
+    def test_vip_merchant_alert_body_with_reason_tag(self) -> None:
+        from services.vip_merchant_alert import build_vip_merchant_alert_body
+
+        link = "https://example.test/dashboard/vip-cart-settings"
+        expected = (
+            "تنبيه VIP 🚨\n\n"
+            "سلة عالية القيمة: 500 ريال\n\n"
+            "السبب: السعر\n\n"
+            "رابط المراجعة:\n"
+            + link
+        )
+        self.assertEqual(
+            build_vip_merchant_alert_body(500.0, reason_tag="price", dashboard_link=link),
+            expected,
         )
 
 

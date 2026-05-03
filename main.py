@@ -228,6 +228,7 @@ from services.vip_merchant_alert import (
     build_vip_merchant_alert_body,
     resolve_merchant_whatsapp_phone,
     try_send_vip_merchant_whatsapp_alert,
+    vip_dashboard_review_link,
 )
 
 log = logging.getLogger("cartflow")
@@ -413,9 +414,6 @@ _DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT = frozenset(
         "/dev/create-vip-test-cart",
     }
 )
-
-# يُكتب على ‎Store‎ نفسه المربوط بسلة ‎/dev/create-vip-test-cart‎ (لتطابق حل متجر تنبيه التاجر).
-_DEV_VIP_TEST_CART_MERCHANT_WHATSAPP = "+966579706669"
 
 
 def _app_test_client() -> Any:
@@ -1596,7 +1594,12 @@ def _activate_vip_manual_cart_handling(
         return False
 
     try:
-        mbody = build_vip_merchant_alert_body(float(cart_total))
+        rt_alert = (reason_tag or "").strip() or None
+        mbody = build_vip_merchant_alert_body(
+            float(cart_total),
+            reason_tag=rt_alert,
+            dashboard_link=vip_dashboard_review_link(),
+        )
         try_send_vip_merchant_whatsapp_alert(store_obj, message=mbody)
     except Exception as e:  # noqa: BLE001
         log.warning("VIP merchant alert failed (non-fatal): %s", e, exc_info=True)
@@ -2708,12 +2711,7 @@ def dev_create_vip_test_cart() -> Any:
         slug = (getattr(st, "zid_store_id", None) or "").strip() or CARTFLOW_DEFAULT_RECOVERY_STORE_ZID
         if getattr(st, "vip_cart_threshold", None) is None:
             st.vip_cart_threshold = 500
-
-        mw = (_DEV_VIP_TEST_CART_MERCHANT_WHATSAPP or "").strip()[:64]
-        if mw:
-            st.store_whatsapp_number = mw
-            db.session.add(st)
-
+        db.session.add(st)
         db.session.commit()
 
         ac_old = db.session.query(AbandonedCart).filter_by(zid_cart_id=_VIP_TEST_ZID).first()
@@ -4244,6 +4242,23 @@ def dashboard_widget_customization(request: Request):
     )
 
 
+def _vip_reason_tag_from_abandoned_cart(ac: Optional[AbandonedCart]) -> Optional[str]:
+    """قراءة ‎reason_tag‎ من ‎AbandonedCart.raw_payload‎ (JSON) لتضمينه في رسالة تنبيه التاجر."""
+    if ac is None:
+        return None
+    rp = getattr(ac, "raw_payload", None)
+    if not isinstance(rp, str) or not rp.strip():
+        return None
+    try:
+        d = json.loads(rp)
+    except (json.JSONDecodeError, TypeError, ValueError):
+        return None
+    if not isinstance(d, dict):
+        return None
+    t = (d.get("reason_tag") or "").strip()
+    return t or None
+
+
 def _store_row_for_abandoned_cart(ac: Optional[AbandonedCart]) -> Optional[Store]:
     """متجر السلة أو آخر متجر افتراضي — إرسال تنبيهات التاجر فقط لا يفسد مسارات أخرى."""
     if ac is None:
@@ -4313,7 +4328,12 @@ def api_dashboard_vip_cart_merchant_alert(cart_row_id: int):
             )
 
         cv = float(ac.cart_value or 0.0)
-        alert_body = build_vip_merchant_alert_body(cv)
+        rtag = _vip_reason_tag_from_abandoned_cart(ac)
+        alert_body = build_vip_merchant_alert_body(
+            cv,
+            reason_tag=rtag,
+            dashboard_link=vip_dashboard_review_link(),
+        )
         out = try_send_vip_merchant_whatsapp_alert(store_obj, message=alert_body)
 
         if out.get("ok") is True:

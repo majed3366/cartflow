@@ -39,7 +39,16 @@ def test_create_vip_test_cart_returns_ok_shape(client, method):
     st_row = db.session.get(Store, ac.store_id)
     assert st_row is not None
     assert ac.store_id == st_row.id
-    assert (st_row.store_whatsapp_number or "").strip() == "+966579706669"
+
+
+def _set_store_whatsapp_via_recovery(client: TestClient, phone: str) -> None:
+    rg = client.get("/api/recovery-settings")
+    assert rg.status_code == 200
+    body = rg.json()
+    body.pop("ok", None)
+    body["store_whatsapp_number"] = phone
+    rp = client.post("/api/recovery-settings", json=body)
+    assert rp.status_code == 200
 
 
 @pytest.mark.parametrize("method", ("get", "post"))
@@ -54,10 +63,13 @@ def test_create_vip_test_cart_idempotent_repost(client, method):
 @patch("services.whatsapp_send.send_whatsapp")
 def test_create_vip_test_cart_merchant_manual_send_ok(mock_sw, client):
     mock_sw.return_value = {"ok": True, "sid": "SM_vip_dev_test"}
+    _set_store_whatsapp_via_recovery(client, "+966578889999")
     r0 = client.get("/dev/create-vip-test-cart")
     assert r0.status_code == 200
     ac = db.session.query(AbandonedCart).filter_by(zid_cart_id="vip-codegen-test-cart-1").one()
-    assert (db.session.get(Store, ac.store_id).store_whatsapp_number or "").strip() == "+966579706669"
+    assert (
+        db.session.get(Store, ac.store_id) is not None
+    ), "cart linked to resolved store row"
     r = client.post(f"/api/dashboard/vip-cart/{ac.id}/merchant-alert", json={})
     assert r.status_code == 200, r.text
     assert r.json().get("ok") is True
