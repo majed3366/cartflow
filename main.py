@@ -29,7 +29,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 from extensions import db, init_database, remove_scoped_session
 from integrations.zid_client import exchange_code_for_token, verify_webhook_signature
 from json_response import UTF8JSONResponse, j
-from sqlalchemy import func, inspect, or_, text
+from sqlalchemy import func, inspect, text
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from decision_engine import decide_recovery_action
@@ -1554,6 +1554,15 @@ def _activate_vip_manual_cart_handling(
 
     if already:
         log.info("[VIP CUSTOMER RECOVERY SKIPPED] reason=vip_manual_handling")
+        if cid:
+            try:
+                ac_sync = db.session.query(AbandonedCart).filter(AbandonedCart.zid_cart_id == cid).first()
+                if ac_sync is not None and str(ac_sync.status or "").strip() != "recovered":
+                    ac_sync.status = "abandoned"
+                    db.session.commit()
+            except (SQLAlchemyError, OSError) as e:
+                db.session.rollback()
+                log.warning("[VIP SYNC STATUS] cart_id=%s err=%s", cid, e)
         with _recovery_session_lock:
             _session_recovery_sent[recovery_key] = True
         return True
@@ -1564,6 +1573,8 @@ def _activate_vip_manual_cart_handling(
             ac2 = db.session.query(AbandonedCart).filter(AbandonedCart.zid_cart_id == cid).first()
             if ac2 is not None:
                 ac2.vip_mode = True
+                if str(ac2.status or "").strip() != "recovered":
+                    ac2.status = "abandoned"
                 db.session.commit()
     except (SQLAlchemyError, OSError) as e:
         db.session.rollback()
@@ -2624,6 +2635,13 @@ async def handle_cart_abandoned(
         db.session.rollback()
         store_row = None
     print("store settings loaded")
+    try:
+        ok_u, err_u, _urow = upsert_abandoned_cart_from_payload(payload, store=store_row)
+        if not ok_u and err_u:
+            log.warning("[ABANDON UPSERT] %s", err_u)
+    except SQLAlchemyError:
+        db.session.rollback()
+        log.warning("[ABANDON UPSERT FAILED]", exc_info=True)
     cart_total_chk = _cart_total_for_vip_recovery(cart_id_log, payload)
     th_chk = getattr(store_row, "vip_cart_threshold", None) if store_row else None
     is_vip_chk = cart_total_chk is not None and is_vip_cart(cart_total_chk, store_row)
@@ -2832,7 +2850,8 @@ async def dev_vip_flow_verify(request: Request) -> Any:
             db.session.delete(ex_ac)
             db.session.commit()
         ok_u, err_u, _ = upsert_abandoned_cart_from_payload(
-            {"cart_id": cid, "cart_value": 500.0, "customer_phone": "+966501112233"}
+            {"cart_id": cid, "cart_value": 500.0, "customer_phone": "+966501112233"},
+            store=store_row,
         )
         if not ok_u:
             return j({"ok": False, "error": "cart_upsert_failed", "detail": err_u}, 500)
@@ -3812,7 +3831,11 @@ def normalize_zid_cart_fields(payload: dict) -> dict[str, Any]:
     }
 
 
-def upsert_abandoned_cart_from_payload(payload: dict) -> Tuple[bool, str, Optional[AbandonedCart]]:
+def upsert_abandoned_cart_from_payload(
+    payload: dict,
+    *,
+    store: Optional[Any] = None,
+) -> Tuple[bool, str, Optional[AbandonedCart]]:
     # إدراج أو تحديث ‎AbandonedCart‎ حسب ‎zid_cart_id‎
     fields = normalize_zid_cart_fields(payload)
     if not fields["zid_cart_id"]:
@@ -3846,6 +3869,11 @@ def upsert_abandoned_cart_from_payload(payload: dict) -> Tuple[bool, str, Option
         else:
             if row.status not in ("sent", "recovered"):
                 row.status = new
+    if store is not None and getattr(store, "id", None) is not None:
+        try:
+            row.store_id = int(store.id)
+        except (TypeError, ValueError):
+            pass
     db.session.commit()
     return True, "ok", row
 
@@ -3923,35 +3951,16 @@ def _format_reason_ts(dt: Optional[datetime]) -> str:
 
 
 def _vip_priority_cart_alert_list() -> list[dict[str, Any]]:
-    """
-    سلّات حقيقية لقسم «أولوية»: ‎vip_mode‎ أو ظهور ‎vip_manual_handling‎ في ‎CartRecoveryLog‎ لنفس ‎zid_cart_id‎.
-    """
+    """سلّات قسم «أولوية»: ‎vip_mode‎ و‎status=abandoned‎ (البيانات المستمرّة من مسار الترك الحقيقي)."""
     out: list[dict[str, Any]] = []
     try:
         _ensure_store_widget_schema()
         db.create_all()
-        log_pairs = (
-            db.session.query(CartRecoveryLog.cart_id)
-            .filter(CartRecoveryLog.status == "vip_manual_handling")
-            .filter(CartRecoveryLog.cart_id.isnot(None))
-            .filter(CartRecoveryLog.cart_id != "")
-            .distinct()
-            .limit(500)
-            .all()
+        q = (
+            db.session.query(AbandonedCart)
+            .filter(AbandonedCart.vip_mode.is_(True))
+            .filter(AbandonedCart.status == "abandoned")
         )
-        log_cids = list(
-            {str(r[0]).strip()[:255] for r in log_pairs if r and (r[0] or "").strip()}
-        )
-
-        filt = AbandonedCart.status != "recovered"
-        if log_cids:
-            q = (
-                db.session.query(AbandonedCart)
-                .filter(filt)
-                .filter(or_(AbandonedCart.vip_mode.is_(True), AbandonedCart.zid_cart_id.in_(log_cids)))
-            )
-        else:
-            q = db.session.query(AbandonedCart).filter(filt).filter(AbandonedCart.vip_mode.is_(True))
 
         for ac in q.order_by(AbandonedCart.last_seen_at.desc()).limit(24).all():
             zid = (ac.zid_cart_id or "").strip()

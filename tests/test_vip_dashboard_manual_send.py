@@ -74,6 +74,7 @@ class VipDashboardMerchantAlertTests(unittest.TestCase):
         msg = kwargs.get("message", "")
         self.assertIn("تنبيه VIP 🚨", msg)
         self.assertIn("سلة عالية القيمة:", msg)
+        self.assertIn("السبب: —", msg)
         self.assertIn("رابط المراجعة:", msg)
 
     def test_non_vip_cart_rejected(self) -> None:
@@ -168,7 +169,7 @@ class VipDashboardMerchantAlertTests(unittest.TestCase):
         self.assertNotIn("demo_vip_cart_zid", html)
         self.assertNotIn("vip-demo-heading", html)
 
-    def test_vip_cart_settings_priority_from_vip_mode_and_recovery_log_union(self) -> None:
+    def test_vip_cart_settings_priority_requires_vip_mode_and_abandoned_status(self) -> None:
         db.create_all()
         slug = f"vip_pri_{uuid.uuid4().hex[:12]}"
         store = Store(zid_store_id=slug)
@@ -183,7 +184,7 @@ class VipDashboardMerchantAlertTests(unittest.TestCase):
             store_id=store.id,
             zid_cart_id=zid_mode,
             cart_value=500.0,
-            status="detected",
+            status="abandoned",
             vip_mode=True,
         )
         ac2 = AbandonedCart(
@@ -210,7 +211,7 @@ class VipDashboardMerchantAlertTests(unittest.TestCase):
         self.assertEqual(r.status_code, 200, r.text)
         html = r.text.replace("&#39;", "'")
         self.assertIn(zid_mode, html)
-        self.assertIn(zid_log, html)
+        self.assertNotIn(zid_log, html)
         self.assertNotIn("vip-demo-heading", html)
 
 

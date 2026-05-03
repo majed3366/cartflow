@@ -45,10 +45,6 @@ class VipManualHandlingTests(unittest.TestCase):
         if existing:
             db.session.delete(existing)
             db.session.commit()
-        ok, _msg, _row = main.upsert_abandoned_cart_from_payload(
-            {"cart_id": cid, "cart_value": 500.0, "customer_phone": "+966501112233"}
-        )
-        self.assertTrue(ok)
 
         sid = "vip-manual-session-1"
         _post_recovery_reason_for_session(self.client, "demo", sid, "price")
@@ -60,6 +56,7 @@ class VipManualHandlingTests(unittest.TestCase):
                 "store": "demo",
                 "session_id": sid,
                 "cart_id": cid,
+                "cart_value": 500.0,
                 "phone": "+966501112233",
             },
         )
@@ -74,6 +71,7 @@ class VipManualHandlingTests(unittest.TestCase):
         ac = db.session.query(AbandonedCart).filter_by(zid_cart_id=cid).first()
         self.assertIsNotNone(ac)
         self.assertTrue(bool(getattr(ac, "vip_mode", False)))
+        self.assertEqual((ac.status or "").strip(), "abandoned")
 
 
 class VipMerchantResolveTests(unittest.TestCase):
@@ -106,6 +104,7 @@ class VipMerchantResolveTests(unittest.TestCase):
         expected = (
             "تنبيه VIP 🚨\n\n"
             "سلة عالية القيمة: 1200 ريال\n\n"
+            "السبب: —\n\n"
             "رابط المراجعة:\n"
             + link
         )
@@ -129,6 +128,12 @@ class VipMerchantResolveTests(unittest.TestCase):
             build_vip_merchant_alert_body(500.0, reason_tag="price", dashboard_link=link),
             expected,
         )
+
+    def test_vip_merchant_alert_not_old_colon_intro(self) -> None:
+        from services.vip_merchant_alert import build_vip_merchant_alert_body
+
+        body = build_vip_merchant_alert_body(999.0, dashboard_link="https://x.test/dash")
+        self.assertNotIn("تنبيه VIP:", body)
 
 
 if __name__ == "__main__":
