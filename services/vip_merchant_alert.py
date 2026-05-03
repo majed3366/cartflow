@@ -74,10 +74,10 @@ def try_send_vip_merchant_whatsapp_alert(
     from services.whatsapp_send import send_whatsapp
 
     phone, src = resolve_merchant_whatsapp_phone(store)
+    log.info("[VIP MERCHANT ALERT ATTEMPT] to=%s source=%s", phone or "none", src)
     if not phone:
-        log.info("[VIP MERCHANT ALERT ATTEMPT] to=none source=%s", src)
+        log.warning("[VIP MERCHANT ALERT FAILED] reason=no_merchant_phone source=%s", src)
         return {"ok": False, "error": "no_merchant_phone", "source": src}
-    log.info("[VIP MERCHANT ALERT ATTEMPT] to=%s source=%s", phone, src)
     try:
         out = send_whatsapp(
             phone,
@@ -91,9 +91,18 @@ def try_send_vip_merchant_whatsapp_alert(
             wa_trace_delay_passed=None,
         )
     except Exception as e:  # noqa: BLE001
-        log.warning("VIP merchant alert send exception: %s", e, exc_info=True)
+        log.warning(
+            "[VIP MERCHANT ALERT FAILED] reason=exception err=%s",
+            str(e),
+            exc_info=True,
+        )
         return {"ok": False, "error": str(e)}
     ok = isinstance(out, dict) and out.get("ok") is True
     if ok:
         log.info("[VIP MERCHANT ALERT SENT]")
+    else:
+        detail = ""
+        if isinstance(out, dict):
+            detail = str(out.get("error") or "")[:256]
+        log.warning("[VIP MERCHANT ALERT FAILED] reason=send_failed detail=%s", detail or "unknown")
     return out if isinstance(out, dict) else {"ok": False, "error": "invalid_result"}

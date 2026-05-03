@@ -50,8 +50,9 @@
                 <p class="text-[10px] text-slate-500">{{ vc.cart_short }} · {{ vc.last_seen }}</p>
                 <p class="mt-1 font-mono text-[10px] font-semibold text-violet-900">{{ vc.status }}</p>
               </div>
-              <button type="button" data-vip-manual-send data-cart-id="{{ vc.id }}"
-                class="shrink-0 rounded-lg border border-violet-500 bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-violet-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600/50 disabled:opacity-60">
+              <button type="button" data-vip-manual-send data-cart-row-id="{{ vc.id }}" data-interactive="{% if vc.interactive %}1{% else %}0{% endif %}"
+                {% if not vc.interactive %}disabled aria-disabled="true" title="بيانات تجريبية للعرض فقط" {% endif %}
+                class="vip-manual-send-btn shrink-0 rounded-lg border border-violet-500 bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-violet-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600/50 disabled:pointer-events-none disabled:opacity-50">
                 إرسال يدوي
               </button>
               <span data-vip-send-status class="w-full text-end text-[10px] text-slate-600 md:w-auto md:flex-1"></span>
@@ -223,32 +224,61 @@
     (function () {
       document.querySelectorAll("[data-vip-manual-send]").forEach(function (btn) {
         btn.addEventListener("click", function () {
-          var id = btn.getAttribute("data-cart-id");
-          if (!id) return;
+          var interactive = btn.getAttribute("data-interactive") === "1";
+          if (!interactive || btn.disabled) return;
+          var rowId = btn.getAttribute("data-cart-row-id");
+          if (!rowId) return;
           var li = btn.closest("li");
           var statusEl = li ? li.querySelector("[data-vip-send-status]") : null;
+          var prevLabel = btn.textContent || "إرسال يدوي";
           btn.disabled = true;
-          fetch("/api/carts/" + encodeURIComponent(id) + "/send", {
+          btn.classList.add("opacity-70");
+          btn.textContent = "جارٍ الإرسال…";
+          if (statusEl) {
+            statusEl.textContent = "";
+            statusEl.classList.remove("text-red-600", "text-emerald-700", "font-semibold");
+          }
+
+          fetch("/api/dashboard/vip-cart/" + encodeURIComponent(rowId) + "/merchant-alert", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: "{}",
           })
             .then(function (r) {
               return r.json().then(function (j) {
-                return { ok: r.ok, j: j };
+                return { status: r.status, j: j };
               });
             })
             .then(function (x) {
-              if (statusEl) {
-                statusEl.textContent =
-                  x.j && x.j.ok ? "تم الإرسال" : (x.j && x.j.error) || "تعذر الإرسال";
+              var d = x.j || {};
+              if (d.ok === true && x.status >= 200 && x.status < 300) {
+                if (statusEl) {
+                  statusEl.textContent = d.message || "تم إرسال تنبيه التاجر";
+                  statusEl.classList.add("text-emerald-700", "font-semibold");
+                  statusEl.classList.remove("text-red-600");
+                }
+              } else {
+                if (statusEl) {
+                  statusEl.textContent =
+                    (d.error && String(d.error)) ||
+                    ("فشل الإرسال" + (d.detail ? " (" + String(d.detail) + ")" : ""));
+                  statusEl.classList.add("text-red-600", "font-semibold");
+                  statusEl.classList.remove("text-emerald-700");
+                }
               }
             })
             .catch(function () {
-              if (statusEl) statusEl.textContent = "تعذر الاتصال";
+              if (statusEl) {
+                statusEl.textContent = "تعذر الاتصال بالخادم";
+                statusEl.classList.add("text-red-600", "font-semibold");
+              }
             })
             .finally(function () {
-              btn.disabled = false;
+              if (interactive) {
+                btn.disabled = false;
+              }
+              btn.classList.remove("opacity-70");
+              btn.textContent = prevLabel;
             });
         });
       });

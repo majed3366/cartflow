@@ -3848,6 +3848,7 @@ def _vip_cart_alerts_merchant_list() -> list[dict[str, Any]]:
                     "cart_short": cart_short or "—",
                     "last_seen": _format_reason_ts(ac.last_seen_at),
                     "status": "vip_manual_handling",
+                    "interactive": True,
                 }
             )
     except (SQLAlchemyError, OSError) as e:
@@ -4088,6 +4089,7 @@ def dashboard_vip_cart_settings(request: Request):
                         "cart_short": "demo_vip_cart_zid",
                         "last_seen": "2026-04-20 16:00",
                         "status": "vip_manual_handling",
+                        "interactive": False,
                     },
                 ]
         except (SQLAlchemyError, OSError):
@@ -4100,6 +4102,7 @@ def dashboard_vip_cart_settings(request: Request):
                     "cart_short": "demo_vip_cart_zid",
                     "last_seen": "2026-04-20 16:00",
                     "status": "vip_manual_handling",
+                    "interactive": False,
                 },
             ]
     return templates.TemplateResponse(
@@ -4147,6 +4150,92 @@ def dashboard_widget_customization(request: Request):
         "widget_customization.html",
         {"request": request},
     )
+
+
+def _store_row_for_abandoned_cart(ac: Optional[AbandonedCart]) -> Optional[Store]:
+    """متجر السلة أو آخر متجر افتراضي — إرسال تنبيهات التاجر فقط لا يفسد مسارات أخرى."""
+    if ac is None:
+        return None
+    try:
+        sid = getattr(ac, "store_id", None)
+        if sid is not None:
+            st = db.session.get(Store, int(sid))
+            if st is not None:
+                return st
+    except (SQLAlchemyError, OSError, TypeError, ValueError):
+        db.session.rollback()
+        return None
+    return _load_latest_store_for_recovery()
+
+
+@app.post("/api/dashboard/vip-cart/{cart_row_id}/merchant-alert")
+def api_dashboard_vip_cart_merchant_alert(cart_row_id: int):
+    """إرسال واتساب للتاجر فقط (VIP) من لوحة السلال المميزة — لا عميل."""
+    log.info("[VIP MANUAL SEND CLICKED] abandoned_cart_row_id=%s", cart_row_id)
+    try:
+        db.create_all()
+        _ensure_store_widget_schema()
+        ac = db.session.get(AbandonedCart, int(cart_row_id))
+        if ac is None:
+            return j({"ok": False, "error": "لم يتم العثور على السلة"}, 404)
+        if not bool(getattr(ac, "vip_mode", False)):
+            return j({"ok": False, "error": "هذه السلة ليست في وضع VIP"}, 400)
+        if str(getattr(ac, "status", "") or "").strip() == "recovered":
+            return j({"ok": False, "error": "السلة مستردة بالفعل"}, 400)
+
+        store_obj = _store_row_for_abandoned_cart(ac)
+        if store_obj is None:
+            log.warning("[VIP MERCHANT ALERT FAILED] reason=no_store")
+            return j(
+                {"ok": False, "error": "لا يوجد رقم واتساب للمتجر", "detail": "no_store"},
+                400,
+            )
+
+        cv = float(ac.cart_value or 0.0)
+        alert_body = build_vip_merchant_alert_body(cv)
+        out = try_send_vip_merchant_whatsapp_alert(store_obj, message=alert_body)
+
+        if out.get("ok") is True:
+            return j(
+                {
+                    "ok": True,
+                    "message": "تم إرسال تنبيه التاجر",
+                },
+                200,
+            )
+
+        err_code = str(out.get("error") or "").strip()
+        src = str(out.get("source") or "").strip()
+
+        if err_code == "no_merchant_phone" or (
+            src in ("no_merchant_contact", "url_unparsed", "no_store")
+        ):
+            user_msg = "لا يوجد رقم واتساب للمتجر"
+            return j(
+                {
+                    "ok": False,
+                    "error": user_msg,
+                    "detail": err_code or src,
+                },
+                400,
+            )
+
+        return j(
+            {
+                "ok": False,
+                "error": err_code or "فشل إرسال رسالة الواتساب للتاجر",
+                "detail": src,
+            },
+            502,
+        )
+    except Exception as e:  # noqa: BLE001
+        db.session.rollback()
+        log.warning(
+            "[VIP MERCHANT ALERT FAILED] reason=endpoint_exception err=%s",
+            str(e),
+            exc_info=True,
+        )
+        return j({"ok": False, "error": "خطأ غير متوقع في الخادم"}, 500)
 
 
 @app.post("/api/carts/<int:row_id>/send")
