@@ -254,6 +254,7 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 |------------|---------|
 | 2026-05-02 | **Full VIP integration:** `_vip_log_decision_override_after_engine` (read-only `decide_recovery_action` + logs); `_activate_vip_manual_cart_handling` returns **`bool`** with **`[VIP RECOVERY BYPASSED]`** / **`[VIP FALLBACK]`** on failure; merchant alert copy and **`[VIP MERCHANT ALERT SENT] status=...`** in `services/vip_merchant_alert.py`. Commit: `feat: full VIP integration (backend + whatsapp + dashboard + override)`. |
 | 2026-05-02 | **VIP UI dedup + logs:** الرئيسية (`dashboard_v1`) — KPIs وأسباب ونشاط فقط (بدون VIP في الشاشة الرئيسية)؛ **تنبيهات السلال المميزة** + **إرسال يدوي** في `vip_cart_settings.html` فقط؛ إزالة دمج VIP من `live_feed`؛ **`[VIP ALERT]`** + **`decision=vip_manual_handling`** في سجلات التجاوز؛ **`_vip_cart_alerts_merchant_list()`** لصفحة السلال المميزة؛ تسمية **الرئيسية** في الشريط الجانبي وعنوان KPI. Commit: `fix: activate VIP handling + remove duplication + enforce priority behavior + rename dashboard`. |
+| 2026-05-02 | **صفحة عامة CartFlow:** `GET /` يعرض `templates/cartflow_landing.html` مع `static/cartflow_landing.css` + `cartflow_landing.js` (تمرير سلس للروابط الداخلية)؛ **`GET /register`** → `register_placeholder.html` (مؤقت، بدون OTP). الصفحة التسويقية عربية RTL مع تخطيط رأس LTR (شعار / تنقل / CTA) كما في المواصفات. Commit: `feat: add pixel-accurate CartFlow landing page`. |
 
 ---
 
