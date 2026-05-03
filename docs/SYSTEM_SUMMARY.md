@@ -38,7 +38,7 @@ CartFlow is a FastAPI application that:
 |--------------|---------|
 | `GET /dashboard` | `dashboard_v1.html` — **الرئيسية**: KPIs، أسباب التردد، الرسم، **آخر النشاطات** (أسباب فقط — بدون VIP). |
 | `GET /dashboard/recovery-settings` | `recovery_settings.html` — delay, attempts, WhatsApp fields; **`GET`/`POST /api/recovery-settings`**. |
-| `GET /dashboard/vip-cart-settings` | `vip_cart_settings.html` — **تنبيهات السلال المميزة** (قائمة `AbandonedCart.vip_mode` + **`interactive`**) + **إرسال يدوي** → **`POST /api/dashboard/vip-cart/{abandoned_cart_row_id}/merchant-alert`** (تنبيه التاجر فقط عبر `try_send_vip_merchant_whatsapp_alert`؛ ليس `POST /api/carts/{id}/send` الذي يوجّه للعميل). عتبة VIP عبر **`/api/recovery-settings`**. صفوف تجريبية `interactive: false` — الزر معطّل. |
+| `GET /dashboard/vip-cart-settings` | `vip_cart_settings.html` — قسمان: **أولوية** (حقيقي فقط: `AbandonedCart` غير `recovered` حيث `vip_mode` **أو** `CartRecoveryLog.cart_id` = `zid_cart_id` مع `status=vip_manual_handling`) + **بيانات تجريبية** (صفوف ثابتة، `interactive: false`). **إرسال يدوي** → **`POST /api/dashboard/vip-cart/{abandoned_cart_row_id}/merchant-alert`** (تنبيه التاجر فقط؛ ليس `POST /api/carts/{id}/send`). عتبة VIP عبر **`/api/recovery-settings`**. |
 | `GET /dashboard/exit-intent-settings` | `exit_intent_settings.html` — exit intent copy; loads/saves via recovery settings API + `static/cartflow_dashboard_messages.js`. |
 | `GET /dashboard/cart-recovery-messages` | `cart_recovery_messages.html` — recovery message templates. |
 | `GET /dashboard/widget-customization` | `widget_customization.html` — widget appearance. |
@@ -177,7 +177,7 @@ Print-style trace: **`[DELAY STARTED]`**, **`[DELAY WAITING]`**, **`[DELAY FINIS
 4. If **multi_message_slots_for_abandon** returns slots → schedule delayed tasks per slot; else **`_run_recovery_dispatch_cart_abandoned`** waits for reason if needed, then schedules **one** delayed **`_run_recovery_sequence_after_cart_abandoned`**.
 5. After sleep (غير مسار VIP المتوقَّف مسبقاً): **VIP guard** دفاعي؛ ثم رسائل القوالب و**`should_send_whatsapp`** و**`send_whatsapp`** للعميل فقط خارج VIP.
 6. **`_persist_cart_recovery_log`** records queued / sent / skipped / VIP rows.
-7. **Dashboard** **`GET /dashboard`** — KPIs وأسباب ونشاط من **`AbandonedCart`** / **`CartRecoveryReason`** فقط. **قائمة VIP** تُحمّل في **`GET /dashboard/vip-cart-settings`** عبر **`_vip_cart_alerts_merchant_list()`** (بدون تكرار في الرئيسية).
+7. **Dashboard** **`GET /dashboard`** — KPIs وأسباب ونشاط من **`AbandonedCart`** / **`CartRecoveryReason`** فقط. **قائمة أولوية VIP** في **`GET /dashboard/vip-cart-settings`** عبر **`_vip_priority_cart_alert_list()`** (الاسم **`_vip_cart_alerts_merchant_list()`** alias للتوافق؛ بدون تكرار في الرئيسية).
 
 ---
 
@@ -261,6 +261,7 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 
 | Date (UTC) | Summary |
 |------------|---------|
+| 2026-05-03 | **لوحة VIP — أولوية مقابل تجريبي:** قسم **أولوية** مربوط بقاعدة البيانات فقط (`vip_mode` ∪ `CartRecoveryLog` بـ **`vip_manual_handling`** على `zid_cart_id`)؛ لا دمج صفوف **`demo_vip_cart_zid`** في الأولوية؛ قسم **بيانات تجريبية** منفصل. Commit: **`fix: bind VIP priority tab to real VIP carts`**. |
 | 2026-05-03 | **VIP في محرّك القرار:** `decide_recovery_action(..., is_vip_cart_flag)` يعيد **`vip_manual_handling`** مع **`send_customer/send_merchant`**؛ لا **fallback** لاسترداد عميل بعد VIP؛ فحص قبل التأخير؛ سجلات D.2. Commit: **`fix: move VIP to decision engine override (real behavior)`**. |
 | 2026-05-03 | **لوحة VIP — إرسال يدوي:** **`POST /api/dashboard/vip-cart/{id}/merchant-alert`**؛ واجهة **`vip_cart_settings.html`**؛ **`interactive`** للصفوف التجريبية؛ رسائل **`تم إرسال تنبيه التاجر`** / **`لا يوجد رقم واتساب للمتجر`**؛ سجلات يدوية. Commit: **`feat: wire VIP manual send action`**. |
 | 2026-05-03 | **بيانات VIP للاختبار:** **`POST /dev/create-vip-test-cart`** (+ إدراج في مسارات `/dev` المسموحة دون ENV). Commit: **`dev: add vip test cart generator`**. |

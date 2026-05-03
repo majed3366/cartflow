@@ -29,7 +29,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 from extensions import db, init_database, remove_scoped_session
 from integrations.zid_client import exchange_code_for_token, verify_webhook_signature
 from json_response import UTF8JSONResponse, j
-from sqlalchemy import func, inspect, text
+from sqlalchemy import func, inspect, or_, text
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from decision_engine import decide_recovery_action
@@ -3895,38 +3895,74 @@ def _format_reason_ts(dt: Optional[datetime]) -> str:
     return d.strftime("%Y-%m-%d %H:%M")
 
 
-def _vip_cart_alerts_merchant_list() -> list[dict[str, Any]]:
+def _vip_demo_cart_fixture_list() -> list[dict[str, Any]]:
+    """صفوف تجريبية ثابتة — قسم «بيانات تجريبية» فقط؛ لا تُمزج مع الأولوية."""
+    return [
+        {
+            "id": 901,
+            "cart_value": 1200.0,
+            "cart_short": "demo_vip_cart_zid",
+            "last_seen": "2026-04-20 16:00",
+            "status": "vip_manual_handling",
+            "interactive": False,
+        }
+    ]
+
+
+def _vip_priority_cart_alert_list() -> list[dict[str, Any]]:
     """
-    سلال ‎vip_mode‎ غير المستردة — لصفحة ‎/dashboard/vip-cart-settings‎ فقط (لا تُعرض في الرئيسية).
+    سلّات حقيقية لقسم «أولوية»: ‎vip_mode‎ أو ظهور ‎vip_manual_handling‎ في ‎CartRecoveryLog‎ لنفس ‎zid_cart_id‎.
     """
     out: list[dict[str, Any]] = []
     try:
         _ensure_store_widget_schema()
         db.create_all()
-        vip_prio_q = (
-            db.session.query(AbandonedCart)
-            .filter(AbandonedCart.vip_mode.is_(True))
-            .filter(AbandonedCart.status != "recovered")
-            .order_by(AbandonedCart.last_seen_at.desc())
-            .limit(24)
+        log_pairs = (
+            db.session.query(CartRecoveryLog.cart_id)
+            .filter(CartRecoveryLog.status == "vip_manual_handling")
+            .filter(CartRecoveryLog.cart_id.isnot(None))
+            .filter(CartRecoveryLog.cart_id != "")
+            .distinct()
+            .limit(500)
+            .all()
         )
-        for ac in vip_prio_q.all():
+        log_cids = list(
+            {str(r[0]).strip()[:255] for r in log_pairs if r and (r[0] or "").strip()}
+        )
+
+        filt = AbandonedCart.status != "recovered"
+        if log_cids:
+            q = (
+                db.session.query(AbandonedCart)
+                .filter(filt)
+                .filter(or_(AbandonedCart.vip_mode.is_(True), AbandonedCart.zid_cart_id.in_(log_cids)))
+            )
+        else:
+            q = db.session.query(AbandonedCart).filter(filt).filter(AbandonedCart.vip_mode.is_(True))
+
+        for ac in q.order_by(AbandonedCart.last_seen_at.desc()).limit(24).all():
             zid = (ac.zid_cart_id or "").strip()
             cart_short = zid[:28] + ("…" if len(zid) > 28 else "") if zid else "—"
+            st = ((ac.status or "").strip() or "—")[:48]
             out.append(
                 {
                     "id": ac.id,
                     "cart_value": float(ac.cart_value or 0.0),
                     "cart_short": cart_short or "—",
                     "last_seen": _format_reason_ts(ac.last_seen_at),
-                    "status": "vip_manual_handling",
+                    "status": st,
                     "interactive": True,
                 }
             )
     except (SQLAlchemyError, OSError) as e:
         db.session.rollback()
-        log.warning("vip_cart_alerts: db read failed: %s", e)
+        log.warning("vip_priority_cart_alerts: db read failed: %s", e)
     return out
+
+
+def _vip_cart_alerts_merchant_list() -> list[dict[str, Any]]:
+    """توافق خلفي — يعرض الآن قائمة الأولوية الحقيقية فقط."""
+    return _vip_priority_cart_alert_list()
 
 
 def _recovery_sales_trend_last_7_days() -> list[dict[str, Any]]:
@@ -4145,45 +4181,16 @@ def dashboard_recovery_settings(request: Request):
 
 @app.get("/dashboard/vip-cart-settings")
 def dashboard_vip_cart_settings(request: Request):
-    """السلال المميزة (VIP) — عتبة عبر ‎GET/POST /api/recovery-settings‎ + قائمة تنبيهات VIP فقط هنا (بدون تكرار في الرئيسية)."""
-    vip_cart_alerts = _vip_cart_alerts_merchant_list()
-    using_mock_alerts = False
-    if not vip_cart_alerts:
-        try:
-            db.create_all()
-            n = int(db.session.query(AbandonedCart).count() or 0)
-            if n == 0:
-                using_mock_alerts = True
-                vip_cart_alerts = [
-                    {
-                        "id": 901,
-                        "cart_value": 1200.0,
-                        "cart_short": "demo_vip_cart_zid",
-                        "last_seen": "2026-04-20 16:00",
-                        "status": "vip_manual_handling",
-                        "interactive": False,
-                    },
-                ]
-        except (SQLAlchemyError, OSError):
-            db.session.rollback()
-            using_mock_alerts = True
-            vip_cart_alerts = [
-                {
-                    "id": 901,
-                    "cart_value": 1200.0,
-                    "cart_short": "demo_vip_cart_zid",
-                    "last_seen": "2026-04-20 16:00",
-                    "status": "vip_manual_handling",
-                    "interactive": False,
-                },
-            ]
+    """السلال المميزة (VIP) — عتبة عبر ‎GET/POST /api/recovery-settings‎ + قسماً: أولوية (حقيقي) وتجريبي."""
+    vip_priority_alerts = _vip_priority_cart_alert_list()
+    vip_demo_alerts = _vip_demo_cart_fixture_list()
     return templates.TemplateResponse(
         request,
         "vip_cart_settings.html",
         {
             "request": request,
-            "vip_cart_alerts": vip_cart_alerts,
-            "using_mock_alerts": using_mock_alerts,
+            "vip_priority_alerts": vip_priority_alerts,
+            "vip_demo_alerts": vip_demo_alerts,
         },
     )
 
