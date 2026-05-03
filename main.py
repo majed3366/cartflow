@@ -409,6 +409,7 @@ _DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT = frozenset(
         "/dev/whatsapp-decision-test",
         "/dev/cartflow-delay-test",
         "/dev/vip-flow-verify",
+        "/dev/create-vip-test-cart",
     }
 )
 
@@ -438,7 +439,7 @@ async def set_embed_csp_middleware(request: Request, call_next: Any) -> Any:
 
 @app.middleware("http")
 async def no_dev_in_production(request: Request, call_next: Any) -> Any:
-    """يُنفَّذ أوّل مسار؛ ‎404‎ لـ ‎/dev‎ و ‎/dev/*‎ عندما ‎ENV‎ ليس ‎development‎ (استثناءات: ‎whatsapp-decision-test‎، ‎cartflow-delay-test‎، ‎vip-flow-verify‎)."""
+    """يُنفَّذ أوّل مسار؛ ‎404‎ لـ ‎/dev‎ و ‎/dev/*‎ عندما ‎ENV‎ ليس ‎development‎ (استثناءات: ‎whatsapp-decision-test‎، ‎cartflow-delay-test‎، ‎vip-flow-verify‎، ‎create-vip-test-cart‎)."""
     p = request.url.path
     if p == "/dev" or (
         p.startswith("/dev/") and p not in _DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT
@@ -2682,6 +2683,77 @@ async def handle_cart_abandoned(
         "recovery_state": "scheduled",
         "recovery_delay_seconds": None,
     }
+
+
+@app.post("/dev/create-vip-test-cart")
+def dev_create_vip_test_cart() -> Any:
+    """
+    ينشئ ‎AbandonedCart‎ + ‎CartRecoveryReason‎ حقيقيين لاختبار VIP بدون ودجت أو سلوك عميل.
+    """
+    _VIP_TEST_ZID = "vip-codegen-test-cart-1"
+    _VIP_TEST_SESSION = "test_vip_session"
+    try:
+        db.create_all()
+        _ensure_store_widget_schema()
+        _ensure_default_store_for_recovery()
+        st = _load_latest_store_for_recovery()
+        if st is None:
+            return j({"ok": False, "error": "no_store"}, 500)
+        slug = (getattr(st, "zid_store_id", None) or "").strip() or CARTFLOW_DEFAULT_RECOVERY_STORE_ZID
+        if getattr(st, "vip_cart_threshold", None) is None:
+            st.vip_cart_threshold = 500
+            db.session.commit()
+
+        ac_old = db.session.query(AbandonedCart).filter_by(zid_cart_id=_VIP_TEST_ZID).first()
+        if ac_old is not None:
+            db.session.delete(ac_old)
+            db.session.commit()
+
+        db.session.query(CartRecoveryReason).filter(
+            CartRecoveryReason.store_slug == slug,
+            CartRecoveryReason.session_id == _VIP_TEST_SESSION,
+        ).delete(synchronize_session=False)
+        db.session.commit()
+
+        now = datetime.now(timezone.utc)
+        ac = AbandonedCart(
+            store_id=int(st.id),
+            zid_cart_id=_VIP_TEST_ZID,
+            customer_phone="+966501112233",
+            cart_value=float(1200.0),
+            cart_url=(os.getenv("WHATSAPP_FALLBACK_CART_URL") or "").strip() or None,
+            status="abandoned",
+            vip_mode=True,
+            first_seen_at=now,
+            last_seen_at=now,
+        )
+        AbandonedCart.set_raw(
+            ac,
+            {
+                "session_id": _VIP_TEST_SESSION,
+                "dev": "create_vip_test_cart",
+                "reason_tag": "price",
+            },
+        )
+        db.session.add(ac)
+
+        crr = CartRecoveryReason(
+            store_slug=slug,
+            session_id=_VIP_TEST_SESSION,
+            reason="price",
+            customer_phone="+966501112233",
+            source="dev_vip_codegen",
+            user_rejected_help=False,
+            created_at=now,
+            updated_at=now,
+        )
+        db.session.add(crr)
+        db.session.commit()
+        return j({"ok": True, "cart_id": _VIP_TEST_ZID, "vip": True}, 200)
+    except Exception as e:  # noqa: BLE001
+        db.session.rollback()
+        log.exception("dev_create_vip_test_cart: %s", e)
+        return j({"ok": False, "error": str(e)}, 500)
 
 
 @app.get("/dev/vip-flow-verify")
