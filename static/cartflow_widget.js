@@ -2288,6 +2288,9 @@
     if (payload.custom_text != null && String(payload.custom_text) !== "") {
       body.custom_text = String(payload.custom_text);
     }
+    if (payload.customer_phone != null && String(payload.customer_phone).trim() !== "") {
+      body.customer_phone = String(payload.customer_phone).trim();
+    }
     if (payload.sub_category != null && String(payload.sub_category) !== "") {
       body.sub_category = String(payload.sub_category);
     }
@@ -2303,6 +2306,18 @@
         return j;
       });
     });
+  }
+
+  var CARTFLOW_LS_CUSTOMER_PHONE = "cartflow_customer_phone";
+
+  function normalizeSaPhoneForCartflow(s) {
+    var d = String(s || "").replace(/\D/g, "");
+    if (d.length === 10 && d.slice(0, 2) === "05") {
+      d = "966" + d.slice(1);
+    } else if (d.length === 9 && d.charAt(0) === "5") {
+      d = "966" + d;
+    }
+    return /^9665\d{8}$/.test(d) ? d : "";
   }
 
   function buildWhatsappGeneratePayload(rkey) {
@@ -5550,14 +5565,49 @@
 
     function mountOtherForm() {
       stripContentKeepChrome();
+      var pHint = document.createElement("p");
+      pHint.style.cssText =
+        "margin:0 0 8px 0;font-size:13px;line-height:1.45;color:rgba(30,27,75,0.82);";
+      pHint.textContent = "نستخدم الرقم فقط لمساعدتك في إكمال الطلب";
+      widgetBody.appendChild(pHint);
+      var phoneIn = document.createElement("input");
+      phoneIn.type = "tel";
+      phoneIn.setAttribute("dir", "ltr");
+      phoneIn.setAttribute(
+        "placeholder",
+        "اكتب رقمك للتواصل عبر واتساب"
+      );
+      phoneIn.setAttribute("autocomplete", "tel");
+      phoneIn.setAttribute(
+        "aria-label",
+        "اكتب رقمك للتواصل عبر واتساب"
+      );
+      phoneIn.style.cssText =
+        "width:100%;box-sizing:border-box;border-radius:8px;border:0;padding:10px 10px;margin-bottom:6px;font:inherit;color:#1e1b4b;";
+      try {
+        var savedP = localStorage.getItem(CARTFLOW_LS_CUSTOMER_PHONE);
+        if (savedP) {
+          phoneIn.value = String(savedP);
+        }
+      } catch (eLs0) {
+        /* ignore */
+      }
+      widgetBody.appendChild(phoneIn);
+      var pErr = document.createElement("p");
+      pErr.setAttribute("role", "alert");
+      pErr.style.cssText =
+        "margin:0 0 8px 0;font-size:13px;line-height:1.4;color:#b91c1c;min-height:0;";
+      pErr.textContent = "";
+      widgetBody.appendChild(pErr);
       var p2o = document.createElement("p");
-      p2o.style.cssText = "margin:0 0 8px 0;";
-      p2o.textContent = "اكتب السبب أو اطلب تحويلك لصاحب المتجر";
+      p2o.style.cssText =
+        "margin:0 0 6px 0;font-size:12px;line-height:1.4;opacity:0.9;";
+      p2o.textContent = "ملاحظة (اختياري)";
       widgetBody.appendChild(p2o);
       var ta = document.createElement("textarea");
       ta.setAttribute("rows", "3");
       ta.setAttribute("placeholder", "…");
-      ta.setAttribute("aria-label", "سبب آخر");
+      ta.setAttribute("aria-label", "ملاحظة اختيارية مع سبب آخر");
       ta.style.cssText =
         "width:100%;box-sizing:border-box;border-radius:8px;border:0;padding:8px;margin-bottom:8px;font:inherit;color:#1e1b4b;resize:vertical;min-height:3.5em;";
       widgetBody.appendChild(ta);
@@ -5565,19 +5615,36 @@
       row2.style.cssText = rowStyleCol;
       var bSend = document.createElement("button");
       bSend.type = "button";
-      bSend.textContent = "إرسال السبب";
+      bSend.textContent = "إرسال";
       stampPrimaryBubbleBtn(bSend);
       bSend.addEventListener("click", function (e2) {
         e2.stopPropagation();
         e2.preventDefault();
-        var t = (ta.value || "").trim();
-        if (!t) {
+        pErr.textContent = "";
+        var norm = normalizeSaPhoneForCartflow(phoneIn.value);
+        if (!norm) {
+          pErr.textContent = "رقم غير صحيح";
           return;
         }
+        var note = (ta.value || "").trim();
         bSend.setAttribute("disabled", "true");
-        postReason({ reason: "other", custom_text: t })
+        postReason({
+          reason: "other",
+          custom_text: note || undefined,
+          customer_phone: norm,
+        })
           .then(function (j) {
             if (j && j.ok) {
+              try {
+                localStorage.setItem(CARTFLOW_LS_CUSTOMER_PHONE, norm);
+              } catch (eLs1) {
+                /* ignore */
+              }
+              try {
+                console.log("[CF PHONE CAPTURED] phone=" + norm);
+              } catch (eC) {
+                /* ignore */
+              }
               setReasonTag("other");
               emitDemoGuideEvent("cartflow-demo-reason-confirmed", {
                 reason: "other",
@@ -5586,6 +5653,14 @@
               showOtherSuccessView();
             } else {
               bSend.removeAttribute("disabled");
+              var eb = (j && j.body) || {};
+              var em = (eb.error && String(eb.error)) || "";
+              if (
+                em.indexOf("invalid_customer_phone") !== -1 ||
+                em === "invalid_customer_phone"
+              ) {
+                pErr.textContent = "رقم غير صحيح";
+              }
             }
           })
           .catch(function () {
@@ -5622,33 +5697,18 @@
 
     function showOtherSuccessView() {
       stripContentKeepChrome();
+      var top = document.createElement("p");
+      top.style.cssText = "margin:0 0 10px 0;font-size:15px;line-height:1.55;font-weight:600;";
+      top.textContent = "تمام 👍 تم استلام طلبك";
+      widgetBody.appendChild(top);
       appendReasonPersonalizationBlock("other");
-      var succ = document.createElement("div");
-      succ.style.cssText = rowStyleCol;
-      var bH2 = document.createElement("button");
-      bH2.type = "button";
-      bH2.textContent = BTN_HANDOFF;
-      stampPrimaryBubbleBtn(bH2);
-      bH2.addEventListener("click", function (e) {
-        e.stopPropagation();
-        e.preventDefault();
-        handoffToMerchant(bH2);
-      });
-      var bAgain = document.createElement("button");
-      bAgain.type = "button";
-      bAgain.textContent = "ملاحظة جديدة";
-      stampPrimaryBubbleBtn(bAgain);
-      bAgain.addEventListener("click", function (e) {
-        e.stopPropagation();
-        e.preventDefault();
-        mountOtherForm();
-      });
-      var bR = document.createElement("button");
-      bR.type = "button";
-      bR.textContent = BTN_BACK;
-      bR.setAttribute("aria-label", "رجوع لاختيار السبب");
-      stampPrimaryBubbleBtn(bR);
-      bR.addEventListener("click", function (e) {
+      var row = document.createElement("div");
+      row.style.cssText = rowStyleCol;
+      var bChat = document.createElement("button");
+      bChat.type = "button";
+      bChat.textContent = "رجوع للمحادثة";
+      stampPrimaryBubbleBtn(bChat);
+      bChat.addEventListener("click", function (e) {
         e.stopPropagation();
         e.preventDefault();
         if (typeof w._cfOnBackToEntry === "function") {
@@ -5657,10 +5717,8 @@
           renderReasonList();
         }
       });
-      succ.appendChild(bH2);
-      succ.appendChild(bAgain);
-      succ.appendChild(bR);
-      widgetBody.appendChild(succ);
+      row.appendChild(bChat);
+      widgetBody.appendChild(row);
     }
 
     function showStandardResponse(rkey) {

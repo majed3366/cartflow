@@ -66,6 +66,62 @@ class TestCartflowAbandonmentReason(unittest.TestCase):
         self.assertEqual(400, r.status_code)
         self.assertFalse((r.json() or {}).get("ok"))
 
+    def test_post_reason_other_accepts_phone_only(self) -> None:
+        ensure_store_widget_schema(db)
+        sid = "s-phone-only-" + uuid.uuid4().hex[:8]
+        r = self.client.post(
+            "/api/cartflow/reason",
+            json={
+                "store_slug": "demo",
+                "session_id": sid,
+                "reason": "other",
+                "customer_phone": "966512345678",
+            },
+        )
+        self.assertEqual(200, r.status_code, r.text)
+        self.assertTrue((r.json() or {}).get("ok"))
+        crr = (
+            db.session.query(CartRecoveryReason)
+            .filter(
+                CartRecoveryReason.store_slug == "demo",
+                CartRecoveryReason.session_id == sid,
+            )
+            .first()
+        )
+        self.assertIsNotNone(crr)
+        self.assertEqual("966512345678", (crr.customer_phone or "").strip())
+
+    def test_post_reason_other_invalid_phone(self) -> None:
+        ensure_store_widget_schema(db)
+        r = self.client.post(
+            "/api/cartflow/reason",
+            json={
+                "store_slug": "demo",
+                "session_id": "s-inv-ph",
+                "reason": "other",
+                "customer_phone": "12345",
+            },
+        )
+        self.assertEqual(400, r.status_code)
+        self.assertFalse((r.json() or {}).get("ok"))
+
+    def test_customer_phone_rejected_when_not_other(self) -> None:
+        ensure_store_widget_schema(db)
+        r = self.client.post(
+            "/api/cartflow/reason",
+            json={
+                "store_slug": "demo",
+                "session_id": "s-wa-phone",
+                "reason": "warranty",
+                "customer_phone": "966512345678",
+            },
+        )
+        self.assertEqual(400, r.status_code)
+        self.assertEqual(
+            "customer_phone_not_applicable",
+            (r.json() or {}).get("error"),
+        )
+
     def test_ready_step1(self) -> None:
         ensure_store_widget_schema(db)
         sid = "rs1-" + uuid.uuid4().hex

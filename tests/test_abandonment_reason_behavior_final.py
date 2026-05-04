@@ -128,26 +128,35 @@ class AbandonmentReasonBehaviorFinalTests(unittest.TestCase):
                 self.assertIsNone(alog.sub_category)
 
     def test_4_other_path_ui(self) -> None:
-        """سبب آخر: textarea, buttons, no 'تواصل عبر واتساب'."""
+        """سبب آخر: حق رقم سعودي، إرسال، ملاحظة اختيارية، تحويل ورجوع."""
         s = self.widget_src
-        self.assertEqual(0, s.count("تواصل عبر واتساب"))
         i_o = s.find("function mountOtherForm")
-        i_ta = s.find("createElement(\"textarea\"")
-        i_send = s.find("bSend.textContent =", i_o)
+        i_ta = s.find("createElement(\"textarea\"", i_o)
+        i_send = s.find('bSend.textContent = "إرسال"', i_o)
         i_ho = s.find("bHandoffO", i_o)
         self.assertNotEqual(-1, i_o, "other form")
-        self.assertNotEqual(-1, s.find("createElement(\"textarea\"", i_o))
+        self.assertNotEqual(-1, i_ta)
         self.assertNotEqual(-1, i_send)
         self.assertNotEqual(-1, i_ho)
-        self.assertNotEqual(-1, s.find("إرسال السبب", i_o))
+        self.assertNotEqual(
+            -1,
+            s.find("اكتب رقمك للتواصل عبر واتساب", i_o),
+            "phone placeholder",
+        )
+        self.assertNotEqual(
+            -1,
+            s.find("نستخدم الرقم فقط لمساعدتك في إكمال الطلب", i_o),
+        )
+        self.assertIn("normalizeSaPhoneForCartflow", s)
         self.assertIn("showOtherSuccessView", s)
         self.assertIn("bSend.type", s)
-        self.assertIn("اكتب السبب أو اطلب تحويلك لصاحب المتجر", s)
+        self.assertIn("CARTFLOW_LS_CUSTOMER_PHONE", s)
 
     def test_5_send_other_persist_and_message(self) -> None:
-        """reason=other, custom_text in DB; confirmation copy in widget."""
+        """reason=other + custom_text؛ التأكيد في الودجيت."""
         session_id = "final-5-other"
         custom = "نص اختباري"
+        phone = "0591234567"
         r = self.client.post(
             "/api/cartflow/reason",
             json={
@@ -155,6 +164,7 @@ class AbandonmentReasonBehaviorFinalTests(unittest.TestCase):
                 "session_id": session_id,
                 "reason": "other",
                 "custom_text": custom,
+                "customer_phone": phone,
             },
         )
         self.assertEqual(200, r.status_code, r.text)
@@ -169,6 +179,7 @@ class AbandonmentReasonBehaviorFinalTests(unittest.TestCase):
         self.assertIsNotNone(crr)
         self.assertEqual("other", crr.reason)
         self.assertEqual(custom, (crr.custom_text or "").strip())
+        self.assertEqual("966591234567", (crr.customer_phone or "").strip())
         alog = (
             db.session.query(AbandonmentReasonLog)
             .filter(AbandonmentReasonLog.session_id == session_id)
@@ -180,6 +191,7 @@ class AbandonmentReasonBehaviorFinalTests(unittest.TestCase):
         # Widget shows personalization confirmation; does not close bubble on this path
         self.assertIn("data-cf-reason-confirm", self.widget_src)
         self.assertIn("showOtherSuccessView", self.widget_src)
+        self.assertIn("تمام 👍 تم استلام طلبك", self.widget_src)
 
     def test_6_merchant_handoff_human_support(self) -> None:
         """human_support stored; public-config for WhatsApp; widget continues."""

@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import logging
+import re
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any, Optional, Tuple
 
 from fastapi import APIRouter, Path, Query, Request
 from sqlalchemy import and_
@@ -25,6 +26,10 @@ from services.recovery_decision import (
 from services.store_template_control import (
     exit_intent_template_fields_for_api,
     template_control_fields_for_api,
+)
+from services.recovery_session_phone import (
+    record_recovery_customer_phone,
+    recovery_key_for_reason_session,
 )
 from services.store_widget_customization import widget_customization_fields_for_api
 
@@ -48,6 +53,26 @@ PRICE_SUB_CATEGORIES = frozenset(
 
 
 SENT_STATUSES = frozenset({"sent_real", "mock_sent"})
+
+
+def _normalize_sa_mobile_cartflow_customer(raw: Any) -> Tuple[Optional[str], Optional[str]]:
+    """
+    مدخلات عميل سعودية: ‎05XXXXXXXX‎ أو ‎9665XXXXXXXX‎ → ‎9665XXXXXXXX‎.
+    يُعيد ‎(رقم مسطّح،‎ None)؛ أو ‎(None,‎ None)‎ إن فارغ؛ أو ‎(None,‎ 'invalid_customer_phone')‎ إن موجود لكن غير صالح.
+    """
+    if raw is None:
+        return None, None
+    s = str(raw).strip()
+    if not s:
+        return None, None
+    d = "".join(c for c in s if c.isdigit())
+    if len(d) == 10 and d.startswith("05"):
+        d = "966" + d[1:]
+    elif len(d) == 9 and d.startswith("5"):
+        d = "966" + d
+    if re.fullmatch(r"9665\d{8}", d):
+        return d, None
+    return None, "invalid_customer_phone"
 
 
 def compute_recovery_analytics(store_slug: str) -> dict[str, Any]:
@@ -298,7 +323,7 @@ def cartflow_public_config(
 async def post_abandonment_reason(request: Request) -> Any:
     """
     يسجّل سبب التردد من الودجت. الأجسام: ‎store_slug, session_id, reason، ‎
-    ‎custom_text‎ اختياري لـ ‎other‎.
+    ‎custom_text‎ اختياري لـ ‎other‎؛ ‎customer_phone‎ (‎05‎ / ‎9665‎…) لـ ‎other‎ مع توسيع القديم (‎custom_text‎ وحده لا يزال مقبولاً).
     """
     try:
         ensure_store_widget_schema(db)
@@ -336,13 +361,31 @@ async def post_abandonment_reason(request: Request) -> Any:
         else:
             if sub_cat is not None:
                 return j({"ok": False, "error": "sub_category_not_applicable"}, 400)
+
+        phone_norm: Optional[str] = None
+        phone_err: Optional[str] = None
+        phone_raw = body.get("customer_phone")
+        if phone_raw is not None:
+            if reason != "other":
+                return j({"ok": False, "error": "customer_phone_not_applicable"}, 400)
+            if not isinstance(phone_raw, str):
+                return j({"ok": False, "error": "invalid_customer_phone_payload"}, 400)
+            pn, err = _normalize_sa_mobile_cartflow_customer(phone_raw)
+            if err:
+                phone_err = err
+            phone_norm = pn
+            if phone_norm is None and phone_raw.strip():
+                phone_err = phone_err or "invalid_customer_phone"
+        if phone_err:
+            return j({"ok": False, "error": "invalid_customer_phone"}, 400)
+
         custom: Optional[str] = None
         if reason in ("other", "human_support"):
             c = (
                 (str(custom_raw) if custom_raw is not None else "")
                 or ""
             ).strip()[:20000]
-            if reason == "other" and not c:
+            if reason == "other" and not c and not phone_norm:
                 return j({"ok": False, "error": "custom_text_required"}, 400)
             custom = c if c else None
         elif custom_raw is not None and (str(custom_raw) or "").strip():
@@ -367,10 +410,14 @@ async def post_abandonment_reason(request: Request) -> Any:
             )
             .first()
         )
+        crr_phone: Optional[str] = phone_norm[:100] if phone_norm else None
+        if reason != "other":
+            crr_phone = None
         if crr is not None:
             crr.reason = reason
             crr.sub_category = sub_for_row
             crr.custom_text = custom
+            crr.customer_phone = crr_phone
             crr.updated_at = now
         else:
             db.session.add(
@@ -378,6 +425,7 @@ async def post_abandonment_reason(request: Request) -> Any:
                     store_slug=ss,
                     session_id=sid,
                     reason=reason,
+                    customer_phone=crr_phone,
                     sub_category=sub_for_row,
                     custom_text=custom,
                     source="legacy_api",
@@ -386,6 +434,11 @@ async def post_abandonment_reason(request: Request) -> Any:
                 )
             )
         db.session.commit()
+        if reason == "other" and phone_norm:
+            record_recovery_customer_phone(
+                recovery_key_for_reason_session(ss, sid),
+                phone_norm,
+            )
         return j({"ok": True})
     except (SQLAlchemyError, OSError) as e:
         db.session.rollback()

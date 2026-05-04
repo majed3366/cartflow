@@ -48,7 +48,8 @@ class AbandonmentReasonFlowVerifyTests(unittest.TestCase):
         ):
             self.assertIn(label, src, f"missing option: {label}")
         self.assertIn("وش أكثر شيء مخليك متردد؟ تبيني أساعدك", src)
-        self.assertIn("اكتب السبب أو اطلب تحويلك لصاحب المتجر", src)
+        self.assertIn("اكتب رقمك للتواصل عبر واتساب", src)
+        self.assertIn("نستخدم الرقم فقط لمساعدتك في إكمال الطلب", src)
         self.assertIn("تحويل لصاحب المتجر", src)
         self.assertIn("getProductAwareCopy", src)
         self.assertIn("buildProductContext", src)
@@ -163,11 +164,11 @@ class AbandonmentReasonFlowVerifyTests(unittest.TestCase):
 
     def test_5_handoff_button_only_in_other_branch(self) -> None:
         """
-        Test 5: merchant handoff label only under "سبب آخر"; no legacy WhatsApp CTA string.
+        تحويل لصاحب المتجر يظهر في فرع سبب آخر؛ حقل الرقم يتضمن نص اتصال بواتساب.
         """
         with open(_WIDGET_JS, encoding="utf-8") as f:
             s = f.read()
-        self.assertEqual(0, s.count("تواصل عبر واتساب"))
+        self.assertIn("اكتب رقمك للتواصل عبر واتساب", s)
         # Label reused (BTN_HANDOFF) in standard actions, other form, and success
         self.assertGreaterEqual(s.count("تحويل لصاحب المتجر"), 1)
         i_branch = s.find("function mountOtherForm")
