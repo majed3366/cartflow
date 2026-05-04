@@ -164,6 +164,12 @@ class VipCartStateSyncTests(unittest.TestCase):
         self.assertFalse(bool(ac.vip_mode))
         self.assertEqual((ac.status or "").strip(), "abandoned")
         self.assertAlmostEqual(float(ac.cart_value or 0.0), 100.0)
+        jb = r.json() or {}
+        self.assertTrue(jb.get("ok"))
+        self.assertTrue(jb.get("vip_from_cart_total"))
+        self.assertFalse(jb.get("is_vip"))
+        self.assertAlmostEqual(float(jb.get("cart_total") or 0.0), 100.0)
+        self.assertEqual(jb.get("vip_cart_threshold"), 900)
 
     def test_cart_updated_creates_vip_abandoned_row_when_none(self) -> None:
         db.create_all()
@@ -208,6 +214,12 @@ class VipCartStateSyncTests(unittest.TestCase):
         self.assertTrue(bool(ac.vip_mode))
         self.assertEqual((ac.status or "").strip(), "abandoned")
         self.assertAlmostEqual(float(ac.cart_value or 0.0), 637.0)
+        jb = r.json() or {}
+        self.assertTrue(jb.get("ok"))
+        self.assertTrue(jb.get("vip_from_cart_total"))
+        self.assertTrue(jb.get("is_vip"))
+        self.assertAlmostEqual(float(jb.get("cart_total") or 0.0), 637.0)
+        self.assertEqual(jb.get("vip_cart_threshold"), 500)
         self.assertEqual(int(ac.store_id or 0), int(store.id))
         self.assertEqual((ac.recovery_session_id or "").strip(), sid.strip())
         prios = main._vip_priority_cart_alert_list()

@@ -194,6 +194,25 @@ class TestCartflowAbandonmentReason(unittest.TestCase):
         j = r.json() or {}
         self.assertTrue(j.get("ok"))
         self.assertIn("vip_cart_threshold", j)
+        self.assertFalse(j.get("vip_from_cart_total"))
+        self.assertIsNone(j.get("cart_total"))
+
+    def test_public_config_reports_is_vip_when_cart_total_provided(self) -> None:
+        ensure_store_widget_schema(db)
+        row = db.session.query(Store).order_by(Store.id.desc()).first()
+        if row is None:
+            self.skipTest("needs default store row")
+        row.vip_cart_threshold = 400
+        db.session.commit()
+        r = self.client.get(
+            "/api/cartflow/public-config",
+            params={"store_slug": "demo", "cart_total": 401},
+        )
+        self.assertEqual(200, r.status_code)
+        j = r.json() or {}
+        self.assertTrue(j.get("vip_from_cart_total"))
+        self.assertTrue(j.get("is_vip"))
+        self.assertAlmostEqual(float(j.get("cart_total") or 0), 401.0)
 
     def test_post_reason_other_emits_cf_phone_logs(self) -> None:
         import logging

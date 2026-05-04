@@ -3498,6 +3498,16 @@ def _handle_cart_state_sync(payload: dict[str, Any]) -> dict[str, Any]:
 
     store_slug = _normalize_store_slug(payload)
     store_row = _load_store_row_for_recovery(store_slug)
+    vip_th_api: Optional[int] = None
+    if store_row is not None:
+        _th_raw_v = getattr(store_row, "vip_cart_threshold", None)
+        if _th_raw_v is not None:
+            try:
+                vip_th_api = int(_th_raw_v)
+            except (TypeError, ValueError):
+                vip_th_api = None
+
+    is_empty = (items_count <= 0) or (cart_total <= 0.0)
 
     merge_pl: dict[str, Any] = dict(payload)
     merge_pl["store"] = store_slug
@@ -3505,7 +3515,16 @@ def _handle_cart_state_sync(payload: dict[str, Any]) -> dict[str, Any]:
     merge_pl = _ensure_cart_abandon_payload_has_cart_id(merge_pl, rk)
     zid = (_cart_id_str_from_payload(merge_pl) or "").strip()[:255]
     if not zid:
-        return {"ok": True, "cart_state_sync": False, "error": "missing_cart_id"}
+        _is_vip_miss = False if is_empty else bool(is_vip_cart(cart_total, store_row))
+        return {
+            "ok": True,
+            "cart_state_sync": False,
+            "error": "missing_cart_id",
+            "cart_total": float(cart_total),
+            "vip_cart_threshold": vip_th_api,
+            "is_vip": _is_vip_miss,
+            "vip_from_cart_total": True,
+        }
 
     cart_ids = [zid]
     syn = _synthetic_zid_cart_id_from_recovery_key(rk)
@@ -3527,13 +3546,21 @@ def _handle_cart_state_sync(payload: dict[str, Any]) -> dict[str, Any]:
                 db.session.flush()
             except IntegrityError:
                 db.session.rollback()
-                return {"ok": False, "cart_state_sync": False, "error": "merge_failed"}
+                return {
+                    "ok": False,
+                    "cart_state_sync": False,
+                    "error": "merge_failed",
+                    "cart_total": float(cart_total),
+                    "vip_cart_threshold": vip_th_api,
+                    "is_vip": False
+                    if is_empty
+                    else bool(is_vip_cart(cart_total, store_row)),
+                    "vip_from_cart_total": True,
+                }
 
     sto_id: Optional[int] = None
     if store_row is not None and getattr(store_row, "id", None) is not None:
         sto_id = int(store_row.id)
-
-    is_empty = (items_count <= 0) or (cart_total <= 0.0)
 
     if is_empty:
         vip_mode_eff = False
@@ -3623,6 +3650,10 @@ def _handle_cart_state_sync(payload: dict[str, Any]) -> dict[str, Any]:
         "cart_state_sync": True,
         "vip_mode": bool(getattr(row, "vip_mode", False)),
         "status": str(row.status or ""),
+        "cart_total": float(cart_total),
+        "vip_cart_threshold": vip_th_api,
+        "is_vip": bool(not is_empty and getattr(row, "vip_mode", False)),
+        "vip_from_cart_total": True,
     }
 
 

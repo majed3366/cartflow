@@ -144,6 +144,9 @@
   var vipPhoneCapturePanel = null;
   var vipPhoneCaptureShowingSuccess = false;
   var CF_SS_VIP_PHONE_DISMISS = "cartflow_vip_phone_capture_dismissed";
+  /** يُحدَّث من ‎cart_state_sync‎ / ‎public-config?cart_total=‎؛ عند المعرفة لا نعيد حساب VIP على المتصفح فقط. */
+  var widgetCfBackendVipKnown = false;
+  var widgetCfBackendIsVip = false;
   var EXIT_INTENT_PRESET_BY_TONE = {
     friendly:
       "هلا 👋\nفيه خيارات ممكن تعجبك 👍\nتحب أشوفها لك بسرعة؟",
@@ -665,9 +668,17 @@
             isFinite(vthNum) && vthNum >= 1 ? Math.floor(vthNum) : null;
         }
       }
+      if (
+        j.vip_from_cart_total === true &&
+        typeof j.is_vip === "boolean"
+      ) {
+        widgetCfBackendVipKnown = true;
+        widgetCfBackendIsVip = j.is_vip;
+      }
       syncWidgetCustomizationToWindow();
       applyWidgetCustomization();
       scheduleVipPhoneCaptureCheck();
+      maybeTryOpenBubbleForVipFromServer();
     } catch (eTpl) {
       /* ignore */
     }
@@ -2208,9 +2219,29 @@
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
-      }).catch(function () {});
-    } catch (eFetch) {}
-    scheduleVipPhoneCaptureCheck();
+      })
+        .then(function (r) {
+          return r
+            .json()
+            .then(function (jj) {
+              return { ok: r.ok, j: jj };
+            })
+            .catch(function () {
+              return { ok: r.ok, j: {} };
+            });
+        })
+        .then(function (pack) {
+          var jj = pack != null ? pack.j : null;
+          applyCartStateSyncVipFromResponse(jj);
+          scheduleVipPhoneCaptureCheck();
+          maybeTryOpenBubbleForVipFromServer();
+        })
+        .catch(function () {
+          scheduleVipPhoneCaptureCheck();
+        });
+    } catch (eFetch) {
+      scheduleVipPhoneCaptureCheck();
+    }
   }
 
   try {
@@ -2385,6 +2416,9 @@
   }
 
   function vipPhoneCaptureEligibilityTotalsOk() {
+    if (widgetCfBackendVipKnown) {
+      return widgetCfBackendIsVip === true;
+    }
     try {
       var cart = window.cart;
       if (!Array.isArray(cart)) {
@@ -2622,7 +2656,8 @@
       try {
         if (
           typeof document !== "undefined" &&
-          document.querySelector("[data-cf-vip-phone-bubble]")
+          (document.querySelector("[data-cf-vip-phone-bubble]") ||
+            document.querySelector("[data-cartflow-bubble][data-cf-vip-immediate-open=\"1\"]"))
         ) {
           hideVipPhoneCapturePanel();
           return;
@@ -2676,6 +2711,61 @@
       }
     } catch (eSch) {
       syncVipPhoneCapturePanel();
+    }
+  }
+
+  function applyCartStateSyncVipFromResponse(j) {
+    if (!j || typeof j !== "object") {
+      return;
+    }
+    if (
+      j.ok === true &&
+      j.vip_from_cart_total === true &&
+      typeof j.is_vip === "boolean"
+    ) {
+      widgetCfBackendVipKnown = true;
+      widgetCfBackendIsVip = j.is_vip;
+      if ("vip_cart_threshold" in j) {
+        var vt = j.vip_cart_threshold;
+        if (vt == null || vt === "") {
+          widgetVipCartThreshold = null;
+        } else {
+          var vtn = typeof vt === "number" ? vt : parseFloat(String(vt));
+          widgetVipCartThreshold =
+            isFinite(vtn) && vtn >= 1 ? Math.floor(vtn) : null;
+        }
+      }
+    }
+  }
+
+  function vipShouldForceVipBubble() {
+    try {
+      if (!haveCartForWidget() || isSessionConverted()) {
+        return false;
+      }
+      return vipPhoneCaptureInteractiveEligible();
+    } catch (eVsf) {
+      return false;
+    }
+  }
+
+  function maybeTryOpenBubbleForVipFromServer() {
+    try {
+      if (shown || isSessionConverted() || !step1Ready) {
+        return;
+      }
+      if (!haveCartForWidget()) {
+        return;
+      }
+      if (!vipShouldForceVipBubble()) {
+        return;
+      }
+      if (!cartflowCanShowWidget(TRIGGER_SOURCE_CART)) {
+        return;
+      }
+      showBubble(TRIGGER_SOURCE_CART, { vipImmediate: true });
+    } catch (eOb) {
+      /* ignore */
     }
   }
 
@@ -3131,6 +3221,23 @@
     }
   }
 
+  /** جذر مع ‎public-config‎ لتمرير مجموع السلة الحالي وحساب ‎is_vip‎ بالخادم. */
+  function cartTotalQuerySuffixForPublicConfig() {
+    try {
+      if (!haveCartForWidget()) {
+        return "";
+      }
+      var cart = window.cart;
+      if (!Array.isArray(cart)) {
+        return "";
+      }
+      var total = cartLifecycleSumCart(cart);
+      return "&cart_total=" + encodeURIComponent(String(total));
+    } catch (eCtq) {
+      return "";
+    }
+  }
+
   /** لوحة التجربة والعرض العام: يقرأ نفس حقول النمط + تخصيص الودجيت مع ‎GET /api/cartflow/ready‎. */
   function fetchPublicConfigForWidgetCustomization(done) {
     done = typeof done === "function" ? done : function () {};
@@ -3139,8 +3246,8 @@
       (bb || "") +
       "/api/cartflow/public-config" +
       "?store_slug=" +
-      encodeURIComponent(getStoreSlug());
-    fetch(u, { method: "GET" })
+      encodeURIComponent(getStoreSlug()) +
+      cartTotalQuerySuffixForPublicConfig();    fetch(u, { method: "GET" })
       .then(function (r) {
         return r.json();
       })
@@ -3296,6 +3403,11 @@
     } catch (eCfTrig) {
       /* ignore */
     }
+    var hasCartItems = haveCartForWidget();
+    if (hasCartItems && vipShouldForceVipBubble()) {
+      triggerSource = TRIGGER_SOURCE_CART;
+      revealOpts.vipImmediate = true;
+    }
     var openSource =
       triggerSource === TRIGGER_SOURCE_EXIT_INTENT
         ? TRIGGER_SOURCE_EXIT_INTENT
@@ -3303,7 +3415,8 @@
     if (
       openSource === TRIGGER_SOURCE_CART &&
       isMobileDeferCartBubbleViewport() &&
-      !revealOpts.mobileCartReveal
+      !revealOpts.mobileCartReveal &&
+      !revealOpts.vipImmediate
     ) {
       try {
         console.log(
@@ -3318,7 +3431,8 @@
       openSource === TRIGGER_SOURCE_CART &&
       isMobileDeferCartBubbleViewport() &&
       revealOpts.mobileCartReveal === true &&
-      revealOpts.mobileDeferredRevealOk !== true
+      revealOpts.mobileDeferredRevealOk !== true &&
+      !revealOpts.vipImmediate
     ) {
       try {
         console.log("[BLOCK IMMEDIATE WIDGET]");
@@ -3328,7 +3442,6 @@
       }
       return;
     }
-    var hasCartItems = haveCartForWidget();
     try {
       console.log("HAS CART:", hasCartItems);
     } catch (eLog) {
@@ -5488,68 +5601,73 @@
       widgetBody.appendChild(wrap);
     }
 
-    var p0 = document.createElement("p");
-    p0.style.cssText =
-      openSource === TRIGGER_SOURCE_EXIT_INTENT
-        ? "margin:0 0 8px 0;font-size:14px;line-height:1.55;white-space:pre-line;"
-        : "margin:0 0 8px 0;";
-    p0.textContent =
-      openSource === TRIGGER_SOURCE_EXIT_INTENT
-        ? getExitIntentOpeningText()
-        : "تبي أساعدك تكمل طلبك؟";
+    var vipImmediateUi = !!(revealOpts && revealOpts.vipImmediate);
 
+    var p0 = null;
     var row0 = null;
     var btnY = null;
     var btnN = null;
-    if (
-      openSource === TRIGGER_SOURCE_EXIT_INTENT ||
-      openSource === TRIGGER_SOURCE_CART
-    ) {
-      row0 = document.createElement("div");
-      row0.style.cssText =
-        "display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-start;margin-top:2px;";
-
-      btnY = document.createElement("button");
-      btnY.type = "button";
-      btnY.textContent =
+    if (!vipImmediateUi) {
+      p0 = document.createElement("p");
+      p0.style.cssText =
         openSource === TRIGGER_SOURCE_EXIT_INTENT
-          ? "نعم، خلني أشوف 👌"
-          : "نعم";
-      stampPrimaryBubbleBtn(btnY);
-
-      btnN = document.createElement("button");
-      btnN.type = "button";
-      btnN.textContent =
+          ? "margin:0 0 8px 0;font-size:14px;line-height:1.55;white-space:pre-line;"
+          : "margin:0 0 8px 0;";
+      p0.textContent =
         openSource === TRIGGER_SOURCE_EXIT_INTENT
-          ? "لا، أتصفح بس"
-          : "لا";
-      stampPrimaryBubbleBtn(btnN);
-      btnN.addEventListener("click", function (ev) {
-        ev.stopPropagation();
-        ev.preventDefault();
-        if (isDemoStoreProductPage() && isDemoScenarioActive()) {
-          return;
-        }
-        if (openSource === TRIGGER_SOURCE_EXIT_INTENT && !haveCartForWidget()) {
-          logWidgetDiscoveryFlow("declined");
-          persistExitIntentPreCartDeclined();
-        }
-        logWidgetFlow("first_prompt_pick", "", "لا");
-        removeFabIfAny();
-        if (typeof w._cfCleanup === "function") {
-          w._cfCleanup();
-        }
-        if (w && w.parentNode) {
-          w.parentNode.removeChild(w);
-        }
-        if (isDemoStoreProductPage()) {
-          shown = false;
-          setCartflowWidgetShownFlag(false);
-          demoStoreBubbleDismissed = true;
-          clearTimeout(idleTimer);
-          idleTimer = null;
-        }
-      });
+          ? getExitIntentOpeningText()
+          : "تبي أساعدك تكمل طلبك؟";
+
+      if (
+        openSource === TRIGGER_SOURCE_EXIT_INTENT ||
+        openSource === TRIGGER_SOURCE_CART
+      ) {
+        row0 = document.createElement("div");
+        row0.style.cssText =
+          "display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-start;margin-top:2px;";
+
+        btnY = document.createElement("button");
+        btnY.type = "button";
+        btnY.textContent =
+          openSource === TRIGGER_SOURCE_EXIT_INTENT
+            ? "نعم، خلني أشوف 👌"
+            : "نعم";
+        stampPrimaryBubbleBtn(btnY);
+
+        btnN = document.createElement("button");
+        btnN.type = "button";
+        btnN.textContent =
+          openSource === TRIGGER_SOURCE_EXIT_INTENT
+            ? "لا، أتصفح بس"
+            : "لا";
+        stampPrimaryBubbleBtn(btnN);
+        btnN.addEventListener("click", function (ev) {
+          ev.stopPropagation();
+          ev.preventDefault();
+          if (isDemoStoreProductPage() && isDemoScenarioActive()) {
+            return;
+          }
+          if (openSource === TRIGGER_SOURCE_EXIT_INTENT && !haveCartForWidget()) {
+            logWidgetDiscoveryFlow("declined");
+            persistExitIntentPreCartDeclined();
+          }
+          logWidgetFlow("first_prompt_pick", "", "لا");
+          removeFabIfAny();
+          if (typeof w._cfCleanup === "function") {
+            w._cfCleanup();
+          }
+          if (w && w.parentNode) {
+            w.parentNode.removeChild(w);
+          }
+          if (isDemoStoreProductPage()) {
+            shown = false;
+            setCartflowWidgetShownFlag(false);
+            demoStoreBubbleDismissed = true;
+            clearTimeout(idleTimer);
+            idleTimer = null;
+          }
+        });
+      }
     }
 
     function getReasonActionOrder(rkey) {
@@ -6211,49 +6329,58 @@
       widgetBody.appendChild(row);
     }
 
-    if (btnY) {
-      btnY.addEventListener("click", function (ev) {
-        ev.stopPropagation();
-        ev.preventDefault();
-        if (w.getAttribute("data-cf-yes") === "1") {
-          return;
-        }
-        w.setAttribute("data-cf-yes", "1");
-        if (
-          openSource === TRIGGER_SOURCE_EXIT_INTENT &&
-          !haveCartForWidget()
-        ) {
-          if (shouldUseRecoveryReasonFlowAfterExitIntentYes()) {
+    if (!vipImmediateUi) {
+      if (btnY) {
+        btnY.addEventListener("click", function (ev) {
+          ev.stopPropagation();
+          ev.preventDefault();
+          if (w.getAttribute("data-cf-yes") === "1") {
+            return;
+          }
+          w.setAttribute("data-cf-yes", "1");
+          if (
+            openSource === TRIGGER_SOURCE_EXIT_INTENT &&
+            !haveCartForWidget()
+          ) {
+            if (shouldUseRecoveryReasonFlowAfterExitIntentYes()) {
+              logWidgetFlow("first_prompt_pick", "", "نعم");
+              stripContentKeepChrome();
+              renderReasonList();
+              emitDemoGuideEvent("cartflow-demo-reason-list-visible", {});
+            } else {
+              logWidgetDiscoveryFlow("accepted");
+              renderExitIntentProductDiscovery();
+              emitDemoGuideEvent("cartflow-demo-exit-discovery-visible", {});
+            }
+          } else if (openSource === TRIGGER_SOURCE_CART) {
             logWidgetFlow("first_prompt_pick", "", "نعم");
             stripContentKeepChrome();
-            renderReasonList();
+            w.setAttribute("data-cf-cart-affirm-help", "1");
+            mountLayerDAbandonIfEligible();
             emitDemoGuideEvent("cartflow-demo-reason-list-visible", {});
           } else {
-            logWidgetDiscoveryFlow("accepted");
-            renderExitIntentProductDiscovery();
-            emitDemoGuideEvent("cartflow-demo-exit-discovery-visible", {});
+            renderReasonList();
+            emitDemoGuideEvent("cartflow-demo-reason-list-visible", {});
           }
-        } else if (openSource === TRIGGER_SOURCE_CART) {
-          logWidgetFlow("first_prompt_pick", "", "نعم");
-          stripContentKeepChrome();
-          w.setAttribute("data-cf-cart-affirm-help", "1");
-          mountLayerDAbandonIfEligible();
-          emitDemoGuideEvent("cartflow-demo-reason-list-visible", {});
-        } else {
-          renderReasonList();
-          emitDemoGuideEvent("cartflow-demo-reason-list-visible", {});
-        }
-      }, false);
-    }
+        }, false);
+      }
 
-    if (row0 && btnY && btnN) {
-      row0.appendChild(btnY);
-      row0.appendChild(btnN);
-    }
-    widgetBody.appendChild(p0);
-    mountLayerDAbandonIfEligible();
-    if (row0) {
-      widgetBody.appendChild(row0);
+      if (row0 && btnY && btnN) {
+        row0.appendChild(btnY);
+        row0.appendChild(btnN);
+      }
+      if (p0) {
+        widgetBody.appendChild(p0);
+      }
+      mountLayerDAbandonIfEligible();
+      if (row0) {
+        widgetBody.appendChild(row0);
+      }
+    } else {
+      try {
+        w.setAttribute("data-cf-vip-immediate-open", "1");
+      } catch (eVia) {}
+      vipPhoneTryMountBubbleBlock(widgetBody);
     }
     try {
       window.cartflowDevMountProductViewAuto = function () {

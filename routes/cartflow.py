@@ -32,7 +32,7 @@ from services.recovery_session_phone import (
     recovery_key_for_reason_session,
 )
 from services.store_widget_customization import widget_customization_fields_for_api
-from services.vip_cart import vip_cart_threshold_fields_for_api
+from services.vip_cart import is_vip_cart, vip_cart_threshold_fields_for_api
 
 log = logging.getLogger("cartflow")
 
@@ -304,9 +304,11 @@ def cartflow_ready(
 @router.get("/public-config")
 def cartflow_public_config(
     store_slug: str = Query(..., min_length=1, max_length=255),
+    cart_total: Optional[float] = Query(None),
 ) -> Any:
     """
     لودجت السبب: رابط واتساب الدعم (أحدث ‎Store‎) — ‎store_slug‎ محجوز للمطابقة لاحقاً.
+    اختياري: ‎cart_total‎ لتحديد ‎is_vip‎ حسب نفس قاعدة الخادم (‎is_vip_cart‎).
     """
     _ = (store_slug or "").strip()[:255]
     try:
@@ -328,7 +330,27 @@ def cartflow_public_config(
         tpl.update(exit_intent_template_fields_for_api(row))
         tpl.update(widget_customization_fields_for_api(row))
         tpl.update(vip_cart_threshold_fields_for_api(row))
-        return j({"ok": True, "whatsapp_url": wa, **tpl})
+        ct_out: Optional[float] = None
+        is_vip_pub = False
+        vip_eval = False
+        if cart_total is not None:
+            vip_eval = True
+            try:
+                ct_out = float(cart_total)
+                is_vip_pub = bool(is_vip_cart(ct_out, row))
+            except (TypeError, ValueError):
+                ct_out = None
+                is_vip_pub = False
+        return j(
+            {
+                "ok": True,
+                "whatsapp_url": wa,
+                "cart_total": ct_out,
+                "is_vip": is_vip_pub,
+                "vip_from_cart_total": vip_eval,
+                **tpl,
+            }
+        )
     except (SQLAlchemyError, OSError) as e:
         db.session.rollback()
         log.warning("cartflow public-config: %s", e)
