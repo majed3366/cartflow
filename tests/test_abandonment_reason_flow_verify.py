@@ -64,6 +64,7 @@ class AbandonmentReasonFlowVerifyTests(unittest.TestCase):
         self.assertIn("CARTFLOW_REASON_ACTION_ORDER", src)
         self.assertIn("showPriceSubMenu", src)
         self.assertIn("renderReasonList", src)
+        self.assertIn("shouldUseRecoveryReasonFlowAfterExitIntentYes", src)
 
     def test_2_normal_options_post_and_persist(self) -> None:
         """Test 2: each standard reason is accepted and stored with matching reason value."""

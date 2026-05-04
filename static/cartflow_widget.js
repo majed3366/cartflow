@@ -1084,6 +1084,52 @@
     return path === "/demo/store";
   }
 
+  /**
+   * بعد ‎exit_intent‎ + «نعم»: إن كانت صفحة سلّة أو دفع (أو قبلت سلة ظاهرة) نعرض أسباب التردد؛
+   * وإلا نبقي مسار توصيات المنتج (‎renderExitIntentProductDiscovery‎)، مثل ‎/demo/store‎ بدون سلّة.
+   */
+  function shouldUseRecoveryReasonFlowAfterExitIntentYes() {
+    if (haveCartForWidget()) {
+      return true;
+    }
+    if (isDemoStoreProductPage()) {
+      return false;
+    }
+    var pathRaw = window.location.pathname || "";
+    var path = pathRaw.replace(/\/+$/, "") || "/";
+    if (/\/checkout/i.test(pathRaw)) {
+      return true;
+    }
+    if (/\/demo\/store\/cart/i.test(pathRaw)) {
+      return true;
+    }
+    if (path.indexOf("/demo/cart") === 0) {
+      return true;
+    }
+    if (/(?:^|\/)cart(?:\/|$)/i.test(path)) {
+      return true;
+    }
+    try {
+      if (cartflowLifecycleLastCount != null && cartflowLifecycleLastCount > 0) {
+        return true;
+      }
+      if (
+        cartflowLifecycleLastTotal != null &&
+        !isNaN(cartflowLifecycleLastTotal) &&
+        cartflowLifecycleLastTotal > 0
+      ) {
+        return true;
+      }
+    } catch (eLc) {}
+    try {
+      var hu = window.location.href || "";
+      if (/#cart\b/i.test(hu)) {
+        return true;
+      }
+    } catch (eH) {}
+    return false;
+  }
+
   function ensureMobileUxStyles() {
     if (document.getElementById("cf-widget-mobile-ux")) {
       return;
@@ -5857,9 +5903,16 @@
           openSource === TRIGGER_SOURCE_EXIT_INTENT &&
           !haveCartForWidget()
         ) {
-          logWidgetDiscoveryFlow("accepted");
-          renderExitIntentProductDiscovery();
-          emitDemoGuideEvent("cartflow-demo-exit-discovery-visible", {});
+          if (shouldUseRecoveryReasonFlowAfterExitIntentYes()) {
+            logWidgetFlow("first_prompt_pick", "", "نعم");
+            stripContentKeepChrome();
+            renderReasonList();
+            emitDemoGuideEvent("cartflow-demo-reason-list-visible", {});
+          } else {
+            logWidgetDiscoveryFlow("accepted");
+            renderExitIntentProductDiscovery();
+            emitDemoGuideEvent("cartflow-demo-exit-discovery-visible", {});
+          }
         } else if (openSource === TRIGGER_SOURCE_CART) {
           logWidgetFlow("first_prompt_pick", "", "نعم");
           stripContentKeepChrome();
