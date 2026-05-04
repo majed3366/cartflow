@@ -677,6 +677,7 @@
       }
       syncWidgetCustomizationToWindow();
       applyWidgetCustomization();
+      syncWindowCartflowVipRuntime();
       scheduleVipPhoneCaptureCheck();
       maybeTryOpenBubbleForVipFromServer();
     } catch (eTpl) {
@@ -2076,28 +2077,43 @@
     return (window.CARTFLOW_API_BASE || "").toString().replace(/\/$/, "");
   }
 
-  /**
-   * يعكس حقول VIP من ‎GET /api/cartflow/public-config‎ أو ‎cart_state_sync‎ على ‎window‎ لتسهيل التصحيح والربط قبل المشغلات.
-   */
-  function cartflowMirrorVipFieldsToWindowAndLog(j) {
+  /** مجموع السلة الحالي + العتبة من‎ public-config‎ →‎ window‎ لمشاهدة وقت التشغيل. */
+  var cartflowLastVipRuntimeSig = "";
+  function syncWindowCartflowVipRuntime() {
     try {
-      if (!j || typeof j !== "object" || j.ok === false) {
-        return;
+      var cart = window.cart;
+      var currentCartTotal = cartLifecycleSumCart(Array.isArray(cart) ? cart : []);
+      window.cart_total = currentCartTotal;
+      var thRaw = widgetVipCartThreshold;
+      if (thRaw == null || thRaw === "") {
+        window.vip_threshold = undefined;
+        window.is_vip = false;
+      } else {
+        var thNum =
+          typeof thRaw === "number" ? thRaw : parseFloat(String(thRaw));
+        if (!isFinite(thNum) || thNum < 1) {
+          window.vip_threshold = undefined;
+          window.is_vip = false;
+        } else {
+          window.vip_threshold = thNum;
+          window.is_vip = currentCartTotal >= thNum;
+        }
       }
-      if ("cart_total" in j) {
-        window.cart_total = j.cart_total;
+      var dbgSig =
+        String(currentCartTotal) +
+        "|" +
+        String(window.vip_threshold) +
+        "|" +
+        String(window.is_vip);
+      if (dbgSig !== cartflowLastVipRuntimeSig) {
+        cartflowLastVipRuntimeSig = dbgSig;
+        console.log("[VIP DATA]", {
+          cart_total: window.cart_total,
+          vip_threshold: window.vip_threshold,
+          is_vip: window.is_vip,
+        });
       }
-      if ("vip_cart_threshold" in j) {
-        window.vip_threshold = j.vip_cart_threshold;
-      }
-      if (typeof j.is_vip === "boolean") {
-        window.is_vip = j.is_vip;
-      }
-      console.log("[VIP DATA]", {
-        cart_total: window.cart_total,
-        is_vip: window.is_vip,
-      });
-    } catch (eMir) {
+    } catch (eSr) {
       /* ignore */
     }
   }
@@ -2199,6 +2215,7 @@
     }
     var total = cartLifecycleSumCart(cart);
     var items_count = cart.length;
+    syncWindowCartflowVipRuntime();
     var sessionId = getSessionId();
     if (!sessionId || String(sessionId).trim() === "" || sessionId === "—") {
       return;
@@ -2761,8 +2778,8 @@
             isFinite(vtn) && vtn >= 1 ? Math.floor(vtn) : null;
         }
       }
-      cartflowMirrorVipFieldsToWindowAndLog(j);
     }
+    syncWindowCartflowVipRuntime();
   }
 
   function vipShouldForceVipBubble() {
@@ -3281,7 +3298,6 @@
       })
       .then(function (j) {
         if (j && typeof j === "object" && j.ok !== false) {
-          cartflowMirrorVipFieldsToWindowAndLog(j);
           applyTemplateConfigFromReady(j);
         }
         if (isDemoPath()) {
@@ -3422,6 +3438,7 @@
 
   function showBubble(triggerSource, revealOpts) {
     revealOpts = revealOpts || {};
+    syncWindowCartflowVipRuntime();
     try {
       window._cartflowApplyNoHelpUi = null;
     } catch (eClrNk) {
