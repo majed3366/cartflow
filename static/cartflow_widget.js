@@ -2076,6 +2076,32 @@
     return (window.CARTFLOW_API_BASE || "").toString().replace(/\/$/, "");
   }
 
+  /**
+   * يعكس حقول VIP من ‎GET /api/cartflow/public-config‎ أو ‎cart_state_sync‎ على ‎window‎ لتسهيل التصحيح والربط قبل المشغلات.
+   */
+  function cartflowMirrorVipFieldsToWindowAndLog(j) {
+    try {
+      if (!j || typeof j !== "object" || j.ok === false) {
+        return;
+      }
+      if ("cart_total" in j) {
+        window.cart_total = j.cart_total;
+      }
+      if ("vip_cart_threshold" in j) {
+        window.vip_threshold = j.vip_cart_threshold;
+      }
+      if (typeof j.is_vip === "boolean") {
+        window.is_vip = j.is_vip;
+      }
+      console.log("[VIP DATA]", {
+        cart_total: window.cart_total,
+        is_vip: window.is_vip,
+      });
+    } catch (eMir) {
+      /* ignore */
+    }
+  }
+
   /** مسار موحّد: ‎cart_state_sync‎ — قراءة السلة، الجلسة، و‎cart_id‎ المستقر للخلفية. */
   var CF_LIFECYCLE_CART_ID_KEY = "cartflow_cart_event_id";
   var cartflowLifecycleInstalled = false;
@@ -2735,6 +2761,7 @@
             isFinite(vtn) && vtn >= 1 ? Math.floor(vtn) : null;
         }
       }
+      cartflowMirrorVipFieldsToWindowAndLog(j);
     }
   }
 
@@ -3247,12 +3274,14 @@
       "/api/cartflow/public-config" +
       "?store_slug=" +
       encodeURIComponent(getStoreSlug()) +
-      cartTotalQuerySuffixForPublicConfig();    fetch(u, { method: "GET" })
+      cartTotalQuerySuffixForPublicConfig();
+    fetch(u, { method: "GET" })
       .then(function (r) {
         return r.json();
       })
       .then(function (j) {
         if (j && typeof j === "object" && j.ok !== false) {
+          cartflowMirrorVipFieldsToWindowAndLog(j);
           applyTemplateConfigFromReady(j);
         }
         if (isDemoPath()) {
@@ -6886,10 +6915,18 @@
     });
   }
 
+  var cartflowInitialArmQueued = false;
+  function cartflowBootstrapPublicConfigThenScheduleArm() {
+    fetchPublicConfigForWidgetCustomization(function () {
+      if (!cartflowInitialArmQueued) {
+        cartflowInitialArmQueued = true;
+        setTimeout(arm, ARM_DELAY_MS);
+      }
+    });
+  }
+
   setTimeout(function () {
-    if (isDemoPath()) {
-      fetchPublicConfigForWidgetCustomization(function () {});
-    }
+    cartflowBootstrapPublicConfigThenScheduleArm();
   }, 0);
   setTimeout(prefetchDashboardPrimaryReason, 0);
   setTimeout(function () {
@@ -6899,7 +6936,6 @@
       /* ignore */
     }
   }, 0);
-  setTimeout(arm, ARM_DELAY_MS);
 })();
 
 /**
