@@ -9,7 +9,16 @@ from typing import Optional
 
 # يطابق ‎REASON_CHOICES / PRICE_SUB_CATEGORIES‎ في ‎routes/cartflow.py‎
 REASON_CHOICES = frozenset(
-    {"price", "quality", "warranty", "shipping", "thinking", "other", "human_support"}
+    {
+        "price",
+        "quality",
+        "warranty",
+        "shipping",
+        "thinking",
+        "other",
+        "human_support",
+        "vip_phone_capture",
+    }
 )
 PRICE_SUB_CATEGORIES = frozenset(
     {
@@ -92,6 +101,10 @@ def build_mock_whatsapp_message(
         return (
             "تم تحويل طلبك لصاحب المتجر 👤\n"
             "راح يساعدك مباشرة بخصوص المنتج أو الطلب."
+        )
+    if r == "vip_phone_capture":
+        return (
+            "تم حفظ رقمك لمتابعة سلّتك 👍"
         )
     if r not in REASON_CHOICES:
         raise ValueError("invalid_reason")

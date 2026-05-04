@@ -122,6 +122,79 @@ class TestCartflowAbandonmentReason(unittest.TestCase):
             (r.json() or {}).get("error"),
         )
 
+    def test_post_reason_vip_phone_capture_persists(self) -> None:
+        ensure_store_widget_schema(db)
+        sid = "s-vip-cap-" + uuid.uuid4().hex[:8]
+        r = self.client.post(
+            "/api/cartflow/reason",
+            json={
+                "store_slug": "demo",
+                "session_id": sid,
+                "reason": "vip_phone_capture",
+                "customer_phone": "0598765432",
+                "custom_text": "vip_cart_phone_capture",
+            },
+        )
+        self.assertEqual(200, r.status_code, r.text)
+        self.assertTrue((r.json() or {}).get("ok"))
+        crr = (
+            db.session.query(CartRecoveryReason)
+            .filter(
+                CartRecoveryReason.store_slug == "demo",
+                CartRecoveryReason.session_id == sid,
+            )
+            .first()
+        )
+        self.assertIsNotNone(crr)
+        self.assertEqual("966598765432", (crr.customer_phone or "").strip())
+        self.assertEqual("vip_phone_capture", crr.reason)
+        self.assertEqual("vip_cart_phone_capture", (crr.custom_text or "").strip())
+
+    def test_post_reason_vip_phone_capture_requires_custom_marker(self) -> None:
+        ensure_store_widget_schema(db)
+        r = self.client.post(
+            "/api/cartflow/reason",
+            json={
+                "store_slug": "demo",
+                "session_id": "s-vip-bad-ct-" + uuid.uuid4().hex[:8],
+                "reason": "vip_phone_capture",
+                "customer_phone": "966512345678",
+                "custom_text": "wrong",
+            },
+        )
+        self.assertEqual(400, r.status_code)
+        self.assertEqual(
+            "custom_text_invalid_vip_capture",
+            (r.json() or {}).get("error"),
+        )
+
+    def test_post_reason_vip_phone_capture_requires_phone(self) -> None:
+        ensure_store_widget_schema(db)
+        r = self.client.post(
+            "/api/cartflow/reason",
+            json={
+                "store_slug": "demo",
+                "session_id": "s-vip-no-ph-" + uuid.uuid4().hex[:8],
+                "reason": "vip_phone_capture",
+                "custom_text": "vip_cart_phone_capture",
+            },
+        )
+        self.assertEqual(400, r.status_code)
+        self.assertEqual(
+            "customer_phone_required",
+            (r.json() or {}).get("error"),
+        )
+
+    def test_public_config_includes_vip_cart_threshold_key(self) -> None:
+        ensure_store_widget_schema(db)
+        r = self.client.get(
+            "/api/cartflow/public-config", params={"store_slug": "demo"}
+        )
+        self.assertEqual(200, r.status_code)
+        j = r.json() or {}
+        self.assertTrue(j.get("ok"))
+        self.assertIn("vip_cart_threshold", j)
+
     def test_post_reason_other_emits_cf_phone_logs(self) -> None:
         import logging
 
@@ -144,8 +217,6 @@ class TestCartflowAbandonmentReason(unittest.TestCase):
         self.assertIn("reason=other", blob)
         self.assertIn("customer_phone=966598765432", blob)
         self.assertIn("[CF PHONE SAVED]", blob)
-
-    def test_ready_step1(self) -> None:
         ensure_store_widget_schema(db)
         sid = "rs1-" + uuid.uuid4().hex
         r0 = self.client.get(

@@ -32,6 +32,7 @@ from services.recovery_session_phone import (
     recovery_key_for_reason_session,
 )
 from services.store_widget_customization import widget_customization_fields_for_api
+from services.vip_cart import vip_cart_threshold_fields_for_api
 
 log = logging.getLogger("cartflow")
 
@@ -39,8 +40,21 @@ router = APIRouter(prefix="/api/cartflow", tags=["cartflow"])
 
 
 REASON_CHOICES = frozenset(
-    {"price", "quality", "warranty", "shipping", "thinking", "other", "human_support"}
+    {
+        "price",
+        "quality",
+        "warranty",
+        "shipping",
+        "thinking",
+        "other",
+        "human_support",
+        "vip_phone_capture",
+    }
 )
+
+REASON_ACCEPTS_CUSTOMER_PHONE = frozenset({"other", "vip_phone_capture"})
+
+VIP_PHONE_CAPTURE_MARKER = "vip_cart_phone_capture"
 
 # فرع ‎السعر‎: يُلزم مع ‎reason=price‎
 PRICE_SUB_CATEGORIES = frozenset(
@@ -273,6 +287,7 @@ def cartflow_ready(
         tpl = template_control_fields_for_api(row)
         tpl.update(exit_intent_template_fields_for_api(row))
         tpl.update(widget_customization_fields_for_api(row))
+        tpl.update(vip_cart_threshold_fields_for_api(row))
         return j(
             {
                 "ok": True,
@@ -312,6 +327,7 @@ def cartflow_public_config(
         tpl = template_control_fields_for_api(row)
         tpl.update(exit_intent_template_fields_for_api(row))
         tpl.update(widget_customization_fields_for_api(row))
+        tpl.update(vip_cart_threshold_fields_for_api(row))
         return j({"ok": True, "whatsapp_url": wa, **tpl})
     except (SQLAlchemyError, OSError) as e:
         db.session.rollback()
@@ -365,7 +381,16 @@ async def post_abandonment_reason(request: Request) -> Any:
         phone_norm: Optional[str] = None
         phone_err: Optional[str] = None
         phone_raw = body.get("customer_phone")
-        if phone_raw is not None:
+        if reason == "vip_phone_capture":
+            if phone_raw is None or not isinstance(phone_raw, str):
+                return j({"ok": False, "error": "customer_phone_required"}, 400)
+            if not phone_raw.strip():
+                return j({"ok": False, "error": "customer_phone_required"}, 400)
+            pn, err = _normalize_sa_mobile_cartflow_customer(phone_raw)
+            if err or pn is None:
+                return j({"ok": False, "error": "invalid_customer_phone"}, 400)
+            phone_norm = pn
+        elif phone_raw is not None:
             if reason != "other":
                 return j({"ok": False, "error": "customer_phone_not_applicable"}, 400)
             if not isinstance(phone_raw, str):
@@ -376,8 +401,8 @@ async def post_abandonment_reason(request: Request) -> Any:
             phone_norm = pn
             if phone_norm is None and phone_raw.strip():
                 phone_err = phone_err or "invalid_customer_phone"
-        if phone_err:
-            return j({"ok": False, "error": "invalid_customer_phone"}, 400)
+            if phone_err:
+                return j({"ok": False, "error": "invalid_customer_phone"}, 400)
 
         if phone_norm:
             cf_sid = sid[:512] if sid else "-"
@@ -398,7 +423,12 @@ async def post_abandonment_reason(request: Request) -> Any:
             )
 
         custom: Optional[str] = None
-        if reason in ("other", "human_support"):
+        if reason == "vip_phone_capture":
+            cts = (str(custom_raw) if custom_raw is not None else "").strip()
+            if cts != VIP_PHONE_CAPTURE_MARKER:
+                return j({"ok": False, "error": "custom_text_invalid_vip_capture"}, 400)
+            custom = VIP_PHONE_CAPTURE_MARKER
+        elif reason in ("other", "human_support"):
             c = (
                 (str(custom_raw) if custom_raw is not None else "")
                 or ""
@@ -429,7 +459,7 @@ async def post_abandonment_reason(request: Request) -> Any:
             .first()
         )
         crr_phone: Optional[str] = phone_norm[:100] if phone_norm else None
-        if reason != "other":
+        if reason not in REASON_ACCEPTS_CUSTOMER_PHONE:
             crr_phone = None
         if crr is not None:
             crr.reason = reason
@@ -465,7 +495,7 @@ async def post_abandonment_reason(request: Request) -> Any:
                 "customer_phone=" + phone_norm,
                 flush=True,
             )
-        if reason == "other" and phone_norm:
+        if reason in ("other", "vip_phone_capture") and phone_norm:
             record_recovery_customer_phone(
                 recovery_key_for_reason_session(ss, sid),
                 phone_norm,

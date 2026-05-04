@@ -138,6 +138,12 @@
   var widgetBrandName = "مساعد المتجر";
   var widgetPrimaryColor = "#6C5CE7";
   var widgetChromeStyle = "modern";
+  /** للودجت: عتبة السلة المميزة من الخادم (‎vip_cart_threshold‎)، ‎null‎ = معطّل. */
+  var widgetVipCartThreshold = null;
+  /** لوحة مصغّرة لجمع رقم العميل عند سلّة VIP بلا رقم (لا تُغلق الواجهة تلقائياً بعد الحفظ). */
+  var vipPhoneCapturePanel = null;
+  var vipPhoneCaptureShowingSuccess = false;
+  var CF_SS_VIP_PHONE_DISMISS = "cartflow_vip_phone_capture_dismissed";
   var EXIT_INTENT_PRESET_BY_TONE = {
     friendly:
       "هلا 👋\nفيه خيارات ممكن تعجبك 👍\nتحب أشوفها لك بسرعة؟",
@@ -649,8 +655,19 @@
         widgetChromeStyle =
           ws === "modern" || ws === "minimal" || ws === "bold" ? ws : "modern";
       }
+      if ("vip_cart_threshold" in j) {
+        var vth = j.vip_cart_threshold;
+        if (vth == null || vth === "") {
+          widgetVipCartThreshold = null;
+        } else {
+          var vthNum = typeof vth === "number" ? vth : parseFloat(String(vth));
+          widgetVipCartThreshold =
+            isFinite(vthNum) && vthNum >= 1 ? Math.floor(vthNum) : null;
+        }
+      }
       syncWidgetCustomizationToWindow();
       applyWidgetCustomization();
+      scheduleVipPhoneCaptureCheck();
     } catch (eTpl) {
       /* ignore */
     }
@@ -2193,6 +2210,7 @@
         body: JSON.stringify(body),
       }).catch(function () {});
     } catch (eFetch) {}
+    scheduleVipPhoneCaptureCheck();
   }
 
   try {
@@ -2364,6 +2382,261 @@
       d = "966" + d;
     }
     return /^9665\d{8}$/.test(d) ? d : "";
+  }
+
+  function vipPhoneCaptureEligibilityTotalsOk() {
+    try {
+      var cart = window.cart;
+      if (!Array.isArray(cart)) {
+        return false;
+      }
+      var total = cartLifecycleSumCart(cart);
+      if (widgetVipCartThreshold == null) {
+        return false;
+      }
+      var th = Number(widgetVipCartThreshold);
+      if (!isFinite(th) || th < 1) {
+        return false;
+      }
+      var tnum =
+        typeof total === "number" ? total : parseFloat(String(total));
+      if (isNaN(tnum)) {
+        return false;
+      }
+      return tnum >= th;
+    } catch (ev) {
+      return false;
+    }
+  }
+
+  function getCartflowStoredCustomerPhoneNorm() {
+    try {
+      return normalizeSaPhoneForCartflow(
+        window.localStorage.getItem(CARTFLOW_LS_CUSTOMER_PHONE)
+      );
+    } catch (eLs) {
+      return "";
+    }
+  }
+
+  function isVipPhoneCaptureDismissedThisSession() {
+    try {
+      return (
+        window.sessionStorage.getItem(CF_SS_VIP_PHONE_DISMISS) === "1"
+      );
+    } catch (eSs) {
+      return false;
+    }
+  }
+
+  function dismissVipPhoneCaptureForSession() {
+    try {
+      window.sessionStorage.setItem(CF_SS_VIP_PHONE_DISMISS, "1");
+    } catch (eD) {
+      /* ignore */
+    }
+    vipPhoneCaptureShowingSuccess = false;
+  }
+
+  function vipPhoneCaptureInteractiveEligible() {
+    if (typeof isSessionConverted === "function" && isSessionConverted()) {
+      return false;
+    }
+    var sid = getSessionId();
+    if (!sid || String(sid).trim() === "" || sid === "—") {
+      return false;
+    }
+    if (!vipPhoneCaptureEligibilityTotalsOk()) {
+      return false;
+    }
+    if (getCartflowStoredCustomerPhoneNorm()) {
+      return false;
+    }
+    if (isVipPhoneCaptureDismissedThisSession()) {
+      return false;
+    }
+    return true;
+  }
+
+  function vipPhoneCaptureShouldKeepPanelOpen() {
+    var sid = getSessionId();
+    if (!sid || String(sid).trim() === "" || sid === "—") {
+      return false;
+    }
+    if (typeof isSessionConverted === "function" && isSessionConverted()) {
+      return false;
+    }
+    if (!vipPhoneCaptureEligibilityTotalsOk()) {
+      return false;
+    }
+    if (vipPhoneCaptureShowingSuccess) {
+      return true;
+    }
+    return vipPhoneCaptureInteractiveEligible();
+  }
+
+  function hideVipPhoneCapturePanel() {
+    if (vipPhoneCapturePanel && vipPhoneCapturePanel.style) {
+      vipPhoneCapturePanel.style.display = "none";
+    }
+  }
+
+  function vipPhoneCaptureRenderFormInner() {
+    if (!vipPhoneCapturePanel) {
+      return;
+    }
+    var inner = vipPhoneCapturePanel.querySelector("[data-vip-phone-inner]");
+    if (!inner) {
+      return;
+    }
+    vipPhoneCaptureShowingSuccess = false;
+    var btnStyle = getWidgetPrimaryButtonStyle();
+    inner.innerHTML =
+      "<div style=\"font-weight:700;font-size:16px;margin-bottom:6px;color:#17202a;\">سلتك تحتاج متابعة خاصة 👋</div>" +
+      "<div style=\"font-size:13px;color:#3d4f5f;margin-bottom:10px;\">اكتب رقمك عشان نساعدك تكمل الطلب عبر واتساب</div>" +
+      "<input type=\"tel\" inputmode=\"numeric\" maxlength=\"17\" autocomplete=\"tel\" placeholder=\"05XXXXXXXX\" data-vip-phone-input " +
+      "style=\"width:100%!important;box-sizing:border-box!important;border:1px solid #cdd5dc!important;border-radius:8px!important;" +
+      "padding:11px 12px!important;font:inherit!important;margin-bottom:10px!important;direction:ltr;text-align:start;letter-spacing:.02em;\"/>" +
+      "<div data-vip-phone-error style=\"display:none;font-size:12px;color:#e74c3c;margin:-4px 0 8px 0;\"></div>" +
+      "<button type=\"button\" data-vip-phone-submit data-cf-widget-primary-btn=\"1\" style=\"" +
+      btnStyle +
+      ";width:100%!important;text-align:center!important;\">حفظ الرقم</button>";
+    var btn = inner.querySelector("[data-vip-phone-submit]");
+    var inp = inner.querySelector("[data-vip-phone-input]");
+    var errEl = inner.querySelector("[data-vip-phone-error]");
+    if (btn && inp && errEl && !btn.getAttribute("data-vip-bound")) {
+      btn.setAttribute("data-vip-bound", "1");
+      btn.addEventListener(
+        "click",
+        function () {
+          var norm = normalizeSaPhoneForCartflow(inp.value);
+          if (!norm) {
+            errEl.style.display = "block";
+            errEl.textContent =
+              "اكتب رقم سعودي صالح (مثال 05xxxxxxxx أو 9665xxxxxxxx)";
+            return;
+          }
+          errEl.style.display = "none";
+          btn.setAttribute("disabled", "true");
+          postReason({
+            reason: "vip_phone_capture",
+            customer_phone: norm,
+            custom_text: "vip_cart_phone_capture",
+          }).then(function (resp) {
+            btn.removeAttribute("disabled");
+            if (!(resp && resp.ok)) {
+              errEl.style.display = "block";
+              errEl.textContent = "تعذّر الحفظ، حاول مرة ثانية.";
+              return;
+            }
+            try {
+              window.localStorage.setItem(CARTFLOW_LS_CUSTOMER_PHONE, norm);
+            } catch (eSt) {
+              /* ignore */
+            }
+            vipPhoneCaptureShowingSuccess = true;
+            inner.innerHTML =
+              "<div style=\"font-size:14px;line-height:1.6;color:#237a52;text-align:center;padding:12px 6px;\">تمام 👍 تم حفظ الرقم</div>";
+          });
+        },
+        false
+      );
+    }
+  }
+
+  function ensureVipPhoneCapturePanel() {
+    if (vipPhoneCapturePanel && vipPhoneCapturePanel.parentNode) {
+      return vipPhoneCapturePanel;
+    }
+    var root = document.body || document.documentElement;
+    if (!root || !document.createElement) {
+      return null;
+    }
+    var wrap = document.createElement("div");
+    wrap.setAttribute("data-cartflow-vip-phone-capture", "1");
+    wrap.setAttribute("dir", "rtl");
+    wrap.style.cssText =
+      "display:none!important;position:fixed!important;z-index:2147483630!important;" +
+      "bottom:calc(76px + env(safe-area-inset-bottom))!important;right:calc(14px + env(safe-area-inset-right))!important;" +
+      "max-width:min(328px,calc(100vw - 24px))!important;box-sizing:border-box!important;" +
+      "font-family:inherit!important;line-height:1.45!important;" +
+      "background:#ffffff!important;color:#17202a!important;padding:14px 36px 14px 14px!important;" +
+      "border-radius:12px!important;box-shadow:0 12px 32px rgba(15,27,61,0.16)!important;" +
+      "border:1px solid rgba(108,124,247,0.22)!important;";
+    wrap.innerHTML =
+      "<button type=\"button\" data-vip-phone-dismiss " +
+      "aria-label=\"إغلاق\" title=\"إغلاق\" " +
+      "style=\"position:absolute!important;top:8px!important;right:10px!important;width:32px!important;height:32px!important;padding:0!important;" +
+      "border:none!important;background:transparent!important;color:#8895a9!important;font-size:22px!important;line-height:1!important;" +
+      "cursor:pointer!important;border-radius:8px!important;\">&times;</button>" +
+      "<div data-vip-phone-inner></div>";
+    root.appendChild(wrap);
+    vipPhoneCapturePanel = wrap;
+    vipPhoneCaptureRenderFormInner();
+    var dismissBtn = wrap.querySelector("[data-vip-phone-dismiss]");
+    if (dismissBtn && !dismissBtn.getAttribute("data-vip-bound")) {
+      dismissBtn.setAttribute("data-vip-bound", "1");
+      dismissBtn.addEventListener(
+        "click",
+        function () {
+          dismissVipPhoneCaptureForSession();
+          hideVipPhoneCapturePanel();
+        },
+        false
+      );
+    }
+    return vipPhoneCapturePanel;
+  }
+
+  function syncVipPhoneCapturePanel() {
+    try {
+      var converted =
+        typeof isSessionConverted === "function" && isSessionConverted();
+      if (
+        vipPhoneCaptureShowingSuccess &&
+        (!vipPhoneCaptureEligibilityTotalsOk() || converted)
+      ) {
+        vipPhoneCaptureShowingSuccess = false;
+      }
+      var keep = vipPhoneCaptureShouldKeepPanelOpen();
+      if (!keep) {
+        hideVipPhoneCapturePanel();
+        return;
+      }
+      var el = ensureVipPhoneCapturePanel();
+      if (!el) {
+        return;
+      }
+      if (
+        !vipPhoneCaptureShowingSuccess &&
+        vipPhoneCaptureInteractiveEligible() &&
+        vipPhoneCapturePanel
+      ) {
+        var hasInput = vipPhoneCapturePanel.querySelector(
+          "[data-vip-phone-input]"
+        );
+        if (!hasInput) {
+          vipPhoneCaptureRenderFormInner();
+        }
+      }
+      el.style.display = "block";
+    } catch (eSyn) {
+      /* ignore */
+    }
+  }
+
+  function scheduleVipPhoneCaptureCheck() {
+    try {
+      if (typeof window.requestAnimationFrame === "function") {
+        window.requestAnimationFrame(function () {
+          syncVipPhoneCapturePanel();
+        });
+      } else {
+        window.setTimeout(syncVipPhoneCapturePanel, 0);
+      }
+    } catch (eSch) {
+      syncVipPhoneCapturePanel();
+    }
   }
 
   function buildWhatsappGeneratePayload(rkey) {
