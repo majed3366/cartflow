@@ -224,6 +224,65 @@ class WidgetCartAbandonVipDetectionTests(unittest.TestCase):
         self.assertTrue(any(int(x.get("id", 0)) == int(ac.id) for x in prios))
 
 
+class WidgetDemoStoreResolutionTests(unittest.TestCase):
+    """Widget store=demo must match dashboard Store (latest id), not an older zid=demo row."""
+
+    def setUp(self) -> None:
+        _reset_recovery_memory()
+
+    def test_demo_slug_uses_latest_store_vip_threshold(self) -> None:
+        db.create_all()
+        main._ensure_store_widget_schema()
+        stale_demo = Store(
+            zid_store_id="demo",
+            vip_cart_threshold=None,
+            recovery_delay=1,
+            recovery_delay_unit="minutes",
+            recovery_attempts=1,
+        )
+        dashboard_row = Store(
+            zid_store_id="merchant_dashboard_zid",
+            vip_cart_threshold=500,
+            recovery_delay=2,
+            recovery_delay_unit="minutes",
+            recovery_attempts=2,
+        )
+        db.session.add(stale_demo)
+        db.session.add(dashboard_row)
+        db.session.commit()
+
+        resolved = main._load_store_row_for_recovery("demo")
+        self.assertIsNotNone(resolved)
+        self.assertEqual(int(resolved.id), int(dashboard_row.id))
+        self.assertEqual(resolved.vip_cart_threshold, 500)
+
+    def test_default_slug_uses_latest_store(self) -> None:
+        db.create_all()
+        main._ensure_store_widget_schema()
+        first = Store(
+            zid_store_id="something",
+            vip_cart_threshold=None,
+            recovery_delay=1,
+            recovery_delay_unit="minutes",
+            recovery_attempts=1,
+        )
+        latest = Store(
+            zid_store_id="live_merchant",
+            vip_cart_threshold=500,
+            recovery_delay=2,
+            recovery_delay_unit="minutes",
+            recovery_attempts=2,
+        )
+        db.session.add(first)
+        db.session.add(latest)
+        db.session.commit()
+
+        resolved = main._load_store_row_for_recovery("default")
+        self.assertIsNotNone(resolved)
+        self.assertEqual(int(resolved.id), int(latest.id))
+        self.assertEqual(resolved.vip_cart_threshold, 500)
+
+
 class VipMerchantResolveTests(unittest.TestCase):
     def test_resolve_store_number(self) -> None:
         from services.vip_merchant_alert import resolve_merchant_whatsapp_phone

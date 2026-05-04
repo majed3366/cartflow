@@ -606,6 +606,10 @@ _WHATSAPP_TEST_CART = {
 _DEV_RECOVERY_SETTINGS_STORE_ZID = "dev-recovery-settings-test"
 # عند فرد ‎DB‎: سجل بـ ‎zid‎ ثابت (لتفادي تعدد ‎NULL‎ مع ‎UNIQUE‎) — آمن عند تزامن أول طلبات.
 CARTFLOW_DEFAULT_RECOVERY_STORE_ZID = "cartflow-default-recovery"
+# ‎demo‎ / ‎default‎ / المتجر الآلي — نفس صف لوحة ‎GET/POST /api/recovery-settings‎ (آخر ‎stores.id‎)، لا صف قديم ‎zid=demo‎ بلا ‎vip_cart_threshold‎.
+_WIDGET_STORE_SLUGS_USE_DASHBOARD_LATEST = frozenset(
+    {"demo", "default", CARTFLOW_DEFAULT_RECOVERY_STORE_ZID.casefold()}
+)
 _VALID_RECOVERY_UNITS = frozenset({"minutes", "hours", "days"})
 
 _STORE_RECOVERY_TEMPLATE_KEYS: tuple[str, ...] = (
@@ -666,11 +670,20 @@ def _ensure_default_store_for_recovery() -> None:
         db.session.rollback()
 
 
+def _dashboard_recovery_store_row() -> Optional[Store]:
+    """آخر ‎Store‎ بحسب ‎id‎ — نفس الصف الذي تقرأه وتحدّثه ‎GET/POST /api/recovery-settings‎."""
+    try:
+        return db.session.query(Store).order_by(Store.id.desc()).first()
+    except (SQLAlchemyError, OSError):
+        db.session.rollback()
+        return None
+
+
 def _merge_recovery_settings_post_body(body: Dict[str, Any]) -> Dict[str, Any]:
     """دمج حقول الاسترجاع مع آخر ‎Store‎ حتى تعمل التحديثات الجزئية."""
     out = dict(body)
     try:
-        row = db.session.query(Store).order_by(Store.id.desc()).first()
+        row = _dashboard_recovery_store_row()
     except (SQLAlchemyError, OSError):
         row = None
     if row is not None:
@@ -722,7 +735,7 @@ def _dev_apply_recovery_settings_update(
     _ensure_store_widget_schema()
     db.create_all()
     _ensure_default_store_for_recovery()
-    row = db.session.query(Store).order_by(Store.id.desc()).first()
+    row = _dashboard_recovery_store_row()
     if row is None:
         return {"ok": False, "error": "no_store"}, 404
     row.recovery_delay = rd_i
@@ -1163,7 +1176,7 @@ def api_recovery_settings_get():
         _ensure_store_widget_schema()
         db.create_all()
         _ensure_default_store_for_recovery()
-        row = db.session.query(Store).order_by(Store.id.desc()).first()
+        row = _dashboard_recovery_store_row()
         if row is None:
             return j({"ok": False, "error": "no_store"}, 500)
         wa: Optional[str] = getattr(row, "whatsapp_support_url", None)
@@ -1384,17 +1397,22 @@ def _last_activity_utc_from_recovery_row(
 
 
 def _load_store_row_for_recovery(store_slug: Optional[str] = None) -> Optional[Store]:
-    """صف ‎Store‎ للاسترجاع: تطابق ‎zid_store_id‎ مع ‎store‎ من الحمولة إن وُجد، وإلا آخر سطر."""
+    """صف ‎Store‎ للاسترجاع و‎VIP‎: ‎zid_store_id‎ يطابق ‎store‎ من الحمولة؛ ‎demo/default‎ → نفس صف لوحة الإعدادات (آخر ‎id‎)؛ وإلا آخر سطر."""
     try:
         db.create_all()
         _ensure_store_widget_schema()
         _ensure_default_store_for_recovery()
-        ss = (store_slug or "").strip()
-        if ss:
-            row = db.session.query(Store).filter_by(zid_store_id=ss).first()
-            if row is not None:
-                return row
-        return db.session.query(Store).order_by(Store.id.desc()).first()
+        latest = _dashboard_recovery_store_row()
+        ss_full = (store_slug or "").strip()
+        ss_key = ss_full.casefold()
+        if not ss_key:
+            return latest
+        if ss_key in _WIDGET_STORE_SLUGS_USE_DASHBOARD_LATEST:
+            return latest
+        row = db.session.query(Store).filter_by(zid_store_id=ss_full).first()
+        if row is None:
+            return latest
+        return row
     except Exception:  # noqa: BLE001
         db.session.rollback()
         return None
@@ -2645,6 +2663,18 @@ async def handle_cart_abandoned(
     except Exception:  # noqa: BLE001
         db.session.rollback()
         store_row = None
+    vip_row_id = getattr(store_row, "id", None) if store_row else None
+    vip_th_disp = getattr(store_row, "vip_cart_threshold", None) if store_row else None
+    vip_th_log = "none" if vip_th_disp is None else str(vip_th_disp)
+    log.info(
+        "[VIP STORE SETTINGS]\nstore_slug=%s\nstore_id=%s\nvip_cart_threshold=%s",
+        store_slug,
+        vip_row_id,
+        vip_th_log,
+    )
+    print(
+        f"[VIP STORE SETTINGS] store_slug={store_slug!r} store_id={vip_row_id} vip_cart_threshold={vip_th_log}"
+    )
     print("store settings loaded")
     try:
         ok_u, err_u, _urow = upsert_abandoned_cart_from_payload(payload, store=store_row)
