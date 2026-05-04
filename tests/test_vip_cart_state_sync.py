@@ -105,11 +105,13 @@ class VipCartStateSyncTests(unittest.TestCase):
         r = self.client.post(
             "/api/cart-event",
             json={
-                "event": "add_to_cart",
+                "event": "cart_state_sync",
+                "reason": "remove",
                 "store": slug,
                 "session_id": sid,
-                "cart": [{"price": 100.0, "quantity": 1}],
                 "cart_total": 100.0,
+                "items_count": 1,
+                "cart": [{"price": 100.0, "quantity": 1}],
             },
         )
         self.assertEqual(r.status_code, 200, r.text)
@@ -146,12 +148,14 @@ class VipCartStateSyncTests(unittest.TestCase):
         r = self.client.post(
             "/api/cart-event",
             json={
-                "event": "add_to_cart",
+                "event": "cart_state_sync",
+                "reason": "remove",
                 "store": slug,
                 "session_id": sid,
                 "cart_id": cid,
-                "cart": [{"price": 100.0, "quantity": 1}],
                 "cart_total": 100.0,
+                "items_count": 1,
+                "cart": [{"price": 100.0, "quantity": 1}],
             },
         )
         self.assertEqual(r.status_code, 200, r.text)
@@ -187,11 +191,13 @@ class VipCartStateSyncTests(unittest.TestCase):
         r = self.client.post(
             "/api/cart-event",
             json={
-                "event": "cart_updated",
+                "event": "cart_state_sync",
+                "reason": "page_load",
                 "store": slug,
                 "session_id": sid,
                 "cart_id": cid,
                 "cart_total": 637.0,
+                "items_count": 1,
                 "cart": [{"price": 637.0, "quantity": 1}],
             },
         )
@@ -235,17 +241,20 @@ class VipCartStateSyncTests(unittest.TestCase):
         r = self.client.post(
             "/api/cart-event",
             json={
-                "event": "add_to_cart",
+                "event": "cart_state_sync",
+                "reason": "clear",
                 "store": slug,
                 "session_id": sid,
                 "cart_id": cid,
+                "cart_total": 0,
+                "items_count": 0,
                 "cart": [],
             },
         )
         self.assertEqual(r.status_code, 200, r.text)
         db.session.refresh(ac)
         self.assertFalse(bool(ac.vip_mode))
-        self.assertEqual((ac.status or "").strip(), "recovered")
+        self.assertEqual((ac.status or "").strip(), "cleared")
         ids = [x["id"] for x in main._vip_priority_cart_alert_list()]
         self.assertNotIn(ac.id, ids)
 

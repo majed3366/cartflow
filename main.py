@@ -3221,6 +3221,173 @@ async def dev_vip_flow_verify(request: Request) -> Any:
                 db.session.rollback()
 
 
+def _handle_cart_state_sync(payload: dict[str, Any]) -> dict[str, Any]:
+    """
+    مسار موحّد لمزامنة حالة السلة (‎cart_state_sync‎): قيمة، ‎VIP‎، ‎status‎ — بما فيها ‎cleared‎ للسلة الفارغة.
+    """
+    try:
+        _ensure_store_widget_schema()
+        db.create_all()
+    except (SQLAlchemyError, OSError):
+        db.session.rollback()
+        return {"ok": False, "cart_state_sync": False, "error": "db_schema"}
+
+    reason_raw = str(payload.get("reason") or "").strip().lower()
+    allowed = frozenset({"add", "remove", "clear", "abandon", "page_load"})
+    if reason_raw not in allowed:
+        reason_raw = "page_load"
+
+    ct_raw = payload.get("cart_total")
+    ic_raw = payload.get("items_count")
+    try:
+        cart_total = float(ct_raw) if ct_raw is not None else 0.0
+    except (TypeError, ValueError):
+        cart_total = 0.0
+    try:
+        items_count = int(ic_raw) if ic_raw is not None else 0
+    except (TypeError, ValueError):
+        items_count = 0
+
+    sid_log = (str(payload.get("session_id") or "").strip())[:512]
+    cid_in_payload = (_cart_id_str_from_payload(payload) or "").strip()[:255]
+
+    log.info(
+        "[CART STATE SYNC RECEIVED]\nreason=%s\ncart_id=%s\nsession_id=%s\ncart_total=%s\nitems_count=%s",
+        reason_raw,
+        cid_in_payload or "-",
+        sid_log or "-",
+        str(cart_total),
+        str(items_count),
+    )
+    print(
+        f"[CART STATE SYNC RECEIVED] reason={reason_raw} cart_id={cid_in_payload or '-'} "
+        f"session_id={sid_log or '-'} cart_total={cart_total} items_count={items_count}"
+    )
+
+    if reason_raw == "add":
+        _clear_user_rejected_help_for_session(
+            _normalize_store_slug(payload),
+            _session_part_from_payload(payload),
+        )
+
+    store_slug = _normalize_store_slug(payload)
+    store_row = _load_store_row_for_recovery(store_slug)
+
+    merge_pl: dict[str, Any] = dict(payload)
+    merge_pl["store"] = store_slug
+    rk = _recovery_key_from_payload(merge_pl)
+    merge_pl = _ensure_cart_abandon_payload_has_cart_id(merge_pl, rk)
+    zid = (_cart_id_str_from_payload(merge_pl) or "").strip()[:255]
+    if not zid:
+        return {"ok": True, "cart_state_sync": False, "error": "missing_cart_id"}
+
+    cart_ids = [zid]
+    syn = _synthetic_zid_cart_id_from_recovery_key(rk)
+    if syn and syn not in cart_ids:
+        cart_ids.append(syn)
+
+    cands = _collect_abandoned_cart_rows_for_merge(
+        cart_ids=cart_ids,
+        session_id=sid_log if sid_log else None,
+        recovery_key=rk,
+        store_row=store_row,
+    )
+    row = _pick_canonical_abandoned_cart_row(cands) if cands else None
+    if cands and row is not None:
+        ndel = _delete_noncanonical_abandoned_merge_rows(keep=row, candidates=cands)
+        if ndel:
+            try:
+                db.session.flush()
+            except IntegrityError:
+                db.session.rollback()
+                return {"ok": False, "cart_state_sync": False, "error": "merge_failed"}
+
+    sto_id: Optional[int] = None
+    if store_row is not None and getattr(store_row, "id", None) is not None:
+        sto_id = int(store_row.id)
+
+    is_empty = (items_count <= 0) or (cart_total <= 0.0)
+
+    if is_empty:
+        vip_mode_eff = False
+        status_eff = "cleared"
+    elif is_vip_cart(cart_total, store_row):
+        vip_mode_eff = True
+        status_eff = "abandoned"
+    else:
+        vip_mode_eff = False
+        status_eff = "abandoned"
+
+    created = row is None
+    real_cid = cid_in_payload or zid
+
+    try:
+        if row is None:
+            row = AbandonedCart(
+                zid_cart_id=zid,
+                cart_value=float(cart_total),
+                status=status_eff,
+                vip_mode=vip_mode_eff,
+            )
+            if sto_id is not None:
+                row.store_id = sto_id
+            if sid_log:
+                row.recovery_session_id = sid_log
+            db.session.add(row)
+        else:
+            _abandoned_cart_try_upgrade_synthetic_zid(row, real_cid)
+            row.cart_value = float(cart_total)
+            row.status = status_eff
+            row.vip_mode = vip_mode_eff
+            if sto_id is not None:
+                row.store_id = sto_id
+            if sid_log:
+                row.recovery_session_id = sid_log
+
+        prev: dict[str, Any] = {}
+        if getattr(row, "raw_payload", None):
+            try:
+                p_raw = json.loads(row.raw_payload)
+                if isinstance(p_raw, dict):
+                    prev = p_raw
+            except (json.JSONDecodeError, TypeError, ValueError):
+                prev = {}
+        prev["items_count"] = items_count
+        prev["cart_state_sync_reason"] = reason_raw
+        if isinstance(payload.get("cart"), list):
+            prev["cart"] = payload.get("cart")
+        AbandonedCart.set_raw(row, prev)
+
+        db.session.commit()
+        db.session.refresh(row)
+    except IntegrityError:
+        db.session.rollback()
+        return {"ok": False, "cart_state_sync": False, "error": "integrity"}
+
+    ups_cid = (str(getattr(row, "zid_cart_id", "") or zid or "")).strip()[:255]
+    ups_sid = (str(getattr(row, "recovery_session_id", "") or sid_log or "")).strip()[:512]
+    log.info(
+        "[CART STATE UPSERT]\nmode=%s\ncart_id=%s\nsession_id=%s\ncart_total=%s\nvip_mode=%s\nstatus=%s",
+        "created" if created else "updated",
+        ups_cid,
+        ups_sid,
+        str(row.cart_value),
+        str(bool(row.vip_mode)).lower(),
+        str(row.status or ""),
+    )
+    print(
+        f"[CART STATE UPSERT] mode={'created' if created else 'updated'} cart_id={ups_cid} "
+        f"session_id={ups_sid} cart_total={row.cart_value} vip_mode={bool(row.vip_mode)} status={row.status}"
+    )
+
+    return {
+        "ok": True,
+        "cart_state_sync": True,
+        "vip_mode": bool(getattr(row, "vip_mode", False)),
+        "status": str(row.status or ""),
+    }
+
+
 @app.post("/api/cart-event")
 async def api_cart_event(request: Request, background_tasks: BackgroundTasks):
     """
@@ -3258,6 +3425,10 @@ async def api_cart_event(request: Request, background_tasks: BackgroundTasks):
     event = payload.get("event")
     event_norm = str(event).strip().lower() if event is not None else ""
     log.info("[EVENT ROUTING] event=%s", event)
+    if event_norm == "cart_state_sync":
+        out_sync: dict[str, Any] = {"ok": True, "event": "cart_state_sync"}
+        out_sync.update(_handle_cart_state_sync(payload))
+        return j(out_sync, 200)
     if event_norm == "cart_abandoned":
         print("[ROUTING TO VIP HANDLER]")
         log.info("[ROUTING TO VIP HANDLER]")
@@ -4669,6 +4840,7 @@ def _vip_priority_cart_alert_list() -> list[dict[str, Any]]:
         sid_log = "none" if dash_id_raw is None else str(dash_id_raw)
         log.info("[VIP PRIORITY QUERY]\nstore_id=%s\ncount=%s", sid_log, str(n_match))
         print(f"[VIP PRIORITY QUERY] store_id={sid_log} count={n_match}")
+        print(f"[VIP PRIORITY QUERY] count={n_match}")
 
         seen_k: set[str] = set()
         picked: list[AbandonedCart] = []

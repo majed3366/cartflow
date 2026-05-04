@@ -80,28 +80,10 @@
     if (cartflowIsSessionConverted()) {
       return;
     }
-    var storeSlug =
-      typeof window.CARTFLOW_STORE_SLUG !== "undefined" &&
-      window.CARTFLOW_STORE_SLUG !== null &&
-      String(window.CARTFLOW_STORE_SLUG).trim() !== ""
-        ? String(window.CARTFLOW_STORE_SLUG).trim()
-        : "demo";
-    var cartArr =
-      typeof window.cart !== "undefined" && window.cart !== null && Array.isArray(window.cart)
-        ? window.cart
-        : [];
-    var body = JSON.stringify({
-      event: "add_to_cart",
-      store: storeSlug,
-      session_id: getRecoverySessionId(),
-      cart: cartArr,
-    });
     try {
-      fetch(apiCartEventUrl(), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: body,
-      }).catch(function () {});
+      if (typeof window.cartflowSyncCartState === "function") {
+        window.cartflowSyncCartState("add");
+      }
     } catch (eNfy) {
       /* ignore */
     }
@@ -213,6 +195,66 @@
       anyRow = true;
     }
     return anyRow ? sum : 0;
+  }
+
+  function cartflowBootstrapCartStateSync(reason) {
+    if (cartflowIsSessionConverted()) {
+      return;
+    }
+    var r = String(reason || "page_load").toLowerCase();
+    var okR = { add: 1, remove: 1, clear: 1, abandon: 1, page_load: 1 };
+    if (!okR[r]) {
+      r = "page_load";
+    }
+    var storeSlug =
+      typeof window.CARTFLOW_STORE_SLUG !== "undefined" &&
+      window.CARTFLOW_STORE_SLUG !== null &&
+      String(window.CARTFLOW_STORE_SLUG).trim() !== ""
+        ? String(window.CARTFLOW_STORE_SLUG).trim()
+        : "demo";
+    var cartArr =
+      typeof window.cart !== "undefined" && window.cart !== null && Array.isArray(window.cart)
+        ? window.cart
+        : [];
+    var cartTotal = sumCartArrayTotal(cartArr);
+    var items_count = cartArr.length;
+    var session_id = getRecoverySessionId();
+    var cart_id = getStableCartEventIdForTracking();
+    var body = JSON.stringify({
+      event: "cart_state_sync",
+      reason: r,
+      store: storeSlug,
+      session_id: session_id,
+      cart_id: cart_id,
+      cart_total: cartTotal,
+      items_count: items_count,
+      cart: cartArr,
+    });
+    try {
+      console.log(
+        "[WIDGET CART SYNC SENT] reason=" +
+          r +
+          " cart_id=" +
+          cart_id +
+          " session_id=" +
+          session_id +
+          " cart_total=" +
+          cartTotal +
+          " items_count=" +
+          items_count
+      );
+    } catch (eL) {}
+    try {
+      fetch(apiCartEventUrl(), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: body,
+      }).catch(function () {});
+    } catch (eF) {}
+  }
+
+  if (typeof window.cartflowSyncCartState !== "function") {
+    window.cartflowSyncCartState = cartflowBootstrapCartStateSync;
   }
 
   function getOptionalCartflowCustomerPhone() {

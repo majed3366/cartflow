@@ -1531,6 +1531,9 @@
     if (isWidgetDomVisible()) {
       return;
     }
+    try {
+      syncCartState("abandon");
+    } catch (eAbandonSync) {}
     cartSmartExitLastFireTs = now;
     try {
       logMobileExitIntentIfApplicable(exitSignalType);
@@ -1939,6 +1942,9 @@
     } catch (eMon) {
       /* ignore */
     }
+    try {
+      syncCartState("add");
+    } catch (eSyn) {}
   }
 
   try {
@@ -1996,11 +2002,13 @@
     return (window.CARTFLOW_API_BASE || "").toString().replace(/\/$/, "");
   }
 
-  /** مزامنة ‎VIP‎ مع الخلفية عند كل تعديل على ‎window.cart‎ (‎cart_updated‎ / ‎cart_cleared‎). */
+  /** مسار موحّد: ‎cart_state_sync‎ — قراءة السلة، الجلسة، و‎cart_id‎ المستقر للخلفية. */
   var CF_LIFECYCLE_CART_ID_KEY = "cartflow_cart_event_id";
   var cartflowLifecycleInstalled = false;
   var cartflowLifecycleLastSig = "";
   var cartflowLifecycleDebounce = null;
+  var cartflowLifecycleLastTotal = null;
+  var cartflowLifecycleLastCount = null;
 
   function cartLifecycleApiUrl() {
     var b = apiBase();
@@ -2076,6 +2084,75 @@
     return nid.slice(0, 255);
   }
 
+  function syncCartState(reason) {
+    if (isSessionConverted()) {
+      return;
+    }
+    var r = String(reason || "page_load").toLowerCase();
+    var okReasons = { add: 1, remove: 1, clear: 1, abandon: 1, page_load: 1 };
+    if (!okReasons[r]) {
+      r = "page_load";
+    }
+    var cart = window.cart;
+    if (!Array.isArray(cart)) {
+      cart = [];
+    }
+    var total = cartLifecycleSumCart(cart);
+    var items_count = cart.length;
+    var sessionId = getSessionId();
+    if (!sessionId || String(sessionId).trim() === "" || sessionId === "—") {
+      return;
+    }
+    var cartId = cartLifecycleStableCartId();
+    var store = getStoreSlug();
+    var body = {
+      event: "cart_state_sync",
+      reason: r,
+      store: store,
+      session_id: sessionId,
+      cart_id: cartId,
+      cart_total: total,
+      items_count: items_count,
+      cart: cart,
+    };
+    try {
+      var sig2;
+      try {
+        sig2 = String(cart.length) + ":" + total.toFixed(4) + ":" + JSON.stringify(cart);
+      } catch (es2) {
+        sig2 = String(cart.length) + ":" + String(total);
+      }
+      cartflowLifecycleLastSig = sig2;
+      cartflowLifecycleLastTotal = total;
+      cartflowLifecycleLastCount = items_count;
+    } catch (eSt) {}
+    try {
+      console.log(
+        "[WIDGET CART SYNC SENT] reason=" +
+          r +
+          " cart_id=" +
+          cartId +
+          " session_id=" +
+          sessionId +
+          " cart_total=" +
+          total +
+          " items_count=" +
+          items_count
+      );
+    } catch (eLog) {}
+    try {
+      fetch(cartLifecycleApiUrl(), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      }).catch(function () {});
+    } catch (eFetch) {}
+  }
+
+  try {
+    window.cartflowSyncCartState = syncCartState;
+  } catch (eWinSync) {}
+
   function cartflowCaptureInitialCartLifecycleSig() {
     try {
       var cart = window.cart;
@@ -2104,6 +2181,7 @@
       return;
     }
     var total = cartLifecycleSumCart(cart);
+    var count = cart.length;
     var sig;
     try {
       sig = String(cart.length) + ":" + total.toFixed(4) + ":" + JSON.stringify(cart);
@@ -2113,42 +2191,33 @@
     if (sig === cartflowLifecycleLastSig) {
       return;
     }
-    cartflowLifecycleLastSig = sig;
 
     var sessionId = getSessionId();
     if (!sessionId || String(sessionId).trim() === "" || sessionId === "—") {
       return;
     }
-    var cartId = cartLifecycleStableCartId();
-    var store = getStoreSlug();
-    var isCleared = cart.length === 0 || total <= 0;
-    var body = isCleared
-      ? {
-          event: "cart_cleared",
-          cart_total: 0,
-          session_id: sessionId,
-          cart_id: cartId,
-          store: store,
-          cart: [],
-        }
-      : {
-          event: "cart_updated",
-          cart_total: total,
-          session_id: sessionId,
-          cart_id: cartId,
-          store: store,
-          cart: cart,
-        };
 
-    try {
-      fetch(cartLifecycleApiUrl(), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      }).catch(function () {});
-    } catch (eFetch) {
-      /* ignore */
+    var prevT = cartflowLifecycleLastTotal;
+    var prevC = cartflowLifecycleLastCount;
+    var reason = "page_load";
+    if (prevT === null && prevC === null) {
+      reason = count === 0 && total <= 0 ? "clear" : "page_load";
+    } else if (count === 0 || total <= 0) {
+      reason = "clear";
+    } else if (prevT != null && total > prevT) {
+      reason = "add";
+    } else if (prevT != null && total < prevT) {
+      reason = "remove";
+    } else if (prevC != null && count < prevC) {
+      reason = "remove";
+    } else if (prevC != null && count > prevC) {
+      reason = "add";
+    } else {
+      reason = "page_load";
     }
+
+    cartflowLifecycleLastSig = sig;
+    syncCartState(reason);
   }
 
   function cartflowInstallCartLifecycleObserver() {
@@ -2200,6 +2269,13 @@
     } catch (ed) {
       /* ignore */
     }
+    window.setTimeout(function () {
+      try {
+        if (haveCartForWidget()) {
+          syncCartState("page_load");
+        }
+      } catch (ePl) {}
+    }, 500);
   }
 
   function postReason(payload) {
