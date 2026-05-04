@@ -11,7 +11,7 @@ from fastapi.testclient import TestClient
 
 from extensions import db
 import main
-from models import AbandonedCart, Store
+from models import AbandonedCart, CartRecoveryReason, Store
 from tests.test_recovery_isolation import _reset_recovery_memory
 
 
@@ -375,6 +375,51 @@ class VipCartStateSyncTests(unittest.TestCase):
         db.session.refresh(ac)
         self.assertFalse(bool(ac.vip_mode))
         self.assertEqual((ac.status or "").strip(), "recovered")
+
+    def test_vip_priority_customer_phone_from_cart_recovery_reason(self) -> None:
+        """رقم العميل في لوحة VIP يُحمّل من ‎CartRecoveryReason.customer_phone‎ لمطابقة الجلسة."""
+        db.create_all()
+        main._ensure_store_widget_schema()
+        slug = f"vsync_crph_{uuid.uuid4().hex[:10]}"
+        store = Store(
+            zid_store_id=slug,
+            vip_cart_threshold=100,
+            recovery_delay=1,
+            recovery_delay_unit="minutes",
+            recovery_attempts=1,
+        )
+        db.session.add(store)
+        db.session.commit()
+        sid_us = f"s_crph_{uuid.uuid4().hex[:8]}"
+        cid = f"c_crph_{uuid.uuid4().hex[:10]}"
+        now = datetime.now(timezone.utc)
+        crr = CartRecoveryReason(
+            store_slug=slug,
+            session_id=sid_us,
+            reason="other",
+            customer_phone="0591112233",
+            source="legacy_api",
+            created_at=now,
+            updated_at=now,
+        )
+        db.session.add(crr)
+        ac = AbandonedCart(
+            store_id=store.id,
+            zid_cart_id=cid,
+            cart_value=500.0,
+            status="abandoned",
+            vip_mode=True,
+            recovery_session_id=sid_us,
+        )
+        db.session.add(ac)
+        db.session.commit()
+        dash = main._dashboard_recovery_store_row()
+        self.assertIsNotNone(dash)
+        self.assertEqual(int(dash.id), int(store.id))
+        lst = main._vip_priority_cart_alert_list()
+        row = next((x for x in lst if int(x["id"]) == int(ac.id)), None)
+        self.assertIsNotNone(row)
+        self.assertEqual(row.get("customer_wa_phone"), "966591112233")
 
 
 if __name__ == "__main__":

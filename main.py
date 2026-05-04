@@ -2114,11 +2114,8 @@ def _strip_recovery_phone(raw: Optional[Any]) -> str:
     return s[:100] if s else ""
 
 
-def _vip_dashboard_customer_phone_raw(
-    ac: AbandonedCart,
-    dashboard_store: Optional[Any],
-) -> str:
-    """رقم عميل للعرض في لوحة VIP — ‎raw_payload‎ ثم جلسة الاسترجاع."""
+def _vip_phone_from_abandoned_cart_raw_payload(ac: AbandonedCart) -> str:
+    """استخراج جوال العميل من ‎AbandonedCart.raw_payload‎ فقط."""
     rp = getattr(ac, "raw_payload", None)
     if isinstance(rp, str) and rp.strip():
         try:
@@ -2134,23 +2131,100 @@ def _vip_dashboard_customer_phone_raw(
                 got = _strip_recovery_phone(v)
                 if got:
                     return got
-    ss = ""
+    return ""
+
+
+def _vip_candidate_store_slugs_for_dashboard(
+    dashboard_store: Optional[Any],
+    ac: AbandonedCart,
+) -> list[str]:
+    """سلاسل ‎store_slug‎ المحتملة لمطابقة ‎CartRecoveryReason‎ وجلسة الذاكرة."""
+    out: list[str] = []
     if dashboard_store is not None:
         zid = getattr(dashboard_store, "zid_store_id", None)
         if isinstance(zid, str) and zid.strip():
-            ss = zid.strip()
+            zs = zid.strip()[:255]
+            if zs:
+                out.append(zs)
+    sto_raw = getattr(ac, "store_id", None)
+    if sto_raw is not None:
+        try:
+            st = db.session.get(Store, int(sto_raw))
+            if st is not None:
+                zz = getattr(st, "zid_store_id", None)
+                if isinstance(zz, str) and zz.strip():
+                    zs2 = zz.strip()[:255]
+                    if zs2 and zs2 not in out:
+                        out.append(zs2)
+        except (SQLAlchemyError, TypeError, ValueError):
+            db.session.rollback()
+    return out
+
+
+def _vip_latest_cart_recovery_reason_customer_phone(
+    store_slug: str, session_id: str,
+) -> str:
+    """أحدث ‎customer_phone‎ غير فارغ في ‎CartRecoveryReason‎ لنفس ‎store_slug‎ و‎session_id‎."""
+    ss = (store_slug or "").strip()[:255]
+    sid = (session_id or "").strip()[:512]
+    if not ss or not sid:
+        return ""
+    try:
+        from schema_widget import (
+            ensure_cart_recovery_reason_phone_schema,
+            ensure_cart_recovery_reason_rejection_schema,
+        )
+
+        ensure_cart_recovery_reason_phone_schema(db)
+        ensure_cart_recovery_reason_rejection_schema(db)
+        db.create_all()
+        rows = (
+            db.session.query(CartRecoveryReason)
+            .filter(
+                CartRecoveryReason.store_slug == ss,
+                CartRecoveryReason.session_id == sid,
+            )
+            .order_by(CartRecoveryReason.updated_at.desc())
+            .limit(32)
+            .all()
+        )
+        for row in rows:
+            p = _strip_recovery_phone(getattr(row, "customer_phone", None))
+            if p:
+                return p
+    except (SQLAlchemyError, OSError, TypeError, ValueError):
+        db.session.rollback()
+        return ""
+    return ""
+
+
+def _vip_dashboard_customer_phone_raw(
+    ac: AbandonedCart,
+    dashboard_store: Optional[Any],
+) -> str:
+    """
+    جوال عميل لوحة VIP: ‎CartRecoveryReason.customer_phone‎ ثم ذاكرة جلسة الاسترجاع ثم ‎raw_payload‎.
+    """
     sid = (getattr(ac, "recovery_session_id", None) or "").strip()
-    if ss and sid:
+    slugs = _vip_candidate_store_slugs_for_dashboard(dashboard_store, ac)
+
+    if sid and slugs:
+        for ss in slugs:
+            got_crr = _vip_latest_cart_recovery_reason_customer_phone(ss, sid)
+            if got_crr:
+                return got_crr
         try:
             from services.recovery_session_phone import get_recovery_customer_phone
 
-            rk = _recovery_key_from_store_and_session(ss, sid)
-            got2 = _strip_recovery_phone(get_recovery_customer_phone(rk))
-            if got2:
-                return got2
+            for ss in slugs:
+                rk = _recovery_key_from_store_and_session(ss, sid)
+                got_mem = _strip_recovery_phone(get_recovery_customer_phone(rk))
+                if got_mem:
+                    return got_mem
         except Exception:  # noqa: BLE001
             pass
-    return ""
+
+    return _vip_phone_from_abandoned_cart_raw_payload(ac)
 
 
 def _recovery_digits_normalized_sa(raw: str) -> str:
@@ -5047,6 +5121,23 @@ def _vip_priority_cart_alert_list() -> list[dict[str, Any]]:
             raw_phone = _vip_dashboard_customer_phone_raw(ac, dash_store)
             wa_digits = _normalize_customer_phone_for_wa_me(raw_phone)
             contact_msg = _vip_customer_contact_whatsapp_message(ac)
+            rs_log = (getattr(ac, "recovery_session_id", None) or "").strip()[:512]
+            log.info(
+                "[VIP PHONE RESOLVED] cart_id=%s session_id=%s customer_phone=%s",
+                zid[:255] if zid else "-",
+                rs_log if rs_log else "-",
+                wa_digits if wa_digits else "-",
+            )
+            try:
+                print(
+                    "[VIP PHONE RESOLVED]\n"
+                    "cart_id=" + (zid[:255] if zid else "-") + "\n"
+                    "session_id=" + (rs_log if rs_log else "-") + "\n"
+                    "customer_phone=" + (wa_digits if wa_digits else "-"),
+                    flush=True,
+                )
+            except OSError:
+                pass
             out.append(
                 {
                     "id": ac.id,
