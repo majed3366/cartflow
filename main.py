@@ -1757,6 +1757,104 @@ def _log_vip_cart_upsert(
     print(f"[VIP CART UPSERT] mode={m} cart_id={cid} session_id={sid} store_id={st_s}")
 
 
+def _normalize_customer_phone_for_wa_me(raw: Optional[str]) -> str:
+    """أرقام فقط لـ ‎wa.me‎ (مثلاً ‎9665xxxxxxxx‎)."""
+    if raw is None or not str(raw).strip():
+        return ""
+    d = "".join(c for c in str(raw) if c.isdigit())
+    if not d:
+        return ""
+    if len(d) == 9 and d.startswith("5"):
+        return "966" + d
+    if len(d) == 10 and d.startswith("05"):
+        return "966" + d[1:]
+    if d.startswith("966") and len(d) >= 11:
+        return d
+    return d
+
+
+def _vip_customer_contact_whatsapp_message(ac: AbandonedCart) -> str:
+    cv = float(ac.cart_value or 0.0)
+    if cv == int(cv):
+        vs = str(int(cv))
+    else:
+        vs = f"{cv:.2f}".rstrip("0").rstrip(".")
+    return (
+        f"السلام عليكم، نتواصل معكم بخصوص سلة بقيمة {vs} ريال. "
+        f"نود مساعدتكم في إتمام الطلب."
+    )
+
+
+def _send_vip_merchant_auto_alert(
+    store_obj: Optional[Any],
+    *,
+    cart_total: float,
+    cart_id: str,
+    reason_tag: Optional[str] = None,
+) -> None:
+    """تنبيه واتساب للتاجر عند أول دخول السلة VIP — لا ينتظر الزر في لوحة الإعدادات."""
+    try:
+        phone, src = resolve_merchant_whatsapp_phone(store_obj)
+        if not phone:
+            log.info(
+                "[VIP MERCHANT AUTO ALERT SKIPPED] reason=no_merchant_phone source=%s",
+                src,
+            )
+            print("[VIP MERCHANT AUTO ALERT SKIPPED] reason=no_merchant_phone")
+            return
+        mbody = build_vip_merchant_alert_body(
+            float(cart_total),
+            reason_tag=reason_tag,
+            dashboard_link=vip_dashboard_review_link(),
+        )
+        out = try_send_vip_merchant_whatsapp_alert(store_obj, message=mbody)
+        sto_log = "none"
+        if store_obj is not None and getattr(store_obj, "id", None) is not None:
+            try:
+                sto_log = str(int(store_obj.id))
+            except (TypeError, ValueError):
+                sto_log = "none"
+        cid_log = (cart_id or "").strip()[:255] or "-"
+        cv_log = str(cart_total)
+        if isinstance(out, dict) and out.get("ok") is True:
+            log.info(
+                "[VIP MERCHANT AUTO ALERT SENT] cart_id=%s store_id=%s cart_total=%s",
+                cid_log,
+                sto_log,
+                cv_log,
+            )
+            print(
+                f"[VIP MERCHANT AUTO ALERT SENT] cart_id={cid_log} store_id={sto_log} cart_total={cv_log}"
+            )
+    except Exception as e:  # noqa: BLE001
+        log.warning("VIP merchant auto alert failed (non-fatal): %s", e, exc_info=True)
+
+
+def _vip_merchant_auto_alert_if_newly_entering(
+    ac: AbandonedCart,
+    store_for_alert: Optional[Any],
+    store_slug: str,
+    session_id: str,
+    *,
+    was_vip_before: bool,
+) -> None:
+    if was_vip_before:
+        return
+    if not bool(getattr(ac, "vip_mode", False)):
+        return
+    if str(getattr(ac, "status", "") or "").strip() != "abandoned":
+        return
+    rtag = _vip_reason_tag_from_abandoned_cart(ac)
+    if not rtag:
+        rtag = _reason_tag_for_session(store_slug, session_id)
+    _send_vip_merchant_auto_alert(
+        store_for_alert,
+        cart_total=float(ac.cart_value or 0.0),
+        cart_id=str(getattr(ac, "zid_cart_id", "") or ""),
+        reason_tag=rtag,
+    )
+
+
 # مسار الويدجت الحقيقي (‎POST /api/cart-event‎)؛ خطوة ‎0‎ = طبقة ‎VIP‎ خارج ‎step 1‎–‎3‎ في ‎CartRecoveryLog‎.
 VIP_WIDGET_ACTIVATION_SOURCE = "real_widget_cart_event"
 VIP_WIDGET_RECOVERY_LOG_MESSAGE = "VIP cart detected from real widget flow"
@@ -1896,13 +1994,28 @@ def _activate_vip_manual_cart_handling(
         return False
 
     try:
-        rt_alert = (reason_tag or "").strip() or None
-        mbody = build_vip_merchant_alert_body(
-            float(cart_total),
-            reason_tag=rt_alert,
-            dashboard_link=vip_dashboard_review_link(),
-        )
-        try_send_vip_merchant_whatsapp_alert(store_obj, message=mbody)
+        ac_send: Optional[AbandonedCart] = None
+        if cid:
+            ac_send = db.session.query(AbandonedCart).filter(AbandonedCart.zid_cart_id == cid).first()
+        if ac_send is not None:
+            store_alert = _resolve_store_for_vip_merchant_alert(ac_send)
+            _vip_merchant_auto_alert_if_newly_entering(
+                ac_send,
+                store_alert,
+                store_slug,
+                session_id,
+                was_vip_before=already,
+            )
+        else:
+            rta = (reason_tag or "").strip() or None
+            if not rta:
+                rta = _reason_tag_for_session(store_slug, session_id)
+            _send_vip_merchant_auto_alert(
+                store_obj,
+                cart_total=float(cart_total),
+                cart_id=cid or "-",
+                reason_tag=rta,
+            )
     except Exception as e:  # noqa: BLE001
         log.warning("VIP merchant alert failed (non-fatal): %s", e, exc_info=True)
 
@@ -1999,6 +2112,45 @@ def _strip_recovery_phone(raw: Optional[Any]) -> str:
         return ""
     s = str(raw).strip()
     return s[:100] if s else ""
+
+
+def _vip_dashboard_customer_phone_raw(
+    ac: AbandonedCart,
+    dashboard_store: Optional[Any],
+) -> str:
+    """رقم عميل للعرض في لوحة VIP — ‎raw_payload‎ ثم جلسة الاسترجاع."""
+    rp = getattr(ac, "raw_payload", None)
+    if isinstance(rp, str) and rp.strip():
+        try:
+            d = json.loads(rp)
+        except (json.JSONDecodeError, TypeError, ValueError):
+            d = None
+        if isinstance(d, dict):
+            cust = d.get("customer") if isinstance(d.get("customer"), dict) else {}
+            for key in ("phone", "mobile", "customer_phone"):
+                v = d.get(key)
+                if v is None and isinstance(cust, dict):
+                    v = cust.get(key)
+                got = _strip_recovery_phone(v)
+                if got:
+                    return got
+    ss = ""
+    if dashboard_store is not None:
+        zid = getattr(dashboard_store, "zid_store_id", None)
+        if isinstance(zid, str) and zid.strip():
+            ss = zid.strip()
+    sid = (getattr(ac, "recovery_session_id", None) or "").strip()
+    if ss and sid:
+        try:
+            from services.recovery_session_phone import get_recovery_customer_phone
+
+            rk = _recovery_key_from_store_and_session(ss, sid)
+            got2 = _strip_recovery_phone(get_recovery_customer_phone(rk))
+            if got2:
+                return got2
+        except Exception:  # noqa: BLE001
+            pass
+    return ""
 
 
 def _recovery_digits_normalized_sa(raw: str) -> str:
@@ -3293,6 +3445,7 @@ def _handle_cart_state_sync(payload: dict[str, Any]) -> dict[str, Any]:
         store_row=store_row,
     )
     row = _pick_canonical_abandoned_cart_row(cands) if cands else None
+    was_vip_before = bool(row is not None and getattr(row, "vip_mode", False))
     if cands and row is not None:
         ndel = _delete_noncanonical_abandoned_merge_rows(keep=row, candidates=cands)
         if ndel:
@@ -3366,6 +3519,17 @@ def _handle_cart_state_sync(payload: dict[str, Any]) -> dict[str, Any]:
 
     ups_cid = (str(getattr(row, "zid_cart_id", "") or zid or "")).strip()[:255]
     ups_sid = (str(getattr(row, "recovery_session_id", "") or sid_log or "")).strip()[:512]
+    try:
+        store_for_alert = _resolve_store_for_vip_merchant_alert(row)
+        _vip_merchant_auto_alert_if_newly_entering(
+            row,
+            store_for_alert,
+            store_slug,
+            ups_sid,
+            was_vip_before=was_vip_before,
+        )
+    except Exception as e:  # noqa: BLE001
+        log.warning("VIP merchant auto alert hook failed (non-fatal): %s", e, exc_info=True)
     log.info(
         "[CART STATE UPSERT]\nmode=%s\ncart_id=%s\nsession_id=%s\ncart_total=%s\nvip_mode=%s\nstatus=%s",
         "created" if created else "updated",
@@ -4410,8 +4574,20 @@ def _sync_abandoned_cart_vip_after_live_cart_payload(payload: dict[str, Any]) ->
                 upsert_st = int(upsert_st) if upsert_st is not None else sto_for_log
                 _log_vip_cart_upsert("created", cart_id=upsert_cid, session_id=upsert_sid, store_id=upsert_st)
                 _log_vip_cart_saved(row)
+                try:
+                    store_alert = _resolve_store_for_vip_merchant_alert(row)
+                    _vip_merchant_auto_alert_if_newly_entering(
+                        row,
+                        store_alert,
+                        store_slug,
+                        upsert_sid,
+                        was_vip_before=False,
+                    )
+                except Exception as e:  # noqa: BLE001
+                    log.warning("VIP merchant auto alert (insert) failed: %s", e, exc_info=True)
                 return
 
+        was_vip_before_update = bool(getattr(row, "vip_mode", False))
         st_norm = str(row.status or "").strip().lower()
         if st_norm == "recovered":
             if tot_eff is not None:
@@ -4471,6 +4647,17 @@ def _sync_abandoned_cart_vip_after_live_cart_payload(payload: dict[str, Any]) ->
             upsert_st = int(upsert_st) if upsert_st is not None else sto_for_log
             _log_vip_cart_upsert("updated", cart_id=upsert_cid, session_id=upsert_sid, store_id=upsert_st)
             _log_vip_cart_saved(row)
+            try:
+                store_alert = _resolve_store_for_vip_merchant_alert(row)
+                _vip_merchant_auto_alert_if_newly_entering(
+                    row,
+                    store_alert,
+                    store_slug,
+                    upsert_sid,
+                    was_vip_before=was_vip_before_update,
+                )
+            except Exception as e:  # noqa: BLE001
+                log.warning("VIP merchant auto alert (update) failed: %s", e, exc_info=True)
     except (SQLAlchemyError, OSError, TypeError, ValueError):
         db.session.rollback()
         log.warning("[VIP CART SYNC] failed", exc_info=True)
@@ -4857,6 +5044,9 @@ def _vip_priority_cart_alert_list() -> list[dict[str, Any]]:
             zid = (ac.zid_cart_id or "").strip()
             cart_short = zid[:28] + ("…" if len(zid) > 28 else "") if zid else "—"
             st = ((ac.status or "").strip() or "—")[:48]
+            raw_phone = _vip_dashboard_customer_phone_raw(ac, dash_store)
+            wa_digits = _normalize_customer_phone_for_wa_me(raw_phone)
+            contact_msg = _vip_customer_contact_whatsapp_message(ac)
             out.append(
                 {
                     "id": ac.id,
@@ -4865,6 +5055,8 @@ def _vip_priority_cart_alert_list() -> list[dict[str, Any]]:
                     "last_seen": _format_reason_ts(ac.last_seen_at),
                     "status": st,
                     "interactive": True,
+                    "customer_wa_phone": wa_digits,
+                    "contact_wa_message": contact_msg,
                 }
             )
     except (SQLAlchemyError, OSError) as e:

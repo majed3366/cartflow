@@ -128,7 +128,7 @@
                     {% if c.status != 'recovered' %}
                     <button type="button" data-send-url="{{ url_for('send_cart_manual', row_id=c.id) }}"
                       class="text-xs font-medium text-zid-600 hover:text-zid-800 border border-zid-200 rounded-lg px-2.5 py-1.5 hover:bg-zid-50">
-                      {% if c.vip_mode %}إرسال يدوي{% else %}Send Manually{% endif %}
+                      {% if c.vip_mode %}التواصل مع العميل{% else %}Send Manually{% endif %}
                     </button>
                     {% else %}
                     <span class="text-xs text-slate-400">—</span>

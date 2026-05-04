@@ -31,7 +31,7 @@ def vip_dashboard_review_link() -> str:
     ).strip().rstrip("/")
     if base:
         return f"{base}/dashboard/vip-cart-settings"
-    return "https://YOUR_APP_HOST/dashboard/vip-cart-settings"
+    return "https://smartreplyai.net/dashboard/vip-cart-settings"
 
 
 def _digits_only(s: str) -> str:

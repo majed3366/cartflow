@@ -5,6 +5,7 @@ from __future__ import annotations
 import unittest
 import uuid
 from datetime import datetime, timedelta, timezone
+from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
@@ -211,6 +212,84 @@ class VipCartStateSyncTests(unittest.TestCase):
         self.assertEqual((ac.recovery_session_id or "").strip(), sid.strip())
         prios = main._vip_priority_cart_alert_list()
         self.assertTrue(any(int(x["id"]) == int(ac.id) for x in prios))
+
+    @patch("main.try_send_vip_merchant_whatsapp_alert")
+    def test_first_vip_cart_state_sync_triggers_merchant_auto_alert(self, mock_send) -> None:
+        mock_send.return_value = {"ok": True}
+        db.create_all()
+        main._ensure_store_widget_schema()
+        slug = f"vsync_auto_{uuid.uuid4().hex[:10]}"
+        store = Store(
+            zid_store_id=slug,
+            vip_cart_threshold=500,
+            store_whatsapp_number="+966501112233",
+            recovery_delay=1,
+            recovery_delay_unit="minutes",
+            recovery_attempts=1,
+        )
+        db.session.add(store)
+        db.session.commit()
+        sid = f"s_auto_{uuid.uuid4().hex[:8]}"
+        cid = f"c_auto_{uuid.uuid4().hex[:10]}"
+        r = self.client.post(
+            "/api/cart-event",
+            json={
+                "event": "cart_state_sync",
+                "reason": "page_load",
+                "store": slug,
+                "session_id": sid,
+                "cart_id": cid,
+                "cart_total": 637.0,
+                "items_count": 1,
+                "cart": [{"price": 637.0, "quantity": 1}],
+            },
+        )
+        self.assertEqual(r.status_code, 200, r.text)
+        mock_send.assert_called_once()
+
+    @patch("main.try_send_vip_merchant_whatsapp_alert")
+    def test_second_vip_cart_state_sync_does_not_repeat_merchant_alert(self, mock_send) -> None:
+        mock_send.return_value = {"ok": True}
+        db.create_all()
+        main._ensure_store_widget_schema()
+        slug = f"vsync_auto2_{uuid.uuid4().hex[:10]}"
+        store = Store(
+            zid_store_id=slug,
+            vip_cart_threshold=500,
+            store_whatsapp_number="+966501112233",
+            recovery_delay=1,
+            recovery_delay_unit="minutes",
+            recovery_attempts=1,
+        )
+        db.session.add(store)
+        db.session.commit()
+        sid = f"s_auto2_{uuid.uuid4().hex[:8]}"
+        cid = f"c_auto2_{uuid.uuid4().hex[:10]}"
+        ac = AbandonedCart(
+            store_id=store.id,
+            zid_cart_id=cid,
+            cart_value=637.0,
+            status="abandoned",
+            vip_mode=True,
+            recovery_session_id=sid,
+        )
+        db.session.add(ac)
+        db.session.commit()
+        r = self.client.post(
+            "/api/cart-event",
+            json={
+                "event": "cart_state_sync",
+                "reason": "add",
+                "store": slug,
+                "session_id": sid,
+                "cart_id": cid,
+                "cart_total": 640.0,
+                "items_count": 1,
+                "cart": [{"price": 640.0, "quantity": 1}],
+            },
+        )
+        self.assertEqual(r.status_code, 200, r.text)
+        mock_send.assert_not_called()
 
     def test_empty_cart_recovered_and_removed_from_priority(self) -> None:
         db.create_all()

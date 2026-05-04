@@ -42,9 +42,13 @@
                 <p class="mt-1 text-xs text-slate-600">{{ vc.last_seen }}</p>
                 <p class="mt-0.5 text-xs font-medium text-slate-700">{{ vc.status }}</p>
               </div>
-              <button type="button" data-vip-manual-send data-cart-row-id="{{ vc.id }}" data-interactive="1"
-                class="vip-manual-send-btn shrink-0 rounded-lg border border-violet-600 bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-violet-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600 disabled:pointer-events-none disabled:opacity-50">
-                إرسال يدوي
+              <button type="button" data-vip-contact-customer
+                data-cart-row-id="{{ vc.id }}"
+                data-customer-wa="{{ vc.customer_wa_phone | e }}"
+                data-contact-msg="{{ vc.contact_wa_message | e }}"
+                data-interactive="1"
+                class="vip-contact-customer-btn shrink-0 rounded-lg border border-violet-600 bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-violet-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600 disabled:pointer-events-none disabled:opacity-50">
+                التواصل مع العميل
               </button>
               <span data-vip-send-status class="w-full text-end text-[10px] text-slate-600 md:w-auto md:flex-1"></span>
             </li>
@@ -211,64 +215,41 @@
   </script>
   <script>
     (function () {
-      document.querySelectorAll("[data-vip-manual-send]").forEach(function (btn) {
+      document.querySelectorAll("[data-vip-contact-customer]").forEach(function (btn) {
         btn.addEventListener("click", function () {
           var interactive = btn.getAttribute("data-interactive") === "1";
           if (!interactive || btn.disabled) return;
-          var rowId = btn.getAttribute("data-cart-row-id");
-          if (!rowId) return;
           var li = btn.closest("li");
           var statusEl = li ? li.querySelector("[data-vip-send-status]") : null;
-          var prevLabel = btn.textContent || "إرسال يدوي";
-          btn.disabled = true;
-          btn.classList.add("opacity-70");
-          btn.textContent = "جارٍ الإرسال…";
+          var waRaw = (btn.getAttribute("data-customer-wa") || "").trim();
+          var msg = btn.getAttribute("data-contact-msg") || "";
           if (statusEl) {
             statusEl.textContent = "";
             statusEl.classList.remove("text-red-600", "text-emerald-700", "font-semibold");
           }
-
-          fetch("/api/dashboard/vip-cart/" + encodeURIComponent(rowId) + "/merchant-alert", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: "{}",
-          })
-            .then(function (r) {
-              return r.json().then(function (j) {
-                return { status: r.status, j: j };
-              });
-            })
-            .then(function (x) {
-              var d = x.j || {};
-              if (d.ok === true && x.status >= 200 && x.status < 300) {
-                if (statusEl) {
-                  statusEl.textContent = d.message || "تم إرسال تنبيه التاجر";
-                  statusEl.classList.add("text-emerald-700", "font-semibold");
-                  statusEl.classList.remove("text-red-600");
-                }
-              } else {
-                if (statusEl) {
-                  statusEl.textContent =
-                    (d.error && String(d.error)) ||
-                    ("فشل الإرسال" + (d.detail ? " (" + String(d.detail) + ")" : ""));
-                  statusEl.classList.add("text-red-600", "font-semibold");
-                  statusEl.classList.remove("text-emerald-700");
-                }
-              }
-            })
-            .catch(function () {
-              if (statusEl) {
-                statusEl.textContent = "تعذر الاتصال بالخادم";
-                statusEl.classList.add("text-red-600", "font-semibold");
-              }
-            })
-            .finally(function () {
-              if (interactive) {
-                btn.disabled = false;
-              }
-              btn.classList.remove("opacity-70");
-              btn.textContent = prevLabel;
-            });
+          if (!waRaw) {
+            if (statusEl) {
+              statusEl.textContent = "لا يوجد رقم للعميل";
+              statusEl.classList.add("text-red-600", "font-semibold");
+            }
+            return;
+          }
+          var digits = waRaw.replace(/\D/g, "");
+          if (!digits) {
+            if (statusEl) {
+              statusEl.textContent = "لا يوجد رقم للعميل";
+              statusEl.classList.add("text-red-600", "font-semibold");
+            }
+            return;
+          }
+          var url =
+            "https://wa.me/" + encodeURIComponent(digits) + "?text=" + encodeURIComponent(msg);
+          window.open(url, "_blank", "noopener,noreferrer");
+          if (statusEl) {
+            statusEl.textContent = "تم فتح واتساب للعميل";
+            statusEl.classList.add("text-emerald-700", "font-semibold");
+            statusEl.classList.remove("text-red-600");
+          }
         });
       });
     })();
