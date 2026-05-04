@@ -2481,11 +2481,10 @@
     }
   }
 
-  function vipPhoneCaptureRenderFormInner() {
-    if (!vipPhoneCapturePanel) {
-      return;
-    }
-    var inner = vipPhoneCapturePanel.querySelector("[data-vip-phone-inner]");
+  /**
+   * حقل جمع الرقم لمتابعة سلّة VIP — يُستخدَم باللوحة المنفصلة وبفقاعة الودجت (بدون ازدواج المنطق).
+   */
+  function vipPhoneCaptureRenderFormIntoContainer(inner) {
     if (!inner) {
       return;
     }
@@ -2544,6 +2543,36 @@
     }
   }
 
+  function vipPhoneCaptureRenderFormInner() {
+    if (!vipPhoneCapturePanel) {
+      return;
+    }
+    var inner = vipPhoneCapturePanel.querySelector("[data-vip-phone-inner]");
+    if (!inner) {
+      return;
+    }
+    vipPhoneCaptureRenderFormIntoContainer(inner);
+  }
+
+  /** أولويّة لتجاوز أسئلة التردد داخل الفقاعة وجمع الرقم لمتابعة سلّة VIP. */
+  function vipPhoneTryMountBubbleBlock(bodyEl) {
+    try {
+      if (!bodyEl || !vipPhoneCaptureInteractiveEligible()) {
+        return false;
+      }
+      var wrapV = document.createElement("div");
+      wrapV.setAttribute("data-cf-vip-phone-bubble", "1");
+      wrapV.style.cssText =
+        "display:block;width:100%;box-sizing:border-box;margin:0 0 10px 0;";
+      bodyEl.appendChild(wrapV);
+      vipPhoneCaptureRenderFormIntoContainer(wrapV);
+      hideVipPhoneCapturePanel();
+      return true;
+    } catch (eVpb) {
+      return false;
+    }
+  }
+
   function ensureVipPhoneCapturePanel() {
     if (vipPhoneCapturePanel && vipPhoneCapturePanel.parentNode) {
       return vipPhoneCapturePanel;
@@ -2590,6 +2619,17 @@
 
   function syncVipPhoneCapturePanel() {
     try {
+      try {
+        if (
+          typeof document !== "undefined" &&
+          document.querySelector("[data-cf-vip-phone-bubble]")
+        ) {
+          hideVipPhoneCapturePanel();
+          return;
+        }
+      } catch (eBubGate) {
+        /* ignore */
+      }
       var converted =
         typeof isSessionConverted === "function" && isSessionConverted();
       if (
@@ -3995,6 +4035,10 @@
         return;
       }
       if (w.getAttribute("data-cf-layer-d-no-help-active") === "1") {
+        return;
+      }
+
+      if (vipPhoneTryMountBubbleBlock(widgetBody)) {
         return;
       }
 
@@ -6059,6 +6103,9 @@
       w._cfOnBackToEntry = null;
       setReasonTag(null);
       stripContentKeepChrome();
+      if (vipPhoneTryMountBubbleBlock(widgetBody)) {
+        return;
+      }
       var p2 = document.createElement("p");
       p2.style.cssText = "margin:0 0 8px 0;";
       p2.textContent = "وش أكثر شيء مخليك متردد؟ تبيني أساعدك";
