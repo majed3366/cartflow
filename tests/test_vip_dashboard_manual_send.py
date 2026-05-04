@@ -207,7 +207,7 @@ class VipDashboardMerchantAlertTests(unittest.TestCase):
         r = self.client.get("/dashboard/vip-cart-settings")
         self.assertEqual(r.status_code, 200, r.text)
         html = r.text
-        empty_msg = "لا توجد سلال مميزة حقيقية حالياً"
+        empty_msg = "لا توجد سلال مميزة حالياً"
         self.assertIn(empty_msg, html)
         self.assertNotIn("demo_vip_cart_zid", html)
         self.assertNotIn("vip-demo-heading", html)
@@ -253,8 +253,8 @@ class VipDashboardMerchantAlertTests(unittest.TestCase):
         r = self.client.get("/dashboard/vip-cart-settings")
         self.assertEqual(r.status_code, 200, r.text)
         html = r.text.replace("&#39;", "'")
-        self.assertIn(zid_mode, html)
-        self.assertNotIn(zid_log, html)
+        self.assertIn(f'data-cart-row-id="{ac1.id}"', html)
+        self.assertNotIn(f'data-cart-row-id="{ac2.id}"', html)
         self.assertNotIn("vip-demo-heading", html)
 
 
