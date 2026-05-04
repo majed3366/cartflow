@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import unittest
 import uuid
+from datetime import datetime, timedelta, timezone
 
 from fastapi.testclient import TestClient
 
@@ -17,6 +18,62 @@ class VipCartStateSyncTests(unittest.TestCase):
     def setUp(self) -> None:
         _reset_recovery_memory()
         self.client = TestClient(main.app)
+
+    def test_dashboard_dedupes_two_vip_rows_same_session(self) -> None:
+        """صفّان ‎VIP‎ لنفس الجلسة: التنظيف + الاستعلام يعرض صفاً واحداً."""
+        db.create_all()
+        main._ensure_store_widget_schema()
+        slug = f"vsync_dedup_{uuid.uuid4().hex[:10]}"
+        store = Store(
+            zid_store_id=slug,
+            vip_cart_threshold=500,
+            recovery_delay=1,
+            recovery_delay_unit="minutes",
+            recovery_attempts=1,
+        )
+        db.session.add(store)
+        db.session.commit()
+
+        sid = f"s_dedup_{uuid.uuid4().hex[:8]}"
+        cid_a = f"c_dedup_a_{uuid.uuid4().hex[:10]}"
+        cid_b = f"c_dedup_b_{uuid.uuid4().hex[:10]}"
+
+        older = datetime.now(timezone.utc) - timedelta(hours=2)
+        ac_old = AbandonedCart(
+            store_id=store.id,
+            zid_cart_id=cid_a,
+            cart_value=900.0,
+            status="abandoned",
+            vip_mode=True,
+            recovery_session_id=sid,
+            last_seen_at=older,
+        )
+        ac_new = AbandonedCart(
+            store_id=store.id,
+            zid_cart_id=cid_b,
+            cart_value=950.0,
+            status="abandoned",
+            vip_mode=True,
+            recovery_session_id=sid,
+            last_seen_at=datetime.now(timezone.utc),
+        )
+        db.session.add(ac_old)
+        db.session.add(ac_new)
+        db.session.commit()
+
+        dash = main._dashboard_recovery_store_row()
+        self.assertIsNotNone(dash)
+        self.assertEqual(int(dash.id), int(store.id))
+
+        lst = main._vip_priority_cart_alert_list()
+        matching_cart = [
+            x for x in lst if abs(float(x.get("cart_value") or 0.0) - 950.0) < 0.01
+        ]
+        self.assertEqual(len(matching_cart), 1)
+
+        ac_db = db.session.query(AbandonedCart).filter_by(recovery_session_id=sid).all()
+        self.assertEqual(len(ac_db), 1)
+        self.assertAlmostEqual(float(ac_db[0].cart_value or 0.0), 950.0)
 
     def test_below_threshold_sync_via_session_only_no_cart_id(self) -> None:
         """نفس سلوك الويدجت الحقيقي (‎add_to_cart‎ بدون ‎cart_id‎) — المطابقة بـ ‎recovery_session_id‎."""

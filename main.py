@@ -1289,6 +1289,197 @@ def _ensure_cart_abandon_payload_has_cart_id(
     return out
 
 
+def _synthetic_zid_cart_id_from_recovery_key(recovery_key: str) -> str:
+    """نفس ‎cart_id‎ الاصطناعي ‎cf_w_*‎ المستخدم في ‎_ensure_cart_abandon_payload_has_cart_id‎."""
+    rk = (recovery_key or "").strip()
+    if not rk:
+        return ""
+    h = hashlib.sha256(rk.encode("utf-8")).hexdigest()[:24]
+    return f"cf_w_{h}"[:255]
+
+
+def _collect_abandoned_cart_rows_for_merge(
+    *,
+    cart_ids: list[str],
+    session_id: Optional[str],
+    recovery_key: str,
+    store_row: Optional[Store],
+) -> list[AbandonedCart]:
+    """كل صفوف ‎AbandonedCart‎ المرشّحة لدمجها: ‎zid_cart_id‎، ‎recovery_session_id‎، ‎cf_w_*‎ من ‎recovery_key‎."""
+    seen: set[int] = set()
+    out: list[AbandonedCart] = []
+
+    def take(r: Optional[AbandonedCart]) -> None:
+        if r is None:
+            return
+        rid = int(r.id)
+        if rid in seen:
+            return
+        seen.add(rid)
+        out.append(r)
+
+    for cid in cart_ids:
+        cid_n = (cid or "").strip()[:255]
+        if not cid_n:
+            continue
+        take(db.session.query(AbandonedCart).filter_by(zid_cart_id=cid_n).first())
+
+    sid_n = (session_id or "").strip()[:512] if session_id else ""
+    if sid_n:
+        q = db.session.query(AbandonedCart).filter(AbandonedCart.recovery_session_id == sid_n)
+        if store_row is not None and getattr(store_row, "id", None) is not None:
+            sid_val = int(store_row.id)
+            q = q.filter(
+                (AbandonedCart.store_id == sid_val) | (AbandonedCart.store_id.is_(None))  # type: ignore[union-attr]
+            )
+        for r in q.all():
+            take(r)
+
+    syn = _synthetic_zid_cart_id_from_recovery_key(recovery_key)
+    if syn:
+        take(db.session.query(AbandonedCart).filter_by(zid_cart_id=syn).first())
+
+    return out
+
+
+def _pick_canonical_abandoned_cart_row(candidates: list[AbandonedCart]) -> Optional[AbandonedCart]:
+    if not candidates:
+        return None
+    if len(candidates) == 1:
+        return candidates[0]
+
+    def sort_key(r: AbandonedCart) -> tuple:
+        zid = (r.zid_cart_id or "").strip()
+        is_syn = zid.startswith("cf_w_")
+        ts = r.last_seen_at
+        if ts is None:
+            tsf = 0.0
+        elif ts.tzinfo is None:
+            tsf = ts.replace(tzinfo=timezone.utc).timestamp()
+        else:
+            tsf = ts.timestamp()
+        return (0 if not is_syn else 1, -tsf, -int(r.id))
+
+    return sorted(candidates, key=sort_key)[0]
+
+
+def _delete_noncanonical_abandoned_merge_rows(
+    *,
+    keep: AbandonedCart,
+    candidates: list[AbandonedCart],
+) -> int:
+    n = 0
+    for c in candidates:
+        if int(c.id) == int(keep.id):
+            continue
+        db.session.delete(c)
+        n += 1
+    return n
+
+
+def _abandoned_cart_try_upgrade_synthetic_zid(row: AbandonedCart, new_zid: str) -> None:
+    """إذا كان ‎zid_cart_id‎ اصطناعياً ‎cf_w_*‎ ووصلنا ‎cart_id‎ حقيقي، نحدّث دون الاصطدام بصف آخر."""
+    nz = (new_zid or "").strip()[:255]
+    if not nz or nz.startswith("cf_w_"):
+        return
+    cur = (row.zid_cart_id or "").strip()
+    if not cur.startswith("cf_w_"):
+        return
+    if cur == nz:
+        return
+    other = db.session.query(AbandonedCart).filter(AbandonedCart.zid_cart_id == nz).first()
+    if other is not None and int(other.id) != int(row.id):
+        return
+    row.zid_cart_id = nz
+
+
+def _resolve_abandoned_cart_row_for_vip_live_sync(
+    *,
+    payload: dict[str, Any],
+    merge_payload: dict[str, Any],
+    payload_session: dict[str, Any],
+    store_row: Optional[Store],
+    cid_synth: str,
+) -> Optional[AbandonedCart]:
+    """
+    دمج صفوف ‎AbandonedCart‎ قبل مزامنة ‎VIP‎ من أحداث السلة الحيّة:
+    يفضّل ‎zid_cart_id‎ الحقيقي ثم الأحدث ‎last_seen_at‎، ويحذف المكررات.
+    """
+    rk = _recovery_key_from_payload(merge_payload)
+    sid_raw = merge_payload.get("session_id") or payload_session.get("session_id")
+    sid_s = sid_raw.strip()[:512] if isinstance(sid_raw, str) and sid_raw.strip() else ""
+    real_cid = (_cart_id_str_from_payload(payload) or "").strip()[:255]
+    cart_ids: list[str] = []
+    for x in (real_cid, (cid_synth or "").strip()[:255]):
+        if x and x not in cart_ids:
+            cart_ids.append(x)
+    cands = _collect_abandoned_cart_rows_for_merge(
+        cart_ids=cart_ids,
+        session_id=sid_s if sid_s else None,
+        recovery_key=rk,
+        store_row=store_row,
+    )
+    if not cands:
+        return None
+    keep = _pick_canonical_abandoned_cart_row(cands)
+    if keep is None:
+        return None
+    _delete_noncanonical_abandoned_merge_rows(keep=keep, candidates=cands)
+    return keep
+
+
+def _cleanup_duplicate_vip_abandoned_rows(*, store_id_scope: Optional[int] = None) -> int:
+    """
+    ‎vip_mode‎ + ‎status=abandoned‎: لكل ‎(store_id, recovery_session_id)‎ يُبقى الأحدث ‎last_seen_at‎
+    ويُحذف الباقي (تنظيف تاريخي).
+    """
+    deleted = 0
+    try:
+        _ensure_store_widget_schema()
+        db.create_all()
+        q = (
+            db.session.query(AbandonedCart)
+            .filter(AbandonedCart.vip_mode.is_(True))
+            .filter(AbandonedCart.status == "abandoned")
+            .filter(AbandonedCart.recovery_session_id.isnot(None))
+        )
+        if store_id_scope is not None:
+            vid = int(store_id_scope)
+            q = q.filter(
+                (AbandonedCart.store_id == vid) | (AbandonedCart.store_id.is_(None))  # type: ignore[union-attr]
+            )
+        rows = list(q.all())
+        groups: dict[tuple[Optional[int], str], list[AbandonedCart]] = {}
+        for ac in rows:
+            sid = (ac.recovery_session_id or "").strip()[:512]
+            if not sid:
+                continue
+            key = (ac.store_id, sid)
+            groups.setdefault(key, []).append(ac)
+        for grp in groups.values():
+            if len(grp) <= 1:
+                continue
+
+            def _ts(r: AbandonedCart) -> datetime:
+                t = r.last_seen_at
+                if t is None:
+                    return datetime.min.replace(tzinfo=timezone.utc)
+                if t.tzinfo is None:
+                    return t.replace(tzinfo=timezone.utc)
+                return t.astimezone(timezone.utc)
+
+            grp.sort(key=_ts, reverse=True)
+            for dup in grp[1:]:
+                db.session.delete(dup)
+                deleted += 1
+        if deleted:
+            db.session.commit()
+    except (SQLAlchemyError, OSError, TypeError, ValueError):
+        db.session.rollback()
+        log.warning("[VIP DEDUPE] cleanup failed", exc_info=True)
+    return deleted
+
+
 def _recovery_message_for_step(step: int) -> str:
     for s, t in _RECOVERY_SEQUENCE_STEPS:
         if s == step:
@@ -1549,6 +1740,21 @@ def _log_vip_cart_saved(ac: Optional[AbandonedCart]) -> None:
     print(
         f"[VIP CART SAVED] cart_id={cid!r} store_id={sid_s} cart_value={cv_s} vip_mode={vm_s} status={st}"
     )
+
+
+def _log_vip_cart_upsert(
+    mode: str,
+    *,
+    cart_id: str,
+    session_id: str,
+    store_id: Optional[int],
+) -> None:
+    m = "created" if mode == "created" else "updated"
+    cid = (cart_id or "").strip()[:255] or "-"
+    sid = (session_id or "").strip()[:512] or "-"
+    st_s = "none" if store_id is None else str(store_id)
+    log.info("[VIP CART UPSERT]\nmode=%s\ncart_id=%s\nsession_id=%s\nstore_id=%s", m, cid, sid, st_s)
+    print(f"[VIP CART UPSERT] mode={m} cart_id={cid} session_id={sid} store_id={st_s}")
 
 
 # مسار الويدجت الحقيقي (‎POST /api/cart-event‎)؛ خطوة ‎0‎ = طبقة ‎VIP‎ خارج ‎step 1‎–‎3‎ في ‎CartRecoveryLog‎.
@@ -3886,34 +4092,6 @@ def _store_slug_for_cart_vip_sync(payload: dict[str, Any]) -> str:
     return "default"
 
 
-def _find_abandoned_cart_row_for_live_cart_sync(
-    payload: dict[str, Any],
-    *,
-    store_row: Optional[Store],
-) -> Optional[AbandonedCart]:
-    """صف ‎AbandonedCart‎ المرتبط بحدث السلة الحي: ‎cart_id‎ أو آخر صف لهذه الجلسة."""
-    try:
-        _ensure_store_widget_schema()
-        db.create_all()
-        cid = _cart_id_str_from_payload(payload)
-        if cid:
-            return db.session.query(AbandonedCart).filter_by(zid_cart_id=cid).first()
-        sid = _session_part_from_payload(payload)
-        if not (isinstance(sid, str) and sid.strip()):
-            return None
-        sid_n = sid.strip()[:512]
-        q = db.session.query(AbandonedCart).filter(AbandonedCart.recovery_session_id == sid_n)
-        if store_row is not None and getattr(store_row, "id", None) is not None:
-            sid_val = int(store_row.id)
-            q = q.filter(
-                (AbandonedCart.store_id == sid_val) | (AbandonedCart.store_id.is_(None))  # type: ignore[union-attr]
-            )
-        return q.order_by(AbandonedCart.last_seen_at.desc()).first()
-    except (SQLAlchemyError, OSError):
-        db.session.rollback()
-        return None
-
-
 def _sync_abandoned_cart_vip_after_live_cart_payload(payload: dict[str, Any]) -> None:
     """
     بعد أحداث سلة حية (غير ‎cart_abandoned‎): تحديث أو إنشاء ‎AbandonedCart‎؛
@@ -3943,11 +4121,26 @@ def _sync_abandoned_cart_vip_after_live_cart_payload(payload: dict[str, Any]) ->
 
         cid_from_request = (_cart_id_str_from_payload(payload) or "").strip()
 
-        row = None
-        if cid_from_request:
-            row = db.session.query(AbandonedCart).filter_by(zid_cart_id=cid_from_request).first()
-        if row is None:
-            row = _find_abandoned_cart_row_for_live_cart_sync(payload_session, store_row=store_row)
+        row = _resolve_abandoned_cart_row_for_vip_live_sync(
+            payload=payload,
+            merge_payload=merge_payload,
+            payload_session=payload_session,
+            store_row=store_row,
+            cid_synth=cid_synth[:255],
+        )
+        if row is not None:
+            _abandoned_cart_try_upgrade_synthetic_zid(row, cid_from_request)
+            db.session.flush()
+
+        sid_for_log_raw = merge_payload.get("session_id") or payload_session.get("session_id")
+        sid_for_log = (
+            sid_for_log_raw.strip()[:512]
+            if isinstance(sid_for_log_raw, str) and sid_for_log_raw.strip()
+            else ""
+        )
+        sto_for_log: Optional[int] = (
+            int(store_row.id) if store_row is not None and getattr(store_row, "id", None) is not None else None
+        )
 
         purchase_done = bool(
             payload.get("purchase_completed") is True
@@ -3993,7 +4186,7 @@ def _sync_abandoned_cart_vip_after_live_cart_payload(payload: dict[str, Any]) ->
         th_s = "none" if th_raw is None else str(th_raw)
         is_vip_now = bool(is_vip_cart(tot_eff, store_row))
 
-        # صف جديد: فقط عند ‎VIP‎ وقيمة سلّة صالحة
+        # صف جديد: فقط عند ‎VIP‎ وقيمة سلّة صالحة — وإلا دمج/تحديث صف موجود (لا تكرار)
         if row is None:
             log.info(
                 "[VIP UPDATE CHECK]\ncart_total=%s\nthreshold=%s\nis_vip=%s",
@@ -4018,20 +4211,33 @@ def _sync_abandoned_cart_vip_after_live_cart_payload(payload: dict[str, Any]) ->
                 row_ins.recovery_session_id = rsid_ins.strip()[:512]
             AbandonedCart.set_raw(row_ins, merge_payload)
             db.session.add(row_ins)
-            row_insert_fresh = True
             try:
                 db.session.flush()
                 row = row_ins
             except IntegrityError:
                 db.session.rollback()
-                row_insert_fresh = False
-                row = db.session.query(AbandonedCart).filter_by(zid_cart_id=cid_synth[:255]).first()
+                row = _resolve_abandoned_cart_row_for_vip_live_sync(
+                    payload=payload,
+                    merge_payload=merge_payload,
+                    payload_session=payload_session,
+                    store_row=store_row,
+                    cid_synth=cid_synth[:255],
+                )
+                if row is not None:
+                    _abandoned_cart_try_upgrade_synthetic_zid(row, cid_from_request)
+                    db.session.flush()
+                if row is None:
+                    row = db.session.query(AbandonedCart).filter_by(zid_cart_id=cid_synth[:255]).first()
                 if row is None:
                     return
-
-            if row_insert_fresh:
+            else:
                 db.session.commit()
                 db.session.refresh(row)
+                upsert_cid = (row.zid_cart_id or cid_synth or "").strip()[:255]
+                upsert_sid = (getattr(row, "recovery_session_id", None) or sid_for_log or "").strip()[:512]
+                upsert_st = getattr(row, "store_id", None)
+                upsert_st = int(upsert_st) if upsert_st is not None else sto_for_log
+                _log_vip_cart_upsert("created", cart_id=upsert_cid, session_id=upsert_sid, store_id=upsert_st)
                 _log_vip_cart_saved(row)
                 return
 
@@ -4088,6 +4294,11 @@ def _sync_abandoned_cart_vip_after_live_cart_payload(payload: dict[str, Any]) ->
 
         db.session.commit()
         if did_vip_save and bool(getattr(row, "vip_mode", False)):
+            upsert_cid = (row.zid_cart_id or cid_synth or "").strip()[:255]
+            upsert_sid = (getattr(row, "recovery_session_id", None) or sid_for_log or "").strip()[:512]
+            upsert_st = getattr(row, "store_id", None)
+            upsert_st = int(upsert_st) if upsert_st is not None else sto_for_log
+            _log_vip_cart_upsert("updated", cart_id=upsert_cid, session_id=upsert_sid, store_id=upsert_st)
             _log_vip_cart_saved(row)
     except (SQLAlchemyError, OSError, TypeError, ValueError):
         db.session.rollback()
@@ -4208,11 +4419,44 @@ def upsert_abandoned_cart_from_payload(
     *,
     store: Optional[Any] = None,
 ) -> Tuple[bool, str, Optional[AbandonedCart]]:
-    # إدراج أو تحديث ‎AbandonedCart‎ حسب ‎zid_cart_id‎
+    # إدراج أو تحديث ‎AbandonedCart‎ — دمج حسب ‎zid_cart_id‎ ثم ‎recovery_session_id‎ ثم ‎cf_w_*‎ من ‎recovery_key‎
     fields = normalize_zid_cart_fields(payload)
     if not fields["zid_cart_id"]:
         return False, "missing zid_cart_id", None
-    row = db.session.query(AbandonedCart).filter_by(zid_cart_id=fields["zid_cart_id"]).first()
+
+    pl = payload if isinstance(payload, dict) else {}
+    rk = _recovery_key_from_payload(pl)
+    sid_raw = pl.get("session_id")
+    sid_s = sid_raw.strip()[:512] if isinstance(sid_raw, str) and sid_raw.strip() else ""
+
+    cart_ids: list[str] = []
+    zid = (fields["zid_cart_id"] or "").strip()[:255]
+    if zid:
+        cart_ids.append(zid)
+    syn = _synthetic_zid_cart_id_from_recovery_key(rk)
+    if syn and syn not in cart_ids:
+        cart_ids.append(syn)
+
+    store_any = store if store is not None else None
+    cands = _collect_abandoned_cart_rows_for_merge(
+        cart_ids=cart_ids,
+        session_id=sid_s if sid_s else None,
+        recovery_key=rk,
+        store_row=store_any,
+    )
+    row = _pick_canonical_abandoned_cart_row(cands) if cands else None
+    merged_away = 0
+    if cands and row is not None:
+        merged_away = _delete_noncanonical_abandoned_merge_rows(keep=row, candidates=cands)
+        if merged_away:
+            try:
+                db.session.flush()
+            except IntegrityError:
+                db.session.rollback()
+                log.warning("[ABANDON UPSERT] merge_flush_failed", exc_info=True)
+                return False, "merge_flush_failed", None
+
+    created = False
     if row is None:
         row = AbandonedCart(
             zid_cart_id=fields["zid_cart_id"],
@@ -4224,7 +4468,9 @@ def upsert_abandoned_cart_from_payload(
         )
         AbandonedCart.set_raw(row, payload)
         db.session.add(row)
+        created = True
     else:
+        _abandoned_cart_try_upgrade_synthetic_zid(row, zid)
         row.customer_name = fields["customer_name"] or row.customer_name
         row.customer_phone = fields["customer_phone"] or row.customer_phone
         if fields["cart_value"] != 0.0 or row.cart_value is None or row.cart_value == 0.0:
@@ -4274,7 +4520,30 @@ def upsert_abandoned_cart_from_payload(
         )
     except Exception:  # noqa: BLE001
         pass
+
+    vip_upsert_log = False
+    try:
+        if bool(getattr(row, "vip_mode", False)) and str(row.status or "").strip() == "abandoned":
+            vip_upsert_log = True
+    except Exception:  # noqa: BLE001
+        vip_upsert_log = False
+
     db.session.commit()
+
+    if vip_upsert_log and row is not None:
+        try:
+            db.session.refresh(row)
+        except (SQLAlchemyError, OSError):
+            db.session.rollback()
+        cid_u = (str(getattr(row, "zid_cart_id", "") or "").strip())[:255]
+        sid_u = (
+            str(getattr(row, "recovery_session_id", "") or "").strip()[:512]
+            or sid_s
+            or "-"
+        )
+        st_u = getattr(row, "store_id", None)
+        st_u_int = int(st_u) if st_u is not None else None
+        _log_vip_cart_upsert("created" if created else "updated", cart_id=cid_u, session_id=sid_u, store_id=st_u_int)
     return True, "ok", row
 
 
@@ -4359,6 +4628,7 @@ def _vip_priority_cart_alert_list() -> list[dict[str, Any]]:
         _ensure_default_store_for_recovery()
         dash_store = _dashboard_recovery_store_row()
         dash_id_raw = getattr(dash_store, "id", None) if dash_store is not None else None
+        scope_id: Optional[int] = None
         q = (
             db.session.query(AbandonedCart)
             .filter(AbandonedCart.vip_mode.is_(True))
@@ -4367,17 +4637,51 @@ def _vip_priority_cart_alert_list() -> list[dict[str, Any]]:
         if dash_id_raw is not None:
             try:
                 vid = int(dash_id_raw)
+                scope_id = vid
                 q = q.filter(
                     (AbandonedCart.store_id == vid) | (AbandonedCart.store_id.is_(None))  # type: ignore[union-attr]
                 )
             except (TypeError, ValueError):
                 pass
-        n_match = int(q.count())
+
+        _cleanup_duplicate_vip_abandoned_rows(store_id_scope=scope_id)
+
+        def _distinct_key(ac: AbandonedCart) -> str:
+            rs = (ac.recovery_session_id or "").strip()
+            if rs:
+                return f"rs:{rs}"
+            zi = (ac.zid_cart_id or "").strip()
+            if zi:
+                return f"zid:{zi}"
+            return f"id:{int(ac.id)}"
+
+        full_rows = list(q.order_by(AbandonedCart.last_seen_at.desc()).all())
+
+        def _ts_norm(ac: AbandonedCart) -> datetime:
+            t = ac.last_seen_at
+            if t is None:
+                return datetime.min.replace(tzinfo=timezone.utc)
+            if t.tzinfo is None:
+                return t.replace(tzinfo=timezone.utc)
+            return t.astimezone(timezone.utc)
+
+        n_match = len({_distinct_key(ac) for ac in full_rows})
         sid_log = "none" if dash_id_raw is None else str(dash_id_raw)
         log.info("[VIP PRIORITY QUERY]\nstore_id=%s\ncount=%s", sid_log, str(n_match))
         print(f"[VIP PRIORITY QUERY] store_id={sid_log} count={n_match}")
 
-        for ac in q.order_by(AbandonedCart.last_seen_at.desc()).limit(24).all():
+        seen_k: set[str] = set()
+        picked: list[AbandonedCart] = []
+        for ac in sorted(full_rows, key=_ts_norm, reverse=True):
+            dk = _distinct_key(ac)
+            if dk in seen_k:
+                continue
+            seen_k.add(dk)
+            picked.append(ac)
+            if len(picked) >= 24:
+                break
+
+        for ac in picked:
             zid = (ac.zid_cart_id or "").strip()
             cart_short = zid[:28] + ("…" if len(zid) > 28 else "") if zid else "—"
             st = ((ac.status or "").strip() or "—")[:48]
