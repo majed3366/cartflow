@@ -107,6 +107,8 @@ class AbandonedCart(Base):
         nullable=False,
     )
     recovered_at = Column(DateTime, nullable=True)
+    # جلسة الاسترجاع من الواجهة (‎session_id‎ عند ترك السلة من الويدجت/المتجر)
+    recovery_session_id = Column(String(512), nullable=True, index=True)
     # سلة عالية القيمة (VIP): لا استرجاع تلقائي للعميل — متابعة يدوية
     vip_mode = Column(Boolean, default=False, nullable=False)
 

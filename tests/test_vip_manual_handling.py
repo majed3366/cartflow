@@ -130,7 +130,7 @@ class WidgetCartAbandonVipDetectionTests(unittest.TestCase):
         self.assertIn("[WIDGET CART EVENT]", blob)
         self.assertIn("[ABANDONED CART SAVED]", blob)
         self.assertIn("[VIP CHECK]", blob)
-        self.assertIn("[VIP MODE ACTIVATED] source=widget_cart_event", blob)
+        self.assertIn("[VIP MODE ACTIVATED] source=real_widget_cart_event", blob)
 
         lg = (
             db.session.query(CartRecoveryLog)
@@ -150,6 +150,75 @@ class WidgetCartAbandonVipDetectionTests(unittest.TestCase):
         self.assertAlmostEqual(float(ac.cart_value or 0.0), 1200.0)
         self.assertEqual((ac.status or "").strip(), "abandoned")
         self.assertTrue(ac.vip_mode)
+
+        prios = main._vip_priority_cart_alert_list()
+        self.assertTrue(any(int(x.get("id", 0)) == int(ac.id) for x in prios))
+
+    @patch("main.try_send_vip_merchant_whatsapp_alert", return_value={"ok": False})
+    @patch("main.send_whatsapp")
+    def test_vip_without_cart_id_uses_stable_fallback_cf_w(self, _mock_sw: object, _mock_va: object) -> None:
+        """واجهات بدون cart_id: يُنشأ cf_w_* وVIP يُسجَّل (>500) دون dev endpoint."""
+        db.create_all()
+        main._ensure_store_widget_schema()
+        slug = f"widnc_{uuid.uuid4().hex[:10]}"
+        store = Store(
+            zid_store_id=slug,
+            vip_cart_threshold=500,
+            recovery_delay=5,
+            recovery_delay_unit="minutes",
+            recovery_attempts=2,
+        )
+        db.session.add(store)
+        db.session.commit()
+        sid = f"wid-no-cid-{uuid.uuid4().hex[:8]}"
+
+        rk = main._recovery_key_from_payload({"store": slug, "session_id": sid})
+        fallback_cid = main._ensure_cart_abandon_payload_has_cart_id(
+            {"store": slug, "session_id": sid, "event": "cart_abandoned"},
+            rk,
+        )["cart_id"]
+
+        old_ac = db.session.query(AbandonedCart).filter_by(zid_cart_id=fallback_cid).first()
+        if old_ac:
+            db.session.delete(old_ac)
+            db.session.commit()
+
+        _post_recovery_reason_for_session(self.client, slug, sid, "price")
+
+        r = self.client.post(
+            "/api/cart-event",
+            json={
+                "event": "cart_abandoned",
+                "store": slug,
+                "session_id": sid,
+                "source": "visibility",
+                "cart_total": 750.5,
+                "phone": "+966501112233",
+                "cart": [],
+            },
+        )
+        self.assertEqual(r.status_code, 200, r.text)
+        self.assertEqual(r.json().get("recovery_state"), "vip_manual_handling")
+
+        ac = db.session.query(AbandonedCart).filter_by(zid_cart_id=fallback_cid).first()
+        self.assertIsNotNone(ac)
+        self.assertEqual((ac.recovery_session_id or "").strip(), sid)
+        self.assertAlmostEqual(float(ac.cart_value or 0.0), 750.5)
+        self.assertTrue(ac.vip_mode)
+        self.assertEqual((ac.status or "").strip(), "abandoned")
+        self.assertEqual(int(ac.store_id or 0), int(store.id))
+
+        lg = (
+            db.session.query(CartRecoveryLog)
+            .filter(
+                CartRecoveryLog.cart_id == fallback_cid,
+                CartRecoveryLog.status == "vip_manual_handling",
+            )
+            .order_by(CartRecoveryLog.id.desc())
+            .first()
+        )
+        self.assertIsNotNone(lg)
+        self.assertEqual((lg.message or "").strip(), main.VIP_WIDGET_RECOVERY_LOG_MESSAGE)
 
         prios = main._vip_priority_cart_alert_list()
         self.assertTrue(any(int(x.get("id", 0)) == int(ac.id) for x in prios))

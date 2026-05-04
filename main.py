@@ -1261,6 +1261,21 @@ def _cart_id_str_from_payload(payload: dict[str, Any]) -> Optional[str]:
     return s if s else None
 
 
+def _ensure_cart_abandon_payload_has_cart_id(
+    payload: dict[str, Any], recovery_key: str
+) -> dict[str, Any]:
+    """يملأ ‎cart_id‎ اصطناعياً عند الغياب حتى يُنشأ ‎AbandonedCart‎ ويُفعّل ‎VIP‎."""
+    if _cart_id_str_from_payload(payload):
+        return payload
+    rk = (recovery_key or "").strip()
+    if not rk:
+        return payload
+    h = hashlib.sha256(rk.encode("utf-8")).hexdigest()[:24]
+    out = dict(payload)
+    out["cart_id"] = f"cf_w_{h}"[:255]
+    return out
+
+
 def _recovery_message_for_step(step: int) -> str:
     for s, t in _RECOVERY_SEQUENCE_STEPS:
         if s == step:
@@ -1492,9 +1507,9 @@ def _vip_log_check(cart_total: Optional[float], threshold: Any, is_vip: bool) ->
     log.info("[VIP CHECK]\ncart_total=%s\nthreshold=%s\nis_vip=%s", ct, th, vip_s)
 
 
-# رسالة وحيدة للسجل عند VIP من مسار الويدجت/‎POST‎ ‎cart-event‎ (خطوة ‎0‎ = مسار vip يدوي خارج ‎step 1‎–‎3‎).
-VIP_WIDGET_ACTIVATION_SOURCE = "widget_cart_event"
-VIP_WIDGET_RECOVERY_LOG_MESSAGE = "VIP cart detected from widget flow"
+# مسار الويدجت الحقيقي (‎POST /api/cart-event‎)؛ خطوة ‎0‎ = طبقة ‎VIP‎ خارج ‎step 1‎–‎3‎ في ‎CartRecoveryLog‎.
+VIP_WIDGET_ACTIVATION_SOURCE = "real_widget_cart_event"
+VIP_WIDGET_RECOVERY_LOG_MESSAGE = "VIP cart detected from real widget flow"
 VIP_WIDGET_RECOVERY_LOG_STEP = 0
 
 
@@ -2589,6 +2604,7 @@ async def handle_cart_abandoned(
     store_slug = _normalize_store_slug(payload)
     print("store:", store_slug)
     recovery_key = _recovery_key_from_payload(payload)
+    payload = _ensure_cart_abandon_payload_has_cart_id(payload, recovery_key)
     print("recovery key:", recovery_key)
     session_id_log = _session_part_from_payload(payload)
     print("[SESSION]", session_id_log)
@@ -3922,15 +3938,22 @@ def upsert_abandoned_cart_from_payload(
         if str(row.status or "").strip() != "recovered":
             row.status = "abandoned"
     try:
+        rsid = payload.get("session_id")
+        if isinstance(rsid, str) and rsid.strip():
+            row.recovery_session_id = rsid.strip()[:512]
+    except (AttributeError, TypeError):
+        pass
+    try:
         cv_disp = row.cart_value
         if cv_disp is None:
             cv_disp = fields.get("cart_value")
         sid_out = str(row.store_id) if getattr(row, "store_id", None) is not None else "none"
         log.info(
-            "[ABANDONED CART SAVED]\ncart_id=%s\ncart_value=%s\nstore_id=%s",
+            "[ABANDONED CART SAVED]\ncart_id=%s\ncart_value=%s\nstore_id=%s\nsession_id=%s",
             fields["zid_cart_id"],
             str(cv_disp) if cv_disp is not None else "",
             sid_out,
+            (str(payload.get("session_id") or "").strip()[:512] or "-"),
         )
     except Exception:  # noqa: BLE001
         pass
