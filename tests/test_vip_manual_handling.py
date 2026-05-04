@@ -233,6 +233,11 @@ class WidgetDemoStoreResolutionTests(unittest.TestCase):
     def test_demo_slug_uses_latest_store_vip_threshold(self) -> None:
         db.create_all()
         main._ensure_store_widget_schema()
+        ex_demo = db.session.query(Store).filter_by(zid_store_id="demo").first()
+        if ex_demo is not None:
+            db.session.delete(ex_demo)
+            db.session.commit()
+        dash_z = f"merchant_dash_{uuid.uuid4().hex[:10]}"
         stale_demo = Store(
             zid_store_id="demo",
             vip_cart_threshold=None,
@@ -241,7 +246,7 @@ class WidgetDemoStoreResolutionTests(unittest.TestCase):
             recovery_attempts=1,
         )
         dashboard_row = Store(
-            zid_store_id="merchant_dashboard_zid",
+            zid_store_id=dash_z,
             vip_cart_threshold=500,
             recovery_delay=2,
             recovery_delay_unit="minutes",
@@ -259,15 +264,17 @@ class WidgetDemoStoreResolutionTests(unittest.TestCase):
     def test_default_slug_uses_latest_store(self) -> None:
         db.create_all()
         main._ensure_store_widget_schema()
+        z_first = f"def_first_{uuid.uuid4().hex[:10]}"
+        z_latest = f"def_latest_{uuid.uuid4().hex[:10]}"
         first = Store(
-            zid_store_id="something",
+            zid_store_id=z_first,
             vip_cart_threshold=None,
             recovery_delay=1,
             recovery_delay_unit="minutes",
             recovery_attempts=1,
         )
         latest = Store(
-            zid_store_id="live_merchant",
+            zid_store_id=z_latest,
             vip_cart_threshold=500,
             recovery_delay=2,
             recovery_delay_unit="minutes",

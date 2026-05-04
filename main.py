@@ -3064,6 +3064,7 @@ async def api_cart_event(request: Request, background_tasks: BackgroundTasks):
         )
         print("[BEHAVIOR RESET]")
         out["behavior_reset"] = True
+    _sync_abandoned_cart_vip_after_live_cart_payload(payload)
     return j(out, 200)
 
 
@@ -3088,6 +3089,13 @@ async def api_conversion(request: Request) -> Any:
     if "purchase_completed" in body and body.get("purchase_completed") is not True:
         return j({"ok": False, "error": "purchase_completed_must_be_true"}, 400)
     key = _mark_session_converted(str(ss).strip(), str(sid).strip())
+    _sync_abandoned_cart_vip_after_live_cart_payload(
+        {
+            "store_slug": str(ss).strip(),
+            "session_id": str(sid).strip(),
+            "purchase_completed": True,
+        }
+    )
     return j(
         {
             "ok": True,
@@ -3841,6 +3849,135 @@ def send_whatsapp_message(
 
 
 # --- مولد رسالة الاسترجاع (Anthropic / Claude) ---
+
+def _store_slug_for_cart_vip_sync(payload: dict[str, Any]) -> str:
+    """مفتاح المتجر من حمولة الويدجت أو ‎/api/conversion‎ (‎store‎ أو ‎store_slug‎)."""
+    raw = payload.get("store")
+    if isinstance(raw, str) and raw.strip():
+        return raw.strip()
+    ss = payload.get("store_slug")
+    if isinstance(ss, str) and ss.strip():
+        return ss.strip()
+    return "default"
+
+
+def _find_abandoned_cart_row_for_live_cart_sync(
+    payload: dict[str, Any],
+    *,
+    store_row: Optional[Store],
+) -> Optional[AbandonedCart]:
+    """صف ‎AbandonedCart‎ المرتبط بحدث السلة الحي: ‎cart_id‎ أو آخر صف لهذه الجلسة."""
+    try:
+        _ensure_store_widget_schema()
+        db.create_all()
+        cid = _cart_id_str_from_payload(payload)
+        if cid:
+            return db.session.query(AbandonedCart).filter_by(zid_cart_id=cid).first()
+        sid = _session_part_from_payload(payload)
+        if not (isinstance(sid, str) and sid.strip()):
+            return None
+        sid_n = sid.strip()[:512]
+        q = db.session.query(AbandonedCart).filter(AbandonedCart.recovery_session_id == sid_n)
+        if store_row is not None and getattr(store_row, "id", None) is not None:
+            sid_val = int(store_row.id)
+            q = q.filter(
+                (AbandonedCart.store_id == sid_val) | (AbandonedCart.store_id.is_(None))  # type: ignore[union-attr]
+            )
+        return q.order_by(AbandonedCart.last_seen_at.desc()).first()
+    except (SQLAlchemyError, OSError):
+        db.session.rollback()
+        return None
+
+
+def _sync_abandoned_cart_vip_after_live_cart_payload(payload: dict[str, Any]) -> None:
+    """
+    بعد أحداث سلة حية (غير ‎cart_abandoned‎): تحديث ‎cart_value‎ وإزالة ‎VIP‎ عند انخفاض العتبة
+    أو إفراغ السلة أو اكتمال الشراء — دون تغيير منطق اكتشاف ‎VIP‎ الأولي.
+    """
+    if not isinstance(payload, dict):
+        return
+    ev = str((payload.get("event") or "")).strip().lower()
+    if ev == "cart_abandoned":
+        return
+    try:
+        _ensure_store_widget_schema()
+        db.create_all()
+        store_slug = _store_slug_for_cart_vip_sync(payload)
+        store_row = _load_store_row_for_recovery(store_slug)
+        row = _find_abandoned_cart_row_for_live_cart_sync(payload, store_row=store_row)
+        if row is None:
+            return
+
+        purchase_done = bool(
+            payload.get("purchase_completed") is True
+            or payload.get("user_converted") is True
+            or ev == "user_converted"
+        )
+        if purchase_done:
+            had_vip = bool(getattr(row, "vip_mode", False))
+            if str(row.status or "").strip() != "recovered":
+                row.status = "recovered"
+                row.recovered_at = datetime.now(timezone.utc)
+            row.vip_mode = False
+            AbandonedCart.set_raw(row, payload)
+            db.session.commit()
+            if had_vip:
+                log.info("[VIP REMOVED] reason=purchase_completed")
+                print("[VIP REMOVED] reason=purchase_completed")
+            return
+
+        cart_list = payload.get("cart")
+        cart_empty = isinstance(cart_list, list) and len(cart_list) == 0
+        if cart_empty:
+            tot_eff: Optional[float] = 0.0
+        else:
+            tot = _cart_total_from_abandon_payload(payload)
+            tot_eff = float(tot) if tot is not None else None
+
+        if tot_eff is None:
+            return
+
+        row.cart_value = tot_eff
+        AbandonedCart.set_raw(row, payload)
+
+        th_raw = getattr(store_row, "vip_cart_threshold", None) if store_row else None
+        th_s = "none" if th_raw is None else str(th_raw)
+        is_vip_now = bool(is_vip_cart(tot_eff, store_row))
+        log.info(
+            "[VIP UPDATE CHECK]\ncart_total=%s\nthreshold=%s\nis_vip=%s",
+            str(tot_eff),
+            th_s,
+            str(is_vip_now).lower(),
+        )
+        print(
+            f"[VIP UPDATE CHECK] cart_total={tot_eff} threshold={th_s} is_vip={str(is_vip_now).lower()}"
+        )
+
+        if cart_empty or tot_eff <= 0:
+            had_vip = bool(getattr(row, "vip_mode", False))
+            if str(row.status or "").strip() != "recovered":
+                row.status = "recovered"
+                row.recovered_at = datetime.now(timezone.utc)
+            row.vip_mode = False
+            db.session.commit()
+            if had_vip:
+                log.info("[VIP REMOVED] reason=cart_cleared")
+                print("[VIP REMOVED] reason=cart_cleared")
+            return
+
+        if (
+            th_raw is not None
+            and bool(getattr(row, "vip_mode", False))
+            and not is_vip_now
+        ):
+            row.vip_mode = False
+            log.info("[VIP REMOVED] reason=below_threshold")
+            print("[VIP REMOVED] reason=below_threshold")
+        db.session.commit()
+    except (SQLAlchemyError, OSError, TypeError, ValueError):
+        db.session.rollback()
+        log.warning("[VIP CART SYNC] failed", exc_info=True)
+
 
 def generate_recovery_message(customer_name: str, cart_items: str, cart_value: float) -> str:
     # طلب نصي قصير لـ ‎Claude‎ حسب البرومبت المطلوب — بدون مفتاح نُرجع نصاً فارغاً
