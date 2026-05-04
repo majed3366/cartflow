@@ -2601,6 +2601,7 @@ async def _run_recovery_dispatch_cart_abandoned(
 async def handle_cart_abandoned(
     _background_tasks: BackgroundTasks, payload: dict[str, Any]
 ) -> dict[str, Any]:
+    log.info("[HANDLE CART ABANDONED ENTERED]")
     store_slug = _normalize_store_slug(payload)
     print("store:", store_slug)
     recovery_key = _recovery_key_from_payload(payload)
@@ -2685,6 +2686,9 @@ async def handle_cart_abandoned(
         log.warning("[ABANDON UPSERT FAILED]", exc_info=True)
     cart_total_chk = _cart_total_for_vip_recovery(cart_id_log, payload)
     th_chk = getattr(store_row, "vip_cart_threshold", None) if store_row else None
+    ct_chk_s = "none" if cart_total_chk is None else str(cart_total_chk)
+    th_chk_s = "none" if th_chk is None else str(th_chk)
+    log.info("[VIP CHECK START]\ncart_total=%s\nthreshold=%s", ct_chk_s, th_chk_s)
     is_vip_chk = cart_total_chk is not None and is_vip_cart(cart_total_chk, store_row)
     _vip_log_check(cart_total_chk, th_chk, is_vip_chk)
     if is_vip_chk:
@@ -2966,6 +2970,25 @@ async def api_cart_event(request: Request, background_tasks: BackgroundTasks):
     if not isinstance(payload, dict):
         payload = {}
     print("[CF API] event received")
+    try:
+        pl_snip = json.dumps(
+            _redact_secrets_for_log(payload), ensure_ascii=False, default=str
+        )[:2000]
+    except Exception:  # noqa: BLE001
+        pl_snip = (str(payload))[:2000]
+    _ev_dbg = payload.get("event")
+    _ct_dbg = _cart_total_from_abandon_payload(payload)
+    _ct_dbg_s = "none" if _ct_dbg is None else str(_ct_dbg)
+    _cid_dbg = (_cart_id_str_from_payload(payload) or "").strip() or "-"
+    _sid_dbg = (_session_part_from_payload(payload) or "").strip() or "-"
+    log.info(
+        "[API CART EVENT RECEIVED]\npayload=%s\nevent=%s\ncart_total=%s\ncart_id=%s\nsession_id=%s",
+        pl_snip,
+        _ev_dbg,
+        _ct_dbg_s,
+        _cid_dbg,
+        _sid_dbg,
+    )
     out: dict[str, Any] = {
         "ok": True,
         "event": payload.get("event"),
