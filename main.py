@@ -1438,6 +1438,8 @@ def _cart_total_from_abandon_payload(payload: dict[str, Any]) -> Optional[float]
         if raw is None:
             continue
         try:
+            if isinstance(raw, str):
+                raw = str(raw).strip().replace(",", "")
             v = float(raw)
         except (TypeError, ValueError):
             continue
@@ -2634,6 +2636,60 @@ async def handle_cart_abandoned(
             "recovery_skipped": True,
             "recovery_state": "converted",
         }
+    try:
+        db.create_all()
+        _ensure_store_widget_schema()
+        _ensure_default_store_for_recovery()
+        store_row = _load_store_row_for_recovery(store_slug)
+    except Exception:  # noqa: BLE001
+        db.session.rollback()
+        store_row = None
+    print("store settings loaded")
+    try:
+        ok_u, err_u, _urow = upsert_abandoned_cart_from_payload(payload, store=store_row)
+        if not ok_u and err_u:
+            log.warning("[ABANDON UPSERT] %s", err_u)
+    except SQLAlchemyError:
+        db.session.rollback()
+        log.warning("[ABANDON UPSERT FAILED]", exc_info=True)
+    cart_total_chk = _cart_total_for_vip_recovery(cart_id_log, payload)
+    th_chk = getattr(store_row, "vip_cart_threshold", None) if store_row else None
+    ct_chk_s = "none" if cart_total_chk is None else str(cart_total_chk)
+    th_chk_s = "none" if th_chk is None else str(th_chk)
+    log.info("[VIP CHECK START]\ncart_total=%s\nthreshold=%s", ct_chk_s, th_chk_s)
+    is_vip_chk = cart_total_chk is not None and is_vip_cart(cart_total_chk, store_row)
+    _vip_log_check(cart_total_chk, th_chk, is_vip_chk)
+    if is_vip_chk:
+        with _recovery_session_lock:
+            _session_recovery_started[recovery_key] = True
+        reason_vip = _reason_tag_for_session(store_slug, session_id_log) or None
+        _vip_recovery_decision_layer(reason_vip, store_row)
+        ok_vip = _activate_vip_manual_cart_handling(
+            store_slug=store_slug,
+            session_id=session_id_log,
+            cart_id=cart_id_log,
+            cart_total=float(cart_total_chk),
+            store_obj=store_row,
+            recovery_key=recovery_key,
+            reason_tag=reason_vip,
+            recovery_log_message=VIP_WIDGET_RECOVERY_LOG_MESSAGE,
+            recovery_log_step=int(VIP_WIDGET_RECOVERY_LOG_STEP),
+            vip_activation_source=VIP_WIDGET_ACTIVATION_SOURCE,
+        )
+        if not ok_vip:
+            log.warning(
+                "[VIP ACTIVATION FAILED] session_id=%s recovery_key=%s — customer_recovery_blocked_no_fallback",
+                session_id_log,
+                recovery_key,
+            )
+        _mark_vip_customer_recovery_closed(recovery_key)
+        return {
+            "recovery_scheduled": False,
+            "recovery_vip_manual": True,
+            "recovery_skipped": True,
+            "customer_recovery_skipped": True,
+            "recovery_state": "vip_manual_handling",
+        }
     with _recovery_session_lock:
         if _session_recovery_sent.get(recovery_key):
             print("recovery already sent, skipping")
@@ -2665,61 +2721,8 @@ async def handle_cart_abandoned(
             "recovery_skipped": True,
             "recovery_state": "pending",
         }
-    # ‎_session_recovery_started[recovery_key]‎ مضبوط — قبل تحميل المتجر أو ‎add_task‎
     print("entered recovery handler")
     log.info("cart abandoned received")
-    try:
-        db.create_all()
-        _ensure_store_widget_schema()
-        _ensure_default_store_for_recovery()
-        store_row = _load_store_row_for_recovery(store_slug)
-    except Exception:  # noqa: BLE001
-        db.session.rollback()
-        store_row = None
-    print("store settings loaded")
-    try:
-        ok_u, err_u, _urow = upsert_abandoned_cart_from_payload(payload, store=store_row)
-        if not ok_u and err_u:
-            log.warning("[ABANDON UPSERT] %s", err_u)
-    except SQLAlchemyError:
-        db.session.rollback()
-        log.warning("[ABANDON UPSERT FAILED]", exc_info=True)
-    cart_total_chk = _cart_total_for_vip_recovery(cart_id_log, payload)
-    th_chk = getattr(store_row, "vip_cart_threshold", None) if store_row else None
-    ct_chk_s = "none" if cart_total_chk is None else str(cart_total_chk)
-    th_chk_s = "none" if th_chk is None else str(th_chk)
-    log.info("[VIP CHECK START]\ncart_total=%s\nthreshold=%s", ct_chk_s, th_chk_s)
-    is_vip_chk = cart_total_chk is not None and is_vip_cart(cart_total_chk, store_row)
-    _vip_log_check(cart_total_chk, th_chk, is_vip_chk)
-    if is_vip_chk:
-        reason_vip = _reason_tag_for_session(store_slug, session_id_log) or None
-        _vip_recovery_decision_layer(reason_vip, store_row)
-        ok_vip = _activate_vip_manual_cart_handling(
-            store_slug=store_slug,
-            session_id=session_id_log,
-            cart_id=cart_id_log,
-            cart_total=float(cart_total_chk),
-            store_obj=store_row,
-            recovery_key=recovery_key,
-            reason_tag=reason_vip,
-            recovery_log_message=VIP_WIDGET_RECOVERY_LOG_MESSAGE,
-            recovery_log_step=int(VIP_WIDGET_RECOVERY_LOG_STEP),
-            vip_activation_source=VIP_WIDGET_ACTIVATION_SOURCE,
-        )
-        if not ok_vip:
-            log.warning(
-                "[VIP ACTIVATION FAILED] session_id=%s recovery_key=%s — customer_recovery_blocked_no_fallback",
-                session_id_log,
-                recovery_key,
-            )
-        _mark_vip_customer_recovery_closed(recovery_key)
-        return {
-            "recovery_scheduled": False,
-            "recovery_vip_manual": True,
-            "recovery_skipped": True,
-            "customer_recovery_skipped": True,
-            "recovery_state": "vip_manual_handling",
-        }
     reason_tag_sync = _reason_tag_for_session(store_slug, session_id_log)
     slots_sync = multi_message_slots_for_abandon(reason_tag_sync, store_row)
     if slots_sync:
@@ -2989,6 +2992,7 @@ async def api_cart_event(request: Request, background_tasks: BackgroundTasks):
         _cid_dbg,
         _sid_dbg,
     )
+    log.info("[EVENT ROUTING] event=%s", payload.get("event"))
     out: dict[str, Any] = {
         "ok": True,
         "event": payload.get("event"),
@@ -3002,13 +3006,6 @@ async def api_cart_event(request: Request, background_tasks: BackgroundTasks):
     ):
         _mark_user_converted_for_payload(payload)
         out["conversion_tracked"] = True
-    if payload.get("event") == "add_to_cart":
-        _clear_user_rejected_help_for_session(
-            _normalize_store_slug(payload),
-            _session_part_from_payload(payload),
-        )
-        print("[BEHAVIOR RESET]")
-        out["behavior_reset"] = True
     if payload.get("event") == "cart_abandoned":
         print("[CF API] processing event")
         wc_id = (_cart_id_str_from_payload(payload) or "").strip() or "-"
@@ -3022,6 +3019,14 @@ async def api_cart_event(request: Request, background_tasks: BackgroundTasks):
             wc_sid,
         )
         out.update(await handle_cart_abandoned(background_tasks, payload))
+        return j(out, 200)
+    if payload.get("event") == "add_to_cart":
+        _clear_user_rejected_help_for_session(
+            _normalize_store_slug(payload),
+            _session_part_from_payload(payload),
+        )
+        print("[BEHAVIOR RESET]")
+        out["behavior_reset"] = True
     return j(out, 200)
 
 
