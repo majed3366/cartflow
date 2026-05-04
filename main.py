@@ -2604,6 +2604,7 @@ async def handle_cart_abandoned(
     _background_tasks: BackgroundTasks, payload: dict[str, Any]
 ) -> dict[str, Any]:
     log.info("[HANDLE CART ABANDONED ENTERED]")
+    print("[HANDLE CART ABANDONED ENTERED]")
     store_slug = _normalize_store_slug(payload)
     print("store:", store_slug)
     recovery_key = _recovery_key_from_payload(payload)
@@ -2657,6 +2658,7 @@ async def handle_cart_abandoned(
     ct_chk_s = "none" if cart_total_chk is None else str(cart_total_chk)
     th_chk_s = "none" if th_chk is None else str(th_chk)
     log.info("[VIP CHECK START]\ncart_total=%s\nthreshold=%s", ct_chk_s, th_chk_s)
+    print(f"[VIP CHECK START] cart_total={ct_chk_s} threshold={th_chk_s}")
     is_vip_chk = cart_total_chk is not None and is_vip_cart(cart_total_chk, store_row)
     _vip_log_check(cart_total_chk, th_chk, is_vip_chk)
     if is_vip_chk:
@@ -2992,7 +2994,26 @@ async def api_cart_event(request: Request, background_tasks: BackgroundTasks):
         _cid_dbg,
         _sid_dbg,
     )
-    log.info("[EVENT ROUTING] event=%s", payload.get("event"))
+    event = payload.get("event")
+    event_norm = str(event).strip().lower() if event is not None else ""
+    log.info("[EVENT ROUTING] event=%s", event)
+    if event_norm == "cart_abandoned":
+        print("[ROUTING TO VIP HANDLER]")
+        log.info("[ROUTING TO VIP HANDLER]")
+        print("[CF API] processing event")
+        wc_id = (_cart_id_str_from_payload(payload) or "").strip() or "-"
+        wc_sid = (_session_part_from_payload(payload) or "").strip() or "-"
+        wc_tot = _cart_total_from_abandon_payload(payload)
+        wc_tot_disp = "none" if wc_tot is None else str(wc_tot)
+        log.info(
+            "[WIDGET CART EVENT]\ncart_id=%s\ncart_total=%s\nsession_id=%s",
+            wc_id,
+            wc_tot_disp,
+            wc_sid,
+        )
+        out_abandon: dict[str, Any] = {"ok": True, "event": event}
+        out_abandon.update(await handle_cart_abandoned(background_tasks, payload))
+        return j(out_abandon, 200)
     out: dict[str, Any] = {
         "ok": True,
         "event": payload.get("event"),
@@ -3006,20 +3027,6 @@ async def api_cart_event(request: Request, background_tasks: BackgroundTasks):
     ):
         _mark_user_converted_for_payload(payload)
         out["conversion_tracked"] = True
-    if payload.get("event") == "cart_abandoned":
-        print("[CF API] processing event")
-        wc_id = (_cart_id_str_from_payload(payload) or "").strip() or "-"
-        wc_sid = (_session_part_from_payload(payload) or "").strip() or "-"
-        wc_tot = _cart_total_from_abandon_payload(payload)
-        wc_tot_disp = "none" if wc_tot is None else str(wc_tot)
-        log.info(
-            "[WIDGET CART EVENT]\ncart_id=%s\ncart_total=%s\nsession_id=%s",
-            wc_id,
-            wc_tot_disp,
-            wc_sid,
-        )
-        out.update(await handle_cart_abandoned(background_tasks, payload))
-        return j(out, 200)
     if payload.get("event") == "add_to_cart":
         _clear_user_rejected_help_for_session(
             _normalize_store_slug(payload),
