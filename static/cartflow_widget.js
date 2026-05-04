@@ -1996,6 +1996,212 @@
     return (window.CARTFLOW_API_BASE || "").toString().replace(/\/$/, "");
   }
 
+  /** مزامنة ‎VIP‎ مع الخلفية عند كل تعديل على ‎window.cart‎ (‎cart_updated‎ / ‎cart_cleared‎). */
+  var CF_LIFECYCLE_CART_ID_KEY = "cartflow_cart_event_id";
+  var cartflowLifecycleInstalled = false;
+  var cartflowLifecycleLastSig = "";
+  var cartflowLifecycleDebounce = null;
+
+  function cartLifecycleApiUrl() {
+    var b = apiBase();
+    return b ? b + "/api/cart-event" : "/api/cart-event";
+  }
+
+  function cartLifecycleSumCart(arr) {
+    if (!arr || !Array.isArray(arr)) {
+      return 0;
+    }
+    var sum = 0;
+    var anyRow = false;
+    var i;
+    for (i = 0; i < arr.length; i++) {
+      var row = arr[i];
+      if (!row || typeof row !== "object") {
+        continue;
+      }
+      var p =
+        row.price != null ? row.price : row.unit_price != null ? row.unit_price : null;
+      if (p == null) {
+        p = row.amount != null ? row.amount : row.total;
+      }
+      if (p == null) {
+        continue;
+      }
+      var pr = typeof p === "number" ? p : parseFloat(String(p));
+      if (isNaN(pr)) {
+        continue;
+      }
+      var qRaw =
+        row.quantity != null ? row.quantity : row.qty != null ? row.qty : 1;
+      var q = typeof qRaw === "number" ? qRaw : parseFloat(String(qRaw));
+      if (isNaN(q) || q < 0) {
+        q = 1;
+      }
+      sum += pr * q;
+      anyRow = true;
+    }
+    return anyRow ? sum : 0;
+  }
+
+  function cartLifecycleStableCartId() {
+    try {
+      if (
+        typeof window.CARTFLOW_CART_ID !== "undefined" &&
+        window.CARTFLOW_CART_ID != null &&
+        String(window.CARTFLOW_CART_ID).trim()
+      ) {
+        return String(window.CARTFLOW_CART_ID).trim().slice(0, 255);
+      }
+    } catch (e1) {
+      /* ignore */
+    }
+    var existing = null;
+    try {
+      existing = window.sessionStorage.getItem(CF_LIFECYCLE_CART_ID_KEY);
+    } catch (e2) {
+      /* ignore */
+    }
+    if (existing && String(existing).trim()) {
+      return String(existing).trim().slice(0, 255);
+    }
+    var nid =
+      typeof window.crypto !== "undefined" && window.crypto.randomUUID
+        ? "cf_cart_" + window.crypto.randomUUID()
+        : "cf_cart_" + String(Date.now()) + "_" + String(Math.random());
+    try {
+      window.sessionStorage.setItem(CF_LIFECYCLE_CART_ID_KEY, nid);
+    } catch (e3) {
+      /* ignore */
+    }
+    return nid.slice(0, 255);
+  }
+
+  function cartflowCaptureInitialCartLifecycleSig() {
+    try {
+      var cart = window.cart;
+      if (!Array.isArray(cart)) {
+        cartflowLifecycleLastSig = "init";
+        return;
+      }
+      var total = cartLifecycleSumCart(cart);
+      cartflowLifecycleLastSig =
+        String(cart.length) + ":" + total.toFixed(4) + ":" + JSON.stringify(cart);
+    } catch (eCap) {
+      cartflowLifecycleLastSig = "init";
+    }
+  }
+
+  function flushCartLifecycleBackendPost() {
+    if (cartflowLifecycleDebounce != null) {
+      clearTimeout(cartflowLifecycleDebounce);
+      cartflowLifecycleDebounce = null;
+    }
+    if (isSessionConverted()) {
+      return;
+    }
+    var cart = window.cart;
+    if (!Array.isArray(cart)) {
+      return;
+    }
+    var total = cartLifecycleSumCart(cart);
+    var sig;
+    try {
+      sig = String(cart.length) + ":" + total.toFixed(4) + ":" + JSON.stringify(cart);
+    } catch (es) {
+      sig = String(cart.length) + ":" + String(total);
+    }
+    if (sig === cartflowLifecycleLastSig) {
+      return;
+    }
+    cartflowLifecycleLastSig = sig;
+
+    var sessionId = getSessionId();
+    if (!sessionId || String(sessionId).trim() === "" || sessionId === "—") {
+      return;
+    }
+    var cartId = cartLifecycleStableCartId();
+    var store = getStoreSlug();
+    var isCleared = cart.length === 0 || total <= 0;
+    var body = isCleared
+      ? {
+          event: "cart_cleared",
+          cart_total: 0,
+          session_id: sessionId,
+          cart_id: cartId,
+          store: store,
+          cart: [],
+        }
+      : {
+          event: "cart_updated",
+          cart_total: total,
+          session_id: sessionId,
+          cart_id: cartId,
+          store: store,
+          cart: cart,
+        };
+
+    try {
+      fetch(cartLifecycleApiUrl(), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      }).catch(function () {});
+    } catch (eFetch) {
+      /* ignore */
+    }
+  }
+
+  function cartflowInstallCartLifecycleObserver() {
+    if (cartflowLifecycleInstalled) {
+      return;
+    }
+    cartflowLifecycleInstalled = true;
+    cartflowCaptureInitialCartLifecycleSig();
+
+    function tick() {
+      if (isSessionConverted()) {
+        return;
+      }
+      try {
+        var cart = window.cart;
+        if (!Array.isArray(cart)) {
+          return;
+        }
+        var total = cartLifecycleSumCart(cart);
+        var sig;
+        try {
+          sig = String(cart.length) + ":" + total.toFixed(4) + ":" + JSON.stringify(cart);
+        } catch (et) {
+          sig = String(cart.length) + ":" + String(total);
+        }
+        if (sig === cartflowLifecycleLastSig) {
+          return;
+        }
+        if (cartflowLifecycleDebounce != null) {
+          clearTimeout(cartflowLifecycleDebounce);
+        }
+        cartflowLifecycleDebounce = setTimeout(function () {
+          flushCartLifecycleBackendPost();
+        }, 350);
+      } catch (et2) {
+        /* ignore */
+      }
+    }
+
+    window.setInterval(tick, 600);
+    try {
+      document.addEventListener(
+        "cf-demo-cart-updated",
+        function () {
+          setTimeout(tick, 0);
+        },
+        false
+      );
+    } catch (ed) {
+      /* ignore */
+    }
+  }
+
   function postReason(payload) {
     var url = apiBase() ? apiBase() + "/api/cartflow/reason" : "/api/cartflow/reason";
     var body = {
@@ -6052,6 +6258,13 @@
     }
   }, 0);
   setTimeout(prefetchDashboardPrimaryReason, 0);
+  setTimeout(function () {
+    try {
+      cartflowInstallCartLifecycleObserver();
+    } catch (eLc) {
+      /* ignore */
+    }
+  }, 0);
   setTimeout(arm, ARM_DELAY_MS);
 })();
 
