@@ -103,6 +103,52 @@ class VipCartStateSyncTests(unittest.TestCase):
         self.assertEqual((ac.status or "").strip(), "abandoned")
         self.assertAlmostEqual(float(ac.cart_value or 0.0), 100.0)
 
+    def test_cart_updated_creates_vip_abandoned_row_when_none(self) -> None:
+        db.create_all()
+        main._ensure_store_widget_schema()
+        slug = f"vsync_cre_{uuid.uuid4().hex[:10]}"
+        store = Store(
+            zid_store_id=slug,
+            vip_cart_threshold=500,
+            recovery_delay=1,
+            recovery_delay_unit="minutes",
+            recovery_attempts=1,
+        )
+        db.session.add(store)
+        db.session.commit()
+        dash = main._dashboard_recovery_store_row()
+        self.assertIsNotNone(dash)
+        self.assertEqual(int(dash.id), int(store.id))
+
+        sid = f"s_cre_{uuid.uuid4().hex[:8]}"
+        cid = f"c_cre_{uuid.uuid4().hex[:10]}"
+        db.session.query(AbandonedCart).filter_by(zid_cart_id=cid).delete(
+            synchronize_session=False
+        )
+        db.session.commit()
+
+        r = self.client.post(
+            "/api/cart-event",
+            json={
+                "event": "cart_updated",
+                "store": slug,
+                "session_id": sid,
+                "cart_id": cid,
+                "cart_total": 637.0,
+                "cart": [{"price": 637.0, "quantity": 1}],
+            },
+        )
+        self.assertEqual(r.status_code, 200, r.text)
+        ac = db.session.query(AbandonedCart).filter_by(zid_cart_id=cid).first()
+        self.assertIsNotNone(ac)
+        self.assertTrue(bool(ac.vip_mode))
+        self.assertEqual((ac.status or "").strip(), "abandoned")
+        self.assertAlmostEqual(float(ac.cart_value or 0.0), 637.0)
+        self.assertEqual(int(ac.store_id or 0), int(store.id))
+        self.assertEqual((ac.recovery_session_id or "").strip(), sid.strip())
+        prios = main._vip_priority_cart_alert_list()
+        self.assertTrue(any(int(x["id"]) == int(ac.id) for x in prios))
+
     def test_empty_cart_recovered_and_removed_from_priority(self) -> None:
         db.create_all()
         main._ensure_store_widget_schema()

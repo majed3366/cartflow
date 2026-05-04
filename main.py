@@ -1527,6 +1527,30 @@ def _vip_log_check(cart_total: Optional[float], threshold: Any, is_vip: bool) ->
     log.info("[VIP CHECK]\ncart_total=%s\nthreshold=%s\nis_vip=%s", ct, th, vip_s)
 
 
+def _log_vip_cart_saved(ac: Optional[AbandonedCart]) -> None:
+    """بعد حفظ صف ‎AbandonedCart‎ لمسار ‎VIP‎ (ويدجت / مزامنة)."""
+    if ac is None:
+        return
+    cid = (str(getattr(ac, "zid_cart_id", "") or "").strip())
+    sid_raw = getattr(ac, "store_id", None)
+    sid_s = "none" if sid_raw is None else str(sid_raw)
+    cv = getattr(ac, "cart_value", None)
+    cv_s = "" if cv is None else str(cv)
+    vm_s = str(bool(getattr(ac, "vip_mode", False))).lower()
+    st = (str(ac.status or "").strip() or "—")[:50]
+    log.info(
+        "[VIP CART SAVED]\ncart_id=%s\nstore_id=%s\ncart_value=%s\nvip_mode=%s\nstatus=%s",
+        cid,
+        sid_s,
+        cv_s,
+        vm_s,
+        st,
+    )
+    print(
+        f"[VIP CART SAVED] cart_id={cid!r} store_id={sid_s} cart_value={cv_s} vip_mode={vm_s} status={st}"
+    )
+
+
 # مسار الويدجت الحقيقي (‎POST /api/cart-event‎)؛ خطوة ‎0‎ = طبقة ‎VIP‎ خارج ‎step 1‎–‎3‎ في ‎CartRecoveryLog‎.
 VIP_WIDGET_ACTIVATION_SOURCE = "real_widget_cart_event"
 VIP_WIDGET_RECOVERY_LOG_MESSAGE = "VIP cart detected from real widget flow"
@@ -1629,6 +1653,7 @@ def _activate_vip_manual_cart_handling(
                 if str(ac2.status or "").strip() != "recovered":
                     ac2.status = "abandoned"
                 db.session.commit()
+                _log_vip_cart_saved(ac2)
     except (SQLAlchemyError, OSError) as e:
         db.session.rollback()
         log.exception("[VIP ACTIVATION FAILED] session_id=%s db_vip_mark err=%s", session_id, e)
@@ -3891,8 +3916,8 @@ def _find_abandoned_cart_row_for_live_cart_sync(
 
 def _sync_abandoned_cart_vip_after_live_cart_payload(payload: dict[str, Any]) -> None:
     """
-    بعد أحداث سلة حية (غير ‎cart_abandoned‎): تحديث ‎cart_value‎ وإزالة ‎VIP‎ عند انخفاض العتبة
-    أو إفراغ السلة أو اكتمال الشراء — دون تغيير منطق اكتشاف ‎VIP‎ الأولي.
+    بعد أحداث سلة حية (غير ‎cart_abandoned‎): تحديث أو إنشاء ‎AbandonedCart‎؛
+    تعزيز ‎vip_mode/status‎ عند تحقق العتبة — دون تعديل ‎is_vip_cart‎ نفسها.
     """
     if not isinstance(payload, dict):
         return
@@ -3904,54 +3929,130 @@ def _sync_abandoned_cart_vip_after_live_cart_payload(payload: dict[str, Any]) ->
         db.create_all()
         store_slug = _store_slug_for_cart_vip_sync(payload)
         store_row = _load_store_row_for_recovery(store_slug)
-        row = _find_abandoned_cart_row_for_live_cart_sync(payload, store_row=store_row)
-        if row is None:
+
+        payload_session = dict(payload)
+        if isinstance(store_slug, str) and store_slug.strip() and payload_session.get("store") is None:
+            payload_session["store"] = store_slug.strip()
+
+        merge_payload = dict(payload_session)
+        rk = _recovery_key_from_payload(merge_payload)
+        merge_payload = _ensure_cart_abandon_payload_has_cart_id(merge_payload, rk)
+        cid_synth = (_cart_id_str_from_payload(merge_payload) or "").strip()
+        if not cid_synth:
             return
+
+        cid_from_request = (_cart_id_str_from_payload(payload) or "").strip()
+
+        row = None
+        if cid_from_request:
+            row = db.session.query(AbandonedCart).filter_by(zid_cart_id=cid_from_request).first()
+        if row is None:
+            row = _find_abandoned_cart_row_for_live_cart_sync(payload_session, store_row=store_row)
 
         purchase_done = bool(
             payload.get("purchase_completed") is True
             or payload.get("user_converted") is True
             or ev == "user_converted"
         )
+
+        def _apply_store_id_if_missing(ac: AbandonedCart) -> None:
+            if store_row is not None and getattr(store_row, "id", None) is not None:
+                if getattr(ac, "store_id", None) is None:
+                    try:
+                        ac.store_id = int(store_row.id)
+                    except (TypeError, ValueError):
+                        pass
+
         if purchase_done:
+            if row is None:
+                return
             had_vip = bool(getattr(row, "vip_mode", False))
             if str(row.status or "").strip() != "recovered":
                 row.status = "recovered"
                 row.recovered_at = datetime.now(timezone.utc)
             row.vip_mode = False
-            AbandonedCart.set_raw(row, payload)
+            AbandonedCart.set_raw(row, payload_session)
             db.session.commit()
             if had_vip:
                 log.info("[VIP REMOVED] reason=purchase_completed")
                 print("[VIP REMOVED] reason=purchase_completed")
             return
 
-        cart_list = payload.get("cart")
+        cart_list = merge_payload.get("cart")
         cart_empty = isinstance(cart_list, list) and len(cart_list) == 0
         if cart_empty:
             tot_eff: Optional[float] = 0.0
         else:
-            tot = _cart_total_from_abandon_payload(payload)
+            tot = _cart_total_from_abandon_payload(merge_payload)
             tot_eff = float(tot) if tot is not None else None
 
         if tot_eff is None:
             return
 
-        row.cart_value = tot_eff
-        AbandonedCart.set_raw(row, payload)
-
         th_raw = getattr(store_row, "vip_cart_threshold", None) if store_row else None
         th_s = "none" if th_raw is None else str(th_raw)
         is_vip_now = bool(is_vip_cart(tot_eff, store_row))
+
+        # صف جديد: فقط عند ‎VIP‎ وقيمة سلّة صالحة
+        if row is None:
+            log.info(
+                "[VIP UPDATE CHECK]\ncart_total=%s\nthreshold=%s\nis_vip=%s",
+                str(tot_eff),
+                th_s,
+                str(is_vip_now).lower(),
+            )
+            print(
+                f"[VIP UPDATE CHECK] cart_total={tot_eff} threshold={th_s} is_vip={str(is_vip_now).lower()}"
+            )
+            if not is_vip_now or cart_empty or tot_eff <= 0:
+                return
+            row_ins = AbandonedCart(
+                zid_cart_id=cid_synth[:255],
+                cart_value=float(tot_eff),
+                status="abandoned",
+                vip_mode=True,
+            )
+            _apply_store_id_if_missing(row_ins)
+            rsid_ins = merge_payload.get("session_id") or payload_session.get("session_id")
+            if isinstance(rsid_ins, str) and rsid_ins.strip():
+                row_ins.recovery_session_id = rsid_ins.strip()[:512]
+            AbandonedCart.set_raw(row_ins, merge_payload)
+            db.session.add(row_ins)
+            row_insert_fresh = True
+            try:
+                db.session.flush()
+                row = row_ins
+            except IntegrityError:
+                db.session.rollback()
+                row_insert_fresh = False
+                row = db.session.query(AbandonedCart).filter_by(zid_cart_id=cid_synth[:255]).first()
+                if row is None:
+                    return
+
+            if row_insert_fresh:
+                db.session.commit()
+                db.session.refresh(row)
+                _log_vip_cart_saved(row)
+                return
+
+        st_norm = str(row.status or "").strip().lower()
+        if st_norm == "recovered":
+            if tot_eff is not None:
+                row.cart_value = tot_eff
+            AbandonedCart.set_raw(row, merge_payload)
+            db.session.commit()
+            return
+
+        row.cart_value = tot_eff
+        AbandonedCart.set_raw(row, merge_payload)
+
         log.info(
             "[VIP UPDATE CHECK]\ncart_total=%s\nthreshold=%s\nis_vip=%s",
             str(tot_eff),
             th_s,
             str(is_vip_now).lower(),
         )
-        print(
-            f"[VIP UPDATE CHECK] cart_total={tot_eff} threshold={th_s} is_vip={str(is_vip_now).lower()}"
-        )
+        print(f"[VIP UPDATE CHECK] cart_total={tot_eff} threshold={th_s} is_vip={str(is_vip_now).lower()}")
 
         if cart_empty or tot_eff <= 0:
             had_vip = bool(getattr(row, "vip_mode", False))
@@ -3965,6 +4066,16 @@ def _sync_abandoned_cart_vip_after_live_cart_payload(payload: dict[str, Any]) ->
                 print("[VIP REMOVED] reason=cart_cleared")
             return
 
+        did_vip_save = False
+        if is_vip_now and str(row.status or "").strip() != "recovered":
+            row.vip_mode = True
+            row.status = "abandoned"
+            _apply_store_id_if_missing(row)
+            rsid2 = merge_payload.get("session_id") or payload_session.get("session_id")
+            if isinstance(rsid2, str) and rsid2.strip():
+                row.recovery_session_id = rsid2.strip()[:512]
+            did_vip_save = True
+
         if (
             th_raw is not None
             and bool(getattr(row, "vip_mode", False))
@@ -3973,7 +4084,11 @@ def _sync_abandoned_cart_vip_after_live_cart_payload(payload: dict[str, Any]) ->
             row.vip_mode = False
             log.info("[VIP REMOVED] reason=below_threshold")
             print("[VIP REMOVED] reason=below_threshold")
+            did_vip_save = False
+
         db.session.commit()
+        if did_vip_save and bool(getattr(row, "vip_mode", False)):
+            _log_vip_cart_saved(row)
     except (SQLAlchemyError, OSError, TypeError, ValueError):
         db.session.rollback()
         log.warning("[VIP CART SYNC] failed", exc_info=True)
@@ -4236,16 +4351,31 @@ def _format_reason_ts(dt: Optional[datetime]) -> str:
 
 
 def _vip_priority_cart_alert_list() -> list[dict[str, Any]]:
-    """سلّات قسم «أولوية»: ‎vip_mode‎ و‎status=abandoned‎ (البيانات المستمرّة من مسار الترك الحقيقي)."""
+    """سلّات قسم «أولوية»: ‎vip_mode‎ و‎status=abandoned‎ لنفس المتجر الظاهر في لوحة الإعدادات."""
     out: list[dict[str, Any]] = []
     try:
         _ensure_store_widget_schema()
         db.create_all()
+        _ensure_default_store_for_recovery()
+        dash_store = _dashboard_recovery_store_row()
+        dash_id_raw = getattr(dash_store, "id", None) if dash_store is not None else None
         q = (
             db.session.query(AbandonedCart)
             .filter(AbandonedCart.vip_mode.is_(True))
             .filter(AbandonedCart.status == "abandoned")
         )
+        if dash_id_raw is not None:
+            try:
+                vid = int(dash_id_raw)
+                q = q.filter(
+                    (AbandonedCart.store_id == vid) | (AbandonedCart.store_id.is_(None))  # type: ignore[union-attr]
+                )
+            except (TypeError, ValueError):
+                pass
+        n_match = int(q.count())
+        sid_log = "none" if dash_id_raw is None else str(dash_id_raw)
+        log.info("[VIP PRIORITY QUERY]\nstore_id=%s\ncount=%s", sid_log, str(n_match))
+        print(f"[VIP PRIORITY QUERY] store_id={sid_log} count={n_match}")
 
         for ac in q.order_by(AbandonedCart.last_seen_at.desc()).limit(24).all():
             zid = (ac.zid_cart_id or "").strip()
