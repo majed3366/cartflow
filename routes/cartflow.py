@@ -379,6 +379,24 @@ async def post_abandonment_reason(request: Request) -> Any:
         if phone_err:
             return j({"ok": False, "error": "invalid_customer_phone"}, 400)
 
+        if phone_norm:
+            cf_sid = sid[:512] if sid else "-"
+            cf_r = (reason or "-")[:32]
+            cf_p = phone_norm
+            log.info(
+                "[CF PHONE RECEIVED] session_id=%s reason=%s customer_phone=%s",
+                cf_sid,
+                cf_r,
+                cf_p,
+            )
+            print(
+                "[CF PHONE RECEIVED]\n"
+                "session_id=" + cf_sid + "\n"
+                "reason=" + cf_r + "\n"
+                "customer_phone=" + cf_p,
+                flush=True,
+            )
+
         custom: Optional[str] = None
         if reason in ("other", "human_support"):
             c = (
@@ -434,6 +452,19 @@ async def post_abandonment_reason(request: Request) -> Any:
                 )
             )
         db.session.commit()
+        if phone_norm:
+            cf_sid2 = sid[:512] if sid else "-"
+            log.info(
+                "[CF PHONE SAVED] session_id=%s customer_phone=%s",
+                cf_sid2,
+                phone_norm,
+            )
+            print(
+                "[CF PHONE SAVED]\n"
+                "session_id=" + cf_sid2 + "\n"
+                "customer_phone=" + phone_norm,
+                flush=True,
+            )
         if reason == "other" and phone_norm:
             record_recovery_customer_phone(
                 recovery_key_for_reason_session(ss, sid),

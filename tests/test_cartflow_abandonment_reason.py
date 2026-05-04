@@ -122,6 +122,29 @@ class TestCartflowAbandonmentReason(unittest.TestCase):
             (r.json() or {}).get("error"),
         )
 
+    def test_post_reason_other_emits_cf_phone_logs(self) -> None:
+        import logging
+
+        ensure_store_widget_schema(db)
+        sid = "s-cf-log-" + uuid.uuid4().hex[:8]
+        with self.assertLogs("cartflow", level=logging.INFO) as alc:
+            r = self.client.post(
+                "/api/cartflow/reason",
+                json={
+                    "store_slug": "demo",
+                    "session_id": sid,
+                    "reason": "other",
+                    "customer_phone": "0598765432",
+                },
+            )
+        self.assertEqual(200, r.status_code, r.text)
+        blob = "\n".join(alc.output)
+        self.assertIn("[CF PHONE RECEIVED]", blob)
+        self.assertIn("session_id=%s" % sid, blob)
+        self.assertIn("reason=other", blob)
+        self.assertIn("customer_phone=966598765432", blob)
+        self.assertIn("[CF PHONE SAVED]", blob)
+
     def test_ready_step1(self) -> None:
         ensure_store_widget_schema(db)
         sid = "rs1-" + uuid.uuid4().hex
