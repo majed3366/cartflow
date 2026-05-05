@@ -101,6 +101,55 @@
             </div>
           </section>
 
+          <section class="cf-dash-card border-violet-200/80 bg-violet-50/40">
+            <div class="cf-dash-section-head">
+              <h2>📱 ظهور الودجيت للعملاء</h2>
+            </div>
+            <p class="mb-3 text-[11px] leading-snug text-slate-600">
+              يطبق على واجهة الاستعادة فقط؛ تتبع السلة وتنبيه السلال المميزة إلى التاجر لا يتأثران.
+            </p>
+            <div class="space-y-3">
+              <div>
+                <label class="mb-1 block text-sm font-semibold text-slate-800" for="cartflow_widget_enabled">
+                  تفعيل ظهور الودجيت للعملاء
+                </label>
+                <select
+                  id="cartflow_widget_enabled"
+                  name="cartflow_widget_enabled"
+                  class="rs-select w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-base text-slate-900 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/30">
+                  <option value="true">تشغيل</option>
+                  <option value="false">إيقاف</option>
+                </select>
+              </div>
+              <div>
+                <label class="mb-1 block text-sm font-semibold text-slate-800" for="cartflow_widget_delay_value">
+                  توقيت ظهور الودجيت
+                </label>
+                <p class="mb-1 text-xs leading-snug text-slate-600">
+                  مهلة قبل إظهار مطالبة الاستعادة للعميل (واجهة فقط؛ لا علاقة بتوقيت رسائل الواتساب من الخادم).
+                </p>
+                <div class="flex flex-wrap items-stretch gap-2">
+                  <input
+                    id="cartflow_widget_delay_value"
+                    name="cartflow_widget_delay_value"
+                    type="number"
+                    min="0"
+                    step="1"
+                    value="0"
+                    class="min-w-[6rem] flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-base text-slate-900 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/30" />
+                  <select
+                    id="cartflow_widget_delay_unit"
+                    name="cartflow_widget_delay_unit"
+                    class="rs-select min-w-[8rem] flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-base text-slate-900 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/30">
+                    <option value="minutes">دقيقة</option>
+                    <option value="hours">ساعة</option>
+                    <option value="days">يوم</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </section>
+
           <div class="cf-dash-save-wrap">
             <button type="submit" id="saveBtn" class="cf-dash-save">💾 حفظ الإعدادات</button>
           </div>
@@ -151,6 +200,26 @@
         if (r) r.checked = true;
         document.getElementById("whatsapp_support_url").value = data.whatsapp_support_url || "";
         document.getElementById("store_whatsapp_number").value = data.store_whatsapp_number || "";
+        fillWidgetRecoveryGate(data);
+      }
+
+      function fillWidgetRecoveryGate(data) {
+        var enSel = document.getElementById("cartflow_widget_enabled");
+        if (enSel) {
+          enSel.value = data.cartflow_widget_enabled !== false ? "true" : "false";
+        }
+        var dv = document.getElementById("cartflow_widget_delay_value");
+        if (dv) {
+          var n = parseInt(data.cartflow_widget_delay_value, 10);
+          dv.value =
+            typeof n === "number" && isFinite(n) && n >= 0 ? String(n) : "0";
+        }
+        var du = document.getElementById("cartflow_widget_delay_unit");
+        if (du) {
+          var u = (data.cartflow_widget_delay_unit || "minutes").toString();
+          du.value =
+            u === "hours" || u === "days" || u === "minutes" ? u : "minutes";
+        }
       }
 
       fetch("/api/recovery-settings")
@@ -187,6 +256,18 @@
             (document.getElementById("store_whatsapp_number") &&
               document.getElementById("store_whatsapp_number").value) ||
             "",
+          cartflow_widget_enabled:
+            document.getElementById("cartflow_widget_enabled").value === "true",
+          cartflow_widget_delay_value: (function () {
+            var raw = parseInt(
+              document.getElementById("cartflow_widget_delay_value").value,
+              10
+            );
+            return raw >= 0 && isFinite(raw) ? raw : 0;
+          })(),
+          cartflow_widget_delay_unit: document.getElementById(
+            "cartflow_widget_delay_unit"
+          ).value,
         };
         fetch("/api/recovery-settings", {
           method: "POST",

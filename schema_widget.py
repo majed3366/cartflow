@@ -655,6 +655,62 @@ def _ensure_store_vip_offer_columns(db: Any) -> None:
         log.debug("schema_widget vip_offer: %s", e)
 
 
+def _ensure_store_cartflow_widget_recovery_gate_columns(db: Any) -> None:
+    """أعمدة ‎cartflow_widget_*‎ — تحكم ظهور واجهة الاستعادة للعميل."""
+    try:
+        db.create_all()
+        insp = inspect(db.engine)
+        if not insp.has_table("stores"):
+            return
+        dialect = getattr(getattr(db.engine, "dialect", None), "name", "") or ""
+        stmts_sqlite = [
+            (
+                "ALTER TABLE stores ADD COLUMN "
+                "cartflow_widget_enabled INTEGER DEFAULT 1"
+            ),
+            (
+                "ALTER TABLE stores ADD COLUMN "
+                "cartflow_widget_delay_value INTEGER DEFAULT 0"
+            ),
+            (
+                "ALTER TABLE stores ADD COLUMN "
+                "cartflow_widget_delay_unit VARCHAR(20) DEFAULT 'minutes'"
+            ),
+        ]
+        stmts_pg = [
+            (
+                "ALTER TABLE stores ADD COLUMN IF NOT EXISTS "
+                "cartflow_widget_enabled BOOLEAN NOT NULL DEFAULT TRUE"
+            ),
+            (
+                "ALTER TABLE stores ADD COLUMN IF NOT EXISTS "
+                "cartflow_widget_delay_value INTEGER NOT NULL DEFAULT 0"
+            ),
+            (
+                "ALTER TABLE stores ADD COLUMN IF NOT EXISTS "
+                "cartflow_widget_delay_unit VARCHAR(20) NOT NULL DEFAULT 'minutes'"
+            ),
+        ]
+        col_names = (
+            "cartflow_widget_enabled",
+            "cartflow_widget_delay_value",
+            "cartflow_widget_delay_unit",
+        )
+        stmts = stmts_pg if dialect in ("postgresql", "postgres") else stmts_sqlite
+        for name, stmt in zip(col_names, stmts):
+            existing = {c["name"] for c in insp.get_columns("stores")}
+            if name in existing:
+                continue
+            try:
+                db.session.execute(text(stmt))
+                db.session.commit()
+            except (OSError, SQLAlchemyError, IntegrityError):
+                db.session.rollback()
+    except (OSError, SQLAlchemyError) as e:
+        db.session.rollback()
+        log.debug("schema_widget cartflow_widget_gate: %s", e)
+
+
 def ensure_store_widget_schema(db: Any) -> None:
     """يُنادى من مسارات ‎API‎ (لا يعتمد على ‎main‎)."""
     _ensure_store_recovery_delay_minutes_column(db)
@@ -670,6 +726,7 @@ def ensure_store_widget_schema(db: Any) -> None:
     _ensure_store_widget_customization_columns(db)
     _ensure_store_vip_cart_threshold_column(db)
     _ensure_store_vip_offer_columns(db)
+    _ensure_store_cartflow_widget_recovery_gate_columns(db)
     _ensure_abandoned_cart_vip_mode_column(db)
     _ensure_abandoned_cart_recovery_session_id_column(db)
     global _store_abandonment_schema_ensured

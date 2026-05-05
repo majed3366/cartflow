@@ -84,6 +84,10 @@ class Store(Base):
     vip_offer_enabled = Column(Boolean, default=False, nullable=False)
     vip_offer_type = Column(String(32), nullable=True)
     vip_offer_value = Column(String(500), nullable=True)
+    # ظهور واجهة استعادة الودجيت للعميل فقط؛ التتبع و VIP يبقيان يعملين
+    cartflow_widget_enabled = Column(Boolean, default=True, nullable=False)
+    cartflow_widget_delay_value = Column(Integer, default=0, nullable=False)
+    cartflow_widget_delay_unit = Column(String(20), default="minutes", nullable=False)
 
 
 class AbandonedCart(Base):

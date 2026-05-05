@@ -232,6 +232,10 @@ from services.reason_template_recovery import (
     resolve_recovery_whatsapp_message_with_reason_templates,
 )
 from services.recovery_multi_message import multi_message_slots_for_abandon
+from services.cartflow_widget_recovery_gate import (
+    apply_cartflow_widget_recovery_gate_from_body,
+    cartflow_widget_recovery_gate_fields_for_api,
+)
 from services.vip_cart import (
     apply_vip_cart_threshold_from_body,
     apply_vip_offer_settings_from_body,
@@ -720,6 +724,26 @@ def _merge_recovery_settings_post_body(body: Dict[str, Any]) -> Dict[str, Any]:
             out["vip_offer_type"] = getattr(row, "vip_offer_type", None)
         if "vip_offer_value" not in body:
             out["vip_offer_value"] = getattr(row, "vip_offer_value", None)
+        if "cartflow_widget_enabled" not in body:
+            out["cartflow_widget_enabled"] = bool(
+                getattr(row, "cartflow_widget_enabled", True)
+            )
+        if "cartflow_widget_delay_value" not in body:
+            dv_def = getattr(row, "cartflow_widget_delay_value", 0)
+            try:
+                out["cartflow_widget_delay_value"] = max(0, int(dv_def))
+            except (TypeError, ValueError):
+                out["cartflow_widget_delay_value"] = 0
+        if "cartflow_widget_delay_unit" not in body:
+            du_raw = getattr(row, "cartflow_widget_delay_unit", None)
+            du_o = (
+                str(du_raw).strip().lower()
+                if isinstance(du_raw, str) and du_raw.strip()
+                else "minutes"
+            )
+            out["cartflow_widget_delay_unit"] = (
+                du_o if du_o in ("minutes", "hours", "days") else "minutes"
+            )
     return out
 
 
@@ -788,6 +812,7 @@ def _dev_apply_recovery_settings_update(
         apply_widget_customization_from_body(row, request_body)
         apply_vip_cart_threshold_from_body(row, request_body)
         apply_vip_offer_settings_from_body(row, request_body)
+        apply_cartflow_widget_recovery_gate_from_body(row, request_body)
     db.session.commit()
     wa: Optional[str] = getattr(row, "whatsapp_support_url", None)
     if not (isinstance(wa, str) and wa.strip()):
@@ -811,6 +836,7 @@ def _dev_apply_recovery_settings_update(
     payload.update(widget_customization_fields_for_api(row))
     payload.update(vip_cart_threshold_fields_for_api(row))
     payload.update(vip_offer_fields_for_api(row))
+    payload.update(cartflow_widget_recovery_gate_fields_for_api(row))
     return payload, 200
 
 # ‎/dev/recovery-flow-test?type=…‎ — بدون قراءة من ‎DB‎
@@ -1226,6 +1252,7 @@ def api_recovery_settings_get():
         payload.update(widget_customization_fields_for_api(row))
         payload.update(vip_cart_threshold_fields_for_api(row))
         payload.update(vip_offer_fields_for_api(row))
+        payload.update(cartflow_widget_recovery_gate_fields_for_api(row))
         return j(payload)
     except Exception as e:  # noqa: BLE001
         db.session.rollback()

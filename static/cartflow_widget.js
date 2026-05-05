@@ -281,6 +281,10 @@ try {
   var widgetChromeStyle = "modern";
   /** للودجت: عتبة السلة المميزة من الخادم (‎vip_cart_threshold‎)، ‎null‎ = معطّل. */
   var widgetVipCartThreshold = null;
+  /** تحكم التاجر (‎cartflow_widget_*‎): إظهار محتوى الاستعادة للعميل فقط */
+  var cfWgEnabled = true;
+  var cfWgPromptNotBefore = 0;
+  var cfWgGateScheduled = false;
   /** لوحة مصغّرة لجمع رقم العميل عند سلّة VIP بلا رقم (لا تُغلق الواجهة تلقائياً بعد الحفظ). */
   var vipPhoneCapturePanel = null;
   var vipPhoneCaptureShowingSuccess = false;
@@ -749,6 +753,70 @@ try {
     /* ignore */
   }
 
+  function cartflowWidgetMerchantDelayMs(value, unit) {
+    var v = typeof value === "number" ? value : parseInt(String(value || 0), 10);
+    if (!isFinite(v) || v < 0) {
+      v = 0;
+    }
+    var u = String(unit || "minutes").toLowerCase();
+    if (u === "hours") {
+      return v * 3600000;
+    }
+    if (u === "days") {
+      return v * 86400000;
+    }
+    return v * 60000;
+  }
+
+  function applyCartflowWidgetRecoveryGateFromConfig(j) {
+    if (!j || typeof j !== "object") {
+      return;
+    }
+    if ("cartflow_widget_enabled" in j) {
+      cfWgEnabled = !!(
+        j.cartflow_widget_enabled !== false &&
+        j.cartflow_widget_enabled !== 0 &&
+        j.cartflow_widget_enabled !== "0"
+      );
+    }
+    if (!cfWgGateScheduled) {
+      cfWgGateScheduled = true;
+      var dv = 0;
+      if (
+        "cartflow_widget_delay_value" in j &&
+        j.cartflow_widget_delay_value != null &&
+        j.cartflow_widget_delay_value !== ""
+      ) {
+        var pn = parseInt(String(j.cartflow_widget_delay_value), 10);
+        if (isFinite(pn) && pn >= 0) {
+          dv = pn;
+        }
+      }
+      var du = "minutes";
+      if (
+        typeof j.cartflow_widget_delay_unit === "string" &&
+        j.cartflow_widget_delay_unit.trim()
+      ) {
+        var ux = j.cartflow_widget_delay_unit.trim().toLowerCase();
+        if (ux === "hours" || ux === "days" || ux === "minutes") {
+          du = ux;
+        }
+      }
+      cfWgPromptNotBefore = Date.now() + cartflowWidgetMerchantDelayMs(dv, du);
+    }
+    if (!cfWgEnabled) {
+      try {
+        hideVipPhoneCapturePanel();
+      } catch (ePh) {}
+      try {
+        shown = false;
+        setCartflowWidgetShownFlag(false);
+        removeFabIfAny();
+        removeCartflowBubbleDom();
+      } catch (eTeardown) {}
+    }
+  }
+
   function applyTemplateConfigFromReady(j) {
     try {
       if (!j || typeof j !== "object") {
@@ -818,6 +886,7 @@ try {
       syncWidgetCustomizationToWindow();
       applyWidgetCustomization();
       syncWindowCartflowVipRuntime();
+      applyCartflowWidgetRecoveryGateFromConfig(j);
       scheduleVipPhoneCaptureCheck();
       maybeTryOpenBubbleForVipFromServer();
     } catch (eTpl) {
@@ -3690,6 +3759,18 @@ try {
   function showBubble(triggerSource, revealOpts) {
     revealOpts = revealOpts || {};
     syncWindowCartflowVipRuntime();
+    if (!cfWgEnabled) {
+      try {
+        console.log("[CF FRONT] skip showBubble: merchant disabled widget recovery UI");
+      } catch (eWgDis) {}
+      return;
+    }
+    if (Date.now() < cfWgPromptNotBefore) {
+      try {
+        console.log("[CF FRONT] skip showBubble: merchant delay not elapsed");
+      } catch (eWgDly) {}
+      return;
+    }
     try {
       window._cartflowApplyNoHelpUi = null;
     } catch (eClrNk) {
