@@ -5848,7 +5848,9 @@ try {
 
       function mountOtherCustomReasonFlow() {
         logWidgetFlow("layer_d_other_ui", "other", "open");
-        persistSessionAbandonReason("other", null);
+        if (!(cartflowState.isVip === true)) {
+          persistSessionAbandonReason("other", null);
+        }
         stripContentKeepChrome();
 
         var intro = document.createElement("p");
@@ -5908,6 +5910,157 @@ try {
         widgetBody.appendChild(row);
       }
 
+      /** VIP: خطوة تسجيل سبب مع ‎/api/cartflow/reason‎ ثم عرض خطوة «متابعة خاصة» قبل جمع الرقم */
+      function vipPostCartflowReasonThenFollowup(
+        reasonPayload,
+        layerAbandonTag,
+        layerAbandonCustom
+      ) {
+        postReason(reasonPayload)
+          .then(function (j) {
+            if (!(j && j.ok)) {
+              return;
+            }
+            try {
+              if (layerAbandonTag != null) {
+                persistSessionAbandonReason(
+                  layerAbandonTag,
+                  layerAbandonCustom != null ? layerAbandonCustom : null
+                );
+              }
+            } catch (ePs) {}
+            showVipFollowupStep();
+          })
+          .catch(function () {});
+      }
+
+      function showVipFollowupStep() {
+        stripContentKeepChrome();
+        try {
+          w.setAttribute("data-cf-vip-inline-flow", "1");
+          w.setAttribute("data-cf-vip-inline-blocking", "1");
+          w.removeAttribute("data-cf-vip-inline-phone-step");
+        } catch (eSf) {}
+
+        var pVx = document.createElement("p");
+        pVx.style.cssText =
+          "margin:0 0 10px 0;font-size:15px;line-height:1.55;font-weight:600;color:rgba(30,27,75,0.95);";
+        pVx.textContent = "سلتك تحتاج متابعة خاصة";
+        widgetBody.appendChild(pVx);
+
+        var rowVx = document.createElement("div");
+        rowVx.style.cssText = rowStyleCol;
+
+        var bGo = document.createElement("button");
+        bGo.type = "button";
+        bGo.textContent = "متابعة";
+        stampPrimaryBubbleBtn(bGo);
+        bGo.addEventListener("click", function (ego) {
+          ego.stopPropagation();
+          ego.preventDefault();
+          mountVipInlinePhoneCapture();
+        });
+
+        var bVxBack = document.createElement("button");
+        bVxBack.type = "button";
+        bVxBack.textContent = BTN_BACK;
+        stampPrimaryBubbleBtn(bVxBack);
+        bVxBack.addEventListener("click", function (ebVx) {
+          ebVx.stopPropagation();
+          ebVx.preventDefault();
+          remountCartReasonChoicesFromFollowUp();
+        });
+
+        rowVx.appendChild(bGo);
+        rowVx.appendChild(bVxBack);
+        widgetBody.appendChild(rowVx);
+      }
+
+      function vipMountLayerOtherBrief() {
+        logWidgetFlow("layer_d_other_ui", "other", "vip_brief_open");
+        stripContentKeepChrome();
+        var introVx = document.createElement("p");
+        introVx.setAttribute("data-cf-vip-other-brief", "1");
+        introVx.style.cssText =
+          "margin:0 0 12px 0;font-size:14px;line-height:1.55;";
+        introVx.textContent =
+          "تمام 👍 كيف نخدمك؟ اكتب سبب التردّد باختصار.";
+        widgetBody.appendChild(introVx);
+
+        var taVx = document.createElement("textarea");
+        taVx.setAttribute("rows", "3");
+        taVx.setAttribute("placeholder", "…");
+        taVx.setAttribute("aria-label", "سبب التردّد باختصار");
+        taVx.style.cssText =
+          "width:100%;box-sizing:border-box;border-radius:8px;border:0;padding:8px;margin-bottom:8px;font:inherit;color:#1e1b4b;resize:vertical;min-height:3.5em;";
+        widgetBody.appendChild(taVx);
+
+        var pVxErr = document.createElement("p");
+        pVxErr.setAttribute("role", "alert");
+        pVxErr.style.cssText =
+          "margin:0 0 8px 0;font-size:13px;line-height:1.4;color:#b91c1c;min-height:0;";
+        pVxErr.textContent = "";
+        widgetBody.appendChild(pVxErr);
+
+        var rowVxO = document.createElement("div");
+        rowVxO.style.cssText = rowStyleCol;
+
+        var bVxSend = document.createElement("button");
+        bVxSend.type = "button";
+        bVxSend.textContent = "متابعة";
+        stampPrimaryBubbleBtn(bVxSend);
+
+        var bVxBackO = document.createElement("button");
+        bVxBackO.type = "button";
+        bVxBackO.textContent = BTN_BACK;
+        stampPrimaryBubbleBtn(bVxBackO);
+        bVxBackO.addEventListener("click", function (ebo) {
+          ebo.stopPropagation();
+          ebo.preventDefault();
+          remountCartReasonChoicesFromFollowUp();
+        });
+
+        bVxSend.addEventListener("click", function (eso) {
+          eso.stopPropagation();
+          eso.preventDefault();
+          var noteVx = String(taVx.value || "").trim();
+          if (!noteVx) {
+            pVxErr.textContent = "يرجى كتابة الملاحظة";
+            return;
+          }
+          pVxErr.textContent = "";
+          bVxSend.setAttribute("disabled", "true");
+          postReason({
+            reason: "other",
+            custom_text: noteVx,
+          })
+            .then(function (jvo) {
+              bVxSend.removeAttribute("disabled");
+              if (!(jvo && jvo.ok)) {
+                pVxErr.textContent = "تعذّر الحفظ، حاول مرة ثانية.";
+                return;
+              }
+              try {
+                persistSessionAbandonReason("other", noteVx);
+              } catch (_) {}
+              setReasonTag("other");
+              emitDemoGuideEvent("cartflow-demo-reason-confirmed", {
+                reason: "other",
+                sub_category: null,
+              });
+              showVipFollowupStep();
+            })
+            .catch(function () {
+              bVxSend.removeAttribute("disabled");
+              pVxErr.textContent = "تعذّر الحفظ، حاول مرة ثانية.";
+            });
+        });
+
+        rowVxO.appendChild(bVxSend);
+        rowVxO.appendChild(bVxBackO);
+        widgetBody.appendChild(rowVxO);
+      }
+
       function buildChoices() {
         while (wrap.firstChild) {
           wrap.removeChild(wrap.firstChild);
@@ -5946,7 +6099,46 @@ try {
                 String(opt.tag),
                 String(opt.label)
               );
-              if (opt.tag === "_other") {
+              if (opt.tag === "no_help") {
+                cartflowRejectHelp();
+              } else if (cartflowState.isVip === true) {
+                if (opt.tag === "_other") {
+                  vipMountLayerOtherBrief();
+                } else if (opt.tag === "price_high") {
+                  vipPostCartflowReasonThenFollowup(
+                    {
+                      reason: "price",
+                      sub_category: "price_budget_issue",
+                    },
+                    "price_high",
+                    null
+                  );
+                } else if (opt.tag === "quality_uncertainty") {
+                  vipPostCartflowReasonThenFollowup(
+                    { reason: "quality" },
+                    "quality_uncertainty",
+                    null
+                  );
+                } else if (opt.tag === "shipping_cost") {
+                  vipPostCartflowReasonThenFollowup(
+                    { reason: "shipping" },
+                    "shipping_cost",
+                    null
+                  );
+                } else if (opt.tag === "delivery_time") {
+                  vipPostCartflowReasonThenFollowup(
+                    { reason: "thinking" },
+                    "delivery_time",
+                    null
+                  );
+                } else if (opt.tag === "warranty") {
+                  vipPostCartflowReasonThenFollowup(
+                    { reason: "warranty" },
+                    "warranty",
+                    null
+                  );
+                }
+              } else if (opt.tag === "_other") {
                 mountOtherCustomReasonFlow();
               } else if (opt.tag === "price_high") {
                 mountPriceObjectionFollowUp();
@@ -5958,8 +6150,6 @@ try {
                 mountDeliveryObjectionFollowUp();
               } else if (opt.tag === "warranty") {
                 mountWarrantyObjectionFollowUp();
-              } else if (opt.tag === "no_help") {
-                cartflowRejectHelp();
               } else {
                 persistSessionAbandonReason(opt.tag, null);
                 showLayerDAckAfterPick(wrap);
@@ -5973,6 +6163,20 @@ try {
 
       buildChoices();
       widgetBody.appendChild(wrap);
+    }
+
+    function vipRemountCartLayerDReasonChoicesFromFollowUp() {
+      logWidgetFlow("reason_menu_back", "", "رجوع_للقائمة_السابقة");
+      try {
+        w.removeAttribute("data-cf-layer-d-no-help-active");
+      } catch (eRmNoHelpFlg) {
+        /* ignore */
+      }
+      stripContentKeepChrome();
+      try {
+        w.setAttribute("data-cf-cart-affirm-help", "1");
+      } catch (eAff) {}
+      mountLayerDAbandonIfEligible();
     }
 
     var vipImmediateUi = !!(revealOpts && revealOpts.vipImmediate);
@@ -6626,7 +6830,7 @@ try {
         try {
           w.removeAttribute("data-cf-vip-inline-phone-step");
         } catch (eBs) {}
-        showVipOnlyReasonMenu();
+        vipRemountCartLayerDReasonChoicesFromFollowUp();
       });
 
       bSend.addEventListener("click", function (e2) {
@@ -6706,35 +6910,6 @@ try {
       rowV.appendChild(bSend);
       rowV.appendChild(bBackV);
       widgetBody.appendChild(rowV);
-    }
-
-    function showVipOnlyReasonMenu() {
-      stripContentKeepChrome();
-      try {
-        w.setAttribute("data-cf-vip-inline-flow", "1");
-        w.setAttribute("data-cf-vip-inline-blocking", "1");
-        w.removeAttribute("data-cf-vip-inline-phone-step");
-      } catch (eVm) {}
-
-      var rowMenu = document.createElement("div");
-      rowMenu.setAttribute("data-cf-vip-inline-reason-row", "1");
-      rowMenu.style.cssText = rowStyleCol;
-
-      var bVip = document.createElement("button");
-      bVip.type = "button";
-      bVip.textContent = "سلتك تحتاج متابعة خاصة";
-      stampPrimaryBubbleBtn(bVip);
-      bVip.addEventListener(
-        "click",
-        function (ev) {
-          ev.stopPropagation();
-          ev.preventDefault();
-          mountVipInlinePhoneCapture();
-        },
-        false
-      );
-      rowMenu.appendChild(bVip);
-      widgetBody.appendChild(rowMenu);
     }
 
     function showOtherSuccessView() {
@@ -6918,7 +7093,8 @@ try {
             stripContentKeepChrome();
             emitDemoGuideEvent("cartflow-demo-reason-list-visible", {});
             if (cartflowState.isVip === true) {
-              showVipOnlyReasonMenu();
+              w.setAttribute("data-cf-cart-affirm-help", "1");
+              mountLayerDAbandonIfEligible();
               return;
             }
             w.setAttribute("data-cf-cart-affirm-help", "1");
