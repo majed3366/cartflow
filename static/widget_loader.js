@@ -4,6 +4,11 @@
 (function () {
   "use strict";
 
+  window.__cartflow_loader_build = "vip-runtime-loader-v1";
+  try {
+    console.log("[CARTFLOW LOADER BUILD]", window.__cartflow_loader_build);
+  } catch (eLb) {}
+
   function cartflowBlockWidgetAfterConversion() {
     try {
       if (
