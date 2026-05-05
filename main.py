@@ -12,6 +12,7 @@ import threading
 import time
 import uuid
 import traceback
+from collections import defaultdict
 from types import SimpleNamespace
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional, Tuple
@@ -5411,23 +5412,42 @@ def _vip_priority_cart_alert_list() -> list[dict[str, Any]]:
         print(f"[VIP PRIORITY QUERY] store_id={sid_log} count={n_match}")
         print(f"[VIP PRIORITY QUERY] count={n_match}")
 
-        seen_k: set[str] = set()
-        picked: list[AbandonedCart] = []
-        for ac in sorted(full_rows, key=_ts_norm, reverse=True):
-            dk = _distinct_key(ac)
-            if dk in seen_k:
-                continue
-            seen_k.add(dk)
-            picked.append(ac)
-            if len(picked) >= 24:
+        def _group_latest_ts(grp: list[AbandonedCart]) -> datetime:
+            if not grp:
+                return datetime.min.replace(tzinfo=timezone.utc)
+            return max(_ts_norm(ac) for ac in grp)
+
+        groups: dict[str, list[AbandonedCart]] = defaultdict(list)
+        for ac in full_rows:
+            groups[_distinct_key(ac)].append(ac)
+
+        sorted_group_keys = sorted(
+            groups.keys(),
+            key=lambda k: _group_latest_ts(groups[k]),
+            reverse=True,
+        )
+
+        picked_groups: list[list[AbandonedCart]] = []
+        for dk in sorted_group_keys:
+            grp = groups[dk]
+            grp_sorted = sorted(grp, key=_ts_norm, reverse=True)
+            picked_groups.append(grp_sorted)
+            if len(picked_groups) >= 24:
                 break
 
-        for ac in picked:
+        for grp_sorted in picked_groups:
+            ac = grp_sorted[0]
+
+            wa_digits = ""
+            for ac_g in grp_sorted:
+                raw_phone = _vip_dashboard_customer_phone_raw(ac_g, dash_store)
+                cand = _normalize_customer_phone_for_wa_me(raw_phone)
+                if cand:
+                    wa_digits = cand
+                    break
             zid = (ac.zid_cart_id or "").strip()
             cart_short = zid[:28] + ("…" if len(zid) > 28 else "") if zid else "—"
             st = ((ac.status or "").strip() or "—")[:48]
-            raw_phone = _vip_dashboard_customer_phone_raw(ac, dash_store)
-            wa_digits = _normalize_customer_phone_for_wa_me(raw_phone)
             hint_ar = (vip_offer_card_hint_ar(dash_store) if wa_digits else "") or ""
             override_msg = vip_offer_manual_contact_whatsapp_body(dash_store)
             if wa_digits and override_msg:

@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import unittest
 import uuid
+from datetime import datetime, timezone
 from unittest.mock import patch
 
 from extensions import db
@@ -300,6 +301,54 @@ class VipDashboardMerchantAlertTests(unittest.TestCase):
         card_html = html[li_start : li_end + len("</li>")]
         self.assertNotIn("ردود جاهزة للتاجر", card_html)
         self.assertNotIn("data-vip-merchant-prefill-btn", card_html)
+
+    @patch("main._cleanup_duplicate_vip_abandoned_rows", return_value=0)
+    def test_vip_priority_merges_same_session_for_display_and_phone(
+        self, _noop_cleanup
+    ) -> None:
+        """بدون تنظيف ‎DB‎: مجموعة واحدة لكل ‎session‎، أحدث سلة مع رقم من أي صف في المجموعة."""
+        db.create_all()
+        slug = f"vip_sess_grp_{uuid.uuid4().hex[:12]}"
+        store = Store(zid_store_id=slug)
+        db.session.add(store)
+        db.session.commit()
+
+        sess = f"rs_grp_{uuid.uuid4().hex[:8]}"
+        ts_old = datetime(2026, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+        ts_new = datetime(2026, 1, 8, 12, 0, 0, tzinfo=timezone.utc)
+        ac_old = AbandonedCart(
+            store_id=store.id,
+            zid_cart_id=f"z-o-{uuid.uuid4().hex[:8]}",
+            recovery_session_id=sess,
+            cart_value=400.0,
+            status="abandoned",
+            vip_mode=True,
+            customer_phone="0501234567",
+            last_seen_at=ts_old,
+        )
+        ac_new = AbandonedCart(
+            store_id=store.id,
+            zid_cart_id=f"z-n-{uuid.uuid4().hex[:8]}",
+            recovery_session_id=sess,
+            cart_value=500.0,
+            status="abandoned",
+            vip_mode=True,
+            customer_phone=None,
+            last_seen_at=ts_new,
+        )
+        db.session.add_all([ac_old, ac_new])
+        db.session.commit()
+
+        r = self.client.get("/dashboard/vip-cart-settings")
+        self.assertEqual(r.status_code, 200, r.text)
+        html = r.text.replace("&#34;", '"')
+        self.assertIn('data-cart-row-id="%d"' % int(ac_new.id), html)
+        self.assertNotIn('data-cart-row-id="%d"' % int(ac_old.id), html)
+        self.assertIn("966501234567", html)
+
+        db.session.expire_all()
+        self.assertIsNotNone(db.session.get(AbandonedCart, ac_old.id))
+        self.assertIsNotNone(db.session.get(AbandonedCart, ac_new.id))
 
     def test_vip_cart_settings_priority_requires_vip_mode_and_abandoned_status(self) -> None:
         db.create_all()
