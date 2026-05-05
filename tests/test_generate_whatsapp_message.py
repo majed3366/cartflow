@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import unittest
+from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
 from main import app
 from services.cartflow_whatsapp_mock import build_mock_whatsapp_message
+from services.decision_engine import VIP_CUSTOMER_WHATSAPP_NEUTRAL_BODY
 
 
 class GenerateWhatsappMessageTests(unittest.TestCase):
@@ -121,6 +123,37 @@ class GenerateWhatsappMessageTests(unittest.TestCase):
         self.assertTrue(j.get("ok"), j)
         self.assertIn("resolved_reason", j)
         self.assertIn("primary_reason_log", j)
+
+    def test_post_vip_cart_total_returns_neutral_message_not_price(self) -> None:
+        with patch("routes.cartflow.is_vip_cart", return_value=True):
+            r = self.client.post(
+                "/api/cartflow/generate-whatsapp-message",
+                json={
+                    "store_slug": "demo",
+                    "session_id": "s_vip_neutral_preview",
+                    "reason": "price",
+                    "sub_category": "price_discount_request",
+                    "product_name": "سماعة",
+                    "cart_url": "#",
+                    "cart_total": 5000.0,
+                },
+            )
+        self.assertEqual(200, r.status_code, r.text)
+        j = r.json()
+        self.assertTrue(j.get("ok"), j)
+        self.assertEqual(j.get("resolved_reason"), "vip_neutral_followup")
+        self.assertEqual(
+            (j.get("message") or "").strip(),
+            VIP_CUSTOMER_WHATSAPP_NEUTRAL_BODY.strip(),
+        )
+        self.assertNotIn("عرض", (j.get("message") or ""), j)
+
+    def test_build_vip_phone_capture_mock_matches_neutral_body(self) -> None:
+        m = build_mock_whatsapp_message(
+            reason="vip_phone_capture",
+            sub_category=None,
+        )
+        self.assertEqual(m.strip(), VIP_CUSTOMER_WHATSAPP_NEUTRAL_BODY.strip())
 
     def test_get_primary_recovery_reason_endpoint(self) -> None:
         r = self.client.get(

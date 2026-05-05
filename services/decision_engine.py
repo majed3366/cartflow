@@ -14,6 +14,13 @@ from services.recovery_message_templates import resolve_whatsapp_recovery_templa
 
 log = logging.getLogger("cartflow")
 
+# رسالة عميل وحيدة للسلّة المميزة — بدون خصومات بديلة أو وعود خاصة؛ مستقلاً عن قوالب التردّد العادية
+VIP_CUSTOMER_WHATSAPP_NEUTRAL_BODY = (
+    "السلام عليكم،\n"
+    "تواصل معكم بخصوص طلبك 👌\n"
+    "نقدر نساعدك تكمل الطلب بكل سهولة."
+)
+
 
 class RecoveryActionResult(TypedDict):
     action: str
@@ -44,12 +51,11 @@ def decide_recovery_action(
     """
     if is_vip_cart_flag:
         log.info("[VIP OVERRIDE ACTIVATED]")
-        log.info("[VIP FLOW STOPPED]")
-        log.info("[VIP CUSTOMER BLOCKED]")
+        log.info("[VIP SKIP HESITATION TEMPLATE LOGIC]")
         return {
-            "action": "vip_manual_handling",
-            "message": "",
-            "send_customer": False,
+            "action": "vip_neutral_followup",
+            "message": VIP_CUSTOMER_WHATSAPP_NEUTRAL_BODY,
+            "send_customer": True,
             "send_merchant": True,
         }
 

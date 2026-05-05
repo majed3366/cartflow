@@ -52,10 +52,12 @@ def test_decide_recovery_action_respects_store_template() -> None:
 
 
 def test_decide_recovery_action_vip_overrides_engine() -> None:
+    from services.decision_engine import VIP_CUSTOMER_WHATSAPP_NEUTRAL_BODY
+
     r = decide_recovery_action("price_high", store=None, is_vip_cart_flag=True)
-    assert r["action"] == "vip_manual_handling"
-    assert r["message"] == ""
-    assert r["send_customer"] is False
+    assert r["action"] == "vip_neutral_followup"
+    assert r["message"] == VIP_CUSTOMER_WHATSAPP_NEUTRAL_BODY
+    assert r["send_customer"] is True
     assert r["send_merchant"] is True
 
 

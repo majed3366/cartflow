@@ -1914,10 +1914,102 @@ VIP_WIDGET_RECOVERY_LOG_MESSAGE = "VIP cart detected from real widget flow"
 VIP_WIDGET_RECOVERY_LOG_STEP = 0
 
 
+def _try_send_vip_neutral_customer_recovery_whatsapp(
+    *,
+    store_slug: str,
+    session_id: str,
+    cart_id: Optional[str],
+    store_obj: Optional[Any],
+    recovery_key: str,
+    abandon_event_phone: Optional[str],
+    reason_tag: Optional[str],
+) -> None:
+    """رسالة عميل وحيدة لمسار VIP — خارج قوالب السعر والبدائل (محرّك القرار يفرض النص)."""
+    try:
+        vip_decision = decide_recovery_action(
+            (reason_tag or "").strip() or None,
+            store=store_obj,
+            is_vip_cart_flag=True,
+        )
+        text = str(vip_decision.get("message") or "").strip()
+        if not vip_decision.get("send_customer") or not text:
+            return
+        reason_row_v = _cart_recovery_reason_latest_row(store_slug, session_id)
+        if reason_row_v is not None and _recovery_row_user_rejected_help(reason_row_v):
+            return
+        if _is_user_converted(recovery_key):
+            return
+        now = datetime.now(timezone.utc)
+        last_act = _last_activity_utc_from_recovery_row(reason_row_v)
+        last_eff = last_act if last_act is not None else now
+        delay_minutes_f = float(_recovery_delay_minutes_from_store(store_obj))
+        if not should_send_whatsapp(
+            last_eff,
+            user_returned_to_site=_is_user_returned(recovery_key),
+            now=now,
+            store=store_obj,
+            sent_count=0,
+        ):
+            return
+        phone, src, allowed = _resolve_cartflow_recovery_phone(
+            store_slug=store_slug,
+            session_id=session_id,
+            cart_id=cart_id,
+            store_obj=store_obj,
+            abandon_event_phone=abandon_event_phone,
+            recovery_key=recovery_key,
+            reason_row=reason_row_v,
+        )
+        store_id_label = _recovery_store_id_label(store_obj, store_slug)
+        _log_phone_resolution(
+            store_id=store_id_label,
+            store_slug=store_slug,
+            session_id=session_id,
+            cart_id=cart_id,
+            source=src,
+            phone=phone,
+            allowed_to_send=allowed,
+        )
+        if not phone or not allowed:
+            return
+        _assert_forbidden_stale_recovery_phone(phone)
+        wa_result = send_whatsapp(
+            phone,
+            text,
+            reason_tag="vip_neutral_followup",
+            wa_trace_path=__file__,
+            wa_trace_session_id=session_id,
+            wa_trace_store_slug=store_slug,
+            wa_trace_last_activity=last_eff,
+            wa_trace_recovery_delay_minutes=delay_minutes_f,
+            wa_trace_delay_passed=True,
+        )
+        wa_dict = wa_result if isinstance(wa_result, dict) else {}
+        ok_flag = wa_dict.get("ok") is True
+        st_out = str(wa_dict.get("status") or "").strip()[:50] or (
+            "sent_real" if ok_flag else "whatsapp_failed"
+        )
+        if ok_flag:
+            with _recovery_session_lock:
+                sc = _session_recovery_send_count.get(recovery_key, 0)
+                _session_recovery_send_count[recovery_key] = sc + 1
+        _persist_cart_recovery_log(
+            store_slug=store_slug,
+            session_id=session_id,
+            cart_id=cart_id,
+            phone=phone if ok_flag else None,
+            message=text,
+            status=st_out if ok_flag else "whatsapp_failed",
+            step=1,
+        )
+    except Exception as exc:  # noqa: BLE001
+        log.warning("VIP neutral customer WA (non-fatal): %s", exc, exc_info=True)
+
+
 def _vip_recovery_decision_layer(
     reason_tag: Optional[str], store_obj: Optional[Any]
 ) -> dict[str, Any]:
-    """استدعاء طبقة قرار D.2 مع تعليم VIP — يوقف منطق رسائل العميل عند المستهلكين."""
+    """استدعاء طبقة القرار مع ‎VIP‎ — نص عميل حيادي دون قوالب التردّد العادية."""
     return decide_recovery_action(
         (reason_tag or "").strip() or None,
         store=store_obj,
@@ -1943,9 +2035,10 @@ def _activate_vip_manual_cart_handling(
     recovery_log_message: Optional[str] = None,
     recovery_log_step: Optional[int] = None,
     vip_activation_source: Optional[str] = None,
+    abandon_event_phone: Optional[str] = None,
 ) -> bool:
     """
-    تفعيل VIP: تعليم السلة، سجل لوحة، تنبيه تاجر، ومنع الاسترجاع التلقائي للعميل.
+    تفعيل VIP: تعليم السلة، سجل لوحة، تنبيه تاجر، رسالة عميل حيادية (خارج قوالب السعر/البدائل)، ومنع مسار الاسترجاع الآلي العادي.
     آمن عند التكرار: لا يعيد التنبيه للتاجر إذا كانت ‎vip_mode‎ مفعّلة مسبقاً.
     يُرجع ‎False‎ عند فشل حرج (للسقوط إلى المسار العادي دون تعديل محرك القرار).
     """
@@ -2072,7 +2165,20 @@ def _activate_vip_manual_cart_handling(
     except Exception as e:  # noqa: BLE001
         log.warning("VIP merchant alert failed (non-fatal): %s", e, exc_info=True)
 
-    log.info("[VIP CUSTOMER RECOVERY SKIPPED] reason=vip_manual_handling")
+    try:
+        _try_send_vip_neutral_customer_recovery_whatsapp(
+            store_slug=store_slug,
+            session_id=session_id,
+            cart_id=cid or None,
+            store_obj=store_obj,
+            recovery_key=recovery_key,
+            abandon_event_phone=abandon_event_phone,
+            reason_tag=(reason_tag or "").strip() or None,
+        )
+    except Exception as exc2:  # noqa: BLE001
+        log.warning("VIP neutral customer send error: %s", exc2, exc_info=True)
+
+    log.info("[VIP ACTIVATION HANDOFF COMPLETE]")
     with _recovery_session_lock:
         _session_recovery_sent[recovery_key] = True
     return True
@@ -2508,6 +2614,7 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
             store_obj=store_pre,
             recovery_key=recovery_key,
             reason_tag=rt_pre or None,
+            abandon_event_phone=abandon_event_phone,
         )
         if not ok_vip:
             log.warning(
@@ -2586,6 +2693,7 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
             store_obj=store_obj,
             recovery_key=recovery_key,
             reason_tag=rt_raw or None,
+            abandon_event_phone=abandon_event_phone,
         )
         if not ok_vip2:
             log.warning(
@@ -3106,6 +3214,7 @@ async def _run_recovery_dispatch_cart_abandoned_impl(
             store_obj=store_row0,
             recovery_key=recovery_key,
             reason_tag=rt0,
+            abandon_event_phone=abandon_event_phone,
         )
         if not ok_vip:
             log.warning(
@@ -3286,6 +3395,7 @@ async def handle_cart_abandoned(
             recovery_log_message=VIP_WIDGET_RECOVERY_LOG_MESSAGE,
             recovery_log_step=int(VIP_WIDGET_RECOVERY_LOG_STEP),
             vip_activation_source=VIP_WIDGET_ACTIVATION_SOURCE,
+            abandon_event_phone=abandon_evt_phone,
         )
         if not ok_vip:
             log.warning(

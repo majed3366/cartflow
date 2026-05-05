@@ -2881,7 +2881,7 @@ try {
     vipPhoneCaptureShowingSuccess = false;
     var btnStyle = getWidgetPrimaryButtonStyle();
     inner.innerHTML =
-      "<div style=\"font-weight:700;font-size:16px;margin-bottom:6px;color:#17202a;\">سلتك تحتاج متابعة خاصة 👋</div>" +
+      "<div style=\"font-weight:700;font-size:16px;margin-bottom:6px;color:#17202a;\">خلنا نساعدك تكمل الطلب 👍</div>" +
       "<div style=\"font-size:13px;color:#3d4f5f;margin-bottom:10px;\">اكتب رقمك عشان نساعدك تكمل الطلب عبر واتساب</div>" +
       "<input type=\"tel\" inputmode=\"numeric\" maxlength=\"17\" autocomplete=\"tel\" placeholder=\"05XXXXXXXX\" data-vip-phone-input " +
       "style=\"width:100%!important;box-sizing:border-box!important;border:1px solid #cdd5dc!important;border-radius:8px!important;" +
@@ -2925,7 +2925,7 @@ try {
             }
             vipPhoneCaptureShowingSuccess = true;
             inner.innerHTML =
-              "<div style=\"font-size:14px;line-height:1.6;color:#237a52;text-align:center;padding:12px 6px;\">تمام 👍 تم حفظ الرقم</div>";
+              "<div style=\"font-size:14px;line-height:1.6;color:#237a52;text-align:center;padding:12px 6px;\">تمام 👍 بنراجع طلبك ونرجع لك</div>";
           });
         },
         false
@@ -3133,7 +3133,7 @@ try {
       } catch (e) {
         hrefAuto = "#";
       }
-      return {
+      var autoBody = {
         store_slug: getStoreSlug(),
         session_id: getSessionId(),
         reason: "auto",
@@ -3141,6 +3141,15 @@ try {
         product_price: ctx.priceLabel || "",
         cart_url: hrefAuto,
       };
+      try {
+        var ctA = Number(cartflowState.cartTotal);
+        if (typeof ctA === "number" && !isNaN(ctA) && ctA > 0) {
+          autoBody.cart_total = ctA;
+        }
+      } catch (eCtA) {
+        /* ignore */
+      }
+      return autoBody;
     }
     var gsub =
       rkey === "price" && typeof window.cartflowGetReasonSubTag === "function"
@@ -3164,6 +3173,14 @@ try {
     };
     if (gsub) {
       body.sub_category = String(gsub);
+    }
+    try {
+      var ctV = Number(cartflowState.cartTotal);
+      if (typeof ctV === "number" && !isNaN(ctV) && ctV > 0) {
+        body.cart_total = ctV;
+      }
+    } catch (eCt) {
+      /* ignore */
     }
     return body;
   }
@@ -5910,7 +5927,7 @@ try {
         widgetBody.appendChild(row);
       }
 
-      /** VIP: خطوة تسجيل سبب مع ‎/api/cartflow/reason‎ ثم عرض خطوة «متابعة خاصة» قبل جمع الرقم */
+      /** VIP: بعد ‎POST /api/cartflow/reason‎ يُفتح جمع الرقم مباشرة دون رسالة وسيطة. */
       function vipPostCartflowReasonThenFollowup(
         reasonPayload,
         layerAbandonTag,
@@ -5929,51 +5946,9 @@ try {
                 );
               }
             } catch (ePs) {}
-            showVipFollowupStep();
+            mountVipInlinePhoneCapture();
           })
           .catch(function () {});
-      }
-
-      function showVipFollowupStep() {
-        stripContentKeepChrome();
-        try {
-          w.setAttribute("data-cf-vip-inline-flow", "1");
-          w.setAttribute("data-cf-vip-inline-blocking", "1");
-          w.removeAttribute("data-cf-vip-inline-phone-step");
-        } catch (eSf) {}
-
-        var pVx = document.createElement("p");
-        pVx.style.cssText =
-          "margin:0 0 10px 0;font-size:15px;line-height:1.55;font-weight:600;color:rgba(30,27,75,0.95);";
-        pVx.textContent = "سلتك تحتاج متابعة خاصة";
-        widgetBody.appendChild(pVx);
-
-        var rowVx = document.createElement("div");
-        rowVx.style.cssText = rowStyleCol;
-
-        var bGo = document.createElement("button");
-        bGo.type = "button";
-        bGo.textContent = "متابعة";
-        stampPrimaryBubbleBtn(bGo);
-        bGo.addEventListener("click", function (ego) {
-          ego.stopPropagation();
-          ego.preventDefault();
-          mountVipInlinePhoneCapture();
-        });
-
-        var bVxBack = document.createElement("button");
-        bVxBack.type = "button";
-        bVxBack.textContent = BTN_BACK;
-        stampPrimaryBubbleBtn(bVxBack);
-        bVxBack.addEventListener("click", function (ebVx) {
-          ebVx.stopPropagation();
-          ebVx.preventDefault();
-          remountCartReasonChoicesFromFollowUp();
-        });
-
-        rowVx.appendChild(bGo);
-        rowVx.appendChild(bVxBack);
-        widgetBody.appendChild(rowVx);
       }
 
       function vipMountLayerOtherBrief() {
@@ -6048,7 +6023,7 @@ try {
                 reason: "other",
                 sub_category: null,
               });
-              showVipFollowupStep();
+              mountVipInlinePhoneCapture();
             })
             .catch(function () {
               bVxSend.removeAttribute("disabled");
@@ -6427,10 +6402,16 @@ try {
           convHint.innerHTML = "";
           convHint.style.display = "none";
           function openWhatsappCompose(effectiveReason, effectiveSub) {
-            var finalMessage = buildWhatsappMessage({
-              reason: effectiveReason,
-              sub_category: effectiveSub,
-            });
+            var useApiCore =
+              generatedCore &&
+              String(generatedCore).trim() !== "" &&
+              String(effectiveReason || "").trim() === "vip_neutral_followup";
+            var finalMessage = useApiCore
+              ? String(generatedCore)
+              : buildWhatsappMessage({
+                  reason: effectiveReason,
+                  sub_category: effectiveSub,
+                });
             var wurl = buildWaMeComposeUrl(finalMessage, merchantE164);
             try {
               window.open(wurl, "_blank", "noopener,noreferrer");
@@ -6506,10 +6487,16 @@ try {
               if (x.j.resolved_sub_category !== undefined && x.j.resolved_sub_category !== null) {
                 waSub = String(x.j.resolved_sub_category).trim();
               }
-              msgEl.textContent = buildWhatsappMessage({
-                reason: waReason,
-                sub_category: waSub,
-              });
+              var vipNeutralPrev =
+                String(x.j.resolved_reason || "") === "vip_neutral_followup";
+              if (vipNeutralPrev) {
+                msgEl.textContent = String(generatedCore);
+              } else {
+                msgEl.textContent = buildWhatsappMessage({
+                  reason: waReason,
+                  sub_category: waSub,
+                });
+              }
               bMock.removeAttribute("disabled");
               if (
                 x.j.merchant_whatsapp_e164 != null &&
@@ -6884,7 +6871,7 @@ try {
             var topOk = document.createElement("p");
             topOk.style.cssText =
               "margin:0 0 10px 0;font-size:15px;line-height:1.55;font-weight:600;";
-            topOk.textContent = "تمام 👍 تم حفظ الرقم";
+            topOk.textContent = "تمام 👍 بنراجع طلبك ونرجع لك";
             widgetBody.appendChild(topOk);
 
             var rowOk = document.createElement("div");

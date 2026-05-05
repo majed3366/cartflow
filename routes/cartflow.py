@@ -19,6 +19,7 @@ from services.cartflow_whatsapp_mock import (
     build_mock_whatsapp_message,
     get_merchant_whatsapp_e164_for_store,
 )
+from services.decision_engine import VIP_CUSTOMER_WHATSAPP_NEUTRAL_BODY
 from services.recovery_decision import (
     get_primary_recovery_reason,
     resolve_auto_whatsapp_reason,
@@ -36,7 +37,10 @@ from services.cartflow_widget_recovery_gate import (
 )
 from services.store_widget_customization import widget_customization_fields_for_api
 from services.vip_cart import is_vip_cart, vip_cart_threshold_fields_for_api
-from services.vip_abandoned_cart_phone import apply_vip_phone_capture_to_abandoned_carts
+from services.vip_abandoned_cart_phone import (
+    apply_vip_phone_capture_to_abandoned_carts,
+    resolve_store_row_for_cartflow_slug,
+)
 
 log = logging.getLogger("cartflow")
 
@@ -223,6 +227,29 @@ async def post_generate_whatsapp_message(request: Request) -> Any:
         url_s = (str(c_url) if c_url is not None else "") or ""
         if not ss or not sid:
             return j({"ok": False, "error": "store_slug_session_required"}, 400)
+        vip_row = resolve_store_row_for_cartflow_slug(ss)
+        ct_try = body.get("cart_total")
+        if vip_row is not None and ct_try is not None:
+            try:
+                ct_f = float(ct_try)
+                if is_vip_cart(ct_f, vip_row):
+                    return j(
+                        {
+                            "ok": True,
+                            "message": VIP_CUSTOMER_WHATSAPP_NEUTRAL_BODY,
+                            "reason": "vip_neutral_followup",
+                            "sub_category": None,
+                            "resolved_reason": "vip_neutral_followup",
+                            "resolved_sub_category": None,
+                            "primary_reason_log": "vip_neutral_followup",
+                            "used_dashboard_primary": False,
+                            "merchant_whatsapp_e164": get_merchant_whatsapp_e164_for_store(
+                                ss
+                            ),
+                        }
+                    )
+            except (TypeError, ValueError):
+                pass
         used_analytics = False
         if is_auto:
             reason, sub_cat, primary_log, used_analytics = resolve_auto_whatsapp_reason(

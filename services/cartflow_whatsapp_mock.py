@@ -7,6 +7,8 @@ from __future__ import annotations
 
 from typing import Optional
 
+from services.decision_engine import VIP_CUSTOMER_WHATSAPP_NEUTRAL_BODY
+
 # يطابق ‎REASON_CHOICES / PRICE_SUB_CATEGORIES‎ في ‎routes/cartflow.py‎
 REASON_CHOICES = frozenset(
     {
@@ -103,9 +105,7 @@ def build_mock_whatsapp_message(
             "راح يساعدك مباشرة بخصوص المنتج أو الطلب."
         )
     if r == "vip_phone_capture":
-        return (
-            "تم حفظ رقمك لمتابعة سلّتك 👍"
-        )
+        return VIP_CUSTOMER_WHATSAPP_NEUTRAL_BODY
     if r not in REASON_CHOICES:
         raise ValueError("invalid_reason")
     raise ValueError("invalid_reason")
