@@ -3,6 +3,7 @@
 CartFlow — تطبيق FastAPI الرئيسي لاستقبال الويبهوك ولوحة التاجر.
 """
 import asyncio
+import base64
 import hashlib
 import json
 import logging
@@ -4704,6 +4705,19 @@ def _vip_merchant_ready_reply_bodies(*, cart_link: str) -> dict[str, str]:
     }
 
 
+def _vip_wa_prefill_utf8_base64(body: Optional[str]) -> str:
+    """UTF-8 → base64 لوسم data-* حتى تبقى العربية والإيموجي سليمة عند القراءة من DOM."""
+    if body is None:
+        return ""
+    s = str(body).strip()
+    if not s:
+        return ""
+    try:
+        return base64.b64encode(s.encode("utf-8")).decode("ascii")
+    except (UnicodeEncodeError, TypeError, ValueError):
+        return ""
+
+
 def format_whatsapp_recipient_id(phone: str) -> str:
     # رقم ‎E.164‎ بلا ‎+‎ (ما يتطلبه ‎Graph API‎)
     d = (phone or "").replace("+", "").replace(" ", "").replace("-", "")
@@ -5475,6 +5489,7 @@ def _vip_priority_cart_alert_list() -> list[dict[str, Any]]:
             merchant_replies_ar = _vip_merchant_ready_reply_bodies(
                 cart_link=cart_link_raw
             )
+            offer_ready = vip_offer_manual_contact_whatsapp_body(dash_store)
             out.append(
                 {
                     "id": ac.id,
@@ -5486,9 +5501,16 @@ def _vip_priority_cart_alert_list() -> list[dict[str, Any]]:
                     "customer_wa_phone": wa_digits,
                     "contact_wa_message": contact_msg,
                     "vip_offer_hint_ar": hint_ar,
-                    "merchant_reply_offer_ar": merchant_replies_ar["offer"],
+                    "merchant_reply_offer_ar": offer_ready,
+                    "merchant_reply_offer_b64": _vip_wa_prefill_utf8_base64(offer_ready),
                     "merchant_reply_reminder_ar": merchant_replies_ar["reminder"],
+                    "merchant_reply_reminder_b64": _vip_wa_prefill_utf8_base64(
+                        merchant_replies_ar["reminder"]
+                    ),
                     "merchant_reply_direct_ar": merchant_replies_ar["direct"],
+                    "merchant_reply_direct_b64": _vip_wa_prefill_utf8_base64(
+                        merchant_replies_ar["direct"]
+                    ),
                 }
             )
     except (SQLAlchemyError, OSError) as e:

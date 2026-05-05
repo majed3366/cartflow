@@ -102,15 +102,17 @@
               <div class="w-full rounded-lg border border-slate-200/90 bg-white px-3 py-2.5" aria-label="ردود جاهزة للتاجر">
                 <p class="mb-2 text-xs font-bold text-slate-800">ردود جاهزة للتاجر</p>
                 <div class="flex flex-wrap gap-2">
-                  <button type="button" data-vip-merchant-prefill-btn data-customer-wa="{{ vc.customer_wa_phone | e }}" data-prefill-body="{{ vc.merchant_reply_offer_ar | e }}"
+                  {% if vc.merchant_reply_offer_ar %}
+                  <button type="button" data-vip-merchant-prefill-btn data-customer-wa="{{ vc.customer_wa_phone | e }}" data-prefill-body-b64="{{ vc.merchant_reply_offer_b64 | e }}" data-prefill-body="{{ vc.merchant_reply_offer_ar | e }}"
                     class="shrink-0 rounded-lg border border-slate-300 bg-slate-50 px-2.5 py-1.5 text-xs font-semibold text-slate-800 shadow-sm hover:border-violet-400 hover:bg-violet-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-500">
                     إرسال عرض جاهز
                   </button>
-                  <button type="button" data-vip-merchant-prefill-btn data-customer-wa="{{ vc.customer_wa_phone | e }}" data-prefill-body="{{ vc.merchant_reply_reminder_ar | e }}"
+                  {% endif %}
+                  <button type="button" data-vip-merchant-prefill-btn data-customer-wa="{{ vc.customer_wa_phone | e }}" data-prefill-body-b64="{{ vc.merchant_reply_reminder_b64 | e }}" data-prefill-body="{{ vc.merchant_reply_reminder_ar | e }}"
                     class="shrink-0 rounded-lg border border-slate-300 bg-slate-50 px-2.5 py-1.5 text-xs font-semibold text-slate-800 shadow-sm hover:border-violet-400 hover:bg-violet-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-500">
                     تذكير لطيف
                   </button>
-                  <button type="button" data-vip-merchant-prefill-btn data-customer-wa="{{ vc.customer_wa_phone | e }}" data-prefill-body="{{ vc.merchant_reply_direct_ar | e }}"
+                  <button type="button" data-vip-merchant-prefill-btn data-customer-wa="{{ vc.customer_wa_phone | e }}" data-prefill-body-b64="{{ vc.merchant_reply_direct_b64 | e }}" data-prefill-body="{{ vc.merchant_reply_direct_ar | e }}"
                     class="shrink-0 rounded-lg border border-slate-300 bg-slate-50 px-2.5 py-1.5 text-xs font-semibold text-slate-800 shadow-sm hover:border-violet-400 hover:bg-violet-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-500">
                     مساعدة مباشرة
                   </button>
@@ -465,12 +467,27 @@
         });
       });
 
+      function vipPrefillBodyFromBtn(btn) {
+        var b64 = (btn.getAttribute("data-prefill-body-b64") || "").trim();
+        if (b64) {
+          try {
+            var bin = atob(b64.replace(/\s+/g, ""));
+            var bytes = new Uint8Array(bin.length);
+            for (var i = 0; i < bin.length; i++) {
+              bytes[i] = bin.charCodeAt(i);
+            }
+            return new TextDecoder("utf-8").decode(bytes);
+          } catch (e) {}
+        }
+        return btn.getAttribute("data-prefill-body") || "";
+      }
+
       document.querySelectorAll("[data-vip-merchant-prefill-btn]").forEach(function (btn) {
         btn.addEventListener("click", function () {
           var li = btn.closest("li");
           var statusEl = li ? li.querySelector("[data-vip-send-status]") : null;
           var waRaw = (btn.getAttribute("data-customer-wa") || "").trim();
-          var msg = btn.getAttribute("data-prefill-body") || "";
+          var msg = vipPrefillBodyFromBtn(btn);
           vipOpenCustomerWhatsApp(statusEl, waRaw, msg);
         });
       });
