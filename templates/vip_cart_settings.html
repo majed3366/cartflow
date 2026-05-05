@@ -30,6 +30,48 @@
           <p class="max-w-2xl">حدّد قيمة السلة التي تحتاج متابعة خاصة، وشاهد السلال التي تجاوزت هذا الحد.</p>
         </div>
 
+        <!-- Merchant follow-up — positive WhatsApp replies (read-only list, manual actions only) -->
+        <section class="mb-6 rounded-2xl border border-emerald-200/80 bg-white p-4 shadow-sm md:p-5" aria-labelledby="mf-followup-heading">
+          <h2 id="mf-followup-heading" class="mb-1 text-lg font-bold text-slate-900">عملاء يحتاجون متابعة الآن</h2>
+          <p class="mb-4 text-sm leading-relaxed text-slate-600">عملاء ردّوا على رسائل واتساب ويحتاجون تواصل سريع من المتجر</p>
+          {% set mf_list = merchant_followup_actions | default([]) %}
+          {% if mf_list | length > 0 %}
+          <ul id="mf-followup-list" class="m-0 list-none space-y-3 p-0" role="list">
+            {% for mf in mf_list %}
+            <li class="rounded-xl border border-slate-200 bg-emerald-50/40 px-3 py-3" data-mf-action-id="{{ mf.id }}">
+              <div class="space-y-2 text-right text-sm text-slate-800">
+                <p class="m-0"><span class="font-semibold text-slate-700">رقم العميل:</span> {{ mf.customer_phone }}</p>
+                <p class="m-0"><span class="font-semibold text-slate-700">الحالة:</span> {{ mf.status_ar }}</p>
+                <p class="m-0"><span class="font-semibold text-slate-700">السبب:</span> {{ mf.reason_ar }}</p>
+                <p class="m-0 whitespace-pre-wrap break-words"><span class="font-semibold text-slate-700">آخر رسالة:</span> {{ mf.inbound_message or "—" }}</p>
+                <p class="m-0"><span class="font-semibold text-slate-700">وقت الرد:</span> {{ mf.replied_at }}</p>
+                {% if mf.cart_value is not none %}
+                <p class="m-0"><span class="font-semibold text-slate-700">قيمة السلة:</span> {{ "%.2f"|format(mf.cart_value) }} ريال</p>
+                {% endif %}
+                {% if mf.reason_tag_ar %}
+                <p class="m-0"><span class="font-semibold text-slate-700">وسم السبب:</span> {{ mf.reason_tag_ar }}</p>
+                {% endif %}
+              </div>
+              <p class="mt-2 min-h-[1.25rem] text-end text-[10px] text-slate-600" data-mf-card-status aria-live="polite"></p>
+              <div class="mt-3 flex flex-wrap gap-2 justify-end">
+                <button type="button" data-mf-wa-contact data-customer-wa="{{ mf.customer_wa_digits | e }}" data-prefill-body="{{ mf.contact_prefill_body | e }}"
+                  class="shrink-0 rounded-lg border border-emerald-600 bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-emerald-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600">
+                  تواصل عبر واتساب
+                </button>
+                <button type="button" data-mf-complete-btn data-action-id="{{ mf.id }}"
+                  class="shrink-0 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 shadow-sm hover:border-emerald-400 hover:bg-emerald-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500">
+                  تمت المتابعة
+                </button>
+              </div>
+            </li>
+            {% endfor %}
+          </ul>
+          <p id="mf-followup-empty" class="{% if mf_list | length > 0 %}hidden {% endif %}m-0 text-sm leading-relaxed text-slate-600">لا توجد طلبات متابعة فورية من ردود واتساب حالياً.</p>
+          {% else %}
+          <p id="mf-followup-empty" class="m-0 text-sm leading-relaxed text-slate-600">لا توجد طلبات متابعة فورية من ردود واتساب حالياً.</p>
+          {% endif %}
+        </section>
+
         <!-- SECTION 1 — VIP carts needing follow-up -->
         <section class="mb-6 rounded-2xl border border-violet-200/80 bg-white p-4 shadow-sm md:p-5" aria-labelledby="vip-followup-heading">
           <h2 id="vip-followup-heading" class="mb-4 text-lg font-bold text-slate-900">السلال التي تحتاج متابعة</h2>
@@ -430,6 +472,71 @@
           var waRaw = (btn.getAttribute("data-customer-wa") || "").trim();
           var msg = btn.getAttribute("data-prefill-body") || "";
           vipOpenCustomerWhatsApp(statusEl, waRaw, msg);
+        });
+      });
+
+      document.querySelectorAll("[data-mf-wa-contact]").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          var li = btn.closest("li");
+          var statusEl = li ? li.querySelector("[data-mf-card-status]") : null;
+          var waRaw = (btn.getAttribute("data-customer-wa") || "").trim();
+          var msg = btn.getAttribute("data-prefill-body") || "";
+          vipOpenCustomerWhatsApp(statusEl, waRaw, msg);
+        });
+      });
+
+      document.querySelectorAll("[data-mf-complete-btn]").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          var id = (btn.getAttribute("data-action-id") || "").trim();
+          if (!id || btn.getAttribute("disabled")) return;
+          var li = btn.closest("li");
+          var statusEl = li ? li.querySelector("[data-mf-card-status]") : null;
+          btn.setAttribute("disabled", "true");
+          if (statusEl) {
+            statusEl.textContent = "";
+            statusEl.classList.remove("text-red-600", "text-emerald-700", "font-semibold");
+          }
+          fetch(
+            "/api/merchant-followup-actions/" + encodeURIComponent(id) + "/complete",
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: "{}",
+            }
+          )
+            .then(function (r) {
+              return r.json().then(function (d) {
+                return { ok: r.ok, d: d };
+              });
+            })
+            .then(function (x) {
+              btn.removeAttribute("disabled");
+              if (x.ok && x.d && x.d.ok) {
+                if (li && li.parentNode) {
+                  li.parentNode.removeChild(li);
+                }
+                var ul = document.getElementById("mf-followup-list");
+                var emptyEl = document.getElementById("mf-followup-empty");
+                if (ul && ul.children.length === 0 && emptyEl) {
+                  ul.classList.add("hidden");
+                  emptyEl.classList.remove("hidden");
+                }
+                return;
+              }
+              var err =
+                (x.d && (x.d.error || x.d.message)) || "تعذّر تحديث الحالة";
+              if (statusEl) {
+                statusEl.textContent = err;
+                statusEl.classList.add("text-red-600", "font-semibold");
+              }
+            })
+            .catch(function () {
+              btn.removeAttribute("disabled");
+              if (statusEl) {
+                statusEl.textContent = "خطأ في الشبكة";
+                statusEl.classList.add("text-red-600", "font-semibold");
+              }
+            });
         });
       });
     })();

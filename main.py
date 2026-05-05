@@ -29,7 +29,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 from extensions import db, init_database, remove_scoped_session
 from integrations.zid_client import exchange_code_for_token, verify_webhook_signature
 from json_response import UTF8JSONResponse, j
-from sqlalchemy import func, inspect, text
+from sqlalchemy import func, inspect, or_, text
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from decision_engine import decide_recovery_action
@@ -179,6 +179,7 @@ from models import (  # noqa: E402
     AbandonedCart,
     CartRecoveryLog,
     CartRecoveryReason,
+    MerchantFollowupAction,
     ObjectionTrack,
     RecoveryEvent,
     Store,
@@ -250,6 +251,11 @@ from services.vip_merchant_alert import (
     resolve_merchant_whatsapp_phone,
     try_send_vip_merchant_whatsapp_alert,
     vip_dashboard_review_link,
+)
+from services.whatsapp_positive_reply import (
+    REASON_CUSTOMER_REPLIED_YES,
+    STATUS_MERCHANT_FOLLOWUP_COMPLETED,
+    STATUS_NEEDS_MERCHANT_FOLLOWUP,
 )
 
 log = logging.getLogger("cartflow")
@@ -5694,14 +5700,49 @@ def dashboard_recovery_settings(request: Request):
 def dashboard_vip_cart_settings(request: Request):
     """السلال المميزة (VIP) — عتبة عبر ‎GET/POST /api/recovery-settings‎؛ قائمة أولوية حقيقية فقط."""
     vip_priority_alerts = _vip_priority_cart_alert_list()
+    merchant_followup_actions = merchant_followup_actions_for_dashboard(limit=10)
     return templates.TemplateResponse(
         request,
         "vip_cart_settings.html",
         {
             "request": request,
             "vip_priority_alerts": vip_priority_alerts,
+            "merchant_followup_actions": merchant_followup_actions,
         },
     )
+
+
+@app.get("/api/merchant-followup-actions")
+def api_merchant_followup_actions():
+    """قائمة قراءة فقط لإجراءات المتابعة اليدوية (ردود إيجابية واتساب)."""
+    try:
+        actions = merchant_followup_actions_for_dashboard(limit=10)
+        return j({"ok": True, "actions": actions})
+    except (OSError, TypeError, ValueError) as e:
+        log.warning("api merchant-followup-actions: %s", e)
+        return j({"ok": False, "error": "failed", "actions": []}, 500)
+
+
+@app.post("/api/merchant-followup-actions/{action_id}/complete")
+def api_merchant_followup_action_complete(action_id: int):
+    """تمييز إجراء المتابعة كمكتمل — يدوي من لوحة التاجر."""
+    try:
+        db.create_all()
+        row = db.session.get(MerchantFollowupAction, int(action_id))
+        if row is None:
+            return j({"ok": False, "error": "لم يتم العثور على الإجراء"}, 404)
+        if str(row.status or "").strip() != STATUS_NEEDS_MERCHANT_FOLLOWUP:
+            return j({"ok": False, "error": "لا يمكن إتمام هذا الإجراء"}, 400)
+        if not _merchant_followup_action_row_visible_for_dashboard(row):
+            return j({"ok": False, "error": "غير مسموح"}, 403)
+        row.status = STATUS_MERCHANT_FOLLOWUP_COMPLETED
+        row.updated_at = datetime.now(timezone.utc)
+        db.session.commit()
+        return j({"ok": True})
+    except (SQLAlchemyError, OSError, TypeError, ValueError) as e:
+        db.session.rollback()
+        log.warning("api merchant-followup complete: %s", e)
+        return j({"ok": False, "error": "failed"}, 500)
 
 
 @app.get("/dashboard/cartflow-messages")
@@ -5755,6 +5796,127 @@ def _vip_reason_tag_from_abandoned_cart(ac: Optional[AbandonedCart]) -> Optional
         return None
     t = (d.get("reason_tag") or "").strip()
     return t or None
+
+
+_MERCHANT_FOLLOWUP_REASON_TAG_SYNONYMS: dict[str, str] = {
+    "price_high": "price",
+    "shipping_cost": "shipping",
+    "quality_uncertainty": "quality",
+    "delivery_time": "shipping",
+}
+
+
+def _merchant_followup_prefill_whatsapp_body(*, cart_link: str) -> str:
+    """نص جاهز لـ‎ wa.me‎ (يدوي) بعد رد إيجابي من العميل."""
+    base = "هلا 👋\nوصلنا ردك، ونقدر نساعدك تكمل الطلب الآن."
+    link = (cart_link or "").strip()
+    if link:
+        return base + "\nرابط السلة:\n" + link
+    return base
+
+
+def _merchant_followup_reason_ar(reason: Optional[str]) -> str:
+    r = (reason or "").strip()
+    if r == REASON_CUSTOMER_REPLIED_YES:
+        return "رد العميل بنعم"
+    return r or "—"
+
+
+def _merchant_followup_reason_tag_label_ar(raw_tag: Optional[str]) -> str:
+    tag = (raw_tag or "").strip()
+    if not tag:
+        return ""
+    key = _MERCHANT_FOLLOWUP_REASON_TAG_SYNONYMS.get(tag.lower(), tag.lower())
+    return _REASON_LABELS_AR.get(key, tag)
+
+
+def _merchant_followup_dashboard_scope_filter(q):  # type: ignore
+    dash = _dashboard_recovery_store_row()
+    if dash is None or getattr(dash, "id", None) is None:
+        return q
+    vid = int(dash.id)
+    return q.filter(
+        or_(
+            MerchantFollowupAction.store_id.is_(None),
+            MerchantFollowupAction.store_id == vid,
+        )
+    )
+
+
+def _merchant_followup_row_to_payload(row: MerchantFollowupAction) -> dict[str, Any]:
+    ac: Optional[AbandonedCart] = None
+    aid = getattr(row, "abandoned_cart_id", None)
+    if aid is not None:
+        try:
+            ac = db.session.get(AbandonedCart, int(aid))
+        except (SQLAlchemyError, OSError, TypeError, ValueError):
+            db.session.rollback()
+            ac = None
+    cart_link = _vip_dashboard_cart_link(ac) if ac is not None else ""
+    reason_tag_raw = _vip_reason_tag_from_abandoned_cart(ac)
+    cv: Optional[float] = None
+    if ac is not None and getattr(ac, "cart_value", None) is not None:
+        try:
+            cv = float(ac.cart_value)
+        except (TypeError, ValueError):
+            cv = None
+    wa_digits = _normalize_customer_phone_for_wa_me(row.customer_phone)
+    return {
+        "id": row.id,
+        "customer_phone": (row.customer_phone or "").strip(),
+        "customer_wa_digits": wa_digits,
+        "status": row.status,
+        "status_ar": "جاهز للتواصل",
+        "reason": row.reason,
+        "reason_ar": _merchant_followup_reason_ar(getattr(row, "reason", None)),
+        "inbound_message": (row.inbound_message or "").strip(),
+        "replied_at": _format_reason_ts(row.created_at),
+        "cart_value": cv,
+        "reason_tag_raw": reason_tag_raw,
+        "reason_tag_ar": _merchant_followup_reason_tag_label_ar(reason_tag_raw),
+        "cart_link": cart_link.strip(),
+        "contact_prefill_body": _merchant_followup_prefill_whatsapp_body(
+            cart_link=cart_link
+        ),
+    }
+
+
+def merchant_followup_actions_for_dashboard(limit: int = 10) -> list[dict[str, Any]]:
+    """أحدث ‎MerchantFollowupAction‎ بحالة تحتاج متابعة — نطاق المتجر الحالي للوحة."""
+    out: list[dict[str, Any]] = []
+    try:
+        db.create_all()
+        _ensure_store_widget_schema()
+        q = db.session.query(MerchantFollowupAction).filter(
+            MerchantFollowupAction.status == STATUS_NEEDS_MERCHANT_FOLLOWUP,
+        )
+        q = _merchant_followup_dashboard_scope_filter(q)
+        rows = (
+            q.order_by(MerchantFollowupAction.created_at.desc())
+            .limit(max(1, min(int(limit), 50)))
+            .all()
+        )
+        out = [_merchant_followup_row_to_payload(r) for r in rows]
+    except (SQLAlchemyError, OSError, TypeError, ValueError) as e:
+        db.session.rollback()
+        log.warning("merchant followup dashboard list failed: %s", e)
+    return out
+
+
+def _merchant_followup_action_row_visible_for_dashboard(
+    row: MerchantFollowupAction,
+) -> bool:
+    dash = _dashboard_recovery_store_row()
+    if dash is None or getattr(dash, "id", None) is None:
+        return True
+    vid = int(dash.id)
+    sid = getattr(row, "store_id", None)
+    if sid is None:
+        return True
+    try:
+        return int(sid) == vid
+    except (TypeError, ValueError):
+        return False
 
 
 def _store_row_for_abandoned_cart(ac: Optional[AbandonedCart]) -> Optional[Store]:

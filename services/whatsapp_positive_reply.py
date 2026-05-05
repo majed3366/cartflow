@@ -14,6 +14,7 @@ from models import AbandonedCart, CartRecoveryReason, MerchantFollowupAction, Me
 log = logging.getLogger("cartflow")
 
 STATUS_NEEDS_MERCHANT_FOLLOWUP = "needs_merchant_followup"
+STATUS_MERCHANT_FOLLOWUP_COMPLETED = "completed"
 REASON_CUSTOMER_REPLIED_YES = "customer_replied_yes"
 
 _POSITIVE_EXACT = frozenset(

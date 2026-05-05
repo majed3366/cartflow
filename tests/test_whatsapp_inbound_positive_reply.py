@@ -41,6 +41,11 @@ class WhatsappInboundPositiveReplyTests(unittest.TestCase):
         db.session.add(ac)
         db.session.commit()
 
+        db.session.query(MerchantFollowupAction).filter(
+            MerchantFollowupAction.customer_phone == ph
+        ).delete(synchronize_session=False)
+        db.session.commit()
+
         count_before = (
             db.session.query(MerchantFollowupAction)
             .filter(MerchantFollowupAction.customer_phone == ph)
