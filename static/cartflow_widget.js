@@ -2094,106 +2094,24 @@
     }
   }
 
-  var cartflowLastCartDetectedLogSig = "";
+  var cartflowLastCartStateFixedSig = "";
 
-  /** يقرأ السلة الفعلية: ‎localStorage‎ بنفس المفتاح كصفحة التجربة أو ‎demo_cart‎، ثم مقارنتها ب‎window.cart‎. */
-  function cartflowResolveCartArrayAndSource() {
-    var keysOrdered = [];
-    var ki;
-    try {
-      if (
-        typeof window.CARTFLOW_DEMO_CART_KEY === "string" &&
-        String(window.CARTFLOW_DEMO_CART_KEY).trim() !== ""
-      ) {
-        keysOrdered.push(String(window.CARTFLOW_DEMO_CART_KEY).trim());
-      }
-    } catch (eK0) {}
-
-    try {
-      if (isDemoPath() && keysOrdered.indexOf("demo_cart") < 0) {
-        keysOrdered.push("demo_cart");
-      }
-    } catch (eKd) {}
-
-    function parseLsRaw(raw) {
-      var parsed = [];
-      try {
-        parsed = raw ? JSON.parse(raw) : [];
-      } catch (eP) {
-        parsed = [];
-      }
-      return Array.isArray(parsed) ? parsed : [];
-    }
-
-    var bestLsArr = [];
-    var bestLsKey = "";
-    for (ki = 0; ki < keysOrdered.length; ki++) {
-      var k = keysOrdered[ki];
-      var rawLs = null;
-      try {
-        rawLs = window.localStorage.getItem(k);
-      } catch (eLs) {
-        rawLs = null;
-      }
-      var arrLs = parseLsRaw(rawLs);
-      if (arrLs.length >= bestLsArr.length) {
-        bestLsArr = arrLs;
-        bestLsKey = arrLs.length > 0 ? k : bestLsKey;
-      }
-    }
-    if (!bestLsKey && keysOrdered.length) {
-      bestLsKey = keysOrdered[keysOrdered.length - 1];
-    }
-
-    var wc = [];
-    try {
-      wc =
-        typeof window.cart !== "undefined" &&
-        window.cart !== null &&
-        Array.isArray(window.cart)
-          ? window.cart
-          : [];
-    } catch (eW) {
-      wc = [];
-    }
-
-    var chosen;
-    var src;
-    if (bestLsArr.length > wc.length) {
-      chosen = bestLsArr;
-      src = "localStorage:" + bestLsKey;
-    } else if (wc.length > 0) {
-      chosen = wc;
-      src = "window.cart";
-    } else if (bestLsKey) {
-      chosen = bestLsArr;
-      src = "localStorage:" + bestLsKey;
-    } else {
-      chosen = wc;
-      src = "window.cart";
-    }
-
-    try {
-      window.cart = chosen;
-    } catch (eAs) {}
-
-    return { cart: chosen, source: src };
-  }
-
-  function cartflowLogCartDetected(chosenCart, source) {
-    var arr = Array.isArray(chosenCart) ? chosenCart : [];
-    var n = arr.length;
-    var cart_total = cartLifecycleSumCart(arr);
-    var sig = String(source) + "|" + String(n) + ":" + cart_total.toFixed(4);
-    if (sig === cartflowLastCartDetectedLogSig) {
+  /** hasCart وحيد وفق مجموع السلة ‎cartLifecycleSumCart‎ (نفس حقول ‎cart_state_sync‎). */
+  function cartflowAnnounceUnifiedCartState(cart_total) {
+    var t =
+      typeof cart_total === "number" && !isNaN(cart_total)
+        ? cart_total
+        : 0;
+    var sig = t.toFixed(4);
+    if (sig === cartflowLastCartStateFixedSig) {
       return;
     }
-    cartflowLastCartDetectedLogSig = sig;
+    cartflowLastCartStateFixedSig = sig;
+    var hasCart = t > 0;
     try {
-      console.log("[CART DETECTED]", {
-        items: n,
-        cart_total: cart_total,
-        source: source,
+      console.log("[CART STATE FIXED]", {
+        hasCart: hasCart,
+        cart_total: t,
       });
     } catch (eL) {}
   }
@@ -2202,24 +2120,13 @@
     if (isSessionConverted()) {
       return false;
     }
-    var res = { cart: [], source: "window.cart" };
-    try {
-      res = cartflowResolveCartArrayAndSource();
-    } catch (eHyd) {
-      /* ignore */
+    var cart = window.cart;
+    if (!Array.isArray(cart)) {
+      cart = [];
     }
-    try {
-      if (typeof window.cart === "undefined" || window.cart === null) {
-        return false;
-      }
-      if (!Array.isArray(window.cart)) {
-        return false;
-      }
-      cartflowLogCartDetected(window.cart, res.source || "window.cart");
-      return window.cart.length > 0;
-    } catch (e) {
-      return false;
-    }
+    var cart_total = cartLifecycleSumCart(cart);
+    cartflowAnnounceUnifiedCartState(cart_total);
+    return cart_total > 0;
   }
 
   function apiBase() {
@@ -2352,6 +2259,7 @@
     }
     var total = cartLifecycleSumCart(cart);
     var items_count = cart.length;
+    cartflowAnnounceUnifiedCartState(total);
 
     var sessionId = getSessionId();
     if (!sessionId || String(sessionId).trim() === "" || sessionId === "—") {
