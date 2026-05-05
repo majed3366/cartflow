@@ -5,6 +5,35 @@
 (function () {
   "use strict";
 
+  window.__cartflow_widget_build = "vip-runtime-state-v1";
+  try {
+    console.log("[CARTFLOW WIDGET BUILD]", window.__cartflow_widget_build);
+  } catch (eBl) {}
+
+  function setCartflowRuntimeState(cartTotal, vipThreshold, suppressReadyLog) {
+    var total = Number(cartTotal || 0);
+    var threshold = Number(vipThreshold || 0);
+    if (isNaN(total)) {
+      total = 0;
+    }
+    if (isNaN(threshold)) {
+      threshold = 0;
+    }
+    window.cart_total = total;
+    window.vip_threshold = threshold;
+    window.is_vip = threshold > 0 && total >= threshold;
+    if (!suppressReadyLog) {
+      console.log("[VIP DATA READY]", {
+        cart_total: window.cart_total,
+        vip_threshold: window.vip_threshold,
+        is_vip: window.is_vip,
+      });
+    }
+  }
+  try {
+    window.setCartflowRuntimeState = setCartflowRuntimeState;
+  } catch (eScr) {}
+
   window.CartFlowState =
     window.CartFlowState ||
     {
@@ -671,6 +700,12 @@
           window.cartflowVipCartThreshold = widgetVipCartThreshold;
         } catch (eWth) {}
       }
+      try {
+        window.vip_threshold = Number(j.vip_cart_threshold || j.vip_threshold || 0);
+        console.log("[VIP CONFIG LOADED]", {
+          vip_threshold: window.vip_threshold,
+        });
+      } catch (eVc) {}
       if (
         j.vip_from_cart_total === true &&
         typeof j.is_vip === "boolean"
@@ -2080,44 +2115,8 @@
     return (window.CARTFLOW_API_BASE || "").toString().replace(/\/$/, "");
   }
 
-  /**
-   * نسخة قراءة فقط إلى ‎window‎: مجموع السلة و‎ vip_cart_threshold‎ المعروضان بالفعل في
-   * ‎widgetVipCartThreshold‎ (من ‎GET public-config‎). لا تغيّر مسارات أو حمولات.
-   */
   function cartflowExposeVipWindowMirrors(total, opts) {
-    var suppressReadyLog = opts && opts.suppressReadyLog === true;
-    window.cart_total = total;
-    var vipCartThreshold = widgetVipCartThreshold;
-    if (vipCartThreshold == null || vipCartThreshold === "") {
-      window.vip_threshold = undefined;
-      window.is_vip = false;
-    } else {
-      var vipThNum =
-        typeof vipCartThreshold === "number"
-          ? vipCartThreshold
-          : parseFloat(String(vipCartThreshold));
-      if (!isFinite(vipThNum) || vipThNum < 1) {
-        window.vip_threshold = undefined;
-        window.is_vip = false;
-      } else {
-        window.vip_threshold = vipThNum;
-        window.is_vip = total >= vipThNum;
-      }
-    }
-    try {
-      if (widgetVipCartThreshold != null && widgetVipCartThreshold !== "") {
-        window.cartflowVipCartThreshold = widgetVipCartThreshold;
-      }
-    } catch (eCt) {}
-    if (!suppressReadyLog) {
-      try {
-        console.log("[VIP DATA READY]", {
-          cart_total: window.cart_total,
-          vip_threshold: window.vip_threshold,
-          is_vip: window.is_vip,
-        });
-      } catch (eLg) {}
-    }
+    setCartflowRuntimeState(total, widgetVipCartThreshold, !!(opts && opts.suppressReadyLog));
   }
 
   var cartflowLastVipRuntimeSig = "";
@@ -2243,8 +2242,6 @@
     var total = cartLifecycleSumCart(cart);
     var items_count = cart.length;
 
-    cartflowExposeVipWindowMirrors(total);
-
     var sessionId = getSessionId();
     if (!sessionId || String(sessionId).trim() === "" || sessionId === "—") {
       return;
@@ -2286,6 +2283,7 @@
           items_count
       );
     } catch (eLog) {}
+    setCartflowRuntimeState(total, widgetVipCartThreshold);
     try {
       fetch(cartLifecycleApiUrl(), {
         method: "POST",

@@ -23,7 +23,7 @@
       return;
     }
     var s = document.createElement("script");
-    s.src = "/static/cartflow_widget.js";
+    s.src = "/static/cartflow_widget.js?v=vip-runtime-state-v1";
     s.async = true;
     (document.body || document.documentElement).appendChild(s);
   }
