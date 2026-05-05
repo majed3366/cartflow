@@ -652,6 +652,16 @@
     })();
   </script>
   <script src="/static/cartflow_demo_panel.js" defer></script>
+  <script>
+    (function () {
+      try {
+        var pn = (window.location.pathname || "").replace(/\/+$/, "") || "/";
+        if (pn === "/demo/cart" || /\/store\/cart$/.test(pn)) {
+          window.CARTFLOW_DISABLE_DEMO_GUIDE = true;
+        }
+      } catch (eDg) {}
+    })();
+  </script>
   <script src="/static/cartflow_demo_guide.js" defer></script>
   <script src="/static/widget_loader.js?v=vip-runtime-loader-v1" data-store="{{ demo_data_store|default('demo') }}"></script>
 </body>

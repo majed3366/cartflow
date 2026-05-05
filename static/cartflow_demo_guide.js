@@ -8,6 +8,9 @@
   if (!/\/demo\//i.test(path)) {
     return;
   }
+  if (window.CARTFLOW_DISABLE_DEMO_GUIDE === true) {
+    return;
+  }
 
   var STEPS = [
     "كل منتج في السلة = فرصة بيع تستحق المتابعة",
