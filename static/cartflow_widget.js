@@ -2080,31 +2080,60 @@
     return (window.CARTFLOW_API_BASE || "").toString().replace(/\/$/, "");
   }
 
-  /** مجموع السلة الحالي + العتبة من‎ public-config‎ →‎ window‎ لمشاهدة وقت التشغيل. */
+  /**
+   * يعرض مجموع السلة و‎ vip_cart_threshold‎ (‎widgetVipCartThreshold‎ من ‎GET public-config‎)
+   * على‎ window؛ إن كانت المحلية فارغة نستخدم‎ window.cartflowVipCartThreshold‎ إن وُجد.
+   */
+  function cartflowExposeVipWindowMirrors(total, opts) {
+    var suppressReadyLog = opts && opts.suppressReadyLog === true;
+    window.cart_total = total;
+    var vipCartThreshold = widgetVipCartThreshold;
+    if (vipCartThreshold == null || vipCartThreshold === "") {
+      try {
+        var wThr = window.cartflowVipCartThreshold;
+        if (wThr != null && wThr !== "") {
+          vipCartThreshold = wThr;
+        }
+      } catch (eWt) {}
+    }
+    if (vipCartThreshold == null || vipCartThreshold === "") {
+      window.vip_threshold = undefined;
+      window.is_vip = false;
+    } else {
+      var vipThNum =
+        typeof vipCartThreshold === "number"
+          ? vipCartThreshold
+          : parseFloat(String(vipCartThreshold));
+      if (!isFinite(vipThNum) || vipThNum < 1) {
+        window.vip_threshold = undefined;
+        window.is_vip = false;
+      } else {
+        window.vip_threshold = vipThNum;
+        window.is_vip = total >= vipThNum;
+      }
+    }
+    try {
+      if (widgetVipCartThreshold != null && widgetVipCartThreshold !== "") {
+        window.cartflowVipCartThreshold = widgetVipCartThreshold;
+      }
+    } catch (eCt) {}
+    if (!suppressReadyLog) {
+      try {
+        console.log("[VIP DATA READY]", {
+          cart_total: window.cart_total,
+          vip_threshold: window.vip_threshold,
+          is_vip: window.is_vip,
+        });
+      } catch (eLg) {}
+    }
+  }
+
   var cartflowLastVipRuntimeSig = "";
   function syncWindowCartflowVipRuntime() {
     try {
       var cart = window.cart;
       var currentCartTotal = cartLifecycleSumCart(Array.isArray(cart) ? cart : []);
-      window.cart_total = currentCartTotal;
-      var thRaw = widgetVipCartThreshold;
-      if (thRaw == null || thRaw === "") {
-        window.vip_threshold = undefined;
-        window.is_vip = false;
-      } else {
-        var thNum =
-          typeof thRaw === "number" ? thRaw : parseFloat(String(thRaw));
-        if (!isFinite(thNum) || thNum < 1) {
-          window.vip_threshold = undefined;
-          window.is_vip = false;
-        } else {
-          window.vip_threshold = thNum;
-          window.is_vip = currentCartTotal >= thNum;
-        }
-      }
-      try {
-        window.cartflowVipCartThreshold = widgetVipCartThreshold;
-      } catch (eWct) {}
+      cartflowExposeVipWindowMirrors(currentCartTotal, { suppressReadyLog: true });
       var dbgSig =
         String(currentCartTotal) +
         "|" +
@@ -2222,33 +2251,7 @@
     var total = cartLifecycleSumCart(cart);
     var items_count = cart.length;
 
-    window.cart_total = total;
-    var vipCartThreshold = widgetVipCartThreshold;
-    if (vipCartThreshold == null || vipCartThreshold === "") {
-      window.vip_threshold = undefined;
-      window.is_vip = false;
-    } else {
-      var vipThNum =
-        typeof vipCartThreshold === "number"
-          ? vipCartThreshold
-          : parseFloat(String(vipCartThreshold));
-      if (!isFinite(vipThNum) || vipThNum < 1) {
-        window.vip_threshold = undefined;
-        window.is_vip = false;
-      } else {
-        window.vip_threshold = vipThNum;
-        window.is_vip = total >= vipThNum;
-      }
-    }
-    try {
-      window.cartflowVipCartThreshold = widgetVipCartThreshold;
-    } catch (eCt) {}
-
-    console.log("[VIP DATA READY]", {
-      cart_total: window.cart_total,
-      vip_threshold: window.vip_threshold,
-      is_vip: window.is_vip,
-    });
+    cartflowExposeVipWindowMirrors(total);
 
     var sessionId = getSessionId();
     if (!sessionId || String(sessionId).trim() === "" || sessionId === "—") {
@@ -2365,7 +2368,10 @@
     }
 
     var sessionId = getSessionId();
-    if (!sessionId || String(sessionId).trim() === "" || sessionId === "—") {
+    var sessMissing =
+      !sessionId || String(sessionId).trim() === "" || sessionId === "—";
+    cartflowExposeVipWindowMirrors(total, { suppressReadyLog: !sessMissing });
+    if (sessMissing) {
       return;
     }
 
