@@ -2081,21 +2081,13 @@
   }
 
   /**
-   * يعرض مجموع السلة و‎ vip_cart_threshold‎ (‎widgetVipCartThreshold‎ من ‎GET public-config‎)
-   * على‎ window؛ إن كانت المحلية فارغة نستخدم‎ window.cartflowVipCartThreshold‎ إن وُجد.
+   * نسخة قراءة فقط إلى ‎window‎: مجموع السلة و‎ vip_cart_threshold‎ المعروضان بالفعل في
+   * ‎widgetVipCartThreshold‎ (من ‎GET public-config‎). لا تغيّر مسارات أو حمولات.
    */
   function cartflowExposeVipWindowMirrors(total, opts) {
     var suppressReadyLog = opts && opts.suppressReadyLog === true;
     window.cart_total = total;
     var vipCartThreshold = widgetVipCartThreshold;
-    if (vipCartThreshold == null || vipCartThreshold === "") {
-      try {
-        var wThr = window.cartflowVipCartThreshold;
-        if (wThr != null && wThr !== "") {
-          vipCartThreshold = wThr;
-        }
-      } catch (eWt) {}
-    }
     if (vipCartThreshold == null || vipCartThreshold === "") {
       window.vip_threshold = undefined;
       window.is_vip = false;
@@ -2368,10 +2360,7 @@
     }
 
     var sessionId = getSessionId();
-    var sessMissing =
-      !sessionId || String(sessionId).trim() === "" || sessionId === "—";
-    cartflowExposeVipWindowMirrors(total, { suppressReadyLog: !sessMissing });
-    if (sessMissing) {
+    if (!sessionId || String(sessionId).trim() === "" || sessionId === "—") {
       return;
     }
 
