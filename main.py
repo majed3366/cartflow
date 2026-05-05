@@ -108,6 +108,19 @@ async def whatsapp_webhook(request: Request):
     print("[WA REPLY]", message)
     print("[WA FROM]", from_number)
 
+    try:
+        from services.whatsapp_positive_reply import (
+            process_inbound_whatsapp_for_positive_intent,
+        )
+
+        process_inbound_whatsapp_for_positive_intent(message, from_number)
+    except Exception as inbound_err:  # noqa: BLE001
+        logging.getLogger("cartflow").warning(
+            "whatsapp_webhook positive intent: %s",
+            inbound_err,
+            exc_info=True,
+        )
+
     return PlainTextResponse("OK")
 
 

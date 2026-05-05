@@ -240,3 +240,33 @@ class RecoveryEvent(Base):
     created_at = Column(
         DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
     )
+
+
+class MerchantFollowupAction(Base):
+    """
+    تنبيه/إجراء للتاجر بعد نية إيجابية من العميل (مثل رد واتساب).
+    لا يُرسل للعميل تلقائياً من هذا الصف؛ للقراءة من لوحة/ـAPI لاحقاً.
+    """
+
+    __tablename__ = "merchant_followup_actions"
+
+    id = Column(Integer, primary_key=True)
+    store_id = Column(Integer, ForeignKey("stores.id"), nullable=True, index=True)
+    abandoned_cart_id = Column(
+        Integer, ForeignKey("abandoned_carts.id"), nullable=True, index=True
+    )
+    customer_phone = Column(String(100), nullable=False, index=True)
+    status = Column(String(64), nullable=False, index=True)
+    reason = Column(String(64), nullable=False, index=True)
+    inbound_message = Column(String(512), nullable=True)
+    created_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+    updated_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
