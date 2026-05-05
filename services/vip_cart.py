@@ -87,6 +87,64 @@ def apply_vip_offer_settings_from_body(row: Any, body: Dict[str, Any]) -> None:
                 row.vip_offer_value = str(p)
 
 
+def vip_offer_manual_contact_whatsapp_body(store: Optional[Any]) -> Optional[str]:
+    """
+    نص واتساب جاهز لزر «التواصل مع العميل» في لوحة VIP.
+    ‎None‎ = الإبقاء على رسالة القيمة الافتراضية.
+    لا يُرسل آلياً — فقط يُملأ الرابط الذي يفتحه التاجر.
+    """
+    if store is None or not bool(getattr(store, "vip_offer_enabled", False)):
+        return None
+    ot_raw = getattr(store, "vip_offer_type", None)
+    ot = (str(ot_raw).strip() if ot_raw is not None else "")[:32]
+    if ot not in VIP_OFFER_TYPES:
+        return None
+    vv = getattr(store, "vip_offer_value", None)
+    val = vv.strip()[:500] if isinstance(vv, str) else ""
+    if ot == "discount":
+        if not val:
+            return None
+        return (
+            f"هلا 👋 لاحظنا إن عندك سلة مميزة، ونقدر نقدم لك خصم {val}% لإكمال الطلب 🎁"
+        )
+    if ot == "free_shipping":
+        return "هلا 👋 لاحظنا إن عندك سلة مميزة، ونقدر نقدم لك شحن مجاني لإكمال الطلب 🚚"
+    if ot == "gift_wrap":
+        return "هلا 👋 لاحظنا إن عندك سلة مميزة، ونقدر نقدم لك تغليف مجاني مع الطلب 🎁"
+    if ot == "gift":
+        if not val:
+            return None
+        return (
+            f"هلا 👋 لاحظنا إن عندك سلة مميزة، ونقدر نضيف لك هدية: {val} 🎁"
+        )
+    return None
+
+
+def vip_offer_card_hint_ar(store: Optional[Any]) -> str:
+    """عرض مختصر تحت بطاقة السلة عند توفر رقم عميل ومفعّل العرض."""
+    if store is None or not bool(getattr(store, "vip_offer_enabled", False)):
+        return ""
+    ot_raw = getattr(store, "vip_offer_type", None)
+    ot = (str(ot_raw).strip() if ot_raw is not None else "")[:32]
+    if ot not in VIP_OFFER_TYPES:
+        return ""
+    vv = getattr(store, "vip_offer_value", None)
+    val = vv.strip()[:500] if isinstance(vv, str) else ""
+    if ot == "discount":
+        if not val:
+            return ""
+        return f"العرض المقترح: خصم {val}%"
+    if ot == "free_shipping":
+        return "العرض المقترح: شحن مجاني"
+    if ot == "gift_wrap":
+        return "العرض المقترح: تغليف مجاني"
+    if ot == "gift":
+        if not val:
+            return ""
+        return f"العرض المقترح: هدية: {val}"
+    return ""
+
+
 def vip_offer_fields_for_api(row: Optional[Any]) -> Dict[str, Any]:
     if row is None:
         return {

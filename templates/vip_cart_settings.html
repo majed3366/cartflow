@@ -41,6 +41,9 @@
                 <p class="text-base font-semibold text-slate-900">{{ "%.0f"|format(vc.cart_value) }} ريال</p>
                 <p class="mt-1 text-xs text-slate-600">{{ vc.last_seen }}</p>
                 <p class="mt-0.5 text-xs font-medium text-slate-700">{{ vc.status }}</p>
+                {% if vc.vip_offer_hint_ar %}
+                <p class="mt-1 text-xs font-semibold text-amber-800">{{ vc.vip_offer_hint_ar }}</p>
+                {% endif %}
               </div>
               <button type="button" data-vip-contact-customer
                 data-cart-row-id="{{ vc.id }}"

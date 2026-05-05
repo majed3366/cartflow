@@ -237,7 +237,9 @@ from services.vip_cart import (
     apply_vip_offer_settings_from_body,
     is_vip_cart,
     vip_cart_threshold_fields_for_api,
+    vip_offer_card_hint_ar,
     vip_offer_fields_for_api,
+    vip_offer_manual_contact_whatsapp_body,
 )
 from services.vip_merchant_alert import (
     build_vip_merchant_alert_body,
@@ -5244,7 +5246,12 @@ def _vip_priority_cart_alert_list() -> list[dict[str, Any]]:
             st = ((ac.status or "").strip() or "—")[:48]
             raw_phone = _vip_dashboard_customer_phone_raw(ac, dash_store)
             wa_digits = _normalize_customer_phone_for_wa_me(raw_phone)
-            contact_msg = _vip_customer_contact_whatsapp_message(ac)
+            hint_ar = (vip_offer_card_hint_ar(dash_store) if wa_digits else "") or ""
+            override_msg = vip_offer_manual_contact_whatsapp_body(dash_store)
+            if wa_digits and override_msg:
+                contact_msg = override_msg
+            else:
+                contact_msg = _vip_customer_contact_whatsapp_message(ac)
             rs_log = (getattr(ac, "recovery_session_id", None) or "").strip()[:512]
             log.info(
                 "[VIP PHONE RESOLVED] cart_id=%s session_id=%s customer_phone=%s",
@@ -5272,6 +5279,7 @@ def _vip_priority_cart_alert_list() -> list[dict[str, Any]]:
                     "interactive": True,
                     "customer_wa_phone": wa_digits,
                     "contact_wa_message": contact_msg,
+                    "vip_offer_hint_ar": hint_ar,
                 }
             )
     except (SQLAlchemyError, OSError) as e:
