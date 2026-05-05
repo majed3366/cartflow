@@ -2244,6 +2244,20 @@
     return nid.slice(0, 255);
   }
 
+  function showVipPhoneCapture() {
+    try {
+      var p = ensureVipPhoneCapturePanel();
+      if (p && p.style) {
+        p.style.setProperty("display", "block", "important");
+        vipPhoneCaptureRenderFormInner();
+      }
+    } catch (eVph) {}
+  }
+
+  try {
+    window.showVipPhoneCapture = showVipPhoneCapture;
+  } catch (eExVph) {}
+
   function syncCartState(reason) {
     if (isSessionConverted()) {
       return;
@@ -2290,14 +2304,49 @@
     } catch (eSt) {}
     try {
       var cart_total = total;
-      window.cart_total = cart_total;
-      window.cartflow_cart_total = cart_total;
-      window.cart_items_count = items_count;
+      var totalForVip = Number(cart_total || 0);
+      var vipCartThreshold = widgetVipCartThreshold;
+      var thresholdForVip = Number(
+        vipCartThreshold != null && vipCartThreshold !== ""
+          ? vipCartThreshold
+          : typeof window.vip_threshold !== "undefined" &&
+              window.vip_threshold != null &&
+              window.vip_threshold !== ""
+          ? window.vip_threshold
+          : 500
+      );
+      if (isNaN(thresholdForVip)) {
+        thresholdForVip = 500;
+      }
+      var existingPhone = "";
+      try {
+        existingPhone =
+          window.localStorage.getItem("cartflow_customer_phone") || "";
+      } catch (eLsP0) {}
+      if (!existingPhone) {
+        try {
+          existingPhone =
+            window.localStorage.getItem("customer_phone") || "";
+        } catch (eLsP1) {}
+      }
+      var existingPhoneTrim = existingPhone ? String(existingPhone).trim() : "";
 
-      console.log("[WINDOW CART TOTAL SET]", {
-        cart_total: window.cart_total,
-        items_count: window.cart_items_count,
+      console.log("[VIP CAPTURE CHECK]", {
+        cart_total: totalForVip,
+        threshold: thresholdForVip,
+        has_phone: !!existingPhoneTrim,
       });
+
+      if (
+        totalForVip >= thresholdForVip &&
+        thresholdForVip > 0 &&
+        !existingPhoneTrim
+      ) {
+        try {
+          showVipPhoneCapture();
+        } catch (eVcap) {}
+        return;
+      }
 
       console.log(
         "[WIDGET CART SYNC SENT] reason=" +
