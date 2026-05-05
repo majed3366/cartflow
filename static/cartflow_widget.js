@@ -22,6 +22,87 @@
     window.__CARTFLOW_WIDGET_ACTIVE__ = true;
   } catch (eWd) {}
 
+  /** هدوء بعد التحميل قبل مهام ثقيلَة لتقليل أثر Performance — لا يغيّر المنطق بعد التشغيل. */
+  var CF_PAGESPEED_QUIET_AFTER_LOAD_MS = 3000;
+  var cartflowMerchantEarlyInteract = false;
+
+  (function cfBindMerchantInteractUnlockOnce() {
+    try {
+      if (window.__cfMerchantInteractUnlockBound === true) {
+        return;
+      }
+      window.__cfMerchantInteractUnlockBound = true;
+      var unlock = function () {
+        cartflowMerchantEarlyInteract = true;
+        try {
+          var evNames = ["pointerdown", "touchstart", "keydown"];
+          var o = { passive: true, capture: true };
+          var ei;
+          for (ei = 0; ei < evNames.length; ei++) {
+            document.removeEventListener(evNames[ei], unlock, o);
+            window.removeEventListener(evNames[ei], unlock, o);
+          }
+        } catch (eRm) {}
+      };
+      var evNamesIU = ["pointerdown", "touchstart", "keydown"];
+      var oListen = { passive: true, capture: true };
+      var ej;
+      for (ej = 0; ej < evNamesIU.length; ej++) {
+        document.addEventListener(evNamesIU[ej], unlock, oListen);
+        window.addEventListener(evNamesIU[ej], unlock, oListen);
+      }
+    } catch (eBk) {}
+  })();
+
+  function cfScheduleMerchantHeavyAfterLoadIdle(done) {
+    function runDeferred() {
+      cfPerfDemoDevLog("[CF PERF] idle start enabled");
+      try {
+        if (typeof done === "function") {
+          done();
+        }
+      } catch (ecb) {}
+    }
+
+    function afterQuietGate() {
+      var loadTs = Date.now();
+      function tickQuiet() {
+        if (
+          cartflowMerchantEarlyInteract ||
+          Date.now() - loadTs >= CF_PAGESPEED_QUIET_AFTER_LOAD_MS
+        ) {
+          if (typeof window.requestIdleCallback === "function") {
+            window.requestIdleCallback(runDeferred, { timeout: 5000 });
+          } else {
+            window.setTimeout(runDeferred, 16);
+          }
+        } else {
+          window.setTimeout(
+            tickQuiet,
+            Math.min(
+              200,
+              Math.max(
+                0,
+                loadTs +
+                  CF_PAGESPEED_QUIET_AFTER_LOAD_MS -
+                  Date.now()
+              )
+            )
+          );
+        }
+      }
+      tickQuiet();
+    }
+
+    try {
+      if (document.readyState === "complete") {
+        afterQuietGate();
+      } else {
+        window.addEventListener("load", afterQuietGate, false);
+      }
+    } catch (eSch) {}
+  }
+
   window.__cartflow_widget_build = "vip-runtime-state-v1";
   try {
     console.log("[CARTFLOW WIDGET BUILD]", window.__cartflow_widget_build);
@@ -2192,6 +2273,8 @@
   /** مسار موحّد: ‎cart_state_sync‎ — قراءة السلة، الجلسة، و‎cart_id‎ المستقر للخلفية. */
   var CF_LIFECYCLE_CART_ID_KEY = "cartflow_cart_event_id";
   var cartflowLifecycleInstalled = false;
+  var cartflowLifecyclePollIntervalId = null;
+  var cartflowLifecycleVisibilityBound = false;
   var cartflowLifecycleLastSig = "";
   var cartflowLifecycleDebounce = null;
   var cartflowLifecycleLastTotal = null;
@@ -2471,10 +2554,18 @@
     cartflowLifecycleInstalled = true;
     cartflowCaptureInitialCartLifecycleSig();
 
+    cfPerfDemoDevLog("[CF PERF] cart observer started");
+
     function tick() {
       if (isSessionConverted()) {
         return;
       }
+      try {
+        if (typeof document.hidden === "boolean" && document.hidden) {
+          return;
+        }
+      } catch (eHid) {}
+
       try {
         var cart = window.cart;
         if (!Array.isArray(cart)) {
@@ -2501,13 +2592,65 @@
       }
     }
 
+    function cartflowLifecycleStopTimedPoll() {
+      if (cartflowLifecyclePollIntervalId !== null) {
+        window.clearInterval(cartflowLifecyclePollIntervalId);
+        cartflowLifecyclePollIntervalId = null;
+      }
+    }
+
+    function cartflowLifecycleStartTimedPoll() {
+      if (cartflowLifecyclePollIntervalId !== null) {
+        return;
+      }
+      cartflowLifecyclePollIntervalId = window.setInterval(tick, 2000);
+    }
+
+    function cartflowLifecycleOnVisibilityChange() {
+      if (!cartflowLifecycleInstalled) {
+        return;
+      }
+      try {
+        if (document.hidden) {
+          cfPerfDemoDevLog("[CF PERF] polling paused while hidden");
+          cartflowLifecycleStopTimedPoll();
+        } else {
+          cartflowLifecycleStartTimedPoll();
+          tick();
+        }
+      } catch (eVis) {}
+    }
+
     cfPerfDemoDevLog("[CF PERF] cart lifecycle observer interval: 2000ms");
-    window.setInterval(tick, 2000);
+
+    if (!cartflowLifecycleVisibilityBound) {
+      cartflowLifecycleVisibilityBound = true;
+      document.addEventListener(
+        "visibilitychange",
+        cartflowLifecycleOnVisibilityChange,
+        false
+      );
+    }
+
+    try {
+      if (document.hidden) {
+        cartflowLifecycleStopTimedPoll();
+      } else {
+        cartflowLifecycleStartTimedPoll();
+      }
+    } catch (ePol0) {}
+
     try {
       document.addEventListener(
         "cf-demo-cart-updated",
         function () {
-          setTimeout(tick, 0);
+          setTimeout(function () {
+            try {
+              if (!(typeof document.hidden === "boolean" && document.hidden)) {
+                tick();
+              }
+            } catch (eDemoH) {}
+          }, 0);
         },
         false
       );
@@ -2517,7 +2660,9 @@
     window.setTimeout(function () {
       try {
         if (haveCartForWidget()) {
-          syncCartState("page_load");
+          if (!(typeof document.hidden === "boolean" && document.hidden)) {
+            syncCartState("page_load");
+          }
         }
       } catch (ePl) {}
     }, 500);
@@ -7268,14 +7413,14 @@
   setTimeout(function () {
     cartflowBootstrapPublicConfigThenScheduleArm();
   }, 0);
-  setTimeout(prefetchDashboardPrimaryReason, 0);
-  setTimeout(function () {
+  cfScheduleMerchantHeavyAfterLoadIdle(function () {
+    try {
+      prefetchDashboardPrimaryReason();
+    } catch (ePf) {}
     try {
       cartflowInstallCartLifecycleObserver();
-    } catch (eLc) {
-      /* ignore */
-    }
-  }, 0);
+    } catch (eLc) {}
+  });
 })();
 
 /**

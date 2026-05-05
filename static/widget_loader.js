@@ -1,5 +1,6 @@
 /**
- * يحمّل ‎cartflow_widget.js‎ بعد اكتمال الصفحة. صفحات ‎/demo/*‎ (مثل ‎/demo/store‎) تُعرَف عبر ‎isCartPage()‎.
+ * يحمّل ‎cartflow_widget.js‎ بعد ‎window.load‎ (لا يحجب اللوحة الأولى).
+ * الحقن الديناميكي مع ‎async=true‎ تنزيل وتنفيذ بأمان مشابه لـ defer/async.
  */
 (function () {
   "use strict";
