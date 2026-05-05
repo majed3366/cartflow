@@ -212,6 +212,95 @@ class VipDashboardMerchantAlertTests(unittest.TestCase):
         self.assertNotIn("demo_vip_cart_zid", html)
         self.assertNotIn("vip-demo-heading", html)
 
+    def test_vip_merchant_ready_reply_bodies_omits_link_when_empty(self) -> None:
+        from main import _vip_merchant_ready_reply_bodies
+
+        with_link = _vip_merchant_ready_reply_bodies(cart_link="https://store.example/cart/1")
+        self.assertIn("تقدر تكمل من هنا", with_link["offer"])
+        self.assertIn("https://store.example/cart/1", with_link["offer"])
+        self.assertIn("هذا رابط السلة", with_link["reminder"])
+        no_link = _vip_merchant_ready_reply_bodies(cart_link="")
+        self.assertNotIn("تقدر تكمل من هنا", no_link["offer"])
+        self.assertNotIn("هذا رابط السلة", no_link["reminder"])
+        self.assertIn("أنا من المتجر", no_link["direct"])
+
+    def test_vip_dashboard_cart_link_column_then_raw_payload(self) -> None:
+        import json
+
+        from main import _vip_dashboard_cart_link
+
+        ac = AbandonedCart(zid_cart_id=f"link-col-{uuid.uuid4().hex[:8]}", cart_url="https://column/c")
+        self.assertEqual(_vip_dashboard_cart_link(ac), "https://column/c")
+        ac2 = AbandonedCart(zid_cart_id=f"link-raw-{uuid.uuid4().hex[:8]}", cart_url=None)
+        ac2.raw_payload = json.dumps({"checkout_url": "https://payload/checkout"}, ensure_ascii=False)
+        self.assertEqual(_vip_dashboard_cart_link(ac2), "https://payload/checkout")
+
+    def test_vip_cart_settings_shows_merchant_ready_replies_when_phone(self) -> None:
+        db.create_all()
+        slug = f"vip_mr_{uuid.uuid4().hex[:12]}"
+        store = Store(zid_store_id=slug)
+        db.session.add(store)
+        db.session.commit()
+
+        uid = uuid.uuid4().hex[:8]
+        zid_val = f"prio-mr-{uid}"
+        cart_url_test = "https://example-ready.test/c/u1"
+        ac = AbandonedCart(
+            store_id=store.id,
+            zid_cart_id=zid_val,
+            cart_value=501.0,
+            status="abandoned",
+            vip_mode=True,
+            customer_phone="0501234567",
+            cart_url=cart_url_test,
+        )
+        db.session.add(ac)
+        db.session.commit()
+
+        r = self.client.get("/dashboard/vip-cart-settings")
+        self.assertEqual(r.status_code, 200, r.text)
+        html = r.text.replace("&#34;", '"')
+        self.assertIn("ردود جاهزة للتاجر", html)
+        self.assertIn("إرسال عرض جاهز", html)
+        self.assertIn("تذكير لطيف", html)
+        self.assertIn("مساعدة مباشرة", html)
+        self.assertIn("data-vip-merchant-prefill-btn", html)
+        self.assertIn(cart_url_test, html)
+
+    def test_vip_cart_settings_hides_ready_replies_without_customer_phone(self) -> None:
+        db.create_all()
+        slug = f"vip_nomr_{uuid.uuid4().hex[:12]}"
+        store = Store(zid_store_id=slug)
+        db.session.add(store)
+        db.session.commit()
+
+        uid = uuid.uuid4().hex[:8]
+        ac = AbandonedCart(
+            store_id=store.id,
+            zid_cart_id=f"prio-nophone-{uid}",
+            cart_value=502.0,
+            status="abandoned",
+            vip_mode=True,
+            customer_phone=None,
+            cart_url="https://x/c",
+        )
+        db.session.add(ac)
+        db.session.commit()
+
+        r = self.client.get("/dashboard/vip-cart-settings")
+        self.assertEqual(r.status_code, 200, r.text)
+        html = r.text
+        needle = f'data-cart-row-id="{int(ac.id)}"'
+        pos = html.find(needle)
+        self.assertGreaterEqual(pos, 0)
+        li_start = html.rfind("<li", 0, pos)
+        li_end = html.find("</li>", pos)
+        self.assertGreaterEqual(li_start, 0)
+        self.assertGreaterEqual(li_end, pos)
+        card_html = html[li_start : li_end + len("</li>")]
+        self.assertNotIn("ردود جاهزة للتاجر", card_html)
+        self.assertNotIn("data-vip-merchant-prefill-btn", card_html)
+
     def test_vip_cart_settings_priority_requires_vip_mode_and_abandoned_status(self) -> None:
         db.create_all()
         slug = f"vip_pri_{uuid.uuid4().hex[:12]}"

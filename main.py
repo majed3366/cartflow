@@ -4658,6 +4658,45 @@ def extract_cart_url(payload: dict) -> str:
     return (u or "").strip()
 
 
+def _vip_dashboard_cart_link(ac: AbandonedCart) -> str:
+    """رابط إكمال الطلب على بطاقة VIP — عمود السلة أو ‎extract_cart_url‎ على ‎raw_payload‎."""
+    cu = getattr(ac, "cart_url", None)
+    if isinstance(cu, str) and cu.strip():
+        return cu.strip()[:2048]
+    rp = getattr(ac, "raw_payload", None)
+    if isinstance(rp, str) and rp.strip():
+        try:
+            parsed = json.loads(rp)
+        except (json.JSONDecodeError, TypeError, ValueError):
+            return ""
+        if isinstance(parsed, dict):
+            ex = extract_cart_url(parsed)
+            return (ex or "").strip()[:2048]
+    return ""
+
+
+def _vip_merchant_ready_reply_bodies(*, cart_link: str) -> dict[str, str]:
+    """
+    رسائل يدوية جاهزة يفتحها التاجر عبر واتساب مع العميل.
+    بدون أسطر الرابط إن لم يتوفر رابط صالح.
+    """
+    link = (cart_link or "").strip()
+    offer_lines = ["هلا 👋", "نقدر نساعدك تكمل طلبك الآن بعرض مناسب 🎁"]
+    reminder_lines = ["هلا 👋", "لاحظنا إن طلبك ما اكتمل، ونقدر نساعدك تكمله بسهولة."]
+    if link:
+        offer_lines.extend(["تقدر تكمل من هنا:", link])
+        reminder_lines.extend(["هذا رابط السلة:", link])
+    direct = (
+        "هلا 👋\n"
+        "أنا من المتجر، أقدر أساعدك تكمل الطلب أو أجاوب على أي استفسار."
+    )
+    return {
+        "offer": "\n".join(offer_lines),
+        "reminder": "\n".join(reminder_lines),
+        "direct": direct,
+    }
+
+
 def format_whatsapp_recipient_id(phone: str) -> str:
     # رقم ‎E.164‎ بلا ‎+‎ (ما يتطلبه ‎Graph API‎)
     d = (phone or "").replace("+", "").replace(" ", "").replace("-", "")
@@ -5406,6 +5445,10 @@ def _vip_priority_cart_alert_list() -> list[dict[str, Any]]:
                 )
             except OSError:
                 pass
+            cart_link_raw = _vip_dashboard_cart_link(ac)
+            merchant_replies_ar = _vip_merchant_ready_reply_bodies(
+                cart_link=cart_link_raw
+            )
             out.append(
                 {
                     "id": ac.id,
@@ -5417,6 +5460,9 @@ def _vip_priority_cart_alert_list() -> list[dict[str, Any]]:
                     "customer_wa_phone": wa_digits,
                     "contact_wa_message": contact_msg,
                     "vip_offer_hint_ar": hint_ar,
+                    "merchant_reply_offer_ar": merchant_replies_ar["offer"],
+                    "merchant_reply_reminder_ar": merchant_replies_ar["reminder"],
+                    "merchant_reply_direct_ar": merchant_replies_ar["direct"],
                 }
             )
     except (SQLAlchemyError, OSError) as e:

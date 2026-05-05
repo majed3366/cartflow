@@ -36,24 +36,45 @@
           {% if vip_priority_alerts | length > 0 %}
           <ul class="m-0 list-none space-y-3 p-0" role="list">
             {% for vc in vip_priority_alerts %}
-            <li class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-3">
-              <div class="min-w-0 flex-1 text-right">
-                <p class="text-base font-semibold text-slate-900">{{ "%.0f"|format(vc.cart_value) }} ريال</p>
-                <p class="mt-1 text-xs text-slate-600">{{ vc.last_seen }}</p>
-                <p class="mt-0.5 text-xs font-medium text-slate-700">{{ vc.status }}</p>
-                {% if vc.vip_offer_hint_ar %}
-                <p class="mt-1 text-xs font-semibold text-amber-800">{{ vc.vip_offer_hint_ar }}</p>
-                {% endif %}
+            <li class="flex flex-col gap-3 rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-3">
+              <div class="flex flex-wrap items-center justify-between gap-3">
+                <div class="min-w-0 flex-1 text-right">
+                  <p class="text-base font-semibold text-slate-900">{{ "%.0f"|format(vc.cart_value) }} ريال</p>
+                  <p class="mt-1 text-xs text-slate-600">{{ vc.last_seen }}</p>
+                  <p class="mt-0.5 text-xs font-medium text-slate-700">{{ vc.status }}</p>
+                  {% if vc.vip_offer_hint_ar %}
+                  <p class="mt-1 text-xs font-semibold text-amber-800">{{ vc.vip_offer_hint_ar }}</p>
+                  {% endif %}
+                </div>
+                <button type="button" data-vip-contact-customer
+                  data-cart-row-id="{{ vc.id }}"
+                  data-customer-wa="{{ vc.customer_wa_phone | e }}"
+                  data-contact-msg="{{ vc.contact_wa_message | e }}"
+                  data-interactive="1"
+                  class="vip-contact-customer-btn shrink-0 rounded-lg border border-violet-600 bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-violet-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600 disabled:pointer-events-none disabled:opacity-50">
+                  التواصل مع العميل
+                </button>
+                <span data-vip-send-status class="w-full text-end text-[10px] text-slate-600 md:w-auto md:flex-1"></span>
               </div>
-              <button type="button" data-vip-contact-customer
-                data-cart-row-id="{{ vc.id }}"
-                data-customer-wa="{{ vc.customer_wa_phone | e }}"
-                data-contact-msg="{{ vc.contact_wa_message | e }}"
-                data-interactive="1"
-                class="vip-contact-customer-btn shrink-0 rounded-lg border border-violet-600 bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-violet-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600 disabled:pointer-events-none disabled:opacity-50">
-                التواصل مع العميل
-              </button>
-              <span data-vip-send-status class="w-full text-end text-[10px] text-slate-600 md:w-auto md:flex-1"></span>
+              {% if vc.customer_wa_phone %}
+              <div class="w-full rounded-lg border border-slate-200/90 bg-white px-3 py-2.5" aria-label="ردود جاهزة للتاجر">
+                <p class="mb-2 text-xs font-bold text-slate-800">ردود جاهزة للتاجر</p>
+                <div class="flex flex-wrap gap-2">
+                  <button type="button" data-vip-merchant-prefill-btn data-customer-wa="{{ vc.customer_wa_phone | e }}" data-prefill-body="{{ vc.merchant_reply_offer_ar | e }}"
+                    class="shrink-0 rounded-lg border border-slate-300 bg-slate-50 px-2.5 py-1.5 text-xs font-semibold text-slate-800 shadow-sm hover:border-violet-400 hover:bg-violet-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-500">
+                    إرسال عرض جاهز
+                  </button>
+                  <button type="button" data-vip-merchant-prefill-btn data-customer-wa="{{ vc.customer_wa_phone | e }}" data-prefill-body="{{ vc.merchant_reply_reminder_ar | e }}"
+                    class="shrink-0 rounded-lg border border-slate-300 bg-slate-50 px-2.5 py-1.5 text-xs font-semibold text-slate-800 shadow-sm hover:border-violet-400 hover:bg-violet-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-500">
+                    تذكير لطيف
+                  </button>
+                  <button type="button" data-vip-merchant-prefill-btn data-customer-wa="{{ vc.customer_wa_phone | e }}" data-prefill-body="{{ vc.merchant_reply_direct_ar | e }}"
+                    class="shrink-0 rounded-lg border border-slate-300 bg-slate-50 px-2.5 py-1.5 text-xs font-semibold text-slate-800 shadow-sm hover:border-violet-400 hover:bg-violet-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-500">
+                    مساعدة مباشرة
+                  </button>
+                </div>
+              </div>
+              {% endif %}
             </li>
             {% endfor %}
           </ul>
@@ -360,6 +381,36 @@
   </script>
   <script>
     (function () {
+      function vipOpenCustomerWhatsApp(statusEl, waRaw, messageText) {
+        if (statusEl) {
+          statusEl.textContent = "";
+          statusEl.classList.remove("text-red-600", "text-emerald-700", "font-semibold");
+        }
+        if (!waRaw) {
+          if (statusEl) {
+            statusEl.textContent = "لا يوجد رقم للعميل";
+            statusEl.classList.add("text-red-600", "font-semibold");
+          }
+          return;
+        }
+        var digits = waRaw.replace(/\D/g, "");
+        if (!digits) {
+          if (statusEl) {
+            statusEl.textContent = "لا يوجد رقم للعميل";
+            statusEl.classList.add("text-red-600", "font-semibold");
+          }
+          return;
+        }
+        var url =
+          "https://wa.me/" + encodeURIComponent(digits) + "?text=" + encodeURIComponent(messageText);
+        window.open(url, "_blank", "noopener,noreferrer");
+        if (statusEl) {
+          statusEl.textContent = "تم فتح واتساب للعميل";
+          statusEl.classList.add("text-emerald-700", "font-semibold");
+          statusEl.classList.remove("text-red-600");
+        }
+      }
+
       document.querySelectorAll("[data-vip-contact-customer]").forEach(function (btn) {
         btn.addEventListener("click", function () {
           var interactive = btn.getAttribute("data-interactive") === "1";
@@ -368,33 +419,17 @@
           var statusEl = li ? li.querySelector("[data-vip-send-status]") : null;
           var waRaw = (btn.getAttribute("data-customer-wa") || "").trim();
           var msg = btn.getAttribute("data-contact-msg") || "";
-          if (statusEl) {
-            statusEl.textContent = "";
-            statusEl.classList.remove("text-red-600", "text-emerald-700", "font-semibold");
-          }
-          if (!waRaw) {
-            if (statusEl) {
-              statusEl.textContent = "لا يوجد رقم للعميل";
-              statusEl.classList.add("text-red-600", "font-semibold");
-            }
-            return;
-          }
-          var digits = waRaw.replace(/\D/g, "");
-          if (!digits) {
-            if (statusEl) {
-              statusEl.textContent = "لا يوجد رقم للعميل";
-              statusEl.classList.add("text-red-600", "font-semibold");
-            }
-            return;
-          }
-          var url =
-            "https://wa.me/" + encodeURIComponent(digits) + "?text=" + encodeURIComponent(msg);
-          window.open(url, "_blank", "noopener,noreferrer");
-          if (statusEl) {
-            statusEl.textContent = "تم فتح واتساب للعميل";
-            statusEl.classList.add("text-emerald-700", "font-semibold");
-            statusEl.classList.remove("text-red-600");
-          }
+          vipOpenCustomerWhatsApp(statusEl, waRaw, msg);
+        });
+      });
+
+      document.querySelectorAll("[data-vip-merchant-prefill-btn]").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          var li = btn.closest("li");
+          var statusEl = li ? li.querySelector("[data-vip-send-status]") : null;
+          var waRaw = (btn.getAttribute("data-customer-wa") || "").trim();
+          var msg = btn.getAttribute("data-prefill-body") || "";
+          vipOpenCustomerWhatsApp(statusEl, waRaw, msg);
         });
       });
     })();
