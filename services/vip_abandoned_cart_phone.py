@@ -64,3 +64,31 @@ def apply_vip_phone_capture_to_abandoned_carts(
         ac.customer_phone = phone
         n += 1
     return n
+
+
+def vip_cart_value_for_recovery_session(store_slug: str, session_id: str) -> float:
+    """قيمة أحدث سلة ‎VIP‎ لهذه الجلسة (أي ‎status‎) لعرضها في تنبيه التاجر."""
+    ss = (store_slug or "").strip()[:255]
+    sid = (session_id or "").strip()[:512]
+    if not sid:
+        return 0.0
+    try:
+        db.create_all()
+        store_row = resolve_store_row_for_cartflow_slug(ss)
+        q = (
+            db.session.query(AbandonedCart)
+            .filter(AbandonedCart.recovery_session_id == sid)
+            .filter(AbandonedCart.vip_mode.is_(True))
+        )
+        if store_row is not None:
+            vid = int(store_row.id)
+            q = q.filter(
+                (AbandonedCart.store_id == vid) | (AbandonedCart.store_id.is_(None))  # type: ignore[union-attr]
+            )
+        ac = q.order_by(AbandonedCart.last_seen_at.desc()).first()
+        if ac is None:
+            return 0.0
+        return float(ac.cart_value or 0.0)
+    except (SQLAlchemyError, OSError, TypeError, ValueError):
+        db.session.rollback()
+        return 0.0

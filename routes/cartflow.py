@@ -529,6 +529,29 @@ async def post_abandonment_reason(request: Request) -> Any:
                 recovery_key_for_reason_session(ss, sid),
                 phone_norm,
             )
+        if reason == "vip_phone_capture" and phone_norm:
+            try:
+                from services.vip_abandoned_cart_phone import (
+                    resolve_store_row_for_cartflow_slug,
+                    vip_cart_value_for_recovery_session,
+                )
+                from services.vip_merchant_alert import (
+                    try_send_vip_phone_capture_merchant_alert,
+                )
+
+                sto = resolve_store_row_for_cartflow_slug(ss)
+                cart_val = vip_cart_value_for_recovery_session(ss, sid)
+                try_send_vip_phone_capture_merchant_alert(
+                    sto,
+                    cart_total=cart_val,
+                    customer_phone=phone_norm,
+                )
+            except Exception as alert_err:  # noqa: BLE001
+                log.warning(
+                    "vip_phone_capture merchant whatsapp: %s",
+                    alert_err,
+                    exc_info=True,
+                )
         return j({"ok": True})
     except (SQLAlchemyError, OSError) as e:
         db.session.rollback()

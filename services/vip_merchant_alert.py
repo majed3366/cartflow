@@ -38,6 +38,21 @@ def _digits_only(s: str) -> str:
     return "".join(c for c in (s or "") if c.isdigit())
 
 
+def resolve_merchant_whatsapp_phone_with_default_env(store: Any) -> Tuple[Optional[str], str]:
+    """
+    مثل ‎resolve_merchant_whatsapp_phone‎ ثم ‎DEFAULT_MERCHANT_PHONE‎ (اختبار/احتياطي).
+    """
+    p, src = resolve_merchant_whatsapp_phone(store)
+    if p:
+        return p, src
+    env_phone = (os.getenv("DEFAULT_MERCHANT_PHONE") or "").strip()
+    if env_phone:
+        d = _digits_only(env_phone)
+        if len(d) >= 8:
+            return env_phone[:64], "default_merchant_phone_env"
+    return None, src
+
+
 def resolve_merchant_whatsapp_phone(store: Any) -> Tuple[Optional[str], str]:
     """
     يُرجع ‎(رقم لـ Twilio ‎whatsapp:+…‎, مصدر)‎ أو ‎(None, reason)‎.
@@ -101,6 +116,103 @@ def build_vip_merchant_alert_body(
         lines.extend([f"السبب: {ar}", ""])
     lines.extend(["رابط المراجعة:", link])
     return "\n".join(lines)
+
+
+def _format_cart_total_display(cart_total: float) -> str:
+    if cart_total == int(cart_total):
+        return str(int(cart_total))
+    return f"{cart_total:.2f}".rstrip("0").rstrip(".")
+
+
+def build_vip_phone_capture_merchant_message(
+    cart_total: float,
+    customer_phone_e164: str,
+) -> str:
+    v = _format_cart_total_display(cart_total)
+    ph = (customer_phone_e164 or "").strip()
+    lines = [
+        "🔥 سلة مميزة تحتاج متابعة",
+        "",
+        f"عميل أضاف سلة بقيمة {v} ريال",
+        "",
+        "رقم العميل:",
+        ph,
+        "",
+        "اضغط للتواصل معه مباشرة",
+    ]
+    body = "\n".join(lines)
+    d = _digits_only(ph)
+    if len(d) >= 8:
+        body = f"{body}\n\nhttps://wa.me/{d}"
+    return body
+
+
+def try_send_vip_phone_capture_merchant_alert(
+    store: Any,
+    *,
+    cart_total: float,
+    customer_phone: str,
+) -> Dict[str, Any]:
+    """
+    تنبيه فوري للتاجر عند حفظ رقم من ‎vip_phone_capture‎ — نفس ‎send_whatsapp‎ (Twilio).
+    """
+    from services.whatsapp_send import send_whatsapp
+
+    phone, src = resolve_merchant_whatsapp_phone_with_default_env(store)
+    log.info(
+        "[VIP ALERT SENDING] merchant_to=%s source=%s cart_total=%s",
+        phone or "none",
+        src,
+        cart_total,
+    )
+    try:
+        print(
+            "[VIP ALERT SENDING]\n"
+            "merchant_to=" + (phone or "none") + "\n"
+            "source=" + str(src),
+            flush=True,
+        )
+    except OSError:
+        pass
+    if not phone:
+        log.warning(
+            "[VIP ALERT FAILED] reason=no_merchant_phone source=%s",
+            src,
+        )
+        return {"ok": False, "error": "no_merchant_phone", "source": src}
+    msg = build_vip_phone_capture_merchant_message(cart_total, customer_phone)
+    try:
+        out = send_whatsapp(
+            phone,
+            msg,
+            reason_tag="vip_phone_capture_merchant",
+            wa_trace_path=__file__,
+            wa_trace_session_id=None,
+            wa_trace_store_slug=None,
+            wa_trace_last_activity=None,
+            wa_trace_recovery_delay_minutes=None,
+            wa_trace_delay_passed=None,
+        )
+    except Exception as e:  # noqa: BLE001
+        log.warning(
+            "[VIP ALERT FAILED] reason=exception err=%s",
+            str(e),
+            exc_info=True,
+        )
+        return {"ok": False, "error": str(e)}
+    ok = isinstance(out, dict) and out.get("ok") is True
+    if ok:
+        log.info("[VIP ALERT SENT]")
+        try:
+            print("[VIP ALERT SENT]", flush=True)
+        except OSError:
+            pass
+    else:
+        detail = ""
+        if isinstance(out, dict):
+            detail = str(out.get("error") or "")[:256]
+        log.warning("[VIP ALERT FAILED] reason=send_failed detail=%s", detail or "unknown")
+    return out if isinstance(out, dict) else {"ok": False, "error": "invalid_result"}
 
 
 def try_send_vip_merchant_whatsapp_alert(

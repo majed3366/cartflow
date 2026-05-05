@@ -197,6 +197,43 @@ class TestCartflowAbandonmentReason(unittest.TestCase):
         resolved = _vip_dashboard_customer_phone_raw(ac_row, dash_store)
         self.assertEqual("966598877665", resolved.strip())
 
+    def test_post_reason_vip_phone_capture_triggers_merchant_whatsapp(self) -> None:
+        """بعد حفظ ‎vip_phone_capture‎: محاولة إرسال واتساب للتاجر عبر ‎send_whatsapp‎."""
+        ensure_store_widget_schema(db)
+        import os
+        from unittest.mock import patch
+
+        sid = "s-vip-merch-wa-" + uuid.uuid4().hex[:8]
+        prev = os.environ.get("DEFAULT_MERCHANT_PHONE")
+        os.environ["DEFAULT_MERCHANT_PHONE"] = "+966511122233"
+        try:
+            with patch(
+                "services.whatsapp_send.send_whatsapp",
+                return_value={"ok": True, "sid": "SM_vip_cap_test"},
+            ) as mock_sw:
+                r = self.client.post(
+                    "/api/cartflow/reason",
+                    json={
+                        "store_slug": "demo",
+                        "session_id": sid,
+                        "reason": "vip_phone_capture",
+                        "customer_phone": "0594433322",
+                        "custom_text": "vip_cart_phone_capture",
+                    },
+                )
+        finally:
+            if prev is None:
+                os.environ.pop("DEFAULT_MERCHANT_PHONE", None)
+            else:
+                os.environ["DEFAULT_MERCHANT_PHONE"] = prev
+        self.assertEqual(200, r.status_code, r.text)
+        self.assertTrue((r.json() or {}).get("ok"))
+        mock_sw.assert_called_once()
+        _merchant_to, msg = mock_sw.call_args[0]
+        self.assertIn("966594433322", msg)
+        self.assertIn("https://wa.me/966594433322", msg)
+        self.assertIn("🔥 سلة مميزة", msg)
+
     def test_post_reason_vip_phone_capture_requires_custom_marker(self) -> None:
         ensure_store_widget_schema(db)
         r = self.client.post(
