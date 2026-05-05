@@ -2094,9 +2094,72 @@
     }
   }
 
+  var cartflowLastCartDetectedLogSig = "";
+
+  /** يزامن ‎window.cart‎ مع ‎localStorage‎ في واجهة التجربة حيث تُحدَّث السلة في التخزين. */
+  function cartflowHydrateDemoCartFromLocalStorage() {
+    var key = "";
+    try {
+      if (
+        typeof window.CARTFLOW_DEMO_CART_KEY === "string" &&
+        String(window.CARTFLOW_DEMO_CART_KEY).trim() !== ""
+      ) {
+        key = String(window.CARTFLOW_DEMO_CART_KEY).trim();
+      } else if (isDemoPath()) {
+        key = "demo_cart";
+      }
+    } catch (eK) {
+      key = "";
+    }
+    if (!key) {
+      return;
+    }
+    var raw = null;
+    try {
+      raw = window.localStorage.getItem(key);
+    } catch (eLs) {
+      return;
+    }
+    var parsed = [];
+    try {
+      parsed = raw ? JSON.parse(raw) : [];
+    } catch (eP) {
+      parsed = [];
+    }
+    if (!Array.isArray(parsed)) {
+      parsed = [];
+    }
+    window.cart = parsed;
+  }
+
+  function cartflowLogCartDetectedFromArray(cart) {
+    var arr = Array.isArray(cart) ? cart : [];
+    var n = arr.length;
+    var cart_total = cartLifecycleSumCart(arr);
+    var sig = String(n) + ":" + cart_total.toFixed(4);
+    if (sig === cartflowLastCartDetectedLogSig) {
+      return;
+    }
+    cartflowLastCartDetectedLogSig = sig;
+    try {
+      console.log("[CART DETECTED]", {
+        items: n,
+        cart_total: cart_total,
+      });
+    } catch (eL) {}
+    try {
+      setCartflowRuntimeState(cart_total, widgetVipCartThreshold, true);
+    } catch (eSr) {}
+  }
+
   function haveCartForWidget() {
     if (isSessionConverted()) {
       return false;
+    }
+    try {
+      cartflowHydrateDemoCartFromLocalStorage();
+    } catch (eHyd) {
+      /* ignore */
     }
     try {
       if (typeof window.cart === "undefined" || window.cart === null) {
@@ -2105,6 +2168,7 @@
       if (!Array.isArray(window.cart)) {
         return false;
       }
+      cartflowLogCartDetectedFromArray(window.cart);
       return window.cart.length > 0;
     } catch (e) {
       return false;
