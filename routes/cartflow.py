@@ -33,6 +33,7 @@ from services.recovery_session_phone import (
 )
 from services.store_widget_customization import widget_customization_fields_for_api
 from services.vip_cart import is_vip_cart, vip_cart_threshold_fields_for_api
+from services.vip_abandoned_cart_phone import apply_vip_phone_capture_to_abandoned_carts
 
 log = logging.getLogger("cartflow")
 
@@ -502,6 +503,12 @@ async def post_abandonment_reason(request: Request) -> Any:
                     created_at=now,
                     updated_at=now,
                 )
+            )
+        if reason == "vip_phone_capture" and phone_norm:
+            apply_vip_phone_capture_to_abandoned_carts(
+                store_slug=ss,
+                recovery_session_id=sid,
+                normalized_phone=phone_norm,
             )
         db.session.commit()
         if phone_norm:

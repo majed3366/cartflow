@@ -2134,6 +2134,58 @@ def _vip_phone_from_abandoned_cart_raw_payload(ac: AbandonedCart) -> str:
     return ""
 
 
+def _vip_store_slug_from_latest_cart_recovery_reason(session_id: str) -> str:
+    """أحدث ‎store_slug‎ لصف ‎CartRecoveryReason‎ لهذه الجلسة (يملأ رقم العميل مفضلاً)."""
+    sid = (session_id or "").strip()[:512]
+    if not sid:
+        return ""
+    try:
+        row = (
+            db.session.query(CartRecoveryReason)
+            .filter(CartRecoveryReason.session_id == sid)
+            .filter(CartRecoveryReason.customer_phone.isnot(None))
+            .order_by(CartRecoveryReason.created_at.desc())
+            .first()
+        )
+        if row is None:
+            return ""
+        return (getattr(row, "store_slug", None) or "").strip()[:255]
+    except (SQLAlchemyError, OSError, TypeError, ValueError):
+        db.session.rollback()
+        return ""
+
+
+def _vip_latest_crr_customer_phone_any_store_slug(session_id: str) -> str:
+    """أحدث ‎customer_phone‎ لأي ‎store_slug‎ بنفس ‎session_id‎ (‎ORDER BY created_at DESC‎)."""
+    sid = (session_id or "").strip()[:512]
+    if not sid:
+        return ""
+    try:
+        from schema_widget import (
+            ensure_cart_recovery_reason_phone_schema,
+            ensure_cart_recovery_reason_rejection_schema,
+        )
+
+        ensure_cart_recovery_reason_phone_schema(db)
+        ensure_cart_recovery_reason_rejection_schema(db)
+        db.create_all()
+        rows = (
+            db.session.query(CartRecoveryReason)
+            .filter(CartRecoveryReason.session_id == sid)
+            .order_by(CartRecoveryReason.created_at.desc())
+            .limit(32)
+            .all()
+        )
+        for row in rows:
+            p = _strip_recovery_phone(getattr(row, "customer_phone", None))
+            if p:
+                return p
+    except (SQLAlchemyError, OSError, TypeError, ValueError):
+        db.session.rollback()
+        return ""
+    return ""
+
+
 def _vip_candidate_store_slugs_for_dashboard(
     dashboard_store: Optional[Any],
     ac: AbandonedCart,
@@ -2184,7 +2236,10 @@ def _vip_latest_cart_recovery_reason_customer_phone(
                 CartRecoveryReason.store_slug == ss,
                 CartRecoveryReason.session_id == sid,
             )
-            .order_by(CartRecoveryReason.updated_at.desc())
+            .order_by(
+                CartRecoveryReason.created_at.desc(),
+                CartRecoveryReason.updated_at.desc(),
+            )
             .limit(32)
             .all()
         )
@@ -2203,10 +2258,15 @@ def _vip_dashboard_customer_phone_raw(
     dashboard_store: Optional[Any],
 ) -> str:
     """
-    جوال عميل لوحة VIP: ‎CartRecoveryReason.customer_phone‎ ثم ذاكرة جلسة الاسترجاع ثم ‎raw_payload‎.
+    جوال عميل لوحة VIP: ‎CartRecoveryReason‎ (سلاسل ‎slug‎ للوحة ومن آخر سبب للجلسة)،
+    ذاكرة الجلسة، ‎AbandonedCart.customer_phone‎، ثم ‎CartRecoveryReason‎ لأي ‎slug‎ بنفس الجلسة، ثم ‎raw_payload‎.
     """
     sid = (getattr(ac, "recovery_session_id", None) or "").strip()
-    slugs = _vip_candidate_store_slugs_for_dashboard(dashboard_store, ac)
+    slugs = list(_vip_candidate_store_slugs_for_dashboard(dashboard_store, ac))
+    if sid:
+        extra_slug = _vip_store_slug_from_latest_cart_recovery_reason(sid)
+        if extra_slug and extra_slug not in slugs:
+            slugs.insert(0, extra_slug)
 
     if sid and slugs:
         for ss in slugs:
@@ -2223,6 +2283,15 @@ def _vip_dashboard_customer_phone_raw(
                     return got_mem
         except Exception:  # noqa: BLE001
             pass
+
+    col = _strip_recovery_phone(getattr(ac, "customer_phone", None))
+    if col:
+        return col
+
+    if sid:
+        got_any = _vip_latest_crr_customer_phone_any_store_slug(sid)
+        if got_any:
+            return got_any
 
     return _vip_phone_from_abandoned_cart_raw_payload(ac)
 

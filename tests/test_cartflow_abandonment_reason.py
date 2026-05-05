@@ -6,7 +6,7 @@ import unittest
 
 from main import app
 from extensions import db
-from models import CartRecoveryLog, CartRecoveryReason, Store
+from models import CartRecoveryLog, CartRecoveryReason, Store, AbandonedCart
 from schema_widget import ensure_store_widget_schema
 
 
@@ -149,6 +149,53 @@ class TestCartflowAbandonmentReason(unittest.TestCase):
         self.assertEqual("966598765432", (crr.customer_phone or "").strip())
         self.assertEqual("vip_phone_capture", crr.reason)
         self.assertEqual("vip_cart_phone_capture", (crr.custom_text or "").strip())
+
+    def test_post_reason_vip_phone_capture_updates_matching_abandoned_cart(self) -> None:
+        """رقم ‎vip_phone_capture‎ يُنسخ إلى ‎AbandonedCart.customer_phone‎ لنفس المتجر والجلسة."""
+        ensure_store_widget_schema(db)
+        uid = uuid.uuid4().hex[:12]
+        zid_store = f"zid_vip_link_{uid}"
+        sid = f"s-vip-cart-{uid}"
+        store = Store(zid_store_id=zid_store)
+        db.session.add(store)
+        db.session.commit()
+        ac = AbandonedCart(
+            store_id=store.id,
+            zid_cart_id=f"cart_vip_{uid}",
+            cart_value=900.0,
+            status="abandoned",
+            vip_mode=True,
+            recovery_session_id=sid,
+        )
+        db.session.add(ac)
+        db.session.commit()
+        ac_id = int(ac.id)
+        r = self.client.post(
+            "/api/cartflow/reason",
+            json={
+                "store_slug": zid_store,
+                "session_id": sid,
+                "reason": "vip_phone_capture",
+                "customer_phone": "0598877665",
+                "custom_text": "vip_cart_phone_capture",
+            },
+        )
+        self.assertEqual(200, r.status_code, r.text)
+        db.session.expire_all()
+        row = db.session.get(AbandonedCart, ac_id)
+        self.assertIsNotNone(row)
+        self.assertEqual("966598877665", (row.customer_phone or "").strip())
+        from main import (  # type: ignore  # نفس مسار لوحة VIP
+            _dashboard_recovery_store_row,
+            _vip_dashboard_customer_phone_raw,
+        )
+
+        db.session.expire_all()
+        ac_row = db.session.get(AbandonedCart, ac_id)
+        self.assertIsNotNone(ac_row)
+        dash_store = _dashboard_recovery_store_row()
+        resolved = _vip_dashboard_customer_phone_raw(ac_row, dash_store)
+        self.assertEqual("966598877665", resolved.strip())
 
     def test_post_reason_vip_phone_capture_requires_custom_marker(self) -> None:
         ensure_store_widget_schema(db)
