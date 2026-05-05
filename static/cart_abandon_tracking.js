@@ -218,6 +218,42 @@
         : [];
     var cartTotal = sumCartArrayTotal(cartArr);
     var items_count = cartArr.length;
+
+    window.cart_total = cartTotal;
+    var vipCartThresholdRaw =
+      typeof window.cartflowVipCartThreshold !== "undefined" &&
+      window.cartflowVipCartThreshold !== null &&
+      window.cartflowVipCartThreshold !== ""
+        ? window.cartflowVipCartThreshold
+        : typeof window.CARTFLOW_VIP_CART_THRESHOLD !== "undefined" &&
+          window.CARTFLOW_VIP_CART_THRESHOLD !== null &&
+          String(window.CARTFLOW_VIP_CART_THRESHOLD).trim() !== ""
+        ? window.CARTFLOW_VIP_CART_THRESHOLD
+        : undefined;
+    var vipCartThreshold = vipCartThresholdRaw;
+    if (vipCartThreshold == null || vipCartThreshold === "") {
+      window.vip_threshold = undefined;
+      window.is_vip = false;
+    } else {
+      var vipThNum =
+        typeof vipCartThreshold === "number"
+          ? vipCartThreshold
+          : parseFloat(String(vipCartThreshold));
+      if (!isFinite(vipThNum) || vipThNum < 1) {
+        window.vip_threshold = undefined;
+        window.is_vip = false;
+      } else {
+        window.vip_threshold = vipThNum;
+        window.is_vip = cartTotal >= vipThNum;
+      }
+    }
+
+    console.log("[VIP DATA READY]", {
+      cart_total: window.cart_total,
+      vip_threshold: window.vip_threshold,
+      is_vip: window.is_vip,
+    });
+
     var session_id = getRecoverySessionId();
     var cart_id = getStableCartEventIdForTracking();
     var body = JSON.stringify({

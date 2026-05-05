@@ -667,6 +667,9 @@
           widgetVipCartThreshold =
             isFinite(vthNum) && vthNum >= 1 ? Math.floor(vthNum) : null;
         }
+        try {
+          window.cartflowVipCartThreshold = widgetVipCartThreshold;
+        } catch (eWth) {}
       }
       if (
         j.vip_from_cart_total === true &&
@@ -2099,6 +2102,9 @@
           window.is_vip = currentCartTotal >= thNum;
         }
       }
+      try {
+        window.cartflowVipCartThreshold = widgetVipCartThreshold;
+      } catch (eWct) {}
       var dbgSig =
         String(currentCartTotal) +
         "|" +
@@ -2215,7 +2221,35 @@
     }
     var total = cartLifecycleSumCart(cart);
     var items_count = cart.length;
-    syncWindowCartflowVipRuntime();
+
+    window.cart_total = total;
+    var vipCartThreshold = widgetVipCartThreshold;
+    if (vipCartThreshold == null || vipCartThreshold === "") {
+      window.vip_threshold = undefined;
+      window.is_vip = false;
+    } else {
+      var vipThNum =
+        typeof vipCartThreshold === "number"
+          ? vipCartThreshold
+          : parseFloat(String(vipCartThreshold));
+      if (!isFinite(vipThNum) || vipThNum < 1) {
+        window.vip_threshold = undefined;
+        window.is_vip = false;
+      } else {
+        window.vip_threshold = vipThNum;
+        window.is_vip = total >= vipThNum;
+      }
+    }
+    try {
+      window.cartflowVipCartThreshold = widgetVipCartThreshold;
+    } catch (eCt) {}
+
+    console.log("[VIP DATA READY]", {
+      cart_total: window.cart_total,
+      vip_threshold: window.vip_threshold,
+      is_vip: window.is_vip,
+    });
+
     var sessionId = getSessionId();
     if (!sessionId || String(sessionId).trim() === "" || sessionId === "—") {
       return;
