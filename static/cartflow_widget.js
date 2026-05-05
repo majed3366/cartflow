@@ -2096,47 +2096,95 @@
 
   var cartflowLastCartDetectedLogSig = "";
 
-  /** يزامن ‎window.cart‎ مع ‎localStorage‎ في واجهة التجربة حيث تُحدَّث السلة في التخزين. */
-  function cartflowHydrateDemoCartFromLocalStorage() {
-    var key = "";
+  /** يقرأ السلة الفعلية: ‎localStorage‎ بنفس المفتاح كصفحة التجربة أو ‎demo_cart‎، ثم مقارنتها ب‎window.cart‎. */
+  function cartflowResolveCartArrayAndSource() {
+    var keysOrdered = [];
+    var ki;
     try {
       if (
         typeof window.CARTFLOW_DEMO_CART_KEY === "string" &&
         String(window.CARTFLOW_DEMO_CART_KEY).trim() !== ""
       ) {
-        key = String(window.CARTFLOW_DEMO_CART_KEY).trim();
-      } else if (isDemoPath()) {
-        key = "demo_cart";
+        keysOrdered.push(String(window.CARTFLOW_DEMO_CART_KEY).trim());
       }
-    } catch (eK) {
-      key = "";
-    }
-    if (!key) {
-      return;
-    }
-    var raw = null;
+    } catch (eK0) {}
+
     try {
-      raw = window.localStorage.getItem(key);
-    } catch (eLs) {
-      return;
+      if (isDemoPath() && keysOrdered.indexOf("demo_cart") < 0) {
+        keysOrdered.push("demo_cart");
+      }
+    } catch (eKd) {}
+
+    function parseLsRaw(raw) {
+      var parsed = [];
+      try {
+        parsed = raw ? JSON.parse(raw) : [];
+      } catch (eP) {
+        parsed = [];
+      }
+      return Array.isArray(parsed) ? parsed : [];
     }
-    var parsed = [];
+
+    var bestLsArr = [];
+    var bestLsKey = "";
+    for (ki = 0; ki < keysOrdered.length; ki++) {
+      var k = keysOrdered[ki];
+      var rawLs = null;
+      try {
+        rawLs = window.localStorage.getItem(k);
+      } catch (eLs) {
+        rawLs = null;
+      }
+      var arrLs = parseLsRaw(rawLs);
+      if (arrLs.length >= bestLsArr.length) {
+        bestLsArr = arrLs;
+        bestLsKey = arrLs.length > 0 ? k : bestLsKey;
+      }
+    }
+    if (!bestLsKey && keysOrdered.length) {
+      bestLsKey = keysOrdered[keysOrdered.length - 1];
+    }
+
+    var wc = [];
     try {
-      parsed = raw ? JSON.parse(raw) : [];
-    } catch (eP) {
-      parsed = [];
+      wc =
+        typeof window.cart !== "undefined" &&
+        window.cart !== null &&
+        Array.isArray(window.cart)
+          ? window.cart
+          : [];
+    } catch (eW) {
+      wc = [];
     }
-    if (!Array.isArray(parsed)) {
-      parsed = [];
+
+    var chosen;
+    var src;
+    if (bestLsArr.length > wc.length) {
+      chosen = bestLsArr;
+      src = "localStorage:" + bestLsKey;
+    } else if (wc.length > 0) {
+      chosen = wc;
+      src = "window.cart";
+    } else if (bestLsKey) {
+      chosen = bestLsArr;
+      src = "localStorage:" + bestLsKey;
+    } else {
+      chosen = wc;
+      src = "window.cart";
     }
-    window.cart = parsed;
+
+    try {
+      window.cart = chosen;
+    } catch (eAs) {}
+
+    return { cart: chosen, source: src };
   }
 
-  function cartflowLogCartDetectedFromArray(cart) {
-    var arr = Array.isArray(cart) ? cart : [];
+  function cartflowLogCartDetected(chosenCart, source) {
+    var arr = Array.isArray(chosenCart) ? chosenCart : [];
     var n = arr.length;
     var cart_total = cartLifecycleSumCart(arr);
-    var sig = String(n) + ":" + cart_total.toFixed(4);
+    var sig = String(source) + "|" + String(n) + ":" + cart_total.toFixed(4);
     if (sig === cartflowLastCartDetectedLogSig) {
       return;
     }
@@ -2145,19 +2193,18 @@
       console.log("[CART DETECTED]", {
         items: n,
         cart_total: cart_total,
+        source: source,
       });
     } catch (eL) {}
-    try {
-      setCartflowRuntimeState(cart_total, widgetVipCartThreshold, true);
-    } catch (eSr) {}
   }
 
   function haveCartForWidget() {
     if (isSessionConverted()) {
       return false;
     }
+    var res = { cart: [], source: "window.cart" };
     try {
-      cartflowHydrateDemoCartFromLocalStorage();
+      res = cartflowResolveCartArrayAndSource();
     } catch (eHyd) {
       /* ignore */
     }
@@ -2168,7 +2215,7 @@
       if (!Array.isArray(window.cart)) {
         return false;
       }
-      cartflowLogCartDetectedFromArray(window.cart);
+      cartflowLogCartDetected(window.cart, res.source || "window.cart");
       return window.cart.length > 0;
     } catch (e) {
       return false;
