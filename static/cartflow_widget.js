@@ -2,6 +2,17 @@
  * CartFlow — عرض سبب التردد بعد ‎step1‎ استرجاع (بلا مزوّد واتساب في الودجت).
  * ‎/demo/‎: يتخطّى انتظار ‎step1‎ (تجارب). باقي المسارات: حتى ‎GET /api/cartflow/ready‎.
  */
+/** حالة VIP من مسار ‎cart_state_sync‎ فقط — بدون ‎window.cart_total‎. */
+const cartflowState = {
+  cartTotal: 0,
+  itemsCount: 0,
+  vipThreshold: 500,
+  isVip: false,
+};
+try {
+  window.cartflowState = cartflowState;
+} catch (eCfsGlobal) {}
+
 (function () {
   "use strict";
 
@@ -142,13 +153,6 @@
       lastIntentAt: null,
     };
 
-  /** حالة VIP من مسار ‎cart_state_sync‎ فقط — بدون ‎window.cart_total‎. */
-  var cartflowState = {
-    cartTotal: 0,
-    itemsCount: 0,
-    vipThreshold: 500,
-    isVip: false,
-  };
   /** جمع رقم VIP داخل الفقاعة فقط؛ تعطيل اللوحة المنفصلة و‎vipImmediate‎ التلقائي. */
   var CARTFLOW_VIP_INLINE_FLOW_ONLY = true;
 
