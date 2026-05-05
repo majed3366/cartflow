@@ -5,6 +5,23 @@
 (function () {
   "use strict";
 
+  function cfPerfDemoDevLog(line) {
+    try {
+      var p = window.location.pathname || "";
+      if (/\/demo\b/i.test(p) || /^\/dev(\/|$)/i.test(p)) {
+        console.log(line);
+      }
+    } catch (ePd) {}
+  }
+
+  try {
+    if (window.__CARTFLOW_WIDGET_ACTIVE__ === true) {
+      cfPerfDemoDevLog("[CF PERF] widget execution skipped duplicate");
+      return;
+    }
+    window.__CARTFLOW_WIDGET_ACTIVE__ = true;
+  } catch (eWd) {}
+
   window.__cartflow_widget_build = "vip-runtime-state-v1";
   try {
     console.log("[CARTFLOW WIDGET BUILD]", window.__cartflow_widget_build);
@@ -43,6 +60,16 @@
       rejectionTimestamp: null,
       lastIntentAt: null,
     };
+
+  /** حالة VIP من مسار ‎cart_state_sync‎ فقط — بدون ‎window.cart_total‎. */
+  var cartflowState = {
+    cartTotal: 0,
+    itemsCount: 0,
+    vipThreshold: 500,
+    isVip: false,
+  };
+  /** جمع رقم VIP داخل الفقاعة فقط؛ تعطيل اللوحة المنفصلة و‎vipImmediate‎ التلقائي. */
+  var CARTFLOW_VIP_INLINE_FLOW_ONLY = true;
 
   var ARM_DELAY_MS = 3000;
   var IDLE_MS = 8000;
@@ -2246,11 +2273,7 @@
 
   function showVipPhoneCapture() {
     try {
-      var p = ensureVipPhoneCapturePanel();
-      if (p && p.style) {
-        p.style.setProperty("display", "block", "important");
-        vipPhoneCaptureRenderFormInner();
-      }
+      hideVipPhoneCapturePanel();
     } catch (eVph) {}
   }
 
@@ -2273,6 +2296,30 @@
     }
     var total = cartLifecycleSumCart(cart);
     var items_count = cart.length;
+    var cart_total = total;
+    var _vthRaw = widgetVipCartThreshold;
+    var _vthComputed = 500;
+    if (_vthRaw != null && _vthRaw !== "") {
+      var _vn = Number(_vthRaw);
+      if (isFinite(_vn) && _vn >= 1) {
+        _vthComputed = Math.floor(_vn);
+      }
+    }
+    cartflowState.cartTotal = Number(cart_total || 0);
+    cartflowState.itemsCount = Number(items_count || 0);
+    cartflowState.vipThreshold = _vthComputed;
+    cartflowState.isVip =
+      cartflowState.itemsCount > 0 &&
+      cartflowState.cartTotal >= cartflowState.vipThreshold;
+    try {
+      console.log("[VIP STATE UPDATED]", {
+        cartTotal: cartflowState.cartTotal,
+        itemsCount: cartflowState.itemsCount,
+        vipThreshold: cartflowState.vipThreshold,
+        isVip: cartflowState.isVip,
+      });
+    } catch (eVsu) {}
+
     cartflowAnnounceUnifiedCartState(total);
 
     var sessionId = getSessionId();
@@ -2303,51 +2350,6 @@
       cartflowLifecycleLastCount = items_count;
     } catch (eSt) {}
     try {
-      var cart_total = total;
-      var totalForVip = Number(cart_total || 0);
-      var vipCartThreshold = widgetVipCartThreshold;
-      var thresholdForVip = Number(
-        vipCartThreshold != null && vipCartThreshold !== ""
-          ? vipCartThreshold
-          : typeof window.vip_threshold !== "undefined" &&
-              window.vip_threshold != null &&
-              window.vip_threshold !== ""
-          ? window.vip_threshold
-          : 500
-      );
-      if (isNaN(thresholdForVip)) {
-        thresholdForVip = 500;
-      }
-      var existingPhone = "";
-      try {
-        existingPhone =
-          window.localStorage.getItem("cartflow_customer_phone") || "";
-      } catch (eLsP0) {}
-      if (!existingPhone) {
-        try {
-          existingPhone =
-            window.localStorage.getItem("customer_phone") || "";
-        } catch (eLsP1) {}
-      }
-      var existingPhoneTrim = existingPhone ? String(existingPhone).trim() : "";
-
-      console.log("[VIP CAPTURE CHECK]", {
-        cart_total: totalForVip,
-        threshold: thresholdForVip,
-        has_phone: !!existingPhoneTrim,
-      });
-
-      if (
-        totalForVip >= thresholdForVip &&
-        thresholdForVip > 0 &&
-        !existingPhoneTrim
-      ) {
-        try {
-          showVipPhoneCapture();
-        } catch (eVcap) {}
-        return;
-      }
-
       console.log(
         "[WIDGET CART SYNC SENT] reason=" +
           r +
@@ -2361,7 +2363,6 @@
           items_count
       );
     } catch (eLog) {}
-    setCartflowRuntimeState(total, widgetVipCartThreshold);
     try {
       fetch(cartLifecycleApiUrl(), {
         method: "POST",
@@ -2500,7 +2501,8 @@
       }
     }
 
-    window.setInterval(tick, 600);
+    cfPerfDemoDevLog("[CF PERF] cart lifecycle observer interval: 2000ms");
+    window.setInterval(tick, 2000);
     try {
       document.addEventListener(
         "cf-demo-cart-updated",
@@ -2739,6 +2741,9 @@
   /** أولويّة لتجاوز أسئلة التردد داخل الفقاعة وجمع الرقم لمتابعة سلّة VIP. */
   function vipPhoneTryMountBubbleBlock(bodyEl) {
     try {
+      if (CARTFLOW_VIP_INLINE_FLOW_ONLY) {
+        return false;
+      }
       if (!bodyEl || !vipPhoneCaptureInteractiveEligible()) {
         return false;
       }
@@ -2801,6 +2806,10 @@
 
   function syncVipPhoneCapturePanel() {
     try {
+      if (CARTFLOW_VIP_INLINE_FLOW_ONLY) {
+        hideVipPhoneCapturePanel();
+        return;
+      }
       try {
         if (
           typeof document !== "undefined" &&
@@ -2889,6 +2898,9 @@
 
   function vipShouldForceVipBubble() {
     try {
+      if (CARTFLOW_VIP_INLINE_FLOW_ONLY) {
+        return false;
+      }
       if (!haveCartForWidget() || isSessionConverted()) {
         return false;
       }
@@ -2900,6 +2912,9 @@
 
   function maybeTryOpenBubbleForVipFromServer() {
     try {
+      if (CARTFLOW_VIP_INLINE_FLOW_ONLY) {
+        return;
+      }
       if (shown || isSessionConverted() || !step1Ready) {
         return;
       }
@@ -3360,6 +3375,17 @@
   function emitDemoGuideEvent(name, detail) {
     if (!isDemoPath()) {
       return;
+    }
+    try {
+      if (
+        document.querySelector(
+          "[data-cartflow-bubble][data-cf-vip-inline-blocking=\"1\"]"
+        )
+      ) {
+        return;
+      }
+    } catch (eBlk) {
+      /* ignore */
     }
     try {
       document.dispatchEvent(
@@ -6327,6 +6353,193 @@
       widgetBody.appendChild(row2);
     }
 
+    function replayCartEntryPromptAfterVipInline() {
+      try {
+        w.removeAttribute("data-cf-vip-inline-flow");
+        w.removeAttribute("data-cf-vip-inline-blocking");
+        w.removeAttribute("data-cf-vip-inline-phone-step");
+        w.removeAttribute("data-cf-yes");
+      } catch (eRl) {}
+      stripContentKeepChrome();
+      if (p0 && row0 && btnY && btnN) {
+        if (btnY.parentNode !== row0) {
+          row0.appendChild(btnY);
+        }
+        if (btnN.parentNode !== row0) {
+          row0.appendChild(btnN);
+        }
+        widgetBody.appendChild(p0);
+        widgetBody.appendChild(row0);
+      }
+    }
+
+    function mountVipInlinePhoneCapture() {
+      stripContentKeepChrome();
+      try {
+        w.setAttribute("data-cf-vip-inline-phone-step", "1");
+        w.setAttribute("data-cf-vip-inline-blocking", "1");
+        w.setAttribute("data-cf-vip-inline-flow", "1");
+      } catch (eAttr) {}
+
+      var pHint = document.createElement("p");
+      pHint.style.cssText =
+        "margin:0 0 8px 0;font-size:13px;line-height:1.45;color:rgba(30,27,75,0.82);";
+      pHint.textContent = "نستخدم الرقم فقط لمساعدتك في إكمال الطلب";
+      widgetBody.appendChild(pHint);
+
+      var phoneIn = document.createElement("input");
+      phoneIn.type = "tel";
+      phoneIn.setAttribute("dir", "ltr");
+      phoneIn.setAttribute("placeholder", "اكتب رقمك للتواصل عبر واتساب");
+      phoneIn.setAttribute("autocomplete", "tel");
+      phoneIn.setAttribute("aria-label", "اكتب رقمك للتواصل عبر واتساب");
+      phoneIn.style.cssText =
+        "width:100%;box-sizing:border-box;border-radius:8px;border:0;padding:10px 10px;margin-bottom:6px;font:inherit;color:#1e1b4b;";
+      try {
+        var savedVp = localStorage.getItem(CARTFLOW_LS_CUSTOMER_PHONE);
+        if (savedVp) {
+          phoneIn.value = String(savedVp);
+        }
+      } catch (eLsV) {}
+
+      widgetBody.appendChild(phoneIn);
+
+      var pErr = document.createElement("p");
+      pErr.setAttribute("role", "alert");
+      pErr.style.cssText =
+        "margin:0 0 8px 0;font-size:13px;line-height:1.4;color:#b91c1c;min-height:0;";
+      pErr.textContent = "";
+      widgetBody.appendChild(pErr);
+
+      var rowV = document.createElement("div");
+      rowV.style.cssText = rowStyleCol;
+
+      var bSend = document.createElement("button");
+      bSend.type = "button";
+      bSend.textContent = "حفظ الرقم";
+      stampPrimaryBubbleBtn(bSend);
+
+      var bBackV = document.createElement("button");
+      bBackV.type = "button";
+      bBackV.textContent = BTN_BACK;
+      stampPrimaryBubbleBtn(bBackV);
+      bBackV.addEventListener("click", function (eb) {
+        eb.stopPropagation();
+        eb.preventDefault();
+        try {
+          w.removeAttribute("data-cf-vip-inline-phone-step");
+        } catch (eBs) {}
+        showVipOnlyReasonMenu();
+      });
+
+      bSend.addEventListener("click", function (e2) {
+        e2.stopPropagation();
+        e2.preventDefault();
+        pErr.textContent = "";
+        var norm = normalizeSaPhoneForCartflow(phoneIn.value);
+        if (!norm) {
+          pErr.textContent = "رقم غير صحيح";
+          return;
+        }
+        try {
+          console.log("[CF PHONE RECEIVED] phone=" + norm);
+        } catch (eCfR) {}
+
+        bSend.setAttribute("disabled", "true");
+        postReason({
+          reason: "vip_phone_capture",
+          customer_phone: norm,
+          custom_text: "vip_cart_phone_capture",
+        })
+          .then(function (j) {
+            bSend.removeAttribute("disabled");
+            if (!(j && j.ok)) {
+              var eb = (j && j.body) || {};
+              var em = (eb.error && String(eb.error)) || "";
+              if (
+                em.indexOf("invalid_customer_phone") !== -1 ||
+                em === "invalid_customer_phone"
+              ) {
+                pErr.textContent = "رقم غير صحيح";
+              } else {
+                pErr.textContent = "تعذّر الحفظ، حاول مرة ثانية.";
+              }
+              return;
+            }
+            try {
+              localStorage.setItem(CARTFLOW_LS_CUSTOMER_PHONE, norm);
+            } catch (eLs1) {
+              /* ignore */
+            }
+            try {
+              console.log("[CF PHONE SAVED] phone=" + norm);
+            } catch (eCfS) {}
+
+            stripContentKeepChrome();
+            try {
+              w.removeAttribute("data-cf-vip-inline-phone-step");
+            } catch (eDone) {}
+
+            var topOk = document.createElement("p");
+            topOk.style.cssText =
+              "margin:0 0 10px 0;font-size:15px;line-height:1.55;font-weight:600;";
+            topOk.textContent = "تمام 👍 تم حفظ الرقم";
+            widgetBody.appendChild(topOk);
+
+            var rowOk = document.createElement("div");
+            rowOk.style.cssText = rowStyleCol;
+            var bChatV = document.createElement("button");
+            bChatV.type = "button";
+            bChatV.textContent = "رجوع للمحادثة";
+            stampPrimaryBubbleBtn(bChatV);
+            bChatV.addEventListener("click", function (e) {
+              e.stopPropagation();
+              e.preventDefault();
+              replayCartEntryPromptAfterVipInline();
+            });
+            rowOk.appendChild(bChatV);
+            widgetBody.appendChild(rowOk);
+          })
+          .catch(function () {
+            bSend.removeAttribute("disabled");
+            pErr.textContent = "تعذّر الحفظ، حاول مرة ثانية.";
+          });
+      });
+
+      rowV.appendChild(bSend);
+      rowV.appendChild(bBackV);
+      widgetBody.appendChild(rowV);
+    }
+
+    function showVipOnlyReasonMenu() {
+      stripContentKeepChrome();
+      try {
+        w.setAttribute("data-cf-vip-inline-flow", "1");
+        w.setAttribute("data-cf-vip-inline-blocking", "1");
+        w.removeAttribute("data-cf-vip-inline-phone-step");
+      } catch (eVm) {}
+
+      var rowMenu = document.createElement("div");
+      rowMenu.setAttribute("data-cf-vip-inline-reason-row", "1");
+      rowMenu.style.cssText = rowStyleCol;
+
+      var bVip = document.createElement("button");
+      bVip.type = "button";
+      bVip.textContent = "سلتك تحتاج متابعة خاصة";
+      stampPrimaryBubbleBtn(bVip);
+      bVip.addEventListener(
+        "click",
+        function (ev) {
+          ev.stopPropagation();
+          ev.preventDefault();
+          mountVipInlinePhoneCapture();
+        },
+        false
+      );
+      rowMenu.appendChild(bVip);
+      widgetBody.appendChild(rowMenu);
+    }
+
     function showOtherSuccessView() {
       stripContentKeepChrome();
       var top = document.createElement("p");
@@ -6506,9 +6719,14 @@
           } else if (openSource === TRIGGER_SOURCE_CART) {
             logWidgetFlow("first_prompt_pick", "", "نعم");
             stripContentKeepChrome();
-            w.setAttribute("data-cf-cart-affirm-help", "1");
-            mountLayerDAbandonIfEligible();
-            emitDemoGuideEvent("cartflow-demo-reason-list-visible", {});
+            if (cartflowState.isVip) {
+              emitDemoGuideEvent("cartflow-demo-reason-list-visible", {});
+              showVipOnlyReasonMenu();
+            } else {
+              w.setAttribute("data-cf-cart-affirm-help", "1");
+              mountLayerDAbandonIfEligible();
+              emitDemoGuideEvent("cartflow-demo-reason-list-visible", {});
+            }
           } else {
             renderReasonList();
             emitDemoGuideEvent("cartflow-demo-reason-list-visible", {});
