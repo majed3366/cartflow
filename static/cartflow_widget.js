@@ -285,9 +285,6 @@ try {
   var vipPhoneCapturePanel = null;
   var vipPhoneCaptureShowingSuccess = false;
   var CF_SS_VIP_PHONE_DISMISS = "cartflow_vip_phone_capture_dismissed";
-  /** يُحدَّث من ‎cart_state_sync‎ / ‎public-config?cart_total=‎؛ عند المعرفة لا نعيد حساب VIP على المتصفح فقط. */
-  var widgetCfBackendVipKnown = false;
-  var widgetCfBackendIsVip = false;
   var EXIT_INTENT_PRESET_BY_TONE = {
     friendly:
       "هلا 👋\nفيه خيارات ممكن تعجبك 👍\nتحب أشوفها لك بسرعة؟",
@@ -818,13 +815,6 @@ try {
           vip_threshold: window.vip_threshold,
         });
       } catch (eVc) {}
-      if (
-        j.vip_from_cart_total === true &&
-        typeof j.is_vip === "boolean"
-      ) {
-        widgetCfBackendVipKnown = true;
-        widgetCfBackendIsVip = j.is_vip;
-      }
       syncWidgetCustomizationToWindow();
       applyWidgetCustomization();
       syncWindowCartflowVipRuntime();
@@ -2369,9 +2359,6 @@ try {
   } catch (eExVph) {}
 
   function syncCartState(reason) {
-    if (isSessionConverted()) {
-      return;
-    }
     var r = String(reason || "page_load").toLowerCase();
     var okReasons = { add: 1, remove: 1, clear: 1, abandon: 1, page_load: 1 };
     if (!okReasons[r]) {
@@ -2406,6 +2393,10 @@ try {
         isVip: cartflowState.isVip,
       });
     } catch (eVsu) {}
+
+    if (isSessionConverted()) {
+      return;
+    }
 
     cartflowAnnounceUnifiedCartState(total);
 
@@ -2715,9 +2706,6 @@ try {
   }
 
   function vipPhoneCaptureEligibilityTotalsOk() {
-    if (widgetCfBackendVipKnown) {
-      return widgetCfBackendIsVip === true;
-    }
     try {
       var cart = window.cart;
       if (!Array.isArray(cart)) {
@@ -2736,7 +2724,7 @@ try {
       if (isNaN(tnum)) {
         return false;
       }
-      return tnum >= th;
+      return cart.length > 0 && tnum >= th;
     } catch (ev) {
       return false;
     }
@@ -3021,42 +3009,25 @@ try {
   }
 
   function applyCartStateSyncVipFromResponse(j) {
-    if (!j || typeof j !== "object") {
+    if (!j || typeof j !== "object" || j.ok !== true) {
+      syncWindowCartflowVipRuntime();
       return;
     }
-    if (
-      j.ok === true &&
-      j.vip_from_cart_total === true &&
-      typeof j.is_vip === "boolean"
-    ) {
-      widgetCfBackendVipKnown = true;
-      widgetCfBackendIsVip = j.is_vip;
-      if ("vip_cart_threshold" in j) {
-        var vt = j.vip_cart_threshold;
-        if (vt == null || vt === "") {
-          widgetVipCartThreshold = null;
-        } else {
-          var vtn = typeof vt === "number" ? vt : parseFloat(String(vt));
-          widgetVipCartThreshold =
-            isFinite(vtn) && vtn >= 1 ? Math.floor(vtn) : null;
-        }
+    if ("vip_cart_threshold" in j) {
+      var vt = j.vip_cart_threshold;
+      if (vt == null || vt === "") {
+        widgetVipCartThreshold = null;
+      } else {
+        var vtn = typeof vt === "number" ? vt : parseFloat(String(vt));
+        widgetVipCartThreshold =
+          isFinite(vtn) && vtn >= 1 ? Math.floor(vtn) : null;
       }
     }
     syncWindowCartflowVipRuntime();
   }
 
   function vipShouldForceVipBubble() {
-    try {
-      if (CARTFLOW_VIP_INLINE_FLOW_ONLY) {
-        return false;
-      }
-      if (!haveCartForWidget() || isSessionConverted()) {
-        return false;
-      }
-      return vipPhoneCaptureInteractiveEligible();
-    } catch (eVsf) {
-      return false;
-    }
+    return false;
   }
 
   function maybeTryOpenBubbleForVipFromServer() {
@@ -3730,10 +3701,6 @@ try {
       /* ignore */
     }
     var hasCartItems = haveCartForWidget();
-    if (hasCartItems && vipShouldForceVipBubble()) {
-      triggerSource = TRIGGER_SOURCE_CART;
-      revealOpts.vipImmediate = true;
-    }
     var openSource =
       triggerSource === TRIGGER_SOURCE_EXIT_INTENT
         ? TRIGGER_SOURCE_EXIT_INTENT
@@ -6868,14 +6835,13 @@ try {
           } else if (openSource === TRIGGER_SOURCE_CART) {
             logWidgetFlow("first_prompt_pick", "", "نعم");
             stripContentKeepChrome();
-            if (cartflowState.isVip) {
-              emitDemoGuideEvent("cartflow-demo-reason-list-visible", {});
+            emitDemoGuideEvent("cartflow-demo-reason-list-visible", {});
+            if (cartflowState.isVip === true) {
               showVipOnlyReasonMenu();
-            } else {
-              w.setAttribute("data-cf-cart-affirm-help", "1");
-              mountLayerDAbandonIfEligible();
-              emitDemoGuideEvent("cartflow-demo-reason-list-visible", {});
+              return;
             }
+            w.setAttribute("data-cf-cart-affirm-help", "1");
+            mountLayerDAbandonIfEligible();
           } else {
             renderReasonList();
             emitDemoGuideEvent("cartflow-demo-reason-list-visible", {});
