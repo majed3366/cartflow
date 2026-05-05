@@ -234,8 +234,10 @@ from services.reason_template_recovery import (
 from services.recovery_multi_message import multi_message_slots_for_abandon
 from services.vip_cart import (
     apply_vip_cart_threshold_from_body,
+    apply_vip_offer_settings_from_body,
     is_vip_cart,
     vip_cart_threshold_fields_for_api,
+    vip_offer_fields_for_api,
 )
 from services.vip_merchant_alert import (
     build_vip_merchant_alert_body,
@@ -710,6 +712,12 @@ def _merge_recovery_settings_post_body(body: Dict[str, Any]) -> Dict[str, Any]:
             out["store_whatsapp_number"] = getattr(row, "store_whatsapp_number", None)
         if "vip_cart_threshold" not in body:
             out["vip_cart_threshold"] = getattr(row, "vip_cart_threshold", None)
+        if "vip_offer_enabled" not in body:
+            out["vip_offer_enabled"] = bool(getattr(row, "vip_offer_enabled", False))
+        if "vip_offer_type" not in body:
+            out["vip_offer_type"] = getattr(row, "vip_offer_type", None)
+        if "vip_offer_value" not in body:
+            out["vip_offer_value"] = getattr(row, "vip_offer_value", None)
     return out
 
 
@@ -777,6 +785,7 @@ def _dev_apply_recovery_settings_update(
         apply_exit_intent_template_control_from_body(row, request_body)
         apply_widget_customization_from_body(row, request_body)
         apply_vip_cart_threshold_from_body(row, request_body)
+        apply_vip_offer_settings_from_body(row, request_body)
     db.session.commit()
     wa: Optional[str] = getattr(row, "whatsapp_support_url", None)
     if not (isinstance(wa, str) and wa.strip()):
@@ -799,6 +808,7 @@ def _dev_apply_recovery_settings_update(
     payload.update(exit_intent_template_fields_for_api(row))
     payload.update(widget_customization_fields_for_api(row))
     payload.update(vip_cart_threshold_fields_for_api(row))
+    payload.update(vip_offer_fields_for_api(row))
     return payload, 200
 
 # ‎/dev/recovery-flow-test?type=…‎ — بدون قراءة من ‎DB‎
@@ -1213,6 +1223,7 @@ def api_recovery_settings_get():
         payload.update(exit_intent_template_fields_for_api(row))
         payload.update(widget_customization_fields_for_api(row))
         payload.update(vip_cart_threshold_fields_for_api(row))
+        payload.update(vip_offer_fields_for_api(row))
         return j(payload)
     except Exception as e:  # noqa: BLE001
         db.session.rollback()

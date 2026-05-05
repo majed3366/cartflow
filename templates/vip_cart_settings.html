@@ -75,8 +75,72 @@
             <p class="mt-2 text-xs text-slate-500">اتركه فارغاً لتعطيل الميزة.</p>
           </section>
 
+          <!-- SECTION — VIP offers (UI only; inactive) -->
+          <section class="rounded-2xl border border-amber-200/90 bg-white p-4 shadow-sm md:p-5" aria-labelledby="vip-offers-heading">
+            <h2 id="vip-offers-heading" class="mb-1 text-lg font-bold text-slate-900">عروض السلال المميزة</h2>
+            <p class="mb-4 text-sm leading-relaxed text-slate-600">
+              حدد نوع العرض الذي يمكن تقديمه للعملاء ذوي السلال العالية القيمة
+            </p>
+
+            <div class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50/90 px-3 py-3">
+              <label for="vip_offer_enabled" class="flex cursor-pointer items-center gap-3 text-sm font-semibold text-slate-900">
+                <input type="checkbox" id="vip_offer_enabled" name="vip_offer_enabled"
+                  class="h-4 w-4 rounded border-slate-300 text-amber-600 focus:ring-amber-500" />
+                <span>تفعيل العروض التلقائية</span>
+              </label>
+            </div>
+            <p class="mb-4 text-xs leading-relaxed text-amber-800/90">لن يتم إرسال أي عرض حالياً (قيد التطوير)</p>
+
+            <div id="vip-offers-fields-wrap">
+              <fieldset class="space-y-3">
+                <legend class="sr-only">نوع العرض</legend>
+                <label class="flex cursor-pointer items-center gap-2 text-sm text-slate-800">
+                  <input type="radio" name="vip_offer_type" value="discount" class="text-amber-600 focus:ring-amber-500" />
+                  خصم
+                </label>
+                <label class="flex cursor-pointer items-center gap-2 text-sm text-slate-800">
+                  <input type="radio" name="vip_offer_type" value="free_shipping" class="text-amber-600 focus:ring-amber-500" />
+                  شحن مجاني
+                </label>
+                <label class="flex cursor-pointer items-center gap-2 text-sm text-slate-800">
+                  <input type="radio" name="vip_offer_type" value="gift_wrap" class="text-amber-600 focus:ring-amber-500" />
+                  تغليف مجاني
+                </label>
+                <label class="flex cursor-pointer items-center gap-2 text-sm text-slate-800">
+                  <input type="radio" name="vip_offer_type" value="gift" class="text-amber-600 focus:ring-amber-500" />
+                  هدية
+                </label>
+              </fieldset>
+
+              <div id="vip-offer-panel-discount" class="mt-4 hidden">
+                <label for="vip_offer_discount_pct" class="mb-1 block text-sm font-medium text-slate-700">نسبة الخصم (%)</label>
+                <input id="vip_offer_discount_pct" type="text" inputmode="numeric" maxlength="3" autocomplete="off" placeholder="مثال: 10"
+                  class="w-full max-w-xs rounded-xl border border-slate-200 bg-white px-3 py-2 text-slate-900 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/25" />
+              </div>
+
+              <div id="vip-offer-panel-free_shipping" class="mt-4 hidden rounded-lg border border-slate-100 bg-slate-50/80 px-3 py-2 text-sm text-slate-600">
+                سيتم إرسال عرض شحن مجاني
+              </div>
+
+              <div id="vip-offer-panel-gift_wrap" class="mt-4 hidden rounded-lg border border-slate-100 bg-slate-50/80 px-3 py-2 text-sm text-slate-600">
+                سيتم إرسال عرض تغليف مجاني
+              </div>
+
+              <div id="vip-offer-panel-gift" class="mt-4 hidden">
+                <label for="vip_offer_gift_desc" class="mb-1 block text-sm font-medium text-slate-700">وصف الهدية</label>
+                <input id="vip_offer_gift_desc" type="text" maxlength="500" autocomplete="off" placeholder="صف موجز للهدية"
+                  class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-slate-900 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/25" />
+              </div>
+
+              <div class="mt-5 rounded-xl border border-dashed border-slate-200 bg-slate-50/60 p-3 text-sm leading-relaxed text-slate-700" aria-label="معاينة رسالة">
+                <p class="m-0 font-medium text-slate-800">مثال الرسالة:</p>
+                <p class="mt-2 m-0 whitespace-pre-line">نقدر نقدم لك عرض خاص لإكمال الطلب 🎁</p>
+              </div>
+            </div>
+          </section>
+
           <div class="cf-dash-save-wrap">
-            <button type="submit" id="saveBtn" class="cf-dash-save">💾 حفظ الإعدادات</button>
+            <button type="submit" id="saveBtn" class="cf-dash-save">حفظ الإعدادات</button>
           </div>
         </form>
       </div>
@@ -122,6 +186,64 @@
         }
       }
 
+      function updateOfferPanels() {
+        var sel = document.querySelector('input[name="vip_offer_type"]:checked');
+        var v = sel ? sel.value : "";
+        ["discount", "free_shipping", "gift_wrap", "gift"].forEach(function (k) {
+          var el = document.getElementById("vip-offer-panel-" + k);
+          if (el) el.classList.toggle("hidden", v !== k);
+        });
+      }
+
+      function setOffersUiDisabled(dis) {
+        var box = document.getElementById("vip-offers-fields-wrap");
+        if (!box) return;
+        box.classList.toggle("opacity-50", !!dis);
+        box.classList.toggle("pointer-events-none", !!dis);
+      }
+
+      function fillVipOffers(data) {
+        var cb = document.getElementById("vip_offer_enabled");
+        if (!cb) return;
+        cb.checked = !!data.vip_offer_enabled;
+        var t = data.vip_offer_type ? String(data.vip_offer_type) : "";
+        document.querySelectorAll('input[name="vip_offer_type"]').forEach(function (r) {
+          r.checked = r.value === t;
+        });
+        var dp = document.getElementById("vip_offer_discount_pct");
+        var gd = document.getElementById("vip_offer_gift_desc");
+        if (dp) {
+          dp.value =
+            t === "discount" && data.vip_offer_value != null
+              ? String(data.vip_offer_value)
+              : "";
+        }
+        if (gd) {
+          gd.value =
+            t === "gift" && data.vip_offer_value != null
+              ? String(data.vip_offer_value)
+              : "";
+        }
+        updateOfferPanels();
+        setOffersUiDisabled(!cb.checked);
+      }
+
+      document.querySelectorAll('input[name="vip_offer_type"]').forEach(function (r) {
+        r.addEventListener("change", updateOfferPanels);
+      });
+      var vocb = document.getElementById("vip_offer_enabled");
+      if (vocb) {
+        vocb.addEventListener("change", function () {
+          setOffersUiDisabled(!vocb.checked);
+        });
+      }
+      var discPctEl = document.getElementById("vip_offer_discount_pct");
+      if (discPctEl) {
+        discPctEl.addEventListener("input", function () {
+          discPctEl.value = String(discPctEl.value || "").replace(/\D/g, "").slice(0, 3);
+        });
+      }
+
       var vipField = document.getElementById("vip_cart_threshold");
       if (vipField) {
         vipField.addEventListener("input", function () {
@@ -158,6 +280,7 @@
           if (x.data.ok) {
             applyBaseFromData(x.data);
             fillVip(x.data);
+            fillVipOffers(x.data);
             hideMsg();
           } else {
             showErr(x.data.error || "تعذّر تحميل الإعدادات.");
@@ -188,6 +311,24 @@
           var vipN = parseInt(vipRaw, 10);
           body.vip_cart_threshold = !isNaN(vipN) && vipN >= 1 ? vipN : null;
         }
+        var voc = document.getElementById("vip_offer_enabled");
+        body.vip_offer_enabled = !!(voc && voc.checked);
+        var typePick = document.querySelector('input[name="vip_offer_type"]:checked');
+        body.vip_offer_type = typePick ? typePick.value : null;
+        body.vip_offer_value = null;
+        if (body.vip_offer_type === "discount") {
+          var pEl = document.getElementById("vip_offer_discount_pct");
+          var pStr = pEl ? String(pEl.value || "").replace(/\D/g, "") : "";
+          if (pStr) {
+            var pn = parseInt(pStr, 10);
+            body.vip_offer_value =
+              !isNaN(pn) && pn >= 1 && pn <= 100 ? String(pn) : null;
+          }
+        } else if (body.vip_offer_type === "gift") {
+          var gEl = document.getElementById("vip_offer_gift_desc");
+          var gStr = gEl ? String(gEl.value || "").trim() : "";
+          body.vip_offer_value = gStr ? gStr.slice(0, 500) : null;
+        }
         fetch("/api/recovery-settings", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -202,6 +343,7 @@
             if (x.data.ok) {
               applyBaseFromData(x.data);
               fillVip(x.data);
+              fillVipOffers(x.data);
               showOk();
             } else {
               showErr(x.data.error || "فشل الحفظ");

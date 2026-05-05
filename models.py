@@ -80,6 +80,10 @@ class Store(Base):
     widget_style = Column(String(16), default="modern", nullable=False)
     # عتبة سلة مميزة (ريال سعودي)؛ ‎NULL‎ = معطّل — تحضير لمسار VIP لاحقاً
     vip_cart_threshold = Column(Integer, nullable=True)
+    # عروض VIP (لوحة التحكم فقط؛ غير مستخدمة في وقت الإرسال بعد)
+    vip_offer_enabled = Column(Boolean, default=False, nullable=False)
+    vip_offer_type = Column(String(32), nullable=True)
+    vip_offer_value = Column(String(500), nullable=True)
 
 
 class AbandonedCart(Base):

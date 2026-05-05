@@ -612,6 +612,49 @@ def _ensure_store_vip_cart_threshold_column(db: Any) -> None:
         log.debug("schema_widget vip_cart_threshold: %s", e)
 
 
+def _ensure_store_vip_offer_columns(db: Any) -> None:
+    """إعدادات عروض VIP للوحة فقط (‎vip_offer_*‎)."""
+    try:
+        db.create_all()
+        insp = inspect(db.engine)
+        if not insp.has_table("stores"):
+            return
+        dialect = getattr(getattr(db.engine, "dialect", None), "name", "") or ""
+        stmts_sqlite = [
+            "ALTER TABLE stores ADD COLUMN vip_offer_enabled INTEGER DEFAULT 0",
+            "ALTER TABLE stores ADD COLUMN vip_offer_type VARCHAR(32)",
+            "ALTER TABLE stores ADD COLUMN vip_offer_value VARCHAR(500)",
+        ]
+        stmts_pg = [
+            (
+                "ALTER TABLE stores ADD COLUMN IF NOT EXISTS "
+                "vip_offer_enabled BOOLEAN NOT NULL DEFAULT FALSE"
+            ),
+            (
+                "ALTER TABLE stores ADD COLUMN IF NOT EXISTS "
+                "vip_offer_type VARCHAR(32)"
+            ),
+            (
+                "ALTER TABLE stores ADD COLUMN IF NOT EXISTS "
+                "vip_offer_value VARCHAR(500)"
+            ),
+        ]
+        col_names = ("vip_offer_enabled", "vip_offer_type", "vip_offer_value")
+        stmts = stmts_pg if dialect in ("postgresql", "postgres") else stmts_sqlite
+        for name, stmt in zip(col_names, stmts):
+            existing = {c["name"] for c in insp.get_columns("stores")}
+            if name in existing:
+                continue
+            try:
+                db.session.execute(text(stmt))
+                db.session.commit()
+            except (OSError, SQLAlchemyError, IntegrityError):
+                db.session.rollback()
+    except (OSError, SQLAlchemyError) as e:
+        db.session.rollback()
+        log.debug("schema_widget vip_offer: %s", e)
+
+
 def ensure_store_widget_schema(db: Any) -> None:
     """يُنادى من مسارات ‎API‎ (لا يعتمد على ‎main‎)."""
     _ensure_store_recovery_delay_minutes_column(db)
@@ -626,6 +669,7 @@ def ensure_store_widget_schema(db: Any) -> None:
     _ensure_store_exit_intent_template_columns(db)
     _ensure_store_widget_customization_columns(db)
     _ensure_store_vip_cart_threshold_column(db)
+    _ensure_store_vip_offer_columns(db)
     _ensure_abandoned_cart_vip_mode_column(db)
     _ensure_abandoned_cart_recovery_session_id_column(db)
     global _store_abandonment_schema_ensured
