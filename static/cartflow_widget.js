@@ -2289,8 +2289,9 @@
       cartflowLifecycleLastCount = items_count;
     } catch (eSt) {}
     try {
-      window.cart_total = total;
-      window.cartflow_cart_total = total;
+      var cart_total = total;
+      window.cart_total = cart_total;
+      window.cartflow_cart_total = cart_total;
       window.cart_items_count = items_count;
 
       console.log("[WINDOW CART TOTAL SET]", {
