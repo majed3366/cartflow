@@ -15,7 +15,6 @@ from datetime import datetime, timedelta, timezone
 from unittest.mock import patch
 
 from fastapi.testclient import TestClient
-from sqlalchemy import and_
 
 from extensions import db
 from main import (
@@ -72,24 +71,20 @@ def _post_recovery_reason_for_session(
         raise AssertionError(f"reason POST failed {r.status_code}: {r.text}")
 
     db.create_all()
-    row = (
+    aged = datetime.now(timezone.utc) - timedelta(hours=3)
+    upd = (
         db.session.query(CartRecoveryReason)
-        .filter(
-            and_(
-                CartRecoveryReason.store_slug == store_slug,
-                CartRecoveryReason.session_id == session_id,
-            )
+        .filter(CartRecoveryReason.session_id == session_id)
+        .update(
+            {"updated_at": aged, "created_at": aged},
+            synchronize_session=False,
         )
-        .first()
     )
-    if row is None:
+    if int(upd or 0) < 1:
         raise AssertionError(
             f"CartRecoveryReason missing after POST store_slug={store_slug!r} "
             f"session_id={session_id!r}"
         )
-    aged = datetime.now(timezone.utc) - timedelta(hours=3)
-    row.updated_at = aged
-    row.created_at = aged
     db.session.commit()
 
 
@@ -98,12 +93,13 @@ class RecoveryIsolationTests(unittest.TestCase):
         _reset_recovery_memory()
         self.client = TestClient(app)
 
+    @patch("main.should_send_whatsapp", return_value=True)
     @patch("main._persist_cart_recovery_log")
     @patch("main.send_whatsapp")
     @patch("main.recovery_uses_real_whatsapp", return_value=False)
     @patch("main.get_recovery_delay", return_value=0)
     def test_demo_then_demo2_same_session_both_schedule(
-        self, _mock_delay: object, _ur: object, _mock_wa: object, _mock_persist: object
+        self, _mock_delay: object, _ur: object, _mock_wa: object, _mock_persist: object, _gate: object
     ) -> None:
         _mock_wa.return_value = {"ok": True}
         sid = "isol-session-verify-1"

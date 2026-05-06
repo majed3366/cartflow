@@ -253,6 +253,10 @@ from services.vip_cart import (
 from services.normal_recovery_followup_message import (
     resolve_smart_second_recovery_message,
 )
+from services.normal_recovery_phone_persist import (
+    commit_normal_recovery_phone_after_resolved,
+    log_normal_recovery_phone_line,
+)
 from services.smart_actions import get_cart_smart_action, smart_action_cta_target  # noqa: E402
 from services.vip_merchant_alert import (
     build_vip_merchant_alert_body,
@@ -2867,10 +2871,13 @@ def _vip_latest_cart_recovery_reason_customer_phone(
 def _vip_dashboard_customer_phone_raw(
     ac: AbandonedCart,
     dashboard_store: Optional[Any],
+    *,
+    prefer_persisted_cart_column_before_memory: bool = False,
 ) -> str:
     """
     جوال عميل لوحة VIP: ‎CartRecoveryReason‎ (سلاسل ‎slug‎ للوحة ومن آخر سبب للجلسة)،
     ذاكرة الجلسة، ‎AbandonedCart.customer_phone‎، ثم ‎CartRecoveryReason‎ لأي ‎slug‎ بنفس الجلسة، ثم ‎raw_payload‎.
+    عند ‎prefer_persisted_cart_column_before_memory‎ (بطاقات الاسترجاع العادي): عمود السلة قبل ذاكرة الجلسة المؤقتة.
     """
     sid = (getattr(ac, "recovery_session_id", None) or "").strip()
     slugs = list(_vip_candidate_store_slugs_for_dashboard(dashboard_store, ac))
@@ -2884,6 +2891,10 @@ def _vip_dashboard_customer_phone_raw(
             got_crr = _vip_latest_cart_recovery_reason_customer_phone(ss, sid)
             if got_crr:
                 return got_crr
+        if prefer_persisted_cart_column_before_memory:
+            col_early = _strip_recovery_phone(getattr(ac, "customer_phone", None))
+            if col_early:
+                return col_early
         try:
             from services.recovery_session_phone import get_recovery_customer_phone
 
@@ -3562,6 +3573,23 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
         phone=phone,
         allowed_to_send=allowed_to_send,
     )
+    rt_for_log = reason_tag if reason_tag else (rt_raw or None)
+    if rt_for_log is not None and isinstance(rt_for_log, str) and not rt_for_log.strip():
+        rt_for_log = None
+    log_normal_recovery_phone_line(
+        session_id=session_id,
+        cart_id=cart_id,
+        reason_tag=rt_for_log,
+        phone=phone,
+    )
+    if phone:
+        commit_normal_recovery_phone_after_resolved(
+            store_slug=store_slug,
+            session_id=session_id,
+            cart_id=cart_id,
+            phone=phone,
+            reason_tag=rt_for_log,
+        )
 
     if not phone or not allowed_to_send:
         print("[NO VERIFIED PHONE] skipping send")
@@ -4240,6 +4268,15 @@ async def handle_cart_abandoned(
             "customer_recovery_skipped": True,
             "recovery_state": "vip_manual_handling",
         }
+    if abandon_evt_phone:
+        reason_tag_ab = _reason_tag_for_session(store_slug, session_id_log)
+        commit_normal_recovery_phone_after_resolved(
+            store_slug=store_slug,
+            session_id=session_id_log,
+            cart_id=cart_id_log,
+            phone=abandon_evt_phone,
+            reason_tag=reason_tag_ab,
+        )
     with _recovery_session_lock:
         if _session_recovery_sent.get(recovery_key):
             print("recovery already sent, skipping")
@@ -6364,9 +6401,15 @@ def _vip_dashboard_cart_alert_dict_from_group(
     recovery_card_tier: str = "vip",
 ) -> dict[str, Any]:
     ac = grp_sorted[0]
+    tier = (recovery_card_tier or "vip").strip().lower()
+    is_vip_card = tier != "normal"
     wa_digits = ""
     for ac_g in grp_sorted:
-        raw_phone = _vip_dashboard_customer_phone_raw(ac_g, dash_store)
+        raw_phone = _vip_dashboard_customer_phone_raw(
+            ac_g,
+            dash_store,
+            prefer_persisted_cart_column_before_memory=not is_vip_card,
+        )
         cand = _normalize_customer_phone_for_wa_me(raw_phone)
         if cand:
             wa_digits = cand
@@ -6374,8 +6417,6 @@ def _vip_dashboard_cart_alert_dict_from_group(
     zid = (ac.zid_cart_id or "").strip()
     cart_short = zid[:28] + ("…" if len(zid) > 28 else "") if zid else "—"
     st = ((ac.status or "").strip() or "—")[:48]
-    tier = (recovery_card_tier or "vip").strip().lower()
-    is_vip_card = tier != "normal"
     hint_ar = ""
     if is_vip_card:
         hint_ar = (vip_offer_card_hint_ar(dash_store) if wa_digits else "") or ""
@@ -6385,22 +6426,31 @@ def _vip_dashboard_cart_alert_dict_from_group(
     else:
         contact_msg = _vip_customer_contact_whatsapp_message(ac)
     rs_log = (getattr(ac, "recovery_session_id", None) or "").strip()[:512]
-    log.info(
-        "[VIP PHONE RESOLVED] cart_id=%s session_id=%s customer_phone=%s",
-        zid[:255] if zid else "-",
-        rs_log if rs_log else "-",
-        wa_digits if wa_digits else "-",
-    )
-    try:
-        print(
-            "[VIP PHONE RESOLVED]\n"
-            "cart_id=" + (zid[:255] if zid else "-") + "\n"
-            "session_id=" + (rs_log if rs_log else "-") + "\n"
-            "customer_phone=" + (wa_digits if wa_digits else "-"),
-            flush=True,
+    reason_tag_resolved = _reason_tag_for_abandoned_cart(ac)
+    if is_vip_card:
+        log.info(
+            "[VIP PHONE RESOLVED] cart_id=%s session_id=%s customer_phone=%s",
+            zid[:255] if zid else "-",
+            rs_log if rs_log else "-",
+            wa_digits if wa_digits else "-",
         )
-    except OSError:
-        pass
+        try:
+            print(
+                "[VIP PHONE RESOLVED]\n"
+                "cart_id=" + (zid[:255] if zid else "-") + "\n"
+                "session_id=" + (rs_log if rs_log else "-") + "\n"
+                "customer_phone=" + (wa_digits if wa_digits else "-"),
+                flush=True,
+            )
+        except OSError:
+            pass
+    else:
+        log_normal_recovery_phone_line(
+            session_id=rs_log if rs_log else "",
+            cart_id=zid or None,
+            reason_tag=reason_tag_resolved,
+            phone=(wa_digits if wa_digits else None),
+        )
     cart_link_raw = _vip_dashboard_cart_link(ac)
     merchant_replies_ar = _vip_merchant_ready_reply_bodies(cart_link=cart_link_raw)
     offer_ready = vip_offer_manual_contact_whatsapp_body(dash_store)
@@ -6408,7 +6458,6 @@ def _vip_dashboard_cart_alert_dict_from_group(
     lbl = _VIP_LIFECYCLE_LABELS_AR.get(lc, _VIP_LIFECYCLE_LABELS_AR["abandoned"])
     card_cls, badge_cls = _vip_dashboard_lifecycle_card_and_badge_classes(lc)
     hide_actions = lc in ("closed", "converted")
-    reason_tag_resolved = _reason_tag_for_abandoned_cart(ac)
     smart_action = get_cart_smart_action(
         {
             "is_vip": is_vip_card,

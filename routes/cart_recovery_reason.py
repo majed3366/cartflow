@@ -20,6 +20,8 @@ from services.recovery_session_phone import (
     recovery_key_for_reason_session,
 )
 
+from services.normal_recovery_phone_persist import apply_normal_recovery_phone_to_session
+
 log = logging.getLogger("cartflow")
 
 router = APIRouter(prefix="/api/cart-recovery", tags=["cart-recovery"])
@@ -82,9 +84,10 @@ async def post_widget_cart_recovery_reason(request: Request) -> Any:
 
         now = datetime.now(timezone.utc)
 
-        reason_phone_update: Optional[str] = None
-        if "phone" in body:
-            pr = body.get("phone")
+        _PHONE_OMIT = object()
+        reason_phone_update: Any = _PHONE_OMIT
+        if "phone" in body or "customer_phone" in body:
+            pr = body["phone"] if "phone" in body else body.get("customer_phone")
             if pr is None or not str(pr).strip():
                 reason_phone_update = None
             else:
@@ -111,7 +114,7 @@ async def post_widget_cart_recovery_reason(request: Request) -> Any:
             if reason_tag == "no_help":
                 row.user_rejected_help = True
                 row.rejection_timestamp = now
-            if "phone" in body:
+            if reason_phone_update is not _PHONE_OMIT:
                 row.customer_phone = reason_phone_update
         else:
             db.session.add(
@@ -122,7 +125,9 @@ async def post_widget_cart_recovery_reason(request: Request) -> Any:
                     sub_category=sub_cat,
                     custom_text=custom_reason,
                     customer_phone=(
-                        reason_phone_update if "phone" in body else None
+                        reason_phone_update
+                        if reason_phone_update is not _PHONE_OMIT
+                        else None
                     ),
                     source="widget",
                     created_at=now,
@@ -132,9 +137,35 @@ async def post_widget_cart_recovery_reason(request: Request) -> Any:
                 )
             )
 
+        db.session.flush()
+        cart_id_raw = body.get("cart_id") or body.get("zid_cart_id")
+        cid_apply: Optional[str] = None
+        if cart_id_raw is not None and str(cart_id_raw).strip():
+            cid_apply = str(cart_id_raw).strip()[:255]
+        row_after = (
+            db.session.query(CartRecoveryReason)
+            .filter(
+                and_(
+                    CartRecoveryReason.store_slug == ss,
+                    CartRecoveryReason.session_id == sid,
+                )
+            )
+            .first()
+        )
+        ph_sync = (getattr(row_after, "customer_phone", None) or "").strip() if row_after else ""
+        if ph_sync:
+            apply_normal_recovery_phone_to_session(
+                db.session,
+                store_slug=ss,
+                session_id=sid,
+                cart_id=cid_apply,
+                phone=ph_sync,
+                reason_tag=reason_tag,
+            )
+
         db.session.commit()
         rk = recovery_key_for_reason_session(ss, sid)
-        if "phone" in body:
+        if reason_phone_update is not _PHONE_OMIT:
             record_recovery_customer_phone(rk, reason_phone_update)
             if reason_phone_update:
                 print("[PHONE ATTACHED]")

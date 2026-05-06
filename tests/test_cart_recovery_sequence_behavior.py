@@ -83,12 +83,13 @@ class CartRecoverySequenceBehaviorTests(unittest.TestCase):
         r3 = self.client.post("/api/cart-event", json=body).json()
         self.assertEqual(1, mock_send.call_count, "still no extra sends")
 
+    @patch("main.should_send_whatsapp", return_value=True)
     @patch("main._persist_cart_recovery_log")
     @patch("main.send_whatsapp")
     @patch("main.recovery_uses_real_whatsapp", return_value=False)
     @patch("main.get_recovery_delay", return_value=0)
     def test_3_store_isolation_demo_and_demo2(
-        self, _d: object, _ur: object, mock_send: object, _p: object
+        self, _d: object, _ur: object, mock_send: object, _p: object, _gate: object
     ) -> None:
         """demo and demo2: separate recovery; one send each, 2 total."""
         mock_send.return_value = {"ok": True}

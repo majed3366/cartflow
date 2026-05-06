@@ -105,22 +105,30 @@ class TestCartflowAbandonmentReason(unittest.TestCase):
         self.assertEqual(400, r.status_code)
         self.assertFalse((r.json() or {}).get("ok"))
 
-    def test_customer_phone_rejected_when_not_other(self) -> None:
+    def test_customer_phone_optional_for_warranty_persists(self) -> None:
         ensure_store_widget_schema(db)
+        sid = "s-wa-phone-opt-" + uuid.uuid4().hex[:8]
         r = self.client.post(
             "/api/cartflow/reason",
             json={
                 "store_slug": "demo",
-                "session_id": "s-wa-phone",
+                "session_id": sid,
                 "reason": "warranty",
                 "customer_phone": "966512345678",
             },
         )
-        self.assertEqual(400, r.status_code)
-        self.assertEqual(
-            "customer_phone_not_applicable",
-            (r.json() or {}).get("error"),
+        self.assertEqual(200, r.status_code, r.text)
+        self.assertTrue((r.json() or {}).get("ok"))
+        crr = (
+            db.session.query(CartRecoveryReason)
+            .filter(
+                CartRecoveryReason.store_slug == "demo",
+                CartRecoveryReason.session_id == sid,
+            )
+            .first()
         )
+        self.assertIsNotNone(crr)
+        self.assertEqual("966512345678", (crr.customer_phone or "").strip())
 
     def test_post_reason_vip_phone_capture_persists(self) -> None:
         ensure_store_widget_schema(db)

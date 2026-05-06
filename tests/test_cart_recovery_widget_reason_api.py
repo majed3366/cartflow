@@ -87,3 +87,31 @@ class TestCartRecoveryWidgetReasonApi(unittest.TestCase):
         self.assertIsNotNone(row)
         assert row is not None
         self.assertEqual((row.custom_text or "").strip(), "أفكر في الموعد")
+
+    def test_post_widget_reason_accepts_customer_phone_alias(self) -> None:
+        ensure_store_widget_schema(db)
+        sid = "o-ph-" + uuid.uuid4().hex
+        r = self.client.post(
+            "/api/cart-recovery/reason",
+            json={
+                "store_slug": "demo",
+                "session_id": sid,
+                "reason_tag": "other",
+                "custom_reason": "تجربة",
+                "customer_phone": "966511122233",
+            },
+        )
+        self.assertEqual(200, r.status_code, r.text)
+        row = (
+            db.session.query(CartRecoveryReason)
+            .filter(
+                and_(
+                    CartRecoveryReason.store_slug == "demo",
+                    CartRecoveryReason.session_id == sid,
+                )
+            )
+            .first()
+        )
+        self.assertIsNotNone(row)
+        assert row is not None
+        self.assertEqual((row.customer_phone or "").strip(), "966511122233")
