@@ -22,6 +22,7 @@ import models  # noqa: F401, E402
 from extensions import db, init_database  # noqa: E402
 from models import (  # noqa: F401, E402
     AbandonedCart,
+    AdminAlert,
     MessageLog,
     ObjectionTrack,
     RecoveryEvent,
