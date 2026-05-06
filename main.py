@@ -1707,6 +1707,118 @@ def _reason_tag_for_abandoned_cart(ac: AbandonedCart) -> Optional[str]:
     return out if out else None
 
 
+_NORMAL_RECOVERY_PHASE_ORDER: list[tuple[str, str]] = [
+    ("pending_send", "بانتظار الإرسال"),
+    ("first_message_sent", "تم إرسال الرسالة الأولى"),
+    ("reminder_sent", "تم إرسال التذكير"),
+    ("stopped_manual", "تم إيقاف الاسترجاع"),
+    ("stopped_purchase", "توقف بعد الشراء"),
+    ("recovery_complete", "اكتمل الاسترجاع"),
+]
+
+
+def _cart_recovery_log_filters_for_abandoned_cart(ac: AbandonedCart) -> list[Any]:
+    sess = (getattr(ac, "recovery_session_id", None) or "").strip()[:512]
+    zid = (getattr(ac, "zid_cart_id", None) or "").strip()[:255]
+    conds: list[Any] = []
+    if sess:
+        conds.append(CartRecoveryLog.session_id == sess)
+    if zid:
+        conds.append(CartRecoveryLog.cart_id == zid)
+    return conds
+
+
+def _cart_recovery_sent_real_count_for_abandoned(ac: AbandonedCart) -> int:
+    conds = _cart_recovery_log_filters_for_abandoned_cart(ac)
+    if not conds:
+        return 0
+    try:
+        db.create_all()
+        n = (
+            db.session.query(func.count(CartRecoveryLog.id))
+            .filter(CartRecoveryLog.status == "sent_real")
+            .filter(or_(*conds))
+            .scalar()
+        )
+        return int(n or 0)
+    except (SQLAlchemyError, OSError, TypeError, ValueError):
+        db.session.rollback()
+        return 0
+
+
+def _latest_cart_recovery_log_row_for_abandoned(
+    ac: AbandonedCart,
+) -> Optional[CartRecoveryLog]:
+    conds = _cart_recovery_log_filters_for_abandoned_cart(ac)
+    if not conds:
+        return None
+    try:
+        db.create_all()
+        row = (
+            db.session.query(CartRecoveryLog)
+            .filter(or_(*conds))
+            .order_by(CartRecoveryLog.created_at.desc())
+            .first()
+        )
+        return row
+    except (SQLAlchemyError, OSError, TypeError, ValueError):
+        db.session.rollback()
+        return None
+
+
+def _normal_recovery_dashboard_phase_key(ac: AbandonedCart) -> str:
+    """مفتاح مرحلة واجهة الاسترجاع العادي — قراءة فقط؛ للعرض ولتوسعة المحرك لاحقاً."""
+    st = (getattr(ac, "status", None) or "").strip().lower()
+    if st == "recovered":
+        return "recovery_complete"
+    sess = (getattr(ac, "recovery_session_id", None) or "").strip()[:512]
+    if sess:
+        r_any = _cart_recovery_reason_latest_row_any_store(sess)
+        if _recovery_row_user_rejected_help(r_any):
+            return "stopped_manual"
+    log_last = _latest_cart_recovery_log_row_for_abandoned(ac)
+    if log_last is not None:
+        ls = (getattr(log_last, "status", None) or "").strip().lower()
+        if ls == "stopped_converted":
+            return "stopped_purchase"
+    sent_n = _cart_recovery_sent_real_count_for_abandoned(ac)
+    if sent_n >= 2:
+        return "reminder_sent"
+    if sent_n == 1:
+        return "first_message_sent"
+    return "pending_send"
+
+
+def _normal_recovery_phase_steps_payload(ac: AbandonedCart) -> dict[str, Any]:
+    order = _NORMAL_RECOVERY_PHASE_ORDER
+    current_key = _normal_recovery_dashboard_phase_key(ac)
+    key_to_index = {k: i for i, (k, _) in enumerate(order)}
+    if current_key not in key_to_index:
+        current_key = "pending_send"
+    curr_idx = key_to_index[current_key]
+    label_ar = order[curr_idx][1]
+    steps_out: list[dict[str, Any]] = []
+    for i, (k, lbl) in enumerate(order):
+        steps_out.append(
+            {
+                "key": k,
+                "label_ar": lbl,
+                "done": i < curr_idx,
+                "current": i == curr_idx,
+                "upcoming": i > curr_idx,
+            }
+        )
+    return {
+        "normal_recovery_phase_key": current_key,
+        "normal_recovery_phase_label_ar": label_ar,
+        "normal_recovery_phase_index": curr_idx + 1,
+        "normal_recovery_phase_total": len(order),
+        "normal_recovery_phase_steps": steps_out,
+        "normal_recovery_activate_disabled": current_key
+        in ("stopped_manual", "stopped_purchase", "recovery_complete"),
+    }
+
+
 def _last_activity_utc_from_recovery_row(
     row: Optional[CartRecoveryReason],
 ) -> Optional[datetime]:
@@ -5656,7 +5768,8 @@ def _vip_dashboard_cart_alert_dict_from_group(
         }
     )
     smart_cta = smart_action_cta_target(smart_action["action_key"])
-    return {
+    smart_cta_target_display = "automation_arm" if not is_vip_card else smart_cta
+    out_payload: dict[str, Any] = {
         "id": ac.id,
         "cart_value": float(ac.cart_value or 0.0),
         "cart_short": cart_short or "—",
@@ -5684,9 +5797,13 @@ def _vip_dashboard_cart_alert_dict_from_group(
         ),
         "smart_action": smart_action,
         "smart_cta_target": smart_cta,
+        "smart_cta_target_display": smart_cta_target_display,
         "recovery_card_tier": "vip" if is_vip_card else "normal",
         "recovery_hide_vip_lifecycle_buttons": not is_vip_card,
     }
+    if not is_vip_card:
+        out_payload.update(_normal_recovery_phase_steps_payload(ac))
+    return out_payload
 
 
 def _vip_priority_alert_rows_for_lc_clause(lc_clause: Any, *, log_suffix: str) -> list[dict[str, Any]]:
