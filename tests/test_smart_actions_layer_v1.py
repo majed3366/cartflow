@@ -3,7 +3,11 @@
 
 import unittest
 
-from services.smart_actions import get_cart_smart_action, smart_action_cta_target
+from services.smart_actions import (
+    get_cart_smart_action,
+    normalize_smart_action_reason_tag,
+    smart_action_cta_target,
+)
 
 
 def _snap(**parts: object) -> dict[str, object]:
@@ -69,6 +73,23 @@ class TestSmartActionsLayerV1(unittest.TestCase):
         )
         self.assertEqual(d["title_ar"], "متابعة عادية")
         self.assertEqual(smart_action_cta_target(d["action_key"]), "contact")
+
+    def test_arabic_price_high_label_normalized(self) -> None:
+        a = get_cart_smart_action(
+            _snap(
+                is_vip=True,
+                reason_tag="السعر مرتفع",
+                vip_lifecycle_effective="abandoned",
+                has_customer_phone=True,
+            )
+        )
+        self.assertEqual(a["title_ar"], "اقترح عرض بسيط")
+
+    def test_normalize_maps_price_aliases_to_canonical(self) -> None:
+        self.assertEqual(normalize_smart_action_reason_tag("price"), "price_high")
+        self.assertEqual(normalize_smart_action_reason_tag("PRICE_HIGH"), "price_high")
+        self.assertEqual(normalize_smart_action_reason_tag("السعر  مرتفع"), "price_high")
+        self.assertEqual(normalize_smart_action_reason_tag("shipping"), "shipping")
 
     def test_vip_price_takes_priority_over_no_phone_and_contacted(self) -> None:
         a = get_cart_smart_action(

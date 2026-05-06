@@ -13,9 +13,28 @@ class CartSmartActionPayload(TypedDict):
     cta_ar: str
 
 
+def normalize_smart_action_reason_tag(reason_tag: Optional[str]) -> Optional[str]:
+    """
+    Canonical price token for الإجراء المقترح — بدون تغيير سلاسل أخرى غير الأسعار.
+
+    السعر‎ /‎ price_high‎ /‎ العربية المعتمدة‎ →‎ ``price_high``.
+    """
+    if reason_tag is None:
+        return None
+    raw = str(reason_tag).strip()
+    if not raw:
+        return None
+    lk = raw.casefold()
+    if lk == "price" or lk == "price_high":
+        return "price_high"
+    if "".join(raw.split()) == "السعرمرتفع":
+        return "price_high"
+    return raw
+
+
 def _normalized_price_related(reason_tag: Optional[str]) -> bool:
     t = (reason_tag or "").strip().lower()
-    return t in {"price", "price_high"}
+    return t == "price_high" or t in {"price"}
 
 
 def _resolve_cart_smart_action(
@@ -79,11 +98,10 @@ def get_cart_smart_action(cart: Mapping[str, Any]) -> CartSmartActionPayload:
     ``vip_lifecycle_effective`` (str), ``has_customer_phone`` (bool).
     """
     raw_rt = cart.get("reason_tag")
-    if raw_rt is None:
-        resolved_tag: Optional[str] = None
-    else:
+    resolved_tag: Optional[str] = None
+    if raw_rt is not None:
         s_rt = str(raw_rt).strip()
-        resolved_tag = s_rt if s_rt else None
+        resolved_tag = normalize_smart_action_reason_tag(s_rt if s_rt else None)
 
     return _resolve_cart_smart_action(
         is_vip=bool(cart.get("is_vip")),

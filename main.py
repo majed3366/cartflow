@@ -1585,6 +1585,33 @@ def _cart_recovery_reason_latest_row(
         return None
 
 
+def _cart_recovery_reason_latest_row_any_store(
+    session_id: str,
+) -> Optional[CartRecoveryReason]:
+    """آخر صف ‎CartRecoveryReason‎ لهذه ‎session_id‎ بأي ‎store_slug‎ (للاقتراحات الذكية فقط)."""
+    sid = (session_id or "").strip()[:512]
+    if not sid:
+        return None
+    try:
+        from schema_widget import (
+            ensure_cart_recovery_reason_phone_schema,
+            ensure_cart_recovery_reason_rejection_schema,
+        )
+
+        ensure_cart_recovery_reason_phone_schema(db)
+        ensure_cart_recovery_reason_rejection_schema(db)
+        db.create_all()
+        return (
+            db.session.query(CartRecoveryReason)
+            .filter(CartRecoveryReason.session_id == sid)
+            .order_by(CartRecoveryReason.updated_at.desc())
+            .first()
+        )
+    except Exception:  # noqa: BLE001
+        db.session.rollback()
+        return None
+
+
 def _recovery_row_user_rejected_help(row: Optional[CartRecoveryReason]) -> bool:
     if row is None:
         return False
@@ -1656,6 +1683,12 @@ def _store_slug_for_cart_recovery_reason(ac: AbandonedCart) -> Optional[str]:
 
 
 def _reason_tag_for_abandoned_cart(ac: AbandonedCart) -> Optional[str]:
+    """
+    مصدر ‎reason_tag‎ لاقتراح «الإجراء المقترح» فقط.
+
+    الأولوية: ‎reason_tag‎ من ‎raw_payload‎ → آخر ‎CartRecoveryReason‎
+    لنفس ‎(store_slug, session_id)‎ → آخر صف لنفس ‎session_id‎ بأي متجر.
+    """
     tag = _vip_reason_tag_from_abandoned_cart(ac)
     if tag:
         return tag
@@ -1663,9 +1696,15 @@ def _reason_tag_for_abandoned_cart(ac: AbandonedCart) -> Optional[str]:
     if not sess:
         return None
     ss = _store_slug_for_cart_recovery_reason(ac)
-    if not ss:
+    row: Optional[CartRecoveryReason] = None
+    if ss:
+        row = _cart_recovery_reason_latest_row(ss, sess)
+    if row is None:
+        row = _cart_recovery_reason_latest_row_any_store(sess)
+    if row is None:
         return None
-    return _reason_tag_for_session(ss, sess)
+    out = (row.reason or "").strip()
+    return out if out else None
 
 
 def _last_activity_utc_from_recovery_row(
