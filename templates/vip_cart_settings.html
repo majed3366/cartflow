@@ -25,66 +25,7 @@
     {% include "partials/dashboard_sidebar.html" %}
     <div class="min-w-0 w-full flex-1 bg-gradient-to-b from-violet-50/40 to-slate-50 px-3 pb-28 pt-14 md:min-h-screen md:px-4 md:pb-24 md:pt-4">
       <div class="cf-dash-shell">
-        <div class="cf-dash-hero mb-6">
-          <h1>السلال عالية القيمة (VIP)</h1>
-          <p class="max-w-2xl">حدّد قيمة السلة التي تحتاج متابعة خاصة، وشاهد السلال التي تجاوزت هذا الحد.</p>
-        </div>
-
-        <!-- Merchant follow-up — positive WhatsApp replies (read-only list, manual actions only) -->
-        <section class="mb-6 rounded-2xl border border-emerald-200/80 bg-white p-4 shadow-sm md:p-5" aria-labelledby="mf-followup-heading">
-          <h2 id="mf-followup-heading" class="mb-1 text-lg font-bold text-slate-900">عملاء يحتاجون متابعة الآن</h2>
-          <p class="mb-4 text-sm leading-relaxed text-slate-600">عملاء ردّوا على رسائل واتساب ويحتاجون تواصل سريع من المتجر</p>
-          {% set mf_list = merchant_followup_actions | default([]) %}
-          {% if mf_list | length > 0 %}
-          <ul id="mf-followup-list" class="m-0 list-none space-y-3 p-0" role="list">
-            {% for mf in mf_list %}
-            <li class="rounded-xl border border-slate-200 bg-emerald-50/40 px-3 py-3" data-mf-action-id="{{ mf.id }}">
-              <div class="space-y-2 text-right text-sm text-slate-800">
-                <p class="m-0"><span class="font-semibold text-slate-700">رقم العميل:</span> {{ mf.customer_phone }}</p>
-                <p class="m-0"><span class="font-semibold text-slate-700">الحالة:</span> {{ mf.status_ar }}</p>
-                <p class="m-0"><span class="font-semibold text-slate-700">السبب:</span> {{ mf.reason_ar }}</p>
-                <p class="m-0 whitespace-pre-wrap break-words"><span class="font-semibold text-slate-700">آخر رسالة:</span> {{ mf.inbound_message or "—" }}</p>
-                <p class="m-0"><span class="font-semibold text-slate-700">وقت الرد:</span> {{ mf.replied_at }}</p>
-                {% if mf.cart_value is not none %}
-                <p class="m-0"><span class="font-semibold text-slate-700">قيمة السلة:</span> {{ "%.2f"|format(mf.cart_value) }} ريال</p>
-                {% endif %}
-                {% if mf.reason_tag_ar %}
-                <p class="m-0"><span class="font-semibold text-slate-700">وسم السبب:</span> {{ mf.reason_tag_ar }}</p>
-                {% endif %}
-              </div>
-              <p class="mt-2 min-h-[1.25rem] text-end text-[10px] text-slate-600" data-mf-card-status aria-live="polite"></p>
-              <div class="mt-3 flex flex-wrap gap-2 justify-end">
-                <button type="button" data-mf-wa-contact data-customer-wa="{{ mf.customer_wa_digits | e }}" data-prefill-body="{{ mf.contact_prefill_body | e }}"
-                  class="shrink-0 rounded-lg border border-emerald-600 bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-emerald-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600">
-                  تواصل عبر واتساب
-                </button>
-                <button type="button" data-mf-complete-btn data-action-id="{{ mf.id }}"
-                  class="shrink-0 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 shadow-sm hover:border-emerald-400 hover:bg-emerald-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500">
-                  تمت المتابعة
-                </button>
-              </div>
-            </li>
-            {% endfor %}
-          </ul>
-          <p id="mf-followup-empty" class="{% if mf_list | length > 0 %}hidden {% endif %}m-0 text-sm leading-relaxed text-slate-600">لا توجد طلبات متابعة فورية من ردود واتساب حالياً.</p>
-          {% else %}
-          <p id="mf-followup-empty" class="m-0 text-sm leading-relaxed text-slate-600">لا توجد طلبات متابعة فورية من ردود واتساب حالياً.</p>
-          {% endif %}
-        </section>
-
-        <section class="mb-6 rounded-2xl border border-slate-200/85 bg-white p-4 shadow-sm md:p-5" aria-labelledby="normal-recovery-heading">
-          <h2 id="normal-recovery-heading" class="mb-1 text-lg font-bold text-slate-900">سلال الاسترجاع العادية</h2>
-          <p class="mb-4 text-sm leading-relaxed text-slate-600">متابعة يدوية للسلات غير المميزة — الاقتراحات إرشادية فقط؛ لا يُرسل شيء تلقائياً.</p>
-          {% set nr_list = normal_recovery_alerts | default([]) %}
-          <ul id="normal-recovery-alerts-ul" class="m-0 list-none space-y-4 p-0 {% if nr_list | length == 0 %}hidden{% endif %}" role="list">
-            {% for vc in nr_list %}
-            {{ vip_cart_dashboard_row(vc) }}
-            {% endfor %}
-          </ul>
-          <p id="normal-recovery-empty" class="{% if nr_list | length > 0 %}hidden {% endif %}m-0 text-sm leading-relaxed text-slate-600">لا توجد سلات استرجاع عادية ظاهرة لهذا المتجر حالياً.</p>
-        </section>
-
-        {# صف سلة عام — قابل لتوسعة (VIP / تعافي عادي / إجراءات ذكية) #}
+        {# Macro must be declared before any {% for %} that calls it (Jinja evaluates top-to-bottom). #}
         {% macro vip_cart_dashboard_row(vc) -%}
             {% set lc = vc.vip_lifecycle_status %}
             {% set tier = vc.recovery_card_tier | default('vip') %}
@@ -180,6 +121,65 @@
               {% endif %}
             </li>
         {%- endmacro %}
+
+        <div class="cf-dash-hero mb-6">
+          <h1>السلال عالية القيمة (VIP)</h1>
+          <p class="max-w-2xl">حدّد قيمة السلة التي تحتاج متابعة خاصة، وشاهد السلال التي تجاوزت هذا الحد.</p>
+        </div>
+
+        <!-- Merchant follow-up — positive WhatsApp replies (read-only list, manual actions only) -->
+        <section class="mb-6 rounded-2xl border border-emerald-200/80 bg-white p-4 shadow-sm md:p-5" aria-labelledby="mf-followup-heading">
+          <h2 id="mf-followup-heading" class="mb-1 text-lg font-bold text-slate-900">عملاء يحتاجون متابعة الآن</h2>
+          <p class="mb-4 text-sm leading-relaxed text-slate-600">عملاء ردّوا على رسائل واتساب ويحتاجون تواصل سريع من المتجر</p>
+          {% set mf_list = merchant_followup_actions | default([]) %}
+          {% if mf_list | length > 0 %}
+          <ul id="mf-followup-list" class="m-0 list-none space-y-3 p-0" role="list">
+            {% for mf in mf_list %}
+            <li class="rounded-xl border border-slate-200 bg-emerald-50/40 px-3 py-3" data-mf-action-id="{{ mf.id }}">
+              <div class="space-y-2 text-right text-sm text-slate-800">
+                <p class="m-0"><span class="font-semibold text-slate-700">رقم العميل:</span> {{ mf.customer_phone }}</p>
+                <p class="m-0"><span class="font-semibold text-slate-700">الحالة:</span> {{ mf.status_ar }}</p>
+                <p class="m-0"><span class="font-semibold text-slate-700">السبب:</span> {{ mf.reason_ar }}</p>
+                <p class="m-0 whitespace-pre-wrap break-words"><span class="font-semibold text-slate-700">آخر رسالة:</span> {{ mf.inbound_message or "—" }}</p>
+                <p class="m-0"><span class="font-semibold text-slate-700">وقت الرد:</span> {{ mf.replied_at }}</p>
+                {% if mf.cart_value is not none %}
+                <p class="m-0"><span class="font-semibold text-slate-700">قيمة السلة:</span> {{ "%.2f"|format(mf.cart_value) }} ريال</p>
+                {% endif %}
+                {% if mf.reason_tag_ar %}
+                <p class="m-0"><span class="font-semibold text-slate-700">وسم السبب:</span> {{ mf.reason_tag_ar }}</p>
+                {% endif %}
+              </div>
+              <p class="mt-2 min-h-[1.25rem] text-end text-[10px] text-slate-600" data-mf-card-status aria-live="polite"></p>
+              <div class="mt-3 flex flex-wrap gap-2 justify-end">
+                <button type="button" data-mf-wa-contact data-customer-wa="{{ mf.customer_wa_digits | e }}" data-prefill-body="{{ mf.contact_prefill_body | e }}"
+                  class="shrink-0 rounded-lg border border-emerald-600 bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-emerald-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600">
+                  تواصل عبر واتساب
+                </button>
+                <button type="button" data-mf-complete-btn data-action-id="{{ mf.id }}"
+                  class="shrink-0 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 shadow-sm hover:border-emerald-400 hover:bg-emerald-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500">
+                  تمت المتابعة
+                </button>
+              </div>
+            </li>
+            {% endfor %}
+          </ul>
+          <p id="mf-followup-empty" class="{% if mf_list | length > 0 %}hidden {% endif %}m-0 text-sm leading-relaxed text-slate-600">لا توجد طلبات متابعة فورية من ردود واتساب حالياً.</p>
+          {% else %}
+          <p id="mf-followup-empty" class="m-0 text-sm leading-relaxed text-slate-600">لا توجد طلبات متابعة فورية من ردود واتساب حالياً.</p>
+          {% endif %}
+        </section>
+
+        <section class="mb-6 rounded-2xl border border-slate-200/85 bg-white p-4 shadow-sm md:p-5" aria-labelledby="normal-recovery-heading">
+          <h2 id="normal-recovery-heading" class="mb-1 text-lg font-bold text-slate-900">سلال الاسترجاع العادية</h2>
+          <p class="mb-4 text-sm leading-relaxed text-slate-600">متابعة يدوية للسلات غير المميزة — الاقتراحات إرشادية فقط؛ لا يُرسل شيء تلقائياً.</p>
+          {% set nr_list = normal_recovery_alerts | default([]) %}
+          <ul id="normal-recovery-alerts-ul" class="m-0 list-none space-y-4 p-0 {% if nr_list | length == 0 %}hidden{% endif %}" role="list">
+            {% for vc in nr_list %}
+            {{ vip_cart_dashboard_row(vc) }}
+            {% endfor %}
+          </ul>
+          <p id="normal-recovery-empty" class="{% if nr_list | length > 0 %}hidden {% endif %}m-0 text-sm leading-relaxed text-slate-600">لا توجد سلات استرجاع عادية ظاهرة لهذا المتجر حالياً.</p>
+        </section>
 
         <!-- SECTION 1 — VIP carts needing follow-up -->
         <section class="mb-6 rounded-2xl border border-violet-200/80 bg-white p-4 shadow-sm md:p-5" aria-labelledby="vip-followup-heading">
