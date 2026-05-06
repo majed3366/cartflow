@@ -282,22 +282,3 @@ class MerchantFollowupAction(Base):
         onupdate=lambda: datetime.now(timezone.utc),
         nullable=False,
     )
-
-
-class AdminAlert(Base):
-    """لوحة مشرف: تنبيهات قابلة للتنفيذ — لا حذف في هذا الإصدار."""
-
-    __tablename__ = "admin_alerts"
-
-    id = Column(Integer, primary_key=True)
-    alert_type = Column(String(64), nullable=False, index=True)
-    title = Column(String(255), nullable=False)
-    status = Column(String(32), nullable=False, index=True, default="active")
-    severity = Column(String(32), nullable=False, index=True, default="medium")
-    cause = Column(Text, nullable=False)
-    action_label = Column(String(255), nullable=False)
-    action_route = Column(String(512), nullable=False)
-    store_slug = Column(String(255), nullable=True, index=True)
-    created_at = Column(
-        DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
-    )
