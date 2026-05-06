@@ -182,6 +182,7 @@ from models import (  # noqa: E402
     CartRecoveryLog,
     CartRecoveryReason,
     MerchantFollowupAction,
+    MessageLog,
     ObjectionTrack,
     RecoveryEvent,
     Store,
@@ -1987,6 +1988,7 @@ def _normal_recovery_dashboard_phase_key(ac: AbandonedCart) -> str:
         r_any = _cart_recovery_reason_latest_row_any_store(sess)
         if _recovery_row_user_rejected_help(r_any):
             return "stopped_manual"
+    sent_n = _cart_recovery_sent_real_count_for_abandoned(ac)
     log_last = _latest_cart_recovery_log_row_for_abandoned(ac)
     if log_last is not None:
         ls = (getattr(log_last, "status", None) or "").strip().lower()
@@ -1994,9 +1996,10 @@ def _normal_recovery_dashboard_phase_key(ac: AbandonedCart) -> str:
             return "stopped_purchase"
         if ls == "skipped_anti_spam":
             return "customer_returned"
-        if ls in ("skipped_missing_reason_tag", "skipped_user_rejected_help"):
+        if ls == "skipped_user_rejected_help":
             return "ignored"
-    sent_n = _cart_recovery_sent_real_count_for_abandoned(ac)
+        if ls == "skipped_missing_reason_tag" and sent_n < 1:
+            return "ignored"
     store_ac = _store_row_for_abandoned_cart(ac)
     try:
         max_a = int(_max_recovery_attempts(store_ac))
@@ -2701,6 +2704,17 @@ _VERIFIED_WA_RECOVERY_PHONE_SOURCES = frozenset(
     {"customer_profile", "checkout", "abandoned_cart", "order_platform"}
 )
 
+_NORMAL_RECOVERY_EXTENDED_PHONE_SOURCES = frozenset(
+    {
+        "abandoned_cart_zid",
+        "cart_recovery_reason_session",
+        "cart_recovery_reason_any_store",
+        "cart_recovery_log_sent",
+        "message_log_whatsapp",
+        "abandoned_cart_session_peer",
+    }
+)
+
 _FORBIDDEN_STALE_RECOVERY_E164 = "966501234567"
 
 
@@ -2890,6 +2904,22 @@ def _vip_dashboard_customer_phone_raw(
         if got_any:
             return got_any
 
+    slug0 = slugs[0] if slugs else ""
+    if not slug0 and dashboard_store is not None:
+        slug0 = (getattr(dashboard_store, "zid_store_id", None) or "").strip()[:255]
+    if not slug0:
+        slug0 = "demo"
+    zid_ac = (getattr(ac, "zid_cart_id", None) or "").strip() or None
+    ext_p, _ext_s = _normal_recovery_extended_phone_lookup(
+        store_slug=slug0,
+        session_id=sid,
+        cart_id=zid_ac,
+        store_obj=dashboard_store if isinstance(dashboard_store, Store) else None,
+        emit_log=False,
+    )
+    if ext_p:
+        return _strip_recovery_phone(ext_p)
+
     return _vip_phone_from_abandoned_cart_raw_payload(ac)
 
 
@@ -2948,6 +2978,159 @@ def _map_verified_recovery_phone_from_session(
     return None, "none"
 
 
+def _abandoned_cart_db_ids_for_recovery_scope(
+    session_id: str, cart_zid: Optional[str]
+) -> list[int]:
+    """معرّفات ‎AbandonedCart‎ المرتبطة بجلسة أو ‎cart zid‎ (لـ ‎MessageLog‎)."""
+    sid = (session_id or "").strip()[:512]
+    cz = (cart_zid or "").strip()[:255]
+    if not sid and not cz:
+        return []
+    try:
+        db.create_all()
+        conds: list[Any] = []
+        if sid:
+            conds.append(AbandonedCart.recovery_session_id == sid)
+        if cz:
+            conds.append(AbandonedCart.zid_cart_id == cz)
+        rows = db.session.query(AbandonedCart.id).filter(or_(*conds)).limit(48).all()
+        out: list[int] = []
+        for r in rows:
+            if r.id is not None and int(r.id) not in out:
+                out.append(int(r.id))
+        return out
+    except (SQLAlchemyError, OSError, TypeError, ValueError):
+        db.session.rollback()
+        return []
+
+
+def _log_normal_recovery_phone_resolution(
+    tag: str, source: str, customer_phone: str
+) -> None:
+    cp = (customer_phone or "").strip()[:100]
+    sp = (source or "").strip()[:80]
+    try:
+        line = f"{tag} source={sp} customer_phone={cp}"
+        log.info(line)
+        print(line, flush=True)
+    except OSError:
+        pass
+
+
+def _normal_recovery_extended_phone_lookup(
+    *,
+    store_slug: str,
+    session_id: str,
+    cart_id: Optional[str],
+    store_obj: Optional[Any],
+    emit_log: bool = True,
+) -> tuple[Optional[str], str]:
+    """
+    مصادر إضافية لرقم العميل بعد فشل خريطة الجلسة السريعة (محاولات لاحقة، لوحة، إلخ).
+    الترتيب: سلّة حالية، ‎CartRecoveryReason‎، سجل إرسال ناجح، ‎MessageLog‎، سلال بنفس الجلسة.
+    """
+    sid = (session_id or "").strip()[:512]
+    cz = (cart_id or "").strip()[:255]
+    ss = (store_slug or "").strip()[:255] or "demo"
+
+    def _hit(ph: Optional[str], src: str) -> tuple[Optional[str], str]:
+        got = _strip_recovery_phone(ph)
+        if not got:
+            return None, "none"
+        if emit_log:
+            _log_normal_recovery_phone_resolution(
+                "[NORMAL RECOVERY PHONE RESOLVED]", src, got
+            )
+        return got, src
+
+    try:
+        db.create_all()
+        if cz:
+            ac_z = (
+                db.session.query(AbandonedCart)
+                .filter(AbandonedCart.zid_cart_id == cz)
+                .first()
+            )
+            if ac_z is not None:
+                out = _hit(getattr(ac_z, "customer_phone", None), "abandoned_cart_zid")
+                if out[0]:
+                    return out
+
+        if sid and ss:
+            crr_sl = _vip_latest_cart_recovery_reason_customer_phone(ss, sid)
+            out = _hit(crr_sl, "cart_recovery_reason_session")
+            if out[0]:
+                return out
+
+        if sid:
+            crr_any = _vip_latest_crr_customer_phone_any_store_slug(sid)
+            out = _hit(crr_any, "cart_recovery_reason_any_store")
+            if out[0]:
+                return out
+
+        log_conds: list[Any] = []
+        if sid:
+            log_conds.append(CartRecoveryLog.session_id == sid)
+        if cz:
+            log_conds.append(CartRecoveryLog.cart_id == cz)
+        if log_conds:
+            cr_row = (
+                db.session.query(CartRecoveryLog)
+                .filter(or_(*log_conds))
+                .filter(CartRecoveryLog.status.in_(_NORMAL_RECOVERY_SENT_LOG_STATUSES))
+                .filter(CartRecoveryLog.phone.isnot(None))
+                .filter(CartRecoveryLog.phone != "")
+                .order_by(
+                    CartRecoveryLog.sent_at.desc().nullslast(),
+                    CartRecoveryLog.id.desc(),
+                )
+                .first()
+            )
+            if cr_row is not None:
+                out = _hit(getattr(cr_row, "phone", None), "cart_recovery_log_sent")
+                if out[0]:
+                    return out
+
+        ac_ids = _abandoned_cart_db_ids_for_recovery_scope(sid, cz if cz else None)
+        if ac_ids:
+            qml = db.session.query(MessageLog).filter(
+                MessageLog.abandoned_cart_id.in_(ac_ids),
+                MessageLog.channel == "whatsapp",
+                MessageLog.phone != "",
+            )
+            st_id = getattr(store_obj, "id", None)
+            if st_id is not None:
+                try:
+                    qml = qml.filter(MessageLog.store_id == int(st_id))
+                except (TypeError, ValueError):
+                    pass
+            ml_row = qml.order_by(MessageLog.created_at.desc()).first()
+            if ml_row is not None:
+                out = _hit(getattr(ml_row, "phone", None), "message_log_whatsapp")
+                if out[0]:
+                    return out
+
+        if sid:
+            pq = db.session.query(AbandonedCart).filter(
+                AbandonedCart.recovery_session_id == sid
+            )
+            st_id = getattr(store_obj, "id", None)
+            if st_id is not None:
+                vid = int(st_id)
+                pq = pq.filter(
+                    (AbandonedCart.store_id == vid) | (AbandonedCart.store_id.is_(None))
+                )
+            peers = pq.limit(48).all()
+            for peer in peers:
+                out = _hit(getattr(peer, "customer_phone", None), "abandoned_cart_session_peer")
+                if out[0]:
+                    return out
+    except (SQLAlchemyError, OSError, TypeError, ValueError):
+        db.session.rollback()
+
+    return None, "none"
+
+
 def _resolve_cartflow_recovery_phone(
     *,
     store_slug: str,
@@ -2966,6 +3149,20 @@ def _resolve_cartflow_recovery_phone(
         reason_row=reason_row,
     )
 
+    if phone is None:
+        ext_p, ext_s = _normal_recovery_extended_phone_lookup(
+            store_slug=store_slug,
+            session_id=session_id,
+            cart_id=cart_id,
+            store_obj=store_obj,
+            emit_log=True,
+        )
+        if ext_p:
+            phone, source = ext_p, ext_s
+
+    if phone is None and not _is_demo_store_slug(store_slug):
+        _log_normal_recovery_phone_resolution("[NORMAL RECOVERY PHONE MISSING]", "none", "-")
+
     if phone is None and _is_demo_store_slug(store_slug):
         phone = demo_cfg if demo_cfg else None
         source = "demo_config"
@@ -2975,7 +3172,9 @@ def _resolve_cartflow_recovery_phone(
         allowed = False
     elif source == "demo_config":
         allowed = _is_demo_store_slug(store_slug) and bool(phone)
-    elif source in _VERIFIED_WA_RECOVERY_PHONE_SOURCES:
+    elif source in (
+        _VERIFIED_WA_RECOVERY_PHONE_SOURCES | _NORMAL_RECOVERY_EXTENDED_PHONE_SOURCES
+    ):
         if not _is_demo_store_slug(store_slug) and phone == demo_cfg:
             allowed = False
         else:

@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import unittest
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from extensions import db
 from main import (
@@ -230,6 +230,52 @@ class NormalRecoveryDashboardStatusTests(unittest.TestCase):
         self.assertEqual(payload["normal_recovery_phase_key"], "customer_returned")
         self.assertEqual(payload["normal_recovery_phase_label_ar"], "عاد العميل")
         self.assertEqual(payload["normal_recovery_status"], "returned")
+
+    def test_skip_missing_reason_after_first_send_not_ignored(self) -> None:
+        st = self._store_attempts_1()
+        sid = f"nr-dash-{self._suffix}-skip2"
+        zid = f"zid-nr-{self._suffix}-skip2"
+        ac = AbandonedCart(
+            store_id=int(st.id),
+            zid_cart_id=zid,
+            recovery_session_id=sid,
+            status="abandoned",
+            vip_mode=False,
+            cart_value=18.0,
+        )
+        db.session.add(ac)
+        db.session.flush()
+        t0 = datetime.now(timezone.utc)
+        t1 = t0 + timedelta(seconds=2)
+        db.session.add(
+            CartRecoveryLog(
+                store_slug="demo",
+                session_id=sid,
+                cart_id=zid,
+                phone="9665111222333",
+                message="m1",
+                status="mock_sent",
+                step=1,
+                created_at=t0,
+                sent_at=t0,
+            )
+        )
+        db.session.add(
+            CartRecoveryLog(
+                store_slug="demo",
+                session_id=sid,
+                cart_id=zid,
+                phone=None,
+                message="x",
+                status="skipped_missing_reason_tag",
+                step=2,
+                created_at=t1,
+                sent_at=None,
+            )
+        )
+        db.session.commit()
+        payload = _normal_recovery_phase_steps_payload(ac)
+        self.assertEqual(payload["normal_recovery_phase_key"], "first_message_sent")
 
     def test_latest_skipped_missing_reason_is_ignored(self) -> None:
         st = self._store_attempts_1()

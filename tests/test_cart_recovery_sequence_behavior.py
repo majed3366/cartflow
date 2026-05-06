@@ -21,7 +21,7 @@ from sqlalchemy import text
 import main
 from main import app
 from extensions import db
-from models import CartRecoveryLog, Store
+from models import CartRecoveryLog
 from tests.test_recovery_isolation import (
     _post_recovery_reason_for_session,
     _reset_recovery_memory,
@@ -166,8 +166,11 @@ class CartRecoverySequenceBehaviorTests(unittest.TestCase):
         """Normal recovery with recovery_attempts=2 sends follow-up after gap (gap patched to 0)."""
         mock_send.return_value = {"ok": True}
         db.create_all()
-        st = db.session.query(Store).filter_by(zid_store_id="demo").first()
-        self.assertIsNotNone(st, "demo store row required")
+        import main as main_mod
+
+        st = main_mod._load_store_row_for_recovery("demo")
+        self.assertIsNotNone(st, "recovery store row for demo slug required")
+        prev_attempts = getattr(st, "recovery_attempts", None)
         st.recovery_attempts = 2
         db.session.commit()
         sid = "seq-normal-two"
@@ -179,9 +182,9 @@ class CartRecoverySequenceBehaviorTests(unittest.TestCase):
             bodies = [c[0][1] for c in mock_send.call_args_list]
             self.assertNotEqual(bodies[0].strip(), bodies[1].strip())
         finally:
-            st2 = db.session.query(Store).filter_by(zid_store_id="demo").first()
-            if st2 is not None:
-                st2.recovery_attempts = 1
+            st_restore = main_mod._load_store_row_for_recovery("demo")
+            if st_restore is not None:
+                st_restore.recovery_attempts = prev_attempts
                 db.session.commit()
 
     @patch("main.send_whatsapp")
