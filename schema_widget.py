@@ -526,6 +526,37 @@ def _ensure_abandoned_cart_vip_mode_column(db: Any) -> None:
         log.debug("schema_widget abandoned_carts vip_mode: %s", e)
 
 
+def _ensure_abandoned_cart_vip_lifecycle_status_column(db: Any) -> None:
+    """عمود ‎vip_lifecycle_status‎ على ‎abandoned_carts‎ — لوحة VIP فقط (‎NULL‎ = ‎abandoned‎)."""
+    try:
+        db.create_all()
+        insp = inspect(db.engine)
+        if not insp.has_table("abandoned_carts"):
+            return
+        dialect = getattr(getattr(db.engine, "dialect", None), "name", "") or ""
+        existing = {c["name"] for c in insp.get_columns("abandoned_carts")}
+        if "vip_lifecycle_status" in existing:
+            return
+        try:
+            if dialect in ("postgresql", "postgres"):
+                stmt = (
+                    "ALTER TABLE abandoned_carts ADD COLUMN IF NOT EXISTS "
+                    "vip_lifecycle_status VARCHAR(32)"
+                )
+            else:
+                stmt = (
+                    "ALTER TABLE abandoned_carts ADD COLUMN vip_lifecycle_status "
+                    "VARCHAR(32)"
+                )
+            db.session.execute(text(stmt))
+            db.session.commit()
+        except (OSError, SQLAlchemyError, IntegrityError):
+            db.session.rollback()
+    except (OSError, SQLAlchemyError) as e:
+        db.session.rollback()
+        log.debug("schema_widget abandoned_carts vip_lifecycle_status: %s", e)
+
+
 def _ensure_abandoned_cart_recovery_session_id_column(db: Any) -> None:
     """عمود ‎recovery_session_id‎ على ‎abandoned_carts‎ (‎session_id‎ من الويدجت عند الترك)."""
     try:
@@ -728,6 +759,7 @@ def ensure_store_widget_schema(db: Any) -> None:
     _ensure_store_vip_offer_columns(db)
     _ensure_store_cartflow_widget_recovery_gate_columns(db)
     _ensure_abandoned_cart_vip_mode_column(db)
+    _ensure_abandoned_cart_vip_lifecycle_status_column(db)
     _ensure_abandoned_cart_recovery_session_id_column(db)
     global _store_abandonment_schema_ensured
     if _store_abandonment_schema_ensured:

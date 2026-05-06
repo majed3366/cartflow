@@ -239,7 +239,11 @@ class VipDashboardMerchantAlertTests(unittest.TestCase):
     def test_vip_cart_settings_shows_merchant_ready_replies_when_phone(self) -> None:
         db.create_all()
         slug = f"vip_mr_{uuid.uuid4().hex[:12]}"
-        store = Store(zid_store_id=slug)
+        store = Store(
+            zid_store_id=slug,
+            vip_offer_enabled=True,
+            vip_offer_type="free_shipping",
+        )
         db.session.add(store)
         db.session.commit()
 

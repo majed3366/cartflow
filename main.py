@@ -5374,6 +5374,73 @@ def _format_reason_ts(dt: Optional[datetime]) -> str:
     return d.strftime("%Y-%m-%d %H:%M")
 
 
+VIP_LIFECYCLE_VALUES = frozenset({"abandoned", "contacted", "closed", "converted"})
+
+_VIP_LIFECYCLE_LABELS_AR: dict[str, str] = {
+    "abandoned": "لم يُجرَ التواصل بعد",
+    "contacted": "تم التواصل مع العميل",
+    "closed": "مغلوقة",
+    "converted": "تم البيع",
+}
+
+
+def _vip_lifecycle_effective(ac: AbandonedCart) -> str:
+    raw = getattr(ac, "vip_lifecycle_status", None)
+    if raw is None or (isinstance(raw, str) and not raw.strip()):
+        return "abandoned"
+    s = str(raw).strip().lower()
+    if s in VIP_LIFECYCLE_VALUES:
+        return s
+    return "abandoned"
+
+
+def _vip_dashboard_ac_in_scope(ac: AbandonedCart, dash_store: Optional[Any]) -> bool:
+    """هل سلة ‎VIP‎ ضمن متجر لوحة الاستعادة (نفس منطق قائمة الأولوية)."""
+    if dash_store is None:
+        return False
+    did = getattr(dash_store, "id", None)
+    if did is None:
+        return False
+    try:
+        vid = int(did)
+    except (TypeError, ValueError):
+        return False
+    sid = getattr(ac, "store_id", None)
+    if sid is None:
+        return True
+    try:
+        return int(sid) == vid
+    except (TypeError, ValueError):
+        return False
+
+
+def _vip_rows_same_logical_vip_cart(ac: AbandonedCart) -> list[AbandonedCart]:
+    """نفس الجلسة أو ‎zid_cart_id‎ ضمن نفس ‎store_id‎ — لتوحيد الحالة على الصفوف المكررة."""
+    sid = getattr(ac, "store_id", None)
+    rs = (getattr(ac, "recovery_session_id", None) or "").strip()
+    zi = (getattr(ac, "zid_cart_id", None) or "").strip()
+    q = db.session.query(AbandonedCart).filter(AbandonedCart.vip_mode.is_(True))
+    if sid is not None:
+        q = q.filter(AbandonedCart.store_id == sid)
+    else:
+        q = q.filter(AbandonedCart.store_id.is_(None))
+    if rs:
+        q = q.filter(AbandonedCart.recovery_session_id == rs)
+    elif zi:
+        q = q.filter(AbandonedCart.zid_cart_id == zi)
+    else:
+        r = db.session.get(AbandonedCart, int(ac.id))
+        return [r] if r is not None else []
+    rows = list(q.all())
+    return rows if rows else ([ac] if ac else [])
+
+
+def _vip_apply_lifecycle_status(group: list[AbandonedCart], status: str) -> None:
+    s = (status or "").strip().lower()
+    for row in group:
+        row.vip_lifecycle_status = s
+
+
 def _vip_priority_cart_alert_list() -> list[dict[str, Any]]:
     """سلّات قسم «أولوية»: ‎vip_mode‎ و‎status=abandoned‎ لنفس المتجر الظاهر في لوحة الإعدادات."""
     out: list[dict[str, Any]] = []
@@ -5388,6 +5455,13 @@ def _vip_priority_cart_alert_list() -> list[dict[str, Any]]:
             db.session.query(AbandonedCart)
             .filter(AbandonedCart.vip_mode.is_(True))
             .filter(AbandonedCart.status == "abandoned")
+            .filter(
+                or_(
+                    AbandonedCart.vip_lifecycle_status.is_(None),
+                    AbandonedCart.vip_lifecycle_status == "abandoned",
+                    AbandonedCart.vip_lifecycle_status == "contacted",
+                )
+            )
         )
         if dash_id_raw is not None:
             try:
@@ -5490,6 +5564,7 @@ def _vip_priority_cart_alert_list() -> list[dict[str, Any]]:
                 cart_link=cart_link_raw
             )
             offer_ready = vip_offer_manual_contact_whatsapp_body(dash_store)
+            lc = _vip_lifecycle_effective(ac)
             out.append(
                 {
                     "id": ac.id,
@@ -5497,6 +5572,11 @@ def _vip_priority_cart_alert_list() -> list[dict[str, Any]]:
                     "cart_short": cart_short or "—",
                     "last_seen": _format_reason_ts(ac.last_seen_at),
                     "status": st,
+                    "vip_lifecycle_status": lc,
+                    "vip_lifecycle_label_ar": _VIP_LIFECYCLE_LABELS_AR.get(
+                        lc, _VIP_LIFECYCLE_LABELS_AR["abandoned"]
+                    ),
+                    "vip_contact_done": lc == "contacted",
                     "interactive": True,
                     "customer_wa_phone": wa_digits,
                     "contact_wa_message": contact_msg,
@@ -6079,6 +6159,59 @@ def api_dashboard_vip_cart_merchant_alert(cart_row_id: int):
             exc_info=True,
         )
         return j({"ok": False, "error": "خطأ غير متوقع في الخادم"}, 500)
+
+
+@app.post("/api/dashboard/vip-cart/{cart_row_id}/lifecycle")
+def api_dashboard_vip_cart_lifecycle(
+    cart_row_id: int, payload: Dict[str, Any] = Body(...)
+) -> Any:
+    """تحديث حالة متابعة VIP في لوحة التحكم فقط — لا يغيّر مسار إرسال واتساب."""
+    try:
+        db.create_all()
+        _ensure_store_widget_schema()
+        new_raw = (payload.get("status") or "").strip().lower()
+        allowed_in = frozenset({"contacted", "closed", "converted"})
+        if new_raw not in allowed_in:
+            return j({"ok": False, "error": "حالة غير صالحة"}, 400)
+        ac = db.session.get(AbandonedCart, int(cart_row_id))
+        if ac is None:
+            return j({"ok": False, "error": "لم يتم العثور على السلة"}, 404)
+        if not bool(getattr(ac, "vip_mode", False)):
+            return j({"ok": False, "error": "هذه السلة ليست في وضع VIP"}, 400)
+        if str(getattr(ac, "status", "") or "").strip() == "recovered":
+            return j({"ok": False, "error": "السلة مستردة بالفعل"}, 400)
+        dash_store = _dashboard_recovery_store_row()
+        if not _vip_dashboard_ac_in_scope(ac, dash_store):
+            return j({"ok": False, "error": "غير مسموح"}, 403)
+
+        cur = _vip_lifecycle_effective(ac)
+        if cur == new_raw:
+            return j(
+                {
+                    "ok": True,
+                    "status": new_raw,
+                    "label_ar": _VIP_LIFECYCLE_LABELS_AR.get(new_raw, ""),
+                },
+                200,
+            )
+        if cur in ("closed", "converted"):
+            return j({"ok": False, "error": "حالة نهائية"}, 400)
+
+        group = _vip_rows_same_logical_vip_cart(ac)
+        _vip_apply_lifecycle_status(group, new_raw)
+        db.session.commit()
+        return j(
+            {
+                "ok": True,
+                "status": new_raw,
+                "label_ar": _VIP_LIFECYCLE_LABELS_AR.get(new_raw, ""),
+            },
+            200,
+        )
+    except (SQLAlchemyError, OSError, TypeError, ValueError) as e:
+        db.session.rollback()
+        log.warning("vip_cart_lifecycle: %s", e)
+        return j({"ok": False, "error": "فشل التحديث"}, 500)
 
 
 @app.post("/api/carts/<int:row_id>/send")

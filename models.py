@@ -119,6 +119,8 @@ class AbandonedCart(Base):
     recovery_session_id = Column(String(512), nullable=True, index=True)
     # سلة عالية القيمة (VIP): لا استرجاع تلقائي للعميل — متابعة يدوية
     vip_mode = Column(Boolean, default=False, nullable=False)
+    # دورة حياة عرض لوحة VIP فقط: abandoned / contacted / closed / converted
+    vip_lifecycle_status = Column(String(32), nullable=True)
 
     message_logs = relationship("MessageLog", backref="abandoned_cart", lazy="dynamic")
 
