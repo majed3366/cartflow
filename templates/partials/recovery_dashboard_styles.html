@@ -108,6 +108,14 @@
     }
   }
 
+  /* تمييز إجراء مطابق للاقتراح الذكي (قراءة فقط — لا يُرسل تلقائياً) */
+  .cf-smart-action-ring {
+    outline: 2px solid rgba(124, 58, 237, 0.38);
+    outline-offset: 3px;
+    border-radius: 0.375rem;
+    transition: outline-color 0.15s ease;
+  }
+
   /* —— نظام CartFlow الموحد (بطاقات / تمييز / مفاتيح) —— */
   .cf-dash-shell {
     max-width: 28rem;

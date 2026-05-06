@@ -248,6 +248,7 @@ from services.vip_cart import (
     vip_offer_fields_for_api,
     vip_offer_manual_contact_whatsapp_body,
 )
+from services.smart_actions import get_cart_smart_action, smart_action_cta_target  # noqa: E402
 from services.vip_merchant_alert import (
     build_vip_merchant_alert_body,
     resolve_merchant_whatsapp_phone,
@@ -1634,6 +1635,37 @@ def _reason_tag_for_session(store_slug: str, session_id: str) -> Optional[str]:
         return None
     tag = (row.reason or "").strip()
     return tag if tag else None
+
+
+def _store_slug_for_cart_recovery_reason(ac: AbandonedCart) -> Optional[str]:
+    sid = getattr(ac, "store_id", None)
+    if sid is not None:
+        try:
+            row = db.session.get(Store, int(sid))
+        except (SQLAlchemyError, OSError, TypeError, ValueError):
+            db.session.rollback()
+            row = None
+        zs = getattr(row, "zid_store_id", None) if row is not None else None
+        if zs and str(zs).strip():
+            return str(zs).strip()[:255]
+    dash = _dashboard_recovery_store_row()
+    z2 = getattr(dash, "zid_store_id", None) if dash is not None else None
+    if z2 and str(z2).strip():
+        return str(z2).strip()[:255]
+    return None
+
+
+def _reason_tag_for_abandoned_cart(ac: AbandonedCart) -> Optional[str]:
+    tag = _vip_reason_tag_from_abandoned_cart(ac)
+    if tag:
+        return tag
+    sess = (getattr(ac, "recovery_session_id", None) or "").strip()
+    if not sess:
+        return None
+    ss = _store_slug_for_cart_recovery_reason(ac)
+    if not ss:
+        return None
+    return _reason_tag_for_session(ss, sess)
 
 
 def _last_activity_utc_from_recovery_row(
@@ -5527,6 +5559,8 @@ def _vip_pick_priority_cart_groups(
 def _vip_dashboard_cart_alert_dict_from_group(
     grp_sorted: list[AbandonedCart],
     dash_store: Optional[Any],
+    *,
+    recovery_card_tier: str = "vip",
 ) -> dict[str, Any]:
     ac = grp_sorted[0]
     wa_digits = ""
@@ -5539,7 +5573,11 @@ def _vip_dashboard_cart_alert_dict_from_group(
     zid = (ac.zid_cart_id or "").strip()
     cart_short = zid[:28] + ("…" if len(zid) > 28 else "") if zid else "—"
     st = ((ac.status or "").strip() or "—")[:48]
-    hint_ar = (vip_offer_card_hint_ar(dash_store) if wa_digits else "") or ""
+    tier = (recovery_card_tier or "vip").strip().lower()
+    is_vip_card = tier != "normal"
+    hint_ar = ""
+    if is_vip_card:
+        hint_ar = (vip_offer_card_hint_ar(dash_store) if wa_digits else "") or ""
     override_msg = vip_offer_manual_contact_whatsapp_body(dash_store)
     if wa_digits and override_msg:
         contact_msg = override_msg
@@ -5569,6 +5607,16 @@ def _vip_dashboard_cart_alert_dict_from_group(
     lbl = _VIP_LIFECYCLE_LABELS_AR.get(lc, _VIP_LIFECYCLE_LABELS_AR["abandoned"])
     card_cls, badge_cls = _vip_dashboard_lifecycle_card_and_badge_classes(lc)
     hide_actions = lc in ("closed", "converted")
+    reason_tag_resolved = _reason_tag_for_abandoned_cart(ac)
+    smart_action = get_cart_smart_action(
+        {
+            "is_vip": is_vip_card,
+            "reason_tag": reason_tag_resolved,
+            "vip_lifecycle_effective": lc if is_vip_card else "abandoned",
+            "has_customer_phone": bool(wa_digits),
+        }
+    )
+    smart_cta = smart_action_cta_target(smart_action["action_key"])
     return {
         "id": ac.id,
         "cart_value": float(ac.cart_value or 0.0),
@@ -5595,6 +5643,10 @@ def _vip_dashboard_cart_alert_dict_from_group(
         "merchant_reply_direct_b64": _vip_wa_prefill_utf8_base64(
             merchant_replies_ar["direct"]
         ),
+        "smart_action": smart_action,
+        "smart_cta_target": smart_cta,
+        "recovery_card_tier": "vip" if is_vip_card else "normal",
+        "recovery_hide_vip_lifecycle_buttons": not is_vip_card,
     }
 
 
@@ -5678,6 +5730,46 @@ def _vip_priority_completed_cart_alert_list() -> list[dict[str, Any]]:
 def _vip_cart_alerts_merchant_list() -> list[dict[str, Any]]:
     """توافق خلفي — يعرض الآن قائمة الأولوية الحقيقية فقط."""
     return _vip_priority_cart_alert_list()
+
+
+def _normal_recovery_cart_alert_list(limit_groups: int = 15) -> list[dict[str, Any]]:
+    """سلات غير ‎VIP‎ بحالة ‎abandoned‎ — نفس أدوات التواصل اليدوي مع اقتراح ذكي منفصل."""
+    try:
+        _ensure_store_widget_schema()
+        db.create_all()
+        _ensure_default_store_for_recovery()
+        dash_store = _dashboard_recovery_store_row()
+        dash_id_raw = getattr(dash_store, "id", None) if dash_store is not None else None
+        q = db.session.query(AbandonedCart).filter(
+            AbandonedCart.vip_mode.is_(False),
+            AbandonedCart.status == "abandoned",
+        )
+        if dash_id_raw is not None:
+            try:
+                vid = int(dash_id_raw)
+                q = q.filter(
+                    (AbandonedCart.store_id == vid)
+                    | (AbandonedCart.store_id.is_(None))  # type: ignore[union-attr]
+                )
+            except (TypeError, ValueError):
+                pass
+        full_rows = list(
+            q.order_by(AbandonedCart.last_seen_at.desc()).limit(240).all()
+        )
+        out: list[dict[str, Any]] = []
+        for grp_sorted in _vip_pick_priority_cart_groups(full_rows)[:limit_groups]:
+            out.append(
+                _vip_dashboard_cart_alert_dict_from_group(
+                    grp_sorted,
+                    dash_store,
+                    recovery_card_tier="normal",
+                )
+            )
+        return out
+    except (SQLAlchemyError, OSError) as e:
+        db.session.rollback()
+        log.warning("normal_recovery_cart_alerts: db read failed: %s", e)
+    return []
 
 
 def _recovery_sales_trend_last_7_days() -> list[dict[str, Any]]:
@@ -5903,6 +5995,7 @@ def dashboard_vip_cart_settings(request: Request):
     vip_completed_alerts = (
         _vip_priority_completed_cart_alert_list() if vip_show_completed else []
     )
+    normal_recovery_alerts = _normal_recovery_cart_alert_list()
     merchant_followup_actions = merchant_followup_actions_for_dashboard(limit=10)
     return templates.TemplateResponse(
         request,
@@ -5912,6 +6005,7 @@ def dashboard_vip_cart_settings(request: Request):
             "vip_priority_alerts": vip_priority_alerts,
             "vip_completed_alerts": vip_completed_alerts,
             "vip_show_completed": vip_show_completed,
+            "normal_recovery_alerts": normal_recovery_alerts,
             "merchant_followup_actions": merchant_followup_actions,
         },
     )

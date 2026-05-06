@@ -72,28 +72,56 @@
           {% endif %}
         </section>
 
+        <section class="mb-6 rounded-2xl border border-slate-200/85 bg-white p-4 shadow-sm md:p-5" aria-labelledby="normal-recovery-heading">
+          <h2 id="normal-recovery-heading" class="mb-1 text-lg font-bold text-slate-900">سلال الاسترجاع العادية</h2>
+          <p class="mb-4 text-sm leading-relaxed text-slate-600">متابعة يدوية للسلات غير المميزة — الاقتراحات إرشادية فقط؛ لا يُرسل شيء تلقائياً.</p>
+          {% set nr_list = normal_recovery_alerts | default([]) %}
+          <ul id="normal-recovery-alerts-ul" class="m-0 list-none space-y-4 p-0 {% if nr_list | length == 0 %}hidden{% endif %}" role="list">
+            {% for vc in nr_list %}
+            {{ vip_cart_dashboard_row(vc) }}
+            {% endfor %}
+          </ul>
+          <p id="normal-recovery-empty" class="{% if nr_list | length > 0 %}hidden {% endif %}m-0 text-sm leading-relaxed text-slate-600">لا توجد سلات استرجاع عادية ظاهرة لهذا المتجر حالياً.</p>
+        </section>
+
         {# صف سلة عام — قابل لتوسعة (VIP / تعافي عادي / إجراءات ذكية) #}
         {% macro vip_cart_dashboard_row(vc) -%}
             {% set lc = vc.vip_lifecycle_status %}
+            {% set tier = vc.recovery_card_tier | default('vip') %}
             <li lang="ar" class="cf-cart-row vip-lc-card flex flex-col gap-0 rounded-xl border p-4 shadow-sm sm:p-4
-              {% if lc == 'abandoned' %}border-slate-200/85 bg-white ring-1 ring-amber-100/60
+              {% if tier == 'normal' %}border-slate-200/85 bg-slate-50/35
+              {% elif lc == 'abandoned' %}border-slate-200/85 bg-white ring-1 ring-amber-100/60
               {% elif lc == 'contacted' %}border-sky-200/65 bg-gradient-to-bl from-sky-50/50 to-white
               {% elif lc == 'converted' %}border-emerald-200/60 bg-gradient-to-bl from-emerald-50/35 to-white
               {% else %}border-slate-300/70 bg-slate-50/50 opacity-95
-              {% endif %}" data-vip-cart-li data-cart-row-id="{{ vc.id }}" data-vip-cart-row-id="{{ vc.id }}" data-vip-lc="{{ lc }}">
+              {% endif %}" data-vip-cart-li data-cart-row-id="{{ vc.id }}" data-vip-cart-row-id="{{ vc.id }}" data-vip-lc="{{ lc }}"
+              data-recovery-tier="{{ tier }}"
+              data-smart-cta-highlight="{{ vc.smart_cta_target | default('none') }}">
               {# صف علوي: معلومات (يمين) + إجراء أساسي (وسط/يسار حسب العرض) #}
               <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-5">
                 <div class="min-w-0 flex-1 space-y-2 text-right">
                   <p class="m-0 text-lg font-bold tabular-nums tracking-tight text-slate-900">{{ "%.0f"|format(vc.cart_value) }} <span class="text-sm font-semibold text-slate-500">ريال</span></p>
                   <div class="flex flex-wrap items-center justify-end gap-2">
+                    {% if tier == 'normal' %}
+                    <span data-vip-lifecycle-label class="inline-flex max-w-full items-center justify-center rounded-md border border-slate-200/90 bg-slate-100/90 px-2 py-0.5 text-[11px] font-semibold leading-snug text-slate-800">استرجاع عادي · {{ vc.status }}</span>
+                    {% else %}
                     <span data-vip-lifecycle-label class="inline-flex max-w-full items-center justify-center rounded-md border px-2 py-0.5 text-[11px] font-semibold leading-snug
                       {% if lc == 'abandoned' %}border-amber-200/90 bg-amber-50/95 text-amber-900
                       {% elif lc == 'contacted' %}border-sky-200/90 bg-sky-50 text-sky-900
                       {% elif lc == 'converted' %}border-emerald-200/90 bg-emerald-50 text-emerald-900
                       {% else %}border-slate-400/50 bg-slate-200/40 text-slate-700
                       {% endif %}">{% if lc == 'closed' %}تم إغلاق السلة{% else %}{{ vc.vip_lifecycle_label_ar }}{% endif %}</span>
+                    {% endif %}
                   </div>
                   <p class="m-0 text-[11px] font-medium text-slate-500">{{ vc.last_seen }}</p>
+                  {% if vc.smart_action %}
+                  <div class="mt-2 rounded-lg border border-slate-200/70 bg-white/70 px-2.5 py-2">
+                    <p class="m-0 text-[10px] font-semibold text-slate-500">الإجراء المقترح</p>
+                    <p class="m-0 mt-1 text-xs font-semibold text-slate-800">{{ vc.smart_action.title_ar }}</p>
+                    <p class="m-0 mt-1 text-[11px] leading-snug text-slate-600">{{ vc.smart_action.reason_ar }}</p>
+                    <p class="m-0 mt-1.5 text-[10px] font-medium text-slate-500">← {{ vc.smart_action.cta_ar }}</p>
+                  </div>
+                  {% endif %}
                   <p class="m-0 text-[9px] leading-relaxed text-slate-400 {% if not vc.vip_show_wa_opened_hint %}hidden{% endif %}" data-vip-wa-opened-hint role="note">تم فتح واتساب مسبقًا</p>
                   {% if vc.vip_offer_hint_ar %}
                   <p class="m-0 text-[11px] font-medium text-amber-800/95">{{ vc.vip_offer_hint_ar }}</p>
@@ -101,7 +129,7 @@
                 </div>
                 {% if not vc.vip_lifecycle_hide_actions %}
                 <div class="flex w-full shrink-0 flex-col gap-1.5 sm:w-auto sm:min-w-[10rem] sm:items-end">
-                  <button type="button" data-vip-contact-customer
+                  <button type="button" data-vip-contact-customer data-smart-match="contact"
                     data-cart-row-id="{{ vc.id }}"
                     data-customer-wa="{{ vc.customer_wa_phone | e }}"
                     data-contact-msg="{{ vc.contact_wa_message | e }}"
@@ -115,7 +143,7 @@
                 <span data-vip-send-status class="sr-only" aria-hidden="true"></span>
                 {% endif %}
               </div>
-              {% if not vc.vip_lifecycle_hide_actions %}
+              {% if not vc.recovery_hide_vip_lifecycle_buttons and not vc.vip_lifecycle_hide_actions %}
               <div class="mt-4 border-t border-slate-100 pt-3">
                 <div class="flex flex-wrap items-center justify-end gap-2">
                   <button type="button" data-vip-lifecycle-sale data-cart-row-id="{{ vc.id }}"
@@ -134,12 +162,12 @@
                 <p class="mb-2 text-[11px] font-bold text-slate-700">ردود جاهزة للتاجر</p>
                 <div class="flex flex-wrap gap-2">
                   {% if vc.merchant_reply_offer_ar %}
-                  <button type="button" data-vip-merchant-prefill-btn data-customer-wa="{{ vc.customer_wa_phone | e }}" data-prefill-body-b64="{{ vc.merchant_reply_offer_b64 | e }}" data-prefill-body="{{ vc.merchant_reply_offer_ar | e }}"
+                  <button type="button" data-vip-merchant-prefill-btn data-smart-match="offer_prefill" data-customer-wa="{{ vc.customer_wa_phone | e }}" data-prefill-body-b64="{{ vc.merchant_reply_offer_b64 | e }}" data-prefill-body="{{ vc.merchant_reply_offer_ar | e }}"
                     class="shrink-0 rounded-md border border-slate-300/90 bg-slate-50/90 px-2.5 py-1 text-[11px] font-semibold text-slate-800 hover:border-violet-300 hover:bg-violet-50/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-500">
                     إرسال عرض جاهز
                   </button>
                   {% endif %}
-                  <button type="button" data-vip-merchant-prefill-btn data-customer-wa="{{ vc.customer_wa_phone | e }}" data-prefill-body-b64="{{ vc.merchant_reply_reminder_b64 | e }}" data-prefill-body="{{ vc.merchant_reply_reminder_ar | e }}"
+                  <button type="button" data-vip-merchant-prefill-btn data-smart-match="reminder_prefill" data-customer-wa="{{ vc.customer_wa_phone | e }}" data-prefill-body-b64="{{ vc.merchant_reply_reminder_b64 | e }}" data-prefill-body="{{ vc.merchant_reply_reminder_ar | e }}"
                     class="shrink-0 rounded-md border border-slate-300/90 bg-slate-50/90 px-2.5 py-1 text-[11px] font-semibold text-slate-800 hover:border-violet-300 hover:bg-violet-50/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-500">
                     تذكير لطيف
                   </button>
@@ -599,6 +627,7 @@
 
       function vipApplyActiveListLcFromServer(li, lc) {
         if (!li) return;
+        if ((li.getAttribute("data-recovery-tier") || "") === "normal") return;
         li.setAttribute("data-vip-lc", lc);
         li.className = vipShellActiveListCard(lc);
         var badge = li.querySelector("[data-vip-lifecycle-label]");
@@ -771,6 +800,21 @@
             });
         });
       });
+
+      function applySmartActionHighlights() {
+        document.querySelectorAll("[data-vip-cart-li]").forEach(function (li) {
+          var target = (li.getAttribute("data-smart-cta-highlight") || "").trim();
+          li.querySelectorAll(".cf-smart-action-ring").forEach(function (btn) {
+            btn.classList.remove("cf-smart-action-ring");
+          });
+          if (!target || target === "none") return;
+          var hit = li.querySelector('[data-smart-match="' + target + '"]');
+          if (hit) {
+            hit.classList.add("cf-smart-action-ring");
+          }
+        });
+      }
+      applySmartActionHighlights();
     })();
   </script>
 </body>
