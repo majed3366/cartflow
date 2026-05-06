@@ -26,6 +26,7 @@ from sqlalchemy.orm import (
     sessionmaker,
 )
 from sqlalchemy.engine import Engine
+from sqlalchemy.pool import NullPool
 
 # ‎db‎: واجهة ‎session / engine / create_all‎ (نمط ORM شائع مع ‎SQLAlchemy‎)
 if TYPE_CHECKING:  # pragma: no cover
@@ -84,12 +85,16 @@ def init_database(url: Optional[str] = None) -> None:
     global _engine, _Scoped
     u = (url or "").strip() or get_database_url()
     connect: dict = {}
+    engine_kw: dict[str, Any] = {}
     if u.startswith("sqlite:"):
         connect["check_same_thread"] = False
+        # ‎QueuePool‎ الافتراضي يُنفّد الاتصالات في ‎pytest‎ الطويل على ‎SQLite‎؛ ‎NullPool‎ يغلق الاتصال عند الإرجاع.
+        engine_kw["poolclass"] = NullPool
     _engine = create_engine(
         u,
         pool_pre_ping=not u.startswith("sqlite:"),
         connect_args=connect,
+        **engine_kw,
     )
     factory = sessionmaker(autocommit=False, autoflush=False, bind=_engine)
     _Scoped = scoped_session(factory)
