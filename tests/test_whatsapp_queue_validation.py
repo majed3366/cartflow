@@ -43,11 +43,12 @@ class WhatsappQueueValidationTests(unittest.IsolatedAsyncioTestCase):
         _reset_recovery_memory()
         os.environ["WHATSAPP_QUEUE_RETRY_BACKOFF_SECONDS"] = "0"
 
+    @patch("main.should_send_whatsapp", return_value=True)
     @patch("main._persist_cart_recovery_log")
     @patch("main.send_whatsapp")
     @patch("main.get_recovery_delay", return_value=0)
     def test_1_queued_before_send(
-        self, _d: object, mock_send: object, mock_persist: object
+        self, _d: object, mock_send: object, mock_persist: object, _gate: object
     ) -> None:
         """Abandoned cart: log queued before send_whatsapp."""
         order: list = []
