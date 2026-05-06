@@ -8,7 +8,13 @@
   data-smart-cta-highlight="{{ vc.smart_cta_target_display | default(vc.smart_cta_target) | default('none') }}">
   <div class="mb-2 flex flex-wrap items-center justify-end gap-2 border-b border-cyan-100/50 pb-2">
     <span class="inline-flex items-center rounded border border-slate-200/80 bg-slate-100/90 px-1.5 py-0.5 text-[9px] font-semibold text-slate-600">آلي</span>
-    <span class="inline-flex max-w-full items-center rounded-md border border-cyan-200/90 bg-cyan-50/90 px-2 py-0.5 text-[11px] font-semibold text-cyan-950">{{ vc.normal_recovery_phase_label_ar | default('بانتظار الإرسال') }}</span>
+    {% set nrs = vc.normal_recovery_status | default('pending') %}
+    <span class="inline-flex max-w-full items-center rounded-md border px-2 py-0.5 text-[11px] font-semibold
+      {% if nrs == 'sent' %}border-emerald-200/90 bg-emerald-50/95 text-emerald-900
+      {% elif nrs == 'converted' %}border-emerald-200/85 bg-emerald-50 text-emerald-950
+      {% elif nrs == 'stopped' %}border-slate-200/90 bg-slate-100/95 text-slate-700
+      {% else %}border-cyan-200/90 bg-cyan-50/90 text-cyan-950{% endif %}"
+      data-normal-recovery-status="{{ nrs }}">{{ vc.normal_recovery_phase_label_ar | default('بانتظار الإرسال') }}</span>
   </div>
   <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-5">
     <div class="min-w-0 flex-1 space-y-2 text-right">
@@ -33,6 +39,7 @@
       {% endif %}
     </div>
     <div class="flex w-full shrink-0 flex-col gap-1.5 sm:w-auto sm:min-w-[11rem] sm:items-end">
+      {% if not (vc.normal_recovery_hide_automation_cta | default(false)) %}
       <button type="button" data-normal-automation-primary data-smart-match="automation_arm"
         data-cart-row-id="{{ vc.id }}"
         {% if vc.normal_recovery_activate_disabled | default(false) %}disabled aria-disabled="true"{% endif %}
@@ -40,6 +47,7 @@
         تفعيل رسائل التردد
       </button>
       <p class="m-0 w-full max-w-[14rem] text-end text-[9px] leading-snug text-slate-500">بدء مسار الاسترجاع التلقائي — لا يفتح واتساب يدوياً.</p>
+      {% endif %}
       <p class="min-h-[1rem] w-full text-end text-[10px] leading-tight text-slate-600 sm:max-w-[14rem]" data-normal-automation-status aria-live="polite"></p>
     </div>
   </div>

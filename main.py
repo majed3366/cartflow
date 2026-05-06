@@ -1710,11 +1710,15 @@ def _reason_tag_for_abandoned_cart(ac: AbandonedCart) -> Optional[str]:
 _NORMAL_RECOVERY_PHASE_ORDER: list[tuple[str, str]] = [
     ("pending_send", "بانتظار الإرسال"),
     ("first_message_sent", "تم إرسال الرسالة الأولى"),
-    ("reminder_sent", "تم إرسال التذكير"),
+    ("reminder_sent", "تم إرسال الرسالة"),
     ("stopped_manual", "تم إيقاف الاسترجاع"),
     ("stopped_purchase", "توقف بعد الشراء"),
     ("recovery_complete", "اكتمل الاسترجاع"),
 ]
+
+# ‎CartRecoveryLog.status‎ values that mean a WhatsApp recovery message was delivered
+# (includes ‎mock_sent‎ from delayed automation and ‎sent_real‎ from the queue / VIP paths).
+_NORMAL_RECOVERY_SENT_LOG_STATUSES = frozenset({"sent_real", "mock_sent"})
 
 
 def _cart_recovery_log_filters_for_abandoned_cart(ac: AbandonedCart) -> list[Any]:
@@ -1729,6 +1733,7 @@ def _cart_recovery_log_filters_for_abandoned_cart(ac: AbandonedCart) -> list[Any
 
 
 def _cart_recovery_sent_real_count_for_abandoned(ac: AbandonedCart) -> int:
+    """عدد إرسالات واتساب الاسترجاع الناجحة من ‎CartRecoveryLog‎ (‎sent_real‎ و ‎mock_sent‎)."""
     conds = _cart_recovery_log_filters_for_abandoned_cart(ac)
     if not conds:
         return 0
@@ -1736,7 +1741,7 @@ def _cart_recovery_sent_real_count_for_abandoned(ac: AbandonedCart) -> int:
         db.create_all()
         n = (
             db.session.query(func.count(CartRecoveryLog.id))
-            .filter(CartRecoveryLog.status == "sent_real")
+            .filter(CartRecoveryLog.status.in_(_NORMAL_RECOVERY_SENT_LOG_STATUSES))
             .filter(or_(*conds))
             .scalar()
         )
@@ -1744,6 +1749,23 @@ def _cart_recovery_sent_real_count_for_abandoned(ac: AbandonedCart) -> int:
     except (SQLAlchemyError, OSError, TypeError, ValueError):
         db.session.rollback()
         return 0
+
+
+def _normal_recovery_coarse_status(phase_key: str) -> str:
+    """
+    حالة مدورة البطاقة للاسترجاع العادي — جاهزة لتوسعة ‎replied‎ لاحقاً.
+    ‎pending‎ / ‎sent‎ / ‎replied‎ / ‎converted‎ / ‎stopped‎
+    """
+    pk = (phase_key or "").strip()
+    if pk in ("first_message_sent", "reminder_sent"):
+        return "sent"
+    if pk == "recovery_complete":
+        return "converted"
+    if pk in ("stopped_manual", "stopped_purchase"):
+        return "stopped"
+    if pk == "pending_send":
+        return "pending"
+    return "pending"
 
 
 def _latest_cart_recovery_log_row_for_abandoned(
@@ -1797,6 +1819,20 @@ def _normal_recovery_phase_steps_payload(ac: AbandonedCart) -> dict[str, Any]:
         current_key = "pending_send"
     curr_idx = key_to_index[current_key]
     label_ar = order[curr_idx][1]
+    coarse = _normal_recovery_coarse_status(current_key)
+    try:
+        log.info(
+            "[NORMAL RECOVERY STATUS] status=%s phase_key=%s abandoned_cart_id=%s",
+            coarse,
+            current_key,
+            getattr(ac, "id", None),
+        )
+        if coarse != "pending":
+            print(f"[NORMAL RECOVERY STATUS] status={coarse}", flush=True)
+    except OSError:
+        pass
+    except (TypeError, ValueError):
+        pass
     steps_out: list[dict[str, Any]] = []
     for i, (k, lbl) in enumerate(order):
         steps_out.append(
@@ -1811,6 +1847,8 @@ def _normal_recovery_phase_steps_payload(ac: AbandonedCart) -> dict[str, Any]:
     return {
         "normal_recovery_phase_key": current_key,
         "normal_recovery_phase_label_ar": label_ar,
+        "normal_recovery_status": coarse,
+        "normal_recovery_hide_automation_cta": current_key != "pending_send",
         "normal_recovery_phase_index": curr_idx + 1,
         "normal_recovery_phase_total": len(order),
         "normal_recovery_phase_steps": steps_out,
