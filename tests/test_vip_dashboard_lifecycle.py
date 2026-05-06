@@ -107,6 +107,45 @@ class VipDashboardLifecycleTests(unittest.TestCase):
         self.assertNotIn(f'data-cart-row-id="{ac_conv.id}"', html)
         self.assertIn("data-vip-lifecycle-close", html)
 
+    @patch("main._cleanup_duplicate_vip_abandoned_rows", return_value=0)
+    def test_dashboard_shows_terminal_cards_when_toggle_query_on(
+        self, _noop_cleanup: object
+    ) -> None:
+        db.create_all()
+        _ensure_store_widget_schema()
+        slug = f"vip_lc_term_{uuid.uuid4().hex[:12]}"
+        store = Store(zid_store_id=slug)
+        db.session.add(store)
+        db.session.commit()
+
+        ac_open = AbandonedCart(
+            store_id=store.id,
+            zid_cart_id=f"topen-{uuid.uuid4().hex[:8]}",
+            cart_value=803.0,
+            status="abandoned",
+            vip_mode=True,
+            vip_lifecycle_status=None,
+            last_seen_at=datetime.now(timezone.utc),
+        )
+        ac_closed = AbandonedCart(
+            store_id=store.id,
+            zid_cart_id=f"tclosed-{uuid.uuid4().hex[:8]}",
+            cart_value=804.0,
+            status="abandoned",
+            vip_mode=True,
+            vip_lifecycle_status="closed",
+            last_seen_at=datetime.now(timezone.utc),
+        )
+        db.session.add_all([ac_open, ac_closed])
+        db.session.commit()
+
+        r = self.client.get("/dashboard/vip-cart-settings?vip_show_completed=1")
+        self.assertEqual(r.status_code, 200, r.text)
+        html = r.text.replace("&#34;", '"')
+        self.assertIn(f'data-cart-row-id="{ac_open.id}"', html)
+        self.assertIn(f'data-cart-row-id="{ac_closed.id}"', html)
+        self.assertIn("vip-completed-wrap", html)
+
 
 if __name__ == "__main__":
     unittest.main()

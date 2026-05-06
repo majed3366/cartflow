@@ -5377,11 +5377,38 @@ def _format_reason_ts(dt: Optional[datetime]) -> str:
 VIP_LIFECYCLE_VALUES = frozenset({"abandoned", "contacted", "closed", "converted"})
 
 _VIP_LIFECYCLE_LABELS_AR: dict[str, str] = {
-    "abandoned": "لم يُجرَ التواصل بعد",
+    "abandoned": "بانتظار التواصل",
     "contacted": "تم التواصل مع العميل",
-    "closed": "مغلوقة",
+    "closed": "تم الإغلاق",
     "converted": "تم البيع",
 }
+
+
+def _vip_dashboard_lifecycle_card_and_badge_classes(lc: str) -> tuple[str, str]:
+    """فئات ‎Tailwind‎ خفيفة: بطاقة (‎li‎) + شارة الحالة فقط."""
+    b = (
+        "inline-flex max-w-full items-center rounded-full border px-2.5 py-0.5 "
+        "text-xs font-semibold leading-tight"
+    )
+    if lc == "contacted":
+        return (
+            "border border-blue-200/90 bg-blue-50/60",
+            b + " border-blue-200 bg-blue-50 text-blue-900",
+        )
+    if lc == "converted":
+        return (
+            "border border-emerald-200/90 bg-emerald-50/50",
+            b + " border-emerald-200 bg-emerald-100/90 text-emerald-900",
+        )
+    if lc == "closed":
+        return (
+            "border border-slate-200/70 bg-slate-50/40 opacity-90",
+            b + " border-slate-200 bg-slate-100/80 text-slate-600",
+        )
+    return (
+        "border border-slate-200 bg-slate-50/80",
+        b + " border-slate-300 bg-slate-100 text-slate-700",
+    )
 
 
 def _vip_lifecycle_effective(ac: AbandonedCart) -> str:
@@ -5441,162 +5468,211 @@ def _vip_apply_lifecycle_status(group: list[AbandonedCart], status: str) -> None
         row.vip_lifecycle_status = s
 
 
-def _vip_priority_cart_alert_list() -> list[dict[str, Any]]:
-    """سلّات قسم «أولوية»: ‎vip_mode‎ و‎status=abandoned‎ لنفس المتجر الظاهر في لوحة الإعدادات."""
-    out: list[dict[str, Any]] = []
+VIP_PRIORITY_LC_ACTIVE_SQL = or_(
+    AbandonedCart.vip_lifecycle_status.is_(None),
+    AbandonedCart.vip_lifecycle_status == "abandoned",
+    AbandonedCart.vip_lifecycle_status == "contacted",
+)
+VIP_PRIORITY_LC_TERMINAL_SQL = or_(
+    AbandonedCart.vip_lifecycle_status == "closed",
+    AbandonedCart.vip_lifecycle_status == "converted",
+)
+
+
+def _vip_pick_priority_cart_groups(
+    full_rows: list[AbandonedCart],
+) -> list[list[AbandonedCart]]:
+    def _distinct_key(ac: AbandonedCart) -> str:
+        rs = (ac.recovery_session_id or "").strip()
+        if rs:
+            return f"rs:{rs}"
+        zi = (ac.zid_cart_id or "").strip()
+        if zi:
+            return f"zid:{zi}"
+        return f"id:{int(ac.id)}"
+
+    def _ts_norm(ac: AbandonedCart) -> datetime:
+        t = ac.last_seen_at
+        if t is None:
+            return datetime.min.replace(tzinfo=timezone.utc)
+        if t.tzinfo is None:
+            return t.replace(tzinfo=timezone.utc)
+        return t.astimezone(timezone.utc)
+
+    def _group_latest_ts(grp: list[AbandonedCart]) -> datetime:
+        if not grp:
+            return datetime.min.replace(tzinfo=timezone.utc)
+        return max(_ts_norm(ac) for ac in grp)
+
+    groups: dict[str, list[AbandonedCart]] = defaultdict(list)
+    for ac in full_rows:
+        groups[_distinct_key(ac)].append(ac)
+
+    sorted_group_keys = sorted(
+        groups.keys(),
+        key=lambda k: _group_latest_ts(groups[k]),
+        reverse=True,
+    )
+
+    picked_groups: list[list[AbandonedCart]] = []
+    for dk in sorted_group_keys:
+        grp = groups[dk]
+        grp_sorted = sorted(grp, key=_ts_norm, reverse=True)
+        picked_groups.append(grp_sorted)
+        if len(picked_groups) >= 24:
+            break
+    return picked_groups
+
+
+def _vip_dashboard_cart_alert_dict_from_group(
+    grp_sorted: list[AbandonedCart],
+    dash_store: Optional[Any],
+) -> dict[str, Any]:
+    ac = grp_sorted[0]
+    wa_digits = ""
+    for ac_g in grp_sorted:
+        raw_phone = _vip_dashboard_customer_phone_raw(ac_g, dash_store)
+        cand = _normalize_customer_phone_for_wa_me(raw_phone)
+        if cand:
+            wa_digits = cand
+            break
+    zid = (ac.zid_cart_id or "").strip()
+    cart_short = zid[:28] + ("…" if len(zid) > 28 else "") if zid else "—"
+    st = ((ac.status or "").strip() or "—")[:48]
+    hint_ar = (vip_offer_card_hint_ar(dash_store) if wa_digits else "") or ""
+    override_msg = vip_offer_manual_contact_whatsapp_body(dash_store)
+    if wa_digits and override_msg:
+        contact_msg = override_msg
+    else:
+        contact_msg = _vip_customer_contact_whatsapp_message(ac)
+    rs_log = (getattr(ac, "recovery_session_id", None) or "").strip()[:512]
+    log.info(
+        "[VIP PHONE RESOLVED] cart_id=%s session_id=%s customer_phone=%s",
+        zid[:255] if zid else "-",
+        rs_log if rs_log else "-",
+        wa_digits if wa_digits else "-",
+    )
     try:
-        _ensure_store_widget_schema()
-        db.create_all()
-        _ensure_default_store_for_recovery()
-        dash_store = _dashboard_recovery_store_row()
-        dash_id_raw = getattr(dash_store, "id", None) if dash_store is not None else None
-        scope_id: Optional[int] = None
-        q = (
-            db.session.query(AbandonedCart)
-            .filter(AbandonedCart.vip_mode.is_(True))
-            .filter(AbandonedCart.status == "abandoned")
-            .filter(
-                or_(
-                    AbandonedCart.vip_lifecycle_status.is_(None),
-                    AbandonedCart.vip_lifecycle_status == "abandoned",
-                    AbandonedCart.vip_lifecycle_status == "contacted",
-                )
-            )
+        print(
+            "[VIP PHONE RESOLVED]\n"
+            "cart_id=" + (zid[:255] if zid else "-") + "\n"
+            "session_id=" + (rs_log if rs_log else "-") + "\n"
+            "customer_phone=" + (wa_digits if wa_digits else "-"),
+            flush=True,
         )
-        if dash_id_raw is not None:
-            try:
-                vid = int(dash_id_raw)
-                scope_id = vid
-                q = q.filter(
-                    (AbandonedCart.store_id == vid) | (AbandonedCart.store_id.is_(None))  # type: ignore[union-attr]
-                )
-            except (TypeError, ValueError):
-                pass
+    except OSError:
+        pass
+    cart_link_raw = _vip_dashboard_cart_link(ac)
+    merchant_replies_ar = _vip_merchant_ready_reply_bodies(cart_link=cart_link_raw)
+    offer_ready = vip_offer_manual_contact_whatsapp_body(dash_store)
+    lc = _vip_lifecycle_effective(ac)
+    lbl = _VIP_LIFECYCLE_LABELS_AR.get(lc, _VIP_LIFECYCLE_LABELS_AR["abandoned"])
+    card_cls, badge_cls = _vip_dashboard_lifecycle_card_and_badge_classes(lc)
+    hide_actions = lc in ("closed", "converted")
+    return {
+        "id": ac.id,
+        "cart_value": float(ac.cart_value or 0.0),
+        "cart_short": cart_short or "—",
+        "last_seen": _format_reason_ts(ac.last_seen_at),
+        "status": st,
+        "vip_lifecycle_status": lc,
+        "vip_lifecycle_label_ar": lbl,
+        "vip_lifecycle_card_class": card_cls,
+        "vip_lifecycle_badge_class": badge_cls,
+        "vip_show_wa_opened_hint": lc == "contacted",
+        "vip_lifecycle_hide_actions": hide_actions,
+        "interactive": True,
+        "customer_wa_phone": wa_digits,
+        "contact_wa_message": contact_msg,
+        "vip_offer_hint_ar": hint_ar,
+        "merchant_reply_offer_ar": offer_ready,
+        "merchant_reply_offer_b64": _vip_wa_prefill_utf8_base64(offer_ready),
+        "merchant_reply_reminder_ar": merchant_replies_ar["reminder"],
+        "merchant_reply_reminder_b64": _vip_wa_prefill_utf8_base64(
+            merchant_replies_ar["reminder"]
+        ),
+        "merchant_reply_direct_ar": merchant_replies_ar["direct"],
+        "merchant_reply_direct_b64": _vip_wa_prefill_utf8_base64(
+            merchant_replies_ar["direct"]
+        ),
+    }
 
-        _cleanup_duplicate_vip_abandoned_rows(store_id_scope=scope_id)
 
-        def _distinct_key(ac: AbandonedCart) -> str:
-            rs = (ac.recovery_session_id or "").strip()
-            if rs:
-                return f"rs:{rs}"
-            zi = (ac.zid_cart_id or "").strip()
-            if zi:
-                return f"zid:{zi}"
-            return f"id:{int(ac.id)}"
+def _vip_priority_alert_rows_for_lc_clause(lc_clause: Any, *, log_suffix: str) -> list[dict[str, Any]]:
+    out: list[dict[str, Any]] = []
+    _ensure_store_widget_schema()
+    db.create_all()
+    _ensure_default_store_for_recovery()
+    dash_store = _dashboard_recovery_store_row()
+    dash_id_raw = getattr(dash_store, "id", None) if dash_store is not None else None
+    scope_id: Optional[int] = None
+    q = (
+        db.session.query(AbandonedCart)
+        .filter(AbandonedCart.vip_mode.is_(True))
+        .filter(AbandonedCart.status == "abandoned")
+        .filter(lc_clause)
+    )
+    if dash_id_raw is not None:
+        try:
+            vid = int(dash_id_raw)
+            scope_id = vid
+            q = q.filter(
+                (AbandonedCart.store_id == vid) | (AbandonedCart.store_id.is_(None))  # type: ignore[union-attr]
+            )
+        except (TypeError, ValueError):
+            pass
 
-        full_rows = list(q.order_by(AbandonedCart.last_seen_at.desc()).all())
+    _cleanup_duplicate_vip_abandoned_rows(store_id_scope=scope_id)
 
-        def _ts_norm(ac: AbandonedCart) -> datetime:
-            t = ac.last_seen_at
-            if t is None:
-                return datetime.min.replace(tzinfo=timezone.utc)
-            if t.tzinfo is None:
-                return t.replace(tzinfo=timezone.utc)
-            return t.astimezone(timezone.utc)
+    full_rows = list(q.order_by(AbandonedCart.last_seen_at.desc()).all())
 
-        n_match = len({_distinct_key(ac) for ac in full_rows})
-        sid_log = "none" if dash_id_raw is None else str(dash_id_raw)
-        log.info("[VIP PRIORITY QUERY]\nstore_id=%s\ncount=%s", sid_log, str(n_match))
-        print(f"[VIP PRIORITY QUERY] store_id={sid_log} count={n_match}")
-        print(f"[VIP PRIORITY QUERY] count={n_match}")
+    def _distinct_key_plain(acr: AbandonedCart) -> str:
+        rsv = (acr.recovery_session_id or "").strip()
+        if rsv:
+            return f"rs:{rsv}"
+        zzz = (acr.zid_cart_id or "").strip()
+        if zzz:
+            return f"zid:{zzz}"
+        return f"id:{int(acr.id)}"
 
-        def _group_latest_ts(grp: list[AbandonedCart]) -> datetime:
-            if not grp:
-                return datetime.min.replace(tzinfo=timezone.utc)
-            return max(_ts_norm(ac) for ac in grp)
-
-        groups: dict[str, list[AbandonedCart]] = defaultdict(list)
-        for ac in full_rows:
-            groups[_distinct_key(ac)].append(ac)
-
-        sorted_group_keys = sorted(
-            groups.keys(),
-            key=lambda k: _group_latest_ts(groups[k]),
-            reverse=True,
+    n_match = len({_distinct_key_plain(ac) for ac in full_rows})
+    sid_log = "none" if dash_id_raw is None else str(dash_id_raw)
+    log.info(
+        "[VIP PRIORITY QUERY %s]\nstore_id=%s\ncount=%s", log_suffix, sid_log, str(n_match)
+    )
+    try:
+        print(
+            f"[VIP PRIORITY QUERY {log_suffix}] store_id={sid_log} count={n_match}",
+            flush=True,
         )
+    except OSError:
+        pass
 
-        picked_groups: list[list[AbandonedCart]] = []
-        for dk in sorted_group_keys:
-            grp = groups[dk]
-            grp_sorted = sorted(grp, key=_ts_norm, reverse=True)
-            picked_groups.append(grp_sorted)
-            if len(picked_groups) >= 24:
-                break
+    for grp_sorted in _vip_pick_priority_cart_groups(full_rows):
+        out.append(_vip_dashboard_cart_alert_dict_from_group(grp_sorted, dash_store))
+    return out
 
-        for grp_sorted in picked_groups:
-            ac = grp_sorted[0]
 
-            wa_digits = ""
-            for ac_g in grp_sorted:
-                raw_phone = _vip_dashboard_customer_phone_raw(ac_g, dash_store)
-                cand = _normalize_customer_phone_for_wa_me(raw_phone)
-                if cand:
-                    wa_digits = cand
-                    break
-            zid = (ac.zid_cart_id or "").strip()
-            cart_short = zid[:28] + ("…" if len(zid) > 28 else "") if zid else "—"
-            st = ((ac.status or "").strip() or "—")[:48]
-            hint_ar = (vip_offer_card_hint_ar(dash_store) if wa_digits else "") or ""
-            override_msg = vip_offer_manual_contact_whatsapp_body(dash_store)
-            if wa_digits and override_msg:
-                contact_msg = override_msg
-            else:
-                contact_msg = _vip_customer_contact_whatsapp_message(ac)
-            rs_log = (getattr(ac, "recovery_session_id", None) or "").strip()[:512]
-            log.info(
-                "[VIP PHONE RESOLVED] cart_id=%s session_id=%s customer_phone=%s",
-                zid[:255] if zid else "-",
-                rs_log if rs_log else "-",
-                wa_digits if wa_digits else "-",
-            )
-            try:
-                print(
-                    "[VIP PHONE RESOLVED]\n"
-                    "cart_id=" + (zid[:255] if zid else "-") + "\n"
-                    "session_id=" + (rs_log if rs_log else "-") + "\n"
-                    "customer_phone=" + (wa_digits if wa_digits else "-"),
-                    flush=True,
-                )
-            except OSError:
-                pass
-            cart_link_raw = _vip_dashboard_cart_link(ac)
-            merchant_replies_ar = _vip_merchant_ready_reply_bodies(
-                cart_link=cart_link_raw
-            )
-            offer_ready = vip_offer_manual_contact_whatsapp_body(dash_store)
-            lc = _vip_lifecycle_effective(ac)
-            out.append(
-                {
-                    "id": ac.id,
-                    "cart_value": float(ac.cart_value or 0.0),
-                    "cart_short": cart_short or "—",
-                    "last_seen": _format_reason_ts(ac.last_seen_at),
-                    "status": st,
-                    "vip_lifecycle_status": lc,
-                    "vip_lifecycle_label_ar": _VIP_LIFECYCLE_LABELS_AR.get(
-                        lc, _VIP_LIFECYCLE_LABELS_AR["abandoned"]
-                    ),
-                    "vip_contact_done": lc == "contacted",
-                    "interactive": True,
-                    "customer_wa_phone": wa_digits,
-                    "contact_wa_message": contact_msg,
-                    "vip_offer_hint_ar": hint_ar,
-                    "merchant_reply_offer_ar": offer_ready,
-                    "merchant_reply_offer_b64": _vip_wa_prefill_utf8_base64(offer_ready),
-                    "merchant_reply_reminder_ar": merchant_replies_ar["reminder"],
-                    "merchant_reply_reminder_b64": _vip_wa_prefill_utf8_base64(
-                        merchant_replies_ar["reminder"]
-                    ),
-                    "merchant_reply_direct_ar": merchant_replies_ar["direct"],
-                    "merchant_reply_direct_b64": _vip_wa_prefill_utf8_base64(
-                        merchant_replies_ar["direct"]
-                    ),
-                }
-            )
+def _vip_priority_cart_alert_list() -> list[dict[str, Any]]:
+    """قائمة ‎VIP‎ النشطة (بانتظار التواصل / تم التواصل) للوحة الإعدادات."""
+    try:
+        return _vip_priority_alert_rows_for_lc_clause(VIP_PRIORITY_LC_ACTIVE_SQL, log_suffix="ACTIVE")
     except (SQLAlchemyError, OSError) as e:
         db.session.rollback()
         log.warning("vip_priority_cart_alerts: db read failed: %s", e)
-    return out
+    return []
+
+
+def _vip_priority_completed_cart_alert_list() -> list[dict[str, Any]]:
+    """المغلقة والمُباعة — لعرض اختياري في اللوحة فقط."""
+    try:
+        return _vip_priority_alert_rows_for_lc_clause(
+            VIP_PRIORITY_LC_TERMINAL_SQL, log_suffix="TERMINAL"
+        )
+    except (SQLAlchemyError, OSError) as e:
+        db.session.rollback()
+        log.warning("vip_priority_completed_cart_alerts: db read failed: %s", e)
+    return []
 
 
 def _vip_cart_alerts_merchant_list() -> list[dict[str, Any]]:
@@ -5821,7 +5897,12 @@ def dashboard_recovery_settings(request: Request):
 @app.get("/dashboard/vip-cart-settings")
 def dashboard_vip_cart_settings(request: Request):
     """السلال المميزة (VIP) — عتبة عبر ‎GET/POST /api/recovery-settings‎؛ قائمة أولوية حقيقية فقط."""
+    qcomp = (request.query_params.get("vip_show_completed") or "").strip().lower()
+    vip_show_completed = qcomp in ("1", "true", "yes", "on")
     vip_priority_alerts = _vip_priority_cart_alert_list()
+    vip_completed_alerts = (
+        _vip_priority_completed_cart_alert_list() if vip_show_completed else []
+    )
     merchant_followup_actions = merchant_followup_actions_for_dashboard(limit=10)
     return templates.TemplateResponse(
         request,
@@ -5829,6 +5910,8 @@ def dashboard_vip_cart_settings(request: Request):
         {
             "request": request,
             "vip_priority_alerts": vip_priority_alerts,
+            "vip_completed_alerts": vip_completed_alerts,
+            "vip_show_completed": vip_show_completed,
             "merchant_followup_actions": merchant_followup_actions,
         },
     )
