@@ -38,6 +38,8 @@ class Store(Base):
     recovery_attempts = Column(Integer, default=1, nullable=False)
     # دقائق التهدئة قبل إرسال واتساب الاسترجاع؛ ‎NULL‎ = استخدام ‎config_system + recovery_delay‎ كما سابقاً.
     recovery_delay_minutes = Column(Integer, nullable=True)
+    # فترة الانتظار بعد الإرسال الأول قبل المحاولة الثانية (استرجاع عادي)؛ ‎NULL‎ = افتراضي آمن في الكود.
+    second_attempt_delay_minutes = Column(Integer, nullable=True)
     created_at = Column(
         DateTime, default=lambda: datetime.now(timezone.utc)
     )

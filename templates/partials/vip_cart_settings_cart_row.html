@@ -21,7 +21,12 @@
   <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-5">
     <div class="min-w-0 flex-1 space-y-2 text-right">
       <p class="m-0 text-lg font-bold tabular-nums tracking-tight text-slate-900">{{ "%.0f"|format(vc.cart_value) }} <span class="text-sm font-semibold text-slate-500">ريال</span></p>
-      <div class="mt-2 flex flex-wrap items-center justify-end gap-1" role="list" aria-label="مراحل الاسترجاع الآلي">
+      <div class="mt-2 flex flex-wrap items-center justify-end gap-1" role="list" aria-label="مراحل الاسترجاع">
+        {% set ncap = vc.normal_recovery_attempt_cap | default(1) | int %}
+        {% set nsent = vc.normal_recovery_attempt_sent | default(0) | int %}
+        {% if ncap >= 2 %}
+        <span class="inline-flex items-center rounded-md border border-cyan-100/90 bg-white/95 px-1.5 py-0.5 text-[9px] font-bold tabular-nums text-cyan-950" title="محاولات رسائل الواتساب" aria-label="تقدم المحاولات">{{ nsent }} → {{ ncap }}</span>
+        {% endif %}
         {% for ph in vc.normal_recovery_phase_steps | default([]) %}
         <span role="listitem" title="{{ ph.label_ar }}"
           class="inline-flex h-7 min-w-[1.625rem] items-center justify-center rounded-full border px-1.5 text-[9px] font-semibold leading-none transition-colors {% if ph.current %}border-cyan-500/80 bg-cyan-50 text-cyan-950 ring-1 ring-cyan-200/60{% elif ph.done %}border-slate-200 bg-slate-100/95 text-slate-500{% else %}border-slate-100/90 bg-white/90 text-slate-400{% endif %}">

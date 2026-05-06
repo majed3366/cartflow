@@ -29,6 +29,7 @@ from main import (
     _session_recovery_returned,
     _session_recovery_send_count,
     _session_recovery_sent,
+    _session_recovery_seq_logged,
     _session_recovery_started,
     app,
 )
@@ -48,6 +49,7 @@ def _reset_recovery_memory() -> None:
         _session_recovery_multi_attempt_cap.clear()
         _session_recovery_multi_verified_indexes.clear()
         _dev_delay_test_send_count.clear()
+        _session_recovery_seq_logged.clear()
     recovery_phone_memory_clear()
 
 

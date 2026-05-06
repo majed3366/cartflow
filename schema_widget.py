@@ -616,6 +616,37 @@ def _ensure_store_recovery_delay_minutes_column(db: Any) -> None:
         log.debug("schema_widget recovery_delay_minutes: %s", e)
 
 
+def _ensure_store_second_attempt_delay_minutes_column(db: Any) -> None:
+    """‎second_attempt_delay_minutes‎ على ‎stores‎ — فاصل المحاولة الثانية للاسترجاع العادي."""
+    try:
+        db.create_all()
+        insp = inspect(db.engine)
+        if not insp.has_table("stores"):
+            return
+        dialect = getattr(getattr(db.engine, "dialect", None), "name", "") or ""
+        existing = {c["name"] for c in insp.get_columns("stores")}
+        if "second_attempt_delay_minutes" in existing:
+            return
+        try:
+            if dialect in ("postgresql", "postgres"):
+                stmt = (
+                    "ALTER TABLE stores ADD COLUMN IF NOT EXISTS "
+                    "second_attempt_delay_minutes INTEGER"
+                )
+            else:
+                stmt = (
+                    "ALTER TABLE stores ADD COLUMN "
+                    "second_attempt_delay_minutes INTEGER"
+                )
+            db.session.execute(text(stmt))
+            db.session.commit()
+        except (OSError, SQLAlchemyError, IntegrityError):
+            db.session.rollback()
+    except (OSError, SQLAlchemyError) as e:
+        db.session.rollback()
+        log.debug("schema_widget second_attempt_delay_minutes: %s", e)
+
+
 def _ensure_store_vip_cart_threshold_column(db: Any) -> None:
     """عتبة السلة المميزة (‎vip_cart_threshold‎) على ‎stores‎ — ‎NULL‎ = معطّل."""
     try:
@@ -745,6 +776,7 @@ def _ensure_store_cartflow_widget_recovery_gate_columns(db: Any) -> None:
 def ensure_store_widget_schema(db: Any) -> None:
     """يُنادى من مسارات ‎API‎ (لا يعتمد على ‎main‎)."""
     _ensure_store_recovery_delay_minutes_column(db)
+    _ensure_store_second_attempt_delay_minutes_column(db)
     _ensure_reason_subcategory_columns(db)
     ensure_recovery_reason_widget_schema(db)
     _ensure_recovery_reason_customer_phone_column(db)

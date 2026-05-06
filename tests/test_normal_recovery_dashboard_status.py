@@ -148,7 +148,10 @@ class NormalRecoveryDashboardStatusTests(unittest.TestCase):
         db.session.commit()
         payload = _normal_recovery_phase_steps_payload(ac)
         self.assertEqual(payload["normal_recovery_phase_key"], "reminder_sent")
-        self.assertEqual(payload["normal_recovery_phase_label_ar"], "تم إرسال الرسالة")
+        self.assertEqual(
+            payload["normal_recovery_phase_label_ar"],
+            "تم إرسال الرسالة الثانية",
+        )
         self.assertEqual(payload["normal_recovery_status"], "sent")
 
     def test_pending_second_when_max_attempts_gte_2(self) -> None:

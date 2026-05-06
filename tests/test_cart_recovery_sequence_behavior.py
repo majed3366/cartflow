@@ -13,7 +13,7 @@ from __future__ import annotations
 import os
 import unittest
 from datetime import datetime, timezone
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 from fastapi.testclient import TestClient
 from sqlalchemy import text
@@ -21,7 +21,7 @@ from sqlalchemy import text
 import main
 from main import app
 from extensions import db
-from models import CartRecoveryLog
+from models import CartRecoveryLog, Store
 from tests.test_recovery_isolation import (
     _post_recovery_reason_for_session,
     _reset_recovery_memory,
@@ -147,6 +147,42 @@ class CartRecoverySequenceBehaviorTests(unittest.TestCase):
         self.assertEqual(1, mock_send.call_count, "only step1 mock send")
         self.assertIn("stopped_converted", states)
         self.assertIn("mock_sent", states)
+
+    @patch("main._second_attempt_delay_minutes_from_store", return_value=0)
+    @patch("main.asyncio.sleep", new_callable=AsyncMock)
+    @patch("main._persist_cart_recovery_log")
+    @patch("main.send_whatsapp")
+    @patch("main.recovery_uses_real_whatsapp", return_value=False)
+    @patch("main.get_recovery_delay", return_value=0)
+    def test_6_two_sequential_sends_when_store_allows_two(
+        self,
+        _d: object,
+        _ur: object,
+        mock_send: object,
+        _p: object,
+        _sleep: object,
+        _gap: object,
+    ) -> None:
+        """Normal recovery with recovery_attempts=2 sends follow-up after gap (gap patched to 0)."""
+        mock_send.return_value = {"ok": True}
+        db.create_all()
+        st = db.session.query(Store).filter_by(zid_store_id="demo").first()
+        self.assertIsNotNone(st, "demo store row required")
+        st.recovery_attempts = 2
+        db.session.commit()
+        sid = "seq-normal-two"
+        try:
+            _post_recovery_reason_for_session(self.client, "demo", sid)
+            r = self.client.post("/api/cart-event", json=_abandon("demo", sid))
+            self.assertEqual(r.status_code, 200, r.text)
+            self.assertEqual(2, mock_send.call_count, mock_send.call_args_list)
+            bodies = [c[0][1] for c in mock_send.call_args_list]
+            self.assertNotEqual(bodies[0].strip(), bodies[1].strip())
+        finally:
+            st2 = db.session.query(Store).filter_by(zid_store_id="demo").first()
+            if st2 is not None:
+                st2.recovery_attempts = 1
+                db.session.commit()
 
     @patch("main.send_whatsapp")
     @patch("main.recovery_uses_real_whatsapp", return_value=False)
