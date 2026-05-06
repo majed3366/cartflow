@@ -706,18 +706,6 @@
         });
       });
 
-      document.querySelectorAll("[data-normal-automation-primary]").forEach(function (btn) {
-        btn.addEventListener("click", function () {
-          if (btn.hasAttribute("disabled")) return;
-          var li = btn.closest('[data-recovery-tier="normal"]');
-          var st = li ? li.querySelector("[data-normal-automation-status]") : null;
-          if (st) {
-            st.textContent =
-              "واجهة التحكم بالأتمتة: الاسترجاع الفعلي يخضع لإعدادات المتجر والجدولة. لا يُفتح واتساب يدوياً من هذه البطاقة.";
-          }
-        });
-      });
-
       function applySmartActionHighlights() {
         document.querySelectorAll("[data-vip-cart-li]").forEach(function (li) {
           var target = (li.getAttribute("data-smart-cta-highlight") || "").trim();

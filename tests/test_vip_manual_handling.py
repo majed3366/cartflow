@@ -22,12 +22,18 @@ class VipManualHandlingTests(unittest.TestCase):
         _reset_recovery_memory()
         self.client = TestClient(app)
 
+    @patch("main._try_send_vip_neutral_customer_recovery_whatsapp")
     @patch("main._load_store_row_for_recovery")
     @patch("main.try_send_vip_merchant_whatsapp_alert", return_value={"ok": False})
     @patch("main._persist_cart_recovery_log")
     @patch("main.send_whatsapp")
     def test_vip_cart_abandon_skips_customer_whatsapp(
-        self, mock_send: object, _p: object, _m: object, mock_store: object
+        self,
+        mock_send: object,
+        _p: object,
+        _m: object,
+        mock_store: object,
+        _vip_neutral: object,
     ) -> None:
         mock_store.return_value = SimpleNamespace(
             zid_store_id="demo",

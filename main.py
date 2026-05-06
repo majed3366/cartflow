@@ -202,6 +202,7 @@ from services.whatsapp_queue import start_whatsapp_queue_worker  # noqa: E402
 from services.recovery_delay import get_recovery_delay  # noqa: E402
 from services.whatsapp_send import (  # noqa: E402
     WA_TRACE_DELAY_UNSPECIFIED,
+    _max_recovery_attempts,
     _recovery_delay_minutes_from_store,
     emit_recovery_wa_send_trace,
     recovery_uses_real_whatsapp,
@@ -1710,9 +1711,12 @@ def _reason_tag_for_abandoned_cart(ac: AbandonedCart) -> Optional[str]:
 _NORMAL_RECOVERY_PHASE_ORDER: list[tuple[str, str]] = [
     ("pending_send", "بانتظار الإرسال"),
     ("first_message_sent", "تم إرسال الرسالة الأولى"),
+    ("pending_second_attempt", "بانتظار المحاولة الثانية"),
     ("reminder_sent", "تم إرسال الرسالة"),
-    ("stopped_manual", "تم إيقاف الاسترجاع"),
-    ("stopped_purchase", "توقف بعد الشراء"),
+    ("customer_returned", "عاد العميل"),
+    ("ignored", "متجاهل"),
+    ("stopped_manual", "تم الإيقاف"),
+    ("stopped_purchase", "تم التحويل"),
     ("recovery_complete", "اكتمل الاسترجاع"),
 ]
 
@@ -1753,12 +1757,18 @@ def _cart_recovery_sent_real_count_for_abandoned(ac: AbandonedCart) -> int:
 
 def _normal_recovery_coarse_status(phase_key: str) -> str:
     """
-    حالة مدورة البطاقة للاسترجاع العادي — جاهزة لتوسعة ‎replied‎ لاحقاً.
-    ‎pending‎ / ‎sent‎ / ‎replied‎ / ‎converted‎ / ‎stopped‎
+    حالة البطاقة للاسترجاع العادي — توسعة لـ ‎replied‎ لاحقاً.
+    ‎pending‎ / ‎sent‎ / ‎replied‎ / ‎converted‎ / ‎stopped‎ / ‎returned‎ / ‎ignored‎
     """
     pk = (phase_key or "").strip()
     if pk in ("first_message_sent", "reminder_sent"):
         return "sent"
+    if pk == "pending_second_attempt":
+        return "pending"
+    if pk == "customer_returned":
+        return "returned"
+    if pk == "ignored":
+        return "ignored"
     if pk == "recovery_complete":
         return "converted"
     if pk in ("stopped_manual", "stopped_purchase"):
@@ -1766,6 +1776,45 @@ def _normal_recovery_coarse_status(phase_key: str) -> str:
     if pk == "pending_send":
         return "pending"
     return "pending"
+
+
+def _store_row_for_abandoned_cart(ac: AbandonedCart) -> Optional[Store]:
+    """صف ‎Store‎ لحساب ‎max_recovery_attempts‎ لبطاقة الاسترجاع العادي."""
+    sid_raw = getattr(ac, "store_id", None)
+    try:
+        if sid_raw is not None:
+            db.create_all()
+            row = db.session.query(Store).filter_by(id=int(sid_raw)).first()
+            if row is not None:
+                return row
+    except (TypeError, ValueError, SQLAlchemyError, OSError):
+        db.session.rollback()
+    return _dashboard_recovery_store_row()
+
+
+def _log_normal_recovery_auto_start(
+    *,
+    store_slug: str,
+    session_id: str,
+    cart_id: Optional[str],
+    mode: str,
+) -> None:
+    cid = (cart_id or "").strip() or "-"
+    sid = (session_id or "").strip() or "-"
+    try:
+        log.info(
+            "[NORMAL RECOVERY AUTO START] store_slug=%s session_id=%s cart_id=%s mode=%s",
+            store_slug,
+            sid,
+            cid,
+            mode,
+        )
+        print(
+            f"[NORMAL RECOVERY AUTO START] session_id={sid} cart_id={cid} mode={mode}",
+            flush=True,
+        )
+    except OSError:
+        pass
 
 
 def _latest_cart_recovery_log_row_for_abandoned(
@@ -1803,9 +1852,21 @@ def _normal_recovery_dashboard_phase_key(ac: AbandonedCart) -> str:
         ls = (getattr(log_last, "status", None) or "").strip().lower()
         if ls == "stopped_converted":
             return "stopped_purchase"
+        if ls == "skipped_anti_spam":
+            return "customer_returned"
+        if ls in ("skipped_missing_reason_tag", "skipped_user_rejected_help"):
+            return "ignored"
     sent_n = _cart_recovery_sent_real_count_for_abandoned(ac)
+    store_ac = _store_row_for_abandoned_cart(ac)
+    try:
+        max_a = int(_max_recovery_attempts(store_ac))
+    except (TypeError, ValueError):
+        max_a = 1
+    max_a = max(0, max_a)
     if sent_n >= 2:
         return "reminder_sent"
+    if sent_n == 1 and max_a >= 2:
+        return "pending_second_attempt"
     if sent_n == 1:
         return "first_message_sent"
     return "pending_send"
@@ -1822,13 +1883,16 @@ def _normal_recovery_phase_steps_payload(ac: AbandonedCart) -> dict[str, Any]:
     coarse = _normal_recovery_coarse_status(current_key)
     try:
         log.info(
-            "[NORMAL RECOVERY STATUS] status=%s phase_key=%s abandoned_cart_id=%s",
+            "[NORMAL RECOVERY STATUS UPDATE] status=%s phase_key=%s abandoned_cart_id=%s",
             coarse,
             current_key,
             getattr(ac, "id", None),
         )
         if coarse != "pending":
-            print(f"[NORMAL RECOVERY STATUS] status={coarse}", flush=True)
+            print(
+                f"[NORMAL RECOVERY STATUS UPDATE] status={coarse}",
+                flush=True,
+            )
     except OSError:
         pass
     except (TypeError, ValueError):
@@ -1848,12 +1912,9 @@ def _normal_recovery_phase_steps_payload(ac: AbandonedCart) -> dict[str, Any]:
         "normal_recovery_phase_key": current_key,
         "normal_recovery_phase_label_ar": label_ar,
         "normal_recovery_status": coarse,
-        "normal_recovery_hide_automation_cta": current_key != "pending_send",
         "normal_recovery_phase_index": curr_idx + 1,
         "normal_recovery_phase_total": len(order),
         "normal_recovery_phase_steps": steps_out,
-        "normal_recovery_activate_disabled": current_key
-        in ("stopped_manual", "stopped_purchase", "recovery_complete"),
     }
 
 
@@ -3685,6 +3746,12 @@ async def handle_cart_abandoned(
             cart_id=cart_id_log,
             abandon_event_phone=abandon_evt_phone,
         )
+        _log_normal_recovery_auto_start(
+            store_slug=store_slug,
+            session_id=session_id_log,
+            cart_id=cart_id_log,
+            mode="multi_message",
+        )
         return {
             "recovery_scheduled": True,
             "recovery_multi_message": True,
@@ -3694,6 +3761,12 @@ async def handle_cart_abandoned(
         }
 
     abandon_mono = time.monotonic()
+    _log_normal_recovery_auto_start(
+        store_slug=store_slug,
+        session_id=session_id_log,
+        cart_id=cart_id_log,
+        mode="delay_poll",
+    )
     asyncio.create_task(
         _run_recovery_dispatch_cart_abandoned(
             recovery_key,
@@ -5806,7 +5879,7 @@ def _vip_dashboard_cart_alert_dict_from_group(
         }
     )
     smart_cta = smart_action_cta_target(smart_action["action_key"])
-    smart_cta_target_display = "automation_arm" if not is_vip_card else smart_cta
+    smart_cta_target_display = "none" if not is_vip_card else smart_cta
     out_payload: dict[str, Any] = {
         "id": ac.id,
         "cart_value": float(ac.cart_value or 0.0),
