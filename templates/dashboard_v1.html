@@ -523,37 +523,11 @@
         {% endif %}
       </header>
 
-      <main class="w-full space-y-3 px-4 py-5 pb-24 md:max-w-5xl md:space-y-4 md:p-5 md:pb-24">
+      <main class="w-full space-y-2.5 px-4 py-4 pb-24 md:max-w-5xl md:space-y-3 md:px-5 md:py-4 md:pb-24">
         {% set quality_rows = reason_bar | selectattr("key", "equalto", "quality") | list %}
 
         {% set feed_n = live_feed|length %}
         {% set msg_est = recovered_carts * 2 + feed_n * 3 %}
-        <!-- قسم مؤشرات -->
-        <section aria-labelledby="kpi-heading">
-          <h2 id="kpi-heading" class="mb-2 border-b-2 border-zid-500/35 pb-1.5 text-base font-bold leading-snug text-slate-800 md:text-sm md:leading-normal">الرئيسية</h2>
-          <div class="grid grid-cols-2 gap-2 md:gap-3">
-            <div class="rounded-2xl border border-cyan-100 bg-gradient-to-br from-cyan-50 to-white p-3 shadow-sm md:p-4">
-              <p class="mb-0.5 text-lg md:text-xl" aria-hidden="true">🛒</p>
-              <p class="text-xl font-bold leading-none text-teal-700 md:text-2xl">{{ recovered_carts }}</p>
-              <p class="mt-1 text-[11px] font-medium leading-snug text-slate-600 md:text-xs">سلال منفذة</p>
-            </div>
-            <div class="rounded-2xl border border-amber-100 bg-gradient-to-br from-amber-50 to-white p-3 shadow-sm md:p-4">
-              <p class="mb-0.5 text-lg md:text-xl" aria-hidden="true">💰</p>
-              <p class="text-xl font-bold leading-none text-amber-700 md:text-2xl">{{ "%.0f"|format(total_revenue) }}</p>
-              <p class="mt-1 text-[11px] font-medium leading-snug text-slate-600 md:text-xs">ريال مسترد</p>
-            </div>
-            <div class="rounded-2xl border border-violet-100 bg-gradient-to-br from-violet-50 to-white p-3 shadow-sm md:p-4">
-              <p class="mb-0.5 text-lg md:text-xl" aria-hidden="true">✉️</p>
-              <p class="text-xl font-bold leading-none text-violet-700 md:text-2xl">{{ msg_est }}</p>
-              <p class="mt-1 text-[11px] font-medium leading-snug text-slate-600 md:text-xs">رسائل أرسلت</p>
-            </div>
-            <div class="rounded-2xl border border-sky-100 bg-gradient-to-br from-sky-50 to-white p-3 shadow-sm md:p-4">
-              <p class="mb-0.5 text-lg md:text-xl" aria-hidden="true">📈</p>
-              <p class="text-xl font-bold leading-none text-sky-700 md:text-2xl">{{ "%.0f"|format(conversion_pct) }}%</p>
-              <p class="mt-1 text-[11px] font-medium leading-snug text-slate-600 md:text-xs">معدل الاسترداد</p>
-            </div>
-          </div>
-        </section>
 
         {% set pr = reason_bar | selectattr("key", "equalto", "price") | list %}
         {% set sr = reason_bar | selectattr("key", "equalto", "shipping") | list %}
@@ -567,76 +541,55 @@
         {% set c_qual = qr[0].count if qr | length > 0 else 0 %}
         {% set mx4 = [c_price, c_ship, c_war, c_think, c_qual, 1] | max %}
 
-        <!-- أسباب التردد -->
-        <section aria-labelledby="reasons-heading">
-          <h2 id="reasons-heading" class="mb-2 border-b-2 border-zid-500/35 pb-1.5 text-base font-bold leading-snug text-slate-800 md:text-sm md:leading-normal">أسباب التردد</h2>
-          <section class="cf-reasons-vchart-wrap rounded-2xl border border-slate-200 bg-white p-3 shadow-sm md:p-3">
-            <div class="cf-reasons-vchart" role="img" aria-label="توزيع أسباب التردد">
-              {% for key, lbl, barc in [
-                ("price", "السعر", "#f97316"),
-                ("shipping", "الشحن", "#3b82f6"),
-                ("warranty", "الضمان", "#0ea5e9"),
-                ("quality", "الجودة", "#9333ea"),
-                ("thinking", "تردد", "#22c55e"),
-              ] %}
-              {% set kr = reason_bar | selectattr("key", "equalto", key) | list %}
-              {% set cnt = kr[0].count if kr | length > 0 else 0 %}
-              {% set wp = (100.0 * cnt / mx4) | round(1) if mx4 > 0 else 0 %}
-              {% set hp = (10 if (cnt > 0 and wp < 10) else wp) %}
-              <div class="cf-reasons-vcol">
-                <div class="cf-reasons-vtrack" aria-hidden="true">
-                  <div class="cf-reasons-vbar-inner">
-                    <div class="cf-reasons-vbar" style="height: {{ hp }}%; background: {{ barc }}"></div>
-                  </div>
-                </div>
-                <span class="cf-reasons-vlbl">{{ lbl }}</span>
-                <span class="cf-reasons-vnum">{{ cnt }}</span>
-              </div>
-              {% endfor %}
-            </div>
-          </section>
-        </section>
+        {% set hesitation_slugs = ('price', 'shipping', 'warranty', 'thinking', 'quality') %}
+        {% set ns = namespace(top_key='thinking', top_count=-1) %}
+        {% for r in reason_bar %}
+          {% if r.key in hesitation_slugs and r.count > ns.top_count %}
+            {% set ns.top_key = r.key %}
+            {% set ns.top_count = r.count %}
+          {% endif %}
+        {% endfor %}
+        {% set trend_anchor = 'cf-msg-template-thinking' if ns.top_key == 'thinking' else ('cf-msg-template-' ~ ns.top_key) %}
 
-        <!-- آخر النشاطات -->
-        <section aria-labelledby="live-heading">
-          <h2 id="live-heading" class="mb-2 border-b-2 border-zid-500/35 pb-1.5 text-base font-bold leading-snug text-slate-800 md:text-sm md:leading-normal">آخر النشاطات</h2>
-          <div class="cf-dash-card max-w-full overflow-hidden p-0">
-            {% for row in live_feed %}
-            {% set rk = row.reason_key | default("", true) | lower %}
-            {% set ic = "📌" %}
-            {% if rk == "price" %}{% set ic = "💳" %}
-            {% elif rk == "shipping" %}{% set ic = "🚚" %}
-            {% elif rk == "warranty" %}{% set ic = "🛡️" %}
-            {% elif rk == "thinking" %}{% set ic = "💭" %}
-            {% elif rk == "quality" %}{% set ic = "⭐" %}
-            {% endif %}
-            <div class="flex gap-2 border-b border-slate-100 px-3 py-2.5 last:border-0">
-              <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-lg" aria-hidden="true">{{ ic }}</span>
-              <div class="min-w-0 flex-1 text-right">
-                <p class="text-[13px] font-semibold leading-snug text-slate-900">{{ row.product }} — {{ row.reason_ar }}</p>
-                <p class="mt-0.5 text-[11px] text-slate-500" data-cf-activity-ts="{{ row.time_str }}">{{ row.time_str }}</p>
-              </div>
+        <!-- قسم مؤشرات — مضغوط -->
+        <section aria-labelledby="kpi-heading">
+          <h2 id="kpi-heading" class="mb-1.5 border-b-2 border-zid-500/35 pb-1 text-base font-bold leading-snug text-slate-800 md:text-sm md:leading-normal">الرئيسية</h2>
+          <div class="grid grid-cols-2 gap-1.5 sm:gap-2 md:grid-cols-4 md:gap-2">
+            <div class="rounded-xl border border-cyan-100 bg-gradient-to-br from-cyan-50 to-white px-2.5 py-2 shadow-sm sm:px-3 sm:py-2.5 md:py-2.5">
+              <p class="mb-0 text-sm leading-none sm:text-base" aria-hidden="true">🛒</p>
+              <p class="mt-0.5 text-xl font-bold tabular-nums leading-none text-teal-700 md:text-2xl">{{ recovered_carts }}</p>
+              <p class="mt-0.5 text-[10px] font-semibold leading-tight text-slate-600 md:text-[11px]">سلال منفذة</p>
             </div>
-            {% else %}
-            <p class="px-4 py-8 text-center text-sm text-slate-500">لا يوجد نشاط بعد.</p>
-            {% endfor %}
+            <div class="rounded-xl border border-amber-100 bg-gradient-to-br from-amber-50 to-white px-2.5 py-2 shadow-sm sm:px-3 sm:py-2.5 md:py-2.5">
+              <p class="mb-0 text-sm leading-none sm:text-base" aria-hidden="true">💰</p>
+              <p class="mt-0.5 text-xl font-bold tabular-nums leading-none text-amber-700 md:text-2xl">{{ "%.0f"|format(total_revenue) }}</p>
+              <p class="mt-0.5 text-[10px] font-semibold leading-tight text-slate-600 md:text-[11px]">ريال مسترد</p>
+            </div>
+            <div class="rounded-xl border border-violet-100 bg-gradient-to-br from-violet-50 to-white px-2.5 py-2 shadow-sm sm:px-3 sm:py-2.5 md:py-2.5">
+              <p class="mb-0 text-sm leading-none sm:text-base" aria-hidden="true">✉️</p>
+              <p class="mt-0.5 text-xl font-bold tabular-nums leading-none text-violet-700 md:text-2xl">{{ msg_est }}</p>
+              <p class="mt-0.5 text-[10px] font-semibold leading-tight text-slate-600 md:text-[11px]">رسائل أرسلت</p>
+            </div>
+            <div class="rounded-xl border border-sky-100 bg-gradient-to-br from-sky-50 to-white px-2.5 py-2 shadow-sm sm:px-3 sm:py-2.5 md:py-2.5">
+              <p class="mb-0 text-sm leading-none sm:text-base" aria-hidden="true">📈</p>
+              <p class="mt-0.5 text-xl font-bold tabular-nums leading-none text-sky-700 md:text-2xl">{{ "%.0f"|format(conversion_pct) }}%</p>
+              <p class="mt-0.5 text-[10px] font-semibold leading-tight text-slate-600 md:text-[11px]">معدل الاسترداد</p>
+            </div>
           </div>
         </section>
 
-        <!-- تطور المبيعات المسترجعة — أسفل الصفحة -->
+        <!-- الأداء: الرسم البياني والرؤى — مباشرة تحت المؤشرات -->
         <section aria-labelledby="recovery-trend-heading">
-          <h2 id="recovery-trend-heading" class="mb-2 border-b-2 border-zid-500/35 pb-1.5 text-base font-bold leading-snug text-slate-800 md:text-sm md:leading-normal">📈 تطور المبيعات المسترجعة</h2>
-          <p class="mb-2 text-xs leading-relaxed text-slate-600 md:text-[11px] md:text-slate-500">المبيعات المسترجعة خلال 7 أيام</p>
-          {% set hesitation_slugs = ('price', 'shipping', 'warranty', 'thinking', 'quality') %}
-          {% set ns = namespace(top_key='thinking', top_count=-1) %}
-          {% for r in reason_bar %}
-            {% if r.key in hesitation_slugs and r.count > ns.top_count %}
-              {% set ns.top_key = r.key %}
-              {% set ns.top_count = r.count %}
-            {% endif %}
-          {% endfor %}
-          {% set trend_anchor = 'cf-msg-template-thinking' if ns.top_key == 'thinking' else ('cf-msg-template-' ~ ns.top_key) %}
-          <div class="mb-3 rounded-xl border border-slate-200/70 px-3 py-2.5 text-sm leading-relaxed text-slate-700 shadow-sm md:px-3.5 md:py-2 md:text-xs" style="background-color: #f8fafc" role="note">
+          <h2 id="recovery-trend-heading" class="mb-1.5 border-b-2 border-zid-500/35 pb-1 text-base font-bold leading-snug text-slate-800 md:text-sm md:leading-normal">📈 الأداء — تطور المبيعات المسترجعة</h2>
+          <p class="mb-1.5 text-xs leading-snug text-slate-600 md:text-[11px] md:text-slate-500">المبيعات المسترجعة خلال 7 أيام</p>
+          <div class="mb-2 rounded-xl border border-zid-100 bg-white p-3 shadow-sm md:p-3">
+            <p id="recoveryTrendEstimateLabel" class="mb-0.5 hidden text-center text-[11px] font-medium leading-snug text-slate-500 md:text-xs">بيانات تقديرية لعرض الأداء</p>
+            <p id="recoveryTrendRevenueHighlight" class="mb-1.5 text-center text-base font-bold leading-snug md:text-lg" style="color: #16a34a"></p>
+            <div class="relative h-40 w-full md:h-36">
+              <canvas id="recoveryTrendChart" aria-label="مخطط المبيعات المسترجعة لسبعة أيام"></canvas>
+            </div>
+          </div>
+          <div class="mb-2 rounded-xl border border-slate-200/70 px-3 py-2 text-sm leading-relaxed text-slate-700 shadow-sm md:px-3.5 md:py-2 md:text-xs" style="background-color: #f8fafc" role="note">
             <p class="font-medium">
               {% if ns.top_key == 'price' %}
               💡 أغلب العملاء كانوا مترددين بسبب السعر
@@ -666,7 +619,7 @@
               {% endif %}
             </a>
           </div>
-          <div id="recoveryTrendSolutionBlock" class="mb-3 rounded-xl border border-[rgba(108,92,231,0.22)] bg-[#f5f3ff] px-3 py-3 shadow-sm ring-1 ring-[rgba(108,92,231,0.12)] md:px-4 md:py-3">
+          <div id="recoveryTrendSolutionBlock" class="mb-2 rounded-xl border border-[rgba(108,92,231,0.22)] bg-[#f5f3ff] px-3 py-2.5 shadow-sm ring-1 ring-[rgba(108,92,231,0.12)] md:px-4 md:py-3">
             <p class="mb-2 border-b border-[rgba(108,92,231,0.2)] pb-1.5 text-xs font-bold leading-snug text-slate-800 md:text-sm">📌 الحل المقترح</p>
             <div id="recoveryTrendSuggestBody" class="mb-3 whitespace-pre-wrap rounded-lg border border-[rgba(108,92,231,0.12)] bg-white/70 px-2.5 py-2.5 text-[11px] leading-relaxed text-slate-700 md:text-[13px] md:leading-relaxed md:px-3 md:py-2.5">
               {% if ns.top_key == 'price' %}
@@ -699,13 +652,62 @@
             </div>
           </div>
           <p id="recoveryTrendCopyToast" class="pointer-events-none fixed bottom-6 left-1/2 z-[60] hidden -translate-x-1/2 rounded-lg bg-slate-800 px-4 py-2 text-xs font-medium text-white shadow-lg opacity-95" role="status"></p>
-          <div class="rounded-2xl border border-zid-100 bg-white p-4 shadow-sm md:p-4">
-            <p id="recoveryTrendEstimateLabel" class="mb-1 hidden text-center text-[11px] font-medium leading-snug text-slate-500 md:text-xs">بيانات تقديرية لعرض الأداء</p>
-            <p id="recoveryTrendRevenueHighlight" class="mb-2 text-center text-base font-bold leading-snug md:text-lg" style="color: #16a34a"></p>
-            <div class="relative h-44 w-full md:h-40">
-              <canvas id="recoveryTrendChart" aria-label="مخطط المبيعات المسترجعة لسبعة أيام"></canvas>
+        </section>
+
+        <!-- النشاط -->
+        <section aria-labelledby="live-heading">
+          <h2 id="live-heading" class="mb-1.5 border-b-2 border-zid-500/35 pb-1 text-base font-bold leading-snug text-slate-800 md:text-sm md:leading-normal">آخر النشاطات</h2>
+          <div class="cf-dash-card max-w-full overflow-hidden p-0">
+            {% for row in live_feed %}
+            {% set rk = row.reason_key | default("", true) | lower %}
+            {% set ic = "📌" %}
+            {% if rk == "price" %}{% set ic = "💳" %}
+            {% elif rk == "shipping" %}{% set ic = "🚚" %}
+            {% elif rk == "warranty" %}{% set ic = "🛡️" %}
+            {% elif rk == "thinking" %}{% set ic = "💭" %}
+            {% elif rk == "quality" %}{% set ic = "⭐" %}
+            {% endif %}
+            <div class="flex gap-2 border-b border-slate-100 px-3 py-2 last:border-0">
+              <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-base" aria-hidden="true">{{ ic }}</span>
+              <div class="min-w-0 flex-1 text-right">
+                <p class="text-[13px] font-semibold leading-snug text-slate-900">{{ row.product }} — {{ row.reason_ar }}</p>
+                <p class="mt-0.5 text-[11px] text-slate-500" data-cf-activity-ts="{{ row.time_str }}">{{ row.time_str }}</p>
+              </div>
             </div>
+            {% else %}
+            <p class="px-3 py-6 text-center text-sm text-slate-500">لا يوجد نشاط بعد.</p>
+            {% endfor %}
           </div>
+        </section>
+
+        <!-- توزيع أسباب التردد — إدارة الرسائل -->
+        <section aria-labelledby="reasons-heading">
+          <h2 id="reasons-heading" class="mb-1.5 border-b-2 border-zid-500/35 pb-1 text-base font-bold leading-snug text-slate-800 md:text-sm md:leading-normal">أسباب التردد</h2>
+          <section class="cf-reasons-vchart-wrap rounded-xl border border-slate-200 bg-white p-2.5 shadow-sm md:p-3">
+            <div class="cf-reasons-vchart" role="img" aria-label="توزيع أسباب التردد">
+              {% for key, lbl, barc in [
+                ("price", "السعر", "#f97316"),
+                ("shipping", "الشحن", "#3b82f6"),
+                ("warranty", "الضمان", "#0ea5e9"),
+                ("quality", "الجودة", "#9333ea"),
+                ("thinking", "تردد", "#22c55e"),
+              ] %}
+              {% set kr = reason_bar | selectattr("key", "equalto", key) | list %}
+              {% set cnt = kr[0].count if kr | length > 0 else 0 %}
+              {% set wp = (100.0 * cnt / mx4) | round(1) if mx4 > 0 else 0 %}
+              {% set hp = (10 if (cnt > 0 and wp < 10) else wp) %}
+              <div class="cf-reasons-vcol">
+                <div class="cf-reasons-vtrack" aria-hidden="true">
+                  <div class="cf-reasons-vbar-inner">
+                    <div class="cf-reasons-vbar" style="height: {{ hp }}%; background: {{ barc }}"></div>
+                  </div>
+                </div>
+                <span class="cf-reasons-vlbl">{{ lbl }}</span>
+                <span class="cf-reasons-vnum">{{ cnt }}</span>
+              </div>
+              {% endfor %}
+            </div>
+          </section>
         </section>
       </main>
     </div>
