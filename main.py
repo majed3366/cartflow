@@ -204,6 +204,8 @@ from services.recovery_delay import get_recovery_delay  # noqa: E402
 from services.whatsapp_send import (  # noqa: E402
     WA_TRACE_DELAY_UNSPECIFIED,
     _max_recovery_attempts,
+    _naive_utc,
+    _recovery_config,
     _recovery_delay_minutes_from_store,
     emit_recovery_wa_send_trace,
     recovery_uses_real_whatsapp,
@@ -993,6 +995,14 @@ def dev_store_delay():
     return {"delay": eff}
 
 
+@app.get("/dev/normal-recovery-debug")
+def dev_normal_recovery_debug(session_id: str = Query(...)) -> Any:
+    """قراءة تشخيصية لمسار المحاولة الثانية — ‎ENV=development‎ فقط."""
+    if not _is_development_mode():
+        return Response(status_code=404)
+    return j(_normal_recovery_debug_for_session(session_id))
+
+
 @app.get("/dev/recovery-delay-verify")
 def dev_recovery_delay_verify():
     """
@@ -1304,6 +1314,8 @@ def api_recovery_settings_get():
 _session_recovery_started: dict[str, bool] = {}
 _session_recovery_logged: dict[str, bool] = {}
 _session_recovery_seq_logged: dict[str, bool] = {}
+_session_recovery_followup_next_due_at: dict[str, str] = {}
+_session_recovery_last_second_skip_reason: dict[str, str] = {}
 _session_recovery_sent: dict[str, bool] = {}
 _session_recovery_converted: dict[str, bool] = {}
 _session_recovery_returned: dict[str, bool] = {}
@@ -1783,11 +1795,328 @@ def _log_second_recovery_line(tag: str, **fields: Any) -> None:
         pass
 
 
+_SECOND_RECOVERY_SKIPPED_PUBLIC = frozenset(
+    {
+        "missing_phone",
+        "missing_reason",
+        "max_attempts_reached",
+        "purchase_completed",
+        "user_returned",
+        "customer_replied",
+        "already_sent",
+        "automation_disabled",
+    }
+)
+
+
+def _second_recovery_public_skip_reason(internal: str) -> str:
+    """Maps engine/internal reasons to the fixed [SECOND RECOVERY SKIPPED] reason= enum."""
+    s = (internal or "").strip().lower()
+    if s in (
+        "purchase_completed",
+        "stopped_converted",
+    ):
+        return "purchase_completed"
+    if s in ("no_verified_phone", "skipped_no_verified_phone"):
+        return "missing_phone"
+    if s in (
+        "missing_reason_tag",
+        "missing_last_activity",
+        "skipped_missing_reason_tag",
+        "skipped_missing_last_activity",
+    ):
+        return "missing_reason"
+    if s in ("delay_not_elapsed",):
+        return "automation_disabled"
+    if s in (
+        "attempt_limit",
+        "skipped_attempt_limit",
+        "max_attempts_reached",
+    ):
+        return "max_attempts_reached"
+    if s in ("customer_returned", "skipped_anti_spam", "user_returned"):
+        return "user_returned"
+    if s in (
+        "customer_positive_reply",
+        "skipped_followup_customer_replied",
+        "user_rejected_help",
+    ):
+        return "customer_replied"
+    if s in ("already_sent",):
+        return "already_sent"
+    if s in (
+        "reason_template_disabled",
+        "skipped_reason_template_disabled",
+        "skipped_delay_gate",
+        "automation_disabled",
+        "whatsapp_failed",
+        "delay_or_attempt_gate",
+    ):
+        return "automation_disabled"
+    return "automation_disabled"
+
+
+def _log_second_recovery_skipped(
+    *,
+    reason: str,
+    gate_detail: str = "",
+    recovery_key: Optional[str] = None,
+    **fields: Any,
+) -> None:
+    pub = _second_recovery_public_skip_reason(reason)
+    if pub not in _SECOND_RECOVERY_SKIPPED_PUBLIC:
+        pub = "automation_disabled"
+    extra = dict(fields)
+    if gate_detail:
+        extra["gate_detail"] = gate_detail
+    _log_second_recovery_line("[SECOND RECOVERY SKIPPED]", reason=pub, **extra)
+    if recovery_key:
+        with _recovery_session_lock:
+            _session_recovery_last_second_skip_reason[recovery_key] = pub
+
+
+def _second_recovery_diagnose_should_send(
+    last_activity_time: Optional[datetime],
+    *,
+    user_returned_to_site: bool,
+    now: datetime,
+    store: Any,
+    sent_count: int,
+) -> Tuple[bool, str]:
+    """Mirror of should_send_whatsapp (read-only) — returns (allowed, reason_tag)."""
+    if user_returned_to_site:
+        return False, "user_returned"
+    cfg = _recovery_config(store)
+    if not cfg.get("whatsapp_recovery_enabled", True):
+        return False, "automation_disabled"
+    try:
+        sc = int(sent_count)
+    except (TypeError, ValueError):
+        sc = 0
+    sc = max(0, sc)
+    max_a = _max_recovery_attempts(store)
+    if max_a < 1:
+        return False, "automation_disabled"
+    if sc >= max_a:
+        return False, "max_attempts_reached"
+    if last_activity_time is None:
+        return True, "allowed"
+    recovery_delay_minutes = _recovery_delay_minutes_from_store(store)
+    t = _naive_utc(now)
+    last_activity = _naive_utc(last_activity_time)
+    delay_passed = t >= last_activity + timedelta(minutes=recovery_delay_minutes)
+    if not delay_passed:
+        return False, "delay_not_elapsed"
+    return True, "allowed"
+
+
+def _log_second_recovery_check(
+    *,
+    session_id: str,
+    cart_id: Optional[str],
+    sent_count: int,
+    max_attempts: int,
+    customer_phone: Optional[str],
+    reason_tag: Optional[str],
+    purchase_completed: bool,
+    user_returned_to_site: bool,
+    customer_replied: bool,
+    allowed: bool,
+) -> None:
+    if not (session_id or "").strip():
+        return
+    cp = (customer_phone or "").strip()
+    rt = (reason_tag or "").strip()
+    _log_second_recovery_line(
+        "[SECOND RECOVERY CHECK]",
+        session_id=(session_id or "").strip(),
+        cart_id=(cart_id or "") or "",
+        sent_count=int(sent_count),
+        max_attempts=int(max_attempts),
+        customer_phone=cp,
+        reason_tag=rt,
+        purchase_completed=bool(purchase_completed),
+        user_returned_to_site=bool(user_returned_to_site),
+        customer_replied=bool(customer_replied),
+        allowed=bool(allowed),
+    )
+
+
+def _last_sent_phone_from_recovery_logs(
+    session_id: str, cart_id: Optional[str]
+) -> Optional[str]:
+    conds: list[Any] = []
+    sid = (session_id or "").strip()[:512]
+    cid = (cart_id or "").strip()[:255]
+    if sid:
+        conds.append(CartRecoveryLog.session_id == sid)
+    if cid:
+        conds.append(CartRecoveryLog.cart_id == cid)
+    if not conds:
+        return None
+    try:
+        db.create_all()
+        row = (
+            db.session.query(CartRecoveryLog)
+            .filter(CartRecoveryLog.status.in_(_NORMAL_RECOVERY_SENT_LOG_STATUSES))
+            .filter(or_(*conds))
+            .order_by(CartRecoveryLog.sent_at.desc(), CartRecoveryLog.id.desc())
+            .first()
+        )
+        if row is None:
+            return None
+        p = getattr(row, "phone", None)
+        ps = str(p).strip() if p else ""
+        return ps if ps else None
+    except (SQLAlchemyError, OSError, TypeError, ValueError):
+        db.session.rollback()
+        return None
+
+
+def _cart_recovery_log_has_successful_send_for_step(
+    session_id: str, cart_id: Optional[str], step: int
+) -> bool:
+    conds: list[Any] = []
+    sid = (session_id or "").strip()[:512]
+    cid = (cart_id or "").strip()[:255] if cart_id else ""
+    if sid:
+        conds.append(CartRecoveryLog.session_id == sid)
+    if cid:
+        conds.append(CartRecoveryLog.cart_id == cid)
+    if not conds:
+        return False
+    try:
+        db.create_all()
+        n = (
+            db.session.query(CartRecoveryLog)
+            .filter(
+                CartRecoveryLog.step == int(step),
+                CartRecoveryLog.status.in_(_NORMAL_RECOVERY_SENT_LOG_STATUSES),
+                or_(*conds),
+            )
+            .count()
+        )
+        return int(n or 0) > 0
+    except (SQLAlchemyError, OSError, TypeError, ValueError):
+        db.session.rollback()
+        return False
+
+
+def _normal_recovery_followup_skip_hint_ar_from_log_status(status: str) -> Optional[str]:
+    s = (status or "").strip().lower()
+    ar_map = {
+        "skipped_no_verified_phone": "توقفت: لا يوجد رقم",
+        "skipped_anti_spam": "توقفت: العميل عاد للموقع",
+        "skipped_attempt_limit": "توقفت: تجاوز عدد المحاولات",
+        "skipped_followup_customer_replied": "توقفت: رد العميل",
+        "skipped_missing_reason_tag": "توقفت: لا يوجد سبب",
+        "skipped_missing_last_activity": "توقفت: لا يوجد نشاط",
+        "skipped_delay_gate": "توقفت: لم تكتمل مهلة السكون",
+        "skipped_reason_template_disabled": "توقفت: الأتمتة معطّلة",
+        "whatsapp_failed": "توقفت: فشل الإرسال",
+        "stopped_converted": "توقفت: اكتمال الشراء",
+    }
+    return ar_map.get(s)
+
+
+def _normal_recovery_latest_followup_diagnostic_row(
+    ac: AbandonedCart,
+) -> Optional[CartRecoveryLog]:
+    conds = _cart_recovery_log_filters_for_abandoned_cart(ac)
+    if not conds:
+        return None
+    try:
+        db.create_all()
+        return (
+            db.session.query(CartRecoveryLog)
+            .filter(or_(*conds))
+            .filter(CartRecoveryLog.step >= 2)
+            .order_by(CartRecoveryLog.id.desc())
+            .first()
+        )
+    except (SQLAlchemyError, OSError, TypeError, ValueError):
+        db.session.rollback()
+        return None
+
+
+def _normal_recovery_debug_for_session(session_id: str) -> dict[str, Any]:
+    """تجميع قراءة فقط للتشخيص المحلي — ‎GET /dev/normal-recovery-debug‎."""
+    sid = (session_id or "").strip()[:512]
+    out: dict[str, Any] = {
+        "ok": bool(sid),
+        "session_id": sid,
+        "current_stage": None,
+        "sent_count": 0,
+        "customer_phone": "",
+        "reason_tag": None,
+        "next_attempt_due_at": None,
+        "last_skip_reason": None,
+        "can_send_second_attempt": False,
+    }
+    if not sid:
+        return out
+    try:
+        db.create_all()
+        ac = (
+            db.session.query(AbandonedCart)
+            .filter(AbandonedCart.recovery_session_id == sid)
+            .order_by(AbandonedCart.last_seen_at.desc())
+            .first()
+        )
+    except (SQLAlchemyError, OSError):
+        db.session.rollback()
+        ac = None
+    slug_guess = "demo"
+    r_any = _cart_recovery_reason_latest_row_any_store(sid)
+    if r_any is not None and (getattr(r_any, "store_slug", None) or "").strip():
+        slug_guess = str(r_any.store_slug).strip()[:255]
+    rk = _recovery_key_from_store_and_session(slug_guess, sid)
+    with _recovery_session_lock:
+        out["next_attempt_due_at"] = _session_recovery_followup_next_due_at.get(rk)
+        out["last_skip_reason"] = _session_recovery_last_second_skip_reason.get(rk)
+    out["reason_tag"] = _reason_tag_for_session(slug_guess, sid)
+    if ac is None:
+        return out
+    out["current_stage"] = _normal_recovery_dashboard_phase_key(ac)
+    out["sent_count"] = _cart_recovery_sent_real_count_for_abandoned(ac)
+    ds = _dashboard_recovery_store_row()
+    out["customer_phone"] = _vip_dashboard_customer_phone_raw(
+        ac, ds, prefer_persisted_cart_column_before_memory=True
+    )
+    rt_ac = _reason_tag_for_abandoned_cart(ac)
+    if rt_ac:
+        out["reason_tag"] = rt_ac
+    store_ac = _store_row_for_abandoned_cart(ac)
+    try:
+        max_a = max(0, int(_max_recovery_attempts(store_ac)))
+    except (TypeError, ValueError):
+        max_a = 1
+    sent_n = int(out["sent_count"])
+    can = max_a >= 2 and sent_n < max_a
+    lr = _normal_recovery_latest_followup_diagnostic_row(ac)
+    if lr is not None:
+        st = (getattr(lr, "status", None) or "").strip().lower()
+        if st and st not in _NORMAL_RECOVERY_SENT_LOG_STATUSES and st != "queued":
+            can = False
+    out["can_send_second_attempt"] = bool(can and sent_n < 2)
+    return out
+
+
 def _maybe_log_second_recovery_stopped(
-    seq_attempt: Optional[int], *, reason: str, **fields: Any
+    seq_attempt: Optional[int],
+    *,
+    reason: str,
+    recovery_key: Optional[str] = None,
+    gate_detail: str = "",
+    **fields: Any,
 ) -> None:
     if seq_attempt is not None and int(seq_attempt) == 2:
-        _log_second_recovery_line("[SECOND RECOVERY STOPPED]", reason=reason, **fields)
+        _log_second_recovery_skipped(
+            reason=reason,
+            gate_detail=gate_detail,
+            recovery_key=recovery_key,
+            **fields,
+        )
 
 
 def _latest_sent_recovery_message_for_followup(
@@ -2061,6 +2390,14 @@ def _normal_recovery_phase_steps_payload(ac: AbandonedCart) -> dict[str, Any]:
     except (TypeError, ValueError):
         max_disp = 1
     sent_ct = _cart_recovery_sent_real_count_for_abandoned(ac)
+    follow_row = _normal_recovery_latest_followup_diagnostic_row(ac)
+    hint_ar: Optional[str] = None
+    last_skip_pub: Optional[str] = None
+    if follow_row is not None:
+        stf = (getattr(follow_row, "status", None) or "").strip().lower()
+        if stf and stf not in _NORMAL_RECOVERY_SENT_LOG_STATUSES and stf != "queued":
+            hint_ar = _normal_recovery_followup_skip_hint_ar_from_log_status(stf)
+            last_skip_pub = _second_recovery_public_skip_reason(stf)
     return {
         "normal_recovery_phase_key": current_key,
         "normal_recovery_phase_label_ar": label_ar,
@@ -2070,6 +2407,8 @@ def _normal_recovery_phase_steps_payload(ac: AbandonedCart) -> dict[str, Any]:
         "normal_recovery_phase_steps": steps_out,
         "normal_recovery_attempt_cap": max_disp,
         "normal_recovery_attempt_sent": sent_ct,
+        "normal_recovery_followup_hint_ar": hint_ar,
+        "normal_recovery_last_skip_reason": last_skip_pub,
     }
 
 
@@ -3283,6 +3622,7 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
         raise
     print("[DELAY FINISHED]")
     seq_attempt = sequential_attempt_index
+    seq_done_key: Optional[str] = None
     if multi_slot_index is not None:
         slot_sk = f"{recovery_key}:multi:{multi_slot_index}"
         with _recovery_session_lock:
@@ -3290,11 +3630,26 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
                 return
             _session_recovery_multi_logged[slot_sk] = True
     elif seq_attempt is not None and int(seq_attempt) > 1:
-        sk = f"{recovery_key}:seq:{int(seq_attempt)}"
+        seq_done_key = f"{recovery_key}:seq:{int(seq_attempt)}"
+        if _cart_recovery_log_has_successful_send_for_step(
+            session_id, cart_id, int(seq_attempt)
+        ):
+            _log_second_recovery_skipped(
+                reason="already_sent",
+                recovery_key=recovery_key,
+                session_id=session_id,
+                cart_id=cart_id or "",
+            )
+            return
         with _recovery_session_lock:
-            if _session_recovery_seq_logged.get(sk):
+            if _session_recovery_seq_logged.get(seq_done_key):
+                _log_second_recovery_skipped(
+                    reason="already_sent",
+                    recovery_key=recovery_key,
+                    session_id=session_id,
+                    cart_id=cart_id or "",
+                )
                 return
-            _session_recovery_seq_logged[sk] = True
     else:
         with _recovery_session_lock:
             if _session_recovery_logged.get(recovery_key):
@@ -3319,6 +3674,39 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
             "recovery triggered after delay (sequential follow-up step=%s)"
             % int(seq_attempt)
         )
+
+    def _consume_seq_slot_if_needed() -> None:
+        if seq_done_key is None:
+            return
+        with _recovery_session_lock:
+            _session_recovery_seq_logged[seq_done_key] = True
+
+    def _seq2_skip(reason: str, *, gate_detail: str = "", **kw: Any) -> None:
+        _maybe_log_second_recovery_stopped(
+            seq_attempt,
+            reason=reason,
+            recovery_key=recovery_key,
+            gate_detail=gate_detail,
+            **kw,
+        )
+
+    effective_abandon_phone = abandon_event_phone
+    if seq_follow:
+        if not (effective_abandon_phone and str(effective_abandon_phone).strip()):
+            lp = _last_sent_phone_from_recovery_logs(session_id, cart_id)
+            if lp:
+                effective_abandon_phone = lp
+            else:
+                try:
+                    from services.recovery_session_phone import (
+                        get_recovery_customer_phone,
+                    )
+
+                    mp = _strip_recovery_phone(get_recovery_customer_phone(recovery_key))
+                    if mp:
+                        effective_abandon_phone = mp
+                except Exception:  # noqa: BLE001
+                    pass
     if _is_user_converted(recovery_key):
         print("recovery sequence stopped: user converted (after initial delay, before step 1)")
         t1 = _recovery_message_for_step(1)
@@ -3331,18 +3719,15 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
             status="stopped_converted",
             step=step_num,
         )
-        _maybe_log_second_recovery_stopped(
-            seq_attempt, reason="purchase_completed", session_id=session_id
-        )
+        _seq2_skip("purchase_completed", session_id=session_id)
+        _consume_seq_slot_if_needed()
         return
 
     reason_row = _cart_recovery_reason_latest_row(store_slug, session_id)
     if _recovery_row_user_rejected_help(reason_row):
         print("[SKIP WA - USER REJECTED HELP]")
         skip_msg = _default_recovery_message()
-        _maybe_log_second_recovery_stopped(
-            seq_attempt, reason="user_rejected_help", session_id=session_id
-        )
+        _seq2_skip("user_rejected_help", session_id=session_id)
         _persist_cart_recovery_log(
             store_slug=store_slug,
             session_id=session_id,
@@ -3354,6 +3739,7 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
         )
         print("[RECOVERY TASK EXIT CLEANLY]")
         print("reason=user_rejected_help")
+        _consume_seq_slot_if_needed()
         return None
     rt_raw = (reason_row.reason or "").strip() if reason_row else ""
     store_obj = _load_store_row_for_recovery(store_slug)
@@ -3380,14 +3766,13 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
                 recovery_key,
             )
         _mark_vip_customer_recovery_closed(recovery_key)
+        _consume_seq_slot_if_needed()
         return None
     if seq_follow:
         if _normal_recovery_positive_reply_blocks_followup(
             session_id=session_id, cart_id=cart_id
         ):
-            _maybe_log_second_recovery_stopped(
-                seq_attempt, reason="customer_positive_reply", session_id=session_id
-            )
+            _seq2_skip("customer_positive_reply", session_id=session_id)
             skip_msg = _default_recovery_message()
             _persist_cart_recovery_log(
                 store_slug=store_slug,
@@ -3400,6 +3785,7 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
             )
             print("[RECOVERY TASK EXIT CLEANLY]")
             print("reason=followup_blocked_customer_replied")
+            _consume_seq_slot_if_needed()
             return None
     resolve_whatsapp_sender(store_obj)
     if seq_attempt is not None and int(seq_attempt) == 2:
@@ -3455,11 +3841,11 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
                 status="skipped_missing_reason_tag",
                 step=step_num,
             )
-            _maybe_log_second_recovery_stopped(
-                seq_attempt,
-                reason="missing_reason_tag",
+            _seq2_skip(
+                "missing_reason_tag",
                 session_id=session_id,
             )
+            _consume_seq_slot_if_needed()
             return None
         reason_tag = rt_raw
         if reason_template_blocks_recovery_whatsapp(reason_tag, store_obj):
@@ -3473,13 +3859,13 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
                 status="skipped_reason_template_disabled",
                 step=step_num,
             )
-            _maybe_log_second_recovery_stopped(
-                seq_attempt,
-                reason="reason_template_disabled",
+            _seq2_skip(
+                "reason_template_disabled",
                 session_id=session_id,
             )
             print("[RECOVERY TASK EXIT CLEANLY]")
             print("reason=reason_template_disabled")
+            _consume_seq_slot_if_needed()
             return None
         prev_body = _latest_sent_recovery_message_for_followup(
             store_slug, session_id, cart_id
@@ -3538,11 +3924,37 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
 
     if not should_send:
         print("[DELAY BLOCKED] skipping send")
-        _maybe_log_second_recovery_stopped(
-            seq_attempt,
-            reason="delay_or_attempt_gate",
-            session_id=session_id,
+        _ds_ok, _ds_tag = _second_recovery_diagnose_should_send(
+            delay_gate_activity,
+            user_returned_to_site=False,
+            now=now,
+            store=store_obj,
+            sent_count=gate_sent_count,
         )
+        try:
+            max_a_chk = max(0, int(_max_recovery_attempts(store_obj)))
+        except (TypeError, ValueError):
+            max_a_chk = 1
+        crep_ds = False
+        if seq_follow:
+            crep_ds = _normal_recovery_positive_reply_blocks_followup(
+                session_id=session_id, cart_id=cart_id
+            )
+        if seq_attempt is not None and int(seq_attempt) == 2:
+            rt_chk = (reason_tag or "") if reason_tag else ""
+            _log_second_recovery_check(
+                session_id=session_id,
+                cart_id=cart_id,
+                sent_count=int(gate_sent_count),
+                max_attempts=max_a_chk,
+                customer_phone="",
+                reason_tag=rt_chk,
+                purchase_completed=_is_user_converted(recovery_key),
+                user_returned_to_site=_is_user_returned(recovery_key),
+                customer_replied=crep_ds,
+                allowed=False,
+            )
+        _seq2_skip(_ds_tag, session_id=session_id)
         _persist_cart_recovery_log(
             store_slug=store_slug,
             session_id=session_id,
@@ -3552,6 +3964,7 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
             status="skipped_delay_gate",
             step=step_num,
         )
+        _consume_seq_slot_if_needed()
         return
 
     phone, phone_source, allowed_to_send = _resolve_cartflow_recovery_phone(
@@ -3559,7 +3972,7 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
         session_id=session_id,
         cart_id=cart_id,
         store_obj=store_obj,
-        abandon_event_phone=abandon_event_phone,
+        abandon_event_phone=effective_abandon_phone,
         recovery_key=recovery_key,
         reason_row=reason_row,
     )
@@ -3593,9 +4006,8 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
 
     if not phone or not allowed_to_send:
         print("[NO VERIFIED PHONE] skipping send")
-        _maybe_log_second_recovery_stopped(
-            seq_attempt,
-            reason="no_verified_phone",
+        _seq2_skip(
+            "no_verified_phone",
             session_id=session_id,
         )
         _persist_cart_recovery_log(
@@ -3607,6 +4019,7 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
             status="skipped_no_verified_phone",
             step=step_num,
         )
+        _consume_seq_slot_if_needed()
         return
     _persist_cart_recovery_log(
         store_slug=store_slug,
@@ -3627,9 +4040,8 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
             status="stopped_converted",
             step=step_num,
         )
-        _maybe_log_second_recovery_stopped(
-            seq_attempt, reason="purchase_completed", session_id=session_id
-        )
+        _seq2_skip("purchase_completed", session_id=session_id)
+        _consume_seq_slot_if_needed()
         return
 
     user_returned_to_site = _is_user_returned(recovery_key)
@@ -3642,9 +4054,8 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
     print("should_send=", should_send_anti_spam)
     if not should_send_anti_spam:
         if not purchase_completed:
-            _maybe_log_second_recovery_stopped(
-                seq_attempt,
-                reason="customer_returned",
+            _seq2_skip(
+                "customer_returned",
                 session_id=session_id,
             )
         _persist_cart_recovery_log(
@@ -3658,6 +4069,7 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
             ),
             step=step_num,
         )
+        _consume_seq_slot_if_needed()
         return
 
     with _recovery_session_lock:
@@ -3676,9 +4088,8 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
     print("allowed=", allowed)
     if not allowed:
         print("[ATTEMPT BLOCKED]")
-        _maybe_log_second_recovery_stopped(
-            seq_attempt,
-            reason="attempt_limit",
+        _seq2_skip(
+            "attempt_limit",
             session_id=session_id,
         )
         _persist_cart_recovery_log(
@@ -3690,6 +4101,7 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
             status="skipped_attempt_limit",
             step=step_num,
         )
+        _consume_seq_slot_if_needed()
         return
 
     user_returned_to_site = _is_user_returned(recovery_key)
@@ -3716,9 +4128,8 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
             pro_st = "skipped_anti_spam"
         else:
             pro_st = "skipped_attempt_limit"
-        _maybe_log_second_recovery_stopped(
-            seq_attempt,
-            reason=pro_st,
+        _seq2_skip(
+            pro_st,
             session_id=session_id,
         )
         _persist_cart_recovery_log(
@@ -3730,14 +4141,14 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
             status=pro_st,
             step=step_num,
         )
+        _consume_seq_slot_if_needed()
         return
 
     reason_row_send = _cart_recovery_reason_latest_row(store_slug, session_id)
     if _recovery_row_user_rejected_help(reason_row_send):
         print("[SKIP WA - USER REJECTED HELP]")
-        _maybe_log_second_recovery_stopped(
-            seq_attempt,
-            reason="user_rejected_help",
+        _seq2_skip(
+            "user_rejected_help",
             session_id=session_id,
         )
         _persist_cart_recovery_log(
@@ -3751,10 +4162,12 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
         )
         print("[RECOVERY TASK EXIT CLEANLY]")
         print("reason=user_rejected_help")
+        _consume_seq_slot_if_needed()
         return None
 
     if not reason_tag:
         print("[SKIP WA - MISSING REASON_TAG]")
+        _seq2_skip("missing_reason_tag", session_id=session_id)
         _persist_cart_recovery_log(
             store_slug=store_slug,
             session_id=session_id,
@@ -3764,13 +4177,13 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
             status="skipped_missing_reason_tag",
             step=step_num,
         )
+        _consume_seq_slot_if_needed()
         return None
 
     if not last_activity and not seq_follow:
         print("[SKIP WA - MISSING LAST_ACTIVITY]")
-        _maybe_log_second_recovery_stopped(
-            seq_attempt,
-            reason="missing_last_activity",
+        _seq2_skip(
+            "missing_last_activity",
             session_id=session_id,
         )
         _persist_cart_recovery_log(
@@ -3782,6 +4195,7 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
             status="skipped_missing_last_activity",
             step=step_num,
         )
+        _consume_seq_slot_if_needed()
         return None
 
     if multi_slot_index is not None:
@@ -3793,6 +4207,28 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
             print("text=", text)
         except Exception:  # noqa: BLE001
             pass
+
+    if seq_attempt is not None and int(seq_attempt) == 2:
+        crep_send = _normal_recovery_positive_reply_blocks_followup(
+            session_id=session_id, cart_id=cart_id
+        )
+        try:
+            max_a_send = max(0, int(_max_recovery_attempts(store_obj)))
+        except (TypeError, ValueError):
+            max_a_send = 1
+        rt_send = (reason_tag or "") if reason_tag else ""
+        _log_second_recovery_check(
+            session_id=session_id,
+            cart_id=cart_id,
+            sent_count=int(sent_count),
+            max_attempts=max_a_send,
+            customer_phone=phone,
+            reason_tag=rt_send,
+            purchase_completed=_is_user_converted(recovery_key),
+            user_returned_to_site=_is_user_returned(recovery_key),
+            customer_replied=crep_send,
+            allowed=True,
+        )
 
     _assert_forbidden_stale_recovery_phone(phone)
     wa_result = send_whatsapp(
@@ -3859,16 +4295,16 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
         if seq_attempt is not None and int(seq_attempt) == 2:
             _log_second_recovery_line(
                 "[SECOND RECOVERY SENT]",
+                sid=sid_str,
                 session_id=session_id,
-                recovery_key=recovery_key,
+                customer_phone=(phone or "")[:40],
             )
 
     if not success:
         if wa_dict.get("error") == "user_rejected_help":
             print("skipped_user_rejected_help = True")
-            _maybe_log_second_recovery_stopped(
-                seq_attempt,
-                reason="user_rejected_help",
+            _seq2_skip(
+                "user_rejected_help",
                 session_id=session_id,
             )
             _persist_cart_recovery_log(
@@ -3882,10 +4318,10 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
             )
             print("[RECOVERY TASK EXIT CLEANLY]")
             print("reason=user_rejected_help_send_guard")
+            _consume_seq_slot_if_needed()
             return
-        _maybe_log_second_recovery_stopped(
-            seq_attempt,
-            reason="whatsapp_failed",
+        _seq2_skip(
+            "whatsapp_failed",
             session_id=session_id,
         )
         _persist_cart_recovery_log(
@@ -3898,6 +4334,7 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
             step=step_num,
         )
         print("recovery NOT marked as sent due to failure")
+        _consume_seq_slot_if_needed()
         return
 
     now = datetime.now(timezone.utc)
@@ -3911,6 +4348,7 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
         sent_at=now,
         step=step_num,
     )
+    _consume_seq_slot_if_needed()
     # إن كان التحويل أثناء الإرسال: سلوك شبيه بالتخطي بعد خطوة أولى
     if _is_user_converted(recovery_key):
         _persist_cart_recovery_log(
@@ -3946,6 +4384,19 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
     if cur_sent < max_a:
         gap_sec = float(_second_attempt_delay_minutes_from_store(store_obj)) * 60.0
         next_idx = int(cur_sent) + 1
+        follow_phone = phone or effective_abandon_phone or abandon_event_phone
+        gap_min = int(_second_attempt_delay_minutes_from_store(store_obj))
+        due_dt = datetime.now(timezone.utc) + timedelta(seconds=gap_sec)
+        with _recovery_session_lock:
+            _session_recovery_followup_next_due_at[recovery_key] = due_dt.isoformat()
+        if int(next_idx) == 2:
+            _log_second_recovery_line(
+                "[SECOND RECOVERY SCHEDULED]",
+                session_id=session_id,
+                cart_id=cart_id or "",
+                customer_phone=(str(follow_phone or "").strip())[:40],
+                next_delay_minutes=gap_min,
+            )
         try:
             print(
                 "[SEQUENTIAL RECOVERY SCHEDULED] next_index=%s delay_s=%s"
@@ -3960,7 +4411,7 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
                 store_slug,
                 session_id,
                 cart_id,
-                abandon_event_phone,
+                follow_phone,
                 sequential_attempt_index=next_idx,
                 multi_message_text=None,
             )
@@ -4002,7 +4453,10 @@ async def _run_recovery_sequence_after_cart_abandoned(
     except KeyboardInterrupt:
         raise
     except BaseException as e:
-        # ‎ExceptionGroup‎ يورث من ‎BaseException‎ لا من ‎Exception‎ — ضروري لمنع انهيار ‎TaskGroup‎.
+        if sequential_attempt_index is not None and int(sequential_attempt_index) > 1:
+            sk_err = f"{recovery_key}:seq:{int(sequential_attempt_index)}"
+            with _recovery_session_lock:
+                _session_recovery_seq_logged.pop(sk_err, None)
         print("[RECOVERY TASK CAUGHT ERROR]", str(e))
     print("[RECOVERY TASK COMPLETED SAFELY]")
 

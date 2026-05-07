@@ -276,6 +276,8 @@ class NormalRecoveryDashboardStatusTests(unittest.TestCase):
         db.session.commit()
         payload = _normal_recovery_phase_steps_payload(ac)
         self.assertEqual(payload["normal_recovery_phase_key"], "first_message_sent")
+        self.assertEqual(payload.get("normal_recovery_followup_hint_ar"), "توقفت: لا يوجد سبب")
+        self.assertEqual(payload.get("normal_recovery_last_skip_reason"), "missing_reason")
 
     def test_latest_skipped_missing_reason_is_ignored(self) -> None:
         st = self._store_attempts_1()
