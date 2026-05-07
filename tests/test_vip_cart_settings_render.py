@@ -23,15 +23,21 @@ class VipCartSettingsRenderTests(unittest.TestCase):
         self.assertIn("cf-dash-shell", html)
         self.assertIn("vip-priority-alerts-ul", html)
         self.assertNotIn("normal-recovery-alerts-ul", html)
-        self.assertIn("/dashboard/normal-recovery", r.text or "")
+        self.assertIn("/dashboard/normal-carts", r.text or "")
 
-    def test_normal_recovery_dashboard_get_returns_200(self) -> None:
-        r = self.client.get("/dashboard/normal-recovery")
+    def test_normal_carts_dashboard_get_returns_200(self) -> None:
+        r = self.client.get("/dashboard/normal-carts")
         self.assertEqual(r.status_code, 200, r.text[:2000] if r.text else "")
         html = (r.text or "").lower()
         self.assertIn("cf-dash-shell", html)
         self.assertIn("normal-recovery-alerts-ul", html)
-        self.assertIn("الاسترجاع العادي", r.text or "")
+        self.assertIn("السلال العادية", r.text or "")
+
+    def test_normal_recovery_legacy_redirects(self) -> None:
+        r = self.client.get("/dashboard/normal-recovery", follow_redirects=False)
+        self.assertEqual(r.status_code, 302, r.text[:500] if r.text else "")
+        loc = r.headers.get("location") or ""
+        self.assertIn("/dashboard/normal-carts", loc)
 
 
 if __name__ == "__main__":

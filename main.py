@@ -5852,12 +5852,12 @@ def dev_platform_readiness_test():
                 and pbody.get("ok") is True
             )
     recovery_settings_api_ready = bool(get_ok and post_ok)
-    d = dashboard_recovery_settings(
-        _minimal_get_request("/dashboard/recovery-settings")
+    d = dashboard_normal_carts(
+        _minimal_get_request("/dashboard/normal-carts")
     )
     dct = d.body or b""
     dashboard_flow_ready = bool(
-        d.status_code == 200 and (b"recovery_delay" in dct)
+        d.status_code == 200 and (b"recovery_delay" in dct or b"template_price" in dct)
     )
     s_src = getsource(send_whatsapp)
     whatsapp_send_is_mocked = bool(
@@ -5890,12 +5890,12 @@ def dev_platform_readiness_test():
 @app.get("/dev/recovery-dashboard-render-test")
 def dev_recovery_dashboard_render_test():
     """
-    يتحقق من مسار ‎/dashboard/recovery-settings‎ وأن الرد ‎HTML‎.
+    يتحقق من مسار ‎/dashboard/normal-carts‎ وأن الرد ‎HTML‎.
     """
     try:
-        route_exists = _app_route_get_exists("/dashboard/recovery-settings")
+        route_exists = _app_route_get_exists("/dashboard/normal-carts")
         tc = _app_test_client()
-        resp = tc.get("/dashboard/recovery-settings")
+        resp = tc.get("/dashboard/normal-carts")
         head = (resp.content or b"")[:3000]
         head_l = head.lstrip().lower()
         ct = (resp.headers.get("Content-Type") or "").lower()
@@ -7414,6 +7414,62 @@ def _vip_cart_alerts_merchant_list() -> list[dict[str, Any]]:
     return _vip_priority_cart_alert_list()
 
 
+def _normal_carts_dashboard_stats() -> dict[str, Any]:
+    """أرقام قراءة فقط لواجهة «السلال العادية» — بدون تغيير منطق الاسترجاع."""
+    out = {
+        "normal_cart_count": 0,
+        "normal_recovered_count": 0,
+        "messages_sent_count": 0,
+        "stopped_flow_count": 0,
+    }
+    try:
+        _ensure_store_widget_schema()
+        db.create_all()
+        dash_store = _dashboard_recovery_store_row()
+        if dash_store is None:
+            return out
+        dash_id_raw = getattr(dash_store, "id", None)
+        slug = (getattr(dash_store, "zid_store_id", None) or "").strip()
+        q = db.session.query(AbandonedCart).filter(AbandonedCart.vip_mode.is_(False))
+        if dash_id_raw is not None:
+            try:
+                vid = int(dash_id_raw)
+                q = q.filter(
+                    (AbandonedCart.store_id == vid)
+                    | (AbandonedCart.store_id.is_(None))  # type: ignore[union-attr]
+                )
+            except (TypeError, ValueError):
+                pass
+        out["normal_cart_count"] = int(q.count() or 0)
+        out["normal_recovered_count"] = int(
+            q.filter(AbandonedCart.status == "recovered").count() or 0
+        )
+        if slug:
+            out["messages_sent_count"] = int(
+                db.session.query(func.count(CartRecoveryLog.id))
+                .filter(
+                    CartRecoveryLog.store_slug == slug,
+                    CartRecoveryLog.status.in_(_NORMAL_RECOVERY_SENT_LOG_STATUSES),
+                )
+                .scalar()
+                or 0
+            )
+            stop_clause = or_(
+                CartRecoveryLog.status.like("skipped%"),
+                CartRecoveryLog.status.like("stopped%"),
+            )
+            out["stopped_flow_count"] = int(
+                db.session.query(func.count(CartRecoveryLog.id))
+                .filter(CartRecoveryLog.store_slug == slug, stop_clause)
+                .scalar()
+                or 0
+            )
+    except (SQLAlchemyError, OSError, TypeError, ValueError) as e:
+        db.session.rollback()
+        log.warning("normal_carts_dashboard_stats: %s", e)
+    return out
+
+
 def _normal_recovery_cart_alert_list(limit_groups: int = 15) -> list[dict[str, Any]]:
     """سلات غير ‎VIP‎ بحالة ‎abandoned‎ — نفس أدوات التواصل اليدوي مع اقتراح ذكي منفصل."""
     try:
@@ -7657,29 +7713,32 @@ def dashboard(request: Request):
 
 @app.get("/dashboard/recovery-settings")
 def dashboard_recovery_settings(request: Request):
-    """صفحة بسيطة لضبط ‎recovery_*‎ — تحمّل/تحفظ عبر ‎/api/recovery-settings‎."""
-    # ‎Starlette:‎ المعامل الأول ‎Request‎ ثم اسم القالب (لا ‎(name, dict)‎ القديم).
+    """توافق خلفي — التوقيت والقوالب ضمن «السلال العادية»."""
+    return RedirectResponse(
+        url="/dashboard/normal-carts#cf-normal-timing", status_code=302
+    )
+
+
+@app.get("/dashboard/normal-carts")
+def dashboard_normal_carts(request: Request):
+    """السلال العادية — مراقبة أتمتة، قوالب حسب السبب، وتوقيت التسلسل."""
+    normal_recovery_alerts = _normal_recovery_cart_alert_list()
+    normal_stats = _normal_carts_dashboard_stats()
     return templates.TemplateResponse(
         request,
-        "recovery_settings.html",
+        "normal_carts_dashboard.html",
         {
             "request": request,
+            "normal_recovery_alerts": normal_recovery_alerts,
+            "normal_stats": normal_stats,
         },
     )
 
 
 @app.get("/dashboard/normal-recovery")
-def dashboard_normal_recovery(request: Request):
-    """الاسترجاع العادي — بطاقات المراقبة والتسلسل الآلي فقط (منفصل عن VIP)."""
-    normal_recovery_alerts = _normal_recovery_cart_alert_list()
-    return templates.TemplateResponse(
-        request,
-        "normal_recovery_dashboard.html",
-        {
-            "request": request,
-            "normal_recovery_alerts": normal_recovery_alerts,
-        },
-    )
+def dashboard_normal_recovery_legacy(request: Request):
+    """توافق خلفي لمسار العنوان السابق."""
+    return RedirectResponse(url="/dashboard/normal-carts", status_code=302)
 
 
 @app.get("/dashboard/vip-cart-settings")
@@ -7740,8 +7799,10 @@ def api_merchant_followup_action_complete(action_id: int):
 
 @app.get("/dashboard/cartflow-messages")
 def dashboard_cartflow_messages(request: Request):
-    """إعادة توجيه — الصفحة الموحّدة أصبحت منفصلة (خروج / استعادة)."""
-    return RedirectResponse(url="/dashboard/cart-recovery-messages", status_code=302)
+    """إعادة توجيه — دمج إعدادات استعادة السلة ضمن السلال العادية."""
+    return RedirectResponse(
+        url="/dashboard/normal-carts#cart-recovery-settings", status_code=302
+    )
 
 
 @app.get("/dashboard/exit-intent-settings")
@@ -7756,21 +7817,27 @@ def dashboard_exit_intent_settings(request: Request):
 
 @app.get("/dashboard/cart-recovery-messages")
 def dashboard_cart_recovery_messages(request: Request):
-    """استعادة السلة وواتساب فقط — نفس ‎GET/POST /api/recovery-settings‎."""
+    """توافق خلفي — القوالب ضمن «السلال العادية»."""
+    return RedirectResponse(
+        url="/dashboard/normal-carts#reason-recovery-settings", status_code=302
+    )
+
+
+@app.get("/dashboard/general-settings")
+def dashboard_general_settings(request: Request):
+    """إعدادات عامة — واتساب المتجر، ظهور الودجيت، ومظهر الودجيت."""
     return templates.TemplateResponse(
         request,
-        "cart_recovery_messages.html",
+        "general_settings.html",
         {"request": request},
     )
 
 
 @app.get("/dashboard/widget-customization")
 def dashboard_widget_customization(request: Request):
-    """تخصيص الودجيت — نفس ‎GET/POST /api/recovery-settings‎."""
-    return templates.TemplateResponse(
-        request,
-        "widget_customization.html",
-        {"request": request},
+    """توافق خلفي — تخصيص الودجيت ضمن إعدادات عامة."""
+    return RedirectResponse(
+        url="/dashboard/general-settings#cf-widget-custom", status_code=302
     )
 
 

@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>السلال العادية — CartFlow</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            zid: { 500: "#7c3aed", 600: "#6d28d9", 100: "#ede9fe", 50: "#f5f3ff" },
+          },
+        },
+      },
+    };
+  </script>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  {% include "partials/recovery_dashboard_styles.html" %}
+  <style>
+    .cf-rec-card { border: 1px solid rgb(226 232 240); border-radius: 12px; padding: 10px; background: #fff; }
+    .cf-rec-slot { border: 1px solid rgb(226 232 240 / 0.9); border-radius: 10px; padding: 8px; background: rgb(248 250 252 / 0.6); }
+    .cf-page-recovery { border-radius: 1.125rem; border: 2px solid rgb(22 163 74 / 0.28); background: rgb(240 253 244 / 0.45); box-shadow: 0 1px 2px rgb(15 23 42 / 0.04); }
+    .cf-segment { display: inline-flex; border-radius: 10px; border: 1px solid rgb(203 213 225); overflow: hidden; background: rgb(255 255 255); }
+    .cf-seg-btn { min-width: 5.5rem; padding: 6px 10px; font-size: 11px; font-weight: 700; line-height: 1.35; border: none; cursor: pointer; background: transparent; color: rgb(100 116 139); transition: background 0.12s ease, color 0.12s ease, box-shadow 0.12s ease; }
+    .cf-seg-btn--active { background: #15803d; color: #fff; box-shadow: none; }
+    .cf-seg-btn--inactive { background: transparent; color: rgb(71 85 105); box-shadow: inset 0 0 0 1.5px rgb(203 213 225); }
+    .cf-segment .cf-seg-btn:first-of-type { border-inline-end: 1px solid rgb(226 232 240); }
+  </style>
+</head>
+<body class="min-h-screen bg-slate-50 text-slate-800 antialiased" data-cf-msg-mode="recovery">
+  {% include "partials/cart_abandon_tracking.html" %}
+  <div class="flex min-h-screen flex-col md:flex-row">
+    {% include "partials/dashboard_sidebar.html" %}
+    <div class="min-w-0 w-full flex-1 bg-gradient-to-b from-cyan-50/30 to-slate-50 px-3 pb-28 pt-14 md:min-h-screen md:px-4 md:pb-24 md:pt-4">
+      <div class="cf-dash-shell mx-auto max-w-4xl">
+        <div class="cf-dash-hero mb-6">
+          <h1>السلال العادية</h1>
+          <p class="max-w-2xl">استرجاع آلي للسلال غير المميزة حسب سبب التردد والتوقيت.</p>
+        </div>
+
+        <div id="errBox" class="mb-2 hidden rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"></div>
+        <div id="okBox" class="mb-2 hidden rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-800">تم الحفظ بنجاح</div>
+
+        {% set ns = normal_stats | default({}) %}
+        <section class="mb-6 grid grid-cols-2 gap-3 md:grid-cols-4" aria-label="نظرة عامة على السلال العادية">
+          <div class="rounded-2xl border border-cyan-100/90 bg-white p-4 shadow-sm">
+            <p class="text-[11px] font-semibold text-slate-500">عدد السلال العادية</p>
+            <p class="mt-1 text-2xl font-bold tabular-nums text-cyan-950">{{ ns.get("normal_cart_count", 0) }}</p>
+          </div>
+          <div class="rounded-2xl border border-cyan-100/90 bg-white p-4 shadow-sm">
+            <p class="text-[11px] font-semibold text-slate-500">الرسائل المرسلة</p>
+            <p class="mt-1 text-2xl font-bold tabular-nums text-cyan-950">{{ ns.get("messages_sent_count", 0) }}</p>
+            <p class="mt-0.5 text-[9px] text-slate-400">من سجل الاسترجاع للمتجر</p>
+          </div>
+          <div class="rounded-2xl border border-emerald-100/90 bg-white p-4 shadow-sm">
+            <p class="text-[11px] font-semibold text-slate-500">السلال المسترجعة</p>
+            <p class="mt-1 text-2xl font-bold tabular-nums text-emerald-900">{{ ns.get("normal_recovered_count", 0) }}</p>
+          </div>
+          <div class="rounded-2xl border border-slate-200/90 bg-white p-4 shadow-sm">
+            <p class="text-[11px] font-semibold text-slate-500">تدفقات متوقفة</p>
+            <p class="mt-1 text-2xl font-bold tabular-nums text-slate-800">{{ ns.get("stopped_flow_count", 0) }}</p>
+            <p class="mt-0.5 text-[9px] text-slate-400">تقريب من سجل الاسترجاع</p>
+          </div>
+        </section>
+
+        <section class="mb-8 rounded-2xl border border-cyan-100/90 bg-white p-4 shadow-sm md:p-5" aria-labelledby="normal-active-heading">
+          <h2 id="normal-active-heading" class="mb-1 text-lg font-bold text-slate-900">السلال النشطة والمراقبة</h2>
+          <p class="mb-4 text-sm leading-relaxed text-slate-600">بطاقات مراقبة للأتمتة — بانتظار الإرسال، تسلسل الرسائل، التوقف، وغيرها. بدون زر تواصل يدوي مثل مسار VIP.</p>
+          {% set nr_list = normal_recovery_alerts | default([]) %}
+          <ul id="normal-recovery-alerts-ul" class="m-0 list-none space-y-4 p-0 {% if nr_list | length == 0 %}hidden{% endif %}" role="list">
+            {% for vc in nr_list %}
+            {% include "partials/vip_cart_settings_cart_row.html" %}
+            {% endfor %}
+          </ul>
+          <p id="normal-recovery-empty" class="{% if nr_list | length > 0 %}hidden {% endif %}m-0 text-sm leading-relaxed text-slate-600">لا توجد سلات عادية ظاهرة لهذا المتجر حالياً.</p>
+        </section>
+
+        <h2 class="mb-2 text-base font-bold text-slate-900">قوالب الرسائل حسب سبب التردد</h2>
+        <p class="mb-3 text-sm text-slate-600">السعر، الشحن، الجودة، التوصيل، الضمان، التردد — مع التفعيل والتأخير بين الرسائل لكل سبب.</p>
+
+        <form id="f" class="cf-dash-compact mb-10 space-y-2 md:space-y-2">
+          <div id="cart-recovery-settings" tabindex="-1" class="cf-page-recovery scroll-mt-20 p-3 md:p-3.5 space-y-2">
+            <div class="cf-dash-section-head border-emerald-600/25">
+              <h2 class="text-base">📱 أسلوب رسائل الاستعادة</h2>
+            </div>
+            <p class="mb-1 text-[11px] leading-snug text-slate-600">نمط رسائل الاستعادة (واتساب) ونص الاكتشاف ثم القوالب حسب السبب.</p>
+            <div class="rounded-xl border border-white/80 bg-white/95 p-2.5 shadow-sm md:p-3 space-y-2">
+            <input type="hidden" id="template_tone" name="template_tone" value="friendly" />
+            <p class="mb-1.5 text-[11px] leading-snug text-slate-500">يُحفظ على الخادم كرسمي / ودي / بيع مباشر؛ خيار «مرح» يوسّع عبارات «ودي» محلياً في المتصفح فقط.</p>
+            <div class="grid grid-cols-2 gap-1.5">
+              <button type="button" class="cf-tone-card text-right" data-cf-tone-card="formal" data-cf-tone-api="formal">
+                <p class="text-sm font-bold text-slate-900">رسمي 🎩</p>
+                <p class="mt-0.5 text-[11px] text-slate-500">أسلوب احترافي ومهني</p>
+              </button>
+              <button type="button" class="cf-tone-card cf-tone-card--on text-right" data-cf-tone-card="warm" data-cf-tone-api="friendly" data-cf-cheer="0">
+                <p class="text-sm font-bold text-slate-900">ودي 🤝</p>
+                <p class="mt-0.5 text-[11px] text-slate-500">أسلوب دافئ وقريب من العميل</p>
+              </button>
+              <button type="button" class="cf-tone-card text-right" data-cf-tone-card="merry" data-cf-tone-api="friendly" data-cf-cheer="1">
+                <p class="text-sm font-bold text-slate-900">مرح 😄</p>
+                <p class="mt-0.5 text-[11px] text-slate-500">أسلوب خفيف وجذاب</p>
+              </button>
+              <button type="button" class="cf-tone-card text-right" data-cf-tone-card="pers" data-cf-tone-api="sales">
+                <p class="text-sm font-bold text-slate-900">مقنع 🎯</p>
+                <p class="mt-0.5 text-[11px] text-slate-500">أسلوب يركز على إتمام البيع</p>
+              </button>
+            </div>
+
+            <div class="cf-dash-section-head mt-3">
+              <h2 class="text-sm">✏️ وضع النص</h2>
+            </div>
+            <div class="grid grid-cols-1 gap-1.5">
+              <label class="cf-tone-card cf-tone-choice flex cursor-pointer items-start gap-2 text-right">
+                <input type="radio" name="template_mode" value="preset" id="template_mode_preset" class="mt-1 h-4 w-4 shrink-0 border-slate-300 text-emerald-600 focus:ring-emerald-500" checked />
+                <span>
+                  <span class="block text-sm font-bold text-slate-900">استخدام أسلوب جاهز</span>
+                  <span class="mt-0.5 block text-[11px] text-slate-500">اختر من العبارات المعدّة مسبقاً</span>
+                </span>
+              </label>
+              <label class="cf-tone-card cf-tone-choice flex cursor-pointer items-start gap-2 text-right">
+                <input type="radio" name="template_mode" value="custom" id="template_mode_custom" class="mt-1 h-4 w-4 shrink-0 border-slate-300 text-emerald-600 focus:ring-emerald-500" />
+                <span>
+                  <span class="block text-sm font-bold text-slate-900">كتابة نص مخصص</span>
+                  <span class="mt-0.5 block text-[11px] text-slate-500">اكتب رسالتك بنفسك بحرية كاملة</span>
+                </span>
+              </label>
+            </div>
+
+            <div id="discovery_phrase_row" class="mt-2 border-t border-slate-200 pt-2">
+              <div class="cf-dash-section-head border-0 pb-0 mb-1">
+                <h2 class="text-sm" id="cf-ready-title">💡 عبارات جاهزة (ودي)</h2>
+              </div>
+              <select id="discovery_phrase_pick" class="sr-only" aria-hidden="true" tabindex="-1">
+                <option value="">اختر عبارة جاهزة</option>
+              </select>
+              <div id="discovery_bubbles" class="flex flex-col gap-1.5"></div>
+              <div id="discovery_phrase_preview" class="mt-1.5 hidden rounded-lg border border-violet-100 bg-zid-50/95 px-2 py-1.5">
+                <p class="text-[10px] font-semibold text-zid-800">مثال:</p>
+                <p id="discovery_phrase_preview_body" class="mt-0.5 whitespace-pre-wrap text-[11px] leading-snug text-slate-700"></p>
+              </div>
+              <p class="mt-1 text-[10px] leading-snug text-slate-500">يملأ خانة النص ويحوّل الوضع إلى «نص مخصص» لتقدر تعدّل قبل الحفظ.</p>
+            </div>
+
+            <div id="template_custom_wrap" class="mt-2 hidden space-y-1">
+              <label class="mb-1 block text-sm font-semibold text-slate-800" for="template_custom_text">النص المخصص</label>
+              <textarea id="template_custom_text" name="template_custom_text" rows="3"
+                placeholder="اكتب النص الذي تريد استخدامه…"
+                class="w-full resize-y rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/35"></textarea>
+            </div>
+            </div>
+
+          <section id="reason-recovery-settings" class="cf-dash-card !bg-white/95 scroll-mt-16" aria-labelledby="reason-recovery-heading">
+            <div class="cf-dash-section-head">
+              <h2 id="reason-recovery-heading">إعدادات حسب سبب التردد</h2>
+            </div>
+            <p class="mb-2 text-[11px] leading-snug text-slate-500">لكل سبب: التفعيل، عدد الرسائل، التأخير، نص كل رسالة، وعبارات جاهزة للقالب.</p>
+            <div class="space-y-2">
+              {% for reason_key, label_ar, tid, aid in [
+                ("price","السعر","template_price","cf-msg-template-price"),
+                ("shipping","الشحن","template_shipping","cf-msg-template-shipping"),
+                ("warranty","الضمان","template_warranty","cf-msg-template-warranty"),
+                ("quality","الجودة","template_quality","cf-msg-template-quality"),
+                ("thinking","التردد","template_other","cf-msg-template-thinking"),
+              ] %}
+              <div id="{{ aid }}" class="cf-rec-card scroll-mt-16" data-rec-trigger-card="{{ reason_key }}">
+                <div class="flex flex-wrap items-start justify-between gap-2 border-b border-slate-200/80 pb-1.5">
+                  <p class="min-w-0 flex-1 text-[11px] font-bold leading-snug text-slate-900">سبب التردد: {{ label_ar }}</p>
+                  <div class="cf-segment shrink-0" role="group" aria-label="تفعيل الإرسال لهذا السبب">
+                    <button type="button" data-rec-trigger-on="{{ reason_key }}" class="cf-seg-btn cf-seg-btn--active" aria-pressed="true">مفعل ☑️</button>
+                    <button type="button" data-rec-trigger-off="{{ reason_key }}" class="cf-seg-btn cf-seg-btn--inactive" aria-pressed="false">غير مفعل ❌</button>
+                  </div>
+                  <input type="checkbox" data-rec-trigger-toggle="{{ reason_key }}" checked tabindex="-1" class="sr-only" aria-hidden="true" />
+                </div>
+                <p class="mt-1 text-[10px] leading-snug text-slate-600" data-rec-trigger-hint="{{ reason_key }}" aria-live="polite"></p>
+                <div class="mt-1.5 flex flex-wrap items-center gap-1.5">
+                  <span class="text-[10px] font-semibold text-slate-700">عدد الرسائل:</span>
+                  <label class="cf-dash-pill relative !py-0.5 !px-2 !min-w-[1.8rem]"><input type="radio" name="rec-msgcount-{{ reason_key }}" value="1" data-rec-msgcount="{{ reason_key }}" checked /><span>1</span></label>
+                  <label class="cf-dash-pill relative !py-0.5 !px-2 !min-w-[1.8rem]"><input type="radio" name="rec-msgcount-{{ reason_key }}" value="2" data-rec-msgcount="{{ reason_key }}" /><span>2</span></label>
+                  <label class="cf-dash-pill relative !py-0.5 !px-2 !min-w-[1.8rem]"><input type="radio" name="rec-msgcount-{{ reason_key }}" value="3" data-rec-msgcount="{{ reason_key }}" /><span>3</span></label>
+                </div>
+                <div class="mt-2 rounded-md border border-zid-100 bg-zid-50/60 p-2">
+                  <p class="mb-1 text-[10px] font-semibold text-zid-900">عبارات جاهزة للقالب</p>
+                  <select data-target="{{ tid }}" class="wa-phrase-pick rs-select w-full rounded-lg border-2 border-zid-200 bg-white px-2 py-2 text-xs font-medium text-slate-800 focus:border-zid-500 focus:outline-none focus:ring-2 focus:ring-zid-400/40">
+                    <option value="" disabled selected hidden>اختر عبارة جاهزة</option>
+                  </select>
+                </div>
+                {% for slot in [1,2,3] %}
+                <div class="cf-rec-slot mt-1.5 {% if slot > 1 %}hidden{% endif %}" data-rec-slot-wrap="{{ reason_key }}" data-slot-index="{{ slot }}">
+                  <p class="mb-1 text-[10px] font-semibold text-slate-800">رسالة {{ slot }}</p>
+                  <div class="mb-1 flex flex-wrap items-center gap-1">
+                    <input type="number" min="1" step="1" value="2" data-rec-slot-delay="{{ reason_key }}" data-slot-index="{{ slot }}" class="w-14 rounded border border-slate-200 px-1 py-0.5 text-[10px]" />
+                    <select data-rec-slot-unit="{{ reason_key }}" data-slot-index="{{ slot }}" class="rounded border border-slate-200 bg-white px-1 py-0.5 text-[10px]">
+                      <option value="minute">دقيقة</option>
+                      <option value="hour">ساعة</option>
+                      <option value="day">يوم</option>
+                    </select>
+                  </div>
+                  {% if slot == 1 %}
+                  <textarea id="{{ tid }}" name="{{ tid }}" rows="2" data-rec-slot-text="{{ reason_key }}" data-slot-index="{{ slot }}" class="w-full resize-y rounded border border-slate-200 bg-white px-1.5 py-1 text-[10px] leading-relaxed"></textarea>
+                  {% else %}
+                  <textarea rows="2" data-rec-slot-text="{{ reason_key }}" data-slot-index="{{ slot }}" class="w-full resize-y rounded border border-slate-200 bg-white px-1.5 py-1 text-[10px] leading-relaxed"></textarea>
+                  {% endif %}
+                </div>
+                {% endfor %}
+              </div>
+              {% endfor %}
+              <div id="cf-msg-template-delivery" class="cf-rec-card scroll-mt-16 border-dashed border-slate-300/90">
+                <p class="text-[11px] font-bold leading-snug text-slate-900">قالب التوصيل</p>
+                <p class="mt-0.5 mb-2 text-[10px] leading-snug text-slate-500">نص رسالة واتساب لوقت التوصيل — يُحفظ مع بقية القوالب.</p>
+                <div class="rounded-md border border-zid-100 bg-zid-50/60 p-2">
+                  <p class="mb-1 text-[10px] font-semibold text-zid-900">عبارات جاهزة للقالب</p>
+                  <select data-target="template_delivery" class="wa-phrase-pick rs-select w-full rounded-lg border-2 border-zid-200 bg-white px-2 py-2 text-xs font-medium text-slate-800 focus:border-zid-500 focus:outline-none focus:ring-2 focus:ring-zid-400/40">
+                    <option value="" disabled selected hidden>اختر عبارة جاهزة</option>
+                  </select>
+                </div>
+                <textarea id="template_delivery" name="template_delivery" rows="2"
+                  class="mt-2 w-full resize-y rounded border border-slate-200 bg-white px-1.5 py-1 text-[10px] leading-relaxed"></textarea>
+              </div>
+            </div>
+          </section>
+
+          </div>
+
+          <div class="cf-dash-save-wrap">
+            <button type="submit" id="saveBtn" class="cf-dash-save">💾 حفظ قوالب الرسائل</button>
+          </div>
+        </form>
+
+        <section id="cf-normal-timing" tabindex="-1" class="mb-8 scroll-mt-20 rounded-2xl border border-slate-200/85 bg-white p-4 shadow-sm md:p-5">
+          <h2 class="mb-1 text-lg font-bold text-slate-900">التوقيت والتسلسل العام</h2>
+          <p class="mb-4 text-sm text-slate-600">مدة الانتظار قبل أول رسالة، وعدد محاولات التسلسل، ورابط واتساب عندما يطلب العميل الدعم — تُستخدم كقيمة احتياط إذا لم يكن للسبب إعداد خاص أعلاه.</p>
+          <form id="f-normal-timing" class="cf-dash-compact space-y-3">
+            <div class="space-y-3 rounded-xl border border-slate-200/80 bg-slate-50/55 p-3">
+              <div>
+                <label class="mb-1 block text-sm font-semibold text-slate-800" for="recovery_delay">مدة الانتظار قبل أول رسالة استرجاع</label>
+                <input id="recovery_delay" name="recovery_delay" type="number" min="1" step="1" required
+                  class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-base text-slate-900 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30" />
+              </div>
+              <div>
+                <label class="mb-1 block text-sm font-semibold text-slate-800" for="recovery_delay_unit">وحدة الوقت</label>
+                <select id="recovery_delay_unit" name="recovery_delay_unit"
+                  class="rs-select w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-base text-slate-900 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30">
+                  <option value="minutes">دقائق</option>
+                  <option value="hours">ساعة</option>
+                  <option value="days">يوم</option>
+                </select>
+              </div>
+              <div>
+                <label class="mb-1 block text-sm font-semibold text-slate-800">الحد الأقصى لمحاولات التسلسل</label>
+                <p class="mb-1 text-xs text-slate-600">عدد رسائل الواتساب في تسلسل السلال العادية (عند عدم ضبط عدد لكل سبب).</p>
+                <div class="flex flex-wrap gap-2" role="group" aria-label="عدد المحاولات">
+                  <label class="cf-dash-pill relative">
+                    <input type="radio" name="recovery_attempts_pick" value="1" />
+                    <span>1</span>
+                  </label>
+                  <label class="cf-dash-pill relative">
+                    <input type="radio" name="recovery_attempts_pick" value="2" />
+                    <span>2</span>
+                  </label>
+                  <label class="cf-dash-pill relative">
+                    <input type="radio" name="recovery_attempts_pick" value="3" />
+                    <span>3</span>
+                  </label>
+                </div>
+                <input type="hidden" id="recovery_attempts" name="recovery_attempts" value="1" />
+              </div>
+              <div>
+                <label class="mb-1 block text-sm font-semibold text-slate-800" for="whatsapp_support_url">رابط دعم واتساب للعميل (اختياري)</label>
+                <input id="whatsapp_support_url" name="whatsapp_support_url" type="url" inputmode="url" autocomplete="off" placeholder="https://wa.me/9665xxxxxxxx"
+                  class="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/35" />
+              </div>
+            </div>
+            <div class="rounded-xl border border-violet-100/90 bg-violet-50/40 p-3">
+              <h3 class="mb-2 text-sm font-bold text-slate-900">تحكم الأتمتة</h3>
+              <p class="text-[11px] leading-relaxed text-slate-600">تشغيل وإيقاف كل سبب من الأقسام أعلاه. مسار هذه الصفحة للمراقبة والأتمتة فقط — دون زر «التواصل مع العميل» اليدوي (هذا مخصص لصفحة السلال المميزة).</p>
+              <p class="mt-2 text-[11px] text-slate-500">رقم واتساب المتجر لتنبيهات VIP وغيرها من <a href="/dashboard/general-settings" class="font-semibold text-violet-800 underline">إعدادات عامة</a>.</p>
+            </div>
+            <div class="cf-dash-save-wrap">
+              <button type="submit" id="saveTimingBtn" class="cf-dash-save">💾 حفظ التوقيت والتسلسل</button>
+            </div>
+          </form>
+        </section>
+
+        <section class="mb-6 rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 p-4 md:p-5" aria-labelledby="normal-analytics-heading">
+          <h2 id="normal-analytics-heading" class="mb-3 text-base font-bold text-slate-800">تحليلات (قريباً)</h2>
+          <p class="mb-3 text-sm text-slate-600">مساحة مخصصة لاحقاً لأكثر أسباب التردد، أفضل رسالة، أفضل توقيت، معدل الاسترجاع، والإيراد المسترجع.</p>
+          <div class="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3">
+            {% for _l in ["أكثر أسباب التردد", "أفضل رسالة", "أفضل توقيت", "معدل الاسترجاع", "الإيراد المسترجع"] %}
+            <div class="rounded-lg border border-slate-200/80 bg-white px-3 py-2 text-center text-xs font-medium text-slate-500">{{ _l }}</div>
+            {% endfor %}
+          </div>
+        </section>
+
+        <p class="text-xs text-slate-500">السلال المميزة (VIP) والمتابعة اليدوية: <a href="/dashboard/vip-cart-settings" class="font-semibold text-violet-700 underline">السلال المميزة</a></p>
+      </div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      function applySmartActionHighlights() {
+        document.querySelectorAll("[data-vip-cart-li]").forEach(function (li) {
+          var target = (li.getAttribute("data-smart-cta-highlight") || "").trim();
+          li.querySelectorAll(".cf-smart-action-ring").forEach(function (btn) {
+            btn.classList.remove("cf-smart-action-ring");
+          });
+          if (!target || target === "none") return;
+          var hit = li.querySelector('[data-smart-match="' + target + '"]');
+          if (hit) hit.classList.add("cf-smart-action-ring");
+        });
+      }
+      applySmartActionHighlights();
+    })();
+  </script>
+  <script src="/static/cartflow_dashboard_messages.js"></script>
+  <script>
+    (function () {
+      var errBox = document.getElementById("errBox");
+      var okBox = document.getElementById("okBox");
+      var hiddenAttempts = document.getElementById("recovery_attempts");
+
+      function showErr(t) {
+        errBox.textContent = t || "حدث خطأ";
+        errBox.classList.remove("hidden");
+        okBox.classList.add("hidden");
+      }
+      function showOk() {
+        okBox.classList.remove("hidden");
+        errBox.classList.add("hidden");
+      }
+      function hideMsg() {
+        errBox.classList.add("hidden");
+        okBox.classList.add("hidden");
+      }
+
+      function syncAttemptsFromPills() {
+        var sel = document.querySelector('input[name="recovery_attempts_pick"]:checked');
+        var v = sel ? parseInt(sel.value, 10) : 1;
+        if (!(v >= 1 && v <= 3)) v = 1;
+        if (hiddenAttempts) hiddenAttempts.value = String(v);
+      }
+
+      document.querySelectorAll('input[name="recovery_attempts_pick"]').forEach(function (r) {
+        r.addEventListener("change", syncAttemptsFromPills);
+      });
+
+      function fillTimingOnly(data) {
+        var rd = document.getElementById("recovery_delay");
+        if (rd) rd.value = data.recovery_delay;
+        var ru = document.getElementById("recovery_delay_unit");
+        if (ru) ru.value = data.recovery_delay_unit;
+        var ra = parseInt(data.recovery_attempts, 10);
+        if (!(ra >= 1 && ra <= 3)) ra = 1;
+        if (hiddenAttempts) hiddenAttempts.value = String(ra);
+        var rpick = document.querySelector(
+          'input[name="recovery_attempts_pick"][value="' + ra + '"]'
+        );
+        if (rpick) rpick.checked = true;
+        var wu = document.getElementById("whatsapp_support_url");
+        if (wu) wu.value = data.whatsapp_support_url || "";
+      }
+
+      fetch("/api/recovery-settings")
+        .then(function (r) {
+          return r.json().then(function (d) {
+            return { status: r.status, data: d };
+          });
+        })
+        .then(function (x) {
+          if (x.data.ok) {
+            fillTimingOnly(x.data);
+            hideMsg();
+          } else {
+            showErr(x.data.error || "تعذّر تحميل الإعدادات.");
+          }
+        })
+        .catch(function () {
+          showErr("خطأ في الشبكة أثناء التحميل.");
+        });
+
+      var tf = document.getElementById("f-normal-timing");
+      if (tf) {
+        tf.addEventListener("submit", function (e) {
+          e.preventDefault();
+          hideMsg();
+          syncAttemptsFromPills();
+          var body = {
+            recovery_delay: parseInt(document.getElementById("recovery_delay").value, 10),
+            recovery_delay_unit: document.getElementById("recovery_delay_unit").value,
+            recovery_attempts: parseInt(document.getElementById("recovery_attempts").value, 10),
+            whatsapp_support_url:
+              (document.getElementById("whatsapp_support_url") &&
+                document.getElementById("whatsapp_support_url").value) ||
+              "",
+          };
+          fetch("/api/recovery-settings", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          })
+            .then(function (r) {
+              return r.json().then(function (d) {
+                return { status: r.status, data: d };
+              });
+            })
+            .then(function (x) {
+              if (x.data.ok) {
+                fillTimingOnly(x.data);
+                showOk();
+              } else {
+                showErr(x.data.error || "فشل الحفظ");
+              }
+            })
+            .catch(function () {
+              showErr("خطأ في الشبكة أثناء الحفظ.");
+            });
+        });
+      }
+    })();
+  </script>
+</body>
+</html>
