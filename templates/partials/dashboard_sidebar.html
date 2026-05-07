@@ -71,12 +71,12 @@
       <span class="min-w-0 leading-snug">الرئيسية</span>
     </a>
     <a
-      href="/dashboard/recovery-settings"
-      data-dash-nav="cartflow-recovery"
+      href="/dashboard/normal-recovery"
+      data-dash-nav="normal-recovery"
       class="group flex items-center gap-2 rounded-lg px-3 py-2.5 text-slate-600 transition-colors hover:bg-zid-50 hover:shadow-sm"
     >
-      <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-[15px] shadow-inner transition-colors group-hover:bg-white group-hover:text-zid-700" aria-hidden="true">⚙️</span>
-      <span class="min-w-0 leading-snug">إعدادات الاسترجاع</span>
+      <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-[15px] shadow-inner transition-colors group-hover:bg-white group-hover:text-zid-700" aria-hidden="true">🔁</span>
+      <span class="min-w-0 leading-snug">الاسترجاع العادي</span>
     </a>
     <a
       href="/dashboard/vip-cart-settings"
@@ -100,7 +100,15 @@
       class="group flex items-center gap-2 rounded-lg px-3 py-2.5 text-slate-600 transition-colors hover:bg-zid-50 hover:shadow-sm"
     >
       <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-[15px] shadow-inner transition-colors group-hover:bg-white group-hover:text-zid-700" aria-hidden="true">🧩</span>
-      <span class="min-w-0 leading-snug">إعدادات استعادة السلة</span>
+      <span class="min-w-0 leading-snug">إعدادات الاستعادة</span>
+    </a>
+    <a
+      href="/dashboard/recovery-settings"
+      data-dash-nav="cartflow-recovery"
+      class="group flex items-center gap-2 rounded-lg px-3 py-2.5 text-slate-600 transition-colors hover:bg-zid-50 hover:shadow-sm"
+    >
+      <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-[15px] shadow-inner transition-colors group-hover:bg-white group-hover:text-zid-700" aria-hidden="true">⚙️</span>
+      <span class="min-w-0 leading-snug">إعدادات الاسترجاع</span>
     </a>
     <a
       href="/dashboard/widget-customization"
@@ -182,6 +190,7 @@
     function applyDashboardNavActive() {
       var path = window.location.pathname || "";
       var dashEl = document.querySelector('[data-dash-nav="dashboard"]');
+      var normEl = document.querySelector('[data-dash-nav="normal-recovery"]');
       var recEl = document.querySelector('[data-dash-nav="cartflow-recovery"]');
       var vipEl = document.querySelector('[data-dash-nav="vip-cart"]');
       var exitEl = document.querySelector('[data-dash-nav="exit-intent"]');
@@ -193,6 +202,7 @@
         "group flex items-center gap-2 rounded-lg border border-zid-300/70 border-l-4 border-l-zid-600 bg-zid-100 px-3 py-2.5 font-semibold text-zid-950 shadow-sm ring-1 ring-zid-400/30 transition-colors";
 
       var isDash = /^\/dashboard\/?$/.test(path);
+      var isNormalRecovery = path.indexOf("/dashboard/normal-recovery") === 0;
       var isRecovery = path.indexOf("/dashboard/recovery-settings") === 0;
       var isVipCart = path.indexOf("/dashboard/vip-cart-settings") === 0;
       var isExitIntent = path.indexOf("/dashboard/exit-intent-settings") === 0;
@@ -200,6 +210,7 @@
       var isWidget = path.indexOf("/dashboard/widget-customization") === 0;
 
       if (dashEl) dashEl.className = isDash ? mainOn : mainIdle;
+      if (normEl) normEl.className = isNormalRecovery ? mainOn : mainIdle;
       if (recEl) recEl.className = isRecovery ? mainOn : mainIdle;
       if (vipEl) vipEl.className = isVipCart ? mainOn : mainIdle;
       if (exitEl) exitEl.className = isExitIntent ? mainOn : mainIdle;

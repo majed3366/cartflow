@@ -7668,6 +7668,20 @@ def dashboard_recovery_settings(request: Request):
     )
 
 
+@app.get("/dashboard/normal-recovery")
+def dashboard_normal_recovery(request: Request):
+    """الاسترجاع العادي — بطاقات المراقبة والتسلسل الآلي فقط (منفصل عن VIP)."""
+    normal_recovery_alerts = _normal_recovery_cart_alert_list()
+    return templates.TemplateResponse(
+        request,
+        "normal_recovery_dashboard.html",
+        {
+            "request": request,
+            "normal_recovery_alerts": normal_recovery_alerts,
+        },
+    )
+
+
 @app.get("/dashboard/vip-cart-settings")
 def dashboard_vip_cart_settings(request: Request):
     """السلال المميزة (VIP) — عتبة عبر ‎GET/POST /api/recovery-settings‎؛ قائمة أولوية حقيقية فقط."""
@@ -7677,7 +7691,6 @@ def dashboard_vip_cart_settings(request: Request):
     vip_completed_alerts = (
         _vip_priority_completed_cart_alert_list() if vip_show_completed else []
     )
-    normal_recovery_alerts = _normal_recovery_cart_alert_list()
     merchant_followup_actions = merchant_followup_actions_for_dashboard(limit=10)
     return templates.TemplateResponse(
         request,
@@ -7687,7 +7700,6 @@ def dashboard_vip_cart_settings(request: Request):
             "vip_priority_alerts": vip_priority_alerts,
             "vip_completed_alerts": vip_completed_alerts,
             "vip_show_completed": vip_show_completed,
-            "normal_recovery_alerts": normal_recovery_alerts,
             "merchant_followup_actions": merchant_followup_actions,
         },
     )

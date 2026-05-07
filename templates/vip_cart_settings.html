@@ -29,7 +29,11 @@
 
         <div class="cf-dash-hero mb-6">
           <h1>السلال عالية القيمة (VIP)</h1>
-          <p class="max-w-2xl">حدّد قيمة السلة التي تحتاج متابعة خاصة، وشاهد السلال التي تجاوزت هذا الحد.</p>
+          <p class="max-w-2xl">حدّد قيمة السلة التي تحتاج متابعة خاصة، وشاهد السلال التي تجاوزت هذا الحد — متابعة يدوية وذات أولوية.</p>
+          <p class="mt-3 max-w-2xl text-sm leading-relaxed text-slate-600">
+            <span class="font-semibold text-slate-700">الاسترجاع الآلي للسلال العادية</span> في صفحة منفصلة:
+            <a href="/dashboard/normal-recovery" class="font-semibold text-violet-700 underline decoration-violet-200 underline-offset-2 hover:text-violet-900">الاسترجاع العادي</a>
+          </p>
         </div>
 
         <!-- Merchant follow-up — positive WhatsApp replies (read-only list, manual actions only) -->
@@ -72,18 +76,6 @@
           {% else %}
           <p id="mf-followup-empty" class="m-0 text-sm leading-relaxed text-slate-600">لا توجد طلبات متابعة فورية من ردود واتساب حالياً.</p>
           {% endif %}
-        </section>
-
-        <section class="mb-6 rounded-2xl border border-slate-200/85 bg-white p-4 shadow-sm md:p-5" aria-labelledby="normal-recovery-heading">
-          <h2 id="normal-recovery-heading" class="mb-1 text-lg font-bold text-slate-900">سلال الاسترجاع العادية</h2>
-          <p class="mb-4 text-sm leading-relaxed text-slate-600">مسار استرجاع آلي منفصل عن VIP — يخضع لإعدادات المتجر والجدولة. البطاقات أدناه تُظهر مراحل الأتمتة دون فتح واتساب يدوياً.</p>
-          {% set nr_list = normal_recovery_alerts | default([]) %}
-          <ul id="normal-recovery-alerts-ul" class="m-0 list-none space-y-4 p-0 {% if nr_list | length == 0 %}hidden{% endif %}" role="list">
-            {% for vc in nr_list %}
-            {% include "partials/vip_cart_settings_cart_row.html" %}
-            {% endfor %}
-          </ul>
-          <p id="normal-recovery-empty" class="{% if nr_list | length > 0 %}hidden {% endif %}m-0 text-sm leading-relaxed text-slate-600">لا توجد سلات استرجاع عادية ظاهرة لهذا المتجر حالياً.</p>
         </section>
 
         <!-- SECTION 1 — VIP carts needing follow-up -->

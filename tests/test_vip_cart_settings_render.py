@@ -22,7 +22,16 @@ class VipCartSettingsRenderTests(unittest.TestCase):
         html = (r.text or "").lower()
         self.assertIn("cf-dash-shell", html)
         self.assertIn("vip-priority-alerts-ul", html)
+        self.assertNotIn("normal-recovery-alerts-ul", html)
+        self.assertIn("/dashboard/normal-recovery", r.text or "")
+
+    def test_normal_recovery_dashboard_get_returns_200(self) -> None:
+        r = self.client.get("/dashboard/normal-recovery")
+        self.assertEqual(r.status_code, 200, r.text[:2000] if r.text else "")
+        html = (r.text or "").lower()
+        self.assertIn("cf-dash-shell", html)
         self.assertIn("normal-recovery-alerts-ul", html)
+        self.assertIn("الاسترجاع العادي", r.text or "")
 
 
 if __name__ == "__main__":
