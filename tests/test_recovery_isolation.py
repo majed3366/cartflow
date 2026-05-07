@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import unittest
 from datetime import datetime, timedelta, timezone
+from typing import Optional
 from unittest.mock import patch
 
 from fastapi.testclient import TestClient
@@ -61,6 +62,7 @@ def _post_recovery_reason_for_session(
     store_slug: str,
     session_id: str,
     reason_tag: str = "price",
+    customer_phone: Optional[str] = None,
 ) -> None:
     """Persist widget reason so delayed recovery has reason_tag + updated_at (last_activity)."""
     r = client.post(
@@ -76,13 +78,16 @@ def _post_recovery_reason_for_session(
 
     db.create_all()
     aged = datetime.now(timezone.utc) - timedelta(hours=3)
+    patch_row: dict = {"updated_at": aged, "created_at": aged}
+    if customer_phone is not None:
+        patch_row["customer_phone"] = customer_phone
     upd = (
         db.session.query(CartRecoveryReason)
-        .filter(CartRecoveryReason.session_id == session_id)
-        .update(
-            {"updated_at": aged, "created_at": aged},
-            synchronize_session=False,
+        .filter(
+            CartRecoveryReason.store_slug == store_slug,
+            CartRecoveryReason.session_id == session_id,
         )
+        .update(patch_row, synchronize_session=False)
     )
     if int(upd or 0) < 1:
         raise AssertionError(
@@ -110,7 +115,12 @@ class RecoveryIsolationTests(unittest.TestCase):
         cart = [{"name": "Test", "price": 1}]
         base = {"event": "cart_abandoned", "session_id": sid, "cart": cart}
 
-        _post_recovery_reason_for_session(self.client, "demo", sid)
+        _post_recovery_reason_for_session(
+            self.client,
+            "demo",
+            sid,
+            customer_phone="9665444555666",
+        )
         r_demo = self.client.post(
             "/api/cart-event",
             json={**base, "store": "demo"},

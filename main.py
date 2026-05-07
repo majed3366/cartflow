@@ -263,6 +263,7 @@ from services.smart_actions import get_cart_smart_action, smart_action_cta_targe
 from services.vip_merchant_alert import (
     build_vip_merchant_alert_body,
     resolve_merchant_whatsapp_phone,
+    resolve_merchant_whatsapp_phone_with_default_env,
     try_send_vip_merchant_whatsapp_alert,
     vip_dashboard_review_link,
 )
@@ -1819,6 +1820,8 @@ def _second_recovery_public_skip_reason(internal: str) -> str:
         return "purchase_completed"
     if s in ("no_verified_phone", "skipped_no_verified_phone"):
         return "missing_phone"
+    if s in ("customer_phone_equals_merchant_phone",):
+        return "missing_phone"
     if s in (
         "missing_reason_tag",
         "missing_last_activity",
@@ -2080,9 +2083,7 @@ def _normal_recovery_debug_for_session(session_id: str) -> dict[str, Any]:
     out["current_stage"] = _normal_recovery_dashboard_phase_key(ac)
     out["sent_count"] = _cart_recovery_sent_real_count_for_abandoned(ac)
     ds = _dashboard_recovery_store_row()
-    out["customer_phone"] = _vip_dashboard_customer_phone_raw(
-        ac, ds, prefer_persisted_cart_column_before_memory=True
-    )
+    out["customer_phone"] = _normal_recovery_dashboard_resolve_customer_phone_raw(ac, ds)
     rt_ac = _reason_tag_for_abandoned_cart(ac)
     if rt_ac:
         out["reason_tag"] = rt_ac
@@ -2390,6 +2391,8 @@ def _normal_recovery_phase_steps_payload(ac: AbandonedCart) -> dict[str, Any]:
     except (TypeError, ValueError):
         max_disp = 1
     sent_ct = _cart_recovery_sent_real_count_for_abandoned(ac)
+    cust_raw = _normal_recovery_dashboard_resolve_customer_phone_raw(ac, store_ac)
+    cust_phone_display_ar = cust_raw if cust_raw else "لا يوجد رقم عميل"
     follow_row = _normal_recovery_latest_followup_diagnostic_row(ac)
     hint_ar: Optional[str] = None
     last_skip_pub: Optional[str] = None
@@ -2409,6 +2412,7 @@ def _normal_recovery_phase_steps_payload(ac: AbandonedCart) -> dict[str, Any]:
         "normal_recovery_attempt_sent": sent_ct,
         "normal_recovery_followup_hint_ar": hint_ar,
         "normal_recovery_last_skip_reason": last_skip_pub,
+        "normal_recovery_customer_phone_display_ar": cust_phone_display_ar,
     }
 
 
@@ -3044,7 +3048,7 @@ def _try_claim_recovery_session(recovery_key: str) -> bool:
 
 
 _VERIFIED_WA_RECOVERY_PHONE_SOURCES = frozenset(
-    {"customer_profile", "checkout", "abandoned_cart", "order_platform"}
+    {"customer_profile", "abandoned_cart"}
 )
 
 _NORMAL_RECOVERY_EXTENDED_PHONE_SOURCES = frozenset(
@@ -3367,6 +3371,112 @@ def _log_normal_recovery_phone_resolution(
         pass
 
 
+def _log_normal_recovery_phone_missing_customer(
+    session_id: str, cart_id: Optional[str]
+) -> None:
+    sid = (session_id or "").strip() or "-"
+    cid = ((cart_id or "").strip()[:255] or "-") if cart_id else "-"
+    try:
+        line = (
+            "[NORMAL RECOVERY PHONE MISSING] reason=missing_customer_phone "
+            f"session_id={sid} cart_id={cid}"
+        )
+        log.info(line)
+        print(line, flush=True)
+    except OSError:
+        pass
+
+
+def _normal_recovery_merchant_normalized_digits(store_obj: Optional[Any]) -> frozenset[str]:
+    """قيم ‎E.164‎ المجرّدة للأرقام التي تُعد ‎merchant/sender‎ — ممنوع إرسال استرجاع عميل إليها."""
+    out: set[str] = set()
+
+    def _add_raw(raw: Optional[Any]) -> None:
+        p = _strip_recovery_phone(str(raw) if raw is not None else "")
+        if not p:
+            return
+        d = _recovery_digits_normalized_sa(p)
+        if d and len(d) >= 8:
+            out.add(d)
+
+    try:
+        if store_obj is not None:
+            mp, _ = resolve_merchant_whatsapp_phone_with_default_env(store_obj)
+            _add_raw(mp)
+            mp2, _ = resolve_merchant_whatsapp_phone(store_obj)
+            _add_raw(mp2)
+        env_m = (os.getenv("DEFAULT_MERCHANT_PHONE") or "").strip()
+        _add_raw(env_m)
+        tw = (os.getenv("TWILIO_WHATSAPP_FROM") or "").strip()
+        if tw:
+            if tw.lower().startswith("whatsapp:"):
+                tw = tw.split(":", 1)[-1].strip()
+            _add_raw(tw)
+        demo_env = (os.getenv("CARTFLOW_DEMO_TEST_PHONE") or "").strip()
+        if demo_env:
+            _add_raw(demo_env)
+        else:
+            _add_raw("966579706669")
+    except (TypeError, ValueError, OSError):
+        pass
+    return frozenset(out)
+
+
+def _normal_recovery_phone_normalized_equals_merchant(
+    phone: Optional[str], merchant_digits: frozenset[str]
+) -> bool:
+    if not phone or not merchant_digits:
+        return False
+    d = _recovery_digits_normalized_sa(_strip_recovery_phone(phone))
+    return bool(d) and d in merchant_digits
+
+
+def _log_normal_recovery_blocked_merchant_match(
+    session_id: str, cart_id: Optional[str]
+) -> None:
+    sid = (session_id or "").strip() or "-"
+    cid = ((cart_id or "").strip()[:255] or "-") if cart_id else "-"
+    try:
+        line = (
+            "[NORMAL RECOVERY BLOCKED] reason=customer_phone_equals_merchant_phone "
+            f"session_id={sid} cart_id={cid}"
+        )
+        log.info(line)
+        print(line, flush=True)
+    except OSError:
+        pass
+
+
+def _normal_recovery_dashboard_resolve_customer_phone_raw(
+    ac: AbandonedCart,
+    dash_store: Optional[Store],
+) -> str:
+    """رقم عميل للعرض فقط — مصادر مسموحة كما في ‎_resolve_cartflow_recovery_phone‎ دون رقم التاجر."""
+    sid = (getattr(ac, "recovery_session_id", None) or "").strip()
+    zid = (getattr(ac, "zid_cart_id", None) or "").strip() or None
+    if not sid:
+        return ""
+    slug = _store_slug_for_cart_recovery_reason(ac)
+    if not slug:
+        z = getattr(dash_store, "zid_store_id", None) if dash_store is not None else None
+        slug = (str(z).strip()[:255] if z and str(z).strip() else "") or "demo"
+    rk = _recovery_key_from_store_and_session(slug, sid)
+    reason_row = _cart_recovery_reason_latest_row(slug, sid)
+    col_phone = _strip_recovery_phone(getattr(ac, "customer_phone", None)) or None
+    phone, _src, ok = _resolve_cartflow_recovery_phone(
+        store_slug=slug,
+        session_id=sid,
+        cart_id=zid,
+        store_obj=dash_store,
+        abandon_event_phone=col_phone,
+        recovery_key=rk,
+        reason_row=reason_row,
+    )
+    if not ok or not phone:
+        return ""
+    return phone.strip()
+
+
 def _normal_recovery_extended_phone_lookup(
     *,
     store_slug: str,
@@ -3382,10 +3492,13 @@ def _normal_recovery_extended_phone_lookup(
     sid = (session_id or "").strip()[:512]
     cz = (cart_id or "").strip()[:255]
     ss = (store_slug or "").strip()[:255] or "demo"
+    merchant_digits = _normal_recovery_merchant_normalized_digits(store_obj)
 
     def _hit(ph: Optional[str], src: str) -> tuple[Optional[str], str]:
         got = _strip_recovery_phone(ph)
         if not got:
+            return None, "none"
+        if _normal_recovery_phone_normalized_equals_merchant(got, merchant_digits):
             return None, "none"
         if emit_log:
             _log_normal_recovery_phone_resolution(
@@ -3491,13 +3604,15 @@ def _resolve_cartflow_recovery_phone(
     recovery_key: str,
     reason_row: Optional[CartRecoveryReason],
 ) -> Tuple[Optional[str], str, bool]:
-    """يُرجع ‎(الرقم، مصدر السجل، مسموح بالإرسال)‎ حسب قواعد الإنتاج ومتجر ‎demo‎."""
-    demo_cfg = _cartflow_demo_test_phone()
+    """رقم ‎العميل‎ فقط لواتساب الاسترجاع العادي — دون رقم التاجر أو مرسل ‎Twilio‎."""
+    merchant_digits = _normal_recovery_merchant_normalized_digits(store_obj)
     phone, source = _map_verified_recovery_phone_from_session(
         abandon_event_phone=abandon_event_phone,
         recovery_key=recovery_key,
         reason_row=reason_row,
     )
+    if phone and _normal_recovery_phone_normalized_equals_merchant(phone, merchant_digits):
+        phone, source = None, "none"
 
     if phone is None:
         ext_p, ext_s = _normal_recovery_extended_phone_lookup(
@@ -3510,28 +3625,18 @@ def _resolve_cartflow_recovery_phone(
         if ext_p:
             phone, source = ext_p, ext_s
 
-    if phone is None and not _is_demo_store_slug(store_slug):
-        _log_normal_recovery_phone_resolution("[NORMAL RECOVERY PHONE MISSING]", "none", "-")
+    if phone and _normal_recovery_phone_normalized_equals_merchant(phone, merchant_digits):
+        phone, source = None, "none"
 
-    if phone is None and _is_demo_store_slug(store_slug):
-        phone = demo_cfg if demo_cfg else None
-        source = "demo_config"
-
-    allowed = False
     if not phone:
-        allowed = False
-    elif source == "demo_config":
-        allowed = _is_demo_store_slug(store_slug) and bool(phone)
-    elif source in (
-        _VERIFIED_WA_RECOVERY_PHONE_SOURCES | _NORMAL_RECOVERY_EXTENDED_PHONE_SOURCES
-    ):
-        if not _is_demo_store_slug(store_slug) and phone == demo_cfg:
-            allowed = False
-        else:
-            allowed = True
-    else:
-        allowed = False
+        _log_normal_recovery_phone_missing_customer(session_id, cart_id)
+        return None, "none", False
 
+    allowed = bool(
+        source in (
+            _VERIFIED_WA_RECOVERY_PHONE_SOURCES | _NORMAL_RECOVERY_EXTENDED_PHONE_SOURCES
+        )
+    )
     return phone, source, allowed
 
 
@@ -3986,6 +4091,16 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
         phone=phone,
         allowed_to_send=allowed_to_send,
     )
+    if (
+        phone
+        and allowed_to_send
+        and _normal_recovery_phone_normalized_equals_merchant(
+            phone, _normal_recovery_merchant_normalized_digits(store_obj)
+        )
+    ):
+        _log_normal_recovery_blocked_merchant_match(session_id, cart_id)
+        phone = None
+        allowed_to_send = False
     rt_for_log = reason_tag if reason_tag else (rt_raw or None)
     if rt_for_log is not None and isinstance(rt_for_log, str) and not rt_for_log.strip():
         rt_for_log = None
@@ -6859,11 +6974,17 @@ def _vip_dashboard_cart_alert_dict_from_group(
     is_vip_card = tier != "normal"
     wa_digits = ""
     for ac_g in grp_sorted:
-        raw_phone = _vip_dashboard_customer_phone_raw(
-            ac_g,
-            dash_store,
-            prefer_persisted_cart_column_before_memory=not is_vip_card,
-        )
+        if is_vip_card:
+            raw_phone = _vip_dashboard_customer_phone_raw(
+                ac_g,
+                dash_store,
+                prefer_persisted_cart_column_before_memory=False,
+            )
+        else:
+            raw_phone = _normal_recovery_dashboard_resolve_customer_phone_raw(
+                ac_g,
+                dash_store,
+            )
         cand = _normalize_customer_phone_for_wa_me(raw_phone)
         if cand:
             wa_digits = cand

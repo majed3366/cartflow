@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""قواعد ‎_resolve_cartflow_recovery_phone‎ — متجر ‎demo‎ مقابل الإنتاج والمصادر الموثّقة."""
+"""قواعد ‎_resolve_cartflow_recovery_phone‎ — رقم عميل فقط دون خط التاجر."""
 from __future__ import annotations
 
 from types import SimpleNamespace
@@ -17,7 +17,7 @@ from main import (
 from models import CartRecoveryLog
 
 
-def test_demo_missing_phone_demo_config(monkeypatch) -> None:
+def test_demo_missing_phone_has_no_demo_fallback(monkeypatch) -> None:
     monkeypatch.setenv("CARTFLOW_DEMO_TEST_PHONE", "966579706669")
     phone, src, ok = _resolve_cartflow_recovery_phone(
         store_slug="demo",
@@ -28,9 +28,9 @@ def test_demo_missing_phone_demo_config(monkeypatch) -> None:
         recovery_key="demo:demo-isolated-s1-phonetest",
         reason_row=None,
     )
-    assert src == "demo_config"
-    assert phone == "966579706669"
-    assert ok is True
+    assert src == "none"
+    assert phone is None
+    assert ok is False
 
 
 def test_non_demo_no_phone_not_allowed(monkeypatch) -> None:
@@ -65,7 +65,7 @@ def test_abandoned_cart_verified_non_demo(monkeypatch) -> None:
     assert ok is True
 
 
-def test_non_demo_blocks_demo_test_phone_even_from_abandon(monkeypatch) -> None:
+def test_non_demo_blocks_merchant_line_even_from_abandon(monkeypatch) -> None:
     monkeypatch.setenv("CARTFLOW_DEMO_TEST_PHONE", "966579706669")
     phone, src, ok = _resolve_cartflow_recovery_phone(
         store_slug="acme",
@@ -76,8 +76,30 @@ def test_non_demo_blocks_demo_test_phone_even_from_abandon(monkeypatch) -> None:
         recovery_key="acme:s4",
         reason_row=None,
     )
-    assert src == "abandoned_cart"
-    assert phone == "966579706669"
+    assert src == "none"
+    assert phone is None
+    assert ok is False
+
+
+def test_store_whatsapp_blocks_matching_customer_candidate(monkeypatch) -> None:
+    monkeypatch.delenv("CARTFLOW_DEMO_TEST_PHONE", raising=False)
+    monkeypatch.delenv("DEFAULT_MERCHANT_PHONE", raising=False)
+    monkeypatch.delenv("TWILIO_WHATSAPP_FROM", raising=False)
+    st = SimpleNamespace(
+        store_whatsapp_number="+966579706669",
+        whatsapp_support_url=None,
+    )
+    phone, src, ok = _resolve_cartflow_recovery_phone(
+        store_slug="acme",
+        session_id="s4b",
+        cart_id=None,
+        store_obj=st,
+        abandon_event_phone="966579706669",
+        recovery_key="acme:s4b",
+        reason_row=None,
+    )
+    assert phone is None
+    assert src == "none"
     assert ok is False
 
 

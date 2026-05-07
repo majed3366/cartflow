@@ -27,6 +27,9 @@ from tests.test_recovery_isolation import (
     _reset_recovery_memory,
 )
 
+# Valid customer WhatsApp for normal recovery (must not match demo merchant / env defaults).
+_NORMAL_SEQUENCE_CUSTOMER_PHONE = "9665444555666"
+
 
 def _abandon(store: str, session_id: str) -> object:
     return {
@@ -51,7 +54,12 @@ class CartRecoverySequenceBehaviorTests(unittest.TestCase):
     ) -> None:
         """One recovery message per scheduled run; no duplicate sends."""
         mock_send.return_value = {"ok": True}
-        _post_recovery_reason_for_session(self.client, "demo", "seq-normal-1")
+        _post_recovery_reason_for_session(
+            self.client,
+            "demo",
+            "seq-normal-1",
+            customer_phone=_NORMAL_SEQUENCE_CUSTOMER_PHONE,
+        )
         r = self.client.post(
             "/api/cart-event",
             json=_abandon("demo", "seq-normal-1"),
@@ -74,7 +82,12 @@ class CartRecoverySequenceBehaviorTests(unittest.TestCase):
         """Multiple abandons for same session: only one send when first run completes."""
         mock_send.return_value = {"ok": True}
         body = _abandon("demo", "seq-dup-1")
-        _post_recovery_reason_for_session(self.client, "demo", "seq-dup-1")
+        _post_recovery_reason_for_session(
+            self.client,
+            "demo",
+            "seq-dup-1",
+            customer_phone=_NORMAL_SEQUENCE_CUSTOMER_PHONE,
+        )
         self.assertTrue(self.client.post("/api/cart-event", json=body).json()["recovery_scheduled"])
         self.assertEqual(1, mock_send.call_count)
         r2 = self.client.post("/api/cart-event", json=body).json()
@@ -94,15 +107,25 @@ class CartRecoverySequenceBehaviorTests(unittest.TestCase):
         """demo and demo2: separate recovery; one send each, 2 total."""
         mock_send.return_value = {"ok": True}
         sid = "shared-sid-iso"
-        _post_recovery_reason_for_session(self.client, "demo", sid)
+        _post_recovery_reason_for_session(
+            self.client,
+            "demo",
+            sid,
+            customer_phone=_NORMAL_SEQUENCE_CUSTOMER_PHONE,
+        )
         r1 = self.client.post(
             "/api/cart-event",
             json=_abandon("demo", sid),
         )
-        _post_recovery_reason_for_session(self.client, "demo2", sid)
+        _post_recovery_reason_for_session(
+            self.client,
+            "demo2",
+            sid,
+            customer_phone=_NORMAL_SEQUENCE_CUSTOMER_PHONE,
+        )
         r2 = self.client.post(
             "/api/cart-event",
-            json={**_abandon("demo2", sid), "phone": "9665444555666"},
+            json={**_abandon("demo2", sid), "phone": _NORMAL_SEQUENCE_CUSTOMER_PHONE},
         )
         self.assertTrue(r1.json().get("recovery_scheduled"))
         self.assertTrue(r2.json().get("recovery_scheduled"))
@@ -139,7 +162,12 @@ class CartRecoverySequenceBehaviorTests(unittest.TestCase):
             return {"ok": True}
 
         mock_send.side_effect = after_step1
-        _post_recovery_reason_for_session(self.client, "demo", "conv-mid-1")
+        _post_recovery_reason_for_session(
+            self.client,
+            "demo",
+            "conv-mid-1",
+            customer_phone=_NORMAL_SEQUENCE_CUSTOMER_PHONE,
+        )
         r = self.client.post(
             "/api/cart-event",
             json=_abandon("demo", "conv-mid-1"),
@@ -176,7 +204,12 @@ class CartRecoverySequenceBehaviorTests(unittest.TestCase):
         db.session.commit()
         sid = "seq-normal-two"
         try:
-            _post_recovery_reason_for_session(self.client, "demo", sid)
+            _post_recovery_reason_for_session(
+                self.client,
+                "demo",
+                sid,
+                customer_phone=_NORMAL_SEQUENCE_CUSTOMER_PHONE,
+            )
             r = self.client.post("/api/cart-event", json=_abandon("demo", sid))
             self.assertEqual(r.status_code, 200, r.text)
             self.assertEqual(2, mock_send.call_count, mock_send.call_args_list)
