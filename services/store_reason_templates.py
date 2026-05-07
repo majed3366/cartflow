@@ -5,8 +5,32 @@ from __future__ import annotations
 import json
 from typing import Any, Dict, List, Optional
 
-_REASON_TAGS = frozenset({"price", "shipping", "warranty", "thinking", "quality"})
+_REASON_TAGS = frozenset(
+    {"price", "shipping", "warranty", "thinking", "quality", "delivery", "other"}
+)
 _MAX_MESSAGE_CHARS = 65535
+
+
+def _parse_guided_attempts_column(raw: Any) -> Dict[str, str]:
+    if raw is None or not isinstance(raw, dict):
+        return {}
+    out: Dict[str, str] = {}
+    for k, v in raw.items():
+        ks = str(k).strip()
+        if ks not in ("1", "2", "3"):
+            try:
+                n = int(ks)
+            except (TypeError, ValueError):
+                continue
+            if not (1 <= n <= 3):
+                continue
+            ks = str(n)
+        if v is None:
+            continue
+        t = str(v).strip()[:_MAX_MESSAGE_CHARS]
+        if t:
+            out[ks] = t
+    return out
 
 
 def normalize_delay_unit(raw: Any) -> Optional[str]:
@@ -92,6 +116,9 @@ def parse_reason_templates_column(raw: Any) -> Dict[str, Dict[str, Any]]:
         row_d: Dict[str, Any] = {"enabled": enabled, "message": msg, "message_count": mc}
         if messages_col:
             row_d["messages"] = messages_col
+        ga = _parse_guided_attempts_column(entry.get("guided_attempts"))
+        if ga:
+            row_d["guided_attempts"] = ga
         out[tt] = row_d
     return out
 
@@ -126,6 +153,37 @@ def apply_reason_templates_from_body(row: Any, body: Dict[str, Any]) -> None:
                 prev["messages"] = parsed_msgs
             elif isinstance(entry.get("messages"), list) and len(entry["messages"]) == 0:
                 prev.pop("messages", None)
+        if "guided_attempts" in entry:
+            inc_ga = entry.get("guided_attempts")
+            if inc_ga is None:
+                prev.pop("guided_attempts", None)
+            elif isinstance(inc_ga, dict):
+                cur = dict(prev.get("guided_attempts") or {})
+                normalized: Dict[str, Any] = {}
+                for rk, rv in inc_ga.items():
+                    sk = str(rk).strip()
+                    if sk not in ("1", "2", "3"):
+                        try:
+                            n = int(sk)
+                        except (TypeError, ValueError):
+                            continue
+                        if 1 <= n <= 3:
+                            sk = str(n)
+                        else:
+                            continue
+                    normalized[sk] = rv
+                for ak in ("1", "2", "3"):
+                    if ak not in normalized:
+                        continue
+                    val = normalized.get(ak)
+                    if val is None or not str(val).strip():
+                        cur.pop(ak, None)
+                    else:
+                        cur[ak] = str(val).strip()[:_MAX_MESSAGE_CHARS]
+                if cur:
+                    prev["guided_attempts"] = cur
+                else:
+                    prev.pop("guided_attempts", None)
         base[tt] = prev
     row.reason_templates_json = json.dumps(base, ensure_ascii=False) if base else None
 

@@ -282,6 +282,7 @@ from services.behavioral_recovery.link_tracking import (
     handle_recovery_link_click,
 )
 from services.recovery_message_strategy import get_recovery_message
+from services.recovery_template_defaults import guided_defaults_for_api
 from services.behavioral_recovery.state_store import (
     behavioral_dict_for_abandoned_cart,
     customer_replied_flagged_for_session,
@@ -901,6 +902,7 @@ def _dev_apply_recovery_settings_update(
     payload.update(vip_cart_threshold_fields_for_api(row))
     payload.update(vip_offer_fields_for_api(row))
     payload.update(cartflow_widget_recovery_gate_fields_for_api(row))
+    payload["guided_recovery_defaults"] = guided_defaults_for_api()
     return payload, 200
 
 # ‎/dev/recovery-flow-test?type=…‎ — بدون قراءة من ‎DB‎
@@ -1328,6 +1330,7 @@ def api_recovery_settings_get():
         payload.update(vip_cart_threshold_fields_for_api(row))
         payload.update(vip_offer_fields_for_api(row))
         payload.update(cartflow_widget_recovery_gate_fields_for_api(row))
+        payload["guided_recovery_defaults"] = guided_defaults_for_api()
         return j(payload)
     except Exception as e:  # noqa: BLE001
         db.session.rollback()
@@ -4086,7 +4089,7 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
             return None
         text = (multi_message_text or "").strip()
         if not text:
-            text = get_recovery_message(reason_tag, int(step_num))
+            text = get_recovery_message(reason_tag, int(step_num), store_obj)
     elif seq_follow:
         if not rt_raw:
             reason_tag = None
@@ -4128,7 +4131,7 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
             return None
         text = (multi_message_text or "").strip()
         if not text:
-            text = get_recovery_message(reason_tag, int(step_num))
+            text = get_recovery_message(reason_tag, int(step_num), store_obj)
     elif rt_raw:
         reason_tag = rt_raw
         if reason_template_blocks_recovery_whatsapp(reason_tag, store_obj):

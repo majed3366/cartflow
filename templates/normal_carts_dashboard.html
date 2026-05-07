@@ -155,14 +155,17 @@
             <div class="cf-dash-section-head">
               <h2 id="reason-recovery-heading">إعدادات حسب سبب التردد</h2>
             </div>
-            <p class="mb-2 text-[11px] leading-snug text-slate-500">لكل سبب: التفعيل، عدد الرسائل، التأخير، نص كل رسالة، وعبارات جاهزة للقالب.</p>
+            <p class="mb-2 text-[11px] leading-snug text-slate-500">لكل سبب: التفعيل، عدد الرسائل، التأخير، ثم مسار موجّه لكل محاولة (مساعدة → طمأنة → تذكير لطيف) مع إمكانية التعديل والحفظ.</p>
             <div class="space-y-2">
+              {% set psych_labels = ["مساعدة", "طمأنة", "تذكير لطيف"] %}
               {% for reason_key, label_ar, tid, aid in [
                 ("price","السعر","template_price","cf-msg-template-price"),
                 ("shipping","الشحن","template_shipping","cf-msg-template-shipping"),
+                ("delivery","التوصيل","template_delivery","cf-msg-template-delivery"),
                 ("warranty","الضمان","template_warranty","cf-msg-template-warranty"),
                 ("quality","الجودة","template_quality","cf-msg-template-quality"),
                 ("thinking","التردد","template_other","cf-msg-template-thinking"),
+                ("other","أخرى","template_reason_other","cf-msg-template-other"),
               ] %}
               <div id="{{ aid }}" class="cf-rec-card scroll-mt-16" data-rec-trigger-card="{{ reason_key }}">
                 <div class="flex flex-wrap items-start justify-between gap-2 border-b border-slate-200/80 pb-1.5">
@@ -188,7 +191,18 @@
                 </div>
                 {% for slot in [1,2,3] %}
                 <div class="cf-rec-slot mt-1.5 {% if slot > 1 %}hidden{% endif %}" data-rec-slot-wrap="{{ reason_key }}" data-slot-index="{{ slot }}">
-                  <p class="mb-1 text-[10px] font-semibold text-slate-800">رسالة {{ slot }}</p>
+                  <div class="mb-1 flex flex-wrap items-center gap-1">
+                    <span class="text-[10px] font-semibold text-slate-800">رسالة {{ slot }}</span>
+                    <span class="rounded-full bg-emerald-50 px-2 py-0.5 text-[9px] font-bold text-emerald-900">{{ psych_labels[slot - 1] }}</span>
+                  </div>
+                  <div class="mb-1.5 flex flex-wrap items-center gap-1">
+                    <select data-guided-preset="{{ reason_key }}" data-slot-index="{{ slot }}" class="cf-guided-preset rs-select grow rounded-lg border border-zid-200 bg-white px-1.5 py-1 text-[10px] font-medium text-slate-800 focus:border-zid-500 focus:outline-none">
+                      <option value="" selected disabled>عبارات مقترحة</option>
+                    </select>
+                    <button type="button" class="shrink-0 rounded-lg border border-slate-200 bg-white px-2 py-1 text-[9px] font-semibold text-violet-800 hover:bg-violet-50" data-guided-restore="{{ reason_key }}" data-slot-index="{{ slot }}">استعادة الافتراضي</button>
+                  </div>
+                  <p class="cf-guided-preview mb-1 min-h-[2rem] whitespace-pre-wrap rounded-lg border border-slate-100 bg-white/95 px-2 py-1 text-[10px] leading-relaxed text-slate-600" data-guided-preview="{{ reason_key }}-{{ slot }}" hidden></p>
+                  <p class="mb-1 text-[9px] font-semibold text-slate-500">التأخير قبل إرسال هذه الرسالة</p>
                   <div class="mb-1 flex flex-wrap items-center gap-1">
                     <input type="number" min="1" step="1" value="2" data-rec-slot-delay="{{ reason_key }}" data-slot-index="{{ slot }}" class="w-14 rounded border border-slate-200 px-1 py-0.5 text-[10px]" />
                     <select data-rec-slot-unit="{{ reason_key }}" data-slot-index="{{ slot }}" class="rounded border border-slate-200 bg-white px-1 py-0.5 text-[10px]">
@@ -197,8 +211,10 @@
                       <option value="day">يوم</option>
                     </select>
                   </div>
-                  {% if slot == 1 %}
+                  {% if slot == 1 and tid != "template_reason_other" %}
                   <textarea id="{{ tid }}" name="{{ tid }}" rows="2" data-rec-slot-text="{{ reason_key }}" data-slot-index="{{ slot }}" class="w-full resize-y rounded border border-slate-200 bg-white px-1.5 py-1 text-[10px] leading-relaxed"></textarea>
+                  {% elif slot == 1 %}
+                  <textarea id="{{ tid }}" name="template_reason_other" rows="2" data-rec-slot-text="{{ reason_key }}" data-slot-index="{{ slot }}" class="w-full resize-y rounded border border-slate-200 bg-white px-1.5 py-1 text-[10px] leading-relaxed"></textarea>
                   {% else %}
                   <textarea rows="2" data-rec-slot-text="{{ reason_key }}" data-slot-index="{{ slot }}" class="w-full resize-y rounded border border-slate-200 bg-white px-1.5 py-1 text-[10px] leading-relaxed"></textarea>
                   {% endif %}
@@ -206,18 +222,6 @@
                 {% endfor %}
               </div>
               {% endfor %}
-              <div id="cf-msg-template-delivery" class="cf-rec-card scroll-mt-16 border-dashed border-slate-300/90">
-                <p class="text-[11px] font-bold leading-snug text-slate-900">قالب التوصيل</p>
-                <p class="mt-0.5 mb-2 text-[10px] leading-snug text-slate-500">نص رسالة واتساب لوقت التوصيل — يُحفظ مع بقية القوالب.</p>
-                <div class="rounded-md border border-zid-100 bg-zid-50/60 p-2">
-                  <p class="mb-1 text-[10px] font-semibold text-zid-900">عبارات جاهزة للقالب</p>
-                  <select data-target="template_delivery" class="wa-phrase-pick rs-select w-full rounded-lg border-2 border-zid-200 bg-white px-2 py-2 text-xs font-medium text-slate-800 focus:border-zid-500 focus:outline-none focus:ring-2 focus:ring-zid-400/40">
-                    <option value="" disabled selected hidden>اختر عبارة جاهزة</option>
-                  </select>
-                </div>
-                <textarea id="template_delivery" name="template_delivery" rows="2"
-                  class="mt-2 w-full resize-y rounded border border-slate-200 bg-white px-1.5 py-1 text-[10px] leading-relaxed"></textarea>
-              </div>
             </div>
           </section>
 

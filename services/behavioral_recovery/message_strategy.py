@@ -17,4 +17,4 @@ def resolve_behavioral_followup_message(
 ) -> str:
     """محاولة 2+ — نبرة مختلفة عن المحاولة الأولى عبر get_recovery_message."""
     _ = (first_message_body, second_message_body, store)
-    return get_recovery_message(reason_tag, int(step_num))
+    return get_recovery_message(reason_tag, int(step_num), store)

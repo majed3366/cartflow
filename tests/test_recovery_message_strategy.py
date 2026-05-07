@@ -20,12 +20,28 @@ class RecoveryMessageStrategyTests(unittest.TestCase):
         m2 = get_recovery_message("shipping", 2)
         m3 = get_recovery_message("warranty", 3)
         self.assertIn("كمّلت", m1)
-        self.assertIn("استفسار", m2)
-        self.assertTrue("نفد" in m3 or "محفوظ" in m3)
+        self.assertTrue("شحن" in m2 or "مهمة" in m2)
+        self.assertTrue(
+            "نفد" in m3 or "محفوظ" in m3 or "إكمال" in m3 or "طلبك" in m3
+        )
 
     def test_attempt_index_clamped(self) -> None:
         self.assertEqual(get_recovery_message("price", 1), get_recovery_message("price", 0))
         self.assertEqual(get_recovery_message("price", 3), get_recovery_message("price", 99))
+
+    def test_merchant_guided_overrides_default(self) -> None:
+        class _S:
+            reason_templates_json = '{"price": {"guided_attempts": {"2": "نص مخصص للتاجر"}}}'
+
+        d2 = get_recovery_message("price_high", 2)
+        c2 = get_recovery_message("price_high", 2, _S())
+        self.assertNotEqual(c2, d2)
+        self.assertEqual(c2, "نص مخصص للتاجر")
+
+    def test_per_reason_defaults_differ(self) -> None:
+        p = get_recovery_message("price", 1)
+        s = get_recovery_message("shipping", 1)
+        self.assertNotEqual(p, s)
 
 
 if __name__ == "__main__":

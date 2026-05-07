@@ -11,17 +11,21 @@ from services.store_reason_templates import parse_reason_templates_column
 def canonical_reason_template_key(reason_tag: Optional[str]) -> Optional[str]:
     """
     وسوم الواجهة / الطبقات → مفتاح ‎reason_templates‎.
-    ‎price_high → price‎، ‎shipping_delay → shipping‎، ‎warranty_issue → warranty‎، ‎thinking → thinking‎.
+    ‎price_high → price‎، ‎shipping_delay → shipping‎، ‎warranty_issue → warranty‎، ‎thinking → thinking‎، ‎other‎، ‎delivery‎.
     """
     k = (reason_tag or "").strip().lower()
     if not k:
         return None
     if k == "thinking":
         return "thinking"
+    if k == "other" or k.startswith("other_"):
+        return "other"
     if k == "quality" or "quality" in k:
         return "quality"
     if k.startswith("price") or "price" in k:
         return "price"
+    if "delivery" in k:
+        return "delivery"
     if "shipping" in k:
         return "shipping"
     if "warranty" in k:

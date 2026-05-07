@@ -16,6 +16,8 @@ def test_canonical_reason_keys() -> None:
     assert canonical_reason_template_key("shipping_delay") == "shipping"
     assert canonical_reason_template_key("warranty_issue") == "warranty"
     assert canonical_reason_template_key("thinking") == "thinking"
+    assert canonical_reason_template_key("other") == "other"
+    assert canonical_reason_template_key("delivery_slow") == "delivery"
 
 
 def test_blocks_when_disabled() -> None:

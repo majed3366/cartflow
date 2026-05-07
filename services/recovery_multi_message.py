@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional, Tuple
 
 from services.reason_template_recovery import canonical_reason_template_key
-from services.recovery_message_templates import resolve_whatsapp_recovery_template_message
+from services.recovery_message_strategy import get_recovery_message
 from services.store_reason_templates import normalize_delay_unit, parse_reason_templates_column
 
 _DEFAULT_MULTI_DELAYS: Dict[str, List[Tuple[float, str]]] = {
@@ -14,6 +14,8 @@ _DEFAULT_MULTI_DELAYS: Dict[str, List[Tuple[float, str]]] = {
     "warranty": [(5.0, "minute"), (2.0, "hour"), (24.0, "hour")],
     "thinking": [(3.0, "minute"), (1.0, "hour"), (24.0, "hour")],
     "quality": [(3.0, "minute"), (2.0, "hour"), (24.0, "hour")],
+    "delivery": [(4.0, "minute"), (1.0, "hour"), (18.0, "hour")],
+    "other": [(3.0, "minute"), (1.0, "hour"), (24.0, "hour")],
 }
 
 
@@ -88,7 +90,7 @@ def multi_message_slots_for_abandon(
         if not text and i == 0 and legacy_msg:
             text = legacy_msg
         if not text:
-            text = resolve_whatsapp_recovery_template_message(reason_tag, store=store)
+            text = get_recovery_message(reason_tag, i + 1, store)
 
         sec = delay_to_seconds(delay_num, unit_eff)
 

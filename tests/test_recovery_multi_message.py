@@ -107,3 +107,23 @@ def test_parse_and_apply_preserves_messages() -> None:
     assert ship["message_count"] == 2
     assert len(ship["messages"]) == 2
     assert ship["messages"][1]["unit"] == "hour"
+
+
+def test_guided_attempts_parse_and_apply() -> None:
+    row = _Row()
+    body = {
+        "reason_templates": {
+            "price": {
+                "enabled": True,
+                "message": "",
+                "message_count": 1,
+                "guided_attempts": {"1": "خط مخصص", "2": "", 3: "ثالثة"},
+            }
+        }
+    }
+    apply_reason_templates_from_body(row, body)
+    parsed = parse_reason_templates_column(row.reason_templates_json)
+    ga = parsed["price"].get("guided_attempts") or {}
+    assert ga.get("1") == "خط مخصص"
+    assert ga.get("3") == "ثالثة"
+    assert "2" not in ga

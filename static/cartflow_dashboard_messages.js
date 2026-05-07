@@ -249,14 +249,39 @@
       }
 
       var recoveryState = null;
-      var REC_REASON_KEYS = ["price", "shipping", "warranty", "thinking", "quality"];
+      var REC_REASON_KEYS = [
+        "price",
+        "shipping",
+        "delivery",
+        "warranty",
+        "quality",
+        "thinking",
+        "other",
+      ];
       var SLOT_DELAY_DEFAULTS = {
         price: [[2, "minute"], [2, "hour"], [24, "hour"]],
         shipping: [[5, "minute"], [1, "hour"], [12, "hour"]],
+        delivery: [[4, "minute"], [1, "hour"], [18, "hour"]],
         warranty: [[5, "minute"], [2, "hour"], [24, "hour"]],
         thinking: [[3, "minute"], [1, "hour"], [24, "hour"]],
+        other: [[3, "minute"], [1, "hour"], [24, "hour"]],
         quality: [[3, "minute"], [2, "hour"], [24, "hour"]],
       };
+      function defaultGuidedLine(uiKey, si) {
+        var g = window.__CF_GUIDED_DEFAULTS || {};
+        var row = g[uiKey] || {};
+        return String(row[String(si)] != null ? row[String(si)] : "").trim();
+      }
+      function buildGuidedAttemptsPayload(uiKey, mc) {
+        var ga = {};
+        for (var si = 1; si <= mc; si++) {
+          var tEl = getSlotTextEl(uiKey, si);
+          var body = tEl ? String(tEl.value || "").trim() : "";
+          var defl = defaultGuidedLine(uiKey, si);
+          ga[String(si)] = body !== defl ? body : "";
+        }
+        return ga;
+      }
       function slotDelayDefaults(uiKey) {
         return SLOT_DELAY_DEFAULTS[uiKey] || [[3, "minute"], [1, "hour"], [24, "hour"]];
       }
@@ -337,11 +362,109 @@
               if (uv === "days") uv = "day";
               uEl.value = uv;
             }
-            if (tEl) tEl.value = typeof item.text === "string" ? item.text : "";
+            if (tEl) {
+              var fromMsg = typeof item.text === "string" ? item.text.trim() : "";
+              var ga = row.guided_attempts && typeof row.guided_attempts === "object" ? row.guided_attempts : {};
+              var fromG = ga[String(si)] != null ? String(ga[String(si)]).trim() : "";
+              var defL = defaultGuidedLine(uiKey, si);
+              tEl.value = fromMsg || fromG || defL;
+            }
           }
           updateSlotVisibility(uiKey);
           syncToggleVisual(uiKey);
           syncHint(uiKey);
+          refreshGuidedForReason(uiKey);
+        });
+      }
+
+      function populateOneGuidedPresetSelect(uiKey, slotIdx) {
+        var sel = document.querySelector(
+          '.cf-guided-preset[data-guided-preset="' + uiKey + '"][data-slot-index="' + slotIdx + '"]'
+        );
+        if (!sel) return;
+        var defBody = defaultGuidedLine(uiKey, slotIdx);
+        while (sel.firstChild) {
+          sel.removeChild(sel.firstChild);
+        }
+        var ph = document.createElement("option");
+        ph.value = "";
+        ph.textContent = "عبارات مقترحة";
+        ph.disabled = true;
+        ph.hidden = true;
+        ph.selected = true;
+        sel.appendChild(ph);
+        if (defBody) {
+          var o = document.createElement("option");
+          o.value = "def";
+          o.setAttribute("data-body", encodePresetBodyForAttr(defBody));
+          o.textContent = "المقترح من CartFlow";
+          sel.appendChild(o);
+        }
+      }
+
+      function syncGuidedPreview(uiKey, slotIdx) {
+        var tEl = getSlotTextEl(uiKey, slotIdx);
+        var prev = document.querySelector('[data-guided-preview="' + uiKey + "-" + slotIdx + '"]');
+        if (!prev || !tEl) return;
+        var txt = String(tEl.value || "").trim();
+        if (!txt) {
+          prev.classList.add("hidden");
+          prev.textContent = "";
+          return;
+        }
+        prev.textContent = txt;
+        prev.classList.remove("hidden");
+      }
+
+      function refreshGuidedForReason(uiKey) {
+        for (var si = 1; si <= 3; si++) {
+          populateOneGuidedPresetSelect(uiKey, si);
+          syncGuidedPreview(uiKey, si);
+        }
+      }
+
+      function bindGuidedRecoveryUi() {
+        var root = document.getElementById("reason-recovery-settings");
+        if (!root) return;
+        root.addEventListener("change", function (ev) {
+          var t = ev.target;
+          if (!t || !t.classList || !t.classList.contains("cf-guided-preset")) return;
+          var uiKey = t.getAttribute("data-guided-preset");
+          var si = parseInt(t.getAttribute("data-slot-index"), 10);
+          if (!uiKey || !(si >= 1 && si <= 3)) return;
+          if (t.selectedIndex <= 0) return;
+          var opt = t.options[t.selectedIndex];
+          var body = opt.getAttribute("data-body");
+          if (!body) return;
+          try {
+            body = body.replace(/&#10;/g, "\n");
+          } catch (eG) {
+            /* ignore */
+          }
+          var ta = getSlotTextEl(uiKey, si);
+          if (ta) ta.value = body;
+          t.selectedIndex = 0;
+          syncGuidedPreview(uiKey, si);
+        });
+        root.addEventListener("click", function (ev) {
+          var t = ev.target;
+          if (!t || !t.closest) return;
+          var btn = t.closest("[data-guided-restore]");
+          if (!btn) return;
+          var uiKey = btn.getAttribute("data-guided-restore");
+          var si = parseInt(btn.getAttribute("data-slot-index"), 10);
+          if (!uiKey || !(si >= 1 && si <= 3)) return;
+          var ta = getSlotTextEl(uiKey, si);
+          if (ta) ta.value = defaultGuidedLine(uiKey, si);
+          syncGuidedPreview(uiKey, si);
+        });
+        root.addEventListener("input", function (ev) {
+          var ta = ev.target;
+          if (!ta || !ta.getAttribute) return;
+          if (!ta.getAttribute("data-rec-slot-text")) return;
+          var uiKey = ta.getAttribute("data-rec-slot-text");
+          var si = parseInt(ta.getAttribute("data-slot-index"), 10);
+          if (uiKey && si >= 1 && si <= 3) syncGuidedPreview(uiKey, si);
         });
       }
 
@@ -369,6 +492,7 @@
             message: messages[0] ? messages[0].text : "",
             message_count: mc,
             messages: messages,
+            guided_attempts: buildGuidedAttemptsPayload(uiKey, mc),
           };
         });
         return out;
@@ -380,13 +504,34 @@
           if (!rt[k]) return;
           o[k] = {
             enabled: rt[k].enabled,
-            message: (rt[k].messages && rt[k].messages[0] && rt[k].messages[0].text) ? rt[k].messages[0].text : "",
+            message:
+              rt[k].messages && rt[k].messages[0] && rt[k].messages[0].text ? rt[k].messages[0].text : "",
           };
         });
-        if (rt.thinking) {
+        if (rt.delivery) {
+          o.delivery = {
+            enabled: rt.delivery.enabled,
+            message:
+              rt.delivery.messages && rt.delivery.messages[0] && rt.delivery.messages[0].text
+                ? rt.delivery.messages[0].text
+                : "",
+          };
+        }
+        if (rt.other) {
+          o.other = {
+            enabled: rt.other.enabled,
+            message:
+              rt.other.messages && rt.other.messages[0] && rt.other.messages[0].text
+                ? rt.other.messages[0].text
+                : "",
+          };
+        } else if (rt.thinking) {
           o.other = {
             enabled: rt.thinking.enabled,
-            message: (rt.thinking.messages && rt.thinking.messages[0] && rt.thinking.messages[0].text) ? rt.thinking.messages[0].text : "",
+            message:
+              rt.thinking.messages && rt.thinking.messages[0] && rt.thinking.messages[0].text
+                ? rt.thinking.messages[0].text
+                : "",
           };
         }
         return o;
@@ -418,6 +563,7 @@
           syncToggleVisual(uiKey);
           syncHint(uiKey);
         });
+        bindGuidedRecoveryUi();
       }
 
       function syncTemplateCustomVisibility() {
@@ -677,6 +823,9 @@
           if (x.data.ok) {
             recoveryState = x.data;
             if (MODE !== "exit") {
+              if (x.data.guided_recovery_defaults) {
+                window.__CF_GUIDED_DEFAULTS = x.data.guided_recovery_defaults;
+              }
               fillTemplates(x.data);
               fillTemplateControl(x.data);
               applyTriggerTemplatesFromApi(x.data.reason_templates || {});
@@ -746,6 +895,9 @@
             if (x.data.ok) {
               recoveryState = x.data;
               if (MODE !== "exit") {
+                if (x.data.guided_recovery_defaults) {
+                  window.__CF_GUIDED_DEFAULTS = x.data.guided_recovery_defaults;
+                }
                 fillTemplates(x.data);
                 fillTemplateControl(x.data);
                 applyTriggerTemplatesFromApi(x.data.reason_templates || {});

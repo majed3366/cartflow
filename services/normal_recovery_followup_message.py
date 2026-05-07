@@ -16,4 +16,4 @@ def resolve_smart_second_recovery_message(
     رسالة المحاولة الثانية — نبرة طمأنة عبر طبقة الاسترجاع السلوكي الموحدة.
     """
     _ = (first_message_body, store)
-    return get_recovery_message(reason_tag, 2)
+    return get_recovery_message(reason_tag, 2, store)
