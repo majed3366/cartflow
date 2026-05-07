@@ -101,9 +101,11 @@ class NormalRecoveryDashboardStatusTests(unittest.TestCase):
         self.assertTrue(payload.get("normal_recovery_reply_intent_label_ar"))
         self.assertIn("نفهمك", payload.get("normal_recovery_suggested_reply_ar") or "")
         self.assertIn(
-            "سعر",
-            payload.get("normal_recovery_suggested_action_hint_ar") or "",
+            "تأكيد",
+            payload.get("normal_recovery_suggested_strategy_ar") or "",
         )
+        self.assertTrue(payload.get("normal_recovery_suggestion_reason_ar"))
+        self.assertEqual(payload.get("normal_recovery_optional_offer_type"), "value_framing")
         self.assertEqual(payload.get("normal_recovery_suggested_action_key"), "reassure_price")
 
     def test_interactive_dashboard_includes_delivery_suggestion(self) -> None:
@@ -152,6 +154,8 @@ class NormalRecoveryDashboardStatusTests(unittest.TestCase):
 
         payload = _normal_recovery_phase_steps_payload(ac)
         self.assertIn("التوصيل", payload.get("normal_recovery_suggested_reply_ar") or "")
+        self.assertIn("طمأنة", payload.get("normal_recovery_suggested_strategy_ar") or "")
+        self.assertTrue(payload.get("normal_recovery_suggestion_reason_ar"))
         self.assertEqual(payload.get("normal_recovery_suggested_action_key"), "clarify_shipping")
 
     def test_mock_sent_counts_for_phase_and_coarse_status(self) -> None:

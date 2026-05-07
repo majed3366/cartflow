@@ -16,10 +16,10 @@ from services.recovery_interaction_state import (
 )
 from services.recovery_reply_actions import recovery_merchant_action_for_intent
 from services.recovery_reply_intent_labels import recovery_reply_intent_badge_ar
-from services.recovery_reply_suggestions import (
-    effective_suggestion_intent,
-    get_recovery_reply_suggestion,
+from services.recovery_product_suggestions import (
+    get_product_aware_recovery_suggestion_for_abandoned_cart,
 )
+from services.recovery_reply_suggestions import effective_suggestion_intent
 from services.whatsapp_positive_reply import normalize_wa_customer_digits
 
 
@@ -74,15 +74,32 @@ def conversation_dashboard_extras(ac: AbandonedCart) -> dict[str, Any]:
     suggested_reply_ar = ""
     suggested_action_hint_ar = ""
     suggested_action_key = ""
+    suggested_strategy_ar = ""
+    suggestion_reason_ar = ""
+    suggestion_ux_badge_ar = ""
+    optional_offer_type = ""
+    checkout_cta_mode = ""
     if replied and st != "recovered":
         cust_for_sugg = str(bh.get("latest_customer_message") or preview or "").strip()
         eff_intent = intent_raw if intent_raw else "other"
-        sug = get_recovery_reply_suggestion(eff_intent, cust_for_sugg)
-        suggested_reply_ar = str(sug.get("suggested_reply") or "").strip()
-        suggested_action_hint_ar = str(sug.get("suggested_action") or "").strip()
+        pa = get_product_aware_recovery_suggestion_for_abandoned_cart(
+            ac,
+            eff_intent,
+            cust_for_sugg,
+        )
+        suggested_reply_ar = str(pa.get("suggested_reply") or "").strip()
+        suggested_strategy_ar = str(pa.get("suggested_strategy") or "").strip()
+        suggestion_reason_ar = str(pa.get("suggestion_reason_ar") or "").strip()
+        ub = pa.get("ux_badge_ar")
+        suggestion_ux_badge_ar = str(ub).strip() if ub else ""
+        ot = pa.get("optional_offer_type")
+        optional_offer_type = str(ot).strip() if ot else ""
+        cm = pa.get("checkout_cta_mode")
+        checkout_cta_mode = str(cm).strip() if cm else ""
         suggested_action_key = recovery_merchant_action_for_intent(
             effective_suggestion_intent(eff_intent)
         ).key
+        suggested_action_hint_ar = suggested_strategy_ar
     subtitle = ""
     badge = False
     open_hint = ""
@@ -114,4 +131,9 @@ def conversation_dashboard_extras(ac: AbandonedCart) -> dict[str, Any]:
         "normal_recovery_suggested_reply_ar": suggested_reply_ar,
         "normal_recovery_suggested_action_hint_ar": suggested_action_hint_ar,
         "normal_recovery_suggested_action_key": suggested_action_key,
+        "normal_recovery_suggested_strategy_ar": suggested_strategy_ar,
+        "normal_recovery_suggestion_reason_ar": suggestion_reason_ar,
+        "normal_recovery_suggestion_ux_badge_ar": suggestion_ux_badge_ar,
+        "normal_recovery_optional_offer_type": optional_offer_type,
+        "normal_recovery_checkout_cta_mode": checkout_cta_mode,
     }

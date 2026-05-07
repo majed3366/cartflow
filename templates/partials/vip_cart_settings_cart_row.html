@@ -52,13 +52,23 @@
         <div class="mt-2 space-y-2 rounded-xl border border-emerald-100/90 bg-gradient-to-br from-white via-emerald-50/30 to-slate-50/80 p-2.5 shadow-sm ring-1 ring-emerald-100/60"
           data-normal-recovery-suggestion-box
           data-normal-recovery-suggestion-action-key="{{ vc.normal_recovery_suggested_action_key | default('') | e }}"
+          data-normal-recovery-offer-type="{{ vc.normal_recovery_optional_offer_type | default('') | e }}"
+          data-normal-recovery-checkout-cta-mode="{{ vc.normal_recovery_checkout_cta_mode | default('') | e }}"
           role="region" aria-label="إرشاد رد استرجاع">
           <div class="flex flex-wrap items-center justify-between gap-1 border-b border-emerald-100/70 pb-1.5">
             <p class="m-0 text-[10px] font-bold tracking-tight text-emerald-950">إرشاد من CartFlow</p>
             <span class="rounded border border-emerald-200/80 bg-white/90 px-1.5 py-0.5 text-[8px] font-semibold text-emerald-800">للصق يدوياً — لا يُرسل تلقائياً</span>
           </div>
-          {% if vc.normal_recovery_suggested_action_hint_ar %}
-          <p class="m-0 text-[10px] font-semibold text-slate-700"><span class="text-slate-500">اقتراح:</span> {{ vc.normal_recovery_suggested_action_hint_ar | e }}</p>
+          <div class="flex flex-wrap items-center justify-end gap-1">
+            {% if vc.normal_recovery_suggestion_ux_badge_ar %}
+            <span class="inline-flex items-center rounded-full border border-amber-200/85 bg-amber-50/95 px-2 py-0.5 text-[8px] font-bold text-amber-950">{{ vc.normal_recovery_suggestion_ux_badge_ar | e }}</span>
+            {% endif %}
+          </div>
+          {% if vc.normal_recovery_suggested_strategy_ar %}
+          <p class="m-0 text-[10px] font-semibold text-slate-800"><span class="font-bold text-emerald-900">نوع الاستراتيجية:</span> {{ vc.normal_recovery_suggested_strategy_ar | e }}</p>
+          {% endif %}
+          {% if vc.normal_recovery_suggestion_reason_ar %}
+          <p class="m-0 text-[9px] leading-relaxed text-slate-600"><span class="font-semibold text-slate-700">لماذا هذا الاقتراح:</span> {{ vc.normal_recovery_suggestion_reason_ar | e }}</p>
           {% endif %}
           <label class="m-0 block text-[9px] font-semibold text-slate-600" for="nr-sugg-{{ vc.id }}">الرد المقترح — يمكنك تعديله قبل النسخ</label>
           <textarea id="nr-sugg-{{ vc.id }}" data-normal-recovery-suggestion-draft dir="auto" rows="3"
