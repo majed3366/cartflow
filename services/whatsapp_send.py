@@ -263,6 +263,7 @@ def should_send_whatsapp(
     now: Optional[datetime] = None,
     store: Optional[Any] = None,
     sent_count: int = 0,
+    configured_message_count: Optional[int] = None,
 ) -> bool:
     """
     هل يسمح بإرسال تذكير واتساب؟ (بدون مزوّد؛ منطق فقط.)
@@ -270,6 +271,8 @@ def should_send_whatsapp(
     - إن رجع المستخدم للموقع (يُمثَّل مؤقتاً بـ user_returned_to_site): لا نرسل.
     - ‎max_recovery_attempts < 1‎: لا نرسل (مُعطّل).
     - إن ‎sent_count >= max_recovery_attempts‎: لا نرسل (نفد الحد).
+      عند تمرير ‎configured_message_count‎ يُستخدم كحد أقصى للتسلسل بدل ‎Store.recovery_attempts‎
+      (مثل وضع الرسائل المتعددة من القوالب).
     - إن لم نُسجّل نشاطاً: نسمح بالإرسال (لاحقاً يرتبط بتتبع فعلي) إن بقي في الحد.
     - وإلا: لا إرسال إلا إذا ‎now‎ (‎UTC‎) ‎>= last_activity‎ (‎UTC‎) + ‎recovery_delay بالدقائق‎ الكاملة فقط.
     """
@@ -283,7 +286,14 @@ def should_send_whatsapp(
     except (TypeError, ValueError):
         sc = 0
     sc = max(0, sc)
-    max_a = _max_recovery_attempts(store)
+    if configured_message_count is not None:
+        try:
+            max_a = int(configured_message_count)
+        except (TypeError, ValueError):
+            max_a = _max_recovery_attempts(store)
+        max_a = max(1, max_a)
+    else:
+        max_a = _max_recovery_attempts(store)
     if max_a < 1:
         return False
     if sc >= max_a:

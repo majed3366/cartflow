@@ -1331,7 +1331,7 @@ _session_recovery_multi_verified_indexes: dict[str, set[int]] = {}
 _MAX_RECOVERY_ATTEMPTS = 1
 _RECOVERY_REASON_POLL_INTERVAL_SEC = 0.15
 _RECOVERY_REASON_POLL_MAX_ATTEMPTS = 67
-_recovery_session_lock = threading.Lock()
+_recovery_session_lock = threading.RLock()
 
 # خطوة إضافية منطقية (سابقاً كان عندها خطوتان أخريان) — لسجلات «توقفت بعد الأولى»
 _RECOVERY_SEQUENCE_STEPS: tuple[tuple[int, str], ...] = (
@@ -1889,6 +1889,7 @@ def _second_recovery_diagnose_should_send(
     now: datetime,
     store: Any,
     sent_count: int,
+    configured_message_count: Optional[int] = None,
 ) -> Tuple[bool, str]:
     """Mirror of should_send_whatsapp (read-only) — returns (allowed, reason_tag)."""
     if user_returned_to_site:
@@ -1901,7 +1902,13 @@ def _second_recovery_diagnose_should_send(
     except (TypeError, ValueError):
         sc = 0
     sc = max(0, sc)
-    max_a = _max_recovery_attempts(store)
+    if configured_message_count is not None:
+        try:
+            max_a = max(1, int(configured_message_count))
+        except (TypeError, ValueError):
+            max_a = _max_recovery_attempts(store)
+    else:
+        max_a = _max_recovery_attempts(store)
     if max_a < 1:
         return False, "automation_disabled"
     if sc >= max_a:
@@ -1915,6 +1922,88 @@ def _second_recovery_diagnose_should_send(
     if not delay_passed:
         return False, "delay_not_elapsed"
     return True, "allowed"
+
+
+def _normal_recovery_configured_message_count_from_runtime(
+    recovery_key: str,
+    store_obj: Any,
+) -> int:
+    """عدد رسائل التسلسل المفعّل: ‎multi_message‎ من القوالب أو ‎Store.recovery_attempts‎."""
+    with _recovery_session_lock:
+        multi_cap = _session_recovery_multi_attempt_cap.get(recovery_key)
+    if multi_cap is not None:
+        try:
+            return max(1, int(multi_cap))
+        except (TypeError, ValueError):
+            return max(1, int(_max_recovery_attempts(store_obj)))
+    return max(1, int(_max_recovery_attempts(store_obj)))
+
+
+def _normal_recovery_configured_message_count_for_abandoned_cart(
+    ac: AbandonedCart,
+    store_ac: Optional[Any],
+) -> int:
+    if store_ac is None:
+        return 1
+    rt = _reason_tag_for_abandoned_cart(ac)
+    slots = multi_message_slots_for_abandon(rt, store_ac)
+    if slots is not None:
+        return max(1, len(slots))
+    return max(1, int(_max_recovery_attempts(store_ac)))
+
+
+def _log_normal_recovery_sequence_config(
+    *,
+    configured_message_count: int,
+    sent_count: int,
+    attempt_index: int,
+    recovery_key: str,
+) -> None:
+    _log_second_recovery_line(
+        "[NORMAL RECOVERY SEQUENCE CONFIG]",
+        configured_message_count=str(int(configured_message_count)),
+        sent_count=str(int(sent_count)),
+        attempt_index=str(int(attempt_index)),
+        recovery_key=recovery_key,
+    )
+
+
+def _log_normal_recovery_attempt_decision(
+    *,
+    attempt_index: int,
+    allowed: bool,
+    reason: str,
+) -> None:
+    _log_second_recovery_line(
+        "[NORMAL RECOVERY ATTEMPT DECISION]",
+        attempt_index=str(int(attempt_index)),
+        allowed="true" if allowed else "false",
+        reason=(reason or "").strip()[:120],
+    )
+
+
+def _log_normal_recovery_attempt_sent(
+    *,
+    attempt_index: int,
+    sid: str,
+) -> None:
+    _log_second_recovery_line(
+        "[NORMAL RECOVERY ATTEMPT SENT]",
+        attempt_index=str(int(attempt_index)),
+        sid=(sid or "").strip()[:80],
+    )
+
+
+def _log_normal_recovery_attempt_skipped(
+    *,
+    attempt_index: int,
+    reason: str,
+) -> None:
+    _log_second_recovery_line(
+        "[NORMAL RECOVERY ATTEMPT SKIPPED]",
+        attempt_index=str(int(attempt_index)),
+        reason=(reason or "").strip()[:120],
+    )
 
 
 def _log_second_recovery_check(
@@ -2349,10 +2438,14 @@ def _normal_recovery_dashboard_phase_key(ac: AbandonedCart) -> str:
             return "ignored"
     store_ac = _store_row_for_abandoned_cart(ac)
     try:
-        max_a = int(_max_recovery_attempts(store_ac))
+        max_a = int(_normal_recovery_configured_message_count_for_abandoned_cart(ac, store_ac))
     except (TypeError, ValueError):
         max_a = 1
     max_a = max(0, max_a)
+    if sent_n >= max_a >= 1:
+        if max_a == 1:
+            return "first_message_sent"
+        return "reminder_sent"
     if sent_n >= 2:
         return "reminder_sent"
     if sent_n == 1 and max_a >= 2:
@@ -2400,10 +2493,17 @@ def _normal_recovery_phase_steps_payload(ac: AbandonedCart) -> dict[str, Any]:
         )
     store_ac = _store_row_for_abandoned_cart(ac)
     try:
-        max_disp = max(1, int(_max_recovery_attempts(store_ac)))
+        max_disp = max(1, int(_normal_recovery_configured_message_count_for_abandoned_cart(ac, store_ac)))
     except (TypeError, ValueError):
         max_disp = 1
     sent_ct = _cart_recovery_sent_real_count_for_abandoned(ac)
+    seq_label_ar: Optional[str] = None
+    if sent_ct >= max_disp >= 1:
+        seq_label_ar = "اكتمل تسلسل الاسترجاع"
+    elif sent_ct >= 2:
+        seq_label_ar = "تم إرسال الرسالة الثانية"
+    elif sent_ct >= 1:
+        seq_label_ar = "تم إرسال الرسالة الأولى"
     cust_raw = _normal_recovery_dashboard_resolve_customer_phone_raw(ac, store_ac)
     cust_phone_display_ar = cust_raw if cust_raw else "لا يوجد رقم عميل"
     follow_row = _normal_recovery_latest_followup_diagnostic_row(ac)
@@ -2423,6 +2523,7 @@ def _normal_recovery_phase_steps_payload(ac: AbandonedCart) -> dict[str, Any]:
         "normal_recovery_phase_steps": steps_out,
         "normal_recovery_attempt_cap": max_disp,
         "normal_recovery_attempt_sent": sent_ct,
+        "normal_recovery_sequence_label_ar": seq_label_ar,
         "normal_recovery_followup_hint_ar": hint_ar,
         "normal_recovery_last_skip_reason": last_skip_pub,
         "normal_recovery_customer_phone_display_ar": cust_phone_display_ar,
@@ -4026,6 +4127,63 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
         reason_tag = None
         text = _DEFAULT_DECISION_FALLBACK_MESSAGE
 
+    configured_message_count = _normal_recovery_configured_message_count_from_runtime(
+        recovery_key, store_obj
+    )
+    with _recovery_session_lock:
+        gate_sent_count = _session_recovery_send_count.get(recovery_key, 0)
+    _log_normal_recovery_sequence_config(
+        configured_message_count=configured_message_count,
+        sent_count=gate_sent_count,
+        attempt_index=step_num,
+        recovery_key=recovery_key,
+    )
+
+    if _cart_recovery_log_has_successful_send_for_step(session_id, cart_id, step_num):
+        _log_normal_recovery_attempt_decision(
+            attempt_index=step_num,
+            allowed=False,
+            reason="already_sent",
+        )
+        _log_normal_recovery_attempt_skipped(
+            attempt_index=step_num,
+            reason="already_sent",
+        )
+        _persist_cart_recovery_log(
+            store_slug=store_slug,
+            session_id=session_id,
+            cart_id=cart_id,
+            phone=None,
+            message=text,
+            status="skipped_duplicate",
+            step=step_num,
+        )
+        _consume_seq_slot_if_needed()
+        return None
+
+    if step_num > configured_message_count or gate_sent_count >= configured_message_count:
+        _log_normal_recovery_attempt_decision(
+            attempt_index=step_num,
+            allowed=False,
+            reason="sequence_completed",
+        )
+        _log_normal_recovery_attempt_skipped(
+            attempt_index=step_num,
+            reason="sequence_completed",
+        )
+        _seq2_skip("attempt_limit", session_id=session_id)
+        _persist_cart_recovery_log(
+            store_slug=store_slug,
+            session_id=session_id,
+            cart_id=cart_id,
+            phone=None,
+            message=text,
+            status="skipped_attempt_limit",
+            step=step_num,
+        )
+        _consume_seq_slot_if_needed()
+        return None
+
     last_activity = _last_activity_utc_from_recovery_row(reason_row)
     now = datetime.now(timezone.utc)
     delay_minutes = _recovery_delay_minutes_from_store(store_obj)
@@ -4036,15 +4194,31 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
         or step_num > 1
         else last_activity
     )
-    with _recovery_session_lock:
-        gate_sent_count = _session_recovery_send_count.get(recovery_key, 0)
     should_send = should_send_whatsapp(
         delay_gate_activity,
         user_returned_to_site=_is_user_returned(recovery_key),
         now=now,
         store=store_obj,
         sent_count=gate_sent_count,
+        configured_message_count=configured_message_count,
     )
+    if should_send:
+        _log_normal_recovery_attempt_decision(
+            attempt_index=step_num, allowed=True, reason="allowed"
+        )
+        _ds_tag = "allowed"
+    else:
+        _, _ds_tag = _second_recovery_diagnose_should_send(
+            delay_gate_activity,
+            user_returned_to_site=_is_user_returned(recovery_key),
+            now=now,
+            store=store_obj,
+            sent_count=gate_sent_count,
+            configured_message_count=configured_message_count,
+        )
+        _log_normal_recovery_attempt_decision(
+            attempt_index=step_num, allowed=False, reason=_ds_tag
+        )
     print("[CARTFLOW DELAY CHECK]")
     print("reason_tag=", reason_tag)
     print("last_activity=", last_activity)
@@ -4054,15 +4228,21 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
 
     if not should_send:
         print("[DELAY BLOCKED] skipping send")
-        _, _ds_tag = _second_recovery_diagnose_should_send(
-            delay_gate_activity,
-            user_returned_to_site=_is_user_returned(recovery_key),
-            now=now,
-            store=store_obj,
-            sent_count=gate_sent_count,
+        nr_skip_reason = _ds_tag
+        if _ds_tag == "max_attempts_reached":
+            nr_skip_reason = "sequence_completed"
+        elif _ds_tag == "delay_not_elapsed":
+            nr_skip_reason = "automation_disabled"
+        elif _ds_tag == "user_returned":
+            nr_skip_reason = "user_returned"
+        elif _ds_tag == "automation_disabled":
+            nr_skip_reason = "automation_disabled"
+        _log_normal_recovery_attempt_skipped(
+            attempt_index=step_num,
+            reason=nr_skip_reason,
         )
         try:
-            max_a_chk = max(0, int(_max_recovery_attempts(store_obj)))
+            max_a_chk = max(0, int(configured_message_count))
         except (TypeError, ValueError):
             max_a_chk = 1
         crep_ds = False
@@ -4146,6 +4326,10 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
 
     if not phone or not allowed_to_send:
         print("[NO VERIFIED PHONE] skipping send")
+        _log_normal_recovery_attempt_skipped(
+            attempt_index=step_num,
+            reason="missing_customer_phone",
+        )
         _seq2_skip(
             "no_verified_phone",
             session_id=session_id,
@@ -4171,6 +4355,10 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
         step=step_num,
     )
     if _is_user_converted(recovery_key):
+        _log_normal_recovery_attempt_skipped(
+            attempt_index=step_num,
+            reason="purchase_completed",
+        )
         _persist_cart_recovery_log(
             store_slug=store_slug,
             session_id=session_id,
@@ -4193,6 +4381,10 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
     print("purchase_completed=", purchase_completed)
     print("should_send=", should_send_anti_spam)
     if not should_send_anti_spam:
+        _log_normal_recovery_attempt_skipped(
+            attempt_index=step_num,
+            reason="purchase_completed" if purchase_completed else "user_returned",
+        )
         if not purchase_completed:
             _seq2_skip(
                 "customer_returned",
@@ -4213,13 +4405,8 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
         return
 
     with _recovery_session_lock:
-        multi_cap = _session_recovery_multi_attempt_cap.get(recovery_key)
-    if multi_cap is not None:
-        max_recovery_attempts = int(multi_cap)
-    else:
-        max_recovery_attempts = _max_recovery_attempts(store_obj)
-    with _recovery_session_lock:
         sent_count = _session_recovery_send_count.get(recovery_key, 0)
+    max_recovery_attempts = int(configured_message_count)
     allowed = sent_count < max_recovery_attempts
     print("[ATTEMPT CONTROL]")
     print("session_id=", session_id)
@@ -4228,6 +4415,10 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
     print("allowed=", allowed)
     if not allowed:
         print("[ATTEMPT BLOCKED]")
+        _log_normal_recovery_attempt_skipped(
+            attempt_index=step_num,
+            reason="sequence_completed",
+        )
         _seq2_skip(
             "attempt_limit",
             session_id=session_id,
@@ -4246,11 +4437,7 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
 
     user_returned_to_site = _is_user_returned(recovery_key)
     purchase_completed = _is_user_converted(recovery_key)
-    pro_allowed = (
-        (not user_returned_to_site)
-        and (not purchase_completed)
-        and (sent_count < max_recovery_attempts)
-    )
+    pro_allowed = (not user_returned_to_site) and (not purchase_completed)
     print("[CARTFLOW PRO LOGIC]")
     print("session_id=", session_id)
     print("reason_tag=", reason_tag)
@@ -4307,6 +4494,10 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
 
     if not reason_tag:
         print("[SKIP WA - MISSING REASON_TAG]")
+        _log_normal_recovery_attempt_skipped(
+            attempt_index=step_num,
+            reason="missing_reason",
+        )
         _seq2_skip("missing_reason_tag", session_id=session_id)
         _persist_cart_recovery_log(
             store_slug=store_slug,
@@ -4353,7 +4544,7 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
             session_id=session_id, cart_id=cart_id
         )
         try:
-            max_a_send = max(0, int(_max_recovery_attempts(store_obj)))
+            max_a_send = max(0, int(configured_message_count))
         except (TypeError, ValueError):
             max_a_send = 1
         rt_send = (reason_tag or "") if reason_tag else ""
@@ -4441,6 +4632,10 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
                 print("total=", mt_ok)
             except Exception:  # noqa: BLE001
                 pass
+        _log_normal_recovery_attempt_sent(
+            attempt_index=step_num,
+            sid=sid_str,
+        )
         if step_num > 1:
             _log_second_recovery_line(
                 "[SECOND RECOVERY SENT]",
@@ -4530,8 +4725,8 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
 
     with _recovery_session_lock:
         cur_sent = _session_recovery_send_count.get(recovery_key, 0)
-    max_a = _max_recovery_attempts(store_obj)
-    if cur_sent < max_a:
+    cfg_seq = _normal_recovery_configured_message_count_from_runtime(recovery_key, store_obj)
+    if cur_sent < cfg_seq:
         gap_sec = float(_second_attempt_delay_minutes_from_store(store_obj)) * 60.0
         next_idx = int(cur_sent) + 1
         follow_phone = phone or effective_abandon_phone or abandon_event_phone

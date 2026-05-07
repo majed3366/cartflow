@@ -117,7 +117,14 @@ class NormalRecoveryDashboardStatusTests(unittest.TestCase):
         self.assertEqual(payload["normal_recovery_status"], "sent")
 
     def test_second_successful_send_reminder_phase(self) -> None:
-        st = self._store_attempts_1()
+        st = Store(
+            zid_store_id=f"nr-tst-{self._suffix}-two-send",
+            recovery_delay=1,
+            recovery_delay_unit="minutes",
+            recovery_attempts=2,
+        )
+        db.session.add(st)
+        db.session.flush()
         sid = f"nr-dash-{self._suffix}-c"
         zid = f"zid-nr-{self._suffix}-c"
         ac = AbandonedCart(
