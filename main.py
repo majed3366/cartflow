@@ -253,9 +253,6 @@ from services.vip_cart import (
     vip_offer_fields_for_api,
     vip_offer_manual_contact_whatsapp_body,
 )
-from services.normal_recovery_followup_message import (
-    resolve_smart_second_recovery_message,
-)
 from services.normal_recovery_phone_persist import (
     commit_normal_recovery_phone_after_resolved,
     log_normal_recovery_phone_line,
@@ -284,7 +281,7 @@ from services.behavioral_recovery.link_tracking import (
     apply_outbound_tracking_to_message,
     handle_recovery_link_click,
 )
-from services.behavioral_recovery.message_strategy import resolve_behavioral_followup_message
+from services.recovery_message_strategy import get_recovery_message
 from services.behavioral_recovery.state_store import (
     behavioral_dict_for_abandoned_cart,
     customer_replied_flagged_for_session,
@@ -2279,38 +2276,6 @@ def _latest_sent_recovery_message_for_followup(
         return ""
 
 
-def _first_sent_recovery_message_for_followup(
-    session_id: str,
-    cart_id: Optional[str],
-) -> str:
-    """أول نص إرسال ناجح (الخطوة 1) لتمييز زوايا الرسائل اللاحقة."""
-    conds: list[Any] = []
-    sid = (session_id or "").strip()[:512]
-    cid = (cart_id or "").strip()[:255]
-    if sid:
-        conds.append(CartRecoveryLog.session_id == sid)
-    if cid:
-        conds.append(CartRecoveryLog.cart_id == cid)
-    if not conds:
-        return ""
-    try:
-        db.create_all()
-        row = (
-            db.session.query(CartRecoveryLog)
-            .filter(CartRecoveryLog.status.in_(_NORMAL_RECOVERY_SENT_LOG_STATUSES))
-            .filter(CartRecoveryLog.step == 1)
-            .filter(or_(*conds))
-            .order_by(CartRecoveryLog.sent_at.asc(), CartRecoveryLog.id.asc())
-            .first()
-        )
-        if row is None:
-            return ""
-        return str(getattr(row, "message", None) or "").strip()
-    except (SQLAlchemyError, OSError, TypeError, ValueError):
-        db.session.rollback()
-        return ""
-
-
 def _normal_recovery_positive_reply_blocks_followup(
     *,
     session_id: str,
@@ -4121,9 +4086,7 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
             return None
         text = (multi_message_text or "").strip()
         if not text:
-            text = resolve_recovery_whatsapp_message_with_reason_templates(
-                reason_tag, store=store_obj
-            )
+            text = get_recovery_message(reason_tag, int(step_num))
     elif seq_follow:
         if not rt_raw:
             reason_tag = None
@@ -4163,24 +4126,9 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
             print("reason=reason_template_disabled")
             _consume_seq_slot_if_needed()
             return None
-        prev_body = _latest_sent_recovery_message_for_followup(
-            store_slug, session_id, cart_id
-        )
-        first_body = _first_sent_recovery_message_for_followup(session_id, cart_id)
         text = (multi_message_text or "").strip()
         if not text:
-            if int(step_num) >= 3:
-                text = resolve_behavioral_followup_message(
-                    step_num=int(step_num),
-                    first_message_body=first_body,
-                    second_message_body=prev_body,
-                    reason_tag=reason_tag,
-                    store=store_obj,
-                )
-            else:
-                text = resolve_smart_second_recovery_message(
-                    prev_body, reason_tag, store_obj
-                )
+            text = get_recovery_message(reason_tag, int(step_num))
     elif rt_raw:
         reason_tag = rt_raw
         if reason_template_blocks_recovery_whatsapp(reason_tag, store_obj):

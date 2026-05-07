@@ -4,11 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-
-_SECOND_ATTEMPT_MESSAGES_AR: tuple[str, ...] = (
-    "نقدر نساعدك تكمل الطلب إذا احتجت خطوة بسيطة 👍",
-    "باقي طلبك محفوظ؛ إذا ودّك نراجع أي نقطة معك بدون ضغط.",
-)
+from services.recovery_message_strategy import get_recovery_message
 
 
 def resolve_smart_second_recovery_message(
@@ -17,13 +13,7 @@ def resolve_smart_second_recovery_message(
     store: Any,
 ) -> str:
     """
-    اختيار رسالة ثانية قصيرة وإنسانية، مختلفة عن الأولى قدر الإمكان.
-    ‎reason_tag‎ و ‎store‎ جاهزان لتوسعة لاحقة (قوالب لكل سبب).
+    رسالة المحاولة الثانية — نبرة طمأنة عبر طبقة الاسترجاع السلوكي الموحدة.
     """
-    _ = (reason_tag, store)
-    first = (first_message_body or "").strip()
-    for cand in _SECOND_ATTEMPT_MESSAGES_AR:
-        c = cand.strip()
-        if c and c != first:
-            return c
-    return _SECOND_ATTEMPT_MESSAGES_AR[0]
+    _ = (first_message_body, store)
+    return get_recovery_message(reason_tag, 2)
