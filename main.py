@@ -3924,7 +3924,7 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
 
     if not should_send:
         print("[DELAY BLOCKED] skipping send")
-        _ds_ok, _ds_tag = _second_recovery_diagnose_should_send(
+        _, _ds_tag = _second_recovery_diagnose_should_send(
             delay_gate_activity,
             user_returned_to_site=False,
             now=now,
