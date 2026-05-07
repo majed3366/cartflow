@@ -69,6 +69,38 @@
         });
       }
       applySmartActionHighlights();
+      document.addEventListener("click", function (ev) {
+        var btn = ev.target && ev.target.closest && ev.target.closest("[data-normal-recovery-copy-wa]");
+        if (!btn) return;
+        ev.preventDefault();
+        var url = (btn.getAttribute("data-normal-recovery-copy-wa") || "").trim();
+        if (!url) return;
+        function fallbackCopy() {
+          try {
+            var ta = document.createElement("textarea");
+            ta.value = url;
+            ta.setAttribute("readonly", "");
+            ta.style.position = "absolute";
+            ta.style.left = "-9999px";
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand("copy");
+            document.body.removeChild(ta);
+          } catch (eC) {
+            /* ignore */
+          }
+        }
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(url).then(fallbackCopy, fallbackCopy);
+        } else {
+          fallbackCopy();
+        }
+        var prev = btn.textContent;
+        btn.textContent = "تم نسخ الرابط";
+        window.setTimeout(function () {
+          btn.textContent = prev;
+        }, 1600);
+      });
     })();
   </script>
 </body>

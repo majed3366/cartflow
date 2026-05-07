@@ -8,11 +8,8 @@ from typing import Any
 from sqlalchemy.exc import SQLAlchemyError
 
 from extensions import db
-from services.behavioral_recovery.state_store import (
-    merge_behavioral_state,
-    normal_recovery_message_was_sent_for_abandoned,
-    utc_now_iso,
-)
+from services.behavioral_recovery.state_store import normal_recovery_message_was_sent_for_abandoned
+from services.recovery_transition_engine import apply_interactive_transition_from_customer_reply
 from services.whatsapp_positive_reply import (
     find_latest_abandoned_cart_for_customer_phone,
     normalize_wa_customer_digits,
@@ -30,8 +27,7 @@ def _meaningful_inbound_body(body: Any) -> bool:
 def process_inbound_behavioral_recovery(body: Any, from_number: Any) -> None:
     """
     Any non-empty customer reply after a normal recovery send:
-    - customer_replied / interactive_mode on AbandonedCart
-    - logs [RECOVERY CUSTOMER REPLIED] + [RECOVERY FLOW SWITCHED TO INTERACTIVE]
+    - interactive / conversational state on AbandonedCart (cf_behavioral)
     VIP carts skipped (VIP flow unchanged).
     """
     if not _meaningful_inbound_body(body):
@@ -49,12 +45,10 @@ def process_inbound_behavioral_recovery(body: Any, from_number: Any) -> None:
             return
         if not normal_recovery_message_was_sent_for_abandoned(ac):
             return
-        merge_behavioral_state(
+        apply_interactive_transition_from_customer_reply(
             ac,
-            customer_replied=True,
-            interactive_mode=True,
-            lifecycle_hint="interactive",
-            customer_replied_at=utc_now_iso(),
+            inbound_body=str(body or "").strip(),
+            customer_phone_key=phone_key,
         )
         db.session.add(ac)
         db.session.commit()
@@ -62,18 +56,3 @@ def process_inbound_behavioral_recovery(body: Any, from_number: Any) -> None:
         db.session.rollback()
         log.warning("behavioral inbound recovery: %s", e, exc_info=True)
         return
-    if ac is None:
-        return
-    sid = (getattr(ac, "recovery_session_id", None) or "").strip()
-    cid = (getattr(ac, "zid_cart_id", None) or "").strip()
-    line1 = (
-        f"[RECOVERY CUSTOMER REPLIED] session_id={sid} cart_id={cid} phone={phone_key}"
-    )
-    line2 = (
-        "[RECOVERY FLOW SWITCHED TO INTERACTIVE] "
-        f"session_id={sid} cart_id={cid}"
-    )
-    print(line1, flush=True)
-    print(line2, flush=True)
-    log.info("%s", line1)
-    log.info("%s", line2)

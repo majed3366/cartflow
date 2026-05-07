@@ -239,6 +239,7 @@ from services.reason_template_recovery import (
     reason_template_blocks_recovery_whatsapp,
     resolve_recovery_whatsapp_message_with_reason_templates,
 )
+from services.recovery_conversation_tracker import conversation_dashboard_extras
 from services.recovery_multi_message import multi_message_slots_for_abandon
 from services.cartflow_widget_recovery_gate import (
     apply_cartflow_widget_recovery_gate_from_body,
@@ -2549,7 +2550,7 @@ def _normal_recovery_phase_steps_payload(ac: AbandonedCart) -> dict[str, Any]:
         if stf and stf not in _NORMAL_RECOVERY_SENT_LOG_STATUSES and stf != "queued":
             hint_ar = _normal_recovery_followup_skip_hint_ar_from_log_status(stf)
             last_skip_pub = _second_recovery_public_skip_reason(stf)
-    return {
+    out_nr: dict[str, Any] = {
         "normal_recovery_phase_key": current_key,
         "normal_recovery_phase_label_ar": label_ar,
         "normal_recovery_status": coarse,
@@ -2563,6 +2564,8 @@ def _normal_recovery_phase_steps_payload(ac: AbandonedCart) -> dict[str, Any]:
         "normal_recovery_last_skip_reason": last_skip_pub,
         "normal_recovery_customer_phone_display_ar": cust_phone_display_ar,
     }
+    out_nr.update(conversation_dashboard_extras(ac))
+    return out_nr
 
 
 def _last_activity_utc_from_recovery_row(
@@ -3952,6 +3955,34 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
             gate_detail=gate_detail,
             **kw,
         )
+
+    if step_num >= 2 and _normal_recovery_positive_reply_blocks_followup(
+        session_id=session_id, cart_id=cart_id
+    ):
+        try:
+            print("[RECOVERY AUTOMATION STOPPED] reason=customer_replied", flush=True)
+            log.info(
+                "[RECOVERY AUTOMATION STOPPED] reason=customer_replied session_id=%s step=%s",
+                session_id,
+                step_num,
+            )
+        except OSError:
+            pass
+        skip_early = _default_recovery_message()
+        _seq2_skip("customer_replied", session_id=session_id)
+        _persist_cart_recovery_log(
+            store_slug=store_slug,
+            session_id=session_id,
+            cart_id=cart_id,
+            phone=None,
+            message=skip_early,
+            status="skipped_followup_customer_replied",
+            step=step_num,
+        )
+        print("[RECOVERY TASK EXIT CLEANLY]")
+        print("reason=customer_replied_followup_suppressed")
+        _consume_seq_slot_if_needed()
+        return
 
     effective_abandon_phone = abandon_event_phone
     if seq_follow or step_num > 1:

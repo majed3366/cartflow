@@ -37,6 +37,31 @@
         {% endfor %}
       </div>
       <p class="m-0 text-[9px] leading-relaxed text-slate-500">الأتمتة تعمل تلقائياً وفق إعدادات السلال العادية. حدّث الصفحة لعرض آخر حالة.</p>
+      {% if vc.normal_recovery_interactive_mode %}
+      <div class="mt-2 space-y-1.5 rounded-lg border border-violet-100/90 bg-violet-50/40 px-2.5 py-2" role="region" aria-label="تفاعل العميل">
+        {% if vc.normal_recovery_active_conversation_badge %}
+        <p class="m-0"><span class="inline-flex items-center rounded-full border border-violet-200 bg-white px-2 py-0.5 text-[9px] font-bold text-violet-900">محادثة نشطة</span></p>
+        {% endif %}
+        {% if vc.normal_recovery_interactive_subtitle_ar %}
+        <p class="m-0 text-[11px] font-semibold text-violet-950">{{ vc.normal_recovery_interactive_subtitle_ar }}</p>
+        {% endif %}
+        {% if vc.normal_recovery_customer_reply_preview %}
+        <p class="m-0 text-[10px] leading-snug text-slate-700"><span class="font-semibold text-slate-600">آخر رد:</span> {{ vc.normal_recovery_customer_reply_preview | e }}</p>
+        {% endif %}
+        {% if vc.normal_recovery_last_interaction_display_ar %}
+        <p class="m-0 text-[9px] text-slate-600">وقت آخر تفاعل: {{ vc.normal_recovery_last_interaction_display_ar | e }}</p>
+        {% endif %}
+        {% if vc.normal_recovery_copy_wa_url %}
+        <button type="button" data-normal-recovery-copy-wa="{{ vc.normal_recovery_copy_wa_url | e }}"
+          class="mt-1 w-full rounded-lg border border-violet-300/90 bg-white px-2 py-1.5 text-center text-[10px] font-bold text-violet-900 shadow-sm transition-colors hover:bg-violet-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-500 sm:w-auto">
+          فتح المحادثة
+        </button>
+        {% if vc.normal_recovery_open_conversation_hint_ar %}
+        <p class="m-0 text-[8px] leading-snug text-slate-500">{{ vc.normal_recovery_open_conversation_hint_ar | e }}</p>
+        {% endif %}
+        {% endif %}
+      </div>
+      {% endif %}
       <p class="m-0 text-[11px] font-medium text-slate-500">{{ vc.last_seen }}</p>
       {% if vc.smart_action %}
       <div class="mt-2 rounded-lg border border-slate-200/65 bg-white/80 px-2.5 py-2">

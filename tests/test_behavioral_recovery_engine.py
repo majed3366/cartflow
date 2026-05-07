@@ -86,6 +86,8 @@ class BehavioralRecoveryTests(unittest.TestCase):
         self.assertIsNotNone(ac2)
         b = behavioral_dict_for_abandoned_cart(ac2)
         self.assertTrue(b.get("customer_replied"))
+        self.assertEqual(b.get("recovery_conversation_state"), "engaged")
+        self.assertTrue(str(b.get("last_customer_reply_preview") or ""))
 
         from main import _normal_recovery_positive_reply_blocks_followup
 

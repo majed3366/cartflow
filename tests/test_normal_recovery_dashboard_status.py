@@ -47,6 +47,55 @@ class NormalRecoveryDashboardStatusTests(unittest.TestCase):
         except Exception:  # noqa: BLE001
             db.session.rollback()
 
+    def test_interactive_mode_dashboard_payload(self) -> None:
+        import json
+
+        st = self._store_attempts_1()
+        sid = f"nr-int-{self._suffix}"
+        zid = f"zid-nr-int-{self._suffix}"
+        raw = {
+            "cf_behavioral": {
+                "customer_replied": True,
+                "interactive_mode": True,
+                "recovery_conversation_state": "engaged",
+                "last_customer_reply_preview": "كم السعر؟",
+                "last_customer_reply_at": "2026-01-15T12:00:00+00:00",
+            }
+        }
+        ac = AbandonedCart(
+            store_id=int(st.id),
+            zid_cart_id=zid,
+            recovery_session_id=sid,
+            customer_phone="+966501111111",
+            status="abandoned",
+            vip_mode=False,
+            cart_value=50.0,
+            raw_payload=json.dumps(raw, ensure_ascii=False),
+        )
+        db.session.add(ac)
+        db.session.flush()
+        db.session.add(
+            CartRecoveryLog(
+                store_slug="demo",
+                session_id=sid,
+                cart_id=zid,
+                phone="966501111111",
+                message="m1",
+                status="mock_sent",
+                step=1,
+                created_at=datetime.now(timezone.utc),
+                sent_at=datetime.now(timezone.utc),
+            )
+        )
+        db.session.commit()
+
+        payload = _normal_recovery_phase_steps_payload(ac)
+        self.assertEqual(payload["normal_recovery_phase_key"], "behavioral_replied")
+        self.assertEqual(payload["normal_recovery_status"], "replied")
+        self.assertTrue(payload.get("normal_recovery_interactive_mode"))
+        self.assertEqual(payload.get("normal_recovery_conversation_state_key"), "engaged")
+        self.assertTrue(payload.get("normal_recovery_customer_reply_preview"))
+
     def test_mock_sent_counts_for_phase_and_coarse_status(self) -> None:
         st = self._store_attempts_1()
         sid = f"nr-dash-{self._suffix}-a"
