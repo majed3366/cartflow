@@ -2031,6 +2031,16 @@ try {
       if (customTextOptional != null && strTrim(customTextOptional) !== "") {
         payload.custom_reason = strTrim(customTextOptional);
       }
+      try {
+        if (typeof window.cartflowReadCfTestCustomerPhone === "function") {
+          var cfT = window.cartflowReadCfTestCustomerPhone();
+          if (cfT) {
+            payload.cf_test_phone = String(cfT).trim().slice(0, 100);
+          }
+        }
+      } catch (eCf) {
+        /* ignore */
+      }
       fetch(u, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

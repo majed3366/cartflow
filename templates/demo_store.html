@@ -315,6 +315,21 @@
 </head>
 <body>
   <script>window.CARTFLOW_STORE_SLUG = "{{ demo_store_slug|default('demo') }}";</script>
+  <script>
+    (function () {
+      try {
+        var params = new URLSearchParams(window.location.search || "");
+        var q = params.get("cf_test_phone");
+        if (q != null && String(q).trim()) {
+          var v = String(q).trim().slice(0, 100);
+          try {
+            window.localStorage.setItem("cartflow_test_customer_phone", v);
+          } catch (eLs) {}
+          window.__CARTFLOW_CF_TEST_PHONE = v;
+        }
+      } catch (e) {}
+    })();
+  </script>
   <script>window.CARTFLOW_DEMO_CART_KEY = "{{ demo_cart_key|default('demo_cart') }}";</script>
   <script>
     try {

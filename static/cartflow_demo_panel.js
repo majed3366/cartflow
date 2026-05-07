@@ -268,6 +268,23 @@
       });
   }
 
+  function attachCfTestPhoneToBody(body) {
+    if (!body || typeof body !== "object") {
+      return body;
+    }
+    try {
+      if (typeof window.cartflowReadCfTestCustomerPhone === "function") {
+        var t = window.cartflowReadCfTestCustomerPhone();
+        if (t) {
+          body.cf_test_phone = String(t).trim().slice(0, 100);
+        }
+      }
+    } catch (eCf) {
+      /* ignore */
+    }
+    return body;
+  }
+
   function getFirstStepMessage() {
     if (sequenceSteps[0] && sequenceSteps[0].message) {
       return String(sequenceSteps[0].message);
@@ -349,12 +366,12 @@
       setText("cf-demo-last-status", "error_no_session");
       return Promise.resolve();
     }
-    var body = {
+    var body = attachCfTestPhoneToBody({
       event: "cart_abandoned",
       store: store,
       session_id: session,
       cart: window.cart,
-    };
+    });
     return postJson("/api/cart-event", body)
       .then(function (res) {
         var j = (res && res.body) || {};
@@ -489,7 +506,7 @@
           setText("cf-demo-last-status", "error_no_session");
           return { ok: false, status: 0, body: { _aborted: true } };
         }
-        var body = {
+        var body = attachCfTestPhoneToBody({
           event: "cart_abandoned",
           store: store,
           session_id: session,
@@ -503,7 +520,7 @@
             return t > 0 ? t : 1200;
           })(),
           cart: window.cart,
-        };
+        });
         return postJson("/api/cart-event", body);
       })
       .then(function (res) {

@@ -21,6 +21,10 @@ from services.recovery_session_phone import (
 )
 
 from services.normal_recovery_phone_persist import apply_normal_recovery_phone_to_session
+from services.cf_test_phone_override import (
+    cf_test_customer_phone_override_allowed,
+    normalize_cf_test_customer_phone,
+)
 
 log = logging.getLogger("cartflow")
 
@@ -92,6 +96,19 @@ async def post_widget_cart_recovery_reason(request: Request) -> Any:
                 reason_phone_update = None
             else:
                 reason_phone_update = str(pr).strip()[:100]
+
+        if cf_test_customer_phone_override_allowed(ss):
+            ct_raw = body.get("cf_test_phone")
+            if ct_raw is not None and str(ct_raw).strip():
+                cn = normalize_cf_test_customer_phone(ct_raw)
+                if cn:
+                    reason_phone_update = cn[:100]
+                    cid_log = (str(body.get("cart_id") or body.get("zid_cart_id") or "").strip() or "-")[
+                        :255
+                    ]
+                    print(
+                        f"[TEST CUSTOMER PHONE APPLIED] session_id={sid} cart_id={cid_log} customer_phone={cn}"
+                    )
 
         row = (
             db.session.query(CartRecoveryReason)

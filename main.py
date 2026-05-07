@@ -259,6 +259,10 @@ from services.normal_recovery_phone_persist import (
     commit_normal_recovery_phone_after_resolved,
     log_normal_recovery_phone_line,
 )
+from services.cf_test_phone_override import (
+    cf_test_customer_phone_override_allowed,
+    normalize_cf_test_customer_phone,
+)
 from services.smart_actions import get_cart_smart_action, smart_action_cta_target  # noqa: E402
 from services.vip_merchant_alert import (
     build_vip_merchant_alert_body,
@@ -4732,6 +4736,27 @@ async def _run_recovery_dispatch_cart_abandoned(
     print("[RECOVERY DISPATCH COMPLETED SAFELY]")
 
 
+def _inject_cf_test_customer_phone_into_abandon_payload(payload: dict[str, Any]) -> None:
+    """‎cf_test_phone‎ → ‎phone‎ when dev/demo-only override is allowed (normal recovery QA)."""
+    if not isinstance(payload, dict):
+        return
+    store_slug = _normalize_store_slug(payload)
+    if not cf_test_customer_phone_override_allowed(store_slug):
+        return
+    raw = payload.get("cf_test_phone")
+    if raw is None or not str(raw).strip():
+        return
+    norm = normalize_cf_test_customer_phone(raw)
+    if not norm:
+        return
+    sid = _session_part_from_payload(payload)
+    cid = (_cart_id_str_from_payload(payload) or "").strip() or "-"
+    print(
+        f"[TEST CUSTOMER PHONE APPLIED] session_id={sid} cart_id={cid} customer_phone={norm}"
+    )
+    payload["phone"] = norm
+
+
 async def handle_cart_abandoned(
     _background_tasks: BackgroundTasks, payload: dict[str, Any]
 ) -> dict[str, Any]:
@@ -4745,6 +4770,7 @@ async def handle_cart_abandoned(
     session_id_log = _session_part_from_payload(payload)
     print("[SESSION]", session_id_log)
     cart_id_log = _cart_id_str_from_payload(payload)
+    _inject_cf_test_customer_phone_into_abandon_payload(payload)
     abandon_evt_phone: Optional[str] = None
     raw_phone = payload.get("phone")
     if isinstance(raw_phone, str) and raw_phone.strip():

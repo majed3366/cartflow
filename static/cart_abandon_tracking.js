@@ -126,6 +126,32 @@
 
   console.log("abandon tracking active");
 
+  var CF_TEST_CUSTOMER_PHONE_LS = "cartflow_test_customer_phone";
+
+  function readCfTestCustomerPhoneForPayload() {
+    try {
+      if (
+        typeof window.__CARTFLOW_CF_TEST_PHONE === "string" &&
+        window.__CARTFLOW_CF_TEST_PHONE.trim()
+      ) {
+        return String(window.__CARTFLOW_CF_TEST_PHONE).trim().slice(0, 100);
+      }
+    } catch (eW) {
+      /* ignore */
+    }
+    try {
+      var ls = window.localStorage.getItem(CF_TEST_CUSTOMER_PHONE_LS);
+      if (ls != null && String(ls).trim()) {
+        return String(ls).trim().slice(0, 100);
+      }
+    } catch (eLs) {
+      /* ignore */
+    }
+    return "";
+  }
+
+  window.cartflowReadCfTestCustomerPhone = readCfTestCustomerPhoneForPayload;
+
   function apiCartEventUrl() {
     var base = (window.CARTFLOW_API_BASE || "").toString().replace(/\/$/, "");
     return base ? base + "/api/cart-event" : "/api/cart-event";
@@ -427,6 +453,10 @@
     var ph = getOptionalCartflowCustomerPhone();
     if (ph) {
       bodyObj.phone = ph;
+    }
+    var cfTestPh = readCfTestCustomerPhoneForPayload();
+    if (cfTestPh) {
+      bodyObj.cf_test_phone = cfTestPh;
     }
     var body = JSON.stringify(bodyObj);
     var url = apiCartEventUrl();
