@@ -14,7 +14,12 @@ from services.recovery_interaction_state import (
     normalize_interaction_state,
     truncate_preview_text,
 )
+from services.recovery_reply_actions import recovery_merchant_action_for_intent
 from services.recovery_reply_intent_labels import recovery_reply_intent_badge_ar
+from services.recovery_reply_suggestions import (
+    effective_suggestion_intent,
+    get_recovery_reply_suggestion,
+)
 from services.whatsapp_positive_reply import normalize_wa_customer_digits
 
 
@@ -65,6 +70,19 @@ def conversation_dashboard_extras(ac: AbandonedCart) -> dict[str, Any]:
     ).strip()
     intent_raw = str(bh.get("recovery_reply_intent") or "").strip().lower()
     intent_label_ar = recovery_reply_intent_badge_ar(intent_raw) if intent_raw else ""
+
+    suggested_reply_ar = ""
+    suggested_action_hint_ar = ""
+    suggested_action_key = ""
+    if replied and st != "recovered":
+        cust_for_sugg = str(bh.get("latest_customer_message") or preview or "").strip()
+        eff_intent = intent_raw if intent_raw else "other"
+        sug = get_recovery_reply_suggestion(eff_intent, cust_for_sugg)
+        suggested_reply_ar = str(sug.get("suggested_reply") or "").strip()
+        suggested_action_hint_ar = str(sug.get("suggested_action") or "").strip()
+        suggested_action_key = recovery_merchant_action_for_intent(
+            effective_suggestion_intent(eff_intent)
+        ).key
     subtitle = ""
     badge = False
     open_hint = ""
@@ -93,4 +111,7 @@ def conversation_dashboard_extras(ac: AbandonedCart) -> dict[str, Any]:
         "normal_recovery_copy_wa_url": copy_wa_url,
         "normal_recovery_reply_intent_key": intent_raw,
         "normal_recovery_reply_intent_label_ar": intent_label_ar,
+        "normal_recovery_suggested_reply_ar": suggested_reply_ar,
+        "normal_recovery_suggested_action_hint_ar": suggested_action_hint_ar,
+        "normal_recovery_suggested_action_key": suggested_action_key,
     }

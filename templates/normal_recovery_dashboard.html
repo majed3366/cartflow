@@ -70,6 +70,41 @@
       }
       applySmartActionHighlights();
       document.addEventListener("click", function (ev) {
+        var btnS =
+          ev.target && ev.target.closest && ev.target.closest("[data-normal-recovery-copy-suggestion]");
+        if (btnS) {
+          ev.preventDefault();
+          var box = btnS.closest("[data-normal-recovery-suggestion-box]");
+          var ta = box && box.querySelector("[data-normal-recovery-suggestion-draft]");
+          var text = (ta && ta.value) || "";
+          if (!text.trim()) return;
+          function fallbackCopyS() {
+            try {
+              var x = document.createElement("textarea");
+              x.value = text;
+              x.setAttribute("readonly", "");
+              x.style.position = "absolute";
+              x.style.left = "-9999px";
+              document.body.appendChild(x);
+              x.select();
+              document.execCommand("copy");
+              document.body.removeChild(x);
+            } catch (eC) {
+              /* ignore */
+            }
+          }
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(fallbackCopyS, fallbackCopyS);
+          } else {
+            fallbackCopyS();
+          }
+          var prevS = btnS.textContent;
+          btnS.textContent = "تم نسخ الرد";
+          window.setTimeout(function () {
+            btnS.textContent = prevS;
+          }, 1600);
+          return;
+        }
         var btn = ev.target && ev.target.closest && ev.target.closest("[data-normal-recovery-copy-wa]");
         if (!btn) return;
         ev.preventDefault();

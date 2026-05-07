@@ -48,6 +48,27 @@
             data-normal-recovery-intent="{{ vc.normal_recovery_reply_intent_key | default('') | e }}">{{ vc.normal_recovery_reply_intent_label_ar | e }}</span>
         </p>
         {% endif %}
+        {% if vc.normal_recovery_suggested_reply_ar %}
+        <div class="mt-2 space-y-2 rounded-xl border border-emerald-100/90 bg-gradient-to-br from-white via-emerald-50/30 to-slate-50/80 p-2.5 shadow-sm ring-1 ring-emerald-100/60"
+          data-normal-recovery-suggestion-box
+          data-normal-recovery-suggestion-action-key="{{ vc.normal_recovery_suggested_action_key | default('') | e }}"
+          role="region" aria-label="إرشاد رد استرجاع">
+          <div class="flex flex-wrap items-center justify-between gap-1 border-b border-emerald-100/70 pb-1.5">
+            <p class="m-0 text-[10px] font-bold tracking-tight text-emerald-950">إرشاد من CartFlow</p>
+            <span class="rounded border border-emerald-200/80 bg-white/90 px-1.5 py-0.5 text-[8px] font-semibold text-emerald-800">للصق يدوياً — لا يُرسل تلقائياً</span>
+          </div>
+          {% if vc.normal_recovery_suggested_action_hint_ar %}
+          <p class="m-0 text-[10px] font-semibold text-slate-700"><span class="text-slate-500">اقتراح:</span> {{ vc.normal_recovery_suggested_action_hint_ar | e }}</p>
+          {% endif %}
+          <label class="m-0 block text-[9px] font-semibold text-slate-600" for="nr-sugg-{{ vc.id }}">الرد المقترح — يمكنك تعديله قبل النسخ</label>
+          <textarea id="nr-sugg-{{ vc.id }}" data-normal-recovery-suggestion-draft dir="auto" rows="3"
+            class="mt-1 w-full resize-y rounded-lg border border-slate-200/90 bg-white px-2 py-1.5 text-[11px] leading-relaxed text-slate-900 shadow-inner placeholder:text-slate-400 focus:border-emerald-400 focus:outline-none focus:ring-1 focus:ring-emerald-300/80">{{ vc.normal_recovery_suggested_reply_ar | e }}</textarea>
+          <button type="button" data-normal-recovery-copy-suggestion
+            class="w-full rounded-lg border border-emerald-600/90 bg-emerald-600 px-2 py-1.5 text-center text-[10px] font-bold text-white shadow-sm transition-colors hover:bg-emerald-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 sm:w-auto">
+            نسخ الرد
+          </button>
+        </div>
+        {% endif %}
         {% if vc.normal_recovery_interactive_subtitle_ar %}
         <p class="m-0 text-[11px] font-semibold text-violet-950">{{ vc.normal_recovery_interactive_subtitle_ar }}</p>
         {% endif %}

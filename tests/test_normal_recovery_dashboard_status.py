@@ -99,6 +99,60 @@ class NormalRecoveryDashboardStatusTests(unittest.TestCase):
         self.assertEqual(payload.get("normal_recovery_conversation_state_key"), "engaged")
         self.assertEqual(payload.get("normal_recovery_reply_intent_key"), "price")
         self.assertTrue(payload.get("normal_recovery_reply_intent_label_ar"))
+        self.assertIn("نفهمك", payload.get("normal_recovery_suggested_reply_ar") or "")
+        self.assertIn(
+            "سعر",
+            payload.get("normal_recovery_suggested_action_hint_ar") or "",
+        )
+        self.assertEqual(payload.get("normal_recovery_suggested_action_key"), "reassure_price")
+
+    def test_interactive_dashboard_includes_delivery_suggestion(self) -> None:
+        import json
+
+        st = self._store_attempts_1()
+        sid = f"nr-int-del-{self._suffix}"
+        zid = f"zid-nr-del-{self._suffix}"
+        raw = {
+            "cf_behavioral": {
+                "customer_replied": True,
+                "interactive_mode": True,
+                "recovery_conversation_state": "engaged",
+                "last_customer_reply_preview": "متى التوصيل؟",
+                "last_customer_reply_at": "2026-01-15T12:00:00+00:00",
+                "recovery_reply_intent": "delivery",
+                "latest_customer_message": "متى التوصيل؟",
+            }
+        }
+        ac = AbandonedCart(
+            store_id=int(st.id),
+            zid_cart_id=zid,
+            recovery_session_id=sid,
+            customer_phone="+966501111112",
+            status="abandoned",
+            vip_mode=False,
+            cart_value=40.0,
+            raw_payload=json.dumps(raw, ensure_ascii=False),
+        )
+        db.session.add(ac)
+        db.session.flush()
+        db.session.add(
+            CartRecoveryLog(
+                store_slug="demo",
+                session_id=sid,
+                cart_id=zid,
+                phone="966501111112",
+                message="m1",
+                status="mock_sent",
+                step=1,
+                created_at=datetime.now(timezone.utc),
+                sent_at=datetime.now(timezone.utc),
+            )
+        )
+        db.session.commit()
+
+        payload = _normal_recovery_phase_steps_payload(ac)
+        self.assertIn("التوصيل", payload.get("normal_recovery_suggested_reply_ar") or "")
+        self.assertEqual(payload.get("normal_recovery_suggested_action_key"), "clarify_shipping")
 
     def test_mock_sent_counts_for_phase_and_coarse_status(self) -> None:
         st = self._store_attempts_1()
