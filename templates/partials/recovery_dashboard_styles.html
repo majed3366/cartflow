@@ -150,6 +150,89 @@
     line-height: 1.45;
     opacity: 0.92;
   }
+
+  /* VIP dashboard — أعلى تقرأ: تباين أعلى، نص صلب، بدون شفافية على النص */
+  .cf-dash-hero--vip {
+    background: linear-gradient(148deg, #0c2e18 0%, #124a28 42%, #166534 78%, #157a3c 100%);
+    box-shadow: 0 6px 22px -10px rgba(10, 40, 22, 0.55);
+    position: relative;
+    isolation: isolate;
+    padding: 1.125rem 1.2rem 1.2rem;
+  }
+  .cf-dash-hero--vip::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(180deg, rgba(0, 0, 0, 0.07) 0%, rgba(0, 0, 0, 0.2) 100%);
+    z-index: 0;
+    pointer-events: none;
+  }
+  .cf-dash-hero--vip > * {
+    position: relative;
+    z-index: 1;
+  }
+  .cf-dash-hero--vip h1 {
+    color: #ffffff;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+  }
+  .cf-dash-hero--vip p,
+  .cf-dash-hero--vip .cf-dash-hero__lead,
+  .cf-dash-hero--vip .cf-dash-hero__cta-label {
+    opacity: 1;
+    color: #ffffff;
+  }
+  .cf-dash-hero--vip .cf-dash-hero__lead {
+    margin-top: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1.65;
+    letter-spacing: 0.01em;
+  }
+  @media (min-width: 768px) {
+    .cf-dash-hero--vip .cf-dash-hero__lead {
+      font-size: 0.9375rem;
+      line-height: 1.7;
+    }
+  }
+  .cf-dash-hero--vip .cf-dash-hero__cta-wrap {
+    margin-top: 1rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 0.75rem;
+  }
+  .cf-dash-hero--vip .cf-dash-hero__cta-label {
+    display: inline-block;
+    margin: 0;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    line-height: 1.5;
+  }
+  .cf-dash-hero--vip a.cf-dash-hero__cta-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.625rem;
+    border: 1.5px solid rgba(255, 255, 255, 0.98);
+    background: rgba(255, 255, 255, 0.14);
+    color: #ffffff !important;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    line-height: 1.45;
+    padding: 0.5rem 0.95rem;
+    text-decoration: none;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+    transition: background 0.15s ease, border-color 0.15s ease;
+  }
+  .cf-dash-hero--vip a.cf-dash-hero__cta-chip:hover {
+    background: rgba(255, 255, 255, 0.24);
+    border-color: #ffffff;
+  }
+  .cf-dash-hero--vip a.cf-dash-hero__cta-chip:focus-visible {
+    outline: 2px solid #ffffff;
+    outline-offset: 2px;
+  }
   .cf-dash-card {
     border-radius: 1.125rem;
     border: 1px solid rgb(226 232 240 / 0.95);
