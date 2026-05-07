@@ -60,6 +60,9 @@ class NormalRecoveryDashboardStatusTests(unittest.TestCase):
                 "recovery_conversation_state": "engaged",
                 "last_customer_reply_preview": "كم السعر؟",
                 "last_customer_reply_at": "2026-01-15T12:00:00+00:00",
+                "recovery_reply_intent": "price",
+                "latest_customer_message": "كم السعر؟",
+                "latest_customer_reply_at": "2026-01-15T12:00:00+00:00",
             }
         }
         ac = AbandonedCart(
@@ -94,7 +97,8 @@ class NormalRecoveryDashboardStatusTests(unittest.TestCase):
         self.assertEqual(payload["normal_recovery_status"], "replied")
         self.assertTrue(payload.get("normal_recovery_interactive_mode"))
         self.assertEqual(payload.get("normal_recovery_conversation_state_key"), "engaged")
-        self.assertTrue(payload.get("normal_recovery_customer_reply_preview"))
+        self.assertEqual(payload.get("normal_recovery_reply_intent_key"), "price")
+        self.assertTrue(payload.get("normal_recovery_reply_intent_label_ar"))
 
     def test_mock_sent_counts_for_phase_and_coarse_status(self) -> None:
         st = self._store_attempts_1()

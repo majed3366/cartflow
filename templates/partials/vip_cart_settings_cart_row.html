@@ -42,6 +42,12 @@
         {% if vc.normal_recovery_active_conversation_badge %}
         <p class="m-0"><span class="inline-flex items-center rounded-full border border-violet-200 bg-white px-2 py-0.5 text-[9px] font-bold text-violet-900">محادثة نشطة</span></p>
         {% endif %}
+        {% if vc.normal_recovery_reply_intent_label_ar %}
+        <p class="m-0 flex flex-wrap items-center gap-1">
+          <span class="inline-flex items-center rounded-full border border-amber-200/90 bg-amber-50/95 px-2 py-0.5 text-[9px] font-bold text-amber-950"
+            data-normal-recovery-intent="{{ vc.normal_recovery_reply_intent_key | default('') | e }}">{{ vc.normal_recovery_reply_intent_label_ar | e }}</span>
+        </p>
+        {% endif %}
         {% if vc.normal_recovery_interactive_subtitle_ar %}
         <p class="m-0 text-[11px] font-semibold text-violet-950">{{ vc.normal_recovery_interactive_subtitle_ar }}</p>
         {% endif %}

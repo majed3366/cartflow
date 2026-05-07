@@ -18,7 +18,9 @@ def test_inbound_patch_sets_engaged_and_preview() -> None:
     assert p["customer_replied"] is True
     assert p["interactive_mode"] is True
     assert p["recovery_conversation_state"] == "engaged"
-    assert "توصيل" in (p.get("last_customer_reply_preview") or "")
+    assert p["recovery_reply_intent"] == "delivery"
+    assert "توصيل" in (p.get("latest_customer_message") or "")
+    assert p.get("latest_customer_reply_at")
     assert p.get("waiting_merchant") is True
 
 

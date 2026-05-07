@@ -12,7 +12,9 @@ from services.recovery_interaction_state import (
     STATE_ENGAGED,
     STATE_RECOVERED,
     normalize_interaction_state,
+    truncate_preview_text,
 )
+from services.recovery_reply_intent_labels import recovery_reply_intent_badge_ar
 from services.whatsapp_positive_reply import normalize_wa_customer_digits
 
 
@@ -56,7 +58,13 @@ def conversation_dashboard_extras(ac: AbandonedCart) -> dict[str, Any]:
         conv_key = ""
 
     preview = str(bh.get("last_customer_reply_preview") or "").strip()
-    last_iso = str(bh.get("last_customer_reply_at") or "").strip()
+    if not preview:
+        preview = truncate_preview_text(str(bh.get("latest_customer_message") or ""))
+    last_iso = str(
+        bh.get("last_customer_reply_at") or bh.get("latest_customer_reply_at") or ""
+    ).strip()
+    intent_raw = str(bh.get("recovery_reply_intent") or "").strip().lower()
+    intent_label_ar = recovery_reply_intent_badge_ar(intent_raw) if intent_raw else ""
     subtitle = ""
     badge = False
     open_hint = ""
@@ -83,4 +91,6 @@ def conversation_dashboard_extras(ac: AbandonedCart) -> dict[str, Any]:
         "normal_recovery_conversation_state_key": conv_key,
         "normal_recovery_open_conversation_hint_ar": open_hint,
         "normal_recovery_copy_wa_url": copy_wa_url,
+        "normal_recovery_reply_intent_key": intent_raw,
+        "normal_recovery_reply_intent_label_ar": intent_label_ar,
     }

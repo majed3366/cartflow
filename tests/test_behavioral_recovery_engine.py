@@ -88,6 +88,7 @@ class BehavioralRecoveryTests(unittest.TestCase):
         self.assertTrue(b.get("customer_replied"))
         self.assertEqual(b.get("recovery_conversation_state"), "engaged")
         self.assertTrue(str(b.get("last_customer_reply_preview") or ""))
+        self.assertEqual(b.get("recovery_reply_intent"), "other")
 
         from main import _normal_recovery_positive_reply_blocks_followup
 
