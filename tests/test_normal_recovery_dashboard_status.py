@@ -235,7 +235,7 @@ class NormalRecoveryDashboardStatusTests(unittest.TestCase):
         db.session.commit()
         payload = _normal_recovery_phase_steps_payload(ac)
         self.assertEqual(payload["normal_recovery_phase_key"], "customer_returned")
-        self.assertEqual(payload["normal_recovery_phase_label_ar"], "عاد العميل")
+        self.assertEqual(payload["normal_recovery_phase_label_ar"], "عاد للموقع — تم إيقاف التسلسل")
         self.assertEqual(payload["normal_recovery_status"], "returned")
 
     def test_skip_missing_reason_after_first_send_not_ignored(self) -> None:

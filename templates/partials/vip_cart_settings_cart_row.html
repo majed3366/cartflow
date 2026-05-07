@@ -11,6 +11,8 @@
     {% set nrs = vc.normal_recovery_status | default('pending') %}
     <span class="inline-flex max-w-full items-center rounded-md border px-2 py-0.5 text-[11px] font-semibold
       {% if nrs == 'sent' %}border-emerald-200/90 bg-emerald-50/95 text-emerald-900
+      {% elif nrs == 'replied' %}border-violet-200/90 bg-violet-50/95 text-violet-900
+      {% elif nrs == 'clicked' %}border-indigo-200/90 bg-indigo-50/95 text-indigo-900
       {% elif nrs == 'converted' %}border-emerald-200/85 bg-emerald-50 text-emerald-950
       {% elif nrs == 'stopped' %}border-slate-200/90 bg-slate-100/95 text-slate-700
       {% elif nrs == 'returned' %}border-sky-200/90 bg-sky-50/95 text-sky-900

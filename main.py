@@ -115,6 +115,7 @@ async def whatsapp_webhook(request: Request):
             process_inbound_whatsapp_for_positive_intent,
         )
 
+        process_inbound_behavioral_recovery(message, from_number)
         process_inbound_whatsapp_for_positive_intent(message, from_number)
     except Exception as inbound_err:  # noqa: BLE001
         logging.getLogger("cartflow").warning(
@@ -276,6 +277,21 @@ from services.whatsapp_positive_reply import (
     STATUS_MERCHANT_FOLLOWUP_COMPLETED,
     STATUS_NEEDS_MERCHANT_FOLLOWUP,
 )
+from services.behavioral_recovery.inbound_whatsapp import (
+    process_inbound_behavioral_recovery,
+)
+from services.behavioral_recovery.link_tracking import (
+    apply_outbound_tracking_to_message,
+    handle_recovery_link_click,
+)
+from services.behavioral_recovery.message_strategy import resolve_behavioral_followup_message
+from services.behavioral_recovery.state_store import (
+    behavioral_dict_for_abandoned_cart,
+    customer_replied_flagged_for_session,
+)
+from services.behavioral_recovery.user_return import (
+    record_behavioral_user_return_from_payload,
+)
 
 log = logging.getLogger("cartflow")
 
@@ -436,6 +452,12 @@ def api_recovery_primary_reason(
         db.session.rollback()
         log.warning("api_recovery_primary_reason: %s", e)
         return j({"primary_reason": "price"})
+
+
+@app.get("/api/recover/r")
+def api_recover_redirect(t: str = Query(..., min_length=6, max_length=2048)):
+    """تتبع نقرة رابط الاسترجاع — يحدّث الحالة ثم يحوّل لصفحة السلة (لا يُسجّل كتحويل تلقائياً)."""
+    return handle_recovery_link_click(t)
 
 
 @app.on_event("startup")
@@ -1762,7 +1784,9 @@ _NORMAL_RECOVERY_PHASE_ORDER: list[tuple[str, str]] = [
     ("first_message_sent", "تم إرسال الرسالة الأولى"),
     ("pending_second_attempt", "بانتظار المحاولة الثانية"),
     ("reminder_sent", "تم إرسال الرسالة الثانية"),
-    ("customer_returned", "عاد العميل"),
+    ("behavioral_link_clicked", "عاد لصفحة الدفع"),
+    ("behavioral_replied", "العميل تفاعل مع الرسالة"),
+    ("customer_returned", "عاد للموقع — تم إيقاف التسلسل"),
     ("ignored", "متجاهل"),
     ("stopped_manual", "تم الإيقاف"),
     ("stopped_purchase", "تم التحويل"),
@@ -2255,6 +2279,38 @@ def _latest_sent_recovery_message_for_followup(
         return ""
 
 
+def _first_sent_recovery_message_for_followup(
+    session_id: str,
+    cart_id: Optional[str],
+) -> str:
+    """أول نص إرسال ناجح (الخطوة 1) لتمييز زوايا الرسائل اللاحقة."""
+    conds: list[Any] = []
+    sid = (session_id or "").strip()[:512]
+    cid = (cart_id or "").strip()[:255]
+    if sid:
+        conds.append(CartRecoveryLog.session_id == sid)
+    if cid:
+        conds.append(CartRecoveryLog.cart_id == cid)
+    if not conds:
+        return ""
+    try:
+        db.create_all()
+        row = (
+            db.session.query(CartRecoveryLog)
+            .filter(CartRecoveryLog.status.in_(_NORMAL_RECOVERY_SENT_LOG_STATUSES))
+            .filter(CartRecoveryLog.step == 1)
+            .filter(or_(*conds))
+            .order_by(CartRecoveryLog.sent_at.asc(), CartRecoveryLog.id.asc())
+            .first()
+        )
+        if row is None:
+            return ""
+        return str(getattr(row, "message", None) or "").strip()
+    except (SQLAlchemyError, OSError, TypeError, ValueError):
+        db.session.rollback()
+        return ""
+
+
 def _normal_recovery_positive_reply_blocks_followup(
     *,
     session_id: str,
@@ -2299,7 +2355,7 @@ def _normal_recovery_positive_reply_blocks_followup(
                 return True
     except (SQLAlchemyError, OSError, TypeError, ValueError):
         db.session.rollback()
-    return False
+    return customer_replied_flagged_for_session(sid, cid or None)
 
 
 def _cart_recovery_log_filters_for_abandoned_cart(ac: AbandonedCart) -> list[Any]:
@@ -2342,6 +2398,10 @@ def _normal_recovery_coarse_status(phase_key: str) -> str:
         return "sent"
     if pk == "pending_second_attempt":
         return "pending"
+    if pk == "behavioral_replied":
+        return "replied"
+    if pk == "behavioral_link_clicked":
+        return "clicked"
     if pk == "customer_returned":
         return "returned"
     if pk == "ignored":
@@ -2419,6 +2479,13 @@ def _normal_recovery_dashboard_phase_key(ac: AbandonedCart) -> str:
     st = (getattr(ac, "status", None) or "").strip().lower()
     if st == "recovered":
         return "recovery_complete"
+    bh = behavioral_dict_for_abandoned_cart(ac)
+    if bh.get("customer_replied") is True:
+        return "behavioral_replied"
+    if bh.get("recovery_link_clicked") is True:
+        return "behavioral_link_clicked"
+    if bh.get("user_returned_to_site") is True:
+        return "customer_returned"
     sess = (getattr(ac, "recovery_session_id", None) or "").strip()[:512]
     if sess:
         r_any = _cart_recovery_reason_latest_row_any_store(sess)
@@ -4099,11 +4166,21 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
         prev_body = _latest_sent_recovery_message_for_followup(
             store_slug, session_id, cart_id
         )
+        first_body = _first_sent_recovery_message_for_followup(session_id, cart_id)
         text = (multi_message_text or "").strip()
         if not text:
-            text = resolve_smart_second_recovery_message(
-                prev_body, reason_tag, store_obj
-            )
+            if int(step_num) >= 3:
+                text = resolve_behavioral_followup_message(
+                    step_num=int(step_num),
+                    first_message_body=first_body,
+                    second_message_body=prev_body,
+                    reason_tag=reason_tag,
+                    store=store_obj,
+                )
+            else:
+                text = resolve_smart_second_recovery_message(
+                    prev_body, reason_tag, store_obj
+                )
     elif rt_raw:
         reason_tag = rt_raw
         if reason_template_blocks_recovery_whatsapp(reason_tag, store_obj):
@@ -4571,6 +4648,11 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
         )
 
     _assert_forbidden_stale_recovery_phone(phone)
+    text = apply_outbound_tracking_to_message(
+        text,
+        cart_id=cart_id,
+        session_id=session_id,
+    )
     wa_result = send_whatsapp(
         phone,
         text,
@@ -5652,6 +5734,7 @@ async def api_cart_event(request: Request, background_tasks: BackgroundTasks):
     }
     if payload.get("user_returned_to_site") is True:
         _mark_user_returned_for_payload(payload)
+        record_behavioral_user_return_from_payload(payload)
     if (
         payload.get("user_converted") is True
         or payload.get("event") == "user_converted"
