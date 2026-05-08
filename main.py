@@ -289,6 +289,7 @@ from services.behavioral_recovery.state_store import (
     customer_replied_flagged_for_session,
 )
 from services.behavioral_recovery.user_return import (
+    payload_indicates_user_returned_to_site,
     record_behavioral_user_return_from_payload,
 )
 
@@ -1369,9 +1370,10 @@ _DEFAULT_DECISION_FALLBACK_MESSAGE = (
 
 
 def _normalize_store_slug(payload: dict[str, Any]) -> str:
-    raw = payload.get("store")
-    if isinstance(raw, str) and raw.strip():
-        return raw.strip()
+    for key in ("store", "store_slug"):
+        raw = payload.get(key)
+        if isinstance(raw, str) and raw.strip():
+            return raw.strip()
     return "default"
 
 
@@ -5714,7 +5716,7 @@ async def api_cart_event(request: Request, background_tasks: BackgroundTasks):
         "ok": True,
         "event": payload.get("event"),
     }
-    if payload.get("user_returned_to_site") is True:
+    if payload_indicates_user_returned_to_site(payload):
         _mark_user_returned_for_payload(payload)
         record_behavioral_user_return_from_payload(payload)
     if (
