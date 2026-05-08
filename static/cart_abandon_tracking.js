@@ -390,6 +390,10 @@
   var CARTFLOW_CONVERTED_KEY = "cartflow_converted";
   var CF_RECOVERY_FLOW_STARTED_KEY = "cartflow_recovery_flow_started";
   var CF_RECOVERY_RETURN_STATE_LS_KEY = "cartflow_recovery_return_state_v1";
+  var CF_REASON_TAG_SS = "cartflow_reason_tag";
+  var CF_REASON_SUB_TAG_SS = "cartflow_reason_sub_tag";
+  var CF_RECOVERY_LAST_ACTIVITY_SS = "cartflow_recovery_last_activity";
+  var CF_LS_CUSTOMER_PHONE = "cartflow_customer_phone";
   // Return-to-site POST is handled only by static/cartflow_return_tracker.js (isolated).
   // يُلزِم id واحداً لكل تبويب حتى عند تزامن ‎beforeunload + visibility‎ أو فشل ‎sessionStorage‎
   var _cachedRecoverySessionId = null;
@@ -440,7 +444,11 @@
       /* ignore */
     }
     var o = cartflowReadDurableRecoveryReturnState();
-    if (!o || o.v !== 1 || o.recovery_flow_started !== "1") {
+    if (
+      !o ||
+      o.v !== 1 ||
+      (o.recovery_flow_started !== "1" && o.recovery_flow_started !== true)
+    ) {
       return;
     }
     var curStore = getCartflowStoreSlugForPayload();
@@ -461,31 +469,187 @@
       );
       window.sessionStorage.setItem(CF_RECOVERY_FLOW_STARTED_KEY, "1");
       _cachedRecoverySessionId = String(o.session_id);
+      var rsn = o.reason_tag != null ? String(o.reason_tag).trim() : "";
+      if (rsn) {
+        window.sessionStorage.setItem(CF_REASON_TAG_SS, rsn.slice(0, 64));
+      }
+      var rsub = o.reason_sub_tag != null ? String(o.reason_sub_tag).trim() : "";
+      if (rsub) {
+        window.sessionStorage.setItem(CF_REASON_SUB_TAG_SS, rsub.slice(0, 64));
+      }
+      var lact = o.last_activity != null ? String(o.last_activity).trim() : "";
+      if (lact) {
+        window.sessionStorage.setItem(CF_RECOVERY_LAST_ACTIVITY_SS, lact.slice(0, 80));
+      }
     } catch (eHy) {
       /* ignore */
     }
   }
 
-  function cartflowPersistDurableRecoveryReturnState() {
+  function _cfNonEmptyStr(v) {
+    if (v == null) {
+      return "";
+    }
+    return String(v).trim();
+  }
+
+  function _mergeRecoveryScalar(incoming, baseVal, readFallback) {
+    var inc = _cfNonEmptyStr(incoming);
+    if (inc) {
+      return inc;
+    }
+    var b = baseVal != null ? _cfNonEmptyStr(baseVal) : "";
+    if (b) {
+      return b;
+    }
+    if (typeof readFallback === "function") {
+      try {
+        var fb = readFallback();
+        return fb != null ? _cfNonEmptyStr(fb) : "";
+      } catch (eFb) {
+        return "";
+      }
+    }
+    return "";
+  }
+
+  function cartflowMergePersistDurableRecoveryReturnState(patch) {
+    patch = patch || {};
+    var baseRaw = cartflowReadDurableRecoveryReturnState();
+    var base = baseRaw && typeof baseRaw === "object" ? baseRaw : {};
+    var sid = getRecoverySessionId();
+    var cid = getStableCartEventIdForTracking();
+    var store = getCartflowStoreSlugForPayload();
+
+    var reason_tag = _mergeRecoveryScalar(
+      patch.reason_tag,
+      base.reason_tag,
+      function () {
+        return typeof window.cartflowGetReasonTag === "function"
+          ? window.cartflowGetReasonTag()
+          : "";
+      }
+    );
+    if (!reason_tag) {
+      try {
+        reason_tag = _cfNonEmptyStr(window.sessionStorage.getItem(CF_REASON_TAG_SS));
+      } catch (eSs) {
+        reason_tag = "";
+      }
+    }
+    reason_tag = reason_tag ? reason_tag.slice(0, 64) : "";
+
+    var reason_sub_tag = _mergeRecoveryScalar(
+      patch.reason_sub_tag,
+      base.reason_sub_tag,
+      function () {
+        return typeof window.cartflowGetReasonSubTag === "function"
+          ? window.cartflowGetReasonSubTag()
+          : "";
+      }
+    );
+    if (!reason_sub_tag) {
+      try {
+        reason_sub_tag = _cfNonEmptyStr(
+          window.sessionStorage.getItem(CF_REASON_SUB_TAG_SS)
+        );
+      } catch (eS2) {
+        reason_sub_tag = "";
+      }
+    }
+    reason_sub_tag = reason_sub_tag ? reason_sub_tag.slice(0, 64) : "";
+
+    var last_activity = _mergeRecoveryScalar(
+      patch.last_activity,
+      base.last_activity,
+      function () {
+        try {
+          return window.sessionStorage.getItem(CF_RECOVERY_LAST_ACTIVITY_SS) || "";
+        } catch (eLa) {
+          return "";
+        }
+      }
+    );
+    last_activity = last_activity ? last_activity.slice(0, 80) : "";
+
+    var customer_phone = _mergeRecoveryScalar(
+      patch.customer_phone,
+      base.customer_phone,
+      function () {
+        var w = getOptionalCartflowCustomerPhone();
+        if (w) {
+          return w;
+        }
+        var t = readCfTestCustomerPhoneForPayload();
+        if (t) {
+          return t;
+        }
+        try {
+          var ls = window.localStorage.getItem(CF_LS_CUSTOMER_PHONE);
+          return ls != null ? String(ls) : "";
+        } catch (eLs) {
+          return "";
+        }
+      }
+    );
+    customer_phone = customer_phone ? customer_phone.slice(0, 100) : "";
+
+    var recovery_started_at = _cfNonEmptyStr(base.recovery_started_at);
+    if (!recovery_started_at) {
+      recovery_started_at = new Date().toISOString();
+    }
+
+    if (!last_activity) {
+      last_activity = new Date().toISOString().slice(0, 80);
+    }
+
+    var out = {
+      v: 1,
+      recovery_flow_started: "1",
+      session_id: sid,
+      cart_id: cid,
+      store_slug: store,
+      ts: Date.now(),
+      recovery_started_at: recovery_started_at,
+      reason_tag: reason_tag || null,
+      last_activity: last_activity || null,
+    };
+    if (reason_sub_tag) {
+      out.reason_sub_tag = reason_sub_tag;
+    }
+    if (customer_phone) {
+      out.customer_phone = customer_phone;
+    }
+
     try {
-      var sid = getRecoverySessionId();
-      var cid = getStableCartEventIdForTracking();
-      var store = getCartflowStoreSlugForPayload();
       window.localStorage.setItem(
         CF_RECOVERY_RETURN_STATE_LS_KEY,
-        JSON.stringify({
-          v: 1,
-          recovery_flow_started: "1",
-          session_id: sid,
-          cart_id: cid,
-          store_slug: store,
-          ts: Date.now(),
-        })
+        JSON.stringify(out)
       );
     } catch (ePs) {
       /* ignore */
     }
+    try {
+      console.log(
+        "[RECOVERY CONTEXT PERSISTED] session_id=" +
+          String(sid) +
+          " cart_id=" +
+          String(cid) +
+          " reason_tag=" +
+          (out.reason_tag != null ? String(out.reason_tag) : "") +
+          " last_activity=" +
+          (out.last_activity != null ? String(out.last_activity) : "")
+      );
+    } catch (eLog) {
+      /* ignore */
+    }
   }
+
+  function cartflowPersistDurableRecoveryReturnState() {
+    cartflowMergePersistDurableRecoveryReturnState({});
+  }
+
+  window.cartflowRefreshDurableRecoveryContext = cartflowMergePersistDurableRecoveryReturnState;
 
   function cartflowIsSessionConverted() {
     try {

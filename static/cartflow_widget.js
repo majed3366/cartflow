@@ -2062,6 +2062,25 @@ try {
                 window.cartflowLogCartflowState();
               }
             }
+            if (
+              j &&
+              j.ok === true &&
+              typeof window.cartflowRefreshDurableRecoveryContext === "function"
+            ) {
+              try {
+                var subRt =
+                  typeof window.cartflowGetReasonSubTag === "function"
+                    ? window.cartflowGetReasonSubTag()
+                    : null;
+                window.cartflowRefreshDurableRecoveryContext({
+                  reason_tag: String(reasonTag),
+                  reason_sub_tag: subRt,
+                  last_activity: new Date().toISOString(),
+                });
+              } catch (eRc) {
+                /* ignore */
+              }
+            }
           } catch (eSyncUrh) {
             /* ignore */
           }
