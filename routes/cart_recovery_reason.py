@@ -88,6 +88,7 @@ async def post_widget_cart_recovery_reason(request: Request) -> Any:
 
         now = datetime.now(timezone.utc)
 
+        phone_from_cf_test = False
         _PHONE_OMIT = object()
         reason_phone_update: Any = _PHONE_OMIT
         if "phone" in body or "customer_phone" in body:
@@ -103,6 +104,7 @@ async def post_widget_cart_recovery_reason(request: Request) -> Any:
                 cn = normalize_cf_test_customer_phone(ct_raw)
                 if cn:
                     reason_phone_update = cn[:100]
+                    phone_from_cf_test = True
                     cid_log = (str(body.get("cart_id") or body.get("zid_cart_id") or "").strip() or "-")[
                         :255
                     ]
@@ -178,12 +180,17 @@ async def post_widget_cart_recovery_reason(request: Request) -> Any:
                 cart_id=cid_apply,
                 phone=ph_sync,
                 reason_tag=reason_tag,
+                phone_record_source="cf_test_phone" if phone_from_cf_test else None,
             )
 
         db.session.commit()
         rk = recovery_key_for_reason_session(ss, sid)
         if reason_phone_update is not _PHONE_OMIT:
-            record_recovery_customer_phone(rk, reason_phone_update)
+            record_recovery_customer_phone(
+                rk,
+                reason_phone_update if isinstance(reason_phone_update, str) else None,
+                source="cf_test_phone" if phone_from_cf_test else None,
+            )
             if reason_phone_update:
                 print("[PHONE ATTACHED]")
                 print("session_id=", sid)

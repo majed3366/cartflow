@@ -62,6 +62,7 @@ def apply_normal_recovery_phone_to_session(
     cart_id: Optional[str],
     phone: Optional[str],
     reason_tag: Optional[str] = None,
+    phone_record_source: Optional[str] = None,
 ) -> bool:
     """
     يحدّث ORM في الجلسة الحالية فقط (بدون ‎commit‎).
@@ -102,7 +103,7 @@ def apply_normal_recovery_phone_to_session(
         log.warning("normal_recovery_phone_persist apply failed: %s", exc, exc_info=True)
         return False
     rk = recovery_key_for_reason_session(ss, sid)
-    record_recovery_customer_phone(rk, ph)
+    record_recovery_customer_phone(rk, ph, source=phone_record_source)
     return True
 
 

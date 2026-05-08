@@ -17,6 +17,14 @@ from services.cf_test_phone_override import (
 )
 from sqlalchemy import and_
 
+from models import AbandonedCart
+from tests.test_recovery_isolation import _reset_recovery_memory
+from services.recovery_session_phone import (
+    get_recovery_customer_phone,
+    get_recovery_phone_resolution_source,
+    recovery_key_for_reason_session,
+)
+
 
 class TestCfTestCustomerPhoneOverride(unittest.TestCase):
     def test_normalize_sa_mobile(self) -> None:
@@ -123,6 +131,41 @@ class TestCfTestCustomerPhoneOverride(unittest.TestCase):
         }
         _inject_cf_test_customer_phone_into_abandon_payload(p)
         self.assertEqual((p.get("phone") or "").strip(), "966546518011")
+        self.assertEqual(p.get("_recovery_phone_inject_source"), "cf_test_phone")
+
+    def test_cart_state_sync_persists_cf_test_phone_memory_and_db(self) -> None:
+        _reset_recovery_memory()
+        ensure_store_widget_schema(db)
+        client = TestClient(app)
+        db.create_all()
+        sid = "cf-sync-" + uuid.uuid4().hex
+        cid = "cf-cart-" + uuid.uuid4().hex[:12]
+        r = client.post(
+            "/api/cart-event",
+            json={
+                "event": "cart_state_sync",
+                "reason": "page_load",
+                "store": "demo",
+                "session_id": sid,
+                "cart_id": cid,
+                "cart_total": 150.0,
+                "items_count": 1,
+                "cart": [{"price": 150.0, "quantity": 1}],
+                "cf_test_phone": "966546518011",
+            },
+        )
+        self.assertEqual(200, r.status_code, r.text)
+        row = (
+            db.session.query(AbandonedCart)
+            .filter(AbandonedCart.zid_cart_id == cid)
+            .first()
+        )
+        self.assertIsNotNone(row)
+        assert row is not None
+        self.assertEqual((row.customer_phone or "").strip(), "966546518011")
+        rk = recovery_key_for_reason_session("demo", sid)
+        self.assertEqual(get_recovery_customer_phone(rk), "966546518011")
+        self.assertEqual(get_recovery_phone_resolution_source(rk), "cf_test_phone")
 
     def test_inject_cf_test_skipped_non_demo_production_env(self) -> None:
         from main import _inject_cf_test_customer_phone_into_abandon_payload

@@ -3202,7 +3202,7 @@ def _try_claim_recovery_session(recovery_key: str) -> bool:
 
 
 _VERIFIED_WA_RECOVERY_PHONE_SOURCES = frozenset(
-    {"customer_profile", "abandoned_cart"}
+    {"customer_profile", "abandoned_cart", "cf_test_phone"}
 )
 
 _NORMAL_RECOVERY_EXTENDED_PHONE_SOURCES = frozenset(
@@ -3471,14 +3471,17 @@ def _map_verified_recovery_phone_from_session(
     recovery_key: str,
     reason_row: Optional[CartRecoveryReason],
 ) -> Tuple[Optional[str], str]:
-    from services.recovery_session_phone import get_recovery_customer_phone
+    from services.recovery_session_phone import (
+        get_recovery_customer_phone,
+        get_recovery_phone_resolution_source,
+    )
 
     ep = _strip_recovery_phone(abandon_event_phone)
     if ep:
         return ep, "abandoned_cart"
     mem = _strip_recovery_phone(get_recovery_customer_phone(recovery_key))
     if mem:
-        return mem, "customer_profile"
+        return mem, get_recovery_phone_resolution_source(recovery_key)
     if reason_row is not None:
         dbp = _strip_recovery_phone(getattr(reason_row, "customer_phone", None))
         if dbp:
@@ -5043,10 +5046,15 @@ def _inject_cf_test_customer_phone_into_abandon_payload(payload: dict[str, Any])
         return
     sid = _session_part_from_payload(payload)
     cid = (_cart_id_str_from_payload(payload) or "").strip() or "-"
-    print(
-        f"[TEST CUSTOMER PHONE APPLIED] session_id={sid} cart_id={cid} customer_phone={norm}"
-    )
+    print("[DEMO TEST PHONE CAPTURED]", flush=True)
+    print("phone=", norm, flush=True)
+    print("session_id=", sid or "", flush=True)
+    print("cart_id=", cid, flush=True)
     payload["phone"] = norm
+    try:
+        payload["_recovery_phone_inject_source"] = "cf_test_phone"
+    except (AttributeError, TypeError, ValueError):
+        pass
 
 
 async def handle_cart_abandoned(
@@ -5070,7 +5078,12 @@ async def handle_cart_abandoned(
     if abandon_evt_phone:
         from services.recovery_session_phone import record_recovery_customer_phone
 
-        record_recovery_customer_phone(recovery_key, abandon_evt_phone)
+        inj = str(payload.get("_recovery_phone_inject_source") or "").strip()
+        record_recovery_customer_phone(
+            recovery_key,
+            abandon_evt_phone,
+            source=inj if inj == "cf_test_phone" else None,
+        )
     msg_log = _default_recovery_message()
     if _is_user_converted(recovery_key):
         print("recovery skipped: user already converted")
@@ -5510,6 +5523,8 @@ def _handle_cart_state_sync(payload: dict[str, Any]) -> dict[str, Any]:
     merge_pl["store"] = store_slug
     rk = _recovery_key_from_payload(merge_pl)
     merge_pl = _ensure_cart_abandon_payload_has_cart_id(merge_pl, rk)
+    _inject_cf_test_customer_phone_into_abandon_payload(merge_pl)
+    sync_phone = _strip_recovery_phone(merge_pl.get("phone"))
     zid = (_cart_id_str_from_payload(merge_pl) or "").strip()[:255]
     if not zid:
         _is_vip_miss = False if is_empty else bool(is_vip_cart(cart_total, store_row))
@@ -5594,6 +5609,30 @@ def _handle_cart_state_sync(payload: dict[str, Any]) -> dict[str, Any]:
                 row.store_id = sto_id
             if sid_log:
                 row.recovery_session_id = sid_log
+
+        db.session.flush()
+
+        if sync_phone:
+            row.customer_phone = sync_phone[:100]
+            from services.normal_recovery_phone_persist import (
+                apply_normal_recovery_phone_to_session,
+            )
+
+            inj_src = (
+                "cf_test_phone"
+                if str(merge_pl.get("_recovery_phone_inject_source") or "").strip()
+                == "cf_test_phone"
+                else None
+            )
+            apply_normal_recovery_phone_to_session(
+                db.session,
+                store_slug=store_slug,
+                session_id=sid_log,
+                cart_id=real_cid,
+                phone=sync_phone,
+                reason_tag=None,
+                phone_record_source=inj_src,
+            )
 
         prev: dict[str, Any] = {}
         if getattr(row, "raw_payload", None):

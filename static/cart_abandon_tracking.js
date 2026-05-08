@@ -325,7 +325,8 @@
 
     var session_id = getRecoverySessionId();
     var cart_id = getStableCartEventIdForTracking();
-    var body = JSON.stringify({
+    var cfTestPh = readCfTestCustomerPhoneForPayload();
+    var syncPayload = {
       event: "cart_state_sync",
       reason: r,
       store: storeSlug,
@@ -334,7 +335,24 @@
       cart_total: cartTotal,
       items_count: items_count,
       cart: cartArr,
-    });
+    };
+    if (cfTestPh) {
+      syncPayload.cf_test_phone = cfTestPh;
+      try {
+        var _cfDemoCapK = "cartflow_demo_test_phone_sync_logged_v1";
+        if (!sessionStorage.getItem(_cfDemoCapK)) {
+          sessionStorage.setItem(_cfDemoCapK, "1");
+          console.log("[DEMO TEST PHONE CAPTURED]", {
+            phone: cfTestPh,
+            session_id: session_id,
+            cart_id: cart_id,
+          });
+        }
+      } catch (eCap) {
+        /* ignore */
+      }
+    }
+    var body = JSON.stringify(syncPayload);
     try {
       var cart_total = cartTotal;
       window.cart_total = cart_total;
