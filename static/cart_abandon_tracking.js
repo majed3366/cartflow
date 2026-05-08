@@ -3,6 +3,47 @@
  */
 (function () {
   "use strict";
+  try {
+    console.log("[TRACKING SCRIPT LOADED]");
+  } catch (eTsl) {
+    /* ignore */
+  }
+  try {
+    function cartflowLogTrackingDomContentLoaded() {
+      try {
+        console.log("[TRACKING DOMContentLoaded]");
+      } catch (eDcl) {
+        /* ignore */
+      }
+    }
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", cartflowLogTrackingDomContentLoaded, false);
+    } else {
+      cartflowLogTrackingDomContentLoaded();
+    }
+  } catch (eReg) {
+    /* ignore */
+  }
+  try {
+    window.addEventListener(
+      "error",
+      function (ev) {
+        try {
+          console.warn(
+            "[TRACKING RUNTIME ERROR]",
+            ev && ev.message,
+            ev && ev.filename,
+            ev && ev.lineno
+          );
+        } catch (eWin) {
+          /* ignore */
+        }
+      },
+      true
+    );
+  } catch (eWinReg) {
+    /* ignore */
+  }
   window.CartFlowState =
     window.CartFlowState ||
     {
@@ -624,6 +665,12 @@
       onCartAbandoned("visibility");
     }
   });
+
+  try {
+    console.log("[RETURN DEBUG INIT]");
+  } catch (eRdi) {
+    /* ignore */
+  }
 
   function cartflowEffectiveRecoveryFlowStarted() {
     try {
