@@ -474,6 +474,9 @@
       window.sessionStorage.removeItem("cartflow_recovery_flow_started");
       window.sessionStorage.removeItem("cartflow_return_event_last_sig");
       window.sessionStorage.removeItem("cartflow_cart_event_id");
+      if (typeof window.cartflowClearDurableRecoveryReturnState === "function") {
+        window.cartflowClearDurableRecoveryReturnState();
+      }
     } catch (e) {
       /* ignore */
     }
@@ -617,6 +620,9 @@
       var j = (res && res.body) || {};
       if (j && j.ok) {
         setClientConverted(true);
+        if (typeof window.cartflowClearDurableRecoveryReturnState === "function") {
+          window.cartflowClearDurableRecoveryReturnState();
+        }
       }
       logDemo("API response (conversion)", { httpOk: res.ok, status: res.status, body: j });
       return refresh();
@@ -645,6 +651,9 @@
       window.sessionStorage.removeItem("cartflow_recovery_flow_started");
       window.sessionStorage.removeItem("cartflow_return_event_last_sig");
       window.sessionStorage.removeItem("cartflow_cart_event_id");
+      if (typeof window.cartflowClearDurableRecoveryReturnState === "function") {
+        window.cartflowClearDurableRecoveryReturnState();
+      }
     } catch (e) {
       /* ignore */
     }

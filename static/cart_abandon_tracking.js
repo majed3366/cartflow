@@ -345,8 +345,105 @@
 
   var CARTFLOW_SESSION_KEY = "cartflow_recovery_session_id";
   var CARTFLOW_CONVERTED_KEY = "cartflow_converted";
+  var CF_RECOVERY_FLOW_STARTED_KEY = "cartflow_recovery_flow_started";
+  var CF_RETURN_EVENT_DEDUPE_KEY = "cartflow_return_event_last_sig";
+  var CF_RECOVERY_RETURN_STATE_LS_KEY = "cartflow_recovery_return_state_v1";
+  var CF_RETURN_DEDUPE_PENDING_PREFIX = "pending:";
   // يُلزِم id واحداً لكل تبويب حتى عند تزامن ‎beforeunload + visibility‎ أو فشل ‎sessionStorage‎
   var _cachedRecoverySessionId = null;
+
+  function getCartflowStoreSlugForPayload() {
+    try {
+      if (
+        typeof window.CARTFLOW_STORE_SLUG !== "undefined" &&
+        window.CARTFLOW_STORE_SLUG !== null &&
+        String(window.CARTFLOW_STORE_SLUG).trim() !== ""
+      ) {
+        return String(window.CARTFLOW_STORE_SLUG).trim();
+      }
+    } catch (eSl) {
+      /* ignore */
+    }
+    return "demo";
+  }
+
+  function cartflowReadDurableRecoveryReturnState() {
+    try {
+      var raw = window.localStorage.getItem(CF_RECOVERY_RETURN_STATE_LS_KEY);
+      if (!raw || !String(raw).trim()) {
+        return null;
+      }
+      return JSON.parse(raw);
+    } catch (eRd) {
+      return null;
+    }
+  }
+
+  function cartflowClearDurableRecoveryReturnState() {
+    try {
+      window.localStorage.removeItem(CF_RECOVERY_RETURN_STATE_LS_KEY);
+    } catch (eCl) {
+      /* ignore */
+    }
+  }
+  window.cartflowClearDurableRecoveryReturnState = cartflowClearDurableRecoveryReturnState;
+
+  function cartflowHydrateDurableRecoveryReturnState() {
+    try {
+      if (cartflowIsSessionConverted()) {
+        cartflowClearDurableRecoveryReturnState();
+        return;
+      }
+    } catch (eCv) {
+      /* ignore */
+    }
+    var o = cartflowReadDurableRecoveryReturnState();
+    if (!o || o.v !== 1 || o.recovery_flow_started !== "1") {
+      return;
+    }
+    var curStore = getCartflowStoreSlugForPayload();
+    if (o.store_slug && curStore && o.store_slug !== curStore) {
+      return;
+    }
+    if (!o.session_id || !o.cart_id) {
+      return;
+    }
+    try {
+      window.sessionStorage.setItem(
+        CARTFLOW_SESSION_KEY,
+        String(o.session_id).slice(0, 300)
+      );
+      window.sessionStorage.setItem(
+        CF_CART_EVENT_ID_STORAGE_KEY,
+        String(o.cart_id).slice(0, 255)
+      );
+      window.sessionStorage.setItem(CF_RECOVERY_FLOW_STARTED_KEY, "1");
+      _cachedRecoverySessionId = String(o.session_id);
+    } catch (eHy) {
+      /* ignore */
+    }
+  }
+
+  function cartflowPersistDurableRecoveryReturnState() {
+    try {
+      var sid = getRecoverySessionId();
+      var cid = getStableCartEventIdForTracking();
+      var store = getCartflowStoreSlugForPayload();
+      window.localStorage.setItem(
+        CF_RECOVERY_RETURN_STATE_LS_KEY,
+        JSON.stringify({
+          v: 1,
+          recovery_flow_started: "1",
+          session_id: sid,
+          cart_id: cid,
+          store_slug: store,
+          ts: Date.now(),
+        })
+      );
+    } catch (ePs) {
+      /* ignore */
+    }
+  }
 
   function cartflowIsSessionConverted() {
     try {
@@ -425,6 +522,8 @@
     } catch (e2) {}
     return s;
   }
+
+  cartflowHydrateDurableRecoveryReturnState();
 
   function sendCartAbandonedToBackend(source) {
     if (cartflowIsSessionConverted()) {
@@ -526,8 +625,19 @@
     }
   });
 
-  var CF_RECOVERY_FLOW_STARTED_KEY = "cartflow_recovery_flow_started";
-  var CF_RETURN_EVENT_DEDUPE_KEY = "cartflow_return_event_last_sig";
+  function cartflowEffectiveRecoveryFlowStarted() {
+    try {
+      if (
+        window.sessionStorage.getItem(CF_RECOVERY_FLOW_STARTED_KEY) === "1"
+      ) {
+        return true;
+      }
+    } catch (eEs) {
+      /* ignore */
+    }
+    var o = cartflowReadDurableRecoveryReturnState();
+    return !!(o && o.v === 1 && o.recovery_flow_started === "1");
+  }
 
   function cartflowMarkRecoveryFlowStarted() {
     try {
@@ -535,6 +645,7 @@
     } catch (eMs) {
       /* ignore */
     }
+    cartflowPersistDurableRecoveryReturnState();
   }
   window.cartflowMarkRecoveryFlowStarted = cartflowMarkRecoveryFlowStarted;
 
@@ -572,12 +683,7 @@
     )
       .toString()
       .toLowerCase();
-    var storeSlug =
-      typeof window.CARTFLOW_STORE_SLUG !== "undefined" &&
-      window.CARTFLOW_STORE_SLUG !== null &&
-      String(window.CARTFLOW_STORE_SLUG).trim() !== ""
-        ? String(window.CARTFLOW_STORE_SLUG).trim()
-        : "demo";
+    var storeSlug = getCartflowStoreSlugForPayload();
     var session_id = getRecoverySessionId();
     var cart_id = getStableCartEventIdForTracking();
     var bodyObj = {
@@ -629,24 +735,80 @@
       })
       .catch(function (err) {
         console.log("[RETURN TO SITE EVENT ERROR]", err);
+        return { ok: false, status: 0, body: null, _error: err };
       });
   }
   window.cartflowSendUserReturnedToSite = cartflowSendUserReturnedToSite;
 
-  function maybeSendReturnToSiteAfterRecoveryStarted() {
-    var started = false;
-    try {
-      started =
-        window.sessionStorage.getItem(CF_RECOVERY_FLOW_STARTED_KEY) === "1";
-    } catch (eSt) {
+  function cartflowPathLooksLikeDemoStoreCart() {
+    var pathRaw = window.location && window.location.pathname ? window.location.pathname : "";
+    return String(pathRaw).toLowerCase().indexOf("/demo/store/cart") !== -1;
+  }
+
+  function cartflowLogReturnDebugOnDemoStoreCart() {
+    if (!cartflowPathLooksLikeDemoStoreCart()) {
       return;
     }
-    if (!started) {
+    var pathRaw = window.location && window.location.pathname ? window.location.pathname : "";
+    var cart_id = getStableCartEventIdForTracking();
+    var store_slug = getCartflowStoreSlugForPayload();
+    var context = inferCartflowReturnContextFromPath();
+    var sig =
+      session_id +
+      "|" +
+      cart_id +
+      "|" +
+      context +
+      "|" +
+      (window.location && window.location.pathname
+        ? window.location.pathname
+        : "");
+    var last = null;
+    try {
+      last = window.sessionStorage.getItem(CF_RETURN_EVENT_DEDUPE_KEY);
+    } catch (eLa) {
+      last = null;
+    }
+    var effStarted = cartflowEffectiveRecoveryFlowStarted();
+    var should_send_return_event =
+      effStarted &&
+      !cartflowIsSessionConverted() &&
+      !!(session_id && session_id !== "—") &&
+      last !== sig &&
+      last !== CF_RETURN_DEDUPE_PENDING_PREFIX + sig;
+    console.log(
+      "[RETURN DEBUG]\n" +
+        "recovery_flow_started=" +
+        (effStarted ? "true" : "false") +
+        "\nsession_id=" +
+        session_id +
+        "\ncart_id=" +
+        cart_id +
+        "\nstore_slug=" +
+        store_slug +
+        "\npathname=" +
+        pathRaw +
+        "\ndedupe_signature=" +
+        sig +
+        "\nshould_send_return_event=" +
+        (should_send_return_event ? "true" : "false")
+    );
+  }
+
+  function maybeSendReturnToSiteAfterRecoveryStarted() {
+    if (cartflowIsSessionConverted()) {
+      if (cartflowPathLooksLikeDemoStoreCart()) {
+        console.log("[RETURN EVENT SKIPPED] reason=session_converted");
+      }
+      return;
+    }
+    if (!cartflowEffectiveRecoveryFlowStarted()) {
       return;
     }
     var session_id = getRecoverySessionId();
     var cart_id = getStableCartEventIdForTracking();
     if (!session_id || session_id === "—") {
+      console.log("[RETURN EVENT SKIPPED] reason=invalid_session_id");
       return;
     }
     var context = inferCartflowReturnContextFromPath();
@@ -667,17 +829,55 @@
       last = null;
     }
     if (last === sig) {
+      console.log("[RETURN EVENT SKIPPED] reason=dedupe_already_sent_for_path_context");
+      return;
+    }
+    var pendingVal = CF_RETURN_DEDUPE_PENDING_PREFIX + sig;
+    if (last === pendingVal) {
+      console.log("[RETURN EVENT SKIPPED] reason=send_inflight_duplicate_hook");
       return;
     }
     try {
-      window.sessionStorage.setItem(CF_RETURN_EVENT_DEDUPE_KEY, sig);
+      window.sessionStorage.setItem(CF_RETURN_EVENT_DEDUPE_KEY, pendingVal);
     } catch (eS) {
       /* ignore */
     }
-    void cartflowSendUserReturnedToSite({ context: context });
+    void cartflowSendUserReturnedToSite({ context: context })
+      .then(function (res) {
+        var body = res && res.body;
+        var ok =
+          res &&
+          res.ok &&
+          body &&
+          body.ok !== false &&
+          !res._error;
+        try {
+          if (ok) {
+            window.sessionStorage.setItem(CF_RETURN_EVENT_DEDUPE_KEY, sig);
+          } else {
+            window.sessionStorage.removeItem(CF_RETURN_EVENT_DEDUPE_KEY);
+          }
+        } catch (eSt) {
+          /* ignore */
+        }
+        if (!ok) {
+          console.log(
+            "[RETURN EVENT SKIPPED] reason=backend_reject_or_network status=" +
+              (res && res.status != null ? String(res.status) : "unknown")
+          );
+        }
+      })
+      .catch(function () {
+        try {
+          window.sessionStorage.removeItem(CF_RETURN_EVENT_DEDUPE_KEY);
+        } catch (eRm) {
+          /* ignore */
+        }
+      });
   }
 
   function onReadyForReturnToSiteHook() {
+    cartflowLogReturnDebugOnDemoStoreCart();
     maybeSendReturnToSiteAfterRecoveryStarted();
   }
 
@@ -686,10 +886,9 @@
   } else {
     onReadyForReturnToSiteHook();
   }
-  window.addEventListener("pageshow", function (ev) {
-    if (ev && ev.persisted) {
-      maybeSendReturnToSiteAfterRecoveryStarted();
-    }
+  window.addEventListener("pageshow", function () {
+    cartflowLogReturnDebugOnDemoStoreCart();
+    maybeSendReturnToSiteAfterRecoveryStarted();
   });
 
   /* للوحة ‎/demo*‎: معرفة الجلسة نفسه بدون تكرار المنطق */
