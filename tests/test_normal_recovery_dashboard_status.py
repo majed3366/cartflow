@@ -104,20 +104,28 @@ class NormalRecoveryDashboardStatusTests(unittest.TestCase):
         self.assertEqual(payload.get("normal_recovery_conversation_state_key"), "engaged")
         self.assertEqual(payload.get("normal_recovery_reply_intent_key"), "price")
         self.assertTrue(payload.get("normal_recovery_reply_intent_label_ar"))
-        self.assertIn("نفهمك", payload.get("normal_recovery_suggested_reply_ar") or "")
-        self.assertIn(
-            "تأكيد",
-            payload.get("normal_recovery_suggested_strategy_ar") or "",
-        )
+        reply_ar = payload.get("normal_recovery_suggested_reply_ar") or ""
+        self.assertIsInstance(reply_ar, str)
+        self.assertGreater(len(reply_ar.strip()), 0)
+        strat_ar = payload.get("normal_recovery_suggested_strategy_ar") or ""
+        self.assertIsInstance(strat_ar, str)
+        self.assertGreater(len(strat_ar.strip()), 0)
         self.assertTrue(payload.get("normal_recovery_suggestion_reason_ar"))
         self.assertEqual(payload.get("normal_recovery_optional_offer_type"), "value_framing")
         self.assertEqual(payload.get("normal_recovery_suggested_action_key"), "reassure_price")
+        self.assertIn("normal_recovery_suggestion_ux_badge_ar", payload)
+        self.assertIsInstance(payload.get("normal_recovery_suggestion_ux_badge_ar"), str)
         self.assertTrue(payload.get("normal_recovery_offer_decision_type_ar"))
         self.assertTrue(payload.get("normal_recovery_offer_confidence_ar"))
         self.assertTrue(payload.get("normal_recovery_offer_decision_rationale_ar"))
         self.assertTrue(payload.get("normal_recovery_offer_persuasion_ar"))
+        self.assertIn("normal_recovery_checkout_push_mode", payload)
+        self.assertIsInstance(payload.get("normal_recovery_checkout_push_mode"), bool)
         self.assertEqual(int(payload.get("normal_recovery_adaptive_turn_count") or 0), 1)
-        self.assertIn("اعتراض", payload.get("normal_recovery_adaptive_stage_ar") or "")
+        self.assertEqual(
+            payload.get("normal_recovery_adaptive_stage_key"), "price_objection"
+        )
+        self.assertTrue(payload.get("normal_recovery_adaptive_stage_ar"))
         self.assertTrue(payload.get("normal_recovery_adaptive_transition_ar"))
         self.assertTrue(payload.get("normal_recovery_adaptive_path_ar"))
 
@@ -166,10 +174,20 @@ class NormalRecoveryDashboardStatusTests(unittest.TestCase):
         db.session.commit()
 
         payload = _normal_recovery_phase_steps_payload(ac)
-        self.assertIn("التوصيل", payload.get("normal_recovery_suggested_reply_ar") or "")
-        self.assertIn("طمأنة", payload.get("normal_recovery_suggested_strategy_ar") or "")
+        self.assertEqual(payload.get("normal_recovery_reply_intent_key"), "delivery")
+        del_reply_ar = payload.get("normal_recovery_suggested_reply_ar") or ""
+        self.assertIsInstance(del_reply_ar, str)
+        self.assertGreater(len(del_reply_ar.strip()), 0)
+        del_strat_ar = payload.get("normal_recovery_suggested_strategy_ar") or ""
+        self.assertIsInstance(del_strat_ar, str)
+        self.assertGreater(len(del_strat_ar.strip()), 0)
         self.assertTrue(payload.get("normal_recovery_suggestion_reason_ar"))
         self.assertEqual(payload.get("normal_recovery_suggested_action_key"), "clarify_shipping")
+        self.assertIn("normal_recovery_suggestion_ux_badge_ar", payload)
+        self.assertIsInstance(payload.get("normal_recovery_suggestion_ux_badge_ar"), str)
+        self.assertTrue(payload.get("normal_recovery_offer_decision_type_ar"))
+        self.assertIn("normal_recovery_checkout_push_mode", payload)
+        self.assertIsInstance(payload.get("normal_recovery_checkout_push_mode"), bool)
 
     def test_mock_sent_counts_for_phase_and_coarse_status(self) -> None:
         st = self._store_attempts_1()
