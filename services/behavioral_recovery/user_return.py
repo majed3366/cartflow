@@ -8,7 +8,6 @@ from typing import Any
 from sqlalchemy.exc import SQLAlchemyError
 
 from extensions import db
-from models import Store
 from services.recovery_conversation_state_machine import (
     build_return_to_site_behavioral_patch,
 )
@@ -43,12 +42,15 @@ def payload_indicates_user_returned_to_site(payload: dict[str, Any]) -> bool:
 
 
 def _store_pk_for_cart_event_slug(slug: str) -> int | None:
+    """Use the same Store row as abandon upsert (widget slugs → dashboard latest)."""
     s = (slug or "").strip()
     if not s or s in ("default", "—"):
         return None
     try:
+        from main import _load_store_row_for_recovery
+
         db.create_all()
-        row = db.session.query(Store).filter(Store.zid_store_id == s).first()
+        row = _load_store_row_for_recovery(s)
         if row is None:
             return None
         return int(row.id)
