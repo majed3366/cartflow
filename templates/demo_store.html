@@ -349,7 +349,6 @@
     }
   </script>
   {% include "partials/cart_abandon_tracking.html" %}
-  <script src="/static/cartflow_return_tracker.js?v=return-tracker-v1"></script>
   <script>
     var DEMO_CART_KEY = "{{ demo_cart_key|default('demo_cart') }}";
 
@@ -679,6 +678,6 @@
     })();
   </script>
   <script src="/static/cartflow_demo_guide.js?v=cartflow-guide-inv-20260207a" defer></script>
-  <script src="/static/widget_loader.js?v=cartflow-widget-inv-20260207a" data-store="{{ demo_data_store|default('demo') }}"></script>
+  <script src="/static/widget_loader.js?v=unified-bootstrap-v1" data-store="{{ demo_data_store|default('demo') }}"></script>
 </body>
 </html>

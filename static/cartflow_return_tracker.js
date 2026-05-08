@@ -1,7 +1,7 @@
 /**
- * Isolated return-to-site tracker — durable state only, no widget / abandon order deps.
- * Writes dedupe: sessionStorage cartflow_return_tracker_dedupe
- * Reads state: localStorage cartflow_recovery_return_state_v1 (same shape as cart_abandon_tracking persist).
+ * Return-to-site tracker — loaded by widget_loader (CartFlow runtime). Do not auto-run.
+ * Dedupe: sessionStorage cartflow_return_tracker_dedupe
+ * State: localStorage cartflow_recovery_return_state_v1
  */
 (function () {
   "use strict";
@@ -9,12 +9,7 @@
   var LS_KEY = "cartflow_recovery_return_state_v1";
   var DEDUPE_KEY = "cartflow_return_tracker_dedupe";
   var CF_TEST_PHONE_LS = "cartflow_test_customer_phone";
-
-  try {
-    console.log("[RETURN TRACKER LOADED]");
-  } catch (eLd) {
-    /* ignore */
-  }
+  var MODULE_VERSION = "return-tracker-runtime-v1";
 
   function apiCartEventUrl() {
     var base = (window.CARTFLOW_API_BASE || "").toString().replace(/\/$/, "");
@@ -42,9 +37,10 @@
   }
 
   function inferReturnContext() {
-    var path = (window.location && window.location.pathname
-      ? String(window.location.pathname)
-      : ""
+    var path = (
+      window.location && window.location.pathname
+        ? String(window.location.pathname)
+        : ""
     ).toLowerCase();
     if (path.indexOf("/checkout") !== -1) {
       return "checkout";
@@ -128,17 +124,32 @@
     return true;
   }
 
-  function run() {
+  function skip(status, reason) {
+    try {
+      status.last_skip_reason = reason;
+      console.log("[RETURN TRACKER SKIPPED] reason=" + reason);
+    } catch (e) {
+      /* ignore */
+    }
+  }
+
+  function runOnce(status) {
+    status.last_skip_reason = null;
+    status.return_state_found = false;
+    status.return_event_sent = false;
+
     if (isConverted()) {
-      console.log("[RETURN TRACKER SKIPPED] reason=session_converted");
+      skip(status, "session_converted");
       return;
     }
 
     var st = readJsonLs(LS_KEY);
     if (!validRecoveryState(st)) {
-      console.log("[RETURN TRACKER SKIPPED] reason=no_recovery_state");
+      skip(status, "no_recovery_state");
       return;
     }
+
+    status.return_state_found = true;
 
     var session_id = String(st.session_id).trim().slice(0, 300);
     var cart_id = String(st.cart_id).trim().slice(0, 255);
@@ -146,7 +157,7 @@
     var store_slug = storeFromState || pageStoreSlug() || "demo";
     var pageSlug = pageStoreSlug();
     if (pageSlug && storeFromState && storeFromState !== pageSlug) {
-      console.log("[RETURN TRACKER SKIPPED] reason=store_slug_mismatch");
+      skip(status, "store_slug_mismatch");
       return;
     }
 
@@ -162,7 +173,8 @@
       pathname;
 
     try {
-      console.log("[RETURN TRACKER STATE]", {
+      console.log("[RETURN TRACKER]", {
+        phase: "state",
         session_id: session_id,
         cart_id: cart_id,
         store_slug: store_slug,
@@ -180,7 +192,7 @@
       last = null;
     }
     if (last === sig) {
-      console.log("[RETURN TRACKER SKIPPED] reason=dedupe_same_signature");
+      skip(status, "dedupe_same_signature");
       return;
     }
 
@@ -203,15 +215,18 @@
       bodyObj.phone = custPh;
     }
 
-    console.log(
-      "[RETURN TO SITE EVENT SENT]\n" +
-        "session_id=" +
-        session_id +
-        "\ncart_id=" +
-        cart_id +
-        "\ncontext=" +
-        recovery_return_context
-    );
+    try {
+      console.log(
+        "[RETURN TRACKER SENT] session_id=" +
+          session_id +
+          " cart_id=" +
+          cart_id +
+          " context=" +
+          recovery_return_context
+      );
+    } catch (eLg) {
+      /* ignore */
+    }
 
     try {
       window
@@ -232,27 +247,92 @@
         })
         .then(function (res) {
           var ok =
-            res &&
-            res.ok &&
-            res.body &&
-            res.body.ok !== false;
+            res && res.ok && res.body && res.body.ok !== false;
           if (ok) {
             try {
               window.sessionStorage.setItem(DEDUPE_KEY, sig);
             } catch (eOk) {
               /* ignore */
             }
+            status.return_event_sent = true;
+            status.last_skip_reason = null;
           } else {
-            console.log("[RETURN TRACKER SKIPPED] reason=backend_reject_or_network");
+            skip(status, "backend_reject_or_network");
           }
         })
-        .catch(function () {
-          console.log("[RETURN TRACKER SKIPPED] reason=fetch_failed");
+        .catch(function (err) {
+          try {
+            console.warn("[RETURN TRACKER ERROR]", "fetch_chain", err);
+          } catch (eW) {
+            /* ignore */
+          }
+          skip(status, "fetch_failed");
         });
     } catch (eF) {
-      console.log("[RETURN TRACKER SKIPPED] reason=fetch_throw");
+      try {
+        console.warn("[RETURN TRACKER ERROR]", "fetch_throw", eF);
+      } catch (eW2) {
+        /* ignore */
+      }
+      skip(status, "fetch_throw");
     }
   }
 
-  run();
+  /**
+   * @param {object} status — window.CARTFLOW_RUNTIME_STATUS
+   * @param {object} runtime — window.CartFlowRuntime
+   */
+  function initReturnTracker(status, runtime) {
+    if (window.__CARTFLOW_RETURN_TRACKER_EXECUTED__) {
+      return;
+    }
+    window.__CARTFLOW_RETURN_TRACKER_EXECUTED__ = true;
+
+    try {
+      status.return_tracker_loaded = true;
+      console.log("[RETURN TRACKER]", "init", MODULE_VERSION);
+    } catch (eI) {
+      /* ignore */
+    }
+
+    var health = { ok: true, ran: false, version: MODULE_VERSION };
+
+    try {
+      runOnce(status);
+      health.ran = true;
+    } catch (eRun) {
+      health.ok = false;
+      try {
+        status.last_skip_reason = "return_tracker_crash";
+        console.warn("[RETURN TRACKER ERROR]", eRun);
+      } catch (eL) {
+        /* ignore */
+      }
+    }
+
+    try {
+      runtime.returnTracker = {
+        version: MODULE_VERSION,
+        getHealth: function () {
+          return health;
+        },
+        getDebug: function () {
+          try {
+            return {
+              last_skip_reason: status.last_skip_reason,
+              return_state_found: status.return_state_found,
+              return_event_sent: status.return_event_sent,
+            };
+          } catch (eDbg) {
+            return {};
+          }
+        },
+      };
+    } catch (eRt) {
+      /* ignore */
+    }
+  }
+
+  window.__cartflowInitReturnTracker = initReturnTracker;
+  window.__cartflowReturnTrackerVersion = MODULE_VERSION;
 })();
