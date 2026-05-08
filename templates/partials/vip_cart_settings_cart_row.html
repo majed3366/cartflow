@@ -54,17 +54,27 @@
         or (nr_coarse == 'returned')
         or (nr_adaptive_key in nr_return_adaptive_stages)
       %}
+      {% set nr_ret_ctx = (vc.normal_recovery_return_context_key | default('', true)) | trim | lower %}
+      {% set nr_ret_ns = namespace(line='') %}
       {% if nr_show_return_after_message %}
+        {% if vc.normal_recovery_returned_checkout_page | default(false)
+          or nr_ret_ctx in ['checkout', 'checkout_page', 'payment', 'pay'] %}
+          {% set nr_ret_ns.line = 'عاد لصفحة الدفع بعد الرسالة' %}
+        {% elif vc.normal_recovery_returned_product_page | default(false)
+          or nr_ret_ctx in ['product', 'product_page', 'pdp', 'item'] %}
+          {% set nr_ret_ns.line = 'عاد لصفحة المنتج بعد الرسالة' %}
+        {% elif nr_ret_ctx == 'cart' %}
+          {% set nr_ret_ns.line = 'عاد للسلة بعد الرسالة' %}
+        {% else %}
+          {% set nr_ret_ns.line = 'عاد للموقع بعد الرسالة' %}
+        {% endif %}
+      {% endif %}
+      {% set nr_return_line_ar = nr_ret_ns.line %}
+      {% if nr_show_return_after_message and nr_return_line_ar and not vc.normal_recovery_interactive_mode %}
       <div class="mt-2 space-y-1 rounded-lg border border-sky-200/90 bg-sky-50/50 px-2.5 py-2 text-right shadow-sm" data-normal-recovery-return-status="1" lang="ar" role="status" aria-live="polite">
         <p class="m-0 flex flex-wrap items-center justify-end gap-1">
-          <span class="inline-flex items-center rounded-full border border-sky-300/90 bg-white px-2 py-0.5 text-[9px] font-bold text-sky-950">عاد للموقع بعد الرسالة</span>
+          <span class="inline-flex items-center rounded-full border border-sky-300/90 bg-white px-2 py-0.5 text-[9px] font-bold text-sky-950">{{ nr_return_line_ar | e }}</span>
         </p>
-        {% set nr_ret_ctx = vc.normal_recovery_return_context_key | default('') %}
-        <ul class="m-0 list-none space-y-0.5 p-0 text-[8px] leading-relaxed text-slate-800">
-          {% if vc.normal_recovery_returned_checkout_page | default(false) %}<li class="m-0">• عاد لصفحة الدفع</li>{% endif %}
-          {% if vc.normal_recovery_returned_product_page | default(false) %}<li class="m-0">• عاد لصفحة المنتج</li>{% endif %}
-          {% if nr_ret_ctx == 'cart' %}<li class="m-0">• عاد للسلة</li>{% endif %}
-        </ul>
         {% if vc.normal_recovery_return_timestamp_display_ar | default('') %}
         <p class="m-0 text-[8px] text-slate-700"><span class="font-semibold text-slate-600">وقت العودة:</span> {{ vc.normal_recovery_return_timestamp_display_ar | e }}</p>
         {% endif %}
@@ -84,11 +94,24 @@
         {% if vc.normal_recovery_active_conversation_badge %}
         <p class="m-0"><span class="inline-flex items-center rounded-full border border-violet-200 bg-white px-2 py-0.5 text-[9px] font-bold text-violet-900">محادثة نشطة</span></p>
         {% endif %}
-        {% if vc.normal_recovery_reply_intent_label_ar %}
-        <p class="m-0 flex flex-wrap items-center gap-1">
+        {% if vc.normal_recovery_reply_intent_label_ar or (nr_show_return_after_message and nr_return_line_ar) %}
+        <p class="m-0 flex flex-wrap items-center justify-end gap-1" aria-label="سلوك العميل والعودة للموقع">
+          {% if vc.normal_recovery_reply_intent_label_ar %}
           <span class="inline-flex items-center rounded-full border border-amber-200/90 bg-amber-50/95 px-2 py-0.5 text-[9px] font-bold text-amber-950"
             data-normal-recovery-intent="{{ vc.normal_recovery_reply_intent_key | default('') | e }}">{{ vc.normal_recovery_reply_intent_label_ar | e }}</span>
+          {% endif %}
+          {% if nr_show_return_after_message and nr_return_line_ar %}
+          <span class="inline-flex items-center rounded-full border border-sky-300/90 bg-sky-50/95 px-2 py-0.5 text-[9px] font-bold text-sky-950"
+            data-normal-recovery-return-inline="1">{{ nr_return_line_ar | e }}</span>
+          {% endif %}
         </p>
+        {% if nr_show_return_after_message and nr_return_line_ar and (vc.normal_recovery_return_timestamp_display_ar | default('') or ((vc.normal_recovery_site_return_count | default(0)) | int > 0)) %}
+        <p class="m-0 text-[8px] text-slate-600">
+          {% if vc.normal_recovery_return_timestamp_display_ar | default('') %}<span class="font-semibold text-slate-500">وقت العودة:</span> {{ vc.normal_recovery_return_timestamp_display_ar | e }}{% endif %}
+          {% if vc.normal_recovery_return_timestamp_display_ar | default('') and ((vc.normal_recovery_site_return_count | default(0)) | int > 0) %} · {% endif %}
+          {% if ((vc.normal_recovery_site_return_count | default(0)) | int > 0) %}<span class="font-semibold text-slate-500">مرات العودة:</span> {{ vc.normal_recovery_site_return_count | default(0) }}{% endif %}
+        </p>
+        {% endif %}
         {% endif %}
         {% if vc.normal_recovery_cooldown_panel %}
         <div class="mt-2 space-y-1 rounded-lg border border-sky-200/90 bg-sky-50/45 px-2 py-1.5 text-right" data-normal-recovery-cooldown="1" lang="ar" role="region" aria-label="تبريد المحادثة">
