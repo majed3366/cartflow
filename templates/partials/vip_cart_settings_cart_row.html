@@ -48,6 +48,32 @@
             data-normal-recovery-intent="{{ vc.normal_recovery_reply_intent_key | default('') | e }}">{{ vc.normal_recovery_reply_intent_label_ar | e }}</span>
         </p>
         {% endif %}
+        {% if vc.normal_recovery_cooldown_panel %}
+        <div class="mt-2 space-y-1 rounded-lg border border-sky-200/90 bg-sky-50/45 px-2 py-1.5 text-right" data-normal-recovery-cooldown="1" lang="ar" role="region" aria-label="تبريد المحادثة">
+          <p class="m-0 text-[9px] font-bold text-sky-950">تبريد المحادثة والصمت</p>
+          {% if vc.normal_recovery_cooldown_state_ar %}
+          <p class="m-0 text-[8px] text-slate-800"><span class="font-semibold text-slate-600">حالة التفاعل الحالية:</span> {{ vc.normal_recovery_cooldown_state_ar | e }}</p>
+          {% endif %}
+          {% if vc.normal_recovery_silence_duration_display_ar %}
+          <p class="m-0 text-[8px] text-slate-800"><span class="font-semibold text-slate-600">مدة الصمت:</span> {{ vc.normal_recovery_silence_duration_display_ar | e }}</p>
+          {% endif %}
+          {% if vc.normal_recovery_activity_level_ar %}
+          <p class="m-0 text-[8px] text-slate-800"><span class="font-semibold text-slate-600">مستوى النشاط:</span> {{ vc.normal_recovery_activity_level_ar | e }}</p>
+          {% endif %}
+          {% if vc.normal_recovery_followup_recommendation_ar %}
+          <p class="m-0 text-[8px] leading-relaxed text-slate-800"><span class="font-semibold text-slate-600">هل يوصى بمتابعة؟</span> {{ vc.normal_recovery_followup_recommendation_ar | e }}</p>
+          {% endif %}
+          {% if vc.normal_recovery_followup_type_ar and vc.normal_recovery_followup_type_ar != '—' %}
+          <p class="m-0 text-[8px] text-slate-800"><span class="font-semibold text-slate-600">نوع المتابعة المقترحة:</span> {{ vc.normal_recovery_followup_type_ar | e }}</p>
+          {% endif %}
+          {% if vc.normal_recovery_cooldown_context_ar %}
+          <p class="m-0 text-[8px] leading-relaxed text-slate-600">{{ vc.normal_recovery_cooldown_context_ar | e }}</p>
+          {% endif %}
+          {% if vc.normal_recovery_cooldown_pressure_note_ar %}
+          <p class="m-0 text-[8px] leading-relaxed text-amber-900/90"><span class="font-semibold">ملاحظة:</span> {{ vc.normal_recovery_cooldown_pressure_note_ar | e }}</p>
+          {% endif %}
+        </div>
+        {% endif %}
         {% if vc.normal_recovery_suggested_reply_ar %}
         <div class="mt-2 space-y-2 rounded-xl border border-emerald-100/90 bg-gradient-to-br from-white via-emerald-50/30 to-slate-50/80 p-2.5 shadow-sm ring-1 ring-emerald-100/60"
           data-normal-recovery-suggestion-box

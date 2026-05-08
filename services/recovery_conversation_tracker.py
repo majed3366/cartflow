@@ -19,7 +19,10 @@ from services.recovery_reply_intent_labels import recovery_reply_intent_badge_ar
 from services.recovery_product_suggestions import (
     get_product_aware_recovery_suggestion_for_abandoned_cart,
 )
-from services.recovery_conversation_state_machine import stage_label_ar
+from services.recovery_conversation_state_machine import (
+    compute_conversational_cooldown,
+    stage_label_ar,
+)
 from services.recovery_reply_suggestions import effective_suggestion_intent
 from services.whatsapp_positive_reply import normalize_wa_customer_digits
 
@@ -95,13 +98,60 @@ def conversation_dashboard_extras(ac: AbandonedCart) -> dict[str, Any]:
     adaptive_transition_ar = ""
     adaptive_turns = 0
     checkout_push_mode = False
+    cooldown_snapshot: dict[str, Any] = {}
+    cooldown_state_key = ""
+    cooldown_state_ar = ""
+    silence_duration_display_ar = ""
+    silence_duration_minutes_val: Optional[float] = None
+    activity_level_ar = ""
+    followup_recommendation_ar = ""
+    followup_recommended = False
+    followup_type_key = ""
+    followup_type_ar = ""
+    cooldown_context_ar = ""
+    pressure_note_ar = ""
+    cooldown_panel = False
     if replied and st != "recovered":
+        adaptive_stage_key = str(bh.get("recovery_adaptive_stage") or "").strip()
+        try:
+            adaptive_turns_pre = int(bh.get("recovery_adaptive_turn_count") or 0)
+        except (TypeError, ValueError):
+            adaptive_turns_pre = 0
+        cooldown_snapshot = compute_conversational_cooldown(
+            last_customer_reply_iso=last_iso,
+            adaptive_stage_key=adaptive_stage_key,
+            adaptive_turn_count=adaptive_turns_pre,
+        )
+        cooldown_state_key = str(cooldown_snapshot.get("cooldown_state") or "")
+        cooldown_state_ar = str(cooldown_snapshot.get("cooldown_state_ar") or "")
+        silence_duration_display_ar = str(
+            cooldown_snapshot.get("silence_duration_display_ar") or ""
+        )
+        try:
+            silence_duration_minutes_val = float(
+                cooldown_snapshot.get("silence_duration_minutes") or 0.0
+            )
+        except (TypeError, ValueError):
+            silence_duration_minutes_val = 0.0
+        activity_level_ar = str(cooldown_snapshot.get("activity_level_ar") or "")
+        followup_recommendation_ar = str(
+            cooldown_snapshot.get("followup_recommendation_ar") or ""
+        )
+        followup_recommended = bool(cooldown_snapshot.get("recommend_followup"))
+        followup_type_key = str(cooldown_snapshot.get("recommended_followup_key") or "")
+        followup_type_ar = str(
+            cooldown_snapshot.get("recommended_followup_type_ar") or ""
+        )
+        cooldown_context_ar = str(cooldown_snapshot.get("cooldown_context_ar") or "")
+        pressure_note_ar = str(cooldown_snapshot.get("pressure_note_ar") or "")
+        cooldown_panel = True
         cust_for_sugg = str(bh.get("latest_customer_message") or preview or "").strip()
         eff_intent = intent_raw if intent_raw else "other"
         pa = get_product_aware_recovery_suggestion_for_abandoned_cart(
             ac,
             eff_intent,
             cust_for_sugg,
+            cooldown_snapshot=cooldown_snapshot,
         )
         suggested_reply_ar = str(pa.get("suggested_reply") or "").strip()
         suggested_strategy_ar = str(pa.get("suggested_strategy") or "").strip()
@@ -137,7 +187,6 @@ def conversation_dashboard_extras(ac: AbandonedCart) -> dict[str, Any]:
             offer_flag_alternative = False
             offer_strategy_key = ""
             offer_persuasion_key = ""
-        adaptive_stage_key = str(bh.get("recovery_adaptive_stage") or "").strip()
         adaptive_stage_label_ar = (
             stage_label_ar(adaptive_stage_key) if adaptive_stage_key else ""
         )
@@ -201,4 +250,16 @@ def conversation_dashboard_extras(ac: AbandonedCart) -> dict[str, Any]:
         "normal_recovery_adaptive_transition_ar": adaptive_transition_ar,
         "normal_recovery_adaptive_turn_count": adaptive_turns,
         "normal_recovery_checkout_push_mode": checkout_push_mode,
+        "normal_recovery_cooldown_panel": cooldown_panel,
+        "normal_recovery_cooldown_state_key": cooldown_state_key,
+        "normal_recovery_cooldown_state_ar": cooldown_state_ar,
+        "normal_recovery_silence_duration_display_ar": silence_duration_display_ar,
+        "normal_recovery_silence_duration_minutes": silence_duration_minutes_val,
+        "normal_recovery_activity_level_ar": activity_level_ar,
+        "normal_recovery_followup_recommended": followup_recommended,
+        "normal_recovery_followup_recommendation_ar": followup_recommendation_ar,
+        "normal_recovery_followup_type_key": followup_type_key,
+        "normal_recovery_followup_type_ar": followup_type_ar,
+        "normal_recovery_cooldown_context_ar": cooldown_context_ar,
+        "normal_recovery_cooldown_pressure_note_ar": pressure_note_ar,
     }

@@ -7,7 +7,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Mapping, Optional, TypedDict
 
-from services.recovery_conversation_state_machine import STAGE_CHECKOUT_READY
+from services.recovery_conversation_state_machine import (
+    COOLDOWN_CHECKOUT_SILENCE,
+    COOLDOWN_COOLING_DOWN,
+    COOLDOWN_DISENGAGED,
+    COOLDOWN_GENTLE_FOLLOWUP_CANDIDATE,
+    STAGE_CHECKOUT_READY,
+)
 from services.recovery_offer_decision import decide_recovery_offer_strategy
 from services.behavioral_recovery.state_store import behavioral_dict_for_abandoned_cart
 from services.recovery_product_context import (
@@ -55,6 +61,62 @@ def _ux_badge_from_decision(od: Mapping[str, Any]) -> Optional[str]:
     if st == "checkout_push":
         return "فرصة تحويل عالية"
     return None
+
+
+def _apply_cooldown_to_suggestion(
+    suggestion: ProductAwareRecoverySuggestion,
+    cooldown_snapshot: Optional[Mapping[str, Any]],
+) -> ProductAwareRecoverySuggestion:
+    """إرشاد فقط — تعديل نبرة الاقتراح بحسب صمت العميل والمرحلة (لا إرسال)."""
+    if not cooldown_snapshot:
+        return suggestion
+    out = dict(suggestion)
+    cs = str(cooldown_snapshot.get("cooldown_state") or "")
+    opt = str(out.get("optional_offer_type") or "")
+
+    if cs == COOLDOWN_DISENGAGED:
+        out["suggested_reply"] = (
+            "مرّ وقت طويل بلا رد من العميل — يُفضّل إيقاف الضغط البيعي؛ "
+            "يمكنك التواصل بلطف لاحقاً إن رغبت دون إقناع إضافي."
+        )
+        out["suggested_strategy"] = "هدوء المحادثة — متابعة اختيارية لاحقاً"
+        out["suggestion_reason_ar"] = (
+            "صمت طويل — طبقة التبريد تقترح عدم المتابعة المزعجة الآن."
+        )
+        out["ux_badge_ar"] = "محادثة باردة"
+        out["checkout_cta_mode"] = None
+    elif cs == COOLDOWN_CHECKOUT_SILENCE and opt == "checkout_cta":
+        out["suggested_reply"] = (
+            "تذكير هادئ 👍 إذا تحب نكرر رابط إكمال الطلب؛ أنا حاضر لأي استفسار بسيط."
+        )
+        out["suggested_strategy"] = "تذكير إكمال — دون تكرار إقناع"
+        out["suggestion_reason_ar"] = (
+            "صمت بعد طلب الرابط أو الإكمال — صياغة هادئة دون إغراق بالعروض."
+        )
+        out["checkout_cta_mode"] = "cooldown_checkout_nudge"
+        out["ux_badge_ar"] = "تذكير هادئ"
+    elif cs == COOLDOWN_COOLING_DOWN and opt in (
+        "value_framing",
+        "soft_offer",
+        "alternative_product",
+    ):
+        base_r = str(out.get("suggestion_reason_ar") or "").strip()
+        out["suggested_reply"] = (
+            "إذا تحب نوضّح نقطة واحدة بهدوء — بدون ضغط، والقرار يبقى للعميل 👍"
+        )
+        out["suggested_strategy"] = "تخفيف ضغط بعد اعتراض وصمت"
+        out["suggestion_reason_ar"] = (
+            f"{base_r} المحادثة تبرد تدريجيًا — قلّل حدة البيع المباشر."
+            if base_r
+            else "المحادثة تبرد تدريجيًا بعد اعتراض وصمت — قلّل حدة البيع المباشر."
+        )
+        out["ux_badge_ar"] = "يفضّل إيقاف الضغط البيعي"
+    elif cs == COOLDOWN_GENTLE_FOLLOWUP_CANDIDATE:
+        prev_r = str(out.get("suggestion_reason_ar") or "").strip()
+        extra = " المحادثة تبرد تدريجيًا؛ يناسبها تذكير لطيف إن رغبت."
+        out["suggestion_reason_ar"] = (prev_r + extra) if prev_r else extra.strip()
+
+    return out  # type: ignore[return-value]
 
 
 def get_product_aware_recovery_suggestion(
@@ -228,6 +290,8 @@ def get_product_aware_recovery_suggestion_for_abandoned_cart(
     ac: "AbandonedCart",
     intent: str,
     customer_message: str = "",
+    *,
+    cooldown_snapshot: Optional[Mapping[str, Any]] = None,
 ) -> ProductAwareRecoverySuggestion:
     ctx = recovery_product_context_from_abandoned_cart(ac)
     cat = resolved_category_label(ctx)
@@ -252,6 +316,7 @@ def get_product_aware_recovery_suggestion_for_abandoned_cart(
         offer_decision=decision,
         adaptive_stage=adaptive_stage,
     )
-    out: dict[str, Any] = dict(result)
+    tuned = _apply_cooldown_to_suggestion(result, cooldown_snapshot)
+    out: dict[str, Any] = dict(tuned)
     out["offer_decision"] = dict(decision)
     return out  # type: ignore[return-value]
