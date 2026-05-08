@@ -74,6 +74,27 @@
           {% endif %}
         </div>
         {% endif %}
+        {% if vc.normal_recovery_return_intel_panel %}
+        <div class="mt-2 space-y-1 rounded-lg border border-indigo-200/90 bg-indigo-50/40 px-2 py-1.5 text-right" data-normal-recovery-return-intel="1" lang="ar" role="region" aria-label="عودة للموقع">
+          <p class="m-0 text-[9px] font-bold text-indigo-950">سلوك العودة للموقع</p>
+          <ul class="m-0 list-none space-y-0.5 p-0 text-[8px] leading-relaxed text-slate-800">
+            {% if vc.normal_recovery_customer_returned_to_site_track %}<li class="m-0">• العميل عاد للموقع</li>{% endif %}
+            {% if vc.normal_recovery_returned_product_page %}<li class="m-0">• عاد لصفحة المنتج</li>{% endif %}
+            {% if vc.normal_recovery_returned_checkout_page %}<li class="m-0">• وصل صفحة الدفع</li>{% endif %}
+            {% if vc.normal_recovery_return_completion_opportunity %}<li class="m-0">• فرصة إكمال مرتفعة</li>{% endif %}
+            <li class="m-0">• يوصى بتخفيف الضغط البيعي وتجنّب الخصومات المفاجئة</li>
+          </ul>
+          {% if vc.normal_recovery_site_return_count | default(0) | int > 0 %}
+          <p class="m-0 text-[8px] text-slate-700"><span class="font-semibold text-slate-600">عدد مرات العودة:</span> {{ vc.normal_recovery_site_return_count | default(0) }}</p>
+          {% endif %}
+          {% if vc.normal_recovery_return_timestamp_display_ar %}
+          <p class="m-0 text-[8px] text-slate-700"><span class="font-semibold text-slate-600">آخر إشعار عودة:</span> {{ vc.normal_recovery_return_timestamp_display_ar | e }}</p>
+          {% endif %}
+          {% if vc.normal_recovery_return_intel_pressure_note_ar %}
+          <p class="m-0 text-[8px] leading-relaxed text-indigo-950/90">{{ vc.normal_recovery_return_intel_pressure_note_ar | e }}</p>
+          {% endif %}
+        </div>
+        {% endif %}
         {% if vc.normal_recovery_suggested_reply_ar %}
         <div class="mt-2 space-y-2 rounded-xl border border-emerald-100/90 bg-gradient-to-br from-white via-emerald-50/30 to-slate-50/80 p-2.5 shadow-sm ring-1 ring-emerald-100/60"
           data-normal-recovery-suggestion-box

@@ -10,7 +10,10 @@ from __future__ import annotations
 
 from typing import Optional, TypedDict
 
-from services.recovery_conversation_state_machine import STAGE_CHECKOUT_READY
+from services.recovery_conversation_state_machine import (
+    STAGE_CHECKOUT_READY,
+    STAGE_RETURNED_CHECKOUT,
+)
 
 # عتبات سعرية تقريبية بالريال — تُضبط لاحقاً من إعدادات المتجر
 _LOW_PRICE_MAX: float = 79.0
@@ -135,6 +138,23 @@ def decide_recovery_offer_strategy(
     band = _price_band(product_price)
     premium_cat = _is_premium_category(product_category or "")
     conf = _price_objection_confidence(customer_message) if eff == "price" else "medium"
+
+    if adapt == STAGE_RETURNED_CHECKOUT:
+        return {
+            "strategy_type": "completion_assistance",
+            "should_offer_discount": False,
+            "should_offer_free_shipping": False,
+            "should_offer_alternative": False,
+            "persuasion_mode": "completion_assistance",
+            "confidence_level": "high",
+            "strategy_type_ar": "مساعدة إكمال — بعد عودة لصفحة الدفع",
+            "confidence_level_ar": "مرتفع",
+            "decision_rationale_ar": (
+                "العميل في المسار النقدي في المتجر — ركّز على المساندة والوضوح دون ضغط بيعي مكثّف "
+                "أو خصومات مفاجئة."
+            ),
+            "persuasion_mode_ar": "أسلوب مساندة للإكمال",
+        }
 
     if eff == "ready_to_buy" or adapt == STAGE_CHECKOUT_READY:
         return {

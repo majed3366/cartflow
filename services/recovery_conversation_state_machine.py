@@ -7,6 +7,11 @@
 latest_customer_reply_at) + المرحلة التكيّفية — للإرشاد في اللوحة فقط؛ لا إرسال ولا جدولة.
 
 جاهز لاحقاً: توقيت نداء ذكي، إيقاع تكيّفي، إرهاق عميل، محرك سلوك زمني — تغذية إرشاد فقط.
+
+سلوك العودة للموقع: يُحدَّث عبر ‎merge_behavioral_state‎ (حدث الويدجت) ويُدمج مع المسار التكيّفي
+عند وجود محادثة تفاعلية — إرشاد للتاجر فقط.
+
+جاهز لاحقاً: behavioral automation، rescue للدفع، وكلاء مبيعات لحظيين — دون إرسال تلقائي من هذه الطبقة.
 """
 from __future__ import annotations
 
@@ -19,6 +24,17 @@ STAGE_ALTERNATIVE_CONSIDERATION = "alternative_consideration"
 STAGE_CHECKOUT_READY = "checkout_ready"
 STAGE_SHIPPING_QUESTIONS = "shipping_questions"
 STAGE_HESITATION_FOLLOWUP = "hesitation_followup"
+STAGE_RETURNED_BROWSING = "returned_browsing"
+STAGE_RETURNED_CHECKOUT = "returned_checkout"
+STAGE_PASSIVE_RETURN = "passive_return"
+
+RETURN_STAGES: frozenset[str] = frozenset(
+    {
+        STAGE_RETURNED_BROWSING,
+        STAGE_RETURNED_CHECKOUT,
+        STAGE_PASSIVE_RETURN,
+    }
+)
 
 COOLDOWN_ACTIVE_CONVERSATION = "active_conversation"
 COOLDOWN_COOLING_DOWN = "cooling_down"
@@ -68,6 +84,9 @@ _STAGE_LABELS_AR: dict[str, str] = {
     STAGE_CHECKOUT_READY: "جاهز لإكمال الطلب",
     STAGE_SHIPPING_QUESTIONS: "أسئلة شحن وتوصيل",
     STAGE_HESITATION_FOLLOWUP: "متابعة تردد لطيفة",
+    STAGE_RETURNED_BROWSING: "عاد للتصفح في المتجر",
+    STAGE_RETURNED_CHECKOUT: "عاد لصفحة الدفع — مساعدة إكمال",
+    STAGE_PASSIVE_RETURN: "عودة لطيفة — تخفيف ضغط بعد اعتراض",
 }
 
 
@@ -332,6 +351,12 @@ def path_label_for_stage(stage: str, intent: str) -> str:
     eff = _norm_intent_key(intent)
     if stage == STAGE_ALTERNATIVE_CONSIDERATION:
         return "قيمة → بدائل → إغلاق"
+    if stage == STAGE_RETURNED_CHECKOUT:
+        return "مساعدة إكمال — دون ضغط بيعي أو خصم مفاجئ"
+    if stage == STAGE_PASSIVE_RETURN:
+        return "تصفح المنتج — تخفيف ضغط بعد اعتراض"
+    if stage == STAGE_RETURNED_BROWSING:
+        return "تصفح بعد العودة — إيقاع هادئ"
     if stage == STAGE_CHECKOUT_READY or eff == "ready_to_buy":
         return "دفع نحو إكمال الطلب"
     if stage == STAGE_SHIPPING_QUESTIONS or eff in ("delivery", "shipping"):
@@ -341,6 +366,105 @@ def path_label_for_stage(stage: str, intent: str) -> str:
     if stage == STAGE_VALUE_REASSURANCE:
         return "طمأنة قيمة → بديل اختياري → إغلاق"
     return "مسار مرن حسب ردود العميل"
+
+
+def compute_return_to_site_adaptive_transition(
+    *,
+    prior_conversational_stage: str,
+    prior_intent: str,
+    returned_checkout_page: bool,
+    returned_product_page: bool,
+) -> tuple[str, str, str]:
+    """انتقال عند إبلاغ الويدجت عن عودة العميل للموقع — للدمج في ‎cf_behavioral‎ فقط."""
+    ps = (prior_conversational_stage or "").strip()
+    pi = _norm_intent_key(prior_intent)
+
+    if returned_checkout_page:
+        if ps == STAGE_CHECKOUT_READY or pi == "ready_to_buy":
+            return (
+                STAGE_RETURNED_CHECKOUT,
+                "العميل عاد لصفحة الدفع بعد اهتمام بالإكمال — مساعدة هادئة دون إقناع مكرر.",
+                path_label_for_stage(STAGE_RETURNED_CHECKOUT, "ready_to_buy"),
+            )
+        return (
+            STAGE_RETURNED_CHECKOUT,
+            "العميل وصل صفحة الدفع من الموقع — ركّز على المساندة والوضوح.",
+            path_label_for_stage(STAGE_RETURNED_CHECKOUT, prior_intent),
+        )
+
+    if returned_product_page:
+        if ps in _PRICE_OR_OBJECTION_STAGES or pi == "price":
+            return (
+                STAGE_PASSIVE_RETURN,
+                "عودة لصفحة المنتج بعد اعتراض أو تفاوض — خفّف الضغط البيعي والخصومات المفاجئة.",
+                path_label_for_stage(STAGE_PASSIVE_RETURN, "price"),
+            )
+        return (
+            STAGE_RETURNED_BROWSING,
+            "العميل يتصفح صفحة المنتج بعد العودة — أسلوب هادئ دون عروض عدوانية.",
+            path_label_for_stage(STAGE_RETURNED_BROWSING, prior_intent),
+        )
+
+    return (
+        STAGE_RETURNED_BROWSING,
+        "العميل عاد للموقع — حافظ على محادثة دافئة دون مضايقة.",
+        path_label_for_stage(STAGE_RETURNED_BROWSING, prior_intent),
+    )
+
+
+def should_fuse_return_into_adaptive_recovery(prior_behavioral: dict[str, Any]) -> bool:
+    """دمج عودة الموقع مع المسار التكيّفي فقط عند وجود سياق محادثة/استرجاع تفاعلي."""
+    if not isinstance(prior_behavioral, dict):
+        return False
+    if prior_behavioral.get("customer_replied") is True:
+        return True
+    if prior_behavioral.get("interactive_mode") is True:
+        return True
+    if str(prior_behavioral.get("recovery_adaptive_stage") or "").strip():
+        return True
+    return False
+
+
+def build_return_to_site_behavioral_patch(
+    prior_behavioral: dict[str, Any],
+    *,
+    returned_product_page: bool,
+    returned_checkout_page: bool,
+    return_timestamp_iso: str,
+    fuse_adaptive: bool = True,
+) -> dict[str, Any]:
+    """
+    حقول ‎cf_behavioral‎ لطبقة العودة للموقع — بدون نظام تتبع جديد.
+    """
+    prior = dict(prior_behavioral) if isinstance(prior_behavioral, dict) else {}
+    try:
+        rc = int(prior.get("recovery_site_return_count") or 0)
+    except (TypeError, ValueError):
+        rc = 0
+    rc = max(0, rc) + 1
+
+    out: dict[str, Any] = {
+        "customer_returned_to_site": True,
+        "recovery_return_timestamp": str(return_timestamp_iso or "").strip(),
+        "recovery_returned_product_page": bool(returned_product_page),
+        "recovery_returned_checkout_page": bool(returned_checkout_page),
+        "recovery_site_return_count": rc,
+    }
+
+    if fuse_adaptive and should_fuse_return_into_adaptive_recovery(prior):
+        prev_stage = str(prior.get("recovery_adaptive_stage") or "").strip()
+        prev_intent = str(prior.get("recovery_reply_intent") or "").strip()
+        st, reason_ar, path_ar = compute_return_to_site_adaptive_transition(
+            prior_conversational_stage=prev_stage,
+            prior_intent=prev_intent,
+            returned_checkout_page=bool(returned_checkout_page),
+            returned_product_page=bool(returned_product_page),
+        )
+        out["recovery_adaptive_stage"] = st
+        out["recovery_last_transition_reason_ar"] = reason_ar
+        out["recovery_adaptive_path_label_ar"] = path_ar
+
+    return out
 
 
 def compute_adaptive_transition(
@@ -379,6 +503,23 @@ def compute_adaptive_transition(
             "انتقال إلى وضع إكمال الطلب — العميل جاهز لخطوة الدفع أو الرابط.",
             path_label_for_stage(STAGE_CHECKOUT_READY, "ready_to_buy"),
         )
+
+    # بعد مرحلة عودة للموقع (سلوك المتجر) — أعد المسار وفق نية الرسالة
+    if p_st in RETURN_STAGES:
+        if wants_checkout_completion(msg, new_intent):
+            return (
+                STAGE_CHECKOUT_READY,
+                "بعد عودة للموقع — العميل يطلب إكمالاً أو الرابط.",
+                path_label_for_stage(STAGE_CHECKOUT_READY, "ready_to_buy"),
+            )
+        st3 = initial_stage_for_intent(new_intent)
+        if p_st == STAGE_RETURNED_CHECKOUT:
+            reason_rt = "بعد عودة لصفحة الدفع — متابعة المحادثة وفق نية الرسالة."
+        elif p_st == STAGE_PASSIVE_RETURN:
+            reason_rt = "بعد عودة لطيفة لصفحة المنتج — أعد ضبط المسار وفق الرد."
+        else:
+            reason_rt = "بعد تصفح في الموقع — تابع بلطف دون ضغط مفاجئ."
+        return (st3, reason_rt, path_label_for_stage(st3, new_intent))
 
     # طلب بديل بعد اعتراض سعر — حتى لو لُخّص النص كـ ‎other‎ خارج نية السعر
     if (

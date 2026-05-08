@@ -13,6 +13,9 @@ from services.recovery_conversation_state_machine import (
     COOLDOWN_DISENGAGED,
     COOLDOWN_GENTLE_FOLLOWUP_CANDIDATE,
     STAGE_CHECKOUT_READY,
+    STAGE_PASSIVE_RETURN,
+    STAGE_RETURNED_BROWSING,
+    STAGE_RETURNED_CHECKOUT,
 )
 from services.recovery_offer_decision import decide_recovery_offer_strategy
 from services.behavioral_recovery.state_store import behavioral_dict_for_abandoned_cart
@@ -60,6 +63,8 @@ def _ux_badge_from_decision(od: Mapping[str, Any]) -> Optional[str]:
         return "لا يُنصح بخصم مباشر"
     if st == "checkout_push":
         return "فرصة تحويل عالية"
+    if st == "completion_assistance":
+        return "فرصة إكمال مرتفعة"
     return None
 
 
@@ -119,6 +124,58 @@ def _apply_cooldown_to_suggestion(
     return out  # type: ignore[return-value]
 
 
+def _apply_return_to_site_to_suggestion(
+    suggestion: ProductAwareRecoverySuggestion,
+    behavioral: Optional[Mapping[str, Any]],
+) -> ProductAwareRecoverySuggestion:
+    """دمج سلوك العودة للموقع — إرشاد فقط (لا إرسال)."""
+    if not behavioral:
+        return suggestion
+    bh = dict(behavioral)
+    st = str(bh.get("recovery_adaptive_stage") or "").strip()
+    returned = bool(
+        bh.get("customer_returned_to_site") is True
+        or bh.get("user_returned_to_site") is True
+        or int(bh.get("recovery_site_return_count") or 0) > 0
+    )
+    if not returned and not st:
+        return suggestion
+
+    out = dict(suggestion)
+    opt = str(out.get("optional_offer_type") or "")
+
+    if st == STAGE_RETURNED_CHECKOUT or bh.get("recovery_returned_checkout_page") is True:
+        if opt not in ("checkout_cta", "completion_assistance"):
+            out["suggested_reply"] = (
+                "إذا احتجت أي مساعدة بالإكمال أنا حاضر 👍 وكل استفسار بسيط حاب تسأل عنه."
+            )
+            out["suggested_strategy"] = "مساعدة إكمال — بدون ضغط بيعي"
+            out["optional_offer_type"] = "completion_assistance"
+            out["suggestion_reason_ar"] = (
+                "العميل عاد لمسار الدفع في المتجر — ركّز على المساندة لا الخصومات المفاجئة."
+            )
+            out["ux_badge_ar"] = "فرصة إكمال مرتفعة"
+            out["checkout_cta_mode"] = "completion_assistance"
+
+    elif st == STAGE_PASSIVE_RETURN or (
+        bh.get("recovery_returned_product_page") is True and opt in ("value_framing", "soft_offer", "alternative_product")
+    ):
+        out["suggested_reply"] = (
+            "شفت إنك رجعت تتفرّج على المنتج 👍 أي توضيح بسيط أنا حاضر — بدون ضغط."
+        )
+        out["suggested_strategy"] = "تصفح بعد العودة — تخفيف ضغط بيعي"
+        out["suggestion_reason_ar"] = (
+            "عودة لصفحة المنتج بعد اعتراض — يُنصح بتخفيف الإقناع المكرر وتجنّب عروض مفاجئة."
+        )
+        out["ux_badge_ar"] = "يُنصح بتخفيف الضغط البيعي"
+    elif st == STAGE_RETURNED_BROWSING:
+        note = str(out.get("suggestion_reason_ar") or "").strip()
+        extra = " العميل يتصفح الموقع بعد العودة — حافظ على نبرة هادئة."
+        out["suggestion_reason_ar"] = (note + extra) if note else extra.strip()
+
+    return out  # type: ignore[return-value]
+
+
 def get_product_aware_recovery_suggestion(
     intent: str,
     product_name: Optional[str],
@@ -140,9 +197,25 @@ def get_product_aware_recovery_suggestion(
     checkout_layer = (
         eff == "ready_to_buy"
         or adapt == STAGE_CHECKOUT_READY
-        or str(od0.get("strategy_type") or "").strip() == "checkout_push"
+        or adapt == STAGE_RETURNED_CHECKOUT
+        or str(od0.get("strategy_type") or "").strip()
+        in ("checkout_push", "completion_assistance")
     )
     if checkout_layer:
+        if adapt == STAGE_RETURNED_CHECKOUT or str(od0.get("strategy_type") or "").strip() == "completion_assistance":
+            return {
+                "suggested_reply": (
+                    "إذا احتجت أي مساعدة بالإكمال أنا حاضر 👍 "
+                    "أسئلة بسيطة عن الخطوة أو الرابط أقدر أساعدك فيها."
+                ),
+                "suggested_strategy": "مساعدة إكمال بعد عودة لصفحة الدفع",
+                "optional_offer_type": "completion_assistance",
+                "suggestion_reason_ar": (
+                    "العميل في صفحة الدفع في المتجر — مساندة واضحة دون تخفيضات مفاجئة أو إقناع مكثّف."
+                ),
+                "ux_badge_ar": "فرصة إكمال مرتفعة",
+                "checkout_cta_mode": "completion_assistance",
+            }
         return {
             "suggested_reply": (
                 "ممتاز 👍 هذا رابط إكمال الطلب مباشرة، وإذا احتجت أي مساعدة أنا حاضر."
@@ -317,6 +390,7 @@ def get_product_aware_recovery_suggestion_for_abandoned_cart(
         adaptive_stage=adaptive_stage,
     )
     tuned = _apply_cooldown_to_suggestion(result, cooldown_snapshot)
+    tuned = _apply_return_to_site_to_suggestion(tuned, bh)
     out: dict[str, Any] = dict(tuned)
     out["offer_decision"] = dict(decision)
     return out  # type: ignore[return-value]

@@ -111,6 +111,14 @@ def conversation_dashboard_extras(ac: AbandonedCart) -> dict[str, Any]:
     cooldown_context_ar = ""
     pressure_note_ar = ""
     cooldown_panel = False
+    return_intel_panel = False
+    customer_returned_to_site_track = False
+    recovery_return_timestamp_ar = ""
+    recovery_returned_product_page_flag = False
+    recovery_returned_checkout_page_flag = False
+    recovery_site_return_count_val = 0
+    return_intel_pressure_note_ar = ""
+    return_intel_completion_opportunity = False
     if replied and st != "recovered":
         adaptive_stage_key = str(bh.get("recovery_adaptive_stage") or "").strip()
         try:
@@ -198,7 +206,47 @@ def conversation_dashboard_extras(ac: AbandonedCart) -> dict[str, Any]:
             adaptive_turns = int(bh.get("recovery_adaptive_turn_count") or 0)
         except (TypeError, ValueError):
             adaptive_turns = 0
-        checkout_push_mode = adaptive_stage_key == "checkout_ready" or offer_strategy_key == "checkout_push"
+        checkout_push_mode = (
+            adaptive_stage_key == "checkout_ready"
+            or adaptive_stage_key == "returned_checkout"
+            or offer_strategy_key in ("checkout_push", "completion_assistance")
+        )
+        customer_returned_to_site_track = bool(
+            bh.get("customer_returned_to_site") is True
+            or bh.get("user_returned_to_site") is True
+        )
+        try:
+            recovery_site_return_count_val = int(bh.get("recovery_site_return_count") or 0)
+        except (TypeError, ValueError):
+            recovery_site_return_count_val = 0
+        recovery_return_timestamp_ar = format_last_interaction_ar(
+            str(bh.get("recovery_return_timestamp") or "").strip()
+        )
+        recovery_returned_product_page_flag = (
+            bh.get("recovery_returned_product_page") is True
+        )
+        recovery_returned_checkout_page_flag = (
+            bh.get("recovery_returned_checkout_page") is True
+        )
+        return_intel_panel = (
+            customer_returned_to_site_track or recovery_site_return_count_val > 0
+        )
+        return_intel_completion_opportunity = (
+            adaptive_stage_key == "returned_checkout"
+            or offer_strategy_key == "completion_assistance"
+        )
+        if recovery_returned_checkout_page_flag:
+            return_intel_pressure_note_ar = (
+                "وصل صفحة الدفع — فرصة إكمال مرتفعة؛ ركّز على المساندة لا العروض المفاجئة."
+            )
+        elif recovery_returned_product_page_flag:
+            return_intel_pressure_note_ar = (
+                "عاد لصفحة المنتج — يُنصح بتخفيف الضغط البيعي وتجنّب إغراءات خصم متكررة."
+            )
+        elif return_intel_panel:
+            return_intel_pressure_note_ar = (
+                "العميل عاد للموقع — حافظ على حوار هادئ دون مضايقة أو بيع مذعور."
+            )
     subtitle = ""
     badge = False
     open_hint = ""
@@ -262,4 +310,12 @@ def conversation_dashboard_extras(ac: AbandonedCart) -> dict[str, Any]:
         "normal_recovery_followup_type_ar": followup_type_ar,
         "normal_recovery_cooldown_context_ar": cooldown_context_ar,
         "normal_recovery_cooldown_pressure_note_ar": pressure_note_ar,
+        "normal_recovery_return_intel_panel": return_intel_panel,
+        "normal_recovery_customer_returned_to_site_track": customer_returned_to_site_track,
+        "normal_recovery_return_timestamp_display_ar": recovery_return_timestamp_ar,
+        "normal_recovery_returned_product_page": recovery_returned_product_page_flag,
+        "normal_recovery_returned_checkout_page": recovery_returned_checkout_page_flag,
+        "normal_recovery_site_return_count": recovery_site_return_count_val,
+        "normal_recovery_return_intel_pressure_note_ar": return_intel_pressure_note_ar,
+        "normal_recovery_return_completion_opportunity": return_intel_completion_opportunity,
     }
