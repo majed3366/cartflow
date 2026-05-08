@@ -379,6 +379,8 @@ class NormalRecoveryDashboardStatusTests(unittest.TestCase):
         self.assertEqual(payload["normal_recovery_phase_key"], "customer_returned")
         self.assertEqual(payload["normal_recovery_phase_label_ar"], "عاد للموقع — تم إيقاف التسلسل")
         self.assertEqual(payload["normal_recovery_status"], "returned")
+        self.assertEqual(payload.get("normal_recovery_blocker_key"), "user_returned")
+        self.assertEqual(payload.get("normal_recovery_followup_hint_ar"), "عاد العميل للموقع")
 
     def test_skip_missing_reason_after_first_send_not_ignored(self) -> None:
         st = self._store_attempts_1()
@@ -425,8 +427,177 @@ class NormalRecoveryDashboardStatusTests(unittest.TestCase):
         db.session.commit()
         payload = _normal_recovery_phase_steps_payload(ac)
         self.assertEqual(payload["normal_recovery_phase_key"], "first_message_sent")
-        self.assertEqual(payload.get("normal_recovery_followup_hint_ar"), "توقفت: لا يوجد سبب")
+        self.assertEqual(payload.get("normal_recovery_followup_hint_ar"), "سبب التردد غير معروف")
         self.assertEqual(payload.get("normal_recovery_last_skip_reason"), "missing_reason")
+        self.assertEqual(payload.get("normal_recovery_blocker_key"), "missing_reason")
+        blk = payload.get("normal_recovery_blocker")
+        self.assertIsInstance(blk, dict)
+        self.assertEqual(blk.get("label_ar"), "سبب التردد غير معروف")
+
+    def test_blocker_missing_customer_phone_step1(self) -> None:
+        st = self._store_attempts_1()
+        sid = f"nr-dash-{self._suffix}-nophone"
+        zid = f"zid-nr-{self._suffix}-nophone"
+        ac = AbandonedCart(
+            store_id=int(st.id),
+            zid_cart_id=zid,
+            recovery_session_id=sid,
+            status="abandoned",
+            vip_mode=False,
+            cart_value=22.0,
+        )
+        db.session.add(ac)
+        db.session.flush()
+        now = datetime.now(timezone.utc)
+        db.session.add(
+            CartRecoveryLog(
+                store_slug="demo",
+                session_id=sid,
+                cart_id=zid,
+                phone=None,
+                message="x",
+                status="skipped_no_verified_phone",
+                step=1,
+                created_at=now,
+                sent_at=None,
+            )
+        )
+        db.session.commit()
+        payload = _normal_recovery_phase_steps_payload(ac)
+        self.assertEqual(payload.get("normal_recovery_blocker_key"), "missing_customer_phone")
+        self.assertEqual(payload.get("normal_recovery_followup_hint_ar"), "لا يوجد رقم عميل")
+        self.assertNotEqual(payload.get("normal_recovery_status"), "sent")
+        self.assertIsNone(payload.get("normal_recovery_sequence_label_ar"))
+
+    def test_blocker_whatsapp_failed(self) -> None:
+        st = self._store_attempts_1()
+        sid = f"nr-dash-{self._suffix}-wafail"
+        zid = f"zid-nr-{self._suffix}-wafail"
+        ac = AbandonedCart(
+            store_id=int(st.id),
+            zid_cart_id=zid,
+            recovery_session_id=sid,
+            status="abandoned",
+            vip_mode=False,
+            cart_value=33.0,
+        )
+        db.session.add(ac)
+        db.session.flush()
+        now = datetime.now(timezone.utc)
+        db.session.add(
+            CartRecoveryLog(
+                store_slug="demo",
+                session_id=sid,
+                cart_id=zid,
+                phone="966599900011",
+                message="m",
+                status="whatsapp_failed",
+                step=1,
+                created_at=now,
+                sent_at=None,
+            )
+        )
+        db.session.commit()
+        payload = _normal_recovery_phase_steps_payload(ac)
+        self.assertEqual(payload.get("normal_recovery_blocker_key"), "whatsapp_failed")
+        self.assertEqual(payload.get("normal_recovery_followup_hint_ar"), "فشل إرسال واتساب")
+        blk = payload.get("normal_recovery_blocker")
+        self.assertIsInstance(blk, dict)
+        self.assertEqual(blk.get("severity"), "error")
+
+    def test_blocker_customer_replied_followup(self) -> None:
+        st = self._store_attempts_1()
+        sid = f"nr-dash-{self._suffix}-crep"
+        zid = f"zid-nr-{self._suffix}-crep"
+        ac = AbandonedCart(
+            store_id=int(st.id),
+            zid_cart_id=zid,
+            recovery_session_id=sid,
+            status="abandoned",
+            vip_mode=False,
+            cart_value=28.0,
+        )
+        db.session.add(ac)
+        db.session.flush()
+        t0 = datetime.now(timezone.utc)
+        t1 = t0 + timedelta(seconds=2)
+        db.session.add(
+            CartRecoveryLog(
+                store_slug="demo",
+                session_id=sid,
+                cart_id=zid,
+                phone="966599900022",
+                message="m1",
+                status="mock_sent",
+                step=1,
+                created_at=t0,
+                sent_at=t0,
+            )
+        )
+        db.session.add(
+            CartRecoveryLog(
+                store_slug="demo",
+                session_id=sid,
+                cart_id=zid,
+                phone=None,
+                message="x",
+                status="skipped_followup_customer_replied",
+                step=2,
+                created_at=t1,
+                sent_at=None,
+            )
+        )
+        db.session.commit()
+        payload = _normal_recovery_phase_steps_payload(ac)
+        self.assertEqual(payload.get("normal_recovery_blocker_key"), "customer_replied")
+        self.assertEqual(payload.get("normal_recovery_followup_hint_ar"), "العميل رد")
+
+    def test_no_blocker_when_latest_log_is_success(self) -> None:
+        st = self._store_attempts_1()
+        sid = f"nr-dash-{self._suffix}-ok"
+        zid = f"zid-nr-{self._suffix}-ok"
+        ac = AbandonedCart(
+            store_id=int(st.id),
+            zid_cart_id=zid,
+            recovery_session_id=sid,
+            status="abandoned",
+            vip_mode=False,
+            cart_value=40.0,
+        )
+        db.session.add(ac)
+        db.session.flush()
+        t0 = datetime.now(timezone.utc)
+        t1 = t0 + timedelta(seconds=2)
+        db.session.add(
+            CartRecoveryLog(
+                store_slug="demo",
+                session_id=sid,
+                cart_id=zid,
+                phone=None,
+                message="x",
+                status="skipped_no_verified_phone",
+                step=1,
+                created_at=t0,
+                sent_at=None,
+            )
+        )
+        db.session.add(
+            CartRecoveryLog(
+                store_slug="demo",
+                session_id=sid,
+                cart_id=zid,
+                phone="966599900033",
+                message="m1",
+                status="mock_sent",
+                step=1,
+                created_at=t1,
+                sent_at=t1,
+            )
+        )
+        db.session.commit()
+        payload = _normal_recovery_phase_steps_payload(ac)
+        self.assertIsNone(payload.get("normal_recovery_blocker"))
+        self.assertIsNone(payload.get("normal_recovery_blocker_key"))
 
     def test_latest_skipped_missing_reason_is_ignored(self) -> None:
         st = self._store_attempts_1()

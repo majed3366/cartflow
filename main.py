@@ -282,6 +282,7 @@ from services.behavioral_recovery.link_tracking import (
     apply_outbound_tracking_to_message,
     handle_recovery_link_click,
 )
+from services.recovery_blocker_display import recovery_blocker_from_latest_log_status
 from services.recovery_message_strategy import get_recovery_message
 from services.recovery_template_defaults import guided_defaults_for_api
 from services.behavioral_recovery.state_store import (
@@ -2162,6 +2163,33 @@ def _normal_recovery_latest_followup_diagnostic_row(
         return None
 
 
+def _normal_recovery_latest_blocker_event_row(ac: AbandonedCart) -> Optional[CartRecoveryLog]:
+    """
+    أحدث سجل استرجاع لهذه السلة/الجلسة إذا كان آخر حدثاً ليس إرسالاً ناجحاً ولا ‎queued‎.
+    يستخدم لعرض سبب التوقف للتاجر دون المساس بمسار الجدولة.
+    """
+    conds = _cart_recovery_log_filters_for_abandoned_cart(ac)
+    if not conds:
+        return None
+    try:
+        db.create_all()
+        row = (
+            db.session.query(CartRecoveryLog)
+            .filter(or_(*conds))
+            .order_by(CartRecoveryLog.id.desc())
+            .first()
+        )
+        if row is None:
+            return None
+        st = (getattr(row, "status", None) or "").strip().lower()
+        if st in _NORMAL_RECOVERY_SENT_LOG_STATUSES or st == "queued":
+            return None
+        return row
+    except (SQLAlchemyError, OSError, TypeError, ValueError):
+        db.session.rollback()
+        return None
+
+
 def _normal_recovery_debug_for_session(session_id: str) -> dict[str, Any]:
     """تجميع قراءة فقط للتشخيص المحلي — ‎GET /dev/normal-recovery-debug‎."""
     sid = (session_id or "").strip()[:512]
@@ -2544,14 +2572,20 @@ def _normal_recovery_phase_steps_payload(ac: AbandonedCart) -> dict[str, Any]:
         seq_label_ar = "تم إرسال الرسالة الأولى"
     cust_raw = _normal_recovery_dashboard_resolve_customer_phone_raw(ac, store_ac)
     cust_phone_display_ar = cust_raw if cust_raw else "لا يوجد رقم عميل"
-    follow_row = _normal_recovery_latest_followup_diagnostic_row(ac)
+    blocker_row = _normal_recovery_latest_blocker_event_row(ac)
+    blocker_bundle: Optional[dict[str, Any]] = None
+    blocker_key_out: Optional[str] = None
+    if blocker_row is not None:
+        blocker_bundle = recovery_blocker_from_latest_log_status(
+            getattr(blocker_row, "status", None)
+        )
+        if isinstance(blocker_bundle, dict) and blocker_bundle.get("key"):
+            blocker_key_out = str(blocker_bundle.get("key"))
     hint_ar: Optional[str] = None
     last_skip_pub: Optional[str] = None
-    if follow_row is not None:
-        stf = (getattr(follow_row, "status", None) or "").strip().lower()
-        if stf and stf not in _NORMAL_RECOVERY_SENT_LOG_STATUSES and stf != "queued":
-            hint_ar = _normal_recovery_followup_skip_hint_ar_from_log_status(stf)
-            last_skip_pub = _second_recovery_public_skip_reason(stf)
+    if isinstance(blocker_bundle, dict) and blocker_bundle:
+        hint_ar = str(blocker_bundle.get("label_ar") or "") or None
+        last_skip_pub = blocker_key_out
     out_nr: dict[str, Any] = {
         "normal_recovery_phase_key": current_key,
         "normal_recovery_phase_label_ar": label_ar,
@@ -2565,6 +2599,8 @@ def _normal_recovery_phase_steps_payload(ac: AbandonedCart) -> dict[str, Any]:
         "normal_recovery_followup_hint_ar": hint_ar,
         "normal_recovery_last_skip_reason": last_skip_pub,
         "normal_recovery_customer_phone_display_ar": cust_phone_display_ar,
+        "normal_recovery_blocker": blocker_bundle,
+        "normal_recovery_blocker_key": blocker_key_out,
     }
     out_nr.update(conversation_dashboard_extras(ac))
     return out_nr

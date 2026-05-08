@@ -36,6 +36,20 @@
         </span>
         {% endfor %}
       </div>
+      {% set nrb = vc.normal_recovery_blocker | default(none) %}
+      {% if nrb is mapping and nrb.get('label_ar') %}
+      {% set nrb_sev = nrb.get('severity') | default('info') %}
+      <div class="mt-2 space-y-1 rounded-lg border px-2.5 py-2 text-right shadow-sm {% if nrb_sev == 'error' %}border-red-200/90 bg-red-50/85{% elif nrb_sev == 'warning' %}border-amber-200/90 bg-amber-50/75{% elif nrb_sev == 'success' %}border-emerald-200/90 bg-emerald-50/75{% else %}border-sky-200/85 bg-sky-50/50{% endif %}"
+        lang="ar" role="status" aria-live="polite" data-normal-recovery-blocker="{{ nrb.get('key', '') | e }}">
+        <p class="m-0 text-[10px] font-bold text-slate-900">{{ nrb.get('label_ar') | e }}</p>
+        {% if nrb.get('description_ar') %}
+        <p class="m-0 text-[9px] leading-relaxed text-slate-700">{{ nrb.get('description_ar') | e }}</p>
+        {% endif %}
+        {% if nrb.get('merchant_action_ar') %}
+        <p class="m-0 text-[9px] text-slate-600"><span class="font-semibold text-slate-700">ما يمكنك فعله:</span> {{ nrb.get('merchant_action_ar') | e }}</p>
+        {% endif %}
+      </div>
+      {% endif %}
       <p class="m-0 text-[9px] leading-relaxed text-slate-500">الأتمتة تعمل تلقائياً وفق إعدادات السلال العادية. حدّث الصفحة لعرض آخر حالة.</p>
       {# Return badge: use every normal_recovery_* signal already on vc (same payload as /dashboard/normal-carts). #}
       {% set nr_phase_key = vc.normal_recovery_phase_key | default('', true) %}
