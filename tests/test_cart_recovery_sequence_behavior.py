@@ -292,6 +292,7 @@ class CartRecoverySequenceBehaviorTests(unittest.TestCase):
             self.assertIn(b"window.cart", r.content)
             self.assertIn(b"cf-store-intro-cta", r.content)
             self.assertIn(b"cartflow_demo_panel.js", r.content)
+            self.assertIn(b"cartflow_return_tracker.js?v=return-tracker-v1", r.content)
         r0 = self.client.get("/demo/cart")
         t = r0.text or ""
         self.assertIn("CARTFLOW_DEMO_CART_KEY", t)

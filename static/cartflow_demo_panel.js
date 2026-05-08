@@ -472,7 +472,7 @@
       window.sessionStorage.removeItem(REASON_SUB_TAG_KEY);
       window.sessionStorage.removeItem(CARTFLOW_CONVERTED_KEY);
       window.sessionStorage.removeItem("cartflow_recovery_flow_started");
-      window.sessionStorage.removeItem("cartflow_return_event_last_sig");
+      window.sessionStorage.removeItem("cartflow_return_tracker_dedupe");
       window.sessionStorage.removeItem("cartflow_cart_event_id");
       if (typeof window.cartflowClearDurableRecoveryReturnState === "function") {
         window.cartflowClearDurableRecoveryReturnState();
@@ -649,7 +649,7 @@
       window.sessionStorage.removeItem(CARTFLOW_SESSION_KEY);
       window.sessionStorage.removeItem("cartflow_demo_store_widget_armed");
       window.sessionStorage.removeItem("cartflow_recovery_flow_started");
-      window.sessionStorage.removeItem("cartflow_return_event_last_sig");
+      window.sessionStorage.removeItem("cartflow_return_tracker_dedupe");
       window.sessionStorage.removeItem("cartflow_cart_event_id");
       if (typeof window.cartflowClearDurableRecoveryReturnState === "function") {
         window.cartflowClearDurableRecoveryReturnState();
