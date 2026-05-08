@@ -71,13 +71,16 @@ def record_behavioral_user_return_from_payload(payload: dict[str, Any]) -> None:
                 return_timestamp_iso=return_ts_iso,
                 fuse_adaptive=True,
             )
-            merge_behavioral_state(
-                ac,
-                user_returned_to_site=True,
-                user_returned_at=utc_now_iso(),
-                lifecycle_hint="returned",
+            ctx_raw = str(payload.get("recovery_return_context") or "").strip()[:64]
+            merge_fields: dict[str, Any] = {
+                "user_returned_to_site": True,
+                "user_returned_at": utc_now_iso(),
+                "lifecycle_hint": "returned",
                 **extra,
-            )
+            }
+            if ctx_raw:
+                merge_fields["recovery_return_context"] = ctx_raw
+            merge_behavioral_state(ac, **merge_fields)
             db.session.add(ac)
             touched = True
         if touched:

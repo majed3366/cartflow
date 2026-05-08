@@ -119,6 +119,49 @@ def conversation_dashboard_extras(ac: AbandonedCart) -> dict[str, Any]:
     recovery_site_return_count_val = 0
     return_intel_pressure_note_ar = ""
     return_intel_completion_opportunity = False
+    normal_recovery_return_context_key = ""
+    if st != "recovered":
+        normal_recovery_return_context_key = str(
+            bh.get("recovery_return_context") or ""
+        ).strip().lower()[:64]
+        customer_returned_to_site_track = bool(
+            bh.get("customer_returned_to_site") is True
+            or bh.get("user_returned_to_site") is True
+        )
+        try:
+            recovery_site_return_count_val = int(
+                bh.get("recovery_site_return_count") or 0
+            )
+        except (TypeError, ValueError):
+            recovery_site_return_count_val = 0
+        rs_ts = str(bh.get("recovery_return_timestamp") or "").strip()
+        if rs_ts:
+            recovery_return_timestamp_ar = format_last_interaction_ar(rs_ts)
+        recovery_returned_product_page_flag = (
+            bh.get("recovery_returned_product_page") is True
+        )
+        recovery_returned_checkout_page_flag = (
+            bh.get("recovery_returned_checkout_page") is True
+        )
+        return_intel_panel = (
+            customer_returned_to_site_track
+            or recovery_site_return_count_val > 0
+            or bool(rs_ts)
+        )
+        ash_bh = str(bh.get("recovery_adaptive_stage") or "").strip()
+        return_intel_completion_opportunity = ash_bh == "returned_checkout"
+        if recovery_returned_checkout_page_flag:
+            return_intel_pressure_note_ar = (
+                "وصل صفحة الدفع — فرصة إكمال مرتفعة؛ ركّز على المساندة لا العروض المفاجئة."
+            )
+        elif recovery_returned_product_page_flag:
+            return_intel_pressure_note_ar = (
+                "عاد لصفحة المنتج — يُنصح بتخفيف الضغط البيعي وتجنّب إغراءات خصم متكررة."
+            )
+        elif return_intel_panel:
+            return_intel_pressure_note_ar = (
+                "العميل عاد للموقع — حافظ على حوار هادئ دون مضايقة أو بيع مذعور."
+            )
     if replied and st != "recovered":
         adaptive_stage_key = str(bh.get("recovery_adaptive_stage") or "").strip()
         try:
@@ -211,42 +254,10 @@ def conversation_dashboard_extras(ac: AbandonedCart) -> dict[str, Any]:
             or adaptive_stage_key == "returned_checkout"
             or offer_strategy_key in ("checkout_push", "completion_assistance")
         )
-        customer_returned_to_site_track = bool(
-            bh.get("customer_returned_to_site") is True
-            or bh.get("user_returned_to_site") is True
-        )
-        try:
-            recovery_site_return_count_val = int(bh.get("recovery_site_return_count") or 0)
-        except (TypeError, ValueError):
-            recovery_site_return_count_val = 0
-        recovery_return_timestamp_ar = format_last_interaction_ar(
-            str(bh.get("recovery_return_timestamp") or "").strip()
-        )
-        recovery_returned_product_page_flag = (
-            bh.get("recovery_returned_product_page") is True
-        )
-        recovery_returned_checkout_page_flag = (
-            bh.get("recovery_returned_checkout_page") is True
-        )
-        return_intel_panel = (
-            customer_returned_to_site_track or recovery_site_return_count_val > 0
-        )
         return_intel_completion_opportunity = (
             adaptive_stage_key == "returned_checkout"
             or offer_strategy_key == "completion_assistance"
         )
-        if recovery_returned_checkout_page_flag:
-            return_intel_pressure_note_ar = (
-                "وصل صفحة الدفع — فرصة إكمال مرتفعة؛ ركّز على المساندة لا العروض المفاجئة."
-            )
-        elif recovery_returned_product_page_flag:
-            return_intel_pressure_note_ar = (
-                "عاد لصفحة المنتج — يُنصح بتخفيف الضغط البيعي وتجنّب إغراءات خصم متكررة."
-            )
-        elif return_intel_panel:
-            return_intel_pressure_note_ar = (
-                "العميل عاد للموقع — حافظ على حوار هادئ دون مضايقة أو بيع مذعور."
-            )
     subtitle = ""
     badge = False
     open_hint = ""
@@ -315,6 +326,7 @@ def conversation_dashboard_extras(ac: AbandonedCart) -> dict[str, Any]:
         "normal_recovery_return_timestamp_display_ar": recovery_return_timestamp_ar,
         "normal_recovery_returned_product_page": recovery_returned_product_page_flag,
         "normal_recovery_returned_checkout_page": recovery_returned_checkout_page_flag,
+        "normal_recovery_return_context_key": normal_recovery_return_context_key,
         "normal_recovery_site_return_count": recovery_site_return_count_val,
         "normal_recovery_return_intel_pressure_note_ar": return_intel_pressure_note_ar,
         "normal_recovery_return_completion_opportunity": return_intel_completion_opportunity,
