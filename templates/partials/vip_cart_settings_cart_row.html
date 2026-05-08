@@ -64,6 +64,28 @@
             <span class="inline-flex items-center rounded-full border border-amber-200/85 bg-amber-50/95 px-2 py-0.5 text-[8px] font-bold text-amber-950">{{ vc.normal_recovery_suggestion_ux_badge_ar | e }}</span>
             {% endif %}
           </div>
+          {% if vc.normal_recovery_offer_decision_type_ar %}
+          <div class="space-y-1 rounded-lg border border-slate-200/85 bg-white/80 px-2 py-1.5" data-normal-recovery-offer-decision="{{ vc.normal_recovery_offer_strategy_key | default('') | e }}">
+            <p class="m-0 text-[9px] font-bold text-slate-800">قرار العرض الذكي</p>
+            <p class="m-0 text-[9px] text-slate-700"><span class="font-semibold text-slate-600">نوع القرار:</span> {{ vc.normal_recovery_offer_decision_type_ar | e }}</p>
+            <p class="m-0 text-[9px] text-slate-700"><span class="font-semibold text-slate-600">مستوى الثقة:</span> {{ vc.normal_recovery_offer_confidence_ar | e }}</p>
+            <p class="m-0 text-[9px] leading-relaxed text-slate-600"><span class="font-semibold text-slate-700">لماذا اختار هذا المسار:</span> {{ vc.normal_recovery_offer_decision_rationale_ar | e }}</p>
+            <p class="m-0 text-[9px] text-slate-700"><span class="font-semibold text-slate-600">نوع الإقناع:</span> {{ vc.normal_recovery_offer_persuasion_ar | e }}{% if vc.normal_recovery_offer_persuasion_key %} <span class="text-[8px] text-slate-400 font-mono">({{ vc.normal_recovery_offer_persuasion_key | e }})</span>{% endif %}</p>
+            <ul class="m-0 list-none space-y-0.5 p-0 text-[8px] text-slate-600">
+              {% if vc.normal_recovery_offer_flag_discount %}
+              <li class="m-0">• يُسمح باقتراح عرض/خصم <span class="font-semibold">يدوي</span> فقط — دون تطبيق تلقائي.</li>
+              {% else %}
+              <li class="m-0">• <span class="font-semibold text-slate-700">لا يُنصح بخصم مباشر</span> في هذا السياق حسب حماية الهامش.</li>
+              {% endif %}
+              {% if vc.normal_recovery_offer_flag_free_shipping %}
+              <li class="m-0">• العميل قد يكون حسّاساً لتكلفة الشحن — ردّ برسوم واضحة أو دوافع لطيفة يدوياً.</li>
+              {% endif %}
+              {% if vc.normal_recovery_offer_flag_alternative %}
+              <li class="m-0">• <span class="font-semibold">تفضيل بديل أقل سعراً</span> في السلة قبل الحديث عن خصم.</li>
+              {% endif %}
+            </ul>
+          </div>
+          {% endif %}
           {% if vc.normal_recovery_suggested_strategy_ar %}
           <p class="m-0 text-[10px] font-semibold text-slate-800"><span class="font-bold text-emerald-900">نوع الاستراتيجية:</span> {{ vc.normal_recovery_suggested_strategy_ar | e }}</p>
           {% endif %}

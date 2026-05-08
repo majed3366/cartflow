@@ -79,6 +79,15 @@ def conversation_dashboard_extras(ac: AbandonedCart) -> dict[str, Any]:
     suggestion_ux_badge_ar = ""
     optional_offer_type = ""
     checkout_cta_mode = ""
+    offer_decision_type_ar = ""
+    offer_confidence_ar = ""
+    offer_rationale_ar = ""
+    offer_persuasion_ar = ""
+    offer_flag_discount = False
+    offer_flag_shipping = False
+    offer_flag_alternative = False
+    offer_strategy_key = ""
+    offer_persuasion_key = ""
     if replied and st != "recovered":
         cust_for_sugg = str(bh.get("latest_customer_message") or preview or "").strip()
         eff_intent = intent_raw if intent_raw else "other"
@@ -100,6 +109,27 @@ def conversation_dashboard_extras(ac: AbandonedCart) -> dict[str, Any]:
             effective_suggestion_intent(eff_intent)
         ).key
         suggested_action_hint_ar = suggested_strategy_ar
+        od = pa.get("offer_decision")
+        if isinstance(od, dict):
+            offer_decision_type_ar = str(od.get("strategy_type_ar") or "").strip()
+            offer_confidence_ar = str(od.get("confidence_level_ar") or "").strip()
+            offer_rationale_ar = str(od.get("decision_rationale_ar") or "").strip()
+            offer_persuasion_ar = str(od.get("persuasion_mode_ar") or "").strip()
+            offer_flag_discount = bool(od.get("should_offer_discount"))
+            offer_flag_shipping = bool(od.get("should_offer_free_shipping"))
+            offer_flag_alternative = bool(od.get("should_offer_alternative"))
+            offer_strategy_key = str(od.get("strategy_type") or "").strip()
+            offer_persuasion_key = str(od.get("persuasion_mode") or "").strip()
+        else:
+            offer_decision_type_ar = ""
+            offer_confidence_ar = ""
+            offer_rationale_ar = ""
+            offer_persuasion_ar = ""
+            offer_flag_discount = False
+            offer_flag_shipping = False
+            offer_flag_alternative = False
+            offer_strategy_key = ""
+            offer_persuasion_key = ""
     subtitle = ""
     badge = False
     open_hint = ""
@@ -136,4 +166,13 @@ def conversation_dashboard_extras(ac: AbandonedCart) -> dict[str, Any]:
         "normal_recovery_suggestion_ux_badge_ar": suggestion_ux_badge_ar,
         "normal_recovery_optional_offer_type": optional_offer_type,
         "normal_recovery_checkout_cta_mode": checkout_cta_mode,
+        "normal_recovery_offer_decision_type_ar": offer_decision_type_ar,
+        "normal_recovery_offer_confidence_ar": offer_confidence_ar,
+        "normal_recovery_offer_decision_rationale_ar": offer_rationale_ar,
+        "normal_recovery_offer_persuasion_ar": offer_persuasion_ar,
+        "normal_recovery_offer_flag_discount": offer_flag_discount,
+        "normal_recovery_offer_flag_free_shipping": offer_flag_shipping,
+        "normal_recovery_offer_flag_alternative": offer_flag_alternative,
+        "normal_recovery_offer_strategy_key": offer_strategy_key,
+        "normal_recovery_offer_persuasion_key": offer_persuasion_key,
     }

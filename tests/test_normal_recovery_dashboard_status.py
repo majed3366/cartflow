@@ -107,6 +107,10 @@ class NormalRecoveryDashboardStatusTests(unittest.TestCase):
         self.assertTrue(payload.get("normal_recovery_suggestion_reason_ar"))
         self.assertEqual(payload.get("normal_recovery_optional_offer_type"), "value_framing")
         self.assertEqual(payload.get("normal_recovery_suggested_action_key"), "reassure_price")
+        self.assertTrue(payload.get("normal_recovery_offer_decision_type_ar"))
+        self.assertTrue(payload.get("normal_recovery_offer_confidence_ar"))
+        self.assertTrue(payload.get("normal_recovery_offer_decision_rationale_ar"))
+        self.assertTrue(payload.get("normal_recovery_offer_persuasion_ar"))
 
     def test_interactive_dashboard_includes_delivery_suggestion(self) -> None:
         import json

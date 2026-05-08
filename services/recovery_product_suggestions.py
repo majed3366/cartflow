@@ -5,8 +5,9 @@
 """
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional, TypedDict
+from typing import TYPE_CHECKING, Any, Mapping, Optional, TypedDict
 
+from services.recovery_offer_decision import decide_recovery_offer_strategy
 from services.recovery_product_context import (
     recovery_product_context_from_abandoned_cart,
     resolved_category_label,
@@ -17,13 +18,14 @@ if TYPE_CHECKING:
     from models import AbandonedCart
 
 
-class ProductAwareRecoverySuggestion(TypedDict):
+class ProductAwareRecoverySuggestion(TypedDict, total=False):
     suggested_reply: str
     suggested_strategy: str
     optional_offer_type: Optional[str]
     suggestion_reason_ar: str
     ux_badge_ar: Optional[str]
     checkout_cta_mode: Optional[str]
+    offer_decision: dict[str, Any]
 
 
 def _norm_intent(intent: str) -> str:
@@ -38,6 +40,21 @@ def _fmt_name(name: Optional[str]) -> str:
     return s[:56] + "…" if len(s) > 56 else s
 
 
+def _ux_badge_from_decision(od: Mapping[str, Any]) -> Optional[str]:
+    st = str(od.get("strategy_type") or "")
+    if st == "soft_discount_path":
+        return "فرصة تحويل مرتفعة"
+    if st == "alternative_first":
+        return "اقتراح بديل"
+    if st in ("reassurance_only", "value_framing_premium"):
+        return "تهدئة اعتراض"
+    if st == "soft_offer_window":
+        return "لا يُنصح بخصم مباشر"
+    if st == "checkout_push":
+        return "فرصة تحويل عالية"
+    return None
+
+
 def get_product_aware_recovery_suggestion(
     intent: str,
     product_name: Optional[str],
@@ -47,6 +64,7 @@ def get_product_aware_recovery_suggestion(
     *,
     cheaper_alternative_name: Optional[str] = None,
     cheaper_alternative_price: Optional[float] = None,
+    offer_decision: Optional[Mapping[str, Any]] = None,
 ) -> ProductAwareRecoverySuggestion:
     _ = (customer_message or "").strip()
     eff = _norm_intent(intent)
@@ -54,18 +72,24 @@ def get_product_aware_recovery_suggestion(
     cat = (product_category or "").strip()
 
     if eff == "ready_to_buy":
-        return ProductAwareRecoverySuggestion(
-            suggested_reply="ممتاز 👍 هذا رابط إكمال الطلب مباشرة",
-            suggested_strategy="إغلاق سريع — إرسال رابط الدفع",
-            optional_offer_type="checkout_cta",
-            suggestion_reason_ar="نية الشراء واضحة: أرسل رابط إكمال الطلب يدوياً في واتساب.",
-            ux_badge_ar="فرصة تحويل عالية",
-            checkout_cta_mode="instant_checkout",
-        )
+        return {
+            "suggested_reply": "ممتاز 👍 هذا رابط إكمال الطلب مباشرة",
+            "suggested_strategy": "إغلاق سريع — إرسال رابط الدفع",
+            "optional_offer_type": "checkout_cta",
+            "suggestion_reason_ar": "نية الشراء واضحة: أرسل رابط إكمال الطلب يدوياً في واتساب.",
+            "ux_badge_ar": "فرصة تحويل عالية",
+            "checkout_cta_mode": "instant_checkout",
+        }
 
     if eff == "price":
+        od = dict(offer_decision) if offer_decision else {}
         alt = (cheaper_alternative_name or "").strip()
-        if alt and cheaper_alternative_price is not None:
+        alt_ok_line = bool(alt and cheaper_alternative_price is not None)
+        push_alt = bool(
+            alt_ok_line and (not od or bool(od.get("should_offer_alternative")))
+        )
+
+        if push_alt:
             alt_short = _fmt_name(alt)
             reply = (
                 "نفهمك 👍 فيه خيار قريب من نفس الفكرة بسعر أخف، تحب أرسله لك؟"
@@ -75,16 +99,19 @@ def get_product_aware_recovery_suggestion(
                     f"نفهمك 👍 عندنا «{alt_short}» بسعر أخف مقارنة بـ«{pn}»، "
                     "تحب أرسله لك ونشوف يناسبك؟"
                 )
-            return ProductAwareRecoverySuggestion(
-                suggested_reply=reply,
-                suggested_strategy="توجيه لخيار أقل سعراً",
-                optional_offer_type="alternative_product",
-                suggestion_reason_ar=(
-                    "في السلة منتج بسعر أقل يصلح كبديل تقريبي دون خصم تلقائي."
+            ub = _ux_badge_from_decision(od) if od else "اقتراح بيع"
+            return {
+                "suggested_reply": reply,
+                "suggested_strategy": "توجيه لخيار أقل سعراً",
+                "optional_offer_type": "alternative_product",
+                "suggestion_reason_ar": (
+                    "في السلة منتج بسعر أقل يصلح كبديل تقريبي دون خصم تلقائي — "
+                    "بعد مسار قرار يفضّل البديل على الخصم عندما يناسب الهامش."
                 ),
-                ux_badge_ar="اقتراح بيع",
-                checkout_cta_mode=None,
-            )
+                "ux_badge_ar": ub or "اقتراح بديل",
+                "checkout_cta_mode": None,
+            }
+
         reply = (
             "نفهمك 👍 كثير يختارونه بسبب الجودة والقيمة مقارنة بالسعر."
         )
@@ -92,17 +119,25 @@ def get_product_aware_recovery_suggestion(
             reply = (
                 f"نفهمك 👍 كثير يختارون «{pn}» بسبب الجودة والقيمة مقارنة بالسعر."
             )
+        if od.get("should_offer_discount"):
+            reply += (
+                " وإذا تحب نقدّر نشوف لك عرض يناسبك — أنت اللي تقرر وتطبّقه يدوياً 👍"
+            )
         reason = "لا يظهر في السلة بديل أوضح بسعر أقل؛ ركّز على القيمة والثقة."
         if product_price is not None and product_price > 0:
             reason += " السعر ظاهر من بيانات السلة للمرجعية فقط — ردّك يبقى يدوياً."
-        return ProductAwareRecoverySuggestion(
-            suggested_reply=reply,
-            suggested_strategy="تأكيد قيمة مقابل السعر",
-            optional_offer_type="value_framing",
-            suggestion_reason_ar=reason,
-            ux_badge_ar="تهدئة اعتراض",
-            checkout_cta_mode=None,
-        )
+        opt_type: Optional[str] = "value_framing"
+        if od.get("should_offer_discount"):
+            opt_type = "soft_offer"
+        ub2 = _ux_badge_from_decision(od) if od else "تهدئة اعتراض"
+        return {
+            "suggested_reply": reply,
+            "suggested_strategy": "تأكيد قيمة مقابل السعر",
+            "optional_offer_type": opt_type,
+            "suggestion_reason_ar": reason,
+            "ux_badge_ar": ub2 or "تهدئة اعتراض",
+            "checkout_cta_mode": None,
+        }
 
     if eff == "delivery":
         reply = (
@@ -112,14 +147,14 @@ def get_product_aware_recovery_suggestion(
             reply = (
                 f"التوصيل عادة سريع 👍 ومع «{cat}» نرسل لك تفاصيل الوصول لمنطقتك إذا تحب."
             )
-        return ProductAwareRecoverySuggestion(
-            suggested_reply=reply,
-            suggested_strategy="طمأنة التوصيل وسرعة الشحن",
-            optional_offer_type="delivery_reassurance",
-            suggestion_reason_ar="استفسار عن التوصيل — اعرض سرعة تسليم واقعية وتفاصيل المنطقة يدوياً.",
-            ux_badge_ar="تهدئة اعتراض",
-            checkout_cta_mode=None,
-        )
+        return {
+            "suggested_reply": reply,
+            "suggested_strategy": "طمأنة التوصيل وسرعة الشحن",
+            "optional_offer_type": "delivery_reassurance",
+            "suggestion_reason_ar": "استفسار عن التوصيل — اعرض سرعة تسليم واقعية وتفاصيل المنطقة يدوياً.",
+            "ux_badge_ar": "تهدئة اعتراض",
+            "checkout_cta_mode": None,
+        }
 
     if eff == "warranty":
         reply = "أكيد 👍 المنتج مغطى بضمان، وإذا تحب ألخص لك النقاط المهمة باختصار."
@@ -127,14 +162,14 @@ def get_product_aware_recovery_suggestion(
             reply = (
                 f"أكيد 👍 «{pn}» يشمل ضمان، وإذا تحب ألخص لك أهم النقاط باختصار."
             )
-        return ProductAwareRecoverySuggestion(
-            suggested_reply=reply,
-            suggested_strategy="شرح الضمان وبناء الثقة",
-            optional_offer_type="warranty_trust",
-            suggestion_reason_ar="العميل يسأل عن الضمان؛ ردّ قصير يعزز المصداقية دون أسلوب دعم فني طويل.",
-            ux_badge_ar="تهدئة اعتراض",
-            checkout_cta_mode=None,
-        )
+        return {
+            "suggested_reply": reply,
+            "suggested_strategy": "شرح الضمان وبناء الثقة",
+            "optional_offer_type": "warranty_trust",
+            "suggestion_reason_ar": "العميل يسأل عن الضمان؛ ردّ قصير يعزز المصداقية دون أسلوب دعم فني طويل.",
+            "ux_badge_ar": "تهدئة اعتراض",
+            "checkout_cta_mode": None,
+        }
 
     if eff == "quality":
         reply = (
@@ -145,35 +180,35 @@ def get_product_aware_recovery_suggestion(
                 f"«{pn}» أصلي والعملاء يرجعون لنا عليه 👍 "
                 "إذا تحب أزودك بتفاصيل تزيد راحتك."
             )
-        return ProductAwareRecoverySuggestion(
-            suggested_reply=reply,
-            suggested_strategy="تعزيز الجودة والمصداقية",
-            optional_offer_type="quality_proof",
-            suggestion_reason_ar="سؤال عن الجودة أو الأصالة — دليل خفيف بدل إطالة.",
-            ux_badge_ar="تهدئة اعتراض",
-            checkout_cta_mode=None,
-        )
+        return {
+            "suggested_reply": reply,
+            "suggested_strategy": "تعزيز الجودة والمصداقية",
+            "optional_offer_type": "quality_proof",
+            "suggestion_reason_ar": "سؤال عن الجودة أو الأصالة — دليل خفيف بدل إطالة.",
+            "ux_badge_ar": "تهدئة اعتراض",
+            "checkout_cta_mode": None,
+        }
 
     if eff == "hesitation":
         base = get_recovery_reply_suggestion("hesitation", customer_message)
-        return ProductAwareRecoverySuggestion(
-            suggested_reply=base["suggested_reply"],
-            suggested_strategy="إبقاء الباب مفتوحاً بلطف",
-            optional_offer_type=None,
-            suggestion_reason_ar="تردد عام — أعطِ مساحة مع بقاء خط البيع دافئاً.",
-            ux_badge_ar=None,
-            checkout_cta_mode=None,
-        )
+        return {
+            "suggested_reply": base["suggested_reply"],
+            "suggested_strategy": "إبقاء الباب مفتوحاً بلطف",
+            "optional_offer_type": None,
+            "suggestion_reason_ar": "تردد عام — أعطِ مساحة مع بقاء خط البيع دافئاً.",
+            "ux_badge_ar": None,
+            "checkout_cta_mode": None,
+        }
 
     base = get_recovery_reply_suggestion(intent, customer_message)
-    return ProductAwareRecoverySuggestion(
-        suggested_reply=base["suggested_reply"],
-        suggested_strategy="متابعة ودية عامة",
-        optional_offer_type=None,
-        suggestion_reason_ar="لم تُحدد نية دقيقة؛ ردّ آمن يفتح مجال الإغلاق.",
-        ux_badge_ar=None,
-        checkout_cta_mode=None,
-    )
+    return {
+        "suggested_reply": base["suggested_reply"],
+        "suggested_strategy": "متابعة ودية عامة",
+        "optional_offer_type": None,
+        "suggestion_reason_ar": "لم تُحدد نية دقيقة؛ ردّ آمن يفتح مجال الإغلاق.",
+        "ux_badge_ar": None,
+        "checkout_cta_mode": None,
+    }
 
 
 def get_product_aware_recovery_suggestion_for_abandoned_cart(
@@ -183,7 +218,14 @@ def get_product_aware_recovery_suggestion_for_abandoned_cart(
 ) -> ProductAwareRecoverySuggestion:
     ctx = recovery_product_context_from_abandoned_cart(ac)
     cat = resolved_category_label(ctx)
-    return get_product_aware_recovery_suggestion(
+    decision = decide_recovery_offer_strategy(
+        intent,
+        ctx.current_product_price,
+        cat or "",
+        customer_message,
+        has_cheaper_alternative=bool(ctx.cheaper_alternative_name),
+    )
+    result = get_product_aware_recovery_suggestion(
         intent,
         ctx.current_product_name,
         ctx.current_product_price,
@@ -191,4 +233,8 @@ def get_product_aware_recovery_suggestion_for_abandoned_cart(
         customer_message,
         cheaper_alternative_name=ctx.cheaper_alternative_name,
         cheaper_alternative_price=ctx.cheaper_alternative_price,
+        offer_decision=decision,
     )
+    out: dict[str, Any] = dict(result)
+    out["offer_decision"] = dict(decision)
+    return out  # type: ignore[return-value]
