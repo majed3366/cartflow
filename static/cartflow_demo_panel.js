@@ -37,6 +37,26 @@
     }
   }
 
+  function demoSetTrackingCartId(cid) {
+    var c = (cid != null ? String(cid).trim() : "") || "";
+    if (!c) {
+      return;
+    }
+    try {
+      window.sessionStorage.setItem("cartflow_cart_event_id", c.slice(0, 255));
+    } catch (e) {
+      /* ignore */
+    }
+  }
+
+  function demoCartIdForRecoverySession(session) {
+    var s = session != null ? String(session).trim() : "";
+    if (!s || s === "—") {
+      return "";
+    }
+    return s.slice(0, 220) + "_demo_cart";
+  }
+
   function cfDemoSumCartTotals(arr) {
     if (!arr || !Array.isArray(arr)) {
       return 0;
@@ -366,10 +386,13 @@
       setText("cf-demo-last-status", "error_no_session");
       return Promise.resolve();
     }
+    var cartId = demoCartIdForRecoverySession(session);
+    demoSetTrackingCartId(cartId);
     var body = attachCfTestPhoneToBody({
       event: "cart_abandoned",
       store: store,
       session_id: session,
+      cart_id: cartId,
       cart: window.cart,
     });
     return postJson("/api/cart-event", body)
@@ -382,6 +405,9 @@
         }
         if (j.recovery_scheduled) {
           demoScenarioActive = true;
+          if (typeof window.cartflowMarkRecoveryFlowStarted === "function") {
+            window.cartflowMarkRecoveryFlowStarted();
+          }
           if (typeof window.cartflowDemoArmStoreWidget === "function") {
             window.cartflowDemoArmStoreWidget();
           }
@@ -445,6 +471,9 @@
       window.sessionStorage.removeItem(REASON_TAG_KEY);
       window.sessionStorage.removeItem(REASON_SUB_TAG_KEY);
       window.sessionStorage.removeItem(CARTFLOW_CONVERTED_KEY);
+      window.sessionStorage.removeItem("cartflow_recovery_flow_started");
+      window.sessionStorage.removeItem("cartflow_return_event_last_sig");
+      window.sessionStorage.removeItem("cartflow_cart_event_id");
     } catch (e) {
       /* ignore */
     }
@@ -506,11 +535,13 @@
           setText("cf-demo-last-status", "error_no_session");
           return { ok: false, status: 0, body: { _aborted: true } };
         }
+        var cartIdRow = demoCartIdForRecoverySession(session);
+        demoSetTrackingCartId(cartIdRow);
         var body = attachCfTestPhoneToBody({
           event: "cart_abandoned",
           store: store,
           session_id: session,
-          cart_id: String(session).trim().slice(0, 220) + "_demo_cart",
+          cart_id: cartIdRow,
           cart_total: (function () {
             var cartArr =
               typeof window.cart !== "undefined" && window.cart != null && Array.isArray(window.cart)
@@ -541,6 +572,9 @@
         }
         if (j.recovery_scheduled) {
           demoScenarioActive = true;
+          if (typeof window.cartflowMarkRecoveryFlowStarted === "function") {
+            window.cartflowMarkRecoveryFlowStarted();
+          }
           if (typeof window.cartflowDemoArmStoreWidget === "function") {
             window.cartflowDemoArmStoreWidget();
           }
@@ -608,6 +642,9 @@
       window.sessionStorage.removeItem(CARTFLOW_CONVERTED_KEY);
       window.sessionStorage.removeItem(CARTFLOW_SESSION_KEY);
       window.sessionStorage.removeItem("cartflow_demo_store_widget_armed");
+      window.sessionStorage.removeItem("cartflow_recovery_flow_started");
+      window.sessionStorage.removeItem("cartflow_return_event_last_sig");
+      window.sessionStorage.removeItem("cartflow_cart_event_id");
     } catch (e) {
       /* ignore */
     }
