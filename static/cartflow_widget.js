@@ -2140,6 +2140,21 @@ try {
     } catch (eCf) {
       /* ignore */
     }
+    try {
+      shown = false;
+    } catch (eSh) {
+      /* ignore */
+    }
+    try {
+      setCartflowWidgetShownFlag(false);
+    } catch (eFl) {
+      /* ignore */
+    }
+    try {
+      syncCartflowExitFlags();
+    } catch (eEx) {
+      /* ignore */
+    }
     if (!silent) {
       try {
         console.log("[CARTFLOW RECOVERY] gates cleared on cart arm");
@@ -2147,6 +2162,7 @@ try {
         /* ignore */
       }
     }
+    scheduleResetIdleAfterGateClear();
   }
 
   function cartflowSyncHasCartFromCart() {
@@ -2260,6 +2276,11 @@ try {
     try {
       syncCartState("add");
     } catch (eSyn) {}
+    try {
+      logCartflowRecoveryGateCheck();
+    } catch (eGk) {
+      /* ignore */
+    }
   }
 
   try {
@@ -2286,6 +2307,161 @@ try {
     window.cartflowRejectHelp = cartflowRejectHelp;
   } catch (eRj) {
     /* ignore */
+  }
+
+  function computeCartHesitationBlockReason() {
+    if (!cfWgEnabled) {
+      return "merchant_widget_disabled";
+    }
+    if (Date.now() < cfWgPromptNotBefore) {
+      return "widget_prompt_delay";
+    }
+    if (isSessionConverted()) {
+      return "session_converted";
+    }
+    if (!step1Ready) {
+      return "step1_not_ready";
+    }
+    var hasItems = false;
+    try {
+      var c = window.cart;
+      if (!Array.isArray(c)) {
+        c = [];
+      }
+      hasItems = cartLifecycleSumCart(c) > 0;
+    } catch (eCart) {
+      return "cart_read_error";
+    }
+    if (!hasItems) {
+      return "no_cart_items";
+    }
+    if (
+      isMobileDeferCartBubbleViewport()
+    ) {
+      return "mobile_cart_ui_deferred";
+    }
+    if (isDemoStoreProductPage()) {
+      if (!readDemoStoreWidgetArmed()) {
+        return "demo_widget_not_armed";
+      }
+      if (demoStoreBubbleDismissed) {
+        return "demo_bubble_dismissed";
+      }
+    }
+    try {
+      cartflowSyncWidgetShownForState();
+    } catch (eW) {
+      /* ignore */
+    }
+    var s = window.CartFlowState;
+    if (s && s.widgetShown) {
+      return "widget_shown_flag";
+    }
+    if (s && s.userRejectedHelp === true) {
+      return "user_rejected_help";
+    }
+    try {
+      if (shown) {
+        return "internal_shown_flag";
+      }
+    } catch (eSn) {
+      /* ignore */
+    }
+    return null;
+  }
+
+  function logCartflowRecoveryGateCheck() {
+    var cartHasItems = false;
+    try {
+      var ca = window.cart;
+      if (!Array.isArray(ca)) {
+        ca = [];
+      }
+      cartHasItems = cartLifecycleSumCart(ca) > 0;
+    } catch (eHc) {
+      cartHasItems = false;
+    }
+    var dismissalParts = [];
+    try {
+      dismissalParts.push(
+        "pre_cart_declined=" + (readExitIntentPreCartDeclined() ? "1" : "0")
+      );
+      dismissalParts.push(
+        "demo_exit_shown=" + (readDemoStoreExitIntentShown() ? "1" : "0")
+      );
+      dismissalParts.push(
+        "demo_prompt_resolved=" +
+          (readDemoStoreExitPromptResolved() ? "1" : "0")
+      );
+    } catch (eD) {
+      dismissalParts.push("read_error");
+    }
+    var dismissal_state = dismissalParts.join("|");
+    var st = window.CartFlowState;
+    var rejection_state =
+      st != null
+        ? "userRejectedHelp=" +
+          String(!!st.userRejectedHelp) +
+          " ts=" +
+          String(st.rejectionTimestamp != null ? st.rejectionTimestamp : "")
+        : "n/a";
+    var exit_suppression = "";
+    try {
+      exit_suppression =
+        window.sessionStorage.getItem("cartflow_suppress_cart_recovery") || "";
+    } catch (eSs) {
+      exit_suppression = "(read_error)";
+    }
+    var user_rejected_help =
+      st != null ? String(!!st.userRejectedHelp) : "";
+    try {
+      syncCartflowExitFlags();
+    } catch (eSf) {
+      /* ignore */
+    }
+    var widget_closed =
+      "demoBubbleDismissed=" +
+      String(!!demoStoreBubbleDismissed) +
+      " manualClosed=" +
+      String(!!window.cartflowManualClosed);
+    var reason_blocked = computeCartHesitationBlockReason();
+    try {
+      console.log(
+        "[CARTFLOW RECOVERY GATE CHECK]\n" +
+          "cart_has_items=" +
+          cartHasItems +
+          "\ndismissal_state=" +
+          dismissal_state +
+          "\nrejection_state=" +
+          rejection_state +
+          "\nexit_suppression=" +
+          (exit_suppression || "(empty)") +
+          "\nuser_rejected_help=" +
+          user_rejected_help +
+          "\nwidget_closed=" +
+          widget_closed +
+          "\nreason_blocked=" +
+          (reason_blocked != null ? reason_blocked : "(none)")
+      );
+    } catch (eLg) {
+      /* ignore */
+    }
+  }
+
+  function scheduleResetIdleAfterGateClear() {
+    try {
+      setTimeout(function () {
+        try {
+          if (haveCartForWidget() && step1Ready && !isSessionConverted()) {
+            resetIdle();
+          }
+        } catch (eRi) {
+          /* ignore */
+        }
+      }, 0);
+    } catch (eSt) {
+      /* ignore */
+    }
   }
 
   /** جاهزية الاسترجاع بعد إضافة للسلة أو جلسة جديدة (لا يعطّل المحادثة نهائياً) */
