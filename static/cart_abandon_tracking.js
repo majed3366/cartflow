@@ -1,5 +1,7 @@
 /**
  * تتبع السلة المتروكة على مستوى التطبيق — أي صفحة فيها ‎window.cart‎.
+ * Static asset cache token (keep in sync with templates/partials/cart_abandon_tracking.html ?v=):
+ * cartflow-abandon-inv-20260207a
  */
 (function () {
   "use strict";
