@@ -731,6 +731,40 @@
 
   cartflowHydrateDurableRecoveryReturnState();
 
+  function cartflowEnsureDurableReturnStateFromSession() {
+    try {
+      if (typeof window.cartflowIsSessionConverted === "function" && window.cartflowIsSessionConverted()) {
+        return;
+      }
+      var flow = "";
+      try {
+        flow = window.sessionStorage.getItem(CF_RECOVERY_FLOW_STARTED_KEY) || "";
+      } catch (eF) {
+        flow = "";
+      }
+      if (flow !== "1") {
+        return;
+      }
+      var sid = "";
+      var cid = "";
+      try {
+        sid = window.sessionStorage.getItem(CARTFLOW_SESSION_KEY) || "";
+        cid = window.sessionStorage.getItem(CF_CART_EVENT_ID_STORAGE_KEY) || "";
+      } catch (eS) {
+        return;
+      }
+      if (!sid || !String(sid).trim() || !cid || !String(cid).trim()) {
+        return;
+      }
+      if (typeof window.cartflowRefreshDurableRecoveryContext === "function") {
+        window.cartflowRefreshDurableRecoveryContext({});
+      }
+    } catch (e) {
+      /* ignore */
+    }
+  }
+  window.cartflowEnsureDurableReturnStateFromSession = cartflowEnsureDurableReturnStateFromSession;
+
   function sendCartAbandonedToBackend(source) {
     if (cartflowIsSessionConverted()) {
       return;

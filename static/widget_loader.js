@@ -120,6 +120,9 @@
       try {
         var st = window.CARTFLOW_RUNTIME_STATUS;
         var rt = window.CartFlowRuntime;
+        if (typeof window.cartflowEnsureDurableReturnStateFromSession === "function") {
+          window.cartflowEnsureDurableReturnStateFromSession();
+        }
         if (
           st &&
           rt &&

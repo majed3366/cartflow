@@ -1,14 +1,19 @@
 /**
  * Return-to-site tracker — loaded by widget_loader (CartFlow runtime). Do not auto-run.
- * Dedupe: sessionStorage cartflow_return_tracker_dedupe
+ * Dedupe: localStorage throttle cartflow_return_tracker_throttle_v1
  * State: localStorage cartflow_recovery_return_state_v1
  */
 (function () {
   "use strict";
 
   var LS_KEY = "cartflow_recovery_return_state_v1";
-  var DEDUPE_KEY = "cartflow_return_tracker_dedupe";
+  /** Cross-tab throttle; avoids blocking resend after reload / later revisit (pathname+SS dedupe was too strict). */
+  var THROTTLE_LS_KEY = "cartflow_return_tracker_throttle_v1";
+  var THROTTLE_MIN_MS = 45000;
   var CF_TEST_PHONE_LS = "cartflow_test_customer_phone";
+  var SS_RECOVERY_FLOW = "cartflow_recovery_flow_started";
+  var SS_SESSION_ID = "cartflow_recovery_session_id";
+  var SS_CART_EVENT_ID = "cartflow_cart_event_id";
   var MODULE_VERSION = "return-tracker-runtime-v1";
 
   function apiCartEventUrl() {
@@ -124,6 +129,64 @@
     return true;
   }
 
+  /** When durable LS is empty but same-tab session still has recovery IDs (e.g. LS cleared). */
+  function buildRecoveryStateFromSessionStorage() {
+    try {
+      if (isConverted()) {
+        return null;
+      }
+      var flow = window.sessionStorage.getItem(SS_RECOVERY_FLOW) || "";
+      if (flow !== "1") {
+        return null;
+      }
+      var sid = window.sessionStorage.getItem(SS_SESSION_ID) || "";
+      var cid = window.sessionStorage.getItem(SS_CART_EVENT_ID) || "";
+      if (!String(sid).trim() || !String(cid).trim()) {
+        return null;
+      }
+      var store = pageStoreSlug() || "demo";
+      return {
+        v: 1,
+        recovery_flow_started: "1",
+        session_id: String(sid).trim().slice(0, 300),
+        cart_id: String(cid).trim().slice(0, 255),
+        store_slug: store,
+      };
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function hasAfterRecoveryReplySignal() {
+    try {
+      if (window.sessionStorage.getItem("cartflow_reason_tag")) {
+        return true;
+      }
+    } catch (e1) {
+      /* ignore */
+    }
+    try {
+      var eng = window.localStorage.getItem("cartflow_recovery_engagement_v1");
+      if (eng != null && String(eng).trim()) {
+        return true;
+      }
+    } catch (e2) {
+      /* ignore */
+    }
+    try {
+      var raw = window.localStorage.getItem(LS_KEY);
+      if (raw && String(raw).trim()) {
+        var o = JSON.parse(raw);
+        if (o && o.reason_tag && String(o.reason_tag).trim()) {
+          return true;
+        }
+      }
+    } catch (e3) {
+      /* ignore */
+    }
+    return false;
+  }
+
   function skip(status, reason) {
     try {
       status.last_skip_reason = reason;
@@ -145,6 +208,9 @@
 
     var st = readJsonLs(LS_KEY);
     if (!validRecoveryState(st)) {
+      st = buildRecoveryStateFromSessionStorage();
+    }
+    if (!validRecoveryState(st)) {
       skip(status, "no_recovery_state");
       return;
     }
@@ -162,15 +228,27 @@
     }
 
     var recovery_return_context = inferReturnContext();
-    var pathname = (window.location && window.location.pathname) || "";
-    var sig =
-      session_id +
-      "|" +
-      cart_id +
-      "|" +
-      recovery_return_context +
-      "|" +
-      pathname;
+    var return_context = hasAfterRecoveryReplySignal()
+      ? "after_recovery_reply"
+      : recovery_return_context;
+
+    var dedupeCore = session_id + "|" + cart_id;
+    var nowMs = Date.now();
+    try {
+      var trRaw = window.localStorage.getItem(THROTTLE_LS_KEY);
+      var tr = trRaw ? JSON.parse(trRaw) : null;
+      if (
+        tr &&
+        tr.k === dedupeCore &&
+        typeof tr.t === "number" &&
+        nowMs - tr.t < THROTTLE_MIN_MS
+      ) {
+        skip(status, "dedupe_throttle");
+        return;
+      }
+    } catch (eTh) {
+      /* ignore */
+    }
 
     try {
       console.log("[RETURN TRACKER]", {
@@ -179,21 +257,10 @@
         cart_id: cart_id,
         store_slug: store_slug,
         recovery_return_context: recovery_return_context,
-        pathname: pathname,
+        return_context: return_context,
       });
     } catch (eSt) {
       /* ignore */
-    }
-
-    var last = null;
-    try {
-      last = window.sessionStorage.getItem(DEDUPE_KEY);
-    } catch (eD) {
-      last = null;
-    }
-    if (last === sig) {
-      skip(status, "dedupe_same_signature");
-      return;
     }
 
     var bodyObj = {
@@ -204,6 +271,7 @@
       session_id: session_id,
       cart_id: cart_id,
       recovery_return_context: recovery_return_context,
+      return_context: return_context,
       return_timestamp: new Date().toISOString(),
     };
     var cfPh = readCfTestPhone();
@@ -213,19 +281,6 @@
     var custPh = readOptionalCustomerPhone();
     if (custPh) {
       bodyObj.phone = custPh;
-    }
-
-    try {
-      console.log(
-        "[RETURN TRACKER SENT] session_id=" +
-          session_id +
-          " cart_id=" +
-          cart_id +
-          " context=" +
-          recovery_return_context
-      );
-    } catch (eLg) {
-      /* ignore */
     }
 
     try {
@@ -250,8 +305,25 @@
             res && res.ok && res.body && res.body.ok !== false;
           if (ok) {
             try {
-              window.sessionStorage.setItem(DEDUPE_KEY, sig);
+              window.localStorage.setItem(
+                THROTTLE_LS_KEY,
+                JSON.stringify({ k: dedupeCore, t: Date.now() })
+              );
             } catch (eOk) {
+              /* ignore */
+            }
+            try {
+              console.log(
+                "[RETURN TRACKER EVENT SENT] store_slug=" +
+                  store_slug +
+                  " session_id=" +
+                  session_id +
+                  " cart_id=" +
+                  cart_id +
+                  " context=" +
+                  return_context
+              );
+            } catch (eLg) {
               /* ignore */
             }
             status.return_event_sent = true;

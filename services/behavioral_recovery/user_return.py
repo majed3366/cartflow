@@ -126,7 +126,11 @@ def record_behavioral_user_return_from_payload(payload: dict[str, Any]) -> None:
                 return_timestamp_iso=return_ts_iso,
                 fuse_adaptive=True,
             )
-            ctx_raw = str(payload.get("recovery_return_context") or "").strip()[:64]
+            ctx_raw = str(
+                payload.get("recovery_return_context")
+                or payload.get("return_context")
+                or ""
+            ).strip()[:64]
             merge_fields: dict[str, Any] = {
                 "user_returned_to_site": True,
                 "customer_returned_to_site": True,
