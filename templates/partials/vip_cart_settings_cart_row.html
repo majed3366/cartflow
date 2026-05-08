@@ -64,6 +64,17 @@
             <span class="inline-flex items-center rounded-full border border-amber-200/85 bg-amber-50/95 px-2 py-0.5 text-[8px] font-bold text-amber-950">{{ vc.normal_recovery_suggestion_ux_badge_ar | e }}</span>
             {% endif %}
           </div>
+          {% if vc.normal_recovery_checkout_push_mode %}
+          <div class="space-y-1 rounded-lg border border-teal-200/90 bg-teal-50/50 px-2 py-1.5 text-right" data-normal-recovery-checkout-push="1" lang="ar">
+            <p class="m-0 text-[9px] font-bold text-teal-950">توجيه التحويل — وضع الإغلاق البيعي</p>
+            <ul class="m-0 list-none space-y-0.5 p-0 text-[8px] leading-relaxed text-slate-800">
+              <li class="m-0">• العميل جاهز للإكمال</li>
+              <li class="m-0">• فرصة تحويل مرتفعة</li>
+              <li class="m-0">• يوصى بإرسال رابط الإكمال</li>
+              <li class="m-0">• وضع الإغلاق البيعي</li>
+            </ul>
+          </div>
+          {% endif %}
           {% if vc.normal_recovery_adaptive_stage_ar or (vc.normal_recovery_adaptive_turn_count | default(0) | int) > 0 %}
           <div class="space-y-1 rounded-lg border border-violet-100/90 bg-violet-50/40 px-2 py-1.5" data-normal-recovery-adaptive-stage="{{ vc.normal_recovery_adaptive_stage_key | default('') | e }}">
             <p class="m-0 text-[9px] font-bold text-violet-900">مسار المحادثة التكيّفي</p>

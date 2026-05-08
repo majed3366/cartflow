@@ -94,6 +94,7 @@ def conversation_dashboard_extras(ac: AbandonedCart) -> dict[str, Any]:
     adaptive_path_ar = ""
     adaptive_transition_ar = ""
     adaptive_turns = 0
+    checkout_push_mode = False
     if replied and st != "recovered":
         cust_for_sugg = str(bh.get("latest_customer_message") or preview or "").strip()
         eff_intent = intent_raw if intent_raw else "other"
@@ -148,6 +149,7 @@ def conversation_dashboard_extras(ac: AbandonedCart) -> dict[str, Any]:
             adaptive_turns = int(bh.get("recovery_adaptive_turn_count") or 0)
         except (TypeError, ValueError):
             adaptive_turns = 0
+        checkout_push_mode = adaptive_stage_key == "checkout_ready" or offer_strategy_key == "checkout_push"
     subtitle = ""
     badge = False
     open_hint = ""
@@ -198,4 +200,5 @@ def conversation_dashboard_extras(ac: AbandonedCart) -> dict[str, Any]:
         "normal_recovery_adaptive_path_ar": adaptive_path_ar,
         "normal_recovery_adaptive_transition_ar": adaptive_transition_ar,
         "normal_recovery_adaptive_turn_count": adaptive_turns,
+        "normal_recovery_checkout_push_mode": checkout_push_mode,
     }

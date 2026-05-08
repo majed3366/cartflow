@@ -71,6 +71,42 @@ def asks_alternative_or_comparison(message: str) -> bool:
     )
 
 
+def wants_checkout_completion(message: str, intent_key: str = "") -> bool:
+    """إن كان العميل يطلب رابطاً أو خطوة إكمال واضحة — بغض النظر عن تصنيف النية أحياناً."""
+    if _norm_intent_key(intent_key) == "ready_to_buy":
+        return True
+    m = _norm_msg(message)
+    if not m:
+        return False
+    return any(
+        k in m
+        for k in (
+            "كيف اطلب",
+            "كيف أطلب",
+            "اشطلب",
+            "أشطلب",
+            "ارسل الرابط",
+            "أرسل الرابط",
+            "ارسلني الرابط",
+            "وين الرابط",
+            "وين رابط",
+            "أين الرابط",
+            "اين الرابط",
+            "فين الرابط",
+            "فين رابط",
+            "ابغى اكمل",
+            "أبغى أكمل",
+            "ابي اكمل",
+            "أبي أكمل",
+            "اكمل الطلب",
+            "أكمل الطلب",
+            "رابط الطلب",
+            "رابط الدفع",
+            "تمام كيف",
+        )
+    )
+
+
 def _norm_intent_key(intent: str) -> str:
     k = (intent or "").strip().lower()
     return "delivery" if k == "shipping" else k
@@ -123,11 +159,24 @@ def compute_adaptive_transition(
     n_in = _norm_intent_key(new_intent)
 
     if turn_index <= 1 or not p_st:
+        if wants_checkout_completion(msg, new_intent):
+            return (
+                STAGE_CHECKOUT_READY,
+                "بداية المسار بوضع إكمال الطلب — العميل طلب رابطاً أو خطوة الطلب.",
+                path_label_for_stage(STAGE_CHECKOUT_READY, "ready_to_buy"),
+            )
         st = initial_stage_for_intent(new_intent)
         return (
             st,
             "أول رد تفاعلي — بداية المسار وفق نية آخر رسالة.",
             path_label_for_stage(st, new_intent),
+        )
+
+    if wants_checkout_completion(msg, new_intent):
+        return (
+            STAGE_CHECKOUT_READY,
+            "انتقال إلى وضع إكمال الطلب — العميل جاهز لخطوة الدفع أو الرابط.",
+            path_label_for_stage(STAGE_CHECKOUT_READY, "ready_to_buy"),
         )
 
     # طلب بديل بعد اعتراض سعر — حتى لو لُخّص النص كـ ‎other‎ خارج نية السعر
@@ -195,6 +244,12 @@ def compute_adaptive_transition(
         )
 
     if p_st == STAGE_SHIPPING_QUESTIONS and n_in in ("delivery", "shipping"):
+        if wants_checkout_completion(msg, new_intent):
+            return (
+                STAGE_CHECKOUT_READY,
+                "بعد طمأنة الشحن — دفع هادئ لإكمال الطلب.",
+                path_label_for_stage(STAGE_CHECKOUT_READY, "ready_to_buy"),
+            )
         return (
             STAGE_SHIPPING_QUESTIONS,
             "متابعة استفسار الشحن — طمأنة تدريجية ثم دفع للإغلاق عند اللزوم.",

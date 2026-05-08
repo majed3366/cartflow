@@ -61,8 +61,21 @@ class RecoveryProductSuggestionsTests(unittest.TestCase):
             "",
         )
         self.assertIn("رابط إكمال الطلب", s["suggested_reply"])
-        self.assertEqual(s["checkout_cta_mode"], "instant_checkout")
-        self.assertEqual(s["ux_badge_ar"], "فرصة تحويل عالية")
+        self.assertIn("حاضر", s["suggested_reply"])
+        self.assertEqual(s["checkout_cta_mode"], "calm_checkout_push")
+        self.assertEqual(s["ux_badge_ar"], "فرصة تحويل مرتفعة")
+
+    def test_adaptive_checkout_ready_overrides_price_copy(self) -> None:
+        s = get_product_aware_recovery_suggestion(
+            "price",
+            "حقيبة",
+            199.0,
+            None,
+            "غالي لكن تمام",
+            adaptive_stage="checkout_ready",
+        )
+        self.assertIn("مساعدة أنا حاضر", s["suggested_reply"])
+        self.assertNotIn("الجودة", s["suggested_reply"])
 
     def test_for_abandoned_cart_reads_items(self) -> None:
         db.create_all()

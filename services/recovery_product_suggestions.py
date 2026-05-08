@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Mapping, Optional, TypedDict
 
+from services.recovery_conversation_state_machine import STAGE_CHECKOUT_READY
 from services.recovery_offer_decision import decide_recovery_offer_strategy
 from services.behavioral_recovery.state_store import behavioral_dict_for_abandoned_cart
 from services.recovery_product_context import (
@@ -66,20 +67,31 @@ def get_product_aware_recovery_suggestion(
     cheaper_alternative_name: Optional[str] = None,
     cheaper_alternative_price: Optional[float] = None,
     offer_decision: Optional[Mapping[str, Any]] = None,
+    adaptive_stage: str = "",
 ) -> ProductAwareRecoverySuggestion:
     _ = (customer_message or "").strip()
     eff = _norm_intent(intent)
     pn = _fmt_name(product_name)
     cat = (product_category or "").strip()
-
-    if eff == "ready_to_buy":
+    adapt = (adaptive_stage or "").strip().lower()
+    od0 = dict(offer_decision) if offer_decision else {}
+    checkout_layer = (
+        eff == "ready_to_buy"
+        or adapt == STAGE_CHECKOUT_READY
+        or str(od0.get("strategy_type") or "").strip() == "checkout_push"
+    )
+    if checkout_layer:
         return {
-            "suggested_reply": "ممتاز 👍 هذا رابط إكمال الطلب مباشرة",
-            "suggested_strategy": "إغلاق سريع — إرسال رابط الدفع",
+            "suggested_reply": (
+                "ممتاز 👍 هذا رابط إكمال الطلب مباشرة، وإذا احتجت أي مساعدة أنا حاضر."
+            ),
+            "suggested_strategy": "إغلاق هادئ — رابط إكمال بدون تكرار طمأنة سابقة",
             "optional_offer_type": "checkout_cta",
-            "suggestion_reason_ar": "نية الشراء واضحة: أرسل رابط إكمال الطلب يدوياً في واتساب.",
-            "ux_badge_ar": "فرصة تحويل عالية",
-            "checkout_cta_mode": "instant_checkout",
+            "suggestion_reason_ar": (
+                "العميل في مرحلة إكمال — ردّ قصير يركّز على الرابط وخطوة الدفع يدوياً."
+            ),
+            "ux_badge_ar": "فرصة تحويل مرتفعة",
+            "checkout_cta_mode": "calm_checkout_push",
         }
 
     if eff == "price":
@@ -238,6 +250,7 @@ def get_product_aware_recovery_suggestion_for_abandoned_cart(
         cheaper_alternative_name=ctx.cheaper_alternative_name,
         cheaper_alternative_price=ctx.cheaper_alternative_price,
         offer_decision=decision,
+        adaptive_stage=adaptive_stage,
     )
     out: dict[str, Any] = dict(result)
     out["offer_decision"] = dict(decision)

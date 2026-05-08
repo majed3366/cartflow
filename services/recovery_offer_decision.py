@@ -2,10 +2,15 @@
 """
 قرار ذكي لاقتراح العروض مقابل الطمأنة — إرشاد للتاجر فقط (لا كوبونات ولا إرسال).
 جاهز لاحقاً لقواعد تاجر، CLV، ومحرك عروض ديناميكي.
+
+توسعات مستقبلية (بدون إرسال تلقائي): روابط إكمال ديناميكية، تتبع الدفع،
+نقاط تحويل، إغلاق آلي اختياري، أتمتة وكيل مبيعات — تُستهلك في الإرشاد واللوحة فقط.
 """
 from __future__ import annotations
 
 from typing import Optional, TypedDict
+
+from services.recovery_conversation_state_machine import STAGE_CHECKOUT_READY
 
 # عتبات سعرية تقريبية بالريال — تُضبط لاحقاً من إعدادات المتجر
 _LOW_PRICE_MAX: float = 79.0
@@ -125,12 +130,13 @@ def decide_recovery_offer_strategy(
     يقرر نوع المسار: طمأنة، بديل، أو السماح باقتراح خصم ناعم (للتاجر يدوياً فقط).
     """
     eff = _norm_intent(intent)
+    adapt = (adaptive_stage or "").strip()
     msg = _norm_msg(customer_message)
     band = _price_band(product_price)
     premium_cat = _is_premium_category(product_category or "")
     conf = _price_objection_confidence(customer_message) if eff == "price" else "medium"
 
-    if eff == "ready_to_buy":
+    if eff == "ready_to_buy" or adapt == STAGE_CHECKOUT_READY:
         return {
             "strategy_type": "checkout_push",
             "should_offer_discount": False,
@@ -138,10 +144,13 @@ def decide_recovery_offer_strategy(
             "should_offer_alternative": False,
             "persuasion_mode": "checkout_push",
             "confidence_level": "high",
-            "strategy_type_ar": "دفع نحو إكمال الطلب",
+            "strategy_type_ar": "وضع الإغلاق البيعي — رابط مباشر",
             "confidence_level_ar": "مرتفع",
-            "decision_rationale_ar": "نية الشراء جاهزة — ركّز على رابط الدفع دون تشتيت بعروض جانبية.",
-            "persuasion_mode_ar": "دفع لطيف لإكمال الطلب",
+            "decision_rationale_ar": (
+                "مرحلة جاهز للإكمال — صياغة واضحة وهادئة دون إقناع إضافي غير ضروري؛ "
+                "ركّز على رابط الدفع."
+            ),
+            "persuasion_mode_ar": "دفع هادئ لإكمال الطلب",
         }
 
     if eff == "delivery":

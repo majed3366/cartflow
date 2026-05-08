@@ -34,6 +34,7 @@ def inbound_patch_for_recovery_reply(
         from services.recovery_conversation_state_machine import (
             STAGE_PRICE_OBJECTION,
             asks_alternative_or_comparison,
+            wants_checkout_completion,
         )
 
         if (
@@ -42,6 +43,8 @@ def inbound_patch_for_recovery_reply(
             and asks_alternative_or_comparison(body)
         ):
             intent = "price"
+        if wants_checkout_completion(body, intent):
+            intent = "ready_to_buy"
     latest_msg = body[:_MAX_LATEST_CUSTOMER_MESSAGE_CHARS]
     patch: dict[str, Any] = {
         "customer_replied": True,
