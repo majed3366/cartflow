@@ -63,6 +63,11 @@ class NormalRecoveryDashboardStatusTests(unittest.TestCase):
                 "recovery_reply_intent": "price",
                 "latest_customer_message": "كم السعر؟",
                 "latest_customer_reply_at": "2026-01-15T12:00:00+00:00",
+                "recovery_adaptive_stage": "price_objection",
+                "recovery_adaptive_turn_count": 1,
+                "recovery_last_transition_reason_ar": "أول رد تفاعلي — بداية المسار وفق نية آخر رسالة.",
+                "recovery_adaptive_path_label_ar": "اعتراض سعر → طمأنة → (بديل / عرض ناعم)",
+                "recovery_last_offer_strategy_key": "soft_offer_window",
             }
         }
         ac = AbandonedCart(
@@ -111,6 +116,10 @@ class NormalRecoveryDashboardStatusTests(unittest.TestCase):
         self.assertTrue(payload.get("normal_recovery_offer_confidence_ar"))
         self.assertTrue(payload.get("normal_recovery_offer_decision_rationale_ar"))
         self.assertTrue(payload.get("normal_recovery_offer_persuasion_ar"))
+        self.assertEqual(int(payload.get("normal_recovery_adaptive_turn_count") or 0), 1)
+        self.assertIn("اعتراض", payload.get("normal_recovery_adaptive_stage_ar") or "")
+        self.assertTrue(payload.get("normal_recovery_adaptive_transition_ar"))
+        self.assertTrue(payload.get("normal_recovery_adaptive_path_ar"))
 
     def test_interactive_dashboard_includes_delivery_suggestion(self) -> None:
         import json

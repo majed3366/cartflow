@@ -119,6 +119,7 @@ def decide_recovery_offer_strategy(
     customer_message: str = "",
     *,
     has_cheaper_alternative: bool = False,
+    adaptive_stage: str = "",
 ) -> RecoveryOfferDecision:
     """
     يقرر نوع المسار: طمأنة، بديل، أو السماح باقتراح خصم ناعم (للتاجر يدوياً فقط).
@@ -204,6 +205,47 @@ def decide_recovery_offer_strategy(
         }
 
     # --- اعتراض سعر ---
+    adapt = (adaptive_stage or "").strip()
+    if adapt == "alternative_consideration":
+        if band in ("premium",) or premium_cat:
+            return {
+                "strategy_type": "value_framing_premium",
+                "should_offer_discount": False,
+                "should_offer_free_shipping": False,
+                "should_offer_alternative": False,
+                "persuasion_mode": "value_framing",
+                "confidence_level": "high",
+                "strategy_type_ar": "مقارنة بدائل — مع الحفاظ على قيمة فاخرة",
+                "confidence_level_ar": "مرتفع",
+                "decision_rationale_ar": "العميل في مرحلة بدائل لكن المنتج/الفئة مميزة — ركّز على القيمة لا الخصم المتهور.",
+                "persuasion_mode_ar": "تأطير القيمة",
+            }
+        if has_cheaper_alternative:
+            return {
+                "strategy_type": "alternative_first",
+                "should_offer_discount": False,
+                "should_offer_free_shipping": False,
+                "should_offer_alternative": True,
+                "persuasion_mode": "alternative_product",
+                "confidence_level": "high",
+                "strategy_type_ar": "تفضيل البديل الأرخص",
+                "confidence_level_ar": "مرتفع",
+                "decision_rationale_ar": "مسار المحادثة يركّز على مقارنة البدائل — استخدم سطر السلة الأرخص قبل أي خصم.",
+                "persuasion_mode_ar": "منتج بديل",
+            }
+        return {
+            "strategy_type": "soft_offer_window",
+            "should_offer_discount": True,
+            "should_offer_free_shipping": False,
+            "should_offer_alternative": False,
+            "persuasion_mode": "soft_offer",
+            "confidence_level": "high",
+            "strategy_type_ar": "بدون بديل واضح — مساحة عرض يدوي",
+            "confidence_level_ar": "مرتفع",
+            "decision_rationale_ar": "العميل طلب خياراً أرخص، ولا يوجد بديل أوضح في السلة — اقترح يدوياً أو وسّع القيمة بحذر.",
+            "persuasion_mode_ar": "عرض ناعم محتمل",
+        }
+
     if band in ("premium",) or premium_cat:
         return {
             "strategy_type": "value_framing_premium",

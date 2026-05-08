@@ -8,6 +8,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Mapping, Optional, TypedDict
 
 from services.recovery_offer_decision import decide_recovery_offer_strategy
+from services.behavioral_recovery.state_store import behavioral_dict_for_abandoned_cart
 from services.recovery_product_context import (
     recovery_product_context_from_abandoned_cart,
     resolved_category_label,
@@ -218,12 +219,15 @@ def get_product_aware_recovery_suggestion_for_abandoned_cart(
 ) -> ProductAwareRecoverySuggestion:
     ctx = recovery_product_context_from_abandoned_cart(ac)
     cat = resolved_category_label(ctx)
+    bh = behavioral_dict_for_abandoned_cart(ac)
+    adaptive_stage = str(bh.get("recovery_adaptive_stage") or "").strip()
     decision = decide_recovery_offer_strategy(
         intent,
         ctx.current_product_price,
         cat or "",
         customer_message,
         has_cheaper_alternative=bool(ctx.cheaper_alternative_name),
+        adaptive_stage=adaptive_stage,
     )
     result = get_product_aware_recovery_suggestion(
         intent,

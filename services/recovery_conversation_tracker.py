@@ -19,6 +19,7 @@ from services.recovery_reply_intent_labels import recovery_reply_intent_badge_ar
 from services.recovery_product_suggestions import (
     get_product_aware_recovery_suggestion_for_abandoned_cart,
 )
+from services.recovery_conversation_state_machine import stage_label_ar
 from services.recovery_reply_suggestions import effective_suggestion_intent
 from services.whatsapp_positive_reply import normalize_wa_customer_digits
 
@@ -88,6 +89,11 @@ def conversation_dashboard_extras(ac: AbandonedCart) -> dict[str, Any]:
     offer_flag_alternative = False
     offer_strategy_key = ""
     offer_persuasion_key = ""
+    adaptive_stage_key = ""
+    adaptive_stage_label_ar = ""
+    adaptive_path_ar = ""
+    adaptive_transition_ar = ""
+    adaptive_turns = 0
     if replied and st != "recovered":
         cust_for_sugg = str(bh.get("latest_customer_message") or preview or "").strip()
         eff_intent = intent_raw if intent_raw else "other"
@@ -130,6 +136,18 @@ def conversation_dashboard_extras(ac: AbandonedCart) -> dict[str, Any]:
             offer_flag_alternative = False
             offer_strategy_key = ""
             offer_persuasion_key = ""
+        adaptive_stage_key = str(bh.get("recovery_adaptive_stage") or "").strip()
+        adaptive_stage_label_ar = (
+            stage_label_ar(adaptive_stage_key) if adaptive_stage_key else ""
+        )
+        adaptive_path_ar = str(bh.get("recovery_adaptive_path_label_ar") or "").strip()
+        adaptive_transition_ar = str(
+            bh.get("recovery_last_transition_reason_ar") or ""
+        ).strip()
+        try:
+            adaptive_turns = int(bh.get("recovery_adaptive_turn_count") or 0)
+        except (TypeError, ValueError):
+            adaptive_turns = 0
     subtitle = ""
     badge = False
     open_hint = ""
@@ -175,4 +193,9 @@ def conversation_dashboard_extras(ac: AbandonedCart) -> dict[str, Any]:
         "normal_recovery_offer_flag_alternative": offer_flag_alternative,
         "normal_recovery_offer_strategy_key": offer_strategy_key,
         "normal_recovery_offer_persuasion_key": offer_persuasion_key,
+        "normal_recovery_adaptive_stage_key": adaptive_stage_key,
+        "normal_recovery_adaptive_stage_ar": adaptive_stage_label_ar,
+        "normal_recovery_adaptive_path_ar": adaptive_path_ar,
+        "normal_recovery_adaptive_transition_ar": adaptive_transition_ar,
+        "normal_recovery_adaptive_turn_count": adaptive_turns,
     }

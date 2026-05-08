@@ -16,7 +16,10 @@ log = logging.getLogger("cartflow")
 _MAX_LATEST_CUSTOMER_MESSAGE_CHARS = 2048
 
 
-def inbound_patch_for_recovery_reply(inbound_body: str) -> dict[str, Any]:
+def inbound_patch_for_recovery_reply(
+    inbound_body: str,
+    prior_behavioral: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """
     حقول ‎cf_behavioral‎ عند رد عميل بعد إرسال استرجاع عادي.
     """
@@ -27,6 +30,18 @@ def inbound_patch_for_recovery_reply(inbound_body: str) -> dict[str, Any]:
     now = utc_now_iso()
     has_question = "?" in body or "؟" in body
     intent = detect_recovery_reply_intent(body)
+    if prior_behavioral and isinstance(prior_behavioral, dict):
+        from services.recovery_conversation_state_machine import (
+            STAGE_PRICE_OBJECTION,
+            asks_alternative_or_comparison,
+        )
+
+        if (
+            str(prior_behavioral.get("recovery_adaptive_stage") or "").strip()
+            == STAGE_PRICE_OBJECTION
+            and asks_alternative_or_comparison(body)
+        ):
+            intent = "price"
     latest_msg = body[:_MAX_LATEST_CUSTOMER_MESSAGE_CHARS]
     patch: dict[str, Any] = {
         "customer_replied": True,
@@ -44,7 +59,33 @@ def inbound_patch_for_recovery_reply(inbound_body: str) -> dict[str, Any]:
         patch["waiting_merchant"] = True
     else:
         patch["waiting_merchant"] = False
+    from services.recovery_conversation_state_machine import append_adaptive_fields_to_patch
+
+    append_adaptive_fields_to_patch(patch, inbound_body, prior_behavioral)
     return patch
+
+
+def _persist_offer_strategy_on_patch(ac: AbandonedCart, patch: dict[str, Any]) -> None:
+    from services.recovery_offer_decision import decide_recovery_offer_strategy
+    from services.recovery_product_context import (
+        recovery_product_context_from_abandoned_cart,
+        resolved_category_label,
+    )
+
+    intent = str(patch.get("recovery_reply_intent") or "").strip().lower()
+    body = str(patch.get("latest_customer_message") or "").strip()
+    ctx = recovery_product_context_from_abandoned_cart(ac)
+    cat = resolved_category_label(ctx) or ""
+    stage = str(patch.get("recovery_adaptive_stage") or "").strip()
+    d = decide_recovery_offer_strategy(
+        intent,
+        ctx.current_product_price,
+        cat,
+        body,
+        has_cheaper_alternative=bool(ctx.cheaper_alternative_name),
+        adaptive_stage=stage,
+    )
+    patch["recovery_last_offer_strategy_key"] = d["strategy_type"]
 
 
 def apply_interactive_transition_from_customer_reply(
@@ -54,9 +95,14 @@ def apply_interactive_transition_from_customer_reply(
     customer_phone_key: str,
 ) -> None:
     """يحدّث الحمولة السلوكية فقط — الالتزام على المستدعي بـ ‎commit‎."""
-    from services.behavioral_recovery.state_store import merge_behavioral_state
+    from services.behavioral_recovery.state_store import (
+        behavioral_dict_for_abandoned_cart,
+        merge_behavioral_state,
+    )
 
-    patch = inbound_patch_for_recovery_reply(inbound_body)
+    prior = behavioral_dict_for_abandoned_cart(ac)
+    patch = inbound_patch_for_recovery_reply(inbound_body, prior_behavioral=prior)
+    _persist_offer_strategy_on_patch(ac, patch)
     merge_behavioral_state(ac, **patch)
     intent = str(patch.get("recovery_reply_intent") or "").strip()
     sid = (getattr(ac, "recovery_session_id", None) or "").strip()
