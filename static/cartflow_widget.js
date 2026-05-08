@@ -1914,14 +1914,6 @@ try {
     }
     if (haveCartForWidget()) {
       clearStaleRecoveryGatesOnCartActivity();
-      try {
-        console.log(
-          "CARTFLOW RECOVERY:",
-          "gates cleared on cart arm (suppress key + demo dismiss)"
-        );
-      } catch (eL) {
-        /* ignore */
-      }
     }
     if (isDemoStoreProductPage() && !readDemoStoreWidgetArmed()) {
       if (isDemoPath() && haveCartForWidget()) {
@@ -2128,6 +2120,35 @@ try {
     }
   }
 
+  /**
+   * مسح حالة رفض/قمع خروج النافذة عند امتلاك سلة فعّالة (انتقال من لا سلة → سلة).
+   * silent=true: بدون سجل (مثلاً عند arm على صفحة السلة حيث قد يُستدعى مع كل تحميل).
+   */
+  function clearExitIntentGatesForActiveCart(silent) {
+    clearExitIntentPreCartDeclined();
+    clearDemoStoreExitIntentShown();
+    clearDemoStoreExitPromptResolved();
+    clearCartRecoverySuppressed();
+    if (isDemoPath()) {
+      demoStoreBubbleDismissed = false;
+    }
+    try {
+      if (window.CartFlowState) {
+        window.CartFlowState.userRejectedHelp = false;
+        window.CartFlowState.rejectionTimestamp = null;
+      }
+    } catch (eCf) {
+      /* ignore */
+    }
+    if (!silent) {
+      try {
+        console.log("[CARTFLOW RECOVERY] gates cleared on cart arm");
+      } catch (eL) {
+        /* ignore */
+      }
+    }
+  }
+
   function cartflowSyncHasCartFromCart() {
     try {
       window.CartFlowState.hasCart = haveCartForWidget();
@@ -2269,13 +2290,12 @@ try {
 
   /** جاهزية الاسترجاع بعد إضافة للسلة أو جلسة جديدة (لا يعطّل المحادثة نهائياً) */
   function clearStaleRecoveryGatesOnCartActivity() {
-    clearCartRecoverySuppressed();
-    if (isDemoStoreProductPage() && isDemoPath()) {
-      demoStoreBubbleDismissed = false;
-    }
+    clearExitIntentGatesForActiveCart(true);
   }
 
   var cartflowLastCartStateFixedSig = "";
+  var cartflowExitResetInitialized = false;
+  var cartflowPrevHadCartForExitReset = false;
 
   /** hasCart وحيد وفق مجموع السلة ‎cartLifecycleSumCart‎ (نفس حقول ‎cart_state_sync‎). */
   function cartflowAnnounceUnifiedCartState(cart_total) {
@@ -2283,15 +2303,56 @@ try {
       typeof cart_total === "number" && !isNaN(cart_total)
         ? cart_total
         : 0;
+    var hasCartNow = t > 0;
+
+    if (!cartflowExitResetInitialized) {
+      cartflowExitResetInitialized = true;
+      if (hasCartNow) {
+        var blocked = false;
+        try {
+          blocked =
+            readExitIntentPreCartDeclined() ||
+            !!(
+              window.CartFlowState &&
+              window.CartFlowState.userRejectedHelp === true
+            );
+        } catch (eBl) {
+          /* ignore */
+        }
+        try {
+          if (window.sessionStorage.getItem("cartflow_suppress_cart_recovery")) {
+            blocked = true;
+          }
+        } catch (eSs) {
+          /* ignore */
+        }
+        try {
+          if (isDemoPath() && demoStoreBubbleDismissed) {
+            blocked = true;
+          }
+        } catch (eDm) {
+          /* ignore */
+        }
+        if (blocked) {
+          clearExitIntentGatesForActiveCart(false);
+        }
+      }
+      cartflowPrevHadCartForExitReset = hasCartNow;
+    } else {
+      if (hasCartNow && !cartflowPrevHadCartForExitReset) {
+        clearExitIntentGatesForActiveCart(false);
+      }
+      cartflowPrevHadCartForExitReset = hasCartNow;
+    }
+
     var sig = t.toFixed(4);
     if (sig === cartflowLastCartStateFixedSig) {
       return;
     }
     cartflowLastCartStateFixedSig = sig;
-    var hasCart = t > 0;
     try {
       console.log("[CART STATE FIXED]", {
-        hasCart: hasCart,
+        hasCart: hasCartNow,
         cart_total: t,
       });
     } catch (eL) {}
