@@ -282,7 +282,10 @@ from services.behavioral_recovery.link_tracking import (
     apply_outbound_tracking_to_message,
     handle_recovery_link_click,
 )
-from services.recovery_blocker_display import recovery_blocker_from_latest_log_status
+from services.recovery_blocker_display import (
+    get_recovery_blocker_display_state,
+    recovery_blocker_from_latest_log_status,
+)
 from services.recovery_message_strategy import get_recovery_message
 from services.recovery_template_defaults import guided_defaults_for_api
 from services.behavioral_recovery.state_store import (
@@ -1797,6 +1800,19 @@ _NORMAL_RECOVERY_PHASE_ORDER: list[tuple[str, str]] = [
     ("recovery_complete", "اكتمل الاسترجاع"),
 ]
 
+# Phases where overlaying a «missing phone» banner would duplicate or confuse the primary story.
+_NORMAL_RECOVERY_PHASE_NO_MISSING_PHONE_OVERLAY = frozenset(
+    {
+        "customer_returned",
+        "behavioral_replied",
+        "behavioral_link_clicked",
+        "recovery_complete",
+        "stopped_purchase",
+        "stopped_manual",
+        "ignored",
+    }
+)
+
 # ‎CartRecoveryLog.status‎ values that mean a WhatsApp recovery message was delivered
 # (includes ‎mock_sent‎ from delayed automation and ‎sent_real‎ from the queue / VIP paths).
 _NORMAL_RECOVERY_SENT_LOG_STATUSES = frozenset({"sent_real", "mock_sent"})
@@ -2185,6 +2201,27 @@ def _normal_recovery_latest_blocker_event_row(ac: AbandonedCart) -> Optional[Car
         if st in _NORMAL_RECOVERY_SENT_LOG_STATUSES or st == "queued":
             return None
         return row
+    except (SQLAlchemyError, OSError, TypeError, ValueError):
+        db.session.rollback()
+        return None
+
+
+def _normal_recovery_latest_skipped_no_verified_phone_row(
+    ac: AbandonedCart,
+) -> Optional[CartRecoveryLog]:
+    """أحدث ‎skipped_no_verified_phone‎ لهذه السلة — للعرض حتى لو كان السجل الأحدث ‎queued‎."""
+    conds = _cart_recovery_log_filters_for_abandoned_cart(ac)
+    if not conds:
+        return None
+    try:
+        db.create_all()
+        return (
+            db.session.query(CartRecoveryLog)
+            .filter(or_(*conds))
+            .filter(CartRecoveryLog.status == "skipped_no_verified_phone")
+            .order_by(CartRecoveryLog.id.desc())
+            .first()
+        )
     except (SQLAlchemyError, OSError, TypeError, ValueError):
         db.session.rollback()
         return None
@@ -2613,6 +2650,24 @@ def _normal_recovery_phase_steps_payload(ac: AbandonedCart) -> dict[str, Any]:
         )
         if isinstance(blocker_bundle, dict) and blocker_bundle.get("key"):
             blocker_key_out = str(blocker_bundle.get("key"))
+    if blocker_bundle is None:
+        cr_fb = (cust_raw or "").strip()
+        if (
+            not cr_fb
+            and sent_ct == 0
+            and current_key not in _NORMAL_RECOVERY_PHASE_NO_MISSING_PHONE_OVERLAY
+        ):
+            if _normal_recovery_latest_skipped_no_verified_phone_row(ac) is not None:
+                blocker_bundle = recovery_blocker_from_latest_log_status(
+                    "skipped_no_verified_phone"
+                )
+                blocker_key_out = "missing_customer_phone"
+                latest_log_status = "skipped_no_verified_phone"
+            else:
+                blocker_bundle = dict(
+                    get_recovery_blocker_display_state("missing_customer_phone")
+                )
+                blocker_key_out = "missing_customer_phone"
     hint_ar: Optional[str] = None
     last_skip_pub: Optional[str] = None
     op_hint_ar: Optional[str] = None
@@ -7648,19 +7703,20 @@ def _normal_carts_dashboard_stats() -> dict[str, Any]:
             return out
         dash_id_raw = getattr(dash_store, "id", None)
         slug = (getattr(dash_store, "zid_store_id", None) or "").strip()
-        q = db.session.query(AbandonedCart).filter(AbandonedCart.vip_mode.is_(False))
+        base_q = db.session.query(AbandonedCart).filter(AbandonedCart.vip_mode.is_(False))
         if dash_id_raw is not None:
             try:
                 vid = int(dash_id_raw)
-                q = q.filter(
+                base_q = base_q.filter(
                     (AbandonedCart.store_id == vid)
                     | (AbandonedCart.store_id.is_(None))  # type: ignore[union-attr]
                 )
             except (TypeError, ValueError):
                 pass
-        out["normal_cart_count"] = int(q.count() or 0)
+        q_abandoned = base_q.filter(AbandonedCart.status == "abandoned")
+        out["normal_cart_count"] = int(q_abandoned.count() or 0)
         out["normal_recovered_count"] = int(
-            q.filter(AbandonedCart.status == "recovered").count() or 0
+            base_q.filter(AbandonedCart.status == "recovered").count() or 0
         )
         if slug:
             out["messages_sent_count"] = int(
@@ -7943,7 +7999,8 @@ def dashboard_normal_carts(request: Request):
     from services.cartflow_observability_runtime import runtime_health_snapshot_readonly
 
     normal_recovery_alerts = _normal_recovery_cart_alert_list()
-    normal_stats = _normal_carts_dashboard_stats()
+    normal_stats = dict(_normal_carts_dashboard_stats())
+    normal_stats["normal_monitoring_card_count"] = len(normal_recovery_alerts)
     return templates.TemplateResponse(
         request,
         "normal_carts_dashboard.html",

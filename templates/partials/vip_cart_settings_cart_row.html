@@ -37,17 +37,27 @@
         {% endfor %}
       </div>
       {% set nrb = vc.normal_recovery_blocker | default(none) %}
+      {% set nr_op = vc.normal_recovery_operational_hint_ar | default('', true) | trim %}
+      {% set nr_fu = vc.normal_recovery_followup_hint_ar | default('', true) | trim %}
       {% if nrb is mapping and nrb.get('label_ar') %}
       {% set nrb_sev = nrb.get('severity') | default('info') %}
       <div class="mt-2 space-y-1 rounded-lg border px-2.5 py-2 text-right shadow-sm {% if nrb_sev == 'error' %}border-red-200/90 bg-red-50/85{% elif nrb_sev == 'warning' %}border-amber-200/90 bg-amber-50/75{% elif nrb_sev == 'success' %}border-emerald-200/90 bg-emerald-50/75{% else %}border-sky-200/85 bg-sky-50/50{% endif %}"
         lang="ar" role="status" aria-live="polite" data-normal-recovery-blocker="{{ nrb.get('key', '') | e }}">
         <p class="m-0 text-[10px] font-bold text-slate-900">{{ nrb.get('label_ar') | e }}</p>
+        {% if nr_op and nr_op != (nrb.get('label_ar') | default('', true) | trim) %}
+        <p class="m-0 text-[9px] font-semibold text-amber-950/95">{{ nr_op | e }}</p>
+        {% endif %}
         {% if nrb.get('description_ar') %}
         <p class="m-0 text-[9px] leading-relaxed text-slate-700">{{ nrb.get('description_ar') | e }}</p>
         {% endif %}
         {% if nrb.get('merchant_action_ar') %}
         <p class="m-0 text-[9px] text-slate-600"><span class="font-semibold text-slate-700">ما يمكنك فعله:</span> {{ nrb.get('merchant_action_ar') | e }}</p>
         {% endif %}
+      </div>
+      {% elif nr_op or nr_fu %}
+      <div class="mt-2 space-y-1 rounded-lg border border-amber-200/90 bg-amber-50/75 px-2.5 py-2 text-right shadow-sm"
+        lang="ar" role="alert" aria-live="polite" data-normal-recovery-blocker-fallback="1">
+        <p class="m-0 text-[10px] font-bold text-slate-900">{{ (nr_op or nr_fu) | e }}</p>
       </div>
       {% endif %}
       {% if vc.normal_recovery_identity_trust_ar | default('') %}

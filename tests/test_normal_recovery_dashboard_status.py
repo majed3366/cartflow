@@ -7,8 +7,11 @@ import unittest
 import uuid
 from datetime import datetime, timedelta, timezone
 
+from fastapi.testclient import TestClient
+
 from extensions import db
 from main import (
+    app,
     _normal_recovery_phase_steps_payload,
     _NORMAL_RECOVERY_SENT_LOG_STATUSES,
 )
@@ -631,6 +634,84 @@ class NormalRecoveryDashboardStatusTests(unittest.TestCase):
         payload = _normal_recovery_phase_steps_payload(ac)
         self.assertEqual(payload["normal_recovery_phase_key"], "ignored")
         self.assertEqual(payload["normal_recovery_status"], "ignored")
+
+    def test_blocker_missing_phone_when_latest_log_is_queued(self) -> None:
+        """Queued row must not hide an earlier skipped_no_verified_phone for the dashboard."""
+        st = self._store_attempts_1()
+        sid = f"nr-dash-{self._suffix}-qphone"
+        zid = f"zid-nr-{self._suffix}-qphone"
+        ac = AbandonedCart(
+            store_id=int(st.id),
+            zid_cart_id=zid,
+            recovery_session_id=sid,
+            status="abandoned",
+            vip_mode=False,
+            cart_value=22.0,
+        )
+        db.session.add(ac)
+        db.session.flush()
+        t0 = datetime.now(timezone.utc)
+        t1 = t0 + timedelta(seconds=3)
+        db.session.add(
+            CartRecoveryLog(
+                store_slug="demo",
+                session_id=sid,
+                cart_id=zid,
+                phone=None,
+                message="skip",
+                status="skipped_no_verified_phone",
+                step=1,
+                created_at=t0,
+                sent_at=None,
+            )
+        )
+        db.session.add(
+            CartRecoveryLog(
+                store_slug="demo",
+                session_id=sid,
+                cart_id=zid,
+                phone=None,
+                message="queued",
+                status="queued",
+                step=1,
+                created_at=t1,
+                sent_at=None,
+            )
+        )
+        db.session.commit()
+        payload = _normal_recovery_phase_steps_payload(ac)
+        self.assertEqual(payload.get("normal_recovery_blocker_key"), "missing_customer_phone")
+        hints = (payload.get("normal_recovery_followup_hint_ar") or "") + (
+            payload.get("normal_recovery_operational_hint_ar") or ""
+        )
+        self.assertTrue(
+            "بانتظار رقم العميل" in hints or "لا يوجد رقم عميل" in hints,
+            hints,
+        )
+
+    def test_normal_carts_dashboard_html_shows_missing_phone_copy(self) -> None:
+        """Regression: missing-phone operational copy must appear in rendered HTML."""
+        st = self._store_attempts_1()
+        sid = f"nr-html-{self._suffix}"
+        zid = f"zid-html-{self._suffix}"
+        ac = AbandonedCart(
+            store_id=int(st.id),
+            zid_cart_id=zid,
+            recovery_session_id=sid,
+            status="abandoned",
+            vip_mode=False,
+            cart_value=18.0,
+        )
+        db.session.add(ac)
+        db.session.commit()
+        client = TestClient(app)
+        r = client.get("/dashboard/normal-carts")
+        self.assertEqual(r.status_code, 200, (r.text or "")[:2000])
+        html = r.text or ""
+        self.assertTrue(
+            ("بانتظار رقم العميل" in html) or ("لا يوجد رقم عميل" in html),
+            html[:4000],
+        )
 
 
 if __name__ == "__main__":

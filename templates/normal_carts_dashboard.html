@@ -46,8 +46,9 @@
         {% set ns = normal_stats | default({}) %}
         <section class="mb-6 grid grid-cols-2 gap-3 md:grid-cols-4" aria-label="نظرة عامة على السلال العادية">
           <div class="rounded-2xl border border-cyan-100/90 bg-white p-4 shadow-sm">
-            <p class="text-[11px] font-semibold text-slate-500">عدد السلال العادية</p>
-            <p class="mt-1 text-2xl font-bold tabular-nums text-cyan-950">{{ ns.get("normal_cart_count", 0) }}</p>
+            <p class="text-[11px] font-semibold text-slate-500">بطاقات السلال العادية الظاهرة</p>
+            <p class="mt-1 text-2xl font-bold tabular-nums text-cyan-950">{{ ns.get("normal_monitoring_card_count", ns.get("normal_cart_count", 0)) }}</p>
+            <p class="mt-0.5 text-[9px] text-slate-400">يتوافق مع قائمة المراقبة أدناه (تجميع قد يُدمج أكثر من سجل).</p>
           </div>
           <div class="rounded-2xl border border-cyan-100/90 bg-white p-4 shadow-sm">
             <p class="text-[11px] font-semibold text-slate-500">الرسائل المرسلة</p>
