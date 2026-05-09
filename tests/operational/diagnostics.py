@@ -34,12 +34,19 @@ def build_operational_diagnostics_snapshot(*, probe_recovery_key: str = "__opera
     rk = (probe_recovery_key or "").strip()[:800]
     phone_probe = get_recovery_customer_phone(rk) if rk else None
     src_probe = get_recovery_phone_resolution_source(rk) if rk else "customer_profile"
+    try:
+        from services.cartflow_duplicate_guard import get_duplicate_guard_diagnostics_readonly
+
+        dup_diag = get_duplicate_guard_diagnostics_readonly()
+    except Exception:
+        dup_diag = {}
     return {
         "runtime_status": {
             "module": "main",
             "app_loaded": getattr(m, "app", None) is not None,
         },
         "duplicate_send_guard": dup_guard,
+        "duplicate_guard_operational": dup_diag,
         "phone_resolution": {
             "probe_key": rk,
             "probe_phone_is_empty": not (phone_probe or "").strip(),

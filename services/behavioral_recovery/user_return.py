@@ -104,6 +104,27 @@ def record_behavioral_user_return_from_payload(payload: dict[str, Any]) -> None:
         return_ts_iso = rts.strip()[:64]
     else:
         return_ts_iso = utc_now_iso()
+    from services.cartflow_duplicate_guard import (
+        behavioral_return_merge_signature,
+        try_consume_behavioral_return_merge,
+    )
+
+    ctx_tail_preview = str(
+        payload.get("recovery_return_context")
+        or payload.get("return_context")
+        or ""
+    ).strip()[:64]
+    _beh_sig = behavioral_return_merge_signature(
+        store_slug=store_slug_disp,
+        session_id=sid,
+        cart_id=cid,
+        return_ts_iso=return_ts_iso,
+        returned_product_page=returned_product_page,
+        returned_checkout_page=returned_checkout_page,
+        context_tail=ctx_tail_preview,
+    )
+    if not try_consume_behavioral_return_merge(signature=_beh_sig):
+        return
     try:
         db.create_all()
         cands = abandoned_carts_for_session_or_cart(sid, cid or None)

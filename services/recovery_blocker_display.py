@@ -97,7 +97,11 @@ def get_recovery_blocker_display_state(blocker_reason: Optional[str]) -> dict[st
             "key": "duplicate_attempt_blocked",
             "label_ar": "محاولة مكررة",
             "operational_hint_ar": "تم منع محاولة مكررة",
-            "description_ar": "لم تُرسل رسالة جديدة لتجنّب التكرار أو لأن هذه المحاولة نُفّذت مسبقاً.",
+            "description_ar": (
+                "تم منع محاولة مكررة، أو تم تجاهل تكرار الحدث، أو تم منع إرسال متكرر "
+                "لحماية العميل — قد يعني ذلك أن الرسالة وصلت مسبقاً أو أن النظام كبح "
+                "تكراراً غير مقصود."
+            ),
             "severity": "info",
             "merchant_action_ar": "إذا سبق أن وصلت رسالة للعميل فلا حاجة لإجراء. وإلا راجع السجل أو تواصل يدوياً.",
         },

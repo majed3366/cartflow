@@ -32,6 +32,13 @@ class CartflowRuntimeHealthTests(unittest.TestCase):
         self.assertIn("runtime_active", snap["recovery_runtime"])
         self.assertIn("whatsapp_provider_configured", snap["whatsapp_runtime"])
         self.assertIn("recent_send_failures_24h", snap["provider_runtime"])
+        dpr = snap["duplicate_protection_runtime"]
+        for k in (
+            "duplicate_anomaly_count",
+            "duplicate_send_blocked_recently",
+            "duplicate_prevention_runtime_ok",
+        ):
+            self.assertIn(k, dpr)
 
     def test_aggregate_anomaly_symbols(self) -> None:
         self.assertEqual(
@@ -70,9 +77,31 @@ class CartflowRuntimeHealthTests(unittest.TestCase):
             "recent_anomaly_count",
             "trust",
             "provider",
+            "duplicate_protection",
         ):
             self.assertIn(k, summary)
         self.assertIn("runtime_trust_label_ar", summary["trust"])
+        self.assertIn("duplicate_anomaly_count", summary["duplicate_protection"])
+
+    def test_trust_signals_duplicate_degraded(self) -> None:
+        s = rh.derive_runtime_trust_signals(
+            {
+                "provider_runtime": {
+                    "whatsapp_provider_ready": True,
+                    "provider_effectively_disabled": False,
+                },
+                "recovery_runtime": {"runtime_active": True},
+                "identity_runtime": {
+                    "identity_resolution_ok": True,
+                    "identity_conflict_detected": False,
+                },
+                "duplicate_protection_runtime": {
+                    "duplicate_prevention_runtime_ok": False,
+                },
+            },
+            recent_anomaly_count=0,
+        )
+        self.assertTrue(s.get("runtime_degraded") or s.get("runtime_warning"))
 
     def test_trust_signals_keys(self) -> None:
         s = rh.derive_runtime_trust_signals(

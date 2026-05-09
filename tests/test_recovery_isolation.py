@@ -55,6 +55,12 @@ def _reset_recovery_memory() -> None:
         _session_recovery_followup_next_due_at.clear()
         _session_recovery_last_second_skip_reason.clear()
     recovery_phone_memory_clear()
+    try:
+        from services.cartflow_duplicate_guard import reset_duplicate_guard_for_tests
+
+        reset_duplicate_guard_for_tests()
+    except Exception:
+        pass
 
 
 def _post_recovery_reason_for_session(

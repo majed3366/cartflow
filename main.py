@@ -2698,6 +2698,21 @@ def _normal_recovery_phase_steps_payload(ac: AbandonedCart) -> dict[str, Any]:
                 session_id=(getattr(ac, "recovery_session_id", None) or ""),
                 cart_id=(getattr(ac, "zid_cart_id", None) or ""),
             )
+            try:
+                from services.cartflow_duplicate_guard import (
+                    note_dashboard_payload_state_conflict,
+                )
+
+                for _cfc in _conflicts:
+                    note_dashboard_payload_state_conflict(
+                        reason_code=str(_cfc),
+                        session_id=str(
+                            getattr(ac, "recovery_session_id", None) or ""
+                        ),
+                        cart_id=str(getattr(ac, "zid_cart_id", None) or ""),
+                    )
+            except Exception:
+                pass
     except Exception:
         pass
     out_nr: dict[str, Any] = {
@@ -4069,6 +4084,15 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
         slot_sk = f"{recovery_key}:multi:{multi_slot_index}"
         with _recovery_session_lock:
             if _session_recovery_multi_logged.get(slot_sk):
+                from services.cartflow_duplicate_guard import (
+                    note_sequential_recovery_slot_duplicate,
+                )
+
+                note_sequential_recovery_slot_duplicate(
+                    recovery_key=recovery_key,
+                    slot_kind="multi_slot",
+                    slot_detail=str(multi_slot_index),
+                )
                 return
             _session_recovery_multi_logged[slot_sk] = True
     elif seq_attempt is not None and int(seq_attempt) > 1:
@@ -4076,6 +4100,16 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
         if _cart_recovery_log_has_successful_send_for_step(
             session_id, cart_id, int(seq_attempt)
         ):
+            from services.cartflow_duplicate_guard import note_send_duplicate_blocked
+
+            note_send_duplicate_blocked(
+                store_slug=store_slug,
+                session_id=session_id,
+                cart_id=cart_id or "",
+                attempt_index=int(seq_attempt),
+                reason="sequential_already_sent_log",
+                recovery_key=recovery_key,
+            )
             _log_second_recovery_skipped(
                 reason="already_sent",
                 recovery_key=recovery_key,
@@ -4085,6 +4119,15 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
             return
         with _recovery_session_lock:
             if _session_recovery_seq_logged.get(seq_done_key):
+                from services.cartflow_duplicate_guard import (
+                    note_sequential_recovery_slot_duplicate,
+                )
+
+                note_sequential_recovery_slot_duplicate(
+                    recovery_key=recovery_key,
+                    slot_kind="sequential_step",
+                    slot_detail=str(seq_done_key),
+                )
                 _log_second_recovery_skipped(
                     reason="already_sent",
                     recovery_key=recovery_key,
@@ -4095,6 +4138,15 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
     else:
         with _recovery_session_lock:
             if _session_recovery_logged.get(recovery_key):
+                from services.cartflow_duplicate_guard import (
+                    note_sequential_recovery_slot_duplicate,
+                )
+
+                note_sequential_recovery_slot_duplicate(
+                    recovery_key=recovery_key,
+                    slot_kind="single_session_delay",
+                    slot_detail="recovery_dispatch_duplicate",
+                )
                 return
             _session_recovery_logged[recovery_key] = True
     seq_follow = (
@@ -4371,6 +4423,16 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
     )
 
     if _cart_recovery_log_has_successful_send_for_step(session_id, cart_id, step_num):
+        from services.cartflow_duplicate_guard import note_send_duplicate_blocked
+
+        note_send_duplicate_blocked(
+            store_slug=store_slug,
+            session_id=session_id,
+            cart_id=cart_id or "",
+            attempt_index=step_num,
+            reason="already_sent_log",
+            recovery_key=recovery_key,
+        )
         _log_normal_recovery_attempt_decision(
             attempt_index=step_num,
             allowed=False,
@@ -4807,17 +4869,92 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
         cart_id=cart_id,
         session_id=session_id,
     )
-    wa_result = send_whatsapp(
-        phone,
-        text,
-        reason_tag=reason_tag,
-        wa_trace_path=__file__,
-        wa_trace_session_id=session_id,
-        wa_trace_store_slug=store_slug,
-        wa_trace_last_activity=last_activity,
-        wa_trace_recovery_delay_minutes=delay_minutes,
-        wa_trace_delay_passed=True,
+    from services.cartflow_duplicate_guard import (
+        log_lifecycle_conflict_pattern,
+        release_outbound_whatsapp_inflight,
+        try_begin_outbound_whatsapp_inflight,
     )
+    from services.cartflow_runtime_health import (
+        ANOMALY_IMPOSSIBLE_STATE_TRANSITION,
+        ANOMALY_SEND_AFTER_CONVERSION,
+        ANOMALY_SEND_AFTER_RETURN,
+        record_runtime_anomaly,
+    )
+
+    _diag_converted = _is_user_converted(recovery_key)
+    _diag_returned = _is_user_returned(recovery_key)
+    _diag_replied = _normal_recovery_positive_reply_blocks_followup(
+        session_id=session_id, cart_id=cart_id
+    )
+    if _diag_converted:
+        log_lifecycle_conflict_pattern(
+            "send_after_conversion",
+            recovery_key=recovery_key,
+            session_id=session_id,
+            cart_id=cart_id or "",
+            step=step_num,
+            detail="pre_provider_diag",
+        )
+        record_runtime_anomaly(
+            ANOMALY_SEND_AFTER_CONVERSION,
+            source="duplicate_guard",
+            detail="pre_send_diag",
+        )
+    if _diag_returned:
+        log_lifecycle_conflict_pattern(
+            "send_after_return",
+            recovery_key=recovery_key,
+            session_id=session_id,
+            cart_id=cart_id or "",
+            step=step_num,
+            detail="pre_provider_diag",
+        )
+        record_runtime_anomaly(
+            ANOMALY_SEND_AFTER_RETURN,
+            source="duplicate_guard",
+            detail="pre_send_diag",
+        )
+    if _diag_replied:
+        log_lifecycle_conflict_pattern(
+            "send_after_reply",
+            recovery_key=recovery_key,
+            session_id=session_id,
+            cart_id=cart_id or "",
+            step=step_num,
+            detail="pre_provider_diag",
+        )
+        record_runtime_anomaly(
+            ANOMALY_IMPOSSIBLE_STATE_TRANSITION,
+            source="duplicate_guard",
+            detail="send_after_reply_diag",
+        )
+
+    if not try_begin_outbound_whatsapp_inflight(recovery_key, step_num):
+        _persist_cart_recovery_log(
+            store_slug=store_slug,
+            session_id=session_id,
+            cart_id=cart_id,
+            phone=phone,
+            message=text,
+            status="skipped_duplicate",
+            step=step_num,
+        )
+        _consume_seq_slot_if_needed()
+        return None
+    try:
+        wa_result = send_whatsapp(
+            phone,
+            text,
+            reason_tag=reason_tag,
+            wa_trace_path=__file__,
+            wa_trace_session_id=session_id,
+            wa_trace_store_slug=store_slug,
+            wa_trace_last_activity=last_activity,
+            wa_trace_recovery_delay_minutes=delay_minutes,
+            wa_trace_delay_passed=True,
+        )
+    finally:
+        release_outbound_whatsapp_inflight(recovery_key, step_num)
     wa_dict = wa_result if isinstance(wa_result, dict) else {}
     ok_flag = wa_dict.get("ok") is True
     sid_str = str(wa_dict.get("sid") or "").strip()
@@ -5362,6 +5499,14 @@ async def handle_cart_abandoned(
             }
     if not _try_claim_recovery_session(recovery_key):
         print("recovery already scheduled, skipping")
+        from services.cartflow_duplicate_guard import note_recovery_schedule_duplicate
+
+        note_recovery_schedule_duplicate(
+            store_slug=store_slug,
+            session_id=session_id_log,
+            cart_id=cart_id_log or "",
+            recovery_key=recovery_key,
+        )
         _persist_cart_recovery_log(
             store_slug=store_slug,
             session_id=session_id_log,

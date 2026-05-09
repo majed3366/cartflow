@@ -267,6 +267,8 @@ class OperationalDiagnosticsHelperTests(unittest.TestCase):
         self.assertIn("duplicate_send_guard", snap)
         self.assertIn("phone_resolution", snap)
         self.assertIn("started_len", snap["duplicate_send_guard"])
+        self.assertIn("duplicate_guard_operational", snap)
+        self.assertIn("counters", snap["duplicate_guard_operational"])
 
 
 class OperationalBehavioralRobustnessTests(unittest.TestCase):

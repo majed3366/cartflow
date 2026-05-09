@@ -221,6 +221,35 @@ def build_runtime_health_snapshot() -> dict[str, Any]:
             str(x.get("type") or "") == ANOMALY_IDENTITY_MERGE_BLOCKED for x in _recent_anomalies
         )
 
+    dup_guard_diag: dict[str, Any] = {}
+    dup_anomaly_count = 0
+    try:
+        from services.cartflow_duplicate_guard import (  # noqa: PLC0415
+            ANOMALY_DUPLICATE_ACTIVE_RECOVERY,
+            ANOMALY_DUPLICATE_BEHAVIORAL_MERGE,
+            get_duplicate_guard_diagnostics_readonly,
+        )
+
+        dup_guard_diag = get_duplicate_guard_diagnostics_readonly()
+        sym_dup = frozenset(
+            {
+                ANOMALY_DUPLICATE_SEND_ATTEMPT,
+                ANOMALY_SEND_AFTER_RETURN,
+                ANOMALY_SEND_AFTER_CONVERSION,
+                ANOMALY_DASHBOARD_PAYLOAD_CONFLICT,
+                ANOMALY_DUPLICATE_ACTIVE_RECOVERY,
+                ANOMALY_DUPLICATE_BEHAVIORAL_MERGE,
+            }
+        )
+        ct = recent_anomaly_type_counts(limit=200)
+        dup_anomaly_count = sum(int(ct.get(k, 0)) for k in sym_dup)
+    except Exception:
+        dup_guard_diag = {}
+        dup_anomaly_count = 0
+
+    dup_prev_ok = bool(dup_guard_diag.get("duplicate_prevention_runtime_ok", True))
+    dup_blocked_recent = bool(dup_guard_diag.get("duplicate_send_blocked_recently", False))
+
     return {
         "recovery_runtime": {
             "runtime_active": recovery_active,
@@ -244,6 +273,11 @@ def build_runtime_health_snapshot() -> dict[str, Any]:
         "duplicate_protection_runtime": {
             "duplicate_prevention_active": bool(flat.get("duplicate_prevention_active")),
             "runtime_active": True,
+            "duplicate_prevention_runtime_ok": dup_prev_ok,
+            "duplicate_anomaly_count": int(dup_anomaly_count),
+            "duplicate_send_blocked_recently": dup_blocked_recent,
+            "duplicate_guard_counters": dup_guard_diag.get("counters", {}),
+            "duplicate_inflight_send_keys": dup_guard_diag.get("inflight_send_keys", 0),
         },
         "behavioral_runtime": {
             "behavioral_merge_runtime_ok": True,
@@ -270,11 +304,17 @@ def derive_runtime_trust_signals(
     pr = snap.get("provider_runtime") if isinstance(snap.get("provider_runtime"), dict) else {}
     rr = snap.get("recovery_runtime") if isinstance(snap.get("recovery_runtime"), dict) else {}
     ir = snap.get("identity_runtime") if isinstance(snap.get("identity_runtime"), dict) else {}
+    dup_rt = (
+        snap.get("duplicate_protection_runtime")
+        if isinstance(snap.get("duplicate_protection_runtime"), dict)
+        else {}
+    )
 
     prov_ok = bool(pr.get("whatsapp_provider_ready")) and not bool(pr.get("provider_effectively_disabled"))
     rec_ok = bool(rr.get("runtime_active"))
     ident_ok = bool(ir.get("identity_resolution_ok"))
     id_conflict = bool(ir.get("identity_conflict_detected"))
+    dup_ok = bool(dup_rt.get("duplicate_prevention_runtime_ok", True))
 
     if recent_anomaly_count is None:
         with _anomaly_lock:
@@ -285,8 +325,9 @@ def derive_runtime_trust_signals(
         or (not prov_ok)
         or (not rec_ok)
         or id_conflict
+        or (not dup_ok)
     )
-    degraded = (not prov_ok) or (not rec_ok) or (not ident_ok)
+    degraded = (not prov_ok) or (not rec_ok) or (not ident_ok) or (not dup_ok)
 
     label_ar = "حالة التشغيل مستقرة"
     if degraded:
@@ -333,6 +374,20 @@ def build_admin_runtime_summary() -> dict[str, Any]:
         ),
         "recent_anomaly_count": buf_len,
         "recent_anomaly_types_preview": types_preview,
+        "duplicate_protection": {
+            "duplicate_anomaly_count": (
+                int((snap.get("duplicate_protection_runtime") or {}).get("duplicate_anomaly_count") or 0)
+                if isinstance(snap.get("duplicate_protection_runtime"), dict)
+                else 0
+            ),
+            "duplicate_send_blocked_recently": bool(
+                (snap.get("duplicate_protection_runtime") or {}).get(
+                    "duplicate_send_blocked_recently"
+                )
+            )
+            if isinstance(snap.get("duplicate_protection_runtime"), dict)
+            else False,
+        },
         "trust": {
             "runtime_stable": signals["runtime_stable"],
             "runtime_degraded": signals["runtime_degraded"],
