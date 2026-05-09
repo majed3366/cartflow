@@ -271,6 +271,16 @@ def build_runtime_health_snapshot() -> dict[str, Any]:
     except Exception:
         sess_diag = {}
 
+    ob_rt: dict[str, Any] = {}
+    try:
+        from services.cartflow_onboarding_readiness import (  # noqa: PLC0415
+            build_onboarding_health_section,
+        )
+
+        ob_rt = build_onboarding_health_section()
+    except Exception:
+        ob_rt = {}
+
     pr_ready: dict[str, Any] = {}
     try:
         from services.cartflow_provider_readiness import (  # noqa: PLC0415
@@ -329,6 +339,7 @@ def build_runtime_health_snapshot() -> dict[str, Any]:
         "session_consistency_runtime": {
             **sess_diag,
         },
+        "onboarding_runtime": dict(ob_rt),
         "behavioral_runtime": {
             "behavioral_merge_runtime_ok": lc_runtime_ok,
             "runtime_active": recovery_active,
@@ -362,6 +373,8 @@ def build_runtime_health_snapshot() -> dict[str, Any]:
                 )
                 if k in pr_ready
             },
+            "onboarding_completion_percent": int(ob_rt.get("onboarding_completion_percent") or 0),
+            "onboarding_ready_flag": bool(ob_rt.get("onboarding_ready", True)),
         },
         "_buffered_anomaly_events": buf_n,
     }
@@ -392,6 +405,11 @@ def derive_runtime_trust_signals(
         if isinstance(snap.get("session_consistency_runtime"), dict)
         else {}
     )
+    ob_rt = (
+        snap.get("onboarding_runtime")
+        if isinstance(snap.get("onboarding_runtime"), dict)
+        else {}
+    )
 
     prov_ok = bool(pr.get("whatsapp_provider_ready")) and not bool(pr.get("provider_effectively_disabled"))
     rec_ok = bool(rr.get("runtime_active"))
@@ -401,6 +419,7 @@ def derive_runtime_trust_signals(
     lc_ok = bool(lc_rt.get("lifecycle_runtime_ok", True))
     sess_runtime_ok = bool(sc_rt.get("session_runtime_consistent", True))
     stale_any = bool(sc_rt.get("stale_state_detected", False))
+    onb_ready = bool(ob_rt.get("onboarding_ready", True))
 
     if recent_anomaly_count is None:
         with _anomaly_lock:
@@ -415,6 +434,7 @@ def derive_runtime_trust_signals(
         or (not lc_ok)
         or (not sess_runtime_ok)
         or stale_any
+        or (not onb_ready)
     )
     degraded = (not prov_ok) or (not rec_ok) or (not ident_ok) or (not dup_ok) or (not lc_ok)
 
@@ -433,6 +453,9 @@ def derive_runtime_trust_signals(
         "stale_state_detected": stale_any,
         "runtime_state_drift_detected": bool(sc_rt.get("runtime_state_drift_detected", False)),
         "behavioral_state_consistent": bool(sc_rt.get("behavioral_state_consistent", True)),
+        "onboarding_ready": onb_ready,
+        "onboarding_blocked": bool(ob_rt.get("onboarding_blocked", False)),
+        "onboarding_completion_percent": int(ob_rt.get("onboarding_completion_percent") or 0),
     }
 
 
@@ -525,6 +548,28 @@ def build_admin_runtime_summary() -> dict[str, Any]:
             if isinstance(snap.get("session_consistency_runtime"), dict)
             else True,
         },
+        "onboarding": {
+            "onboarding_ready": bool(
+                (snap.get("onboarding_runtime") or {}).get("onboarding_ready", True)
+            )
+            if isinstance(snap.get("onboarding_runtime"), dict)
+            else True,
+            "onboarding_blocked": bool(
+                (snap.get("onboarding_runtime") or {}).get("onboarding_blocked", False)
+            )
+            if isinstance(snap.get("onboarding_runtime"), dict)
+            else False,
+            "onboarding_completion_percent": int(
+                (snap.get("onboarding_runtime") or {}).get("onboarding_completion_percent") or 0
+            )
+            if isinstance(snap.get("onboarding_runtime"), dict)
+            else 0,
+            "sandbox_mode_active": bool(
+                (snap.get("onboarding_runtime") or {}).get("sandbox_mode_active", False)
+            )
+            if isinstance(snap.get("onboarding_runtime"), dict)
+            else False,
+        },
         "trust": {
             "runtime_stable": signals["runtime_stable"],
             "runtime_degraded": signals["runtime_degraded"],
@@ -534,6 +579,8 @@ def build_admin_runtime_summary() -> dict[str, Any]:
             "stale_state_detected": signals.get("stale_state_detected", False),
             "runtime_state_drift_detected": signals.get("runtime_state_drift_detected", False),
             "behavioral_state_consistent": signals.get("behavioral_state_consistent", True),
+            "onboarding_ready": signals.get("onboarding_ready", True),
+            "onboarding_completion_percent": signals.get("onboarding_completion_percent", 0),
         },
         "provider": {
             "configured": bool(pr.get("twilio_env_present")),

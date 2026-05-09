@@ -8209,10 +8209,13 @@ def dashboard_recovery_settings(request: Request):
 def dashboard_normal_carts(request: Request):
     """السلال العادية — مراقبة أتمتة، قوالب حسب السبب، وتوقيت التسلسل."""
     from services.cartflow_observability_runtime import runtime_health_snapshot_readonly
+    from services.cartflow_onboarding_readiness import get_onboarding_dashboard_visibility
 
     normal_recovery_alerts = _normal_recovery_cart_alert_list()
     normal_stats = dict(_normal_carts_dashboard_stats())
     normal_stats["normal_monitoring_card_count"] = len(normal_recovery_alerts)
+    dash_store = _dashboard_recovery_store_row()
+    onboarding_visibility = get_onboarding_dashboard_visibility(dash_store)
     return templates.TemplateResponse(
         request,
         "normal_carts_dashboard.html",
@@ -8221,6 +8224,7 @@ def dashboard_normal_carts(request: Request):
             "normal_recovery_alerts": normal_recovery_alerts,
             "normal_stats": normal_stats,
             "cartflow_runtime_health": runtime_health_snapshot_readonly(),
+            "onboarding_visibility": onboarding_visibility,
         },
     )
 

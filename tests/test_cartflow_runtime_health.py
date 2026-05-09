@@ -34,6 +34,7 @@ class CartflowRuntimeHealthTests(unittest.TestCase):
             "duplicate_protection_runtime",
             "lifecycle_consistency_runtime",
             "session_consistency_runtime",
+            "onboarding_runtime",
             "behavioral_runtime",
             "provider_runtime",
         ):
@@ -42,7 +43,7 @@ class CartflowRuntimeHealthTests(unittest.TestCase):
         self.assertIn("runtime_active", snap["recovery_runtime"])
         self.assertIn("whatsapp_provider_configured", snap["whatsapp_runtime"])
         self.assertIn("recent_send_failures_24h", snap["provider_runtime"])
-        self.assertIn("provider_readiness_summary", snap["provider_runtime"])
+        self.assertIn("onboarding_completion_percent", snap["provider_runtime"])
         lc = snap["lifecycle_consistency_runtime"]
         for k in (
             "lifecycle_runtime_ok",
@@ -98,10 +99,12 @@ class CartflowRuntimeHealthTests(unittest.TestCase):
             "duplicate_protection",
             "lifecycle_consistency",
             "session_consistency",
+            "onboarding",
         ):
             self.assertIn(k, summary)
         self.assertIn("runtime_trust_label_ar", summary["trust"])
         self.assertIn("session_runtime_consistent", summary["trust"])
+        self.assertIn("onboarding_ready", summary["trust"])
         self.assertIn("duplicate_anomaly_count", summary["duplicate_protection"])
         self.assertIn("lifecycle_conflict_detected", summary["lifecycle_consistency"])
 
