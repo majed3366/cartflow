@@ -2803,6 +2803,23 @@ def _normal_recovery_phase_steps_payload(ac: AbandonedCart) -> dict[str, Any]:
         )
     except Exception:
         pass
+    try:
+        from services.cartflow_merchant_clarity import (  # noqa: PLC0415
+            attach_merchant_clarity_to_normal_recovery_payload,
+        )
+
+        attach_merchant_clarity_to_normal_recovery_payload(
+            out_nr,
+            phase_key=current_key,
+            coarse=coarse,
+            latest_log_status=latest_log_status,
+            blocker_key=blocker_key_out,
+            behavioral=behavioral_pre,
+            sent_ct=int(sent_ct),
+            phase_steps=steps_out,
+        )
+    except Exception:
+        pass
     return out_nr
 
 

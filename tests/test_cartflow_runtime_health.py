@@ -37,6 +37,7 @@ class CartflowRuntimeHealthTests(unittest.TestCase):
             "onboarding_runtime",
             "behavioral_runtime",
             "provider_runtime",
+            "merchant_operational_clarity_runtime",
         ):
             self.assertIn(key, snap)
             self.assertIsInstance(snap[key], dict)
@@ -100,6 +101,7 @@ class CartflowRuntimeHealthTests(unittest.TestCase):
             "lifecycle_consistency",
             "session_consistency",
             "onboarding",
+            "merchant_operational_clarity",
         ):
             self.assertIn(k, summary)
         self.assertIn("runtime_trust_label_ar", summary["trust"])

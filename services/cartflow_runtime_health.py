@@ -281,6 +281,16 @@ def build_runtime_health_snapshot() -> dict[str, Any]:
     except Exception:
         ob_rt = {}
 
+    mc_rt: dict[str, Any] = {}
+    try:
+        from services.cartflow_merchant_clarity import (  # noqa: PLC0415
+            build_merchant_clarity_runtime_section,
+        )
+
+        mc_rt = build_merchant_clarity_runtime_section(ob_rt)
+    except Exception:
+        mc_rt = {}
+
     pr_ready: dict[str, Any] = {}
     try:
         from services.cartflow_provider_readiness import (  # noqa: PLC0415
@@ -340,6 +350,7 @@ def build_runtime_health_snapshot() -> dict[str, Any]:
             **sess_diag,
         },
         "onboarding_runtime": dict(ob_rt),
+        "merchant_operational_clarity_runtime": dict(mc_rt),
         "behavioral_runtime": {
             "behavioral_merge_runtime_ok": lc_runtime_ok,
             "runtime_active": recovery_active,
@@ -444,7 +455,7 @@ def derive_runtime_trust_signals(
     elif warn:
         label_ar = "مراقبة خفيفة — راجع الإشارات التشغيلية عند الحاجة"
 
-    return {
+    ret: dict[str, Any] = {
         "runtime_stable": not degraded and not warn,
         "runtime_degraded": degraded,
         "runtime_warning": warn and not degraded,
@@ -457,6 +468,19 @@ def derive_runtime_trust_signals(
         "onboarding_blocked": bool(ob_rt.get("onboarding_blocked", False)),
         "onboarding_completion_percent": int(ob_rt.get("onboarding_completion_percent") or 0),
     }
+    try:
+        from services.cartflow_merchant_clarity import (  # noqa: PLC0415
+            enrich_runtime_trust_with_clarity,
+        )
+
+        _mc = snap.get("merchant_operational_clarity_runtime")
+        enrich_runtime_trust_with_clarity(
+            ret,
+            _mc if isinstance(_mc, dict) else None,
+        )
+    except Exception:
+        pass
+    return ret
 
 
 def build_admin_runtime_summary() -> dict[str, Any]:
@@ -570,6 +594,11 @@ def build_admin_runtime_summary() -> dict[str, Any]:
             if isinstance(snap.get("onboarding_runtime"), dict)
             else False,
         },
+        "merchant_operational_clarity": dict(
+            snap.get("merchant_operational_clarity_runtime") or {}
+        )
+        if isinstance(snap.get("merchant_operational_clarity_runtime"), dict)
+        else {},
         "trust": {
             "runtime_stable": signals["runtime_stable"],
             "runtime_degraded": signals["runtime_degraded"],
@@ -581,6 +610,7 @@ def build_admin_runtime_summary() -> dict[str, Any]:
             "behavioral_state_consistent": signals.get("behavioral_state_consistent", True),
             "onboarding_ready": signals.get("onboarding_ready", True),
             "onboarding_completion_percent": signals.get("onboarding_completion_percent", 0),
+            "merchant_operational_clarity_ar": signals.get("merchant_operational_clarity_ar", ""),
         },
         "provider": {
             "configured": bool(pr.get("twilio_env_present")),

@@ -65,6 +65,21 @@
         <p class="m-0 text-[10px] font-bold text-amber-950">{{ vc.normal_recovery_identity_trust_ar | e }}</p>
       </div>
       {% endif %}
+      {% if vc.merchant_clarity_group_ar | default('', true) | trim | length > 0 %}
+      <div class="mt-2 space-y-0.5 rounded-lg border border-slate-200/90 bg-slate-50/80 px-2.5 py-2 text-right shadow-sm" lang="ar" role="region" aria-label="توضيح تشغيلي" data-merchant-clarity-card="1">
+        <p class="m-0 text-[9px] font-bold text-slate-600">{{ vc.merchant_clarity_group_ar | e }}</p>
+        <p class="m-0 text-[10px] font-semibold text-slate-900">{{ vc.merchant_clarity_headline_ar | default('', true) | e }}</p>
+        {% if vc.merchant_clarity_outcome_ar | default('', true) | trim %}
+        <p class="m-0 text-[9px] leading-relaxed text-slate-700">{{ vc.merchant_clarity_outcome_ar | e }}</p>
+        {% endif %}
+        {% if vc.merchant_clarity_roi_hint_ar | default('', true) | trim %}
+        <p class="m-0 text-[9px] font-semibold text-cyan-950/95">{{ vc.merchant_clarity_roi_hint_ar | e }}</p>
+        {% endif %}
+        {% if vc.merchant_clarity_progress_chip_ar | default('', true) | trim %}
+        <p class="m-0 text-[8px] leading-relaxed text-slate-500">{{ vc.merchant_clarity_progress_chip_ar | e }}</p>
+        {% endif %}
+      </div>
+      {% endif %}
       <p class="m-0 text-[9px] leading-relaxed text-slate-500">الأتمتة تعمل تلقائياً وفق إعدادات السلال العادية. حدّث الصفحة لعرض آخر حالة.</p>
       {# Return badge: use every normal_recovery_* signal already on vc (same payload as /dashboard/normal-carts). #}
       {% set nr_phase_key = vc.normal_recovery_phase_key | default('', true) %}

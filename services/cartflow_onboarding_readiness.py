@@ -426,7 +426,7 @@ def get_onboarding_dashboard_visibility(store: Optional[Any]) -> dict[str, Any]:
             t = BLOCKER_COPY[code].get("title_ar")
             if t and t not in titles:
                 titles.append(t)
-    return {
+    out = {
         "show_strip": True,
         "ready": ev["ready"],
         "completion_percent": ev["completion_percent"],
@@ -437,6 +437,15 @@ def get_onboarding_dashboard_visibility(store: Optional[Any]) -> dict[str, Any]:
         "blocking_titles_ar": titles[:4],
         "milestones": ev.get("milestones") or {},
     }
+    try:
+        from services.cartflow_merchant_clarity import (  # noqa: PLC0415
+            enrich_onboarding_visibility,
+        )
+
+        enrich_onboarding_visibility(out, ev)
+    except Exception:
+        pass
+    return out
 
 
 def build_onboarding_health_section() -> dict[str, Any]:
