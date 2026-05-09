@@ -50,6 +50,11 @@
         {% endif %}
       </div>
       {% endif %}
+      {% if vc.normal_recovery_identity_trust_ar | default('') %}
+      <div class="mt-2 rounded-lg border border-amber-200/90 bg-amber-50/75 px-2.5 py-2 text-right shadow-sm" lang="ar" role="alert" data-normal-recovery-identity-trust="1">
+        <p class="m-0 text-[10px] font-bold text-amber-950">{{ vc.normal_recovery_identity_trust_ar | e }}</p>
+      </div>
+      {% endif %}
       <p class="m-0 text-[9px] leading-relaxed text-slate-500">الأتمتة تعمل تلقائياً وفق إعدادات السلال العادية. حدّث الصفحة لعرض آخر حالة.</p>
       {# Return badge: use every normal_recovery_* signal already on vc (same payload as /dashboard/normal-carts). #}
       {% set nr_phase_key = vc.normal_recovery_phase_key | default('', true) %}

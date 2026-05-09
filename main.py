@@ -2521,6 +2521,35 @@ def _normal_recovery_dashboard_phase_key(ac: AbandonedCart) -> str:
     return "pending_send"
 
 
+def _normal_recovery_identity_trust_surface(ac: AbandonedCart) -> Optional[str]:
+    """رسالة تشغيلية آمنة عند تعارض الهوية؛ لا تكشف تفاصيل تقنية."""
+    from services.cartflow_identity import (
+        IDENTITY_TRUST_FAILED_KEY,
+        MERCHANT_IDENTITY_TRUST_AR,
+        detect_abandoned_cart_identity_anomaly,
+        log_cartflow_identity_warning,
+    )
+
+    bh = behavioral_dict_for_abandoned_cart(ac)
+    if bh.get(IDENTITY_TRUST_FAILED_KEY) is True:
+        return str(bh.get("identity_trust_message_ar") or MERCHANT_IDENTITY_TRUST_AR)
+    sid = (getattr(ac, "recovery_session_id", None) or "").strip()
+    zid = (getattr(ac, "zid_cart_id", None) or "").strip()
+    bad, rsn = detect_abandoned_cart_identity_anomaly(sid, zid or None)
+    if bad:
+        slug_guess = (_store_slug_for_cart_recovery_reason(ac) or "").strip()[:255]
+        log_cartflow_identity_warning(
+            store_slug=slug_guess or "-",
+            resolved_store_id=str(getattr(ac, "store_id", "") or "") or "-",
+            expected_store_id="-",
+            session_id=sid,
+            cart_id=zid,
+            reason=f"dashboard_identity_anomaly:{rsn}",
+        )
+        return MERCHANT_IDENTITY_TRUST_AR
+    return None
+
+
 def _normal_recovery_phase_steps_payload(ac: AbandonedCart) -> dict[str, Any]:
     order = _NORMAL_RECOVERY_PHASE_ORDER
     current_key = _normal_recovery_dashboard_phase_key(ac)
@@ -2603,6 +2632,9 @@ def _normal_recovery_phase_steps_payload(ac: AbandonedCart) -> dict[str, Any]:
         "normal_recovery_blocker_key": blocker_key_out,
     }
     out_nr.update(conversation_dashboard_extras(ac))
+    trust_ar = _normal_recovery_identity_trust_surface(ac)
+    if trust_ar:
+        out_nr["normal_recovery_identity_trust_ar"] = trust_ar
     return out_nr
 
 
