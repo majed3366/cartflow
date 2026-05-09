@@ -65,6 +65,14 @@ def _reset_recovery_memory() -> None:
         reset_duplicate_guard_for_tests()
         reset_lifecycle_guard_for_tests()
         reset_provider_readiness_log_throttle_for_tests()
+        try:
+            from services.cartflow_session_consistency import (
+                reset_session_consistency_for_tests,
+            )
+
+            reset_session_consistency_for_tests()
+        except Exception:
+            pass
     except Exception:
         pass
 

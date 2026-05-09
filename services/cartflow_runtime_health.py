@@ -261,6 +261,16 @@ def build_runtime_health_snapshot() -> dict[str, Any]:
         lc_diag = {}
     lc_runtime_ok = bool(lc_diag.get("lifecycle_runtime_ok", True))
 
+    sess_diag: dict[str, Any] = {}
+    try:
+        from services.cartflow_session_consistency import (  # noqa: PLC0415
+            get_session_consistency_diagnostics_readonly,
+        )
+
+        sess_diag = get_session_consistency_diagnostics_readonly()
+    except Exception:
+        sess_diag = {}
+
     pr_ready: dict[str, Any] = {}
     try:
         from services.cartflow_provider_readiness import (  # noqa: PLC0415
@@ -316,9 +326,16 @@ def build_runtime_health_snapshot() -> dict[str, Any]:
                 lc_diag.get("lifecycle_conflict_events_recent", 0)
             ),
         },
+        "session_consistency_runtime": {
+            **sess_diag,
+        },
         "behavioral_runtime": {
             "behavioral_merge_runtime_ok": lc_runtime_ok,
             "runtime_active": recovery_active,
+            "behavioral_state_consistent": bool(
+                sess_diag.get("behavioral_state_consistent", True)
+            ),
+            "session_consistency_counters": sess_diag.get("counters", {}),
         },
         "provider_runtime": {
             "whatsapp_provider_ready": wa_ready,
@@ -370,6 +387,11 @@ def derive_runtime_trust_signals(
         if isinstance(snap.get("lifecycle_consistency_runtime"), dict)
         else {}
     )
+    sc_rt = (
+        snap.get("session_consistency_runtime")
+        if isinstance(snap.get("session_consistency_runtime"), dict)
+        else {}
+    )
 
     prov_ok = bool(pr.get("whatsapp_provider_ready")) and not bool(pr.get("provider_effectively_disabled"))
     rec_ok = bool(rr.get("runtime_active"))
@@ -377,6 +399,8 @@ def derive_runtime_trust_signals(
     id_conflict = bool(ir.get("identity_conflict_detected"))
     dup_ok = bool(dup_rt.get("duplicate_prevention_runtime_ok", True))
     lc_ok = bool(lc_rt.get("lifecycle_runtime_ok", True))
+    sess_runtime_ok = bool(sc_rt.get("session_runtime_consistent", True))
+    stale_any = bool(sc_rt.get("stale_state_detected", False))
 
     if recent_anomaly_count is None:
         with _anomaly_lock:
@@ -389,6 +413,8 @@ def derive_runtime_trust_signals(
         or id_conflict
         or (not dup_ok)
         or (not lc_ok)
+        or (not sess_runtime_ok)
+        or stale_any
     )
     degraded = (not prov_ok) or (not rec_ok) or (not ident_ok) or (not dup_ok) or (not lc_ok)
 
@@ -403,6 +429,10 @@ def derive_runtime_trust_signals(
         "runtime_degraded": degraded,
         "runtime_warning": warn and not degraded,
         "runtime_trust_label_ar": label_ar,
+        "session_runtime_consistent": sess_runtime_ok,
+        "stale_state_detected": stale_any,
+        "runtime_state_drift_detected": bool(sc_rt.get("runtime_state_drift_detected", False)),
+        "behavioral_state_consistent": bool(sc_rt.get("behavioral_state_consistent", True)),
     }
 
 
@@ -467,11 +497,43 @@ def build_admin_runtime_summary() -> dict[str, Any]:
             if isinstance(snap.get("lifecycle_consistency_runtime"), dict)
             else False,
         },
+        "session_consistency": {
+            "session_runtime_consistent": bool(
+                (snap.get("session_consistency_runtime") or {}).get(
+                    "session_runtime_consistent", True
+                )
+            )
+            if isinstance(snap.get("session_consistency_runtime"), dict)
+            else True,
+            "stale_state_detected": bool(
+                (snap.get("session_consistency_runtime") or {}).get("stale_state_detected", False)
+            )
+            if isinstance(snap.get("session_consistency_runtime"), dict)
+            else False,
+            "runtime_state_drift_detected": bool(
+                (snap.get("session_consistency_runtime") or {}).get(
+                    "runtime_state_drift_detected", False
+                )
+            )
+            if isinstance(snap.get("session_consistency_runtime"), dict)
+            else False,
+            "behavioral_state_consistent": bool(
+                (snap.get("session_consistency_runtime") or {}).get(
+                    "behavioral_state_consistent", True
+                )
+            )
+            if isinstance(snap.get("session_consistency_runtime"), dict)
+            else True,
+        },
         "trust": {
             "runtime_stable": signals["runtime_stable"],
             "runtime_degraded": signals["runtime_degraded"],
             "runtime_warning": signals["runtime_warning"],
             "runtime_trust_label_ar": signals["runtime_trust_label_ar"],
+            "session_runtime_consistent": signals.get("session_runtime_consistent", True),
+            "stale_state_detected": signals.get("stale_state_detected", False),
+            "runtime_state_drift_detected": signals.get("runtime_state_drift_detected", False),
+            "behavioral_state_consistent": signals.get("behavioral_state_consistent", True),
         },
         "provider": {
             "configured": bool(pr.get("twilio_env_present")),

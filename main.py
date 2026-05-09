@@ -2785,6 +2785,24 @@ def _normal_recovery_phase_steps_payload(ac: AbandonedCart) -> dict[str, Any]:
     trust_ar = _normal_recovery_identity_trust_surface(ac)
     if trust_ar:
         out_nr["normal_recovery_identity_trust_ar"] = trust_ar
+    try:
+        from services.cartflow_session_consistency import (  # noqa: PLC0415
+            finalize_dashboard_session_payload,
+        )
+
+        _slug_ss = str(_store_slug_for_cart_recovery_reason(ac) or "").strip()[:255] or "-"
+        finalize_dashboard_session_payload(
+            out_nr,
+            ac=ac,
+            phase_key=current_key,
+            coarse=coarse,
+            latest_log_status=latest_log_status,
+            behavioral=behavioral_pre,
+            sent_ct=int(sent_ct),
+            store_slug=_slug_ss,
+        )
+    except Exception:
+        pass
     return out_nr
 
 

@@ -16,6 +16,14 @@ class CartflowLifecycleConsistencyTests(unittest.TestCase):
     def tearDown(self) -> None:
         lg.reset_lifecycle_guard_for_tests()
         rh.clear_runtime_anomaly_buffer_for_tests()
+        try:
+            from services.cartflow_session_consistency import (
+                reset_session_consistency_for_tests,
+            )
+
+            reset_session_consistency_for_tests()
+        except Exception:
+            pass
 
     def test_valid_transition_chain(self) -> None:
         self.assertTrue(lg.is_valid_transition(lg.STATE_ABANDONED, lg.STATE_QUEUED))

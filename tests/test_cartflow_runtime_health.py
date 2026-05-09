@@ -15,6 +15,14 @@ class CartflowRuntimeHealthTests(unittest.TestCase):
     def tearDown(self) -> None:
         rh.clear_runtime_anomaly_buffer_for_tests()
         os.environ.pop("CARTFLOW_STRUCTURED_HEALTH_LOG", None)
+        try:
+            from services.cartflow_session_consistency import (
+                reset_session_consistency_for_tests,
+            )
+
+            reset_session_consistency_for_tests()
+        except Exception:
+            pass
 
     def test_build_runtime_health_snapshot_sections(self) -> None:
         snap = rh.build_runtime_health_snapshot()
@@ -25,6 +33,7 @@ class CartflowRuntimeHealthTests(unittest.TestCase):
             "dashboard_runtime",
             "duplicate_protection_runtime",
             "lifecycle_consistency_runtime",
+            "session_consistency_runtime",
             "behavioral_runtime",
             "provider_runtime",
         ):
@@ -41,14 +50,15 @@ class CartflowRuntimeHealthTests(unittest.TestCase):
             "invalid_transition_recently",
         ):
             self.assertIn(k, lc)
+        br = snap["behavioral_runtime"]
+        self.assertIn("behavioral_state_consistent", br)
+        self.assertIn("session_consistency_counters", br)
         for k in (
             "duplicate_anomaly_count",
             "duplicate_send_blocked_recently",
             "duplicate_prevention_runtime_ok",
         ):
             self.assertIn(k, snap["duplicate_protection_runtime"])
-
-    def test_aggregate_anomaly_symbols(self) -> None:
         self.assertEqual(
             rh.aggregate_anomaly_symbols(["a", "a", "b"]),
             {"a": 2, "b": 1},
@@ -87,9 +97,11 @@ class CartflowRuntimeHealthTests(unittest.TestCase):
             "provider",
             "duplicate_protection",
             "lifecycle_consistency",
+            "session_consistency",
         ):
             self.assertIn(k, summary)
         self.assertIn("runtime_trust_label_ar", summary["trust"])
+        self.assertIn("session_runtime_consistent", summary["trust"])
         self.assertIn("duplicate_anomaly_count", summary["duplicate_protection"])
         self.assertIn("lifecycle_conflict_detected", summary["lifecycle_consistency"])
 
