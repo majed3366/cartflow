@@ -2696,6 +2696,19 @@ def _normal_recovery_phase_steps_payload(ac: AbandonedCart) -> dict[str, Any]:
             _lc_notes = [str(x) for x in _raw_notes]
     except Exception:
         _lc_hint_override = None
+    try:
+        from services.cartflow_provider_readiness import (  # noqa: PLC0415
+            enrich_whatsapp_failed_blocker,
+            get_whatsapp_provider_readiness,
+        )
+
+        if blocker_key_out == "whatsapp_failed" and isinstance(blocker_bundle, dict):
+            blocker_bundle = enrich_whatsapp_failed_blocker(
+                blocker_bundle,
+                readiness=get_whatsapp_provider_readiness(),
+            )
+    except Exception:
+        pass
     hint_ar: Optional[str] = None
     last_skip_pub: Optional[str] = None
     op_hint_ar: Optional[str] = None
@@ -2762,6 +2775,10 @@ def _normal_recovery_phase_steps_payload(ac: AbandonedCart) -> dict[str, Any]:
         "normal_recovery_blocker": blocker_bundle,
         "normal_recovery_blocker_key": blocker_key_out,
     }
+    if isinstance(blocker_bundle, dict):
+        _pih = str(blocker_bundle.get("provider_issue_hint_ar") or "").strip()
+        if _pih:
+            out_nr["normal_recovery_provider_issue_hint_ar"] = _pih
     if _lc_notes:
         out_nr["normal_recovery_lifecycle_notes"] = _lc_notes
     out_nr.update(conversation_dashboard_extras(ac))

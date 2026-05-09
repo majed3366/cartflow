@@ -58,9 +58,13 @@ def _reset_recovery_memory() -> None:
     try:
         from services.cartflow_duplicate_guard import reset_duplicate_guard_for_tests
         from services.cartflow_lifecycle_guard import reset_lifecycle_guard_for_tests
+        from services.cartflow_provider_readiness import (
+            reset_provider_readiness_log_throttle_for_tests,
+        )
 
         reset_duplicate_guard_for_tests()
         reset_lifecycle_guard_for_tests()
+        reset_provider_readiness_log_throttle_for_tests()
     except Exception:
         pass
 

@@ -261,6 +261,18 @@ def build_runtime_health_snapshot() -> dict[str, Any]:
         lc_diag = {}
     lc_runtime_ok = bool(lc_diag.get("lifecycle_runtime_ok", True))
 
+    pr_ready: dict[str, Any] = {}
+    try:
+        from services.cartflow_provider_readiness import (  # noqa: PLC0415
+            get_whatsapp_provider_readiness,
+            log_provider_readiness_snapshot,
+        )
+
+        pr_ready = get_whatsapp_provider_readiness()
+        log_provider_readiness_snapshot(pr_ready)
+    except Exception:
+        pr_ready = {}
+
     return {
         "recovery_runtime": {
             "runtime_active": recovery_active,
@@ -314,6 +326,25 @@ def build_runtime_health_snapshot() -> dict[str, Any]:
             **tw,
             "recent_send_failures_24h": fail_n,
             "provider_effectively_disabled": not tw["twilio_env_present"],
+            "provider_readiness_ready": bool(pr_ready.get("ready", False)),
+            "provider_readiness_configured": bool(pr_ready.get("configured", False)),
+            "provider_readiness_provider": str(pr_ready.get("provider") or "unknown"),
+            "provider_readiness_mode": str(pr_ready.get("mode") or "unknown"),
+            "provider_failure_class": str(pr_ready.get("failure_class") or ""),
+            "provider_readiness_summary": {
+                k: pr_ready[k]
+                for k in (
+                    "provider",
+                    "configured",
+                    "ready",
+                    "mode",
+                    "failure_class",
+                    "merchant_label_ar",
+                    "merchant_action_ar",
+                    "missing_env",
+                )
+                if k in pr_ready
+            },
         },
         "_buffered_anomaly_events": buf_n,
     }
@@ -445,5 +476,8 @@ def build_admin_runtime_summary() -> dict[str, Any]:
         "provider": {
             "configured": bool(pr.get("twilio_env_present")),
             "recent_send_failures_24h": pr.get("recent_send_failures_24h"),
+            "provider_readiness_ready": bool(pr.get("provider_readiness_ready", False)),
+            "provider_readiness_configured": bool(pr.get("provider_readiness_configured", False)),
+            "provider_failure_class": pr.get("provider_failure_class"),
         },
     }

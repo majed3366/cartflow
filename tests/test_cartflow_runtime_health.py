@@ -33,6 +33,7 @@ class CartflowRuntimeHealthTests(unittest.TestCase):
         self.assertIn("runtime_active", snap["recovery_runtime"])
         self.assertIn("whatsapp_provider_configured", snap["whatsapp_runtime"])
         self.assertIn("recent_send_failures_24h", snap["provider_runtime"])
+        self.assertIn("provider_readiness_summary", snap["provider_runtime"])
         lc = snap["lifecycle_consistency_runtime"]
         for k in (
             "lifecycle_runtime_ok",
