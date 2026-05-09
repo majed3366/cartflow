@@ -17,8 +17,9 @@
       {% elif nrs == 'stopped' %}border-slate-200/90 bg-slate-100/95 text-slate-700
       {% elif nrs == 'returned' %}border-sky-200/90 bg-sky-50/95 text-sky-900
       {% elif nrs == 'ignored' %}border-amber-200/85 bg-amber-50/90 text-amber-950
+      {% elif nrs == 'blocked' %}border-amber-200/90 bg-amber-50/95 text-amber-950
       {% else %}border-cyan-200/90 bg-cyan-50/90 text-cyan-950{% endif %}"
-      data-normal-recovery-status="{{ nrs }}">{{ vc.normal_recovery_phase_label_ar | default('بانتظار الإرسال') }}</span>
+      data-normal-recovery-status="{{ nrs }}" data-normal-recovery-phase-key="{{ vc.normal_recovery_phase_key | default('', true) | e }}">{{ vc.normal_recovery_phase_label_ar | default('بانتظار الإرسال') }}</span>
   </div>
   <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-5">
     <div class="min-w-0 flex-1 space-y-2 text-right">

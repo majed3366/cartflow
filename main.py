@@ -1826,6 +1826,11 @@ _NORMAL_RECOVERY_PHASE_ORDER: list[tuple[str, str]] = [
     ("recovery_complete", "اكتمل الاسترجاع"),
 ]
 
+# مرحلة عرض — الإرسال متوقف لغياب رقم عميل مُتحقق؛ موضع مسار الرسائل = ‎pending_send‎.
+NORMAL_RECOVERY_PHASE_KEY_BLOCKED_MISSING_CUSTOMER_PHONE = (
+    "blocked_missing_customer_phone"
+)
+
 # Phases where overlaying a «missing phone» banner would duplicate or confuse the primary story.
 _NORMAL_RECOVERY_PHASE_NO_MISSING_PHONE_OVERLAY = frozenset(
     {
@@ -2253,6 +2258,21 @@ def _normal_recovery_latest_skipped_no_verified_phone_row(
         return None
 
 
+def _normal_recovery_is_missing_verified_phone_send_blocked(ac: AbandonedCart) -> bool:
+    """
+    قراءة فقط — نفس حقيقة التشغيل لبطاقة اللوحة عند غياب رقم يُسمح بالإرسال إليه:
+    لا إرسال ناجح بعد + لا رقم مُتحقق (كما في ‎_normal_recovery_dashboard_resolve_customer_phone_raw‎).
+    """
+    store_ac = _store_row_for_abandoned_cart(ac)
+    if (_normal_recovery_dashboard_resolve_customer_phone_raw(ac, store_ac) or "").strip():
+        return False
+    if _cart_recovery_sent_real_count_for_abandoned(ac) > 0:
+        return False
+    if _normal_recovery_latest_skipped_no_verified_phone_row(ac) is not None:
+        return True
+    return True
+
+
 def _normal_recovery_debug_for_session(session_id: str) -> dict[str, Any]:
     """تجميع قراءة فقط للتشخيص المحلي — ‎GET /dev/normal-recovery-debug‎."""
     sid = (session_id or "").strip()[:512]
@@ -2474,6 +2494,8 @@ def _normal_recovery_coarse_status(phase_key: str) -> str:
         return "stopped"
     if pk == "pending_send":
         return "pending"
+    if pk == NORMAL_RECOVERY_PHASE_KEY_BLOCKED_MISSING_CUSTOMER_PHONE:
+        return "blocked"
     return "pending"
 
 
@@ -2581,6 +2603,8 @@ def _normal_recovery_dashboard_phase_key(ac: AbandonedCart) -> str:
         return "pending_second_attempt"
     if sent_n == 1:
         return "first_message_sent"
+    if _normal_recovery_is_missing_verified_phone_send_blocked(ac):
+        return NORMAL_RECOVERY_PHASE_KEY_BLOCKED_MISSING_CUSTOMER_PHONE
     return "pending_send"
 
 
@@ -2617,10 +2641,16 @@ def _normal_recovery_phase_steps_payload(ac: AbandonedCart) -> dict[str, Any]:
     order = _NORMAL_RECOVERY_PHASE_ORDER
     current_key = _normal_recovery_dashboard_phase_key(ac)
     key_to_index = {k: i for i, (k, _) in enumerate(order)}
-    if current_key not in key_to_index:
-        current_key = "pending_send"
-    curr_idx = key_to_index[current_key]
+    progress_key = current_key
+    if current_key == NORMAL_RECOVERY_PHASE_KEY_BLOCKED_MISSING_CUSTOMER_PHONE:
+        progress_key = "pending_send"
+    if progress_key not in key_to_index:
+        progress_key = "pending_send"
+    curr_idx = key_to_index[progress_key]
     label_ar = order[curr_idx][1]
+    if current_key == NORMAL_RECOVERY_PHASE_KEY_BLOCKED_MISSING_CUSTOMER_PHONE:
+        _bst = dict(get_recovery_blocker_display_state("missing_customer_phone"))
+        label_ar = str(_bst.get("operational_hint_ar") or "بانتظار رقم العميل").strip()
     coarse = _normal_recovery_coarse_status(current_key)
     try:
         log.info(
@@ -2640,10 +2670,16 @@ def _normal_recovery_phase_steps_payload(ac: AbandonedCart) -> dict[str, Any]:
         pass
     steps_out: list[dict[str, Any]] = []
     for i, (k, lbl) in enumerate(order):
+        display_lbl = lbl
+        if (
+            i == curr_idx
+            and current_key == NORMAL_RECOVERY_PHASE_KEY_BLOCKED_MISSING_CUSTOMER_PHONE
+        ):
+            display_lbl = label_ar
         steps_out.append(
             {
                 "key": k,
-                "label_ar": lbl,
+                "label_ar": display_lbl,
                 "done": i < curr_idx,
                 "current": i == curr_idx,
                 "upcoming": i > curr_idx,
@@ -2784,17 +2820,6 @@ def _normal_recovery_phase_steps_payload(ac: AbandonedCart) -> dict[str, Any]:
                 pass
     except Exception:
         pass
-    if blocker_key_out == "missing_customer_phone":
-        _missing_phone_primary_ar = "بانتظار رقم العميل"
-        if isinstance(blocker_bundle, dict):
-            _op = str(blocker_bundle.get("operational_hint_ar") or "").strip()
-            if _op:
-                _missing_phone_primary_ar = _op
-        label_ar = _missing_phone_primary_ar
-        for _step in steps_out:
-            if _step.get("current") is True:
-                _step["label_ar"] = _missing_phone_primary_ar
-                break
     out_nr: dict[str, Any] = {
         "normal_recovery_phase_key": current_key,
         "normal_recovery_phase_label_ar": label_ar,

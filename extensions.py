@@ -88,6 +88,8 @@ def init_database(url: Optional[str] = None) -> None:
     engine_kw: dict[str, Any] = {}
     if u.startswith("sqlite:"):
         connect["check_same_thread"] = False
+        # يقلّل ‎"database is locked"‎ عند ‎TestClient‎ / عدة خيوط على ‎Windows‎ مع نفس الملف.
+        connect["timeout"] = 30.0
         # ‎QueuePool‎ الافتراضي يُنفّد الاتصالات في ‎pytest‎ الطويل على ‎SQLite‎؛ ‎NullPool‎ يغلق الاتصال عند الإرجاع.
         engine_kw["poolclass"] = NullPool
     _engine = create_engine(

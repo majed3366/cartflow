@@ -9,7 +9,7 @@ from datetime import datetime, timedelta, timezone
 
 from fastapi.testclient import TestClient
 
-from extensions import db
+from extensions import db, remove_scoped_session
 from main import (
     app,
     _normal_recovery_phase_steps_payload,
@@ -468,6 +468,11 @@ class NormalRecoveryDashboardStatusTests(unittest.TestCase):
         db.session.commit()
         payload = _normal_recovery_phase_steps_payload(ac)
         self.assertEqual(payload.get("normal_recovery_blocker_key"), "missing_customer_phone")
+        self.assertEqual(
+            payload.get("normal_recovery_phase_key"),
+            "blocked_missing_customer_phone",
+        )
+        self.assertEqual(payload.get("normal_recovery_status"), "blocked")
         self.assertEqual(payload.get("normal_recovery_followup_hint_ar"), "لا يوجد رقم عميل")
         self.assertEqual(
             payload.get("normal_recovery_phase_label_ar"),
@@ -689,6 +694,11 @@ class NormalRecoveryDashboardStatusTests(unittest.TestCase):
         db.session.commit()
         payload = _normal_recovery_phase_steps_payload(ac)
         self.assertEqual(payload.get("normal_recovery_blocker_key"), "missing_customer_phone")
+        self.assertEqual(
+            payload.get("normal_recovery_phase_key"),
+            "blocked_missing_customer_phone",
+        )
+        self.assertEqual(payload.get("normal_recovery_status"), "blocked")
         self.assertEqual(payload.get("normal_recovery_phase_label_ar"), "بانتظار رقم العميل")
         hints = (payload.get("normal_recovery_followup_hint_ar") or "") + (
             payload.get("normal_recovery_operational_hint_ar") or ""
@@ -721,6 +731,75 @@ class NormalRecoveryDashboardStatusTests(unittest.TestCase):
             ("بانتظار رقم العميل" in html) or ("لا يوجد رقم عميل" in html),
             html[:4000],
         )
+        self.assertIn(
+            'data-normal-recovery-phase-key="blocked_missing_customer_phone"',
+            html,
+        )
+        self.assertIn('data-normal-recovery-status="blocked"', html)
+
+    def test_http_abandon_without_phone_resolves_blocked_dominant_phase(self) -> None:
+        """API reason + abandon without phone → payload phase is blocked (not pending_send)."""
+        from unittest.mock import patch
+
+        from main import _dashboard_recovery_store_row
+
+        st = self._store_attempts_1()
+        slug = (st.zid_store_id or "demo").strip()
+        db.session.commit()  # Release SQLite write lock before TestClient request threads write.
+        remove_scoped_session()  # Avoid test-thread session pinning the DB across ASGI threads.
+        sid = f"nr-http-{self._suffix}"
+        zid = f"zid-http-{self._suffix}"
+        client = TestClient(app)
+        with (
+            patch("main.send_whatsapp", return_value={"ok": True}),
+            patch("main.recovery_uses_real_whatsapp", return_value=False),
+            patch("main.get_recovery_delay", return_value=0),
+            patch("main._persist_cart_recovery_log"),
+        ):
+            rr = client.post(
+                "/api/cart-recovery/reason",
+                json={
+                    "store_slug": slug,
+                    "session_id": sid,
+                    "reason_tag": "price",
+                },
+            )
+            self.assertEqual(rr.status_code, 200, rr.text)
+            ra = client.post(
+                "/api/cart-event",
+                json={
+                    "event": "cart_abandoned",
+                    "store": slug,
+                    "session_id": sid,
+                    "cart_id": zid,
+                    "cart": [{"name": "item", "price": 40}],
+                },
+            )
+            self.assertEqual(ra.status_code, 200, ra.text)
+        ac = (
+            db.session.query(AbandonedCart)
+            .filter(AbandonedCart.recovery_session_id == sid)
+            .order_by(AbandonedCart.id.desc())
+            .first()
+        )
+        self.assertIsNotNone(ac)
+        payload = _normal_recovery_phase_steps_payload(ac)
+        self.assertEqual(
+            payload.get("normal_recovery_phase_key"),
+            "blocked_missing_customer_phone",
+        )
+        self.assertEqual(payload.get("normal_recovery_status"), "blocked")
+        self.assertEqual(payload.get("normal_recovery_blocker_key"), "missing_customer_phone")
+        ds = _dashboard_recovery_store_row()
+        if ds is not None and int(ac.store_id or 0) == int(ds.id):
+            rd = client.get("/dashboard/normal-carts")
+            self.assertEqual(rd.status_code, 200)
+            html = rd.text or ""
+            self.assertIn(
+                'data-normal-recovery-phase-key="blocked_missing_customer_phone"',
+                html,
+            )
+            self.assertIn('data-normal-recovery-status="blocked"', html)
 
 
 if __name__ == "__main__":

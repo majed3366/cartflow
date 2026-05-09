@@ -243,7 +243,7 @@ def map_dashboard_phase_to_state(phase_key: Optional[str]) -> str:
         return STATE_STOPPED
     if pk == "behavioral_link_clicked":
         return STATE_SENT
-    if pk == "pending_send":
+    if pk in ("pending_send", "blocked_missing_customer_phone"):
         return STATE_ABANDONED
     return STATE_UNKNOWN
 
