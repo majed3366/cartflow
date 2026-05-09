@@ -2784,6 +2784,17 @@ def _normal_recovery_phase_steps_payload(ac: AbandonedCart) -> dict[str, Any]:
                 pass
     except Exception:
         pass
+    if blocker_key_out == "missing_customer_phone":
+        _missing_phone_primary_ar = "بانتظار رقم العميل"
+        if isinstance(blocker_bundle, dict):
+            _op = str(blocker_bundle.get("operational_hint_ar") or "").strip()
+            if _op:
+                _missing_phone_primary_ar = _op
+        label_ar = _missing_phone_primary_ar
+        for _step in steps_out:
+            if _step.get("current") is True:
+                _step["label_ar"] = _missing_phone_primary_ar
+                break
     out_nr: dict[str, Any] = {
         "normal_recovery_phase_key": current_key,
         "normal_recovery_phase_label_ar": label_ar,

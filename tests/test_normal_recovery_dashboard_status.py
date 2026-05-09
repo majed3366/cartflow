@@ -469,6 +469,14 @@ class NormalRecoveryDashboardStatusTests(unittest.TestCase):
         payload = _normal_recovery_phase_steps_payload(ac)
         self.assertEqual(payload.get("normal_recovery_blocker_key"), "missing_customer_phone")
         self.assertEqual(payload.get("normal_recovery_followup_hint_ar"), "لا يوجد رقم عميل")
+        self.assertEqual(
+            payload.get("normal_recovery_phase_label_ar"),
+            "بانتظار رقم العميل",
+        )
+        self.assertNotEqual(
+            payload.get("normal_recovery_phase_label_ar"),
+            "بانتظار الإرسال",
+        )
         self.assertNotEqual(payload.get("normal_recovery_status"), "sent")
         self.assertIsNone(payload.get("normal_recovery_sequence_label_ar"))
 
@@ -681,6 +689,7 @@ class NormalRecoveryDashboardStatusTests(unittest.TestCase):
         db.session.commit()
         payload = _normal_recovery_phase_steps_payload(ac)
         self.assertEqual(payload.get("normal_recovery_blocker_key"), "missing_customer_phone")
+        self.assertEqual(payload.get("normal_recovery_phase_label_ar"), "بانتظار رقم العميل")
         hints = (payload.get("normal_recovery_followup_hint_ar") or "") + (
             payload.get("normal_recovery_operational_hint_ar") or ""
         )
