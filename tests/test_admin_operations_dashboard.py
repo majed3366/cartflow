@@ -65,7 +65,8 @@ class AdminOperationsDashboardTests(unittest.TestCase):
         self.assertRegex(body, r"جاهزية الإعداد|صحة الإعداد|٤ —")
         self.assertIn("ملخص سريع", body)
         self.assertIn("أولوية:", body)
-        self.assertRegex(body, r"طبيعي|متابعة|تدخل|خطر تشغيلي")
+        self.assertIn("مسارات إجراء مقترحة", body)
+        self.assertIn("admin-action-routing", body)
 
     def test_operational_interpretation_and_guidance_sections(self) -> None:
         os.environ["CARTFLOW_ADMIN_PASSWORD"] = "dashboard-auth-test-pass-9"
