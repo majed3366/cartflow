@@ -2601,10 +2601,13 @@ def _normal_recovery_phase_steps_payload(ac: AbandonedCart) -> dict[str, Any]:
         seq_label_ar = "تم إرسال الرسالة الأولى"
     cust_raw = _normal_recovery_dashboard_resolve_customer_phone_raw(ac, store_ac)
     cust_phone_display_ar = cust_raw if cust_raw else "لا يوجد رقم عميل"
+    behavioral_pre = behavioral_dict_for_abandoned_cart(ac)
     blocker_row = _normal_recovery_latest_blocker_event_row(ac)
     blocker_bundle: Optional[dict[str, Any]] = None
     blocker_key_out: Optional[str] = None
+    latest_log_status: Optional[str] = None
     if blocker_row is not None:
+        latest_log_status = str(getattr(blocker_row, "status", None) or "") or None
         blocker_bundle = recovery_blocker_from_latest_log_status(
             getattr(blocker_row, "status", None)
         )
@@ -2612,9 +2615,36 @@ def _normal_recovery_phase_steps_payload(ac: AbandonedCart) -> dict[str, Any]:
             blocker_key_out = str(blocker_bundle.get("key"))
     hint_ar: Optional[str] = None
     last_skip_pub: Optional[str] = None
+    op_hint_ar: Optional[str] = None
     if isinstance(blocker_bundle, dict) and blocker_bundle:
         hint_ar = str(blocker_bundle.get("label_ar") or "") or None
         last_skip_pub = blocker_key_out
+        op_hint_ar = str(blocker_bundle.get("operational_hint_ar") or "").strip() or None
+    try:
+        from services.cartflow_identity import IDENTITY_TRUST_FAILED_KEY
+        from services.cartflow_observability_runtime import (
+            detect_recovery_runtime_conflicts,
+            log_runtime_conflicts,
+        )
+
+        trust_failed = behavioral_pre.get(IDENTITY_TRUST_FAILED_KEY) is True
+        log_s = (latest_log_status or "").strip().lower()
+        sent_ok = log_s in ("mock_sent", "sent_real")
+        _conflicts = detect_recovery_runtime_conflicts(
+            abandoned_status=str(getattr(ac, "status", "") or ""),
+            behavioral=behavioral_pre,
+            latest_log_status=latest_log_status,
+            identity_trust_failed=trust_failed,
+            sent_ok_latest_log=sent_ok,
+        )
+        if _conflicts:
+            log_runtime_conflicts(
+                _conflicts,
+                session_id=(getattr(ac, "recovery_session_id", None) or ""),
+                cart_id=(getattr(ac, "zid_cart_id", None) or ""),
+            )
+    except Exception:
+        pass
     out_nr: dict[str, Any] = {
         "normal_recovery_phase_key": current_key,
         "normal_recovery_phase_label_ar": label_ar,
@@ -2626,6 +2656,7 @@ def _normal_recovery_phase_steps_payload(ac: AbandonedCart) -> dict[str, Any]:
         "normal_recovery_attempt_sent": sent_ct,
         "normal_recovery_sequence_label_ar": seq_label_ar,
         "normal_recovery_followup_hint_ar": hint_ar,
+        "normal_recovery_operational_hint_ar": op_hint_ar,
         "normal_recovery_last_skip_reason": last_skip_pub,
         "normal_recovery_customer_phone_display_ar": cust_phone_display_ar,
         "normal_recovery_blocker": blocker_bundle,
@@ -3253,6 +3284,19 @@ def _persist_cart_recovery_log(
         )
         db.session.add(row)
         db.session.commit()
+        try:
+            from services.cartflow_observability_runtime import (
+                trace_recovery_lifecycle_from_log_status,
+            )
+
+            trace_recovery_lifecycle_from_log_status(
+                status=status,
+                session_id=session_id,
+                cart_id=cart_id,
+                store_slug=store_slug,
+            )
+        except Exception:
+            pass
     except Exception as e:  # noqa: BLE001
         db.session.rollback()
         log.warning("CartRecoveryLog persist failed: %s", e)
@@ -7896,6 +7940,8 @@ def dashboard_recovery_settings(request: Request):
 @app.get("/dashboard/normal-carts")
 def dashboard_normal_carts(request: Request):
     """السلال العادية — مراقبة أتمتة، قوالب حسب السبب، وتوقيت التسلسل."""
+    from services.cartflow_observability_runtime import runtime_health_snapshot_readonly
+
     normal_recovery_alerts = _normal_recovery_cart_alert_list()
     normal_stats = _normal_carts_dashboard_stats()
     return templates.TemplateResponse(
@@ -7905,6 +7951,7 @@ def dashboard_normal_carts(request: Request):
             "request": request,
             "normal_recovery_alerts": normal_recovery_alerts,
             "normal_stats": normal_stats,
+            "cartflow_runtime_health": runtime_health_snapshot_readonly(),
         },
     )
 

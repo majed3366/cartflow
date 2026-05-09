@@ -72,6 +72,7 @@ def get_recovery_blocker_display_state(blocker_reason: Optional[str]) -> dict[st
         "missing_customer_phone": {
             "key": "missing_customer_phone",
             "label_ar": "لا يوجد رقم عميل",
+            "operational_hint_ar": "بانتظار رقم العميل",
             "description_ar": "لا يمكن إرسال رسائل الاسترجاع لهذه السلة حتى يتوفر رقم العميل.",
             "severity": "warning",
             "merchant_action_ar": "تحقق من مصدر رقم العميل أو تكامل المنصة.",
@@ -79,6 +80,7 @@ def get_recovery_blocker_display_state(blocker_reason: Optional[str]) -> dict[st
         "missing_reason": {
             "key": "missing_reason",
             "label_ar": "سبب التردد غير معروف",
+            "operational_hint_ar": "سبب التردد غير معروف",
             "description_ar": "لم يتم تحديد سبب التردد، لذلك لا يمكن اختيار الرسالة المناسبة.",
             "severity": "warning",
             "merchant_action_ar": "راجع إعدادات الودجت أو تدفق اختيار السبب.",
@@ -86,6 +88,7 @@ def get_recovery_blocker_display_state(blocker_reason: Optional[str]) -> dict[st
         "whatsapp_failed": {
             "key": "whatsapp_failed",
             "label_ar": "فشل إرسال واتساب",
+            "operational_hint_ar": "فشل إرسال واتساب",
             "description_ar": "حاول النظام الإرسال لكن مزود واتساب لم يقبل الرسالة أو فشل التسليم.",
             "severity": "error",
             "merchant_action_ar": "راجع إعدادات واتساب أو حالة المزود.",
@@ -93,6 +96,7 @@ def get_recovery_blocker_display_state(blocker_reason: Optional[str]) -> dict[st
         "duplicate_attempt_blocked": {
             "key": "duplicate_attempt_blocked",
             "label_ar": "محاولة مكررة",
+            "operational_hint_ar": "تم منع محاولة مكررة",
             "description_ar": "لم تُرسل رسالة جديدة لتجنّب التكرار أو لأن هذه المحاولة نُفّذت مسبقاً.",
             "severity": "info",
             "merchant_action_ar": "إذا سبق أن وصلت رسالة للعميل فلا حاجة لإجراء. وإلا راجع السجل أو تواصل يدوياً.",
@@ -100,6 +104,7 @@ def get_recovery_blocker_display_state(blocker_reason: Optional[str]) -> dict[st
         "user_returned": {
             "key": "user_returned",
             "label_ar": "عاد العميل للموقع",
+            "operational_hint_ar": "تم إيقاف الإرسال بعد عودة العميل",
             "description_ar": "تم إيقاف الضغط البيعي لأن العميل عاد للتصفح أو الإكمال.",
             "severity": "info",
             "merchant_action_ar": "راقب السلة أو ساعده عند الحاجة.",
@@ -107,6 +112,7 @@ def get_recovery_blocker_display_state(blocker_reason: Optional[str]) -> dict[st
         "customer_replied": {
             "key": "customer_replied",
             "label_ar": "العميل رد",
+            "operational_hint_ar": "تم إيقاف الإرسال بعد رد العميل",
             "description_ar": "تم إيقاف الرسائل الآلية لأن العميل دخل في محادثة.",
             "severity": "info",
             "merchant_action_ar": "راجع الرد المقترح وتابع المحادثة.",
@@ -114,6 +120,7 @@ def get_recovery_blocker_display_state(blocker_reason: Optional[str]) -> dict[st
         "purchase_completed": {
             "key": "purchase_completed",
             "label_ar": "تم إيقاف الاسترجاع بعد الشراء",
+            "operational_hint_ar": "تم إيقاف الاسترجاع بعد إتمام الشراء",
             "description_ar": "لا حاجة لمتابعة إضافية بعد إكمال الطلب.",
             "severity": "success",
             "merchant_action_ar": "لا يوجد إجراء مطلوب.",
@@ -121,6 +128,7 @@ def get_recovery_blocker_display_state(blocker_reason: Optional[str]) -> dict[st
         "automation_disabled": {
             "key": "automation_disabled",
             "label_ar": "الاسترجاع متوقف",
+            "operational_hint_ar": "الاسترجاع متوقف حسب الإعدادات أو الشروط",
             "description_ar": "إعدادات المتجر تمنع إرسال رسائل الاسترجاع حالياً أو لم تكتمل شروط الإرسال.",
             "severity": "warning",
             "merchant_action_ar": "فعّل الاسترجاع من إعدادات السلال العادية أو راجع المهلات والقوالب.",

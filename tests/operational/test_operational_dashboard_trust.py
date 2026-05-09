@@ -109,6 +109,7 @@ class OperationalDashboardTrustTests(unittest.TestCase):
             "normal_recovery_attempt_sent",
             "normal_recovery_last_skip_reason",
             "normal_recovery_phase_steps",
+            "normal_recovery_operational_hint_ar",
         ):
             self.assertIn(key, payload)
 

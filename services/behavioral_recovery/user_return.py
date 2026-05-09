@@ -26,6 +26,7 @@ from services.behavioral_recovery.state_store import (
     merge_behavioral_state,
     utc_now_iso,
 )
+from services.cartflow_observability_runtime import RecoveryLifecycleEvent, trace_recovery_lifecycle
 
 log = logging.getLogger("cartflow")
 
@@ -133,6 +134,13 @@ def record_behavioral_user_return_from_payload(payload: dict[str, Any]) -> None:
             _mark_identity_trust_failure(
                 non_vip_pre[0], internal_reason="ambiguous_multi_store"
             )
+            trace_recovery_lifecycle(
+                RecoveryLifecycleEvent.MERGE_BLOCKED,
+                session_id=sid,
+                cart_id=cid,
+                store_slug=store_slug_disp,
+                extra_status="ambiguous_multi_store",
+            )
             db.session.commit()
             return
 
@@ -160,6 +168,13 @@ def record_behavioral_user_return_from_payload(payload: dict[str, Any]) -> None:
                     session_id=sid,
                     cart_id=cid,
                     reason=f"behavioral_merge_skipped:{skip_reason}",
+                )
+                trace_recovery_lifecycle(
+                    RecoveryLifecycleEvent.MERGE_BLOCKED,
+                    session_id=sid,
+                    cart_id=cid,
+                    store_slug=store_slug_disp,
+                    extra_status=f"skip:{skip_reason}",
                 )
                 continue
             prior = behavioral_dict_for_abandoned_cart(ac)
@@ -209,10 +224,24 @@ def record_behavioral_user_return_from_payload(payload: dict[str, Any]) -> None:
                 non_vip_pre[0],
                 internal_reason="all_rows_skipped",
             )
+            trace_recovery_lifecycle(
+                RecoveryLifecycleEvent.MERGE_BLOCKED,
+                session_id=sid,
+                cart_id=cid,
+                store_slug=store_slug_disp,
+                extra_status="all_rows_store_mismatch",
+            )
             db.session.commit()
             return
         if touched:
             db.session.commit()
+            trace_recovery_lifecycle(
+                RecoveryLifecycleEvent.RETURNED_TO_SITE,
+                session_id=sid,
+                cart_id=cid,
+                store_slug=store_slug_disp,
+                extra_status="behavioral_persisted",
+            )
             if last_ctx == "" and last_ac is not None:
                 last_ctx = str(
                     behavioral_dict_for_abandoned_cart(last_ac).get(
