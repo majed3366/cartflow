@@ -48,6 +48,19 @@ def _attach_behavioral_to_payload_dict(data: dict[str, Any], patch: dict[str, An
 
 def merge_behavioral_state(ac: AbandonedCart, **fields: Any) -> None:
     """Merge keys into cf_behavioral and persist abondoned_cart row."""
+    prior = behavioral_dict_for_abandoned_cart(ac)
+    try:
+        from services.cartflow_lifecycle_guard import prune_behavioral_merge_fields
+
+        sid = str(getattr(ac, "recovery_session_id", None) or "").strip()[:512]
+        cid = str(getattr(ac, "zid_cart_id", None) or "").strip()[:255]
+        fields = prune_behavioral_merge_fields(
+            prior, dict(fields), session_id=sid, cart_id=cid
+        )
+    except Exception:
+        fields = dict(fields)
+    if not fields:
+        return
     rp = getattr(ac, "raw_payload", None)
     data: dict[str, Any]
     if isinstance(rp, str) and rp.strip():

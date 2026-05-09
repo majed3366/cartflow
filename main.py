@@ -2668,6 +2668,34 @@ def _normal_recovery_phase_steps_payload(ac: AbandonedCart) -> dict[str, Any]:
                     get_recovery_blocker_display_state("missing_customer_phone")
                 )
                 blocker_key_out = "missing_customer_phone"
+    _lc_notes: list[str] = []
+    _lc_hint_override: Optional[str] = None
+    try:
+        from services.cartflow_lifecycle_guard import reconcile_normal_recovery_dashboard_hints
+
+        _slug_lc = str(_store_slug_for_cart_recovery_reason(ac) or "").strip()[:255] or "default"
+        _recon = reconcile_normal_recovery_dashboard_hints(
+            store_slug=_slug_lc,
+            session_id=str(getattr(ac, "recovery_session_id", None) or ""),
+            cart_id=str(getattr(ac, "zid_cart_id", None) or ""),
+            phase_key=current_key,
+            sent_ct=int(sent_ct),
+            latest_log_status=latest_log_status,
+            behavioral=behavioral_pre,
+            blocker_key=blocker_key_out,
+            blocker_bundle=blocker_bundle,
+            seq_label_ar=seq_label_ar,
+            operational_hint_ar=None,
+        )
+        blocker_bundle = _recon.get("blocker_bundle")
+        blocker_key_out = _recon.get("blocker_key")
+        seq_label_ar = _recon.get("sequence_label_ar")
+        _lc_hint_override = _recon.get("operational_hint_ar")
+        _raw_notes = _recon.get("lifecycle_notes")
+        if isinstance(_raw_notes, list):
+            _lc_notes = [str(x) for x in _raw_notes]
+    except Exception:
+        _lc_hint_override = None
     hint_ar: Optional[str] = None
     last_skip_pub: Optional[str] = None
     op_hint_ar: Optional[str] = None
@@ -2675,6 +2703,8 @@ def _normal_recovery_phase_steps_payload(ac: AbandonedCart) -> dict[str, Any]:
         hint_ar = str(blocker_bundle.get("label_ar") or "") or None
         last_skip_pub = blocker_key_out
         op_hint_ar = str(blocker_bundle.get("operational_hint_ar") or "").strip() or None
+    if isinstance(_lc_hint_override, str) and _lc_hint_override.strip():
+        op_hint_ar = _lc_hint_override.strip()
     try:
         from services.cartflow_identity import IDENTITY_TRUST_FAILED_KEY
         from services.cartflow_observability_runtime import (
@@ -2732,6 +2762,8 @@ def _normal_recovery_phase_steps_payload(ac: AbandonedCart) -> dict[str, Any]:
         "normal_recovery_blocker": blocker_bundle,
         "normal_recovery_blocker_key": blocker_key_out,
     }
+    if _lc_notes:
+        out_nr["normal_recovery_lifecycle_notes"] = _lc_notes
     out_nr.update(conversation_dashboard_extras(ac))
     trust_ar = _normal_recovery_identity_trust_surface(ac)
     if trust_ar:

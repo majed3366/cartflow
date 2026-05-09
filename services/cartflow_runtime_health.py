@@ -250,6 +250,17 @@ def build_runtime_health_snapshot() -> dict[str, Any]:
     dup_prev_ok = bool(dup_guard_diag.get("duplicate_prevention_runtime_ok", True))
     dup_blocked_recent = bool(dup_guard_diag.get("duplicate_send_blocked_recently", False))
 
+    lc_diag: dict[str, Any] = {}
+    try:
+        from services.cartflow_lifecycle_guard import (  # noqa: PLC0415
+            get_lifecycle_diagnostics_readonly,
+        )
+
+        lc_diag = get_lifecycle_diagnostics_readonly()
+    except Exception:
+        lc_diag = {}
+    lc_runtime_ok = bool(lc_diag.get("lifecycle_runtime_ok", True))
+
     return {
         "recovery_runtime": {
             "runtime_active": recovery_active,
@@ -279,8 +290,22 @@ def build_runtime_health_snapshot() -> dict[str, Any]:
             "duplicate_guard_counters": dup_guard_diag.get("counters", {}),
             "duplicate_inflight_send_keys": dup_guard_diag.get("inflight_send_keys", 0),
         },
+        "lifecycle_consistency_runtime": {
+            "lifecycle_runtime_ok": lc_runtime_ok,
+            "lifecycle_conflict_detected": bool(
+                lc_diag.get("lifecycle_conflict_detected", False)
+            ),
+            "invalid_transition_recently": bool(
+                lc_diag.get("invalid_transition_recently", False)
+            ),
+            "runtime_state_consistent": bool(lc_diag.get("runtime_state_consistent", True)),
+            "lifecycle_counters": lc_diag.get("counters", {}),
+            "lifecycle_conflict_events_recent": int(
+                lc_diag.get("lifecycle_conflict_events_recent", 0)
+            ),
+        },
         "behavioral_runtime": {
-            "behavioral_merge_runtime_ok": True,
+            "behavioral_merge_runtime_ok": lc_runtime_ok,
             "runtime_active": recovery_active,
         },
         "provider_runtime": {
@@ -309,12 +334,18 @@ def derive_runtime_trust_signals(
         if isinstance(snap.get("duplicate_protection_runtime"), dict)
         else {}
     )
+    lc_rt = (
+        snap.get("lifecycle_consistency_runtime")
+        if isinstance(snap.get("lifecycle_consistency_runtime"), dict)
+        else {}
+    )
 
     prov_ok = bool(pr.get("whatsapp_provider_ready")) and not bool(pr.get("provider_effectively_disabled"))
     rec_ok = bool(rr.get("runtime_active"))
     ident_ok = bool(ir.get("identity_resolution_ok"))
     id_conflict = bool(ir.get("identity_conflict_detected"))
     dup_ok = bool(dup_rt.get("duplicate_prevention_runtime_ok", True))
+    lc_ok = bool(lc_rt.get("lifecycle_runtime_ok", True))
 
     if recent_anomaly_count is None:
         with _anomaly_lock:
@@ -326,8 +357,9 @@ def derive_runtime_trust_signals(
         or (not rec_ok)
         or id_conflict
         or (not dup_ok)
+        or (not lc_ok)
     )
-    degraded = (not prov_ok) or (not rec_ok) or (not ident_ok) or (not dup_ok)
+    degraded = (not prov_ok) or (not rec_ok) or (not ident_ok) or (not dup_ok) or (not lc_ok)
 
     label_ar = "حالة التشغيل مستقرة"
     if degraded:
@@ -386,6 +418,22 @@ def build_admin_runtime_summary() -> dict[str, Any]:
                 )
             )
             if isinstance(snap.get("duplicate_protection_runtime"), dict)
+            else False,
+        },
+        "lifecycle_consistency": {
+            "lifecycle_conflict_detected": bool(
+                (snap.get("lifecycle_consistency_runtime") or {}).get(
+                    "lifecycle_conflict_detected"
+                )
+            )
+            if isinstance(snap.get("lifecycle_consistency_runtime"), dict)
+            else False,
+            "invalid_transition_recently": bool(
+                (snap.get("lifecycle_consistency_runtime") or {}).get(
+                    "invalid_transition_recently"
+                )
+            )
+            if isinstance(snap.get("lifecycle_consistency_runtime"), dict)
             else False,
         },
         "trust": {
