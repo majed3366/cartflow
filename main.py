@@ -96,6 +96,18 @@ def dev_admin_operational_summary():
     return j(build_admin_operational_summary_readonly())
 
 
+@app.get("/dev/production-readiness")
+def dev_production_readiness():
+    """تقرير جاهزية الإنتاج — قراءة فقط، بدون قيم أسرار؛ ‎ENV=development‎ فقط."""
+    if not _is_development_mode():
+        return PlainTextResponse("Not found", status_code=404)
+    from services.cartflow_production_readiness import (
+        build_cartflow_production_readiness_report,
+    )
+
+    return j(build_cartflow_production_readiness_report())
+
+
 @app.get("/decision-check")
 def decision_check(reason_tag: str = "price_high"):
     result = decide_recovery_action(reason_tag)
