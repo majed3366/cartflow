@@ -84,6 +84,18 @@ def config_system_verify():
     }
 
 
+@app.get("/dev/admin-operational-summary")
+def dev_admin_operational_summary():
+    """ملخص تشغيلي للمشرف — قراءة فقط؛ يعمل مع ‎ENV=development‎ فقط."""
+    if not _is_development_mode():
+        return PlainTextResponse("Not found", status_code=404)
+    from services.cartflow_admin_operational_summary import (
+        build_admin_operational_summary_readonly,
+    )
+
+    return j(build_admin_operational_summary_readonly())
+
+
 @app.get("/decision-check")
 def decision_check(reason_tag: str = "price_high"):
     result = decide_recovery_action(reason_tag)
