@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CartFlow — مركز التشغيل</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen bg-slate-50 text-slate-800 antialiased">
+  {% set ts = summary.trust_signals_summary or {} %}
+  {% set agg = summary.aggregate_onboarding or {} %}
+  {% set de = summary.degradation_flags or {} %}
+  {% set avis = summary.anomaly_visibility or {} %}
+  {% set rt = summary.admin_runtime_summary_reuse or {} %}
+  {% set pcat = summary.platform_admin_category or '' %}
+
+  <header class="border-b border-slate-200 bg-white">
+    <div class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-4">
+      <div>
+        <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Operational Control Center</p>
+        <h1 class="text-xl font-semibold text-slate-900">مركز التشغيل — CartFlow</h1>
+        <p class="text-sm text-slate-500">ملخّص تشغيلي مبني على بيانات اللوحة الحالية فقط</p>
+      </div>
+      <form method="post" action="/admin/operations/logout">
+        <button type="submit" class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50">
+          خروج
+        </button>
+      </form>
+    </div>
+  </header>
+
+  <main class="mx-auto max-w-6xl space-y-8 px-4 py-8">
+    <!-- 1 Platform health summary -->
+    <section>
+      <h2 class="mb-3 text-sm font-semibold text-slate-900">ملخّص صحة المنصة</h2>
+      <div class="flex flex-wrap gap-2">
+        <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
+          فئة المنصة: {{ platform_category_label_ar }}
+        </span>
+        {% if ts.runtime_trust_label_ar %}
+        <span class="rounded-full bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-900">
+          ثقة التشغيل: {{ ts.runtime_trust_label_ar }}
+        </span>
+        {% endif %}
+        {% if ts.runtime_degraded %}
+        <span class="rounded-full bg-rose-100 px-3 py-1 text-xs font-medium text-rose-800">تدهور تشغيلي</span>
+        {% elif ts.runtime_warning %}
+        <span class="rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-900">تنبيه تشغيلي</span>
+        {% elif ts.runtime_stable %}
+        <span class="rounded-full bg-emerald-100 px-3 py-1 text-xs font-medium text-emerald-800">مستقر نسبياً</span>
+        {% endif %}
+      </div>
+      <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <p class="text-xs text-slate-500">متاجر فعلية (قاعدة البيانات)</p>
+          <p class="mt-1 text-2xl font-semibold tabular-nums text-slate-900">{{ summary.active_stores_db_total or 0 }}</p>
+        </div>
+        <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <p class="text-xs text-slate-500">ممسوحة للثقة</p>
+          <p class="mt-1 text-2xl font-semibold tabular-nums text-slate-900">{{ summary.stores_scanned_for_trust or 0 }}</p>
+        </div>
+        <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <p class="text-xs text-slate-500">جاهز إعدادياً</p>
+          <p class="mt-1 text-2xl font-semibold tabular-nums text-emerald-700">{{ agg.onboarding_ready_stores or 0 }}</p>
+        </div>
+        <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <p class="text-xs text-slate-500">بحاجة إعداد (عوائق)</p>
+          <p class="mt-1 text-2xl font-semibold tabular-nums text-amber-700">{{ agg.onboarding_blocked_stores or 0 }}</p>
+        </div>
+        <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <p class="text-xs text-slate-500">جاهز تشغيلياً (ثقة عالية)</p>
+          <p class="mt-1 text-2xl font-semibold tabular-nums text-emerald-700">{{ trust_ready_n }}</p>
+        </div>
+        <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <p class="text-xs text-slate-500">ضعيف / غير مستقر</p>
+          <p class="mt-1 text-2xl font-semibold tabular-nums text-rose-700">{{ trust_degraded_n + trust_unstable_n }}</p>
+        </div>
+        <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <p class="text-xs text-slate-500">Sandbox</p>
+          <p class="mt-1 text-2xl font-semibold tabular-nums text-slate-800">{{ agg.sandbox_mode_stores or 0 }}</p>
+        </div>
+        <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <p class="text-xs text-slate-500">متاجر بسلّة دون تغطية أرقام</p>
+          <p class="mt-1 text-2xl font-semibold tabular-nums text-slate-900">{{ summary.stores_missing_phone_coverage_estimate or 0 }}</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Trust categories -->
+    <section>
+      <h2 class="mb-3 text-sm font-semibold text-slate-900">فئات الثقة التشغيلية</h2>
+      <div class="flex flex-wrap gap-2">
+        <span class="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-900">جاهز: {{ trust_ready_n }}</span>
+        <span class="rounded-full bg-sky-50 px-2.5 py-1 text-xs font-medium text-sky-900">جزئي: {{ trust_partial_n }}</span>
+        <span class="rounded-full bg-orange-50 px-2.5 py-1 text-xs font-medium text-orange-900">ضعيف: {{ trust_degraded_n }}</span>
+        <span class="rounded-full bg-rose-50 px-2.5 py-1 text-xs font-medium text-rose-900">غير مستقر: {{ trust_unstable_n }}</span>
+      </div>
+    </section>
+
+    <!-- 2–4 Readiness / provider / runtime (compact) -->
+    <section class="grid gap-4 lg:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <h3 class="text-sm font-semibold text-slate-900">جاهزية الإعداد</h3>
+        <ul class="mt-2 space-y-1 text-sm text-slate-600">
+          <li>نسبة معطّلين: <span class="font-mono tabular-nums">{{ "%.0f"|format((agg.onboarding_blocked_ratio or 0) * 100) }}%</span></li>
+          <li>نسبة Sandbox: <span class="font-mono tabular-nums">{{ "%.0f"|format((agg.sandbox_store_ratio or 0) * 100) }}%</span></li>
+          <li>إكمال إعداد مُقدَّر: <span class="font-mono tabular-nums">{{ ts.onboarding_completion_percent or 0 }}%</span></li>
+        </ul>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <h3 class="text-sm font-semibold text-slate-900">المزوّد (واتساب)</h3>
+        <ul class="mt-2 space-y-1 text-sm text-slate-600">
+          <li>مزود المنصة: {% if rt.provider_runtime_ok %}<span class="text-emerald-700">جيد</span>{% else %}<span class="text-amber-700">يحتاج انتباه</span>{% endif %}</li>
+          {% if pcat == 'provider_attention_needed' %}
+          <li class="text-amber-800">فئة المنصة تشير لضغط على جاهزية المزود</li>
+          {% endif %}
+        </ul>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <h3 class="text-sm font-semibold text-slate-900">التشغيل والبنية</h3>
+        <ul class="mt-2 space-y-1 text-sm text-slate-600">
+          <li>استرجاع: {% if rt.recovery_runtime_ok %}<span class="text-emerald-700">حسب المؤشر</span>{% else %}<span class="text-rose-700">مراجعة</span>{% endif %}</li>
+          <li>هوية: {% if rt.identity_runtime_ok %}<span class="text-emerald-700">حسب المؤشر</span>{% else %}<span class="text-rose-700">مراجعة</span>{% endif %}</li>
+          <li>لوحة: {% if rt.dashboard_runtime_ok %}<span class="text-emerald-700">حسب المؤشر</span>{% else %}<span class="text-amber-700">مراجعة</span>{% endif %}</li>
+          <li>استرجاع فعّال عالمياً: {% if summary.recovery_runtime_globally_active %}نعم{% else %}لا{% endif %}</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- 5 Warnings -->
+    <section>
+      <h2 class="mb-3 text-sm font-semibold text-slate-900">تحذيرات تشغيلية</h2>
+      {% set hints = summary.admin_operational_hints_ar or [] %}
+      {% if hints %}
+        <ul class="space-y-2">
+          {% for h in hints %}
+          <li class="rounded-lg border border-amber-100 bg-amber-50/80 px-3 py-2 text-sm text-amber-950">{{ h }}</li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="text-sm text-slate-500">لا توجد تحذيرات مختصرة حسب البيانات الحالية.</p>
+      {% endif %}
+    </section>
+
+    <!-- 6 Degradation + anomalies -->
+    <section class="grid gap-4 lg:grid-cols-2">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <h3 class="text-sm font-semibold text-slate-900">مؤشرات الضغط</h3>
+        <div class="mt-2 flex flex-wrap gap-2">
+          {% if de.repeated_provider_failures %}<span class="rounded-full bg-rose-100 px-2 py-0.5 text-xs text-rose-900">تكرار فشل مزود</span>{% endif %}
+          {% if de.high_recent_duplicate_anomalies %}<span class="rounded-full bg-orange-100 px-2 py-0.5 text-xs text-orange-900">محاولات تكرار</span>{% endif %}
+          {% if de.repeated_lifecycle_pressure %}<span class="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-900">دورة حياة</span>{% endif %}
+          {% if de.dashboard_payload_pressure %}<span class="rounded-full bg-violet-100 px-2 py-0.5 text-xs text-violet-900">لوحة</span>{% endif %}
+          {% if de.stale_session_signals %}<span class="rounded-full bg-slate-200 px-2 py-0.5 text-xs text-slate-800">جلسة</span>{% endif %}
+          {% if de.duplicate_guard_pressure %}<span class="rounded-full bg-stone-200 px-2 py-0.5 text-xs text-stone-800">حراس منع التكرار</span>{% endif %}
+          {% if de.onboarding_pressure %}<span class="rounded-full bg-yellow-100 px-2 py-0.5 text-xs text-yellow-900">ضغط إعداد</span>{% endif %}
+          {% if de.impossible_transition_pressure %}<span class="rounded-full bg-red-100 px-2 py-0.5 text-xs text-red-900">انتقال غير متسق</span>{% endif %}
+        </div>
+        {% if not (de.repeated_provider_failures or de.high_recent_duplicate_anomalies or de.repeated_lifecycle_pressure or de.dashboard_payload_pressure or de.stale_session_signals or de.duplicate_guard_pressure or de.onboarding_pressure or de.impossible_transition_pressure) %}
+          <p class="mt-2 text-sm text-slate-500">لا ضغطاً مُعلَناً من المؤشرات الحالية.</p>
+        {% endif %}
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <h3 class="text-sm font-semibold text-slate-900">رؤية الشذوذ (مختصر)</h3>
+        {% set counts = avis.recent_type_counts or {} %}
+        {% if counts %}
+          <ul class="mt-2 max-h-40 overflow-y-auto text-sm text-slate-600">
+            {% for k, v in counts.items() %}
+            <li class="flex justify-between gap-2 border-b border-slate-100 py-1"><span class="font-mono text-xs">{{ k }}</span><span class="tabular-nums">{{ v }}</span></li>
+            {% endfor %}
+          </ul>
+          <p class="mt-2 text-xs text-slate-400">مجموع مُخزَّن مؤقتاً: {{ avis.buffered_event_total or 0 }}</p>
+        {% else %}
+          <p class="mt-2 text-sm text-slate-500">لا أعداد حديثة في النافذة الحالية.</p>
+        {% endif %}
+      </div>
+    </section>
+
+    <!-- 7 Store table -->
+    <section>
+      <h2 class="mb-3 text-sm font-semibold text-slate-900">حالة المتاجر</h2>
+      {% set rows = summary.store_operational_rows or [] %}
+      {% if rows %}
+      <div class="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+        <table class="min-w-full divide-y divide-slate-200 text-sm">
+          <thead class="bg-slate-50 text-right text-xs font-medium text-slate-500">
+            <tr>
+              <th class="px-3 py-2">المتجر</th>
+              <th class="px-3 py-2">ثقة تشغيلية</th>
+              <th class="px-3 py-2">إعداد</th>
+              <th class="px-3 py-2">مزود (منصة)</th>
+              <th class="px-3 py-2">Sandbox</th>
+              <th class="px-3 py-2">عوائق</th>
+              <th class="px-3 py-2">إشارات</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100">
+            {% for r in rows %}
+            <tr class="hover:bg-slate-50/80">
+              <td class="px-3 py-2 font-medium text-slate-900">
+                {{ r.display_name }}
+                {% if r.store_ref %}<div class="text-xs font-normal text-slate-500">{{ r.store_ref }}</div>{% endif %}
+              </td>
+              <td class="px-3 py-2">
+                <span class="rounded-md bg-slate-100 px-2 py-0.5 text-xs">{{ trust_bucket_labels_ar.get(r.trust_bucket, r.trust_bucket) }}</span>
+                <span class="text-xs text-slate-400 tabular-nums">({{ r.trust_score }})</span>
+              </td>
+              <td class="px-3 py-2">{% if r.onboarding_ready %}<span class="text-emerald-700">جاهز</span>{% else %}<span class="text-amber-700">{{ r.onboarding_completion_percent }}%</span>{% endif %}</td>
+              <td class="px-3 py-2">{% if r.provider_ready_platform %}<span class="text-emerald-700">جاهز</span>{% else %}<span class="text-slate-500">—</span>{% endif %}</td>
+              <td class="px-3 py-2">{% if r.sandbox_mode_active %}<span class="text-sky-800">نعم</span>{% else %}<span class="text-slate-500">لا</span>{% endif %}</td>
+              <td class="px-3 py-2 tabular-nums text-slate-600">{{ r.blocking_steps_count }}</td>
+              <td class="px-3 py-2 text-xs text-slate-600">{% if r.anomaly_notes %}{{ r.anomaly_notes | join('، ') }}{% else %}—{% endif %}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+        <p class="rounded-lg border border-dashed border-slate-200 bg-white px-4 py-6 text-center text-sm text-slate-500">لا متاجر لعرضها في نطاق المسح الحالي.</p>
+      {% endif %}
+    </section>
+  </main>
+</body>
+</html>

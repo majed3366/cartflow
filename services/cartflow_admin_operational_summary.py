@@ -223,6 +223,7 @@ def build_admin_operational_summary_readonly() -> dict[str, Any]:
     onboarding_blocked_n = 0
     sandbox_n = 0
     trust_buckets: Counter[str] = Counter()
+    store_operational_rows: list[dict[str, Any]] = []
     for row in store_rows:
         ev = evaluate_onboarding_readiness(row)
         if bool(ev.get("ready")):
@@ -240,6 +241,21 @@ def build_admin_operational_summary_readonly() -> dict[str, Any]:
             session_ok=session_ok,
         )
         trust_buckets[bucket] += 1
+        sid = (getattr(row, "zid_store_id", None) or "").strip()
+        store_operational_rows.append(
+            {
+                "display_name": (getattr(row, "widget_name", None) or "").strip()
+                or (sid[:64] if sid else "متجر"),
+                "store_ref": sid[:128] if sid else "",
+                "trust_bucket": bucket,
+                "trust_score": int(_sc),
+                "onboarding_ready": bool(ev.get("ready")),
+                "onboarding_completion_percent": int(ev.get("completion_percent") or 0),
+                "provider_ready_platform": bool(provider_ready_glob),
+                "sandbox_mode_active": bool(ev.get("sandbox_mode_active")),
+                "blocking_steps_count": len(ev.get("blocking_steps") or []),
+            }
+        )
 
     agg_ob = {
         "total_stores_scanned": scanned,
@@ -304,6 +320,22 @@ def build_admin_operational_summary_readonly() -> dict[str, Any]:
         trust=trust,
     )
 
+    ano_notes = [
+        lbl
+        for cond, lbl in (
+            (degradation.get("repeated_provider_failures"), "مزود"),
+            (degradation.get("high_recent_duplicate_anomalies"), "تكرار"),
+            (degradation.get("repeated_lifecycle_pressure"), "دورة_حياة"),
+            (degradation.get("dashboard_payload_pressure"), "لوحة"),
+            (degradation.get("stale_session_signals"), "جلسة"),
+            (degradation.get("duplicate_guard_pressure"), "منع_تكرار"),
+            (degradation.get("onboarding_pressure"), "إعداد"),
+        )
+        if cond
+    ]
+    for srow in store_operational_rows:
+        srow["anomaly_notes"] = list(ano_notes[:4])
+
     anomaly_visibility = {
         "recent_type_counts": {k: int(v) for k, v in ano.items() if int(v) > 0},
         "duplicate_guard_counters": dup_diag.get("counters", {}),
@@ -337,6 +369,7 @@ def build_admin_operational_summary_readonly() -> dict[str, Any]:
         "degradation_flags": degradation,
         "anomaly_visibility": anomaly_visibility,
         "admin_operational_hints_ar": hints_ar,
+        "store_operational_rows": store_operational_rows,
         "admin_runtime_summary_reuse": {
             "recovery_runtime_ok": admin_base.get("recovery_runtime_ok"),
             "provider_runtime_ok": admin_base.get("provider_runtime_ok"),

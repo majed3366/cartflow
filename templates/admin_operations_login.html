@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CartFlow — دخول التشغيل</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen bg-slate-100 text-slate-800 antialiased">
+  <div class="mx-auto flex min-h-screen max-w-md flex-col justify-center px-4">
+    <div class="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
+      <h1 class="text-lg font-semibold text-slate-900">مركز التشغيل — CartFlow</h1>
+      <p class="mt-1 text-sm text-slate-500">وصول داخلي للمشغّلين فقط</p>
+      {% if missing_config is defined and missing_config %}
+        <p class="mt-4 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">
+          لم يُضبط <span class="font-mono text-xs">CARTFLOW_ADMIN_PASSWORD</span> في البيئة.
+        </p>
+      {% elif not admin_configured %}
+        <p class="mt-4 text-sm text-red-700">لم يُضبط كلمة مرور المشرف.</p>
+      {% else %}
+        <form method="post" action="/admin/operations/login" class="mt-6 space-y-4">
+          <input type="hidden" name="next" value="{{ next_path | e }}" />
+          <div>
+            <label class="mb-1 block text-sm font-medium text-slate-700">كلمة المرور</label>
+            <input name="password" type="password" autocomplete="current-password" required
+              class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+          </div>
+          {% if error %}
+            <p class="text-sm text-red-600">كلمة المرور غير صحيحة.</p>
+          {% endif %}
+          <button type="submit"
+            class="w-full rounded-lg bg-slate-900 py-2.5 text-sm font-medium text-white hover:bg-slate-800">
+            دخول
+          </button>
+        </form>
+      {% endif %}
+    </div>
+  </div>
+</body>
+</html>

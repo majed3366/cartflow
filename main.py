@@ -214,10 +214,12 @@ from models import (  # noqa: E402
 )
 from routes.cartflow import router as cartflow_router  # noqa: E402
 from routes.cart_recovery_reason import router as cart_recovery_reason_router  # noqa: E402
+from routes.admin_operations import router as admin_operations_router  # noqa: E402
 from routes.demo_panel import router as demo_panel_router  # noqa: E402
 from routes.ops import router as ops_router  # noqa: E402
 
 app.include_router(ops_router)
+app.include_router(admin_operations_router)
 app.include_router(cartflow_router)
 app.include_router(cart_recovery_reason_router)
 app.include_router(demo_panel_router, prefix="/demo")

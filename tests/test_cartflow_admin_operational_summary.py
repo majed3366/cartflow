@@ -76,6 +76,7 @@ class CartflowAdminOperationalSummaryTests(unittest.TestCase):
             "degradation_flags",
             "admin_operational_hints_ar",
             "trust_signals_summary",
+            "store_operational_rows",
         ):
             self.assertIn(k, payload, msg=k)
         self.assertTrue(payload.get("runtime_health_reused"))
