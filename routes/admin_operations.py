@@ -12,6 +12,7 @@ from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
+from services.cartflow_admin_operational_guidance import derive_admin_operational_guidance
 from services.cartflow_admin_http_auth import (
     admin_cookie_name,
     admin_password_configured,
@@ -147,6 +148,7 @@ def admin_operations_dashboard(request: Request) -> Any:
             status_code=302,
         )
     summary = build_admin_operational_summary_readonly()
+    guidance = derive_admin_operational_guidance(summary)
     agg = summary.get("aggregate_onboarding") or {}
     tcounts = agg.get("trust_bucket_counts") or {}
     platform_cat = str(summary.get("platform_admin_category") or "")
@@ -164,5 +166,6 @@ def admin_operations_dashboard(request: Request) -> Any:
             "trust_partial_n": int(tcounts.get(TRUST_PARTIAL, 0)),
             "trust_degraded_n": int(tcounts.get(TRUST_DEGRADED, 0)),
             "trust_unstable_n": int(tcounts.get(TRUST_UNSTABLE, 0)),
+            "guidance": guidance,
         },
     )

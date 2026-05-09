@@ -61,8 +61,27 @@ class AdminOperationsDashboardTests(unittest.TestCase):
         body = r2.text
         self.assertIn("مركز التشغيل", body)
         self.assertIn("Operational Control Center", body)
-        self.assertRegex(body, r"فئة المنصة:")
-        self.assertRegex(body, r"جاهزية الإعداد|جاهز إعدادياً")
+        self.assertRegex(body, r"فئة المنصة:|تصنيف المنصة:")
+        self.assertRegex(body, r"جاهزية الإعداد|صحة الإعداد|٤ —")
+        self.assertIn("ملخص سريع", body)
+        self.assertIn("أولوية:", body)
+        self.assertRegex(body, r"طبيعي|متابعة|تدخل|خطر تشغيلي")
+
+    def test_operational_interpretation_and_guidance_sections(self) -> None:
+        os.environ["CARTFLOW_ADMIN_PASSWORD"] = "dashboard-auth-test-pass-9"
+        os.environ["SECRET_KEY"] = "unit-test-secret-key-for-admin-cookie-hmac-"
+        client = TestClient(app)
+        client.post(
+            "/admin/operations/login",
+            data={"password": "dashboard-auth-test-pass-9"},
+        )
+        r = client.get("/admin/operations")
+        self.assertEqual(r.status_code, 200)
+        body = r.text
+        self.assertIn("حالة المنصة", body)
+        self.assertIn("انتباه تشغيلي مهم", body)
+        self.assertIn("المزوّد والتشغيل", body)
+        self.assertIn("اتجاهات تشغيلية", body)
 
     def test_trust_chips_render_when_counts_present(self) -> None:
         os.environ["CARTFLOW_ADMIN_PASSWORD"] = "dashboard-auth-test-pass-9"
@@ -79,6 +98,22 @@ class AdminOperationsDashboardTests(unittest.TestCase):
         r = client.get("/admin/operations")
         self.assertEqual(r.status_code, 200)
         self.assertRegex(r.text, r"جاهز:|جزئي:|ضعيف:|غير مستقر:")
+
+    def test_empty_scan_friendly_copy_in_html(self) -> None:
+        os.environ["CARTFLOW_ADMIN_PASSWORD"] = "dashboard-auth-test-pass-9"
+        os.environ["SECRET_KEY"] = "unit-test-secret-key-for-admin-cookie-hmac-"
+        summary = aos.build_admin_operational_summary_readonly()
+        agg = summary.get("aggregate_onboarding") or {}
+        if int(agg.get("total_stores_scanned") or 0) >= 1:
+            self.skipTest("stores already present in DB")
+        client = TestClient(app)
+        client.post(
+            "/admin/operations/login",
+            data={"password": "dashboard-auth-test-pass-9"},
+        )
+        r = client.get("/admin/operations")
+        self.assertEqual(r.status_code, 200)
+        self.assertIn("لم يُمسح متجر", r.text)
 
     def test_warnings_section_renders_hints(self) -> None:
         os.environ["CARTFLOW_ADMIN_PASSWORD"] = "dashboard-auth-test-pass-9"
@@ -109,8 +144,12 @@ class AdminOperationsDashboardTests(unittest.TestCase):
         )
         r = client.get("/admin/operations")
         self.assertEqual(r.status_code, 200)
-        has_empty = "لا متاجر لعرضها" in r.text
-        has_table = "حالة المتاجر" in r.text and "<table" in r.text
+        has_empty = (
+            "لا صفوف متاجر" in r.text
+            or "لم يُمسح متجر" in r.text
+            or "لا متاجر لعرضها" in r.text
+        )
+        has_table = ("متاجر" in r.text or "٦ —" in r.text) and "<table" in r.text
         self.assertTrue(has_empty or has_table)
 
     def test_no_secrets_in_html(self) -> None:

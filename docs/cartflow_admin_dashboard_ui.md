@@ -48,4 +48,5 @@ It intentionally avoids large charts, infrastructure metrics, and terminal-style
 - `routes/admin_operations.py` — HTTP routes and template wiring.
 - `services/cartflow_admin_http_auth.py` — password check and cookie signing.
 - `services/cartflow_admin_operational_summary.py` — single source of operational aggregates and `store_operational_rows`.
+- `services/cartflow_admin_operational_guidance.py` — presentation-only priority and Arabic interpretation (see `docs/cartflow_admin_operational_guidance.md`).
 - `templates/admin_operations.html`, `templates/admin_operations_login.html`.
