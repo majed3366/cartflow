@@ -290,9 +290,12 @@ class CartRecoverySequenceBehaviorTests(unittest.TestCase):
             "/demo/cart",
             "/demo/store",
             "/demo/store/cart",
+            "/demo/store/checkout",
+            "/demo/cart/checkout",
             "/demo/store/product/1",
             "/demo/store/product/2",
             "/demo/store2/cart",
+            "/demo/store2/checkout",
             "/demo/store2/product/1",
         )
         for path in paths:
@@ -309,7 +312,8 @@ class CartRecoverySequenceBehaviorTests(unittest.TestCase):
         r0 = self.client.get("/demo/cart")
         t = r0.text or ""
         self.assertIn("CARTFLOW_DEMO_CART_KEY", t)
-        self.assertIn("هودي قطني مريح", t)
+        self.assertIn("Luxe", t)
+        self.assertIn('"hoodie"', t)
         self.assertIn("warranty_info", t)
         self.assertIn("CF_DEMO_PRODUCTS", t)
         self.assertIn("ابدأ التجربة", t)

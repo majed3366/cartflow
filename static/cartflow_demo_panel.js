@@ -501,7 +501,10 @@
     clearStateForStartScenario();
     var pick = null;
     if (window.CF_DEMO_PRODUCTS) {
-      pick = window.CF_DEMO_PRODUCTS.earbuds || window.CF_DEMO_PRODUCTS.hoodie;
+      pick =
+        window.CF_DEMO_PRODUCTS.hp_pro ||
+        window.CF_DEMO_PRODUCTS.earbuds ||
+        window.CF_DEMO_PRODUCTS.hoodie;
     }
     if (!pick) {
       pick = { name: "CartFlow demo item", price: 1, description: "—" };
@@ -684,6 +687,7 @@
   }
 
   window.cartflowStartDemoScenario = startDemoScenario;
+  window.cartflowTriggerDemoConversion = triggerConversion;
 
   function wire() {
     var b;

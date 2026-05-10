@@ -111,7 +111,10 @@ def _unwrap_data_level(payload: dict[str, Any]) -> dict[str, Any]:
 
 
 def _first_line_items_list(scope: dict[str, Any]) -> list[dict[str, Any]]:
-    cart = scope.get("cart") if isinstance(scope.get("cart"), dict) else {}
+    cart_raw = scope.get("cart")
+    if isinstance(cart_raw, list) and cart_raw:
+        return [x for x in cart_raw if isinstance(x, dict)]
+    cart = cart_raw if isinstance(cart_raw, dict) else {}
     for key in ("line_items", "items", "products", "order_items"):
         for src in (scope, cart):
             raw = src.get(key)

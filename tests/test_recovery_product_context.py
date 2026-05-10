@@ -33,6 +33,30 @@ class RecoveryProductContextTests(unittest.TestCase):
         self.assertIsNone(ctx.current_product_name)
         self.assertEqual(ctx.line_item_count, 0)
 
+    def test_cart_as_list_demo_payload(self) -> None:
+        payload = {
+            "cart": [
+                {
+                    "id": "demo_hp_pro",
+                    "name": "TrueSound Pro — سماعة لاسلكية مع عزل ضوضاء",
+                    "price": 449.0,
+                    "unit_price": 449.0,
+                    "category": "إلكترونيات",
+                },
+                {
+                    "id": "demo_earbuds",
+                    "name": "TrueSound — سماعة لاسلكية",
+                    "price": 199.0,
+                    "category": "إلكترونيات",
+                },
+            ]
+        }
+        ctx = recovery_product_context_from_payload(payload)
+        self.assertEqual(ctx.line_item_count, 2)
+        self.assertEqual(ctx.current_product_name, payload["cart"][0]["name"])
+        self.assertEqual(ctx.cheaper_alternative_name, payload["cart"][1]["name"])
+        self.assertEqual(ctx.cheaper_alternative_price, 199.0)
+
 
 if __name__ == "__main__":
     unittest.main()

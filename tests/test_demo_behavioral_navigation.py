@@ -51,6 +51,14 @@ class DemoBehavioralNavigationTests(unittest.TestCase):
         self.assertEqual(200, r.status_code)
         self.assertIn('id="cf-demo-products"', r.text)
 
+    def test_demo_checkout_page_has_cod_and_hides_grid(self) -> None:
+        r = self.client.get("/demo/store/checkout")
+        self.assertEqual(200, r.status_code)
+        t = r.text or ""
+        self.assertNotIn('id="cf-demo-products"', t)
+        self.assertIn('id="cf-demo-cod-btn"', t)
+        self.assertIn("/demo/store/cart", t)
+
     def test_demo_store2_product_and_nav_base(self) -> None:
         r = self.client.get("/demo/store2/product/1")
         self.assertEqual(200, r.status_code)

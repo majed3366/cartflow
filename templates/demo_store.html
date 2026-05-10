@@ -139,6 +139,66 @@
     }
     .card .meta { font-size: 0.7rem; color: #a8a29e; }
     .card .price { font-weight: 800; color: #1c1917; font-size: 1.1rem; margin: 0.4rem 0; }
+    .card-thumb-wrap {
+      width: 100%;
+      aspect-ratio: 1;
+      overflow: hidden;
+      border-radius: 8px;
+      margin-bottom: 0.5rem;
+      background: #f5f5f4;
+    }
+    .card-thumb { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .card.unavailable { opacity: 0.88; }
+    .add-btn[disabled] { opacity: 0.45; cursor: not-allowed; }
+    .pdp-media { margin-bottom: 1rem; }
+    .pdp-media img {
+      width: 100%;
+      max-height: 320px;
+      object-fit: cover;
+      border-radius: 12px;
+      display: block;
+      background: #f5f5f4;
+    }
+    .pdp-extras { font-size: 0.78rem; color: var(--muted); margin: 0.35rem 0 0.5rem; line-height: 1.45; }
+    .related-row { display: flex; flex-wrap: wrap; gap: 0.45rem; margin-top: 0.65rem; align-items: center; }
+    .related-row span { font-size: 0.72rem; font-weight: 700; color: var(--muted); }
+    .related-row a { font-size: 0.8rem; color: var(--accent); font-weight: 700; text-decoration: none; }
+    .related-row a:hover { text-decoration: underline; }
+    .cart-total-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 0.75rem;
+      padding-top: 0.75rem;
+      border-top: 1px solid var(--line);
+      font-weight: 800;
+    }
+    .cart-cta-row { margin-top: 0.65rem; display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+    .cart-cta-row a.checkout-btn {
+      display: inline-block;
+      text-align: center;
+      text-decoration: none;
+      border-radius: 8px;
+      padding: 0.55rem 0.85rem;
+      background: var(--accent);
+      color: #fff;
+      font: inherit;
+      font-weight: 700;
+      font-size: 0.85rem;
+    }
+    .cart-cta-row a.checkout-btn:hover { background: var(--accent-hover); }
+    .checkout-panel {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 1.2rem 1.25rem 1.35rem;
+      max-width: 32rem;
+      box-shadow: 0 1px 2px rgba(0,0,0,.04);
+    }
+    .checkout-panel h2 { margin: 0 0 0.65rem 0; font-size: 1rem; }
+    .checkout-panel ul { margin: 0; padding: 0 0 0 1.1rem; }
+    .checkout-hint { font-size: 0.8rem; color: var(--muted); margin: 0.5rem 0 0.85rem; }
+    .checkout-done { color: #15803d; font-weight: 800; margin-top: 0.85rem; font-size: 0.92rem; }
     .add-btn {
       margin-top: auto;
       width: 100%;
@@ -393,9 +453,74 @@
       }
     }
 
+    function sumDemoCartLines() {
+      if (!Array.isArray(window.cart)) return 0;
+      var sum = 0;
+      window.cart.forEach(function (item) {
+        if (!item) return;
+        var pr = item.price != null ? item.price : item.unit_price != null ? item.unit_price : null;
+        if (pr == null) return;
+        var n = typeof pr === "number" ? pr : parseFloat(String(pr));
+        if (isNaN(n)) return;
+        var qRaw = item.quantity != null ? item.quantity : item.qty != null ? item.qty : 1;
+        var q = typeof qRaw === "number" ? qRaw : parseFloat(String(qRaw));
+        if (isNaN(q) || q < 1) q = 1;
+        sum += n * q;
+      });
+      return Math.round(sum * 100) / 100;
+    }
+
+    function renderCartSubtotalAndCta() {
+      var sub = document.getElementById("cart-subtotal");
+      if (sub) {
+        var t = sumDemoCartLines();
+        sub.textContent = (t > 0 ? String(t) : "0") + " ريال";
+      }
+      var co = document.getElementById("cart-goto-checkout");
+      if (co) {
+        co.hidden = !window.cart || window.cart.length === 0;
+      }
+    }
+
+    function renderCheckoutSummary() {
+      var ul = document.getElementById("checkout-lines");
+      var ot = document.getElementById("checkout-subtotal");
+      if (!ul && !ot) return;
+      if (ul) {
+        ul.innerHTML = "";
+        if (!Array.isArray(window.cart) || window.cart.length === 0) {
+          var li0 = document.createElement("li");
+          li0.className = "empty";
+          li0.textContent = "لا عناصر — ارجع للمتجر أو السلة.";
+          ul.appendChild(li0);
+        } else {
+          window.cart.forEach(function (item) {
+            var qRaw = item && (item.quantity != null ? item.quantity : item.qty != null ? item.qty : 1);
+            var row = document.createElement("li");
+            var pr = item && (item.price != null ? item.price : item.unit_price);
+            row.textContent =
+              (item && item.name ? item.name : "—") +
+              (qRaw && Number(qRaw) !== 1 ? " × " + qRaw : "") +
+              " — " +
+              (pr != null ? pr : "—") +
+              " ريال";
+            ul.appendChild(row);
+          });
+        }
+      }
+      if (ot) {
+        var s = sumDemoCartLines();
+        ot.textContent = (s > 0 ? String(s) : "0") + " ريال";
+      }
+    }
+
     function renderCart() {
+      renderCheckoutSummary();
       var ul = document.getElementById("cart-list");
-      if (!ul) return;
+      if (!ul) {
+        renderCartSubtotalAndCta();
+        return;
+      }
       ul.innerHTML = "";
       if (window.cart.length === 0) {
         var li = document.createElement("li");
@@ -405,15 +530,19 @@
       } else {
         window.cart.forEach(function (item) {
           var row = document.createElement("li");
+          var qRaw = item && (item.quantity != null ? item.quantity : item.qty != null ? item.qty : 1);
+          var pr = item && (item.price != null ? item.price : item.unit_price);
           var line =
             (item && item.name ? item.name : "Item") +
+            (qRaw && Number(qRaw) !== 1 ? " × " + qRaw : "") +
             " — " +
-            (item && item.price != null ? item.price : "—") +
+            (pr != null ? pr : "—") +
             " ريال";
           row.textContent = line;
           ul.appendChild(row);
         });
       }
+      renderCartSubtotalAndCta();
     }
 
     function addToCart(product) {
@@ -501,6 +630,8 @@
       نفس جلسة المتصفح والسلة عبر الصفحات — مناسب لاختبار <strong>العودة للموقع</strong> ومسار المنتج دون متجر كامل.
       {% elif demo_view|default('list') == 'cart' %}
       صفحة السلة منفصلة بنفس السلة المحفوظة — لاختبار إعادة زيارة السلة والعودة بعد الاسترجاع.
+      {% elif demo_view|default('list') == 'checkout' %}
+      ملخص طلب خفيف — زر «دفع عند الاستلام» يستدعي نفس ‎<code>POST /api/conversion</code>‎ المستخدم في لوحة التجربة لإغلاق الاسترجاع.
       {% else %}
       واجهة مبسّطة تُمثّل كتالوجاً حقيقياً مع <strong>نفس سلوك CartFlow</strong> (ودجت يظهر بعد لحظة تردد كأي زائر). استخدم شريط التنقّل للتنقّل بين الصفحات.
       {% endif %}
@@ -508,58 +639,8 @@
     <p class="store-note">المتجر: <code>{{ demo_store_slug|default('demo') }}</code> — السلة من <code>localStorage</code> (<code>{{ demo_cart_key|default('demo_cart') }}</code>)</p>
   </div>
   <script>
-    (function () {
-      window.CF_DEMO_PRODUCTS = {
-        earbuds: {
-          name: "TrueSound — سماعة لاسلكية",
-          price: 199,
-          description: "تجربة صوتية متوازنة بعزل مريح لليوم. بطارية تدوم طويلاً مع عدة غطاء تثبيت.",
-          category: "إلكترونيات",
-          warranty_info: "ضمان سنة ضد عيوب التصنيع. التحقق من الـ IMEI/الرقم عند الاستلام.",
-          shipping_info: "شحن 2–5 أيام عمل حسب المدينة. تتبع يُرسل لرسالة واتساب."
-        },
-        hoodie: {
-          name: "Luxe — هودي صوفي",
-          price: 149,
-          description: "هودي قطني مريح للاستخدام اليومي، تصميم عملي ومناسب للجو البارد. يتناسب للعمل والنزهات.",
-          category: "أزياء",
-          warranty_info: "ضمان جودة ضد عيوب التصنيع (الخياطة/اللون) خلال 14 يوم استلام.",
-          shipping_info: "الشحن خلال 2 إلى 5 أيام عمل حسب المدينة."
-        },
-        perfume: {
-          name: "Amber Oud — عطر",
-          price: 289,
-          description: "مزيج دافئ من خشب العود والعنبر. يتفتح على الجلد ويمنح حضوراً طويل المدى.",
-          category: "عطور",
-          warranty_info: "لا يقبل الاسترجاع بعد فتح فيلم الاحكام. التحقق من تخزين مناسب (بارد وجاف).",
-          shipping_info: "يُشحن مع تغليف حماية حسب الوزن (عادة 1–3 أيام عمل داخل الرياض/جدة/الظهران)."
-        },
-        watch: {
-          name: "Raven — حزام ووتش جلد",
-          price: 85,
-          description: "حزام جلد مُحكم مع إبزيم غير مُزعج. يمشي فتحات معيار 20–22مم لمعظم الوجوه.",
-          category: "إكسسوارات",
-          warranty_info: "ضمان 3 أشهر لعيوب الربط. لا يشمل الاستعمال الخاطئ أو المياه دون تصنيف ماء.",
-          shipping_info: "شحن خفيف 1–3 أيام عمل. يُوضع بظرف مُرَنٍّ."
-        },
-        charger: {
-          name: "Nano 20W — رأس شحن سريع",
-          price: 75,
-          description: "رأس مدمج مُصغّر للحقيبة. يوافق بروفيل USB‑PD 20W للهواتف المتوافقة.",
-          category: "إلكترونيات",
-          warranty_info: "ضمان سنة: استبدال عند عيوب الاخراج. لا يشمل البرق/الوصلات بلا علامتنا.",
-          shipping_info: "شحن بري 2–4 أيام عمل. يشحن مُغلفاً مُنفرداً عن السوائل/العطور."
-        },
-        wallet: {
-          name: "Mira — محفظة سفر",
-          price: 65,
-          description: "نحيفة بجيوب للبطاقات والنقد. مُصمّمة لتقليل الانتفاخ في الجيب.",
-          category: "إكسسوارات",
-          warranty_info: "6 أشهر على عيوب الخياطة والفتحات. لا يشمل الاستلام الرطب.",
-          shipping_info: "2–4 أيام عمل. يُرجع غير مُسْتَهْلَك بنفس الظرف."
-        }
-      };
-    })();
+    window.CF_DEMO_NAV_BASE = {{ (demo_catalog_nav_base|default('/demo/store'))|tojson }};
+    window.CF_DEMO_PRODUCTS = {{ (demo_catalog_js or {})|tojson }};
   </script>
   <nav class="demo-nav" id="cf-demo-behavioral-nav" aria-label="تنقّل تجريبي للاختبار التشغيلي">
     {% set navb = demo_behavioral_nav_base|default('/demo/store') %}
@@ -570,70 +651,37 @@
     <a href="{{ navb }}/product/2">منتج 2</a>
     <span class="demo-nav-sep" aria-hidden="true">|</span>
     <a href="{{ navb }}/cart">السلة</a>
+    <span class="demo-nav-sep" aria-hidden="true">|</span>
+    <a href="{{ navb }}/checkout">الدفع</a>
   </nav>
   {% if demo_view|default('list') == 'list' %}
   <div class="grid" id="cf-demo-products">
-    <div class="card" id="p-earbuds">
-      <span class="pcat">إلكترونيات</span>
-      <h2>TrueSound — سماعة لاسلكية</h2>
-      <p class="desc" lang="ar">تجربة صوتية متوازنة، عزل مريح، وعمر بطارية يناسب الاستعمال اليومي.</p>
-      <p class="ex" lang="ar">ضمان سنة ضد عيوب التصنيع. شحن 2–5 أيام عمل.</p>
-      <div class="meta">للمزامنة مع اختبارات الاسترجاع في CartFlow</div>
-      <div class="price">199 ريال</div>
-      <button type="button" class="add-btn" onclick="addToCart(window.CF_DEMO_PRODUCTS.earbuds)">أضف للسلة</button>
+    {% for row in demo_grid_rows|default([]) %}
+    <div class="card{% if not row.available %} unavailable{% endif %}" id="p-{{ row.key }}">
+      <div class="card-thumb-wrap">
+        <img class="card-thumb" src="{{ row.image }}" alt="" loading="lazy" width="520" height="520" />
+      </div>
+      <span class="pcat">{{ row.category }}</span>
+      <h2>{{ row.name }}</h2>
+      <p class="desc" lang="ar">{{ row.short }}</p>
+      <div class="meta">معرّف: <code>{{ row.key }}</code></div>
+      <div class="price">{{ row.price }} ريال</div>
+      <button type="button" class="add-btn" {% if not row.available %}disabled{% endif %} onclick="addToCart(window.CF_DEMO_PRODUCTS['{{ row.key }}'])">أضف للسلة</button>
     </div>
-    <div class="card" id="p-hoodie">
-      <span class="pcat">أزياء</span>
-      <h2>Luxe — هودي صوفي</h2>
-      <p class="desc" lang="ar">خامة مريحة مع قصّه عملي للوقت البرّاد دون مبالغة في الحجم.</p>
-      <p class="ex" lang="ar">ضمان جودة خلال 14 يوم. شحن 2–5 أيام.</p>
-      <div class="meta">نموذج أزياء مع بيانات كاملة</div>
-      <div class="price">149 ريال</div>
-      <button type="button" class="add-btn" onclick="addToCart(window.CF_DEMO_PRODUCTS.hoodie)">أضف للسلة</button>
-    </div>
-    <div class="card" id="p-perfume">
-      <span class="pcat">عطور</span>
-      <h2>Amber Oud</h2>
-      <p class="desc" lang="ar">مسار عطري بُني على العنبر وخفّة الورد على خلفية خشب.</p>
-      <p class="ex" lang="ar">يُراعى الاسترجاع قبل فتح الاحكام. شحن حسب الوزن.</p>
-      <div class="meta">مناسب لعرض سبب &quot;السعر/العطر&quot; في الودجت</div>
-      <div class="price">289 ريال</div>
-      <button type="button" class="add-btn" onclick="addToCart(window.CF_DEMO_PRODUCTS.perfume)">أضف للسلة</button>
-    </div>
-    <div class="card" id="p-watch">
-      <span class="pcat">إكسسوارات</span>
-      <h2>Raven — حزام ووتش جلد</h2>
-      <p class="desc" lang="ar">لون متعادل مع معدن غير مُلمع يُلائم الوجه الرسمي واليومي.</p>
-      <p class="ex" lang="ar">ضمان 3 أشهر. شحن خفيف 1–3 أيام.</p>
-      <div class="meta">إثبات الضمان والوصف</div>
-      <div class="price">85 ريال</div>
-      <button type="button" class="add-btn" onclick="addToCart(window.CF_DEMO_PRODUCTS.watch)">أضف للسلة</button>
-    </div>
-    <div class="card" id="p-charger">
-      <span class="pcat">إلكترونيات</span>
-      <h2>Nano 20W</h2>
-      <p class="desc" lang="ar">حل شحن مدمج للرحلات. يوافق PD حتى 20W للمتوافق.</p>
-      <p class="ex" lang="ar">ضمان سنة. تُرسل مُنفصلة عن إرسال سريع/عطور.</p>
-      <div class="meta">منتج تكميلي صغير الحجم</div>
-      <div class="price">75 ريال</div>
-      <button type="button" class="add-btn" onclick="addToCart(window.CF_DEMO_PRODUCTS.charger)">أضف للسلة</button>
-    </div>
-    <div class="card" id="p-wallet">
-      <span class="pcat">إكسسوارات</span>
-      <h2>Mira — محفظة سفر</h2>
-      <p class="desc" lang="ar">نحف الحجم بجيوب مُنظّمة. يتجنّب الانتفاخ بما يوافق الجيب الأمامي.</p>
-      <p class="ex" lang="ar">6 أشهر ثبات خياطة. شحن 2–4 أيام.</p>
-      <div class="meta">أسلوب مقدّم للويبينار</div>
-      <div class="price">65 ريال</div>
-      <button type="button" class="add-btn" onclick="addToCart(window.CF_DEMO_PRODUCTS.wallet)">أضف للسلة</button>
-    </div>
+    {% endfor %}
   </div>
   {% elif demo_view|default('') == 'product' and demo_product_key %}
   <div class="grid" id="cf-demo-product-detail" style="max-width: 28rem;">
     <div class="card" id="cf-demo-single-product-card">
       <span class="pcat" id="cf-demo-product-cat"></span>
       <h2 id="cf-demo-product-title">—</h2>
+      <div class="pdp-media"><img id="cf-demo-product-img" alt="" width="520" height="520" /></div>
       <p class="desc" id="cf-demo-product-desc" lang="ar"></p>
+      <p class="pdp-extras" id="cf-demo-product-warranty" lang="ar"></p>
+      <div class="related-row" id="cf-demo-related-wrap" hidden>
+        <span>منتجات ذات صلة:</span>
+        <span id="cf-demo-related"></span>
+      </div>
       <div class="price" id="cf-demo-product-price">—</div>
       <button type="button" class="add-btn" id="cf-demo-product-add">أضف للسلة</button>
     </div>
@@ -649,14 +697,47 @@
         var d = document.getElementById("cf-demo-product-desc");
         var pr2 = document.getElementById("cf-demo-product-price");
         var btn = document.getElementById("cf-demo-product-add");
+        var img = document.getElementById("cf-demo-product-img");
+        var w = document.getElementById("cf-demo-product-warranty");
+        var relWrap = document.getElementById("cf-demo-related-wrap");
+        var relHost = document.getElementById("cf-demo-related");
         if (cat) cat.textContent = p.category || "";
         if (t) t.textContent = p.name || "";
         if (d) d.textContent = p.description || "";
         if (pr2) pr2.textContent = (p.price != null ? p.price : "—") + " ريال";
+        if (img) {
+          img.src = p.image || "";
+          img.alt = p.name || "";
+        }
+        if (w) {
+          var ws = (p.warranty_info || "") + (p.shipping_info ? " " + p.shipping_info : "");
+          w.textContent = ws.trim();
+        }
+        if (relHost && relWrap && p.related_keys && p.related_keys.length) {
+          relWrap.removeAttribute("hidden");
+          relHost.innerHTML = "";
+          var base = window.CF_DEMO_NAV_BASE || "/demo/store";
+          p.related_keys.forEach(function (rk) {
+            var rp = window.CF_DEMO_PRODUCTS[rk];
+            if (!rp || rp.product_num == null) return;
+            var a = document.createElement("a");
+            a.href = base + "/product/" + rp.product_num;
+            a.textContent = rp.name || rk;
+            relHost.appendChild(a);
+            relHost.appendChild(document.createTextNode(" "));
+          });
+        }
         if (btn) {
-          btn.onclick = function () {
-            addToCart(Object.assign({}, p));
-          };
+          if (p.available === false) {
+            btn.disabled = true;
+            btn.textContent = "غير متوفر";
+          } else {
+            btn.disabled = false;
+            btn.textContent = "أضف للسلة";
+            btn.onclick = function () {
+              addToCart(Object.assign({}, p));
+            };
+          }
         }
       }
       if (document.readyState === "loading") {
@@ -666,13 +747,35 @@
       }
     })();
   </script>
+  {% elif demo_view|default('') == 'checkout' %}
+  <div class="checkout-panel" id="cf-demo-checkout">
+    <h2>ملخص الطلب</h2>
+    <ul id="checkout-lines"></ul>
+    <p class="cart-total-row" style="border: 0; padding-top: 0.35rem; margin-top: 0.35rem;">
+      <span>الإجمالي</span>
+      <strong id="checkout-subtotal">—</strong>
+    </p>
+    <p class="checkout-hint">لا يوجد دفع حقيقي — زر أدناه يُسجّل اكتمال شراء وهمي ويُحدّث حالة الاسترجاع كما في لوحة التجربة.</p>
+    <button type="button" class="add-btn" id="cf-demo-cod-btn">تأكيد الطلب — دفع عند الاستلام</button>
+    <p id="cf-demo-cod-done" class="checkout-done" hidden>تم تسجيل الطلب. الجلسة مُعلَمة كمُحوّلة — أفرغنا السلة محلياً.</p>
+  </div>
   {% endif %}
 
+  {% if demo_view|default('list') != 'checkout' %}
   <div class="cart" id="cart">
     <h2>السلة</h2>
     <ul id="cart-list"></ul>
+    <div class="cart-total-row">
+      <span>المجموع</span>
+      <strong id="cart-subtotal">0 ريال</strong>
+    </div>
+    <div class="cart-cta-row">
+      {% set navb2 = demo_behavioral_nav_base|default('/demo/store') %}
+      <a class="checkout-btn" id="cart-goto-checkout" href="{{ navb2 }}/checkout" hidden>المتابعة للدفع</a>
+    </div>
     <button type="button" class="add-btn btn-clear" onclick="clearCart()">إفراغ السلة</button>
   </div>
+  {% endif %}
   </div>
 
   <script>
@@ -751,10 +854,40 @@
   </script>
   <script src="/static/cartflow_demo_panel.js?v=cartflow-demo-inv-20260207a" defer></script>
   <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      var btn = document.getElementById("cf-demo-cod-btn");
+      if (!btn) return;
+      if (typeof renderCart === "function") {
+        renderCart();
+      }
+      btn.addEventListener("click", function () {
+        var tries = 0;
+        function go() {
+          if (typeof window.cartflowTriggerDemoConversion === "function") {
+            window.cartflowTriggerDemoConversion().then(function () {
+              if (typeof clearCart === "function") {
+                clearCart();
+              }
+              var d = document.getElementById("cf-demo-cod-done");
+              if (d) d.hidden = false;
+              btn.disabled = true;
+            });
+            return;
+          }
+          tries += 1;
+          if (tries < 80) {
+            setTimeout(go, 25);
+          }
+        }
+        go();
+      });
+    });
+  </script>
+  <script>
     (function () {
       try {
         var pn = (window.location.pathname || "").replace(/\/+$/, "") || "/";
-        if (pn === "/demo/cart" || /\/store\/cart$/.test(pn)) {
+        if (pn === "/demo/cart" || /\/store\/cart$/.test(pn) || /\/checkout$/.test(pn)) {
           window.CARTFLOW_DISABLE_DEMO_GUIDE = true;
         }
       } catch (eDg) {}
