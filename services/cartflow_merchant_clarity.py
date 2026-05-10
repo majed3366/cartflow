@@ -27,6 +27,7 @@ LOG_LABELS: dict[str, str] = {
     "whatsapp_failed": "لم يكتمل الإرسال عبر قناة الواتساب",
     "skipped_duplicate": "تم منع محاولة مكررة",
     "skipped_anti_spam": "تم إيقاف الاسترجاع تلقائيًا بعد عودة العميل للموقع",
+    "returned_to_site": "تم إيقاف الاسترجاع تلقائيًا بعد عودة العميل للموقع",
     "skipped_followup_customer_replied": "توقف الإرسال بعد تفاعل العميل",
     "skipped_user_rejected_help": "توقف الإرسال بعد رفض العميل المساعدة",
     "stopped_converted": "تم إيقاف الاسترجاع بعد الشراء",
@@ -93,6 +94,7 @@ def status_intentional_customer_stop(log_status: Optional[str], blocker_key: Opt
         return True
     if ls in (
         "skipped_anti_spam",
+        "returned_to_site",
         "skipped_followup_customer_replied",
         "stopped_converted",
         "skipped_user_rejected_help",
@@ -135,7 +137,7 @@ def attach_merchant_clarity_to_normal_recovery_payload(
             or bh.get("customer_returned_to_site") is True
         ):
             bk = "user_returned"
-        elif ls == "skipped_anti_spam":
+        elif ls in ("skipped_anti_spam", "returned_to_site"):
             bk = "user_returned"
         elif bk == "automation_disabled" and pk == "customer_returned":
             bk = "user_returned"

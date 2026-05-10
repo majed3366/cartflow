@@ -165,6 +165,73 @@ class MerchantLifecyclePayloadTests(unittest.TestCase):
         self.assertEqual(p.get("merchant_lifecycle_primary_key"), "customer_returned")
         self.assertIn("عاد", p.get("merchant_lifecycle_customer_behavior_ar") or "")
 
+    def test_durable_returned_to_site_log_survives_skipped_duplicate_for_lifecycle(self) -> None:
+        """Durable return row must win over later skipped_duplicate (narrow send path)."""
+        st = self._store()
+        sid = f"sid-ml-durable-{self._suffix}"
+        zid = f"zid-ml-durable-{self._suffix}"
+        ac = AbandonedCart(
+            store_id=int(st.id),
+            zid_cart_id=zid,
+            recovery_session_id=sid,
+            status="abandoned",
+            vip_mode=False,
+            cart_value=15.0,
+            customer_phone="9665111222333",
+        )
+        db.session.add(ac)
+        db.session.flush()
+        t0 = datetime.now(timezone.utc)
+        t1 = t0 + timedelta(seconds=1)
+        db.session.add(
+            CartRecoveryLog(
+                store_slug=st.zid_store_id,
+                session_id=sid,
+                cart_id=zid,
+                phone=None,
+                message="return_to_site_detected",
+                status="returned_to_site",
+                step=None,
+                created_at=t0,
+                sent_at=None,
+            )
+        )
+        db.session.add(
+            CartRecoveryLog(
+                store_slug=st.zid_store_id,
+                session_id=sid,
+                cart_id=zid,
+                phone="9665111222333",
+                message="m1",
+                status="mock_sent",
+                step=1,
+                created_at=t0 - timedelta(seconds=5),
+                sent_at=t0 - timedelta(seconds=5),
+            )
+        )
+        db.session.add(
+            CartRecoveryLog(
+                store_slug=st.zid_store_id,
+                session_id=sid,
+                cart_id=zid,
+                phone=None,
+                message="dup",
+                status="skipped_duplicate",
+                step=2,
+                created_at=t1,
+                sent_at=None,
+            )
+        )
+        db.session.commit()
+        p = _normal_recovery_phase_steps_payload(ac)
+        self.assertEqual(p.get("merchant_lifecycle_primary_key"), "customer_returned")
+        self.assertIn("عاد", p.get("merchant_lifecycle_customer_behavior_ar") or "")
+        self.assertIn("تلقائي", p.get("merchant_lifecycle_system_outcome_ar") or "")
+        diag = p.get("normal_recovery_diagnostics") or {}
+        self.assertTrue(diag.get("returned_to_site_evidence"), msg=diag)
+        self.assertEqual(diag.get("merchant_lifecycle_primary_key"), "customer_returned")
+        self.assertIn("returned_to_site", diag.get("recovery_log_statuses_seen") or [])
+
     def test_skipped_anti_spam_log_session_holds_cart_id_correlates_to_abandoned_row(self) -> None:
         """
         Regression: persist may set CartRecoveryLog.session_id to the cart id (no separate

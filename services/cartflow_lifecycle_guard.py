@@ -205,7 +205,7 @@ def map_recovery_log_status_to_state(status: Optional[str]) -> str:
         return STATE_CONVERTED
     if s in ("skipped_followup_customer_replied", "skipped_user_rejected_help"):
         return STATE_REPLIED
-    if s == "skipped_anti_spam":
+    if s in ("skipped_anti_spam", "returned_to_site"):
         return STATE_RETURNED
     if s == "whatsapp_failed":
         return STATE_FAILED
@@ -396,6 +396,7 @@ def _dashboard_winning_rank(
     sent_ct: int,
     latest_log_status: Optional[str],
     behavioral: dict[str, Any],
+    recovery_log_statuses: Optional[frozenset[str]] = None,
 ) -> int:
     ranks: list[int] = []
     ranks.append(lifecycle_precedence_rank(map_dashboard_phase_to_state(phase_key)))
@@ -409,6 +410,8 @@ def _dashboard_winning_rank(
         ranks.append(lifecycle_precedence_rank(STATE_SENT))
     if bh.get("user_returned_to_site") is True or bh.get("customer_returned_to_site") is True:
         ranks.append(lifecycle_precedence_rank(STATE_RETURNED))
+    if recovery_log_statuses and "returned_to_site" in recovery_log_statuses:
+        ranks.append(lifecycle_precedence_rank(STATE_RETURNED))
     return max(ranks) if ranks else 0
 
 
@@ -417,6 +420,7 @@ def _presentation_blocker_after_duplicate_or_stale_automation(
     behavioral: dict[str, Any],
     latest_log_status: Optional[str],
     phase_key: str,
+    recovery_log_statuses: Optional[frozenset[str]] = None,
 ) -> tuple[Optional[str], Optional[dict[str, Any]]]:
     """
     When duplicate / automation_disabled banners contradict return-to-site truth,
@@ -430,6 +434,8 @@ def _presentation_blocker_after_duplicate_or_stale_automation(
     bh = behavioral if isinstance(behavioral, dict) else {}
     ls = _norm(latest_log_status)
     pk = (phase_key or "").strip()
+    log_ss = recovery_log_statuses or frozenset()
+    durable_return = "returned_to_site" in log_ss
 
     if bh.get("customer_replied") is True or ls in (
         "skipped_followup_customer_replied",
@@ -441,6 +447,8 @@ def _presentation_blocker_after_duplicate_or_stale_automation(
         bh.get("user_returned_to_site") is True
         or bh.get("customer_returned_to_site") is True
         or ls == "skipped_anti_spam"
+        or ls == "returned_to_site"
+        or durable_return
         or pk == "customer_returned"
     ):
         st = get_recovery_blocker_display_state("user_returned")
@@ -461,16 +469,19 @@ def reconcile_normal_recovery_dashboard_hints(
     blocker_bundle: Optional[dict[str, Any]],
     seq_label_ar: Optional[str],
     operational_hint_ar: Optional[str],
+    recovery_log_statuses: Optional[frozenset[str]] = None,
 ) -> dict[str, Any]:
     """
     Apply precedence so the dashboard does not show contradictory primary signals.
     Does not change underlying DB or recovery execution.
     """
+    log_ss = recovery_log_statuses or frozenset()
     win = _dashboard_winning_rank(
         phase_key=phase_key,
         sent_ct=sent_ct,
         latest_log_status=latest_log_status,
         behavioral=behavioral,
+        recovery_log_statuses=log_ss if log_ss else None,
     )
     out_blocker = blocker_bundle
     out_key = blocker_key
@@ -543,6 +554,7 @@ def reconcile_normal_recovery_dashboard_hints(
             behavioral=behavioral,
             latest_log_status=latest_log_status,
             phase_key=phase_key,
+            recovery_log_statuses=log_ss if log_ss else None,
         )
         if _pb_key and isinstance(_pb_bundle, dict):
             out_key = _pb_key
@@ -561,6 +573,7 @@ def reconcile_normal_recovery_dashboard_hints(
             behavioral=behavioral,
             latest_log_status=latest_log_status,
             phase_key=phase_key,
+            recovery_log_statuses=log_ss if log_ss else None,
         )
         if (
             _pb_key2 == "user_returned"
@@ -575,6 +588,8 @@ def reconcile_normal_recovery_dashboard_hints(
                 )
                 is True
                 or _norm(latest_log_status) == "skipped_anti_spam"
+                or _norm(latest_log_status) == "returned_to_site"
+                or "returned_to_site" in log_ss
                 or (phase_key or "").strip() == "customer_returned"
             )
         ):

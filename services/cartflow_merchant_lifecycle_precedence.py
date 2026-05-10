@@ -76,8 +76,10 @@ def lifecycle_returned_evidence(
         or pk == "customer_returned"
         or cr == "returned"
         or ls == "skipped_anti_spam"
+        or ls == "returned_to_site"
         or bk == "user_returned"
         or "skipped_anti_spam" in log_ss
+        or "returned_to_site" in log_ss
         or dashboard_return_track
         or dashboard_return_intel_panel
     )

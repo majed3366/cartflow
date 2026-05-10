@@ -23,6 +23,7 @@ class OperationalStaticObservabilityTests(unittest.TestCase):
         self.assertIn("[WA STATUS]", wa_src)
         ret_src = _read("services/behavioral_recovery/user_return.py")
         self.assertIn("[RETURN TO SITE] persisted_behavioral", ret_src)
+        self.assertIn("[RETURN TO SITE] durable_evidence_persisted", main_src)
         self.assertIn("[LIFECYCLE STATE]", ret_src)
         loader = _read("static/widget_loader.js")
         self.assertIn("[CARTFLOW RUNTIME]", loader)

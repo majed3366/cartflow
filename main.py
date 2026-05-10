@@ -1387,6 +1387,10 @@ _RECOVERY_REASON_POLL_INTERVAL_SEC = 0.15
 _RECOVERY_REASON_POLL_MAX_ATTEMPTS = 67
 _recovery_session_lock = threading.RLock()
 
+# Durable dashboard/lifecycle evidence: written on return-to-site detection (not send path).
+_DURABLE_RETURN_TO_SITE_LOG_STATUS = "returned_to_site"
+_DURABLE_RETURN_LOG_DEBOUNCE_SEC = 120
+
 # خطوة إضافية منطقية (سابقاً كان عندها خطوتان أخريان) — لسجلات «توقفت بعد الأولى»
 _RECOVERY_SEQUENCE_STEPS: tuple[tuple[int, str], ...] = (
     (1, "يبدو أنك نسيت سلتك 🛒"),
@@ -1916,7 +1920,7 @@ def _second_recovery_public_skip_reason(internal: str) -> str:
         "max_attempts_reached",
     ):
         return "max_attempts_reached"
-    if s in ("customer_returned", "skipped_anti_spam", "user_returned"):
+    if s in ("customer_returned", "skipped_anti_spam", "user_returned", "returned_to_site"):
         return "user_returned"
     if s in (
         "customer_positive_reply",
@@ -2178,6 +2182,7 @@ def _normal_recovery_followup_skip_hint_ar_from_log_status(status: str) -> Optio
     ar_map = {
         "skipped_no_verified_phone": "توقفت: لا يوجد رقم",
         "skipped_anti_spam": "توقفت: العميل عاد للموقع",
+        "returned_to_site": "توقفت: العميل عاد للموقع",
         "skipped_attempt_limit": "توقفت: تجاوز عدد المحاولات",
         "skipped_followup_customer_replied": "توقفت: رد العميل",
         "skipped_missing_reason_tag": "توقفت: لا يوجد سبب",
@@ -2653,6 +2658,7 @@ def _normal_recovery_dashboard_phase_key(
     ac: AbandonedCart,
     *,
     behavioral_override: Optional[dict[str, Any]] = None,
+    recovery_log_statuses: Optional[frozenset[str]] = None,
 ) -> str:
     """مفتاح مرحلة واجهة الاسترجاع العادي — قراءة فقط؛ للعرض ولتوسعة المحرك لاحقاً."""
     st = (getattr(ac, "status", None) or "").strip().lower()
@@ -2662,6 +2668,8 @@ def _normal_recovery_dashboard_phase_key(
         bh = behavioral_override
     else:
         bh = behavioral_dict_for_abandoned_cart(ac)
+    if recovery_log_statuses and "returned_to_site" in recovery_log_statuses:
+        return "customer_returned"
     if bh.get("customer_replied") is True:
         return "behavioral_replied"
     if bh.get("recovery_link_clicked") is True:
@@ -2680,6 +2688,8 @@ def _normal_recovery_dashboard_phase_key(
         if ls == "stopped_converted":
             return "stopped_purchase"
         if ls == "skipped_anti_spam":
+            return "customer_returned"
+        if ls == "returned_to_site":
             return "customer_returned"
         if ls == "skipped_user_rejected_help":
             return "ignored"
@@ -2745,8 +2755,11 @@ def _normal_recovery_phase_steps_payload(
         list(behavioral_cart_group) if behavioral_cart_group else [ac]
     )
     behavioral_pre = _normal_recovery_behavioral_merge_from_cart_group(_grp_bh)
+    _log_statuses_union = _normal_recovery_recovery_log_statuses_lower_group(_grp_bh)
     current_key = _normal_recovery_dashboard_phase_key(
-        ac, behavioral_override=behavioral_pre
+        ac,
+        behavioral_override=behavioral_pre,
+        recovery_log_statuses=_log_statuses_union,
     )
     key_to_index = {k: i for i, (k, _) in enumerate(order)}
     progress_key = current_key
@@ -2855,6 +2868,7 @@ def _normal_recovery_phase_steps_payload(
             blocker_bundle=blocker_bundle,
             seq_label_ar=seq_label_ar,
             operational_hint_ar=None,
+            recovery_log_statuses=_log_statuses_union,
         )
         blocker_bundle = _recon.get("blocker_bundle")
         blocker_key_out = _recon.get("blocker_key")
@@ -2903,6 +2917,7 @@ def _normal_recovery_phase_steps_payload(
             latest_log_status=latest_log_status,
             identity_trust_failed=trust_failed,
             sent_ok_latest_log=sent_ok,
+            recovery_log_statuses=_log_statuses_union,
         )
         if _conflicts:
             log_runtime_conflicts(
@@ -3003,7 +3018,7 @@ def _normal_recovery_phase_steps_payload(
             else None
         )
         _ls_merchant = (str(latest_log_status or "").strip() or _tail_st or None)
-        _log_statuses_all = _normal_recovery_recovery_log_statuses_lower_group(_grp_bh)
+        _log_statuses_all = _log_statuses_union
 
         out_nr.update(
             build_normal_recovery_merchant_lifecycle(
@@ -3025,7 +3040,7 @@ def _normal_recovery_phase_steps_payload(
         )
     except Exception:
         pass
-    _diag_log_seen = sorted(_normal_recovery_recovery_log_statuses_lower_group(_grp_bh))
+    _diag_log_seen = sorted(_log_statuses_union)
     _diag_mi = out_nr.get("merchant_lifecycle_internal")
     _diag_returned = bool(
         isinstance(_diag_mi, dict)
@@ -3646,6 +3661,70 @@ def _mark_user_returned_for_payload(payload: dict[str, Any]) -> None:
     except OSError:
         pass
     log.info("%s", line)
+    _persist_durable_return_to_site_evidence_from_payload(payload)
+
+
+def _persist_durable_return_to_site_evidence_from_payload(payload: dict[str, Any]) -> None:
+    """
+    Store-keyed durable return signal for dashboard lifecycle (independent of send-attempt logs).
+    Debounced to avoid flooding on repeated client events.
+    """
+    if not isinstance(payload, dict):
+        return
+    try:
+        store_slug = _normalize_store_slug(payload)
+        session_id = _session_part_from_payload(payload)
+        cart_id = _cart_id_str_from_payload(payload)
+        ss = (store_slug or "").strip()[:255] or "default"
+        sid = (session_id or "").strip()[:512]
+        cid = (cart_id or "").strip()[:255] if cart_id else ""
+        if not sid:
+            return
+        db.create_all()
+        cutoff = datetime.now(timezone.utc) - timedelta(
+            seconds=_DURABLE_RETURN_LOG_DEBOUNCE_SEC
+        )
+        conds: list[Any] = []
+        conds.append(CartRecoveryLog.session_id == sid)
+        if cid:
+            conds.append(CartRecoveryLog.cart_id == cid)
+            conds.append(CartRecoveryLog.session_id == cid)
+        dup = (
+            db.session.query(CartRecoveryLog.id)
+            .filter(
+                CartRecoveryLog.store_slug == ss,
+                CartRecoveryLog.status == _DURABLE_RETURN_TO_SITE_LOG_STATUS,
+                CartRecoveryLog.created_at >= cutoff,
+                or_(*conds),
+            )
+            .first()
+        )
+        if dup is not None:
+            return
+        _persist_cart_recovery_log(
+            store_slug=ss,
+            session_id=sid,
+            cart_id=cid or None,
+            phone=None,
+            message="return_to_site_detected",
+            status=_DURABLE_RETURN_TO_SITE_LOG_STATUS,
+            step=None,
+        )
+        try:
+            _dline = (
+                f"[RETURN TO SITE] durable_evidence_persisted store_slug={ss} "
+                f"session_id={sid[:80]} cart_id={(cid or '-')[:64]}"
+            )
+            print(_dline, flush=True)
+            log.info("%s", _dline)
+        except OSError:
+            pass
+    except Exception as exc:  # noqa: BLE001
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+        log.warning("durable return evidence persist skipped: %s", exc)
 
 
 def _persist_cart_recovery_log(

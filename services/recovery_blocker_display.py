@@ -35,7 +35,7 @@ def log_status_to_recovery_blocker_key(log_status: Optional[str]) -> Optional[st
         return "whatsapp_failed"
     if s in ("skipped_duplicate",):
         return "duplicate_attempt_blocked"
-    if s in ("skipped_anti_spam",):
+    if s in ("skipped_anti_spam", "returned_to_site"):
         return "user_returned"
     if s in (
         "skipped_followup_customer_replied",

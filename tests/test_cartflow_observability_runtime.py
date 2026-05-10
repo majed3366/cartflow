@@ -81,6 +81,17 @@ class CartflowObservabilityHelpersTests(unittest.TestCase):
         )
         self.assertIn("anti_spam_skip_without_behavioral_return", c)
 
+    def test_detect_conflicts_anti_spam_ok_when_durable_return_in_log_union(self) -> None:
+        c = detect_recovery_runtime_conflicts(
+            abandoned_status="abandoned",
+            behavioral={},
+            latest_log_status="skipped_anti_spam",
+            identity_trust_failed=False,
+            sent_ok_latest_log=False,
+            recovery_log_statuses=frozenset({"returned_to_site", "skipped_anti_spam"}),
+        )
+        self.assertNotIn("anti_spam_skip_without_behavioral_return", c)
+
     def test_log_runtime_conflicts_emits_diagnostic(self) -> None:
         buf = io.StringIO()
         with redirect_stdout(buf):

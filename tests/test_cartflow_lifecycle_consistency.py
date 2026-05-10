@@ -90,6 +90,23 @@ class CartflowLifecycleConsistencyTests(unittest.TestCase):
             operational_hint_ar=None,
         )
         self.assertEqual(r.get("blocker_key"), "user_returned")
+
+    def test_reconcile_duplicate_replaced_when_durable_return_in_log_union(self) -> None:
+        r = lg.reconcile_normal_recovery_dashboard_hints(
+            store_slug="demo",
+            session_id="s-dur",
+            cart_id="c-dur",
+            phase_key="pending_second_attempt",
+            sent_ct=0,
+            latest_log_status="skipped_duplicate",
+            behavioral={},
+            blocker_key="duplicate_attempt_blocked",
+            blocker_bundle={"key": "duplicate_attempt_blocked", "label_ar": "محاولة مكررة"},
+            seq_label_ar=None,
+            operational_hint_ar=None,
+            recovery_log_statuses=frozenset({"returned_to_site", "skipped_duplicate"}),
+        )
+        self.assertEqual(r.get("blocker_key"), "user_returned")
         bb = r.get("blocker_bundle")
         self.assertIsInstance(bb, dict)
         assert isinstance(bb, dict)

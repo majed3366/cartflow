@@ -124,7 +124,7 @@ def trace_recovery_lifecycle_from_log_status(
         ev = RecoveryLifecycleEvent.SKIPPED_DUPLICATE
     elif s in ("skipped_no_verified_phone",):
         ev = RecoveryLifecycleEvent.SKIPPED_MISSING_PHONE
-    elif s in ("skipped_anti_spam",):
+    elif s in ("skipped_anti_spam", "returned_to_site"):
         ev = RecoveryLifecycleEvent.SKIPPED_RETURNED
     elif s in ("stopped_converted",):
         ev = RecoveryLifecycleEvent.SKIPPED_CONVERTED
@@ -197,6 +197,7 @@ def detect_recovery_runtime_conflicts(
     latest_log_status: Optional[str],
     identity_trust_failed: bool,
     sent_ok_latest_log: bool,
+    recovery_log_statuses: Optional[frozenset[str]] = None,
 ) -> list[str]:
     """
     Return symbolic conflict codes (no PII). Callers may log via log_runtime_conflicts.
@@ -208,11 +209,13 @@ def detect_recovery_runtime_conflicts(
     bh_returned = behavioral.get("user_returned_to_site") is True
     log_s = (latest_log_status or "").strip().lower()
     sent_ok = bool(sent_ok_latest_log)
+    log_ss = recovery_log_statuses or frozenset()
+    durable_return_evidence = "returned_to_site" in log_ss
     if st == "recovered" and sent_ok:
         conflicts.append("recovered_cart_with_send_success_log")
     if identity_trust_failed and sent_ok:
         conflicts.append("identity_trust_failed_with_send_success_log")
-    if log_s == "skipped_anti_spam" and not bh_returned:
+    if log_s == "skipped_anti_spam" and not bh_returned and not durable_return_evidence:
         conflicts.append("anti_spam_skip_without_behavioral_return")
     return conflicts
 
