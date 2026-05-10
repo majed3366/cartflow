@@ -234,6 +234,23 @@ def recovery_product_context_from_abandoned_cart(ac: Optional[AbandonedCart]) ->
     return recovery_product_context_from_payload(data)
 
 
+def line_items_from_abandoned_cart(ac: Optional[AbandonedCart]) -> list[dict[str, Any]]:
+    """عناصر السطر من ‎raw_payload‎ — لإعادة الاستخدام في طبقة ذكاء المنتج."""
+    if ac is None:
+        return []
+    rp = getattr(ac, "raw_payload", None)
+    if not isinstance(rp, str) or not rp.strip():
+        return []
+    try:
+        data = json.loads(rp)
+    except (json.JSONDecodeError, TypeError, ValueError):
+        return []
+    if not isinstance(data, dict):
+        return []
+    scope = _unwrap_data_level(data)
+    return _first_line_items_list(scope)
+
+
 def resolved_category_label(ctx: RecoveryProductContext) -> Optional[str]:
     if ctx.current_product_category and ctx.current_product_category.strip():
         return ctx.current_product_category.strip()

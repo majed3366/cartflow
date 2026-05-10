@@ -277,6 +277,17 @@ from services.cartflow_widget_trigger_settings import (
     merge_widget_trigger_config_from_body,
     widget_trigger_config_from_store_row,
 )
+from services.cartflow_merchant_offer_settings import (
+    apply_merchant_offer_settings_from_body,
+    apply_product_catalog_from_body,
+    merchant_offer_settings_for_api,
+    merge_merchant_offer_settings_from_body,
+    merge_product_catalog_from_body,
+    merchant_offer_settings_from_store_row,
+    offer_applications_count_for_api,
+    product_catalog_for_api,
+    product_catalog_from_store_row,
+)
 from services.vip_cart import (
     apply_vip_cart_threshold_from_body,
     apply_vip_offer_settings_from_body,
@@ -837,6 +848,16 @@ def _merge_recovery_settings_post_body(body: Dict[str, Any]) -> Dict[str, Any]:
             )
         else:
             out["widget_trigger_config"] = widget_trigger_config_from_store_row(row)
+        if isinstance(body.get("merchant_offer_settings"), dict):
+            out["merchant_offer_settings"] = merge_merchant_offer_settings_from_body(
+                row, body
+            )
+        else:
+            out["merchant_offer_settings"] = merchant_offer_settings_from_store_row(row)
+        if isinstance(body.get("product_catalog"), dict):
+            out["product_catalog"] = merge_product_catalog_from_body(row, body)
+        else:
+            out["product_catalog"] = product_catalog_from_store_row(row)
     return out
 
 
@@ -920,6 +941,8 @@ def _dev_apply_recovery_settings_update(
         apply_vip_offer_settings_from_body(row, request_body)
         apply_cartflow_widget_recovery_gate_from_body(row, request_body)
         apply_widget_trigger_settings_from_body(row, request_body)
+        apply_merchant_offer_settings_from_body(row, request_body)
+        apply_product_catalog_from_body(row, request_body)
     db.session.commit()
     wa: Optional[str] = getattr(row, "whatsapp_support_url", None)
     if not (isinstance(wa, str) and wa.strip()):
@@ -951,6 +974,9 @@ def _dev_apply_recovery_settings_update(
     payload.update(vip_offer_fields_for_api(row))
     payload.update(cartflow_widget_recovery_gate_fields_for_api(row))
     payload.update(widget_trigger_config_for_api(row))
+    payload.update(merchant_offer_settings_for_api(row))
+    payload.update(product_catalog_for_api(row))
+    payload.update(offer_applications_count_for_api(row))
     payload["guided_recovery_defaults"] = guided_defaults_for_api()
     return payload, 200
 
@@ -1383,6 +1409,9 @@ def api_recovery_settings_get():
         payload.update(vip_offer_fields_for_api(row))
         payload.update(cartflow_widget_recovery_gate_fields_for_api(row))
         payload.update(widget_trigger_config_for_api(row))
+        payload.update(merchant_offer_settings_for_api(row))
+        payload.update(product_catalog_for_api(row))
+        payload.update(offer_applications_count_for_api(row))
         payload["guided_recovery_defaults"] = guided_defaults_for_api()
         return j(payload)
     except Exception as e:  # noqa: BLE001

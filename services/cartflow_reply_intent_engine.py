@@ -21,6 +21,8 @@ from sqlalchemy.exc import SQLAlchemyError
 from extensions import db
 from models import AbandonedCart, CartRecoveryReason, Store
 
+from services.cartflow_product_intelligence import FALLBACK_CHEAPER_MESSAGE_AR
+
 log = logging.getLogger("cartflow")
 
 _continuation_lock = threading.RLock()
@@ -449,23 +451,24 @@ def dashboard_summary_ar(contextual_intent: str, action: str) -> str:
     return "العميل تفاعل مع الرسالة"
 
 
-def _template_vars_for_cart(ac: AbandonedCart) -> dict[str, str]:
-    from services.behavioral_recovery.link_tracking import build_recovery_tracking_url
-    from services.recovery_product_context import recovery_product_context_from_abandoned_cart
+def _template_vars_for_cart(
+    ac: AbandonedCart,
+    *,
+    reason_tag: str,
+    contextual_intent: str,
+    action: str,
+) -> dict[str, str]:
+    from services.cartflow_product_intelligence import build_intelligence_continuation_vars
+    from services.cartflow_product_intelligence import resolve_store_for_abandoned_cart
 
-    zid = (getattr(ac, "zid_cart_id", None) or "").strip()
-    sid = (getattr(ac, "recovery_session_id", None) or "").strip()
-    checkout = build_recovery_tracking_url(zid, sid) or (getattr(ac, "cart_url", None) or "").strip()
-    ctx = recovery_product_context_from_abandoned_cart(ac)
-    alt_name = (ctx.cheaper_alternative_name or "خيار بسعر أوضح").strip()
-    alt_url = checkout or ""
-    ship = (os.getenv("CARTFLOW_SHIPPING_ESTIMATE_AR") or "حسب المدينة — غالباً ٣–٧ أيام عمل").strip()
-    return {
-        "checkout_url": checkout or "رابط المتجر",
-        "alternative_product_name": alt_name,
-        "alternative_checkout_url": alt_url,
-        "shipping_estimate": ship,
-    }
+    store = resolve_store_for_abandoned_cart(ac)
+    return build_intelligence_continuation_vars(
+        ac,
+        store,
+        reason_tag=reason_tag,
+        contextual_intent=contextual_intent,
+        action=action,
+    )
 
 
 def build_continuation_message(action: str, vars_map: dict[str, str]) -> str:
@@ -473,55 +476,70 @@ def build_continuation_message(action: str, vars_map: dict[str, str]) -> str:
     altn = vars_map.get("alternative_product_name") or ""
     altu = vars_map.get("alternative_checkout_url") or cu
     se = vars_map.get("shipping_estimate") or ""
+    offer = vars_map.get("merchant_offer_line") or ""
+
     if action == CONTINUATION_ACTION_SEND_CHECKOUT:
         return (
             "ممتاز 👍\n"
             "هذا رابط إكمال الطلب مباشرة:\n"
             f"{cu}\n\n"
             "وإذا احتجت أي مساعدة أنا موجود."
-        )
+        ) + offer
     if action == CONTINUATION_ACTION_RESEND_CHECKOUT:
         return (
             "أكيد 👍\n"
             "هذا رابط الطلب المباشر:\n"
             f"{cu}"
-        )
+        ) + offer
     if action == CONTINUATION_ACTION_SEND_CHEAPER:
-        return (
-            "وجدنا لك خيار قريب بسعر أقل 👌\n"
-            f"{altn}\n"
-            f"{altu}"
-        )
+        if vars_map.get("cheaper_reply_mode") == "real" and altn.strip():
+            return (
+                "وجدنا لك خياراً بسعر أقل 👌\n"
+                f"{altn}\n"
+                f"{altu}"
+            ) + offer
+        base = FALLBACK_CHEAPER_MESSAGE_AR
+        if cu.strip().lower().startswith("http"):
+            base += f"\n\nرابط السلة:\n{cu}"
+        return base + offer
     if action == CONTINUATION_ACTION_EXPLAIN_SHIPPING:
         return (
             "الشحن متاح 👍\n"
             "مدة التوصيل المتوقعة:\n"
             f"{se}"
-        )
+        ) + offer
     if action == CONTINUATION_ACTION_EXPLAIN_DELIVERY:
         return (
             "أكيد 👍\n"
             "التوصيل يختلف حسب المدينة، لكن غالباً يكون خلال أيام عمل بسيطة.\n"
             f"تقدير سريع: {se}\n"
             "إذا حاب نثبت لك الموعد بدقة قبل الإكمال نقدر نساعدك."
-        )
+        ) + offer
     if action == CONTINUATION_ACTION_EXPLAIN_WARRANTY:
         return (
             "أكيد 👍\n"
             "الضمان يختلف حسب المنتج، لكن نقدر نأكد لك التفاصيل قبل إكمال الطلب."
-        )
+        ) + offer
     if action == CONTINUATION_ACTION_EXPLAIN_PRICE:
+        if vars_map.get("has_price_context") == "1":
+            pd = vars_map.get("current_product_price_display") or ""
+            return (
+                "أكيد 👍\n"
+                f"السعر المعروض حالياً للمنتج في السلة: {pd}.\n"
+                "قبل الدفع يظهر لك الإجمالي النهائي في صفحة الإكمال.\n"
+                "إذا حاب توضيح لأي رسوم إضافية، قولنا ونساعدك."
+            ) + offer
         return (
             "أكيد 👍\n"
             "السعر اللي شايفه بالسلة هو المعتمد قبل الدفع.\n"
             "إذا حاب توضيح لأي رسوم إضافية قبل الإكمال، قولنا ونساعدك خطوة بخطوة."
-        )
+        ) + offer
     if action == CONTINUATION_ACTION_EXPLAIN_QUALITY:
         return (
             "أكيد 👍\n"
             "نفهم قلقك على الجودة — التفاصيل الدقيقة تختلف حسب المنتج.\n"
             "قبل الإكمال نقدر نوضح لك المصدر والمواصفات اللي تهمك."
-        )
+        ) + offer
     if action == CONTINUATION_ACTION_REASSURANCE:
         return "خذ راحتك 👍\nإذا احتجت أي توضيح أنا موجود."
     if action == CONTINUATION_ACTION_GRACEFUL_EXIT:
@@ -709,6 +727,7 @@ class ContinuationDecision:
     summary_ar: str
     message_to_send: str
     should_send: bool
+    merchant_offer_applied: bool = False
 
 
 def decide_continuation(
@@ -729,7 +748,12 @@ def decide_continuation(
     action = resolve_continuation_action(ctx)
     st_key = continuation_state_key(ctx, action)
     summary = dashboard_summary_ar(ctx, action)
-    vars_map = _template_vars_for_cart(ac)
+    vars_map = _template_vars_for_cart(
+        ac,
+        reason_tag=reason_tag,
+        contextual_intent=ctx,
+        action=action,
+    )
     msg = build_continuation_message(action, vars_map)
     should_send = bool(
         msg.strip()
@@ -740,6 +764,7 @@ def decide_continuation(
     )
     if action == CONTINUATION_ACTION_WAIT:
         should_send = False
+    offer_applied = vars_map.get("merchant_offer_applied") == "1"
     return ContinuationDecision(
         base_intent=base,
         contextual_intent=ctx,
@@ -748,6 +773,7 @@ def decide_continuation(
         summary_ar=summary,
         message_to_send=msg,
         should_send=should_send,
+        merchant_offer_applied=offer_applied,
     )
 
 
@@ -918,6 +944,14 @@ def process_continuation_after_customer_reply(
                 _mark_auto_reply_sent(phone_key)
                 patch["continuation_last_auto_reply_at"] = utc_now_iso()
                 patch["continuation_last_auto_reply_action"] = dec.action
+                if dec.merchant_offer_applied:
+                    from services.cartflow_product_intelligence import (
+                        record_merchant_offer_use,
+                        resolve_store_for_abandoned_cart,
+                    )
+
+                    st_row = resolve_store_for_abandoned_cart(ac)
+                    record_merchant_offer_use(st_row)
                 if body_hash_curr:
                     patch["continuation_last_autoreply_body_hash"] = body_hash_curr
                     patch["continuation_last_autoreply_contextual_intent"] = (

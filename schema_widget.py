@@ -773,6 +773,55 @@ def _ensure_store_cartflow_widget_recovery_gate_columns(db: Any) -> None:
         log.debug("schema_widget cartflow_widget_gate: %s", e)
 
 
+def _ensure_store_product_intelligence_columns(db: Any) -> None:
+    """أعمدة كتالوج/عروض التاجر وعدّاد استخدام العرض — طبقة ذكاء المنتج v1."""
+    try:
+        db.create_all()
+        insp = inspect(db.engine)
+        if not insp.has_table("stores"):
+            return
+        dialect = getattr(getattr(db.engine, "dialect", None), "name", "") or ""
+        cols = {c["name"] for c in insp.get_columns("stores")}
+        specs = [
+            ("cf_product_catalog_json", "TEXT"),
+            ("cf_merchant_offer_settings_json", "TEXT"),
+        ]
+        for name, sql_type in specs:
+            if name in cols:
+                continue
+            if dialect in ("postgresql", "postgres"):
+                stmt = (
+                    f"ALTER TABLE stores ADD COLUMN IF NOT EXISTS {name} {sql_type}"
+                )
+            else:
+                stmt = f"ALTER TABLE stores ADD COLUMN {name} {sql_type}"
+            try:
+                db.session.execute(text(stmt))
+                db.session.commit()
+            except (OSError, SQLAlchemyError, IntegrityError):
+                db.session.rollback()
+        cols2 = {c["name"] for c in insp.get_columns("stores")}
+        if "cf_offer_applications_count" not in cols2:
+            if dialect in ("postgresql", "postgres"):
+                stmt = (
+                    "ALTER TABLE stores ADD COLUMN IF NOT EXISTS "
+                    "cf_offer_applications_count INTEGER NOT NULL DEFAULT 0"
+                )
+            else:
+                stmt = (
+                    "ALTER TABLE stores ADD COLUMN cf_offer_applications_count "
+                    "INTEGER NOT NULL DEFAULT 0"
+                )
+            try:
+                db.session.execute(text(stmt))
+                db.session.commit()
+            except (OSError, SQLAlchemyError, IntegrityError):
+                db.session.rollback()
+    except (OSError, SQLAlchemyError) as e:
+        db.session.rollback()
+        log.debug("schema_widget product_intelligence: %s", e)
+
+
 def _ensure_store_widget_trigger_settings_column(db: Any) -> None:
     """عمود ‎cf_widget_trigger_settings_json‎ — إعدادات ظهور الودجيت (طبقة إعدادات فقط)."""
     try:
@@ -820,6 +869,7 @@ def ensure_store_widget_schema(db: Any) -> None:
     _ensure_store_vip_offer_columns(db)
     _ensure_store_cartflow_widget_recovery_gate_columns(db)
     _ensure_store_widget_trigger_settings_column(db)
+    _ensure_store_product_intelligence_columns(db)
     _ensure_abandoned_cart_vip_mode_column(db)
     _ensure_abandoned_cart_vip_lifecycle_status_column(db)
     _ensure_abandoned_cart_recovery_session_id_column(db)

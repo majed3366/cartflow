@@ -142,7 +142,11 @@ def test_decide_wants_cheaper() -> None:
     )
     assert d.base_intent == "wants_cheaper"
     assert d.action == CONTINUATION_ACTION_SEND_CHEAPER
-    assert "سعر أقل" in d.message_to_send
+    assert (
+        "بسعر أقل" in d.message_to_send
+        or "ميزانيتك" in d.message_to_send
+        or "أنسب" in d.message_to_send
+    )
 
 
 def test_decide_asks_shipping() -> None:

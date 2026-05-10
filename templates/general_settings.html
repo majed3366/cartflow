@@ -206,6 +206,76 @@
           </div>
         </form>
 
+        <form id="f-smart-offers" class="cf-dash-compact mb-6 space-y-2">
+          <section class="cf-dash-card border-slate-200/80 bg-white">
+            <div class="cf-dash-section-head">
+              <h2>العروض الذكية</h2>
+            </div>
+            <p class="mb-2 text-[11px] leading-snug text-slate-600">قواعد اختيارية لمسار الاستمرار بعد واتساب الاسترجاع — لا يُنشئ النظام خصومات تلقائياً؛ التاجر يضع الكود والشروط فقط.</p>
+            <p class="mb-2 text-[10px] text-slate-500">مرات ظهور كود الخصم في الردود التلقائية: <span id="offer_apps_count" class="font-semibold text-slate-700">0</span></p>
+            <div class="space-y-2 p-1">
+              <div class="grid gap-2 sm:grid-cols-2">
+                <div>
+                  <label class="mb-0.5 block text-[11px] font-medium text-slate-700" for="mo_offer_enabled">تفعيل العروض</label>
+                  <select id="mo_offer_enabled" class="rs-select w-full rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm">
+                    <option value="false">إيقاف</option>
+                    <option value="true">تشغيل</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="mb-0.5 block text-[11px] font-medium text-slate-700" for="mo_enable_discount">عروض الخصم (كود)</label>
+                  <select id="mo_enable_discount" class="rs-select w-full rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm">
+                    <option value="false">إيقاف</option>
+                    <option value="true">تشغيل</option>
+                  </select>
+                </div>
+                <div class="sm:col-span-2">
+                  <label class="mb-0.5 block text-[11px] font-medium text-slate-700" for="mo_discount_code">كود الخصم</label>
+                  <input id="mo_discount_code" type="text" maxlength="64" autocomplete="off" placeholder="مثال: SAVE10"
+                    class="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm" />
+                </div>
+                <div>
+                  <label class="mb-0.5 block text-[11px] font-medium text-slate-700" for="mo_discount_percent">نسبة الخصم (اختياري)</label>
+                  <input id="mo_discount_percent" type="number" min="1" max="35" step="1" placeholder="مثال: 10"
+                    class="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm" />
+                </div>
+                <div>
+                  <label class="mb-0.5 block text-[11px] font-medium text-slate-700" for="mo_trigger_reason">يظهر عند سبب التردد</label>
+                  <select id="mo_trigger_reason" class="rs-select w-full rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm">
+                    <option value="price">السعر</option>
+                    <option value="shipping">الشحن</option>
+                    <option value="quality">الجودة</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="mb-0.5 block text-[11px] font-medium text-slate-700" for="mo_min_cart">أقل قيمة للسلة (اختياري)</label>
+                  <input id="mo_min_cart" type="number" min="0" step="0.01" placeholder="فارغ = بدون حد أدنى"
+                    class="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm" />
+                </div>
+                <div>
+                  <label class="mb-0.5 block text-[11px] font-medium text-slate-700" for="mo_delay_min">تأخير أول عرض (دقائق)</label>
+                  <input id="mo_delay_min" type="number" min="0" max="10080" step="1" value="0"
+                    class="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm" />
+                </div>
+                <div>
+                  <label class="mb-0.5 block text-[11px] font-medium text-slate-700" for="mo_max_uses">حد استخدام الكود في الردود (اختياري)</label>
+                  <input id="mo_max_uses" type="number" min="1" step="1" placeholder="فارغ = بلا حد"
+                    class="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm" />
+                </div>
+              </div>
+              <div>
+                <label class="mb-0.5 block text-[11px] font-medium text-slate-700" for="mo_catalog_json">كتالوج إضافي (JSON اختياري)</label>
+                <textarea id="mo_catalog_json" rows="5" dir="ltr" placeholder='{"version":1,"products":[{"id":"p2","name":"منتج","price":49,"category":"إلكترونيات","url":"","available":true}]}'
+                  class="w-full rounded-lg border border-slate-200 bg-slate-50 px-2 py-2 font-mono text-[11px] text-slate-800"></textarea>
+                <p class="mt-1 text-[10px] text-slate-500">للبدائل الأرخص: نفس فئة المنتج في السلة وسعر أقل فقط — من بيانات حقيقية، بدون اختراع.</p>
+              </div>
+            </div>
+          </section>
+          <div class="cf-dash-save-wrap">
+            <button type="submit" id="saveSmartOffersBtn" class="cf-dash-save">حفظ العروض والكتالوج</button>
+          </div>
+        </form>
+
         <div id="cf-widget-custom" tabindex="-1" class="scroll-mt-20">
           <h2 class="mb-2 text-lg font-bold text-slate-900">مظهر الودجيت</h2>
           <p class="mb-4 text-sm text-slate-600">اللون والاسم والشكل — تُحفظ على الخادم.</p>
@@ -406,6 +476,53 @@
           '<script src="' + src + '" data-store="' + store + '"><\/script>';
       }
 
+      function fillSmartOffersFromData(data) {
+        var mo = data.merchant_offer_settings && typeof data.merchant_offer_settings === "object" ? data.merchant_offer_settings : {};
+        function setVal(id, v) {
+          var el = document.getElementById(id);
+          if (el) el.value = v != null && v !== "" ? String(v) : "";
+        }
+        var en = document.getElementById("mo_offer_enabled");
+        if (en) en.value = mo.offer_enabled === true ? "true" : "false";
+        var ed = document.getElementById("mo_enable_discount");
+        if (ed) ed.value = mo.enable_discount_offers === true ? "true" : "false";
+        setVal("mo_discount_code", mo.discount_code || "");
+        if (mo.discount_percent != null && mo.discount_percent !== "") {
+          setVal("mo_discount_percent", mo.discount_percent);
+        } else {
+          setVal("mo_discount_percent", "");
+        }
+        var tr = document.getElementById("mo_trigger_reason");
+        if (tr) {
+          var t = (mo.offer_trigger_reason || "price").toString();
+          tr.value = t === "shipping" || t === "quality" || t === "price" ? t : "price";
+        }
+        if (mo.offer_min_cart_total != null && mo.offer_min_cart_total !== "") {
+          setVal("mo_min_cart", mo.offer_min_cart_total);
+        } else {
+          setVal("mo_min_cart", "");
+        }
+        setVal("mo_delay_min", mo.offer_delay_minutes != null ? mo.offer_delay_minutes : 0);
+        if (mo.offer_max_uses != null && mo.offer_max_uses !== "") {
+          setVal("mo_max_uses", mo.offer_max_uses);
+        } else {
+          setVal("mo_max_uses", "");
+        }
+        var ta = document.getElementById("mo_catalog_json");
+        if (ta) {
+          try {
+            ta.value = data.product_catalog ? JSON.stringify(data.product_catalog, null, 2) : "";
+          } catch (e) {
+            ta.value = "";
+          }
+        }
+        var oc = document.getElementById("offer_apps_count");
+        if (oc) {
+          var n = data.offer_applications_count;
+          oc.textContent = n != null && n !== "" ? String(n) : "0";
+        }
+      }
+
       var LS = {
         pos: "cf_widget_preview_pos",
         dark: "cf_widget_preview_dark",
@@ -596,6 +713,7 @@
           if (x.data.ok) {
             fillGlobalFromData(x.data);
             fillWidgetTriggersFromData(x.data);
+            fillSmartOffersFromData(x.data);
             fillWidgetFromData(x.data);
             loadPreviewPrefs();
             hideMsg();
@@ -665,6 +783,59 @@
           .then(function (x) {
             if (x.data.ok) {
               fillWidgetTriggersFromData(x.data);
+              showOk();
+            } else {
+              showErr(x.data.error || "فشل الحفظ");
+            }
+          })
+          .catch(function () {
+            showErr("خطأ في الشبكة أثناء الحفظ.");
+          });
+      });
+
+      document.getElementById("f-smart-offers").addEventListener("submit", function (e) {
+        e.preventDefault();
+        hideMsg();
+        var ta = document.getElementById("mo_catalog_json");
+        var catalog = { version: 1, products: [] };
+        if (ta && ta.value.trim()) {
+          try {
+            catalog = JSON.parse(ta.value);
+          } catch (err) {
+            showErr("صيغة JSON للكتالوج غير صالحة.");
+            return;
+          }
+        }
+        var dmin = parseInt(document.getElementById("mo_delay_min").value, 10);
+        var maxu = document.getElementById("mo_max_uses").value.trim();
+        var minc = document.getElementById("mo_min_cart").value.trim();
+        var dp = document.getElementById("mo_discount_percent").value.trim();
+        var body = {
+          merchant_offer_settings: {
+            offer_enabled: document.getElementById("mo_offer_enabled").value === "true",
+            enable_discount_offers: document.getElementById("mo_enable_discount").value === "true",
+            discount_code: document.getElementById("mo_discount_code").value.trim(),
+            discount_percent: dp === "" ? null : parseInt(dp, 10),
+            offer_trigger_reason: document.getElementById("mo_trigger_reason").value,
+            offer_min_cart_total: minc === "" ? null : parseFloat(minc),
+            offer_delay_minutes: isFinite(dmin) && dmin >= 0 ? dmin : 0,
+            offer_max_uses: maxu === "" ? null : parseInt(maxu, 10),
+          },
+          product_catalog: catalog,
+        };
+        fetch("/api/recovery-settings", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        })
+          .then(function (r) {
+            return r.json().then(function (d) {
+              return { status: r.status, data: d };
+            });
+          })
+          .then(function (x) {
+            if (x.data.ok) {
+              fillSmartOffersFromData(x.data);
               showOk();
             } else {
               showErr(x.data.error || "فشل الحفظ");

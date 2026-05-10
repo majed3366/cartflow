@@ -33,6 +33,9 @@ class WidgetTriggerSettingsTests(unittest.TestCase):
         self.assertTrue(body.get("ok"), body)
         self.assertIn("widget_trigger_config", body)
         self.assertIn("zid_store_id", body)
+        self.assertIn("merchant_offer_settings", body)
+        self.assertIn("product_catalog", body)
+        self.assertIn("offer_applications_count", body)
         wtc = body["widget_trigger_config"]
         self.assertIsInstance(wtc, dict)
         self.assertEqual(wtc.get("exit_intent_sensitivity"), "medium")
