@@ -40,6 +40,46 @@
       {% set nrb = vc.normal_recovery_blocker | default(none) %}
       {% set nr_op = vc.normal_recovery_operational_hint_ar | default('', true) | trim %}
       {% set nr_fu = vc.normal_recovery_followup_hint_ar | default('', true) | trim %}
+      {% set ml_beh = vc.merchant_lifecycle_customer_behavior_ar | default('', true) | trim %}
+      {% set ml_out = vc.merchant_lifecycle_system_outcome_ar | default('', true) | trim %}
+      {% set ml_next = vc.merchant_lifecycle_next_action_ar | default('', true) | trim %}
+      {% set ml_primary = vc.merchant_lifecycle_primary_key | default('', true) | trim %}
+      {% set nr_skip = vc.normal_recovery_last_skip_reason | default('', true) | trim %}
+      {% set show_ops = (nrb is mapping and nrb.get('label_ar')) or nr_op or nr_fu or (nr_skip | length > 0) %}
+      {% if ml_beh %}
+      <div class="mt-2 space-y-1.5 rounded-lg border border-cyan-200/90 bg-gradient-to-bl from-cyan-50/50 to-white px-2.5 py-2.5 text-right shadow-sm" lang="ar" role="region" aria-label="حالة العميل والمتابعة" data-merchant-lifecycle-primary="{{ ml_primary | e }}">
+        <p class="m-0 text-[11px] font-bold text-slate-900">{{ ml_beh | e }}</p>
+        <p class="m-0 text-[10px] font-semibold text-cyan-950/95">{{ ml_out | e }}</p>
+        <p class="m-0 text-[9px] leading-relaxed text-slate-700">{{ ml_next | e }}</p>
+      </div>
+      {% if show_ops %}
+      <details class="mt-2 rounded-lg border border-slate-200/80 bg-slate-50/60 px-2 py-1.5 text-right" lang="ar" data-normal-recovery-technical="1">
+        <summary class="cursor-pointer select-none text-[9px] font-semibold text-slate-600">تفاصيل تشغيلية (دعم فني)</summary>
+        <div class="mt-1.5 space-y-1 border-t border-slate-200/70 pt-1.5">
+          {% if nrb is mapping and nrb.get('label_ar') %}
+          {% set nrb_sev = nrb.get('severity') | default('info') %}
+          <div class="space-y-1 rounded border px-2 py-1.5 {% if nrb_sev == 'error' %}border-red-200/80 bg-red-50/70{% elif nrb_sev == 'warning' %}border-amber-200/80 bg-amber-50/65{% elif nrb_sev == 'success' %}border-emerald-200/80 bg-emerald-50/65{% else %}border-sky-200/70 bg-sky-50/40{% endif %}" data-normal-recovery-blocker="{{ nrb.get('key', '') | e }}">
+            <p class="m-0 text-[9px] font-bold text-slate-900">{{ nrb.get('label_ar') | e }}</p>
+            {% if nr_op and nr_op != (nrb.get('label_ar') | default('', true) | trim) %}
+            <p class="m-0 text-[8px] font-semibold text-amber-950/95">{{ nr_op | e }}</p>
+            {% endif %}
+            {% if nrb.get('description_ar') %}
+            <p class="m-0 text-[8px] leading-relaxed text-slate-700">{{ nrb.get('description_ar') | e }}</p>
+            {% endif %}
+            {% if nrb.get('merchant_action_ar') %}
+            <p class="m-0 text-[8px] text-slate-600"><span class="font-semibold text-slate-700">ما يمكنك فعله:</span> {{ nrb.get('merchant_action_ar') | e }}</p>
+            {% endif %}
+          </div>
+          {% elif nr_op or nr_fu %}
+          <p class="m-0 text-[9px] font-bold text-slate-800" data-normal-recovery-blocker-fallback="1">{{ (nr_op or nr_fu) | e }}</p>
+          {% endif %}
+          {% if nr_skip %}
+          <p class="m-0 text-[8px] text-slate-500"><span class="font-semibold">رمز آخر تخطٍ:</span> {{ nr_skip | e }}</p>
+          {% endif %}
+        </div>
+      </details>
+      {% endif %}
+      {% else %}
       {% if nrb is mapping and nrb.get('label_ar') %}
       {% set nrb_sev = nrb.get('severity') | default('info') %}
       <div class="mt-2 space-y-1 rounded-lg border px-2.5 py-2 text-right shadow-sm {% if nrb_sev == 'error' %}border-red-200/90 bg-red-50/85{% elif nrb_sev == 'warning' %}border-amber-200/90 bg-amber-50/75{% elif nrb_sev == 'success' %}border-emerald-200/90 bg-emerald-50/75{% else %}border-sky-200/85 bg-sky-50/50{% endif %}"
@@ -61,12 +101,13 @@
         <p class="m-0 text-[10px] font-bold text-slate-900">{{ (nr_op or nr_fu) | e }}</p>
       </div>
       {% endif %}
+      {% endif %}
       {% if vc.normal_recovery_identity_trust_ar | default('') %}
       <div class="mt-2 rounded-lg border border-amber-200/90 bg-amber-50/75 px-2.5 py-2 text-right shadow-sm" lang="ar" role="alert" data-normal-recovery-identity-trust="1">
         <p class="m-0 text-[10px] font-bold text-amber-950">{{ vc.normal_recovery_identity_trust_ar | e }}</p>
       </div>
       {% endif %}
-      {% if vc.merchant_clarity_group_ar | default('', true) | trim | length > 0 %}
+      {% if (vc.merchant_clarity_group_ar | default('', true) | trim | length > 0) and (not ml_beh) %}
       <div class="mt-2 space-y-0.5 rounded-lg border border-slate-200/90 bg-slate-50/80 px-2.5 py-2 text-right shadow-sm" lang="ar" role="region" aria-label="توضيح تشغيلي" data-merchant-clarity-card="1">
         <p class="m-0 text-[9px] font-bold text-slate-600">{{ vc.merchant_clarity_group_ar | e }}</p>
         <p class="m-0 text-[10px] font-semibold text-slate-900">{{ vc.merchant_clarity_headline_ar | default('', true) | e }}</p>
@@ -115,7 +156,7 @@
         {% endif %}
       {% endif %}
       {% set nr_return_line_ar = nr_ret_ns.line %}
-      {% if nr_show_return_after_message and nr_return_line_ar and not vc.normal_recovery_interactive_mode %}
+      {% if nr_show_return_after_message and nr_return_line_ar and not vc.normal_recovery_interactive_mode and ml_primary != 'customer_returned' %}
       <div class="mt-2 space-y-1 rounded-lg border border-sky-200/90 bg-sky-50/50 px-2.5 py-2 text-right shadow-sm" data-normal-recovery-return-status="1" lang="ar" role="status" aria-live="polite">
         <p class="m-0 flex flex-wrap items-center justify-end gap-1">
           <span class="inline-flex items-center rounded-full border border-sky-300/90 bg-white px-2 py-0.5 text-[9px] font-bold text-sky-950">{{ nr_return_line_ar | e }}</span>

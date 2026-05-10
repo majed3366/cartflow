@@ -2237,6 +2237,24 @@ def _normal_recovery_latest_blocker_event_row(ac: AbandonedCart) -> Optional[Car
         return None
 
 
+def _normal_recovery_latest_recovery_log_row(ac: AbandonedCart) -> Optional[CartRecoveryLog]:
+    """أحدث سجل استرجاع بأي حالة (يشمل queued و sent) — لطبقة العرض السلوكية فقط."""
+    conds = _cart_recovery_log_filters_for_abandoned_cart(ac)
+    if not conds:
+        return None
+    try:
+        db.create_all()
+        return (
+            db.session.query(CartRecoveryLog)
+            .filter(or_(*conds))
+            .order_by(CartRecoveryLog.id.desc())
+            .first()
+        )
+    except (SQLAlchemyError, OSError, TypeError, ValueError):
+        db.session.rollback()
+        return None
+
+
 def _normal_recovery_latest_skipped_no_verified_phone_row(
     ac: AbandonedCart,
 ) -> Optional[CartRecoveryLog]:
@@ -2879,6 +2897,32 @@ def _normal_recovery_phase_steps_payload(ac: AbandonedCart) -> dict[str, Any]:
             behavioral=behavioral_pre,
             sent_ct=int(sent_ct),
             phase_steps=steps_out,
+        )
+    except Exception:
+        pass
+    try:
+        from services.cartflow_merchant_lifecycle import (  # noqa: PLC0415
+            build_normal_recovery_merchant_lifecycle,
+        )
+
+        _tail_row = _normal_recovery_latest_recovery_log_row(ac)
+        _tail_st = (
+            str(getattr(_tail_row, "status", None) or "").strip() or None
+            if _tail_row is not None
+            else None
+        )
+        _ls_merchant = (str(latest_log_status or "").strip() or _tail_st or None)
+
+        out_nr.update(
+            build_normal_recovery_merchant_lifecycle(
+                phase_key=current_key,
+                coarse=coarse,
+                latest_log_status=_ls_merchant,
+                blocker_key=blocker_key_out,
+                behavioral=behavioral_pre,
+                sent_ct=int(sent_ct),
+                attempt_cap=max_disp,
+            )
         )
     except Exception:
         pass

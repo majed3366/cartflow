@@ -424,6 +424,13 @@ class NormalRecoveryDashboardStatusTests(unittest.TestCase):
         self.assertIn("تلقائي", hint)
         mc_head = payload.get("merchant_clarity_headline_ar") or ""
         self.assertIn("موقع", mc_head)
+        self.assertEqual(
+            payload.get("merchant_lifecycle_primary_key"), "customer_returned"
+        )
+        self.assertIn(
+            "عاد",
+            (payload.get("merchant_lifecycle_customer_behavior_ar") or ""),
+        )
 
     def test_skip_missing_reason_after_first_send_not_ignored(self) -> None:
         st = self._store_attempts_1()
@@ -776,6 +783,7 @@ class NormalRecoveryDashboardStatusTests(unittest.TestCase):
             html,
         )
         self.assertIn('data-normal-recovery-status="blocked"', html)
+        self.assertIn("data-merchant-lifecycle-primary", html, html[:6000])
 
     def test_http_abandon_without_phone_resolves_blocked_dominant_phase(self) -> None:
         """API reason + abandon without phone → payload phase is blocked (not pending_send)."""
