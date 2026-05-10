@@ -2,11 +2,11 @@
 {% set lc = vc.vip_lifecycle_status %}
 {% set tier = vc.recovery_card_tier | default('vip') %}
 {% if tier == 'normal' %}
-<li lang="ar" class="cf-cart-row cf-normal-recovery-card flex flex-col gap-0 rounded-xl border border-cyan-100/80 bg-gradient-to-bl from-white via-slate-50/40 to-slate-50/80 p-3.5 shadow-sm sm:p-4"
+<li lang="ar" class="cf-cart-row cf-normal-recovery-card flex flex-col gap-0 rounded-xl border border-cyan-100/80 bg-gradient-to-bl from-white via-slate-50/40 to-slate-50/80 p-3 shadow-sm sm:p-3.5"
   data-vip-cart-li data-cart-row-id="{{ vc.id }}" data-vip-cart-row-id="{{ vc.id }}" data-vip-lc="{{ lc }}"
   data-recovery-tier="normal"
   data-smart-cta-highlight="{{ vc.smart_cta_target_display | default('none') }}">
-  <div class="mb-2 flex flex-wrap items-center justify-end gap-2 border-b border-cyan-100/50 pb-2">
+  <div class="mb-1.5 flex flex-wrap items-center justify-end gap-1.5 border-b border-cyan-100/50 pb-1.5">
     <span class="inline-flex items-center rounded border border-slate-200/80 bg-slate-100/90 px-1.5 py-0.5 text-[9px] font-semibold text-slate-600">آلي</span>
     {% set nrs = vc.normal_recovery_status | default('pending') %}
     <span class="inline-flex max-w-full items-center rounded-md border px-2 py-0.5 text-[11px] font-semibold
@@ -19,10 +19,10 @@
       {% elif nrs == 'ignored' %}border-amber-200/85 bg-amber-50/90 text-amber-950
       {% elif nrs == 'blocked' %}border-amber-200/90 bg-amber-50/95 text-amber-950
       {% else %}border-cyan-200/90 bg-cyan-50/90 text-cyan-950{% endif %}"
-      data-normal-recovery-status="{{ nrs }}" data-normal-recovery-phase-key="{{ vc.normal_recovery_phase_key | default('', true) | e }}">{{ vc.normal_recovery_phase_label_ar | default('بانتظار الإرسال') }}</span>
+      data-normal-recovery-status="{{ nrs }}"       data-normal-recovery-phase-key="{{ vc.normal_recovery_phase_key | default('', true) | e }}">{{ vc.normal_recovery_phase_label_ar | default('بانتظار الإرسال') }}</span>
   </div>
-  <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-5">
-    <div class="min-w-0 flex-1 space-y-2 text-right">
+  <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+    <div class="min-w-0 flex-1 space-y-1.5 text-right">
       <p class="m-0 text-lg font-bold tabular-nums tracking-tight text-slate-900">{{ "%.0f"|format(vc.cart_value) }} <span class="text-sm font-semibold text-slate-500">ريال</span></p>
       <div class="mt-2 flex flex-wrap items-center justify-end gap-1" role="list" aria-label="مراحل الاسترجاع">
         {% set ncap = vc.normal_recovery_attempt_cap | default(1) | int %}
@@ -49,7 +49,7 @@
       {% set show_diag = nr_diag is mapping %}
       {% set show_ops = (nrb is mapping and nrb.get('label_ar')) or nr_op or nr_fu or (nr_skip | length > 0) %}
       {% if ml_beh %}
-      <div class="mt-2 space-y-1.5 rounded-lg border border-cyan-200/90 bg-gradient-to-bl from-cyan-50/50 to-white px-2.5 py-2.5 text-right shadow-sm" lang="ar" role="region" aria-label="حالة العميل والمتابعة" data-merchant-lifecycle-primary="{{ ml_primary | e }}">
+      <div class="mt-1.5 space-y-1 rounded-lg border border-cyan-200/90 bg-gradient-to-bl from-cyan-50/50 to-white px-2.5 py-2 text-right shadow-sm" lang="ar" role="region" aria-label="حالة العميل والمتابعة" data-merchant-lifecycle-primary="{{ ml_primary | e }}">
         <p class="m-0 text-[11px] font-bold text-slate-900">{{ ml_beh | e }}</p>
         <p class="m-0 text-[10px] font-semibold text-cyan-950/95">{{ ml_out | e }}</p>
         <p class="m-0 text-[9px] leading-relaxed text-slate-700">{{ ml_next | e }}</p>
@@ -133,7 +133,7 @@
         {% endif %}
       </div>
       {% endif %}
-      <p class="m-0 text-[9px] leading-relaxed text-slate-500">الأتمتة تعمل تلقائياً وفق إعدادات السلال العادية. حدّث الصفحة لعرض آخر حالة.</p>
+      <p class="m-0 mt-1.5 text-[8px] leading-snug text-slate-500">الأتمتة تعمل تلقائياً وفق إعدادات السلال العادية. حدّث الصفحة لعرض آخر حالة.</p>
       {# Return badge: use every normal_recovery_* signal already on vc (same payload as /dashboard/normal-carts). #}
       {% set nr_phase_key = vc.normal_recovery_phase_key | default('', true) %}
       {% set nr_coarse = vc.normal_recovery_status | default('', true) %}
@@ -187,15 +187,15 @@
       </div>
       {% endif %}
       {% if vc.normal_recovery_interactive_mode %}
-      <div class="mt-2 space-y-1.5 rounded-lg border border-violet-100/90 bg-violet-50/40 px-2.5 py-2" role="region" aria-label="تفاعل العميل">
-        {% if vc.normal_recovery_active_conversation_badge %}
-        <p class="m-0"><span class="inline-flex items-center rounded-full border border-violet-200 bg-white px-2 py-0.5 text-[9px] font-bold text-violet-900">محادثة نشطة</span></p>
-        {% endif %}
+      <div class="mt-1.5 space-y-1 rounded-lg border border-violet-100/90 bg-violet-50/40 px-2 py-1.5" role="region" aria-label="تفاعل العميل">
         {% if vc.normal_recovery_continuation_summary_ar | default('', true) | trim %}
-        <p class="m-0 text-[8px] leading-relaxed text-violet-950/90" data-normal-recovery-continuation-summary="1" lang="ar">
-          <span class="font-semibold text-violet-800">متابعة تلقائية:</span>
+        <p class="m-0 text-[8px] leading-snug text-violet-950/95" data-normal-recovery-continuation-summary="1" lang="ar">
+          <span class="font-semibold text-violet-800">آخر متابعة:</span>
           {{ vc.normal_recovery_continuation_summary_ar | e }}
         </p>
+        {% endif %}
+        {% if vc.normal_recovery_active_conversation_badge %}
+        <p class="m-0"><span class="inline-flex items-center rounded-full border border-violet-200 bg-white px-1.5 py-0.5 text-[8px] font-bold text-violet-900">محادثة نشطة</span></p>
         {% endif %}
         {% if vc.normal_recovery_reply_intent_label_ar or (nr_show_return_after_message and nr_return_line_ar) %}
         <p class="m-0 flex flex-wrap items-center justify-end gap-1" aria-label="سلوك العميل والعودة للموقع">
@@ -217,7 +217,7 @@
         {% endif %}
         {% endif %}
         {% if vc.normal_recovery_cooldown_panel %}
-        <div class="mt-2 space-y-1 rounded-lg border border-sky-200/90 bg-sky-50/45 px-2 py-1.5 text-right" data-normal-recovery-cooldown="1" lang="ar" role="region" aria-label="تبريد المحادثة">
+        <div class="mt-1.5 space-y-0.5 rounded-lg border border-sky-200/90 bg-sky-50/45 px-1.5 py-1 text-right" data-normal-recovery-cooldown="1" lang="ar" role="region" aria-label="تبريد المحادثة">
           <p class="m-0 text-[9px] font-bold text-sky-950">تبريد المحادثة والصمت</p>
           {% if vc.normal_recovery_cooldown_state_ar %}
           <p class="m-0 text-[8px] text-slate-800"><span class="font-semibold text-slate-600">حالة التفاعل الحالية:</span> {{ vc.normal_recovery_cooldown_state_ar | e }}</p>
@@ -243,7 +243,7 @@
         </div>
         {% endif %}
         {% if vc.normal_recovery_suggested_reply_ar %}
-        <div class="mt-2 space-y-2 rounded-xl border border-emerald-100/90 bg-gradient-to-br from-white via-emerald-50/30 to-slate-50/80 p-2.5 shadow-sm ring-1 ring-emerald-100/60"
+        <div class="mt-1.5 space-y-1.5 rounded-xl border border-emerald-100/90 bg-gradient-to-br from-white via-emerald-50/30 to-slate-50/80 p-2 shadow-sm ring-1 ring-emerald-100/60"
           data-normal-recovery-suggestion-box
           data-normal-recovery-suggestion-action-key="{{ vc.normal_recovery_suggested_action_key | default('') | e }}"
           data-normal-recovery-offer-type="{{ vc.normal_recovery_optional_offer_type | default('') | e }}"

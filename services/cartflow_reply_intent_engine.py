@@ -70,6 +70,7 @@ _AR_NORM = (
     ("آ", "ا"),
     ("ٱ", "ا"),
     ("ى", "ي"),
+    ("ی", "ي"),
     ("ة", "ه"),
 )
 
@@ -86,9 +87,15 @@ def normalize_inbound_text_v1(raw: str) -> str:
 def _contains_any(norm: str, phrases: frozenset[str]) -> bool:
     if not norm:
         return False
-    if norm in phrases:
-        return True
-    return any(p in norm for p in phrases if len(p) > 2)
+    for p in phrases:
+        pn = normalize_inbound_text_v1(p)
+        if not pn:
+            continue
+        if norm == pn:
+            return True
+        if len(pn) > 2 and pn in norm:
+            return True
+    return False
 
 
 _CONFIRMATION_YES = frozenset(
@@ -145,16 +152,51 @@ _ASKS_PRICE = frozenset(
         "how much",
     }
 )
+_ASKS_DELIVERY = frozenset(
+    {
+        "متى يوصل",
+        "متى يصل",
+        "موعد التوصيل",
+        "موعد الوصول",
+        "وقت التوصيل",
+        "يوصل متى",
+        "كم ياخذ التوصيل",
+        "كم يأخذ التوصيل",
+        "طلبي وين",
+        "وين الطلب",
+    }
+)
 _ASKS_SHIPPING = frozenset(
     {
         "الشحن",
         "شحن",
         "التوصيل",
         "توصيل",
-        "متى يوصل",
-        "يوصل",
+        "رسوم الشحن",
+        "سعر الشحن",
+        "شحن مجاني",
         "shipping",
-        "delivery",
+    }
+)
+_ASKS_WARRANTY = frozenset(
+    {
+        "الضمان",
+        "ضمان",
+        "ضمانات",
+        "warranty",
+    }
+)
+_ASKS_QUALITY = frozenset(
+    {
+        "الجودة",
+        "جودة",
+        "جوده",
+        "اصلي",
+        "أصلي",
+        "تقليد",
+        "original",
+        "quality",
+        "موثوق",
     }
 )
 _HESITATION = frozenset(
@@ -213,10 +255,16 @@ def detect_base_intent_v1(body: str) -> str:
         return "wants_cheaper"
     if _contains_any(n, _WANTS_LINK):
         return "wants_link"
-    if _contains_any(n, _ASKS_SHIPPING):
-        return "asks_shipping"
+    if _contains_any(n, _ASKS_WARRANTY):
+        return "asks_warranty"
+    if _contains_any(n, _ASKS_QUALITY):
+        return "asks_quality"
     if _contains_any(n, _ASKS_PRICE):
         return "asks_price"
+    if _contains_any(n, _ASKS_DELIVERY):
+        return "asks_delivery"
+    if _contains_any(n, _ASKS_SHIPPING):
+        return "asks_shipping"
     if _contains_any(n, _HESITATION):
         return "hesitation"
     if _contains_any(n, _CONFIRMATION_YES):
@@ -289,6 +337,12 @@ def resolve_contextual_intent(
         return "wants_cheaper_alternative"
     if b == "asks_price":
         return "asks_price_detail"
+    if b == "asks_warranty":
+        return "asks_warranty_detail"
+    if b == "asks_quality":
+        return "asks_quality_detail"
+    if b == "asks_delivery":
+        return "asks_delivery_detail"
     if b == "asks_shipping":
         return "asks_shipping_detail"
     if b == "hesitation":
@@ -306,6 +360,10 @@ CONTINUATION_ACTION_SEND_CHECKOUT = "send_checkout_link"
 CONTINUATION_ACTION_RESEND_CHECKOUT = "resend_checkout_link"
 CONTINUATION_ACTION_SEND_CHEAPER = "send_cheaper_alternative"
 CONTINUATION_ACTION_EXPLAIN_SHIPPING = "explain_shipping"
+CONTINUATION_ACTION_EXPLAIN_DELIVERY = "explain_delivery"
+CONTINUATION_ACTION_EXPLAIN_WARRANTY = "explain_warranty"
+CONTINUATION_ACTION_EXPLAIN_PRICE = "explain_price"
+CONTINUATION_ACTION_EXPLAIN_QUALITY = "explain_quality"
 CONTINUATION_ACTION_REASSURANCE = "reassurance_followup"
 CONTINUATION_ACTION_GRACEFUL_EXIT = "graceful_exit"
 CONTINUATION_ACTION_ESCALATE = "escalate_to_human"
@@ -320,7 +378,10 @@ def resolve_continuation_action(contextual_intent: str) -> str:
         "confirmation_after_shipping": CONTINUATION_ACTION_REASSURANCE,
         "wants_checkout_link": CONTINUATION_ACTION_RESEND_CHECKOUT,
         "wants_cheaper_alternative": CONTINUATION_ACTION_SEND_CHEAPER,
-        "asks_price_detail": CONTINUATION_ACTION_REASSURANCE,
+        "asks_price_detail": CONTINUATION_ACTION_EXPLAIN_PRICE,
+        "asks_warranty_detail": CONTINUATION_ACTION_EXPLAIN_WARRANTY,
+        "asks_quality_detail": CONTINUATION_ACTION_EXPLAIN_QUALITY,
+        "asks_delivery_detail": CONTINUATION_ACTION_EXPLAIN_DELIVERY,
         "asks_shipping_detail": CONTINUATION_ACTION_EXPLAIN_SHIPPING,
         "customer_hesitating": CONTINUATION_ACTION_REASSURANCE,
         "customer_rejecting": CONTINUATION_ACTION_GRACEFUL_EXIT,
@@ -341,6 +402,14 @@ def continuation_state_key(contextual_intent: str, action: str) -> str:
         return "customer_interested_in_alternative"
     if contextual_intent == "asks_shipping_detail":
         return "customer_asking_shipping"
+    if contextual_intent == "asks_delivery_detail":
+        return "customer_asking_delivery"
+    if contextual_intent == "asks_warranty_detail":
+        return "customer_asking_warranty"
+    if contextual_intent == "asks_quality_detail":
+        return "customer_asking_quality"
+    if contextual_intent == "asks_price_detail":
+        return "customer_asking_price"
     if contextual_intent == "customer_hesitating":
         return "customer_hesitating"
     if contextual_intent == "customer_rejecting":
@@ -352,19 +421,25 @@ def continuation_state_key(contextual_intent: str, action: str) -> str:
 
 def dashboard_summary_ar(contextual_intent: str, action: str) -> str:
     if action == CONTINUATION_ACTION_ESCALATE:
-        return "طلب تدخل بشري"
+        return "تم طلب تدخل بشري"
     if action == CONTINUATION_ACTION_GRACEFUL_EXIT:
-        return "العميل جاهز للإغلاق"
+        return "العميل أنهى المحادثة بلباقة"
     if contextual_intent == "wants_checkout_link":
         return "العميل يطلب رابط الإكمال"
     if contextual_intent in ("ready_for_checkout", "confirmation_generic"):
         return "العميل جاهز للإكمال"
     if contextual_intent in ("yes_to_cheaper_alternative", "wants_cheaper_alternative"):
-        return "العميل مهتم ببديل أقل"
+        return "العميل مهتم بخيار أوفر"
     if contextual_intent == "asks_shipping_detail":
         return "العميل يسأل عن الشحن"
+    if contextual_intent == "asks_delivery_detail":
+        return "العميل يسأل عن موعد التوصيل"
     if contextual_intent == "asks_price_detail":
         return "العميل يسأل عن السعر"
+    if contextual_intent == "asks_warranty_detail":
+        return "العميل يسأل عن الضمان"
+    if contextual_intent == "asks_quality_detail":
+        return "العميل يسأل عن الجودة"
     if contextual_intent == "customer_hesitating":
         return "العميل متردد"
     if contextual_intent == "confirmation_after_shipping":
@@ -422,6 +497,30 @@ def build_continuation_message(action: str, vars_map: dict[str, str]) -> str:
             "الشحن متاح 👍\n"
             "مدة التوصيل المتوقعة:\n"
             f"{se}"
+        )
+    if action == CONTINUATION_ACTION_EXPLAIN_DELIVERY:
+        return (
+            "أكيد 👍\n"
+            "التوصيل يختلف حسب المدينة، لكن غالباً يكون خلال أيام عمل بسيطة.\n"
+            f"تقدير سريع: {se}\n"
+            "إذا حاب نثبت لك الموعد بدقة قبل الإكمال نقدر نساعدك."
+        )
+    if action == CONTINUATION_ACTION_EXPLAIN_WARRANTY:
+        return (
+            "أكيد 👍\n"
+            "الضمان يختلف حسب المنتج، لكن نقدر نأكد لك التفاصيل قبل إكمال الطلب."
+        )
+    if action == CONTINUATION_ACTION_EXPLAIN_PRICE:
+        return (
+            "أكيد 👍\n"
+            "السعر اللي شايفه بالسلة هو المعتمد قبل الدفع.\n"
+            "إذا حاب توضيح لأي رسوم إضافية قبل الإكمال، قولنا ونساعدك خطوة بخطوة."
+        )
+    if action == CONTINUATION_ACTION_EXPLAIN_QUALITY:
+        return (
+            "أكيد 👍\n"
+            "نفهم قلقك على الجودة — التفاصيل الدقيقة تختلف حسب المنتج.\n"
+            "قبل الإكمال نقدر نوضح لك المصدر والمواصفات اللي تهمك."
         )
     if action == CONTINUATION_ACTION_REASSURANCE:
         return "خذ راحتك 👍\nإذا احتجت أي توضيح أنا موجود."
@@ -705,6 +804,34 @@ def process_continuation_after_customer_reply(
     )
 
     sid_log = (getattr(ac, "recovery_session_id", None) or "").strip()
+
+    body_hash_curr = ""
+    if dec.should_send and dec.action != CONTINUATION_ACTION_ESCALATE:
+        body_hash_curr = hashlib.sha256(
+            (dec.message_to_send or "").strip().encode("utf-8")
+        ).hexdigest()[:48]
+    prev_body_h = str(bh.get("continuation_last_autoreply_body_hash") or "")
+    prev_ctx_h = str(bh.get("continuation_last_autoreply_contextual_intent") or "")
+    suppress_repeat_send = bool(
+        body_hash_curr
+        and prev_body_h
+        and prev_body_h == body_hash_curr
+        and prev_ctx_h == dec.contextual_intent
+    )
+    if suppress_repeat_send:
+        try:
+            print(
+                f"[CONTINUATION REPEAT SUPPRESSED] session_id={sid_log} "
+                f"contextual_intent={dec.contextual_intent}",
+                flush=True,
+            )
+        except OSError:
+            pass
+        log.info(
+            "[CONTINUATION REPEAT SUPPRESSED] session_id=%s contextual=%s",
+            sid_log,
+            dec.contextual_intent,
+        )
     log.info(
         "[CONTINUATION INTENT] session_id=%s base=%s contextual=%s action=%s state=%s",
         sid_log,
@@ -723,14 +850,20 @@ def process_continuation_after_customer_reply(
     except OSError:
         pass
 
+    summary_ar_out = dec.summary_ar
+    if suppress_repeat_send:
+        summary_ar_out = f"{dec.summary_ar} — لم نُعد نفس الرد تلقائياً"
+
     patch: dict[str, Any] = {
         "continuation_base_intent": dec.base_intent,
         "continuation_contextual_intent": dec.contextual_intent,
         "continuation_action": dec.action,
         "continuation_state": dec.continuation_state,
-        "continuation_summary_ar": dec.summary_ar,
+        "continuation_summary_ar": summary_ar_out,
         "continuation_last_evaluated_at": utc_now_iso(),
     }
+    if suppress_repeat_send:
+        patch["continuation_repeat_suppressed"] = True
 
     if dec.action == CONTINUATION_ACTION_ESCALATE:
         patch["continuation_escalated_human"] = True
@@ -744,6 +877,7 @@ def process_continuation_after_customer_reply(
 
     if (
         dec.should_send
+        and not suppress_repeat_send
         and continuation_auto_reply_enabled()
         and dec.action != CONTINUATION_ACTION_ESCALATE
         and _cooldown_allows_auto_reply(phone_key)
@@ -784,6 +918,11 @@ def process_continuation_after_customer_reply(
                 _mark_auto_reply_sent(phone_key)
                 patch["continuation_last_auto_reply_at"] = utc_now_iso()
                 patch["continuation_last_auto_reply_action"] = dec.action
+                if body_hash_curr:
+                    patch["continuation_last_autoreply_body_hash"] = body_hash_curr
+                    patch["continuation_last_autoreply_contextual_intent"] = (
+                        dec.contextual_intent
+                    )
                 _log_continuation_auto_reply_terminal(
                     sent=True,
                     session_id=sid_log,

@@ -8,7 +8,10 @@ import pytest
 from models import AbandonedCart
 from services.cartflow_reply_intent_engine import (
     CONTINUATION_ACTION_ESCALATE,
+    CONTINUATION_ACTION_EXPLAIN_DELIVERY,
+    CONTINUATION_ACTION_EXPLAIN_PRICE,
     CONTINUATION_ACTION_EXPLAIN_SHIPPING,
+    CONTINUATION_ACTION_EXPLAIN_WARRANTY,
     CONTINUATION_ACTION_GRACEFUL_EXIT,
     CONTINUATION_ACTION_REASSURANCE,
     CONTINUATION_ACTION_SEND_CHECKOUT,
@@ -41,6 +44,9 @@ def test_normalize_inbound_text_arabic_punctuation() -> None:
         ("بكم", "asks_price"),
         ("الشحن", "asks_shipping"),
         ("shipping", "asks_shipping"),
+        ("متى يوصل", "asks_delivery"),
+        ("الضمان", "asks_warranty"),
+        ("جودة المنتج", "asks_quality"),
         ("بفكر", "hesitation"),
         ("لا شكرا", "rejection"),
         ("خدمة العملاء", "human_help"),
@@ -157,6 +163,56 @@ def test_decide_asks_shipping() -> None:
     assert d.summary_ar == "العميل يسأل عن الشحن"
 
 
+def test_decide_asks_delivery() -> None:
+    ac = MagicMock(spec=AbandonedCart)
+    ac.zid_cart_id = "c1"
+    ac.recovery_session_id = "s1"
+    ac.cart_url = ""
+    d = decide_continuation(
+        inbound_body="متى يوصل الطلب؟",
+        behavioral={},
+        reason_tag="",
+        ac=ac,
+    )
+    assert d.base_intent == "asks_delivery"
+    assert d.action == CONTINUATION_ACTION_EXPLAIN_DELIVERY
+    assert "التوصيل يختلف" in d.message_to_send
+    assert d.summary_ar == "العميل يسأل عن موعد التوصيل"
+
+
+def test_decide_asks_warranty() -> None:
+    ac = MagicMock(spec=AbandonedCart)
+    ac.zid_cart_id = "c1"
+    ac.recovery_session_id = "s1"
+    ac.cart_url = ""
+    d = decide_continuation(
+        inbound_body="في ضمان؟",
+        behavioral={},
+        reason_tag="",
+        ac=ac,
+    )
+    assert d.base_intent == "asks_warranty"
+    assert d.action == CONTINUATION_ACTION_EXPLAIN_WARRANTY
+    assert "الضمان يختلف" in d.message_to_send
+
+
+def test_decide_asks_price_uses_explain_template() -> None:
+    ac = MagicMock(spec=AbandonedCart)
+    ac.zid_cart_id = "c1"
+    ac.recovery_session_id = "s1"
+    ac.cart_url = ""
+    d = decide_continuation(
+        inbound_body="بكم السعر؟",
+        behavioral={},
+        reason_tag="",
+        ac=ac,
+    )
+    assert d.base_intent == "asks_price"
+    assert d.action == CONTINUATION_ACTION_EXPLAIN_PRICE
+    assert "السعر" in d.message_to_send
+    assert "السلة" in d.message_to_send
+
+
 def test_decide_hesitation() -> None:
     ac = MagicMock(spec=AbandonedCart)
     ac.zid_cart_id = "c1"
@@ -185,7 +241,7 @@ def test_decide_rejection() -> None:
         ac=ac,
     )
     assert d.action == CONTINUATION_ACTION_GRACEFUL_EXIT
-    assert d.summary_ar == "العميل جاهز للإغلاق"
+    assert d.summary_ar == "العميل أنهى المحادثة بلباقة"
 
 
 def test_decide_escalation_to_human() -> None:
@@ -201,7 +257,7 @@ def test_decide_escalation_to_human() -> None:
     )
     assert d.action == CONTINUATION_ACTION_ESCALATE
     assert "فريق المتابعة" in d.message_to_send
-    assert d.summary_ar == "طلب تدخل بشري"
+    assert d.summary_ar == "تم طلب تدخل بشري"
 
 
 def test_dashboard_continuation_summary_merchant_friendly() -> None:
@@ -354,6 +410,69 @@ def test_no_second_auto_send_within_cooldown_different_body() -> None:
         )
 
     assert sw.call_count == 1
+
+
+def test_process_identical_continuation_suppressed_on_equivalent_confirmation() -> None:
+    """Second confirmation with same outbound template does not re-send WhatsApp."""
+    reset_continuation_engine_for_tests()
+    ac = MagicMock(spec=AbandonedCart)
+    ac.vip_mode = False
+    ac.recovery_session_id = "sess-rpt"
+    ac.zid_cart_id = "cart-rpt"
+    ac.store_id = None
+    ac.customer_phone = ""
+    phone_key = "966501112266"
+
+    merged: dict = {"recovery_previous_offer_strategy": "checkout_push"}
+
+    def _merge(ac_obj: AbandonedCart, **kwargs: object) -> None:
+        merged.update(kwargs)
+
+    with patch(
+        "services.behavioral_recovery.state_store.normal_recovery_message_was_sent_for_abandoned",
+        return_value=True,
+    ), patch(
+        "services.behavioral_recovery.state_store.behavioral_dict_for_abandoned_cart",
+        side_effect=lambda _ac: dict(merged),
+    ), patch(
+        "services.behavioral_recovery.state_store.merge_behavioral_state",
+        side_effect=_merge,
+    ), patch(
+        "services.cartflow_reply_intent_engine._reason_tag_for_abandoned_cart",
+        return_value="other",
+    ), patch(
+        "services.cartflow_reply_intent_engine._inbound_duplicate_recent",
+        return_value=False,
+    ), patch(
+        "services.whatsapp_send.send_whatsapp",
+        return_value={"ok": True},
+    ) as sw, patch(
+        "services.cartflow_reply_intent_engine.continuation_auto_reply_enabled",
+        return_value=True,
+    ), patch(
+        "services.cartflow_reply_intent_engine.continuation_cooldown_seconds",
+        return_value=15.0,
+    ), patch(
+        "services.cartflow_reply_intent_engine.continuation_dedup_seconds",
+        return_value=300.0,
+    ):
+        process_continuation_after_customer_reply(
+            ac,
+            inbound_body="نعم",
+            customer_phone_key=phone_key,
+            prior_behavioral_before_reply={},
+        )
+        process_continuation_after_customer_reply(
+            ac,
+            inbound_body="تمام",
+            customer_phone_key=phone_key,
+            prior_behavioral_before_reply={},
+        )
+
+    assert sw.call_count == 1
+    assert "لم نُعد نفس الرد تلقائياً" in str(
+        merged.get("continuation_summary_ar") or ""
+    )
 
 
 def test_unknown_reply_waits_without_template_send_flag() -> None:
