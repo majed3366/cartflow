@@ -1,0 +1,14 @@
+---
+description: After substantive work, update docs/SYSTEM_SUMMARY.md (changelog + affected sections).
+alwaysApply: true
+---
+
+# SYSTEM_SUMMARY.md — always keep in sync
+
+On **every substantive task** (features, fixes, refactors that change behavior, routes, services, or important wiring):
+
+1. **Append a row** to **`docs/SYSTEM_SUMMARY.md` §10 (Recent updates / changelog)** with date (UTC), a short summary, and the commit message when you commit.
+2. **Edit earlier sections** when the change affects architecture: e.g. §3 routes/services, §2 dashboards, widget behavior — so §10 is not the only place that drifts.
+3. **Trivial-only changes** (typos, formatting, one-line comments with no behavior change) do not require a changelog line unless the user asks.
+
+This file is the project’s **single high-level reference**; treat an incomplete §10 as unfinished work before you finish the task.

@@ -277,10 +277,11 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 
 ## 10) Recent updates (changelog)
 
-**Convention:** After substantive project changes, append a short dated entry here so this file stays the single high-level record of behavior and wiring. **Maintain this section on every substantive change.**
+**Convention:** After substantive project changes, append a short dated entry here so this file stays the single high-level record of behavior and wiring. **Maintain this section on every substantive change.** Cursor agents: see **`.cursor/rules/system-summary-always-update.mdc`** (`alwaysApply`) — update §10 and any affected sections **as part of the same task** before considering the work complete.
 
 | Date (UTC) | Summary |
 |------------|---------|
+| 2026-05-10 | **Agent convention:** `.cursor/rules/system-summary-always-update.mdc` (`alwaysApply`) — substantive tasks must update this document (§10 + affected sections). §10 convention text cross-references the rule. Commit: **`chore: enforce SYSTEM_SUMMARY updates via Cursor rule`**. |
 | 2026-05-10 | **Commerce sandbox v1:** `services/demo_sandbox_catalog.py` (multi-category catalog, rule-first `related_keys` / `cheaper_alternative_keys`, merchant JSON for `product_catalog`); `templates/demo_store.html` (grid, PDP, cart total, `/demo/*/checkout` + fake COD → `POST /api/conversion`); `recovery_product_context` list-`cart` support; `cartflow_demo_panel.js` (`hp_pro` scenario, `cartflowTriggerDemoConversion`). Commit: **`feat: upgrade demo into realistic commerce sandbox v1`**. |
 | 2026-05-03 | **لوحة VIP — أولوية مقابل تجريبي:** قسم **أولوية** مربوط بقاعدة البيانات فقط (`vip_mode` ∪ `CartRecoveryLog` بـ **`vip_manual_handling`** على `zid_cart_id`)؛ لا دمج صفوف **`demo_vip_cart_zid`** في الأولوية؛ قسم **بيانات تجريبية** منفصل. Commit: **`fix: bind VIP priority tab to real VIP carts`**. |
 | 2026-05-03 | **VIP في محرّك القرار:** `decide_recovery_action(..., is_vip_cart_flag)` يعيد **`vip_manual_handling`** مع **`send_customer/send_merchant`**؛ لا **fallback** لاسترداد عميل بعد VIP؛ فحص قبل التأخير؛ سجلات D.2. Commit: **`fix: move VIP to decision engine override (real behavior)`**. |
