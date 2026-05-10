@@ -75,6 +75,59 @@ class CartflowLifecycleConsistencyTests(unittest.TestCase):
         self.assertIsNone(r.get("blocker_key"))
         self.assertIn("suppressed_duplicate_after_send", r.get("lifecycle_notes") or [])
 
+    def test_reconcile_duplicate_replaced_with_user_returned_when_behavioral_return(self) -> None:
+        r = lg.reconcile_normal_recovery_dashboard_hints(
+            store_slug="demo",
+            session_id="s-ur",
+            cart_id="c-ur",
+            phase_key="pending_send",
+            sent_ct=0,
+            latest_log_status="skipped_duplicate",
+            behavioral={"user_returned_to_site": True},
+            blocker_key="duplicate_attempt_blocked",
+            blocker_bundle={"key": "duplicate_attempt_blocked", "label_ar": "محاولة مكررة"},
+            seq_label_ar=None,
+            operational_hint_ar=None,
+        )
+        self.assertEqual(r.get("blocker_key"), "user_returned")
+        bb = r.get("blocker_bundle")
+        self.assertIsInstance(bb, dict)
+        assert isinstance(bb, dict)
+        self.assertEqual(bb.get("key"), "user_returned")
+        self.assertIn("عاد", str(bb.get("label_ar") or ""))
+        self.assertIn(
+            "presentation_explicit_stop_after_duplicate",
+            r.get("lifecycle_notes") or [],
+        )
+
+    def test_reconcile_automation_disabled_replaced_with_user_returned_when_behavioral_return(
+        self,
+    ) -> None:
+        from services.recovery_blocker_display import get_recovery_blocker_display_state
+
+        r = lg.reconcile_normal_recovery_dashboard_hints(
+            store_slug="demo",
+            session_id="s-ad",
+            cart_id="c-ad",
+            phase_key="first_message_sent",
+            sent_ct=1,
+            latest_log_status="skipped_attempt_limit",
+            behavioral={"customer_returned_to_site": True},
+            blocker_key="automation_disabled",
+            blocker_bundle=dict(get_recovery_blocker_display_state("automation_disabled")),
+            seq_label_ar=None,
+            operational_hint_ar=None,
+        )
+        self.assertEqual(r.get("blocker_key"), "user_returned")
+        bb = r.get("blocker_bundle")
+        self.assertIsInstance(bb, dict)
+        assert isinstance(bb, dict)
+        self.assertEqual(bb.get("key"), "user_returned")
+        self.assertIn(
+            "presentation_user_return_over_automation_disabled",
+            r.get("lifecycle_notes") or [],
+        )
+
     def test_reconcile_conversion_clears_send_seq_label(self) -> None:
         r = lg.reconcile_normal_recovery_dashboard_hints(
             store_slug="demo",

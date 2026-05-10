@@ -63,6 +63,25 @@ class CartflowMerchantClarityTests(unittest.TestCase):
         out = p.get("merchant_clarity_outcome_ar") or ""
         self.assertNotIn("فشل", out.lower())
 
+    def test_return_to_site_overrides_duplicate_blocker_presentation(self) -> None:
+        p: dict = {}
+        mc.attach_merchant_clarity_to_normal_recovery_payload(
+            p,
+            phase_key="customer_returned",
+            coarse="returned",
+            latest_log_status="skipped_duplicate",
+            blocker_key="duplicate_attempt_blocked",
+            behavioral={"user_returned_to_site": True},
+            sent_ct=0,
+            phase_steps=[],
+        )
+        self.assertEqual(p.get("merchant_clarity_group_ar"), mc.GROUP_STOPPED_CUSTOMER)
+        self.assertTrue(p.get("merchant_clarity_intentional_stop"))
+        h = p.get("merchant_clarity_headline_ar") or ""
+        self.assertIn("موقع", h)
+        o = p.get("merchant_clarity_outcome_ar") or ""
+        self.assertIn("عودة", o)
+
     def test_headline_consistency_reply(self) -> None:
         p: dict = {}
         mc.attach_merchant_clarity_to_normal_recovery_payload(

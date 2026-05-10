@@ -407,7 +407,45 @@ def _dashboard_winning_rank(
         ranks.append(lifecycle_precedence_rank(STATE_REPLIED))
     if bh.get("recovery_link_clicked") is True:
         ranks.append(lifecycle_precedence_rank(STATE_SENT))
+    if bh.get("user_returned_to_site") is True or bh.get("customer_returned_to_site") is True:
+        ranks.append(lifecycle_precedence_rank(STATE_RETURNED))
     return max(ranks) if ranks else 0
+
+
+def _presentation_blocker_after_duplicate_or_stale_automation(
+    *,
+    behavioral: dict[str, Any],
+    latest_log_status: Optional[str],
+    phase_key: str,
+) -> tuple[Optional[str], Optional[dict[str, Any]]]:
+    """
+    When duplicate / automation_disabled banners contradict return-to-site truth,
+    map dashboard presentation to an explicit stop reason (does not alter logs).
+    """
+    try:
+        from services.recovery_blocker_display import get_recovery_blocker_display_state  # noqa: PLC0415
+    except Exception:
+        return None, None
+
+    bh = behavioral if isinstance(behavioral, dict) else {}
+    ls = _norm(latest_log_status)
+    pk = (phase_key or "").strip()
+
+    if bh.get("customer_replied") is True or ls in (
+        "skipped_followup_customer_replied",
+        "skipped_user_rejected_help",
+    ):
+        st = get_recovery_blocker_display_state("customer_replied")
+        return "customer_replied", dict(st) if isinstance(st, dict) else None
+    if (
+        bh.get("user_returned_to_site") is True
+        or bh.get("customer_returned_to_site") is True
+        or ls == "skipped_anti_spam"
+        or pk == "customer_returned"
+    ):
+        st = get_recovery_blocker_display_state("user_returned")
+        return "user_returned", dict(st) if isinstance(st, dict) else None
+    return None, None
 
 
 def reconcile_normal_recovery_dashboard_hints(
@@ -501,10 +539,62 @@ def reconcile_normal_recovery_dashboard_hints(
             attempted_state="duplicate_blocked",
             detail="dashboard Truth",
         )
-        out_blocker = None
-        out_key = None
-        out_hint = MERCHANT_SOFT_IGNORE_INCONSISTENT_AR
-        notes.append("suppressed_duplicate_after_return_reply")
+        _pb_key, _pb_bundle = _presentation_blocker_after_duplicate_or_stale_automation(
+            behavioral=behavioral,
+            latest_log_status=latest_log_status,
+            phase_key=phase_key,
+        )
+        if _pb_key and isinstance(_pb_bundle, dict):
+            out_key = _pb_key
+            out_blocker = _pb_bundle
+            out_hint = str(_pb_bundle.get("operational_hint_ar") or "").strip() or out_hint
+            notes.append("presentation_explicit_stop_after_duplicate")
+        else:
+            out_blocker = None
+            out_key = None
+            out_hint = MERCHANT_SOFT_IGNORE_INCONSISTENT_AR
+            notes.append("suppressed_duplicate_after_return_reply")
+
+    # Return-to-site truth over generic "automation disabled" when logs are stale or mixed.
+    if out_key == "automation_disabled":
+        _pb_key2, _pb_bundle2 = _presentation_blocker_after_duplicate_or_stale_automation(
+            behavioral=behavioral,
+            latest_log_status=latest_log_status,
+            phase_key=phase_key,
+        )
+        if (
+            _pb_key2 == "user_returned"
+            and isinstance(_pb_bundle2, dict)
+            and (
+                (behavioral.get("user_returned_to_site") if isinstance(behavioral, dict) else None)
+                is True
+                or (
+                    behavioral.get("customer_returned_to_site")
+                    if isinstance(behavioral, dict)
+                    else None
+                )
+                is True
+                or _norm(latest_log_status) == "skipped_anti_spam"
+                or (phase_key or "").strip() == "customer_returned"
+            )
+        ):
+            with _LOCK:
+                _counters["dashboard_reconciliation"] = (
+                    int(_counters.get("dashboard_reconciliation", 0)) + 1
+                )
+            emit_lifecycle_event(
+                "lifecycle_precedence_applied",
+                store_slug=store_slug,
+                session_id=session_id,
+                cart_id=cart_id,
+                current_state="user_returned",
+                attempted_state="automation_disabled_banner",
+                detail="dashboard_blocker",
+            )
+            out_key = "user_returned"
+            out_blocker = _pb_bundle2
+            out_hint = str(_pb_bundle2.get("operational_hint_ar") or "").strip() or out_hint
+            notes.append("presentation_user_return_over_automation_disabled")
 
     return {
         "blocker_bundle": out_blocker,

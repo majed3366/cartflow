@@ -385,6 +385,46 @@ class NormalRecoveryDashboardStatusTests(unittest.TestCase):
         self.assertEqual(payload.get("normal_recovery_blocker_key"), "user_returned")
         self.assertEqual(payload.get("normal_recovery_followup_hint_ar"), "عاد العميل للموقع")
 
+    def test_behavioral_return_overrides_stale_duplicate_latest_log(self) -> None:
+        import json
+
+        st = self._store_attempts_1()
+        sid = f"nr-dash-{self._suffix}-dupret"
+        zid = f"zid-nr-{self._suffix}-dupret"
+        raw = {"cf_behavioral": {"user_returned_to_site": True}}
+        ac = AbandonedCart(
+            store_id=int(st.id),
+            zid_cart_id=zid,
+            recovery_session_id=sid,
+            status="abandoned",
+            vip_mode=False,
+            cart_value=20.0,
+            raw_payload=json.dumps(raw, ensure_ascii=False),
+        )
+        db.session.add(ac)
+        db.session.flush()
+        now = datetime.now(timezone.utc)
+        db.session.add(
+            CartRecoveryLog(
+                store_slug="demo",
+                session_id=sid,
+                cart_id=zid,
+                phone=None,
+                message="x",
+                status="skipped_duplicate",
+                step=1,
+                created_at=now,
+                sent_at=None,
+            )
+        )
+        db.session.commit()
+        payload = _normal_recovery_phase_steps_payload(ac)
+        self.assertEqual(payload.get("normal_recovery_blocker_key"), "user_returned")
+        hint = (payload.get("normal_recovery_operational_hint_ar") or "").strip()
+        self.assertIn("تلقائي", hint)
+        mc_head = payload.get("merchant_clarity_headline_ar") or ""
+        self.assertIn("موقع", mc_head)
+
     def test_skip_missing_reason_after_first_send_not_ignored(self) -> None:
         st = self._store_attempts_1()
         sid = f"nr-dash-{self._suffix}-skip2"

@@ -108,8 +108,8 @@ def get_recovery_blocker_display_state(blocker_reason: Optional[str]) -> dict[st
         "user_returned": {
             "key": "user_returned",
             "label_ar": "عاد العميل للموقع",
-            "operational_hint_ar": "تم إيقاف الإرسال بعد عودة العميل",
-            "description_ar": "تم إيقاف الضغط البيعي لأن العميل عاد للتصفح أو الإكمال.",
+            "operational_hint_ar": "تم إيقاف الاسترجاع تلقائيًا بعد العودة",
+            "description_ar": "تم إيقاف الاسترجاع لأن العميل عاد للموقع — إيقاف مقصود وليس عطلًا.",
             "severity": "info",
             "merchant_action_ar": "راقب السلة أو ساعده عند الحاجة.",
         },

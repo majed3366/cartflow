@@ -26,7 +26,7 @@ LOG_LABELS: dict[str, str] = {
     "skipped_no_verified_phone": "بانتظار رقم العميل",
     "whatsapp_failed": "لم يكتمل الإرسال عبر قناة الواتساب",
     "skipped_duplicate": "تم منع محاولة مكررة",
-    "skipped_anti_spam": "توقف الإرسال بعد عودة العميل للموقع",
+    "skipped_anti_spam": "تم إيقاف الاسترجاع تلقائيًا بعد عودة العميل للموقع",
     "skipped_followup_customer_replied": "توقف الإرسال بعد تفاعل العميل",
     "skipped_user_rejected_help": "توقف الإرسال بعد رفض العميل المساعدة",
     "stopped_converted": "تم إيقاف الاسترجاع بعد الشراء",
@@ -129,6 +129,16 @@ def attach_merchant_clarity_to_normal_recovery_payload(
     bk = _norm(blocker_key)
     bh = behavioral if isinstance(behavioral, dict) else {}
     pk = _norm(phase_key) or "pending_send"
+    if bk in ("duplicate_attempt_blocked", "automation_disabled"):
+        if (
+            bh.get("user_returned_to_site") is True
+            or bh.get("customer_returned_to_site") is True
+        ):
+            bk = "user_returned"
+        elif ls == "skipped_anti_spam":
+            bk = "user_returned"
+        elif bk == "automation_disabled" and pk == "customer_returned":
+            bk = "user_returned"
     sent_n = int(sent_ct or 0)
 
     group_ar = GROUP_WAITING
@@ -142,6 +152,8 @@ def attach_merchant_clarity_to_normal_recovery_payload(
         group_ar, roi_hint_ar = BLOCKER_GROUPS[bk]
         headline_ar = BLOCKER_HEADLINES.get(bk, headline_ar)
         outcome_ar = LOG_LABELS.get(ls, outcome_ar) or outcome_ar
+        if bk == "user_returned":
+            outcome_ar = LOG_LABELS.get("skipped_anti_spam", outcome_ar)
         if ls in WAITING_STATUSES:
             outcome_ar = "المهلة أو الجدولة لا تزال ضمن النطاق الطبيعي."
         if bk in ("user_returned", "customer_replied", "purchase_completed"):
