@@ -92,6 +92,9 @@ def record_behavioral_user_return_from_payload(payload: dict[str, Any]) -> None:
     cid_raw = payload.get("cart_id")
     cid = str(cid_raw).strip()[:255] if cid_raw is not None else ""
     if not sid and not cid:
+        log.info(
+            "[RETURN TO SITE] behavioral_persist_skipped missing session_id and cart_id"
+        )
         return
     store_slug_disp = str(
         payload.get("store") or payload.get("store_slug") or ""
@@ -124,6 +127,11 @@ def record_behavioral_user_return_from_payload(payload: dict[str, Any]) -> None:
         context_tail=ctx_tail_preview,
     )
     if not try_consume_behavioral_return_merge(signature=_beh_sig):
+        log.info(
+            "[RETURN TO SITE] behavioral_merge_skipped duplicate_guard session_id=%s cart_id=%s",
+            (sid or "-")[:64],
+            (cid or "-")[:48],
+        )
         return
     try:
         db.create_all()
@@ -273,13 +281,34 @@ def record_behavioral_user_return_from_payload(payload: dict[str, Any]) -> None:
             elif last_ctx == "":
                 last_ctx = "-"
             line = (
-                "[RETURN TO SITE BACKEND PERSISTED] "
-                f"store_slug={store_slug_disp} session_id={sid} "
-                f"cart_id={cid or '-'} context={last_ctx} return_count={last_rc}"
+                "[LIFECYCLE STATE] hint=returned_to_site session_id=%s cart_id=%s "
+                "return_count=%s context=%s"
+                % (
+                    (sid or "-")[:64],
+                    (cid or "-")[:48],
+                    last_rc,
+                    last_ctx,
+                )
             )
             print(line, flush=True)
             log.info("%s", line)
-            line2 = f"[RECOVERY STOPPED USER RETURNED] session_id={sid} cart_id={cid}"
+            line = (
+                "[RETURN TO SITE] persisted_behavioral store_slug=%s session_id=%s "
+                "cart_id=%s context=%s return_count=%s"
+                % (
+                    store_slug_disp,
+                    sid,
+                    cid or "-",
+                    last_ctx,
+                    last_rc,
+                )
+            )
+            print(line, flush=True)
+            log.info("%s", line)
+            line2 = (
+                "[RETURN TO SITE] recovery_stopped_signal session_id=%s cart_id=%s"
+                % (sid, cid)
+            )
             print(line2, flush=True)
             log.info("%s", line2)
     except (SQLAlchemyError, OSError, TypeError, ValueError) as e:

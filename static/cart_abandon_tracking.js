@@ -825,6 +825,13 @@
     if (source === "beforeunload") {
       opts.keepalive = true;
     }
+    /* Return-tracker durable state must exist before navigation tears down the document.
+       Otherwise fetch().then never runs and the next page sees no_recovery_state. */
+    try {
+      cartflowMarkRecoveryFlowStarted();
+    } catch (ePrimeRt) {
+      /* ignore */
+    }
     return fetch(url, opts)
       .then(function (r) {
         return r.json().then(function (j) {
@@ -837,6 +844,7 @@
           var st = response && response.status;
           var body = response && response.body;
           if (st === 200 && body && body.ok !== false) {
+            /* Refresh merged context (reason tags, activity) after confirmed abandon. */
             cartflowMarkRecoveryFlowStarted();
           }
         } catch (eOk) {

@@ -3469,9 +3469,21 @@ def _is_user_returned(recovery_key: str) -> bool:
 
 def _mark_user_returned_for_payload(payload: dict[str, Any]) -> None:
     key = _recovery_key_from_payload(payload)
+    ss = str(payload.get("store") or payload.get("store_slug") or "").strip() or "-"
+    sid = str(payload.get("session_id") or "").strip()
+    cid = str(payload.get("cart_id") or "").strip()
     with _recovery_session_lock:
         _session_recovery_returned[key] = True
-    log.info("user_returned_to_site recorded for recovery_key=%s", key)
+    line = (
+        f"[RETURN TO SITE] in_memory_suppression_flag=true recovery_key={key} "
+        f"store_slug={ss} session_id={sid[:80] if sid else '-'} "
+        f"cart_id={cid[:64] if cid else '-'}"
+    )
+    try:
+        print(line, flush=True)
+    except OSError:
+        pass
+    log.info("%s", line)
 
 
 def _persist_cart_recovery_log(
@@ -4820,6 +4832,16 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
     print("purchase_completed=", purchase_completed)
     print("should_send=", should_send_anti_spam)
     if not should_send_anti_spam:
+        _sup_r = "purchase_completed" if purchase_completed else "user_returned"
+        try:
+            _sup_line = (
+                f"[BEHAVIOR SUPPRESSION] reason={_sup_r} recovery_key={recovery_key} "
+                f"session_id={(session_id or '')[:80]} cart_id={(str(cart_id or '') or '-')[:64]}"
+            )
+            print(_sup_line, flush=True)
+            log.info("%s", _sup_line)
+        except OSError:
+            pass
         _log_normal_recovery_attempt_skipped(
             attempt_index=step_num,
             reason="purchase_completed" if purchase_completed else "user_returned",
@@ -4894,6 +4916,18 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
             pro_st = "skipped_anti_spam"
         else:
             pro_st = "skipped_attempt_limit"
+        if pro_st in ("skipped_anti_spam", "stopped_converted"):
+            try:
+                _psr = "purchase_completed" if purchase_completed else "user_returned"
+                _ps_line = (
+                    f"[BEHAVIOR SUPPRESSION] reason={_psr} gate=pro_pre_send "
+                    f"recovery_key={recovery_key} session_id={(session_id or '')[:80]} "
+                    f"cart_id={(str(cart_id or '') or '-')[:64]}"
+                )
+                print(_ps_line, flush=True)
+                log.info("%s", _ps_line)
+            except OSError:
+                pass
         _seq2_skip(
             pro_st,
             session_id=session_id,
@@ -6214,6 +6248,20 @@ async def api_cart_event(request: Request, background_tasks: BackgroundTasks):
         "event": payload.get("event"),
     }
     if payload_indicates_user_returned_to_site(payload):
+        try:
+            _rss = str(
+                payload.get("store") or payload.get("store_slug") or ""
+            ).strip() or "-"
+            _rsid = str(payload.get("session_id") or "").strip()
+            _rcid = str(payload.get("cart_id") or "").strip()
+            _rack = (
+                f"[RETURN TO SITE] cart_event_accepted store_slug={_rss} "
+                f"session_id={(_rsid or '-')[:80]} cart_id={(_rcid or '-')[:64]}"
+            )
+            print(_rack, flush=True)
+            log.info("%s", _rack)
+        except OSError:
+            pass
         _mark_user_returned_for_payload(payload)
         record_behavioral_user_return_from_payload(payload)
     if (
