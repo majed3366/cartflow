@@ -466,13 +466,107 @@ def _store_slug_for_ac(ac: AbandonedCart) -> str:
         return ""
 
 
+def _continuation_wa_trace_store_slug(ac: AbandonedCart) -> str:
+    """
+    Same store key recovery uses for CartRecoveryReason / send_whatsapp trace
+    (merchant store_slug), not Store.zid_store_id — keeps user_rejected_help
+    checks aligned with the recovery pipeline.
+    """
+    sid = (getattr(ac, "recovery_session_id", None) or "").strip()
+    if not sid:
+        return ""
+    try:
+        db.create_all()
+        row = (
+            db.session.query(CartRecoveryReason.store_slug)
+            .filter(CartRecoveryReason.session_id == sid)
+            .order_by(CartRecoveryReason.updated_at.desc())
+            .first()
+        )
+        if row is not None and row[0]:
+            return str(row[0]).strip()[:255]
+    except RuntimeError:
+        # Unit tests / scripts without init_database()
+        pass
+    except (SQLAlchemyError, OSError, TypeError, ValueError):
+        db.session.rollback()
+    return _store_slug_for_ac(ac)
+
+
 def _phone_e164_from_key(phone_key: str) -> str:
-    d = (phone_key or "").strip()
+    d = "".join(c for c in (phone_key or "") if c.isdigit())
+    if len(d) == 10 and d.startswith("05"):
+        d = "966" + d[1:]
+    elif len(d) == 9 and d.startswith("5"):
+        d = "966" + d
+    elif len(d) == 10 and d.startswith("5"):
+        d = "966" + d
     if len(d) < 11:
         return ""
-    if d.startswith("966"):
-        return "+" + d
     return "+" + d
+
+
+def _phone_e164_from_abandoned_cart(ac: AbandonedCart) -> str:
+    raw = (getattr(ac, "customer_phone", None) or "").strip()
+    if not raw:
+        return ""
+    d = "".join(c for c in raw if c.isdigit())
+    while d.startswith("00"):
+        d = d[2:]
+    if len(d) == 10 and d.startswith("05"):
+        d = "966" + d[1:]
+    elif len(d) == 9 and d.startswith("5"):
+        d = "966" + d
+    elif len(d) == 10 and d.startswith("5"):
+        d = "966" + d
+    if len(d) < 11:
+        return ""
+    return "+" + d
+
+
+def _resolve_outbound_e164_for_continuation(ac: AbandonedCart, phone_key: str) -> str:
+    p = _phone_e164_from_key(phone_key)
+    if p:
+        return p
+    return _phone_e164_from_abandoned_cart(ac)
+
+
+def _continuation_reply_preview(message: str, *, max_chars: int = 100) -> str:
+    t = (message or "").strip().replace("\n", " ")
+    if len(t) <= max_chars:
+        return t
+    return t[: max_chars - 1] + "…"
+
+
+def _log_continuation_auto_reply_terminal(
+    *,
+    sent: bool,
+    session_id: str,
+    phone_e164: str,
+    action: str,
+    preview: str,
+    error: Optional[str] = None,
+) -> None:
+    sid = (session_id or "").strip()
+    ph = (phone_e164 or "").strip()
+    act = (action or "").strip()
+    pv = _continuation_reply_preview(preview, max_chars=100)
+    if sent:
+        line = (
+            f"[CONTINUATION AUTO REPLY SENT] session_id={sid} phone={ph} "
+            f"action={act} reply_preview={pv!r}"
+        )
+    else:
+        err = (error or "unknown").strip()[:500]
+        line = (
+            f"[CONTINUATION AUTO REPLY FAILED] session_id={sid} phone={ph} "
+            f"action={act} reply_preview={pv!r} error={err!r}"
+        )
+    log.info("%s", line)
+    try:
+        print(line, flush=True)
+    except OSError:
+        pass
 
 
 def _inbound_duplicate_recent(phone_key: str, body_norm: str) -> bool:
@@ -648,33 +742,41 @@ def process_continuation_after_customer_reply(
         except OSError:
             pass
 
-    sent_ok = False
     if (
         dec.should_send
         and continuation_auto_reply_enabled()
         and dec.action != CONTINUATION_ACTION_ESCALATE
         and _cooldown_allows_auto_reply(phone_key)
     ):
-        phone_out = _phone_e164_from_key(phone_key)
-        if phone_out:
-            from services.whatsapp_send import send_whatsapp
+        from services.whatsapp_send import send_whatsapp_real
 
-            slug = _store_slug_for_ac(ac)
-            log.info("[CONTINUATION ACTION] session_id=%s action=%s", sid_log, dec.action)
-            try:
-                print(
-                    f"[CONTINUATION ACTION] session_id={sid_log} continuation_action={dec.action}",
-                    flush=True,
-                )
-            except OSError:
-                pass
-            result = send_whatsapp(
+        phone_out = _resolve_outbound_e164_for_continuation(ac, phone_key)
+        trace_slug = _continuation_wa_trace_store_slug(ac)
+        log.info("[CONTINUATION ACTION] session_id=%s action=%s", sid_log, dec.action)
+        try:
+            print(
+                f"[CONTINUATION ACTION] session_id={sid_log} continuation_action={dec.action}",
+                flush=True,
+            )
+        except OSError:
+            pass
+        if not phone_out:
+            _log_continuation_auto_reply_terminal(
+                sent=False,
+                session_id=sid_log,
+                phone_e164="",
+                action=dec.action,
+                preview=dec.message_to_send,
+                error="missing_outbound_phone",
+            )
+        else:
+            result = send_whatsapp_real(
                 phone_out,
                 dec.message_to_send,
                 reason_tag="continuation",
                 wa_trace_path=__file__,
                 wa_trace_session_id=sid_log or None,
-                wa_trace_store_slug=slug or None,
+                wa_trace_store_slug=trace_slug or None,
                 wa_trace_delay_passed=True,
             )
             sent_ok = bool(isinstance(result, dict) and result.get("ok") is True)
@@ -682,52 +784,72 @@ def process_continuation_after_customer_reply(
                 _mark_auto_reply_sent(phone_key)
                 patch["continuation_last_auto_reply_at"] = utc_now_iso()
                 patch["continuation_last_auto_reply_action"] = dec.action
-                log.info(
-                    "[CONTINUATION AUTO REPLY] session_id=%s action=%s ok=true",
-                    sid_log,
-                    dec.action,
+                _log_continuation_auto_reply_terminal(
+                    sent=True,
+                    session_id=sid_log,
+                    phone_e164=phone_out,
+                    action=dec.action,
+                    preview=dec.message_to_send,
                 )
-                try:
-                    print(
-                        f"[CONTINUATION AUTO REPLY] session_id={sid_log} action={dec.action}",
-                        flush=True,
-                    )
-                except OSError:
-                    pass
             else:
-                log.warning(
-                    "[CONTINUATION AUTO REPLY] session_id=%s action=%s result=%s",
-                    sid_log,
-                    dec.action,
-                    result,
+                err = None
+                if isinstance(result, dict):
+                    err = str(result.get("error") or result.get("hint") or result)
+                _log_continuation_auto_reply_terminal(
+                    sent=False,
+                    session_id=sid_log,
+                    phone_e164=phone_out,
+                    action=dec.action,
+                    preview=dec.message_to_send,
+                    error=err or "send_failed",
                 )
     elif dec.action == CONTINUATION_ACTION_ESCALATE and dec.message_to_send:
         # Optional: still send the short escalation ack when Twilio configured
         if continuation_auto_reply_enabled() and _cooldown_allows_auto_reply(phone_key):
-            phone_out = _phone_e164_from_key(phone_key)
-            if phone_out:
-                from services.whatsapp_send import send_whatsapp
+            from services.whatsapp_send import send_whatsapp_real
 
-                slug = _store_slug_for_ac(ac)
-                result = send_whatsapp(
+            phone_out = _resolve_outbound_e164_for_continuation(ac, phone_key)
+            trace_slug = _continuation_wa_trace_store_slug(ac)
+            if not phone_out:
+                _log_continuation_auto_reply_terminal(
+                    sent=False,
+                    session_id=sid_log,
+                    phone_e164="",
+                    action=CONTINUATION_ACTION_ESCALATE,
+                    preview=dec.message_to_send,
+                    error="missing_outbound_phone",
+                )
+            else:
+                result = send_whatsapp_real(
                     phone_out,
                     dec.message_to_send,
                     reason_tag="continuation_escalation",
                     wa_trace_path=__file__,
                     wa_trace_session_id=sid_log or None,
-                    wa_trace_store_slug=slug or None,
+                    wa_trace_store_slug=trace_slug or None,
                     wa_trace_delay_passed=True,
                 )
                 if isinstance(result, dict) and result.get("ok") is True:
                     _mark_auto_reply_sent(phone_key)
                     patch["continuation_last_auto_reply_at"] = utc_now_iso()
-                    log.info("[CONTINUATION AUTO REPLY] escalation ack sent session_id=%s", sid_log)
-                    try:
-                        print(
-                            f"[CONTINUATION AUTO REPLY] session_id={sid_log} escalation_ack",
-                            flush=True,
-                        )
-                    except OSError:
-                        pass
+                    _log_continuation_auto_reply_terminal(
+                        sent=True,
+                        session_id=sid_log,
+                        phone_e164=phone_out,
+                        action=CONTINUATION_ACTION_ESCALATE,
+                        preview=dec.message_to_send,
+                    )
+                else:
+                    err = None
+                    if isinstance(result, dict):
+                        err = str(result.get("error") or result.get("hint") or result)
+                    _log_continuation_auto_reply_terminal(
+                        sent=False,
+                        session_id=sid_log,
+                        phone_e164=phone_out,
+                        action=CONTINUATION_ACTION_ESCALATE,
+                        preview=dec.message_to_send,
+                        error=err or "send_failed",
+                    )
 
     merge_behavioral_state(ac, **patch)
