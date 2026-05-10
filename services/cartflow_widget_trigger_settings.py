@@ -1,0 +1,144 @@
+# -*- coding: utf-8 -*-
+"""إعدادات تحكم مشغّل ظهور الودجيت (طبقة إعدادات فقط — لا تغيّر منطق الخروج/التردد الحالي في الويدجت)."""
+from __future__ import annotations
+
+import json
+from typing import Any, Dict, Optional
+
+DEFAULT_WIDGET_TRIGGER_CONFIG: Dict[str, Any] = {
+    "exit_intent_enabled": True,
+    "exit_intent_sensitivity": "medium",
+    "exit_intent_delay_seconds": 0,
+    "exit_intent_frequency": "per_session",
+    "hesitation_trigger_enabled": True,
+    "hesitation_after_seconds": 20,
+    "hesitation_condition": "after_cart_add",
+    "visibility_widget_globally_enabled": True,
+    "visibility_temporarily_disabled": False,
+    "visibility_page_scope": "all",
+}
+
+_SENS = frozenset({"low", "medium", "high"})
+_DELAY = frozenset({0, 3, 5})
+_FREQ = frozenset({"per_session", "per_24h", "no_rapid_repeat"})
+_HES_SEC = frozenset({10, 20, 30})
+_HES_COND = frozenset(
+    {"after_cart_add", "repeated_view", "inactivity", "cart_interaction"}
+)
+_SCOPE = frozenset({"product", "cart", "all"})
+
+
+def _boolish(v: Any, default: bool) -> bool:
+    if isinstance(v, bool):
+        return v
+    if isinstance(v, (int, float)) and v in (0, 1):
+        return bool(v)
+    if isinstance(v, str):
+        s = v.strip().lower()
+        if s in ("true", "1", "yes", "on"):
+            return True
+        if s in ("false", "0", "no", "off", ""):
+            return False
+    return default
+
+
+def _int_choice(v: Any, allowed: set[int], default: int) -> int:
+    try:
+        i = int(v)
+    except (TypeError, ValueError):
+        return default
+    return i if i in allowed else default
+
+
+def _str_choice(v: Any, allowed: frozenset[str], default: str) -> str:
+    if not isinstance(v, str):
+        return default
+    s = v.strip().lower()
+    return s if s in allowed else default
+
+
+def normalize_widget_trigger_config(raw: Any) -> Dict[str, Any]:
+    out = dict(DEFAULT_WIDGET_TRIGGER_CONFIG)
+    if not isinstance(raw, dict):
+        return out
+    out["exit_intent_enabled"] = _boolish(
+        raw.get("exit_intent_enabled"), bool(out["exit_intent_enabled"])
+    )
+    out["exit_intent_sensitivity"] = _str_choice(
+        raw.get("exit_intent_sensitivity"),
+        _SENS,
+        str(out["exit_intent_sensitivity"]),
+    )
+    out["exit_intent_delay_seconds"] = _int_choice(
+        raw.get("exit_intent_delay_seconds"), _DELAY, int(out["exit_intent_delay_seconds"])
+    )
+    out["exit_intent_frequency"] = _str_choice(
+        raw.get("exit_intent_frequency"),
+        _FREQ,
+        str(out["exit_intent_frequency"]),
+    )
+    out["hesitation_trigger_enabled"] = _boolish(
+        raw.get("hesitation_trigger_enabled"),
+        bool(out["hesitation_trigger_enabled"]),
+    )
+    out["hesitation_after_seconds"] = _int_choice(
+        raw.get("hesitation_after_seconds"),
+        _HES_SEC,
+        int(out["hesitation_after_seconds"]),
+    )
+    out["hesitation_condition"] = _str_choice(
+        raw.get("hesitation_condition"),
+        _HES_COND,
+        str(out["hesitation_condition"]),
+    )
+    out["visibility_widget_globally_enabled"] = _boolish(
+        raw.get("visibility_widget_globally_enabled"),
+        bool(out["visibility_widget_globally_enabled"]),
+    )
+    out["visibility_temporarily_disabled"] = _boolish(
+        raw.get("visibility_temporarily_disabled"),
+        bool(out["visibility_temporarily_disabled"]),
+    )
+    out["visibility_page_scope"] = _str_choice(
+        raw.get("visibility_page_scope"),
+        _SCOPE,
+        str(out["visibility_page_scope"]),
+    )
+    return out
+
+
+def widget_trigger_config_from_store_row(row: Optional[Any]) -> Dict[str, Any]:
+    raw = getattr(row, "cf_widget_trigger_settings_json", None) if row is not None else None
+    if not isinstance(raw, str) or not raw.strip():
+        return dict(DEFAULT_WIDGET_TRIGGER_CONFIG)
+    try:
+        data = json.loads(raw)
+    except (json.JSONDecodeError, TypeError, ValueError):
+        return dict(DEFAULT_WIDGET_TRIGGER_CONFIG)
+    return normalize_widget_trigger_config(data)
+
+
+def merge_widget_trigger_config_from_body(
+    row: Optional[Any], body: Dict[str, Any]
+) -> Dict[str, Any]:
+    base = widget_trigger_config_from_store_row(row)
+    patch = body.get("widget_trigger_config")
+    if not isinstance(patch, dict):
+        return base
+    merged = dict(base)
+    merged.update(patch)
+    return normalize_widget_trigger_config(merged)
+
+
+def apply_widget_trigger_settings_from_body(row: Any, body: Dict[str, Any]) -> None:
+    cfg = body.get("widget_trigger_config")
+    if not isinstance(cfg, dict):
+        return
+    normalized = normalize_widget_trigger_config(cfg)
+    row.cf_widget_trigger_settings_json = json.dumps(
+        normalized, ensure_ascii=False, separators=(",", ":")
+    )
+
+
+def widget_trigger_config_for_api(row: Optional[Any]) -> Dict[str, Any]:
+    return {"widget_trigger_config": widget_trigger_config_from_store_row(row)}

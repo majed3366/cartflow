@@ -773,6 +773,35 @@ def _ensure_store_cartflow_widget_recovery_gate_columns(db: Any) -> None:
         log.debug("schema_widget cartflow_widget_gate: %s", e)
 
 
+def _ensure_store_widget_trigger_settings_column(db: Any) -> None:
+    """عمود ‎cf_widget_trigger_settings_json‎ — إعدادات ظهور الودجيت (طبقة إعدادات فقط)."""
+    try:
+        db.create_all()
+        insp = inspect(db.engine)
+        if not insp.has_table("stores"):
+            return
+        dialect = getattr(getattr(db.engine, "dialect", None), "name", "") or ""
+        col = "cf_widget_trigger_settings_json"
+        existing = {c["name"] for c in insp.get_columns("stores")}
+        if col in existing:
+            return
+        if dialect in ("postgresql", "postgres"):
+            stmt = (
+                "ALTER TABLE stores ADD COLUMN IF NOT EXISTS "
+                "cf_widget_trigger_settings_json TEXT"
+            )
+        else:
+            stmt = "ALTER TABLE stores ADD COLUMN cf_widget_trigger_settings_json TEXT"
+        try:
+            db.session.execute(text(stmt))
+            db.session.commit()
+        except (OSError, SQLAlchemyError, IntegrityError):
+            db.session.rollback()
+    except (OSError, SQLAlchemyError) as e:
+        db.session.rollback()
+        log.debug("schema_widget widget_trigger_settings: %s", e)
+
+
 def ensure_store_widget_schema(db: Any) -> None:
     """يُنادى من مسارات ‎API‎ (لا يعتمد على ‎main‎)."""
     _ensure_store_recovery_delay_minutes_column(db)
@@ -790,6 +819,7 @@ def ensure_store_widget_schema(db: Any) -> None:
     _ensure_store_vip_cart_threshold_column(db)
     _ensure_store_vip_offer_columns(db)
     _ensure_store_cartflow_widget_recovery_gate_columns(db)
+    _ensure_store_widget_trigger_settings_column(db)
     _ensure_abandoned_cart_vip_mode_column(db)
     _ensure_abandoned_cart_vip_lifecycle_status_column(db)
     _ensure_abandoned_cart_recovery_session_id_column(db)

@@ -271,6 +271,12 @@ from services.cartflow_widget_recovery_gate import (
     apply_cartflow_widget_recovery_gate_from_body,
     cartflow_widget_recovery_gate_fields_for_api,
 )
+from services.cartflow_widget_trigger_settings import (
+    apply_widget_trigger_settings_from_body,
+    widget_trigger_config_for_api,
+    merge_widget_trigger_config_from_body,
+    widget_trigger_config_from_store_row,
+)
 from services.vip_cart import (
     apply_vip_cart_threshold_from_body,
     apply_vip_offer_settings_from_body,
@@ -825,6 +831,12 @@ def _merge_recovery_settings_post_body(body: Dict[str, Any]) -> Dict[str, Any]:
             out["cartflow_widget_delay_unit"] = (
                 du_o if du_o in ("minutes", "hours", "days") else "minutes"
             )
+        if isinstance(body.get("widget_trigger_config"), dict):
+            out["widget_trigger_config"] = merge_widget_trigger_config_from_body(
+                row, body
+            )
+        else:
+            out["widget_trigger_config"] = widget_trigger_config_from_store_row(row)
     return out
 
 
@@ -907,6 +919,7 @@ def _dev_apply_recovery_settings_update(
         apply_vip_cart_threshold_from_body(row, request_body)
         apply_vip_offer_settings_from_body(row, request_body)
         apply_cartflow_widget_recovery_gate_from_body(row, request_body)
+        apply_widget_trigger_settings_from_body(row, request_body)
     db.session.commit()
     wa: Optional[str] = getattr(row, "whatsapp_support_url", None)
     if not (isinstance(wa, str) and wa.strip()):
@@ -914,6 +927,8 @@ def _dev_apply_recovery_settings_update(
     sw: Optional[str] = getattr(row, "store_whatsapp_number", None)
     if not (isinstance(sw, str) and sw.strip()):
         sw = None
+    zs2 = getattr(row, "zid_store_id", None)
+    zid_resp = zs2.strip() if isinstance(zs2, str) and zs2.strip() else None
     payload: Dict[str, Any] = {
         "ok": True,
         "recovery_delay": row.recovery_delay,
@@ -924,6 +939,7 @@ def _dev_apply_recovery_settings_update(
         ),
         "whatsapp_support_url": wa,
         "store_whatsapp_number": sw,
+        "zid_store_id": zid_resp,
     }
     payload.update(_recovery_template_fields_for_api(row))
     payload.update(trigger_templates_fields_for_api(row))
@@ -934,6 +950,7 @@ def _dev_apply_recovery_settings_update(
     payload.update(vip_cart_threshold_fields_for_api(row))
     payload.update(vip_offer_fields_for_api(row))
     payload.update(cartflow_widget_recovery_gate_fields_for_api(row))
+    payload.update(widget_trigger_config_for_api(row))
     payload["guided_recovery_defaults"] = guided_defaults_for_api()
     return payload, 200
 
@@ -1342,6 +1359,8 @@ def api_recovery_settings_get():
         sw: Optional[str] = getattr(row, "store_whatsapp_number", None)
         if not (isinstance(sw, str) and sw.strip()):
             sw = None
+        zs = getattr(row, "zid_store_id", None)
+        zid_out = zs.strip() if isinstance(zs, str) and zs.strip() else None
         payload = {
             "ok": True,
             "recovery_delay": row.recovery_delay,
@@ -1352,6 +1371,7 @@ def api_recovery_settings_get():
             ),
             "whatsapp_support_url": wa,
             "store_whatsapp_number": sw,
+            "zid_store_id": zid_out,
         }
         payload.update(_recovery_template_fields_for_api(row))
         payload.update(trigger_templates_fields_for_api(row))
@@ -1362,6 +1382,7 @@ def api_recovery_settings_get():
         payload.update(vip_cart_threshold_fields_for_api(row))
         payload.update(vip_offer_fields_for_api(row))
         payload.update(cartflow_widget_recovery_gate_fields_for_api(row))
+        payload.update(widget_trigger_config_for_api(row))
         payload["guided_recovery_defaults"] = guided_defaults_for_api()
         return j(payload)
     except Exception as e:  # noqa: BLE001
@@ -8932,10 +8953,13 @@ def dashboard_cart_recovery_messages(request: Request):
 @app.get("/dashboard/general-settings")
 def dashboard_general_settings(request: Request):
     """إعدادات عامة — واتساب المتجر، ظهور الودجيت، ومظهر الودجيت."""
+    base = str(request.base_url)
+    if base.endswith("/"):
+        base = base[:-1]
     return templates.TemplateResponse(
         request,
         "general_settings.html",
-        {"request": request},
+        {"request": request, "cartflow_public_origin": base},
     )
 
 

@@ -86,6 +86,124 @@
           </div>
         </form>
 
+        <form id="f-widget-triggers" class="cf-dash-compact mb-6 space-y-2">
+          <section id="cf-widget-trigger-settings" tabindex="-1" class="cf-dash-card scroll-mt-20 border-slate-200/80 bg-white">
+            <div class="cf-dash-section-head">
+              <h2>إعدادات ظهور الودجيت</h2>
+            </div>
+            <p class="mb-3 text-[12px] leading-snug text-slate-600">تحكم في توقيت وسلوك ظهور CartFlow داخل المتجر.</p>
+
+            <div class="space-y-3 p-1">
+              <div class="rounded-lg border border-slate-100 bg-slate-50/50 px-2.5 py-2">
+                <p class="mb-2 text-[11px] font-semibold text-slate-700">نية الخروج</p>
+                <div class="grid gap-2 sm:grid-cols-2">
+                  <div>
+                    <label class="mb-0.5 block text-[11px] font-medium text-slate-700" for="wtc_exit_enabled">تفعيل الظهور عند نية الخروج</label>
+                    <select id="wtc_exit_enabled" class="rs-select w-full rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm">
+                      <option value="true">تشغيل</option>
+                      <option value="false">إيقاف</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="mb-0.5 block text-[11px] font-medium text-slate-700" for="wtc_exit_sensitivity">حساسية اكتشاف النية</label>
+                    <select id="wtc_exit_sensitivity" class="rs-select w-full rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm">
+                      <option value="low">منخفض</option>
+                      <option value="medium">متوسط</option>
+                      <option value="high">عالي</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="mb-0.5 block text-[11px] font-medium text-slate-700" for="wtc_exit_delay">التأخير قبل الظهور</label>
+                    <select id="wtc_exit_delay" class="rs-select w-full rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm">
+                      <option value="0">فوري</option>
+                      <option value="3">بعد 3 ثوانٍ</option>
+                      <option value="5">بعد 5 ثوانٍ</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="mb-0.5 block text-[11px] font-medium text-slate-700" for="wtc_exit_frequency">تكرار الظهور</label>
+                    <select id="wtc_exit_frequency" class="rs-select w-full rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm">
+                      <option value="per_session">مرة لكل جلسة</option>
+                      <option value="per_24h">مرة كل 24 ساعة</option>
+                      <option value="no_rapid_repeat">بدون تكرار سريع</option>
+                    </select>
+                  </div>
+                </div>
+                <p class="mt-1.5 text-[10px] text-slate-500">هذه الخيارات تُحفظ للمرحلة القادمة؛ سلوك المتجر الحالي لا يتغيّر بعد اليوم.</p>
+              </div>
+
+              <div class="rounded-lg border border-slate-100 bg-slate-50/50 px-2.5 py-2">
+                <p class="mb-2 text-[11px] font-semibold text-slate-700">تردّد العميل</p>
+                <div class="grid gap-2 sm:grid-cols-2">
+                  <div>
+                    <label class="mb-0.5 block text-[11px] font-medium text-slate-700" for="wtc_hes_enabled">تفعيل الظهور عند التردد</label>
+                    <select id="wtc_hes_enabled" class="rs-select w-full rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm">
+                      <option value="true">تشغيل</option>
+                      <option value="false">إيقاف</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="mb-0.5 block text-[11px] font-medium text-slate-700" for="wtc_hes_after">الظهور بعد</label>
+                    <select id="wtc_hes_after" class="rs-select w-full rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm">
+                      <option value="10">10 ثوانٍ</option>
+                      <option value="20">20 ثانية</option>
+                      <option value="30">30 ثانية</option>
+                    </select>
+                  </div>
+                  <div class="sm:col-span-2">
+                    <label class="mb-0.5 block text-[11px] font-medium text-slate-700" for="wtc_hes_when">يظهر فقط بعد</label>
+                    <select id="wtc_hes_when" class="rs-select w-full rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm">
+                      <option value="after_cart_add">إضافة للسلة</option>
+                      <option value="repeated_view">تصفّح متكرّر للمنتج</option>
+                      <option value="inactivity">توقف عن التفاعل</option>
+                      <option value="cart_interaction">تفاعل مع السلة</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div class="rounded-lg border border-slate-100 bg-slate-50/50 px-2.5 py-2">
+                <p class="mb-2 text-[11px] font-semibold text-slate-700">أين يظهر الودجيت</p>
+                <div class="grid gap-2 sm:grid-cols-2">
+                  <div>
+                    <label class="mb-0.5 block text-[11px] font-medium text-slate-700" for="wtc_vis_global">تفعيل الودجيت عموماً</label>
+                    <select id="wtc_vis_global" class="rs-select w-full rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm">
+                      <option value="true">تشغيل</option>
+                      <option value="false">إيقاف</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="mb-0.5 block text-[11px] font-medium text-slate-700" for="wtc_vis_pause">إيقاف مؤقت</label>
+                    <select id="wtc_vis_pause" class="rs-select w-full rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm">
+                      <option value="false">لا</option>
+                      <option value="true">نعم (مؤقتاً)</option>
+                    </select>
+                  </div>
+                  <div class="sm:col-span-2">
+                    <label class="mb-0.5 block text-[11px] font-medium text-slate-700" for="wtc_vis_pages">الصفحات</label>
+                    <select id="wtc_vis_pages" class="rs-select w-full rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm">
+                      <option value="product">صفحات المنتجات</option>
+                      <option value="cart">صفحة السلة</option>
+                      <option value="all">كل الصفحات</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div class="rounded-lg border border-emerald-100/80 bg-emerald-50/30 px-2.5 py-2">
+                <p class="mb-1.5 text-[11px] font-semibold text-slate-800">كود الودجيت</p>
+                <p class="mb-2 text-[10px] text-slate-600">انسخ السطر التالي إلى قالب متجرك. يُحدَّث مع ربط المتجر.</p>
+                <pre id="cf_embed_snippet" dir="ltr" class="mb-2 max-h-28 overflow-auto rounded-md border border-slate-200 bg-white p-2 text-left text-[11px] leading-relaxed text-slate-800"></pre>
+                <button type="button" id="cf_embed_copy" class="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700">نسخ الكود</button>
+                <span id="cf_embed_copy_ok" class="mr-2 hidden text-xs font-medium text-emerald-700">تم النسخ</span>
+              </div>
+            </div>
+          </section>
+          <div class="cf-dash-save-wrap">
+            <button type="submit" id="saveWidgetTriggersBtn" class="cf-dash-save">💾 حفظ إعدادات الظهور</button>
+          </div>
+        </form>
+
         <div id="cf-widget-custom" tabindex="-1" class="scroll-mt-20">
           <h2 class="mb-2 text-lg font-bold text-slate-900">مظهر الودجيت</h2>
           <p class="mb-4 text-sm text-slate-600">اللون والاسم والشكل — تُحفظ على الخادم.</p>
@@ -197,6 +315,93 @@
           var u = (data.cartflow_widget_delay_unit || "minutes").toString();
           du.value = u === "hours" || u === "days" || u === "minutes" ? u : "minutes";
         }
+      }
+
+      var CF_EMBED_ORIGIN = {{ cartflow_public_origin | tojson }};
+
+      function fillWidgetTriggersFromData(data) {
+        var cfg = data.widget_trigger_config && typeof data.widget_trigger_config === "object" ? data.widget_trigger_config : {};
+        function sel(id, val) {
+          var el = document.getElementById(id);
+          if (el) el.value = val;
+        }
+        sel("wtc_exit_enabled", cfg.exit_intent_enabled !== false ? "true" : "false");
+        var sens = cfg.exit_intent_sensitivity || "medium";
+        if (sens !== "low" && sens !== "medium" && sens !== "high") sens = "medium";
+        sel("wtc_exit_sensitivity", sens);
+        var dsec = parseInt(cfg.exit_intent_delay_seconds, 10);
+        if (dsec !== 0 && dsec !== 3 && dsec !== 5) dsec = 0;
+        sel("wtc_exit_delay", String(dsec));
+        var fq = cfg.exit_intent_frequency || "per_session";
+        if (fq !== "per_session" && fq !== "per_24h" && fq !== "no_rapid_repeat") fq = "per_session";
+        sel("wtc_exit_frequency", fq);
+        sel("wtc_hes_enabled", cfg.hesitation_trigger_enabled !== false ? "true" : "false");
+        var ha = parseInt(cfg.hesitation_after_seconds, 10);
+        if (ha !== 10 && ha !== 20 && ha !== 30) ha = 20;
+        sel("wtc_hes_after", String(ha));
+        var hw = cfg.hesitation_condition || "after_cart_add";
+        if (
+          hw !== "after_cart_add" &&
+          hw !== "repeated_view" &&
+          hw !== "inactivity" &&
+          hw !== "cart_interaction"
+        )
+          hw = "after_cart_add";
+        sel("wtc_hes_when", hw);
+        sel("wtc_vis_global", cfg.visibility_widget_globally_enabled !== false ? "true" : "false");
+        sel("wtc_vis_pause", cfg.visibility_temporarily_disabled === true ? "true" : "false");
+        var pg = cfg.visibility_page_scope || "all";
+        if (pg !== "product" && pg !== "cart" && pg !== "all") pg = "all";
+        sel("wtc_vis_pages", pg);
+        updateEmbedSnippet(data.zid_store_id || "");
+      }
+
+      function collectWidgetTriggerConfig() {
+        function bol(id) {
+          var el = document.getElementById(id);
+          return el && el.value === "true";
+        }
+        function num(id, allowed) {
+          var el = document.getElementById(id);
+          var n = el ? parseInt(el.value, 10) : NaN;
+          return allowed.indexOf(n) >= 0 ? n : allowed[0];
+        }
+        function str(id, allowed, def) {
+          var el = document.getElementById(id);
+          var v = el ? el.value : "";
+          return allowed.indexOf(v) >= 0 ? v : def;
+        }
+        return {
+          exit_intent_enabled: bol("wtc_exit_enabled"),
+          exit_intent_sensitivity: str("wtc_exit_sensitivity", ["low", "medium", "high"], "medium"),
+          exit_intent_delay_seconds: num("wtc_exit_delay", [0, 3, 5]),
+          exit_intent_frequency: str(
+            "wtc_exit_frequency",
+            ["per_session", "per_24h", "no_rapid_repeat"],
+            "per_session"
+          ),
+          hesitation_trigger_enabled: bol("wtc_hes_enabled"),
+          hesitation_after_seconds: num("wtc_hes_after", [10, 20, 30]),
+          hesitation_condition: str(
+            "wtc_hes_when",
+            ["after_cart_add", "repeated_view", "inactivity", "cart_interaction"],
+            "after_cart_add"
+          ),
+          visibility_widget_globally_enabled: bol("wtc_vis_global"),
+          visibility_temporarily_disabled: bol("wtc_vis_pause"),
+          visibility_page_scope: str("wtc_vis_pages", ["product", "cart", "all"], "all"),
+        };
+      }
+
+      function updateEmbedSnippet(zid) {
+        var pre = document.getElementById("cf_embed_snippet");
+        if (!pre) return;
+        var raw = (zid && String(zid).trim()) || "demo";
+        var store = raw.replace(/[^a-zA-Z0-9_\-]/g, "").slice(0, 128) || "demo";
+        var origin = CF_EMBED_ORIGIN || window.location.origin || "";
+        var src = origin + "/static/widget_loader.js";
+        pre.textContent =
+          '<script src="' + src + '" data-store="' + store + '"><\/script>';
       }
 
       var LS = {
@@ -388,6 +593,7 @@
         .then(function (x) {
           if (x.data.ok) {
             fillGlobalFromData(x.data);
+            fillWidgetTriggersFromData(x.data);
             fillWidgetFromData(x.data);
             loadPreviewPrefs();
             hideMsg();
@@ -440,6 +646,58 @@
             showErr("خطأ في الشبكة أثناء الحفظ.");
           });
       });
+
+      document.getElementById("f-widget-triggers").addEventListener("submit", function (e) {
+        e.preventDefault();
+        hideMsg();
+        fetch("/api/recovery-settings", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ widget_trigger_config: collectWidgetTriggerConfig() }),
+        })
+          .then(function (r) {
+            return r.json().then(function (d) {
+              return { status: r.status, data: d };
+            });
+          })
+          .then(function (x) {
+            if (x.data.ok) {
+              fillWidgetTriggersFromData(x.data);
+              showOk();
+            } else {
+              showErr(x.data.error || "فشل الحفظ");
+            }
+          })
+          .catch(function () {
+            showErr("خطأ في الشبكة أثناء الحفظ.");
+          });
+      });
+
+      (function wireEmbedCopy() {
+        var btn = document.getElementById("cf_embed_copy");
+        var ok = document.getElementById("cf_embed_copy_ok");
+        if (!btn) return;
+        btn.addEventListener("click", function () {
+          var pre = document.getElementById("cf_embed_snippet");
+          var t = pre ? pre.textContent : "";
+          if (!t) return;
+          function done() {
+            if (ok) {
+              ok.classList.remove("hidden");
+              setTimeout(function () {
+                ok.classList.add("hidden");
+              }, 2000);
+            }
+          }
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(t).then(done).catch(function () {
+              showErr("تعذّر النسخ — انسخ يدوياً.");
+            });
+          } else {
+            showErr("المتصفح لا يدعم النسخ التلقائي.");
+          }
+        });
+      })();
 
       document.getElementById("f-widget").addEventListener("submit", function (e) {
         e.preventDefault();

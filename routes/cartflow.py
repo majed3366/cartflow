@@ -35,6 +35,7 @@ from services.recovery_session_phone import (
 from services.cartflow_widget_recovery_gate import (
     cartflow_widget_recovery_gate_fields_for_api,
 )
+from services.cartflow_widget_trigger_settings import widget_trigger_config_for_api
 from services.store_widget_customization import widget_customization_fields_for_api
 from services.vip_cart import is_vip_cart, vip_cart_threshold_fields_for_api
 from services.vip_abandoned_cart_phone import (
@@ -319,6 +320,7 @@ def cartflow_ready(
         tpl.update(widget_customization_fields_for_api(row))
         tpl.update(vip_cart_threshold_fields_for_api(row))
         tpl.update(cartflow_widget_recovery_gate_fields_for_api(row))
+        tpl.update(widget_trigger_config_for_api(row))
         return j(
             {
                 "ok": True,
@@ -362,6 +364,7 @@ def cartflow_public_config(
         tpl.update(widget_customization_fields_for_api(row))
         tpl.update(vip_cart_threshold_fields_for_api(row))
         tpl.update(cartflow_widget_recovery_gate_fields_for_api(row))
+        tpl.update(widget_trigger_config_for_api(row))
         ct_out: Optional[float] = None
         is_vip_pub = False
         vip_eval = False

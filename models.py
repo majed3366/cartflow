@@ -90,6 +90,8 @@ class Store(Base):
     cartflow_widget_enabled = Column(Boolean, default=True, nullable=False)
     cartflow_widget_delay_value = Column(Integer, default=0, nullable=False)
     cartflow_widget_delay_unit = Column(String(20), default="minutes", nullable=False)
+    # إعدادات مشغّل ظهور الودجيت (JSON) — طبقة تحكم تاجرية؛ القيم الافتراضية في الكود عند الفراغ
+    cf_widget_trigger_settings_json = Column(Text, nullable=True)
 
 
 class AbandonedCart(Base):
