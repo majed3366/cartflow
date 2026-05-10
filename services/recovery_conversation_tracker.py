@@ -49,12 +49,22 @@ def format_last_interaction_ar(iso_s: Optional[str]) -> str:
         return (iso_s or "").strip()[:32]
 
 
-def conversation_dashboard_extras(ac: AbandonedCart) -> dict[str, Any]:
+def conversation_dashboard_extras(
+    ac: AbandonedCart,
+    *,
+    behavioral_payload: Optional[dict[str, Any]] = None,
+) -> dict[str, Any]:
     """
     حقول إضافية لبطاقة «السلال العادية» — بدون تغيير مسار الإرسال.
+
+    behavioral_payload: اختياري — نفس دمج ‎cf_behavioral‎ المستخدم في ‎_normal_recovery_phase_steps_payload‎
+    عند تجميع صفوف ‎AbandonedCart‎ المكرّرة لنفس الجلسة.
     """
     st = (getattr(ac, "status", None) or "").strip().lower()
-    bh = behavioral_dict_for_abandoned_cart(ac)
+    if behavioral_payload is not None:
+        bh = behavioral_payload
+    else:
+        bh = behavioral_dict_for_abandoned_cart(ac)
     replied = bool(bh.get("customer_replied") is True or bh.get("interactive_mode") is True)
     raw_state = bh.get("recovery_conversation_state")
     if st == "recovered":

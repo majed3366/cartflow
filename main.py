@@ -2278,6 +2278,52 @@ def _normal_recovery_recovery_log_statuses_lower(ac: AbandonedCart) -> frozenset
         return frozenset()
 
 
+def _normal_recovery_behavioral_merge_from_cart_group(
+    grp: list[AbandonedCart],
+) -> dict[str, Any]:
+    """
+    دمج ‎cf_behavioral‎ عبر صفوف ‎AbandonedCart‎ المجمّعة لنفس الجلسة،
+    حتى لا تضيع إشارة عودة العميل على الصف الأحدث بلا ‎raw_payload‎ (مصدر الحقيقة للوحة).
+    """
+    merged: dict[str, Any] = {}
+    for row in grp:
+        d = behavioral_dict_for_abandoned_cart(row)
+        if not d:
+            continue
+        for k, v in d.items():
+            if v is True:
+                merged[k] = True
+    for row in grp:
+        d = behavioral_dict_for_abandoned_cart(row)
+        if not d:
+            continue
+        for k, v in d.items():
+            if k in merged:
+                continue
+            if v in (False, None):
+                continue
+            if isinstance(v, (int, float)) and not isinstance(v, bool):
+                try:
+                    merged[k] = max(
+                        float(merged.get(k, 0) or 0),
+                        float(v),
+                    )
+                except (TypeError, ValueError):
+                    merged[k] = v
+            elif v not in ("", [], {}):
+                merged[k] = v
+    return merged
+
+
+def _normal_recovery_recovery_log_statuses_lower_group(
+    grp: list[AbandonedCart],
+) -> frozenset[str]:
+    acc: set[str] = set()
+    for row in grp:
+        acc |= set(_normal_recovery_recovery_log_statuses_lower(row))
+    return frozenset(acc)
+
+
 def _normal_recovery_latest_skipped_no_verified_phone_row(
     ac: AbandonedCart,
 ) -> Optional[CartRecoveryLog]:
@@ -2599,12 +2645,19 @@ def _latest_cart_recovery_log_row_for_abandoned(
         return None
 
 
-def _normal_recovery_dashboard_phase_key(ac: AbandonedCart) -> str:
+def _normal_recovery_dashboard_phase_key(
+    ac: AbandonedCart,
+    *,
+    behavioral_override: Optional[dict[str, Any]] = None,
+) -> str:
     """مفتاح مرحلة واجهة الاسترجاع العادي — قراءة فقط؛ للعرض ولتوسعة المحرك لاحقاً."""
     st = (getattr(ac, "status", None) or "").strip().lower()
     if st == "recovered":
         return "recovery_complete"
-    bh = behavioral_dict_for_abandoned_cart(ac)
+    if behavioral_override is not None:
+        bh = behavioral_override
+    else:
+        bh = behavioral_dict_for_abandoned_cart(ac)
     if bh.get("customer_replied") is True:
         return "behavioral_replied"
     if bh.get("recovery_link_clicked") is True:
@@ -2678,9 +2731,19 @@ def _normal_recovery_identity_trust_surface(ac: AbandonedCart) -> Optional[str]:
     return None
 
 
-def _normal_recovery_phase_steps_payload(ac: AbandonedCart) -> dict[str, Any]:
+def _normal_recovery_phase_steps_payload(
+    ac: AbandonedCart,
+    *,
+    behavioral_cart_group: Optional[list[AbandonedCart]] = None,
+) -> dict[str, Any]:
     order = _NORMAL_RECOVERY_PHASE_ORDER
-    current_key = _normal_recovery_dashboard_phase_key(ac)
+    _grp_bh: list[AbandonedCart] = (
+        list(behavioral_cart_group) if behavioral_cart_group else [ac]
+    )
+    behavioral_pre = _normal_recovery_behavioral_merge_from_cart_group(_grp_bh)
+    current_key = _normal_recovery_dashboard_phase_key(
+        ac, behavioral_override=behavioral_pre
+    )
     key_to_index = {k: i for i, (k, _) in enumerate(order)}
     progress_key = current_key
     if current_key == NORMAL_RECOVERY_PHASE_KEY_BLOCKED_MISSING_CUSTOMER_PHONE:
@@ -2741,7 +2804,6 @@ def _normal_recovery_phase_steps_payload(ac: AbandonedCart) -> dict[str, Any]:
         seq_label_ar = "تم إرسال الرسالة الأولى"
     cust_raw = _normal_recovery_dashboard_resolve_customer_phone_raw(ac, store_ac)
     cust_phone_display_ar = cust_raw if cust_raw else "لا يوجد رقم عميل"
-    behavioral_pre = behavioral_dict_for_abandoned_cart(ac)
     blocker_row = _normal_recovery_latest_blocker_event_row(ac)
     blocker_bundle: Optional[dict[str, Any]] = None
     blocker_key_out: Optional[str] = None
@@ -2884,7 +2946,9 @@ def _normal_recovery_phase_steps_payload(ac: AbandonedCart) -> dict[str, Any]:
             out_nr["normal_recovery_provider_issue_hint_ar"] = _pih
     if _lc_notes:
         out_nr["normal_recovery_lifecycle_notes"] = _lc_notes
-    out_nr.update(conversation_dashboard_extras(ac))
+    out_nr.update(
+        conversation_dashboard_extras(ac, behavioral_payload=behavioral_pre)
+    )
     trust_ar = _normal_recovery_identity_trust_surface(ac)
     if trust_ar:
         out_nr["normal_recovery_identity_trust_ar"] = trust_ar
@@ -2935,7 +2999,7 @@ def _normal_recovery_phase_steps_payload(ac: AbandonedCart) -> dict[str, Any]:
             else None
         )
         _ls_merchant = (str(latest_log_status or "").strip() or _tail_st or None)
-        _log_statuses_all = _normal_recovery_recovery_log_statuses_lower(ac)
+        _log_statuses_all = _normal_recovery_recovery_log_statuses_lower_group(_grp_bh)
 
         out_nr.update(
             build_normal_recovery_merchant_lifecycle(
@@ -8015,7 +8079,11 @@ def _vip_dashboard_cart_alert_dict_from_group(
         "recovery_hide_vip_lifecycle_buttons": not is_vip_card,
     }
     if not is_vip_card:
-        out_payload.update(_normal_recovery_phase_steps_payload(ac))
+        out_payload.update(
+            _normal_recovery_phase_steps_payload(
+                ac, behavioral_cart_group=grp_sorted
+            )
+        )
     return out_payload
 
 

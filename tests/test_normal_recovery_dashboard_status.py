@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import json
 import unittest
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -12,8 +13,10 @@ from fastapi.testclient import TestClient
 from extensions import db, remove_scoped_session
 from main import (
     app,
+    _dashboard_recovery_store_row,
     _normal_recovery_phase_steps_payload,
     _NORMAL_RECOVERY_SENT_LOG_STATUSES,
+    _vip_dashboard_cart_alert_dict_from_group,
 )
 from models import AbandonedCart, CartRecoveryLog, Store
 
@@ -431,6 +434,85 @@ class NormalRecoveryDashboardStatusTests(unittest.TestCase):
             "عاد",
             (payload.get("merchant_lifecycle_customer_behavior_ar") or ""),
         )
+
+    def test_alert_card_merges_cf_behavioral_from_older_duplicate_row(self) -> None:
+        """
+        /dashboard/normal-carts يمرّ عبر تجميع صفوف AbandonedCart؛ الصف الأحدث قد لا يحمل cf_behavioral
+        بينما صف أقدم يحمل user_returned_to_site — يجب أن تظهر بطاقة العودة وليس انتظار التوقيت.
+        """
+        st = self._store_attempts_1()
+        slug = (st.zid_store_id or "demo").strip()
+        sid = f"nr-dupbh-{self._suffix}"
+        z_old = f"zid-old-{self._suffix}"
+        z_new = f"zid-new-{self._suffix}"
+        t_old = datetime.now(timezone.utc) - timedelta(minutes=5)
+        t_new = datetime.now(timezone.utc)
+        raw_old = {"cf_behavioral": {"user_returned_to_site": True}}
+        ac_old = AbandonedCart(
+            store_id=int(st.id),
+            zid_cart_id=z_old,
+            recovery_session_id=sid,
+            status="abandoned",
+            vip_mode=False,
+            cart_value=11.0,
+            raw_payload=json.dumps(raw_old, ensure_ascii=False),
+            last_seen_at=t_old,
+            first_seen_at=t_old,
+        )
+        ac_new = AbandonedCart(
+            store_id=int(st.id),
+            zid_cart_id=z_new,
+            recovery_session_id=sid,
+            status="abandoned",
+            vip_mode=False,
+            cart_value=11.0,
+            raw_payload=None,
+            last_seen_at=t_new,
+            first_seen_at=t_new,
+        )
+        db.session.add(ac_old)
+        db.session.add(ac_new)
+        db.session.flush()
+        now = datetime.now(timezone.utc)
+        db.session.add(
+            CartRecoveryLog(
+                store_slug=slug,
+                session_id=sid,
+                cart_id=z_old,
+                phone="9665111222333",
+                message="m",
+                status="mock_sent",
+                step=1,
+                created_at=now - timedelta(seconds=10),
+                sent_at=now - timedelta(seconds=10),
+            )
+        )
+        db.session.add(
+            CartRecoveryLog(
+                store_slug=slug,
+                session_id=sid,
+                cart_id=z_new,
+                phone=None,
+                message="q",
+                status="queued",
+                step=2,
+                created_at=now,
+                sent_at=None,
+            )
+        )
+        db.session.commit()
+        grp_sorted = sorted([ac_new, ac_old], key=lambda a: a.last_seen_at, reverse=True)
+        self.assertIs(grp_sorted[0], ac_new)
+        dash = _dashboard_recovery_store_row()
+        card = _vip_dashboard_cart_alert_dict_from_group(
+            grp_sorted, dash, recovery_card_tier="normal"
+        )
+        self.assertEqual(
+            card.get("merchant_lifecycle_primary_key"),
+            "customer_returned",
+            card.get("merchant_lifecycle_internal"),
+        )
+        self.assertIn("عاد", card.get("merchant_lifecycle_customer_behavior_ar") or "")
 
     def test_skip_missing_reason_after_first_send_not_ignored(self) -> None:
         st = self._store_attempts_1()
