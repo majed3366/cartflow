@@ -61,7 +61,7 @@ Implemented inside **`static/cartflow_widget.js`** (exit-intent keys, pre-cart d
 
 ### 3.1 FastAPI structure
 
-- **`main.py`** — Core app: mounts `static/`, registers routers, **`POST /api/cart-event`**, **`/api/recovery-settings`**, **`/api/conversion`**, webhooks, **`GET /dashboard`**, demo routes, recovery sequence orchestration.
+- **`main.py`** — Core app: mounts `static/`, registers routers, **`POST /api/cart-event`**, **`/api/recovery-settings`**, **`/api/conversion`**, webhooks, **`GET /dashboard`**, **demo / commerce sandbox** routes (see §3.2.1), recovery sequence orchestration.
 - **`routes/cartflow.py`** — `APIRouter(prefix="/api/cartflow")`: analytics, ready, public-config, generate-whatsapp-message, reason, etc.
 - **`routes/cart_recovery_reason.py`** — `APIRouter(prefix="/api/cart-recovery")`: **`POST /reason`** (widget reason persistence).
 - **`routes/ops.py`**, **`routes/demo_panel.py`** — operational / demo utilities.
@@ -81,6 +81,24 @@ Implemented inside **`static/cartflow_widget.js`** (exit-intent keys, pre-cart d
 | `POST /dev/create-vip-test-cart` | `main.py` | Seed حقيقي: `AbandonedCart` VIP + `CartRecoveryReason` جلسة `test_vip_session` بدون ودجت (مسموح في الإنتاج عبر قائمة `_DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT`). |
 | `POST /webhook/zid` | `main.py` | Zid webhook ingestion. |
 | `POST` / `GET /webhook/whatsapp` | `main.py` | Twilio / inbound hook stubs (`[WA REPLY]` logging). |
+| `GET /demo/store`, `/demo/store/cart`, `/demo/store/checkout`, `/demo/cart`, `/demo/cart/checkout`, `/demo/store/product/{id}` | `main.py` | **Commerce sandbox (default `store_slug=demo`):** multi-page catalog, cart, lightweight checkout. |
+| `GET /demo/store2`, `/demo/store2/cart`, `/demo/store2/checkout`, `/demo/store2/product/{id}` | `main.py` | Same UI with **isolation** (`demo2` slug / `demo2_cart` localStorage) for recovery tests. |
+
+### 3.2.1 Demo commerce sandbox (v1) — reference
+
+**Purpose:** One in-app “realistic lightweight store” that exercises the **real** recovery pipeline (cart events, continuation, dashboard, offers/product intelligence when configured) without replacing production widget architecture.
+
+| Piece | Location / behavior |
+|--------|---------------------|
+| **Catalog (data)** | **`services/demo_sandbox_catalog.py`** — `SANDBOX_PRODUCTS`, `SANDBOX_PRODUCT_ORDER`, PDP numbering (`SANDBOX_PRODUCT_KEY_BY_NUM`). Fields: `id`, `sku`, `name`, `price` / `unit_price`, `category`, descriptions, `url` / `image` (picsum seeds), **`related_keys`**, **`cheaper_alternative_keys`**, **`available`**. **Rule-first only** (no AI): relationships are explicit lists on each SKU. |
+| **URLs per store** | `product_demo_url(nav_base, key)` — `/demo/store/...` vs `/demo/store2/...` so `demo2` PDP links stay isolated. |
+| **Merchant sync** | `merchant_catalog_for_intelligence_sync()` / `merchant_catalog_json_string()` — JSON shaped for **`product_catalog`** in **`/api/recovery-settings`** (paste in dashboard **العروض الذكية** so intelligence and offers match real catalog rows). Template context: `demo_merchant_catalog_json`. |
+| **Store UI** | **`templates/demo_store.html`** — grid from `demo_grid_rows`, `window.CF_DEMO_PRODUCTS` + `window.CF_DEMO_NAV_BASE` from server JSON; PDP with image + related links; cart **subtotal** + link to checkout; **checkout** page with **COD** button → **`window.cartflowTriggerDemoConversion`** → **`POST /api/conversion`** (`purchase_completed: true`), then local cart clear + client converted flag (same as demo panel). |
+| **Demo panel** | **`static/cartflow_demo_panel.js`** — cart page only UI; **`cartflowStartDemoScenario`** seeds **`hp_pro`** first (premium headphones) to surface **cheaper-alternative** scenarios; **`cartflowTriggerDemoConversion`** exported for checkout page. |
+| **Abandon payload shape** | Demo sends **`cart` as a JSON array** of line objects (`id`, `name`, `price`, `category`, …). **`services/recovery_product_context.py`** `_first_line_items_list` accepts **`cart` as list** so product context / intelligence see line items. |
+| **Tests** | `tests/test_demo_behavioral_navigation.py` (routes, checkout), `tests/test_cart_recovery_sequence_behavior.py`, `tests/test_recovery_product_context.py` (list-cart case). |
+
+**Do not use the sandbox as:** a second application or a bypass of lifecycle, continuation, or dashboard settings — it is wired to the same APIs and session keys as the existing demo.
 
 ### 3.3 Services (`services/`)
 
@@ -95,6 +113,8 @@ Implemented inside **`static/cartflow_widget.js`** (exit-intent keys, pre-cart d
 | Session phone | `recovery_session_phone.py` |
 | Store JSON fields | `store_trigger_templates.py`, `store_template_control.py`, `store_widget_customization.py` |
 | AI / copy | `ai_message_builder.py` |
+| Demo commerce catalog | `demo_sandbox_catalog.py` — static SKUs, grid/JS maps, merchant `product_catalog` export (§3.2.1). |
+| Product context from cart | `recovery_product_context.py` — infers cheaper alternative from line items; supports **`cart` as list** for demo payloads. |
 
 ### 3.4 Database models
 
@@ -261,6 +281,7 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 
 | Date (UTC) | Summary |
 |------------|---------|
+| 2026-05-10 | **Commerce sandbox v1:** `services/demo_sandbox_catalog.py` (multi-category catalog, rule-first `related_keys` / `cheaper_alternative_keys`, merchant JSON for `product_catalog`); `templates/demo_store.html` (grid, PDP, cart total, `/demo/*/checkout` + fake COD → `POST /api/conversion`); `recovery_product_context` list-`cart` support; `cartflow_demo_panel.js` (`hp_pro` scenario, `cartflowTriggerDemoConversion`). Commit: **`feat: upgrade demo into realistic commerce sandbox v1`**. |
 | 2026-05-03 | **لوحة VIP — أولوية مقابل تجريبي:** قسم **أولوية** مربوط بقاعدة البيانات فقط (`vip_mode` ∪ `CartRecoveryLog` بـ **`vip_manual_handling`** على `zid_cart_id`)؛ لا دمج صفوف **`demo_vip_cart_zid`** في الأولوية؛ قسم **بيانات تجريبية** منفصل. Commit: **`fix: bind VIP priority tab to real VIP carts`**. |
 | 2026-05-03 | **VIP في محرّك القرار:** `decide_recovery_action(..., is_vip_cart_flag)` يعيد **`vip_manual_handling`** مع **`send_customer/send_merchant`**؛ لا **fallback** لاسترداد عميل بعد VIP؛ فحص قبل التأخير؛ سجلات D.2. Commit: **`fix: move VIP to decision engine override (real behavior)`**. |
 | 2026-05-03 | **لوحة VIP — إرسال يدوي:** **`POST /api/dashboard/vip-cart/{id}/merchant-alert`**؛ واجهة **`vip_cart_settings.html`**؛ **`interactive`** للصفوف التجريبية؛ رسائل **`تم إرسال تنبيه التاجر`** / **`لا يوجد رقم واتساب للمتجر`**؛ سجلات يدوية. Commit: **`feat: wire VIP manual send action`**. |
