@@ -524,6 +524,7 @@
       </header>
 
       <main class="w-full space-y-2.5 px-4 py-4 pb-24 md:max-w-5xl md:space-y-3 md:px-5 md:py-4 md:pb-24">
+        {% include "partials/whatsapp_readiness_card.html" %}
         {% set quality_rows = reason_bar | selectattr("key", "equalto", "quality") | list %}
 
         {% set feed_n = live_feed|length %}

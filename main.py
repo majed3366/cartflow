@@ -8260,6 +8260,10 @@ def dashboard(request: Request):
                 "width_pct": min(100.0, round(100.0 * float(cnt) / float(rmax), 1)),
             }
         )
+    from services.merchant_whatsapp_readiness_ui import (  # noqa: PLC0415
+        build_merchant_whatsapp_readiness_card,
+    )
+
     return templates.TemplateResponse(
         request,
         "dashboard_v1.html",
@@ -8272,6 +8276,9 @@ def dashboard(request: Request):
             "conversion_pct": conversion_pct,
             "reason_bar": reason_bar,
             "live_feed": live_rows,
+            "whatsapp_readiness_card": build_merchant_whatsapp_readiness_card(
+                _dashboard_recovery_store_row()
+            ),
         },
     )
 
@@ -8290,11 +8297,14 @@ def dashboard_normal_carts(request: Request):
     from services.cartflow_observability_runtime import runtime_health_snapshot_readonly
     from services.cartflow_onboarding_readiness import get_onboarding_dashboard_visibility
 
+    from services.merchant_whatsapp_readiness_ui import build_merchant_whatsapp_readiness_card
+
     normal_recovery_alerts = _normal_recovery_cart_alert_list()
     normal_stats = dict(_normal_carts_dashboard_stats())
     normal_stats["normal_monitoring_card_count"] = len(normal_recovery_alerts)
     dash_store = _dashboard_recovery_store_row()
     onboarding_visibility = get_onboarding_dashboard_visibility(dash_store)
+    whatsapp_readiness_card = build_merchant_whatsapp_readiness_card(dash_store)
     return templates.TemplateResponse(
         request,
         "normal_carts_dashboard.html",
@@ -8304,6 +8314,7 @@ def dashboard_normal_carts(request: Request):
             "normal_stats": normal_stats,
             "cartflow_runtime_health": runtime_health_snapshot_readonly(),
             "onboarding_visibility": onboarding_visibility,
+            "whatsapp_readiness_card": whatsapp_readiness_card,
         },
     )
 

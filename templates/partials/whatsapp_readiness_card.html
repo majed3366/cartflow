@@ -1,0 +1,30 @@
+{# Merchant-safe WhatsApp readiness — populated server-side only; no technical strings. #}
+{% set wa = whatsapp_readiness_card %}
+{% if wa %}
+<section
+  class="mb-4 rounded-2xl border border-violet-100/90 bg-gradient-to-br from-violet-50/80 via-white to-slate-50/50 px-4 py-4 shadow-sm md:px-5"
+  aria-labelledby="cf-wa-readiness-title"
+  data-cf-whatsapp-readiness="{{ wa.state_key | e }}"
+>
+  <div class="flex flex-wrap items-start justify-between gap-2 border-b border-violet-100/70 pb-3">
+    <div class="min-w-0 flex-1">
+      <h2 id="cf-wa-readiness-title" class="m-0 text-base font-bold text-slate-900">حالة الواتساب</h2>
+      <p class="mt-1 mb-0 text-xs leading-relaxed text-slate-600">تحقق من جاهزية استرجاع السلال عبر الواتساب.</p>
+    </div>
+    <span
+      class="inline-flex shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-bold {{ wa.badge_class }}"
+      lang="ar"
+    >{{ wa.badge_ar }}</span>
+  </div>
+  <p class="mt-3 mb-0 text-sm font-semibold leading-snug text-slate-900" lang="ar">{{ wa.title_ar }}</p>
+  <p class="mt-1.5 mb-0 text-sm leading-relaxed text-slate-700" lang="ar">{{ wa.description_ar }}</p>
+  <p class="mt-2 mb-0 rounded-lg border border-slate-100/90 bg-white/70 px-2.5 py-2 text-xs leading-relaxed text-slate-600" lang="ar">{{ wa.impact_ar }}</p>
+  <div class="mt-4 flex flex-wrap items-center gap-2">
+    <a
+      href="{{ wa.action_href }}"
+      class="inline-flex items-center justify-center rounded-xl border border-zid-500/25 bg-zid-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-zid-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-zid-400"
+      lang="ar"
+    >{{ wa.action_label_ar }}</a>
+  </div>
+</section>
+{% endif %}
