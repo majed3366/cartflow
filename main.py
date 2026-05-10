@@ -1378,6 +1378,8 @@ _session_recovery_last_second_skip_reason: dict[str, str] = {}
 _session_recovery_sent: dict[str, bool] = {}
 _session_recovery_converted: dict[str, bool] = {}
 _session_recovery_returned: dict[str, bool] = {}
+# UTC: normal recovery was scheduled for this recovery_key (return-to-site qualification).
+_session_recovery_flow_armed_at: dict[str, datetime] = {}
 _session_recovery_send_count: dict[str, int] = {}
 _session_recovery_multi_logged: dict[str, bool] = {}
 _session_recovery_multi_attempt_cap: dict[str, int] = {}
@@ -1390,6 +1392,84 @@ _recovery_session_lock = threading.RLock()
 # Durable dashboard/lifecycle evidence: written on return-to-site detection (not send path).
 _DURABLE_RETURN_TO_SITE_LOG_STATUS = "returned_to_site"
 _DURABLE_RETURN_LOG_DEBOUNCE_SEC = 120
+
+
+def _return_to_site_qualify_min_seconds() -> float:
+    raw = (os.getenv("CARTFLOW_RETURN_QUALIFY_MIN_SECONDS") or "").strip()
+    if not raw:
+        return 45.0
+    try:
+        return max(0.0, float(raw))
+    except (TypeError, ValueError):
+        return 45.0
+
+
+def _note_recovery_flow_armed_now(recovery_key: str) -> None:
+    """Record that normal recovery was scheduled (enables qualified return-to-site)."""
+    rk = (recovery_key or "").strip()
+    if not rk:
+        return
+    now = datetime.now(timezone.utc)
+    with _recovery_session_lock:
+        _session_recovery_flow_armed_at[rk] = now
+
+
+def _return_to_site_payload_is_qualified(payload: dict[str, Any]) -> bool:
+    """
+    True only after recovery was armed and a minimum delay elapsed — avoids same-session
+    navigation right after reason selection being treated as abandonment return.
+    """
+    if not isinstance(payload, dict):
+        return False
+    key = _recovery_key_from_payload(payload)
+    if not (key or "").strip():
+        return False
+    now = datetime.now(timezone.utc)
+    with _recovery_session_lock:
+        t0 = _session_recovery_flow_armed_at.get(key)
+    if t0 is None:
+        try:
+            _qskip = (
+                f"[RETURN TO SITE] qualified_skip reason=recovery_flow_not_armed "
+                f"recovery_key={key}"
+            )
+            print(_qskip, flush=True)
+            log.info("%s", _qskip)
+        except OSError:
+            pass
+        return False
+    if t0.tzinfo is None:
+        t0_utc = t0.replace(tzinfo=timezone.utc)
+    else:
+        t0_utc = t0.astimezone(timezone.utc)
+    min_sec = _return_to_site_qualify_min_seconds()
+    elapsed = (now - t0_utc).total_seconds()
+    if elapsed < min_sec:
+        try:
+            _qskip2 = (
+                f"[RETURN TO SITE] qualified_skip reason=return_within_cooldown "
+                f"recovery_key={key} elapsed_s={elapsed:.1f} min_s={min_sec}"
+            )
+            print(_qskip2, flush=True)
+            log.info("%s", _qskip2)
+        except OSError:
+            pass
+        return False
+    return True
+
+
+def _test_set_recovery_flow_armed_at(recovery_key: str, armed_at_utc: datetime) -> None:
+    """Tests only: set armed time for return qualification."""
+    rk = (recovery_key or "").strip()
+    if not rk:
+        return
+    dt = armed_at_utc
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    else:
+        dt = dt.astimezone(timezone.utc)
+    with _recovery_session_lock:
+        _session_recovery_flow_armed_at[rk] = dt
 
 # خطوة إضافية منطقية (سابقاً كان عندها خطوتان أخريان) — لسجلات «توقفت بعد الأولى»
 _RECOVERY_SEQUENCE_STEPS: tuple[tuple[int, str], ...] = (
@@ -5961,6 +6041,7 @@ async def handle_cart_abandoned(
             cart_id=cart_id_log,
             mode="multi_message",
         )
+        _note_recovery_flow_armed_now(recovery_key)
         return {
             "recovery_scheduled": True,
             "recovery_multi_message": True,
@@ -5976,6 +6057,7 @@ async def handle_cart_abandoned(
         cart_id=cart_id_log,
         mode="delay_poll",
     )
+    _note_recovery_flow_armed_now(recovery_key)
     asyncio.create_task(
         _run_recovery_dispatch_cart_abandoned(
             recovery_key,
@@ -6503,8 +6585,9 @@ async def api_cart_event(request: Request, background_tasks: BackgroundTasks):
             log.info("%s", _rack)
         except OSError:
             pass
-        _mark_user_returned_for_payload(payload)
-        record_behavioral_user_return_from_payload(payload)
+        if _return_to_site_payload_is_qualified(payload):
+            _mark_user_returned_for_payload(payload)
+            record_behavioral_user_return_from_payload(payload)
     if (
         payload.get("user_converted") is True
         or payload.get("event") == "user_converted"

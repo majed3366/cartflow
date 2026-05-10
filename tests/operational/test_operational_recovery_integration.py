@@ -192,6 +192,10 @@ class OperationalRecoveryIntegrationTests(unittest.TestCase):
         sid = f"op_sid_{self._suffix}"
         cid = f"op_cid_{self._suffix}"
         self._seed_store_cart_reason(slug=slug, sid=sid, cid=cid, with_phone=True)
+        key = main._recovery_key_from_payload({"store": slug, "session_id": sid})
+        main._test_set_recovery_flow_armed_at(
+            key, datetime.now(timezone.utc) - timedelta(seconds=120)
+        )
         main._mark_user_returned_for_payload({"store": slug, "session_id": sid})
 
         r = self.client.post("/api/cart-event", json=_abandon(slug, sid, cid))
