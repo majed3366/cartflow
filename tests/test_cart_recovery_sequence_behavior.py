@@ -285,12 +285,21 @@ class CartRecoverySequenceBehaviorTests(unittest.TestCase):
                 pass
 
     def test_demo_store_page_exists(self) -> None:
-        """Demo cart: /demo/cart, /demo/store, /demo/store/cart, /demo/store2/cart include cart + CTA."""
-        for path in ("/demo/cart", "/demo/store", "/demo/store/cart", "/demo/store2/cart"):
+        """Demo cart: listing, cart, product PDPs, store2 cart include cart + CTA."""
+        paths = (
+            "/demo/cart",
+            "/demo/store",
+            "/demo/store/cart",
+            "/demo/store/product/1",
+            "/demo/store/product/2",
+            "/demo/store2/cart",
+            "/demo/store2/product/1",
+        )
+        for path in paths:
             r = self.client.get(path)
             self.assertEqual(200, r.status_code, path)
             self.assertIn(b"window.cart", r.content)
-            self.assertIn(b"cf-store-intro-cta", r.content)
+            self.assertIn(b"cf-demo-behavioral-nav", r.content)
             self.assertIn(b"cartflow_demo_panel.js", r.content)
             self.assertNotIn(b"cartflow_return_tracker.js?v=return-tracker-v1", r.content)
         rw = self.client.get("/static/widget_loader.js")

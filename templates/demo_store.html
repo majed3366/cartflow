@@ -55,6 +55,31 @@
       cursor: pointer;
     }
     .btn-replay:hover { background: rgba(255, 255, 255, 0.08); border-color: #78716c; }
+    .demo-nav {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.45rem 0.65rem;
+      margin: 0 0 1.25rem 0;
+      padding: 0.55rem 0.75rem;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      font-size: 0.85rem;
+      font-weight: 700;
+    }
+    .demo-nav a {
+      color: var(--accent);
+      text-decoration: none;
+      padding: 0.25rem 0.45rem;
+      border-radius: 6px;
+    }
+    .demo-nav a:hover { background: #f5f3ff; text-decoration: underline; }
+    .demo-nav .demo-nav-sep {
+      color: var(--line);
+      font-weight: 400;
+      user-select: none;
+    }
     .wrap { max-width: 1120px; margin: 0 auto; padding: 1.5rem 1.25rem 2.5rem; }
     .hero {
       margin-bottom: 1.75rem;
@@ -471,7 +496,15 @@
   <div class="wrap">
   <div class="hero">
     <h1>{{ demo_h1|default('واجهة جاهزة للتجارب') }}</h1>
-    <p class="sub">واجهة مبسّطة تُمثّل كتالوجاً حقيقياً مع <strong>نفس سلوك CartFlow</strong> (ودجت يظهر بعد لحظة تردد كأي زائر).</p>
+    <p class="sub">
+      {% if demo_view|default('list') == 'product' %}
+      نفس جلسة المتصفح والسلة عبر الصفحات — مناسب لاختبار <strong>العودة للموقع</strong> ومسار المنتج دون متجر كامل.
+      {% elif demo_view|default('list') == 'cart' %}
+      صفحة السلة منفصلة بنفس السلة المحفوظة — لاختبار إعادة زيارة السلة والعودة بعد الاسترجاع.
+      {% else %}
+      واجهة مبسّطة تُمثّل كتالوجاً حقيقياً مع <strong>نفس سلوك CartFlow</strong> (ودجت يظهر بعد لحظة تردد كأي زائر). استخدم شريط التنقّل للتنقّل بين الصفحات.
+      {% endif %}
+    </p>
     <p class="store-note">المتجر: <code>{{ demo_store_slug|default('demo') }}</code> — السلة من <code>localStorage</code> (<code>{{ demo_cart_key|default('demo_cart') }}</code>)</p>
   </div>
   <script>
@@ -528,6 +561,17 @@
       };
     })();
   </script>
+  <nav class="demo-nav" id="cf-demo-behavioral-nav" aria-label="تنقّل تجريبي للاختبار التشغيلي">
+    {% set navb = demo_behavioral_nav_base|default('/demo/store') %}
+    <span class="demo-nav-sep" aria-hidden="true">|</span>
+    <a href="{{ navb }}">المتجر</a>
+    <span class="demo-nav-sep" aria-hidden="true">|</span>
+    <a href="{{ navb }}/product/1">منتج 1</a>
+    <a href="{{ navb }}/product/2">منتج 2</a>
+    <span class="demo-nav-sep" aria-hidden="true">|</span>
+    <a href="{{ navb }}/cart">السلة</a>
+  </nav>
+  {% if demo_view|default('list') == 'list' %}
   <div class="grid" id="cf-demo-products">
     <div class="card" id="p-earbuds">
       <span class="pcat">إلكترونيات</span>
@@ -584,6 +628,45 @@
       <button type="button" class="add-btn" onclick="addToCart(window.CF_DEMO_PRODUCTS.wallet)">أضف للسلة</button>
     </div>
   </div>
+  {% elif demo_view|default('') == 'product' and demo_product_key %}
+  <div class="grid" id="cf-demo-product-detail" style="max-width: 28rem;">
+    <div class="card" id="cf-demo-single-product-card">
+      <span class="pcat" id="cf-demo-product-cat"></span>
+      <h2 id="cf-demo-product-title">—</h2>
+      <p class="desc" id="cf-demo-product-desc" lang="ar"></p>
+      <div class="price" id="cf-demo-product-price">—</div>
+      <button type="button" class="add-btn" id="cf-demo-product-add">أضف للسلة</button>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var k = {{ demo_product_key | tojson }};
+      function fill() {
+        var p = window.CF_DEMO_PRODUCTS && window.CF_DEMO_PRODUCTS[k];
+        if (!p) return;
+        var cat = document.getElementById("cf-demo-product-cat");
+        var t = document.getElementById("cf-demo-product-title");
+        var d = document.getElementById("cf-demo-product-desc");
+        var pr2 = document.getElementById("cf-demo-product-price");
+        var btn = document.getElementById("cf-demo-product-add");
+        if (cat) cat.textContent = p.category || "";
+        if (t) t.textContent = p.name || "";
+        if (d) d.textContent = p.description || "";
+        if (pr2) pr2.textContent = (p.price != null ? p.price : "—") + " ريال";
+        if (btn) {
+          btn.onclick = function () {
+            addToCart(Object.assign({}, p));
+          };
+        }
+      }
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", fill);
+      } else {
+        fill();
+      }
+    })();
+  </script>
+  {% endif %}
 
   <div class="cart" id="cart">
     <h2>السلة</h2>

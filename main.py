@@ -8782,18 +8782,58 @@ async def zid_webhook(request: Request):
     return j(out, 200)
 
 
+# صفحات تجريبية متعددة لمسار ‎/demo/store‎ (تنقّل مثل ‎PDP / cart‎ دون تغيير منطق الاسترجاع).
+_DEMO_BEHAVIORAL_PRODUCT_BY_NUM: dict[int, str] = {
+    1: "earbuds",
+    2: "hoodie",
+    3: "perfume",
+    4: "watch",
+    5: "charger",
+    6: "wallet",
+}
+
+
+def _demo_store_html_context(request: Request) -> dict[str, Any]:
+    """سياق مشترك لـ‎ demo_store.html‎ — قائمة المنتجات أو صفحة السلة فقط."""
+    p = (request.url.path or "").rstrip("/") or "/"
+    if p == "/demo/cart" or p.endswith("/store/cart"):
+        title = "CartFlow — سلة (تجربة)"
+        h1 = "واجهة سلة + استرجاع (تجربة داخلية)"
+        view = "cart"
+    else:
+        title = "CartFlow — متجر تجريبي"
+        h1 = "متجر وهمي — جاهز لعرض CartFlow"
+        view = "list"
+    return {
+        "request": request,
+        "demo_page_title": title,
+        "demo_h1": h1,
+        "demo_view": view,
+        "demo_product_key": None,
+        "demo_behavioral_nav_base": "/demo/store",
+    }
+
+
 @app.get("/demo/cart")
 @app.get("/demo/store")
 @app.get("/demo/store/cart")
 def demo_store(request: Request):
     """متجر وهمي للتجارب الداخلية (ويدجت / أحداث سلة — بدون منصات حقيقية)."""
-    p = (request.url.path or "").rstrip("/") or "/"
-    if p == "/demo/cart" or p.endswith("/store/cart"):
-        title = "CartFlow — سلة (تجربة)"
-        h1 = "واجهة سلة + استرجاع (تجربة داخلية)"
-    else:
-        title = "CartFlow — متجر تجريبي"
-        h1 = "متجر وهمي — جاهز لعرض CartFlow"
+    return templates.TemplateResponse(
+        request,
+        "demo_store.html",
+        _demo_store_html_context(request),
+    )
+
+
+@app.get("/demo/store/product/{product_id:int}")
+def demo_store_product(request: Request, product_id: int):
+    """صفحة منتج وهمية — نفس ‎localStorage‎ للسلة وحالة الجلسة للاختبار التشغيلي."""
+    key = _DEMO_BEHAVIORAL_PRODUCT_BY_NUM.get(int(product_id))
+    if not key:
+        return PlainTextResponse("Not found", status_code=404)
+    title = "CartFlow — صفحة منتج (تجربة)"
+    h1 = "صفحة منتج — تنقّل تشغيلي"
     return templates.TemplateResponse(
         request,
         "demo_store.html",
@@ -8801,8 +8841,35 @@ def demo_store(request: Request):
             "request": request,
             "demo_page_title": title,
             "demo_h1": h1,
+            "demo_view": "product",
+            "demo_product_key": key,
+            "demo_behavioral_nav_base": "/demo/store",
         },
     )
+
+
+def _demo_store2_html_context(request: Request) -> dict[str, Any]:
+    """سياق ‎demo2‎ — عزل الاسترجاع مع مسارات تنقّل مماثلة لـ‎ /demo/store‎."""
+    p = (request.url.path or "").rstrip("/") or "/"
+    if p.endswith("/store2/cart"):
+        title = "Demo store 2 — cart"
+        h1 = "Demo store 2 — cart (isolation)"
+        view = "cart"
+    else:
+        title = "Demo store 2"
+        h1 = "Demo store 2 (isolation test)"
+        view = "list"
+    return {
+        "request": request,
+        "demo_store_slug": "demo2",
+        "demo_cart_key": "demo2_cart",
+        "demo_page_title": title,
+        "demo_h1": h1,
+        "demo_data_store": "demo2",
+        "demo_view": view,
+        "demo_product_key": None,
+        "demo_behavioral_nav_base": "/demo/store2",
+    }
 
 
 @app.get("/demo/store2")
@@ -8812,13 +8879,29 @@ def demo_store2(request: Request):
     return templates.TemplateResponse(
         request,
         "demo_store.html",
+        _demo_store2_html_context(request),
+    )
+
+
+@app.get("/demo/store2/product/{product_id:int}")
+def demo_store2_product(request: Request, product_id: int):
+    """صفحة منتج لـ‎ demo2‎ — نفس عزل السلة والجلسة."""
+    key = _DEMO_BEHAVIORAL_PRODUCT_BY_NUM.get(int(product_id))
+    if not key:
+        return PlainTextResponse("Not found", status_code=404)
+    return templates.TemplateResponse(
+        request,
+        "demo_store.html",
         {
             "request": request,
             "demo_store_slug": "demo2",
             "demo_cart_key": "demo2_cart",
-            "demo_page_title": "Demo store 2",
-            "demo_h1": "Demo store 2 (isolation test)",
+            "demo_page_title": "Demo store 2 — product",
+            "demo_h1": "Demo store 2 — product page",
             "demo_data_store": "demo2",
+            "demo_view": "product",
+            "demo_product_key": key,
+            "demo_behavioral_nav_base": "/demo/store2",
         },
     )
 
