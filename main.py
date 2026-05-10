@@ -3021,6 +3021,25 @@ def _normal_recovery_phase_steps_payload(
         )
     except Exception:
         pass
+    _diag_log_seen = sorted(_normal_recovery_recovery_log_statuses_lower_group(_grp_bh))
+    _diag_mi = out_nr.get("merchant_lifecycle_internal")
+    _diag_returned = bool(
+        isinstance(_diag_mi, dict)
+        and _diag_mi.get("lifecycle_evidence_returned") is True
+    )
+    out_nr["normal_recovery_diagnostics"] = {
+        "session_id": str(getattr(ac, "recovery_session_id", None) or ""),
+        "cart_id": str(getattr(ac, "zid_cart_id", None) or ""),
+        "merchant_lifecycle_primary_key": out_nr.get("merchant_lifecycle_primary_key"),
+        "recovery_log_statuses_seen": _diag_log_seen,
+        "returned_to_site_evidence": _diag_returned,
+        "customer_phone_present": bool((cust_raw or "").strip()),
+        "selected_abandoned_cart_id": int(getattr(ac, "id", 0) or 0),
+        "grouped_abandoned_cart_row_ids_count": len(_grp_bh),
+        "grouped_abandoned_cart_row_ids": [
+            int(getattr(x, "id", 0) or 0) for x in _grp_bh
+        ],
+    }
     return out_nr
 
 

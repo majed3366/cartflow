@@ -1,0 +1,14 @@
+{# Temporary dashboard diagnostics — normal recovery card only; inside technical <details>. #}
+{% if nr_diag is mapping %}
+<div class="mt-2 rounded border border-violet-200/70 bg-violet-50/40 px-2 py-1.5 font-mono text-[8px] leading-snug text-slate-800 text-left" dir="ltr" lang="en" data-normal-recovery-diagnostics="1">
+  <p class="m-0">session_id: {{ nr_diag.get('session_id', '') | e }}</p>
+  <p class="m-0">cart_id: {{ nr_diag.get('cart_id', '') | e }}</p>
+  <p class="m-0">merchant_lifecycle_primary_key: {{ nr_diag.get('merchant_lifecycle_primary_key', '') | e }}</p>
+  <p class="m-0">recovery_log_statuses_seen: {{ (nr_diag.get('recovery_log_statuses_seen') or []) | join(', ') | e }}</p>
+  <p class="m-0">returned_to_site_evidence: {{ nr_diag.get('returned_to_site_evidence', '') | e }}</p>
+  <p class="m-0">customer_phone_present: {{ nr_diag.get('customer_phone_present', '') | e }}</p>
+  <p class="m-0">selected_abandoned_cart_id: {{ nr_diag.get('selected_abandoned_cart_id', '') | e }}</p>
+  <p class="m-0">grouped_abandoned_cart_row_ids_count: {{ nr_diag.get('grouped_abandoned_cart_row_ids_count', '') | e }}</p>
+  <p class="m-0">grouped_abandoned_cart_row_ids: {{ (nr_diag.get('grouped_abandoned_cart_row_ids') or []) | join(', ') | e }}</p>
+</div>
+{% endif %}

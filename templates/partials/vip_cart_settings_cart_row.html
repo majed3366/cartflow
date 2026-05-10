@@ -45,6 +45,8 @@
       {% set ml_next = vc.merchant_lifecycle_next_action_ar | default('', true) | trim %}
       {% set ml_primary = vc.merchant_lifecycle_primary_key | default('', true) | trim %}
       {% set nr_skip = vc.normal_recovery_last_skip_reason | default('', true) | trim %}
+      {% set nr_diag = vc.normal_recovery_diagnostics | default(none) %}
+      {% set show_diag = nr_diag is mapping %}
       {% set show_ops = (nrb is mapping and nrb.get('label_ar')) or nr_op or nr_fu or (nr_skip | length > 0) %}
       {% if ml_beh %}
       <div class="mt-2 space-y-1.5 rounded-lg border border-cyan-200/90 bg-gradient-to-bl from-cyan-50/50 to-white px-2.5 py-2.5 text-right shadow-sm" lang="ar" role="region" aria-label="حالة العميل والمتابعة" data-merchant-lifecycle-primary="{{ ml_primary | e }}">
@@ -52,7 +54,7 @@
         <p class="m-0 text-[10px] font-semibold text-cyan-950/95">{{ ml_out | e }}</p>
         <p class="m-0 text-[9px] leading-relaxed text-slate-700">{{ ml_next | e }}</p>
       </div>
-      {% if show_ops %}
+      {% if show_ops or show_diag %}
       <details class="mt-2 rounded-lg border border-slate-200/80 bg-slate-50/60 px-2 py-1.5 text-right" lang="ar" data-normal-recovery-technical="1">
         <summary class="cursor-pointer select-none text-[9px] font-semibold text-slate-600">تفاصيل تشغيلية (دعم فني)</summary>
         <div class="mt-1.5 space-y-1 border-t border-slate-200/70 pt-1.5">
@@ -76,6 +78,7 @@
           {% if nr_skip %}
           <p class="m-0 text-[8px] text-slate-500"><span class="font-semibold">رمز آخر تخطٍ:</span> {{ nr_skip | e }}</p>
           {% endif %}
+          {% include "partials/normal_recovery_diagnostics_inner.html" %}
         </div>
       </details>
       {% endif %}
@@ -100,6 +103,14 @@
         lang="ar" role="alert" aria-live="polite" data-normal-recovery-blocker-fallback="1">
         <p class="m-0 text-[10px] font-bold text-slate-900">{{ (nr_op or nr_fu) | e }}</p>
       </div>
+      {% endif %}
+      {% if show_diag and not ml_beh %}
+      <details class="mt-2 rounded-lg border border-slate-200/80 bg-slate-50/60 px-2 py-1.5 text-right" lang="ar" data-normal-recovery-technical="1">
+        <summary class="cursor-pointer select-none text-[9px] font-semibold text-slate-600">تفاصيل تشغيلية (دعم فني)</summary>
+        <div class="mt-1.5 space-y-1 border-t border-slate-200/70 pt-1.5">
+          {% include "partials/normal_recovery_diagnostics_inner.html" %}
+        </div>
+      </details>
       {% endif %}
       {% endif %}
       {% if vc.normal_recovery_identity_trust_ar | default('') %}

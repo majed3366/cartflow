@@ -513,6 +513,31 @@ class NormalRecoveryDashboardStatusTests(unittest.TestCase):
             card.get("merchant_lifecycle_internal"),
         )
         self.assertIn("عاد", card.get("merchant_lifecycle_customer_behavior_ar") or "")
+        diag = card.get("normal_recovery_diagnostics")
+        self.assertIsInstance(diag, dict)
+        self.assertEqual(diag.get("grouped_abandoned_cart_row_ids_count"), 2)
+
+    def test_normal_recovery_payload_includes_diagnostics_dict(self) -> None:
+        st = self._store_attempts_1()
+        zid = f"zid-diag-{self._suffix}"
+        ac = AbandonedCart(
+            store_id=int(st.id),
+            zid_cart_id=zid,
+            recovery_session_id=f"sid-diag-{self._suffix}",
+            status="abandoned",
+            vip_mode=False,
+            cart_value=9.0,
+            customer_phone="9665111222333",
+        )
+        db.session.add(ac)
+        db.session.commit()
+        p = _normal_recovery_phase_steps_payload(ac)
+        d = p.get("normal_recovery_diagnostics")
+        self.assertIsInstance(d, dict)
+        self.assertEqual(d.get("selected_abandoned_cart_id"), int(ac.id))
+        self.assertEqual(d.get("grouped_abandoned_cart_row_ids_count"), 1)
+        self.assertIn("session_id", d)
+        self.assertIn("merchant_lifecycle_primary_key", d)
 
     def test_skip_missing_reason_after_first_send_not_ignored(self) -> None:
         st = self._store_attempts_1()
@@ -866,6 +891,7 @@ class NormalRecoveryDashboardStatusTests(unittest.TestCase):
         )
         self.assertIn('data-normal-recovery-status="blocked"', html)
         self.assertIn("data-merchant-lifecycle-primary", html, html[:6000])
+        self.assertIn("data-normal-recovery-diagnostics", html, html[:8000])
 
     def test_http_abandon_without_phone_resolves_blocked_dominant_phase(self) -> None:
         """API reason + abandon without phone → payload phase is blocked (not pending_send)."""
