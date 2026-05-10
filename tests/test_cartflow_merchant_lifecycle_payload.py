@@ -165,6 +165,46 @@ class MerchantLifecyclePayloadTests(unittest.TestCase):
         self.assertEqual(p.get("merchant_lifecycle_primary_key"), "customer_returned")
         self.assertIn("عاد", p.get("merchant_lifecycle_customer_behavior_ar") or "")
 
+    def test_skipped_anti_spam_log_session_holds_cart_id_correlates_to_abandoned_row(self) -> None:
+        """
+        Regression: persist may set CartRecoveryLog.session_id to the cart id (no separate
+        session_id in widget) while cart_id is null; AbandonedCart.recovery_session_id may
+        stay empty. Lifecycle must still see skipped_anti_spam like suppression does.
+        """
+        st = self._store()
+        zid = f"zid-ml-sesscart-{self._suffix}"
+        ac = AbandonedCart(
+            store_id=int(st.id),
+            zid_cart_id=zid,
+            recovery_session_id="",
+            status="abandoned",
+            vip_mode=False,
+            cart_value=12.0,
+            customer_phone="9665111222333",
+        )
+        db.session.add(ac)
+        db.session.flush()
+        db.session.add(
+            CartRecoveryLog(
+                store_slug=st.zid_store_id,
+                session_id=zid,
+                cart_id=None,
+                phone=None,
+                message="suppressed",
+                status="skipped_anti_spam",
+                step=1,
+                created_at=datetime.now(timezone.utc),
+                sent_at=None,
+            )
+        )
+        db.session.commit()
+        p = _normal_recovery_phase_steps_payload(ac)
+        self.assertEqual(p.get("merchant_lifecycle_primary_key"), "customer_returned")
+        diag = p.get("normal_recovery_diagnostics") or {}
+        self.assertTrue(diag.get("returned_to_site_evidence"), msg=diag)
+        mi = p.get("merchant_lifecycle_internal") or {}
+        self.assertTrue(mi.get("lifecycle_evidence_returned"), msg=mi)
+
     def test_pending_send_no_duplicate_is_no_engagement(self) -> None:
         st = self._store()
         sid = f"sid-ml-pend-{self._suffix}"

@@ -2535,6 +2535,10 @@ def _cart_recovery_log_filters_for_abandoned_cart(ac: AbandonedCart) -> list[Any
         conds.append(CartRecoveryLog.session_id == sess)
     if zid:
         conds.append(CartRecoveryLog.cart_id == zid)
+        # When the widget omits session_id, _session_part_from_payload falls back to cart_id
+        # (or a cart fingerprint) for the recovery pipeline — logs may store that value in
+        # session_id with cart_id left null. Match those rows for dashboard/suppression parity.
+        conds.append(CartRecoveryLog.session_id == zid)
     return conds
 
 
