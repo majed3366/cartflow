@@ -31,7 +31,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 from extensions import db, init_database, remove_scoped_session
 from integrations.zid_client import exchange_code_for_token, verify_webhook_signature
 from json_response import UTF8JSONResponse, j
-from sqlalchemy import func, inspect, or_, text
+from sqlalchemy import and_, exists, func, inspect, or_, text
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from decision_engine import decide_recovery_action
@@ -7942,7 +7942,11 @@ VIP_PRIORITY_LC_TERMINAL_SQL = or_(
 
 def _vip_pick_priority_cart_groups(
     full_rows: list[AbandonedCart],
+    *,
+    cart_activity_utc: Optional[dict[int, datetime]] = None,
 ) -> list[list[AbandonedCart]]:
+    act = cart_activity_utc if isinstance(cart_activity_utc, dict) else None
+
     def _distinct_key(ac: AbandonedCart) -> str:
         rs = (ac.recovery_session_id or "").strip()
         if rs:
@@ -7953,6 +7957,8 @@ def _vip_pick_priority_cart_groups(
         return f"id:{int(ac.id)}"
 
     def _ts_norm(ac: AbandonedCart) -> datetime:
+        if act is not None and int(ac.id) in act:
+            return act[int(ac.id)]
         t = ac.last_seen_at
         if t is None:
             return datetime.min.replace(tzinfo=timezone.utc)
@@ -8202,18 +8208,11 @@ def _normal_carts_dashboard_stats() -> dict[str, Any]:
         dash_store = _dashboard_recovery_store_row()
         if dash_store is None:
             return out
-        dash_id_raw = getattr(dash_store, "id", None)
         slug = (getattr(dash_store, "zid_store_id", None) or "").strip()
         base_q = db.session.query(AbandonedCart).filter(AbandonedCart.vip_mode.is_(False))
-        if dash_id_raw is not None:
-            try:
-                vid = int(dash_id_raw)
-                base_q = base_q.filter(
-                    (AbandonedCart.store_id == vid)
-                    | (AbandonedCart.store_id.is_(None))  # type: ignore[union-attr]
-                )
-            except (TypeError, ValueError):
-                pass
+        _st_scope = _normal_recovery_abandoned_scope_filter(dash_store)
+        if _st_scope is not None:
+            base_q = base_q.filter(_st_scope)
         q_abandoned = base_q.filter(AbandonedCart.status == "abandoned")
         out["normal_cart_count"] = int(q_abandoned.count() or 0)
         out["normal_recovered_count"] = int(
@@ -8245,32 +8244,174 @@ def _normal_carts_dashboard_stats() -> dict[str, Any]:
     return out
 
 
-def _normal_recovery_cart_alert_list(limit_groups: int = 15) -> list[dict[str, Any]]:
+def _normal_recovery_abandoned_scope_filter(
+    dash_store: Optional[Any],
+) -> Optional[Any]:
+    """
+    لوحة السلال العادية: صفوف مرتبطة بمتجر اللوحة ‎store_id‎ أو ‎NULL‎،
+    أو لها سجل استرجاع بـ ‎store_slug‎ يطابق ‎zid_store_id‎ للمتجر (حتى لا تُستبعد
+    جلسات حقيقية بسبب ‎store_id‎ قديم/مختلف عن آخر صف ‎Store‎).
+    """
+    if dash_store is None:
+        return None
+    slug = (getattr(dash_store, "zid_store_id", None) or "").strip()
+    dash_id_raw = getattr(dash_store, "id", None)
+    parts: list[Any] = []
+    if dash_id_raw is not None:
+        try:
+            vid = int(dash_id_raw)
+            parts.append(
+                or_(
+                    AbandonedCart.store_id == vid,
+                    AbandonedCart.store_id.is_(None),  # type: ignore[union-attr]
+                )
+            )
+        except (TypeError, ValueError):
+            pass
+    if slug:
+        log_match = exists().where(
+            CartRecoveryLog.store_slug == slug,
+            or_(
+                and_(
+                    AbandonedCart.recovery_session_id.isnot(None),
+                    CartRecoveryLog.session_id == AbandonedCart.recovery_session_id,
+                ),
+                and_(
+                    AbandonedCart.zid_cart_id.isnot(None),
+                    CartRecoveryLog.cart_id.isnot(None),
+                    CartRecoveryLog.cart_id == AbandonedCart.zid_cart_id,
+                ),
+            ),
+        )
+        parts.append(log_match)
+    if not parts:
+        return None
+    return or_(*parts)
+
+
+def _normal_recovery_cart_activity_rank_map(
+    rows: list[AbandonedCart],
+    store_slug: str,
+) -> dict[int, datetime]:
+    """أقصى نشاط لكل سلة: ‎max(last_seen_at, آخر سجل استرجاع للمتجر)‎."""
+    slug = (store_slug or "").strip()
+    epoch = datetime.min.replace(tzinfo=timezone.utc)
+    out: dict[int, datetime] = {}
+    for ac in rows:
+        t = ac.last_seen_at
+        if t is None:
+            base = epoch
+        elif t.tzinfo is None:
+            base = t.replace(tzinfo=timezone.utc)
+        else:
+            base = t.astimezone(timezone.utc)
+        out[int(ac.id)] = base
+    if not slug or not rows:
+        return out
+    sids: set[str] = set()
+    cids: set[str] = set()
+    for ac in rows:
+        rs = (getattr(ac, "recovery_session_id", None) or "").strip()
+        if rs:
+            sids.add(rs[:512])
+        zi = (getattr(ac, "zid_cart_id", None) or "").strip()
+        if zi:
+            cids.add(zi[:255])
+    if not sids and not cids:
+        return out
+    try:
+        db.create_all()
+        cond_logs = [
+            CartRecoveryLog.store_slug == slug,
+        ]
+        or_parts: list[Any] = []
+        if sids:
+            or_parts.append(CartRecoveryLog.session_id.in_(list(sids)))
+        if cids:
+            or_parts.append(CartRecoveryLog.cart_id.in_(list(cids)))
+        if not or_parts:
+            return out
+        agg = (
+            db.session.query(
+                CartRecoveryLog.session_id,
+                CartRecoveryLog.cart_id,
+                func.max(CartRecoveryLog.created_at).label("mx"),
+            )
+            .filter(*cond_logs)
+            .filter(or_(*or_parts))
+            .group_by(CartRecoveryLog.session_id, CartRecoveryLog.cart_id)
+            .all()
+        )
+    except (SQLAlchemyError, OSError, TypeError, ValueError):
+        db.session.rollback()
+        return out
+    sess_peak: dict[str, datetime] = {}
+    cart_peak: dict[str, datetime] = {}
+    for sid_l, cid_l, mx in agg:
+        if mx is None:
+            continue
+        mxt = mx if mx.tzinfo else mx.replace(tzinfo=timezone.utc)
+        if sid_l:
+            sk = str(sid_l).strip()[:512]
+            if sk:
+                prev = sess_peak.get(sk, epoch)
+                sess_peak[sk] = max(prev, mxt)
+        if cid_l:
+            ck = str(cid_l).strip()[:255]
+            if ck:
+                prev = cart_peak.get(ck, epoch)
+                cart_peak[ck] = max(prev, mxt)
+    for ac in rows:
+        aid = int(ac.id)
+        ts = out.get(aid, epoch)
+        rs = (getattr(ac, "recovery_session_id", None) or "").strip()[:512]
+        zi = (getattr(ac, "zid_cart_id", None) or "").strip()[:255]
+        if rs and rs in sess_peak:
+            ts = max(ts, sess_peak[rs])
+        if zi and zi in cart_peak:
+            ts = max(ts, cart_peak[zi])
+        out[aid] = ts
+    return out
+
+
+def _normal_recovery_cart_alert_list(
+    limit_groups: int = 15,
+    *,
+    nr_session: Optional[str] = None,
+    nr_cart: Optional[str] = None,
+) -> list[dict[str, Any]]:
     """سلات غير ‎VIP‎ بحالة ‎abandoned‎ — نفس أدوات التواصل اليدوي مع اقتراح ذكي منفصل."""
     try:
         _ensure_store_widget_schema()
         db.create_all()
         _ensure_default_store_for_recovery()
         dash_store = _dashboard_recovery_store_row()
-        dash_id_raw = getattr(dash_store, "id", None) if dash_store is not None else None
         q = db.session.query(AbandonedCart).filter(
             AbandonedCart.vip_mode.is_(False),
             AbandonedCart.status == "abandoned",
         )
-        if dash_id_raw is not None:
-            try:
-                vid = int(dash_id_raw)
-                q = q.filter(
-                    (AbandonedCart.store_id == vid)
-                    | (AbandonedCart.store_id.is_(None))  # type: ignore[union-attr]
-                )
-            except (TypeError, ValueError):
-                pass
+        _nr_scope = _normal_recovery_abandoned_scope_filter(dash_store)
+        if _nr_scope is not None:
+            q = q.filter(_nr_scope)
+        ns = (nr_session or "").strip()[:512]
+        if ns:
+            q = q.filter(AbandonedCart.recovery_session_id == ns)
+        nc = (nr_cart or "").strip()[:255]
+        if nc:
+            q = q.filter(AbandonedCart.zid_cart_id == nc)
         full_rows = list(
-            q.order_by(AbandonedCart.last_seen_at.desc()).limit(240).all()
+            q.order_by(AbandonedCart.last_seen_at.desc()).limit(500).all()
         )
+        slug_for_act = (
+            (getattr(dash_store, "zid_store_id", None) or "").strip()
+            if dash_store is not None
+            else ""
+        )
+        activity_map = _normal_recovery_cart_activity_rank_map(full_rows, slug_for_act)
         out: list[dict[str, Any]] = []
-        for grp_sorted in _vip_pick_priority_cart_groups(full_rows)[:limit_groups]:
+        for grp_sorted in _vip_pick_priority_cart_groups(
+            full_rows, cart_activity_utc=activity_map
+        )[:limit_groups]:
             out.append(
                 _vip_dashboard_cart_alert_dict_from_group(
                     grp_sorted,
@@ -8509,7 +8650,12 @@ def dashboard_normal_carts(request: Request):
 
     from services.merchant_whatsapp_readiness_ui import build_merchant_whatsapp_readiness_card
 
-    normal_recovery_alerts = _normal_recovery_cart_alert_list()
+    nr_sess = (request.query_params.get("nr_session") or "").strip()
+    nr_cid = (request.query_params.get("nr_cart") or "").strip()
+    normal_recovery_alerts = _normal_recovery_cart_alert_list(
+        nr_session=nr_sess or None,
+        nr_cart=nr_cid or None,
+    )
     normal_stats = dict(_normal_carts_dashboard_stats())
     normal_stats["normal_monitoring_card_count"] = len(normal_recovery_alerts)
     dash_store = _dashboard_recovery_store_row()

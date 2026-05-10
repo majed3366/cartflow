@@ -14,6 +14,7 @@ from extensions import db, remove_scoped_session
 from main import (
     app,
     _dashboard_recovery_store_row,
+    _normal_recovery_cart_alert_list,
     _normal_recovery_phase_steps_payload,
     _NORMAL_RECOVERY_SENT_LOG_STATUSES,
     _vip_dashboard_cart_alert_dict_from_group,
@@ -48,6 +49,9 @@ class NormalRecoveryDashboardStatusTests(unittest.TestCase):
             ).delete(synchronize_session=False)
             db.session.query(Store).filter(
                 Store.zid_store_id.like(f"nr-tst-{self._suffix}%")
+            ).delete(synchronize_session=False)
+            db.session.query(Store).filter(
+                Store.zid_store_id.like(f"%-{self._suffix}")
             ).delete(synchronize_session=False)
             db.session.commit()
         except Exception:  # noqa: BLE001
@@ -516,6 +520,63 @@ class NormalRecoveryDashboardStatusTests(unittest.TestCase):
         diag = card.get("normal_recovery_diagnostics")
         self.assertIsInstance(diag, dict)
         self.assertEqual(diag.get("grouped_abandoned_cart_row_ids_count"), 2)
+
+    def test_normal_cart_list_includes_session_when_store_id_mismatch_but_log_slug_matches(
+        self,
+    ) -> None:
+        """جلسة بسجلات للمتجر الحالي يجب أن تظهر حتى لو ‎AbandonedCart.store_id‎ يشير لصف ‎Store‎ أقدم."""
+        slug_new = f"nr-scope-new-{self._suffix}"
+        slug_old = f"nr-scope-old-{self._suffix}"
+        st_old = Store(
+            zid_store_id=slug_old,
+            recovery_delay=1,
+            recovery_delay_unit="minutes",
+            recovery_attempts=1,
+        )
+        st_new = Store(
+            zid_store_id=slug_new,
+            recovery_delay=1,
+            recovery_delay_unit="minutes",
+            recovery_attempts=1,
+        )
+        db.session.add(st_old)
+        db.session.add(st_new)
+        db.session.flush()
+        self.assertGreater(int(st_new.id), int(st_old.id))
+        sid = f"sid-scope-{self._suffix}"
+        zid = f"zid-scope-{self._suffix}"
+        ac = AbandonedCart(
+            store_id=int(st_old.id),
+            zid_cart_id=zid,
+            recovery_session_id=sid,
+            status="abandoned",
+            vip_mode=False,
+            cart_value=12.0,
+        )
+        db.session.add(ac)
+        db.session.flush()
+        now = datetime.now(timezone.utc)
+        db.session.add(
+            CartRecoveryLog(
+                store_slug=slug_new,
+                session_id=sid,
+                cart_id=zid,
+                phone="9665111222333",
+                message="m",
+                status="mock_sent",
+                step=1,
+                created_at=now,
+                sent_at=now,
+            )
+        )
+        db.session.commit()
+        dash = _dashboard_recovery_store_row()
+        self.assertEqual((dash.zid_store_id or "").strip(), slug_new)
+        alerts = _normal_recovery_cart_alert_list(nr_session=sid)
+        self.assertEqual(len(alerts), 1)
+        d = alerts[0].get("normal_recovery_diagnostics") or {}
+        self.assertEqual(d.get("session_id"), sid)
+        self.assertEqual(d.get("cart_id"), zid)
 
     def test_normal_recovery_payload_includes_diagnostics_dict(self) -> None:
         st = self._store_attempts_1()
