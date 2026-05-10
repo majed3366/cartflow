@@ -130,6 +130,12 @@ def conversation_dashboard_extras(
     return_intel_pressure_note_ar = ""
     return_intel_completion_opportunity = False
     normal_recovery_return_context_key = ""
+    normal_recovery_continuation_summary_ar = str(
+        bh.get("continuation_summary_ar") or ""
+    ).strip()
+    normal_recovery_continuation_state_key = str(
+        bh.get("continuation_state") or ""
+    ).strip()
     if st != "recovered":
         normal_recovery_return_context_key = str(
             bh.get("recovery_return_context") or ""
@@ -340,4 +346,6 @@ def conversation_dashboard_extras(
         "normal_recovery_site_return_count": recovery_site_return_count_val,
         "normal_recovery_return_intel_pressure_note_ar": return_intel_pressure_note_ar,
         "normal_recovery_return_completion_opportunity": return_intel_completion_opportunity,
+        "normal_recovery_continuation_summary_ar": normal_recovery_continuation_summary_ar,
+        "normal_recovery_continuation_state_key": normal_recovery_continuation_state_key,
     }

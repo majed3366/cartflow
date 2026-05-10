@@ -8,7 +8,11 @@ from typing import Any
 from sqlalchemy.exc import SQLAlchemyError
 
 from extensions import db
-from services.behavioral_recovery.state_store import normal_recovery_message_was_sent_for_abandoned
+from services.behavioral_recovery.state_store import (
+    behavioral_dict_for_abandoned_cart,
+    normal_recovery_message_was_sent_for_abandoned,
+)
+from services.cartflow_reply_intent_engine import process_continuation_after_customer_reply
 from services.recovery_transition_engine import apply_interactive_transition_from_customer_reply
 from services.whatsapp_positive_reply import (
     find_latest_abandoned_cart_for_customer_phone,
@@ -45,10 +49,17 @@ def process_inbound_behavioral_recovery(body: Any, from_number: Any) -> None:
             return
         if not normal_recovery_message_was_sent_for_abandoned(ac):
             return
+        prior_bh = behavioral_dict_for_abandoned_cart(ac)
         apply_interactive_transition_from_customer_reply(
             ac,
             inbound_body=str(body or "").strip(),
             customer_phone_key=phone_key,
+        )
+        process_continuation_after_customer_reply(
+            ac,
+            inbound_body=str(body or "").strip(),
+            customer_phone_key=phone_key,
+            prior_behavioral_before_reply=prior_bh,
         )
         db.session.add(ac)
         db.session.commit()

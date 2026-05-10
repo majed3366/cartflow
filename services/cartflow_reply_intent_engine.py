@@ -1,0 +1,733 @@
+# -*- coding: utf-8 -*-
+"""
+Conversational continuation layer v1 — rule-first, recovery-focused, isolated.
+
+Does not alter recovery scheduling, delay gates, or return-to-site qualification.
+Inbound hook sends at most one auto-reply per customer message event when enabled.
+"""
+from __future__ import annotations
+
+import hashlib
+import logging
+import os
+import re
+import threading
+import time
+from dataclasses import dataclass
+from typing import Any, Optional
+
+from sqlalchemy.exc import SQLAlchemyError
+
+from extensions import db
+from models import AbandonedCart, CartRecoveryReason, Store
+
+log = logging.getLogger("cartflow")
+
+_continuation_lock = threading.RLock()
+# phone_key -> monotonic time of last auto-reply
+_last_auto_reply_mono: dict[str, float] = {}
+# phone_key -> (normalized_body_hash, monotonic time) last processed inbound
+_last_inbound_dedup: list[tuple[str, tuple[str, float]]] = []
+
+def _dedup_list_trim() -> None:
+    global _last_inbound_dedup
+    if len(_last_inbound_dedup) > 2000:
+        _last_inbound_dedup = _last_inbound_dedup[-800:]
+
+
+def reset_continuation_engine_for_tests() -> None:
+    with _continuation_lock:
+        _last_auto_reply_mono.clear()
+        _last_inbound_dedup.clear()
+
+
+def continuation_auto_reply_enabled() -> bool:
+    v = (os.getenv("CARTFLOW_CONTINUATION_AUTO_REPLY") or "1").strip().lower()
+    return v not in ("0", "false", "no", "off")
+
+
+def continuation_cooldown_seconds() -> float:
+    raw = (os.getenv("CARTFLOW_CONTINUATION_COOLDOWN_SECONDS") or "90").strip()
+    try:
+        return max(15.0, float(raw))
+    except (TypeError, ValueError):
+        return 90.0
+
+
+def continuation_dedup_seconds() -> float:
+    raw = (os.getenv("CARTFLOW_CONTINUATION_DEDUP_SECONDS") or "120").strip()
+    try:
+        return max(10.0, float(raw))
+    except (TypeError, ValueError):
+        return 120.0
+
+
+# --- Normalization & base intents (v1) ---
+
+_AR_NORM = (
+    ("أ", "ا"),
+    ("إ", "ا"),
+    ("آ", "ا"),
+    ("ٱ", "ا"),
+    ("ى", "ي"),
+    ("ة", "ه"),
+)
+
+
+def normalize_inbound_text_v1(raw: str) -> str:
+    t = (raw or "").strip().lower()
+    for a, b in _AR_NORM:
+        t = t.replace(a, b)
+    t = re.sub(r"([!?؟.,])\1+", r"\1", t)
+    t = " ".join(t.split())
+    return t
+
+
+def _contains_any(norm: str, phrases: frozenset[str]) -> bool:
+    if not norm:
+        return False
+    if norm in phrases:
+        return True
+    return any(p in norm for p in phrases if len(p) > 2)
+
+
+_CONFIRMATION_YES = frozenset(
+    {
+        "نعم",
+        "نعم ",
+        "اوكي",
+        "اوك",
+        "ok",
+        "okay",
+        "تمام",
+        "موافق",
+        "ايوه",
+        "اي",
+        "yes",
+        "yep",
+        "👍",
+        "✅",
+    }
+)
+_WANTS_LINK = frozenset(
+    {
+        "الرابط",
+        "رابط",
+        "ارسل الرابط",
+        "أرسل الرابط",
+        "ارسال الرابط",
+        "link",
+        "checkout",
+        "الدفع",
+        "اكمل الطلب",
+        "أكمل الطلب",
+    }
+)
+_WANTS_CHEAPER = frozenset(
+    {
+        "ارخص",
+        "أرخص",
+        "اقل سعر",
+        "أقل سعر",
+        "cheaper",
+        "بديل",
+        "عندك بديل",
+        "خصم",
+    }
+)
+_ASKS_PRICE = frozenset(
+    {
+        "بكم",
+        "كم سعر",
+        "السعر",
+        "سعره",
+        "price",
+        "how much",
+    }
+)
+_ASKS_SHIPPING = frozenset(
+    {
+        "الشحن",
+        "شحن",
+        "التوصيل",
+        "توصيل",
+        "متى يوصل",
+        "يوصل",
+        "shipping",
+        "delivery",
+    }
+)
+_HESITATION = frozenset(
+    {
+        "بفكر",
+        "بفكر ",
+        "بعدين",
+        "لاحقا",
+        "لاحقاً",
+        "مو متأكد",
+        "مش متأكد",
+        "ما ادري",
+        "مدري",
+        "think",
+    }
+)
+_REJECTION = frozenset(
+    {
+        "لا",
+        "لأ",
+        "لا شكرا",
+        "لا شكراً",
+        "مو مهتم",
+        "مش مهتم",
+        "not interested",
+        "no thanks",
+    }
+)
+_HUMAN_HELP = frozenset(
+    {
+        "خدمة العملاء",
+        "خدمه العملاء",
+        "موظف",
+        "موظفين",
+        "اكلم احد",
+        "أكلم أحد",
+        "ادمين",
+        "human",
+        "agent",
+        "support",
+    }
+)
+
+
+def detect_base_intent_v1(body: str) -> str:
+    n = normalize_inbound_text_v1(body)
+    if not n:
+        return "unknown_reply"
+    if n in _CONFIRMATION_YES or (len(n) <= 4 and n.strip("👍✅.! ") in ("نعم", "ايه", "اي", "ok", "yes")):
+        return "confirmation_yes"
+    if _contains_any(n, _HUMAN_HELP):
+        return "human_help"
+    if _contains_any(n, _REJECTION) and len(n) < 40:
+        return "rejection"
+    if _contains_any(n, _WANTS_CHEAPER):
+        return "wants_cheaper"
+    if _contains_any(n, _WANTS_LINK):
+        return "wants_link"
+    if _contains_any(n, _ASKS_SHIPPING):
+        return "asks_shipping"
+    if _contains_any(n, _ASKS_PRICE):
+        return "asks_price"
+    if _contains_any(n, _HESITATION):
+        return "hesitation"
+    if _contains_any(n, _CONFIRMATION_YES):
+        return "confirmation_yes"
+    return "unknown_reply"
+
+
+def infer_prior_outbound_strategy(
+    behavioral: dict[str, Any],
+    reason_tag: str,
+    *,
+    prior_behavioral_before_reply: Optional[dict[str, Any]] = None,
+) -> str:
+    """
+    Bucket the recovery context *before* this customer message.
+
+    Uses recovery_previous_offer_strategy (captured on inbound from the prior
+    recovery_last_offer_strategy_key). On the first reply after an outbound-only
+    recovery, that key is often empty — fall back to abandonment reason_tag.
+    """
+    prev_offer = str(behavioral.get("recovery_previous_offer_strategy") or "").strip().lower()
+    if not prev_offer and isinstance(prior_behavioral_before_reply, dict):
+        prev_offer = str(
+            prior_behavioral_before_reply.get("recovery_last_offer_strategy_key") or ""
+        ).strip().lower()
+    rt = (reason_tag or "").strip().lower()
+    if not prev_offer:
+        if rt in ("shipping", "delivery"):
+            return "shipping_focus"
+        if rt == "price" or rt.startswith("price"):
+            return "cheaper_alternative"
+        return "checkout_push"
+
+    st = prev_offer
+    if st in ("checkout_push", "completion_assistance"):
+        return "checkout_push"
+    if st in (
+        "alternative_first",
+        "value_framing_premium",
+        "soft_discount_path",
+    ) or behavioral.get("recovery_offer_flag_alternative") is True:
+        return "cheaper_alternative"
+    if st == "delivery_reassurance" or rt in ("shipping", "delivery"):
+        return "shipping_focus"
+    if st in ("reassurance_only", "balanced_guidance", "trust_proof", "warranty_trust"):
+        return "reassurance"
+    return "generic"
+
+
+def resolve_contextual_intent(
+    base_intent: str,
+    *,
+    prior_strategy: str,
+    reason_tag: str,
+) -> str:
+    b = base_intent
+    ps = prior_strategy
+    rt = (reason_tag or "").strip().lower()
+    if b == "confirmation_yes":
+        if ps == "cheaper_alternative":
+            return "yes_to_cheaper_alternative"
+        if ps == "checkout_push":
+            return "ready_for_checkout"
+        if ps == "shipping_focus" or rt in ("shipping", "delivery"):
+            return "confirmation_after_shipping"
+        return "confirmation_generic"
+    if b == "wants_link":
+        return "wants_checkout_link"
+    if b == "wants_cheaper":
+        return "wants_cheaper_alternative"
+    if b == "asks_price":
+        return "asks_price_detail"
+    if b == "asks_shipping":
+        return "asks_shipping_detail"
+    if b == "hesitation":
+        return "customer_hesitating"
+    if b == "rejection":
+        return "customer_rejecting"
+    if b == "human_help":
+        return "requests_human"
+    return "unknown_reply"
+
+
+# --- Actions & replies ---
+
+CONTINUATION_ACTION_SEND_CHECKOUT = "send_checkout_link"
+CONTINUATION_ACTION_RESEND_CHECKOUT = "resend_checkout_link"
+CONTINUATION_ACTION_SEND_CHEAPER = "send_cheaper_alternative"
+CONTINUATION_ACTION_EXPLAIN_SHIPPING = "explain_shipping"
+CONTINUATION_ACTION_REASSURANCE = "reassurance_followup"
+CONTINUATION_ACTION_GRACEFUL_EXIT = "graceful_exit"
+CONTINUATION_ACTION_ESCALATE = "escalate_to_human"
+CONTINUATION_ACTION_WAIT = "wait_for_customer_reply"
+
+
+def resolve_continuation_action(contextual_intent: str) -> str:
+    m = {
+        "ready_for_checkout": CONTINUATION_ACTION_SEND_CHECKOUT,
+        "yes_to_cheaper_alternative": CONTINUATION_ACTION_SEND_CHEAPER,
+        "confirmation_generic": CONTINUATION_ACTION_SEND_CHECKOUT,
+        "confirmation_after_shipping": CONTINUATION_ACTION_REASSURANCE,
+        "wants_checkout_link": CONTINUATION_ACTION_RESEND_CHECKOUT,
+        "wants_cheaper_alternative": CONTINUATION_ACTION_SEND_CHEAPER,
+        "asks_price_detail": CONTINUATION_ACTION_REASSURANCE,
+        "asks_shipping_detail": CONTINUATION_ACTION_EXPLAIN_SHIPPING,
+        "customer_hesitating": CONTINUATION_ACTION_REASSURANCE,
+        "customer_rejecting": CONTINUATION_ACTION_GRACEFUL_EXIT,
+        "requests_human": CONTINUATION_ACTION_ESCALATE,
+        "unknown_reply": CONTINUATION_ACTION_WAIT,
+    }
+    return m.get(contextual_intent, CONTINUATION_ACTION_WAIT)
+
+
+def continuation_state_key(contextual_intent: str, action: str) -> str:
+    if action == CONTINUATION_ACTION_ESCALATE:
+        return "customer_needs_human_help"
+    if action == CONTINUATION_ACTION_GRACEFUL_EXIT:
+        return "recovery_closing"
+    if contextual_intent in ("ready_for_checkout", "wants_checkout_link"):
+        return "customer_ready_for_checkout"
+    if contextual_intent in ("yes_to_cheaper_alternative", "wants_cheaper_alternative"):
+        return "customer_interested_in_alternative"
+    if contextual_intent == "asks_shipping_detail":
+        return "customer_asking_shipping"
+    if contextual_intent == "customer_hesitating":
+        return "customer_hesitating"
+    if contextual_intent == "customer_rejecting":
+        return "recovery_closing"
+    if contextual_intent == "requests_human":
+        return "customer_needs_human_help"
+    return "customer_replied"
+
+
+def dashboard_summary_ar(contextual_intent: str, action: str) -> str:
+    if action == CONTINUATION_ACTION_ESCALATE:
+        return "طلب تدخل بشري"
+    if action == CONTINUATION_ACTION_GRACEFUL_EXIT:
+        return "العميل جاهز للإغلاق"
+    if contextual_intent == "wants_checkout_link":
+        return "العميل يطلب رابط الإكمال"
+    if contextual_intent in ("ready_for_checkout", "confirmation_generic"):
+        return "العميل جاهز للإكمال"
+    if contextual_intent in ("yes_to_cheaper_alternative", "wants_cheaper_alternative"):
+        return "العميل مهتم ببديل أقل"
+    if contextual_intent == "asks_shipping_detail":
+        return "العميل يسأل عن الشحن"
+    if contextual_intent == "asks_price_detail":
+        return "العميل يسأل عن السعر"
+    if contextual_intent == "customer_hesitating":
+        return "العميل متردد"
+    if contextual_intent == "confirmation_after_shipping":
+        return "العميل يؤكد بعد طمأنة الشحن"
+    if action in (CONTINUATION_ACTION_SEND_CHECKOUT, CONTINUATION_ACTION_RESEND_CHECKOUT):
+        return "العميل يطلب رابط الإكمال"
+    return "العميل تفاعل مع الرسالة"
+
+
+def _template_vars_for_cart(ac: AbandonedCart) -> dict[str, str]:
+    from services.behavioral_recovery.link_tracking import build_recovery_tracking_url
+    from services.recovery_product_context import recovery_product_context_from_abandoned_cart
+
+    zid = (getattr(ac, "zid_cart_id", None) or "").strip()
+    sid = (getattr(ac, "recovery_session_id", None) or "").strip()
+    checkout = build_recovery_tracking_url(zid, sid) or (getattr(ac, "cart_url", None) or "").strip()
+    ctx = recovery_product_context_from_abandoned_cart(ac)
+    alt_name = (ctx.cheaper_alternative_name or "خيار بسعر أوضح").strip()
+    alt_url = checkout or ""
+    ship = (os.getenv("CARTFLOW_SHIPPING_ESTIMATE_AR") or "حسب المدينة — غالباً ٣–٧ أيام عمل").strip()
+    return {
+        "checkout_url": checkout or "رابط المتجر",
+        "alternative_product_name": alt_name,
+        "alternative_checkout_url": alt_url,
+        "shipping_estimate": ship,
+    }
+
+
+def build_continuation_message(action: str, vars_map: dict[str, str]) -> str:
+    cu = vars_map.get("checkout_url") or ""
+    altn = vars_map.get("alternative_product_name") or ""
+    altu = vars_map.get("alternative_checkout_url") or cu
+    se = vars_map.get("shipping_estimate") or ""
+    if action == CONTINUATION_ACTION_SEND_CHECKOUT:
+        return (
+            "ممتاز 👍\n"
+            "هذا رابط إكمال الطلب مباشرة:\n"
+            f"{cu}\n\n"
+            "وإذا احتجت أي مساعدة أنا موجود."
+        )
+    if action == CONTINUATION_ACTION_RESEND_CHECKOUT:
+        return (
+            "أكيد 👍\n"
+            "هذا رابط الطلب المباشر:\n"
+            f"{cu}"
+        )
+    if action == CONTINUATION_ACTION_SEND_CHEAPER:
+        return (
+            "وجدنا لك خيار قريب بسعر أقل 👌\n"
+            f"{altn}\n"
+            f"{altu}"
+        )
+    if action == CONTINUATION_ACTION_EXPLAIN_SHIPPING:
+        return (
+            "الشحن متاح 👍\n"
+            "مدة التوصيل المتوقعة:\n"
+            f"{se}"
+        )
+    if action == CONTINUATION_ACTION_REASSURANCE:
+        return "خذ راحتك 👍\nإذا احتجت أي توضيح أنا موجود."
+    if action == CONTINUATION_ACTION_GRACEFUL_EXIT:
+        return "تمام 👍\nإذا احتجت أي شيء لاحقًا نحن بالخدمة."
+    if action == CONTINUATION_ACTION_ESCALATE:
+        return "تم تحويل طلبك لفريق المتابعة 👍"
+    return ""
+
+
+def _reason_tag_for_abandoned_cart(ac: AbandonedCart) -> str:
+    sid = (getattr(ac, "recovery_session_id", None) or "").strip()
+    if not sid:
+        return ""
+    try:
+        db.create_all()
+        row = (
+            db.session.query(CartRecoveryReason)
+            .filter(CartRecoveryReason.session_id == sid)
+            .order_by(CartRecoveryReason.updated_at.desc())
+            .first()
+        )
+        if row is None:
+            return ""
+        return str(row.reason or "").strip().lower()
+    except (SQLAlchemyError, OSError, TypeError, ValueError):
+        db.session.rollback()
+        return ""
+
+
+def _store_slug_for_ac(ac: AbandonedCart) -> str:
+    raw = getattr(ac, "store_id", None)
+    if raw is None:
+        return ""
+    try:
+        st = db.session.get(Store, int(raw))
+        if st is None:
+            return ""
+        return str(getattr(st, "zid_store_id", None) or "").strip()
+    except (TypeError, ValueError, SQLAlchemyError):
+        db.session.rollback()
+        return ""
+
+
+def _phone_e164_from_key(phone_key: str) -> str:
+    d = (phone_key or "").strip()
+    if len(d) < 11:
+        return ""
+    if d.startswith("966"):
+        return "+" + d
+    return "+" + d
+
+
+def _inbound_duplicate_recent(phone_key: str, body_norm: str) -> bool:
+    h = hashlib.sha256(body_norm.encode("utf-8")).hexdigest()[:24]
+    now = time.monotonic()
+    win = continuation_dedup_seconds()
+    with _continuation_lock:
+        for pk, (hh, ts) in _last_inbound_dedup:
+            if pk != phone_key:
+                continue
+            if hh != h:
+                continue
+            if now - ts <= win:
+                return True
+        _last_inbound_dedup.append((phone_key, (h, now)))
+        _dedup_list_trim()
+    return False
+
+
+def _cooldown_allows_auto_reply(phone_key: str) -> bool:
+    now = time.monotonic()
+    cd = continuation_cooldown_seconds()
+    with _continuation_lock:
+        last = _last_auto_reply_mono.get(phone_key)
+        if last is not None and (now - last) < cd:
+            return False
+        return True
+
+
+def _mark_auto_reply_sent(phone_key: str) -> None:
+    with _continuation_lock:
+        _last_auto_reply_mono[phone_key] = time.monotonic()
+
+
+@dataclass
+class ContinuationDecision:
+    base_intent: str
+    contextual_intent: str
+    action: str
+    continuation_state: str
+    summary_ar: str
+    message_to_send: str
+    should_send: bool
+
+
+def decide_continuation(
+    *,
+    inbound_body: str,
+    behavioral: dict[str, Any],
+    reason_tag: str,
+    ac: AbandonedCart,
+    prior_behavioral_before_reply: Optional[dict[str, Any]] = None,
+) -> ContinuationDecision:
+    base = detect_base_intent_v1(inbound_body)
+    prior = infer_prior_outbound_strategy(
+        behavioral,
+        reason_tag,
+        prior_behavioral_before_reply=prior_behavioral_before_reply,
+    )
+    ctx = resolve_contextual_intent(base, prior_strategy=prior, reason_tag=reason_tag)
+    action = resolve_continuation_action(ctx)
+    st_key = continuation_state_key(ctx, action)
+    summary = dashboard_summary_ar(ctx, action)
+    vars_map = _template_vars_for_cart(ac)
+    msg = build_continuation_message(action, vars_map)
+    should_send = bool(
+        msg.strip()
+        and action
+        not in (
+            CONTINUATION_ACTION_WAIT,
+        )
+    )
+    if action == CONTINUATION_ACTION_WAIT:
+        should_send = False
+    return ContinuationDecision(
+        base_intent=base,
+        contextual_intent=ctx,
+        action=action,
+        continuation_state=st_key,
+        summary_ar=summary,
+        message_to_send=msg,
+        should_send=should_send,
+    )
+
+
+def process_continuation_after_customer_reply(
+    ac: AbandonedCart,
+    *,
+    inbound_body: str,
+    customer_phone_key: str,
+    prior_behavioral_before_reply: Optional[dict[str, Any]] = None,
+) -> None:
+    """
+    Run after apply_interactive_transition_from_customer_reply (same transaction).
+    Merges continuation fields; optionally sends one WhatsApp via send_whatsapp.
+    """
+    from services.behavioral_recovery.state_store import (
+        behavioral_dict_for_abandoned_cart,
+        merge_behavioral_state,
+        normal_recovery_message_was_sent_for_abandoned,
+        utc_now_iso,
+    )
+
+    body = (inbound_body or "").strip()
+    phone_key = (customer_phone_key or "").strip()
+    if not body or len(phone_key) < 11:
+        return
+    if bool(getattr(ac, "vip_mode", False)):
+        return
+    if not normal_recovery_message_was_sent_for_abandoned(ac):
+        return
+
+    bh = behavioral_dict_for_abandoned_cart(ac)
+    if bh.get("continuation_escalated_human") is True:
+        log.info("[CONTINUATION] skip: already escalated session_id=%s", ac.recovery_session_id)
+        return
+    if bh.get("continuation_automation_stopped") is True:
+        log.info("[CONTINUATION] skip: automation stopped session_id=%s", ac.recovery_session_id)
+        return
+
+    norm = normalize_inbound_text_v1(body)
+    if _inbound_duplicate_recent(phone_key, norm):
+        log.info(
+            "[CONTINUATION] duplicate inbound skipped phone_key=%s",
+            phone_key[:6],
+        )
+        return
+
+    reason_tag = _reason_tag_for_abandoned_cart(ac)
+    dec = decide_continuation(
+        inbound_body=body,
+        behavioral=bh,
+        reason_tag=reason_tag,
+        ac=ac,
+        prior_behavioral_before_reply=prior_behavioral_before_reply,
+    )
+
+    sid_log = (getattr(ac, "recovery_session_id", None) or "").strip()
+    log.info(
+        "[CONTINUATION INTENT] session_id=%s base=%s contextual=%s action=%s state=%s",
+        sid_log,
+        dec.base_intent,
+        dec.contextual_intent,
+        dec.action,
+        dec.continuation_state,
+    )
+    try:
+        print(
+            f"[CONTINUATION INTENT] session_id={sid_log} detected_intent={dec.base_intent} "
+            f"contextual_intent={dec.contextual_intent} continuation_action={dec.action} "
+            f"lifecycle_state={dec.continuation_state}",
+            flush=True,
+        )
+    except OSError:
+        pass
+
+    patch: dict[str, Any] = {
+        "continuation_base_intent": dec.base_intent,
+        "continuation_contextual_intent": dec.contextual_intent,
+        "continuation_action": dec.action,
+        "continuation_state": dec.continuation_state,
+        "continuation_summary_ar": dec.summary_ar,
+        "continuation_last_evaluated_at": utc_now_iso(),
+    }
+
+    if dec.action == CONTINUATION_ACTION_ESCALATE:
+        patch["continuation_escalated_human"] = True
+        patch["waiting_merchant"] = True
+        patch["continuation_automation_stopped"] = True
+        log.info("[CONTINUATION ESCALATION] session_id=%s", sid_log)
+        try:
+            print(f"[CONTINUATION ESCALATION] session_id={sid_log}", flush=True)
+        except OSError:
+            pass
+
+    sent_ok = False
+    if (
+        dec.should_send
+        and continuation_auto_reply_enabled()
+        and dec.action != CONTINUATION_ACTION_ESCALATE
+        and _cooldown_allows_auto_reply(phone_key)
+    ):
+        phone_out = _phone_e164_from_key(phone_key)
+        if phone_out:
+            from services.whatsapp_send import send_whatsapp
+
+            slug = _store_slug_for_ac(ac)
+            log.info("[CONTINUATION ACTION] session_id=%s action=%s", sid_log, dec.action)
+            try:
+                print(
+                    f"[CONTINUATION ACTION] session_id={sid_log} continuation_action={dec.action}",
+                    flush=True,
+                )
+            except OSError:
+                pass
+            result = send_whatsapp(
+                phone_out,
+                dec.message_to_send,
+                reason_tag="continuation",
+                wa_trace_path=__file__,
+                wa_trace_session_id=sid_log or None,
+                wa_trace_store_slug=slug or None,
+                wa_trace_delay_passed=True,
+            )
+            sent_ok = bool(isinstance(result, dict) and result.get("ok") is True)
+            if sent_ok:
+                _mark_auto_reply_sent(phone_key)
+                patch["continuation_last_auto_reply_at"] = utc_now_iso()
+                patch["continuation_last_auto_reply_action"] = dec.action
+                log.info(
+                    "[CONTINUATION AUTO REPLY] session_id=%s action=%s ok=true",
+                    sid_log,
+                    dec.action,
+                )
+                try:
+                    print(
+                        f"[CONTINUATION AUTO REPLY] session_id={sid_log} action={dec.action}",
+                        flush=True,
+                    )
+                except OSError:
+                    pass
+            else:
+                log.warning(
+                    "[CONTINUATION AUTO REPLY] session_id=%s action=%s result=%s",
+                    sid_log,
+                    dec.action,
+                    result,
+                )
+    elif dec.action == CONTINUATION_ACTION_ESCALATE and dec.message_to_send:
+        # Optional: still send the short escalation ack when Twilio configured
+        if continuation_auto_reply_enabled() and _cooldown_allows_auto_reply(phone_key):
+            phone_out = _phone_e164_from_key(phone_key)
+            if phone_out:
+                from services.whatsapp_send import send_whatsapp
+
+                slug = _store_slug_for_ac(ac)
+                result = send_whatsapp(
+                    phone_out,
+                    dec.message_to_send,
+                    reason_tag="continuation_escalation",
+                    wa_trace_path=__file__,
+                    wa_trace_session_id=sid_log or None,
+                    wa_trace_store_slug=slug or None,
+                    wa_trace_delay_passed=True,
+                )
+                if isinstance(result, dict) and result.get("ok") is True:
+                    _mark_auto_reply_sent(phone_key)
+                    patch["continuation_last_auto_reply_at"] = utc_now_iso()
+                    log.info("[CONTINUATION AUTO REPLY] escalation ack sent session_id=%s", sid_log)
+                    try:
+                        print(
+                            f"[CONTINUATION AUTO REPLY] session_id={sid_log} escalation_ack",
+                            flush=True,
+                        )
+                    except OSError:
+                        pass
+
+    merge_behavioral_state(ac, **patch)

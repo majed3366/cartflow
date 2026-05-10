@@ -191,6 +191,12 @@
         {% if vc.normal_recovery_active_conversation_badge %}
         <p class="m-0"><span class="inline-flex items-center rounded-full border border-violet-200 bg-white px-2 py-0.5 text-[9px] font-bold text-violet-900">محادثة نشطة</span></p>
         {% endif %}
+        {% if vc.normal_recovery_continuation_summary_ar | default('', true) | trim %}
+        <p class="m-0 text-[8px] leading-relaxed text-violet-950/90" data-normal-recovery-continuation-summary="1" lang="ar">
+          <span class="font-semibold text-violet-800">متابعة تلقائية:</span>
+          {{ vc.normal_recovery_continuation_summary_ar | e }}
+        </p>
+        {% endif %}
         {% if vc.normal_recovery_reply_intent_label_ar or (nr_show_return_after_message and nr_return_line_ar) %}
         <p class="m-0 flex flex-wrap items-center justify-end gap-1" aria-label="سلوك العميل والعودة للموقع">
           {% if vc.normal_recovery_reply_intent_label_ar %}
