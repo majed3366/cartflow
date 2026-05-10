@@ -2,13 +2,21 @@
 """
 Behavior-first merchant lifecycle narrative for normal recovery (presentation only).
 
-Single decision surface: derives one primary lifecycle story from phase, coarse status,
-behavioral flags, and internal signals. Internal blocker keys and raw log statuses are
-echoed only under merchant_lifecycle_internal for API/debug — not as the headline story.
+Precedence is centralized in cartflow_merchant_lifecycle_precedence: behavioral
+customer truth (purchase → reply → return) always beats scheduling / delay /
+duplicate / automation narratives. Raw signals stay in merchant_lifecycle_internal.
 """
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any, Iterable, Optional
+
+from services.cartflow_merchant_lifecycle_precedence import (
+    lifecycle_delay_scheduling_only,
+    lifecycle_purchased_evidence,
+    lifecycle_replied_evidence,
+    lifecycle_returned_evidence,
+    recovery_log_statuses_lower,
+)
 
 
 def _norm(s: Optional[str]) -> str:
@@ -24,6 +32,9 @@ def build_normal_recovery_merchant_lifecycle(
     behavioral: dict[str, Any],
     sent_ct: int,
     attempt_cap: int,
+    recovery_log_statuses: Optional[Iterable[str]] = None,
+    dashboard_customer_returned_track: bool = False,
+    dashboard_return_intel_panel: bool = False,
 ) -> dict[str, Any]:
     pk = _norm(phase_key) or "pending_send"
     cr = _norm(coarse)
@@ -36,11 +47,29 @@ def build_normal_recovery_merchant_lifecycle(
     except (TypeError, ValueError):
         cap = 1
 
+    log_ss = recovery_log_statuses_lower(recovery_log_statuses)
+    purchased = lifecycle_purchased_evidence(ls=ls, bk=bk, pk=pk, cr=cr, log_ss=log_ss)
+    replied = lifecycle_replied_evidence(bh=bh, ls=ls, bk=bk, pk=pk, log_ss=log_ss)
+    returned = lifecycle_returned_evidence(
+        bh=bh,
+        ls=ls,
+        bk=bk,
+        pk=pk,
+        cr=cr,
+        log_ss=log_ss,
+        dashboard_return_track=bool(dashboard_customer_returned_track),
+        dashboard_return_intel_panel=bool(dashboard_return_intel_panel),
+    )
+
     internal: dict[str, Any] = {
         "latest_log_status": latest_log_status,
         "blocker_key": blocker_key,
         "phase_key": phase_key,
         "coarse": coarse,
+        "recovery_log_statuses_seen": sorted(log_ss)[:48],
+        "lifecycle_evidence_purchased": purchased,
+        "lifecycle_evidence_replied": replied,
+        "lifecycle_evidence_returned": returned,
     }
 
     def pack(
@@ -57,14 +86,9 @@ def build_normal_recovery_merchant_lifecycle(
             "merchant_lifecycle_internal": internal,
         }
 
-    # --- Strict precedence: one primary story (customer → decision → next) ---
+    # --- Strict precedence: purchase → reply → return → … (see precedence module) ---
 
-    if (
-        ls == "stopped_converted"
-        or bk == "purchase_completed"
-        or pk in ("stopped_purchase", "recovery_complete")
-        or cr == "converted"
-    ):
+    if purchased:
         return pack(
             "purchase_complete",
             "العميل أكمل الطلب",
@@ -72,12 +96,7 @@ def build_normal_recovery_merchant_lifecycle(
             "لا حاجة لرسائل استرجاع إضافية.",
         )
 
-    if (
-        bh.get("customer_replied") is True
-        or pk == "behavioral_replied"
-        or bk == "customer_replied"
-        or ls in ("skipped_followup_customer_replied", "skipped_user_rejected_help")
-    ):
+    if replied:
         return pack(
             "customer_replied",
             "العميل تفاعل مع الرسالة",
@@ -85,14 +104,7 @@ def build_normal_recovery_merchant_lifecycle(
             "تابع المحادثة يدويًا عند الحاجة دون إغراق بالرسائل الآلية.",
         )
 
-    if (
-        bh.get("user_returned_to_site") is True
-        or bh.get("customer_returned_to_site") is True
-        or pk == "customer_returned"
-        or cr == "returned"
-        or ls == "skipped_anti_spam"
-        or bk == "user_returned"
-    ):
+    if returned:
         return pack(
             "customer_returned",
             "العميل عاد للموقع",
@@ -139,7 +151,13 @@ def build_normal_recovery_merchant_lifecycle(
             "أكمل الودجت أو نشاط السلة المطلوب ثم أعد التحقق.",
         )
 
-    if ls in ("queued", "skipped_delay_gate") or pk == "pending_second_attempt":
+    if lifecycle_delay_scheduling_only(
+        ls=ls,
+        pk=pk,
+        purchased=purchased,
+        replied=replied,
+        returned=returned,
+    ):
         return pack(
             "delay_waiting",
             "بانتظار الوقت المناسب",

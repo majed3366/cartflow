@@ -2255,6 +2255,29 @@ def _normal_recovery_latest_recovery_log_row(ac: AbandonedCart) -> Optional[Cart
         return None
 
 
+def _normal_recovery_recovery_log_statuses_lower(ac: AbandonedCart) -> frozenset[str]:
+    """
+    جميع حالات سجل الاسترجاع لهذه السلة/الجلسة (بدون اعتماد «آخر سطر فقط»).
+    يُستعمل لطبقة عمر التاجر السلوكية حتى لا يغلب queued التأكد من عودة العميل.
+    """
+    conds = _cart_recovery_log_filters_for_abandoned_cart(ac)
+    if not conds:
+        return frozenset()
+    try:
+        db.create_all()
+        rows = (
+            db.session.query(CartRecoveryLog.status)
+            .filter(or_(*conds))
+            .all()
+        )
+        return frozenset(
+            str((r[0] or "")).strip().lower() for r in rows if r and (r[0] or "").strip()
+        )
+    except (SQLAlchemyError, OSError, TypeError, ValueError):
+        db.session.rollback()
+        return frozenset()
+
+
 def _normal_recovery_latest_skipped_no_verified_phone_row(
     ac: AbandonedCart,
 ) -> Optional[CartRecoveryLog]:
@@ -2912,6 +2935,7 @@ def _normal_recovery_phase_steps_payload(ac: AbandonedCart) -> dict[str, Any]:
             else None
         )
         _ls_merchant = (str(latest_log_status or "").strip() or _tail_st or None)
+        _log_statuses_all = _normal_recovery_recovery_log_statuses_lower(ac)
 
         out_nr.update(
             build_normal_recovery_merchant_lifecycle(
@@ -2922,6 +2946,13 @@ def _normal_recovery_phase_steps_payload(ac: AbandonedCart) -> dict[str, Any]:
                 behavioral=behavioral_pre,
                 sent_ct=int(sent_ct),
                 attempt_cap=max_disp,
+                recovery_log_statuses=_log_statuses_all,
+                dashboard_customer_returned_track=bool(
+                    out_nr.get("normal_recovery_customer_returned_to_site_track")
+                ),
+                dashboard_return_intel_panel=bool(
+                    out_nr.get("normal_recovery_return_intel_panel")
+                ),
             )
         )
     except Exception:

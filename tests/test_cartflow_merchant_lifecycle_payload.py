@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import unittest
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from extensions import db
 from main import _normal_recovery_phase_steps_payload
@@ -101,6 +101,69 @@ class MerchantLifecyclePayloadTests(unittest.TestCase):
         self.assertEqual(p.get("merchant_lifecycle_primary_key"), "customer_returned")
         self.assertIn("عاد", p.get("merchant_lifecycle_customer_behavior_ar") or "")
         self.assertIn("تلقائي", p.get("merchant_lifecycle_system_outcome_ar") or "")
+
+    def test_queued_after_skipped_anti_spam_tail_still_customer_returned(self) -> None:
+        """Regression: newest log queued must not hide skipped_anti_spam return signal."""
+        st = self._store()
+        sid = f"sid-ml-antiq-{self._suffix}"
+        zid = f"zid-ml-antiq-{self._suffix}"
+        ac = AbandonedCart(
+            store_id=int(st.id),
+            zid_cart_id=zid,
+            recovery_session_id=sid,
+            status="abandoned",
+            vip_mode=False,
+            cart_value=15.0,
+            customer_phone="9665111222333",
+        )
+        db.session.add(ac)
+        db.session.flush()
+        t0 = datetime.now(timezone.utc)
+        t1 = t0 + timedelta(seconds=1)
+        t2 = t0 + timedelta(seconds=2)
+        db.session.add(
+            CartRecoveryLog(
+                store_slug=st.zid_store_id,
+                session_id=sid,
+                cart_id=zid,
+                phone="9665111222333",
+                message="m1",
+                status="mock_sent",
+                step=1,
+                created_at=t0,
+                sent_at=t0,
+            )
+        )
+        db.session.add(
+            CartRecoveryLog(
+                store_slug=st.zid_store_id,
+                session_id=sid,
+                cart_id=zid,
+                phone=None,
+                message="spam",
+                status="skipped_anti_spam",
+                step=1,
+                created_at=t1,
+                sent_at=None,
+            )
+        )
+        db.session.add(
+            CartRecoveryLog(
+                store_slug=st.zid_store_id,
+                session_id=sid,
+                cart_id=zid,
+                phone=None,
+                message="q",
+                status="queued",
+                step=2,
+                created_at=t2,
+                sent_at=None,
+            )
+        )
+        db.session.commit()
+        p = _normal_recovery_phase_steps_payload(ac)
+        self.assertEqual(p.get("merchant_lifecycle_primary_key"), "customer_returned")
+        self.assertIn("عاد", p.get("merchant_lifecycle_customer_behavior_ar") or "")
 
     def test_pending_send_no_duplicate_is_no_engagement(self) -> None:
         st = self._store()
