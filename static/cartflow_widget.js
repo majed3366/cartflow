@@ -2011,6 +2011,36 @@ try {
     };
   }
 
+  /**
+   * يلحق ‎customer_phone‎ من ‎localStorage‎ (نفس منطق ‎getCartflowStoredCustomerPhoneNorm‎)
+   * هنا بشكل مستقل حتى لا يعتمد ترتيب التعريف في الملف على محركات قديمة/ضغط غير قياسي.
+   */
+  function cartflowPayloadAttachStoredCustomerPhone(payload) {
+    if (!payload || typeof payload !== "object") {
+      return;
+    }
+    try {
+      var k = "cartflow_customer_phone";
+      var raw = "";
+      try {
+        raw = window.localStorage.getItem(k) || "";
+      } catch (eLs0) {
+        raw = "";
+      }
+      var d = String(raw).replace(/\D/g, "");
+      if (d.length === 10 && d.slice(0, 2) === "05") {
+        d = "966" + d.slice(1);
+      } else if (d.length === 9 && d.charAt(0) === "5") {
+        d = "966" + d;
+      }
+      if (/^9665\d{8}$/.test(d)) {
+        payload.customer_phone = d;
+      }
+    } catch (eLs1) {
+      /* ignore */
+    }
+  }
+
   function persistCartRecoveryReasonBackend(reasonTag, customTextOptional) {
     try {
       var b = apiBase();
@@ -2034,16 +2064,7 @@ try {
         /* ignore */
       }
       /* CF_PHONE_SAVED: persisted customer line (localStorage cartflow_customer_phone) */
-      try {
-        if (typeof getCartflowStoredCustomerPhoneNorm === "function") {
-          var lsPhone = getCartflowStoredCustomerPhoneNorm();
-          if (lsPhone) {
-            payload.customer_phone = lsPhone;
-          }
-        }
-      } catch (eLsPh) {
-        /* ignore */
-      }
+      cartflowPayloadAttachStoredCustomerPhone(payload);
       fetch(u, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -2145,7 +2166,15 @@ try {
     } catch (eLog) {
       /* ignore */
     }
-    persistCartRecoveryReasonBackend(reasonTag, customTextOptional);
+    try {
+      persistCartRecoveryReasonBackend(reasonTag, customTextOptional);
+    } catch (ePersist) {
+      try {
+        console.warn("CART_RECOVERY_REASON_PERSIST_EXCEPTION", ePersist);
+      } catch (eW) {
+        /* ignore */
+      }
+    }
   }
 
   function clearCartRecoverySuppressed() {
