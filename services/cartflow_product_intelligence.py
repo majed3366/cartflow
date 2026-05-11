@@ -348,6 +348,7 @@ def _log_alt_rejected(
     *,
     primary: CatalogEntry,
     cand: CatalogEntry,
+    primary_canons: frozenset[str],
     reason: str,
     score_val: float,
 ) -> None:
@@ -363,10 +364,29 @@ def _log_alt_rejected(
         reason,
         score_val,
     )
+    dbg = (
+        "[CHEAPER REJECTED] primary_id=%s candidate_id=%s candidate_name=%s "
+        "primary_canons=%s candidate_canons=%s primary_price=%s candidate_price=%s "
+        "rejection_reason=%s"
+    )
+    pc = ",".join(sorted(primary_canons))[:160]
+    cc = ",".join(sorted(_candidate_category_canons(cand)))[:160]
+    dbg_args = (
+        (primary.product_id or "")[:64],
+        (cand.product_id or "")[:64],
+        (cand.name or "")[:80],
+        pc,
+        cc,
+        primary.price,
+        cand.price,
+        reason,
+    )
     if reason == "category_mismatch":
         log.debug(msg, *args)
+        log.debug(dbg, *dbg_args)
     else:
         log.info(msg, *args)
+        log.info(dbg, *dbg_args)
 
 
 def select_cheaper_alternative(
@@ -380,6 +400,11 @@ def select_cheaper_alternative(
     نفس الفئة (إشارات متعددة + تطبيع)، سعر أقل آمن، متاح فقط، ترتيب بالدرجة.
     """
     if primary.price <= 0:
+        log.info(
+            "[CHEAPER FALLBACK REASON] reason=invalid_primary_price primary_id=%s price=%s",
+            (primary.product_id or "")[:64],
+            primary.price,
+        )
         return CheaperAlternativeResult(None, 0.0, "invalid_primary_price")
 
     primary_canons = _primary_category_canons(primary, recovery_category_label)
@@ -388,33 +413,101 @@ def select_cheaper_alternative(
             "[PRODUCT MATCH] skip: no category signal primary_id=%s",
             primary.product_id[:32] if primary.product_id else "",
         )
+        log.info(
+            "[CHEAPER FALLBACK REASON] reason=no_category_signal primary_id=%s "
+            "primary_category=%s primary_norm_category=%s recovery_category_label=%s",
+            (primary.product_id or "")[:64],
+            (primary.category or "")[:120],
+            (primary.normalized_category or "")[:120],
+            (recovery_category_label or "")[:120],
+        )
         return CheaperAlternativeResult(None, 0.0, "no_category_signal")
+
+    pool = cart_entries + catalog_entries
+    log.info(
+        "[CHEAPER MATCH DEBUG] phase=select primary_id=%s primary_name=%s "
+        "primary_category=%s primary_norm_category=%s primary_price=%s "
+        "primary_family=%s primary_type=%s recovery_category_label=%s "
+        "primary_canons=%s pool_size=%s cart_tail=%s catalog=%s",
+        (primary.product_id or "")[:64],
+        (primary.name or "")[:80],
+        (primary.category or "")[:120],
+        (primary.normalized_category or "")[:120],
+        primary.price,
+        (primary.product_family or "")[:64],
+        (primary.product_type or "")[:64],
+        (recovery_category_label or "")[:120],
+        ",".join(sorted(primary_canons))[:160],
+        len(pool),
+        len(cart_entries),
+        len(catalog_entries),
+    )
 
     scored: list[tuple[CatalogEntry, float]] = []
     seen_keys: set[str] = set()
-    for e in cart_entries + catalog_entries:
+    for e in pool:
         if e.product_id == primary.product_id and e.name == primary.name:
             _log_alt_rejected(
                 primary=primary,
                 cand=e,
+                primary_canons=primary_canons,
                 reason="same_line_as_primary",
                 score_val=-1.0,
             )
             continue
         key = f"{e.product_id}|{e.name}"
         if key in seen_keys:
-            _log_alt_rejected(primary=primary, cand=e, reason="duplicate_candidate", score_val=-1.0)
+            _log_alt_rejected(
+                primary=primary,
+                cand=e,
+                primary_canons=primary_canons,
+                reason="duplicate_candidate",
+                score_val=-1.0,
+            )
             continue
         seen_keys.add(key)
+        cand_canons_pre = _candidate_category_canons(e)
+        log.info(
+            "[CHEAPER CANDIDATE] product_id=%s name=%s price=%s category=%s "
+            "normalized_category=%s available=%s product_family=%s product_type=%s "
+            "candidate_canons=%s",
+            (e.product_id or "")[:64],
+            (e.name or "")[:80],
+            e.price,
+            (e.category or "")[:120],
+            (e.normalized_category or "")[:120],
+            e.available,
+            (e.product_family or "")[:64],
+            (e.product_type or "")[:64],
+            ",".join(sorted(cand_canons_pre))[:160],
+        )
         if not e.available:
-            _log_alt_rejected(primary=primary, cand=e, reason="unavailable", score_val=-1.0)
+            _log_alt_rejected(
+                primary=primary,
+                cand=e,
+                primary_canons=primary_canons,
+                reason="unavailable",
+                score_val=-1.0,
+            )
             continue
-        cand_canons = _candidate_category_canons(e)
+        cand_canons = cand_canons_pre
         if not (primary_canons & cand_canons):
-            _log_alt_rejected(primary=primary, cand=e, reason="category_mismatch", score_val=-1.0)
+            _log_alt_rejected(
+                primary=primary,
+                cand=e,
+                primary_canons=primary_canons,
+                reason="category_mismatch",
+                score_val=-1.0,
+            )
             continue
         if not _is_strictly_lower_price(e.price, primary.price):
-            _log_alt_rejected(primary=primary, cand=e, reason="price_not_lower", score_val=-1.0)
+            _log_alt_rejected(
+                primary=primary,
+                cand=e,
+                primary_canons=primary_canons,
+                reason="price_not_lower",
+                score_val=-1.0,
+            )
             continue
         sc = _cheaper_candidate_score(primary, e)
         scored.append((e, sc))
@@ -435,6 +528,14 @@ def select_cheaper_alternative(
         len(scored),
     )
     if not scored:
+        log.info(
+            "[CHEAPER FALLBACK REASON] reason=no_eligible_cheaper_in_category primary_id=%s "
+            "primary_price=%s primary_canons=%s pool_size=%s scored_count=0",
+            (primary.product_id or "")[:64],
+            primary.price,
+            ",".join(sorted(primary_canons))[:160],
+            len(pool),
+        )
         return CheaperAlternativeResult(None, 0.0, "no_eligible_cheaper_in_category")
 
     best_entry, best_score = max(
@@ -447,6 +548,22 @@ def select_cheaper_alternative(
         best_entry.price,
         primary.price,
         best_score,
+    )
+    try:
+        pdiff = f"{float(primary.price) - float(best_entry.price):.2f}"
+    except (TypeError, ValueError):
+        pdiff = ""
+    log.info(
+        "[CHEAPER SELECTED] product_id=%s name=%s price=%s primary_id=%s primary_price=%s "
+        "price_difference=%s score=%s url_present=%s",
+        (best_entry.product_id or "")[:64],
+        (best_entry.name or "")[:120],
+        best_entry.price,
+        (primary.product_id or "")[:64],
+        primary.price,
+        pdiff,
+        best_score,
+        "1" if (best_entry.url or "").strip() else "0",
     )
     return CheaperAlternativeResult(best_entry, float(best_score), "")
 
@@ -500,6 +617,34 @@ def build_product_intelligence_snapshot(
     )
     catalog_entries = _entries_from_catalog_dict(catalog)
 
+    store_id = getattr(store, "id", None) if store is not None else None
+    raw_prod_count = (
+        len(catalog.get("products"))
+        if isinstance(catalog.get("products"), list)
+        else 0
+    )
+    log.info(
+        "[CHEAPER MATCH DEBUG] phase=snapshot store_id=%s line_dicts=%s cart_entries_built=%s "
+        "catalog_raw_products=%s catalog_entries_available=%s recovery_category=%s "
+        "primary_mapped=%s primary_id=%s primary_category=%s primary_price=%s",
+        store_id,
+        len(line_dicts),
+        len(cart_entries),
+        raw_prod_count,
+        len(catalog_entries),
+        (rc_cat or "")[:120],
+        "1" if primary is not None else "0",
+        (primary.product_id if primary else "")[:64],
+        (primary.category if primary else "")[:120],
+        primary.price if primary else "",
+    )
+    if primary is None and line_dicts:
+        log.info(
+            "[CHEAPER FALLBACK REASON] reason=no_primary_cart_line line_items=%s "
+            "(first line missing name/price)",
+            len(line_dicts),
+        )
+
     alt: Optional[CatalogEntry] = None
     alt_score: Optional[float] = None
     fb_reason: Optional[str] = None
@@ -513,8 +658,19 @@ def build_product_intelligence_snapshot(
         alt = pick.entry
         if pick.entry is not None:
             alt_score = pick.cheaper_candidate_score
+            log.info(
+                "[CHEAPER MATCH DEBUG] phase=post_select select_returned_alt=1 "
+                "matched_product_id=%s matched_price=%s",
+                (pick.entry.product_id or "")[:64],
+                pick.entry.price,
+            )
         else:
             fb_reason = pick.fallback_reason or None
+            log.info(
+                "[CHEAPER MATCH DEBUG] phase=post_select select_returned_alt=0 "
+                "fallback_reason_from_select=%s",
+                (fb_reason or "")[:80],
+            )
         if alt is None and recovery_ctx.cheaper_alternative_name:
             pprice = primary.price
             oprice = recovery_ctx.cheaper_alternative_price
@@ -542,6 +698,15 @@ def build_product_intelligence_snapshot(
                             e2.product_id[:48],
                             alt_score,
                         )
+                        log.info(
+                            "[CHEAPER SELECTED] source=cart_context_recovery product_id=%s "
+                            "name=%s price=%s primary_id=%s score=%s",
+                            (e2.product_id or "")[:64],
+                            (e2.name or "")[:120],
+                            e2.price,
+                            (primary.product_id or "")[:64],
+                            alt_score,
+                        )
                         break
 
     zid = (getattr(ac, "zid_cart_id", None) or "").strip()
@@ -561,6 +726,13 @@ def build_product_intelligence_snapshot(
             (primary.category or "")[:80],
             primary.price,
             rsn,
+        )
+        log.info(
+            "[CHEAPER FALLBACK REASON] reason=final_snapshot_no_alternative detail=%s "
+            "primary_id=%s catalog_entries=%s",
+            rsn[:120],
+            (primary.product_id or "")[:64],
+            len(catalog_entries),
         )
 
     if primary is not None:
@@ -806,6 +978,14 @@ def build_intelligence_continuation_vars(
         if not has_real
         else "",
     }
+    log.info(
+        "[CHEAPER MATCH DEBUG] phase=continuation_vars cheaper_reply_mode=%s "
+        "has_real_alternative=%s alternative_url_len=%s cheaper_fallback_reason=%s",
+        vars_map.get("cheaper_reply_mode", ""),
+        "1" if has_real else "0",
+        len((vars_map.get("alternative_checkout_url") or "")),
+        (vars_map.get("cheaper_fallback_reason") or "")[:120],
+    )
     return vars_map
 
 
