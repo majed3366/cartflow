@@ -301,7 +301,9 @@ class CartflowIdentityDbTests(unittest.TestCase):
         client = TestClient(app)
         from urllib.parse import quote
 
-        r = client.get("/dashboard/normal-carts?nr_session=" + quote(sid_h, safe=""))
+        r = client.get(
+            "/dashboard/normal-carts/operations?nr_session=" + quote(sid_h, safe="")
+        )
         self.assertEqual(r.status_code, 200, (r.text or "")[:1200])
         html = r.text or ""
         self.assertIn("data-normal-recovery-identity-trust", html)

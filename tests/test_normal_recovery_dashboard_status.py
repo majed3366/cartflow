@@ -942,7 +942,7 @@ class NormalRecoveryDashboardStatusTests(unittest.TestCase):
         from urllib.parse import quote
 
         r = client.get(
-            "/dashboard/normal-carts?nr_lifecycle=archived&nr_session="
+            "/dashboard/normal-carts/operations?nr_lifecycle=archived&nr_session="
             + quote(sid, safe="")
         )
         self.assertEqual(r.status_code, 200, (r.text or "")[:2000])
@@ -1017,7 +1017,7 @@ class NormalRecoveryDashboardStatusTests(unittest.TestCase):
             from urllib.parse import quote
 
             rd = client.get(
-                "/dashboard/normal-carts?nr_lifecycle=archived&nr_session="
+                "/dashboard/normal-carts/operations?nr_lifecycle=archived&nr_session="
                 + quote(sid, safe="")
             )
             self.assertEqual(rd.status_code, 200)
@@ -1094,6 +1094,205 @@ class NormalRecoveryDashboardStatusTests(unittest.TestCase):
         self.assertEqual(
             (active[0].get("normal_recovery_status") or "").strip(), "pending"
         )
+
+    def test_normal_carts_query_filter_redirects_to_operations(self) -> None:
+        remove_scoped_session()
+        client = TestClient(app)
+        r = client.get(
+            "/dashboard/normal-carts?nr_session=x_sess&nr_lifecycle=active",
+            follow_redirects=False,
+        )
+        self.assertEqual(r.status_code, 302)
+        loc = r.headers.get("location") or ""
+        self.assertIn("/dashboard/normal-carts/operations", loc)
+        self.assertIn("nr_session=x_sess", loc)
+
+    def test_merchant_normal_carts_has_no_session_filter_field(self) -> None:
+        remove_scoped_session()
+        client = TestClient(app)
+        r = client.get("/dashboard/normal-carts")
+        self.assertEqual(r.status_code, 200)
+        self.assertNotIn('name="nr_session"', r.text or "")
+
+    def test_operations_normal_carts_has_session_filter_field(self) -> None:
+        remove_scoped_session()
+        client = TestClient(app)
+        r = client.get("/dashboard/normal-carts/operations")
+        self.assertEqual(r.status_code, 200)
+        self.assertIn('name="nr_session"', r.text or "")
+
+    def test_stale_sent_cart_archived_for_merchant_not_active(self) -> None:
+        from unittest.mock import patch
+
+        st = self._store_attempts_1()
+        slug = (st.zid_store_id or "").strip()
+        sid = f"nr-stale-{self._suffix}"
+        zid = f"zid-stale-{self._suffix}"
+        t_old = datetime.now(timezone.utc) - timedelta(hours=3)
+        ac = AbandonedCart(
+            store_id=int(st.id),
+            zid_cart_id=zid,
+            recovery_session_id=sid,
+            customer_phone="966501111117",
+            status="abandoned",
+            vip_mode=False,
+            cart_value=55.0,
+            last_seen_at=t_old,
+        )
+        db.session.add(ac)
+        db.session.flush()
+        db.session.add(
+            CartRecoveryLog(
+                store_slug=slug,
+                session_id=sid,
+                cart_id=zid,
+                phone="966501111117",
+                message="m1",
+                status="mock_sent",
+                step=1,
+                created_at=t_old,
+                sent_at=t_old,
+            )
+        )
+        db.session.commit()
+
+        tiny = {
+            "active_sent_window_minutes": 1,
+            "active_pending_window_minutes": 1,
+            "stale_archive_enabled": True,
+        }
+        with patch(
+            "services.normal_recovery_merchant_stale.normal_recovery_merchant_stale_config",
+            return_value=tiny,
+        ):
+            active = _normal_recovery_cart_alert_list(
+                nr_session=sid, lifecycle="active", limit_groups=20, audience="merchant"
+            )
+            archived = _normal_recovery_cart_alert_list(
+                nr_session=sid,
+                lifecycle="archived",
+                limit_groups=20,
+                audience="merchant",
+            )
+        self.assertEqual(len(active), 0)
+        self.assertEqual(len(archived), 1)
+        self.assertTrue(archived[0].get("normal_recovery_merchant_stale"))
+        self.assertFalse(archived[0].get("recovery_ops_detail_view", False))
+
+    def test_stale_not_when_queued_followup_after_activity(self) -> None:
+        from unittest.mock import patch
+
+        st = self._store_attempts_1()
+        slug = (st.zid_store_id or "").strip()
+        sid = f"nr-q-{self._suffix}"
+        zid = f"zid-q-{self._suffix}"
+        t_old = datetime.now(timezone.utc) - timedelta(hours=3)
+        t_q = t_old + timedelta(minutes=15)
+        ac = AbandonedCart(
+            store_id=int(st.id),
+            zid_cart_id=zid,
+            recovery_session_id=sid,
+            customer_phone="966501111118",
+            status="abandoned",
+            vip_mode=False,
+            cart_value=56.0,
+            last_seen_at=t_old,
+        )
+        db.session.add(ac)
+        db.session.flush()
+        db.session.add(
+            CartRecoveryLog(
+                store_slug=slug,
+                session_id=sid,
+                cart_id=zid,
+                phone="966501111118",
+                message="m1",
+                status="mock_sent",
+                step=1,
+                created_at=t_old,
+                sent_at=t_old,
+            )
+        )
+        db.session.add(
+            CartRecoveryLog(
+                store_slug=slug,
+                session_id=sid,
+                cart_id=zid,
+                phone=None,
+                message="queued",
+                status="queued",
+                step=2,
+                created_at=t_q,
+                sent_at=None,
+            )
+        )
+        db.session.commit()
+        tiny = {
+            "active_sent_window_minutes": 1,
+            "active_pending_window_minutes": 1,
+            "stale_archive_enabled": True,
+        }
+        with patch(
+            "services.normal_recovery_merchant_stale.normal_recovery_merchant_stale_config",
+            return_value=tiny,
+        ):
+            active = _normal_recovery_cart_alert_list(
+                nr_session=sid, lifecycle="active", limit_groups=20, audience="merchant"
+            )
+        self.assertEqual(len(active), 1)
+
+    def test_ops_audience_sets_recovery_ops_detail_view_on_stale_archived(self) -> None:
+        from unittest.mock import patch
+
+        st = self._store_attempts_1()
+        slug = (st.zid_store_id or "").strip()
+        sid = f"nr-ops-{self._suffix}"
+        zid = f"zid-ops-{self._suffix}"
+        t_old = datetime.now(timezone.utc) - timedelta(hours=3)
+        ac = AbandonedCart(
+            store_id=int(st.id),
+            zid_cart_id=zid,
+            recovery_session_id=sid,
+            customer_phone="966501111119",
+            status="abandoned",
+            vip_mode=False,
+            cart_value=57.0,
+            last_seen_at=t_old,
+        )
+        db.session.add(ac)
+        db.session.flush()
+        db.session.add(
+            CartRecoveryLog(
+                store_slug=slug,
+                session_id=sid,
+                cart_id=zid,
+                phone="966501111119",
+                message="m1",
+                status="mock_sent",
+                step=1,
+                created_at=t_old,
+                sent_at=t_old,
+            )
+        )
+        db.session.commit()
+        tiny = {
+            "active_sent_window_minutes": 1,
+            "active_pending_window_minutes": 1,
+            "stale_archive_enabled": True,
+        }
+        with patch(
+            "services.normal_recovery_merchant_stale.normal_recovery_merchant_stale_config",
+            return_value=tiny,
+        ):
+            archived = _normal_recovery_cart_alert_list(
+                nr_session=sid,
+                lifecycle="archived",
+                limit_groups=20,
+                audience="ops",
+            )
+        self.assertEqual(len(archived), 1)
+        self.assertTrue(archived[0].get("recovery_ops_detail_view"))
+        self.assertEqual(archived[0].get("recovery_ops_session_id"), sid)
 
 
 if __name__ == "__main__":

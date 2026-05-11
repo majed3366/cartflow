@@ -79,6 +79,14 @@
       <span class="min-w-0 leading-snug">السلال العادية</span>
     </a>
     <a
+      href="/dashboard/normal-carts/operations"
+      data-dash-nav="normal-carts-ops"
+      class="group flex items-center gap-2 rounded-lg px-3 py-2.5 text-slate-600 transition-colors hover:bg-zid-50 hover:shadow-sm"
+    >
+      <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-[15px] shadow-inner transition-colors group-hover:bg-white group-hover:text-zid-700" aria-hidden="true">🔧</span>
+      <span class="min-w-0 leading-snug text-[13px]">عمليات — سلال عادية</span>
+    </a>
+    <a
       href="/dashboard/vip-cart-settings"
       data-dash-nav="vip-cart"
       class="group flex items-center gap-2 rounded-lg px-3 py-2.5 text-slate-600 transition-colors hover:bg-zid-50 hover:shadow-sm"
@@ -175,6 +183,7 @@
       var path = window.location.pathname || "";
       var dashEl = document.querySelector('[data-dash-nav="dashboard"]');
       var normEl = document.querySelector('[data-dash-nav="normal-carts"]');
+      var normOpsEl = document.querySelector('[data-dash-nav="normal-carts-ops"]');
       var vipEl = document.querySelector('[data-dash-nav="vip-cart"]');
       var exitEl = document.querySelector('[data-dash-nav="exit-intent"]');
       var genEl = document.querySelector('[data-dash-nav="general-settings"]');
@@ -187,12 +196,14 @@
       var isNormalCarts =
         path.indexOf("/dashboard/normal-carts") === 0 ||
         path.indexOf("/dashboard/normal-recovery") === 0;
+      var isNormalCartsOps = path.indexOf("/dashboard/normal-carts/operations") === 0;
       var isVipCart = path.indexOf("/dashboard/vip-cart-settings") === 0;
       var isExitIntent = path.indexOf("/dashboard/exit-intent-settings") === 0;
       var isGeneral = path.indexOf("/dashboard/general-settings") === 0;
 
       if (dashEl) dashEl.className = isDash ? mainOn : mainIdle;
-      if (normEl) normEl.className = isNormalCarts ? mainOn : mainIdle;
+      if (normEl) normEl.className = isNormalCarts && !isNormalCartsOps ? mainOn : mainIdle;
+      if (normOpsEl) normOpsEl.className = isNormalCartsOps ? mainOn : mainIdle;
       if (vipEl) vipEl.className = isVipCart ? mainOn : mainIdle;
       if (exitEl) exitEl.className = isExitIntent ? mainOn : mainIdle;
       if (genEl) genEl.className = isGeneral ? mainOn : mainIdle;

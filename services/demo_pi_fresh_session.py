@@ -267,7 +267,7 @@ def apply_demo_pi_fresh_start(
         return {"ok": False, "error": "persist_failed"}
 
     dash = (
-        f"/dashboard/normal-carts?nr_session={quote(sid, safe='')}"
+        f"/dashboard/normal-carts/operations?nr_session={quote(sid, safe='')}"
         f"&nr_cart={quote(cid, safe='')}&nr_lifecycle=active"
     )
     return {

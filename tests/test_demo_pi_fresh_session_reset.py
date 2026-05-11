@@ -41,7 +41,7 @@ class TestDemoPiFreshSessionReset(unittest.TestCase):
         self.assertTrue(sid.startswith("s_"))
         self.assertTrue(cid.startswith("cf_cart_"))
         self.assertIn("reason_tag=price_high", t)
-        self.assertIn("/dashboard/normal-carts?nr_session=", t)
+        self.assertIn("/dashboard/normal-carts/operations?nr_session=", t)
         self.assertIn(sid, t)
         self.assertIn(cid, t)
 

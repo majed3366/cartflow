@@ -35,9 +35,17 @@
     {% include "partials/dashboard_sidebar.html" %}
     <div class="min-w-0 w-full flex-1 bg-gradient-to-b from-cyan-50/30 to-slate-50 px-3 pb-28 pt-14 md:min-h-screen md:px-4 md:pb-24 md:pt-4">
       <div class="cf-dash-shell mx-auto max-w-4xl">
+        {% set _ops_dash = recovery_ops_dashboard | default(false) %}
         <div class="cf-dash-hero mb-6">
-          <h1>السلال العادية</h1>
-          <p class="max-w-2xl">استرجاع آلي للسلال غير المميزة حسب سبب التردد والتوقيت.</p>
+          <h1>{% if _ops_dash %}العمليات — السلال العادية{% else %}السلال العادية{% endif %}</h1>
+          <p class="max-w-2xl">{% if _ops_dash %}فلاتر الجلسة والتشخيص الخام لمسار الدعم والاختبار — لا تُعرض للتاجر الافتراضي.{% else %}استرجاع آلي للسلال غير المميزة حسب سبب التردد والتوقيت.{% endif %}</p>
+          <p class="mt-2 mb-0 text-[11px] font-semibold text-slate-600">
+            {% if _ops_dash %}
+            <a href="{{ normal_merchant_dashboard_url | default('/dashboard/normal-carts') }}" class="text-emerald-800 underline decoration-emerald-300/80 underline-offset-2 hover:text-emerald-950">← واجهة التاجر (بدون فلاتر تقنية)</a>
+            {% else %}
+            <a href="{{ normal_operations_dashboard_url | default('/dashboard/normal-carts/operations') }}" class="text-slate-700 underline decoration-slate-300/80 underline-offset-2 hover:text-slate-900">فتح لوحة العمليات (جلسة / سلة / تشخيص)</a>
+            {% endif %}
+          </p>
         </div>
 
         {% include "partials/whatsapp_readiness_card.html" %}
@@ -108,6 +116,7 @@
               <a href="{{ normal_carts_url_archived|default('/dashboard/normal-carts?nr_lifecycle=archived') }}" class="cf-seg-btn {% if _nr_lc == 'archived' %}cf-seg-btn--active{% else %}cf-seg-btn--inactive{% endif %} rounded-md px-2.5 py-1 text-[10px] no-underline">عرض السجل</a>
             </div>
           </div>
+          {% if _ops_dash %}
           {% set _nr_s = (request.query_params.get("nr_session") or "")|trim %}
           {% set _nr_c = (request.query_params.get("nr_cart") or "")|trim %}
           {% set _nr_tr = (request.query_params.get("nr_test_run") or "")|trim %}
@@ -129,9 +138,10 @@
             </label>
             <div class="flex items-end gap-2">
               <button type="submit" class="rounded-lg bg-emerald-700 px-3 py-1.5 text-xs font-bold text-white">تطبيق الفلتر</button>
-              <a href="/dashboard/normal-carts" class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-700">إزالة الفلاتر</a>
+              <a href="{{ normal_operations_dashboard_url | default('/dashboard/normal-carts/operations') }}" class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-700">إزالة الفلاتر</a>
             </div>
           </form>
+          {% endif %}
           {% set nr_list = normal_recovery_alerts | default([]) %}
           <ul id="normal-recovery-alerts-ul" class="m-0 list-none space-y-4 p-0 {% if nr_list | length == 0 %}hidden{% endif %}" role="list">
             {% for vc in nr_list %}

@@ -38,6 +38,8 @@ from decision_engine import decide_recovery_action
 
 load_dotenv()
 
+from services.normal_recovery_merchant_stale import merchant_group_stale_meta
+
 import models  # noqa: F401, E402
 init_database()
 
@@ -8365,6 +8367,8 @@ def _vip_dashboard_cart_alert_dict_from_group(
     dash_store: Optional[Any],
     *,
     recovery_card_tier: str = "vip",
+    normal_recovery_stale_context: Optional[dict[str, Any]] = None,
+    recovery_ops_detail_view: bool = False,
 ) -> dict[str, Any]:
     ac = grp_sorted[0]
     tier = (recovery_card_tier or "vip").strip().lower()
@@ -8479,6 +8483,32 @@ def _vip_dashboard_cart_alert_dict_from_group(
                 ac, behavioral_cart_group=grp_sorted
             )
         )
+        sc = (
+            normal_recovery_stale_context
+            if isinstance(normal_recovery_stale_context, dict)
+            else {}
+        )
+        if sc.get("stale"):
+            out_payload["normal_recovery_merchant_stale"] = True
+            mh = str(sc.get("merchant_stale_hint_ar") or "").strip()
+            if mh:
+                out_payload["normal_recovery_merchant_stale_hint_ar"] = mh
+            sf = str(sc.get("merchant_stale_surface") or "").strip()
+            if sf:
+                out_payload["normal_recovery_merchant_stale_surface"] = sf
+        if recovery_ops_detail_view:
+            out_payload["recovery_ops_detail_view"] = True
+            out_payload["recovery_ops_stale_reason"] = sc.get("stale_reason")
+            out_payload["recovery_ops_age_minutes"] = sc.get("age_minutes")
+            out_payload["recovery_ops_last_activity_at"] = sc.get("last_activity_at")
+            out_payload["recovery_ops_session_id"] = str(
+                getattr(ac, "recovery_session_id", None) or ""
+            )
+            out_payload["recovery_ops_cart_id"] = str(
+                getattr(ac, "zid_cart_id", None) or ""
+            )
+        else:
+            out_payload["recovery_ops_detail_view"] = False
     return out_payload
 
 
@@ -8758,6 +8788,7 @@ def _normal_recovery_cart_alert_list(
     nr_cart: Optional[str] = None,
     nr_test_run: Optional[str] = None,
     lifecycle: str = "active",
+    audience: str = "merchant",
 ) -> list[dict[str, Any]]:
     """
     سلات غير ‎VIP‎ بحالة ‎abandoned‎ — نفس أدوات التواصل اليدوي مع اقتراح ذكي منفصل.
@@ -8767,6 +8798,10 @@ def _normal_recovery_cart_alert_list(
     - ‎archived‎: ‎replied‎ / ‎clicked‎ / ‎returned‎ / ‎ignored‎ / ‎stopped‎ / ‎converted‎ / ‎blocked‎.
     - ‎all‎: كل المجموعات (سلوك قديم للاختبار فقط).
     ‎nr_test_run‎: مرشّح ‎session_id‎ لعزل جلسة تجربة (يُدمج مع ‎nr_session‎ إن وُجد).
+
+    ‎audience‎:
+    - ‎merchant‎: يستبعد «الخامل» من النشط، ويُظهره في السجل مع نص تجاري (بدون حذف ‎DB‎).
+    - ‎ops‎: نفس تقسيم النشط/السجل مع إبقاء الحقول التشغيلية في الحمولة.
     """
     try:
         _ensure_store_widget_schema()
@@ -8776,6 +8811,9 @@ def _normal_recovery_cart_alert_list(
         lc_raw = (lifecycle or "active").strip().lower()
         if lc_raw not in ("active", "archived", "all"):
             lc_raw = "active"
+        aud = (audience or "merchant").strip().lower()
+        if aud not in ("merchant", "ops"):
+            aud = "merchant"
         q = db.session.query(AbandonedCart).filter(AbandonedCart.status == "abandoned")
         _nr_scope = _normal_recovery_abandoned_scope_filter(dash_store)
         if _nr_scope is not None:
@@ -8806,17 +8844,57 @@ def _normal_recovery_cart_alert_list(
             cart_activity_utc=activity_map,
             max_pick_groups=max_pick,
         )
+        now_utc = datetime.now(timezone.utc)
+
+        def _lifecycle_bucket_ok(
+            *,
+            archived: bool,
+            coarse: str,
+            stale_flag: bool,
+        ) -> bool:
+            if lc_raw == "all":
+                return True
+            in_history = archived or (
+                stale_flag and coarse in ("pending", "sent")
+            )
+            operational_active = (not archived) and (not stale_flag)
+            if lc_raw == "active":
+                return operational_active
+            if lc_raw == "archived":
+                return in_history
+            return True
+
         for grp_sorted in picked:
             arch = _normal_recovery_group_is_archived(grp_sorted)
-            if lc_raw == "active" and arch:
-                continue
-            if lc_raw == "archived" and not arch:
+            bh = _normal_recovery_behavioral_merge_from_cart_group(grp_sorted)
+            log_u = _normal_recovery_recovery_log_statuses_lower_group(grp_sorted)
+            ac0 = grp_sorted[0]
+            pk = _normal_recovery_dashboard_phase_key(
+                ac0,
+                behavioral_override=bh,
+                recovery_log_statuses=log_u,
+            )
+            coarse = _normal_recovery_coarse_status(pk)
+            stale_flag, stale_meta = merchant_group_stale_meta(
+                grp_sorted,
+                store_slug=slug_for_act,
+                activity_map=activity_map,
+                coarse=coarse,
+                now_utc=now_utc,
+            )
+            if not _lifecycle_bucket_ok(
+                archived=arch,
+                coarse=coarse,
+                stale_flag=stale_flag,
+            ):
                 continue
             out.append(
                 _vip_dashboard_cart_alert_dict_from_group(
                     grp_sorted,
                     dash_store,
                     recovery_card_tier="normal",
+                    normal_recovery_stale_context=stale_meta,
+                    recovery_ops_detail_view=(aud == "ops"),
                 )
             )
             if len(out) >= int(limit_groups):
@@ -9044,9 +9122,8 @@ def dashboard_recovery_settings(request: Request):
     )
 
 
-@app.get("/dashboard/normal-carts")
-def dashboard_normal_carts(request: Request):
-    """السلال العادية — مراقبة أتمتة، قوالب حسب السبب، وتوقيت التسلسل."""
+def _normal_carts_dashboard_page_response(request: Request, *, audience: str) -> Any:
+    """عرض ‎HTML‎ المشترك — ‎audience=merchant‎ (تجاري) أو ‎ops‎ (فلاتر وتشخيص)."""
     from urllib.parse import urlencode
 
     from services.cartflow_observability_runtime import runtime_health_snapshot_readonly
@@ -9054,6 +9131,9 @@ def dashboard_normal_carts(request: Request):
 
     from services.merchant_whatsapp_readiness_ui import build_merchant_whatsapp_readiness_card
 
+    aud = (audience or "merchant").strip().lower()
+    if aud not in ("merchant", "ops"):
+        aud = "merchant"
     nr_sess = (request.query_params.get("nr_session") or "").strip()
     nr_cid = (request.query_params.get("nr_cart") or "").strip()
     nr_tr = (request.query_params.get("nr_test_run") or "").strip()
@@ -9063,24 +9143,31 @@ def dashboard_normal_carts(request: Request):
 
     def _nr_preserved_query(*, lifecycle: Optional[str] = None) -> str:
         d: dict[str, str] = {}
-        if nr_sess:
-            d["nr_session"] = nr_sess
-        if nr_cid:
-            d["nr_cart"] = nr_cid
-        if nr_tr:
-            d["nr_test_run"] = nr_tr
+        if aud == "ops":
+            if nr_sess:
+                d["nr_session"] = nr_sess
+            if nr_cid:
+                d["nr_cart"] = nr_cid
+            if nr_tr:
+                d["nr_test_run"] = nr_tr
         if lifecycle == "archived":
             d["nr_lifecycle"] = "archived"
         elif lifecycle == "all":
             d["nr_lifecycle"] = "all"
+        base = (
+            "/dashboard/normal-carts/operations"
+            if aud == "ops"
+            else "/dashboard/normal-carts"
+        )
         qs = urlencode(d)
-        return "/dashboard/normal-carts" + ("?" + qs if qs else "")
+        return base + ("?" + qs if qs else "")
 
     normal_recovery_alerts = _normal_recovery_cart_alert_list(
         nr_session=nr_sess or None,
         nr_cart=nr_cid or None,
         nr_test_run=nr_tr or None,
         lifecycle=nr_lc,
+        audience=aud,
     )
     normal_stats = dict(_normal_carts_dashboard_stats())
     normal_stats["normal_monitoring_card_count"] = len(normal_recovery_alerts)
@@ -9100,8 +9187,32 @@ def dashboard_normal_carts(request: Request):
             "cartflow_runtime_health": runtime_health_snapshot_readonly(),
             "onboarding_visibility": onboarding_visibility,
             "whatsapp_readiness_card": whatsapp_readiness_card,
+            "recovery_ops_dashboard": aud == "ops",
+            "normal_merchant_dashboard_url": "/dashboard/normal-carts",
+            "normal_operations_dashboard_url": "/dashboard/normal-carts/operations",
         },
     )
+
+
+@app.get("/dashboard/normal-carts")
+def dashboard_normal_carts(request: Request):
+    """السلال العادية — واجهة التاجر؛ معاملات ‎session/cart/test_run‎ تُوجَّه للوحة العمليات."""
+    nr_sess = (request.query_params.get("nr_session") or "").strip()
+    nr_cid = (request.query_params.get("nr_cart") or "").strip()
+    nr_tr = (request.query_params.get("nr_test_run") or "").strip()
+    if nr_sess or nr_cid or nr_tr:
+        raw_q = str(getattr(request.url, "query", None) or "").strip()
+        dest = "/dashboard/normal-carts/operations"
+        if raw_q:
+            dest += "?" + raw_q
+        return RedirectResponse(url=dest, status_code=302)
+    return _normal_carts_dashboard_page_response(request, audience="merchant")
+
+
+@app.get("/dashboard/normal-carts/operations")
+def dashboard_normal_carts_operations(request: Request):
+    """لوحة عمليات — فلاتر جلسة/سلة/تجربة وتشخيص خام لمسار الدعم."""
+    return _normal_carts_dashboard_page_response(request, audience="ops")
 
 
 @app.get("/dashboard/normal-recovery")
