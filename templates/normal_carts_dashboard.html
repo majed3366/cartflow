@@ -92,6 +92,22 @@
         <section class="mb-8 rounded-2xl border border-cyan-100/90 bg-white p-4 shadow-sm md:p-5" aria-labelledby="normal-active-heading">
           <h2 id="normal-active-heading" class="mb-1 text-lg font-bold text-slate-900">السلال النشطة والمراقبة</h2>
           <p class="mb-4 text-sm leading-relaxed text-slate-600">بطاقات مراقبة للأتمتة — بانتظار الإرسال، تسلسل الرسائل، التوقف، وغيرها. بدون زر تواصل يدوي مثل مسار VIP.</p>
+          {% set _nr_s = (request.query_params.get("nr_session") or "")|trim %}
+          {% set _nr_c = (request.query_params.get("nr_cart") or "")|trim %}
+          <form method="get" class="mb-3 grid grid-cols-1 gap-2 rounded-xl border border-slate-200 bg-slate-50/70 p-2.5 md:grid-cols-3" aria-label="تصفية السلال العادية حسب جلسة الاختبار">
+            <label class="text-xs text-slate-600">
+              session_id
+              <input type="text" name="nr_session" value="{{ _nr_s }}" class="mt-1 w-full rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs text-slate-800" placeholder="s_..." />
+            </label>
+            <label class="text-xs text-slate-600">
+              cart_id
+              <input type="text" name="nr_cart" value="{{ _nr_c }}" class="mt-1 w-full rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs text-slate-800" placeholder="cf_cart_..." />
+            </label>
+            <div class="flex items-end gap-2">
+              <button type="submit" class="rounded-lg bg-emerald-700 px-3 py-1.5 text-xs font-bold text-white">تطبيق الفلتر</button>
+              <a href="/dashboard/normal-carts" class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-700">إزالة الفلاتر</a>
+            </div>
+          </form>
           {% set nr_list = normal_recovery_alerts | default([]) %}
           <ul id="normal-recovery-alerts-ul" class="m-0 list-none space-y-4 p-0 {% if nr_list | length == 0 %}hidden{% endif %}" role="list">
             {% for vc in nr_list %}

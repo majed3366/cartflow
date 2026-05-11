@@ -299,6 +299,7 @@ from services.demo_sandbox_catalog import (
     SANDBOX_PRODUCT_KEY_BY_NUM as _DEMO_BEHAVIORAL_PRODUCT_BY_NUM,
     demo_template_context_extras,
 )
+from services.demo_pi_fresh_session import merge_demo_pi_fresh_query_into_context
 from services.vip_cart import (
     abandoned_cart_in_vip_operational_lane,
     apply_vip_cart_threshold_from_body,
@@ -9516,6 +9517,7 @@ def _demo_store_html_context(request: Request) -> dict[str, Any]:
         view = "list"
     ctx = {
         "request": request,
+        "demo_store_slug": "demo",
         "demo_page_title": title,
         "demo_h1": h1,
         "demo_view": view,
@@ -9523,7 +9525,7 @@ def _demo_store_html_context(request: Request) -> dict[str, Any]:
         "demo_behavioral_nav_base": "/demo/store",
     }
     ctx.update(demo_template_context_extras(nav_base="/demo/store"))
-    return ctx
+    return merge_demo_pi_fresh_query_into_context(request, ctx)
 
 
 @app.get("/demo/cart")
@@ -9550,6 +9552,7 @@ def demo_store_product(request: Request, product_id: int):
     h1 = "صفحة منتج — تنقّل تشغيلي"
     pctx = {
         "request": request,
+        "demo_store_slug": "demo",
         "demo_page_title": title,
         "demo_h1": h1,
         "demo_view": "product",
@@ -9557,7 +9560,9 @@ def demo_store_product(request: Request, product_id: int):
         "demo_behavioral_nav_base": "/demo/store",
     }
     pctx.update(demo_template_context_extras(nav_base="/demo/store"))
-    return templates.TemplateResponse(request, "demo_store.html", pctx)
+    return templates.TemplateResponse(
+        request, "demo_store.html", merge_demo_pi_fresh_query_into_context(request, pctx)
+    )
 
 
 def _demo_store2_html_context(request: Request) -> dict[str, Any]:
@@ -9587,7 +9592,7 @@ def _demo_store2_html_context(request: Request) -> dict[str, Any]:
         "demo_behavioral_nav_base": "/demo/store2",
     }
     ctx.update(demo_template_context_extras(nav_base="/demo/store2"))
-    return ctx
+    return merge_demo_pi_fresh_query_into_context(request, ctx)
 
 
 @app.get("/demo/store2")
@@ -9620,7 +9625,9 @@ def demo_store2_product(request: Request, product_id: int):
         "demo_behavioral_nav_base": "/demo/store2",
     }
     d2p.update(demo_template_context_extras(nav_base="/demo/store2"))
-    return templates.TemplateResponse(request, "demo_store.html", d2p)
+    return templates.TemplateResponse(
+        request, "demo_store.html", merge_demo_pi_fresh_query_into_context(request, d2p)
+    )
 
 
 @app.get("/dev/recovery-logs/{store_slug}")

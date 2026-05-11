@@ -400,6 +400,62 @@
 </head>
 <body>
   <script>window.CARTFLOW_STORE_SLUG = "{{ demo_store_slug|default('demo') }}";</script>
+  {% if demo_pi_fresh_applied %}
+  <script>
+    (function () {
+      try {
+        var sid = {{ demo_pi_fresh_session_id|tojson }};
+        var cid = {{ demo_pi_fresh_cart_id|tojson }};
+        var dkey = {{ (demo_cart_key|default('demo_cart'))|tojson }};
+        var ssKeys = [
+          "cartflow_recovery_session_id",
+          "cartflow_cart_event_id",
+          "cartflow_converted",
+          "cartflow_recovery_flow_started",
+          "cartflow_reason_tag",
+          "cartflow_reason_sub_tag",
+          "cartflow_recovery_last_activity",
+          "cartflow_demo_test_phone_sync_logged_v1",
+        ];
+        var i;
+        for (i = 0; i < ssKeys.length; i++) {
+          try {
+            sessionStorage.removeItem(ssKeys[i]);
+          } catch (eRm) {}
+        }
+        try {
+          localStorage.removeItem("cartflow_recovery_return_state_v1");
+        } catch (eR1) {}
+        try {
+          localStorage.removeItem("replyai_session");
+        } catch (eR2) {}
+        try {
+          localStorage.removeItem(dkey);
+          localStorage.setItem(dkey, "[]");
+        } catch (eDc) {}
+        try {
+          sessionStorage.setItem("cartflow_recovery_session_id", sid);
+          sessionStorage.setItem("cartflow_cart_event_id", cid);
+        } catch (eSs) {}
+        window.cart = [];
+        try {
+          var u = new URL(window.location.href);
+          u.searchParams.delete("fresh");
+          window.history.replaceState({}, "", u.pathname + u.search + u.hash);
+        } catch (eU) {}
+      } catch (e) {}
+    })();
+  </script>
+  {% endif %}
+  {% if demo_pi_fresh_error %}
+  <div
+    class="demo-pi-fresh-err"
+    style="margin:0;padding:10px 14px;background:#fef2f2;color:#991b1b;font-size:0.85rem;font-weight:600;border-bottom:1px solid #fecaca;"
+    role="status"
+  >
+    تعذّر بدء جلسة نظيفة: {{ demo_pi_fresh_error|e }} — تأكد من ‎cf_test_phone‎ ومن أن المتجر ‎demo‎ مسموح لمسار الاختبار.
+  </div>
+  {% endif %}
   <script>
     (function () {
       try {
@@ -611,6 +667,16 @@
       </div>
       <div class="topbar-actions">
         <button type="button" class="btn-replay" id="cf-btn-replay-demo" title="إعادة عرض المقدّمة ومسار التجربة">إعادة التجربة</button>
+        {% set _cf_q_phone = (request.query_params.get('cf_test_phone') or '')|trim %}
+        {% if _cf_q_phone %}
+        <a
+          class="btn-replay"
+          href="{{ (demo_behavioral_nav_base|default('/demo/store')) ~ '?cf_test_phone=' ~ (_cf_q_phone|urlencode) ~ '&fresh=1' }}"
+          title="جلسة اختبار جديدة: مسح السلة والحالة وتوليد session_id/cart_id جديدين"
+        >
+          بدء جلسة اختبار نظيفة
+        </a>
+        {% endif %}
       </div>
     </div>
   </div>
@@ -637,6 +703,14 @@
       {% endif %}
     </p>
     <p class="store-note">المتجر: <code>{{ demo_store_slug|default('demo') }}</code> — السلة من <code>localStorage</code> (<code>{{ demo_cart_key|default('demo_cart') }}</code>)</p>
+    {% if demo_pi_fresh_applied %}
+    <p class="store-note">
+      تم تطبيق جلسة نظيفة: <code>session_id={{ demo_pi_fresh_session_id }}</code>،
+      <code>cart_id={{ demo_pi_fresh_cart_id }}</code>،
+      <code>reason_tag=price_high</code>.
+      <a href="{{ demo_pi_fresh_normal_dashboard_url|default('/dashboard/normal-carts') }}">عرض هذه الجلسة في لوحة السلال العادية</a>
+    </p>
+    {% endif %}
   </div>
   <script>
     window.CF_DEMO_NAV_BASE = {{ (demo_catalog_nav_base|default('/demo/store'))|tojson }};
