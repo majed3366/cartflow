@@ -939,7 +939,12 @@ class NormalRecoveryDashboardStatusTests(unittest.TestCase):
         db.session.add(ac)
         db.session.commit()
         client = TestClient(app)
-        r = client.get("/dashboard/normal-carts")
+        from urllib.parse import quote
+
+        r = client.get(
+            "/dashboard/normal-carts?nr_lifecycle=archived&nr_session="
+            + quote(sid, safe="")
+        )
         self.assertEqual(r.status_code, 200, (r.text or "")[:2000])
         html = r.text or ""
         self.assertTrue(
@@ -1009,7 +1014,12 @@ class NormalRecoveryDashboardStatusTests(unittest.TestCase):
         self.assertEqual(payload.get("normal_recovery_blocker_key"), "missing_customer_phone")
         ds = _dashboard_recovery_store_row()
         if ds is not None and int(ac.store_id or 0) == int(ds.id):
-            rd = client.get("/dashboard/normal-carts")
+            from urllib.parse import quote
+
+            rd = client.get(
+                "/dashboard/normal-carts?nr_lifecycle=archived&nr_session="
+                + quote(sid, safe="")
+            )
             self.assertEqual(rd.status_code, 200)
             html = rd.text or ""
             self.assertIn(
@@ -1017,6 +1027,73 @@ class NormalRecoveryDashboardStatusTests(unittest.TestCase):
                 html,
             )
             self.assertIn('data-normal-recovery-status="blocked"', html)
+
+    def test_normal_recovery_lifecycle_replied_archived_not_active(self) -> None:
+        st = self._store_attempts_1()
+        slug = (st.zid_store_id or "demo").strip()
+        sid = f"nr-lc-arch-{self._suffix}"
+        zid = f"zid-lc-arch-{self._suffix}"
+        raw = {"cf_behavioral": {"customer_replied": True}}
+        ac = AbandonedCart(
+            store_id=int(st.id),
+            zid_cart_id=zid,
+            recovery_session_id=sid,
+            customer_phone="966501111114",
+            status="abandoned",
+            vip_mode=False,
+            cart_value=33.0,
+            raw_payload=json.dumps(raw, ensure_ascii=False),
+        )
+        db.session.add(ac)
+        db.session.flush()
+        db.session.add(
+            CartRecoveryLog(
+                store_slug=slug,
+                session_id=sid,
+                cart_id=zid,
+                phone="966501111114",
+                message="m1",
+                status="mock_sent",
+                step=1,
+                created_at=datetime.now(timezone.utc),
+                sent_at=datetime.now(timezone.utc),
+            )
+        )
+        db.session.commit()
+        active = _normal_recovery_cart_alert_list(
+            nr_session=sid, lifecycle="active", limit_groups=20
+        )
+        self.assertEqual(len(active), 0)
+        archived = _normal_recovery_cart_alert_list(
+            nr_session=sid, lifecycle="archived", limit_groups=20
+        )
+        self.assertEqual(len(archived), 1)
+        self.assertEqual(
+            (archived[0].get("normal_recovery_status") or "").strip(), "replied"
+        )
+
+    def test_normal_recovery_lifecycle_pending_in_active(self) -> None:
+        st = self._store_attempts_1()
+        sid = f"nr-lc-pen-{self._suffix}"
+        zid = f"zid-lc-pen-{self._suffix}"
+        ac = AbandonedCart(
+            store_id=int(st.id),
+            zid_cart_id=zid,
+            recovery_session_id=sid,
+            customer_phone="966501111115",
+            status="abandoned",
+            vip_mode=False,
+            cart_value=44.0,
+        )
+        db.session.add(ac)
+        db.session.commit()
+        active = _normal_recovery_cart_alert_list(
+            nr_session=sid, lifecycle="active", limit_groups=20
+        )
+        self.assertEqual(len(active), 1)
+        self.assertEqual(
+            (active[0].get("normal_recovery_status") or "").strip(), "pending"
+        )
 
 
 if __name__ == "__main__":

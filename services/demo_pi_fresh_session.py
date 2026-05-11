@@ -268,7 +268,7 @@ def apply_demo_pi_fresh_start(
 
     dash = (
         f"/dashboard/normal-carts?nr_session={quote(sid, safe='')}"
-        f"&nr_cart={quote(cid, safe='')}"
+        f"&nr_cart={quote(cid, safe='')}&nr_lifecycle=active"
     )
     return {
         "ok": True,

@@ -89,12 +89,32 @@
           </div>
         </section>
 
+        {% set _nr_lc = (nr_lifecycle_mode|default('active'))|trim|lower %}
         <section class="mb-8 rounded-2xl border border-cyan-100/90 bg-white p-4 shadow-sm md:p-5" aria-labelledby="normal-active-heading">
-          <h2 id="normal-active-heading" class="mb-1 text-lg font-bold text-slate-900">السلال النشطة والمراقبة</h2>
-          <p class="mb-4 text-sm leading-relaxed text-slate-600">بطاقات مراقبة للأتمتة — بانتظار الإرسال، تسلسل الرسائل، التوقف، وغيرها. بدون زر تواصل يدوي مثل مسار VIP.</p>
+          <h2 id="normal-active-heading" class="mb-1 text-lg font-bold text-slate-900">
+            {% if _nr_lc == 'archived' %}سجل السلال العادية (مُنهية){% else %}السلال النشطة والمراقبة{% endif %}
+          </h2>
+          <p class="mb-3 text-sm leading-relaxed text-slate-600">
+            {% if _nr_lc == 'archived' %}
+            بطاقات بلا إجراء تشغيلي حالي: رد العميل، عودة، تجاهل، إيقاف، إلخ. البيانات كاملة للدعم — العرض فقط مُقسّم عن القائمة النشطة.
+            {% else %}
+            بطاقات التشغيل الحالي فقط (بانتظار الإرسال، ضمن التسلسل، أو بحاجة متابعة). الحالات المُنهية في «عرض السجل».
+            {% endif %}
+          </p>
+          <div class="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 bg-slate-50/80 px-2.5 py-2" role="navigation" aria-label="تبديل عرض السلال العادية">
+            <span class="text-[10px] font-bold text-slate-500">عرض القائمة</span>
+            <div class="cf-segment inline-flex rounded-lg border border-slate-200 bg-white p-0.5">
+              <a href="{{ normal_carts_url_active|default('/dashboard/normal-carts') }}" class="cf-seg-btn {% if _nr_lc != 'archived' %}cf-seg-btn--active{% else %}cf-seg-btn--inactive{% endif %} rounded-md px-2.5 py-1 text-[10px] no-underline">نشطة</a>
+              <a href="{{ normal_carts_url_archived|default('/dashboard/normal-carts?nr_lifecycle=archived') }}" class="cf-seg-btn {% if _nr_lc == 'archived' %}cf-seg-btn--active{% else %}cf-seg-btn--inactive{% endif %} rounded-md px-2.5 py-1 text-[10px] no-underline">عرض السجل</a>
+            </div>
+          </div>
           {% set _nr_s = (request.query_params.get("nr_session") or "")|trim %}
           {% set _nr_c = (request.query_params.get("nr_cart") or "")|trim %}
-          <form method="get" class="mb-3 grid grid-cols-1 gap-2 rounded-xl border border-slate-200 bg-slate-50/70 p-2.5 md:grid-cols-3" aria-label="تصفية السلال العادية حسب جلسة الاختبار">
+          {% set _nr_tr = (request.query_params.get("nr_test_run") or "")|trim %}
+          <form method="get" class="mb-3 grid grid-cols-1 gap-2 rounded-xl border border-slate-200 bg-slate-50/70 p-2.5 md:grid-cols-4" aria-label="تصفية السلال العادية حسب جلسة الاختبار">
+            {% if _nr_lc == 'archived' %}
+            <input type="hidden" name="nr_lifecycle" value="archived" />
+            {% endif %}
             <label class="text-xs text-slate-600">
               session_id
               <input type="text" name="nr_session" value="{{ _nr_s }}" class="mt-1 w-full rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs text-slate-800" placeholder="s_..." />
@@ -102,6 +122,10 @@
             <label class="text-xs text-slate-600">
               cart_id
               <input type="text" name="nr_cart" value="{{ _nr_c }}" class="mt-1 w-full rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs text-slate-800" placeholder="cf_cart_..." />
+            </label>
+            <label class="text-xs text-slate-600">
+              test_run_id
+              <input type="text" name="nr_test_run" value="{{ _nr_tr }}" class="mt-1 w-full rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs text-slate-800" title="نفس فلتر session_id لعزل جلسة التجربة (يُفضّل مع رابط fresh من المتجر التجريبي)" placeholder="نفس session_id…" />
             </label>
             <div class="flex items-end gap-2">
               <button type="submit" class="rounded-lg bg-emerald-700 px-3 py-1.5 text-xs font-bold text-white">تطبيق الفلتر</button>

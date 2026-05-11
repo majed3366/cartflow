@@ -275,25 +275,22 @@ class CartflowIdentityDbTests(unittest.TestCase):
 
     def test_normal_carts_dashboard_html_shows_identity_trust_banner(self) -> None:
         """Merchant-safe copy and marker must appear on normal carts dashboard HTML."""
-        s1 = Store(
-            zid_store_id=f"id_st_h1_{self._suffix}",
+        st = Store(
+            zid_store_id=f"id_st_h_{self._suffix}",
             recovery_delay=1,
             recovery_delay_unit="minutes",
             recovery_attempts=1,
         )
-        s2 = Store(
-            zid_store_id=f"id_st_h2_{self._suffix}",
-            recovery_delay=1,
-            recovery_delay_unit="minutes",
-            recovery_attempts=1,
-        )
-        db.session.add_all([s1, s2])
+        db.session.add(st)
         db.session.flush()
         raw = {"cf_behavioral": {IDENTITY_TRUST_FAILED_KEY: True}}
+        sid_h = f"id_sess_h_{self._suffix}"
+        zid_h = f"cid_id_h_{self._suffix}"
         ac = AbandonedCart(
-            store_id=int(s2.id),
-            zid_cart_id=f"cid_id_h_{self._suffix}",
-            recovery_session_id=f"id_sess_h_{self._suffix}",
+            store_id=int(st.id),
+            zid_cart_id=zid_h,
+            recovery_session_id=sid_h,
+            customer_phone="966501111116",
             status="abandoned",
             vip_mode=False,
             cart_value=12.0,
@@ -302,7 +299,9 @@ class CartflowIdentityDbTests(unittest.TestCase):
         db.session.add(ac)
         db.session.commit()
         client = TestClient(app)
-        r = client.get("/dashboard/normal-carts")
+        from urllib.parse import quote
+
+        r = client.get("/dashboard/normal-carts?nr_session=" + quote(sid_h, safe=""))
         self.assertEqual(r.status_code, 200, (r.text or "")[:1200])
         html = r.text or ""
         self.assertIn("data-normal-recovery-identity-trust", html)

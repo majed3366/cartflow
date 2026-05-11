@@ -2758,6 +2758,35 @@ def _normal_recovery_coarse_status(phase_key: str) -> str:
     return "pending"
 
 
+# حالات واجهة «مُنهية» — تُعرض في عرض السجل وليس في قائمة التشغيل الافتراضية.
+_NORMAL_RECOVERY_ARCHIVED_COARSE_STATUSES = frozenset(
+    {
+        "replied",
+        "clicked",
+        "returned",
+        "ignored",
+        "stopped",
+        "converted",
+        "blocked",
+    }
+)
+
+
+def _normal_recovery_group_is_archived(grp_sorted: list[AbandonedCart]) -> bool:
+    """تصنيف مجموعة صفوف ‎AbandonedCart‎ المجمّعة لنفس الجلسة/السلة — أرشيف مقابل نشط."""
+    if not grp_sorted:
+        return False
+    bh = _normal_recovery_behavioral_merge_from_cart_group(grp_sorted)
+    log_u = _normal_recovery_recovery_log_statuses_lower_group(grp_sorted)
+    ac0 = grp_sorted[0]
+    pk = _normal_recovery_dashboard_phase_key(
+        ac0,
+        behavioral_override=bh,
+        recovery_log_statuses=log_u,
+    )
+    return _normal_recovery_coarse_status(pk) in _NORMAL_RECOVERY_ARCHIVED_COARSE_STATUSES
+
+
 def _store_row_for_abandoned_cart(ac: AbandonedCart) -> Optional[Store]:
     """صف ‎Store‎ لحساب ‎max_recovery_attempts‎ لبطاقة الاسترجاع العادي."""
     sid_raw = getattr(ac, "store_id", None)
@@ -8282,6 +8311,7 @@ def _vip_pick_priority_cart_groups(
     full_rows: list[AbandonedCart],
     *,
     cart_activity_utc: Optional[dict[int, datetime]] = None,
+    max_pick_groups: int = 24,
 ) -> list[list[AbandonedCart]]:
     act = cart_activity_utc if isinstance(cart_activity_utc, dict) else None
 
@@ -8320,11 +8350,12 @@ def _vip_pick_priority_cart_groups(
     )
 
     picked_groups: list[list[AbandonedCart]] = []
+    cap = max(1, int(max_pick_groups))
     for dk in sorted_group_keys:
         grp = groups[dk]
         grp_sorted = sorted(grp, key=_ts_norm, reverse=True)
         picked_groups.append(grp_sorted)
-        if len(picked_groups) >= 24:
+        if len(picked_groups) >= cap:
             break
     return picked_groups
 
@@ -8725,13 +8756,26 @@ def _normal_recovery_cart_alert_list(
     *,
     nr_session: Optional[str] = None,
     nr_cart: Optional[str] = None,
+    nr_test_run: Optional[str] = None,
+    lifecycle: str = "active",
 ) -> list[dict[str, Any]]:
-    """سلات غير ‎VIP‎ بحالة ‎abandoned‎ — نفس أدوات التواصل اليدوي مع اقتراح ذكي منفصل."""
+    """
+    سلات غير ‎VIP‎ بحالة ‎abandoned‎ — نفس أدوات التواصل اليدوي مع اقتراح ذكي منفصل.
+
+    ‎lifecycle‎:
+    - ‎active‎ (افتراضي): ‎pending‎ / ‎sent‎ فقط — بدون حالات مُنهية في القائمة الافتراضية.
+    - ‎archived‎: ‎replied‎ / ‎clicked‎ / ‎returned‎ / ‎ignored‎ / ‎stopped‎ / ‎converted‎ / ‎blocked‎.
+    - ‎all‎: كل المجموعات (سلوك قديم للاختبار فقط).
+    ‎nr_test_run‎: مرشّح ‎session_id‎ لعزل جلسة تجربة (يُدمج مع ‎nr_session‎ إن وُجد).
+    """
     try:
         _ensure_store_widget_schema()
         db.create_all()
         _ensure_default_store_for_recovery()
         dash_store = _dashboard_recovery_store_row()
+        lc_raw = (lifecycle or "active").strip().lower()
+        if lc_raw not in ("active", "archived", "all"):
+            lc_raw = "active"
         q = db.session.query(AbandonedCart).filter(AbandonedCart.status == "abandoned")
         _nr_scope = _normal_recovery_abandoned_scope_filter(dash_store)
         if _nr_scope is not None:
@@ -8739,14 +8783,16 @@ def _normal_recovery_cart_alert_list(
         vip_th = merchant_vip_threshold_int(dash_store)
         if vip_th is not None:
             q = q.filter(func.coalesce(AbandonedCart.cart_value, 0) < float(vip_th))
-        ns = (nr_session or "").strip()[:512]
+        ns = (nr_session or nr_test_run or "").strip()[:512]
         if ns:
             q = q.filter(AbandonedCart.recovery_session_id == ns)
         nc = (nr_cart or "").strip()[:255]
         if nc:
             q = q.filter(AbandonedCart.zid_cart_id == nc)
+        row_cap = 500 if lc_raw == "all" else 220
+        max_pick = 24 if lc_raw == "all" else 96
         full_rows = list(
-            q.order_by(AbandonedCart.last_seen_at.desc()).limit(500).all()
+            q.order_by(AbandonedCart.last_seen_at.desc()).limit(row_cap).all()
         )
         slug_for_act = (
             (getattr(dash_store, "zid_store_id", None) or "").strip()
@@ -8755,9 +8801,17 @@ def _normal_recovery_cart_alert_list(
         )
         activity_map = _normal_recovery_cart_activity_rank_map(full_rows, slug_for_act)
         out: list[dict[str, Any]] = []
-        for grp_sorted in _vip_pick_priority_cart_groups(
-            full_rows, cart_activity_utc=activity_map
-        )[:limit_groups]:
+        picked = _vip_pick_priority_cart_groups(
+            full_rows,
+            cart_activity_utc=activity_map,
+            max_pick_groups=max_pick,
+        )
+        for grp_sorted in picked:
+            arch = _normal_recovery_group_is_archived(grp_sorted)
+            if lc_raw == "active" and arch:
+                continue
+            if lc_raw == "archived" and not arch:
+                continue
             out.append(
                 _vip_dashboard_cart_alert_dict_from_group(
                     grp_sorted,
@@ -8765,6 +8819,8 @@ def _normal_recovery_cart_alert_list(
                     recovery_card_tier="normal",
                 )
             )
+            if len(out) >= int(limit_groups):
+                break
         return out
     except (SQLAlchemyError, OSError) as e:
         db.session.rollback()
@@ -8991,6 +9047,8 @@ def dashboard_recovery_settings(request: Request):
 @app.get("/dashboard/normal-carts")
 def dashboard_normal_carts(request: Request):
     """السلال العادية — مراقبة أتمتة، قوالب حسب السبب، وتوقيت التسلسل."""
+    from urllib.parse import urlencode
+
     from services.cartflow_observability_runtime import runtime_health_snapshot_readonly
     from services.cartflow_onboarding_readiness import get_onboarding_dashboard_visibility
 
@@ -8998,9 +9056,31 @@ def dashboard_normal_carts(request: Request):
 
     nr_sess = (request.query_params.get("nr_session") or "").strip()
     nr_cid = (request.query_params.get("nr_cart") or "").strip()
+    nr_tr = (request.query_params.get("nr_test_run") or "").strip()
+    nr_lc = (request.query_params.get("nr_lifecycle") or "active").strip().lower()
+    if nr_lc not in ("active", "archived", "all"):
+        nr_lc = "active"
+
+    def _nr_preserved_query(*, lifecycle: Optional[str] = None) -> str:
+        d: dict[str, str] = {}
+        if nr_sess:
+            d["nr_session"] = nr_sess
+        if nr_cid:
+            d["nr_cart"] = nr_cid
+        if nr_tr:
+            d["nr_test_run"] = nr_tr
+        if lifecycle == "archived":
+            d["nr_lifecycle"] = "archived"
+        elif lifecycle == "all":
+            d["nr_lifecycle"] = "all"
+        qs = urlencode(d)
+        return "/dashboard/normal-carts" + ("?" + qs if qs else "")
+
     normal_recovery_alerts = _normal_recovery_cart_alert_list(
         nr_session=nr_sess or None,
         nr_cart=nr_cid or None,
+        nr_test_run=nr_tr or None,
+        lifecycle=nr_lc,
     )
     normal_stats = dict(_normal_carts_dashboard_stats())
     normal_stats["normal_monitoring_card_count"] = len(normal_recovery_alerts)
@@ -9014,6 +9094,9 @@ def dashboard_normal_carts(request: Request):
             "request": request,
             "normal_recovery_alerts": normal_recovery_alerts,
             "normal_stats": normal_stats,
+            "nr_lifecycle_mode": nr_lc,
+            "normal_carts_url_active": _nr_preserved_query(lifecycle="active"),
+            "normal_carts_url_archived": _nr_preserved_query(lifecycle="archived"),
             "cartflow_runtime_health": runtime_health_snapshot_readonly(),
             "onboarding_visibility": onboarding_visibility,
             "whatsapp_readiness_card": whatsapp_readiness_card,
