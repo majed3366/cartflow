@@ -60,10 +60,11 @@ def _p(
     cheaper_than: Tuple[str, ...] = (),
     available: bool = True,
     image_seed: str = "",
+    product_family: str = "",
 ) -> Dict[str, Any]:
     seed = image_seed or key
     url_path = product_demo_url("/demo/store", key)
-    return {
+    out: Dict[str, Any] = {
         "key": key,
         "id": f"demo_{key}",
         "sku": f"DEMO-{key.upper().replace('_', '-')}",
@@ -71,6 +72,7 @@ def _p(
         "price": float(price),
         "unit_price": float(price),
         "category": category,
+        "normalized_category": (category or "").strip(),
         "description": description,
         "short": short,
         "warranty_info": warranty_info,
@@ -82,6 +84,10 @@ def _p(
         "related_keys": list(related),
         "cheaper_alternative_keys": list(cheaper_than),
     }
+    fam = (product_family or "").strip()
+    if fam:
+        out["product_family"] = fam[:64]
+    return out
 
 
 SANDBOX_PRODUCTS: Dict[str, Dict[str, Any]] = {
@@ -100,6 +106,7 @@ SANDBOX_PRODUCTS: Dict[str, Dict[str, Any]] = {
         related=("earbuds", "hp_air", "charger"),
         cheaper_than=("earbuds", "hp_air", "hp_stick"),
         image_seed="ts-pro-hp",
+        product_family="truesound_headphones",
     ),
     "earbuds": _p(
         "earbuds",
@@ -116,6 +123,7 @@ SANDBOX_PRODUCTS: Dict[str, Dict[str, Any]] = {
         related=("hp_pro", "hp_air", "charger"),
         cheaper_than=("hp_air", "hp_stick"),
         image_seed="ts-lite-hp",
+        product_family="truesound_headphones",
     ),
     "hp_air": _p(
         "hp_air",
@@ -131,6 +139,7 @@ SANDBOX_PRODUCTS: Dict[str, Dict[str, Any]] = {
         related=("earbuds", "hp_stick", "charger"),
         cheaper_than=("hp_stick",),
         image_seed="ts-air-hp",
+        product_family="truesound_headphones",
     ),
     "hp_stick": _p(
         "hp_stick",
@@ -146,6 +155,7 @@ SANDBOX_PRODUCTS: Dict[str, Dict[str, Any]] = {
         related=("hp_air", "charger"),
         cheaper_than=(),
         image_seed="soundstick",
+        product_family="truesound_headphones",
     ),
     "watch_pro": _p(
         "watch_pro",
@@ -162,6 +172,7 @@ SANDBOX_PRODUCTS: Dict[str, Dict[str, Any]] = {
         related=("watch_sport", "watch_band"),
         cheaper_than=("watch_sport",),
         image_seed="horizon-steel",
+        product_family="horizon_timepieces",
     ),
     "watch_sport": _p(
         "watch_sport",
@@ -177,6 +188,7 @@ SANDBOX_PRODUCTS: Dict[str, Dict[str, Any]] = {
         related=("watch_pro", "watch_band"),
         cheaper_than=(),
         image_seed="pulse-sport",
+        product_family="horizon_timepieces",
     ),
     "perfume": _p(
         "perfume",
@@ -192,6 +204,7 @@ SANDBOX_PRODUCTS: Dict[str, Dict[str, Any]] = {
         related=("perfume_velvet",),
         cheaper_than=("perfume_velvet",),
         image_seed="amber-oud",
+        product_family="studio_scent",
     ),
     "perfume_velvet": _p(
         "perfume_velvet",
@@ -207,6 +220,7 @@ SANDBOX_PRODUCTS: Dict[str, Dict[str, Any]] = {
         related=("perfume",),
         cheaper_than=(),
         image_seed="velvet-musk",
+        product_family="studio_scent",
     ),
     "charger": _p(
         "charger",
@@ -222,6 +236,7 @@ SANDBOX_PRODUCTS: Dict[str, Dict[str, Any]] = {
         related=("earbuds", "hp_pro"),
         cheaper_than=(),
         image_seed="nano-20w",
+        product_family="usb_power",
     ),
     "watch_band": _p(
         "watch_band",
@@ -237,6 +252,7 @@ SANDBOX_PRODUCTS: Dict[str, Dict[str, Any]] = {
         related=("watch_pro", "watch_sport"),
         cheaper_than=(),
         image_seed="raven-band",
+        product_family="horizon_timepieces",
     ),
     "wallet": _p(
         "wallet",
@@ -252,6 +268,7 @@ SANDBOX_PRODUCTS: Dict[str, Dict[str, Any]] = {
         related=("hoodie",),
         cheaper_than=(),
         image_seed="mira-wallet",
+        product_family="travel_slg",
     ),
     "hoodie": _p(
         "hoodie",
@@ -267,6 +284,7 @@ SANDBOX_PRODUCTS: Dict[str, Dict[str, Any]] = {
         related=("wallet",),
         cheaper_than=(),
         image_seed="luxe-hoodie",
+        product_family="luxe_apparel",
     ),
 }
 
@@ -284,6 +302,8 @@ def sandbox_product_js_map(nav_base: str = "/demo/store") -> Dict[str, Any]:
             "price": p["price"],
             "unit_price": p["unit_price"],
             "category": p["category"],
+            "normalized_category": p.get("normalized_category") or (p["category"] or "").strip(),
+            "product_family": p.get("product_family", ""),
             "description": p["description"],
             "short": p["short"],
             "warranty_info": p["warranty_info"],
@@ -330,16 +350,21 @@ def merchant_catalog_for_intelligence_sync(nav_base: str = "/demo/store") -> Dic
         p = SANDBOX_PRODUCTS[k]
         if not p.get("available", True):
             continue
-        prods.append(
-            {
-                "id": p["id"],
-                "name": p["name"],
-                "price": p["price"],
-                "category": p["category"],
-                "url": product_demo_url(nb, k),
-                "available": True,
-            }
-        )
+        row: Dict[str, Any] = {
+            "id": p["id"],
+            "name": p["name"],
+            "price": p["price"],
+            "category": p["category"],
+            "url": product_demo_url(nb, k),
+            "available": True,
+        }
+        nc = (p.get("normalized_category") or p.get("category") or "").strip()
+        if nc:
+            row["normalized_category"] = nc[:120]
+        fam = (p.get("product_family") or "").strip()
+        if fam:
+            row["product_family"] = fam[:64]
+        prods.append(row)
     return {"version": 1, "products": prods}
 
 

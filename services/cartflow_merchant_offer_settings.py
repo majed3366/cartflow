@@ -162,16 +162,24 @@ def normalize_product_catalog(raw: Any) -> Dict[str, Any]:
         if avail is None:
             avail = p.get("in_stock")
         available = True if avail is None else _boolish(avail, True)
-        cleaned.append(
-            {
-                "id": pid_s or name_s[:64],
-                "name": name_s,
-                "price": round(price_v, 2),
-                "category": cat_s,
-                "url": url_s,
-                "available": available,
-            }
-        )
+        row: Dict[str, Any] = {
+            "id": pid_s or name_s[:64],
+            "name": name_s,
+            "price": round(price_v, 2),
+            "category": cat_s,
+            "url": url_s,
+            "available": available,
+        }
+        nc = p.get("normalized_category")
+        if isinstance(nc, str) and nc.strip():
+            row["normalized_category"] = nc.strip()[:120]
+        fam = p.get("product_family")
+        if isinstance(fam, str) and fam.strip():
+            row["product_family"] = fam.strip()[:64]
+        ptype = p.get("product_type")
+        if isinstance(ptype, str) and ptype.strip():
+            row["product_type"] = ptype.strip()[:64]
+        cleaned.append(row)
     out["products"] = cleaned
     return out
 

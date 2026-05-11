@@ -37,16 +37,17 @@ class ProductIntelligenceTests(unittest.TestCase):
             url="https://x/b",
             available=True,
         )
-        alt = select_cheaper_alternative(
+        pick = select_cheaper_alternative(
             primary=primary,
             cart_entries=[cart_other],
             catalog_entries=[],
             recovery_category_label="إلكترونيات",
         )
-        self.assertIsNotNone(alt)
-        assert alt is not None
-        self.assertEqual(alt.product_id, "b")
-        self.assertLess(alt.price, primary.price)
+        self.assertIsNotNone(pick.entry)
+        assert pick.entry is not None
+        self.assertEqual(pick.entry.product_id, "b")
+        self.assertLess(pick.entry.price, primary.price)
+        self.assertGreater(pick.cheaper_candidate_score, 0.0)
 
     def test_select_cheaper_rejects_higher_price(self) -> None:
         primary = CatalogEntry(
@@ -65,13 +66,14 @@ class ProductIntelligenceTests(unittest.TestCase):
             url="",
             available=True,
         )
-        alt = select_cheaper_alternative(
+        pick = select_cheaper_alternative(
             primary=primary,
             cart_entries=[bad],
             catalog_entries=[],
             recovery_category_label="إلكترونيات",
         )
-        self.assertIsNone(alt)
+        self.assertIsNone(pick.entry)
+        self.assertEqual(pick.fallback_reason, "no_eligible_cheaper_in_category")
 
     def test_offer_requires_code_and_reason(self) -> None:
         st = SimpleNamespace(
@@ -170,6 +172,9 @@ class ProductIntelligenceTests(unittest.TestCase):
         self.assertIsNotNone(snap.alternative)
         assert snap.alternative is not None
         self.assertLess(snap.alternative.price, 200.0)
+        self.assertIsNotNone(snap.alternative_score)
+        assert snap.alternative_score is not None
+        self.assertGreater(snap.alternative_score, 0.0)
 
     def test_cheaper_message_fallback_no_fake_product(self) -> None:
         vars_map = {
@@ -182,6 +187,8 @@ class ProductIntelligenceTests(unittest.TestCase):
             "current_product_price_display": "",
             "merchant_offer_line": "",
             "merchant_offer_applied": "0",
+            "cheaper_candidate_score": "",
+            "cheaper_fallback_reason": "no_eligible_cheaper_in_category",
         }
         msg = build_continuation_message(CONTINUATION_ACTION_SEND_CHEAPER, vars_map)
         self.assertIn("ميزانيتك", msg)
@@ -205,6 +212,96 @@ class ProductIntelligenceTests(unittest.TestCase):
         )
         self.assertEqual(d.action, CONTINUATION_ACTION_SEND_CHEAPER)
         self.assertTrue(d.should_send)
+
+    def test_select_cheaper_rejects_cross_category_perfume(self) -> None:
+        primary = CatalogEntry(
+            product_id="hp1",
+            name="TrueSound Pro — سماعة",
+            price=449.0,
+            category="إلكترونيات",
+            url="",
+            available=True,
+        )
+        wrong_cat = CatalogEntry(
+            product_id="p1",
+            name="Velvet Musk — عطر",
+            price=49.0,
+            category="عطور",
+            url="https://x/p",
+            available=True,
+        )
+        pick = select_cheaper_alternative(
+            primary=primary,
+            cart_entries=[wrong_cat],
+            catalog_entries=[],
+            recovery_category_label="إلكترونيات",
+        )
+        self.assertIsNone(pick.entry)
+
+    def test_select_cheaper_synonym_beauty_categories(self) -> None:
+        primary = CatalogEntry(
+            product_id="a",
+            name="Amber Oud — عطر",
+            price=289.0,
+            category="عطور",
+            url="",
+            available=True,
+        )
+        cheaper = CatalogEntry(
+            product_id="b",
+            name="Velvet Musk — عطر يومي",
+            price=149.0,
+            category="العناية والتجميل",
+            url="https://x/b",
+            available=True,
+        )
+        pick = select_cheaper_alternative(
+            primary=primary,
+            cart_entries=[cheaper],
+            catalog_entries=[],
+            recovery_category_label=None,
+        )
+        self.assertIsNotNone(pick.entry)
+        assert pick.entry is not None
+        self.assertEqual(pick.entry.product_id, "b")
+
+    def test_select_cheaper_prefers_same_product_family(self) -> None:
+        primary = CatalogEntry(
+            product_id="p",
+            name="TrueSound Pro — سماعة",
+            price=449.0,
+            category="إلكترونيات",
+            url="",
+            available=True,
+            product_family="truesound_headphones",
+        )
+        charger = CatalogEntry(
+            product_id="c",
+            name="Nano charger",
+            price=29.0,
+            category="إلكترونيات",
+            url="https://x/c",
+            available=True,
+            product_family="usb_power",
+        )
+        earbuds = CatalogEntry(
+            product_id="e",
+            name="TrueSound Lite — سماعة",
+            price=199.0,
+            category="إلكترونيات",
+            url="https://x/e",
+            available=True,
+            product_family="truesound_headphones",
+        )
+        pick = select_cheaper_alternative(
+            primary=primary,
+            cart_entries=[charger, earbuds],
+            catalog_entries=[],
+            recovery_category_label="إلكترونيات",
+        )
+        self.assertIsNotNone(pick.entry)
+        assert pick.entry is not None
+        self.assertEqual(pick.entry.product_id, "e")
 
 
 if __name__ == "__main__":

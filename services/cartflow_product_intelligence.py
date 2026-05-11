@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Optional
@@ -42,6 +43,9 @@ class CatalogEntry:
     category: str
     url: str
     available: bool
+    normalized_category: str = ""
+    product_family: str = ""
+    product_type: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -55,6 +59,15 @@ class ProductIntelligenceSnapshot:
     cart_total: Optional[float]
     alternative: Optional[CatalogEntry]
     cart_products: tuple[CatalogEntry, ...]
+    alternative_score: Optional[float] = None
+    fallback_reason: Optional[str] = None
+
+
+@dataclass(frozen=True, slots=True)
+class CheaperAlternativeResult:
+    entry: Optional[CatalogEntry]
+    cheaper_candidate_score: float
+    fallback_reason: str
 
 
 def _norm_bucket(label: str) -> str:
@@ -84,19 +97,40 @@ def _line_item_url(it: dict[str, Any]) -> str:
     return str(u).strip()[:2048]
 
 
+def _nested_product(it: dict[str, Any]) -> dict[str, Any]:
+    p = it.get("product")
+    return p if isinstance(p, dict) else {}
+
+
+def _line_item_meta(it: dict[str, Any], key: str) -> str:
+    v = it.get(key)
+    if v is None or (isinstance(v, str) and not v.strip()):
+        v = _nested_product(it).get(key)
+    if v is None:
+        return ""
+    return str(v).strip()[:120]
+
+
 def _entry_from_line_item(it: dict[str, Any]) -> Optional[CatalogEntry]:
     name = _item_display_name(it)
     price = _item_unit_price(it)
     if not name or price is None or price <= 0:
         return None
     cat = _item_category(it) or infer_category_from_product_name(name)
+    cat_s = (cat or "")[:120]
+    nc = _line_item_meta(it, "normalized_category") or _norm_bucket(cat_s)
+    fam = (_line_item_meta(it, "product_family") or "")[:64]
+    ptype = (_line_item_meta(it, "product_type") or "")[:64]
     return CatalogEntry(
         product_id=_line_item_id(it) or name[:64],
         name=name[:300],
         price=float(price),
-        category=(cat or "")[:120],
+        category=cat_s,
         url=_line_item_url(it),
         available=True,
+        normalized_category=nc[:120],
+        product_family=fam[:64],
+        product_type=ptype[:64],
     )
 
 
@@ -114,9 +148,17 @@ def _entries_from_catalog_dict(catalog: dict[str, Any]) -> list[CatalogEntry]:
             continue
         if not name or price <= 0:
             continue
-        if p.get("available") is False:
+        avail = p.get("available")
+        available = avail is not False
+        if not available:
             continue
         cat = str(p.get("category") or "").strip()[:120]
+        nc_raw = p.get("normalized_category")
+        nc = str(nc_raw).strip()[:120] if isinstance(nc_raw, str) and nc_raw.strip() else _norm_bucket(cat)
+        fam_raw = p.get("product_family")
+        fam = str(fam_raw).strip()[:64] if isinstance(fam_raw, str) else ""
+        pt_raw = p.get("product_type")
+        pt = str(pt_raw).strip()[:64] if isinstance(pt_raw, str) else ""
         url = str(p.get("url") or "").strip()[:2048]
         out.append(
             CatalogEntry(
@@ -126,29 +168,203 @@ def _entries_from_catalog_dict(catalog: dict[str, Any]) -> list[CatalogEntry]:
                 category=cat,
                 url=url,
                 available=True,
+                normalized_category=nc,
+                product_family=fam,
+                product_type=pt,
             )
         )
     return out
 
 
-def _primary_category_bucket(
-    primary_name: Optional[str],
-    primary_explicit_cat: Optional[str],
-    recovery_ctx_category: Optional[str],
-) -> str:
-    for c in (recovery_ctx_category, primary_explicit_cat):
-        b = _norm_bucket(c or "")
-        if b:
-            return b
-    inf = infer_category_from_product_name(primary_name or "")
-    return _norm_bucket(inf)
+_RAW_TO_CANON: dict[str, str] = {
+    _norm_bucket("إلكترونيات"): "electronics",
+    "electronics": "electronics",
+    "electronic": "electronics",
+    _norm_bucket("ساعات"): "watches",
+    "watches": "watches",
+    "watch": "watches",
+    _norm_bucket("عطور"): "beauty",
+    "perfume": "beauty",
+    "perfumes": "beauty",
+    "fragrance": "beauty",
+    _norm_bucket("العناية والتجميل"): "beauty",
+    _norm_bucket("الموضة والأزياء"): "fashion",
+    "fashion": "fashion",
+    "apparel": "fashion",
+    _norm_bucket("المنزل والمعيشة"): "home",
+    "home": "home",
+}
 
 
-def _candidate_category_bucket(name: str, explicit_cat: str) -> str:
-    b = _norm_bucket(explicit_cat)
-    if b:
-        return b
-    return _norm_bucket(infer_category_from_product_name(name))
+def _canon_for_category_label(label: str) -> str:
+    b = _norm_bucket(label)
+    if not b:
+        return ""
+    return _RAW_TO_CANON.get(b, b)
+
+
+def _canon_for_infer_label(infer_label: str) -> str:
+    b = _norm_bucket(infer_label)
+    if not b:
+        return ""
+    return _RAW_TO_CANON.get(b, b)
+
+
+_TYPE_NEEDLES: tuple[tuple[str, tuple[str, ...]], ...] = (
+    (
+        "headphones",
+        (
+            "سماعة",
+            "headphone",
+            "earbud",
+            "airpod",
+            "anc",
+            "true",
+            "sound",
+            "soundstick",
+            "truesound",
+        ),
+    ),
+    (
+        "watch",
+        ("ساعة", "watch", "horizon", "pulse sport", "حزام", "band"),
+    ),
+    ("perfume", ("عطر", "oud", "musk", "perfume", "amber", "velvet")),
+    ("charger", ("شاحن", "charger", "usb", "watt", "محول")),
+    ("wallet", ("محفظة", "wallet")),
+    ("apparel", ("هودي", "hoodie", "قميص", "جاكيت")),
+)
+
+
+def _infer_product_type_family(name: str) -> str:
+    n = (name or "").strip().lower()
+    if not n:
+        return ""
+    for fam, needles in _TYPE_NEEDLES:
+        for nd in needles:
+            if nd in n:
+                return fam
+    return ""
+
+
+_SPLIT_TOKENS = re.compile(r"[\s,|;،]+")
+
+
+def _name_tokens(name: str) -> set[str]:
+    raw = _SPLIT_TOKENS.split((name or "").lower())
+    out: set[str] = set()
+    for p in raw:
+        t = re.sub(r"[^\w\u0600-\u06FF]", "", p)
+        if len(t) >= 2:
+            out.add(t)
+    return out
+
+
+def _token_jaccard(a: str, b: str) -> float:
+    sa, sb = _name_tokens(a), _name_tokens(b)
+    if not sa or not sb:
+        return 0.0
+    inter = len(sa & sb)
+    union = len(sa | sb)
+    return float(inter) / float(union) if union else 0.0
+
+
+def _category_canon_frozenset(
+    *,
+    explicit_category: str,
+    normalized_category: str,
+    product_name: str,
+) -> frozenset[str]:
+    s: set[str] = set()
+    for lab in (explicit_category, normalized_category):
+        c = _canon_for_category_label(lab)
+        if c:
+            s.add(c)
+    inf = infer_category_from_product_name(product_name or "")
+    ic = _canon_for_infer_label(inf)
+    if ic:
+        s.add(ic)
+    return frozenset(s)
+
+
+def _primary_category_canons(
+    primary: CatalogEntry,
+    recovery_category_label: Optional[str],
+) -> frozenset[str]:
+    s: set[str] = set()
+    if recovery_category_label and recovery_category_label.strip():
+        s.add(_canon_for_category_label(recovery_category_label))
+    s.update(
+        _category_canon_frozenset(
+            explicit_category=primary.category,
+            normalized_category=primary.normalized_category or _norm_bucket(primary.category),
+            product_name=primary.name,
+        )
+    )
+    return frozenset(x for x in s if x)
+
+
+def _candidate_category_canons(e: CatalogEntry) -> frozenset[str]:
+    return _category_canon_frozenset(
+        explicit_category=e.category,
+        normalized_category=e.normalized_category or _norm_bucket(e.category),
+        product_name=e.name,
+    )
+
+
+def _price_epsilon(primary_price: float) -> float:
+    return max(0.01, abs(float(primary_price)) * 1e-6)
+
+
+def _is_strictly_lower_price(candidate: float, primary: float) -> bool:
+    if primary <= 0:
+        return False
+    return float(candidate) + _price_epsilon(primary) < float(primary)
+
+
+def _cheaper_candidate_score(primary: CatalogEntry, cand: CatalogEntry) -> float:
+    score = 25.0
+    pf = (primary.product_family or "").strip()
+    cf = (cand.product_family or "").strip()
+    if pf and cf and pf == cf:
+        score += 40.0
+    else:
+        pt_p = (primary.product_type or "").strip() or _infer_product_type_family(primary.name)
+        pt_c = (cand.product_type or "").strip() or _infer_product_type_family(cand.name)
+        if pt_p and pt_c and pt_p == pt_c:
+            score += 22.0
+    score += _token_jaccard(primary.name, cand.name) * 20.0
+    if primary.price > 0:
+        ratio = min(1.0, max(0.0, float(cand.price) / float(primary.price)))
+        score += ratio * 25.0
+    if cand.available:
+        score += 5.0
+    return round(score, 4)
+
+
+def _log_alt_rejected(
+    *,
+    primary: CatalogEntry,
+    cand: CatalogEntry,
+    reason: str,
+    score_val: float,
+) -> None:
+    msg = (
+        "[ALTERNATIVE REJECTED] product_id=%s category=%s original_price=%s "
+        "candidate_price=%s rejection_reason=%s score=%s"
+    )
+    args = (
+        (cand.product_id or "")[:64],
+        (cand.category or "")[:80],
+        primary.price,
+        cand.price,
+        reason,
+        score_val,
+    )
+    if reason == "category_mismatch":
+        log.debug(msg, *args)
+    else:
+        log.info(msg, *args)
 
 
 def select_cheaper_alternative(
@@ -157,58 +373,80 @@ def select_cheaper_alternative(
     cart_entries: list[CatalogEntry],
     catalog_entries: list[CatalogEntry],
     recovery_category_label: Optional[str],
-) -> Optional[CatalogEntry]:
+) -> CheaperAlternativeResult:
     """
-    نفس الفئة (عند توفر إشارة فئة)، سعر أقل فقط، متاح فقط — بدون اختراع.
+    نفس الفئة (إشارات متعددة + تطبيع)، سعر أقل آمن، متاح فقط، ترتيب بالدرجة.
     """
     if primary.price <= 0:
-        return None
-    bucket = _primary_category_bucket(
-        primary.name,
-        primary.category,
-        recovery_category_label,
-    )
-    if not bucket:
+        return CheaperAlternativeResult(None, 0.0, "invalid_primary_price")
+
+    primary_canons = _primary_category_canons(primary, recovery_category_label)
+    if not primary_canons:
         log.info(
             "[PRODUCT MATCH] skip: no category signal primary_id=%s",
             primary.product_id[:32] if primary.product_id else "",
         )
-        return None
+        return CheaperAlternativeResult(None, 0.0, "no_category_signal")
 
-    candidates: list[CatalogEntry] = []
-    seen_ids: set[str] = set()
+    scored: list[tuple[CatalogEntry, float]] = []
+    seen_keys: set[str] = set()
     for e in cart_entries + catalog_entries:
         if e.product_id == primary.product_id and e.name == primary.name:
+            _log_alt_rejected(
+                primary=primary,
+                cand=e,
+                reason="same_line_as_primary",
+                score_val=-1.0,
+            )
             continue
         key = f"{e.product_id}|{e.name}"
-        if key in seen_ids:
+        if key in seen_keys:
+            _log_alt_rejected(primary=primary, cand=e, reason="duplicate_candidate", score_val=-1.0)
             continue
-        seen_ids.add(key)
+        seen_keys.add(key)
         if not e.available:
+            _log_alt_rejected(primary=primary, cand=e, reason="unavailable", score_val=-1.0)
             continue
-        cb = _candidate_category_bucket(e.name, e.category)
-        if cb != bucket:
+        cand_canons = _candidate_category_canons(e)
+        if not (primary_canons & cand_canons):
+            _log_alt_rejected(primary=primary, cand=e, reason="category_mismatch", score_val=-1.0)
             continue
-        if e.price >= primary.price * 0.999:
+        if not _is_strictly_lower_price(e.price, primary.price):
+            _log_alt_rejected(primary=primary, cand=e, reason="price_not_lower", score_val=-1.0)
             continue
-        candidates.append(e)
+        sc = _cheaper_candidate_score(primary, e)
+        scored.append((e, sc))
+        log.info(
+            "[ALTERNATIVE SCORE] product_id=%s category=%s original_price=%s "
+            "candidate_price=%s rejection_reason=n/a score=%s",
+            (e.product_id or "")[:64],
+            (e.category or "")[:80],
+            primary.price,
+            e.price,
+            sc,
+        )
 
     log.info(
-        "[PRODUCT MATCH] bucket=%s primary_price=%s candidates=%s",
-        bucket[:48],
+        "[PRODUCT MATCH] primary_canons=%s primary_price=%s eligible_scored=%s",
+        ",".join(sorted(primary_canons))[:120],
         primary.price,
-        len(candidates),
+        len(scored),
     )
-    if not candidates:
-        return None
-    best = max(candidates, key=lambda x: x.price)
+    if not scored:
+        return CheaperAlternativeResult(None, 0.0, "no_eligible_cheaper_in_category")
+
+    best_entry, best_score = max(
+        scored,
+        key=lambda t: (t[1], t[0].price, t[0].name),
+    )
     log.info(
-        "[ALTERNATIVE SELECTED] id=%s price=%s (primary=%s)",
-        best.product_id[:48],
-        best.price,
+        "[ALTERNATIVE SELECTED] id=%s price=%s (primary=%s) score=%s",
+        best_entry.product_id[:48],
+        best_entry.price,
         primary.price,
+        best_score,
     )
-    return best
+    return CheaperAlternativeResult(best_entry, float(best_score), "")
 
 
 def _cart_total_from_abandoned(ac: AbandonedCart, entries: list[CatalogEntry]) -> Optional[float]:
@@ -249,13 +487,20 @@ def build_product_intelligence_snapshot(
     catalog_entries = _entries_from_catalog_dict(catalog)
 
     alt: Optional[CatalogEntry] = None
+    alt_score: Optional[float] = None
+    fb_reason: Optional[str] = None
     if primary is not None:
-        alt = select_cheaper_alternative(
+        pick = select_cheaper_alternative(
             primary=primary,
             cart_entries=cart_entries[1:],
             catalog_entries=catalog_entries,
             recovery_category_label=rc_cat,
         )
+        alt = pick.entry
+        if pick.entry is not None:
+            alt_score = pick.cheaper_candidate_score
+        else:
+            fb_reason = pick.fallback_reason or None
         if alt is None and recovery_ctx.cheaper_alternative_name:
             pprice = primary.price
             oprice = recovery_ctx.cheaper_alternative_price
@@ -264,7 +509,7 @@ def build_product_intelligence_snapshot(
                 oname
                 and oprice is not None
                 and oprice > 0
-                and oprice < pprice * 0.999
+                and _is_strictly_lower_price(float(oprice), pprice)
                 and line_dicts
                 and len(line_dicts) >= 2
             ):
@@ -276,9 +521,12 @@ def build_product_intelligence_snapshot(
                         and abs(e2.price - float(oprice)) < 0.02
                     ):
                         alt = e2
+                        alt_score = _cheaper_candidate_score(primary, e2)
+                        fb_reason = None
                         log.info(
-                            "[ALTERNATIVE SELECTED] source=cart_line id=%s",
+                            "[ALTERNATIVE SELECTED] source=cart_line id=%s score=%s",
                             e2.product_id[:48],
+                            alt_score,
                         )
                         break
 
@@ -290,6 +538,17 @@ def build_product_intelligence_snapshot(
 
     cart_total = _cart_total_from_abandoned(ac, cart_entries)
 
+    if primary is not None and alt is None:
+        rsn = (fb_reason or "no_alternative").strip() or "no_alternative"
+        log.info(
+            "[FALLBACK USED] product_id=%s category=%s original_price=%s "
+            "candidate_price=n/a rejection_reason=%s score=0",
+            (primary.product_id or "")[:64],
+            (primary.category or "")[:80],
+            primary.price,
+            rsn,
+        )
+
     snap = ProductIntelligenceSnapshot(
         current_product_id=primary.product_id if primary else None,
         current_product_name=primary.name if primary else None,
@@ -300,6 +559,8 @@ def build_product_intelligence_snapshot(
         cart_total=cart_total,
         alternative=alt,
         cart_products=tuple(cart_entries),
+        alternative_score=alt_score,
+        fallback_reason=(fb_reason if alt is None else None),
     )
 
     log.info(
@@ -502,6 +763,12 @@ def build_intelligence_continuation_vars(
         else f"{snap.current_product_price:.2f}",
         "merchant_offer_line": offer_line,
         "merchant_offer_applied": "1" if offer_apply else "0",
+        "cheaper_candidate_score": ""
+        if snap.alternative_score is None
+        else f"{snap.alternative_score:.4f}",
+        "cheaper_fallback_reason": (snap.fallback_reason or "")
+        if not has_real
+        else "",
     }
     return vars_map
 
