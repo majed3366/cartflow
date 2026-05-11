@@ -158,6 +158,84 @@ class TestCartflowAbandonmentReason(unittest.TestCase):
         self.assertEqual("vip_phone_capture", crr.reason)
         self.assertEqual("vip_cart_phone_capture", (crr.custom_text or "").strip())
 
+    def test_vip_phone_capture_preserves_prior_cartflow_reason(self) -> None:
+        """جمع الرقم لا يستبدل سبب الاعتراض المحفوظ (مثل السعر + الفرع)."""
+        ensure_store_widget_schema(db)
+        sid = "s-preserve-legacy-" + uuid.uuid4().hex[:10]
+        r1 = self.client.post(
+            "/api/cartflow/reason",
+            json={
+                "store_slug": "demo",
+                "session_id": sid,
+                "reason": "price",
+                "sub_category": "price_cheaper_alternative",
+            },
+        )
+        self.assertEqual(200, r1.status_code, r1.text)
+        r2 = self.client.post(
+            "/api/cartflow/reason",
+            json={
+                "store_slug": "demo",
+                "session_id": sid,
+                "reason": "vip_phone_capture",
+                "customer_phone": "0597654321",
+                "custom_text": "vip_cart_phone_capture",
+            },
+        )
+        self.assertEqual(200, r2.status_code, r2.text)
+        db.session.expire_all()
+        crr = (
+            db.session.query(CartRecoveryReason)
+            .filter(
+                CartRecoveryReason.store_slug == "demo",
+                CartRecoveryReason.session_id == sid,
+            )
+            .first()
+        )
+        self.assertIsNotNone(crr)
+        self.assertEqual("price", (crr.reason or "").strip())
+        self.assertEqual(
+            "price_cheaper_alternative",
+            (crr.sub_category or "").strip(),
+        )
+        self.assertEqual("966597654321", (crr.customer_phone or "").strip())
+
+    def test_cart_recovery_phone_capture_preserves_price_high(self) -> None:
+        """POST /api/cart-recovery/reason: vip_phone_capture يحفظ الرقم دون مسح reason_tag الاعتراضي."""
+        ensure_store_widget_schema(db)
+        sid = "s-preserve-new-" + uuid.uuid4().hex[:10]
+        r1 = self.client.post(
+            "/api/cart-recovery/reason",
+            json={
+                "store_slug": "demo",
+                "session_id": sid,
+                "reason_tag": "price_high",
+            },
+        )
+        self.assertEqual(200, r1.status_code, r1.text)
+        r2 = self.client.post(
+            "/api/cart-recovery/reason",
+            json={
+                "store_slug": "demo",
+                "session_id": sid,
+                "reason_tag": "vip_phone_capture",
+                "customer_phone": "0598877660",
+            },
+        )
+        self.assertEqual(200, r2.status_code, r2.text)
+        db.session.expire_all()
+        crr = (
+            db.session.query(CartRecoveryReason)
+            .filter(
+                CartRecoveryReason.store_slug == "demo",
+                CartRecoveryReason.session_id == sid,
+            )
+            .first()
+        )
+        self.assertIsNotNone(crr)
+        self.assertEqual("price_high", (crr.reason or "").strip())
+        self.assertEqual("0598877660", (crr.customer_phone or "").strip())
+
     def test_post_reason_vip_phone_capture_updates_matching_abandoned_cart(self) -> None:
         """رقم ‎vip_phone_capture‎ يُنسخ إلى ‎AbandonedCart.customer_phone‎ لنفس المتجر والجلسة."""
         ensure_store_widget_schema(db)

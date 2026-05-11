@@ -21,6 +21,7 @@ from services.recovery_session_phone import (
 )
 
 from services.normal_recovery_phone_persist import apply_normal_recovery_phone_to_session
+from services.recovery_reason_preserve import PHONE_CAPTURE_REASON_VALUES
 from services.cf_test_phone_override import (
     cf_test_customer_phone_override_allowed,
     normalize_cf_test_customer_phone,
@@ -125,16 +126,34 @@ async def post_widget_cart_recovery_reason(request: Request) -> Any:
 
         sub_cat: Optional[str] = None
         if row is not None:
-            row.reason = reason_tag
-            row.sub_category = sub_cat
-            row.custom_text = custom_reason
-            row.source = "widget"
-            row.updated_at = now
-            if reason_tag == "no_help":
-                row.user_rejected_help = True
-                row.rejection_timestamp = now
-            if reason_phone_update is not _PHONE_OMIT:
-                row.customer_phone = reason_phone_update
+            prev_lc = (row.reason or "").strip().lower()
+            preserve_objection = (
+                reason_tag in PHONE_CAPTURE_REASON_VALUES
+                and prev_lc
+                and prev_lc not in PHONE_CAPTURE_REASON_VALUES
+            )
+            if preserve_objection:
+                row.updated_at = now
+                row.source = "widget"
+                if reason_phone_update is not _PHONE_OMIT:
+                    row.customer_phone = reason_phone_update
+                log.info(
+                    "[PHONE CAPTURE] store=%s session=%s preserved_reason=%s",
+                    ss[:64],
+                    sid[:64],
+                    (row.reason or "")[:64],
+                )
+            else:
+                row.reason = reason_tag
+                row.sub_category = sub_cat
+                row.custom_text = custom_reason
+                row.source = "widget"
+                row.updated_at = now
+                if reason_tag == "no_help":
+                    row.user_rejected_help = True
+                    row.rejection_timestamp = now
+                if reason_phone_update is not _PHONE_OMIT:
+                    row.customer_phone = reason_phone_update
         else:
             db.session.add(
                 CartRecoveryReason(
@@ -173,13 +192,17 @@ async def post_widget_cart_recovery_reason(request: Request) -> Any:
         )
         ph_sync = (getattr(row_after, "customer_phone", None) or "").strip() if row_after else ""
         if ph_sync:
+            persist_rt = (
+                (getattr(row_after, "reason", None) or "").strip()[:_MAX_REASON]
+                or reason_tag
+            )
             apply_normal_recovery_phone_to_session(
                 db.session,
                 store_slug=ss,
                 session_id=sid,
                 cart_id=cid_apply,
                 phone=ph_sync,
-                reason_tag=reason_tag,
+                reason_tag=persist_rt,
                 phone_record_source="cf_test_phone" if phone_from_cf_test else None,
             )
 
@@ -195,8 +218,13 @@ async def post_widget_cart_recovery_reason(request: Request) -> Any:
                 print("[PHONE ATTACHED]")
                 print("session_id=", sid)
                 print("phone=", reason_phone_update)
+        stored_reason_log = (
+            (getattr(row_after, "reason", None) or "").strip()
+            if row_after is not None
+            else reason_tag
+        )
         print(
-            f"[REASON SAVED] store={ss} session={sid} reason={reason_tag} custom={custom_reason}"
+            f"[REASON SAVED] store={ss} session={sid} reason={stored_reason_log} custom={custom_reason}"
         )
         resp_ok: dict[str, Any] = {"ok": True, "saved": True}
         if reason_tag == "no_help":

@@ -43,6 +43,10 @@ from services.vip_abandoned_cart_phone import (
     resolve_store_row_for_cartflow_slug,
 )
 from services.normal_recovery_phone_persist import apply_normal_recovery_phone_to_session
+from services.recovery_reason_preserve import (
+    PHONE_CAPTURE_REASON_VALUES,
+    effective_cart_recovery_reason_row_value,
+)
 
 log = logging.getLogger("cartflow")
 
@@ -530,11 +534,31 @@ async def post_abandonment_reason(request: Request) -> Any:
         else:
             crr_phone = None
         if crr is not None:
-            crr.reason = reason
-            crr.sub_category = sub_for_row
-            crr.custom_text = custom
-            crr.customer_phone = crr_phone
-            crr.updated_at = now
+            prev_reason_lc = (crr.reason or "").strip().lower()
+            if (
+                reason in PHONE_CAPTURE_REASON_VALUES
+                and prev_reason_lc
+                and prev_reason_lc not in PHONE_CAPTURE_REASON_VALUES
+            ):
+                stored_reason = effective_cart_recovery_reason_row_value(
+                    incoming_reason=reason,
+                    existing_reason=crr.reason,
+                )
+                crr.reason = stored_reason[:32]
+                crr.customer_phone = crr_phone
+                crr.updated_at = now
+                log.info(
+                    "[PHONE CAPTURE] session_id=%s incoming=%s preserved_reason=%s",
+                    (sid or "")[:64],
+                    reason,
+                    (crr.reason or "")[:64],
+                )
+            else:
+                crr.reason = reason
+                crr.sub_category = sub_for_row
+                crr.custom_text = custom
+                crr.customer_phone = crr_phone
+                crr.updated_at = now
         else:
             db.session.add(
                 CartRecoveryReason(
@@ -572,13 +596,16 @@ async def post_abandonment_reason(request: Request) -> Any:
         )
         ph_sync = (getattr(crr_row, "customer_phone", None) or "").strip() if crr_row else ""
         if ph_sync:
+            persist_rt = (
+                (getattr(crr_row, "reason", None) or "").strip()[:64] or reason
+            )
             apply_normal_recovery_phone_to_session(
                 db.session,
                 store_slug=ss,
                 session_id=sid,
                 cart_id=cid_apply,
                 phone=ph_sync,
-                reason_tag=reason,
+                reason_tag=persist_rt,
             )
         db.session.commit()
         if phone_norm:
