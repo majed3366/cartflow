@@ -202,7 +202,7 @@ class ProductIntelligenceTests(unittest.TestCase):
         vars_map = {
             "checkout_url": "https://c.example/cart",
             "alternative_product_name": "Essentials — هودي قطني خفيف",
-            "alternative_checkout_url": "/demo/store/product/11",
+            "alternative_checkout_url": "/demo/store/product/12",
             "alternative_product_price_display": "89",
             "current_product_name_display": "Luxe — هودي صوفي",
             "shipping_estimate": "3-7",
@@ -219,7 +219,7 @@ class ProductIntelligenceTests(unittest.TestCase):
         self.assertIn("لقينا لك خيار قريب", msg)
         self.assertIn("89 ريال", msg)
         self.assertIn("تقدر تشوفه هنا:", msg)
-        self.assertIn("https://shop.example/demo/store/product/11", msg)
+        self.assertIn("https://shop.example/demo/store/product/12", msg)
 
     def test_select_cheaper_same_fashion_category_hoodie(self) -> None:
         primary = CatalogEntry(
@@ -227,9 +227,9 @@ class ProductIntelligenceTests(unittest.TestCase):
             name="Luxe — هودي صوفي",
             price=149.0,
             category="أزياء",
-            url="/demo/store/product/12",
+            url="/demo/store/product/13",
             available=True,
-            normalized_category="أزياء",
+            normalized_category="الموضة والأزياء",
             product_family="luxe_apparel",
         )
         ess = CatalogEntry(
@@ -237,9 +237,9 @@ class ProductIntelligenceTests(unittest.TestCase):
             name="Essentials — هودي قطني خفيف",
             price=89.0,
             category="أزياء",
-            url="/demo/store/product/11",
+            url="/demo/store/product/12",
             available=True,
-            normalized_category="أزياء",
+            normalized_category="الموضة والأزياء",
             product_family="luxe_apparel",
         )
         pick = select_cheaper_alternative(

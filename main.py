@@ -523,6 +523,18 @@ def api_recover_redirect(t: str = Query(..., min_length=6, max_length=2048)):
 
 @app.on_event("startup")
 async def _startup_whatsapp_queue() -> None:
+    try:
+        from services.cartflow_demo_catalog_seed import seed_demo_store_product_catalog_if_empty
+
+        n = seed_demo_store_product_catalog_if_empty()
+        if n:
+            log.info("[DEMO CATALOG SEED] startup rows_updated=%s", n)
+    except Exception as exc:  # noqa: BLE001
+        log.warning(
+            "startup demo catalog seed skipped: %s",
+            exc,
+            exc_info=True,
+        )
     await start_whatsapp_queue_worker()
 
 

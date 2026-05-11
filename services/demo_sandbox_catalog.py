@@ -62,9 +62,11 @@ def _p(
     available: bool = True,
     image_seed: str = "",
     product_family: str = "",
+    normalized_category: str = "",
 ) -> Dict[str, Any]:
     seed = image_seed or key
     url_path = product_demo_url("/demo/store", key)
+    nc_out = (normalized_category or "").strip() or (category or "").strip()
     out: Dict[str, Any] = {
         "key": key,
         "id": f"demo_{key}",
@@ -73,7 +75,7 @@ def _p(
         "price": float(price),
         "unit_price": float(price),
         "category": category,
-        "normalized_category": (category or "").strip(),
+        "normalized_category": nc_out,
         "description": description,
         "short": short,
         "warranty_info": warranty_info,
@@ -276,6 +278,7 @@ SANDBOX_PRODUCTS: Dict[str, Dict[str, Any]] = {
         name="Essentials — هودي قطني خفيف",
         price=89.0,
         category="أزياء",
+        normalized_category="الموضة والأزياء",
         description=(
             "قطن مريح بقصة يومية؛ أخف من خط Luxe وبسعر أوضح لنفس فئة الهودي."
         ),
@@ -292,6 +295,7 @@ SANDBOX_PRODUCTS: Dict[str, Dict[str, Any]] = {
         name="Luxe — هودي صوفي",
         price=149.0,
         category="أزياء",
+        normalized_category="الموضة والأزياء",
         description=(
             "قطن مريح بقصّة عملية للبرودة الخفيفة. مناسب للعمل الكاجوال."
         ),
