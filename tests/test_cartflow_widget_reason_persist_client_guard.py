@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
-"""Regression: widget reason persist must not reference forward-only helpers unsafely."""
+"""
+Regression: persistCartRecoveryReasonBackend must stay free of forward refs
+that broke reason-button clicks (see git 0f5043f baseline vs c5b8a1d).
+"""
 from __future__ import annotations
 
 from pathlib import Path
@@ -10,26 +13,7 @@ def _widget_js() -> str:
     return (root / "static" / "cartflow_widget.js").read_text(encoding="utf-8")
 
 
-def test_cartflow_payload_attach_stored_phone_helper_present() -> None:
-    t = _widget_js()
-    assert "function cartflowPayloadAttachStoredCustomerPhone(payload)" in t
-    assert "cartflowPayloadAttachStoredCustomerPhone(payload)" in t
-
-
-def test_persist_session_abandon_reason_guards_backend_persist() -> None:
-    t = _widget_js()
-    assert "CART_RECOVERY_REASON_PERSIST_EXCEPTION" in t
-    start = t.find("function persistSessionAbandonReason")
-    assert start > 0
-    end = t.find("function clearCartRecoverySuppressed", start)
-    assert end > start
-    fn = t[start:end]
-    assert "persistCartRecoveryReasonBackend(reasonTag, customTextOptional)" in fn
-    assert "try" in fn and "CART_RECOVERY_REASON_PERSIST_EXCEPTION" in fn
-
-
-def test_no_direct_get_cartflow_stored_in_persist_cart_recovery_block() -> None:
-    """Avoid calling getCartflowStoredCustomerPhoneNorm from persistCartRecoveryReasonBackend (hoist/order)."""
+def test_persist_cart_recovery_reason_has_no_ls_phone_forward_ref() -> None:
     t = _widget_js()
     start = t.find("function persistCartRecoveryReasonBackend")
     assert start > 0
@@ -37,3 +21,13 @@ def test_no_direct_get_cartflow_stored_in_persist_cart_recovery_block() -> None:
     assert end > start
     block = t[start:end]
     assert "getCartflowStoredCustomerPhoneNorm" not in block
+    assert "cartflowPayloadAttachStoredCustomerPhone" not in block
+
+
+def test_persist_session_abandon_calls_backend_directly() -> None:
+    t = _widget_js()
+    start = t.find("function persistSessionAbandonReason")
+    end = t.find("function clearCartRecoverySuppressed", start)
+    fn = t[start:end]
+    assert "persistCartRecoveryReasonBackend(reasonTag, customTextOptional)" in fn
+    assert "CART_RECOVERY_REASON_PERSIST_EXCEPTION" not in fn
