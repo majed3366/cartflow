@@ -5,9 +5,10 @@
   "scripts": {
     "gen": "node -e \"require('child_process').execSync('python ../scripts/generate_promptfoo_scenarios.py',{stdio:'inherit',cwd:__dirname})\"",
     "eval": "promptfoo eval -c promptfooconfig.yaml --no-cache",
+    "eval:latest": "npx promptfoo@latest eval -c promptfooconfig.yaml --no-cache",
     "view": "promptfoo view"
   },
   "devDependencies": {
-    "promptfoo": "^0.104.0"
+    "promptfoo": "^0.121.0"
   }
 }

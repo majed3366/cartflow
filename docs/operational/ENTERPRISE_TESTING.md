@@ -63,9 +63,11 @@ k6’s built-in HTML summary is a **snapshot**, not a time-series. For curves, e
 cd promptfoo
 npm install
 python ../scripts/generate_promptfoo_scenarios.py   # refreshes tests.generated.yaml
-npx promptfoo eval -c promptfooconfig.yaml --no-cache
+npm run eval
 npx promptfoo view   # optional UI for pass/fail matrix
 ```
+
+If **`FOREIGN KEY constraint failed`** (SQLite inside promptfoo), clear **`%USERPROFILE%\.promptfoo`** and run **`npm run eval:latest`** (see **`promptfoo/README.md`**).
 
 - **Provider:** `promptfoo/cartflowStubProvider.js` (deterministic Arabic stub).  
 - **Assertions:** no `%` / `٪` / `discount` / `خصم` in output (aligns with “no rogue discounts”).  
