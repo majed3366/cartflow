@@ -29,6 +29,9 @@ from services.recovery_product_context import (
 
 log = logging.getLogger("cartflow")
 
+# Bumped when cheaper diagnostics change — grep in prod logs to confirm this revision is live.
+CHEAPER_DIAG_BUILD = "cheaper-diag-info-v2"
+
 FALLBACK_CHEAPER_MESSAGE_AR = (
     "أفهمك 👍\n"
     "نقدر نساعدك بخيار أنسب حسب ميزانيتك."
@@ -381,12 +384,12 @@ def _log_alt_rejected(
         cand.price,
         reason,
     )
+    # Always INFO for [CHEAPER REJECTED] so production log pipelines (often INFO+) capture mismatches.
     if reason == "category_mismatch":
         log.debug(msg, *args)
-        log.debug(dbg, *dbg_args)
     else:
         log.info(msg, *args)
-        log.info(dbg, *dbg_args)
+    log.info(dbg, *dbg_args)
 
 
 def select_cheaper_alternative(
@@ -425,10 +428,11 @@ def select_cheaper_alternative(
 
     pool = cart_entries + catalog_entries
     log.info(
-        "[CHEAPER MATCH DEBUG] phase=select primary_id=%s primary_name=%s "
+        "[CHEAPER MATCH DEBUG] phase=select diag_build=%s primary_id=%s primary_name=%s "
         "primary_category=%s primary_norm_category=%s primary_price=%s "
         "primary_family=%s primary_type=%s recovery_category_label=%s "
         "primary_canons=%s pool_size=%s cart_tail=%s catalog=%s",
+        CHEAPER_DIAG_BUILD,
         (primary.product_id or "")[:64],
         (primary.name or "")[:80],
         (primary.category or "")[:120],
@@ -624,9 +628,11 @@ def build_product_intelligence_snapshot(
         else 0
     )
     log.info(
-        "[CHEAPER MATCH DEBUG] phase=snapshot store_id=%s line_dicts=%s cart_entries_built=%s "
-        "catalog_raw_products=%s catalog_entries_available=%s recovery_category=%s "
-        "primary_mapped=%s primary_id=%s primary_category=%s primary_price=%s",
+        "[CHEAPER MATCH DEBUG] phase=snapshot diag_build=%s store_id=%s line_dicts=%s "
+        "cart_entries_built=%s catalog_raw_products=%s catalog_entries_available=%s "
+        "recovery_category=%s primary_mapped=%s primary_id=%s primary_category=%s "
+        "primary_price=%s",
+        CHEAPER_DIAG_BUILD,
         store_id,
         len(line_dicts),
         len(cart_entries),
@@ -979,8 +985,9 @@ def build_intelligence_continuation_vars(
         else "",
     }
     log.info(
-        "[CHEAPER MATCH DEBUG] phase=continuation_vars cheaper_reply_mode=%s "
+        "[CHEAPER MATCH DEBUG] phase=continuation_vars diag_build=%s cheaper_reply_mode=%s "
         "has_real_alternative=%s alternative_url_len=%s cheaper_fallback_reason=%s",
+        CHEAPER_DIAG_BUILD,
         vars_map.get("cheaper_reply_mode", ""),
         "1" if has_real else "0",
         len((vars_map.get("alternative_checkout_url") or "")),

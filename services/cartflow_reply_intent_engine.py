@@ -21,7 +21,10 @@ from sqlalchemy.exc import SQLAlchemyError
 from extensions import db
 from models import AbandonedCart, CartRecoveryReason, Store
 
-from services.cartflow_product_intelligence import FALLBACK_CHEAPER_MESSAGE_AR
+from services.cartflow_product_intelligence import (
+    CHEAPER_DIAG_BUILD,
+    FALLBACK_CHEAPER_MESSAGE_AR,
+)
 
 log = logging.getLogger("cartflow")
 
@@ -762,6 +765,42 @@ class ContinuationDecision:
     merchant_offer_applied: bool = False
 
 
+def _deploy_git_sha_for_logs() -> str:
+    """Best-effort commit from common PaaS env vars (for deploy verification in logs)."""
+    for key in (
+        "RAILWAY_GIT_COMMIT_SHA",
+        "RENDER_GIT_COMMIT",
+        "SOURCE_VERSION",
+        "HEROKU_SLUG_COMMIT",
+        "K_REVISION",
+    ):
+        v = (os.environ.get(key) or "").strip()
+        if v:
+            return v[:48]
+    return ""
+
+
+def _log_cheaper_continuation_decision(ac: AbandonedCart, vars_map: dict[str, str]) -> None:
+    """
+    Exactly one [CHEAPER MATCH DEBUG] at INFO + stdout whenever send_cheaper_alternative is chosen,
+    so production captures diagnostics even if only console logs are tailed.
+    """
+    sid = (getattr(ac, "recovery_session_id", None) or "").strip()[:64]
+    sha = _deploy_git_sha_for_logs()
+    crm = (vars_map.get("cheaper_reply_mode") or "").strip()
+    cfb = (vars_map.get("cheaper_fallback_reason") or "").strip()[:200]
+    line = (
+        f"[CHEAPER MATCH DEBUG] phase=continuation_decision diag_build={CHEAPER_DIAG_BUILD} "
+        f"session_id={sid} cheaper_reply_mode={crm} cheaper_fallback_reason={cfb!r} "
+        f"deploy_git_sha={sha or 'n/a'}"
+    )
+    log.info("%s", line)
+    try:
+        print(line, flush=True)
+    except OSError:
+        pass
+
+
 def decide_continuation(
     *,
     inbound_body: str,
@@ -786,6 +825,8 @@ def decide_continuation(
         contextual_intent=ctx,
         action=action,
     )
+    if action == CONTINUATION_ACTION_SEND_CHEAPER:
+        _log_cheaper_continuation_decision(ac, vars_map)
     msg = build_continuation_message(action, vars_map)
     should_send = bool(
         msg.strip()
