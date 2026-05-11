@@ -1,0 +1,24 @@
+# CartFlow — Promptfoo matrix (50 vars in tests.generated.yaml; stub provider = no API spend).
+# Install: cd promptfoo && npm install
+# Generate tests: python ../scripts/generate_promptfoo_scenarios.py
+# Run: npx promptfoo eval -c promptfooconfig.yaml --no-cache
+description: CartFlow recovery copy discipline (deterministic stub; swap provider for live LLM audits)
+
+prompts:
+  - "reason={{reason_tag}} product={{product_name}} value={{cart_value}}"
+
+providers:
+  - file://cartflowStubProvider.js
+
+defaultTest:
+  assert:
+    - type: not-contains
+      value: "%"
+    - type: not-contains
+      value: "٪"
+    - type: not-contains
+      value: "خصم"
+    - type: not-contains
+      value: "discount"
+
+tests: file://tests.generated.yaml

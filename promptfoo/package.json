@@ -1,0 +1,13 @@
+{
+  "name": "cartflow-promptfoo-matrix",
+  "private": true,
+  "description": "Promptfoo eval for recovery-copy discipline (stub provider; no API keys required).",
+  "scripts": {
+    "gen": "node -e \"require('child_process').execSync('python ../scripts/generate_promptfoo_scenarios.py',{stdio:'inherit',cwd:__dirname})\"",
+    "eval": "promptfoo eval -c promptfooconfig.yaml --no-cache",
+    "view": "promptfoo view"
+  },
+  "devDependencies": {
+    "promptfoo": "^0.104.0"
+  }
+}

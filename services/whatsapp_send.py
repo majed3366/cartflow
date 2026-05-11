@@ -420,6 +420,18 @@ def send_whatsapp(
     except Exception as e:  # noqa: BLE001 — إرجاع خطأ المزود للمتصل
         print("Twilio WhatsApp send failed:", str(e))
         logger.warning("Twilio WhatsApp send failed: %s", e, exc_info=True)
+        try:
+            from services.cartflow_sentry import capture_whatsapp_failure
+
+            capture_whatsapp_failure(
+                str(e),
+                extra={
+                    "reason_tag": (reason_tag or "")[:64],
+                    "to": (phone or "")[:32],
+                },
+            )
+        except Exception:  # noqa: BLE001
+            pass
         return {"ok": False, "error": str(e)}
 
 

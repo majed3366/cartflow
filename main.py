@@ -48,6 +48,13 @@ app = FastAPI(
     root_path="",
 )
 
+try:
+    from services.cartflow_sentry import init_cartflow_sentry
+
+    init_cartflow_sentry(app)
+except Exception:  # noqa: BLE001 — لا نمنع الإقلاع عند غياب ‎sentry-sdk‎
+    pass
+
 
 @app.get("/ping")
 def ping():

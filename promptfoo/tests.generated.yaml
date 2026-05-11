@@ -1,0 +1,251 @@
+# Auto-generated — python scripts/generate_promptfoo_scenarios.py
+- vars:
+    case_id: 0
+    reason_tag: price_high
+    product_name: حقيقي أ
+    cart_value: 49.0
+- vars:
+    case_id: 1
+    reason_tag: shipping
+    product_name: SKU-241
+    cart_value: 100.0
+- vars:
+    case_id: 2
+    reason_tag: warranty
+    product_name: منتج تجريبي
+    cart_value: 500.0
+- vars:
+    case_id: 3
+    reason_tag: quality
+    product_name: TrueSound
+    cart_value: 1500.0
+- vars:
+    case_id: 4
+    reason_tag: thinking
+    product_name: عطر
+    cart_value: 12000.0
+- vars:
+    case_id: 5
+    reason_tag: human_support
+    product_name: حقيقي أ
+    cart_value: 49.0
+- vars:
+    case_id: 6
+    reason_tag: other
+    product_name: SKU-241
+    cart_value: 100.0
+- vars:
+    case_id: 7
+    reason_tag: price_high
+    product_name: منتج تجريبي
+    cart_value: 500.0
+- vars:
+    case_id: 8
+    reason_tag: shipping
+    product_name: TrueSound
+    cart_value: 1500.0
+- vars:
+    case_id: 9
+    reason_tag: warranty
+    product_name: عطر
+    cart_value: 12000.0
+- vars:
+    case_id: 10
+    reason_tag: quality
+    product_name: حقيقي أ
+    cart_value: 49.0
+- vars:
+    case_id: 11
+    reason_tag: thinking
+    product_name: SKU-241
+    cart_value: 100.0
+- vars:
+    case_id: 12
+    reason_tag: human_support
+    product_name: منتج تجريبي
+    cart_value: 500.0
+- vars:
+    case_id: 13
+    reason_tag: other
+    product_name: TrueSound
+    cart_value: 1500.0
+- vars:
+    case_id: 14
+    reason_tag: price_high
+    product_name: عطر
+    cart_value: 12000.0
+- vars:
+    case_id: 15
+    reason_tag: shipping
+    product_name: حقيقي أ
+    cart_value: 49.0
+- vars:
+    case_id: 16
+    reason_tag: warranty
+    product_name: SKU-241
+    cart_value: 100.0
+- vars:
+    case_id: 17
+    reason_tag: quality
+    product_name: منتج تجريبي
+    cart_value: 500.0
+- vars:
+    case_id: 18
+    reason_tag: thinking
+    product_name: TrueSound
+    cart_value: 1500.0
+- vars:
+    case_id: 19
+    reason_tag: human_support
+    product_name: عطر
+    cart_value: 12000.0
+- vars:
+    case_id: 20
+    reason_tag: other
+    product_name: حقيقي أ
+    cart_value: 49.0
+- vars:
+    case_id: 21
+    reason_tag: price_high
+    product_name: SKU-241
+    cart_value: 100.0
+- vars:
+    case_id: 22
+    reason_tag: shipping
+    product_name: منتج تجريبي
+    cart_value: 500.0
+- vars:
+    case_id: 23
+    reason_tag: warranty
+    product_name: TrueSound
+    cart_value: 1500.0
+- vars:
+    case_id: 24
+    reason_tag: quality
+    product_name: عطر
+    cart_value: 12000.0
+- vars:
+    case_id: 25
+    reason_tag: thinking
+    product_name: حقيقي أ
+    cart_value: 49.0
+- vars:
+    case_id: 26
+    reason_tag: human_support
+    product_name: SKU-241
+    cart_value: 100.0
+- vars:
+    case_id: 27
+    reason_tag: other
+    product_name: منتج تجريبي
+    cart_value: 500.0
+- vars:
+    case_id: 28
+    reason_tag: price_high
+    product_name: TrueSound
+    cart_value: 1500.0
+- vars:
+    case_id: 29
+    reason_tag: shipping
+    product_name: عطر
+    cart_value: 12000.0
+- vars:
+    case_id: 30
+    reason_tag: warranty
+    product_name: حقيقي أ
+    cart_value: 49.0
+- vars:
+    case_id: 31
+    reason_tag: quality
+    product_name: SKU-241
+    cart_value: 100.0
+- vars:
+    case_id: 32
+    reason_tag: thinking
+    product_name: منتج تجريبي
+    cart_value: 500.0
+- vars:
+    case_id: 33
+    reason_tag: human_support
+    product_name: TrueSound
+    cart_value: 1500.0
+- vars:
+    case_id: 34
+    reason_tag: other
+    product_name: عطر
+    cart_value: 12000.0
+- vars:
+    case_id: 35
+    reason_tag: price_high
+    product_name: حقيقي أ
+    cart_value: 49.0
+- vars:
+    case_id: 36
+    reason_tag: shipping
+    product_name: SKU-241
+    cart_value: 100.0
+- vars:
+    case_id: 37
+    reason_tag: warranty
+    product_name: منتج تجريبي
+    cart_value: 500.0
+- vars:
+    case_id: 38
+    reason_tag: quality
+    product_name: TrueSound
+    cart_value: 1500.0
+- vars:
+    case_id: 39
+    reason_tag: thinking
+    product_name: عطر
+    cart_value: 12000.0
+- vars:
+    case_id: 40
+    reason_tag: human_support
+    product_name: حقيقي أ
+    cart_value: 49.0
+- vars:
+    case_id: 41
+    reason_tag: other
+    product_name: SKU-241
+    cart_value: 100.0
+- vars:
+    case_id: 42
+    reason_tag: price_high
+    product_name: منتج تجريبي
+    cart_value: 500.0
+- vars:
+    case_id: 43
+    reason_tag: shipping
+    product_name: TrueSound
+    cart_value: 1500.0
+- vars:
+    case_id: 44
+    reason_tag: warranty
+    product_name: عطر
+    cart_value: 12000.0
+- vars:
+    case_id: 45
+    reason_tag: quality
+    product_name: حقيقي أ
+    cart_value: 49.0
+- vars:
+    case_id: 46
+    reason_tag: thinking
+    product_name: SKU-241
+    cart_value: 100.0
+- vars:
+    case_id: 47
+    reason_tag: human_support
+    product_name: منتج تجريبي
+    cart_value: 500.0
+- vars:
+    case_id: 48
+    reason_tag: other
+    product_name: TrueSound
+    cart_value: 1500.0
+- vars:
+    case_id: 49
+    reason_tag: price_high
+    product_name: عطر
+    cart_value: 12000.0

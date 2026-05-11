@@ -5,7 +5,8 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Query, Request
+from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
 from extensions import db, get_database_url
@@ -35,8 +36,29 @@ def get_mock_abandoned_cart() -> dict:
 
 
 @router.get("/health")
-def health() -> Any:
-    return j({"ok": True, "service": "cartflow"})
+def health(
+    db_probe: int = Query(
+        0,
+        ge=0,
+        le=1,
+        alias="db",
+        description="1=run SELECT 1 for load/integrity checks",
+    ),
+) -> Any:
+    """
+    خفيف لـ‎ LB‎؛ ‎?db=1‎ يُنفّذ ‎SELECT 1‎ (استخدمه باعتدال تحت الضغط العالي).
+    """
+    out: dict[str, Any] = {"ok": True, "service": "cartflow"}
+    if int(db_probe) == 1:
+        try:
+            db.session.execute(text("SELECT 1"))
+            db.session.commit()
+            out["database"] = "ok"
+        except SQLAlchemyError as e:
+            db.session.rollback()
+            log.warning("health db probe: %s", e)
+            return j({"ok": False, "service": "cartflow", "database": "error"}, 503)
+    return j(out)
 
 
 @router.get("/debug/db")

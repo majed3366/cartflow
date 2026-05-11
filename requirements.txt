@@ -11,3 +11,4 @@ psycopg2-binary
 anthropic
 psycopg[binary]
 twilio
+sentry-sdk>=2.0,<3
