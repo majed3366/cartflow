@@ -2,8 +2,10 @@
 from __future__ import annotations
 
 import json
+import os
 import unittest
 from types import SimpleNamespace
+from unittest.mock import patch
 
 from models import AbandonedCart
 from services.cartflow_product_intelligence import (
@@ -181,6 +183,8 @@ class ProductIntelligenceTests(unittest.TestCase):
             "checkout_url": "https://c.example",
             "alternative_product_name": "",
             "alternative_checkout_url": "https://c.example",
+            "alternative_product_price_display": "",
+            "current_product_name_display": "",
             "shipping_estimate": "3-7",
             "cheaper_reply_mode": "fallback",
             "has_price_context": "0",
@@ -193,6 +197,61 @@ class ProductIntelligenceTests(unittest.TestCase):
         msg = build_continuation_message(CONTINUATION_ACTION_SEND_CHEAPER, vars_map)
         self.assertIn("ميزانيتك", msg)
         self.assertNotIn("خيار بسعر أوضح", msg)
+
+    def test_cheaper_message_real_format_short_sa(self) -> None:
+        vars_map = {
+            "checkout_url": "https://c.example/cart",
+            "alternative_product_name": "Essentials — هودي قطني خفيف",
+            "alternative_checkout_url": "/demo/store/product/11",
+            "alternative_product_price_display": "89",
+            "current_product_name_display": "Luxe — هودي صوفي",
+            "shipping_estimate": "3-7",
+            "cheaper_reply_mode": "real",
+            "has_price_context": "1",
+            "current_product_price_display": "149.00",
+            "merchant_offer_line": "",
+            "merchant_offer_applied": "0",
+            "cheaper_candidate_score": "70",
+            "cheaper_fallback_reason": "",
+        }
+        with patch.dict(os.environ, {"CARTFLOW_PUBLIC_BASE_URL": "https://shop.example"}):
+            msg = build_continuation_message(CONTINUATION_ACTION_SEND_CHEAPER, vars_map)
+        self.assertIn("لقينا لك خيار قريب", msg)
+        self.assertIn("89 ريال", msg)
+        self.assertIn("تقدر تشوفه هنا:", msg)
+        self.assertIn("https://shop.example/demo/store/product/11", msg)
+
+    def test_select_cheaper_same_fashion_category_hoodie(self) -> None:
+        primary = CatalogEntry(
+            product_id="demo_hoodie",
+            name="Luxe — هودي صوفي",
+            price=149.0,
+            category="أزياء",
+            url="/demo/store/product/12",
+            available=True,
+            normalized_category="أزياء",
+            product_family="luxe_apparel",
+        )
+        ess = CatalogEntry(
+            product_id="demo_hoodie_essentials",
+            name="Essentials — هودي قطني خفيف",
+            price=89.0,
+            category="أزياء",
+            url="/demo/store/product/11",
+            available=True,
+            normalized_category="أزياء",
+            product_family="luxe_apparel",
+        )
+        pick = select_cheaper_alternative(
+            primary=primary,
+            cart_entries=[],
+            catalog_entries=[ess],
+            recovery_category_label="أزياء",
+        )
+        self.assertIsNotNone(pick.entry)
+        assert pick.entry is not None
+        self.assertEqual(pick.entry.product_id, "demo_hoodie_essentials")
+        self.assertLess(pick.entry.price, primary.price)
 
     def test_decide_continuation_mock_cart_no_store(self) -> None:
         from unittest.mock import MagicMock

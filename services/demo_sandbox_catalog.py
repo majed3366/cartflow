@@ -21,6 +21,7 @@ SANDBOX_PRODUCT_ORDER: Tuple[str, ...] = (
     "charger",
     "watch_band",
     "wallet",
+    "hoodie_essentials",
     "hoodie",
 )
 
@@ -265,10 +266,26 @@ SANDBOX_PRODUCTS: Dict[str, Dict[str, Any]] = {
         short="إكسسوار عملي بسعر معقول.",
         warranty_info="6 أشهر على الخياطة.",
         shipping_info="2–4 أيام عمل.",
-        related=("hoodie",),
+        related=("hoodie_essentials", "hoodie"),
         cheaper_than=(),
         image_seed="mira-wallet",
         product_family="travel_slg",
+    ),
+    "hoodie_essentials": _p(
+        "hoodie_essentials",
+        name="Essentials — هودي قطني خفيف",
+        price=89.0,
+        category="أزياء",
+        description=(
+            "قطن مريح بقصة يومية؛ أخف من خط Luxe وبسعر أوضح لنفس فئة الهودي."
+        ),
+        short="بديل أوفر ضمن نفس فئة الأزياء.",
+        warranty_info="ضمان جودة 14 يوماً على العيوب الظاهرة.",
+        shipping_info="شحن 2–5 أيام.",
+        related=("hoodie", "wallet"),
+        cheaper_than=(),
+        image_seed="essentials-hoodie",
+        product_family="luxe_apparel",
     ),
     "hoodie": _p(
         "hoodie",
@@ -281,8 +298,8 @@ SANDBOX_PRODUCTS: Dict[str, Dict[str, Any]] = {
         short="فئة أزياء منفصلة عن الإلكترونيات.",
         warranty_info="ضمان جودة 14 يوماً على العيوب الظاهرة.",
         shipping_info="شحن 2–5 أيام.",
-        related=("wallet",),
-        cheaper_than=(),
+        related=("hoodie_essentials", "wallet"),
+        cheaper_than=("hoodie_essentials",),
         image_seed="luxe-hoodie",
         product_family="luxe_apparel",
     ),

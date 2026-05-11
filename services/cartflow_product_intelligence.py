@@ -189,6 +189,8 @@ _RAW_TO_CANON: dict[str, str] = {
     "fragrance": "beauty",
     _norm_bucket("العناية والتجميل"): "beauty",
     _norm_bucket("الموضة والأزياء"): "fashion",
+    _norm_bucket("أزياء"): "fashion",
+    "ازياء": "fashion",
     "fashion": "fashion",
     "apparel": "fashion",
     _norm_bucket("المنزل والمعيشة"): "home",
@@ -464,6 +466,18 @@ def _cart_total_from_abandoned(ac: AbandonedCart, entries: list[CatalogEntry]) -
     return s if s > 0 else None
 
 
+def _display_sar_amount(price: float) -> str:
+    try:
+        x = float(price)
+    except (TypeError, ValueError):
+        return ""
+    if x <= 0:
+        return ""
+    if abs(x - round(x)) < 0.001:
+        return str(int(round(x)))
+    return f"{x:.2f}".rstrip("0").rstrip(".")
+
+
 def build_product_intelligence_snapshot(
     ac: AbandonedCart,
     store: Optional[Store],
@@ -547,6 +561,24 @@ def build_product_intelligence_snapshot(
             (primary.category or "")[:80],
             primary.price,
             rsn,
+        )
+
+    if primary is not None:
+        mp = (alt.name if alt else "").strip()[:300]
+        op = (primary.name or "").strip()[:300]
+        diff_s = ""
+        if alt is not None:
+            try:
+                diff_s = f"{float(primary.price) - float(alt.price):.2f}"
+            except (TypeError, ValueError):
+                diff_s = ""
+        log.info(
+            "[REAL PRODUCT MATCH] matched_product=%s original_product=%s "
+            "price_difference=%s fallback_used=%s",
+            mp[:200],
+            op[:200],
+            diff_s,
+            "true" if alt is None else "false",
         )
 
     snap = ProductIntelligenceSnapshot(
@@ -753,6 +785,10 @@ def build_intelligence_continuation_vars(
         "checkout_url": checkout,
         "alternative_product_name": alt.name if alt else "",
         "alternative_checkout_url": (alt.url if alt and alt.url else checkout),
+        "alternative_product_price_display": _display_sar_amount(alt.price)
+        if alt
+        else "",
+        "current_product_name_display": (snap.current_product_name or "").strip()[:300],
         "shipping_estimate": ship,
         "cheaper_reply_mode": "real" if has_real else "fallback",
         "has_price_context": "1"

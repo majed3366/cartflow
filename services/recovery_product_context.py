@@ -59,6 +59,8 @@ _CATEGORY_KEYWORDS: Final[tuple[tuple[str, frozenset[str]], ...]] = (
                 "شنطة",
                 "ساعة يد",
                 "نظارة",
+                "هودي",
+                "hoodie",
             }
         ),
     ),

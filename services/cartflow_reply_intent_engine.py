@@ -25,6 +25,22 @@ from services.cartflow_product_intelligence import FALLBACK_CHEAPER_MESSAGE_AR
 
 log = logging.getLogger("cartflow")
 
+
+def _absolute_url_for_customer_share(raw: str) -> str:
+    """يحوّل مساراً نسبياً من الكتالوج إلى رابط كامل عند توفر قاعدة عامة."""
+    u = (raw or "").strip()
+    if not u:
+        return u
+    if u.lower().startswith(("http://", "https://")):
+        return u
+    base = (
+        os.getenv("CARTFLOW_PUBLIC_BASE_URL") or os.getenv("PUBLIC_BASE_URL") or ""
+    ).strip().rstrip("/")
+    if not base:
+        return u
+    return base + (u if u.startswith("/") else "/" + u)
+
+
 _continuation_lock = threading.RLock()
 # phone_key -> monotonic time of last auto-reply
 _last_auto_reply_mono: dict[str, float] = {}
@@ -136,6 +152,16 @@ _WANTS_CHEAPER = frozenset(
     {
         "ارخص",
         "أرخص",
+        "ابغي ارخص",
+        "أبغى أرخص",
+        "ابغي اقل",
+        "أبغى أقل",
+        "عندكم اقل",
+        "عندكم أقل",
+        "اغلى",
+        "أغلى",
+        "غالي",
+        "غاليا",
         "اقل سعر",
         "أقل سعر",
         "cheaper",
@@ -493,11 +519,17 @@ def build_continuation_message(action: str, vars_map: dict[str, str]) -> str:
         ) + offer
     if action == CONTINUATION_ACTION_SEND_CHEAPER:
         if vars_map.get("cheaper_reply_mode") == "real" and altn.strip():
-            return (
-                "وجدنا لك خياراً بسعر أقل 👌\n"
-                f"{altn}\n"
-                f"{altu}"
-            ) + offer
+            altp = (vars_map.get("alternative_product_price_display") or "").strip()
+            altu_abs = _absolute_url_for_customer_share(altu.strip() or cu)
+            lines = [
+                "لقينا لك خيار قريب من اللي اخترته 👌",
+                "",
+                altn,
+            ]
+            if altp:
+                lines.append(f"{altp} ريال")
+            lines.extend(["", "تقدر تشوفه هنا:", altu_abs])
+            return "\n".join(lines) + offer
         base = FALLBACK_CHEAPER_MESSAGE_AR
         if cu.strip().lower().startswith("http"):
             base += f"\n\nرابط السلة:\n{cu}"
