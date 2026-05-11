@@ -120,6 +120,24 @@ def test_customer_profile_from_reason_row(monkeypatch) -> None:
     assert ok is True
 
 
+def test_reason_row_real_beats_demo_abandon_event(monkeypatch) -> None:
+    """Persisted widget profile must win over demo-line abandon payload."""
+    monkeypatch.setenv("CARTFLOW_DEMO_TEST_PHONE", "966579706669")
+    row = SimpleNamespace(customer_phone="9665000111222")
+    phone, src, ok = _resolve_cartflow_recovery_phone(
+        store_slug="demo",
+        session_id="s_demo_ab",
+        cart_id=None,
+        store_obj=None,
+        abandon_event_phone="966579706669",
+        recovery_key="demo:s_demo_ab",
+        reason_row=row,
+    )
+    assert phone == "9665000111222"
+    assert src == "customer_profile"
+    assert ok is True
+
+
 def test_forbidden_stale_literal_raises() -> None:
     with pytest.raises(RuntimeError, match="Forbidden stale test phone"):
         _assert_forbidden_stale_recovery_phone("966501234567")

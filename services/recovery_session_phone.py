@@ -56,7 +56,11 @@ def get_recovery_phone_resolution_source(recovery_key: str) -> str:
         return "customer_profile"
     with _lock:
         s = _phone_resolution_source_by_recovery_key.get(rk)
-        return s if s else "customer_profile"
+        if not s:
+            return "customer_profile"
+        if s == "cf_test_phone":
+            return "demo_test_phone"
+        return s
 
 
 def recovery_phone_memory_clear() -> None:

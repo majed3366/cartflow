@@ -2033,6 +2033,17 @@ try {
       } catch (eCf) {
         /* ignore */
       }
+      /* CF_PHONE_SAVED: persisted customer line (localStorage cartflow_customer_phone) */
+      try {
+        if (typeof getCartflowStoredCustomerPhoneNorm === "function") {
+          var lsPhone = getCartflowStoredCustomerPhoneNorm();
+          if (lsPhone) {
+            payload.customer_phone = lsPhone;
+          }
+        }
+      } catch (eLsPh) {
+        /* ignore */
+      }
       fetch(u, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

@@ -25,6 +25,7 @@ from services.recovery_reason_preserve import PHONE_CAPTURE_REASON_VALUES
 from services.cf_test_phone_override import (
     cf_test_customer_phone_override_allowed,
     normalize_cf_test_customer_phone,
+    phone_matches_cartflow_demo_test_customer_phone,
 )
 
 log = logging.getLogger("cartflow")
@@ -99,19 +100,9 @@ async def post_widget_cart_recovery_reason(request: Request) -> Any:
             else:
                 reason_phone_update = str(pr).strip()[:100]
 
-        if cf_test_customer_phone_override_allowed(ss):
-            ct_raw = body.get("cf_test_phone")
-            if ct_raw is not None and str(ct_raw).strip():
-                cn = normalize_cf_test_customer_phone(ct_raw)
-                if cn:
-                    reason_phone_update = cn[:100]
-                    phone_from_cf_test = True
-                    cid_log = (str(body.get("cart_id") or body.get("zid_cart_id") or "").strip() or "-")[
-                        :255
-                    ]
-                    print(
-                        f"[TEST CUSTOMER PHONE APPLIED] session_id={sid} cart_id={cid_log} customer_phone={cn}"
-                    )
+        body_phone_nonempty = isinstance(reason_phone_update, str) and bool(
+            reason_phone_update.strip()
+        )
 
         row = (
             db.session.query(CartRecoveryReason)
@@ -123,6 +114,47 @@ async def post_widget_cart_recovery_reason(request: Request) -> Any:
             )
             .first()
         )
+
+        cn = ""
+        if cf_test_customer_phone_override_allowed(ss):
+            ct_raw = body.get("cf_test_phone")
+            if ct_raw is not None and str(ct_raw).strip():
+                cn = normalize_cf_test_customer_phone(ct_raw) or ""
+
+        if cn and not body_phone_nonempty:
+            persisted = ""
+            if row is not None:
+                persisted = (getattr(row, "customer_phone", None) or "").strip()[:100]
+            if persisted and not phone_matches_cartflow_demo_test_customer_phone(persisted):
+                reason_phone_update = persisted
+                phone_from_cf_test = False
+                log.info(
+                    "outbound_phone_source=real_customer_phone "
+                    "detail=persisted_cart_recovery_reason_over_cf_test "
+                    "session_id=%s store=%s",
+                    sid[:80],
+                    ss[:64],
+                )
+            else:
+                reason_phone_update = cn[:100]
+                phone_from_cf_test = True
+                cid_log = (
+                    str(body.get("cart_id") or body.get("zid_cart_id") or "").strip() or "-"
+                )[:255]
+                log.info(
+                    "outbound_phone_source=demo_test_phone "
+                    "[TEST CUSTOMER PHONE APPLIED] session_id=%s cart_id=%s customer_phone=%s",
+                    sid[:80],
+                    cid_log,
+                    cn[:32],
+                )
+        elif cn and body_phone_nonempty:
+            log.info(
+                "outbound_phone_source=real_customer_phone "
+                "detail=body_phone_overrides_cf_test session_id=%s store=%s",
+                sid[:80],
+                ss[:64],
+            )
 
         sub_cat: Optional[str] = None
         if row is not None:
@@ -196,6 +228,12 @@ async def post_widget_cart_recovery_reason(request: Request) -> Any:
                 (getattr(row_after, "reason", None) or "").strip()[:_MAX_REASON]
                 or reason_tag
             )
+            _persist_src = (
+                "demo_test_phone"
+                if phone_from_cf_test
+                or phone_matches_cartflow_demo_test_customer_phone(ph_sync)
+                else "real_customer_phone"
+            )
             apply_normal_recovery_phone_to_session(
                 db.session,
                 store_slug=ss,
@@ -203,17 +241,24 @@ async def post_widget_cart_recovery_reason(request: Request) -> Any:
                 cart_id=cid_apply,
                 phone=ph_sync,
                 reason_tag=persist_rt,
-                phone_record_source="cf_test_phone" if phone_from_cf_test else None,
+                phone_record_source=_persist_src,
             )
 
         db.session.commit()
         rk = recovery_key_for_reason_session(ss, sid)
         if reason_phone_update is not _PHONE_OMIT:
-            record_recovery_customer_phone(
-                rk,
-                reason_phone_update if isinstance(reason_phone_update, str) else None,
-                source="cf_test_phone" if phone_from_cf_test else None,
+            _rk_phone = (
+                reason_phone_update if isinstance(reason_phone_update, str) else None
             )
+            _rk_src: Optional[str] = None
+            if isinstance(reason_phone_update, str) and reason_phone_update.strip():
+                _rk_src = (
+                    "demo_test_phone"
+                    if phone_from_cf_test
+                    or phone_matches_cartflow_demo_test_customer_phone(reason_phone_update)
+                    else "real_customer_phone"
+                )
+            record_recovery_customer_phone(rk, _rk_phone, source=_rk_src)
             if reason_phone_update:
                 print("[PHONE ATTACHED]")
                 print("session_id=", sid)

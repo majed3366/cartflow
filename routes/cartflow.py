@@ -625,6 +625,7 @@ async def post_abandonment_reason(request: Request) -> Any:
             record_recovery_customer_phone(
                 recovery_key_for_reason_session(ss, sid),
                 phone_norm,
+                source="real_customer_phone",
             )
         if reason == "vip_phone_capture" and phone_norm:
             try:

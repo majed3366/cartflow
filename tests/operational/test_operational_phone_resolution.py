@@ -84,5 +84,5 @@ class OperationalPhoneResolutionTests(unittest.TestCase):
             reason_row=None,
         )
         self.assertTrue((phone or "").strip().endswith("966511122233"))
-        self.assertEqual(src, "cf_test_phone")
+        self.assertEqual(src, "demo_test_phone")
         self.assertTrue(allowed)

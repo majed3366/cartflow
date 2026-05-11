@@ -14,6 +14,7 @@ from schema_widget import ensure_store_widget_schema
 from services.cf_test_phone_override import (
     cf_test_customer_phone_override_allowed,
     normalize_cf_test_customer_phone,
+    phone_matches_cartflow_demo_test_customer_phone,
 )
 from sqlalchemy import and_
 
@@ -30,6 +31,18 @@ class TestCfTestCustomerPhoneOverride(unittest.TestCase):
     def test_normalize_sa_mobile(self) -> None:
         self.assertEqual(normalize_cf_test_customer_phone("0546518011"), "966546518011")
         self.assertEqual(normalize_cf_test_customer_phone("966546518011"), "966546518011")
+
+    def test_phone_matches_demo_line(self) -> None:
+        prev = os.environ.get("CARTFLOW_DEMO_TEST_PHONE")
+        try:
+            os.environ["CARTFLOW_DEMO_TEST_PHONE"] = "966579706669"
+            self.assertTrue(phone_matches_cartflow_demo_test_customer_phone("966579706669"))
+            self.assertFalse(phone_matches_cartflow_demo_test_customer_phone("966546518011"))
+        finally:
+            if prev is None:
+                os.environ.pop("CARTFLOW_DEMO_TEST_PHONE", None)
+            else:
+                os.environ["CARTFLOW_DEMO_TEST_PHONE"] = prev
 
     def test_allowed_demo_slug_even_when_env_production(self) -> None:
         prev = os.environ.get("ENV")
@@ -165,7 +178,7 @@ class TestCfTestCustomerPhoneOverride(unittest.TestCase):
         self.assertEqual((row.customer_phone or "").strip(), "966546518011")
         rk = recovery_key_for_reason_session("demo", sid)
         self.assertEqual(get_recovery_customer_phone(rk), "966546518011")
-        self.assertEqual(get_recovery_phone_resolution_source(rk), "cf_test_phone")
+        self.assertEqual(get_recovery_phone_resolution_source(rk), "demo_test_phone")
 
     def test_inject_cf_test_skipped_non_demo_production_env(self) -> None:
         from main import _inject_cf_test_customer_phone_into_abandon_payload
@@ -185,3 +198,73 @@ class TestCfTestCustomerPhoneOverride(unittest.TestCase):
                 os.environ.pop("ENV", None)
             else:
                 os.environ["ENV"] = prev
+
+    def test_reason_endpoint_body_customer_phone_overrides_cf_test(self) -> None:
+        ensure_store_widget_schema(db)
+        client = TestClient(app)
+        sid = "cf-body-" + uuid.uuid4().hex
+        r = client.post(
+            "/api/cart-recovery/reason",
+            json={
+                "store_slug": "demo",
+                "session_id": sid,
+                "reason_tag": "price",
+                "cf_test_phone": "966546518011",
+                "customer_phone": "9665000111222",
+            },
+        )
+        self.assertEqual(200, r.status_code, r.text)
+        row = (
+            db.session.query(CartRecoveryReason)
+            .filter(
+                and_(
+                    CartRecoveryReason.store_slug == "demo",
+                    CartRecoveryReason.session_id == sid,
+                )
+            )
+            .first()
+        )
+        self.assertIsNotNone(row)
+        assert row is not None
+        self.assertEqual((row.customer_phone or "").strip(), "9665000111222")
+        rk = recovery_key_for_reason_session("demo", sid)
+        self.assertEqual(get_recovery_customer_phone(rk), "9665000111222")
+        self.assertEqual(get_recovery_phone_resolution_source(rk), "real_customer_phone")
+
+    def test_reason_endpoint_persisted_real_over_cf_test_when_body_empty(self) -> None:
+        ensure_store_widget_schema(db)
+        client = TestClient(app)
+        sid = "cf-persist-" + uuid.uuid4().hex
+        r1 = client.post(
+            "/api/cart-recovery/reason",
+            json={
+                "store_slug": "demo",
+                "session_id": sid,
+                "reason_tag": "price",
+                "customer_phone": "9665000999888",
+            },
+        )
+        self.assertEqual(200, r1.status_code, r1.text)
+        r2 = client.post(
+            "/api/cart-recovery/reason",
+            json={
+                "store_slug": "demo",
+                "session_id": sid,
+                "reason_tag": "shipping",
+                "cf_test_phone": "966546518011",
+            },
+        )
+        self.assertEqual(200, r2.status_code, r2.text)
+        row = (
+            db.session.query(CartRecoveryReason)
+            .filter(
+                and_(
+                    CartRecoveryReason.store_slug == "demo",
+                    CartRecoveryReason.session_id == sid,
+                )
+            )
+            .first()
+        )
+        self.assertIsNotNone(row)
+        assert row is not None
+        self.assertEqual((row.customer_phone or "").strip(), "9665000999888")

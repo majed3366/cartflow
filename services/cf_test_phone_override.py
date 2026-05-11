@@ -28,3 +28,20 @@ def normalize_cf_test_customer_phone(raw: Any) -> str:
     if d.startswith("966") and len(d) >= 11:
         return d
     return d
+
+
+def cartflow_demo_test_phone_normalized() -> str:
+    """Canonical QA/demo line digits (env ‎CARTFLOW_DEMO_TEST_PHONE‎ or default)."""
+    raw = (os.getenv("CARTFLOW_DEMO_TEST_PHONE") or "").strip()
+    canonical = raw if raw else "966579706669"
+    n = normalize_cf_test_customer_phone(canonical)
+    return n if n else "".join(c for c in canonical if c.isdigit())
+
+
+def phone_matches_cartflow_demo_test_customer_phone(raw: Optional[Any]) -> bool:
+    """True when ‎raw‎ normalizes to the same digits as the configured demo test line."""
+    if raw is None or not str(raw).strip():
+        return False
+    n = normalize_cf_test_customer_phone(raw)
+    d = cartflow_demo_test_phone_normalized()
+    return bool(n and d and n == d)

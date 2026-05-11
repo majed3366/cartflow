@@ -3555,6 +3555,13 @@ def _try_send_vip_neutral_customer_recovery_whatsapp(
         if not phone or not allowed:
             return
         _assert_forbidden_stale_recovery_phone(phone)
+        log.info(
+            "outbound_phone_source=%s recovery_resolved_source=%s session_id=%s cart_id=%s",
+            _outbound_phone_source_log_label(phone),
+            src,
+            (session_id or "")[:80],
+            (str(cart_id or "") or "-")[:64],
+        )
         wa_result = send_whatsapp(
             phone,
             text,
@@ -3931,7 +3938,13 @@ def _try_claim_recovery_session(recovery_key: str) -> bool:
 
 
 _VERIFIED_WA_RECOVERY_PHONE_SOURCES = frozenset(
-    {"customer_profile", "abandoned_cart", "cf_test_phone"}
+    {
+        "customer_profile",
+        "abandoned_cart",
+        "cf_test_phone",
+        "real_customer_phone",
+        "demo_test_phone",
+    }
 )
 
 _NORMAL_RECOVERY_EXTENDED_PHONE_SOURCES = frozenset(
@@ -4194,27 +4207,52 @@ def _recovery_store_id_label(store_obj: Optional[Any], store_slug: str) -> str:
     return (store_slug or "").strip() or ""
 
 
+def _outbound_phone_source_log_label(phone: Optional[str]) -> str:
+    """‎real_customer_phone‎ vs ‎demo_test_phone‎ — للسجلات فقط (‎CARTFLOW_DEMO_TEST_PHONE‎)."""
+    from services.cf_test_phone_override import phone_matches_cartflow_demo_test_customer_phone
+
+    if phone and phone_matches_cartflow_demo_test_customer_phone(phone):
+        return "demo_test_phone"
+    return "real_customer_phone"
+
+
 def _map_verified_recovery_phone_from_session(
     *,
     abandon_event_phone: Optional[str],
     recovery_key: str,
     reason_row: Optional[CartRecoveryReason],
 ) -> Tuple[Optional[str], str]:
+    from services.cf_test_phone_override import phone_matches_cartflow_demo_test_customer_phone
     from services.recovery_session_phone import (
         get_recovery_customer_phone,
         get_recovery_phone_resolution_source,
     )
 
     ep = _strip_recovery_phone(abandon_event_phone)
-    if ep:
-        return ep, "abandoned_cart"
+    dbp = (
+        _strip_recovery_phone(getattr(reason_row, "customer_phone", None))
+        if reason_row is not None
+        else ""
+    )
     mem = _strip_recovery_phone(get_recovery_customer_phone(recovery_key))
-    if mem:
-        return mem, get_recovery_phone_resolution_source(recovery_key)
-    if reason_row is not None:
-        dbp = _strip_recovery_phone(getattr(reason_row, "customer_phone", None))
-        if dbp:
-            return dbp, "customer_profile"
+    mem_src = get_recovery_phone_resolution_source(recovery_key) if mem else "customer_profile"
+
+    candidates: list[tuple[str, str]] = [
+        (dbp, "customer_profile"),
+        (ep, "abandoned_cart"),
+        (mem, mem_src),
+    ]
+
+    def _is_demo_line(p: str) -> bool:
+        return bool(p) and phone_matches_cartflow_demo_test_customer_phone(p)
+
+    non_demo_exists = any(bool(p) and not _is_demo_line(p) for p, _ in candidates)
+    for p, src in candidates:
+        if not p:
+            continue
+        if non_demo_exists and _is_demo_line(p):
+            continue
+        return p, src
     return None, "none"
 
 
@@ -5510,6 +5548,13 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
         )
         _consume_seq_slot_if_needed()
         return None
+    log.info(
+        "outbound_phone_source=%s recovery_resolved_source=%s session_id=%s cart_id=%s",
+        _outbound_phone_source_log_label(phone),
+        phone_source,
+        (session_id or "")[:80],
+        (str(cart_id or "") or "-")[:64],
+    )
     try:
         wa_result = send_whatsapp(
             phone,
@@ -5911,6 +5956,11 @@ def _inject_cf_test_customer_phone_into_abandon_payload(payload: dict[str, Any])
     store_slug = _normalize_store_slug(payload)
     if not cf_test_customer_phone_override_allowed(store_slug):
         return
+    existing = _strip_recovery_phone(str(payload.get("phone") or "")) or _strip_recovery_phone(
+        str(payload.get("customer_phone") or "")
+    )
+    if existing:
+        return
     raw = payload.get("cf_test_phone")
     if raw is None or not str(raw).strip():
         return
@@ -5955,7 +6005,7 @@ async def handle_cart_abandoned(
         record_recovery_customer_phone(
             recovery_key,
             abandon_evt_phone,
-            source=inj if inj == "cf_test_phone" else None,
+            source="demo_test_phone" if inj == "cf_test_phone" else "real_customer_phone",
         )
     msg_log = _default_recovery_message()
     if _is_user_converted(recovery_key):
@@ -6507,10 +6557,10 @@ def _handle_cart_state_sync(payload: dict[str, Any]) -> dict[str, Any]:
             )
 
             inj_src = (
-                "cf_test_phone"
+                "demo_test_phone"
                 if str(merge_pl.get("_recovery_phone_inject_source") or "").strip()
                 == "cf_test_phone"
-                else None
+                else "real_customer_phone"
             )
             apply_normal_recovery_phone_to_session(
                 db.session,
