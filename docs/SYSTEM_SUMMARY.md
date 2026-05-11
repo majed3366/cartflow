@@ -38,7 +38,7 @@ CartFlow is a FastAPI application that:
 |--------------|---------|
 | `GET /dashboard` | `dashboard_v1.html` — **الرئيسية**: KPIs، أسباب التردد، الرسم، **آخر النشاطات** (أسباب فقط — بدون VIP). |
 | `GET /dashboard/recovery-settings` | `recovery_settings.html` — delay, attempts, WhatsApp fields; **`GET`/`POST /api/recovery-settings`**. |
-| `GET /dashboard/vip-cart-settings` | `vip_cart_settings.html` — قسمان: **أولوية** (حقيقي فقط: `AbandonedCart` غير `recovered` حيث `vip_mode` **أو** `CartRecoveryLog.cart_id` = `zid_cart_id` مع `status=vip_manual_handling`) + **بيانات تجريبية** (صفوف ثابتة، `interactive: false`). **إرسال يدوي** → **`POST /api/dashboard/vip-cart/{abandoned_cart_row_id}/merchant-alert`** (تنبيه التاجر فقط؛ ليس `POST /api/carts/{id}/send`). عتبة VIP عبر **`/api/recovery-settings`**. |
+| `GET /dashboard/vip-cart-settings` | `vip_cart_settings.html` — **أولوية حقيقية:** `AbandonedCart.status=abandoned` و‎`coalesce(cart_value,0) >= Store.vip_cart_threshold` عند تعريف العتبة؛ بدون عتبة لا تُعرض قائمة VIP. **بيانات تجريبية** منفصلة (`interactive: false`). **إرسال يدوي** → **`POST /api/dashboard/vip-cart/{abandoned_cart_row_id}/merchant-alert`**. عتبة VIP عبر **`/api/recovery-settings`**. |
 | `GET /dashboard/exit-intent-settings` | `exit_intent_settings.html` — exit intent copy; loads/saves via recovery settings API + `static/cartflow_dashboard_messages.js`. |
 | `GET /dashboard/cart-recovery-messages` | `cart_recovery_messages.html` — recovery message templates. |
 | `GET /dashboard/widget-customization` | `widget_customization.html` — widget appearance. |
@@ -109,7 +109,7 @@ Implemented inside **`static/cartflow_widget.js`** (exit-intent keys, pre-cart d
 | Multi-message | `recovery_multi_message.py` (`multi_message_slots_for_abandon`) |
 | Reason templates | `reason_template_recovery.py`, `store_reason_templates.py`, `recovery_message_templates.py` |
 | Decision | `decision_engine.py` (Layer D.2 message/action); `main` imports `decide_recovery_action` via `decision_engine.py` shim |
-| VIP | `vip_cart.py` (`is_vip_cart`), `vip_merchant_alert.py` (merchant-only Twilio alert) |
+| VIP | `vip_cart.py` (`is_vip_cart`, `merchant_vip_threshold_int`, `vip_operational_lane_diagnostics`, `abandoned_cart_in_vip_operational_lane`), `vip_merchant_alert.py` (merchant-only Twilio alert) |
 | Session phone | `recovery_session_phone.py` |
 | Store JSON fields | `store_trigger_templates.py`, `store_template_control.py`, `store_widget_customization.py` |
 | AI / copy | `ai_message_builder.py` |
@@ -178,6 +178,7 @@ Print-style trace: **`[DELAY STARTED]`**, **`[DELAY WAITING]`**, **`[DELAY FINIS
 ### 4.9 VIP handling
 
 - **Threshold:** **`Store.vip_cart_threshold`** (null → VIP ignored); مجموع السلة من **`_abandoned_cart_cart_value_for_recovery`** / الحمولة مقابل **`services/vip_cart.is_vip_cart(cart_total, store)`**. **`cart_value`** مفقود → لا اعتبار VIP في الإشارة الأولى؛ يمكن للمهام اللاحقة إعادة التقييم.
+- **لوحة السلال — مسار واحد:** **`/dashboard/normal-carts`** يستبعد السلال حيث `cart_value >= vip_cart_threshold`؛ **`/dashboard/vip-cart-settings`** يعرضها فقط عند وجود عتبة صالحة. التشخيص في JSON البطاقة: `cart_total`, `vip_threshold`, `is_vip_cart`, `operational_lane` (`normal` \| `vip`). **`vip_mode`** في DB يبقى للمزامنة/الاسترجاع؛ العرض والـ **`POST …/merchant-alert`** و**`…/lifecycle`** يعتمدون **`is_vip_cart`** على العتبة.
 - **طبقة قرار D.2:** **`_vip_recovery_decision_layer`** → **`decide_recovery_action(..., is_vip_cart_flag=True)`**؛ لا إرسال قوالب للعميل من المحرك عند هذا العلم.
 - **Activation:** **`main._activate_vip_manual_cart_handling`** يضع **`vip_mode`**، **`CartRecoveryLog`** بـ **`status=vip_manual_handling`**، **`try_send_vip_merchant_whatsapp_alert`** (نص: **`build_vip_merchant_alert_body`**؛ هدف: **`store_whatsapp_number`** ثم **`whatsapp_support_url`** القابل للتحليل)، ويضبط **`_session_recovery_sent`** عند النجاح أو عند كان **`vip_mode`** مفعّلاً مسبقاً؛ **`_mark_vip_customer_recovery_closed`** يمنع أي إرسال متابعة للعميل لهذه الجلسة بعد اعتبار السلة VIP في **`handle_cart_abandoned`**.
 - **بدون عميل مهما كان تفعيل DB:** إذا **`is_vip_cart`** صحيحة في **`handle_cart_abandoned`** أو **`_run_recovery_dispatch_cart_abandoned_impl`** → لا يُجدول **`multi`** ولا **`_run_recovery_sequence`** كمسار عميل؛ فشل تمييز DB لا يفعّل **fallback** إلى استرداد عميل أوتوماتيكي. في **`_run_recovery_sequence_after_cart_abandoned_impl`**: فحص VIP **قبل **`asyncio.sleep`**** لعدم تأخير VIP؛ فحص لاحق دفاعي بعد التأخير يمنع **`send_whatsapp`** للعميل.
@@ -269,7 +270,7 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 | WhatsApp receive (`/webhook/whatsapp`) | 🟡 (stub / logging) |
 | Multi-message (reason templates + scheduled slots) | ✅ |
 | Per-reason delay (`get_recovery_delay` + store quiet period in `should_send_whatsapp`) | ✅ |
-| VIP (threshold, decision-layer override, لا إرسال عميل أوتوماتيك، تنبيه تاجر، **`vip_mode`**, لوحة **`vip-cart-settings`** + **`POST …/merchant-alert`**, **`/dev/create-vip-test-cart`**) | ✅ |
+| VIP (عتبة التاجر فقط، مسار لوحة واحد مقابل عادي، decision-layer override، تنبيه تاجر، لوحة **`vip-cart-settings`** + **`POST …/merchant-alert`**, **`/dev/create-vip-test-cart`**) | ✅ |
 
 **Legend:** ✅ implemented and wired in code · 🟡 partial or environment-dependent · ❌ not implemented
 
@@ -281,6 +282,7 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 
 | Date (UTC) | Summary |
 |------------|---------|
+| 2026-05-11 | **VIP vs عادي — مصدر حقيقة واحد للوحة:** تصنيف القائمة من **`Store.vip_cart_threshold`** و‎`is_vip_cart(cart_value, store)` فقط؛ استبعاد السلال العالية من **`/dashboard/normal-carts`**؛ قائمة VIP فارغة بدون عتبة؛ تشخيصات البطاقة + **`POST …/merchant-alert`** / **`lifecycle`** يتحققان من المسار التشغيلي وليس **`vip_mode`** وحدها؛ **`dev/create-vip-test-cart`** يشتق عتبة اختبار من قيمة السلة. Commit: **`fix: enforce single operational lane for vip and normal carts`**. |
 | 2026-05-10 | **Agent convention:** `.cursor/rules/system-summary-always-update.mdc` (`alwaysApply`) — substantive tasks must update this document (§10 + affected sections). §10 convention text cross-references the rule. Commit: **`chore: enforce SYSTEM_SUMMARY updates via Cursor rule`**. |
 | 2026-05-10 | **Commerce sandbox v1:** `services/demo_sandbox_catalog.py` (multi-category catalog, rule-first `related_keys` / `cheaper_alternative_keys`, merchant JSON for `product_catalog`); `templates/demo_store.html` (grid, PDP, cart total, `/demo/*/checkout` + fake COD → `POST /api/conversion`); `recovery_product_context` list-`cart` support; `cartflow_demo_panel.js` (`hp_pro` scenario, `cartflowTriggerDemoConversion`). Commit: **`feat: upgrade demo into realistic commerce sandbox v1`**. |
 | 2026-05-03 | **لوحة VIP — أولوية مقابل تجريبي:** قسم **أولوية** مربوط بقاعدة البيانات فقط (`vip_mode` ∪ `CartRecoveryLog` بـ **`vip_manual_handling`** على `zid_cart_id`)؛ لا دمج صفوف **`demo_vip_cart_zid`** في الأولوية؛ قسم **بيانات تجريبية** منفصل. Commit: **`fix: bind VIP priority tab to real VIP carts`**. |

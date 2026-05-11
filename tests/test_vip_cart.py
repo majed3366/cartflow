@@ -6,7 +6,9 @@ from types import SimpleNamespace
 from services.vip_cart import (
     apply_vip_cart_threshold_from_body,
     is_vip_cart,
+    merchant_vip_threshold_int,
     vip_cart_threshold_fields_for_api,
+    vip_operational_lane_diagnostics,
 )
 
 
@@ -55,3 +57,26 @@ def test_vip_cart_threshold_fields_for_api() -> None:
     assert vip_cart_threshold_fields_for_api(SimpleNamespace(vip_cart_threshold=300)) == {
         "vip_cart_threshold": 300,
     }
+
+
+def test_merchant_vip_threshold_int_invalid_returns_none() -> None:
+    assert merchant_vip_threshold_int(None) is None
+    assert merchant_vip_threshold_int(SimpleNamespace(vip_cart_threshold=None)) is None
+    assert merchant_vip_threshold_int(SimpleNamespace(vip_cart_threshold=0)) is None
+    assert merchant_vip_threshold_int(SimpleNamespace(vip_cart_threshold="x")) is None
+
+
+def test_vip_operational_lane_diagnostics() -> None:
+    st = SimpleNamespace(vip_cart_threshold=1000)
+    d = vip_operational_lane_diagnostics(1299.0, st)
+    assert d["operational_lane"] == "vip"
+    assert d["is_vip_cart"] is True
+    assert d["vip_threshold"] == 1000
+    assert d["cart_total"] == 1299.0
+    low = vip_operational_lane_diagnostics(200.0, st)
+    assert low["operational_lane"] == "normal"
+    assert low["is_vip_cart"] is False
+    off = vip_operational_lane_diagnostics(99999.0, SimpleNamespace(vip_cart_threshold=None))
+    assert off["operational_lane"] == "normal"
+    assert off["is_vip_cart"] is False
+    assert off["vip_threshold"] is None

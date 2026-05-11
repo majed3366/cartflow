@@ -29,7 +29,7 @@ class VipDashboardLifecycleTests(unittest.TestCase):
         db.create_all()
         _ensure_store_widget_schema()
         slug = f"vip_lc_{uuid.uuid4().hex[:12]}"
-        store = Store(zid_store_id=slug)
+        store = Store(zid_store_id=slug, vip_cart_threshold=500)
         db.session.add(store)
         db.session.commit()
 
@@ -65,7 +65,7 @@ class VipDashboardLifecycleTests(unittest.TestCase):
         db.create_all()
         _ensure_store_widget_schema()
         slug = f"vip_lc_hide_{uuid.uuid4().hex[:12]}"
-        store = Store(zid_store_id=slug)
+        store = Store(zid_store_id=slug, vip_cart_threshold=500)
         db.session.add(store)
         db.session.commit()
 
@@ -114,7 +114,7 @@ class VipDashboardLifecycleTests(unittest.TestCase):
         db.create_all()
         _ensure_store_widget_schema()
         slug = f"vip_lc_term_{uuid.uuid4().hex[:12]}"
-        store = Store(zid_store_id=slug)
+        store = Store(zid_store_id=slug, vip_cart_threshold=500)
         db.session.add(store)
         db.session.commit()
 

@@ -48,7 +48,10 @@ class VipDashboardMerchantAlertTests(unittest.TestCase):
         mock_send.return_value = {"ok": True, "sid": "wx_1"}
         db.create_all()
 
-        store = Store(zid_store_id=f"vip_manual_send_store_{uuid.uuid4().hex[:12]}")
+        store = Store(
+            zid_store_id=f"vip_manual_send_store_{uuid.uuid4().hex[:12]}",
+            vip_cart_threshold=500,
+        )
         db.session.add(store)
         db.session.commit()
 
@@ -91,7 +94,10 @@ class VipDashboardMerchantAlertTests(unittest.TestCase):
 
         mock_send.return_value = {"ok": True, "sid": "wx_2"}
         db.create_all()
-        store = Store(zid_store_id=f"vip_reason_body_{uuid.uuid4().hex[:12]}")
+        store = Store(
+            zid_store_id=f"vip_reason_body_{uuid.uuid4().hex[:12]}",
+            vip_cart_threshold=200,
+        )
         db.session.add(store)
         db.session.commit()
         _persist_store_whatsapp_via_recovery_api(self, self.client, VIP_MANUAL_ALERT_TEST_MERCHANT_WHATSAPP)
@@ -123,7 +129,10 @@ class VipDashboardMerchantAlertTests(unittest.TestCase):
 
     def test_non_vip_cart_rejected(self) -> None:
         db.create_all()
-        store = Store(zid_store_id=f"vip_ns_1_{uuid.uuid4().hex[:12]}")
+        store = Store(
+            zid_store_id=f"vip_ns_1_{uuid.uuid4().hex[:12]}",
+            vip_cart_threshold=500,
+        )
         db.session.add(store)
         db.session.commit()
 
@@ -149,6 +158,7 @@ class VipDashboardMerchantAlertTests(unittest.TestCase):
             zid_store_id=f"vip_ns_2_{uuid.uuid4().hex[:12]}",
             store_whatsapp_number=None,
             whatsapp_support_url=None,
+            vip_cart_threshold=250,
         )
         db.session.add(store)
         db.session.commit()
@@ -172,7 +182,10 @@ class VipDashboardMerchantAlertTests(unittest.TestCase):
         mock_sw.return_value = {"ok": True, "sid": "SM_integration_test"}
 
         db.create_all()
-        store = Store(zid_store_id=f"vip_integration_{uuid.uuid4().hex[:12]}")
+        store = Store(
+            zid_store_id=f"vip_integration_{uuid.uuid4().hex[:12]}",
+            vip_cart_threshold=500,
+        )
         db.session.add(store)
         db.session.commit()
 
@@ -243,6 +256,7 @@ class VipDashboardMerchantAlertTests(unittest.TestCase):
             zid_store_id=slug,
             vip_offer_enabled=True,
             vip_offer_type="free_shipping",
+            vip_cart_threshold=500,
         )
         db.session.add(store)
         db.session.commit()
@@ -275,7 +289,7 @@ class VipDashboardMerchantAlertTests(unittest.TestCase):
     def test_vip_cart_settings_hides_ready_replies_without_customer_phone(self) -> None:
         db.create_all()
         slug = f"vip_nomr_{uuid.uuid4().hex[:12]}"
-        store = Store(zid_store_id=slug)
+        store = Store(zid_store_id=slug, vip_cart_threshold=500)
         db.session.add(store)
         db.session.commit()
 
@@ -313,7 +327,7 @@ class VipDashboardMerchantAlertTests(unittest.TestCase):
         """بدون تنظيف ‎DB‎: مجموعة واحدة لكل ‎session‎، أحدث سلة مع رقم من أي صف في المجموعة."""
         db.create_all()
         slug = f"vip_sess_grp_{uuid.uuid4().hex[:12]}"
-        store = Store(zid_store_id=slug)
+        store = Store(zid_store_id=slug, vip_cart_threshold=400)
         db.session.add(store)
         db.session.commit()
 
@@ -357,7 +371,7 @@ class VipDashboardMerchantAlertTests(unittest.TestCase):
     def test_vip_cart_settings_priority_requires_vip_mode_and_abandoned_status(self) -> None:
         db.create_all()
         slug = f"vip_pri_{uuid.uuid4().hex[:12]}"
-        store = Store(zid_store_id=slug)
+        store = Store(zid_store_id=slug, vip_cart_threshold=500)
         db.session.add(store)
         db.session.commit()
 
@@ -398,6 +412,33 @@ class VipDashboardMerchantAlertTests(unittest.TestCase):
         self.assertIn(f'data-cart-row-id="{ac1.id}"', html)
         self.assertNotIn(f'data-cart-row-id="{ac2.id}"', html)
         self.assertNotIn("vip-demo-heading", html)
+
+    @patch("main._cleanup_duplicate_vip_abandoned_rows", return_value=0)
+    def test_high_value_cart_exclusive_vip_lane_by_threshold_not_vip_mode(
+        self, _noop_cleanup: object,
+    ) -> None:
+        """سلة ‎1299‎ بعتبة ‎1000‎: تظهر في VIP فقط حتى لو ‎vip_mode=False‎ في DB."""
+        db.create_all()
+        slug = f"vip_lane_ex_{uuid.uuid4().hex[:12]}"
+        store = Store(zid_store_id=slug, vip_cart_threshold=1000)
+        db.session.add(store)
+        db.session.commit()
+        ac = AbandonedCart(
+            store_id=store.id,
+            zid_cart_id=f"lane-ex-{uuid.uuid4().hex[:8]}",
+            recovery_session_id=f"rs_lane_{uuid.uuid4().hex[:8]}",
+            cart_value=1299.0,
+            status="abandoned",
+            vip_mode=False,
+            last_seen_at=datetime.now(timezone.utc),
+        )
+        db.session.add(ac)
+        db.session.commit()
+        needle = f'data-cart-row-id="{int(ac.id)}"'
+        nr = self.client.get("/dashboard/normal-carts")
+        vip = self.client.get("/dashboard/vip-cart-settings")
+        self.assertNotIn(needle, nr.text.replace("&#34;", '"'))
+        self.assertIn(needle, vip.text.replace("&#34;", '"'))
 
 
 if __name__ == "__main__":

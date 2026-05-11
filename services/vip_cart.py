@@ -5,6 +5,25 @@ from __future__ import annotations
 from typing import Any, Dict, Optional
 
 
+def merchant_vip_threshold_int(store: Any) -> Optional[int]:
+    """
+    عتبة VIP المعرفة من التاجر على ‎Store‎ فقط.
+    ‎None‎ = غير مفعّلة أو غير صالحة — لا مسار VIP تشغيلي (كل السلال تعتبر عادية للوحة).
+    """
+    if store is None:
+        return None
+    raw_th = getattr(store, "vip_cart_threshold", None)
+    if raw_th is None:
+        return None
+    try:
+        threshold = int(raw_th)
+    except (TypeError, ValueError):
+        return None
+    if threshold < 1:
+        return None
+    return threshold
+
+
 def is_vip_cart(cart_total: Any, store: Any) -> bool:
     """
     إذا وُجدت عتبة صالحة على المتجر وقيمة السلة >= العتبة → ‎True‎.
@@ -12,20 +31,40 @@ def is_vip_cart(cart_total: Any, store: Any) -> bool:
     """
     if store is None:
         return False
-    raw_th = getattr(store, "vip_cart_threshold", None)
-    if raw_th is None:
-        return False
-    try:
-        threshold = int(raw_th)
-    except (TypeError, ValueError):
-        return False
-    if threshold < 1:
+    threshold = merchant_vip_threshold_int(store)
+    if threshold is None:
         return False
     try:
         total = float(cart_total) if cart_total is not None else 0.0
     except (TypeError, ValueError):
         return False
     return total >= float(threshold)
+
+
+def vip_operational_lane_diagnostics(cart_total: Any, store: Any) -> Dict[str, Any]:
+    """
+    تشخيص مسار واحد للوحة: ‎normal‎ أو ‎vip‎ حسب العتبة فقط (لا يعتمد على ‎vip_mode‎ في DB).
+    عند غياب العتبة: ‎operational_lane=normal‎ و‎is_vip_cart=False‎ (معطّل VIP).
+    """
+    th = merchant_vip_threshold_int(store)
+    try:
+        ct = float(cart_total) if cart_total is not None else 0.0
+    except (TypeError, ValueError):
+        ct = 0.0
+    iv = bool(th is not None and is_vip_cart(cart_total, store))
+    lane = "vip" if iv else "normal"
+    return {
+        "cart_total": round(ct, 2),
+        "vip_threshold": th,
+        "is_vip_cart": iv,
+        "operational_lane": lane,
+    }
+
+
+def abandoned_cart_in_vip_operational_lane(ac: Any, store: Any) -> bool:
+    """هل السلة في مسار VIP للوحة والإجراءات — حسب القيمة والعتبة فقط."""
+    cv = getattr(ac, "cart_value", None) if ac is not None else None
+    return bool(is_vip_cart(cv, store))
 
 
 def apply_vip_cart_threshold_from_body(row: Any, body: Dict[str, Any]) -> None:

@@ -293,13 +293,16 @@ from services.demo_sandbox_catalog import (
     demo_template_context_extras,
 )
 from services.vip_cart import (
+    abandoned_cart_in_vip_operational_lane,
     apply_vip_cart_threshold_from_body,
     apply_vip_offer_settings_from_body,
     is_vip_cart,
+    merchant_vip_threshold_int,
     vip_cart_threshold_fields_for_api,
     vip_offer_card_hint_ar,
     vip_offer_fields_for_api,
     vip_offer_manual_contact_whatsapp_body,
+    vip_operational_lane_diagnostics,
 )
 from services.normal_recovery_phone_persist import (
     commit_normal_recovery_phone_after_resolved,
@@ -1735,19 +1738,23 @@ def _resolve_abandoned_cart_row_for_vip_live_sync(
 
 def _cleanup_duplicate_vip_abandoned_rows(*, store_id_scope: Optional[int] = None) -> int:
     """
-    ‎vip_mode‎ + ‎status=abandoned‎: لكل ‎(store_id, recovery_session_id)‎ يُبقى الأحدث ‎last_seen_at‎
-    ويُحذف الباقي (تنظيف تاريخي).
+    تكرار صفوف ‎VIP‎ لنفس الجلسة: عند تعريف ‎vip_cart_threshold‎ يُعتمد ‎cart_value >= threshold‎؛
+    وإلا ‎vip_mode=True‎ (توافق خلفي). يُبقى الأحدث ‎last_seen_at‎ لكل ‎(store_id, recovery_session_id)‎.
     """
     deleted = 0
     try:
         _ensure_store_widget_schema()
         db.create_all()
-        q = (
-            db.session.query(AbandonedCart)
-            .filter(AbandonedCart.vip_mode.is_(True))
-            .filter(AbandonedCart.status == "abandoned")
-            .filter(AbandonedCart.recovery_session_id.isnot(None))
+        th_dedupe = merchant_vip_threshold_int(
+            _load_latest_store_for_recovery() if store_id_scope is None else db.session.get(Store, int(store_id_scope))
         )
+        q = db.session.query(AbandonedCart).filter(AbandonedCart.status == "abandoned").filter(
+            AbandonedCart.recovery_session_id.isnot(None)
+        )
+        if th_dedupe is not None:
+            q = q.filter(func.coalesce(AbandonedCart.cart_value, 0) >= float(th_dedupe))
+        else:
+            q = q.filter(AbandonedCart.vip_mode.is_(True))
         if store_id_scope is not None:
             vid = int(store_id_scope)
             q = q.filter(
@@ -3461,7 +3468,7 @@ def _vip_merchant_auto_alert_if_newly_entering(
 ) -> None:
     if was_vip_before:
         return
-    if not bool(getattr(ac, "vip_mode", False)):
+    if not abandoned_cart_in_vip_operational_lane(ac, store_for_alert):
         return
     if str(getattr(ac, "status", "") or "").strip() != "abandoned":
         return
@@ -6146,8 +6153,10 @@ def dev_create_vip_test_cart() -> Any:
         if st is None:
             return j({"ok": False, "error": "no_store"}, 500)
         slug = (getattr(st, "zid_store_id", None) or "").strip() or CARTFLOW_DEFAULT_RECOVERY_STORE_ZID
+        _vip_test_val = 1200.0
         if getattr(st, "vip_cart_threshold", None) is None:
-            st.vip_cart_threshold = 500
+            # عتبة مشتقة من قيمة سلة الاختبار — لا قيمة سحرية ثابتة في الإنتاج.
+            st.vip_cart_threshold = max(1, int(_vip_test_val * 0.75))
         db.session.add(st)
         db.session.commit()
 
@@ -6397,6 +6406,7 @@ def _handle_cart_state_sync(payload: dict[str, Any]) -> dict[str, Any]:
     zid = (_cart_id_str_from_payload(merge_pl) or "").strip()[:255]
     if not zid:
         _is_vip_miss = False if is_empty else bool(is_vip_cart(cart_total, store_row))
+        _lane_miss = vip_operational_lane_diagnostics(cart_total, store_row)
         return {
             "ok": True,
             "cart_state_sync": False,
@@ -6405,6 +6415,8 @@ def _handle_cart_state_sync(payload: dict[str, Any]) -> dict[str, Any]:
             "vip_cart_threshold": vip_th_api,
             "is_vip": _is_vip_miss,
             "vip_from_cart_total": True,
+            "operational_lane": _lane_miss.get("operational_lane"),
+            "is_vip_cart": _lane_miss.get("is_vip_cart"),
         }
 
     cart_ids = [zid]
@@ -6550,6 +6562,7 @@ def _handle_cart_state_sync(payload: dict[str, Any]) -> dict[str, Any]:
         f"session_id={ups_sid} cart_total={row.cart_value} vip_mode={bool(row.vip_mode)} status={row.status}"
     )
 
+    _lane_diag = vip_operational_lane_diagnostics(row.cart_value, store_row)
     return {
         "ok": True,
         "cart_state_sync": True,
@@ -6557,8 +6570,10 @@ def _handle_cart_state_sync(payload: dict[str, Any]) -> dict[str, Any]:
         "status": str(row.status or ""),
         "cart_total": float(cart_total),
         "vip_cart_threshold": vip_th_api,
-        "is_vip": bool(not is_empty and getattr(row, "vip_mode", False)),
+        "is_vip": bool(not is_empty and is_vip_cart(row.cart_value, store_row)),
         "vip_from_cart_total": True,
+        "operational_lane": _lane_diag.get("operational_lane"),
+        "is_vip_cart": _lane_diag.get("is_vip_cart"),
     }
 
 
@@ -8124,10 +8139,11 @@ def _vip_dashboard_ac_in_scope(ac: AbandonedCart, dash_store: Optional[Any]) -> 
 
 def _vip_rows_same_logical_vip_cart(ac: AbandonedCart) -> list[AbandonedCart]:
     """نفس الجلسة أو ‎zid_cart_id‎ ضمن نفس ‎store_id‎ — لتوحيد الحالة على الصفوف المكررة."""
+    st_row = _store_row_for_abandoned_cart(ac) or _dashboard_recovery_store_row()
     sid = getattr(ac, "store_id", None)
     rs = (getattr(ac, "recovery_session_id", None) or "").strip()
     zi = (getattr(ac, "zid_cart_id", None) or "").strip()
-    q = db.session.query(AbandonedCart).filter(AbandonedCart.vip_mode.is_(True))
+    q = db.session.query(AbandonedCart)
     if sid is not None:
         q = q.filter(AbandonedCart.store_id == sid)
     else:
@@ -8138,9 +8154,10 @@ def _vip_rows_same_logical_vip_cart(ac: AbandonedCart) -> list[AbandonedCart]:
         q = q.filter(AbandonedCart.zid_cart_id == zi)
     else:
         r = db.session.get(AbandonedCart, int(ac.id))
-        return [r] if r is not None else []
-    rows = list(q.all())
-    return rows if rows else ([ac] if ac else [])
+        rows0 = [r] if r is not None else []
+        return [x for x in rows0 if abandoned_cart_in_vip_operational_lane(x, st_row)]
+    rows = [r for r in q.all() if abandoned_cart_in_vip_operational_lane(r, st_row)]
+    return rows if rows else ([ac] if ac and abandoned_cart_in_vip_operational_lane(ac, st_row) else [])
 
 
 def _vip_apply_lifecycle_status(group: list[AbandonedCart], status: str) -> None:
@@ -8323,6 +8340,7 @@ def _vip_dashboard_cart_alert_dict_from_group(
         "recovery_card_tier": "vip" if is_vip_card else "normal",
         "recovery_hide_vip_lifecycle_buttons": not is_vip_card,
     }
+    out_payload.update(vip_operational_lane_diagnostics(ac.cart_value, dash_store))
     if not is_vip_card:
         out_payload.update(
             _normal_recovery_phase_steps_payload(
@@ -8338,11 +8356,15 @@ def _vip_priority_alert_rows_for_lc_clause(lc_clause: Any, *, log_suffix: str) -
     db.create_all()
     _ensure_default_store_for_recovery()
     dash_store = _dashboard_recovery_store_row()
+    vip_th = merchant_vip_threshold_int(dash_store)
+    if vip_th is None:
+        log.info("[VIP PRIORITY QUERY %s] skipped: no merchant vip_cart_threshold", log_suffix)
+        return []
     dash_id_raw = getattr(dash_store, "id", None) if dash_store is not None else None
     scope_id: Optional[int] = None
     q = (
         db.session.query(AbandonedCart)
-        .filter(AbandonedCart.vip_mode.is_(True))
+        .filter(func.coalesce(AbandonedCart.cart_value, 0) >= float(vip_th))
         .filter(AbandonedCart.status == "abandoned")
         .filter(lc_clause)
     )
@@ -8429,10 +8451,13 @@ def _normal_carts_dashboard_stats() -> dict[str, Any]:
         if dash_store is None:
             return out
         slug = (getattr(dash_store, "zid_store_id", None) or "").strip()
-        base_q = db.session.query(AbandonedCart).filter(AbandonedCart.vip_mode.is_(False))
+        base_q = db.session.query(AbandonedCart)
         _st_scope = _normal_recovery_abandoned_scope_filter(dash_store)
         if _st_scope is not None:
             base_q = base_q.filter(_st_scope)
+        vip_th = merchant_vip_threshold_int(dash_store)
+        if vip_th is not None:
+            base_q = base_q.filter(func.coalesce(AbandonedCart.cart_value, 0) < float(vip_th))
         q_abandoned = base_q.filter(AbandonedCart.status == "abandoned")
         out["normal_cart_count"] = int(q_abandoned.count() or 0)
         out["normal_recovered_count"] = int(
@@ -8606,13 +8631,13 @@ def _normal_recovery_cart_alert_list(
         db.create_all()
         _ensure_default_store_for_recovery()
         dash_store = _dashboard_recovery_store_row()
-        q = db.session.query(AbandonedCart).filter(
-            AbandonedCart.vip_mode.is_(False),
-            AbandonedCart.status == "abandoned",
-        )
+        q = db.session.query(AbandonedCart).filter(AbandonedCart.status == "abandoned")
         _nr_scope = _normal_recovery_abandoned_scope_filter(dash_store)
         if _nr_scope is not None:
             q = q.filter(_nr_scope)
+        vip_th = merchant_vip_threshold_int(dash_store)
+        if vip_th is not None:
+            q = q.filter(func.coalesce(AbandonedCart.cart_value, 0) < float(vip_th))
         ns = (nr_session or "").strip()[:512]
         if ns:
             q = q.filter(AbandonedCart.recovery_session_id == ns)
@@ -9187,13 +9212,13 @@ def api_dashboard_vip_cart_merchant_alert(cart_row_id: int):
         ac = db.session.get(AbandonedCart, int(cart_row_id))
         if ac is None:
             return j({"ok": False, "error": "لم يتم العثور على السلة"}, 404)
-        if not bool(getattr(ac, "vip_mode", False)):
+        store_obj = _resolve_store_for_vip_merchant_alert(ac)
+        if not abandoned_cart_in_vip_operational_lane(ac, store_obj):
             return j({"ok": False, "error": "هذه السلة ليست في وضع VIP"}, 400)
         if str(getattr(ac, "status", "") or "").strip() == "recovered":
             return j({"ok": False, "error": "السلة مستردة بالفعل"}, 400)
 
         cart_sid = getattr(ac, "store_id", None)
-        store_obj = _resolve_store_for_vip_merchant_alert(ac)
         resolved_id = getattr(store_obj, "id", None) if store_obj is not None else None
         sw_raw = getattr(store_obj, "store_whatsapp_number", None) if store_obj is not None else None
         sw_disp = (sw_raw or "").strip() if isinstance(sw_raw, str) else ""
@@ -9277,11 +9302,12 @@ def api_dashboard_vip_cart_lifecycle(
         ac = db.session.get(AbandonedCart, int(cart_row_id))
         if ac is None:
             return j({"ok": False, "error": "لم يتم العثور على السلة"}, 404)
-        if not bool(getattr(ac, "vip_mode", False)):
+        dash_store = _dashboard_recovery_store_row()
+        store_lane = _store_row_for_abandoned_cart(ac) or dash_store
+        if not abandoned_cart_in_vip_operational_lane(ac, store_lane):
             return j({"ok": False, "error": "هذه السلة ليست في وضع VIP"}, 400)
         if str(getattr(ac, "status", "") or "").strip() == "recovered":
             return j({"ok": False, "error": "السلة مستردة بالفعل"}, 400)
-        dash_store = _dashboard_recovery_store_row()
         if not _vip_dashboard_ac_in_scope(ac, dash_store):
             return j({"ok": False, "error": "غير مسموح"}, 403)
 
