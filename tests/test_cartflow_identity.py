@@ -218,6 +218,9 @@ class CartflowIdentityDbTests(unittest.TestCase):
         record_behavioral_user_return_from_payload(
             {
                 "user_returned_to_site": True,
+                "active_commercial_reengagement": True,
+                "return_visit_kind": "active_commercial_reengagement",
+                "returned_checkout_page": True,
                 "session_id": sid,
                 "cart_id": cid,
                 "store": "demo",
@@ -257,6 +260,9 @@ class CartflowIdentityDbTests(unittest.TestCase):
         record_behavioral_user_return_from_payload(
             {
                 "user_returned_to_site": True,
+                "active_commercial_reengagement": True,
+                "return_visit_kind": "active_commercial_reengagement",
+                "returned_checkout_page": True,
                 "session_id": sid,
                 "cart_id": cid,
                 "store": "demo",

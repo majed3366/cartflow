@@ -265,7 +265,6 @@
 
     var bodyObj = {
       event_type: "user_returned_to_site",
-      user_returned_to_site: true,
       store_slug: store_slug,
       store: store_slug,
       session_id: session_id,
@@ -274,6 +273,15 @@
       return_context: return_context,
       return_timestamp: new Date().toISOString(),
     };
+    if (recovery_return_context === "checkout") {
+      bodyObj.return_visit_kind = "active_commercial_reengagement";
+      bodyObj.active_commercial_reengagement = true;
+      bodyObj.user_returned_to_site = true;
+      bodyObj.returned_checkout_page = true;
+    } else {
+      bodyObj.return_visit_kind = "passive_return_visit";
+      bodyObj.passive_return_visit = true;
+    }
     var cfPh = readCfTestPhone();
     if (cfPh) {
       bodyObj.cf_test_phone = cfPh;

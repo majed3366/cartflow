@@ -128,6 +128,7 @@ def conversation_dashboard_extras(
     recovery_returned_checkout_page_flag = False
     recovery_site_return_count_val = 0
     return_intel_pressure_note_ar = ""
+    passive_hint_ar = ""
     return_intel_completion_opportunity = False
     normal_recovery_return_context_key = ""
     normal_recovery_continuation_summary_ar = str(
@@ -166,7 +167,17 @@ def conversation_dashboard_extras(
         )
         ash_bh = str(bh.get("recovery_adaptive_stage") or "").strip()
         return_intel_completion_opportunity = ash_bh == "returned_checkout"
-        if recovery_returned_checkout_page_flag:
+        try:
+            _pvc = int(bh.get("passive_return_visit_count") or 0)
+        except (TypeError, ValueError):
+            _pvc = 0
+        if _pvc > 0 and not customer_returned_to_site_track:
+            passive_hint_ar = "العميل يتصفح من جديد"
+        if customer_returned_to_site_track:
+            return_intel_pressure_note_ar = (
+                "العميل عاد وتفاعل مع السلة — أوقفنا الرسائل تلقائيًا."
+            )
+        elif recovery_returned_checkout_page_flag:
             return_intel_pressure_note_ar = (
                 "وصل صفحة الدفع — فرصة إكمال مرتفعة؛ ركّز على المساندة لا العروض المفاجئة."
             )
@@ -346,6 +357,7 @@ def conversation_dashboard_extras(
         "normal_recovery_site_return_count": recovery_site_return_count_val,
         "normal_recovery_return_intel_pressure_note_ar": return_intel_pressure_note_ar,
         "normal_recovery_return_completion_opportunity": return_intel_completion_opportunity,
+        "normal_recovery_passive_browsing_hint_ar": passive_hint_ar,
         "normal_recovery_continuation_summary_ar": normal_recovery_continuation_summary_ar,
         "normal_recovery_continuation_state_key": normal_recovery_continuation_state_key,
     }

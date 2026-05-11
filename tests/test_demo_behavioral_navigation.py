@@ -90,11 +90,14 @@ class DemoBehavioralNavigationTests(unittest.TestCase):
         payload = {
             "event_type": "user_returned_to_site",
             "user_returned_to_site": True,
+            "active_commercial_reengagement": True,
+            "return_visit_kind": "active_commercial_reengagement",
             "store": "demo",
             "store_slug": "demo",
             "session_id": sid,
             "cart_id": cid,
-            "recovery_return_context": "product",
+            "recovery_return_context": "checkout",
+            "returned_checkout_page": True,
         }
         r = self.client.post("/api/cart-event", json=payload)
         self.assertEqual(200, r.status_code, r.text)
@@ -129,6 +132,9 @@ class DemoBehavioralNavigationTests(unittest.TestCase):
         ret = {
             "event_type": "user_returned_to_site",
             "user_returned_to_site": True,
+            "active_commercial_reengagement": True,
+            "return_visit_kind": "active_commercial_reengagement",
+            "returned_checkout_page": True,
             "store": "demo",
             "session_id": sid,
             "cart_id": cid,

@@ -2701,7 +2701,7 @@ try {
 
   function syncCartState(reason) {
     var r = String(reason || "page_load").toLowerCase();
-    var okReasons = { add: 1, remove: 1, clear: 1, abandon: 1, page_load: 1 };
+    var okReasons = { add: 1, remove: 1, clear: 1, abandon: 1, page_load: 1, checkout: 1 };
     if (!okReasons[r]) {
       r = "page_load";
     }
@@ -2877,6 +2877,18 @@ try {
       reason = "add";
     } else {
       reason = "page_load";
+    }
+
+    try {
+      var onCheckoutPath =
+        typeof window.location !== "undefined" &&
+        window.location.pathname &&
+        /checkout/i.test(String(window.location.pathname));
+      if (onCheckoutPath && reason === "page_load") {
+        reason = "checkout";
+      }
+    } catch (eChPath) {
+      /* ignore */
     }
 
     cartflowLifecycleLastSig = sig;

@@ -49,6 +49,7 @@ class RecoveryLifecycleEvent:
     SEND_FAILED = "send_failed"
     REPLY_RECEIVED = "reply_received"
     RETURNED_TO_SITE = "returned_to_site"
+    PASSIVE_RETURN_VISIT = "passive_return_visit"
     MERGE_BLOCKED = "merge_blocked"
     TRUST_WARNING = "trust_warning"
     AUTOMATION_GATED = "automation_gated"

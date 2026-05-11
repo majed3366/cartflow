@@ -350,8 +350,10 @@ from services.behavioral_recovery.state_store import (
     customer_replied_flagged_for_session,
 )
 from services.behavioral_recovery.user_return import (
-    payload_indicates_user_returned_to_site,
+    payload_indicates_active_commercial_reengagement,
+    payload_indicates_passive_return_visit,
     record_behavioral_user_return_from_payload,
+    record_passive_return_visit_from_payload,
 )
 
 log = logging.getLogger("cartflow")
@@ -6646,6 +6648,12 @@ def _handle_cart_state_sync(payload: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _cart_state_sync_reason_is_commercial_reengagement(payload: dict[str, Any]) -> bool:
+    """‎cart_state_sync.reason‎ يعكس تفاعلاً تجارياً يبرّر إيقاف الاسترجاع (وليس ‎page_load‎)."""
+    r = str(payload.get("reason") or "").strip().lower()
+    return r in ("add", "remove", "checkout")
+
+
 @app.post("/api/cart-event")
 async def api_cart_event(request: Request, background_tasks: BackgroundTasks):
     """
@@ -6686,6 +6694,13 @@ async def api_cart_event(request: Request, background_tasks: BackgroundTasks):
     if event_norm == "cart_state_sync":
         out_sync: dict[str, Any] = {"ok": True, "event": "cart_state_sync"}
         out_sync.update(_handle_cart_state_sync(payload))
+        if _cart_state_sync_reason_is_commercial_reengagement(payload):
+            act_payload = dict(payload)
+            act_payload["return_visit_kind"] = "active_commercial_reengagement"
+            act_payload["active_commercial_reengagement"] = True
+            if _return_to_site_payload_is_qualified(act_payload):
+                _mark_user_returned_for_payload(act_payload)
+                record_behavioral_user_return_from_payload(act_payload)
         return j(out_sync, 200)
     if event_norm == "cart_abandoned":
         print("[ROUTING TO VIP HANDLER]")
@@ -6708,7 +6723,7 @@ async def api_cart_event(request: Request, background_tasks: BackgroundTasks):
         "ok": True,
         "event": payload.get("event"),
     }
-    if payload_indicates_user_returned_to_site(payload):
+    if payload_indicates_active_commercial_reengagement(payload):
         try:
             _rss = str(
                 payload.get("store") or payload.get("store_slug") or ""
@@ -6716,7 +6731,7 @@ async def api_cart_event(request: Request, background_tasks: BackgroundTasks):
             _rsid = str(payload.get("session_id") or "").strip()
             _rcid = str(payload.get("cart_id") or "").strip()
             _rack = (
-                f"[RETURN TO SITE] cart_event_accepted store_slug={_rss} "
+                f"[RETURN TO SITE] cart_event_commercial_reengagement store_slug={_rss} "
                 f"session_id={(_rsid or '-')[:80]} cart_id={(_rcid or '-')[:64]}"
             )
             print(_rack, flush=True)
@@ -6726,6 +6741,22 @@ async def api_cart_event(request: Request, background_tasks: BackgroundTasks):
         if _return_to_site_payload_is_qualified(payload):
             _mark_user_returned_for_payload(payload)
             record_behavioral_user_return_from_payload(payload)
+    elif payload_indicates_passive_return_visit(payload):
+        try:
+            _prs = str(
+                payload.get("store") or payload.get("store_slug") or ""
+            ).strip() or "-"
+            _prsid = str(payload.get("session_id") or "").strip()
+            _prcid = str(payload.get("cart_id") or "").strip()
+            _prline = (
+                f"[PASSIVE RETURN] cart_event_passive_visit store_slug={_prs} "
+                f"session_id={(_prsid or '-')[:80]} cart_id={(_prcid or '-')[:64]}"
+            )
+            print(_prline, flush=True)
+            log.info("%s", _prline)
+        except OSError:
+            pass
+        record_passive_return_visit_from_payload(payload)
     if (
         payload.get("user_converted") is True
         or payload.get("event") == "user_converted"
