@@ -36,7 +36,9 @@ DEFAULT_WIDGET_TRIGGER_CONFIG: Dict[str, Any] = {
 _SENS = frozenset({"low", "medium", "high"})
 _DELAY = frozenset({0, 3, 5})
 _FREQ = frozenset({"per_session", "per_24h", "no_rapid_repeat"})
-_HES_SEC = frozenset({5, 10, 15, 20, 30, 45, 60, 90, 120})
+# قيم جاهزة + ‎0‎ فوري؛ أي عدد صحيح ‎1–600‎ يُقبل كمخصّص.
+_HES_PRESET = frozenset({0, 5, 10, 15, 20, 30, 45, 60, 90, 120})
+_HES_CUSTOM_MAX = 600
 _HES_COND = frozenset(
     {"after_cart_add", "repeated_view", "inactivity", "cart_interaction"}
 )
@@ -61,6 +63,18 @@ def _boolish(v: Any, default: bool) -> bool:
             return True
         if s in ("false", "0", "no", "off", ""):
             return False
+    return default
+
+
+def _hesitation_after_seconds(v: Any, default: int) -> int:
+    try:
+        i = int(v)
+    except (TypeError, ValueError):
+        return default
+    if i in _HES_PRESET:
+        return i
+    if 1 <= i <= _HES_CUSTOM_MAX:
+        return i
     return default
 
 
@@ -123,9 +137,8 @@ def normalize_widget_trigger_config(raw: Any) -> Dict[str, Any]:
         raw.get("hesitation_trigger_enabled"),
         bool(out["hesitation_trigger_enabled"]),
     )
-    out["hesitation_after_seconds"] = _int_choice(
+    out["hesitation_after_seconds"] = _hesitation_after_seconds(
         raw.get("hesitation_after_seconds"),
-        _HES_SEC,
         int(out["hesitation_after_seconds"]),
     )
     out["hesitation_condition"] = _str_choice(

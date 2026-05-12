@@ -61,6 +61,7 @@
     var gf = byId("mw-exit-freq");
     var he = byId("mw-hes-enabled");
     var hs = byId("mw-hes-sec");
+    var hsc = byId("mw-hes-sec-custom");
     var hc = byId("mw-hes-cond");
     var sc = byId("mw-scope");
     var sd = byId("mw-sup-dismiss");
@@ -72,7 +73,17 @@
     if (gs) t.exit_intent_sensitivity = gs.value || "medium";
     if (gf) t.exit_intent_frequency = gf.value || "per_session";
     if (he) t.hesitation_trigger_enabled = !!he.checked;
-    if (hs) t.hesitation_after_seconds = parseInt(hs.value, 10) || 20;
+    if (hs) {
+      var hv = String(hs.value || "").trim();
+      if (hv === "custom" && hsc) {
+        var cn = parseInt(String(hsc.value || "").trim(), 10);
+        t.hesitation_after_seconds =
+          isFinite(cn) && cn >= 1 && cn <= 600 ? cn : 20;
+      } else {
+        var sn = parseInt(hv, 10);
+        t.hesitation_after_seconds = isFinite(sn) ? sn : 20;
+      }
+    }
     if (hc) t.hesitation_condition = hc.value || "after_cart_add";
     if (sc) t.visibility_page_scope = sc.value || "all";
     t.widget_brand_line_ar = "";
@@ -232,10 +243,29 @@
     }
   }
 
+  function wireHesitationDelayUi() {
+    var hs = byId("mw-hes-sec");
+    var hsc = byId("mw-hes-sec-custom");
+    var lbl = byId("mw-hes-sec-custom-label");
+    if (!hs) return;
+    function sync() {
+      var isC = hs.value === "custom";
+      if (hsc) {
+        hsc.style.display = isC ? "" : "none";
+      }
+      if (lbl) {
+        lbl.style.display = isC ? "" : "none";
+      }
+    }
+    hs.addEventListener("change", sync);
+    sync();
+  }
+
   function init() {
     if (!byId("page-widget")) return;
     bindReasonReorder();
     wireLive();
+    wireHesitationDelayUi();
     wireSave();
     refreshPreview();
   }

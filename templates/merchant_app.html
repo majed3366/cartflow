@@ -404,23 +404,36 @@
           </select>
         </div>
         <div class="ma-fw-card">
-          <div class="ma-fw-h">التوقيت داخل الصفحة والتردد</div>
+          <div class="ma-fw-h">ظهور الودجيت داخل الصفحة</div>
+          {% set hes_sec = tg.hesitation_after_seconds | default(20) | int %}
+          {% set hes_presets = [0, 5, 10, 20, 30, 15, 45, 60, 90, 120] %}
+          {% set hes_is_custom = hes_sec not in hes_presets %}
           <label class="ma-fw-check">
             <input type="checkbox" id="mw-hes-enabled" {% if tg.hesitation_trigger_enabled | default(true) %}checked{% endif %}>
-            <span>الظهور عند التردد داخل الصفحة</span>
+            <span>تفعيل ظهور الودجيت عند تردّد العميل داخل الصفحة</span>
           </label>
-          <label class="ma-fw-label" for="mw-hes-sec">الظهور بعد (ثوانٍ)</label>
+          <label class="ma-fw-label" for="mw-hes-sec">التأخير بعد شرط التردد</label>
           <select class="ma-fw-input" id="mw-hes-sec">
-            {% for sec in [5, 10, 15, 20, 30, 45, 60, 90, 120] %}
-            <option value="{{ sec }}" {% if (tg.hesitation_after_seconds | default(20) | int) == sec %}selected{% endif %}>{{ sec }} ثانية</option>
-            {% endfor %}
+            <option value="0" {% if hes_sec == 0 and not hes_is_custom %}selected{% endif %}>فوري</option>
+            <option value="5" {% if hes_sec == 5 and not hes_is_custom %}selected{% endif %}>بعد 5 ثوانٍ</option>
+            <option value="10" {% if hes_sec == 10 and not hes_is_custom %}selected{% endif %}>بعد 10 ثوانٍ</option>
+            <option value="20" {% if hes_sec == 20 and not hes_is_custom %}selected{% endif %}>بعد 20 ثانية</option>
+            <option value="30" {% if hes_sec == 30 and not hes_is_custom %}selected{% endif %}>بعد 30 ثانية</option>
+            <option value="15" {% if hes_sec == 15 and not hes_is_custom %}selected{% endif %}>بعد 15 ثانية</option>
+            <option value="45" {% if hes_sec == 45 and not hes_is_custom %}selected{% endif %}>بعد 45 ثانية</option>
+            <option value="60" {% if hes_sec == 60 and not hes_is_custom %}selected{% endif %}>بعد 60 ثانية</option>
+            <option value="90" {% if hes_sec == 90 and not hes_is_custom %}selected{% endif %}>بعد 90 ثانية</option>
+            <option value="120" {% if hes_sec == 120 and not hes_is_custom %}selected{% endif %}>بعد 120 ثانية</option>
+            <option value="custom" {% if hes_is_custom %}selected{% endif %}>مخصص بالثواني</option>
           </select>
-          <label class="ma-fw-label" for="mw-hes-cond">متى يُعتبر العميل متردداً</label>
+          <label class="ma-fw-label" for="mw-hes-sec-custom" id="mw-hes-sec-custom-label" style="{% if not hes_is_custom %}display:none{% endif %}">عدد الثواني (1–600)</label>
+          <input class="ma-fw-input" type="number" id="mw-hes-sec-custom" min="1" max="600" step="1" value="{{ hes_sec if hes_is_custom else 45 }}" style="{% if not hes_is_custom %}display:none{% endif %};margin-top:6px;">
+          <label class="ma-fw-label" for="mw-hes-cond">شرط التردد</label>
           <select class="ma-fw-input" id="mw-hes-cond">
             <option value="after_cart_add" {% if (tg.hesitation_condition or 'after_cart_add') == 'after_cart_add' %}selected{% endif %}>بعد إضافة منتج للسلة</option>
+            <option value="inactivity" {% if (tg.hesitation_condition or '') == 'inactivity' %}selected{% endif %}>بعد توقف التفاعل</option>
+            <option value="repeated_view" {% if (tg.hesitation_condition or '') == 'repeated_view' %}selected{% endif %}>بعد مشاهدة المنتج</option>
             <option value="cart_interaction" {% if (tg.hesitation_condition or '') == 'cart_interaction' %}selected{% endif %}>عند التفاعل مع السلة</option>
-            <option value="repeated_view" {% if (tg.hesitation_condition or '') == 'repeated_view' %}selected{% endif %}>عند التصفح المتكرر للصفحة</option>
-            <option value="inactivity" {% if (tg.hesitation_condition or '') == 'inactivity' %}selected{% endif %}>عند التوقف عن التفاعل</option>
           </select>
           <label class="ma-fw-label" for="mw-scope">نطاق الصفحات</label>
           <select class="ma-fw-input" id="mw-scope">

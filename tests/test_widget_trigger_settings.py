@@ -52,6 +52,14 @@ class WidgetTriggerSettingsTests(unittest.TestCase):
         self.assertEqual(out["exit_intent_delay_seconds"], 0)
         self.assertEqual(out["hesitation_after_seconds"], 20)
 
+    def test_hesitation_after_seconds_zero_and_custom_range(self) -> None:
+        z = normalize_widget_trigger_config({"hesitation_after_seconds": 0})
+        self.assertEqual(z["hesitation_after_seconds"], 0)
+        c = normalize_widget_trigger_config({"hesitation_after_seconds": 77})
+        self.assertEqual(c["hesitation_after_seconds"], 77)
+        hi = normalize_widget_trigger_config({"hesitation_after_seconds": 9999})
+        self.assertEqual(hi["hesitation_after_seconds"], 20)
+
     def test_default_includes_merchant_panel_keys(self) -> None:
         out = normalize_widget_trigger_config({})
         self.assertIn("widget_brand_line_ar", out)
