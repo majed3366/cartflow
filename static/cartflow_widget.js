@@ -516,6 +516,97 @@ try {
     };
   }
 
+  function cfReasonSurfaceLabel(reasonKey, defaultLabel) {
+    var k = String(reasonKey || "").toLowerCase();
+    var rt = getCfReasonTemplates();
+    var ent = rt[k];
+    if (ent && typeof ent === "object") {
+      var m = String(ent.message || "").trim();
+      if (m) {
+        var parts = m.split(/\r?\n/);
+        var line = String(parts[0] || "").trim();
+        if (line.length > 80) {
+          return line.slice(0, 77) + "…";
+        }
+        return line;
+      }
+    }
+    return defaultLabel != null ? String(defaultLabel) : k;
+  }
+
+  function cfReasonTemplatesLogSnapshot() {
+    var keys = [
+      "price",
+      "shipping",
+      "delivery",
+      "quality",
+      "warranty",
+      "thinking",
+      "other",
+    ];
+    var rt = getCfReasonTemplates();
+    var out = [];
+    var i;
+    for (i = 0; i < keys.length; i++) {
+      var kk = keys[i];
+      var ent = rt[kk];
+      var en = true;
+      if (ent && typeof ent === "object" && ent.enabled === false) {
+        en = false;
+      }
+      var defL = cfDefaultReasonLabels()[kk] != null ? cfDefaultReasonLabels()[kk] : kk;
+      out.push({
+        key: kk,
+        enabled: en,
+        label: cfReasonSurfaceLabel(kk, defL),
+      });
+    }
+    return out;
+  }
+
+  function cfLayerDChipSpecForReason(reasonKey) {
+    var k = String(reasonKey || "").toLowerCase();
+    var map = {
+      price: { tag: "price_high", defaultLabel: "السعر مرتفع" },
+      quality: { tag: "quality_uncertainty", defaultLabel: "غير متأكد من الجودة" },
+      shipping: { tag: "shipping_cost", defaultLabel: "تكلفة الشحن" },
+      delivery: { tag: "delivery_time", defaultLabel: "مدة التوصيل" },
+      warranty: { tag: "warranty", defaultLabel: "الضمان" },
+      other: { tag: "_other", defaultLabel: "سبب آخر / أحتاج أتحدث معك" },
+    };
+    return map[k] || null;
+  }
+
+  function cfLayerDChipsFromConfig() {
+    var tr = getCfWidgetTrigger();
+    var order = Array.isArray(tr.reason_display_order)
+      ? tr.reason_display_order
+      : CF_WIDGET_TRIGGER_DEFAULTS.reason_display_order;
+    var out = [];
+    var i;
+    for (i = 0; i < order.length; i++) {
+      var rk = String(order[i] || "").toLowerCase();
+      if (!rk || !cfReasonTemplateEnabled(rk)) {
+        continue;
+      }
+      var spec = cfLayerDChipSpecForReason(rk);
+      if (!spec) {
+        continue;
+      }
+      out.push({
+        tag: spec.tag,
+        label: cfReasonSurfaceLabel(rk, spec.defaultLabel),
+        reasonKey: rk,
+      });
+    }
+    out.push({
+      tag: "no_help",
+      label: "ما أحتاج مساعدة الآن",
+      reasonKey: null,
+    });
+    return out;
+  }
+
   function cfBuildVisibleReasonRows() {
     var tr = getCfWidgetTrigger();
     var order = Array.isArray(tr.reason_display_order)
@@ -529,7 +620,8 @@ try {
       if (!r || !cfReasonTemplateEnabled(r)) {
         continue;
       }
-      var lab = labels[r] || r;
+      var defLab = labels[r] != null ? labels[r] : r;
+      var lab = cfReasonSurfaceLabel(r, defLab);
       out.push({ r: r, label: lab });
     }
     return out;
@@ -604,10 +696,11 @@ try {
     }
   }
 
-  function applyWidgetRuntimeConfigFromPayload(j) {
+  function applyWidgetRuntimeConfigFromPayload(j, configSource) {
     if (!j || typeof j !== "object") {
       return;
     }
+    var cfgSrc = configSource != null ? String(configSource) : "unknown";
     if (j.widget_trigger_config && typeof j.widget_trigger_config === "object") {
       cfWidgetTriggerRuntime = mergeCfWidgetTrigger(j.widget_trigger_config);
     }
@@ -617,7 +710,12 @@ try {
       cfReasonTemplatesRuntime = null;
     }
     try {
+      var ord = getCfWidgetTrigger().reason_display_order || [];
       console.log("[WIDGET CONFIG LOADED]", {
+        store_slug: getStoreSlug(),
+        config_source: cfgSrc,
+        reason_display_order: ord.slice(),
+        reason_templates: cfReasonTemplatesLogSnapshot(),
         exit_intent_enabled: getCfWidgetTrigger().exit_intent_enabled,
         exit_intent_sensitivity: getCfWidgetTrigger().exit_intent_sensitivity,
         exit_intent_delay_seconds: getCfWidgetTrigger().exit_intent_delay_seconds,
@@ -630,9 +728,38 @@ try {
         suppress_after_widget_dismiss: getCfWidgetTrigger().suppress_after_widget_dismiss,
         suppress_after_purchase: getCfWidgetTrigger().suppress_after_purchase,
         suppress_when_checkout_started: getCfWidgetTrigger().suppress_when_checkout_started,
-        reason_order_len: (getCfWidgetTrigger().reason_display_order || []).length,
       });
-      console.log("[WIDGET CONFIG APPLIED]");
+      var visRows = cfBuildVisibleReasonRows();
+      var ALL_R = [
+        "price",
+        "shipping",
+        "delivery",
+        "quality",
+        "warranty",
+        "thinking",
+        "other",
+      ];
+      var disabledKeys = [];
+      var dk;
+      for (dk = 0; dk < ALL_R.length; dk++) {
+        if (!cfReasonTemplateEnabled(ALL_R[dk])) {
+          disabledKeys.push(ALL_R[dk]);
+        }
+      }
+      var layerChips = cfLayerDChipsFromConfig();
+      console.log("[WIDGET CONFIG APPLIED]", {
+        visible_reason_keys: visRows.map(function (x) {
+          return x.r;
+        }),
+        visible_reason_labels: visRows.map(function (x) {
+          return x.label;
+        }),
+        disabled_reason_keys: disabledKeys,
+        layer_d_chip_tags: layerChips.map(function (c) {
+          return c.tag;
+        }),
+        layer_d_chip_count: layerChips.length,
+      });
     } catch (eCfg) {
       /* ignore */
     }
@@ -1156,12 +1283,12 @@ try {
     }
   }
 
-  function applyTemplateConfigFromReady(j) {
+  function applyTemplateConfigFromReady(j, configSource) {
     try {
       if (!j || typeof j !== "object") {
         return;
       }
-      applyWidgetRuntimeConfigFromPayload(j);
+      applyWidgetRuntimeConfigFromPayload(j, configSource);
       var m = j.template_mode;
       if (m === "preset" || m === "custom") {
         widgetTemplateMode = m;
@@ -4223,7 +4350,7 @@ try {
         return resp.json();
       })
       .then(function (cfg) {
-        applyTemplateConfigFromReady(cfg);
+        applyTemplateConfigFromReady(cfg, "public_config");
         if (cfg && cfg.whatsapp_url) {
           window.open(
             cfg.whatsapp_url,
@@ -4309,7 +4436,7 @@ try {
       })
       .then(function (j) {
         if (j && typeof j === "object" && j.ok !== false) {
-          applyTemplateConfigFromReady(j);
+          applyTemplateConfigFromReady(j, "public_config");
         }
         if (isDemoPath()) {
           demoCustomizationLoaded = true;
@@ -4361,7 +4488,7 @@ try {
         return r.json();
       })
       .then(function (j) {
-        applyTemplateConfigFromReady(j);
+        applyTemplateConfigFromReady(j, "ready");
         if (j && j.after_step1) {
           step1Ready = true;
           if (step1Poll !== null) {
@@ -6765,15 +6892,7 @@ try {
         rowCh.style.cssText =
           "display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-start;margin:0;padding:2px 0;" +
           "max-height:220px;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;";
-        var layerOpts = [
-          { tag: "price_high", label: "السعر مرتفع" },
-          { tag: "quality_uncertainty", label: "غير متأكد من الجودة" },
-          { tag: "shipping_cost", label: "تكلفة الشحن" },
-          { tag: "delivery_time", label: "مدة التوصيل" },
-          { tag: "warranty", label: "الضمان" },
-          { tag: "_other", label: "سبب آخر / أحتاج أتحدث معك" },
-          { tag: "no_help", label: "ما أحتاج مساعدة الآن" },
-        ];
+        var layerOpts = cfLayerDChipsFromConfig();
         wrap.appendChild(hintHead);
         var idx;
         for (idx = 0; idx < layerOpts.length; idx++) {

@@ -702,7 +702,11 @@ def dev_widget_runtime_config_verify(
         from services.cartflow_widget_trigger_settings import (
             widget_trigger_config_from_store_row,
         )
-        from services.merchant_widget_panel import merchant_widget_panel_bundle
+        from services.merchant_widget_panel import (
+            merchant_reason_panel_rows_for_widget_settings,
+            merchant_visible_reason_keys_for_runtime,
+            merchant_widget_panel_bundle,
+        )
         from services.store_reason_templates import parse_reason_templates_column
 
         row = store_row_for_widget_public_api(store_slug)
@@ -711,10 +715,20 @@ def dev_widget_runtime_config_verify(
                 {"ok": False, "error": "no_store", "store_slug": store_slug},
                 404,
             )
+        try:
+            latest = db.session.query(Store).order_by(Store.id.desc()).first()
+        except (SQLAlchemyError, OSError):
+            db.session.rollback()
+            latest = None
+        same_row_as_dashboard_latest = bool(
+            latest is not None and row is not None and int(latest.id) == int(row.id)
+        )
         pub_trig = widget_trigger_config_from_store_row(row)
         pub_rt = parse_reason_templates_column(getattr(row, "reason_templates_json", None))
         dash = merchant_widget_panel_bundle(row)
         dash_trig = dash.get("trigger") or {}
+        reason_rows_dash = merchant_reason_panel_rows_for_widget_settings(row)
+        visible_keys = merchant_visible_reason_keys_for_runtime(row)
         trigger_match = pub_trig == dash_trig
         phone_match = pub_trig.get("widget_phone_capture_mode") == dash_trig.get(
             "widget_phone_capture_mode"
@@ -735,6 +749,8 @@ def dev_widget_runtime_config_verify(
                 "widget_style",
             }
         )
+        zid_resolved = getattr(row, "zid_store_id", None)
+        zid_resolved_s = zid_resolved.strip() if isinstance(zid_resolved, str) else None
         return j(
             {
                 "ok": True,
@@ -745,6 +761,20 @@ def dev_widget_runtime_config_verify(
                 ),
                 "runtime_keys_present": runtime_keys,
                 "widget_trigger_keys": sorted(pub_trig.keys()),
+                "resolved_store_row_id": int(row.id),
+                "resolved_zid_store_id": zid_resolved_s,
+                "dashboard_latest_store_row_id": int(latest.id) if latest is not None else None,
+                "dashboard_latest_zid_store_id": (
+                    str(latest.zid_store_id).strip()
+                    if latest is not None
+                    and isinstance(getattr(latest, "zid_store_id", None), str)
+                    and str(latest.zid_store_id).strip()
+                    else None
+                ),
+                "same_row_as_dashboard_latest": same_row_as_dashboard_latest,
+                "reason_templates_public_config": pub_rt,
+                "reason_rows_dashboard_panel": reason_rows_dash,
+                "visible_reason_keys_from_config": visible_keys,
             }
         )
     except Exception as e:  # noqa: BLE001

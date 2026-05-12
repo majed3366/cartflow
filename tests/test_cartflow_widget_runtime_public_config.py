@@ -11,6 +11,7 @@ from main import app
 from models import Store
 from services.cartflow_widget_public_store import store_row_for_widget_public_api
 from services.cartflow_widget_trigger_settings import widget_trigger_config_from_store_row
+from services.merchant_widget_panel import merchant_visible_reason_keys_for_runtime
 from services.store_reason_templates import parse_reason_templates_column
 
 
@@ -184,6 +185,24 @@ class CartflowWidgetRuntimePublicConfigTests(unittest.TestCase):
                 "visibility_widget_globally_enabled", True
             )
         )
+
+    def test_merchant_visible_reason_keys_matches_runtime_filter(self) -> None:
+        ss = self._widget_public_store_slug()
+        self._reset_common_trigger_flags()
+        self.client.post(
+            "/api/dashboard/merchant-widget-settings",
+            json={
+                "reason_templates": {
+                    "quality": {"enabled": False, "message": "x"},
+                }
+            },
+        )
+        row = store_row_for_widget_public_api(ss)
+        assert row is not None
+        mvis = merchant_visible_reason_keys_for_runtime(row)
+        helper = _visible_reason_keys_for_runtime(row)
+        self.assertEqual(mvis, helper)
+        self.assertNotIn("quality", mvis)
 
 
 if __name__ == "__main__":

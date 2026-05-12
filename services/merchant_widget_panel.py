@@ -82,6 +82,12 @@ def merchant_reason_panel_rows_for_widget_settings(
     return out
 
 
+def merchant_visible_reason_keys_for_runtime(row: Optional[Any]) -> List[str]:
+    """مفاتيح الأسباب المفعّلة فقط — نفس منطق صفوف اللوحة (للتحقق من ‎public-config‎ / الودجت)."""
+    rows = merchant_reason_panel_rows_for_widget_settings(row)
+    return [str(r["key"]) for r in rows if r.get("enabled") is True]
+
+
 def merchant_widget_panel_bundle(row: Optional[Any]) -> Dict[str, Any]:
     """حزمة جاهزة للقالب ولـ ‎JSON‎ التهيئة في المتصفح."""
     wtc = widget_trigger_config_from_store_row(row)

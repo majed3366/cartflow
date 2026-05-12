@@ -21,11 +21,13 @@ def resolve_store_row_for_cartflow_slug(store_slug: str) -> Optional[Store]:
         return None
     try:
         db.create_all()
+        # ‎demo‎ / ‎default‎ / المتجر الافتراضي: نفس صف لوحة ‎GET/POST /api/recovery-settings‎ (آخر ‎id‎)
+        # حتى لا يُربط الودجيت بسجل قديم ‎zid_store_id=demo‎ بلا إعدادات لوحة التحكم.
+        if ss.casefold() in {x.casefold() for x in _WIDGET_SLUGS_MAP_TO_LATEST_STORE}:
+            return db.session.query(Store).order_by(Store.id.desc()).first()
         row = db.session.query(Store).filter(Store.zid_store_id == ss).first()
         if row is not None:
             return row
-        if ss.casefold() in {x.casefold() for x in _WIDGET_SLUGS_MAP_TO_LATEST_STORE}:
-            return db.session.query(Store).order_by(Store.id.desc()).first()
         return None
     except (SQLAlchemyError, OSError):
         db.session.rollback()
