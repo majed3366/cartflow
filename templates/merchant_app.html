@@ -346,18 +346,9 @@
       <div class="ma-widget-form">
         <div class="ma-fw-card">
           <div class="ma-fw-h">هوية الودجيت</div>
-          <p class="ma-fw-desc">ما يراه العميل في أعلى نافذة المساعدة</p>
+          <p class="ma-fw-desc">اسم المتجر داخل النافذة واللون والتفعيل — عنوان السؤال يبقى ضمن تدفق الودجيت الحالي دون تكرار هنا</p>
           <label class="ma-fw-label" for="mw-brand-line">اسم المتجر داخل الودجيت</label>
           <input class="ma-fw-input" id="mw-brand-line" type="text" maxlength="120" value="{{ (tg.widget_brand_line_ar or '') | e }}" dir="rtl" autocomplete="organization">
-          <label class="ma-fw-label" for="mw-widget-title">عنوان الودجيت</label>
-          <input class="ma-fw-input" id="mw-widget-title" type="text" maxlength="120" value="{{ (wp.widget_name or 'مساعد المتجر') | e }}" dir="rtl" autocomplete="off">
-          <label class="ma-fw-label" for="mw-exit-mode">نمط السؤال الرئيسي</label>
-          <select class="ma-fw-input" id="mw-exit-mode">
-            <option value="preset" {% if (wp.exit_intent_template_mode or 'preset') == 'preset' %}selected{% endif %}>سؤال جاهز وودّي</option>
-            <option value="custom" {% if (wp.exit_intent_template_mode or '') == 'custom' %}selected{% endif %}>نص مخصّص</option>
-          </select>
-          <label class="ma-fw-label" for="mw-exit-custom">نص السؤال الرئيسي</label>
-          <textarea class="ma-fw-input ma-fw-textarea" id="mw-exit-custom" rows="2" maxlength="500" dir="rtl">{{ (wp.exit_intent_custom_text or '') | e }}</textarea>
           <label class="ma-fw-label" for="mw-widget-color">لون الودجيت</label>
           <input class="ma-fw-input ma-fw-color" id="mw-widget-color" type="color" value="{{ (wp.widget_primary_color or '#6C5CE7') | e }}">
           <label class="ma-fw-check">
