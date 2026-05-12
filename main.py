@@ -43,7 +43,16 @@ from services.merchant_normal_recovery_summary import (
     merchant_history_case_note_ar,
     merchant_next_action_hint_ar,
 )
+from services.merchant_dashboard_reference_ui import (
+    merchant_ar_weekday_date_header,
+    merchant_coarse_to_status_row,
+    merchant_reason_chip_class_and_label,
+    merchant_reason_panel_rows_from_counts,
+    merchant_relative_time_arabic,
+    merchant_vip_avatar_letter,
+)
 from services.normal_recovery_merchant_stale import merchant_group_stale_meta
+from urllib.parse import quote
 
 import models  # noqa: F401, E402
 init_database()
@@ -8656,6 +8665,227 @@ def _normal_carts_dashboard_stats() -> dict[str, Any]:
     return out
 
 
+def _merchant_ref_non_vip_scoped_base_query(
+    dash_store: Optional[Any],
+) -> Optional[Any]:
+    """نطاق السلال العادية (غير VIP) لمؤشرات لوحة التاجر — قراءة فقط."""
+    if dash_store is None:
+        return None
+    try:
+        base_q = db.session.query(AbandonedCart)
+        _st_scope = _normal_recovery_abandoned_scope_filter(dash_store)
+        if _st_scope is not None:
+            base_q = base_q.filter(_st_scope)
+        vip_th = merchant_vip_threshold_int(dash_store)
+        if vip_th is not None:
+            base_q = base_q.filter(
+                func.coalesce(AbandonedCart.cart_value, 0) < float(vip_th)
+            )
+        return base_q
+    except (SQLAlchemyError, OSError, TypeError, ValueError):
+        db.session.rollback()
+        return None
+
+
+def _merchant_ref_today_utc_bounds() -> tuple[datetime, datetime]:
+    now = datetime.now(timezone.utc)
+    start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    end_day = start + timedelta(days=1)
+    return start, end_day
+
+
+def _merchant_kpi_today_projection(
+    dash_store: Optional[Any],
+) -> dict[str, Any]:
+    """مؤشرات يومية خفيفة — UTC يوم واحد."""
+    out = {
+        "abandoned_today": 0,
+        "recovered_today": 0,
+        "whatsapp_sent_today": 0,
+        "recovered_revenue_today": 0.0,
+    }
+    bq = _merchant_ref_non_vip_scoped_base_query(dash_store)
+    if bq is None:
+        return out
+    slug = (getattr(dash_store, "zid_store_id", None) or "").strip()
+    start, end_day = _merchant_ref_today_utc_bounds()
+    try:
+        out["abandoned_today"] = int(
+            bq.filter(
+                AbandonedCart.status == "abandoned",
+                AbandonedCart.last_seen_at.isnot(None),  # type: ignore[union-attr]
+                AbandonedCart.last_seen_at >= start,
+                AbandonedCart.last_seen_at < end_day,
+            ).count()
+            or 0
+        )
+        out["recovered_today"] = int(
+            bq.filter(
+                AbandonedCart.status == "recovered",
+                AbandonedCart.recovered_at.isnot(None),  # type: ignore[union-attr]
+                AbandonedCart.recovered_at >= start,
+                AbandonedCart.recovered_at < end_day,
+            ).count()
+            or 0
+        )
+        rev = (
+            bq.filter(
+                AbandonedCart.status == "recovered",
+                AbandonedCart.recovered_at.isnot(None),  # type: ignore[union-attr]
+                AbandonedCart.recovered_at >= start,
+                AbandonedCart.recovered_at < end_day,
+            )
+            .with_entities(func.coalesce(func.sum(AbandonedCart.cart_value), 0.0))
+            .scalar()
+        )
+        out["recovered_revenue_today"] = float(rev or 0.0)
+        if slug:
+            out["whatsapp_sent_today"] = int(
+                db.session.query(func.count(CartRecoveryLog.id))
+                .filter(
+                    CartRecoveryLog.store_slug == slug,
+                    CartRecoveryLog.status.in_(_NORMAL_RECOVERY_SENT_LOG_STATUSES),
+                    CartRecoveryLog.created_at >= start,
+                    CartRecoveryLog.created_at < end_day,
+                )
+                .scalar()
+                or 0
+            )
+    except (SQLAlchemyError, OSError, TypeError, ValueError) as e:
+        db.session.rollback()
+        log.warning("merchant_kpi_today_projection: %s", e)
+    return out
+
+
+def _merchant_month_window_projection(
+    dash_store: Optional[Any],
+    *,
+    days: int = 30,
+) -> dict[str, Any]:
+    """ملخص نافذة زمنية — سلال غير VIP في نطاق اللوحة."""
+    out = {
+        "abandoned_total": 0,
+        "recovered_total": 0,
+        "recovery_pct": 0.0,
+        "recovered_revenue": 0.0,
+    }
+    bq = _merchant_ref_non_vip_scoped_base_query(dash_store)
+    if bq is None:
+        return out
+    now = datetime.now(timezone.utc)
+    start = now - timedelta(days=max(1, int(days)))
+    try:
+        out["abandoned_total"] = int(
+            bq.filter(
+                AbandonedCart.status == "abandoned",
+                AbandonedCart.last_seen_at.isnot(None),  # type: ignore[union-attr]
+                AbandonedCart.last_seen_at >= start,
+            ).count()
+            or 0
+        )
+        out["recovered_total"] = int(
+            bq.filter(
+                AbandonedCart.status == "recovered",
+                AbandonedCart.recovered_at.isnot(None),  # type: ignore[union-attr]
+                AbandonedCart.recovered_at >= start,
+            ).count()
+            or 0
+        )
+        rev = (
+            bq.filter(
+                AbandonedCart.status == "recovered",
+                AbandonedCart.recovered_at.isnot(None),  # type: ignore[union-attr]
+                AbandonedCart.recovered_at >= start,
+            )
+            .with_entities(func.coalesce(func.sum(AbandonedCart.cart_value), 0.0))
+            .scalar()
+        )
+        out["recovered_revenue"] = float(rev or 0.0)
+        denom = int(out["abandoned_total"]) + int(out["recovered_total"])
+        if denom > 0:
+            out["recovery_pct"] = round(
+                100.0 * float(out["recovered_total"]) / float(denom), 1
+            )
+    except (SQLAlchemyError, OSError, TypeError, ValueError) as e:
+        db.session.rollback()
+        log.warning("merchant_month_window_projection: %s", e)
+    return out
+
+
+def _merchant_reason_counts_store_window(
+    dash_store: Optional[Any],
+    *,
+    days: int = 7,
+) -> dict[str, int]:
+    """تجميع أسباب التردد للمتجر الحالي في نافذة زمنية."""
+    if dash_store is None:
+        return {}
+    slug = (getattr(dash_store, "zid_store_id", None) or "").strip()
+    if not slug:
+        return {}
+    now = datetime.now(timezone.utc)
+    start = now - timedelta(days=max(1, int(days)))
+    counts: dict[str, int] = {}
+    try:
+        rows = (
+            db.session.query(CartRecoveryReason.reason, func.count(CartRecoveryReason.id))
+            .filter(
+                CartRecoveryReason.store_slug == slug,
+                CartRecoveryReason.updated_at >= start,
+            )
+            .group_by(CartRecoveryReason.reason)
+            .all()
+        )
+        for rkey, c in rows:
+            k = (rkey or "").strip().lower()
+            if not k:
+                continue
+            counts[k] = int(c or 0)
+    except (SQLAlchemyError, OSError, TypeError, ValueError) as e:
+        db.session.rollback()
+        log.warning("merchant_reason_counts_store_window: %s", e)
+    return counts
+
+
+def _merchant_vip_row_safe_projection(
+    vc: dict[str, Any],
+    *,
+    avatar_letter: str,
+    dash_store: Optional[Any],
+) -> dict[str, Any]:
+    """صف VIP للوحة التاجر — حقول أعمال فقط."""
+    rid = vc.get("id")
+    ac: Optional[AbandonedCart] = None
+    try:
+        if rid is not None:
+            ac = db.session.get(AbandonedCart, int(rid))
+    except (SQLAlchemyError, OSError, TypeError, ValueError):
+        db.session.rollback()
+        ac = None
+    rt = _reason_tag_for_abandoned_cart(ac) if ac is not None else None
+    _, reason_lbl = merchant_reason_chip_class_and_label(
+        (rt or "other").strip().lower()
+    )
+    now_utc = datetime.now(timezone.utc)
+    ls = getattr(ac, "last_seen_at", None) if ac is not None else None
+    rel = merchant_relative_time_arabic(ls, now_utc=now_utc)
+    val = float(vc.get("cart_value") or 0.0)
+    phone = (str(vc.get("customer_wa_phone") or "").strip())
+    msg = (str(vc.get("contact_wa_message") or "").strip())
+    href = ""
+    if phone and msg:
+        href = f"https://wa.me/{phone}?text={quote(msg)}"
+    elif phone:
+        href = f"https://wa.me/{phone}"
+    return {
+        "avatar_letter": avatar_letter,
+        "amount_display": str(int(val)),
+        "subtitle_ar": f"{rel} • {reason_lbl}",
+        "contact_href": href,
+        "has_phone": bool(phone),
+    }
+
+
 def _normal_recovery_abandoned_scope_filter(
     dash_store: Optional[Any],
 ) -> Optional[Any]:
@@ -8794,9 +9024,11 @@ def _merchant_normal_recovery_light_payload(
     stale_meta: dict[str, Any],
     archived_group: bool,
     stale_flag: bool,
+    now_utc: Optional[datetime] = None,
 ) -> dict[str, Any]:
     """حمولة تجارية خفيفة فقط — بدون ‎phase_steps‎ ولا تشخيص ولا ‎session_id‎."""
     ac0 = grp_sorted[0]
+    nu = now_utc or datetime.now(timezone.utc)
     store_ac = _store_row_for_abandoned_cart(ac0)
     cust_raw = _normal_recovery_dashboard_resolve_customer_phone_raw(ac0, store_ac)
     has_phone = bool((cust_raw or "").strip())
@@ -8810,20 +9042,35 @@ def _merchant_normal_recovery_light_payload(
     elif archived_group:
         hist_note = merchant_history_case_note_ar(dormant_sales=False)
     trust = _normal_recovery_identity_trust_surface(ac0)
+    rtag = (_reason_tag_for_abandoned_cart(ac0) or "other").strip().lower()
+    chip_cls, chip_lbl = merchant_reason_chip_class_and_label(rtag)
+    st_row_cls, st_lbl, next_urgent = merchant_coarse_to_status_row(
+        coarse, has_phone=has_phone
+    )
+    next_ar = merchant_next_action_hint_ar(
+        coarse=coarse,
+        has_phone=has_phone,
+        is_dormant_case=in_history_slice,
+    )
     out: dict[str, Any] = {
         "merchant_recovery_kind": "normal_case",
         "merchant_case_row_id": int(getattr(ac0, "id", 0) or 0),
         "merchant_cart_value": float(ac0.cart_value or 0.0),
         "merchant_business_state_ar": merchant_business_state_label_ar(coarse),
-        "merchant_next_action_ar": merchant_next_action_hint_ar(
-            coarse=coarse,
-            has_phone=has_phone,
-            is_dormant_case=in_history_slice,
-        ),
+        "merchant_next_action_ar": next_ar,
         "merchant_phone_line_ar": phone_line,
         "merchant_is_history_slice": in_history_slice,
         "merchant_history_note_ar": hist_note,
         "merchant_last_seen_display": _format_reason_ts(getattr(ac0, "last_seen_at", None)),
+        "merchant_reason_chip_class": chip_cls,
+        "merchant_reason_chip_label_ar": chip_lbl,
+        "merchant_time_relative_ar": merchant_relative_time_arabic(
+            getattr(ac0, "last_seen_at", None),
+            now_utc=nu,
+        ),
+        "merchant_status_row_class": st_row_cls,
+        "merchant_status_label_ar": st_lbl,
+        "merchant_next_action_urgent": bool(next_urgent and not in_history_slice),
     }
     if trust:
         out["merchant_identity_trust_ar"] = trust
@@ -8932,6 +9179,7 @@ def _normal_recovery_merchant_lightweight_alert_list(
                     stale_meta=stale_meta,
                     archived_group=arch,
                     stale_flag=stale_flag,
+                    now_utc=now_utc,
                 )
             )
             if len(out) >= int(limit_groups):
@@ -9264,36 +9512,117 @@ def _dashboard_v1_financial_context() -> dict[str, Any]:
 
 @app.get("/dashboard")
 def dashboard(request: Request):
-    """محور التاجر — مؤشرات وروابط دون تفاصيل تقنية للاسترجاع."""
-    ctx = _dashboard_v1_financial_context()
-    feed = ctx.get("live_feed") or []
-    merchant_live_feed = [
-        {
-            "reason_ar": str(r.get("reason_ar") or "—"),
-            "product": str(r.get("product") or "—"),
-            "time_str": str(r.get("time_str") or ""),
-            "reason_key": str(r.get("reason_key") or ""),
-        }
-        for r in feed
-        if isinstance(r, dict) and r.get("kind") == "activity"
-    ]
+    """لوحة التاجر — تصميم مرجعي خفيف وبيانات حقيقية آمنة."""
+    from services.merchant_whatsapp_readiness_ui import (  # noqa: PLC0415
+        build_merchant_whatsapp_readiness_card,
+    )
+
+    dash_store = _dashboard_recovery_store_row()
+    now_utc = datetime.now(timezone.utc)
     try:
         mstats = dict(_normal_carts_dashboard_stats())
     except (SQLAlchemyError, OSError, TypeError, ValueError):
-        mstats = {"normal_cart_count": 0, "messages_sent_count": 0, "normal_recovered_count": 0, "stopped_flow_count": 0}
+        mstats = {
+            "normal_cart_count": 0,
+            "messages_sent_count": 0,
+            "normal_recovered_count": 0,
+            "stopped_flow_count": 0,
+        }
     try:
-        trend = _recovery_sales_trend_last_7_days()
+        kpis = _merchant_kpi_today_projection(dash_store)
     except (SQLAlchemyError, OSError, TypeError, ValueError):
-        trend = []
+        kpis = {
+            "abandoned_today": 0,
+            "recovered_today": 0,
+            "whatsapp_sent_today": 0,
+            "recovered_revenue_today": 0.0,
+        }
+    try:
+        month_win = _merchant_month_window_projection(dash_store, days=30)
+    except (SQLAlchemyError, OSError, TypeError, ValueError):
+        month_win = {
+            "abandoned_total": 0,
+            "recovered_total": 0,
+            "recovery_pct": 0.0,
+            "recovered_revenue": 0.0,
+        }
+    reason_counts_w = _merchant_reason_counts_store_window(dash_store, days=7)
+    reason_rows, reason_insight = merchant_reason_panel_rows_from_counts(
+        reason_counts_w
+    )
+    try:
+        table_rows = _normal_recovery_merchant_lightweight_alert_list(
+            8, lifecycle="active"
+        )
+    except (SQLAlchemyError, OSError, TypeError, ValueError):
+        table_rows = []
+    try:
+        vip_raw = _vip_priority_cart_alert_list()
+    except (SQLAlchemyError, OSError, TypeError, ValueError):
+        vip_raw = []
+    vip_rows: list[dict[str, Any]] = []
+    for i, vc in enumerate(vip_raw[:3]):
+        if isinstance(vc, dict):
+            vip_rows.append(
+                _merchant_vip_row_safe_projection(
+                    vc,
+                    avatar_letter=merchant_vip_avatar_letter(i),
+                    dash_store=dash_store,
+                )
+            )
+    vip_banner: Optional[dict[str, Any]] = None
+    if vip_raw and isinstance(vip_raw[0], dict):
+        v0 = vip_raw[0]
+        proj0 = _merchant_vip_row_safe_projection(
+            v0,
+            avatar_letter=merchant_vip_avatar_letter(0),
+            dash_store=dash_store,
+        )
+        try:
+            amt_int = int(float(v0.get("cart_value") or 0))
+        except (TypeError, ValueError):
+            amt_int = 0
+        vip_banner = {
+            "amount_line": f"سلة بقيمة {amt_int:,} ريال — {proj0.get('subtitle_ar', '')}",
+            "contact_href": proj0.get("contact_href") or "",
+        }
+    try:
+        follow_n = len(merchant_followup_actions_for_dashboard(50))
+    except (SQLAlchemyError, OSError, TypeError, ValueError):
+        follow_n = 0
+    wa_card = build_merchant_whatsapp_readiness_card(dash_store)
+    store_name = "متجرك"
+    if dash_store is not None:
+        sn = (getattr(dash_store, "name", None) or "").strip()
+        if sn:
+            store_name = sn[:80]
+    ab_today = int(kpis.get("abandoned_today") or 0)
+    rec_today = int(kpis.get("recovered_today") or 0)
+    pct_recovered_vs_abandoned = 0.0
+    if ab_today > 0:
+        pct_recovered_vs_abandoned = round(100.0 * float(rec_today) / float(ab_today), 1)
     return templates.TemplateResponse(
         request,
-        "merchant_hub_dashboard.html",
+        "merchant_dashboard_reference.html",
         {
             "request": request,
-            **ctx,
-            "merchant_live_feed": merchant_live_feed,
-            "merchant_normal_stats": mstats,
-            "merchant_recovery_trend": trend,
+            "merchant_ar_date_header": merchant_ar_weekday_date_header(now_utc),
+            "merchant_store_display_name": store_name,
+            "whatsapp_readiness_card": wa_card,
+            "merchant_nav_badge_abandoned": int(mstats.get("normal_cart_count") or 0),
+            "merchant_nav_badge_followup": int(follow_n),
+            "merchant_nav_badge_vip": len(vip_raw),
+            "merchant_kpi_abandoned_today": ab_today,
+            "merchant_kpi_recovered_today": rec_today,
+            "merchant_kpi_wa_sent_today": int(kpis.get("whatsapp_sent_today") or 0),
+            "merchant_kpi_revenue_today": float(kpis.get("recovered_revenue_today") or 0.0),
+            "merchant_kpi_recovered_pct_of_abandoned": pct_recovered_vs_abandoned,
+            "merchant_table_rows": table_rows,
+            "merchant_reason_rows_week": reason_rows,
+            "merchant_reason_insight_ar": reason_insight,
+            "merchant_month_summary": month_win,
+            "merchant_vip_rows": vip_rows,
+            "merchant_vip_banner": vip_banner,
         },
     )
 
@@ -9311,9 +9640,9 @@ def dashboard_analytics(request: Request):
 
 @app.get("/dashboard/recovery-settings")
 def dashboard_recovery_settings(request: Request):
-    """توافق خلفي — التوقيت والقوالب ضمن «السلال العادية»."""
+    """توافق خلفي — التوقيت والقوالب ضمن لوحة التاجر."""
     return RedirectResponse(
-        url="/dashboard/normal-carts#cf-normal-timing", status_code=302
+        url="/dashboard#cf-normal-timing", status_code=302
     )
 
 

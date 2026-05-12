@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>CartFlow — لوحة التاجر</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+<script src="https://cdn.tailwindcss.com"></script>
+{% include "partials/recovery_dashboard_styles.html" %}
+<style>
+  :root {
+    --green:       #166534;
+    --green-mid:   #16a34a;
+    --green-soft:  #dcfce7;
+    --green-hover: #14532d;
+    --amber:       #d97706;
+    --amber-soft:  #fef3c7;
+    --red:         #dc2626;
+    --red-soft:    #fee2e2;
+    --blue:        #1d4ed8;
+    --blue-soft:   #dbeafe;
+    --bg:          #f8fafc;
+    --surface:     #ffffff;
+    --border:      #e2e8f0;
+    --text:        #0f172a;
+    --muted:       #64748b;
+    --light:       #cbd5e1;
+    --shadow:      0 1px 4px rgba(0,0,0,0.06);
+    --shadow-md:   0 4px 16px rgba(0,0,0,0.08);
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    font-family: "IBM Plex Sans Arabic", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 13px;
+    min-height: 100vh;
+  }
+
+  .sidebar {
+    position: fixed; right: 0; top: 0;
+    width: 224px; height: 100vh;
+    background: var(--green);
+    display: flex; flex-direction: column;
+    z-index: 200;
+  }
+
+  .brand {
+    padding: 24px 20px 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+  .brand-name { font-size: 18px; font-weight: 700; color: #fff; letter-spacing: -.3px; }
+  .brand-sub  { font-size: 11px; color: rgba(255,255,255,0.45); margin-top: 3px; }
+
+  .store-info {
+    margin: 14px 16px;
+    background: rgba(255,255,255,0.09);
+    border-radius: 10px;
+    padding: 10px 13px;
+    display: flex; align-items: center; gap: 9px;
+  }
+  .store-led { width: 8px; height: 8px; border-radius: 50%; background: #4ade80; flex-shrink: 0; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+  .store-name { font-size: 12.5px; color: rgba(255,255,255,0.9); font-weight: 600; }
+
+  nav { padding: 8px 12px; flex: 1; overflow-y: auto; }
+
+  .nav-section {
+    font-size: 9px; font-weight: 700;
+    color: rgba(255,255,255,0.3);
+    text-transform: uppercase; letter-spacing: 1px;
+    padding: 14px 8px 5px;
+  }
+
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 12px; border-radius: 9px;
+    color: rgba(255,255,255,0.65);
+    font-size: 13px; cursor: pointer;
+    margin-bottom: 2px;
+    transition: all .13s;
+    text-decoration: none;
+  }
+  .nav-item:hover  { background: rgba(255,255,255,0.09); color: #fff; }
+  .nav-item.active { background: rgba(255,255,255,0.16); color: #fff; font-weight: 600; }
+  .nav-ico { font-size: 15px; width: 18px; text-align: center; flex-shrink: 0; }
+
+  .nav-badge {
+    margin-right: auto;
+    font-size: 9px; font-weight: 700;
+    padding: 2px 7px; border-radius: 20px;
+  }
+  .nb-red    { background: #ef4444; color: #fff; }
+  .nb-amber  { background: #f59e0b; color: #fff; }
+
+  .sidebar-footer {
+    padding: 14px 16px;
+    border-top: 1px solid rgba(255,255,255,0.08);
+  }
+  .sf-plan {
+    font-size: 10px; color: rgba(255,255,255,0.4);
+    display: flex; align-items: center; gap: 6px;
+  }
+
+  .main { margin-right: 224px; display: flex; flex-direction: column; min-height: 100vh; }
+
+  .topbar {
+    height: 60px; background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center;
+    padding: 0 28px;
+    justify-content: space-between;
+    position: sticky; top: 0; z-index: 100;
+    box-shadow: var(--shadow);
+  }
+
+  .topbar-title { font-size: 16px; font-weight: 700; }
+  .topbar-date  { font-size: 12px; color: var(--muted); }
+
+  .topbar-actions { display: flex; align-items: center; gap: 10px; }
+
+  .wa-status {
+    display: flex; align-items: center; gap: 6px;
+    background: var(--green-soft);
+    border: 1px solid #86efac;
+    padding: 5px 12px; border-radius: 20px;
+    font-size: 11px; font-weight: 600; color: var(--green);
+  }
+  .wa-status-muted {
+    background: #f1f5f9;
+    border-color: #e2e8f0;
+    color: var(--muted);
+  }
+  .wa-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green-mid); }
+  .wa-dot-muted { background: var(--light); }
+
+  .content { padding: 24px 28px; }
+
+  .vip-alert {
+    display: flex; align-items: center; gap: 14px;
+    background: linear-gradient(135deg, #fffbeb, #fefce8);
+    border: 1.5px solid #fbbf24;
+    border-radius: 12px;
+    padding: 14px 20px;
+    margin-bottom: 24px;
+    animation: glow-border 3s infinite;
+  }
+  @keyframes glow-border {
+    0%,100% { box-shadow: none; }
+    50% { box-shadow: 0 0 0 3px rgba(251,191,36,.18); }
+  }
+  .va-icon { font-size: 22px; }
+  .va-body { flex: 1; }
+  .va-title { font-size: 13px; font-weight: 700; color: #78350f; }
+  .va-sub   { font-size: 11px; color: #92400e; margin-top: 3px; }
+  .va-btn {
+    background: var(--amber); color: #fff;
+    border: none; padding: 8px 18px;
+    border-radius: 8px; font-size: 12px;
+    font-weight: 600; cursor: pointer;
+    font-family: inherit; white-space: nowrap;
+    transition: background .12s;
+    text-decoration: none;
+    display: inline-block;
+    text-align: center;
+  }
+  .va-btn:hover { background: #b45309; }
+
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px; margin-bottom: 24px;
+  }
+
+  .kpi {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 13px;
+    padding: 20px 20px 16px;
+    box-shadow: var(--shadow);
+    position: relative; overflow: hidden;
+    animation: rise .4s ease both;
+  }
+  @keyframes rise { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+  .kpi:nth-child(1){animation-delay:.04s}
+  .kpi:nth-child(2){animation-delay:.09s}
+  .kpi:nth-child(3){animation-delay:.14s}
+  .kpi:nth-child(4){animation-delay:.19s}
+
+  .kpi-accent {
+    position: absolute; top: 0; right: 0;
+    width: 4px; height: 100%;
+    border-radius: 0 13px 13px 0;
+  }
+
+  .kpi-icon {
+    font-size: 20px; margin-bottom: 10px;
+    display: block;
+  }
+  .kpi-label { font-size: 11px; color: var(--muted); font-weight: 500; margin-bottom: 6px; }
+  .kpi-value { font-size: 30px; font-weight: 700; line-height: 1; margin-bottom: 8px; }
+  .kpi-trend { font-size: 11px; font-weight: 600; }
+  .trend-up      { color: var(--green-mid); }
+  .trend-neutral { color: var(--muted); }
+
+  .body-grid {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 20px; margin-bottom: 20px;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 13px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+
+  .card-head {
+    padding: 15px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .card-title { font-size: 13px; font-weight: 700; }
+  .card-action {
+    font-size: 11px; color: var(--green-mid);
+    cursor: pointer; font-weight: 500;
+    transition: color .12s;
+    text-decoration: none;
+  }
+  .card-action:hover { color: var(--green); }
+
+  table { width: 100%; border-collapse: collapse; }
+  thead tr { background: var(--bg); }
+  th {
+    padding: 10px 16px; text-align: right;
+    font-size: 10px; font-weight: 600;
+    color: var(--muted); text-transform: uppercase;
+    letter-spacing: .5px;
+    border-bottom: 1px solid var(--border);
+  }
+  td {
+    padding: 13px 16px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #f8fafc; transition: background .1s; }
+
+  .cart-amount { font-size: 14px; font-weight: 700; }
+  .cart-time   { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .cart-phone  { font-size: 11px; }
+  .has-phone   { color: var(--green-mid); font-weight: 600; }
+  .no-phone    { color: var(--muted); }
+
+  .chip {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 4px 10px; border-radius: 20px;
+    font-size: 11px; font-weight: 600;
+  }
+  .c-price    { background: #dbeafe; color: #1d4ed8; }
+  .c-shipping { background: #ede9fe; color: #7c3aed; }
+  .c-thinking { background: #fce7f3; color: #be185d; }
+  .c-trust    { background: #ffedd5; color: #c2410c; }
+  .c-other    { background: #f1f5f9; color: #475569; }
+
+  .status {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 10px; border-radius: 20px;
+    font-size: 11px; font-weight: 600;
+  }
+  .s-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .s-recovered { background: var(--green-soft);  color: var(--green); }
+  .s-recovered .s-dot { background: var(--green-mid); }
+  .s-sent      { background: var(--blue-soft);   color: var(--blue); }
+  .s-sent      .s-dot { background: #3b82f6; }
+  .s-waiting   { background: var(--amber-soft);  color: var(--amber); }
+  .s-waiting   .s-dot { background: #f59e0b; }
+  .s-attention { background: var(--red-soft);    color: var(--red); }
+  .s-attention .s-dot { background: var(--red); }
+  .s-inactive  { background: #f1f5f9;            color: var(--muted); }
+  .s-inactive  .s-dot { background: var(--light); }
+
+  .next-action { font-size: 11px; color: var(--muted); }
+  .next-action.urgent { color: var(--red); font-weight: 600; }
+
+  .reasons-body { padding: 16px 20px; }
+  .r-row { margin-bottom: 15px; }
+  .r-row:last-child { margin-bottom: 0; }
+  .r-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+  .r-label { font-size: 12px; font-weight: 500; }
+  .r-count { font-size: 11px; color: var(--muted); font-weight: 600; }
+  .r-track { height: 6px; background: var(--border); border-radius: 10px; overflow: hidden; }
+  .r-fill  { height: 100%; border-radius: 10px; transition: width .6s ease; }
+
+  .r-insight {
+    margin-top: 14px; padding-top: 14px;
+    border-top: 1px solid var(--border);
+    background: var(--bg);
+    margin: 14px -20px -16px;
+    padding: 12px 20px;
+    font-size: 11px; color: var(--muted);
+    display: flex; align-items: flex-start; gap: 6px;
+  }
+
+  .bottom-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+
+  .summary-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 1px; background: var(--border);
+  }
+  .summary-cell { background: var(--surface); padding: 18px 20px; }
+  .sc-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; margin-bottom: 5px; }
+  .sc-value { font-size: 22px; font-weight: 700; }
+
+  .vip-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 13px 20px;
+    border-bottom: 1px solid var(--border);
+    transition: background .1s;
+  }
+  .vip-item:last-child { border-bottom: none; }
+  .vip-item:hover { background: #fffbeb; }
+
+  .vip-avatar {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: linear-gradient(135deg, #fbbf24, #f59e0b);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 700; color: #fff;
+    flex-shrink: 0;
+  }
+
+  .vip-info { flex: 1; }
+  .vip-label  { font-size: 12px; color: var(--muted); }
+  .vip-amount { font-size: 15px; font-weight: 700; color: var(--amber); }
+  .vip-time   { font-size: 11px; color: var(--muted); margin-top: 1px; }
+
+  .vip-tag {
+    background: var(--amber-soft); color: #92400e;
+    font-size: 9px; font-weight: 700;
+    padding: 2px 7px; border-radius: 20px;
+  }
+
+  .vip-contact-btn {
+    background: none; border: 1.5px solid var(--amber);
+    color: var(--amber); padding: 5px 12px;
+    border-radius: 7px; font-size: 11px;
+    font-weight: 600; cursor: pointer;
+    font-family: inherit; white-space: nowrap;
+    transition: all .12s;
+    text-decoration: none;
+    display: inline-block;
+  }
+  .vip-contact-btn:hover { background: var(--amber); color: #fff; }
+
+  .vip-empty {
+    padding: 28px 20px; text-align: center;
+    color: var(--muted); font-size: 12px;
+  }
+
+  .quick-links { padding: 14px 20px; display: flex; flex-direction: column; gap: 8px; }
+  .ql-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px; border-radius: 9px;
+    background: var(--bg); cursor: pointer;
+    transition: background .12s;
+    border: 1px solid transparent;
+    text-decoration: none;
+    color: inherit;
+  }
+  .ql-item:hover { background: var(--green-soft); border-color: #86efac; }
+  .ql-icon { font-size: 16px; }
+  .ql-label { font-size: 12px; font-weight: 500; }
+  .ql-arrow { margin-right: auto; font-size: 11px; color: var(--muted); }
+
+  .sr-only {
+    position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+    overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+  }
+
+  @media (max-width: 1100px) {
+    .body-grid { grid-template-columns: 1fr; }
+    .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    .bottom-grid { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 720px) {
+    .sidebar { display: none; }
+    .main { margin-right: 0; }
+    .kpi-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body data-cf-msg-mode="recovery">
+{% include "partials/cart_abandon_tracking.html" %}
+{% set wa = whatsapp_readiness_card %}
+<span class="sr-only" data-cf-whatsapp-readiness="{{ wa.state_key if wa else '' }}">حالة الواتساب</span>
+
+<div class="sidebar">
+  <div class="brand">
+    <div class="brand-name">CartFlow</div>
+    <div class="brand-sub">وكيل المبيعات الذكي</div>
+  </div>
+
+  <div class="store-info">
+    <div class="store-led"></div>
+    <div class="store-name">{{ merchant_store_display_name | e }}</div>
+  </div>
+
+  <nav>
+    <div class="nav-section">القائمة الرئيسية</div>
+    <a class="nav-item active" href="/dashboard">
+      <span class="nav-ico">📊</span> الرئيسية
+    </a>
+    <a class="nav-item" href="/dashboard/normal-carts">
+      <span class="nav-ico">🛒</span> السلال المتروكة
+      {% if merchant_nav_badge_abandoned > 0 %}
+      <span class="nav-badge nb-red">{{ merchant_nav_badge_abandoned }}</span>
+      {% endif %}
+    </a>
+    <a class="nav-item" href="/dashboard/normal-carts">
+      <span class="nav-ico">🔔</span> سلال تحتاج متابعة
+      {% if merchant_nav_badge_followup > 0 %}
+      <span class="nav-badge nb-amber">{{ merchant_nav_badge_followup }}</span>
+      {% endif %}
+    </a>
+    <a class="nav-item" href="/dashboard/vip-cart-settings">
+      <span class="nav-ico">👑</span> سلال VIP
+      {% if merchant_nav_badge_vip > 0 %}
+      <span class="nav-badge nb-amber">{{ merchant_nav_badge_vip }}</span>
+      {% endif %}
+    </a>
+
+    <div class="nav-section">التواصل والرسائل</div>
+    <a class="nav-item" href="/dashboard/analytics">
+      <span class="nav-ico">💬</span> الرسائل المرسلة
+    </a>
+    <a class="nav-item" href="#reason-week-panel">
+      <span class="nav-ico">📋</span> أسباب التردد
+    </a>
+
+    <div class="nav-section">الإعدادات</div>
+    <a class="nav-item" href="/dashboard/widget-customization">
+      <span class="nav-ico">🧩</span> الودجيت
+    </a>
+    <a class="nav-item" href="/dashboard#cf-normal-timing">
+      <span class="nav-ico">📱</span> إعدادات واتساب
+    </a>
+    <a class="nav-item" href="/dashboard/general-settings">
+      <span class="nav-ico">⚙️</span> إعدادات عامة
+    </a>
+  </nav>
+
+  <div class="sidebar-footer">
+    <div class="sf-plan">🟢 الخطة النشطة — احترافي</div>
+  </div>
+</div>
+
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-title">الرئيسية</div>
+    <div class="topbar-actions">
+      <div class="topbar-date">{{ merchant_ar_date_header | e }}</div>
+      {% if wa and wa.state_key == 'ready' %}
+      <div class="wa-status">
+        <div class="wa-dot"></div>
+        واتساب نشط
+      </div>
+      {% else %}
+      <div class="wa-status wa-status-muted">
+        <div class="wa-dot wa-dot-muted"></div>
+        {{ wa.badge_ar if wa else 'واتساب' }}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="content">
+    <div id="errBox" class="hidden rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"></div>
+    <div id="okBox" class="hidden rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-800">تم الحفظ بنجاح</div>
+
+    {% if merchant_vip_banner %}
+    <div class="vip-alert">
+      <div class="va-icon">👑</div>
+      <div class="va-body">
+        <div class="va-title">عميل VIP يحتاج تدخلك المباشر — لن يُرسَل له واتساب تلقائياً</div>
+        <div class="va-sub">{{ merchant_vip_banner.amount_line | e }} — تواصل معه شخصياً للحصول على أفضل نتيجة</div>
+      </div>
+      {% if merchant_vip_banner.contact_href %}
+      <a class="va-btn" href="{{ merchant_vip_banner.contact_href | e }}">تواصل معه ←</a>
+      {% else %}
+      <span class="va-btn" style="opacity:.5;cursor:default;">تواصل معه ←</span>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    <div class="kpi-grid">
+      <div class="kpi">
+        <div class="kpi-accent" style="background:#dc2626"></div>
+        <span class="kpi-icon">🛒</span>
+        <div class="kpi-label">سلال متروكة اليوم</div>
+        <div class="kpi-value">{{ merchant_kpi_abandoned_today }}</div>
+        <div class="kpi-trend trend-neutral">منذ فتح المتجر اليوم</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-accent" style="background:#16a34a"></div>
+        <span class="kpi-icon">✅</span>
+        <div class="kpi-label">تم استردادها</div>
+        <div class="kpi-value">{{ merchant_kpi_recovered_today }}</div>
+        <div class="kpi-trend {% if merchant_kpi_abandoned_today > 0 and merchant_kpi_recovered_today > 0 %}trend-up{% else %}trend-neutral{% endif %}">
+          {% if merchant_kpi_abandoned_today > 0 %}
+          ↑ نسبة {{ merchant_kpi_recovered_pct_of_abandoned }}٪ من المتروكة
+          {% else %}
+          —
+          {% endif %}
+        </div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-accent" style="background:#d97706"></div>
+        <span class="kpi-icon">💬</span>
+        <div class="kpi-label">رسائل واتساب أُرسلت</div>
+        <div class="kpi-value">{{ merchant_kpi_wa_sent_today }}</div>
+        <div class="kpi-trend trend-neutral">
+          {% if merchant_kpi_wa_sent_today > 0 %}تم الإرسال من متجرك{% else %}لا رسائل اليوم بعد{% endif %}
+        </div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-accent" style="background:#7c3aed"></div>
+        <span class="kpi-icon">💰</span>
+        <div class="kpi-label">إيرادات مستردة اليوم</div>
+        <div class="kpi-value">{{ (merchant_kpi_revenue_today | float) | round(0) | int }}</div>
+        <div class="kpi-trend {% if merchant_kpi_revenue_today > 0 %}trend-up{% else %}trend-neutral{% endif %}">↑ ريال سعودي</div>
+      </div>
+    </div>
+
+    <div class="body-grid">
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">السلال المتروكة — آخر النشاطات</div>
+          <a class="card-action" href="/dashboard/normal-carts">عرض الكل</a>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>قيمة السلة</th>
+              <th>سبب التردد</th>
+              <th>الحالة</th>
+              <th>الخطوة التالية</th>
+              <th>رقم الجوال</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in merchant_table_rows %}
+            <tr>
+              <td>
+                <div class="cart-amount">{{ (row.merchant_cart_value | float) | round(0) | int }} ريال</div>
+                <div class="cart-time">{{ row.merchant_time_relative_ar | e }}</div>
+              </td>
+              <td><span class="chip {{ row.merchant_reason_chip_class | e }}">{{ row.merchant_reason_chip_label_ar | e }}</span></td>
+              <td><span class="status {{ row.merchant_status_row_class | e }}"><span class="s-dot"></span>{{ row.merchant_status_label_ar | e }}</span></td>
+              <td><div class="next-action{% if row.merchant_next_action_urgent %} urgent{% endif %}">{{ row.merchant_next_action_ar | e }}</div></td>
+              <td>
+                {% if 'متوفر' in (row.merchant_phone_line_ar or '') %}
+                <span class="cart-phone has-phone">✓ متوفر</span>
+                {% else %}
+                <span class="cart-phone no-phone">✗ غير متوفر</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="5" style="text-align:center;color:var(--muted);padding:24px;">لا توجد سلال متروكة حديثة للعرض.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:18px">
+        <div class="card" id="reason-week-panel">
+          <div class="card-head">
+            <div class="card-title">أسباب التردد — هذا الأسبوع</div>
+            <a class="card-action" href="/dashboard/analytics">تقرير كامل</a>
+          </div>
+          <div class="reasons-body">
+            {% for rr in merchant_reason_rows_week %}
+            <div class="r-row">
+              <div class="r-head">
+                <span class="r-label">{{ rr.label_ar | e }}</span>
+                <span class="r-count">{{ rr.count_pct }}٪</span>
+              </div>
+              <div class="r-track"><div class="r-fill" style="width:{{ rr.count_pct }}%;background:{{ rr.fill_color }}"></div></div>
+            </div>
+            {% else %}
+            <p style="font-size:12px;color:var(--muted);text-align:center;padding:8px 0;">لا بيانات أسباب لهذا الأسبوع.</p>
+            {% endfor %}
+            <div class="r-insight">{{ merchant_reason_insight_ar | e }}</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><div class="card-title">إجراءات سريعة</div></div>
+          <div class="quick-links">
+            <a class="ql-item" href="/dashboard/widget-customization">
+              <span class="ql-icon">🎨</span>
+              <span class="ql-label">تخصيص الودجيت</span>
+              <span class="ql-arrow">←</span>
+            </a>
+            <a class="ql-item" href="/dashboard#cf-normal-timing">
+              <span class="ql-icon">📱</span>
+              <span class="ql-label">إعدادات واتساب</span>
+              <span class="ql-arrow">←</span>
+            </a>
+            <a class="ql-item" href="/dashboard#cart-recovery-settings">
+              <span class="ql-icon">✉️</span>
+              <span class="ql-label">قوالب الرسائل</span>
+              <span class="ql-arrow">←</span>
+            </a>
+            <a class="ql-item" href="/dashboard#cf-normal-timing">
+              <span class="ql-icon">⏱️</span>
+              <span class="ql-label">توقيت المتابعة</span>
+              <span class="ql-arrow">←</span>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="bottom-grid">
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">ملخص الشهر</div>
+          <a class="card-action" href="/dashboard/analytics">تقرير تفصيلي</a>
+        </div>
+        <div class="summary-grid">
+          <div class="summary-cell">
+            <div class="sc-label">إجمالي السلال المتروكة</div>
+            <div class="sc-value">{{ merchant_month_summary.abandoned_total }}</div>
+          </div>
+          <div class="summary-cell">
+            <div class="sc-label">سلال تم استردادها</div>
+            <div class="sc-value" style="color:var(--green-mid)">{{ merchant_month_summary.recovered_total }}</div>
+          </div>
+          <div class="summary-cell">
+            <div class="sc-label">نسبة الاسترداد</div>
+            <div class="sc-value" style="color:var(--green-mid)">{{ merchant_month_summary.recovery_pct }}٪</div>
+          </div>
+          <div class="summary-cell">
+            <div class="sc-label">إيرادات مستردة</div>
+            <div class="sc-value">{{ (merchant_month_summary.recovered_revenue | float) | round(0) | int }} ر</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">👑 سلال VIP — تحتاج تدخلك</div>
+          <a class="card-action" href="/dashboard/vip-cart-settings">عرض الكل</a>
+        </div>
+
+        {% for vr in merchant_vip_rows %}
+        <div class="vip-item">
+          <div class="vip-avatar">{{ vr.avatar_letter | e }}</div>
+          <div class="vip-info">
+            <div class="vip-amount">{{ vr.amount_display | e }} ريال</div>
+            <div class="vip-time">{{ vr.subtitle_ar | e }}</div>
+          </div>
+          <span class="vip-tag">VIP</span>
+          {% if vr.contact_href %}
+          <a class="vip-contact-btn" href="{{ vr.contact_href | e }}">تواصل ←</a>
+          {% else %}
+          <span class="vip-contact-btn" style="opacity:.45;pointer-events:none;">تواصل ←</span>
+          {% endif %}
+        </div>
+        {% else %}
+        <div class="vip-empty">لا سلال VIP تحتاج تدخلاً الآن.</div>
+        {% endfor %}
+
+        <div style="padding:12px 20px;background:var(--bg);border-top:1px solid var(--border);font-size:11px;color:var(--muted)">
+          ⚠️ سلال VIP لا تتلقى رسائل تلقائية — تدخلك الشخصي يصنع الفرق
+        </div>
+      </div>
+    </div>
+
+    <section class="card" style="margin-top:20px;padding:0;overflow:visible" aria-label="قوالب الرسائل حسب سبب التردد">
+      <div class="merchant-settings-mount">
+        <div class="merchant-settings-mid">
+          <div class="mcf-shell mx-auto" style="max-width:100%;padding:0 12px 20px">
+            {% include "partials/normal_carts_merchant_settings_tail.html" %}
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+</body>
+</html>
