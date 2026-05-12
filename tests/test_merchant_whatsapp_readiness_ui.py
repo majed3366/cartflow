@@ -41,12 +41,13 @@ class MerchantWhatsAppReadinessDashboardHtmlTests(unittest.TestCase):
         self.assertIn("data-cf-merchant-dashboard-placeholder", t.lower())
         self.assertNotIn("data-cf-whatsapp-readiness", t.lower())
 
-    def test_dashboard_home_is_placeholder(self) -> None:
+    def test_dashboard_home_is_merchant_v1_shell(self) -> None:
         r = TestClient(app).get("/dashboard")
         self.assertEqual(r.status_code, 200, r.text[:500])
         t = r.text or ""
-        self.assertIn("Merchant Dashboard is being rebuilt", t)
-        self.assertNotIn("حالة الواتساب", t)
+        self.assertIn("data-cf-merchant-dashboard-v1", t.lower())
+        self.assertIn("CartFlow", t)
+        self.assertNotIn("data-cf-merchant-dashboard-placeholder", t.lower())
 
 
 class MerchantWhatsAppReadinessUiTests(unittest.TestCase):

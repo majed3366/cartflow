@@ -44,9 +44,12 @@ from services.merchant_normal_recovery_summary import (
     merchant_next_action_hint_ar,
 )
 from services.merchant_dashboard_reference_ui import (
+    merchant_ar_weekday_date_header,
     merchant_coarse_to_status_row,
     merchant_reason_chip_class_and_label,
+    merchant_reason_panel_rows_from_counts,
     merchant_relative_time_arabic,
+    merchant_vip_avatar_letter,
 )
 from services.normal_recovery_merchant_stale import merchant_group_stale_meta
 from urllib.parse import quote
@@ -9516,10 +9519,150 @@ def _merchant_dashboard_placeholder_response(request: Request) -> Any:
     )
 
 
+def _merchant_dashboard_fmt_int(n: Any) -> str:
+    try:
+        return f"{int(float(n)):,}"
+    except (TypeError, ValueError):
+        return "0"
+
+
 @app.get("/dashboard")
 def dashboard(request: Request):
-    """لوحة التاجر — واجهة مؤقتة أثناء إعادة البناء."""
-    return _merchant_dashboard_placeholder_response(request)
+    """لوحة التاجر — تصميم v1 خفيف وبيانات حقيقية آمنة."""
+    from services.merchant_whatsapp_readiness_ui import (  # noqa: PLC0415
+        build_merchant_whatsapp_readiness_card,
+    )
+
+    dash_store = _dashboard_recovery_store_row()
+    now_utc = datetime.now(timezone.utc)
+    try:
+        kpis = _merchant_kpi_today_projection(dash_store)
+    except (SQLAlchemyError, OSError, TypeError, ValueError):
+        kpis = {
+            "abandoned_today": 0,
+            "recovered_today": 0,
+            "whatsapp_sent_today": 0,
+            "recovered_revenue_today": 0.0,
+        }
+    try:
+        month_win = _merchant_month_window_projection(dash_store, days=30)
+    except (SQLAlchemyError, OSError, TypeError, ValueError):
+        month_win = {
+            "abandoned_total": 0,
+            "recovered_total": 0,
+            "recovery_pct": 0.0,
+            "recovered_revenue": 0.0,
+        }
+    reason_counts_w = _merchant_reason_counts_store_window(dash_store, days=7)
+    reason_rows, reason_insight = merchant_reason_panel_rows_from_counts(
+        reason_counts_w
+    )
+    try:
+        table_rows = _normal_recovery_merchant_lightweight_alert_list(
+            8, lifecycle="active"
+        )
+    except (SQLAlchemyError, OSError, TypeError, ValueError):
+        table_rows = []
+    try:
+        vip_raw = _vip_priority_cart_alert_list()
+    except (SQLAlchemyError, OSError, TypeError, ValueError):
+        vip_raw = []
+    vip_rows: list[dict[str, Any]] = []
+    for i, vc in enumerate(vip_raw[:3]):
+        if isinstance(vc, dict):
+            vip_rows.append(
+                _merchant_vip_row_safe_projection(
+                    vc,
+                    avatar_letter=merchant_vip_avatar_letter(i),
+                    dash_store=dash_store,
+                )
+            )
+    vip_banner: Optional[dict[str, Any]] = None
+    if vip_raw and isinstance(vip_raw[0], dict):
+        v0 = vip_raw[0]
+        proj0 = _merchant_vip_row_safe_projection(
+            v0,
+            avatar_letter=merchant_vip_avatar_letter(0),
+            dash_store=dash_store,
+        )
+        try:
+            amt_int = int(float(v0.get("cart_value") or 0))
+        except (TypeError, ValueError):
+            amt_int = 0
+        vip_banner = {
+            "amount_line": f"سلة بقيمة {amt_int:,} ريال — {proj0.get('subtitle_ar', '')}",
+            "contact_href": proj0.get("contact_href") or "",
+        }
+    store_name = "متجرك"
+    if dash_store is not None:
+        sn = (getattr(dash_store, "name", None) or "").strip()
+        if sn:
+            store_name = sn[:80]
+    try:
+        mstats = dict(_normal_carts_dashboard_stats())
+    except (SQLAlchemyError, OSError, TypeError, ValueError):
+        mstats = {
+            "normal_cart_count": 0,
+            "messages_sent_count": 0,
+            "normal_recovered_count": 0,
+            "stopped_flow_count": 0,
+        }
+    try:
+        follow_n = len(merchant_followup_actions_for_dashboard(50))
+    except (SQLAlchemyError, OSError, TypeError, ValueError):
+        follow_n = 0
+    vip_ct = len(vip_raw) if vip_raw else 0
+    wa_card = build_merchant_whatsapp_readiness_card(dash_store)
+    ab_today = int(kpis.get("abandoned_today") or 0)
+    rec_today = int(kpis.get("recovered_today") or 0)
+    pct_recovered_vs_abandoned = 0.0
+    if ab_today > 0:
+        pct_recovered_vs_abandoned = round(
+            100.0 * float(rec_today) / float(ab_today), 1
+        )
+    rev_today = float(kpis.get("recovered_revenue_today") or 0.0)
+    rev_month = float(month_win.get("recovered_revenue") or 0.0)
+    rec_pct_m = float(month_win.get("recovery_pct") or 0.0)
+    return templates.TemplateResponse(
+        request,
+        "merchant_dashboard_v1.html",
+        {
+            "request": request,
+            "merchant_html_title": "CartFlow — لوحة التاجر",
+            "merchant_store_display_name": store_name,
+            "merchant_nav_badge_abandoned": int(mstats.get("normal_cart_count") or 0),
+            "merchant_nav_badge_followup": int(follow_n),
+            "merchant_nav_badge_vip": int(vip_ct),
+            "merchant_ar_date_header": merchant_ar_weekday_date_header(now_utc),
+            "wa_badge_ar": str(wa_card.get("badge_ar") or "—"),
+            "wa_state_key": str(wa_card.get("state_key") or ""),
+            "merchant_kpi_abandoned_fmt": _merchant_dashboard_fmt_int(
+                kpis.get("abandoned_today")
+            ),
+            "merchant_kpi_recovered_fmt": _merchant_dashboard_fmt_int(
+                kpis.get("recovered_today")
+            ),
+            "merchant_kpi_wa_sent_fmt": _merchant_dashboard_fmt_int(
+                kpis.get("whatsapp_sent_today")
+            ),
+            "merchant_kpi_revenue_fmt": _merchant_dashboard_fmt_int(rev_today),
+            "merchant_kpi_recovered_pct_vs_abandoned": pct_recovered_vs_abandoned,
+            "merchant_kpi_wa_sub_ar": "سجلات إرسال اليوم",
+            "merchant_reason_rows_week": reason_rows,
+            "merchant_reason_insight_ar": reason_insight,
+            "merchant_table_rows": table_rows,
+            "merchant_vip_rows": vip_rows,
+            "merchant_vip_banner": vip_banner,
+            "merchant_month_abandoned_fmt": _merchant_dashboard_fmt_int(
+                month_win.get("abandoned_total")
+            ),
+            "merchant_month_recovered_fmt": _merchant_dashboard_fmt_int(
+                month_win.get("recovered_total")
+            ),
+            "merchant_month_recovery_pct_fmt": f"{rec_pct_m:.1f}",
+            "merchant_month_revenue_fmt": _merchant_dashboard_fmt_int(rev_month),
+        },
+    )
 
 
 @app.get("/dashboard/analytics")
