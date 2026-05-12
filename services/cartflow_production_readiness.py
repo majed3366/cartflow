@@ -18,6 +18,7 @@ _DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT: frozenset[str] = frozenset(
         "/dev/cartflow-delay-test",
         "/dev/vip-flow-verify",
         "/dev/create-vip-test-cart",
+        "/dev/widget-runtime-config-verify",
     }
 )
 

@@ -38,7 +38,7 @@ There is no separate CORS “allowed origins” env in this repo; embed and dash
 - **`DATABASE_URL`** unset in production → SQLite fallback may lose data or diverge across instances.
 - **`GET /debug/db`** is outside the `/dev` prefix → it is **not** hidden by `no_dev_in_production` and returns a short DB URL prefix (information leak).
 - **`GET /admin/init-db?key=...`** uses a **fixed default key** (`dev-init`) in source → anyone who knows the key can hit it; protect with network rules or change the key in `routes/ops.py`.
-- **Allowlisted `/dev/*` paths** when `ENV` is not `development` remain reachable (no session auth): see `main._DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT`.
+- **Allowlisted `/dev/*` paths** when `ENV` is not `development` remain reachable (no session auth): see `main._DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT` (includes read-only `GET /dev/widget-runtime-config-verify` for storefront widget config checks).
 - **`WA_RECOVERY_SEND_TRACE`**: if enabled in production, ensure logs do not print message bodies, Twilio tokens, or customer PII.
 
 ## Railway deployment notes

@@ -69,6 +69,19 @@ class CartflowProductionReadinessTests(unittest.TestCase):
         dbg_block = any("/debug/db" in x for x in body["blocking_issues"])
         self.assertFalse(dbg_block)
 
+    def test_widget_runtime_config_verify_on_production_dev_allowlist(self) -> None:
+        """Read-only verify route must bypass no_dev_in_production when ENV is unset (Railway)."""
+        from main import _DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT
+
+        self.assertIn(
+            "/dev/widget-runtime-config-verify",
+            _DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT,
+        )
+        self.assertIn(
+            "/dev/widget-runtime-config-verify",
+            pr._DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT,
+        )
+
     def test_dev_route_middleware_allowlist_and_production_readiness_route(self) -> None:
         from fastapi.testclient import TestClient
 

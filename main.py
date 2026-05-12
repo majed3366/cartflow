@@ -572,6 +572,7 @@ _DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT = frozenset(
         "/dev/cartflow-delay-test",
         "/dev/vip-flow-verify",
         "/dev/create-vip-test-cart",
+        "/dev/widget-runtime-config-verify",
     }
 )
 
@@ -601,7 +602,7 @@ async def set_embed_csp_middleware(request: Request, call_next: Any) -> Any:
 
 @app.middleware("http")
 async def no_dev_in_production(request: Request, call_next: Any) -> Any:
-    """يُنفَّذ أوّل مسار؛ ‎404‎ لـ ‎/dev‎ و ‎/dev/*‎ عندما ‎ENV‎ ليس ‎development‎ (استثناءات: ‎whatsapp-decision-test‎، ‎cartflow-delay-test‎، ‎vip-flow-verify‎، ‎create-vip-test-cart‎)."""
+    """يُنفَّذ أوّل مسار؛ ‎404‎ لـ ‎/dev‎ و ‎/dev/*‎ عندما ‎ENV‎ ليس ‎development‎ (استثناءات: مسارات القائمة ‎_DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT‎)."""
     p = request.url.path
     if p == "/dev" or (
         p.startswith("/dev/") and p not in _DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT
