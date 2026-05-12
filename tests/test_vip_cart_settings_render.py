@@ -20,8 +20,8 @@ class VipCartSettingsRenderTests(unittest.TestCase):
         r = self.client.get("/dashboard/vip-cart-settings")
         self.assertEqual(r.status_code, 200, r.text[:2000] if r.text else "")
         html = (r.text or "").lower()
-        self.assertIn("cf-dash-shell", html)
         self.assertIn("vip-priority-alerts-ul", html)
+        self.assertIn('class="sidebar"', html)
         self.assertNotIn("normal-recovery-alerts-ul", html)
         self.assertIn("/dashboard/normal-carts", r.text or "")
 
@@ -29,9 +29,9 @@ class VipCartSettingsRenderTests(unittest.TestCase):
         r = self.client.get("/dashboard/normal-carts")
         self.assertEqual(r.status_code, 200, r.text[:2000] if r.text else "")
         html = (r.text or "").lower()
-        self.assertIn("cf-dash-shell", html)
-        self.assertIn("normal-recovery-alerts-ul", html)
-        self.assertIn("السلال العادية", r.text or "")
+        self.assertIn('class="sidebar"', html)
+        self.assertIn("merchant-normal-carts-table", html)
+        self.assertIn("cart-recovery-settings", html)
 
     def test_normal_recovery_legacy_redirects(self) -> None:
         r = self.client.get("/dashboard/normal-recovery", follow_redirects=False)

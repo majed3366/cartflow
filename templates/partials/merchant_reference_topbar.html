@@ -1,0 +1,18 @@
+{% set wa = whatsapp_readiness_card %}
+<div class="topbar">
+  <div class="topbar-title">{{ merchant_page_title | default('الرئيسية') | e }}</div>
+  <div class="topbar-actions">
+    <div class="topbar-date">{{ merchant_ar_date_header | e }}</div>
+    {% if wa and wa.state_key == 'ready' %}
+    <div class="wa-status">
+      <div class="wa-dot"></div>
+      واتساب نشط
+    </div>
+    {% else %}
+    <div class="wa-status wa-status-muted">
+      <div class="wa-dot wa-dot-muted"></div>
+      {{ wa.badge_ar if wa else 'واتساب' }}
+    </div>
+    {% endif %}
+  </div>
+</div>

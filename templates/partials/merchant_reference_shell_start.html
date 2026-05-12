@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>{{ merchant_html_title | default('CartFlow — لوحة التاجر') | e }}</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+{% if merchant_load_tailwind | default(false) %}
+<script src="https://cdn.tailwindcss.com"></script>
+{% if merchant_tailwind_zid_config | default(false) %}
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          zid: { 500: "#7c3aed", 600: "#6d28d9", 100: "#ede9fe", 50: "#f5f3ff" },
+        },
+      },
+    },
+  };
+</script>
+{% endif %}
+{% endif %}
+{% if merchant_load_recovery_form_styles | default(false) %}
+{% include "partials/recovery_dashboard_styles.html" %}
+{% endif %}
+{% include "partials/merchant_reference_styles.html" %}
+</head>
+<body data-cf-msg-mode="recovery">
+{% include "partials/cart_abandon_tracking.html" %}
+{% set wa = whatsapp_readiness_card %}
+<span class="sr-only" data-cf-whatsapp-readiness="{{ wa.state_key if wa else '' }}">حالة الواتساب</span>
+{% include "partials/merchant_reference_sidebar.html" %}
+<div class="main">
+{% include "partials/merchant_reference_topbar.html" %}
+<div class="content">

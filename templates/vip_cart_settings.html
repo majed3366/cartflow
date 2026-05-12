@@ -1,30 +1,14 @@
-<!DOCTYPE html>
-<html lang="ar" dir="rtl" data-theme="light">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>السلال المميزة (VIP) — CartFlow</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            zid: { 500: "#7c3aed", 600: "#6d28d9", 100: "#ede9fe", 50: "#f5f3ff" },
-          },
-        },
-      },
-    };
-  </script>
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  {% include "partials/recovery_dashboard_styles.html" %}
-</head>
-<body class="min-h-screen bg-slate-50 text-slate-800 antialiased">
-  {% include "partials/cart_abandon_tracking.html" %}
-  <div class="flex min-h-screen flex-col md:flex-row">
-    {% include "partials/dashboard_sidebar.html" %}
-    <div class="min-w-0 w-full flex-1 bg-gradient-to-b from-violet-50/40 to-slate-50 px-3 pb-28 pt-14 md:min-h-screen md:px-4 md:pb-24 md:pt-4">
-      <div class="cf-dash-shell">
+{% set merchant_html_title = "السلال المميزة (VIP) — CartFlow" %}
+{% set merchant_active_nav = "vip" %}
+{% set merchant_page_title = "السلال المميزة" %}
+{% set merchant_load_tailwind = true %}
+{% set merchant_load_recovery_form_styles = true %}
+{% set merchant_tailwind_zid_config = true %}
+{% include "partials/merchant_reference_shell_start.html" %}
+
+        <div id="errBox" class="hidden ref-msg ref-msg--err"></div>
+        <div id="okBox" class="hidden ref-msg ref-msg--ok">تم الحفظ بنجاح</div>
+
         {# Cart rows live in partials/vip_cart_settings_cart_row.html (include — no fragile macro ordering). #}
 
         <div class="cf-dash-hero cf-dash-hero--vip mb-6">
@@ -53,9 +37,6 @@
                 <p class="m-0"><span class="font-semibold text-slate-700">وقت الرد:</span> {{ mf.replied_at }}</p>
                 {% if mf.cart_value is not none %}
                 <p class="m-0"><span class="font-semibold text-slate-700">قيمة السلة:</span> {{ "%.2f"|format(mf.cart_value) }} ريال</p>
-                {% endif %}
-                {% if mf.reason_tag_ar %}
-                <p class="m-0"><span class="font-semibold text-slate-700">وسم السبب:</span> {{ mf.reason_tag_ar }}</p>
                 {% endif %}
               </div>
               <p class="mt-2 min-h-[1.25rem] text-end text-[10px] text-slate-600" data-mf-card-status aria-live="polite"></p>
@@ -108,9 +89,6 @@
           </div>
           {% endif %}
         </section>
-
-        <div id="errBox" class="mb-2 hidden rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"></div>
-        <div id="okBox" class="mb-2 hidden rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-800">تم الحفظ بنجاح</div>
 
         <form id="f" class="cf-dash-compact space-y-4">
           <!-- SECTION 2 — VIP threshold -->
@@ -193,9 +171,7 @@
             <button type="submit" id="saveBtn" class="cf-dash-save">حفظ الإعدادات</button>
           </div>
         </form>
-      </div>
-    </div>
-  </div>
+{% include "partials/merchant_reference_main_close.html" %}
   <script>
     (function () {
       var errBox = document.getElementById("errBox");

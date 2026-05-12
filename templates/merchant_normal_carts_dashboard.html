@@ -1,114 +1,114 @@
-<!DOCTYPE html>
-<html lang="ar" dir="rtl" data-theme="light">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>متابعة العملاء — CartFlow</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            zid: { 500: "#7c3aed", 600: "#6d28d9", 100: "#ede9fe", 50: "#f5f3ff" },
-          },
-        },
-      },
-    };
-  </script>
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  {% include "partials/recovery_dashboard_styles.html" %}
-  <style>
-    .mcf-shell { max-width: 42rem; }
-    .mcf-kpi { border-radius: 1rem; border: 1px solid rgb(226 232 240); background: #fff; box-shadow: 0 1px 2px rgb(15 23 42 / 0.04); }
-    .cf-segment { display: inline-flex; border-radius: 10px; border: 1px solid rgb(203 213 225); overflow: hidden; background: rgb(255 255 255); }
-    .cf-seg-btn { min-width: 5.5rem; padding: 6px 10px; font-size: 11px; font-weight: 700; line-height: 1.35; border: none; cursor: pointer; background: transparent; color: rgb(100 116 139); transition: background 0.12s ease, color 0.12s ease; }
-    .cf-seg-btn--active { background: #0f766e; color: #fff; }
-    .cf-seg-btn--inactive { background: transparent; color: rgb(71 85 105); box-shadow: inset 0 0 0 1.5px rgb(203 213 225); }
-    .cf-segment .cf-seg-btn:first-of-type { border-inline-end: 1px solid rgb(226 232 240); }
-  </style>
-</head>
-<body class="min-h-screen bg-slate-50 text-slate-800 antialiased" data-cf-msg-mode="recovery">
-  {% include "partials/cart_abandon_tracking.html" %}
-  <div class="flex min-h-screen flex-col md:flex-row">
-    {% include "partials/dashboard_sidebar.html" %}
-    <div class="min-w-0 w-full flex-1 bg-gradient-to-b from-slate-50 to-white px-3 pb-28 pt-14 md:min-h-screen md:px-6 md:pb-24 md:pt-6">
-      <div class="mcf-shell mx-auto">
-        <header class="mb-8">
-          <h1 class="text-2xl font-bold tracking-tight text-slate-900 md:text-3xl">متابعة العملاء</h1>
-          <p class="mt-2 max-w-xl text-sm leading-relaxed text-slate-600">نظرة سريعة على السلال التي تحتاج متابعة، ثم إعداد رسائلك — بدون تفاصيل تقنية.</p>
-        </header>
+{% include "partials/merchant_reference_shell_start.html" %}
 
-        {% include "partials/whatsapp_readiness_card.html" %}
+    <div id="errBox" class="hidden ref-msg ref-msg--err"></div>
+    <div id="okBox" class="hidden ref-msg ref-msg--ok">تم الحفظ بنجاح</div>
 
-        <div id="errBox" class="mb-2 hidden rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"></div>
-        <div id="okBox" class="mb-2 hidden rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-800">تم الحفظ بنجاح</div>
+    {% set ob = onboarding_visibility | default({}) %}
+    {% if ob.get("show_strip") and ob.get("status_ar") %}
+    <div class="ref-onboarding" aria-label="حالة الإعداد" data-cf-onboarding-ready="{{ '1' if ob.get('ready') else '0' }}">
+      <p class="m-0 font-bold" style="margin-bottom:6px;color:var(--text)">{{ ob.status_ar }}</p>
+      {% if ob.get("recommended_ar") %}<p class="m-0" style="font-size:12px;color:var(--muted);line-height:1.5">{{ ob.recommended_ar }}</p>{% endif %}
+      {% if ob.get("sandbox_notice_ar") %}<p class="m-0" style="margin-top:8px;font-size:11px;padding:8px;border-radius:8px;background:#fffbeb;color:#92400e">{{ ob.sandbox_notice_ar }}</p>{% endif %}
+      {% if ob.get("blocking_titles_ar") %}
+      <ul class="m-0 mt-2" style="padding-right:18px;font-size:11px;color:var(--text)">
+        {% for t in ob.blocking_titles_ar %}<li>{{ t }}</li>{% endfor %}
+      </ul>
+      {% endif %}
+    </div>
+    {% endif %}
 
-        {% set ob = onboarding_visibility | default({}) %}
-        {% if ob.get("show_strip") and ob.get("status_ar") %}
-        <section class="mb-6 rounded-2xl border border-slate-200/90 bg-white px-4 py-3 shadow-sm md:px-5" aria-label="حالة الإعداد" data-cf-onboarding-ready="{{ '1' if ob.get('ready') else '0' }}">
-          <p class="m-0 text-sm font-bold text-slate-900">{{ ob.status_ar }}</p>
-          {% if ob.get("recommended_ar") %}<p class="mt-1 mb-0 text-xs leading-relaxed text-slate-600">{{ ob.recommended_ar }}</p>{% endif %}
-          {% if ob.get("sandbox_notice_ar") %}<p class="mt-1.5 mb-0 rounded-lg bg-amber-50 px-2 py-1.5 text-[11px] leading-relaxed text-amber-900">{{ ob.sandbox_notice_ar }}</p>{% endif %}
-          {% if ob.get("blocking_titles_ar") %}
-          <ul class="mt-2 mb-0 list-disc list-inside space-y-0.5 text-[11px] text-slate-700">
-            {% for t in ob.blocking_titles_ar %}<li>{{ t }}</li>{% endfor %}
-          </ul>
-          {% endif %}
-        </section>
-        {% endif %}
-
-        {% set ns = normal_stats | default({}) %}
-        <section class="mb-8 grid grid-cols-2 gap-3 md:grid-cols-4" aria-label="مؤشرات سريعة">
-          <div class="mcf-kpi p-4">
-            <p class="text-[11px] font-semibold text-slate-500">تحتاج متابعة الآن</p>
-            <p class="mt-1 text-2xl font-bold tabular-nums text-slate-900">{{ ns.get("normal_monitoring_card_count", 0) }}</p>
-          </div>
-          <div class="mcf-kpi p-4">
-            <p class="text-[11px] font-semibold text-slate-500">رسائل الترحيب</p>
-            <p class="mt-1 text-2xl font-bold tabular-nums text-slate-900">{{ ns.get("messages_sent_count", 0) }}</p>
-          </div>
-          <div class="mcf-kpi p-4">
-            <p class="text-[11px] font-semibold text-slate-500">طلبات اكتملت</p>
-            <p class="mt-1 text-2xl font-bold tabular-nums text-emerald-800">{{ ns.get("normal_recovered_count", 0) }}</p>
-          </div>
-          <div class="mcf-kpi p-4">
-            <p class="text-[11px] font-semibold text-slate-500">محادثات متوقفة</p>
-            <p class="mt-1 text-2xl font-bold tabular-nums text-slate-700">{{ ns.get("stopped_flow_count", 0) }}</p>
-          </div>
-        </section>
-
-        {% set _nr_lc = (nr_lifecycle_mode|default('active'))|trim|lower %}
-        <section class="mb-8 rounded-2xl border border-slate-200/90 bg-white p-4 shadow-sm md:p-6" aria-labelledby="mcf-cases-heading">
-          <h2 id="mcf-cases-heading" class="mb-1 text-lg font-bold text-slate-900">
-            {% if _nr_lc == 'archived' %}حالات سابقة{% else %}سلال تحتاج متابعة{% endif %}
-          </h2>
-          <p class="mb-4 text-sm leading-relaxed text-slate-600">
-            {% if _nr_lc == 'archived' %}
-            حالات أُغلقت أو توقفت أو لم تُكمل — للرجوع إليها كسجل عمل.
-            {% else %}
-            ما يحتاج انتباهك اليوم؛ بقية الحالات في «الحالات السابقة».
-            {% endif %}
-          </p>
-          <div class="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-100 bg-slate-50/80 px-2 py-2" role="navigation" aria-label="عرض الحالات">
-            <span class="text-[10px] font-bold text-slate-500">العرض</span>
-            <div class="cf-segment inline-flex rounded-lg border border-slate-200 bg-white p-0.5">
-              <a href="{{ normal_carts_url_active|default('/dashboard/normal-carts') }}" class="cf-seg-btn {% if _nr_lc != 'archived' %}cf-seg-btn--active{% else %}cf-seg-btn--inactive{% endif %} rounded-md px-2.5 py-1 text-[10px] no-underline">نشطة</a>
-              <a href="{{ normal_carts_url_archived|default('/dashboard/normal-carts?nr_lifecycle=archived') }}" class="cf-seg-btn {% if _nr_lc == 'archived' %}cf-seg-btn--active{% else %}cf-seg-btn--inactive{% endif %} rounded-md px-2.5 py-1 text-[10px] no-underline">الحالات السابقة</a>
-            </div>
-          </div>
-          {% set mlist = merchant_recovery_alerts | default(normal_recovery_alerts) | default([]) %}
-          <ul id="merchant-recovery-cases-ul" class="m-0 list-none space-y-3 p-0 {% if mlist | length == 0 %}hidden{% endif %}" role="list">
-            {% for mc in mlist %}
-            {% include "partials/merchant_normal_recovery_card.html" %}
-            {% endfor %}
-          </ul>
-          <p id="merchant-recovery-empty" class="{% if mlist | length > 0 %}hidden {% endif %}m-0 text-sm text-slate-600">لا توجد حالات في هذا العرض حالياً.</p>
-        </section>
-
-        {% include "partials/normal_carts_merchant_settings_tail.html" %}
+    {% set ns = normal_stats | default({}) %}
+    <div class="kpi-grid">
+      <div class="kpi">
+        <div class="kpi-accent" style="background:#dc2626"></div>
+        <span class="kpi-icon">🛒</span>
+        <div class="kpi-label">تحتاج متابعة الآن</div>
+        <div class="kpi-value">{{ ns.get("normal_monitoring_card_count", 0) }}</div>
+        <div class="kpi-trend trend-neutral">في هذا العرض</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-accent" style="background:#16a34a"></div>
+        <span class="kpi-icon">💬</span>
+        <div class="kpi-label">رسائل واتساب أُرسلت</div>
+        <div class="kpi-value">{{ ns.get("messages_sent_count", 0) }}</div>
+        <div class="kpi-trend trend-neutral">من متجرك</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-accent" style="background:#d97706"></div>
+        <span class="kpi-icon">✅</span>
+        <div class="kpi-label">سلال تم استردادها</div>
+        <div class="kpi-value">{{ ns.get("normal_recovered_count", 0) }}</div>
+        <div class="kpi-trend trend-up">مكتملة</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-accent" style="background:#64748b"></div>
+        <span class="kpi-icon">⏹️</span>
+        <div class="kpi-label">محادثات متوقفة</div>
+        <div class="kpi-value">{{ ns.get("stopped_flow_count", 0) }}</div>
+        <div class="kpi-trend trend-neutral">مسار متوقف</div>
       </div>
     </div>
-  </div>
+
+    {% set _nr_lc = (nr_lifecycle_mode|default('active'))|trim|lower %}
+    <div class="card" style="margin-bottom:20px">
+      <div class="card-head">
+        <div class="card-title">{% if _nr_lc == 'archived' %}حالات سابقة{% else %}سلال تحتاج متابعة{% endif %}</div>
+      </div>
+      <div style="padding:12px 20px;border-bottom:1px solid var(--border)">
+        <p style="font-size:12px;color:var(--muted);margin:0 0 10px 0">
+          {% if _nr_lc == 'archived' %}حالات أُغلقت أو توقفت — للرجوع إليها كسجل.{% else %}ما يحتاج انتباهك الآن؛ للحالات الأقدم استخدم «الحالات السابقة».{% endif %}
+        </p>
+        <div class="ref-seg" role="navigation" aria-label="عرض الحالات">
+          <a href="{{ normal_carts_url_active|default('/dashboard/normal-carts') }}" class="{% if _nr_lc != 'archived' %}on{% endif %}">نشطة</a>
+          <a href="{{ normal_carts_url_archived|default('/dashboard/normal-carts?nr_lifecycle=archived') }}" class="{% if _nr_lc == 'archived' %}on{% endif %}">الحالات السابقة</a>
+        </div>
+      </div>
+      <table id="merchant-normal-carts-table">
+        <thead>
+          <tr>
+            <th>قيمة السلة</th>
+            <th>سبب التردد</th>
+            <th>الحالة</th>
+            <th>الخطوة التالية</th>
+            <th>رقم الجوال</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% set mlist = merchant_recovery_alerts | default(normal_recovery_alerts) | default([]) %}
+          {% for mc in mlist %}
+          <tr>
+            <td>
+              <div class="cart-amount">{{ "%.0f"|format(mc.merchant_cart_value | float) }} ريال</div>
+              <div class="cart-time">{{ mc.merchant_time_relative_ar | default(mc.merchant_last_seen_display) | e }}</div>
+            </td>
+            <td><span class="chip {{ mc.merchant_reason_chip_class | default('c-other') | e }}">{{ mc.merchant_reason_chip_label_ar | default('—') | e }}</span></td>
+            <td><span class="status {{ mc.merchant_status_row_class | default('s-waiting') | e }}"><span class="s-dot"></span>{{ mc.merchant_status_label_ar | default(mc.merchant_business_state_ar) | e }}</span></td>
+            <td><div class="next-action{% if mc.merchant_next_action_urgent %} urgent{% endif %}">{{ mc.merchant_next_action_ar | e }}</div></td>
+            <td>
+              {% if 'متوفر' in (mc.merchant_phone_line_ar or '') %}
+              <span class="cart-phone has-phone">✓ متوفر</span>
+              {% else %}
+              <span class="cart-phone no-phone">✗ غير متوفر</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="5" style="text-align:center;color:var(--muted);padding:24px;">لا توجد حالات في هذا العرض حالياً.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="merchant-settings-mount">
+      <div class="merchant-settings-mid">
+        <div class="mcf-shell mx-auto" style="max-width:100%;padding:0 0 8px">
+          {% include "partials/normal_carts_merchant_settings_tail.html" %}
+        </div>
+      </div>
+    </div>
+
+{% include "partials/merchant_reference_main_close.html" %}
 </body>
 </html>

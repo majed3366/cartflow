@@ -193,7 +193,7 @@ class CartflowOnboardingReadinessTests(unittest.TestCase):
         client = TestClient(app)
         r = client.get("/dashboard/normal-carts")
         self.assertEqual(r.status_code, 200, r.text[:1500] if r.text else "")
-        self.assertIn("cf-onboarding-strip", (r.text or "").lower())
+        self.assertIn("data-cf-onboarding-ready", (r.text or "").lower())
 
 
 if __name__ == "__main__":

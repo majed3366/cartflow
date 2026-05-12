@@ -1,0 +1,61 @@
+{# متغير: merchant_active_nav = home | normal-carts | vip | widget | general | analytics #}
+{% set ma = merchant_active_nav | default('home') | trim | lower %}
+<div class="sidebar">
+  <div class="brand">
+    <div class="brand-name">CartFlow</div>
+    <div class="brand-sub">وكيل المبيعات الذكي</div>
+  </div>
+
+  <div class="store-info">
+    <div class="store-led"></div>
+    <div class="store-name">{{ merchant_store_display_name | e }}</div>
+  </div>
+
+  <nav>
+    <div class="nav-section">القائمة الرئيسية</div>
+    <a class="nav-item{% if ma == 'home' %} active{% endif %}" href="/dashboard">
+      <span class="nav-ico">📊</span> الرئيسية
+    </a>
+    <a class="nav-item{% if ma == 'normal-carts' %} active{% endif %}" href="/dashboard/normal-carts">
+      <span class="nav-ico">🛒</span> السلال المتروكة
+      {% if merchant_nav_badge_abandoned > 0 %}
+      <span class="nav-badge nb-red">{{ merchant_nav_badge_abandoned }}</span>
+      {% endif %}
+    </a>
+    <a class="nav-item{% if ma == 'normal-carts' %} active{% endif %}" href="/dashboard/normal-carts">
+      <span class="nav-ico">🔔</span> سلال تحتاج متابعة
+      {% if merchant_nav_badge_followup > 0 %}
+      <span class="nav-badge nb-amber">{{ merchant_nav_badge_followup }}</span>
+      {% endif %}
+    </a>
+    <a class="nav-item{% if ma == 'vip' %} active{% endif %}" href="/dashboard/vip-cart-settings">
+      <span class="nav-ico">👑</span> سلال VIP
+      {% if merchant_nav_badge_vip > 0 %}
+      <span class="nav-badge nb-amber">{{ merchant_nav_badge_vip }}</span>
+      {% endif %}
+    </a>
+
+    <div class="nav-section">التواصل والرسائل</div>
+    <a class="nav-item{% if ma == 'analytics' %} active{% endif %}" href="/dashboard/analytics">
+      <span class="nav-ico">💬</span> الرسائل المرسلة
+    </a>
+    <a class="nav-item" href="{% if ma == 'home' %}#reason-week-panel{% else %}/dashboard#reason-week-panel{% endif %}">
+      <span class="nav-ico">📋</span> أسباب التردد
+    </a>
+
+    <div class="nav-section">الإعدادات</div>
+    <a class="nav-item{% if ma == 'widget' %} active{% endif %}" href="/dashboard/widget-customization">
+      <span class="nav-ico">🧩</span> الودجيت
+    </a>
+    <a class="nav-item" href="/dashboard/normal-carts#cf-normal-timing">
+      <span class="nav-ico">📱</span> إعدادات واتساب
+    </a>
+    <a class="nav-item{% if ma == 'general' %} active{% endif %}" href="/dashboard/general-settings">
+      <span class="nav-ico">⚙️</span> إعدادات عامة
+    </a>
+  </nav>
+
+  <div class="sidebar-footer">
+    <div class="sf-plan">🟢 الخطة النشطة — احترافي</div>
+  </div>
+</div>
