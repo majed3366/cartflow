@@ -34,20 +34,22 @@ def _ob(flags: dict[str, bool], blocking: list[str]) -> dict:
 
 
 class MerchantWhatsAppReadinessDashboardHtmlTests(unittest.TestCase):
-    def test_normal_carts_merchant_is_placeholder_not_heavy_dashboard(self) -> None:
-        r = TestClient(app).get("/dashboard/normal-carts")
-        self.assertEqual(r.status_code, 200, r.text[:500])
-        t = r.text or ""
-        self.assertIn("data-cf-merchant-dashboard-placeholder", t.lower())
-        self.assertNotIn("data-cf-whatsapp-readiness", t.lower())
+    def test_normal_carts_redirects_to_merchant_app_not_placeholder(self) -> None:
+        r = TestClient(app).get("/dashboard/normal-carts", follow_redirects=False)
+        self.assertEqual(r.status_code, 302, r.text[:500])
+        loc = r.headers.get("location") or ""
+        self.assertIn("#carts", loc)
+        self.assertNotIn("data-cf-merchant-dashboard-placeholder", loc.lower())
 
-    def test_dashboard_home_is_merchant_v1_shell(self) -> None:
+    def test_dashboard_home_is_standalone_merchant_app(self) -> None:
         r = TestClient(app).get("/dashboard")
         self.assertEqual(r.status_code, 200, r.text[:500])
         t = r.text or ""
-        self.assertIn("data-cf-merchant-dashboard-v1", t.lower())
+        tl = t.lower()
+        self.assertIn("data-cf-merchant-app", tl)
         self.assertIn("CartFlow", t)
-        self.assertNotIn("data-cf-merchant-dashboard-placeholder", t.lower())
+        self.assertNotIn("data-cf-merchant-dashboard-placeholder", tl)
+        self.assertNotIn("data-cf-merchant-dashboard-v1", tl)
         self.assertIn("kpi-grid", t)
         self.assertIn("bottom-grid", t)
         self.assertIn("table-scroll", t)
@@ -62,7 +64,7 @@ class MerchantWhatsAppReadinessUiTests(unittest.TestCase):
         c = build_merchant_whatsapp_readiness_card(_ST)
         self.assertEqual(c["state_key"], "disabled")
         self.assertIn("غير مفعل", c["badge_ar"])
-        self.assertEqual(c["action_href"], "/dashboard/normal-carts#cart-recovery-settings")
+        self.assertEqual(c["action_href"], "/dashboard#whatsapp")
 
     @patch(
         "services.merchant_whatsapp_readiness_ui.evaluate_onboarding_readiness",

@@ -1111,7 +1111,7 @@ class NormalRecoveryDashboardStatusTests(unittest.TestCase):
     def test_merchant_normal_carts_has_no_session_filter_field(self) -> None:
         remove_scoped_session()
         client = TestClient(app)
-        r = client.get("/dashboard/normal-carts")
+        r = client.get("/dashboard")
         self.assertEqual(r.status_code, 200)
         self.assertNotIn('name="nr_session"', r.text or "")
 

@@ -7003,12 +7003,10 @@ def dev_platform_readiness_test():
                 and pbody.get("ok") is True
             )
     recovery_settings_api_ready = bool(get_ok and post_ok)
-    d = dashboard_normal_carts(
-        _minimal_get_request("/dashboard/normal-carts")
-    )
+    d = dashboard(_minimal_get_request("/dashboard"))
     dct = d.body or b""
     dashboard_flow_ready = bool(
-        d.status_code == 200 and (b"recovery_delay" in dct or b"template_price" in dct)
+        d.status_code == 200 and b"data-cf-merchant-app" in dct
     )
     s_src = getsource(send_whatsapp)
     whatsapp_send_is_mocked = bool(
@@ -7041,12 +7039,12 @@ def dev_platform_readiness_test():
 @app.get("/dev/recovery-dashboard-render-test")
 def dev_recovery_dashboard_render_test():
     """
-    يتحقق من مسار ‎/dashboard/normal-carts‎ وأن الرد ‎HTML‎.
+    يتحقق من مسار ‎/dashboard‎ (تطبيق التاجر) وأن الرد ‎HTML‎.
     """
     try:
-        route_exists = _app_route_get_exists("/dashboard/normal-carts")
+        route_exists = _app_route_get_exists("/dashboard")
         tc = _app_test_client()
-        resp = tc.get("/dashboard/normal-carts")
+        resp = tc.get("/dashboard")
         head = (resp.content or b"")[:3000]
         head_l = head.lstrip().lower()
         ct = (resp.headers.get("Content-Type") or "").lower()
@@ -7058,7 +7056,11 @@ def dev_recovery_dashboard_render_test():
                 or head_l.startswith(b"<html")
             )
         )
-        ok = bool(route_exists and returns_html)
+        ok = bool(
+            route_exists
+            and returns_html
+            and b"data-cf-merchant-app" in head_l
+        )
         return j(
             {
                 "ok": ok,
@@ -9625,7 +9627,7 @@ def dashboard(request: Request):
     rec_pct_m = float(month_win.get("recovery_pct") or 0.0)
     return templates.TemplateResponse(
         request,
-        "merchant_dashboard_v1.html",
+        "merchant_app.html",
         {
             "request": request,
             "merchant_html_title": "CartFlow — لوحة التاجر",
@@ -9678,14 +9680,12 @@ def dashboard_analytics(request: Request):
 
 @app.get("/dashboard/recovery-settings")
 def dashboard_recovery_settings(request: Request):
-    """توافق خلفي — التوقيت والقوالب ضمن متابعة العملاء."""
-    return RedirectResponse(
-        url="/dashboard/normal-carts#cf-normal-timing", status_code=302
-    )
+    """توافق خلفي — التوقيت والقوالب داخل تطبيق التاجر."""
+    return RedirectResponse(url="/dashboard#whatsapp", status_code=302)
 
 
 def _normal_carts_dashboard_page_response(request: Request, *, audience: str) -> Any:
-    """عرض ‎HTML‎ المشترك — ‎audience=merchant‎ (صفحة مؤقتة) أو ‎ops‎ (فلاتر وتشخيص)."""
+    """عرض ‎HTML‎ للوحة العمليات فقط (‎audience=ops‎)؛ أي طلب تاجر يُعاد توجيهه إلى ‎/dashboard#carts‎."""
     from urllib.parse import urlencode
 
     from services.cartflow_observability_runtime import runtime_health_snapshot_readonly
@@ -9696,8 +9696,8 @@ def _normal_carts_dashboard_page_response(request: Request, *, audience: str) ->
     aud = (audience or "merchant").strip().lower()
     if aud not in ("merchant", "ops"):
         aud = "merchant"
-    if aud == "merchant":
-        return _merchant_dashboard_placeholder_response(request)
+    if aud != "ops":
+        return RedirectResponse(url="/dashboard#carts", status_code=302)
 
     nr_sess = (request.query_params.get("nr_session") or "").strip()
     nr_cid = (request.query_params.get("nr_cart") or "").strip()
@@ -9746,7 +9746,7 @@ def _normal_carts_dashboard_page_response(request: Request, *, audience: str) ->
         "onboarding_visibility": onboarding_visibility,
         "whatsapp_readiness_card": whatsapp_readiness_card,
         "recovery_ops_dashboard": True,
-        "normal_merchant_dashboard_url": "/dashboard/normal-carts",
+        "normal_merchant_dashboard_url": "/dashboard#carts",
         "normal_operations_dashboard_url": "/dashboard/normal-carts/operations",
     }
     return templates.TemplateResponse(
@@ -9768,7 +9768,7 @@ def dashboard_normal_carts(request: Request):
         if raw_q:
             dest += "?" + raw_q
         return RedirectResponse(url=dest, status_code=302)
-    return _normal_carts_dashboard_page_response(request, audience="merchant")
+    return RedirectResponse(url="/dashboard#carts", status_code=302)
 
 
 @app.get("/dashboard/normal-carts/operations")
@@ -9780,19 +9780,19 @@ def dashboard_normal_carts_operations(request: Request):
 @app.get("/dashboard/normal-recovery")
 def dashboard_normal_recovery_legacy(request: Request):
     """توافق خلفي لمسار العنوان السابق."""
-    return RedirectResponse(url="/dashboard/normal-carts", status_code=302)
+    return RedirectResponse(url="/dashboard#carts", status_code=302)
 
 
 @app.get("/dashboard/normal")
 def dashboard_normal_alias(request: Request):
-    """توافق عنوان مختصر — نفس واجهة متابعة العملاء."""
-    return RedirectResponse(url="/dashboard/normal-carts", status_code=302)
+    """توافق عنوان مختصر — لوحة التاجر الموحدة."""
+    return RedirectResponse(url="/dashboard", status_code=302)
 
 
 @app.get("/dashboard/vip-cart-settings")
 def dashboard_vip_cart_settings(request: Request):
-    """واجهة ‎VIP‎ للتاجر مُعطّلة مؤقتاً — المنطق والـ‎API‎ يبقيان كما هما."""
-    return _merchant_dashboard_placeholder_response(request)
+    """توافق خلفي — إعدادات ‎VIP‎ داخل تطبيق التاجر."""
+    return RedirectResponse(url="/dashboard#vip", status_code=302)
 
 
 @app.get("/api/merchant-followup-actions")
@@ -9830,10 +9830,8 @@ def api_merchant_followup_action_complete(action_id: int):
 
 @app.get("/dashboard/cartflow-messages")
 def dashboard_cartflow_messages(request: Request):
-    """إعادة توجيه — دمج إعدادات استعادة السلة ضمن السلال العادية."""
-    return RedirectResponse(
-        url="/dashboard/normal-carts#cart-recovery-settings", status_code=302
-    )
+    """إعادة توجيه — دمج إعدادات استعادة السلة ضمن تطبيق التاجر."""
+    return RedirectResponse(url="/dashboard#whatsapp", status_code=302)
 
 
 @app.get("/dashboard/exit-intent-settings")
@@ -9848,10 +9846,8 @@ def dashboard_exit_intent_settings(request: Request):
 
 @app.get("/dashboard/cart-recovery-messages")
 def dashboard_cart_recovery_messages(request: Request):
-    """توافق خلفي — القوالب ضمن «السلال العادية»."""
-    return RedirectResponse(
-        url="/dashboard/normal-carts#reason-recovery-settings", status_code=302
-    )
+    """توافق خلفي — القوالب ضمن تطبيق التاجر."""
+    return RedirectResponse(url="/dashboard#whatsapp", status_code=302)
 
 
 @app.get("/dashboard/general-settings")
@@ -9869,10 +9865,8 @@ def dashboard_general_settings(request: Request):
 
 @app.get("/dashboard/widget-customization")
 def dashboard_widget_customization(request: Request):
-    """توافق خلفي — تخصيص الودجيت ضمن إعدادات عامة."""
-    return RedirectResponse(
-        url="/dashboard/general-settings#cf-widget-custom", status_code=302
-    )
+    """توافق خلفي — تخصيص الودجيت داخل تطبيق التاجر."""
+    return RedirectResponse(url="/dashboard#widget", status_code=302)
 
 
 def _vip_reason_tag_from_abandoned_cart(ac: Optional[AbandonedCart]) -> Optional[str]:

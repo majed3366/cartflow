@@ -11,8 +11,8 @@ from typing import Any, Optional
 
 from services.cartflow_onboarding_readiness import evaluate_onboarding_readiness
 
-_HREF_SETTINGS = "/dashboard/normal-carts#cart-recovery-settings"
-_HREF_GENERAL = "/dashboard/general-settings"
+_HREF_SETTINGS = "/dashboard#whatsapp"
+_HREF_GENERAL = "/dashboard#settings"
 
 
 def build_merchant_whatsapp_readiness_card(store: Optional[Any]) -> dict[str, Any]:

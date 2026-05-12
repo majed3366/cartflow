@@ -222,11 +222,14 @@ class VipDashboardMerchantAlertTests(unittest.TestCase):
 
     def test_vip_cart_settings_placeholder_has_no_demo_vip_section(self) -> None:
         db.create_all()
-        r = self.client.get("/dashboard/vip-cart-settings")
-        self.assertEqual(r.status_code, 200, r.text)
-        self.assertIn("Merchant Dashboard is being rebuilt", r.text or "")
-        self.assertNotIn("demo_vip_cart_zid", r.text or "")
-        self.assertNotIn("vip-demo-heading", r.text or "")
+        r = self.client.get("/dashboard/vip-cart-settings", follow_redirects=False)
+        self.assertEqual(r.status_code, 302, r.text)
+        loc = r.headers.get("location") or ""
+        self.assertIn("#vip", loc)
+        r2 = self.client.get("/dashboard")
+        self.assertEqual(r2.status_code, 200, r2.text)
+        self.assertNotIn("demo_vip_cart_zid", r2.text or "")
+        self.assertNotIn("vip-demo-heading", r2.text or "")
 
     def test_vip_merchant_ready_reply_bodies_omits_link_when_empty(self) -> None:
         from main import _vip_merchant_ready_reply_bodies
