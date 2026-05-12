@@ -305,6 +305,345 @@ try {
     sales: "هذه أفضل الخيارات لك الآن 👇",
   };
 
+  var CF_WIDGET_TRIGGER_DEFAULTS = {
+    exit_intent_enabled: true,
+    exit_intent_sensitivity: "medium",
+    exit_intent_delay_seconds: 0,
+    exit_intent_frequency: "per_session",
+    hesitation_trigger_enabled: true,
+    hesitation_after_seconds: 20,
+    hesitation_condition: "after_cart_add",
+    visibility_widget_globally_enabled: true,
+    visibility_temporarily_disabled: false,
+    visibility_page_scope: "all",
+    widget_brand_line_ar: "",
+    widget_phone_capture_mode: "after_reason",
+    suppress_after_widget_dismiss: true,
+    suppress_after_purchase: true,
+    suppress_when_checkout_started: true,
+    reason_display_order: [
+      "price",
+      "shipping",
+      "delivery",
+      "quality",
+      "warranty",
+      "thinking",
+      "other",
+    ],
+  };
+  var cfWidgetTriggerRuntime = null;
+  var cfReasonTemplatesRuntime = null;
+  var CF_LS_WIDGET_LAST_SHOWN = "cartflow_cf_widget_last_shown_ts";
+  var CF_SS_WIDGET_SHOWN = "cartflow_cf_widget_shown_session";
+  var CF_SS_WIDGET_DISMISS = "cartflow_cf_suppress_after_dismiss";
+
+  function mergeCfWidgetTrigger(patch) {
+    var o = {};
+    var k;
+    for (k in CF_WIDGET_TRIGGER_DEFAULTS) {
+      if (Object.prototype.hasOwnProperty.call(CF_WIDGET_TRIGGER_DEFAULTS, k)) {
+        o[k] = CF_WIDGET_TRIGGER_DEFAULTS[k];
+      }
+    }
+    if (patch && typeof patch === "object") {
+      for (k in patch) {
+        if (Object.prototype.hasOwnProperty.call(patch, k)) {
+          o[k] = patch[k];
+        }
+      }
+    }
+    return o;
+  }
+
+  function getCfWidgetTrigger() {
+    return cfWidgetTriggerRuntime || CF_WIDGET_TRIGGER_DEFAULTS;
+  }
+
+  function cfCheckoutPathActive() {
+    try {
+      var p = String(window.location.pathname || "") + String(window.location.search || "");
+      return /\/checkout\b/i.test(p);
+    } catch (eCh) {
+      return false;
+    }
+  }
+
+  function cfReadDismissSuppressFlag() {
+    try {
+      return window.sessionStorage.getItem(CF_SS_WIDGET_DISMISS) === "1";
+    } catch (e1) {
+      return false;
+    }
+  }
+
+  function cfMarkDismissSuppressFlag() {
+    try {
+      window.sessionStorage.setItem(CF_SS_WIDGET_DISMISS, "1");
+    } catch (e2) {
+      /* ignore */
+    }
+  }
+
+  function cfPageScopeAllowsCartUi() {
+    var tr = getCfWidgetTrigger();
+    var sc = String(tr.visibility_page_scope || "all").toLowerCase();
+    var path = String(window.location.pathname || "");
+    var full = path + String(window.location.search || "");
+    if (sc === "all") {
+      return true;
+    }
+    if (sc === "cart") {
+      return (
+        /\/cart\b/i.test(full) ||
+        /\/checkout\b/i.test(full) ||
+        /\/demo\/store\/cart/i.test(full) ||
+        path === "/demo/store" ||
+        path.indexOf("/demo/store/") === 0
+      );
+    }
+    if (sc === "product") {
+      if (/\/cart\b|\/checkout\b/i.test(full)) {
+        return false;
+      }
+      return /\/products?\b|\/collections?\b|\/demo\/store\b/i.test(full) || path.length > 1;
+    }
+    return true;
+  }
+
+  function cfExitIntentSurfaceAllowed() {
+    var tr = getCfWidgetTrigger();
+    if (!tr.exit_intent_enabled) {
+      return false;
+    }
+    var sc = String(tr.visibility_page_scope || "all").toLowerCase();
+    var path = String(window.location.pathname || "");
+    var full = path + String(window.location.search || "");
+    if (sc === "all") {
+      return true;
+    }
+    if (sc === "cart") {
+      return /\/cart\b|\/checkout\b|\/demo\/store\/cart/i.test(full) || path === "/demo/store";
+    }
+    if (sc === "product") {
+      return (
+        !/\/cart\b|\/checkout\b/i.test(full) &&
+        (path === "/demo/store" || /\/product/i.test(full) || path.indexOf("/demo/store/") === 0)
+      );
+    }
+    return true;
+  }
+
+  function cfFrequencyAllowsShow(openSource) {
+    void openSource;
+    var tr = getCfWidgetTrigger();
+    var mode = String(tr.exit_intent_frequency || "per_session").toLowerCase();
+    var now = Date.now();
+    try {
+      if (mode === "per_session") {
+        if (window.sessionStorage.getItem(CF_SS_WIDGET_SHOWN) === "1") {
+          return false;
+        }
+      } else if (mode === "per_24h") {
+        var raw = window.localStorage.getItem(CF_LS_WIDGET_LAST_SHOWN);
+        var last = raw ? parseInt(String(raw), 10) : 0;
+        if (isFinite(last) && last > 0 && now - last < 86400000) {
+          return false;
+        }
+      } else if (mode === "no_rapid_repeat") {
+        var raw2 = window.localStorage.getItem(CF_LS_WIDGET_LAST_SHOWN);
+        var last2 = raw2 ? parseInt(String(raw2), 10) : 0;
+        if (isFinite(last2) && last2 > 0 && now - last2 < 120000) {
+          return false;
+        }
+      }
+    } catch (eFq) {
+      return true;
+    }
+    return true;
+  }
+
+  function cfMarkWidgetShownForFrequency() {
+    var now = Date.now();
+    try {
+      window.sessionStorage.setItem(CF_SS_WIDGET_SHOWN, "1");
+    } catch (eS) {
+      /* ignore */
+    }
+    try {
+      window.localStorage.setItem(CF_LS_WIDGET_LAST_SHOWN, String(now));
+    } catch (eL) {
+      /* ignore */
+    }
+  }
+
+  function cfPhoneCaptureMode() {
+    return String(getCfWidgetTrigger().widget_phone_capture_mode || "after_reason").toLowerCase();
+  }
+
+  function cfCustomerPhoneSaved() {
+    try {
+      var p = localStorage.getItem(CARTFLOW_LS_CUSTOMER_PHONE);
+      return !!(p && String(p).trim());
+    } catch (ePh) {
+      return false;
+    }
+  }
+
+  function getCfReasonTemplates() {
+    return cfReasonTemplatesRuntime && typeof cfReasonTemplatesRuntime === "object"
+      ? cfReasonTemplatesRuntime
+      : {};
+  }
+
+  function cfReasonTemplateEnabled(slug) {
+    var rt = getCfReasonTemplates();
+    var e = rt[String(slug || "").toLowerCase()];
+    if (!e || typeof e !== "object") {
+      return true;
+    }
+    return e.enabled !== false;
+  }
+
+  function cfDefaultReasonLabels() {
+    return {
+      price: "السعر",
+      quality: "الجودة",
+      warranty: "الضمان",
+      shipping: "الشحن",
+      delivery: "التوصيل",
+      thinking: "أفكر",
+      other: "سبب آخر",
+    };
+  }
+
+  function cfBuildVisibleReasonRows() {
+    var tr = getCfWidgetTrigger();
+    var order = Array.isArray(tr.reason_display_order)
+      ? tr.reason_display_order
+      : CF_WIDGET_TRIGGER_DEFAULTS.reason_display_order;
+    var labels = cfDefaultReasonLabels();
+    var out = [];
+    var i;
+    for (i = 0; i < order.length; i++) {
+      var r = String(order[i] || "").toLowerCase();
+      if (!r || !cfReasonTemplateEnabled(r)) {
+        continue;
+      }
+      var lab = labels[r] || r;
+      out.push({ r: r, label: lab });
+    }
+    return out;
+  }
+
+  function cfExitIntentInactivityMs() {
+    var tr = getCfWidgetTrigger();
+    var base = 10000;
+    try {
+      var sens = String(tr.exit_intent_sensitivity || "medium").toLowerCase();
+      if (sens === "low") {
+        base = 16000;
+      } else if (sens === "high") {
+        base = 6500;
+      }
+    } catch (eSens) {
+      base = 10000;
+    }
+    var d = 0;
+    try {
+      if (typeof tr.exit_intent_delay_seconds === "number" && isFinite(tr.exit_intent_delay_seconds)) {
+        d = Math.max(0, Math.min(60, tr.exit_intent_delay_seconds));
+      }
+    } catch (eDel) {
+      d = 0;
+    }
+    return base + d * 1000;
+  }
+
+  function cfExitIntentScrollDelta() {
+    try {
+      var sens = String(getCfWidgetTrigger().exit_intent_sensitivity || "medium").toLowerCase();
+      if (sens === "low") {
+        return 180;
+      }
+      if (sens === "high") {
+        return 80;
+      }
+    } catch (eSd) {
+      /* ignore */
+    }
+    return 120;
+  }
+
+  function cfMaybeMarkDismissSuppress() {
+    try {
+      if (getCfWidgetTrigger().suppress_after_widget_dismiss) {
+        cfMarkDismissSuppressFlag();
+      }
+    } catch (eMs) {
+      /* ignore */
+    }
+  }
+
+  function cfLogWidgetTriggerBlocked(reasonCode, extra) {
+    try {
+      console.log(
+        "[WIDGET TRIGGER BLOCKED] reason=" +
+          String(reasonCode || "") +
+          (extra != null ? " " + String(extra) : "")
+      );
+    } catch (eLb) {
+      /* ignore */
+    }
+  }
+
+  function cfLogWidgetTriggerFired(source) {
+    try {
+      console.log("[WIDGET TRIGGER FIRED] source=" + String(source || ""));
+    } catch (eLf) {
+      /* ignore */
+    }
+  }
+
+  function applyWidgetRuntimeConfigFromPayload(j) {
+    if (!j || typeof j !== "object") {
+      return;
+    }
+    if (j.widget_trigger_config && typeof j.widget_trigger_config === "object") {
+      cfWidgetTriggerRuntime = mergeCfWidgetTrigger(j.widget_trigger_config);
+    }
+    if (j.reason_templates && typeof j.reason_templates === "object") {
+      cfReasonTemplatesRuntime = j.reason_templates;
+    } else {
+      cfReasonTemplatesRuntime = null;
+    }
+    try {
+      console.log("[WIDGET CONFIG LOADED]", {
+        exit_intent_enabled: getCfWidgetTrigger().exit_intent_enabled,
+        exit_intent_sensitivity: getCfWidgetTrigger().exit_intent_sensitivity,
+        exit_intent_delay_seconds: getCfWidgetTrigger().exit_intent_delay_seconds,
+        exit_intent_frequency: getCfWidgetTrigger().exit_intent_frequency,
+        hesitation_trigger_enabled: getCfWidgetTrigger().hesitation_trigger_enabled,
+        hesitation_after_seconds: getCfWidgetTrigger().hesitation_after_seconds,
+        hesitation_condition: getCfWidgetTrigger().hesitation_condition,
+        visibility_page_scope: getCfWidgetTrigger().visibility_page_scope,
+        widget_phone_capture_mode: cfPhoneCaptureMode(),
+        suppress_after_widget_dismiss: getCfWidgetTrigger().suppress_after_widget_dismiss,
+        suppress_after_purchase: getCfWidgetTrigger().suppress_after_purchase,
+        suppress_when_checkout_started: getCfWidgetTrigger().suppress_when_checkout_started,
+        reason_order_len: (getCfWidgetTrigger().reason_display_order || []).length,
+      });
+      console.log("[WIDGET CONFIG APPLIED]");
+    } catch (eCfg) {
+      /* ignore */
+    }
+    try {
+      window.__cfWidgetTriggerRuntime = getCfWidgetTrigger();
+      window.__cfReasonTemplatesRuntime = cfReasonTemplatesRuntime;
+    } catch (eW) {
+      /* ignore */
+    }
+  }
+
   function normalizeWidgetPrimaryHexClient(raw) {
     var def = "#6C5CE7";
     if (raw == null || raw === "") return def;
@@ -822,6 +1161,7 @@ try {
       if (!j || typeof j !== "object") {
         return;
       }
+      applyWidgetRuntimeConfigFromPayload(j);
       var m = j.template_mode;
       if (m === "preset" || m === "custom") {
         widgetTemplateMode = m;
@@ -1784,6 +2124,18 @@ try {
     if (!isCartPage()) {
       return;
     }
+    try {
+      if (!getCfWidgetTrigger().exit_intent_enabled) {
+        cfLogWidgetTriggerBlocked("exit_intent_disabled", "cart_smart_exit");
+        return;
+      }
+      if (!cfPageScopeAllowsCartUi()) {
+        cfLogWidgetTriggerBlocked("page_scope_blocked", "cart_smart_exit");
+        return;
+      }
+    } catch (eEx) {
+      /* ignore */
+    }
     if (!haveCartForWidget() || isSessionConverted()) {
       return;
     }
@@ -1842,6 +2194,16 @@ try {
     }
     if (!isCartPage()) {
       return;
+    }
+    try {
+      if (!getCfWidgetTrigger().exit_intent_enabled) {
+        return;
+      }
+      if (!cfPageScopeAllowsCartUi()) {
+        return;
+      }
+    } catch (eMa) {
+      /* ignore */
     }
     if (!haveCartForWidget()) {
       return;
@@ -2359,6 +2721,20 @@ try {
     }
     if (!hasItems) {
       return "no_cart_items";
+    }
+    try {
+      var trb = getCfWidgetTrigger();
+      if (trb.suppress_when_checkout_started && cfCheckoutPathActive()) {
+        return "checkout_started";
+      }
+      if (trb.suppress_after_widget_dismiss && cfReadDismissSuppressFlag()) {
+        return "closed_recently";
+      }
+      if (!cfPageScopeAllowsCartUi()) {
+        return "page_scope_blocked";
+      }
+    } catch (eBlk) {
+      /* ignore */
     }
     if (
       isMobileDeferCartBubbleViewport()
@@ -3603,6 +3979,20 @@ try {
   /** مهلة عرض الودجيت بعد آخر نشاط سلة (لا علاقة لها بتأخير الإرسال على الخادم). */
   function getWidgetCartUiIdleMs() {
     try {
+      var tr = getCfWidgetTrigger();
+      if (tr && tr.hesitation_trigger_enabled === false) {
+        return 86400000;
+      }
+      if (tr && typeof tr.hesitation_after_seconds === "number") {
+        var sec = tr.hesitation_after_seconds;
+        if (isFinite(sec) && sec >= 1) {
+          return Math.min(Math.max(sec, 3), 600) * 1000;
+        }
+      }
+    } catch (eHes) {
+      /* ignore */
+    }
+    try {
       var o = window.CARTFLOW_WIDGET_UI_IDLE_MS;
       if (typeof o === "number" && isFinite(o) && o >= 0) {
         return o;
@@ -4060,6 +4450,10 @@ try {
   function showBubble(triggerSource, revealOpts) {
     revealOpts = revealOpts || {};
     syncWindowCartflowVipRuntime();
+    var openSource =
+      triggerSource === TRIGGER_SOURCE_EXIT_INTENT
+        ? TRIGGER_SOURCE_EXIT_INTENT
+        : TRIGGER_SOURCE_CART;
     if (!cfWgEnabled) {
       try {
         console.log("[CF FRONT] skip showBubble: merchant disabled widget recovery UI");
@@ -4070,6 +4464,45 @@ try {
       try {
         console.log("[CF FRONT] skip showBubble: merchant delay not elapsed");
       } catch (eWgDly) {}
+      return;
+    }
+    var _trPre = getCfWidgetTrigger();
+    if (_trPre && _trPre.visibility_widget_globally_enabled === false) {
+      cfLogWidgetTriggerBlocked("widget_disabled", "globally_off");
+      return;
+    }
+    if (_trPre && _trPre.visibility_temporarily_disabled === true) {
+      cfLogWidgetTriggerBlocked("widget_disabled", "temporarily_off");
+      return;
+    }
+    if (isSessionConverted()) {
+      cfLogWidgetTriggerBlocked("purchase_completed", "");
+      return;
+    }
+    if (openSource === TRIGGER_SOURCE_EXIT_INTENT) {
+      try {
+        if (!_trPre.exit_intent_enabled) {
+          cfLogWidgetTriggerBlocked("exit_intent_disabled", "show_bubble");
+          return;
+        }
+        if (!cfExitIntentSurfaceAllowed()) {
+          cfLogWidgetTriggerBlocked("page_scope_blocked", "exit_intent_surface");
+          return;
+        }
+      } catch (eExi) {
+        /* ignore */
+      }
+    }
+    if (openSource === TRIGGER_SOURCE_CART && !cfPageScopeAllowsCartUi()) {
+      cfLogWidgetTriggerBlocked("page_scope_blocked", "cart_bubble");
+      return;
+    }
+    if (!cfFrequencyAllowsShow(openSource)) {
+      cfLogWidgetTriggerBlocked("frequency_blocked", String(openSource || ""));
+      return;
+    }
+    if (_trPre.suppress_when_checkout_started && cfCheckoutPathActive()) {
+      cfLogWidgetTriggerBlocked("checkout_started", "");
       return;
     }
     try {
@@ -4083,10 +4516,6 @@ try {
       /* ignore */
     }
     var hasCartItems = haveCartForWidget();
-    var openSource =
-      triggerSource === TRIGGER_SOURCE_EXIT_INTENT
-        ? TRIGGER_SOURCE_EXIT_INTENT
-        : TRIGGER_SOURCE_CART;
     if (
       openSource === TRIGGER_SOURCE_CART &&
       isMobileDeferCartBubbleViewport() &&
@@ -4145,7 +4574,7 @@ try {
     if (openSource === TRIGGER_SOURCE_CART && !hasCartItems) {
       return;
     }
-    if (isSessionConverted() || !step1Ready) {
+    if (!step1Ready) {
       return;
     }
     if (isDemoStoreProductPage()) {
@@ -4192,6 +4621,8 @@ try {
     }
     shown = true;
     setCartflowWidgetShownFlag(true);
+    cfMarkWidgetShownForFrequency();
+    cfLogWidgetTriggerFired(openSource);
     removeFabIfAny();
     if (step1Poll !== null) {
       clearInterval(step1Poll);
@@ -4573,6 +5004,7 @@ try {
     btnClose.addEventListener("click", function (ev) {
       ev.stopPropagation();
       ev.preventDefault();
+      cfMaybeMarkDismissSuppress();
       removeFabIfAny();
       if (typeof w._cfCleanup === "function") {
         w._cfCleanup();
@@ -6445,66 +6877,110 @@ try {
     var btnY = null;
     var btnN = null;
     if (!vipImmediateUi) {
-      p0 = document.createElement("p");
-      p0.style.cssText =
-        openSource === TRIGGER_SOURCE_EXIT_INTENT
-          ? "margin:0 0 8px 0;font-size:14px;line-height:1.55;white-space:pre-line;"
-          : "margin:0 0 8px 0;";
-      p0.textContent =
-        openSource === TRIGGER_SOURCE_EXIT_INTENT
-          ? getExitIntentOpeningText()
-          : "تبي أساعدك تكمل طلبك؟";
-
-      if (
-        openSource === TRIGGER_SOURCE_EXIT_INTENT ||
-        openSource === TRIGGER_SOURCE_CART
-      ) {
-        row0 = document.createElement("div");
-        row0.style.cssText =
-          "display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-start;margin-top:2px;";
-
-        btnY = document.createElement("button");
-        btnY.type = "button";
-        btnY.textContent =
+      (function cfMountMainEntry() {
+        if (cfPhoneCaptureMode() === "immediate" && !cfCustomerPhoneSaved()) {
+          var gP = document.createElement("p");
+          gP.style.cssText = "margin:0 0 8px 0;font-size:14px;line-height:1.45;";
+          gP.textContent = "أدخل رقم جوالك لمتابعة التواصل";
+          var pin = document.createElement("input");
+          pin.type = "tel";
+          pin.setAttribute("dir", "ltr");
+          pin.setAttribute("placeholder", "05xxxxxxxx");
+          pin.setAttribute("autocomplete", "tel");
+          pin.style.cssText =
+            "width:100%;box-sizing:border-box;border-radius:8px;border:0;padding:10px;margin-bottom:8px;font:inherit;color:#1e1b4b;";
+          var gErr = document.createElement("p");
+          gErr.style.cssText =
+            "margin:0 0 8px 0;font-size:13px;color:#b91c1c;min-height:1em;";
+          var bGo = document.createElement("button");
+          bGo.type = "button";
+          bGo.textContent = "متابعة";
+          stampPrimaryBubbleBtn(bGo);
+          bGo.addEventListener("click", function (gev) {
+            gev.stopPropagation();
+            gev.preventDefault();
+            gErr.textContent = "";
+            var n = normalizeSaPhoneForCartflow(pin.value);
+            if (!n) {
+              gErr.textContent = "رقم غير صحيح";
+              return;
+            }
+            try {
+              localStorage.setItem(CARTFLOW_LS_CUSTOMER_PHONE, n);
+            } catch (eLsIm) {
+              /* ignore */
+            }
+            stripContentKeepChrome();
+            cfMountMainEntry();
+          });
+          widgetBody.appendChild(gP);
+          widgetBody.appendChild(pin);
+          widgetBody.appendChild(gErr);
+          widgetBody.appendChild(bGo);
+          return;
+        }
+        p0 = document.createElement("p");
+        p0.style.cssText =
           openSource === TRIGGER_SOURCE_EXIT_INTENT
-            ? "نعم، خلني أشوف 👌"
-            : "نعم";
-        stampPrimaryBubbleBtn(btnY);
-
-        btnN = document.createElement("button");
-        btnN.type = "button";
-        btnN.textContent =
+            ? "margin:0 0 8px 0;font-size:14px;line-height:1.55;white-space:pre-line;"
+            : "margin:0 0 8px 0;";
+        p0.textContent =
           openSource === TRIGGER_SOURCE_EXIT_INTENT
-            ? "لا، أتصفح بس"
-            : "لا";
-        stampPrimaryBubbleBtn(btnN);
-        btnN.addEventListener("click", function (ev) {
-          ev.stopPropagation();
-          ev.preventDefault();
-          if (isDemoStoreProductPage() && isDemoScenarioActive()) {
-            return;
-          }
-          if (openSource === TRIGGER_SOURCE_EXIT_INTENT && !haveCartForWidget()) {
-            logWidgetDiscoveryFlow("declined");
-            persistExitIntentPreCartDeclined();
-          }
-          logWidgetFlow("first_prompt_pick", "", "لا");
-          removeFabIfAny();
-          if (typeof w._cfCleanup === "function") {
-            w._cfCleanup();
-          }
-          if (w && w.parentNode) {
-            w.parentNode.removeChild(w);
-          }
-          if (isDemoStoreProductPage()) {
-            shown = false;
-            setCartflowWidgetShownFlag(false);
-            demoStoreBubbleDismissed = true;
-            clearTimeout(idleTimer);
-            idleTimer = null;
-          }
-        });
-      }
+            ? getExitIntentOpeningText()
+            : "تبي أساعدك تكمل طلبك؟";
+
+        if (
+          openSource === TRIGGER_SOURCE_EXIT_INTENT ||
+          openSource === TRIGGER_SOURCE_CART
+        ) {
+          row0 = document.createElement("div");
+          row0.style.cssText =
+            "display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-start;margin-top:2px;";
+
+          btnY = document.createElement("button");
+          btnY.type = "button";
+          btnY.textContent =
+            openSource === TRIGGER_SOURCE_EXIT_INTENT
+              ? "نعم، خلني أشوف 👌"
+              : "نعم";
+          stampPrimaryBubbleBtn(btnY);
+
+          btnN = document.createElement("button");
+          btnN.type = "button";
+          btnN.textContent =
+            openSource === TRIGGER_SOURCE_EXIT_INTENT
+              ? "لا، أتصفح بس"
+              : "لا";
+          stampPrimaryBubbleBtn(btnN);
+          btnN.addEventListener("click", function (ev) {
+            ev.stopPropagation();
+            ev.preventDefault();
+            if (isDemoStoreProductPage() && isDemoScenarioActive()) {
+              return;
+            }
+            if (openSource === TRIGGER_SOURCE_EXIT_INTENT && !haveCartForWidget()) {
+              logWidgetDiscoveryFlow("declined");
+              persistExitIntentPreCartDeclined();
+            }
+            logWidgetFlow("first_prompt_pick", "", "لا");
+            cfMaybeMarkDismissSuppress();
+            removeFabIfAny();
+            if (typeof w._cfCleanup === "function") {
+              w._cfCleanup();
+            }
+            if (w && w.parentNode) {
+              w.parentNode.removeChild(w);
+            }
+            if (isDemoStoreProductPage()) {
+              shown = false;
+              setCartflowWidgetShownFlag(false);
+              demoStoreBubbleDismissed = true;
+              clearTimeout(idleTimer);
+              idleTimer = null;
+            }
+          });
+        }
+      })();
     }
 
     function getReasonActionOrder(rkey) {
@@ -6895,34 +7371,35 @@ try {
 
     function mountOtherForm() {
       stripContentKeepChrome();
+      var pcm = cfPhoneCaptureMode();
+      var hidePhone = pcm === "none";
       var pHint = document.createElement("p");
       pHint.style.cssText =
         "margin:0 0 8px 0;font-size:13px;line-height:1.45;color:rgba(30,27,75,0.82);";
-      pHint.textContent = "نستخدم الرقم فقط لمساعدتك في إكمال الطلب";
+      pHint.textContent = hidePhone
+        ? "اكتب ملاحظتك وسنوصلها للمتجر (بدون رقم جوال داخل الودجيت)."
+        : "نستخدم الرقم فقط لمساعدتك في إكمال الطلب";
       widgetBody.appendChild(pHint);
-      var phoneIn = document.createElement("input");
-      phoneIn.type = "tel";
-      phoneIn.setAttribute("dir", "ltr");
-      phoneIn.setAttribute(
-        "placeholder",
-        "اكتب رقمك للتواصل عبر واتساب"
-      );
-      phoneIn.setAttribute("autocomplete", "tel");
-      phoneIn.setAttribute(
-        "aria-label",
-        "اكتب رقمك للتواصل عبر واتساب"
-      );
-      phoneIn.style.cssText =
-        "width:100%;box-sizing:border-box;border-radius:8px;border:0;padding:10px 10px;margin-bottom:6px;font:inherit;color:#1e1b4b;";
-      try {
-        var savedP = localStorage.getItem(CARTFLOW_LS_CUSTOMER_PHONE);
-        if (savedP) {
-          phoneIn.value = String(savedP);
+      var phoneIn = null;
+      if (!hidePhone) {
+        phoneIn = document.createElement("input");
+        phoneIn.type = "tel";
+        phoneIn.setAttribute("dir", "ltr");
+        phoneIn.setAttribute("placeholder", "اكتب رقمك للتواصل عبر واتساب");
+        phoneIn.setAttribute("autocomplete", "tel");
+        phoneIn.setAttribute("aria-label", "اكتب رقمك للتواصل عبر واتساب");
+        phoneIn.style.cssText =
+          "width:100%;box-sizing:border-box;border-radius:8px;border:0;padding:10px 10px;margin-bottom:6px;font:inherit;color:#1e1b4b;";
+        try {
+          var savedP = localStorage.getItem(CARTFLOW_LS_CUSTOMER_PHONE);
+          if (savedP) {
+            phoneIn.value = String(savedP);
+          }
+        } catch (eLs0) {
+          /* ignore */
         }
-      } catch (eLs0) {
-        /* ignore */
+        widgetBody.appendChild(phoneIn);
       }
-      widgetBody.appendChild(phoneIn);
       var pErr = document.createElement("p");
       pErr.setAttribute("role", "alert");
       pErr.style.cssText =
@@ -6932,7 +7409,7 @@ try {
       var p2o = document.createElement("p");
       p2o.style.cssText =
         "margin:0 0 6px 0;font-size:12px;line-height:1.4;opacity:0.9;";
-      p2o.textContent = "ملاحظة (اختياري)";
+      p2o.textContent = hidePhone ? "الملاحظة" : "ملاحظة (اختياري)";
       widgetBody.appendChild(p2o);
       var ta = document.createElement("textarea");
       ta.setAttribute("rows", "3");
@@ -6951,29 +7428,41 @@ try {
         e2.stopPropagation();
         e2.preventDefault();
         pErr.textContent = "";
-        var norm = normalizeSaPhoneForCartflow(phoneIn.value);
-        if (!norm) {
-          pErr.textContent = "رقم غير صحيح";
+        var note = (ta.value || "").trim();
+        var norm = null;
+        if (!hidePhone && phoneIn) {
+          norm = normalizeSaPhoneForCartflow(phoneIn.value);
+          if ((pcm === "after_reason" || pcm === "immediate") && !norm) {
+            pErr.textContent = "أدخل رقم جوال صحيح";
+            return;
+          }
+          if (phoneIn.value && String(phoneIn.value).trim() && !norm) {
+            pErr.textContent = "رقم غير صحيح";
+            return;
+          }
+        } else if (!note) {
+          pErr.textContent = "اكتب ملاحظة قصيرة";
           return;
         }
-        var note = (ta.value || "").trim();
+        var payload = { reason: "other", custom_text: note || undefined };
+        if (norm) {
+          payload.customer_phone = norm;
+        }
         bSend.setAttribute("disabled", "true");
-        postReason({
-          reason: "other",
-          custom_text: note || undefined,
-          customer_phone: norm,
-        })
+        postReason(payload)
           .then(function (j) {
             if (j && j.ok) {
-              try {
-                localStorage.setItem(CARTFLOW_LS_CUSTOMER_PHONE, norm);
-              } catch (eLs1) {
-                /* ignore */
-              }
-              try {
-                console.log("[CF PHONE CAPTURED] phone=" + norm);
-              } catch (eC) {
-                /* ignore */
+              if (norm) {
+                try {
+                  localStorage.setItem(CARTFLOW_LS_CUSTOMER_PHONE, norm);
+                } catch (eLs1) {
+                  /* ignore */
+                }
+                try {
+                  console.log("[CF PHONE CAPTURED] phone=" + norm);
+                } catch (eC) {
+                  /* ignore */
+                }
               }
               setReasonTag("other");
               emitDemoGuideEvent("cartflow-demo-reason-confirmed", {
@@ -7241,14 +7730,14 @@ try {
         "display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-start;margin-top:4px;max-height:220px;overflow-y:auto;" +
         "-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:2px 0;";
 
-      var options = [
-        { label: "السعر", r: "price" },
-        { label: "الجودة", r: "quality" },
-        { label: "الضمان", r: "warranty" },
-        { label: "الشحن", r: "shipping" },
-        { label: "أفكر", r: "thinking" },
-        { label: "سبب آخر", r: "_other" },
-      ];
+      var options = cfBuildVisibleReasonRows();
+      if (!options.length) {
+        var pEmpty = document.createElement("p");
+        pEmpty.style.cssText = "margin:0;font-size:13px;opacity:0.9;";
+        pEmpty.textContent = "لا توجد أسباب مفعّلة حالياً.";
+        widgetBody.appendChild(pEmpty);
+        return;
+      }
 
       options.forEach(function (o) {
         var b = document.createElement("button");
@@ -7258,7 +7747,7 @@ try {
         b.addEventListener("click", function (e) {
           e.stopPropagation();
           e.preventDefault();
-          if (o.r === "_other") {
+          if (o.r === "other") {
             mountOtherForm();
           } else if (o.r === "price") {
             showPriceSubMenu();
@@ -7421,6 +7910,14 @@ try {
     if (shown) {
       return;
     }
+    try {
+      var trR = getCfWidgetTrigger();
+      if (trR && trR.hesitation_trigger_enabled === false) {
+        return;
+      }
+    } catch (eHt) {
+      /* ignore */
+    }
     clearTimeout(idleTimer);
     idleTimer = null;
     if (!haveCartForWidget()) {
@@ -7458,6 +7955,33 @@ try {
       }
       if (!shouldSend) {
         return;
+      }
+      try {
+        var trId = getCfWidgetTrigger();
+        if (trId.suppress_after_widget_dismiss && cfReadDismissSuppressFlag()) {
+          cfLogWidgetTriggerBlocked("closed_recently", "idle_timer");
+          return;
+        }
+        if (trId.suppress_when_checkout_started && cfCheckoutPathActive()) {
+          cfLogWidgetTriggerBlocked("checkout_started", "idle_timer");
+          return;
+        }
+        if (!cfPageScopeAllowsCartUi()) {
+          cfLogWidgetTriggerBlocked("page_scope_blocked", "idle_timer");
+          return;
+        }
+        var hcond = String(trId.hesitation_condition || "").toLowerCase();
+        if (hcond === "after_cart_add" || hcond === "cart_interaction") {
+          var st = window.CartFlowState;
+          if (!st || st.lastIntentAt == null) {
+            return;
+          }
+          if (nowMs - st.lastIntentAt > 50 * 60 * 1000) {
+            return;
+          }
+        }
+      } catch (eGate) {
+        /* ignore */
       }
       function finishIdleCartBubbleReveal() {
         showBubble(TRIGGER_SOURCE_CART, {
@@ -7664,6 +8188,16 @@ try {
     if (isSessionConverted()) {
       return false;
     }
+    try {
+      if (!getCfWidgetTrigger().exit_intent_enabled) {
+        return false;
+      }
+      if (!cfExitIntentSurfaceAllowed()) {
+        return false;
+      }
+    } catch (eCan) {
+      return false;
+    }
     if (haveCartForWidget()) {
       try {
         console.log("EXIT INTENT BLOCKED:", true);
@@ -7696,6 +8230,16 @@ try {
   /** نفس تسلسل التهيئة كما بعد add to cart، ثم showBubble(exit_intent) فقط. */
   function openExitIntentWidget() {
     if (!canShowExitIntentWidget()) {
+      try {
+        var trOp = getCfWidgetTrigger();
+        if (!trOp.exit_intent_enabled) {
+          cfLogWidgetTriggerBlocked("exit_intent_disabled", "open_exit");
+        } else if (!haveCartForWidget() && !cfExitIntentSurfaceAllowed()) {
+          cfLogWidgetTriggerBlocked("page_scope_blocked", "open_exit");
+        }
+      } catch (eOp) {
+        /* ignore */
+      }
       return;
     }
     if (isDemoPath()) {
@@ -7734,6 +8278,16 @@ try {
 
   function CartflowExitIntentController() {
     if (!isCartPage()) {
+      return;
+    }
+    try {
+      if (!getCfWidgetTrigger().exit_intent_enabled) {
+        return;
+      }
+      if (!cfExitIntentSurfaceAllowed()) {
+        return;
+      }
+    } catch (eCi) {
       return;
     }
     var triggered = false;
@@ -7777,7 +8331,7 @@ try {
       inactivityTimer = setTimeout(function () {
         inactivityTimer = null;
         fire("inactivity");
-      }, 10000);
+      }, cfExitIntentInactivityMs());
     }
     ["touchstart", "touchmove", "scroll", "mousemove", "keydown"].forEach(function (ev) {
       document.addEventListener(
@@ -7793,7 +8347,7 @@ try {
     function onScroll() {
       resetTimer();
       var y = getScrollYForExit();
-      if (lastY - y > 120 && lastY > 300) {
+      if (lastY - y > cfExitIntentScrollDelta() && lastY > 300) {
         fire("scroll_up");
       }
       lastY = y;

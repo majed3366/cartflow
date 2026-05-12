@@ -687,6 +687,71 @@ def dev_widget_test():
     )
 
 
+@app.get("/dev/widget-runtime-config-verify")
+def dev_widget_runtime_config_verify(
+    store_slug: str = Query("demo", min_length=1, max_length=255),
+):
+    """
+    مقارنة سريعة: إعدادات الودجيت من ‎Store‎ نفسها مقابل حزمة لوحة التاجر و‎widget_trigger_config‎.
+    """
+    try:
+        _ensure_store_widget_schema()
+        db.create_all()
+        _ensure_default_store_for_recovery()
+        from services.cartflow_widget_public_store import store_row_for_widget_public_api
+        from services.cartflow_widget_trigger_settings import (
+            widget_trigger_config_from_store_row,
+        )
+        from services.merchant_widget_panel import merchant_widget_panel_bundle
+        from services.store_reason_templates import parse_reason_templates_column
+
+        row = store_row_for_widget_public_api(store_slug)
+        if row is None:
+            return j(
+                {"ok": False, "error": "no_store", "store_slug": store_slug},
+                404,
+            )
+        pub_trig = widget_trigger_config_from_store_row(row)
+        pub_rt = parse_reason_templates_column(getattr(row, "reason_templates_json", None))
+        dash = merchant_widget_panel_bundle(row)
+        dash_trig = dash.get("trigger") or {}
+        trigger_match = pub_trig == dash_trig
+        phone_match = pub_trig.get("widget_phone_capture_mode") == dash_trig.get(
+            "widget_phone_capture_mode"
+        )
+        exit_match = pub_trig.get("exit_intent_enabled") == dash_trig.get(
+            "exit_intent_enabled"
+        )
+        reasons_match = pub_rt == parse_reason_templates_column(
+            getattr(row, "reason_templates_json", None)
+        )
+        runtime_keys = sorted(
+            set(pub_trig.keys())
+            | {
+                "reason_templates",
+                "cartflow_widget_enabled",
+                "widget_name",
+                "widget_primary_color",
+                "widget_style",
+            }
+        )
+        return j(
+            {
+                "ok": True,
+                "store_slug": store_slug,
+                "dashboard_settings_loaded": True,
+                "public_config_matches_dashboard": bool(
+                    trigger_match and phone_match and exit_match and reasons_match
+                ),
+                "runtime_keys_present": runtime_keys,
+                "widget_trigger_keys": sorted(pub_trig.keys()),
+            }
+        )
+    except Exception as e:  # noqa: BLE001
+        db.session.rollback()
+        return j({"ok": False, "error": str(e), "store_slug": store_slug}, 500)
+
+
 def _track_objection_cors(resp: Response) -> Response:
     resp.headers["Access-Control-Allow-Origin"] = "*"
     resp.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"

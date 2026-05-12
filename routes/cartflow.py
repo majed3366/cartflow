@@ -36,6 +36,8 @@ from services.cartflow_widget_recovery_gate import (
     cartflow_widget_recovery_gate_fields_for_api,
 )
 from services.cartflow_widget_trigger_settings import widget_trigger_config_for_api
+from services.cartflow_widget_public_store import store_row_for_widget_public_api
+from services.store_reason_templates import reason_templates_fields_for_api
 from services.store_widget_customization import widget_customization_fields_for_api
 from services.vip_cart import is_vip_cart, vip_cart_threshold_fields_for_api
 from services.vip_abandoned_cart_phone import (
@@ -59,6 +61,7 @@ REASON_CHOICES = frozenset(
         "quality",
         "warranty",
         "shipping",
+        "delivery",
         "thinking",
         "other",
         "human_support",
@@ -318,13 +321,14 @@ def cartflow_ready(
     except (OSError, SQLAlchemyError):
         db.session.rollback()
     try:
-        row = db.session.query(Store).order_by(Store.id.desc()).first()
+        row = store_row_for_widget_public_api(store_slug)
         tpl = template_control_fields_for_api(row)
         tpl.update(exit_intent_template_fields_for_api(row))
         tpl.update(widget_customization_fields_for_api(row))
         tpl.update(vip_cart_threshold_fields_for_api(row))
         tpl.update(cartflow_widget_recovery_gate_fields_for_api(row))
         tpl.update(widget_trigger_config_for_api(row))
+        tpl.update(reason_templates_fields_for_api(row))
         return j(
             {
                 "ok": True,
@@ -357,7 +361,7 @@ def cartflow_public_config(
     except (OSError, SQLAlchemyError):
         db.session.rollback()
     try:
-        row = db.session.query(Store).order_by(Store.id.desc()).first()
+        row = store_row_for_widget_public_api(store_slug)
         wa: Optional[str] = None
         if row is not None:
             w = getattr(row, "whatsapp_support_url", None)
@@ -369,6 +373,7 @@ def cartflow_public_config(
         tpl.update(vip_cart_threshold_fields_for_api(row))
         tpl.update(cartflow_widget_recovery_gate_fields_for_api(row))
         tpl.update(widget_trigger_config_for_api(row))
+        tpl.update(reason_templates_fields_for_api(row))
         ct_out: Optional[float] = None
         is_vip_pub = False
         vip_eval = False
