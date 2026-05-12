@@ -35,6 +35,10 @@ class MerchantStandaloneAppDashboardTests(unittest.TestCase):
             "إعدادات واتساب",
             "إعدادات عامة",
             "توصيات",
+            "حفظ إعدادات الودجيت",
+            "معاينة سطح المكتب",
+            "معاينة الجوال",
+            'id="ma-widget-bootstrap"',
         ):
             self.assertIn(needle, html, msg=f"missing: {needle}")
 
@@ -52,6 +56,7 @@ class MerchantStandaloneAppDashboardTests(unittest.TestCase):
         self.assertNotIn("ارجع للرئيسية", t)
         self.assertNotIn("recovery_ops_dashboard", t)
         self.assertNotIn("cartflow_runtime_health", t)
+        self.assertIn("merchant_widget_panel.js", t)
 
     def test_dashboard_contains_all_section_page_ids(self) -> None:
         r = self.client.get("/dashboard")

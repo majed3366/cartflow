@@ -334,45 +334,163 @@
   </div>
 
   <div class="page" id="page-widget">
+    {% set wp = merchant_widget_panel if merchant_widget_panel is defined else {} %}
+    {% set tg = wp.trigger if wp.trigger is defined else {} %}
+    <script type="application/json" id="ma-widget-bootstrap">{{ wp | tojson }}</script>
     <div class="page-header">
       <div class="page-h1">الودجيت</div>
-      <div class="page-sub">معاينة شكل نافذة الخروج كما يراها العميل — الإعدادات من بطاقة المتجر</div>
+      <div class="page-sub">اضبط مظهر الودجيت وأسباب التردد والتشغيل — تُحفظ في بطاقة المتجر بأمان دون تغيير منطق المتجر الحالي</div>
     </div>
-    <div class="widget-preview">
-      <div class="widget-box">
-        <div class="wb-close" aria-hidden="true">✕</div>
-        <div class="wb-title">{{ merchant_widget_title_ar | default("مساعد المتجر") }}</div>
-        <div class="wb-sub">{{ merchant_widget_question_ar | default("ما الذي منعك من إكمال الطلب؟") }}</div>
-        <div class="wb-options">
-          {% for wr in merchant_widget_reason_rows %}
-          <span class="wb-opt{% if wr.enabled %} selected{% endif %}">{{ wr.label_ar }}</span>
-          {% endfor %}
+    <p class="ma-widget-banner" id="mw-save-msg" hidden></p>
+    <div class="ma-widget-layout">
+      <div class="ma-widget-form">
+        <div class="ma-fw-card">
+          <div class="ma-fw-h">هوية الودجيت</div>
+          <p class="ma-fw-desc">ما يراه العميل في أعلى نافذة المساعدة</p>
+          <label class="ma-fw-label" for="mw-brand-line">اسم المتجر داخل الودجيت</label>
+          <input class="ma-fw-input" id="mw-brand-line" type="text" maxlength="120" value="{{ (tg.widget_brand_line_ar or '') | e }}" dir="rtl" autocomplete="organization">
+          <label class="ma-fw-label" for="mw-widget-title">عنوان الودجيت</label>
+          <input class="ma-fw-input" id="mw-widget-title" type="text" maxlength="120" value="{{ (wp.widget_name or 'مساعد المتجر') | e }}" dir="rtl" autocomplete="off">
+          <label class="ma-fw-label" for="mw-exit-mode">نمط السؤال الرئيسي</label>
+          <select class="ma-fw-input" id="mw-exit-mode">
+            <option value="preset" {% if (wp.exit_intent_template_mode or 'preset') == 'preset' %}selected{% endif %}>سؤال جاهز وودّي</option>
+            <option value="custom" {% if (wp.exit_intent_template_mode or '') == 'custom' %}selected{% endif %}>نص مخصّص</option>
+          </select>
+          <label class="ma-fw-label" for="mw-exit-custom">نص السؤال الرئيسي</label>
+          <textarea class="ma-fw-input ma-fw-textarea" id="mw-exit-custom" rows="2" maxlength="500" dir="rtl">{{ (wp.exit_intent_custom_text or '') | e }}</textarea>
+          <label class="ma-fw-label" for="mw-widget-color">لون الودجيت</label>
+          <input class="ma-fw-input ma-fw-color" id="mw-widget-color" type="color" value="{{ (wp.widget_primary_color or '#6C5CE7') | e }}">
+          <label class="ma-fw-check">
+            <input type="checkbox" id="mw-widget-enabled" {% if wp.cartflow_widget_enabled | default(true) %}checked{% endif %}>
+            <span>تفعيل ظهور الودجيت للعملاء</span>
+          </label>
+        </div>
+        <div class="ma-fw-card">
+          <div class="ma-fw-h">أسباب التردد</div>
+          <p class="ma-fw-desc">الاسم الظاهر للعميل، التفعيل، والترتيب (بدون حقول تقنية)</p>
+          <table class="ma-fw-table" aria-label="أسباب التردد">
+            <thead><tr><th>الاسم للعميل</th><th>مفعّل</th><th>ترتيب</th></tr></thead>
+            <tbody id="mw-reason-tbody">
+              {% for r in (wp.reason_rows or []) %}
+              <tr data-mw-reason-row>
+                <td>
+                  <input type="hidden" class="mw-reason-key" value="{{ r.key | e }}">
+                  <input class="ma-fw-input mw-reason-label" type="text" maxlength="80" value="{{ r.label_ar | e }}" dir="rtl" autocomplete="off">
+                </td>
+                <td class="ma-fw-td-center"><input class="mw-reason-on" type="checkbox" {% if r.enabled %}checked{% endif %}></td>
+                <td class="ma-fw-td-center">
+                  <button type="button" class="ma-fw-mini" data-mw-reason-up title="تحريك لأعلى">↑</button>
+                  <button type="button" class="ma-fw-mini" data-mw-reason-down title="تحريك لأسفل">↓</button>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <div class="ma-fw-card">
+          <div class="ma-fw-h">نية الخروج (Exit intent)</div>
+          <label class="ma-fw-check">
+            <input type="checkbox" id="mw-exit-enabled" {% if tg.exit_intent_enabled | default(true) %}checked{% endif %}>
+            <span>تفعيل اكتشاف نية الخروج</span>
+          </label>
+          <label class="ma-fw-label" for="mw-exit-delay">توقيت الظهور بعد محاولة الخروج</label>
+          <select class="ma-fw-input" id="mw-exit-delay">
+            {% for sec in [0, 3, 5] %}
+            <option value="{{ sec }}" {% if (tg.exit_intent_delay_seconds | default(0) | int) == sec %}selected{% endif %}>{% if sec == 0 %}فوري{% else %}بعد {{ sec }} ثوانٍ{% endif %}</option>
+            {% endfor %}
+          </select>
+          <label class="ma-fw-label" for="mw-exit-sens">الحساسية</label>
+          <select class="ma-fw-input" id="mw-exit-sens">
+            <option value="low" {% if (tg.exit_intent_sensitivity or '') == 'low' %}selected{% endif %}>منخفض</option>
+            <option value="medium" {% if (tg.exit_intent_sensitivity or 'medium') == 'medium' %}selected{% endif %}>متوسط</option>
+            <option value="high" {% if (tg.exit_intent_sensitivity or '') == 'high' %}selected{% endif %}>عالي</option>
+          </select>
+          <label class="ma-fw-label" for="mw-exit-freq">التكرار</label>
+          <select class="ma-fw-input" id="mw-exit-freq">
+            <option value="per_session" {% if (tg.exit_intent_frequency or 'per_session') == 'per_session' %}selected{% endif %}>مرة لكل جلسة</option>
+            <option value="per_24h" {% if (tg.exit_intent_frequency or '') == 'per_24h' %}selected{% endif %}>مرة كل 24 ساعة تقريباً</option>
+            <option value="no_rapid_repeat" {% if (tg.exit_intent_frequency or '') == 'no_rapid_repeat' %}selected{% endif %}>تقليل التكرار السريع</option>
+          </select>
+        </div>
+        <div class="ma-fw-card">
+          <div class="ma-fw-h">التوقيت داخل الصفحة والتردد</div>
+          <label class="ma-fw-check">
+            <input type="checkbox" id="mw-hes-enabled" {% if tg.hesitation_trigger_enabled | default(true) %}checked{% endif %}>
+            <span>الظهور عند التردد داخل الصفحة</span>
+          </label>
+          <label class="ma-fw-label" for="mw-hes-sec">الظهور بعد (ثوانٍ)</label>
+          <select class="ma-fw-input" id="mw-hes-sec">
+            {% for sec in [5, 10, 15, 20, 30, 45, 60, 90, 120] %}
+            <option value="{{ sec }}" {% if (tg.hesitation_after_seconds | default(20) | int) == sec %}selected{% endif %}>{{ sec }} ثانية</option>
+            {% endfor %}
+          </select>
+          <label class="ma-fw-label" for="mw-hes-cond">متى يُعتبر العميل متردداً</label>
+          <select class="ma-fw-input" id="mw-hes-cond">
+            <option value="after_cart_add" {% if (tg.hesitation_condition or 'after_cart_add') == 'after_cart_add' %}selected{% endif %}>بعد إضافة منتج للسلة</option>
+            <option value="cart_interaction" {% if (tg.hesitation_condition or '') == 'cart_interaction' %}selected{% endif %}>عند التفاعل مع السلة</option>
+            <option value="repeated_view" {% if (tg.hesitation_condition or '') == 'repeated_view' %}selected{% endif %}>عند التصفح المتكرر للصفحة</option>
+            <option value="inactivity" {% if (tg.hesitation_condition or '') == 'inactivity' %}selected{% endif %}>عند التوقف عن التفاعل</option>
+          </select>
+          <label class="ma-fw-label" for="mw-scope">نطاق الصفحات</label>
+          <select class="ma-fw-input" id="mw-scope">
+            <option value="all" {% if (tg.visibility_page_scope or 'all') == 'all' %}selected{% endif %}>كل صفحات المتجر</option>
+            <option value="cart" {% if (tg.visibility_page_scope or '') == 'cart' %}selected{% endif %}>صفحة السلة فقط</option>
+            <option value="product" {% if (tg.visibility_page_scope or '') == 'product' %}selected{% endif %}>صفحات المنتجات فقط</option>
+          </select>
+        </div>
+        <div class="ma-fw-card">
+          <div class="ma-fw-h">قواعد عدم الإزعاج</div>
+          <label class="ma-fw-check">
+            <input type="checkbox" id="mw-sup-dismiss" {% if tg.suppress_after_widget_dismiss | default(true) %}checked{% endif %}>
+            <span>لا يظهر بعد إغلاقه من العميل</span>
+          </label>
+          <label class="ma-fw-check">
+            <input type="checkbox" id="mw-sup-purchase" {% if tg.suppress_after_purchase | default(true) %}checked{% endif %}>
+            <span>لا يظهر بعد إتمام الشراء</span>
+          </label>
+          <label class="ma-fw-check">
+            <input type="checkbox" id="mw-sup-checkout" {% if tg.suppress_when_checkout_started | default(true) %}checked{% endif %}>
+            <span>لا يظهر إذا بدأ العميل إتمام الطلب</span>
+          </label>
+        </div>
+        <div class="ma-fw-card">
+          <div class="ma-fw-h">طلب رقم الجوال</div>
+          <label class="ma-fw-radio"><input type="radio" name="mw-phone" value="after_reason" {% if (tg.widget_phone_capture_mode or 'after_reason') == 'after_reason' %}checked{% endif %}><span>بعد اختيار سبب التردد</span></label>
+          <label class="ma-fw-radio"><input type="radio" name="mw-phone" value="immediate" {% if (tg.widget_phone_capture_mode or '') == 'immediate' %}checked{% endif %}><span>مباشرة عند ظهور الودجيت</span></label>
+          <label class="ma-fw-radio"><input type="radio" name="mw-phone" value="none" {% if (tg.widget_phone_capture_mode or '') == 'none' %}checked{% endif %}><span>عدم طلب الجوال داخل الودجيت</span></label>
+        </div>
+        <div class="ma-fw-actions">
+          <button type="button" class="ma-fw-save" id="mw-save-btn">حفظ إعدادات الودجيت</button>
         </div>
       </div>
-    </div>
-    <div class="settings-grid">
-      <div class="setting-card">
-        <div class="setting-title">نص الودجيت</div>
-        <div class="setting-desc">العنوان والسؤال الظاهران للعميل</div>
-        <div class="setting-row"><span class="setting-label">العنوان</span><span class="setting-value">{{ merchant_widget_title_ar | default("—") }}</span></div>
-        <div class="setting-row"><span class="setting-label">السؤال</span><span class="setting-value">{{ merchant_widget_question_ar | default("—") }}</span></div>
-      </div>
-      <div class="setting-card">
-        <div class="setting-title">خيارات التردد</div>
-        <div class="setting-desc">تفعيل كل سبب في بطاقة المتجر (عرض فقط)</div>
-        {% for wr in merchant_widget_reason_rows %}
-        <div class="setting-row">
-          <span class="setting-label">{{ wr.label_ar }}</span>
-          <span class="toggle{% if not wr.enabled %} off{% endif %}" aria-hidden="true"></span>
+      <div class="ma-widget-previews">
+        <div class="ma-fw-card ma-preview-wrap">
+          <div class="ma-fw-h">معاينة سطح المكتب</div>
+          <div class="ma-preview-frame ma-preview-desktop" id="mw-preview-desktop">
+            <div class="ma-wb-shell">
+              <div class="widget-box ma-wb-box" id="mw-desk-box">
+                <div class="wb-close" aria-hidden="true">✕</div>
+                <div class="wb-brand ma-wb-brand" id="mw-desk-brand"></div>
+                <div class="wb-title ma-wb-title" id="mw-desk-title"></div>
+                <div class="wb-sub ma-wb-sub" id="mw-desk-sub"></div>
+                <div class="wb-options ma-wb-opts" id="mw-desk-opts"></div>
+              </div>
+            </div>
+          </div>
         </div>
-        {% endfor %}
-      </div>
-      <div class="setting-card">
-        <div class="setting-title">حالة الودجيت في المتجر</div>
-        <div class="setting-desc">استناداً إلى إعداد «تفعيل ودجيت CartFlow»</div>
-        <div class="setting-row">
-          <span class="setting-label">الظهور للعملاء</span>
-          <span class="setting-value">{% if merchant_widget_installed %}مفعّل{% else %}معطّل{% endif %}</span>
+        <div class="ma-fw-card ma-preview-wrap">
+          <div class="ma-fw-h">معاينة الجوال</div>
+          <div class="ma-preview-frame ma-preview-mobile" id="mw-preview-mobile">
+            <div class="ma-wb-shell">
+              <div class="widget-box ma-wb-box" id="mw-mob-box">
+                <div class="wb-close" aria-hidden="true">✕</div>
+                <div class="wb-brand ma-wb-brand" id="mw-mob-brand"></div>
+                <div class="wb-title ma-wb-title" id="mw-mob-title"></div>
+                <div class="wb-sub ma-wb-sub" id="mw-mob-sub"></div>
+                <div class="wb-options ma-wb-opts" id="mw-mob-opts"></div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -452,6 +570,7 @@
   </div>
 </div>
 
+<script defer src="/static/merchant_widget_panel.js"></script>
 <script defer src="/static/merchant_app.js"></script>
 </body>
 </html>

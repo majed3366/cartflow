@@ -52,6 +52,13 @@ class WidgetTriggerSettingsTests(unittest.TestCase):
         self.assertEqual(out["exit_intent_delay_seconds"], 0)
         self.assertEqual(out["hesitation_after_seconds"], 20)
 
+    def test_default_includes_merchant_panel_keys(self) -> None:
+        out = normalize_widget_trigger_config({})
+        self.assertIn("widget_brand_line_ar", out)
+        self.assertIn("widget_phone_capture_mode", out)
+        self.assertIn("reason_display_order", out)
+        self.assertEqual(len(out["reason_display_order"]), 7)
+
     def test_widget_trigger_partial_post_roundtrip(self) -> None:
         db.create_all()
         base = self.client.get("/api/recovery-settings").json()

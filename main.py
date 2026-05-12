@@ -1464,6 +1464,43 @@ def api_recovery_settings_get():
         return j({"ok": False, "error": str(e)}, 500)
 
 
+@app.post("/api/dashboard/merchant-widget-settings")
+async def api_merchant_widget_settings(request: Request):
+    """
+    تحديث إعدادات الودجيت من لوحة التاجر فقط — نفس حقول ‎Store‎ الآمنة
+    (‎widget_*‎، ‎exit_intent_*‎، ‎cartflow_widget_*‎، ‎reason_templates‎، ‎cf_widget_trigger_settings_json‎).
+    """
+    try:
+        _ensure_store_widget_schema()
+        db.create_all()
+        _ensure_default_store_for_recovery()
+        row = _dashboard_recovery_store_row()
+        if row is None:
+            return j({"ok": False, "error": "no_store"}, 404)
+        try:
+            body = await request.json()
+        except Exception:  # noqa: BLE001
+            body = None
+        if not isinstance(body, dict):
+            return j({"ok": False, "error": "json_object_required"}, 400)
+        merged_trigger = merge_widget_trigger_config_from_body(row, body)
+        body_apply = dict(body)
+        body_apply["widget_trigger_config"] = merged_trigger
+        apply_widget_customization_from_body(row, body_apply)
+        apply_exit_intent_template_control_from_body(row, body_apply)
+        apply_cartflow_widget_recovery_gate_from_body(row, body_apply)
+        apply_reason_templates_from_body(row, body_apply)
+        apply_widget_trigger_settings_from_body(row, body_apply)
+        db.session.commit()
+        from services.merchant_widget_panel import merchant_widget_panel_bundle  # noqa: PLC0415
+
+        panel = merchant_widget_panel_bundle(row)
+        return j({"ok": True, "merchant_widget_panel": panel})
+    except Exception as e:  # noqa: BLE001
+        db.session.rollback()
+        return j({"ok": False, "error": str(e)}, 500)
+
+
 # جلسة واحدة = تسلسل استرجاع + ‎sent‎ عند اكتمال الخطوات (لكل عملية ‎worker‎)
 _session_recovery_started: dict[str, bool] = {}
 _session_recovery_logged: dict[str, bool] = {}
@@ -9767,53 +9804,21 @@ def dashboard(request: Request):
     last_send_ar = "—"
     if message_history_rows:
         last_send_ar = str(message_history_rows[0].get("time_ar") or "—")
-    from services.store_reason_templates import parse_reason_templates_column  # noqa: PLC0415
+    from services.merchant_widget_panel import merchant_widget_panel_bundle  # noqa: PLC0415
 
-    rt_map = (
-        parse_reason_templates_column(getattr(dash_store, "reason_templates_json", None))
-        if dash_store is not None
-        else {}
-    )
-    _wlbl = {
-        "price": "💰 السعر مرتفع",
-        "shipping": "🚚 تكلفة الشحن",
-        "thinking": "🤔 وقت للتفكير",
-        "warranty": "🔒 الثقة بالمتجر",
-        "quality": "⭐ الجودة",
-        "delivery": "🚚 التوصيل",
-        "other": "💭 أخرى",
-    }
-    merchant_widget_reason_rows: list[dict[str, Any]] = []
-    for tag in ("price", "shipping", "thinking", "warranty", "other"):
-        ent = rt_map.get(tag, {}) if isinstance(rt_map, dict) else {}
-        enabled = bool(ent.get("enabled", True)) if isinstance(ent, dict) else True
-        merchant_widget_reason_rows.append(
-            {"tag": tag, "label_ar": _wlbl.get(tag, tag), "enabled": enabled}
-        )
-    wiz_title = (
-        (getattr(dash_store, "widget_name", None) or "").strip()
-        if dash_store is not None
-        else ""
-    ) or "مساعد المتجر"
-    ex_mode = (
-        (getattr(dash_store, "exit_intent_template_mode", None) or "preset")
-        .strip()
-        .lower()
-        if dash_store is not None
-        else "preset"
-    )
-    ex_custom = (
-        (getattr(dash_store, "exit_intent_custom_text", None) or "").strip()
-        if dash_store is not None
-        else ""
-    )
+    merchant_widget_panel = merchant_widget_panel_bundle(dash_store)
+    merchant_widget_title_ar = str(merchant_widget_panel.get("widget_name") or "مساعد المتجر")
+    ex_mode = str(merchant_widget_panel.get("exit_intent_template_mode") or "preset").strip().lower()
+    ex_custom = str(merchant_widget_panel.get("exit_intent_custom_text") or "").strip()
     if ex_mode == "custom" and ex_custom:
         merchant_widget_question_ar = ex_custom[:500]
     else:
         merchant_widget_question_ar = "ما الذي منعك من إكمال الطلب؟"
-    widget_installed = bool(
-        getattr(dash_store, "cartflow_widget_enabled", True)
-    ) if dash_store is not None else False
+    merchant_widget_reason_rows = [
+        {"label_ar": r.get("label_ar"), "enabled": bool(r.get("enabled", True))}
+        for r in (merchant_widget_panel.get("reason_rows") or [])
+    ]
+    widget_installed = bool(merchant_widget_panel.get("cartflow_widget_enabled", True))
     zid_disp = (
         (getattr(dash_store, "zid_store_id", None) or "").strip()[:64]
         if dash_store is not None
@@ -9910,9 +9915,10 @@ def dashboard(request: Request):
             "merchant_wa_second_delay_ar": second_delay_ar,
             "merchant_wa_max_messages_ar": f"{max_msgs} رسائل كحد أقصى",
             "merchant_wa_vip_threshold_ar": vip_threshold_ar,
-            "merchant_widget_title_ar": wiz_title,
+            "merchant_widget_title_ar": merchant_widget_title_ar,
             "merchant_widget_question_ar": merchant_widget_question_ar,
             "merchant_widget_reason_rows": merchant_widget_reason_rows,
+            "merchant_widget_panel": merchant_widget_panel,
             "merchant_widget_installed": widget_installed,
             "merchant_platform_ar": platform_ar,
             "merchant_month_abandoned_fmt": _merchant_dashboard_fmt_int(
