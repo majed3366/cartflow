@@ -3578,6 +3578,20 @@ try {
     });
   }
 
+  /** يعتبر الطلب ناجحاً إذا لم يُرجع الخادم ‎ok: false‎ أو ‎error‎ صريحة. */
+  function cfCartflowReasonPostOk(j) {
+    if (!j || typeof j !== "object") {
+      return false;
+    }
+    if (j.ok === true) {
+      return true;
+    }
+    if (j.ok === false || j.error) {
+      return false;
+    }
+    return true;
+  }
+
   var CARTFLOW_LS_CUSTOMER_PHONE = "cartflow_customer_phone";
 
   function normalizeSaPhoneForCartflow(s) {
@@ -5650,6 +5664,11 @@ try {
     }
 
       function mountLayerDAbandonIfEligible() {
+      try {
+        w.setAttribute("data-cf-reason-entry", "layer_d");
+      } catch (eEnLd) {
+        /* ignore */
+      }
       if (openSource !== TRIGGER_SOURCE_CART) {
         return;
       }
@@ -5664,6 +5683,18 @@ try {
         return;
       }
 
+      function remountPrimaryCartReasonSurface() {
+        try {
+          if (String(w.getAttribute("data-cf-reason-entry") || "") === "classic") {
+            renderReasonList();
+            return;
+          }
+        } catch (eRmS) {
+          /* ignore */
+        }
+        mountLayerDAbandonIfEligible();
+      }
+
       function remountCartReasonChoicesFromFollowUp() {
         logWidgetFlow("reason_menu_back", "", "رجوع_للقائمة_السابقة");
         try {
@@ -5672,7 +5703,7 @@ try {
           /* ignore */
         }
         stripContentKeepChrome();
-        mountLayerDAbandonIfEligible();
+        remountPrimaryCartReasonSurface();
       }
 
       var wrap = document.createElement("div");
@@ -5693,7 +5724,7 @@ try {
           evRet.stopPropagation();
           evRet.preventDefault();
           stripContentKeepChrome();
-          mountLayerDAbandonIfEligible();
+          remountPrimaryCartReasonSurface();
         });
         rowReturn.appendChild(bChat);
         widgetBody.appendChild(rowReturn);
@@ -7769,7 +7800,7 @@ try {
         } catch (eSt) {}
         postReason({ reason: "price", sub_category: sub })
           .then(function (j) {
-            if (!(j && j.ok)) {
+            if (!cfCartflowReasonPostOk(j)) {
               onFailPrice();
               return;
             }
@@ -7797,6 +7828,16 @@ try {
                 return;
               }
               if (getCartflowStoredCustomerPhoneNorm()) {
+                try {
+                  console.log("[PHONE CAPTURE CHECK]", {
+                    mode: cfPhoneCaptureMode(),
+                    reason_key: "price",
+                    has_existing_phone: true,
+                    should_show_phone_capture: false,
+                  });
+                } catch (ePc1) {
+                  /* ignore */
+                }
                 mountNonVipPostPhoneContinuation("price", sub);
                 return;
               }
@@ -7804,7 +7845,7 @@ try {
                 mountNonVipPostPhoneContinuation("price", sub);
               });
             }
-            cfRafPaint(branchAfterPrice);
+            branchAfterPrice();
           })
           .catch(function () {
             onFailPrice();
@@ -7975,11 +8016,11 @@ try {
           postReason(payload)
             .then(function (j) {
               removeLdO();
-              if (!(j && j.ok)) {
-                reEnableRow();
-                try {
-                  console.log("[REASON SAVE FAILED]", { reason_key: "other" });
-                } catch (eFo) {}
+            if (!cfCartflowReasonPostOk(j)) {
+              reEnableRow();
+              try {
+                console.log("[REASON SAVE FAILED]", { reason_key: "other" });
+              } catch (eFo) {}
                 var eb = (j && j.body) || {};
                 var em = (eb.error && String(eb.error)) || "";
                 if (
@@ -8262,6 +8303,11 @@ try {
     function mountNonVipPostPhoneContinuation(reasonKey, subCategory) {
       var rk = String(reasonKey || "other").toLowerCase();
       stripContentKeepChrome();
+      try {
+        console.log("[PHONE CONTINUATION SHOWN]", { reason_key: rk });
+      } catch (ePcs) {
+        /* ignore */
+      }
       var msgs = {
         price:
           "تمام، وصلتني ملاحظتك عن السعر. أقدر أساعدك بخيار أنسب أو أوضح لك القيمة.",
@@ -8336,7 +8382,21 @@ try {
     ) {
       onDone = typeof onDone === "function" ? onDone : function () {};
       var rkey = String(reasonKey || "").toLowerCase();
-      if (cfPhoneCaptureMode() !== "after_reason") {
+      var pcm = cfPhoneCaptureMode();
+      var hasPh = !!getCartflowStoredCustomerPhoneNorm();
+      var willShowPhone =
+        pcm === "after_reason" && cartflowState.isVip !== true && !hasPh;
+      try {
+        console.log("[PHONE CAPTURE CHECK]", {
+          mode: pcm,
+          reason_key: rkey,
+          has_existing_phone: hasPh,
+          should_show_phone_capture: willShowPhone,
+        });
+      } catch (eChk0) {
+        /* ignore */
+      }
+      if (pcm !== "after_reason") {
         onDone();
         return;
       }
@@ -8344,19 +8404,18 @@ try {
         onDone();
         return;
       }
-      var existingNorm = getCartflowStoredCustomerPhoneNorm();
+      if (hasPh) {
+        onDone();
+        return;
+      }
       try {
         console.log("[PHONE CAPTURE REQUESTED]", {
           mode: "after_reason",
           reason_key: rkey,
-          has_existing_phone: !!existingNorm,
+          has_existing_phone: false,
         });
       } catch (eLg) {
         /* ignore */
-      }
-      if (existingNorm) {
-        onDone();
-        return;
       }
       stripContentKeepChrome();
       try {
@@ -8365,11 +8424,17 @@ try {
         /* ignore */
       }
 
-      var pHint0 = document.createElement("p");
-      pHint0.style.cssText =
-        "margin:0 0 8px 0;font-size:13px;line-height:1.45;color:rgba(30,27,75,0.82);";
-      pHint0.textContent = "أدخل رقم جوالك لمتابعة التواصل عبر واتساب";
-      widgetBody.appendChild(pHint0);
+      var pTitle = document.createElement("p");
+      pTitle.style.cssText =
+        "margin:0 0 6px 0;font-size:16px;line-height:1.35;font-weight:700;";
+      pTitle.textContent = "رقم الجوال لإكمال المتابعة";
+      widgetBody.appendChild(pTitle);
+
+      var pSub = document.createElement("p");
+      pSub.style.cssText =
+        "margin:0 0 10px 0;font-size:13px;line-height:1.45;color:rgba(30,27,75,0.82);";
+      pSub.textContent = "نستخدمه فقط لمتابعة طلبك إذا احتجت مساعدة.";
+      widgetBody.appendChild(pSub);
 
       var phoneIn = document.createElement("input");
       phoneIn.type = "tel";
@@ -8393,7 +8458,7 @@ try {
 
       var bSend = document.createElement("button");
       bSend.type = "button";
-      bSend.textContent = "حفظ ومتابعة";
+      bSend.textContent = "حفظ الرقم";
       stampPrimaryBubbleBtn(bSend);
 
       var bBackPh = document.createElement("button");
@@ -8431,7 +8496,7 @@ try {
         postReason(body)
           .then(function (pj) {
             bSend.removeAttribute("disabled");
-            if (!(pj && pj.ok)) {
+            if (!cfCartflowReasonPostOk(pj)) {
               var eb = (pj && pj.body) || {};
               var em = (eb.error && String(eb.error)) || "";
               if (
@@ -8538,7 +8603,7 @@ try {
         } catch (eSt) {}
         postReason({ reason: rkey })
           .then(function (j) {
-            if (!(j && j.ok)) {
+            if (!cfCartflowReasonPostOk(j)) {
               onFailStd();
               return;
             }
@@ -8564,6 +8629,16 @@ try {
                 return;
               }
               if (getCartflowStoredCustomerPhoneNorm()) {
+                try {
+                  console.log("[PHONE CAPTURE CHECK]", {
+                    mode: cfPhoneCaptureMode(),
+                    reason_key: rkey,
+                    has_existing_phone: true,
+                    should_show_phone_capture: false,
+                  });
+                } catch (ePc0) {
+                  /* ignore */
+                }
                 mountNonVipPostPhoneContinuation(rkey, null);
                 return;
               }
@@ -8571,7 +8646,7 @@ try {
                 mountNonVipPostPhoneContinuation(rkey, null);
               });
             }
-            cfRafPaint(branchAfterSave);
+            branchAfterSave();
           })
           .catch(function () {
             onFailStd();
@@ -8580,6 +8655,11 @@ try {
     }
 
     function renderReasonList() {
+      try {
+        w.setAttribute("data-cf-reason-entry", "classic");
+      } catch (eReEnt) {
+        /* ignore */
+      }
       w._cfOnBackToEntry = null;
       setReasonTag(null);
       stripContentKeepChrome();
@@ -8724,7 +8804,11 @@ try {
               return;
             }
             w.setAttribute("data-cf-cart-affirm-help", "1");
-            mountLayerDAbandonIfEligible();
+            if (cfPhoneCaptureMode() === "after_reason") {
+              renderReasonList();
+            } else {
+              mountLayerDAbandonIfEligible();
+            }
           } else {
             renderReasonList();
             emitDemoGuideEvent("cartflow-demo-reason-list-visible", {});
