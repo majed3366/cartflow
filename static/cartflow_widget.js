@@ -482,7 +482,16 @@ try {
   }
 
   function cfPhoneCaptureMode() {
-    return String(getCfWidgetTrigger().widget_phone_capture_mode || "after_reason").toLowerCase();
+    var allowed = { after_reason: 1, immediate: 1, none: 1 };
+    var raw = getCfWidgetTrigger().widget_phone_capture_mode;
+    var s = String(raw == null || raw === "" ? "after_reason" : raw)
+      .trim()
+      .toLowerCase()
+      .replace(/[\s\-]+/g, "_");
+    if (allowed[s]) {
+      return s;
+    }
+    return "after_reason";
   }
 
   function cfCustomerPhoneSaved() {
@@ -715,6 +724,8 @@ try {
           hesitation_condition: trAp.hesitation_condition,
           hesitation_after_seconds: trAp.hesitation_after_seconds,
           visibility_page_scope: trAp.visibility_page_scope,
+          widget_phone_capture_mode_raw: trAp.widget_phone_capture_mode,
+          widget_phone_capture_mode: cfPhoneCaptureMode(),
         });
       } catch (eTrAp) {
         /* ignore */
@@ -727,6 +738,7 @@ try {
     }
     try {
       var ord = getCfWidgetTrigger().reason_display_order || [];
+      var trigForPhone = getCfWidgetTrigger();
       console.log("[WIDGET CONFIG LOADED]", {
         store_slug: getStoreSlug(),
         config_source: cfgSrc,
@@ -740,6 +752,7 @@ try {
         hesitation_after_seconds: getCfWidgetTrigger().hesitation_after_seconds,
         hesitation_condition: getCfWidgetTrigger().hesitation_condition,
         visibility_page_scope: getCfWidgetTrigger().visibility_page_scope,
+        widget_phone_capture_mode_raw: trigForPhone.widget_phone_capture_mode,
         widget_phone_capture_mode: cfPhoneCaptureMode(),
         suppress_after_widget_dismiss: getCfWidgetTrigger().suppress_after_widget_dismiss,
         suppress_after_purchase: getCfWidgetTrigger().suppress_after_purchase,
@@ -7810,42 +7823,7 @@ try {
             removeLd();
             setReasonTag("price");
             setReasonSubTag(sub);
-            function branchAfterPrice() {
-              if (cartflowState.isVip === true) {
-                mountProductAwareView("price");
-                emitDemoGuideEvent("cartflow-demo-reason-confirmed", {
-                  reason: "price",
-                  sub_category: sub,
-                });
-                return;
-              }
-              if (cfPhoneCaptureMode() !== "after_reason") {
-                mountProductAwareView("price");
-                emitDemoGuideEvent("cartflow-demo-reason-confirmed", {
-                  reason: "price",
-                  sub_category: sub,
-                });
-                return;
-              }
-              if (getCartflowStoredCustomerPhoneNorm()) {
-                try {
-                  console.log("[PHONE CAPTURE CHECK]", {
-                    mode: cfPhoneCaptureMode(),
-                    reason_key: "price",
-                    has_existing_phone: true,
-                    should_show_phone_capture: false,
-                  });
-                } catch (ePc1) {
-                  /* ignore */
-                }
-                mountNonVipPostPhoneContinuation("price", sub);
-                return;
-              }
-              mountNonVipAfterReasonPhoneCaptureUI("price", sub, null, function () {
-                mountNonVipPostPhoneContinuation("price", sub);
-              });
-            }
-            branchAfterPrice();
+            cfNonVipClassicReasonAfterSaveUi("price", sub, null);
           })
           .catch(function () {
             onFailPrice();
@@ -8061,10 +8039,18 @@ try {
                 showOtherSuccessView();
               }
               if (
-                phoneAfterReason &&
+                cfPhoneCaptureMode() === "after_reason" &&
                 cartflowState.isVip !== true &&
                 !getCartflowStoredCustomerPhoneNorm()
               ) {
+                try {
+                  console.log("[PHONE CAPTURE BRANCH ENTERED]", {
+                    reason_key: "other",
+                    widget_phone_capture_mode: cfPhoneCaptureMode(),
+                    has_valid_phone: false,
+                    is_vip: false,
+                  });
+                } catch (ePb) {}
                 mountNonVipAfterReasonPhoneCaptureUI(
                   "other",
                   null,
@@ -8074,6 +8060,17 @@ try {
                   }
                 );
               } else {
+                try {
+                  if (cfPhoneCaptureMode() === "after_reason") {
+                    console.log("[PHONE CAPTURE SKIPPED]", {
+                      reason:
+                        cartflowState.isVip === true
+                          ? "vip_flow"
+                          : "valid_phone_already_stored",
+                      widget_phone_capture_mode: cfPhoneCaptureMode(),
+                    });
+                  }
+                } catch (ePs) {}
                 doneOtherClassic();
               }
             })
@@ -8300,6 +8297,67 @@ try {
       widgetBody.appendChild(row);
     }
 
+    function cfNonVipClassicReasonAfterSaveUi(reasonKey, subCategory, customTextForPhonePost) {
+      var rk = String(reasonKey || "other").toLowerCase();
+      var subNorm =
+        subCategory != null && String(subCategory).trim() !== ""
+          ? String(subCategory).trim()
+          : null;
+      var pcm = cfPhoneCaptureMode();
+      var hasValidPhone = !!getCartflowStoredCustomerPhoneNorm();
+      try {
+        console.log("[PHONE CAPTURE BRANCH ENTERED]", {
+          reason_key: rk,
+          widget_phone_capture_mode: pcm,
+          has_valid_phone: hasValidPhone,
+          is_vip: cartflowState.isVip === true,
+        });
+      } catch (ePcBr) {}
+
+      if (cartflowState.isVip === true) {
+        try {
+          console.log("[PHONE CAPTURE SKIPPED]", { reason: "vip_flow_uses_inline_phone" });
+        } catch (eSk0) {}
+        mountProductAwareView(rk);
+        try {
+          emitDemoGuideEvent("cartflow-demo-reason-confirmed", {
+            reason: rk,
+            sub_category: subNorm,
+          });
+        } catch (eDgV) {}
+        return;
+      }
+
+      if (pcm !== "after_reason") {
+        try {
+          console.log("[PHONE CAPTURE SKIPPED]", {
+            reason: "capture_mode_not_after_reason",
+            widget_phone_capture_mode: pcm,
+          });
+        } catch (eSk1) {}
+        mountProductAwareView(rk);
+        try {
+          emitDemoGuideEvent("cartflow-demo-reason-confirmed", {
+            reason: rk,
+            sub_category: subNorm,
+          });
+        } catch (eDgM) {}
+        return;
+      }
+
+      if (!hasValidPhone) {
+        mountNonVipAfterReasonPhoneCaptureUI(rk, subNorm, customTextForPhonePost, function () {
+          mountNonVipPostPhoneContinuation(rk, subNorm);
+        });
+        return;
+      }
+
+      try {
+        console.log("[PHONE CAPTURE SKIPPED]", { reason: "valid_phone_already_stored" });
+      } catch (eSk2) {}
+      mountNonVipPostPhoneContinuation(rk, subNorm);
+    }
+
     function mountNonVipPostPhoneContinuation(reasonKey, subCategory) {
       var rk = String(reasonKey || "other").toLowerCase();
       stripContentKeepChrome();
@@ -8397,30 +8455,49 @@ try {
         /* ignore */
       }
       if (pcm !== "after_reason") {
+        try {
+          console.log("[PHONE CAPTURE SKIPPED]", {
+            reason: "internal_capture_mode_guard",
+            widget_phone_capture_mode: pcm,
+          });
+        } catch (eIg0) {
+          /* ignore */
+        }
         onDone();
         return;
       }
       if (cartflowState.isVip === true) {
+        try {
+          console.log("[PHONE CAPTURE SKIPPED]", { reason: "internal_vip_guard" });
+        } catch (eIg1) {
+          /* ignore */
+        }
         onDone();
         return;
       }
       if (hasPh) {
+        try {
+          console.log("[PHONE CAPTURE SKIPPED]", {
+            reason: "internal_already_has_valid_phone",
+          });
+        } catch (eIg2) {
+          /* ignore */
+        }
         onDone();
         return;
-      }
-      try {
-        console.log("[PHONE CAPTURE REQUESTED]", {
-          mode: "after_reason",
-          reason_key: rkey,
-          has_existing_phone: false,
-        });
-      } catch (eLg) {
-        /* ignore */
       }
       stripContentKeepChrome();
       try {
         w.setAttribute("data-cf-after-reason-phone-step", "1");
       } catch (eAt) {
+        /* ignore */
+      }
+      try {
+        console.log("[PHONE CAPTURE UI MOUNTED]", {
+          widget_phone_capture_mode: pcm,
+          reason_key: rkey,
+        });
+      } catch (eUi) {
         /* ignore */
       }
 
@@ -8611,42 +8688,7 @@ try {
               console.log("[REASON SAVE SUCCESS]", { reason_key: rkey });
             } catch (eOk) {}
             removeLoading();
-            function branchAfterSave() {
-              if (cartflowState.isVip === true) {
-                mountProductAwareView(rkey);
-                emitDemoGuideEvent("cartflow-demo-reason-confirmed", {
-                  reason: rkey,
-                  sub_category: null,
-                });
-                return;
-              }
-              if (cfPhoneCaptureMode() !== "after_reason") {
-                mountProductAwareView(rkey);
-                emitDemoGuideEvent("cartflow-demo-reason-confirmed", {
-                  reason: rkey,
-                  sub_category: null,
-                });
-                return;
-              }
-              if (getCartflowStoredCustomerPhoneNorm()) {
-                try {
-                  console.log("[PHONE CAPTURE CHECK]", {
-                    mode: cfPhoneCaptureMode(),
-                    reason_key: rkey,
-                    has_existing_phone: true,
-                    should_show_phone_capture: false,
-                  });
-                } catch (ePc0) {
-                  /* ignore */
-                }
-                mountNonVipPostPhoneContinuation(rkey, null);
-                return;
-              }
-              mountNonVipAfterReasonPhoneCaptureUI(rkey, null, null, function () {
-                mountNonVipPostPhoneContinuation(rkey, null);
-              });
-            }
-            branchAfterSave();
+            cfNonVipClassicReasonAfterSaveUi(rkey, null, null);
           })
           .catch(function () {
             onFailStd();
