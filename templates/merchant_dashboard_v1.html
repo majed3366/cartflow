@@ -739,7 +739,7 @@
                 <span class="r-label">{{ rr.label_ar }}</span>
                 <span class="r-count">{{ "%.0f"|format(rr.count_pct | float) }}٪</span>
               </div>
-              <div class="r-track"><div class="r-fill" style="width: {{ rr.count_pct | float }}%; background: {{ rr.fill_color }}"></div></div>
+              <div class="r-track"><div class="r-fill" style="width: {{ rr.count_pct | float }}%; background: {{ rr.fill_color }};"></div></div>
             </div>
             {% else %}
             <div class="vip-empty">لا توجد بيانات أسباب التردد لهذا الأسبوع بعد</div>
@@ -794,11 +794,11 @@
           </div>
           <div class="summary-cell">
             <div class="sc-label">سلال تم استردادها</div>
-            <div class="sc-value" style="color:var(--green-mid)">{{ merchant_month_recovered_fmt | default("0") }}</div>
+            <div class="sc-value" style="color:var(--green-mid);">{{ merchant_month_recovered_fmt | default("0") }}</div>
           </div>
           <div class="summary-cell">
             <div class="sc-label">نسبة الاسترداد</div>
-            <div class="sc-value" style="color:var(--green-mid)">{{ merchant_month_recovery_pct_fmt | default("0") }}٪</div>
+            <div class="sc-value" style="color:var(--green-mid);">{{ merchant_month_recovery_pct_fmt | default("0") }}٪</div>
           </div>
           <div class="summary-cell">
             <div class="sc-label">إيرادات مستردة</div>

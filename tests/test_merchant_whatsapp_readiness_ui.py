@@ -48,6 +48,9 @@ class MerchantWhatsAppReadinessDashboardHtmlTests(unittest.TestCase):
         self.assertIn("data-cf-merchant-dashboard-v1", t.lower())
         self.assertIn("CartFlow", t)
         self.assertNotIn("data-cf-merchant-dashboard-placeholder", t.lower())
+        self.assertIn("kpi-grid", t)
+        self.assertIn("bottom-grid", t)
+        self.assertIn("table-scroll", t)
 
 
 class MerchantWhatsAppReadinessUiTests(unittest.TestCase):
