@@ -195,6 +195,8 @@ try {
   var cartSmartExitScrollLastY = 0;
   var cartSmartExitInactivityTimer = null;
   var cartSmartExitLastFireTs = 0;
+  /** فتح تأخّر خروج الصفحة — يستهلك إعداد الخروج الموحّد. */
+  var cfExitIntentScheduledOpenTimer = null;
   /** مصدر فتح الودجت — نص الترحيب فقط */
   var TRIGGER_SOURCE_CART = "cart";
   var TRIGGER_SOURCE_EXIT_INTENT = "exit_intent";
@@ -578,6 +580,191 @@ try {
     return out;
   }
 
+  /**
+   * وحدة وقت تشغيل موحدة: إعداد مهيّأ، مهيّلي التردّد بعد الإضافة، وبوابات الخروج.
+   * المصدر المعتمد لقرارات هذه الدوال هو ‎cfRuntimeConfig()‎ فقط.
+   */
+  var CartFlowRuntimeController = {};
+  var cfRuntimeTrigger = { timer: null, expectedAt: null, source: null };
+  try {
+    window.__cfRuntimeTriggerRef = cfRuntimeTrigger;
+    window.__cfRuntimeConfigSnap = null;
+  } catch (eRf) {}
+
+  function cfNormalizeToken(raw, allowed, fallback) {
+    var map = {};
+    var i;
+    for (i = 0; i < allowed.length; i++) {
+      map[allowed[i]] = 1;
+    }
+    var s = String(raw == null ? "" : raw)
+      .trim()
+      .toLowerCase()
+      .replace(/[\s\-]+/g, "_");
+    return map[s] ? s : fallback;
+  }
+
+  function cfExitIntentFreqNorm(raw) {
+    var s = cfNormalizeToken(
+      raw,
+      ["per_session", "per_24h", "no_rapid_repeat"],
+      "per_session"
+    );
+    return s || "per_session";
+  }
+
+  function cfExitIntentSensNorm(raw) {
+    return cfNormalizeToken(raw, ["low", "medium", "high"], "medium");
+  }
+
+  /**
+   * @returns {{
+   *   widget_enabled:boolean,
+   *   hesitation_enabled:boolean,
+   *   hesitation_condition:string,
+   *   hesitation_delay_seconds:number,
+   *   exit_intent_enabled:boolean,
+   *   exit_intent_delay_seconds:number,
+   *   exit_intent_sensitivity:string,
+   *   exit_intent_frequency:string,
+   *   page_scope:string,
+   *   phone_capture_mode:string,
+   *   visible_reasons:{key:string,label:string}[]
+   * }}
+   */
+  function cfRuntimeConfig(silentLog) {
+    var tr = getCfWidgetTrigger();
+    var hesitationCondRaw = cfNormalizeToken(
+      tr && tr.hesitation_condition != null ? tr.hesitation_condition : "",
+      ["after_cart_add", "inactivity", "repeated_view", "cart_interaction"],
+      "after_cart_add"
+    );
+    var hesitationSecRaw =
+      tr &&
+      typeof tr.hesitation_after_seconds === "number" &&
+      isFinite(tr.hesitation_after_seconds)
+        ? tr.hesitation_after_seconds
+        : 20;
+    if (hesitationSecRaw < 0) {
+      hesitationSecRaw = 0;
+    }
+    if (hesitationSecRaw > 600) {
+      hesitationSecRaw = 600;
+    }
+    var exitDly = 0;
+    try {
+      if (
+        tr &&
+        typeof tr.exit_intent_delay_seconds === "number" &&
+        isFinite(tr.exit_intent_delay_seconds)
+      ) {
+        exitDly = Math.max(
+          0,
+          Math.min(60, Math.floor(tr.exit_intent_delay_seconds))
+        );
+      }
+    } catch (eExD) {}
+
+    var visRows = cfBuildVisibleReasonRows();
+
+    /**
+     * ‎visibility_widget_globally_enabled‎ و ‎visibility_temporarily_disabled‎ يحددان إن كان
+     * عرض الويدجت مسموحاً للزائر (طبقة ظهور ويدجيت الاسترداد؛ لا علاقة لمحرك دورة الحياة).
+     */
+    var wgOn = true;
+    try {
+      if (tr.visibility_widget_globally_enabled === false) {
+        wgOn = false;
+      }
+      if (tr.visibility_temporarily_disabled === true) {
+        wgOn = false;
+      }
+    } catch (eVs) {}
+
+    var cfg = {
+      widget_enabled: !!wgOn,
+      hesitation_enabled: !!(tr && tr.hesitation_trigger_enabled !== false),
+      hesitation_condition: hesitationCondRaw,
+      hesitation_delay_seconds: hesitationSecRaw,
+      exit_intent_enabled: !!(tr && tr.exit_intent_enabled !== false),
+      exit_intent_delay_seconds: exitDly,
+      exit_intent_sensitivity: cfExitIntentSensNorm(
+        tr ? tr.exit_intent_sensitivity : "medium"
+      ),
+      exit_intent_frequency: cfExitIntentFreqNorm(
+        tr ? tr.exit_intent_frequency : "per_session"
+      ),
+      page_scope: cfNormalizeToken(
+        tr && tr.visibility_page_scope != null ? tr.visibility_page_scope : "",
+        ["product", "cart", "all"],
+        "all"
+      ),
+      phone_capture_mode: cfNormalizeToken(
+        tr && tr.widget_phone_capture_mode != null
+          ? tr.widget_phone_capture_mode
+          : "after_reason",
+        ["after_reason", "immediate", "none"],
+        "after_reason"
+      ),
+      visible_reasons: visRows.map(function (row) {
+        return { key: row.r, label: row.label };
+      }),
+    };
+
+    CartFlowRuntimeController.lastConfig = cfg;
+    CartFlowRuntimeController.trigger = cfRuntimeTrigger;
+    try {
+      window.__cfRuntimeConfigSnap = cfg;
+    } catch (eSn) {}
+
+    if (!silentLog) {
+      try {
+        console.log("[CF RUNTIME CONFIG]", cfg);
+      } catch (eLc) {}
+    }
+
+    return cfg;
+  }
+
+  function cfHasValidStoredPhone() {
+    return !!getCartflowStoredCustomerPhoneNorm();
+  }
+
+  function cfRuntimeClearHesitationTimer(reasonNote, silentLogClear) {
+    try {
+      if (cfRuntimeTrigger.timer != null) {
+        clearTimeout(cfRuntimeTrigger.timer);
+      }
+      if (cfHesitationAnchorTimer != null && cfHesitationAnchorTimer !== cfRuntimeTrigger.timer) {
+        clearTimeout(cfHesitationAnchorTimer);
+      }
+    } catch (eClr) {}
+    cfRuntimeTrigger.timer = null;
+    cfRuntimeTrigger.expectedAt = null;
+    cfRuntimeTrigger.source = null;
+    cfHesitationAnchorTimer = null;
+    cfHesitationScheduledAtMs = 0;
+    cfHesitationExpectedFireAtMs = 0;
+    if (!silentLogClear) {
+      try {
+        console.log("[CF TIMER CLEAR]", { reason: String(reasonNote || "") });
+      } catch (eLg0) {}
+    }
+  }
+
+  function cfRuntimeClearHesitationTimeoutOnlyNoFlags() {
+    try {
+      if (cfRuntimeTrigger.timer != null) {
+        clearTimeout(cfRuntimeTrigger.timer);
+      }
+      if (cfHesitationAnchorTimer != null && cfHesitationAnchorTimer !== cfRuntimeTrigger.timer) {
+        clearTimeout(cfHesitationAnchorTimer);
+      }
+    } catch (eTmo) {}
+    cfRuntimeTrigger.timer = null;
+    cfHesitationAnchorTimer = null;
+  }
+
   function cfLayerDChipSpecForReason(reasonKey) {
     var k = String(reasonKey || "").toLowerCase();
     var map = {
@@ -798,6 +985,9 @@ try {
     } catch (eW) {
       /* ignore */
     }
+    try {
+      cfRuntimeConfig(false);
+    } catch (eRfSnap) {}
   }
 
   function normalizeWidgetPrimaryHexClient(raw) {
@@ -2932,6 +3122,22 @@ try {
     return null;
   }
 
+  function computeRuntimeHesitationAnchorBlockReason() {
+    var b = computeCartHesitationBlockReason();
+    if (b === "mobile_cart_ui_deferred") {
+      return null;
+    }
+    return b;
+  }
+
+  try {
+    CartFlowRuntimeController.config = cfRuntimeConfig;
+    CartFlowRuntimeController.trigger = cfRuntimeTrigger;
+    CartFlowRuntimeController.hasValidPhone = cfHasValidStoredPhone;
+    CartFlowRuntimeController.computeAnchorBlock = computeRuntimeHesitationAnchorBlockReason;
+    window.CartFlowRuntimeController = CartFlowRuntimeController;
+  } catch (eCrcGlue) {}
+
   function logCartflowRecoveryGateCheck() {
     var cartHasItems = false;
     try {
@@ -4187,25 +4393,11 @@ try {
   }
 
   function cfClearHesitationAnchorTimer() {
-    try {
-      if (cfHesitationAnchorTimer != null) {
-        clearTimeout(cfHesitationAnchorTimer);
-        cfHesitationAnchorTimer = null;
-      }
-      cfHesitationScheduledAtMs = 0;
-      cfHesitationExpectedFireAtMs = 0;
-    } catch (eClrH) {
-      /* ignore */
-    }
+    cfRuntimeClearHesitationTimer("anchor_compat", true);
   }
 
   function cfHesitationAnchorDelayMs() {
-    var tr = getCfWidgetTrigger();
-    var sec =
-      typeof tr.hesitation_after_seconds === "number" &&
-      isFinite(tr.hesitation_after_seconds)
-        ? tr.hesitation_after_seconds
-        : 20;
+    var sec = cfRuntimeConfig(true).hesitation_delay_seconds;
     if (sec < 0) {
       sec = 0;
     }
@@ -4221,38 +4413,29 @@ try {
       typeof expectedAtMs === "number" && isFinite(expectedAtMs)
         ? firedAt - expectedAtMs
         : 0;
-    try {
-      var tr0 = getCfWidgetTrigger();
-      if (!tr0 || tr0.hesitation_trigger_enabled === false) {
-        try {
-          console.log("[WIDGET TIMER FIRED]", {
-            fired_at: firedAt,
-            drift_ms: Math.round(driftMs),
-            eligible: false,
-            blocked_reason: "hesitation_disabled",
-          });
-        } catch (eL0) {
-          /* ignore */
-        }
-        cfClearHesitationAnchorTimer();
-        return;
-      }
-      var hc0 = String(tr0.hesitation_condition || "").toLowerCase();
-      if (hc0 !== "after_cart_add" && hc0 !== "cart_interaction") {
-        try {
-          console.log("[WIDGET TIMER FIRED]", {
-            fired_at: firedAt,
-            drift_ms: Math.round(driftMs),
-            eligible: false,
-            blocked_reason: "hesitation_condition_not_cart",
-          });
-        } catch (eL1) {
-          /* ignore */
-        }
-        cfClearHesitationAnchorTimer();
-        return;
-      }
-    } catch (eTr) {
+    var rcEarly = cfRuntimeConfig(true);
+    if (!rcEarly.widget_enabled || !rcEarly.hesitation_enabled) {
+      try {
+        console.log("[CF TIMER BLOCKED]", {
+          gate: !rcEarly.widget_enabled ? "widget_disabled" : "hesitation_disabled",
+          drift_ms: Math.round(driftMs),
+          source_label: sourceLabel,
+        });
+      } catch (eBk0) {}
+      cfClearHesitationAnchorTimer();
+      return;
+    }
+    if (
+      rcEarly.hesitation_condition !== "after_cart_add" &&
+      rcEarly.hesitation_condition !== "cart_interaction"
+    ) {
+      try {
+        console.log("[CF TIMER BLOCKED]", {
+          gate: "hesitation_condition_not_cart",
+          condition: rcEarly.hesitation_condition,
+          drift_ms: Math.round(driftMs),
+        });
+      } catch (eBk1) {}
       cfClearHesitationAnchorTimer();
       return;
     }
@@ -4265,23 +4448,31 @@ try {
       });
       return;
     }
-    var blocked = computeCartHesitationBlockReason();
+    var blocked = computeRuntimeHesitationAnchorBlockReason();
     var eligible = !blocked;
-    try {
-      console.log("[WIDGET TIMER FIRED]", {
-        fired_at: firedAt,
-        drift_ms: Math.round(driftMs),
-        eligible: eligible,
-        blocked_reason: eligible ? null : String(blocked || ""),
-      });
-    } catch (eLf) {
-      /* ignore */
-    }
     if (!eligible) {
+      try {
+        console.log("[CF TIMER BLOCKED]", {
+          blocked_reason: String(blocked || ""),
+          drift_ms: Math.round(driftMs),
+        });
+      } catch (eBk2) {}
       cfClearHesitationAnchorTimer();
       return;
     }
-    cfClearHesitationAnchorTimer();
+    try {
+      console.log("[CF TIMER FIRE]", {
+        source_label: sourceLabel,
+        drift_ms: Math.round(driftMs),
+      });
+    } catch (eFire) {}
+    cfRuntimeClearHesitationTimer("hesitation_fire", true);
+    try {
+      console.log("[CF WIDGET SHOW]", {
+        trace: "hesitation_anchor_timer",
+        delay_seconds: cfRuntimeConfig(true).hesitation_delay_seconds,
+      });
+    } catch (eSh) {}
     showBubble(TRIGGER_SOURCE_CART, {
       mobileCartReveal: true,
       mobileDeferredRevealOk: true,
@@ -4302,10 +4493,7 @@ try {
         return;
       }
       var expected = cfHesitationExpectedFireAtMs;
-      if (cfHesitationAnchorTimer != null) {
-        clearTimeout(cfHesitationAnchorTimer);
-        cfHesitationAnchorTimer = null;
-      }
+      cfRuntimeClearHesitationTimeoutOnlyNoFlags();
       cfTryFireWidgetHesitationTimer("visibility_resume", expected);
     } catch (eVis) {
       /* ignore */
@@ -4332,18 +4520,33 @@ try {
       sourceEvent != null && String(sourceEvent).trim() !== ""
         ? String(sourceEvent)
         : "add_to_cart";
+    var rcSnap = cfRuntimeConfig(true);
     cfHesitationScheduleGen += 1;
     var gen = cfHesitationScheduleGen;
-    cfClearHesitationAnchorTimer();
+    cfRuntimeClearHesitationTimer("cart_intent_schedule_reset", false);
+    if (!rcSnap.widget_enabled || !rcSnap.hesitation_enabled) {
+      try {
+        console.log("[CF TIMER BLOCKED]", {
+          gate: !rcSnap.widget_enabled ? "widget_disabled" : "hesitation_disabled",
+          source_event: srcEv,
+        });
+      } catch (eSb0) {}
+      return;
+    }
+    if (
+      rcSnap.hesitation_condition !== "after_cart_add" &&
+      rcSnap.hesitation_condition !== "cart_interaction"
+    ) {
+      try {
+        console.log("[CF TIMER BLOCKED]", {
+          gate: "hesitation_condition_not_cart",
+          condition: rcSnap.hesitation_condition,
+          source_event: srcEv,
+        });
+      } catch (eSb1) {}
+      return;
+    }
     try {
-      var tr = getCfWidgetTrigger();
-      if (!tr || tr.hesitation_trigger_enabled === false) {
-        return;
-      }
-      var hc = String(tr.hesitation_condition || "after_cart_add").toLowerCase();
-      if (hc !== "after_cart_add" && hc !== "cart_interaction") {
-        return;
-      }
       function tryArm(attempt) {
         if (gen !== cfHesitationScheduleGen) {
           return;
@@ -4359,6 +4562,13 @@ try {
             setTimeout(function () {
               tryArm(attempt + 1);
             }, attempt === 0 ? 0 : Math.min(120, 20 * attempt));
+          } else {
+            try {
+              console.log("[CF TIMER BLOCKED]", {
+                gate: "no_cart_when_scheduling_window_closed",
+                source_event: srcEv,
+              });
+            } catch (eSb2) {}
           }
           return;
         }
@@ -4367,27 +4577,32 @@ try {
         var expectedAt = now + delayMs;
         cfHesitationScheduledAtMs = now;
         cfHesitationExpectedFireAtMs = expectedAt;
+        cfRuntimeTrigger.expectedAt = expectedAt;
+        cfRuntimeTrigger.source = srcEv;
         var sid = getSessionId();
         var cid = cartLifecycleStableCartId();
         try {
-          console.log("[WIDGET TIMER SCHEDULED]", {
+          console.log("[CF TIMER SCHEDULE]", {
             source_event: srcEv,
             delay_seconds: delayMs / 1000,
             scheduled_at: now,
             expected_fire_at: expectedAt,
             cart_id: cid,
             session_id: sid,
+            hesitation_condition: rcSnap.hesitation_condition,
           });
         } catch (eSchLog) {
           /* ignore */
         }
-        cfHesitationAnchorTimer = setTimeout(function () {
+        cfRuntimeTrigger.timer = setTimeout(function () {
+          cfRuntimeTrigger.timer = null;
           cfHesitationAnchorTimer = null;
           if (gen !== cfHesitationScheduleGen) {
             return;
           }
           cfTryFireWidgetHesitationTimer("timeout", expectedAt);
         }, delayMs);
+        cfHesitationAnchorTimer = cfRuntimeTrigger.timer;
       }
       tryArm(0);
     } catch (eSch) {
@@ -7316,7 +7531,7 @@ try {
     var btnN = null;
     if (!vipImmediateUi) {
       (function cfMountMainEntry() {
-        if (cfPhoneCaptureMode() === "immediate" && !cfCustomerPhoneSaved()) {
+        if (cfRuntimeConfig(true).phone_capture_mode === "immediate" && !cfCustomerPhoneSaved()) {
           var gP = document.createElement("p");
           gP.style.cssText = "margin:0 0 8px 0;font-size:14px;line-height:1.45;";
           gP.textContent = "أدخل رقم جوالك لمتابعة التواصل";
@@ -7807,28 +8022,22 @@ try {
         widgetBody.appendChild(br);
       }
 
-      cfRafPaint(function () {
-        try {
-          console.log("[REASON SAVE START]", { reason_key: "price" });
-        } catch (eSt) {}
-        postReason({ reason: "price", sub_category: sub })
-          .then(function (j) {
-            if (!cfCartflowReasonPostOk(j)) {
-              onFailPrice();
-              return;
-            }
-            try {
-              console.log("[REASON SAVE SUCCESS]", { reason_key: "price" });
-            } catch (eOk) {}
+      cfHandleReasonSelected(
+        "price",
+        { reason: "price", sub_category: sub },
+        { sub_category: sub },
+        {
+          onSuccessUi: function () {
             removeLd();
-            setReasonTag("price");
-            setReasonSubTag(sub);
-            cfNonVipClassicReasonAfterSaveUi("price", sub, null);
-          })
-          .catch(function () {
+          },
+          onFailResponse: function () {
             onFailPrice();
-          });
-      });
+          },
+          onNetworkError: function () {
+            onFailPrice();
+          },
+        }
+      );
     }
 
     function showPriceSubMenu() {
@@ -7874,7 +8083,8 @@ try {
 
     function mountOtherForm() {
       stripContentKeepChrome();
-      var pcm = cfPhoneCaptureMode();
+      var rcPh = cfRuntimeConfig(true);
+      var pcm = rcPh.phone_capture_mode;
       var hidePhone = pcm === "none";
       var phoneAfterReason = pcm === "after_reason";
       var showPhoneInline = pcm === "immediate";
@@ -7987,33 +8197,13 @@ try {
           payload.customer_phone = norm;
         }
 
-        cfRafPaint(function () {
-          try {
-            console.log("[REASON SAVE START]", { reason_key: "other" });
-          } catch (eStO) {}
-          postReason(payload)
-            .then(function (j) {
+        cfHandleReasonSelected(
+          "other",
+          payload,
+          { custom_text: note },
+          {
+            onSuccessUi: function () {
               removeLdO();
-            if (!cfCartflowReasonPostOk(j)) {
-              reEnableRow();
-              try {
-                console.log("[REASON SAVE FAILED]", { reason_key: "other" });
-              } catch (eFo) {}
-                var eb = (j && j.body) || {};
-                var em = (eb.error && String(eb.error)) || "";
-                if (
-                  em.indexOf("invalid_customer_phone") !== -1 ||
-                  em === "invalid_customer_phone"
-                ) {
-                  pErr.textContent = "رقم غير صحيح";
-                } else {
-                  pErr.textContent = "تعذّر الحفظ، حاول مرة ثانية.";
-                }
-                return;
-              }
-              try {
-                console.log("[REASON SAVE SUCCESS]", { reason_key: "other" });
-              } catch (eOkO) {}
               if (norm) {
                 try {
                   localStorage.setItem(CARTFLOW_LS_CUSTOMER_PHONE, norm);
@@ -8026,63 +8216,33 @@ try {
                   /* ignore */
                 }
               }
-              setReasonTag("other");
-              function doneOtherClassic() {
-                try {
-                  emitDemoGuideEvent("cartflow-demo-reason-confirmed", {
-                    reason: "other",
-                    sub_category: null,
-                  });
-                } catch (eEm) {
-                  /* ignore */
-                }
-                showOtherSuccessView();
-              }
+            },
+            onFailResponse: function (j) {
+              reEnableRow();
+              try {
+                console.log("[REASON SAVE FAILED]", { reason_key: "other" });
+              } catch (eFo) {}
+              var eb = (j && j.body) || {};
+              var em = (eb.error && String(eb.error)) || "";
               if (
-                cfPhoneCaptureMode() === "after_reason" &&
-                cartflowState.isVip !== true &&
-                !getCartflowStoredCustomerPhoneNorm()
+                em.indexOf("invalid_customer_phone") !== -1 ||
+                em === "invalid_customer_phone"
               ) {
-                try {
-                  console.log("[PHONE CAPTURE BRANCH ENTERED]", {
-                    reason_key: "other",
-                    widget_phone_capture_mode: cfPhoneCaptureMode(),
-                    has_valid_phone: false,
-                    is_vip: false,
-                  });
-                } catch (ePb) {}
-                mountNonVipAfterReasonPhoneCaptureUI(
-                  "other",
-                  null,
-                  note,
-                  function () {
-                    mountNonVipPostPhoneContinuation("other", null);
-                  }
-                );
+                pErr.textContent = "رقم غير صحيح";
               } else {
-                try {
-                  if (cfPhoneCaptureMode() === "after_reason") {
-                    console.log("[PHONE CAPTURE SKIPPED]", {
-                      reason:
-                        cartflowState.isVip === true
-                          ? "vip_flow"
-                          : "valid_phone_already_stored",
-                      widget_phone_capture_mode: cfPhoneCaptureMode(),
-                    });
-                  }
-                } catch (ePs) {}
-                doneOtherClassic();
+                pErr.textContent = "تعذّر الحفظ، حاول مرة ثانية.";
               }
-            })
-            .catch(function () {
+            },
+            onNetworkError: function () {
               removeLdO();
               reEnableRow();
               try {
                 console.log("[REASON SAVE FAILED]", { reason_key: "other" });
               } catch (eFc) {}
               pErr.textContent = "تعذّر الحفظ، حاول مرة ثانية.";
-            });
-        });
+            },
+          }
+        );
       });
       var bHandoffO = document.createElement("button");
       bHandoffO.type = "button";
@@ -8271,6 +8431,107 @@ try {
       widgetBody.appendChild(rowV);
     }
 
+    function cfShowContinuation(reasonKey, subCategory) {
+      mountNonVipPostPhoneContinuation(reasonKey, subCategory);
+    }
+
+    function cfShowPhoneCapture(reasonKey, detail) {
+      detail = detail || {};
+      var rk = String(reasonKey || "other").toLowerCase();
+      var sub =
+        detail.sub_category != null && String(detail.sub_category).trim() !== ""
+          ? String(detail.sub_category).trim()
+          : null;
+      try {
+        console.log("[CF PHONE SHOW]", { reason_key: rk });
+      } catch (ePs) {}
+      mountNonVipAfterReasonPhoneCaptureUI(
+        rk,
+        sub,
+        detail.custom_text != null && String(detail.custom_text).trim() !== ""
+          ? String(detail.custom_text).trim()
+          : null,
+        function () {
+          cfShowContinuation(rk, sub);
+        }
+      );
+    }
+
+    function cfAfterReasonSaved(reasonKey, detail) {
+      detail = detail || {};
+      var rk = String(reasonKey || "other").toLowerCase();
+      var subNorm =
+        detail.sub_category != null && String(detail.sub_category).trim() !== ""
+          ? String(detail.sub_category).trim()
+          : null;
+      var cfg = cfRuntimeConfig(true);
+      var hasPhone = cfHasValidStoredPhone();
+
+      if (cartflowState.isVip === true) {
+        mountProductAwareView(rk);
+        try {
+          emitDemoGuideEvent("cartflow-demo-reason-confirmed", {
+            reason: rk,
+            sub_category: subNorm,
+          });
+        } catch (eDgV) {}
+        return;
+      }
+
+      if (cfg.phone_capture_mode === "after_reason" && !hasPhone) {
+        cfShowPhoneCapture(rk, detail);
+        return;
+      }
+
+      if (cfg.phone_capture_mode === "none" || hasPhone) {
+        cfShowContinuation(rk, subNorm);
+        return;
+      }
+
+      cfShowContinuation(rk, subNorm);
+    }
+
+    function cfHandleReasonSelected(reasonKey, payload, detail, callbacks) {
+      callbacks = callbacks || {};
+      detail = detail || {};
+      var rk = String(reasonKey || "other").toLowerCase();
+      cfRafPaint(function () {
+        try {
+          console.log("[REASON SAVE START]", { reason_key: rk });
+        } catch (eSt0) {}
+        postReason(payload)
+          .then(function (j) {
+            if (!cfCartflowReasonPostOk(j)) {
+              if (typeof callbacks.onFailResponse === "function") {
+                callbacks.onFailResponse(j);
+              }
+              return;
+            }
+            try {
+              console.log("[REASON SAVE SUCCESS]", { reason_key: rk });
+            } catch (eOk0) {}
+            if (typeof callbacks.onSuccessUi === "function") {
+              callbacks.onSuccessUi(j);
+            }
+            setReasonTag(rk);
+            if (
+              detail.sub_category != null &&
+              String(detail.sub_category).trim() !== ""
+            ) {
+              setReasonSubTag(String(detail.sub_category).trim());
+            } else {
+              setReasonSubTag(null);
+            }
+            cfAfterReasonSaved(rk, detail);
+          })
+          .catch(function () {
+            if (typeof callbacks.onNetworkError === "function") {
+              callbacks.onNetworkError();
+            }
+          });
+      });
+    }
+
     function showOtherSuccessView() {
       stripContentKeepChrome();
       var top = document.createElement("p");
@@ -8297,72 +8558,13 @@ try {
       widgetBody.appendChild(row);
     }
 
-    function cfNonVipClassicReasonAfterSaveUi(reasonKey, subCategory, customTextForPhonePost) {
-      var rk = String(reasonKey || "other").toLowerCase();
-      var subNorm =
-        subCategory != null && String(subCategory).trim() !== ""
-          ? String(subCategory).trim()
-          : null;
-      var pcm = cfPhoneCaptureMode();
-      var hasValidPhone = !!getCartflowStoredCustomerPhoneNorm();
-      try {
-        console.log("[PHONE CAPTURE BRANCH ENTERED]", {
-          reason_key: rk,
-          widget_phone_capture_mode: pcm,
-          has_valid_phone: hasValidPhone,
-          is_vip: cartflowState.isVip === true,
-        });
-      } catch (ePcBr) {}
 
-      if (cartflowState.isVip === true) {
-        try {
-          console.log("[PHONE CAPTURE SKIPPED]", { reason: "vip_flow_uses_inline_phone" });
-        } catch (eSk0) {}
-        mountProductAwareView(rk);
-        try {
-          emitDemoGuideEvent("cartflow-demo-reason-confirmed", {
-            reason: rk,
-            sub_category: subNorm,
-          });
-        } catch (eDgV) {}
-        return;
-      }
-
-      if (pcm !== "after_reason") {
-        try {
-          console.log("[PHONE CAPTURE SKIPPED]", {
-            reason: "capture_mode_not_after_reason",
-            widget_phone_capture_mode: pcm,
-          });
-        } catch (eSk1) {}
-        mountProductAwareView(rk);
-        try {
-          emitDemoGuideEvent("cartflow-demo-reason-confirmed", {
-            reason: rk,
-            sub_category: subNorm,
-          });
-        } catch (eDgM) {}
-        return;
-      }
-
-      if (!hasValidPhone) {
-        mountNonVipAfterReasonPhoneCaptureUI(rk, subNorm, customTextForPhonePost, function () {
-          mountNonVipPostPhoneContinuation(rk, subNorm);
-        });
-        return;
-      }
-
-      try {
-        console.log("[PHONE CAPTURE SKIPPED]", { reason: "valid_phone_already_stored" });
-      } catch (eSk2) {}
-      mountNonVipPostPhoneContinuation(rk, subNorm);
-    }
 
     function mountNonVipPostPhoneContinuation(reasonKey, subCategory) {
       var rk = String(reasonKey || "other").toLowerCase();
       stripContentKeepChrome();
       try {
-        console.log("[PHONE CONTINUATION SHOWN]", { reason_key: rk });
+        console.log("[CF CONTINUATION SHOW]", { reason_key: rk });
       } catch (ePcs) {
         /* ignore */
       }
@@ -8440,7 +8642,7 @@ try {
     ) {
       onDone = typeof onDone === "function" ? onDone : function () {};
       var rkey = String(reasonKey || "").toLowerCase();
-      var pcm = cfPhoneCaptureMode();
+      var pcm = cfRuntimeConfig(true).phone_capture_mode;
       var hasPh = !!getCartflowStoredCustomerPhoneNorm();
       var willShowPhone =
         pcm === "after_reason" && cartflowState.isVip !== true && !hasPh;
@@ -8492,15 +8694,6 @@ try {
       } catch (eAt) {
         /* ignore */
       }
-      try {
-        console.log("[PHONE CAPTURE UI MOUNTED]", {
-          widget_phone_capture_mode: pcm,
-          reason_key: rkey,
-        });
-      } catch (eUi) {
-        /* ignore */
-      }
-
       var pTitle = document.createElement("p");
       pTitle.style.cssText =
         "margin:0 0 6px 0;font-size:16px;line-height:1.35;font-weight:700;";
@@ -8570,10 +8763,19 @@ try {
         if (customText != null && String(customText).trim() !== "") {
           body.custom_text = String(customText).trim();
         }
+        try {
+          console.log("[CF PHONE SAVE START]", { reason_key: rkey });
+        } catch (ePs0) {}
         postReason(body)
           .then(function (pj) {
             bSend.removeAttribute("disabled");
             if (!cfCartflowReasonPostOk(pj)) {
+              try {
+                console.log("[CF PHONE SAVE FAILED]", {
+                  reason_key: rkey,
+                  trace: "server_reject",
+                });
+              } catch (ePf) {}
               var eb = (pj && pj.body) || {};
               var em = (eb.error && String(eb.error)) || "";
               if (
@@ -8594,7 +8796,7 @@ try {
             var sid = getSessionId();
             var cid = cartLifecycleStableCartId();
             try {
-              console.log("[PHONE CAPTURE SAVED]", {
+              console.log("[CF PHONE SAVE SUCCESS]", {
                 session_id: sid,
                 cart_id: cid,
                 reason_key: rkey,
@@ -8611,6 +8813,12 @@ try {
           })
           .catch(function () {
             bSend.removeAttribute("disabled");
+            try {
+              console.log("[CF PHONE SAVE FAILED]", {
+                reason_key: rkey,
+                trace: "network",
+              });
+            } catch (ePn) {}
             pErr.textContent = "تعذّر الحفظ، حاول مرة ثانية.";
           });
       });
@@ -8629,7 +8837,6 @@ try {
       } catch (eLc) {
         /* ignore */
       }
-      setReasonTag(rkey);
       var rowR = widgetBody.querySelector("[data-cf-reason-row]");
       if (rowR) {
         var btns = rowR.querySelectorAll("button");
@@ -8674,26 +8881,22 @@ try {
         widgetBody.appendChild(br);
       }
 
-      cfRafPaint(function () {
-        try {
-          console.log("[REASON SAVE START]", { reason_key: rkey });
-        } catch (eSt) {}
-        postReason({ reason: rkey })
-          .then(function (j) {
-            if (!cfCartflowReasonPostOk(j)) {
-              onFailStd();
-              return;
-            }
-            try {
-              console.log("[REASON SAVE SUCCESS]", { reason_key: rkey });
-            } catch (eOk) {}
+      cfHandleReasonSelected(
+        rkey,
+        { reason: rkey },
+        {},
+        {
+          onSuccessUi: function () {
             removeLoading();
-            cfNonVipClassicReasonAfterSaveUi(rkey, null, null);
-          })
-          .catch(function () {
+          },
+          onFailResponse: function () {
             onFailStd();
-          });
-      });
+          },
+          onNetworkError: function () {
+            onFailStd();
+          },
+        }
+      );
     }
 
     function renderReasonList() {
@@ -8846,7 +9049,7 @@ try {
               return;
             }
             w.setAttribute("data-cf-cart-affirm-help", "1");
-            if (cfPhoneCaptureMode() === "after_reason") {
+            if (cfRuntimeConfig(true).phone_capture_mode === "after_reason") {
               renderReasonList();
             } else {
               mountLayerDAbandonIfEligible();
@@ -9176,6 +9379,22 @@ try {
     }
     shown = false;
     setCartflowWidgetShownFlag(false);
+    try {
+      var rcGu = cfRuntimeConfig(true);
+      if (
+        rcGu.hesitation_enabled &&
+        (rcGu.hesitation_condition === "after_cart_add" ||
+          rcGu.hesitation_condition === "cart_interaction") &&
+        cfRuntimeTrigger.timer != null
+      ) {
+        try {
+          console.log("[CF TIMER BLOCKED]", {
+            gate: "demo_visibility_poll_deferred_anchor_active",
+          });
+        } catch (eGd) {}
+        return;
+      }
+    } catch (eRc) {}
     showBubble(TRIGGER_SOURCE_CART);
   }
 
@@ -9227,19 +9446,15 @@ try {
     return true;
   }
 
-  /** نفس تسلسل التهيئة كما بعد add to cart، ثم showBubble(exit_intent) فقط. */
-  function openExitIntentWidget() {
+  /** تنفيذ فتح الفقاعة بعد التهيئة — لا يطبّق تأخير الإعداد؛ يستخدمه مسار الخروج فقط. */
+  function cfExitIntentRevealNowAfterArm() {
+    try {
+      console.log("[CF EXIT INTENT FIRE]", { trace: "reveal_execute" });
+    } catch (eFi) {}
     if (!canShowExitIntentWidget()) {
       try {
-        var trOp = getCfWidgetTrigger();
-        if (!trOp.exit_intent_enabled) {
-          cfLogWidgetTriggerBlocked("exit_intent_disabled", "open_exit");
-        } else if (!haveCartForWidget() && !cfExitIntentSurfaceAllowed()) {
-          cfLogWidgetTriggerBlocked("page_scope_blocked", "open_exit");
-        }
-      } catch (eOp) {
-        /* ignore */
-      }
+        console.log("[CF EXIT INTENT BLOCKED]", { gate: "recheck_failed" });
+      } catch (eRb) {}
       return;
     }
     if (isDemoPath()) {
@@ -9255,6 +9470,9 @@ try {
     clearTimeout(idleTimer);
     idleTimer = null;
     if (!canShowExitIntentWidget()) {
+      try {
+        console.log("[CF EXIT INTENT BLOCKED]", { gate: "post_arm_failed" });
+      } catch (eRb2) {}
       return;
     }
     if (isDemoPath()) {
@@ -9263,17 +9481,73 @@ try {
     }
     fetchReadyThen(function () {
       if (!canShowExitIntentWidget()) {
+        try {
+          console.log("[CF EXIT INTENT BLOCKED]", { gate: "after_ready_failed" });
+        } catch (_) {}
         return;
       }
       showBubble(TRIGGER_SOURCE_EXIT_INTENT);
     });
   }
 
-  function openCartflowWidgetFromTrigger(trigger) {
+  /** نفس تسلسل التهيئة كما بعد add to cart، ثم showBubble(exit_intent) فقط. */
+  function openExitIntentWidget(opts) {
+    opts = opts || {};
+    clearTimeout(cfExitIntentScheduledOpenTimer);
+    cfExitIntentScheduledOpenTimer = null;
+
+    try {
+      if (!cfRuntimeConfig(true).exit_intent_enabled) {
+        try {
+          console.log("[CF EXIT INTENT BLOCKED]", { gate: "exit_disabled" });
+        } catch (eEb) {}
+        return;
+      }
+    } catch (_) {}
+
+    if (!canShowExitIntentWidget()) {
+      try {
+        var trOp = getCfWidgetTrigger();
+        if (!trOp.exit_intent_enabled) {
+          cfLogWidgetTriggerBlocked("exit_intent_disabled", "open_exit");
+        } else if (!haveCartForWidget() && !cfExitIntentSurfaceAllowed()) {
+          cfLogWidgetTriggerBlocked("page_scope_blocked", "open_exit");
+        }
+        console.log("[CF EXIT INTENT BLOCKED]", { gate: "can_show_exit_false" });
+      } catch (eOp) {
+        /* ignore */
+      }
+      return;
+    }
+
+    if (opts.skipScheduledDelay !== true) {
+      var xiDelaySec = cfRuntimeConfig(true).exit_intent_delay_seconds;
+      var xiMs = Math.max(0, Math.min(60000, Math.floor(Number(xiDelaySec) || 0) * 1000));
+      if (xiMs > 0) {
+        try {
+          console.log("[CF EXIT INTENT SCHEDULED]", {
+            delay_ms: xiMs,
+            sensor: opts.sensorType != null ? String(opts.sensorType) : "",
+          });
+        } catch (eSd) {}
+        cfExitIntentScheduledOpenTimer = setTimeout(function () {
+          cfExitIntentScheduledOpenTimer = null;
+          openExitIntentWidget({ skipScheduledDelay: true, sensorType: opts.sensorType });
+        }, xiMs);
+        return;
+      }
+    }
+
+    cfExitIntentRevealNowAfterArm();
+  }
+
+  function openCartflowWidgetFromTrigger(trigger, sensorType) {
     if (trigger !== "exit_intent") {
       return;
     }
-    openExitIntentWidget();
+    openExitIntentWidget(
+      sensorType != null ? { sensorType: String(sensorType) } : {}
+    );
   }
 
   function CartflowExitIntentController() {
@@ -9313,15 +9587,21 @@ try {
     }
     function fire(type) {
       if (!canTrigger()) {
+        try {
+          console.log("[CF EXIT INTENT BLOCKED]", {
+            gate: "controller_suppressed_or_ineligible",
+            type: type,
+          });
+        } catch (eBl) {}
         return;
       }
       triggered = true;
       try {
-        console.log("EXIT_INTENT_FIRED:", type);
-      } catch (e) {
+        console.log("[CF EXIT INTENT DETECTED]", { type: type });
+      } catch (eCf) {
         /* ignore */
       }
-      openCartflowWidgetFromTrigger("exit_intent");
+      openCartflowWidgetFromTrigger("exit_intent", type);
     }
     function resetTimer() {
       if (inactivityTimer) {
