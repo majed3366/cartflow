@@ -63,7 +63,6 @@
     var hs = byId("mw-hes-sec");
     var hc = byId("mw-hes-cond");
     var sc = byId("mw-scope");
-    var bl = byId("mw-brand-line");
     var sd = byId("mw-sup-dismiss");
     var sp = byId("mw-sup-purchase");
     var scx = byId("mw-sup-checkout");
@@ -76,7 +75,7 @@
     if (hs) t.hesitation_after_seconds = parseInt(hs.value, 10) || 20;
     if (hc) t.hesitation_condition = hc.value || "after_cart_add";
     if (sc) t.visibility_page_scope = sc.value || "all";
-    if (bl) t.widget_brand_line_ar = (bl.value || "").trim();
+    t.widget_brand_line_ar = "";
     if (phoneEl) t.widget_phone_capture_mode = phoneEl.value;
     if (sd) t.suppress_after_widget_dismiss = !!sd.checked;
     if (sp) t.suppress_after_purchase = !!sp.checked;
@@ -87,7 +86,10 @@
 
   function collectPayload() {
     var b = readBootstrap() || {};
+    var wn = byId("mw-widget-name");
+    var rawName = wn ? String(wn.value || "").trim() : "";
     var body = {
+      widget_name: rawName,
       widget_primary_color: byId("mw-widget-color") ? byId("mw-widget-color").value : b.widget_primary_color,
       cartflow_widget_enabled: byId("mw-widget-enabled") ? !!byId("mw-widget-enabled").checked : true,
       reason_templates: collectReasonTemplates(),
@@ -110,31 +112,25 @@
     return PRESET_Q;
   }
 
-  function fillPreviewPair(suffix, title, sub, brand, color, optsHtml) {
+  function fillPreviewPair(suffix, title, sub, color, optsHtml) {
     var box = byId("mw-" + suffix + "-box");
     var bt = byId("mw-" + suffix + "-title");
     var bs = byId("mw-" + suffix + "-sub");
-    var bb = byId("mw-" + suffix + "-brand");
     var bo = byId("mw-" + suffix + "-opts");
-    if (!box || !bt || !bs || !bb || !bo) return;
+    if (!box || !bt || !bs || !bo) return;
     box.style.borderRight = "4px solid " + (color || "#6C5CE7");
     bt.textContent = title || "مساعد المتجر";
     bs.textContent = sub || PRESET_Q;
-    if (brand) {
-      bb.textContent = brand;
-      bb.style.display = "block";
-    } else {
-      bb.textContent = "";
-      bb.style.display = "none";
-    }
     bo.innerHTML = optsHtml;
   }
 
   function refreshPreview() {
     var b = readBootstrap() || {};
-    var title = titleFromBootstrap(b);
+    var wn = byId("mw-widget-name");
+    var title =
+      (wn && (wn.value || "").trim()) ||
+      titleFromBootstrap(b);
     var sub = questionFromBootstrap(b);
-    var brand = byId("mw-brand-line") ? byId("mw-brand-line").value.trim() : "";
     var color = byId("mw-widget-color") ? byId("mw-widget-color").value : "#6C5CE7";
     var tb = byId("mw-reason-tbody");
     var parts = [];
@@ -152,8 +148,8 @@
       });
     }
     var optsHtml = parts.join("");
-    fillPreviewPair("desk", title, sub, brand, color, optsHtml);
-    fillPreviewPair("mob", title, sub, brand, color, optsHtml);
+    fillPreviewPair("desk", title, sub, color, optsHtml);
+    fillPreviewPair("mob", title, sub, color, optsHtml);
   }
 
   function bindReasonReorder() {
@@ -223,7 +219,7 @@
   }
 
   function wireLive() {
-    ["mw-brand-line", "mw-widget-color"].forEach(function (id) {
+    ["mw-widget-name", "mw-widget-color"].forEach(function (id) {
       var el = byId(id);
       if (!el) return;
       el.addEventListener("input", refreshPreview);

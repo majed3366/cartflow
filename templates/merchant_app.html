@@ -346,9 +346,9 @@
       <div class="ma-widget-form">
         <div class="ma-fw-card">
           <div class="ma-fw-h">هوية الودجيت</div>
-          <p class="ma-fw-desc">اسم المتجر داخل النافذة واللون والتفعيل — عنوان السؤال يبقى ضمن تدفق الودجيت الحالي دون تكرار هنا</p>
-          <label class="ma-fw-label" for="mw-brand-line">اسم المتجر داخل الودجيت</label>
-          <input class="ma-fw-input" id="mw-brand-line" type="text" maxlength="120" value="{{ (tg.widget_brand_line_ar or '') | e }}" dir="rtl" autocomplete="organization">
+          <p class="ma-fw-desc">اسم واحد يظهر في رأس الودجيت للعميل — يطابق ما يُعرض في المتجر (نفس حقل اسم الودجيت المحفوظ)</p>
+          <label class="ma-fw-label" for="mw-widget-name">اسم المتجر في الودجيت</label>
+          <input class="ma-fw-input" id="mw-widget-name" type="text" maxlength="120" value="{{ (wp.widget_name or 'مساعد المتجر') | e }}" dir="rtl" autocomplete="organization">
           <label class="ma-fw-label" for="mw-widget-color">لون الودجيت</label>
           <input class="ma-fw-input ma-fw-color" id="mw-widget-color" type="color" value="{{ (wp.widget_primary_color or '#6C5CE7') | e }}">
           <label class="ma-fw-check">
@@ -461,7 +461,6 @@
             <div class="ma-wb-shell">
               <div class="widget-box ma-wb-box" id="mw-desk-box">
                 <div class="wb-close" aria-hidden="true">✕</div>
-                <div class="wb-brand ma-wb-brand" id="mw-desk-brand"></div>
                 <div class="wb-title ma-wb-title" id="mw-desk-title"></div>
                 <div class="wb-sub ma-wb-sub" id="mw-desk-sub"></div>
                 <div class="wb-options ma-wb-opts" id="mw-desk-opts"></div>
@@ -475,7 +474,6 @@
             <div class="ma-wb-shell">
               <div class="widget-box ma-wb-box" id="mw-mob-box">
                 <div class="wb-close" aria-hidden="true">✕</div>
-                <div class="wb-brand ma-wb-brand" id="mw-mob-brand"></div>
                 <div class="wb-title ma-wb-title" id="mw-mob-title"></div>
                 <div class="wb-sub ma-wb-sub" id="mw-mob-sub"></div>
                 <div class="wb-options ma-wb-opts" id="mw-mob-opts"></div>
