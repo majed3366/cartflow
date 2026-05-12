@@ -8570,31 +8570,26 @@ try {
       }
       var msgs = {
         price:
-          "تمام، وصلتني ملاحظتك عن السعر. أقدر أساعدك بخيار أنسب أو أوضح لك القيمة.",
+          "أفهم 👍\nخلني أساعدك بخيار أنسب أو أوضح لك القيمة بشكل أفضل.",
         shipping:
-          "تمام، وصلتني ملاحظتك عن الشحن. أقدر أوضح لك خيارات الشحن أو أساعدك تكمل الطلب.",
+          "واضح إن الشحن مهم لك 👍\nأقدر أوضح لك خيارات الشحن أو الأسرع للطلب.",
         delivery:
-          "تمام، وصلتني ملاحظتك عن التوصيل. أقدر أوضح لك مدة التوصيل المتوقعة.",
+          "أكيد 👍\nخلني أوضح لك مدة التوصيل المتوقعة بشكل أدق.",
         quality:
-          "تمام، وصلتني ملاحظتك عن الجودة. أقدر أوضح لك تفاصيل المنتج والضمان.",
+          "أتفهم 👍\nأقدر أوضح لك الجودة والتفاصيل بشكل أفضل.",
         warranty:
-          "تمام، وصلتني ملاحظتك عن الضمان. أقدر أوضح لك سياسة الضمان والاستبدال.",
+          "أكيد 👍\nأوضح لك سياسة الضمان والاستبدال بكل بساطة.",
         thinking:
-          "تمام، خذ وقتك. أقدر أساعدك بمقارنة سريعة أو أوضح لك الأنسب.",
+          "خذ وقتك 👍\nأقدر أقارن لك بين الخيارات أو أوضح اللي يهمك قبل لا تكمّل.",
         other:
-          "تمام، وصلتني ملاحظتك. أقدر أساعدك هنا أو يتواصل معك المتجر.",
+          "تمام 👍\nأنا معك إذا احتجت أي توضيح قبل تكمل الطلب.",
       };
       var msg = msgs[rk] != null ? msgs[rk] : msgs.other;
       var pCont = document.createElement("p");
       pCont.style.cssText =
-        "margin:0 0 12px 0;font-size:14px;line-height:1.55;white-space:pre-line;";
+        "margin:0 0 16px 0;font-size:14px;line-height:1.65;white-space:pre-line;";
       pCont.textContent = msg;
       widgetBody.appendChild(pCont);
-      try {
-        appendReasonPersonalizationBlock(rk);
-      } catch (eAp) {
-        /* ignore */
-      }
       var rowC = document.createElement("div");
       rowC.style.cssText = rowStyleCol;
       function addContBtn(label, fn) {
