@@ -34,18 +34,19 @@ def _ob(flags: dict[str, bool], blocking: list[str]) -> dict:
 
 
 class MerchantWhatsAppReadinessDashboardHtmlTests(unittest.TestCase):
-    def test_normal_carts_includes_readiness_section(self) -> None:
+    def test_normal_carts_merchant_is_placeholder_not_heavy_dashboard(self) -> None:
         r = TestClient(app).get("/dashboard/normal-carts")
         self.assertEqual(r.status_code, 200, r.text[:500])
         t = r.text or ""
-        self.assertIn("حالة الواتساب", t)
-        self.assertIn("data-cf-whatsapp-readiness", t)
+        self.assertIn("data-cf-merchant-dashboard-placeholder", t.lower())
+        self.assertNotIn("data-cf-whatsapp-readiness", t.lower())
 
-    def test_dashboard_v1_includes_readiness_section(self) -> None:
+    def test_dashboard_home_is_placeholder(self) -> None:
         r = TestClient(app).get("/dashboard")
         self.assertEqual(r.status_code, 200, r.text[:500])
         t = r.text or ""
-        self.assertIn("حالة الواتساب", t)
+        self.assertIn("Merchant Dashboard is being rebuilt", t)
+        self.assertNotIn("حالة الواتساب", t)
 
 
 class MerchantWhatsAppReadinessUiTests(unittest.TestCase):

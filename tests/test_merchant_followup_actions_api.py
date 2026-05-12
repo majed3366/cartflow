@@ -97,7 +97,7 @@ class MerchantFollowupActionsApiTests(unittest.TestCase):
         phones = {a.get("customer_phone") for a in (r_list.json().get("actions") or [])}
         self.assertNotIn("966533333333", phones)
 
-    def test_vip_dashboard_includes_followup_section_heading(self) -> None:
+    def test_followup_action_surfaces_in_api_list(self) -> None:
         db.create_all()
         uid = uuid.uuid4().hex[:10]
         store = Store(zid_store_id=f"z_mf_html_{uid}")
@@ -114,12 +114,12 @@ class MerchantFollowupActionsApiTests(unittest.TestCase):
         db.session.add(row)
         db.session.commit()
 
-        r = self.client.get("/dashboard/vip-cart-settings")
+        r = self.client.get("/api/merchant-followup-actions")
         self.assertEqual(r.status_code, 200, r.text)
-        self.assertIn("عملاء يحتاجون متابعة الآن", r.text)
-        self.assertIn("تواصل عبر واتساب", r.text)
-        self.assertIn("تمت المتابعة", r.text)
-        self.assertIn("966544444444", r.text)
+        j = r.json()
+        self.assertTrue(j.get("ok"), j)
+        phones = {a.get("customer_phone") for a in (j.get("actions") or [])}
+        self.assertIn("966544444444", phones)
 
 
 if __name__ == "__main__":

@@ -187,11 +187,11 @@ class CartflowOnboardingReadinessTests(unittest.TestCase):
         self.assertTrue(vis.get("show_strip"))
         self.assertTrue(len(vis.get("status_ar") or "") > 0)
 
-    def test_normal_carts_html_includes_onboarding_strip(self) -> None:
+    def test_operations_normal_carts_html_includes_onboarding_strip(self) -> None:
         from fastapi.testclient import TestClient
 
         client = TestClient(app)
-        r = client.get("/dashboard/normal-carts")
+        r = client.get("/dashboard/normal-carts/operations")
         self.assertEqual(r.status_code, 200, r.text[:1500] if r.text else "")
         self.assertIn("data-cf-onboarding-ready", (r.text or "").lower())
 

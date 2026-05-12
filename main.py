@@ -44,12 +44,9 @@ from services.merchant_normal_recovery_summary import (
     merchant_next_action_hint_ar,
 )
 from services.merchant_dashboard_reference_ui import (
-    merchant_ar_weekday_date_header,
     merchant_coarse_to_status_row,
     merchant_reason_chip_class_and_label,
-    merchant_reason_panel_rows_from_counts,
     merchant_relative_time_arabic,
-    merchant_vip_avatar_letter,
 )
 from services.normal_recovery_merchant_stale import merchant_group_stale_meta
 from urllib.parse import quote
@@ -9510,99 +9507,19 @@ def _dashboard_v1_financial_context() -> dict[str, Any]:
     }
 
 
-@app.get("/dashboard")
-def dashboard(request: Request):
-    """لوحة التاجر — تصميم مرجعي خفيف وبيانات حقيقية آمنة."""
-    dash_store = _dashboard_recovery_store_row()
-    try:
-        kpis = _merchant_kpi_today_projection(dash_store)
-    except (SQLAlchemyError, OSError, TypeError, ValueError):
-        kpis = {
-            "abandoned_today": 0,
-            "recovered_today": 0,
-            "whatsapp_sent_today": 0,
-            "recovered_revenue_today": 0.0,
-        }
-    try:
-        month_win = _merchant_month_window_projection(dash_store, days=30)
-    except (SQLAlchemyError, OSError, TypeError, ValueError):
-        month_win = {
-            "abandoned_total": 0,
-            "recovered_total": 0,
-            "recovery_pct": 0.0,
-            "recovered_revenue": 0.0,
-        }
-    reason_counts_w = _merchant_reason_counts_store_window(dash_store, days=7)
-    reason_rows, reason_insight = merchant_reason_panel_rows_from_counts(
-        reason_counts_w
-    )
-    try:
-        table_rows = _normal_recovery_merchant_lightweight_alert_list(
-            8, lifecycle="active"
-        )
-    except (SQLAlchemyError, OSError, TypeError, ValueError):
-        table_rows = []
-    try:
-        vip_raw = _vip_priority_cart_alert_list()
-    except (SQLAlchemyError, OSError, TypeError, ValueError):
-        vip_raw = []
-    vip_rows: list[dict[str, Any]] = []
-    for i, vc in enumerate(vip_raw[:3]):
-        if isinstance(vc, dict):
-            vip_rows.append(
-                _merchant_vip_row_safe_projection(
-                    vc,
-                    avatar_letter=merchant_vip_avatar_letter(i),
-                    dash_store=dash_store,
-                )
-            )
-    vip_banner: Optional[dict[str, Any]] = None
-    if vip_raw and isinstance(vip_raw[0], dict):
-        v0 = vip_raw[0]
-        proj0 = _merchant_vip_row_safe_projection(
-            v0,
-            avatar_letter=merchant_vip_avatar_letter(0),
-            dash_store=dash_store,
-        )
-        try:
-            amt_int = int(float(v0.get("cart_value") or 0))
-        except (TypeError, ValueError):
-            amt_int = 0
-        vip_banner = {
-            "amount_line": f"سلة بقيمة {amt_int:,} ريال — {proj0.get('subtitle_ar', '')}",
-            "contact_href": proj0.get("contact_href") or "",
-        }
-    shell = _merchant_reference_shell_context(vip_alert_count=len(vip_raw))
-    ab_today = int(kpis.get("abandoned_today") or 0)
-    rec_today = int(kpis.get("recovered_today") or 0)
-    pct_recovered_vs_abandoned = 0.0
-    if ab_today > 0:
-        pct_recovered_vs_abandoned = round(100.0 * float(rec_today) / float(ab_today), 1)
+def _merchant_dashboard_placeholder_response(request: Request) -> Any:
+    """صفحة مؤقتة — لوحة التاجر قيد إعادة البناء دون استدعاءات بيانات ثقيلة."""
     return templates.TemplateResponse(
         request,
-        "merchant_dashboard_reference.html",
-        {
-            "request": request,
-            **shell,
-            "merchant_active_nav": "home",
-            "merchant_page_title": "الرئيسية",
-            "merchant_html_title": "CartFlow — لوحة التاجر",
-            "merchant_load_tailwind": False,
-            "merchant_load_recovery_form_styles": False,
-            "merchant_tailwind_zid_config": False,
-            "merchant_kpi_abandoned_today": ab_today,
-            "merchant_kpi_recovered_today": rec_today,
-            "merchant_kpi_wa_sent_today": int(kpis.get("whatsapp_sent_today") or 0),
-            "merchant_kpi_revenue_today": float(kpis.get("recovered_revenue_today") or 0.0),
-            "merchant_kpi_recovered_pct_of_abandoned": pct_recovered_vs_abandoned,
-            "merchant_table_rows": table_rows,
-            "merchant_reason_rows_week": reason_rows,
-            "merchant_reason_insight_ar": reason_insight,
-            "merchant_month_summary": month_win,
-            "merchant_vip_rows": vip_rows,
-            "merchant_vip_banner": vip_banner,
-        },
+        "merchant_dashboard_rebuild_placeholder.html",
+        {"request": request},
     )
+
+
+@app.get("/dashboard")
+def dashboard(request: Request):
+    """لوحة التاجر — واجهة مؤقتة أثناء إعادة البناء."""
+    return _merchant_dashboard_placeholder_response(request)
 
 
 @app.get("/dashboard/analytics")
@@ -9624,52 +9541,8 @@ def dashboard_recovery_settings(request: Request):
     )
 
 
-def _merchant_reference_shell_context(
-    *,
-    vip_alert_count: Optional[int] = None,
-) -> dict[str, Any]:
-    """حقول مشتركة للواجهة المرجعية — شريط جانبي وعلوي فقط (قراءة خفيفة)."""
-    from services.merchant_whatsapp_readiness_ui import (  # noqa: PLC0415
-        build_merchant_whatsapp_readiness_card,
-    )
-
-    dash_store = _dashboard_recovery_store_row()
-    now_utc = datetime.now(timezone.utc)
-    try:
-        mstats = dict(_normal_carts_dashboard_stats())
-    except (SQLAlchemyError, OSError, TypeError, ValueError):
-        mstats = {
-            "normal_cart_count": 0,
-            "messages_sent_count": 0,
-            "normal_recovered_count": 0,
-            "stopped_flow_count": 0,
-        }
-    if vip_alert_count is None:
-        try:
-            vip_alert_count = len(_vip_priority_cart_alert_list())
-        except (SQLAlchemyError, OSError, TypeError, ValueError):
-            vip_alert_count = 0
-    try:
-        follow_n = len(merchant_followup_actions_for_dashboard(50))
-    except (SQLAlchemyError, OSError, TypeError, ValueError):
-        follow_n = 0
-    store_name = "متجرك"
-    if dash_store is not None:
-        sn = (getattr(dash_store, "name", None) or "").strip()
-        if sn:
-            store_name = sn[:80]
-    return {
-        "merchant_ar_date_header": merchant_ar_weekday_date_header(now_utc),
-        "merchant_store_display_name": store_name,
-        "whatsapp_readiness_card": build_merchant_whatsapp_readiness_card(dash_store),
-        "merchant_nav_badge_abandoned": int(mstats.get("normal_cart_count") or 0),
-        "merchant_nav_badge_followup": int(follow_n),
-        "merchant_nav_badge_vip": int(vip_alert_count or 0),
-    }
-
-
 def _normal_carts_dashboard_page_response(request: Request, *, audience: str) -> Any:
-    """عرض ‎HTML‎ المشترك — ‎audience=merchant‎ (تجاري) أو ‎ops‎ (فلاتر وتشخيص)."""
+    """عرض ‎HTML‎ المشترك — ‎audience=merchant‎ (صفحة مؤقتة) أو ‎ops‎ (فلاتر وتشخيص)."""
     from urllib.parse import urlencode
 
     from services.cartflow_observability_runtime import runtime_health_snapshot_readonly
@@ -9680,6 +9553,9 @@ def _normal_carts_dashboard_page_response(request: Request, *, audience: str) ->
     aud = (audience or "merchant").strip().lower()
     if aud not in ("merchant", "ops"):
         aud = "merchant"
+    if aud == "merchant":
+        return _merchant_dashboard_placeholder_response(request)
+
     nr_sess = (request.query_params.get("nr_session") or "").strip()
     nr_cid = (request.query_params.get("nr_cart") or "").strip()
     nr_tr = (request.query_params.get("nr_test_run") or "").strip()
@@ -9689,40 +9565,26 @@ def _normal_carts_dashboard_page_response(request: Request, *, audience: str) ->
 
     def _nr_preserved_query(*, lifecycle: Optional[str] = None) -> str:
         d: dict[str, str] = {}
-        if aud == "ops":
-            if nr_sess:
-                d["nr_session"] = nr_sess
-            if nr_cid:
-                d["nr_cart"] = nr_cid
-            if nr_tr:
-                d["nr_test_run"] = nr_tr
+        if nr_sess:
+            d["nr_session"] = nr_sess
+        if nr_cid:
+            d["nr_cart"] = nr_cid
+        if nr_tr:
+            d["nr_test_run"] = nr_tr
         if lifecycle == "archived":
             d["nr_lifecycle"] = "archived"
         elif lifecycle == "all":
             d["nr_lifecycle"] = "all"
-        base = (
-            "/dashboard/normal-carts/operations"
-            if aud == "ops"
-            else "/dashboard/normal-carts"
-        )
+        base = "/dashboard/normal-carts/operations"
         qs = urlencode(d)
         return base + ("?" + qs if qs else "")
 
-    normal_recovery_alerts = (
-        _normal_recovery_merchant_lightweight_alert_list(
-            nr_session=nr_sess or None,
-            nr_cart=nr_cid or None,
-            nr_test_run=nr_tr or None,
-            lifecycle=nr_lc,
-        )
-        if aud == "merchant"
-        else _normal_recovery_cart_alert_list(
-            nr_session=nr_sess or None,
-            nr_cart=nr_cid or None,
-            nr_test_run=nr_tr or None,
-            lifecycle=nr_lc,
-            audience="ops",
-        )
+    normal_recovery_alerts = _normal_recovery_cart_alert_list(
+        nr_session=nr_sess or None,
+        nr_cart=nr_cid or None,
+        nr_test_run=nr_tr or None,
+        lifecycle=nr_lc,
+        audience="ops",
     )
     normal_stats = dict(_normal_carts_dashboard_stats())
     normal_stats["normal_monitoring_card_count"] = len(normal_recovery_alerts)
@@ -9737,38 +9599,16 @@ def _normal_carts_dashboard_page_response(request: Request, *, audience: str) ->
         "nr_lifecycle_mode": nr_lc,
         "normal_carts_url_active": _nr_preserved_query(lifecycle="active"),
         "normal_carts_url_archived": _nr_preserved_query(lifecycle="archived"),
-        "cartflow_runtime_health": (
-            None if aud == "merchant" else runtime_health_snapshot_readonly()
-        ),
+        "cartflow_runtime_health": runtime_health_snapshot_readonly(),
         "onboarding_visibility": onboarding_visibility,
         "whatsapp_readiness_card": whatsapp_readiness_card,
-        "recovery_ops_dashboard": aud == "ops",
+        "recovery_ops_dashboard": True,
         "normal_merchant_dashboard_url": "/dashboard/normal-carts",
         "normal_operations_dashboard_url": "/dashboard/normal-carts/operations",
     }
-    if aud == "merchant":
-        try:
-            vip_ct = len(_vip_priority_cart_alert_list())
-        except (SQLAlchemyError, OSError, TypeError, ValueError):
-            vip_ct = 0
-        tpl_ctx.update(_merchant_reference_shell_context(vip_alert_count=vip_ct))
-        tpl_ctx.update(
-            {
-                "merchant_active_nav": "normal-carts",
-                "merchant_page_title": "السلال المتروكة",
-                "merchant_html_title": "متابعة العملاء — CartFlow",
-                "merchant_load_tailwind": True,
-                "merchant_load_recovery_form_styles": True,
-                "merchant_tailwind_zid_config": False,
-            }
-        )
     return templates.TemplateResponse(
         request,
-        (
-            "merchant_normal_carts_dashboard.html"
-            if aud == "merchant"
-            else "normal_carts_dashboard.html"
-        ),
+        "normal_carts_dashboard.html",
         tpl_ctx,
     )
 
@@ -9808,33 +9648,8 @@ def dashboard_normal_alias(request: Request):
 
 @app.get("/dashboard/vip-cart-settings")
 def dashboard_vip_cart_settings(request: Request):
-    """السلال المميزة (VIP) — عتبة عبر ‎GET/POST /api/recovery-settings‎؛ قائمة أولوية حقيقية فقط."""
-    qcomp = (request.query_params.get("vip_show_completed") or "").strip().lower()
-    vip_show_completed = qcomp in ("1", "true", "yes", "on")
-    vip_priority_alerts = _vip_priority_cart_alert_list()
-    vip_completed_alerts = (
-        _vip_priority_completed_cart_alert_list() if vip_show_completed else []
-    )
-    merchant_followup_actions = merchant_followup_actions_for_dashboard(limit=10)
-    vip_ct = len(vip_priority_alerts)
-    return templates.TemplateResponse(
-        request,
-        "vip_cart_settings.html",
-        {
-            "request": request,
-            **_merchant_reference_shell_context(vip_alert_count=vip_ct),
-            "merchant_active_nav": "vip",
-            "merchant_page_title": "السلال المميزة",
-            "merchant_html_title": "السلال المميزة (VIP) — CartFlow",
-            "merchant_load_tailwind": True,
-            "merchant_load_recovery_form_styles": True,
-            "merchant_tailwind_zid_config": True,
-            "vip_priority_alerts": vip_priority_alerts,
-            "vip_completed_alerts": vip_completed_alerts,
-            "vip_show_completed": vip_show_completed,
-            "merchant_followup_actions": merchant_followup_actions,
-        },
-    )
+    """واجهة ‎VIP‎ للتاجر مُعطّلة مؤقتاً — المنطق والـ‎API‎ يبقيان كما هما."""
+    return _merchant_dashboard_placeholder_response(request)
 
 
 @app.get("/api/merchant-followup-actions")

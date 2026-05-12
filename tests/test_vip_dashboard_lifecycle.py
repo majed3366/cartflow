@@ -10,7 +10,12 @@ from unittest.mock import patch
 from extensions import db
 from fastapi.testclient import TestClient
 
-from main import app, _ensure_store_widget_schema
+from main import (
+    _ensure_store_widget_schema,
+    _vip_priority_cart_alert_list,
+    _vip_priority_completed_cart_alert_list,
+    app,
+)
 from models import AbandonedCart, Store
 
 
@@ -99,13 +104,11 @@ class VipDashboardLifecycleTests(unittest.TestCase):
         db.session.add_all([ac_open, ac_closed, ac_conv])
         db.session.commit()
 
-        r = self.client.get("/dashboard/vip-cart-settings")
-        self.assertEqual(r.status_code, 200, r.text)
-        html = r.text.replace("&#34;", '"')
-        self.assertIn(f'data-cart-row-id="{ac_open.id}"', html)
-        self.assertNotIn(f'data-cart-row-id="{ac_closed.id}"', html)
-        self.assertNotIn(f'data-cart-row-id="{ac_conv.id}"', html)
-        self.assertIn("data-vip-lifecycle-close", html)
+        active = _vip_priority_cart_alert_list()
+        ids = {int(x.get("id") or 0) for x in active}
+        self.assertIn(int(ac_open.id), ids)
+        self.assertNotIn(int(ac_closed.id), ids)
+        self.assertNotIn(int(ac_conv.id), ids)
 
     @patch("main._cleanup_duplicate_vip_abandoned_rows", return_value=0)
     def test_dashboard_shows_terminal_cards_when_toggle_query_on(
@@ -139,12 +142,10 @@ class VipDashboardLifecycleTests(unittest.TestCase):
         db.session.add_all([ac_open, ac_closed])
         db.session.commit()
 
-        r = self.client.get("/dashboard/vip-cart-settings?vip_show_completed=1")
-        self.assertEqual(r.status_code, 200, r.text)
-        html = r.text.replace("&#34;", '"')
-        self.assertIn(f'data-cart-row-id="{ac_open.id}"', html)
-        self.assertIn(f'data-cart-row-id="{ac_closed.id}"', html)
-        self.assertIn("vip-completed-wrap", html)
+        act_ids = {int(x.get("id") or 0) for x in _vip_priority_cart_alert_list()}
+        comp_ids = {int(x.get("id") or 0) for x in _vip_priority_completed_cart_alert_list()}
+        self.assertIn(int(ac_open.id), act_ids)
+        self.assertIn(int(ac_closed.id), comp_ids)
 
 
 if __name__ == "__main__":

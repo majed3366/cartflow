@@ -11,7 +11,12 @@ from unittest.mock import patch
 from extensions import db
 from fastapi.testclient import TestClient
 
-from main import app
+from main import (
+    _normal_recovery_merchant_lightweight_alert_list,
+    _vip_dashboard_cart_link,
+    _vip_priority_cart_alert_list,
+    app,
+)
 from models import AbandonedCart, CartRecoveryLog, Store
 
 VIP_MANUAL_ALERT_TEST_MERCHANT_WHATSAPP = "+966579706669"
@@ -215,16 +220,13 @@ class VipDashboardMerchantAlertTests(unittest.TestCase):
         self.assertIn("[VIP MERCHANT ALERT ATTEMPT]", blob)
         self.assertIn("[VIP MERCHANT ALERT SENT]", blob)
 
-    @patch("main._vip_priority_cart_alert_list", return_value=[])
-    def test_vip_cart_settings_empty_priority_no_demo_section(self, _prio_mock) -> None:
+    def test_vip_cart_settings_placeholder_has_no_demo_vip_section(self) -> None:
         db.create_all()
         r = self.client.get("/dashboard/vip-cart-settings")
         self.assertEqual(r.status_code, 200, r.text)
-        html = r.text
-        empty_msg = "لا توجد سلال مميزة حالياً"
-        self.assertIn(empty_msg, html)
-        self.assertNotIn("demo_vip_cart_zid", html)
-        self.assertNotIn("vip-demo-heading", html)
+        self.assertIn("Merchant Dashboard is being rebuilt", r.text or "")
+        self.assertNotIn("demo_vip_cart_zid", r.text or "")
+        self.assertNotIn("vip-demo-heading", r.text or "")
 
     def test_vip_merchant_ready_reply_bodies_omits_link_when_empty(self) -> None:
         from main import _vip_merchant_ready_reply_bodies
@@ -249,7 +251,7 @@ class VipDashboardMerchantAlertTests(unittest.TestCase):
         ac2.raw_payload = json.dumps({"checkout_url": "https://payload/checkout"}, ensure_ascii=False)
         self.assertEqual(_vip_dashboard_cart_link(ac2), "https://payload/checkout")
 
-    def test_vip_cart_settings_shows_merchant_ready_replies_when_phone(self) -> None:
+    def test_vip_priority_payload_includes_merchant_ready_replies_when_phone(self) -> None:
         db.create_all()
         slug = f"vip_mr_{uuid.uuid4().hex[:12]}"
         store = Store(
@@ -276,17 +278,22 @@ class VipDashboardMerchantAlertTests(unittest.TestCase):
         db.session.add(ac)
         db.session.commit()
 
-        r = self.client.get("/dashboard/vip-cart-settings")
-        self.assertEqual(r.status_code, 200, r.text)
-        html = r.text.replace("&#34;", '"')
-        self.assertIn("ردود جاهزة للتاجر", html)
-        self.assertIn("إرسال عرض جاهز", html)
-        self.assertIn("تذكير لطيف", html)
-        self.assertIn("مساعدة مباشرة", html)
-        self.assertIn("data-vip-merchant-prefill-btn", html)
-        self.assertIn(cart_url_test, html)
+        alerts = _vip_priority_cart_alert_list()
+        by_id = {int(a.get("id") or 0): a for a in alerts}
+        self.assertIn(int(ac.id), by_id)
+        row = by_id[int(ac.id)]
+        self.assertTrue(bool((row.get("customer_wa_phone") or "").strip()))
+        self.assertIn("merchant_reply_offer_ar", row)
+        self.assertIn("merchant_reply_reminder_ar", row)
+        self.assertIn("merchant_reply_direct_ar", row)
+        blob = (
+            str(row.get("merchant_reply_reminder_ar", ""))
+            + str(row.get("merchant_reply_offer_ar", ""))
+            + str(row.get("merchant_reply_direct_ar", ""))
+        )
+        self.assertIn(cart_url_test, blob)
 
-    def test_vip_cart_settings_hides_ready_replies_without_customer_phone(self) -> None:
+    def test_vip_priority_payload_omits_customer_phone_when_missing(self) -> None:
         db.create_all()
         slug = f"vip_nomr_{uuid.uuid4().hex[:12]}"
         store = Store(zid_store_id=slug, vip_cart_threshold=500)
@@ -306,19 +313,11 @@ class VipDashboardMerchantAlertTests(unittest.TestCase):
         db.session.add(ac)
         db.session.commit()
 
-        r = self.client.get("/dashboard/vip-cart-settings")
-        self.assertEqual(r.status_code, 200, r.text)
-        html = r.text
-        needle = f'data-cart-row-id="{int(ac.id)}"'
-        pos = html.find(needle)
-        self.assertGreaterEqual(pos, 0)
-        li_start = html.rfind("<li", 0, pos)
-        li_end = html.find("</li>", pos)
-        self.assertGreaterEqual(li_start, 0)
-        self.assertGreaterEqual(li_end, pos)
-        card_html = html[li_start : li_end + len("</li>")]
-        self.assertNotIn("ردود جاهزة للتاجر", card_html)
-        self.assertNotIn("data-vip-merchant-prefill-btn", card_html)
+        alerts = _vip_priority_cart_alert_list()
+        by_id = {int(a.get("id") or 0): a for a in alerts}
+        self.assertIn(int(ac.id), by_id)
+        row = by_id[int(ac.id)]
+        self.assertFalse(bool((row.get("customer_wa_phone") or "").strip()))
 
     @patch("main._cleanup_duplicate_vip_abandoned_rows", return_value=0)
     def test_vip_priority_merges_same_session_for_display_and_phone(
@@ -357,12 +356,12 @@ class VipDashboardMerchantAlertTests(unittest.TestCase):
         db.session.add_all([ac_old, ac_new])
         db.session.commit()
 
-        r = self.client.get("/dashboard/vip-cart-settings")
-        self.assertEqual(r.status_code, 200, r.text)
-        html = r.text.replace("&#34;", '"')
-        self.assertIn('data-cart-row-id="%d"' % int(ac_new.id), html)
-        self.assertNotIn('data-cart-row-id="%d"' % int(ac_old.id), html)
-        self.assertIn("966501234567", html)
+        alerts = _vip_priority_cart_alert_list()
+        ids = [int(a.get("id") or 0) for a in alerts]
+        self.assertIn(int(ac_new.id), ids)
+        self.assertNotIn(int(ac_old.id), ids)
+        row = next(a for a in alerts if int(a.get("id") or 0) == int(ac_new.id))
+        self.assertIn("966501234567", (row.get("customer_wa_phone") or ""))
 
         db.session.expire_all()
         self.assertIsNotNone(db.session.get(AbandonedCart, ac_old.id))
@@ -406,12 +405,10 @@ class VipDashboardMerchantAlertTests(unittest.TestCase):
         db.session.add(lg)
         db.session.commit()
 
-        r = self.client.get("/dashboard/vip-cart-settings")
-        self.assertEqual(r.status_code, 200, r.text)
-        html = r.text.replace("&#39;", "'")
-        self.assertIn(f'data-cart-row-id="{ac1.id}"', html)
-        self.assertNotIn(f'data-cart-row-id="{ac2.id}"', html)
-        self.assertNotIn("vip-demo-heading", html)
+        alerts = _vip_priority_cart_alert_list()
+        ids = {int(x.get("id") or 0) for x in alerts}
+        self.assertIn(int(ac1.id), ids)
+        self.assertNotIn(int(ac2.id), ids)
 
     @patch("main._cleanup_duplicate_vip_abandoned_rows", return_value=0)
     def test_high_value_cart_exclusive_vip_lane_by_threshold_not_vip_mode(
@@ -434,11 +431,11 @@ class VipDashboardMerchantAlertTests(unittest.TestCase):
         )
         db.session.add(ac)
         db.session.commit()
-        needle = f'data-cart-row-id="{int(ac.id)}"'
-        nr = self.client.get("/dashboard/normal-carts")
-        vip = self.client.get("/dashboard/vip-cart-settings")
-        self.assertNotIn(needle, nr.text.replace("&#34;", '"'))
-        self.assertIn(needle, vip.text.replace("&#34;", '"'))
+        light = _normal_recovery_merchant_lightweight_alert_list(80, lifecycle="active")
+        light_ids = {int(x.get("merchant_case_row_id") or 0) for x in light}
+        vip_ids = {int(x.get("id") or 0) for x in _vip_priority_cart_alert_list()}
+        self.assertIn(int(ac.id), vip_ids)
+        self.assertNotIn(int(ac.id), light_ids)
 
 
 if __name__ == "__main__":

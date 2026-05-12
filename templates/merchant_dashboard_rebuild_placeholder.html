@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CartFlow — Merchant Dashboard</title>
+  <style>
+    :root { --cf-green: #166534; --cf-bg: #f8fafc; --cf-text: #0f172a; --cf-muted: #64748b; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: system-ui, "Segoe UI", Roboto, sans-serif;
+      background: var(--cf-bg);
+      color: var(--cf-text);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+    }
+    .card {
+      max-width: 28rem;
+      width: 100%;
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 2rem 1.75rem;
+      text-align: center;
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+    }
+    .logo {
+      font-weight: 700;
+      font-size: 1.35rem;
+      color: var(--cf-green);
+      letter-spacing: -0.02em;
+      margin-bottom: 0.25rem;
+    }
+    .logo span { color: var(--cf-text); font-weight: 600; }
+    h1 {
+      font-size: 1.125rem;
+      font-weight: 600;
+      margin: 1.25rem 0 0.5rem;
+      line-height: 1.4;
+    }
+    p { margin: 0; color: var(--cf-muted); font-size: 0.9375rem; line-height: 1.5; }
+    .ops {
+      margin-top: 1.5rem;
+      font-size: 0.8125rem;
+    }
+    .ops a { color: var(--cf-green); font-weight: 600; text-decoration: none; }
+    .ops a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body data-cf-merchant-dashboard-placeholder="1">
+  <div class="card">
+    <div class="logo">Cart<span>Flow</span></div>
+    <h1>Merchant Dashboard is being rebuilt</h1>
+    <p>We are preparing a new experience. Core recovery and messaging continue to run in the background.</p>
+    <p class="ops"><a href="/dashboard/normal-carts/operations">Operations console</a> (staff)</p>
+  </div>
+</body>
+</html>
