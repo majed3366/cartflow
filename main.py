@@ -8888,6 +8888,97 @@ def _merchant_vip_row_safe_projection(
     }
 
 
+def _merchant_cart_recovery_send_count(
+    store_slug: str, ac: Optional[AbandonedCart]
+) -> int:
+    """عدد سجلات إرسال واتساب (مرسل فعلي/تجريبي) لنفس السلة أو الجلسة — للعرض فقط."""
+    if ac is None:
+        return 0
+    slug = (store_slug or "").strip()
+    if not slug:
+        return 0
+    zid = (getattr(ac, "zid_cart_id", None) or "").strip()[:255]
+    rs = (getattr(ac, "recovery_session_id", None) or "").strip()[:512]
+    parts: list[Any] = []
+    if zid:
+        parts.append(CartRecoveryLog.cart_id == zid)
+    if rs:
+        parts.append(CartRecoveryLog.session_id == rs)
+    if not parts:
+        return 0
+    try:
+        n = (
+            db.session.query(func.count(CartRecoveryLog.id))
+            .filter(
+                CartRecoveryLog.store_slug == slug,
+                CartRecoveryLog.status.in_(tuple(_NORMAL_RECOVERY_SENT_LOG_STATUSES)),
+                or_(*parts),
+            )
+            .scalar()
+        )
+        return int(n or 0)
+    except (SQLAlchemyError, OSError, TypeError, ValueError):
+        db.session.rollback()
+        return 0
+
+
+def _merchant_recovery_message_history_rows(
+    dash_store: Optional[Any], *, limit: int = 35
+) -> list[dict[str, Any]]:
+    """آخر محاولات إرسال مسجّلة للمتجر الحالي — نص مختصر للتاجر فقط."""
+    out: list[dict[str, Any]] = []
+    if dash_store is None:
+        return out
+    slug = (getattr(dash_store, "zid_store_id", None) or "").strip()[:255]
+    if not slug:
+        return out
+    lim = max(1, min(int(limit), 80))
+    now_utc = datetime.now(timezone.utc)
+    try:
+        rows = (
+            db.session.query(CartRecoveryLog)
+            .filter(
+                CartRecoveryLog.store_slug == slug,
+                CartRecoveryLog.status.in_(tuple(_NORMAL_RECOVERY_SENT_LOG_STATUSES)),
+            )
+            .order_by(
+                CartRecoveryLog.sent_at.desc().nullslast(),
+                CartRecoveryLog.created_at.desc(),
+            )
+            .limit(lim)
+            .all()
+        )
+    except (SQLAlchemyError, OSError, TypeError, ValueError):
+        db.session.rollback()
+        return out
+    for lg in rows:
+        st = (getattr(lg, "status", None) or "").strip().lower()
+        if st == "sent_real":
+            st_ar = "تم الإرسال"
+            st_cls = "s-sent"
+        else:
+            st_ar = "تم الإرسال (وضع تجريبي)"
+            st_cls = "s-sent"
+        ts = getattr(lg, "sent_at", None) or getattr(lg, "created_at", None)
+        rel = merchant_relative_time_arabic(ts, now_utc=now_utc)
+        msg = (getattr(lg, "message", None) or "").strip()
+        if len(msg) > 200:
+            msg = msg[:200] + "…"
+        step = getattr(lg, "step", None)
+        step_ar = f"المحاولة {int(step)}" if step is not None else "—"
+        out.append(
+            {
+                "title_ar": "رسالة استرداد",
+                "preview_ar": msg or "—",
+                "time_ar": rel,
+                "status_ar": st_ar,
+                "status_row_class": st_cls,
+                "step_ar": step_ar,
+            }
+        )
+    return out
+
+
 def _normal_recovery_abandoned_scope_filter(
     dash_store: Optional[Any],
 ) -> Optional[Any]:
@@ -9054,6 +9145,17 @@ def _merchant_normal_recovery_light_payload(
         has_phone=has_phone,
         is_dormant_case=in_history_slice,
     )
+    cnorm = (coarse or "").strip().lower()
+    if cnorm == "converted":
+        cart_bucket = "recovered"
+    elif cnorm == "sent":
+        cart_bucket = "sent"
+    elif cnorm == "blocked":
+        cart_bucket = "attention"
+    elif not has_phone:
+        cart_bucket = "nophone"
+    else:
+        cart_bucket = "other"
     out: dict[str, Any] = {
         "merchant_recovery_kind": "normal_case",
         "merchant_case_row_id": int(getattr(ac0, "id", 0) or 0),
@@ -9073,6 +9175,9 @@ def _merchant_normal_recovery_light_payload(
         "merchant_status_row_class": st_row_cls,
         "merchant_status_label_ar": st_lbl,
         "merchant_next_action_urgent": bool(next_urgent and not in_history_slice),
+        "merchant_coarse_status": cnorm,
+        "merchant_has_customer_phone": bool(has_phone),
+        "merchant_cart_bucket": cart_bucket,
     }
     if trust:
         out["merchant_identity_trust_ar"] = trust
@@ -9528,6 +9633,16 @@ def _merchant_dashboard_fmt_int(n: Any) -> str:
         return "0"
 
 
+def _merchant_phone_display_masked(raw: Optional[str]) -> str:
+    s = (raw or "").strip()
+    if not s:
+        return "غير مضبوط في بطاقة المتجر"
+    digits = "".join(c for c in s if c.isdigit())
+    if len(digits) < 4:
+        return "•••"
+    return "••••" + digits[-4:]
+
+
 @app.get("/dashboard")
 def dashboard(request: Request):
     """لوحة التاجر — تصميم v1 خفيف وبيانات حقيقية آمنة."""
@@ -9559,12 +9674,28 @@ def dashboard(request: Request):
     reason_rows, reason_insight = merchant_reason_panel_rows_from_counts(
         reason_counts_w
     )
+    reason_counts_m = _merchant_reason_counts_store_window(dash_store, days=30)
+    reason_rows_month, reason_insight_month = merchant_reason_panel_rows_from_counts(
+        reason_counts_m
+    )
     try:
-        table_rows = _normal_recovery_merchant_lightweight_alert_list(
-            8, lifecycle="active"
+        merchant_carts_page_rows = _normal_recovery_merchant_lightweight_alert_list(
+            48, lifecycle="active"
         )
     except (SQLAlchemyError, OSError, TypeError, ValueError):
-        table_rows = []
+        merchant_carts_page_rows = []
+    table_rows = list(merchant_carts_page_rows[:8])
+    cart_filter_counts: dict[str, int] = {
+        "all": len(merchant_carts_page_rows),
+        "recovered": 0,
+        "sent": 0,
+        "attention": 0,
+        "nophone": 0,
+    }
+    for _cr in merchant_carts_page_rows:
+        bk = str(_cr.get("merchant_cart_bucket") or "other").strip().lower()
+        if bk in ("recovered", "sent", "attention", "nophone"):
+            cart_filter_counts[bk] = int(cart_filter_counts.get(bk, 0)) + 1
     try:
         vip_raw = _vip_priority_cart_alert_list()
     except (SQLAlchemyError, OSError, TypeError, ValueError):
@@ -9573,6 +9704,16 @@ def dashboard(request: Request):
     for i, vc in enumerate(vip_raw[:3]):
         if isinstance(vc, dict):
             vip_rows.append(
+                _merchant_vip_row_safe_projection(
+                    vc,
+                    avatar_letter=merchant_vip_avatar_letter(i),
+                    dash_store=dash_store,
+                )
+            )
+    vip_page_rows: list[dict[str, Any]] = []
+    for i, vc in enumerate(vip_raw[:20]):
+        if isinstance(vc, dict):
+            vip_page_rows.append(
                 _merchant_vip_row_safe_projection(
                     vc,
                     avatar_letter=merchant_vip_avatar_letter(i),
@@ -9610,11 +9751,112 @@ def dashboard(request: Request):
             "stopped_flow_count": 0,
         }
     try:
-        follow_n = len(merchant_followup_actions_for_dashboard(50))
+        followup_rows = merchant_followup_actions_for_dashboard(50)
+        follow_n = len(followup_rows)
     except (SQLAlchemyError, OSError, TypeError, ValueError):
+        followup_rows = []
         follow_n = 0
     vip_ct = len(vip_raw) if vip_raw else 0
     wa_card = build_merchant_whatsapp_readiness_card(dash_store)
+    try:
+        message_history_rows = _merchant_recovery_message_history_rows(
+            dash_store, limit=40
+        )
+    except (SQLAlchemyError, OSError, TypeError, ValueError):
+        message_history_rows = []
+    last_send_ar = "—"
+    if message_history_rows:
+        last_send_ar = str(message_history_rows[0].get("time_ar") or "—")
+    from services.store_reason_templates import parse_reason_templates_column  # noqa: PLC0415
+
+    rt_map = (
+        parse_reason_templates_column(getattr(dash_store, "reason_templates_json", None))
+        if dash_store is not None
+        else {}
+    )
+    _wlbl = {
+        "price": "💰 السعر مرتفع",
+        "shipping": "🚚 تكلفة الشحن",
+        "thinking": "🤔 وقت للتفكير",
+        "warranty": "🔒 الثقة بالمتجر",
+        "quality": "⭐ الجودة",
+        "delivery": "🚚 التوصيل",
+        "other": "💭 أخرى",
+    }
+    merchant_widget_reason_rows: list[dict[str, Any]] = []
+    for tag in ("price", "shipping", "thinking", "warranty", "other"):
+        ent = rt_map.get(tag, {}) if isinstance(rt_map, dict) else {}
+        enabled = bool(ent.get("enabled", True)) if isinstance(ent, dict) else True
+        merchant_widget_reason_rows.append(
+            {"tag": tag, "label_ar": _wlbl.get(tag, tag), "enabled": enabled}
+        )
+    wiz_title = (
+        (getattr(dash_store, "widget_name", None) or "").strip()
+        if dash_store is not None
+        else ""
+    ) or "مساعد المتجر"
+    ex_mode = (
+        (getattr(dash_store, "exit_intent_template_mode", None) or "preset")
+        .strip()
+        .lower()
+        if dash_store is not None
+        else "preset"
+    )
+    ex_custom = (
+        (getattr(dash_store, "exit_intent_custom_text", None) or "").strip()
+        if dash_store is not None
+        else ""
+    )
+    if ex_mode == "custom" and ex_custom:
+        merchant_widget_question_ar = ex_custom[:500]
+    else:
+        merchant_widget_question_ar = "ما الذي منعك من إكمال الطلب؟"
+    widget_installed = bool(
+        getattr(dash_store, "cartflow_widget_enabled", True)
+    ) if dash_store is not None else False
+    zid_disp = (
+        (getattr(dash_store, "zid_store_id", None) or "").strip()[:64]
+        if dash_store is not None
+        else ""
+    )
+    platform_ar = f"معرّف المتجر: {zid_disp}" if zid_disp else "غير مربوط بعد"
+    wa_num_raw = (
+        (getattr(dash_store, "store_whatsapp_number", None) or "").strip()
+        if dash_store is not None
+        else ""
+    )
+    wa_num_display = _merchant_phone_display_masked(wa_num_raw)
+    rd_u = (
+        (getattr(dash_store, "recovery_delay_unit", None) or "minutes")
+        .strip()
+        .lower()
+        if dash_store is not None
+        else "minutes"
+    )
+    rdelay = int(getattr(dash_store, "recovery_delay", None) or 2) if dash_store else 2
+    if rd_u in ("minute", "minutes", "min"):
+        first_delay_ar = f"{rdelay} دقيقة"
+    elif rd_u in ("hour", "hours", "hr", "h"):
+        first_delay_ar = f"{rdelay} ساعة"
+    else:
+        first_delay_ar = f"{rdelay} ({rd_u})"
+    sec_m = getattr(dash_store, "second_attempt_delay_minutes", None) if dash_store else None
+    if sec_m is not None:
+        try:
+            second_delay_ar = f"بعد {int(sec_m)} دقيقة من أول رسالة"
+        except (TypeError, ValueError):
+            second_delay_ar = "يُطبّق وفق الجدولة في النظام"
+    else:
+        second_delay_ar = "يُطبّق وفق الجدولة في النظام"
+    max_msgs = int(getattr(dash_store, "recovery_attempts", None) or 1) if dash_store else 1
+    vip_th = merchant_vip_threshold_int(dash_store)
+    vip_threshold_ar = f"{int(vip_th):,} ريال" if vip_th is not None else "غير مفعّل"
+    if (reason_insight_month or "").strip():
+        merchant_reason_recommendations_ar = [str(reason_insight_month).strip()]
+    else:
+        merchant_reason_recommendations_ar = [
+            "لا توجد بيانات كافية بعد لعرض توصيات مخصّصة لهذا الشهر."
+        ]
     ab_today = int(kpis.get("abandoned_today") or 0)
     rec_today = int(kpis.get("recovered_today") or 0)
     pct_recovered_vs_abandoned = 0.0
@@ -9652,9 +9894,27 @@ def dashboard(request: Request):
             "merchant_kpi_wa_sub_ar": "سجلات إرسال اليوم",
             "merchant_reason_rows_week": reason_rows,
             "merchant_reason_insight_ar": reason_insight,
+            "merchant_reason_rows_month": reason_rows_month,
+            "merchant_reason_recommendations_ar": merchant_reason_recommendations_ar,
             "merchant_table_rows": table_rows,
+            "merchant_carts_page_rows": merchant_carts_page_rows,
+            "merchant_cart_filter_counts": cart_filter_counts,
+            "merchant_followup_rows": followup_rows,
             "merchant_vip_rows": vip_rows,
+            "merchant_vip_page_rows": vip_page_rows,
             "merchant_vip_banner": vip_banner,
+            "merchant_message_history_rows": message_history_rows,
+            "merchant_wa_last_send_ar": last_send_ar,
+            "merchant_wa_number_display": wa_num_display,
+            "merchant_wa_first_delay_ar": first_delay_ar,
+            "merchant_wa_second_delay_ar": second_delay_ar,
+            "merchant_wa_max_messages_ar": f"{max_msgs} رسائل كحد أقصى",
+            "merchant_wa_vip_threshold_ar": vip_threshold_ar,
+            "merchant_widget_title_ar": wiz_title,
+            "merchant_widget_question_ar": merchant_widget_question_ar,
+            "merchant_widget_reason_rows": merchant_widget_reason_rows,
+            "merchant_widget_installed": widget_installed,
+            "merchant_platform_ar": platform_ar,
             "merchant_month_abandoned_fmt": _merchant_dashboard_fmt_int(
                 month_win.get("abandoned_total")
             ),
@@ -9931,7 +10191,9 @@ def _merchant_followup_dashboard_scope_filter(q):  # type: ignore
     )
 
 
-def _merchant_followup_row_to_payload(row: MerchantFollowupAction) -> dict[str, Any]:
+def _merchant_followup_row_to_payload(
+    row: MerchantFollowupAction, *, store_slug: Optional[str] = None
+) -> dict[str, Any]:
     ac: Optional[AbandonedCart] = None
     aid = getattr(row, "abandoned_cart_id", None)
     if aid is not None:
@@ -9949,6 +10211,25 @@ def _merchant_followup_row_to_payload(row: MerchantFollowupAction) -> dict[str, 
         except (TypeError, ValueError):
             cv = None
     wa_digits = _normalize_customer_phone_for_wa_me(row.customer_phone)
+    slug = (store_slug or "").strip()
+    send_n = _merchant_cart_recovery_send_count(slug, ac) if slug else 0
+    if send_n <= 0:
+        attempts_ar = "لا توجد رسائل استرداد مسجّلة لهذه السلة بعد"
+    else:
+        attempts_ar = f"{send_n} رسالة استرداد مُسجّلة"
+    pre_body = _merchant_followup_prefill_whatsapp_body(cart_link=cart_link)
+    contact_wa_href = ""
+    if wa_digits:
+        pb = pre_body.strip()
+        if pb:
+            contact_wa_href = f"https://wa.me/{wa_digits}?text={quote(pb, safe='')}"
+        else:
+            contact_wa_href = f"https://wa.me/{wa_digits}"
+    inbound = (row.inbound_message or "").strip()
+    if inbound:
+        last_msg_ar = inbound[:240] + ("…" if len(inbound) > 240 else "")
+    else:
+        last_msg_ar = "لا يوجد رد نصي بعد — يُنصح بالتواصل عبر واتساب"
     return {
         "id": row.id,
         "customer_phone": (row.customer_phone or "").strip(),
@@ -9957,15 +10238,16 @@ def _merchant_followup_row_to_payload(row: MerchantFollowupAction) -> dict[str, 
         "status_ar": "جاهز للتواصل",
         "reason": row.reason,
         "reason_ar": _merchant_followup_reason_ar(getattr(row, "reason", None)),
-        "inbound_message": (row.inbound_message or "").strip(),
+        "inbound_message": inbound,
         "replied_at": _format_reason_ts(row.created_at),
         "cart_value": cv,
         "reason_tag_raw": reason_tag_raw,
         "reason_tag_ar": _merchant_followup_reason_tag_label_ar(reason_tag_raw),
         "cart_link": cart_link.strip(),
-        "contact_prefill_body": _merchant_followup_prefill_whatsapp_body(
-            cart_link=cart_link
-        ),
+        "contact_prefill_body": pre_body,
+        "attempts_ar": attempts_ar,
+        "last_message_line_ar": last_msg_ar,
+        "contact_wa_href": contact_wa_href,
     }
 
 
@@ -9984,7 +10266,13 @@ def merchant_followup_actions_for_dashboard(limit: int = 10) -> list[dict[str, A
             .limit(max(1, min(int(limit), 50)))
             .all()
         )
-        out = [_merchant_followup_row_to_payload(r) for r in rows]
+        slug = ""
+        try:
+            ds = _dashboard_recovery_store_row()
+            slug = (getattr(ds, "zid_store_id", None) or "").strip()
+        except (SQLAlchemyError, OSError, TypeError, ValueError):
+            slug = ""
+        out = [_merchant_followup_row_to_payload(r, store_slug=slug or None) for r in rows]
     except (SQLAlchemyError, OSError, TypeError, ValueError) as e:
         db.session.rollback()
         log.warning("merchant followup dashboard list failed: %s", e)

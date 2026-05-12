@@ -47,6 +47,33 @@ class MerchantStandaloneAppDashboardTests(unittest.TestCase):
         self.assertNotIn("data-cf-merchant-dashboard-v1", t)
         self.assertNotIn("data-cf-merchant-dashboard-placeholder", t)
         self.assertNotIn("merchant dashboard is being rebuilt", t.lower())
+        self.assertNotIn("placeholder", t)
+        self.assertNotIn("عرض توضيحي", t)
+        self.assertNotIn("ارجع للرئيسية", t)
+        self.assertNotIn("recovery_ops_dashboard", t)
+        self.assertNotIn("cartflow_runtime_health", t)
+
+    def test_dashboard_contains_all_section_page_ids(self) -> None:
+        r = self.client.get("/dashboard")
+        self.assertEqual(r.status_code, 200)
+        html = r.text or ""
+        for pid in (
+            'id="page-home"',
+            'id="page-carts"',
+            'id="page-followup"',
+            'id="page-vip"',
+            'id="page-messages"',
+            'id="page-reasons"',
+            'id="page-widget"',
+            'id="page-whatsapp"',
+            'id="page-settings"',
+        ):
+            self.assertIn(pid, html, msg=f"missing: {pid}")
+
+    def test_dashboard_merchant_html_has_no_ops_session_field(self) -> None:
+        r = self.client.get("/dashboard")
+        self.assertEqual(r.status_code, 200)
+        self.assertNotIn('name="nr_session"', r.text or "")
 
     def test_normal_carts_redirects_to_dashboard_carts_hash(self) -> None:
         r = self.client.get("/dashboard/normal-carts", follow_redirects=False)

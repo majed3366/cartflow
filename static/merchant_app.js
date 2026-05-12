@@ -27,6 +27,34 @@
     "#settings": "settings",
   };
 
+  function applyCartFilterMode(mode) {
+    var tbody = document.querySelector("#page-carts tbody");
+    if (!tbody) return;
+    tbody.querySelectorAll("tr[data-ma-filter]").forEach(function (tr) {
+      var b = tr.getAttribute("data-ma-filter") || "other";
+      var show = mode === "all" || b === mode;
+      tr.style.display = show ? "" : "none";
+    });
+  }
+
+  function initCartFiltersOnce() {
+    var bar = document.querySelector("#page-carts .filter-bar");
+    if (!bar || bar.getAttribute("data-ma-bound") === "1") return;
+    bar.setAttribute("data-ma-bound", "1");
+    bar.querySelectorAll(".filter-btn").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var mode = btn.getAttribute("data-filter") || "all";
+        bar.querySelectorAll(".filter-btn").forEach(function (b) {
+          b.classList.remove("active");
+        });
+        btn.classList.add("active");
+        applyCartFilterMode(mode);
+      });
+    });
+    var active = bar.querySelector(".filter-btn.active");
+    applyCartFilterMode(active ? active.getAttribute("data-filter") || "all" : "all");
+  }
+
   function activatePage(page) {
     var titles = TITLES;
     document.querySelectorAll(".page").forEach(function (p) {
@@ -43,6 +71,12 @@
     var cb = document.getElementById("ma-sidebar-toggle");
     if (cb) cb.checked = false;
     window.scrollTo(0, 0);
+    initCartFiltersOnce();
+    if (page === "carts") {
+      var bar = document.querySelector("#page-carts .filter-bar");
+      var active = bar && bar.querySelector(".filter-btn.active");
+      applyCartFilterMode(active ? active.getAttribute("data-filter") || "all" : "all");
+    }
   }
 
   function syncFromHash() {
@@ -65,16 +99,6 @@
 
   document.addEventListener("DOMContentLoaded", function () {
     syncFromHash();
-    document.querySelectorAll(".filter-btn").forEach(function (btn) {
-      btn.addEventListener("click", function () {
-        var bar = this.closest(".filter-bar");
-        if (!bar) return;
-        bar.querySelectorAll(".filter-btn").forEach(function (b) {
-          b.classList.remove("active");
-        });
-        this.classList.add("active");
-      });
-    });
   });
 
   window.addEventListener("hashchange", syncFromHash);
