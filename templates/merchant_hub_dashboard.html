@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CartFlow — لوحة التاجر</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    body { font-family: "IBM Plex Sans Arabic", system-ui, sans-serif; }
+    .mhub-card { border-radius: 1rem; border: 1px solid rgb(226 232 240); background: #fff; box-shadow: 0 1px 2px rgb(15 23 42 / 0.04); }
+    .mhub-kpi { font-variant-numeric: tabular-nums; }
+  </style>
+</head>
+<body class="min-h-screen bg-slate-50 text-slate-800 antialiased">
+  <div class="flex min-h-screen flex-col md:flex-row">
+    {% include "partials/dashboard_sidebar.html" %}
+    <div class="min-w-0 flex-1 px-3 pb-24 pt-14 md:px-8 md:pb-16 md:pt-8">
+      <div class="mx-auto max-w-5xl">
+        <header class="mb-10">
+          <p class="m-0 text-[11px] font-semibold uppercase tracking-wide text-teal-800/90">CartFlow</p>
+          <h1 class="mt-1 text-2xl font-bold tracking-tight text-slate-900 md:text-3xl">لوحة التاجر</h1>
+          <p class="mt-2 max-w-2xl text-sm leading-relaxed text-slate-600">مؤشرات الأداء والوصول السريع لأهم أقسام متجرك — بدون تفاصيل تقنية للاسترجاع.</p>
+          <p class="mt-3 text-[11px]"><a href="/dashboard/analytics" class="font-semibold text-violet-700 underline decoration-violet-300/80 underline-offset-2 hover:text-violet-900">عرض التحليلات والرسوم التفصيلية</a></p>
+        </header>
+
+        {% include "partials/whatsapp_readiness_card.html" %}
+
+        <section class="mb-10 grid grid-cols-2 gap-3 md:grid-cols-4" aria-label="مؤشرات الأداء">
+          <div class="mhub-card p-4">
+            <p class="text-[11px] font-semibold text-slate-500">إجمالي السلال</p>
+            <p class="mhub-kpi mt-1 text-2xl font-bold text-slate-900">{{ total_carts }}</p>
+          </div>
+          <div class="mhub-card p-4">
+            <p class="text-[11px] font-semibold text-slate-500">الإيراد المسترجع</p>
+            <p class="mhub-kpi mt-1 text-2xl font-bold text-emerald-800">{{ "%.0f"|format(total_revenue) }}</p>
+            <p class="mt-0.5 text-[9px] text-slate-400">ريال</p>
+          </div>
+          <div class="mhub-card p-4">
+            <p class="text-[11px] font-semibold text-slate-500">سلال مكتملة</p>
+            <p class="mhub-kpi mt-1 text-2xl font-bold text-slate-900">{{ recovered_carts }}</p>
+          </div>
+          <div class="mhub-card p-4">
+            <p class="text-[11px] font-semibold text-slate-500">نسبة التحويل</p>
+            <p class="mhub-kpi mt-1 text-2xl font-bold text-teal-800">{{ conversion_pct }}٪</p>
+          </div>
+        </section>
+
+        {% set mns = merchant_normal_stats | default({}) %}
+        <section class="mb-10 grid grid-cols-2 gap-3 md:grid-cols-4" aria-label="الاسترجاع العادي">
+          <div class="mhub-card border-teal-100/90 bg-teal-50/30 p-4">
+            <p class="text-[11px] font-semibold text-teal-900/90">متابعة سلال</p>
+            <p class="mhub-kpi mt-1 text-xl font-bold text-teal-950">{{ mns.get("normal_monitoring_card_count", mns.get("normal_cart_count", 0)) }}</p>
+            <p class="mt-1 text-[9px] text-teal-800/80">من صفحة متابعة العملاء</p>
+          </div>
+          <div class="mhub-card p-4">
+            <p class="text-[11px] font-semibold text-slate-500">رسائل ترحيب مرسلة</p>
+            <p class="mhub-kpi mt-1 text-xl font-bold text-slate-900">{{ mns.get("messages_sent_count", 0) }}</p>
+          </div>
+          <div class="mhub-card p-4">
+            <p class="text-[11px] font-semibold text-slate-500">سلال عادية مكتملة</p>
+            <p class="mhub-kpi mt-1 text-xl font-bold text-emerald-900">{{ mns.get("normal_recovered_count", 0) }}</p>
+          </div>
+          <div class="mhub-card p-4">
+            <p class="text-[11px] font-semibold text-slate-500">تدفقات متوقفة</p>
+            <p class="mhub-kpi mt-1 text-xl font-bold text-slate-700">{{ mns.get("stopped_flow_count", 0) }}</p>
+          </div>
+        </section>
+
+        <section class="mb-10 mhub-card p-5 md:p-6" aria-labelledby="mhub-reasons">
+          <h2 id="mhub-reasons" class="mb-4 text-base font-bold text-slate-900">أسباب التردد</h2>
+          <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {% for r in reason_bar | default([]) %}
+            <div class="rounded-xl border border-slate-100 bg-slate-50/80 px-3 py-2 text-center">
+              <p class="m-0 text-[10px] font-semibold text-slate-500">{{ r.label }}</p>
+              <p class="mhub-kpi mt-1 text-lg font-bold text-slate-900">{{ r.count }}</p>
+            </div>
+            {% endfor %}
+          </div>
+        </section>
+
+        <section class="mb-10 mhub-card p-5 md:p-6" aria-labelledby="mhub-activity">
+          <h2 id="mhub-activity" class="mb-3 text-base font-bold text-slate-900">آخر اهتمامات العملاء</h2>
+          <ul class="m-0 list-none space-y-2 p-0">
+            {% for row in merchant_live_feed | default([]) %}
+            <li class="flex flex-wrap items-baseline justify-between gap-2 rounded-lg border border-slate-100 bg-white px-3 py-2 text-right text-sm text-slate-800">
+              <span class="font-semibold text-slate-900">{{ row.reason_ar | e }}</span>
+              <span class="text-xs text-slate-600">{{ row.product | e }}</span>
+              <span class="w-full text-[10px] text-slate-400 md:w-auto md:text-end">{{ row.time_str | e }}</span>
+            </li>
+            {% else %}
+            <li class="text-sm text-slate-500">لا يوجد نشاط حديث لعرضه.</li>
+            {% endfor %}
+          </ul>
+        </section>
+
+        {% set tr = merchant_recovery_trend | default([]) %}
+        {% if tr | length > 0 %}
+        <section class="mb-10 mhub-card p-5" aria-label="اتجاه الاسترجاع">
+          <h2 class="mb-2 text-base font-bold text-slate-900">اتجاه الإيراد المسترجع (7 أيام)</h2>
+          <ul class="m-0 flex flex-wrap gap-2 p-0 text-[11px] text-slate-600">
+            {% for p in tr %}
+            <li class="rounded-lg border border-slate-100 bg-slate-50 px-2 py-1">{{ p.date }}: <span class="font-semibold text-slate-900">{{ p.value }}</span> ر.س</li>
+            {% endfor %}
+          </ul>
+        </section>
+        {% endif %}
+
+        <section class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3" aria-label="اختصارات">
+          <a href="/dashboard/normal-carts" class="mhub-card block p-4 no-underline transition hover:border-teal-300 hover:shadow-md">
+            <p class="m-0 text-sm font-bold text-slate-900">متابعة العملاء</p>
+            <p class="mt-1 text-xs leading-relaxed text-slate-600">سلال تحتاج متابعة ورسائل الاسترجاع</p>
+          </a>
+          <a href="/dashboard/vip-cart-settings" class="mhub-card block p-4 no-underline transition hover:border-violet-300 hover:shadow-md">
+            <p class="m-0 text-sm font-bold text-slate-900">السلال المميزة</p>
+            <p class="mt-1 text-xs leading-relaxed text-slate-600">VIP والمتابعة اليدوية</p>
+          </a>
+          <a href="/dashboard/exit-intent-settings" class="mhub-card block p-4 no-underline transition hover:border-slate-400 hover:shadow-md">
+            <p class="m-0 text-sm font-bold text-slate-900">رسالة قبل الخروج</p>
+            <p class="mt-1 text-xs leading-relaxed text-slate-600">تقليل فقدان الزوار</p>
+          </a>
+          <a href="/dashboard/general-settings" class="mhub-card block p-4 no-underline transition hover:border-slate-400 hover:shadow-md">
+            <p class="m-0 text-sm font-bold text-slate-900">إعدادات عامة</p>
+            <p class="mt-1 text-xs leading-relaxed text-slate-600">الودجيت والواتساب والمظهر</p>
+          </a>
+          <a href="/dashboard/normal-carts/operations" class="mhub-card block border-dashed p-4 no-underline transition hover:border-slate-500 hover:shadow-md">
+            <p class="m-0 text-sm font-bold text-slate-800">لوحة العمليات</p>
+            <p class="mt-1 text-xs leading-relaxed text-slate-500">للفريق الداخلي — تشخيص وتتبع</p>
+          </a>
+        </section>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

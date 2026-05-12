@@ -71,6 +71,14 @@
       <span class="min-w-0 leading-snug">الرئيسية</span>
     </a>
     <a
+      href="/dashboard/analytics"
+      data-dash-nav="dashboard-analytics"
+      class="group flex items-center gap-2 rounded-lg px-3 py-2.5 text-slate-600 transition-colors hover:bg-zid-50 hover:shadow-sm"
+    >
+      <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-[15px] shadow-inner transition-colors group-hover:bg-white group-hover:text-zid-700" aria-hidden="true">📊</span>
+      <span class="min-w-0 leading-snug text-[13px]">تحليلات مفصّلة</span>
+    </a>
+    <a
       href="/dashboard/normal-carts"
       data-dash-nav="normal-carts"
       class="group flex items-center gap-2 rounded-lg px-3 py-2.5 text-slate-600 transition-colors hover:bg-zid-50 hover:shadow-sm"
@@ -182,6 +190,7 @@
     function applyDashboardNavActive() {
       var path = window.location.pathname || "";
       var dashEl = document.querySelector('[data-dash-nav="dashboard"]');
+      var dashAnalyticsEl = document.querySelector('[data-dash-nav="dashboard-analytics"]');
       var normEl = document.querySelector('[data-dash-nav="normal-carts"]');
       var normOpsEl = document.querySelector('[data-dash-nav="normal-carts-ops"]');
       var vipEl = document.querySelector('[data-dash-nav="vip-cart"]');
@@ -193,6 +202,7 @@
         "group flex items-center gap-2 rounded-lg border border-zid-300/70 border-l-4 border-l-zid-600 bg-zid-100 px-3 py-2.5 font-semibold text-zid-950 shadow-sm ring-1 ring-zid-400/30 transition-colors";
 
       var isDash = /^\/dashboard\/?$/.test(path);
+      var isDashAnalytics = path.indexOf("/dashboard/analytics") === 0;
       var isNormalCarts =
         path.indexOf("/dashboard/normal-carts") === 0 ||
         path.indexOf("/dashboard/normal-recovery") === 0;
@@ -202,6 +212,7 @@
       var isGeneral = path.indexOf("/dashboard/general-settings") === 0;
 
       if (dashEl) dashEl.className = isDash ? mainOn : mainIdle;
+      if (dashAnalyticsEl) dashAnalyticsEl.className = isDashAnalytics ? mainOn : mainIdle;
       if (normEl) normEl.className = isNormalCarts && !isNormalCartsOps ? mainOn : mainIdle;
       if (normOpsEl) normOpsEl.className = isNormalCartsOps ? mainOn : mainIdle;
       if (vipEl) vipEl.className = isVipCart ? mainOn : mainIdle;

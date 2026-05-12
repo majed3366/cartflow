@@ -15,6 +15,7 @@ from main import (
     app,
     _dashboard_recovery_store_row,
     _normal_recovery_cart_alert_list,
+    _normal_recovery_merchant_lightweight_alert_list,
     _normal_recovery_phase_steps_payload,
     _NORMAL_RECOVERY_SENT_LOG_STATUSES,
     _vip_dashboard_cart_alert_dict_from_group,
@@ -572,7 +573,7 @@ class NormalRecoveryDashboardStatusTests(unittest.TestCase):
         db.session.commit()
         dash = _dashboard_recovery_store_row()
         self.assertEqual((dash.zid_store_id or "").strip(), slug_new)
-        alerts = _normal_recovery_cart_alert_list(nr_session=sid)
+        alerts = _normal_recovery_cart_alert_list(nr_session=sid, audience="ops")
         self.assertEqual(len(alerts), 1)
         d = alerts[0].get("normal_recovery_diagnostics") or {}
         self.assertEqual(d.get("session_id"), sid)
@@ -1061,11 +1062,11 @@ class NormalRecoveryDashboardStatusTests(unittest.TestCase):
         )
         db.session.commit()
         active = _normal_recovery_cart_alert_list(
-            nr_session=sid, lifecycle="active", limit_groups=20
+            nr_session=sid, lifecycle="active", limit_groups=20, audience="ops"
         )
         self.assertEqual(len(active), 0)
         archived = _normal_recovery_cart_alert_list(
-            nr_session=sid, lifecycle="archived", limit_groups=20
+            nr_session=sid, lifecycle="archived", limit_groups=20, audience="ops"
         )
         self.assertEqual(len(archived), 1)
         self.assertEqual(
@@ -1088,7 +1089,7 @@ class NormalRecoveryDashboardStatusTests(unittest.TestCase):
         db.session.add(ac)
         db.session.commit()
         active = _normal_recovery_cart_alert_list(
-            nr_session=sid, lifecycle="active", limit_groups=20
+            nr_session=sid, lifecycle="active", limit_groups=20, audience="ops"
         )
         self.assertEqual(len(active), 1)
         self.assertEqual(
@@ -1165,19 +1166,20 @@ class NormalRecoveryDashboardStatusTests(unittest.TestCase):
             "services.normal_recovery_merchant_stale.normal_recovery_merchant_stale_config",
             return_value=tiny,
         ):
-            active = _normal_recovery_cart_alert_list(
-                nr_session=sid, lifecycle="active", limit_groups=20, audience="merchant"
+            active = _normal_recovery_merchant_lightweight_alert_list(
+                nr_session=sid, lifecycle="active", limit_groups=20
             )
-            archived = _normal_recovery_cart_alert_list(
+            archived = _normal_recovery_merchant_lightweight_alert_list(
                 nr_session=sid,
                 lifecycle="archived",
                 limit_groups=20,
-                audience="merchant",
             )
         self.assertEqual(len(active), 0)
         self.assertEqual(len(archived), 1)
-        self.assertTrue(archived[0].get("normal_recovery_merchant_stale"))
-        self.assertFalse(archived[0].get("recovery_ops_detail_view", False))
+        self.assertIn("لم يُكمل", archived[0].get("merchant_history_note_ar") or "")
+        self.assertEqual(
+            (archived[0].get("merchant_business_state_ar") or "").strip(), "تم التواصل"
+        )
 
     def test_stale_not_when_queued_followup_after_activity(self) -> None:
         from unittest.mock import patch
@@ -1236,8 +1238,8 @@ class NormalRecoveryDashboardStatusTests(unittest.TestCase):
             "services.normal_recovery_merchant_stale.normal_recovery_merchant_stale_config",
             return_value=tiny,
         ):
-            active = _normal_recovery_cart_alert_list(
-                nr_session=sid, lifecycle="active", limit_groups=20, audience="merchant"
+            active = _normal_recovery_merchant_lightweight_alert_list(
+                nr_session=sid, lifecycle="active", limit_groups=20
             )
         self.assertEqual(len(active), 1)
 
