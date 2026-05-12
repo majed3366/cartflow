@@ -179,6 +179,9 @@ try {
   var idleTimer = null;
   /** مؤقّت مرتبط بحدث إضافة للسلة (شرط ‎after_cart_add‎ / ‎cart_interaction‎) وليس بإعادة ضبط النشاط. */
   var cfHesitationAnchorTimer = null;
+  var cfHesitationScheduledAtMs = 0;
+  var cfHesitationExpectedFireAtMs = 0;
+  var cfHesitationScheduleGen = 0;
   var step1Ready = false;
   /** على مسارات ‎/demo/‎: بعد أول طلب ‎public-config‎ يُعتمد التخصيص لتجنّب فتح الفقاعة بلون افتراضي. */
   var demoCustomizationLoaded = false;
@@ -2809,7 +2812,7 @@ try {
       /* ignore */
     }
     try {
-      cfScheduleHesitationAfterCartIntent();
+      cfScheduleHesitationAfterCartIntent("add_to_cart");
     } catch (eHesSch) {
       /* ignore */
     }
@@ -4162,6 +4165,8 @@ try {
         clearTimeout(cfHesitationAnchorTimer);
         cfHesitationAnchorTimer = null;
       }
+      cfHesitationScheduledAtMs = 0;
+      cfHesitationExpectedFireAtMs = 0;
     } catch (eClrH) {
       /* ignore */
     }
@@ -4183,76 +4188,125 @@ try {
     return sec * 1000;
   }
 
-  function cfFireHesitationCartBubble(sourceEvent) {
+  function cfTryFireWidgetHesitationTimer(sourceLabel, expectedAtMs) {
+    var firedAt = Date.now();
+    var driftMs =
+      typeof expectedAtMs === "number" && isFinite(expectedAtMs)
+        ? firedAt - expectedAtMs
+        : 0;
     try {
-      var trId = getCfWidgetTrigger();
-      console.log("[WIDGET HESITATION TRIGGER FIRED]", {
-        condition: String(trId.hesitation_condition || ""),
-        delay_seconds: trId.hesitation_after_seconds,
-        source_event: String(sourceEvent || ""),
-      });
-    } catch (eLhf) {
-      /* ignore */
-    }
-    try {
-      var tr2 = getCfWidgetTrigger();
-      if (!tr2 || tr2.hesitation_trigger_enabled === false) {
-        return;
-      }
-      var hc2 = String(tr2.hesitation_condition || "").toLowerCase();
-      if (hc2 !== "after_cart_add" && hc2 !== "cart_interaction") {
-        return;
-      }
-    } catch (eGate0) {
-      return;
-    }
-    function runShowBubble() {
-      showBubble(TRIGGER_SOURCE_CART, {
-        mobileCartReveal: true,
-        mobileDeferredRevealOk: true,
-      });
-    }
-    function proceedFromReady() {
-      if (!haveCartForWidget() || shown || isSessionConverted()) {
-        return;
-      }
-      if (isMobileDeferCartBubbleViewport()) {
-        var nowMs = Date.now();
-        var elapsedSec = mobileSecondsSinceLastAddToCartForGuard();
-        var guardSec = MOBILE_POST_ADD_WIDGET_GUARD_MS / 1000;
-        var guardOk = elapsedSec === null || elapsedSec >= guardSec;
-        if (!guardOk) {
-          var lastAddTs = window._cartflowMobileLastAddToCartTs;
-          var waitMs =
-            typeof lastAddTs === "number" && isFinite(lastAddTs)
-              ? MOBILE_POST_ADD_WIDGET_GUARD_MS - (nowMs - lastAddTs)
-              : MOBILE_POST_ADD_WIDGET_GUARD_MS;
-          if (waitMs < 0) {
-            waitMs = 0;
-          }
-          setTimeout(function () {
-            if (!haveCartForWidget() || shown || isSessionConverted()) {
-              return;
-            }
-            runShowBubble();
-          }, waitMs);
-          return;
+      var tr0 = getCfWidgetTrigger();
+      if (!tr0 || tr0.hesitation_trigger_enabled === false) {
+        try {
+          console.log("[WIDGET TIMER FIRED]", {
+            fired_at: firedAt,
+            drift_ms: Math.round(driftMs),
+            eligible: false,
+            blocked_reason: "hesitation_disabled",
+          });
+        } catch (eL0) {
+          /* ignore */
         }
+        cfClearHesitationAnchorTimer();
+        return;
       }
-      runShowBubble();
+      var hc0 = String(tr0.hesitation_condition || "").toLowerCase();
+      if (hc0 !== "after_cart_add" && hc0 !== "cart_interaction") {
+        try {
+          console.log("[WIDGET TIMER FIRED]", {
+            fired_at: firedAt,
+            drift_ms: Math.round(driftMs),
+            eligible: false,
+            blocked_reason: "hesitation_condition_not_cart",
+          });
+        } catch (eL1) {
+          /* ignore */
+        }
+        cfClearHesitationAnchorTimer();
+        return;
+      }
+    } catch (eTr) {
+      cfClearHesitationAnchorTimer();
+      return;
     }
     if (!step1Ready) {
       fetchReadyThen(function () {
-        cfFireHesitationCartBubble(
-          String(sourceEvent || "") + "_retry_after_ready"
+        cfTryFireWidgetHesitationTimer(
+          String(sourceLabel || "") + "_after_ready",
+          expectedAtMs
         );
       });
       return;
     }
-    proceedFromReady();
+    var blocked = computeCartHesitationBlockReason();
+    var eligible = !blocked;
+    try {
+      console.log("[WIDGET TIMER FIRED]", {
+        fired_at: firedAt,
+        drift_ms: Math.round(driftMs),
+        eligible: eligible,
+        blocked_reason: eligible ? null : String(blocked || ""),
+      });
+    } catch (eLf) {
+      /* ignore */
+    }
+    if (!eligible) {
+      cfClearHesitationAnchorTimer();
+      return;
+    }
+    cfClearHesitationAnchorTimer();
+    showBubble(TRIGGER_SOURCE_CART, {
+      mobileCartReveal: true,
+      mobileDeferredRevealOk: true,
+    });
   }
 
-  function cfScheduleHesitationAfterCartIntent() {
+  function cfHesitationResumeAfterVisible() {
+    try {
+      if (cfHesitationExpectedFireAtMs <= 0) {
+        return;
+      }
+      var now = Date.now();
+      if (now + 500 < cfHesitationExpectedFireAtMs) {
+        return;
+      }
+      if (shown || isSessionConverted()) {
+        cfClearHesitationAnchorTimer();
+        return;
+      }
+      var expected = cfHesitationExpectedFireAtMs;
+      if (cfHesitationAnchorTimer != null) {
+        clearTimeout(cfHesitationAnchorTimer);
+        cfHesitationAnchorTimer = null;
+      }
+      cfTryFireWidgetHesitationTimer("visibility_resume", expected);
+    } catch (eVis) {
+      /* ignore */
+    }
+  }
+
+  function cfRafPaint(cb) {
+    cb = typeof cb === "function" ? cb : function () {};
+    try {
+      if (typeof requestAnimationFrame === "function") {
+        requestAnimationFrame(function () {
+          requestAnimationFrame(cb);
+        });
+        return;
+      }
+    } catch (eRaf) {
+      /* ignore */
+    }
+    setTimeout(cb, 0);
+  }
+
+  function cfScheduleHesitationAfterCartIntent(sourceEvent) {
+    var srcEv =
+      sourceEvent != null && String(sourceEvent).trim() !== ""
+        ? String(sourceEvent)
+        : "add_to_cart";
+    cfHesitationScheduleGen += 1;
+    var gen = cfHesitationScheduleGen;
     cfClearHesitationAnchorTimer();
     try {
       var tr = getCfWidgetTrigger();
@@ -4263,17 +4317,90 @@ try {
       if (hc !== "after_cart_add" && hc !== "cart_interaction") {
         return;
       }
-      if (!haveCartForWidget()) {
-        return;
+      function tryArm(attempt) {
+        if (gen !== cfHesitationScheduleGen) {
+          return;
+        }
+        if (!step1Ready) {
+          fetchReadyThen(function () {
+            tryArm(0);
+          });
+          return;
+        }
+        if (!haveCartForWidget()) {
+          if (attempt < 6) {
+            setTimeout(function () {
+              tryArm(attempt + 1);
+            }, attempt === 0 ? 0 : Math.min(120, 20 * attempt));
+          }
+          return;
+        }
+        var now = Date.now();
+        var delayMs = cfHesitationAnchorDelayMs();
+        var expectedAt = now + delayMs;
+        cfHesitationScheduledAtMs = now;
+        cfHesitationExpectedFireAtMs = expectedAt;
+        var sid = getSessionId();
+        var cid = cartLifecycleStableCartId();
+        try {
+          console.log("[WIDGET TIMER SCHEDULED]", {
+            source_event: srcEv,
+            delay_seconds: delayMs / 1000,
+            scheduled_at: now,
+            expected_fire_at: expectedAt,
+            cart_id: cid,
+            session_id: sid,
+          });
+        } catch (eSchLog) {
+          /* ignore */
+        }
+        cfHesitationAnchorTimer = setTimeout(function () {
+          cfHesitationAnchorTimer = null;
+          if (gen !== cfHesitationScheduleGen) {
+            return;
+          }
+          cfTryFireWidgetHesitationTimer("timeout", expectedAt);
+        }, delayMs);
       }
-      var delayMs = cfHesitationAnchorDelayMs();
-      cfHesitationAnchorTimer = setTimeout(function () {
-        cfHesitationAnchorTimer = null;
-        cfFireHesitationCartBubble("add_to_cart_timer");
-      }, delayMs);
+      tryArm(0);
     } catch (eSch) {
       /* ignore */
     }
+  }
+
+  try {
+    if (typeof document !== "undefined" && !window.__cfHesitationVisBound) {
+      window.__cfHesitationVisBound = true;
+      document.addEventListener(
+        "visibilitychange",
+        function () {
+          try {
+            if (document.visibilityState === "visible") {
+              cfHesitationResumeAfterVisible();
+            }
+          } catch (eV1) {
+            /* ignore */
+          }
+        },
+        false
+      );
+      if (typeof window !== "undefined") {
+        window.addEventListener(
+          "pageshow",
+          function (ev) {
+            try {
+              void ev;
+              cfHesitationResumeAfterVisible();
+            } catch (ePs) {
+              /* ignore */
+            }
+          },
+          false
+        );
+      }
+    }
+  } catch (eBind) {
+    /* ignore */
   }
 
   function getPrimaryRecoveryReason(storeId) {
@@ -7581,31 +7708,108 @@ try {
     }
 
     function postPriceWithSubCategory(sub) {
-      postReason({ reason: "price", sub_category: sub })
-        .then(function (j) {
-          if (!(j && j.ok)) {
-            return;
-          }
-          function finish() {
+      try {
+        console.log("[REASON CLICKED]", {
+          reason_key: "price",
+          sub_category: sub,
+          ui_updated_immediately: true,
+        });
+      } catch (eClk) {
+        /* ignore */
+      }
+      var subWrap = widgetBody.querySelector("[data-cf-price-sub-ui]");
+      if (subWrap) {
+        var pb = subWrap.querySelectorAll("button");
+        var pi;
+        for (pi = 0; pi < pb.length; pi++) {
+          pb[pi].setAttribute("disabled", "true");
+          pb[pi].style.opacity = "0.55";
+        }
+      }
+      stripContentKeepChrome();
+      var ldP = document.createElement("p");
+      ldP.setAttribute("data-cf-reason-loading", "1");
+      ldP.style.cssText = "margin:0;font-size:14px;opacity:0.85;";
+      ldP.textContent = "جاري الحفظ…";
+      widgetBody.appendChild(ldP);
+
+      function removeLd() {
+        var x = widgetBody.querySelector("[data-cf-reason-loading]");
+        if (x && x.parentNode) {
+          x.parentNode.removeChild(x);
+        }
+      }
+
+      function onFailPrice() {
+        removeLd();
+        try {
+          console.log("[REASON SAVE FAILED]", { reason_key: "price" });
+        } catch (eF) {}
+        var pe = document.createElement("p");
+        pe.style.cssText = "color:#b91c1c;font-size:13px;margin:0 0 8px 0;";
+        pe.textContent = "تعذّر حفظ السبب. حاول مرة ثانية.";
+        widgetBody.appendChild(pe);
+        var br = document.createElement("button");
+        br.type = "button";
+        br.textContent = "رجوع للأسباب";
+        stampPrimaryBubbleBtn(br);
+        br.addEventListener("click", function (ev) {
+          ev.preventDefault();
+          ev.stopPropagation();
+          setReasonTag(null);
+          setReasonSubTag(null);
+          renderReasonList();
+        });
+        widgetBody.appendChild(br);
+      }
+
+      cfRafPaint(function () {
+        try {
+          console.log("[REASON SAVE START]", { reason_key: "price" });
+        } catch (eSt) {}
+        postReason({ reason: "price", sub_category: sub })
+          .then(function (j) {
+            if (!(j && j.ok)) {
+              onFailPrice();
+              return;
+            }
+            try {
+              console.log("[REASON SAVE SUCCESS]", { reason_key: "price" });
+            } catch (eOk) {}
+            removeLd();
             setReasonTag("price");
             setReasonSubTag(sub);
-            mountProductAwareView("price");
-            emitDemoGuideEvent("cartflow-demo-reason-confirmed", {
-              reason: "price",
-              sub_category: sub,
-            });
-          }
-          if (
-            cartflowState.isVip === true ||
-            cfPhoneCaptureMode() !== "after_reason" ||
-            getCartflowStoredCustomerPhoneNorm()
-          ) {
-            finish();
-            return;
-          }
-          mountNonVipAfterReasonPhoneCaptureUI("price", sub, null, finish);
-        })
-        .catch(function () {});
+            function branchAfterPrice() {
+              if (cartflowState.isVip === true) {
+                mountProductAwareView("price");
+                emitDemoGuideEvent("cartflow-demo-reason-confirmed", {
+                  reason: "price",
+                  sub_category: sub,
+                });
+                return;
+              }
+              if (cfPhoneCaptureMode() !== "after_reason") {
+                mountProductAwareView("price");
+                emitDemoGuideEvent("cartflow-demo-reason-confirmed", {
+                  reason: "price",
+                  sub_category: sub,
+                });
+                return;
+              }
+              if (getCartflowStoredCustomerPhoneNorm()) {
+                mountNonVipPostPhoneContinuation("price", sub);
+                return;
+              }
+              mountNonVipAfterReasonPhoneCaptureUI("price", sub, null, function () {
+                mountNonVipPostPhoneContinuation("price", sub);
+              });
+            }
+            cfRafPaint(branchAfterPrice);
+          })
+          .catch(function () {
+            onFailPrice();
+          });
+      });
     }
 
     function showPriceSubMenu() {
@@ -7617,6 +7821,7 @@ try {
       psub.textContent = "وش يناسب وضعك بالنسبة للسعر؟";
       widgetBody.appendChild(psub);
       var rsub = document.createElement("div");
+      rsub.setAttribute("data-cf-price-sub-ui", "1");
       rsub.style.cssText = rowStyleCol;
       CARTFLOW_PRICE_SUB_OPTIONS.forEach(function (o) {
         var bs = document.createElement("button");
@@ -7728,60 +7933,118 @@ try {
           pErr.textContent = "اكتب ملاحظة قصيرة";
           return;
         }
+        try {
+          console.log("[REASON CLICKED]", {
+            reason_key: "other",
+            ui_updated_immediately: true,
+          });
+        } catch (eClkO) {
+          /* ignore */
+        }
+        bSend.setAttribute("disabled", "true");
+        bHandoffO.setAttribute("disabled", "true");
+        bBackO.setAttribute("disabled", "true");
+        var ldO = document.createElement("p");
+        ldO.setAttribute("data-cf-reason-loading", "1");
+        ldO.style.cssText = "margin:8px 0 0 0;font-size:14px;opacity:0.85;";
+        ldO.textContent = "جاري الحفظ…";
+        row2.insertBefore(ldO, bSend);
+
+        function removeLdO() {
+          var x = row2.querySelector("[data-cf-reason-loading]");
+          if (x && x.parentNode) {
+            x.parentNode.removeChild(x);
+          }
+        }
+
+        function reEnableRow() {
+          bSend.removeAttribute("disabled");
+          bHandoffO.removeAttribute("disabled");
+          bBackO.removeAttribute("disabled");
+        }
+
         var payload = { reason: "other", custom_text: note };
         if (norm) {
           payload.customer_phone = norm;
         }
-        bSend.setAttribute("disabled", "true");
-        postReason(payload)
-          .then(function (j) {
-            if (!(j && j.ok)) {
-              bSend.removeAttribute("disabled");
-              var eb = (j && j.body) || {};
-              var em = (eb.error && String(eb.error)) || "";
+
+        cfRafPaint(function () {
+          try {
+            console.log("[REASON SAVE START]", { reason_key: "other" });
+          } catch (eStO) {}
+          postReason(payload)
+            .then(function (j) {
+              removeLdO();
+              if (!(j && j.ok)) {
+                reEnableRow();
+                try {
+                  console.log("[REASON SAVE FAILED]", { reason_key: "other" });
+                } catch (eFo) {}
+                var eb = (j && j.body) || {};
+                var em = (eb.error && String(eb.error)) || "";
+                if (
+                  em.indexOf("invalid_customer_phone") !== -1 ||
+                  em === "invalid_customer_phone"
+                ) {
+                  pErr.textContent = "رقم غير صحيح";
+                } else {
+                  pErr.textContent = "تعذّر الحفظ، حاول مرة ثانية.";
+                }
+                return;
+              }
+              try {
+                console.log("[REASON SAVE SUCCESS]", { reason_key: "other" });
+              } catch (eOkO) {}
+              if (norm) {
+                try {
+                  localStorage.setItem(CARTFLOW_LS_CUSTOMER_PHONE, norm);
+                } catch (eLs1) {
+                  /* ignore */
+                }
+                try {
+                  console.log("[CF PHONE CAPTURED] phone=" + norm);
+                } catch (eC) {
+                  /* ignore */
+                }
+              }
+              setReasonTag("other");
+              function doneOtherClassic() {
+                try {
+                  emitDemoGuideEvent("cartflow-demo-reason-confirmed", {
+                    reason: "other",
+                    sub_category: null,
+                  });
+                } catch (eEm) {
+                  /* ignore */
+                }
+                showOtherSuccessView();
+              }
               if (
-                em.indexOf("invalid_customer_phone") !== -1 ||
-                em === "invalid_customer_phone"
+                phoneAfterReason &&
+                cartflowState.isVip !== true &&
+                !getCartflowStoredCustomerPhoneNorm()
               ) {
-                pErr.textContent = "رقم غير صحيح";
+                mountNonVipAfterReasonPhoneCaptureUI(
+                  "other",
+                  null,
+                  note,
+                  function () {
+                    mountNonVipPostPhoneContinuation("other", null);
+                  }
+                );
               } else {
-                pErr.textContent = "تعذّر الحفظ، حاول مرة ثانية.";
+                doneOtherClassic();
               }
-              return;
-            }
-            if (norm) {
+            })
+            .catch(function () {
+              removeLdO();
+              reEnableRow();
               try {
-                localStorage.setItem(CARTFLOW_LS_CUSTOMER_PHONE, norm);
-              } catch (eLs1) {
-                /* ignore */
-              }
-              try {
-                console.log("[CF PHONE CAPTURED] phone=" + norm);
-              } catch (eC) {
-                /* ignore */
-              }
-            }
-            setReasonTag("other");
-            emitDemoGuideEvent("cartflow-demo-reason-confirmed", {
-              reason: "other",
-              sub_category: null,
+                console.log("[REASON SAVE FAILED]", { reason_key: "other" });
+              } catch (eFc) {}
+              pErr.textContent = "تعذّر الحفظ، حاول مرة ثانية.";
             });
-            function doneOther() {
-              showOtherSuccessView();
-            }
-            if (
-              phoneAfterReason &&
-              cartflowState.isVip !== true &&
-              !getCartflowStoredCustomerPhoneNorm()
-            ) {
-              mountNonVipAfterReasonPhoneCaptureUI("other", null, note, doneOther);
-            } else {
-              doneOther();
-            }
-          })
-          .catch(function () {
-            bSend.removeAttribute("disabled");
-          });
+        });
       });
       var bHandoffO = document.createElement("button");
       bHandoffO.type = "button";
@@ -7996,6 +8259,75 @@ try {
       widgetBody.appendChild(row);
     }
 
+    function mountNonVipPostPhoneContinuation(reasonKey, subCategory) {
+      var rk = String(reasonKey || "other").toLowerCase();
+      stripContentKeepChrome();
+      var msgs = {
+        price:
+          "تمام، وصلتني ملاحظتك عن السعر. أقدر أساعدك بخيار أنسب أو أوضح لك القيمة.",
+        shipping:
+          "تمام، وصلتني ملاحظتك عن الشحن. أقدر أوضح لك خيارات الشحن أو أساعدك تكمل الطلب.",
+        delivery:
+          "تمام، وصلتني ملاحظتك عن التوصيل. أقدر أوضح لك مدة التوصيل المتوقعة.",
+        quality:
+          "تمام، وصلتني ملاحظتك عن الجودة. أقدر أوضح لك تفاصيل المنتج والضمان.",
+        warranty:
+          "تمام، وصلتني ملاحظتك عن الضمان. أقدر أوضح لك سياسة الضمان والاستبدال.",
+        thinking:
+          "تمام، خذ وقتك. أقدر أساعدك بمقارنة سريعة أو أوضح لك الأنسب.",
+        other:
+          "تمام، وصلتني ملاحظتك. أقدر أساعدك هنا أو يتواصل معك المتجر.",
+      };
+      var msg = msgs[rk] != null ? msgs[rk] : msgs.other;
+      var pCont = document.createElement("p");
+      pCont.style.cssText =
+        "margin:0 0 12px 0;font-size:14px;line-height:1.55;white-space:pre-line;";
+      pCont.textContent = msg;
+      widgetBody.appendChild(pCont);
+      try {
+        appendReasonPersonalizationBlock(rk);
+      } catch (eAp) {
+        /* ignore */
+      }
+      var rowC = document.createElement("div");
+      rowC.style.cssText = rowStyleCol;
+      function addContBtn(label, fn) {
+        var bx = document.createElement("button");
+        bx.type = "button";
+        bx.textContent = label;
+        stampPrimaryBubbleBtn(bx);
+        bx.addEventListener("click", function (ev) {
+          ev.stopPropagation();
+          ev.preventDefault();
+          fn();
+        });
+        rowC.appendChild(bx);
+      }
+      addContBtn("أكمل الطلب", function () {
+        scrollToCartOrCheckout();
+      });
+      addContBtn("أحتاج مساعدة الآن", function () {
+        mountProductAwareView(rk);
+      });
+      addContBtn("رجوع للأسباب", function () {
+        setReasonTag(null);
+        setReasonSubTag(null);
+        renderReasonList();
+      });
+      widgetBody.appendChild(rowC);
+      try {
+        emitDemoGuideEvent("cartflow-demo-reason-confirmed", {
+          reason: rk,
+          sub_category:
+            subCategory != null && String(subCategory).trim() !== ""
+              ? String(subCategory).trim()
+              : null,
+        });
+      } catch (eEm) {
+        /* ignore */
+      }
+    }
+
     function mountNonVipAfterReasonPhoneCaptureUI(
       reasonKey,
       subCategory,
@@ -8147,30 +8479,104 @@ try {
     }
 
     function showStandardResponse(rkey) {
+      try {
+        console.log("[REASON CLICKED]", {
+          reason_key: rkey,
+          ui_updated_immediately: true,
+        });
+      } catch (eLc) {
+        /* ignore */
+      }
       setReasonTag(rkey);
-      postReason({ reason: rkey })
-        .then(function (j) {
-          if (!(j && j.ok)) {
-            return;
-          }
-          function finish() {
-            mountProductAwareView(rkey);
-            emitDemoGuideEvent("cartflow-demo-reason-confirmed", {
-              reason: rkey,
-              sub_category: null,
-            });
-          }
-          if (
-            cartflowState.isVip === true ||
-            cfPhoneCaptureMode() !== "after_reason" ||
-            getCartflowStoredCustomerPhoneNorm()
-          ) {
-            finish();
-            return;
-          }
-          mountNonVipAfterReasonPhoneCaptureUI(rkey, null, null, finish);
-        })
-        .catch(function () {});
+      var rowR = widgetBody.querySelector("[data-cf-reason-row]");
+      if (rowR) {
+        var btns = rowR.querySelectorAll("button");
+        var bi;
+        for (bi = 0; bi < btns.length; bi++) {
+          btns[bi].setAttribute("disabled", "true");
+          btns[bi].style.opacity = "0.55";
+        }
+      }
+      stripContentKeepChrome();
+      var ld = document.createElement("p");
+      ld.setAttribute("data-cf-reason-loading", "1");
+      ld.style.cssText = "margin:0;font-size:14px;opacity:0.85;";
+      ld.textContent = "جاري الحفظ…";
+      widgetBody.appendChild(ld);
+
+      function removeLoading() {
+        var x = widgetBody.querySelector("[data-cf-reason-loading]");
+        if (x && x.parentNode) {
+          x.parentNode.removeChild(x);
+        }
+      }
+
+      function onFailStd() {
+        removeLoading();
+        try {
+          console.log("[REASON SAVE FAILED]", { reason_key: rkey });
+        } catch (eFs) {}
+        var pe = document.createElement("p");
+        pe.style.cssText = "color:#b91c1c;font-size:13px;margin:0 0 8px 0;";
+        pe.textContent = "تعذّر حفظ السبب. حاول مرة ثانية.";
+        widgetBody.appendChild(pe);
+        var br = document.createElement("button");
+        br.type = "button";
+        br.textContent = "رجوع للأسباب";
+        stampPrimaryBubbleBtn(br);
+        br.addEventListener("click", function (ev) {
+          ev.preventDefault();
+          ev.stopPropagation();
+          renderReasonList();
+        });
+        widgetBody.appendChild(br);
+      }
+
+      cfRafPaint(function () {
+        try {
+          console.log("[REASON SAVE START]", { reason_key: rkey });
+        } catch (eSt) {}
+        postReason({ reason: rkey })
+          .then(function (j) {
+            if (!(j && j.ok)) {
+              onFailStd();
+              return;
+            }
+            try {
+              console.log("[REASON SAVE SUCCESS]", { reason_key: rkey });
+            } catch (eOk) {}
+            removeLoading();
+            function branchAfterSave() {
+              if (cartflowState.isVip === true) {
+                mountProductAwareView(rkey);
+                emitDemoGuideEvent("cartflow-demo-reason-confirmed", {
+                  reason: rkey,
+                  sub_category: null,
+                });
+                return;
+              }
+              if (cfPhoneCaptureMode() !== "after_reason") {
+                mountProductAwareView(rkey);
+                emitDemoGuideEvent("cartflow-demo-reason-confirmed", {
+                  reason: rkey,
+                  sub_category: null,
+                });
+                return;
+              }
+              if (getCartflowStoredCustomerPhoneNorm()) {
+                mountNonVipPostPhoneContinuation(rkey, null);
+                return;
+              }
+              mountNonVipAfterReasonPhoneCaptureUI(rkey, null, null, function () {
+                mountNonVipPostPhoneContinuation(rkey, null);
+              });
+            }
+            cfRafPaint(branchAfterSave);
+          })
+          .catch(function () {
+            onFailStd();
+          });
+      });
     }
 
     function renderReasonList() {
@@ -8883,6 +9289,19 @@ try {
           }
           if (demoStoreBubbleDismissed) {
             return;
+          }
+          try {
+            var trFb = getCfWidgetTrigger();
+            var hcFb = String(trFb.hesitation_condition || "").toLowerCase();
+            if (
+              trFb.hesitation_trigger_enabled !== false &&
+              (hcFb === "after_cart_add" || hcFb === "cart_interaction") &&
+              (cfHesitationExpectedFireAtMs > 0 || cfHesitationAnchorTimer != null)
+            ) {
+              return;
+            }
+          } catch (eFb) {
+            /* ignore */
           }
           if (!readDemoStoreWidgetArmed()) {
             runArmBody();
