@@ -18,17 +18,17 @@ CartFlow is a FastAPI application that:
 
 | Asset | Role |
 |--------|------|
-| `static/widget_loader.js` | Injects `cartflow_widget.js` after `window.load` (skips if session marked converted via `sessionStorage` / `cartflowIsSessionConverted`). |
-| `static/cartflow_widget.js` | Main widget: idle detection, reason UI, exit-intent flows, session keys for abandon reason, calls backend APIs. |
+| `static/widget_loader.js` | After **`window.load`**: schedules **`cartflow_return_tracker.js`**, then **`CARTFLOW_WIDGET_RUNTIME_V2`**: **`cartflow_widget_runtime/cartflow_widget_loader.js`** (module chain); **else**: legacy **`cartflow_widget.js`**. **`/demo/store*`** forces V2 in the shim (**`cartflowIsDemoStorePrimaryV2Path()`**). Skips tracker/widget bootstrap when session marked converted via `sessionStorage` / `cartflowIsSessionConverted`. |
+| `static/cartflow_widget_runtime/*.js` | **Layered V2** storefront widget (config → API → state → triggers → phone → shell → UI → flows → legacy_bridge). Starts via **`Flows.start()`** after bootstrap. Does **not** append **`cartflow_widget.js`** at runtime; VIP mirrors use **`mirrorCartTotals()`** in **`cartflow_widget_flows.js`** only. |
+| `static/cartflow_widget.js` | **Legacy monolith** (`B`): same UX surface when **`CARTFLOW_WIDGET_RUNTIME_V2`** is omitted/false for the shim, **or** when **`/dev/widget-test`** embeds the script directly. Keep for rollback, dev harness, and static/operational probes. |
+| `static/cartflow_return_tracker.js` | Loaded by **`widget_loader.js`** (return-to-site / behavioral handoff signalling). |
 | `static/cart_abandon_tracking.js` | Included from dashboard templates (`partials/cart_abandon_tracking.html`) for analytics-style tracking where wired. |
 
-**Primary backend calls from the widget (examples in `cartflow_widget.js`):**
+**Primary backend calls from storefront widgets:**
 
-- `POST /api/cart-recovery/reason` — persist widget **Layer D** reason (`routes/cart_recovery_reason.py`, router prefix `/api/cart-recovery`).
-- `POST /api/cartflow/reason` — alternate/legacy reason path under `routes/cartflow.py` (`/api/cartflow/*`).
-- `GET /api/recovery/primary-reason` — `main.py` route; widget uses for primary reason hints.
-- `GET /api/cartflow/ready`, `GET /api/cartflow/public-config` — readiness / public widget config (`routes/cartflow.py`).
-- `POST /api/cartflow/generate-whatsapp-message` — mock message text for UI preview (no DB write in that handler).
+- **V2 (`cartflow_widget_api.js`):** `POST /api/cartflow/reason`, `GET /api/cartflow/ready`, `GET /api/cartflow/public-config` (`routes/cartflow.py`).
+- **Legacy (`cartflow_widget.js`):** `POST /api/cart-recovery/reason` — persist widget **Layer D** (`routes/cart_recovery_reason.py`); `POST /api/cartflow/reason` alternate path (`routes/cartflow.py`).
+- Shared / either surface as wired: `GET /api/recovery/primary-reason` — `main.py`; `POST /api/cartflow/generate-whatsapp-message` — mock WhatsApp preview (no DB write in that handler).
 
 **Cart abandon signal to backend:** the storefront integration is expected to call **`POST /api/cart-event`** with `event: cart_abandoned` (handled in `main.handle_cart_abandoned` → recovery dispatch). The widget focuses on reasons and UX; the actual **abandon event** is typically from page / platform integration.
 
@@ -46,12 +46,16 @@ CartFlow is a FastAPI application that:
 
 ### 2.3 Exit Intent UI
 
-Implemented inside **`static/cartflow_widget.js`** (exit-intent keys, pre-cart decline, smart exit with cart). Server-side template control: **`exit_intent_*`** columns on `Store`, applied via `services/store_template_control.py` and persisted through **`/api/recovery-settings`**.
+- **V2:** **`cartflow_widget_triggers.js`** / **`cartflow_widget_flows.js`** (orchestration) with shell UI modules; duplicate open guards (e.g. **`[CF TRIGGER BLOCKED]`** paths) live in layered code.
+- **Legacy:** Implemented inside **`static/cartflow_widget.js`** when that file is the only widget bootstrap.
+
+Server-side template control (**`exit_intent_*`** on **`Store`**): `services/store_template_control.py` merge through **`/api/recovery-settings`**.
 
 ### 2.4 Cart Recovery UI
 
 - **Dashboard:** recovery settings + cart recovery messages pages above.
-- **Widget:** reason capture, handoff, and message preview flows in **`cartflow_widget.js`** backed by **`/api/cart-recovery/reason`** and cartflow APIs.
+- **Widget (V2):** layered **Ui / Flows / Api** backed by **`/api/cartflow/*`** helpers above.
+- **Widget (legacy):** reason capture, handoff, and preview in **`cartflow_widget.js`** (including **`/api/cart-recovery/reason`** where wired).
 
 **How UI interacts with backend:** JSON `fetch` / XHR to FastAPI routes; dashboards use embedded scripts or `static/cartflow_dashboard_messages.js` for shared save/load patterns against **`/api/recovery-settings`**.
 
@@ -133,7 +137,7 @@ Defined in **`models.py`**; optional columns ensured at runtime via **`schema_wi
 ### 4.2 Reason Capture (Layer C / D)
 
 - **Layer D (persistence)** — **`POST /api/cart-recovery/reason`** in `routes/cart_recovery_reason.py`: validates payload, upserts **`CartRecoveryReason`** (`store_slug`, `session_id`, `reason`, `sub_category`, `custom_text`, `customer_phone`, `user_rejected_help`, etc.).
-- Widget stores session keys and posts **`reason_tag`** aligned with dashboard / templates (see comments in `cartflow_widget.js`).
+- Widget stores session keys and posts **`reason_tag`** aligned with dashboard / templates (see layered sources and comments in **`cartflow_widget.js`**).
 
 ### 4.3 Persistence (Layer D)
 
@@ -193,7 +197,7 @@ Print-style trace: **`[DELAY STARTED]`**, **`[DELAY WAITING]`**, **`[DELAY FINIS
 
 **Widget → Backend → Decision → Delay → WhatsApp → Dashboard**
 
-1. User interacts with **`cartflow_widget.js`** on the store page; widget may call **`POST /api/cart-recovery/reason`** → row in **`cart_recovery_reasons`**.
+1. User interacts with the layered **V2** runtime (`cartflow_widget_runtime/**`) or legacy **`cartflow_widget.js`** on the storefront; reason persistence follows the active surface (`/api/cartflow/reason` vs `/api/cart-recovery/reason`) → row in **`cart_recovery_reasons`** when applicable.
 2. Store platform (or demo) sends **`POST /api/cart-event`** with `event: cart_abandoned`, `store`, `session_id`, optional `cart_id` / `phone`.
 3. **`handle_cart_abandoned`**: conversion / duplicate / claim checks → load **`Store`** → **إذا VIP** (`is_vip_cart`): استدعاء **`_vip_recovery_decision_layer`** ثم **`_activate_vip_manual_cart_handling`** ثم **`_mark_vip_customer_recovery_closed`** و**`return`** (لا جدولة إرسال للعميل حتى لو فشل جزء التفعيل).
 4. If **multi_message_slots_for_abandon** returns slots → schedule delayed tasks per slot; else **`_run_recovery_dispatch_cart_abandoned`** waits for reason if needed, then schedules **one** delayed **`_run_recovery_sequence_after_cart_abandoned`**.
@@ -254,7 +258,7 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 - **VIP merchant alert:** depends on **`store_whatsapp_number`** or parsable **`whatsapp_support_url`**; otherwise **`[VIP MERCHANT ALERT FAILED] reason=no_merchant_phone`** (لوحة: **`لا يوجد رقم واتساب للمتجر`**).
 - **`/webhook/whatsapp`:** minimal handler (prints body); not a full inbound conversation engine.
 - **Schema drift:** legacy SQLite DBs need **`schema_widget.ensure_store_widget_schema`** (called from critical paths) so new ORM columns exist.
-- **Widget file size:** `static/cartflow_widget.js` is very large; navigation for contributors is easier via grep for `/api/` paths.
+- **Dual widget bundles:** primary V2 adopters chain **`cartflow_widget_runtime`**; rollback / non-V2 embeds still fetch **`cartflow_widget.js`** via **`widget_loader`**. **`cartflow_widget.js`** remains large; contributors often grep **`/api/`** in both trees.
 
 ---
 
@@ -283,6 +287,7 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 
 | Date (UTC) | Summary |
 |------------|---------|
+| 2026-05-13 | **Widget docs vs V2 isolation:** **`docs/SYSTEM_SUMMARY.md`** §2.1–2.4, §5, §8 — document **`widget_loader`** V2 vs legacy branching, **`cartflow_widget_runtime/**`**, **`/demo/store*`** coercion, **`mirrorCartTotals()`** VIP (no layered legacy injection); align end-to-end and limitation bullets. Chore with **`docs/cartflow_operational_risk_test_report.md`** + **`docs/widget_legacy_cleanup_audit.md`** (Tier 1 doc cleanup per cleanup audit). Commit: **`chore: remove safe legacy widget cleanup candidates`**. |
 | 2026-05-11 | **Operational / enterprise testing pack:** **`docs/operational/ENTERPRISE_TESTING.md`** — k6 stress script **`synthetic/k6/widget-recovery-stress.js`** (smoke vs `LOAD_PROFILE=full`, p95 under 1s thresholds, `GET /health?db=1` probe), HTML summary output + **`scripts/reports/k6_summary_to_html.py`**; **Promptfoo** matrix (`promptfoo/`, 50 cases in **`tests.generated.yaml`**, stub JS provider); **pytest** discipline matrix **`tests/operational/test_enterprise_message_discipline_matrix.py`**; **Sentry** optional init **`services/cartflow_sentry.py`** + Twilio failure capture; **E2E** **`e2e/cartflow-lifecycle.spec.ts`**; **`GET /health?db=1`** DB probe in **`routes/ops.py`**. |
 | 2026-05-10 | **Reason vs phone capture:** `vip_phone_capture` no longer overwrites **`CartRecoveryReason.reason`** when an objection tag (e.g. **`price_high`**, **`price`** + sub) is already stored — phone is attached only; audit row **`AbandonmentReasonLog`** unchanged. Implemented in **`routes/cartflow.py`**, **`routes/cart_recovery_reason.py`**, helper **`services/recovery_reason_preserve.py`**. Commit: **`fix: preserve objection reason during phone capture`**. |
 | 2026-05-10 | **Product matching v1:** `cartflow_product_intelligence.py` — canonical category buckets (synonyms e.g. عطور / العناية والتجميل), **`cheaper_candidate_score`** (family, type, name overlap, closest lower price), safer strict price compare, `[ALTERNATIVE REJECTED]` / `[ALTERNATIVE SCORE]` / consolidated `[FALLBACK USED]`; snapshot **`alternative_score`** / **`fallback_reason`**; continuation vars **`cheaper_candidate_score`**, **`cheaper_fallback_reason`**. Demo catalog **`normalized_category`**, **`product_family`**; **`normalize_product_catalog`** preserves optional fields; merchant export includes them. Commit: **`improve product intelligence matching quality`**. |

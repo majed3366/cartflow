@@ -1,6 +1,6 @@
 # Widget Legacy Cleanup Audit
 
-**Purpose:** Inventory **layered V2** (`static/cartflow_widget_runtime/**`) vs **legacy monolith** (`static/cartflow_widget.js`) vs **shared storefront scripts**, to plan safe cleanup **without deleting anything yet**.
+**Purpose:** Inventory **layered V2** (`static/cartflow_widget_runtime/**`) vs **legacy monolith** (`static/cartflow_widget.js`) vs **shared storefront scripts**, and track **incremental cleanup** after V2 isolation.
 
 **Audit revision:** Refresh after **V2 isolation** — the layered runtime **no longer** injects legacy, sets **`__CF_LOAD_LEGACY_CARTFLOW_WIDGET`**, or references **`injectLegacyCartflowWidget`**. VIP mirrors still run via **`mirrorCartTotals()`** only; recovery + exit-intent UI for bundled V2 storefronts stays inside **`cartflow_widget_runtime`**.
 
@@ -82,7 +82,7 @@ _Order may vary slightly; shim uses non-blocking patterns._
 
 ### Is `static/cartflow_widget.js` still referenced in code/tests/docs?
 
-**Yes** — **shim**, **dev HTML**, **`tests/**`** (static reads), **`docs/SYSTEM_SUMMARY.md`** (outdated wording), **`cartflow_widget.js` internally** (**`__CF_LOAD_LEGACY_CARTFLOW_WIDGET`** early-exit guard for edge double-load scenarios).
+**Yes** — **shim**, **dev HTML**, **`tests/**`** (static reads), **`docs/SYSTEM_SUMMARY.md`** (**refreshed 2026-05-13** for shim V2 vs legacy), **`cartflow_widget.js` internally** (**`__CF_LOAD_LEGACY_CARTFLOW_WIDGET`** early-exit guard for edge double-load scenarios).
 
 **V2 layered `cartflow_widget_flows.js`:** **does not** reference **`injectLegacyCartflowWidget`**, **`__CF_LOAD_LEGACY_CARTFLOW_WIDGET`**, **`data-cf-legacy-widget-v2-fallback`**, or legacy URL construction (validated by **`tests/test_cartflow_widget_layered_runtime.py`**).
 
@@ -122,8 +122,8 @@ _Order may vary slightly; shim uses non-blocking patterns._
 
 ### 4.5 Cleanup candidates (**E**) — later
 
-- **`docs/SYSTEM_SUMMARY.md`** (and similar) where text still claims **`widget_loader`** only injects **`cartflow_widget.js`** as the main widget
-- **`docs/cartflow_operational_risk_test_report.md`** rows that imply V2→legacy injection
+- **Done (Tier 1):** ~~`SYSTEM_SUMMARY.md` shim narrative~~ refreshed; ~~`cartflow_operational_risk_test_report.md` ambiguity~~ clarified (still scans loader + legacy only by design).
+- Merchant-facing embed snippets in templates / playbooks — periodically scan for copy that ignores **`CARTFLOW_WIDGET_RUNTIME_V2`** or implies V2 loads **`cartflow_widget.js`** automatically.
 - After **100% V2** embeds: optional removal of **`widget_loader.js`** legacy branch (then delete monolith last)
 
 ### 4.6 Must keep for now (**F**)
@@ -136,14 +136,16 @@ _Order may vary slightly; shim uses non-blocking patterns._
 
 ## 5. Safe first deletion candidates
 
-**Scope of this section:** lowest-risk deletions **when** you start cleanup — **not** recommending deletion in this step.
+**Executed (Tier 1, chore `remove safe legacy widget cleanup candidates`):** refreshed **`docs/SYSTEM_SUMMARY.md`** (shim **`CARTFLOW_WIDGET_RUNTIME_V2`** vs legacy branching, **`/demo/store*`** coercion, **`cartflow_widget_runtime/**`**, VIP via **`mirrorCartTotals()`**, no layered legacy injection narrative) and **`docs/cartflow_operational_risk_test_report.md`** (clarifies static scans intentionally cover **`widget_loader`** + **`cartflow_widget.js`**, while V2 **does not** inject the monolith). **No standalone orphaned doc/static files** met the Tier‑1 bar for **`git rm`** beyond removing those stale narratives.
+
+Remaining ordered work:
 
 | Priority | Candidate | Why “first” | Risk if done too early |
 |----------|-----------|-------------|-------------------------|
-| **1** | Stale **documentation** only (`SYSTEM_SUMMARY.md`, other docs still describing V2 injection / VIP→legacy) | No runtime effect | Confusion if wrong |
-| **2** | **`/dev/widget-test`** switch to **`widget_loader` + V2** (remove direct `<script src="…cartflow_widget.js">`) | Aligns dev with production V2 path | Loses dedicated “legacy only” harness unless a second route is kept |
-| **3** | **`widget_loader.js`** legacy `else` branch | After **all** storefronts/embeds verified with **`CARTFLOW_WIDGET_RUNTIME_V2`** | Legacy-only merchants break |
-| **4** | **`static/cartflow_widget.js`** file | Absolute last | Loader legacy branch, dev test, **`tests/**`** reading file, **`test_operational_static_observability.py`** |
+| ~~**1**~~ | ~~Stale **documentation**~~ | ~~No runtime~~ | ~~Confusion~~ — **completed** above |
+| **2** | **`/dev/widget-test`** switch to **`widget_loader` + V2** | Aligns dev with primary storefront path | Loses dedicated “legacy only” harness unless a **second** route is kept (**F** rollback/dev today) |
+| **3** | **`widget_loader.js`** legacy `else` branch | After **all** embeds **`CARTFLOW_WIDGET_RUNTIME_V2=true`** | Legacy-only merchants break |
+| **4** | **`static/cartflow_widget.js`** file (**do not touch yet**) | Sunset monolith last | Loader legacy branch, dev test, **`tests/**`** reading file, **`test_operational_static_observability.py`** |
 
 **There is no “safe first” deletion inside `static/cartflow_widget_runtime/` for isolation purposes** — the bundle is entirely **A / F**.
 
@@ -191,7 +193,7 @@ _All other URLs are V2 modules, return tracker, abandon tracking (if template in
 
 Same spirit as rev 1 — updated for isolation:
 
-1. Refresh **documentation** (`SYSTEM_SUMMARY`, risk reports).
+1. ~~Refresh **documentation** (`SYSTEM_SUMMARY`, risk reports).~~ — **Tier 1 done**
 2. **Dev route** parity with **`widget_loader` + V2**.
 3. **Merchant embed defaults**:** document **`CARTFLOW_WIDGET_RUNTIME_V2 = true`** in **`general_settings.html`** snippets.
 4. **Migrate tests** toward **`cartflow_widget_runtime`** where behavior moved.
@@ -211,6 +213,6 @@ pytest tests/test_demo_behavioral_navigation.py -q
 
 ---
 
-## 10. Disclaimer
+## 10. Disclaimer — this commit boundary
 
-This revision updates **documentation only** (`docs/widget_legacy_cleanup_audit.md`). **No runtime, loader, V2 flows, backend, dashboard, WhatsApp, or lifecycle code** was changed as part of this audit refresh commit.
+Tier 1 touched **documentation only**: **`widget_legacy_cleanup_audit.md`**, **`SYSTEM_SUMMARY.md`**, **`cartflow_operational_risk_test_report.md`**. **No** changes to **`static/widget_loader.js`**, **`cartflow_widget_runtime/**`**, **`cartflow_widget.js`**, **`cart_abandon_tracking.js`**, **`cartflow_return_tracker.js`**, backend, dashboards, WhatsApp, or lifecycle. Next risky steps (`/dev/widget-test`, shim legacy branch, monolith deletion) remain **explicitly deferred**.
