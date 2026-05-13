@@ -266,6 +266,16 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     clearHesitationTimersOnly();
 
     var ms = hesitationMs();
+    try {
+      var secs = ms / 1000;
+      var label =
+        !isFinite(secs) || secs < 0
+          ? "0"
+          : secs % 1 === 0
+            ? String(Math.round(secs))
+            : String(Math.round(secs * 10) / 10);
+      console.log("[CF V2 OPEN IN " + label + "S]");
+    } catch (eOpenLog) {}
     logScheduled("add_to_cart", {
       delay_ms: ms,
       timer: "hesitation_anchor",
@@ -425,10 +435,8 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
         try {
           if (document.visibilityState === "visible") {
             window.clearTimeout(resumeDebounceTimer);
-            resumeDebounceTimer = window.setTimeout(function () {
-              resumeDebounceTimer = null;
-              fireResume();
-            }, 280);
+            resumeDebounceTimer = null;
+            fireResume();
           }
         } catch (ev) {}
       },
@@ -440,10 +448,8 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       function (ev) {
         try {
           window.clearTimeout(resumeDebounceTimer);
-          resumeDebounceTimer = window.setTimeout(function () {
-            resumeDebounceTimer = null;
-            fireResume();
-          }, 280);
+          resumeDebounceTimer = null;
+          fireResume();
         } catch (eP) {}
       },
       false

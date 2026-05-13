@@ -31,7 +31,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
 
   function primaryHex() {
     var M = Cf.Config.merchant();
-    return (M && M.widget_primary_color) || "#6C5CE7";
+    return (M && M.widget_primary_color) || "#6366f1";
   }
 
   function injectLegacyCartflowWidget() {
@@ -162,6 +162,13 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
   function runBackgroundReasonPhoneSave(meta) {
     meta = meta || {};
     try {
+      console.log("[CF V2 BACKGROUND SAVE]", {
+        phase: "start",
+        kind: meta.kind || "reason_phone",
+        reason_key: String(meta.reasonKey || ""),
+      });
+    } catch (eVs) {}
+    try {
       console.log("[CF BACKGROUND SAVE START]", {
         reason_key: String(meta.reasonKey || ""),
         kind: meta.kind || "reason_phone",
@@ -208,6 +215,13 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
   }
 
   function runBackgroundReasonOnly(payload, rk, continuationSub) {
+    try {
+      console.log("[CF V2 BACKGROUND SAVE]", {
+        phase: "start",
+        kind: "reason_only",
+        reason_key: String(rk || ""),
+      });
+    } catch (eVs2) {}
     try {
       console.log("[CF BACKGROUND SAVE START]", {
         reason_key: String(rk || ""),
@@ -370,12 +384,38 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
   function openReasonPath(reasonKey, payload, detail) {
     detail = detail || {};
     var rk = String(reasonKey || "").toLowerCase();
-    var pcm = Cf.Config.phoneCaptureMode();
+    var pcm = String(Cf.Config.phoneCaptureMode() || "after_reason").toLowerCase();
     var has = Cf.State.hasValidStoredPhone();
     var subCat =
       detail.sub_category != null ? detail.sub_category : null;
 
-    if (pcm !== "none" && !has) {
+    if (pcm === "none") {
+      st().pending_reason_key = rk;
+      st().pending_reason_payload = Object.assign({}, payload || {});
+      st().pending_reason_detail = Object.assign({}, detail || {});
+      try {
+        console.log("[CF UX REASON INSTANT]", {
+          reason_key: rk,
+          path: "to_continuation_direct",
+          pcm: pcm,
+        });
+      } catch (eUr) {}
+
+      showContinuation(rk, subCat);
+      runBackgroundReasonOnly(
+        Object.assign({}, payload || {}),
+        rk,
+        subCat
+      );
+      return;
+    }
+
+    if (pcm === "after_reason") {
+      openReasonPhoneImmediate(rk, payload, detail);
+      return;
+    }
+
+    if (!has) {
       openReasonPhoneImmediate(rk, payload, detail);
       return;
     }
@@ -387,8 +427,9 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       console.log("[CF UX REASON INSTANT]", {
         reason_key: rk,
         path: "to_continuation_direct",
+        pcm: pcm,
       });
-    } catch (eUr) {}
+    } catch (eUr2) {}
 
     showContinuation(rk, subCat);
     runBackgroundReasonOnly(
@@ -615,7 +656,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
 
     tick();
     if (!st().step1Poll) {
-      st().step1Poll = setInterval(tick, 5000);
+      st().step1Poll = setInterval(tick, 1000);
     }
   }
 

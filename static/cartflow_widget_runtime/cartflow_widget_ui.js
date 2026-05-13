@@ -7,7 +7,9 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
 
   var Cf = window.CartflowWidgetRuntime;
   var rowStyleCol =
-    "display:flex;flex-direction:column;gap:10px;margin-top:4px;width:100%;box-sizing:border-box;";
+    "display:flex;flex-direction:column;gap:6px;margin-top:2px;width:100%;box-sizing:border-box;";
+  var textPrimary = "margin:0;color:rgba(241,245,249,.95);";
+  var textMuted = "margin:0;color:rgba(226,232,240,.82);";
 
   function bubbleRoot() {
     if (Cf.Shell && typeof Cf.Shell.getRoot === "function") {
@@ -25,13 +27,22 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
   }
 
   function stampPrimary(btn, primaryHex) {
-    var hex = primaryHex || "#6C5CE7";
+    var hex = primaryHex || "#6366f1";
     btn.style.cssText =
-      "border:1px solid rgba(148,163,184,.58);cursor:pointer;display:inline-flex;align-items:center;" +
-      "justify-content:flex-start;text-align:start;border-radius:10px;background:" +
+      "cursor:pointer;display:inline-flex;align-items:center;justify-content:center;text-align:center;border-radius:9px;" +
+      "background:linear-gradient(180deg," +
       hex +
-      ";color:#fff;width:100%;box-sizing:border-box;padding:11px 12px;line-height:1.45;" +
-      "font-weight:600;";
+      " 0%,#4f46e5 100%);color:#fafafa;width:100%;box-sizing:border-box;" +
+      "padding:9px 10px;line-height:1.35;font-weight:600;font-size:13px;" +
+      "border:1px solid rgba(255,255,255,.12);box-shadow:0 1px 0 rgba(255,255,255,.12) inset;";
+  }
+
+  function stampSecondaryOutline(btn) {
+    btn.style.cssText =
+      "cursor:pointer;display:inline-flex;align-items:center;justify-content:center;text-align:center;border-radius:9px;" +
+      "background:rgba(255,255,255,.07);color:#e2e8f0;width:100%;box-sizing:border-box;" +
+      "padding:9px 10px;line-height:1.35;font-weight:600;font-size:13px;" +
+      "border:1px solid rgba(226,232,240,.25);";
   }
 
   function clear(primaryHex) {
@@ -49,10 +60,11 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     }
     Cf.Shell.open({ primaryColor: opts.primaryColor });
     Cf.Shell.setStep("yes_no");
-    var ph = opts.primaryColor || "#6C5CE7";
+    var ph = opts.primaryColor || "#6366f1";
     var frag = document.createDocumentFragment();
     var p = document.createElement("p");
-    p.style.cssText = "margin:0 0 12px;font-size:14px;line-height:1.5;";
+    p.style.cssText =
+      textPrimary + "margin-bottom:10px;font-size:14px;line-height:1.5;font-weight:500;";
     p.textContent = opts.question || "";
     frag.appendChild(p);
     var row = document.createElement("div");
@@ -69,8 +81,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     var bn = document.createElement("button");
     bn.type = "button";
     bn.textContent = opts.no || "لا";
-    bn.style.cssText =
-      by.style.cssText.replace(/background[^;]+;/, "background:transparent;color:#4338CA;");
+    stampSecondaryOutline(bn);
     bn.addEventListener("click", function (e) {
       e.preventDefault();
       e.stopPropagation();
@@ -80,13 +91,15 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     row.appendChild(bn);
     frag.appendChild(row);
     Cf.Shell.setContent(frag, "yes_no");
+    try {
+      console.log("[CF V2 SHOW YESNO]");
+    } catch (eLog) {}
   }
 
-  function btnGhostStyle(primaryHex) {
+  function btnGhostStyle() {
     return (
-      "border:1px solid rgba(148,163,184,.52);cursor:pointer;border-radius:10px;background:transparent;color:" +
-      primaryHex +
-      ";width:auto;padding:8px 12px;"
+      "margin-top:6px;border:1px solid rgba(226,232,240,.26);cursor:pointer;border-radius:9px;" +
+      "background:rgba(255,255,255,.06);color:rgba(241,245,249,.9);width:100%;padding:8px 10px;font-weight:600;font-size:12px;"
     );
   }
 
@@ -96,16 +109,17 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     }
     Cf.Shell.open({ primaryColor: opts.primaryColor });
     Cf.Shell.setStep("reason");
-    var ph = opts.primaryColor || "#6C5CE7";
+    var ph = opts.primaryColor || "#6366f1";
     var frag = document.createDocumentFragment();
     var p = document.createElement("p");
-    p.style.cssText = "margin:0 0 12px;";
+    p.style.cssText =
+      textPrimary + "margin-bottom:8px;font-size:13px;line-height:1.45;font-weight:600;";
     p.textContent = opts.title || "وش أكثر شيء مخليك متردد؟ تبيني أساعدك";
     frag.appendChild(p);
     var row = document.createElement("div");
     row.setAttribute("data-cf-reason-row-v2", "1");
     row.style.cssText =
-      "display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-start;margin-top:4px;";
+      "display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:2px;width:100%;";
     opts.rows.forEach(function (item) {
       var b = document.createElement("button");
       b.type = "button";
@@ -122,7 +136,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     if (opts.onBack) {
       var back = document.createElement("button");
       back.type = "button";
-      back.style.cssText = "margin-top:10px;" + btnGhostStyle(ph);
+      back.style.cssText = btnGhostStyle();
       back.textContent = "رجوع";
       back.addEventListener("click", function (e) {
         e.preventDefault();
@@ -132,6 +146,9 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       frag.appendChild(back);
     }
     Cf.Shell.setContent(frag, "reason_grid");
+    try {
+      console.log("[CF V2 SHOW REASONS]");
+    } catch (eR) {}
   }
 
   function renderBrowsingChoices(opts) {
@@ -140,10 +157,10 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     }
     Cf.Shell.open({ primaryColor: opts.primaryColor });
     Cf.Shell.setStep("exit_browsing");
-    var ph = opts.primaryColor || "#6C5CE7";
+    var ph = opts.primaryColor || "#6366f1";
     var frag = document.createDocumentFragment();
     var p = document.createElement("p");
-    p.style.cssText = "margin:0 0 12px;font-size:14px;line-height:1.5;";
+    p.style.cssText = textPrimary + "margin-bottom:10px;font-size:14px;line-height:1.5;";
     p.textContent = opts.title || "";
     frag.appendChild(p);
     var row = document.createElement("div");
@@ -170,14 +187,15 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     }
     Cf.Shell.open({ primaryColor: opts.primaryColor });
     Cf.Shell.setStep("phone");
-    var ph = opts.primaryColor || "#6C5CE7";
+    var ph = opts.primaryColor || "#6366f1";
     var frag = document.createDocumentFragment();
     var t = document.createElement("p");
-    t.style.cssText = "margin:0 0 10px;font-size:14px;line-height:1.4;font-weight:700;";
+    t.style.cssText =
+      textPrimary + "margin-bottom:6px;font-size:13px;line-height:1.4;font-weight:700;";
     t.textContent = "رقم الجوال لإكمال المتابعة";
     frag.appendChild(t);
     var s = document.createElement("p");
-    s.style.cssText = "margin:0 0 10px;font-size:13px;opacity:.9;";
+    s.style.cssText = textMuted + "margin-bottom:8px;font-size:12px;line-height:1.4;";
     s.textContent = "نستخدمه فقط لمتابعة طلبك إذا احتجت مساعدة.";
     frag.appendChild(s);
     var inp = document.createElement("input");
@@ -185,7 +203,9 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     inp.placeholder = "05xxxxxxxx";
     inp.setAttribute("dir", "ltr");
     inp.style.cssText =
-      "width:100%;box-sizing:border-box;border-radius:8px;border:0;padding:10px;margin-bottom:8px;font:inherit;";
+      "width:100%;box-sizing:border-box;border-radius:9px;border:1px solid rgba(99,102,241,.38);" +
+      "background:rgba(15,23,42,.65);padding:9px 10px;margin-bottom:6px;font:inherit;font-size:14px;color:#f8fafc;" +
+      "outline:none;";
     try {
       var norm = Cf.State ? Cf.State.getStoredPhoneNorm() : "";
       if (norm && norm.slice(0, 3) === "966") {
@@ -194,7 +214,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     } catch (eLs) {}
     frag.appendChild(inp);
     var err = document.createElement("p");
-    err.style.cssText = "margin:0 0 10px;color:#b91c1c;font-size:13px;";
+    err.style.cssText = "margin:0 0 8px;color:#fecaca;font-size:12px;line-height:1.35;";
     err.textContent = "";
     frag.appendChild(err);
     var row = document.createElement("div");
@@ -206,7 +226,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     var back = document.createElement("button");
     back.type = "button";
     back.textContent = "رجوع";
-    back.style.cssText = save.style.cssText + "opacity:0.92;background:#e0e7ff;color:#312e81;";
+    stampSecondaryOutline(back);
     back.addEventListener("click", function (e) {
       e.preventDefault();
       opts.onBack();
@@ -241,6 +261,9 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     row.appendChild(back);
     frag.appendChild(row);
     Cf.Shell.setContent(frag, "phone_capture");
+    try {
+      console.log("[CF V2 SHOW PHONE]");
+    } catch (eP) {}
   }
 
   function renderContinuation(opts) {
@@ -249,7 +272,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     }
     Cf.Shell.open({ primaryColor: opts.primaryColor });
     Cf.Shell.setStep("continuation");
-    var ph = opts.primaryColor || "#6C5CE7";
+    var ph = opts.primaryColor || "#6366f1";
     var msgs = opts.messages || {};
     var rk = String(opts.reasonKey || "other").toLowerCase();
     var txt =
@@ -257,12 +280,13 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       "تمام 👍\nأنا معك إذا احتجت أي توضيح قبل تكمل الطلب.";
     var frag = document.createDocumentFragment();
     var p = document.createElement("p");
-    p.style.cssText = "margin:0 0 16px;font-size:14px;line-height:1.65;white-space:pre-line;";
+    p.style.cssText =
+      textPrimary + "margin-bottom:10px;font-size:13px;line-height:1.55;white-space:pre-line;";
     p.textContent = txt;
     frag.appendChild(p);
     var row = document.createElement("div");
     row.style.cssText = rowStyleCol;
-    function add(label, fn) {
+    function addPrimary(label, fn) {
       var b = document.createElement("button");
       b.type = "button";
       b.textContent = label;
@@ -273,16 +297,27 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       });
       row.appendChild(b);
     }
-    add("أكمل الطلب", opts.onContinueCart);
-    add("أحتاج مساعدة الآن", opts.onAssist);
-    add("رجوع للأسباب", opts.onBackReasons);
+    function addSecondary(label, fn) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.textContent = label;
+      stampSecondaryOutline(b);
+      b.addEventListener("click", function (e) {
+        e.preventDefault();
+        fn();
+      });
+      row.appendChild(b);
+    }
+    addPrimary("أكمل الطلب", opts.onContinueCart);
+    addSecondary("أحتاج مساعدة الآن", opts.onAssist);
+    addSecondary("رجوع للأسباب", opts.onBackReasons);
     if (opts.onRetryBackgroundSave && typeof opts.onRetryBackgroundSave === "function") {
       var rz = document.createElement("button");
       rz.type = "button";
       rz.textContent = opts.retryLabel || "إعادة إرسال";
       rz.style.cssText =
-        "border:1px solid rgba(148,163,184,.62);cursor:pointer;border-radius:10px;background:#fffefa;color:#9a3412;" +
-        "width:100%;box-sizing:border-box;padding:11px 12px;font:inherit;font-weight:600;";
+        "border:1px solid rgba(251,191,36,.45);cursor:pointer;border-radius:9px;background:rgba(120,53,15,.35);" +
+        "color:#fde68a;width:100%;box-sizing:border-box;padding:9px 10px;font:inherit;font-weight:600;";
       rz.addEventListener("click", function (e) {
         e.preventDefault();
         e.stopPropagation();
@@ -292,6 +327,9 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     }
     frag.appendChild(row);
     Cf.Shell.setContent(frag, "continuation");
+    try {
+      console.log("[CF V2 SHOW CONTINUATION]");
+    } catch (eCo) {}
   }
 
   function hideBubble() {
@@ -315,19 +353,20 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     }
     Cf.Shell.open({ primaryColor: opts.primaryColor });
     Cf.Shell.setStep("other_draft");
-    var ph = opts.primaryColor || "#6C5CE7";
+    var ph = opts.primaryColor || "#6366f1";
     var frag = document.createDocumentFragment();
     var hi = document.createElement("p");
-    hi.style.cssText = "margin:0 0 10px;font-size:13px;line-height:1.5;";
+    hi.style.cssText = textPrimary + "margin-bottom:8px;font-size:13px;line-height:1.5;";
     hi.textContent = "اكتب ملاحظتك باختصار 👇";
     frag.appendChild(hi);
     var ta = document.createElement("textarea");
     ta.rows = 3;
     ta.style.cssText =
-      "width:100%;box-sizing:border-box;border-radius:8px;border:0;padding:8px;margin-bottom:8px;font:inherit;resize:vertical;";
+      "width:100%;box-sizing:border-box;border-radius:9px;border:1px solid rgba(99,102,241,.38);" +
+      "background:rgba(15,23,42,.65);padding:8px;margin-bottom:6px;font:inherit;resize:vertical;color:#f8fafc;";
     frag.appendChild(ta);
     var err = document.createElement("p");
-    err.style.cssText = "color:#b91c1c;font-size:13px;margin:4px 0;";
+    err.style.cssText = "color:#fecaca;font-size:12px;margin:4px 0;";
     err.textContent = "";
     frag.appendChild(err);
     var row = document.createElement("div");
@@ -338,7 +377,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     stampPrimary(send, ph);
     var back = document.createElement("button");
     back.type = "button";
-    back.style.cssText = send.style.cssText + "opacity:0.92;background:#e0e7ff;color:#312e81;";
+    stampSecondaryOutline(back);
     back.textContent = "رجوع";
     back.addEventListener("click", function (e) {
       e.preventDefault();

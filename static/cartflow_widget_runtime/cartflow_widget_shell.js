@@ -149,13 +149,15 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       }
     }
 
-    var fill = primaryHex || "#6C5CE7";
+    var fill = primaryHex || "#6366F1";
     w.style.cssText =
-      "position:fixed;z-index:2147483640;max-width:min(340px,calc(100vw - 24px));" +
-      "right:max(14px,env(safe-area-inset-right));bottom:max(14px,env(safe-area-inset-bottom));" +
-      "box-sizing:border-box;padding:14px;border-radius:16px;background:rgba(249,247,254,1);" +
-      "color:#17202a;box-shadow:0 24px 64px rgba(15,23,42,.48), 0 4px 12px rgba(15,23,42,.08);" +
-      "font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;font-size:15px;line-height:1.45;";
+      "position:fixed;z-index:2147483640;max-width:min(300px,calc(100vw - 20px));" +
+      "right:max(12px,env(safe-area-inset-right));bottom:max(12px,env(safe-area-inset-bottom));" +
+      "box-sizing:border-box;padding:11px;border-radius:14px;" +
+      "background:linear-gradient(165deg,#1e1b4b 0%,#312e81 42%,#1e1b4b 100%);" +
+      "color:#f1f5f9;border:1px solid rgba(99,102,241,.45);" +
+      "box-shadow:0 18px 48px rgba(2,6,23,.72), inset 0 1px 0 rgba(255,255,255,.06);" +
+      "font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;font-size:14px;line-height:1.42;";
 
     var inner = w.querySelector("[data-cf-shell-inner]");
     if (!inner) {
@@ -187,17 +189,18 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       var head = document.createElement("div");
       head.setAttribute("data-cf-shell-header", "1");
       head.style.cssText =
-        "display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 0 10px 0;";
+        "display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 0 6px 0;";
       var title = document.createElement("span");
       title.setAttribute("data-cf-shell-title", "1");
-      title.style.cssText = "font-weight:700;font-size:14px;opacity:.95;";
+      title.style.cssText =
+        "font-weight:700;font-size:13px;color:#eef2ff;letter-spacing:.01em;";
       title.textContent = HEADER_DEFAULT;
       var closeBtn = document.createElement("button");
       closeBtn.type = "button";
       closeBtn.setAttribute("data-cf-shell-close", "1");
       closeBtn.setAttribute("aria-label", "إغلاق");
       closeBtn.style.cssText =
-        "border:0;background:transparent;color:#64748b;cursor:pointer;font-size:20px;line-height:1;padding:2px 6px;border-radius:8px;";
+        "border:0;background:transparent;color:rgba(226,232,240,.82);cursor:pointer;font-size:20px;line-height:1;padding:2px 6px;border-radius:8px;";
       closeBtn.textContent = "×";
       head.appendChild(title);
       head.appendChild(closeBtn);
@@ -241,7 +244,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       load.setAttribute("data-cf-shell-loading", "1");
       load.style.cssText =
         "display:none;position:absolute;left:0;right:0;top:0;bottom:0;align-items:center;justify-content:center;" +
-        "flex-direction:row;background:rgba(249,247,254,.88);border-radius:12px;z-index:4;font-size:13px;color:#475569;";
+        "flex-direction:row;background:rgba(15,23,42,.45);border-radius:10px;z-index:4;font-size:12px;color:#e2e8f0;";
       load.textContent = "…";
       var mEl = stage.querySelector(WIDGET_BODY_SELECTOR);
       if (mEl) {
@@ -255,7 +258,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       var foot = document.createElement("div");
       foot.setAttribute("data-cf-shell-footer", "1");
       foot.style.cssText =
-        "margin-top:10px;min-height:0;font-size:13px;line-height:1.4;color:#0f172a;display:none;";
+        "margin-top:8px;min-height:0;font-size:12px;line-height:1.35;color:rgba(226,232,240,.92);display:none;";
       inner.appendChild(foot);
     }
 
@@ -430,7 +433,11 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     foot.textContent = msg;
     try {
       foot.style.color =
-        opts.tone === "error" ? "#b91c1c" : opts.tone === "success" ? "#047857" : "#0f172a";
+        opts.tone === "error"
+          ? "#fecaca"
+          : opts.tone === "success"
+          ? "#86efac"
+          : "#e2e8f0";
     } catch (eC) {}
   }
 
