@@ -23,6 +23,10 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     background_save_failed: false,
     last_exit_fire_ts: 0,
     exit_session_block: false,
+    /** Hesitation UX: canonical fire deadline (unix ms); see cartflow_widget_triggers.js */
+    cfV2HesitationDeadlineAt: null,
+    /** When cart signal arrived before trigger init flush; anchors deadline to cart time */
+    cfV2HesitationDeferredBaseAt: null,
     shell: {
       isOpen: false,
       currentStep: null,

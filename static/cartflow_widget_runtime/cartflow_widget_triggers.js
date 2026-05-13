@@ -16,8 +16,8 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
   var v2TriggerInitDone = false;
   var v2DeferredScheduleReasons = [];
 
-  /** One pending exit timer; one pending hesitation anchor timer (State.internals). */
-  var resumeDebounceTimer = null;
+  /** One pending resume coalesce (same tick merges pageshow + visibilitychange). */
+  var resumeFlushTimer = null;
 
   function trigLog(tag, meta) {
     try {
@@ -140,6 +140,34 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     return Cf.State && Cf.State.internals ? Cf.State.internals : {};
   }
 
+  function emitHesitationFireLogs(deadlineMs) {
+    var actual = Date.now();
+    var drift =
+      deadlineMs != null && isFinite(deadlineMs) ? actual - deadlineMs : 0;
+    try {
+      console.log("[CF V2 TIMER FIRE]", {
+        actual_fire_at: actual,
+        drift_ms: drift,
+      });
+      console.log("[CF V2 SHOW NOW]");
+    } catch (eL) {}
+  }
+
+  function fireCartRecoveryAfterHesitation(stInner, flowsRef) {
+    stInner.hesitationAnchorTimer = null;
+    var dl = stInner.cfV2HesitationDeadlineAt;
+    stInner.cfV2HesitationDeadlineAt = null;
+    emitHesitationFireLogs(dl);
+    logFired("add_to_cart", {
+      timer: "hesitation_anchor",
+    });
+    if (typeof Hooks.fireCartRecovery === "function") {
+      Hooks.fireCartRecovery("cart_hesitation_timer");
+    } else if (flowsRef && typeof flowsRef.onHesitationTimerFire === "function") {
+      flowsRef.onHesitationTimerFire();
+    }
+  }
+
   function clearHesitationTimersOnly() {
     if (Cf.State && typeof Cf.State.clearHesitationTimers === "function") {
       Cf.State.clearHesitationTimers();
@@ -250,7 +278,9 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     return { ok: true, reason: null };
   }
 
-  function scheduleCartHesitation(st, flowsRef) {
+  function scheduleCartHesitation(stRef, flowsRef, timingOpts) {
+    timingOpts = timingOpts || {};
+    flowsRef = flowsRef || {};
     var g = gateHesitationAfterCartAdd();
     if (!g.ok) {
       logBlocked(g.reason || "widget_disabled", {
@@ -260,36 +290,36 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     }
     logAllowed({ path: "hesitation_schedule" });
 
-    if (st.hesitationAnchorTimer != null) {
+    if (stRef.hesitationAnchorTimer != null) {
       logCleared({ cause: "timer_replaced", timer: "hesitation_anchor" });
     }
     clearHesitationTimersOnly();
 
-    var ms = hesitationMs();
+    var baseMs =
+      typeof timingOpts.armBaseAtMs === "number" && isFinite(timingOpts.armBaseAtMs)
+        ? timingOpts.armBaseAtMs
+        : Date.now();
+    var msConfigured = hesitationMs();
+    var deadline = baseMs + msConfigured;
+    var remainingMs = Math.max(0, Math.floor(deadline - Date.now()));
+
+    stRef.cfV2HesitationDeadlineAt = deadline;
+
     try {
-      var secs = ms / 1000;
-      var label =
-        !isFinite(secs) || secs < 0
-          ? "0"
-          : secs % 1 === 0
-            ? String(Math.round(secs))
-            : String(Math.round(secs * 10) / 10);
-      console.log("[CF V2 OPEN IN " + label + "S]");
-    } catch (eOpenLog) {}
+      console.log("[CF V2 TIMER ARM]", {
+        expected_fire_at: deadline,
+      });
+    } catch (eArm) {}
+
     logScheduled("add_to_cart", {
-      delay_ms: ms,
+      delay_ms: remainingMs,
       timer: "hesitation_anchor",
+      configured_delay_ms: msConfigured,
     });
 
-    st.hesitationAnchorTimer = setTimeout(function () {
-      st.hesitationAnchorTimer = null;
-      logFired("add_to_cart", { timer: "hesitation_anchor", delay_ms: ms });
-      if (typeof Hooks.fireCartRecovery === "function") {
-        Hooks.fireCartRecovery("cart_hesitation_timer");
-      } else if (flowsRef && typeof flowsRef.onHesitationTimerFire === "function") {
-        flowsRef.onHesitationTimerFire();
-      }
-    }, ms);
+    stRef.hesitationAnchorTimer = setTimeout(function () {
+      fireCartRecoveryAfterHesitation(stRef, flowsRef);
+    }, remainingMs);
   }
 
   function scheduleInactivityBubble(st, flowsRef, delayMs) {
@@ -297,6 +327,9 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       logCleared({ cause: "timer_replaced", timer: "idle" });
     }
     clearHesitationTimersOnly();
+    try {
+      st.cfV2HesitationDeadlineAt = null;
+    } catch (eDl) {}
     logScheduled("add_to_cart", {
       delay_ms: delayMs || 120000,
       timer: "inactivity",
@@ -347,6 +380,9 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     } catch (eLf) {}
 
     if (!v2TriggerInitDone) {
+      try {
+        st().cfV2HesitationDeferredBaseAt = Date.now();
+      } catch (eB) {}
       try {
         v2DeferredScheduleReasons.push(sourceTag);
       } catch (ePu) {}
@@ -422,21 +458,25 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     );
   }
 
-  function installVisibilityResumeListener() {
-    function fireResume() {
+  function enqueueVisibilityResumeSoon() {
+    try {
+      window.clearTimeout(resumeFlushTimer);
+    } catch (eC) {}
+    resumeFlushTimer = window.setTimeout(function () {
+      resumeFlushTimer = null;
       try {
         receiveTrigger("visibility_resume", { from: "tab_visible_or_pageshow" });
       } catch (eR) {}
-    }
+    }, 0);
+  }
 
+  function installVisibilityResumeListener() {
     document.addEventListener(
       "visibilitychange",
       function () {
         try {
           if (document.visibilityState === "visible") {
-            window.clearTimeout(resumeDebounceTimer);
-            resumeDebounceTimer = null;
-            fireResume();
+            enqueueVisibilityResumeSoon();
           }
         } catch (ev) {}
       },
@@ -447,9 +487,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       "pageshow",
       function (ev) {
         try {
-          window.clearTimeout(resumeDebounceTimer);
-          resumeDebounceTimer = null;
-          fireResume();
+          enqueueVisibilityResumeSoon();
         } catch (eP) {}
       },
       false
@@ -491,15 +529,23 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
 
   installStorefrontCartBridgeEarly();
 
-  function flushDeferredScheduling(st, flowsRef) {
+  function flushDeferredScheduling(stRef, flowsRef) {
     var had = false;
     try {
       had = v2DeferredScheduleReasons.length > 0;
       v2DeferredScheduleReasons.length = 0;
     } catch (eE) {}
-    if (had && st && !st.bubbleShown && haveCartApprox()) {
-      scheduleCartHesitation(st, flowsRef || {});
+    if (!had || !stRef || stRef.bubbleShown || !haveCartApprox()) {
+      return;
     }
+    var baseAt =
+      stRef.cfV2HesitationDeferredBaseAt != null
+        ? stRef.cfV2HesitationDeferredBaseAt
+        : Date.now();
+    try {
+      stRef.cfV2HesitationDeferredBaseAt = null;
+    } catch (eC) {}
+    scheduleCartHesitation(stRef, flowsRef || {}, { armBaseAtMs: baseAt });
   }
 
   /**
@@ -533,7 +579,58 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
         return null;
       }
       Cf.State.mirrorCartTotalsFromGlobals();
-      scheduleCartHesitation(st(), {});
+
+      var stRef = st();
+      var dl = stRef.cfV2HesitationDeadlineAt;
+      var deadlinePassed =
+        dl != null && isFinite(dl) && Date.now() >= dl && haveCartApprox();
+
+      try {
+        console.log("[CF V2 RETURN RESUME]", {
+          delay_passed: !!deadlinePassed,
+        });
+      } catch (eRs) {}
+
+      if (!haveCartApprox() || stRef.bubbleShown) {
+        return true;
+      }
+
+      if (deadlinePassed && dl != null) {
+        var gm = gateCartRecoveryOpen("visibility_resume");
+        if (!gm.ok) {
+          return true;
+        }
+        if (stRef.hesitationAnchorTimer != null) {
+          try {
+            clearTimeout(stRef.hesitationAnchorTimer);
+          } catch (eCt) {}
+          stRef.hesitationAnchorTimer = null;
+        }
+        stRef.cfV2HesitationDeadlineAt = null;
+        emitHesitationFireLogs(dl);
+        logFired("visibility_resume", { timer: "hesitation_catch_up" });
+        if (typeof Hooks.fireCartRecovery === "function") {
+          Hooks.fireCartRecovery("cart_hesitation_timer");
+        }
+        return true;
+      }
+
+      if (
+        dl != null &&
+        isFinite(dl) &&
+        gateHesitationAfterCartAdd().ok
+      ) {
+        var remainder = Math.max(0, Math.floor(dl - Date.now()));
+        try {
+          if (stRef.hesitationAnchorTimer != null) {
+            clearTimeout(stRef.hesitationAnchorTimer);
+          }
+        } catch (eCrs) {}
+        stRef.hesitationAnchorTimer = setTimeout(function () {
+          fireCartRecoveryAfterHesitation(stRef, {});
+        }, remainder);
+      }
+
       return true;
     }
 

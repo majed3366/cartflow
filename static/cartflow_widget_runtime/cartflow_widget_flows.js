@@ -656,7 +656,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
 
     tick();
     if (!st().step1Poll) {
-      st().step1Poll = setInterval(tick, 1000);
+      st().step1Poll = setInterval(tick, 120);
     }
   }
 
