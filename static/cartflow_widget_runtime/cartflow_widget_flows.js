@@ -29,37 +29,16 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     return /\b\/demo\//i.test(String(window.location.pathname || ""));
   }
 
-  /** Primary V2 storefront only; excludes /demo/store2 etc. Legacy VIP bypass never runs here. */
-  function isDemoStorePrimaryWidgetPath() {
-    return /^\/demo\/store(?:\/|$)/i.test(
-      String(window.location.pathname || "")
-    );
-  }
-
   function primaryHex() {
     var M = Cf.Config.merchant();
     return (M && M.widget_primary_color) || "#6366f1";
   }
 
-  function injectLegacyCartflowWidget() {
+  /** Keep cart totals / VIP mirrors in sync; V2 bundle does not load legacy cartflow_widget.js. */
+  function mirrorCartTotals() {
     try {
-      if (document.querySelector("script[data-cf-legacy-widget-v2-fallback=\"1\"]")) {
-        return;
-      }
-      window.__CF_LOAD_LEGACY_CARTFLOW_WIDGET = true;
-      var s = document.createElement("script");
-      var v =
-        window.__cartflow_runtime_v2_build ||
-        window.CARTFLOW_RUNTIME_VERSION ||
-        "layered-runtime-v1";
-      s.src = "/static/cartflow_widget.js?v=" + encodeURIComponent(String(v));
-      s.async = true;
-      s.setAttribute("data-cf-legacy-widget-v2-fallback", "1");
-      (document.body || document.documentElement).appendChild(s);
-      try {
-        console.warn("[CartflowWidgetRuntimeV2] delegating VIP to legacy bundle");
-      } catch (eC) {}
-    } catch (eInj) {}
+      Cf.State.mirrorCartTotalsFromGlobals();
+    } catch (eM) {}
   }
 
   function emitGuide(name, detail) {
@@ -71,22 +50,6 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
         new CustomEvent(name, { bubbles: true, detail: detail || {} })
       );
     } catch (eDm) {}
-  }
-
-  function mirrorAndVipGate() {
-    Cf.State.mirrorCartTotalsFromGlobals();
-    try {
-      if (isDemoStorePrimaryWidgetPath()) {
-        return false;
-      }
-    } catch (eDs) {}
-    try {
-      if (window.cartflowState && window.cartflowState.isVip === true) {
-        injectLegacyCartflowWidget();
-        return true;
-      }
-    } catch (eVi) {}
-    return false;
   }
 
   function merchantAllowsUi() {
@@ -532,9 +495,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     if (Cf.State.sessionConvertedBlock()) {
       return;
     }
-    if (mirrorAndVipGate()) {
-      return;
-    }
+    mirrorCartTotals();
 
     if (Cf.Shell && typeof Cf.Shell.setLastTriggerSource === "function") {
       Cf.Shell.setLastTriggerSource(String(tagNote || "cart_recovery"));
@@ -652,7 +613,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     function tick() {
       Cf.Api.fetchReady().then(function (j) {
         Cf.Config.applyPayload(j, "ready");
-        mirrorAndVipGate();
+        mirrorCartTotals();
         if (j && j.after_step1) {
           st().step1Ready = true;
           if (st().step1Poll != null) {
@@ -678,26 +639,16 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
 
     Cf.Api.fetchReady().then(function (j) {
       Cf.Config.applyPayload(j || {}, "primed");
-      mirrorAndVipGate();
-      if (window.cartflowState && window.cartflowState.isVip === true) {
-        return;
-      }
+      mirrorCartTotals();
 
       Cf.Api.fetchPublicConfig().then(function (pc) {
         if (pc && typeof pc === "object" && pc.ok !== false) {
           Cf.Config.applyPayload(pc, "public_config_first");
-          mirrorAndVipGate();
+          mirrorCartTotals();
         }
       });
 
-      if (window.cartflowState && window.cartflowState.isVip === true) {
-        return;
-      }
-
       ensureStep1Then(function () {
-        if (mirrorAndVipGate()) {
-          return;
-        }
         if (!merchantAllowsUi()) {
           try {
             console.log("[CartflowWidgetRuntimeV2] merchant gate pauses hesitation UI");
@@ -727,6 +678,10 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
           },
         });
 
+        try {
+          console.log("[CF V2 FULLY ISOLATED]", { flows: FLOW_VERSION });
+        } catch (eIso) {}
+
         emitGuide("cartflow-demo-bubble-visible", {});
         try {
           console.log("[CARTFLOW WIDGET V2 FLOWS]", FLOW_VERSION);
@@ -739,7 +694,6 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     start: startFlows,
     showBubbleCartRecovery: showBubbleCartRecovery,
     FLOW_VERSION: FLOW_VERSION,
-    injectLegacyFallback: injectLegacyCartflowWidget,
     emitGuideEvent: emitGuide,
     scrollToCartOrCheckout: scrollToCartOrCheckout,
   };

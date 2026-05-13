@@ -15,7 +15,7 @@ class CartflowWidgetLayeredRuntimeTests(unittest.TestCase):
         s = (_RUNTIME / "cartflow_widget_loader.js").read_text(encoding="utf-8")
         self.assertIn("[CF V2 LOAD START]", s)
         self.assertIn("[CF V2 PRIMARY RUNTIME]", s)
-        self.assertIn("layered-runtime-v13", s)
+        self.assertIn("layered-runtime-v14", s)
         p = s.index("cartflow_widget_phone.js")
         sh = s.index("cartflow_widget_shell.js")
         u = s.index("cartflow_widget_ui.js")
@@ -25,7 +25,11 @@ class CartflowWidgetLayeredRuntimeTests(unittest.TestCase):
         self.assertLess(u, f)
 
         fx = (_RUNTIME / "cartflow_widget_flows.js").read_text(encoding="utf-8")
-        self.assertIn("isDemoStorePrimaryWidgetPath", fx)
+        self.assertIn("mirrorCartTotals", fx)
+        self.assertIn("[CF V2 FULLY ISOLATED]", fx)
+        self.assertNotIn("injectLegacyCartflowWidget", fx)
+        self.assertNotIn("__CF_LOAD_LEGACY_CARTFLOW_WIDGET", fx)
+        self.assertNotIn("data-cf-legacy-widget-v2-fallback", fx)
 
     def test_runtime_modules_exist(self) -> None:
         expected = (

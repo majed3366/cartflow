@@ -8,7 +8,7 @@
   "use strict";
 
   var BASE = "/static/cartflow_widget_runtime/";
-  var RUNTIME_TAG = window.CARTFLOW_RUNTIME_VERSION || "layered-runtime-v13";
+  var RUNTIME_TAG = window.CARTFLOW_RUNTIME_VERSION || "layered-runtime-v14";
   try {
     if (/^\/demo\/store(?:\/|$)/i.test(String(window.location.pathname || ""))) {
       console.log("[CF V2 PRIMARY RUNTIME]", {
