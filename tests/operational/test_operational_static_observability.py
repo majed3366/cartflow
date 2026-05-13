@@ -28,6 +28,8 @@ class OperationalStaticObservabilityTests(unittest.TestCase):
         self.assertIn("[LIFECYCLE STATE]", ret_src)
         loader = _read("static/widget_loader.js")
         self.assertIn("[CARTFLOW RUNTIME]", loader)
+        self.assertIn("[CF LEGACY WIDGET LOAD BLOCKED]", loader)
+        self.assertIn("[CF LEGACY WIDGET LOAD ALLOWED]", loader)
 
     def test_widget_boot_duplicate_guards_present(self) -> None:
         """Loader and widget bundle declare single-flight guards (operational maintainability)."""

@@ -53,6 +53,9 @@ class CartflowWidgetLayeredRuntimeTests(unittest.TestCase):
     def test_unified_loader_branches_on_runtime_v2_flag(self) -> None:
         s = _LOADER.read_text(encoding="utf-8")
         self.assertIn("CARTFLOW_WIDGET_RUNTIME_V2", s)
+        self.assertIn("__CARTFLOW_ALLOW_LEGACY_WIDGET", s)
+        self.assertIn("[CF LEGACY WIDGET LOAD BLOCKED]", s)
+        self.assertIn("[CF LEGACY WIDGET LOAD ALLOWED]", s)
         self.assertIn("/static/cartflow_widget_runtime/cartflow_widget_loader.js", s)
         self.assertIn("/static/cartflow_widget.js", s)
         self.assertIn("cartflowIsDemoStorePrimaryV2Path", s)

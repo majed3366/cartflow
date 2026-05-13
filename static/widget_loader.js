@@ -1,13 +1,25 @@
 /**
  * Unified CartFlow runtime bootstrap: return tracker + widget load after window.load.
- * Loads layered V2 (‎cartflow_widget_runtime‎) when ‎window.CARTFLOW_WIDGET_RUNTIME_V2‎ is true
- * (‎cartflow_widget_loader.js‎). Otherwise loads legacy ‎cartflow_widget.js‎.
- * ‎/demo/store*‎ always uses V2 (primary runtime; legacy not loaded).
+ * Layered V2 (‎cartflow_widget_runtime‎) is the **default** for storefronts using this shim.
+ * Legacy ‎cartflow_widget.js‎ loads **only** when ‎window.__CARTFLOW_ALLOW_LEGACY_WIDGET‎ === true **and**
+ * ‎window.CARTFLOW_WIDGET_RUNTIME_V2‎ is not true — explicit rollback / QA (see console ‎ALLOWED‎ / ‎BLOCKED‎ logs).
+ * ‎/demo/store*‎ sets ‎CARTFLOW_WIDGET_RUNTIME_V2‎ (**primary V2**; unchanged product behavior).
+ *
+ * Logs: ‎[CF LEGACY WIDGET LOAD BLOCKED]‎ (default-V2 substituted for accidental legacy path);
+ *       ‎[CF LEGACY WIDGET LOAD ALLOWED]‎ (legacy opt-in). ‎GET /dev/widget-test‎ bypasses this file.
  */
 (function () {
   "use strict";
 
-  var RUNTIME_VERSION = "unified-bootstrap-v5";
+  var RUNTIME_VERSION = "unified-bootstrap-v6";
+
+  function cartflowAllowLegacyWidgetExplicit() {
+    try {
+      return window.__CARTFLOW_ALLOW_LEGACY_WIDGET === true;
+    } catch (eLeg) {
+      return false;
+    }
+  }
 
   /** /demo/store, /demo/store/cart, … — primary V2 storefront; never legacy blob here. */
   function cartflowIsDemoStorePrimaryV2Path() {
@@ -276,8 +288,24 @@
       }
     } catch (eV2set) {}
 
+    var runtimeV2Explicit = window.CARTFLOW_WIDGET_RUNTIME_V2 === true;
+    var legacyExplicit = cartflowAllowLegacyWidgetExplicit();
+
+    /** Default storefront: V2. Legacy paths require ‎window.__CARTFLOW_ALLOW_LEGACY_WIDGET‎ before load fires. */
+    var loadLayeredV2 = runtimeV2Explicit || !legacyExplicit;
+
+    if (!runtimeV2Explicit && legacyExplicit) {
+      try {
+        console.log("[CF LEGACY WIDGET LOAD ALLOWED]");
+      } catch (eAl) {}
+    } else if (!runtimeV2Explicit && !legacyExplicit) {
+      try {
+        console.log("[CF LEGACY WIDGET LOAD BLOCKED]");
+      } catch (eBl) {}
+    }
+
     var s = document.createElement("script");
-    if (window.CARTFLOW_WIDGET_RUNTIME_V2 === true) {
+    if (loadLayeredV2) {
       s.src =
         "/static/cartflow_widget_runtime/cartflow_widget_loader.js?v=" +
         encodeURIComponent(RUNTIME_VERSION);

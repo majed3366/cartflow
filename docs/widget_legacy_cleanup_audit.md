@@ -4,6 +4,8 @@
 
 **Audit revision:** Refresh after **V2 isolation** — the layered runtime **no longer** injects legacy, sets **`__CF_LOAD_LEGACY_CARTFLOW_WIDGET`**, or references **`injectLegacyCartflowWidget`**. VIP mirrors still run via **`mirrorCartTotals()`** only; recovery + exit-intent UI for bundled V2 storefronts stays inside **`cartflow_widget_runtime`**.
 
+**Loader revision (2026-05-13, `chore restrict legacy widget loader branch`):** **`static/widget_loader.js`** **defaults to layered V2**; legacy **`cartflow_widget.js`** loads **only** with explicit **`window.__CARTFLOW_ALLOW_LEGACY_WIDGET === true`** while **`CARTFLOW_WIDGET_RUNTIME_V2`** is **not** `true` (**`[CF LEGACY WIDGET LOAD BLOCKED]`** / **`[CF LEGACY WIDGET LOAD ALLOWED]`**). **`GET /dev/widget-test*`** bypasses shim (unchanged).
+
 ---
 
 ## Classification key
@@ -25,7 +27,7 @@
 
 | Artifact | Role |
 |----------|------|
-| `static/widget_loader.js` | After `window.load`: schedules **`cartflow_return_tracker.js`**, then **`cartflow_widget_runtime/cartflow_widget_loader.js`** when **`CARTFLOW_WIDGET_RUNTIME_V2 === true`**, or legacy URL when false. Also forces V2 on **`/demo/store*`** via **`cartflowIsDemoStorePrimaryV2Path()`**. |
+| `static/widget_loader.js` | After `window.load`: **`cartflow_return_tracker.js`**, then **layered V2 by default**. **`cartflow_widget_runtime`** loads when **`CARTFLOW_WIDGET_RUNTIME_V2 === true`** **or** when legacy is **not** explicitly opted in (see **`__CARTFLOW_ALLOW_LEGACY_WIDGET`**). Legacy **`cartflow_widget.js`** only when **`window.__CARTFLOW_ALLOW_LEGACY_WIDGET === true`** **and** **`CARTFLOW_WIDGET_RUNTIME_V2` is not `true`** — logs **`[CF LEGACY WIDGET LOAD ALLOWED]`** / **`[CF LEGACY WIDGET LOAD BLOCKED]`**. **`/demo/store*`** coerces **`CARTFLOW_WIDGET_RUNTIME_V2 = true`**. |
 | `static/cartflow_widget_runtime/cartflow_widget_loader.js` | Serial module loader → bootstrap |
 | `static/cartflow_widget_runtime/cartflow_widget_*.js` | Config, API, State, **Triggers**, Phone, Shell, **Ui**, **Flows**, LegacyBridge |
 | `window.__cartflowV2Bootstrap` / `Flows.start()` | Starts V2 flows + trigger orchestrator (hesitation, exit intent, gates) |
@@ -50,7 +52,7 @@
 
 | Artifact | When it loads |
 |-----------|----------------|
-| `static/cartflow_widget.js` | **`widget_loader`** when **`CARTFLOW_WIDGET_RUNTIME_V2 !== true`**; **or** **`GET /dev/widget-test*`** (`_DEV_LEGACY_WIDGET_HARNESS_HTML` — **development ENV only**, see §**6.5**) |
+| `static/cartflow_widget.js` | **`widget_loader`** **only with explicit** **`window.__CARTFLOW_ALLOW_LEGACY_WIDGET === true`** while **`CARTFLOW_WIDGET_RUNTIME_V2` ≠ `true`** (rollback QA); **`GET /dev/widget-test*`** (**`_DEV_LEGACY_WIDGET_HARNESS_HTML`** — **development ENV**, see section **6.5**) bypasses shim |
 
 ---
 
@@ -77,8 +79,8 @@ _Order may vary slightly; shim uses non-blocking patterns._
 
 | Loader / page | Mechanism |
 |---------------|-----------|
-| **`static/widget_loader.js`** | **`s.src = "/static/cartflow_widget.js`** when **`CARTFLOW_WIDGET_RUNTIME_V2` is not `true`** |
-| **`main.py`** | **`_DEV_LEGACY_WIDGET_HARNESS_HTML`** — **`GET /dev/widget-test`**, **`GET /dev/widget-test/cart`** embed legacy **`cartflow_widget.js`** directly (**no shim / no V2**). **`404`** unless **`ENV=development`** (explicitly **excluded** from **`_DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT`** — see **`no_dev_in_production`**). See §**6.5**. |
+| **`static/widget_loader.js`** | **Default chained V2** (`cartflow_widget_runtime`). **Legacy** script tag **`/static/cartflow_widget.js`** **only if** **`window.__CARTFLOW_ALLOW_LEGACY_WIDGET === true`** **and** **`CARTFLOW_WIDGET_RUNTIME_V2` is not `true`**. Else emits **`[CF LEGACY WIDGET LOAD BLOCKED]`** and loads V2. Explicit legacy opt-in emits **`[CF LEGACY WIDGET LOAD ALLOWED]`**. |
+| **`main.py`** | **`_DEV_LEGACY_WIDGET_HARNESS_HTML`** — **`GET /dev/widget-test`**, **`GET /dev/widget-test/cart`** embed legacy **`cartflow_widget.js`** directly (**no shim / no V2**). **`404`** unless **`ENV=development`** (explicitly **excluded** from **`_DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT`** — see **`no_dev_in_production`**). See section **6.5**. |
 
 ### Is `static/cartflow_widget.js` still referenced in code/tests/docs?
 
@@ -88,7 +90,7 @@ _Order may vary slightly; shim uses non-blocking patterns._
 
 ### Does any V2 path still inject legacy fallback?
 
-**No.** Rollback path for storefronts today is **`widget_loader`** choosing the **legacy** script tag when **`CARTFLOW_WIDGET_RUNTIME_V2`** is omitted/false — not runtime injection from V2.
+**No.** Merchant **shim rollback** (optional): set **`window.__CARTFLOW_ALLOW_LEGACY_WIDGET = true`** before **`widget_loader`** runs **and** keep **`CARTFLOW_WIDGET_RUNTIME_V2`** untrue / omitted — then legacy **`cartflow_widget.js`** loads (**`[CF LEGACY WIDGET LOAD ALLOWED]`**). Otherwise the shim **defaults to V2** (**`[CF LEGACY WIDGET LOAD BLOCKED]`** when legacy would previously have loaded). **`/demo/store*`** coerces **`CARTFLOW_WIDGET_RUNTIME_V2`** — **never** shim-only legacy there.
 
 ### Exit intent: legacy vs V2?
 
@@ -168,15 +170,15 @@ _All other URLs are V2 modules, return tracker, abandon tracking (if template in
 
 ### 6.3 Still required today for rollback / QA
 
-- **`static/cartflow_widget.js`** — **non-V2** **`widget_loader`** path
-- **`widget_loader.js`** legacy branch + duplicate-guard strings for **`cartflow_widget.js`**
+- **`static/cartflow_widget.js`** — **`widget_loader`** only when **`window.__CARTFLOW_ALLOW_LEGACY_WIDGET === true`** and **`CARTFLOW_WIDGET_RUNTIME_V2`** is **not** `true`, **or** dev harness **`GET /dev/widget-test*`** (section **6.5**).
+- **`widget_loader.js`** — **defaults to V2**; legacy branch keyed on **`window.__CARTFLOW_ALLOW_LEGACY_WIDGET === true`**
 - **Static tests** coupled to monolith file contents (**F** until rewritten to V2 sources)
 - **Operational** checks over **`cartflow_widget.js`** (**F**)
 
 ### 6.4 VIP
 
 - **VIP flag** still maintained in **`window.cartflowState`** via **`mirrorCartTotals()`** inside V2 **`flows.js`**.
-- **VIP no longer pulls in** legacy **`cartflow_widget.js`** automatically from layered code. Merchants relying **only** on legacy behavior must keep **`CARTFLOW_WIDGET_RUNTIME_V2`** unset/false in embed until they accept full V2 UX.
+- **VIP no longer pulls in** legacy **`cartflow_widget.js`** automatically from **`cartflow_widget_runtime`**. For **monolith** storefront UX via **`widget_loader`**, set **`window.__CARTFLOW_ALLOW_LEGACY_WIDGET = true`** and omit **`CARTFLOW_WIDGET_RUNTIME_V2`** (**rollback** — see shim logs **`[CF LEGACY WIDGET LOAD ALLOWED]`**).
 
 ### 6.5 Dev legacy widget harness (**isolated** — **not production cleanup path**)
 
@@ -193,13 +195,13 @@ Complete inventory (HTML harness only — **no** **`widget_loader`** / **no** **
 - Paths are **explicitly excluded** from **`_DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT`** (see comment in **`main.py`** next to the frozenset).
 - **`/demo/store*`** (**unchanged**) remains the canonical **layered V2** storefront demo; do **not** use **`/dev/widget-test`** as a substitute.
 
-**Safely delete harness later:** only after audit priority **4** (**`cartflow_widget.js`**) roadmap; **not deleted** in this milestone (**Audit §5**).
+**Safely delete harness later:** only after audit priority **4** (**`cartflow_widget.js`**) roadmap; **not deleted** in this milestone (**Audit section 5**).
 
 ---
 
 ## 7. Risks before deleting `cartflow_widget.js`
 
-1. **Embeds without V2 flag** still load legacy via **`widget_loader.js`**.
+1. **Embeds deliberately forcing legacy via shim** must set **`window.__CARTFLOW_ALLOW_LEGACY_WIDGET = true`** before **`widget_loader`** runs (**and** **`CARTFLOW_WIDGET_RUNTIME_V2`** not true); omission **defaults to V2** (see **`[CF LEGACY WIDGET LOAD BLOCKED]`** log).
 2. **Regression tests** and **operational observability** scrape monolith markers.
 3. ~~**`/dev/widget-test`**~~ — **Controlled:** served only when **`ENV=development`** (**not** production-allowlisted). Still loads legacy inline for QA; **`/demo/store`** remains **primary V2** storefront preview.
 4. **Rollback** strategy for misconfigured storefronts disappears if loader legacy branch removed first.
@@ -230,6 +232,10 @@ pytest tests/test_demo_behavioral_navigation.py -q
 
 ---
 
-## 10. Disclaimer — this commit boundary
+## 10. Disclaimer — `chore: restrict legacy widget loader branch`
 
-**Isolation chore:** **`main.py`** (`_DEV_LEGACY_WIDGET_HARNESS_HTML`, **`dev_widget_test`** docstring, comment beside **`_DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT`**), **`tests/test_cartflow_production_readiness.py`**, **`services/cartflow_production_readiness.py`** (parity comment), **`SYSTEM_SUMMARY`**, **`docs/cartflow_production_readiness.md`**, **`widget_legacy_cleanup_audit.md`**. Unchanged: **`templates/demo_store.html`**, **`cartflow_widget_runtime/**`**, **`cart_abandon_tracking.js`**, **`cartflow_return_tracker.js`**, recovery / lifecycle / WhatsApp. **`widget_loader`** legacy branch + **`cartflow_widget.js`** unchanged.
+Touches **`static/widget_loader.js`** (V2-default shim, **`window.__CARTFLOW_ALLOW_LEGACY_WIDGET`** rollback gate, console **`[CF LEGACY WIDGET LOAD BLOCKED|ALLOWED]`**, internal **`RUNTIME_VERSION` → `unified-bootstrap-v6`**), **`tests/test_cartflow_widget_layered_runtime.py`**, **`tests/operational/test_operational_static_observability.py`**, **`docs/widget_legacy_cleanup_audit.md`**.
+
+**Out of scope / unchanged:** **`templates/demo_store.html`**, **`cartflow_widget_runtime/**`**, **`static/cartflow_widget.js`** (file retained), tracking scripts (**`cartflow_return_tracker.js`**, **`cart_abandon_tracking.js`**), **`main.py`** dev harness, dashboards, lifecycle / WhatsApp / recovery backends.
+
+Prior **dev-only harness** isolation (section **6.5**) and **`no_dev_in_production`** allowlist semantics **unchanged**.
