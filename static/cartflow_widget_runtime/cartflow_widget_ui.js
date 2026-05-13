@@ -1,66 +1,27 @@
 /**
- * DOM-only presenters for the storefront bubble (flows supply copy + handlers).
+ * DOM presenters — all views mount through CartflowWidgetRuntime.Shell (single bubble).
  */
 window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
 (function () {
   "use strict";
 
   var Cf = window.CartflowWidgetRuntime;
-  var WIDGET_BODY_SELECTOR = ".cartflow-widget-body";
   var rowStyleCol =
     "display:flex;flex-direction:column;gap:10px;margin-top:4px;width:100%;box-sizing:border-box;";
 
   function bubbleRoot() {
+    if (Cf.Shell && typeof Cf.Shell.getRoot === "function") {
+      return Cf.Shell.getRoot();
+    }
     return document.querySelector("[data-cartflow-bubble]");
   }
 
-  function stripChromeKeep(w) {
-    var body = w.querySelector(WIDGET_BODY_SELECTOR);
-    if (body) {
-      while (body.firstChild) {
-        body.removeChild(body.firstChild);
-      }
-      return body;
-    }
-    return null;
-  }
-
   function ensureBubble(primaryHex) {
-    var w =
-      bubbleRoot() ||
-      (function () {
-        var el = document.createElement("div");
-        el.setAttribute("data-cartflow-bubble", "1");
-        el.setAttribute("data-cf-reason-entry", "v2");
-        document.body.appendChild(el);
-        return el;
-      })();
-
-    var fill = primaryHex || "#6C5CE7";
-    w.style.cssText =
-      "position:fixed;z-index:2147483640;max-width:min(340px,calc(100vw - 24px));" +
-      "right:max(14px,env(safe-area-inset-right));bottom:max(14px,env(safe-area-inset-bottom));" +
-      "box-sizing:border-box;padding:14px;border-radius:16px;background:rgba(249,247,254,1);" +
-      "color:#17202a;box-shadow:0 24px 64px rgba(15,23,42,.48), 0 4px 12px rgba(15,23,42,.08);" +
-      "font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;font-size:15px;line-height:1.45;";
-    if (!w.querySelector('[data-cf-chrome="1"]')) {
-      var bar = document.createElement("div");
-      bar.setAttribute("data-cf-chrome", "1");
-      bar.style.cssText =
-        "height:4px;border-radius:999px;margin:0 0 10px 0;background:" + fill + ";";
-      w.appendChild(bar);
+    if (!Cf.Shell) {
+      return null;
     }
-    if (!w.querySelector(WIDGET_BODY_SELECTOR)) {
-      var inner = document.createElement("div");
-      inner.className = "cartflow-widget-body";
-      inner.style.cssText = "display:block;";
-      w.appendChild(inner);
-    }
-    try {
-      w.style.display = "block";
-      w.style.visibility = "visible";
-    } catch (eVis) {}
-    return w;
+    Cf.Shell.open({ primaryColor: primaryHex });
+    return Cf.Shell.getRoot();
   }
 
   function stampPrimary(btn, primaryHex) {
@@ -74,21 +35,26 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
   }
 
   function clear(primaryHex) {
-    var w = ensureBubble(primaryHex);
-    stripChromeKeep(w);
+    if (!Cf.Shell) {
+      return;
+    }
+    Cf.Shell.open({ primaryColor: primaryHex });
+    Cf.Shell.setContent(null, null);
+    Cf.Shell.setStep(null);
   }
 
   function renderYesNo(opts) {
-    var w = ensureBubble(opts.primaryColor);
-    var body = stripChromeKeep(w);
-    if (!body) {
+    if (!Cf.Shell) {
       return;
     }
+    Cf.Shell.open({ primaryColor: opts.primaryColor });
+    Cf.Shell.setStep("yes_no");
     var ph = opts.primaryColor || "#6C5CE7";
+    var frag = document.createDocumentFragment();
     var p = document.createElement("p");
     p.style.cssText = "margin:0 0 12px;font-size:14px;line-height:1.5;";
     p.textContent = opts.question || "";
-    body.appendChild(p);
+    frag.appendChild(p);
     var row = document.createElement("div");
     row.style.cssText = rowStyleCol;
     var by = document.createElement("button");
@@ -112,7 +78,8 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     });
     row.appendChild(by);
     row.appendChild(bn);
-    body.appendChild(row);
+    frag.appendChild(row);
+    Cf.Shell.setContent(frag, "yes_no");
   }
 
   function btnGhostStyle(primaryHex) {
@@ -124,16 +91,17 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
   }
 
   function renderReasonGrid(opts) {
-    var w = ensureBubble(opts.primaryColor);
-    var body = stripChromeKeep(w);
-    if (!body) {
+    if (!Cf.Shell) {
       return;
     }
+    Cf.Shell.open({ primaryColor: opts.primaryColor });
+    Cf.Shell.setStep("reason");
     var ph = opts.primaryColor || "#6C5CE7";
+    var frag = document.createDocumentFragment();
     var p = document.createElement("p");
     p.style.cssText = "margin:0 0 12px;";
     p.textContent = opts.title || "وش أكثر شيء مخليك متردد؟ تبيني أساعدك";
-    body.appendChild(p);
+    frag.appendChild(p);
     var row = document.createElement("div");
     row.setAttribute("data-cf-reason-row-v2", "1");
     row.style.cssText =
@@ -150,7 +118,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       });
       row.appendChild(b);
     });
-    body.appendChild(row);
+    frag.appendChild(row);
     if (opts.onBack) {
       var back = document.createElement("button");
       back.type = "button";
@@ -161,21 +129,23 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
         e.stopPropagation();
         opts.onBack();
       });
-      body.appendChild(back);
+      frag.appendChild(back);
     }
+    Cf.Shell.setContent(frag, "reason_grid");
   }
 
   function renderBrowsingChoices(opts) {
-    var w = ensureBubble(opts.primaryColor);
-    var body = stripChromeKeep(w);
-    if (!body) {
+    if (!Cf.Shell) {
       return;
     }
+    Cf.Shell.open({ primaryColor: opts.primaryColor });
+    Cf.Shell.setStep("exit_browsing");
     var ph = opts.primaryColor || "#6C5CE7";
+    var frag = document.createDocumentFragment();
     var p = document.createElement("p");
     p.style.cssText = "margin:0 0 12px;font-size:14px;line-height:1.5;";
     p.textContent = opts.title || "";
-    body.appendChild(p);
+    frag.appendChild(p);
     var row = document.createElement("div");
     row.style.cssText = rowStyleCol;
     (opts.buttons || []).forEach(function (b) {
@@ -190,24 +160,26 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       });
       row.appendChild(btn);
     });
-    body.appendChild(row);
+    frag.appendChild(row);
+    Cf.Shell.setContent(frag, "browsing_choices");
   }
 
   function renderPhoneStep(opts) {
-    var w = ensureBubble(opts.primaryColor);
-    var body = stripChromeKeep(w);
-    if (!body) {
+    if (!Cf.Shell) {
       return;
     }
+    Cf.Shell.open({ primaryColor: opts.primaryColor });
+    Cf.Shell.setStep("phone");
     var ph = opts.primaryColor || "#6C5CE7";
+    var frag = document.createDocumentFragment();
     var t = document.createElement("p");
     t.style.cssText = "margin:0 0 10px;font-size:14px;line-height:1.4;font-weight:700;";
     t.textContent = "رقم الجوال لإكمال المتابعة";
-    body.appendChild(t);
+    frag.appendChild(t);
     var s = document.createElement("p");
     s.style.cssText = "margin:0 0 10px;font-size:13px;opacity:.9;";
     s.textContent = "نستخدمه فقط لمتابعة طلبك إذا احتجت مساعدة.";
-    body.appendChild(s);
+    frag.appendChild(s);
     var inp = document.createElement("input");
     inp.type = "tel";
     inp.placeholder = "05xxxxxxxx";
@@ -220,11 +192,11 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
         inp.value = "0" + norm.slice(3);
       }
     } catch (eLs) {}
-    body.appendChild(inp);
+    frag.appendChild(inp);
     var err = document.createElement("p");
     err.style.cssText = "margin:0 0 10px;color:#b91c1c;font-size:13px;";
     err.textContent = "";
-    body.appendChild(err);
+    frag.appendChild(err);
     var row = document.createElement("div");
     row.style.cssText = rowStyleCol;
     var save = document.createElement("button");
@@ -234,7 +206,6 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     var back = document.createElement("button");
     back.type = "button";
     back.textContent = "رجوع";
-    back.style.opacity = "0.85";
     back.style.cssText = save.style.cssText + "opacity:0.92;background:#e0e7ff;color:#312e81;";
     back.addEventListener("click", function (e) {
       e.preventDefault();
@@ -261,25 +232,27 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     });
     row.appendChild(save);
     row.appendChild(back);
-    body.appendChild(row);
+    frag.appendChild(row);
+    Cf.Shell.setContent(frag, "phone_capture");
   }
 
   function renderContinuation(opts) {
-    var w = ensureBubble(opts.primaryColor);
-    var body = stripChromeKeep(w);
-    if (!body) {
+    if (!Cf.Shell) {
       return;
     }
+    Cf.Shell.open({ primaryColor: opts.primaryColor });
+    Cf.Shell.setStep("continuation");
     var ph = opts.primaryColor || "#6C5CE7";
     var msgs = opts.messages || {};
     var rk = String(opts.reasonKey || "other").toLowerCase();
     var txt =
       msgs[rk] ||
       "تمام 👍\nأنا معك إذا احتجت أي توضيح قبل تكمل الطلب.";
+    var frag = document.createDocumentFragment();
     var p = document.createElement("p");
     p.style.cssText = "margin:0 0 16px;font-size:14px;line-height:1.65;white-space:pre-line;";
     p.textContent = txt;
-    body.appendChild(p);
+    frag.appendChild(p);
     var row = document.createElement("div");
     row.style.cssText = rowStyleCol;
     function add(label, fn) {
@@ -296,10 +269,15 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     add("أكمل الطلب", opts.onContinueCart);
     add("أحتاج مساعدة الآن", opts.onAssist);
     add("رجوع للأسباب", opts.onBackReasons);
-    body.appendChild(row);
+    frag.appendChild(row);
+    Cf.Shell.setContent(frag, "continuation");
   }
 
   function hideBubble() {
+    if (Cf.Shell && typeof Cf.Shell.close === "function") {
+      Cf.Shell.close({ syncDismiss: false });
+      return;
+    }
     var w = bubbleRoot();
     if (!w) {
       return;
@@ -311,25 +289,26 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
 
   /** “سبب آخر” ملاحظة قصيرة ثم تنفيذ onSubmit(note). */
   function renderOtherDraftForm(opts) {
-    var w = ensureBubble(opts.primaryColor);
-    var body = stripChromeKeep(w);
-    if (!body) {
+    if (!Cf.Shell) {
       return;
     }
+    Cf.Shell.open({ primaryColor: opts.primaryColor });
+    Cf.Shell.setStep("other_draft");
     var ph = opts.primaryColor || "#6C5CE7";
+    var frag = document.createDocumentFragment();
     var hi = document.createElement("p");
     hi.style.cssText = "margin:0 0 10px;font-size:13px;line-height:1.5;";
     hi.textContent = "اكتب ملاحظتك باختصار 👇";
-    body.appendChild(hi);
+    frag.appendChild(hi);
     var ta = document.createElement("textarea");
     ta.rows = 3;
     ta.style.cssText =
       "width:100%;box-sizing:border-box;border-radius:8px;border:0;padding:8px;margin-bottom:8px;font:inherit;resize:vertical;";
-    body.appendChild(ta);
+    frag.appendChild(ta);
     var err = document.createElement("p");
     err.style.cssText = "color:#b91c1c;font-size:13px;margin:4px 0;";
     err.textContent = "";
-    body.appendChild(err);
+    frag.appendChild(err);
     var row = document.createElement("div");
     row.style.cssText = rowStyleCol;
     var send = document.createElement("button");
@@ -356,10 +335,11 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     });
     row.appendChild(send);
     row.appendChild(back);
-    body.appendChild(row);
+    frag.appendChild(row);
+    Cf.Shell.setContent(frag, "other_draft");
   }
 
-  /** خيارات فرعية للسبب ”السعر”. */
+  /** خيارات فرعية للسبب ”السعر“. */
   function renderPriceBranches(opts) {
     var rows = opts.options || [];
     renderReasonGrid({

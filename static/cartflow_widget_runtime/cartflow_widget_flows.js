@@ -190,9 +190,11 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       });
       setBubbleShown(true);
       try {
-        document
-          .querySelector("[data-cartflow-bubble]")
-          .setAttribute("data-cf-after-reason-phone-step", "1");
+        var root =
+          Cf.Shell && Cf.Shell.getRoot ? Cf.Shell.getRoot() : null;
+        if (root) {
+          root.setAttribute("data-cf-after-reason-phone-step", "1");
+        }
       } catch (eAt) {}
     });
   }
@@ -222,7 +224,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
 
   function showContinuation(reasonKey, subCategory) {
     try {
-      var b = document.querySelector("[data-cartflow-bubble]");
+      var b = Cf.Shell && Cf.Shell.getRoot ? Cf.Shell.getRoot() : null;
       if (b) {
         b.removeAttribute("data-cf-after-reason-phone-step");
       }
@@ -325,6 +327,10 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     }
     if (mirrorAndVipGate()) {
       return;
+    }
+
+    if (Cf.Shell && typeof Cf.Shell.setLastTriggerSource === "function") {
+      Cf.Shell.setLastTriggerSource(String(tagNote || "cart_recovery"));
     }
 
     Cf.Ui.renderYesNo({

@@ -14,11 +14,13 @@ class CartflowWidgetLayeredRuntimeTests(unittest.TestCase):
     def test_v2_loader_orders_modules_and_busts_cache(self) -> None:
         s = (_RUNTIME / "cartflow_widget_loader.js").read_text(encoding="utf-8")
         self.assertIn("[CF V2 LOAD START]", s)
-        self.assertIn("layered-runtime-v4", s)
+        self.assertIn("layered-runtime-v5", s)
         p = s.index("cartflow_widget_phone.js")
+        sh = s.index("cartflow_widget_shell.js")
         u = s.index("cartflow_widget_ui.js")
         f = s.index("cartflow_widget_flows.js")
-        self.assertLess(p, u)
+        self.assertLess(p, sh)
+        self.assertLess(sh, u)
         self.assertLess(u, f)
 
     def test_runtime_modules_exist(self) -> None:
@@ -29,6 +31,7 @@ class CartflowWidgetLayeredRuntimeTests(unittest.TestCase):
             "cartflow_widget_triggers.js",
             "cartflow_widget_flows.js",
             "cartflow_widget_phone.js",
+            "cartflow_widget_shell.js",
             "cartflow_widget_api.js",
             "cartflow_widget_ui.js",
             "cartflow_widget_legacy_bridge.js",

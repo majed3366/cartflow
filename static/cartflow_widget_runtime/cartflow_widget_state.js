@@ -20,6 +20,13 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     pending_reason_detail: null,
     last_exit_fire_ts: 0,
     exit_session_block: false,
+    shell: {
+      isOpen: false,
+      currentStep: null,
+      loading: false,
+      mountedView: null,
+      lastTriggerSource: null,
+    },
   };
 
   function readDismissSuppress() {
@@ -140,8 +147,13 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     return false;
   }
 
+  function shellState() {
+    return ST.shell;
+  }
+
   var State = {
     internals: ST,
+    shellState: shellState,
     readDismissSuppress: readDismissSuppress,
     normalizePhoneDigits: normalizePhoneDigits,
     getStoredPhoneNorm: getStoredPhoneNorm,

@@ -8,7 +8,7 @@
   "use strict";
 
   var BASE = "/static/cartflow_widget_runtime/";
-  var RUNTIME_TAG = window.CARTFLOW_RUNTIME_VERSION || "layered-runtime-v4";
+  var RUNTIME_TAG = window.CARTFLOW_RUNTIME_VERSION || "layered-runtime-v5";
 
   /** Must match filesystem; order preserves dependencies between modules. */
   var MODULES = [
@@ -17,6 +17,7 @@
     "cartflow_widget_state.js",
     "cartflow_widget_triggers.js",
     "cartflow_widget_phone.js",
+    "cartflow_widget_shell.js",
     "cartflow_widget_ui.js",
     "cartflow_widget_flows.js",
     "cartflow_widget_legacy_bridge.js",
@@ -42,6 +43,7 @@
       "State",
       "Triggers",
       "Phone",
+      "Shell",
       "Ui",
       "Flows",
       "LegacyBridge",
@@ -68,6 +70,12 @@
     }
     if (!R.Triggers || typeof R.Triggers.init !== "function") {
       missing.push("CartflowWidgetRuntime.Triggers.init (function)");
+    }
+    if (!R.Shell || typeof R.Shell.open !== "function") {
+      missing.push("CartflowWidgetRuntime.Shell.open (function)");
+    }
+    if (!R.Shell || typeof R.Shell.setContent !== "function") {
+      missing.push("CartflowWidgetRuntime.Shell.setContent (function)");
     }
     return missing;
   }
