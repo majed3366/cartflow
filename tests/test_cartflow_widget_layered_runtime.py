@@ -30,6 +30,8 @@ class CartflowWidgetLayeredRuntimeTests(unittest.TestCase):
         self.assertNotIn("injectLegacyCartflowWidget", fx)
         self.assertNotIn("__CF_LOAD_LEGACY_CARTFLOW_WIDGET", fx)
         self.assertNotIn("data-cf-legacy-widget-v2-fallback", fx)
+        self.assertIn("v2ShellOccupiedPreventExitIntentDuplicates", fx)
+        self.assertIn("[CF TRIGGER BLOCKED] reason=already_open", fx)
 
     def test_runtime_modules_exist(self) -> None:
         expected = (

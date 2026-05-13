@@ -88,6 +88,22 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     return Cf.State.internals;
   }
 
+  /** Exit-intent vs cart recovery: do not replace UI if bubble or shell chrome is already visible (incl. minimized launcher). */
+  function v2ShellOccupiedPreventExitIntentDuplicates() {
+    try {
+      if (st().bubbleShown) {
+        return true;
+      }
+    } catch (eBs) {}
+    try {
+      var sh = st().shell;
+      if (sh && sh.isOpen === true) {
+        return true;
+      }
+    } catch (eSh) {}
+    return false;
+  }
+
   function setBubbleShown(bit) {
     st().bubbleShown = !!bit;
     try {
@@ -671,6 +687,12 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
           fireExitWithCart: function () {
             if (Cf.Triggers.haveCartApprox()) {
               if (shouldBlockCartTriggers()) {
+                return;
+              }
+              if (v2ShellOccupiedPreventExitIntentDuplicates()) {
+                try {
+                  console.log("[CF TRIGGER BLOCKED] reason=already_open");
+                } catch (eBl) {}
                 return;
               }
               showBubbleCartRecovery("exit_intent_with_cart");
