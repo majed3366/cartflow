@@ -49,7 +49,10 @@ class DemoBehavioralNavigationTests(unittest.TestCase):
     def test_demo_list_page_shows_grid(self) -> None:
         r = self.client.get("/demo/store")
         self.assertEqual(200, r.status_code)
-        self.assertIn('id="cf-demo-products"', r.text)
+        t = r.text or ""
+        self.assertIn('id="cf-demo-products"', t)
+        self.assertIn("CARTFLOW_WIDGET_RUNTIME_V2", t)
+        self.assertNotIn('/static/cartflow_widget.js"', t)
 
     def test_demo_checkout_page_has_cod_and_hides_grid(self) -> None:
         r = self.client.get("/demo/store/checkout")

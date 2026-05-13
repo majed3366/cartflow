@@ -1,11 +1,24 @@
 /**
  * Unified CartFlow runtime bootstrap: return tracker + widget load after window.load.
- * يحمّل ‎cartflow_widget.js‎ بعد ‎window.load‎ (لا يحجب اللوحة الأولى).
+ * Loads layered V2 (‎cartflow_widget_runtime‎) when ‎window.CARTFLOW_WIDGET_RUNTIME_V2‎ is true
+ * (‎cartflow_widget_loader.js‎). Otherwise loads legacy ‎cartflow_widget.js‎.
+ * ‎/demo/store*‎ always uses V2 (primary runtime; legacy not loaded).
  */
 (function () {
   "use strict";
 
-  var RUNTIME_VERSION = "unified-bootstrap-v4";
+  var RUNTIME_VERSION = "unified-bootstrap-v5";
+
+  /** /demo/store, /demo/store/cart, … — primary V2 storefront; never legacy blob here. */
+  function cartflowIsDemoStorePrimaryV2Path() {
+    try {
+      return /^\/demo\/store(?:\/|$)/i.test(
+        String(window.location.pathname || "")
+      );
+    } catch (eP) {
+      return false;
+    }
+  }
   var RETURN_TRACKER_SRC =
     "/static/cartflow_return_tracker.js?v=" + encodeURIComponent(RUNTIME_VERSION);
 
@@ -257,6 +270,12 @@
     }
 
     window.__CARTFLOW_WIDGET_LOADER_ACTIVE__ = true;
+    try {
+      if (cartflowIsDemoStorePrimaryV2Path()) {
+        window.CARTFLOW_WIDGET_RUNTIME_V2 = true;
+      }
+    } catch (eV2set) {}
+
     var s = document.createElement("script");
     if (window.CARTFLOW_WIDGET_RUNTIME_V2 === true) {
       s.src =

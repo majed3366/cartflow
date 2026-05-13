@@ -8,7 +8,14 @@
   "use strict";
 
   var BASE = "/static/cartflow_widget_runtime/";
-  var RUNTIME_TAG = window.CARTFLOW_RUNTIME_VERSION || "layered-runtime-v12";
+  var RUNTIME_TAG = window.CARTFLOW_RUNTIME_VERSION || "layered-runtime-v13";
+  try {
+    if (/^\/demo\/store(?:\/|$)/i.test(String(window.location.pathname || ""))) {
+      console.log("[CF V2 PRIMARY RUNTIME]", {
+        layered: RUNTIME_TAG,
+      });
+    }
+  } catch (ePri) {}
 
   /** Must match filesystem; order preserves dependencies between modules. */
   var MODULES = [

@@ -29,6 +29,13 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     return /\b\/demo\//i.test(String(window.location.pathname || ""));
   }
 
+  /** Primary V2 storefront only; excludes /demo/store2 etc. Legacy VIP bypass never runs here. */
+  function isDemoStorePrimaryWidgetPath() {
+    return /^\/demo\/store(?:\/|$)/i.test(
+      String(window.location.pathname || "")
+    );
+  }
+
   function primaryHex() {
     var M = Cf.Config.merchant();
     return (M && M.widget_primary_color) || "#6366f1";
@@ -68,6 +75,11 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
 
   function mirrorAndVipGate() {
     Cf.State.mirrorCartTotalsFromGlobals();
+    try {
+      if (isDemoStorePrimaryWidgetPath()) {
+        return false;
+      }
+    } catch (eDs) {}
     try {
       if (window.cartflowState && window.cartflowState.isVip === true) {
         injectLegacyCartflowWidget();
