@@ -5,7 +5,7 @@
 (function () {
   "use strict";
 
-  var RUNTIME_VERSION = "unified-bootstrap-v1";
+  var RUNTIME_VERSION = "unified-bootstrap-v2";
   var RETURN_TRACKER_SRC =
     "/static/cartflow_return_tracker.js?v=" + encodeURIComponent(RUNTIME_VERSION);
 
@@ -227,6 +227,15 @@
       var si;
       for (si = 0; si < scripts.length; si++) {
         var prevSrc = scripts[si].getAttribute("src") || "";
+        if (
+          prevSrc.indexOf("/static/cartflow_widget_runtime/cartflow_widget_loader.js") >= 0
+        ) {
+          cartflowLoaderPerfDemoDevLog(
+            "[CF PERF] layered widget runtime already queued"
+          );
+          window.__CARTFLOW_WIDGET_LOADER_ACTIVE__ = true;
+          return;
+        }
         if (prevSrc.indexOf("/static/cartflow_widget.js") >= 0) {
           cartflowLoaderPerfDemoDevLog(
             "[CF PERF] widget loader skipped duplicate"
@@ -249,7 +258,13 @@
 
     window.__CARTFLOW_WIDGET_LOADER_ACTIVE__ = true;
     var s = document.createElement("script");
-    s.src = "/static/cartflow_widget.js?v=" + encodeURIComponent(RUNTIME_VERSION);
+    if (window.CARTFLOW_WIDGET_RUNTIME_V2 === true) {
+      s.src =
+        "/static/cartflow_widget_runtime/cartflow_widget_loader.js?v=" +
+        encodeURIComponent(RUNTIME_VERSION);
+    } else {
+      s.src = "/static/cartflow_widget.js?v=" + encodeURIComponent(RUNTIME_VERSION);
+    }
     s.async = true;
     (document.body || document.documentElement).appendChild(s);
   }

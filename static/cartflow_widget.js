@@ -33,6 +33,14 @@ try {
     window.__CARTFLOW_WIDGET_ACTIVE__ = true;
   } catch (eWd) {}
 
+  if (
+    window.CARTFLOW_WIDGET_RUNTIME_V2 === true &&
+    window.__CF_LOAD_LEGACY_CARTFLOW_WIDGET !== true
+  ) {
+    cfPerfDemoDevLog("[CF PERF] widget execution skipped (layered runtime v2)");
+    return;
+  }
+
   /** هدوء بعد التحميل قبل مهام ثقيلَة لتقليل أثر Performance — لا يغيّر المنطق بعد التشغيل. */
   var CF_PAGESPEED_QUIET_AFTER_LOAD_MS = 3000;
   var cartflowMerchantEarlyInteract = false;
