@@ -18,6 +18,7 @@ class CartflowWidgetTriggerOrchestratorTests(unittest.TestCase):
             "[CF TRIGGER SCHEDULED]",
             "[CF TRIGGER FIRED]",
             "[CF TRIGGER BLOCKED]",
+            "[CF TRIGGER ALLOWED]",
             "[CF TRIGGER CLEARED]",
         ):
             self.assertIn(tag, s)

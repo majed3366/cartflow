@@ -8,7 +8,7 @@
   "use strict";
 
   var BASE = "/static/cartflow_widget_runtime/";
-  var RUNTIME_TAG = window.CARTFLOW_RUNTIME_VERSION || "layered-runtime-v7";
+  var RUNTIME_TAG = window.CARTFLOW_RUNTIME_VERSION || "layered-runtime-v8";
 
   /** Must match filesystem; order preserves dependencies between modules. */
   var MODULES = [

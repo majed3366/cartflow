@@ -45,6 +45,10 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     trigLog("[CF TRIGGER BLOCKED]", Object.assign({ reason: reason }, extra || {}));
   }
 
+  function logAllowed(extra) {
+    trigLog("[CF TRIGGER ALLOWED]", extra || {});
+  }
+
   function logCleared(extra) {
     trigLog("[CF TRIGGER CLEARED]", extra || {});
   }
@@ -183,15 +187,25 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     return { ok: true, reason: null, tag: extraTag };
   }
 
+  /** TEMP (stabilization): hesitation allows schedule only widget_disabled | no_cart. */
   function gateHesitationAfterCartAdd() {
-    if (Cf.Config.hesitationCondition() !== "after_cart_add") {
-      return { ok: false, reason: null, skipLog: true };
+    try {
+      Cf.State.mirrorCartTotalsFromGlobals();
+    } catch (eM) {}
+    if (!Cf.Config.widgetGloballyAllowed()) {
+      return { ok: false, reason: "widget_disabled" };
+    }
+    if (merchantWidgetDisabled()) {
+      return { ok: false, reason: "widget_disabled" };
     }
     var tr = Cf.Config.widgetTrigger();
     if (!tr || tr.hesitation_trigger_enabled === false) {
       return { ok: false, reason: "widget_disabled" };
     }
-    return gateCartRecoveryOpen("add_to_cart");
+    if (!haveCartApprox()) {
+      return { ok: false, reason: "no_cart" };
+    }
+    return { ok: true, reason: null };
   }
 
   function gateExitIntentTimer() {
@@ -238,15 +252,13 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
 
   function scheduleCartHesitation(st, flowsRef) {
     var g = gateHesitationAfterCartAdd();
-    if (g.skipLog) {
-      return;
-    }
     if (!g.ok) {
-      if (g.reason) {
-        logBlocked(g.reason, { path: "hesitation_schedule" });
-      }
+      logBlocked(g.reason || "widget_disabled", {
+        path: "hesitation_schedule",
+      });
       return;
     }
+    logAllowed({ path: "hesitation_schedule" });
 
     if (st.hesitationAnchorTimer != null) {
       logCleared({ cause: "timer_replaced", timer: "hesitation_anchor" });

@@ -14,7 +14,7 @@ class CartflowWidgetLayeredRuntimeTests(unittest.TestCase):
     def test_v2_loader_orders_modules_and_busts_cache(self) -> None:
         s = (_RUNTIME / "cartflow_widget_loader.js").read_text(encoding="utf-8")
         self.assertIn("[CF V2 LOAD START]", s)
-        self.assertIn("layered-runtime-v7", s)
+        self.assertIn("layered-runtime-v8", s)
         p = s.index("cartflow_widget_phone.js")
         sh = s.index("cartflow_widget_shell.js")
         u = s.index("cartflow_widget_ui.js")
