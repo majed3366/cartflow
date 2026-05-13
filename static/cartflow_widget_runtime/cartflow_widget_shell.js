@@ -10,7 +10,15 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
   var WIDGET_BODY_SELECTOR = ".cartflow-widget-body";
   var HEADER_DEFAULT = "مساعدة";
 
-  var chromeBound = false;
+  function shellLog(tag, meta) {
+    try {
+      if (meta !== undefined && meta !== null) {
+        console.log(tag, meta);
+      } else {
+        console.log(tag);
+      }
+    } catch (eL) {}
+  }
 
   function stShell() {
     try {
@@ -33,8 +41,35 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     }
   }
 
+  /** Canonical singleton: [data-cartflow-bubble][data-cf-shell="1"] */
   function rootFromDom() {
-    return document.querySelector("[data-cartflow-bubble]");
+    var el = document.querySelector('[data-cartflow-bubble][data-cf-shell="1"]');
+    if (el) {
+      return el;
+    }
+    el = document.querySelector("[data-cartflow-bubble]");
+    return el;
+  }
+
+  /**
+   * Remove duplicate bubbles; prefer the marked shell instance.
+   */
+  function dedupeShellRoots() {
+    var all = document.querySelectorAll("[data-cartflow-bubble]");
+    if (all.length <= 1) {
+      return rootFromDom();
+    }
+    var keeper =
+      document.querySelector('[data-cartflow-bubble][data-cf-shell="1"]') || all[0];
+    var i;
+    for (i = 0; i < all.length; i++) {
+      if (all[i] !== keeper) {
+        try {
+          all[i].parentNode.removeChild(all[i]);
+        } catch (eR) {}
+      }
+    }
+    return keeper;
   }
 
   function getRoot() {
@@ -65,7 +100,41 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     return w.querySelector("[data-cf-shell-loading]");
   }
 
+  function clearContentMount() {
+    var mount = getContentMount();
+    if (!mount) {
+      return;
+    }
+    while (mount.firstChild) {
+      mount.removeChild(mount.firstChild);
+    }
+  }
+
+  function bindCloseButtonOnce(w) {
+    var closer = w.querySelector("[data-cf-shell-close]");
+    if (!closer) {
+      return;
+    }
+    if (closer.getAttribute("data-cf-shell-bound") === "1") {
+      shellLog("[CF SHELL LISTENER DUPLICATE BLOCKED]", { which: "close" });
+      return;
+    }
+    closer.setAttribute("data-cf-shell-bound", "1");
+    closer.addEventListener(
+      "click",
+      function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        close({ syncDismiss: true });
+      },
+      false
+    );
+  }
+
   function ensureShell(primaryHex) {
+    dedupeShellRoots();
+
+    var createdNew = false;
     var w = rootFromDom();
     if (!w) {
       w = document.createElement("div");
@@ -73,6 +142,11 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       w.setAttribute("data-cf-reason-entry", "v2");
       w.setAttribute("data-cf-shell", "1");
       document.body.appendChild(w);
+      createdNew = true;
+    } else {
+      if (!w.getAttribute("data-cf-shell")) {
+        w.setAttribute("data-cf-shell", "1");
+      }
     }
 
     var fill = primaryHex || "#6C5CE7";
@@ -185,30 +259,24 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       inner.appendChild(foot);
     }
 
-    if (!chromeBound) {
-      try {
-        var closer = w.querySelector("[data-cf-shell-close]");
-        if (closer) {
-          closer.addEventListener(
-            "click",
-            function (e) {
-              e.preventDefault();
-              e.stopPropagation();
-              close({ syncDismiss: true });
-            },
-            false
-          );
-        }
-      } catch (eBind) {}
-      chromeBound = true;
-    }
+    bindCloseButtonOnce(w);
 
-    return w;
+    return { root: w, createdNew: createdNew };
   }
 
   function open(opts) {
     opts = opts || {};
-    var w = ensureShell(opts.primaryColor);
+    dedupeShellRoots();
+    var hadRoot = !!rootFromDom();
+    var r = ensureShell(opts.primaryColor);
+    var w = r.root;
+    if (r.createdNew) {
+      shellLog("[CF SHELL OPEN]", { created: true });
+    } else if (hadRoot) {
+      shellLog("[CF SHELL REUSED]", { reused: true });
+    } else {
+      shellLog("[CF SHELL OPEN]", { created: false });
+    }
     try {
       w.style.display = "block";
       w.style.visibility = "visible";
@@ -219,15 +287,54 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
 
   function close(opts) {
     opts = opts || {};
+    try {
+      window.clearTimeout(showSuccess._t);
+    } catch (eCt) {}
+    showSuccess._t = null;
+
+    shellLog("[CF SHELL CLOSE]", {
+      syncDismiss: !!opts.syncDismiss,
+    });
+
     var w = rootFromDom();
     if (!w) {
-      patchShell({ isOpen: false });
+      patchShell({
+        isOpen: false,
+        currentStep: null,
+        loading: false,
+        mountedView: null,
+        lastTriggerSource: null,
+      });
       return;
     }
     try {
       w.style.display = "none";
     } catch (eH) {}
-    patchShell({ isOpen: false });
+
+    try {
+      var elLoad = getLoadingEl();
+      var mount = getContentMount();
+      if (mount) {
+        mount.style.opacity = "";
+      }
+      if (elLoad) {
+        elLoad.style.display = "none";
+      }
+    } catch (eLd) {}
+
+    clearContentMount();
+    try {
+      hideFooterMessage();
+    } catch (eF) {}
+
+    patchShell({
+      isOpen: false,
+      currentStep: null,
+      loading: false,
+      mountedView: null,
+      lastTriggerSource: null,
+    });
+
     if (opts.syncDismiss) {
       try {
         Cf.State.internals.bubbleShown = false;
@@ -241,7 +348,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
   }
 
   /**
-   * @param {*} content HTMLElement, DocumentFragment, or string (innerHTML — internal trusted markup only)
+   * @param {*} content HTMLElement, DocumentFragment, or string (trusted internal markup only; prefer fragment from Ui)
    * @param {string} [mountedView] optional view key for state.shell.mountedView
    */
   function setContent(content, mountedView) {
@@ -255,11 +362,23 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     try {
       hideFooterMessage();
     } catch (eF) {}
+    shellLog("[CF SHELL CONTENT SET]", {
+      mountedView: mountedView != null ? String(mountedView) : null,
+      mode:
+        content == null || content === ""
+          ? "clear"
+          : typeof content === "string"
+          ? "html"
+          : content.nodeType === 11
+          ? "fragment"
+          : "element",
+    });
     if (content == null || content === "") {
       patchShell({ mountedView: mountedView != null ? mountedView : null });
       return;
     }
     if (typeof content === "string") {
+      mount.textContent = "";
       mount.innerHTML = content;
     } else if (content.nodeType === 11) {
       mount.appendChild(content);
