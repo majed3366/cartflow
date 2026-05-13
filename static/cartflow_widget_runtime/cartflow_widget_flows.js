@@ -354,6 +354,9 @@
     setBubbleShown(true);
     emitGuide("cartflow-demo-reason-list-visible", {});
     try {
+      console.log("[CF WIDGET SHOW]", { tag: String(tagNote || "cart_recovery"), layer: "v2" });
+    } catch (eShw) {}
+    try {
       console.log("[CF WIDGET SHOW V2]", { tag: String(tagNote || "cart_recovery") });
     } catch (eSh) {}
   }

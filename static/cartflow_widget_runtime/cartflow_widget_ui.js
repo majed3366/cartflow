@@ -370,8 +370,23 @@
     });
   }
 
+  function showBubble() {
+    try {
+      var F = Cf.Flows;
+      if (F && typeof F.showBubbleCartRecovery === "function") {
+        F.showBubbleCartRecovery("__cfV2ShowNow");
+        return true;
+      }
+    } catch (eSb) {}
+    try {
+      console.warn("[CF V2] Ui.showBubble: Flows.showBubbleCartRecovery not available");
+    } catch (eW) {}
+    return false;
+  }
+
   window.CartflowWidgetRuntime = Cf;
   window.CartflowWidgetRuntime.Ui = {
+    showBubble: showBubble,
     ensureBubble: ensureBubble,
     clearBody: clear,
     renderYesNo: renderYesNo,

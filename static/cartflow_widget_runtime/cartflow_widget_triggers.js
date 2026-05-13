@@ -1,5 +1,6 @@
 /**
- * Hesitation + exit-intent timers only (delegates presentation to flows).
+ * Hesitation + exit-intent timers (delegates UI to flows).
+ * Cart interception installs at parse time — before flows/bootstrap — so add-to-cart is never missed.
  */
 (function () {
   "use strict";
@@ -10,6 +11,10 @@
     fireExitNoCart: null,
     fireExitWithCart: null,
   };
+
+  /** Set true after Triggers.init assigns Hooks + clears deferred backlog. */
+  var v2TriggerInitDone = false;
+  var v2DeferredScheduleReasons = [];
 
   function pageScopeAllows() {
     var tr =
@@ -74,30 +79,91 @@
     }
   }
 
-  function clearAnchors(st) {
-    if (Cf.State) {
+  function clearHesitationTimersOnly(st) {
+    if (Cf.State && typeof Cf.State.clearHesitationTimers === "function") {
       Cf.State.clearHesitationTimers();
     }
+    /** Do NOT clear st.step1Poll — owned by flows ensureStep1. */
+  }
+
+  /** Central entry: storefront cartflowSyncCartState + cartflowRegisterNewIntent. */
+  function onV2CartChannel(sourceTag, detail) {
+    detail = detail || {};
     try {
-      if (st.step1Poll != null) {
-        clearInterval(st.step1Poll);
-        st.step1Poll = null;
+      console.log("[CF V2 CART EVENT RECEIVED]", { source: sourceTag, detail: detail });
+    } catch (eL0) {}
+
+    if (!Cf.State || typeof Cf.State.mirrorCartTotalsFromGlobals !== "function") {
+      return;
+    }
+    Cf.State.mirrorCartTotalsFromGlobals();
+
+    var rsEarly = String(detail.reason || "").toLowerCase();
+    var addDetected =
+      detail.kind === "add_to_cart" ||
+      sourceTag === "demo_dom" ||
+      (sourceTag === "sync" && rsEarly === "add");
+    if (addDetected) {
+      try {
+        console.log("[CF V2 ADD TO CART DETECTED]", {
+          source: sourceTag,
+          reason: detail.reason,
+          kind: detail.kind,
+        });
+      } catch (eAd) {}
+    }
+
+    try {
+      if (window.CartFlowState && sourceTag !== "replay") {
+        window.CartFlowState.lastIntentAt = Date.now();
       }
-    } catch (eP) {}
+    } catch (eLf) {}
+
+    if (!(Cf.Config && Cf.Config.widgetGloballyAllowed())) {
+      return;
+    }
+
+    try {
+      if (Cf.State.checkoutPathActive && Cf.State.checkoutPathActive()) {
+        var tr0 = Cf.Config.widgetTrigger();
+        if (tr0 && tr0.suppress_when_checkout_started !== false) {
+          return;
+        }
+      }
+    } catch (eCk) {}
+
+    if (Cf.Config.hesitationCondition() !== "after_cart_add") {
+      return;
+    }
+
+    var stInt = Cf.State.internals ? Cf.State.internals : null;
+    if (!stInt) {
+      return;
+    }
+    if (stInt.bubbleShown) {
+      return;
+    }
+
+    if (!haveCartApprox()) {
+      return;
+    }
+    try {
+      console.log("[CF V2 HESITATION ELIGIBLE]", { source: sourceTag });
+    } catch (eHel) {}
+
+    if (!v2TriggerInitDone) {
+      try {
+        v2DeferredScheduleReasons.push(sourceTag);
+      } catch (ePu) {}
+      return;
+    }
+    scheduleCartHesitation(stInt, {});
   }
 
   function scheduleCartHesitation(st, flowsRef) {
     if (!(Cf.Config && Cf.Config.widgetGloballyAllowed())) {
       return;
     }
-    try {
-      if (
-        !st.step1Ready &&
-        !/\b\/demo\//i.test(String(window.location.pathname || ""))
-      ) {
-        return;
-      }
-    } catch (eS1) {}
     var tr = Cf.Config.widgetTrigger();
     if (!tr || tr.hesitation_trigger_enabled === false) {
       return;
@@ -105,15 +171,22 @@
     if (Cf.Config.hesitationCondition() !== "after_cart_add") {
       return;
     }
-    clearAnchors(st);
+    clearHesitationTimersOnly(st);
     var ms = hesitationMs();
     try {
-      console.log("[CF TIMER SCHEDULE V2]", { ms: ms, source: "after_cart_intent" });
+      console.log("[CF TIMER SCHEDULE V2]", {
+        ms: ms,
+        source: "after_cart_add",
+        hesitation_after_seconds: ms / 1000,
+      });
     } catch (eLg) {}
     st.hesitationAnchorTimer = setTimeout(function () {
       st.hesitationAnchorTimer = null;
+      try {
+        console.log("[CF TIMER FIRE]", { delay_ms: ms });
+      } catch (eTf) {}
       if (typeof Hooks.fireCartRecovery === "function") {
-        Hooks.fireCartRecovery("cart_heistation_timer");
+        Hooks.fireCartRecovery("cart_hesitation_timer");
       } else if (flowsRef && typeof flowsRef.onHesitationTimerFire === "function") {
         flowsRef.onHesitationTimerFire();
       }
@@ -121,7 +194,7 @@
   }
 
   function scheduleInactivityBubble(st, flowsRef, delayMs) {
-    clearAnchors(st);
+    clearHesitationTimersOnly(st);
     st.idlePollTimer = setTimeout(function () {
       st.idlePollTimer = null;
       if (
@@ -160,7 +233,11 @@
         } catch (eB) {}
         return;
       }
-      var fq = Cf.Config.normalizeToken(tr.exit_intent_frequency, ["per_session", "per_24h", "no_rapid_repeat"], "per_session");
+      var fq = Cf.Config.normalizeToken(
+        tr.exit_intent_frequency,
+        ["per_session", "per_24h", "no_rapid_repeat"],
+        "per_session"
+      );
       if (fq === "per_session" && exitAlreadyThisSession()) {
         try {
           console.log("[CF EXIT INTENT BLOCKED V2]", { gate: "per_session_already" });
@@ -213,42 +290,51 @@
     );
   }
 
-  /** Wrap cart sync so hesitation anchor stays single-flight. */
-  function patchCartflowSync(st, flowsRef) {
-    var prior = typeof window.cartflowSyncCartState === "function"
-      ? window.cartflowSyncCartState
-      : null;
+  /** Install wrappers as soon as this file loads — before flows/legacy_bridge. */
+  function installStorefrontCartBridgeEarly() {
+    if (window.__cfV2StorefrontCartBridgeInstalled === true) {
+      return;
+    }
+    window.__cfV2StorefrontCartBridgeInstalled = true;
+
+    var priorSync =
+      typeof window.cartflowSyncCartState === "function"
+        ? window.cartflowSyncCartState
+        : null;
     window.cartflowSyncCartState = function (reason) {
-      if (typeof prior === "function") {
+      if (typeof priorSync === "function") {
         try {
-          prior(reason);
+          priorSync(reason);
         } catch (eP) {}
       }
-      Cf.State.mirrorCartTotalsFromGlobals();
-      try {
-        if (!st.step1Ready && !/\b\/demo\//i.test(String(window.location.pathname || ""))) {
-          return;
-        }
-      } catch (eS1) {}
-      try {
-        if (window.CartFlowState) {
-          window.CartFlowState.lastIntentAt = Date.now();
-        }
-      } catch (eLt) {}
-      var r = String(reason || "").toLowerCase();
-      if (Cf.Config.widgetGloballyAllowed() && Cf.Config.hesitationCondition() === "after_cart_add") {
-        if (
-          !st.bubbleShown &&
-          (r === "add" ||
-            r === "remove" ||
-            r === "clear" ||
-            r === "abandon" ||
-            r === "page_load")
-        ) {
-          scheduleCartHesitation(st, flowsRef);
-        }
-      }
+      onV2CartChannel("sync", { reason: reason });
     };
+
+    var priorReg =
+      typeof window.cartflowRegisterNewIntent === "function"
+        ? window.cartflowRegisterNewIntent
+        : null;
+    window.cartflowRegisterNewIntent = function (kind) {
+      if (typeof priorReg === "function") {
+        try {
+          priorReg.apply(this, arguments);
+        } catch (eR) {}
+      }
+      onV2CartChannel("register_intent", { kind: kind });
+    };
+  }
+
+  installStorefrontCartBridgeEarly();
+
+  function flushDeferredScheduling(st, flowsRef) {
+    var had = false;
+    try {
+      had = v2DeferredScheduleReasons.length > 0;
+      v2DeferredScheduleReasons.length = 0;
+    } catch (eE) {}
+    if (had && st && !st.bubbleShown && haveCartApprox()) {
+      scheduleCartHesitation(st, flowsRef || {});
+    }
   }
 
   function init(opts) {
@@ -266,15 +352,17 @@
       opts && typeof opts.fireExitWithCart === "function"
         ? opts.fireExitWithCart
         : Hooks.fireExitWithCart;
+
+    v2TriggerInitDone = true;
+
     bootstrapExitListeners(st, opts.flowsRef);
-    patchCartflowSync(st, opts.flowsRef);
+    flushDeferredScheduling(st, opts.flowsRef);
+
     try {
       document.addEventListener(
         "cf-demo-cart-updated",
         function () {
-          if (Cf.Config.hesitationCondition() === "after_cart_add") {
-            scheduleCartHesitation(st, opts.flowsRef);
-          }
+          onV2CartChannel("demo_dom", { kind: "add_to_cart", synthetic: true });
         },
         false
       );
@@ -286,7 +374,7 @@
     }
     return {
       scheduleCartHesitation: function () {
-        scheduleCartHesitation(st, opts.flowsRef);
+        scheduleCartHesitation(st, {});
       },
     };
   }
@@ -296,4 +384,18 @@
     init: init,
     haveCartApprox: haveCartApprox,
   };
+
+  try {
+    window.__cfV2ShowNow = function () {
+      try {
+        if (Cf.Ui && typeof Cf.Ui.showBubble === "function") {
+          return Cf.Ui.showBubble();
+        }
+      } catch (eSb) {}
+      try {
+        console.warn("[CF V2] __cfV2ShowNow: Ui.showBubble unavailable yet");
+      } catch (eW) {}
+      return false;
+    };
+  } catch (eGn) {}
 })();
