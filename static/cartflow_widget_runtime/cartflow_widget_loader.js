@@ -8,7 +8,7 @@
   "use strict";
 
   var BASE = "/static/cartflow_widget_runtime/";
-  var RUNTIME_TAG = window.CARTFLOW_RUNTIME_VERSION || "layered-runtime-v3";
+  var RUNTIME_TAG = window.CARTFLOW_RUNTIME_VERSION || "layered-runtime-v4";
 
   /** Must match filesystem; order preserves dependencies between modules. */
   var MODULES = [
@@ -44,6 +44,7 @@
       "Phone",
       "Ui",
       "Flows",
+      "LegacyBridge",
     ];
     if (!R || typeof R !== "object") {
       return [

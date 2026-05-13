@@ -2,10 +2,11 @@
  * Hesitation + exit-intent timers (delegates UI to flows).
  * Cart interception installs at parse time — before flows/bootstrap — so add-to-cart is never missed.
  */
+window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
 (function () {
   "use strict";
 
-  var Cf = window.CartflowWidgetRuntime || {};
+  var Cf = window.CartflowWidgetRuntime;
   var Hooks = {
     fireCartRecovery: null,
     fireExitNoCart: null,
@@ -379,23 +380,9 @@
     };
   }
 
-  window.CartflowWidgetRuntime = Cf;
-  window.CartflowWidgetRuntime.Triggers = {
+  var Triggers = {
     init: init,
     haveCartApprox: haveCartApprox,
   };
-
-  try {
-    window.__cfV2ShowNow = function () {
-      try {
-        if (Cf.Ui && typeof Cf.Ui.showBubble === "function") {
-          return Cf.Ui.showBubble();
-        }
-      } catch (eSb) {}
-      try {
-        console.warn("[CF V2] __cfV2ShowNow: Ui.showBubble unavailable yet");
-      } catch (eW) {}
-      return false;
-    };
-  } catch (eGn) {}
+  window.CartflowWidgetRuntime.Triggers = Triggers;
 })();

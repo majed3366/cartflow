@@ -1,10 +1,11 @@
 /**
  * DOM-only presenters for the storefront bubble (flows supply copy + handlers).
  */
+window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
 (function () {
   "use strict";
 
-  var Cf = window.CartflowWidgetRuntime || {};
+  var Cf = window.CartflowWidgetRuntime;
   var WIDGET_BODY_SELECTOR = ".cartflow-widget-body";
   var rowStyleCol =
     "display:flex;flex-direction:column;gap:10px;margin-top:4px;width:100%;box-sizing:border-box;";
@@ -384,8 +385,7 @@
     return false;
   }
 
-  window.CartflowWidgetRuntime = Cf;
-  window.CartflowWidgetRuntime.Ui = {
+  var Ui = {
     showBubble: showBubble,
     ensureBubble: ensureBubble,
     clearBody: clear,
@@ -399,4 +399,5 @@
     hideBubble: hideBubble,
     bubbleRoot: bubbleRoot,
   };
+  window.CartflowWidgetRuntime.Ui = Ui;
 })();

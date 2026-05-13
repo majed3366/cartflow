@@ -2,6 +2,7 @@
  * Normalize merchant + trigger config once per ready/public-config payload.
  * No DOM. No timers.
  */
+window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
 (function () {
   "use strict";
 
@@ -281,8 +282,7 @@
     return out;
   }
 
-  window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
-  window.CartflowWidgetRuntime.Config = {
+  var Config = {
     applyPayload: applyPayload,
     widgetTrigger: widgetTrigger,
     phoneCaptureMode: phoneCaptureMode,
@@ -327,4 +327,5 @@
       return true;
     },
   };
+  window.CartflowWidgetRuntime.Config = Config;
 })();

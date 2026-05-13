@@ -1,10 +1,11 @@
 /**
  * Customer flows (cart recovery + exit-intent branching). Bridges triggers ↔ UI ↔ API ↔ phone module.
  */
+window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
 (function () {
   "use strict";
 
-  var Cf = window.CartflowWidgetRuntime || {};
+  var Cf = window.CartflowWidgetRuntime;
   var FLOW_VERSION = "v2-layer-alpha1";
 
   var CONTINUATION = {
@@ -513,8 +514,7 @@
     });
   }
 
-  window.CartflowWidgetRuntime = Cf;
-  window.CartflowWidgetRuntime.Flows = {
+  var Flows = {
     start: startFlows,
     showBubbleCartRecovery: showBubbleCartRecovery,
     FLOW_VERSION: FLOW_VERSION,
@@ -522,6 +522,7 @@
     emitGuideEvent: emitGuide,
     scrollToCartOrCheckout: scrollToCartOrCheckout,
   };
+  window.CartflowWidgetRuntime.Flows = Flows;
 
   /** Dev hook for manual smoke tests without timers. */
   window.cartflowRuntimeV2ShowCartBubble = showBubbleCartRecovery;

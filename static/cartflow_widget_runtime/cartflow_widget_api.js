@@ -1,6 +1,7 @@
 /**
  * Fetch / POST façade for widget runtime (no triggers, no DOM).
  */
+window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
 (function () {
   "use strict";
 
@@ -160,8 +161,7 @@
     });
   }
 
-  window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
-  window.CartflowWidgetRuntime.Api = {
+  var Api = {
     apiBase: apiBase,
     storeSlug: storeSlug,
     sessionId: sessionId,
@@ -170,4 +170,5 @@
     fetchPublicConfig: fetchPublicConfig,
     reasonPostOk: cfCartflowReasonPostOk,
   };
+  window.CartflowWidgetRuntime.Api = Api;
 })();

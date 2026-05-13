@@ -1,10 +1,11 @@
 /**
  * Phone normalization + bundled reason POST (single API hop after user confirms).
  */
+window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
 (function () {
   "use strict";
 
-  var Cf = window.CartflowWidgetRuntime || {};
+  var Cf = window.CartflowWidgetRuntime;
 
   function deferAfterReasonCapture() {
     var pcm =
@@ -63,9 +64,9 @@
     });
   }
 
-  window.CartflowWidgetRuntime = Cf;
-  window.CartflowWidgetRuntime.Phone = {
+  var Phone = {
     deferAfterReasonCapture: deferAfterReasonCapture,
     postReasonMerged: postReasonMerged,
   };
+  window.CartflowWidgetRuntime.Phone = Phone;
 })();

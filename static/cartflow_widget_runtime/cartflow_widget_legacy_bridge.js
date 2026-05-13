@@ -1,6 +1,7 @@
 /**
  * Global compatibility + single entry after module chain load.
  */
+window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
 (function () {
   "use strict";
 
@@ -28,7 +29,26 @@
         window.__cartflow_runtime_v2_build || ""
       );
     } catch (eLg) {}
+
+    try {
+      console.log("[CF V2 GLOBAL READY]", {
+        runtime_exists: !!window.CartflowWidgetRuntime,
+        modules: Object.keys(window.CartflowWidgetRuntime || {}),
+      });
+    } catch (eGr) {}
   };
+
+  window.__cfV2ShowNow = function () {
+    return window.CartflowWidgetRuntime?.Ui?.showBubble?.();
+  };
+
+  window.__cfV2Runtime = window.CartflowWidgetRuntime;
+
+  var LegacyBridge = {
+    version: "1",
+    bootstrap: window.__cartflowV2Bootstrap,
+  };
+  window.CartflowWidgetRuntime.LegacyBridge = LegacyBridge;
 
   /** Rollback helpers (same names as legacy where safe). */
   window.cartflowDevMountProductViewAuto = window.cartflowDevMountProductViewAuto || function () {

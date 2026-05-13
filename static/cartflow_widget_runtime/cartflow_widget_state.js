@@ -1,6 +1,7 @@
 /**
  * Stateful runtime snapshot — no rendering.
  */
+window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
 (function () {
   "use strict";
 
@@ -139,8 +140,7 @@
     return false;
   }
 
-  window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
-  window.CartflowWidgetRuntime.State = {
+  var State = {
     internals: ST,
     readDismissSuppress: readDismissSuppress,
     normalizePhoneDigits: normalizePhoneDigits,
@@ -152,4 +152,5 @@
     sessionConvertedBlock: sessionConvertedBlock,
     LS_CUSTOMER_PHONE: LS_PHONE,
   };
+  window.CartflowWidgetRuntime.State = State;
 })();
