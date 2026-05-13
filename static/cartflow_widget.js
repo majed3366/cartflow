@@ -730,6 +730,19 @@ try {
     return !!getCartflowStoredCustomerPhoneNorm();
   }
 
+  function cfDeferAfterReasonPhoneCapture() {
+    if (cfRuntimeConfig(true).phone_capture_mode !== "after_reason") {
+      return false;
+    }
+    if (cartflowState.isVip === true) {
+      return false;
+    }
+    if (cfHasValidStoredPhone()) {
+      return false;
+    }
+    return true;
+  }
+
   function cfRuntimeClearHesitationTimer(reasonNote, silentLogClear) {
     try {
       if (cfRuntimeTrigger.timer != null) {
@@ -7986,17 +7999,21 @@ try {
         }
       }
       stripContentKeepChrome();
-      var ldP = document.createElement("p");
-      ldP.setAttribute("data-cf-reason-loading", "1");
-      ldP.style.cssText = "margin:0;font-size:14px;opacity:0.85;";
-      ldP.textContent = "جاري الحفظ…";
-      widgetBody.appendChild(ldP);
 
       function removeLd() {
         var x = widgetBody.querySelector("[data-cf-reason-loading]");
         if (x && x.parentNode) {
           x.parentNode.removeChild(x);
         }
+      }
+
+      if (cfDeferAfterReasonPhoneCapture()) {
+        cfBeginAfterReasonDeferredPhone(
+          "price",
+          { reason: "price", sub_category: sub },
+          { sub_category: sub }
+        );
+        return;
       }
 
       function onFailPrice() {
@@ -8170,14 +8187,10 @@ try {
         } catch (eClkO) {
           /* ignore */
         }
-        bSend.setAttribute("disabled", "true");
-        bHandoffO.setAttribute("disabled", "true");
-        bBackO.setAttribute("disabled", "true");
-        var ldO = document.createElement("p");
-        ldO.setAttribute("data-cf-reason-loading", "1");
-        ldO.style.cssText = "margin:8px 0 0 0;font-size:14px;opacity:0.85;";
-        ldO.textContent = "جاري الحفظ…";
-        row2.insertBefore(ldO, bSend);
+        var payload = { reason: "other", custom_text: note };
+        if (norm) {
+          payload.customer_phone = norm;
+        }
 
         function removeLdO() {
           var x = row2.querySelector("[data-cf-reason-loading]");
@@ -8192,10 +8205,18 @@ try {
           bBackO.removeAttribute("disabled");
         }
 
-        var payload = { reason: "other", custom_text: note };
-        if (norm) {
-          payload.customer_phone = norm;
+        if (cfDeferAfterReasonPhoneCapture()) {
+          cfBeginAfterReasonDeferredPhone(
+            "other",
+            { reason: "other", custom_text: note },
+            { custom_text: note }
+          );
+          return;
         }
+
+        bSend.setAttribute("disabled", "true");
+        bHandoffO.setAttribute("disabled", "true");
+        bBackO.setAttribute("disabled", "true");
 
         cfHandleReasonSelected(
           "other",
@@ -8435,6 +8456,36 @@ try {
       mountNonVipPostPhoneContinuation(reasonKey, subCategory);
     }
 
+    function cfBeginAfterReasonDeferredPhone(reasonKey, payload, detail) {
+      detail = detail || {};
+      var rk = String(reasonKey || "other").toLowerCase();
+      try {
+        console.log("[CF REASON SELECTED]", { reason_key: rk });
+      } catch (eRs) {}
+      var subNorm =
+        detail.sub_category != null && String(detail.sub_category).trim() !== ""
+          ? String(detail.sub_category).trim()
+          : null;
+      var customNorm =
+        detail.custom_text != null && String(detail.custom_text).trim() !== ""
+          ? String(detail.custom_text).trim()
+          : null;
+      cfRafPaint(function () {
+        try {
+          console.log("[CF PHONE SHOW IMMEDIATE]", { reason_key: rk });
+        } catch (ePi) {}
+        mountNonVipAfterReasonPhoneCaptureUI(
+          rk,
+          subNorm,
+          customNorm,
+          function () {
+            cfShowContinuation(rk, subNorm);
+          },
+          { pendingReasonPayload: payload }
+        );
+      });
+    }
+
     function cfShowPhoneCapture(reasonKey, detail) {
       detail = detail || {};
       var rk = String(reasonKey || "other").toLowerCase();
@@ -8453,7 +8504,8 @@ try {
           : null,
         function () {
           cfShowContinuation(rk, sub);
-        }
+        },
+        {}
       );
     }
 
@@ -8633,8 +8685,11 @@ try {
       reasonKey,
       subCategory,
       customText,
-      onDone
+      onDone,
+      phoneCaptureOpts
     ) {
+      phoneCaptureOpts = phoneCaptureOpts || {};
+      var pendingReasonPayload = phoneCaptureOpts.pendingReasonPayload;
       onDone = typeof onDone === "function" ? onDone : function () {};
       var rkey = String(reasonKey || "").toLowerCase();
       var pcm = cfRuntimeConfig(true).phone_capture_mode;
@@ -8751,22 +8806,56 @@ try {
           return;
         }
         bSend.setAttribute("disabled", "true");
-        var body = { reason: rkey, customer_phone: norm };
-        if (subCategory != null && String(subCategory).trim() !== "") {
-          body.sub_category = String(subCategory).trim();
+        var body;
+        if (pendingReasonPayload && typeof pendingReasonPayload === "object") {
+          body = {};
+          var pk;
+          for (pk in pendingReasonPayload) {
+            if (Object.prototype.hasOwnProperty.call(pendingReasonPayload, pk)) {
+              body[pk] = pendingReasonPayload[pk];
+            }
+          }
+          body.customer_phone = norm;
+          if (body.reason == null || String(body.reason).trim() === "") {
+            body.reason = rkey;
+          }
+        } else {
+          body = { reason: rkey, customer_phone: norm };
+          if (subCategory != null && String(subCategory).trim() !== "") {
+            body.sub_category = String(subCategory).trim();
+          }
+          if (customText != null && String(customText).trim() !== "") {
+            body.custom_text = String(customText).trim();
+          }
         }
-        if (customText != null && String(customText).trim() !== "") {
-          body.custom_text = String(customText).trim();
+        if (
+          pendingReasonPayload &&
+          typeof pendingReasonPayload === "object"
+        ) {
+          if (
+            subCategory != null &&
+            String(subCategory).trim() !== "" &&
+            body.sub_category == null
+          ) {
+            body.sub_category = String(subCategory).trim();
+          }
+          if (
+            customText != null &&
+            String(customText).trim() !== "" &&
+            body.custom_text == null
+          ) {
+            body.custom_text = String(customText).trim();
+          }
         }
         try {
-          console.log("[CF PHONE SAVE START]", { reason_key: rkey });
+          console.log("[CF REASON_PHONE_SAVE_START]", { reason_key: rkey });
         } catch (ePs0) {}
         postReason(body)
           .then(function (pj) {
             bSend.removeAttribute("disabled");
             if (!cfCartflowReasonPostOk(pj)) {
               try {
-                console.log("[CF PHONE SAVE FAILED]", {
+                console.log("[CF REASON_PHONE_SAVE_FAILED]", {
                   reason_key: rkey,
                   trace: "server_reject",
                 });
@@ -8791,7 +8880,7 @@ try {
             var sid = getSessionId();
             var cid = cartLifecycleStableCartId();
             try {
-              console.log("[CF PHONE SAVE SUCCESS]", {
+              console.log("[CF REASON_PHONE_SAVE_SUCCESS]", {
                 session_id: sid,
                 cart_id: cid,
                 reason_key: rkey,
@@ -8804,12 +8893,26 @@ try {
             } catch (eRm) {
               /* ignore */
             }
+            if (
+              pendingReasonPayload &&
+              typeof pendingReasonPayload === "object"
+            ) {
+              setReasonTag(String(body.reason || rkey).toLowerCase());
+              if (
+                body.sub_category != null &&
+                String(body.sub_category).trim() !== ""
+              ) {
+                setReasonSubTag(String(body.sub_category).trim());
+              } else {
+                setReasonSubTag(null);
+              }
+            }
             onDone();
           })
           .catch(function () {
             bSend.removeAttribute("disabled");
             try {
-              console.log("[CF PHONE SAVE FAILED]", {
+              console.log("[CF REASON_PHONE_SAVE_FAILED]", {
                 reason_key: rkey,
                 trace: "network",
               });
@@ -8842,17 +8945,17 @@ try {
         }
       }
       stripContentKeepChrome();
-      var ld = document.createElement("p");
-      ld.setAttribute("data-cf-reason-loading", "1");
-      ld.style.cssText = "margin:0;font-size:14px;opacity:0.85;";
-      ld.textContent = "جاري الحفظ…";
-      widgetBody.appendChild(ld);
 
       function removeLoading() {
         var x = widgetBody.querySelector("[data-cf-reason-loading]");
         if (x && x.parentNode) {
           x.parentNode.removeChild(x);
         }
+      }
+
+      if (cfDeferAfterReasonPhoneCapture()) {
+        cfBeginAfterReasonDeferredPhone(rkey, { reason: rkey }, {});
+        return;
       }
 
       function onFailStd() {
