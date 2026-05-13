@@ -188,11 +188,6 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
         } catch (eOk) {}
         st().background_retry_meta = null;
         st().background_save_failed = false;
-        try {
-          if (Cf.Shell && Cf.Shell.showSuccess) {
-            Cf.Shell.showSuccess("تم الحفظ");
-          }
-        } catch (eS) {}
       })
       .catch(function () {
         try {
@@ -258,11 +253,6 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
         } catch (eOk2) {}
         st().background_retry_meta = null;
         st().background_save_failed = false;
-        try {
-          if (Cf.Shell && Cf.Shell.showSuccess) {
-            Cf.Shell.showSuccess("تم الحفظ");
-          }
-        } catch (eSu) {}
       })
       .catch(function () {
         try {
@@ -553,7 +543,15 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
         mountReasonList();
       },
       onNo: function () {
-        Cf.Ui.hideBubble();
+        try {
+          if (Cf.Shell && typeof Cf.Shell.minimizeLauncher === "function") {
+            Cf.Shell.minimizeLauncher();
+          } else {
+            Cf.Ui.hideBubble();
+          }
+        } catch (eNo) {
+          Cf.Ui.hideBubble();
+        }
         setBubbleShown(false);
         try {
           if (window.CartFlowState) {

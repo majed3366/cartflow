@@ -29,6 +29,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     cfV2HesitationDeferredBaseAt: null,
     shell: {
       isOpen: false,
+      isMinimized: false,
       currentStep: null,
       loading: false,
       mountedView: null,

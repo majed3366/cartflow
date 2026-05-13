@@ -110,6 +110,130 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     }
   }
 
+  function ensureLauncherChip(w) {
+    var chip = w.querySelector("[data-cf-shell-launcher-chip]");
+    if (chip) {
+      return chip;
+    }
+    chip = document.createElement("button");
+    chip.type = "button";
+    chip.setAttribute("data-cf-shell-launcher-chip", "1");
+    chip.setAttribute("aria-label", "فتح المساعدة");
+    chip.textContent = "?";
+    chip.style.cssText =
+      "display:none;box-sizing:border-box;position:absolute;left:0;top:0;width:100%;height:100%;" +
+      "align-items:center;justify-content:center;margin:0;border:0;background:transparent;" +
+      "cursor:pointer;color:#f8fafc;font-size:22px;font-weight:700;line-height:1;padding:0;";
+    w.appendChild(chip);
+    chip.addEventListener(
+      "click",
+      function (ev) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        shellLog("[CF SHELL LAUNCHER OPEN]", {});
+        expandShell();
+      },
+      false
+    );
+    return chip;
+  }
+
+  function expandShell() {
+    var w = rootFromDom();
+    if (!w || w.getAttribute("data-cf-shell-minimized") !== "1") {
+      return;
+    }
+    try {
+      var ph =
+        Cf.Config && Cf.Config.merchant && Cf.Config.merchant().widget_primary_color;
+      ensureShell(ph);
+    } catch (ePh) {
+      ensureShell();
+    }
+    w = rootFromDom();
+    if (!w) {
+      return;
+    }
+    var inner = w.querySelector("[data-cf-shell-inner]");
+    var chip = w.querySelector("[data-cf-shell-launcher-chip]");
+    if (inner) {
+      inner.style.display = "";
+    }
+    if (chip) {
+      chip.style.display = "none";
+    }
+    try {
+      w.style.visibility = "visible";
+      w.style.overflow = "";
+      w.style.display = "block";
+    } catch (eVi) {}
+    w.removeAttribute("data-cf-shell-minimized");
+    patchShell({ isMinimized: false, isOpen: true });
+    shellLog("[CF SHELL EXPAND]", {});
+  }
+
+  /** Cart recovery „لا”: keep content; shrink to launcher chip only. */
+  function minimizeLauncher() {
+    var w = rootFromDom();
+    if (!w) {
+      return;
+    }
+    dedupeShellRoots();
+    w = rootFromDom();
+    if (!w) {
+      return;
+    }
+    try {
+      window.clearTimeout(showSuccess._t);
+    } catch (eCt) {}
+    showSuccess._t = null;
+    try {
+      hideFooterMessage();
+    } catch (eFm) {}
+
+    ensureLauncherChip(w);
+    var inner = w.querySelector("[data-cf-shell-inner]");
+    var chip = w.querySelector("[data-cf-shell-launcher-chip]");
+    if (inner) {
+      inner.style.display = "none";
+    }
+    if (chip) {
+      chip.style.display = "flex";
+    }
+
+    w.setAttribute("data-cf-shell-minimized", "1");
+    try {
+      w.style.boxSizing = "border-box";
+      w.style.display = "block";
+      w.style.visibility = "visible";
+      w.style.position = "fixed";
+      w.style.zIndex = "2147483640";
+      w.style.right = "max(12px,env(safe-area-inset-right))";
+      w.style.bottom = "max(12px,env(safe-area-inset-bottom))";
+      w.style.left = "";
+      w.style.top = "";
+      w.style.width = "52px";
+      w.style.height = "52px";
+      w.style.maxWidth = "52px";
+      w.style.padding = "0";
+      w.style.margin = "0";
+      w.style.borderRadius = "999px";
+      w.style.overflow = "hidden";
+      w.style.cursor = "default";
+      w.style.background =
+        "linear-gradient(165deg,#1e1b4b 0%,#312e81 52%,#1e3a5f 100%)";
+      w.style.border = "1px solid rgba(99,102,241,.5)";
+      w.style.boxShadow = "0 10px 28px rgba(2,6,23,.52)";
+      w.style.fontSize = "0";
+      w.style.lineHeight = "1";
+      w.style.fontFamily =
+        "system-ui,-apple-system,Segoe UI,Roboto,sans-serif";
+    } catch (eStl) {}
+
+    patchShell({ isMinimized: true, isOpen: true });
+    shellLog("[CF SHELL MINIMIZE]", { mode: "launcher" });
+  }
+
   function bindCloseButtonOnce(w) {
     var closer = w.querySelector("[data-cf-shell-close]");
     if (!closer) {
@@ -273,6 +397,12 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     var hadRoot = !!rootFromDom();
     var r = ensureShell(opts.primaryColor);
     var w = r.root;
+    try {
+      if (w && w.getAttribute("data-cf-shell-minimized") === "1") {
+        expandShell();
+        w = rootFromDom();
+      }
+    } catch (eExp) {}
     if (r.createdNew) {
       shellLog("[CF SHELL OPEN]", { created: true });
     } else if (hadRoot) {
@@ -307,9 +437,22 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
         loading: false,
         mountedView: null,
         lastTriggerSource: null,
+        isMinimized: false,
       });
       return;
     }
+    try {
+      w.removeAttribute("data-cf-shell-minimized");
+      var chin = w.querySelector("[data-cf-shell-launcher-chip]");
+      var inn = w.querySelector("[data-cf-shell-inner]");
+      if (chin) {
+        chin.style.display = "none";
+      }
+      if (inn) {
+        inn.style.display = "";
+      }
+    } catch (eMin) {}
+
     try {
       w.style.display = "none";
     } catch (eH) {}
@@ -336,6 +479,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       loading: false,
       mountedView: null,
       lastTriggerSource: null,
+      isMinimized: false,
     });
 
     if (opts.syncDismiss) {
@@ -468,6 +612,8 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     setLastTriggerSource: setLastTriggerSource,
     showError: showError,
     showSuccess: showSuccess,
+    minimizeLauncher: minimizeLauncher,
+    expand: expandShell,
     getRoot: getRoot,
     getContentMount: getContentMount,
   };
