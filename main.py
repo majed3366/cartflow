@@ -566,6 +566,8 @@ def _is_development_mode() -> bool:
 
 
 # مسارات ‎/dev‎ مسموحة في الإنتاج رغم ‎ENV‎ (تحقق يدوي / مراقبة؛ باقي ‎/dev‎ محظور).
+# **`/dev/widget-test*`** لا تُدرَج هنا عامداً — تحمّل **`cartflow_widget.js`** (شبيه الإنتاج الرجعي فقط)،
+# وليست بديل **`/demo/store`** (مسار **`CARTFLOW_WIDGET_RUNTIME_V2`**). تبقى ‎404‎ حتى **`ENV=development`**.
 _DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT = frozenset(
     {
         "/dev/whatsapp-decision-test",
@@ -661,15 +663,17 @@ def dev_run_flow():
     )
 
 
-_DEV_WIDGET_TEST_HTML = """<!doctype html>
+_DEV_LEGACY_WIDGET_HARNESS_HTML = """<!doctype html>
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>CartFlow widget test</title>
+<meta name="cartflow-dev-harness" content="legacy-monolith-cartflow-widget-js">
+<title>DEV — Legacy widget harness (not V2 / not demo store)</title>
 </head>
-<body>
-<p style="font:14px system-ui;padding:1rem">اختبار الويدجت: 3 ث ثم 8 ث هدوء — تظهر الفقاعة.</p>
+<body data-cf-dev-legacy-widget-harness="1">
+<p style="font:13px system-ui;padding:1rem;background:#fef3c7;border:1px solid #fcd34d;border-radius:6px;margin:1rem;line-height:1.5"><strong>[CartFlow DEV ONLY]</strong> Legacy monolith <code>/static/cartflow_widget.js</code> — rollback / QA harness.<br>This is not the layered V2 runtime and not <code>/demo/store</code> (production-style demo uses <code>CARTFLOW_WIDGET_RUNTIME_V2</code> via <code>widget_loader.js</code>).<br><strong>غير وقت التشغيل الإنتاجي</strong></p>
+<p style="font:14px system-ui;padding:1rem">اختبار الويدجت القديم (monolith): 3 ث ثم 8 ث هدوء — تظهر الفقاعة.</p>
 <script>
 if (location.pathname.indexOf("/cart") < 0) {
   try { history.replaceState(null, "", "/dev/widget-test/cart"); } catch (e) {}
@@ -683,8 +687,13 @@ if (location.pathname.indexOf("/cart") < 0) {
 @app.get("/dev/widget-test")
 @app.get("/dev/widget-test/cart")
 def dev_widget_test():
+    """
+    **DEV-only legacy widget harness.** Html loads **`cartflow_widget.js`** directly (no shim / no V2).
+    Middleware **`no_dev_in_production`**: **`404`** unless **`ENV=development`** (path is **not** in
+    **`_DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT`**). Do **not** treat this as storefront or `/demo/store` parity.
+    """
     return Response(
-        content=_DEV_WIDGET_TEST_HTML, media_type="text/html; charset=utf-8"
+        content=_DEV_LEGACY_WIDGET_HARNESS_HTML, media_type="text/html; charset=utf-8"
     )
 
 

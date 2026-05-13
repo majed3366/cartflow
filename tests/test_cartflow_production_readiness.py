@@ -81,6 +81,14 @@ class CartflowProductionReadinessTests(unittest.TestCase):
             "/dev/widget-runtime-config-verify",
             pr._DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT,
         )
+        self.assertNotIn(
+            "/dev/widget-test",
+            _DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT,
+        )
+        self.assertNotIn(
+            "/dev/widget-test/cart",
+            _DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT,
+        )
 
     def test_dev_route_middleware_allowlist_and_production_readiness_route(self) -> None:
         from fastapi.testclient import TestClient
@@ -91,11 +99,19 @@ class CartflowProductionReadinessTests(unittest.TestCase):
         os.environ.pop("ENV", None)
         r_block = client.get("/dev/run-flow")
         self.assertEqual(r_block.status_code, 404)
+        r_wgt = client.get("/dev/widget-test")
+        self.assertEqual(r_wgt.status_code, 404)
+        r_wgc = client.get("/dev/widget-test/cart")
+        self.assertEqual(r_wgc.status_code, 404)
         r_list = client.get("/dev/routes")
         self.assertEqual(r_list.status_code, 404)
         r_pr = client.get("/dev/production-readiness")
         self.assertEqual(r_pr.status_code, 404)
         os.environ["ENV"] = "development"
+        r_wgt2 = client.get("/dev/widget-test")
+        self.assertEqual(r_wgt2.status_code, 200, r_wgt2.text[:500])
+        self.assertIn("/static/cartflow_widget.js", r_wgt2.text)
+        self.assertIn("cf-dev-legacy-widget-harness", r_wgt2.text)
         r_pr2 = client.get("/dev/production-readiness")
         self.assertEqual(r_pr2.status_code, 200, r_pr2.text[:400])
         j2 = r_pr2.json()

@@ -12,6 +12,7 @@ import os
 from typing import Any
 
 # Keep aligned with main._DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT
+# Note: `/dev/widget-test*` is deliberately NOT listed — loads legacy cartflow_widget.js; dev ENV only (see main).
 _DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT: frozenset[str] = frozenset(
     {
         "/dev/whatsapp-decision-test",

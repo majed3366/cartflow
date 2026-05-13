@@ -50,7 +50,7 @@
 
 | Artifact | When it loads |
 |-----------|----------------|
-| `static/cartflow_widget.js` | **`widget_loader`** when **`CARTFLOW_WIDGET_RUNTIME_V2 !== true`**; **or** **`/dev/widget-test`** inline script in **`main.py`** |
+| `static/cartflow_widget.js` | **`widget_loader`** when **`CARTFLOW_WIDGET_RUNTIME_V2 !== true`**; **or** **`GET /dev/widget-test*`** (`_DEV_LEGACY_WIDGET_HARNESS_HTML` — **development ENV only**, see §**6.5**) |
 
 ---
 
@@ -78,7 +78,7 @@ _Order may vary slightly; shim uses non-blocking patterns._
 | Loader / page | Mechanism |
 |---------------|-----------|
 | **`static/widget_loader.js`** | **`s.src = "/static/cartflow_widget.js`** when **`CARTFLOW_WIDGET_RUNTIME_V2` is not `true`** |
-| **`main.py`** | **`_DEV_WIDGET_TEST_HTML`** — **`/dev/widget-test`**, **`/dev/widget-test/cart`** embed legacy script directly |
+| **`main.py`** | **`_DEV_LEGACY_WIDGET_HARNESS_HTML`** — **`GET /dev/widget-test`**, **`GET /dev/widget-test/cart`** embed legacy **`cartflow_widget.js`** directly (**no shim / no V2**). **`404`** unless **`ENV=development`** (explicitly **excluded** from **`_DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT`** — see **`no_dev_in_production`**). See §**6.5**. |
 
 ### Is `static/cartflow_widget.js` still referenced in code/tests/docs?
 
@@ -163,7 +163,7 @@ _All other URLs are V2 modules, return tracker, abandon tracking (if template in
 
 ### 6.2 Dev / test-only (legacy script **usage**)
 
-- **`main.py`** — **`_DEV_WIDGET_TEST_HTML`** → **`cartflow_widget.js`**
+- **`main.py`** — **`_DEV_LEGACY_WIDGET_HARNESS_HTML`** → **`GET /dev/widget-test`**, **`GET /dev/widget-test/cart`** (**`ENV=development`** only via **`no_dev_in_production`** — **not** in **`_DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT`**).
 - **`tests/**`** — multiple files **`read_text`** **`static/cartflow_widget.js`** or assert HTML **omits** legacy on **`/demo/store`**
 
 ### 6.3 Still required today for rollback / QA
@@ -178,13 +178,30 @@ _All other URLs are V2 modules, return tracker, abandon tracking (if template in
 - **VIP flag** still maintained in **`window.cartflowState`** via **`mirrorCartTotals()`** inside V2 **`flows.js`**.
 - **VIP no longer pulls in** legacy **`cartflow_widget.js`** automatically from layered code. Merchants relying **only** on legacy behavior must keep **`CARTFLOW_WIDGET_RUNTIME_V2`** unset/false in embed until they accept full V2 UX.
 
+### 6.5 Dev legacy widget harness (**isolated** — **not production cleanup path**)
+
+Complete inventory (HTML harness only — **no** **`widget_loader`** / **no** **`cartflow_widget_runtime`**):
+
+| URL | Behaviour |
+|-----|-----------|
+| **`GET /dev/widget-test`** | Serves **`_DEV_LEGACY_WIDGET_HARNESS_HTML`**. Visible banner + **`data-cf-dev-legacy-widget-harness`** mark page as **[CartFlow DEV ONLY]**. Script tag **`/static/cartflow_widget.js`**. |
+| **`GET /dev/widget-test/cart`** | Same HTML body (**URL variant**); client **`history.replaceState`** may normalize path to **`/dev/widget-test/cart`**. |
+
+**Production / shipped non-dev:**
+
+- Middleware **`no_dev_in_production`** returns **`404`** for these paths whenever **`ENV` ≠ `development`**.
+- Paths are **explicitly excluded** from **`_DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT`** (see comment in **`main.py`** next to the frozenset).
+- **`/demo/store*`** (**unchanged**) remains the canonical **layered V2** storefront demo; do **not** use **`/dev/widget-test`** as a substitute.
+
+**Safely delete harness later:** only after audit priority **4** (**`cartflow_widget.js`**) roadmap; **not deleted** in this milestone (**Audit §5**).
+
 ---
 
 ## 7. Risks before deleting `cartflow_widget.js`
 
 1. **Embeds without V2 flag** still load legacy via **`widget_loader.js`**.
 2. **Regression tests** and **operational observability** scrape monolith markers.
-3. **`/dev/widget-test`** bypasses shim.
+3. ~~**`/dev/widget-test`**~~ — **Controlled:** served only when **`ENV=development`** (**not** production-allowlisted). Still loads legacy inline for QA; **`/demo/store`** remains **primary V2** storefront preview.
 4. **Rollback** strategy for misconfigured storefronts disappears if loader legacy branch removed first.
 
 ---
@@ -194,7 +211,7 @@ _All other URLs are V2 modules, return tracker, abandon tracking (if template in
 Same spirit as rev 1 — updated for isolation:
 
 1. ~~Refresh **documentation** (`SYSTEM_SUMMARY`, risk reports).~~ — **Tier 1 done**
-2. **Dev route** parity with **`widget_loader` + V2**.
+2. ~~Expose dev tooling~~ — **`/dev/widget-test*`** **isolated** from production allowlist + labelled HTML (**`chore isolate legacy widget dev harness`**); optional future: second route with **`widget_loader` + V2** for parity.
 3. **Merchant embed defaults**:** document **`CARTFLOW_WIDGET_RUNTIME_V2 = true`** in **`general_settings.html`** snippets.
 4. **Migrate tests** toward **`cartflow_widget_runtime`** where behavior moved.
 5. Remove **`widget_loader`** legacy branch when **no** production consumer needs it.
@@ -215,4 +232,4 @@ pytest tests/test_demo_behavioral_navigation.py -q
 
 ## 10. Disclaimer — this commit boundary
 
-Tier 1 touched **documentation only**: **`widget_legacy_cleanup_audit.md`**, **`SYSTEM_SUMMARY.md`**, **`cartflow_operational_risk_test_report.md`**. **No** changes to **`static/widget_loader.js`**, **`cartflow_widget_runtime/**`**, **`cartflow_widget.js`**, **`cart_abandon_tracking.js`**, **`cartflow_return_tracker.js`**, backend, dashboards, WhatsApp, or lifecycle. Next risky steps (`/dev/widget-test`, shim legacy branch, monolith deletion) remain **explicitly deferred**.
+**Isolation chore:** **`main.py`** (`_DEV_LEGACY_WIDGET_HARNESS_HTML`, **`dev_widget_test`** docstring, comment beside **`_DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT`**), **`tests/test_cartflow_production_readiness.py`**, **`services/cartflow_production_readiness.py`** (parity comment), **`SYSTEM_SUMMARY`**, **`docs/cartflow_production_readiness.md`**, **`widget_legacy_cleanup_audit.md`**. Unchanged: **`templates/demo_store.html`**, **`cartflow_widget_runtime/**`**, **`cart_abandon_tracking.js`**, **`cartflow_return_tracker.js`**, recovery / lifecycle / WhatsApp. **`widget_loader`** legacy branch + **`cartflow_widget.js`** unchanged.
