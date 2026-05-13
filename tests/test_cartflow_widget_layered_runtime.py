@@ -11,6 +11,16 @@ _LOADER = _ROOT / "static" / "widget_loader.js"
 
 
 class CartflowWidgetLayeredRuntimeTests(unittest.TestCase):
+    def test_v2_loader_orders_modules_and_busts_cache(self) -> None:
+        s = (_RUNTIME / "cartflow_widget_loader.js").read_text(encoding="utf-8")
+        self.assertIn("[CF V2 LOAD START]", s)
+        self.assertIn("layered-runtime-v2", s)
+        p = s.index("cartflow_widget_phone.js")
+        u = s.index("cartflow_widget_ui.js")
+        f = s.index("cartflow_widget_flows.js")
+        self.assertLess(p, u)
+        self.assertLess(u, f)
+
     def test_runtime_modules_exist(self) -> None:
         expected = (
             "cartflow_widget_loader.js",

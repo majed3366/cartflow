@@ -5,7 +5,7 @@
 (function () {
   "use strict";
 
-  var RUNTIME_VERSION = "unified-bootstrap-v2";
+  var RUNTIME_VERSION = "unified-bootstrap-v3";
   var RETURN_TRACKER_SRC =
     "/static/cartflow_return_tracker.js?v=" + encodeURIComponent(RUNTIME_VERSION);
 
