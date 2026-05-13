@@ -353,9 +353,20 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
 
   function showBubble() {
     try {
+      if (Cf.Triggers && typeof Cf.Triggers.receiveTrigger === "function") {
+        var r = Cf.Triggers.receiveTrigger("manual_debug", { entry: "ui_show_bubble" });
+        if (r === true) {
+          return true;
+        }
+        if (r === false) {
+          return false;
+        }
+      }
+    } catch (eT) {}
+    try {
       var F = Cf.Flows;
       if (F && typeof F.showBubbleCartRecovery === "function") {
-        F.showBubbleCartRecovery("__cfV2ShowNow");
+        F.showBubbleCartRecovery("manual_debug");
         return true;
       }
     } catch (eSb) {}
