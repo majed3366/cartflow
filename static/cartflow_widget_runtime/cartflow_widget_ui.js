@@ -219,6 +219,13 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
         err.textContent = "رقم غير صحيح";
         return;
       }
+      if (opts.optimisticSave && opts.onSave) {
+        var ret = opts.onSave(pn);
+        if (ret && typeof ret.then === "function") {
+          ret.catch(function () {});
+        }
+        return;
+      }
       save.setAttribute("disabled", "true");
       opts
         .onSave(pn)
@@ -269,6 +276,20 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     add("أكمل الطلب", opts.onContinueCart);
     add("أحتاج مساعدة الآن", opts.onAssist);
     add("رجوع للأسباب", opts.onBackReasons);
+    if (opts.onRetryBackgroundSave && typeof opts.onRetryBackgroundSave === "function") {
+      var rz = document.createElement("button");
+      rz.type = "button";
+      rz.textContent = opts.retryLabel || "إعادة إرسال";
+      rz.style.cssText =
+        "border:1px solid rgba(148,163,184,.62);cursor:pointer;border-radius:10px;background:#fffefa;color:#9a3412;" +
+        "width:100%;box-sizing:border-box;padding:11px 12px;font:inherit;font-weight:600;";
+      rz.addEventListener("click", function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        opts.onRetryBackgroundSave();
+      });
+      row.appendChild(rz);
+    }
     frag.appendChild(row);
     Cf.Shell.setContent(frag, "continuation");
   }

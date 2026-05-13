@@ -131,9 +131,15 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     }
   }
 
+  var _sessionReadyCached = null;
+  var _sessionPublicConfigCached = null;
+
   function fetchReady() {
     if (/\b\/demo\//i.test(String(window.location.pathname || ""))) {
       return Promise.resolve({ demo: true, after_step1: true, ok: true });
+    }
+    if (_sessionReadyCached != null && _sessionReadyCached.after_step1) {
+      return Promise.resolve(_sessionReadyCached);
     }
     var b = apiBase();
     var u =
@@ -144,11 +150,19 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       "&session_id=" +
       encodeURIComponent(sessionId());
     return fetch(u, { method: "GET" }).then(function (r) {
-      return r.json();
+      return r.json().then(function (j) {
+        if (j && j.after_step1) {
+          _sessionReadyCached = j;
+        }
+        return j;
+      });
     });
   }
 
   function fetchPublicConfig() {
+    if (_sessionPublicConfigCached != null) {
+      return Promise.resolve(_sessionPublicConfigCached);
+    }
     var bb = apiBase();
     var u =
       (bb || "") +
@@ -157,7 +171,12 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       encodeURIComponent(storeSlug()) +
       cartTotalSuffix();
     return fetch(u, { method: "GET" }).then(function (r) {
-      return r.json();
+      return r.json().then(function (j) {
+        if (j != null && typeof j === "object" && j.ok !== false) {
+          _sessionPublicConfigCached = j;
+        }
+        return j;
+      });
     });
   }
 

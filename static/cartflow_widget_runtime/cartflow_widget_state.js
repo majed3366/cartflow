@@ -18,6 +18,9 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     open_source: null,
     pending_reason_payload: null,
     pending_reason_detail: null,
+    pending_reason_key: null,
+    background_retry_meta: null,
+    background_save_failed: false,
     last_exit_fire_ts: 0,
     exit_session_block: false,
     shell: {

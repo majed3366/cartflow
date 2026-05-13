@@ -159,44 +159,212 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       .catch(function () {});
   }
 
+  function runBackgroundReasonPhoneSave(meta) {
+    meta = meta || {};
+    try {
+      console.log("[CF BACKGROUND SAVE START]", {
+        reason_key: String(meta.reasonKey || ""),
+        kind: meta.kind || "reason_phone",
+      });
+    } catch (eSt) {}
+    st().background_save_failed = false;
+    Cf.Phone.postReasonMerged(
+      meta.payload,
+      meta.phoneNorm,
+      meta.subHint,
+      meta.textHint,
+      meta.reasonKey
+    )
+      .then(function () {
+        try {
+          console.log("[CF BACKGROUND SAVE SUCCESS]");
+        } catch (eOk) {}
+        st().background_retry_meta = null;
+        st().background_save_failed = false;
+        try {
+          if (Cf.Shell && Cf.Shell.showSuccess) {
+            Cf.Shell.showSuccess("تم الحفظ");
+          }
+        } catch (eS) {}
+      })
+      .catch(function () {
+        try {
+          console.log("[CF BACKGROUND SAVE FAILED]");
+        } catch (eF) {}
+        st().background_save_failed = true;
+        st().background_retry_meta = Object.assign({}, meta, {
+          kind: meta.kind || "reason_phone",
+          continuationSub: meta.continuationSub,
+        });
+        try {
+          if (Cf.Shell && Cf.Shell.showError) {
+            Cf.Shell.showError(
+              "تعذّر حفظ البيانات. يمكنك الضغط على «إعادة إرسال»."
+            );
+          }
+        } catch (eE) {}
+        showContinuationQuiet(meta.reasonKey, meta.continuationSub);
+      });
+  }
+
+  function runBackgroundReasonOnly(payload, rk, continuationSub) {
+    try {
+      console.log("[CF BACKGROUND SAVE START]", {
+        reason_key: String(rk || ""),
+        kind: "reason_only",
+      });
+    } catch (eSt2) {}
+    st().background_save_failed = false;
+    var payloadCopy = Object.assign({}, payload || {});
+    Cf.Api.postReason(payloadCopy)
+      .then(function (j) {
+        if (!Cf.Api.reasonPostOk(j)) {
+          try {
+            console.log("[CF BACKGROUND SAVE FAILED]");
+          } catch (eFj) {}
+          st().background_save_failed = true;
+          st().background_retry_meta = {
+            kind: "reason_only",
+            payload: payloadCopy,
+            reasonKey: rk,
+            continuationSub: continuationSub,
+          };
+          try {
+            if (Cf.Shell && Cf.Shell.showError) {
+              Cf.Shell.showError(
+                "تعذّر حفظ البيانات. يمكنك الضغط على «إعادة إرسال»."
+              );
+            }
+          } catch (eSe) {}
+          showContinuationQuiet(rk, continuationSub);
+          return;
+        }
+        try {
+          console.log("[CF BACKGROUND SAVE SUCCESS]");
+        } catch (eOk2) {}
+        st().background_retry_meta = null;
+        st().background_save_failed = false;
+        try {
+          if (Cf.Shell && Cf.Shell.showSuccess) {
+            Cf.Shell.showSuccess("تم الحفظ");
+          }
+        } catch (eSu) {}
+      })
+      .catch(function () {
+        try {
+          console.log("[CF BACKGROUND SAVE FAILED]");
+        } catch (eFc) {}
+        st().background_save_failed = true;
+        st().background_retry_meta = {
+          kind: "reason_only",
+          payload: payloadCopy,
+          reasonKey: rk,
+          continuationSub: continuationSub,
+        };
+        try {
+          if (Cf.Shell && Cf.Shell.showError) {
+            Cf.Shell.showError(
+              "تعذّر حفظ البيانات. يمكنك الضغط على «إعادة إرسال»."
+            );
+          }
+        } catch (eSe2) {}
+        showContinuationQuiet(rk, continuationSub);
+      });
+  }
+
+  function showContinuationQuiet(reasonKey, subCategory) {
+    try {
+      var b = Cf.Shell && Cf.Shell.getRoot ? Cf.Shell.getRoot() : null;
+      if (b) {
+        b.removeAttribute("data-cf-after-reason-phone-step");
+      }
+    } catch (eRm2) {}
+    var retryMeta = st().background_retry_meta;
+    Cf.Ui.renderContinuation({
+      primaryColor: primaryHex(),
+      messages: CONTINUATION,
+      reasonKey: reasonKey,
+      retryLabel: "إعادة إرسال",
+      onContinueCart: function () {
+        scrollToCartOrCheckout();
+      },
+      onAssist: function () {
+        handoffAssistThenOpenWa();
+      },
+      onBackReasons: function () {
+        mountReasonList();
+      },
+      onRetryBackgroundSave:
+        retryMeta != null
+          ? function () {
+              var m = st().background_retry_meta;
+              if (!m) {
+                return;
+              }
+              if (m.kind === "reason_only") {
+                runBackgroundReasonOnly(
+                  Object.assign({}, m.payload),
+                  m.reasonKey,
+                  m.continuationSub
+                );
+              } else {
+                runBackgroundReasonPhoneSave(Object.assign({}, m));
+              }
+            }
+          : null,
+    });
+    setBubbleShown(true);
+  }
+
   /** ---- Reason flow internals ---- */
 
   function openReasonPhoneImmediate(reasonKey, payload, detail) {
     var rk = String(reasonKey || "").toLowerCase();
     detail = detail || {};
+    st().pending_reason_key = rk;
+    st().pending_reason_payload = Object.assign({}, payload || {});
+    st().pending_reason_detail = Object.assign({}, detail || {});
     try {
       console.log("[CF REASON SELECTED V2]", { reason_key: rk });
     } catch (eR) {}
-    requestAnimationFrame(function () {
-      try {
-        console.log("[CF PHONE SHOW IMMEDIATE V2]", { reason_key: rk });
-      } catch (ePi) {}
-      Cf.Ui.renderPhoneStep({
-        primaryColor: primaryHex(),
-        onBack: function () {
-          mountReasonList();
-        },
-        onSave: function (pn) {
-          return Cf.Phone.postReasonMerged(
-            payload,
-            pn,
-            detail.sub_category != null ? String(detail.sub_category) : "",
+    try {
+      console.log("[CF UX REASON INSTANT]", { reason_key: rk });
+    } catch (eUx) {}
+
+    Cf.Ui.renderPhoneStep({
+      primaryColor: primaryHex(),
+      optimisticSave: true,
+      onBack: function () {
+        mountReasonList();
+      },
+      onSave: function (pn) {
+        try {
+          console.log("[CF UX PHONE INSTANT]", { reason_key: rk });
+        } catch (ePh) {}
+        var subCat =
+          detail.sub_category != null ? detail.sub_category : null;
+        showContinuation(rk, subCat);
+        runBackgroundReasonPhoneSave({
+          payload: Object.assign({}, payload || {}),
+          phoneNorm: pn,
+          subHint: subCat != null ? String(subCat) : "",
+          textHint:
             detail.custom_text != null ? String(detail.custom_text) : "",
-            rk
-          ).then(function () {
-            showContinuation(rk, detail.sub_category);
-          });
-        },
-      });
-      setBubbleShown(true);
-      try {
-        var root =
-          Cf.Shell && Cf.Shell.getRoot ? Cf.Shell.getRoot() : null;
-        if (root) {
-          root.setAttribute("data-cf-after-reason-phone-step", "1");
-        }
-      } catch (eAt) {}
+          reasonKey: rk,
+          continuationSub: subCat,
+          kind: "reason_phone",
+        });
+        return Promise.resolve();
+      },
     });
+    setBubbleShown(true);
+    try {
+      var root =
+        Cf.Shell && Cf.Shell.getRoot ? Cf.Shell.getRoot() : null;
+      if (root) {
+        root.setAttribute("data-cf-after-reason-phone-step", "1");
+      }
+    } catch (eAt) {}
   }
 
   function openReasonPath(reasonKey, payload, detail) {
@@ -204,22 +372,30 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     var rk = String(reasonKey || "").toLowerCase();
     var pcm = Cf.Config.phoneCaptureMode();
     var has = Cf.State.hasValidStoredPhone();
-
-    function afterPostSuccess() {
-      showContinuation(rk, detail.sub_category != null ? detail.sub_category : null);
-    }
+    var subCat =
+      detail.sub_category != null ? detail.sub_category : null;
 
     if (pcm !== "none" && !has) {
       openReasonPhoneImmediate(rk, payload, detail);
       return;
     }
 
-    Cf.Api.postReason(payload).then(function (j) {
-      if (!Cf.Api.reasonPostOk(j)) {
-        return;
-      }
-      afterPostSuccess();
-    });
+    st().pending_reason_key = rk;
+    st().pending_reason_payload = Object.assign({}, payload || {});
+    st().pending_reason_detail = Object.assign({}, detail || {});
+    try {
+      console.log("[CF UX REASON INSTANT]", {
+        reason_key: rk,
+        path: "to_continuation_direct",
+      });
+    } catch (eUr) {}
+
+    showContinuation(rk, subCat);
+    runBackgroundReasonOnly(
+      Object.assign({}, payload || {}),
+      rk,
+      subCat
+    );
   }
 
   function showContinuation(reasonKey, subCategory) {
@@ -236,24 +412,12 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
           ? String(subCategory).trim()
           : null,
     });
-    Cf.Ui.renderContinuation({
-      primaryColor: primaryHex(),
-      messages: CONTINUATION,
-      reasonKey: reasonKey,
-      onContinueCart: function () {
-        scrollToCartOrCheckout();
-      },
-      onAssist: function () {
-        handoffAssistThenOpenWa();
-      },
-      onBackReasons: function () {
-        mountReasonList();
-      },
-    });
-    setBubbleShown(true);
+    showContinuationQuiet(reasonKey, subCategory);
   }
 
   function mountReasonList() {
+    st().background_retry_meta = null;
+    st().background_save_failed = false;
     var rows =
       Cf.Config && typeof Cf.Config.buildVisibleReasonRows === "function"
         ? Cf.Config.buildVisibleReasonRows()
