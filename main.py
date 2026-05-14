@@ -618,10 +618,21 @@ async def db_scoped_session_cleanup(request: Request, call_next: Any) -> Any:
     ‎scoped_session‎ / ‎QueuePool‎: ‎remove_scoped_session()‎ لكل طلب في ‎finally‎
     (مسجّل بعد باقي الـ middleware — يغلف السلسلة بحيث يُنظَّف الجلسة بعد المسار).
     """
+    from services.db_request_audit import (  # noqa: PLC0415
+        audit_leak_suspected_check,
+        audit_request_begin,
+        audit_request_end,
+        maybe_install_engine_listener,
+    )
+
+    maybe_install_engine_listener()
+    audit_request_begin(request)
     try:
         return await call_next(request)
     finally:
+        audit_leak_suspected_check(request)
         remove_scoped_session()
+        audit_request_end()
 
 
 def _app_route_get_exists(path: str) -> bool:
