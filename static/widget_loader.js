@@ -11,7 +11,7 @@
 (function () {
   "use strict";
 
-  var RUNTIME_VERSION = "unified-bootstrap-v6";
+  var RUNTIME_VERSION = "v2-cart-identity-verify-1";
 
   function cartflowAllowLegacyWidgetExplicit() {
     try {
