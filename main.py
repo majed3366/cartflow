@@ -1690,32 +1690,45 @@ _RECOVERY_REASON_POLL_INTERVAL_SEC = 0.15
 _RECOVERY_REASON_POLL_MAX_ATTEMPTS = 67
 _recovery_session_lock = threading.RLock()
 
-# Explicitly marked when cart_abandon returned waiting_for_reason; consumed on reason POST to arm scheduling once.
-_recovery_pending_reason_tags: set[str] = set()
+# When cart_abandon returned waiting_for_reason: stores arm context consumed once on reason POST.
+_recovery_pending_reason_arm_ctx: dict[str, dict[str, Any]] = {}
 
 
 def _normal_recovery_pending_reason_tags_clear_for_tests() -> None:
     with _recovery_session_lock:
-        _recovery_pending_reason_tags.clear()
+        _recovery_pending_reason_arm_ctx.clear()
 
 
-def _mark_normal_recovery_pending_reason_tag(recovery_key: str) -> None:
+def _mark_normal_recovery_pending_reason_tag(
+    recovery_key: str,
+    *,
+    cart_id: Optional[str] = None,
+    cart_total: Optional[float] = None,
+) -> None:
     rk = (recovery_key or "").strip()
     if not rk:
         return
+    ctx: dict[str, Any] = {}
+    cid_n = (str(cart_id).strip()[:255]) if cart_id else ""
+    if cid_n:
+        ctx["cart_id"] = cid_n
+    if cart_total is not None:
+        try:
+            ctx["cart_total"] = float(cart_total)
+        except (TypeError, ValueError):
+            pass
     with _recovery_session_lock:
-        _recovery_pending_reason_tags.add(rk)
+        _recovery_pending_reason_arm_ctx[rk] = ctx
 
 
-def _consume_normal_recovery_pending_reason_tag(recovery_key: str) -> bool:
+def _consume_normal_recovery_pending_reason_tag(
+    recovery_key: str,
+) -> Optional[dict[str, Any]]:
     rk = (recovery_key or "").strip()
     if not rk:
-        return False
+        return None
     with _recovery_session_lock:
-        if rk in _recovery_pending_reason_tags:
-            _recovery_pending_reason_tags.discard(rk)
-            return True
-        return False
+        return _recovery_pending_reason_arm_ctx.pop(rk, None)
 
 
 # Durable dashboard/lifecycle evidence: written on return-to-site detection (not send path).
@@ -6517,7 +6530,11 @@ async def handle_cart_abandoned(
         )
         log.info(nr_line)
         print(nr_line, flush=True)
-        _mark_normal_recovery_pending_reason_tag(recovery_key)
+        _mark_normal_recovery_pending_reason_tag(
+            recovery_key,
+            cart_id=cart_id_log,
+            cart_total=cart_total_chk,
+        )
         _persist_cart_recovery_log(
             store_slug=store_slug,
             session_id=session_id_log,
@@ -6640,10 +6657,21 @@ async def _schedule_normal_recovery_after_cart_recovery_reason_saved(
     if not sid or not ss:
         return
     rk = _recovery_key_from_store_and_session(ss, sid)
-    if not _consume_normal_recovery_pending_reason_tag(rk):
+    arm_ctx = _consume_normal_recovery_pending_reason_tag(rk)
+    if arm_ctx is None:
         return
     if _is_user_converted(rk):
         return
+
+    pending_cid = arm_ctx.get("cart_id") if isinstance(arm_ctx.get("cart_id"), str) else None
+    pending_cid = (pending_cid or "").strip()[:255] or None
+    pending_total_raw = arm_ctx.get("cart_total")
+    pending_total: Optional[float] = None
+    if pending_total_raw is not None:
+        try:
+            pending_total = float(pending_total_raw)
+        except (TypeError, ValueError):
+            pending_total = None
 
     cart_id_raw = body.get("cart_id") or body.get("zid_cart_id")
     cart_id_join: Optional[str] = (
@@ -6652,19 +6680,37 @@ async def _schedule_normal_recovery_after_cart_recovery_reason_saved(
         else None
     )
 
+    armed_cid = pending_cid or cart_id_join
     synth_pl: dict[str, Any] = {
         "event": "cart_abandoned",
         "store": ss,
         "store_slug": ss,
         "session_id": sid,
     }
-    if cart_id_join:
-        synth_pl["cart_id"] = cart_id_join
+    if armed_cid:
+        synth_pl["cart_id"] = armed_cid
     if isinstance(body.get("cart"), list):
         synth_pl["cart"] = body["cart"]
-    for k in ("cart_total", "cart_value", "phone", "items_count"):
+    if pending_total is not None:
+        synth_pl["cart_total"] = pending_total
+    else:
+        for k in ("cart_total", "cart_value"):
+            if k in body and body.get(k) is not None:
+                synth_pl[k] = body[k]
+    for k in ("phone", "items_count"):
         if k in body and body.get(k) is not None:
             synth_pl[k] = body[k]
+
+    ct_for_log = synth_pl.get("cart_total") if synth_pl.get("cart_total") is not None else synth_pl.get("cart_value")
+    ct_line = "none" if ct_for_log is None else str(ct_for_log)
+    orig_line = pending_cid if pending_cid else "-"
+    armed_line = armed_cid if armed_cid else "-"
+    arm_msg = (
+        "[NORMAL RECOVERY ARMED FROM REASON] "
+        f"original_cart_id={orig_line} armed_cart_id={armed_line} cart_total={ct_line}"
+    )
+    log.info(arm_msg)
+    print(arm_msg, flush=True)
 
     from fastapi import BackgroundTasks
 

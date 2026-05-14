@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import os
 import unittest
+import uuid
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, patch
 
@@ -61,6 +62,61 @@ class CartRecoverySequenceBehaviorTests(unittest.TestCase):
         self.assertEqual("waiting_for_reason", r.get("recovery_state"))
         mock_ct.assert_not_called()
         self.assertEqual(0, mock_send.call_count)
+
+    @patch("main.asyncio.create_task")
+    @patch("main._persist_cart_recovery_log")
+    @patch("main.send_whatsapp")
+    @patch("main.recovery_uses_real_whatsapp", return_value=False)
+    @patch("main.get_recovery_delay", return_value=0)
+    def test_reason_saved_after_waiting_replays_same_cart_identity(
+        self,
+        _delay: object,
+        _ur: object,
+        mock_send: object,
+        _pcl: object,
+        mock_ct: object,
+    ) -> None:
+        """Replay after POST /reason must reuse storefront cart_id and cart_total from abandon."""
+        mock_send.return_value = {"ok": True}
+        sid = "seq-preserve-cart-" + uuid.uuid4().hex[:12]
+        orig_cid = "s_integration_demo_cart"
+        cart_total = 88.5
+        body = {
+            "event": "cart_abandoned",
+            "store": "demo",
+            "session_id": sid,
+            "cart": [{"name": "Item", "price": 10}],
+            "cart_id": orig_cid,
+            "cart_total": cart_total,
+        }
+        captured = []
+        real_handle = main.handle_cart_abandoned
+
+        async def shim(bt, payload):  # type: ignore[no-untyped-def]
+            captured.append(dict(payload))
+            return await real_handle(bt, payload)
+
+        with patch.object(main, "handle_cart_abandoned", new=shim):
+            j1 = self.client.post("/api/cart-event", json=body).json()
+            self.assertFalse(j1.get("recovery_scheduled", True))
+            self.assertEqual("waiting_for_reason", j1.get("recovery_state"))
+            mock_ct.assert_not_called()
+            _post_recovery_reason_for_session(
+                self.client,
+                "demo",
+                sid,
+                customer_phone=_NORMAL_SEQUENCE_CUSTOMER_PHONE,
+            )
+
+        self.assertEqual(2, len(captured))
+        replay = captured[1]
+        self.assertEqual(orig_cid, replay.get("cart_id"))
+        self.assertAlmostEqual(float(replay.get("cart_total")), cart_total)
+        self.assertFalse(
+            str(replay.get("cart_id") or "").startswith("cf_w_"),
+            replay,
+        )
+        mock_ct.assert_called()
 
     @patch("main._persist_cart_recovery_log")
     @patch("main.send_whatsapp")
