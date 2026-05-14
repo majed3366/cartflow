@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+import json
+import re
 import unittest
 from datetime import datetime, timedelta, timezone
 
@@ -25,6 +27,50 @@ class DemoBehavioralNavigationTests(unittest.TestCase):
     def setUp(self) -> None:
         _reset_recovery_memory()
         self.client = TestClient(app)
+
+    def test_demo_list_without_reset_demo_has_no_demo_reset_console_hook(self) -> None:
+        t = self.client.get("/demo/store").text or ""
+        self.assertNotIn("[CF DEMO SESSION RESET]", t)
+
+    def test_reset_demo_query_injects_fresh_demo_session_markup(self) -> None:
+        r = self.client.get("/demo/store?reset_demo=1")
+        self.assertEqual(200, r.status_code)
+        t = r.text or ""
+        self.assertIn("[CF DEMO SESSION RESET]", t)
+        self.assertIn("sessionStorage.setItem(\"cartflow_recovery_session_id\"", t)
+        self.assertIn("sessionStorage.setItem(\"cartflow_cart_event_id\"", t)
+        sid, ce = self._extract_demo_reset_ids(t)
+        self.assertTrue(sid.startswith("s_"))
+        self.assertTrue(ce.startswith("cf_cart_"))
+
+    def test_reset_demo_each_request_can_emit_distinct_sessions(self) -> None:
+        sids = []
+        for _ in range(3):
+            txt = self.client.get("/demo/store?reset_demo=1&v=demo-reset-test").text or ""
+            sid, _ce = self._extract_demo_reset_ids(txt)
+            sids.append(sid)
+        self.assertTrue(all(x.startswith("s_") for x in sids))
+        self.assertEqual(len(set(sids)), 3)
+
+    def test_demo_store2_ignores_reset_demo_query_for_markup(self) -> None:
+        r = self.client.get("/demo/store2?reset_demo=1")
+        self.assertEqual(200, r.status_code)
+        self.assertNotIn("[CF DEMO SESSION RESET]", r.text or "")
+
+    @staticmethod
+    def _extract_demo_reset_ids(html: str) -> tuple[str, str]:
+        """Parses ‎var sid‎ / ‎var ceid‎ from the ‎reset_demo‎ script (before the console log marker)."""
+        pos = html.find("cartflow_cf_exit_intent_fired_sess_v2")
+        if pos < 0:
+            return "", ""
+        prefix = html[max(0, pos - 4500) : pos]
+        ms = list(re.finditer(r'var sid = ("(?:[^"\\]|\\.)*")\s*;', prefix))
+        mc = list(re.finditer(r'var ceid = ("(?:[^"\\]|\\.)*")\s*;', prefix))
+        if not ms or not mc:
+            return "", ""
+        sid = json.loads(ms[-1].group(1))
+        ceid = json.loads(mc[-1].group(1))
+        return str(sid), str(ceid)
 
     def test_demo_product_pages_and_unknown_id(self) -> None:
         r404 = self.client.get("/demo/store/product/0")

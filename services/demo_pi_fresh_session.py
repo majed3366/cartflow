@@ -45,6 +45,11 @@ def _new_demo_cart_id() -> str:
     return "cf_cart_" + str(uuid.uuid4())
 
 
+def new_demo_tracking_identity_pair() -> tuple[str, str]:
+    """‎session_id‎ + ‎cartflow_cart_event_id‎ style معرف لتجربة ‎demo‎ دون أي كتابة ‎DB‎."""
+    return _new_demo_session_id(), _new_demo_cart_id()
+
+
 def _pn_match(db_val: Optional[str], target_norm: str) -> bool:
     if not target_norm:
         return False

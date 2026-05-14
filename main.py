@@ -316,6 +316,7 @@ from services.demo_sandbox_catalog import (
     demo_template_context_extras,
 )
 from services.demo_pi_fresh_session import merge_demo_pi_fresh_query_into_context
+from services.demo_store_reset_demo import merge_demo_primary_store_demo_queries
 from services.vip_cart import (
     abandoned_cart_in_vip_operational_lane,
     apply_vip_cart_threshold_from_body,
@@ -11025,7 +11026,7 @@ def _demo_store_html_context(request: Request) -> dict[str, Any]:
         "demo_behavioral_nav_base": "/demo/store",
     }
     ctx.update(demo_template_context_extras(nav_base="/demo/store"))
-    return merge_demo_pi_fresh_query_into_context(request, ctx)
+    return merge_demo_primary_store_demo_queries(request, ctx)
 
 
 @app.get("/demo/cart")
@@ -11061,7 +11062,9 @@ def demo_store_product(request: Request, product_id: int):
     }
     pctx.update(demo_template_context_extras(nav_base="/demo/store"))
     return templates.TemplateResponse(
-        request, "demo_store.html", merge_demo_pi_fresh_query_into_context(request, pctx)
+        request,
+        "demo_store.html",
+        merge_demo_primary_store_demo_queries(request, pctx),
     )
 
 

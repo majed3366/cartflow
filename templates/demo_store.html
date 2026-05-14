@@ -400,6 +400,72 @@
 </head>
 <body>
   <script>window.CARTFLOW_STORE_SLUG = "{{ demo_store_slug|default('demo') }}";</script>
+  {% if demo_reset_applied %}
+  <script>
+    (function () {
+      try {
+        var sid = {{ demo_reset_session_id|tojson }};
+        var ceid = {{ demo_reset_cart_event_id|tojson }};
+        var dkey = {{ (demo_cart_key|default('demo_cart'))|tojson }};
+        try {
+          console.log("[CF DEMO SESSION RESET] session_id=" + sid + " cart_event_id=" + ceid);
+        } catch (eCon) {}
+        var ssRm = [
+          "cartflow_recovery_session_id",
+          "cartflow_cart_event_id",
+          "cartflow_converted",
+          "cartflow_recovery_flow_started",
+          "cartflow_reason_tag",
+          "cartflow_reason_sub_tag",
+          "cartflow_recovery_last_activity",
+          "cartflow_demo_test_phone_sync_logged_v1",
+          "cartflow_cf_exit_intent_fired_sess_v2",
+          "cartflow_cf_suppress_after_dismiss",
+          "cf_store_intro_dismissed",
+          "cf_demo_guide_dismissed",
+          "cartflow_demo_store_widget_armed",
+        ];
+        var ir;
+        for (ir = 0; ir < ssRm.length; ir++) {
+          try {
+            sessionStorage.removeItem(ssRm[ir]);
+          } catch (eSr) {}
+        }
+        try {
+          localStorage.removeItem("cartflow_recovery_return_state_v1");
+        } catch (eLr) {}
+        try {
+          localStorage.removeItem("replyai_session");
+        } catch (eLr2) {}
+        try {
+          localStorage.removeItem("cartflow_return_tracker_throttle_v1");
+        } catch (eThr) {}
+        try {
+          localStorage.removeItem("cartflow_recovery_engagement_v1");
+        } catch (eEng) {}
+        try {
+          localStorage.removeItem("cartflow_customer_phone");
+        } catch (eCph) {}
+        try {
+          localStorage.removeItem(dkey);
+          localStorage.setItem(dkey, "[]");
+        } catch (eDc) {}
+        try {
+          sessionStorage.setItem("cartflow_recovery_session_id", sid);
+          sessionStorage.setItem("cartflow_cart_event_id", ceid);
+        } catch (eSs) {}
+        try {
+          window.cart = [];
+        } catch (eWc) {}
+        try {
+          var u = new URL(window.location.href);
+          u.searchParams.delete("reset_demo");
+          window.history.replaceState({}, "", u.pathname + u.search + u.hash);
+        } catch (eU) {}
+      } catch (e) {}
+    })();
+  </script>
+  {% endif %}
   {% if demo_pi_fresh_applied %}
   <script>
     (function () {
