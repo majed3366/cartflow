@@ -271,6 +271,17 @@ async def post_widget_cart_recovery_reason(request: Request) -> Any:
         print(
             f"[REASON SAVED] store={ss} session={sid} reason={stored_reason_log} custom={custom_reason}"
         )
+        try:
+            from main import _schedule_normal_recovery_after_cart_recovery_reason_saved
+
+            await _schedule_normal_recovery_after_cart_recovery_reason_saved(
+                store_slug=ss,
+                session_id=sid,
+                body=body,
+            )
+        except Exception as exc:  # noqa: BLE001
+            log.warning("post-reason normal recovery reschedule hook skipped: %s", exc)
+
         resp_ok: dict[str, Any] = {"ok": True, "saved": True}
         if reason_tag == "no_help":
             resp_ok["user_rejected_help"] = True

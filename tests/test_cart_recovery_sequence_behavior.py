@@ -45,6 +45,23 @@ class CartRecoverySequenceBehaviorTests(unittest.TestCase):
         _reset_recovery_memory()
         self.client = TestClient(app)
 
+    @patch("main.asyncio.create_task")
+    @patch("main._persist_cart_recovery_log")
+    @patch("main.send_whatsapp")
+    @patch("main.recovery_uses_real_whatsapp", return_value=False)
+    @patch("main.get_recovery_delay", return_value=0)
+    def test_abandon_without_saved_reason_skips_schedule(
+        self, _d: object, _ur: object, mock_send: object, _pcl: object, mock_ct: object
+    ) -> None:
+        """No CartRecoveryReason and no payload reason_tag: no asyncio delay task."""
+        sid = "seq-no-reason-1"
+        body = _abandon("demo", sid)
+        r = self.client.post("/api/cart-event", json=body).json()
+        self.assertFalse(r.get("recovery_scheduled", True))
+        self.assertEqual("waiting_for_reason", r.get("recovery_state"))
+        mock_ct.assert_not_called()
+        self.assertEqual(0, mock_send.call_count)
+
     @patch("main._persist_cart_recovery_log")
     @patch("main.send_whatsapp")
     @patch("main.recovery_uses_real_whatsapp", return_value=False)

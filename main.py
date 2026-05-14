@@ -1690,6 +1690,34 @@ _RECOVERY_REASON_POLL_INTERVAL_SEC = 0.15
 _RECOVERY_REASON_POLL_MAX_ATTEMPTS = 67
 _recovery_session_lock = threading.RLock()
 
+# Explicitly marked when cart_abandon returned waiting_for_reason; consumed on reason POST to arm scheduling once.
+_recovery_pending_reason_tags: set[str] = set()
+
+
+def _normal_recovery_pending_reason_tags_clear_for_tests() -> None:
+    with _recovery_session_lock:
+        _recovery_pending_reason_tags.clear()
+
+
+def _mark_normal_recovery_pending_reason_tag(recovery_key: str) -> None:
+    rk = (recovery_key or "").strip()
+    if not rk:
+        return
+    with _recovery_session_lock:
+        _recovery_pending_reason_tags.add(rk)
+
+
+def _consume_normal_recovery_pending_reason_tag(recovery_key: str) -> bool:
+    rk = (recovery_key or "").strip()
+    if not rk:
+        return False
+    with _recovery_session_lock:
+        if rk in _recovery_pending_reason_tags:
+            _recovery_pending_reason_tags.discard(rk)
+            return True
+        return False
+
+
 # Durable dashboard/lifecycle evidence: written on return-to-site detection (not send path).
 _DURABLE_RETURN_TO_SITE_LOG_STATUS = "returned_to_site"
 _DURABLE_RETURN_LOG_DEBOUNCE_SEC = 120
@@ -2145,6 +2173,31 @@ def _reason_tag_for_session(store_slug: str, session_id: str) -> Optional[str]:
         return None
     tag = (row.reason or "").strip()
     return tag if tag else None
+
+
+def _effective_normal_recovery_reason_tag(
+    *,
+    store_slug: str,
+    session_id: str,
+    payload: dict[str, Any],
+) -> Optional[str]:
+    """
+    سبب لواتساب الاسترجاع العادي: ‎CartRecoveryReason‎ ثم حقول الحمولة (بدون اشتراط ويدجت ‎UX‎ جديدة).
+    """
+    rt_session = _reason_tag_for_session(store_slug, session_id)
+    if rt_session:
+        s = str(rt_session).strip().lower()
+        return s[:64] if s else None
+    for key in ("reason_tag", "abandon_reason_tag", "reason"):
+        if key not in payload:
+            continue
+        raw = payload.get(key)
+        if raw is None:
+            continue
+        cand = str(raw).strip().lower()
+        if cand:
+            return cand[:64]
+    return None
 
 
 def _store_slug_for_cart_recovery_reason(ac: AbandonedCart) -> Optional[str]:
@@ -6450,6 +6503,35 @@ async def handle_cart_abandoned(
             phone=abandon_evt_phone,
             reason_tag=reason_tag_ab,
         )
+    reason_for_schedule = _effective_normal_recovery_reason_tag(
+        store_slug=store_slug,
+        session_id=session_id_log,
+        payload=payload,
+    )
+    if not reason_for_schedule:
+        nr_line = (
+            "[NORMAL RECOVERY NOT SCHEDULED] reason=missing_reason_tag "
+            f"store_slug={(store_slug or '-')[:96]} "
+            f"session_id={(session_id_log or '-')[:96]} "
+            f"cart_id={(str(cart_id_log) if cart_id_log else '-')[:80]}"
+        )
+        log.info(nr_line)
+        print(nr_line, flush=True)
+        _mark_normal_recovery_pending_reason_tag(recovery_key)
+        _persist_cart_recovery_log(
+            store_slug=store_slug,
+            session_id=session_id_log,
+            cart_id=cart_id_log,
+            phone=None,
+            message=msg_log,
+            status="skipped_missing_reason_tag",
+        )
+        return {
+            "recovery_scheduled": False,
+            "recovery_skipped": True,
+            "recovery_state": "waiting_for_reason",
+            "waiting_for_reason": True,
+        }
     with _recovery_session_lock:
         if _session_recovery_sent.get(recovery_key):
             print("recovery already sent, skipping")
@@ -6541,6 +6623,52 @@ async def handle_cart_abandoned(
         "recovery_state": "scheduled",
         "recovery_delay_seconds": None,
     }
+
+
+async def _schedule_normal_recovery_after_cart_recovery_reason_saved(
+    *,
+    store_slug: str,
+    session_id: str,
+    body: dict[str, Any],
+) -> None:
+    """
+    بعد حفظ السبب: إن كان آخر ‎cart_abandoned‎ أعاد ‎waiting_for_reason‎ (علامة مفتاح واحدة)،
+    يُعاد تشغيل المسار لتفعيل الجدولة دون حدث هجر ثانٍ.
+    """
+    sid = (session_id or "").strip()[:512]
+    ss = (store_slug or "").strip()[:255]
+    if not sid or not ss:
+        return
+    rk = _recovery_key_from_store_and_session(ss, sid)
+    if not _consume_normal_recovery_pending_reason_tag(rk):
+        return
+    if _is_user_converted(rk):
+        return
+
+    cart_id_raw = body.get("cart_id") or body.get("zid_cart_id")
+    cart_id_join: Optional[str] = (
+        str(cart_id_raw).strip()[:255]
+        if cart_id_raw is not None and str(cart_id_raw).strip()
+        else None
+    )
+
+    synth_pl: dict[str, Any] = {
+        "event": "cart_abandoned",
+        "store": ss,
+        "store_slug": ss,
+        "session_id": sid,
+    }
+    if cart_id_join:
+        synth_pl["cart_id"] = cart_id_join
+    if isinstance(body.get("cart"), list):
+        synth_pl["cart"] = body["cart"]
+    for k in ("cart_total", "cart_value", "phone", "items_count"):
+        if k in body and body.get(k) is not None:
+            synth_pl[k] = body[k]
+
+    from fastapi import BackgroundTasks
+
+    await handle_cart_abandoned(BackgroundTasks(), synth_pl)
 
 
 @app.api_route("/dev/create-vip-test-cart", methods=["GET", "POST"])

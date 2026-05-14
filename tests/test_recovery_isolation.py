@@ -58,6 +58,12 @@ def _reset_recovery_memory() -> None:
         _session_recovery_last_second_skip_reason.clear()
     recovery_phone_memory_clear()
     try:
+        from main import _normal_recovery_pending_reason_tags_clear_for_tests
+
+        _normal_recovery_pending_reason_tags_clear_for_tests()
+    except Exception:
+        pass
+    try:
         from services.cartflow_duplicate_guard import reset_duplicate_guard_for_tests
         from services.cartflow_lifecycle_guard import reset_lifecycle_guard_for_tests
         from services.cartflow_provider_readiness import (

@@ -593,6 +593,17 @@ async def post_abandonment_reason(request: Request) -> Any:
                     alert_err,
                     exc_info=True,
                 )
+        try:
+            from main import _schedule_normal_recovery_after_cart_recovery_reason_saved
+
+            await _schedule_normal_recovery_after_cart_recovery_reason_saved(
+                store_slug=ss,
+                session_id=sid,
+                body=body,
+            )
+        except Exception as hook_err:  # noqa: BLE001
+            log.warning("cartflow/reason recovery reschedule hook skipped: %s", hook_err)
+
         return j({"ok": True})
     except (SQLAlchemyError, OSError) as e:
         db.session.rollback()
