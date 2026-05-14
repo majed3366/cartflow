@@ -5,16 +5,24 @@ from __future__ import annotations
 import logging
 import re
 from datetime import datetime, timezone
-from typing import Any, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 from fastapi import APIRouter, Path, Query, Request
 from sqlalchemy import and_
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import OperationalError, SQLAlchemyError
 
 from extensions import db
 from json_response import j
 from models import AbandonmentReasonLog, CartRecoveryLog, CartRecoveryReason, Store
 from schema_widget import ensure_store_widget_schema
+from services.cartflow_widget_public_cache import (
+    public_cache_get,
+    public_cache_set,
+    public_cache_key,
+    ready_cache_get,
+    ready_cache_key,
+    ready_cache_set,
+)
 from services.cartflow_whatsapp_mock import (
     build_mock_whatsapp_message,
     get_merchant_whatsapp_e164_for_store,
@@ -183,6 +191,41 @@ def _ready_after_step1(store_slug: str, session_id: str) -> bool:
     return base.first() is not None
 
 
+def _merge_widget_template_bundle(row: Optional[Any]) -> Dict[str, Any]:
+    tpl: Dict[str, Any] = {}
+    tpl.update(template_control_fields_for_api(row))
+    tpl.update(exit_intent_template_fields_for_api(row))
+    tpl.update(widget_customization_fields_for_api(row))
+    tpl.update(vip_cart_threshold_fields_for_api(row))
+    tpl.update(cartflow_widget_recovery_gate_fields_for_api(row))
+    tpl.update(widget_trigger_config_for_api(row))
+    tpl.update(reason_templates_fields_for_api(row))
+    return tpl
+
+
+def _ready_safe_default_payload() -> Dict[str, Any]:
+    return {"ok": True, "after_step1": False, **_merge_widget_template_bundle(None)}
+
+
+def _public_safe_default_payload(cart_total: Optional[float]) -> Dict[str, Any]:
+    tpl = _merge_widget_template_bundle(None)
+    ct_out: Optional[float] = None
+    vip_eval = cart_total is not None
+    if cart_total is not None:
+        try:
+            ct_out = float(cart_total)
+        except (TypeError, ValueError):
+            ct_out = None
+    return {
+        "ok": True,
+        "whatsapp_url": None,
+        "cart_total": ct_out,
+        "is_vip": False,
+        "vip_from_cart_total": vip_eval,
+        **tpl,
+    }
+
+
 @router.get("/primary-recovery-reason")
 def primary_recovery_reason(
     store_slug: str = Query(..., min_length=1, max_length=255),
@@ -315,31 +358,48 @@ def cartflow_ready(
 
     الجسم يتضمن حقول النمط والودجيت للعرض الأمامي، منها:
     ‎widget_name‎، ‎widget_primary_color‎، ‎widget_style‎ (مع باقي حقول القوالب).
+
+    Hot path: short in-process cache + soft fallback when DB pool is exhausted.
     """
+    ck = ready_cache_key(store_slug, session_id)
+    hit = ready_cache_get(ck)
+    if hit is not None:
+        return j(hit)
+
+    ss_log = (store_slug or "").strip()[:80]
+    log.info("[DB SESSION OPEN] route=/api/cartflow/ready store_slug=%s", ss_log)
     try:
-        ensure_store_widget_schema(db)
-    except (OSError, SQLAlchemyError):
-        db.session.rollback()
-    try:
-        row = store_row_for_widget_public_api(store_slug)
-        tpl = template_control_fields_for_api(row)
-        tpl.update(exit_intent_template_fields_for_api(row))
-        tpl.update(widget_customization_fields_for_api(row))
-        tpl.update(vip_cart_threshold_fields_for_api(row))
-        tpl.update(cartflow_widget_recovery_gate_fields_for_api(row))
-        tpl.update(widget_trigger_config_for_api(row))
-        tpl.update(reason_templates_fields_for_api(row))
-        return j(
-            {
+        try:
+            ensure_store_widget_schema(db)
+        except (OSError, SQLAlchemyError):
+            db.session.rollback()
+        try:
+            row = store_row_for_widget_public_api(store_slug)
+            tpl = _merge_widget_template_bundle(row)
+            payload: Dict[str, Any] = {
                 "ok": True,
                 "after_step1": _ready_after_step1(store_slug, session_id),
                 **tpl,
             }
-        )
-    except (SQLAlchemyError, OSError) as e:
-        db.session.rollback()
-        log.warning("cartflow ready: %s", e)
-        return j({"ok": False, "error": "query_failed"}, 500)
+            ready_cache_set(ck, payload)
+            return j(payload)
+        except OperationalError as e:
+            db.session.rollback()
+            log.warning("[CF READY DB FALLBACK] %s", e)
+            log.warning("[CF READY SAFE DEFAULT]")
+            return j(_ready_safe_default_payload())
+        except SQLAlchemyError as e:
+            db.session.rollback()
+            log.warning("[CF READY DB FALLBACK] %s", e)
+            log.warning("[CF READY SAFE DEFAULT]")
+            return j(_ready_safe_default_payload())
+        except OSError as e:
+            db.session.rollback()
+            log.warning("[CF READY DB FALLBACK] %s", e)
+            log.warning("[CF READY SAFE DEFAULT]")
+            return j(_ready_safe_default_payload())
+    finally:
+        log.info("[DB SESSION CLOSED] route=/api/cartflow/ready store_slug=%s", ss_log)
 
 
 @router.get("/public-config")
@@ -350,43 +410,49 @@ def cartflow_public_config(
     """
     لودجت السبب: رابط واتساب الدعم (أحدث ‎Store‎) — ‎store_slug‎ محجوز للمطابقة لاحقاً.
     اختياري: ‎cart_total‎ لتحديد ‎is_vip‎ حسب نفس قاعدة الخادم (‎is_vip_cart‎).
+
+    Hot path: short in-process cache + soft fallback when DB pool is exhausted.
     """
     _ = (store_slug or "").strip()[:255]
-    try:
-        from main import _ensure_default_store_for_recovery  # type: ignore  # runtime; يتجنب دورة
+    ck = public_cache_key(store_slug, cart_total)
+    hit = public_cache_get(ck)
+    if hit is not None:
+        return j(hit)
 
-        ensure_store_widget_schema(db)
-        db.create_all()
-        _ensure_default_store_for_recovery()
-    except (OSError, SQLAlchemyError):
-        db.session.rollback()
+    ss_log = (store_slug or "").strip()[:80]
+    log.info(
+        "[DB SESSION OPEN] route=/api/cartflow/public-config store_slug=%s",
+        ss_log,
+    )
     try:
-        row = store_row_for_widget_public_api(store_slug)
-        wa: Optional[str] = None
-        if row is not None:
-            w = getattr(row, "whatsapp_support_url", None)
-            if isinstance(w, str) and w.strip():
-                wa = w.strip()[:2048]
-        tpl = template_control_fields_for_api(row)
-        tpl.update(exit_intent_template_fields_for_api(row))
-        tpl.update(widget_customization_fields_for_api(row))
-        tpl.update(vip_cart_threshold_fields_for_api(row))
-        tpl.update(cartflow_widget_recovery_gate_fields_for_api(row))
-        tpl.update(widget_trigger_config_for_api(row))
-        tpl.update(reason_templates_fields_for_api(row))
-        ct_out: Optional[float] = None
-        is_vip_pub = False
-        vip_eval = False
-        if cart_total is not None:
-            vip_eval = True
-            try:
-                ct_out = float(cart_total)
-                is_vip_pub = bool(is_vip_cart(ct_out, row))
-            except (TypeError, ValueError):
-                ct_out = None
-                is_vip_pub = False
-        return j(
-            {
+        try:
+            from main import _ensure_default_store_for_recovery  # type: ignore  # runtime; يتجنب دورة
+
+            ensure_store_widget_schema(db)
+            db.create_all()
+            _ensure_default_store_for_recovery()
+        except (OSError, SQLAlchemyError):
+            db.session.rollback()
+        try:
+            row = store_row_for_widget_public_api(store_slug)
+            wa: Optional[str] = None
+            if row is not None:
+                w = getattr(row, "whatsapp_support_url", None)
+                if isinstance(w, str) and w.strip():
+                    wa = w.strip()[:2048]
+            tpl = _merge_widget_template_bundle(row)
+            ct_out: Optional[float] = None
+            is_vip_pub = False
+            vip_eval = False
+            if cart_total is not None:
+                vip_eval = True
+                try:
+                    ct_out = float(cart_total)
+                    is_vip_pub = bool(is_vip_cart(ct_out, row))
+                except (TypeError, ValueError):
+                    ct_out = None
+                    is_vip_pub = False
+            payload: Dict[str, Any] = {
                 "ok": True,
                 "whatsapp_url": wa,
                 "cart_total": ct_out,
@@ -394,11 +460,23 @@ def cartflow_public_config(
                 "vip_from_cart_total": vip_eval,
                 **tpl,
             }
+            public_cache_set(ck, payload)
+            return j(payload)
+        except OperationalError as e:
+            db.session.rollback()
+            log.warning("[CF PUBLIC CONFIG DB FALLBACK] %s", e)
+            log.warning("[CF PUBLIC CONFIG SAFE DEFAULT]")
+            return j(_public_safe_default_payload(cart_total))
+        except (SQLAlchemyError, OSError) as e:
+            db.session.rollback()
+            log.warning("[CF PUBLIC CONFIG DB FALLBACK] %s", e)
+            log.warning("[CF PUBLIC CONFIG SAFE DEFAULT]")
+            return j(_public_safe_default_payload(cart_total))
+    finally:
+        log.info(
+            "[DB SESSION CLOSED] route=/api/cartflow/public-config store_slug=%s",
+            ss_log,
         )
-    except (SQLAlchemyError, OSError) as e:
-        db.session.rollback()
-        log.warning("cartflow public-config: %s", e)
-        return j({"ok": False, "error": "query_failed", "whatsapp_url": None}, 500)
 
 
 @router.post("/reason")

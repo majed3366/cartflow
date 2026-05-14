@@ -598,8 +598,6 @@ async def set_embed_csp_middleware(request: Request, call_next: Any) -> Any:
             "frame-ancestors https://*.zid.sa https://zid.sa;"
         )
         return response
-    finally:
-        remove_scoped_session()
 
 
 @app.middleware("http")
@@ -612,6 +610,18 @@ async def no_dev_in_production(request: Request, call_next: Any) -> Any:
         if not _is_development_mode():
             return Response(status_code=404)
     return await call_next(request)
+
+
+@app.middleware("http")
+async def db_scoped_session_cleanup(request: Request, call_next: Any) -> Any:
+    """
+    ‎scoped_session‎ / ‎QueuePool‎: ‎remove_scoped_session()‎ لكل طلب في ‎finally‎
+    (مسجّل بعد باقي الـ middleware — يغلف السلسلة بحيث يُنظَّف الجلسة بعد المسار).
+    """
+    try:
+        return await call_next(request)
+    finally:
+        remove_scoped_session()
 
 
 def _app_route_get_exists(path: str) -> bool:

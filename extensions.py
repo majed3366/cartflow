@@ -92,6 +92,12 @@ def init_database(url: Optional[str] = None) -> None:
         connect["timeout"] = 30.0
         # ‎QueuePool‎ الافتراضي يُنفّد الاتصالات في ‎pytest‎ الطويل على ‎SQLite‎؛ ‎NullPool‎ يغلق الاتصال عند الإرجاع.
         engine_kw["poolclass"] = NullPool
+    else:
+        # Postgres/MySQL: avoid holding stale connections; bounded wait vs indefinite QueuePool timeout storms
+        engine_kw["pool_size"] = 5
+        engine_kw["max_overflow"] = 12
+        engine_kw["pool_timeout"] = 15
+        engine_kw["pool_recycle"] = 300
     _engine = create_engine(
         u,
         pool_pre_ping=not u.startswith("sqlite:"),
