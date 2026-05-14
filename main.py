@@ -4537,15 +4537,94 @@ def _log_normal_recovery_phone_resolution(
         pass
 
 
+_no_phone_miss_log_lock = threading.RLock()
+_no_phone_miss_log_until_mono: Dict[str, float] = {}
+_no_phone_miss_last_suppress_log_mono: Dict[str, float] = {}
+
+
+def _normal_recovery_no_phone_miss_cache_key(
+    store_slug: str, session_id: str, cart_id: Optional[str]
+) -> str:
+    ss = (store_slug or "").strip()[:255] or "-"
+    sid = (session_id or "").strip()[:512] or "-"
+    cid = ((cart_id or "").strip()[:255]) or "-"
+    return f"{ss}\x00{sid}\x00{cid}"
+
+
+def _normal_recovery_no_phone_miss_cooldown_sec() -> float:
+    raw = (os.getenv("CARTFLOW_NO_PHONE_RECOVERY_COOLDOWN_SEC") or "").strip()
+    if not raw:
+        return 900.0
+    try:
+        v = float(raw)
+        return max(600.0, min(v, 1800.0))
+    except (TypeError, ValueError):
+        return 900.0
+
+
+def _normal_recovery_no_phone_miss_active(key: str) -> bool:
+    with _no_phone_miss_log_lock:
+        return time.monotonic() < float(_no_phone_miss_log_until_mono.get(key, 0.0))
+
+
+def _normal_recovery_no_phone_miss_clear(key: str) -> None:
+    if not key:
+        return
+    with _no_phone_miss_log_lock:
+        _no_phone_miss_log_until_mono.pop(key, None)
+        _no_phone_miss_last_suppress_log_mono.pop(key, None)
+
+
 def _log_normal_recovery_phone_missing_customer(
-    session_id: str, cart_id: Optional[str]
+    store_slug: str, session_id: str, cart_id: Optional[str]
+) -> None:
+    """يُستدعى فقط عند غياب الرقم خارج نافذة التهدئة — ترسيب ‎FIRST_SEEN‎ ورفع نوافذ لاحقة."""
+
+    sid = (session_id or "").strip() or "-"
+    cid = ((cart_id or "").strip()[:255]) if cart_id else "-"
+    ss = (store_slug or "").strip()[:255] or "-"
+    key = _normal_recovery_no_phone_miss_cache_key(store_slug, session_id, cart_id)
+    now = time.monotonic()
+    cool = _normal_recovery_no_phone_miss_cooldown_sec()
+    try:
+        with _no_phone_miss_log_lock:
+            _no_phone_miss_log_until_mono[key] = now + cool
+        first = (
+            "[NORMAL RECOVERY PHONE MISSING FIRST_SEEN] "
+            f"store_slug={ss} session_id={sid} cart_id={cid} "
+            f"cooldown_s={int(cool)}"
+        )
+        log.info(first)
+        print(first, flush=True)
+    except OSError:
+        pass
+
+
+def _maybe_log_phone_missing_suppressed_throttled(
+    store_slug: str,
+    session_id: str,
+    cart_id: Optional[str],
+    *,
+    min_interval_s: float = 120.0,
 ) -> None:
     sid = (session_id or "").strip() or "-"
-    cid = ((cart_id or "").strip()[:255] or "-") if cart_id else "-"
+    cid = ((cart_id or "").strip()[:255]) if cart_id else "-"
+    ss = (store_slug or "").strip()[:255] or "-"
+    key = _normal_recovery_no_phone_miss_cache_key(store_slug, session_id, cart_id)
+    now = time.monotonic()
+    with _no_phone_miss_log_lock:
+        last = float(_no_phone_miss_last_suppress_log_mono.get(key, 0.0))
+        if now - last < float(min_interval_s):
+            return
+        _no_phone_miss_last_suppress_log_mono[key] = now
     try:
+        with _no_phone_miss_log_lock:
+            until = float(_no_phone_miss_log_until_mono.get(key, 0.0))
+            rem = max(0.0, until - now)
         line = (
-            "[NORMAL RECOVERY PHONE MISSING] reason=missing_customer_phone "
-            f"session_id={sid} cart_id={cid}"
+            "[NORMAL RECOVERY PHONE MISSING SUPPRESSED] "
+            f"store_slug={ss} session_id={sid} cart_id={cid} "
+            f"cooldown_remaining_s={round(rem, 1)}"
         )
         log.info(line)
         print(line, flush=True)
@@ -4771,6 +4850,7 @@ def _resolve_cartflow_recovery_phone(
     reason_row: Optional[CartRecoveryReason],
 ) -> Tuple[Optional[str], str, bool]:
     """رقم ‎العميل‎ فقط لواتساب الاسترجاع العادي — دون رقم التاجر أو مرسل ‎Twilio‎."""
+    nk = _normal_recovery_no_phone_miss_cache_key(store_slug, session_id, cart_id)
     merchant_digits = _normal_recovery_merchant_normalized_digits(store_obj)
     phone, source = _map_verified_recovery_phone_from_session(
         abandon_event_phone=abandon_event_phone,
@@ -4779,6 +4859,13 @@ def _resolve_cartflow_recovery_phone(
     )
     if phone and _normal_recovery_phone_normalized_equals_merchant(phone, merchant_digits):
         phone, source = None, "none"
+
+    if phone:
+        _normal_recovery_no_phone_miss_clear(nk)
+
+    if phone is None and _normal_recovery_no_phone_miss_active(nk):
+        _maybe_log_phone_missing_suppressed_throttled(store_slug, session_id, cart_id)
+        return None, "none", False
 
     if phone is None:
         ext_p, ext_s = _normal_recovery_extended_phone_lookup(
@@ -4790,12 +4877,13 @@ def _resolve_cartflow_recovery_phone(
         )
         if ext_p:
             phone, source = ext_p, ext_s
+            _normal_recovery_no_phone_miss_clear(nk)
 
     if phone and _normal_recovery_phone_normalized_equals_merchant(phone, merchant_digits):
         phone, source = None, "none"
 
     if not phone:
-        _log_normal_recovery_phone_missing_customer(session_id, cart_id)
+        _log_normal_recovery_phone_missing_customer(store_slug, session_id, cart_id)
         return None, "none", False
 
     allowed = bool(
@@ -4803,6 +4891,7 @@ def _resolve_cartflow_recovery_phone(
             _VERIFIED_WA_RECOVERY_PHONE_SOURCES | _NORMAL_RECOVERY_EXTENDED_PHONE_SOURCES
         )
     )
+    _normal_recovery_no_phone_miss_clear(nk)
     return phone, source, allowed
 
 

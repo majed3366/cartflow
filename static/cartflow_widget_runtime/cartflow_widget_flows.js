@@ -7,6 +7,14 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
 
   var Cf = window.CartflowWidgetRuntime;
   var FLOW_VERSION = "v2-layer-alpha1";
+  /** Polling cadence/caps for `/api/cartflow/ready` bootstrap (avoid unbounded churn). */
+  var READY_POLL_INTERVAL_MS = 120;
+  var MAX_READY_POLL_DURATION_MS = 75000;
+  var MAX_READY_POLL_TICKS =
+    Math.ceil(MAX_READY_POLL_DURATION_MS / READY_POLL_INTERVAL_MS) + 1;
+
+  /** Set while `ensureStep1Then` is waiting; public-config completion pings this if still pending. */
+  var notifyStep1PublicConfigHydrated = null;
 
   var CONTINUATION = {
     price: "أفهم 👍\nخلني أساعدك بخيار أنسب أو أوضح لك القيمة بشكل أفضل.",
@@ -626,27 +634,67 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       return;
     }
 
+    var finalized = false;
+    var pollT0 = Date.now();
+    var pollTickIx = 0;
+
+    function finalizeOnce(reason) {
+      if (finalized) {
+        return;
+      }
+      finalized = true;
+      notifyStep1PublicConfigHydrated = null;
+
+      st().step1Ready = true;
+      if (st().step1Poll != null) {
+        try {
+          clearInterval(st().step1Poll);
+        } catch (eCi) {}
+        st().step1Poll = null;
+      }
+      try {
+        console.log("[CF READY POLL STOP] reason=" + String(reason || "unknown"));
+      } catch (ePl) {}
+
+      cb();
+    }
+
+    notifyStep1PublicConfigHydrated = function () {
+      try {
+        if (!finalized && st().v2PublicConfigHydrated) {
+          finalizeOnce("config_loaded");
+        }
+      } catch (eN1) {}
+    };
+
     function tick() {
+      pollTickIx += 1;
       Cf.Api.fetchReady().then(function (j) {
         Cf.Config.applyPayload(j, "ready");
         mirrorCartTotals();
-        if (j && j.after_step1) {
-          st().step1Ready = true;
-          if (st().step1Poll != null) {
-            clearInterval(st().step1Poll);
-            st().step1Poll = null;
-          }
-          try {
-            console.log("[CF READY POLL STOP] reason=after_step1");
-          } catch (ePl) {}
-          cb();
+
+        if (!finalized && j && j.after_step1) {
+          finalizeOnce("after_step1");
+          return;
+        }
+        if (!finalized && st().v2PublicConfigHydrated) {
+          finalizeOnce("config_loaded");
+          return;
+        }
+
+        var elapsed = Date.now() - pollT0;
+        if (
+          !finalized &&
+          (pollTickIx >= MAX_READY_POLL_TICKS || elapsed >= MAX_READY_POLL_DURATION_MS)
+        ) {
+          finalizeOnce("max_attempts");
         }
       });
     }
 
     tick();
     if (!st().step1Poll) {
-      st().step1Poll = setInterval(tick, 120);
+      st().step1Poll = setInterval(tick, READY_POLL_INTERVAL_MS);
     }
   }
 
@@ -659,13 +707,6 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     Cf.Api.fetchReady().then(function (j) {
       Cf.Config.applyPayload(j || {}, "primed");
       mirrorCartTotals();
-
-      Cf.Api.fetchPublicConfig().then(function (pc) {
-        if (pc && typeof pc === "object" && pc.ok !== false) {
-          Cf.Config.applyPayload(pc, "public_config_first");
-          mirrorCartTotals();
-        }
-      });
 
       ensureStep1Then(function () {
         if (!merchantAllowsUi()) {
@@ -711,6 +752,19 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
         try {
           console.log("[CARTFLOW WIDGET V2 FLOWS]", FLOW_VERSION);
         } catch (eFs) {}
+      });
+
+      Cf.Api.fetchPublicConfig().then(function (pc) {
+        if (pc && typeof pc === "object" && pc.ok !== false) {
+          Cf.Config.applyPayload(pc, "public_config_first");
+          mirrorCartTotals();
+          st().v2PublicConfigHydrated = true;
+        }
+        try {
+          if (typeof notifyStep1PublicConfigHydrated === "function") {
+            notifyStep1PublicConfigHydrated();
+          }
+        } catch (ePc) {}
       });
     });
   }

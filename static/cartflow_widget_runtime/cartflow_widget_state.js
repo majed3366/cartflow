@@ -12,6 +12,8 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     idlePollTimer: null,
     exitInactivityTimer: null,
     step1Poll: null,
+    /** Public-config fetch succeeded (`/public-config`) — readiness gate may stop polling /ready early. */
+    v2PublicConfigHydrated: false,
     step1Ready: false,
     bubbleShown: false,
     dismissSuppress: false,
