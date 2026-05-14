@@ -1104,39 +1104,45 @@ def _dev_apply_recovery_settings_update(
         apply_merchant_offer_settings_from_body(row, request_body)
         apply_product_catalog_from_body(row, request_body)
     db.session.commit()
-    wa: Optional[str] = getattr(row, "whatsapp_support_url", None)
+    saved = db.session.get(Store, row.id)
+    if saved is not None:
+        from services.widget_config_cache import update_from_dashboard_store_row
+
+        update_from_dashboard_store_row(saved)
+    anchor = saved if saved is not None else row
+    wa: Optional[str] = getattr(anchor, "whatsapp_support_url", None)
     if not (isinstance(wa, str) and wa.strip()):
         wa = None
-    sw: Optional[str] = getattr(row, "store_whatsapp_number", None)
+    sw: Optional[str] = getattr(anchor, "store_whatsapp_number", None)
     if not (isinstance(sw, str) and sw.strip()):
         sw = None
-    zs2 = getattr(row, "zid_store_id", None)
+    zs2 = getattr(anchor, "zid_store_id", None)
     zid_resp = zs2.strip() if isinstance(zs2, str) and zs2.strip() else None
     payload: Dict[str, Any] = {
         "ok": True,
-        "recovery_delay": row.recovery_delay,
-        "recovery_delay_unit": row.recovery_delay_unit,
-        "recovery_attempts": row.recovery_attempts,
+        "recovery_delay": anchor.recovery_delay,
+        "recovery_delay_unit": anchor.recovery_delay_unit,
+        "recovery_attempts": anchor.recovery_attempts,
         "second_attempt_delay_minutes": getattr(
-            row, "second_attempt_delay_minutes", None
+            anchor, "second_attempt_delay_minutes", None
         ),
         "whatsapp_support_url": wa,
         "store_whatsapp_number": sw,
         "zid_store_id": zid_resp,
     }
-    payload.update(_recovery_template_fields_for_api(row))
-    payload.update(trigger_templates_fields_for_api(row))
-    payload.update(reason_templates_fields_for_api(row))
-    payload.update(template_control_fields_for_api(row))
-    payload.update(exit_intent_template_fields_for_api(row))
-    payload.update(widget_customization_fields_for_api(row))
-    payload.update(vip_cart_threshold_fields_for_api(row))
-    payload.update(vip_offer_fields_for_api(row))
-    payload.update(cartflow_widget_recovery_gate_fields_for_api(row))
-    payload.update(widget_trigger_config_for_api(row))
-    payload.update(merchant_offer_settings_for_api(row))
-    payload.update(product_catalog_for_api(row))
-    payload.update(offer_applications_count_for_api(row))
+    payload.update(_recovery_template_fields_for_api(anchor))
+    payload.update(trigger_templates_fields_for_api(anchor))
+    payload.update(reason_templates_fields_for_api(anchor))
+    payload.update(template_control_fields_for_api(anchor))
+    payload.update(exit_intent_template_fields_for_api(anchor))
+    payload.update(widget_customization_fields_for_api(anchor))
+    payload.update(vip_cart_threshold_fields_for_api(anchor))
+    payload.update(vip_offer_fields_for_api(anchor))
+    payload.update(cartflow_widget_recovery_gate_fields_for_api(anchor))
+    payload.update(widget_trigger_config_for_api(anchor))
+    payload.update(merchant_offer_settings_for_api(anchor))
+    payload.update(product_catalog_for_api(anchor))
+    payload.update(offer_applications_count_for_api(anchor))
     payload["guided_recovery_defaults"] = guided_defaults_for_api()
     return payload, 200
 
@@ -1607,9 +1613,14 @@ async def api_merchant_widget_settings(request: Request):
         apply_reason_templates_from_body(row, body_apply)
         apply_widget_trigger_settings_from_body(row, body_apply)
         db.session.commit()
+        from services.widget_config_cache import update_from_dashboard_store_row
+
+        fresh = db.session.get(Store, row.id)
+        if fresh is not None:
+            update_from_dashboard_store_row(fresh)
         from services.merchant_widget_panel import merchant_widget_panel_bundle  # noqa: PLC0415
 
-        panel = merchant_widget_panel_bundle(row)
+        panel = merchant_widget_panel_bundle(fresh if fresh is not None else row)
         return j({"ok": True, "merchant_widget_panel": panel})
     except Exception as e:  # noqa: BLE001
         db.session.rollback()
@@ -4120,6 +4131,14 @@ def _persist_cart_recovery_log(
         )
         db.session.add(row)
         db.session.commit()
+        from services.widget_config_cache import note_after_step1_from_recovery_log_attrs
+
+        note_after_step1_from_recovery_log_attrs(
+            store_slug=store_slug[:255],
+            session_id=session_id[:512],
+            step=step,
+            status=str(status),
+        )
         try:
             from services.cartflow_observability_runtime import (
                 trace_recovery_lifecycle_from_log_status,

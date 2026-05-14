@@ -7,22 +7,14 @@ import re
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional, Tuple
 
-from fastapi import APIRouter, Path, Query, Request
+from fastapi import APIRouter, BackgroundTasks, Path, Query, Request
 from sqlalchemy import and_
-from sqlalchemy.exc import OperationalError, SQLAlchemyError
+from sqlalchemy.exc import SQLAlchemyError
 
 from extensions import db
 from json_response import j
 from models import AbandonmentReasonLog, CartRecoveryLog, CartRecoveryReason, Store
 from schema_widget import ensure_store_widget_schema
-from services.cartflow_widget_public_cache import (
-    public_cache_get,
-    public_cache_set,
-    public_cache_key,
-    ready_cache_get,
-    ready_cache_key,
-    ready_cache_set,
-)
 from services.cartflow_whatsapp_mock import (
     build_mock_whatsapp_message,
     get_merchant_whatsapp_e164_for_store,
@@ -32,22 +24,20 @@ from services.recovery_decision import (
     get_primary_recovery_reason,
     resolve_auto_whatsapp_reason,
 )
-from services.store_template_control import (
-    exit_intent_template_fields_for_api,
-    template_control_fields_for_api,
-)
 from services.recovery_session_phone import (
     record_recovery_customer_phone,
     recovery_key_for_reason_session,
 )
-from services.cartflow_widget_recovery_gate import (
-    cartflow_widget_recovery_gate_fields_for_api,
+from services.widget_config_cache import (
+    get_snapshot,
+    install_cart_recovery_ready_signals_once,
+    maybe_schedule_background_refresh,
+    normalize_store_slug,
+    public_http_payload,
+    ready_http_payload,
+    warmup_snapshot_sync_pytest,
 )
-from services.cartflow_widget_trigger_settings import widget_trigger_config_for_api
-from services.cartflow_widget_public_store import store_row_for_widget_public_api
-from services.store_reason_templates import reason_templates_fields_for_api
-from services.store_widget_customization import widget_customization_fields_for_api
-from services.vip_cart import is_vip_cart, vip_cart_threshold_fields_for_api
+from services.vip_cart import is_vip_cart
 from services.vip_abandoned_cart_phone import (
     apply_vip_phone_capture_to_abandoned_carts,
     resolve_store_row_for_cartflow_slug,
@@ -175,55 +165,6 @@ def get_recovery_analytics(
         return j({"ok": False, "error": "query_failed"}, 500)
 
 
-def _ready_after_step1(store_slug: str, session_id: str) -> bool:
-    ss = (store_slug or "").strip()[:255]
-    sid = (session_id or "").strip()[:512]
-    if not ss or not sid:
-        return False
-    base = (
-        db.session.query(CartRecoveryLog)
-        .filter(CartRecoveryLog.store_slug == ss, CartRecoveryLog.session_id == sid)
-        .filter(
-            CartRecoveryLog.step == 1,
-            CartRecoveryLog.status.in_(SENT_STATUSES),
-        )
-    )
-    return base.first() is not None
-
-
-def _merge_widget_template_bundle(row: Optional[Any]) -> Dict[str, Any]:
-    tpl: Dict[str, Any] = {}
-    tpl.update(template_control_fields_for_api(row))
-    tpl.update(exit_intent_template_fields_for_api(row))
-    tpl.update(widget_customization_fields_for_api(row))
-    tpl.update(vip_cart_threshold_fields_for_api(row))
-    tpl.update(cartflow_widget_recovery_gate_fields_for_api(row))
-    tpl.update(widget_trigger_config_for_api(row))
-    tpl.update(reason_templates_fields_for_api(row))
-    return tpl
-
-
-def _ready_safe_default_payload() -> Dict[str, Any]:
-    return {"ok": True, "after_step1": False, **_merge_widget_template_bundle(None)}
-
-
-def _public_safe_default_payload(cart_total: Optional[float]) -> Dict[str, Any]:
-    tpl = _merge_widget_template_bundle(None)
-    ct_out: Optional[float] = None
-    vip_eval = cart_total is not None
-    if cart_total is not None:
-        try:
-            ct_out = float(cart_total)
-        except (TypeError, ValueError):
-            ct_out = None
-    return {
-        "ok": True,
-        "whatsapp_url": None,
-        "cart_total": ct_out,
-        "is_vip": False,
-        "vip_from_cart_total": vip_eval,
-        **tpl,
-    }
 
 
 @router.get("/primary-recovery-reason")
@@ -350,133 +291,52 @@ async def post_generate_whatsapp_message(request: Request) -> Any:
 
 @router.get("/ready")
 def cartflow_ready(
+    background_tasks: BackgroundTasks,
     store_slug: str = Query(..., min_length=1, max_length=255),
     session_id: str = Query(..., min_length=1, max_length=512),
 ) -> Any:
     """
     ‎true‎ عند تسجيل ‎step1‎ استرجاع واتساب (مرسَل/وهمي) لنفس ‎store_slug + session_id‎.
 
-    الجسم يتضمن حقول النمط والودجيت للعرض الأمامي، منها:
-    ‎widget_name‎، ‎widget_primary_color‎، ‎widget_style‎ (مع باقي حقول القوالب).
-
-    Hot path: short in-process cache + soft fallback when DB pool is exhausted.
+    مسار المتجر ‎hot path‎: لا جلسات ‎DB‎ — قراءة من كاش الذاكرة + حالة اصطناعية
+    (‎CartRecoveryLog‎ تُطبَّع بعد الالتزام دون هذا المسار).
     """
-    ck = ready_cache_key(store_slug, session_id)
-    hit = ready_cache_get(ck)
-    if hit is not None:
-        return j(hit)
-
-    ss_log = (store_slug or "").strip()[:80]
-    log.info("[DB SESSION OPEN] route=/api/cartflow/ready store_slug=%s", ss_log)
-    try:
-        try:
-            ensure_store_widget_schema(db)
-        except (OSError, SQLAlchemyError):
-            db.session.rollback()
-        try:
-            row = store_row_for_widget_public_api(store_slug)
-            tpl = _merge_widget_template_bundle(row)
-            payload: Dict[str, Any] = {
-                "ok": True,
-                "after_step1": _ready_after_step1(store_slug, session_id),
-                **tpl,
-            }
-            ready_cache_set(ck, payload)
-            return j(payload)
-        except OperationalError as e:
-            db.session.rollback()
-            log.warning("[CF READY DB FALLBACK] %s", e)
-            log.warning("[CF READY SAFE DEFAULT]")
-            return j(_ready_safe_default_payload())
-        except SQLAlchemyError as e:
-            db.session.rollback()
-            log.warning("[CF READY DB FALLBACK] %s", e)
-            log.warning("[CF READY SAFE DEFAULT]")
-            return j(_ready_safe_default_payload())
-        except OSError as e:
-            db.session.rollback()
-            log.warning("[CF READY DB FALLBACK] %s", e)
-            log.warning("[CF READY SAFE DEFAULT]")
-            return j(_ready_safe_default_payload())
-    finally:
-        log.info("[DB SESSION CLOSED] route=/api/cartflow/ready store_slug=%s", ss_log)
+    norm = normalize_store_slug(store_slug)
+    snap = get_snapshot(norm)
+    if snap is None:
+        warmup_snapshot_sync_pytest(norm)
+        snap = get_snapshot(norm)
+    if snap is not None:
+        log.info("[WIDGET CONFIG CACHE HIT] store_slug=%s", norm[:80])
+    else:
+        log.info("[WIDGET CONFIG CACHE MISS_SAFE_DEFAULT] store_slug=%s", norm[:80])
+        maybe_schedule_background_refresh(norm, background_tasks)
+    return j(ready_http_payload(norm, session_id, snap))
 
 
 @router.get("/public-config")
 def cartflow_public_config(
+    background_tasks: BackgroundTasks,
     store_slug: str = Query(..., min_length=1, max_length=255),
     cart_total: Optional[float] = Query(None),
 ) -> Any:
     """
     لودجت السبب: رابط واتساب الدعم (أحدث ‎Store‎) — ‎store_slug‎ محجوز للمطابقة لاحقاً.
-    اختياري: ‎cart_total‎ لتحديد ‎is_vip‎ حسب نفس قاعدة الخادم (‎is_vip_cart‎).
 
-    Hot path: short in-process cache + soft fallback when DB pool is exhausted.
+    مسار المتجر ‎hot path‎: لا جلسات ‎DB‎ — قراءة من الكاش مع ضبط ‎VIP‎ من عتبة
+    المنسوخة وقيمة ‎cart_total‎ في الاستعلام.
     """
-    _ = (store_slug or "").strip()[:255]
-    ck = public_cache_key(store_slug, cart_total)
-    hit = public_cache_get(ck)
-    if hit is not None:
-        return j(hit)
-
-    ss_log = (store_slug or "").strip()[:80]
-    log.info(
-        "[DB SESSION OPEN] route=/api/cartflow/public-config store_slug=%s",
-        ss_log,
-    )
-    try:
-        try:
-            from main import _ensure_default_store_for_recovery  # type: ignore  # runtime; يتجنب دورة
-
-            ensure_store_widget_schema(db)
-            db.create_all()
-            _ensure_default_store_for_recovery()
-        except (OSError, SQLAlchemyError):
-            db.session.rollback()
-        try:
-            row = store_row_for_widget_public_api(store_slug)
-            wa: Optional[str] = None
-            if row is not None:
-                w = getattr(row, "whatsapp_support_url", None)
-                if isinstance(w, str) and w.strip():
-                    wa = w.strip()[:2048]
-            tpl = _merge_widget_template_bundle(row)
-            ct_out: Optional[float] = None
-            is_vip_pub = False
-            vip_eval = False
-            if cart_total is not None:
-                vip_eval = True
-                try:
-                    ct_out = float(cart_total)
-                    is_vip_pub = bool(is_vip_cart(ct_out, row))
-                except (TypeError, ValueError):
-                    ct_out = None
-                    is_vip_pub = False
-            payload: Dict[str, Any] = {
-                "ok": True,
-                "whatsapp_url": wa,
-                "cart_total": ct_out,
-                "is_vip": is_vip_pub,
-                "vip_from_cart_total": vip_eval,
-                **tpl,
-            }
-            public_cache_set(ck, payload)
-            return j(payload)
-        except OperationalError as e:
-            db.session.rollback()
-            log.warning("[CF PUBLIC CONFIG DB FALLBACK] %s", e)
-            log.warning("[CF PUBLIC CONFIG SAFE DEFAULT]")
-            return j(_public_safe_default_payload(cart_total))
-        except (SQLAlchemyError, OSError) as e:
-            db.session.rollback()
-            log.warning("[CF PUBLIC CONFIG DB FALLBACK] %s", e)
-            log.warning("[CF PUBLIC CONFIG SAFE DEFAULT]")
-            return j(_public_safe_default_payload(cart_total))
-    finally:
-        log.info(
-            "[DB SESSION CLOSED] route=/api/cartflow/public-config store_slug=%s",
-            ss_log,
-        )
+    norm = normalize_store_slug(store_slug)
+    snap = get_snapshot(norm)
+    if snap is None:
+        warmup_snapshot_sync_pytest(norm)
+        snap = get_snapshot(norm)
+    if snap is not None:
+        log.info("[WIDGET CONFIG CACHE HIT] store_slug=%s", norm[:80])
+    else:
+        log.info("[WIDGET CONFIG CACHE MISS_SAFE_DEFAULT] store_slug=%s", norm[:80])
+        maybe_schedule_background_refresh(norm, background_tasks)
+    return j(public_http_payload(norm, cart_total, snap))
 
 
 @router.post("/reason")
@@ -738,3 +598,6 @@ async def post_abandonment_reason(request: Request) -> Any:
         db.session.rollback()
         log.warning("cartflow reason: %s", e)
         return j({"ok": False, "error": "persist_failed"}, 500)
+
+
+install_cart_recovery_ready_signals_once()
