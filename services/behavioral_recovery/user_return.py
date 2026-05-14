@@ -191,7 +191,9 @@ def record_passive_return_visit_from_payload(payload: dict[str, Any]) -> None:
         )
         return
     try:
-        db.create_all()
+        from main import _ensure_cartflow_api_db_warmed
+
+        _ensure_cartflow_api_db_warmed()
         cands = abandoned_carts_for_session_or_cart(sid, cid or None)
         non_vip_pre = [ac for ac in cands if not bool(getattr(ac, "vip_mode", False))]
         store_pk = resolve_store_pk_for_event_slug(store_slug_disp)
@@ -324,7 +326,9 @@ def record_behavioral_user_return_from_payload(payload: dict[str, Any]) -> None:
         )
         return
     try:
-        db.create_all()
+        from main import _ensure_cartflow_api_db_warmed
+
+        _ensure_cartflow_api_db_warmed()
         cands = abandoned_carts_for_session_or_cart(sid, cid or None)
         non_vip_pre = [
             ac for ac in cands if not bool(getattr(ac, "vip_mode", False))

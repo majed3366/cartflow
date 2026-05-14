@@ -122,7 +122,9 @@ def commit_normal_recovery_phone_after_resolved(
     if not ph:
         return False
     try:
-        db.create_all()
+        from main import _ensure_cartflow_api_db_warmed
+
+        _ensure_cartflow_api_db_warmed()
         ok = apply_normal_recovery_phone_to_session(
             db.session,
             store_slug=store_slug,

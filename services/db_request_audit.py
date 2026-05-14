@@ -86,8 +86,41 @@ def maybe_install_engine_listener() -> None:
             )
         ):
             bucket["store_hits"] = int(bucket.get("store_hits") or 0) + 1
+        if any(
+            tok in stmt
+            for tok in (
+                "abandoned_cart",
+                "cart_recovery_reason",
+                "cart_recovery_log",
+                "recovery_event",
+                "abandonment_reason",
+                "merchant_followup",
+            )
+        ):
+            bucket["recovery_hits"] = int(bucket.get("recovery_hits") or 0) + 1
+        elif any(tok in stmt for tok in ("objection_track", "message_log")):
+            bucket["analytics_hits"] = int(bucket.get("analytics_hits") or 0) + 1
 
     _engine_listener_registered = True
+
+
+def peek_request_audit_bucket_for_profile() -> Optional[Dict[str, Any]]:
+    """
+    قراءة فقط لتقرير تعرُّف الطلب — بدون تنظيف (يُنشَأ المفتاح مع ‎audit_request_begin‎).
+    """
+
+    bucket = _audit_bucket.get()
+    if bucket is None:
+        return None
+    qn = int(bucket.get("queries") or 0)
+    elapsed_ms = (time.perf_counter() - float(bucket["t0"])) * 1000.0
+    return {
+        "queries": qn,
+        "store_queries": int(bucket.get("store_hits") or 0),
+        "recovery_queries": int(bucket.get("recovery_hits") or 0),
+        "analytics_queries": int(bucket.get("analytics_hits") or 0),
+        "elapsed_request_ms_roundtrip": round(elapsed_ms, 1),
+    }
 
 
 def audit_request_begin(request: Any) -> None:
@@ -118,6 +151,8 @@ def audit_request_begin(request: Any) -> None:
         "method": method,
         "queries": 0,
         "store_hits": 0,
+        "recovery_hits": 0,
+        "analytics_hits": 0,
         "t0": time.perf_counter(),
     }
     _audit_bucket.set(bucket)

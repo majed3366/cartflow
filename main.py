@@ -965,6 +965,38 @@ def _dashboard_recovery_store_row() -> Optional[Store]:
         return None
 
 
+_cartflow_api_db_warm_lock = threading.Lock()
+_cartflow_api_db_warmed = False
+
+
+def _ensure_cartflow_api_db_warmed() -> None:
+    """
+    مرة واحدة لكل عملية: ‎create_all‎ + مخطط الودجت/المتجر + أعمدة أسباب الاسترجاع + ‎Store‎ الافتراضي.
+    يُستدعى من مسارات ‎cart-event‎ ومساعداتها لتجنّب آلاف أوامر ‎inspector/DDL‎ المتكررة.
+    """
+    global _cartflow_api_db_warmed
+    if _cartflow_api_db_warmed:
+        return
+    with _cartflow_api_db_warm_lock:
+        if _cartflow_api_db_warmed:
+            return
+        try:
+            db.create_all()
+            _ensure_store_widget_schema()
+            from schema_widget import (
+                ensure_cart_recovery_reason_phone_schema,
+                ensure_cart_recovery_reason_rejection_schema,
+            )
+
+            ensure_cart_recovery_reason_phone_schema(db)
+            ensure_cart_recovery_reason_rejection_schema(db)
+            _ensure_default_store_for_recovery()
+            _cartflow_api_db_warmed = True
+        except Exception as e:  # noqa: BLE001
+            db.session.rollback()
+            log.warning("cartflow api db warm failed (will retry later): %s", e)
+
+
 def _merge_recovery_settings_post_body(body: Dict[str, Any]) -> Dict[str, Any]:
     """دمج حقول الاسترجاع مع آخر ‎Store‎ حتى تعمل التحديثات الجزئية."""
     out = dict(body)
@@ -1826,39 +1858,45 @@ def _collect_abandoned_cart_rows_for_merge(
     store_row: Optional[Store],
 ) -> list[AbandonedCart]:
     """كل صفوف ‎AbandonedCart‎ المرشّحة لدمجها: ‎zid_cart_id‎، ‎recovery_session_id‎، ‎cf_w_*‎ من ‎recovery_key‎."""
-    seen: set[int] = set()
-    out: list[AbandonedCart] = []
-
-    def take(r: Optional[AbandonedCart]) -> None:
-        if r is None:
-            return
-        rid = int(r.id)
-        if rid in seen:
-            return
-        seen.add(rid)
-        out.append(r)
-
+    cid_clauses = []
     for cid in cart_ids:
         cid_n = (cid or "").strip()[:255]
-        if not cid_n:
-            continue
-        take(db.session.query(AbandonedCart).filter_by(zid_cart_id=cid_n).first())
+        if cid_n:
+            cid_clauses.append(AbandonedCart.zid_cart_id == cid_n)
+    syn = _synthetic_zid_cart_id_from_recovery_key(recovery_key)
+    syn_n = (syn or "").strip()[:255]
+    if syn_n:
+        cid_clauses.append(AbandonedCart.zid_cart_id == syn_n)
 
     sid_n = (session_id or "").strip()[:512] if session_id else ""
+    clauses: list = []
+    if cid_clauses:
+        clauses.append(or_(*cid_clauses))
     if sid_n:
-        q = db.session.query(AbandonedCart).filter(AbandonedCart.recovery_session_id == sid_n)
+        sess_q = AbandonedCart.recovery_session_id == sid_n
         if store_row is not None and getattr(store_row, "id", None) is not None:
             sid_val = int(store_row.id)
-            q = q.filter(
-                (AbandonedCart.store_id == sid_val) | (AbandonedCart.store_id.is_(None))  # type: ignore[union-attr]
+            sess_q = and_(
+                sess_q,
+                or_(AbandonedCart.store_id == sid_val, AbandonedCart.store_id.is_(None)),  # type: ignore[arg-type]
             )
-        for r in q.all():
-            take(r)
+        clauses.append(sess_q)
+    if not clauses:
+        return []
 
-    syn = _synthetic_zid_cart_id_from_recovery_key(recovery_key)
-    if syn:
-        take(db.session.query(AbandonedCart).filter_by(zid_cart_id=syn).first())
+    rows = db.session.query(AbandonedCart).filter(or_(*clauses)).all()
 
+    seen: set[int] = set()
+    out: list[AbandonedCart] = []
+    for r in rows:
+        try:
+            rid = int(r.id)
+        except (TypeError, ValueError):
+            continue
+        if rid in seen:
+            continue
+        seen.add(rid)
+        out.append(r)
     return out
 
 
@@ -2025,14 +2063,7 @@ def _cart_recovery_reason_latest_row(
     if not ss or not sid:
         return None
     try:
-        from schema_widget import (
-            ensure_cart_recovery_reason_phone_schema,
-            ensure_cart_recovery_reason_rejection_schema,
-        )
-
-        ensure_cart_recovery_reason_phone_schema(db)
-        ensure_cart_recovery_reason_rejection_schema(db)
-        db.create_all()
+        _ensure_cartflow_api_db_warmed()
         return (
             db.session.query(CartRecoveryReason)
             .filter(
@@ -2055,14 +2086,7 @@ def _cart_recovery_reason_latest_row_any_store(
     if not sid:
         return None
     try:
-        from schema_widget import (
-            ensure_cart_recovery_reason_phone_schema,
-            ensure_cart_recovery_reason_rejection_schema,
-        )
-
-        ensure_cart_recovery_reason_phone_schema(db)
-        ensure_cart_recovery_reason_rejection_schema(db)
-        db.create_all()
+        _ensure_cartflow_api_db_warmed()
         return (
             db.session.query(CartRecoveryReason)
             .filter(CartRecoveryReason.session_id == sid)
@@ -2089,10 +2113,7 @@ def _clear_user_rejected_help_for_session(store_slug: str, session_id: str) -> N
     if not ss or not sid:
         return
     try:
-        from schema_widget import ensure_cart_recovery_reason_rejection_schema
-
-        ensure_cart_recovery_reason_rejection_schema(db)
-        db.create_all()
+        _ensure_cartflow_api_db_warmed()
         row = (
             db.session.query(CartRecoveryReason)
             .filter(
@@ -3459,9 +3480,7 @@ def _last_activity_utc_from_recovery_row(
 def _load_store_row_for_recovery(store_slug: Optional[str] = None) -> Optional[Store]:
     """صف ‎Store‎ للاسترجاع و‎VIP‎: ‎zid_store_id‎ يطابق ‎store‎ من الحمولة؛ ‎demo/default‎ → نفس صف لوحة الإعدادات (آخر ‎id‎)؛ وإلا آخر سطر."""
     try:
-        db.create_all()
-        _ensure_store_widget_schema()
-        _ensure_default_store_for_recovery()
+        _ensure_cartflow_api_db_warmed()
         latest = _dashboard_recovery_store_row()
         ss_full = (store_slug or "").strip()
         ss_key = ss_full.casefold()
@@ -3967,7 +3986,9 @@ def _activate_vip_manual_cart_handling(
         if cid:
             ac_send = db.session.query(AbandonedCart).filter(AbandonedCart.zid_cart_id == cid).first()
         if ac_send is not None:
-            store_alert = _resolve_store_for_vip_merchant_alert(ac_send)
+            store_alert = _resolve_store_for_vip_merchant_alert(
+                ac_send, context_store_fallback=store_obj
+            )
             _vip_merchant_auto_alert_if_newly_entering(
                 ac_send,
                 store_alert,
@@ -6355,9 +6376,7 @@ async def handle_cart_abandoned(
             "recovery_state": "converted",
         }
     try:
-        db.create_all()
-        _ensure_store_widget_schema()
-        _ensure_default_store_for_recovery()
+        _ensure_cartflow_api_db_warmed()
         store_row = _load_store_row_for_recovery(store_slug)
     except Exception:  # noqa: BLE001
         db.session.rollback()
@@ -6728,8 +6747,7 @@ def _handle_cart_state_sync(payload: dict[str, Any]) -> dict[str, Any]:
     مسار موحّد لمزامنة حالة السلة (‎cart_state_sync‎): قيمة، ‎VIP‎، ‎status‎ — بما فيها ‎cleared‎ للسلة الفارغة.
     """
     try:
-        _ensure_store_widget_schema()
-        db.create_all()
+        _ensure_cartflow_api_db_warmed()
     except (SQLAlchemyError, OSError):
         db.session.rollback()
         return {"ok": False, "cart_state_sync": False, "error": "db_schema"}
@@ -6918,7 +6936,6 @@ def _handle_cart_state_sync(payload: dict[str, Any]) -> dict[str, Any]:
         AbandonedCart.set_raw(row, prev)
 
         db.session.commit()
-        db.session.refresh(row)
     except IntegrityError:
         db.session.rollback()
         return {"ok": False, "cart_state_sync": False, "error": "integrity"}
@@ -6926,7 +6943,9 @@ def _handle_cart_state_sync(payload: dict[str, Any]) -> dict[str, Any]:
     ups_cid = (str(getattr(row, "zid_cart_id", "") or zid or "")).strip()[:255]
     ups_sid = (str(getattr(row, "recovery_session_id", "") or sid_log or "")).strip()[:512]
     try:
-        store_for_alert = _resolve_store_for_vip_merchant_alert(row)
+        store_for_alert = _resolve_store_for_vip_merchant_alert(
+            row, context_store_fallback=store_row
+        )
         _vip_merchant_auto_alert_if_newly_entering(
             row,
             store_for_alert,
@@ -6971,6 +6990,33 @@ def _cart_state_sync_reason_is_commercial_reengagement(payload: dict[str, Any]) 
     return r in ("add", "remove", "checkout")
 
 
+def _log_cart_event_profile(*, wall_perf_start: float, event_label: str) -> None:
+    """تقرير خفيف لمسار ‎POST /api/cart-event‎ (يعتمد على ‎db_request_audit‎ عند تفعيله)."""
+    from services.db_request_audit import peek_request_audit_bucket_for_profile
+
+    duration_ms = round((time.perf_counter() - wall_perf_start) * 1000.0, 1)
+    peek = peek_request_audit_bucket_for_profile()
+    blob: Dict[str, Any] = {"duration_ms": duration_ms, "event": event_label}
+    if peek is not None:
+        blob["total_queries"] = peek["queries"]
+        blob["store_queries"] = peek["store_queries"]
+        blob["recovery_queries"] = peek["recovery_queries"]
+        blob["analytics_queries"] = peek["analytics_queries"]
+        er = peek.get("elapsed_request_ms_roundtrip")
+        if er is not None:
+            blob["duration_ms_request_roundtrip_estimate"] = er
+    else:
+        blob["audit"] = "disabled_or_no_bucket"
+    try:
+        line = json.dumps(blob, ensure_ascii=False)
+    except Exception:  # noqa: BLE001
+        line = str(blob)
+    try:
+        log.info("[CART EVENT PROFILE] %s", line)
+    except Exception:  # noqa: BLE001
+        pass
+
+
 @app.post("/api/cart-event")
 async def api_cart_event(request: Request, background_tasks: BackgroundTasks):
     """
@@ -6979,117 +7025,124 @@ async def api_cart_event(request: Request, background_tasks: BackgroundTasks):
     عند ‎cart_abandoned‎: لا إرسال فوري — جدولة مؤجّلة حسب ‎Store.recovery_*‎؛ مفتاح الاسترجاع ‎store + session‎.
     بدون واتساب.
     """
+    wall0 = time.perf_counter()
+    _ensure_cartflow_api_db_warmed()
+    ev_profile = "unknown"
     try:
-        payload = await request.json()
-    except Exception:  # noqa: BLE001
-        payload = None
-    if not isinstance(payload, dict):
-        payload = {}
-    print("[CF API] event received")
-    try:
-        pl_snip = json.dumps(
-            _redact_secrets_for_log(payload), ensure_ascii=False, default=str
-        )[:2000]
-    except Exception:  # noqa: BLE001
-        pl_snip = (str(payload))[:2000]
-    _ev_dbg = payload.get("event")
-    _ct_dbg = _cart_total_from_abandon_payload(payload)
-    _ct_dbg_s = "none" if _ct_dbg is None else str(_ct_dbg)
-    _cid_dbg = (_cart_id_str_from_payload(payload) or "").strip() or "-"
-    _sid_dbg = (_session_part_from_payload(payload) or "").strip() or "-"
-    log.info(
-        "[API CART EVENT RECEIVED]\npayload=%s\nevent=%s\ncart_total=%s\ncart_id=%s\nsession_id=%s",
-        pl_snip,
-        _ev_dbg,
-        _ct_dbg_s,
-        _cid_dbg,
-        _sid_dbg,
-    )
-    event = payload.get("event")
-    event_norm = str(event).strip().lower() if event is not None else ""
-    log.info("[EVENT ROUTING] event=%s", event)
-    if event_norm == "cart_state_sync":
-        out_sync: dict[str, Any] = {"ok": True, "event": "cart_state_sync"}
-        out_sync.update(_handle_cart_state_sync(payload))
-        if _cart_state_sync_reason_is_commercial_reengagement(payload):
-            act_payload = dict(payload)
-            act_payload["return_visit_kind"] = "active_commercial_reengagement"
-            act_payload["active_commercial_reengagement"] = True
-            if _return_to_site_payload_is_qualified(act_payload):
-                _mark_user_returned_for_payload(act_payload)
-                record_behavioral_user_return_from_payload(act_payload)
-        return j(out_sync, 200)
-    if event_norm == "cart_abandoned":
-        print("[ROUTING TO VIP HANDLER]")
-        log.info("[ROUTING TO VIP HANDLER]")
-        print("[CF API] processing event")
-        wc_id = (_cart_id_str_from_payload(payload) or "").strip() or "-"
-        wc_sid = (_session_part_from_payload(payload) or "").strip() or "-"
-        wc_tot = _cart_total_from_abandon_payload(payload)
-        wc_tot_disp = "none" if wc_tot is None else str(wc_tot)
+        try:
+            payload = await request.json()
+        except Exception:  # noqa: BLE001
+            payload = None
+        if not isinstance(payload, dict):
+            payload = {}
+        print("[CF API] event received")
+        try:
+            pl_snip = json.dumps(
+                _redact_secrets_for_log(payload), ensure_ascii=False, default=str
+            )[:2000]
+        except Exception:  # noqa: BLE001
+            pl_snip = (str(payload))[:2000]
+        _ev_dbg = payload.get("event")
+        _ct_dbg = _cart_total_from_abandon_payload(payload)
+        _ct_dbg_s = "none" if _ct_dbg is None else str(_ct_dbg)
+        _cid_dbg = (_cart_id_str_from_payload(payload) or "").strip() or "-"
+        _sid_dbg = (_session_part_from_payload(payload) or "").strip() or "-"
         log.info(
-            "[WIDGET CART EVENT]\ncart_id=%s\ncart_total=%s\nsession_id=%s",
-            wc_id,
-            wc_tot_disp,
-            wc_sid,
+            "[API CART EVENT RECEIVED]\npayload=%s\nevent=%s\ncart_total=%s\ncart_id=%s\nsession_id=%s",
+            pl_snip,
+            _ev_dbg,
+            _ct_dbg_s,
+            _cid_dbg,
+            _sid_dbg,
         )
-        out_abandon: dict[str, Any] = {"ok": True, "event": event}
-        out_abandon.update(await handle_cart_abandoned(background_tasks, payload))
-        return j(out_abandon, 200)
-    out: dict[str, Any] = {
-        "ok": True,
-        "event": payload.get("event"),
-    }
-    if payload_indicates_active_commercial_reengagement(payload):
-        try:
-            _rss = str(
-                payload.get("store") or payload.get("store_slug") or ""
-            ).strip() or "-"
-            _rsid = str(payload.get("session_id") or "").strip()
-            _rcid = str(payload.get("cart_id") or "").strip()
-            _rack = (
-                f"[RETURN TO SITE] cart_event_commercial_reengagement store_slug={_rss} "
-                f"session_id={(_rsid or '-')[:80]} cart_id={(_rcid or '-')[:64]}"
+        event = payload.get("event")
+        event_norm = str(event).strip().lower() if event is not None else ""
+        log.info("[EVENT ROUTING] event=%s", event)
+        ev_profile = event_norm or "misc"
+        if event_norm == "cart_state_sync":
+            out_sync: dict[str, Any] = {"ok": True, "event": "cart_state_sync"}
+            out_sync.update(_handle_cart_state_sync(payload))
+            if _cart_state_sync_reason_is_commercial_reengagement(payload):
+                act_payload = dict(payload)
+                act_payload["return_visit_kind"] = "active_commercial_reengagement"
+                act_payload["active_commercial_reengagement"] = True
+                if _return_to_site_payload_is_qualified(act_payload):
+                    _mark_user_returned_for_payload(act_payload)
+                    record_behavioral_user_return_from_payload(act_payload)
+            return j(out_sync, 200)
+        if event_norm == "cart_abandoned":
+            print("[ROUTING TO VIP HANDLER]")
+            log.info("[ROUTING TO VIP HANDLER]")
+            print("[CF API] processing event")
+            wc_id = (_cart_id_str_from_payload(payload) or "").strip() or "-"
+            wc_sid = (_session_part_from_payload(payload) or "").strip() or "-"
+            wc_tot = _cart_total_from_abandon_payload(payload)
+            wc_tot_disp = "none" if wc_tot is None else str(wc_tot)
+            log.info(
+                "[WIDGET CART EVENT]\ncart_id=%s\ncart_total=%s\nsession_id=%s",
+                wc_id,
+                wc_tot_disp,
+                wc_sid,
             )
-            print(_rack, flush=True)
-            log.info("%s", _rack)
-        except OSError:
-            pass
-        if _return_to_site_payload_is_qualified(payload):
-            _mark_user_returned_for_payload(payload)
-            record_behavioral_user_return_from_payload(payload)
-    elif payload_indicates_passive_return_visit(payload):
-        try:
-            _prs = str(
-                payload.get("store") or payload.get("store_slug") or ""
-            ).strip() or "-"
-            _prsid = str(payload.get("session_id") or "").strip()
-            _prcid = str(payload.get("cart_id") or "").strip()
-            _prline = (
-                f"[PASSIVE RETURN] cart_event_passive_visit store_slug={_prs} "
-                f"session_id={(_prsid or '-')[:80]} cart_id={(_prcid or '-')[:64]}"
+            out_abandon: dict[str, Any] = {"ok": True, "event": event}
+            out_abandon.update(await handle_cart_abandoned(background_tasks, payload))
+            return j(out_abandon, 200)
+        out: dict[str, Any] = {
+            "ok": True,
+            "event": payload.get("event"),
+        }
+        if payload_indicates_active_commercial_reengagement(payload):
+            try:
+                _rss = str(
+                    payload.get("store") or payload.get("store_slug") or ""
+                ).strip() or "-"
+                _rsid = str(payload.get("session_id") or "").strip()
+                _rcid = str(payload.get("cart_id") or "").strip()
+                _rack = (
+                    f"[RETURN TO SITE] cart_event_commercial_reengagement store_slug={_rss} "
+                    f"session_id={(_rsid or '-')[:80]} cart_id={(_rcid or '-')[:64]}"
+                )
+                print(_rack, flush=True)
+                log.info("%s", _rack)
+            except OSError:
+                pass
+            if _return_to_site_payload_is_qualified(payload):
+                _mark_user_returned_for_payload(payload)
+                record_behavioral_user_return_from_payload(payload)
+        elif payload_indicates_passive_return_visit(payload):
+            try:
+                _prs = str(
+                    payload.get("store") or payload.get("store_slug") or ""
+                ).strip() or "-"
+                _prsid = str(payload.get("session_id") or "").strip()
+                _prcid = str(payload.get("cart_id") or "").strip()
+                _prline = (
+                    f"[PASSIVE RETURN] cart_event_passive_visit store_slug={_prs} "
+                    f"session_id={(_prsid or '-')[:80]} cart_id={(_prcid or '-')[:64]}"
+                )
+                print(_prline, flush=True)
+                log.info("%s", _prline)
+            except OSError:
+                pass
+            record_passive_return_visit_from_payload(payload)
+        if (
+            payload.get("user_converted") is True
+            or payload.get("event") == "user_converted"
+            or payload.get("purchase_completed") is True
+        ):
+            _mark_user_converted_for_payload(payload)
+            out["conversion_tracked"] = True
+        if payload.get("event") == "add_to_cart":
+            _clear_user_rejected_help_for_session(
+                _normalize_store_slug(payload),
+                _session_part_from_payload(payload),
             )
-            print(_prline, flush=True)
-            log.info("%s", _prline)
-        except OSError:
-            pass
-        record_passive_return_visit_from_payload(payload)
-    if (
-        payload.get("user_converted") is True
-        or payload.get("event") == "user_converted"
-        or payload.get("purchase_completed") is True
-    ):
-        _mark_user_converted_for_payload(payload)
-        out["conversion_tracked"] = True
-    if payload.get("event") == "add_to_cart":
-        _clear_user_rejected_help_for_session(
-            _normalize_store_slug(payload),
-            _session_part_from_payload(payload),
-        )
-        print("[BEHAVIOR RESET]")
-        out["behavior_reset"] = True
-    _sync_abandoned_cart_vip_after_live_cart_payload(payload)
-    return j(out, 200)
+            print("[BEHAVIOR RESET]")
+            out["behavior_reset"] = True
+        _sync_abandoned_cart_vip_after_live_cart_payload(payload)
+        return j(out, 200)
+    finally:
+        _log_cart_event_profile(wall_perf_start=wall0, event_label=ev_profile)
 
 
 @app.post("/api/conversion")
@@ -7950,8 +8003,7 @@ def _sync_abandoned_cart_vip_after_live_cart_payload(payload: dict[str, Any]) ->
     if ev == "cart_abandoned":
         return
     try:
-        _ensure_store_widget_schema()
-        db.create_all()
+        _ensure_cartflow_api_db_warmed()
         store_slug = _store_slug_for_cart_vip_sync(payload)
         store_row = _load_store_row_for_recovery(store_slug)
 
@@ -8079,7 +8131,6 @@ def _sync_abandoned_cart_vip_after_live_cart_payload(payload: dict[str, Any]) ->
                     return
             else:
                 db.session.commit()
-                db.session.refresh(row)
                 upsert_cid = (row.zid_cart_id or cid_synth or "").strip()[:255]
                 upsert_sid = (getattr(row, "recovery_session_id", None) or sid_for_log or "").strip()[:512]
                 upsert_st = getattr(row, "store_id", None)
@@ -8087,7 +8138,9 @@ def _sync_abandoned_cart_vip_after_live_cart_payload(payload: dict[str, Any]) ->
                 _log_vip_cart_upsert("created", cart_id=upsert_cid, session_id=upsert_sid, store_id=upsert_st)
                 _log_vip_cart_saved(row)
                 try:
-                    store_alert = _resolve_store_for_vip_merchant_alert(row)
+                    store_alert = _resolve_store_for_vip_merchant_alert(
+                        row, context_store_fallback=store_row
+                    )
                     _vip_merchant_auto_alert_if_newly_entering(
                         row,
                         store_alert,
@@ -8160,7 +8213,9 @@ def _sync_abandoned_cart_vip_after_live_cart_payload(payload: dict[str, Any]) ->
             _log_vip_cart_upsert("updated", cart_id=upsert_cid, session_id=upsert_sid, store_id=upsert_st)
             _log_vip_cart_saved(row)
             try:
-                store_alert = _resolve_store_for_vip_merchant_alert(row)
+                store_alert = _resolve_store_for_vip_merchant_alert(
+                    row, context_store_fallback=store_row
+                )
                 _vip_merchant_auto_alert_if_newly_entering(
                     row,
                     store_alert,
@@ -10551,7 +10606,11 @@ def _store_row_for_abandoned_cart(ac: Optional[AbandonedCart]) -> Optional[Store
     return _load_latest_store_for_recovery()
 
 
-def _resolve_store_for_vip_merchant_alert(ac: AbandonedCart) -> Optional[Store]:
+def _resolve_store_for_vip_merchant_alert(
+    ac: AbandonedCart,
+    *,
+    context_store_fallback: Optional[Store] = None,
+) -> Optional[Store]:
     """
     متجر لتنبيه التاجر VIP: متجر السلة إن وفّر رقم/‎URL‎ جهة؛ وإلا آخر متجر فيه جهة اتصال
     (‎recovery settings‎ غالباً تحدّث أحدث ‎Store‎).
@@ -10561,12 +10620,12 @@ def _resolve_store_for_vip_merchant_alert(ac: AbandonedCart) -> Optional[Store]:
         phone, _ = resolve_merchant_whatsapp_phone(primary)
         if phone:
             return primary
-    latest = _load_latest_store_for_recovery()
-    if latest is None:
-        return primary
-    phone2, _ = resolve_merchant_whatsapp_phone(latest)
-    if phone2:
-        return latest
+    for fb in (context_store_fallback, _load_latest_store_for_recovery()):
+        if fb is None:
+            continue
+        phone2, _ = resolve_merchant_whatsapp_phone(fb)
+        if phone2:
+            return fb
     return primary
 
 
