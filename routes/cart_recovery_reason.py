@@ -14,7 +14,6 @@ from sqlalchemy.exc import SQLAlchemyError
 from extensions import db
 from json_response import j
 from models import CartRecoveryReason
-from schema_widget import ensure_store_widget_schema
 from services.recovery_session_phone import (
     record_recovery_customer_phone,
     recovery_key_for_reason_session,
@@ -43,8 +42,9 @@ async def post_widget_cart_recovery_reason(request: Request) -> Any:
     يحدّث الصفّ لنفس ‎(store_slug, session_id)‎ إن وُجد.
     """
     try:
-        ensure_store_widget_schema(db)
-        db.create_all()
+        from main import _ensure_cartflow_api_db_warmed
+
+        _ensure_cartflow_api_db_warmed()
     except (OSError, SQLAlchemyError):
         db.session.rollback()
     try:
@@ -187,45 +187,34 @@ async def post_widget_cart_recovery_reason(request: Request) -> Any:
                 if reason_phone_update is not _PHONE_OMIT:
                     row.customer_phone = reason_phone_update
         else:
-            db.session.add(
-                CartRecoveryReason(
-                    store_slug=ss,
-                    session_id=sid,
-                    reason=reason_tag,
-                    sub_category=sub_cat,
-                    custom_text=custom_reason,
-                    customer_phone=(
-                        reason_phone_update
-                        if reason_phone_update is not _PHONE_OMIT
-                        else None
-                    ),
-                    source="widget",
-                    created_at=now,
-                    updated_at=now,
-                    user_rejected_help=reason_tag == "no_help",
-                    rejection_timestamp=now if reason_tag == "no_help" else None,
-                )
+            row = CartRecoveryReason(
+                store_slug=ss,
+                session_id=sid,
+                reason=reason_tag,
+                sub_category=sub_cat,
+                custom_text=custom_reason,
+                customer_phone=(
+                    reason_phone_update
+                    if reason_phone_update is not _PHONE_OMIT
+                    else None
+                ),
+                source="widget",
+                created_at=now,
+                updated_at=now,
+                user_rejected_help=reason_tag == "no_help",
+                rejection_timestamp=now if reason_tag == "no_help" else None,
             )
+            db.session.add(row)
 
         db.session.flush()
         cart_id_raw = body.get("cart_id") or body.get("zid_cart_id")
         cid_apply: Optional[str] = None
         if cart_id_raw is not None and str(cart_id_raw).strip():
             cid_apply = str(cart_id_raw).strip()[:255]
-        row_after = (
-            db.session.query(CartRecoveryReason)
-            .filter(
-                and_(
-                    CartRecoveryReason.store_slug == ss,
-                    CartRecoveryReason.session_id == sid,
-                )
-            )
-            .first()
-        )
-        ph_sync = (getattr(row_after, "customer_phone", None) or "").strip() if row_after else ""
+        ph_sync = (getattr(row, "customer_phone", None) or "").strip() if row is not None else ""
         if ph_sync:
             persist_rt = (
-                (getattr(row_after, "reason", None) or "").strip()[:_MAX_REASON]
+                (getattr(row, "reason", None) or "").strip()[:_MAX_REASON]
                 or reason_tag
             )
             _persist_src = (
@@ -264,8 +253,8 @@ async def post_widget_cart_recovery_reason(request: Request) -> Any:
                 print("session_id=", sid)
                 print("phone=", reason_phone_update)
         stored_reason_log = (
-            (getattr(row_after, "reason", None) or "").strip()
-            if row_after is not None
+            (getattr(row, "reason", None) or "").strip()
+            if row is not None
             else reason_tag
         )
         print(

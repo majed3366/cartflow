@@ -90,13 +90,15 @@ class CartRecoverySequenceBehaviorTests(unittest.TestCase):
             "cart_total": cart_total,
         }
         captured = []
-        real_handle = main.handle_cart_abandoned
+        real_arm = main._arm_recovery_schedule_from_saved_reason_payload
 
-        async def shim(bt, payload):  # type: ignore[no-untyped-def]
-            captured.append(dict(payload))
-            return await real_handle(bt, payload)
+        def arm_shim(synth_pl: dict) -> None:
+            captured.append(dict(synth_pl))
+            return real_arm(synth_pl)
 
-        with patch.object(main, "handle_cart_abandoned", new=shim):
+        with patch.object(
+            main, "_arm_recovery_schedule_from_saved_reason_payload", new=arm_shim
+        ):
             j1 = self.client.post("/api/cart-event", json=body).json()
             self.assertFalse(j1.get("recovery_scheduled", True))
             self.assertEqual("waiting_for_reason", j1.get("recovery_state"))
@@ -108,8 +110,8 @@ class CartRecoverySequenceBehaviorTests(unittest.TestCase):
                 customer_phone=_NORMAL_SEQUENCE_CUSTOMER_PHONE,
             )
 
-        self.assertEqual(2, len(captured))
-        replay = captured[1]
+        self.assertEqual(1, len(captured))
+        replay = captured[0]
         self.assertEqual(orig_cid, replay.get("cart_id"))
         self.assertAlmostEqual(float(replay.get("cart_total")), cart_total)
         self.assertFalse(

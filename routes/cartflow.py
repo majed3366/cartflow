@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import re
+import time
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional, Tuple
 
@@ -14,7 +15,6 @@ from sqlalchemy.exc import SQLAlchemyError
 from extensions import db
 from json_response import j
 from models import AbandonmentReasonLog, CartRecoveryLog, CartRecoveryReason, Store
-from schema_widget import ensure_store_widget_schema
 from services.cartflow_whatsapp_mock import (
     build_mock_whatsapp_message,
     get_merchant_whatsapp_e164_for_store,
@@ -49,6 +49,54 @@ from services.recovery_reason_preserve import (
 )
 
 log = logging.getLogger("cartflow")
+
+
+def _peek_db_queries_cartflow_optional() -> Optional[int]:
+    from services.db_request_audit import audit_enabled, peek_request_audit_bucket_for_profile
+
+    if not audit_enabled():
+        return None
+    peek = peek_request_audit_bucket_for_profile()
+    if peek is None:
+        return None
+    return int(peek.get("queries") or 0)
+
+
+def _log_reason_save_profile(
+    *,
+    wall_perf_start: float,
+    phase: str,
+    audit_query_baseline: Optional[int] = None,
+) -> None:
+    from services.db_request_audit import audit_enabled, peek_request_audit_bucket_for_profile
+
+    duration_ms = round((time.perf_counter() - wall_perf_start) * 1000.0, 1)
+    audit_on = audit_enabled()
+    peek = peek_request_audit_bucket_for_profile()
+    if peek is not None:
+        qn_full = int(peek.get("queries") or 0)
+        qn_eff = qn_full if audit_query_baseline is None else max(0, qn_full - audit_query_baseline)
+        qs = str(qn_eff)
+        ss = str(int(peek.get("store_queries") or 0))
+        rs = str(int(peek.get("recovery_queries") or 0))
+        aq = str(int(peek.get("analytics_queries") or 0))
+    elif not audit_on:
+        qs = ss = rs = aq = "n/a"
+    else:
+        qs = ss = rs = aq = "?"
+    line = (
+        f"[REASON SAVE PROFILE] queries={qs} duration_ms={duration_ms} phase={phase} "
+        f"store_queries={ss} recovery_queries={rs} analytics_queries={aq}"
+    )
+    try:
+        print(line, flush=True)
+    except OSError:
+        pass
+    try:
+        log.info("%s", line)
+    except Exception:  # noqa: BLE001
+        pass
+
 
 router = APIRouter(prefix="/api/cartflow", tags=["cartflow"])
 
@@ -346,7 +394,9 @@ async def post_abandonment_reason(request: Request) -> Any:
     ‎custom_text‎ اختياري لـ ‎other‎؛ ‎customer_phone‎ (‎05‎ / ‎9665‎…) لـ ‎other‎ مع توسيع القديم (‎custom_text‎ وحده لا يزال مقبولاً).
     """
     try:
-        ensure_store_widget_schema(db)
+        from main import _ensure_cartflow_api_db_warmed
+
+        _ensure_cartflow_api_db_warmed()
     except (OSError, SQLAlchemyError):
         db.session.rollback()
     try:
@@ -446,6 +496,9 @@ async def post_abandonment_reason(request: Request) -> Any:
         elif custom_raw is not None and (str(custom_raw) or "").strip():
             return j({"ok": False, "error": "custom_text_not_applicable"}, 400)
         sub_for_row: Optional[str] = sub_cat if reason == "price" else None
+        perf_rs = time.perf_counter()
+        rs_q_base = _peek_db_queries_cartflow_optional()
+
         row = AbandonmentReasonLog(
             store_slug=ss,
             session_id=sid,
@@ -503,19 +556,18 @@ async def post_abandonment_reason(request: Request) -> Any:
                 crr.customer_phone = crr_phone
                 crr.updated_at = now
         else:
-            db.session.add(
-                CartRecoveryReason(
-                    store_slug=ss,
-                    session_id=sid,
-                    reason=reason,
-                    customer_phone=crr_phone,
-                    sub_category=sub_for_row,
-                    custom_text=custom,
-                    source="legacy_api",
-                    created_at=now,
-                    updated_at=now,
-                )
+            crr = CartRecoveryReason(
+                store_slug=ss,
+                session_id=sid,
+                reason=reason,
+                customer_phone=crr_phone,
+                sub_category=sub_for_row,
+                custom_text=custom,
+                source="legacy_api",
+                created_at=now,
+                updated_at=now,
             )
+            db.session.add(crr)
         if reason == "vip_phone_capture" and phone_norm:
             apply_vip_phone_capture_to_abandoned_carts(
                 store_slug=ss,
@@ -527,20 +579,10 @@ async def post_abandonment_reason(request: Request) -> Any:
         cid_apply: Optional[str] = None
         if cart_id_raw is not None and str(cart_id_raw).strip():
             cid_apply = str(cart_id_raw).strip()[:255]
-        crr_row = (
-            db.session.query(CartRecoveryReason)
-            .filter(
-                and_(
-                    CartRecoveryReason.store_slug == ss,
-                    CartRecoveryReason.session_id == sid,
-                )
-            )
-            .first()
-        )
-        ph_sync = (getattr(crr_row, "customer_phone", None) or "").strip() if crr_row else ""
+        ph_sync = (getattr(crr, "customer_phone", None) or "").strip() if crr is not None else ""
         if ph_sync:
             persist_rt = (
-                (getattr(crr_row, "reason", None) or "").strip()[:64] or reason
+                (getattr(crr, "reason", None) or "").strip()[:64] or reason
             )
             apply_normal_recovery_phone_to_session(
                 db.session,
@@ -604,6 +646,11 @@ async def post_abandonment_reason(request: Request) -> Any:
         except Exception as hook_err:  # noqa: BLE001
             log.warning("cartflow/reason recovery reschedule hook skipped: %s", hook_err)
 
+        _log_reason_save_profile(
+            wall_perf_start=perf_rs,
+            phase="committed_plus_recovery_arm",
+            audit_query_baseline=rs_q_base,
+        )
         return j({"ok": True})
     except (SQLAlchemyError, OSError) as e:
         db.session.rollback()

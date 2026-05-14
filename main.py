@@ -2182,13 +2182,28 @@ def _recovery_row_user_rejected_help(row: Optional[CartRecoveryReason]) -> bool:
         return getattr(row, "user_rejected_help", False) is True
 
 
+def _defer_clear_user_rejected_help_for_cart_sync_session(
+    store_slug: str,
+    session_id: str,
+) -> None:
+    """Post-response: يفرّغ رفض المساعدة دون تكديس جلسة ‎scoped_session‎ الطلب السابق."""
+    try:
+        _clear_user_rejected_help_for_session(store_slug, session_id)
+    except Exception as exc:  # noqa: BLE001
+        log.warning("deferred rejection reset skipped: %s", exc)
+    finally:
+        remove_scoped_session()
+
+
 def _clear_user_rejected_help_for_session(store_slug: str, session_id: str) -> None:
     ss = (store_slug or "").strip()[:255]
     sid = (session_id or "").strip()[:512]
     if not ss or not sid:
         return
     try:
-        _ensure_cartflow_api_db_warmed()
+        global _cartflow_api_db_warmed
+        if not _cartflow_api_db_warmed:
+            _ensure_cartflow_api_db_warmed()
         row = (
             db.session.query(CartRecoveryReason)
             .filter(
@@ -3602,7 +3617,9 @@ def _load_store_row_for_recovery(store_slug: Optional[str] = None) -> Optional[S
         if cart_event_scope_active() and scoped_store_contains(ck):
             return scoped_store_get(ck)
 
-        _ensure_cartflow_api_db_warmed()
+        global _cartflow_api_db_warmed
+        if not _cartflow_api_db_warmed:
+            _ensure_cartflow_api_db_warmed()
         latest = _dashboard_recovery_store_row()
         ss_full = (store_slug or "").strip()
         ss_key = ss_full.casefold()
@@ -4378,7 +4395,7 @@ def _persist_cart_recovery_log(
     step: Optional[int] = None,
 ) -> None:
     try:
-        db.create_all()
+        _ensure_cartflow_api_db_warmed()
         row = CartRecoveryLog(
             store_slug=store_slug[:255],
             session_id=session_id[:512],
@@ -6561,6 +6578,279 @@ def _inject_cf_test_customer_phone_into_abandon_payload(payload: dict[str, Any])
         pass
 
 
+def _execute_cart_abandon_recovery_schedule_continue(
+    *,
+    store_slug: str,
+    recovery_key: str,
+    session_id_log: str,
+    cart_id_log: Optional[str],
+    payload: dict[str, Any],
+    abandon_evt_phone: Optional[str],
+    msg_log: str,
+    store_row: Any,
+    reason_for_preflight: Optional[str],
+    skip_abandon_upsert: bool = False,
+) -> Dict[str, Any]:
+    """Upsert سلّة مهجورة ومسار VIP ثم جدولة الاسترجاع العادي (بعد تجاوز انتظار السبب)."""
+    do_upsert = not skip_abandon_upsert
+    if skip_abandon_upsert:
+        cid_probe = (str(cart_id_log or "").strip()[:255]) or ""
+        skip_ok = False
+        if cid_probe:
+            try:
+                skip_ok = (
+                    db.session.query(AbandonedCart.id)
+                    .filter(AbandonedCart.zid_cart_id == cid_probe)
+                    .limit(1)
+                    .first()
+                    is not None
+                )
+            except SQLAlchemyError:
+                db.session.rollback()
+                skip_ok = False
+        if not skip_ok:
+            do_upsert = True
+    if do_upsert:
+        try:
+            ok_u, err_u, _urow = upsert_abandoned_cart_from_payload(payload, store=store_row)
+            if not ok_u and err_u:
+                log.warning("[ABANDON UPSERT] %s", err_u)
+        except SQLAlchemyError:
+            db.session.rollback()
+            log.warning("[ABANDON UPSERT FAILED]", exc_info=True)
+        cart_total_chk = _cart_total_for_vip_recovery(cart_id_log, payload)
+    else:
+        cart_total_chk = _cart_total_probe_for_vip_check(cart_id_log, payload)
+    th_chk = getattr(store_row, "vip_cart_threshold", None) if store_row else None
+    ct_chk_s = "none" if cart_total_chk is None else str(cart_total_chk)
+    th_chk_s = "none" if th_chk is None else str(th_chk)
+    log.info("[VIP CHECK START]\ncart_total=%s\nthreshold=%s", ct_chk_s, th_chk_s)
+    print(f"[VIP CHECK START] cart_total={ct_chk_s} threshold={th_chk_s}")
+    is_vip_chk = cart_total_chk is not None and is_vip_cart(cart_total_chk, store_row)
+    _vip_log_check(cart_total_chk, th_chk, is_vip_chk)
+    if is_vip_chk:
+        with _recovery_session_lock:
+            _session_recovery_started[recovery_key] = True
+        reason_vip = reason_for_preflight or (
+            _reason_tag_for_session(store_slug, session_id_log) or None
+        )
+        _vip_recovery_decision_layer(reason_vip, store_row)
+        ok_vip = _activate_vip_manual_cart_handling(
+            store_slug=store_slug,
+            session_id=session_id_log,
+            cart_id=cart_id_log,
+            cart_total=float(cart_total_chk),
+            store_obj=store_row,
+            recovery_key=recovery_key,
+            reason_tag=reason_vip,
+            recovery_log_message=VIP_WIDGET_RECOVERY_LOG_MESSAGE,
+            recovery_log_step=int(VIP_WIDGET_RECOVERY_LOG_STEP),
+            vip_activation_source=VIP_WIDGET_ACTIVATION_SOURCE,
+            abandon_event_phone=abandon_evt_phone,
+        )
+        if not ok_vip:
+            log.warning(
+                "[VIP ACTIVATION FAILED] session_id=%s recovery_key=%s — customer_recovery_blocked_no_fallback",
+                session_id_log,
+                recovery_key,
+            )
+        _mark_vip_customer_recovery_closed(recovery_key)
+        return {
+            "recovery_scheduled": False,
+            "recovery_vip_manual": True,
+            "recovery_skipped": True,
+            "customer_recovery_skipped": True,
+            "recovery_state": "vip_manual_handling",
+        }
+    if abandon_evt_phone:
+        reason_tag_ab = _reason_tag_for_session(store_slug, session_id_log)
+        commit_normal_recovery_phone_after_resolved(
+            store_slug=store_slug,
+            session_id=session_id_log,
+            cart_id=cart_id_log,
+            phone=abandon_evt_phone,
+            reason_tag=reason_tag_ab,
+        )
+    if reason_for_preflight:
+        reason_for_schedule = reason_for_preflight
+    else:
+        reason_for_schedule = _effective_normal_recovery_reason_tag(
+            store_slug=store_slug,
+            session_id=session_id_log,
+            payload=payload,
+        )
+    if not reason_for_schedule:
+        nr_line = (
+            "[NORMAL RECOVERY NOT SCHEDULED] reason=missing_reason_tag "
+            f"store_slug={(store_slug or '-')[:96]} "
+            f"session_id={(session_id_log or '-')[:96]} "
+            f"cart_id={(str(cart_id_log) if cart_id_log else '-')[:80]}"
+        )
+        log.info(nr_line)
+        print(nr_line, flush=True)
+        _mark_normal_recovery_pending_reason_tag(
+            recovery_key,
+            cart_id=cart_id_log,
+            cart_total=cart_total_chk,
+        )
+        _persist_cart_recovery_log(
+            store_slug=store_slug,
+            session_id=session_id_log,
+            cart_id=cart_id_log,
+            phone=None,
+            message=msg_log,
+            status="skipped_missing_reason_tag",
+        )
+        cart_event_profile_set_meta(path="waiting_for_reason")
+        return {
+            "recovery_scheduled": False,
+            "recovery_skipped": True,
+            "recovery_state": "waiting_for_reason",
+            "waiting_for_reason": True,
+        }
+    with _recovery_session_lock:
+        if _session_recovery_sent.get(recovery_key):
+            print("recovery already sent, skipping")
+            _persist_cart_recovery_log(
+                store_slug=store_slug,
+                session_id=session_id_log,
+                cart_id=cart_id_log,
+                phone=None,
+                message=msg_log,
+                status="skipped_delay",
+            )
+            return {
+                "recovery_scheduled": False,
+                "recovery_skipped": True,
+                "recovery_state": "sent",
+            }
+    if not _try_claim_recovery_session(recovery_key):
+        print("recovery already scheduled, skipping")
+        from services.cartflow_duplicate_guard import note_recovery_schedule_duplicate
+
+        note_recovery_schedule_duplicate(
+            store_slug=store_slug,
+            session_id=session_id_log,
+            cart_id=cart_id_log or "",
+            recovery_key=recovery_key,
+        )
+        _persist_cart_recovery_log(
+            store_slug=store_slug,
+            session_id=session_id_log,
+            cart_id=cart_id_log,
+            phone=None,
+            message=msg_log,
+            status="skipped_duplicate",
+        )
+        return {
+            "recovery_scheduled": False,
+            "recovery_skipped": True,
+            "recovery_state": "pending",
+        }
+    print("entered recovery handler")
+    log.info("cart abandoned received")
+    reason_tag_sync = reason_for_schedule
+    slots_sync = multi_message_slots_for_abandon(reason_tag_sync, store_row)
+    if slots_sync:
+        _schedule_recovery_multi_slots(
+            recovery_key,
+            slots_sync,
+            elapsed_seconds=0.0,
+            store_slug=store_slug,
+            session_id=session_id_log,
+            cart_id=cart_id_log,
+            abandon_event_phone=abandon_evt_phone,
+        )
+        _log_normal_recovery_auto_start(
+            store_slug=store_slug,
+            session_id=session_id_log,
+            cart_id=cart_id_log,
+            mode="multi_message",
+        )
+        _note_recovery_flow_armed_now(recovery_key)
+        return {
+            "recovery_scheduled": True,
+            "recovery_multi_message": True,
+            "recovery_multi_count": len(slots_sync),
+            "recovery_delay_seconds": float(slots_sync[0]["delay_seconds"]),
+            "recovery_state": "scheduled",
+        }
+
+    abandon_mono = time.monotonic()
+    _log_normal_recovery_auto_start(
+        store_slug=store_slug,
+        session_id=session_id_log,
+        cart_id=cart_id_log,
+        mode="delay_poll",
+    )
+    _note_recovery_flow_armed_now(recovery_key)
+    asyncio.create_task(
+        _run_recovery_dispatch_cart_abandoned(
+            recovery_key,
+            store_slug,
+            session_id_log,
+            cart_id_log,
+            abandon_evt_phone,
+            abandon_mono,
+        )
+    )
+    return {
+        "recovery_scheduled": True,
+        "recovery_state": "scheduled",
+        "recovery_delay_seconds": None,
+    }
+
+
+def _arm_recovery_schedule_from_saved_reason_payload(synth_pl: dict[str, Any]) -> None:
+    """جدولة بعد ‎POST /api/cartflow/reason‎ — دون مسار ‎handle_cart_abandoned‎ الكامل (لا طبقة انتظار السبب)."""
+    synth_pl = dict(synth_pl)
+    global _cartflow_api_db_warmed
+    if not _cartflow_api_db_warmed:
+        _ensure_cartflow_api_db_warmed()
+    store_slug = _normalize_store_slug(synth_pl)
+    recovery_key = _recovery_key_from_payload(synth_pl)
+    synth_pl = _ensure_cart_abandon_payload_has_cart_id(synth_pl, recovery_key)
+    session_id_log = _session_part_from_payload(synth_pl)
+    cart_id_log = _cart_id_str_from_payload(synth_pl)
+    abandon_evt_phone: Optional[str] = None
+    rp = synth_pl.get("phone")
+    if isinstance(rp, str) and rp.strip():
+        abandon_evt_phone = rp.strip()[:100]
+
+    msg_log = _default_recovery_message()
+    if _is_user_converted(recovery_key):
+        _persist_cart_recovery_log(
+            store_slug=store_slug,
+            session_id=session_id_log,
+            cart_id=cart_id_log,
+            phone=None,
+            message=msg_log,
+            status="stopped_converted",
+        )
+        return
+    try:
+        store_row = _load_store_row_for_recovery(store_slug)
+    except Exception:  # noqa: BLE001
+        db.session.rollback()
+        store_row = None
+
+    rtp = (_reason_tag_for_session(store_slug, session_id_log) or "").strip()[:64]
+    reason_pf: Optional[str] = rtp if rtp else None
+
+    _execute_cart_abandon_recovery_schedule_continue(
+        store_slug=store_slug,
+        recovery_key=recovery_key,
+        session_id_log=session_id_log,
+        cart_id_log=cart_id_log,
+        payload=synth_pl,
+        abandon_evt_phone=abandon_evt_phone,
+        msg_log=msg_log,
+        store_row=store_row,
+        reason_for_preflight=reason_pf,
+        skip_abandon_upsert=True,
+    )
+
+
 async def handle_cart_abandoned(
     _background_tasks: BackgroundTasks, payload: dict[str, Any]
 ) -> dict[str, Any]:
@@ -6678,190 +6968,17 @@ async def handle_cart_abandoned(
 
     cart_event_profile_set_meta(path="recovery_schedule")
 
-    try:
-        ok_u, err_u, _urow = upsert_abandoned_cart_from_payload(payload, store=store_row)
-        if not ok_u and err_u:
-            log.warning("[ABANDON UPSERT] %s", err_u)
-    except SQLAlchemyError:
-        db.session.rollback()
-        log.warning("[ABANDON UPSERT FAILED]", exc_info=True)
-    cart_total_chk = _cart_total_for_vip_recovery(cart_id_log, payload)
-    th_chk = getattr(store_row, "vip_cart_threshold", None) if store_row else None
-    ct_chk_s = "none" if cart_total_chk is None else str(cart_total_chk)
-    th_chk_s = "none" if th_chk is None else str(th_chk)
-    log.info("[VIP CHECK START]\ncart_total=%s\nthreshold=%s", ct_chk_s, th_chk_s)
-    print(f"[VIP CHECK START] cart_total={ct_chk_s} threshold={th_chk_s}")
-    is_vip_chk = cart_total_chk is not None and is_vip_cart(cart_total_chk, store_row)
-    _vip_log_check(cart_total_chk, th_chk, is_vip_chk)
-    if is_vip_chk:
-        with _recovery_session_lock:
-            _session_recovery_started[recovery_key] = True
-        reason_vip = _reason_tag_for_session(store_slug, session_id_log) or None
-        _vip_recovery_decision_layer(reason_vip, store_row)
-        ok_vip = _activate_vip_manual_cart_handling(
-            store_slug=store_slug,
-            session_id=session_id_log,
-            cart_id=cart_id_log,
-            cart_total=float(cart_total_chk),
-            store_obj=store_row,
-            recovery_key=recovery_key,
-            reason_tag=reason_vip,
-            recovery_log_message=VIP_WIDGET_RECOVERY_LOG_MESSAGE,
-            recovery_log_step=int(VIP_WIDGET_RECOVERY_LOG_STEP),
-            vip_activation_source=VIP_WIDGET_ACTIVATION_SOURCE,
-            abandon_event_phone=abandon_evt_phone,
-        )
-        if not ok_vip:
-            log.warning(
-                "[VIP ACTIVATION FAILED] session_id=%s recovery_key=%s — customer_recovery_blocked_no_fallback",
-                session_id_log,
-                recovery_key,
-            )
-        _mark_vip_customer_recovery_closed(recovery_key)
-        return {
-            "recovery_scheduled": False,
-            "recovery_vip_manual": True,
-            "recovery_skipped": True,
-            "customer_recovery_skipped": True,
-            "recovery_state": "vip_manual_handling",
-        }
-    if abandon_evt_phone:
-        reason_tag_ab = _reason_tag_for_session(store_slug, session_id_log)
-        commit_normal_recovery_phone_after_resolved(
-            store_slug=store_slug,
-            session_id=session_id_log,
-            cart_id=cart_id_log,
-            phone=abandon_evt_phone,
-            reason_tag=reason_tag_ab,
-        )
-    if reason_for_preflight:
-        reason_for_schedule = reason_for_preflight
-    else:
-        reason_for_schedule = _effective_normal_recovery_reason_tag(
-            store_slug=store_slug,
-            session_id=session_id_log,
-            payload=payload,
-        )
-    if not reason_for_schedule:
-        nr_line = (
-            "[NORMAL RECOVERY NOT SCHEDULED] reason=missing_reason_tag "
-            f"store_slug={(store_slug or '-')[:96]} "
-            f"session_id={(session_id_log or '-')[:96]} "
-            f"cart_id={(str(cart_id_log) if cart_id_log else '-')[:80]}"
-        )
-        log.info(nr_line)
-        print(nr_line, flush=True)
-        _mark_normal_recovery_pending_reason_tag(
-            recovery_key,
-            cart_id=cart_id_log,
-            cart_total=cart_total_chk,
-        )
-        _persist_cart_recovery_log(
-            store_slug=store_slug,
-            session_id=session_id_log,
-            cart_id=cart_id_log,
-            phone=None,
-            message=msg_log,
-            status="skipped_missing_reason_tag",
-        )
-        cart_event_profile_set_meta(path="waiting_for_reason")
-        return {
-            "recovery_scheduled": False,
-            "recovery_skipped": True,
-            "recovery_state": "waiting_for_reason",
-            "waiting_for_reason": True,
-        }
-    with _recovery_session_lock:
-        if _session_recovery_sent.get(recovery_key):
-            print("recovery already sent, skipping")
-            _persist_cart_recovery_log(
-                store_slug=store_slug,
-                session_id=session_id_log,
-                cart_id=cart_id_log,
-                phone=None,
-                message=msg_log,
-                status="skipped_delay",
-            )
-            return {
-                "recovery_scheduled": False,
-                "recovery_skipped": True,
-                "recovery_state": "sent",
-            }
-    if not _try_claim_recovery_session(recovery_key):
-        print("recovery already scheduled, skipping")
-        from services.cartflow_duplicate_guard import note_recovery_schedule_duplicate
-
-        note_recovery_schedule_duplicate(
-            store_slug=store_slug,
-            session_id=session_id_log,
-            cart_id=cart_id_log or "",
-            recovery_key=recovery_key,
-        )
-        _persist_cart_recovery_log(
-            store_slug=store_slug,
-            session_id=session_id_log,
-            cart_id=cart_id_log,
-            phone=None,
-            message=msg_log,
-            status="skipped_duplicate",
-        )
-        return {
-            "recovery_scheduled": False,
-            "recovery_skipped": True,
-            "recovery_state": "pending",
-        }
-    print("entered recovery handler")
-    log.info("cart abandoned received")
-    reason_tag_sync = _reason_tag_for_session(store_slug, session_id_log)
-    slots_sync = multi_message_slots_for_abandon(reason_tag_sync, store_row)
-    if slots_sync:
-        _schedule_recovery_multi_slots(
-            recovery_key,
-            slots_sync,
-            elapsed_seconds=0.0,
-            store_slug=store_slug,
-            session_id=session_id_log,
-            cart_id=cart_id_log,
-            abandon_event_phone=abandon_evt_phone,
-        )
-        _log_normal_recovery_auto_start(
-            store_slug=store_slug,
-            session_id=session_id_log,
-            cart_id=cart_id_log,
-            mode="multi_message",
-        )
-        _note_recovery_flow_armed_now(recovery_key)
-        return {
-            "recovery_scheduled": True,
-            "recovery_multi_message": True,
-            "recovery_multi_count": len(slots_sync),
-            "recovery_delay_seconds": float(slots_sync[0]["delay_seconds"]),
-            "recovery_state": "scheduled",
-        }
-
-    abandon_mono = time.monotonic()
-    _log_normal_recovery_auto_start(
+    return _execute_cart_abandon_recovery_schedule_continue(
         store_slug=store_slug,
-        session_id=session_id_log,
-        cart_id=cart_id_log,
-        mode="delay_poll",
+        recovery_key=recovery_key,
+        session_id_log=session_id_log,
+        cart_id_log=cart_id_log,
+        payload=payload,
+        abandon_evt_phone=abandon_evt_phone,
+        msg_log=msg_log,
+        store_row=store_row,
+        reason_for_preflight=reason_for_preflight,
     )
-    _note_recovery_flow_armed_now(recovery_key)
-    asyncio.create_task(
-        _run_recovery_dispatch_cart_abandoned(
-            recovery_key,
-            store_slug,
-            session_id_log,
-            cart_id_log,
-            abandon_evt_phone,
-            abandon_mono,
-        )
-    )
-    return {
-        "recovery_scheduled": True,
-        "recovery_state": "scheduled",
-        "recovery_delay_seconds": None,
-    }
 
 
 async def _schedule_normal_recovery_after_cart_recovery_reason_saved(
@@ -6934,9 +7051,7 @@ async def _schedule_normal_recovery_after_cart_recovery_reason_saved(
     log.info(arm_msg)
     print(arm_msg, flush=True)
 
-    from fastapi import BackgroundTasks
-
-    await handle_cart_abandoned(BackgroundTasks(), synth_pl)
+    _arm_recovery_schedule_from_saved_reason_payload(synth_pl)
 
 
 @app.api_route("/dev/create-vip-test-cart", methods=["GET", "POST"])
@@ -7146,13 +7261,7 @@ def _handle_cart_state_sync(
     """
     مسار موحّد لمزامنة حالة السلة (‎cart_state_sync‎): قيمة، ‎VIP‎، ‎status‎ — بما فيها ‎cleared‎ للسلة الفارغة.
     """
-    try:
-        _ensure_cartflow_api_db_warmed()
-    except (SQLAlchemyError, OSError):
-        db.session.rollback()
-        cart_event_profile_set_meta(path="cart_sync_db_schema")
-        return {"ok": False, "cart_state_sync": False, "error": "db_schema"}
-
+    perf0 = time.perf_counter()
     reason_raw = str(payload.get("reason") or "").strip().lower()
     allowed = frozenset({"add", "remove", "clear", "abandon", "page_load"})
     if reason_raw not in allowed:
@@ -7185,13 +7294,34 @@ def _handle_cart_state_sync(
         f"session_id={sid_log or '-'} cart_total={cart_total} items_count={items_count}"
     )
 
-    if reason_raw == "add":
-        _clear_user_rejected_help_for_session(
-            _normalize_store_slug(payload),
-            _session_part_from_payload(payload),
-        )
-
     store_slug = _normalize_store_slug(payload)
+
+    if reason_raw == "add":
+        sid_for_clear = (_session_part_from_payload(payload) or "").strip()[:512]
+        if sid_for_clear and store_slug.strip():
+            if background_tasks is not None:
+                background_tasks.add_task(
+                    _defer_clear_user_rejected_help_for_cart_sync_session,
+                    store_slug,
+                    sid_for_clear,
+                )
+            else:
+                _clear_user_rejected_help_for_session(store_slug, sid_for_clear)
+        try:
+            global _cartflow_api_db_warmed
+            if not _cartflow_api_db_warmed:
+                _ensure_cartflow_api_db_warmed()
+        except (SQLAlchemyError, OSError):
+            db.session.rollback()
+            cart_event_profile_set_meta(path="cart_sync_db_schema")
+            return {"ok": False, "cart_state_sync": False, "error": "db_schema"}
+    else:
+        try:
+            _ensure_cartflow_api_db_warmed()
+        except (SQLAlchemyError, OSError):
+            db.session.rollback()
+            cart_event_profile_set_meta(path="cart_sync_db_schema")
+            return {"ok": False, "cart_state_sync": False, "error": "db_schema"}
     store_row = _load_store_row_for_recovery(store_slug)
     vip_th_api: Optional[int] = None
     if store_row is not None:
@@ -7218,13 +7348,13 @@ def _handle_cart_state_sync(
         vip_mode_eff = False
         status_eff = "abandoned"
 
-    merge_pl: dict[str, Any] = dict(payload)
-    merge_pl["store"] = store_slug
-    rk = _recovery_key_from_payload(merge_pl)
-    merge_pl = _ensure_cart_abandon_payload_has_cart_id(merge_pl, rk)
-    _inject_cf_test_customer_phone_into_abandon_payload(merge_pl)
-    sync_phone = _strip_recovery_phone(merge_pl.get("phone"))
-    zid = (_cart_id_str_from_payload(merge_pl) or "").strip()[:255]
+    work_pl: dict[str, Any] = dict(payload)
+    work_pl["store"] = store_slug
+    rk = _recovery_key_from_payload(work_pl)
+    work_pl = _ensure_cart_abandon_payload_has_cart_id(work_pl, rk)
+    _inject_cf_test_customer_phone_into_abandon_payload(work_pl)
+    sync_phone = _strip_recovery_phone(work_pl.get("phone"))
+    zid = (_cart_id_str_from_payload(work_pl) or "").strip()[:255]
     if not zid:
         _is_vip_miss = False if is_empty else bool(is_vip_cart(cart_total, store_row))
         _lane_miss = vip_operational_lane_diagnostics(cart_total, store_row)
@@ -7248,6 +7378,7 @@ def _handle_cart_state_sync(
 
     if lite_add:
         cart_event_profile_set_meta(event_type="cart_state_sync", path="lightweight_sync")
+        audit_q_base = _peek_db_audit_queries_value()
         try:
             row = db.session.query(AbandonedCart).filter_by(zid_cart_id=zid).first()
         except (SQLAlchemyError, OSError):
@@ -7314,8 +7445,6 @@ def _handle_cart_state_sync(
             if sid_log:
                 row.recovery_session_id = sid_log
 
-        db.session.flush()
-
         if sync_phone:
             row.customer_phone = sync_phone[:100]
             from services.normal_recovery_phone_persist import (
@@ -7324,7 +7453,7 @@ def _handle_cart_state_sync(
 
             inj_src = (
                 "demo_test_phone"
-                if str(merge_pl.get("_recovery_phone_inject_source") or "").strip()
+                if str(work_pl.get("_recovery_phone_inject_source") or "").strip()
                 == "cf_test_phone"
                 else "real_customer_phone"
             )
@@ -7405,6 +7534,12 @@ def _handle_cart_state_sync(
     )
 
     _lane_diag = vip_operational_lane_diagnostics(row.cart_value, store_row)
+    if lite_add:
+        _log_cart_sync_profile(
+            wall_perf_start=perf0,
+            phase="lightweight_commit",
+            audit_query_baseline=audit_q_base,
+        )
     return {
         "ok": True,
         "cart_state_sync": True,
@@ -7417,6 +7552,54 @@ def _handle_cart_state_sync(
         "operational_lane": _lane_diag.get("operational_lane"),
         "is_vip_cart": _lane_diag.get("is_vip_cart"),
     }
+
+
+def _peek_db_audit_queries_value() -> Optional[int]:
+    from services.db_request_audit import audit_enabled, peek_request_audit_bucket_for_profile
+
+    if not audit_enabled():
+        return None
+    peek = peek_request_audit_bucket_for_profile()
+    if peek is None:
+        return None
+    return int(peek.get("queries") or 0)
+
+
+def _log_cart_sync_profile(
+    *,
+    wall_perf_start: float,
+    phase: str,
+    audit_query_baseline: Optional[int] = None,
+) -> None:
+    """تقرير صغير لممر ‎reason=add‎ ضمن ‎cart_state_sync‎."""
+    from services.db_request_audit import audit_enabled, peek_request_audit_bucket_for_profile
+
+    duration_ms = round((time.perf_counter() - wall_perf_start) * 1000.0, 1)
+    audit_on = audit_enabled()
+    peek = peek_request_audit_bucket_for_profile()
+    if peek is not None:
+        qn_full = int(peek.get("queries") or 0)
+        qn_eff = qn_full if audit_query_baseline is None else max(0, qn_full - audit_query_baseline)
+        qs = str(qn_eff)
+        ss = str(int(peek.get("store_queries") or 0))
+        rs = str(int(peek.get("recovery_queries") or 0))
+        aq = str(int(peek.get("analytics_queries") or 0))
+    elif not audit_on:
+        qs = ss = rs = aq = "n/a"
+    else:
+        qs = ss = rs = aq = "?"
+    line = (
+        f"[CART SYNC PROFILE] queries={qs} duration_ms={duration_ms} phase={phase} "
+        f"store_queries={ss} recovery_queries={rs} analytics_queries={aq}"
+    )
+    try:
+        print(line, flush=True)
+    except OSError:
+        pass
+    try:
+        log.info("%s", line)
+    except Exception:  # noqa: BLE001
+        pass
 
 
 def _cart_state_sync_reason_is_commercial_reengagement(payload: dict[str, Any]) -> bool:
@@ -7484,8 +7667,6 @@ async def api_cart_event(request: Request, background_tasks: BackgroundTasks):
     بدون واتساب.
     """
     wall0 = time.perf_counter()
-    _ensure_cartflow_api_db_warmed()
-    cart_event_request_begin()
     ev_profile = "unknown"
     try:
         try:
@@ -7494,6 +7675,15 @@ async def api_cart_event(request: Request, background_tasks: BackgroundTasks):
             payload = None
         if not isinstance(payload, dict):
             payload = {}
+
+        ev_for_warm = payload.get("event")
+        ev_w = str(ev_for_warm).strip().lower() if ev_for_warm is not None else ""
+        rs_w = str(payload.get("reason") or "").strip().lower()
+        if not (ev_w == "cart_state_sync" and rs_w == "add"):
+            _ensure_cartflow_api_db_warmed()
+
+        cart_event_request_begin()
+
         print("[CF API] event received")
         try:
             pl_snip = json.dumps(

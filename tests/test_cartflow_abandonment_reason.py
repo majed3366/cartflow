@@ -8,6 +8,7 @@ from main import app
 from extensions import db
 from models import CartRecoveryLog, CartRecoveryReason, Store, AbandonedCart
 from schema_widget import ensure_store_widget_schema
+from services.widget_config_cache import warmup_snapshot_sync_pytest
 
 
 class TestCartflowAbandonmentReason(unittest.TestCase):
@@ -374,6 +375,7 @@ class TestCartflowAbandonmentReason(unittest.TestCase):
             self.skipTest("needs default store row")
         row.vip_cart_threshold = 400
         db.session.commit()
+        warmup_snapshot_sync_pytest("demo")
         r = self.client.get(
             "/api/cartflow/public-config",
             params={"store_slug": "demo", "cart_total": 401},

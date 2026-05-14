@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import threading
 from typing import Any
 
 import models  # noqa: F401  # تسجيل ‎ORM‎ بما فيه ‎AbandonmentReasonLog‎
@@ -10,6 +11,16 @@ from sqlalchemy import inspect, text
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 log = logging.getLogger("cartflow")
+
+_store_widget_schema_full_once_lock = threading.Lock()
+_store_widget_schema_full_once = False
+
+
+def reset_store_widget_schema_full_guard_for_tests() -> None:
+    """وحده الاختبارات — إعادة تمكين ‎ensure_store_widget_schema‎ بالكامل."""
+    global _store_widget_schema_full_once
+    _store_widget_schema_full_once = False
+
 
 _store_abandonment_schema_ensured = False
 _recovery_reason_widget_cols_ensured = False
@@ -853,56 +864,63 @@ def _ensure_store_widget_trigger_settings_column(db: Any) -> None:
 
 def ensure_store_widget_schema(db: Any) -> None:
     """يُنادى من مسارات ‎API‎ (لا يعتمد على ‎main‎)."""
-    _ensure_store_recovery_delay_minutes_column(db)
-    _ensure_store_second_attempt_delay_minutes_column(db)
-    _ensure_reason_subcategory_columns(db)
-    ensure_recovery_reason_widget_schema(db)
-    _ensure_recovery_reason_customer_phone_column(db)
-    _ensure_recovery_reason_rejection_columns(db)
-    _ensure_store_whatsapp_recovery_template_columns(db)
-    _ensure_store_trigger_templates_json_column(db)
-    _ensure_store_reason_templates_json_column(db)
-    _ensure_store_template_control_columns(db)
-    _ensure_store_exit_intent_template_columns(db)
-    _ensure_store_widget_customization_columns(db)
-    _ensure_store_vip_cart_threshold_column(db)
-    _ensure_store_vip_offer_columns(db)
-    _ensure_store_cartflow_widget_recovery_gate_columns(db)
-    _ensure_store_widget_trigger_settings_column(db)
-    _ensure_store_product_intelligence_columns(db)
-    _ensure_abandoned_cart_vip_mode_column(db)
-    _ensure_abandoned_cart_vip_lifecycle_status_column(db)
-    _ensure_abandoned_cart_recovery_session_id_column(db)
-    global _store_abandonment_schema_ensured
-    if _store_abandonment_schema_ensured:
+    global _store_widget_schema_full_once
+    if _store_widget_schema_full_once:
         return
-    try:
-        db.create_all()
-        insp = inspect(db.engine)
-        if insp.has_table("stores"):
-            existing = {c["name"] for c in insp.get_columns("stores")}
-            if "whatsapp_support_url" not in existing:
-                try:
-                    db.session.execute(
-                        text(
-                            "ALTER TABLE stores ADD COLUMN whatsapp_support_url VARCHAR(2048)"
-                        )
-                    )
-                    db.session.commit()
-                except (OSError, SQLAlchemyError, IntegrityError):
-                    db.session.rollback()
-            existing = {c["name"] for c in insp.get_columns("stores")}
-            if "store_whatsapp_number" not in existing:
-                try:
-                    db.session.execute(
-                        text(
-                            "ALTER TABLE stores ADD COLUMN store_whatsapp_number VARCHAR(64)"
-                        )
-                    )
-                    db.session.commit()
-                except (OSError, SQLAlchemyError, IntegrityError):
-                    db.session.rollback()
-        _store_abandonment_schema_ensured = True
-    except (OSError, SQLAlchemyError) as e:
-        db.session.rollback()
-        log.debug("schema_widget: %s", e)
+    with _store_widget_schema_full_once_lock:
+        if _store_widget_schema_full_once:
+            return
+        _ensure_store_recovery_delay_minutes_column(db)
+        _ensure_store_second_attempt_delay_minutes_column(db)
+        _ensure_reason_subcategory_columns(db)
+        ensure_recovery_reason_widget_schema(db)
+        _ensure_recovery_reason_customer_phone_column(db)
+        _ensure_recovery_reason_rejection_columns(db)
+        _ensure_store_whatsapp_recovery_template_columns(db)
+        _ensure_store_trigger_templates_json_column(db)
+        _ensure_store_reason_templates_json_column(db)
+        _ensure_store_template_control_columns(db)
+        _ensure_store_exit_intent_template_columns(db)
+        _ensure_store_widget_customization_columns(db)
+        _ensure_store_vip_cart_threshold_column(db)
+        _ensure_store_vip_offer_columns(db)
+        _ensure_store_cartflow_widget_recovery_gate_columns(db)
+        _ensure_store_widget_trigger_settings_column(db)
+        _ensure_store_product_intelligence_columns(db)
+        _ensure_abandoned_cart_vip_mode_column(db)
+        _ensure_abandoned_cart_vip_lifecycle_status_column(db)
+        _ensure_abandoned_cart_recovery_session_id_column(db)
+        global _store_abandonment_schema_ensured
+        if not _store_abandonment_schema_ensured:
+            try:
+                db.create_all()
+                insp = inspect(db.engine)
+                if insp.has_table("stores"):
+                    existing = {c["name"] for c in insp.get_columns("stores")}
+                    if "whatsapp_support_url" not in existing:
+                        try:
+                            db.session.execute(
+                                text(
+                                    "ALTER TABLE stores ADD COLUMN whatsapp_support_url VARCHAR(2048)"
+                                )
+                            )
+                            db.session.commit()
+                        except (OSError, SQLAlchemyError, IntegrityError):
+                            db.session.rollback()
+                    existing = {c["name"] for c in insp.get_columns("stores")}
+                    if "store_whatsapp_number" not in existing:
+                        try:
+                            db.session.execute(
+                                text(
+                                    "ALTER TABLE stores ADD COLUMN store_whatsapp_number VARCHAR(64)"
+                                )
+                            )
+                            db.session.commit()
+                        except (OSError, SQLAlchemyError, IntegrityError):
+                            db.session.rollback()
+                _store_abandonment_schema_ensured = True
+            except (OSError, SQLAlchemyError) as e:
+                db.session.rollback()
+                log.debug("schema_widget: %s", e)
+                return
+        _store_widget_schema_full_once = True
