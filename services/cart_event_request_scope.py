@@ -30,8 +30,34 @@ def cart_event_request_begin() -> None:
             "reason_any": {},
             "cart_value": {},
             "abandoned_sess_cart": {},
+            "profile_event_type": None,
+            "profile_path": None,
         }
     )
+
+
+def cart_event_profile_set_meta(
+    *,
+    event_type: Optional[str] = None,
+    path: Optional[str] = None,
+) -> None:
+    d = _scope_dict()
+    if not d:
+        return
+    if event_type is not None:
+        d["profile_event_type"] = event_type
+    if path is not None:
+        d["profile_path"] = path
+
+
+def cart_event_profile_take_meta() -> Dict[str, Any]:
+    d = _scope_dict()
+    if not d:
+        return {}
+    return {
+        "event_type": d.get("profile_event_type"),
+        "path": d.get("profile_path"),
+    }
 
 
 def cart_event_request_end() -> None:

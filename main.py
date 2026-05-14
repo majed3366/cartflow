@@ -318,6 +318,8 @@ from services.demo_sandbox_catalog import (
 from services.demo_pi_fresh_session import merge_demo_pi_fresh_query_into_context
 from services.demo_store_reset_demo import merge_demo_primary_store_demo_queries
 from services.cart_event_request_scope import (
+    cart_event_profile_set_meta,
+    cart_event_profile_take_meta,
     cart_event_request_begin,
     cart_event_request_end,
 )
@@ -3743,6 +3745,22 @@ def _cart_total_for_vip_recovery(
     return dbv if dbv is not None else payv
 
 
+def _cart_total_probe_for_vip_check(
+    cart_id: Optional[str], payload: Optional[dict[str, Any]]
+) -> Optional[float]:
+    """
+    Lightweight cart total for early VIP branching (no AbandonedCart.persist_from_abandon).
+    Used before full abandon upsert on the waiting_for_reason short-circuit.
+    """
+    pl = payload if isinstance(payload, dict) else {}
+    payv = _cart_total_from_abandon_payload(pl)
+    cid = (str(cart_id).strip()[:255] if cart_id else "") or ""
+    dbv = _abandoned_cart_cart_value_for_recovery(cid) if cid else None
+    if dbv is not None and payv is not None:
+        return max(dbv, payv)
+    return dbv if dbv is not None else payv
+
+
 def _vip_log_check(cart_total: Optional[float], threshold: Any, is_vip: bool) -> None:
     ct = "none" if cart_total is None else str(cart_total)
     th = "none" if threshold is None else str(threshold)
@@ -4198,7 +4216,8 @@ def _is_user_returned(recovery_key: str) -> bool:
         return bool(_session_recovery_returned.get(recovery_key))
 
 
-def _mark_user_returned_for_payload(payload: dict[str, Any]) -> None:
+def _mark_user_returned_in_memory_only(payload: dict[str, Any]) -> None:
+    """In-memory return flag only (no durable/analytics persistence)."""
     key = _recovery_key_from_payload(payload)
     ss = str(payload.get("store") or payload.get("store_slug") or "").strip() or "-"
     sid = str(payload.get("session_id") or "").strip()
@@ -4215,7 +4234,73 @@ def _mark_user_returned_for_payload(payload: dict[str, Any]) -> None:
     except OSError:
         pass
     log.info("%s", line)
+
+
+def _mark_user_returned_for_payload(payload: dict[str, Any]) -> None:
+    _mark_user_returned_in_memory_only(payload)
     _persist_durable_return_to_site_evidence_from_payload(payload)
+
+
+def _defer_commercial_return_to_site_db_side_effects(payload_snapshot: dict[str, Any]) -> None:
+    try:
+        _persist_durable_return_to_site_evidence_from_payload(payload_snapshot)
+        record_behavioral_user_return_from_payload(payload_snapshot)
+    except Exception as exc:  # noqa: BLE001
+        log.warning(
+            "deferred commercial return-to-site persistence failed (non-fatal): %s",
+            exc,
+            exc_info=True,
+        )
+    finally:
+        remove_scoped_session()
+
+
+def _defer_vip_merchant_auto_alert_after_cart_state_sync(snapshot: dict[str, Any]) -> None:
+    """Runs VIP merchant auto-alert after response (cart_state_sync add lightweight path)."""
+    try:
+        ss = (
+            str(snapshot.get("_vip_alert_store_slug") or "").strip()[:255]
+            or _normalize_store_slug(snapshot)
+            or "default"
+        )
+        zid = (str(snapshot.get("_vip_alert_zid") or "").strip())[:255]
+        if not zid:
+            return
+        was_vip_before = bool(snapshot.get("_vip_alert_was_vip_before"))
+        sid = (str(snapshot.get("_vip_alert_recovery_session") or "").strip())[:512]
+        store_ctx = None
+        sto_raw = snapshot.get("_vip_alert_store_pk")
+        if sto_raw is not None:
+            try:
+                store_ctx = db.session.get(Store, int(sto_raw))
+            except (SQLAlchemyError, OSError, TypeError, ValueError):
+                db.session.rollback()
+                store_ctx = None
+        db.create_all()
+        row = db.session.query(AbandonedCart).filter_by(zid_cart_id=zid).first()
+        if row is None:
+            return
+        store_for_alert = _resolve_store_for_vip_merchant_alert(
+            row, context_store_fallback=store_ctx
+        )
+        ups_sid_eff = sid or (
+            str(getattr(row, "recovery_session_id", "") or "").strip()[:512]
+        )
+        _vip_merchant_auto_alert_if_newly_entering(
+            row,
+            store_for_alert,
+            ss,
+            ups_sid_eff,
+            was_vip_before=was_vip_before,
+        )
+    except Exception as e:  # noqa: BLE001
+        log.warning(
+            "deferred vip merchant alert after cart sync failed (non-fatal): %s",
+            e,
+            exc_info=True,
+        )
+    finally:
+        remove_scoped_session()
 
 
 def _persist_durable_return_to_site_evidence_from_payload(payload: dict[str, Any]) -> None:
@@ -6538,6 +6623,60 @@ async def handle_cart_abandoned(
         f"[VIP STORE SETTINGS] store_slug={store_slug!r} store_id={vip_row_id} vip_cart_threshold={vip_th_log}"
     )
     print("store settings loaded")
+
+    cart_event_profile_set_meta(event_type="cart_abandoned")
+
+    reason_for_preflight = _effective_normal_recovery_reason_tag(
+        store_slug=store_slug,
+        session_id=session_id_log,
+        payload=payload,
+    )
+    cart_total_probe = _cart_total_probe_for_vip_check(cart_id_log, payload)
+    vip_probe = cart_total_probe is not None and is_vip_cart(cart_total_probe, store_row)
+
+    if not vip_probe and not reason_for_preflight:
+        cart_event_profile_set_meta(path="waiting_for_reason")
+        nr_line_fast = (
+            "[NORMAL RECOVERY NOT SCHEDULED] reason=missing_reason_tag "
+            f"store_slug={(store_slug or '-')[:96]} "
+            f"session_id={(session_id_log or '-')[:96]} "
+            f"cart_id={(str(cart_id_log) if cart_id_log else '-')[:80]}"
+        )
+        log.info(nr_line_fast)
+        print(nr_line_fast, flush=True)
+        if abandon_evt_phone:
+            commit_normal_recovery_phone_after_resolved(
+                store_slug=store_slug,
+                session_id=session_id_log,
+                cart_id=cart_id_log,
+                phone=abandon_evt_phone,
+                reason_tag=None,
+            )
+        ct_pending = cart_total_probe
+        if ct_pending is None:
+            ct_pending = _cart_total_from_abandon_payload(payload)
+        _mark_normal_recovery_pending_reason_tag(
+            recovery_key,
+            cart_id=cart_id_log,
+            cart_total=ct_pending,
+        )
+        _persist_cart_recovery_log(
+            store_slug=store_slug,
+            session_id=session_id_log,
+            cart_id=cart_id_log,
+            phone=None,
+            message=msg_log,
+            status="skipped_missing_reason_tag",
+        )
+        return {
+            "recovery_scheduled": False,
+            "recovery_skipped": True,
+            "recovery_state": "waiting_for_reason",
+            "waiting_for_reason": True,
+        }
+
+    cart_event_profile_set_meta(path="recovery_schedule")
+
     try:
         ok_u, err_u, _urow = upsert_abandoned_cart_from_payload(payload, store=store_row)
         if not ok_u and err_u:
@@ -6594,11 +6733,14 @@ async def handle_cart_abandoned(
             phone=abandon_evt_phone,
             reason_tag=reason_tag_ab,
         )
-    reason_for_schedule = _effective_normal_recovery_reason_tag(
-        store_slug=store_slug,
-        session_id=session_id_log,
-        payload=payload,
-    )
+    if reason_for_preflight:
+        reason_for_schedule = reason_for_preflight
+    else:
+        reason_for_schedule = _effective_normal_recovery_reason_tag(
+            store_slug=store_slug,
+            session_id=session_id_log,
+            payload=payload,
+        )
     if not reason_for_schedule:
         nr_line = (
             "[NORMAL RECOVERY NOT SCHEDULED] reason=missing_reason_tag "
@@ -6621,6 +6763,7 @@ async def handle_cart_abandoned(
             message=msg_log,
             status="skipped_missing_reason_tag",
         )
+        cart_event_profile_set_meta(path="waiting_for_reason")
         return {
             "recovery_scheduled": False,
             "recovery_skipped": True,
@@ -6994,7 +7137,11 @@ async def dev_vip_flow_verify(request: Request) -> Any:
                 db.session.rollback()
 
 
-def _handle_cart_state_sync(payload: dict[str, Any]) -> dict[str, Any]:
+def _handle_cart_state_sync(
+    payload: dict[str, Any],
+    *,
+    background_tasks: Optional[BackgroundTasks] = None,
+) -> dict[str, Any]:
     """
     مسار موحّد لمزامنة حالة السلة (‎cart_state_sync‎): قيمة، ‎VIP‎، ‎status‎ — بما فيها ‎cleared‎ للسلة الفارغة.
     """
@@ -7055,6 +7202,20 @@ def _handle_cart_state_sync(payload: dict[str, Any]) -> dict[str, Any]:
 
     is_empty = (items_count <= 0) or (cart_total <= 0.0)
 
+    sto_id: Optional[int] = None
+    if store_row is not None and getattr(store_row, "id", None) is not None:
+        sto_id = int(store_row.id)
+
+    if is_empty:
+        vip_mode_eff = False
+        status_eff = "cleared"
+    elif is_vip_cart(cart_total, store_row):
+        vip_mode_eff = True
+        status_eff = "abandoned"
+    else:
+        vip_mode_eff = False
+        status_eff = "abandoned"
+
     merge_pl: dict[str, Any] = dict(payload)
     merge_pl["store"] = store_slug
     rk = _recovery_key_from_payload(merge_pl)
@@ -7077,51 +7238,51 @@ def _handle_cart_state_sync(payload: dict[str, Any]) -> dict[str, Any]:
             "is_vip_cart": _lane_miss.get("is_vip_cart"),
         }
 
-    cart_ids = [zid]
-    syn = _synthetic_zid_cart_id_from_recovery_key(rk)
-    if syn and syn not in cart_ids:
-        cart_ids.append(syn)
+    lite_add = reason_raw == "add"
 
-    cands = _collect_abandoned_cart_rows_for_merge(
-        cart_ids=cart_ids,
-        session_id=sid_log if sid_log else None,
-        recovery_key=rk,
-        store_row=store_row,
-    )
-    row = _pick_canonical_abandoned_cart_row(cands) if cands else None
-    was_vip_before = bool(row is not None and getattr(row, "vip_mode", False))
-    if cands and row is not None:
-        ndel = _delete_noncanonical_abandoned_merge_rows(keep=row, candidates=cands)
-        if ndel:
-            try:
-                db.session.flush()
-            except IntegrityError:
-                db.session.rollback()
-                return {
-                    "ok": False,
-                    "cart_state_sync": False,
-                    "error": "merge_failed",
-                    "cart_total": float(cart_total),
-                    "vip_cart_threshold": vip_th_api,
-                    "is_vip": False
-                    if is_empty
-                    else bool(is_vip_cart(cart_total, store_row)),
-                    "vip_from_cart_total": True,
-                }
+    row: Optional[AbandonedCart] = None
+    was_vip_before = False
 
-    sto_id: Optional[int] = None
-    if store_row is not None and getattr(store_row, "id", None) is not None:
-        sto_id = int(store_row.id)
-
-    if is_empty:
-        vip_mode_eff = False
-        status_eff = "cleared"
-    elif is_vip_cart(cart_total, store_row):
-        vip_mode_eff = True
-        status_eff = "abandoned"
+    if lite_add:
+        cart_event_profile_set_meta(event_type="cart_state_sync", path="lightweight_sync")
+        try:
+            row = db.session.query(AbandonedCart).filter_by(zid_cart_id=zid).first()
+        except (SQLAlchemyError, OSError):
+            db.session.rollback()
+            row = None
+        was_vip_before = bool(row is not None and getattr(row, "vip_mode", False))
     else:
-        vip_mode_eff = False
-        status_eff = "abandoned"
+        cart_ids = [zid]
+        syn = _synthetic_zid_cart_id_from_recovery_key(rk)
+        if syn and syn not in cart_ids:
+            cart_ids.append(syn)
+
+        cands = _collect_abandoned_cart_rows_for_merge(
+            cart_ids=cart_ids,
+            session_id=sid_log if sid_log else None,
+            recovery_key=rk,
+            store_row=store_row,
+        )
+        row = _pick_canonical_abandoned_cart_row(cands) if cands else None
+        was_vip_before = bool(row is not None and getattr(row, "vip_mode", False))
+        if cands and row is not None:
+            ndel = _delete_noncanonical_abandoned_merge_rows(keep=row, candidates=cands)
+            if ndel:
+                try:
+                    db.session.flush()
+                except IntegrityError:
+                    db.session.rollback()
+                    return {
+                        "ok": False,
+                        "cart_state_sync": False,
+                        "error": "merge_failed",
+                        "cart_total": float(cart_total),
+                        "vip_cart_threshold": vip_th_api,
+                        "is_vip": False
+                        if is_empty
+                        else bool(is_vip_cart(cart_total, store_row)),
+                        "vip_from_cart_total": True,
+                    }
 
     created = row is None
     real_cid = cid_in_payload or zid
@@ -7195,16 +7356,30 @@ def _handle_cart_state_sync(payload: dict[str, Any]) -> dict[str, Any]:
     ups_cid = (str(getattr(row, "zid_cart_id", "") or zid or "")).strip()[:255]
     ups_sid = (str(getattr(row, "recovery_session_id", "") or sid_log or "")).strip()[:512]
     try:
-        store_for_alert = _resolve_store_for_vip_merchant_alert(
-            row, context_store_fallback=store_row
-        )
-        _vip_merchant_auto_alert_if_newly_entering(
-            row,
-            store_for_alert,
-            store_slug,
-            ups_sid,
-            was_vip_before=was_vip_before,
-        )
+        if lite_add and background_tasks is not None:
+            background_tasks.add_task(
+                _defer_vip_merchant_auto_alert_after_cart_state_sync,
+                {
+                    "_vip_alert_zid": zid,
+                    "_vip_alert_was_vip_before": was_vip_before,
+                    "_vip_alert_recovery_session": ups_sid,
+                    "_vip_alert_store_pk": sto_id,
+                    "_vip_alert_store_slug": store_slug,
+                    "store": store_slug,
+                    "store_slug": store_slug,
+                },
+            )
+        else:
+            store_for_alert = _resolve_store_for_vip_merchant_alert(
+                row, context_store_fallback=store_row
+            )
+            _vip_merchant_auto_alert_if_newly_entering(
+                row,
+                store_for_alert,
+                store_slug,
+                ups_sid,
+                was_vip_before=was_vip_before,
+            )
     except Exception as e:  # noqa: BLE001
         log.warning("VIP merchant auto alert hook failed (non-fatal): %s", e, exc_info=True)
     log.info(
@@ -7249,22 +7424,45 @@ def _log_cart_event_profile(*, wall_perf_start: float, event_label: str) -> None
     duration_ms = round((time.perf_counter() - wall_perf_start) * 1000.0, 1)
     peek = peek_request_audit_bucket_for_profile()
     blob: Dict[str, Any] = {"duration_ms": duration_ms, "event": event_label}
+    meta = cart_event_profile_take_meta()
+    et = meta.get("event_type")
+    path_prof = meta.get("path")
+    if isinstance(et, str) and et.strip():
+        blob["event_type"] = et.strip()
+    if isinstance(path_prof, str) and path_prof.strip():
+        blob["path"] = path_prof.strip()
     if peek is not None:
         blob["total_queries"] = peek["queries"]
         blob["store_queries"] = peek["store_queries"]
         blob["recovery_queries"] = peek["recovery_queries"]
         blob["analytics_queries"] = peek["analytics_queries"]
+        qs = peek.get("queries")
+        if qs is not None:
+            blob["queries"] = qs
         er = peek.get("elapsed_request_ms_roundtrip")
         if er is not None:
             blob["duration_ms_request_roundtrip_estimate"] = er
     else:
         blob["audit"] = "disabled_or_no_bucket"
+        blob.setdefault("queries", None)
+    if "queries" not in blob:
+        blob["queries"] = blob.get("total_queries")
     try:
         line = json.dumps(blob, ensure_ascii=False)
     except Exception:  # noqa: BLE001
         line = str(blob)
     try:
         log.info("[CART EVENT PROFILE] %s", line)
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        log.info(
+            "[CART EVENT PROFILE] event_type=%s path=%s queries=%s duration_ms=%s",
+            blob.get("event_type", "-"),
+            blob.get("path", "-"),
+            blob.get("queries", "-"),
+            duration_ms,
+        )
     except Exception:  # noqa: BLE001
         pass
 
@@ -7313,15 +7511,26 @@ async def api_cart_event(request: Request, background_tasks: BackgroundTasks):
         log.info("[EVENT ROUTING] event=%s", event)
         ev_profile = event_norm or "misc"
         if event_norm == "cart_state_sync":
+            cart_event_profile_set_meta(event_type="cart_state_sync")
             out_sync: dict[str, Any] = {"ok": True, "event": "cart_state_sync"}
-            out_sync.update(_handle_cart_state_sync(payload))
+            out_sync.update(
+                _handle_cart_state_sync(payload, background_tasks=background_tasks)
+            )
             if _cart_state_sync_reason_is_commercial_reengagement(payload):
                 act_payload = dict(payload)
                 act_payload["return_visit_kind"] = "active_commercial_reengagement"
                 act_payload["active_commercial_reengagement"] = True
                 if _return_to_site_payload_is_qualified(act_payload):
-                    _mark_user_returned_for_payload(act_payload)
-                    record_behavioral_user_return_from_payload(act_payload)
+                    _rs_reason = str(payload.get("reason") or "").strip().lower()
+                    if _rs_reason == "add":
+                        _mark_user_returned_in_memory_only(act_payload)
+                        background_tasks.add_task(
+                            _defer_commercial_return_to_site_db_side_effects,
+                            dict(act_payload),
+                        )
+                    else:
+                        _mark_user_returned_for_payload(act_payload)
+                        record_behavioral_user_return_from_payload(act_payload)
             return j(out_sync, 200)
         if event_norm == "cart_abandoned":
             print("[ROUTING TO VIP HANDLER]")
