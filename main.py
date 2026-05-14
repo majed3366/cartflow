@@ -6590,6 +6590,7 @@ async def handle_cart_abandoned(
         )
     msg_log = _default_recovery_message()
     if _is_user_converted(recovery_key):
+        cart_event_profile_set_meta(event_type="cart_abandoned", path="abandon_converted")
         print("recovery skipped: user already converted")
         _persist_cart_recovery_log(
             store_slug=store_slug,
@@ -7149,6 +7150,7 @@ def _handle_cart_state_sync(
         _ensure_cartflow_api_db_warmed()
     except (SQLAlchemyError, OSError):
         db.session.rollback()
+        cart_event_profile_set_meta(path="cart_sync_db_schema")
         return {"ok": False, "cart_state_sync": False, "error": "db_schema"}
 
     reason_raw = str(payload.get("reason") or "").strip().lower()
@@ -7226,6 +7228,7 @@ def _handle_cart_state_sync(
     if not zid:
         _is_vip_miss = False if is_empty else bool(is_vip_cart(cart_total, store_row))
         _lane_miss = vip_operational_lane_diagnostics(cart_total, store_row)
+        cart_event_profile_set_meta(path="cart_sync_missing_cart_id")
         return {
             "ok": True,
             "cart_state_sync": False,
@@ -7272,6 +7275,7 @@ def _handle_cart_state_sync(
                     db.session.flush()
                 except IntegrityError:
                     db.session.rollback()
+                    cart_event_profile_set_meta(path="cart_sync_merge_failed")
                     return {
                         "ok": False,
                         "cart_state_sync": False,
@@ -7351,7 +7355,11 @@ def _handle_cart_state_sync(
         db.session.commit()
     except IntegrityError:
         db.session.rollback()
+        cart_event_profile_set_meta(path="cart_sync_integrity_error")
         return {"ok": False, "cart_state_sync": False, "error": "integrity"}
+
+    if not lite_add:
+        cart_event_profile_set_meta(path="cart_sync_merged")
 
     ups_cid = (str(getattr(row, "zid_cart_id", "") or zid or "")).strip()[:255]
     ups_sid = (str(getattr(row, "recovery_session_id", "") or sid_log or "")).strip()[:512]
@@ -7418,51 +7426,51 @@ def _cart_state_sync_reason_is_commercial_reengagement(payload: dict[str, Any]) 
 
 
 def _log_cart_event_profile(*, wall_perf_start: float, event_label: str) -> None:
-    """تقرير خفيف لمسار ‎POST /api/cart-event‎ (يعتمد على ‎db_request_audit‎ عند تفعيله)."""
-    from services.db_request_audit import peek_request_audit_bucket_for_profile
+    """تقرير مرئي ثابت لمسار ‎POST /api/cart-event‎ (يعتمد على ‎db_request_audit‎ للأعداد عند التفعيل)."""
+    from services.db_request_audit import audit_enabled, peek_request_audit_bucket_for_profile
 
     duration_ms = round((time.perf_counter() - wall_perf_start) * 1000.0, 1)
+    audit_on = audit_enabled()
     peek = peek_request_audit_bucket_for_profile()
-    blob: Dict[str, Any] = {"duration_ms": duration_ms, "event": event_label}
     meta = cart_event_profile_take_meta()
-    et = meta.get("event_type")
-    path_prof = meta.get("path")
-    if isinstance(et, str) and et.strip():
-        blob["event_type"] = et.strip()
-    if isinstance(path_prof, str) and path_prof.strip():
-        blob["path"] = path_prof.strip()
+    raw_et = meta.get("event_type")
+    raw_path = meta.get("path")
+    event_type_eff = (
+        raw_et.strip()
+        if isinstance(raw_et, str) and raw_et.strip()
+        else (event_label.strip() if isinstance(event_label, str) else "")
+        or "misc"
+    )
+    path_eff = raw_path.strip() if isinstance(raw_path, str) and raw_path.strip() else ""
+    if not path_eff:
+        if event_type_eff == "cart_state_sync":
+            path_eff = "cart_sync_standard"
+        elif event_type_eff == "cart_abandoned":
+            path_eff = "cart_abandon_standard"
+        else:
+            path_eff = "widget_misc_standard"
+
     if peek is not None:
-        blob["total_queries"] = peek["queries"]
-        blob["store_queries"] = peek["store_queries"]
-        blob["recovery_queries"] = peek["recovery_queries"]
-        blob["analytics_queries"] = peek["analytics_queries"]
-        qs = peek.get("queries")
-        if qs is not None:
-            blob["queries"] = qs
-        er = peek.get("elapsed_request_ms_roundtrip")
-        if er is not None:
-            blob["duration_ms_request_roundtrip_estimate"] = er
+        qs = str(int(peek.get("queries") or 0))
+        ss = str(int(peek.get("store_queries") or 0))
+        rs = str(int(peek.get("recovery_queries") or 0))
+        as_ = str(int(peek.get("analytics_queries") or 0))
+    elif not audit_on:
+        qs = ss = rs = as_ = "n/a"
     else:
-        blob["audit"] = "disabled_or_no_bucket"
-        blob.setdefault("queries", None)
-    if "queries" not in blob:
-        blob["queries"] = blob.get("total_queries")
+        qs = ss = rs = as_ = "?"
+
+    profile_line = (
+        f"[CART EVENT PROFILE] event_type={event_type_eff} path={path_eff} "
+        f"queries={qs} duration_ms={duration_ms} store_queries={ss} "
+        f"recovery_queries={rs} analytics_queries={as_}"
+    )
     try:
-        line = json.dumps(blob, ensure_ascii=False)
-    except Exception:  # noqa: BLE001
-        line = str(blob)
-    try:
-        log.info("[CART EVENT PROFILE] %s", line)
-    except Exception:  # noqa: BLE001
+        print(profile_line, flush=True)
+    except OSError:
         pass
     try:
-        log.info(
-            "[CART EVENT PROFILE] event_type=%s path=%s queries=%s duration_ms=%s",
-            blob.get("event_type", "-"),
-            blob.get("path", "-"),
-            blob.get("queries", "-"),
-            duration_ms,
-        )
+        log.info("%s", profile_line)
     except Exception:  # noqa: BLE001
         pass
 
@@ -7553,6 +7561,7 @@ async def api_cart_event(request: Request, background_tasks: BackgroundTasks):
             "ok": True,
             "event": payload.get("event"),
         }
+        cart_event_profile_set_meta(event_type=ev_profile, path="widget_misc")
         if payload_indicates_active_commercial_reengagement(payload):
             try:
                 _rss = str(
