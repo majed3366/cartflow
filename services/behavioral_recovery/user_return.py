@@ -271,7 +271,11 @@ def record_passive_return_visit_from_payload(payload: dict[str, Any]) -> None:
         log.warning("passive return visit: %s", e, exc_info=True)
 
 
-def record_behavioral_user_return_from_payload(payload: dict[str, Any]) -> None:
+def record_behavioral_user_return_from_payload(
+    payload: dict[str, Any],
+    *,
+    skip_db_schema_bootstrap: bool = False,
+) -> None:
     """Persist commercial return-to-site on ‎AbandonedCart.cf_behavioral‎ (normal carts only)."""
     if not isinstance(payload, dict):
         return
@@ -326,9 +330,10 @@ def record_behavioral_user_return_from_payload(payload: dict[str, Any]) -> None:
         )
         return
     try:
-        from main import _ensure_cartflow_api_db_warmed
+        if not skip_db_schema_bootstrap:
+            from main import _ensure_cartflow_api_db_warmed
 
-        _ensure_cartflow_api_db_warmed()
+            _ensure_cartflow_api_db_warmed()
         cands = abandoned_carts_for_session_or_cart(sid, cid or None)
         non_vip_pre = [
             ac for ac in cands if not bool(getattr(ac, "vip_mode", False))

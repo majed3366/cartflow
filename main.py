@@ -2188,21 +2188,28 @@ def _defer_clear_user_rejected_help_for_cart_sync_session(
 ) -> None:
     """Post-response: يفرّغ رفض المساعدة دون تكديس جلسة ‎scoped_session‎ الطلب السابق."""
     try:
-        _clear_user_rejected_help_for_session(store_slug, session_id)
+        _clear_user_rejected_help_for_session(
+            store_slug, session_id, skip_cartflow_api_warm=True
+        )
     except Exception as exc:  # noqa: BLE001
         log.warning("deferred rejection reset skipped: %s", exc)
     finally:
         remove_scoped_session()
 
 
-def _clear_user_rejected_help_for_session(store_slug: str, session_id: str) -> None:
+def _clear_user_rejected_help_for_session(
+    store_slug: str,
+    session_id: str,
+    *,
+    skip_cartflow_api_warm: bool = False,
+) -> None:
     ss = (store_slug or "").strip()[:255]
     sid = (session_id or "").strip()[:512]
     if not ss or not sid:
         return
     try:
         global _cartflow_api_db_warmed
-        if not _cartflow_api_db_warmed:
+        if not skip_cartflow_api_warm and not _cartflow_api_db_warmed:
             _ensure_cartflow_api_db_warmed()
         row = (
             db.session.query(CartRecoveryReason)
@@ -3603,7 +3610,11 @@ def _store_row_cache_key_for_recovery(store_slug: Optional[str]) -> str:
     return f"zid:{ss_full}"
 
 
-def _load_store_row_for_recovery(store_slug: Optional[str] = None) -> Optional[Store]:
+def _load_store_row_for_recovery(
+    store_slug: Optional[str] = None,
+    *,
+    allow_schema_warm: bool = True,
+) -> Optional[Store]:
     """صف ‎Store‎ للاسترجاع و‎VIP‎: ‎zid_store_id‎ يطابق ‎store‎ من الحمولة؛ ‎demo/default‎ → نفس صف لوحة الإعدادات (آخر ‎id‎)؛ وإلا آخر سطر."""
     try:
         from services.cart_event_request_scope import (
@@ -3618,7 +3629,7 @@ def _load_store_row_for_recovery(store_slug: Optional[str] = None) -> Optional[S
             return scoped_store_get(ck)
 
         global _cartflow_api_db_warmed
-        if not _cartflow_api_db_warmed:
+        if allow_schema_warm and not _cartflow_api_db_warmed:
             _ensure_cartflow_api_db_warmed()
         latest = _dashboard_recovery_store_row()
         ss_full = (store_slug or "").strip()
@@ -4258,10 +4269,20 @@ def _mark_user_returned_for_payload(payload: dict[str, Any]) -> None:
     _persist_durable_return_to_site_evidence_from_payload(payload)
 
 
-def _defer_commercial_return_to_site_db_side_effects(payload_snapshot: dict[str, Any]) -> None:
+def _defer_commercial_return_to_site_db_side_effects(
+    payload_snapshot: dict[str, Any],
+    *,
+    skip_db_schema_bootstrap: bool = False,
+) -> None:
     try:
-        _persist_durable_return_to_site_evidence_from_payload(payload_snapshot)
-        record_behavioral_user_return_from_payload(payload_snapshot)
+        _persist_durable_return_to_site_evidence_from_payload(
+            payload_snapshot,
+            skip_db_schema_bootstrap=skip_db_schema_bootstrap,
+        )
+        record_behavioral_user_return_from_payload(
+            payload_snapshot,
+            skip_db_schema_bootstrap=skip_db_schema_bootstrap,
+        )
     except Exception as exc:  # noqa: BLE001
         log.warning(
             "deferred commercial return-to-site persistence failed (non-fatal): %s",
@@ -4293,7 +4314,6 @@ def _defer_vip_merchant_auto_alert_after_cart_state_sync(snapshot: dict[str, Any
             except (SQLAlchemyError, OSError, TypeError, ValueError):
                 db.session.rollback()
                 store_ctx = None
-        db.create_all()
         row = db.session.query(AbandonedCart).filter_by(zid_cart_id=zid).first()
         if row is None:
             return
@@ -4320,7 +4340,11 @@ def _defer_vip_merchant_auto_alert_after_cart_state_sync(snapshot: dict[str, Any
         remove_scoped_session()
 
 
-def _persist_durable_return_to_site_evidence_from_payload(payload: dict[str, Any]) -> None:
+def _persist_durable_return_to_site_evidence_from_payload(
+    payload: dict[str, Any],
+    *,
+    skip_db_schema_bootstrap: bool = False,
+) -> None:
     """
     Store-keyed durable return signal for dashboard lifecycle (independent of send-attempt logs).
     Debounced to avoid flooding on repeated client events.
@@ -4336,7 +4360,8 @@ def _persist_durable_return_to_site_evidence_from_payload(payload: dict[str, Any
         cid = (cart_id or "").strip()[:255] if cart_id else ""
         if not sid:
             return
-        db.create_all()
+        if not skip_db_schema_bootstrap:
+            db.create_all()
         cutoff = datetime.now(timezone.utc) - timedelta(
             seconds=_DURABLE_RETURN_LOG_DEBOUNCE_SEC
         )
@@ -4365,6 +4390,7 @@ def _persist_durable_return_to_site_evidence_from_payload(payload: dict[str, Any
             message="return_to_site_detected",
             status=_DURABLE_RETURN_TO_SITE_LOG_STATUS,
             step=None,
+            skip_api_warm=skip_db_schema_bootstrap,
         )
         try:
             _dline = (
@@ -4393,9 +4419,11 @@ def _persist_cart_recovery_log(
     status: str,
     sent_at: Optional[datetime] = None,
     step: Optional[int] = None,
+    skip_api_warm: bool = False,
 ) -> None:
     try:
-        _ensure_cartflow_api_db_warmed()
+        if not skip_api_warm:
+            _ensure_cartflow_api_db_warmed()
         row = CartRecoveryLog(
             store_slug=store_slug[:255],
             session_id=session_id[:512],
@@ -7296,7 +7324,9 @@ def _handle_cart_state_sync(
 
     store_slug = _normalize_store_slug(payload)
 
-    if reason_raw == "add":
+    is_lite_cart_sync_add = reason_raw == "add"
+
+    if is_lite_cart_sync_add:
         sid_for_clear = (_session_part_from_payload(payload) or "").strip()[:512]
         if sid_for_clear and store_slug.strip():
             if background_tasks is not None:
@@ -7306,15 +7336,11 @@ def _handle_cart_state_sync(
                     sid_for_clear,
                 )
             else:
-                _clear_user_rejected_help_for_session(store_slug, sid_for_clear)
-        try:
-            global _cartflow_api_db_warmed
-            if not _cartflow_api_db_warmed:
-                _ensure_cartflow_api_db_warmed()
-        except (SQLAlchemyError, OSError):
-            db.session.rollback()
-            cart_event_profile_set_meta(path="cart_sync_db_schema")
-            return {"ok": False, "cart_state_sync": False, "error": "db_schema"}
+                _clear_user_rejected_help_for_session(
+                    store_slug,
+                    sid_for_clear,
+                    skip_cartflow_api_warm=True,
+                )
     else:
         try:
             _ensure_cartflow_api_db_warmed()
@@ -7322,7 +7348,9 @@ def _handle_cart_state_sync(
             db.session.rollback()
             cart_event_profile_set_meta(path="cart_sync_db_schema")
             return {"ok": False, "cart_state_sync": False, "error": "db_schema"}
-    store_row = _load_store_row_for_recovery(store_slug)
+    store_row = _load_store_row_for_recovery(
+        store_slug, allow_schema_warm=not is_lite_cart_sync_add
+    )
     vip_th_api: Optional[int] = None
     if store_row is not None:
         _th_raw_v = getattr(store_row, "vip_cart_threshold", None)
@@ -7565,6 +7593,46 @@ def _peek_db_audit_queries_value() -> Optional[int]:
     return int(peek.get("queries") or 0)
 
 
+def _log_pre_cart_event_profile(
+    *,
+    event_type_eff: str,
+    phase: str,
+) -> None:
+    """قياس فوري قبل ‎_handle_cart_state_sync‎ (طلب كامل ضمن عدّاد المراجعة)."""
+    from services.db_request_audit import audit_enabled, peek_request_audit_bucket_for_profile
+
+    audit_on = audit_enabled()
+    peek = peek_request_audit_bucket_for_profile()
+    if peek is not None:
+        qs = str(int(peek.get("queries") or 0))
+        ss = str(int(peek.get("store_queries") or 0))
+        rs = str(int(peek.get("recovery_queries") or 0))
+        aq = str(int(peek.get("analytics_queries") or 0))
+        duration_ms_round = round(
+            float(peek.get("elapsed_request_ms_roundtrip") or 0.0),
+            1,
+        )
+    elif not audit_on:
+        qs = ss = rs = aq = "n/a"
+        duration_ms_round = 0.0
+    else:
+        qs = ss = rs = aq = "?"
+        duration_ms_round = 0.0
+    line = (
+        f"[PRE CART EVENT PROFILE] event_type={event_type_eff} phase={phase} "
+        f"queries={qs} duration_ms={duration_ms_round} store_queries={ss} "
+        f"recovery_queries={rs} analytics_queries={aq}"
+    )
+    try:
+        print(line, flush=True)
+    except OSError:
+        pass
+    try:
+        log.info("%s", line)
+    except Exception:  # noqa: BLE001
+        pass
+
+
 def _log_cart_sync_profile(
     *,
     wall_perf_start: float,
@@ -7710,6 +7778,11 @@ async def api_cart_event(request: Request, background_tasks: BackgroundTasks):
         ev_profile = event_norm or "misc"
         if event_norm == "cart_state_sync":
             cart_event_profile_set_meta(event_type="cart_state_sync")
+            if str(payload.get("reason") or "").strip().lower() == "add":
+                _log_pre_cart_event_profile(
+                    event_type_eff="cart_state_sync",
+                    phase="before_handler",
+                )
             out_sync: dict[str, Any] = {"ok": True, "event": "cart_state_sync"}
             out_sync.update(
                 _handle_cart_state_sync(payload, background_tasks=background_tasks)
@@ -7725,6 +7798,7 @@ async def api_cart_event(request: Request, background_tasks: BackgroundTasks):
                         background_tasks.add_task(
                             _defer_commercial_return_to_site_db_side_effects,
                             dict(act_payload),
+                            skip_db_schema_bootstrap=True,
                         )
                     else:
                         _mark_user_returned_for_payload(act_payload)
