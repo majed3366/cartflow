@@ -636,6 +636,9 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
             clearInterval(st().step1Poll);
             st().step1Poll = null;
           }
+          try {
+            console.log("[CF READY POLL STOP] reason=after_step1");
+          } catch (ePl) {}
           cb();
         }
       });

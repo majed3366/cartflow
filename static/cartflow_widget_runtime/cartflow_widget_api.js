@@ -133,6 +133,9 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
 
   var _sessionReadyCached = null;
   var _sessionPublicConfigCached = null;
+  var _readyFetchInFlight = null;
+  var _readyLastNetworkDoneAt = 0;
+  var READY_NETWORK_MIN_GAP_MS = 2200;
 
   function fetchReady() {
     if (/\b\/demo\//i.test(String(window.location.pathname || ""))) {
@@ -140,6 +143,22 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     }
     if (_sessionReadyCached != null && _sessionReadyCached.after_step1) {
       return Promise.resolve(_sessionReadyCached);
+    }
+    var gapNow = Date.now();
+    if (
+      _readyFetchInFlight == null &&
+      _sessionReadyCached != null &&
+      !_sessionReadyCached.after_step1 &&
+      _readyLastNetworkDoneAt > 0 &&
+      gapNow - _readyLastNetworkDoneAt < READY_NETWORK_MIN_GAP_MS
+    ) {
+      return Promise.resolve(_sessionReadyCached);
+    }
+    if (_readyFetchInFlight != null) {
+      try {
+        console.log("[CF READY REQUEST SKIPPED_DUPLICATE]");
+      } catch (eSkip) {}
+      return _readyFetchInFlight;
     }
     var b = apiBase();
     var u =
@@ -149,14 +168,28 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       encodeURIComponent(storeSlug()) +
       "&session_id=" +
       encodeURIComponent(sessionId());
-    return fetch(u, { method: "GET" }).then(function (r) {
-      return r.json().then(function (j) {
-        if (j && j.after_step1) {
-          _sessionReadyCached = j;
-        }
-        return j;
+    _readyFetchInFlight = fetch(u, { method: "GET" })
+      .then(function (r) {
+        return r.json().then(function (j) {
+          _readyLastNetworkDoneAt = Date.now();
+          if (j != null && typeof j === "object") {
+            if (j.after_step1) {
+              _sessionReadyCached = j;
+            } else if (j.ok !== false) {
+              _sessionReadyCached = j;
+            }
+          }
+          return j;
+        });
+      })
+      .catch(function () {
+        _readyLastNetworkDoneAt = Date.now();
+        return _sessionReadyCached != null ? _sessionReadyCached : { ok: false };
+      })
+      .finally(function () {
+        _readyFetchInFlight = null;
       });
-    });
+    return _readyFetchInFlight;
   }
 
   function fetchPublicConfig() {

@@ -27,8 +27,10 @@ _ready_after_step1: Dict[str, bool] = {}
 
 _per_slug_busy: Set[str] = set()
 _per_slug_last_schedule: Dict[str, float] = {}
+_refresh_fail_until_mono: Dict[str, float] = {}
 
 _signals_installed = False
+_REFRESH_FAILURE_COOLDOWN_SEC = 60.0
 
 
 def normalize_store_slug(store_slug: str) -> str:
@@ -49,19 +51,6 @@ def _trim_after_step1_map() -> None:
         if i >= _AFTER_STEP1_MAX_KEYS // 2:
             break
         _ready_after_step1.pop(key, None)
-
-
-class _SchemaDbShim:
-    """يمرِّر جلسة عارية إلى ‎ensure_store_widget_schema‎ دون تداخل scoped session‎."""
-
-    __slots__ = ("session",)
-
-    def __init__(self, session: Any) -> None:
-        self.session = session
-
-    @property
-    def engine(self) -> Any:
-        return self.session.bind
 
 
 def install_cart_recovery_ready_signals_once() -> None:
@@ -181,6 +170,7 @@ def update_from_dashboard_store_row(store_row: Any) -> None:
     with _lock:
         for k in ks:
             _store_snapshots[k] = snap
+            _refresh_fail_until_mono.pop(k, None)
     log.info(
         "[WIDGET CONFIG CACHE UPDATED_FROM_DASHBOARD] keys=%s",
         ",".join(ks[:12]) + ("..." if len(ks) > 12 else ""),
@@ -272,14 +262,13 @@ def public_http_payload(
 
 
 def _load_snapshot_from_db(norm_slug: str) -> Dict[str, Any]:
-    from schema_widget import ensure_store_widget_schema
+    """قراءة فقط من الجداول الموجودة — بدون ‎DDL‎ ولا ‎create_all‎ (مسار خلفية/اختبار)."""
+
     from services.cartflow_widget_public_store import store_row_for_widget_public_session
 
     Maker = sessionmaker(bind=db.engine)
     sess = Maker()
     try:
-        shim = _SchemaDbShim(sess)
-        ensure_store_widget_schema(shim)
         row = store_row_for_widget_public_session(sess, norm_slug)
         return build_snapshot_from_store_row(row)
     finally:
@@ -291,11 +280,26 @@ def _release_refresh_busy(norm_slug: str) -> None:
         _per_slug_busy.discard(norm_slug)
 
 
-def _run_refresh_impl(norm_slug: str) -> None:
-    snap_new = _load_snapshot_from_db(norm_slug)
+def _run_refresh_impl(norm_slug: str) -> bool:
+    """يُحدِّث الكاش عند النجاح. عند الخطأ: كتم + تبريد ‎60s‎ دون طوفان إعادة المحاولة."""
+
+    try:
+        snap_new = _load_snapshot_from_db(norm_slug)
+    except Exception as exc:  # noqa: BLE001
+        mono = time.monotonic()
+        with _lock:
+            _refresh_fail_until_mono[norm_slug] = mono + _REFRESH_FAILURE_COOLDOWN_SEC
+        log.warning(
+            "[WIDGET CONFIG REFRESH FAILURE_SUPPRESSED] store_slug=%s err=%s",
+            norm_slug[:80],
+            exc,
+        )
+        return False
     with _lock:
         _store_snapshots[norm_slug] = snap_new
+        _refresh_fail_until_mono.pop(norm_slug, None)
     log.info("[WIDGET CONFIG CACHE REFRESH_SUCCESS] store_slug=%s", norm_slug[:80])
+    return True
 
 
 def maybe_schedule_background_refresh(
@@ -310,6 +314,14 @@ def maybe_schedule_background_refresh(
         return
     mono = time.monotonic()
     with _lock:
+        fail_until = float(_refresh_fail_until_mono.get(slug) or 0.0)
+        if mono < fail_until:
+            log.info(
+                "[WIDGET CONFIG REFRESH THROTTLED] store_slug=%s cooldown_remaining_s=%.1f",
+                slug[:80],
+                max(0.0, fail_until - mono),
+            )
+            return
         if slug in _per_slug_busy:
             return
         last = float(_per_slug_last_schedule.get(slug) or 0.0)
@@ -321,14 +333,7 @@ def maybe_schedule_background_refresh(
 
     def _job() -> None:
         try:
-            try:
-                _run_refresh_impl(slug)
-            except Exception as e:  # noqa: BLE001
-                log.warning(
-                    "[WIDGET CONFIG CACHE REFRESH_FAILED] store_slug=%s err=%s",
-                    slug[:80],
-                    e,
-                )
+            _run_refresh_impl(slug)
         finally:
             _release_refresh_busy(slug)
 
@@ -349,12 +354,5 @@ def warmup_snapshot_sync_pytest(norm_slug: str) -> None:
     slug = normalize_store_slug(norm_slug)
     if not slug or not os.environ.get("PYTEST_CURRENT_TEST"):
         return
-    try:
-        _run_refresh_impl(slug)
-    except Exception as e:  # noqa: BLE001
-        log.warning(
-            "[WIDGET CONFIG CACHE REFRESH_FAILED] store_slug=%s err=%s",
-            slug[:80],
-            e,
-        )
+    _run_refresh_impl(slug)
 
