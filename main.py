@@ -1004,6 +1004,11 @@ def _ensure_cartflow_api_db_warmed() -> None:
             log.warning("cartflow api db warm failed (will retry later): %s", e)
 
 
+def _merchant_dashboard_db_ready() -> None:
+    """لوحة التاجر وواجهاتها: تدفئة المخطط مرة واحدة لكل عملية دون ‎create_all‎ لكل دالة."""
+    _ensure_cartflow_api_db_warmed()
+
+
 def _merge_recovery_settings_post_body(body: Dict[str, Any]) -> Dict[str, Any]:
     """دمج حقول الاسترجاع مع آخر ‎Store‎ حتى تعمل التحديثات الجزئية."""
     out = dict(body)
@@ -1103,9 +1108,7 @@ def _dev_apply_recovery_settings_update(
     unit = (str(recovery_delay_unit) if recovery_delay_unit is not None else "").strip().lower()
     if unit not in _VALID_RECOVERY_UNITS:
         return {"ok": False, "error": "invalid_recovery_delay_unit"}, 400
-    _ensure_store_widget_schema()
-    db.create_all()
-    _ensure_default_store_for_recovery()
+    _merchant_dashboard_db_ready()
     row = _dashboard_recovery_store_row()
     if row is None:
         return {"ok": False, "error": "no_store"}, 404
@@ -1556,8 +1559,9 @@ async def api_recovery_settings(request: Request):
     """
     واجهة ‎API‎ — تحديث أحدث ‎Store‎ (نفس التحقق والمنطق مثل ‎/dev/recovery-settings-update‎).
     """
+    wall0 = time.perf_counter()
+    _merchant_dashboard_db_ready()
     try:
-        db.create_all()
         try:
             body = await request.json()
         except Exception:  # noqa: BLE001
@@ -1581,6 +1585,12 @@ async def api_recovery_settings(request: Request):
     except Exception as e:  # noqa: BLE001
         db.session.rollback()
         return j({"ok": False, "error": str(e)}, 500)
+    finally:
+        _log_dashboard_profile(
+            endpoint="POST /api/recovery-settings",
+            section="recovery_settings_post",
+            wall_perf_start=wall0,
+        )
 
 
 @app.get("/api/recovery-settings")
@@ -1588,10 +1598,9 @@ def api_recovery_settings_get():
     """
     واجهة ‎API‎ — قراءة أحدث ‎Store.recovery_*‎.
     """
+    wall0 = time.perf_counter()
+    _merchant_dashboard_db_ready()
     try:
-        _ensure_store_widget_schema()
-        db.create_all()
-        _ensure_default_store_for_recovery()
         row = _dashboard_recovery_store_row()
         if row is None:
             return j({"ok": False, "error": "no_store"}, 500)
@@ -1633,6 +1642,12 @@ def api_recovery_settings_get():
     except Exception as e:  # noqa: BLE001
         db.session.rollback()
         return j({"ok": False, "error": str(e)}, 500)
+    finally:
+        _log_dashboard_profile(
+            endpoint="GET /api/recovery-settings",
+            section="recovery_settings_read",
+            wall_perf_start=wall0,
+        )
 
 
 @app.post("/api/dashboard/merchant-widget-settings")
@@ -1641,10 +1656,9 @@ async def api_merchant_widget_settings(request: Request):
     تحديث إعدادات الودجيت من لوحة التاجر فقط — نفس حقول ‎Store‎ الآمنة
     (‎widget_*‎، ‎exit_intent_*‎، ‎cartflow_widget_*‎، ‎reason_templates‎، ‎cf_widget_trigger_settings_json‎).
     """
+    wall0 = time.perf_counter()
+    _merchant_dashboard_db_ready()
     try:
-        _ensure_store_widget_schema()
-        db.create_all()
-        _ensure_default_store_for_recovery()
         row = _dashboard_recovery_store_row()
         if row is None:
             return j({"ok": False, "error": "no_store"}, 404)
@@ -1675,6 +1689,12 @@ async def api_merchant_widget_settings(request: Request):
     except Exception as e:  # noqa: BLE001
         db.session.rollback()
         return j({"ok": False, "error": str(e)}, 500)
+    finally:
+        _log_dashboard_profile(
+            endpoint="POST /api/dashboard/merchant-widget-settings",
+            section="merchant_widget_settings_post",
+            wall_perf_start=wall0,
+        )
 
 
 # جلسة واحدة = تسلسل استرجاع + ‎sent‎ عند اكتمال الخطوات (لكل عملية ‎worker‎)
@@ -7633,6 +7653,37 @@ def _log_pre_cart_event_profile(
         pass
 
 
+def _log_dashboard_profile(
+    *,
+    endpoint: str,
+    section: str,
+    wall_perf_start: float,
+) -> None:
+    """تقرير مرئي لمسارات لوحة التاجر — يعتمد على ‎db_request_audit‎ عند التفعيل."""
+    from services.db_request_audit import audit_enabled, peek_request_audit_bucket_for_profile
+
+    duration_ms = round((time.perf_counter() - wall_perf_start) * 1000.0, 1)
+    peek = peek_request_audit_bucket_for_profile()
+    if peek is not None:
+        qs = str(int(peek.get("queries") or 0))
+    elif not audit_enabled():
+        qs = "n/a"
+    else:
+        qs = "?"
+    line = (
+        f"[DASHBOARD PROFILE] endpoint={endpoint} queries={qs} "
+        f"duration_ms={duration_ms} section={section}"
+    )
+    try:
+        print(line, flush=True)
+    except OSError:
+        pass
+    try:
+        log.info("%s", line)
+    except Exception:  # noqa: BLE001
+        pass
+
+
 def _log_cart_sync_profile(
     *,
     wall_perf_start: float,
@@ -9590,12 +9641,16 @@ def _vip_dashboard_cart_alert_dict_from_group(
     return out_payload
 
 
-def _vip_priority_alert_rows_for_lc_clause(lc_clause: Any, *, log_suffix: str) -> list[dict[str, Any]]:
+def _vip_priority_alert_rows_for_lc_clause(
+    lc_clause: Any,
+    *,
+    log_suffix: str,
+    dash_store: Optional[Any] = None,
+) -> list[dict[str, Any]]:
     out: list[dict[str, Any]] = []
-    _ensure_store_widget_schema()
-    db.create_all()
-    _ensure_default_store_for_recovery()
-    dash_store = _dashboard_recovery_store_row()
+    _merchant_dashboard_db_ready()
+    if dash_store is None:
+        dash_store = _dashboard_recovery_store_row()
     vip_th = merchant_vip_threshold_int(dash_store)
     if vip_th is None:
         log.info("[VIP PRIORITY QUERY %s] skipped: no merchant vip_cart_threshold", log_suffix)
@@ -9649,10 +9704,17 @@ def _vip_priority_alert_rows_for_lc_clause(lc_clause: Any, *, log_suffix: str) -
     return out
 
 
-def _vip_priority_cart_alert_list() -> list[dict[str, Any]]:
+def _vip_priority_cart_alert_list(
+    *,
+    dash_store: Optional[Any] = None,
+) -> list[dict[str, Any]]:
     """قائمة ‎VIP‎ النشطة (بانتظار التواصل / تم التواصل) للوحة الإعدادات."""
     try:
-        return _vip_priority_alert_rows_for_lc_clause(VIP_PRIORITY_LC_ACTIVE_SQL, log_suffix="ACTIVE")
+        return _vip_priority_alert_rows_for_lc_clause(
+            VIP_PRIORITY_LC_ACTIVE_SQL,
+            log_suffix="ACTIVE",
+            dash_store=dash_store,
+        )
     except (SQLAlchemyError, OSError) as e:
         db.session.rollback()
         log.warning("vip_priority_cart_alerts: db read failed: %s", e)
@@ -9663,7 +9725,8 @@ def _vip_priority_completed_cart_alert_list() -> list[dict[str, Any]]:
     """المغلقة والمُباعة — لعرض اختياري في اللوحة فقط."""
     try:
         return _vip_priority_alert_rows_for_lc_clause(
-            VIP_PRIORITY_LC_TERMINAL_SQL, log_suffix="TERMINAL"
+            VIP_PRIORITY_LC_TERMINAL_SQL,
+            log_suffix="TERMINAL",
         )
     except (SQLAlchemyError, OSError) as e:
         db.session.rollback()
@@ -9676,7 +9739,7 @@ def _vip_cart_alerts_merchant_list() -> list[dict[str, Any]]:
     return _vip_priority_cart_alert_list()
 
 
-def _normal_carts_dashboard_stats() -> dict[str, Any]:
+def _normal_carts_dashboard_stats(dash_store: Optional[Any] = None) -> dict[str, Any]:
     """أرقام قراءة فقط لواجهة «السلال العادية» — بدون تغيير منطق الاسترجاع."""
     out = {
         "normal_cart_count": 0,
@@ -9685,9 +9748,8 @@ def _normal_carts_dashboard_stats() -> dict[str, Any]:
         "stopped_flow_count": 0,
     }
     try:
-        _ensure_store_widget_schema()
-        db.create_all()
-        dash_store = _dashboard_recovery_store_row()
+        if dash_store is None:
+            dash_store = _dashboard_recovery_store_row()
         if dash_store is None:
             return out
         slug = (getattr(dash_store, "zid_store_id", None) or "").strip()
@@ -10117,7 +10179,6 @@ def _normal_recovery_cart_activity_rank_map(
     if not sids and not cids:
         return out
     try:
-        db.create_all()
         cond_logs = [
             CartRecoveryLog.store_slug == slug,
         ]
@@ -10253,16 +10314,16 @@ def _normal_recovery_merchant_lightweight_alert_list(
     nr_cart: Optional[str] = None,
     nr_test_run: Optional[str] = None,
     lifecycle: str = "active",
+    dash_store: Optional[Any] = None,
 ) -> list[dict[str, Any]]:
     """
     قائمة السلال العادية للتاجر — نفس تصفية المحرك دون استدعاء ‎_normal_recovery_phase_steps_payload‎
     ولا ‎conversation_dashboard_extras‎ ولا تجميع التشخيص الثقيل.
     """
     try:
-        _ensure_store_widget_schema()
-        db.create_all()
-        _ensure_default_store_for_recovery()
-        dash_store = _dashboard_recovery_store_row()
+        _merchant_dashboard_db_ready()
+        if dash_store is None:
+            dash_store = _dashboard_recovery_store_row()
         lc_raw = (lifecycle or "active").strip().lower()
         if lc_raw not in ("active", "archived", "all"):
             lc_raw = "active"
@@ -10368,6 +10429,7 @@ def _normal_recovery_cart_alert_list(
     nr_test_run: Optional[str] = None,
     lifecycle: str = "active",
     audience: str = "ops",
+    dash_store: Optional[Any] = None,
 ) -> list[dict[str, Any]]:
     """
     سلات غير ‎VIP‎ — حمولة كاملة للوحة العمليات (تشخيص، متابعة، ‎continuation‎).
@@ -10375,10 +10437,9 @@ def _normal_recovery_cart_alert_list(
     للواجهة التجارية استخدم ‎_normal_recovery_merchant_lightweight_alert_list‎.
     """
     try:
-        _ensure_store_widget_schema()
-        db.create_all()
-        _ensure_default_store_for_recovery()
-        dash_store = _dashboard_recovery_store_row()
+        _merchant_dashboard_db_ready()
+        if dash_store is None:
+            dash_store = _dashboard_recovery_store_row()
         lc_raw = (lifecycle or "active").strip().lower()
         if lc_raw not in ("active", "archived", "all"):
             lc_raw = "active"
@@ -10492,7 +10553,6 @@ def _recovery_sales_trend_last_7_days() -> list[dict[str, Any]]:
         tzinfo=timezone.utc
     )
     try:
-        db.create_all()
         q = (
             db.session.query(AbandonedCart.recovered_at, AbandonedCart.cart_value)
             .filter(AbandonedCart.status == "recovered")
@@ -10520,10 +10580,20 @@ def _recovery_sales_trend_last_7_days() -> list[dict[str, Any]]:
 @app.get("/api/dashboard/recovery-trend")
 def api_dashboard_recovery_trend():
     """قراءة فقط — اتجاه المبيعات المسترجعة (مجموع قيمة السلة) لآخر ‎7‎ أيام."""
-    return _recovery_sales_trend_last_7_days()
+    wall0 = time.perf_counter()
+    _merchant_dashboard_db_ready()
+    out = _recovery_sales_trend_last_7_days()
+    _log_dashboard_profile(
+        endpoint="GET /api/dashboard/recovery-trend",
+        section="recovery_trend",
+        wall_perf_start=wall0,
+    )
+    return out
 
 
-def _dashboard_v1_financial_context() -> dict[str, Any]:
+def _dashboard_v1_financial_context(
+    dash_store: Optional[Any] = None,
+) -> dict[str, Any]:
     """
     بيانات الأداء المالي وأسباب التردد — تُستخدم للمحور التجاري ولصفحة التحليلات التفصيلية.
     """
@@ -10540,7 +10610,6 @@ def _dashboard_v1_financial_context() -> dict[str, Any]:
     }
     live_rows: list[dict[str, Any]] = []
     try:
-        db.create_all()
         total_carts = int(db.session.query(AbandonedCart).count() or 0)
         rev = (
             db.session.query(func.coalesce(func.sum(AbandonedCart.cart_value), 0.0))
@@ -10561,7 +10630,6 @@ def _dashboard_v1_financial_context() -> dict[str, Any]:
         use_mock = True
     if not use_mock:
         try:
-            _ensure_store_widget_schema()
             # أسباب التردد — آخر اختيار لكل جلسة في ‎cart_recovery_reasons‎
             groups = (
                 db.session.query(
@@ -10665,6 +10733,7 @@ def _dashboard_v1_financial_context() -> dict[str, Any]:
         build_merchant_whatsapp_readiness_card,
     )
 
+    ds = dash_store if dash_store is not None else _dashboard_recovery_store_row()
     return {
         "using_mock": use_mock,
         "total_carts": total_carts,
@@ -10673,9 +10742,7 @@ def _dashboard_v1_financial_context() -> dict[str, Any]:
         "conversion_pct": conversion_pct,
         "reason_bar": reason_bar,
         "live_feed": live_rows,
-        "whatsapp_readiness_card": build_merchant_whatsapp_readiness_card(
-            _dashboard_recovery_store_row()
-        ),
+        "whatsapp_readiness_card": build_merchant_whatsapp_readiness_card(ds),
     }
 
 
@@ -10708,6 +10775,8 @@ def _merchant_phone_display_masked(raw: Optional[str]) -> str:
 @app.get("/dashboard")
 def dashboard(request: Request):
     """لوحة التاجر — تصميم v1 خفيف وبيانات حقيقية آمنة."""
+    wall0 = time.perf_counter()
+    _merchant_dashboard_db_ready()
     from services.merchant_whatsapp_readiness_ui import (  # noqa: PLC0415
         build_merchant_whatsapp_readiness_card,
     )
@@ -10742,7 +10811,7 @@ def dashboard(request: Request):
     )
     try:
         merchant_carts_page_rows = _normal_recovery_merchant_lightweight_alert_list(
-            48, lifecycle="active"
+            48, lifecycle="active", dash_store=dash_store
         )
     except (SQLAlchemyError, OSError, TypeError, ValueError):
         merchant_carts_page_rows = []
@@ -10759,7 +10828,7 @@ def dashboard(request: Request):
         if bk in ("recovered", "sent", "attention", "nophone"):
             cart_filter_counts[bk] = int(cart_filter_counts.get(bk, 0)) + 1
     try:
-        vip_raw = _vip_priority_cart_alert_list()
+        vip_raw = _vip_priority_cart_alert_list(dash_store=dash_store)
     except (SQLAlchemyError, OSError, TypeError, ValueError):
         vip_raw = []
     vip_rows: list[dict[str, Any]] = []
@@ -10804,7 +10873,7 @@ def dashboard(request: Request):
         if sn:
             store_name = sn[:80]
     try:
-        mstats = dict(_normal_carts_dashboard_stats())
+        mstats = dict(_normal_carts_dashboard_stats(dash_store))
     except (SQLAlchemyError, OSError, TypeError, ValueError):
         mstats = {
             "normal_cart_count": 0,
@@ -10813,7 +10882,9 @@ def dashboard(request: Request):
             "stopped_flow_count": 0,
         }
     try:
-        followup_rows = merchant_followup_actions_for_dashboard(50)
+        followup_rows = merchant_followup_actions_for_dashboard(
+            50, dash_store=dash_store
+        )
         follow_n = len(followup_rows)
     except (SQLAlchemyError, OSError, TypeError, ValueError):
         followup_rows = []
@@ -10897,7 +10968,7 @@ def dashboard(request: Request):
     rev_today = float(kpis.get("recovered_revenue_today") or 0.0)
     rev_month = float(month_win.get("recovered_revenue") or 0.0)
     rec_pct_m = float(month_win.get("recovery_pct") or 0.0)
-    return templates.TemplateResponse(
+    resp = templates.TemplateResponse(
         request,
         "merchant_app.html",
         {
@@ -10956,17 +11027,32 @@ def dashboard(request: Request):
             "merchant_month_revenue_fmt": _merchant_dashboard_fmt_int(rev_month),
         },
     )
+    _log_dashboard_profile(
+        endpoint="GET /dashboard",
+        section="full_render",
+        wall_perf_start=wall0,
+    )
+    return resp
 
 
 @app.get("/dashboard/analytics")
 def dashboard_analytics(request: Request):
     """عرض الرسوم والتفاصيل الإضافية — يحتفظ ببث ‎live_feed‎ الكامل للفريق."""
-    ctx = _dashboard_v1_financial_context()
-    return templates.TemplateResponse(
+    wall0 = time.perf_counter()
+    _merchant_dashboard_db_ready()
+    dash_store = _dashboard_recovery_store_row()
+    ctx = _dashboard_v1_financial_context(dash_store)
+    resp = templates.TemplateResponse(
         request,
         "dashboard_v1.html",
         {"request": request, **ctx},
     )
+    _log_dashboard_profile(
+        endpoint="GET /dashboard/analytics",
+        section="analytics_page",
+        wall_perf_start=wall0,
+    )
+    return resp
 
 
 @app.get("/dashboard/recovery-settings")
@@ -10989,6 +11075,10 @@ def _normal_carts_dashboard_page_response(request: Request, *, audience: str) ->
         aud = "merchant"
     if aud != "ops":
         return RedirectResponse(url="/dashboard#carts", status_code=302)
+
+    wall0 = time.perf_counter()
+    _merchant_dashboard_db_ready()
+    dash_store = _dashboard_recovery_store_row()
 
     nr_sess = (request.query_params.get("nr_session") or "").strip()
     nr_cid = (request.query_params.get("nr_cart") or "").strip()
@@ -11019,10 +11109,10 @@ def _normal_carts_dashboard_page_response(request: Request, *, audience: str) ->
         nr_test_run=nr_tr or None,
         lifecycle=nr_lc,
         audience="ops",
+        dash_store=dash_store,
     )
-    normal_stats = dict(_normal_carts_dashboard_stats())
+    normal_stats = dict(_normal_carts_dashboard_stats(dash_store))
     normal_stats["normal_monitoring_card_count"] = len(normal_recovery_alerts)
-    dash_store = _dashboard_recovery_store_row()
     onboarding_visibility = get_onboarding_dashboard_visibility(dash_store)
     whatsapp_readiness_card = build_merchant_whatsapp_readiness_card(dash_store)
     tpl_ctx: dict[str, Any] = {
@@ -11040,11 +11130,17 @@ def _normal_carts_dashboard_page_response(request: Request, *, audience: str) ->
         "normal_merchant_dashboard_url": "/dashboard#carts",
         "normal_operations_dashboard_url": "/dashboard/normal-carts/operations",
     }
-    return templates.TemplateResponse(
+    resp = templates.TemplateResponse(
         request,
         "normal_carts_dashboard.html",
         tpl_ctx,
     )
+    _log_dashboard_profile(
+        endpoint="GET /dashboard/normal-carts/operations",
+        section="normal_carts_ops",
+        wall_perf_start=wall0,
+    )
+    return resp
 
 
 @app.get("/dashboard/normal-carts")
@@ -11089,12 +11185,20 @@ def dashboard_vip_cart_settings(request: Request):
 @app.get("/api/merchant-followup-actions")
 def api_merchant_followup_actions():
     """قائمة قراءة فقط لإجراءات المتابعة اليدوية (ردود إيجابية واتساب)."""
+    wall0 = time.perf_counter()
+    _merchant_dashboard_db_ready()
     try:
         actions = merchant_followup_actions_for_dashboard(limit=10)
         return j({"ok": True, "actions": actions})
     except (OSError, TypeError, ValueError) as e:
         log.warning("api merchant-followup-actions: %s", e)
         return j({"ok": False, "error": "failed", "actions": []}, 500)
+    finally:
+        _log_dashboard_profile(
+            endpoint="GET /api/merchant-followup-actions",
+            section="merchant_followup_actions",
+            wall_perf_start=wall0,
+        )
 
 
 @app.post("/api/merchant-followup-actions/{action_id}/complete")
@@ -11209,8 +11313,11 @@ def _merchant_followup_reason_tag_label_ar(raw_tag: Optional[str]) -> str:
     return _REASON_LABELS_AR.get(key, tag)
 
 
-def _merchant_followup_dashboard_scope_filter(q):  # type: ignore
-    dash = _dashboard_recovery_store_row()
+def _merchant_followup_dashboard_scope_filter(  # type: ignore
+    q,
+    dash_store: Optional[Any] = None,
+):
+    dash = dash_store if dash_store is not None else _dashboard_recovery_store_row()
     if dash is None or getattr(dash, "id", None) is None:
         return q
     vid = int(dash.id)
@@ -11282,27 +11389,27 @@ def _merchant_followup_row_to_payload(
     }
 
 
-def merchant_followup_actions_for_dashboard(limit: int = 10) -> list[dict[str, Any]]:
+def merchant_followup_actions_for_dashboard(
+    limit: int = 10,
+    *,
+    dash_store: Optional[Any] = None,
+) -> list[dict[str, Any]]:
     """أحدث ‎MerchantFollowupAction‎ بحالة تحتاج متابعة — نطاق المتجر الحالي للوحة."""
     out: list[dict[str, Any]] = []
     try:
-        db.create_all()
-        _ensure_store_widget_schema()
+        _merchant_dashboard_db_ready()
+        if dash_store is None:
+            dash_store = _dashboard_recovery_store_row()
         q = db.session.query(MerchantFollowupAction).filter(
             MerchantFollowupAction.status == STATUS_NEEDS_MERCHANT_FOLLOWUP,
         )
-        q = _merchant_followup_dashboard_scope_filter(q)
+        q = _merchant_followup_dashboard_scope_filter(q, dash_store=dash_store)
         rows = (
             q.order_by(MerchantFollowupAction.created_at.desc())
             .limit(max(1, min(int(limit), 50)))
             .all()
         )
-        slug = ""
-        try:
-            ds = _dashboard_recovery_store_row()
-            slug = (getattr(ds, "zid_store_id", None) or "").strip()
-        except (SQLAlchemyError, OSError, TypeError, ValueError):
-            slug = ""
+        slug = (getattr(dash_store, "zid_store_id", None) or "").strip()
         out = [_merchant_followup_row_to_payload(r, store_slug=slug or None) for r in rows]
     except (SQLAlchemyError, OSError, TypeError, ValueError) as e:
         db.session.rollback()
