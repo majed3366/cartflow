@@ -101,10 +101,21 @@ def abandoned_carts_for_session_or_cart(
 ) -> list[AbandonedCart]:
     sid = (session_id or "").strip()[:512]
     cid = (str(cart_id).strip()[:255] if cart_id else "") or ""
+    ck = (sid, cid)
+    try:
+        from services import cart_event_request_scope as _ce_scope
+    except ImportError:
+        _ce_scope = None  # type: ignore[misc, assignment]
+
+    if _ce_scope is not None:
+        if _ce_scope.scoped_abandoned_list_contains(ck):
+            return list(_ce_scope.scoped_abandoned_list_get(ck))
+
     out: list[AbandonedCart] = []
     seen: set[int] = set()
     try:
-        db.create_all()
+        if _ce_scope is None or not _ce_scope.cart_event_scope_maybe_skip_schema_create_all():
+            db.create_all()
         if cid:
             row = (
                 db.session.query(AbandonedCart)
@@ -129,6 +140,8 @@ def abandoned_carts_for_session_or_cart(
                     out.append(row)
     except (SQLAlchemyError, OSError, TypeError, ValueError):
         db.session.rollback()
+    if _ce_scope is not None:
+        _ce_scope.scoped_abandoned_list_set(ck, list(out))
     return out
 
 

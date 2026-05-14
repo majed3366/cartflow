@@ -103,7 +103,15 @@ def resolve_store_pk_for_event_slug(slug: str) -> Optional[int]:
 
         from extensions import db  # noqa: PLC0415
 
-        db.create_all()
+        try:
+            from services.cart_event_request_scope import (
+                cart_event_scope_maybe_skip_schema_create_all,
+            )
+
+            if not cart_event_scope_maybe_skip_schema_create_all():
+                db.create_all()
+        except ImportError:
+            db.create_all()
         row = _load_store_row_for_recovery(s)
         if row is None or getattr(row, "id", None) is None:
             return None

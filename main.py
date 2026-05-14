@@ -317,6 +317,10 @@ from services.demo_sandbox_catalog import (
 )
 from services.demo_pi_fresh_session import merge_demo_pi_fresh_query_into_context
 from services.demo_store_reset_demo import merge_demo_primary_store_demo_queries
+from services.cart_event_request_scope import (
+    cart_event_request_begin,
+    cart_event_request_end,
+)
 from services.vip_cart import (
     abandoned_cart_in_vip_operational_lane,
     apply_vip_cart_threshold_from_body,
@@ -2105,8 +2109,19 @@ def _cart_recovery_reason_latest_row(
     if not ss or not sid:
         return None
     try:
+        from services.cart_event_request_scope import (
+            cart_event_scope_active,
+            scoped_reason_contains,
+            scoped_reason_get,
+            scoped_reason_set,
+        )
+
+        rkey = (ss, sid)
+        if cart_event_scope_active() and scoped_reason_contains(rkey):
+            return scoped_reason_get(rkey)
+
         _ensure_cartflow_api_db_warmed()
-        return (
+        row = (
             db.session.query(CartRecoveryReason)
             .filter(
                 CartRecoveryReason.store_slug == ss,
@@ -2115,6 +2130,9 @@ def _cart_recovery_reason_latest_row(
             .order_by(CartRecoveryReason.updated_at.desc())
             .first()
         )
+        if cart_event_scope_active():
+            scoped_reason_set(rkey, row)
+        return row
     except Exception:  # noqa: BLE001
         db.session.rollback()
         return None
@@ -2128,13 +2146,26 @@ def _cart_recovery_reason_latest_row_any_store(
     if not sid:
         return None
     try:
+        from services.cart_event_request_scope import (
+            cart_event_scope_active,
+            scoped_reason_any_contains,
+            scoped_reason_any_get,
+            scoped_reason_any_set,
+        )
+
+        if cart_event_scope_active() and scoped_reason_any_contains(sid):
+            return scoped_reason_any_get(sid)
+
         _ensure_cartflow_api_db_warmed()
-        return (
+        row = (
             db.session.query(CartRecoveryReason)
             .filter(CartRecoveryReason.session_id == sid)
             .order_by(CartRecoveryReason.updated_at.desc())
             .first()
         )
+        if cart_event_scope_active():
+            scoped_reason_any_set(sid, row)
+        return row
     except Exception:  # noqa: BLE001
         db.session.rollback()
         return None
@@ -3544,21 +3575,53 @@ def _last_activity_utc_from_recovery_row(
     return dt.astimezone(timezone.utc)
 
 
+def _store_row_cache_key_for_recovery(store_slug: Optional[str]) -> str:
+    """مفتاح تخزين مؤقت لطلب واحد (‎cart-event‎ فقط حين يُفعّل النطاق)."""
+    ss_full = (store_slug or "").strip()
+    ss_key = ss_full.casefold()
+    if not ss_key:
+        return "__latest__"
+    if ss_key in _WIDGET_STORE_SLUGS_USE_DASHBOARD_LATEST:
+        return "__latest__"
+    return f"zid:{ss_full}"
+
+
 def _load_store_row_for_recovery(store_slug: Optional[str] = None) -> Optional[Store]:
     """صف ‎Store‎ للاسترجاع و‎VIP‎: ‎zid_store_id‎ يطابق ‎store‎ من الحمولة؛ ‎demo/default‎ → نفس صف لوحة الإعدادات (آخر ‎id‎)؛ وإلا آخر سطر."""
     try:
+        from services.cart_event_request_scope import (
+            cart_event_scope_active,
+            scoped_store_contains,
+            scoped_store_get,
+            scoped_store_set,
+        )
+
+        ck = _store_row_cache_key_for_recovery(store_slug)
+        if cart_event_scope_active() and scoped_store_contains(ck):
+            return scoped_store_get(ck)
+
         _ensure_cartflow_api_db_warmed()
         latest = _dashboard_recovery_store_row()
         ss_full = (store_slug or "").strip()
         ss_key = ss_full.casefold()
         if not ss_key:
-            return latest
+            out = latest
+            if cart_event_scope_active():
+                scoped_store_set(ck, out)
+            return out
         if ss_key in _WIDGET_STORE_SLUGS_USE_DASHBOARD_LATEST:
-            return latest
+            out = latest
+            if cart_event_scope_active():
+                scoped_store_set(ck, out)
+            return out
         row = db.session.query(Store).filter_by(zid_store_id=ss_full).first()
         if row is None:
-            return latest
-        return row
+            out = latest
+        else:
+            out = row
+        if cart_event_scope_active():
+            scoped_store_set(ck, out)
+        return out
     except Exception:  # noqa: BLE001
         db.session.rollback()
         return None
@@ -3574,6 +3637,16 @@ def _abandoned_cart_cart_value_for_recovery(cart_id: Optional[str]) -> Optional[
     if not cid:
         return None
     try:
+        from services.cart_event_request_scope import (
+            cart_event_scope_active,
+            scoped_cart_value_contains,
+            scoped_cart_value_get,
+            scoped_cart_value_set,
+        )
+
+        if cart_event_scope_active() and scoped_cart_value_contains(cid):
+            return scoped_cart_value_get(cid)
+
         row = (
             db.session.query(AbandonedCart.cart_value)
             .filter(AbandonedCart.zid_cart_id == cid)
@@ -3584,11 +3657,15 @@ def _abandoned_cart_cart_value_for_recovery(cart_id: Optional[str]) -> Optional[
         db.session.rollback()
         return None
     if row is None or row[0] is None:
-        return None
-    try:
-        return float(row[0])
-    except (TypeError, ValueError):
-        return None
+        out = None
+    else:
+        try:
+            out = float(row[0])
+        except (TypeError, ValueError):
+            out = None
+    if cart_event_scope_active():
+        scoped_cart_value_set(cid, out)
+    return out
 
 
 def _cart_total_from_abandon_payload(payload: dict[str, Any]) -> Optional[float]:
@@ -7202,6 +7279,7 @@ async def api_cart_event(request: Request, background_tasks: BackgroundTasks):
     """
     wall0 = time.perf_counter()
     _ensure_cartflow_api_db_warmed()
+    cart_event_request_begin()
     ev_profile = "unknown"
     try:
         try:
@@ -7318,6 +7396,7 @@ async def api_cart_event(request: Request, background_tasks: BackgroundTasks):
         return j(out, 200)
     finally:
         _log_cart_event_profile(wall_perf_start=wall0, event_label=ev_profile)
+        cart_event_request_end()
 
 
 @app.post("/api/conversion")
