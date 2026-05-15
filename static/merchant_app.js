@@ -8,6 +8,7 @@
     vip: "سلال VIP",
     messages: "الرسائل المرسلة",
     reasons: "أسباب التردد",
+    "trigger-templates": "قوالب الاسترجاع",
     widget: "الودجيت",
     whatsapp: "إعدادات واتساب",
     settings: "الإعدادات العامة",
@@ -22,6 +23,7 @@
     "#vip": "vip",
     "#messages": "messages",
     "#reasons": "reasons",
+    "#trigger-templates": "trigger-templates",
     "#widget": "widget",
     "#whatsapp": "whatsapp",
     "#settings": "settings",
@@ -72,6 +74,9 @@
     if (cb) cb.checked = false;
     window.scrollTo(0, 0);
     initCartFiltersOnce();
+    if (typeof window.maEnsureTriggerTemplatesLoaded === "function" && page === "trigger-templates") {
+      window.maEnsureTriggerTemplatesLoaded();
+    }
     if (page === "carts") {
       var bar = document.querySelector("#page-carts .filter-bar");
       var active = bar && bar.querySelector(".filter-btn.active");

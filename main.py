@@ -11846,6 +11846,81 @@ def api_dashboard_messages():
         _log_dashboard_section_profile(section="messages", wall_perf_start=wall0)
 
 
+@app.get("/api/dashboard/trigger-templates")
+def api_dashboard_trigger_templates():
+    """قوالب ‎reason_templates‎ فقط — استعلام واحد عن ‎Store‎ دون تدفئة مخطط كاملة."""
+    wall0 = time.perf_counter()
+    try:
+        from services.trigger_templates_dashboard import (
+            build_trigger_templates_get_payload,
+        )
+
+        dash_store = _dashboard_recovery_store_row()
+        if dash_store is None:
+            return j({"ok": False, "error": "no_store"}, 404)
+        tpl = build_trigger_templates_get_payload(dash_store)
+        return j({"ok": True, **tpl})
+    except Exception as e:  # noqa: BLE001
+        db.session.rollback()
+        log.warning("api_dashboard_trigger_templates: %s", e)
+        return j({"ok": False, "error": "failed"}, 500)
+    finally:
+        _log_dashboard_section_profile(
+            section="trigger_templates", wall_perf_start=wall0
+        )
+        _log_dashboard_profile(
+            endpoint="GET /api/dashboard/trigger-templates",
+            section="trigger_templates",
+            wall_perf_start=wall0,
+        )
+
+
+@app.post("/api/dashboard/trigger-templates")
+async def api_dashboard_trigger_templates_save(request: Request):
+    """دمج جزئي لـ ‎reason_templates‎ على آخر ‎Store‎ — نفس ‎apply_reason_templates_from_body‎."""
+    wall0 = time.perf_counter()
+    try:
+        dash_store = _dashboard_recovery_store_row()
+        if dash_store is None:
+            return j({"ok": False, "error": "no_store"}, 404)
+        try:
+            body = await request.json()
+        except Exception:  # noqa: BLE001
+            body = None
+        if not isinstance(body, dict):
+            return j({"ok": False, "error": "json_object_required"}, 400)
+        rt = body.get("reason_templates")
+        if not isinstance(rt, dict):
+            return j({"ok": False, "error": "reason_templates_object_required"}, 400)
+        patch = {"reason_templates": rt}
+        apply_reason_templates_from_body(dash_store, patch)
+        db.session.commit()
+        from services.widget_config_cache import update_from_dashboard_store_row
+        from services.trigger_templates_dashboard import (
+            build_trigger_templates_get_payload,
+        )
+
+        fresh = db.session.get(Store, getattr(dash_store, "id", None))
+        if fresh is not None:
+            update_from_dashboard_store_row(fresh)
+        row_out = fresh if fresh is not None else dash_store
+        tpl = build_trigger_templates_get_payload(row_out)
+        return j({"ok": True, **tpl})
+    except Exception as e:  # noqa: BLE001
+        db.session.rollback()
+        log.warning("api_dashboard_trigger_templates_save: %s", e)
+        return j({"ok": False, "error": "failed"}, 500)
+    finally:
+        _log_dashboard_section_profile(
+            section="trigger_templates", wall_perf_start=wall0
+        )
+        _log_dashboard_profile(
+            endpoint="POST /api/dashboard/trigger-templates",
+            section="trigger_templates",
+            wall_perf_start=wall0,
+        )
+
+
 def _dashboard_v1_financial_context(
     dash_store: Optional[Any] = None,
 ) -> dict[str, Any]:

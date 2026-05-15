@@ -38,6 +38,9 @@ class MerchantStandaloneAppDashboardTests(unittest.TestCase):
             "حفظ إعدادات الودجيت",
             "معاينة سطح المكتب",
             "معاينة الجوال",
+            "قوالب حسب سبب التردد",
+            'id="page-trigger-templates"',
+            "merchant_trigger_templates.js",
             'id="ma-widget-bootstrap"',
         ):
             self.assertIn(needle, html, msg=f"missing: {needle}")
@@ -70,6 +73,7 @@ class MerchantStandaloneAppDashboardTests(unittest.TestCase):
             'id="page-vip"',
             'id="page-messages"',
             'id="page-reasons"',
+            'id="page-trigger-templates"',
             'id="page-widget"',
             'id="page-whatsapp"',
             'id="page-settings"',

@@ -36,6 +36,7 @@
     <div class="nav-sec">التواصل</div>
     <button type="button" class="nav-item" data-nav="messages" onclick="goTo('messages')"><span class="nav-ico">💬</span> الرسائل المرسلة</button>
     <button type="button" class="nav-item" data-nav="reasons" onclick="goTo('reasons')"><span class="nav-ico">📋</span> أسباب التردد</button>
+    <button type="button" class="nav-item" data-nav="trigger-templates" onclick="goTo('trigger-templates')"><span class="nav-ico">📝</span> قوالب الاسترجاع</button>
     <div class="nav-sec">الإعدادات</div>
     <button type="button" class="nav-item" data-nav="widget" onclick="goTo('widget')"><span class="nav-ico">🧩</span> الودجيت</button>
     <button type="button" class="nav-item" data-nav="whatsapp" onclick="goTo('whatsapp')"><span class="nav-ico">📱</span> إعدادات واتساب</button>
@@ -179,6 +180,7 @@
             <div class="ql" onclick="goTo('whatsapp')"><span class="ql-ico">📱</span><span class="ql-label">إعدادات واتساب</span><span class="ql-arr">←</span></div>
             <div class="ql" onclick="goTo('settings')"><span class="ql-ico">⚙️</span><span class="ql-label">إعدادات عامة</span><span class="ql-arr">←</span></div>
             <div class="ql" onclick="goTo('reasons')"><span class="ql-ico">📋</span><span class="ql-label">تقرير أسباب التردد</span><span class="ql-arr">←</span></div>
+            <div class="ql" onclick="goTo('trigger-templates')"><span class="ql-ico">📝</span><span class="ql-label">قوالب حسب سبب التردد</span><span class="ql-arr">←</span></div>
           </div>
         </div>
       </div>
@@ -413,6 +415,21 @@
         {% endfor %}
         {% endif %}
       </div>
+    </div>
+  </div>
+
+  <div class="page ma-tpl-page" id="page-trigger-templates">
+    <div class="page-header">
+      <div class="page-h1">قوالب حسب سبب التردد</div>
+      <div class="page-sub" id="ma-tpl-sub">تحكم في رسالة الاسترجاع لكل سبب من أسباب التردد.</div>
+    </div>
+    <p class="ma-tpl-banner" id="ma-tpl-load-err" hidden>تعذر تحميل القوالب من الخادم.</p>
+    <div id="ma-tpl-root" class="ma-tpl-root-wrap">
+      {% if merchant_dashboard_lazy_shell %}
+      <div class="ma-dash-skel" style="padding:32px;text-align:center;color:var(--muted);" id="ma-tpl-shell-hint">…</div>
+      {% else %}
+      <div class="empty-text" style="padding:24px;text-align:center;color:var(--muted);">هذا القسم يعمل مع لوحة التاجر الكسولة.</div>
+      {% endif %}
     </div>
   </div>
 
@@ -657,6 +674,7 @@
 </div>
 
 <script defer src="/static/merchant_dashboard_lazy.js"></script>
+<script defer src="/static/merchant_trigger_templates.js"></script>
 <script defer src="/static/merchant_widget_panel.js"></script>
 <script defer src="/static/merchant_app.js"></script>
 </body>

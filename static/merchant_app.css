@@ -1022,3 +1022,123 @@ tr:hover td { background: #f8fafc; }
 .ma-dash-skel-row td {
   animation: ma-dash-pulse 1.15s ease-in-out infinite;
 }
+
+/* ===== Trigger templates (recovery per reason) ===== */
+.ma-tpl-page .page-sub {
+  margin-top: 6px;
+}
+
+#ma-tpl-load-err {
+  background: var(--red-soft);
+  color: var(--red);
+  padding: 12px 14px;
+  border-radius: 10px;
+  margin-bottom: 16px;
+  font-size: 12.5px;
+}
+
+.ma-tpl-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 640px) {
+  .ma-tpl-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1100px) {
+  .ma-tpl-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.ma-tpl-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px 14px;
+  box-shadow: var(--shadow);
+}
+
+.ma-tpl-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.ma-tpl-chip {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--green-dark);
+}
+
+.ma-tpl-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-bottom: 12px;
+}
+
+.ma-tpl-lbl {
+  display: block;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--muted);
+  margin: 8px 0 4px;
+}
+
+.ma-tpl-input {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-family: inherit;
+  font-size: 13px;
+  background: var(--surface);
+}
+
+.ma-tpl-ta {
+  min-height: 88px;
+  resize: vertical;
+  line-height: 1.55;
+}
+
+.ma-tpl-row2 {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+@media (min-width: 520px) {
+  .ma-tpl-row2 {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+}
+
+.ma-tpl-hint {
+  font-size: 11px;
+  color: var(--muted);
+  margin: 10px 0 12px;
+  line-height: 1.45;
+}
+
+.ma-tpl-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.ma-tpl-status {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--green-mid);
+}
