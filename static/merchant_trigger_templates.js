@@ -7,7 +7,17 @@
   var FETCH_URL_GET = "/api/dashboard/trigger-templates";
   var FETCH_URL_POST = "/api/dashboard/trigger-templates";
   var lastPayload = null;
-  var loadInFlight = false;
+
+  /** حالة تحميل عالمية لتفادي سباق الطلبات / إعادة الجلب بين التنقل. */
+  var MAX_DOM_READY_ATTEMPTS = 48;
+  var DOM_POLL_MS = 50;
+
+  if (typeof window.__trigger_templates_loading === "undefined") {
+    window.__trigger_templates_loading = false;
+  }
+  if (typeof window.__trigger_templates_loaded === "undefined") {
+    window.__trigger_templates_loaded = null;
+  }
 
   /** ترتيب ثابت يطابق الخادم عند الحاجة لبطاقات احتياطية. */
   var TRIGGER_KEYS_ORDER = [
@@ -189,6 +199,46 @@
     };
   }
 
+  function payloadKeys(raw) {
+    try {
+      if (!raw || typeof raw !== "object") return "(none)";
+      return Object.keys(raw).slice(0, 56).join(",");
+    } catch (unused) {
+      return "(keys_error)";
+    }
+  }
+
+  function trigLog(tag, meta) {
+    try {
+      console.log(tag, meta && typeof meta === "object" ? meta : {});
+    } catch (unusedUnused) {}
+  }
+
+  function snapshotCacheOk(snap) {
+    if (
+      !snap ||
+      typeof snap !== "object" ||
+      snap.json == null ||
+      typeof snap.json !== "object"
+    ) {
+      return false;
+    }
+    try {
+      var probe = normalizeTriggerTemplatesPayload(
+        snap.json,
+        snap.httpStatus
+      );
+      return !!(
+        probe &&
+        probe.ok &&
+        probe.reason_rows &&
+        probe.reason_rows.length
+      );
+    } catch (snapErr) {
+      return false;
+    }
+  }
+
   function cardHtml(row) {
     var keyRaw = row.key != null ? String(row.key) : "";
     var k = esc(keyRaw);
@@ -302,7 +352,12 @@
     try {
       payload = normalizeTriggerTemplatesPayload(raw, httpStatus);
     } catch (normErr) {
-      console.log("[TRIGGER TEMPLATES LOAD ERROR] normalize", normErr);
+      trigLog("[TRIGGER LOAD ERROR]", {
+        phase: "normalize_render",
+        err: String(normErr && normErr.message ? normErr.message : normErr),
+        payload_keys: payloadKeys(raw),
+        status: httpStatus,
+      });
       lastPayload = null;
       if (err) err.hidden = false;
       root.innerHTML =
@@ -315,7 +370,11 @@
     }
 
     if (!payload.ok || !payload.reason_rows || payload.reason_rows.length === 0) {
-      console.log("[TRIGGER TEMPLATES LOAD ERROR] unusable payload", raw);
+      trigLog("[TRIGGER LOAD ERROR]", {
+        phase: "unusable_payload",
+        payload_keys: payloadKeys(raw),
+        status: httpStatus,
+      });
       lastPayload = null;
       if (err) err.hidden = false;
       root.innerHTML =
@@ -331,7 +390,14 @@
         payload.reason_rows.map(cardHtml).join("") +
         "</div>";
     } catch (renderErr) {
-      console.log("[TRIGGER TEMPLATES LOAD ERROR] render", renderErr);
+      trigLog("[TRIGGER LOAD ERROR]", {
+        phase: "render_cards",
+        err: String(
+          renderErr && renderErr.message ? renderErr.message : renderErr
+        ),
+        payload_keys: payloadKeys(raw),
+        status: httpStatus,
+      });
       lastPayload = null;
       if (err) err.hidden = false;
       root.innerHTML =
@@ -382,6 +448,27 @@
         }
       });
     });
+  }
+
+  /** يرسم بعد توفر الحاوية (تجنّب فشل ‎SPA‎ عند تفعيل الصفحة قبل بناء DOM). */
+  function renderWhenRootReady(raw, httpStatus, domAttempt, onDone) {
+    var root = byId("ma-tpl-root");
+    if (root && root.isConnected) {
+      render(raw, httpStatus);
+      var ok =
+        !!(lastPayload && lastPayload.ok && lastPayload.reason_rows &&
+          lastPayload.reason_rows.length);
+      if (onDone) onDone(ok);
+      return;
+    }
+    if (domAttempt >= MAX_DOM_READY_ATTEMPTS) {
+      window.__trigger_templates_loading = false;
+      if (onDone) onDone(false);
+      return;
+    }
+    window.setTimeout(function () {
+      renderWhenRootReady(raw, httpStatus, domAttempt + 1, onDone);
+    }, DOM_POLL_MS);
   }
 
   function findRow(key) {
@@ -474,7 +561,17 @@
       })
       .then(function (pack) {
         if (pack.ok && pack.payload) {
-          render(pack.payload, pack.httpStatus);
+          window.__trigger_templates_loaded = {
+            json: pack.payload,
+            httpStatus:
+              typeof pack.httpStatus === "number" ? pack.httpStatus : 200,
+          };
+          renderWhenRootReady(
+            pack.payload,
+            typeof pack.httpStatus === "number" ? pack.httpStatus : 200,
+            0,
+            function () {}
+          );
           var newCard = document.querySelector('[data-ma-tpl-key="' + key + '"]');
           var st2 =
             newCard && newCard.querySelector("[data-ma-tpl-status]");
@@ -491,53 +588,223 @@
       });
   }
 
-  function loadTemplates() {
-    if (loadInFlight) return;
-    var root = byId("ma-tpl-root");
-    if (!root) return;
-
-    loadInFlight = true;
-    console.log("[TRIGGER TEMPLATES LOAD START]");
-    root.innerHTML =
-      '<div class="ma-tpl-loading ma-dash-skel" style="padding:32px;text-align:center;color:var(--muted);">جاري تحميل القوالب…</div>';
-
-    fetch(FETCH_URL_GET, { credentials: "same-origin" })
-      .then(function (r) {
-        var status = r.status;
-        return r.json().then(
-          function (json) {
-            return { status: status, json: json };
-          },
-          function (parseErr) {
-            console.log("[TRIGGER TEMPLATES LOAD ERROR] json parse", parseErr);
-            return { status: status, json: null };
+  function loadTemplates(forceRefresh) {
+    forceRefresh = !!forceRefresh;
+    var perfNow =
+      typeof performance !== "undefined" && performance.now
+        ? function () {
+            return performance.now();
           }
-        );
-      })
-      .then(function (pack) {
-        if (!pack.json) {
-          console.log("[TRIGGER TEMPLATES LOAD ERROR] empty body");
-          render({}, pack.status);
-          return;
-        }
-        render(pack.json, pack.status);
-        var norm = lastPayload;
-        if (norm && norm.ok && norm.reason_rows && norm.reason_rows.length) {
-          console.log(
-            "[TRIGGER TEMPLATES LOAD SUCCESS]",
-            norm.reason_rows.length
-          );
-        } else {
-          console.log("[TRIGGER TEMPLATES LOAD ERROR]", "not ok or no rows");
-        }
-      })
-      .catch(function (e) {
-        console.log("[TRIGGER TEMPLATES LOAD ERROR]", e);
-        render({}, 0);
-      })
-      .finally(function () {
-        loadInFlight = false;
+        : function () {
+            return Date.now();
+          };
+
+    var wall0 = perfNow();
+
+    function wallMs() {
+      return Math.round(perfNow() - wall0);
+    }
+
+    if (!forceRefresh && window.__trigger_templates_loading) {
+      trigLog("[TRIGGER LOAD SKIP ALREADY_LOADING]", {
+        duration_ms: wallMs(),
+        status: "(in_flight)",
+        payload_keys: window.__trigger_templates_loaded
+          ? payloadKeys(window.__trigger_templates_loaded.json)
+          : "(none)",
       });
+      return;
+    }
+
+    var cached = window.__trigger_templates_loaded;
+    if (!forceRefresh && snapshotCacheOk(cached)) {
+      trigLog("[TRIGGER LOAD START]", {
+        duration_ms: 0,
+        source: "memory_cache",
+        status: cached.httpStatus,
+        payload_keys: payloadKeys(cached.json),
+      });
+      var rCache = byId("ma-tpl-root");
+      if (rCache && rCache.isConnected) {
+        rCache.innerHTML =
+          '<div class="ma-tpl-loading ma-dash-skel" style="padding:32px;text-align:center;color:var(--muted);">جاري عرض القوالب…</div>';
+      }
+      renderWhenRootReady(cached.json, cached.httpStatus, 0, function (okDom) {
+        if (okDom) {
+          trigLog("[TRIGGER LOAD SUCCESS]", {
+            duration_ms: wallMs(),
+            status: cached.httpStatus,
+            payload_keys: payloadKeys(cached.json),
+            source: "memory_cache",
+          });
+        } else {
+          trigLog("[TRIGGER LOAD ERROR]", {
+            duration_ms: wallMs(),
+            status: cached.httpStatus,
+            payload_keys: payloadKeys(cached.json),
+            source: "memory_cache_dom",
+          });
+        }
+      });
+      return;
+    }
+
+    window.__trigger_templates_loading = true;
+    trigLog("[TRIGGER LOAD START]", {
+      duration_ms: 0,
+      source: "network_fetch",
+      status: "(pending)",
+      payload_keys: "(request)",
+    });
+
+    var shell = byId("ma-tpl-root");
+    if (shell && shell.isConnected) {
+      shell.innerHTML =
+        '<div class="ma-tpl-loading ma-dash-skel" style="padding:32px;text-align:center;color:var(--muted);">جاري تحميل القوالب…</div>';
+    }
+
+    var sawRetry = false;
+
+    function runFetch(isRetry) {
+      var t0 = perfNow();
+
+      fetch(FETCH_URL_GET, { credentials: "same-origin" })
+        .then(function (resp) {
+          var st = resp.status;
+          return resp.json().then(
+            function (json) {
+              return {
+                status: st,
+                json: json,
+                parse_failed: false,
+              };
+            },
+            function () {
+              return { status: st, json: null, parse_failed: true };
+            }
+          );
+        })
+        .then(function (pack) {
+          var fetchMs = Math.round(perfNow() - t0);
+          var httpOk =
+            typeof pack.status === "number" &&
+            pack.status >= 200 &&
+            pack.status < 300;
+          var gotJson =
+            pack.json != null &&
+            typeof pack.json === "object" &&
+            !pack.parse_failed;
+
+          var normProbe = null;
+          if (httpOk && gotJson) {
+            try {
+              normProbe = normalizeTriggerTemplatesPayload(
+                pack.json,
+                pack.status
+              );
+            } catch (probErrUnused) {
+              normProbe = null;
+            }
+          }
+
+          var dataUsable =
+            !!(
+              normProbe &&
+              normProbe.ok &&
+              normProbe.reason_rows &&
+              normProbe.reason_rows.length
+            );
+
+          var shouldRetryFetch =
+            !isRetry &&
+            !sawRetry &&
+            (!httpOk || !gotJson || pack.parse_failed || !dataUsable);
+
+          if (shouldRetryFetch) {
+            sawRetry = true;
+            trigLog("[TRIGGER LOAD RETRY]", {
+              duration_ms: fetchMs,
+              status:
+                typeof pack.status === "number" ? pack.status : "(unknown)",
+              payload_keys: payloadKeys(pack.json || {}),
+              after_ms: 500,
+            });
+            window.setTimeout(function () {
+              runFetch(true);
+            }, 500);
+            return;
+          }
+
+          if (!httpOk || !gotJson || !dataUsable) {
+            trigLog("[TRIGGER LOAD ERROR]", {
+              duration_ms: wallMs(),
+              status:
+                typeof pack.status === "number" ? pack.status : "(unknown)",
+              payload_keys: payloadKeys(pack.json || {}),
+              phase: isRetry ? "after_retry" : "immediate",
+              fetch_ms: fetchMs,
+            });
+            window.__trigger_templates_loading = false;
+            renderWhenRootReady(
+              pack.json || {},
+              typeof pack.status === "number" ? pack.status : 0,
+              0,
+              function () {}
+            );
+            return;
+          }
+
+          window.__trigger_templates_loaded = {
+            json: pack.json,
+            httpStatus: pack.status,
+          };
+
+          renderWhenRootReady(pack.json, pack.status, 0, function (okDom) {
+            window.__trigger_templates_loading = false;
+            var meta = {
+              duration_ms: wallMs(),
+              status: pack.status,
+              payload_keys: payloadKeys(pack.json),
+              fetch_ms: fetchMs,
+            };
+            if (okDom) {
+              trigLog("[TRIGGER LOAD SUCCESS]", meta);
+            } else {
+              meta.phase = "dom_timeout_or_render";
+              trigLog("[TRIGGER LOAD ERROR]", meta);
+            }
+          });
+        })
+        .catch(function (netErr) {
+          var fetchMsCatch = Math.round(perfNow() - t0);
+          if (!isRetry && !sawRetry) {
+            sawRetry = true;
+            trigLog("[TRIGGER LOAD RETRY]", {
+              duration_ms: fetchMsCatch,
+              status: "(network)",
+              payload_keys: "(none)",
+              after_ms: 500,
+              err: String(netErr && netErr.message ? netErr.message : netErr),
+            });
+            window.setTimeout(function () {
+              runFetch(true);
+            }, 500);
+            return;
+          }
+          trigLog("[TRIGGER LOAD ERROR]", {
+            duration_ms: wallMs(),
+            status: "(network)",
+            payload_keys: "(none)",
+            phase: "fetch_catch_final",
+            fetch_ms: fetchMsCatch,
+            err: String(netErr && netErr.message ? netErr.message : netErr),
+          });
+          window.__trigger_templates_loading = false;
+          renderWhenRootReady({}, 0, 0, function () {});
+        });
+    }
+
+    runFetch(false);
   }
 
   window.maEnsureTriggerTemplatesLoaded = loadTemplates;
