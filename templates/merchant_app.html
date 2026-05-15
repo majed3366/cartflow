@@ -24,9 +24,15 @@
   <nav>
     <div class="nav-sec">القائمة الرئيسية</div>
     <button type="button" class="nav-item active" data-nav="home" onclick="goTo('home')"><span class="nav-ico">📊</span> الرئيسية</button>
+    {% if merchant_dashboard_lazy_shell %}
+    <button type="button" class="nav-item" data-nav="carts" onclick="goTo('carts')"><span class="nav-ico">🛒</span> السلال المتروكة<span class="nb nb-r" id="ma-nav-badge-abandoned" style="display:none;"></span></button>
+    <button type="button" class="nav-item" data-nav="followup" onclick="goTo('followup')"><span class="nav-ico">🔔</span> سلال تحتاج متابعة<span class="nb nb-a" id="ma-nav-badge-followup" style="display:none;"></span></button>
+    <button type="button" class="nav-item" data-nav="vip" onclick="goTo('vip')"><span class="nav-ico">👑</span> سلال VIP<span class="nb nb-a" id="ma-nav-badge-vip" style="display:none;"></span></button>
+    {% else %}
     <button type="button" class="nav-item" data-nav="carts" onclick="goTo('carts')"><span class="nav-ico">🛒</span> السلال المتروكة{% if merchant_nav_badge_abandoned and merchant_nav_badge_abandoned > 0 %}<span class="nb nb-r">{{ merchant_nav_badge_abandoned }}</span>{% endif %}</button>
     <button type="button" class="nav-item" data-nav="followup" onclick="goTo('followup')"><span class="nav-ico">🔔</span> سلال تحتاج متابعة{% if merchant_nav_badge_followup and merchant_nav_badge_followup > 0 %}<span class="nb nb-a">{{ merchant_nav_badge_followup }}</span>{% endif %}</button>
     <button type="button" class="nav-item" data-nav="vip" onclick="goTo('vip')"><span class="nav-ico">👑</span> سلال VIP{% if merchant_nav_badge_vip and merchant_nav_badge_vip > 0 %}<span class="nb nb-a">{{ merchant_nav_badge_vip }}</span>{% endif %}</button>
+    {% endif %}
     <div class="nav-sec">التواصل</div>
     <button type="button" class="nav-item" data-nav="messages" onclick="goTo('messages')"><span class="nav-ico">💬</span> الرسائل المرسلة</button>
     <button type="button" class="nav-item" data-nav="reasons" onclick="goTo('reasons')"><span class="nav-ico">📋</span> أسباب التردد</button>
@@ -45,13 +51,20 @@
     <label for="ma-sidebar-toggle" class="ma-nav-open" aria-label="فتح القائمة">☰</label>
     <div class="topbar-title" id="pageTitle">الرئيسية</div>
     <div class="topbar-right">
+      {% if merchant_dashboard_lazy_shell %}
+      <div class="topbar-date" id="ma-topbar-date">{{ merchant_ar_date_header | default("") }}</div>
+      <div id="ma-topbar-wa-wrap"><div class="wa-pill ma-dash-skel wa-muted"><div class="wa-dot"></div><span id="ma-topbar-wa-text">{{ wa_badge_ar | default("—") }}</span></div></div>
+      {% else %}
       <div class="topbar-date">{{ merchant_ar_date_header | default("") }}</div>
       <div class="wa-pill {% if wa_state_key != 'ready' %}wa-muted{% endif %}"><div class="wa-dot"></div>{{ wa_badge_ar | default("—") }}</div>
+      {% endif %}
     </div>
   </div>
 
   <div class="page active" id="page-home">
-    {% if merchant_vip_banner %}
+    {% if merchant_dashboard_lazy_shell %}
+    <div id="ma-home-vip-banner" style="display:none;"></div>
+    {% elif merchant_vip_banner %}
     <div class="vip-alert">
       <div class="va-icon">👑</div>
       <div class="va-body">
@@ -68,28 +81,45 @@
         <div class="kpi-stripe" style="background:#dc2626"></div>
         <span class="kpi-ico">🛒</span>
         <div class="kpi-label">سلال متروكة اليوم</div>
+        {% if merchant_dashboard_lazy_shell %}
+        <div class="kpi-value ma-dash-skel" id="ma-kpi-abandoned">{{ merchant_kpi_abandoned_fmt | default("…") }}</div>
+        {% else %}
         <div class="kpi-value">{{ merchant_kpi_abandoned_fmt | default("0") }}</div>
+        {% endif %}
         <div class="kpi-note neutral">منذ فتح المتجر</div>
       </div>
       <div class="kpi">
         <div class="kpi-stripe" style="background:var(--green-mid)"></div>
         <span class="kpi-ico">✅</span>
         <div class="kpi-label">تم استردادها</div>
+        {% if merchant_dashboard_lazy_shell %}
+        <div class="kpi-value ma-dash-skel" id="ma-kpi-recovered">{{ merchant_kpi_recovered_fmt | default("…") }}</div>
+        <div class="kpi-note neutral" id="ma-kpi-recovered-note">—</div>
+        {% else %}
         <div class="kpi-value">{{ merchant_kpi_recovered_fmt | default("0") }}</div>
         <div class="kpi-note {% if merchant_kpi_recovered_pct_vs_abandoned > 0 %}up{% else %}neutral{% endif %}">{% if merchant_kpi_recovered_pct_vs_abandoned > 0 %}↑ نسبة {{ "%.0f"|format(merchant_kpi_recovered_pct_vs_abandoned) }}٪{% else %}—{% endif %}</div>
+        {% endif %}
       </div>
       <div class="kpi">
         <div class="kpi-stripe" style="background:var(--amber)"></div>
         <span class="kpi-ico">💬</span>
         <div class="kpi-label">رسائل واتساب</div>
+        {% if merchant_dashboard_lazy_shell %}
+        <div class="kpi-value ma-dash-skel" id="ma-kpi-wa">{{ merchant_kpi_wa_sent_fmt | default("…") }}</div>
+        {% else %}
         <div class="kpi-value">{{ merchant_kpi_wa_sent_fmt | default("0") }}</div>
+        {% endif %}
         <div class="kpi-note neutral">{{ merchant_kpi_wa_sub_ar | default("سجلات اليوم") }}</div>
       </div>
       <div class="kpi">
         <div class="kpi-stripe" style="background:#7c3aed"></div>
         <span class="kpi-ico">💰</span>
         <div class="kpi-label">إيرادات مستردة</div>
+        {% if merchant_dashboard_lazy_shell %}
+        <div class="kpi-value ma-dash-skel" id="ma-kpi-revenue">{{ merchant_kpi_revenue_fmt | default("…") }}</div>
+        {% else %}
         <div class="kpi-value">{{ merchant_kpi_revenue_fmt | default("0") }}</div>
+        {% endif %}
         <div class="kpi-note up">↑ ريال اليوم</div>
       </div>
     </div>
@@ -103,7 +133,10 @@
         <div class="table-scroll">
           <table>
             <thead><tr><th>قيمة السلة</th><th>سبب التردد</th><th>الحالة</th><th>الخطوة التالية</th><th>جوال</th></tr></thead>
-            <tbody>
+            <tbody id="ma-tbody-home-carts">
+              {% if merchant_dashboard_lazy_shell %}
+              <tr class="ma-dash-skel-row"><td colspan="5" style="text-align:center;padding:24px;color:var(--muted);">…</td></tr>
+              {% else %}
               {% for mc in merchant_table_rows %}
               <tr>
                 <td><div class="camt">{{ "{:,.0f}".format((mc.merchant_cart_value or 0)|float) }} ر</div><div class="ctime">{{ mc.merchant_time_relative_ar | default("—") }}</div></td>
@@ -115,6 +148,7 @@
               {% else %}
               <tr><td colspan="5" class="empty-text" style="text-align:center;padding:24px;color:var(--muted);">لا توجد سلال ضمن النشاط الحالي</td></tr>
               {% endfor %}
+              {% endif %}
             </tbody>
           </table>
         </div>
@@ -122,7 +156,10 @@
       <div class="side-stack">
         <div class="card">
           <div class="card-head"><div class="card-title">أسباب التردد — الأسبوع</div><button type="button" class="card-link" onclick="goTo('reasons')">تقرير كامل</button></div>
-          <div class="reasons-body">
+          <div class="reasons-body" id="ma-reasons-week-body">
+            {% if merchant_dashboard_lazy_shell %}
+            <div class="ma-dash-skel" style="padding:12px;color:var(--muted);">…</div>
+            {% else %}
             {% for rr in merchant_reason_rows_week %}
             <div class="r-row">
               <div class="r-head"><span class="r-name">{{ rr.label_ar }}</span><span class="r-pct">{{ "%.0f"|format(rr.count_pct | float) }}٪</span></div>
@@ -132,6 +169,7 @@
             <div class="empty-text" style="padding:12px;color:var(--muted);">لا توجد بيانات أسباب التردد لهذا الأسبوع</div>
             {% endfor %}
             {% if merchant_reason_insight_ar %}<div class="r-insight">{{ merchant_reason_insight_ar }}</div>{% endif %}
+            {% endif %}
           </div>
         </div>
         <div class="card">
@@ -150,14 +188,25 @@
       <div class="card">
         <div class="card-head"><div class="card-title">ملخص الشهر</div></div>
         <div class="mini-grid">
+          {% if merchant_dashboard_lazy_shell %}
+          <div class="mc"><div class="mc-l">إجمالي السلال</div><div class="mc-v ma-dash-skel" id="ma-month-abandoned">{{ merchant_month_abandoned_fmt | default("…") }}</div></div>
+          <div class="mc"><div class="mc-l">تم استردادها</div><div class="mc-v ma-dash-skel" style="color:var(--green-mid);" id="ma-month-recovered">{{ merchant_month_recovered_fmt | default("…") }}</div></div>
+          <div class="mc"><div class="mc-l">نسبة الاسترداد</div><div class="mc-v ma-dash-skel" style="color:var(--green-mid);" id="ma-month-pct">{{ merchant_month_recovery_pct_fmt | default("…") }}٪</div></div>
+          <div class="mc"><div class="mc-l">إيرادات مستردة</div><div class="mc-v ma-dash-skel" id="ma-month-revenue">{{ merchant_month_revenue_fmt | default("…") }} ر</div></div>
+          {% else %}
           <div class="mc"><div class="mc-l">إجمالي السلال</div><div class="mc-v">{{ merchant_month_abandoned_fmt | default("0") }}</div></div>
           <div class="mc"><div class="mc-l">تم استردادها</div><div class="mc-v" style="color:var(--green-mid);">{{ merchant_month_recovered_fmt | default("0") }}</div></div>
           <div class="mc"><div class="mc-l">نسبة الاسترداد</div><div class="mc-v" style="color:var(--green-mid);">{{ merchant_month_recovery_pct_fmt | default("0") }}٪</div></div>
           <div class="mc"><div class="mc-l">إيرادات مستردة</div><div class="mc-v">{{ merchant_month_revenue_fmt | default("0") }} ر</div></div>
+          {% endif %}
         </div>
       </div>
       <div class="card">
         <div class="card-head"><div class="card-title">👑 سلال VIP — تحتاج تدخلك</div><button type="button" class="card-link" onclick="goTo('vip')">عرض الكل</button></div>
+        <div id="ma-vip-home-list">
+        {% if merchant_dashboard_lazy_shell %}
+        <div class="ma-dash-skel" style="padding:16px;color:var(--muted);text-align:center;">…</div>
+        {% else %}
         {% for vr in merchant_vip_rows %}
         <div class="vip-item">
           <div class="vav">{{ vr.avatar_letter }}</div>
@@ -168,6 +217,8 @@
         {% else %}
         <div class="empty-state"><div class="empty-icon">👑</div><div class="empty-text">لا سلال VIP تحتاج تدخلك حالياً</div></div>
         {% endfor %}
+        {% endif %}
+        </div>
         <div class="ma-vip-footnote">⚠️ VIP لا يتلقى رسائل تلقائية — تدخلك الشخصي يصنع الفرق</div>
       </div>
     </div>
@@ -179,11 +230,19 @@
       <div class="page-sub">جميع السلال العادية (غير VIP) المرتبطة بمتجرك — صفِّ حسب الحالة</div>
     </div>
     <div class="filter-bar" id="ma-cart-filters">
+      {% if merchant_dashboard_lazy_shell %}
+      <button type="button" class="filter-btn active" data-filter="all">الكل (<span id="ma-filt-all">0</span>)</button>
+      <button type="button" class="filter-btn" data-filter="recovered">تم الاسترداد (<span id="ma-filt-recovered">0</span>)</button>
+      <button type="button" class="filter-btn" data-filter="sent">رسالة أُرسلت (<span id="ma-filt-sent">0</span>)</button>
+      <button type="button" class="filter-btn" data-filter="attention">يحتاج متابعة (<span id="ma-filt-attention">0</span>)</button>
+      <button type="button" class="filter-btn" data-filter="nophone">لا جوال (<span id="ma-filt-nophone">0</span>)</button>
+      {% else %}
       <button type="button" class="filter-btn active" data-filter="all">الكل ({{ merchant_cart_filter_counts.all | default(0) }})</button>
       <button type="button" class="filter-btn" data-filter="recovered">تم الاسترداد ({{ merchant_cart_filter_counts.recovered | default(0) }})</button>
       <button type="button" class="filter-btn" data-filter="sent">رسالة أُرسلت ({{ merchant_cart_filter_counts.sent | default(0) }})</button>
       <button type="button" class="filter-btn" data-filter="attention">يحتاج متابعة ({{ merchant_cart_filter_counts.attention | default(0) }})</button>
       <button type="button" class="filter-btn" data-filter="nophone">لا جوال ({{ merchant_cart_filter_counts.nophone | default(0) }})</button>
+      {% endif %}
     </div>
     <div class="card">
       <div class="table-scroll">
@@ -193,7 +252,10 @@
               <th>قيمة السلة</th><th>سبب التردد</th><th>الحالة</th><th>الخطوة التالية</th><th>آخر نشاط</th><th>جوال</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody id="ma-tbody-all-carts">
+            {% if merchant_dashboard_lazy_shell %}
+            <tr class="ma-dash-skel-row"><td colspan="6" style="text-align:center;padding:24px;color:var(--muted);">…</td></tr>
+            {% else %}
             {% for mc in merchant_carts_page_rows %}
             <tr data-ma-filter="{{ mc.merchant_cart_bucket | default('other') }}">
               <td><div class="camt">{{ "{:,.0f}".format((mc.merchant_cart_value or 0)|float) }} ر</div><div class="ctime">{{ mc.merchant_time_relative_ar | default("—") }}</div></td>
@@ -206,6 +268,7 @@
             {% else %}
             <tr><td colspan="6" class="empty-state" style="border:none;"><div class="empty-icon">🛒</div><div class="empty-text">لا توجد سلال متروكة مسجّلة حالياً ضمن نطاق متجرك</div></td></tr>
             {% endfor %}
+            {% endif %}
           </tbody>
         </table>
       </div>
@@ -225,7 +288,10 @@
               <th>قيمة السلة</th><th>سبب التردد</th><th>آخر رسالة / ملاحظة</th><th>محاولات الاسترداد</th><th>جوال</th><th>إجراء</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody id="ma-tbody-followups">
+            {% if merchant_dashboard_lazy_shell %}
+            <tr class="ma-dash-skel-row"><td colspan="6" style="text-align:center;padding:24px;color:var(--muted);">…</td></tr>
+            {% else %}
             {% for fr in merchant_followup_rows %}
             <tr>
               <td>{% if fr.cart_value is not none %}<div class="camt">{{ "{:,.0f}".format(fr.cart_value|float) }} ر</div>{% else %}<div class="camt">—</div>{% endif %}<div class="ctime">{{ fr.replied_at | default("—") }}</div></td>
@@ -238,6 +304,7 @@
             {% else %}
             <tr><td colspan="6" class="empty-state" style="border:none;"><div class="empty-icon">🔔</div><div class="empty-text">لا توجد سلال تحتاج متابعتك حالياً</div></td></tr>
             {% endfor %}
+            {% endif %}
           </tbody>
         </table>
       </div>
@@ -262,7 +329,10 @@
           <thead>
             <tr><th>قيمة السلة</th><th>الوصف</th><th>جوال</th><th>الإجراء</th></tr>
           </thead>
-          <tbody>
+          <tbody id="ma-tbody-vip-page">
+            {% if merchant_dashboard_lazy_shell %}
+            <tr class="ma-dash-skel-row"><td colspan="4" style="text-align:center;padding:24px;color:var(--muted);">…</td></tr>
+            {% else %}
             {% for vr in merchant_vip_page_rows %}
             <tr>
               <td><div class="camt">{{ vr.amount_display }} ريال</div></td>
@@ -273,6 +343,7 @@
             {% else %}
             <tr><td colspan="4" class="empty-state" style="border:none;"><div class="empty-icon">👑</div><div class="empty-text">لا توجد سلال VIP نشطة تحتاج تدخلك الآن</div></td></tr>
             {% endfor %}
+            {% endif %}
           </tbody>
         </table>
       </div>
@@ -285,7 +356,10 @@
       <div class="page-h1">الرسائل المرسلة</div>
       <div class="page-sub">سجل رسائل استرداد واتساب المسجّلة لمتجرك</div>
     </div>
-    <div class="card">
+    <div class="card" id="ma-messages-card">
+      {% if merchant_dashboard_lazy_shell %}
+      <div class="ma-dash-skel" style="padding:40px 20px;text-align:center;color:var(--muted);">…</div>
+      {% else %}
       {% for mr in merchant_message_history_rows %}
       <div class="msg-row">
         <div class="msg-avatar">💬</div>
@@ -304,6 +378,7 @@
       {% else %}
       <div class="empty-state" style="padding:40px 20px;"><div class="empty-icon">💬</div><div class="empty-text">لا توجد رسائل مرسلة بعد</div></div>
       {% endfor %}
+      {% endif %}
     </div>
   </div>
 
@@ -313,8 +388,11 @@
       <div class="page-sub">توزيع أسباب ترك السلة خلال آخر 30 يوماً</div>
     </div>
     <div class="reasons-full-grid">
-      <div class="reasons-full">
+      <div class="reasons-full" id="ma-reasons-month-body">
         <h3>توزيع الأسباب — آخر 30 يوماً</h3>
+        {% if merchant_dashboard_lazy_shell %}
+        <div class="ma-dash-skel" style="padding:16px;color:var(--muted);">…</div>
+        {% else %}
         {% for rb in merchant_reason_rows_month %}
         <div class="r-big">
           <div class="r-big-head"><span class="r-big-name">{{ rb.label_ar }}</span><span class="r-big-pct">{{ "%.0f"|format(rb.count_pct | float) }}٪</span></div>
@@ -323,12 +401,17 @@
         {% else %}
         <div class="empty-text" style="padding:16px;">لا توجد بيانات أسباب كافية لهذه الفترة</div>
         {% endfor %}
+        {% endif %}
       </div>
-      <div class="insights-box">
+      <div class="insights-box" id="ma-reasons-insights">
         <div class="ib-title">💡 توصيات</div>
+        {% if merchant_dashboard_lazy_shell %}
+        <div class="ib-item ma-dash-skel">…</div>
+        {% else %}
         {% for line in merchant_reason_recommendations_ar %}
         <div class="ib-item">📌 {{ line }}</div>
         {% endfor %}
+        {% endif %}
       </div>
     </div>
   </div>
@@ -509,8 +592,8 @@
         <div class="setting-title">الحساب والاتصال</div>
         <div class="setting-desc">رقم المتجر المخزّن لإرسال الاسترداد</div>
         <div class="setting-row"><span class="setting-label">رقم واتساب</span><span class="setting-value">{{ merchant_wa_number_display | default("—") }}</span></div>
-        <div class="setting-row"><span class="setting-label">حالة الجاهزية</span><div class="wa-pill {% if wa_state_key != 'ready' %}wa-muted{% endif %}" style="font-size:10px;padding:3px 9px;"><div class="wa-dot"></div>{{ wa_badge_ar | default("—") }}</div></div>
-        <div class="setting-row"><span class="setting-label">آخر إرسال مسجّل</span><span class="setting-value">{{ merchant_wa_last_send_ar | default("—") }}</span></div>
+        <div class="setting-row"><span class="setting-label">حالة الجاهزية</span><div id="ma-page-whatsapp-ready-pill" class="wa-pill {% if wa_state_key != 'ready' %}wa-muted{% endif %}" style="font-size:10px;padding:3px 9px;"><div class="wa-dot"></div><span id="ma-page-whatsapp-ready-text">{{ wa_badge_ar | default("—") }}</span></div></div>
+        <div class="setting-row"><span class="setting-label">آخر إرسال مسجّل</span><span class="setting-value" id="ma-wa-last-send">{{ merchant_wa_last_send_ar | default("—") }}</span></div>
       </div>
       <div class="setting-card">
         <div class="setting-title">قواعد الإرسال</div>
@@ -554,7 +637,7 @@
         <div class="setting-title">الخطة والاشتراك</div>
         <div class="setting-desc">عرض الخطة الحالية للوحة التاجر</div>
         <div class="setting-row"><span class="setting-label">الخطة الحالية</span><span class="setting-value" style="color:var(--green-mid);font-weight:700;">احترافي</span></div>
-        <div class="setting-row"><span class="setting-label">سلال هذا الشهر (مؤشر)</span><span class="setting-value">{{ merchant_month_abandoned_fmt | default("0") }} سلة مسجّلة</span></div>
+        <div class="setting-row"><span class="setting-label">سلال هذا الشهر (مؤشر)</span><span class="setting-value" id="ma-settings-month-cart-line">{{ merchant_month_abandoned_fmt | default("0") }} سلة مسجّلة</span></div>
       </div>
       <div class="setting-card">
         <div class="setting-title">الإشعارات</div>
@@ -566,13 +649,14 @@
       <div class="setting-card">
         <div class="setting-title">الودجيت والتثبيت</div>
         <div class="setting-desc">حالة ظهور الودجيت للعملاء</div>
-        <div class="setting-row"><span class="setting-label">الودجيت مفعّل</span><span class="setting-value">{% if merchant_widget_installed %}نعم{% else %}لا{% endif %}</span></div>
-        <div class="setting-row"><span class="setting-label">اسم الودجيت</span><span class="setting-value">{{ merchant_widget_title_ar | default("—") }}</span></div>
+        <div class="setting-row"><span class="setting-label">الودجيت مفعّل</span><span class="setting-value" id="ma-settings-widget-enabled">{% if merchant_widget_installed %}نعم{% else %}لا{% endif %}</span></div>
+        <div class="setting-row"><span class="setting-label">اسم الودجيت</span><span class="setting-value" id="ma-settings-widget-title">{{ merchant_widget_title_ar | default("—") }}</span></div>
       </div>
     </div>
   </div>
 </div>
 
+<script defer src="/static/merchant_dashboard_lazy.js"></script>
 <script defer src="/static/merchant_widget_panel.js"></script>
 <script defer src="/static/merchant_app.js"></script>
 </body>

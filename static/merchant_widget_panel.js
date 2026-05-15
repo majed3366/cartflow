@@ -270,6 +270,17 @@
     refreshPreview();
   }
 
+  window.cartflowMerchantWidgetPanelRefresh = refreshPreview;
+
+  window.cartflowMerchantWidgetPanelRebindReasons = function () {
+    var tb = byId("mw-reason-tbody");
+    if (tb) {
+      tb.removeAttribute("data-mw-bound");
+    }
+    bindReasonReorder();
+    refreshPreview();
+  };
+
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", init);
   } else {

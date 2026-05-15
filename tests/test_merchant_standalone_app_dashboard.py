@@ -57,6 +57,7 @@ class MerchantStandaloneAppDashboardTests(unittest.TestCase):
         self.assertNotIn("recovery_ops_dashboard", t)
         self.assertNotIn("cartflow_runtime_health", t)
         self.assertIn("merchant_widget_panel.js", t)
+        self.assertIn("merchant_dashboard_lazy.js", t)
 
     def test_dashboard_contains_all_section_page_ids(self) -> None:
         r = self.client.get("/dashboard")
@@ -74,6 +75,13 @@ class MerchantStandaloneAppDashboardTests(unittest.TestCase):
             'id="page-settings"',
         ):
             self.assertIn(pid, html, msg=f"missing: {pid}")
+
+    def test_dashboard_summary_api_returns_ok(self) -> None:
+        r = self.client.get("/api/dashboard/summary")
+        self.assertEqual(r.status_code, 200, r.text[:300])
+        payload = r.json()
+        self.assertTrue(payload.get("ok"))
+        self.assertIn("merchant_kpi_abandoned_fmt", payload)
 
     def test_dashboard_merchant_html_has_no_ops_session_field(self) -> None:
         r = self.client.get("/dashboard")

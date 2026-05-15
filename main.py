@@ -7684,6 +7684,46 @@ def _log_dashboard_profile(
         pass
 
 
+def _dashboard_lazy_profile_queries_str() -> str:
+    from services.db_request_audit import audit_enabled, peek_request_audit_bucket_for_profile
+
+    peek = peek_request_audit_bucket_for_profile()
+    if peek is not None:
+        return str(int(peek.get("queries") or 0))
+    return "n/a" if not audit_enabled() else "?"
+
+
+def _log_dashboard_shell_profile(*, wall_perf_start: float) -> None:
+    duration_ms = round((time.perf_counter() - wall_perf_start) * 1000.0, 1)
+    qs = _dashboard_lazy_profile_queries_str()
+    line = f"[DASHBOARD SHELL PROFILE] queries={qs} duration_ms={duration_ms}"
+    try:
+        print(line, flush=True)
+    except OSError:
+        pass
+    try:
+        log.info("%s", line)
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def _log_dashboard_section_profile(*, section: str, wall_perf_start: float) -> None:
+    duration_ms = round((time.perf_counter() - wall_perf_start) * 1000.0, 1)
+    qs = _dashboard_lazy_profile_queries_str()
+    line = (
+        f"[DASHBOARD SECTION PROFILE] section={section} queries={qs} "
+        f"duration_ms={duration_ms}"
+    )
+    try:
+        print(line, flush=True)
+    except OSError:
+        pass
+    try:
+        log.info("%s", line)
+    except Exception:  # noqa: BLE001
+        pass
+
+
 def _log_cart_sync_profile(
     *,
     wall_perf_start: float,
@@ -10581,14 +10621,108 @@ def _recovery_sales_trend_last_7_days() -> list[dict[str, Any]]:
 def api_dashboard_recovery_trend():
     """قراءة فقط — اتجاه المبيعات المسترجعة (مجموع قيمة السلة) لآخر ‎7‎ أيام."""
     wall0 = time.perf_counter()
-    _merchant_dashboard_db_ready()
-    out = _recovery_sales_trend_last_7_days()
-    _log_dashboard_profile(
-        endpoint="GET /api/dashboard/recovery-trend",
-        section="recovery_trend",
-        wall_perf_start=wall0,
-    )
-    return out
+    try:
+        _merchant_dashboard_db_ready()
+        out = _recovery_sales_trend_last_7_days()
+        return out
+    finally:
+        _log_dashboard_section_profile(section="recovery_trend", wall_perf_start=wall0)
+
+
+@app.get("/api/dashboard/summary")
+def api_dashboard_summary():
+    wall0 = time.perf_counter()
+    try:
+        _merchant_dashboard_db_ready()
+        dash_store = _dashboard_recovery_store_row()
+        body = _api_json_dashboard_summary(dash_store)
+        return j({"ok": True, **body})
+    except Exception as e:  # noqa: BLE001
+        db.session.rollback()
+        log.warning("api_dashboard_summary: %s", e)
+        return j({"ok": False, "error": "failed"}, 500)
+    finally:
+        _log_dashboard_section_profile(section="summary", wall_perf_start=wall0)
+
+
+@app.get("/api/dashboard/normal-carts")
+def api_dashboard_normal_carts():
+    wall0 = time.perf_counter()
+    try:
+        _merchant_dashboard_db_ready()
+        dash_store = _dashboard_recovery_store_row()
+        body = _api_json_dashboard_normal_carts(dash_store)
+        return j({"ok": True, **body})
+    except Exception as e:  # noqa: BLE001
+        db.session.rollback()
+        log.warning("api_dashboard_normal_carts: %s", e)
+        return j({"ok": False, "error": "failed"}, 500)
+    finally:
+        _log_dashboard_section_profile(section="normal_carts", wall_perf_start=wall0)
+
+
+@app.get("/api/dashboard/vip-carts")
+def api_dashboard_vip_carts():
+    wall0 = time.perf_counter()
+    try:
+        _merchant_dashboard_db_ready()
+        dash_store = _dashboard_recovery_store_row()
+        body = _api_json_dashboard_vip_carts(dash_store)
+        return j({"ok": True, **body})
+    except Exception as e:  # noqa: BLE001
+        db.session.rollback()
+        log.warning("api_dashboard_vip_carts: %s", e)
+        return j({"ok": False, "error": "failed"}, 500)
+    finally:
+        _log_dashboard_section_profile(section="vip_carts", wall_perf_start=wall0)
+
+
+@app.get("/api/dashboard/followups")
+def api_dashboard_followups():
+    wall0 = time.perf_counter()
+    try:
+        _merchant_dashboard_db_ready()
+        dash_store = _dashboard_recovery_store_row()
+        body = _api_json_dashboard_followups(dash_store)
+        return j({"ok": True, **body})
+    except Exception as e:  # noqa: BLE001
+        db.session.rollback()
+        log.warning("api_dashboard_followups: %s", e)
+        return j({"ok": False, "error": "failed"}, 500)
+    finally:
+        _log_dashboard_section_profile(section="followups", wall_perf_start=wall0)
+
+
+@app.get("/api/dashboard/widget-panel")
+def api_dashboard_widget_panel():
+    wall0 = time.perf_counter()
+    try:
+        _merchant_dashboard_db_ready()
+        dash_store = _dashboard_recovery_store_row()
+        body = _api_json_dashboard_widget_panel(dash_store)
+        return j({"ok": True, **body})
+    except Exception as e:  # noqa: BLE001
+        db.session.rollback()
+        log.warning("api_dashboard_widget_panel: %s", e)
+        return j({"ok": False, "error": "failed"}, 500)
+    finally:
+        _log_dashboard_section_profile(section="widget_panel", wall_perf_start=wall0)
+
+
+@app.get("/api/dashboard/messages")
+def api_dashboard_messages():
+    wall0 = time.perf_counter()
+    try:
+        _merchant_dashboard_db_ready()
+        dash_store = _dashboard_recovery_store_row()
+        body = _api_json_dashboard_messages(dash_store)
+        return j({"ok": True, **body})
+    except Exception as e:  # noqa: BLE001
+        db.session.rollback()
+        log.warning("api_dashboard_messages: %s", e)
+        return j({"ok": False, "error": "failed"}, 500)
+    finally:
+        _log_dashboard_section_profile(section="messages", wall_perf_start=wall0)
 
 
 def _dashboard_v1_financial_context(
@@ -10772,16 +10906,67 @@ def _merchant_phone_display_masked(raw: Optional[str]) -> str:
     return "••••" + digits[-4:]
 
 
-@app.get("/dashboard")
-def dashboard(request: Request):
-    """لوحة التاجر — تصميم v1 خفيف وبيانات حقيقية آمنة."""
-    wall0 = time.perf_counter()
-    _merchant_dashboard_db_ready()
+def _merchant_dashboard_shell_store_fields(dash_store: Optional[Any]) -> Dict[str, Any]:
+    """حقول قراءة فقط من صف ‎Store‎ — بدون قوائم استرجاع أو تجميعات ثقيلة."""
+    store_name = "متجرك"
+    if dash_store is not None:
+        sn = (getattr(dash_store, "name", None) or "").strip()
+        if sn:
+            store_name = sn[:80]
+    zid_disp = (
+        (getattr(dash_store, "zid_store_id", None) or "").strip()[:64]
+        if dash_store is not None
+        else ""
+    )
+    platform_ar = f"معرّف المتجر: {zid_disp}" if zid_disp else "غير مربوط بعد"
+    wa_num_raw = (
+        (getattr(dash_store, "store_whatsapp_number", None) or "").strip()
+        if dash_store is not None
+        else ""
+    )
+    wa_num_display = _merchant_phone_display_masked(wa_num_raw)
+    rd_u = (
+        (getattr(dash_store, "recovery_delay_unit", None) or "minutes")
+        .strip()
+        .lower()
+        if dash_store is not None
+        else "minutes"
+    )
+    rdelay = int(getattr(dash_store, "recovery_delay", None) or 2) if dash_store else 2
+    if rd_u in ("minute", "minutes", "min"):
+        first_delay_ar = f"{rdelay} دقيقة"
+    elif rd_u in ("hour", "hours", "hr", "h"):
+        first_delay_ar = f"{rdelay} ساعة"
+    else:
+        first_delay_ar = f"{rdelay} ({rd_u})"
+    sec_m = getattr(dash_store, "second_attempt_delay_minutes", None) if dash_store else None
+    if sec_m is not None:
+        try:
+            second_delay_ar = f"بعد {int(sec_m)} دقيقة من أول رسالة"
+        except (TypeError, ValueError):
+            second_delay_ar = "يُطبّق وفق الجدولة في النظام"
+    else:
+        second_delay_ar = "يُطبّق وفق الجدولة في النظام"
+    max_msgs = int(getattr(dash_store, "recovery_attempts", None) or 1) if dash_store else 1
+    vip_th = merchant_vip_threshold_int(dash_store)
+    vip_threshold_ar = f"{int(vip_th):,} ريال" if vip_th is not None else "غير مفعّل"
+    return {
+        "merchant_store_display_name": store_name,
+        "merchant_platform_ar": platform_ar,
+        "merchant_wa_number_display": wa_num_display,
+        "merchant_wa_first_delay_ar": first_delay_ar,
+        "merchant_wa_second_delay_ar": second_delay_ar,
+        "merchant_wa_max_messages_ar": f"{max_msgs} رسائل كحد أقصى",
+        "merchant_wa_vip_threshold_ar": vip_threshold_ar,
+    }
+
+
+def _api_json_dashboard_summary(dash_store: Optional[Any]) -> Dict[str, Any]:
+    """‎KPI‎ + شهر + أسباب + شارة الواجهة + عداد السلال في القائمة (بدون استعلام قائمة VIP/متابعة)."""
     from services.merchant_whatsapp_readiness_ui import (  # noqa: PLC0415
         build_merchant_whatsapp_readiness_card,
     )
 
-    dash_store = _dashboard_recovery_store_row()
     now_utc = datetime.now(timezone.utc)
     try:
         kpis = _merchant_kpi_today_projection(dash_store)
@@ -10802,13 +10987,72 @@ def dashboard(request: Request):
             "recovered_revenue": 0.0,
         }
     reason_counts_w = _merchant_reason_counts_store_window(dash_store, days=7)
-    reason_rows, reason_insight = merchant_reason_panel_rows_from_counts(
-        reason_counts_w
-    )
+    reason_rows, reason_insight = merchant_reason_panel_rows_from_counts(reason_counts_w)
     reason_counts_m = _merchant_reason_counts_store_window(dash_store, days=30)
     reason_rows_month, reason_insight_month = merchant_reason_panel_rows_from_counts(
         reason_counts_m
     )
+    try:
+        mstats = dict(_normal_carts_dashboard_stats(dash_store))
+    except (SQLAlchemyError, OSError, TypeError, ValueError):
+        mstats = {
+            "normal_cart_count": 0,
+            "messages_sent_count": 0,
+            "normal_recovered_count": 0,
+            "stopped_flow_count": 0,
+        }
+    wa_card = build_merchant_whatsapp_readiness_card(dash_store)
+    if (reason_insight_month or "").strip():
+        merchant_reason_recommendations_ar = [str(reason_insight_month).strip()]
+    else:
+        merchant_reason_recommendations_ar = [
+            "لا توجد بيانات كافية بعد لعرض توصيات مخصّصة لهذا الشهر."
+        ]
+    ab_today = int(kpis.get("abandoned_today") or 0)
+    rec_today = int(kpis.get("recovered_today") or 0)
+    pct_recovered_vs_abandoned = 0.0
+    if ab_today > 0:
+        pct_recovered_vs_abandoned = round(
+            100.0 * float(rec_today) / float(ab_today), 1
+        )
+    rev_today = float(kpis.get("recovered_revenue_today") or 0.0)
+    rev_month = float(month_win.get("recovered_revenue") or 0.0)
+    rec_pct_m = float(month_win.get("recovery_pct") or 0.0)
+    return {
+        "merchant_ar_date_header": merchant_ar_weekday_date_header(now_utc),
+        "wa_badge_ar": str(wa_card.get("badge_ar") or "—"),
+        "wa_state_key": str(wa_card.get("state_key") or ""),
+        "merchant_kpi_abandoned_fmt": _merchant_dashboard_fmt_int(
+            kpis.get("abandoned_today")
+        ),
+        "merchant_kpi_recovered_fmt": _merchant_dashboard_fmt_int(
+            kpis.get("recovered_today")
+        ),
+        "merchant_kpi_wa_sent_fmt": _merchant_dashboard_fmt_int(
+            kpis.get("whatsapp_sent_today")
+        ),
+        "merchant_kpi_revenue_fmt": _merchant_dashboard_fmt_int(rev_today),
+        "merchant_kpi_recovered_pct_vs_abandoned": pct_recovered_vs_abandoned,
+        "merchant_kpi_wa_sub_ar": "سجلات إرسال اليوم",
+        "merchant_reason_rows_week": reason_rows,
+        "merchant_reason_insight_ar": reason_insight,
+        "merchant_reason_rows_month": reason_rows_month,
+        "merchant_reason_recommendations_ar": merchant_reason_recommendations_ar,
+        "merchant_month_abandoned_fmt": _merchant_dashboard_fmt_int(
+            month_win.get("abandoned_total")
+        ),
+        "merchant_month_recovered_fmt": _merchant_dashboard_fmt_int(
+            month_win.get("recovered_total")
+        ),
+        "merchant_month_recovery_pct_fmt": f"{rec_pct_m:.1f}",
+        "merchant_month_revenue_fmt": _merchant_dashboard_fmt_int(rev_month),
+        "merchant_nav_badge_abandoned": int(mstats.get("normal_cart_count") or 0),
+        "merchant_nav_badge_followup": 0,
+        "merchant_nav_badge_vip": 0,
+    }
+
+
+def _api_json_dashboard_normal_carts(dash_store: Optional[Any]) -> Dict[str, Any]:
     try:
         merchant_carts_page_rows = _normal_recovery_merchant_lightweight_alert_list(
             48, lifecycle="active", dash_store=dash_store
@@ -10827,6 +11071,14 @@ def dashboard(request: Request):
         bk = str(_cr.get("merchant_cart_bucket") or "other").strip().lower()
         if bk in ("recovered", "sent", "attention", "nophone"):
             cart_filter_counts[bk] = int(cart_filter_counts.get(bk, 0)) + 1
+    return {
+        "merchant_table_rows": table_rows,
+        "merchant_carts_page_rows": merchant_carts_page_rows,
+        "merchant_cart_filter_counts": cart_filter_counts,
+    }
+
+
+def _api_json_dashboard_vip_carts(dash_store: Optional[Any]) -> Dict[str, Any]:
     try:
         vip_raw = _vip_priority_cart_alert_list(dash_store=dash_store)
     except (SQLAlchemyError, OSError, TypeError, ValueError):
@@ -10867,44 +11119,35 @@ def dashboard(request: Request):
             "amount_line": f"سلة بقيمة {amt_int:,} ريال — {proj0.get('subtitle_ar', '')}",
             "contact_href": proj0.get("contact_href") or "",
         }
-    store_name = "متجرك"
-    if dash_store is not None:
-        sn = (getattr(dash_store, "name", None) or "").strip()
-        if sn:
-            store_name = sn[:80]
-    try:
-        mstats = dict(_normal_carts_dashboard_stats(dash_store))
-    except (SQLAlchemyError, OSError, TypeError, ValueError):
-        mstats = {
-            "normal_cart_count": 0,
-            "messages_sent_count": 0,
-            "normal_recovered_count": 0,
-            "stopped_flow_count": 0,
-        }
+    return {
+        "merchant_vip_banner": vip_banner,
+        "merchant_vip_rows": vip_rows,
+        "merchant_vip_page_rows": vip_page_rows,
+        "merchant_nav_badge_vip": len(vip_raw) if vip_raw else 0,
+    }
+
+
+def _api_json_dashboard_followups(dash_store: Optional[Any]) -> Dict[str, Any]:
     try:
         followup_rows = merchant_followup_actions_for_dashboard(
             50, dash_store=dash_store
         )
-        follow_n = len(followup_rows)
     except (SQLAlchemyError, OSError, TypeError, ValueError):
         followup_rows = []
-        follow_n = 0
-    vip_ct = len(vip_raw) if vip_raw else 0
-    wa_card = build_merchant_whatsapp_readiness_card(dash_store)
-    try:
-        message_history_rows = _merchant_recovery_message_history_rows(
-            dash_store, limit=40
-        )
-    except (SQLAlchemyError, OSError, TypeError, ValueError):
-        message_history_rows = []
-    last_send_ar = "—"
-    if message_history_rows:
-        last_send_ar = str(message_history_rows[0].get("time_ar") or "—")
+    return {
+        "merchant_followup_rows": followup_rows,
+        "merchant_nav_badge_followup": len(followup_rows),
+    }
+
+
+def _api_json_dashboard_widget_panel(dash_store: Optional[Any]) -> Dict[str, Any]:
     from services.merchant_widget_panel import merchant_widget_panel_bundle  # noqa: PLC0415
 
     merchant_widget_panel = merchant_widget_panel_bundle(dash_store)
     merchant_widget_title_ar = str(merchant_widget_panel.get("widget_name") or "مساعد المتجر")
-    ex_mode = str(merchant_widget_panel.get("exit_intent_template_mode") or "preset").strip().lower()
+    ex_mode = str(
+        merchant_widget_panel.get("exit_intent_template_mode") or "preset"
+    ).strip().lower()
     ex_custom = str(merchant_widget_panel.get("exit_intent_custom_text") or "").strip()
     if ex_mode == "custom" and ex_custom:
         merchant_widget_question_ar = ex_custom[:500]
@@ -10915,123 +11158,90 @@ def dashboard(request: Request):
         for r in (merchant_widget_panel.get("reason_rows") or [])
     ]
     widget_installed = bool(merchant_widget_panel.get("cartflow_widget_enabled", True))
-    zid_disp = (
-        (getattr(dash_store, "zid_store_id", None) or "").strip()[:64]
-        if dash_store is not None
-        else ""
-    )
-    platform_ar = f"معرّف المتجر: {zid_disp}" if zid_disp else "غير مربوط بعد"
-    wa_num_raw = (
-        (getattr(dash_store, "store_whatsapp_number", None) or "").strip()
-        if dash_store is not None
-        else ""
-    )
-    wa_num_display = _merchant_phone_display_masked(wa_num_raw)
-    rd_u = (
-        (getattr(dash_store, "recovery_delay_unit", None) or "minutes")
-        .strip()
-        .lower()
-        if dash_store is not None
-        else "minutes"
-    )
-    rdelay = int(getattr(dash_store, "recovery_delay", None) or 2) if dash_store else 2
-    if rd_u in ("minute", "minutes", "min"):
-        first_delay_ar = f"{rdelay} دقيقة"
-    elif rd_u in ("hour", "hours", "hr", "h"):
-        first_delay_ar = f"{rdelay} ساعة"
-    else:
-        first_delay_ar = f"{rdelay} ({rd_u})"
-    sec_m = getattr(dash_store, "second_attempt_delay_minutes", None) if dash_store else None
-    if sec_m is not None:
-        try:
-            second_delay_ar = f"بعد {int(sec_m)} دقيقة من أول رسالة"
-        except (TypeError, ValueError):
-            second_delay_ar = "يُطبّق وفق الجدولة في النظام"
-    else:
-        second_delay_ar = "يُطبّق وفق الجدولة في النظام"
-    max_msgs = int(getattr(dash_store, "recovery_attempts", None) or 1) if dash_store else 1
-    vip_th = merchant_vip_threshold_int(dash_store)
-    vip_threshold_ar = f"{int(vip_th):,} ريال" if vip_th is not None else "غير مفعّل"
-    if (reason_insight_month or "").strip():
-        merchant_reason_recommendations_ar = [str(reason_insight_month).strip()]
-    else:
-        merchant_reason_recommendations_ar = [
-            "لا توجد بيانات كافية بعد لعرض توصيات مخصّصة لهذا الشهر."
-        ]
-    ab_today = int(kpis.get("abandoned_today") or 0)
-    rec_today = int(kpis.get("recovered_today") or 0)
-    pct_recovered_vs_abandoned = 0.0
-    if ab_today > 0:
-        pct_recovered_vs_abandoned = round(
-            100.0 * float(rec_today) / float(ab_today), 1
+    return {
+        "merchant_widget_panel": merchant_widget_panel,
+        "merchant_widget_title_ar": merchant_widget_title_ar,
+        "merchant_widget_question_ar": merchant_widget_question_ar,
+        "merchant_widget_reason_rows": merchant_widget_reason_rows,
+        "merchant_widget_installed": widget_installed,
+    }
+
+
+def _api_json_dashboard_messages(dash_store: Optional[Any]) -> Dict[str, Any]:
+    try:
+        message_history_rows = _merchant_recovery_message_history_rows(
+            dash_store, limit=40
         )
-    rev_today = float(kpis.get("recovered_revenue_today") or 0.0)
-    rev_month = float(month_win.get("recovered_revenue") or 0.0)
-    rec_pct_m = float(month_win.get("recovery_pct") or 0.0)
+    except (SQLAlchemyError, OSError, TypeError, ValueError):
+        message_history_rows = []
+    last_send_ar = "—"
+    if message_history_rows:
+        last_send_ar = str(message_history_rows[0].get("time_ar") or "—")
+    return {
+        "merchant_message_history_rows": message_history_rows,
+        "merchant_wa_last_send_ar": last_send_ar,
+    }
+
+
+@app.get("/dashboard")
+def dashboard(request: Request):
+    """لوحة التاجر — هيكل فوري؛ الأقسام الثقيلة تُحمّل لاحقاً عبر ‎JavaScript‎."""
+    wall0 = time.perf_counter()
+    _merchant_dashboard_db_ready()
+    dash_store = _dashboard_recovery_store_row()
+    now_utc = datetime.now(timezone.utc)
+    shell_store = _merchant_dashboard_shell_store_fields(dash_store)
     resp = templates.TemplateResponse(
         request,
         "merchant_app.html",
         {
             "request": request,
             "merchant_html_title": "CartFlow — لوحة التاجر",
-            "merchant_store_display_name": store_name,
-            "merchant_nav_badge_abandoned": int(mstats.get("normal_cart_count") or 0),
-            "merchant_nav_badge_followup": int(follow_n),
-            "merchant_nav_badge_vip": int(vip_ct),
+            "merchant_dashboard_lazy_shell": True,
             "merchant_ar_date_header": merchant_ar_weekday_date_header(now_utc),
-            "wa_badge_ar": str(wa_card.get("badge_ar") or "—"),
-            "wa_state_key": str(wa_card.get("state_key") or ""),
-            "merchant_kpi_abandoned_fmt": _merchant_dashboard_fmt_int(
-                kpis.get("abandoned_today")
-            ),
-            "merchant_kpi_recovered_fmt": _merchant_dashboard_fmt_int(
-                kpis.get("recovered_today")
-            ),
-            "merchant_kpi_wa_sent_fmt": _merchant_dashboard_fmt_int(
-                kpis.get("whatsapp_sent_today")
-            ),
-            "merchant_kpi_revenue_fmt": _merchant_dashboard_fmt_int(rev_today),
-            "merchant_kpi_recovered_pct_vs_abandoned": pct_recovered_vs_abandoned,
+            "merchant_nav_badge_abandoned": 0,
+            "merchant_nav_badge_followup": 0,
+            "merchant_nav_badge_vip": 0,
+            "wa_badge_ar": "…",
+            "wa_state_key": "",
+            "merchant_kpi_abandoned_fmt": "…",
+            "merchant_kpi_recovered_fmt": "…",
+            "merchant_kpi_wa_sent_fmt": "…",
+            "merchant_kpi_revenue_fmt": "…",
+            "merchant_kpi_recovered_pct_vs_abandoned": 0.0,
             "merchant_kpi_wa_sub_ar": "سجلات إرسال اليوم",
-            "merchant_reason_rows_week": reason_rows,
-            "merchant_reason_insight_ar": reason_insight,
-            "merchant_reason_rows_month": reason_rows_month,
-            "merchant_reason_recommendations_ar": merchant_reason_recommendations_ar,
-            "merchant_table_rows": table_rows,
-            "merchant_carts_page_rows": merchant_carts_page_rows,
-            "merchant_cart_filter_counts": cart_filter_counts,
-            "merchant_followup_rows": followup_rows,
-            "merchant_vip_rows": vip_rows,
-            "merchant_vip_page_rows": vip_page_rows,
-            "merchant_vip_banner": vip_banner,
-            "merchant_message_history_rows": message_history_rows,
-            "merchant_wa_last_send_ar": last_send_ar,
-            "merchant_wa_number_display": wa_num_display,
-            "merchant_wa_first_delay_ar": first_delay_ar,
-            "merchant_wa_second_delay_ar": second_delay_ar,
-            "merchant_wa_max_messages_ar": f"{max_msgs} رسائل كحد أقصى",
-            "merchant_wa_vip_threshold_ar": vip_threshold_ar,
-            "merchant_widget_title_ar": merchant_widget_title_ar,
-            "merchant_widget_question_ar": merchant_widget_question_ar,
-            "merchant_widget_reason_rows": merchant_widget_reason_rows,
-            "merchant_widget_panel": merchant_widget_panel,
-            "merchant_widget_installed": widget_installed,
-            "merchant_platform_ar": platform_ar,
-            "merchant_month_abandoned_fmt": _merchant_dashboard_fmt_int(
-                month_win.get("abandoned_total")
-            ),
-            "merchant_month_recovered_fmt": _merchant_dashboard_fmt_int(
-                month_win.get("recovered_total")
-            ),
-            "merchant_month_recovery_pct_fmt": f"{rec_pct_m:.1f}",
-            "merchant_month_revenue_fmt": _merchant_dashboard_fmt_int(rev_month),
+            "merchant_reason_rows_week": [],
+            "merchant_reason_insight_ar": "",
+            "merchant_reason_rows_month": [],
+            "merchant_reason_recommendations_ar": [],
+            "merchant_table_rows": [],
+            "merchant_carts_page_rows": [],
+            "merchant_cart_filter_counts": {
+                "all": 0,
+                "recovered": 0,
+                "sent": 0,
+                "attention": 0,
+                "nophone": 0,
+            },
+            "merchant_followup_rows": [],
+            "merchant_vip_rows": [],
+            "merchant_vip_page_rows": [],
+            "merchant_vip_banner": None,
+            "merchant_message_history_rows": [],
+            "merchant_wa_last_send_ar": "—",
+            "merchant_widget_title_ar": "مساعد المتجر",
+            "merchant_widget_question_ar": "ما الذي منعك من إكمال الطلب؟",
+            "merchant_widget_reason_rows": [],
+            "merchant_widget_panel": {},
+            "merchant_widget_installed": True,
+            "merchant_month_abandoned_fmt": "…",
+            "merchant_month_recovered_fmt": "…",
+            "merchant_month_recovery_pct_fmt": "…",
+            "merchant_month_revenue_fmt": "…",
+            **shell_store,
         },
     )
-    _log_dashboard_profile(
-        endpoint="GET /dashboard",
-        section="full_render",
-        wall_perf_start=wall0,
-    )
+    _log_dashboard_shell_profile(wall_perf_start=wall0)
     return resp
 
 

@@ -97,6 +97,14 @@
     }
   };
 
+  window.merchantAppReinitCartFilters = function () {
+    var bar = document.querySelector("#page-carts .filter-bar");
+    if (bar) {
+      bar.removeAttribute("data-ma-bound");
+    }
+    initCartFiltersOnce();
+  };
+
   document.addEventListener("DOMContentLoaded", function () {
     syncFromHash();
   });

@@ -1013,3 +1013,12 @@ tr:hover td { background: #f8fafc; }
   .kpi-grid { grid-template-columns: 1fr; }
   .kpi-value { font-size: 24px; }
 }
+
+@keyframes ma-dash-pulse {
+  0%, 100% { opacity: 0.42; }
+  50% { opacity: 0.78; }
+}
+.ma-dash-skel,
+.ma-dash-skel-row td {
+  animation: ma-dash-pulse 1.15s ease-in-out infinite;
+}
