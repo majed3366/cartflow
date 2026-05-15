@@ -39,10 +39,11 @@
   };
 
   /**
-   * مسودات جاهزة لكل سبب — نص ثابت فقط؛ بدون أي استعلام إضافي أو ذكاء منتج بعد.
-   * لاحقاً: ‎Product Intelligence / Offer Control‎ يمكن أن يستبدل النص حسب القواعد؛
-   * مفاتيح ‎type‎ (مثل ‎offer‎، ‎shipping_offer‎، ‎warranty_info‎) تبقى مرساة للتحكم دون إدراج
-   * أكواد خصم وهمية أو قسائم من الواجهة — التاجر يحرر النص قبل الإرسال.
+   * Recovery Trigger Templates — مسودات واجهة ‎#/trigger-templates‎ فقط.
+   * Independent recovery/WhatsApp templates (تُحفظ في ‎reason_templates.message‎ / ‎messages‎).
+   * Future hook: Product Intelligence / Offer Control — استبدال نصي حسب القواعد.
+   * Do NOT connect to CartFlow Widget copy — تسميات الودجيت في ‎widget_reason_label_ar‎.
+   * التنفيذ الحالي نص ثابت فقط؛ صفر استعلامات إضافية.
    */
   var PRESET_SUGGESTIONS_BY_REASON = {
     price: [

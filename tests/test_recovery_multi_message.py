@@ -127,3 +127,41 @@ def test_guided_attempts_parse_and_apply() -> None:
     assert ga.get("1") == "خط مخصص"
     assert ga.get("3") == "ثالثة"
     assert "2" not in ga
+
+
+def test_parse_widget_reason_label_ar_roundtrip() -> None:
+    row = _Row()
+    row.reason_templates_json = json.dumps(
+        {
+            "price": {
+                "enabled": True,
+                "message": "نص استرجاع طويل للواتساب",
+                "widget_reason_label_ar": "السعر",
+            }
+        }
+    )
+    p = parse_reason_templates_column(row.reason_templates_json)
+    assert p["price"]["message"] == "نص استرجاع طويل للواتساب"
+    assert p["price"]["widget_reason_label_ar"] == "السعر"
+
+
+def test_apply_widget_label_only_preserves_recovery_message() -> None:
+    row = _Row()
+    long_recovery = "RECOVERY_BODY_" * 20
+    row.reason_templates_json = json.dumps(
+        {"price": {"enabled": True, "message": long_recovery, "message_count": 1}}
+    )
+    apply_reason_templates_from_body(
+        row,
+        {
+            "reason_templates": {
+                "price": {
+                    "enabled": True,
+                    "widget_reason_label_ar": "السعر للعميل",
+                }
+            }
+        },
+    )
+    p = parse_reason_templates_column(row.reason_templates_json)
+    assert p["price"]["message"] == long_recovery
+    assert p["price"]["widget_reason_label_ar"] == "السعر للعميل"

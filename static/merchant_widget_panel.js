@@ -1,6 +1,12 @@
 (function () {
   "use strict";
 
+  /*
+   * CartFlow Widget hesitation copy — Independent customer-facing widget text (أسباب التردد في لوحة الودجيت).
+   * Do NOT connect to recovery templates: لا نرسل ‎message‎ من هنا لتفادي مسح قوالب الاسترجاع.
+   * التسميات تُخزَّن في ‎reason_templates[*].widget_reason_label_ar‎ بدمج جزئي.
+   */
+
   var PRESET_Q = "ما الذي منعك من إكمال الطلب؟";
 
   function byId(id) {
@@ -47,7 +53,7 @@
       if (!k) return;
       o[k] = {
         enabled: onInp ? !!onInp.checked : true,
-        message: (labInp.value || "").trim(),
+        widget_reason_label_ar: (labInp.value || "").trim(),
       };
     });
     return o;

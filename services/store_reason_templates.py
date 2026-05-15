@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
-"""قوالب الاسترجاع حسب السبب (‎reason_templates‎) — تفعيل/تعطيل لكل سبب + نص على ‎Store.reason_templates_json‎."""
+"""قوالب الاسترجاع حسب السبب (‎reason_templates‎) — تفعيل/تعطيل لكل سبب + نص على ‎Store.reason_templates_json‎.
+
+رسالة الاسترجاع (‎message‎ / ‎messages‎) لمسار واتساب فقط.
+حقل اختياري ‎widget_reason_label_ar‎: نص السبب الظاهر في ودجيت المتجر — لا يُرسَل كاسترجاع.
+"""
 from __future__ import annotations
 
 import json
@@ -9,6 +13,7 @@ _REASON_TAGS = frozenset(
     {"price", "shipping", "warranty", "thinking", "quality", "delivery", "other"}
 )
 _MAX_MESSAGE_CHARS = 65535
+_MAX_WIDGET_REASON_LABEL_CHARS = 80
 
 
 def _parse_guided_attempts_column(raw: Any) -> Dict[str, str]:
@@ -119,6 +124,11 @@ def parse_reason_templates_column(raw: Any) -> Dict[str, Dict[str, Any]]:
         ga = _parse_guided_attempts_column(entry.get("guided_attempts"))
         if ga:
             row_d["guided_attempts"] = ga
+        wl = entry.get("widget_reason_label_ar")
+        if wl is not None:
+            ws = str(wl).strip()[:_MAX_WIDGET_REASON_LABEL_CHARS]
+            if ws:
+                row_d["widget_reason_label_ar"] = ws
         out[tt] = row_d
     return out
 
@@ -184,6 +194,14 @@ def apply_reason_templates_from_body(row: Any, body: Dict[str, Any]) -> None:
                     prev["guided_attempts"] = cur
                 else:
                     prev.pop("guided_attempts", None)
+        if "widget_reason_label_ar" in entry:
+            wlab = entry.get("widget_reason_label_ar")
+            if wlab is None or not str(wlab).strip():
+                prev.pop("widget_reason_label_ar", None)
+            else:
+                prev["widget_reason_label_ar"] = str(wlab).strip()[
+                    :_MAX_WIDGET_REASON_LABEL_CHARS
+                ]
         base[tt] = prev
     row.reason_templates_json = json.dumps(base, ensure_ascii=False) if base else None
 

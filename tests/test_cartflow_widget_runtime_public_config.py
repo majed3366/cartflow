@@ -96,7 +96,10 @@ class CartflowWidgetRuntimePublicConfigTests(unittest.TestCase):
             "/api/dashboard/merchant-widget-settings",
             json={
                 "reason_templates": {
-                    "price": {"enabled": False, "message": "x"},
+                    "price": {
+                        "enabled": False,
+                        "widget_reason_label_ar": "السعر",
+                    },
                 }
             },
         )

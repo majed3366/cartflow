@@ -53,7 +53,10 @@ class MerchantWidgetPanelApiTests(unittest.TestCase):
             "/api/dashboard/merchant-widget-settings",
             json={
                 "reason_templates": {
-                    "price": {"enabled": False, "message": "السعر غير مناسب"},
+                    "price": {
+                        "enabled": False,
+                        "widget_reason_label_ar": "السعر غير مناسب",
+                    },
                 },
                 "widget_trigger_config": {
                     "reason_display_order": [

@@ -2,6 +2,18 @@
 """
 عرض ودمج إعدادات قسم الودجيت في لوحة التاجر — قراءة فقط + تجهيز حفظ آمن.
 لا يغيّر منطق الاسترجاع أو الويدجت في المتجر؛ يمرّر الحقول نفسها لطبقات ‎Store‎ الموجودة.
+
+---
+# CartFlow Widget hesitation copy
+# نصوص أسباب التردد الظاهرة للعميل داخل الودجيت — مستقلة عن قوالب الاسترجاع.
+# لا تربطها بـ ‎message‎ في ‎reason_templates‎ (ذلك لمسار واتساب/الاسترجاع).
+# Do NOT connect to recovery templates for customer-facing labels.
+---
+# Recovery Trigger Templates
+# ‎reason_templates.message‎ / ‎messages‎ — قوالب استرجاع بعد ترك السلة؛ مستقلة عن تسميات الودجيت.
+# Future hook: Product Intelligence / Offer Control (لا تغيير هنا الآن).
+# Do NOT use recovery message text as widget chip labels (انظر ‎widget_reason_label_ar‎).
+---
 """
 from __future__ import annotations
 
@@ -26,6 +38,7 @@ _REASON_PANEL_DEF: Tuple[Tuple[str, str], ...] = (
 )
 
 _REASON_INTERNAL_KEYS = frozenset(k for k, _ in _REASON_PANEL_DEF)
+_MAX_WIDGET_REASON_LABEL_FOR_LEGACY = 80
 
 
 def _default_label_for_reason_key(key: str) -> str:
@@ -39,9 +52,27 @@ def _coerce_customer_label(raw_msg: str, key: str) -> str:
     s = (raw_msg or "").strip()
     if not s:
         return _default_label_for_reason_key(key)
-    if len(s) > 80:
-        return s[:77] + "…"
+    if len(s) > _MAX_WIDGET_REASON_LABEL_FOR_LEGACY:
+        return s[: _MAX_WIDGET_REASON_LABEL_FOR_LEGACY - 3] + "…"
     return s
+
+
+def _widget_customer_label_from_ent(key: str, ent: Dict[str, Any]) -> str:
+    """
+    تسمية السبب في واجهة الودجيت فقط.
+    المصدر الأساسي: ‎widget_reason_label_ar‎.
+    ترحيل: إذا غاب الحقل وكانت ‎message‎ قصيرة (≤٨٠)، تُعتبر تسمية ودجيت قديمة.
+    رسائل استرجاع طويلة لا تُعرض كتسمية أبداً.
+    """
+    if not isinstance(ent, dict):
+        ent = {}
+    w = str(ent.get("widget_reason_label_ar") or "").strip()
+    if w:
+        return _coerce_customer_label(w, key)
+    msg = str(ent.get("message") or "").strip()
+    if msg and len(msg) <= _MAX_WIDGET_REASON_LABEL_FOR_LEGACY:
+        return _coerce_customer_label(msg, key)
+    return _default_label_for_reason_key(key)
 
 
 def merchant_reason_panel_rows_for_widget_settings(
@@ -68,14 +99,11 @@ def merchant_reason_panel_rows_for_widget_settings(
             continue
         ent = rt.get(key) if isinstance(rt.get(key), dict) else {}
         enabled = bool(ent.get("enabled", True)) if isinstance(ent, dict) else True
-        msg = ""
-        if isinstance(ent, dict):
-            msg = str(ent.get("message") or "").strip()
         out.append(
             {
                 "key": key,
                 "sort_index": idx,
-                "label_ar": _coerce_customer_label(msg, key),
+                "label_ar": _widget_customer_label_from_ent(key, ent),
                 "enabled": enabled,
             }
         )
