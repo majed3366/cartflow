@@ -38,20 +38,143 @@
     other: "سبب آخر",
   };
 
-  /** نصوص مساعدة ثابتة في الواجهة فقط — لا تُفرض على الحقل ولا تستبدل المحفوظ. */
-  var SUGGESTED_BY_KEY = {
-    price:
-      "واضح إن السعر مهم لك 👍 إذا تحب نساعدك بخيار أنسب أو نوضح القيمة أكثر",
-    quality:
-      "الجودة تهمنا مثلك 👍 أي استفسار عن المواصفات أو المطابقة نقدر نلخصلك بسرعة",
-    shipping: "إذا عندك استفسار عن الشحن أو المدة، نقدر نوضحها لك",
-    delivery:
-      "بخصوص مدة التوصيل، نقدر نعطيك وقت تقريبي يناسب منطقتك 👍",
-    warranty:
-      "إذا عندك سؤال عن الضمان أو التغطية، نوضّح لك النقاط المهمة باختصار",
-    other:
-      "لاحظنا ما كمّلت الطلب 👍 إذا في شي وقفك، قولنا ونشوف لك حل بسيط",
+  /**
+   * مسودات جاهزة لكل سبب — نص ثابت فقط؛ بدون أي استعلام إضافي أو ذكاء منتج بعد.
+   * لاحقاً: يمكن أن يستبدل ‎Product Intelligence‎ نصاً حسب ‎SKU / مخزون / عروض‎؛
+   * يبقى الحقل المعرفي `type` كمرساة لذلك دون تغيير مسار الاسترجاع الحالي.
+   */
+  var PRESET_SUGGESTIONS_BY_REASON = {
+    price: [
+      {
+        type: "reassurance",
+        label: "طمأنة",
+        text: "نحب نطمّنك 👍 أي استفسار عن السعر أو طريقة الدفع نقدر نوضّحه باختصار.",
+      },
+      {
+        type: "offer",
+        label: "عرض",
+        text: "إذا يناسبك، نقدر نشوف لك عرضاً أو خياراً يلائم ميزانيتك — قولنا ونساعدك.",
+      },
+      {
+        type: "alternative",
+        label: "بديل / باكج",
+        text: "عندنا خيارات بديلة أو باكج قد يفيدك أكثر 👍 نقدر نلخّصها لك بسرعة إذا حاب.",
+      },
+    ],
+    quality: [
+      {
+        type: "reassurance",
+        label: "طمأنة",
+        text: "الجودة عندنا خط واضح 👍 أي نقطة تحتاج طمأنة نجاوبك بكل صراحة.",
+      },
+      {
+        type: "specs",
+        label: "شرح المواصفات",
+        text: "نقدر نشرح لك أهم المواصفات بجمل بسيطة تسهّل القرار بدون تعقيد.",
+      },
+      {
+        type: "social_proof",
+        label: "تجارب العملاء",
+        text: "كثير من عملائنا اختاروا نفس المنتج برضا 👍 إذا حاب نعطيك فكرة سريعة عن التجارب.",
+      },
+    ],
+    shipping: [
+      {
+        type: "shipping_info",
+        label: "توضيح المدة",
+        text: "بخصوص الشحن: نقدر نوضّح لك المدة والتكلفة والخيارات المتاحة لمنطقتك.",
+      },
+      {
+        type: "offer",
+        label: "عرض شحن",
+        text: "إذا في عرض شحن أو خيار أوفر يناسبك، نراجعه معك بلطف.",
+      },
+      {
+        type: "special_followup",
+        label: "متابعة خاصة",
+        text: "نقدر نتابع معك بشكل خاص لحد ما ترتاح من تفاصيل الشحن والتسليم.",
+      },
+    ],
+    delivery: [
+      {
+        type: "shipping_info",
+        label: "توضيح الموعد",
+        text: "بخصوص موعد التوصيل: نعطيك توقيتاً تقريبياً واضحاً يناسب عنوانك.",
+      },
+      {
+        type: "offer",
+        label: "تسريع إن أمكن",
+        text: "إذا أمكن تسريع التوصيل أو خيار أسرع، نبلغك بما هو متاح 👍",
+      },
+      {
+        type: "special_followup",
+        label: "متابعة خاصة",
+        text: "نقدر متابعة خاصة معك لمتابعة الطلب وتوضيح الموعد خطوة بخطوة.",
+      },
+    ],
+    warranty: [
+      {
+        type: "reassurance",
+        label: "طمأنة",
+        text: "الضمان جزء من راحتك 👍 أي سؤال نجاوبك بوضوح.",
+      },
+      {
+        type: "warranty_info",
+        label: "شرح الضمان",
+        text: "نلخّصلك أهم بنود الضمان بجمل قصيرة تفيدك قبل إكمال الطلب.",
+      },
+      {
+        type: "alternative",
+        label: "استبدال / إرجاع",
+        text: "إذا تحتاج خيار استبدال أو إرجاع، نوضّح لك الخطوات ببساطة بدون إرباك.",
+      },
+    ],
+    other: [
+      {
+        type: "reassurance",
+        label: "مساعدة عامة",
+        text: "نحنا هنا نساعدك 🙏 أي استفسار عام عن الطلب أو المتجر قولنا باختصار.",
+      },
+      {
+        type: "specs",
+        label: "سؤال مفتوح",
+        text: "وش اللي يوقفك الآن؟ اكتب لنا باختصار ونجاوبك بطريقة مفتوحة وواضحة.",
+      },
+      {
+        type: "special_followup",
+        label: "متابعة خاصة",
+        text: "نقدر متابعة خاصة معك لين ترتاح وتكمّل براحة.",
+      },
+    ],
   };
+
+  function presetChipsHtml(rowKey) {
+    var list = PRESET_SUGGESTIONS_BY_REASON[rowKey] || [];
+    if (!list.length) return "";
+    var chunks = [];
+    var i;
+    for (i = 0; i < list.length; i++) {
+      var p = list[i];
+      chunks.push(
+        '<button type="button" class="ma-tpl-preset-chip" data-ma-tpl-preset data-ma-tpl-reason="' +
+        esc(rowKey) +
+        '" data-ma-tpl-preset-type="' +
+        esc(p.type) +
+        '" data-ma-tpl-preset-i="' +
+        i +
+        '">' +
+        esc(p.label) +
+        "</button>"
+      );
+    }
+    return (
+      '<div class="ma-tpl-preset-wrap" dir="rtl">' +
+      '<span class="ma-tpl-preset-hint">مسودات جاهزة:</span>' +
+      '<div class="ma-tpl-preset-row">' +
+      chunks.join("") +
+      "</div></div>"
+    );
+  }
 
   function byId(id) {
     return document.getElementById(id);
@@ -257,19 +380,7 @@
     var minSel = duNorm === "minute" ? " selected" : "";
     var hourSel = duNorm === "hour" ? " selected" : "";
     var daySel = duNorm === "day" ? " selected" : "";
-    var sugRaw = String(SUGGESTED_BY_KEY[row.key] || "").trim();
-    var sug = esc(sugRaw);
-    var sugBlock =
-      sugRaw.length > 0
-        ? '<div class="ma-tpl-suggest">' +
-          '<p class="ma-tpl-suggest-lbl">اقتراح:</p>' +
-          '<div class="ma-tpl-suggest-row">' +
-          '<p class="ma-tpl-suggest-txt" data-ma-tpl-suggest-txt dir="rtl">' +
-          sug +
-          "</p>" +
-          '<button type="button" class="ma-tpl-copy" data-ma-tpl-copy-suggest>نسخ</button>' +
-          "</div></div>"
-        : "";
+    var presetRow = presetChipsHtml(keyRaw || row.key || "");
 
     var mcOpts = [1, 2, 3]
       .map(function (n) {
@@ -298,7 +409,7 @@
       '" rows="5" maxlength="65535" data-ma-tpl-msg dir="rtl" placeholder="النص الموجّه للعميل عبر مسار الاسترجاع…">' +
       msg +
       "</textarea>" +
-      sugBlock +
+      presetRow +
       '<div class="ma-tpl-row2">' +
       '<div><label class="ma-tpl-lbl" for="ma-tpl-dv-' +
       k +
@@ -407,47 +518,37 @@
 
     lastPayload = payload;
 
-    root.querySelectorAll("[data-ma-tpl-save]").forEach(function (btn) {
-      btn.addEventListener("click", function () {
-        var card = btn.closest("[data-ma-tpl-key]");
-        if (card) saveOne(card.getAttribute("data-ma-tpl-key"), card);
-      });
-    });
-
-    root.querySelectorAll("[data-ma-tpl-copy-suggest]").forEach(function (btn) {
-      btn.addEventListener("click", function () {
-        var card = btn.closest("[data-ma-tpl-key]");
-        if (!card) return;
-        var el = card.querySelector("[data-ma-tpl-suggest-txt]");
-        var ta = card.querySelector("[data-ma-tpl-msg]");
-        var rawTxt = el ? el.textContent || "" : "";
-        if (!rawTxt.trim()) return;
-        function done(copyOk) {
-          var st = card.querySelector("[data-ma-tpl-status]");
-          if (st) st.textContent = copyOk ? "تم النسخ" : "تعذر النسخ";
-          if (copyOk && ta) {
-            ta.focus();
-          }
-          window.setTimeout(function () {
-            if (st && (st.textContent === "تم النسخ" || st.textContent === "تعذر النسخ")) {
-              st.textContent = "";
-            }
-          }, 2500);
+    if (typeof root._maTplClickDelegate === "function") {
+      root.removeEventListener("click", root._maTplClickDelegate);
+    }
+    root._maTplClickDelegate = function (ev) {
+      var tg = ev.target;
+      var chip =
+        tg && tg.closest ? tg.closest("[data-ma-tpl-preset]") : null;
+      if (chip && root.contains(chip)) {
+        ev.preventDefault();
+        var rk = chip.getAttribute("data-ma-tpl-reason");
+        var ix = parseInt(chip.getAttribute("data-ma-tpl-preset-i"), 10);
+        var arr = PRESET_SUGGESTIONS_BY_REASON[rk];
+        if (!arr || !(ix >= 0) || !arr[ix]) return;
+        var cardShell = chip.closest("[data-ma-tpl-key]");
+        var taPick =
+          cardShell && cardShell.querySelector("[data-ma-tpl-msg]");
+        if (taPick) {
+          taPick.value = arr[ix].text || "";
+          taPick.focus();
         }
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(rawTxt.trim()).then(
-            function () {
-              done(true);
-            },
-            function () {
-              done(false);
-            }
-          );
-        } else {
-          done(false);
-        }
-      });
-    });
+        return;
+      }
+      var saveB =
+        tg && tg.closest ? tg.closest("[data-ma-tpl-save]") : null;
+      if (saveB && root.contains(saveB)) {
+        ev.preventDefault();
+        var cardS = saveB.closest("[data-ma-tpl-key]");
+        if (cardS) saveOne(cardS.getAttribute("data-ma-tpl-key"), cardS);
+      }
+    };
+    root.addEventListener("click", root._maTplClickDelegate);
   }
 
   /** يرسم بعد توفر الحاوية (تجنّب فشل ‎SPA‎ عند تفعيل الصفحة قبل بناء DOM). */

@@ -1110,6 +1110,50 @@ tr:hover td { background: #f8fafc; }
   line-height: 1.55;
 }
 
+/* Chips — مسودات جاهزة (نص ثابت؛ لا استعلامات إضافية) */
+.ma-tpl-preset-wrap {
+  margin: 6px 0 8px;
+}
+
+.ma-tpl-preset-hint {
+  display: block;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--muted);
+  margin: 0 0 6px;
+  line-height: 1.35;
+}
+
+.ma-tpl-preset-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.ma-tpl-preset-chip {
+  margin: 0;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: rgba(0, 0, 0, 0.02);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--green-dark);
+  line-height: 1.35;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.ma-tpl-preset-chip:active {
+  transform: scale(0.98);
+}
+
+.ma-tpl-preset-chip:hover {
+  background: rgba(0, 0, 0, 0.045);
+}
+
 .ma-tpl-suggest {
   margin: 10px 0 6px;
   padding: 10px 11px;
@@ -1220,6 +1264,24 @@ tr:hover td { background: #f8fafc; }
 
   .ma-tpl-ta {
     min-height: 76px;
+  }
+
+  .ma-tpl-preset-wrap {
+    margin: 4px 0 6px;
+  }
+
+  .ma-tpl-preset-hint {
+    font-size: 10px;
+    margin-bottom: 4px;
+  }
+
+  .ma-tpl-preset-row {
+    gap: 5px;
+  }
+
+  .ma-tpl-preset-chip {
+    padding: 3px 8px;
+    font-size: 10.5px;
   }
 
   .ma-tpl-suggest {
