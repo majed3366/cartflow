@@ -157,6 +157,11 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     stInner.hesitationAnchorTimer = null;
     var dl = stInner.cfV2HesitationDeadlineAt;
     stInner.cfV2HesitationDeadlineAt = null;
+    try {
+      if (Cf.State && typeof Cf.State.clearV2HesitationDeadlinePersisted === "function") {
+        Cf.State.clearV2HesitationDeadlinePersisted();
+      }
+    } catch (eClr) {}
     emitHesitationFireLogs(dl);
     logFired("add_to_cart", {
       timer: "hesitation_anchor",
@@ -306,6 +311,12 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     stRef.cfV2HesitationDeadlineAt = deadline;
 
     try {
+      if (Cf.State && typeof Cf.State.persistV2HesitationDeadline === "function") {
+        Cf.State.persistV2HesitationDeadline(deadline);
+      }
+    } catch (ePSs) {}
+
+    try {
       console.log("[CF V2 TIMER ARM]", {
         expected_fire_at: deadline,
       });
@@ -329,6 +340,9 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     clearHesitationTimersOnly();
     try {
       st.cfV2HesitationDeadlineAt = null;
+      if (Cf.State && typeof Cf.State.clearV2HesitationDeadlinePersisted === "function") {
+        Cf.State.clearV2HesitationDeadlinePersisted();
+      }
     } catch (eDl) {}
     logScheduled("add_to_cart", {
       delay_ms: delayMs || 120000,
@@ -581,23 +595,56 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       Cf.State.mirrorCartTotalsFromGlobals();
 
       var stRef = st();
+      if (
+        stRef.cfV2HesitationDeadlineAt == null &&
+        Cf.State &&
+        typeof Cf.State.readV2HesitationDeadlinePersisted === "function"
+      ) {
+        try {
+          var pDl = Cf.State.readV2HesitationDeadlinePersisted();
+          if (pDl != null && isFinite(pDl)) {
+            stRef.cfV2HesitationDeadlineAt = pDl;
+          }
+        } catch (eRes) {}
+      }
       var dl = stRef.cfV2HesitationDeadlineAt;
-      var deadlinePassed =
-        dl != null && isFinite(dl) && Date.now() >= dl && haveCartApprox();
+      var delayResumeDidShow = false;
 
       try {
         console.log("[CF V2 RETURN RESUME]", {
-          delay_passed: !!deadlinePassed,
+          delay_passed: !!(
+            dl != null &&
+            isFinite(dl) &&
+            Date.now() >= dl &&
+            haveCartApprox()
+          ),
         });
       } catch (eRs) {}
 
       if (!haveCartApprox() || stRef.bubbleShown) {
+        try {
+          console.log("[CF DELAY RESUME COMPLETE]", { show: false });
+        } catch (eC1) {}
         return true;
       }
+
+      if (dl != null && isFinite(dl)) {
+        try {
+          console.log("[CF DELAY RESUME]", {
+            remaining_ms: Math.max(0, Math.floor(dl - Date.now())),
+          });
+        } catch (eDr) {}
+      }
+
+      var deadlinePassed =
+        dl != null && isFinite(dl) && Date.now() >= dl && haveCartApprox();
 
       if (deadlinePassed && dl != null) {
         var gm = gateCartRecoveryOpen("visibility_resume");
         if (!gm.ok) {
+          try {
+            console.log("[CF DELAY RESUME COMPLETE]", { show: false });
+          } catch (eCg) {}
           return true;
         }
         if (stRef.hesitationAnchorTimer != null) {
@@ -607,11 +654,20 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
           stRef.hesitationAnchorTimer = null;
         }
         stRef.cfV2HesitationDeadlineAt = null;
+        try {
+          if (Cf.State && typeof Cf.State.clearV2HesitationDeadlinePersisted === "function") {
+            Cf.State.clearV2HesitationDeadlinePersisted();
+          }
+        } catch (eCl2) {}
         emitHesitationFireLogs(dl);
         logFired("visibility_resume", { timer: "hesitation_catch_up" });
+        delayResumeDidShow = true;
         if (typeof Hooks.fireCartRecovery === "function") {
           Hooks.fireCartRecovery("cart_hesitation_timer");
         }
+        try {
+          console.log("[CF DELAY RESUME COMPLETE]", { show: delayResumeDidShow });
+        } catch (eC2) {}
         return true;
       }
 
@@ -626,10 +682,34 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
             clearTimeout(stRef.hesitationAnchorTimer);
           }
         } catch (eCrs) {}
-        stRef.hesitationAnchorTimer = setTimeout(function () {
+
+        var armDelay = remainder;
+        try {
+          stRef.cfV2HesitationDeadlineAt = dl;
+          if (
+            Cf.State &&
+            typeof Cf.State.persistV2HesitationDeadline === "function"
+          ) {
+            Cf.State.persistV2HesitationDeadline(dl);
+          }
+        } catch (ePer) {}
+
+        var tick = function () {
           fireCartRecoveryAfterHesitation(stRef, {});
-        }, remainder);
+        };
+        if (armDelay <= 0) {
+          tick();
+          delayResumeDidShow = true;
+        } else {
+          stRef.hesitationAnchorTimer = window.setTimeout(tick, armDelay);
+        }
       }
+
+      try {
+        console.log("[CF DELAY RESUME COMPLETE]", {
+          show: !!delayResumeDidShow,
+        });
+      } catch (eCf) {}
 
       return true;
     }

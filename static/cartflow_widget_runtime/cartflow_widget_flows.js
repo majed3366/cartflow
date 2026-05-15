@@ -504,6 +504,22 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       } catch (eB) {}
       return;
     }
+    var _tagS = String(tagNote || "");
+    if (
+      _tagS !== "manual_debug" &&
+      Cf.State.hesitationDelayWallActive &&
+      Cf.State.hesitationDelayWallActive()
+    ) {
+      try {
+        console.log("[CF WIDGET BLOCKED V2]", {
+          gate: "hesitation_delay_pending",
+          remaining_ms:
+            Cf.State.hesitationDelayRemainingMs &&
+            Cf.State.hesitationDelayRemainingMs(),
+        });
+      } catch (eHx) {}
+      return;
+    }
     if (!Cf.Config.widgetGloballyAllowed()) {
       return;
     }
@@ -572,6 +588,20 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
 
   function showExitNoCart() {
     if (!merchantAllowsUi()) {
+      return;
+    }
+    if (
+      Cf.State.hesitationDelayWallActive &&
+      Cf.State.hesitationDelayWallActive()
+    ) {
+      try {
+        console.log("[CF WIDGET BLOCKED V2]", {
+          gate: "exit_intent_hesitation_delay_pending",
+          remaining_ms:
+            Cf.State.hesitationDelayRemainingMs &&
+            Cf.State.hesitationDelayRemainingMs(),
+        });
+      } catch (eEx) {}
       return;
     }
     if (Cf.State.sessionConvertedBlock()) {

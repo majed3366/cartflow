@@ -6,6 +6,8 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
   "use strict";
 
   var LS_PHONE = "cartflow_customer_phone";
+  /** Persists add-to-cart hesitation fire deadline across tab sleep / bfcache quirks. */
+  var SS_V2_HESITATION_DL = "cartflow_cf_v2_hesitation_deadline_at";
   var ST = {
     hesitationTimer: null,
     hesitationAnchorTimer: null,
@@ -132,6 +134,57 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     ST.idlePollTimer = null;
   }
 
+  function persistV2HesitationDeadline(deadlineMs) {
+    try {
+      if (
+        deadlineMs != null &&
+        typeof deadlineMs === "number" &&
+        isFinite(deadlineMs) &&
+        deadlineMs > 0
+      ) {
+        sessionStorage.setItem(SS_V2_HESITATION_DL, String(Math.floor(deadlineMs)));
+        return;
+      }
+    } catch (eP) {}
+    clearV2HesitationDeadlinePersisted();
+  }
+
+  function clearV2HesitationDeadlinePersisted() {
+    try {
+      sessionStorage.removeItem(SS_V2_HESITATION_DL);
+    } catch (eC) {}
+  }
+
+  function readV2HesitationDeadlinePersisted() {
+    try {
+      var raw = sessionStorage.getItem(SS_V2_HESITATION_DL);
+      if (raw == null || raw === "") {
+        return null;
+      }
+      var v = parseInt(raw, 10);
+      return isFinite(v) && v > 0 ? v : null;
+    } catch (eR) {
+      return null;
+    }
+  }
+
+  /** Milliseconds until hesitation deadline; 0 if none or already passed. */
+  function hesitationDelayRemainingMs() {
+    try {
+      var dl = ST.cfV2HesitationDeadlineAt;
+      if (dl == null || !isFinite(dl)) {
+        return 0;
+      }
+      return Math.max(0, Math.floor(dl - Date.now()));
+    } catch (eRm) {
+      return 0;
+    }
+  }
+
+  function hesitationDelayWallActive() {
+    return hesitationDelayRemainingMs() > 0;
+  }
+
   function checkoutPathActive() {
     try {
       var p =
@@ -171,6 +224,11 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     mirrorCartTotalsFromGlobals: mirrorCartTotalsFromGlobals,
     clearHesitationTimers: clearTimers,
     checkoutPathActive: checkoutPathActive,
+    persistV2HesitationDeadline: persistV2HesitationDeadline,
+    clearV2HesitationDeadlinePersisted: clearV2HesitationDeadlinePersisted,
+    readV2HesitationDeadlinePersisted: readV2HesitationDeadlinePersisted,
+    hesitationDelayRemainingMs: hesitationDelayRemainingMs,
+    hesitationDelayWallActive: hesitationDelayWallActive,
     sessionConvertedBlock: sessionConvertedBlock,
     LS_CUSTOMER_PHONE: LS_PHONE,
   };
