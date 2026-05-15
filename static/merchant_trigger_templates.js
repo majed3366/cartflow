@@ -9,6 +9,25 @@
   var lastPayload = null;
   var loadInFlight = false;
 
+  /** ترتيب ثابت يطابق الخادم عند الحاجة لبطاقات احتياطية. */
+  var TRIGGER_KEYS_ORDER = [
+    "price",
+    "quality",
+    "shipping",
+    "delivery",
+    "warranty",
+    "other",
+  ];
+
+  var LABEL_BY_KEY = {
+    price: "السعر",
+    quality: "الجودة",
+    shipping: "الشحن",
+    delivery: "مدة التوصيل",
+    warranty: "الضمان",
+    other: "سبب آخر",
+  };
+
   /** نصوص مساعدة ثابتة في الواجهة فقط — لا تُفرض على الحقل ولا تستبدل المحفوظ. */
   var SUGGESTED_BY_KEY = {
     price:
@@ -77,8 +96,103 @@
     return { delay: dv, unit: uiUnit };
   }
 
+  function buildRowFromTemplateEntry(key, ent) {
+    ent = ent && typeof ent === "object" ? ent : {};
+    var msgs = Array.isArray(ent.messages) ? ent.messages.slice(0, 3) : [];
+    var first = msgs[0] && typeof msgs[0] === "object" ? msgs[0] : {};
+    var dv = typeof first.delay === "number" ? first.delay : parseFloat(first.delay);
+    if (!(dv > 0)) dv = typeof ent.delay_value === "number" ? ent.delay_value : parseFloat(ent.delay_value);
+    if (!(dv > 0)) dv = 1;
+    var unitRaw = first.unit != null ? first.unit : ent.delay_unit;
+    var u = normalizeApiDelayUnit(unitRaw) === "hour" ? "hour" : "minute";
+    var msgText = String(ent.message || first.text || "").trim();
+    var mc = parseInt(ent.message_count, 10);
+    if (!(mc >= 1)) mc = 1;
+    mc = Math.max(1, Math.min(3, mc));
+    return {
+      key: key,
+      label_ar: String(ent.label_ar || LABEL_BY_KEY[key] || key),
+      enabled: ent.enabled !== false,
+      message: msgText,
+      delay_value: dv,
+      delay_unit: u,
+      message_count: mc,
+      messages: msgs,
+    };
+  }
+
+  function ensureSixRows(rowsIn) {
+    var byKey = {};
+    var i;
+    var r;
+    var ks;
+    if (Array.isArray(rowsIn)) {
+      for (i = 0; i < rowsIn.length; i++) {
+        r = rowsIn[i];
+        if (!r || typeof r !== "object") continue;
+        ks = String(r.key || r.slug || r.id || "").trim().toLowerCase();
+        if (ks) byKey[ks] = r;
+      }
+    }
+    var out = [];
+    for (i = 0; i < TRIGGER_KEYS_ORDER.length; i++) {
+      var k0 = TRIGGER_KEYS_ORDER[i];
+      out.push(buildRowFromTemplateEntry(k0, byKey[k0] || {}));
+    }
+    return out;
+  }
+
+  /**
+   * يدمج أشكال الاستجابة المختلفة (حقل آخر اسم، غلاف data/) دون افتراض شكل واحد.
+   * @param {number} [httpStatus]  رمز ‎HTTP‎ لـ ‎GET‎ عند التوفّر — ‎٢٠٠‎ مع صفوف صالحة يُعتبر نجاحاً حتى لو ‎ok‎ ناقص.
+   */
+  function normalizeTriggerTemplatesPayload(raw, httpStatus) {
+    var base = raw && typeof raw === "object" ? raw : {};
+    var data = base;
+    if (base.data && typeof base.data === "object") data = base.data;
+    else if (base.payload && typeof base.payload === "object") data = base.payload;
+
+    var rows = null;
+    if (Array.isArray(data.reason_rows)) rows = data.reason_rows;
+    else if (Array.isArray(data.cards)) rows = data.cards;
+    else if (Array.isArray(data.reasons)) rows = data.reasons;
+    else if (Array.isArray(base.reason_rows)) rows = base.reason_rows;
+
+    if (
+      (!rows || rows.length === 0) &&
+      data.reason_templates &&
+      typeof data.reason_templates === "object"
+    ) {
+      rows = TRIGGER_KEYS_ORDER.map(function (k) {
+        return buildRowFromTemplateEntry(k, data.reason_templates[k]);
+      });
+    }
+
+    rows = ensureSixRows(rows || []);
+
+    var jsonOk = base.ok === true || data.ok === true;
+    var jsonFail = base.ok === false || data.ok === false;
+    var httpOk =
+      typeof httpStatus === "number" && httpStatus >= 200 && httpStatus < 300;
+
+    var ok = false;
+    if (jsonOk) ok = true;
+    else if (!jsonFail && rows.length > 0) ok = true;
+    else if (httpOk && rows.length > 0) ok = true;
+
+    return {
+      ok: ok,
+      section_title_ar: data.section_title_ar || base.section_title_ar,
+      section_subtitle_ar: data.section_subtitle_ar || base.section_subtitle_ar,
+      guided_defaults: data.guided_defaults || base.guided_defaults,
+      reason_rows: rows,
+    };
+  }
+
   function cardHtml(row) {
-    var lbl = esc(row.label_ar);
+    var keyRaw = row.key != null ? String(row.key) : "";
+    var k = esc(keyRaw);
+    var lbl = esc(row.label_ar || LABEL_BY_KEY[row.key] || row.key || "");
     var en = row.enabled !== false ? " checked" : "";
     var msg = esc(row.message || "");
     var rawDv =
@@ -178,29 +292,54 @@
     );
   }
 
-  function render(payload) {
-    lastPayload = payload;
+  function render(raw, httpStatus) {
     var root = byId("ma-tpl-root");
     var sub = byId("ma-tpl-sub");
     var err = byId("ma-tpl-load-err");
     if (!root) return;
 
-    if (sub && payload && payload.section_subtitle_ar) {
-      sub.textContent = payload.section_subtitle_ar;
-    }
-
-    if (!payload || !payload.ok || !payload.reason_rows) {
+    var payload;
+    try {
+      payload = normalizeTriggerTemplatesPayload(raw, httpStatus);
+    } catch (normErr) {
+      console.log("[TRIGGER TEMPLATES LOAD ERROR] normalize", normErr);
+      lastPayload = null;
       if (err) err.hidden = false;
       root.innerHTML =
         '<div class="empty-text" style="padding:24px;text-align:center;">تعذر تحميل القوالب</div>';
       return;
     }
+
+    if (sub && payload.section_subtitle_ar) {
+      sub.textContent = payload.section_subtitle_ar;
+    }
+
+    if (!payload.ok || !payload.reason_rows || payload.reason_rows.length === 0) {
+      console.log("[TRIGGER TEMPLATES LOAD ERROR] unusable payload", raw);
+      lastPayload = null;
+      if (err) err.hidden = false;
+      root.innerHTML =
+        '<div class="empty-text" style="padding:24px;text-align:center;">تعذر تحميل القوالب</div>';
+      return;
+    }
+
     if (err) err.hidden = true;
 
-    root.innerHTML =
-      '<div class="ma-tpl-grid">' +
-      payload.reason_rows.map(cardHtml).join("") +
-      "</div>";
+    try {
+      root.innerHTML =
+        '<div class="ma-tpl-grid">' +
+        payload.reason_rows.map(cardHtml).join("") +
+        "</div>";
+    } catch (renderErr) {
+      console.log("[TRIGGER TEMPLATES LOAD ERROR] render", renderErr);
+      lastPayload = null;
+      if (err) err.hidden = false;
+      root.innerHTML =
+        '<div class="empty-text" style="padding:24px;text-align:center;">تعذر تحميل القوالب</div>';
+      return;
+    }
+
+    lastPayload = payload;
 
     root.querySelectorAll("[data-ma-tpl-save]").forEach(function (btn) {
       btn.addEventListener("click", function () {
@@ -215,12 +354,12 @@
         if (!card) return;
         var el = card.querySelector("[data-ma-tpl-suggest-txt]");
         var ta = card.querySelector("[data-ma-tpl-msg]");
-        var raw = el ? el.textContent || "" : "";
-        if (!raw.trim()) return;
-        function done(ok) {
+        var rawTxt = el ? el.textContent || "" : "";
+        if (!rawTxt.trim()) return;
+        function done(copyOk) {
           var st = card.querySelector("[data-ma-tpl-status]");
-          if (st) st.textContent = ok ? "تم النسخ" : "تعذر النسخ";
-          if (ok && ta) {
+          if (st) st.textContent = copyOk ? "تم النسخ" : "تعذر النسخ";
+          if (copyOk && ta) {
             ta.focus();
           }
           window.setTimeout(function () {
@@ -230,7 +369,7 @@
           }, 2500);
         }
         if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(raw.trim()).then(
+          navigator.clipboard.writeText(rawTxt.trim()).then(
             function () {
               done(true);
             },
@@ -330,12 +469,12 @@
     })
       .then(function (r) {
         return r.json().then(function (j) {
-          return { ok: r.ok && j.ok, payload: j };
+          return { ok: r.ok && j.ok, payload: j, httpStatus: r.status };
         });
       })
       .then(function (pack) {
         if (pack.ok && pack.payload) {
-          render(pack.payload);
+          render(pack.payload, pack.httpStatus);
           var newCard = document.querySelector('[data-ma-tpl-key="' + key + '"]');
           var st2 =
             newCard && newCard.querySelector("[data-ma-tpl-status]");
@@ -358,18 +497,43 @@
     if (!root) return;
 
     loadInFlight = true;
+    console.log("[TRIGGER TEMPLATES LOAD START]");
     root.innerHTML =
       '<div class="ma-tpl-loading ma-dash-skel" style="padding:32px;text-align:center;color:var(--muted);">جاري تحميل القوالب…</div>';
 
     fetch(FETCH_URL_GET, { credentials: "same-origin" })
       .then(function (r) {
-        return r.json();
+        var status = r.status;
+        return r.json().then(
+          function (json) {
+            return { status: status, json: json };
+          },
+          function (parseErr) {
+            console.log("[TRIGGER TEMPLATES LOAD ERROR] json parse", parseErr);
+            return { status: status, json: null };
+          }
+        );
       })
-      .then(function (d) {
-        render(d);
+      .then(function (pack) {
+        if (!pack.json) {
+          console.log("[TRIGGER TEMPLATES LOAD ERROR] empty body");
+          render({}, pack.status);
+          return;
+        }
+        render(pack.json, pack.status);
+        var norm = lastPayload;
+        if (norm && norm.ok && norm.reason_rows && norm.reason_rows.length) {
+          console.log(
+            "[TRIGGER TEMPLATES LOAD SUCCESS]",
+            norm.reason_rows.length
+          );
+        } else {
+          console.log("[TRIGGER TEMPLATES LOAD ERROR]", "not ok or no rows");
+        }
       })
-      .catch(function () {
-        render({ ok: false });
+      .catch(function (e) {
+        console.log("[TRIGGER TEMPLATES LOAD ERROR]", e);
+        render({}, 0);
       })
       .finally(function () {
         loadInFlight = false;
