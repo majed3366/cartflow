@@ -964,6 +964,29 @@ def _ensure_default_store_for_recovery() -> None:
         db.session.rollback()
 
 
+from services.normal_carts_query_profiler import normal_carts_profile_span
+
+
+def _normal_carts_query_prof_wrap(span_name: str):
+    """يُفعّل فقط عند ‎normal_carts_profile_begin()‎ — بدون تأثير على بقية الطلبات."""
+
+    def _decorate(fn: Any) -> Any:
+        def _inner(*args: Any, **kwargs: Any) -> Any:
+            from services.normal_carts_query_profiler import (
+                normal_carts_query_profiling_active,
+            )
+
+            if not normal_carts_query_profiling_active():
+                return fn(*args, **kwargs)
+            with normal_carts_profile_span(span_name):
+                return fn(*args, **kwargs)
+
+        return _inner
+
+    return _decorate
+
+
+@_normal_carts_query_prof_wrap("_dashboard_recovery_store_row")
 def _dashboard_recovery_store_row() -> Optional[Store]:
     """آخر ‎Store‎ بحسب ‎id‎ — نفس الصف الذي تقرأه وتحدّثه ‎GET/POST /api/recovery-settings‎."""
     try:
@@ -1005,6 +1028,7 @@ def _ensure_cartflow_api_db_warmed() -> None:
             log.warning("cartflow api db warm failed (will retry later): %s", e)
 
 
+@_normal_carts_query_prof_wrap("_merchant_dashboard_db_ready")
 def _merchant_dashboard_db_ready() -> None:
     """لوحة التاجر وواجهاتها: تدفئة المخطط مرة واحدة لكل عملية دون ‎create_all‎ لكل دالة."""
     _ensure_cartflow_api_db_warmed()
@@ -2123,6 +2147,7 @@ def _default_recovery_message() -> str:
     return _recovery_message_for_step(1)
 
 
+@_normal_carts_query_prof_wrap("_cart_recovery_reason_latest_row")
 def _cart_recovery_reason_latest_row(
     store_slug: str, session_id: str,
 ) -> Optional[CartRecoveryReason]:
@@ -2161,6 +2186,7 @@ def _cart_recovery_reason_latest_row(
         return None
 
 
+@_normal_carts_query_prof_wrap("_cart_recovery_reason_latest_row_any_store")
 def _cart_recovery_reason_latest_row_any_store(
     session_id: str,
 ) -> Optional[CartRecoveryReason]:
@@ -2308,6 +2334,7 @@ def _store_slug_for_cart_recovery_reason(ac: AbandonedCart) -> Optional[str]:
     return None
 
 
+@_normal_carts_query_prof_wrap("_reason_tag_for_abandoned_cart")
 def _reason_tag_for_abandoned_cart(ac: AbandonedCart) -> Optional[str]:
     """
     مصدر ‎reason_tag‎ لاقتراح «الإجراء المقترح» فقط.
@@ -2777,6 +2804,7 @@ def _normal_recovery_latest_recovery_log_row(ac: AbandonedCart) -> Optional[Cart
         return None
 
 
+@_normal_carts_query_prof_wrap("_normal_recovery_recovery_log_statuses_lower")
 def _normal_recovery_recovery_log_statuses_lower(ac: AbandonedCart) -> frozenset[str]:
     """
     جميع حالات سجل الاسترجاع لهذه السلة/الجلسة (بدون اعتماد «آخر سطر فقط»).
@@ -2837,6 +2865,7 @@ def _normal_recovery_behavioral_merge_from_cart_group(
     return merged
 
 
+@_normal_carts_query_prof_wrap("_normal_recovery_recovery_log_statuses_lower_group")
 def _normal_recovery_recovery_log_statuses_lower_group(
     grp: list[AbandonedCart],
 ) -> frozenset[str]:
@@ -2846,6 +2875,7 @@ def _normal_recovery_recovery_log_statuses_lower_group(
     return frozenset(acc)
 
 
+@_normal_carts_query_prof_wrap("_normal_recovery_latest_skipped_no_verified_phone_row")
 def _normal_recovery_latest_skipped_no_verified_phone_row(
     ac: AbandonedCart,
 ) -> Optional[CartRecoveryLog]:
@@ -2867,6 +2897,7 @@ def _normal_recovery_latest_skipped_no_verified_phone_row(
         return None
 
 
+@_normal_carts_query_prof_wrap("_normal_recovery_is_missing_verified_phone_send_blocked")
 def _normal_recovery_is_missing_verified_phone_send_blocked(ac: AbandonedCart) -> bool:
     """
     قراءة فقط — نفس حقيقة التشغيل لبطاقة اللوحة عند غياب رقم يُسمح بالإرسال إليه:
@@ -3064,6 +3095,7 @@ def _cart_recovery_log_filters_for_abandoned_cart(ac: AbandonedCart) -> list[Any
     return conds
 
 
+@_normal_carts_query_prof_wrap("_cart_recovery_sent_real_count_for_abandoned")
 def _cart_recovery_sent_real_count_for_abandoned(ac: AbandonedCart) -> int:
     """عدد إرسالات واتساب الاسترجاع الناجحة من ‎CartRecoveryLog‎ (‎sent_real‎ و ‎mock_sent‎)."""
     conds = _cart_recovery_log_filters_for_abandoned_cart(ac)
@@ -3180,6 +3212,7 @@ def _log_normal_recovery_auto_start(
         pass
 
 
+@_normal_carts_query_prof_wrap("_latest_cart_recovery_log_row_for_abandoned")
 def _latest_cart_recovery_log_row_for_abandoned(
     ac: AbandonedCart,
 ) -> Optional[CartRecoveryLog]:
@@ -3200,6 +3233,7 @@ def _latest_cart_recovery_log_row_for_abandoned(
         return None
 
 
+@_normal_carts_query_prof_wrap("_normal_recovery_dashboard_phase_key")
 def _normal_recovery_dashboard_phase_key(
     ac: AbandonedCart,
     *,
@@ -5008,6 +5042,7 @@ def _log_normal_recovery_blocked_merchant_match(
         pass
 
 
+@_normal_carts_query_prof_wrap("_normal_recovery_dashboard_resolve_customer_phone_raw")
 def _normal_recovery_dashboard_resolve_customer_phone_raw(
     ac: AbandonedCart,
     dash_store: Optional[Store],
@@ -5038,6 +5073,7 @@ def _normal_recovery_dashboard_resolve_customer_phone_raw(
     return phone.strip()
 
 
+@_normal_carts_query_prof_wrap("_normal_recovery_extended_phone_lookup")
 def _normal_recovery_extended_phone_lookup(
     *,
     store_slug: str,
@@ -5155,6 +5191,7 @@ def _normal_recovery_extended_phone_lookup(
     return None, "none"
 
 
+@_normal_carts_query_prof_wrap("_resolve_cartflow_recovery_phone")
 def _resolve_cartflow_recovery_phone(
     *,
     store_slug: str,
@@ -9507,6 +9544,7 @@ VIP_PRIORITY_LC_TERMINAL_SQL = or_(
 )
 
 
+@_normal_carts_query_prof_wrap("_vip_pick_priority_cart_groups")
 def _vip_pick_priority_cart_groups(
     full_rows: list[AbandonedCart],
     *,
@@ -10217,6 +10255,7 @@ def _normal_recovery_abandoned_scope_filter(
     return or_(*parts)
 
 
+@_normal_carts_query_prof_wrap("_normal_recovery_cart_activity_rank_map")
 def _normal_recovery_cart_activity_rank_map(
     rows: list[AbandonedCart],
     store_slug: str,
@@ -10426,6 +10465,7 @@ def _merchant_dashboard_identity_anomaly_batched(
     return False, ""
 
 
+@_normal_carts_query_prof_wrap("_normal_recovery_dashboard_phase_key_merchant_batch")
 def _normal_recovery_dashboard_phase_key_merchant_batch(
     ac: AbandonedCart,
     *,
@@ -10516,6 +10556,7 @@ def _normal_recovery_recovery_log_statuses_union_merchant_batch(
     return frozenset(acc)
 
 
+@_normal_carts_query_prof_wrap("_normal_recovery_group_is_archived_merchant_batch")
 def _normal_recovery_group_is_archived_merchant_batch(
     grp_sorted: list[AbandonedCart],
     batch: MerchantNormalCartsBatchReads,
@@ -10607,6 +10648,7 @@ def _abandoned_ids_for_recovery_scope_rows(
     return out
 
 
+@_normal_carts_query_prof_wrap("_merchant_normal_batch_extended_phone_resolve")
 def _merchant_normal_batch_extended_phone_resolve(
     ac: AbandonedCart,
     store_slug: str,
@@ -10722,6 +10764,7 @@ def _merchant_normal_batch_extended_phone_resolve(
     return None, "none"
 
 
+@_normal_carts_query_prof_wrap("_merchant_normal_batch_resolve_customer_phone_raw")
 def _merchant_normal_batch_resolve_customer_phone_raw(
     ac: AbandonedCart,
     dash_store: Optional[Any],
@@ -10765,6 +10808,7 @@ def _merchant_normal_batch_resolve_customer_phone_raw(
     return ""
 
 
+@_normal_carts_query_prof_wrap("_merchant_normal_dashboard_batch_reads")
 def _merchant_normal_dashboard_batch_reads(
     full_rows: list[AbandonedCart], dash_store: Any
 ) -> MerchantNormalCartsBatchReads:
@@ -10775,19 +10819,20 @@ def _merchant_normal_dashboard_batch_reads(
     sess_pool: set[str] = set()
     cid_pool: set[str] = set()
     uniq_store_pk: set[int] = set()
-    for ac in full_rows:
-        rs = (getattr(ac, "recovery_session_id", None) or "").strip()[:512]
-        if rs:
-            sess_pool.add(rs)
-        zi = (getattr(ac, "zid_cart_id", None) or "").strip()[:255]
-        if zi:
-            cid_pool.add(zi)
-        stid = getattr(ac, "store_id", None)
-        if stid is not None:
-            try:
-                uniq_store_pk.add(int(stid))
-            except (TypeError, ValueError):
-                pass
+    with normal_carts_profile_span("loop:batch_scan_full_rows_for_session_cart_ids"):
+        for ac in full_rows:
+            rs = (getattr(ac, "recovery_session_id", None) or "").strip()[:512]
+            if rs:
+                sess_pool.add(rs)
+            zi = (getattr(ac, "zid_cart_id", None) or "").strip()[:255]
+            if zi:
+                cid_pool.add(zi)
+            stid = getattr(ac, "store_id", None)
+            if stid is not None:
+                try:
+                    uniq_store_pk.add(int(stid))
+                except (TypeError, ValueError):
+                    pass
     combined_sess = set(sess_pool) | set(cid_pool)
 
     logs: list[CartRecoveryLog] = []
@@ -10800,22 +10845,26 @@ def _merchant_normal_dashboard_batch_reads(
             if cid_pool:
                 or_parts_log.append(CartRecoveryLog.cart_id.in_(list(cid_pool)))
             if or_parts_log:
-                logs = (
-                    db.session.query(CartRecoveryLog).filter(or_(*or_parts_log)).all()
-                )
+                with normal_carts_profile_span("sql:batch_cart_recovery_logs_bulk"):
+                    logs = (
+                        db.session.query(CartRecoveryLog)
+                        .filter(or_(*or_parts_log))
+                        .all()
+                    )
     except (SQLAlchemyError, OSError, TypeError, ValueError):
         db.session.rollback()
         logs = []
     logs_loaded = len(logs)
     by_sess: dict[str, list[CartRecoveryLog]] = defaultdict(list)
     by_cart: dict[str, list[CartRecoveryLog]] = defaultdict(list)
-    for lg in logs:
-        ls_l = (getattr(lg, "session_id", None) or "").strip()
-        if ls_l:
-            by_sess[ls_l].append(lg)
-        lc_l = (getattr(lg, "cart_id", None) or "").strip()
-        if lc_l:
-            by_cart[lc_l].append(lg)
+    with normal_carts_profile_span("loop:batch_index_recovery_logs_into_hash_maps"):
+        for lg in logs:
+            ls_l = (getattr(lg, "session_id", None) or "").strip()
+            if ls_l:
+                by_sess[ls_l].append(lg)
+            lc_l = (getattr(lg, "cart_id", None) or "").strip()
+            if lc_l:
+                by_cart[lc_l].append(lg)
 
     status_union_by_ac: dict[int, frozenset[str]] = {}
     sent_real_count: dict[int, int] = {}
@@ -10823,94 +10872,96 @@ def _merchant_normal_dashboard_batch_reads(
     skipped_nv_by_ac: dict[int, Optional[CartRecoveryLog]] = {}
 
     for ac in full_rows:
-        aid_ac = int(getattr(ac, "id", 0) or 0)
-        if not aid_ac:
-            continue
-        sid_ac = (getattr(ac, "recovery_session_id", None) or "").strip()[:512]
-        zid_ac = (getattr(ac, "zid_cart_id", None) or "").strip()[:255]
-        cand_l: list[CartRecoveryLog] = []
-        if sid_ac:
-            cand_l.extend(by_sess.get(sid_ac, ()))
-        if zid_ac:
-            cand_l.extend(by_sess.get(zid_ac, ()))
-            cand_l.extend(by_cart.get(zid_ac, ()))
-        seen_lid: set[int] = set()
-        matched_logs: list[CartRecoveryLog] = []
-        for lg in cand_l:
-            lg_id = int(getattr(lg, "id", 0) or 0)
-            if not lg_id or lg_id in seen_lid:
+        with normal_carts_profile_span("loop:batch_build_per_abandoned_log_projection"):
+            aid_ac = int(getattr(ac, "id", 0) or 0)
+            if not aid_ac:
                 continue
-            seen_lid.add(lg_id)
-            if _recovery_log_row_matches_abandoned_cart(lg, ac):
-                matched_logs.append(lg)
-        stset = frozenset(
-            str((getattr(x, "status", None) or "")).strip().lower()
-            for x in matched_logs
-            if (getattr(x, "status", None) or "").strip()
-        )
-        status_union_by_ac[aid_ac] = stset
-        sc = 0
-        for x in matched_logs:
-            stlz = str((getattr(x, "status", None) or "")).strip().lower()
-            if stlz in _NORMAL_RECOVERY_SENT_LOG_STATUSES:
-                sc += 1
-        sent_real_count[aid_ac] = sc
-        if matched_logs:
-            latest_log_by_ac[aid_ac] = max(
-                matched_logs,
-                key=lambda r: (
-                    getattr(r, "created_at", None)
-                    or datetime.min.replace(tzinfo=timezone.utc),
-                    int(getattr(r, "id", 0) or 0),
-                ),
+            sid_ac = (getattr(ac, "recovery_session_id", None) or "").strip()[:512]
+            zid_ac = (getattr(ac, "zid_cart_id", None) or "").strip()[:255]
+            cand_l: list[CartRecoveryLog] = []
+            if sid_ac:
+                cand_l.extend(by_sess.get(sid_ac, ()))
+            if zid_ac:
+                cand_l.extend(by_sess.get(zid_ac, ()))
+                cand_l.extend(by_cart.get(zid_ac, ()))
+            seen_lid: set[int] = set()
+            matched_logs: list[CartRecoveryLog] = []
+            for lg in cand_l:
+                lg_id = int(getattr(lg, "id", 0) or 0)
+                if not lg_id or lg_id in seen_lid:
+                    continue
+                seen_lid.add(lg_id)
+                if _recovery_log_row_matches_abandoned_cart(lg, ac):
+                    matched_logs.append(lg)
+            stset = frozenset(
+                str((getattr(x, "status", None) or "")).strip().lower()
+                for x in matched_logs
+                if (getattr(x, "status", None) or "").strip()
             )
-        else:
-            latest_log_by_ac[aid_ac] = None
-        skipped_logs = [
-            x
-            for x in matched_logs
-            if str((getattr(x, "status", None) or "")).strip().lower()
-            == "skipped_no_verified_phone"
-        ]
-        if skipped_logs:
-            skipped_nv_by_ac[aid_ac] = max(
-                skipped_logs, key=lambda r: int(getattr(r, "id", 0) or 0)
-            )
-        else:
-            skipped_nv_by_ac[aid_ac] = None
+            status_union_by_ac[aid_ac] = stset
+            sc = 0
+            for x in matched_logs:
+                stlz = str((getattr(x, "status", None) or "")).strip().lower()
+                if stlz in _NORMAL_RECOVERY_SENT_LOG_STATUSES:
+                    sc += 1
+            sent_real_count[aid_ac] = sc
+            if matched_logs:
+                latest_log_by_ac[aid_ac] = max(
+                    matched_logs,
+                    key=lambda r: (
+                        getattr(r, "created_at", None)
+                        or datetime.min.replace(tzinfo=timezone.utc),
+                        int(getattr(r, "id", 0) or 0),
+                    ),
+                )
+            else:
+                latest_log_by_ac[aid_ac] = None
+            skipped_logs = [
+                x
+                for x in matched_logs
+                if str((getattr(x, "status", None) or "")).strip().lower()
+                == "skipped_no_verified_phone"
+            ]
+            if skipped_logs:
+                skipped_nv_by_ac[aid_ac] = max(
+                    skipped_logs, key=lambda r: int(getattr(r, "id", 0) or 0)
+                )
+            else:
+                skipped_nv_by_ac[aid_ac] = None
 
     reason_store_by_session: dict[str, CartRecoveryReason] = {}
     reason_any_by_session: dict[str, CartRecoveryReason] = {}
     reasons_rows_fetched = 0
     try:
-        db.create_all()
-        if slug and sess_pool:
-            rs_rows = (
-                db.session.query(CartRecoveryReason)
-                .filter(
-                    CartRecoveryReason.store_slug == slug,
-                    CartRecoveryReason.session_id.in_(list(sess_pool)),
+        with normal_carts_profile_span("sql:batch_cart_recovery_reason_by_session"):
+            db.create_all()
+            if slug and sess_pool:
+                rs_rows = (
+                    db.session.query(CartRecoveryReason)
+                    .filter(
+                        CartRecoveryReason.store_slug == slug,
+                        CartRecoveryReason.session_id.in_(list(sess_pool)),
+                    )
+                    .order_by(CartRecoveryReason.updated_at.desc())
+                    .all()
                 )
-                .order_by(CartRecoveryReason.updated_at.desc())
-                .all()
-            )
-            reasons_rows_fetched += len(rs_rows)
-            for r in rs_rows:
-                k = (getattr(r, "session_id", None) or "").strip()[:512]
-                if k and k not in reason_store_by_session:
-                    reason_store_by_session[k] = r
-        if sess_pool:
-            ra_rows = (
-                db.session.query(CartRecoveryReason)
-                .filter(CartRecoveryReason.session_id.in_(list(sess_pool)))
-                .order_by(CartRecoveryReason.updated_at.desc())
-                .all()
-            )
-            reasons_rows_fetched += len(ra_rows)
-            for r in ra_rows:
-                k = (getattr(r, "session_id", None) or "").strip()[:512]
-                if k and k not in reason_any_by_session:
-                    reason_any_by_session[k] = r
+                reasons_rows_fetched += len(rs_rows)
+                for r in rs_rows:
+                    k = (getattr(r, "session_id", None) or "").strip()[:512]
+                    if k and k not in reason_store_by_session:
+                        reason_store_by_session[k] = r
+            if sess_pool:
+                ra_rows = (
+                    db.session.query(CartRecoveryReason)
+                    .filter(CartRecoveryReason.session_id.in_(list(sess_pool)))
+                    .order_by(CartRecoveryReason.updated_at.desc())
+                    .all()
+                )
+                reasons_rows_fetched += len(ra_rows)
+                for r in ra_rows:
+                    k = (getattr(r, "session_id", None) or "").strip()[:512]
+                    if k and k not in reason_any_by_session:
+                        reason_any_by_session[k] = r
     except (SQLAlchemyError, OSError, TypeError, ValueError):
         db.session.rollback()
 
@@ -10924,13 +10975,14 @@ def _merchant_normal_dashboard_batch_reads(
                 sp_parts.append(AbandonedCart.recovery_session_id.in_(list(sess_pool)))
             if cid_pool:
                 sp_parts.append(AbandonedCart.zid_cart_id.in_(list(cid_pool)))
-            peers_non_vip = (
-                db.session.query(AbandonedCart)
-                .filter(AbandonedCart.vip_mode.is_(False))
-                .filter(or_(*sp_parts))
-                .limit(4000)
-                .all()
-            )
+            with normal_carts_profile_span("sql:batch_abandoned_cart_peers_for_scope"):
+                peers_non_vip = (
+                    db.session.query(AbandonedCart)
+                    .filter(AbandonedCart.vip_mode.is_(False))
+                    .filter(or_(*sp_parts))
+                    .limit(4000)
+                    .all()
+                )
             scope_ab_rows = []
             for ar in peers_non_vip:
                 rid_r = getattr(ar, "id", None)
@@ -10956,9 +11008,11 @@ def _merchant_normal_dashboard_batch_reads(
             except (TypeError, ValueError):
                 pass
         if need_pks:
-            for srow in (
-                db.session.query(Store).filter(Store.id.in_(list(need_pks))).all()
-            ):
+            with normal_carts_profile_span("sql:batch_store_rows_by_primary_keys"):
+                store_rows_pkg = (
+                    db.session.query(Store).filter(Store.id.in_(list(need_pks))).all()
+                )
+            for srow in store_rows_pkg:
                 pk_id = getattr(srow, "id", None)
                 if pk_id is not None:
                     store_by_pk[int(pk_id)] = srow
@@ -10975,17 +11029,18 @@ def _merchant_normal_dashboard_batch_reads(
     try:
         db.create_all()
         if ac_ids_ml:
-            ml_rows_list = (
-                db.session.query(MessageLog)
-                .filter(
-                    MessageLog.abandoned_cart_id.in_(ac_ids_ml),
-                    MessageLog.channel == "whatsapp",
-                    MessageLog.phone.isnot(None),
-                    MessageLog.phone != "",
+            with normal_carts_profile_span("sql:batch_message_logs_whatsapp_by_abandoned"):
+                ml_rows_list = (
+                    db.session.query(MessageLog)
+                    .filter(
+                        MessageLog.abandoned_cart_id.in_(ac_ids_ml),
+                        MessageLog.channel == "whatsapp",
+                        MessageLog.phone.isnot(None),
+                        MessageLog.phone != "",
+                    )
+                    .order_by(MessageLog.created_at.desc())
+                    .all()
                 )
-                .order_by(MessageLog.created_at.desc())
-                .all()
-            )
             message_logs_loaded = len(ml_rows_list)
             for m in ml_rows_list:
                 aid_m_l = getattr(m, "abandoned_cart_id", None)
@@ -11010,10 +11065,11 @@ def _merchant_normal_dashboard_batch_reads(
         or datetime.min.replace(tzinfo=timezone.utc),
         reverse=True,
     )
-    for ac_fc in sorted_full_rows:
-        zz_fc = (getattr(ac_fc, "zid_cart_id", None) or "").strip()[:255]
-        if zz_fc and zz_fc not in zid_first_ac:
-            zid_first_ac[zz_fc] = ac_fc
+    with normal_carts_profile_span("loop:batch_build_zid_first_seen_map"):
+        for ac_fc in sorted_full_rows:
+            zz_fc = (getattr(ac_fc, "zid_cart_id", None) or "").strip()[:255]
+            if zz_fc and zz_fc not in zid_first_ac:
+                zid_first_ac[zz_fc] = ac_fc
 
     batch = MerchantNormalCartsBatchReads(
         slug=slug,
@@ -11037,17 +11093,19 @@ def _merchant_normal_dashboard_batch_reads(
     )
     cust_map: dict[int, str] = {}
     for ac_ph in full_rows:
-        aid_ph = int(getattr(ac_ph, "id", 0) or 0)
-        if not aid_ph:
-            continue
-        cust_map[aid_ph] = _merchant_normal_batch_resolve_customer_phone_raw(
-            ac_ph, dash_store, batch
-        ).strip()
+        with normal_carts_profile_span("loop:batch_resolve_customer_phone_per_abandoned"):
+            aid_ph = int(getattr(ac_ph, "id", 0) or 0)
+            if not aid_ph:
+                continue
+            cust_map[aid_ph] = _merchant_normal_batch_resolve_customer_phone_raw(
+                ac_ph, dash_store, batch
+            ).strip()
     batch.cust_phone_by_ac = cust_map
     batch.phones_loaded = sum(1 for vx in cust_map.values() if vx)
     return batch
 
 
+@_normal_carts_query_prof_wrap("_merchant_normal_recovery_light_payload_merchant_batch")
 def _merchant_normal_recovery_light_payload_merchant_batch(
     grp_sorted: list[AbandonedCart],
     dash_store: Optional[Any],
@@ -11123,6 +11181,7 @@ def _merchant_normal_recovery_light_payload_merchant_batch(
     return out
 
 
+@_normal_carts_query_prof_wrap("_merchant_normal_recovery_light_payload")
 def _merchant_normal_recovery_light_payload(
     grp_sorted: list[AbandonedCart],
     dash_store: Optional[Any],
@@ -11312,6 +11371,7 @@ def _normal_recovery_merchant_lightweight_alert_list(
     return []
 
 
+@_normal_carts_query_prof_wrap("_normal_recovery_merchant_lightweight_alert_list_for_api")
 def _normal_recovery_merchant_lightweight_alert_list_for_api(
     page_limit: int = 50,
     page_offset: int = 0,
@@ -11359,9 +11419,10 @@ def _normal_recovery_merchant_lightweight_alert_list_for_api(
             220, min(500, desired_end * 8)
         )
         max_pick = 24 if lc_raw == "all" else max(96, min(160, desired_end * 3))
-        full_rows = list(
-            q.order_by(AbandonedCart.last_seen_at.desc()).limit(row_cap).all()
-        )
+        with normal_carts_profile_span("sql:abandoned_cart_candidates_page_query"):
+            full_rows = list(
+                q.order_by(AbandonedCart.last_seen_at.desc()).limit(row_cap).all()
+            )
         if not full_rows:
             return [], dict(prof_empty)
         slug_for_act = (
@@ -11398,49 +11459,51 @@ def _normal_recovery_merchant_lightweight_alert_list_for_api(
             return True
 
         for grp_sorted in picked:
-            arch = _normal_recovery_group_is_archived_merchant_batch(
-                grp_sorted, batch_reads
-            )
-            bh = _normal_recovery_behavioral_merge_from_cart_group(grp_sorted)
-            log_u = _normal_recovery_recovery_log_statuses_union_merchant_batch(
-                grp_sorted,
-                batch_reads,
-            )
-            ac0 = grp_sorted[0]
-            pk = _normal_recovery_dashboard_phase_key_merchant_batch(
-                ac0,
-                behavioral_override=bh,
-                recovery_log_statuses=log_u,
-                batch=batch_reads,
-            )
-            coarse = _normal_recovery_coarse_status(pk)
-            stale_flag, stale_meta = merchant_group_stale_meta(
-                grp_sorted,
-                store_slug=slug_for_act,
-                activity_map=activity_map,
-                coarse=coarse,
-                now_utc=now_utc,
-            )
-            if not _lifecycle_bucket_ok(
-                archived=arch,
-                coarse=coarse,
-                stale_flag=stale_flag,
-            ):
-                continue
-            out.append(
-                _merchant_normal_recovery_light_payload_merchant_batch(
-                    grp_sorted,
-                    dash_store,
-                    batch_reads,
-                    coarse=coarse,
-                    stale_meta=stale_meta,
-                    archived_group=arch,
-                    stale_flag=stale_flag,
-                    now_utc=now_utc,
+            with normal_carts_profile_span("loop:for_grp_sorted_in_picked"):
+                arch = _normal_recovery_group_is_archived_merchant_batch(
+                    grp_sorted, batch_reads
                 )
-            )
-            if len(out) >= desired_end:
-                break
+                bh = _normal_recovery_behavioral_merge_from_cart_group(grp_sorted)
+                log_u = _normal_recovery_recovery_log_statuses_union_merchant_batch(
+                    grp_sorted,
+                    batch_reads,
+                )
+                ac0 = grp_sorted[0]
+                pk = _normal_recovery_dashboard_phase_key_merchant_batch(
+                    ac0,
+                    behavioral_override=bh,
+                    recovery_log_statuses=log_u,
+                    batch=batch_reads,
+                )
+                coarse = _normal_recovery_coarse_status(pk)
+                with normal_carts_profile_span("merchant_group_stale_meta"):
+                    stale_flag, stale_meta = merchant_group_stale_meta(
+                        grp_sorted,
+                        store_slug=slug_for_act,
+                        activity_map=activity_map,
+                        coarse=coarse,
+                        now_utc=now_utc,
+                    )
+                if not _lifecycle_bucket_ok(
+                    archived=arch,
+                    coarse=coarse,
+                    stale_flag=stale_flag,
+                ):
+                    continue
+                out.append(
+                    _merchant_normal_recovery_light_payload_merchant_batch(
+                        grp_sorted,
+                        dash_store,
+                        batch_reads,
+                        coarse=coarse,
+                        stale_meta=stale_meta,
+                        archived_group=arch,
+                        stale_flag=stale_flag,
+                        now_utc=now_utc,
+                    )
+                )
+                if len(out) >= desired_end:
+                    break
 
         po = max(0, int(page_offset or 0))
         pl = max(1, int(page_limit or 50))
@@ -11647,7 +11710,13 @@ def api_dashboard_summary():
 
 @app.get("/api/dashboard/normal-carts")
 def api_dashboard_normal_carts(request: Request):
+    from services.normal_carts_query_profiler import (
+        normal_carts_profile_begin,
+        normal_carts_profile_end,
+    )
+
     wall0 = time.perf_counter()
+    normal_carts_profile_begin()
     nc_prof = {
         "carts_count": 0,
         "logs_loaded": 0,
@@ -11664,6 +11733,9 @@ def api_dashboard_normal_carts(request: Request):
         log.warning("api_dashboard_normal_carts: %s", e)
         return j({"ok": False, "error": "failed"}, 500)
     finally:
+        from services.normal_carts_query_profiler import normal_carts_profile_end
+
+        normal_carts_profile_end()
         _log_dashboard_section_profile(section="normal_carts", wall_perf_start=wall0)
         _log_normal_carts_profile(
             wall_perf_start=wall0,
@@ -12693,6 +12765,7 @@ def _merchant_followup_action_row_visible_for_dashboard(
         return False
 
 
+@_normal_carts_query_prof_wrap("_store_row_for_abandoned_cart")
 def _store_row_for_abandoned_cart(ac: Optional[AbandonedCart]) -> Optional[Store]:
     """متجر السلة أو آخر متجر افتراضي — إرسال تنبيهات التاجر فقط لا يفسد مسارات أخرى."""
     if ac is None:
