@@ -2274,6 +2274,42 @@ def _cart_recovery_reason_latest_row_any_store(
         return None
 
 
+def _effective_return_store_slug(payload: dict[str, Any]) -> str:
+    """‎store_slug‎ الصريح من الحمولة؛ إن كان ‎default‎ يُستنتج من آخر ‎CartRecoveryReason‎ لنفس الجلسة."""
+    ss = (_normalize_store_slug(payload) or "default").strip()[:255]
+    if ss != "default":
+        return ss
+    sid_raw = payload.get("session_id")
+    sid_n = sid_raw.strip()[:512] if isinstance(sid_raw, str) else ""
+    part = _session_part_from_payload(payload)
+    lookup_sid = sid_n or ((part or "").strip()[:512])
+    if not lookup_sid:
+        return ss
+    row = _cart_recovery_reason_latest_row_any_store(lookup_sid)
+    if row is None:
+        return ss
+    rss = str(getattr(row, "store_slug", "") or "").strip()[:255]
+    return rss if rss else ss
+
+
+def _effective_recovery_key_from_return_payload(payload: dict[str, Any]) -> str:
+    """مفتاح استرجاع يطابق مسار الجدولة عند تعرض ‎store‎ للاختفاء في حدث العودة السلبية."""
+    ss = _effective_return_store_slug(payload)
+    part = _session_part_from_payload(payload)
+    return f"{ss}:{part}"
+
+
+def _recovery_return_store_candidates(store_slug: str, recovery_key: str) -> list[str]:
+    out: list[str] = []
+    ss = ((store_slug or "").strip()[:255]) or "default"
+    out.append(ss)
+    if ":" in recovery_key:
+        pref = recovery_key.split(":", 1)[0].strip()[:255]
+        if pref and pref not in out:
+            out.append(pref)
+    return out
+
+
 def _recovery_row_user_rejected_help(row: Optional[CartRecoveryReason]) -> bool:
     if row is None:
         return False
@@ -4377,15 +4413,18 @@ def _is_user_returned(recovery_key: str) -> bool:
 
 def _mark_user_returned_in_memory_only(payload: dict[str, Any]) -> None:
     """In-memory return flag only (no durable/analytics persistence)."""
-    key = _recovery_key_from_payload(payload)
-    ss = str(payload.get("store") or payload.get("store_slug") or "").strip() or "-"
+    key_eff = _effective_recovery_key_from_return_payload(payload)
+    key_legacy = _recovery_key_from_payload(payload)
+    ss = _effective_return_store_slug(payload)
     sid = str(payload.get("session_id") or "").strip()
     cid = str(payload.get("cart_id") or "").strip()
     with _recovery_session_lock:
-        _session_recovery_returned[key] = True
+        _session_recovery_returned[key_eff] = True
+        if key_legacy != key_eff:
+            _session_recovery_returned[key_legacy] = True
     line = (
-        f"[RETURN TO SITE] in_memory_suppression_flag=true recovery_key={key} "
-        f"store_slug={ss} session_id={sid[:80] if sid else '-'} "
+        f"[RETURN TO SITE] in_memory_suppression_flag=true recovery_key={key_eff} "
+        f"(legacy_key={key_legacy}) store_slug={ss} session_id={sid[:80] if sid else '-'} "
         f"cart_id={cid[:64] if cid else '-'}"
     )
     try:
@@ -4396,15 +4435,15 @@ def _mark_user_returned_in_memory_only(payload: dict[str, Any]) -> None:
 
 
 def _mark_user_returned_for_payload(payload: dict[str, Any]) -> None:
-    key = _recovery_key_from_payload(payload)
-    ss = str(payload.get("store") or payload.get("store_slug") or "").strip() or "-"
+    key_eff = _effective_recovery_key_from_return_payload(payload)
+    ss = _effective_return_store_slug(payload)
     sid = str(payload.get("session_id") or "").strip()
     cid = str(payload.get("cart_id") or "").strip()
     _mark_user_returned_in_memory_only(payload)
     _persist_durable_return_to_site_evidence_from_payload(payload)
     try:
         _rn = (
-            f"[RETURN TO SITE RECORDED] recovery_key={key} store_slug={ss} "
+            f"[RETURN TO SITE RECORDED] recovery_key={key_eff} store_slug={ss} "
             f"session_id={sid[:80] if sid else '-'} cart_id={cid[:64] if cid else '-'}"
         )
         print(_rn, flush=True)
@@ -4496,12 +4535,12 @@ def _persist_durable_return_to_site_evidence_from_payload(
     if not isinstance(payload, dict):
         return
     try:
-        store_slug = _normalize_store_slug(payload)
         session_id = _session_part_from_payload(payload)
         cart_id = _cart_id_str_from_payload(payload)
-        ss = (store_slug or "").strip()[:255] or "default"
+        ss = (_effective_return_store_slug(payload) or "").strip()[:255] or "default"
         sid = (session_id or "").strip()[:512]
         cid = (cart_id or "").strip()[:255] if cart_id else ""
+        rk_eff = _effective_recovery_key_from_return_payload(payload)
         if not sid:
             return
         if not skip_db_schema_bootstrap:
@@ -4525,6 +4564,15 @@ def _persist_durable_return_to_site_evidence_from_payload(
             .first()
         )
         if dup is not None:
+            try:
+                print(
+                    "[RETURN STORE] "
+                    f"store_slug={ss} session_id={sid[:80]} cart_id={(cid or '-')[:64]} "
+                    f"recovery_key={rk_eff} status=returned_to_site note=recent_duplicate_skip",
+                    flush=True,
+                )
+            except OSError:
+                pass
             return
         _persist_cart_recovery_log(
             store_slug=ss,
@@ -4537,6 +4585,12 @@ def _persist_durable_return_to_site_evidence_from_payload(
             skip_api_warm=skip_db_schema_bootstrap,
         )
         try:
+            print(
+                "[RETURN STORE] "
+                f"store_slug={ss} session_id={sid[:80]} cart_id={(cid or '-')[:64]} "
+                f"recovery_key={rk_eff} status=returned_to_site",
+                flush=True,
+            )
             _dline = (
                 f"[RETURN TO SITE] durable_evidence_persisted store_slug={ss} "
                 f"session_id={sid[:80]} cart_id={(cid or '-')[:64]}"
@@ -4553,14 +4607,15 @@ def _persist_durable_return_to_site_evidence_from_payload(
         log.warning("durable return evidence persist skipped: %s", exc)
 
 
-def _recovery_durable_return_evidence_exists(
+def _recovery_durable_return_match_detail(
     *,
     store_slug: str,
     session_id: str,
     cart_id: Optional[str],
+    recovery_key: str,
     skip_api_warm: bool = False,
-) -> bool:
-    ss = (store_slug or "").strip()[:255]
+) -> Tuple[bool, str, Optional[str]]:
+    """‎CartRecoveryLog.returned_to_site‎ مطابقة الجلسة/السلة مع مرشّحات ‎store_slug‎."""
     sid = (session_id or "").strip()[:512]
     cid = ((cart_id or "").strip()[:255]) if cart_id else ""
     conds: list[Any] = []
@@ -4570,39 +4625,55 @@ def _recovery_durable_return_evidence_exists(
         conds.append(CartRecoveryLog.cart_id == cid)
         conds.append(CartRecoveryLog.session_id == cid)
     if not conds:
-        return False
+        return False, "no_session_match", None
+    candidates = _recovery_return_store_candidates(store_slug, recovery_key)
     try:
         if not skip_api_warm:
             _ensure_cartflow_api_db_warmed()
-        probe = (
-            db.session.query(CartRecoveryLog.id)
+        row_strict = (
+            db.session.query(CartRecoveryLog.store_slug)
             .filter(
-                CartRecoveryLog.store_slug == ss,
                 CartRecoveryLog.status == _DURABLE_RETURN_TO_SITE_LOG_STATUS,
+                CartRecoveryLog.store_slug.in_(candidates),
                 or_(*conds),
             )
+            .order_by(CartRecoveryLog.created_at.desc())
             .limit(1)
             .first()
         )
-        return probe is not None
+        if row_strict:
+            return True, "matched", str(row_strict[0])
+        row_loose = (
+            db.session.query(CartRecoveryLog.store_slug)
+            .filter(
+                CartRecoveryLog.status == _DURABLE_RETURN_TO_SITE_LOG_STATUS,
+                or_(*conds),
+            )
+            .order_by(CartRecoveryLog.created_at.desc())
+            .limit(1)
+            .first()
+        )
+        if row_loose:
+            return False, "no_store_match", str(row_loose[0])
+        return False, "no_log", None
     except (SQLAlchemyError, OSError, TypeError, ValueError):
         try:
             db.session.rollback()
         except Exception:
             pass
-        return False
+        return False, "no_log", None
 
 
-def _recovery_behavioral_user_returned_hint(
+def _recovery_behavioral_return_match_detail(
     *,
     session_id: str,
     cart_id: Optional[str],
     skip_api_warm: bool = False,
-) -> bool:
+) -> Tuple[bool, str]:
     sid = (session_id or "").strip()[:512]
     cid = ((cart_id or "").strip()[:255]) if cart_id else ""
     if not sid:
-        return False
+        return False, "no_session_match"
     try:
         if not skip_api_warm:
             _ensure_cartflow_api_db_warmed()
@@ -4612,14 +4683,14 @@ def _recovery_behavioral_user_returned_hint(
             if bh.get("user_returned_to_site") is True or bh.get(
                 "customer_returned_to_site"
             ) is True:
-                return True
+                return True, "matched"
     except (SQLAlchemyError, OSError, TypeError, ValueError):
         try:
             db.session.rollback()
         except Exception:
             pass
-        return False
-    return False
+        return False, "no_behavioral_match"
+    return False, "no_behavioral_match"
 
 
 def _recovery_resolve_user_returned_for_send(
@@ -4630,6 +4701,10 @@ def _recovery_resolve_user_returned_for_send(
     cart_id: Optional[str],
     log_recovery_check: bool = True,
 ) -> bool:
+    lk_ss = ((store_slug or "").strip()[:255]) or "default"
+    lk_sid = (session_id or "").strip()[:512]
+    lk_cid = ((cart_id or "").strip()[:255]) if cart_id else ""
+
     def _rch(msg: str) -> None:
         if not log_recovery_check:
             return
@@ -4638,42 +4713,90 @@ def _recovery_resolve_user_returned_for_send(
         except OSError:
             pass
 
-    if _is_user_returned(recovery_key):
+    if log_recovery_check:
         _rch(
-            "[RECOVERY RETURN CHECK] user_returned_to_site=true source=in_memory "
-            + f"session_id={(session_id or '')[:80]} cart_id={(str(cart_id or '') or '-')[:64]} "
-            + f"recovery_key={recovery_key}"
+            "[RETURN LOOKUP] "
+            f"lookup_store={lk_ss} lookup_session={lk_sid[:80]} "
+            f"lookup_cart={(lk_cid or '-')[:64]} lookup_recovery_key={recovery_key}"
         )
+
+    if _is_user_returned(recovery_key):
+        if log_recovery_check:
+            print("[RETURN SOURCE] source=memory matched=true", flush=True)
+            print("[RETURN MATCH RESULT] matched=true reason=memory_hit", flush=True)
+            _rch(
+                "[RECOVERY RETURN CHECK] user_returned_to_site=true branch=memory "
+                f"session_id={lk_sid[:80]} cart_id={(lk_cid or '-')[:64]} recovery_key={recovery_key}"
+            )
         return True
-    if _recovery_durable_return_evidence_exists(
-        store_slug=store_slug, session_id=session_id, cart_id=cart_id
-    ) or _recovery_behavioral_user_returned_hint(
-        session_id=session_id, cart_id=cart_id
-    ):
+
+    dur_ok, dur_reason, dur_row_ss = _recovery_durable_return_match_detail(
+        store_slug=lk_ss,
+        session_id=lk_sid,
+        cart_id=cart_id,
+        recovery_key=recovery_key,
+    )
+    if dur_ok:
         with _recovery_session_lock:
             _session_recovery_returned[recovery_key] = True
         if log_recovery_check:
+            print(
+                f"[RETURN SOURCE] source=CartRecoveryLog matched=true row_store="
+                f"{dur_row_ss or '-'}",
+                flush=True,
+            )
+            print(f"[RETURN MATCH RESULT] matched=true reason={dur_reason}", flush=True)
             try:
                 mm = (
                     "[RETURN TO SITE MATCHED RECOVERY] recovered_from=persistent "
-                    f"session_id={(session_id or '')[:80]} cart_id={(str(cart_id or '') or '-')[:64]} "
+                    f"session_id={lk_sid[:80]} cart_id={(lk_cid or '-')[:64]} "
                     f"recovery_key={recovery_key}"
                 )
                 print(mm, flush=True)
                 log.info("%s", mm)
             except OSError:
                 pass
-        _rch(
-            "[RECOVERY RETURN CHECK] user_returned_to_site=true source=persistent "
-            f"session_id={(session_id or '')[:80]} cart_id={(str(cart_id or '') or '-')[:64]} "
-            f"recovery_key={recovery_key}"
-        )
+            _rch(
+                "[RECOVERY RETURN CHECK] user_returned_to_site=true branch=CartRecoveryLog "
+                f"session_id={lk_sid[:80]} cart_id={(lk_cid or '-')[:64]} recovery_key={recovery_key}"
+            )
         return True
-    _rch(
-        "[RECOVERY RETURN CHECK] user_returned_to_site=false "
-        f"session_id={(session_id or '')[:80]} cart_id={(str(cart_id or '') or '-')[:64]} "
-        f"recovery_key={recovery_key}"
+
+    beh_ok, beh_reason = _recovery_behavioral_return_match_detail(
+        session_id=lk_sid,
+        cart_id=cart_id,
     )
+    if beh_ok:
+        with _recovery_session_lock:
+            _session_recovery_returned[recovery_key] = True
+        if log_recovery_check:
+            print("[RETURN SOURCE] source=AbandonedCart_behavioral matched=true", flush=True)
+            print(f"[RETURN MATCH RESULT] matched=true reason={beh_reason}", flush=True)
+            _rch(
+                "[RECOVERY RETURN CHECK] user_returned_to_site=true branch=AbandonedCart_behavioral "
+                f"session_id={lk_sid[:80]} cart_id={(lk_cid or '-')[:64]} recovery_key={recovery_key}"
+            )
+        return True
+
+    if log_recovery_check:
+        print(
+            "[RETURN SOURCE] source=fallback matched=false "
+            f"durable_hint={dur_reason} behavioral_hint={beh_reason} "
+            f"log_row_store={(dur_row_ss or '-')}",
+            flush=True,
+        )
+        fail_reason = dur_reason
+        if dur_reason == "no_log" and beh_reason == "no_behavioral_match":
+            fail_reason = "no_log"
+        elif dur_reason == "no_store_match":
+            fail_reason = "no_store_match"
+        elif dur_reason == "no_session_match":
+            fail_reason = "no_session_match"
+        print(f"[RETURN MATCH RESULT] matched=false reason={fail_reason}", flush=True)
+        _rch(
+            "[RECOVERY RETURN CHECK] user_returned_to_site=false branch=fallback "
+            f"session_id={lk_sid[:80]} cart_id={(lk_cid or '-')[:64]} recovery_key={recovery_key}"
+        )
     return False
 
 
