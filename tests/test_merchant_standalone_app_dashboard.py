@@ -83,6 +83,20 @@ class MerchantStandaloneAppDashboardTests(unittest.TestCase):
         self.assertTrue(payload.get("ok"))
         self.assertIn("merchant_kpi_abandoned_fmt", payload)
 
+    def test_dashboard_normal_carts_api_ok_default_limit(self) -> None:
+        r = self.client.get("/api/dashboard/normal-carts")
+        self.assertEqual(r.status_code, 200, r.text[:400])
+        payload = r.json()
+        self.assertTrue(payload.get("ok"))
+        rows = payload.get("merchant_carts_page_rows") or []
+        self.assertIsInstance(rows, list)
+        self.assertLessEqual(
+            len(rows),
+            50,
+            msg="default normal-carts API payload should cap at 50 carts",
+        )
+        self.assertIn("merchant_cart_filter_counts", payload)
+
     def test_dashboard_merchant_html_has_no_ops_session_field(self) -> None:
         r = self.client.get("/dashboard")
         self.assertEqual(r.status_code, 200)
