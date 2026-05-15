@@ -9,6 +9,21 @@
   var lastPayload = null;
   var loadInFlight = false;
 
+  /** نصوص مساعدة ثابتة في الواجهة فقط — لا تُفرض على الحقل ولا تستبدل المحفوظ. */
+  var SUGGESTED_BY_KEY = {
+    price:
+      "واضح إن السعر مهم لك 👍 إذا تحب نساعدك بخيار أنسب أو نوضح القيمة أكثر",
+    quality:
+      "الجودة تهمنا مثلك 👍 أي استفسار عن المواصفات أو المطابقة نقدر نلخصلك بسرعة",
+    shipping: "إذا عندك استفسار عن الشحن أو المدة، نقدر نوضحها لك",
+    delivery:
+      "بخصوص مدة التوصيل، نقدر نعطيك وقت تقريبي يناسب منطقتك 👍",
+    warranty:
+      "إذا عندك سؤال عن الضمان أو التغطية، نوضّح لك النقاط المهمة باختصار",
+    other:
+      "لاحظنا ما كمّلت الطلب 👍 إذا في شي وقفك، قولنا ونشوف لك حل بسيط",
+  };
+
   function byId(id) {
     return document.getElementById(id);
   }
@@ -20,17 +35,77 @@
       .replace(/"/g, "&quot;");
   }
 
+  function normalizeApiDelayUnit(u) {
+    var s = String(u == null ? "" : u).trim().toLowerCase();
+    if (s === "hour" || s === "hours") return "hour";
+    return "minute";
+  }
+
+  function normalizeUiDelayUnit(u) {
+    var s = String(u == null ? "" : u).trim();
+    if (s === "hour") return "hour";
+    if (s === "day") return "day";
+    return "minute";
+  }
+
+  /**
+   * عرض أيام في الواجهة دون تغيير الخادم: نخزّن التعادل كساعات على الـ API (ساعات = أيام×٢٤).
+   */
+  function displayDelayFromApi(delayVal, apiUnitNorm) {
+    var dv =
+      typeof delayVal === "number"
+        ? delayVal
+        : parseFloat(delayVal);
+    if (!(dv > 0) || typeof dv !== "number") {
+      dv = 1;
+    }
+    var u = apiUnitNorm;
+    if (u === "hour" && dv >= 24) {
+      var days = dv / 24;
+      var rnd = Math.round(days);
+      if (rnd >= 1 && Math.abs(days - rnd) < 1e-6) {
+        return { value: rnd, unit: "day" };
+      }
+    }
+    return { value: dv, unit: u };
+  }
+
+  function persistFirstSlotDelay(dv, uiUnit) {
+    if (uiUnit === "day") {
+      return { delay: dv * 24, unit: "hour" };
+    }
+    return { delay: dv, unit: uiUnit };
+  }
+
   function cardHtml(row) {
-    var k = esc(row.key);
     var lbl = esc(row.label_ar);
     var en = row.enabled !== false ? " checked" : "";
     var msg = esc(row.message || "");
-    var dv = typeof row.delay_value === "number" ? row.delay_value : parseFloat(row.delay_value) || 1;
-    var du = esc(String(row.delay_unit || "minute"));
+    var rawDv =
+      typeof row.delay_value === "number"
+        ? row.delay_value
+        : parseFloat(row.delay_value) || 1;
+    var disp = displayDelayFromApi(rawDv, normalizeApiDelayUnit(row.delay_unit));
+    var dv = disp.value;
+    var duNorm = disp.unit;
     var mc = parseInt(row.message_count, 10) || 1;
     mc = Math.max(1, Math.min(3, mc));
-    var minSel = du === "hour" ? "" : " selected";
-    var hourSel = du === "hour" ? " selected" : "";
+    var minSel = duNorm === "minute" ? " selected" : "";
+    var hourSel = duNorm === "hour" ? " selected" : "";
+    var daySel = duNorm === "day" ? " selected" : "";
+    var sugRaw = String(SUGGESTED_BY_KEY[row.key] || "").trim();
+    var sug = esc(sugRaw);
+    var sugBlock =
+      sugRaw.length > 0
+        ? '<div class="ma-tpl-suggest">' +
+          '<p class="ma-tpl-suggest-lbl">اقتراح:</p>' +
+          '<div class="ma-tpl-suggest-row">' +
+          '<p class="ma-tpl-suggest-txt" data-ma-tpl-suggest-txt dir="rtl">' +
+          sug +
+          "</p>" +
+          '<button type="button" class="ma-tpl-copy" data-ma-tpl-copy-suggest>نسخ</button>' +
+          "</div></div>"
+        : "";
 
     var mcOpts = [1, 2, 3]
       .map(function (n) {
@@ -59,6 +134,7 @@
       '" rows="5" maxlength="65535" data-ma-tpl-msg dir="rtl" placeholder="النص الموجّه للعميل عبر مسار الاسترجاع…">' +
       msg +
       "</textarea>" +
+      sugBlock +
       '<div class="ma-tpl-row2">' +
       '<div><label class="ma-tpl-lbl" for="ma-tpl-dv-' +
       k +
@@ -76,10 +152,13 @@
       '" data-ma-tpl-unit>' +
       '<option value="minute"' +
       minSel +
-      ">دقيقة / دقائق</option>" +
+      ">دقائق</option>" +
       '<option value="hour"' +
       hourSel +
-      ">ساعة / ساعات</option>" +
+      ">ساعات</option>" +
+      '<option value="day"' +
+      daySel +
+      ">أيام</option>" +
       "</select></div>" +
       '<div><label class="ma-tpl-lbl" for="ma-tpl-mc-' +
       k +
@@ -129,6 +208,41 @@
         if (card) saveOne(card.getAttribute("data-ma-tpl-key"), card);
       });
     });
+
+    root.querySelectorAll("[data-ma-tpl-copy-suggest]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var card = btn.closest("[data-ma-tpl-key]");
+        if (!card) return;
+        var el = card.querySelector("[data-ma-tpl-suggest-txt]");
+        var ta = card.querySelector("[data-ma-tpl-msg]");
+        var raw = el ? el.textContent || "" : "";
+        if (!raw.trim()) return;
+        function done(ok) {
+          var st = card.querySelector("[data-ma-tpl-status]");
+          if (st) st.textContent = ok ? "تم النسخ" : "تعذر النسخ";
+          if (ok && ta) {
+            ta.focus();
+          }
+          window.setTimeout(function () {
+            if (st && (st.textContent === "تم النسخ" || st.textContent === "تعذر النسخ")) {
+              st.textContent = "";
+            }
+          }, 2500);
+        }
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(raw.trim()).then(
+            function () {
+              done(true);
+            },
+            function () {
+              done(false);
+            }
+          );
+        } else {
+          done(false);
+        }
+      });
+    });
   }
 
   function findRow(key) {
@@ -169,8 +283,9 @@
       var sl = slot(j);
       if (j === 0) {
         sl.text = text;
-        sl.delay = dv;
-        sl.unit = unit;
+        var enc = persistFirstSlotDelay(dv, unit);
+        sl.delay = enc.delay;
+        sl.unit = enc.unit;
       }
       out.push(sl);
     }
@@ -189,7 +304,7 @@
     var text = ta ? ta.value.trim() : "";
     var dv = parseFloat(dvi && dvi.value ? dvi.value : "1") || 1;
     if (dv <= 0) dv = 1;
-    var unit = dsi && dsi.value === "hour" ? "hour" : "minute";
+    var unit = normalizeUiDelayUnit(dsi && dsi.value ? dsi.value : "minute");
     var mc = parseInt(mci && mci.value ? mci.value : "1", 10) || 1;
     mc = Math.max(1, Math.min(3, mc));
 
