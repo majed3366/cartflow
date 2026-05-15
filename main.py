@@ -551,6 +551,14 @@ def api_recover_redirect(t: str = Query(..., min_length=6, max_length=2048)):
 @app.on_event("startup")
 async def _startup_whatsapp_queue() -> None:
     try:
+        _ensure_cartflow_api_db_warmed()
+    except Exception as exc:  # noqa: BLE001
+        log.warning(
+            "startup cartflow api db warm skipped: %s",
+            exc,
+            exc_info=True,
+        )
+    try:
         from services.cartflow_demo_catalog_seed import seed_demo_store_product_catalog_if_empty
 
         n = seed_demo_store_product_catalog_if_empty()
@@ -2569,6 +2577,21 @@ def _normal_recovery_configured_message_count_for_abandoned_cart(
     if store_ac is None:
         return 1
     rt = _reason_tag_for_abandoned_cart(ac)
+    slots = multi_message_slots_for_abandon(rt, store_ac)
+    if slots is not None:
+        return max(1, len(slots))
+    return max(1, int(_max_recovery_attempts(store_ac)))
+
+
+def _normal_recovery_configured_message_count_for_abandoned_cart_merchant_batch(
+    ac: AbandonedCart,
+    store_ac: Optional[Any],
+    batch: Any,
+) -> int:
+    """نفس ‎_normal_recovery_configured_message_count_for_abandoned_cart‎ مع خرائط الأسباب المجمّعة فقط."""
+    if store_ac is None:
+        return 1
+    rt = _reason_tag_merchant_normal_batch(ac, batch)
     slots = multi_message_slots_for_abandon(rt, store_ac)
     if slots is not None:
         return max(1, len(slots))
@@ -7772,12 +7795,16 @@ def _log_normal_carts_profile(
     logs_loaded: int,
     reasons_loaded: int,
     phones_loaded: int,
+    warm_skipped: bool = False,
+    reason_n1_removed: bool = False,
 ) -> None:
     duration_ms = round((time.perf_counter() - wall_perf_start) * 1000.0, 1)
     qs = _dashboard_lazy_profile_queries_str()
     line = (
-        f"[NORMAL CARTS PROFILE] carts_count={int(carts_count)} queries={qs} "
-        f"duration_ms={duration_ms} logs_loaded={int(logs_loaded)} "
+        f"[NORMAL CARTS PROFILE] queries={qs} duration_ms={duration_ms} "
+        f"warm_skipped={'true' if warm_skipped else 'false'} "
+        f"reason_n1_removed={'true' if reason_n1_removed else 'false'} "
+        f"carts_count={int(carts_count)} logs_loaded={int(logs_loaded)} "
         f"reasons_loaded={int(reasons_loaded)} phones_loaded={int(phones_loaded)}"
     )
     try:
@@ -10511,7 +10538,9 @@ def _normal_recovery_dashboard_phase_key_merchant_batch(
     store_ac = batch.store_row_for_cart(ac)
     try:
         max_a = int(
-            _normal_recovery_configured_message_count_for_abandoned_cart(ac, store_ac)
+            _normal_recovery_configured_message_count_for_abandoned_cart_merchant_batch(
+                ac, store_ac, batch
+            )
         )
     except (TypeError, ValueError):
         max_a = 1
@@ -10837,7 +10866,6 @@ def _merchant_normal_dashboard_batch_reads(
 
     logs: list[CartRecoveryLog] = []
     try:
-        db.create_all()
         if combined_sess or cid_pool:
             or_parts_log: list[Any] = []
             if combined_sess:
@@ -10932,15 +10960,15 @@ def _merchant_normal_dashboard_batch_reads(
     reason_store_by_session: dict[str, CartRecoveryReason] = {}
     reason_any_by_session: dict[str, CartRecoveryReason] = {}
     reasons_rows_fetched = 0
+    reason_sess_keys = combined_sess
     try:
         with normal_carts_profile_span("sql:batch_cart_recovery_reason_by_session"):
-            db.create_all()
-            if slug and sess_pool:
+            if slug and reason_sess_keys:
                 rs_rows = (
                     db.session.query(CartRecoveryReason)
                     .filter(
                         CartRecoveryReason.store_slug == slug,
-                        CartRecoveryReason.session_id.in_(list(sess_pool)),
+                        CartRecoveryReason.session_id.in_(list(reason_sess_keys)),
                     )
                     .order_by(CartRecoveryReason.updated_at.desc())
                     .all()
@@ -10950,10 +10978,12 @@ def _merchant_normal_dashboard_batch_reads(
                     k = (getattr(r, "session_id", None) or "").strip()[:512]
                     if k and k not in reason_store_by_session:
                         reason_store_by_session[k] = r
-            if sess_pool:
+            if reason_sess_keys:
                 ra_rows = (
                     db.session.query(CartRecoveryReason)
-                    .filter(CartRecoveryReason.session_id.in_(list(sess_pool)))
+                    .filter(
+                        CartRecoveryReason.session_id.in_(list(reason_sess_keys))
+                    )
                     .order_by(CartRecoveryReason.updated_at.desc())
                     .all()
                 )
@@ -10968,7 +10998,6 @@ def _merchant_normal_dashboard_batch_reads(
     peers_non_vip: list[AbandonedCart] = []
     scope_ab_rows: list[tuple[int, str, str]] = []
     try:
-        db.create_all()
         if sess_pool or cid_pool:
             sp_parts: list[Any] = []
             if sess_pool:
@@ -10999,7 +11028,6 @@ def _merchant_normal_dashboard_batch_reads(
 
     store_by_pk: dict[int, Store] = {}
     try:
-        db.create_all()
         need_pks = set(uniq_store_pk)
         ds_id = getattr(dash_store, "id", None) if dash_store is not None else None
         if ds_id is not None:
@@ -11027,7 +11055,6 @@ def _merchant_normal_dashboard_batch_reads(
     ml_phone_by_ac_id: dict[int, str] = {}
     message_logs_loaded = 0
     try:
-        db.create_all()
         if ac_ids_ml:
             with normal_carts_profile_span("sql:batch_message_logs_whatsapp_by_abandoned"):
                 ml_rows_list = (
@@ -11396,7 +11423,6 @@ def _normal_recovery_merchant_lightweight_alert_list_for_api(
     }
     desired_end = max(0, int(page_offset or 0)) + max(1, int(page_limit or 50))
     try:
-        _merchant_dashboard_db_ready()
         if dash_store is None:
             dash_store = _dashboard_recovery_store_row()
         lc_raw = (lifecycle or "active").strip().lower()
@@ -11724,7 +11750,15 @@ def api_dashboard_normal_carts(request: Request):
         "phones_loaded": 0,
     }
     try:
-        _merchant_dashboard_db_ready()
+        line_skip = "[NORMAL CARTS DB WARM SKIPPED]"
+        try:
+            print(line_skip, flush=True)
+        except OSError:
+            pass
+        try:
+            log.info("%s", line_skip)
+        except Exception:  # noqa: BLE001
+            pass
         dash_store = _dashboard_recovery_store_row()
         body, nc_prof = _api_json_dashboard_normal_carts(dash_store, request=request)
         return j({"ok": True, **body})
@@ -11743,6 +11777,8 @@ def api_dashboard_normal_carts(request: Request):
             logs_loaded=int(nc_prof.get("logs_loaded") or 0),
             reasons_loaded=int(nc_prof.get("reasons_loaded") or 0),
             phones_loaded=int(nc_prof.get("phones_loaded") or 0),
+            warm_skipped=True,
+            reason_n1_removed=True,
         )
 
 
