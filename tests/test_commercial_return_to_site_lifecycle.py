@@ -152,3 +152,27 @@ class CommercialReturnApiScenarioTests(unittest.TestCase):
         }
         self.assertEqual(200, self.client.post("/api/cart-event", json=active).status_code)
         self.assertTrue(main._is_user_returned(key))
+
+
+class CommercialPassiveCartDelayWaitingTests(unittest.TestCase):
+    def setUp(self) -> None:
+        _reset_recovery_memory()
+        self.client = TestClient(main.app)
+
+    def test_passive_cart_during_recovery_delay_waiting_marks_suppression(self) -> None:
+        sid = "cf-scen-d-delay-cart"
+        cid = "cf-cart-scen-d"
+        _post_recovery_reason_for_session(self.client, "demo", sid)
+        key = main._recovery_key_from_payload({"store": "demo", "session_id": sid, "cart_id": cid})
+        main._note_recovery_delay_waiting_started(key)
+        passive = {
+            "return_visit_kind": "passive_return_visit",
+            "passive_return_visit": True,
+            "store": "demo",
+            "session_id": sid,
+            "cart_id": cid,
+            "recovery_return_context": "cart",
+            "event_type": "user_returned_to_site",
+        }
+        self.assertEqual(200, self.client.post("/api/cart-event", json=passive).status_code)
+        self.assertTrue(main._is_user_returned(key), msg=key)

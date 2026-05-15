@@ -371,6 +371,7 @@ from services.recovery_blocker_display import (
 from services.recovery_message_strategy import get_recovery_message
 from services.recovery_template_defaults import guided_defaults_for_api
 from services.behavioral_recovery.state_store import (
+    abandoned_carts_for_session_or_cart,
     behavioral_dict_for_abandoned_cart,
     customer_replied_flagged_for_session,
 )
@@ -1741,6 +1742,8 @@ _session_recovery_converted: dict[str, bool] = {}
 _session_recovery_returned: dict[str, bool] = {}
 # UTC: normal recovery was scheduled for this recovery_key (return-to-site qualification).
 _session_recovery_flow_armed_at: dict[str, datetime] = {}
+# UTC: ‎‎_run_recovery_sequence_after_cart_abandoned_impl‎ entered ‎DELAY WAITING‎ / sleep.
+_session_recovery_delay_wait_started_at: dict[str, datetime] = {}
 _session_recovery_send_count: dict[str, int] = {}
 _session_recovery_multi_logged: dict[str, bool] = {}
 _session_recovery_multi_attempt_cap: dict[str, int] = {}
@@ -1814,6 +1817,49 @@ def _note_recovery_flow_armed_now(recovery_key: str) -> None:
     now = datetime.now(timezone.utc)
     with _recovery_session_lock:
         _session_recovery_flow_armed_at[rk] = now
+
+
+def _note_recovery_delay_waiting_started(recovery_key: str) -> None:
+    """Marks that outbound recovery passed VIP/pre-checks and is in the configured delay sleep."""
+    rk = (recovery_key or "").strip()
+    if not rk:
+        return
+    now = datetime.now(timezone.utc)
+    with _recovery_session_lock:
+        _session_recovery_delay_wait_started_at[rk] = now
+
+
+def _recovery_delay_waiting_started_for_key(recovery_key: str) -> bool:
+    rk = (recovery_key or "").strip()
+    if not rk:
+        return False
+    with _recovery_session_lock:
+        return rk in _session_recovery_delay_wait_started_at
+
+
+def _test_note_recovery_delay_waiting_started(recovery_key: str) -> None:
+    _note_recovery_delay_waiting_started(recovery_key)
+
+
+def _passive_cart_return_suppresses_whatsapp_recovery(payload: dict[str, Any]) -> bool:
+    """Passive tracker on cart/checkout while delay is active stops WhatsApp (no checkout-active payload)."""
+    if not isinstance(payload, dict):
+        return False
+    if payload_indicates_active_commercial_reengagement(payload):
+        return False
+    if not payload_indicates_passive_return_visit(payload):
+        return False
+    ctx = str(
+        payload.get("recovery_return_context")
+        or payload.get("return_context")
+        or ""
+    ).strip().lower()
+    if ctx not in ("cart", "checkout"):
+        return False
+    key = _recovery_key_from_payload(payload)
+    if not (key or "").strip():
+        return False
+    return _recovery_delay_waiting_started_for_key(key)
 
 
 def _return_to_site_payload_is_qualified(payload: dict[str, Any]) -> bool:
@@ -4046,9 +4092,16 @@ def _try_send_vip_neutral_customer_recovery_whatsapp(
         last_act = _last_activity_utc_from_recovery_row(reason_row_v)
         last_eff = last_act if last_act is not None else now
         delay_minutes_f = float(_recovery_delay_minutes_from_store(store_obj))
+        vip_ur = _recovery_resolve_user_returned_for_send(
+            recovery_key,
+            store_slug=store_slug,
+            session_id=session_id,
+            cart_id=cart_id,
+            log_recovery_check=True,
+        )
         if not should_send_whatsapp(
             last_eff,
-            user_returned_to_site=_is_user_returned(recovery_key),
+            user_returned_to_site=vip_ur,
             now=now,
             store=store_obj,
             sent_count=0,
@@ -4343,8 +4396,21 @@ def _mark_user_returned_in_memory_only(payload: dict[str, Any]) -> None:
 
 
 def _mark_user_returned_for_payload(payload: dict[str, Any]) -> None:
+    key = _recovery_key_from_payload(payload)
+    ss = str(payload.get("store") or payload.get("store_slug") or "").strip() or "-"
+    sid = str(payload.get("session_id") or "").strip()
+    cid = str(payload.get("cart_id") or "").strip()
     _mark_user_returned_in_memory_only(payload)
     _persist_durable_return_to_site_evidence_from_payload(payload)
+    try:
+        _rn = (
+            f"[RETURN TO SITE RECORDED] recovery_key={key} store_slug={ss} "
+            f"session_id={sid[:80] if sid else '-'} cart_id={cid[:64] if cid else '-'}"
+        )
+        print(_rn, flush=True)
+        log.info("%s", _rn)
+    except OSError:
+        pass
 
 
 def _defer_commercial_return_to_site_db_side_effects(
@@ -4485,6 +4551,148 @@ def _persist_durable_return_to_site_evidence_from_payload(
         except Exception:
             pass
         log.warning("durable return evidence persist skipped: %s", exc)
+
+
+def _recovery_durable_return_evidence_exists(
+    *,
+    store_slug: str,
+    session_id: str,
+    cart_id: Optional[str],
+    skip_api_warm: bool = False,
+) -> bool:
+    ss = (store_slug or "").strip()[:255]
+    sid = (session_id or "").strip()[:512]
+    cid = ((cart_id or "").strip()[:255]) if cart_id else ""
+    conds: list[Any] = []
+    if sid:
+        conds.append(CartRecoveryLog.session_id == sid)
+    if cid:
+        conds.append(CartRecoveryLog.cart_id == cid)
+        conds.append(CartRecoveryLog.session_id == cid)
+    if not conds:
+        return False
+    try:
+        if not skip_api_warm:
+            _ensure_cartflow_api_db_warmed()
+        probe = (
+            db.session.query(CartRecoveryLog.id)
+            .filter(
+                CartRecoveryLog.store_slug == ss,
+                CartRecoveryLog.status == _DURABLE_RETURN_TO_SITE_LOG_STATUS,
+                or_(*conds),
+            )
+            .limit(1)
+            .first()
+        )
+        return probe is not None
+    except (SQLAlchemyError, OSError, TypeError, ValueError):
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+        return False
+
+
+def _recovery_behavioral_user_returned_hint(
+    *,
+    session_id: str,
+    cart_id: Optional[str],
+    skip_api_warm: bool = False,
+) -> bool:
+    sid = (session_id or "").strip()[:512]
+    cid = ((cart_id or "").strip()[:255]) if cart_id else ""
+    if not sid:
+        return False
+    try:
+        if not skip_api_warm:
+            _ensure_cartflow_api_db_warmed()
+        rows = abandoned_carts_for_session_or_cart(sid, cid or None)
+        for ac in rows:
+            bh = behavioral_dict_for_abandoned_cart(ac)
+            if bh.get("user_returned_to_site") is True or bh.get(
+                "customer_returned_to_site"
+            ) is True:
+                return True
+    except (SQLAlchemyError, OSError, TypeError, ValueError):
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+        return False
+    return False
+
+
+def _recovery_resolve_user_returned_for_send(
+    recovery_key: str,
+    *,
+    store_slug: str,
+    session_id: str,
+    cart_id: Optional[str],
+    log_recovery_check: bool = True,
+) -> bool:
+    def _rch(msg: str) -> None:
+        if not log_recovery_check:
+            return
+        try:
+            print(msg, flush=True)
+        except OSError:
+            pass
+
+    if _is_user_returned(recovery_key):
+        _rch(
+            "[RECOVERY RETURN CHECK] user_returned_to_site=true source=in_memory "
+            + f"session_id={(session_id or '')[:80]} cart_id={(str(cart_id or '') or '-')[:64]} "
+            + f"recovery_key={recovery_key}"
+        )
+        return True
+    if _recovery_durable_return_evidence_exists(
+        store_slug=store_slug, session_id=session_id, cart_id=cart_id
+    ) or _recovery_behavioral_user_returned_hint(
+        session_id=session_id, cart_id=cart_id
+    ):
+        with _recovery_session_lock:
+            _session_recovery_returned[recovery_key] = True
+        if log_recovery_check:
+            try:
+                mm = (
+                    "[RETURN TO SITE MATCHED RECOVERY] recovered_from=persistent "
+                    f"session_id={(session_id or '')[:80]} cart_id={(str(cart_id or '') or '-')[:64]} "
+                    f"recovery_key={recovery_key}"
+                )
+                print(mm, flush=True)
+                log.info("%s", mm)
+            except OSError:
+                pass
+        _rch(
+            "[RECOVERY RETURN CHECK] user_returned_to_site=true source=persistent "
+            f"session_id={(session_id or '')[:80]} cart_id={(str(cart_id or '') or '-')[:64]} "
+            f"recovery_key={recovery_key}"
+        )
+        return True
+    _rch(
+        "[RECOVERY RETURN CHECK] user_returned_to_site=false "
+        f"session_id={(session_id or '')[:80]} cart_id={(str(cart_id or '') or '-')[:64]} "
+        f"recovery_key={recovery_key}"
+    )
+    return False
+
+
+def _log_recovery_stopped_returned_to_site(
+    *,
+    session_id: str,
+    cart_id: Optional[str],
+    recovery_key: str,
+) -> None:
+    try:
+        line = (
+            "[RECOVERY STOPPED RETURNED_TO_SITE] "
+            f"session_id={(session_id or '')[:80]} cart_id={(str(cart_id or '') or '-')[:64]} "
+            f"recovery_key={recovery_key}"
+        )
+        print(line, flush=True)
+        log.info("%s", line)
+    except OSError:
+        pass
 
 
 def _persist_cart_recovery_log(
@@ -5355,6 +5563,7 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
     scheduled_recovery_delay_minutes = delay_seconds / 60.0
     print("[DELAY STARTED]", scheduled_recovery_delay_minutes)
     print("[DELAY WAITING]")
+    _note_recovery_delay_waiting_started(recovery_key)
     try:
         await asyncio.sleep(delay_seconds)
     except asyncio.CancelledError:
@@ -5782,9 +5991,15 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
         or step_num > 1
         else last_activity
     )
+    user_returned_eff = _recovery_resolve_user_returned_for_send(
+        recovery_key,
+        store_slug=store_slug,
+        session_id=session_id,
+        cart_id=cart_id,
+    )
     should_send = should_send_whatsapp(
         delay_gate_activity,
-        user_returned_to_site=_is_user_returned(recovery_key),
+        user_returned_to_site=user_returned_eff,
         now=now,
         store=store_obj,
         sent_count=gate_sent_count,
@@ -5798,7 +6013,7 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
     else:
         _, _ds_tag = _second_recovery_diagnose_should_send(
             delay_gate_activity,
-            user_returned_to_site=_is_user_returned(recovery_key),
+            user_returned_to_site=user_returned_eff,
             now=now,
             store=store_obj,
             sent_count=gate_sent_count,
@@ -5823,6 +6038,11 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
             nr_skip_reason = "automation_disabled"
         elif _ds_tag == "user_returned":
             nr_skip_reason = "user_returned"
+            _log_recovery_stopped_returned_to_site(
+                session_id=session_id,
+                cart_id=cart_id,
+                recovery_key=recovery_key,
+            )
         elif _ds_tag == "automation_disabled":
             nr_skip_reason = "automation_disabled"
         _log_normal_recovery_attempt_skipped(
@@ -5848,7 +6068,7 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
                 customer_phone="",
                 reason_tag=rt_chk,
                 purchase_completed=_is_user_converted(recovery_key),
-                user_returned_to_site=_is_user_returned(recovery_key),
+                user_returned_to_site=user_returned_eff,
                 customer_replied=crep_ds,
                 allowed=False,
             )
@@ -5960,7 +6180,13 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
         _consume_seq_slot_if_needed()
         return
 
-    user_returned_to_site = _is_user_returned(recovery_key)
+    user_returned_to_site = _recovery_resolve_user_returned_for_send(
+        recovery_key,
+        store_slug=store_slug,
+        session_id=session_id,
+        cart_id=cart_id,
+        log_recovery_check=True,
+    )
     purchase_completed = _is_user_converted(recovery_key)
     should_send_anti_spam = (not user_returned_to_site) and (not purchase_completed)
     print("[ANTI SPAM CHECK]")
@@ -5979,6 +6205,12 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
             log.info("%s", _sup_line)
         except OSError:
             pass
+        if _sup_r == "user_returned":
+            _log_recovery_stopped_returned_to_site(
+                session_id=session_id,
+                cart_id=cart_id,
+                recovery_key=recovery_key,
+            )
         _log_normal_recovery_attempt_skipped(
             attempt_index=step_num,
             reason="purchase_completed" if purchase_completed else "user_returned",
@@ -6033,7 +6265,13 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
         _consume_seq_slot_if_needed()
         return
 
-    user_returned_to_site = _is_user_returned(recovery_key)
+    user_returned_to_site = _recovery_resolve_user_returned_for_send(
+        recovery_key,
+        store_slug=store_slug,
+        session_id=session_id,
+        cart_id=cart_id,
+        log_recovery_check=False,
+    )
     purchase_completed = _is_user_converted(recovery_key)
     pro_allowed = (not user_returned_to_site) and (not purchase_completed)
     print("[CARTFLOW PRO LOGIC]")
@@ -6051,6 +6289,11 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
             pro_st = "stopped_converted"
         elif user_returned_to_site:
             pro_st = "skipped_anti_spam"
+            _log_recovery_stopped_returned_to_site(
+                session_id=session_id,
+                cart_id=cart_id,
+                recovery_key=recovery_key,
+            )
         else:
             pro_st = "skipped_attempt_limit"
         if pro_st in ("skipped_anti_spam", "stopped_converted"):
@@ -6166,7 +6409,13 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
             customer_phone=phone,
             reason_tag=rt_send,
             purchase_completed=_is_user_converted(recovery_key),
-            user_returned_to_site=_is_user_returned(recovery_key),
+            user_returned_to_site=_recovery_resolve_user_returned_for_send(
+                recovery_key,
+                store_slug=store_slug,
+                session_id=session_id,
+                cart_id=cart_id,
+                log_recovery_check=False,
+            ),
             customer_replied=crep_send,
             allowed=True,
         )
@@ -6199,7 +6448,13 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
     )
 
     _diag_converted = _is_user_converted(recovery_key)
-    _diag_returned = _is_user_returned(recovery_key)
+    _diag_returned = _recovery_resolve_user_returned_for_send(
+        recovery_key,
+        store_slug=store_slug,
+        session_id=session_id,
+        cart_id=cart_id,
+        log_recovery_check=False,
+    )
     _diag_replied = _normal_recovery_positive_reply_blocks_followup(
         session_id=session_id, cart_id=cart_id
     )
@@ -8043,6 +8298,17 @@ async def api_cart_event(request: Request, background_tasks: BackgroundTasks):
                 log.info("%s", _prline)
             except OSError:
                 pass
+            if _passive_cart_return_suppresses_whatsapp_recovery(payload):
+                try:
+                    _supp_txt = (
+                        "[RETURN TO SITE] passive_cart_while_recovery_delay_waiting "
+                        f"recovery_key={_recovery_key_from_payload(payload)}"
+                    )
+                    print(_supp_txt, flush=True)
+                    log.info("%s", _supp_txt)
+                except OSError:
+                    pass
+                _mark_user_returned_for_payload(payload)
             record_passive_return_visit_from_payload(payload)
         if (
             payload.get("user_converted") is True

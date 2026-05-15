@@ -23,6 +23,7 @@ from main import (
     _recovery_session_lock,
     _session_recovery_converted,
     _session_recovery_flow_armed_at,
+    _session_recovery_delay_wait_started_at,
     _session_recovery_logged,
     _session_recovery_multi_attempt_cap,
     _session_recovery_multi_logged,
@@ -48,6 +49,7 @@ def _reset_recovery_memory() -> None:
         _session_recovery_converted.clear()
         _session_recovery_returned.clear()
         _session_recovery_flow_armed_at.clear()
+        _session_recovery_delay_wait_started_at.clear()
         _session_recovery_send_count.clear()
         _session_recovery_multi_logged.clear()
         _session_recovery_multi_attempt_cap.clear()
