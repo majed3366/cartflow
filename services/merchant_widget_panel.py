@@ -5,14 +5,14 @@
 
 ---
 # CartFlow Widget hesitation copy
-# نصوص أسباب التردد الظاهرة للعميل داخل الودجيت — مستقلة عن قوالب الاسترجاع.
-# لا تربطها بـ ‎message‎ في ‎reason_templates‎ (ذلك لمسار واتساب/الاسترجاع).
-# Do NOT connect to recovery templates for customer-facing labels.
+# نص أسباب التردد المعروضة للعميل داخل الودجيت: كتالوج ثابت (لا تحرير من التاجر).
+# Independent customer-facing widget text — do NOT derive from recovery ‎message‎.
+# لا تُستخرج التسميات من قوالب الاسترجاع أو ‎widget_reason_label_ar‎ (البقاء في ‎reason_templates‎ اختياري فقط لتجاهله في الواجهة).
 ---
 # Recovery Trigger Templates
 # ‎reason_templates.message‎ / ‎messages‎ — قوالب استرجاع بعد ترك السلة؛ مستقلة عن تسميات الودجيت.
 # Future hook: Product Intelligence / Offer Control (لا تغيير هنا الآن).
-# Do NOT use recovery message text as widget chip labels (انظر ‎widget_reason_label_ar‎).
+# Do NOT surface recovery WhatsApp bodies as hesitation chip headings.
 ---
 """
 from __future__ import annotations
@@ -26,53 +26,22 @@ from services.store_reason_templates import parse_reason_templates_column
 from services.store_template_control import exit_intent_template_fields_for_api
 from services.store_widget_customization import widget_customization_fields_for_api
 
-# ترتيب العرض الافتراضي — المفتاح الداخلي لا يُعرض للتاجر في الواجهة النصية.
-_REASON_PANEL_DEF: Tuple[Tuple[str, str], ...] = (
-    ("price", "السعر"),
-    ("shipping", "الشحن"),
-    ("delivery", "التوصيل"),
-    ("quality", "الجودة"),
-    ("warranty", "الضمان"),
-    ("thinking", "يفكر في القرار"),
-    ("other", "أخرى"),
-)
-
-_REASON_INTERNAL_KEYS = frozenset(k for k, _ in _REASON_PANEL_DEF)
-_MAX_WIDGET_REASON_LABEL_FOR_LEGACY = 80
+# ترتيب وسمات أسباب التردد المعروضة في الودجيت — لا تظهر حقول تنصيط للأسماء؛ التفعيل والترتيب فقط.
+_WIDGET_FIXED_HESITATION_LABEL_AR: Dict[str, str] = {
+    "price": "السعر",
+    "quality": "الجودة",
+    "shipping": "الشحن",
+    "delivery": "مدة التوصيل",
+    "warranty": "الضمان",
+    "other": "سبب آخر",
+}
+_REASON_PANEL_KEYS_ORDER: Tuple[str, ...] = tuple(_WIDGET_FIXED_HESITATION_LABEL_AR.keys())
+_MERCHANT_PANEL_REASON_KEYS = frozenset(_REASON_PANEL_KEYS_ORDER)
 
 
-def _default_label_for_reason_key(key: str) -> str:
-    for k, lab in _REASON_PANEL_DEF:
-        if k == key:
-            return lab
-    return "أخرى"
-
-
-def _coerce_customer_label(raw_msg: str, key: str) -> str:
-    s = (raw_msg or "").strip()
-    if not s:
-        return _default_label_for_reason_key(key)
-    if len(s) > _MAX_WIDGET_REASON_LABEL_FOR_LEGACY:
-        return s[: _MAX_WIDGET_REASON_LABEL_FOR_LEGACY - 3] + "…"
-    return s
-
-
-def _widget_customer_label_from_ent(key: str, ent: Dict[str, Any]) -> str:
-    """
-    تسمية السبب في واجهة الودجيت فقط.
-    المصدر الأساسي: ‎widget_reason_label_ar‎.
-    ترحيل: إذا غاب الحقل وكانت ‎message‎ قصيرة (≤٨٠)، تُعتبر تسمية ودجيت قديمة.
-    رسائل استرجاع طويلة لا تُعرض كتسمية أبداً.
-    """
-    if not isinstance(ent, dict):
-        ent = {}
-    w = str(ent.get("widget_reason_label_ar") or "").strip()
-    if w:
-        return _coerce_customer_label(w, key)
-    msg = str(ent.get("message") or "").strip()
-    if msg and len(msg) <= _MAX_WIDGET_REASON_LABEL_FOR_LEGACY:
-        return _coerce_customer_label(msg, key)
-    return _default_label_for_reason_key(key)
+def _fixed_widget_hesitation_label_ar(key: str) -> str:
+    k = str(key or "").strip().lower()
+    return _WIDGET_FIXED_HESITATION_LABEL_AR.get(k, "سبب آخر")
 
 
 def merchant_reason_panel_rows_for_widget_settings(
@@ -80,7 +49,7 @@ def merchant_reason_panel_rows_for_widget_settings(
     *,
     trigger_cfg: Optional[Dict[str, Any]] = None,
 ) -> List[Dict[str, Any]]:
-    """صفوف أسباب للواجهة التجارية — ترتيب من الإعدادات مع تسمية من القالب أو الافتراضي."""
+    """صفوف أسباب للواجهة التجارية — ترتيب من الإعدادات مع تسميات كتالوج ثابتة."""
     rt = parse_reason_templates_column(getattr(row, "reason_templates_json", None) if row else None)
     cfg = trigger_cfg if isinstance(trigger_cfg, dict) else widget_trigger_config_from_store_row(row)
     order_raw = cfg.get("reason_display_order")
@@ -88,14 +57,14 @@ def merchant_reason_panel_rows_for_widget_settings(
     if isinstance(order_raw, list):
         for x in order_raw:
             k = str(x).strip().lower()
-            if k in _REASON_INTERNAL_KEYS and k not in order:
+            if k in _MERCHANT_PANEL_REASON_KEYS and k not in order:
                 order.append(k)
-    for k, _ in _REASON_PANEL_DEF:
+    for k in _REASON_PANEL_KEYS_ORDER:
         if k not in order:
             order.append(k)
     out: List[Dict[str, Any]] = []
     for idx, key in enumerate(order):
-        if key not in _REASON_INTERNAL_KEYS:
+        if key not in _MERCHANT_PANEL_REASON_KEYS:
             continue
         ent = rt.get(key) if isinstance(rt.get(key), dict) else {}
         enabled = bool(ent.get("enabled", True)) if isinstance(ent, dict) else True
@@ -103,7 +72,7 @@ def merchant_reason_panel_rows_for_widget_settings(
             {
                 "key": key,
                 "sort_index": idx,
-                "label_ar": _widget_customer_label_from_ent(key, ent),
+                "label_ar": _fixed_widget_hesitation_label_ar(key),
                 "enabled": enabled,
             }
         )

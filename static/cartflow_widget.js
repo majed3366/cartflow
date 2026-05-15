@@ -338,11 +338,10 @@ try {
     suppress_when_checkout_started: true,
     reason_display_order: [
       "price",
+      "quality",
       "shipping",
       "delivery",
-      "quality",
       "warranty",
-      "thinking",
       "other",
     ],
   };
@@ -528,32 +527,23 @@ try {
     return e.enabled !== false;
   }
 
+  /** تسميات أسباب Layer D المعروضة للعميل — كتالوج ثابت؛ لا تعتمد على ‎reason_templates.message‎ (استرجاع). */
   function cfDefaultReasonLabels() {
     return {
       price: "السعر",
       quality: "الجودة",
       warranty: "الضمان",
       shipping: "الشحن",
-      delivery: "التوصيل",
-      thinking: "أفكر",
+      delivery: "مدة التوصيل",
       other: "سبب آخر",
     };
   }
 
   function cfReasonSurfaceLabel(reasonKey, defaultLabel) {
     var k = String(reasonKey || "").toLowerCase();
-    var rt = getCfReasonTemplates();
-    var ent = rt[k];
-    if (ent && typeof ent === "object") {
-      var m = String(ent.message || "").trim();
-      if (m) {
-        var parts = m.split(/\r?\n/);
-        var line = String(parts[0] || "").trim();
-        if (line.length > 80) {
-          return line.slice(0, 77) + "…";
-        }
-        return line;
-      }
+    var defs = cfDefaultReasonLabels();
+    if (defs[k] != null) {
+      return defs[k];
     }
     return defaultLabel != null ? String(defaultLabel) : k;
   }
@@ -561,11 +551,10 @@ try {
   function cfReasonTemplatesLogSnapshot() {
     var keys = [
       "price",
+      "quality",
       "shipping",
       "delivery",
-      "quality",
       "warranty",
-      "thinking",
       "other",
     ];
     var rt = getCfReasonTemplates();
@@ -969,11 +958,10 @@ try {
       var visRows = cfBuildVisibleReasonRows();
       var ALL_R = [
         "price",
+        "quality",
         "shipping",
         "delivery",
-        "quality",
         "warranty",
-        "thinking",
         "other",
       ];
       var disabledKeys = [];

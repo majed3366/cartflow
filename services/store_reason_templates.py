@@ -2,7 +2,7 @@
 """قوالب الاسترجاع حسب السبب (‎reason_templates‎) — تفعيل/تعطيل لكل سبب + نص على ‎Store.reason_templates_json‎.
 
 رسالة الاسترجاع (‎message‎ / ‎messages‎) لمسار واتساب فقط.
-حقل اختياري ‎widget_reason_label_ar‎: نص السبب الظاهر في ودجيت المتجر — لا يُرسَل كاسترجاع.
+‎widget_reason_label_ar‎ محفوظ للتوافق مع بيانات قديمة؛ واجهات الودجيت تتجاهله وتعرض كتالوج تسميات ثابت.
 """
 from __future__ import annotations
 

@@ -458,16 +458,16 @@
         </div>
         <div class="ma-fw-card">
           <div class="ma-fw-h">أسباب التردد</div>
-          <p class="ma-fw-desc">السبب الظاهر للعميل، التفعيل، والترتيب (بدون حقول تقنية). هذا النص هو ما يظهر للعميل داخل الودجيت.</p>
+          <p class="ma-fw-desc">تفعيل كل سبب وترتيب عرض الأزرار على العميل. أسماء الأسباب جاهزة وثابتة.</p>
+          <p class="ma-fw-field-hint" style="margin:8px 0 0;font-size:12px;color:var(--muted);">هذه الأسباب تظهر للعميل داخل الودجيت.</p>
           <table class="ma-fw-table" aria-label="أسباب التردد">
-            <thead><tr><th>السبب الظاهر للعميل</th><th>مفعّل</th><th>ترتيب</th></tr></thead>
+            <thead><tr><th>السبب</th><th>مفعّل</th><th>ترتيب</th></tr></thead>
             <tbody id="mw-reason-tbody">
               {% for r in (wp.reason_rows or []) %}
               <tr data-mw-reason-row>
                 <td>
                   <input type="hidden" class="mw-reason-key" value="{{ r.key | e }}">
-                  <p class="ma-fw-field-hint" style="margin:0 0 4px 0;font-size:12px;opacity:0.85;">هذا النص هو ما يظهر للعميل داخل الودجيت.</p>
-                  <input class="ma-fw-input mw-reason-label" type="text" maxlength="80" value="{{ r.label_ar | e }}" dir="rtl" autocomplete="off">
+                  <span class="mw-reason-label-fixed" dir="rtl">{{ r.label_ar | e }}</span>
                 </td>
                 <td class="ma-fw-td-center"><input class="mw-reason-on" type="checkbox" {% if r.enabled %}checked{% endif %}></td>
                 <td class="ma-fw-td-center">

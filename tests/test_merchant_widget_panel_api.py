@@ -55,6 +55,7 @@ class MerchantWidgetPanelApiTests(unittest.TestCase):
                 "reason_templates": {
                     "price": {
                         "enabled": False,
+                        # Legacy field only — لا يُعرض بعد الآن؛ التسمية من كتالوج الودجيت الثابت
                         "widget_reason_label_ar": "السعر غير مناسب",
                     },
                 },
@@ -66,7 +67,6 @@ class MerchantWidgetPanelApiTests(unittest.TestCase):
                         "delivery",
                         "quality",
                         "warranty",
-                        "thinking",
                     ],
                 },
             },
@@ -78,7 +78,7 @@ class MerchantWidgetPanelApiTests(unittest.TestCase):
         self.assertEqual(keys[0], "other")
         price_row = next(x for x in rows if x.get("key") == "price")
         self.assertFalse(price_row.get("enabled"))
-        self.assertIn("غير مناسب", str(price_row.get("label_ar") or ""))
+        self.assertEqual(str(price_row.get("label_ar") or ""), "السعر")
 
 
 if __name__ == "__main__":

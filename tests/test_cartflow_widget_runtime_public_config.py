@@ -128,6 +128,14 @@ class CartflowWidgetRuntimePublicConfigTests(unittest.TestCase):
             "delivery",
             "price",
         ]
+        normalized_order_stored = [
+            "other",
+            "warranty",
+            "quality",
+            "shipping",
+            "delivery",
+            "price",
+        ]
         pr = self.client.post(
             "/api/dashboard/merchant-widget-settings",
             json={"widget_trigger_config": {"reason_display_order": custom_order}},
@@ -138,7 +146,7 @@ class CartflowWidgetRuntimePublicConfigTests(unittest.TestCase):
         ).json()
         self.assertEqual(
             (pub.get("widget_trigger_config") or {}).get("reason_display_order"),
-            custom_order,
+            normalized_order_stored,
         )
 
     def test_exit_intent_disabled_in_public_config(self) -> None:

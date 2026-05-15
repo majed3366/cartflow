@@ -65,7 +65,7 @@ class WidgetTriggerSettingsTests(unittest.TestCase):
         self.assertIn("widget_brand_line_ar", out)
         self.assertIn("widget_phone_capture_mode", out)
         self.assertIn("reason_display_order", out)
-        self.assertEqual(len(out["reason_display_order"]), 7)
+        self.assertEqual(len(out["reason_display_order"]), 6)
 
     def test_widget_trigger_partial_post_roundtrip(self) -> None:
         db.create_all()

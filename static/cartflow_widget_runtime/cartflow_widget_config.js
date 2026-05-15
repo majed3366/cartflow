@@ -24,11 +24,10 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       suppress_when_checkout_started: true,
       reason_display_order: [
         "price",
+        "quality",
         "shipping",
         "delivery",
-        "quality",
         "warranty",
-        "thinking",
         "other",
       ],
     },
@@ -175,30 +174,23 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     return e.enabled !== false;
   }
 
+  /** تسميات أسباب الودجيت — كتالوج ثابت؛ لا تقرأ من ‎templates()[k].message‎ (قوالب الاسترجاع). */
   function defaultLabels() {
     return {
       price: "السعر",
       quality: "الجودة",
       warranty: "الضمان",
       shipping: "الشحن",
-      delivery: "التوصيل",
-      thinking: "أفكر",
+      delivery: "مدة التوصيل",
       other: "سبب آخر",
     };
   }
 
   function surfaceLabel(reasonKey, defLabel) {
     var k = String(reasonKey || "").toLowerCase();
-    var ent = templates()[k];
-    if (ent && typeof ent === "object") {
-      var m = String(ent.message || "").trim();
-      if (m) {
-        var line = String(m.split(/\r?\n/)[0] || "").trim();
-        if (line.length > 80) {
-          return line.slice(0, 77) + "…";
-        }
-        return line;
-      }
+    var defs = defaultLabels();
+    if (defs[k] != null) {
+      return defs[k];
     }
     return defLabel != null ? String(defLabel) : k;
   }

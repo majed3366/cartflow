@@ -42,7 +42,7 @@
    * Recovery Trigger Templates — مسودات واجهة ‎#/trigger-templates‎ فقط.
    * Independent recovery/WhatsApp templates (تُحفظ في ‎reason_templates.message‎ / ‎messages‎).
    * Future hook: Product Intelligence / Offer Control — استبدال نصي حسب القواعد.
-   * Do NOT connect to CartFlow Widget copy — تسميات الودجيت في ‎widget_reason_label_ar‎.
+   * Do NOT connect to CartFlow Widget hesitation labels — الودجيت يعرض كتالوجًا ثابتًا من لوحة المتجر؛ لا حقول تنصيط.
    * التنفيذ الحالي نص ثابت فقط؛ صفر استعلامات إضافية.
    */
   var PRESET_SUGGESTIONS_BY_REASON = {

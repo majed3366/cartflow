@@ -2,9 +2,9 @@
   "use strict";
 
   /*
-   * CartFlow Widget hesitation copy — Independent customer-facing widget text (أسباب التردد في لوحة الودجيت).
-   * Do NOT connect to recovery templates: لا نرسل ‎message‎ من هنا لتفادي مسح قوالب الاسترجاع.
-   * التسميات تُخزَّن في ‎reason_templates[*].widget_reason_label_ar‎ بدمج جزئي.
+   * CartFlow Widget — أسباب التردد: تسميات جاهزة وثابتة (كتالوج عربي)؛ الواجهة تتحكم بالتفعيل والترتيب فقط.
+   * لا نُرسل ‎widget_reason_label_ar‎ ولا ‎message‎ من هذا المسار لتفادي دمج قالب الاسترجاع ضمن الودجيت.
+   * Recovery Trigger Templates تُدار من صفحة منفصلة.
    */
 
   var PRESET_Q = "ما الذي منعك من إكمال الطلب؟";
@@ -46,14 +46,12 @@
     var o = {};
     tb.querySelectorAll("tr[data-mw-reason-row]").forEach(function (tr) {
       var keyInp = tr.querySelector(".mw-reason-key");
-      var labInp = tr.querySelector(".mw-reason-label");
       var onInp = tr.querySelector(".mw-reason-on");
-      if (!keyInp || !labInp) return;
+      if (!keyInp) return;
       var k = (keyInp.value || "").trim().toLowerCase();
       if (!k) return;
       o[k] = {
         enabled: onInp ? !!onInp.checked : true,
-        widget_reason_label_ar: (labInp.value || "").trim(),
       };
     });
     return o;
@@ -154,9 +152,9 @@
     if (tb) {
       tb.querySelectorAll("tr[data-mw-reason-row]").forEach(function (tr) {
         var onInp = tr.querySelector(".mw-reason-on");
-        var labInp = tr.querySelector(".mw-reason-label");
-        if (!labInp || !onInp || !onInp.checked) return;
-        var lab = (labInp.value || "").trim() || "—";
+        var labEl = tr.querySelector(".mw-reason-label-fixed");
+        if (!labEl || !onInp || !onInp.checked) return;
+        var lab = String(labEl.textContent || "").trim() || "—";
         parts.push(
           '<span class="wb-opt selected">' +
             lab.replace(/</g, "&lt;").replace(/>/g, "&gt;") +

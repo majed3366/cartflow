@@ -24,11 +24,10 @@ DEFAULT_WIDGET_TRIGGER_CONFIG: Dict[str, Any] = {
     "suppress_when_checkout_started": True,
     "reason_display_order": [
         "price",
+        "quality",
         "shipping",
         "delivery",
-        "quality",
         "warranty",
-        "thinking",
         "other",
     ],
 }
@@ -44,8 +43,9 @@ _HES_COND = frozenset(
 )
 _SCOPE = frozenset({"product", "cart", "all"})
 _PHONE_CAPTURE = frozenset({"after_reason", "immediate", "none"})
+# ‎thinking‎ موجود في ‎reason_templates‎ للاسترجاع؛ لا يُعرض ضمن قائمة تردّد الودجيت المرئية بعد الآن.
 _REASON_ORDER_KEYS = frozenset(
-    {"price", "shipping", "delivery", "quality", "warranty", "thinking", "other"}
+    {"price", "shipping", "delivery", "quality", "warranty", "other"}
 )
 _DEFAULT_REASON_ORDER: List[str] = list(
     DEFAULT_WIDGET_TRIGGER_CONFIG["reason_display_order"]
