@@ -12294,10 +12294,19 @@ def api_dashboard_recovery_trend():
 
 @app.get("/api/dashboard/summary")
 def api_dashboard_summary():
+    from services.dashboard_summary_query_profiler import (  # noqa: PLC0415
+        dashboard_summary_profile_begin,
+        dashboard_summary_profile_end,
+        dashboard_summary_profile_span,
+    )
+
     wall0 = time.perf_counter()
+    dashboard_summary_profile_begin()
     try:
-        _merchant_dashboard_db_ready()
-        dash_store = _dashboard_recovery_store_row()
+        with dashboard_summary_profile_span("_merchant_dashboard_db_ready"):
+            _merchant_dashboard_db_ready()
+        with dashboard_summary_profile_span("_dashboard_recovery_store_row"):
+            dash_store = _dashboard_recovery_store_row()
         body = _api_json_dashboard_summary(dash_store)
         return j({"ok": True, **body})
     except Exception as e:  # noqa: BLE001
@@ -12305,6 +12314,7 @@ def api_dashboard_summary():
         log.warning("api_dashboard_summary: %s", e)
         return j({"ok": False, "error": "failed"}, 500)
     finally:
+        dashboard_summary_profile_end()
         _log_dashboard_section_profile(section="summary", wall_perf_start=wall0)
 
 
@@ -12733,13 +12743,17 @@ def _merchant_dashboard_shell_store_fields(dash_store: Optional[Any]) -> Dict[st
 
 def _api_json_dashboard_summary(dash_store: Optional[Any]) -> Dict[str, Any]:
     """‎KPI‎ + شهر + أسباب + شارة الواجهة + عداد السلال في القائمة (بدون استعلام قائمة VIP/متابعة)."""
+    from services.dashboard_summary_query_profiler import (  # noqa: PLC0415
+        dashboard_summary_profile_span,
+    )
     from services.merchant_whatsapp_readiness_ui import (  # noqa: PLC0415
         build_merchant_whatsapp_readiness_card,
     )
 
     now_utc = datetime.now(timezone.utc)
     try:
-        kpis = _merchant_kpi_today_projection(dash_store)
+        with dashboard_summary_profile_span("_merchant_kpi_today_projection"):
+            kpis = _merchant_kpi_today_projection(dash_store)
     except (SQLAlchemyError, OSError, TypeError, ValueError):
         kpis = {
             "abandoned_today": 0,
@@ -12748,7 +12762,8 @@ def _api_json_dashboard_summary(dash_store: Optional[Any]) -> Dict[str, Any]:
             "recovered_revenue_today": 0.0,
         }
     try:
-        month_win = _merchant_month_window_projection(dash_store, days=30)
+        with dashboard_summary_profile_span("_merchant_month_window_projection_days30"):
+            month_win = _merchant_month_window_projection(dash_store, days=30)
     except (SQLAlchemyError, OSError, TypeError, ValueError):
         month_win = {
             "abandoned_total": 0,
@@ -12756,14 +12771,17 @@ def _api_json_dashboard_summary(dash_store: Optional[Any]) -> Dict[str, Any]:
             "recovery_pct": 0.0,
             "recovered_revenue": 0.0,
         }
-    reason_counts_w = _merchant_reason_counts_store_window(dash_store, days=7)
+    with dashboard_summary_profile_span("_merchant_reason_counts_store_window_days7"):
+        reason_counts_w = _merchant_reason_counts_store_window(dash_store, days=7)
     reason_rows, reason_insight = merchant_reason_panel_rows_from_counts(reason_counts_w)
-    reason_counts_m = _merchant_reason_counts_store_window(dash_store, days=30)
+    with dashboard_summary_profile_span("_merchant_reason_counts_store_window_days30"):
+        reason_counts_m = _merchant_reason_counts_store_window(dash_store, days=30)
     reason_rows_month, reason_insight_month = merchant_reason_panel_rows_from_counts(
         reason_counts_m
     )
     try:
-        mstats = dict(_normal_carts_dashboard_stats(dash_store))
+        with dashboard_summary_profile_span("_normal_carts_dashboard_stats"):
+            mstats = dict(_normal_carts_dashboard_stats(dash_store))
     except (SQLAlchemyError, OSError, TypeError, ValueError):
         mstats = {
             "normal_cart_count": 0,
@@ -12771,7 +12789,8 @@ def _api_json_dashboard_summary(dash_store: Optional[Any]) -> Dict[str, Any]:
             "normal_recovered_count": 0,
             "stopped_flow_count": 0,
         }
-    wa_card = build_merchant_whatsapp_readiness_card(dash_store)
+    with dashboard_summary_profile_span("build_merchant_whatsapp_readiness_card"):
+        wa_card = build_merchant_whatsapp_readiness_card(dash_store)
     if (reason_insight_month or "").strip():
         merchant_reason_recommendations_ar = [str(reason_insight_month).strip()]
     else:
