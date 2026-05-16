@@ -11641,21 +11641,31 @@ def _merchant_normal_dashboard_batch_reads(
     scope_ab_rows: list[tuple[int, str, str]] = []
     try:
         if sess_pool or cid_pool:
+            from services.peers_abandoned_query_diag import (
+                peers_non_vip_abandoned_scope_diag_maybe,
+            )
+
             sp_parts: list[Any] = []
             if sess_pool:
                 sp_parts.append(AbandonedCart.recovery_session_id.in_(list(sess_pool)))
             if cid_pool:
                 sp_parts.append(AbandonedCart.zid_cart_id.in_(list(cid_pool)))
+            peers_sa_query = (
+                db.session.query(AbandonedCart)
+                .filter(AbandonedCart.vip_mode.is_(False))
+                .filter(or_(*sp_parts))
+                .limit(4000)
+            )
+            peers_non_vip_abandoned_scope_diag_maybe(
+                db.session,
+                peers_sa_query,
+                sess_in_len=len(sess_pool),
+                cid_in_len=len(cid_pool),
+            )
             _mbr_seg_t = time.perf_counter()
             _mbr_seg_q = merchant_dashboard_batch_reads_trace_peek_for_seg(_mbr_tr)
             with normal_carts_profile_span("sql:batch_abandoned_cart_peers_for_scope"):
-                peers_non_vip = (
-                    db.session.query(AbandonedCart)
-                    .filter(AbandonedCart.vip_mode.is_(False))
-                    .filter(or_(*sp_parts))
-                    .limit(4000)
-                    .all()
-                )
+                peers_non_vip = peers_sa_query.all()
             merchant_dashboard_batch_reads_trace_seg_end(
                 _mbr_tr,
                 _mbr_seg_t,
