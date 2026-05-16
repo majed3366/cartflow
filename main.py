@@ -3847,12 +3847,52 @@ def _build_recovery_context_from_arm(
     }
 
 
+def _store_slug_from_recovery_key(recovery_key: Optional[str]) -> Optional[str]:
+    """الجزء الأول من ‎recovery_key‎ (‎zid_store_id‎) — مصدر هوية المتجر لمسار الاسترجاع."""
+    rk = (recovery_key or "").strip()
+    if not rk or ":" not in rk:
+        return None
+    head = rk.split(":", 1)[0].strip()[:255]
+    return head if head else None
+
+
+def _store_row_by_zid_store_id_exact(
+    zid: Optional[str],
+    *,
+    allow_schema_warm: bool = True,
+) -> Optional[Store]:
+    """صف ‎Store‎ عند تطابق ‎zid_store_id‎ فقط — بلا ‎latest‎ لوحة الاسترجاع."""
+    ss = (zid or "").strip()
+    if not ss:
+        return None
+    try:
+        global _cartflow_api_db_warmed
+
+        if allow_schema_warm and not _cartflow_api_db_warmed:
+            _ensure_cartflow_api_db_warmed()
+        return db.session.query(Store).filter_by(zid_store_id=ss).first()
+    except (SQLAlchemyError, OSError):
+        db.session.rollback()
+        return None
+
+
 def _recovery_store_from_context(
     recovery_context: Optional[Dict[str, Any]],
     *,
     store_slug: str,
     allow_schema_warm: bool = True,
 ) -> Optional[Any]:
+    rk_merchant: Optional[str] = None
+    if recovery_context:
+        rk_merchant = _store_slug_from_recovery_key(
+            str(recovery_context.get("recovery_key") or "")
+        )
+    if rk_merchant:
+        exact = _store_row_by_zid_store_id_exact(
+            rk_merchant, allow_schema_warm=allow_schema_warm
+        )
+        if exact is not None:
+            return exact
     if not recovery_context:
         return _load_store_row_for_recovery(store_slug, allow_schema_warm=allow_schema_warm)
     pk = recovery_context.get("store_id")
@@ -3880,9 +3920,12 @@ def _log_recovery_context_before_send(
 ) -> None:
     try:
         tpl_z = (getattr(store_obj, "zid_store_id", None) or "").strip() or "-"
+        display_store_slug = (
+            tpl_z if tpl_z != "-" else (store_slug or "").strip() or "-"
+        )
         sid_i = getattr(store_obj, "id", None)
         print("[RECOVERY CONTEXT]", flush=True)
-        print(f"store_slug={store_slug}", flush=True)
+        print(f"store_slug={display_store_slug}", flush=True)
         print(f"store_id={sid_i if sid_i is not None else '-'}", flush=True)
         print(f"reason_tag={(reason_tag or '-')[:64]}", flush=True)
         print(f"cart_id={(str(cart_id or '') or '-')[:64]}", flush=True)
