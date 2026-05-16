@@ -69,12 +69,15 @@ def get_onboarding_blocker_catalog() -> dict[str, dict[str, str]]:
 
 
 def _resolve_dashboard_store_row():
-    """Same selection as dashboard recovery row — avoid importing main."""
+    """
+    Same selection as dashboard recovery row — avoid importing main.
+
+    لا ‎DDL‎ هنا؛ المخطط يُهيَّأ مرّة لكل عملية عبر ‎_ensure_cartflow_api_db_warmed‎ (‎startup‎ أو مسارات اللوحة).
+    """
     try:
         from extensions import db  # noqa: PLC0415
         from models import Store  # noqa: PLC0415
 
-        db.create_all()
         return db.session.query(Store).order_by(Store.id.desc()).first()
     except (SQLAlchemyError, OSError, TypeError, ValueError):
         try:
@@ -104,8 +107,6 @@ def _milestones_readonly(store: Any) -> dict[str, bool]:
             MerchantFollowupAction,
         )
 
-        with wa_readiness_step("milestones_schema_create_all"):
-            db.create_all()
         sid = int(getattr(store, "id", 0) or 0)
         slug = (getattr(store, "zid_store_id", None) or "").strip()[:255]
         if sid <= 0:
@@ -192,8 +193,6 @@ def _phone_coverage_readonly(store: Any) -> tuple[bool, bool]:
         from extensions import db  # noqa: PLC0415
         from models import AbandonedCart  # noqa: PLC0415
 
-        with wa_readiness_step("phone_coverage_schema_create_all"):
-            db.create_all()
         sid = int(getattr(store, "id", 0) or 0)
         if sid <= 0:
             return False, False
