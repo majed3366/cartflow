@@ -909,10 +909,7 @@ _WHATSAPP_TEST_CART = {
 _DEV_RECOVERY_SETTINGS_STORE_ZID = "dev-recovery-settings-test"
 # عند فرد ‎DB‎: سجل بـ ‎zid‎ ثابت (لتفادي تعدد ‎NULL‎ مع ‎UNIQUE‎) — آمن عند تزامن أول طلبات.
 CARTFLOW_DEFAULT_RECOVERY_STORE_ZID = "cartflow-default-recovery"
-# ‎demo‎ / ‎default‎ / المتجر الآلي — نفس صف لوحة ‎GET/POST /api/recovery-settings‎ (آخر ‎stores.id‎)، لا صف قديم ‎zid=demo‎ بلا ‎vip_cart_threshold‎.
-_WIDGET_STORE_SLUGS_USE_DASHBOARD_LATEST = frozenset(
-    {"demo", "default", CARTFLOW_DEFAULT_RECOVERY_STORE_ZID.casefold()}
-)
+# ‎Store‎ للاسترجاع: ‎zid_store_id == store_slug‎ من الحمولة أولاً (‎reason_templates_json‎ وغيره لكل تاجر)؛ إن لم يوجد ‎zid‎ مطابق يُستخدم آخر ‎Store.id‎ (لوحة الاسترجاع).
 _VALID_RECOVERY_UNITS = frozenset({"minutes", "hours", "days"})
 
 _STORE_RECOVERY_TEMPLATE_KEYS: tuple[str, ...] = (
@@ -3766,8 +3763,6 @@ def _store_row_cache_key_for_recovery(store_slug: Optional[str]) -> str:
     ss_key = ss_full.casefold()
     if not ss_key:
         return "__latest__"
-    if ss_key in _WIDGET_STORE_SLUGS_USE_DASHBOARD_LATEST:
-        return "__latest__"
     return f"zid:{ss_full}"
 
 
@@ -3776,7 +3771,7 @@ def _load_store_row_for_recovery(
     *,
     allow_schema_warm: bool = True,
 ) -> Optional[Store]:
-    """صف ‎Store‎ للاسترجاع و‎VIP‎: ‎zid_store_id‎ يطابق ‎store‎ من الحمولة؛ ‎demo/default‎ → نفس صف لوحة الإعدادات (آخر ‎id‎)؛ وإلا آخر سطر."""
+    """صف ‎Store‎ للاسترجاع و‎VIP‎: ‎zid_store_id‎ يطابق ‎store_slug‎ من الحمولة؛ إن لم يوجد صف مطابق ‎zid‎ → آخر ‎Store.id‎ (لوحة الاسترجاع)."""
     try:
         from services.cart_event_request_scope import (
             cart_event_scope_active,
@@ -3796,11 +3791,6 @@ def _load_store_row_for_recovery(
         ss_full = (store_slug or "").strip()
         ss_key = ss_full.casefold()
         if not ss_key:
-            out = latest
-            if cart_event_scope_active():
-                scoped_store_set(ck, out)
-            return out
-        if ss_key in _WIDGET_STORE_SLUGS_USE_DASHBOARD_LATEST:
             out = latest
             if cart_event_scope_active():
                 scoped_store_set(ck, out)

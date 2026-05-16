@@ -9,11 +9,6 @@ from sqlalchemy.exc import SQLAlchemyError
 from extensions import db
 from models import AbandonedCart, Store
 
-# يطابق ‎main._WIDGET_STORE_SLUGS_USE_DASHBOARD_LATEST‎ (بدون استيراد ‎main‎ لتفادي الدورات).
-WIDGET_SLUGS_MAP_TO_LATEST_STORE = frozenset(
-    {"demo", "default", "cartflow-default-recovery"}
-)
-
 
 def resolve_store_row_for_cartflow_slug_session(
     session: Any, store_slug: str
@@ -23,11 +18,10 @@ def resolve_store_row_for_cartflow_slug_session(
     if not ss:
         return None
     try:
-        aliases = WIDGET_SLUGS_MAP_TO_LATEST_STORE
-        if ss.casefold() in {x.casefold() for x in aliases}:
-            return session.query(Store).order_by(Store.id.desc()).first()
         row = session.query(Store).filter(Store.zid_store_id == ss).first()
-        return row if row is not None else None
+        if row is not None:
+            return row
+        return session.query(Store).order_by(Store.id.desc()).first()
     except (SQLAlchemyError, OSError):
         session.rollback()
         return None
@@ -39,8 +33,6 @@ def resolve_store_row_for_cartflow_slug(store_slug: str) -> Optional[Store]:
         return None
     try:
         db.create_all()
-        # ‎demo‎ / ‎default‎ / المتجر الافتراضي: نفس صف لوحة ‎GET/POST /api/recovery-settings‎ (آخر ‎id‎)
-        # حتى لا يُربط الودجيت بسجل قديم ‎zid_store_id=demo‎ بلا إعدادات لوحة التحكم.
         return resolve_store_row_for_cartflow_slug_session(db.session, ss)
     except (SQLAlchemyError, OSError):
         db.session.rollback()
