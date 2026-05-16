@@ -12004,8 +12004,31 @@ def _normal_recovery_merchant_lightweight_alert_list_for_api(
     }
     desired_end = max(0, int(page_offset or 0)) + max(1, int(page_limit or 50))
     try:
+        from services.lightweight_alert_list_trace import (
+            lightweight_alert_list_trace_ctx_begin,
+            lightweight_alert_list_trace_enabled,
+            lightweight_alert_list_trace_phase,
+        )
+
+        lat_ctx = (
+            lightweight_alert_list_trace_ctx_begin()
+            if lightweight_alert_list_trace_enabled()
+            else None
+        )
+
+        def _lat_ph(phase: str, **kw: Any) -> None:
+            if lat_ctx is not None:
+                lightweight_alert_list_trace_phase(phase, lat_ctx, **kw)
+
+        _lat_ph(
+            "enter",
+            page_limit=int(page_limit or 50),
+            page_offset=int(page_offset or 0),
+            desired_end=int(desired_end),
+        )
         if dash_store is None:
             dash_store = _dashboard_recovery_store_row()
+        _lat_ph("after_dash_store_row")
         lc_raw = (lifecycle or "active").strip().lower()
         if lc_raw not in ("active", "archived", "all"):
             lc_raw = "active"
@@ -12030,7 +12053,15 @@ def _normal_recovery_merchant_lightweight_alert_list_for_api(
             full_rows = list(
                 q.order_by(AbandonedCart.last_seen_at.desc()).limit(row_cap).all()
             )
+        _lat_ph(
+            "after_abandoned_cart_candidate_query",
+            row_cap=int(row_cap),
+            max_pick_groups=int(max_pick),
+            candidate_rows=len(full_rows),
+            lifecycle_lc=(lc_raw or "")[:32],
+        )
         if not full_rows:
+            _lat_ph("early_out_no_candidates")
             return [], dict(prof_empty)
         slug_for_act = (
             (getattr(dash_store, "zid_store_id", None) or "").strip()
@@ -12038,12 +12069,20 @@ def _normal_recovery_merchant_lightweight_alert_list_for_api(
             else ""
         )
         activity_map = _normal_recovery_cart_activity_rank_map(full_rows, slug_for_act)
+        _lat_ph("after_activity_rank_map", activity_entries=len(activity_map))
         picked = _vip_pick_priority_cart_groups(
             full_rows,
             cart_activity_utc=activity_map,
             max_pick_groups=max_pick,
         )
+        _lat_ph("after_vip_pick_priority_groups", picked_groups=len(picked))
         batch_reads = _merchant_normal_dashboard_batch_reads(full_rows, dash_store)
+        _lat_ph(
+            "after_merchant_normal_dashboard_batch_reads",
+            logs_loaded=int(getattr(batch_reads, "logs_loaded", 0) or 0),
+            reasons_rows=int(getattr(batch_reads, "reasons_rows_fetched", 0) or 0),
+            phones_loaded=int(getattr(batch_reads, "phones_loaded", 0) or 0),
+        )
         out: list[dict[str, Any]] = []
         now_utc = datetime.now(timezone.utc)
         npick = len(picked)
@@ -12067,7 +12106,9 @@ def _normal_recovery_merchant_lightweight_alert_list_for_api(
                 return in_history
             return True
 
+        _lat_loop_iters = 0
         for pick_i, grp_sorted in enumerate(picked):
+            _lat_loop_iters += 1
             with normal_carts_profile_span("loop:for_grp_sorted_in_picked"):
                 arch = _normal_recovery_group_is_archived_merchant_batch(
                     grp_sorted, batch_reads
@@ -12128,6 +12169,13 @@ def _normal_recovery_merchant_lightweight_alert_list_for_api(
                 pass
             log.info("%s", _sm_summ)
 
+        _lat_ph(
+            "after_group_build_loop",
+            loop_iterations=int(_lat_loop_iters),
+            out_groups_before_slice=len(out),
+            picked_total=npick,
+        )
+
         po = max(0, int(page_offset or 0))
         pl = max(1, int(page_limit or 50))
         sliced = out[po : po + pl]
@@ -12137,6 +12185,13 @@ def _normal_recovery_merchant_lightweight_alert_list_for_api(
             "reasons_loaded": int(batch_reads.reasons_rows_fetched or 0),
             "phones_loaded": int(batch_reads.phones_loaded or 0),
         }
+        _lat_ph(
+            "exit_return",
+            sliced_len=len(sliced),
+            slice_page_limit=int(pl),
+            slice_page_offset=int(po),
+            prof_logs_loaded=int(prof.get("logs_loaded") or 0),
+        )
         return sliced, prof
     except (SQLAlchemyError, OSError, TypeError, ValueError) as e:
         db.session.rollback()
