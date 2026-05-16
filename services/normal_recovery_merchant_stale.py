@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-import os
 import time
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
@@ -22,34 +21,27 @@ log = logging.getLogger("cartflow")
 
 
 def stale_meta_trace_enabled() -> bool:
-    """سجلات ‎[MERCHANT_GROUP_STALE_TRACE]‎ فقط؛ ‎CARTFLOW_STALE_META_TRACE=0‎ يعطّل."""
-    v = (os.getenv("CARTFLOW_STALE_META_TRACE") or "").strip().lower()
-    if v in ("0", "false", "no", "off"):
-        return False
-    if v in ("1", "true", "yes", "on"):
-        return True
+    """سجلات ‎[MERCHANT_GROUP_STALE_TRACE]‎ — ‎OBSERVABILITY_MODE=debug‎؛ ‎CARTFLOW_STALE_META_TRACE=0‎ يعطّل."""
     try:
-        from services.db_request_audit import audit_enabled
+        from services.cartflow_observability_mode import (
+            observability_stale_meta_trace_enabled,
+        )
 
-        return audit_enabled()
+        return observability_stale_meta_trace_enabled()
     except Exception:  # noqa: BLE001
         return False
 
 
 def queued_followup_schema_inspection_enabled() -> bool:
     """
-    ‎[QUEUED_FOLLOWUP_SCHEMA_INSPECT]‎ لتتبع مسار التحقق من ‎queued followup‎ (بدون ‎DDL‎).
-    ‎CARTFLOW_QUEUED_FOLLOWUP_SCHEMA_INSPECTION=0‎ يعطّل؛ غير محدّد ⇒ ‎audit_enabled()‎.
+    ‎[QUEUED_FOLLOWUP_SCHEMA_INSPECT]‎ — ‎OBSERVABILITY_MODE=debug‎؛ ‎CARTFLOW_QUEUED_FOLLOWUP_SCHEMA_INSPECTION=0‎ يعطّل.
     """
-    v = (os.getenv("CARTFLOW_QUEUED_FOLLOWUP_SCHEMA_INSPECTION") or "").strip().lower()
-    if v in ("0", "false", "no", "off"):
-        return False
-    if v in ("1", "true", "yes", "on"):
-        return True
     try:
-        from services.db_request_audit import audit_enabled
+        from services.cartflow_observability_mode import (
+            observability_queued_followup_schema_inspection_enabled,
+        )
 
-        return audit_enabled()
+        return observability_queued_followup_schema_inspection_enabled()
     except Exception:  # noqa: BLE001
         return False
 
@@ -86,10 +78,6 @@ def _emit_queued_followup_schema_inspect(
         f" queries_delta_total={dq_total}"
         f" queries_delta_through_create_all={dq_create_all_phase}"
     )
-    try:
-        print(line, flush=True)
-    except OSError:
-        pass
     try:
         log.info("%s", line)
     except Exception:  # noqa: BLE001
@@ -138,10 +126,6 @@ def _emit_merchant_group_stale_trace(
         f" queries_delta={queries_delta_str}"
         f" duration_ms={round(duration_ms, 3)}"
     )
-    try:
-        print(line, flush=True)
-    except OSError:
-        pass
     try:
         log.info("%s", line)
     except Exception:  # noqa: BLE001

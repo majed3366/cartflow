@@ -2,13 +2,12 @@
 """
 Sub-step timing for ‎main._merchant_normal_dashboard_batch_reads‎ — سجلات فقط.
 
-تفعيل: ‎CARTFLOW_MERCHANT_BATCH_READS_TRACE=1‎، أو غير مضبوط ⇒ ‎audit_enabled()‎.
+تفعيل: ‎CARTFLOW_OBSERVABILITY_MODE=debug‎؛ ‎CARTFLOW_MERCHANT_BATCH_READS_TRACE=0‎ يعطّل.
 لا استعلامات إضافية؛ يعتمد عدّاد ‎db_request_audit‎ إن وُجد.
 """
 from __future__ import annotations
 
 import logging
-import os
 import time
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -19,15 +18,12 @@ Seg = Tuple[str, float, str, str, Optional[int]]
 
 
 def merchant_dashboard_batch_reads_trace_enabled() -> bool:
-    v = (os.getenv("CARTFLOW_MERCHANT_BATCH_READS_TRACE") or "").strip().lower()
-    if v in ("0", "false", "no", "off"):
-        return False
-    if v in ("1", "true", "yes", "on"):
-        return True
     try:
-        from services.db_request_audit import audit_enabled
+        from services.cartflow_observability_mode import (
+            observability_merchant_dashboard_batch_reads_trace_enabled,
+        )
 
-        return audit_enabled()
+        return observability_merchant_dashboard_batch_reads_trace_enabled()
     except Exception:  # noqa: BLE001
         return False
 
@@ -77,10 +73,6 @@ def merchant_dashboard_batch_reads_trace_begin(
 
 
 def _emit(line: str) -> None:
-    try:
-        print(line, flush=True)
-    except OSError:
-        pass
     try:
         log.info("%s", line)
     except Exception:  # noqa: BLE001

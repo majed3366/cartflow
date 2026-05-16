@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 مراقبة مؤقتة لضغط القاعدة: عدّ الاستعلامات لكل طلب ‎HTTP‎ + مدة + تقدير الـ ‎pool‎.
-يُفعَّل عبر ‎ENV=development‎ (افتراضي) أو ‎CARTFLOW_DB_REQUEST_AUDIT=1‎، ويُعطَّل بـ ‎CARTFLOW_DB_REQUEST_AUDIT=0‎.
+يُفعَّل عبر ‎CARTFLOW_OBSERVABILITY_MODE=basic|debug‎؛ ‎CARTFLOW_DB_REQUEST_AUDIT=0‎ يعطّل العداد.
 لا يغيِّر سلوك التطبيق سوى السجلات.
 """
 from __future__ import annotations
@@ -30,12 +30,14 @@ _SLOW_MS_DEFAULT = 750.0
 
 
 def audit_enabled() -> bool:
-    v = (os.getenv("CARTFLOW_DB_REQUEST_AUDIT") or "").strip().lower()
-    if v in ("0", "false", "no", "off"):
+    try:
+        from services.cartflow_observability_mode import (
+            observability_request_sql_audit_active,
+        )
+
+        return observability_request_sql_audit_active()
+    except Exception:  # noqa: BLE001
         return False
-    if v in ("1", "true", "yes", "on"):
-        return True
-    return (os.getenv("ENV") or "").strip().lower() == "development"
 
 
 def slow_request_threshold_ms() -> float:
@@ -128,8 +130,17 @@ def audit_request_begin(request: Any) -> None:
         return
     maybe_install_engine_listener()
 
+    try:
+        from services.cartflow_observability_mode import (
+            observability_db_audit_leak_and_nesting_warnings,
+        )
+
+        leak_warn_ok = observability_db_audit_leak_and_nesting_warnings()
+    except Exception:  # noqa: BLE001
+        leak_warn_ok = False
+
     nest = _audit_nesting.get()
-    if nest > 0:
+    if nest > 0 and leak_warn_ok:
         path = getattr(getattr(request, "url", None), "path", "") or ""
         log.warning(
             "[DB SESSION LEAK SUSPECTED] nested_db_audit_context depth=%s path=%s",
@@ -156,13 +167,30 @@ def audit_request_begin(request: Any) -> None:
         "t0": time.perf_counter(),
     }
     _audit_bucket.set(bucket)
-    log.info("[DB REQUEST START] endpoint=%s", endpoint[:500])
+    try:
+        from services.cartflow_observability_mode import (
+            observability_middleware_verbose_db_request_logs,
+        )
+
+        if observability_middleware_verbose_db_request_logs():
+            log.info("[DB REQUEST START] endpoint=%s", endpoint[:500])
+    except Exception:  # noqa: BLE001
+        pass
 
 
 def audit_leak_suspected_check(request: Any) -> None:
     """طلبات القراءة مع كيانات ‎ORM‎ قذرة/جديدة دون تنظيف — غالباً سلوك نادر؛ سجلات فقط."""
 
     if not audit_enabled():
+        return
+    try:
+        from services.cartflow_observability_mode import (
+            observability_db_audit_leak_and_nesting_warnings,
+        )
+
+        if not observability_db_audit_leak_and_nesting_warnings():
+            return
+    except Exception:  # noqa: BLE001
         return
     method = (getattr(request, "method", "") or "").upper()
     if method not in ("GET", "HEAD", "OPTIONS"):
@@ -203,14 +231,23 @@ def audit_request_end() -> None:
     sh = int(bucket.get("store_hits") or 0)
 
     pool_line = _pool_line()
+    try:
+        from services.cartflow_observability_mode import (
+            observability_middleware_verbose_db_request_logs,
+        )
 
-    log.info("[DB REQUEST END] endpoint=%s duration_ms=%.1f %s", endpoint[:500], elapsed_ms, pool_line)
-    log.info(
-        "[DB QUERY COUNT] endpoint=%s queries=%s store_sql_hits=%s",
-        endpoint[:500],
-        qn,
-        sh,
-    )
+        verbose_ep = observability_middleware_verbose_db_request_logs()
+    except Exception:  # noqa: BLE001
+        verbose_ep = False
+
+    if verbose_ep:
+        log.info("[DB REQUEST END] endpoint=%s duration_ms=%.1f %s", endpoint[:500], elapsed_ms, pool_line)
+        log.info(
+            "[DB QUERY COUNT] endpoint=%s queries=%s store_sql_hits=%s",
+            endpoint[:500],
+            qn,
+            sh,
+        )
 
     if elapsed_ms >= slow_request_threshold_ms():
         log.warning(
@@ -263,13 +300,15 @@ def _pool_line() -> str:
 
 
 def stall_trace_enabled() -> bool:
-    """تشخيص تعليقات الطلب (‎~100s‎ مع ‎queries=0‎): سجلات فقط؛ ‎CARTFLOW_STALL_TRACE=0‎ يعطّل."""
-    v = (os.getenv("CARTFLOW_STALL_TRACE") or "").strip().lower()
-    if v in ("0", "false", "no", "off"):
+    """تشخيص تعليقات الطلب — ‎OBSERVABILITY_MODE=debug‎ ولا ‎CARTFLOW_STALL_TRACE=0‎."""
+    try:
+        from services.cartflow_observability_mode import (
+            observability_stall_trace_enabled,
+        )
+
+        return observability_stall_trace_enabled()
+    except Exception:  # noqa: BLE001
         return False
-    if v in ("1", "true", "yes", "on"):
-        return True
-    return audit_enabled()
 
 
 def _stall_runtime_snapshot() -> Dict[str, Any]:
@@ -330,10 +369,6 @@ def stall_trace_checkpoint(
     if bg_tasks_queued is not None:
         parts.append(f"bg_tasks_queued={int(bg_tasks_queued)}")
     line = " ".join(parts)
-    try:
-        print(line, flush=True)
-    except OSError:
-        pass
     try:
         log.warning("%s", line)
     except Exception:  # noqa: BLE001

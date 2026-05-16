@@ -44,6 +44,18 @@ def normal_carts_query_profiling_active() -> bool:
 
 
 def normal_carts_profile_begin() -> None:
+    _active.set(False)
+    _stack.set(None)
+    try:
+        from services.cartflow_observability_mode import (
+            observability_normal_carts_subprofiler_enabled,
+        )
+
+        ok = observability_normal_carts_subprofiler_enabled()
+    except Exception:  # noqa: BLE001
+        ok = False
+    if not ok:
+        return
     _active.set(True)
     _stack.set([])
     _stats.clear()
@@ -51,7 +63,8 @@ def normal_carts_profile_begin() -> None:
 
 def normal_carts_profile_end() -> None:
     try:
-        _emit_normal_carts_profile_reports()
+        if normal_carts_query_profiling_active():
+            _emit_normal_carts_profile_reports()
     finally:
         _active.set(False)
         _stack.set(None)
@@ -156,10 +169,6 @@ def _emit_normal_carts_profile_reports() -> None:
             f"duration_exclusive_ms={round(st.exclusive_wall_ms, 1)}"
         )
         try:
-            print(line, flush=True)
-        except OSError:
-            pass
-        try:
             log.info("%s", line)
         except Exception:  # noqa: BLE001
             pass
@@ -182,10 +191,6 @@ def _emit_normal_carts_profile_reports() -> None:
             f"total_ms={round(st.inclusive_wall_ms, 1)} "
             f"total_exclusive_ms={round(st.exclusive_wall_ms, 1)}"
         )
-        try:
-            print(line, flush=True)
-        except OSError:
-            pass
         try:
             log.info("%s", line)
         except Exception:  # noqa: BLE001

@@ -43,13 +43,25 @@ _last_frontend_stale_mono: float = 0.0
 
 
 def session_consistency_log_enabled() -> bool:
-    v = (os.getenv("CARTFLOW_SESSION_CONSISTENCY_LOG") or "").strip().lower()
-    return v in ("1", "true", "yes", "on")
+    try:
+        from services.cartflow_observability_mode import (
+            observability_cartflow_session_consistency_log_enabled,
+        )
+
+        return observability_cartflow_session_consistency_log_enabled()
+    except Exception:  # noqa: BLE001
+        return False
 
 
 def structured_health_style_enabled() -> bool:
-    v = (os.getenv("CARTFLOW_STRUCTURED_HEALTH_LOG") or "").strip().lower()
-    return v in ("1", "true", "yes", "on")
+    try:
+        from services.cartflow_observability_mode import (
+            observability_structured_health_dashboard_log_enabled,
+        )
+
+        return observability_structured_health_dashboard_log_enabled()
+    except Exception:  # noqa: BLE001
+        return False
 
 
 def _emit(
@@ -86,10 +98,9 @@ def _emit(
     ]
     line = " ".join(parts)
     try:
-        print(line, flush=True)
-    except OSError:
+        log.info("%s", line)
+    except Exception:  # noqa: BLE001
         pass
-    log.info("%s", line)
 
 
 def _safe(s: str) -> str:

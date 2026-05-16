@@ -3,10 +3,9 @@
 
 from __future__ import annotations
 
-import io
 import os
 import unittest
-from contextlib import redirect_stdout
+
 
 from services import cartflow_runtime_health as rh
 
@@ -15,6 +14,7 @@ class CartflowRuntimeHealthTests(unittest.TestCase):
     def tearDown(self) -> None:
         rh.clear_runtime_anomaly_buffer_for_tests()
         os.environ.pop("CARTFLOW_STRUCTURED_HEALTH_LOG", None)
+        os.environ.pop("CARTFLOW_OBSERVABILITY_MODE", None)
         try:
             from services.cartflow_session_consistency import (
                 reset_session_consistency_for_tests,
@@ -173,26 +173,24 @@ class CartflowRuntimeHealthTests(unittest.TestCase):
         self.assertIn("runtime_warning", s)
 
     def test_structured_health_log_emits_when_enabled(self) -> None:
+        os.environ["CARTFLOW_OBSERVABILITY_MODE"] = "basic"
         os.environ["CARTFLOW_STRUCTURED_HEALTH_LOG"] = "1"
-        buf = io.StringIO()
-        with redirect_stdout(buf):
+        with self.assertLogs("cartflow", level="INFO") as cm:
             rh.emit_health_log("ping", recovery_runtime_active=True)
-        self.assertIn("[CARTFLOW HEALTH]", buf.getvalue())
-        buf2 = io.StringIO()
-        with redirect_stdout(buf2):
+        self.assertTrue(any("[CARTFLOW HEALTH]" in x for x in cm.output))
+        with self.assertLogs("cartflow", level="INFO") as cm2:
             rh.emit_anomaly_log("test_type", foo="bar")
-        self.assertIn("[CARTFLOW ANOMALY]", buf2.getvalue())
-        buf3 = io.StringIO()
-        with redirect_stdout(buf3):
+        self.assertTrue(any("[CARTFLOW ANOMALY]" in x for x in cm2.output))
+        with self.assertLogs("cartflow", level="INFO") as cm3:
             rh.emit_provider_log("twilio_check", configured=True)
-        self.assertIn("[CARTFLOW PROVIDER]", buf3.getvalue())
+        self.assertTrue(any("[CARTFLOW PROVIDER]" in x for x in cm3.output))
 
     def test_no_health_log_when_disabled(self) -> None:
+        os.environ["CARTFLOW_OBSERVABILITY_MODE"] = "basic"
         os.environ.pop("CARTFLOW_STRUCTURED_HEALTH_LOG", None)
-        buf = io.StringIO()
-        with redirect_stdout(buf):
-            rh.emit_health_log("silent")
-        self.assertEqual(buf.getvalue().strip(), "")
+        with self.assertRaises(AssertionError):
+            with self.assertLogs("cartflow", level="INFO"):
+                rh.emit_health_log("silent")
 
 
 if __name__ == "__main__":

@@ -18,7 +18,6 @@ Diagnostics-only: peers query (‎vip_mode‎ + OR على ‎recovery_session_id
 from __future__ import annotations
 
 import logging
-import os
 import re
 from typing import Any, Callable, Iterable
 
@@ -29,18 +28,20 @@ log = logging.getLogger("cartflow")
 
 
 def peers_abandoned_explain_diag_enabled() -> bool:
-    v = (os.getenv("CARTFLOW_PEERS_ABANDONED_EXPLAIN_DIAG") or "").strip().lower()
-    return v in ("1", "true", "yes", "on")
+    try:
+        from services.cartflow_observability_mode import (
+            observability_peers_sql_explain_enabled,
+        )
+
+        return observability_peers_sql_explain_enabled()
+    except Exception:  # noqa: BLE001
+        return False
 
 
 EmitFn = Callable[[str], None]
 
 
 def _emit_default(line: str) -> None:
-    try:
-        print(line, flush=True)
-    except OSError:
-        pass
     try:
         log.info("%s", line)
     except Exception:  # noqa: BLE001
@@ -201,9 +202,9 @@ def peers_non_vip_abandoned_scope_diag_maybe(
         return
     ell = emit_line or _emit_default
     ell(
-        "[PEERS_NON_VIP_SQL_DIAG] env=CARTFLOW_PEERS_ABANDONED_EXPLAIN_DIAG=1 "
-        "warning=literal_explains MAY log IN-list values "
-        "(extra planner round-trip; default app path unchanged when env unset)."
+        "[PEERS_NON_VIP_SQL_DIAG] require=CARTFLOW_OBSERVABILITY_MODE=debug "
+        "and_CARTFLOW_PEERS_ABANDONED_EXPLAIN_DIAG=1 warning=literals_may_include_IN_values"
+        "_(single_log_via_logger_no_stdout_dup)"
     )
     ell(
         f"[PEERS_NON_VIP_SQL_DIAG] in_dims recovery_session_id_values={sess_in_len} "

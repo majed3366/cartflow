@@ -3,7 +3,7 @@
 Runtime health visibility foundation: read-only snapshots, anomaly symbols, admin-ready summaries.
 
 Does not change WhatsApp sending, scheduling, recovery flow, or the observability package itself.
-Opt-in structured logs via CARTFLOW_STRUCTURED_HEALTH_LOG=1 to avoid noise.
+Opt-in structured logs via CARTFLOW_STRUCTURED_HEALTH_LOG=1 combined with OBSERVABILITY basic|debug.
 """
 from __future__ import annotations
 
@@ -46,8 +46,14 @@ _recent_anomalies: deque[dict[str, Any]] = deque(maxlen=_MAX_ANOMALY_BUFFER)
 
 
 def structured_health_logging_enabled() -> bool:
-    v = (os.getenv("CARTFLOW_STRUCTURED_HEALTH_LOG") or "").strip().lower()
-    return v in ("1", "true", "yes", "on")
+    try:
+        from services.cartflow_observability_mode import (
+            observability_structured_health_dashboard_log_enabled,
+        )
+
+        return observability_structured_health_dashboard_log_enabled()
+    except Exception:  # noqa: BLE001
+        return False
 
 
 def emit_health_log(message: str, **fields: Any) -> None:
@@ -79,10 +85,6 @@ def _emit_line(prefix: str, message: str, **fields: Any) -> None:
         sval = "-" if val is None else str(val).strip().replace("\n", " ")[:256]
         parts.append(f"{key}={sval}")
     line = " ".join(parts)
-    try:
-        print(line, flush=True)
-    except OSError:
-        pass
     log.info("%s", line)
 
 

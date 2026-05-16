@@ -8,7 +8,6 @@ optional tooling without touching recovery or WhatsApp behavior.
 from __future__ import annotations
 
 import logging
-import os
 from typing import Any, Final
 
 log = logging.getLogger("cartflow.queue_readiness")
@@ -31,8 +30,14 @@ SAFETY_LIFECYCLE_SENSITIVE: Final = "lifecycle_sensitive"
 
 
 def _env_readiness_log_enabled() -> bool:
-    v = (os.getenv("CARTFLOW_QUEUE_READINESS_LOG") or "").strip().lower()
-    return v in ("1", "true", "yes", "on")
+    try:
+        from services.cartflow_observability_mode import (
+            observability_queue_readiness_log_enabled,
+        )
+
+        return observability_queue_readiness_log_enabled()
+    except Exception:  # noqa: BLE001
+        return False
 
 
 def emit_queue_readiness_diagnostic(

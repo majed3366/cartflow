@@ -3,12 +3,11 @@
 Phase timing for ‎_normal_recovery_merchant_lightweight_alert_list_for_api‎ only.
 
 Uses ‎db_request_audit‎ query counter when present — no extra SQL.
-Enable: ‎CARTFLOW_LIGHTWEIGHT_ALERT_LIST_TRACE=1‎ (or unset → same as ‎audit_enabled()‎).
+‎OBSERVABILITY_MODE=debug‎؛ ‎CARTFLOW_LIGHTWEIGHT_ALERT_LIST_TRACE=0‎ يعطّل.
 """
 from __future__ import annotations
 
 import logging
-import os
 import time
 from typing import Any, Dict, Optional
 
@@ -16,15 +15,12 @@ log = logging.getLogger("cartflow")
 
 
 def lightweight_alert_list_trace_enabled() -> bool:
-    v = (os.getenv("CARTFLOW_LIGHTWEIGHT_ALERT_LIST_TRACE") or "").strip().lower()
-    if v in ("0", "false", "no", "off"):
-        return False
-    if v in ("1", "true", "yes", "on"):
-        return True
     try:
-        from services.db_request_audit import audit_enabled
+        from services.cartflow_observability_mode import (
+            observability_lightweight_alert_list_trace_enabled,
+        )
 
-        return audit_enabled()
+        return observability_lightweight_alert_list_trace_enabled()
     except Exception:  # noqa: BLE001
         return False
 
@@ -90,10 +86,6 @@ def lightweight_alert_list_trace_phase(
         f" fn_elapsed_ms={round(fn_elapsed_ms, 3)} step_ms={round(step_elapsed_ms, 3)}"
         f" queries_cumulative={cq} queries_step={sq}{extras}"
     )
-    try:
-        print(line, flush=True)
-    except OSError:
-        pass
     try:
         log.info("%s", line)
     except Exception:  # noqa: BLE001

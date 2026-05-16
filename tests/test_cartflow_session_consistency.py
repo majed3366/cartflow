@@ -3,10 +3,9 @@
 
 from __future__ import annotations
 
-import io
 import os
 import unittest
-from contextlib import redirect_stdout
+
 from unittest.mock import MagicMock
 
 from services import cartflow_runtime_health as rh
@@ -19,6 +18,7 @@ class CartflowSessionConsistencyTests(unittest.TestCase):
         rh.clear_runtime_anomaly_buffer_for_tests()
         os.environ.pop("CARTFLOW_SESSION_CONSISTENCY_LOG", None)
         os.environ.pop("CARTFLOW_STRUCTURED_HEALTH_LOG", None)
+        os.environ.pop("CARTFLOW_OBSERVABILITY_MODE", None)
 
     def test_validate_session_scope_missing_both(self) -> None:
         issues = sc.validate_session_runtime_consistency(session_id="", cart_id="")
@@ -95,14 +95,15 @@ class CartflowSessionConsistencyTests(unittest.TestCase):
         self.assertTrue(d.get("stale_state_detected"))
 
     def test_frontend_stale_emits_when_log_enabled(self) -> None:
+        os.environ["CARTFLOW_OBSERVABILITY_MODE"] = "basic"
         os.environ["CARTFLOW_SESSION_CONSISTENCY_LOG"] = "1"
-        buf = io.StringIO()
-        with redirect_stdout(buf):
+        with self.assertLogs("cartflow", level="INFO") as cm:
             sc.note_frontend_stale_state_intent(
                 store_slug="demo", session_id="s", cart_id="c"
             )
-        self.assertIn("[CARTFLOW SESSION]", buf.getvalue())
-        self.assertIn("frontend_state_stale", buf.getvalue())
+        joined = "\n".join(cm.output)
+        self.assertIn("[CARTFLOW SESSION]", joined)
+        self.assertIn("frontend_state_stale", joined)
 
     def test_trust_signals_session_drift_warning(self) -> None:
         s = rh.derive_runtime_trust_signals(

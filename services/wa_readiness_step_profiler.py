@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import contextvars
 import logging
-import os
 import time
 from collections import defaultdict
 from contextlib import contextmanager
@@ -35,21 +34,21 @@ _agg: DefaultDict[str, _Agg] = defaultdict(_Agg)
 
 
 def wa_readiness_step_profiling_enabled() -> bool:
-    v = (os.getenv("CARTFLOW_WA_READINESS_STEP_PROFILE") or "").strip().lower()
-    if v in ("0", "false", "no", "off"):
-        return False
-    if v in ("1", "true", "yes", "on"):
-        return True
     try:
-        from services.db_request_audit import audit_enabled
+        from services.cartflow_observability_mode import (
+            observability_wa_readiness_step_profiler_enabled,
+        )
 
-        return audit_enabled()
+        return observability_wa_readiness_step_profiler_enabled()
     except Exception:  # noqa: BLE001
         return False
 
 
 def wa_readiness_profile_begin() -> None:
     """Start a profiling session for one card build."""
+    _session_active.set(False)
+    if not wa_readiness_step_profiling_enabled():
+        return
     _agg.clear()
     _session_active.set(True)
 
@@ -57,7 +56,8 @@ def wa_readiness_profile_begin() -> None:
 def wa_readiness_profile_end() -> None:
     """Emit TOP and clear session."""
     try:
-        _emit_top_ranked()
+        if wa_readiness_step_session_active():
+            _emit_top_ranked()
     finally:
         _session_active.set(False)
 
@@ -106,10 +106,6 @@ def wa_readiness_step(step: str) -> Iterator[None]:
             f"queries={dq_s} duration_ms={round(elapsed_ms, 2)}"
         )
         try:
-            print(line, flush=True)
-        except OSError:
-            pass
-        try:
             log.info("%s", line)
         except Exception:  # noqa: BLE001
             pass
@@ -141,10 +137,6 @@ def _emit_top_ranked() -> None:
             f"[WA READINESS TOP] rank={rank} step={step} "
             f"queries={q_part} duration_ms={round(ag.total_ms, 2)}"
         )
-        try:
-            print(line, flush=True)
-        except OSError:
-            pass
         try:
             log.info("%s", line)
         except Exception:  # noqa: BLE001

@@ -8217,6 +8217,16 @@ def _log_pre_cart_event_profile(
     phase: str,
 ) -> None:
     """قياس فوري قبل ‎_handle_cart_state_sync‎ (طلب كامل ضمن عدّاد المراجعة)."""
+    try:
+        from services.cartflow_observability_mode import (
+            observability_emit_pre_cart_event_profile,
+        )
+
+        if not observability_emit_pre_cart_event_profile():
+            return
+    except Exception:  # noqa: BLE001
+        return
+
     from services.db_request_audit import audit_enabled, peek_request_audit_bucket_for_profile
 
     audit_on = audit_enabled()
@@ -8242,10 +8252,6 @@ def _log_pre_cart_event_profile(
         f"recovery_queries={rs} analytics_queries={aq}"
     )
     try:
-        print(line, flush=True)
-    except OSError:
-        pass
-    try:
         log.info("%s", line)
     except Exception:  # noqa: BLE001
         pass
@@ -8258,6 +8264,16 @@ def _log_dashboard_profile(
     wall_perf_start: float,
 ) -> None:
     """تقرير مرئي لمسارات لوحة التاجر — يعتمد على ‎db_request_audit‎ عند التفعيل."""
+    try:
+        from services.cartflow_observability_mode import (
+            observability_dashboard_route_endpoint_profile_enabled,
+        )
+
+        if not observability_dashboard_route_endpoint_profile_enabled():
+            return
+    except Exception:  # noqa: BLE001
+        return
+
     from services.db_request_audit import audit_enabled, peek_request_audit_bucket_for_profile
 
     duration_ms = round((time.perf_counter() - wall_perf_start) * 1000.0, 1)
@@ -8272,10 +8288,6 @@ def _log_dashboard_profile(
         f"[DASHBOARD PROFILE] endpoint={endpoint} queries={qs} "
         f"duration_ms={duration_ms} section={section}"
     )
-    try:
-        print(line, flush=True)
-    except OSError:
-        pass
     try:
         log.info("%s", line)
     except Exception:  # noqa: BLE001
@@ -8292,13 +8304,18 @@ def _dashboard_lazy_profile_queries_str() -> str:
 
 
 def _log_dashboard_shell_profile(*, wall_perf_start: float) -> None:
+    try:
+        from services.cartflow_observability_mode import (
+            observability_emit_dashboard_shell_profile,
+        )
+
+        if not observability_emit_dashboard_shell_profile():
+            return
+    except Exception:  # noqa: BLE001
+        return
     duration_ms = round((time.perf_counter() - wall_perf_start) * 1000.0, 1)
     qs = _dashboard_lazy_profile_queries_str()
     line = f"[DASHBOARD SHELL PROFILE] queries={qs} duration_ms={duration_ms}"
-    try:
-        print(line, flush=True)
-    except OSError:
-        pass
     try:
         log.info("%s", line)
     except Exception:  # noqa: BLE001
@@ -8306,16 +8323,21 @@ def _log_dashboard_shell_profile(*, wall_perf_start: float) -> None:
 
 
 def _log_dashboard_section_profile(*, section: str, wall_perf_start: float) -> None:
+    try:
+        from services.cartflow_observability_mode import (
+            observability_emit_dashboard_section_profile,
+        )
+
+        if not observability_emit_dashboard_section_profile():
+            return
+    except Exception:  # noqa: BLE001
+        return
     duration_ms = round((time.perf_counter() - wall_perf_start) * 1000.0, 1)
     qs = _dashboard_lazy_profile_queries_str()
     line = (
         f"[DASHBOARD SECTION PROFILE] section={section} queries={qs} "
         f"duration_ms={duration_ms}"
     )
-    try:
-        print(line, flush=True)
-    except OSError:
-        pass
     try:
         log.info("%s", line)
     except Exception:  # noqa: BLE001
@@ -8332,6 +8354,16 @@ def _log_normal_carts_profile(
     warm_skipped: bool = False,
     reason_n1_removed: bool = False,
 ) -> None:
+    try:
+        from services.cartflow_observability_mode import (
+            observability_emit_normal_carts_aggregate_profile,
+        )
+
+        if not observability_emit_normal_carts_aggregate_profile():
+            return
+    except Exception:  # noqa: BLE001
+        return
+
     duration_ms = round((time.perf_counter() - wall_perf_start) * 1000.0, 1)
     qs = _dashboard_lazy_profile_queries_str()
     line = (
@@ -8341,10 +8373,6 @@ def _log_normal_carts_profile(
         f"carts_count={int(carts_count)} logs_loaded={int(logs_loaded)} "
         f"reasons_loaded={int(reasons_loaded)} phones_loaded={int(phones_loaded)}"
     )
-    try:
-        print(line, flush=True)
-    except OSError:
-        pass
     try:
         log.info("%s", line)
     except Exception:  # noqa: BLE001
@@ -8358,6 +8386,16 @@ def _log_cart_sync_profile(
     audit_query_baseline: Optional[int] = None,
 ) -> None:
     """تقرير صغير لممر ‎reason=add‎ ضمن ‎cart_state_sync‎."""
+    try:
+        from services.cartflow_observability_mode import (
+            observability_emit_cart_sync_profile,
+        )
+
+        if not observability_emit_cart_sync_profile():
+            return
+    except Exception:  # noqa: BLE001
+        return
+
     from services.db_request_audit import audit_enabled, peek_request_audit_bucket_for_profile
 
     duration_ms = round((time.perf_counter() - wall_perf_start) * 1000.0, 1)
@@ -8379,10 +8417,6 @@ def _log_cart_sync_profile(
         f"store_queries={ss} recovery_queries={rs} analytics_queries={aq}"
     )
     try:
-        print(line, flush=True)
-    except OSError:
-        pass
-    try:
         log.info("%s", line)
     except Exception:  # noqa: BLE001
         pass
@@ -8396,6 +8430,14 @@ def _cart_state_sync_reason_is_commercial_reengagement(payload: dict[str, Any]) 
 
 def _log_cart_event_profile(*, wall_perf_start: float, event_label: str) -> None:
     """تقرير مرئي ثابت لمسار ‎POST /api/cart-event‎ (يعتمد على ‎db_request_audit‎ للأعداد عند التفعيل)."""
+    try:
+        from services.cartflow_observability_mode import observability_emit_cart_event_profile
+
+        if not observability_emit_cart_event_profile():
+            return
+    except Exception:  # noqa: BLE001
+        return
+
     from services.db_request_audit import audit_enabled, peek_request_audit_bucket_for_profile
 
     duration_ms = round((time.perf_counter() - wall_perf_start) * 1000.0, 1)
@@ -8434,10 +8476,6 @@ def _log_cart_event_profile(*, wall_perf_start: float, event_label: str) -> None
         f"queries={qs} duration_ms={duration_ms} store_queries={ss} "
         f"recovery_queries={rs} analytics_queries={as_}"
     )
-    try:
-        print(profile_line, flush=True)
-    except OSError:
-        pass
     try:
         log.info("%s", profile_line)
     except Exception:  # noqa: BLE001
@@ -12573,15 +12611,6 @@ def api_dashboard_normal_carts(request: Request):
         "phones_loaded": 0,
     }
     try:
-        line_skip = "[NORMAL CARTS DB WARM SKIPPED]"
-        try:
-            print(line_skip, flush=True)
-        except OSError:
-            pass
-        try:
-            log.info("%s", line_skip)
-        except Exception:  # noqa: BLE001
-            pass
         dash_store = _dashboard_recovery_store_row()
         body, nc_prof = _api_json_dashboard_normal_carts(dash_store, request=request)
         return j({"ok": True, **body})
