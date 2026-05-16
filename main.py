@@ -52,7 +52,10 @@ from services.merchant_dashboard_reference_ui import (
     merchant_relative_time_arabic,
     merchant_vip_avatar_letter,
 )
-from services.normal_recovery_merchant_stale import merchant_group_stale_meta
+from services.normal_recovery_merchant_stale import (
+    merchant_group_stale_meta,
+    stale_meta_trace_enabled,
+)
 from urllib.parse import quote
 
 import models  # noqa: F401, E402
@@ -11909,6 +11912,8 @@ def _normal_recovery_merchant_lightweight_alert_list(
             max_pick_groups=max_pick,
         )
         now_utc = datetime.now(timezone.utc)
+        npick = len(picked)
+        _stale_diag = stale_meta_trace_enabled()
 
         def _lifecycle_bucket_ok(
             *,
@@ -11928,7 +11933,7 @@ def _normal_recovery_merchant_lightweight_alert_list(
                 return in_history
             return True
 
-        for grp_sorted in picked:
+        for pick_i, grp_sorted in enumerate(picked):
             arch = _normal_recovery_group_is_archived(grp_sorted)
             bh = _normal_recovery_behavioral_merge_from_cart_group(grp_sorted)
             log_u = _normal_recovery_recovery_log_statuses_lower_group(grp_sorted)
@@ -11945,6 +11950,8 @@ def _normal_recovery_merchant_lightweight_alert_list(
                 activity_map=activity_map,
                 coarse=coarse,
                 now_utc=now_utc,
+                diag_pick_index=pick_i if _stale_diag else None,
+                diag_picked_groups_total=npick if _stale_diag else None,
             )
             if not _lifecycle_bucket_ok(
                 archived=arch,
@@ -12039,6 +12046,8 @@ def _normal_recovery_merchant_lightweight_alert_list_for_api(
         batch_reads = _merchant_normal_dashboard_batch_reads(full_rows, dash_store)
         out: list[dict[str, Any]] = []
         now_utc = datetime.now(timezone.utc)
+        npick = len(picked)
+        _stale_diag = stale_meta_trace_enabled()
 
         def _lifecycle_bucket_ok(
             *,
@@ -12058,7 +12067,7 @@ def _normal_recovery_merchant_lightweight_alert_list_for_api(
                 return in_history
             return True
 
-        for grp_sorted in picked:
+        for pick_i, grp_sorted in enumerate(picked):
             with normal_carts_profile_span("loop:for_grp_sorted_in_picked"):
                 arch = _normal_recovery_group_is_archived_merchant_batch(
                     grp_sorted, batch_reads
@@ -12083,6 +12092,8 @@ def _normal_recovery_merchant_lightweight_alert_list_for_api(
                         activity_map=activity_map,
                         coarse=coarse,
                         now_utc=now_utc,
+                        diag_pick_index=pick_i if _stale_diag else None,
+                        diag_picked_groups_total=npick if _stale_diag else None,
                     )
                 if not _lifecycle_bucket_ok(
                     archived=arch,
@@ -12104,6 +12115,18 @@ def _normal_recovery_merchant_lightweight_alert_list_for_api(
                 )
                 if len(out) >= desired_end:
                     break
+
+        if _stale_diag:
+            _sm_summ = (
+                "[MERCHANT_GROUP_STALE_TRACE] summary context=normal_carts_api_after_loop "
+                f"picked_groups={npick} abandoned_candidate_rows={len(full_rows)} "
+                f"lifecycle_tab={(lc_raw or '').strip().lower()[:32]}"
+            )
+            try:
+                print(_sm_summ, flush=True)
+            except OSError:
+                pass
+            log.info("%s", _sm_summ)
 
         po = max(0, int(page_offset or 0))
         pl = max(1, int(page_limit or 50))
@@ -12180,6 +12203,8 @@ def _normal_recovery_cart_alert_list(
             max_pick_groups=max_pick,
         )
         now_utc = datetime.now(timezone.utc)
+        npick = len(picked)
+        _stale_diag = stale_meta_trace_enabled()
 
         def _lifecycle_bucket_ok(
             *,
@@ -12199,7 +12224,7 @@ def _normal_recovery_cart_alert_list(
                 return in_history
             return True
 
-        for grp_sorted in picked:
+        for pick_i, grp_sorted in enumerate(picked):
             arch = _normal_recovery_group_is_archived(grp_sorted)
             bh = _normal_recovery_behavioral_merge_from_cart_group(grp_sorted)
             log_u = _normal_recovery_recovery_log_statuses_lower_group(grp_sorted)
@@ -12216,6 +12241,8 @@ def _normal_recovery_cart_alert_list(
                 activity_map=activity_map,
                 coarse=coarse,
                 now_utc=now_utc,
+                diag_pick_index=pick_i if _stale_diag else None,
+                diag_picked_groups_total=npick if _stale_diag else None,
             )
             if not _lifecycle_bucket_ok(
                 archived=arch,

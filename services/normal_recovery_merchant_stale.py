@@ -2,6 +2,9 @@
 """تصنيف «خامل» لعرض التاجر — قراءة فقط؛ بدون حذف أو إخفاء عشوائي."""
 from __future__ import annotations
 
+import logging
+import os
+import time
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
@@ -14,6 +17,75 @@ from models import AbandonedCart, CartRecoveryLog
 from services.normal_recovery_merchant_view_config import (
     normal_recovery_merchant_stale_config,
 )
+
+log = logging.getLogger("cartflow")
+
+
+def stale_meta_trace_enabled() -> bool:
+    """سجلات ‎[MERCHANT_GROUP_STALE_TRACE]‎ فقط؛ ‎CARTFLOW_STALE_META_TRACE=0‎ يعطّل."""
+    v = (os.getenv("CARTFLOW_STALE_META_TRACE") or "").strip().lower()
+    if v in ("0", "false", "no", "off"):
+        return False
+    if v in ("1", "true", "yes", "on"):
+        return True
+    try:
+        from services.db_request_audit import audit_enabled
+
+        return audit_enabled()
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def _peek_audit_query_count() -> Optional[int]:
+    try:
+        from services.db_request_audit import peek_request_audit_bucket_for_profile
+
+        b = peek_request_audit_bucket_for_profile()
+        if b is None:
+            return None
+        return int(b.get("queries") or 0)
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _emit_merchant_group_stale_trace(
+    *,
+    pick_index: Optional[int],
+    picked_groups_total: Optional[int],
+    grp_len: int,
+    coarse_in: str,
+    path_out: str,
+    checker_state: str,
+    recovery_log_cond_count: int,
+    window_minutes: Optional[int],
+    age_minutes: Optional[float],
+    stale_flag_out: bool,
+    queries_delta_str: str,
+    duration_ms: float,
+) -> None:
+    tot = ""
+    if picked_groups_total is not None:
+        tot = f" picked_groups_total={int(picked_groups_total)}"
+    line = (
+        f"[MERCHANT_GROUP_STALE_TRACE] pick_idx={pick_index}{tot}"
+        f" grp_len={int(grp_len)} coarse={(coarse_in or '-')[:40]}"
+        f" path={path_out}"
+        f" checker_state={checker_state}"
+        f" recovery_log_conds={int(recovery_log_cond_count)}"
+        f" window_minutes={(window_minutes if window_minutes is not None else 'n/a')}"
+        f" age_minutes={(round(age_minutes, 2) if age_minutes is not None else 'n/a')}"
+        f" stale_flag={str(bool(stale_flag_out)).lower()}"
+        f" queries_delta={queries_delta_str}"
+        f" duration_ms={round(duration_ms, 3)}"
+    )
+    try:
+        print(line, flush=True)
+    except OSError:
+        pass
+    try:
+        log.info("%s", line)
+    except Exception:  # noqa: BLE001
+        pass
 
 
 def _cart_recovery_log_conds_for_abandoned(ac: AbandonedCart) -> list[Any]:
@@ -80,10 +152,14 @@ def merchant_group_stale_meta(
     activity_map: dict[int, datetime],
     coarse: str,
     now_utc: Optional[datetime] = None,
+    diag_pick_index: Optional[int] = None,
+    diag_picked_groups_total: Optional[int] = None,
 ) -> tuple[bool, dict[str, Any]]:
     """
     خامل تجاري: ‎pending/sent‎ + تجاوز النافذة + لا ‎queued‎ بعد آخر نشاط معنٍ.
     يُمرَّر ‎coarse‎ من محرك اللوحة (نفس ‎_normal_recovery_coarse_status‎).
+
+    diagnostics: ضع ‎diag_pick_index‎ عند ‎stale_meta_trace_enabled()‎ — سطر ‎[MERCHANT_GROUP_STALE_TRACE]‎ فقط؛ لا يغيّر الحساب.
     """
     meta: dict[str, Any] = {
         "stale": False,
@@ -93,50 +169,116 @@ def merchant_group_stale_meta(
         "merchant_stale_hint_ar": "",
         "merchant_stale_surface": "",
     }
-    cfg = normal_recovery_merchant_stale_config()
-    if not cfg.get("stale_archive_enabled"):
-        return False, meta
-    if not grp_sorted:
-        return False, meta
+    do_trace = diag_pick_index is not None
+    q0: Optional[int] = None
+    t0 = 0.0
+    path = "unknown"
+    stale_result = False
+    cr_trim = ""
+    grp_len_effective = len(grp_sorted) if grp_sorted else 0
+    win_live: Optional[int] = None
+    age_eff: Optional[float] = None
+    cond_cnt = 0
+    checker_state = ""
 
-    cr = (coarse or "").strip().lower()
-    if cr not in ("pending", "sent"):
-        return False, meta
+    try:
+        if do_trace:
+            q0 = _peek_audit_query_count()
+            t0 = time.perf_counter()
 
-    now = now_utc or datetime.now(timezone.utc)
-    last_act = _group_activity_utc(grp_sorted, activity_map)
-    if last_act.tzinfo is None:
-        last_act = last_act.replace(tzinfo=timezone.utc)
-    else:
-        last_act = last_act.astimezone(timezone.utc)
-    meta["last_activity_at"] = last_act.isoformat()
-    age_min = max(0.0, (now - last_act).total_seconds() / 60.0)
-    meta["age_minutes"] = round(age_min, 1)
+        cfg = normal_recovery_merchant_stale_config()
+        if not cfg.get("stale_archive_enabled"):
+            path = "stale_archive_disabled"
+            checker_state = "checker_not_needed_stale_archive_off"
+            return False, meta
+        if not grp_sorted:
+            path = "empty_group"
+            checker_state = "checker_not_needed_empty_row_group"
+            return False, meta
 
-    win = (
-        int(cfg["active_pending_window_minutes"])
-        if cr == "pending"
-        else int(cfg["active_sent_window_minutes"])
-    )
-    if age_min <= float(win):
-        return False, meta
+        cr_trim = (coarse or "").strip().lower()
+        if cr_trim not in ("pending", "sent"):
+            path = f"coarse_skip:{cr_trim or 'unset'}"
+            checker_state = "checker_not_needed_coarse_only_pending_sent"
+            return False, meta
 
-    since = last_act - timedelta(minutes=2)
-    if _has_recent_queued_followup(grp_sorted, store_slug=store_slug, since_utc=since):
-        meta["stale_reason"] = "queued_followup_present"
-        return False, meta
+        now = now_utc or datetime.now(timezone.utc)
+        last_act = _group_activity_utc(grp_sorted, activity_map)
+        if last_act.tzinfo is None:
+            last_act = last_act.replace(tzinfo=timezone.utc)
+        else:
+            last_act = last_act.astimezone(timezone.utc)
+        meta["last_activity_at"] = last_act.isoformat()
+        age_min = max(0.0, (now - last_act).total_seconds() / 60.0)
+        age_eff = age_min
+        meta["age_minutes"] = round(age_min, 1)
 
-    meta["stale"] = True
-    if cr == "pending":
-        meta["stale_reason"] = "stale_pending_no_activity"
-        meta["merchant_stale_surface"] = "expired_waiting"
-        meta["merchant_stale_hint_ar"] = (
-            "لم يتفاعل العميل بعد — تم نقلها إلى السجل."
+        win_live = (
+            int(cfg["active_pending_window_minutes"])
+            if cr_trim == "pending"
+            else int(cfg["active_sent_window_minutes"])
         )
-    else:
-        meta["stale_reason"] = "stale_sent_no_customer_signal"
-        meta["merchant_stale_surface"] = "stale_active"
-        meta["merchant_stale_hint_ar"] = (
-            "لم يظهر تفاعل بعد آخر رسالة — تم نقلها إلى السجل."
+        if age_min <= float(win_live):
+            path = "within_active_window"
+            checker_state = "checker_not_needed_still_inside_archive_window"
+            return False, meta
+
+        cond_cnt = len(_cart_recovery_log_conds_for_abandoned(grp_sorted[0]))
+        since = last_act - timedelta(minutes=2)
+        hq = _has_recent_queued_followup(
+            grp_sorted, store_slug=store_slug, since_utc=since
         )
-    return True, meta
+        if hq:
+            path = "queued_followup_present"
+            checker_state = "checker_positive_recent_queued_recovery_log_row"
+            meta["stale_reason"] = "queued_followup_present"
+            return False, meta
+
+        if cond_cnt <= 0:
+            checker_state = (
+                "checker_negative_no_session_cart_predicate_no_recovery_log_touch"
+            )
+        else:
+            checker_state = (
+                "checker_negative_recent_queued_query_no_hit_then_mark_stale"
+            )
+
+        meta["stale"] = True
+        stale_result = True
+        if cr_trim == "pending":
+            path = "marked_stale_pending"
+            meta["stale_reason"] = "stale_pending_no_activity"
+            meta["merchant_stale_surface"] = "expired_waiting"
+            meta["merchant_stale_hint_ar"] = (
+                "لم يتفاعل العميل بعد — تم نقلها إلى السجل."
+            )
+        else:
+            path = "marked_stale_sent"
+            meta["stale_reason"] = "stale_sent_no_customer_signal"
+            meta["merchant_stale_surface"] = "stale_active"
+            meta["merchant_stale_hint_ar"] = (
+                "لم يظهر تفاعل بعد آخر رسالة — تم نقلها إلى السجل."
+            )
+        return True, meta
+    finally:
+        if do_trace:
+            q1 = _peek_audit_query_count()
+            if q0 is None or q1 is None:
+                dq_s = "n/a"
+            else:
+                dq_s = str(max(0, int(q1) - int(q0)))
+            elapsed_ms = (time.perf_counter() - float(t0)) * 1000.0
+            _emit_merchant_group_stale_trace(
+                pick_index=diag_pick_index,
+                picked_groups_total=diag_picked_groups_total,
+                grp_len=grp_len_effective,
+                coarse_in=cr_trim or (coarse or ""),
+                path_out=path,
+                checker_state=checker_state or "unset",
+                recovery_log_cond_count=cond_cnt,
+                window_minutes=win_live,
+                age_minutes=age_eff,
+                stale_flag_out=stale_result,
+                queries_delta_str=dq_s,
+                duration_ms=elapsed_ms,
+            )
