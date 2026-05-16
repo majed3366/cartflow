@@ -36,6 +36,66 @@ def stale_meta_trace_enabled() -> bool:
         return False
 
 
+def queued_followup_schema_inspection_enabled() -> bool:
+    """
+    ‎[QUEUED_FOLLOWUP_SCHEMA_INSPECT]‎ لتأكيد استدعاء ‎db.create_all()‎ داخل ‎_has_recent_queued_followup‎.
+    ‎CARTFLOW_QUEUED_FOLLOWUP_SCHEMA_INSPECTION=0‎ يعطّل؛ غير محدّد ⇒ ‎audit_enabled()‎.
+    """
+    v = (os.getenv("CARTFLOW_QUEUED_FOLLOWUP_SCHEMA_INSPECTION") or "").strip().lower()
+    if v in ("0", "false", "no", "off"):
+        return False
+    if v in ("1", "true", "yes", "on"):
+        return True
+    try:
+        from services.db_request_audit import audit_enabled
+
+        return audit_enabled()
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def _emit_queued_followup_schema_inspect(
+    *,
+    path: str,
+    store_slug_prefix: str,
+    grp_len: int,
+    cond_count: int,
+    create_all_executed: bool,
+    q0: Optional[int],
+    q_after_create_all: Optional[int],
+    q_end: Optional[int],
+    caller: str,
+) -> None:
+    ca = str(bool(create_all_executed)).lower()
+    dq_total = "n/a"
+    dq_create_all_phase = "n/a"
+    if q0 is not None and q_end is not None:
+        dq_total = str(max(0, int(q_end) - int(q0)))
+    if (
+        q0 is not None
+        and q_after_create_all is not None
+        and bool(create_all_executed)
+    ):
+        dq_create_all_phase = str(max(0, int(q_after_create_all) - int(q0)))
+    line = (
+        f"[QUEUED_FOLLOWUP_SCHEMA_INSPECT] caller={caller} path={path}"
+        f" store_slug_prefix={(store_slug_prefix or '-')[:64]}"
+        f" grp_len={int(grp_len)} recovery_log_cond_count={int(cond_count)}"
+        f" db_create_all_executed={ca}"
+        f" ddl_note=extensions.db_create_all_maps_to_SQLAlchemy_metadata_create_all_implicit_schema_sync"
+        f" queries_delta_total={dq_total}"
+        f" queries_delta_through_create_all={dq_create_all_phase}"
+    )
+    try:
+        print(line, flush=True)
+    except OSError:
+        pass
+    try:
+        log.info("%s", line)
+    except Exception:  # noqa: BLE001
+        pass
+
+
 def _peek_audit_query_count() -> Optional[int]:
     try:
         from services.db_request_audit import peek_request_audit_bucket_for_profile
@@ -120,15 +180,33 @@ def _has_recent_queued_followup(
     store_slug: str,
     since_utc: datetime,
 ) -> bool:
+    ins = queued_followup_schema_inspection_enabled()
+    q0 = _peek_audit_query_count() if ins else None
+    q_after_create_all: Optional[int] = None
+    inspect_path = ""
+    inspect_slug = ""
+    inspect_grp_len = len(grp_sorted) if grp_sorted else 0
+    inspect_cond_cnt = 0
+    create_all_hit = False
+
     ss = (store_slug or "").strip()[:255]
-    if not ss or not grp_sorted:
-        return False
-    ac0 = grp_sorted[0]
-    conds = _cart_recovery_log_conds_for_abandoned(ac0)
-    if not conds:
-        return False
     try:
+        if not ss or not grp_sorted:
+            inspect_path = "early_return_no_slug_or_empty_group"
+            return False
+        inspect_slug = ss
+        ac0 = grp_sorted[0]
+        conds = _cart_recovery_log_conds_for_abandoned(ac0)
+        inspect_cond_cnt = len(conds)
+        if not conds:
+            inspect_path = (
+                "early_return_no_recovery_log_conds_skip_create_all_and_select"
+            )
+            return False
+        inspect_path = "db_create_all_then_select_recent_queued_recovery_log_first"
+        create_all_hit = True
         db.create_all()
+        q_after_create_all = _peek_audit_query_count() if ins else None
         row = (
             db.session.query(CartRecoveryLog.id)
             .filter(
@@ -142,7 +220,22 @@ def _has_recent_queued_followup(
         return row is not None
     except (SQLAlchemyError, OSError, TypeError, ValueError):
         db.session.rollback()
+        inspect_path = f"{inspect_path or 'during_followup'}|exception_rollback"
         return False
+    finally:
+        if ins:
+            q_end = _peek_audit_query_count()
+            _emit_queued_followup_schema_inspect(
+                path=(inspect_path or "unknown_exit"),
+                store_slug_prefix=inspect_slug or ss,
+                grp_len=int(inspect_grp_len),
+                cond_count=int(inspect_cond_cnt),
+                create_all_executed=bool(create_all_hit),
+                q0=q0,
+                q_after_create_all=q_after_create_all,
+                q_end=q_end,
+                caller="merchant_group_stale_meta_via__has_recent_queued_followup",
+            )
 
 
 def merchant_group_stale_meta(
