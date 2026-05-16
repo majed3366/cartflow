@@ -3808,6 +3808,85 @@ def _load_store_row_for_recovery(
         return None
 
 
+def _build_recovery_context_from_arm(
+    *,
+    store_slug: str,
+    store_row: Optional[Any],
+    session_id: str,
+    cart_id: Optional[str],
+    recovery_key: str,
+    reason_tag: Optional[str],
+    abandon_event_phone: Optional[str],
+) -> Dict[str, Any]:
+    """مصدر واحد للهوية عند تسليح الاسترجاع — يُمرَّر للمهمة المؤجّلة دون إعادة اختراع ‎store‎ لاحقاً."""
+    rt = (reason_tag or "").strip().lower()[:128] if reason_tag else None
+    sid_pk: Optional[int] = None
+    if store_row is not None:
+        raw_pk = getattr(store_row, "id", None)
+        if raw_pk is not None:
+            try:
+                sid_pk = int(raw_pk)
+            except (TypeError, ValueError):
+                sid_pk = None
+    return {
+        "store_slug": (store_slug or "").strip()[:255],
+        "store_id": sid_pk,
+        "session_id": (session_id or "").strip()[:512],
+        "cart_id": (str(cart_id).strip()[:255] if cart_id else None),
+        "recovery_key": recovery_key,
+        "reason_tag": rt if rt else None,
+        "cart_total": _abandoned_cart_cart_value_for_recovery(cart_id),
+        "abandon_event_phone": abandon_event_phone,
+    }
+
+
+def _recovery_store_from_context(
+    recovery_context: Optional[Dict[str, Any]],
+    *,
+    store_slug: str,
+    allow_schema_warm: bool = True,
+) -> Optional[Any]:
+    if not recovery_context:
+        return _load_store_row_for_recovery(store_slug, allow_schema_warm=allow_schema_warm)
+    pk = recovery_context.get("store_id")
+    if pk is not None:
+        try:
+            global _cartflow_api_db_warmed
+
+            if allow_schema_warm and not _cartflow_api_db_warmed:
+                _ensure_cartflow_api_db_warmed()
+            row = db.session.get(Store, int(pk))
+            if row is not None:
+                return row
+        except (SQLAlchemyError, OSError, TypeError, ValueError):
+            db.session.rollback()
+    return _load_store_row_for_recovery(store_slug, allow_schema_warm=allow_schema_warm)
+
+
+def _log_recovery_context_before_send(
+    *,
+    store_obj: Any,
+    store_slug: str,
+    reason_tag: Optional[str],
+    session_id: str,
+    cart_id: Optional[str],
+) -> None:
+    try:
+        tpl_z = (getattr(store_obj, "zid_store_id", None) or "").strip() or "-"
+        sid_i = getattr(store_obj, "id", None)
+        print("[RECOVERY CONTEXT]", flush=True)
+        print(f"store_slug={store_slug}", flush=True)
+        print(f"store_id={sid_i if sid_i is not None else '-'}", flush=True)
+        print(f"reason_tag={(reason_tag or '-')[:64]}", flush=True)
+        print(f"cart_id={(str(cart_id or '') or '-')[:64]}", flush=True)
+        print(f"session_id={(session_id or '')[:80]}", flush=True)
+        print(f"template_store_slug={tpl_z}", flush=True)
+        print(f"delay_store_slug={tpl_z}", flush=True)
+        print(f"phone_store_slug={store_slug}", flush=True)
+    except OSError:
+        pass
+
+
 def _load_latest_store_for_recovery() -> Optional[Store]:
     return _load_store_row_for_recovery(None)
 
@@ -5654,12 +5733,15 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
     multi_slot_index: Optional[int] = None,
     multi_message_text: Optional[str] = None,
     sequential_attempt_index: Optional[int] = None,
+    recovery_context: Optional[Dict[str, Any]] = None,
 ) -> None:
     """
     ينتظر ‎delay_seconds‎ ثم يطبّق ‎should_send_whatsapp‎ على آخر نشاط السبب؛ عند السماح فقط يرسل عبر ‎send_whatsapp‎.
     نص الرسالة من محرّك القراءة حسب ‎reason_tag‎ المحفوظ، أو رسالة احتياطية.
     """
-    store_pre = _load_store_row_for_recovery(store_slug)
+    store_pre = _recovery_store_from_context(
+        recovery_context, store_slug=store_slug, allow_schema_warm=True
+    )
     cart_total_pre = _abandoned_cart_cart_value_for_recovery(cart_id)
     if cart_total_pre is not None and is_vip_cart(cart_total_pre, store_pre):
         reason_row_pre = _cart_recovery_reason_latest_row(store_slug, session_id)
@@ -5887,8 +5969,20 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
         print("reason=user_rejected_help")
         _consume_seq_slot_if_needed()
         return None
-    rt_raw = (reason_row.reason or "").strip() if reason_row else ""
-    store_obj = _load_store_row_for_recovery(store_slug)
+    if recovery_context and recovery_context.get("reason_tag"):
+        rt_raw = str(recovery_context["reason_tag"]).strip()
+    else:
+        rt_raw = (reason_row.reason or "").strip() if reason_row else ""
+    store_obj = _recovery_store_from_context(
+        recovery_context, store_slug=store_slug, allow_schema_warm=True
+    )
+    _log_recovery_context_before_send(
+        store_obj=store_obj,
+        store_slug=store_slug,
+        reason_tag=rt_raw or None,
+        session_id=session_id,
+        cart_id=cart_id,
+    )
     cart_total_vip = _abandoned_cart_cart_value_for_recovery(cart_id)
     th_raw = getattr(store_obj, "vip_cart_threshold", None) if store_obj is not None else None
     is_vip_eff = cart_total_vip is not None and is_vip_cart(cart_total_vip, store_obj)
@@ -6825,6 +6919,15 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
             )
         except OSError:
             pass
+        seq_ctx = _build_recovery_context_from_arm(
+            store_slug=store_slug,
+            store_row=store_obj,
+            session_id=session_id,
+            cart_id=cart_id,
+            recovery_key=recovery_key,
+            reason_tag=reason_tag,
+            abandon_event_phone=follow_phone,
+        )
         asyncio.create_task(
             _run_recovery_sequence_after_cart_abandoned(
                 recovery_key,
@@ -6835,6 +6938,7 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
                 follow_phone,
                 sequential_attempt_index=next_idx,
                 multi_message_text=None,
+                recovery_context=seq_ctx,
             )
         )
     with _recovery_session_lock:
@@ -6853,6 +6957,7 @@ async def _run_recovery_sequence_after_cart_abandoned(
     multi_slot_index: Optional[int] = None,
     multi_message_text: Optional[str] = None,
     sequential_attempt_index: Optional[int] = None,
+    recovery_context: Optional[Dict[str, Any]] = None,
 ) -> None:
     """مدخل آمن: أي خطأ داخل المهمة المؤجّلة لا يصعد إلى ‎TaskGroup‎ / وسيط الطلب."""
     try:
@@ -6866,6 +6971,7 @@ async def _run_recovery_sequence_after_cart_abandoned(
             multi_slot_index=multi_slot_index,
             multi_message_text=multi_message_text,
             sequential_attempt_index=sequential_attempt_index,
+            recovery_context=recovery_context,
         )
     except asyncio.CancelledError:
         raise
@@ -6891,6 +6997,7 @@ def _schedule_recovery_multi_slots(
     session_id: str,
     cart_id: Optional[str],
     abandon_event_phone: Optional[str],
+    recovery_context: Optional[Dict[str, Any]] = None,
 ) -> None:
     es = float(elapsed_seconds)
     try:
@@ -6918,6 +7025,7 @@ def _schedule_recovery_multi_slots(
                 abandon_event_phone,
                 multi_slot_index=int(s["index"]),
                 multi_message_text=str(s.get("text") or ""),
+                recovery_context=recovery_context,
             )
         )
 
@@ -6964,6 +7072,15 @@ async def _run_recovery_dispatch_cart_abandoned_impl(
         slots_try = multi_message_slots_for_abandon(reason_tag, store_row)
         if slots_try is not None:
             elapsed = time.monotonic() - abandon_monotonic
+            rc_arm = _build_recovery_context_from_arm(
+                store_slug=store_slug,
+                store_row=store_row,
+                session_id=session_id,
+                cart_id=cart_id,
+                recovery_key=recovery_key,
+                reason_tag=reason_tag,
+                abandon_event_phone=abandon_event_phone,
+            )
             _schedule_recovery_multi_slots(
                 recovery_key,
                 slots_try,
@@ -6972,6 +7089,7 @@ async def _run_recovery_dispatch_cart_abandoned_impl(
                 session_id=session_id,
                 cart_id=cart_id,
                 abandon_event_phone=abandon_event_phone,
+                recovery_context=rc_arm,
             )
             return
         if reason_tag:
@@ -6983,6 +7101,15 @@ async def _run_recovery_dispatch_cart_abandoned_impl(
     reason_tag = _reason_tag_for_session(store_slug, session_id)
     slots_final = multi_message_slots_for_abandon(reason_tag, store_row)
     if slots_final is not None:
+        rc_arm2 = _build_recovery_context_from_arm(
+            store_slug=store_slug,
+            store_row=store_row,
+            session_id=session_id,
+            cart_id=cart_id,
+            recovery_key=recovery_key,
+            reason_tag=reason_tag,
+            abandon_event_phone=abandon_event_phone,
+        )
         _schedule_recovery_multi_slots(
             recovery_key,
             slots_final,
@@ -6991,6 +7118,7 @@ async def _run_recovery_dispatch_cart_abandoned_impl(
             session_id=session_id,
             cart_id=cart_id,
             abandon_event_phone=abandon_event_phone,
+            recovery_context=rc_arm2,
         )
         return
 
@@ -6998,6 +7126,15 @@ async def _run_recovery_dispatch_cart_abandoned_impl(
     delay_s = float(get_recovery_delay(reason_tag, store_config=config))
     remain = max(0.0, delay_s - elapsed)
     print("starting delay task")
+    rc_arm3 = _build_recovery_context_from_arm(
+        store_slug=store_slug,
+        store_row=store_row,
+        session_id=session_id,
+        cart_id=cart_id,
+        recovery_key=recovery_key,
+        reason_tag=reason_tag,
+        abandon_event_phone=abandon_event_phone,
+    )
     asyncio.create_task(
         _run_recovery_sequence_after_cart_abandoned(
             recovery_key,
@@ -7006,6 +7143,7 @@ async def _run_recovery_dispatch_cart_abandoned_impl(
             session_id,
             cart_id,
             abandon_event_phone,
+            recovery_context=rc_arm3,
         )
     )
 
@@ -7243,6 +7381,15 @@ def _execute_cart_abandon_recovery_schedule_continue(
     reason_tag_sync = reason_for_schedule
     slots_sync = multi_message_slots_for_abandon(reason_tag_sync, store_row)
     if slots_sync:
+        rc_sync = _build_recovery_context_from_arm(
+            store_slug=store_slug,
+            store_row=store_row,
+            session_id=session_id_log,
+            cart_id=cart_id_log,
+            recovery_key=recovery_key,
+            reason_tag=reason_tag_sync,
+            abandon_event_phone=abandon_evt_phone,
+        )
         _schedule_recovery_multi_slots(
             recovery_key,
             slots_sync,
@@ -7251,6 +7398,7 @@ def _execute_cart_abandon_recovery_schedule_continue(
             session_id=session_id_log,
             cart_id=cart_id_log,
             abandon_event_phone=abandon_evt_phone,
+            recovery_context=rc_sync,
         )
         _log_normal_recovery_auto_start(
             store_slug=store_slug,
