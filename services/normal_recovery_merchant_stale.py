@@ -38,7 +38,7 @@ def stale_meta_trace_enabled() -> bool:
 
 def queued_followup_schema_inspection_enabled() -> bool:
     """
-    ‎[QUEUED_FOLLOWUP_SCHEMA_INSPECT]‎ لتأكيد استدعاء ‎db.create_all()‎ داخل ‎_has_recent_queued_followup‎.
+    ‎[QUEUED_FOLLOWUP_SCHEMA_INSPECT]‎ لتتبع مسار التحقق من ‎queued followup‎ (بدون ‎DDL‎).
     ‎CARTFLOW_QUEUED_FOLLOWUP_SCHEMA_INSPECTION=0‎ يعطّل؛ غير محدّد ⇒ ‎audit_enabled()‎.
     """
     v = (os.getenv("CARTFLOW_QUEUED_FOLLOWUP_SCHEMA_INSPECTION") or "").strip().lower()
@@ -82,7 +82,7 @@ def _emit_queued_followup_schema_inspect(
         f" store_slug_prefix={(store_slug_prefix or '-')[:64]}"
         f" grp_len={int(grp_len)} recovery_log_cond_count={int(cond_count)}"
         f" db_create_all_executed={ca}"
-        f" ddl_note=extensions.db_create_all_maps_to_SQLAlchemy_metadata_create_all_implicit_schema_sync"
+        f" schema_note=no_create_all_in_dashboard_hot_path_rely_on_ensure_cartflow_api_db_warmed_startup"
         f" queries_delta_total={dq_total}"
         f" queries_delta_through_create_all={dq_create_all_phase}"
     )
@@ -180,14 +180,13 @@ def _has_recent_queued_followup(
     store_slug: str,
     since_utc: datetime,
 ) -> bool:
+    # Schema is ensured at startup (_ensure_cartflow_api_db_warmed); do not run create_all in dashboard hot path.
     ins = queued_followup_schema_inspection_enabled()
     q0 = _peek_audit_query_count() if ins else None
-    q_after_create_all: Optional[int] = None
     inspect_path = ""
     inspect_slug = ""
     inspect_grp_len = len(grp_sorted) if grp_sorted else 0
     inspect_cond_cnt = 0
-    create_all_hit = False
 
     ss = (store_slug or "").strip()[:255]
     try:
@@ -203,10 +202,7 @@ def _has_recent_queued_followup(
                 "early_return_no_recovery_log_conds_skip_create_all_and_select"
             )
             return False
-        inspect_path = "db_create_all_then_select_recent_queued_recovery_log_first"
-        create_all_hit = True
-        db.create_all()
-        q_after_create_all = _peek_audit_query_count() if ins else None
+        inspect_path = "select_recent_queued_recovery_log_first"
         row = (
             db.session.query(CartRecoveryLog.id)
             .filter(
@@ -230,9 +226,9 @@ def _has_recent_queued_followup(
                 store_slug_prefix=inspect_slug or ss,
                 grp_len=int(inspect_grp_len),
                 cond_count=int(inspect_cond_cnt),
-                create_all_executed=bool(create_all_hit),
+                create_all_executed=False,
                 q0=q0,
-                q_after_create_all=q_after_create_all,
+                q_after_create_all=None,
                 q_end=q_end,
                 caller="merchant_group_stale_meta_via__has_recent_queued_followup",
             )
