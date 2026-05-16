@@ -1842,7 +1842,7 @@ def _test_note_recovery_delay_waiting_started(recovery_key: str) -> None:
 
 
 def _passive_cart_return_suppresses_whatsapp_recovery(payload: dict[str, Any]) -> bool:
-    """Passive tracker on cart/checkout while delay is active stops WhatsApp (no checkout-active payload)."""
+    """Passive tracker while delay is active stops WhatsApp — same store paths as return_tracker (cart/PDP/list/checkout)."""
     if not isinstance(payload, dict):
         return False
     if payload_indicates_active_commercial_reengagement(payload):
@@ -1854,7 +1854,8 @@ def _passive_cart_return_suppresses_whatsapp_recovery(payload: dict[str, Any]) -
         or payload.get("return_context")
         or ""
     ).strip().lower()
-    if ctx not in ("cart", "checkout"):
+    # Align with static/cartflow_return_tracker.js inferReturnContext(): cart, checkout, product, page (store list).
+    if ctx not in ("cart", "checkout", "product", "page"):
         return False
     key = _recovery_key_from_payload(payload)
     if not (key or "").strip():
@@ -4542,6 +4543,10 @@ def _persist_durable_return_to_site_evidence_from_payload(
         cid = (cart_id or "").strip()[:255] if cart_id else ""
         rk_eff = _effective_recovery_key_from_return_payload(payload)
         if not sid:
+            try:
+                print("[RETURN DURABLE WRITE] ok=false", flush=True)
+            except OSError:
+                pass
             return
         if not skip_db_schema_bootstrap:
             db.create_all()
@@ -4571,6 +4576,7 @@ def _persist_durable_return_to_site_evidence_from_payload(
                     f"recovery_key={rk_eff} status=returned_to_site note=recent_duplicate_skip",
                     flush=True,
                 )
+                print("[RETURN DURABLE WRITE] ok=true", flush=True)
             except OSError:
                 pass
             return
@@ -4591,6 +4597,7 @@ def _persist_durable_return_to_site_evidence_from_payload(
                 f"recovery_key={rk_eff} status=returned_to_site",
                 flush=True,
             )
+            print("[RETURN DURABLE WRITE] ok=true", flush=True)
             _dline = (
                 f"[RETURN TO SITE] durable_evidence_persisted store_slug={ss} "
                 f"session_id={sid[:80]} cart_id={(cid or '-')[:64]}"
@@ -4600,6 +4607,10 @@ def _persist_durable_return_to_site_evidence_from_payload(
         except OSError:
             pass
     except Exception as exc:  # noqa: BLE001
+        try:
+            print("[RETURN DURABLE WRITE] ok=false", flush=True)
+        except OSError:
+            pass
         try:
             db.session.rollback()
         except Exception:

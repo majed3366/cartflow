@@ -64,6 +64,10 @@ class CommercialReturnApiScenarioTests(unittest.TestCase):
         main._test_set_recovery_flow_armed_at(
             key, datetime.now(timezone.utc) - timedelta(seconds=120)
         )
+        # Abandon schedules an in-flight delay ([DELAY WAITING]); this scenario tests passive-only
+        # behavioral recording without the «return during active delay» suppression path.
+        with main._recovery_session_lock:
+            main._session_recovery_delay_wait_started_at.pop(key, None)
         passive = {
             "return_visit_kind": "passive_return_visit",
             "passive_return_visit": True,
@@ -172,6 +176,42 @@ class CommercialPassiveCartDelayWaitingTests(unittest.TestCase):
             "session_id": sid,
             "cart_id": cid,
             "recovery_return_context": "cart",
+            "event_type": "user_returned_to_site",
+        }
+        self.assertEqual(200, self.client.post("/api/cart-event", json=passive).status_code)
+        self.assertTrue(main._is_user_returned(key), msg=key)
+
+    def test_passive_product_during_recovery_delay_waiting_marks_suppression(self) -> None:
+        sid = "cf-scen-d-delay-product"
+        cid = "cf-cart-scen-d-prod"
+        _post_recovery_reason_for_session(self.client, "demo", sid)
+        key = main._recovery_key_from_payload({"store": "demo", "session_id": sid, "cart_id": cid})
+        main._note_recovery_delay_waiting_started(key)
+        passive = {
+            "return_visit_kind": "passive_return_visit",
+            "passive_return_visit": True,
+            "store": "demo",
+            "session_id": sid,
+            "cart_id": cid,
+            "recovery_return_context": "product",
+            "event_type": "user_returned_to_site",
+        }
+        self.assertEqual(200, self.client.post("/api/cart-event", json=passive).status_code)
+        self.assertTrue(main._is_user_returned(key), msg=key)
+
+    def test_passive_store_list_during_recovery_delay_waiting_marks_suppression(self) -> None:
+        sid = "cf-scen-d-delay-page"
+        cid = "cf-cart-scen-d-page"
+        _post_recovery_reason_for_session(self.client, "demo", sid)
+        key = main._recovery_key_from_payload({"store": "demo", "session_id": sid, "cart_id": cid})
+        main._note_recovery_delay_waiting_started(key)
+        passive = {
+            "return_visit_kind": "passive_return_visit",
+            "passive_return_visit": True,
+            "store": "demo",
+            "session_id": sid,
+            "cart_id": cid,
+            "recovery_return_context": "page",
             "event_type": "user_returned_to_site",
         }
         self.assertEqual(200, self.client.post("/api/cart-event", json=passive).status_code)
