@@ -87,6 +87,8 @@ def _resolve_dashboard_store_row():
 
 
 def _milestones_readonly(store: Any) -> dict[str, bool]:
+    from services.wa_readiness_step_profiler import wa_readiness_step
+
     out = {
         "first_cart_detected": False,
         "first_recovery_scheduled": False,
@@ -102,66 +104,76 @@ def _milestones_readonly(store: Any) -> dict[str, bool]:
             MerchantFollowupAction,
         )
 
-        db.create_all()
+        with wa_readiness_step("milestones_schema_create_all"):
+            db.create_all()
         sid = int(getattr(store, "id", 0) or 0)
         slug = (getattr(store, "zid_store_id", None) or "").strip()[:255]
         if sid <= 0:
             return out
 
-        n_carts = (
-            db.session.query(func.count(AbandonedCart.id))
-            .filter(AbandonedCart.store_id == sid)
-            .scalar()
-            or 0
-        )
+        with wa_readiness_step("milestones_count_abandoned_carts"):
+            n_carts = (
+                db.session.query(func.count(AbandonedCart.id))
+                .filter(AbandonedCart.store_id == sid)
+                .scalar()
+                or 0
+            )
         out["first_cart_detected"] = int(n_carts) > 0
 
         reply_log = False
         if slug:
-            out["first_recovery_scheduled"] = bool(
+            with wa_readiness_step("milestones_exists_recovery_scheduled_log"):
+                out["first_recovery_scheduled"] = bool(
+                    db.session.query(
+                        exists().where(CartRecoveryLog.store_slug == slug)
+                    ).scalar()
+                )
+            with wa_readiness_step("milestones_exists_whatsapp_sent_log"):
+                out["first_whatsapp_sent"] = bool(
+                    db.session.query(
+                        exists().where(
+                            CartRecoveryLog.store_slug == slug,
+                            CartRecoveryLog.status.in_(("mock_sent", "sent_real")),
+                        )
+                    ).scalar()
+                )
+            with wa_readiness_step("milestones_exists_customer_reply_logs"):
+                reply_log = bool(
+                    db.session.query(
+                        exists().where(
+                            CartRecoveryLog.store_slug == slug,
+                            CartRecoveryLog.status.in_(
+                                (
+                                    "skipped_followup_customer_replied",
+                                    "customer_replied",
+                                )
+                            ),
+                        )
+                    ).scalar()
+                )
+        else:
+            out["first_recovery_scheduled"] = False
+            out["first_whatsapp_sent"] = False
+        with wa_readiness_step("milestones_exists_followup_actions"):
+            followup = bool(
                 db.session.query(
-                    exists().where(CartRecoveryLog.store_slug == slug)
+                    exists().where(MerchantFollowupAction.store_id == sid)
                 ).scalar()
             )
-            out["first_whatsapp_sent"] = bool(
+        out["first_reply_received"] = bool(reply_log or followup)
+
+        with wa_readiness_step("milestones_exists_recovered_cart"):
+            out["first_recovered_cart"] = bool(
                 db.session.query(
                     exists().where(
-                        CartRecoveryLog.store_slug == slug,
-                        CartRecoveryLog.status.in_(("mock_sent", "sent_real")),
-                    )
-                ).scalar()
-            )
-            reply_log = bool(
-                db.session.query(
-                    exists().where(
-                        CartRecoveryLog.store_slug == slug,
-                        CartRecoveryLog.status.in_(
-                            (
-                                "skipped_followup_customer_replied",
-                                "customer_replied",
-                            )
+                        AbandonedCart.store_id == sid,
+                        or_(
+                            AbandonedCart.status == "recovered",
+                            AbandonedCart.recovered_at.isnot(None),
                         ),
                     )
                 ).scalar()
             )
-        followup = bool(
-            db.session.query(
-                exists().where(MerchantFollowupAction.store_id == sid)
-            ).scalar()
-        )
-        out["first_reply_received"] = bool(reply_log or followup)
-
-        out["first_recovered_cart"] = bool(
-            db.session.query(
-                exists().where(
-                    AbandonedCart.store_id == sid,
-                    or_(
-                        AbandonedCart.status == "recovered",
-                        AbandonedCart.recovered_at.isnot(None),
-                    ),
-                )
-            ).scalar()
-        )
     except (SQLAlchemyError, OSError, TypeError, ValueError):
         try:
             from extensions import db as _db  # noqa: PLC0415
@@ -174,26 +186,30 @@ def _milestones_readonly(store: Any) -> dict[str, bool]:
 
 def _phone_coverage_readonly(store: Any) -> tuple[bool, bool]:
     """Returns (any_cart_has_phone, store_merchant_phone_set)."""
+    from services.wa_readiness_step_profiler import wa_readiness_step
+
     try:
         from extensions import db  # noqa: PLC0415
         from models import AbandonedCart  # noqa: PLC0415
 
-        db.create_all()
+        with wa_readiness_step("phone_coverage_schema_create_all"):
+            db.create_all()
         sid = int(getattr(store, "id", 0) or 0)
         if sid <= 0:
             return False, False
         merchant_phone = bool(
             (getattr(store, "store_whatsapp_number", None) or "").strip()
         )
-        has_cart_phone = bool(
-            db.session.query(
-                exists().where(
-                    AbandonedCart.store_id == sid,
-                    AbandonedCart.customer_phone.isnot(None),
-                    AbandonedCart.customer_phone != "",
-                )
-            ).scalar()
-        )
+        with wa_readiness_step("phone_coverage_exists_cart_with_customer_phone"):
+            has_cart_phone = bool(
+                db.session.query(
+                    exists().where(
+                        AbandonedCart.store_id == sid,
+                        AbandonedCart.customer_phone.isnot(None),
+                        AbandonedCart.customer_phone != "",
+                    )
+                ).scalar()
+            )
         return has_cart_phone, merchant_phone
     except (SQLAlchemyError, OSError, TypeError, ValueError):
         try:
@@ -212,24 +228,28 @@ def evaluate_onboarding_readiness(store: Optional[Any] = None) -> dict[str, Any]
     ``ready`` is True only when the store can operate in the **current** mode
     (sandbox: mock path ok; production: Twilio + provider readiness).
     """
+    from services.wa_readiness_step_profiler import wa_readiness_step
     from services.whatsapp_send import (  # noqa: PLC0415
         recovery_uses_real_whatsapp,
         whatsapp_real_configured,
     )
 
     st = store
-    sandbox_mode = not bool(recovery_uses_real_whatsapp())
-    need_real_wa = bool(recovery_uses_real_whatsapp())
 
-    twilio_ok = bool(whatsapp_real_configured())
+    with wa_readiness_step("recovery_twilio_env_flags"):
+        sandbox_mode = not bool(recovery_uses_real_whatsapp())
+        need_real_wa = bool(recovery_uses_real_whatsapp())
+        twilio_ok = bool(whatsapp_real_configured())
+
     provider_ready = False
     try:
-        from services.cartflow_provider_readiness import (  # noqa: PLC0415
-            get_whatsapp_provider_readiness,
-        )
+        with wa_readiness_step("whatsapp_provider_bundle"):
+            from services.cartflow_provider_readiness import (  # noqa: PLC0415
+                get_whatsapp_provider_readiness,
+            )
 
-        pr = get_whatsapp_provider_readiness()
-        provider_ready = bool(pr.get("ready"))
+            pr = get_whatsapp_provider_readiness()
+            provider_ready = bool(pr.get("ready"))
     except Exception:
         provider_ready = False
 

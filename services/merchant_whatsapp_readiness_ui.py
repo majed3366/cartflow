@@ -21,7 +21,20 @@ def build_merchant_whatsapp_readiness_card(store: Optional[Any]) -> dict[str, An
 
     Merchant-safe Arabic only; no provider names or technical tokens.
     """
-    ob = evaluate_onboarding_readiness(store)
+    from services.wa_readiness_step_profiler import (
+        wa_readiness_profile_begin,
+        wa_readiness_profile_end,
+        wa_readiness_step_profiling_enabled,
+    )
+
+    _wa_prof_run = wa_readiness_step_profiling_enabled()
+    if _wa_prof_run:
+        wa_readiness_profile_begin()
+    try:
+        ob = evaluate_onboarding_readiness(store)
+    finally:
+        if _wa_prof_run:
+            wa_readiness_profile_end()
     flags: dict[str, Any] = dict(ob.get("flags") or {})
     blocking: set[str] = set(ob.get("blocking_steps") or [])
 
