@@ -11418,13 +11418,25 @@ def _merchant_normal_batch_resolve_customer_phone_raw(
 def _merchant_normal_dashboard_batch_reads(
     full_rows: list[AbandonedCart], dash_store: Any
 ) -> MerchantNormalCartsBatchReads:
+    from services.merchant_dashboard_batch_reads_trace import (
+        merchant_dashboard_batch_reads_trace_begin,
+        merchant_dashboard_batch_reads_trace_finish,
+        merchant_dashboard_batch_reads_trace_peek_for_seg,
+        merchant_dashboard_batch_reads_trace_seg_end,
+    )
+
     slug = ""
     if dash_store is not None:
         z = getattr(dash_store, "zid_store_id", None)
         slug = (str(z).strip()[:255] if z and str(z).strip() else "") or ""
+    _mbr_tr = merchant_dashboard_batch_reads_trace_begin(
+        slug_len=len(slug), full_rows_len=len(full_rows)
+    )
     sess_pool: set[str] = set()
     cid_pool: set[str] = set()
     uniq_store_pk: set[int] = set()
+    _mbr_seg_t = time.perf_counter()
+    _mbr_seg_q = merchant_dashboard_batch_reads_trace_peek_for_seg(_mbr_tr)
     with normal_carts_profile_span("loop:batch_scan_full_rows_for_session_cart_ids"):
         for ac in full_rows:
             rs = (getattr(ac, "recovery_session_id", None) or "").strip()[:512]
@@ -11439,9 +11451,18 @@ def _merchant_normal_dashboard_batch_reads(
                     uniq_store_pk.add(int(stid))
                 except (TypeError, ValueError):
                     pass
+    merchant_dashboard_batch_reads_trace_seg_end(
+        _mbr_tr,
+        _mbr_seg_t,
+        _mbr_seg_q,
+        "loop_scan_full_rows_session_cart_store_ids",
+        rows_loaded=len(full_rows),
+    )
     combined_sess = set(sess_pool) | set(cid_pool)
 
     logs: list[CartRecoveryLog] = []
+    _mbr_seg_t = time.perf_counter()
+    _mbr_seg_q = merchant_dashboard_batch_reads_trace_peek_for_seg(_mbr_tr)
     try:
         if combined_sess or cid_pool:
             or_parts_log: list[Any] = []
@@ -11459,9 +11480,18 @@ def _merchant_normal_dashboard_batch_reads(
     except (SQLAlchemyError, OSError, TypeError, ValueError):
         db.session.rollback()
         logs = []
+    merchant_dashboard_batch_reads_trace_seg_end(
+        _mbr_tr,
+        _mbr_seg_t,
+        _mbr_seg_q,
+        "sql_logs_bulk_load",
+        rows_loaded=len(logs),
+    )
     logs_loaded = len(logs)
     by_sess: dict[str, list[CartRecoveryLog]] = defaultdict(list)
     by_cart: dict[str, list[CartRecoveryLog]] = defaultdict(list)
+    _mbr_seg_t = time.perf_counter()
+    _mbr_seg_q = merchant_dashboard_batch_reads_trace_peek_for_seg(_mbr_tr)
     with normal_carts_profile_span("loop:batch_index_recovery_logs_into_hash_maps"):
         for lg in logs:
             ls_l = (getattr(lg, "session_id", None) or "").strip()
@@ -11470,12 +11500,21 @@ def _merchant_normal_dashboard_batch_reads(
             lc_l = (getattr(lg, "cart_id", None) or "").strip()
             if lc_l:
                 by_cart[lc_l].append(lg)
+    merchant_dashboard_batch_reads_trace_seg_end(
+        _mbr_tr,
+        _mbr_seg_t,
+        _mbr_seg_q,
+        "loop_index_recovery_logs_into_hash_maps",
+        rows_loaded=len(logs),
+    )
 
     status_union_by_ac: dict[int, frozenset[str]] = {}
     sent_real_count: dict[int, int] = {}
     latest_log_by_ac: dict[int, Optional[CartRecoveryLog]] = {}
     skipped_nv_by_ac: dict[int, Optional[CartRecoveryLog]] = {}
 
+    _mbr_seg_t = time.perf_counter()
+    _mbr_seg_q = merchant_dashboard_batch_reads_trace_peek_for_seg(_mbr_tr)
     for ac in full_rows:
         with normal_carts_profile_span("loop:batch_build_per_abandoned_log_projection"):
             aid_ac = int(getattr(ac, "id", 0) or 0)
@@ -11534,6 +11573,14 @@ def _merchant_normal_dashboard_batch_reads(
             else:
                 skipped_nv_by_ac[aid_ac] = None
 
+    merchant_dashboard_batch_reads_trace_seg_end(
+        _mbr_tr,
+        _mbr_seg_t,
+        _mbr_seg_q,
+        "loop_per_abandoned_recovery_log_projection",
+        rows_loaded=len(full_rows),
+    )
+
     reason_store_by_session: dict[str, CartRecoveryReason] = {}
     reason_any_by_session: dict[str, CartRecoveryReason] = {}
     reasons_rows_fetched = 0
@@ -11541,6 +11588,8 @@ def _merchant_normal_dashboard_batch_reads(
     try:
         with normal_carts_profile_span("sql:batch_cart_recovery_reason_by_session"):
             if slug and reason_sess_keys:
+                _mbr_seg_t = time.perf_counter()
+                _mbr_seg_q = merchant_dashboard_batch_reads_trace_peek_for_seg(_mbr_tr)
                 rs_rows = (
                     db.session.query(CartRecoveryReason)
                     .filter(
@@ -11555,7 +11604,16 @@ def _merchant_normal_dashboard_batch_reads(
                     k = (getattr(r, "session_id", None) or "").strip()[:512]
                     if k and k not in reason_store_by_session:
                         reason_store_by_session[k] = r
+                merchant_dashboard_batch_reads_trace_seg_end(
+                    _mbr_tr,
+                    _mbr_seg_t,
+                    _mbr_seg_q,
+                    "sql_reasons_by_store_slug_and_session_keys",
+                    rows_loaded=len(rs_rows),
+                )
             if reason_sess_keys:
+                _mbr_seg_t = time.perf_counter()
+                _mbr_seg_q = merchant_dashboard_batch_reads_trace_peek_for_seg(_mbr_tr)
                 ra_rows = (
                     db.session.query(CartRecoveryReason)
                     .filter(
@@ -11569,6 +11627,13 @@ def _merchant_normal_dashboard_batch_reads(
                     k = (getattr(r, "session_id", None) or "").strip()[:512]
                     if k and k not in reason_any_by_session:
                         reason_any_by_session[k] = r
+                merchant_dashboard_batch_reads_trace_seg_end(
+                    _mbr_tr,
+                    _mbr_seg_t,
+                    _mbr_seg_q,
+                    "sql_reasons_by_session_keys_any_store",
+                    rows_loaded=len(ra_rows),
+                )
     except (SQLAlchemyError, OSError, TypeError, ValueError):
         db.session.rollback()
 
@@ -11581,6 +11646,8 @@ def _merchant_normal_dashboard_batch_reads(
                 sp_parts.append(AbandonedCart.recovery_session_id.in_(list(sess_pool)))
             if cid_pool:
                 sp_parts.append(AbandonedCart.zid_cart_id.in_(list(cid_pool)))
+            _mbr_seg_t = time.perf_counter()
+            _mbr_seg_q = merchant_dashboard_batch_reads_trace_peek_for_seg(_mbr_tr)
             with normal_carts_profile_span("sql:batch_abandoned_cart_peers_for_scope"):
                 peers_non_vip = (
                     db.session.query(AbandonedCart)
@@ -11589,6 +11656,15 @@ def _merchant_normal_dashboard_batch_reads(
                     .limit(4000)
                     .all()
                 )
+            merchant_dashboard_batch_reads_trace_seg_end(
+                _mbr_tr,
+                _mbr_seg_t,
+                _mbr_seg_q,
+                "sql_peers_non_vip_abandoned_scope",
+                rows_loaded=len(peers_non_vip),
+            )
+            _mbr_seg_t = time.perf_counter()
+            _mbr_seg_q = merchant_dashboard_batch_reads_trace_peek_for_seg(_mbr_tr)
             scope_ab_rows = []
             for ar in peers_non_vip:
                 rid_r = getattr(ar, "id", None)
@@ -11597,6 +11673,13 @@ def _merchant_normal_dashboard_batch_reads(
                 rs_rr = (getattr(ar, "recovery_session_id", None) or "").strip()[:512]
                 zi_rr = (getattr(ar, "zid_cart_id", None) or "").strip()[:255]
                 scope_ab_rows.append((int(rid_r), rs_rr, zi_rr))
+            merchant_dashboard_batch_reads_trace_seg_end(
+                _mbr_tr,
+                _mbr_seg_t,
+                _mbr_seg_q,
+                "loop_build_scope_ab_rows_from_peers",
+                rows_loaded=len(scope_ab_rows),
+            )
     except (SQLAlchemyError, OSError, TypeError, ValueError):
         db.session.rollback()
         peers_non_vip = []
@@ -11613,14 +11696,32 @@ def _merchant_normal_dashboard_batch_reads(
             except (TypeError, ValueError):
                 pass
         if need_pks:
+            _mbr_seg_t = time.perf_counter()
+            _mbr_seg_q = merchant_dashboard_batch_reads_trace_peek_for_seg(_mbr_tr)
             with normal_carts_profile_span("sql:batch_store_rows_by_primary_keys"):
                 store_rows_pkg = (
                     db.session.query(Store).filter(Store.id.in_(list(need_pks))).all()
                 )
+            merchant_dashboard_batch_reads_trace_seg_end(
+                _mbr_tr,
+                _mbr_seg_t,
+                _mbr_seg_q,
+                "sql_store_rows_by_primary_keys",
+                rows_loaded=len(store_rows_pkg),
+            )
+            _mbr_seg_t = time.perf_counter()
+            _mbr_seg_q = merchant_dashboard_batch_reads_trace_peek_for_seg(_mbr_tr)
             for srow in store_rows_pkg:
                 pk_id = getattr(srow, "id", None)
                 if pk_id is not None:
                     store_by_pk[int(pk_id)] = srow
+            merchant_dashboard_batch_reads_trace_seg_end(
+                _mbr_tr,
+                _mbr_seg_t,
+                _mbr_seg_q,
+                "loop_index_store_rows_into_store_by_pk",
+                rows_loaded=len(store_rows_pkg),
+            )
     except (SQLAlchemyError, OSError, TypeError, ValueError):
         db.session.rollback()
 
@@ -11633,6 +11734,8 @@ def _merchant_normal_dashboard_batch_reads(
     message_logs_loaded = 0
     try:
         if ac_ids_ml:
+            _mbr_seg_t = time.perf_counter()
+            _mbr_seg_q = merchant_dashboard_batch_reads_trace_peek_for_seg(_mbr_tr)
             with normal_carts_profile_span("sql:batch_message_logs_whatsapp_by_abandoned"):
                 ml_rows_list = (
                     db.session.query(MessageLog)
@@ -11645,7 +11748,16 @@ def _merchant_normal_dashboard_batch_reads(
                     .order_by(MessageLog.created_at.desc())
                     .all()
                 )
+            merchant_dashboard_batch_reads_trace_seg_end(
+                _mbr_tr,
+                _mbr_seg_t,
+                _mbr_seg_q,
+                "sql_message_logs_whatsapp_by_abandoned",
+                rows_loaded=len(ml_rows_list),
+            )
             message_logs_loaded = len(ml_rows_list)
+            _mbr_seg_t = time.perf_counter()
+            _mbr_seg_q = merchant_dashboard_batch_reads_trace_peek_for_seg(_mbr_tr)
             for m in ml_rows_list:
                 aid_m_l = getattr(m, "abandoned_cart_id", None)
                 if aid_m_l is None:
@@ -11659,21 +11771,46 @@ def _merchant_normal_dashboard_batch_reads(
                 ph_ml = _strip_recovery_phone(getattr(m, "phone", None))
                 if ph_ml:
                     ml_phone_by_ac_id[aid_mi] = ph_ml
+            merchant_dashboard_batch_reads_trace_seg_end(
+                _mbr_tr,
+                _mbr_seg_t,
+                _mbr_seg_q,
+                "loop_index_message_logs_into_phone_map",
+                rows_loaded=len(ml_rows_list),
+            )
     except (SQLAlchemyError, OSError, TypeError, ValueError):
         db.session.rollback()
 
     zid_first_ac: dict[str, AbandonedCart] = {}
+    _mbr_seg_t = time.perf_counter()
+    _mbr_seg_q = merchant_dashboard_batch_reads_trace_peek_for_seg(_mbr_tr)
     sorted_full_rows = sorted(
         full_rows,
         key=lambda r: getattr(r, "last_seen_at", None)
         or datetime.min.replace(tzinfo=timezone.utc),
         reverse=True,
     )
+    merchant_dashboard_batch_reads_trace_seg_end(
+        _mbr_tr,
+        _mbr_seg_t,
+        _mbr_seg_q,
+        "sort_full_rows_last_seen_desc",
+        rows_loaded=len(sorted_full_rows),
+    )
+    _mbr_seg_t = time.perf_counter()
+    _mbr_seg_q = merchant_dashboard_batch_reads_trace_peek_for_seg(_mbr_tr)
     with normal_carts_profile_span("loop:batch_build_zid_first_seen_map"):
         for ac_fc in sorted_full_rows:
             zz_fc = (getattr(ac_fc, "zid_cart_id", None) or "").strip()[:255]
             if zz_fc and zz_fc not in zid_first_ac:
                 zid_first_ac[zz_fc] = ac_fc
+    merchant_dashboard_batch_reads_trace_seg_end(
+        _mbr_tr,
+        _mbr_seg_t,
+        _mbr_seg_q,
+        "loop_build_zid_first_seen_map",
+        rows_loaded=len(zid_first_ac),
+    )
 
     batch = MerchantNormalCartsBatchReads(
         slug=slug,
@@ -11696,6 +11833,8 @@ def _merchant_normal_dashboard_batch_reads(
         message_logs_loaded=message_logs_loaded,
     )
     cust_map: dict[int, str] = {}
+    _mbr_seg_t = time.perf_counter()
+    _mbr_seg_q = merchant_dashboard_batch_reads_trace_peek_for_seg(_mbr_tr)
     for ac_ph in full_rows:
         with normal_carts_profile_span("loop:batch_resolve_customer_phone_per_abandoned"):
             aid_ph = int(getattr(ac_ph, "id", 0) or 0)
@@ -11706,6 +11845,14 @@ def _merchant_normal_dashboard_batch_reads(
             ).strip()
     batch.cust_phone_by_ac = cust_map
     batch.phones_loaded = sum(1 for vx in cust_map.values() if vx)
+    merchant_dashboard_batch_reads_trace_seg_end(
+        _mbr_tr,
+        _mbr_seg_t,
+        _mbr_seg_q,
+        "loop_resolve_customer_phone_per_abandoned",
+        rows_loaded=batch.phones_loaded,
+    )
+    merchant_dashboard_batch_reads_trace_finish(_mbr_tr)
     return batch
 
 
