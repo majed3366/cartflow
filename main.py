@@ -640,12 +640,16 @@ async def db_scoped_session_cleanup(request: Request, call_next: Any) -> Any:
         audit_request_begin,
         audit_request_end,
         maybe_install_engine_listener,
+        stall_trace_checkpoint,
     )
 
     maybe_install_engine_listener()
     audit_request_begin(request)
+    stall_trace_checkpoint("request_received_mw")
     try:
-        return await call_next(request)
+        response = await call_next(request)
+        stall_trace_checkpoint("response_ready_mw")
+        return response
     finally:
         audit_leak_suspected_check(request)
         remove_scoped_session()
@@ -8445,6 +8449,12 @@ async def api_cart_event(request: Request, background_tasks: BackgroundTasks):
     عند ‎cart_abandoned‎: لا إرسال فوري — جدولة مؤجّلة حسب ‎Store.recovery_*‎؛ مفتاح الاسترجاع ‎store + session‎.
     بدون واتساب.
     """
+    from services.db_request_audit import stall_trace_checkpoint
+
+    def _bg_tasks_queued() -> int:
+        return len(getattr(background_tasks, "tasks", ()) or ())
+
+    stall_trace_checkpoint("cart_event_route_entry", bg_tasks_queued=_bg_tasks_queued())
     wall0 = time.perf_counter()
     ev_profile = "unknown"
     try:
@@ -8452,6 +8462,7 @@ async def api_cart_event(request: Request, background_tasks: BackgroundTasks):
             payload = await request.json()
         except Exception:  # noqa: BLE001
             payload = None
+        stall_trace_checkpoint("cart_event_after_json", bg_tasks_queued=_bg_tasks_queued())
         if not isinstance(payload, dict):
             payload = {}
 
@@ -8461,7 +8472,12 @@ async def api_cart_event(request: Request, background_tasks: BackgroundTasks):
         if not (ev_w == "cart_state_sync" and rs_w == "add"):
             _ensure_cartflow_api_db_warmed()
 
+        stall_trace_checkpoint("cart_event_after_api_warm", bg_tasks_queued=_bg_tasks_queued())
         cart_event_request_begin()
+        stall_trace_checkpoint(
+            "cart_event_after_cart_event_request_begin",
+            bg_tasks_queued=_bg_tasks_queued(),
+        )
 
         print("[CF API] event received")
         try:
@@ -8488,6 +8504,10 @@ async def api_cart_event(request: Request, background_tasks: BackgroundTasks):
         log.info("[EVENT ROUTING] event=%s", event)
         ev_profile = event_norm or "misc"
         if event_norm == "cart_state_sync":
+            stall_trace_checkpoint(
+                "cart_event_before_cart_state_sync_dispatch",
+                bg_tasks_queued=_bg_tasks_queued(),
+            )
             cart_event_profile_set_meta(event_type="cart_state_sync")
             if str(payload.get("reason") or "").strip().lower() == "add":
                 _log_pre_cart_event_profile(
@@ -8514,6 +8534,10 @@ async def api_cart_event(request: Request, background_tasks: BackgroundTasks):
                     else:
                         _mark_user_returned_for_payload(act_payload)
                         record_behavioral_user_return_from_payload(act_payload)
+            stall_trace_checkpoint(
+                "cart_event_before_response_cart_state_sync",
+                bg_tasks_queued=_bg_tasks_queued(),
+            )
             return j(out_sync, 200)
         if event_norm == "cart_abandoned":
             print("[ROUTING TO VIP HANDLER]")
@@ -8529,8 +8553,16 @@ async def api_cart_event(request: Request, background_tasks: BackgroundTasks):
                 wc_tot_disp,
                 wc_sid,
             )
+            stall_trace_checkpoint(
+                "cart_event_before_handle_cart_abandoned",
+                bg_tasks_queued=_bg_tasks_queued(),
+            )
             out_abandon: dict[str, Any] = {"ok": True, "event": event}
             out_abandon.update(await handle_cart_abandoned(background_tasks, payload))
+            stall_trace_checkpoint(
+                "cart_event_before_response_cart_abandoned",
+                bg_tasks_queued=_bg_tasks_queued(),
+            )
             return j(out_abandon, 200)
         out: dict[str, Any] = {
             "ok": True,
@@ -8597,6 +8629,10 @@ async def api_cart_event(request: Request, background_tasks: BackgroundTasks):
             print("[BEHAVIOR RESET]")
             out["behavior_reset"] = True
         _sync_abandoned_cart_vip_after_live_cart_payload(payload)
+        stall_trace_checkpoint(
+            "cart_event_before_response_misc",
+            bg_tasks_queued=_bg_tasks_queued(),
+        )
         return j(out, 200)
     finally:
         _log_cart_event_profile(wall_perf_start=wall0, event_label=ev_profile)
@@ -12957,11 +12993,16 @@ def _api_json_dashboard_messages(dash_store: Optional[Any]) -> Dict[str, Any]:
 @app.get("/dashboard")
 def dashboard(request: Request):
     """لوحة التاجر — هيكل فوري؛ الأقسام الثقيلة تُحمّل لاحقاً عبر ‎JavaScript‎."""
+    from services.db_request_audit import stall_trace_checkpoint
+
+    stall_trace_checkpoint("dashboard_entry")
     wall0 = time.perf_counter()
     _merchant_dashboard_db_ready()
+    stall_trace_checkpoint("dashboard_after_merchant_db_ready")
     dash_store = _dashboard_recovery_store_row()
     now_utc = datetime.now(timezone.utc)
     shell_store = _merchant_dashboard_shell_store_fields(dash_store)
+    stall_trace_checkpoint("dashboard_before_template_render")
     resp = templates.TemplateResponse(
         request,
         "merchant_app.html",
@@ -13012,7 +13053,9 @@ def dashboard(request: Request):
             **shell_store,
         },
     )
+    stall_trace_checkpoint("dashboard_after_template_before_shell_profile")
     _log_dashboard_shell_profile(wall_perf_start=wall0)
+    stall_trace_checkpoint("dashboard_response_ready")
     return resp
 
 

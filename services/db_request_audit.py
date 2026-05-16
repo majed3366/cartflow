@@ -220,6 +220,7 @@ def audit_request_end() -> None:
             qn,
             sh,
         )
+        stall_trace_checkpoint("slow_request_audit_end")
 
     _audit_bucket.set(None)
 
@@ -259,4 +260,82 @@ def _pool_line() -> str:
         return f"pool={pname} " + (out or "metrics=n/a").strip()
     except Exception:
         return "pool=err"
+
+
+def stall_trace_enabled() -> bool:
+    """تشخيص تعليقات الطلب (‎~100s‎ مع ‎queries=0‎): سجلات فقط؛ ‎CARTFLOW_STALL_TRACE=0‎ يعطّل."""
+    v = (os.getenv("CARTFLOW_STALL_TRACE") or "").strip().lower()
+    if v in ("0", "false", "no", "off"):
+        return False
+    if v in ("1", "true", "yes", "on"):
+        return True
+    return audit_enabled()
+
+
+def _stall_runtime_snapshot() -> Dict[str, Any]:
+    """معرّفات زمن التشغيل — يعمل في ‎async‎ و‎sync‎ (لوحة التاجر على ‎thread pool‎)."""
+    import os
+    import threading
+
+    out: Dict[str, Any] = {
+        "thread_id": threading.get_ident(),
+        "process_id": os.getpid(),
+        "threading_active": threading.active_count(),
+    }
+    try:
+        import asyncio
+
+        loop = asyncio.get_running_loop()
+        out["event_loop_id"] = id(loop)
+        all_t = asyncio.all_tasks(loop)
+        out["asyncio_all_tasks"] = len(all_t)
+        out["asyncio_pending_tasks"] = len([t for t in all_t if not t.done()])
+    except RuntimeError:
+        out["event_loop_id"] = "n/a_sync_context"
+        out["asyncio_all_tasks"] = "n/a"
+        out["asyncio_pending_tasks"] = "n/a"
+    return out
+
+
+def stall_trace_checkpoint(
+    phase: str,
+    *,
+    bg_tasks_queued: Optional[int] = None,
+) -> None:
+    """
+    نقطة زمنية واحدة لمسار الطلب — لمقارنة التعليق خارج ‎SQL‎ (‎queries=0‎).
+    لا يغيّر السلوك.
+    """
+    if not stall_trace_enabled():
+        return
+    bucket = _audit_bucket.get()
+    elapsed_ms = 0.0
+    ep = "?"
+    if bucket is not None:
+        elapsed_ms = (time.perf_counter() - float(bucket["t0"])) * 1000.0
+        ep = str(bucket.get("endpoint") or "?")[:500]
+    snap = _stall_runtime_snapshot()
+    parts = [
+        "[STALL TRACE]",
+        f"phase={phase}",
+        f"elapsed_ms={elapsed_ms:.1f}",
+        f"endpoint={ep}",
+        f"thread_id={snap['thread_id']}",
+        f"process_id={snap['process_id']}",
+        f"threading_active={snap['threading_active']}",
+        f"event_loop_id={snap['event_loop_id']}",
+        f"asyncio_all_tasks={snap['asyncio_all_tasks']}",
+        f"asyncio_pending_tasks={snap['asyncio_pending_tasks']}",
+    ]
+    if bg_tasks_queued is not None:
+        parts.append(f"bg_tasks_queued={int(bg_tasks_queued)}")
+    line = " ".join(parts)
+    try:
+        print(line, flush=True)
+    except OSError:
+        pass
+    try:
+        log.warning("%s", line)
+    except Exception:  # noqa: BLE001
+        pass
 
