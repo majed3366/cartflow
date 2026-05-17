@@ -768,11 +768,30 @@
         <div class="setting-card ma-fw-card">
           <div class="setting-title">طريقة التشغيل</div>
           <div class="setting-desc">للتذكير فقط — لا يغيّر آلية الاسترجاع حالياً</div>
-          <div class="setting-row" style="flex-direction:column;align-items:flex-start;gap:10px;">
-            <label class="ma-fw-radio"><input type="radio" name="merchant_automation_mode" value="manual" checked> <span>يدوي</span></label>
-            <label class="ma-fw-radio"><input type="radio" name="merchant_automation_mode" value="assistant"> <span>مساعد</span></label>
-            <label class="ma-fw-radio"><input type="radio" name="merchant_automation_mode" value="auto"> <span>تلقائي</span></label>
+          <div class="ma-general-mode-options">
+            <label class="ma-fw-radio ma-general-mode-option">
+              <input type="radio" name="merchant_automation_mode" value="manual" checked>
+              <span>
+                <span class="ma-general-mode-label">يدوي</span>
+                <span class="ma-fw-field-hint ma-general-mode-hint">أنت تراجع وتقرر قبل أي متابعة خاصة.</span>
+              </span>
+            </label>
+            <label class="ma-fw-radio ma-general-mode-option">
+              <input type="radio" name="merchant_automation_mode" value="assistant">
+              <span>
+                <span class="ma-general-mode-label">مساعد</span>
+                <span class="ma-fw-field-hint ma-general-mode-hint">النظام يقترح الإجراء، وأنت توافق.</span>
+              </span>
+            </label>
+            <label class="ma-fw-radio ma-general-mode-option">
+              <input type="radio" name="merchant_automation_mode" value="auto">
+              <span>
+                <span class="ma-general-mode-label">تلقائي</span>
+                <span class="ma-fw-field-hint ma-general-mode-hint">النظام يتابع حسب إعداداتك، ويعرض لك ما حدث.</span>
+              </span>
+            </label>
           </div>
+          <p class="ma-fw-field-hint ma-general-mode-footnote">يمكنك تغيير طريقة التشغيل لاحقاً دون التأثير على الإعدادات المحفوظة.</p>
         </div>
         <div class="setting-card">
           <div class="setting-title">ملخص (قراءة فقط)</div>

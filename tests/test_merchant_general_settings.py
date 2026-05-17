@@ -163,6 +163,9 @@ class MerchantGeneralSettingsTests(unittest.TestCase):
         self.assertIn("merchant_general_settings.js", html)
         self.assertIn("تنبيه سلة VIP", html)
         self.assertIn("حفظ الإعدادات", html)
+        self.assertIn("ma-general-mode-hint", html)
+        self.assertIn("أنت تراجع وتقرر قبل أي متابعة خاصة.", html)
+        self.assertIn("يمكنك تغيير طريقة التشغيل لاحقاً", html)
 
 
 if __name__ == "__main__":
