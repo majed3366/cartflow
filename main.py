@@ -2329,14 +2329,17 @@ def _defer_clear_user_rejected_help_for_cart_sync_session(
     session_id: str,
 ) -> None:
     """Post-response: يفرّغ رفض المساعدة دون تكديس جلسة ‎scoped_session‎ الطلب السابق."""
-    try:
-        _clear_user_rejected_help_for_session(
-            store_slug, session_id, skip_cartflow_api_warm=True
-        )
-    except Exception as exc:  # noqa: BLE001
-        log.warning("deferred rejection reset skipped: %s", exc)
-    finally:
-        remove_scoped_session()
+    from services.db_session_lifecycle import run_sync_background_db_task
+
+    def _work() -> None:
+        try:
+            _clear_user_rejected_help_for_session(
+                store_slug, session_id, skip_cartflow_api_warm=True
+            )
+        except Exception as exc:  # noqa: BLE001
+            log.warning("deferred rejection reset skipped: %s", exc)
+
+    run_sync_background_db_task(_work)
 
 
 def _clear_user_rejected_help_for_session(
@@ -4577,70 +4580,76 @@ def _defer_commercial_return_to_site_db_side_effects(
     *,
     skip_db_schema_bootstrap: bool = False,
 ) -> None:
-    try:
-        _persist_durable_return_to_site_evidence_from_payload(
-            payload_snapshot,
-            skip_db_schema_bootstrap=skip_db_schema_bootstrap,
-        )
-        record_behavioral_user_return_from_payload(
-            payload_snapshot,
-            skip_db_schema_bootstrap=skip_db_schema_bootstrap,
-        )
-    except Exception as exc:  # noqa: BLE001
-        log.warning(
-            "deferred commercial return-to-site persistence failed (non-fatal): %s",
-            exc,
-            exc_info=True,
-        )
-    finally:
-        remove_scoped_session()
+    from services.db_session_lifecycle import run_sync_background_db_task
+
+    def _work() -> None:
+        try:
+            _persist_durable_return_to_site_evidence_from_payload(
+                payload_snapshot,
+                skip_db_schema_bootstrap=skip_db_schema_bootstrap,
+            )
+            record_behavioral_user_return_from_payload(
+                payload_snapshot,
+                skip_db_schema_bootstrap=skip_db_schema_bootstrap,
+            )
+        except Exception as exc:  # noqa: BLE001
+            log.warning(
+                "deferred commercial return-to-site persistence failed (non-fatal): %s",
+                exc,
+                exc_info=True,
+            )
+
+    run_sync_background_db_task(_work)
 
 
 def _defer_vip_merchant_auto_alert_after_cart_state_sync(snapshot: dict[str, Any]) -> None:
     """Runs VIP merchant auto-alert after response (cart_state_sync add lightweight path)."""
-    try:
-        ss = (
-            str(snapshot.get("_vip_alert_store_slug") or "").strip()[:255]
-            or _normalize_store_slug(snapshot)
-            or "default"
-        )
-        zid = (str(snapshot.get("_vip_alert_zid") or "").strip())[:255]
-        if not zid:
-            return
-        was_vip_before = bool(snapshot.get("_vip_alert_was_vip_before"))
-        sid = (str(snapshot.get("_vip_alert_recovery_session") or "").strip())[:512]
-        store_ctx = None
-        sto_raw = snapshot.get("_vip_alert_store_pk")
-        if sto_raw is not None:
-            try:
-                store_ctx = db.session.get(Store, int(sto_raw))
-            except (SQLAlchemyError, OSError, TypeError, ValueError):
-                db.session.rollback()
-                store_ctx = None
-        row = db.session.query(AbandonedCart).filter_by(zid_cart_id=zid).first()
-        if row is None:
-            return
-        store_for_alert = _resolve_store_for_vip_merchant_alert(
-            row, context_store_fallback=store_ctx
-        )
-        ups_sid_eff = sid or (
-            str(getattr(row, "recovery_session_id", "") or "").strip()[:512]
-        )
-        _vip_merchant_auto_alert_if_newly_entering(
-            row,
-            store_for_alert,
-            ss,
-            ups_sid_eff,
-            was_vip_before=was_vip_before,
-        )
-    except Exception as e:  # noqa: BLE001
-        log.warning(
-            "deferred vip merchant alert after cart sync failed (non-fatal): %s",
-            e,
-            exc_info=True,
-        )
-    finally:
-        remove_scoped_session()
+    from services.db_session_lifecycle import run_sync_background_db_task
+
+    def _work() -> None:
+        try:
+            ss = (
+                str(snapshot.get("_vip_alert_store_slug") or "").strip()[:255]
+                or _normalize_store_slug(snapshot)
+                or "default"
+            )
+            zid = (str(snapshot.get("_vip_alert_zid") or "").strip())[:255]
+            if not zid:
+                return
+            was_vip_before = bool(snapshot.get("_vip_alert_was_vip_before"))
+            sid = (str(snapshot.get("_vip_alert_recovery_session") or "").strip())[:512]
+            store_ctx = None
+            sto_raw = snapshot.get("_vip_alert_store_pk")
+            if sto_raw is not None:
+                try:
+                    store_ctx = db.session.get(Store, int(sto_raw))
+                except (SQLAlchemyError, OSError, TypeError, ValueError):
+                    db.session.rollback()
+                    store_ctx = None
+            row = db.session.query(AbandonedCart).filter_by(zid_cart_id=zid).first()
+            if row is None:
+                return
+            store_for_alert = _resolve_store_for_vip_merchant_alert(
+                row, context_store_fallback=store_ctx
+            )
+            ups_sid_eff = sid or (
+                str(getattr(row, "recovery_session_id", "") or "").strip()[:512]
+            )
+            _vip_merchant_auto_alert_if_newly_entering(
+                row,
+                store_for_alert,
+                ss,
+                ups_sid_eff,
+                was_vip_before=was_vip_before,
+            )
+        except Exception as e:  # noqa: BLE001
+            log.warning(
+                "deferred vip merchant alert after cart sync failed (non-fatal): %s",
+                e,
+                exc_info=True,
+            )
+
+    run_sync_background_db_task(_work)
 
 
 def _persist_durable_return_to_site_evidence_from_payload(
@@ -5820,6 +5829,9 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
     print("[DELAY STARTED]", scheduled_recovery_delay_minutes)
     print("[DELAY WAITING]")
     _note_recovery_delay_waiting_started(recovery_key)
+    from services.db_session_lifecycle import release_db_before_async_wait
+
+    await release_db_before_async_wait()
     try:
         await asyncio.sleep(delay_seconds)
     except asyncio.CancelledError:
@@ -7010,6 +7022,9 @@ async def _run_recovery_sequence_after_cart_abandoned(
     recovery_context: Optional[Dict[str, Any]] = None,
 ) -> None:
     """مدخل آمن: أي خطأ داخل المهمة المؤجّلة لا يصعد إلى ‎TaskGroup‎ / وسيط الطلب."""
+    from services.db_session_lifecycle import release_scoped_db_session, scoped_db_session_begin
+
+    scoped_db_session_begin()
     try:
         await _run_recovery_sequence_after_cart_abandoned_impl(
             recovery_key,
@@ -7035,6 +7050,8 @@ async def _run_recovery_sequence_after_cart_abandoned(
             with _recovery_session_lock:
                 _session_recovery_seq_logged.pop(sk_err, None)
         print("[RECOVERY TASK CAUGHT ERROR]", str(e))
+    finally:
+        release_scoped_db_session()
     print("[RECOVERY TASK COMPLETED SAFELY]")
 
 
@@ -7144,6 +7161,9 @@ async def _run_recovery_dispatch_cart_abandoned_impl(
             return
         if reason_tag:
             break
+        from services.db_session_lifecycle import release_db_before_async_wait
+
+        await release_db_before_async_wait()
         await asyncio.sleep(_RECOVERY_REASON_POLL_INTERVAL_SEC)
 
     elapsed = time.monotonic() - abandon_monotonic
@@ -7206,6 +7226,9 @@ async def _run_recovery_dispatch_cart_abandoned(
     abandon_event_phone: Optional[str],
     abandon_monotonic: float,
 ) -> None:
+    from services.db_session_lifecycle import release_scoped_db_session, scoped_db_session_begin
+
+    scoped_db_session_begin()
     try:
         await _run_recovery_dispatch_cart_abandoned_impl(
             recovery_key,
@@ -7223,6 +7246,8 @@ async def _run_recovery_dispatch_cart_abandoned(
         raise
     except BaseException as e:
         print("[RECOVERY DISPATCH CAUGHT ERROR]", str(e))
+    finally:
+        release_scoped_db_session()
     print("[RECOVERY DISPATCH COMPLETED SAFELY]")
 
 
@@ -8525,6 +8550,70 @@ def _log_cart_event_profile(*, wall_perf_start: float, event_label: str) -> None
         pass
 
 
+def _cart_event_operational_begin(payload: dict[str, Any]) -> Dict[str, Any]:
+    ev_raw = payload.get("event")
+    ev = str(ev_raw).strip().lower() if ev_raw is not None else ""
+    return {
+        "t0": time.perf_counter(),
+        "store_slug": (_normalize_store_slug(payload) or "")[:96],
+        "session_id": (_session_part_from_payload(payload) or "")[:96],
+        "cart_id": ((_cart_id_str_from_payload(payload) or "").strip())[:80],
+        "event": ev[:64] or "unknown",
+        "reason": str(payload.get("reason") or "").strip().lower()[:64],
+        "db_work": "pending",
+        "recovery_outcome": "",
+    }
+
+
+def _cart_event_operational_note_recovery(
+    op_ctx: Dict[str, Any], handler_out: Optional[Dict[str, Any]]
+) -> None:
+    if not isinstance(handler_out, dict):
+        op_ctx["recovery_outcome"] = "no_handler_body"
+        return
+    if handler_out.get("recovery_vip_manual"):
+        op_ctx["recovery_outcome"] = "vip_manual"
+        return
+    if handler_out.get("waiting_for_reason"):
+        op_ctx["recovery_outcome"] = "waiting_for_reason"
+        return
+    if handler_out.get("recovery_skipped"):
+        st = str(handler_out.get("recovery_state") or "skipped").strip()[:48]
+        op_ctx["recovery_outcome"] = f"skipped:{st}"
+        return
+    if handler_out.get("recovery_scheduled"):
+        op_ctx["recovery_outcome"] = "scheduled"
+        return
+    op_ctx["recovery_outcome"] = str(handler_out.get("recovery_state") or "ok")[:48]
+
+
+def _cart_event_operational_finish(
+    op_ctx: Dict[str, Any],
+    *,
+    http_status: int = 200,
+    error: Optional[str] = None,
+) -> None:
+    dur_ms = (time.perf_counter() - float(op_ctx.get("t0") or 0.0)) * 1000.0
+    line = (
+        "[CART-EVENT] end "
+        f"duration_ms={dur_ms:.1f} status={http_status} "
+        f"event={op_ctx.get('event') or '-'} "
+        f"store_slug={op_ctx.get('store_slug') or '-'} "
+        f"session_id={op_ctx.get('session_id') or '-'} "
+        f"cart_id={op_ctx.get('cart_id') or '-'} "
+        f"reason={op_ctx.get('reason') or '-'} "
+        f"db_work={op_ctx.get('db_work') or '-'} "
+        f"recovery={op_ctx.get('recovery_outcome') or '-'}"
+    )
+    if error:
+        line += f" error={error[:120]}"
+    try:
+        print(line, flush=True)
+        log.info("%s", line)
+    except OSError:
+        pass
+
+
 @app.post("/api/cart-event")
 async def api_cart_event(request: Request, background_tasks: BackgroundTasks):
     """
@@ -8541,6 +8630,9 @@ async def api_cart_event(request: Request, background_tasks: BackgroundTasks):
     stall_trace_checkpoint("cart_event_route_entry", bg_tasks_queued=_bg_tasks_queued())
     wall0 = time.perf_counter()
     ev_profile = "unknown"
+    op_ctx: Dict[str, Any] = {}
+    http_status = 200
+    route_error: Optional[str] = None
     try:
         try:
             payload = await request.json()
@@ -8550,11 +8642,29 @@ async def api_cart_event(request: Request, background_tasks: BackgroundTasks):
         if not isinstance(payload, dict):
             payload = {}
 
+        op_ctx = _cart_event_operational_begin(payload)
+        try:
+            print(
+                "[CART-EVENT] start "
+                f"event={op_ctx.get('event')} "
+                f"store_slug={op_ctx.get('store_slug') or '-'} "
+                f"session_id={op_ctx.get('session_id') or '-'} "
+                f"cart_id={op_ctx.get('cart_id') or '-'} "
+                f"reason={op_ctx.get('reason') or '-'}",
+                flush=True,
+            )
+        except OSError:
+            pass
+
         ev_for_warm = payload.get("event")
         ev_w = str(ev_for_warm).strip().lower() if ev_for_warm is not None else ""
         rs_w = str(payload.get("reason") or "").strip().lower()
         if not (ev_w == "cart_state_sync" and rs_w == "add"):
-            _ensure_cartflow_api_db_warmed()
+            if not _cartflow_api_db_warmed:
+                _ensure_cartflow_api_db_warmed()
+            op_ctx["db_work"] = "warmed_once" if _cartflow_api_db_warmed else "warm_failed"
+        else:
+            op_ctx["db_work"] = "lite_add_skip_warm"
 
         stall_trace_checkpoint("cart_event_after_api_warm", bg_tasks_queued=_bg_tasks_queued())
         cart_event_request_begin()
@@ -8599,9 +8709,17 @@ async def api_cart_event(request: Request, background_tasks: BackgroundTasks):
                     phase="before_handler",
                 )
             out_sync: dict[str, Any] = {"ok": True, "event": "cart_state_sync"}
-            out_sync.update(
-                _handle_cart_state_sync(payload, background_tasks=background_tasks)
+            sync_out = _handle_cart_state_sync(
+                payload, background_tasks=background_tasks
             )
+            out_sync.update(sync_out)
+            op_ctx["db_work"] = "cart_state_sync"
+            if sync_out.get("ok") is False:
+                op_ctx["recovery_outcome"] = "sync_error"
+            elif sync_out.get("vip_mode"):
+                op_ctx["recovery_outcome"] = "vip_sync"
+            else:
+                op_ctx["recovery_outcome"] = "sync_ok"
             if _cart_state_sync_reason_is_commercial_reengagement(payload):
                 act_payload = dict(payload)
                 act_payload["return_visit_kind"] = "active_commercial_reengagement"
@@ -8642,7 +8760,10 @@ async def api_cart_event(request: Request, background_tasks: BackgroundTasks):
                 bg_tasks_queued=_bg_tasks_queued(),
             )
             out_abandon: dict[str, Any] = {"ok": True, "event": event}
-            out_abandon.update(await handle_cart_abandoned(background_tasks, payload))
+            abandon_out = await handle_cart_abandoned(background_tasks, payload)
+            out_abandon.update(abandon_out)
+            op_ctx["db_work"] = "cart_abandoned"
+            _cart_event_operational_note_recovery(op_ctx, abandon_out)
             stall_trace_checkpoint(
                 "cart_event_before_response_cart_abandoned",
                 bg_tasks_queued=_bg_tasks_queued(),
@@ -8717,8 +8838,21 @@ async def api_cart_event(request: Request, background_tasks: BackgroundTasks):
             "cart_event_before_response_misc",
             bg_tasks_queued=_bg_tasks_queued(),
         )
+        if not op_ctx.get("recovery_outcome"):
+            op_ctx["recovery_outcome"] = "misc"
+        if op_ctx.get("db_work") == "pending":
+            op_ctx["db_work"] = "misc"
         return j(out, 200)
+    except Exception as route_exc:  # noqa: BLE001
+        http_status = 500
+        route_error = str(route_exc)[:120]
+        op_ctx["db_work"] = "error"
+        raise
     finally:
+        if op_ctx:
+            _cart_event_operational_finish(
+                op_ctx, http_status=http_status, error=route_error
+            )
         _log_cart_event_profile(wall_perf_start=wall0, event_label=ev_profile)
         cart_event_request_end()
 

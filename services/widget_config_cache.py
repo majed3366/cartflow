@@ -9,7 +9,7 @@ import time
 from typing import Any, Dict, List, Optional, Set
 
 from sqlalchemy import event
-from sqlalchemy.orm import sessionmaker
+from services.db_session_lifecycle import isolated_db_session
 
 from extensions import db
 from models import CartRecoveryLog
@@ -266,13 +266,9 @@ def _load_snapshot_from_db(norm_slug: str) -> Dict[str, Any]:
 
     from services.cartflow_widget_public_store import store_row_for_widget_public_session
 
-    Maker = sessionmaker(bind=db.engine)
-    sess = Maker()
-    try:
+    with isolated_db_session() as sess:
         row = store_row_for_widget_public_session(sess, norm_slug)
         return build_snapshot_from_store_row(row)
-    finally:
-        sess.close()
 
 
 def _release_refresh_busy(norm_slug: str) -> None:
@@ -332,9 +328,13 @@ def maybe_schedule_background_refresh(
     log.info("[WIDGET CONFIG CACHE REFRESH_SCHEDULED] store_slug=%s", slug[:80])
 
     def _job() -> None:
+        from services.db_session_lifecycle import release_scoped_db_session, scoped_db_session_begin
+
+        scoped_db_session_begin()
         try:
             _run_refresh_impl(slug)
         finally:
+            release_scoped_db_session()
             _release_refresh_busy(slug)
 
     try:
