@@ -79,6 +79,9 @@
     if (typeof window.maEnsureTriggerTemplatesLoaded === "function" && page === "trigger-templates") {
       window.maEnsureTriggerTemplatesLoaded();
     }
+    if (typeof window.maInitWhatsappSettingsPage === "function" && page === "whatsapp") {
+      window.maInitWhatsappSettingsPage();
+    }
     if (page === "carts") {
       var bar = document.querySelector("#page-carts .filter-bar");
       var active = bar && bar.querySelector(".filter-btn.active");

@@ -887,6 +887,11 @@ def ensure_store_widget_schema(db: Any) -> None:
         _ensure_store_cartflow_widget_recovery_gate_columns(db)
         _ensure_store_widget_trigger_settings_column(db)
         _ensure_store_product_intelligence_columns(db)
+        from services.merchant_whatsapp_settings import (  # noqa: PLC0415
+            ensure_store_whatsapp_merchant_settings_schema,
+        )
+
+        ensure_store_whatsapp_merchant_settings_schema()
         _ensure_abandoned_cart_vip_mode_column(db)
         _ensure_abandoned_cart_vip_lifecycle_status_column(db)
         _ensure_abandoned_cart_recovery_session_id_column(db)

@@ -57,6 +57,9 @@ class Store(Base):
     whatsapp_support_url = Column(String(2048), nullable=True)
     # اختياري: رقم واتساب المتجر (تحضير لمصدر إرسال مستقبلي؛ غير مستخدم حالياً في الإرسال)
     store_whatsapp_number = Column(String(64), nullable=True)
+    # إعدادات واتساب من لوحة التاجر (قراءة/حفظ فقط في v1)
+    whatsapp_recovery_enabled = Column(Boolean, default=True, nullable=False)
+    whatsapp_provider_mode = Column(String(32), nullable=True)
     # قوالب واتساب استرجاع قابلة للتهيئة من لوحة التحكم — فارغ = القالب الافتراضي المدمج
     template_price = Column(Text, nullable=True)
     template_shipping = Column(Text, nullable=True)

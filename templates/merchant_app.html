@@ -623,15 +623,45 @@
   <div class="page" id="page-whatsapp">
     <div class="page-header">
       <div class="page-h1">إعدادات واتساب</div>
-      <div class="page-sub">قيم مسجّلة لمتجرك — تعديل التفاصيل الدقيقة يتم عبر واجهات الإعدادات الآمنة</div>
+      <div class="page-sub">رقم المتجر وتفعيل استرجاع الواتساب — تُحفظ لمتجرك دون إرسال تجريبي من هذه الصفحة</div>
     </div>
+    <div id="ma-wa-settings-err" style="display:none;margin-bottom:10px;padding:10px 12px;border-radius:10px;border:1px solid #fecaca;background:#fef2f2;color:#991b1b;font-size:13px;"></div>
+    <div id="ma-wa-settings-ok" style="display:none;margin-bottom:10px;padding:10px 12px;border-radius:10px;border:1px solid #bbf7d0;background:#f0fdf4;color:#166534;font-size:13px;">تم الحفظ بنجاح</div>
     <div class="settings-grid">
+      <div class="setting-card ma-fw-card" style="grid-column:1/-1;">
+        <div class="setting-title">إعدادات واتساب المتجر</div>
+        <div class="setting-desc">احفظ رقم واتساب وتفعيل رسائل الاسترجاع — لا يتم إرسال رسالة من هذه الصفحة</div>
+        <form id="ma-wa-settings-form" class="ma-fw-form" autocomplete="off">
+          <div class="setting-row" style="flex-direction:column;align-items:stretch;gap:6px;">
+            <label class="ma-fw-label" for="ma-wa-store-number">رقم واتساب المتجر</label>
+            <input class="ma-fw-input" id="ma-wa-store-number" name="store_whatsapp_number" type="text" inputmode="tel" dir="ltr" value="" title="+9665XXXXXXXX">
+            <p class="ma-fw-field-hint" style="margin:4px 0 0;font-size:12px;opacity:0.85;">مثال: +9665XXXXXXXX</p>
+          </div>
+          <div class="setting-row" style="align-items:center;justify-content:space-between;">
+            <label class="ma-fw-label" for="ma-wa-recovery-enabled" style="margin:0;">تفعيل إرسال رسائل الاسترجاع</label>
+            <label class="ma-fw-check"><input type="checkbox" id="ma-wa-recovery-enabled" name="whatsapp_recovery_enabled" value="1"></label>
+          </div>
+          <div class="setting-row" style="flex-direction:column;align-items:stretch;gap:6px;">
+            <label class="ma-fw-label" for="ma-wa-provider-mode">وضع المزود</label>
+            <select class="ma-fw-input" id="ma-wa-provider-mode" name="whatsapp_provider_mode">
+              <option value="sandbox">تجريبي (Sandbox)</option>
+              <option value="test">اختبار (Test)</option>
+              <option value="production">إنتاج (Production)</option>
+            </select>
+            <p id="ma-wa-provider-hint" class="ma-fw-field-hint" style="margin:4px 0 0;font-size:12px;opacity:0.85;"></p>
+          </div>
+          <div class="ma-fw-actions">
+            <button type="submit" class="ma-fw-save" id="ma-wa-settings-save">حفظ إعدادات واتساب</button>
+          </div>
+        </form>
+      </div>
       <div class="setting-card">
-        <div class="setting-title">الحساب والاتصال</div>
-        <div class="setting-desc">رقم المتجر المخزّن لإرسال الاسترداد</div>
-        <div class="setting-row"><span class="setting-label">رقم واتساب</span><span class="setting-value">{{ merchant_wa_number_display | default("—") }}</span></div>
+        <div class="setting-title">الحالة والمراقبة</div>
+        <div class="setting-desc">قراءة فقط — تُحدَّث بعد الحفظ أو تحميل الصفحة</div>
+        <div class="setting-row"><span class="setting-label">حالة واتساب</span><span class="setting-value" id="ma-wa-status-display">—</span></div>
         <div class="setting-row"><span class="setting-label">حالة الجاهزية</span><div id="ma-page-whatsapp-ready-pill" class="wa-pill {% if wa_state_key != 'ready' %}wa-muted{% endif %}" style="font-size:10px;padding:3px 9px;"><div class="wa-dot"></div><span id="ma-page-whatsapp-ready-text">{{ wa_badge_ar | default("—") }}</span></div></div>
-        <div class="setting-row"><span class="setting-label">آخر إرسال مسجّل</span><span class="setting-value" id="ma-wa-last-send">{{ merchant_wa_last_send_ar | default("—") }}</span></div>
+        <div class="setting-row"><span class="setting-label">آخر حالة إرسال</span><span class="setting-value" id="ma-wa-last-send-status">—</span></div>
+        <div class="setting-row"><span class="setting-label">وقت آخر إرسال</span><span class="setting-value" id="ma-wa-last-send">{{ merchant_wa_last_send_ar | default("—") }}</span></div>
       </div>
       <div class="setting-card">
         <div class="setting-title">قواعد الإرسال</div>
@@ -639,20 +669,6 @@
         <div class="setting-row"><span class="setting-label">تأخير الرسالة الأولى</span><span class="setting-value">{{ merchant_wa_first_delay_ar | default("—") }}</span></div>
         <div class="setting-row"><span class="setting-label">المحاولة الثانية</span><span class="setting-value">{{ merchant_wa_second_delay_ar | default("—") }}</span></div>
         <div class="setting-row"><span class="setting-label">الحد الأقصى للرسائل</span><span class="setting-value">{{ merchant_wa_max_messages_ar | default("—") }}</span></div>
-        <div class="setting-row"><span class="setting-label">منع التكرار</span><span class="setting-value">يُطبّق تلقائياً على مستوى النظام</span></div>
-        <div class="setting-row"><span class="setting-label">إيقاف عند عودة العميل</span><span class="setting-value">مفعّل عند اكتشاف عودة للمتجر</span></div>
-      </div>
-      <div class="setting-card">
-        <div class="setting-title">إعدادات VIP</div>
-        <div class="setting-desc">عتبة السلة المميزة — السلوك الافتراضي دون إرسال تلقائي</div>
-        <div class="setting-row"><span class="setting-label">حد VIP</span><span class="setting-value">{{ merchant_wa_vip_threshold_ar | default("—") }}</span></div>
-        <div class="setting-row"><span class="setting-label">إرسال تلقائي لـ VIP</span><span class="toggle off" aria-hidden="true"></span></div>
-        <div class="setting-row"><span class="setting-label">تنبيه التاجر فقط</span><span class="toggle" aria-hidden="true"></span></div>
-      </div>
-      <div class="setting-card">
-        <div class="setting-title">ساعات العمل</div>
-        <div class="setting-desc">لا توجد قيود ساعات مخزّنة في بطاقة المتجر — الإرسال يخضع لجدولة النظام</div>
-        <div class="setting-row"><span class="setting-label">نافذة الإرسال</span><span class="setting-value">حسب إعدادات المنصة والنظام</span></div>
       </div>
     </div>
   </div>
@@ -695,6 +711,7 @@
 </div>
 
 <script defer src="/static/merchant_dashboard_lazy.js"></script>
+<script defer src="/static/merchant_whatsapp_settings.js"></script>
 <script defer src="/static/merchant_trigger_templates.js"></script>
 <script defer src="/static/merchant_widget_panel.js"></script>
 <script defer src="/static/merchant_app.js"></script>
