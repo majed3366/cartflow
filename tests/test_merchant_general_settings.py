@@ -117,6 +117,45 @@ class MerchantGeneralSettingsTests(unittest.TestCase):
         self.assertIn("merchant_automation_mode", body)
         self.assertNotIn("recovery_delay", body)
         self.assertNotIn("widget_trigger_config", body)
+        self.assertTrue(body.get("apply_handlers_skipped"))
+        self.assertIn("total_duration_ms", body)
+        self.assertLess(float(body["total_duration_ms"]), 3000.0)
+
+    def test_test123_persists_after_save_and_get(self) -> None:
+        post = self.client.post(
+            "/api/recovery-settings",
+            json={
+                "widget_display_name": "TEST123",
+                "merchant_settings_scope": "general",
+            },
+        )
+        self.assertEqual(post.status_code, 200, post.text[:400])
+        self.assertEqual(post.json().get("widget_display_name"), "TEST123")
+
+        get_after = self.client.get("/api/recovery-settings").json()
+        self.assertEqual(get_after.get("widget_display_name"), "TEST123")
+        self.assertEqual(
+            get_after.get("settings_widget_name_display_ar"), "TEST123"
+        )
+
+        saved = db.session.get(Store, self.row.id)
+        assert saved is not None
+        self.assertEqual((saved.widget_display_name or "").strip(), "TEST123")
+
+    def test_general_save_does_not_rewrite_recovery_delay(self) -> None:
+        self.row.recovery_delay = 17
+        db.session.commit()
+        self.client.post(
+            "/api/recovery-settings",
+            json={
+                "widget_display_name": "CART",
+                "merchant_settings_scope": "general",
+            },
+        )
+        db.session.expire(self.row)
+        refreshed = db.session.get(Store, self.row.id)
+        assert refreshed is not None
+        self.assertEqual(refreshed.recovery_delay, 17)
 
     def test_dashboard_settings_page_has_form(self) -> None:
         html = self.client.get("/dashboard").text or ""

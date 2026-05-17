@@ -183,6 +183,6 @@
 
   window.maInitGeneralSettingsPage = function () {
     bindOnce();
-    loadSettings(false);
+    loadSettings(true);
   };
 })();

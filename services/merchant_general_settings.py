@@ -2,8 +2,11 @@
 """Merchant dashboard general operational preferences — persist/display only."""
 from __future__ import annotations
 
+import logging
+import os
+import time
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 
 from sqlalchemy import inspect, text
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
@@ -11,6 +14,13 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from extensions import db
 from models import Store
 from services.merchant_dashboard_reference_ui import merchant_relative_time_arabic
+
+_log = logging.getLogger("cartflow.merchant_general_settings")
+
+
+def _general_settings_logging_enabled() -> bool:
+    raw = (os.environ.get("CARTFLOW_LOG_GENERAL_SETTINGS") or "1").strip().lower()
+    return raw not in ("0", "false", "no", "off")
 
 _VALID_AUTOMATION_MODES = frozenset({"manual", "assistant", "auto"})
 _AUTOMATION_MODE_AR = {
@@ -192,6 +202,9 @@ def is_merchant_general_settings_only_patch(body: Optional[Dict[str, Any]]) -> b
         return False
     if not keys <= _GENERAL_PATCH_KEYS:
         return False
+    scope = str(body.get("merchant_settings_scope") or "").strip().lower()
+    if scope == "general":
+        return True
     return bool(
         keys
         & {
@@ -205,10 +218,87 @@ def is_merchant_general_settings_only_patch(body: Optional[Dict[str, Any]]) -> b
     )
 
 
-def merchant_general_settings_patch_response(store: Optional[Any]) -> Dict[str, Any]:
+def merchant_general_settings_patch_response(
+    store: Optional[Any], *, total_duration_ms: Optional[float] = None
+) -> Dict[str, Any]:
     payload: Dict[str, Any] = {"ok": True}
     payload.update(merchant_general_settings_fields_for_api(store))
+    if total_duration_ms is not None:
+        payload["total_duration_ms"] = round(total_duration_ms, 2)
     return payload
+
+
+def _widget_display_name_on_row(row: Optional[Any]) -> Optional[str]:
+    if row is None:
+        return None
+    raw = getattr(row, "widget_display_name", None)
+    if raw is None:
+        return None
+    return str(raw).strip() or None
+
+
+def post_merchant_general_settings_only(body: Dict[str, Any]) -> Tuple[Dict[str, Any], int]:
+    """
+    Fast path: general prefs only — no recovery merge, no template/catalog/trigger rewrites.
+    """
+    t0 = time.perf_counter()
+    keys = sorted(k for k in body if not str(k).startswith("_"))
+    scope = str(body.get("merchant_settings_scope") or "").strip().lower()
+    log_on = _general_settings_logging_enabled()
+
+    ensure_store_merchant_general_settings_schema()
+    row = db.session.query(Store).order_by(Store.id.desc()).first()
+    if row is None:
+        return {"ok": False, "error": "no_store"}, 404
+
+    store_id = getattr(row, "id", None)
+    before_name = _widget_display_name_on_row(row)
+    if log_on:
+        _log.info(
+            "[GENERAL SETTINGS SAVE] incoming keys=%s scope=%s store_id=%s "
+            "widget_display_name(before)=%s apply_handlers_skipped="
+            "recovery,templates,triggers,catalog,vip,widget_cache",
+            keys,
+            scope or "—",
+            store_id,
+            before_name,
+        )
+
+    apply_merchant_general_settings_from_body(row, body)
+    after_apply_name = _widget_display_name_on_row(row)
+
+    try:
+        db.session.commit()
+    except (OSError, SQLAlchemyError) as exc:
+        db.session.rollback()
+        if log_on:
+            _log.warning(
+                "[GENERAL SETTINGS SAVE] commit failed store_id=%s error=%s",
+                store_id,
+                exc,
+            )
+        return {"ok": False, "error": "save_failed"}, 500
+
+    db.session.expire(row)
+    saved = db.session.get(Store, row.id) if row.id is not None else None
+    saved_name = _widget_display_name_on_row(saved)
+    duration_ms = (time.perf_counter() - t0) * 1000.0
+
+    if log_on:
+        _log.info(
+            "[GENERAL SETTINGS SAVE] widget_display_name(after)=%s "
+            "widget_display_name(saved)=%s duration_ms=%.2f "
+            "scope_isolated=true",
+            after_apply_name,
+            saved_name,
+            duration_ms,
+        )
+
+    payload = merchant_general_settings_patch_response(
+        saved if saved is not None else row, total_duration_ms=duration_ms
+    )
+    payload["apply_handlers_skipped"] = True
+    return payload, 200
 
 
 def apply_merchant_general_settings_from_body(row: Store, body: Dict[str, Any]) -> None:

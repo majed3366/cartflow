@@ -342,6 +342,7 @@ from services.merchant_general_settings import (
     is_merchant_general_settings_only_patch,
     merchant_general_settings_fields_for_api,
     merchant_general_settings_patch_response,
+    post_merchant_general_settings_only,
 )
 from services.merchant_vip_settings import (
     apply_merchant_vip_settings_from_body,
@@ -1691,6 +1692,9 @@ async def api_recovery_settings(request: Request):
         if not isinstance(body, dict):
             return j({"ok": False, "error": "json_object_required"}, 400)
         raw_body = dict(body)
+        if is_merchant_general_settings_only_patch(raw_body):
+            data, code = post_merchant_general_settings_only(raw_body)
+            return j(data, code)
         merged = _merge_recovery_settings_post_body(raw_body)
         uw = "whatsapp_support_url" in raw_body
         us = "store_whatsapp_number" in raw_body
