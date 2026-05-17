@@ -722,43 +722,80 @@
   <div class="page" id="page-settings">
     <div class="page-header">
       <div class="page-h1">الإعدادات العامة</div>
-      <div class="page-sub">ملخص بيانات المتجر من السجل الحالي</div>
+      <div class="page-sub">تفضيلات تشغيلية بسيطة — لا تغيّر سلوك الاسترجاع أو الواتساب تلقائياً</div>
     </div>
-    <div class="settings-grid">
-      <div class="setting-card">
-        <div class="setting-title">معلومات المتجر</div>
-        <div class="setting-desc">الاسم والربط كما في آخر سجل متجر</div>
-        <div class="setting-row"><span class="setting-label">اسم المتجر</span><span class="setting-value">{{ merchant_store_display_name | default("متجرك") }}</span></div>
-        <div class="setting-row"><span class="setting-label">المنصة / المعرف</span><span class="setting-value">{{ merchant_platform_ar | default("—") }}</span></div>
-        <div class="setting-row"><span class="setting-label">العملة</span><span class="setting-value">ريال سعودي</span></div>
-        <div class="setting-row"><span class="setting-label">اللغة</span><span class="setting-value">العربية</span></div>
+    <div id="ma-general-settings-err" style="display:none;margin-bottom:10px;padding:10px 12px;border-radius:10px;border:1px solid #fecaca;background:#fef2f2;color:#991b1b;font-size:13px;"></div>
+    <div id="ma-general-settings-ok" style="display:none;margin-bottom:10px;padding:10px 12px;border-radius:10px;border:1px solid #bbf7d0;background:#f0fdf4;color:#166534;font-size:13px;">تم حفظ الإعدادات</div>
+    <form id="ma-general-settings-form" class="ma-fw-form" autocomplete="off">
+      <div class="settings-grid">
+        <div class="setting-card ma-fw-card">
+          <div class="setting-title">الإشعارات</div>
+          <div class="setting-desc">اختر ما تريد أن يظهر لك داخل اللوحة</div>
+          <div class="setting-row" style="align-items:flex-start;justify-content:space-between;gap:12px;">
+            <div>
+              <label class="ma-fw-label" for="ma-general-notify-vip" style="margin:0;">تنبيه سلة VIP</label>
+              <p class="ma-fw-field-hint" style="margin:4px 0 0;font-size:12px;opacity:0.85;">إشعار عند ظهور سلة مهمة.</p>
+            </div>
+            <label class="ma-fw-check"><input type="checkbox" id="ma-general-notify-vip" name="settings_notify_vip" value="1"></label>
+          </div>
+          <div class="setting-row" style="align-items:flex-start;justify-content:space-between;gap:12px;">
+            <div>
+              <label class="ma-fw-label" for="ma-general-notify-recovery" style="margin:0;">تنبيه إيراد مسترجع</label>
+              <p class="ma-fw-field-hint" style="margin:4px 0 0;font-size:12px;opacity:0.85;">إشعار عند استعادة عملية شراء.</p>
+            </div>
+            <label class="ma-fw-check"><input type="checkbox" id="ma-general-notify-recovery" name="settings_notify_recovery_success" value="1"></label>
+          </div>
+          <div class="setting-row" style="align-items:flex-start;justify-content:space-between;gap:12px;">
+            <div>
+              <label class="ma-fw-label" for="ma-general-notify-wa-fail" style="margin:0;">تنبيه انقطاع واتساب</label>
+              <p class="ma-fw-field-hint" style="margin:4px 0 0;font-size:12px;opacity:0.85;">إشعار عند وجود مشكلة إرسال.</p>
+            </div>
+            <label class="ma-fw-check"><input type="checkbox" id="ma-general-notify-wa-fail" name="settings_notify_whatsapp_failure" value="1"></label>
+          </div>
+        </div>
+        <div class="setting-card ma-fw-card">
+          <div class="setting-title">الودجيت والتثبيت</div>
+          <div class="setting-desc">تفضيلات عرض فقط — لا تغيّر الودجيت في المتجر من هذه الصفحة</div>
+          <div class="setting-row" style="align-items:center;justify-content:space-between;">
+            <label class="ma-fw-label" for="ma-general-widget-enabled" style="margin:0;">الودجيت مفعل</label>
+            <label class="ma-fw-check"><input type="checkbox" id="ma-general-widget-enabled" name="widget_enabled" value="1" checked></label>
+          </div>
+          <div class="setting-row" style="flex-direction:column;align-items:stretch;gap:6px;">
+            <label class="ma-fw-label" for="ma-general-widget-name">اسم الودجيت</label>
+            <input class="ma-fw-input" id="ma-general-widget-name" name="widget_display_name" type="text" maxlength="255" dir="rtl" placeholder="CartFlow">
+          </div>
+        </div>
+        <div class="setting-card ma-fw-card">
+          <div class="setting-title">طريقة التشغيل</div>
+          <div class="setting-desc">للتذكير فقط — لا يغيّر آلية الاسترجاع حالياً</div>
+          <div class="setting-row" style="flex-direction:column;align-items:flex-start;gap:10px;">
+            <label class="ma-fw-radio"><input type="radio" name="merchant_automation_mode" value="manual" checked> <span>يدوي</span></label>
+            <label class="ma-fw-radio"><input type="radio" name="merchant_automation_mode" value="assistant"> <span>مساعد</span></label>
+            <label class="ma-fw-radio"><input type="radio" name="merchant_automation_mode" value="auto"> <span>تلقائي</span></label>
+          </div>
+        </div>
+        <div class="setting-card">
+          <div class="setting-title">ملخص (قراءة فقط)</div>
+          <div class="setting-desc">معلومات من إعداداتك المحفوظة</div>
+          <div class="setting-row"><span class="setting-label">وضع التشغيل الحالي</span><span class="setting-value" id="ma-general-mode-display">—</span></div>
+          <div class="setting-row"><span class="setting-label">الإشعارات المفعلة</span><span class="setting-value" id="ma-general-notify-display">—</span></div>
+          <div class="setting-row"><span class="setting-label">اسم الودجيت الحالي</span><span class="setting-value" id="ma-general-widget-name-display">—</span></div>
+          <div class="setting-row"><span class="setting-label">آخر تحديث للإعدادات</span><span class="setting-value" id="ma-general-updated-display">—</span></div>
+        </div>
       </div>
-      <div class="setting-card">
-        <div class="setting-title">الخطة والاشتراك</div>
-        <div class="setting-desc">عرض الخطة الحالية للوحة التاجر</div>
-        <div class="setting-row"><span class="setting-label">الخطة الحالية</span><span class="setting-value" style="color:var(--green-mid);font-weight:700;">احترافي</span></div>
-        <div class="setting-row"><span class="setting-label">سلال هذا الشهر (مؤشر)</span><span class="setting-value" id="ma-settings-month-cart-line">{{ merchant_month_abandoned_fmt | default("0") }} سلة مسجّلة</span></div>
+      <div class="ma-fw-actions" style="margin-top:16px;">
+        <button type="submit" class="ma-fw-save" id="ma-general-settings-save">حفظ الإعدادات</button>
       </div>
-      <div class="setting-card">
-        <div class="setting-title">الإشعارات</div>
-        <div class="setting-desc">تنبيهات تشغيلية — تفاصيل التفعيل من فريق الدعم عند الحاجة</div>
-        <div class="setting-row"><span class="setting-label">تنبيه سلة VIP</span><span class="toggle" aria-hidden="true"></span></div>
-        <div class="setting-row"><span class="setting-label">تنبيه إيراد مسترد</span><span class="toggle" aria-hidden="true"></span></div>
-        <div class="setting-row"><span class="setting-label">تنبيه انقطاع واتساب</span><span class="toggle off" aria-hidden="true"></span></div>
-      </div>
-      <div class="setting-card">
-        <div class="setting-title">الودجيت والتثبيت</div>
-        <div class="setting-desc">حالة ظهور الودجيت للعملاء</div>
-        <div class="setting-row"><span class="setting-label">الودجيت مفعّل</span><span class="setting-value" id="ma-settings-widget-enabled">{% if merchant_widget_installed %}نعم{% else %}لا{% endif %}</span></div>
-        <div class="setting-row"><span class="setting-label">اسم الودجيت</span><span class="setting-value" id="ma-settings-widget-title">{{ merchant_widget_title_ar | default("—") }}</span></div>
-      </div>
-    </div>
+    </form>
   </div>
+
+
 </div>
 
 <script defer src="/static/merchant_dashboard_lazy.js"></script>
 <script defer src="/static/merchant_whatsapp_settings.js"></script>
 <script defer src="/static/merchant_vip_settings.js"></script>
+<script defer src="/static/merchant_general_settings.js"></script>
 <script defer src="/static/merchant_trigger_templates.js"></script>
 <script defer src="/static/merchant_widget_panel.js"></script>
 <script defer src="/static/merchant_app.js"></script>

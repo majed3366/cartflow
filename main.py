@@ -337,6 +337,12 @@ from services.merchant_whatsapp_settings import (
     apply_merchant_whatsapp_settings_from_body,
     merchant_whatsapp_settings_fields_for_api,
 )
+from services.merchant_general_settings import (
+    apply_merchant_general_settings_from_body,
+    is_merchant_general_settings_only_patch,
+    merchant_general_settings_fields_for_api,
+    merchant_general_settings_patch_response,
+)
 from services.merchant_vip_settings import (
     apply_merchant_vip_settings_from_body,
     is_merchant_vip_only_patch,
@@ -1114,6 +1120,28 @@ def _merge_recovery_settings_post_body(body: Dict[str, Any]) -> Dict[str, Any]:
             out["vip_notify_enabled"] = True if raw_vn is None else bool(raw_vn)
         if "vip_note" not in body:
             out["vip_note"] = getattr(row, "vip_note", None)
+        if "settings_notify_vip" not in body:
+            raw_sn = getattr(row, "settings_notify_vip", None)
+            out["settings_notify_vip"] = True if raw_sn is None else bool(raw_sn)
+        if "settings_notify_recovery_success" not in body:
+            raw_sr = getattr(row, "settings_notify_recovery_success", None)
+            out["settings_notify_recovery_success"] = (
+                True if raw_sr is None else bool(raw_sr)
+            )
+        if "settings_notify_whatsapp_failure" not in body:
+            raw_sw = getattr(row, "settings_notify_whatsapp_failure", None)
+            out["settings_notify_whatsapp_failure"] = (
+                True if raw_sw is None else bool(raw_sw)
+            )
+        if "widget_enabled" not in body:
+            raw_we = getattr(row, "widget_enabled", None)
+            out["widget_enabled"] = True if raw_we is None else bool(raw_we)
+        if "widget_display_name" not in body:
+            out["widget_display_name"] = getattr(row, "widget_display_name", None)
+        if "merchant_automation_mode" not in body:
+            out["merchant_automation_mode"] = getattr(
+                row, "merchant_automation_mode", None
+            ) or "manual"
         if "vip_offer_enabled" not in body:
             out["vip_offer_enabled"] = bool(getattr(row, "vip_offer_enabled", False))
         if "vip_offer_type" not in body:
@@ -1241,6 +1269,7 @@ def _dev_apply_recovery_settings_update(
         apply_product_catalog_from_body(row, request_body)
         apply_merchant_whatsapp_settings_from_body(row, request_body)
         apply_merchant_vip_settings_from_body(row, request_body)
+        apply_merchant_general_settings_from_body(row, request_body)
     db.session.commit()
     saved = db.session.get(Store, row.id)
     if saved is not None:
@@ -1250,6 +1279,8 @@ def _dev_apply_recovery_settings_update(
     anchor = saved if saved is not None else row
     if request_body is not None and is_merchant_vip_only_patch(request_body):
         return merchant_vip_settings_patch_response(anchor), 200
+    if request_body is not None and is_merchant_general_settings_only_patch(request_body):
+        return merchant_general_settings_patch_response(anchor), 200
     wa: Optional[str] = getattr(anchor, "whatsapp_support_url", None)
     if not (isinstance(wa, str) and wa.strip()):
         wa = None
@@ -1285,6 +1316,7 @@ def _dev_apply_recovery_settings_update(
     payload.update(offer_applications_count_for_api(anchor))
     payload.update(merchant_whatsapp_settings_fields_for_api(anchor))
     payload.update(merchant_vip_settings_fields_for_api(anchor, include_activity=False))
+    payload.update(merchant_general_settings_fields_for_api(anchor))
     payload["guided_recovery_defaults"] = guided_defaults_for_api()
     return payload, 200
 
@@ -1730,6 +1762,7 @@ def api_recovery_settings_get():
         payload.update(offer_applications_count_for_api(row))
         payload.update(merchant_whatsapp_settings_fields_for_api(row))
         payload.update(merchant_vip_settings_fields_for_api(row))
+        payload.update(merchant_general_settings_fields_for_api(row))
         payload["guided_recovery_defaults"] = guided_defaults_for_api()
         return j(payload)
     except Exception as e:  # noqa: BLE001

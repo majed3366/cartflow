@@ -85,6 +85,9 @@
     if (typeof window.maInitVipSettingsPage === "function" && page === "vip") {
       window.maInitVipSettingsPage();
     }
+    if (typeof window.maInitGeneralSettingsPage === "function" && page === "settings") {
+      window.maInitGeneralSettingsPage();
+    }
     if (page === "carts") {
       var bar = document.querySelector("#page-carts .filter-bar");
       var active = bar && bar.querySelector(".filter-btn.active");
