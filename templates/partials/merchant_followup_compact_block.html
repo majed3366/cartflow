@@ -1,6 +1,17 @@
+{% set _rtag = fr.reason_tag_raw | default('', true) | trim %}
+{% set _goal = merchant_reason_goal_ar(_rtag) %}
+{% set _reply = merchant_reply_preview_display(inbound_message=fr.inbound_message, last_message_line_ar=fr.last_message_line_ar) %}
 <div class="recovery-truth recovery-truth-compact" aria-label="ملخص التفاعل">
-  <div class="recovery-truth-line"><strong>الحالة الحالية:</strong> تفاعل العميل</div>
+  <div class="recovery-truth-line"><strong>الحالة:</strong> تفاعل العميل</div>
+  {% if _reply %}
+  <div class="recovery-truth-line"><strong>رد العميل:</strong> {{ _reply }}</div>
+  {% endif %}
+  <div class="recovery-truth-line"><strong>الإجراء:</strong> بدأ النظام متابعة الاعتراض</div>
+  {% if _goal %}
+  <div class="recovery-truth-line"><strong>الهدف:</strong> {{ _goal }}</div>
+  {% elif _rtag %}
+  <div class="recovery-truth-line"><strong>الهدف:</strong> اختار النظام رسالة مناسبة بناءً على سبب التردد.</div>
+  {% endif %}
   <div class="recovery-truth-line"><strong>الانتظار:</strong> النظام يتابع تلقائياً</div>
-  <div class="recovery-truth-line"><strong>الإجراء:</strong> بدأ النظام متابعة المسار</div>
-  <div class="recovery-truth-line recovery-truth-muted"><strong>تدخل التاجر:</strong> لا</div>
+  <div class="recovery-truth-line recovery-truth-muted"><strong>تدخل:</strong> لا</div>
 </div>

@@ -184,6 +184,68 @@
     stopped_manual: 1,
   };
 
+  var MERCHANT_REASON_GOAL_AR = {
+    price: "معالجة قلق السعر",
+    price_high: "معالجة قلق السعر",
+    shipping: "طمأنة حول الشحن",
+    delivery: "طمأنة حول الشحن",
+    thinking: "دعم اتخاذ القرار",
+    warranty: "طمأنة حول الجودة",
+    quality: "طمأنة حول الجودة",
+    human_support: "طمأنة حول الجودة",
+    trust: "طمأنة حول الجودة",
+  };
+
+  function merchantReasonGoalAr(reasonTag) {
+    var k = String(reasonTag || "")
+      .trim()
+      .toLowerCase();
+    if (!k) return "";
+    return MERCHANT_REASON_GOAL_AR[k] || "متابعة سبب التردد";
+  }
+
+  function merchantTruncateText(text, maxLen) {
+    var raw = String(text || "").trim();
+    if (!raw) return "";
+    if (raw.length <= maxLen) return raw;
+    return raw.slice(0, maxLen - 1).trim() + "…";
+  }
+
+  function merchantPreviewFromWhatsappLine(line) {
+    var s = String(line || "").trim();
+    if (!s || s.indexOf("—") < 0) return "";
+    var tail = s.split("—").slice(1).join("—").trim();
+    if (tail.indexOf("(") === 0 && tail.lastIndexOf(")") === tail.length - 1) {
+      tail = tail.slice(1, -1).trim();
+    }
+    if (tail && tail.indexOf("ننتظر") !== 0) return tail;
+    return "";
+  }
+
+  function merchantSentMessageLine(mc) {
+    var prev =
+      String(mc.message_preview || "").trim() ||
+      merchantPreviewFromWhatsappLine(mc.merchant_whatsapp_line_ar);
+    if (prev) return '"' + merchantTruncateText(prev, 80) + '"';
+    return "تم إرسال رسالة مناسبة لسبب التردد";
+  }
+
+  function merchantReplyPreview(fr) {
+    var raw = String((fr && fr.inbound_message) || "").trim();
+    if (!raw && fr && fr.last_message_line_ar) {
+      var line = String(fr.last_message_line_ar).trim();
+      if (
+        line &&
+        line.indexOf("لا يوجد رد") < 0 &&
+        line.indexOf("يتابع النظام") < 0
+      ) {
+        raw = line;
+      }
+    }
+    if (!raw) return "";
+    return '"' + merchantTruncateText(raw, 60) + '"';
+  }
+
   function merchantNeedsIntervention(mc) {
     if (!mc) return false;
     if (mc.merchant_next_action_urgent) return true;
@@ -211,7 +273,7 @@
     var waiting = "النظام يتابع تلقائياً";
     if (pk === "customer_replied" || coarse === "replied" || coarse === "engaged") {
       status = "تفاعل العميل";
-      action = "بدأ النظام متابعة المسار";
+      action = "بدأ النظام متابعة الاعتراض";
       waiting = "النظام يتابع تلقائياً";
     } else if (pur || pk === "purchase_complete" || coarse === "converted") {
       status = "اكتمل الشراء";
@@ -227,7 +289,7 @@
       coarse === "sent"
     ) {
       status = "أُرسلت رسالة";
-      action = "بانتظار العميل";
+      action = "—";
       waiting = "ننتظر تفاعل العميل";
     } else if (
       pk === "delay_waiting" ||
@@ -249,11 +311,21 @@
       action = "راجع الإعدادات";
       waiting = "—";
     }
+    var isSent =
+      pk === "awaiting_customer_after_send" ||
+      pk === "message_sent" ||
+      coarse === "sent";
+    var isInteraction =
+      pk === "customer_replied" || coarse === "replied" || coarse === "engaged";
     return {
       status: status,
       action: action,
       waiting: waiting,
       needsIntervention: needs,
+      messageLine: isSent ? merchantSentMessageLine(mc) : "",
+      goalLine: merchantReasonGoalAr(mc.reason_tag) || "",
+      isSent: isSent,
+      isInteraction: isInteraction,
     };
   }
 
@@ -262,16 +334,31 @@
     var h =
       '<div class="recovery-truth recovery-truth-compact" aria-label="ملخص المسار">';
     h +=
-      '<div class="recovery-truth-line"><strong>الحالة الحالية:</strong> ' +
+      '<div class="recovery-truth-line"><strong>الحالة:</strong> ' +
       esc(c.status) +
       "</div>";
+    if (c.messageLine) {
+      h +=
+        '<div class="recovery-truth-line"><strong>الرسالة:</strong> ' +
+        esc(c.messageLine) +
+        "</div>";
+    }
+    if (c.goalLine) {
+      h +=
+        '<div class="recovery-truth-line"><strong>الهدف:</strong> ' +
+        esc(c.goalLine) +
+        "</div>";
+    } else if (c.isSent) {
+      h +=
+        '<div class="recovery-truth-line"><strong>الهدف:</strong> اختار النظام رسالة مناسبة بناءً على سبب التردد.</div>';
+    }
     if (c.waiting && c.waiting !== "—") {
       h +=
         '<div class="recovery-truth-line"><strong>الانتظار:</strong> ' +
         esc(c.waiting) +
         "</div>";
     }
-    if (c.action && c.action !== "—") {
+    if (c.action && c.action !== "—" && !c.isSent) {
       h +=
         '<div class="recovery-truth-line"><strong>الإجراء:</strong> ' +
         esc(c.action) +
@@ -280,21 +367,42 @@
     h +=
       '<div class="recovery-truth-line' +
       (c.needsIntervention ? "" : " recovery-truth-muted") +
-      '"><strong>تدخل التاجر:</strong> ' +
+      '"><strong>تدخل:</strong> ' +
       (c.needsIntervention ? "نعم" : "لا") +
       "</div>";
     return h + "</div>";
   }
 
-  function followupCompactHtml() {
-    return (
-      '<div class="recovery-truth recovery-truth-compact" aria-label="ملخص التفاعل">' +
-      '<div class="recovery-truth-line"><strong>الحالة الحالية:</strong> تفاعل العميل</div>' +
-      '<div class="recovery-truth-line"><strong>الانتظار:</strong> النظام يتابع تلقائياً</div>' +
-      '<div class="recovery-truth-line"><strong>الإجراء:</strong> بدأ النظام متابعة المسار</div>' +
-      '<div class="recovery-truth-line recovery-truth-muted"><strong>تدخل التاجر:</strong> لا</div>' +
-      "</div>"
-    );
+  function followupCompactHtml(fr) {
+    fr = fr || {};
+    var goal = merchantReasonGoalAr(fr.reason_tag_raw || fr.reason_tag_ar);
+    var reply = merchantReplyPreview(fr);
+    var h =
+      '<div class="recovery-truth recovery-truth-compact" aria-label="ملخص التفاعل">';
+    h +=
+      '<div class="recovery-truth-line"><strong>الحالة:</strong> تفاعل العميل</div>';
+    if (reply) {
+      h +=
+        '<div class="recovery-truth-line"><strong>رد العميل:</strong> ' +
+        esc(reply) +
+        "</div>";
+    }
+    h +=
+      '<div class="recovery-truth-line"><strong>الإجراء:</strong> بدأ النظام متابعة الاعتراض</div>';
+    if (goal) {
+      h +=
+        '<div class="recovery-truth-line"><strong>الهدف:</strong> ' +
+        esc(goal) +
+        "</div>";
+    } else if (fr.reason_tag_raw) {
+      h +=
+        '<div class="recovery-truth-line"><strong>الهدف:</strong> اختار النظام رسالة مناسبة بناءً على سبب التردد.</div>';
+    }
+    h +=
+      '<div class="recovery-truth-line"><strong>الانتظار:</strong> النظام يتابع تلقائياً</div>';
+    h +=
+      '<div class="recovery-truth-line recovery-truth-muted"><strong>تدخل:</strong> لا</div>';
+    return h + "</div>";
   }
 
   function merchantNextLineShort(mc) {
@@ -529,7 +637,7 @@
     var ph = digits
       ? '<span class="ph-ok">✓ متوفر</span>'
       : '<span class="ph-no">✗ غير متوفر</span>';
-    var act = followupCompactHtml();
+    var act = followupCompactHtml(fr);
     return (
       "<tr>" +
       "<td>" +

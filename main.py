@@ -225,6 +225,19 @@ app.state.secret_key = os.getenv("SECRET_KEY", "dev-only-change-in-production")
 _ROOT = os.path.dirname(os.path.abspath(__file__))
 # مسار مُطلَق: يعمل حتى اختلاف ‎working directory‎ على ‎Railway / Docker‎
 templates = Jinja2Templates(directory=os.path.join(_ROOT, "templates"))
+from services.merchant_lifecycle_reasoning_display import (  # noqa: E402
+    merchant_message_preview_display,
+    merchant_reason_goal_ar,
+    merchant_reason_goal_line_ar,
+    merchant_reply_preview_display,
+    merchant_sent_message_line_ar,
+)
+
+templates.env.globals["merchant_reason_goal_ar"] = merchant_reason_goal_ar
+templates.env.globals["merchant_reason_goal_line_ar"] = merchant_reason_goal_line_ar
+templates.env.globals["merchant_message_preview_display"] = merchant_message_preview_display
+templates.env.globals["merchant_sent_message_line_ar"] = merchant_sent_message_line_ar
+templates.env.globals["merchant_reply_preview_display"] = merchant_reply_preview_display
 _static = os.path.join(_ROOT, "static")
 if os.path.isdir(_static):
     app.mount("/static", StaticFiles(directory=_static), name="static")
