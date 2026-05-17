@@ -3752,6 +3752,26 @@ def _normal_recovery_phase_steps_payload(
             int(getattr(x, "id", 0) or 0) for x in _grp_bh
         ],
     }
+    try:
+        from services.merchant_recovery_lifecycle_truth import (
+            attach_merchant_recovery_lifecycle_truth,
+        )
+
+        attach_merchant_recovery_lifecycle_truth(
+            out_nr,
+            ac=ac,
+            phase_key=current_key,
+            coarse=coarse,
+            sent_ct=int(sent_ct),
+            log_statuses=_log_statuses_union,
+            behavioral=behavioral_pre,
+            reason_tag=_reason_tag_for_abandoned_cart(ac),
+            has_phone=bool((cust_raw or "").strip()),
+            latest_log=_tail_row if _tail_row is not None else blocker_row,
+            attempt_cap=max_disp,
+        )
+    except Exception:  # noqa: BLE001
+        pass
     return out_nr
 
 
@@ -12154,6 +12174,49 @@ def _merchant_normal_recovery_light_payload_merchant_batch(
     }
     if trust:
         out["merchant_identity_trust_ar"] = trust
+    ac0 = grp_sorted[0]
+    aid0 = int(getattr(ac0, "id", 0) or 0)
+    bh_lc = _normal_recovery_behavioral_merge_from_cart_group(grp_sorted)
+    log_u_lc = _normal_recovery_recovery_log_statuses_union_merchant_batch(
+        grp_sorted, batch
+    )
+    pk_lc = _normal_recovery_dashboard_phase_key_merchant_batch(
+        ac0,
+        behavioral_override=bh_lc,
+        recovery_log_statuses=log_u_lc,
+        batch=batch,
+    )
+    sent_ct_lc = int(batch.sent_real_count.get(aid0, 0) or 0)
+    try:
+        from services.merchant_recovery_lifecycle_truth import (
+            attach_merchant_recovery_lifecycle_truth,
+            matched_recovery_logs,
+        )
+
+        store_lc = batch.store_row_for_cart(ac0)
+        try:
+            cap_lc = max(
+                1,
+                int(_normal_recovery_configured_message_count_for_abandoned_cart(ac0, store_lc)),
+            )
+        except (TypeError, ValueError):
+            cap_lc = 1
+        attach_merchant_recovery_lifecycle_truth(
+            out,
+            ac=ac0,
+            phase_key=pk_lc,
+            coarse=cnorm,
+            sent_ct=sent_ct_lc,
+            log_statuses=log_u_lc,
+            behavioral=bh_lc,
+            reason_tag=rtag,
+            has_phone=has_phone,
+            latest_log=batch.latest_log_by_ac.get(aid0),
+            matched_logs=matched_recovery_logs(ac0, batch.logs),
+            attempt_cap=cap_lc,
+        )
+    except Exception:  # noqa: BLE001
+        pass
     return out
 
 
@@ -12230,6 +12293,47 @@ def _merchant_normal_recovery_light_payload(
     }
     if trust:
         out["merchant_identity_trust_ar"] = trust
+    ac0 = grp_sorted[0]
+    bh_lc = _normal_recovery_behavioral_merge_from_cart_group(grp_sorted)
+    log_u_lc = _normal_recovery_recovery_log_statuses_lower_group(grp_sorted)
+    pk_lc = _normal_recovery_dashboard_phase_key(
+        ac0,
+        behavioral_override=bh_lc,
+        recovery_log_statuses=log_u_lc,
+    )
+    sent_ct_lc = _cart_recovery_sent_real_count_for_abandoned(ac0)
+    try:
+        from services.merchant_recovery_lifecycle_truth import (
+            attach_merchant_recovery_lifecycle_truth,
+        )
+
+        try:
+            cap_lc = max(
+                1,
+                int(
+                    _normal_recovery_configured_message_count_for_abandoned_cart(
+                        ac0, store_ac
+                    )
+                ),
+            )
+        except (TypeError, ValueError):
+            cap_lc = 1
+        attach_merchant_recovery_lifecycle_truth(
+            out,
+            ac=ac0,
+            phase_key=pk_lc,
+            coarse=cnorm,
+            sent_ct=sent_ct_lc,
+            log_statuses=log_u_lc,
+            behavioral=bh_lc,
+            reason_tag=rtag,
+            has_phone=has_phone,
+            latest_log=_normal_recovery_latest_recovery_log_row(ac0),
+            matched_logs=None,
+            attempt_cap=cap_lc,
+        )
+    except Exception:  # noqa: BLE001
+        pass
     return out
 
 

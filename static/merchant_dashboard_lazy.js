@@ -176,6 +176,41 @@
     }
   }
 
+  function lifecycleTruthHtml(mc) {
+    var wa = String(mc.merchant_whatsapp_line_ar || "").trim();
+    var ret = String(mc.merchant_return_line_ar || "").trim();
+    var pur = String(mc.merchant_purchase_line_ar || "").trim();
+    var lc = String(mc.lifecycle_label_ar || "").trim();
+    if (!wa && !ret && !pur && !lc) return "";
+    var h =
+      '<div class="recovery-truth" aria-label="تفاصيل مسار الاسترجاع">';
+    if (lc) {
+      h +=
+        '<div class="recovery-truth-line"><strong>الحالة:</strong> ' +
+        esc(lc) +
+        "</div>";
+    }
+    if (wa) {
+      h +=
+        '<div class="recovery-truth-line"><strong>واتساب:</strong> ' +
+        esc(wa) +
+        "</div>";
+    }
+    if (ret) {
+      h +=
+        '<div class="recovery-truth-line recovery-truth-highlight">' +
+        esc(ret) +
+        "</div>";
+    }
+    if (pur) {
+      h +=
+        '<div class="recovery-truth-line recovery-truth-highlight">' +
+        esc(pur) +
+        "</div>";
+    }
+    return h + "</div>";
+  }
+
   function cartRowHome(mc) {
     var v = Math.round(parseFloat(mc.merchant_cart_value) || 0);
     var phoneOk =
@@ -205,7 +240,9 @@
       urg +
       '">' +
       esc(mc.merchant_next_action_ar || "—") +
-      "</div></td>" +
+      "</div>" +
+      lifecycleTruthHtml(mc) +
+      "</td>" +
       "<td>" +
       ph +
       "</td></tr>"
@@ -243,7 +280,9 @@
       urg +
       '">' +
       esc(mc.merchant_next_action_ar || "—") +
-      "</div></td>" +
+      "</div>" +
+      lifecycleTruthHtml(mc) +
+      "</td>" +
       '<td><div class="ctime">' +
       esc(mc.merchant_last_seen_display || "—") +
       "</div></td>" +

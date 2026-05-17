@@ -390,6 +390,10 @@ tr:hover td { background: #f8fafc; }
 
 .camt { font-size: 14px; font-weight: 700; }
 .ctime { font-size: 10px; color: var(--muted); margin-top: 2px; }
+.recovery-truth { font-size: 11px; color: var(--muted); margin-top: 8px; line-height: 1.45; max-width: 28rem; }
+.recovery-truth-line { margin-top: 3px; }
+.recovery-truth-line strong { color: var(--text); font-weight: 600; }
+.recovery-truth-highlight { color: #0f766e; font-weight: 500; }
 .ph-ok { font-size: 11px; color: var(--green-mid); font-weight: 600; }
 .ph-no { font-size: 11px; color: var(--muted); }
 .next { font-size: 11px; color: var(--muted); }

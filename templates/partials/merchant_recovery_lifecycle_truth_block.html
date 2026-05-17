@@ -1,0 +1,21 @@
+﻿{# قراءة فقط — حقيقة مسار الاسترجاع للتاجر #}
+{% set _wa = mc.merchant_whatsapp_line_ar | default('', true) | trim %}
+{% set _ret = mc.merchant_return_line_ar | default('', true) | trim %}
+{% set _pur = mc.merchant_purchase_line_ar | default('', true) | trim %}
+{% set _lc = mc.lifecycle_label_ar | default('', true) | trim %}
+{% if _wa or _ret or _pur or _lc %}
+<div class="recovery-truth" aria-label="تفاصيل مسار الاسترجاع">
+  {% if _lc %}
+  <div class="recovery-truth-line"><strong>الحالة:</strong> {{ _lc }}</div>
+  {% endif %}
+  {% if _wa %}
+  <div class="recovery-truth-line"><strong>واتساب:</strong> {{ _wa }}</div>
+  {% endif %}
+  {% if _ret %}
+  <div class="recovery-truth-line recovery-truth-highlight">{{ _ret }}</div>
+  {% endif %}
+  {% if _pur %}
+  <div class="recovery-truth-line recovery-truth-highlight">{{ _pur }}</div>
+  {% endif %}
+</div>
+{% endif %}

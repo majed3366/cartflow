@@ -83,7 +83,10 @@
             </td>
             <td><span class="chip {{ mc.merchant_reason_chip_class | default('c-other') | e }}">{{ mc.merchant_reason_chip_label_ar | default('—') | e }}</span></td>
             <td><span class="status {{ mc.merchant_status_row_class | default('s-waiting') | e }}"><span class="s-dot"></span>{{ mc.merchant_status_label_ar | default(mc.merchant_business_state_ar) | e }}</span></td>
-            <td><div class="next-action{% if mc.merchant_next_action_urgent %} urgent{% endif %}">{{ mc.merchant_next_action_ar | e }}</div></td>
+            <td>
+              <div class="next-action{% if mc.merchant_next_action_urgent %} urgent{% endif %}">{{ mc.merchant_next_action_ar | e }}</div>
+              {% include "partials/merchant_recovery_lifecycle_truth_block.html" %}
+            </td>
             <td>
               {% if 'متوفر' in (mc.merchant_phone_line_ar or '') %}
               <span class="cart-phone has-phone">✓ متوفر</span>
