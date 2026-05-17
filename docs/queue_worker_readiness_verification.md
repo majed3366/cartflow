@@ -12,7 +12,7 @@ This document supports **verification and migration planning** — not a queue r
 | Field | Default | Notes |
 |-------|---------|--------|
 | `store_slug` | `demo` | Store context for payloads |
-| `events_count` | `20` | Max `50` |
+| `events_count` | `20` | Max `100` |
 | `dry_run_whatsapp` | `true` | Mocks provider send for the run only |
 | `reason_tag` | omitted | If set → `cart_abandoned`; else → lite `cart_state_sync` / `add` |
 | `phone_present` | `true` | Includes test phone in payload when true |

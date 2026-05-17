@@ -15,7 +15,7 @@ from typing import Any, Optional
 from unittest.mock import patch
 
 _SLOW_MS = 2500.0
-_MAX_EVENTS = 50
+_MAX_EVENTS = 100
 _DEFAULT_EVENTS = 20
 
 _lock = threading.Lock()
@@ -35,11 +35,16 @@ def get_latest_load_test_display_ar() -> Optional[str]:
     r = get_latest_load_test_result()
     if not r:
         return None
+    mode = r.get("event_mode") or "cart_state_sync"
+    mode_ar = "تخلي سلة" if mode == "cart_abandoned" else "مزامنة خفيفة"
+    pool_delta = int(r.get("queuepool_timeout_count") or 0)
+    pool_bit = f" — QueuePool +{pool_delta}" if pool_delta else ""
     return (
-        f"آخر اختبار ضغط: نجاح {r.get('success_count', 0)}/{r.get('total_events', 0)}"
+        f"آخر اختبار ضغط ({mode_ar}): نجاح {r.get('success_count', 0)}/{r.get('total_events', 0)}"
         f" — أخطاء {r.get('error_count', 0)}"
         f" — متوسط {r.get('avg_duration_ms', 0):.0f}ms"
         f" — أقصى {r.get('max_duration_ms', 0):.0f}ms"
+        f"{pool_bit}"
     )
 
 
@@ -184,6 +189,7 @@ def run_cart_event_load_test(
         "ok": error_count == 0 and pool_timeout_delta == 0,
         "run_id": run_id,
         "store_slug": slug,
+        "max_events_allowed": _MAX_EVENTS,
         "events_count": n,
         "event_mode": "cart_abandoned" if rt else "cart_state_sync",
         "dry_run_whatsapp": bool(dry_run_whatsapp),

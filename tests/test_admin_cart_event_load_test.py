@@ -15,6 +15,7 @@ from services.admin_cart_event_load_test import (
     get_latest_load_test_display_ar,
     run_cart_event_load_test,
 )
+from services.admin_cart_event_load_test import _MAX_EVENTS
 
 
 class AdminCartEventLoadTestTests(unittest.TestCase):
@@ -51,6 +52,18 @@ class AdminCartEventLoadTestTests(unittest.TestCase):
         line = get_latest_load_test_display_ar()
         self.assertIsNotNone(line)
         self.assertIn("آخر اختبار ضغط", line or "")
+
+    def test_events_count_capped_at_100(self) -> None:
+        summary = run_cart_event_load_test(
+            store_slug="demo",
+            events_count=250,
+            dry_run_whatsapp=True,
+            reason_tag="price",
+            phone_present=True,
+        )
+        self.assertEqual(summary["total_events"], _MAX_EVENTS)
+        self.assertEqual(summary["max_events_allowed"], _MAX_EVENTS)
+        self.assertEqual(summary["event_mode"], "cart_abandoned")
 
     def test_endpoint_requires_admin(self) -> None:
         os.environ.pop("CARTFLOW_ADMIN_PASSWORD", None)
@@ -93,3 +106,4 @@ class AdminCartEventLoadTestTests(unittest.TestCase):
         r = client.get("/admin/operational-health")
         self.assertEqual(r.status_code, 200)
         self.assertIn("التحكم التشغيلي", r.text)
+        self.assertIn("آخر اختبار ضغط", r.text)

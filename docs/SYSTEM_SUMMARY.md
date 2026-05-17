@@ -302,6 +302,7 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 
 | Date (UTC) | Summary |
 |------------|---------|
+| 2026-05-17 | **Admin load test cap 100:** `POST /admin/ops/load-test/cart-event` max `events_count` raised 50→100 (dry-run WhatsApp only); `max_events_allowed` in summary; richer «آخر اختبار ضغط» on `/admin/operational-health`. Commit: **`test: allow safe 100 event cart abandoned load test`**. |
 | 2026-05-17 | **Settings save + VIP load stability:** General settings uses `GET/POST ?scope=general` (no full recovery-settings merge on save); removed post-save VIP rerender + `ensureModeLoaded` heavy GET loop; VIP empty vs error states with diagnostic line. Commit: **`fix: stabilize settings save and vip dashboard loading`**. |
 | 2026-05-17 | **VIP actions vs automation mode (UI only):** `/dashboard#vip` action column follows `merchant_automation_mode` (manual → تواصل يدوي، assistant → اقتراح متابعة + panel، auto → status display); `GET /api/dashboard/vip-carts` includes mode; `static/merchant_vip_automation_ui.js`. No VIP/send/runtime changes. Commit: **`feat: connect merchant automation mode to vip dashboard behavior`**. |
 | 2026-05-17 | **General settings automation mode copy:** `/dashboard#settings` — يدوي/مساعد/تلقائي each with short Arabic description + footnote; UI/CSS only. Commit: **`ux: clarify merchant automation mode options`**. |
