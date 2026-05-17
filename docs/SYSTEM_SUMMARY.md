@@ -51,6 +51,7 @@ CartFlow is a FastAPI application that:
 | `GET /dashboard` | `dashboard_v1.html` — **الرئيسية**: KPIs، أسباب التردد، الرسم، **آخر النشاطات** (أسباب فقط — بدون VIP). |
 | `GET /dashboard/recovery-settings` | `recovery_settings.html` — delay, attempts, WhatsApp fields; **`GET`/`POST /api/recovery-settings`**. |
 | `GET /dashboard#whatsapp` | `merchant_app.html` — merchant WhatsApp settings form (number, recovery toggle, provider mode); same **`/api/recovery-settings`** API. |
+| `GET /dashboard#vip` | `merchant_app.html` — VIP preferences (enable, threshold, notify toggle, note) + existing VIP cart table; **`/api/recovery-settings`**. |
 | `GET /dashboard/vip-cart-settings` | `vip_cart_settings.html` — **أولوية حقيقية:** `AbandonedCart.status=abandoned` و‎`coalesce(cart_value,0) >= Store.vip_cart_threshold` عند تعريف العتبة؛ بدون عتبة لا تُعرض قائمة VIP. **بيانات تجريبية** منفصلة (`interactive: false`). **إرسال يدوي** → **`POST /api/dashboard/vip-cart/{abandoned_cart_row_id}/merchant-alert`**. عتبة VIP عبر **`/api/recovery-settings`**. |
 | `GET /dashboard/exit-intent-settings` | `exit_intent_settings.html` — exit intent copy; loads/saves via recovery settings API + `static/cartflow_dashboard_messages.js`. |
 | `GET /dashboard/cart-recovery-messages` | `cart_recovery_messages.html` — recovery message templates. |
@@ -225,7 +226,7 @@ Print-style trace: **`[DELAY STARTED]`**, **`[DELAY WAITING]`**, **`[DELAY FINIS
 
 ### `Store` (`stores`)
 
-Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recovery_delay_minutes`. WhatsApp / UX: `whatsapp_support_url`, `store_whatsapp_number`, `whatsapp_recovery_enabled`, `whatsapp_provider_mode` (merchant dashboard v1 — display/persist; send runtime still uses `config_system` gates), per-reason templates (`template_*`, `trigger_templates_json`, `reason_templates_json`), `template_mode` / `tone` / `template_custom_text`, exit intent fields, widget customization (`widget_name`, `widget_primary_color`, `widget_style`). **VIP:** `vip_cart_threshold`.
+Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recovery_delay_minutes`. WhatsApp / UX: `whatsapp_support_url`, `store_whatsapp_number`, `whatsapp_recovery_enabled`, `whatsapp_provider_mode` (merchant dashboard v1 — display/persist; send runtime still uses `config_system` gates), per-reason templates. **VIP (merchant prefs v1):** `vip_enabled`, `vip_notify_enabled`, `vip_note` (display/persist only); **`vip_cart_threshold`** still drives operational lane via `is_vip_cart` / `merchant_vip_threshold_int` (`template_*`, `trigger_templates_json`, `reason_templates_json`), `template_mode` / `tone` / `template_custom_text`, exit intent fields, widget customization (`widget_name`, `widget_primary_color`, `widget_style`). **VIP:** `vip_cart_threshold`.
 
 ### `AbandonedCart` (`abandoned_carts`)
 
@@ -301,6 +302,7 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 
 | Date (UTC) | Summary |
 |------------|---------|
+| 2026-05-17 | **Merchant VIP settings v1:** `/dashboard#vip` — تفعيل المتابعة، عتبة السلة، تنبيه، ملاحظة؛ `Store.vip_enabled` / `vip_notify_enabled` / `vip_note` (+ existing `vip_cart_threshold`); `services/merchant_vip_settings.py` + `static/merchant_vip_settings.js`; read-only ملخص. No runtime lane/send changes. Commit: **`feat: add merchant vip settings v1`**. |
 | 2026-05-17 | **Merchant WhatsApp settings v1:** `/dashboard#whatsapp` — form (رقم واتساب المتجر، تفعيل الاسترجاع، وضع المزود) persists via `GET`/`POST /api/recovery-settings`; `Store.whatsapp_recovery_enabled`, `Store.whatsapp_provider_mode`; `services/merchant_whatsapp_settings.py` + `static/merchant_whatsapp_settings.js`. Read-only: حالة واتساب، آخر حالة إرسال. No send-from-page. Commit: **`feat: add merchant whatsapp settings persistence v1`**. |
 | 2026-05-17 | **Admin cart-event load test:** `POST /admin/ops/load-test/cart-event` (admin auth, dry-run WhatsApp mock, metrics summary); `docs/queue_worker_readiness_verification.md`; latest result on operational health page. Commit: **`test: add safe cart-event load test and queue readiness report`**. |
 | 2026-05-17 | **Admin risk severity tiers:** operational control v2 — levels 0–3 (سليم / تحذير / خطر فعلي / أزمة), impact truth when affected=0, «لماذا؟» on actions, timeline severity colors. Commit: **`fix: add operational risk severity tiers and reduce false alarms`**. |

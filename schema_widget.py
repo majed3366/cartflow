@@ -892,6 +892,11 @@ def ensure_store_widget_schema(db: Any) -> None:
         )
 
         ensure_store_whatsapp_merchant_settings_schema()
+        from services.merchant_vip_settings import (  # noqa: PLC0415
+            ensure_store_merchant_vip_settings_schema,
+        )
+
+        ensure_store_merchant_vip_settings_schema()
         _ensure_abandoned_cart_vip_mode_column(db)
         _ensure_abandoned_cart_vip_lifecycle_status_column(db)
         _ensure_abandoned_cart_recovery_session_id_column(db)

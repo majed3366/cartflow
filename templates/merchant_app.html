@@ -336,8 +336,54 @@
 
   <div class="page" id="page-vip">
     <div class="page-header">
-      <div class="page-h1">👑 سلال VIP</div>
-      <div class="page-sub">سلال بقيمة عالية — التواصل اليدوي يعطي أفضل النتائج</div>
+      <div class="page-h1">👑 السلال المهمة (VIP)</div>
+      <div class="page-sub">حدّد متى تُعتبر السلة مهمة وهل تريد تنبيهاً — ثم راجع السلال الحالية أدناه</div>
+    </div>
+
+    <div id="ma-vip-settings-err" style="display:none;margin-bottom:10px;padding:10px 12px;border-radius:10px;border:1px solid #fecaca;background:#fef2f2;color:#991b1b;font-size:13px;"></div>
+    <div id="ma-vip-settings-ok" style="display:none;margin-bottom:10px;padding:10px 12px;border-radius:10px;border:1px solid #bbf7d0;background:#f0fdf4;color:#166534;font-size:13px;">تم الحفظ بنجاح</div>
+    <div class="settings-grid" style="margin-bottom:16px;">
+      <div class="setting-card ma-fw-card" style="grid-column:1/-1;">
+        <div class="setting-title">إعدادات السلال المهمة</div>
+        <div class="setting-desc">ما هي السلة المهمة؟ عندما تتجاوز قيمة السلة الحد الذي تحدده. لا يُرسل النظام رسائل استرداد تلقائية لهذه السلال.</div>
+        <form id="ma-vip-settings-form" class="ma-fw-form" autocomplete="off">
+          <div class="setting-row" style="align-items:flex-start;justify-content:space-between;gap:12px;">
+            <div>
+              <label class="ma-fw-label" for="ma-vip-enabled" style="margin:0;">تفعيل متابعة السلال المهمة</label>
+              <p class="ma-fw-field-hint" style="margin:4px 0 0;font-size:12px;opacity:0.85;">عند تجاوز قيمة معينة، يمكن التعامل مع السلة كحالة تحتاج متابعة خاصة.</p>
+            </div>
+            <label class="ma-fw-check"><input type="checkbox" id="ma-vip-enabled" name="vip_enabled" value="1"></label>
+          </div>
+          <div class="setting-row" style="flex-direction:column;align-items:stretch;gap:6px;">
+            <label class="ma-fw-label" for="ma-vip-threshold">قيمة السلة المهمة (ريال)</label>
+            <input class="ma-fw-input" id="ma-vip-threshold" name="vip_cart_threshold" type="number" min="1" step="1" dir="ltr" value="500">
+            <p class="ma-fw-field-hint" style="margin:4px 0 0;font-size:12px;opacity:0.85;">مثال: 500 — أي سلة بقيمة 500 ريال أو أكثر تُعرض كسلة مهمة.</p>
+          </div>
+          <div class="setting-row" style="align-items:flex-start;justify-content:space-between;gap:12px;">
+            <div>
+              <label class="ma-fw-label" for="ma-vip-notify-enabled" style="margin:0;">تنبيه عند ظهور سلة مهمة</label>
+              <p class="ma-fw-field-hint" style="margin:4px 0 0;font-size:12px;opacity:0.85;">إرسال تنبيه داخل النظام عند ظهور سلة مهمة.</p>
+            </div>
+            <label class="ma-fw-check"><input type="checkbox" id="ma-vip-notify-enabled" name="vip_notify_enabled" value="1"></label>
+          </div>
+          <div class="setting-row" style="flex-direction:column;align-items:stretch;gap:6px;">
+            <label class="ma-fw-label" for="ma-vip-note">ملاحظة خاصة للسلال المهمة</label>
+            <textarea class="ma-fw-input" id="ma-vip-note" name="vip_note" rows="3" maxlength="2000" dir="rtl" style="resize:vertical;min-height:72px;"></textarea>
+            <p class="ma-fw-field-hint" style="margin:4px 0 0;font-size:12px;opacity:0.85;">للتذكير فقط — مثل: شحن مجاني، خصم خاص، متابعة يدوية.</p>
+          </div>
+          <div class="ma-fw-actions">
+            <button type="submit" class="ma-fw-save" id="ma-vip-settings-save">حفظ إعدادات السلال المهمة</button>
+          </div>
+        </form>
+      </div>
+      <div class="setting-card">
+        <div class="setting-title">ملخص (قراءة فقط)</div>
+        <div class="setting-desc">معلومات من إعداداتك وسجل النظام</div>
+        <div class="setting-row"><span class="setting-label">حالة VIP</span><span class="setting-value" id="ma-vip-status-display">—</span></div>
+        <div class="setting-row"><span class="setting-label">العتبة الحالية</span><span class="setting-value" id="ma-vip-threshold-display">—</span></div>
+        <div class="setting-row"><span class="setting-label">آخر سلة مهمة</span><span class="setting-value" id="ma-vip-last-cart">—</span></div>
+        <div class="setting-row"><span class="setting-label">آخر تنبيه VIP</span><span class="setting-value" id="ma-vip-last-alert">—</span></div>
+      </div>
     </div>
     <div class="vip-alert">
       <div class="va-icon">💡</div>
@@ -712,6 +758,7 @@
 
 <script defer src="/static/merchant_dashboard_lazy.js"></script>
 <script defer src="/static/merchant_whatsapp_settings.js"></script>
+<script defer src="/static/merchant_vip_settings.js"></script>
 <script defer src="/static/merchant_trigger_templates.js"></script>
 <script defer src="/static/merchant_widget_panel.js"></script>
 <script defer src="/static/merchant_app.js"></script>

@@ -337,6 +337,10 @@ from services.merchant_whatsapp_settings import (
     apply_merchant_whatsapp_settings_from_body,
     merchant_whatsapp_settings_fields_for_api,
 )
+from services.merchant_vip_settings import (
+    apply_merchant_vip_settings_from_body,
+    merchant_vip_settings_fields_for_api,
+)
 from services.demo_sandbox_catalog import (
     SANDBOX_PRODUCT_KEY_BY_NUM as _DEMO_BEHAVIORAL_PRODUCT_BY_NUM,
     demo_template_context_extras,
@@ -1100,6 +1104,14 @@ def _merge_recovery_settings_post_body(body: Dict[str, Any]) -> Dict[str, Any]:
             )
         if "vip_cart_threshold" not in body:
             out["vip_cart_threshold"] = getattr(row, "vip_cart_threshold", None)
+        if "vip_enabled" not in body:
+            raw_ve = getattr(row, "vip_enabled", None)
+            out["vip_enabled"] = True if raw_ve is None else bool(raw_ve)
+        if "vip_notify_enabled" not in body:
+            raw_vn = getattr(row, "vip_notify_enabled", None)
+            out["vip_notify_enabled"] = True if raw_vn is None else bool(raw_vn)
+        if "vip_note" not in body:
+            out["vip_note"] = getattr(row, "vip_note", None)
         if "vip_offer_enabled" not in body:
             out["vip_offer_enabled"] = bool(getattr(row, "vip_offer_enabled", False))
         if "vip_offer_type" not in body:
@@ -1226,6 +1238,7 @@ def _dev_apply_recovery_settings_update(
         apply_merchant_offer_settings_from_body(row, request_body)
         apply_product_catalog_from_body(row, request_body)
         apply_merchant_whatsapp_settings_from_body(row, request_body)
+        apply_merchant_vip_settings_from_body(row, request_body)
     db.session.commit()
     saved = db.session.get(Store, row.id)
     if saved is not None:
@@ -1267,6 +1280,7 @@ def _dev_apply_recovery_settings_update(
     payload.update(product_catalog_for_api(anchor))
     payload.update(offer_applications_count_for_api(anchor))
     payload.update(merchant_whatsapp_settings_fields_for_api(anchor))
+    payload.update(merchant_vip_settings_fields_for_api(anchor))
     payload["guided_recovery_defaults"] = guided_defaults_for_api()
     return payload, 200
 
@@ -1709,6 +1723,7 @@ def api_recovery_settings_get():
         payload.update(product_catalog_for_api(row))
         payload.update(offer_applications_count_for_api(row))
         payload.update(merchant_whatsapp_settings_fields_for_api(row))
+        payload.update(merchant_vip_settings_fields_for_api(row))
         payload["guided_recovery_defaults"] = guided_defaults_for_api()
         return j(payload)
     except Exception as e:  # noqa: BLE001
