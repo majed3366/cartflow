@@ -193,85 +193,116 @@
     return !!MERCHANT_INTERVENTION_PRIMARY_KEYS[pk];
   }
 
-  function lifecycleTruthHtml(mc) {
-    var happened = String(mc.merchant_lifecycle_customer_behavior_ar || "").trim();
-    var systemDid = String(mc.merchant_lifecycle_system_outcome_ar || "").trim();
-    var waiting = String(
-      mc.merchant_lifecycle_next_action_ar || mc.merchant_next_action_ar || ""
-    ).trim();
-    var wa = String(mc.merchant_whatsapp_line_ar || "").trim();
-    var ret = String(mc.merchant_return_line_ar || "").trim();
+
+  function merchantLifecycleCompact(mc) {
+    var pk = String(mc.merchant_lifecycle_primary_key || "")
+      .trim()
+      .toLowerCase();
+    var coarse = String(
+      mc.merchant_coarse_status || mc.recovery_status || ""
+    )
+      .trim()
+      .toLowerCase();
+    var needs = merchantNeedsIntervention(mc);
     var pur = String(mc.merchant_purchase_line_ar || "").trim();
-    if (!systemDid) {
-      if (pur) systemDid = pur;
-      else if (ret) systemDid = ret;
-      else if (wa) systemDid = wa;
+    var ret = String(mc.merchant_return_line_ar || "").trim();
+    var status = "قيد المتابعة";
+    var action = "النظام يتابع تلقائياً";
+    var waiting = "النظام يتابع تلقائياً";
+    if (pk === "customer_replied" || coarse === "replied" || coarse === "engaged") {
+      status = "تفاعل العميل";
+      action = "بدأ النظام متابعة المسار";
+      waiting = "النظام يتابع تلقائياً";
+    } else if (pur || pk === "purchase_complete" || coarse === "converted") {
+      status = "اكتمل الشراء";
+      action = "انتهت مهمة الاسترجاع";
+      waiting = "—";
+    } else if (ret || pk === "customer_returned" || coarse === "returned") {
+      status = "عاد للموقع";
+      action = "أوقفنا الرسائل";
+      waiting = "—";
+    } else if (
+      pk === "awaiting_customer_after_send" ||
+      pk === "message_sent" ||
+      coarse === "sent"
+    ) {
+      status = "أُرسلت رسالة";
+      action = "بانتظار العميل";
+      waiting = "ننتظر تفاعل العميل";
+    } else if (
+      pk === "delay_waiting" ||
+      pk === "no_engagement_yet" ||
+      pk === "automation_paused" ||
+      pk === "pending_schedule" ||
+      coarse === "pending"
+    ) {
+      status = "بانتظار الإرسال";
+      action = "—";
+      waiting = "بانتظار وقت الإرسال";
+    } else if (
+      pk === "channel_failed" ||
+      pk === "needs_phone" ||
+      pk === "needs_reason" ||
+      pk === "attempts_exhausted"
+    ) {
+      status = "يحتاج إجراء";
+      action = "راجع الإعدادات";
+      waiting = "—";
     }
-    if (happened || systemDid || waiting) {
-      var needs = merchantNeedsIntervention(mc);
-      var intervene =
-        needs && waiting.indexOf("قد تحتاج") >= 0
-          ? waiting
-          : needs
-            ? "قد تحتاج تدخل التاجر"
-            : "لا — النظام يتابع تلقائياً";
-      var interp =
-        '<div class="recovery-truth" aria-label="تفسير مسار الاسترجاع">';
-      if (happened) {
-        interp +=
-          '<div class="recovery-truth-line"><strong>ماذا حدث؟</strong> ' +
-          esc(happened) +
-          "</div>";
-      }
-      if (systemDid) {
-        interp +=
-          '<div class="recovery-truth-line"><strong>ماذا فعل النظام؟</strong> ' +
-          esc(systemDid) +
-          "</div>";
-      }
-      if (waiting) {
-        interp +=
-          '<div class="recovery-truth-line"><strong>ماذا ينتظر الآن؟</strong> ' +
-          esc(waiting) +
-          "</div>";
-      }
-      interp +=
-        '<div class="recovery-truth-line' +
-        (needs ? "" : " recovery-truth-muted") +
-        '"><strong>هل يحتاج تدخل التاجر؟</strong> ' +
-        esc(intervene) +
-        "</div>";
-      return interp + "</div>";
-    }
-    var lc = String(mc.lifecycle_label_ar || "").trim();
-    if (!wa && !ret && !pur && !lc) return "";
+    return {
+      status: status,
+      action: action,
+      waiting: waiting,
+      needsIntervention: needs,
+    };
+  }
+
+  function merchantLifecycleCompactHtml(mc) {
+    var c = merchantLifecycleCompact(mc);
     var h =
-      '<div class="recovery-truth" aria-label="تفاصيل مسار الاسترجاع">';
-    if (lc) {
+      '<div class="recovery-truth recovery-truth-compact" aria-label="ملخص المسار">';
+    h +=
+      '<div class="recovery-truth-line"><strong>الحالة الحالية:</strong> ' +
+      esc(c.status) +
+      "</div>";
+    if (c.waiting && c.waiting !== "—") {
       h +=
-        '<div class="recovery-truth-line"><strong>الحالة:</strong> ' +
-        esc(lc) +
+        '<div class="recovery-truth-line"><strong>الانتظار:</strong> ' +
+        esc(c.waiting) +
         "</div>";
     }
-    if (wa) {
+    if (c.action && c.action !== "—") {
       h +=
-        '<div class="recovery-truth-line"><strong>واتساب:</strong> ' +
-        esc(wa) +
+        '<div class="recovery-truth-line"><strong>الإجراء:</strong> ' +
+        esc(c.action) +
         "</div>";
     }
-    if (ret) {
-      h +=
-        '<div class="recovery-truth-line recovery-truth-highlight">' +
-        esc(ret) +
-        "</div>";
-    }
-    if (pur) {
-      h +=
-        '<div class="recovery-truth-line recovery-truth-highlight">' +
-        esc(pur) +
-        "</div>";
-    }
+    h +=
+      '<div class="recovery-truth-line' +
+      (c.needsIntervention ? "" : " recovery-truth-muted") +
+      '"><strong>تدخل التاجر:</strong> ' +
+      (c.needsIntervention ? "نعم" : "لا") +
+      "</div>";
     return h + "</div>";
+  }
+
+  function followupCompactHtml() {
+    return (
+      '<div class="recovery-truth recovery-truth-compact" aria-label="ملخص التفاعل">' +
+      '<div class="recovery-truth-line"><strong>الحالة الحالية:</strong> تفاعل العميل</div>' +
+      '<div class="recovery-truth-line"><strong>الانتظار:</strong> النظام يتابع تلقائياً</div>' +
+      '<div class="recovery-truth-line"><strong>الإجراء:</strong> بدأ النظام متابعة المسار</div>' +
+      '<div class="recovery-truth-line recovery-truth-muted"><strong>تدخل التاجر:</strong> لا</div>' +
+      "</div>"
+    );
+  }
+
+  function merchantNextLineShort(mc) {
+    return merchantLifecycleCompact(mc).status;
+  }
+
+  function lifecycleTruthHtml(mc) {
+    return merchantLifecycleCompactHtml(mc);
   }
 
   function cartRowHome(mc) {
@@ -302,7 +333,7 @@
       '<td><div class="next' +
       urg +
       '">' +
-      esc(mc.merchant_next_action_ar || "—") +
+      esc(merchantNextLineShort(mc) || mc.merchant_next_action_ar || "—") +
       "</div>" +
       lifecycleTruthHtml(mc) +
       "</td>" +
@@ -342,7 +373,7 @@
       '<td><div class="next' +
       urg +
       '">' +
-      esc(mc.merchant_next_action_ar || "—") +
+      esc(merchantNextLineShort(mc) || mc.merchant_next_action_ar || "—") +
       "</div>" +
       lifecycleTruthHtml(mc) +
       "</td>" +
@@ -498,13 +529,7 @@
     var ph = digits
       ? '<span class="ph-ok">✓ متوفر</span>'
       : '<span class="ph-no">✗ غير متوفر</span>';
-    var statusAr =
-      String(fr.status_ar || "").trim() ||
-      "تفاعل العميل — بدأ النظام متابعة المسار المناسب.";
-    var act =
-      '<div class="next">' +
-      esc(statusAr) +
-      '</div><div class="recovery-truth recovery-truth-muted" style="margin-top:6px;font-size:11px;">لا حاجة لزر تواصل — النظام يوجّه المسار تلقائياً</div>';
+    var act = followupCompactHtml();
     return (
       "<tr>" +
       "<td>" +

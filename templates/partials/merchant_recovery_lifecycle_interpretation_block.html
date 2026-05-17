@@ -1,30 +1,36 @@
-{# قراءة فقط — تفسير مسار الاسترجاع للتاجر (أتمتة أولاً) #}
-{% set _happened = mc.merchant_lifecycle_customer_behavior_ar | default('', true) | trim %}
-{% set _system = mc.merchant_lifecycle_system_outcome_ar | default('', true) | trim %}
-{% set _waiting = mc.merchant_lifecycle_next_action_ar | default(mc.merchant_next_action_ar, true) | default('', true) | trim %}
-{% set _wa = mc.merchant_whatsapp_line_ar | default('', true) | trim %}
-{% set _ret = mc.merchant_return_line_ar | default('', true) | trim %}
-{% set _pur = mc.merchant_purchase_line_ar | default('', true) | trim %}
-{% if not _system and (_wa or _ret or _pur) %}
-  {% if _pur %}{% set _system = _pur %}{% elif _ret %}{% set _system = _ret %}{% else %}{% set _system = _wa %}{% endif %}
-{% endif %}
+{# قراءة فقط — ملخص قصير لمسار الاسترجاع #}
 {% set _pk = (mc.merchant_lifecycle_primary_key | default('', true) | trim | lower) %}
+{% set _coarse = (mc.merchant_coarse_status | default(mc.recovery_status, true) | default('', true) | trim | lower) %}
 {% set _needs = mc.merchant_next_action_urgent or (_pk in ['channel_failed', 'needs_phone', 'needs_reason', 'attempts_exhausted', 'stopped_manual']) %}
-{% if _happened or _system or _waiting %}
-<div class="recovery-truth" aria-label="تفسير مسار الاسترجاع">
-  {% if _happened %}
-  <div class="recovery-truth-line"><strong>ماذا حدث؟</strong> {{ _happened }}</div>
-  {% endif %}
-  {% if _system %}
-  <div class="recovery-truth-line"><strong>ماذا فعل النظام؟</strong> {{ _system }}</div>
-  {% endif %}
-  {% if _waiting %}
-  <div class="recovery-truth-line"><strong>ماذا ينتظر الآن؟</strong> {{ _waiting }}</div>
-  {% endif %}
-  <div class="recovery-truth-line{% if not _needs %} recovery-truth-muted{% endif %}"><strong>هل يحتاج تدخل التاجر؟</strong>
-    {% if _needs and 'قد تحتاج' in _waiting %}{{ _waiting }}{% elif _needs %}قد تحتاج تدخل التاجر{% else %}لا — النظام يتابع تلقائياً{% endif %}
-  </div>
-</div>
-{% elif _wa or _ret or _pur %}
-{% include "partials/merchant_recovery_lifecycle_truth_block.html" %}
+{% set _pur = mc.merchant_purchase_line_ar | default('', true) | trim %}
+{% set _ret = mc.merchant_return_line_ar | default('', true) | trim %}
+{% set _status = '' %}
+{% set _action = '' %}
+{% set _waiting = '' %}
+{% if _pk == 'customer_replied' or _coarse in ['replied', 'engaged'] %}
+  {% set _status = 'تفاعل العميل' %}{% set _action = 'بدأ النظام متابعة المسار' %}{% set _waiting = 'النظام يتابع تلقائياً' %}
+{% elif _pur or _pk == 'purchase_complete' or _coarse == 'converted' %}
+  {% set _status = 'اكتمل الشراء' %}{% set _action = 'انتهت مهمة الاسترجاع' %}{% set _waiting = '—' %}
+{% elif _ret or _pk == 'customer_returned' or _coarse == 'returned' %}
+  {% set _status = 'عاد للموقع' %}{% set _action = 'أوقفنا الرسائل' %}{% set _waiting = '—' %}
+{% elif _pk in ['awaiting_customer_after_send', 'message_sent'] or _coarse == 'sent' %}
+  {% set _status = 'أُرسلت رسالة' %}{% set _action = 'بانتظار العميل' %}{% set _waiting = 'ننتظر تفاعل العميل' %}
+{% elif _pk in ['delay_waiting', 'no_engagement_yet', 'automation_paused', 'pending_schedule'] or _coarse == 'pending' %}
+  {% set _status = 'بانتظار الإرسال' %}{% set _action = '—' %}{% set _waiting = 'بانتظار وقت الإرسال' %}
+{% elif _pk in ['channel_failed', 'needs_phone', 'needs_reason', 'attempts_exhausted'] %}
+  {% set _status = 'يحتاج إجراء' %}{% set _action = 'راجع الإعدادات' %}{% set _waiting = '—' %}
+{% else %}
+  {% set _status = (mc.merchant_lifecycle_customer_behavior_ar | default('', true) | trim)[:48] or 'قيد المتابعة' %}
+  {% set _action = (mc.merchant_lifecycle_system_outcome_ar | default('', true) | trim)[:48] or 'النظام يتابع تلقائياً' %}
+  {% set _waiting = 'النظام يتابع تلقائياً' %}
 {% endif %}
+<div class="recovery-truth recovery-truth-compact" aria-label="ملخص المسار">
+  <div class="recovery-truth-line"><strong>الحالة الحالية:</strong> {{ _status }}</div>
+  {% if _waiting and _waiting != '—' %}
+  <div class="recovery-truth-line"><strong>الانتظار:</strong> {{ _waiting }}</div>
+  {% endif %}
+  {% if _action and _action != '—' %}
+  <div class="recovery-truth-line"><strong>الإجراء:</strong> {{ _action }}</div>
+  {% endif %}
+  <div class="recovery-truth-line{% if not _needs %} recovery-truth-muted{% endif %}"><strong>تدخل التاجر:</strong> {% if _needs %}نعم{% else %}لا{% endif %}</div>
+</div>

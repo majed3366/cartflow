@@ -231,7 +231,7 @@
   <div class="page" id="page-carts">
     <div class="page-header">
       <div class="page-h1">سلال الانتظار</div>
-      <div class="page-sub">سلال بانتظار الإرسال أو تفاعل العميل — يتابعها النظام تلقائياً (غير VIP)</div>
+      <div class="page-sub">بانتظار الإرسال أو تفاعل العميل — تلقائياً</div>
     </div>
     <div class="filter-bar" id="ma-cart-filters">
       {% if merchant_dashboard_lazy_shell %}
@@ -282,7 +282,7 @@
   <div class="page" id="page-followup">
     <div class="page-header">
       <div class="page-h1">سلال التفاعل</div>
-      <div class="page-sub">عميل تفاعل — النظام يوجّه المسار دون ضغط يدوي على السلال العادية</div>
+      <div class="page-sub">تفاعل العميل — النظام يتابع المسار</div>
     </div>
     <div class="card">
       <div class="table-scroll">
@@ -303,7 +303,7 @@
               <td><div class="msg-text" style="margin:0;">{{ fr.last_message_line_ar | default("—") }}</div></td>
               <td><div class="ctime" style="font-size:12px;font-weight:600;">{{ fr.attempts_ar | default("—") }}</div></td>
               <td>{% if fr.customer_wa_digits %}<span class="ph-ok">✓ متوفر</span>{% else %}<span class="ph-no">✗ غير متوفر</span>{% endif %}</td>
-              <td><div class="next">{{ fr.status_ar | default('تفاعل العميل — بدأ النظام متابعة المسار المناسب.') }}</div><div class="recovery-truth recovery-truth-muted" style="margin-top:6px;font-size:11px;">لا حاجة لزر تواصل — النظام يوجّه المسار تلقائياً</div></td>
+              <td>{% include "partials/merchant_followup_compact_block.html" %}</td>
             </tr>
             {% else %}
             <tr><td colspan="6" class="empty-state" style="border:none;"><div class="empty-icon">🔔</div><div class="empty-text">لا توجد سلال تفاعل حالياً</div></td></tr>
@@ -318,13 +318,18 @@
   <div class="page" id="page-completed">
     <div class="page-header">
       <div class="page-h1">السلال المكتملة</div>
-      <div class="page-sub">سلال اكتمل شراؤها أو عاد عميلها للموقع أو توقّف الاسترجاع — عرض موحّد قريباً.</div>
+      <div class="page-sub">سلال أنهى مسارها الاسترجاع</div>
     </div>
     <div class="card">
-      <div class="empty-state" style="padding:32px 20px;border:none;">
+      <div class="empty-state" style="padding:32px 20px;border:none;text-align:right;">
         <div class="empty-icon">✅</div>
-        <div class="empty-text">قريباً: عرض السلال المكتملة (شراء، عودة للموقع، إيقاف الاسترجاع) في مكان واحد.</div>
-        <p style="margin-top:12px;font-size:12px;color:var(--muted);">حتى ذلك الحين، راجع الحالات المنتهية من <a href="/dashboard/normal-carts?nr_lifecycle=archived" style="color:var(--green-mid);font-weight:600;">سلال عادية → الحالات السابقة</a>.</p>
+        <div class="empty-text" style="font-weight:600;margin-bottom:10px;">ستظهر هنا السلال التي:</div>
+        <ul style="margin:0;padding-right:20px;font-size:13px;line-height:1.7;color:var(--text);">
+          <li>✓ اكتملت عملية الشراء</li>
+          <li>✓ عاد العميل للموقع</li>
+          <li>✓ انتهت مهمة الاسترجاع</li>
+        </ul>
+        <p style="margin-top:14px;font-size:12px;color:var(--muted);">الحالات المنتهية الآن: <a href="/dashboard/normal-carts?nr_lifecycle=archived" style="color:var(--green-mid);font-weight:600;">السلال المكتملة (عرض سابق)</a></p>
       </div>
     </div>
   </div>

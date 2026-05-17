@@ -56,7 +56,7 @@
       </div>
       <div style="padding:12px 20px;border-bottom:1px solid var(--border)">
         <p style="font-size:12px;color:var(--muted);margin:0 0 10px 0">
-          {% if _nr_lc == 'archived' %}سلال اكتمل شراؤها أو عاد العميل أو توقّف الاسترجاع.{% else %}بانتظار الإرسال أو تفاعل العميل — يتابعها النظام تلقائياً.{% endif %}
+          {% if _nr_lc == 'archived' %}✓ شراء · ✓ عودة للموقع · ✓ انتهاء الاسترجاع{% else %}بانتظار الإرسال أو تفاعل العميل{% endif %}
         </p>
         <div class="ref-seg" role="navigation" aria-label="عرض الحالات">
           <a href="{{ normal_carts_url_active|default('/dashboard/normal-carts') }}" class="{% if _nr_lc != 'archived' %}on{% endif %}">نشطة</a>

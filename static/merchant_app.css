@@ -395,6 +395,8 @@ tr:hover td { background: #f8fafc; }
 .recovery-truth-line strong { color: var(--text); font-weight: 600; }
 .recovery-truth-highlight { color: #0f766e; font-weight: 500; }
 .recovery-truth-muted { color: var(--muted); font-weight: 400; }
+.recovery-truth-compact { margin-top: 6px; }
+.recovery-truth-compact .recovery-truth-line { margin-top: 2px; }
 .ph-ok { font-size: 11px; color: var(--green-mid); font-weight: 600; }
 .ph-no { font-size: 11px; color: var(--muted); }
 .next { font-size: 11px; color: var(--muted); }
