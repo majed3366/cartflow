@@ -77,6 +77,20 @@ def clear_operational_health_buffers_for_tests() -> None:
         _background_task_errors.clear()
 
 
+def get_db_pool_snapshot_readonly() -> dict[str, Any]:
+    """Public read-only pool snapshot for admin load tests."""
+    return _pool_snapshot_safe()
+
+
+def get_operational_counter_snapshots() -> dict[str, int]:
+    """In-process counters for load-test before/after deltas."""
+    with _lock:
+        return {
+            "pool_timeout_count": len(_pool_timeout_events),
+            "background_task_errors": len(_background_task_errors),
+        }
+
+
 def _maybe_install_pool_error_listener() -> None:
     global _listeners_installed
     if _listeners_installed:

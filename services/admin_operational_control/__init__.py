@@ -79,9 +79,18 @@ def build_admin_operational_control_readonly() -> dict[str, Any]:
         ),
     }
 
+    load_test_line_ar = None
+    try:
+        from services.admin_cart_event_load_test import get_latest_load_test_display_ar
+
+        load_test_line_ar = get_latest_load_test_display_ar()
+    except Exception:
+        load_test_line_ar = None
+
     return {
         "version": "admin_operational_control_v2",
         "generated_at_utc": ctx.generated_at_utc,
+        "latest_load_test_ar": load_test_line_ar,
         "admin_risk_summary": risk,
         "admin_impact_layer": impact,
         "admin_actions_layer": actions,

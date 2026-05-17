@@ -300,6 +300,7 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 
 | Date (UTC) | Summary |
 |------------|---------|
+| 2026-05-17 | **Admin cart-event load test:** `POST /admin/ops/load-test/cart-event` (admin auth, dry-run WhatsApp mock, metrics summary); `docs/queue_worker_readiness_verification.md`; latest result on operational health page. Commit: **`test: add safe cart-event load test and queue readiness report`**. |
 | 2026-05-17 | **Admin risk severity tiers:** operational control v2 — levels 0–3 (سليم / تحذير / خطر فعلي / أزمة), impact truth when affected=0, «لماذا؟» on actions, timeline severity colors. Commit: **`fix: add operational risk severity tiers and reduce false alarms`**. |
 | 2026-05-17 | **Admin Operational Control v2:** `/admin/operational-health` — risk summary, impact, suggested actions, verification, revenue protection, timeline; modules under `services/admin_operational_control/`. Commit: **`feat: evolve admin operational health into operational control v2`**. |
 | 2026-05-17 | **Admin Operational Health v1:** `GET /admin/operational-health` — read-only cards (cart-event, DB pool, background tasks, WhatsApp, warnings); `services/admin_operational_health.py`; same admin auth as `/admin/operations`. Commit: **`feat: add admin operational health v1`**. |
