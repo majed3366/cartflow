@@ -2,6 +2,7 @@
 """Merchant dashboard WhatsApp settings — read/save on Store (no send runtime)."""
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
 from sqlalchemy import inspect, text
@@ -157,7 +158,9 @@ def last_send_status_for_store(store: Optional[Any]) -> Dict[str, str]:
                 merchant_relative_time_arabic,
             )
 
-            out["last_send_at_ar"] = merchant_relative_time_arabic(ts)
+            out["last_send_at_ar"] = merchant_relative_time_arabic(
+                ts, now_utc=datetime.now(timezone.utc)
+            )
         except Exception:  # noqa: BLE001
             out["last_send_at_ar"] = str(ts)
     return out
