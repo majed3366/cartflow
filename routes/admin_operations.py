@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -24,6 +24,7 @@ from services.cartflow_admin_http_auth import (
     issue_admin_session_cookie_value,
     verify_admin_password,
 )
+from services.admin_operational_health import build_admin_operational_health_readonly
 from services.cartflow_admin_operational_summary import (
     ADMIN_PLATFORM_CATEGORY_DEGRADED,
     ADMIN_PLATFORM_CATEGORY_HEALTHY,
@@ -131,15 +132,7 @@ def admin_operations_login_submit(
     return resp
 
 
-@router.post("/admin/operations/logout")
-def admin_operations_logout() -> RedirectResponse:
-    resp = RedirectResponse(url="/admin/operations/login", status_code=303)
-    resp.delete_cookie(admin_cookie_name(), path="/")
-    return resp
-
-
-@router.get("/admin/operations", response_class=HTMLResponse)
-def admin_operations_dashboard(request: Request) -> Any:
+def _admin_session_or_redirect(request: Request, *, next_path: str) -> Optional[Any]:
     if not admin_password_configured():
         return HTMLResponse(
             "Admin password not configured — set CARTFLOW_ADMIN_PASSWORD.",
@@ -148,9 +141,39 @@ def admin_operations_dashboard(request: Request) -> Any:
     cookie = request.cookies.get(admin_cookie_name())
     if not admin_session_cookie_valid(cookie):
         return RedirectResponse(
-            url="/admin/operations/login?next=/admin/operations",
+            url=f"/admin/operations/login?next={next_path}",
             status_code=302,
         )
+    return None
+
+
+@router.post("/admin/operations/logout")
+def admin_operations_logout() -> RedirectResponse:
+    resp = RedirectResponse(url="/admin/operations/login", status_code=303)
+    resp.delete_cookie(admin_cookie_name(), path="/")
+    return resp
+
+
+@router.get("/admin/operational-health", response_class=HTMLResponse)
+def admin_operational_health_page(request: Request) -> Any:
+    denied = _admin_session_or_redirect(
+        request, next_path="/admin/operational-health"
+    )
+    if denied is not None:
+        return denied
+    health = build_admin_operational_health_readonly()
+    return templates.TemplateResponse(
+        request,
+        "admin_operational_health.html",
+        {"health": health},
+    )
+
+
+@router.get("/admin/operations", response_class=HTMLResponse)
+def admin_operations_dashboard(request: Request) -> Any:
+    denied = _admin_session_or_redirect(request, next_path="/admin/operations")
+    if denied is not None:
+        return denied
     summary = build_admin_operational_summary_readonly()
     guidance = derive_admin_operational_guidance(summary)
     action_items = derive_actionable_operational_items(

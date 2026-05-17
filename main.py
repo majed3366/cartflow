@@ -8649,6 +8649,17 @@ def _cart_event_operational_finish(
         log.info("%s", line)
     except OSError:
         pass
+    try:
+        from services.admin_operational_health import record_cart_event_finish_sample
+
+        record_cart_event_finish_sample(
+            duration_ms=dur_ms,
+            http_status=http_status,
+            recovery_outcome=str(op_ctx.get("recovery_outcome") or ""),
+            event=str(op_ctx.get("event") or ""),
+        )
+    except Exception:  # noqa: BLE001 — عينة صحة تشغيلية فقط
+        pass
 
 
 @app.post("/api/cart-event")

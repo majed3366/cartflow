@@ -29,9 +29,12 @@
           <h1 class="mt-0.5 text-xl font-semibold text-slate-900">مركز التشغيل — CartFlow</h1>
           <p class="mt-1 max-w-2xl text-sm leading-relaxed text-slate-600">قراءة تشغيلية هادئة — المعنى والأولوية قبل الأرقام.</p>
         </div>
-        <form method="post" action="/admin/operations/logout">
-          <button type="submit" class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50">خروج</button>
-        </form>
+        <div class="flex flex-wrap gap-2">
+          <a href="/admin/operational-health" class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50">صحة التشغيل</a>
+          <form method="post" action="/admin/operations/logout">
+            <button type="submit" class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50">خروج</button>
+          </form>
+        </div>
       </div>
       <!-- Summary strip -->
       <div class="mt-4 rounded-xl border border-slate-200/80 bg-white/90 px-4 py-3 shadow-sm ring-1 ring-slate-100">
