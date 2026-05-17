@@ -230,6 +230,35 @@
     return "تم إرسال رسالة مناسبة لسبب التردد";
   }
 
+  function merchantAttemptsDisplayAr(fr) {
+    fr = fr || {};
+    var raw = String(fr.attempts_ar || "").trim();
+    var inbound = String(fr.inbound_message || "").trim();
+    var replied = !!inbound;
+    if (!replied) {
+      var line = String(fr.last_message_line_ar || "").trim();
+      replied =
+        line.length > 0 &&
+        line.indexOf("لا يوجد رد") < 0 &&
+        line.indexOf("يتابع النظام") < 0;
+    }
+    var m = raw.match(/(\d+)\s*رسالة/);
+    var n = m ? parseInt(m[1], 10) : 0;
+    if (raw.indexOf("عدد الرسائل:") === 0) return raw;
+    if (raw.indexOf("تمت متابعة") === 0) return raw;
+    if (raw.indexOf("أُرسلت رسالة —") === 0) return raw;
+    if (raw.indexOf("تم إرسال أول") === 0) return raw;
+    if (raw.indexOf("لم تبدأ") === 0) return raw;
+    if (n >= 3) return "عدد الرسائل: " + n;
+    if (n === 2) return "تمت متابعة إضافية";
+    if (n === 1) return "أُرسلت رسالة — لا توجد متابعات إضافية بعد";
+    if (replied) return "تم إرسال أول رسالة استرداد";
+    if (n === 0 && raw.indexOf("لا توجد") >= 0) {
+      return replied ? "تم إرسال أول رسالة استرداد" : "لم تبدأ عملية الاسترداد بعد";
+    }
+    return raw || "—";
+  }
+
   function merchantReplyPreview(fr) {
     var raw = String((fr && fr.inbound_message) || "").trim();
     if (!raw && fr && fr.last_message_line_ar) {
@@ -651,7 +680,7 @@
       '<td><div class="msg-text" style="margin:0;">' +
       esc(fr.last_message_line_ar || "—") +
       '</div></td><td><div class="ctime" style="font-size:12px;font-weight:600;">' +
-      esc(fr.attempts_ar || "—") +
+      esc(merchantAttemptsDisplayAr(fr)) +
       "</div></td><td>" +
       ph +
       "</td><td>" +

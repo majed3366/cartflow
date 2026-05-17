@@ -98,6 +98,28 @@ def merchant_reason_goal_line_ar(reason_tag: Optional[str]) -> str:
     return ""
 
 
+def merchant_recovery_attempts_display_ar(
+    send_count: int,
+    *,
+    customer_replied: bool = False,
+) -> str:
+    """
+    نص محاولات الاسترداد للتاجر — يتوافق مع حقيقة المسار دون تغيير العدّ.
+
+    إذا وُجد رد عميل لكن العدّ صفر (سجل غير مطابق)، نعرض أن الرسالة الأولى أُرسلت.
+    """
+    n = max(0, int(send_count or 0))
+    if n >= 3:
+        return f"عدد الرسائل: {n}"
+    if n == 2:
+        return "تمت متابعة إضافية"
+    if n == 1:
+        return "أُرسلت رسالة — لا توجد متابعات إضافية بعد"
+    if customer_replied:
+        return "تم إرسال أول رسالة استرداد"
+    return "لم تبدأ عملية الاسترداد بعد"
+
+
 def merchant_reply_preview_display(
     *,
     inbound_message: Optional[str] = None,

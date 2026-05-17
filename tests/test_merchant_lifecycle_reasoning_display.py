@@ -6,6 +6,7 @@ import unittest
 from services.merchant_lifecycle_reasoning_display import (
     merchant_message_preview_display,
     merchant_reason_goal_ar,
+    merchant_recovery_attempts_display_ar,
     merchant_reply_preview_display,
     merchant_sent_message_line_ar,
 )
@@ -35,6 +36,30 @@ class MerchantLifecycleReasoningDisplayTests(unittest.TestCase):
         self.assertEqual(
             merchant_reply_preview_display(inbound_message="نعم"),
             '"نعم"',
+        )
+
+    def test_attempts_replied_zero_send(self) -> None:
+        self.assertEqual(
+            merchant_recovery_attempts_display_ar(0, customer_replied=True),
+            "تم إرسال أول رسالة استرداد",
+        )
+
+    def test_attempts_one_send(self) -> None:
+        self.assertEqual(
+            merchant_recovery_attempts_display_ar(1, customer_replied=True),
+            "أُرسلت رسالة — لا توجد متابعات إضافية بعد",
+        )
+
+    def test_attempts_two_sends(self) -> None:
+        self.assertEqual(
+            merchant_recovery_attempts_display_ar(2, customer_replied=True),
+            "تمت متابعة إضافية",
+        )
+
+    def test_attempts_none(self) -> None:
+        self.assertEqual(
+            merchant_recovery_attempts_display_ar(0, customer_replied=False),
+            "لم تبدأ عملية الاسترداد بعد",
         )
 
 

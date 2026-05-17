@@ -300,6 +300,7 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 
 | Date (UTC) | Summary |
 |------------|---------|
+| 2026-05-17 | **Recovery attempts copy aligned with lifecycle:** `merchant_recovery_attempts_display_ar` — follow-up «محاولات الاسترداد» matches send count / customer reply (no «لا توجد رسائل» when a message was sent). Commit: **`ux: align recovery attempts wording with lifecycle truth`**. |
 | 2026-05-17 | **Merchant dashboard reasoning truth (read-only):** Compact «الرسالة / الهدف / رد العميل» from `message_preview`, `reason_tag`, inbound reply — `services/merchant_lifecycle_reasoning_display.py` + interpretation partial / lazy JS. Commit: **`ux: expose compact reasoning truth in merchant lifecycle`**. |
 | 2026-05-17 | **Merchant dashboard compact lifecycle copy:** Short labels (الحالة الحالية / الانتظار / الإجراء / تدخل التاجر: نعم|لا) in interpretation partial + `merchant_dashboard_lazy.js`; simplified completed-page list; no backend changes. Commit: **`ux: simplify lifecycle interpretation language`**. |
 | 2026-05-17 | **Merchant dashboard sections (automation-first):** Nav/pages renamed — «سلال الانتظار» (carts), «سلال التفاعل» (follow-up), placeholder «السلال المكتملة»; removed default WhatsApp «متابعة يدوية» on normal/follow-up rows; 4-part lifecycle interpretation block in UI. Commit: **`ux: align dashboard lifecycle sections with automation-first recovery`**. |

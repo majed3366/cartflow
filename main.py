@@ -229,6 +229,7 @@ from services.merchant_lifecycle_reasoning_display import (  # noqa: E402
     merchant_message_preview_display,
     merchant_reason_goal_ar,
     merchant_reason_goal_line_ar,
+    merchant_recovery_attempts_display_ar,
     merchant_reply_preview_display,
     merchant_sent_message_line_ar,
 )
@@ -238,6 +239,9 @@ templates.env.globals["merchant_reason_goal_line_ar"] = merchant_reason_goal_lin
 templates.env.globals["merchant_message_preview_display"] = merchant_message_preview_display
 templates.env.globals["merchant_sent_message_line_ar"] = merchant_sent_message_line_ar
 templates.env.globals["merchant_reply_preview_display"] = merchant_reply_preview_display
+templates.env.globals["merchant_recovery_attempts_display_ar"] = (
+    merchant_recovery_attempts_display_ar
+)
 _static = os.path.join(_ROOT, "static")
 if os.path.isdir(_static):
     app.mount("/static", StaticFiles(directory=_static), name="static")
@@ -13956,10 +13960,11 @@ def _merchant_followup_row_to_payload(
     wa_digits = _normalize_customer_phone_for_wa_me(row.customer_phone)
     slug = (store_slug or "").strip()
     send_n = _merchant_cart_recovery_send_count(slug, ac) if slug else 0
-    if send_n <= 0:
-        attempts_ar = "لا توجد رسائل استرداد مسجّلة لهذه السلة بعد"
-    else:
-        attempts_ar = f"{send_n} رسالة استرداد مُسجّلة"
+    inbound = (row.inbound_message or "").strip()
+    attempts_ar = merchant_recovery_attempts_display_ar(
+        send_n,
+        customer_replied=bool(inbound),
+    )
     pre_body = _merchant_followup_prefill_whatsapp_body(cart_link=cart_link)
     contact_wa_href = ""
     if wa_digits:
@@ -13968,7 +13973,6 @@ def _merchant_followup_row_to_payload(
             contact_wa_href = f"https://wa.me/{wa_digits}?text={quote(pb, safe='')}"
         else:
             contact_wa_href = f"https://wa.me/{wa_digits}"
-    inbound = (row.inbound_message or "").strip()
     if inbound:
         last_msg_ar = inbound[:240] + ("…" if len(inbound) > 240 else "")
     else:
