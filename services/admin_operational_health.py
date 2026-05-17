@@ -421,11 +421,61 @@ def _headline_answers(warnings: list[dict[str, str]], admin_rt: dict[str, Any]) 
     }
 
 
-def build_admin_operational_health_readonly() -> dict[str, Any]:
-    """
-    Aggregate read-only health cards for GET /admin/operational-health.
-    Safe fallbacks when metrics are missing; reuses existing runtime summary queries.
-    """
+def _count_slow_cart_events() -> int:
+    with _lock:
+        samples = list(_cart_event_samples)
+    return sum(1 for s in samples if float(s.get("duration_ms") or 0) >= _CART_EVENT_SLOW_MS)
+
+
+def get_operational_timeline_source_events() -> list[dict[str, Any]]:
+    """Events for operational timeline (newest sort done by caller)."""
+    events: list[dict[str, Any]] = []
+    with _lock:
+        for t in _pool_timeout_events:
+            events.append(
+                {
+                    "recorded_at_utc": t.get("recorded_at_utc"),
+                    "kind": "pool",
+                    "message_ar": "ارتفع ضغط QueuePool — انتهاء مهلة مسبح",
+                }
+            )
+        for s in _cart_event_samples:
+            ms = float(s.get("duration_ms") or 0)
+            if ms >= _CART_EVENT_SLOW_MS:
+                events.append(
+                    {
+                        "recorded_at_utc": s.get("recorded_at_utc"),
+                        "kind": "cart_event",
+                        "message_ar": f"cart-event بطيء ({ms:.0f} مللي ثانية)",
+                    }
+                )
+    try:
+        from services.cartflow_runtime_health import drain_recent_anomalies
+
+        for a in drain_recent_anomalies(limit=15):
+            events.append(
+                {
+                    "recorded_at_utc": a.get("recorded_at_utc"),
+                    "kind": "anomaly",
+                    "message_ar": f"إشارة: {a.get('type', '—')}",
+                }
+            )
+    except Exception:
+        pass
+    if not events:
+        events.append(
+            {
+                "recorded_at_utc": datetime.now(timezone.utc).isoformat(),
+                "kind": "stable",
+                "message_ar": "المزود والمسار مستقران",
+            }
+        )
+    return events
+
+
+def build_operational_control_context() -> "OperationalControlContext":
+    from services.admin_operational_control.context import OperationalControlContext
+
     _maybe_install_pool_error_listener()
 
     admin_rt: dict[str, Any] = {}
@@ -436,26 +486,91 @@ def build_admin_operational_health_readonly() -> dict[str, Any]:
     except Exception:
         admin_rt = {}
 
+    admin_summary: dict[str, Any] = {}
+    try:
+        from services.cartflow_admin_operational_summary import (
+            build_admin_operational_summary_readonly,
+        )
+
+        admin_summary = build_admin_operational_summary_readonly()
+    except Exception:
+        admin_summary = {}
+
     cart = _cart_event_card()
     pool = _db_pool_card()
     bg = _background_tasks_card(admin_rt)
     wa = _whatsapp_card(admin_rt)
     warnings = _build_warnings(cart=cart, pool=pool, bg=bg, wa=wa)
-    headlines = _headline_answers(warnings, admin_rt)
 
+    prov = admin_rt.get("provider") if isinstance(admin_rt.get("provider"), dict) else {}
+    wa_fail = prov.get("recent_send_failures_24h")
+    wa_fail_i = int(wa_fail) if isinstance(wa_fail, int) and wa_fail >= 0 else None
+    provider_unstable = bool(
+        (wa_fail_i and wa_fail_i > 0)
+        or not bool(prov.get("configured"))
+        or bool(str(prov.get("provider_failure_class") or "").strip())
+    )
+
+    affected = 0
+    rows = admin_summary.get("store_operational_rows")
+    if isinstance(rows, list):
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            if str(row.get("trust_bucket") or "") in (
+                "degraded",
+                "unstable",
+                "partially_ready",
+            ):
+                affected += 1
+    if affected == 0 and warnings:
+        affected = min(int(admin_summary.get("stores_scanned_for_trust") or 1), 3)
+
+    return OperationalControlContext(
+        generated_at_utc=datetime.now(timezone.utc).isoformat(),
+        admin_rt=admin_rt,
+        admin_summary=admin_summary,
+        cart=cart,
+        pool=pool,
+        bg=bg,
+        wa=wa,
+        warnings=warnings,
+        affected_stores_estimate=affected,
+        slow_cart_event_count=_count_slow_cart_events(),
+        pool_timeout_count=int(pool.get("timeout_count") or 0),
+        whatsapp_failed_24h=wa_fail_i,
+        background_failure_count=int(bg.get("background_error_count") or 0),
+        provider_unstable=provider_unstable,
+    )
+
+
+def build_admin_operational_health_readonly() -> dict[str, Any]:
+    """
+    Aggregate for GET /admin/operational-health — v2 control + v1 diagnostics.
+    """
+    from services.admin_operational_control import build_admin_operational_control_readonly
+
+    control = build_admin_operational_control_readonly()
+    diag = control.get("diagnostics_v1") or {}
+    warnings = diag.get("warnings") or []
+    admin_rt = {}
+    try:
+        from services.cartflow_runtime_health import build_admin_runtime_summary
+
+        admin_rt = build_admin_runtime_summary()
+    except Exception:
+        pass
+    headlines = _headline_answers(warnings, admin_rt)
     anomaly_ct = recent_anomaly_type_counts(limit=50)
 
     return {
-        "generated_at_utc": datetime.now(timezone.utc).isoformat(),
+        **control,
+        "generated_at_utc": control.get("generated_at_utc"),
         "headlines": headlines,
-        "cards": {
-            "cart_event": cart,
-            "db_pool": pool,
-            "background_tasks": bg,
-            "whatsapp": wa,
-        },
+        "cards": diag.get("cards") or {},
         "warnings": warnings,
         "anomaly_types_preview": anomaly_ct,
-        "needs_technical_attention": bool(warnings)
-        or not bool(admin_rt.get("recovery_runtime_ok")),
+        "needs_technical_attention": bool(
+            (control.get("admin_risk_summary") or {}).get("risk_detected")
+        ),
     }

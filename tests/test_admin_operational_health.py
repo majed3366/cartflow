@@ -11,6 +11,7 @@ from fastapi.testclient import TestClient
 from main import app
 from services import cartflow_admin_http_auth as aauth
 from services import cartflow_runtime_health as rh
+from services.admin_operational_control import clear_verification_state_for_tests
 from services.admin_operational_health import (
     build_admin_operational_health_readonly,
     clear_operational_health_buffers_for_tests,
@@ -24,9 +25,11 @@ class AdminOperationalHealthTests(unittest.TestCase):
         self._prev_admin = os.environ.get("CARTFLOW_ADMIN_PASSWORD")
         self._prev_secret = os.environ.get("SECRET_KEY")
         clear_operational_health_buffers_for_tests()
+        clear_verification_state_for_tests()
 
     def tearDown(self) -> None:
         clear_operational_health_buffers_for_tests()
+        clear_verification_state_for_tests()
         rh.clear_runtime_anomaly_buffer_for_tests()
         if self._prev_admin is not None:
             os.environ["CARTFLOW_ADMIN_PASSWORD"] = self._prev_admin
@@ -39,7 +42,7 @@ class AdminOperationalHealthTests(unittest.TestCase):
 
     def test_build_readonly_has_cards_and_headlines(self) -> None:
         payload = build_admin_operational_health_readonly()
-        self.assertIn("headlines", payload)
+        self.assertIn("admin_risk_summary", payload)
         self.assertIn("cards", payload)
         cards = payload["cards"]
         self.assertIn("cart_event", cards)
@@ -95,6 +98,6 @@ class AdminOperationalHealthTests(unittest.TestCase):
         )
         r = client.get("/admin/operational-health")
         self.assertEqual(r.status_code, 200, r.text[:400])
-        self.assertIn("صحة التشغيل", r.text)
-        self.assertIn("cart-event", r.text)
-        self.assertIn("هل النظام يختنق", r.text)
+        self.assertIn("التحكم التشغيلي", r.text)
+        self.assertIn("طبقة الأثر", r.text)
+        self.assertIn("هل النظام سليم", r.text)
