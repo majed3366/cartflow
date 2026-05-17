@@ -644,8 +644,39 @@
     );
   }
 
+  function vipPageEmptyHtml() {
+    return (
+      '<tr><td colspan="4" class="empty-state" style="border:none;">' +
+      '<div class="empty-icon">👑</div>' +
+      '<div class="empty-text">لا توجد سلال VIP نشطة تحتاج تدخلك الآن</div>' +
+      '<p class="ma-vip-load-diag">آخر تحقق: تم تحميل البيانات بنجاح</p>' +
+      "</td></tr>"
+    );
+  }
+
+  function vipPageErrorHtml() {
+    return (
+      '<tr><td colspan="4" style="text-align:center;padding:24px;color:#991b1b;">' +
+      "تعذر تحميل سلال VIP" +
+      "</td></tr>"
+    );
+  }
+
+  function applyVipCartsFailed() {
+    var tb = byId("ma-tbody-vip-page");
+    if (tb) tb.innerHTML = vipPageErrorHtml();
+    var list = byId("ma-vip-home-list");
+    if (list) {
+      list.innerHTML =
+        '<div class="empty-state" style="color:#991b1b;"><div class="empty-text">تعذر تحميل سلال VIP</div></div>';
+    }
+  }
+
   function applyVipCarts(d) {
-    if (!d || !d.ok) return;
+    if (!d || !d.ok) {
+      applyVipCartsFailed();
+      return;
+    }
     if (window.maVipAutomation) {
       if (d.merchant_automation_mode) {
         window.maVipAutomation.setMode(d.merchant_automation_mode);
@@ -658,7 +689,7 @@
       var rows = d.merchant_vip_rows || [];
       if (!rows.length) {
         list.innerHTML =
-          '<div class="empty-state"><div class="empty-icon">👑</div><div class="empty-text">لا سلال VIP تحتاج تدخلك حالياً</div></div>';
+          '<div class="empty-state"><div class="empty-icon">👑</div><div class="empty-text">لا سلال VIP تحتاج تدخلك حالياً</div><p class="ma-vip-load-diag">آخر تحقق: تم تحميل البيانات بنجاح</p></div>';
       } else {
         list.innerHTML = rows.map(vipItemHtml).join("");
       }
@@ -667,8 +698,7 @@
     if (tb) {
       var pr = d.merchant_vip_page_rows || [];
       if (!pr.length) {
-        tb.innerHTML =
-          '<tr><td colspan="4" class="empty-state" style="border:none;"><div class="empty-icon">👑</div><div class="empty-text">لا توجد سلال VIP نشطة تحتاج تدخلك الآن</div></td></tr>';
+        tb.innerHTML = vipPageEmptyHtml();
       } else {
         tb.innerHTML = pr.map(vipRowTable).join("");
       }
@@ -894,7 +924,7 @@
     var jobs = [
       fetchSection("/api/dashboard/summary", applySummary, "summary"),
       fetchSection("/api/dashboard/normal-carts", applyNormalCarts, "normal_carts"),
-      fetchSection("/api/dashboard/vip-carts", applyVipCarts, "vip_carts"),
+      fetch("/api/dashboard/vip-carts", { credentials: "same-origin" }).then(function (r) { return r.json(); }).then(applyVipCarts).catch(applyVipCartsFailed),
       fetchSection("/api/dashboard/followups", applyFollowups, "followups"),
       fetchSection("/api/dashboard/widget-panel", applyWidgetPanel, "widget_panel"),
       fetchSection("/api/dashboard/messages", applyMessages, "messages"),

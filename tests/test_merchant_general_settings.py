@@ -43,8 +43,15 @@ class MerchantGeneralSettingsTests(unittest.TestCase):
         )
         db.session.commit()
 
+    def test_get_scope_general_is_minimal(self) -> None:
+        data = self.client.get("/api/recovery-settings?scope=general").json()
+        self.assertTrue(data.get("ok"))
+        self.assertIn("merchant_automation_mode", data)
+        self.assertNotIn("recovery_delay", data)
+        self.assertNotIn("widget_trigger_config", data)
+
     def test_get_includes_merchant_general_fields(self) -> None:
-        data = self.client.get("/api/recovery-settings").json()
+        data = self.client.get("/api/recovery-settings?scope=general").json()
         self.assertTrue(data.get("ok"))
         self.assertIn("settings_notify_vip", data)
         self.assertIn("settings_notify_recovery_success", data)
@@ -55,6 +62,20 @@ class MerchantGeneralSettingsTests(unittest.TestCase):
         self.assertIn("merchant_automation_mode_ar", data)
         self.assertIn("settings_notifications_summary_ar", data)
         self.assertIn("settings_updated_at_ar", data)
+
+    def test_post_general_scope_sets_apply_handlers_skipped(self) -> None:
+        post = self.client.post(
+            "/api/recovery-settings",
+            json={
+                "merchant_automation_mode": "assistant",
+                "merchant_settings_scope": "general",
+            },
+        )
+        self.assertEqual(post.status_code, 200)
+        body = post.json()
+        self.assertTrue(body.get("apply_handlers_skipped"))
+        self.assertIn("total_duration_ms", body)
+        self.assertNotIn("recovery_delay", body)
 
     def test_post_persists_automation_notify_widget_name(self) -> None:
         r1 = self.client.post(

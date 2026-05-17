@@ -112,7 +112,7 @@
   function loadSettings(force) {
     if (!force && loadedOnce) return Promise.resolve();
     hideMsgs();
-    return fetch("/api/recovery-settings", { credentials: "same-origin" })
+    return fetch("/api/recovery-settings?scope=general", { credentials: "same-origin" })
       .then(function (r) {
         return r.json().then(function (d) {
           return { status: r.status, data: d };
@@ -158,7 +158,6 @@
           fillForm(x.data);
           if (window.maVipAutomation && x.data.merchant_automation_mode) {
             window.maVipAutomation.setMode(x.data.merchant_automation_mode);
-            window.maVipAutomation.rerenderFromCache();
           }
           showOk();
         } else {

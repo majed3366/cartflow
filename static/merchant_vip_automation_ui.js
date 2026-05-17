@@ -4,7 +4,6 @@
 
   var mode = "manual";
   var lastVipPayload = null;
-  var modeLoadPromise = null;
 
   function esc(s) {
     return String(s == null ? "" : s)
@@ -205,28 +204,18 @@
     });
   }
 
-  function ensureModeLoaded() {
-    if (modeLoadPromise) return modeLoadPromise;
-    modeLoadPromise = fetch("/api/recovery-settings", { credentials: "same-origin" })
-      .then(function (r) {
-        return r.json();
-      })
-      .then(function (d) {
-        if (d && d.ok && d.merchant_automation_mode) {
-          mode = normalizeMode(d.merchant_automation_mode);
-          updatePageHints();
-        }
-      })
-      .catch(function () {
-        /* keep default */
-      });
-    return modeLoadPromise;
-  }
-
   function rerenderFromCache() {
     if (lastVipPayload && typeof window.maApplyVipCartsPayload === "function") {
       window.maApplyVipCartsPayload(lastVipPayload);
     }
+  }
+
+  function syncFromCachedVipCarts() {
+    if (lastVipPayload && lastVipPayload.merchant_automation_mode) {
+      mode = normalizeMode(lastVipPayload.merchant_automation_mode);
+    }
+    updatePageHints();
+    rerenderFromCache();
   }
 
   window.maVipAutomation = {
@@ -237,7 +226,7 @@
       mode = normalizeMode(m);
       updatePageHints();
     },
-    ensureModeLoaded: ensureModeLoaded,
+    syncFromCachedVipCarts: syncFromCachedVipCarts,
     renderTableAction: renderTableAction,
     renderHomeItemBtn: function (vr) {
       return renderCompactBtn(vr, "vbtn", false);

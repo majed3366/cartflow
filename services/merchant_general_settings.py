@@ -253,16 +253,6 @@ def post_merchant_general_settings_only(body: Dict[str, Any]) -> Tuple[Dict[str,
 
     store_id = getattr(row, "id", None)
     before_name = _widget_display_name_on_row(row)
-    if log_on:
-        _log.info(
-            "[GENERAL SETTINGS SAVE] incoming keys=%s scope=%s store_id=%s "
-            "widget_display_name(before)=%s apply_handlers_skipped="
-            "recovery,templates,triggers,catalog,vip,widget_cache",
-            keys,
-            scope or "—",
-            store_id,
-            before_name,
-        )
 
     apply_merchant_general_settings_from_body(row, body)
     after_apply_name = _widget_display_name_on_row(row)
@@ -284,14 +274,24 @@ def post_merchant_general_settings_only(body: Dict[str, Any]) -> Tuple[Dict[str,
     saved_name = _widget_display_name_on_row(saved)
     duration_ms = (time.perf_counter() - t0) * 1000.0
 
+    saved_mode = (
+        normalize_automation_mode(getattr(saved, "merchant_automation_mode", None))
+        if saved is not None
+        else normalize_automation_mode(getattr(row, "merchant_automation_mode", None))
+    )
     if log_on:
         _log.info(
-            "[GENERAL SETTINGS SAVE] widget_display_name(after)=%s "
-            "widget_display_name(saved)=%s duration_ms=%.2f "
-            "scope_isolated=true",
+            "[GENERAL SETTINGS SAVE] scope=%s incoming keys=%s duration_ms=%.2f "
+            "apply_handlers_skipped=true widget_display_name(before)=%s "
+            "widget_display_name(after)=%s widget_display_name(saved)=%s "
+            "merchant_automation_mode(saved)=%s",
+            scope or "—",
+            keys,
+            duration_ms,
+            before_name,
             after_apply_name,
             saved_name,
-            duration_ms,
+            saved_mode,
         )
 
     payload = merchant_general_settings_patch_response(
@@ -299,6 +299,13 @@ def post_merchant_general_settings_only(body: Dict[str, Any]) -> Tuple[Dict[str,
     )
     payload["apply_handlers_skipped"] = True
     return payload, 200
+
+
+def merchant_general_settings_get_response(store: Optional[Any]) -> Dict[str, Any]:
+    """Minimal GET payload for /api/recovery-settings?scope=general."""
+    payload: Dict[str, Any] = {"ok": True}
+    payload.update(merchant_general_settings_fields_for_api(store))
+    return payload
 
 
 def apply_merchant_general_settings_from_body(row: Store, body: Dict[str, Any]) -> None:

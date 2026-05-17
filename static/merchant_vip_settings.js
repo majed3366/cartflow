@@ -121,7 +121,7 @@
   function loadSettings(force) {
     if (!force && loadedOnce) return Promise.resolve();
     hideMsgs();
-    return fetch("/api/recovery-settings", { credentials: "same-origin" })
+    return fetch("/api/recovery-settings?scope=vip", { credentials: "same-origin" })
       .then(function (r) {
         return r.json().then(function (d) {
           return { status: r.status, data: d };
@@ -197,15 +197,12 @@
 
   window.maInitVipSettingsPage = function () {
     bindOnce();
-    var modeReady =
-      window.maVipAutomation && typeof window.maVipAutomation.ensureModeLoaded === "function"
-        ? window.maVipAutomation.ensureModeLoaded()
-        : Promise.resolve();
-    modeReady.then(function () {
-      if (window.maVipAutomation) {
-        window.maVipAutomation.rerenderFromCache();
-      }
-    });
+    if (
+      window.maVipAutomation &&
+      typeof window.maVipAutomation.syncFromCachedVipCarts === "function"
+    ) {
+      window.maVipAutomation.syncFromCachedVipCarts();
+    }
     loadSettings(false);
   };
 

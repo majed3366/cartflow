@@ -58,6 +58,14 @@ class MerchantVipAutomationUiTests(unittest.TestCase):
         self.assertIn("ma-vip-automation-helper", html)
         self.assertIn("ma-vip-suggest-panel", html)
         self.assertIn("اقتراح متابعة VIP", html)
+        self.assertIn("طريقة التشغيل تغيّر أسلوب المتابعة فقط", html)
+
+    def test_get_scope_vip_is_minimal(self) -> None:
+        data = self.client.get("/api/recovery-settings?scope=vip").json()
+        self.assertTrue(data.get("ok"))
+        self.assertIn("vip_cart_threshold", data)
+        self.assertNotIn("recovery_delay", data)
+        self.assertNotIn("widget_trigger_config", data)
 
     def test_modes_persist_via_recovery_settings_get(self) -> None:
         for mode in ("manual", "assistant", "auto"):

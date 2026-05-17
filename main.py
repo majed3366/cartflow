@@ -1721,9 +1721,10 @@ async def api_recovery_settings(request: Request):
 
 
 @app.get("/api/recovery-settings")
-def api_recovery_settings_get():
+def api_recovery_settings_get(request: Request):
     """
     واجهة ‎API‎ — قراءة أحدث ‎Store.recovery_*‎.
+    ‎?scope=general‎ أو ‎?scope=vip‎ — استجابة خفيفة للوحة التاجر فقط.
     """
     wall0 = time.perf_counter()
     _merchant_dashboard_db_ready()
@@ -1731,6 +1732,20 @@ def api_recovery_settings_get():
         row = _dashboard_recovery_store_row()
         if row is None:
             return j({"ok": False, "error": "no_store"}, 500)
+        scope = (request.query_params.get("scope") or "").strip().lower()
+        if scope == "general":
+            from services.merchant_general_settings import (  # noqa: PLC0415
+                merchant_general_settings_get_response,
+            )
+
+            return j(merchant_general_settings_get_response(row))
+        if scope == "vip":
+            return j(
+                {
+                    "ok": True,
+                    **merchant_vip_settings_fields_for_api(row, include_activity=True),
+                }
+            )
         wa: Optional[str] = getattr(row, "whatsapp_support_url", None)
         if not (isinstance(wa, str) and wa.strip()):
             wa = None
