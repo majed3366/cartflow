@@ -13959,13 +13959,13 @@ def _merchant_followup_row_to_payload(
     if inbound:
         last_msg_ar = inbound[:240] + ("…" if len(inbound) > 240 else "")
     else:
-        last_msg_ar = "لا يوجد رد نصي بعد — يُنصح بالتواصل عبر واتساب"
+        last_msg_ar = "لا يوجد رد نصي بعد — يتابع النظام المسار تلقائياً"
     return {
         "id": row.id,
         "customer_phone": (row.customer_phone or "").strip(),
         "customer_wa_digits": wa_digits,
         "status": row.status,
-        "status_ar": "جاهز للتواصل",
+        "status_ar": "تفاعل العميل — بدأ النظام متابعة المسار المناسب.",
         "reason": row.reason,
         "reason_ar": _merchant_followup_reason_ar(getattr(row, "reason", None)),
         "inbound_message": inbound,

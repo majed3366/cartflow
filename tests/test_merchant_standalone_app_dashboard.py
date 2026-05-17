@@ -26,8 +26,9 @@ class MerchantStandaloneAppDashboardTests(unittest.TestCase):
         html = r.text or ""
         for needle in (
             "الرئيسية",
-            "السلال المتروكة",
-            "سلال تحتاج متابعة",
+            "سلال الانتظار",
+            "سلال التفاعل",
+            "السلال المكتملة",
             "سلال VIP",
             "الرسائل المرسلة",
             "أسباب التردد",
@@ -70,6 +71,7 @@ class MerchantStandaloneAppDashboardTests(unittest.TestCase):
             'id="page-home"',
             'id="page-carts"',
             'id="page-followup"',
+            'id="page-completed"',
             'id="page-vip"',
             'id="page-messages"',
             'id="page-reasons"',

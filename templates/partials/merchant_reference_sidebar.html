@@ -17,13 +17,13 @@
       <span class="nav-ico">📊</span> الرئيسية
     </a>
     <a class="nav-item{% if ma == 'normal-carts' %} active{% endif %}" href="/dashboard/normal-carts">
-      <span class="nav-ico">🛒</span> السلال المتروكة
+      <span class="nav-ico">🛒</span> سلال الانتظار
       {% if merchant_nav_badge_abandoned > 0 %}
       <span class="nav-badge nb-red">{{ merchant_nav_badge_abandoned }}</span>
       {% endif %}
     </a>
     <a class="nav-item{% if ma == 'normal-carts' %} active{% endif %}" href="/dashboard/normal-carts">
-      <span class="nav-ico">🔔</span> سلال تحتاج متابعة
+      <span class="nav-ico">🔔</span> سلال التفاعل
       {% if merchant_nav_badge_followup > 0 %}
       <span class="nav-badge nb-amber">{{ merchant_nav_badge_followup }}</span>
       {% endif %}

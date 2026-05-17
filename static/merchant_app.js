@@ -3,8 +3,9 @@
 
   var TITLES = {
     home: "الرئيسية",
-    carts: "السلال المتروكة",
-    followup: "سلال تحتاج متابعة",
+    carts: "سلال الانتظار",
+    followup: "سلال التفاعل",
+    completed: "السلال المكتملة",
     vip: "سلال VIP",
     messages: "الرسائل المرسلة",
     reasons: "أسباب التردد",
@@ -20,6 +21,7 @@
     "#home": "home",
     "#carts": "carts",
     "#followup": "followup",
+    "#completed": "completed",
     "#vip": "vip",
     "#messages": "messages",
     "#reasons": "reasons",

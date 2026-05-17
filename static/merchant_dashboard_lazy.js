@@ -176,10 +176,73 @@
     }
   }
 
+  var MERCHANT_INTERVENTION_PRIMARY_KEYS = {
+    channel_failed: 1,
+    needs_phone: 1,
+    needs_reason: 1,
+    attempts_exhausted: 1,
+    stopped_manual: 1,
+  };
+
+  function merchantNeedsIntervention(mc) {
+    if (!mc) return false;
+    if (mc.merchant_next_action_urgent) return true;
+    var pk = String(mc.merchant_lifecycle_primary_key || "")
+      .trim()
+      .toLowerCase();
+    return !!MERCHANT_INTERVENTION_PRIMARY_KEYS[pk];
+  }
+
   function lifecycleTruthHtml(mc) {
+    var happened = String(mc.merchant_lifecycle_customer_behavior_ar || "").trim();
+    var systemDid = String(mc.merchant_lifecycle_system_outcome_ar || "").trim();
+    var waiting = String(
+      mc.merchant_lifecycle_next_action_ar || mc.merchant_next_action_ar || ""
+    ).trim();
     var wa = String(mc.merchant_whatsapp_line_ar || "").trim();
     var ret = String(mc.merchant_return_line_ar || "").trim();
     var pur = String(mc.merchant_purchase_line_ar || "").trim();
+    if (!systemDid) {
+      if (pur) systemDid = pur;
+      else if (ret) systemDid = ret;
+      else if (wa) systemDid = wa;
+    }
+    if (happened || systemDid || waiting) {
+      var needs = merchantNeedsIntervention(mc);
+      var intervene =
+        needs && waiting.indexOf("قد تحتاج") >= 0
+          ? waiting
+          : needs
+            ? "قد تحتاج تدخل التاجر"
+            : "لا — النظام يتابع تلقائياً";
+      var interp =
+        '<div class="recovery-truth" aria-label="تفسير مسار الاسترجاع">';
+      if (happened) {
+        interp +=
+          '<div class="recovery-truth-line"><strong>ماذا حدث؟</strong> ' +
+          esc(happened) +
+          "</div>";
+      }
+      if (systemDid) {
+        interp +=
+          '<div class="recovery-truth-line"><strong>ماذا فعل النظام؟</strong> ' +
+          esc(systemDid) +
+          "</div>";
+      }
+      if (waiting) {
+        interp +=
+          '<div class="recovery-truth-line"><strong>ماذا ينتظر الآن؟</strong> ' +
+          esc(waiting) +
+          "</div>";
+      }
+      interp +=
+        '<div class="recovery-truth-line' +
+        (needs ? "" : " recovery-truth-muted") +
+        '"><strong>هل يحتاج تدخل التاجر؟</strong> ' +
+        esc(intervene) +
+        "</div>";
+      return interp + "</div>";
+    }
     var lc = String(mc.lifecycle_label_ar || "").trim();
     if (!wa && !ret && !pur && !lc) return "";
     var h =
@@ -435,11 +498,13 @@
     var ph = digits
       ? '<span class="ph-ok">✓ متوفر</span>'
       : '<span class="ph-no">✗ غير متوفر</span>';
-    var act = fr.contact_wa_href
-      ? '<a class="vbtn" href="' +
-        esc(fr.contact_wa_href) +
-        '" rel="noopener noreferrer">متابعة يدوية ←</a>'
-      : '<span class="vbtn is-disabled">متابعة يدوية ←</span>';
+    var statusAr =
+      String(fr.status_ar || "").trim() ||
+      "تفاعل العميل — بدأ النظام متابعة المسار المناسب.";
+    var act =
+      '<div class="next">' +
+      esc(statusAr) +
+      '</div><div class="recovery-truth recovery-truth-muted" style="margin-top:6px;font-size:11px;">لا حاجة لزر تواصل — النظام يوجّه المسار تلقائياً</div>';
     return (
       "<tr>" +
       "<td>" +
@@ -469,7 +534,7 @@
       var fr = d.merchant_followup_rows || [];
       if (!fr.length) {
         tb.innerHTML =
-          '<tr><td colspan="6" class="empty-state" style="border:none;"><div class="empty-icon">🔔</div><div class="empty-text">لا توجد سلال تحتاج متابعتك حالياً</div></td></tr>';
+          '<tr><td colspan="6" class="empty-state" style="border:none;"><div class="empty-icon">🔔</div><div class="empty-text">لا توجد سلال تفاعل حالياً</div></td></tr>';
       } else {
         tb.innerHTML = fr.map(followRowHtml).join("");
       }

@@ -25,12 +25,14 @@
     <div class="nav-sec">القائمة الرئيسية</div>
     <button type="button" class="nav-item active" data-nav="home" onclick="goTo('home')"><span class="nav-ico">📊</span> الرئيسية</button>
     {% if merchant_dashboard_lazy_shell %}
-    <button type="button" class="nav-item" data-nav="carts" onclick="goTo('carts')"><span class="nav-ico">🛒</span> السلال المتروكة<span class="nb nb-r" id="ma-nav-badge-abandoned" style="display:none;"></span></button>
-    <button type="button" class="nav-item" data-nav="followup" onclick="goTo('followup')"><span class="nav-ico">🔔</span> سلال تحتاج متابعة<span class="nb nb-a" id="ma-nav-badge-followup" style="display:none;"></span></button>
+    <button type="button" class="nav-item" data-nav="carts" onclick="goTo('carts')"><span class="nav-ico">🛒</span> سلال الانتظار<span class="nb nb-r" id="ma-nav-badge-abandoned" style="display:none;"></span></button>
+    <button type="button" class="nav-item" data-nav="followup" onclick="goTo('followup')"><span class="nav-ico">🔔</span> سلال التفاعل<span class="nb nb-a" id="ma-nav-badge-followup" style="display:none;"></span></button>
+    <button type="button" class="nav-item" data-nav="completed" onclick="goTo('completed')"><span class="nav-ico">✅</span> السلال المكتملة</button>
     <button type="button" class="nav-item" data-nav="vip" onclick="goTo('vip')"><span class="nav-ico">👑</span> سلال VIP<span class="nb nb-a" id="ma-nav-badge-vip" style="display:none;"></span></button>
     {% else %}
-    <button type="button" class="nav-item" data-nav="carts" onclick="goTo('carts')"><span class="nav-ico">🛒</span> السلال المتروكة{% if merchant_nav_badge_abandoned and merchant_nav_badge_abandoned > 0 %}<span class="nb nb-r">{{ merchant_nav_badge_abandoned }}</span>{% endif %}</button>
-    <button type="button" class="nav-item" data-nav="followup" onclick="goTo('followup')"><span class="nav-ico">🔔</span> سلال تحتاج متابعة{% if merchant_nav_badge_followup and merchant_nav_badge_followup > 0 %}<span class="nb nb-a">{{ merchant_nav_badge_followup }}</span>{% endif %}</button>
+    <button type="button" class="nav-item" data-nav="carts" onclick="goTo('carts')"><span class="nav-ico">🛒</span> سلال الانتظار{% if merchant_nav_badge_abandoned and merchant_nav_badge_abandoned > 0 %}<span class="nb nb-r">{{ merchant_nav_badge_abandoned }}</span>{% endif %}</button>
+    <button type="button" class="nav-item" data-nav="followup" onclick="goTo('followup')"><span class="nav-ico">🔔</span> سلال التفاعل{% if merchant_nav_badge_followup and merchant_nav_badge_followup > 0 %}<span class="nb nb-a">{{ merchant_nav_badge_followup }}</span>{% endif %}</button>
+    <button type="button" class="nav-item" data-nav="completed" onclick="goTo('completed')"><span class="nav-ico">✅</span> السلال المكتملة</button>
     <button type="button" class="nav-item" data-nav="vip" onclick="goTo('vip')"><span class="nav-ico">👑</span> سلال VIP{% if merchant_nav_badge_vip and merchant_nav_badge_vip > 0 %}<span class="nb nb-a">{{ merchant_nav_badge_vip }}</span>{% endif %}</button>
     {% endif %}
     <div class="nav-sec">التواصل</div>
@@ -128,7 +130,7 @@
     <div class="body-grid">
       <div class="card">
         <div class="card-head">
-          <div class="card-title">السلال المتروكة — آخر النشاطات</div>
+          <div class="card-title">سلال الانتظار — آخر النشاطات</div>
           <button type="button" class="card-link" onclick="goTo('carts')">عرض الكل</button>
         </div>
         <div class="table-scroll">
@@ -143,7 +145,7 @@
                 <td><div class="camt">{{ "{:,.0f}".format((mc.merchant_cart_value or 0)|float) }} ر</div><div class="ctime">{{ mc.merchant_time_relative_ar | default("—") }}</div></td>
                 <td><span class="chip {{ mc.merchant_reason_chip_class | default('c-other') }}">{{ mc.merchant_reason_chip_label_ar | default("—") }}</span></td>
                 <td><span class="st {{ mc.merchant_status_row_class | default('s-waiting') }}"><span class="sd"></span>{{ mc.merchant_status_label_ar | default("—") }}</span></td>
-                <td><div class="next{% if mc.merchant_next_action_urgent %} urgent{% endif %}">{{ mc.merchant_next_action_ar | default("—") }}</div></td>
+                <td><div class="next{% if mc.merchant_next_action_urgent %} urgent{% endif %}">{{ mc.merchant_next_action_ar | default("—") }}</div>{% include "partials/merchant_recovery_lifecycle_interpretation_block.html" %}</td>
                 <td>{% if mc.merchant_phone_line_ar and ("متوفر" in mc.merchant_phone_line_ar) %}<span class="ph-ok">✓ متوفر</span>{% else %}<span class="ph-no">✗ غير متوفر</span>{% endif %}</td>
               </tr>
               {% else %}
@@ -228,8 +230,8 @@
 
   <div class="page" id="page-carts">
     <div class="page-header">
-      <div class="page-h1">السلال المتروكة</div>
-      <div class="page-sub">جميع السلال العادية (غير VIP) المرتبطة بمتجرك — صفِّ حسب الحالة</div>
+      <div class="page-h1">سلال الانتظار</div>
+      <div class="page-sub">سلال بانتظار الإرسال أو تفاعل العميل — يتابعها النظام تلقائياً (غير VIP)</div>
     </div>
     <div class="filter-bar" id="ma-cart-filters">
       {% if merchant_dashboard_lazy_shell %}
@@ -263,12 +265,12 @@
               <td><div class="camt">{{ "{:,.0f}".format((mc.merchant_cart_value or 0)|float) }} ر</div><div class="ctime">{{ mc.merchant_time_relative_ar | default("—") }}</div></td>
               <td><span class="chip {{ mc.merchant_reason_chip_class | default('c-other') }}">{{ mc.merchant_reason_chip_label_ar | default("—") }}</span></td>
               <td><span class="st {{ mc.merchant_status_row_class | default('s-waiting') }}"><span class="sd"></span>{{ mc.merchant_status_label_ar | default("—") }}</span></td>
-              <td><div class="next{% if mc.merchant_next_action_urgent %} urgent{% endif %}">{{ mc.merchant_next_action_ar | default("—") }}</div></td>
+              <td><div class="next{% if mc.merchant_next_action_urgent %} urgent{% endif %}">{{ mc.merchant_next_action_ar | default("—") }}</div>{% include "partials/merchant_recovery_lifecycle_interpretation_block.html" %}</td>
               <td><div class="ctime">{{ mc.merchant_last_seen_display | default("—") }}</div></td>
               <td>{% if mc.merchant_has_customer_phone %}<span class="ph-ok">✓</span>{% else %}<span class="ph-no">✗</span>{% endif %}</td>
             </tr>
             {% else %}
-            <tr><td colspan="6" class="empty-state" style="border:none;"><div class="empty-icon">🛒</div><div class="empty-text">لا توجد سلال متروكة مسجّلة حالياً ضمن نطاق متجرك</div></td></tr>
+            <tr><td colspan="6" class="empty-state" style="border:none;"><div class="empty-icon">🛒</div><div class="empty-text">لا توجد سلال انتظار مسجّلة حالياً ضمن نطاق متجرك</div></td></tr>
             {% endfor %}
             {% endif %}
           </tbody>
@@ -279,15 +281,15 @@
 
   <div class="page" id="page-followup">
     <div class="page-header">
-      <div class="page-h1">سلال تحتاج متابعة</div>
-      <div class="page-sub">عملاء أبدوا اهتماماً ويحتاجون تواصلك المباشر</div>
+      <div class="page-h1">سلال التفاعل</div>
+      <div class="page-sub">عميل تفاعل — النظام يوجّه المسار دون ضغط يدوي على السلال العادية</div>
     </div>
     <div class="card">
       <div class="table-scroll">
         <table>
           <thead>
             <tr>
-              <th>قيمة السلة</th><th>سبب التردد</th><th>آخر رسالة / ملاحظة</th><th>محاولات الاسترداد</th><th>جوال</th><th>إجراء</th>
+              <th>قيمة السلة</th><th>سبب التردد</th><th>آخر رسالة / ملاحظة</th><th>محاولات الاسترداد</th><th>جوال</th><th>مسار النظام</th>
             </tr>
           </thead>
           <tbody id="ma-tbody-followups">
@@ -301,14 +303,28 @@
               <td><div class="msg-text" style="margin:0;">{{ fr.last_message_line_ar | default("—") }}</div></td>
               <td><div class="ctime" style="font-size:12px;font-weight:600;">{{ fr.attempts_ar | default("—") }}</div></td>
               <td>{% if fr.customer_wa_digits %}<span class="ph-ok">✓ متوفر</span>{% else %}<span class="ph-no">✗ غير متوفر</span>{% endif %}</td>
-              <td>{% if fr.contact_wa_href %}<a class="vbtn" href="{{ fr.contact_wa_href }}" rel="noopener noreferrer">متابعة يدوية ←</a>{% else %}<span class="vbtn is-disabled">متابعة يدوية ←</span>{% endif %}</td>
+              <td><div class="next">{{ fr.status_ar | default('تفاعل العميل — بدأ النظام متابعة المسار المناسب.') }}</div><div class="recovery-truth recovery-truth-muted" style="margin-top:6px;font-size:11px;">لا حاجة لزر تواصل — النظام يوجّه المسار تلقائياً</div></td>
             </tr>
             {% else %}
-            <tr><td colspan="6" class="empty-state" style="border:none;"><div class="empty-icon">🔔</div><div class="empty-text">لا توجد سلال تحتاج متابعتك حالياً</div></td></tr>
+            <tr><td colspan="6" class="empty-state" style="border:none;"><div class="empty-icon">🔔</div><div class="empty-text">لا توجد سلال تفاعل حالياً</div></td></tr>
             {% endfor %}
             {% endif %}
           </tbody>
         </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="page" id="page-completed">
+    <div class="page-header">
+      <div class="page-h1">السلال المكتملة</div>
+      <div class="page-sub">سلال اكتمل شراؤها أو عاد عميلها للموقع أو توقّف الاسترجاع — عرض موحّد قريباً.</div>
+    </div>
+    <div class="card">
+      <div class="empty-state" style="padding:32px 20px;border:none;">
+        <div class="empty-icon">✅</div>
+        <div class="empty-text">قريباً: عرض السلال المكتملة (شراء، عودة للموقع، إيقاف الاسترجاع) في مكان واحد.</div>
+        <p style="margin-top:12px;font-size:12px;color:var(--muted);">حتى ذلك الحين، راجع الحالات المنتهية من <a href="/dashboard/normal-carts?nr_lifecycle=archived" style="color:var(--green-mid);font-weight:600;">سلال عادية → الحالات السابقة</a>.</p>
       </div>
     </div>
   </div>
