@@ -61,7 +61,7 @@ BLOCKER_GROUPS: dict[str, tuple[str, str]] = {
     ),
     "customer_replied": (
         GROUP_STOPPED_CUSTOMER,
-        "العميل تفاعل بالفعل، راقب المحادثة.",
+        "العميل تفاعل — سيتابع النظام المسار المناسب تلقائياً.",
     ),
     "purchase_completed": (GROUP_NORMAL, "اكتمال شراء جيد — لا إجراء مطلوب لهذه السلة."),
     "automation_disabled": (

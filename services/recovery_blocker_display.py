@@ -111,7 +111,7 @@ def get_recovery_blocker_display_state(blocker_reason: Optional[str]) -> dict[st
             "operational_hint_ar": "تم إيقاف الاسترجاع تلقائيًا بعد العودة",
             "description_ar": "تم إيقاف الاسترجاع لأن العميل عاد للموقع — إيقاف مقصود وليس عطلًا.",
             "severity": "info",
-            "merchant_action_ar": "راقب السلة أو ساعده عند الحاجة.",
+            "merchant_action_ar": "لا حاجة لإجراء — النظام أوقف الرسائل تلقائياً.",
         },
         "customer_replied": {
             "key": "customer_replied",
@@ -119,7 +119,7 @@ def get_recovery_blocker_display_state(blocker_reason: Optional[str]) -> dict[st
             "operational_hint_ar": "تم إيقاف الإرسال بعد رد العميل",
             "description_ar": "تم إيقاف الرسائل الآلية لأن العميل دخل في محادثة.",
             "severity": "info",
-            "merchant_action_ar": "راجع الرد المقترح وتابع المحادثة.",
+            "merchant_action_ar": "تفاعل العميل — بدأ النظام متابعة المسار المناسب.",
         },
         "purchase_completed": {
             "key": "purchase_completed",

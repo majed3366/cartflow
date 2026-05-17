@@ -68,6 +68,7 @@ class MerchantRecoveryLifecycleTruthTests(unittest.TestCase):
         )
         self.assertEqual(truth["whatsapp_status"], "sent")
         self.assertIn("تم إرسال الرسالة", truth["merchant_whatsapp_line_ar"])
+        self.assertIn("ننتظر تفاعل العميل", truth["merchant_whatsapp_line_ar"])
         self.assertIn("مرحباً", truth["message_preview"] or "")
         self.assertTrue(truth["customer_phone_present"])
 

@@ -342,8 +342,8 @@
     var btn = href
       ? '<a class="va-btn" href="' +
         esc(href) +
-        '">تواصل ←</a>'
-      : '<span class="va-btn is-disabled" role="button" aria-disabled="true">تواصل ←</span>';
+        '">تواصل يدوي (VIP) ←</a>'
+      : '<span class="va-btn is-disabled" role="button" aria-disabled="true">تواصل يدوي (VIP) ←</span>';
     host.innerHTML =
       '<div class="vip-alert"><div class="va-icon">👑</div><div class="va-body">' +
       '<div class="va-title">عميل VIP يحتاج تدخلك — لن يُرسَل له واتساب تلقائياً</div>' +
@@ -357,8 +357,8 @@
   function vipItemHtml(vr) {
     var href = vr.contact_href || "";
     var btn = href
-      ? '<a class="vbtn" href="' + esc(href) + '">تواصل</a>'
-      : '<span class="vbtn is-disabled">تواصل</span>';
+      ? '<a class="vbtn" href="' + esc(href) + '">تواصل يدوي (VIP)</a>'
+      : '<span class="vbtn is-disabled">تواصل يدوي (VIP)</span>';
     return (
       '<div class="vip-item">' +
       '<div class="vav">' +
@@ -379,8 +379,8 @@
     var btn = href
       ? '<a class="va-btn" href="' +
         esc(href) +
-        '" rel="noopener noreferrer">تواصل الآن ←</a>'
-      : '<span class="va-btn is-disabled">تواصل الآن ←</span>';
+        '" rel="noopener noreferrer">تواصل يدوي (VIP) ←</a>'
+      : '<span class="va-btn is-disabled">تواصل يدوي (VIP) ←</span>';
     var hp = vr.has_phone
       ? '<span class="ph-ok">✓ متوفر</span>'
       : '<span class="ph-no">✗ غير متوفر</span>';
@@ -438,8 +438,8 @@
     var act = fr.contact_wa_href
       ? '<a class="vbtn" href="' +
         esc(fr.contact_wa_href) +
-        '" rel="noopener noreferrer">تواصل ←</a>'
-      : '<span class="vbtn is-disabled">تواصل ←</span>';
+        '" rel="noopener noreferrer">متابعة يدوية ←</a>'
+      : '<span class="vbtn is-disabled">متابعة يدوية ←</span>';
     return (
       "<tr>" +
       "<td>" +

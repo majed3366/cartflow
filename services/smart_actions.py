@@ -83,9 +83,9 @@ def _resolve_cart_smart_action(
 
     return {
         "action_key": "default_gentle_followup",
-        "title_ar": "متابعة عادية",
-        "reason_ar": "لا توجد إشارة قوية تستدعي عرض خاص.",
-        "cta_ar": "تواصل عادي",
+        "title_ar": "متابعة تلقائية",
+        "reason_ar": "لا توجد إشارة قوية تستدعي تدخلاً يدوياً.",
+        "cta_ar": "النظام يتابع تلقائياً",
     }
 
 

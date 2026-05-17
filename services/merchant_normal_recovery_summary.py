@@ -4,9 +4,9 @@ from __future__ import annotations
 
 # خرائط حالة تقريبية داخلية (لا تُعرض للتاجر) → نصوص أعمال
 _COARSE_TO_BUSINESS_STATE_AR: dict[str, str] = {
-    "pending": "تحتاج متابعة",
-    "sent": "تم التواصل",
-    "replied": "العميل رد",
+    "pending": "بانتظار الإرسال",
+    "sent": "بانتظار تفاعل العميل",
+    "replied": "تفاعل العميل",
     "clicked": "تفاعل مع الرابط",
     "returned": "العميل عاد",
     "ignored": "لم تُستكمل",
@@ -36,14 +36,18 @@ def merchant_next_action_hint_ar(
     if cr == "pending":
         return "ستُرسل رسالة المتابعة تلقائياً وفق التوقيت الذي ضبطته."
     if cr == "sent":
-        return "راقب الرد؛ عند الحاجة راجع المحادثة من واتساب المتجر."
-    if cr in ("replied", "clicked", "returned"):
-        return "تابع بخطوة بيع لطيفة أو أجب على استفسار العميل."
+        return "تم إرسال الرسالة — ننتظر تفاعل العميل."
+    if cr in ("replied", "clicked"):
+        return "تفاعل العميل — بدأ النظام متابعة المسار المناسب."
+    if cr == "returned":
+        return "العميل عاد للموقع — أوقفنا الرسائل تلقائياً."
     if cr == "blocked":
-        return "راجع بيانات العميل أو الربط ثم أعد المحاولة."
-    if cr in ("converted", "stopped", "ignored"):
+        return "قد تحتاج تدخل التاجر — راجع بيانات العميل أو إعدادات الربط."
+    if cr == "converted":
+        return "تمت عملية الشراء — انتهت مهمة الاسترجاع."
+    if cr in ("stopped", "ignored"):
         return "لا يتطلب إجراءاً إضافياً من هذه الشاشة."
-    return "راقب النتيجة من تقاريرك اليومية."
+    return "سيتابع النظام المسار تلقائياً — راجع التقارير عند الحاجة."
 
 
 def merchant_history_case_note_ar(*, dormant_sales: bool) -> str:

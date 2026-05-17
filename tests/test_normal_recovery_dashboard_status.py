@@ -1178,7 +1178,7 @@ class NormalRecoveryDashboardStatusTests(unittest.TestCase):
         self.assertEqual(len(archived), 1)
         self.assertIn("لم يُكمل", archived[0].get("merchant_history_note_ar") or "")
         self.assertEqual(
-            (archived[0].get("merchant_business_state_ar") or "").strip(), "تم التواصل"
+            (archived[0].get("merchant_business_state_ar") or "").strip(), "بانتظار تفاعل العميل"
         )
 
     def test_stale_not_when_queued_followup_after_activity(self) -> None:

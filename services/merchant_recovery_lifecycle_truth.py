@@ -314,15 +314,28 @@ def build_merchant_recovery_lifecycle_truth(
         sent_ct=int(sent_ct),
     )
 
-    if message_sent:
-        whatsapp_line_ar = "تم إرسال الرسالة"
+    if replied and not purchased:
+        whatsapp_line_ar = "تفاعل العميل — بدأ النظام متابعة المسار المناسب."
+    elif returned and not purchased:
+        whatsapp_line_ar = "العميل عاد للموقع — أوقفنا الرسائل تلقائياً."
+    elif purchased:
+        whatsapp_line_ar = "تمت عملية الشراء — انتهت مهمة الاسترجاع."
+    elif message_sent:
+        whatsapp_line_ar = "تم إرسال الرسالة — ننتظر تفاعل العميل."
         if preview:
-            whatsapp_line_ar += f" — {preview}"
+            whatsapp_line_ar += f" ({preview})"
         if sent_at_display:
             whatsapp_line_ar += f" ({sent_at_display})"
+    elif scheduling or not_sent_key == "waiting_delay":
+        whatsapp_line_ar = "ننتظر تفاعل العميل — سيتابع النظام تلقائياً."
+    elif failed:
+        whatsapp_line_ar = "قد تحتاج تدخل التاجر — تعذّر إرسال واتساب."
     else:
         reason_ar = _NOT_SENT_REASON_AR.get(not_sent_key, _NOT_SENT_REASON_AR["unknown"])
-        whatsapp_line_ar = f"لم تُرسل رسالة بعد — {reason_ar}"
+        if not_sent_key in ("missing_phone", "missing_reason"):
+            whatsapp_line_ar = f"قد تحتاج تدخل التاجر — {reason_ar}"
+        else:
+            whatsapp_line_ar = f"لم تُرسل رسالة بعد — {reason_ar}"
 
     return_line_ar = ""
     if returned and not purchased:

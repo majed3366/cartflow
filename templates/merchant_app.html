@@ -72,8 +72,8 @@
         <div class="va-title">عميل VIP يحتاج تدخلك — لن يُرسَل له واتساب تلقائياً</div>
         <div class="va-sub">{{ merchant_vip_banner.amount_line | default("") }}</div>
       </div>
-      {% if merchant_vip_banner.contact_href %}<a class="va-btn" href="{{ merchant_vip_banner.contact_href }}">تواصل ←</a>
-      {% else %}<span class="va-btn is-disabled" role="button" aria-disabled="true">تواصل ←</span>{% endif %}
+      {% if merchant_vip_banner.contact_href %}<a class="va-btn" href="{{ merchant_vip_banner.contact_href }}">تواصل يدوي (VIP) ←</a>
+      {% else %}<span class="va-btn is-disabled" role="button" aria-disabled="true">تواصل يدوي (VIP) ←</span>{% endif %}
     </div>
     {% endif %}
 
@@ -214,7 +214,7 @@
           <div class="vav">{{ vr.avatar_letter }}</div>
           <div class="vi"><div class="vamt">{{ vr.amount_display }} ريال</div><div class="vtm">{{ vr.subtitle_ar }}</div></div>
           <span class="vtag">VIP</span>
-          {% if vr.contact_href %}<a class="vbtn" href="{{ vr.contact_href }}">تواصل</a>{% else %}<span class="vbtn is-disabled">تواصل</span>{% endif %}
+          {% if vr.contact_href %}<a class="vbtn" href="{{ vr.contact_href }}">تواصل يدوي (VIP)</a>{% else %}<span class="vbtn is-disabled">تواصل يدوي (VIP)</span>{% endif %}
         </div>
         {% else %}
         <div class="empty-state"><div class="empty-icon">👑</div><div class="empty-text">لا سلال VIP تحتاج تدخلك حالياً</div></div>
@@ -301,7 +301,7 @@
               <td><div class="msg-text" style="margin:0;">{{ fr.last_message_line_ar | default("—") }}</div></td>
               <td><div class="ctime" style="font-size:12px;font-weight:600;">{{ fr.attempts_ar | default("—") }}</div></td>
               <td>{% if fr.customer_wa_digits %}<span class="ph-ok">✓ متوفر</span>{% else %}<span class="ph-no">✗ غير متوفر</span>{% endif %}</td>
-              <td>{% if fr.contact_wa_href %}<a class="vbtn" href="{{ fr.contact_wa_href }}" rel="noopener noreferrer">تواصل ←</a>{% else %}<span class="vbtn is-disabled">تواصل ←</span>{% endif %}</td>
+              <td>{% if fr.contact_wa_href %}<a class="vbtn" href="{{ fr.contact_wa_href }}" rel="noopener noreferrer">متابعة يدوية ←</a>{% else %}<span class="vbtn is-disabled">متابعة يدوية ←</span>{% endif %}</td>
             </tr>
             {% else %}
             <tr><td colspan="6" class="empty-state" style="border:none;"><div class="empty-icon">🔔</div><div class="empty-text">لا توجد سلال تحتاج متابعتك حالياً</div></td></tr>
@@ -322,7 +322,7 @@
       <div class="va-icon">💡</div>
       <div class="va-body">
         <div class="va-title">سلال VIP لا تتلقى رسائل استرداد تلقائية</div>
-        <div class="va-sub">النظام لا يُرسل سلسلة واتساب آلية لهذه السلال — استخدم «تواصل الآن» للوصول للعميل مباشرة.</div>
+        <div class="va-sub">النظام لا يُرسل سلسلة واتساب آلية لهذه السلال — استخدم «تواصل يدوي (VIP)» للوصول للعميل مباشرة.</div>
       </div>
     </div>
     <div class="card">
@@ -340,7 +340,7 @@
               <td><div class="camt">{{ vr.amount_display }} ريال</div></td>
               <td><div class="ctime">{{ vr.subtitle_ar }}</div></td>
               <td>{% if vr.has_phone %}<span class="ph-ok">✓ متوفر</span>{% else %}<span class="ph-no">✗ غير متوفر</span>{% endif %}</td>
-              <td>{% if vr.contact_href %}<a class="va-btn" href="{{ vr.contact_href }}" rel="noopener noreferrer">تواصل الآن ←</a>{% else %}<span class="va-btn is-disabled">تواصل الآن ←</span>{% endif %}</td>
+              <td>{% if vr.contact_href %}<a class="va-btn" href="{{ vr.contact_href }}" rel="noopener noreferrer">تواصل يدوي (VIP) ←</a>{% else %}<span class="va-btn is-disabled">تواصل يدوي (VIP) ←</span>{% endif %}</td>
             </tr>
             {% else %}
             <tr><td colspan="4" class="empty-state" style="border:none;"><div class="empty-icon">👑</div><div class="empty-text">لا توجد سلال VIP نشطة تحتاج تدخلك الآن</div></td></tr>
