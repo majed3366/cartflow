@@ -3,7 +3,8 @@
   "use strict";
 
   var bound = false;
-  var loading = false;
+  var loadedOnce = false;
+  var saving = false;
   var DEFAULT_THRESHOLD = 500;
 
   function byId(id) {
@@ -26,12 +27,30 @@
 
   function showOk() {
     setBoxVisible(byId("ma-vip-settings-err"), false);
-    setBoxVisible(byId("ma-vip-settings-ok"), true);
+    var ok = byId("ma-vip-settings-ok");
+    if (ok) {
+      ok.textContent = "تم حفظ إعدادات السلال المهمة";
+      setBoxVisible(ok, true);
+    }
   }
 
   function hideMsgs() {
     setBoxVisible(byId("ma-vip-settings-err"), false);
     setBoxVisible(byId("ma-vip-settings-ok"), false);
+  }
+
+  function parseThresholdInput() {
+    var el = byId("ma-vip-threshold");
+    if (!el) return { ok: false, error: "حقل العتبة غير متوفر" };
+    var raw = String(el.value == null ? "" : el.value).trim();
+    if (!raw) {
+      return { ok: false, error: "أدخل قيمة السلة المهمة (رقم موجب)" };
+    }
+    var n = parseInt(raw, 10);
+    if (!isFinite(n) || n < 1) {
+      return { ok: false, error: "قيمة السلة المهمة يجب أن تكون رقماً موجباً (مثل 300 أو 1000)" };
+    }
+    return { ok: true, value: n };
   }
 
   function setReadOnly(d) {
@@ -56,67 +75,90 @@
     }
   }
 
+  function thresholdFromApi(d) {
+    var n = parseInt(d && d.vip_cart_threshold, 10);
+    if (typeof n === "number" && isFinite(n) && n >= 1) return n;
+    return null;
+  }
+
   function fillForm(d) {
     if (!d) return;
     var en = byId("ma-vip-enabled");
     if (en) en.checked = d.vip_enabled !== false;
     var th = byId("ma-vip-threshold");
     if (th) {
-      var n = parseInt(d.vip_cart_threshold, 10);
-      th.value =
-        typeof n === "number" && isFinite(n) && n >= 1
-          ? String(n)
-          : String(DEFAULT_THRESHOLD);
+      var saved = thresholdFromApi(d);
+      th.value = saved != null ? String(saved) : String(DEFAULT_THRESHOLD);
+      th.placeholder = String(DEFAULT_THRESHOLD);
     }
     var nt = byId("ma-vip-notify-enabled");
     if (nt) nt.checked = d.vip_notify_enabled !== false;
     var note = byId("ma-vip-note");
-    if (note) note.value = d.vip_note || "";
+    if (note) note.value = d.vip_note != null ? String(d.vip_note) : "";
     setReadOnly(d);
   }
 
-  function loadSettings() {
-    if (loading) return Promise.resolve();
-    loading = true;
+  function collectSaveBody() {
+    var th = parseThresholdInput();
+    if (!th.ok) return th;
+    return {
+      ok: true,
+      body: {
+        vip_enabled: !!(byId("ma-vip-enabled") && byId("ma-vip-enabled").checked),
+        vip_cart_threshold: th.value,
+        vip_notify_enabled: !!(
+          byId("ma-vip-notify-enabled") && byId("ma-vip-notify-enabled").checked
+        ),
+        vip_note:
+          byId("ma-vip-note") && byId("ma-vip-note").value != null
+            ? String(byId("ma-vip-note").value)
+            : "",
+        merchant_settings_scope: "vip",
+      },
+    };
+  }
+
+  function loadSettings(force) {
+    if (!force && loadedOnce) return Promise.resolve();
     hideMsgs();
-    return fetch("/api/recovery-settings")
+    return fetch("/api/recovery-settings", { credentials: "same-origin" })
       .then(function (r) {
         return r.json().then(function (d) {
           return { status: r.status, data: d };
         });
       })
       .then(function (x) {
-        if (x.data && x.data.ok) fillForm(x.data);
-        else showErr((x.data && x.data.error) || "تعذّر تحميل الإعدادات");
+        if (x.data && x.data.ok) {
+          fillForm(x.data);
+          loadedOnce = true;
+        } else {
+          showErr((x.data && x.data.error) || "تعذّر تحميل الإعدادات");
+        }
       })
       .catch(function () {
         showErr("خطأ في الشبكة أثناء التحميل");
-      })
-      .finally(function () {
-        loading = false;
       });
   }
 
   function onSubmit(e) {
     e.preventDefault();
+    if (saving) return;
     hideMsgs();
+    var collected = collectSaveBody();
+    if (!collected.ok) {
+      showErr(collected.error);
+      return;
+    }
+    var body = collected.body;
     var btn = byId("ma-vip-settings-save");
-    if (btn) btn.disabled = true;
-    var rawTh = parseInt(byId("ma-vip-threshold") && byId("ma-vip-threshold").value, 10);
-    var threshold =
-      typeof rawTh === "number" && isFinite(rawTh) && rawTh >= 1
-        ? rawTh
-        : DEFAULT_THRESHOLD;
-    var body = {
-      vip_enabled: !!(byId("ma-vip-enabled") && byId("ma-vip-enabled").checked),
-      vip_cart_threshold: threshold,
-      vip_notify_enabled: !!(
-        byId("ma-vip-notify-enabled") && byId("ma-vip-notify-enabled").checked
-      ),
-      vip_note: (byId("ma-vip-note") && byId("ma-vip-note").value) || "",
-    };
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = "جاري الحفظ…";
+    }
+    saving = true;
     fetch("/api/recovery-settings", {
       method: "POST",
+      credentials: "same-origin",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     })
@@ -137,7 +179,11 @@
         showErr("خطأ في الشبكة أثناء الحفظ");
       })
       .finally(function () {
-        if (btn) btn.disabled = false;
+        saving = false;
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = "حفظ إعدادات السلال المهمة";
+        }
       });
   }
 
@@ -151,6 +197,10 @@
 
   window.maInitVipSettingsPage = function () {
     bindOnce();
-    loadSettings();
+    loadSettings(false);
+  };
+
+  window.maReloadVipSettingsPage = function () {
+    loadSettings(true);
   };
 })();

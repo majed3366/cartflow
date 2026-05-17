@@ -302,6 +302,7 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 
 | Date (UTC) | Summary |
 |------------|---------|
+| 2026-05-17 | **Merchant VIP settings persistence fix:** POST applies only keys the merchant sent (not merged widget/catalog blobs); VIP-only fast response; threshold/note round-trip; UI no forced 500 on save. Commit: **`fix: persist merchant vip settings correctly`**. |
 | 2026-05-17 | **Merchant VIP settings v1:** `/dashboard#vip` — تفعيل المتابعة، عتبة السلة، تنبيه، ملاحظة؛ `Store.vip_enabled` / `vip_notify_enabled` / `vip_note` (+ existing `vip_cart_threshold`); `services/merchant_vip_settings.py` + `static/merchant_vip_settings.js`; read-only ملخص. No runtime lane/send changes. Commit: **`feat: add merchant vip settings v1`**. |
 | 2026-05-17 | **Merchant WhatsApp settings v1:** `/dashboard#whatsapp` — form (رقم واتساب المتجر، تفعيل الاسترجاع، وضع المزود) persists via `GET`/`POST /api/recovery-settings`; `Store.whatsapp_recovery_enabled`, `Store.whatsapp_provider_mode`; `services/merchant_whatsapp_settings.py` + `static/merchant_whatsapp_settings.js`. Read-only: حالة واتساب، آخر حالة إرسال. No send-from-page. Commit: **`feat: add merchant whatsapp settings persistence v1`**. |
 | 2026-05-17 | **Admin cart-event load test:** `POST /admin/ops/load-test/cart-event` (admin auth, dry-run WhatsApp mock, metrics summary); `docs/queue_worker_readiness_verification.md`; latest result on operational health page. Commit: **`test: add safe cart-event load test and queue readiness report`**. |

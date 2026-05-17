@@ -52,6 +52,60 @@ class MerchantVipSettingsTests(unittest.TestCase):
         self.assertIn("vip_status_display_ar", data)
         self.assertIn("vip_threshold_display_ar", data)
 
+    def test_post_persists_300_then_1000_after_refresh(self) -> None:
+        note = "شحن مجاني للسلال المهمة"
+        r1 = self.client.post(
+            "/api/recovery-settings",
+            json={
+                "vip_enabled": True,
+                "vip_cart_threshold": 300,
+                "vip_notify_enabled": True,
+                "vip_note": note,
+                "merchant_settings_scope": "vip",
+            },
+        )
+        self.assertEqual(r1.status_code, 200, r1.text[:400])
+        j1 = r1.json()
+        self.assertTrue(j1.get("ok"))
+        self.assertEqual(j1.get("vip_cart_threshold"), 300)
+        self.assertEqual(j1.get("vip_note"), note)
+
+        j_get = self.client.get("/api/recovery-settings").json()
+        self.assertEqual(j_get.get("vip_cart_threshold"), 300)
+        self.assertEqual(j_get.get("vip_note"), note)
+
+        r2 = self.client.post(
+            "/api/recovery-settings",
+            json={
+                "vip_enabled": True,
+                "vip_cart_threshold": 1000,
+                "vip_notify_enabled": True,
+                "vip_note": note,
+                "merchant_settings_scope": "vip",
+            },
+        )
+        self.assertEqual(r2.status_code, 200)
+        self.assertEqual(r2.json().get("vip_cart_threshold"), 1000)
+        j_get2 = self.client.get("/api/recovery-settings").json()
+        self.assertEqual(j_get2.get("vip_cart_threshold"), 1000)
+
+    def test_vip_only_post_does_not_rewrite_widget_trigger_json(self) -> None:
+        from services.cartflow_widget_trigger_settings import (
+            widget_trigger_config_from_store_row,
+        )
+
+        before = widget_trigger_config_from_store_row(self.row)
+        self.client.post(
+            "/api/recovery-settings",
+            json={"vip_cart_threshold": 250, "merchant_settings_scope": "vip"},
+        )
+        db.session.expire(self.row)
+        refreshed = db.session.get(Store, self.row.id)
+        assert refreshed is not None
+        after = widget_trigger_config_from_store_row(refreshed)
+        self.assertEqual(after, before)
+        self.assertEqual(refreshed.vip_cart_threshold, 250)
+
     def test_post_persists_toggle_threshold_note(self) -> None:
         post = self.client.post(
             "/api/recovery-settings",

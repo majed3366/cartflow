@@ -11,10 +11,23 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from extensions import db
 from models import AbandonedCart, CartRecoveryLog, Store
 from services.merchant_dashboard_reference_ui import merchant_relative_time_arabic
-from services.vip_cart import abandoned_cart_in_vip_operational_lane, merchant_vip_threshold_int
+from services.vip_cart import (
+    abandoned_cart_in_vip_operational_lane,
+    merchant_vip_threshold_int,
+    vip_cart_threshold_fields_for_api,
+)
 
 DEFAULT_VIP_THRESHOLD = 500
 _VIP_ALERT_LOG_STATUSES = ("vip_manual_handling",)
+_VIP_PATCH_KEYS = frozenset(
+    {
+        "vip_enabled",
+        "vip_cart_threshold",
+        "vip_notify_enabled",
+        "vip_note",
+        "merchant_settings_scope",
+    }
+)
 
 _schema_ensured = False
 
@@ -86,7 +99,7 @@ def vip_threshold_display_ar(store: Optional[Any]) -> str:
     th = merchant_vip_threshold_int(store)
     if th is not None:
         return f"{int(th):,} ريال"
-    return f"{DEFAULT_VIP_THRESHOLD:,} ريال (افتراضي للعرض)"
+    return "غير محددة"
 
 
 def vip_status_display_ar(store: Optional[Any]) -> str:
@@ -186,23 +199,54 @@ def last_vip_alert_display_for_store(store: Optional[Any]) -> Dict[str, str]:
     return out
 
 
-def merchant_vip_settings_fields_for_api(store: Optional[Any]) -> Dict[str, Any]:
+def _vip_note_for_api(store: Optional[Any]) -> Optional[str]:
+    if store is None:
+        return None
+    raw = getattr(store, "vip_note", None)
+    if not isinstance(raw, str):
+        return None
+    trimmed = raw.strip()
+    if not trimmed:
+        return None
+    return trimmed[:2000]
+
+
+def is_merchant_vip_only_patch(body: Optional[Dict[str, Any]]) -> bool:
+    if not isinstance(body, dict) or not body:
+        return False
+    keys = {k for k in body if not str(k).startswith("_")}
+    if not keys:
+        return False
+    return keys <= _VIP_PATCH_KEYS and bool(keys & {"vip_cart_threshold", "vip_note", "vip_enabled", "vip_notify_enabled"})
+
+
+def merchant_vip_settings_fields_for_api(
+    store: Optional[Any], *, include_activity: bool = True
+) -> Dict[str, Any]:
     ensure_store_merchant_vip_settings_schema()
-    note_raw = getattr(store, "vip_note", None) if store else None
-    note = note_raw.strip()[:2000] if isinstance(note_raw, str) and note_raw.strip() else ""
-    last_cart = last_vip_cart_display_for_store(store)
-    last_alert = last_vip_alert_display_for_store(store)
-    return {
+    out: Dict[str, Any] = {
         "vip_enabled": merchant_vip_enabled(store),
         "vip_notify_enabled": merchant_vip_notify_enabled(store),
-        "vip_note": note or None,
+        "vip_note": _vip_note_for_api(store),
         "vip_status_display_ar": vip_status_display_ar(store),
         "vip_threshold_display_ar": vip_threshold_display_ar(store),
-        "last_vip_cart_ar": last_cart.get("last_vip_cart_ar") or "—",
-        "last_vip_cart_at_ar": last_cart.get("last_vip_cart_at_ar") or "—",
-        "last_vip_alert_ar": last_alert.get("last_vip_alert_ar") or "—",
-        "last_vip_alert_at_ar": last_alert.get("last_vip_alert_at_ar") or "—",
     }
+    out.update(vip_cart_threshold_fields_for_api(store))
+    if include_activity:
+        last_cart = last_vip_cart_display_for_store(store)
+        last_alert = last_vip_alert_display_for_store(store)
+        out["last_vip_cart_ar"] = last_cart.get("last_vip_cart_ar") or "—"
+        out["last_vip_cart_at_ar"] = last_cart.get("last_vip_cart_at_ar") or "—"
+        out["last_vip_alert_ar"] = last_alert.get("last_vip_alert_ar") or "—"
+        out["last_vip_alert_at_ar"] = last_alert.get("last_vip_alert_at_ar") or "—"
+    return out
+
+
+def merchant_vip_settings_patch_response(store: Optional[Any]) -> Dict[str, Any]:
+    """Small POST response for VIP-only saves (faster than full recovery-settings payload)."""
+    payload: Dict[str, Any] = {"ok": True}
+    payload.update(merchant_vip_settings_fields_for_api(store, include_activity=False))
+    return payload
 
 
 def apply_merchant_vip_settings_from_body(row: Store, body: Dict[str, Any]) -> None:
@@ -215,7 +259,9 @@ def apply_merchant_vip_settings_from_body(row: Store, body: Dict[str, Any]) -> N
         )
     if "vip_note" in body:
         raw = body.get("vip_note")
-        if raw is None or (isinstance(raw, str) and not raw.strip()):
+        if raw is None:
+            row.vip_note = None
+        elif isinstance(raw, str) and not raw.strip():
             row.vip_note = None
         else:
             row.vip_note = str(raw).strip()[:2000]

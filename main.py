@@ -339,7 +339,9 @@ from services.merchant_whatsapp_settings import (
 )
 from services.merchant_vip_settings import (
     apply_merchant_vip_settings_from_body,
+    is_merchant_vip_only_patch,
     merchant_vip_settings_fields_for_api,
+    merchant_vip_settings_patch_response,
 )
 from services.demo_sandbox_catalog import (
     SANDBOX_PRODUCT_KEY_BY_NUM as _DEMO_BEHAVIORAL_PRODUCT_BY_NUM,
@@ -1246,6 +1248,8 @@ def _dev_apply_recovery_settings_update(
 
         update_from_dashboard_store_row(saved)
     anchor = saved if saved is not None else row
+    if request_body is not None and is_merchant_vip_only_patch(request_body):
+        return merchant_vip_settings_patch_response(anchor), 200
     wa: Optional[str] = getattr(anchor, "whatsapp_support_url", None)
     if not (isinstance(wa, str) and wa.strip()):
         wa = None
@@ -1280,7 +1284,7 @@ def _dev_apply_recovery_settings_update(
     payload.update(product_catalog_for_api(anchor))
     payload.update(offer_applications_count_for_api(anchor))
     payload.update(merchant_whatsapp_settings_fields_for_api(anchor))
-    payload.update(merchant_vip_settings_fields_for_api(anchor))
+    payload.update(merchant_vip_settings_fields_for_api(anchor, include_activity=False))
     payload["guided_recovery_defaults"] = guided_defaults_for_api()
     return payload, 200
 
@@ -1620,18 +1624,19 @@ async def dev_recovery_settings_update(request: Request):
             body = None
         if not isinstance(body, dict):
             return j({"ok": False, "error": "json_object_required"}, 400)
-        body = _merge_recovery_settings_post_body(body)
-        uw = "whatsapp_support_url" in body
-        us = "store_whatsapp_number" in body
+        raw_body = dict(body)
+        merged = _merge_recovery_settings_post_body(raw_body)
+        uw = "whatsapp_support_url" in raw_body
+        us = "store_whatsapp_number" in raw_body
         data, code = _dev_apply_recovery_settings_update(
-            body.get("recovery_delay"),
-            body.get("recovery_delay_unit"),
-            body.get("recovery_attempts"),
-            whatsapp_support_url=body.get("whatsapp_support_url") if uw else None,
+            merged.get("recovery_delay"),
+            merged.get("recovery_delay_unit"),
+            merged.get("recovery_attempts"),
+            whatsapp_support_url=merged.get("whatsapp_support_url") if uw else None,
             update_whatsapp=uw,
-            store_whatsapp_number=body.get("store_whatsapp_number") if us else None,
+            store_whatsapp_number=merged.get("store_whatsapp_number") if us else None,
             update_store_whatsapp=us,
-            request_body=body,
+            request_body=raw_body,
         )
         return j(data, code)
     except Exception as e:  # noqa: BLE001
@@ -1653,18 +1658,19 @@ async def api_recovery_settings(request: Request):
             body = None
         if not isinstance(body, dict):
             return j({"ok": False, "error": "json_object_required"}, 400)
-        body = _merge_recovery_settings_post_body(body)
-        uw = "whatsapp_support_url" in body
-        us = "store_whatsapp_number" in body
+        raw_body = dict(body)
+        merged = _merge_recovery_settings_post_body(raw_body)
+        uw = "whatsapp_support_url" in raw_body
+        us = "store_whatsapp_number" in raw_body
         data, code = _dev_apply_recovery_settings_update(
-            body.get("recovery_delay"),
-            body.get("recovery_delay_unit"),
-            body.get("recovery_attempts"),
-            whatsapp_support_url=body.get("whatsapp_support_url") if uw else None,
+            merged.get("recovery_delay"),
+            merged.get("recovery_delay_unit"),
+            merged.get("recovery_attempts"),
+            whatsapp_support_url=merged.get("whatsapp_support_url") if uw else None,
             update_whatsapp=uw,
-            store_whatsapp_number=body.get("store_whatsapp_number") if us else None,
+            store_whatsapp_number=merged.get("store_whatsapp_number") if us else None,
             update_store_whatsapp=us,
-            request_body=body,
+            request_body=raw_body,
         )
         return j(data, code)
     except Exception as e:  # noqa: BLE001
