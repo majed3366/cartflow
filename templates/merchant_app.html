@@ -389,9 +389,10 @@
       <div class="va-icon">💡</div>
       <div class="va-body">
         <div class="va-title">سلال VIP لا تتلقى رسائل استرداد تلقائية</div>
-        <div class="va-sub">النظام لا يُرسل سلسلة واتساب آلية لهذه السلال — استخدم «تواصل يدوي (VIP)» للوصول للعميل مباشرة.</div>
+        <div class="va-sub" id="ma-vip-alert-dynamic">النظام لا يُرسل سلسلة واتساب آلية لهذه السلال — استخدم «تواصل يدوي (VIP)» للوصول للعميل مباشرة.</div>
       </div>
     </div>
+    <p class="ma-fw-field-hint ma-vip-automation-helper" id="ma-vip-automation-helper">طريقة التشغيل تغيّر أسلوب المتابعة فقط</p>
     <div class="card">
       <div class="table-scroll">
         <table>
@@ -809,8 +810,23 @@
   </div>
 
 
+    <div id="ma-vip-suggest-panel" class="ma-vip-suggest-panel" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="ma-vip-suggest-title">
+      <div class="ma-vip-suggest-card">
+        <button type="button" class="ma-vip-suggest-dismiss" aria-label="إغلاق">×</button>
+        <div class="ma-vip-suggest-title" id="ma-vip-suggest-title">اقتراح متابعة VIP</div>
+        <div class="ma-vip-suggest-line"><span class="ma-vip-suggest-k">السلة:</span> <span id="ma-vip-suggest-amount">—</span></div>
+        <div class="ma-vip-suggest-line"><span class="ma-vip-suggest-k">الحالة:</span> <span id="ma-vip-suggest-state">—</span></div>
+        <div class="ma-vip-suggest-line"><span class="ma-vip-suggest-k">الاقتراح:</span> <span id="ma-vip-suggest-action">—</span></div>
+        <div class="ma-vip-suggest-actions">
+          <button type="button" class="ma-fw-save" id="ma-vip-suggest-approve">موافقة</button>
+          <button type="button" class="ma-fw-save ma-vip-suggest-secondary" id="ma-vip-suggest-ignore">تجاهل</button>
+        </div>
+      </div>
+    </div>
+
 </div>
 
+<script defer src="/static/merchant_vip_automation_ui.js"></script>
 <script defer src="/static/merchant_dashboard_lazy.js"></script>
 <script defer src="/static/merchant_whatsapp_settings.js"></script>
 <script defer src="/static/merchant_vip_settings.js"></script>

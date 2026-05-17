@@ -13557,6 +13557,8 @@ def _api_json_dashboard_normal_carts(
 
 
 def _api_json_dashboard_vip_carts(dash_store: Optional[Any]) -> Dict[str, Any]:
+    from services.merchant_general_settings import merchant_automation_mode  # noqa: PLC0415
+
     try:
         vip_raw = _vip_priority_cart_alert_list(dash_store=dash_store)
     except (SQLAlchemyError, OSError, TypeError, ValueError):
@@ -13602,6 +13604,7 @@ def _api_json_dashboard_vip_carts(dash_store: Optional[Any]) -> Dict[str, Any]:
         "merchant_vip_rows": vip_rows,
         "merchant_vip_page_rows": vip_page_rows,
         "merchant_nav_badge_vip": len(vip_raw) if vip_raw else 0,
+        "merchant_automation_mode": merchant_automation_mode(dash_store),
     }
 
 

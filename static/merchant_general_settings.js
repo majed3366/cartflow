@@ -156,6 +156,10 @@
       .then(function (x) {
         if (x.data && x.data.ok) {
           fillForm(x.data);
+          if (window.maVipAutomation && x.data.merchant_automation_mode) {
+            window.maVipAutomation.setMode(x.data.merchant_automation_mode);
+            window.maVipAutomation.rerenderFromCache();
+          }
           showOk();
         } else {
           showErr((x.data && x.data.error) || "فشل الحفظ");

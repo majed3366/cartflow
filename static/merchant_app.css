@@ -916,6 +916,120 @@ tr:hover td { background: #f8fafc; }
   line-height: 1.45;
 }
 
+.ma-vip-automation-helper {
+  margin: 0 0 12px;
+  font-size: 12px;
+  opacity: 0.85;
+}
+
+.ma-vip-action-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.ma-vip-action-desc {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.4;
+  max-width: 220px;
+}
+
+.ma-vip-auto-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 220px;
+}
+
+.ma-vip-auto-head {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.ma-vip-auto-status {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.ma-vip-auto-inline {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.ma-vip-suggest-panel {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  background: rgba(15, 23, 42, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.ma-vip-suggest-card {
+  position: relative;
+  background: #fff;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  padding: 18px 16px 14px;
+  max-width: 360px;
+  width: 100%;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
+}
+
+.ma-vip-suggest-dismiss {
+  position: absolute;
+  top: 8px;
+  left: 10px;
+  border: none;
+  background: transparent;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--muted);
+}
+
+.ma-vip-suggest-title {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+
+.ma-vip-suggest-line {
+  font-size: 13px;
+  margin-bottom: 8px;
+  line-height: 1.5;
+}
+
+.ma-vip-suggest-k {
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.ma-vip-suggest-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+
+.ma-vip-suggest-secondary {
+  background: #f1f5f9 !important;
+  color: #334155 !important;
+  border: 1px solid var(--border) !important;
+}
+
+button.ma-vip-suggest-btn.va-btn {
+  font: inherit;
+  cursor: pointer;
+  border: none;
+}
+
 .ma-fw-table {
   width: 100%;
   border-collapse: collapse;

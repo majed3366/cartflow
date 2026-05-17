@@ -197,6 +197,15 @@
 
   window.maInitVipSettingsPage = function () {
     bindOnce();
+    var modeReady =
+      window.maVipAutomation && typeof window.maVipAutomation.ensureModeLoaded === "function"
+        ? window.maVipAutomation.ensureModeLoaded()
+        : Promise.resolve();
+    modeReady.then(function () {
+      if (window.maVipAutomation) {
+        window.maVipAutomation.rerenderFromCache();
+      }
+    });
     loadSettings(false);
   };
 

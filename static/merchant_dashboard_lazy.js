@@ -569,12 +569,16 @@
       return;
     }
     host.style.display = "";
-    var href = ban.contact_href || "";
-    var btn = href
-      ? '<a class="va-btn" href="' +
-        esc(href) +
-        '">تواصل يدوي (VIP) ←</a>'
-      : '<span class="va-btn is-disabled" role="button" aria-disabled="true">تواصل يدوي (VIP) ←</span>';
+    var btn =
+      window.maVipAutomation && typeof window.maVipAutomation.renderBannerBtn === "function"
+        ? window.maVipAutomation.renderBannerBtn(ban)
+        : "";
+    if (!btn) {
+      var href = ban.contact_href || "";
+      btn = href
+        ? '<a class="va-btn" href="' + esc(href) + '">تواصل يدوي (VIP) ←</a>'
+        : '<span class="va-btn is-disabled" role="button" aria-disabled="true">تواصل يدوي (VIP) ←</span>';
+    }
     host.innerHTML =
       '<div class="vip-alert"><div class="va-icon">👑</div><div class="va-body">' +
       '<div class="va-title">عميل VIP يحتاج تدخلك — لن يُرسَل له واتساب تلقائياً</div>' +
@@ -586,10 +590,16 @@
   }
 
   function vipItemHtml(vr) {
-    var href = vr.contact_href || "";
-    var btn = href
-      ? '<a class="vbtn" href="' + esc(href) + '">تواصل يدوي (VIP)</a>'
-      : '<span class="vbtn is-disabled">تواصل يدوي (VIP)</span>';
+    var btn =
+      window.maVipAutomation && typeof window.maVipAutomation.renderHomeItemBtn === "function"
+        ? window.maVipAutomation.renderHomeItemBtn(vr)
+        : "";
+    if (!btn) {
+      var href = vr.contact_href || "";
+      btn = href
+        ? '<a class="vbtn" href="' + esc(href) + '">تواصل يدوي (VIP)</a>'
+        : '<span class="vbtn is-disabled">تواصل يدوي (VIP)</span>';
+    }
     return (
       '<div class="vip-item">' +
       '<div class="vav">' +
@@ -606,12 +616,18 @@
   }
 
   function vipRowTable(vr) {
-    var href = vr.contact_href || "";
-    var btn = href
-      ? '<a class="va-btn" href="' +
-        esc(href) +
-        '" rel="noopener noreferrer">تواصل يدوي (VIP) ←</a>'
-      : '<span class="va-btn is-disabled">تواصل يدوي (VIP) ←</span>';
+    var btn =
+      window.maVipAutomation && typeof window.maVipAutomation.renderTableAction === "function"
+        ? window.maVipAutomation.renderTableAction(vr)
+        : "";
+    if (!btn) {
+      var href = vr.contact_href || "";
+      btn = href
+        ? '<a class="va-btn" href="' +
+          esc(href) +
+          '" rel="noopener noreferrer">تواصل يدوي (VIP) ←</a>'
+        : '<span class="va-btn is-disabled">تواصل يدوي (VIP) ←</span>';
+    }
     var hp = vr.has_phone
       ? '<span class="ph-ok">✓ متوفر</span>'
       : '<span class="ph-no">✗ غير متوفر</span>';
@@ -630,6 +646,12 @@
 
   function applyVipCarts(d) {
     if (!d || !d.ok) return;
+    if (window.maVipAutomation) {
+      if (d.merchant_automation_mode) {
+        window.maVipAutomation.setMode(d.merchant_automation_mode);
+      }
+      window.maVipAutomation.storePayload(d);
+    }
     applyVipHomeBanner(d.merchant_vip_banner || null);
     var list = byId("ma-vip-home-list");
     if (list) {
@@ -887,6 +909,8 @@
     ];
     Promise.allSettled(jobs);
   }
+
+  window.maApplyVipCartsPayload = applyVipCarts;
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", bootLazyDashboard);
