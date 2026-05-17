@@ -571,6 +571,6 @@ def build_admin_operational_health_readonly() -> dict[str, Any]:
         "warnings": warnings,
         "anomaly_types_preview": anomaly_ct,
         "needs_technical_attention": bool(
-            (control.get("admin_risk_summary") or {}).get("risk_detected")
+            (control.get("admin_risk_summary") or {}).get("actual_risk")
         ),
     }

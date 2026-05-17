@@ -1,11 +1,34 @@
 # -*- coding: utf-8 -*-
-"""Part 6 — chronological operational timeline (newest first)."""
+"""Part 6 — chronological operational timeline (newest first) with severity."""
 from __future__ import annotations
 
 from datetime import datetime, timezone
 from typing import Any
 
 from services.admin_operational_control.context import OperationalControlContext
+
+_SEVERITY_BY_KIND: dict[str, tuple[str, str]] = {
+    "pool": ("risk", "🔴"),
+    "cart_event": ("risk", "🔴"),
+    "anomaly": ("warning", "🟡"),
+    "hint": ("warning", "🟡"),
+    "active_issue": ("risk", "🔴"),
+    "active_issue_potential": ("warning", "🟡"),
+    "stable": ("recovered", "🟢"),
+    "recovered": ("recovered", "🟢"),
+    "empty": ("warning", "🟡"),
+    "critical": ("critical", "🚨"),
+}
+
+
+def _timeline_severity(kind: str, *, tier: str = "") -> dict[str, str]:
+    if kind == "active_issue" and tier == "potential":
+        sev, emoji = _SEVERITY_BY_KIND["active_issue_potential"]
+    elif kind in _SEVERITY_BY_KIND:
+        sev, emoji = _SEVERITY_BY_KIND[kind]
+    else:
+        sev, emoji = "warning", "🟡"
+    return {"severity": sev, "severity_emoji": emoji}
 
 
 def _parse_iso(iso: str) -> datetime | None:
@@ -46,13 +69,14 @@ def build_admin_operational_timeline(ctx: OperationalControlContext) -> dict[str
             }
         )
 
-    for v in (ctx.issues or []):
-        if v.active:
+    for issue in ctx.issues or []:
+        if issue.active:
             events.append(
                 {
                     "recorded_at_utc": ctx.generated_at_utc,
                     "kind": "active_issue",
-                    "message_ar": f"خطر نشط: {v.problem_ar}",
+                    "tier": issue.tier,
+                    "message_ar": f"{issue.problem_ar}",
                 }
             )
 
@@ -65,20 +89,26 @@ def build_admin_operational_timeline(ctx: OperationalControlContext) -> dict[str
     items: list[dict[str, Any]] = []
     for ev in events[:25]:
         iso = str(ev.get("recorded_at_utc") or "")
+        kind = str(ev.get("kind") or "event")
+        tier = str(ev.get("tier") or "")
+        sev = _timeline_severity(kind, tier=tier)
         items.append(
             {
                 "time_ar": _time_label_ar(iso),
                 "message_ar": str(ev.get("message_ar") or "—")[:240],
-                "kind": str(ev.get("kind") or "event"),
+                "kind": kind,
+                **sev,
             }
         )
 
     if not items:
+        sev = _timeline_severity("stable")
         items.append(
             {
                 "time_ar": "—",
                 "message_ar": "لا أحداث مسجّلة بعد في هذه العملية",
                 "kind": "empty",
+                **sev,
             }
         )
 

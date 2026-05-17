@@ -41,21 +41,31 @@ def build_admin_operational_control_readonly() -> dict[str, Any]:
     revenue = build_admin_revenue_protection(ctx)
     timeline = build_admin_operational_timeline(ctx)
 
+    level = int(risk.get("risk_level") or 0)
     quick_answers = {
         "is_healthy_ar": (
-            "نعم — لا خطر فوري"
-            if not risk.get("risk_detected")
-            else "لا — يوجد خطر تشغيلي"
+            "نعم — سليم"
+            if level == 0
+            else (
+                "تحذير فقط — لا أثر فعلي"
+                if level == 1
+                else "لا — يوجد خطر فعلي أو أزمة"
+            )
         ),
         "what_failing_ar": (
-            "؛ ".join(i.problem_ar for i in ctx.issues if i.active)[:240]
+            "؛ ".join(i.problem_ar for i in ctx.issues if i.active and i.tier == "actual")[:240]
+            or "؛ ".join(i.problem_ar for i in ctx.issues if i.active)[:240]
             if ctx.issues
             else "لا فشل نشط"
         ),
         "who_affected_ar": (
-            f"{ctx.affected_stores_estimate} متجر (تقدير)"
-            if risk.get("risk_detected")
-            else "لا تأثير مباشر"
+            f"{risk.get('metrics', {}).get('affected_stores', 0)} متجر"
+            if risk.get("actual_risk") and int(risk.get("metrics", {}).get("affected_stores") or 0) > 0
+            else (
+                "لا تأثير مباشر"
+                if level <= 1
+                else "تأثير على مستوى المنصة — راجع التفاصيل"
+            )
         ),
         "what_to_do_ar": (
             actions["items"][0]["recommended_action_ar"]

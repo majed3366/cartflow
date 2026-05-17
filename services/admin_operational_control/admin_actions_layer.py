@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Part 3 — suggested actions (read-only navigation)."""
+"""Part 3 — suggested actions (read-only navigation) with why."""
 from __future__ import annotations
 
 from typing import Any
@@ -12,13 +12,17 @@ def build_admin_actions_layer(ctx: OperationalControlContext) -> dict[str, Any]:
     for issue in ctx.issues:
         if not issue.active:
             continue
+        why = (issue.why_ar or "").strip()
         items.append(
             {
                 "code": issue.code,
                 "recommended_action_ar": issue.action_ar,
+                "why_ar": why or "—",
+                "why_label_ar": "لماذا؟",
                 "detail_href": issue.detail_href,
                 "detail_label_ar": "فتح التفاصيل ←",
                 "problem_ar": issue.problem_ar,
+                "tier": issue.tier,
             }
         )
     return {

@@ -87,3 +87,4 @@ class AdminOperationalControlV2Tests(unittest.TestCase):
         self.assertIn("الخط الزمني", body)
         self.assertIn("حماية الإيراد", body)
         self.assertIn("هل النظام سليم", body)
+        self.assertIn("لماذا", body)

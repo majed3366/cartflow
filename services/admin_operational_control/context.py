@@ -18,6 +18,8 @@ class OperationalIssue:
     action_ar: str
     detail_href: str
     detail_anchor: str = ""
+    tier: str = "potential"  # potential | actual
+    why_ar: str = ""
 
 
 @dataclass

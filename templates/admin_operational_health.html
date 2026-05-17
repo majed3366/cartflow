@@ -64,12 +64,16 @@
     </section>
 
     <!-- PART 1 — Risk summary -->
-    <section class="rounded-xl border p-5 shadow-sm {% if risk.risk_detected %}border-rose-200 bg-rose-50/50{% else %}border-emerald-200 bg-emerald-50/40{% endif %}">
+    {% set rl = risk.risk_level | default(0) | int %}
+    <section class="rounded-xl border p-5 shadow-sm {% if rl >= 3 %}border-orange-300 bg-orange-50/60{% elif rl == 2 %}border-rose-200 bg-rose-50/50{% elif rl == 1 %}border-amber-200 bg-amber-50/50{% else %}border-emerald-200 bg-emerald-50/40{% endif %}">
       <div class="flex flex-wrap items-center gap-3">
         <span class="text-2xl" aria-hidden="true">{{ risk.status_emoji or "🟢" }}</span>
         <div>
           <h2 class="text-base font-semibold text-slate-900">{{ risk.status_label_ar or "—" }}</h2>
           <p class="mt-1 text-sm text-slate-800">{{ risk.headline_ar or "—" }}</p>
+          {% if risk.subheadline_ar %}
+          <p class="mt-1 text-xs text-slate-600">{{ risk.subheadline_ar }}</p>
+          {% endif %}
         </div>
       </div>
       <div class="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3 text-xs">
@@ -131,9 +135,10 @@
       <ul class="mt-4 space-y-3">
         {% for act in actions_layer.get('items', []) %}
         <li class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-indigo-100 bg-indigo-50/40 px-4 py-3">
-          <div>
+          <div class="min-w-0 flex-1">
             <p class="text-xs text-indigo-800/80">{{ act.problem_ar }}</p>
             <p class="mt-1 text-sm font-medium text-indigo-950">{{ act.recommended_action_ar }}</p>
+            <p class="mt-2 text-xs text-slate-600"><span class="font-medium">{{ act.why_label_ar or "لماذا؟" }}</span> {{ act.why_ar }}</p>
           </div>
           <a href="{{ act.detail_href }}" class="shrink-0 rounded-lg bg-white px-3 py-1.5 text-sm font-medium text-indigo-700 ring-1 ring-indigo-200 hover:bg-indigo-50">{{ act.detail_label_ar }}</a>
         </li>
@@ -194,7 +199,7 @@
       <ol class="mt-4 space-y-2 border-r-2 border-slate-200 pr-4">
         {% for ev in timeline.get('items', []) %}
         <li class="relative text-sm">
-          <span class="absolute -right-[1.35rem] top-1 h-2 w-2 rounded-full bg-slate-400"></span>
+          <span class="absolute -right-[1.35rem] top-0.5 text-xs" aria-hidden="true">{{ ev.severity_emoji or "🟡" }}</span>
           <span class="font-mono text-xs text-slate-500">{{ ev.time_ar }}</span>
           <span class="mr-2 text-slate-800">{{ ev.message_ar }}</span>
         </li>
