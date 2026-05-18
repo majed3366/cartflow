@@ -157,7 +157,7 @@
       <h2 class="text-sm font-semibold text-slate-900 border-b border-slate-200 pb-2">التحقق — هل تعافى؟</h2>
       {% if verify.has_recoveries %}
       <ul class="mt-4 space-y-2">
-        {% for v in verify.items or [] %}
+        {% for v in verify.get('items', []) %}
         <li class="rounded-lg border border-emerald-200 bg-emerald-50/60 px-4 py-3 text-sm">
           <p class="font-medium text-emerald-900">{{ v.headline_ar }}</p>
           <p class="mt-1 text-emerald-800">{{ v.message_ar }}</p>

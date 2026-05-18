@@ -53,15 +53,15 @@ class AdminCartEventLoadTestTests(unittest.TestCase):
         self.assertIsNotNone(line)
         self.assertIn("آخر اختبار ضغط", line or "")
 
-    def test_events_count_accepts_500(self) -> None:
+    def test_events_count_accepts_1000(self) -> None:
         summary = run_cart_event_load_test(
             store_slug="demo",
-            events_count=500,
+            events_count=1000,
             dry_run_whatsapp=True,
             reason_tag="price",
             phone_present=True,
         )
-        self.assertEqual(summary["total_events"], 500)
+        self.assertEqual(summary["total_events"], 1000)
         self.assertEqual(summary["max_events_allowed"], _MAX_EVENTS)
         self.assertEqual(summary["event_mode"], "cart_abandoned")
         self.assertEqual(summary["error_count"], 0)
@@ -72,7 +72,7 @@ class AdminCartEventLoadTestTests(unittest.TestCase):
     def test_events_count_capped_above_max(self) -> None:
         summary = run_cart_event_load_test(
             store_slug="demo",
-            events_count=750,
+            events_count=2000,
             dry_run_whatsapp=True,
             reason_tag="price",
             phone_present=True,
