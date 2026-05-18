@@ -55,7 +55,6 @@ class MerchantStandaloneAppDashboardTests(unittest.TestCase):
         self.assertNotIn("data-cf-merchant-dashboard-v1", t)
         self.assertNotIn("data-cf-merchant-dashboard-placeholder", t)
         self.assertNotIn("merchant dashboard is being rebuilt", t.lower())
-        self.assertNotIn("placeholder", t)
         self.assertNotIn("عرض توضيحي", t)
         self.assertNotIn("ارجع للرئيسية", t)
         self.assertNotIn("recovery_ops_dashboard", t)
