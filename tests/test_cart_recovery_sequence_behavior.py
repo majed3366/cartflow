@@ -51,6 +51,34 @@ class CartRecoverySequenceBehaviorTests(unittest.TestCase):
     @patch("main.send_whatsapp")
     @patch("main.recovery_uses_real_whatsapp", return_value=False)
     @patch("main.get_recovery_delay", return_value=0)
+    def test_abandon_with_reason_but_no_phone_waits(
+        self, _d: object, _ur: object, mock_send: object, _pcl: object, mock_ct: object
+    ) -> None:
+        """Reason saved without phone: abandon must not schedule until phone exists."""
+        sid = "seq-no-phone-1"
+        self.client.post(
+            "/api/cart-recovery/reason",
+            json={
+                "store_slug": "demo",
+                "session_id": sid,
+                "reason_tag": "price_high",
+            },
+        )
+        body = {
+            **_abandon("demo", sid),
+            "reason": "price",
+        }
+        r = self.client.post("/api/cart-event", json=body).json()
+        self.assertFalse(r.get("recovery_scheduled", True))
+        self.assertEqual("waiting_for_phone", r.get("recovery_state"))
+        mock_ct.assert_not_called()
+        self.assertEqual(0, mock_send.call_count)
+
+    @patch("main.asyncio.create_task")
+    @patch("main._persist_cart_recovery_log")
+    @patch("main.send_whatsapp")
+    @patch("main.recovery_uses_real_whatsapp", return_value=False)
+    @patch("main.get_recovery_delay", return_value=0)
     def test_abandon_without_saved_reason_skips_schedule(
         self, _d: object, _ur: object, mock_send: object, _pcl: object, mock_ct: object
     ) -> None:
@@ -170,6 +198,29 @@ class CartRecoverySequenceBehaviorTests(unittest.TestCase):
         self.assertEqual(1, mock_send.call_count, "no extra sends on duplicate post")
         r3 = self.client.post("/api/cart-event", json=body).json()
         self.assertEqual(1, mock_send.call_count, "still no extra sends")
+
+    @patch("main.asyncio.create_task", side_effect=lambda coro: coro)
+    @patch("main._persist_cart_recovery_log")
+    @patch("main.send_whatsapp")
+    @patch("main.recovery_uses_real_whatsapp", return_value=False)
+    @patch("main.get_recovery_delay", return_value=0)
+    def test_duplicate_abandon_while_inflight_returns_skipped_duplicate(
+        self, _d: object, _ur: object, mock_send: object, _p: object, _ct: object
+    ) -> None:
+        """Second abandon while recovery already claimed: explicit skipped_duplicate."""
+        mock_send.return_value = {"ok": True}
+        body = _abandon("demo", "seq-dup-inflight")
+        _post_recovery_reason_for_session(
+            self.client,
+            "demo",
+            "seq-dup-inflight",
+            customer_phone=_NORMAL_SEQUENCE_CUSTOMER_PHONE,
+        )
+        r1 = self.client.post("/api/cart-event", json=body).json()
+        self.assertTrue(r1.get("recovery_scheduled"))
+        r2 = self.client.post("/api/cart-event", json=body).json()
+        self.assertEqual("skipped_duplicate", r2.get("recovery_state"))
+        self.assertFalse(r2.get("recovery_scheduled", True))
 
     @patch("main.should_send_whatsapp", return_value=True)
     @patch("main._persist_cart_recovery_log")

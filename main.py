@@ -1866,11 +1866,14 @@ _recovery_session_lock = threading.RLock()
 
 # When cart_abandon returned waiting_for_reason: stores arm context consumed once on reason POST.
 _recovery_pending_reason_arm_ctx: dict[str, dict[str, Any]] = {}
+# When cart_abandon returned waiting_for_phone: arm context consumed once phone is captured.
+_recovery_pending_phone_arm_ctx: dict[str, dict[str, Any]] = {}
 
 
 def _normal_recovery_pending_reason_tags_clear_for_tests() -> None:
     with _recovery_session_lock:
         _recovery_pending_reason_arm_ctx.clear()
+        _recovery_pending_phone_arm_ctx.clear()
 
 
 def _mark_normal_recovery_pending_reason_tag(
@@ -1903,6 +1906,61 @@ def _consume_normal_recovery_pending_reason_tag(
         return None
     with _recovery_session_lock:
         return _recovery_pending_reason_arm_ctx.pop(rk, None)
+
+
+def _mark_normal_recovery_pending_phone(
+    recovery_key: str,
+    *,
+    cart_id: Optional[str] = None,
+    cart_total: Optional[float] = None,
+) -> None:
+    rk = (recovery_key or "").strip()
+    if not rk:
+        return
+    ctx: dict[str, Any] = {}
+    cid_n = (str(cart_id).strip()[:255]) if cart_id else ""
+    if cid_n:
+        ctx["cart_id"] = cid_n
+    if cart_total is not None:
+        try:
+            ctx["cart_total"] = float(cart_total)
+        except (TypeError, ValueError):
+            pass
+    with _recovery_session_lock:
+        _recovery_pending_phone_arm_ctx[rk] = ctx
+
+
+def _consume_normal_recovery_pending_phone(
+    recovery_key: str,
+) -> Optional[dict[str, Any]]:
+    rk = (recovery_key or "").strip()
+    if not rk:
+        return None
+    with _recovery_session_lock:
+        return _recovery_pending_phone_arm_ctx.pop(rk, None)
+
+
+def _normal_recovery_phone_ready_for_schedule(
+    *,
+    store_slug: str,
+    session_id: str,
+    cart_id: Optional[str],
+    store_row: Any,
+    abandon_evt_phone: Optional[str],
+    recovery_key: str,
+) -> bool:
+    """True when a verified customer phone exists before scheduling normal recovery."""
+    reason_row = _cart_recovery_reason_latest_row(store_slug, session_id)
+    _phone, _src, allowed = _resolve_cartflow_recovery_phone(
+        store_slug=store_slug,
+        session_id=session_id,
+        cart_id=cart_id,
+        store_obj=store_row,
+        abandon_event_phone=abandon_evt_phone,
+        recovery_key=recovery_key,
+        reason_row=reason_row,
+    )
+    return bool(allowed)
 
 
 # Durable dashboard/lifecycle evidence: written on return-to-site detection (not send path).
@@ -7539,6 +7597,42 @@ def _execute_cart_abandon_recovery_schedule_continue(
             "recovery_state": "waiting_for_reason",
             "waiting_for_reason": True,
         }
+    if not _normal_recovery_phone_ready_for_schedule(
+        store_slug=store_slug,
+        session_id=session_id_log,
+        cart_id=cart_id_log,
+        store_row=store_row,
+        abandon_evt_phone=abandon_evt_phone,
+        recovery_key=recovery_key,
+    ):
+        np_line = (
+            "[NORMAL RECOVERY NOT SCHEDULED] reason=missing_customer_phone "
+            f"store_slug={(store_slug or '-')[:96]} "
+            f"session_id={(session_id_log or '-')[:96]} "
+            f"cart_id={(str(cart_id_log) if cart_id_log else '-')[:80]}"
+        )
+        log.info(np_line)
+        print(np_line, flush=True)
+        _mark_normal_recovery_pending_phone(
+            recovery_key,
+            cart_id=cart_id_log,
+            cart_total=cart_total_chk,
+        )
+        _persist_cart_recovery_log(
+            store_slug=store_slug,
+            session_id=session_id_log,
+            cart_id=cart_id_log,
+            phone=None,
+            message=msg_log,
+            status="skipped_missing_phone",
+        )
+        cart_event_profile_set_meta(path="waiting_for_phone")
+        return {
+            "recovery_scheduled": False,
+            "recovery_skipped": True,
+            "recovery_state": "waiting_for_phone",
+            "waiting_for_phone": True,
+        }
     with _recovery_session_lock:
         if _session_recovery_sent.get(recovery_key):
             print("recovery already sent, skipping")
@@ -7576,7 +7670,8 @@ def _execute_cart_abandon_recovery_schedule_continue(
         return {
             "recovery_scheduled": False,
             "recovery_skipped": True,
-            "recovery_state": "pending",
+            "recovery_state": "skipped_duplicate",
+            "skipped_duplicate": True,
         }
     print("entered recovery handler")
     log.info("cart abandoned received")
@@ -7654,9 +7749,11 @@ def _arm_recovery_schedule_from_saved_reason_payload(synth_pl: dict[str, Any]) -
     session_id_log = _session_part_from_payload(synth_pl)
     cart_id_log = _cart_id_str_from_payload(synth_pl)
     abandon_evt_phone: Optional[str] = None
-    rp = synth_pl.get("phone")
-    if isinstance(rp, str) and rp.strip():
-        abandon_evt_phone = rp.strip()[:100]
+    for _pk in ("phone", "customer_phone"):
+        rp = synth_pl.get(_pk)
+        if isinstance(rp, str) and rp.strip():
+            abandon_evt_phone = rp.strip()[:100]
+            break
 
     msg_log = _default_recovery_message()
     if _is_user_converted(recovery_key):
@@ -7838,14 +7935,21 @@ async def _schedule_normal_recovery_after_cart_recovery_reason_saved(
         return
     rk = _recovery_key_from_store_and_session(ss, sid)
     arm_ctx = _consume_normal_recovery_pending_reason_tag(rk)
-    if arm_ctx is None:
+    phone_ctx = _consume_normal_recovery_pending_phone(rk)
+    if arm_ctx is None and phone_ctx is None:
         return
     if _is_user_converted(rk):
         return
 
-    pending_cid = arm_ctx.get("cart_id") if isinstance(arm_ctx.get("cart_id"), str) else None
+    arm_merged: dict[str, Any] = {}
+    if isinstance(phone_ctx, dict):
+        arm_merged.update(phone_ctx)
+    if isinstance(arm_ctx, dict):
+        arm_merged.update(arm_ctx)
+
+    pending_cid = arm_merged.get("cart_id") if isinstance(arm_merged.get("cart_id"), str) else None
     pending_cid = (pending_cid or "").strip()[:255] or None
-    pending_total_raw = arm_ctx.get("cart_total")
+    pending_total_raw = arm_merged.get("cart_total")
     pending_total: Optional[float] = None
     if pending_total_raw is not None:
         try:
@@ -7877,7 +7981,7 @@ async def _schedule_normal_recovery_after_cart_recovery_reason_saved(
         for k in ("cart_total", "cart_value"):
             if k in body and body.get(k) is not None:
                 synth_pl[k] = body[k]
-    for k in ("phone", "items_count"):
+    for k in ("phone", "customer_phone", "items_count"):
         if k in body and body.get(k) is not None:
             synth_pl[k] = body[k]
 

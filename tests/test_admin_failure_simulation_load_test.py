@@ -41,7 +41,7 @@ class AdminFailureSimulationLoadTestTests(unittest.TestCase):
         self.assertEqual(summary["unexpected_crash_count"], 0)
         self.assertEqual(summary["contamination_errors"], 0)
         self.assertEqual(summary["lifecycle_errors"], 0)
-        self.assertGreaterEqual(summary["failure_handled_count"], 8)
+        self.assertEqual(summary["failure_handled_count"], 10)
         self.assertEqual(summary["queuepool_timeout_count"], 0)
         results = summary.get("scenario_results") or []
         self.assertEqual(len(results), 10)

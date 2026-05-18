@@ -246,7 +246,7 @@ def run_failure_scenarios_load_test(*, dry_run_whatsapp: bool = True) -> dict[st
             ok = (
                 r.status_code == 200
                 and not body.get("recovery_scheduled", True)
-                and str(body.get("recovery_state") or "") == "waiting_for_reason"
+                and str(body.get("recovery_state") or "") == "waiting_for_phone"
             )
             return ok, r.status_code, f"reason_post={st} state={body.get('recovery_state')}"
 
@@ -287,7 +287,7 @@ def run_failure_scenarios_load_test(*, dry_run_whatsapp: bool = True) -> dict[st
             ok = (
                 r1.status_code == 200
                 and r2.status_code == 200
-                and b2.get("recovery_state") in ("sent", "scheduled", "skipped_duplicate")
+                and b2.get("recovery_state") in ("skipped_duplicate", "sent")
             )
             return ok, r2.status_code, str(b2.get("recovery_state") or "")
 

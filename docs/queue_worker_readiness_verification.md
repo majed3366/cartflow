@@ -25,7 +25,7 @@ This document supports **verification and migration planning** — not a queue r
 
 **Multi-store mixed behavior (v2):** `POST /admin/ops/load-test/multi-store-mixed-behavior` — same caps; mixed event types (sync/abandon/reason/return/purchase); `contamination_errors` + `lifecycle_errors`; «آخر اختبار سلوك مختلط» on operational health.
 
-**Failure simulation (v1):** `POST /admin/ops/load-test/failure-scenarios` — 10 sequential scenarios via in-process `TestClient` + targeted mocks only (no production/recovery/widget changes); `dry_run_whatsapp` default true. Returns `failure_handled_count`, `unexpected_crash_count`, `contamination_errors`, `lifecycle_errors`, `queuepool_timeout_count`, `avg_duration_ms` / `max_duration_ms`, per-scenario `scenario_results`. Acceptance: `unexpected_crash_count` = 0, no contamination; admin health stays 200. «آخر محاكاة أعطال» on operational health.
+**Failure simulation (v1):** `POST /admin/ops/load-test/failure-scenarios` — 10 sequential scenarios via in-process `TestClient` + targeted mocks only (no production/recovery/widget changes); `dry_run_whatsapp` default true. Returns `failure_handled_count`, `unexpected_crash_count`, `contamination_errors`, `lifecycle_errors`, `queuepool_timeout_count`, `avg_duration_ms` / `max_duration_ms`, per-scenario `scenario_results`. Acceptance: `failure_handled_count` = 10, `unexpected_crash_count` = 0, no contamination; admin health stays 200. «آخر محاكاة أعطال» on operational health. Production guards: `waiting_for_phone` / `skipped_duplicate` recovery states.
 
 ---
 

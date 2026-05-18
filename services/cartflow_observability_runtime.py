@@ -123,7 +123,7 @@ def trace_recovery_lifecycle_from_log_status(
         ev = RecoveryLifecycleEvent.QUEUED
     elif s == "skipped_duplicate":
         ev = RecoveryLifecycleEvent.SKIPPED_DUPLICATE
-    elif s in ("skipped_no_verified_phone",):
+    elif s in ("skipped_no_verified_phone", "skipped_missing_phone"):
         ev = RecoveryLifecycleEvent.SKIPPED_MISSING_PHONE
     elif s in ("skipped_anti_spam", "returned_to_site"):
         ev = RecoveryLifecycleEvent.SKIPPED_RETURNED

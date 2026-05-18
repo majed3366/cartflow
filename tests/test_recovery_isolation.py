@@ -95,13 +95,16 @@ def _post_recovery_reason_for_session(
     customer_phone: Optional[str] = None,
 ) -> None:
     """Persist widget reason so delayed recovery has reason_tag + updated_at (last_activity)."""
+    reason_body: dict = {
+        "store_slug": store_slug,
+        "session_id": session_id,
+        "reason_tag": reason_tag,
+    }
+    if customer_phone is not None:
+        reason_body["customer_phone"] = customer_phone
     r = client.post(
         "/api/cart-recovery/reason",
-        json={
-            "store_slug": store_slug,
-            "session_id": session_id,
-            "reason_tag": reason_tag,
-        },
+        json=reason_body,
     )
     if r.status_code != 200:
         raise AssertionError(f"reason POST failed {r.status_code}: {r.text}")
