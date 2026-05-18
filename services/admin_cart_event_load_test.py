@@ -17,9 +17,31 @@ from unittest.mock import patch
 _SLOW_MS = 2500.0
 _MAX_EVENTS = 100
 _DEFAULT_EVENTS = 20
+LOAD_TEST_DISPLAY_UNAVAILABLE_AR = "آخر اختبار ضغط: غير متاح مؤقتاً"
 
 _lock = threading.Lock()
 _latest_result: Optional[dict[str, Any]] = None
+
+
+def _safe_int(val: Any, default: int = 0) -> int:
+    if val is None:
+        return default
+    try:
+        return int(val)
+    except (TypeError, ValueError):
+        return default
+
+
+def _safe_float_ms(val: Any, default: float = 0.0) -> float:
+    if val is None:
+        return default
+    try:
+        out = float(val)
+        if out != out:  # NaN
+            return default
+        return out
+    except (TypeError, ValueError):
+        return default
 
 
 def _mock_whatsapp_send(*_args: Any, **_kwargs: Any) -> dict[str, Any]:
@@ -32,20 +54,45 @@ def get_latest_load_test_result() -> Optional[dict[str, Any]]:
 
 
 def get_latest_load_test_display_ar() -> Optional[str]:
-    r = get_latest_load_test_result()
-    if not r:
-        return None
-    mode = r.get("event_mode") or "cart_state_sync"
-    mode_ar = "تخلي سلة" if mode == "cart_abandoned" else "مزامنة خفيفة"
-    pool_delta = int(r.get("queuepool_timeout_count") or 0)
-    pool_bit = f" — QueuePool +{pool_delta}" if pool_delta else ""
-    return (
-        f"آخر اختبار ضغط ({mode_ar}): نجاح {r.get('success_count', 0)}/{r.get('total_events', 0)}"
-        f" — أخطاء {r.get('error_count', 0)}"
-        f" — متوسط {r.get('avg_duration_ms', 0):.0f}ms"
-        f" — أقصى {r.get('max_duration_ms', 0):.0f}ms"
-        f"{pool_bit}"
-    )
+    """Safe Arabic summary for admin UI; never raises."""
+    try:
+        r = get_latest_load_test_result()
+        if not r:
+            return None
+        if not isinstance(r, dict):
+            return LOAD_TEST_DISPLAY_UNAVAILABLE_AR
+
+        total = _safe_int(r.get("total_events"), -1)
+        if total < 0:
+            total = _safe_int(r.get("events_count"), -1)
+        if total < 0:
+            return LOAD_TEST_DISPLAY_UNAVAILABLE_AR
+
+        success = max(0, _safe_int(r.get("success_count"), 0))
+        errors = max(0, _safe_int(r.get("error_count"), 0))
+        avg_ms = _safe_float_ms(r.get("avg_duration_ms"))
+        max_ms = _safe_float_ms(r.get("max_duration_ms"))
+
+        mode = str(r.get("event_mode") or "cart_state_sync")
+        mode_ar = "تخلي سلة" if mode == "cart_abandoned" else "مزامنة خفيفة"
+        pool_delta = max(0, _safe_int(r.get("queuepool_timeout_count"), 0))
+        pool_bit = f" — QueuePool +{pool_delta}" if pool_delta else ""
+        return (
+            f"آخر اختبار ضغط ({mode_ar}): نجاح {success}/{total}"
+            f" — أخطاء {errors}"
+            f" — متوسط {avg_ms:.0f}ms"
+            f" — أقصى {max_ms:.0f}ms"
+            f"{pool_bit}"
+        )
+    except Exception:
+        return LOAD_TEST_DISPLAY_UNAVAILABLE_AR
+
+
+def stash_latest_load_test_result_for_tests(data: Optional[dict[str, Any]]) -> None:
+    """Test helper — inject latest load-test snapshot without running the harness."""
+    global _latest_result
+    with _lock:
+        _latest_result = dict(data) if data else None
 
 
 def clear_load_test_state_for_tests() -> None:

@@ -81,11 +81,14 @@ def build_admin_operational_control_readonly() -> dict[str, Any]:
 
     load_test_line_ar = None
     try:
-        from services.admin_cart_event_load_test import get_latest_load_test_display_ar
+        from services.admin_cart_event_load_test import (
+            LOAD_TEST_DISPLAY_UNAVAILABLE_AR,
+            get_latest_load_test_display_ar,
+        )
 
         load_test_line_ar = get_latest_load_test_display_ar()
     except Exception:
-        load_test_line_ar = None
+        load_test_line_ar = LOAD_TEST_DISPLAY_UNAVAILABLE_AR
 
     return {
         "version": "admin_operational_control_v2",

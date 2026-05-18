@@ -161,7 +161,56 @@ def admin_operational_health_page(request: Request) -> Any:
     )
     if denied is not None:
         return denied
-    health = build_admin_operational_health_readonly()
+    try:
+        health = build_admin_operational_health_readonly()
+    except Exception:
+        from services.admin_cart_event_load_test import LOAD_TEST_DISPLAY_UNAVAILABLE_AR
+
+        health = {
+            "version": "admin_operational_control_v2",
+            "latest_load_test_ar": LOAD_TEST_DISPLAY_UNAVAILABLE_AR,
+            "admin_risk_summary": {
+                "risk_level": 0,
+                "status_emoji": "🟢",
+                "status_label_ar": "سليم",
+                "headline_ar": "تعذر تحميل ملخص التشغيل بالكامل",
+                "subheadline_ar": "",
+                "metrics": {},
+                "metrics_labels_ar": {},
+            },
+            "admin_impact_layer": {"has_issues": False, "empty_message_ar": "—"},
+            "admin_actions_layer": {"has_actions": False, "empty_message_ar": "—"},
+            "admin_verification_layer": {"has_recoveries": False, "empty_message_ar": "—"},
+            "admin_revenue_protection": {
+                "headline_ar": "—",
+                "protected": [],
+                "risk": [],
+                "summary_stable_ar": "—",
+                "summary_fail_ar": "—",
+            },
+            "admin_operational_timeline": {
+                "items": [
+                    {
+                        "time_ar": "—",
+                        "message_ar": "تعذر بناء الخط الزمني",
+                        "kind": "empty",
+                        "severity": "warning",
+                        "severity_emoji": "🟡",
+                    }
+                ]
+            },
+            "quick_answers": {
+                "is_healthy_ar": "غير معروف",
+                "what_failing_ar": "—",
+                "who_affected_ar": "—",
+                "what_to_do_ar": "أعد تحميل الصفحة",
+                "did_recover_ar": "—",
+            },
+            "diagnostics_v1": {"cards": {}, "warnings": []},
+            "cards": {},
+            "warnings": [],
+            "headlines": {},
+        }
     return templates.TemplateResponse(
         request,
         "admin_operational_health.html",
