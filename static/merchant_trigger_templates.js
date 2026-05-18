@@ -150,6 +150,87 @@
     ],
   };
 
+  function stageLabelForIndex(p, index) {
+    var n = index + 1;
+    return "الرسالة " + n + " — " + (p && p.label ? p.label : "");
+  }
+
+  function buildStageCountHelpHtml(rowKey) {
+    var list = PRESET_SUGGESTIONS_BY_REASON[rowKey] || [];
+    if (!list.length) {
+      return (
+        '<p class="ma-tpl-stage-help">1 = مرحلة واحدة · 2 = مرحلتان متتابعتان · 3 = ثلاث مراحل — وليس تكراراً لنفس الرسالة.</p>'
+      );
+    }
+    var lines = [];
+    var i;
+    for (i = 0; i < Math.min(3, list.length); i++) {
+      var chain = [];
+      var j;
+      for (j = 0; j <= i; j++) {
+        chain.push(list[j].label);
+      }
+      lines.push(i + 1 + " = " + chain.join(" → "));
+    }
+    return (
+      '<p class="ma-tpl-stage-help" data-ma-tpl-stage-help>' +
+      lines.join("<br>") +
+      "</p>"
+    );
+  }
+
+  function sequenceFlowHtml(rowKey) {
+    var list = PRESET_SUGGESTIONS_BY_REASON[rowKey] || [];
+    if (!list.length) return "";
+    var parts = [];
+    var i;
+    for (i = 0; i < list.length; i++) {
+      if (i > 0) {
+        parts.push('<span class="ma-tpl-seq-arrow" aria-hidden="true">↓</span>');
+      }
+      parts.push(
+        '<span class="ma-tpl-seq-step" data-ma-tpl-seq-step="' +
+        (i + 1) +
+        '"><span class="ma-tpl-seq-num">' +
+        (i + 1) +
+        "</span>" +
+        esc(list[i].label) +
+        "</span>"
+      );
+    }
+    return (
+      '<div class="ma-tpl-seq-flow" data-ma-tpl-seq-flow dir="rtl" aria-label="تسلسل مراحل الاسترجاع">' +
+      parts.join("") +
+      "</div>"
+    );
+  }
+
+  function sectionIntroHtml() {
+    return (
+      '<div class="ma-tpl-seq-intro" dir="rtl">' +
+      '<p class="ma-tpl-seq-intro-title">مسار الاسترجاع = سلسلة مراحل</p>' +
+      '<p class="ma-tpl-seq-intro-body">كل رقم يفعّل مرحلة جديدة في التسلسل — <strong>وليس</strong> إرسال نفس الرسالة أكثر من مرة.</p>' +
+      '<p class="ma-tpl-seq-intro-note">يتم الإرسال تدريجياً حسب تفاعل العميل. إذا عاد العميل أو اشترى، تتوقف الرسائل تلقائياً.</p>' +
+      '<div class="ma-tpl-seq-chip-row" aria-hidden="true"><span class="ma-tpl-seq-chip">1</span><span class="ma-tpl-seq-chip-arrow">→</span><span class="ma-tpl-seq-chip">2</span><span class="ma-tpl-seq-chip-arrow">→</span><span class="ma-tpl-seq-chip">3</span></div>' +
+      "</div>"
+    );
+  }
+
+  function syncCardSequenceActiveSteps(cardEl) {
+    if (!cardEl) return;
+    var mcSel = cardEl.querySelector("[data-ma-tpl-msg-count]");
+    var flow = cardEl.querySelector("[data-ma-tpl-seq-flow]");
+    if (!mcSel || !flow) return;
+    var n = parseInt(mcSel.value, 10) || 1;
+    var steps = flow.querySelectorAll("[data-ma-tpl-seq-step]");
+    var i;
+    for (i = 0; i < steps.length; i++) {
+      var active = i < n;
+      steps[i].classList.toggle("ma-tpl-seq-step--active", active);
+      steps[i].classList.toggle("ma-tpl-seq-step--off", !active);
+    }
+  }
+
   function presetChipsHtml(rowKey) {
     var list = PRESET_SUGGESTIONS_BY_REASON[rowKey] || [];
     if (!list.length) return "";
@@ -165,13 +246,13 @@
         '" data-ma-tpl-preset-i="' +
         i +
         '">' +
-        esc(p.label) +
+        esc(stageLabelForIndex(p, i)) +
         "</button>"
       );
     }
     return (
       '<div class="ma-tpl-preset-wrap" dir="rtl">' +
-      '<span class="ma-tpl-preset-hint">مسودات جاهزة:</span>' +
+      '<span class="ma-tpl-preset-hint">مسودات جاهزة لكل مرحلة:</span>' +
       '<div class="ma-tpl-preset-row">' +
       chunks.join("") +
       "</div></div>"
@@ -383,6 +464,12 @@
     var hourSel = duNorm === "hour" ? " selected" : "";
     var daySel = duNorm === "day" ? " selected" : "";
     var presetRow = presetChipsHtml(keyRaw || row.key || "");
+    var seqFlow = sequenceFlowHtml(keyRaw || row.key || "");
+    var stageHelp = buildStageCountHelpHtml(keyRaw || row.key || "");
+    var presets0 = (PRESET_SUGGESTIONS_BY_REASON[keyRaw || row.key || ""] || [])[0];
+    var msg1Lbl = presets0
+      ? esc(stageLabelForIndex(presets0, 0))
+      : "الرسالة 1 — نص المرحلة الأولى";
 
     var mcOpts = [1, 2, 3]
       .map(function (n) {
@@ -403,9 +490,12 @@
       '<label class="ma-tpl-check"><input type="checkbox" data-ma-tpl-enabled' +
       en +
       "> تفعيل قالب الاسترجاع لهذا السبب</label>" +
+      seqFlow +
       '<label class="ma-tpl-lbl" for="ma-tpl-msg-' +
       k +
-      '">نص الرسالة (المحاولة الأولى في السلسلة)</label>' +
+      '">' +
+      msg1Lbl +
+      "</label>" +
       '<textarea class="ma-tpl-input ma-tpl-ta" id="ma-tpl-msg-' +
       k +
       '" rows="5" maxlength="65535" data-ma-tpl-msg dir="rtl" placeholder="النص الموجّه للعميل عبر مسار الاسترجاع…">' +
@@ -439,14 +529,16 @@
       "</select></div>" +
       '<div><label class="ma-tpl-lbl" for="ma-tpl-mc-' +
       k +
-      '">عدد رسائل السلسلة</label>' +
+      '">كم مرحلة تريد تفعيلها؟</label>' +
       '<select class="ma-tpl-input" id="ma-tpl-mc-' +
       k +
       '" data-ma-tpl-msg-count>' +
       mcOpts +
-      "</select></div>" +
+      "</select>" +
+      stageHelp +
       "</div>" +
-      '<p class="ma-tpl-hint">محاولات إضافية (٢–٣) تُكمَل من المحتوى المحفوظ مسبقاً أو من النصوص الافتراضية المرشدة عند عدم وجودها.</p>' +
+      "</div>" +
+      '<p class="ma-tpl-hint">المرحلة 2 و3 تُكمَل من النصوص المحفوظة أو المسودات أعلاه — كل مرحلة رسالة مختلفة في التسلسل.</p>' +
       '<div class="ma-tpl-actions">' +
       '<button type="button" class="ma-fw-save" data-ma-tpl-save>حفظ</button>' +
       '<span class="ma-tpl-status" data-ma-tpl-status aria-live="polite"></span>' +
@@ -478,9 +570,7 @@
       return;
     }
 
-    if (sub && payload.section_subtitle_ar) {
-      sub.textContent = payload.section_subtitle_ar;
-    }
+    /* Page subtitle stays from merchant_app.html (sequence stages — not API overwrite). */
 
     if (!payload.ok || !payload.reason_rows || payload.reason_rows.length === 0) {
       trigLog("[TRIGGER LOAD ERROR]", {
@@ -499,6 +589,7 @@
 
     try {
       root.innerHTML =
+        sectionIntroHtml() +
         '<div class="ma-tpl-grid">' +
         payload.reason_rows.map(cardHtml).join("") +
         "</div>";
@@ -519,6 +610,20 @@
     }
 
     lastPayload = payload;
+
+    var cards = root.querySelectorAll("[data-ma-tpl-key]");
+    var ci;
+    for (ci = 0; ci < cards.length; ci++) {
+      (function (cardEl) {
+        syncCardSequenceActiveSteps(cardEl);
+        var mcSel = cardEl.querySelector("[data-ma-tpl-msg-count]");
+        if (mcSel) {
+          mcSel.addEventListener("change", function () {
+            syncCardSequenceActiveSteps(cardEl);
+          });
+        }
+      })(cards[ci]);
+    }
 
     if (typeof root._maTplClickDelegate === "function") {
       root.removeEventListener("click", root._maTplClickDelegate);
