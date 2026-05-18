@@ -175,6 +175,7 @@ def admin_operational_health_page(request: Request) -> Any:
             "latest_mixed_behavior_load_test_ar": (
                 "آخر اختبار سلوك مختلط: غير متاح مؤقتاً"
             ),
+            "latest_failure_simulation_ar": "آخر محاكاة أعطال: غير متاح مؤقتاً",
             "admin_risk_summary": {
                 "risk_level": 0,
                 "status_emoji": "🟢",

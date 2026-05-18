@@ -18,6 +18,7 @@ from services.admin_multi_store_load_test import run_multi_store_cart_event_load
 from services.admin_multi_store_mixed_behavior_load_test import (
     run_multi_store_mixed_behavior_load_test,
 )
+from services.admin_failure_simulation_load_test import run_failure_scenarios_load_test
 
 from routes.admin_operations import router
 
@@ -123,4 +124,25 @@ def admin_load_test_multi_store_mixed_behavior(
         events_per_store=int(events_per_store) if events_per_store is not None else 50,
         dry_run_whatsapp=bool(dry_run),
     )
+    return j(summary)
+
+
+@router.post("/admin/ops/load-test/failure-scenarios")
+def admin_load_test_failure_scenarios(
+    request: Request,
+    body: dict[str, Any] = Body(default_factory=dict),
+) -> Any:
+    """
+    Realistic failure-scenario harness (admin session required).
+    Exercises edge cases in-process; dry_run_whatsapp defaults true.
+    """
+    denied = _admin_json_auth_or_error(request)
+    if denied is not None:
+        return denied
+
+    dry_run = body.get("dry_run_whatsapp", True)
+    if isinstance(dry_run, str):
+        dry_run = dry_run.strip().lower() in ("1", "true", "yes", "on")
+
+    summary = run_failure_scenarios_load_test(dry_run_whatsapp=bool(dry_run))
     return j(summary)
