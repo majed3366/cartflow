@@ -302,6 +302,7 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 
 | Date (UTC) | Summary |
 |------------|---------|
+| 2026-05-17 | **Admin load test cap 500:** `POST /admin/ops/load-test/cart-event` max `events_count` 250→500 (dry-run WhatsApp; above cap executes 500). Commit: **`test: raise safe cart-event load cap to 500`**. |
 | 2026-05-17 | **Admin load test cap 250:** `POST /admin/ops/load-test/cart-event` max `events_count` 100→250 (dry-run WhatsApp; requests above cap execute 250). Commit: **`test: raise safe cart-event load cap to 250`**. |
 | 2026-05-17 | **Admin health + load test display:** `/admin/operational-health` no longer 500 when latest load-test snapshot has null/missing fields; safe `get_latest_load_test_display_ar()` + page fallback. Commit: **`fix: prevent admin operational health crash after load test`**. |
 | 2026-05-17 | **Admin load test cap 100:** `POST /admin/ops/load-test/cart-event` max `events_count` raised 50→100 (dry-run WhatsApp only); `max_events_allowed` in summary; richer «آخر اختبار ضغط» on `/admin/operational-health`. Commit: **`test: allow safe 100 event cart abandoned load test`**. |

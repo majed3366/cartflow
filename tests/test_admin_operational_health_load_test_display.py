@@ -95,27 +95,7 @@ class AdminOperationalHealthLoadTestDisplayTests(unittest.TestCase):
             LOAD_TEST_DISPLAY_UNAVAILABLE_AR,
         )
 
-    def test_health_after_250_abandoned_load_test(self) -> None:
-        os.environ["CARTFLOW_ADMIN_PASSWORD"] = "health-loadtest-pass-1"
-        os.environ["SECRET_KEY"] = "unit-test-secret-key-for-admin-cookie-hmac-"
-        client = TestClient(app)
-        self._login(client)
-        r = client.post(
-            "/admin/ops/load-test/cart-event",
-            json={"events_count": 250, "reason_tag": "price", "dry_run_whatsapp": True},
-        )
-        self.assertEqual(r.status_code, 200, r.text[:300])
-        data = r.json()
-        self.assertEqual(data.get("total_events"), 250)
-        self.assertEqual(data.get("success_count"), 250)
-        self.assertEqual(data.get("error_count"), 0)
-        self.assertEqual(data.get("queuepool_timeout_count"), 0)
-        self.assertEqual(self._get_health(client), 200)
-        page = client.get("/admin/operational-health")
-        self.assertIn("آخر اختبار ضغط", page.text)
-        self.assertIn("250/250", page.text)
-
-    def test_health_after_request_capped_at_250(self) -> None:
+    def test_health_after_500_abandoned_load_test(self) -> None:
         os.environ["CARTFLOW_ADMIN_PASSWORD"] = "health-loadtest-pass-1"
         os.environ["SECRET_KEY"] = "unit-test-secret-key-for-admin-cookie-hmac-"
         client = TestClient(app)
@@ -123,6 +103,27 @@ class AdminOperationalHealthLoadTestDisplayTests(unittest.TestCase):
         r = client.post(
             "/admin/ops/load-test/cart-event",
             json={"events_count": 500, "reason_tag": "price", "dry_run_whatsapp": True},
+        )
+        self.assertEqual(r.status_code, 200, r.text[:300])
+        data = r.json()
+        self.assertEqual(data.get("total_events"), 500)
+        self.assertEqual(data.get("success_count"), 500)
+        self.assertEqual(data.get("error_count"), 0)
+        self.assertEqual(data.get("queuepool_timeout_count"), 0)
+        self.assertEqual(data.get("background_task_failures"), 0)
+        self.assertEqual(self._get_health(client), 200)
+        page = client.get("/admin/operational-health")
+        self.assertIn("آخر اختبار ضغط", page.text)
+        self.assertIn("500/500", page.text)
+
+    def test_health_after_request_capped_at_500(self) -> None:
+        os.environ["CARTFLOW_ADMIN_PASSWORD"] = "health-loadtest-pass-1"
+        os.environ["SECRET_KEY"] = "unit-test-secret-key-for-admin-cookie-hmac-"
+        client = TestClient(app)
+        self._login(client)
+        r = client.post(
+            "/admin/ops/load-test/cart-event",
+            json={"events_count": 750, "reason_tag": "price", "dry_run_whatsapp": True},
         )
         self.assertEqual(r.status_code, 200, r.text[:300])
         data = r.json()
