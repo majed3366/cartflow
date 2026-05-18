@@ -169,6 +169,9 @@ def admin_operational_health_page(request: Request) -> Any:
         health = {
             "version": "admin_operational_control_v2",
             "latest_load_test_ar": LOAD_TEST_DISPLAY_UNAVAILABLE_AR,
+            "latest_multi_store_load_test_ar": (
+                "آخر اختبار تعدد متاجر: غير متاح مؤقتاً"
+            ),
             "admin_risk_summary": {
                 "risk_level": 0,
                 "status_emoji": "🟢",
