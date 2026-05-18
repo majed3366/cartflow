@@ -15,7 +15,7 @@ from typing import Any, Optional
 from unittest.mock import patch
 
 _SLOW_MS = 2500.0
-_MAX_EVENTS = 100
+_MAX_EVENTS = 250
 _DEFAULT_EVENTS = 20
 LOAD_TEST_DISPLAY_UNAVAILABLE_AR = "آخر اختبار ضغط: غير متاح مؤقتاً"
 
