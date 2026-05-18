@@ -302,6 +302,7 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 
 | Date (UTC) | Summary |
 |------------|---------|
+| 2026-05-17 | **Admin multi-store mixed behavior v2:** `POST /admin/ops/load-test/multi-store-mixed-behavior` — 20×50 mixed sync/abandon/reason/return/purchase + VIP; contamination + lifecycle checks; health line. Commit: **`test: add multi-store mixed behavior load test`**. |
 | 2026-05-17 | **Admin multi-store load test v1:** `POST /admin/ops/load-test/multi-store-cart-event` — 20 virtual `loadtest-store-*` stores, max 1000 events, contamination checks, dry-run WhatsApp; health page line. Commit: **`test: add safe multi-store cart-event load test v1`**. |
 | 2026-05-17 | **Admin load test cap 1000:** `POST /admin/ops/load-test/cart-event` max `events_count` 500→1000 (dry-run WhatsApp; above cap executes 1000); Jinja fix `verify.get('items')` on operational health after recoveries. Commit: **`test: raise safe cart-event load cap to 1000`**. |
 | 2026-05-17 | **Admin load test cap 500:** `POST /admin/ops/load-test/cart-event` max `events_count` 250→500 (dry-run WhatsApp; above cap executes 500). Commit: **`test: raise safe cart-event load cap to 500`**. |

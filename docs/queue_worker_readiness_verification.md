@@ -23,6 +23,8 @@ This document supports **verification and migration planning** — not a queue r
 
 **Multi-store (v1):** `POST /admin/ops/load-test/multi-store-cart-event` — virtual `loadtest-store-001` … `020`, max 20 stores × 50 events (1000 total); per-store templates/VIP/widget/automation; `contamination_errors` in response; latest line on `/admin/operational-health`.
 
+**Multi-store mixed behavior (v2):** `POST /admin/ops/load-test/multi-store-mixed-behavior` — same caps; mixed event types (sync/abandon/reason/return/purchase); `contamination_errors` + `lifecycle_errors`; «آخر اختبار سلوك مختلط» on operational health.
+
 ---
 
 ## What still runs in-process (asyncio) today

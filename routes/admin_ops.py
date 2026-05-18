@@ -15,6 +15,9 @@ from services.cartflow_admin_http_auth import (
 )
 from services.admin_cart_event_load_test import run_cart_event_load_test
 from services.admin_multi_store_load_test import run_multi_store_cart_event_load_test
+from services.admin_multi_store_mixed_behavior_load_test import (
+    run_multi_store_mixed_behavior_load_test,
+)
 
 from routes.admin_operations import router
 
@@ -89,6 +92,33 @@ def admin_load_test_multi_store_cart_event(
         dry_run = dry_run.strip().lower() in ("1", "true", "yes", "on")
 
     summary = run_multi_store_cart_event_load_test(
+        stores_count=int(stores_count) if stores_count is not None else 20,
+        events_per_store=int(events_per_store) if events_per_store is not None else 50,
+        dry_run_whatsapp=bool(dry_run),
+    )
+    return j(summary)
+
+
+@router.post("/admin/ops/load-test/multi-store-mixed-behavior")
+def admin_load_test_multi_store_mixed_behavior(
+    request: Request,
+    body: dict[str, Any] = Body(default_factory=dict),
+) -> Any:
+    """
+    Multi-store mixed lifecycle load test (admin session required).
+    Virtual loadtest-store-* only; dry_run_whatsapp defaults true.
+    """
+    denied = _admin_json_auth_or_error(request)
+    if denied is not None:
+        return denied
+
+    stores_count = body.get("stores_count", 20)
+    events_per_store = body.get("events_per_store", 50)
+    dry_run = body.get("dry_run_whatsapp", True)
+    if isinstance(dry_run, str):
+        dry_run = dry_run.strip().lower() in ("1", "true", "yes", "on")
+
+    summary = run_multi_store_mixed_behavior_load_test(
         stores_count=int(stores_count) if stores_count is not None else 20,
         events_per_store=int(events_per_store) if events_per_store is not None else 50,
         dry_run_whatsapp=bool(dry_run),

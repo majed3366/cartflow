@@ -172,6 +172,9 @@ def admin_operational_health_page(request: Request) -> Any:
             "latest_multi_store_load_test_ar": (
                 "آخر اختبار تعدد متاجر: غير متاح مؤقتاً"
             ),
+            "latest_mixed_behavior_load_test_ar": (
+                "آخر اختبار سلوك مختلط: غير متاح مؤقتاً"
+            ),
             "admin_risk_summary": {
                 "risk_level": 0,
                 "status_emoji": "🟢",

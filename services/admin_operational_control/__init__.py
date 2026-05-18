@@ -101,11 +101,23 @@ def build_admin_operational_control_readonly() -> dict[str, Any]:
     except Exception:
         multi_store_load_test_line_ar = MULTI_STORE_LOAD_TEST_DISPLAY_UNAVAILABLE_AR
 
+    mixed_behavior_line_ar = None
+    try:
+        from services.admin_multi_store_mixed_behavior_load_test import (
+            MIXED_BEHAVIOR_LOAD_TEST_DISPLAY_UNAVAILABLE_AR,
+            get_latest_mixed_behavior_load_test_display_ar,
+        )
+
+        mixed_behavior_line_ar = get_latest_mixed_behavior_load_test_display_ar()
+    except Exception:
+        mixed_behavior_line_ar = MIXED_BEHAVIOR_LOAD_TEST_DISPLAY_UNAVAILABLE_AR
+
     return {
         "version": "admin_operational_control_v2",
         "generated_at_utc": ctx.generated_at_utc,
         "latest_load_test_ar": load_test_line_ar,
         "latest_multi_store_load_test_ar": multi_store_load_test_line_ar,
+        "latest_mixed_behavior_load_test_ar": mixed_behavior_line_ar,
         "admin_risk_summary": risk,
         "admin_impact_layer": impact,
         "admin_actions_layer": actions,
