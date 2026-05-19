@@ -102,6 +102,18 @@ class MerchantStandaloneAppDashboardTests(unittest.TestCase):
         )
         self.assertIn("merchant_cart_filter_counts", payload)
 
+    def test_trigger_templates_js_has_restore_timing_action(self) -> None:
+        from pathlib import Path
+
+        js = (
+            Path(__file__).resolve().parents[1]
+            / "static"
+            / "merchant_trigger_templates.js"
+        ).read_text(encoding="utf-8")
+        self.assertIn("data-ma-tpl-restore-timing", js)
+        self.assertIn("restoreRecommendedTimingForActiveStage", js)
+        self.assertIn("استعادة المقترح", js)
+
     def test_dashboard_merchant_html_has_no_ops_session_field(self) -> None:
         r = self.client.get("/dashboard")
         self.assertEqual(r.status_code, 200)

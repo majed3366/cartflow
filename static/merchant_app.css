@@ -1682,6 +1682,31 @@ button.ma-vip-suggest-btn.va-btn {
   }
 }
 
+.ma-tpl-delay-restore-wrap {
+  margin: 4px 0 0;
+  text-align: end;
+}
+
+.ma-tpl-restore-timing {
+  border: none;
+  background: none;
+  padding: 2px 0;
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--muted, #64748b);
+  cursor: pointer;
+  font-family: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  font-weight: 500;
+}
+
+.ma-tpl-restore-timing:hover,
+.ma-tpl-restore-timing:focus-visible {
+  color: var(--green-dark, #166534);
+  outline: none;
+}
+
 .ma-tpl-timing-note {
   margin: 6px 0 0;
   font-size: 10.5px;

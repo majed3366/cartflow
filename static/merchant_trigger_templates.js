@@ -270,6 +270,92 @@
     return { value: rec.value, unit: rec.unit };
   }
 
+  /** يحفظ تأخير/نص المرحلة النشطة في الذاكرة فقط (قبل التبديل أو الحفظ). */
+  function patchActiveStageInLastPayload(cardShell, reasonKey) {
+    if (!cardShell || !reasonKey || !lastPayload) return;
+    var row = findRow(reasonKey);
+    if (!row) return;
+    var ix = parseInt(cardShell.getAttribute("data-ma-tpl-active-stage") || "0", 10);
+    if (!(ix >= 0)) ix = 0;
+    var mc = getCardEnabledStageCount(cardShell);
+    ix = Math.max(0, Math.min(mc - 1, ix));
+
+    var dvi = cardShell.querySelector("[data-ma-tpl-delay]");
+    var dsi = cardShell.querySelector("[data-ma-tpl-unit]");
+    var ta = cardShell.querySelector("[data-ma-tpl-msg]");
+    var dv = parseFloat(dvi && dvi.value ? dvi.value : "1") || 1;
+    if (dv <= 0) dv = 1;
+    var unit = normalizeUiDelayUnit(dsi && dsi.value ? dsi.value : "minute");
+    var enc = persistFirstSlotDelay(dv, unit);
+    var text = ta ? ta.value.trim() : "";
+    if (!Array.isArray(row.messages)) row.messages = [];
+    while (row.messages.length < mc) {
+      row.messages.push({ delay: 60, unit: "minute", text: "" });
+    }
+    var prev =
+      row.messages[ix] && typeof row.messages[ix] === "object"
+        ? row.messages[ix]
+        : {};
+    row.messages[ix] = {
+      delay: enc.delay,
+      unit: enc.unit,
+      text:
+        text ||
+        String(prev.text || "").trim() ||
+        presetTextForStage(reasonKey, ix),
+    };
+    if (ix === 0) {
+      row.delay_value = enc.delay;
+      row.delay_unit = enc.unit;
+      row.message = row.messages[0].text;
+    }
+  }
+
+  /** استعادة التوقيت المقترح للمرحلة المحددة فقط — دون حفظ تلقائي. */
+  function restoreRecommendedTimingForActiveStage(cardShell, reasonKey) {
+    if (!cardShell || !reasonKey) return;
+    var ix = parseInt(cardShell.getAttribute("data-ma-tpl-active-stage") || "0", 10);
+    if (!(ix >= 0)) ix = 0;
+    var mc = getCardEnabledStageCount(cardShell);
+    ix = Math.max(0, Math.min(mc - 1, ix));
+
+    var rec = recommendedDelayForStage(reasonKey, ix);
+    var dvi = cardShell.querySelector("[data-ma-tpl-delay]");
+    var dsi = cardShell.querySelector("[data-ma-tpl-unit]");
+    if (dvi) dvi.value = String(rec.value);
+    if (dsi) {
+      dsi.value =
+        rec.unit === "day" ? "day" : rec.unit === "hour" ? "hour" : "minute";
+    }
+
+    var row = findRow(reasonKey);
+    if (row) {
+      var enc = persistFirstSlotDelay(rec.value, rec.unit);
+      if (!Array.isArray(row.messages)) row.messages = [];
+      while (row.messages.length <= ix) {
+        row.messages.push({ delay: enc.delay, unit: enc.unit, text: "" });
+      }
+      var prev =
+        row.messages[ix] && typeof row.messages[ix] === "object"
+          ? row.messages[ix]
+          : {};
+      var ta = cardShell.querySelector("[data-ma-tpl-msg]");
+      var txt =
+        (ta && ta.value.trim()) ||
+        String(prev.text || "").trim() ||
+        presetTextForStage(reasonKey, ix);
+      row.messages[ix] = {
+        delay: enc.delay,
+        unit: enc.unit,
+        text: txt,
+      };
+      if (ix === 0) {
+        row.delay_value = enc.delay;
+        row.delay_unit = enc.unit;
+      }
+    }
+  }
+
   function stageLabelForIndex(p, index) {
     var n = index + 1;
     return "الرسالة " + n + " — " + (p && p.label ? p.label : "");
@@ -861,6 +947,9 @@
       ">أيام</option>" +
       "</select></div>" +
       "</div>" +
+      '<p class="ma-tpl-delay-restore-wrap" dir="rtl">' +
+      '<button type="button" class="ma-tpl-restore-timing" data-ma-tpl-restore-timing title="استعادة التوقيت المقترح لهذه المرحلة فقط (بدون حفظ تلقائي)">↺ استعادة المقترح</button>' +
+      "</p>" +
       '<p class="ma-tpl-timing-note" dir="rtl">💡 التوقيت المقترح مبني على ممارسات شائعة لاستعادة السلال ويمكن تعديله.</p>' +
       '<p class="ma-tpl-hint">المراحل تُرسل بالترتيب فقط عند عدم عودة العميل أو إتمام الشراء.</p>' +
       '<div class="ma-tpl-actions">' +
@@ -968,7 +1057,19 @@
         var ixChip = parseInt(stageBtn.getAttribute("data-ma-tpl-preset-i"), 10);
         var cardChip = stageBtn.closest("[data-ma-tpl-key]");
         if (!cardChip || !rkChip || !(ixChip >= 0)) return;
+        patchActiveStageInLastPayload(cardChip, rkChip);
         setCardEditorStage(cardChip, rkChip, ixChip);
+        return;
+      }
+      var restoreB =
+        tg && tg.closest ? tg.closest("[data-ma-tpl-restore-timing]") : null;
+      if (restoreB && root.contains(restoreB)) {
+        ev.preventDefault();
+        var cardR = restoreB.closest("[data-ma-tpl-key]");
+        var rkR = cardR && cardR.getAttribute("data-ma-tpl-key");
+        if (cardR && rkR) {
+          restoreRecommendedTimingForActiveStage(cardR, rkR);
+        }
         return;
       }
       var saveB =
