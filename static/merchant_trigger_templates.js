@@ -616,7 +616,31 @@
       message_count: mc,
       messages: msgs,
     };
-    return applyRecommendedDelaysToRow(key, built);
+    return safeApplyRecommendedDelaysToRow(key, built);
+  }
+
+  function safeApplyRecommendedDelaysToRow(reasonKey, row) {
+    try {
+      return applyRecommendedDelaysToRow(reasonKey, row);
+    } catch (rowErr) {
+      trigLog("[TRIGGER ROW DELAY APPLY ERROR]", {
+        reason: reasonKey,
+        err: String(rowErr && rowErr.message ? rowErr.message : rowErr),
+      });
+      return row;
+    }
+  }
+
+  function buildClientFallbackPayload() {
+    var rows = TRIGGER_KEYS_ORDER.map(function (k) {
+      return buildRowFromTemplateEntry(k, {});
+    });
+    return {
+      ok: true,
+      section_title_ar: "قوالب حسب سبب التردد",
+      reason_rows: rows,
+      display_fallback: true,
+    };
   }
 
   function ensureSixRows(rowsIn) {
@@ -629,13 +653,23 @@
         r = rowsIn[i];
         if (!r || typeof r !== "object") continue;
         ks = String(r.key || r.slug || r.id || "").trim().toLowerCase();
-        if (ks) byKey[ks] = applyRecommendedDelaysToRow(ks, r);
+        if (ks) byKey[ks] = r;
       }
     }
     var out = [];
     for (i = 0; i < TRIGGER_KEYS_ORDER.length; i++) {
       var k0 = TRIGGER_KEYS_ORDER[i];
-      out.push(buildRowFromTemplateEntry(k0, byKey[k0] || {}));
+      try {
+        out.push(buildRowFromTemplateEntry(k0, byKey[k0] || {}));
+      } catch (rowBuildErr) {
+        trigLog("[TRIGGER ROW BUILD ERROR]", {
+          reason: k0,
+          err: String(
+            rowBuildErr && rowBuildErr.message ? rowBuildErr.message : rowBuildErr
+          ),
+        });
+        out.push(buildRowFromTemplateEntry(k0, {}));
+      }
     }
     return out;
   }
@@ -853,10 +887,7 @@
         payload_keys: payloadKeys(raw),
         status: httpStatus,
       });
-      lastPayload = null;
-      if (err) err.hidden = false;
-      root.innerHTML =
-        '<div class="empty-text" style="padding:24px;text-align:center;">تعذر تحميل القوالب</div>';
+      render(buildClientFallbackPayload(), 200);
       return;
     }
 
@@ -868,10 +899,7 @@
         payload_keys: payloadKeys(raw),
         status: httpStatus,
       });
-      lastPayload = null;
-      if (err) err.hidden = false;
-      root.innerHTML =
-        '<div class="empty-text" style="padding:24px;text-align:center;">تعذر تحميل القوالب</div>';
+      render(buildClientFallbackPayload(), 200);
       return;
     }
 
@@ -892,10 +920,7 @@
         payload_keys: payloadKeys(raw),
         status: httpStatus,
       });
-      lastPayload = null;
-      if (err) err.hidden = false;
-      root.innerHTML =
-        '<div class="empty-text" style="padding:24px;text-align:center;">تعذر تحميل القوالب</div>';
+      render(buildClientFallbackPayload(), 200);
       return;
     }
 
@@ -1267,12 +1292,17 @@
               fetch_ms: fetchMs,
             });
             window.__trigger_templates_loading = false;
-            renderWhenRootReady(
-              pack.json || {},
-              typeof pack.status === "number" ? pack.status : 0,
-              0,
-              function () {}
-            );
+            var fallbackPayload = buildClientFallbackPayload();
+            window.__trigger_templates_loaded = {
+              json: fallbackPayload,
+              httpStatus: 200,
+            };
+            renderWhenRootReady(fallbackPayload, 200, 0, function (okFb) {
+              var errBanner = byId("ma-tpl-load-err");
+              if (errBanner) {
+                errBanner.hidden = !!okFb;
+              }
+            });
             return;
           }
 
@@ -1322,7 +1352,17 @@
             err: String(netErr && netErr.message ? netErr.message : netErr),
           });
           window.__trigger_templates_loading = false;
-          renderWhenRootReady({}, 0, 0, function () {});
+          var fallbackNet = buildClientFallbackPayload();
+          window.__trigger_templates_loaded = {
+            json: fallbackNet,
+            httpStatus: 200,
+          };
+          renderWhenRootReady(fallbackNet, 200, 0, function (okNet) {
+            var errBanner = byId("ma-tpl-load-err");
+            if (errBanner) {
+              errBanner.hidden = !!okNet;
+            }
+          });
         });
     }
 

@@ -13211,14 +13211,17 @@ def api_dashboard_trigger_templates():
         )
 
         dash_store = _dashboard_recovery_store_row()
-        if dash_store is None:
-            return j({"ok": False, "error": "no_store"}, 404)
         tpl = build_trigger_templates_get_payload(dash_store)
         return j({"ok": True, **tpl})
     except Exception as e:  # noqa: BLE001
         db.session.rollback()
         log.warning("api_dashboard_trigger_templates: %s", e)
-        return j({"ok": False, "error": "failed"}, 500)
+        from services.trigger_templates_dashboard import (
+            build_fallback_trigger_templates_payload,
+        )
+
+        tpl = build_fallback_trigger_templates_payload()
+        return j({"ok": True, **tpl})
     finally:
         _log_dashboard_section_profile(
             section="trigger_templates", wall_perf_start=wall0

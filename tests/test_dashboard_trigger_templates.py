@@ -80,3 +80,39 @@ class TriggerTemplatesDashboardServiceTests(unittest.TestCase):
         sample = {r["key"]: r["message_count"] for r in p["reason_rows"]}
         self.assertEqual(sample["price"], 1)
 
+    def test_build_payload_survives_non_list_messages(self) -> None:
+        import json
+
+        from services.trigger_templates_dashboard import build_trigger_templates_get_payload
+
+        class _Mini:
+            reason_templates_json = json.dumps(
+                {
+                    "price": {
+                        "enabled": True,
+                        "message_count": 2,
+                        "messages": True,
+                        "message": "نص مخصص",
+                    }
+                }
+            )
+
+        p = build_trigger_templates_get_payload(_Mini())
+        self.assertEqual(len(p["reason_rows"]), 6)
+        price = next(r for r in p["reason_rows"] if r["key"] == "price")
+        self.assertEqual(price["message_count"], 2)
+        self.assertIsInstance(price.get("messages"), list)
+
+    def test_build_fallback_when_store_missing(self) -> None:
+        from services.trigger_templates_dashboard import (
+            build_fallback_trigger_templates_payload,
+            build_trigger_templates_get_payload,
+        )
+
+        fb = build_fallback_trigger_templates_payload()
+        self.assertEqual(len(fb["reason_rows"]), 6)
+        self.assertTrue(fb.get("display_fallback"))
+
+        none_p = build_trigger_templates_get_payload(None)
+        self.assertEqual(len(none_p["reason_rows"]), 6)
+

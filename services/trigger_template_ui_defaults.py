@@ -126,6 +126,13 @@ def _coerce_mc(raw: Any) -> int:
     return max(1, min(3, mc))
 
 
+def _coerce_messages_list(raw: Any) -> List[Any]:
+    """‎messages‎ قد يكون غير قائمة في بيانات قديمة — لا نُسقِط تحميل اللوحة."""
+    if isinstance(raw, list):
+        return raw
+    return []
+
+
 def _persist_delay_for_api(value: float, unit: str) -> Tuple[float, str]:
     u = (unit or "minute").strip().lower()
     if u == "day":
@@ -295,41 +302,51 @@ def enrich_reason_entry_for_dashboard(key: str, ent: Dict[str, Any]) -> Dict[str
     إثراء للعرض فقط: ملء خانات فارغة؛ إصلاح مرحلة 1 (طمأنة)؛ إزالة عناوين LOADTEST.
     لا يكتب قاعدة البيانات — يُستدعى من GET/POST استجابة لوحة القوالب فقط.
     """
-    ent = dict(ent)
-    defaults = DASHBOARD_STAGE_TEXTS.get(key)
-    if not defaults:
+    try:
+        if not isinstance(ent, dict):
+            ent = {}
+        else:
+            ent = dict(ent)
+        defaults = DASHBOARD_STAGE_TEXTS.get(key)
+        if not defaults:
+            return ent
+
+        mc = _coerce_mc(ent.get("message_count"))
+        msgs_in = _coerce_messages_list(ent.get("messages"))
+        msgs_out: List[Dict[str, Any]] = []
+        fallback_msg = str(ent.get("message") or "").strip()
+        for i in range(mc):
+            had_raw = i < len(msgs_in) and isinstance(msgs_in[i], dict)
+            raw_item = msgs_in[i] if had_raw else {}
+            raw_text = str(raw_item.get("text") or "").strip() if had_raw else ""
+            slot = _slot_dict(raw_item)
+            if _should_apply_recommended_delay(
+                key, i, slot, had_raw, defaults, raw_text, fallback_msg
+            ):
+                slot = _apply_recommended_delay_to_slot(key, i, slot)
+            slot["text"] = _repair_slot_text(key, i, slot["text"], defaults)
+            msgs_out.append(slot)
+
+        fallback_msg = _repair_slot_text(key, 0, fallback_msg, defaults)
+
+        text0 = str(msgs_out[0].get("text") or "").strip() if msgs_out else ""
+        if text0:
+            message_one = text0
+        elif fallback_msg:
+            message_one = fallback_msg
+        else:
+            message_one = defaults[0]
+
+        ent["message"] = message_one
+        ent["messages"] = msgs_out
+        ent["message_count"] = mc
         return ent
-
-    mc = _coerce_mc(ent.get("message_count"))
-    msgs_in = list(ent.get("messages") or [])
-    msgs_out: List[Dict[str, Any]] = []
-    fallback_msg = str(ent.get("message") or "").strip()
-    for i in range(mc):
-        had_raw = i < len(msgs_in) and isinstance(msgs_in[i], dict)
-        raw_item = msgs_in[i] if had_raw else {}
-        raw_text = str(raw_item.get("text") or "").strip() if had_raw else ""
-        slot = _slot_dict(raw_item)
-        if _should_apply_recommended_delay(
-            key, i, slot, had_raw, defaults, raw_text, fallback_msg
-        ):
-            slot = _apply_recommended_delay_to_slot(key, i, slot)
-        slot["text"] = _repair_slot_text(key, i, slot["text"], defaults)
-        msgs_out.append(slot)
-
-    fallback_msg = _repair_slot_text(key, 0, fallback_msg, defaults)
-
-    text0 = str(msgs_out[0].get("text") or "").strip() if msgs_out else ""
-    if text0:
-        message_one = text0
-    elif fallback_msg:
-        message_one = fallback_msg
-    else:
-        message_one = defaults[0]
-
-    ent["message"] = message_one
-    ent["messages"] = msgs_out
-    ent["message_count"] = mc
-    return ent
+    except Exception:
+        if isinstance(ent, dict):
+            safe = dict(ent)
+            safe["messages"] = _coerce_messages_list(ent.get("messages"))
+            return safe
+        return {}
 
 
 def stage_texts_are_distinct(reason_key: str) -> bool:

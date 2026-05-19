@@ -253,6 +253,18 @@ class TriggerTemplateUiDefaultsTests(unittest.TestCase):
                 )
             self.assertNotIn("LOADTEST", row["message"])
 
+    def test_enrich_does_not_throw_on_boolean_messages(self) -> None:
+        ent = {
+            "enabled": True,
+            "message_count": 2,
+            "messages": True,
+            "message": "نص محفوظ",
+        }
+        out = enrich_reason_entry_for_dashboard("price", ent)
+        self.assertEqual(out["message_count"], 2)
+        self.assertIsInstance(out.get("messages"), list)
+        self.assertEqual(len(out["messages"]), 2)
+
 
 if __name__ == "__main__":
     unittest.main()
