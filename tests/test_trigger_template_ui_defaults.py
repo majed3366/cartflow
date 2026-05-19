@@ -7,9 +7,11 @@ import json
 import unittest
 
 from services.trigger_template_ui_defaults import (
+    DASHBOARD_STAGE_DELAYS,
     DASHBOARD_STAGE_TEXTS,
     enrich_reason_entry_for_dashboard,
     is_loadtest_placeholder,
+    stage_default_delay_ui,
     stage_default_text,
     stage_texts_are_distinct,
 )
@@ -27,6 +29,34 @@ class TriggerTemplateUiDefaultsTests(unittest.TestCase):
                 DASHBOARD_STAGE_TEXTS[key][1],
                 msg=f"stage1==stage2 for {key}",
             )
+
+    def test_recommended_delays_per_reason(self) -> None:
+        self.assertEqual(stage_default_delay_ui("price", 0), (60.0, "minute"))
+        self.assertEqual(stage_default_delay_ui("price", 1), (5.0, "hour"))
+        self.assertEqual(stage_default_delay_ui("price", 2), (5.0, "day"))
+        self.assertEqual(stage_default_delay_ui("shipping", 0), (30.0, "minute"))
+        self.assertEqual(stage_default_delay_ui("shipping", 2), (2.0, "day"))
+        self.assertEqual(stage_default_delay_ui("quality", 0), (90.0, "minute"))
+        self.assertEqual(stage_default_delay_ui("warranty", 0), (2.0, "hour"))
+        self.assertEqual(stage_default_delay_ui("delivery", 1), (6.0, "hour"))
+        self.assertEqual(stage_default_delay_ui("other", 2), (5.0, "day"))
+        for key in _ALL_REASONS:
+            row = DASHBOARD_STAGE_DELAYS[key]
+            self.assertEqual(len(row), 3)
+            self.assertNotEqual(row[0], row[1], msg=key)
+
+    def test_enrich_applies_recommended_delay_only_for_new_slots(self) -> None:
+        ent = {
+            "enabled": True,
+            "message": "",
+            "message_count": 2,
+            "messages": [{"delay": 45, "unit": "minute", "text": "مخصص"}],
+        }
+        out = enrich_reason_entry_for_dashboard("price", ent)
+        self.assertEqual(out["messages"][0]["delay"], 45.0)
+        self.assertEqual(out["messages"][0]["unit"], "minute")
+        self.assertEqual(out["messages"][1]["delay"], 5.0)
+        self.assertEqual(out["messages"][1]["unit"], "hour")
 
     def test_shipping_delivery_stage3_defaults(self) -> None:
         self.assertEqual(

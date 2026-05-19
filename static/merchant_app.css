@@ -1682,6 +1682,14 @@ button.ma-vip-suggest-btn.va-btn {
   }
 }
 
+.ma-tpl-timing-note {
+  margin: 6px 0 0;
+  font-size: 10.5px;
+  line-height: 1.45;
+  color: var(--muted, #64748b);
+  font-weight: 500;
+}
+
 .ma-tpl-hint {
   font-size: 11px;
   color: var(--muted);

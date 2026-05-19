@@ -150,6 +150,68 @@
     ],
   };
 
+  /** مقترحات تأخير المراحل — للعرض والبذر فقط (minute | hour | day). */
+  var RECOMMENDED_STAGE_DELAYS = {
+    price: [
+      { value: 60, unit: "minute" },
+      { value: 5, unit: "hour" },
+      { value: 5, unit: "day" },
+    ],
+    quality: [
+      { value: 90, unit: "minute" },
+      { value: 8, unit: "hour" },
+      { value: 5, unit: "day" },
+    ],
+    shipping: [
+      { value: 30, unit: "minute" },
+      { value: 4, unit: "hour" },
+      { value: 2, unit: "day" },
+    ],
+    delivery: [
+      { value: 30, unit: "minute" },
+      { value: 6, unit: "hour" },
+      { value: 3, unit: "day" },
+    ],
+    warranty: [
+      { value: 2, unit: "hour" },
+      { value: 12, unit: "hour" },
+      { value: 5, unit: "day" },
+    ],
+    other: [
+      { value: 3, unit: "hour" },
+      { value: 1, unit: "day" },
+      { value: 5, unit: "day" },
+    ],
+  };
+
+  function recommendedDelayForStage(reasonKey, index) {
+    var row = RECOMMENDED_STAGE_DELAYS[reasonKey] || [];
+    var rec = row[index];
+    if (rec && rec.value > 0) {
+      return { value: rec.value, unit: rec.unit || "minute" };
+    }
+    return { value: 60, unit: "minute" };
+  }
+
+  function recommendedDelayEncodedForApi(reasonKey, index) {
+    var rec = recommendedDelayForStage(reasonKey, index);
+    return persistFirstSlotDelay(rec.value, rec.unit);
+  }
+
+  function displayDelayForStage(reasonKey, index) {
+    var row = findRow(reasonKey);
+    if (row && Array.isArray(row.messages) && row.messages[index]) {
+      var slot = row.messages[index];
+      var d =
+        typeof slot.delay === "number" ? slot.delay : parseFloat(slot.delay);
+      if (d > 0) {
+        return displayDelayFromApi(d, normalizeApiDelayUnit(slot.unit));
+      }
+    }
+    var rec = recommendedDelayForStage(reasonKey, index);
+    return { value: rec.value, unit: rec.unit };
+  }
+
   function stageLabelForIndex(p, index) {
     var n = index + 1;
     return "الرسالة " + n + " — " + (p && p.label ? p.label : "");
@@ -400,6 +462,18 @@
       }
     }
 
+    var dvi = cardShell.querySelector("[data-ma-tpl-delay]");
+    var dsi = cardShell.querySelector("[data-ma-tpl-unit]");
+    var dispDelay = displayDelayForStage(reasonKey, ix);
+    if (dvi) {
+      dvi.value = String(dispDelay.value);
+    }
+    if (dsi) {
+      var u = dispDelay.unit;
+      dsi.value =
+        u === "day" ? "day" : u === "hour" ? "hour" : "minute";
+    }
+
     syncCardStageWorkflow(cardShell);
   }
 
@@ -462,9 +536,14 @@
     var first = msgs[0] && typeof msgs[0] === "object" ? msgs[0] : {};
     var dv = typeof first.delay === "number" ? first.delay : parseFloat(first.delay);
     if (!(dv > 0)) dv = typeof ent.delay_value === "number" ? ent.delay_value : parseFloat(ent.delay_value);
-    if (!(dv > 0)) dv = 1;
     var unitRaw = first.unit != null ? first.unit : ent.delay_unit;
     var u = normalizeApiDelayUnit(unitRaw) === "hour" ? "hour" : "minute";
+    if (!(dv > 0) && !msgs.length) {
+      var encNew = recommendedDelayEncodedForApi(key, 0);
+      dv = encNew.delay;
+      u = encNew.unit;
+    }
+    if (!(dv > 0)) dv = 1;
     var msgText = "";
     if (msgs.length && msgs[0] && String(msgs[0].text || "").trim()) {
       msgText = String(msgs[0].text).trim();
@@ -694,6 +773,7 @@
       ">أيام</option>" +
       "</select></div>" +
       "</div>" +
+      '<p class="ma-tpl-timing-note" dir="rtl">💡 التوقيت المقترح مبني على ممارسات شائعة لاستعادة السلال ويمكن تعديله.</p>' +
       '<p class="ma-tpl-hint">المراحل تُرسل بالترتيب فقط عند عدم عودة العميل أو إتمام الشراء.</p>' +
       '<div class="ma-tpl-actions">' +
       '<button type="button" class="ma-fw-save" data-ma-tpl-save>حفظ</button>' +
@@ -875,10 +955,13 @@
         if (o.delay <= 0) o.delay = 1;
         return o;
       }
-      var baseDly = i === 0 ? dv : 120;
-      var baseUnit = i === 0 ? unit : "minute";
+      var recEnc = recommendedDelayEncodedForApi(key, i);
       var fillText = i === editIx ? text : presetTextForStage(key, i);
-      return { delay: baseDly, unit: baseUnit, text: fillText };
+      return {
+        delay: recEnc.delay,
+        unit: recEnc.unit,
+        text: fillText,
+      };
     }
 
     var out = [];
@@ -886,11 +969,9 @@
       var sl = slot(j);
       if (j === editIx) {
         sl.text = text;
-      }
-      if (j === 0) {
-        var enc = persistFirstSlotDelay(dv, unit);
-        sl.delay = enc.delay;
-        sl.unit = enc.unit;
+        var encEdit = persistFirstSlotDelay(dv, unit);
+        sl.delay = encEdit.delay;
+        sl.unit = encEdit.unit;
       }
       out.push(sl);
     }

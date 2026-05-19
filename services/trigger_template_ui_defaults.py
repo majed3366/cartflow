@@ -45,6 +45,16 @@ DASHBOARD_STAGE_TEXTS: Dict[str, Tuple[str, str, str]] = {
 
 _LOADTEST_PLACEHOLDER_RE = re.compile(r"LOADTEST_STORE_\d+", re.IGNORECASE)
 
+# تأخير مقترح لكل مرحلة (قيمة عرض الواجهة: minute | hour | day) — يُطبَّق فقط على خانات جديدة/فارغة
+DASHBOARD_STAGE_DELAYS: Dict[str, List[Tuple[float, str]]] = {
+    "price": [(60.0, "minute"), (5.0, "hour"), (5.0, "day")],
+    "quality": [(90.0, "minute"), (8.0, "hour"), (5.0, "day")],
+    "shipping": [(30.0, "minute"), (4.0, "hour"), (2.0, "day")],
+    "delivery": [(30.0, "minute"), (6.0, "hour"), (3.0, "day")],
+    "warranty": [(2.0, "hour"), (12.0, "hour"), (5.0, "day")],
+    "other": [(3.0, "hour"), (1.0, "day"), (5.0, "day")],
+}
+
 # نصوص مرحلة 1/رسالة قديمة أو خطأ شائع (عرض في المرحلة 1) — تُستبدل عند العرض فقط
 _LEGACY_WRONG_STAGE1: Dict[str, FrozenSet[str]] = {
     "price": frozenset(
@@ -116,6 +126,38 @@ def _coerce_mc(raw: Any) -> int:
     return max(1, min(3, mc))
 
 
+def _persist_delay_for_api(value: float, unit: str) -> Tuple[float, str]:
+    u = (unit or "minute").strip().lower()
+    if u == "day":
+        return (float(value) * 24.0, "hour")
+    if u == "hour":
+        return (float(value), "hour")
+    return (float(value), "minute")
+
+
+def _apply_recommended_delay_if_new_slot(
+    key: str, index: int, slot: Dict[str, Any], had_raw: bool
+) -> Dict[str, Any]:
+    if had_raw:
+        return slot
+    row = DASHBOARD_STAGE_DELAYS.get(key)
+    if not row or index >= len(row):
+        return slot
+    val, unit = row[index]
+    delay_v, unit_v = _persist_delay_for_api(val, unit)
+    slot["delay"] = delay_v
+    slot["unit"] = unit_v
+    return slot
+
+
+def stage_default_delay_ui(reason_key: str, index: int) -> Tuple[float, str]:
+    row = DASHBOARD_STAGE_DELAYS.get(reason_key)
+    if not row or index < 0 or index >= len(row):
+        return (60.0, "minute")
+    val, unit = row[index]
+    return (float(val), str(unit))
+
+
 def _slot_dict(raw: Any) -> Dict[str, Any]:
     if isinstance(raw, dict):
         base = dict(raw)
@@ -183,8 +225,10 @@ def enrich_reason_entry_for_dashboard(key: str, ent: Dict[str, Any]) -> Dict[str
     msgs_in = list(ent.get("messages") or [])
     msgs_out: List[Dict[str, Any]] = []
     for i in range(mc):
-        raw_item = msgs_in[i] if i < len(msgs_in) else {}
+        had_raw = i < len(msgs_in) and isinstance(msgs_in[i], dict)
+        raw_item = msgs_in[i] if had_raw else {}
         slot = _slot_dict(raw_item)
+        slot = _apply_recommended_delay_if_new_slot(key, i, slot, had_raw)
         slot["text"] = _repair_slot_text(key, i, slot["text"], defaults)
         msgs_out.append(slot)
 

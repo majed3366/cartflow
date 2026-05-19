@@ -302,6 +302,7 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 
 | Date (UTC) | Summary |
 |------------|---------|
+| 2026-05-19 | **Recommended recovery timings (dashboard):** per-reason stage delay suggestions in trigger templates (price 60m/5h/5d, quality 90m/8h/5d, shipping 30m/4h/2d, etc.); new slots only; delay fields sync per selected stage; Arabic timing note. No runtime/send changes. Commit: **`feat: add recommended default recovery timings by hesitation reason`**. |
 | 2026-05-19 | **Shipping/delivery stage 3 defaults (dashboard):** stage 3 labels «تحديث الشحن» / «تحديث الموعد» + objection-specific copy; delivery stage 2 wording; JS presets + `trigger_template_ui_defaults` only. Commit: **`improve: make shipping and delivery recovery paths continue objection logic`**. |
 | 2026-05-19 | **Stage 1 defaults all reasons (dashboard):** `trigger_template_ui_defaults` — reassurance copy for price/quality/shipping/delivery/warranty/other; repair stage-1 when offer/alt/load-test (`LOADTEST_STORE_*`) leaked; JS presets + client load-test guard. Display-only. Commit: **`fix: correct stage one defaults across recovery reasons`**. |
 | 2026-05-19 | **Price recovery stage defaults (dashboard):** distinct stage-1 reassurance vs stage-2 offer in `PRESET_SUGGESTIONS` + `trigger_template_ui_defaults`; GET enrich repairs legacy `message`=offer mismatch; JS save uses `messages[0]` for `message` and preset fill for empty slots. No runtime/send changes. Commit: **`fix: correct default price recovery stage messages`**. |
