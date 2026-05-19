@@ -198,6 +198,64 @@
     return persistFirstSlotDelay(rec.value, rec.unit);
   }
 
+  function isGenericLegacyDelay(index, delay, unit) {
+    var u = unit || "minute";
+    var d = parseFloat(delay);
+    if (!(d > 0)) return false;
+    if (u === "minute") {
+      if (index === 0 && d >= 1 && d <= 5) return true;
+      if (index > 0 && (d === 1 || d === 2 || d === 120)) return true;
+    }
+    if (u === "hour" && index === 0 && d === 1) return true;
+    return false;
+  }
+
+  function textIsDefaultishForDelay(reasonKey, index, text, rowMessage) {
+    var t = String(text || "").trim();
+    if (!t && index === 0) {
+      t = String(rowMessage || "").trim();
+    }
+    if (!t) return true;
+    if (isLoadtestPlaceholder(t)) return true;
+    var preset = presetTextForStage(reasonKey, index);
+    if (preset && t === preset) return true;
+    var offer = presetTextForStage(reasonKey, 1);
+    if (offer && t === offer) return true;
+    return false;
+  }
+
+  function applyRecommendedDelaysToRow(reasonKey, row) {
+    if (!row || !reasonKey) return row;
+    var mc = parseInt(row.message_count, 10) || 1;
+    mc = Math.max(1, Math.min(3, mc));
+    var msgs = Array.isArray(row.messages) ? row.messages.slice() : [];
+    var i;
+    for (i = 0; i < mc; i++) {
+      var had = i < msgs.length && msgs[i] && typeof msgs[i] === "object";
+      var slot = had ? msgs[i] : {};
+      var txt = String(slot.text || (i === 0 ? row.message : "") || "").trim();
+      var d =
+        typeof slot.delay === "number" ? slot.delay : parseFloat(slot.delay);
+      var u = slot.unit || "minute";
+      var apply =
+        !had ||
+        isLoadtestPlaceholder(txt) ||
+        (isGenericLegacyDelay(i, d, u) &&
+          textIsDefaultishForDelay(reasonKey, i, txt, row.message));
+      if (apply) {
+        var enc = recommendedDelayEncodedForApi(reasonKey, i);
+        var fillTxt = txt || presetTextForStage(reasonKey, i);
+        msgs[i] = { delay: enc.delay, unit: enc.unit, text: fillTxt };
+      }
+    }
+    row.messages = msgs;
+    if (msgs[0]) {
+      row.delay_value = msgs[0].delay;
+      row.delay_unit = msgs[0].unit;
+    }
+    return row;
+  }
+
   function displayDelayForStage(reasonKey, index) {
     var row = findRow(reasonKey);
     if (row && Array.isArray(row.messages) && row.messages[index]) {
@@ -538,11 +596,6 @@
     if (!(dv > 0)) dv = typeof ent.delay_value === "number" ? ent.delay_value : parseFloat(ent.delay_value);
     var unitRaw = first.unit != null ? first.unit : ent.delay_unit;
     var u = normalizeApiDelayUnit(unitRaw) === "hour" ? "hour" : "minute";
-    if (!(dv > 0) && !msgs.length) {
-      var encNew = recommendedDelayEncodedForApi(key, 0);
-      dv = encNew.delay;
-      u = encNew.unit;
-    }
     if (!(dv > 0)) dv = 1;
     var msgText = "";
     if (msgs.length && msgs[0] && String(msgs[0].text || "").trim()) {
@@ -553,7 +606,7 @@
     var mc = parseInt(ent.message_count, 10);
     if (!(mc >= 1)) mc = 1;
     mc = Math.max(1, Math.min(3, mc));
-    return {
+    var built = {
       key: key,
       label_ar: String(ent.label_ar || LABEL_BY_KEY[key] || key),
       enabled: ent.enabled !== false,
@@ -563,6 +616,7 @@
       message_count: mc,
       messages: msgs,
     };
+    return applyRecommendedDelaysToRow(key, built);
   }
 
   function ensureSixRows(rowsIn) {
@@ -575,7 +629,7 @@
         r = rowsIn[i];
         if (!r || typeof r !== "object") continue;
         ks = String(r.key || r.slug || r.id || "").trim().toLowerCase();
-        if (ks) byKey[ks] = r;
+        if (ks) byKey[ks] = applyRecommendedDelaysToRow(ks, r);
       }
     }
     var out = [];

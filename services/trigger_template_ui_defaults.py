@@ -135,11 +135,74 @@ def _persist_delay_for_api(value: float, unit: str) -> Tuple[float, str]:
     return (float(value), "minute")
 
 
-def _apply_recommended_delay_if_new_slot(
-    key: str, index: int, slot: Dict[str, Any], had_raw: bool
+def _is_generic_legacy_delay(index: int, delay: float, unit: str) -> bool:
+    """تأخيرات قديمة/افتراضية من النظام (1–5 دقائق للمرحلة 1، 120 د للمراحل اللاحقة)."""
+    u = (unit or "minute").strip().lower()
+    try:
+        d = float(delay)
+    except (TypeError, ValueError):
+        return False
+    if u == "minute":
+        if index == 0 and 1.0 <= d <= 5.0:
+            return True
+        if index > 0 and d in (1.0, 2.0, 120.0):
+            return True
+    if u == "hour" and index == 0 and d == 1.0:
+        return True
+    return False
+
+
+def _text_is_defaultish_for_delay(
+    key: str,
+    index: int,
+    text: str,
+    defaults: Tuple[str, str, str],
+    *,
+    fallback_message: str = "",
+) -> bool:
+    t = (text or "").strip()
+    if not t and index == 0:
+        t = (fallback_message or "").strip()
+    if not t:
+        return True
+    if is_loadtest_placeholder(t):
+        return True
+    if index < len(defaults) and t == defaults[index]:
+        return True
+    legacy = _LEGACY_WRONG_STAGE1.get(key)
+    if legacy and t in legacy:
+        return True
+    if index == 0 and _stage1_needs_repair(key, t, defaults):
+        return True
+    return False
+
+
+def _should_apply_recommended_delay(
+    key: str,
+    index: int,
+    slot: Dict[str, Any],
+    had_raw: bool,
+    defaults: Tuple[str, str, str],
+    raw_text: str,
+    fallback_message: str,
+) -> bool:
+    if not had_raw:
+        return True
+    raw_t = (raw_text or "").strip()
+    if is_loadtest_placeholder(raw_t):
+        return True
+    if _text_is_defaultish_for_delay(
+        key, index, raw_t, defaults, fallback_message=fallback_message
+    ) and _is_generic_legacy_delay(
+        index, float(slot.get("delay", 0)), str(slot.get("unit") or "minute")
+    ):
+        return True
+    return False
+
+
+def _apply_recommended_delay_to_slot(
+    key: str, index: int, slot: Dict[str, Any]
 ) -> Dict[str, Any]:
-    if had_raw:
-        return slot
     row = DASHBOARD_STAGE_DELAYS.get(key)
     if not row or index >= len(row):
         return slot
@@ -148,6 +211,22 @@ def _apply_recommended_delay_if_new_slot(
     slot["delay"] = delay_v
     slot["unit"] = unit_v
     return slot
+
+
+def format_delay_for_dashboard_ui(delay: float, unit: str) -> str:
+    """صيغة عرض مطابقة للوحة (دقائق / ساعات / أيام)."""
+    u = (unit or "minute").strip().lower()
+    d = float(delay)
+    if u == "hour" and d >= 24:
+        days = d / 24.0
+        rnd = round(days)
+        if rnd >= 1 and abs(days - rnd) < 1e-6:
+            return f"{rnd} يوم"
+    if u == "hour":
+        iv = int(d) if d == int(d) else d
+        return f"{iv} ساعة"
+    iv = int(d) if d == int(d) else d
+    return f"{iv} دقيقة"
 
 
 def stage_default_delay_ui(reason_key: str, index: int) -> Tuple[float, str]:
@@ -224,15 +303,19 @@ def enrich_reason_entry_for_dashboard(key: str, ent: Dict[str, Any]) -> Dict[str
     mc = _coerce_mc(ent.get("message_count"))
     msgs_in = list(ent.get("messages") or [])
     msgs_out: List[Dict[str, Any]] = []
+    fallback_msg = str(ent.get("message") or "").strip()
     for i in range(mc):
         had_raw = i < len(msgs_in) and isinstance(msgs_in[i], dict)
         raw_item = msgs_in[i] if had_raw else {}
+        raw_text = str(raw_item.get("text") or "").strip() if had_raw else ""
         slot = _slot_dict(raw_item)
-        slot = _apply_recommended_delay_if_new_slot(key, i, slot, had_raw)
+        if _should_apply_recommended_delay(
+            key, i, slot, had_raw, defaults, raw_text, fallback_msg
+        ):
+            slot = _apply_recommended_delay_to_slot(key, i, slot)
         slot["text"] = _repair_slot_text(key, i, slot["text"], defaults)
         msgs_out.append(slot)
 
-    fallback_msg = str(ent.get("message") or "").strip()
     fallback_msg = _repair_slot_text(key, 0, fallback_msg, defaults)
 
     text0 = str(msgs_out[0].get("text") or "").strip() if msgs_out else ""

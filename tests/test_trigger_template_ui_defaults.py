@@ -10,6 +10,7 @@ from services.trigger_template_ui_defaults import (
     DASHBOARD_STAGE_DELAYS,
     DASHBOARD_STAGE_TEXTS,
     enrich_reason_entry_for_dashboard,
+    format_delay_for_dashboard_ui,
     is_loadtest_placeholder,
     stage_default_delay_ui,
     stage_default_text,
@@ -44,6 +45,48 @@ class TriggerTemplateUiDefaultsTests(unittest.TestCase):
             row = DASHBOARD_STAGE_DELAYS[key]
             self.assertEqual(len(row), 3)
             self.assertNotEqual(row[0], row[1], msg=key)
+
+    def test_empty_store_price_stage1_is_60_minutes(self) -> None:
+        class _Mini:
+            reason_templates_json = None
+
+        rows = build_trigger_templates_get_payload(_Mini())["reason_rows"]
+        price = next(r for r in rows if r["key"] == "price")
+        self.assertEqual(price["delay_value"], 60.0)
+        self.assertEqual(price["delay_unit"], "minute")
+        self.assertEqual(price["messages"][0]["delay"], 60.0)
+        self.assertEqual(
+            format_delay_for_dashboard_ui(60.0, "minute"),
+            "60 دقيقة",
+        )
+
+    def test_legacy_four_minutes_upgrades_when_text_is_defaultish(self) -> None:
+        offer = DASHBOARD_STAGE_TEXTS["price"][1]
+        ent = {
+            "enabled": True,
+            "message": offer,
+            "message_count": 2,
+            "messages": [
+                {"delay": 4, "unit": "minute", "text": offer},
+                {"delay": 5, "unit": "hour", "text": offer},
+            ],
+        }
+        out = enrich_reason_entry_for_dashboard("price", ent)
+        self.assertEqual(out["messages"][0]["delay"], 60.0)
+        self.assertEqual(out["messages"][0]["unit"], "minute")
+        self.assertEqual(out["messages"][1]["delay"], 5.0)
+        self.assertEqual(out["messages"][1]["unit"], "hour")
+
+    def test_legacy_four_minutes_kept_when_text_is_custom(self) -> None:
+        custom = "نص مخصص للتاجر — ليس افتراضياً"
+        ent = {
+            "enabled": True,
+            "message": custom,
+            "message_count": 1,
+            "messages": [{"delay": 4, "unit": "minute", "text": custom}],
+        }
+        out = enrich_reason_entry_for_dashboard("price", ent)
+        self.assertEqual(out["messages"][0]["delay"], 4.0)
 
     def test_enrich_applies_recommended_delay_only_for_new_slots(self) -> None:
         ent = {
