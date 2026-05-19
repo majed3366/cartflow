@@ -94,6 +94,46 @@ class DashboardTriggerTemplatesApiTests(unittest.TestCase):
         self.assertEqual(price.get("delay_value"), 5.0)
         self.assertEqual(price["messages"][0]["delay"], 5.0)
 
+    def test_post_warranty_and_other_timing_persist_on_get(self) -> None:
+        from services.trigger_template_ui_defaults import DASHBOARD_STAGE_TEXTS
+
+        cases = (
+            ("warranty", 7, "minute"),
+            ("other", 11, "minute"),
+        )
+        for reason, delay, unit in cases:
+            stage1 = DASHBOARD_STAGE_TEXTS[reason][0]
+            body = {
+                "reason_templates": {
+                    reason: {
+                        "enabled": True,
+                        "message": stage1,
+                        "message_count": 1,
+                        "messages": [
+                            {"delay": delay, "unit": unit, "text": stage1}
+                        ],
+                    }
+                },
+                "selected_stage": 0,
+            }
+            rp = self.client.post(
+                "/api/dashboard/trigger-templates",
+                json=body,
+            )
+            self.assertEqual(rp.status_code, 200, rp.text[:400])
+            ack_row = next(
+                r
+                for r in rp.json().get("reason_rows") or []
+                if r.get("key") == reason
+            )
+            self.assertEqual(ack_row.get("delay_value"), float(delay))
+            g = self.client.get("/api/dashboard/trigger-templates")
+            row = next(
+                r for r in g.json().get("reason_rows") or [] if r.get("key") == reason
+            )
+            self.assertEqual(row.get("delay_value"), float(delay))
+            self.assertEqual(row["messages"][0]["delay"], float(delay))
+
 
 class TriggerTemplatesDashboardServiceTests(unittest.TestCase):
     def test_build_payload_for_empty_namespace(self) -> None:

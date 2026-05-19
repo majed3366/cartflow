@@ -259,6 +259,10 @@
     return row;
   }
 
+  function normalizeReasonKey(key) {
+    return String(key == null ? "" : key).trim().toLowerCase();
+  }
+
   function displayDelayForStage(reasonKey, index) {
     var row = findRow(reasonKey);
     if (row && Array.isArray(row.messages) && row.messages[index]) {
@@ -269,13 +273,24 @@
         return displayDelayFromApi(d, normalizeApiDelayUnit(slot.unit));
       }
     }
+    if (row && index === 0) {
+      var topDv =
+        typeof row.delay_value === "number"
+          ? row.delay_value
+          : parseFloat(row.delay_value);
+      if (topDv > 0) {
+        return displayDelayFromApi(topDv, normalizeApiDelayUnit(row.delay_unit));
+      }
+    }
     var rec = recommendedDelayForStage(reasonKey, index);
     return { value: rec.value, unit: rec.unit };
   }
 
   /** يحفظ تأخير/نص المرحلة النشطة في الذاكرة فقط (قبل التبديل أو الحفظ). */
   function patchActiveStageInLastPayload(cardShell, reasonKey) {
-    if (!cardShell || !reasonKey || !lastPayload) return;
+    if (!cardShell || !reasonKey) return;
+    reasonKey = normalizeReasonKey(reasonKey);
+    ensureLastPayloadShell();
     var row = findRow(reasonKey);
     if (!row) return;
     var ix = parseInt(cardShell.getAttribute("data-ma-tpl-active-stage") || "0", 10);
@@ -602,9 +617,15 @@
       ta.value = messageTextForStage(reasonKey, ix);
       if (ix < getCardEnabledStageCount(cardShell)) {
         try {
-          ta.focus();
+          if (typeof ta.focus === "function") {
+            ta.focus({ preventScroll: true });
+          }
         } catch (_focusErr) {
-          /* ignore */
+          try {
+            ta.focus();
+          } catch (_focusErr2) {
+            /* ignore */
+          }
         }
       }
     }
@@ -697,7 +718,7 @@
     if (!(mc >= 1)) mc = 1;
     mc = Math.max(1, Math.min(3, mc));
     var built = {
-      key: key,
+      key: normalizeReasonKey(key) || key,
       label_ar: String(ent.label_ar || LABEL_BY_KEY[key] || key),
       enabled: ent.enabled !== false,
       message: msgText,
@@ -1163,10 +1184,132 @@
 
   function findRow(key) {
     if (!lastPayload || !lastPayload.reason_rows) return null;
+    var nk = normalizeReasonKey(key);
+    if (!nk) return null;
     for (var i = 0; i < lastPayload.reason_rows.length; i++) {
-      if (lastPayload.reason_rows[i].key === key) return lastPayload.reason_rows[i];
+      if (normalizeReasonKey(lastPayload.reason_rows[i].key) === nk) {
+        return lastPayload.reason_rows[i];
+      }
     }
     return null;
+  }
+
+  function ensureLastPayloadShell() {
+    if (
+      lastPayload &&
+      Array.isArray(lastPayload.reason_rows) &&
+      lastPayload.reason_rows.length >= TRIGGER_KEYS_ORDER.length
+    ) {
+      return;
+    }
+    var probe = null;
+    var snap = window.__trigger_templates_loaded;
+    if (snapshotCacheOk(snap)) {
+      try {
+        probe = normalizeTriggerTemplatesPayload(snap.json, snap.httpStatus);
+      } catch (_shellNormErr) {
+        probe = null;
+      }
+    }
+    if (probe && probe.reason_rows && probe.reason_rows.length) {
+      lastPayload = probe;
+      return;
+    }
+    lastPayload = buildClientFallbackPayload();
+  }
+
+  function applySavedMessagesToLocalState(reasonKey, messages, mc) {
+    ensureLastPayloadShell();
+    var nk = normalizeReasonKey(reasonKey);
+    if (!nk || !Array.isArray(messages) || !messages.length) return;
+    mc = Math.max(1, Math.min(3, parseInt(mc, 10) || 1));
+    var row = findRow(nk);
+    if (!row) {
+      row = buildRowFromTemplateEntry(nk, {}, { applyRecommended: false });
+      if (!Array.isArray(lastPayload.reason_rows)) {
+        lastPayload.reason_rows = [];
+      }
+      lastPayload.reason_rows.push(row);
+    }
+    row.messages = messages.slice(0, mc);
+    row.message_count = mc;
+    if (row.messages[0]) {
+      row.delay_value = row.messages[0].delay;
+      row.delay_unit = row.messages[0].unit;
+      row.message = String(row.messages[0].text || row.message || "").trim();
+    }
+  }
+
+  function syncCardDelayFieldsFromRow(card, reasonKey, stageIx) {
+    if (!card || !reasonKey) return;
+    var ix = parseInt(stageIx, 10);
+    if (!(ix >= 0)) ix = 0;
+    var disp = displayDelayForStage(reasonKey, ix);
+    var dvi = card.querySelector("[data-ma-tpl-delay]");
+    var dsi = card.querySelector("[data-ma-tpl-unit]");
+    if (dvi) dvi.value = String(disp.value);
+    if (dsi) {
+      dsi.value =
+        disp.unit === "day"
+          ? "day"
+          : disp.unit === "hour"
+            ? "hour"
+            : "minute";
+    }
+    var ta = card.querySelector("[data-ma-tpl-msg]");
+    var row = findRow(reasonKey);
+    if (ta && row && row.messages && row.messages[ix]) {
+      ta.value = String(row.messages[ix].text || row.message || "");
+    }
+  }
+
+  function syncAllCardsFromLastPayload() {
+    if (!lastPayload || !lastPayload.reason_rows) return;
+    var root = byId("ma-tpl-root");
+    if (!root || !root.isConnected) return;
+    var cards = root.querySelectorAll("[data-ma-tpl-key]");
+    var ci;
+    for (ci = 0; ci < cards.length; ci++) {
+      var rk = normalizeReasonKey(cards[ci].getAttribute("data-ma-tpl-key"));
+      if (!rk) continue;
+      var editIx = parseInt(
+        cards[ci].getAttribute("data-ma-tpl-active-stage") || "0",
+        10
+      );
+      if (!(editIx >= 0)) editIx = 0;
+      syncCardDelayFieldsFromRow(cards[ci], rk, editIx);
+      syncCardStageWorkflow(cards[ci]);
+    }
+  }
+
+  function captureTplScrollAnchor() {
+    var anchor = {
+      windowY:
+        typeof window.scrollY === "number"
+          ? window.scrollY
+          : window.pageYOffset || 0,
+      rootTop: 0,
+    };
+    var root = byId("ma-tpl-root");
+    if (root && root.getBoundingClientRect) {
+      anchor.rootTop = root.getBoundingClientRect().top;
+    }
+    return anchor;
+  }
+
+  function restoreTplScrollAnchor(anchor) {
+    if (!anchor || typeof anchor !== "object") return;
+    window.requestAnimationFrame(function () {
+      window.scrollTo(0, anchor.windowY);
+      window.requestAnimationFrame(function () {
+        var root = byId("ma-tpl-root");
+        if (!root || !root.getBoundingClientRect) return;
+        var delta = root.getBoundingClientRect().top - anchor.rootTop;
+        if (Math.abs(delta) > 1) {
+          window.scrollBy(0, delta);
+        }
+      });
+    });
   }
 
   function buildMessagesSlice(key, text, dv, unit, mc, activeStageIndex) {
@@ -1216,6 +1359,7 @@
   }
 
   function mergeReasonRowsIntoLastPayload(patchRows) {
+    ensureLastPayloadShell();
     if (!lastPayload || !Array.isArray(patchRows) || !patchRows.length) return;
     if (!Array.isArray(lastPayload.reason_rows)) {
       lastPayload.reason_rows = [];
@@ -1223,13 +1367,17 @@
     var byKey = {};
     var i;
     for (i = 0; i < lastPayload.reason_rows.length; i++) {
-      var rk = lastPayload.reason_rows[i] && lastPayload.reason_rows[i].key;
+      var rk = normalizeReasonKey(
+        lastPayload.reason_rows[i] && lastPayload.reason_rows[i].key
+      );
       if (rk) byKey[rk] = lastPayload.reason_rows[i];
     }
     for (i = 0; i < patchRows.length; i++) {
       var pr = patchRows[i];
       if (!pr || !pr.key) continue;
-      byKey[pr.key] = buildRowFromTemplateEntry(pr.key, pr, {
+      var pk = normalizeReasonKey(pr.key);
+      if (!pk) continue;
+      byKey[pk] = buildRowFromTemplateEntry(pk, pr, {
         applyRecommended: false,
       });
     }
@@ -1243,18 +1391,33 @@
   }
 
   /** بعد الحفظ: تحديث الذاكرة دون إعادة رسم الشبكة (يحافظ على التمرير والمرحلة). */
-  function absorbSaveResponseWithoutRerender(pack, savedKey, savedCard) {
+  function absorbSaveResponseWithoutRerender(pack, savedKey, savedCard, saveCtx) {
     if (!pack || !pack.payload) return;
-    var scrollY =
-      typeof window.scrollY === "number"
-        ? window.scrollY
-        : window.pageYOffset || 0;
+    var scrollAnchor = captureTplScrollAnchor();
     var httpSt =
       typeof pack.httpStatus === "number" ? pack.httpStatus : 200;
     var p = pack.payload;
+    var nk = normalizeReasonKey(savedKey);
+
+    if (
+      saveCtx &&
+      Array.isArray(saveCtx.messages) &&
+      saveCtx.messages.length &&
+      nk
+    ) {
+      applySavedMessagesToLocalState(nk, saveCtx.messages, saveCtx.mc);
+    }
 
     if (p.save_ack && (!p.reason_rows || p.reason_rows.length <= 2)) {
       mergeReasonRowsIntoLastPayload(p.reason_rows || []);
+      if (
+        saveCtx &&
+        Array.isArray(saveCtx.messages) &&
+        saveCtx.messages.length &&
+        nk
+      ) {
+        applySavedMessagesToLocalState(nk, saveCtx.messages, saveCtx.mc);
+      }
       window.__trigger_templates_loaded = {
         json: {
           ok: true,
@@ -1266,39 +1429,29 @@
     } else {
       var norm = normalizeTriggerTemplatesPayload(p, httpSt);
       lastPayload = norm;
+      if (
+        saveCtx &&
+        Array.isArray(saveCtx.messages) &&
+        saveCtx.messages.length &&
+        nk
+      ) {
+        applySavedMessagesToLocalState(nk, saveCtx.messages, saveCtx.mc);
+      }
       window.__trigger_templates_loaded = {
         json: p,
         httpStatus: httpSt,
       };
     }
 
-    if (savedCard && savedKey) {
+    if (savedCard && nk) {
       var ix = parseInt(
         savedCard.getAttribute("data-ma-tpl-active-stage") || "0",
         10
       );
       if (!(ix >= 0)) ix = 0;
-      var disp = displayDelayForStage(savedKey, ix);
-      var dvi = savedCard.querySelector("[data-ma-tpl-delay]");
-      var dsi = savedCard.querySelector("[data-ma-tpl-unit]");
-      if (dvi) dvi.value = String(disp.value);
-      if (dsi) {
-        dsi.value =
-          disp.unit === "day"
-            ? "day"
-            : disp.unit === "hour"
-              ? "hour"
-              : "minute";
-      }
-      var ta = savedCard.querySelector("[data-ma-tpl-msg]");
-      var row = findRow(savedKey);
-      if (ta && row && row.messages && row.messages[ix]) {
-        ta.value = String(row.messages[ix].text || row.message || "");
-      }
+      syncCardDelayFieldsFromRow(savedCard, nk, ix);
     }
-    window.requestAnimationFrame(function () {
-      window.scrollTo(0, scrollY);
-    });
+    restoreTplScrollAnchor(scrollAnchor);
   }
 
   function parseSaveResponse(resp) {
@@ -1326,7 +1479,9 @@
   }
 
   function saveOne(key, card) {
+    key = normalizeReasonKey(key);
     if (!key || !card) return;
+    ensureLastPayloadShell();
     patchActiveStageInLastPayload(card, key);
     var st = card.querySelector("[data-ma-tpl-status]");
     var ena = card.querySelector("[data-ma-tpl-enabled]");
@@ -1402,7 +1557,11 @@
       .then(function (pack) {
         if (pack.ok && pack.payload) {
           try {
-            absorbSaveResponseWithoutRerender(pack, key, card);
+            absorbSaveResponseWithoutRerender(pack, key, card, {
+              messages: messages,
+              mc: mc,
+              activeIx: activeIx,
+            });
           } catch (absorbErr) {
             tplDbg("[SAVE TEMPLATE FAIL]", {
               reason: key,
@@ -1536,6 +1695,7 @@
             cached.json,
             cached.httpStatus
           );
+          syncAllCardsFromLastPayload();
         } catch (_cacheNormErr) {
           /* fall through to render */
         }
@@ -1600,7 +1760,7 @@
     });
 
     var shell = byId("ma-tpl-root");
-    if (shell && shell.isConnected) {
+    if (shell && shell.isConnected && !shell.querySelector("[data-ma-tpl-key]")) {
       shell.innerHTML =
         '<div class="ma-tpl-loading ma-dash-skel" style="padding:32px;text-align:center;color:var(--muted);">جاري تحميل القوالب…</div>';
     }
