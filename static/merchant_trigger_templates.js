@@ -155,6 +155,28 @@
     return "الرسالة " + n + " — " + (p && p.label ? p.label : "");
   }
 
+  function stageRowTitle(p, index) {
+    var n = index + 1;
+    return "مرحلة " + n + " — " + (p && p.label ? p.label : "");
+  }
+
+  function stageTimingHintAr(index, enabledInRoute) {
+    if (!enabledInRoute) {
+      return "غير مفعلة — لن يستلمها العميل";
+    }
+    if (index === 0) {
+      return "ترسل أولاً";
+    }
+    return "بعد تجاهل المرحلة السابقة";
+  }
+
+  function getCardEnabledStageCount(cardEl) {
+    if (!cardEl) return 1;
+    var mcSel = cardEl.querySelector("[data-ma-tpl-msg-count]");
+    var n = parseInt(mcSel && mcSel.value ? mcSel.value : "1", 10) || 1;
+    return Math.max(1, Math.min(3, n));
+  }
+
   function buildStageCountHelpHtml(rowKey) {
     var list = PRESET_SUGGESTIONS_BY_REASON[rowKey] || [];
     if (!list.length) {
@@ -179,28 +201,66 @@
     );
   }
 
-  function sequenceFlowHtml(rowKey) {
+  function customerExperienceSummaryHtml(rowKey, enabledCount) {
     var list = PRESET_SUGGESTIONS_BY_REASON[rowKey] || [];
     if (!list.length) return "";
-    var parts = [];
+    var n = Math.max(1, Math.min(3, enabledCount || 1));
+    var chain = [];
     var i;
-    for (i = 0; i < list.length; i++) {
-      if (i > 0) {
-        parts.push('<span class="ma-tpl-seq-arrow" aria-hidden="true">↓</span>');
-      }
-      parts.push(
-        '<span class="ma-tpl-seq-step" data-ma-tpl-seq-step="' +
-        (i + 1) +
-        '"><span class="ma-tpl-seq-num">' +
-        (i + 1) +
-        "</span>" +
-        esc(list[i].label) +
-        "</span>"
-      );
+    for (i = 0; i < n && i < list.length; i++) {
+      chain.push(list[i].label);
     }
     return (
-      '<div class="ma-tpl-seq-flow" data-ma-tpl-seq-flow dir="rtl" aria-label="تسلسل مراحل الاسترجاع">' +
-      parts.join("") +
+      '<p class="ma-tpl-customer-path" data-ma-tpl-customer-path dir="rtl">' +
+      "<strong>ما يستلمه العميل:</strong> " +
+      esc(chain.join(" ← ")) +
+      (n < list.length
+        ? ' <span class="ma-tpl-customer-path-muted">(المراحل التالية غير مفعّلة)</span>'
+        : "") +
+      "</p>"
+    );
+  }
+
+  function stageWorkflowHtml(rowKey, enabledCount) {
+    var list = PRESET_SUGGESTIONS_BY_REASON[rowKey] || [];
+    if (!list.length) return "";
+    var n = Math.max(1, Math.min(3, enabledCount || 1));
+    var rows = [];
+    var i;
+    for (i = 0; i < list.length; i++) {
+      var en = i < n;
+      var timing = stageTimingHintAr(i, en);
+      var sym = en ? "✓" : "—";
+      rows.push(
+        '<button type="button" class="ma-tpl-stage-row' +
+        (en ? "" : " ma-tpl-stage-row--route-disabled") +
+        '" data-ma-tpl-stage-select data-ma-tpl-reason="' +
+        esc(rowKey) +
+        '" data-ma-tpl-preset-i="' +
+        i +
+        '" data-ma-tpl-stage-route-enabled="' +
+        (en ? "1" : "0") +
+        '">' +
+        '<span class="ma-tpl-stage-status" data-ma-tpl-stage-status aria-hidden="true">' +
+        sym +
+        "</span>" +
+        '<span class="ma-tpl-stage-body">' +
+        '<span class="ma-tpl-stage-title">' +
+        esc(stageRowTitle(list[i], i)) +
+        "</span>" +
+        '<span class="ma-tpl-stage-timing">(' +
+        esc(timing) +
+        ")</span>" +
+        "</span></button>"
+      );
+      if (i < list.length - 1) {
+        rows.push('<span class="ma-tpl-stage-connector" aria-hidden="true">↓</span>');
+      }
+    }
+    return (
+      '<div class="ma-tpl-stage-workflow" data-ma-tpl-stage-workflow dir="rtl" aria-label="مسار المراحل بالترتيب">' +
+      '<p class="ma-tpl-stage-workflow-title">مسار الإرسال (بالترتيب)</p>' +
+      rows.join("") +
       "</div>"
     );
   }
@@ -216,18 +276,62 @@
     );
   }
 
-  function syncCardSequenceActiveSteps(cardEl) {
+  function syncCardStageWorkflow(cardEl) {
     if (!cardEl) return;
-    var mcSel = cardEl.querySelector("[data-ma-tpl-msg-count]");
-    var flow = cardEl.querySelector("[data-ma-tpl-seq-flow]");
-    if (!mcSel || !flow) return;
-    var n = parseInt(mcSel.value, 10) || 1;
-    var steps = flow.querySelectorAll("[data-ma-tpl-seq-step]");
+    var n = getCardEnabledStageCount(cardEl);
+    var rk = cardEl.getAttribute("data-ma-tpl-key") || "";
+    var editIx = parseInt(cardEl.getAttribute("data-ma-tpl-active-stage") || "0", 10);
+    if (!(editIx >= 0)) editIx = 0;
+
+    var rows = cardEl.querySelectorAll("[data-ma-tpl-stage-select]");
     var i;
-    for (i = 0; i < steps.length; i++) {
-      var active = i < n;
-      steps[i].classList.toggle("ma-tpl-seq-step--active", active);
-      steps[i].classList.toggle("ma-tpl-seq-step--off", !active);
+    for (i = 0; i < rows.length; i++) {
+      var ix = parseInt(rows[i].getAttribute("data-ma-tpl-preset-i"), 10);
+      var en = ix < n;
+      rows[i].setAttribute("data-ma-tpl-stage-route-enabled", en ? "1" : "0");
+      rows[i].classList.toggle("ma-tpl-stage-row--route-disabled", !en);
+      rows[i].classList.toggle("ma-tpl-stage-row--route-active", en);
+      rows[i].classList.toggle("ma-tpl-stage-row--editing", ix === editIx);
+      var st = rows[i].querySelector("[data-ma-tpl-stage-status]");
+      if (st) {
+        st.textContent = en ? (ix === editIx ? "✓" : "○") : "—";
+      }
+      var timingEl = rows[i].querySelector(".ma-tpl-stage-timing");
+      if (timingEl) {
+        timingEl.textContent = "(" + stageTimingHintAr(ix, en) + ")";
+      }
+    }
+
+    var pathEl = cardEl.querySelector("[data-ma-tpl-customer-path]");
+    if (pathEl && rk) {
+      var list = PRESET_SUGGESTIONS_BY_REASON[rk] || [];
+      var chain = [];
+      for (i = 0; i < n && i < list.length; i++) {
+        chain.push(list[i].label);
+      }
+      var muted =
+        n < list.length
+          ? ' <span class="ma-tpl-customer-path-muted">(المراحل التالية غير مفعّلة)</span>'
+          : "";
+      pathEl.innerHTML =
+        "<strong>ما يستلمه العميل:</strong> " +
+        esc(chain.join(" ← ")) +
+        muted;
+    }
+
+    var panel = cardEl.querySelector("[data-ma-tpl-editor-panel]");
+    var banner = cardEl.querySelector("[data-ma-tpl-inactive-banner]");
+    var ta = cardEl.querySelector("[data-ma-tpl-msg]");
+    var editingDisabled = editIx >= n;
+    if (panel) {
+      panel.classList.toggle("ma-tpl-editor-panel--inactive-stage", editingDisabled);
+    }
+    if (banner) {
+      banner.hidden = !editingDisabled;
+    }
+    if (ta) {
+      ta.readOnly = editingDisabled;
+      ta.setAttribute("aria-readonly", editingDisabled ? "true" : "false");
     }
   }
 
@@ -256,24 +360,6 @@
     return "";
   }
 
-  function syncPresetChipActiveState(cardShell, activeIndex) {
-    if (!cardShell) return;
-    var chips = cardShell.querySelectorAll("[data-ma-tpl-preset]");
-    var i;
-    for (i = 0; i < chips.length; i++) {
-      var ix = parseInt(chips[i].getAttribute("data-ma-tpl-preset-i"), 10);
-      chips[i].classList.toggle(
-        "ma-tpl-preset-chip--active",
-        ix === activeIndex
-      );
-    }
-    var steps = cardShell.querySelectorAll("[data-ma-tpl-seq-step]");
-    for (i = 0; i < steps.length; i++) {
-      var stepN = parseInt(steps[i].getAttribute("data-ma-tpl-seq-step"), 10);
-      steps[i].classList.toggle("ma-tpl-seq-step--editing", stepN === activeIndex + 1);
-    }
-  }
-
   /** Sync textarea + editor title for the selected stage (all reasons). */
   function setCardEditorStage(cardShell, reasonKey, index) {
     if (!cardShell || !reasonKey) return;
@@ -290,42 +376,16 @@
     var ta = cardShell.querySelector("[data-ma-tpl-msg]");
     if (ta) {
       ta.value = messageTextForStage(reasonKey, ix);
-      try {
-        ta.focus();
-      } catch (_focusErr) {
-        /* ignore */
+      if (ix < getCardEnabledStageCount(cardShell)) {
+        try {
+          ta.focus();
+        } catch (_focusErr) {
+          /* ignore */
+        }
       }
     }
 
-    syncPresetChipActiveState(cardShell, ix);
-  }
-
-  function presetChipsHtml(rowKey) {
-    var list = PRESET_SUGGESTIONS_BY_REASON[rowKey] || [];
-    if (!list.length) return "";
-    var chunks = [];
-    var i;
-    for (i = 0; i < list.length; i++) {
-      var p = list[i];
-      chunks.push(
-        '<button type="button" class="ma-tpl-preset-chip" data-ma-tpl-preset data-ma-tpl-reason="' +
-        esc(rowKey) +
-        '" data-ma-tpl-preset-type="' +
-        esc(p.type) +
-        '" data-ma-tpl-preset-i="' +
-        i +
-        '">' +
-        esc(stageLabelForIndex(p, i)) +
-        "</button>"
-      );
-    }
-    return (
-      '<div class="ma-tpl-preset-wrap" dir="rtl">' +
-      '<span class="ma-tpl-preset-hint">مسودات جاهزة لكل مرحلة:</span>' +
-      '<div class="ma-tpl-preset-row">' +
-      chunks.join("") +
-      "</div></div>"
-    );
+    syncCardStageWorkflow(cardShell);
   }
 
   function byId(id) {
@@ -532,9 +592,9 @@
     var minSel = duNorm === "minute" ? " selected" : "";
     var hourSel = duNorm === "hour" ? " selected" : "";
     var daySel = duNorm === "day" ? " selected" : "";
-    var presetRow = presetChipsHtml(keyRaw || row.key || "");
-    var seqFlow = sequenceFlowHtml(keyRaw || row.key || "");
     var stageHelp = buildStageCountHelpHtml(keyRaw || row.key || "");
+    var workflow = stageWorkflowHtml(keyRaw || row.key || "", mc);
+    var customerPath = customerExperienceSummaryHtml(keyRaw || row.key || "", mc);
     var presets0 = (PRESET_SUGGESTIONS_BY_REASON[keyRaw || row.key || ""] || [])[0];
     var msg1Lbl = presets0
       ? esc(stageLabelForIndex(presets0, 0))
@@ -559,7 +619,24 @@
       '<label class="ma-tpl-check"><input type="checkbox" data-ma-tpl-enabled' +
       en +
       "> تفعيل قالب الاسترجاع لهذا السبب</label>" +
-      seqFlow +
+      '<div class="ma-tpl-stage-config">' +
+      '<label class="ma-tpl-lbl" for="ma-tpl-mc-' +
+      k +
+      '">كم مرحلة تريد تفعيلها؟</label>' +
+      '<select class="ma-tpl-input" id="ma-tpl-mc-' +
+      k +
+      '" data-ma-tpl-msg-count>' +
+      mcOpts +
+      "</select>" +
+      stageHelp +
+      "</div>" +
+      customerPath +
+      workflow +
+      '<div class="ma-tpl-editor-panel" data-ma-tpl-editor-panel>' +
+      '<p class="ma-tpl-editor-inactive-banner" data-ma-tpl-inactive-banner hidden dir="rtl">' +
+      "هذه المرحلة غير مفعّلة في المسار — العميل لن يستلمها. المعاينة للاطلاع فقط." +
+      "</p>" +
+      '<p class="ma-tpl-editor-hint" dir="rtl">تحرير نص المرحلة المحددة (✓ = تُرسل · ○ = لاحقاً في المسار · — = غير مفعّلة)</p>' +
       '<label class="ma-tpl-lbl" data-ma-tpl-msg-label for="ma-tpl-msg-' +
       k +
       '">' +
@@ -570,7 +647,7 @@
       '" rows="5" maxlength="65535" data-ma-tpl-msg dir="rtl" placeholder="النص الموجّه للعميل عبر مسار الاسترجاع…">' +
       msg +
       "</textarea>" +
-      presetRow +
+      "</div>" +
       '<div class="ma-tpl-row2">' +
       '<div><label class="ma-tpl-lbl" for="ma-tpl-dv-' +
       k +
@@ -596,18 +673,8 @@
       daySel +
       ">أيام</option>" +
       "</select></div>" +
-      '<div><label class="ma-tpl-lbl" for="ma-tpl-mc-' +
-      k +
-      '">كم مرحلة تريد تفعيلها؟</label>' +
-      '<select class="ma-tpl-input" id="ma-tpl-mc-' +
-      k +
-      '" data-ma-tpl-msg-count>' +
-      mcOpts +
-      "</select>" +
-      stageHelp +
       "</div>" +
-      "</div>" +
-      '<p class="ma-tpl-hint">المرحلة 2 و3 تُكمَل من النصوص المحفوظة أو المسودات أعلاه — كل مرحلة رسالة مختلفة في التسلسل.</p>' +
+      '<p class="ma-tpl-hint">المراحل تُرسل بالترتيب فقط عند عدم عودة العميل أو إتمام الشراء.</p>' +
       '<div class="ma-tpl-actions">' +
       '<button type="button" class="ma-fw-save" data-ma-tpl-save>حفظ</button>' +
       '<span class="ma-tpl-status" data-ma-tpl-status aria-live="polite"></span>' +
@@ -684,15 +751,26 @@
     var ci;
     for (ci = 0; ci < cards.length; ci++) {
       (function (cardEl) {
-        syncCardSequenceActiveSteps(cardEl);
         var rkInit = cardEl.getAttribute("data-ma-tpl-key");
         if (rkInit) {
-          syncPresetChipActiveState(cardEl, 0);
+          setCardEditorStage(cardEl, rkInit, 0);
+        } else {
+          syncCardStageWorkflow(cardEl);
         }
         var mcSel = cardEl.querySelector("[data-ma-tpl-msg-count]");
         if (mcSel) {
           mcSel.addEventListener("change", function () {
-            syncCardSequenceActiveSteps(cardEl);
+            var rk = cardEl.getAttribute("data-ma-tpl-key");
+            var n = getCardEnabledStageCount(cardEl);
+            var editIx = parseInt(
+              cardEl.getAttribute("data-ma-tpl-active-stage") || "0",
+              10
+            );
+            if (editIx >= n && rk) {
+              setCardEditorStage(cardEl, rk, n - 1);
+            } else {
+              syncCardStageWorkflow(cardEl);
+            }
           });
         }
       })(cards[ci]);
@@ -703,27 +781,15 @@
     }
     root._maTplClickDelegate = function (ev) {
       var tg = ev.target;
-      var chip =
-        tg && tg.closest ? tg.closest("[data-ma-tpl-preset]") : null;
-      if (chip && root.contains(chip)) {
+      var stageBtn =
+        tg && tg.closest ? tg.closest("[data-ma-tpl-stage-select]") : null;
+      if (stageBtn && root.contains(stageBtn)) {
         ev.preventDefault();
-        var rkChip = chip.getAttribute("data-ma-tpl-reason");
-        var ixChip = parseInt(chip.getAttribute("data-ma-tpl-preset-i"), 10);
-        var cardChip = chip.closest("[data-ma-tpl-key]");
+        var rkChip = stageBtn.getAttribute("data-ma-tpl-reason");
+        var ixChip = parseInt(stageBtn.getAttribute("data-ma-tpl-preset-i"), 10);
+        var cardChip = stageBtn.closest("[data-ma-tpl-key]");
         if (!cardChip || !rkChip || !(ixChip >= 0)) return;
         setCardEditorStage(cardChip, rkChip, ixChip);
-        return;
-      }
-      var seqStep =
-        tg && tg.closest ? tg.closest("[data-ma-tpl-seq-step]") : null;
-      if (seqStep && root.contains(seqStep)) {
-        ev.preventDefault();
-        var cardSeq = seqStep.closest("[data-ma-tpl-key]");
-        var rkSeq = cardSeq && cardSeq.getAttribute("data-ma-tpl-key");
-        var stepN = parseInt(seqStep.getAttribute("data-ma-tpl-seq-step"), 10);
-        if (cardSeq && rkSeq && stepN >= 1 && stepN <= 3) {
-          setCardEditorStage(cardSeq, rkSeq, stepN - 1);
-        }
         return;
       }
       var saveB =
