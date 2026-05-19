@@ -67,7 +67,7 @@
       {
         type: "reassurance",
         label: "طمأنة",
-        text: "الجودة عندنا خط واضح 👍 أي نقطة تحتاج طمأنة نجاوبك بكل صراحة.",
+        text: "نحب نطمنك 👍 إذا عندك أي سؤال عن جودة المنتج أو تفاصيله نوضحها لك باختصار.",
       },
       {
         type: "specs",
@@ -101,7 +101,7 @@
       {
         type: "shipping_info",
         label: "توضيح الموعد",
-        text: "بخصوص موعد التوصيل: نعطيك توقيتاً تقريبياً واضحاً يناسب عنوانك.",
+        text: "نقدر نوضح لك مدة التوصيل المتوقعة قبل ما تكمل الطلب 👍",
       },
       {
         type: "offer",
@@ -118,7 +118,7 @@
       {
         type: "reassurance",
         label: "طمأنة",
-        text: "الضمان جزء من راحتك 👍 أي سؤال نجاوبك بوضوح.",
+        text: "نوضح لك تفاصيل الضمان أو الاستبدال بكل بساطة 👍",
       },
       {
         type: "warranty_info",
@@ -135,7 +135,7 @@
       {
         type: "reassurance",
         label: "مساعدة عامة",
-        text: "نحنا هنا نساعدك 🙏 أي استفسار عام عن الطلب أو المتجر قولنا باختصار.",
+        text: "نقدر نساعدك بأي استفسار قبل إكمال الطلب 👍",
       },
       {
         type: "specs",
@@ -342,6 +342,10 @@
     return "الرسالة " + (index + 1);
   }
 
+  function isLoadtestPlaceholder(text) {
+    return /LOADTEST_STORE_\d+/i.test(String(text == null ? "" : text).trim());
+  }
+
   function presetTextForStage(reasonKey, index) {
     var presets = PRESET_SUGGESTIONS_BY_REASON[reasonKey] || [];
     if (presets[index] && presets[index].text) {
@@ -356,10 +360,17 @@
     if (hasMsgs) {
       var slot = row.messages[index];
       if (slot && typeof slot === "object" && String(slot.text || "").trim()) {
-        return String(slot.text).trim();
+        var fromSlot = String(slot.text).trim();
+        if (isLoadtestPlaceholder(fromSlot)) {
+          return presetTextForStage(reasonKey, index);
+        }
+        return fromSlot;
       }
-    } else if (row && index === 0 && String(row.message || "").trim()) {
-      return String(row.message).trim();
+    } else if (row && index === 0) {
+      var legacy = String(row.message || "").trim();
+      if (legacy && !isLoadtestPlaceholder(legacy)) {
+        return legacy;
+      }
     }
     return presetTextForStage(reasonKey, index);
   }

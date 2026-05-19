@@ -6,7 +6,8 @@
 """
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Tuple
+import re
+from typing import Any, Dict, FrozenSet, List, Tuple
 
 # (مرحلة 1 طمأنة، مرحلة 2 عرض/تفاصيل، مرحلة 3 بديل/متابعة)
 DASHBOARD_STAGE_TEXTS: Dict[str, Tuple[str, str, str]] = {
@@ -16,38 +17,85 @@ DASHBOARD_STAGE_TEXTS: Dict[str, Tuple[str, str, str]] = {
         "عندنا خيارات بديلة أو باكج قد يفيدك أكثر 👍 نقدر نلخصها لك بسرعة إذا حاب.",
     ),
     "quality": (
-        "الجودة عندنا خط واضح 👍 أي نقطة تحتاج طمأنة نجاوبك بكل صراحة.",
+        "نحب نطمنك 👍 إذا عندك أي سؤال عن جودة المنتج أو تفاصيله نوضحها لك باختصار.",
         "نقدر نشرح لك أهم المواصفات بجمل بسيطة تسهّل القرار بدون تعقيد.",
         "كثير من عملائنا اختاروا نفس المنتج برضا 👍 إذا حاب نعطيك فكرة سريعة عن التجارب.",
     ),
     "shipping": (
-        "بخصوص الشحن: نقدر نوضّح لك المدة والتكلفة والخيارات المتاحة لمنطقتك.",
+        "نوضح لك خيارات الشحن والتكلفة بكل اختصار 👍",
         "إذا يتوفر شحن مجاني أو عرض شحن يناسبك، نشرح لك الشروط باختصار بدون التزام منك الآن.",
         "نقدر نتابع معك بشكل خاص لحد ما ترتاح من تفاصيل الشحن والتسليم.",
     ),
     "delivery": (
-        "بخصوص موعد التوصيل: نعطيك توقيتاً تقريبياً واضحاً يناسب عنوانك.",
+        "نقدر نوضح لك مدة التوصيل المتوقعة قبل ما تكمل الطلب 👍",
         "إذا في خيار أسرع أو تسريع متاح لموقعك، نبلغك باختصار وتقرر براحتك 👍",
         "نقدر متابعة خاصة معك لمتابعة الطلب وتوضيح الموعد خطوة بخطوة.",
     ),
     "warranty": (
-        "الضمان جزء من راحتك 👍 أي سؤال نجاوبك بوضوح.",
+        "نوضح لك تفاصيل الضمان أو الاستبدال بكل بساطة 👍",
         "نلخّصلك أهم بنود الضمان بجمل قصيرة تفيدك قبل إكمال الطلب.",
         "إذا تحتاج خيار استبدال أو إرجاع، نوضّح لك الخطوات ببساطة بدون إرباك.",
     ),
     "other": (
-        "نحنا هنا نساعدك 🙏 أي استفسار عام عن الطلب أو المتجر قولنا باختصار.",
+        "نقدر نساعدك بأي استفسار قبل إكمال الطلب 👍",
         "وش اللي يوقفك الآن؟ اكتب لنا باختصار ونجاوبك بطريقة مفتوحة وواضحة.",
         "نقدر متابعة خاصة معك لين ترتاح وتكمّل براحة.",
     ),
 }
 
-_PRICE_OFFER_TEXT = DASHBOARD_STAGE_TEXTS["price"][1]
-_PRICE_REASSURANCE_TEXT = DASHBOARD_STAGE_TEXTS["price"][0]
-# نص طمأنة قديم في الواجهة قبل التصحيح — يُعاد فقط عند تطابقه مع خطأ «الرسالة = عرض»
-_PRICE_LEGACY_REASSURANCE_TEXT = (
-    "نحب نطمّنك 👍 أي استفسار عن السعر أو طريقة الدفع نقدر نوضّحه باختصار."
-)
+_LOADTEST_PLACEHOLDER_RE = re.compile(r"LOADTEST_STORE_\d+", re.IGNORECASE)
+
+# نصوص مرحلة 1/رسالة قديمة أو خطأ شائع (عرض في المرحلة 1) — تُستبدل عند العرض فقط
+_LEGACY_WRONG_STAGE1: Dict[str, FrozenSet[str]] = {
+    "price": frozenset(
+        {
+            DASHBOARD_STAGE_TEXTS["price"][1],
+            "نحب نطمّنك 👍 أي استفسار عن السعر أو طريقة الدفع نقدر نوضّحه باختصار.",
+        }
+    ),
+    "quality": frozenset(
+        {
+            "الجودة عندنا خط واضح 👍 أي نقطة تحتاج طمأنة نجاوبك بكل صراحة.",
+            DASHBOARD_STAGE_TEXTS["quality"][1],
+            DASHBOARD_STAGE_TEXTS["quality"][2],
+        }
+    ),
+    "shipping": frozenset(
+        {
+            "بخصوص الشحن: نقدر نوضّح لك المدة والتكلفة والخيارات المتاحة لمنطقتك.",
+            DASHBOARD_STAGE_TEXTS["shipping"][1],
+            DASHBOARD_STAGE_TEXTS["shipping"][2],
+        }
+    ),
+    "delivery": frozenset(
+        {
+            "بخصوص موعد التوصيل: نعطيك توقيتاً تقريبياً واضحاً يناسب عنوانك.",
+            DASHBOARD_STAGE_TEXTS["delivery"][1],
+            DASHBOARD_STAGE_TEXTS["delivery"][2],
+        }
+    ),
+    "warranty": frozenset(
+        {
+            "الضمان جزء من راحتك 👍 أي سؤال نجاوبك بوضوح.",
+            DASHBOARD_STAGE_TEXTS["warranty"][1],
+            DASHBOARD_STAGE_TEXTS["warranty"][2],
+        }
+    ),
+    "other": frozenset(
+        {
+            "نحنا هنا نساعدك 🙏 أي استفسار عام عن الطلب أو المتجر قولنا باختصار.",
+            DASHBOARD_STAGE_TEXTS["other"][1],
+            DASHBOARD_STAGE_TEXTS["other"][2],
+        }
+    ),
+}
+
+
+def is_loadtest_placeholder(text: str) -> bool:
+    t = (text or "").strip()
+    if not t:
+        return False
+    return bool(_LOADTEST_PLACEHOLDER_RE.search(t))
 
 
 def stage_default_text(reason_key: str, index: int) -> str:
@@ -65,7 +113,7 @@ def _coerce_mc(raw: Any) -> int:
     return max(1, min(3, mc))
 
 
-def _slot_dict(raw: Any, index: int) -> Dict[str, Any]:
+def _slot_dict(raw: Any) -> Dict[str, Any]:
     if isinstance(raw, dict):
         base = dict(raw)
     else:
@@ -83,11 +131,45 @@ def _slot_dict(raw: Any, index: int) -> Dict[str, Any]:
     return {"delay": delay_v, "unit": unit, "text": text}
 
 
+def _stage1_needs_repair(key: str, text: str, defaults: Tuple[str, str, str]) -> bool:
+    t = (text or "").strip()
+    if not t:
+        return False
+    if is_loadtest_placeholder(t):
+        return True
+    if len(defaults) > 1 and t == defaults[1]:
+        return True
+    if len(defaults) > 2 and t == defaults[2]:
+        return True
+    legacy = _LEGACY_WRONG_STAGE1.get(key)
+    if legacy and t in legacy:
+        return True
+    return False
+
+
+def _repair_slot_text(
+    key: str,
+    index: int,
+    text: str,
+    defaults: Tuple[str, str, str],
+) -> str:
+    t = (text or "").strip()
+    if index >= len(defaults):
+        return t
+    default_for_slot = defaults[index]
+    if not t:
+        return default_for_slot
+    if is_loadtest_placeholder(t):
+        return default_for_slot
+    if index == 0 and _stage1_needs_repair(key, t, defaults):
+        return defaults[0]
+    return t
+
+
 def enrich_reason_entry_for_dashboard(key: str, ent: Dict[str, Any]) -> Dict[str, Any]:
     """
-    إثراء للعرض فقط: ملء خانات فارغة من الافتراضيات؛ إصلاح خطأ شائع لـ price
-    (حقل message = نص العرض بينما المرحلة 1 فارغة أو مكررة).
-    لا يكتب قاعدة البيانات — يُستدعى من GET لوحة القوالب فقط.
+    إثراء للعرض فقط: ملء خانات فارغة؛ إصلاح مرحلة 1 (طمأنة)؛ إزالة عناوين LOADTEST.
+    لا يكتب قاعدة البيانات — يُستدعى من GET/POST استجابة لوحة القوالب فقط.
     """
     ent = dict(ent)
     defaults = DASHBOARD_STAGE_TEXTS.get(key)
@@ -99,42 +181,20 @@ def enrich_reason_entry_for_dashboard(key: str, ent: Dict[str, Any]) -> Dict[str
     msgs_out: List[Dict[str, Any]] = []
     for i in range(mc):
         raw_item = msgs_in[i] if i < len(msgs_in) else {}
-        slot = _slot_dict(raw_item, i)
-        if not slot["text"] and i < len(defaults):
-            slot["text"] = defaults[i]
+        slot = _slot_dict(raw_item)
+        slot["text"] = _repair_slot_text(key, i, slot["text"], defaults)
         msgs_out.append(slot)
 
     fallback_msg = str(ent.get("message") or "").strip()
-
-    if key == "price":
-        offer = _PRICE_OFFER_TEXT
-        reassure = _PRICE_REASSURANCE_TEXT
-        t0 = str(msgs_out[0].get("text") or "").strip() if msgs_out else ""
-        t1 = str(msgs_out[1].get("text") or "").strip() if len(msgs_out) > 1 else ""
-        if fallback_msg == offer or t0 == offer or (not t0 and fallback_msg == offer):
-            if msgs_out and (not t0 or t0 == offer):
-                msgs_out[0]["text"] = reassure
-            fallback_msg = reassure if fallback_msg == offer else fallback_msg
-        if msgs_out and t0 == offer and t1 == offer:
-            msgs_out[0]["text"] = reassure
-        if fallback_msg == _PRICE_LEGACY_REASSURANCE_TEXT and reassure:
-            if msgs_out and str(msgs_out[0].get("text") or "").strip() in (
-                "",
-                _PRICE_LEGACY_REASSURANCE_TEXT,
-            ):
-                msgs_out[0]["text"] = reassure
-            if fallback_msg == _PRICE_LEGACY_REASSURANCE_TEXT:
-                fallback_msg = reassure
+    fallback_msg = _repair_slot_text(key, 0, fallback_msg, defaults)
 
     text0 = str(msgs_out[0].get("text") or "").strip() if msgs_out else ""
     if text0:
         message_one = text0
     elif fallback_msg:
         message_one = fallback_msg
-    elif defaults:
-        message_one = defaults[0]
     else:
-        message_one = ""
+        message_one = defaults[0]
 
     ent["message"] = message_one
     ent["messages"] = msgs_out
