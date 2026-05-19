@@ -28,6 +28,20 @@ class TriggerTemplateUiDefaultsTests(unittest.TestCase):
                 msg=f"stage1==stage2 for {key}",
             )
 
+    def test_shipping_delivery_stage3_defaults(self) -> None:
+        self.assertEqual(
+            stage_default_text("shipping", 2),
+            "إذا حاب، نوضح لك آخر تحديثات الشحن أو الخيارات المتاحة بسرعة 👍",
+        )
+        self.assertEqual(
+            stage_default_text("delivery", 1),
+            "إذا فيه خيار أسرع أو أقرب لموعدك، نوضح لك المتاح باختصار.",
+        )
+        self.assertEqual(
+            stage_default_text("delivery", 2),
+            "إذا حاب، نوضح لك آخر موعد متوقع أو أي تحديث يفيد قرارك 👍",
+        )
+
     def test_stage1_reassurance_copy_per_reason(self) -> None:
         expected = {
             "price": "نعرف إن السعر قرار مهم 👍 إذا عندك استفسار عن السعر أو الدفع نوضحه بسرعة.",
