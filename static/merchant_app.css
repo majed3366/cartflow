@@ -1440,6 +1440,20 @@ button.ma-vip-suggest-btn.va-btn {
   background: rgba(0, 0, 0, 0.045);
 }
 
+.ma-tpl-preset-chip--active {
+  border-color: var(--green-mid, #16a34a);
+  background: rgb(220 252 231);
+  color: rgb(21 128 61);
+  font-weight: 700;
+}
+
+.ma-tpl-seq-step--editing {
+  box-shadow:
+    inset 3px 0 0 rgb(22 163 74),
+    0 0 0 1px rgb(22 163 74 / 0.22);
+  cursor: pointer;
+}
+
 .ma-tpl-suggest {
   margin: 10px 0 6px;
   padding: 10px 11px;

@@ -231,6 +231,75 @@
     }
   }
 
+  function stageLabelForReasonIndex(reasonKey, index) {
+    var list = PRESET_SUGGESTIONS_BY_REASON[reasonKey] || [];
+    var p = list[index];
+    if (p) return stageLabelForIndex(p, index);
+    return "الرسالة " + (index + 1);
+  }
+
+  function messageTextForStage(reasonKey, index) {
+    var row = findRow(reasonKey);
+    if (row && Array.isArray(row.messages)) {
+      var slot = row.messages[index];
+      if (slot && typeof slot === "object" && String(slot.text || "").trim()) {
+        return String(slot.text).trim();
+      }
+    }
+    if (row && index === 0 && String(row.message || "").trim()) {
+      return String(row.message).trim();
+    }
+    var presets = PRESET_SUGGESTIONS_BY_REASON[reasonKey] || [];
+    if (presets[index] && presets[index].text) {
+      return String(presets[index].text);
+    }
+    return "";
+  }
+
+  function syncPresetChipActiveState(cardShell, activeIndex) {
+    if (!cardShell) return;
+    var chips = cardShell.querySelectorAll("[data-ma-tpl-preset]");
+    var i;
+    for (i = 0; i < chips.length; i++) {
+      var ix = parseInt(chips[i].getAttribute("data-ma-tpl-preset-i"), 10);
+      chips[i].classList.toggle(
+        "ma-tpl-preset-chip--active",
+        ix === activeIndex
+      );
+    }
+    var steps = cardShell.querySelectorAll("[data-ma-tpl-seq-step]");
+    for (i = 0; i < steps.length; i++) {
+      var stepN = parseInt(steps[i].getAttribute("data-ma-tpl-seq-step"), 10);
+      steps[i].classList.toggle("ma-tpl-seq-step--editing", stepN === activeIndex + 1);
+    }
+  }
+
+  /** Sync textarea + editor title for the selected stage (all reasons). */
+  function setCardEditorStage(cardShell, reasonKey, index) {
+    if (!cardShell || !reasonKey) return;
+    var ix = parseInt(index, 10);
+    if (!(ix >= 0)) ix = 0;
+    ix = Math.max(0, Math.min(2, ix));
+    cardShell.setAttribute("data-ma-tpl-active-stage", String(ix));
+
+    var lbl = cardShell.querySelector("[data-ma-tpl-msg-label]");
+    if (lbl) {
+      lbl.textContent = stageLabelForReasonIndex(reasonKey, ix);
+    }
+
+    var ta = cardShell.querySelector("[data-ma-tpl-msg]");
+    if (ta) {
+      ta.value = messageTextForStage(reasonKey, ix);
+      try {
+        ta.focus();
+      } catch (_focusErr) {
+        /* ignore */
+      }
+    }
+
+    syncPresetChipActiveState(cardShell, ix);
+  }
+
   function presetChipsHtml(rowKey) {
     var list = PRESET_SUGGESTIONS_BY_REASON[rowKey] || [];
     if (!list.length) return "";
@@ -481,7 +550,7 @@
     return (
       '<div class="ma-tpl-card" data-ma-tpl-key="' +
       k +
-      '">' +
+      '" data-ma-tpl-active-stage="0">' +
       '<div class="ma-tpl-card-head">' +
       '<span class="ma-tpl-chip">' +
       lbl +
@@ -491,7 +560,7 @@
       en +
       "> تفعيل قالب الاسترجاع لهذا السبب</label>" +
       seqFlow +
-      '<label class="ma-tpl-lbl" for="ma-tpl-msg-' +
+      '<label class="ma-tpl-lbl" data-ma-tpl-msg-label for="ma-tpl-msg-' +
       k +
       '">' +
       msg1Lbl +
@@ -616,6 +685,10 @@
     for (ci = 0; ci < cards.length; ci++) {
       (function (cardEl) {
         syncCardSequenceActiveSteps(cardEl);
+        var rkInit = cardEl.getAttribute("data-ma-tpl-key");
+        if (rkInit) {
+          syncPresetChipActiveState(cardEl, 0);
+        }
         var mcSel = cardEl.querySelector("[data-ma-tpl-msg-count]");
         if (mcSel) {
           mcSel.addEventListener("change", function () {
@@ -634,16 +707,22 @@
         tg && tg.closest ? tg.closest("[data-ma-tpl-preset]") : null;
       if (chip && root.contains(chip)) {
         ev.preventDefault();
-        var rk = chip.getAttribute("data-ma-tpl-reason");
-        var ix = parseInt(chip.getAttribute("data-ma-tpl-preset-i"), 10);
-        var arr = PRESET_SUGGESTIONS_BY_REASON[rk];
-        if (!arr || !(ix >= 0) || !arr[ix]) return;
-        var cardShell = chip.closest("[data-ma-tpl-key]");
-        var taPick =
-          cardShell && cardShell.querySelector("[data-ma-tpl-msg]");
-        if (taPick) {
-          taPick.value = arr[ix].text || "";
-          taPick.focus();
+        var rkChip = chip.getAttribute("data-ma-tpl-reason");
+        var ixChip = parseInt(chip.getAttribute("data-ma-tpl-preset-i"), 10);
+        var cardChip = chip.closest("[data-ma-tpl-key]");
+        if (!cardChip || !rkChip || !(ixChip >= 0)) return;
+        setCardEditorStage(cardChip, rkChip, ixChip);
+        return;
+      }
+      var seqStep =
+        tg && tg.closest ? tg.closest("[data-ma-tpl-seq-step]") : null;
+      if (seqStep && root.contains(seqStep)) {
+        ev.preventDefault();
+        var cardSeq = seqStep.closest("[data-ma-tpl-key]");
+        var rkSeq = cardSeq && cardSeq.getAttribute("data-ma-tpl-key");
+        var stepN = parseInt(seqStep.getAttribute("data-ma-tpl-seq-step"), 10);
+        if (cardSeq && rkSeq && stepN >= 1 && stepN <= 3) {
+          setCardEditorStage(cardSeq, rkSeq, stepN - 1);
         }
         return;
       }
@@ -687,9 +766,12 @@
     return null;
   }
 
-  function buildMessagesSlice(key, text, dv, unit, mc) {
+  function buildMessagesSlice(key, text, dv, unit, mc, activeStageIndex) {
     var prevRow = findRow(key);
     var prevMsgs = prevRow && Array.isArray(prevRow.messages) ? prevRow.messages.slice() : [];
+    var editIx = parseInt(activeStageIndex, 10);
+    if (!(editIx >= 0)) editIx = 0;
+    editIx = Math.max(0, Math.min(mc - 1, editIx));
 
     function slot(i) {
       if (prevMsgs[i] && typeof prevMsgs[i] === "object") {
@@ -715,8 +797,10 @@
     var out = [];
     for (var j = 0; j < mc; j++) {
       var sl = slot(j);
-      if (j === 0) {
+      if (j === editIx) {
         sl.text = text;
+      }
+      if (j === 0) {
         var enc = persistFirstSlotDelay(dv, unit);
         sl.delay = enc.delay;
         sl.unit = enc.unit;
@@ -742,7 +826,11 @@
     var mc = parseInt(mci && mci.value ? mci.value : "1", 10) || 1;
     mc = Math.max(1, Math.min(3, mc));
 
-    var messages = buildMessagesSlice(key, text, dv, unit, mc);
+    var activeIx = parseInt(card.getAttribute("data-ma-tpl-active-stage") || "0", 10);
+    if (!(activeIx >= 0)) activeIx = 0;
+    activeIx = Math.max(0, Math.min(mc - 1, activeIx));
+
+    var messages = buildMessagesSlice(key, text, dv, unit, mc, activeIx);
 
     var body = {
       reason_templates: {},
