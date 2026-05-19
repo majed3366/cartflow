@@ -921,6 +921,7 @@
     }
     if (!byId("ma-kpi-abandoned")) return;
 
+    /* لا ‎recovery-trend‎ هنا — كان يستهلك اتصال DB دون تحديث الواجهة (الرسم في ‎dashboard_v1‎). */
     var jobs = [
       fetchSection("/api/dashboard/summary", applySummary, "summary"),
       fetchSection("/api/dashboard/normal-carts", applyNormalCarts, "normal_carts"),
@@ -928,14 +929,6 @@
       fetchSection("/api/dashboard/followups", applyFollowups, "followups"),
       fetchSection("/api/dashboard/widget-panel", applyWidgetPanel, "widget_panel"),
       fetchSection("/api/dashboard/messages", applyMessages, "messages"),
-      fetch("/api/dashboard/recovery-trend", { credentials: "same-origin" }).then(
-        function () {
-          return null;
-        },
-        function () {
-          return null;
-        }
-      ),
     ];
     Promise.allSettled(jobs);
   }

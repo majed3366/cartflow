@@ -129,14 +129,14 @@ def build_snapshot_from_store_row(store_row: Optional[Any]) -> Dict[str, Any]:
 
 
 def _public_payload_keys_from_dashboard_row(sess: Any, row: Any) -> List[str]:
-    from models import Store
+    from services.db_pool_diagnostics import cached_top_store_id
 
     keys: List[str] = []
     zs = getattr(row, "zid_store_id", None)
     if isinstance(zs, str) and zs.strip():
         keys.append(zs.strip()[:255])
     try:
-        top = sess.query(Store.id).order_by(Store.id.desc()).limit(1).scalar()
+        top = cached_top_store_id(sess)
         rid = getattr(row, "id", None)
         if (
             top is not None

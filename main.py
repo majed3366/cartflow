@@ -690,7 +690,9 @@ async def db_scoped_session_cleanup(request: Request, call_next: Any) -> Any:
         return response
     finally:
         audit_leak_suspected_check(request)
-        remove_scoped_session()
+        from services.db_session_lifecycle import release_scoped_db_session
+
+        release_scoped_db_session()
         audit_request_end()
 
 
@@ -1078,7 +1080,9 @@ def _ensure_cartflow_api_db_warmed() -> None:
 
 @_normal_carts_query_prof_wrap("_merchant_dashboard_db_ready")
 def _merchant_dashboard_db_ready() -> None:
-    """لوحة التاجر وواجهاتها: تدفئة المخطط مرة واحدة لكل عملية دون ‎create_all‎ لكل دالة."""
+    """لوحة التاجر: لا ‎create_all‎ في المسار الساخن — التدفئة عند الإقلاع فقط."""
+    if _cartflow_api_db_warmed:
+        return
     _ensure_cartflow_api_db_warmed()
 
 
@@ -2303,15 +2307,22 @@ def _resolve_abandoned_cart_row_for_vip_live_sync(
     return keep
 
 
+_vip_dedupe_last_run_mono: float = 0.0
+_VIP_DEDUPE_MIN_INTERVAL_SEC = 180.0
+
+
 def _cleanup_duplicate_vip_abandoned_rows(*, store_id_scope: Optional[int] = None) -> int:
     """
     تكرار صفوف ‎VIP‎ لنفس الجلسة: عند تعريف ‎vip_cart_threshold‎ يُعتمد ‎cart_value >= threshold‎؛
     وإلا ‎vip_mode=True‎ (توافق خلفي). يُبقى الأحدث ‎last_seen_at‎ لكل ‎(store_id, recovery_session_id)‎.
+    لا ‎create_all‎ هنا — المخطط يُدفأ عند الإقلاع فقط؛ مُحدَّد بزمن لتفادي ضغط اللوحة.
     """
+    global _vip_dedupe_last_run_mono
+    now_mono = time.monotonic()
+    if now_mono - _vip_dedupe_last_run_mono < _VIP_DEDUPE_MIN_INTERVAL_SEC:
+        return 0
     deleted = 0
     try:
-        _ensure_store_widget_schema()
-        db.create_all()
         th_dedupe = merchant_vip_threshold_int(
             _load_latest_store_for_recovery() if store_id_scope is None else db.session.get(Store, int(store_id_scope))
         )
@@ -2356,6 +2367,8 @@ def _cleanup_duplicate_vip_abandoned_rows(*, store_id_scope: Optional[int] = Non
     except (SQLAlchemyError, OSError, TypeError, ValueError):
         db.session.rollback()
         log.warning("[VIP DEDUPE] cleanup failed", exc_info=True)
+    else:
+        _vip_dedupe_last_run_mono = now_mono
     return deleted
 
 
@@ -13065,7 +13078,6 @@ def api_dashboard_recovery_trend():
     """قراءة فقط — اتجاه المبيعات المسترجعة (مجموع قيمة السلة) لآخر ‎7‎ أيام."""
     wall0 = time.perf_counter()
     try:
-        _merchant_dashboard_db_ready()
         out = _recovery_sales_trend_last_7_days()
         return out
     finally:
@@ -13309,19 +13321,27 @@ async def api_dashboard_trigger_templates_save(request: Request):
                 delay_value = ent0.get("delay")
                 delay_unit = str(ent0.get("unit") or "")
 
+        from services.db_pool_diagnostics import log_pool_checkpoint
+
         log.info(
-            "[TEMPLATE SAVE START] store_slug=%s reason=%s selected_stage=%s delay_value=%s delay_unit=%s",
+            "[TEMPLATE SAVE START] store_slug=%s reason=%s selected_stage=%s delay_value=%s delay_unit=%s duration_ms=%s",
             store_slug,
             reason_key,
             selected_stage,
             delay_value,
             delay_unit,
+            _elapsed_ms(),
         )
         log.info(
             "[TEMPLATE SAVE PAYLOAD SIZE] store_slug=%s bytes=%s reason_keys=%s",
             store_slug,
             payload_bytes,
             ",".join(reason_keys),
+        )
+        log_pool_checkpoint(
+            "[DB POOL BEFORE TEMPLATE SAVE]",
+            store_slug=store_slug,
+            reason=reason_key,
         )
 
         patch = {"reason_templates": rt}
@@ -13341,6 +13361,12 @@ async def api_dashboard_trigger_templates_save(request: Request):
         ack = build_trigger_templates_save_ack(
             saved_reason_keys=reason_keys,
             store_row=dash_store,
+        )
+        log_pool_checkpoint(
+            "[DB POOL AFTER TEMPLATE SAVE]",
+            store_slug=store_slug,
+            reason=reason_key,
+            duration_ms=_elapsed_ms(),
         )
         log.info(
             "[TEMPLATE SAVE SUCCESS] store_slug=%s reason=%s duration_ms=%s response_rows=%s",
