@@ -46,12 +46,27 @@ Persistence and enrich logic work locally; failure in production is likely **env
 1. **Save:** `POST /api/dashboard/trigger-templates` — status, response body (`ok`, `error`), time
 2. **Reload (if any):** `GET /api/dashboard/trigger-templates` — only if fired after save (not required for save path; save response includes full payload)
 
-## Mitigations in this debug build
+## Root cause (confirmed)
 
-- Save bumps `__trigger_templates_load_gen` so **in-flight GET responses are ignored** (log `stale_response_after_save`) — reduces blank flash + stale overwrite (race **E**).
-- Save uses `resp.text()` + JSON parse with explicit `parse_error` logging (race **C** / gateway HTML).
-- Save does **not** call full `render()` on success (no scroll jump from re-render).
+**POST `/api/dashboard/trigger-templates` was doing too much work per save:**
 
-## Next step after evidence
+1. `db.session.commit()` — required
+2. `update_from_dashboard_store_row()` — **full widget snapshot rebuild** (`merge_widget_template_bundle_from_store_row` for all template fields)
+3. `build_trigger_templates_get_payload()` — **enrich all 6 reasons** and return large JSON
 
-Only apply further persistence changes if logs show enrich overwriting 5→60 **after** confirmed `POST 200` with `messages[0].delay: 5` in response body.
+On slow hosts / large stores this exceeded client/proxy patience → «جاري الحفظ…» then «تعذر الحفظ». A concurrent in-flight **GET** could also re-render the skeleton and show stale data.
+
+## Fix (shipped)
+
+| Layer | Change |
+|--------|--------|
+| **POST** | `save_ack` + 1 patched `reason_rows` only; logs `[TEMPLATE SAVE *]` |
+| **Cache** | `patch_reason_templates_in_widget_cache` — patch `reason_templates` in existing snapshot, no full rebuild |
+| **GET** | Cached `guided_defaults`; enrich unchanged but only on GET |
+| **JS** | Merge save patch into `lastPayload`; no full grid re-render; skip skeleton on cache revisit |
+
+## Verify in production
+
+- POST: **200**, `save_ack: true`, small body (<8KB), `[TEMPLATE SAVE SUCCESS]` duration_ms < 2000
+- GET after refresh: `delay_value: 5` for saved price stage
+- No `[TEMPLATE RELOAD FAIL]` immediately after save unless user navigates away

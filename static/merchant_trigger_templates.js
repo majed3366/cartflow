@@ -1215,6 +1215,33 @@
     return out;
   }
 
+  function mergeReasonRowsIntoLastPayload(patchRows) {
+    if (!lastPayload || !Array.isArray(patchRows) || !patchRows.length) return;
+    if (!Array.isArray(lastPayload.reason_rows)) {
+      lastPayload.reason_rows = [];
+    }
+    var byKey = {};
+    var i;
+    for (i = 0; i < lastPayload.reason_rows.length; i++) {
+      var rk = lastPayload.reason_rows[i] && lastPayload.reason_rows[i].key;
+      if (rk) byKey[rk] = lastPayload.reason_rows[i];
+    }
+    for (i = 0; i < patchRows.length; i++) {
+      var pr = patchRows[i];
+      if (!pr || !pr.key) continue;
+      byKey[pr.key] = buildRowFromTemplateEntry(pr.key, pr, {
+        applyRecommended: false,
+      });
+    }
+    var merged = [];
+    for (i = 0; i < TRIGGER_KEYS_ORDER.length; i++) {
+      var k = TRIGGER_KEYS_ORDER[i];
+      merged.push(byKey[k] || buildRowFromTemplateEntry(k, {}, { applyRecommended: true }));
+    }
+    lastPayload.reason_rows = merged;
+    lastPayload.ok = true;
+  }
+
   /** بعد الحفظ: تحديث الذاكرة دون إعادة رسم الشبكة (يحافظ على التمرير والمرحلة). */
   function absorbSaveResponseWithoutRerender(pack, savedKey, savedCard) {
     if (!pack || !pack.payload) return;
@@ -1222,16 +1249,29 @@
       typeof window.scrollY === "number"
         ? window.scrollY
         : window.pageYOffset || 0;
-    var norm = normalizeTriggerTemplatesPayload(
-      pack.payload,
-      typeof pack.httpStatus === "number" ? pack.httpStatus : 200
-    );
-    lastPayload = norm;
-    window.__trigger_templates_loaded = {
-      json: pack.payload,
-      httpStatus:
-        typeof pack.httpStatus === "number" ? pack.httpStatus : 200,
-    };
+    var httpSt =
+      typeof pack.httpStatus === "number" ? pack.httpStatus : 200;
+    var p = pack.payload;
+
+    if (p.save_ack && (!p.reason_rows || p.reason_rows.length <= 2)) {
+      mergeReasonRowsIntoLastPayload(p.reason_rows || []);
+      window.__trigger_templates_loaded = {
+        json: {
+          ok: true,
+          save_ack: true,
+          reason_rows: lastPayload ? lastPayload.reason_rows : p.reason_rows,
+        },
+        httpStatus: httpSt,
+      };
+    } else {
+      var norm = normalizeTriggerTemplatesPayload(p, httpSt);
+      lastPayload = norm;
+      window.__trigger_templates_loaded = {
+        json: p,
+        httpStatus: httpSt,
+      };
+    }
+
     if (savedCard && savedKey) {
       var ix = parseInt(
         savedCard.getAttribute("data-ma-tpl-active-stage") || "0",
@@ -1321,6 +1361,7 @@
       message_count: mc,
       messages: messages,
     };
+    body.selected_stage = activeIx;
 
     var saveGen = (window.__trigger_templates_load_gen || 0) + 1;
     window.__trigger_templates_load_gen = saveGen;
@@ -1481,9 +1522,29 @@
         payload_keys: payloadKeys(cached.json),
       });
       var rCache = byId("ma-tpl-root");
-      if (rCache && rCache.isConnected) {
+      var cacheHasCards =
+        rCache &&
+        rCache.isConnected &&
+        rCache.querySelector("[data-ma-tpl-key]");
+      if (!cacheHasCards && rCache && rCache.isConnected) {
         rCache.innerHTML =
           '<div class="ma-tpl-loading ma-dash-skel" style="padding:32px;text-align:center;color:var(--muted);">جاري عرض القوالب…</div>';
+      }
+      if (cacheHasCards) {
+        try {
+          lastPayload = normalizeTriggerTemplatesPayload(
+            cached.json,
+            cached.httpStatus
+          );
+        } catch (_cacheNormErr) {
+          /* fall through to render */
+        }
+        tplDbg("[TEMPLATE RELOAD SUCCESS]", {
+          duration_ms: wallMs(),
+          status: cached.httpStatus,
+          source: "memory_cache_skip_render",
+        });
+        return;
       }
       renderWhenRootReady(cached.json, cached.httpStatus, 0, function (okDom) {
         if (okDom) {

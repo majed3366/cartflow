@@ -59,13 +59,40 @@ class DashboardTriggerTemplatesApiTests(unittest.TestCase):
         self.assertEqual(rp.status_code, 200, rp.text[:400])
         out = rp.json()
         self.assertTrue(out.get("ok"), msg=out)
+        self.assertTrue(out.get("save_ack"), msg=out)
+        self.assertLess(len(rp.content), 8000, msg="POST should stay lightweight")
+        g2 = self.client.get("/api/dashboard/trigger-templates")
+        self.assertEqual(g2.status_code, 200)
         found = False
-        for row in out.get("reason_rows") or []:
+        for row in g2.json().get("reason_rows") or []:
             if row.get("key") != rid:
                 continue
             found = True
             self.assertIn("اختبار", row.get("message") or "")
-        self.assertTrue(found, msg=out.get("reason_rows"))
+        self.assertTrue(found, msg=g2.json().get("reason_rows"))
+
+    def test_post_save_five_minutes_persists_on_get(self) -> None:
+        from services.trigger_template_ui_defaults import DASHBOARD_STAGE_TEXTS
+
+        stage1 = DASHBOARD_STAGE_TEXTS["price"][0]
+        body = {
+            "reason_templates": {
+                "price": {
+                    "enabled": True,
+                    "message": stage1,
+                    "message_count": 1,
+                    "messages": [{"delay": 5, "unit": "minute", "text": stage1}],
+                }
+            },
+            "selected_stage": 0,
+        }
+        rp = self.client.post("/api/dashboard/trigger-templates", json=body)
+        self.assertEqual(rp.status_code, 200, rp.text[:400])
+        self.assertTrue(rp.json().get("save_ack"))
+        g = self.client.get("/api/dashboard/trigger-templates")
+        price = next(r for r in g.json().get("reason_rows") or [] if r.get("key") == "price")
+        self.assertEqual(price.get("delay_value"), 5.0)
+        self.assertEqual(price["messages"][0]["delay"], 5.0)
 
 
 class TriggerTemplatesDashboardServiceTests(unittest.TestCase):
@@ -140,4 +167,32 @@ class TriggerTemplatesDashboardServiceTests(unittest.TestCase):
         )
         self.assertEqual(price["delay_value"], 5.0)
         self.assertEqual(price["messages"][0]["delay"], 5.0)
+
+    def test_build_save_ack_returns_patch_rows_only(self) -> None:
+        import json
+
+        from services.trigger_template_ui_defaults import DASHBOARD_STAGE_TEXTS
+        from services.trigger_templates_dashboard import build_trigger_templates_save_ack
+
+        stage1 = DASHBOARD_STAGE_TEXTS["price"][0]
+
+        class _Mini:
+            reason_templates_json = json.dumps(
+                {
+                    "price": {
+                        "enabled": True,
+                        "message": stage1,
+                        "message_count": 1,
+                        "messages": [{"delay": 5, "unit": "minute", "text": stage1}],
+                    }
+                }
+            )
+
+        ack = build_trigger_templates_save_ack(
+            saved_reason_keys=["price"], store_row=_Mini()
+        )
+        self.assertTrue(ack.get("save_ack"))
+        self.assertEqual(ack.get("saved_reason_keys"), ["price"])
+        self.assertEqual(len(ack.get("reason_rows") or []), 1)
+        self.assertEqual(ack["reason_rows"][0]["delay_value"], 5.0)
 

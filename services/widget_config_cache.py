@@ -177,6 +177,29 @@ def update_from_dashboard_store_row(store_row: Any) -> None:
     )
 
 
+def patch_reason_templates_in_widget_cache(store_row: Any) -> None:
+    """
+    بعد حفظ قوالب اللوحة فقط — تحديث ‎reason_templates‎ في اللقطة دون إعادة بناء الحزمة كاملة.
+    """
+    if store_row is None:
+        return
+    from services.store_reason_templates import reason_templates_fields_for_api
+
+    rt_fields = reason_templates_fields_for_api(store_row)
+    sess = db.session
+    ks = _public_payload_keys_from_dashboard_row(sess, store_row)
+    with _lock:
+        for k in ks:
+            snap = _store_snapshots.get(k)
+            if isinstance(snap, dict):
+                bundle = snap.get("template_bundle")
+                if isinstance(bundle, dict):
+                    bundle.update(rt_fields)
+                    continue
+            _store_snapshots.pop(k, None)
+            _refresh_fail_until_mono.pop(k, None)
+
+
 def get_snapshot(norm_slug: str) -> Optional[Dict[str, Any]]:
     with _lock:
         got = _store_snapshots.get(norm_slug)

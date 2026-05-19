@@ -24,6 +24,8 @@ from services.trigger_template_ui_defaults import (
 
 _log = logging.getLogger(__name__)
 
+_GUIDED_DEFAULTS_SLICE: Optional[Dict[str, Dict[str, str]]] = None
+
 TRIGGER_TEMPLATE_PAGE_KEYS: tuple[str, ...] = (
     "price",
     "quality",
@@ -44,8 +46,15 @@ _LABEL_AR: Dict[str, str] = {
 
 
 def _guided_defaults_slice() -> Dict[str, Dict[str, str]]:
-    g_all = guided_defaults_for_api()
-    return {k: dict(g_all.get(k) or {}) for k in TRIGGER_TEMPLATE_PAGE_KEYS if k in g_all}
+    global _GUIDED_DEFAULTS_SLICE
+    if _GUIDED_DEFAULTS_SLICE is None:
+        g_all = guided_defaults_for_api()
+        _GUIDED_DEFAULTS_SLICE = {
+            k: dict(g_all.get(k) or {})
+            for k in TRIGGER_TEMPLATE_PAGE_KEYS
+            if k in g_all
+        }
+    return _GUIDED_DEFAULTS_SLICE
 
 
 def _default_row_for_reason(key: str, message_count: int = 3) -> Dict[str, Any]:
@@ -123,6 +132,47 @@ def _reason_row_from_enriched(key: str, ent: Dict[str, Any]) -> Dict[str, Any]:
         "delay_unit": unit_eff,
         "message_count": mc,
         "messages": msgs_in[:3] if msgs_in else [],
+    }
+
+
+def build_reason_row_for_key(store_row: Optional[Any], key: str) -> Dict[str, Any]:
+    """صف واحد بعد الحفظ — إثراء مفتاح واحد فقط."""
+    if key not in TRIGGER_TEMPLATE_PAGE_KEYS:
+        return _default_row_for_reason("price")
+    if store_row is None:
+        return _default_row_for_reason(key)
+    try:
+        parsed = parse_reason_templates_column(
+            getattr(store_row, "reason_templates_json", None)
+        )
+    except Exception as exc:  # noqa: BLE001
+        _log.warning("trigger_templates parse failed for %s: %s", key, exc)
+        return _default_row_for_reason(key)
+    raw_ent = parsed.get(key) if isinstance(parsed.get(key), dict) else {}
+    try:
+        ent = enrich_reason_entry_for_dashboard(key, dict(raw_ent))
+        return _reason_row_from_enriched(key, ent)
+    except Exception as exc:  # noqa: BLE001
+        _log.warning("trigger_templates enrich failed for %s: %s", key, exc)
+        return _default_row_for_reason(key)
+
+
+def build_trigger_templates_save_ack(
+    *,
+    saved_reason_keys: List[str],
+    store_row: Optional[Any] = None,
+) -> Dict[str, Any]:
+    """استجابة خفيفة لـ POST — دون إعادة بناء الصفوف الستة."""
+    keys = [k for k in saved_reason_keys if k in TRIGGER_TEMPLATE_PAGE_KEYS]
+    patch_rows: List[Dict[str, Any]] = []
+    if store_row is not None:
+        for k in keys:
+            patch_rows.append(build_reason_row_for_key(store_row, k))
+    return {
+        "ok": True,
+        "save_ack": True,
+        "saved_reason_keys": keys,
+        "reason_rows": patch_rows,
     }
 
 

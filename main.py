@@ -13235,93 +13235,128 @@ def api_dashboard_trigger_templates():
 
 @app.post("/api/dashboard/trigger-templates")
 async def api_dashboard_trigger_templates_save(request: Request):
-    """دمج جزئي لـ ‎reason_templates‎ على آخر ‎Store‎ — نفس ‎apply_reason_templates_from_body‎."""
+    """دمج جزئي لـ ‎reason_templates‎ على آخر ‎Store‎ — استجابة خفيفة دون إعادة بناء ٦ صفوف."""
     wall0 = time.perf_counter()
     store_id: Any = None
     store_slug = "(unknown)"
     reason_keys: list[str] = []
-    timing_hint = ""
+    reason_key = ""
+    selected_stage = 0
+    delay_value: Any = None
+    delay_unit = ""
+    payload_bytes = 0
+
+    def _elapsed_ms() -> int:
+        return round((time.perf_counter() - wall0) * 1000)
+
     try:
+        raw_body = await request.body()
+        payload_bytes = len(raw_body or b"")
+        try:
+            import json as _json
+
+            body = _json.loads(raw_body.decode("utf-8") if raw_body else "{}")
+        except Exception:  # noqa: BLE001
+            body = None
+
         dash_store = _dashboard_recovery_store_row()
         if dash_store is None:
             log.warning(
-                "[SAVE TEMPLATE FAIL] duration_ms=%s error=no_store",
-                round((time.perf_counter() - wall0) * 1000),
+                "[TEMPLATE SAVE FAIL] store_slug=%s duration_ms=%s error=no_store",
+                store_slug,
+                _elapsed_ms(),
             )
             return j({"ok": False, "error": "no_store"}, 404)
         store_id = getattr(dash_store, "id", None)
         zs = getattr(dash_store, "zid_store_id", None)
         if isinstance(zs, str) and zs.strip():
             store_slug = zs.strip()[:255]
-        try:
-            body = await request.json()
-        except Exception:  # noqa: BLE001
-            body = None
+
         if not isinstance(body, dict):
             log.warning(
-                "[SAVE TEMPLATE FAIL] store_id=%s store_slug=%s duration_ms=%s error=json_object_required",
-                store_id,
+                "[TEMPLATE SAVE FAIL] store_slug=%s duration_ms=%s error=json_object_required",
                 store_slug,
-                round((time.perf_counter() - wall0) * 1000),
+                _elapsed_ms(),
             )
             return j({"ok": False, "error": "json_object_required"}, 400)
         rt = body.get("reason_templates")
         if not isinstance(rt, dict):
             log.warning(
-                "[SAVE TEMPLATE FAIL] store_id=%s store_slug=%s duration_ms=%s error=reason_templates_object_required",
-                store_id,
+                "[TEMPLATE SAVE FAIL] store_slug=%s duration_ms=%s error=reason_templates_object_required",
                 store_slug,
-                round((time.perf_counter() - wall0) * 1000),
+                _elapsed_ms(),
             )
             return j({"ok": False, "error": "reason_templates_object_required"}, 400)
-        reason_keys = [str(k) for k in rt.keys()][:8]
-        for rk, ent in list(rt.items())[:1]:
-            if isinstance(ent, dict):
-                msgs = ent.get("messages")
-                if isinstance(msgs, list) and msgs and isinstance(msgs[0], dict):
-                    timing_hint = "reason=%s delay=%s unit=%s" % (
-                        rk,
-                        msgs[0].get("delay"),
-                        msgs[0].get("unit"),
-                    )
+
+        reason_keys = [str(k) for k in rt.keys() if str(k).strip()][:8]
+        reason_key = reason_keys[0] if reason_keys else ""
+        ent0 = rt.get(reason_key) if reason_key else None
+        if isinstance(ent0, dict):
+            try:
+                selected_stage = max(
+                    0,
+                    min(2, int(body.get("selected_stage", 0))),
+                )
+            except (TypeError, ValueError):
+                selected_stage = 0
+            msgs = ent0.get("messages")
+            if isinstance(msgs, list) and msgs:
+                slot_ix = min(selected_stage, len(msgs) - 1)
+                slot = msgs[slot_ix] if isinstance(msgs[slot_ix], dict) else {}
+                delay_value = slot.get("delay")
+                delay_unit = str(slot.get("unit") or "")
+            elif ent0.get("delay") is not None:
+                delay_value = ent0.get("delay")
+                delay_unit = str(ent0.get("unit") or "")
+
         log.info(
-            "[SAVE TEMPLATE START] store_id=%s store_slug=%s reason_keys=%s %s",
-            store_id,
+            "[TEMPLATE SAVE START] store_slug=%s reason=%s selected_stage=%s delay_value=%s delay_unit=%s",
             store_slug,
-            ",".join(reason_keys),
-            timing_hint,
+            reason_key,
+            selected_stage,
+            delay_value,
+            delay_unit,
         )
-        patch = {"reason_templates": rt}
-        apply_reason_templates_from_body(dash_store, patch)
-        db.session.commit()
-        from services.widget_config_cache import update_from_dashboard_store_row
-        from services.trigger_templates_dashboard import (
-            build_trigger_templates_get_payload,
+        log.info(
+            "[TEMPLATE SAVE PAYLOAD SIZE] store_slug=%s bytes=%s reason_keys=%s",
+            store_slug,
+            payload_bytes,
+            ",".join(reason_keys),
         )
 
-        fresh = db.session.get(Store, getattr(dash_store, "id", None))
-        if fresh is not None:
-            update_from_dashboard_store_row(fresh)
-        row_out = fresh if fresh is not None else dash_store
-        tpl = build_trigger_templates_get_payload(row_out)
-        elapsed_ms = round((time.perf_counter() - wall0) * 1000)
+        patch = {"reason_templates": rt}
+        log.info("[TEMPLATE SAVE DB START] store_slug=%s", store_slug)
+        apply_reason_templates_from_body(dash_store, patch)
+        db.session.commit()
         log.info(
-            "[SAVE TEMPLATE SUCCESS] store_id=%s store_slug=%s duration_ms=%s reason_keys=%s",
-            store_id,
+            "[TEMPLATE SAVE DB DONE] store_slug=%s duration_ms=%s",
             store_slug,
-            elapsed_ms,
-            ",".join(reason_keys),
+            _elapsed_ms(),
         )
-        return j({"ok": True, **tpl})
+
+        from services.widget_config_cache import patch_reason_templates_in_widget_cache
+        from services.trigger_templates_dashboard import build_trigger_templates_save_ack
+
+        patch_reason_templates_in_widget_cache(dash_store)
+        ack = build_trigger_templates_save_ack(
+            saved_reason_keys=reason_keys,
+            store_row=dash_store,
+        )
+        log.info(
+            "[TEMPLATE SAVE SUCCESS] store_slug=%s reason=%s duration_ms=%s response_rows=%s",
+            store_slug,
+            reason_key,
+            _elapsed_ms(),
+            len(ack.get("reason_rows") or []),
+        )
+        return j(ack)
     except Exception as e:  # noqa: BLE001
         db.session.rollback()
-        elapsed_ms = round((time.perf_counter() - wall0) * 1000)
         log.warning(
-            "[SAVE TEMPLATE FAIL] store_id=%s store_slug=%s duration_ms=%s reason_keys=%s err=%s",
-            store_id,
+            "[TEMPLATE SAVE FAIL] store_slug=%s reason=%s duration_ms=%s err=%s",
             store_slug,
-            elapsed_ms,
-            ",".join(reason_keys),
+            reason_key,
+            _elapsed_ms(),
             e,
         )
         log.warning("api_dashboard_trigger_templates_save: %s", e)
