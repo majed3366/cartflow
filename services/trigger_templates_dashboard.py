@@ -13,6 +13,7 @@ from services.store_reason_templates import (
     normalize_delay_unit,
     parse_reason_templates_column,
 )
+from services.trigger_template_ui_defaults import enrich_reason_entry_for_dashboard
 
 TRIGGER_TEMPLATE_PAGE_KEYS: tuple[str, ...] = (
     "price",
@@ -43,7 +44,7 @@ def build_trigger_templates_get_payload(store_row: Optional[Any]) -> Dict[str, A
     reason_rows: List[Dict[str, Any]] = []
     for key in TRIGGER_TEMPLATE_PAGE_KEYS:
         raw_ent = parsed.get(key) if isinstance(parsed.get(key), dict) else {}
-        ent = dict(raw_ent)
+        ent = enrich_reason_entry_for_dashboard(key, dict(raw_ent))
         enabled = bool(ent.get("enabled", True))
         mc_raw = ent.get("message_count", 1)
         try:
@@ -69,7 +70,7 @@ def build_trigger_templates_get_payload(store_row: Optional[Any]) -> Dict[str, A
 
         text0 = str(first.get("text") or "").strip()
         fallback_msg = str(ent.get("message") or "").strip()
-        message_one = fallback_msg if fallback_msg else text0
+        message_one = text0 if text0 else fallback_msg
 
         reason_rows.append(
             {

@@ -50,7 +50,7 @@
       {
         type: "reassurance",
         label: "طمأنة",
-        text: "نحب نطمّنك 👍 أي استفسار عن السعر أو طريقة الدفع نقدر نوضّحه باختصار.",
+        text: "نعرف إن السعر قرار مهم 👍 إذا عندك استفسار عن السعر أو الدفع نوضحه بسرعة.",
       },
       {
         type: "offer",
@@ -342,22 +342,26 @@
     return "الرسالة " + (index + 1);
   }
 
-  function messageTextForStage(reasonKey, index) {
-    var row = findRow(reasonKey);
-    if (row && Array.isArray(row.messages)) {
-      var slot = row.messages[index];
-      if (slot && typeof slot === "object" && String(slot.text || "").trim()) {
-        return String(slot.text).trim();
-      }
-    }
-    if (row && index === 0 && String(row.message || "").trim()) {
-      return String(row.message).trim();
-    }
+  function presetTextForStage(reasonKey, index) {
     var presets = PRESET_SUGGESTIONS_BY_REASON[reasonKey] || [];
     if (presets[index] && presets[index].text) {
       return String(presets[index].text);
     }
     return "";
+  }
+
+  function messageTextForStage(reasonKey, index) {
+    var row = findRow(reasonKey);
+    var hasMsgs = row && Array.isArray(row.messages) && row.messages.length > 0;
+    if (hasMsgs) {
+      var slot = row.messages[index];
+      if (slot && typeof slot === "object" && String(slot.text || "").trim()) {
+        return String(slot.text).trim();
+      }
+    } else if (row && index === 0 && String(row.message || "").trim()) {
+      return String(row.message).trim();
+    }
+    return presetTextForStage(reasonKey, index);
   }
 
   /** Sync textarea + editor title for the selected stage (all reasons). */
@@ -450,7 +454,12 @@
     if (!(dv > 0)) dv = 1;
     var unitRaw = first.unit != null ? first.unit : ent.delay_unit;
     var u = normalizeApiDelayUnit(unitRaw) === "hour" ? "hour" : "minute";
-    var msgText = String(ent.message || first.text || "").trim();
+    var msgText = "";
+    if (msgs.length && msgs[0] && String(msgs[0].text || "").trim()) {
+      msgText = String(msgs[0].text).trim();
+    } else if (String(ent.message || "").trim()) {
+      msgText = String(ent.message).trim();
+    }
     var mc = parseInt(ent.message_count, 10);
     if (!(mc >= 1)) mc = 1;
     mc = Math.max(1, Math.min(3, mc));
@@ -857,7 +866,8 @@
       }
       var baseDly = i === 0 ? dv : 120;
       var baseUnit = i === 0 ? unit : "minute";
-      return { delay: baseDly, unit: baseUnit, text: i === 0 ? text : text };
+      var fillText = i === editIx ? text : presetTextForStage(key, i);
+      return { delay: baseDly, unit: baseUnit, text: fillText };
     }
 
     var out = [];
@@ -901,9 +911,13 @@
     var body = {
       reason_templates: {},
     };
+    var stage1Text =
+      messages[0] && messages[0].text
+        ? String(messages[0].text).trim()
+        : text;
     body.reason_templates[key] = {
       enabled: !!(ena && ena.checked),
-      message: text,
+      message: stage1Text,
       message_count: mc,
       messages: messages,
     };
