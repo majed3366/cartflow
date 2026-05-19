@@ -60,14 +60,14 @@ class TriggerTemplateUiDefaultsTests(unittest.TestCase):
             "60 دقيقة",
         )
 
-    def test_legacy_four_minutes_upgrades_when_text_is_defaultish(self) -> None:
+    def test_legacy_two_minutes_upgrades_when_text_is_defaultish(self) -> None:
         offer = DASHBOARD_STAGE_TEXTS["price"][1]
         ent = {
             "enabled": True,
             "message": offer,
             "message_count": 2,
             "messages": [
-                {"delay": 4, "unit": "minute", "text": offer},
+                {"delay": 2, "unit": "minute", "text": offer},
                 {"delay": 5, "unit": "hour", "text": offer},
             ],
         }
@@ -76,6 +76,38 @@ class TriggerTemplateUiDefaultsTests(unittest.TestCase):
         self.assertEqual(out["messages"][0]["unit"], "minute")
         self.assertEqual(out["messages"][1]["delay"], 5.0)
         self.assertEqual(out["messages"][1]["unit"], "hour")
+
+    def test_enrich_preserves_merchant_five_minute_stage1_default_text(self) -> None:
+        stage1 = DASHBOARD_STAGE_TEXTS["price"][0]
+        ent = {
+            "enabled": True,
+            "message": stage1,
+            "message_count": 1,
+            "messages": [{"delay": 5, "unit": "minute", "text": stage1}],
+        }
+        out = enrich_reason_entry_for_dashboard("price", ent)
+        self.assertEqual(out["messages"][0]["delay"], 5.0)
+        self.assertEqual(out["messages"][0]["unit"], "minute")
+
+    def test_get_payload_preserves_five_minute_after_reload_shape(self) -> None:
+        stage1 = DASHBOARD_STAGE_TEXTS["price"][0]
+        stored = {
+            "price": {
+                "enabled": True,
+                "message": stage1,
+                "message_count": 1,
+                "messages": [{"delay": 5, "unit": "minute", "text": stage1}],
+            }
+        }
+
+        class _Mini:
+            reason_templates_json = json.dumps(stored)
+
+        rows = build_trigger_templates_get_payload(_Mini())["reason_rows"]
+        price = next(r for r in rows if r["key"] == "price")
+        self.assertEqual(price["delay_value"], 5.0)
+        self.assertEqual(price["delay_unit"], "minute")
+        self.assertEqual(price["messages"][0]["delay"], 5.0)
 
     def test_legacy_four_minutes_kept_when_text_is_custom(self) -> None:
         custom = "نص مخصص للتاجر — ليس افتراضياً"

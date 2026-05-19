@@ -203,7 +203,7 @@
     var d = parseFloat(delay);
     if (!(d > 0)) return false;
     if (u === "minute") {
-      if (index === 0 && d >= 1 && d <= 5) return true;
+      if (index === 0 && (d === 1 || d === 2)) return true;
       if (index > 0 && (d === 1 || d === 2 || d === 120)) return true;
     }
     if (u === "hour" && index === 0 && d === 1) return true;
@@ -674,7 +674,8 @@
     return { delay: dv, unit: uiUnit };
   }
 
-  function buildRowFromTemplateEntry(key, ent) {
+  function buildRowFromTemplateEntry(key, ent, options) {
+    options = options && typeof options === "object" ? options : {};
     ent = ent && typeof ent === "object" ? ent : {};
     var msgs = Array.isArray(ent.messages) ? ent.messages.slice(0, 3) : [];
     var first = msgs[0] && typeof msgs[0] === "object" ? msgs[0] : {};
@@ -702,7 +703,10 @@
       message_count: mc,
       messages: msgs,
     };
-    return safeApplyRecommendedDelaysToRow(key, built);
+    if (options.applyRecommended) {
+      return safeApplyRecommendedDelaysToRow(key, built);
+    }
+    return built;
   }
 
   function safeApplyRecommendedDelaysToRow(reasonKey, row) {
@@ -719,7 +723,7 @@
 
   function buildClientFallbackPayload() {
     var rows = TRIGGER_KEYS_ORDER.map(function (k) {
-      return buildRowFromTemplateEntry(k, {});
+      return buildRowFromTemplateEntry(k, {}, { applyRecommended: true });
     });
     return {
       ok: true,
@@ -746,7 +750,17 @@
     for (i = 0; i < TRIGGER_KEYS_ORDER.length; i++) {
       var k0 = TRIGGER_KEYS_ORDER[i];
       try {
-        out.push(buildRowFromTemplateEntry(k0, byKey[k0] || {}));
+        var ent0 = byKey[k0] || {};
+        var hasStored =
+          ent0 &&
+          ((Array.isArray(ent0.messages) && ent0.messages.length > 0) ||
+            ent0.delay_value != null ||
+            ent0.delay_unit != null);
+        out.push(
+          buildRowFromTemplateEntry(k0, ent0, {
+            applyRecommended: !hasStored,
+          })
+        );
       } catch (rowBuildErr) {
         trigLog("[TRIGGER ROW BUILD ERROR]", {
           reason: k0,
@@ -754,7 +768,9 @@
             rowBuildErr && rowBuildErr.message ? rowBuildErr.message : rowBuildErr
           ),
         });
-        out.push(buildRowFromTemplateEntry(k0, {}));
+        out.push(
+          buildRowFromTemplateEntry(k0, {}, { applyRecommended: true })
+        );
       }
     }
     return out;
@@ -1158,8 +1174,55 @@
     return out;
   }
 
+  /** بعد الحفظ: تحديث الذاكرة دون إعادة رسم الشبكة (يحافظ على التمرير والمرحلة). */
+  function absorbSaveResponseWithoutRerender(pack, savedKey, savedCard) {
+    if (!pack || !pack.payload) return;
+    var scrollY =
+      typeof window.scrollY === "number"
+        ? window.scrollY
+        : window.pageYOffset || 0;
+    var norm = normalizeTriggerTemplatesPayload(
+      pack.payload,
+      typeof pack.httpStatus === "number" ? pack.httpStatus : 200
+    );
+    lastPayload = norm;
+    window.__trigger_templates_loaded = {
+      json: pack.payload,
+      httpStatus:
+        typeof pack.httpStatus === "number" ? pack.httpStatus : 200,
+    };
+    if (savedCard && savedKey) {
+      var ix = parseInt(
+        savedCard.getAttribute("data-ma-tpl-active-stage") || "0",
+        10
+      );
+      if (!(ix >= 0)) ix = 0;
+      var disp = displayDelayForStage(savedKey, ix);
+      var dvi = savedCard.querySelector("[data-ma-tpl-delay]");
+      var dsi = savedCard.querySelector("[data-ma-tpl-unit]");
+      if (dvi) dvi.value = String(disp.value);
+      if (dsi) {
+        dsi.value =
+          disp.unit === "day"
+            ? "day"
+            : disp.unit === "hour"
+              ? "hour"
+              : "minute";
+      }
+      var ta = savedCard.querySelector("[data-ma-tpl-msg]");
+      var row = findRow(savedKey);
+      if (ta && row && row.messages && row.messages[ix]) {
+        ta.value = String(row.messages[ix].text || row.message || "");
+      }
+    }
+    window.requestAnimationFrame(function () {
+      window.scrollTo(0, scrollY);
+    });
+  }
+
   function saveOne(key, card) {
     if (!key || !card) return;
+    patchActiveStageInLastPayload(card, key);
     var st = card.querySelector("[data-ma-tpl-status]");
     var ena = card.querySelector("[data-ma-tpl-enabled]");
     var ta = card.querySelector("[data-ma-tpl-msg]");
@@ -1209,23 +1272,10 @@
       })
       .then(function (pack) {
         if (pack.ok && pack.payload) {
-          window.__trigger_templates_loaded = {
-            json: pack.payload,
-            httpStatus:
-              typeof pack.httpStatus === "number" ? pack.httpStatus : 200,
-          };
-          renderWhenRootReady(
-            pack.payload,
-            typeof pack.httpStatus === "number" ? pack.httpStatus : 200,
-            0,
-            function () {}
-          );
-          var newCard = document.querySelector('[data-ma-tpl-key="' + key + '"]');
-          var st2 =
-            newCard && newCard.querySelector("[data-ma-tpl-status]");
-          if (st2) st2.textContent = "تم الحفظ";
+          absorbSaveResponseWithoutRerender(pack, key, card);
+          if (st) st.textContent = "تم الحفظ";
           window.setTimeout(function () {
-            if (st2 && st2.textContent === "تم الحفظ") st2.textContent = "";
+            if (st && st.textContent === "تم الحفظ") st.textContent = "";
           }, 3500);
         } else if (st) {
           st.textContent = "تعذر الحفظ";

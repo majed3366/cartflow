@@ -143,14 +143,14 @@ def _persist_delay_for_api(value: float, unit: str) -> Tuple[float, str]:
 
 
 def _is_generic_legacy_delay(index: int, delay: float, unit: str) -> bool:
-    """تأخيرات قديمة/افتراضية من النظام (1–5 دقائق للمرحلة 1، 120 د للمراحل اللاحقة)."""
+    """تأخيرات بذور قديمة فقط (1–2 د للمرحلة 1) — لا تُعامل 3–5 د كغير مُعدّة."""
     u = (unit or "minute").strip().lower()
     try:
         d = float(delay)
     except (TypeError, ValueError):
         return False
     if u == "minute":
-        if index == 0 and 1.0 <= d <= 5.0:
+        if index == 0 and d in (1.0, 2.0):
             return True
         if index > 0 and d in (1.0, 2.0, 120.0):
             return True

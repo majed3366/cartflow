@@ -116,3 +116,28 @@ class TriggerTemplatesDashboardServiceTests(unittest.TestCase):
         none_p = build_trigger_templates_get_payload(None)
         self.assertEqual(len(none_p["reason_rows"]), 6)
 
+    def test_enrich_roundtrip_keeps_custom_five_minute_price_stage1(self) -> None:
+        from services.trigger_template_ui_defaults import DASHBOARD_STAGE_TEXTS
+        from services.trigger_templates_dashboard import build_trigger_templates_get_payload
+
+        stage1 = DASHBOARD_STAGE_TEXTS["price"][0]
+        stored = {
+            "price": {
+                "enabled": True,
+                "message": stage1,
+                "message_count": 1,
+                "messages": [{"delay": 5, "unit": "minute", "text": stage1}],
+            }
+        }
+
+        class _Mini:
+            reason_templates_json = __import__("json").dumps(stored)
+
+        price = next(
+            r
+            for r in build_trigger_templates_get_payload(_Mini())["reason_rows"]
+            if r["key"] == "price"
+        )
+        self.assertEqual(price["delay_value"], 5.0)
+        self.assertEqual(price["messages"][0]["delay"], 5.0)
+
