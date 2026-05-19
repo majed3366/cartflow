@@ -18,6 +18,9 @@
   if (typeof window.__trigger_templates_loaded === "undefined") {
     window.__trigger_templates_loaded = null;
   }
+  if (typeof window.__trigger_templates_load_gen === "undefined") {
+    window.__trigger_templates_load_gen = 0;
+  }
 
   /** ترتيب ثابت يطابق الخادم عند الحاجة لبطاقات احتياطية. */
   var TRIGGER_KEYS_ORDER = [
@@ -838,6 +841,44 @@
     } catch (unusedUnused) {}
   }
 
+  function tplStoreSlugForDebug() {
+    try {
+      if (
+        typeof window.CARTFLOW_STORE_SLUG === "string" &&
+        window.CARTFLOW_STORE_SLUG.trim()
+      ) {
+        return window.CARTFLOW_STORE_SLUG.trim();
+      }
+      var el = document.querySelector("[data-ma-store-slug]");
+      if (el) {
+        var a = el.getAttribute("data-ma-store-slug");
+        if (a && String(a).trim()) return String(a).trim();
+      }
+    } catch (_slugErr) {
+      /* ignore */
+    }
+    return "(dashboard_latest_store)";
+  }
+
+  /** سجلات تحقيق مؤقتة — وحدة التحكم في المتصفح + trigLog. */
+  function tplDbg(tag, meta) {
+    var out = { store_slug: tplStoreSlugForDebug() };
+    if (meta && typeof meta === "object") {
+      var mk;
+      for (mk in meta) {
+        if (Object.prototype.hasOwnProperty.call(meta, mk)) {
+          out[mk] = meta[mk];
+        }
+      }
+    }
+    try {
+      console.log(tag, out);
+    } catch (_logErr) {
+      /* ignore */
+    }
+    trigLog(tag, out);
+  }
+
   function snapshotCacheOk(snap) {
     if (
       !snap ||
@@ -1220,6 +1261,30 @@
     });
   }
 
+  function parseSaveResponse(resp) {
+    return resp.text().then(function (text) {
+      var j = null;
+      var parseErr = null;
+      try {
+        j = text ? JSON.parse(text) : null;
+      } catch (pe) {
+        parseErr = String(pe && pe.message ? pe.message : pe);
+      }
+      var ok =
+        resp.ok &&
+        j &&
+        typeof j === "object" &&
+        j.ok === true;
+      return {
+        ok: ok,
+        payload: j,
+        httpStatus: resp.status,
+        parseErr: parseErr,
+        raw_bytes: text ? text.length : 0,
+      };
+    });
+  }
+
   function saveOne(key, card) {
     if (!key || !card) return;
     patchActiveStageInLastPayload(card, key);
@@ -1257,6 +1322,28 @@
       messages: messages,
     };
 
+    var saveGen = (window.__trigger_templates_load_gen || 0) + 1;
+    window.__trigger_templates_load_gen = saveGen;
+
+    var perfNow =
+      typeof performance !== "undefined" && performance.now
+        ? function () {
+            return performance.now();
+          }
+        : function () {
+            return Date.now();
+          };
+    var tSave0 = perfNow();
+
+    tplDbg("[SAVE TEMPLATE START]", {
+      reason: key,
+      stage: activeIx,
+      delay: dv,
+      unit: unit,
+      load_gen: saveGen,
+      endpoint: FETCH_URL_POST,
+    });
+
     if (st) st.textContent = "جاري الحفظ…";
 
     fetch(FETCH_URL_POST, {
@@ -1266,22 +1353,87 @@
       body: JSON.stringify(body),
     })
       .then(function (r) {
-        return r.json().then(function (j) {
-          return { ok: r.ok && j.ok, payload: j, httpStatus: r.status };
+        return parseSaveResponse(r).then(function (pack) {
+          pack.duration_ms = Math.round(perfNow() - tSave0);
+          return pack;
         });
       })
       .then(function (pack) {
         if (pack.ok && pack.payload) {
-          absorbSaveResponseWithoutRerender(pack, key, card);
+          try {
+            absorbSaveResponseWithoutRerender(pack, key, card);
+          } catch (absorbErr) {
+            tplDbg("[SAVE TEMPLATE FAIL]", {
+              reason: key,
+              stage: activeIx,
+              delay: dv,
+              unit: unit,
+              duration_ms: pack.duration_ms,
+              http_status: pack.httpStatus,
+              failure_class: "absorb_response",
+              err: String(
+                absorbErr && absorbErr.message ? absorbErr.message : absorbErr
+              ),
+            });
+            if (st) st.textContent = "تعذر الحفظ";
+            return;
+          }
+          var rowAfter = findRow(key);
+          var savedDelay =
+            rowAfter &&
+            rowAfter.messages &&
+            rowAfter.messages[activeIx] &&
+            rowAfter.messages[activeIx].delay;
+          tplDbg("[SAVE TEMPLATE SUCCESS]", {
+            reason: key,
+            stage: activeIx,
+            delay: dv,
+            unit: unit,
+            duration_ms: pack.duration_ms,
+            http_status: pack.httpStatus,
+            persisted_delay: savedDelay,
+            load_gen: saveGen,
+          });
           if (st) st.textContent = "تم الحفظ";
           window.setTimeout(function () {
             if (st && st.textContent === "تم الحفظ") st.textContent = "";
           }, 3500);
-        } else if (st) {
-          st.textContent = "تعذر الحفظ";
+          return;
         }
+        tplDbg("[SAVE TEMPLATE FAIL]", {
+          reason: key,
+          stage: activeIx,
+          delay: dv,
+          unit: unit,
+          duration_ms: pack.duration_ms,
+          http_status: pack.httpStatus,
+          api_error:
+            pack.payload && pack.payload.error
+              ? pack.payload.error
+              : "(none)",
+          parse_error: pack.parseErr || "(none)",
+          raw_bytes: pack.raw_bytes,
+          failure_class:
+            pack.parseErr
+              ? "json_parse"
+              : pack.httpStatus >= 500
+                ? "server_5xx"
+                : pack.httpStatus === 404
+                  ? "no_store"
+                  : "api_ok_false",
+        });
+        if (st) st.textContent = "تعذر الحفظ";
       })
-      .catch(function () {
+      .catch(function (netErr) {
+        tplDbg("[SAVE TEMPLATE FAIL]", {
+          reason: key,
+          stage: activeIx,
+          delay: dv,
+          unit: unit,
+          duration_ms: Math.round(perfNow() - tSave0),
+          failure_class: "network_or_timeout",
+          err: String(netErr && netErr.message ? netErr.message : netErr),
+        });
         if (st) st.textContent = "تعذر الحفظ";
       });
   }
@@ -1316,6 +1468,12 @@
 
     var cached = window.__trigger_templates_loaded;
     if (!forceRefresh && snapshotCacheOk(cached)) {
+      tplDbg("[TEMPLATE RELOAD START]", {
+        duration_ms: 0,
+        source: "memory_cache",
+        status: cached.httpStatus,
+        payload_keys: payloadKeys(cached.json),
+      });
       trigLog("[TRIGGER LOAD START]", {
         duration_ms: 0,
         source: "memory_cache",
@@ -1329,6 +1487,12 @@
       }
       renderWhenRootReady(cached.json, cached.httpStatus, 0, function (okDom) {
         if (okDom) {
+          tplDbg("[TEMPLATE RELOAD SUCCESS]", {
+            duration_ms: wallMs(),
+            status: cached.httpStatus,
+            payload_keys: payloadKeys(cached.json),
+            source: "memory_cache",
+          });
           trigLog("[TRIGGER LOAD SUCCESS]", {
             duration_ms: wallMs(),
             status: cached.httpStatus,
@@ -1336,6 +1500,13 @@
             source: "memory_cache",
           });
         } else {
+          tplDbg("[TEMPLATE RELOAD FAIL]", {
+            duration_ms: wallMs(),
+            status: cached.httpStatus,
+            payload_keys: payloadKeys(cached.json),
+            source: "memory_cache_dom",
+            failure_class: "dom_render",
+          });
           trigLog("[TRIGGER LOAD ERROR]", {
             duration_ms: wallMs(),
             status: cached.httpStatus,
@@ -1347,12 +1518,24 @@
       return;
     }
 
+    var loadGen = (window.__trigger_templates_load_gen || 0) + 1;
+    window.__trigger_templates_load_gen = loadGen;
+
     window.__trigger_templates_loading = true;
+    tplDbg("[TEMPLATE RELOAD START]", {
+      duration_ms: 0,
+      source: "network_fetch",
+      status: "(pending)",
+      payload_keys: "(request)",
+      load_gen: loadGen,
+      endpoint: FETCH_URL_GET,
+    });
     trigLog("[TRIGGER LOAD START]", {
       duration_ms: 0,
       source: "network_fetch",
       status: "(pending)",
       payload_keys: "(request)",
+      load_gen: loadGen,
     });
 
     var shell = byId("ma-tpl-root");
@@ -1383,6 +1566,19 @@
           );
         })
         .then(function (pack) {
+          if (loadGen !== window.__trigger_templates_load_gen) {
+            tplDbg("[TEMPLATE RELOAD FAIL]", {
+              duration_ms: wallMs(),
+              status:
+                typeof pack.status === "number" ? pack.status : "(unknown)",
+              load_gen: loadGen,
+              current_gen: window.__trigger_templates_load_gen,
+              failure_class: "stale_response_after_save",
+              fetch_ms: Math.round(perfNow() - t0),
+            });
+            window.__trigger_templates_loading = false;
+            return;
+          }
           var fetchMs = Math.round(perfNow() - t0);
           var httpOk =
             typeof pack.status === "number" &&
@@ -1434,6 +1630,20 @@
           }
 
           if (!httpOk || !gotJson || !dataUsable) {
+            tplDbg("[TEMPLATE RELOAD FAIL]", {
+              duration_ms: wallMs(),
+              status:
+                typeof pack.status === "number" ? pack.status : "(unknown)",
+              payload_keys: payloadKeys(pack.json || {}),
+              phase: isRetry ? "after_retry" : "immediate",
+              fetch_ms: fetchMs,
+              load_gen: loadGen,
+              failure_class: !httpOk
+                ? "http_error"
+                : !gotJson
+                  ? "json_parse"
+                  : "payload_unusable",
+            });
             trigLog("[TRIGGER LOAD ERROR]", {
               duration_ms: wallMs(),
               status:
@@ -1469,16 +1679,24 @@
               status: pack.status,
               payload_keys: payloadKeys(pack.json),
               fetch_ms: fetchMs,
+              load_gen: loadGen,
             };
             if (okDom) {
+              tplDbg("[TEMPLATE RELOAD SUCCESS]", meta);
               trigLog("[TRIGGER LOAD SUCCESS]", meta);
             } else {
               meta.phase = "dom_timeout_or_render";
+              meta.failure_class = "dom_render";
+              tplDbg("[TEMPLATE RELOAD FAIL]", meta);
               trigLog("[TRIGGER LOAD ERROR]", meta);
             }
           });
         })
         .catch(function (netErr) {
+          if (loadGen !== window.__trigger_templates_load_gen) {
+            window.__trigger_templates_loading = false;
+            return;
+          }
           var fetchMsCatch = Math.round(perfNow() - t0);
           if (!isRetry && !sawRetry) {
             sawRetry = true;
@@ -1494,6 +1712,16 @@
             }, 500);
             return;
           }
+          tplDbg("[TEMPLATE RELOAD FAIL]", {
+            duration_ms: wallMs(),
+            status: "(network)",
+            payload_keys: "(none)",
+            phase: "fetch_catch_final",
+            fetch_ms: fetchMsCatch,
+            load_gen: loadGen,
+            failure_class: "network_or_timeout",
+            err: String(netErr && netErr.message ? netErr.message : netErr),
+          });
           trigLog("[TRIGGER LOAD ERROR]", {
             duration_ms: wallMs(),
             status: "(network)",

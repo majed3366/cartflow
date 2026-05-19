@@ -114,6 +114,25 @@ class MerchantStandaloneAppDashboardTests(unittest.TestCase):
         self.assertIn("restoreRecommendedTimingForActiveStage", js)
         self.assertIn("استعادة المقترح", js)
 
+    def test_trigger_templates_js_has_save_debug_logs(self) -> None:
+        from pathlib import Path
+
+        js = (
+            Path(__file__).resolve().parents[1]
+            / "static"
+            / "merchant_trigger_templates.js"
+        ).read_text(encoding="utf-8")
+        for tag in (
+            "[SAVE TEMPLATE START]",
+            "[SAVE TEMPLATE SUCCESS]",
+            "[SAVE TEMPLATE FAIL]",
+            "[TEMPLATE RELOAD START]",
+            "[TEMPLATE RELOAD SUCCESS]",
+            "[TEMPLATE RELOAD FAIL]",
+        ):
+            self.assertIn(tag, js, msg=tag)
+        self.assertIn("stale_response_after_save", js)
+
     def test_dashboard_merchant_html_has_no_ops_session_field(self) -> None:
         r = self.client.get("/dashboard")
         self.assertEqual(r.status_code, 200)
