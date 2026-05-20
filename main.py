@@ -370,6 +370,60 @@ def _resolve_single_message_schedule_timing(
 
     log_recovery_delay_resolved(timing, recovery_key=recovery_key, path=path)
     return timing
+
+
+def _persist_durable_recovery_schedule(
+    *,
+    recovery_key: str,
+    store_slug: str,
+    session_id: str,
+    cart_id: Optional[str],
+    reason_tag: Optional[str],
+    abandon_event_phone: Optional[str],
+    delay_seconds_scheduled: float,
+    schedule_timing: Optional[Dict[str, Any]],
+    recovery_context: Optional[Dict[str, Any]],
+    multi_slot_index: Optional[int] = None,
+    sequential_attempt_index: Optional[int] = None,
+    multi_message_text: Optional[str] = None,
+) -> None:
+    from services.recovery_restart_survival import persist_recovery_schedule_durable
+
+    persist_recovery_schedule_durable(
+        recovery_key=recovery_key,
+        store_slug=store_slug,
+        session_id=session_id,
+        cart_id=cart_id,
+        reason_tag=reason_tag,
+        abandon_event_phone=abandon_event_phone,
+        delay_seconds_scheduled=delay_seconds_scheduled,
+        schedule_timing=schedule_timing,
+        recovery_context=recovery_context,
+        multi_slot_index=multi_slot_index,
+        sequential_attempt_index=sequential_attempt_index,
+        multi_message_text=multi_message_text,
+    )
+
+
+def _finalize_durable_recovery_schedule(
+    recovery_key: str,
+    *,
+    status: str,
+    multi_slot_index: Optional[int] = None,
+    sequential_attempt_index: Optional[int] = None,
+    detail: Optional[str] = None,
+) -> None:
+    from services.recovery_restart_survival import finalize_recovery_schedule_durable
+
+    finalize_recovery_schedule_durable(
+        recovery_key,
+        status=status,
+        multi_slot_index=multi_slot_index,
+        sequential_attempt_index=sequential_attempt_index,
+        detail=detail,
+    )
+
+
 from services.cartflow_widget_recovery_gate import (
     apply_cartflow_widget_recovery_gate_from_body,
     cartflow_widget_recovery_gate_fields_for_api,
@@ -667,6 +721,17 @@ async def _startup_whatsapp_queue() -> None:
             exc,
             exc_info=True,
         )
+    try:
+        from services.recovery_restart_survival import run_recovery_resume_scan_async
+
+        resume_out = await run_recovery_resume_scan_async(max_dispatch=25)
+        if resume_out.get("dispatched"):
+            log.info(
+                "[RECOVERY RESUME SCAN] startup dispatched=%s",
+                resume_out.get("dispatched"),
+            )
+    except Exception as exc:  # noqa: BLE001
+        log.warning("startup recovery resume scan skipped: %s", exc)
     await start_whatsapp_queue_worker()
 
 
@@ -688,6 +753,7 @@ _DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT = frozenset(
         "/dev/vip-flow-verify",
         "/dev/create-vip-test-cart",
         "/dev/widget-runtime-config-verify",
+        "/dev/recovery-restart-survival-verify",
     }
 )
 
@@ -1510,6 +1576,32 @@ def dev_normal_recovery_debug(session_id: str = Query(...)) -> Any:
     if not _is_development_mode():
         return Response(status_code=404)
     return j(_normal_recovery_debug_for_session(session_id))
+
+
+@app.get("/dev/recovery-restart-survival-verify")
+def dev_recovery_restart_survival_verify(
+    action: str = Query("inspect"),
+    recovery_key: Optional[str] = Query(None),
+    dry_run: bool = Query(True),
+) -> Any:
+    """
+    Reliability Program v1 — inspect durable schedules and simulate post-restart resume scan.
+    Allowed in production (read-only inspect / dry_run scan by default).
+    """
+    from services.recovery_restart_survival import dev_verify_recovery_restart_survival
+
+    try:
+        _ensure_cartflow_api_db_warmed()
+        return j(
+            dev_verify_recovery_restart_survival(
+                action=action,
+                recovery_key=recovery_key,
+                dry_run=dry_run,
+            )
+        )
+    except Exception as exc:  # noqa: BLE001
+        db.session.rollback()
+        return j({"ok": False, "error": str(exc)}, 500)
 
 
 @app.get("/dev/recovery-delay-verify")
@@ -6787,6 +6879,13 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
             status="skipped_delay_gate",
             step=step_num,
         )
+        _finalize_durable_recovery_schedule(
+            recovery_key,
+            status="skipped_resume_unsafe",  # recovery_schedules.status
+            multi_slot_index=multi_slot_index,
+            sequential_attempt_index=sequential_attempt_index,
+            detail=nr_skip_reason,
+        )
         _consume_seq_slot_if_needed()
         return
 
@@ -7415,6 +7514,25 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
             reason_tag=reason_tag,
             abandon_event_phone=follow_phone,
         )
+        seq_timing = {
+            "effective_delay_seconds": gap_sec,
+            "source": "second_attempt_delay",
+            "reason_tag": reason_tag or "",
+            "stage": next_idx,
+        }
+        seq_ctx["schedule_timing"] = seq_timing
+        _persist_durable_recovery_schedule(
+            recovery_key=recovery_key,
+            store_slug=store_slug,
+            session_id=session_id,
+            cart_id=cart_id,
+            reason_tag=reason_tag,
+            abandon_event_phone=follow_phone,
+            delay_seconds_scheduled=float(gap_sec),
+            schedule_timing=seq_timing,
+            recovery_context=seq_ctx,
+            sequential_attempt_index=next_idx,
+        )
         asyncio.create_task(
             _run_recovery_sequence_after_cart_abandoned(
                 recovery_key,
@@ -7430,6 +7548,12 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
         )
     with _recovery_session_lock:
         _session_recovery_sent[recovery_key] = True
+    _finalize_durable_recovery_schedule(
+        recovery_key,
+        status="completed",
+        multi_slot_index=multi_slot_index,
+        sequential_attempt_index=sequential_attempt_index,
+    )
     print("recovery marked as sent")
 
 
@@ -7548,6 +7672,19 @@ def _schedule_recovery_multi_slots(
             pass
         slot_ctx = attach_schedule_timing_to_context(
             recovery_context, slot_timing
+        )
+        _persist_durable_recovery_schedule(
+            recovery_key=recovery_key,
+            store_slug=store_slug,
+            session_id=session_id,
+            cart_id=cart_id,
+            reason_tag=str(s.get("canon") or ""),
+            abandon_event_phone=abandon_event_phone,
+            delay_seconds_scheduled=float(remain),
+            schedule_timing=slot_timing,
+            recovery_context=slot_ctx,
+            multi_slot_index=int(s["index"]),
+            multi_message_text=str(s.get("text") or ""),
         )
         asyncio.create_task(
             _run_recovery_sequence_after_cart_abandoned(
@@ -7705,6 +7842,17 @@ async def _run_recovery_dispatch_cart_abandoned_impl(
         timing,
         recovery_key=recovery_key,
         scheduled_delay_seconds=float(remain),
+    )
+    _persist_durable_recovery_schedule(
+        recovery_key=recovery_key,
+        store_slug=store_slug,
+        session_id=session_id,
+        cart_id=cart_id,
+        reason_tag=reason_tag,
+        abandon_event_phone=abandon_event_phone,
+        delay_seconds_scheduled=float(remain),
+        schedule_timing=timing,
+        recovery_context=rc_arm3,
     )
     asyncio.create_task(
         _run_recovery_sequence_after_cart_abandoned(

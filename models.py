@@ -241,6 +241,42 @@ class CartRecoveryReason(Base):
     rejection_timestamp = Column(DateTime, nullable=True)
 
 
+class RecoverySchedule(Base):
+    """
+    جدولة استرجاع دائمة — تنجو من إعادة تشغيل الخادم (Reliability Program v1).
+    مفتاح المحاولة: ‎recovery_key + step + multi_slot_index‎.
+    """
+
+    __tablename__ = "recovery_schedules"
+
+    id = Column(Integer, primary_key=True)
+    recovery_key = Column(String(512), nullable=False, index=True)
+    store_slug = Column(String(255), nullable=False, index=True)
+    session_id = Column(String(512), nullable=False, index=True)
+    cart_id = Column(String(255), nullable=True, index=True)
+    reason_tag = Column(String(128), nullable=True)
+    customer_phone = Column(String(100), nullable=True)
+    scheduled_at = Column(DateTime, nullable=False)
+    due_at = Column(DateTime, nullable=False, index=True)
+    effective_delay_seconds = Column(Float, nullable=False)
+    delay_source = Column(String(128), nullable=False, default="unknown")
+    status = Column(String(64), nullable=False, default="scheduled", index=True)
+    step = Column(Integer, nullable=False, default=1)
+    multi_slot_index = Column(Integer, nullable=False, default=-1)
+    sequential_attempt_index = Column(Integer, nullable=True)
+    context_json = Column(Text, nullable=True)
+    last_error = Column(String(512), nullable=True)
+    created_at = Column(
+        DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
+    )
+    updated_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+
+
 class CartRecoveryLog(Base):
     """تسجيل محاولات الاسترجاع (وهمي/تخطٍ) دون الاعتماد على واتساب حقيقي."""
     __tablename__ = "cart_recovery_logs"

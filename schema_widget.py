@@ -862,6 +862,15 @@ def _ensure_store_widget_trigger_settings_column(db: Any) -> None:
         log.debug("schema_widget widget_trigger_settings: %s", e)
 
 
+def _ensure_recovery_schedules_table(db: Any) -> None:
+    """جدول ‎recovery_schedules‎ — جدولة استرجاع دائمة (Reliability Program v1)."""
+    try:
+        db.create_all()
+    except (OSError, SQLAlchemyError) as e:
+        db.session.rollback()
+        log.debug("schema_widget recovery_schedules: %s", e)
+
+
 def ensure_store_widget_schema(db: Any) -> None:
     """يُنادى من مسارات ‎API‎ (لا يعتمد على ‎main‎)."""
     global _store_widget_schema_full_once
@@ -902,6 +911,7 @@ def ensure_store_widget_schema(db: Any) -> None:
         )
 
         ensure_store_merchant_general_settings_schema()
+        _ensure_recovery_schedules_table(db)
         _ensure_abandoned_cart_vip_mode_column(db)
         _ensure_abandoned_cart_vip_lifecycle_status_column(db)
         _ensure_abandoned_cart_recovery_session_id_column(db)
