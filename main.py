@@ -359,13 +359,17 @@ def _resolve_single_message_schedule_timing(
         return timing
 
     store_row_fresh = _fresh_store_row_for_recovery_templates(store_slug) or store_row_hint
-    return resolve_recovery_schedule_timing(
+    timing = resolve_recovery_schedule_timing(
         reason_tag,
         store_row_fresh,
         stage_index=0,
         recovery_key=recovery_key,
         path=path,
     )
+    from services.recovery_delay_unified import log_recovery_delay_resolved
+
+    log_recovery_delay_resolved(timing, recovery_key=recovery_key, path=path)
+    return timing
 from services.cartflow_widget_recovery_gate import (
     apply_cartflow_widget_recovery_gate_from_body,
     cartflow_widget_recovery_gate_fields_for_api,
@@ -2848,6 +2852,7 @@ def _second_recovery_diagnose_should_send(
     store: Any,
     sent_count: int,
     configured_message_count: Optional[int] = None,
+    effective_delay_seconds: Optional[float] = None,
 ) -> Tuple[bool, str]:
     """Mirror of should_send_whatsapp (read-only) — returns (allowed, reason_tag)."""
     if user_returned_to_site:
@@ -2873,10 +2878,15 @@ def _second_recovery_diagnose_should_send(
         return False, "max_attempts_reached"
     if last_activity_time is None:
         return True, "allowed"
-    recovery_delay_minutes = _recovery_delay_minutes_from_store(store)
     t = _naive_utc(now)
     last_activity = _naive_utc(last_activity_time)
-    delay_passed = t >= last_activity + timedelta(minutes=recovery_delay_minutes)
+    if effective_delay_seconds is not None:
+        delay_passed = t >= last_activity + timedelta(
+            seconds=max(0.0, float(effective_delay_seconds))
+        )
+    else:
+        recovery_delay_minutes = _recovery_delay_minutes_from_store(store)
+        delay_passed = t >= last_activity + timedelta(minutes=recovery_delay_minutes)
     if not delay_passed:
         return False, "delay_not_elapsed"
     return True, "allowed"
@@ -6167,10 +6177,36 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
         return
 
     scheduled_recovery_delay_minutes = delay_seconds / 60.0
-    sched_timing = (
-        recovery_context.get("schedule_timing")
-        if recovery_context and isinstance(recovery_context.get("schedule_timing"), dict)
-        else None
+    from services.recovery_delay_unified import (
+        effective_delay_for_gate,
+        log_recovery_delay_scheduled,
+        timing_from_recovery_context,
+    )
+
+    sched_timing = timing_from_recovery_context(recovery_context)
+    if sched_timing is None:
+        sched_timing = {
+            "effective_delay_seconds": float(delay_seconds),
+            "source": "scheduled_task_delay",
+            "reason_tag": (
+                str(recovery_context.get("reason_tag") or "")
+                if recovery_context
+                else ""
+            ),
+            "stage": (
+                int(sequential_attempt_index)
+                if sequential_attempt_index is not None
+                else (
+                    int(multi_slot_index)
+                    if multi_slot_index is not None
+                    else 1
+                )
+            ),
+        }
+    log_recovery_delay_scheduled(
+        sched_timing,
+        recovery_key=recovery_key,
+        scheduled_delay_seconds=float(delay_seconds),
     )
     try:
         print("[DELAY STARTED]", scheduled_recovery_delay_minutes, flush=True)
@@ -6622,14 +6658,33 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
 
     last_activity = _last_activity_utc_from_recovery_row(reason_row)
     now = datetime.now(timezone.utc)
-    delay_minutes = _recovery_delay_minutes_from_store(store_obj)
-    delay_gate_activity = (
-        None
-        if multi_slot_index is not None
-        or seq_follow
-        or step_num > 1
-        else last_activity
+    from services.recovery_delay_unified import (
+        effective_delay_for_gate,
+        log_final_delay_gate,
     )
+
+    gate_timing = effective_delay_for_gate(
+        recovery_context=recovery_context,
+        delay_seconds_scheduled=float(delay_seconds),
+        multi_slot_index=multi_slot_index,
+        step_num=step_num,
+        reason_tag=rt_raw or reason_tag,
+        store_obj=store_obj,
+        recovery_key=recovery_key,
+        resolve_timing_fn=resolve_recovery_schedule_timing,
+    )
+    if recovery_context is not None:
+        recovery_context = dict(recovery_context)
+        recovery_context["schedule_timing"] = dict(gate_timing)
+    gate_delay_seconds = float(gate_timing["effective_delay_seconds"])
+    skip_delay_check = (
+        multi_slot_index is not None or seq_follow or step_num > 1
+    )
+    delay_gate_activity = (
+        None if skip_delay_check else last_activity
+    )
+    gate_effective_sec = None if skip_delay_check else gate_delay_seconds
+    gate_source = None if skip_delay_check else str(gate_timing.get("source") or "")
     user_returned_eff = _recovery_resolve_user_returned_for_send(
         recovery_key,
         store_slug=store_slug,
@@ -6643,6 +6698,8 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
         store=store_obj,
         sent_count=gate_sent_count,
         configured_message_count=configured_message_count,
+        effective_delay_seconds=gate_effective_sec,
+        delay_source=gate_source,
     )
     if should_send:
         _log_normal_recovery_attempt_decision(
@@ -6657,15 +6714,24 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
             store=store_obj,
             sent_count=gate_sent_count,
             configured_message_count=configured_message_count,
+            effective_delay_seconds=gate_effective_sec,
         )
         _log_normal_recovery_attempt_decision(
             attempt_index=step_num, allowed=False, reason=_ds_tag
         )
+    log_final_delay_gate(
+        gate_timing,
+        recovery_key=recovery_key,
+        gate_delay_seconds=gate_delay_seconds,
+        should_send=should_send,
+        skip_delay_check=skip_delay_check,
+    )
     print("[CARTFLOW DELAY CHECK]")
     print("reason_tag=", reason_tag)
     print("last_activity=", last_activity)
     print("now=", now)
-    print("delay_minutes=", delay_minutes)
+    print("gate_delay_seconds=", gate_delay_seconds)
+    print("delay_source=", gate_source or "-")
     print("should_send=", should_send)
 
     if not should_send:
@@ -7168,7 +7234,7 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
             wa_trace_session_id=session_id,
             wa_trace_store_slug=store_slug,
             wa_trace_last_activity=last_activity,
-            wa_trace_recovery_delay_minutes=delay_minutes,
+            wa_trace_recovery_delay_minutes=gate_delay_seconds / 60.0,
             wa_trace_delay_passed=True,
         )
     finally:
@@ -7441,7 +7507,33 @@ def _schedule_recovery_multi_slots(
         except Exception:  # noqa: BLE001
             pass
         remain = max(0.0, float(s["delay_seconds"]) - es)
+        slot_timing = {
+            "reason_tag": str(s.get("canon") or ""),
+            "canon": s.get("canon"),
+            "stage": int(s.get("index") or 1),
+            "template_delay_value": s.get("delay_display"),
+            "template_delay_unit": s.get("unit_display"),
+            "effective_delay_seconds": float(s["delay_seconds"]),
+            "source": "reason_templates.messages.multi",
+            "fallback_reason": None,
+        }
         try:
+            from services.recovery_delay_unified import (
+                attach_schedule_timing_to_context,
+                log_recovery_delay_resolved,
+                log_recovery_delay_scheduled,
+            )
+
+            log_recovery_delay_resolved(
+                slot_timing,
+                recovery_key=recovery_key,
+                path="multi_slot_schedule",
+            )
+            log_recovery_delay_scheduled(
+                slot_timing,
+                recovery_key=recovery_key,
+                scheduled_delay_seconds=float(remain),
+            )
             emit_template_timing_used(
                 reason_tag=str(s.get("canon") or ""),
                 stage=int(s.get("index") or 1),
@@ -7454,6 +7546,9 @@ def _schedule_recovery_multi_slots(
             )
         except Exception:  # noqa: BLE001
             pass
+        slot_ctx = attach_schedule_timing_to_context(
+            recovery_context, slot_timing
+        )
         asyncio.create_task(
             _run_recovery_sequence_after_cart_abandoned(
                 recovery_key,
@@ -7464,7 +7559,7 @@ def _schedule_recovery_multi_slots(
                 abandon_event_phone,
                 multi_slot_index=int(s["index"]),
                 multi_message_text=str(s.get("text") or ""),
-                recovery_context=recovery_context,
+                recovery_context=slot_ctx,
             )
         )
 
@@ -7604,6 +7699,13 @@ async def _run_recovery_dispatch_cart_abandoned_impl(
         abandon_event_phone=abandon_event_phone,
     )
     rc_arm3["schedule_timing"] = timing
+    from services.recovery_delay_unified import log_recovery_delay_scheduled
+
+    log_recovery_delay_scheduled(
+        timing,
+        recovery_key=recovery_key,
+        scheduled_delay_seconds=float(remain),
+    )
     asyncio.create_task(
         _run_recovery_sequence_after_cart_abandoned(
             recovery_key,

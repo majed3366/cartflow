@@ -264,6 +264,8 @@ def should_send_whatsapp(
     store: Optional[Any] = None,
     sent_count: int = 0,
     configured_message_count: Optional[int] = None,
+    effective_delay_seconds: Optional[float] = None,
+    delay_source: Optional[str] = None,
 ) -> bool:
     """
     هل يسمح بإرسال تذكير واتساب؟ (بدون مزوّد؛ منطق فقط.)
@@ -300,14 +302,22 @@ def should_send_whatsapp(
         return False
     if last_activity_time is None:
         return True
-    recovery_delay_minutes = _recovery_delay_minutes_from_store(store)
     t = now if now is not None else datetime.utcnow()
     t = _naive_utc(t)
     last_activity = _naive_utc(last_activity_time)
-    delay_passed = t >= (last_activity + timedelta(minutes=recovery_delay_minutes))
+    if effective_delay_seconds is not None:
+        delay_td = timedelta(seconds=max(0.0, float(effective_delay_seconds)))
+        recovery_delay_minutes = delay_td.total_seconds() / 60.0
+        delay_passed = t >= (last_activity + delay_td)
+        delay_label = delay_source or "effective_delay_seconds"
+    else:
+        recovery_delay_minutes = _recovery_delay_minutes_from_store(store)
+        delay_passed = t >= (last_activity + timedelta(minutes=recovery_delay_minutes))
+        delay_label = "store_recovery_delay"
     print("last_activity:", last_activity)
     print("now:", t)
     print("delay_minutes:", recovery_delay_minutes)
+    print("delay_source:", delay_label)
     print("should_send:", delay_passed)
     if not delay_passed:
         return False
