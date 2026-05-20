@@ -1126,6 +1126,11 @@ def _ensure_cartflow_api_db_warmed() -> None:
             ensure_cart_recovery_reason_phone_schema(db)
             ensure_cart_recovery_reason_rejection_schema(db)
             _ensure_default_store_for_recovery()
+            from services.recovery_store_lookup import (
+                ensure_widget_recovery_store_rows_on_warm,
+            )
+
+            ensure_widget_recovery_store_rows_on_warm()
             _cartflow_api_db_warmed = True
         except Exception as e:  # noqa: BLE001
             db.session.rollback()
@@ -4071,10 +4076,19 @@ def _load_store_row_for_recovery(
             return out
         row = db.session.query(Store).filter_by(zid_store_id=ss_full).first()
         if row is None:
-            out = latest
+            if not allow_latest_fallback:
+                from services.recovery_store_lookup import (
+                    resolve_recovery_store_row_canonical,
+                )
+
+                out = resolve_recovery_store_row_canonical(
+                    ss_full, allow_schema_warm=allow_schema_warm
+                )
+            else:
+                out = latest
         else:
             out = row
-        if cart_event_scope_active():
+        if cart_event_scope_active() and out is not None:
             scoped_store_set(ck, out)
         return out
     except Exception:  # noqa: BLE001
@@ -4152,7 +4166,7 @@ def _store_row_by_zid_store_id_exact(
     *,
     allow_schema_warm: bool = True,
 ) -> Optional[Store]:
-    """صف ‎Store‎ عند تطابق ‎zid_store_id‎ فقط — بلا ‎latest‎ لوحة الاسترجاع."""
+    """صف ‎Store‎ للـ‎zid‎ الكنسي — بحث دقيق ثم تجهيز ‎demo/demo2‎ عند الغياب."""
     ss = (zid or "").strip()
     if not ss:
         return None
@@ -4161,7 +4175,9 @@ def _store_row_by_zid_store_id_exact(
 
         if allow_schema_warm and not _cartflow_api_db_warmed:
             _ensure_cartflow_api_db_warmed()
-        return db.session.query(Store).filter_by(zid_store_id=ss).first()
+        from services.recovery_store_lookup import resolve_recovery_store_row_canonical
+
+        return resolve_recovery_store_row_canonical(ss, allow_schema_warm=False)
     except (SQLAlchemyError, OSError):
         db.session.rollback()
         return None

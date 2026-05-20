@@ -16,6 +16,10 @@ from services.recovery_store_context import (
     log_store_context_check,
 )
 from services.recovery_multi_message import resolve_recovery_schedule_timing
+from services.recovery_store_lookup import (
+    ensure_recovery_store_row_for_zid,
+    resolve_recovery_store_row_canonical,
+)
 
 
 class RecoveryStoreContextIsolationTests(unittest.TestCase):
@@ -200,6 +204,102 @@ class RecoveryStoreContextIsolationTests(unittest.TestCase):
             selected_store_slug="demo",
         )
         self.assertFalse(ok)
+
+    def test_provisions_demo_row_with_dashboard_templates(self) -> None:
+        db.create_all()
+        main._ensure_store_widget_schema()
+        loadtest_z = f"loadtest-{uuid.uuid4().hex[:8]}"
+        for z in ("demo", loadtest_z):
+            for row in db.session.query(Store).filter_by(zid_store_id=z).all():
+                db.session.delete(row)
+        db.session.commit()
+
+        tpl = {
+            "other": {
+                "enabled": True,
+                "message": "x",
+                "message_count": 1,
+                "messages": [{"delay": 2, "unit": "hour", "text": "x"}],
+            }
+        }
+        row_lt = Store(
+            zid_store_id=loadtest_z,
+            recovery_delay=9,
+            recovery_delay_unit="hours",
+            recovery_attempts=1,
+            reason_templates_json=json.dumps(tpl),
+            vip_cart_threshold=1500.0,
+        )
+        db.session.add(row_lt)
+        db.session.commit()
+
+        row_demo = ensure_recovery_store_row_for_zid("demo", allow_schema_warm=False)
+        self.assertIsNotNone(row_demo)
+        assert row_demo is not None
+        self.assertEqual(row_demo.zid_store_id, "demo")
+        self.assertIsNotNone(row_demo.id)
+        self.assertEqual(float(row_demo.vip_cart_threshold or 0), 1500.0)
+
+        timing = resolve_recovery_schedule_timing("other", row_demo, stage_index=0)
+        self.assertEqual(timing["effective_delay_seconds"], 7200.0)
+        self.assertEqual(timing["source"], "reason_templates.messages")
+
+        timing_1m = resolve_recovery_schedule_timing(
+            "price",
+            type(
+                "_S",
+                (),
+                {
+                    "reason_templates_json": json.dumps(
+                        {
+                            "price": {
+                                "enabled": True,
+                                "message": "p",
+                                "message_count": 1,
+                                "messages": [
+                                    {"delay": 1, "unit": "minute", "text": "p"}
+                                ],
+                            }
+                        }
+                    )
+                },
+            )(),
+            stage_index=0,
+        )
+        self.assertEqual(timing_1m["effective_delay_seconds"], 60.0)
+
+        resolved_lt = resolve_recovery_store_row_canonical(
+            loadtest_z, allow_schema_warm=False
+        )
+        self.assertIsNotNone(resolved_lt)
+        assert resolved_lt is not None
+        self.assertEqual(resolved_lt.zid_store_id, loadtest_z)
+        self.assertNotEqual(int(resolved_lt.id), int(row_demo.id))
+
+    def test_runtime_load_does_not_use_latest_for_unrelated_zid(self) -> None:
+        db.create_all()
+        main._ensure_store_widget_schema()
+        latest_z = f"latest-x-{uuid.uuid4().hex[:8]}"
+        for row in db.session.query(Store).all():
+            db.session.delete(row)
+        db.session.commit()
+        db.session.add(
+            Store(
+                zid_store_id=latest_z,
+                recovery_delay=1,
+                recovery_delay_unit="minutes",
+                recovery_attempts=1,
+            )
+        )
+        db.session.commit()
+
+        out = main._load_store_row_for_recovery(
+            "demo", allow_latest_fallback=False
+        )
+        self.assertIsNotNone(out)
+        assert out is not None
+        self.assertEqual(out.zid_store_id, "demo")
+        self.assertNotEqual(out.zid_store_id, latest_z)
 
 
 if __name__ == "__main__":

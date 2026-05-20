@@ -7,6 +7,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from services.reason_template_recovery import canonical_reason_template_key
 from services.recovery_message_strategy import get_recovery_message
+from services.recovery_store_lookup import log_recovery_template_lookup
 from services.store_reason_templates import normalize_delay_unit, parse_reason_templates_column
 
 _log = logging.getLogger("cartflow")
@@ -169,6 +170,15 @@ def resolve_recovery_schedule_timing(
 
     if canon is None:
         sec = _legacy_recovery_delay_seconds(reason_tag)
+        log_recovery_template_lookup(
+            reason=rt_log,
+            template_found=False,
+            message_count=None,
+            delay=None,
+            unit=None,
+            source="legacy_recovery_delay",
+            canon=None,
+        )
         emit_template_timing_fallback(
             reason_tag=rt_log,
             stage=stage_1based,
@@ -194,6 +204,15 @@ def resolve_recovery_schedule_timing(
     entry = templates.get(canon)
     if entry is None:
         sec = _legacy_recovery_delay_seconds(reason_tag)
+        log_recovery_template_lookup(
+            reason=rt_log,
+            template_found=False,
+            message_count=None,
+            delay=None,
+            unit=None,
+            source="legacy_recovery_delay",
+            canon=canon,
+        )
         emit_template_timing_fallback(
             reason_tag=rt_log,
             stage=stage_1based,
@@ -215,6 +234,15 @@ def resolve_recovery_schedule_timing(
 
     if not bool(entry.get("enabled", True)):
         sec = _legacy_recovery_delay_seconds(reason_tag)
+        log_recovery_template_lookup(
+            reason=rt_log,
+            template_found=True,
+            message_count=entry.get("message_count"),
+            delay=None,
+            unit=None,
+            source="legacy_recovery_delay",
+            canon=canon,
+        )
         emit_template_timing_fallback(
             reason_tag=rt_log,
             stage=stage_1based,
@@ -236,6 +264,15 @@ def resolve_recovery_schedule_timing(
     from_template = _read_stage_delay_from_entry(entry, canon, stage_index)
     if from_template is not None:
         delay_num, unit_eff, sec = from_template
+        log_recovery_template_lookup(
+            reason=rt_log,
+            template_found=True,
+            message_count=entry.get("message_count"),
+            delay=delay_num,
+            unit=unit_eff,
+            source="reason_templates.messages",
+            canon=canon,
+        )
         out = {
             "reason_tag": rt_log,
             "canon": canon,
@@ -260,6 +297,15 @@ def resolve_recovery_schedule_timing(
 
     slot_defaults = _default_slot_delay_tuple(canon, stage_index)
     sec = delay_to_seconds(slot_defaults[0], slot_defaults[1])
+    log_recovery_template_lookup(
+        reason=rt_log,
+        template_found=True,
+        message_count=entry.get("message_count"),
+        delay=slot_defaults[0],
+        unit=slot_defaults[1],
+        source="reason_templates.default_slot",
+        canon=canon,
+    )
     emit_template_timing_used(
         reason_tag=rt_log,
         stage=stage_1based,
