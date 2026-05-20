@@ -272,7 +272,6 @@ app.include_router(demo_panel_router, prefix="/demo")
 from services.ai_message_builder import build_abandoned_cart_message  # noqa: E402
 from services.whatsapp_recovery import build_whatsapp_recovery_message  # noqa: E402
 from services.whatsapp_queue import start_whatsapp_queue_worker  # noqa: E402
-from services.recovery_delay import get_recovery_delay  # noqa: E402
 from services.whatsapp_send import (  # noqa: E402
     WA_TRACE_DELAY_UNSPECIFIED,
     _max_recovery_attempts,
@@ -311,7 +310,11 @@ from services.reason_template_recovery import (
     resolve_recovery_whatsapp_message_with_reason_templates,
 )
 from services.recovery_conversation_tracker import conversation_dashboard_extras
-from services.recovery_multi_message import multi_message_slots_for_abandon
+from services.recovery_multi_message import (
+    emit_template_timing_used,
+    multi_message_slots_for_abandon,
+    resolve_recovery_schedule_timing,
+)
 from services.cartflow_widget_recovery_gate import (
     apply_cartflow_widget_recovery_gate_from_body,
     cartflow_widget_recovery_gate_fields_for_api,
@@ -7280,6 +7283,18 @@ def _schedule_recovery_multi_slots(
         except Exception:  # noqa: BLE001
             pass
         remain = max(0.0, float(s["delay_seconds"]) - es)
+        try:
+            emit_template_timing_used(
+                reason_tag=str(s.get("canon") or ""),
+                stage=int(s.get("index") or 1),
+                template_delay_value=s.get("delay_display"),
+                template_delay_unit=s.get("unit_display"),
+                effective_delay_seconds=float(s["delay_seconds"]),
+                source="reason_templates.messages.multi",
+                recovery_key=recovery_key,
+            )
+        except Exception:  # noqa: BLE001
+            pass
         asyncio.create_task(
             _run_recovery_sequence_after_cart_abandoned(
                 recovery_key,
@@ -7390,8 +7405,13 @@ async def _run_recovery_dispatch_cart_abandoned_impl(
         )
         return
 
-    config = None
-    delay_s = float(get_recovery_delay(reason_tag, store_config=config))
+    timing = resolve_recovery_schedule_timing(
+        reason_tag,
+        store_row,
+        stage_index=0,
+        recovery_key=recovery_key,
+    )
+    delay_s = float(timing["effective_delay_seconds"])
     remain = max(0.0, delay_s - elapsed)
     print("starting delay task")
     rc_arm3 = _build_recovery_context_from_arm(

@@ -3,7 +3,11 @@ from __future__ import annotations
 
 import json
 
-from services.recovery_multi_message import delay_to_seconds, multi_message_slots_for_abandon
+from services.recovery_multi_message import (
+    delay_to_seconds,
+    multi_message_slots_for_abandon,
+    resolve_recovery_schedule_timing,
+)
 from services.store_reason_templates import apply_reason_templates_from_body, parse_reason_templates_column
 
 
@@ -14,6 +18,71 @@ class _Row:
 def test_delay_to_seconds_minute_and_hour() -> None:
     assert delay_to_seconds(2, "minute") == 120.0
     assert delay_to_seconds(2, "hour") == 7200.0
+
+
+def test_resolve_schedule_timing_price_one_minute() -> None:
+    class _S:
+        reason_templates_json = json.dumps(
+            {
+                "price": {
+                    "enabled": True,
+                    "message": "نص",
+                    "message_count": 1,
+                    "messages": [{"delay": 1, "unit": "minute", "text": "نص"}],
+                }
+            }
+        )
+
+    t = resolve_recovery_schedule_timing("price_high", _S(), stage_index=0)
+    assert t["effective_delay_seconds"] == 60.0
+    assert t["source"] == "reason_templates.messages"
+    assert multi_message_slots_for_abandon("price_high", _S()) is None
+
+
+def test_resolve_schedule_timing_other_two_hours() -> None:
+    class _S:
+        reason_templates_json = json.dumps(
+            {
+                "other": {
+                    "enabled": True,
+                    "message": "نص",
+                    "message_count": 1,
+                    "messages": [{"delay": 2, "unit": "hour", "text": "نص"}],
+                }
+            }
+        )
+
+    t = resolve_recovery_schedule_timing("other", _S(), stage_index=0)
+    assert t["effective_delay_seconds"] == 7200.0
+    assert t["source"] == "reason_templates.messages"
+
+
+def test_resolve_schedule_timing_warranty_five_minutes() -> None:
+    class _S:
+        reason_templates_json = json.dumps(
+            {
+                "warranty": {
+                    "enabled": True,
+                    "message": "نص",
+                    "message_count": 1,
+                    "messages": [{"delay": 5, "unit": "minute", "text": "نص"}],
+                }
+            }
+        )
+
+    t = resolve_recovery_schedule_timing("warranty", _S(), stage_index=0)
+    assert t["effective_delay_seconds"] == 300.0
+    assert t["source"] == "reason_templates.messages"
+
+
+def test_resolve_schedule_timing_legacy_when_no_template() -> None:
+    class _S:
+        reason_templates_json = None
+
+    t = resolve_recovery_schedule_timing("other", _S(), stage_index=0)
+    assert t["effective_delay_seconds"] == 240.0
+    assert t["source"] == "legacy_recovery_delay"
+    assert t["fallback_reason"] == "no_template_entry"
 
 
 def test_multi_slots_none_when_single_message_mode() -> None:
