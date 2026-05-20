@@ -4031,25 +4031,21 @@ def _store_row_cache_key_for_recovery(store_slug: Optional[str]) -> str:
 def _fresh_store_row_for_recovery_templates(
     store_slug: Optional[str] = None,
 ) -> Optional[Store]:
-    """إعادة قراءة ‎Store‎ من DB — تفادي كاش ‎cart-event‎ بعد حفظ القوالب."""
-    try:
-        ss_full = (store_slug or "").strip()
-        if ss_full:
-            row = db.session.query(Store).filter_by(zid_store_id=ss_full).first()
-            if row is not None:
-                return row
-        return _dashboard_recovery_store_row()
-    except Exception:  # noqa: BLE001
-        db.session.rollback()
-        return _load_store_row_for_recovery(store_slug, allow_schema_warm=False)
+    """إعادة قراءة ‎Store‎ من DB — تفادي كاش ‎cart-event‎ بعد حفظ القوالب (بدون ‎latest‎ لوحة)."""
+    return _load_store_row_for_recovery(
+        store_slug,
+        allow_schema_warm=False,
+        allow_latest_fallback=False,
+    )
 
 
 def _load_store_row_for_recovery(
     store_slug: Optional[str] = None,
     *,
     allow_schema_warm: bool = True,
+    allow_latest_fallback: bool = True,
 ) -> Optional[Store]:
-    """صف ‎Store‎ للاسترجاع و‎VIP‎: ‎zid_store_id‎ يطابق ‎store_slug‎ من الحمولة؛ إن لم يوجد صف مطابق ‎zid‎ → آخر ‎Store.id‎ (لوحة الاسترجاع)."""
+    """صف ‎Store‎: ‎zid_store_id‎ مطابق؛ عند ``allow_latest_fallback=False`` (مسار الاسترجاع) بلا صف ‎latest‎."""
     try:
         from services.cart_event_request_scope import (
             cart_event_scope_active,
@@ -4065,7 +4061,7 @@ def _load_store_row_for_recovery(
         global _cartflow_api_db_warmed
         if allow_schema_warm and not _cartflow_api_db_warmed:
             _ensure_cartflow_api_db_warmed()
-        latest = _dashboard_recovery_store_row()
+        latest = _dashboard_recovery_store_row() if allow_latest_fallback else None
         ss_full = (store_slug or "").strip()
         ss_key = ss_full.casefold()
         if not ss_key:
@@ -4086,6 +4082,29 @@ def _load_store_row_for_recovery(
         return None
 
 
+def _coerce_recovery_runtime_store_slug(
+    recovery_key: str,
+    store_slug_hint: str,
+) -> str:
+    from services.recovery_store_context import coerce_recovery_runtime_store_slug
+
+    return coerce_recovery_runtime_store_slug(recovery_key, store_slug_hint)
+
+
+def _bind_recovery_runtime_store_identity(
+    recovery_key: str,
+    store_slug_hint: str,
+) -> tuple[str, Optional[Store]]:
+    """مصدر هوية واحد لمسار الاسترجاع: الجزء الأول من ‎recovery_key‎."""
+    canonical = _coerce_recovery_runtime_store_slug(recovery_key, store_slug_hint)
+    ctx: Dict[str, Any] = {
+        "recovery_key": recovery_key,
+        "store_slug": canonical,
+    }
+    row = _recovery_store_from_context(ctx, store_slug=canonical, allow_schema_warm=True)
+    return canonical, row
+
+
 def _build_recovery_context_from_arm(
     *,
     store_slug: str,
@@ -4098,6 +4117,7 @@ def _build_recovery_context_from_arm(
 ) -> Dict[str, Any]:
     """مصدر واحد للهوية عند تسليح الاسترجاع — يُمرَّر للمهمة المؤجّلة دون إعادة اختراع ‎store‎ لاحقاً."""
     rt = (reason_tag or "").strip().lower()[:128] if reason_tag else None
+    canon_slug = _coerce_recovery_runtime_store_slug(recovery_key, store_slug)
     sid_pk: Optional[int] = None
     if store_row is not None:
         raw_pk = getattr(store_row, "id", None)
@@ -4107,7 +4127,7 @@ def _build_recovery_context_from_arm(
             except (TypeError, ValueError):
                 sid_pk = None
     return {
-        "store_slug": (store_slug or "").strip()[:255],
+        "store_slug": canon_slug[:255],
         "store_id": sid_pk,
         "session_id": (session_id or "").strip()[:512],
         "cart_id": (str(cart_id).strip()[:255] if cart_id else None),
@@ -4153,21 +4173,34 @@ def _recovery_store_from_context(
     store_slug: str,
     allow_schema_warm: bool = True,
 ) -> Optional[Any]:
-    rk_merchant: Optional[str] = None
-    if recovery_context:
-        rk_merchant = _store_slug_from_recovery_key(
-            str(recovery_context.get("recovery_key") or "")
+    rk_raw = str((recovery_context or {}).get("recovery_key") or "")
+    rk_merchant = _store_slug_from_recovery_key(rk_raw) if rk_raw else None
+    hint = (store_slug or "").strip()
+    if rk_merchant and hint and hint.casefold() != rk_merchant.casefold():
+        from services.recovery_store_context import log_store_context_mismatch
+
+        log_store_context_mismatch(
+            recovery_key=rk_raw,
+            canonical_store_slug=rk_merchant,
+            hint_store_slug=hint,
         )
-    if rk_merchant:
+    slug_eff = rk_merchant or hint
+    if slug_eff:
         exact = _store_row_by_zid_store_id_exact(
-            rk_merchant, allow_schema_warm=allow_schema_warm
+            slug_eff, allow_schema_warm=allow_schema_warm
         )
         if exact is not None:
             return exact
+    if rk_merchant:
+        return None
     if not recovery_context:
-        return _load_store_row_for_recovery(store_slug, allow_schema_warm=allow_schema_warm)
+        return _load_store_row_for_recovery(
+            store_slug,
+            allow_schema_warm=allow_schema_warm,
+            allow_latest_fallback=False,
+        )
     pk = recovery_context.get("store_id")
-    if pk is not None:
+    if pk is not None and slug_eff:
         try:
             global _cartflow_api_db_warmed
 
@@ -4175,10 +4208,16 @@ def _recovery_store_from_context(
                 _ensure_cartflow_api_db_warmed()
             row = db.session.get(Store, int(pk))
             if row is not None:
-                return row
+                zid = (getattr(row, "zid_store_id", None) or "").strip()
+                if zid and zid.casefold() == slug_eff.casefold():
+                    return row
         except (SQLAlchemyError, OSError, TypeError, ValueError):
             db.session.rollback()
-    return _load_store_row_for_recovery(store_slug, allow_schema_warm=allow_schema_warm)
+    if slug_eff:
+        return _store_row_by_zid_store_id_exact(
+            slug_eff, allow_schema_warm=allow_schema_warm
+        )
+    return None
 
 
 def _log_recovery_context_before_send(
@@ -4188,22 +4227,35 @@ def _log_recovery_context_before_send(
     reason_tag: Optional[str],
     session_id: str,
     cart_id: Optional[str],
+    recovery_key: str = "",
 ) -> None:
     try:
+        canon = _coerce_recovery_runtime_store_slug(recovery_key, store_slug)
         tpl_z = (getattr(store_obj, "zid_store_id", None) or "").strip() or "-"
-        display_store_slug = (
-            tpl_z if tpl_z != "-" else (store_slug or "").strip() or "-"
-        )
+        if tpl_z == "-" and canon:
+            tpl_z = canon
+        display_store_slug = canon or tpl_z if tpl_z != "-" else "-"
         sid_i = getattr(store_obj, "id", None)
         print("[RECOVERY CONTEXT]", flush=True)
         print(f"store_slug={display_store_slug}", flush=True)
+        print(f"recovery_key={recovery_key[:120] if recovery_key else '-'}", flush=True)
         print(f"store_id={sid_i if sid_i is not None else '-'}", flush=True)
         print(f"reason_tag={(reason_tag or '-')[:64]}", flush=True)
         print(f"cart_id={(str(cart_id or '') or '-')[:64]}", flush=True)
         print(f"session_id={(session_id or '')[:80]}", flush=True)
         print(f"template_store_slug={tpl_z}", flush=True)
         print(f"delay_store_slug={tpl_z}", flush=True)
-        print(f"phone_store_slug={store_slug}", flush=True)
+        print(f"phone_store_slug={canon or tpl_z}", flush=True)
+        from services.recovery_store_context import log_store_context_check
+
+        log_store_context_check(
+            recovery_key=recovery_key,
+            canonical_store_slug=canon or display_store_slug,
+            template_store_slug=tpl_z,
+            delay_store_slug=tpl_z,
+            phone_store_slug=canon or tpl_z,
+            selected_store_slug=display_store_slug,
+        )
     except OSError:
         pass
 
@@ -6066,7 +6118,12 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
     ينتظر ‎delay_seconds‎ ثم يطبّق ‎should_send_whatsapp‎ على آخر نشاط السبب؛ عند السماح فقط يرسل عبر ‎send_whatsapp‎.
     نص الرسالة من محرّك القراءة حسب ‎reason_tag‎ المحفوظ، أو رسالة احتياطية.
     """
-    store_pre = _recovery_store_from_context(
+    store_slug, _bound_row = _bind_recovery_runtime_store_identity(recovery_key, store_slug)
+    if recovery_context is not None:
+        recovery_context = dict(recovery_context)
+        recovery_context["store_slug"] = store_slug
+        recovery_context["recovery_key"] = recovery_key
+    store_pre = _bound_row or _recovery_store_from_context(
         recovery_context, store_slug=store_slug, allow_schema_warm=True
     )
     cart_total_pre = _abandoned_cart_cart_value_for_recovery(cart_id)
@@ -6329,6 +6386,7 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
         reason_tag=rt_raw or None,
         session_id=session_id,
         cart_id=cart_id,
+        recovery_key=recovery_key,
     )
     cart_total_vip = _abandoned_cart_cart_value_for_recovery(cart_id)
     th_raw = getattr(store_obj, "vip_cart_threshold", None) if store_obj is not None else None
@@ -7403,7 +7461,11 @@ async def _run_recovery_dispatch_cart_abandoned_impl(
     abandon_event_phone: Optional[str],
     abandon_monotonic: float,
 ) -> None:
-    store_row0 = _load_store_row_for_recovery(store_slug)
+    store_slug, store_row0 = _bind_recovery_runtime_store_identity(recovery_key, store_slug)
+    if store_row0 is None:
+        store_row0 = _load_store_row_for_recovery(
+            store_slug, allow_latest_fallback=False
+        )
     cart_tot0 = _abandoned_cart_cart_value_for_recovery(cart_id)
     th0 = getattr(store_row0, "vip_cart_threshold", None) if store_row0 else None
     is_vip0 = cart_tot0 is not None and is_vip_cart(cart_tot0, store_row0)
@@ -7430,9 +7492,11 @@ async def _run_recovery_dispatch_cart_abandoned_impl(
         _mark_vip_customer_recovery_closed(recovery_key)
         return
     reason_tag: Optional[str] = None
-    store_row: Optional[Any] = None
+    store_row: Optional[Any] = store_row0
     for _ in range(_RECOVERY_REASON_POLL_MAX_ATTEMPTS):
-        store_row = _load_store_row_for_recovery(store_slug)
+        store_row = _load_store_row_for_recovery(
+            store_slug, allow_latest_fallback=False
+        )
         reason_tag = _reason_tag_for_session(store_slug, session_id)
         slots_try = multi_message_slots_for_abandon(reason_tag, store_row)
         if slots_try is not None:
@@ -7465,7 +7529,7 @@ async def _run_recovery_dispatch_cart_abandoned_impl(
         await asyncio.sleep(_RECOVERY_REASON_POLL_INTERVAL_SEC)
 
     elapsed = time.monotonic() - abandon_monotonic
-    store_row = _load_store_row_for_recovery(store_slug)
+    store_row = _load_store_row_for_recovery(store_slug, allow_latest_fallback=False)
     reason_tag = _reason_tag_for_session(store_slug, session_id)
     slots_final = multi_message_slots_for_abandon(reason_tag, store_row)
     if slots_final is not None:
@@ -7894,6 +7958,7 @@ def _arm_recovery_schedule_from_saved_reason_payload(synth_pl: dict[str, Any]) -
         _ensure_cartflow_api_db_warmed()
     store_slug = _normalize_store_slug(synth_pl)
     recovery_key = _recovery_key_from_payload(synth_pl)
+    store_slug = _coerce_recovery_runtime_store_slug(recovery_key, store_slug)
     synth_pl = _ensure_cart_abandon_payload_has_cart_id(synth_pl, recovery_key)
     session_id_log = _session_part_from_payload(synth_pl)
     cart_id_log = _cart_id_str_from_payload(synth_pl)
@@ -7916,7 +7981,9 @@ def _arm_recovery_schedule_from_saved_reason_payload(synth_pl: dict[str, Any]) -
         )
         return
     try:
-        store_row = _load_store_row_for_recovery(store_slug)
+        store_row = _load_store_row_for_recovery(
+            store_slug, allow_latest_fallback=False
+        )
     except Exception:  # noqa: BLE001
         db.session.rollback()
         store_row = None
@@ -7944,8 +8011,9 @@ async def handle_cart_abandoned(
     log.info("[HANDLE CART ABANDONED ENTERED]")
     print("[HANDLE CART ABANDONED ENTERED]")
     store_slug = _normalize_store_slug(payload)
-    print("store:", store_slug)
     recovery_key = _recovery_key_from_payload(payload)
+    store_slug = _coerce_recovery_runtime_store_slug(recovery_key, store_slug)
+    print("store:", store_slug)
     payload = _ensure_cart_abandon_payload_has_cart_id(payload, recovery_key)
     print("recovery key:", recovery_key)
     session_id_log = _session_part_from_payload(payload)
@@ -7984,7 +8052,9 @@ async def handle_cart_abandoned(
         }
     try:
         _ensure_cartflow_api_db_warmed()
-        store_row = _load_store_row_for_recovery(store_slug)
+        store_row = _load_store_row_for_recovery(
+            store_slug, allow_latest_fallback=False
+        )
     except Exception:  # noqa: BLE001
         db.session.rollback()
         store_row = None
