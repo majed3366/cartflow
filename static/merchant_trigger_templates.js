@@ -21,6 +21,27 @@
   if (typeof window.__trigger_templates_load_gen === "undefined") {
     window.__trigger_templates_load_gen = 0;
   }
+  if (typeof window.__trigger_templates_apply_gen === "undefined") {
+    window.__trigger_templates_apply_gen = 0;
+  }
+  if (typeof window.__trigger_templates_dom_ready === "undefined") {
+    window.__trigger_templates_dom_ready = false;
+  }
+
+  /** طلب GET نشط — يُلغى عند بدء جلب أحدث (لا تكديس طلبات). */
+  var tplGetAbort = null;
+  /** مفتاح السبب → حفظ قيد التنفيذ (نقرة واحدة = POST واحد). */
+  var tplSaveInFlight = {};
+  var tplMetrics = {
+    save_clicks: 0,
+    save_posts_started: 0,
+    save_in_flight_keys: 0,
+    get_fetches_started: 0,
+    get_in_flight: 0,
+    render_applied: 0,
+    render_stale_skipped: 0,
+    save_click_handlers: 0,
+  };
 
   /** ترتيب ثابت يطابق الخادم عند الحاجة لبطاقات احتياطية. */
   var TRIGGER_KEYS_ORDER = [
@@ -881,7 +902,66 @@
     return "(dashboard_latest_store)";
   }
 
-  /** سجلات تحقيق مؤقتة — وحدة التحكم في المتصفح + trigLog. */
+  function bumpTplApplyGen() {
+    var g = (window.__trigger_templates_apply_gen || 0) + 1;
+    window.__trigger_templates_apply_gen = g;
+    window.__trigger_templates_load_gen = g;
+    return g;
+  }
+
+  function applyGenIsCurrent(gen) {
+    return typeof gen !== "number" || gen === window.__trigger_templates_apply_gen;
+  }
+
+  function cancelTplGetInFlight() {
+    if (!tplGetAbort) return;
+    try {
+      tplGetAbort.abort();
+    } catch (_abortErr) {
+      /* ignore */
+    }
+    tplGetAbort = null;
+  }
+
+  function countTplSaveInFlight() {
+    var n = 0;
+    var k;
+    for (k in tplSaveInFlight) {
+      if (Object.prototype.hasOwnProperty.call(tplSaveInFlight, k) && tplSaveInFlight[k]) {
+        n++;
+      }
+    }
+    return n;
+  }
+
+  /** عدادات تشخيص — `window.__maTplDebug()` في وحدة التحكم. */
+  function refreshMaTplDebugCounters() {
+    var root = byId("ma-tpl-root");
+    var cards = root ? root.querySelectorAll("[data-ma-tpl-key]") : [];
+    tplMetrics.save_in_flight_keys = countTplSaveInFlight();
+    tplMetrics.save_click_handlers = root && root._maTplDelegatesBound ? 1 : 0;
+    window.__maTplDebug = {
+      mounted_cards: cards ? cards.length : 0,
+      save_click_handlers: tplMetrics.save_click_handlers,
+      active_save_requests: tplMetrics.save_in_flight_keys,
+      active_get_requests: tplMetrics.get_in_flight,
+      save_clicks: tplMetrics.save_clicks,
+      save_posts_started: tplMetrics.save_posts_started,
+      get_fetches_started: tplMetrics.get_fetches_started,
+      render_applied: tplMetrics.render_applied,
+      render_stale_skipped: tplMetrics.render_stale_skipped,
+      apply_gen: window.__trigger_templates_apply_gen,
+      dom_ready: !!window.__trigger_templates_dom_ready,
+      templates_loading: !!window.__trigger_templates_loading,
+      current_reason_key: window.__maTplDebugLastReason || "",
+      current_stage: window.__maTplDebugLastStage,
+      last_payload_bytes: window.__maTplDebugLastPayloadBytes || 0,
+      last_save_ms: window.__maTplDebugLastSaveMs || 0,
+    };
+    return window.__maTplDebug;
+  }
+
+  /** سجلات تحقيق — وحدة التحكم + trigLog + `__maTplDebug()`. */
   function tplDbg(tag, meta) {
     var out = { store_slug: tplStoreSlugForDebug() };
     if (meta && typeof meta === "object") {
@@ -892,12 +972,83 @@
         }
       }
     }
+    out.debug = refreshMaTplDebugCounters();
     try {
       console.log(tag, out);
     } catch (_logErr) {
       /* ignore */
     }
     trigLog(tag, out);
+  }
+
+  function onMaTplRootClick(ev) {
+    var root = byId("ma-tpl-root");
+    if (!root) return;
+    var tg = ev.target;
+    var stageBtn =
+      tg && tg.closest ? tg.closest("[data-ma-tpl-stage-select]") : null;
+    if (stageBtn && root.contains(stageBtn)) {
+      ev.preventDefault();
+      var rkChip = stageBtn.getAttribute("data-ma-tpl-reason");
+      var ixChip = parseInt(stageBtn.getAttribute("data-ma-tpl-preset-i"), 10);
+      var cardChip = stageBtn.closest("[data-ma-tpl-key]");
+      if (!cardChip || !rkChip || !(ixChip >= 0)) return;
+      patchActiveStageInLastPayload(cardChip, rkChip);
+      setCardEditorStage(cardChip, rkChip, ixChip);
+      return;
+    }
+    var restoreB =
+      tg && tg.closest ? tg.closest("[data-ma-tpl-restore-timing]") : null;
+    if (restoreB && root.contains(restoreB)) {
+      ev.preventDefault();
+      var cardR = restoreB.closest("[data-ma-tpl-key]");
+      var rkR = cardR && cardR.getAttribute("data-ma-tpl-key");
+      if (cardR && rkR) {
+        restoreRecommendedTimingForActiveStage(cardR, rkR);
+      }
+      return;
+    }
+    var saveB = tg && tg.closest ? tg.closest("[data-ma-tpl-save]") : null;
+    if (saveB && root.contains(saveB)) {
+      ev.preventDefault();
+      tplMetrics.save_clicks++;
+      var cardS = saveB.closest("[data-ma-tpl-key]");
+      if (cardS) saveOne(cardS.getAttribute("data-ma-tpl-key"), cardS);
+    }
+  }
+
+  function onMaTplRootChange(ev) {
+    var root = byId("ma-tpl-root");
+    if (!root) return;
+    var mcSel =
+      ev.target && ev.target.closest
+        ? ev.target.closest("[data-ma-tpl-msg-count]")
+        : null;
+    if (!mcSel || !root.contains(mcSel)) return;
+    var cardEl = mcSel.closest("[data-ma-tpl-key]");
+    if (!cardEl) return;
+    var rk = cardEl.getAttribute("data-ma-tpl-key");
+    var n = getCardEnabledStageCount(cardEl);
+    var editIx = parseInt(
+      cardEl.getAttribute("data-ma-tpl-active-stage") || "0",
+      10
+    );
+    if (editIx >= n && rk) {
+      setCardEditorStage(cardEl, rk, n - 1);
+    } else {
+      syncCardStageWorkflow(cardEl);
+    }
+  }
+
+  /** ربط مرة واحدة — لا إعادة ربط عند كل render. */
+  function ensureMaTplRootDelegates() {
+    var root = byId("ma-tpl-root");
+    if (!root || root._maTplDelegatesBound) return;
+    root._maTplDelegatesBound = true;
+    root.addEventListener("click", onMaTplRootClick);
+    root.addEventListener("change", onMaTplRootChange);
+    tplMetrics.save_click_handlers = 1;
+    refreshMaTplDebugCounters();
   }
 
   function snapshotCacheOk(snap) {
@@ -1038,7 +1189,16 @@
     );
   }
 
-  function render(raw, httpStatus) {
+  function render(raw, httpStatus, applyGen) {
+    if (!applyGenIsCurrent(applyGen)) {
+      tplMetrics.render_stale_skipped++;
+      tplDbg("[TRIGGER RENDER STALE SKIP]", {
+        apply_gen: applyGen,
+        current_gen: window.__trigger_templates_apply_gen,
+      });
+      return;
+    }
+    ensureMaTplRootDelegates();
     var root = byId("ma-tpl-root");
     var sub = byId("ma-tpl-sub");
     var err = byId("ma-tpl-load-err");
@@ -1054,7 +1214,7 @@
         payload_keys: payloadKeys(raw),
         status: httpStatus,
       });
-      render(buildClientFallbackPayload(), 200);
+      render(buildClientFallbackPayload(), 200, applyGen);
       return;
     }
 
@@ -1066,7 +1226,7 @@
         payload_keys: payloadKeys(raw),
         status: httpStatus,
       });
-      render(buildClientFallbackPayload(), 200);
+      render(buildClientFallbackPayload(), 200, applyGen);
       return;
     }
 
@@ -1087,11 +1247,13 @@
         payload_keys: payloadKeys(raw),
         status: httpStatus,
       });
-      render(buildClientFallbackPayload(), 200);
+      render(buildClientFallbackPayload(), 200, applyGen);
       return;
     }
 
     lastPayload = payload;
+    tplMetrics.render_applied++;
+    window.__trigger_templates_dom_ready = true;
 
     var cards = root.querySelectorAll("[data-ma-tpl-key]");
     var ci;
@@ -1103,69 +1265,21 @@
         } else {
           syncCardStageWorkflow(cardEl);
         }
-        var mcSel = cardEl.querySelector("[data-ma-tpl-msg-count]");
-        if (mcSel) {
-          mcSel.addEventListener("change", function () {
-            var rk = cardEl.getAttribute("data-ma-tpl-key");
-            var n = getCardEnabledStageCount(cardEl);
-            var editIx = parseInt(
-              cardEl.getAttribute("data-ma-tpl-active-stage") || "0",
-              10
-            );
-            if (editIx >= n && rk) {
-              setCardEditorStage(cardEl, rk, n - 1);
-            } else {
-              syncCardStageWorkflow(cardEl);
-            }
-          });
-        }
       })(cards[ci]);
     }
-
-    if (typeof root._maTplClickDelegate === "function") {
-      root.removeEventListener("click", root._maTplClickDelegate);
-    }
-    root._maTplClickDelegate = function (ev) {
-      var tg = ev.target;
-      var stageBtn =
-        tg && tg.closest ? tg.closest("[data-ma-tpl-stage-select]") : null;
-      if (stageBtn && root.contains(stageBtn)) {
-        ev.preventDefault();
-        var rkChip = stageBtn.getAttribute("data-ma-tpl-reason");
-        var ixChip = parseInt(stageBtn.getAttribute("data-ma-tpl-preset-i"), 10);
-        var cardChip = stageBtn.closest("[data-ma-tpl-key]");
-        if (!cardChip || !rkChip || !(ixChip >= 0)) return;
-        patchActiveStageInLastPayload(cardChip, rkChip);
-        setCardEditorStage(cardChip, rkChip, ixChip);
-        return;
-      }
-      var restoreB =
-        tg && tg.closest ? tg.closest("[data-ma-tpl-restore-timing]") : null;
-      if (restoreB && root.contains(restoreB)) {
-        ev.preventDefault();
-        var cardR = restoreB.closest("[data-ma-tpl-key]");
-        var rkR = cardR && cardR.getAttribute("data-ma-tpl-key");
-        if (cardR && rkR) {
-          restoreRecommendedTimingForActiveStage(cardR, rkR);
-        }
-        return;
-      }
-      var saveB =
-        tg && tg.closest ? tg.closest("[data-ma-tpl-save]") : null;
-      if (saveB && root.contains(saveB)) {
-        ev.preventDefault();
-        var cardS = saveB.closest("[data-ma-tpl-key]");
-        if (cardS) saveOne(cardS.getAttribute("data-ma-tpl-key"), cardS);
-      }
-    };
-    root.addEventListener("click", root._maTplClickDelegate);
+    refreshMaTplDebugCounters();
   }
 
   /** يرسم بعد توفر الحاوية (تجنّب فشل ‎SPA‎ عند تفعيل الصفحة قبل بناء DOM). */
-  function renderWhenRootReady(raw, httpStatus, domAttempt, onDone) {
+  function renderWhenRootReady(raw, httpStatus, domAttempt, onDone, applyGen) {
+    if (!applyGenIsCurrent(applyGen)) {
+      tplMetrics.render_stale_skipped++;
+      if (onDone) onDone(false);
+      return;
+    }
     var root = byId("ma-tpl-root");
     if (root && root.isConnected) {
-      render(raw, httpStatus);
+      render(raw, httpStatus, applyGen);
       var ok =
         !!(lastPayload && lastPayload.ok && lastPayload.reason_rows &&
           lastPayload.reason_rows.length);
@@ -1178,7 +1292,7 @@
       return;
     }
     window.setTimeout(function () {
-      renderWhenRootReady(raw, httpStatus, domAttempt + 1, onDone);
+      renderWhenRootReady(raw, httpStatus, domAttempt + 1, onDone, applyGen);
     }, DOM_POLL_MS);
   }
 
@@ -1481,6 +1595,15 @@
   function saveOne(key, card) {
     key = normalizeReasonKey(key);
     if (!key || !card) return;
+    if (tplSaveInFlight[key]) {
+      tplDbg("[SAVE TEMPLATE SKIP]", {
+        reason: key,
+        cause: "save_in_flight",
+      });
+      return;
+    }
+    tplSaveInFlight[key] = true;
+    ensureMaTplRootDelegates();
     ensureLastPayloadShell();
     patchActiveStageInLastPayload(card, key);
     var st = card.querySelector("[data-ma-tpl-status]");
@@ -1518,8 +1641,11 @@
     };
     body.selected_stage = activeIx;
 
-    var saveGen = (window.__trigger_templates_load_gen || 0) + 1;
-    window.__trigger_templates_load_gen = saveGen;
+    var bodyStr = JSON.stringify(body);
+    window.__maTplDebugLastReason = key;
+    window.__maTplDebugLastStage = activeIx;
+    window.__maTplDebugLastPayloadBytes = bodyStr.length;
+    bumpTplApplyGen();
 
     var perfNow =
       typeof performance !== "undefined" && performance.now
@@ -1531,12 +1657,14 @@
           };
     var tSave0 = perfNow();
 
+    tplMetrics.save_posts_started++;
     tplDbg("[SAVE TEMPLATE START]", {
       reason: key,
       stage: activeIx,
       delay: dv,
       unit: unit,
-      load_gen: saveGen,
+      payload_bytes: bodyStr.length,
+      apply_gen: window.__trigger_templates_apply_gen,
       endpoint: FETCH_URL_POST,
     });
 
@@ -1546,7 +1674,7 @@
       method: "POST",
       credentials: "same-origin",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
+      body: bodyStr,
     })
       .then(function (r) {
         return parseSaveResponse(r).then(function (pack) {
@@ -1584,6 +1712,7 @@
             rowAfter.messages &&
             rowAfter.messages[activeIx] &&
             rowAfter.messages[activeIx].delay;
+          window.__maTplDebugLastSaveMs = pack.duration_ms;
           tplDbg("[SAVE TEMPLATE SUCCESS]", {
             reason: key,
             stage: activeIx,
@@ -1592,7 +1721,7 @@
             duration_ms: pack.duration_ms,
             http_status: pack.httpStatus,
             persisted_delay: savedDelay,
-            load_gen: saveGen,
+            apply_gen: window.__trigger_templates_apply_gen,
           });
           if (st) st.textContent = "تم الحفظ";
           window.setTimeout(function () {
@@ -1635,11 +1764,16 @@
           err: String(netErr && netErr.message ? netErr.message : netErr),
         });
         if (st) st.textContent = "تعذر الحفظ";
+      })
+      .then(function () {
+        delete tplSaveInFlight[key];
+        refreshMaTplDebugCounters();
       });
   }
 
   function loadTemplates(forceRefresh) {
     forceRefresh = !!forceRefresh;
+    ensureMaTplRootDelegates();
     var perfNow =
       typeof performance !== "undefined" && performance.now
         ? function () {
@@ -1653,6 +1787,23 @@
 
     function wallMs() {
       return Math.round(perfNow() - wall0);
+    }
+
+    if (!forceRefresh && window.__trigger_templates_dom_ready) {
+      var rReady = byId("ma-tpl-root");
+      if (
+        rReady &&
+        rReady.isConnected &&
+        rReady.querySelector("[data-ma-tpl-key]")
+      ) {
+        refreshMaTplDebugCounters();
+        tplDbg("[TEMPLATE RELOAD SKIP]", {
+          duration_ms: wallMs(),
+          source: "dom_already_ready",
+        });
+        return;
+      }
+      window.__trigger_templates_dom_ready = false;
     }
 
     if (!forceRefresh && window.__trigger_templates_loading) {
@@ -1690,12 +1841,12 @@
           '<div class="ma-tpl-loading ma-dash-skel" style="padding:32px;text-align:center;color:var(--muted);">جاري عرض القوالب…</div>';
       }
       if (cacheHasCards) {
+        window.__trigger_templates_dom_ready = true;
         try {
           lastPayload = normalizeTriggerTemplatesPayload(
             cached.json,
             cached.httpStatus
           );
-          syncAllCardsFromLastPayload();
         } catch (_cacheNormErr) {
           /* fall through to render */
         }
@@ -1704,51 +1855,63 @@
           status: cached.httpStatus,
           source: "memory_cache_skip_render",
         });
+        refreshMaTplDebugCounters();
         return;
       }
-      renderWhenRootReady(cached.json, cached.httpStatus, 0, function (okDom) {
-        if (okDom) {
-          tplDbg("[TEMPLATE RELOAD SUCCESS]", {
-            duration_ms: wallMs(),
-            status: cached.httpStatus,
-            payload_keys: payloadKeys(cached.json),
-            source: "memory_cache",
-          });
-          trigLog("[TRIGGER LOAD SUCCESS]", {
-            duration_ms: wallMs(),
-            status: cached.httpStatus,
-            payload_keys: payloadKeys(cached.json),
-            source: "memory_cache",
-          });
-        } else {
-          tplDbg("[TEMPLATE RELOAD FAIL]", {
-            duration_ms: wallMs(),
-            status: cached.httpStatus,
-            payload_keys: payloadKeys(cached.json),
-            source: "memory_cache_dom",
-            failure_class: "dom_render",
-          });
-          trigLog("[TRIGGER LOAD ERROR]", {
-            duration_ms: wallMs(),
-            status: cached.httpStatus,
-            payload_keys: payloadKeys(cached.json),
-            source: "memory_cache_dom",
-          });
-        }
-      });
+      renderWhenRootReady(
+        cached.json,
+        cached.httpStatus,
+        0,
+        function (okDom) {
+          if (okDom) {
+            tplDbg("[TEMPLATE RELOAD SUCCESS]", {
+              duration_ms: wallMs(),
+              status: cached.httpStatus,
+              payload_keys: payloadKeys(cached.json),
+              source: "memory_cache",
+            });
+            trigLog("[TRIGGER LOAD SUCCESS]", {
+              duration_ms: wallMs(),
+              status: cached.httpStatus,
+              payload_keys: payloadKeys(cached.json),
+              source: "memory_cache",
+            });
+          } else {
+            tplDbg("[TEMPLATE RELOAD FAIL]", {
+              duration_ms: wallMs(),
+              status: cached.httpStatus,
+              payload_keys: payloadKeys(cached.json),
+              source: "memory_cache_dom",
+              failure_class: "dom_render",
+            });
+            trigLog("[TRIGGER LOAD ERROR]", {
+              duration_ms: wallMs(),
+              status: cached.httpStatus,
+              payload_keys: payloadKeys(cached.json),
+              source: "memory_cache_dom",
+            });
+          }
+        },
+        window.__trigger_templates_apply_gen
+      );
       return;
     }
 
-    var loadGen = (window.__trigger_templates_load_gen || 0) + 1;
-    window.__trigger_templates_load_gen = loadGen;
+    cancelTplGetInFlight();
+    var fetchGen = bumpTplApplyGen();
+    var fetchAbort =
+      typeof AbortController !== "undefined" ? new AbortController() : null;
+    tplGetAbort = fetchAbort;
 
     window.__trigger_templates_loading = true;
+    tplMetrics.get_fetches_started++;
+    tplMetrics.get_in_flight++;
     tplDbg("[TEMPLATE RELOAD START]", {
       duration_ms: 0,
       source: "network_fetch",
       status: "(pending)",
       payload_keys: "(request)",
-      load_gen: loadGen,
+      apply_gen: fetchGen,
       endpoint: FETCH_URL_GET,
     });
     trigLog("[TRIGGER LOAD START]", {
@@ -1756,7 +1919,7 @@
       source: "network_fetch",
       status: "(pending)",
       payload_keys: "(request)",
-      load_gen: loadGen,
+      apply_gen: fetchGen,
     });
 
     var shell = byId("ma-tpl-root");
@@ -1769,8 +1932,12 @@
 
     function runFetch(isRetry) {
       var t0 = perfNow();
+      var fetchOpts = { credentials: "same-origin" };
+      if (fetchAbort && fetchAbort.signal) {
+        fetchOpts.signal = fetchAbort.signal;
+      }
 
-      fetch(FETCH_URL_GET, { credentials: "same-origin" })
+      fetch(FETCH_URL_GET, fetchOpts)
         .then(function (resp) {
           var st = resp.status;
           return resp.json().then(
@@ -1787,17 +1954,18 @@
           );
         })
         .then(function (pack) {
-          if (loadGen !== window.__trigger_templates_load_gen) {
+          if (!applyGenIsCurrent(fetchGen)) {
             tplDbg("[TEMPLATE RELOAD FAIL]", {
               duration_ms: wallMs(),
               status:
                 typeof pack.status === "number" ? pack.status : "(unknown)",
-              load_gen: loadGen,
-              current_gen: window.__trigger_templates_load_gen,
+              apply_gen: fetchGen,
+              current_gen: window.__trigger_templates_apply_gen,
               failure_class: "stale_response_after_save",
               fetch_ms: Math.round(perfNow() - t0),
             });
             window.__trigger_templates_loading = false;
+            tplMetrics.get_in_flight = Math.max(0, tplMetrics.get_in_flight - 1);
             return;
           }
           var fetchMs = Math.round(perfNow() - t0);
@@ -1858,7 +2026,7 @@
               payload_keys: payloadKeys(pack.json || {}),
               phase: isRetry ? "after_retry" : "immediate",
               fetch_ms: fetchMs,
-              load_gen: loadGen,
+              apply_gen: fetchGen,
               failure_class: !httpOk
                 ? "http_error"
                 : !gotJson
@@ -1879,12 +2047,19 @@
               json: fallbackPayload,
               httpStatus: 200,
             };
-            renderWhenRootReady(fallbackPayload, 200, 0, function (okFb) {
-              var errBanner = byId("ma-tpl-load-err");
-              if (errBanner) {
-                errBanner.hidden = !!okFb;
-              }
-            });
+            renderWhenRootReady(
+              fallbackPayload,
+              200,
+              0,
+              function (okFb) {
+                var errBanner = byId("ma-tpl-load-err");
+                if (errBanner) {
+                  errBanner.hidden = !!okFb;
+                }
+              },
+              fetchGen
+            );
+            tplMetrics.get_in_flight = Math.max(0, tplMetrics.get_in_flight - 1);
             return;
           }
 
@@ -1893,29 +2068,49 @@
             httpStatus: pack.status,
           };
 
-          renderWhenRootReady(pack.json, pack.status, 0, function (okDom) {
-            window.__trigger_templates_loading = false;
-            var meta = {
-              duration_ms: wallMs(),
-              status: pack.status,
-              payload_keys: payloadKeys(pack.json),
-              fetch_ms: fetchMs,
-              load_gen: loadGen,
-            };
-            if (okDom) {
-              tplDbg("[TEMPLATE RELOAD SUCCESS]", meta);
-              trigLog("[TRIGGER LOAD SUCCESS]", meta);
-            } else {
-              meta.phase = "dom_timeout_or_render";
-              meta.failure_class = "dom_render";
-              tplDbg("[TEMPLATE RELOAD FAIL]", meta);
-              trigLog("[TRIGGER LOAD ERROR]", meta);
-            }
-          });
+          renderWhenRootReady(
+            pack.json,
+            pack.status,
+            0,
+            function (okDom) {
+              window.__trigger_templates_loading = false;
+              tplMetrics.get_in_flight = Math.max(
+                0,
+                tplMetrics.get_in_flight - 1
+              );
+              var meta = {
+                duration_ms: wallMs(),
+                status: pack.status,
+                payload_keys: payloadKeys(pack.json),
+                fetch_ms: fetchMs,
+                apply_gen: fetchGen,
+              };
+              if (okDom) {
+                tplDbg("[TEMPLATE RELOAD SUCCESS]", meta);
+                trigLog("[TRIGGER LOAD SUCCESS]", meta);
+              } else {
+                meta.phase = "dom_timeout_or_render";
+                meta.failure_class = "dom_render";
+                tplDbg("[TEMPLATE RELOAD FAIL]", meta);
+                trigLog("[TRIGGER LOAD ERROR]", meta);
+              }
+            },
+            fetchGen
+          );
         })
         .catch(function (netErr) {
-          if (loadGen !== window.__trigger_templates_load_gen) {
+          if (netErr && netErr.name === "AbortError") {
             window.__trigger_templates_loading = false;
+            tplMetrics.get_in_flight = Math.max(0, tplMetrics.get_in_flight - 1);
+            tplDbg("[TEMPLATE RELOAD ABORT]", {
+              apply_gen: fetchGen,
+              current_gen: window.__trigger_templates_apply_gen,
+            });
+            return;
+          }
+          if (!applyGenIsCurrent(fetchGen)) {
+            window.__trigger_templates_loading = false;
+            tplMetrics.get_in_flight = Math.max(0, tplMetrics.get_in_flight - 1);
             return;
           }
           var fetchMsCatch = Math.round(perfNow() - t0);
@@ -1939,7 +2134,7 @@
             payload_keys: "(none)",
             phase: "fetch_catch_final",
             fetch_ms: fetchMsCatch,
-            load_gen: loadGen,
+            apply_gen: fetchGen,
             failure_class: "network_or_timeout",
             err: String(netErr && netErr.message ? netErr.message : netErr),
           });
@@ -1952,21 +2147,34 @@
             err: String(netErr && netErr.message ? netErr.message : netErr),
           });
           window.__trigger_templates_loading = false;
+          tplMetrics.get_in_flight = Math.max(0, tplMetrics.get_in_flight - 1);
           var fallbackNet = buildClientFallbackPayload();
           window.__trigger_templates_loaded = {
             json: fallbackNet,
             httpStatus: 200,
           };
-          renderWhenRootReady(fallbackNet, 200, 0, function (okNet) {
-            var errBanner = byId("ma-tpl-load-err");
-            if (errBanner) {
-              errBanner.hidden = !!okNet;
-            }
-          });
+          renderWhenRootReady(
+            fallbackNet,
+            200,
+            0,
+            function (okNet) {
+              var errBanner = byId("ma-tpl-load-err");
+              if (errBanner) {
+                errBanner.hidden = !!okNet;
+              }
+            },
+            fetchGen
+          );
         });
     }
 
     runFetch(false);
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", ensureMaTplRootDelegates);
+  } else {
+    ensureMaTplRootDelegates();
   }
 
   window.maEnsureTriggerTemplatesLoaded = loadTemplates;

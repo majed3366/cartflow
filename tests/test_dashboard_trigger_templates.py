@@ -134,6 +134,49 @@ class DashboardTriggerTemplatesApiTests(unittest.TestCase):
             self.assertEqual(row.get("delay_value"), float(delay))
             self.assertEqual(row["messages"][0]["delay"], float(delay))
 
+    def test_twenty_consecutive_saves_across_reasons(self) -> None:
+        from services.trigger_template_ui_defaults import DASHBOARD_STAGE_TEXTS
+
+        rotation = ("price", "quality", "warranty", "other", "shipping", "delivery")
+        last_delay_by_reason: dict[str, float] = {}
+        for i in range(20):
+            reason = rotation[i % len(rotation)]
+            delay = 3 + (i % 7)
+            last_delay_by_reason[reason] = float(delay)
+            stage1 = DASHBOARD_STAGE_TEXTS[reason][0]
+            body = {
+                "reason_templates": {
+                    reason: {
+                        "enabled": True,
+                        "message": stage1,
+                        "message_count": 1,
+                        "messages": [
+                            {"delay": delay, "unit": "minute", "text": stage1}
+                        ],
+                    }
+                },
+                "selected_stage": 0,
+            }
+            rp = self.client.post(
+                "/api/dashboard/trigger-templates",
+                json=body,
+            )
+            self.assertEqual(rp.status_code, 200, (i, reason, rp.text[:200]))
+            self.assertTrue(rp.json().get("save_ack"), (i, reason, rp.json()))
+            ack = next(
+                r
+                for r in rp.json().get("reason_rows") or []
+                if r.get("key") == reason
+            )
+            self.assertEqual(ack.get("delay_value"), float(delay), (i, reason))
+        g = self.client.get("/api/dashboard/trigger-templates")
+        self.assertEqual(g.status_code, 200)
+        for reason, expected in last_delay_by_reason.items():
+            row = next(
+                r for r in g.json().get("reason_rows") or [] if r.get("key") == reason
+            )
+            self.assertEqual(row.get("delay_value"), expected, reason)
+
 
 class TriggerTemplatesDashboardServiceTests(unittest.TestCase):
     def test_build_payload_for_empty_namespace(self) -> None:
