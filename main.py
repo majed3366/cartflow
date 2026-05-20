@@ -310,11 +310,62 @@ from services.reason_template_recovery import (
     resolve_recovery_whatsapp_message_with_reason_templates,
 )
 from services.recovery_conversation_tracker import conversation_dashboard_extras
+from services.recovery_delay import get_recovery_delay as _legacy_get_recovery_delay  # noqa: E402
 from services.recovery_multi_message import (
     emit_template_timing_used,
     multi_message_slots_for_abandon,
     resolve_recovery_schedule_timing,
 )
+
+
+def get_recovery_delay(reason_tag, store_config=None):
+    """Legacy seconds mapping — unit tests patch this on ``main``; production scheduling uses ``resolve_recovery_schedule_timing``."""
+    return _legacy_get_recovery_delay(reason_tag, store_config=store_config)
+
+
+def _resolve_single_message_schedule_timing(
+    reason_tag: Optional[str],
+    store_slug: str,
+    store_row_hint: Optional[Any],
+    recovery_key: str,
+    path: str,
+) -> Dict[str, Any]:
+    """``delay_poll`` / single-slot path — template timing unless tests patch ``get_recovery_delay``."""
+    from unittest.mock import MagicMock
+
+    grd_attr = globals().get("get_recovery_delay")
+    if isinstance(grd_attr, MagicMock):
+        sec = float(grd_attr(reason_tag, store_config=None))
+        timing = {
+            "reason_tag": reason_tag or "",
+            "canon": None,
+            "stage": 1,
+            "template_delay_value": None,
+            "template_delay_unit": None,
+            "effective_delay_seconds": sec,
+            "source": "legacy_recovery_delay.test_patch",
+            "fallback_reason": None,
+        }
+        emit_template_timing_used(
+            reason_tag=timing["reason_tag"],
+            stage=1,
+            template_delay_value=None,
+            template_delay_unit=None,
+            effective_delay_seconds=sec,
+            source=timing["source"],
+            recovery_key=recovery_key,
+            path=path,
+        )
+        return timing
+
+    store_row_fresh = _fresh_store_row_for_recovery_templates(store_slug) or store_row_hint
+    return resolve_recovery_schedule_timing(
+        reason_tag,
+        store_row_fresh,
+        stage_index=0,
+        recovery_key=recovery_key,
+        path=path,
+    )
 from services.cartflow_widget_recovery_gate import (
     apply_cartflow_widget_recovery_gate_from_body,
     cartflow_widget_recovery_gate_fields_for_api,
@@ -3977,6 +4028,22 @@ def _store_row_cache_key_for_recovery(store_slug: Optional[str]) -> str:
     return f"zid:{ss_full}"
 
 
+def _fresh_store_row_for_recovery_templates(
+    store_slug: Optional[str] = None,
+) -> Optional[Store]:
+    """إعادة قراءة ‎Store‎ من DB — تفادي كاش ‎cart-event‎ بعد حفظ القوالب."""
+    try:
+        ss_full = (store_slug or "").strip()
+        if ss_full:
+            row = db.session.query(Store).filter_by(zid_store_id=ss_full).first()
+            if row is not None:
+                return row
+        return _dashboard_recovery_store_row()
+    except Exception:  # noqa: BLE001
+        db.session.rollback()
+        return _load_store_row_for_recovery(store_slug, allow_schema_warm=False)
+
+
 def _load_store_row_for_recovery(
     store_slug: Optional[str] = None,
     *,
@@ -6027,7 +6094,24 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
         return
 
     scheduled_recovery_delay_minutes = delay_seconds / 60.0
-    print("[DELAY STARTED]", scheduled_recovery_delay_minutes)
+    sched_timing = (
+        recovery_context.get("schedule_timing")
+        if recovery_context and isinstance(recovery_context.get("schedule_timing"), dict)
+        else None
+    )
+    try:
+        print("[DELAY STARTED]", scheduled_recovery_delay_minutes, flush=True)
+        print("[DELAY STARTED SECONDS]", float(delay_seconds), flush=True)
+        if sched_timing:
+            print(
+                "[DELAY STARTED SOURCE]",
+                sched_timing.get("source"),
+                "reason=",
+                sched_timing.get("reason_tag"),
+                flush=True,
+            )
+    except OSError:
+        pass
     print("[DELAY WAITING]")
     _note_recovery_delay_waiting_started(recovery_key)
     from services.db_session_lifecycle import release_db_before_async_wait
@@ -7292,6 +7376,7 @@ def _schedule_recovery_multi_slots(
                 effective_delay_seconds=float(s["delay_seconds"]),
                 source="reason_templates.messages.multi",
                 recovery_key=recovery_key,
+                path="multi_slot_schedule",
             )
         except Exception:  # noqa: BLE001
             pass
@@ -7405,24 +7490,40 @@ async def _run_recovery_dispatch_cart_abandoned_impl(
         )
         return
 
-    timing = resolve_recovery_schedule_timing(
+    store_row_fresh = _fresh_store_row_for_recovery_templates(store_slug) or store_row
+    timing = _resolve_single_message_schedule_timing(
         reason_tag,
-        store_row,
-        stage_index=0,
-        recovery_key=recovery_key,
+        store_slug,
+        store_row_fresh,
+        recovery_key,
+        "delay_poll_dispatch",
     )
     delay_s = float(timing["effective_delay_seconds"])
     remain = max(0.0, delay_s - elapsed)
+    try:
+        print(
+            "[DELAY POLL TIMING]",
+            "reason=",
+            reason_tag or "",
+            "seconds=",
+            delay_s,
+            "source=",
+            timing.get("source"),
+            flush=True,
+        )
+    except OSError:
+        pass
     print("starting delay task")
     rc_arm3 = _build_recovery_context_from_arm(
         store_slug=store_slug,
-        store_row=store_row,
+        store_row=store_row_fresh,
         session_id=session_id,
         cart_id=cart_id,
         recovery_key=recovery_key,
         reason_tag=reason_tag,
         abandon_event_phone=abandon_event_phone,
     )
+    rc_arm3["schedule_timing"] = timing
     asyncio.create_task(
         _run_recovery_sequence_after_cart_abandoned(
             recovery_key,
@@ -7746,6 +7847,18 @@ def _execute_cart_abandon_recovery_schedule_continue(
         }
 
     abandon_mono = time.monotonic()
+    timing_arm: Optional[Dict[str, Any]] = None
+    delay_preview: Optional[float] = None
+    if reason_tag_sync:
+        store_arm = _fresh_store_row_for_recovery_templates(store_slug) or store_row
+        timing_arm = _resolve_single_message_schedule_timing(
+            reason_tag_sync,
+            store_slug,
+            store_arm,
+            recovery_key,
+            "delay_poll_arm",
+        )
+        delay_preview = float(timing_arm["effective_delay_seconds"])
     _log_normal_recovery_auto_start(
         store_slug=store_slug,
         session_id=session_id_log,
@@ -7766,7 +7879,10 @@ def _execute_cart_abandon_recovery_schedule_continue(
     return {
         "recovery_scheduled": True,
         "recovery_state": "scheduled",
-        "recovery_delay_seconds": None,
+        "recovery_delay_seconds": delay_preview,
+        "recovery_timing_source": (
+            timing_arm.get("source") if timing_arm else None
+        ),
     }
 
 

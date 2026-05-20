@@ -53,10 +53,29 @@ def emit_template_timing_used(
     effective_delay_seconds: float,
     source: str,
     recovery_key: Optional[str] = None,
+    path: Optional[str] = None,
 ) -> None:
+    line = (
+        "[TEMPLATE TIMING USED] reason_tag=%s stage=%s template_delay_value=%s "
+        "template_delay_unit=%s effective_delay_seconds=%s source=%s recovery_key=%s path=%s"
+        % (
+            reason_tag or "",
+            stage,
+            template_delay_value,
+            template_delay_unit or "",
+            effective_delay_seconds,
+            source,
+            recovery_key or "",
+            path or "",
+        )
+    )
+    try:
+        print(line, flush=True)
+    except OSError:
+        pass
     _log.info(
         "[TEMPLATE TIMING USED] reason_tag=%s stage=%s template_delay_value=%s "
-        "template_delay_unit=%s effective_delay_seconds=%s source=%s recovery_key=%s",
+        "template_delay_unit=%s effective_delay_seconds=%s source=%s recovery_key=%s path=%s",
         reason_tag or "",
         stage,
         template_delay_value,
@@ -64,6 +83,7 @@ def emit_template_timing_used(
         effective_delay_seconds,
         source,
         recovery_key or "",
+        path or "",
     )
 
 
@@ -74,15 +94,33 @@ def emit_template_timing_fallback(
     fallback_reason: str,
     effective_delay_seconds: float,
     recovery_key: Optional[str] = None,
+    path: Optional[str] = None,
 ) -> None:
+    line = (
+        "[TEMPLATE TIMING FALLBACK] reason_tag=%s stage=%s fallback_reason=%s "
+        "effective_delay_seconds=%s recovery_key=%s path=%s"
+        % (
+            reason_tag or "",
+            stage,
+            fallback_reason,
+            effective_delay_seconds,
+            recovery_key or "",
+            path or "",
+        )
+    )
+    try:
+        print(line, flush=True)
+    except OSError:
+        pass
     _log.info(
         "[TEMPLATE TIMING FALLBACK] reason_tag=%s stage=%s fallback_reason=%s "
-        "effective_delay_seconds=%s recovery_key=%s",
+        "effective_delay_seconds=%s recovery_key=%s path=%s",
         reason_tag or "",
         stage,
         fallback_reason,
         effective_delay_seconds,
         recovery_key or "",
+        path or "",
     )
 
 
@@ -119,6 +157,7 @@ def resolve_recovery_schedule_timing(
     *,
     stage_index: int = 0,
     recovery_key: Optional[str] = None,
+    path: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     تأخير الجدولة لمرحلة واحدة (٠ = الرسالة الأولى) — يقرأ ‎reason_templates.messages‎
@@ -136,6 +175,7 @@ def resolve_recovery_schedule_timing(
             fallback_reason="unknown_reason_canon",
             effective_delay_seconds=sec,
             recovery_key=recovery_key,
+            path=path,
         )
         return {
             "reason_tag": rt_log,
@@ -160,6 +200,7 @@ def resolve_recovery_schedule_timing(
             fallback_reason="no_template_entry",
             effective_delay_seconds=sec,
             recovery_key=recovery_key,
+            path=path,
         )
         return {
             "reason_tag": rt_log,
@@ -213,6 +254,7 @@ def resolve_recovery_schedule_timing(
             effective_delay_seconds=sec,
             source=out["source"],
             recovery_key=recovery_key,
+            path=path,
         )
         return out
 
@@ -226,6 +268,7 @@ def resolve_recovery_schedule_timing(
         effective_delay_seconds=sec,
         source="reason_templates.default_slot",
         recovery_key=recovery_key,
+        path=path,
     )
     return {
         "reason_tag": rt_log,

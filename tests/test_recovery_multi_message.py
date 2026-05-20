@@ -75,6 +75,37 @@ def test_resolve_schedule_timing_warranty_five_minutes() -> None:
     assert t["source"] == "reason_templates.messages"
 
 
+def test_resolve_schedule_timing_delay_poll_paths() -> None:
+    class _S:
+        reason_templates_json = json.dumps(
+            {
+                "other": {
+                    "enabled": True,
+                    "message": "نص",
+                    "message_count": 1,
+                    "messages": [{"delay": 2, "unit": "hour", "text": "نص"}],
+                },
+                "price": {
+                    "enabled": True,
+                    "message": "نص",
+                    "message_count": 1,
+                    "messages": [{"delay": 1, "unit": "minute", "text": "نص"}],
+                },
+            }
+        )
+
+    other = resolve_recovery_schedule_timing(
+        "other", _S(), path="delay_poll_dispatch"
+    )
+    assert other["effective_delay_seconds"] == 7200.0
+    assert other["source"] == "reason_templates.messages"
+
+    price = resolve_recovery_schedule_timing(
+        "price_high", _S(), path="delay_poll_arm"
+    )
+    assert price["effective_delay_seconds"] == 60.0
+
+
 def test_resolve_schedule_timing_legacy_when_no_template() -> None:
     class _S:
         reason_templates_json = None

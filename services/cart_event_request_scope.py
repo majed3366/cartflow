@@ -80,6 +80,7 @@ def cart_event_scope_invalidate_after_commit() -> None:
     d["reason_any"].clear()
     d["cart_value"].clear()
     d["abandoned_sess_cart"].clear()
+    d["stores"].clear()
 
 
 def _scope_dict() -> Optional[Dict[str, Any]]:
