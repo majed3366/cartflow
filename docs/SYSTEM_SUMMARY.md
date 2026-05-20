@@ -158,6 +158,7 @@ Defined in **`models.py`**; optional columns ensured at runtime via **`schema_wi
 
 - **`CartRecoveryReason`** — last reason per `(store_slug, session_id)`; drives `updated_at` / last activity for delay checks.
 - **`CartRecoveryLog`** — append-only recovery attempts (`status`, `step`, `message`, …); includes **`vip_manual_handling`** for VIP dashboard lines.
+- **`RecoverySchedule`** — durable delayed-recovery jobs (`recovery_key`, `due_at`, `effective_delay_seconds`, `delay_source`, `context_json`); survives process restart; resumed on startup via **`services/recovery_restart_survival`**.
 - **`AbandonedCart`** — `zid_cart_id`, `cart_value`, `vip_mode`, etc.; VIP threshold comparison uses **`_abandoned_cart_cart_value_for_recovery`** in `main.py`.
 - **`Store`** — recovery delays, units, attempts, templates, `vip_cart_threshold`, WhatsApp fields.
 - **`schema_widget.py`** — idempotent `ALTER TABLE` helpers so ORM matches SQLite/Postgres deployments.
