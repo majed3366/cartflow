@@ -34,6 +34,7 @@
   var tplSaveInFlight = {};
   var tplMetrics = {
     save_clicks: 0,
+    save_handler_invokes: 0,
     save_posts_started: 0,
     save_in_flight_keys: 0,
     get_fetches_started: 0,
@@ -41,6 +42,12 @@
     render_applied: 0,
     render_stale_skipped: 0,
     save_click_handlers: 0,
+  };
+
+  /** معرّفات ثابتة لمسار الحفظ الوحيد — للتشخيص في وحدة التحكم. */
+  var TPL_SAVE_HANDLER = {
+    name: "onMaTplRootClick",
+    id: "ma_tpl_root_delegate_v1",
   };
 
   /** ترتيب ثابت يطابق الخادم عند الحاجة لبطاقات احتياطية. */
@@ -880,7 +887,23 @@
   function trigLog(tag, meta) {
     try {
       console.log(tag, meta && typeof meta === "object" ? meta : {});
-    } catch (unusedUnused) {}
+    } catch (_trigLogErr) {
+      /* ignore */
+    }
+  }
+
+  function logSaveHandler(handlerName, handlerId, reason, eventType) {
+    try {
+      console.log(
+        "[SAVE HANDLER]",
+        handlerName,
+        handlerId,
+        reason || "",
+        eventType || ""
+      );
+    } catch (_handlerLogErr) {
+      /* ignore */
+    }
   }
 
   function tplStoreSlugForDebug() {
@@ -946,7 +969,9 @@
       active_save_requests: tplMetrics.save_in_flight_keys,
       active_get_requests: tplMetrics.get_in_flight,
       save_clicks: tplMetrics.save_clicks,
+      save_handler_invokes: tplMetrics.save_handler_invokes,
       save_posts_started: tplMetrics.save_posts_started,
+      last_save_invocation: window.__maTplSaveInvocation || 0,
       get_fetches_started: tplMetrics.get_fetches_started,
       render_applied: tplMetrics.render_applied,
       render_stale_skipped: tplMetrics.render_stale_skipped,
@@ -961,7 +986,7 @@
     return window.__maTplDebug;
   }
 
-  /** سجلات تحقيق — وحدة التحكم + trigLog + `__maTplDebug()`. */
+  /** سجلات تحقيق — مسار console واحد (لا استدعاء trigLog مكرر). */
   function tplDbg(tag, meta) {
     var out = { store_slug: tplStoreSlugForDebug() };
     if (meta && typeof meta === "object") {
@@ -978,7 +1003,6 @@
     } catch (_logErr) {
       /* ignore */
     }
-    trigLog(tag, out);
   }
 
   function onMaTplRootClick(ev) {
@@ -1011,9 +1035,19 @@
     var saveB = tg && tg.closest ? tg.closest("[data-ma-tpl-save]") : null;
     if (saveB && root.contains(saveB)) {
       ev.preventDefault();
+      ev.stopPropagation();
       tplMetrics.save_clicks++;
       var cardS = saveB.closest("[data-ma-tpl-key]");
-      if (cardS) saveOne(cardS.getAttribute("data-ma-tpl-key"), cardS);
+      var rkSave = cardS && cardS.getAttribute("data-ma-tpl-key");
+      if (cardS && rkSave) {
+        logSaveHandler(
+          TPL_SAVE_HANDLER.name,
+          TPL_SAVE_HANDLER.id,
+          normalizeReasonKey(rkSave),
+          ev.type
+        );
+        saveOne(rkSave, cardS, TPL_SAVE_HANDLER);
+      }
     }
   }
 
@@ -1043,10 +1077,22 @@
   /** ربط مرة واحدة — لا إعادة ربط عند كل render. */
   function ensureMaTplRootDelegates() {
     var root = byId("ma-tpl-root");
-    if (!root || root._maTplDelegatesBound) return;
+    if (!root) return;
+    if (root._maTplDelegatesBound) {
+      tplMetrics.save_click_handlers = 1;
+      return;
+    }
+    if (typeof root._maTplOnClick === "function") {
+      root.removeEventListener("click", root._maTplOnClick);
+    }
+    if (typeof root._maTplOnChange === "function") {
+      root.removeEventListener("change", root._maTplOnChange);
+    }
+    root._maTplOnClick = onMaTplRootClick;
+    root._maTplOnChange = onMaTplRootChange;
     root._maTplDelegatesBound = true;
-    root.addEventListener("click", onMaTplRootClick);
-    root.addEventListener("change", onMaTplRootChange);
+    root.addEventListener("click", root._maTplOnClick);
+    root.addEventListener("change", root._maTplOnChange);
     tplMetrics.save_click_handlers = 1;
     refreshMaTplDebugCounters();
   }
@@ -1592,17 +1638,30 @@
     });
   }
 
-  function saveOne(key, card) {
+  function saveOne(key, card, handlerRef) {
     key = normalizeReasonKey(key);
     if (!key || !card) return;
+    handlerRef = handlerRef || TPL_SAVE_HANDLER;
+    if (handlerRef.id !== TPL_SAVE_HANDLER.id) {
+      tplDbg("[SAVE TEMPLATE SKIP]", {
+        reason: key,
+        cause: "unknown_handler",
+        handler_id: handlerRef.id,
+      });
+      return;
+    }
     if (tplSaveInFlight[key]) {
       tplDbg("[SAVE TEMPLATE SKIP]", {
         reason: key,
         cause: "save_in_flight",
+        handler_id: handlerRef.id,
       });
       return;
     }
     tplSaveInFlight[key] = true;
+    tplMetrics.save_handler_invokes++;
+    var saveInvocation = (window.__maTplSaveInvocation || 0) + 1;
+    window.__maTplSaveInvocation = saveInvocation;
     ensureMaTplRootDelegates();
     ensureLastPayloadShell();
     patchActiveStageInLastPayload(card, key);
@@ -1659,6 +1718,9 @@
 
     tplMetrics.save_posts_started++;
     tplDbg("[SAVE TEMPLATE START]", {
+      invocation: saveInvocation,
+      handler_name: handlerRef.name,
+      handler_id: handlerRef.id,
       reason: key,
       stage: activeIx,
       delay: dv,
@@ -1714,6 +1776,8 @@
             rowAfter.messages[activeIx].delay;
           window.__maTplDebugLastSaveMs = pack.duration_ms;
           tplDbg("[SAVE TEMPLATE SUCCESS]", {
+            invocation: saveInvocation,
+            handler_id: handlerRef.id,
             reason: key,
             stage: activeIx,
             delay: dv,

@@ -133,6 +133,29 @@ class MerchantStandaloneAppDashboardTests(unittest.TestCase):
             self.assertIn(tag, js, msg=tag)
         self.assertIn("stale_response_after_save", js)
 
+    def test_trigger_templates_save_single_log_path_and_handler(self) -> None:
+        import re
+        from pathlib import Path
+
+        js = (
+            Path(__file__).resolve().parents[1]
+            / "static"
+            / "merchant_trigger_templates.js"
+        ).read_text(encoding="utf-8")
+        self.assertNotIn(
+            "trigLog(tag, out)",
+            js,
+            msg="tplDbg must not double-log via trigLog",
+        )
+        self.assertIn("[SAVE HANDLER]", js)
+        self.assertIn("ma_tpl_root_delegate_v1", js)
+        save_calls = len(re.findall(r"(?<!function )saveOne\s*\(", js))
+        self.assertEqual(
+            save_calls,
+            1,
+            msg="exactly one saveOne() call site (delegated click)",
+        )
+
     def test_dashboard_merchant_html_has_no_ops_session_field(self) -> None:
         r = self.client.get("/dashboard")
         self.assertEqual(r.status_code, 200)
