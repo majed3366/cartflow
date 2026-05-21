@@ -6264,11 +6264,16 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
             recovery_context["__schedule_exec_tail"] = _exec_tail
         recovery_context["store_slug"] = store_slug
         recovery_context["recovery_key"] = recovery_key
+    post_delay_only = bool(
+        recovery_context and recovery_context.get("recovery_post_delay_only")
+    )
     store_pre = _bound_row or _recovery_store_from_context(
         recovery_context, store_slug=store_slug, allow_schema_warm=True
     )
     cart_total_pre = _abandoned_cart_cart_value_for_recovery(cart_id)
-    if cart_total_pre is not None and is_vip_cart(cart_total_pre, store_pre):
+    if not post_delay_only and cart_total_pre is not None and is_vip_cart(
+        cart_total_pre, store_pre
+    ):
         reason_row_pre = _cart_recovery_reason_latest_row(store_slug, session_id)
         rt_pre = (reason_row_pre.reason or "").strip() if reason_row_pre else ""
         _vip_recovery_decision_layer(rt_pre or None, store_pre)
@@ -6291,83 +6296,77 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
         _mark_vip_customer_recovery_closed(recovery_key)
         return
 
-    scheduled_recovery_delay_minutes = delay_seconds / 60.0
-    from services.recovery_delay_unified import (
-        effective_delay_for_gate,
-        log_recovery_delay_scheduled,
-        timing_from_recovery_context,
-    )
+    if not post_delay_only:
+        scheduled_recovery_delay_minutes = delay_seconds / 60.0
+        from services.recovery_delay_unified import (
+            log_recovery_delay_scheduled,
+            timing_from_recovery_context,
+        )
 
-    sched_timing = timing_from_recovery_context(recovery_context)
-    if sched_timing is None:
-        sched_timing = {
-            "effective_delay_seconds": float(delay_seconds),
-            "source": "scheduled_task_delay",
-            "reason_tag": (
-                str(recovery_context.get("reason_tag") or "")
-                if recovery_context
-                else ""
-            ),
-            "stage": (
-                int(sequential_attempt_index)
-                if sequential_attempt_index is not None
-                else (
-                    int(multi_slot_index)
-                    if multi_slot_index is not None
-                    else 1
+        sched_timing = timing_from_recovery_context(recovery_context)
+        if sched_timing is None:
+            sched_timing = {
+                "effective_delay_seconds": float(delay_seconds),
+                "source": "scheduled_task_delay",
+                "reason_tag": (
+                    str(recovery_context.get("reason_tag") or "")
+                    if recovery_context
+                    else ""
+                ),
+                "stage": (
+                    int(sequential_attempt_index)
+                    if sequential_attempt_index is not None
+                    else (
+                        int(multi_slot_index)
+                        if multi_slot_index is not None
+                        else 1
+                    )
+                ),
+            }
+        log_recovery_delay_scheduled(
+            sched_timing,
+            recovery_key=recovery_key,
+            scheduled_delay_seconds=float(delay_seconds),
+        )
+        try:
+            print("[DELAY STARTED]", scheduled_recovery_delay_minutes, flush=True)
+            print("[DELAY STARTED SECONDS]", float(delay_seconds), flush=True)
+            if sched_timing:
+                print(
+                    "[DELAY STARTED SOURCE]",
+                    sched_timing.get("source"),
+                    "reason=",
+                    sched_timing.get("reason_tag"),
+                    flush=True,
                 )
-            ),
-        }
-    log_recovery_delay_scheduled(
-        sched_timing,
-        recovery_key=recovery_key,
-        scheduled_delay_seconds=float(delay_seconds),
-    )
-    try:
-        print("[DELAY STARTED]", scheduled_recovery_delay_minutes, flush=True)
-        print("[DELAY STARTED SECONDS]", float(delay_seconds), flush=True)
-        if sched_timing:
-            print(
-                "[DELAY STARTED SOURCE]",
-                sched_timing.get("source"),
-                "reason=",
-                sched_timing.get("reason_tag"),
-                flush=True,
-            )
-    except OSError:
-        pass
-    print("[DELAY WAITING]")
-    _note_recovery_delay_waiting_started(recovery_key)
-    from services.db_session_lifecycle import release_db_before_async_wait
+        except OSError:
+            pass
+        print("[DELAY WAITING]")
+        _note_recovery_delay_waiting_started(recovery_key)
+        from services.db_session_lifecycle import release_db_before_async_wait
 
-    await release_db_before_async_wait()
-    try:
-        await asyncio.sleep(delay_seconds)
-    except asyncio.CancelledError:
-        raise
-    print("[DELAY FINISHED]")
+        await release_db_before_async_wait()
+        try:
+            await asyncio.sleep(delay_seconds)
+        except asyncio.CancelledError:
+            raise
+        print("[DELAY FINISHED]")
+        from services.recovery_execution_boundary import execute_recovery_schedule
+
+        await execute_recovery_schedule(
+            recovery_key=recovery_key,
+            multi_slot_index=multi_slot_index,
+            sequential_attempt_index=sequential_attempt_index,
+            source="live_delay_task",
+        )
+        return
+
     seq_attempt = sequential_attempt_index
     step_num = (
         int(seq_attempt)
         if seq_attempt is not None
         else (int(multi_slot_index) if multi_slot_index is not None else 1)
     )
-
-    from services.recovery_restart_survival import claim_recovery_schedule_execution
-
-    _resume_holder = bool(
-        recovery_context and recovery_context.get("resume_from_durable_schedule")
-    )
-    claimed, _claim_skip, sched_row = claim_recovery_schedule_execution(
-        recovery_key=recovery_key,
-        multi_slot_index=multi_slot_index,
-        sequential_attempt_index=sequential_attempt_index,
-        path="live_delay_task" if not _resume_holder else "resume_delay_task",
-        accept_already_running=_resume_holder,
-    )
-    if not claimed:
-        return
-
     if recovery_context is None:
         recovery_context = {}
     else:
@@ -6375,14 +6374,9 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
         recovery_context = dict(recovery_context)
         if isinstance(_tail_preserve, dict):
             recovery_context["__schedule_exec_tail"] = _tail_preserve
-    recovery_context["schedule_execution_claimed"] = True
-    recovery_context["durable_schedule_row_id"] = int(sched_row.id)
     recovery_context["recovery_key"] = recovery_key
     recovery_context["multi_slot_index"] = multi_slot_index
     recovery_context["sequential_attempt_index"] = sequential_attempt_index
-    _tail = recovery_context.get("__schedule_exec_tail")
-    if isinstance(_tail, dict):
-        _tail["needs_release"] = True
 
     if step_num > 1:
         _log_second_recovery_line(

@@ -755,53 +755,20 @@ def reconcile_stale_running_schedules(
 
 
 async def _execute_resume_recovery_task(row: RecoverySchedule) -> None:
-    """
-    Run delayed recovery for a claimed schedule row; always finalize status in finally.
-    """
+    """Backward-compatible resume task — delegates to queue-ready execution boundary."""
     _log_resume_task_enter(row)
-    exc_detail = ""
+    from services.recovery_execution_boundary import execute_recovery_schedule
+
     try:
-        ctx = load_context(row)
-        rc = dict(ctx.get("recovery_context") or {})
-        rc["recovery_key"] = row.recovery_key
-        rc["store_slug"] = row.store_slug
-        rc["resume_from_durable_schedule"] = True
-        rc["durable_schedule_row_id"] = int(row.id)
-        rc["schedule_execution_claimed"] = True
-        if ctx.get("schedule_timing") is not None:
-            rc["schedule_timing"] = ctx.get("schedule_timing")
-        abandon_phone = ctx.get("abandon_event_phone") or row.customer_phone
-        multi_text = ctx.get("multi_message_text")
-        msi = row.multi_slot_index if row.multi_slot_index >= 0 else None
-
-        from main import _run_recovery_sequence_after_cart_abandoned  # noqa: PLC0415
-
-        await _run_recovery_sequence_after_cart_abandoned(
-            row.recovery_key,
-            0.0,
-            row.store_slug,
-            row.session_id,
-            row.cart_id,
-            abandon_phone,
-            multi_slot_index=msi,
-            multi_message_text=multi_text,
-            sequential_attempt_index=row.sequential_attempt_index,
-            recovery_context=rc,
-        )
+        await execute_recovery_schedule(schedule_id=int(row.id), source="resume_scan")
         _log_resume_task_after_delay(row)
     except Exception as exc:  # noqa: BLE001
         import asyncio
 
         if isinstance(exc, asyncio.CancelledError):
-            exc_detail = "cancelled"
-            _log_resume_task_exception(row, exc_detail)
+            _log_resume_task_exception(row, "cancelled")
             raise
-        exc_detail = str(exc)[:512]
-        _log_resume_task_exception(row, exc_detail)
-    finally:
-        status, detail = infer_resume_task_terminal_status(row, exc_detail=exc_detail)
-        _log_resume_task_finalize(row, status, detail)
-        _finalize_running_schedule_row(row, status=status, detail=detail)
+        _log_resume_task_exception(row, str(exc)[:512])
 
 
 def persist_recovery_schedule_durable(
@@ -1225,7 +1192,11 @@ async def resume_one_schedule(
 
     import asyncio
 
-    asyncio.create_task(_execute_resume_recovery_task(row))
+    from services.recovery_execution_boundary import execute_recovery_schedule
+
+    asyncio.create_task(
+        execute_recovery_schedule(schedule_id=int(row.id), source="resume_scan")
+    )
     _log_resume_sent(row.recovery_key)
     return {"recovery_key": row.recovery_key, "dispatched": True, "reason": "allowed"}
 

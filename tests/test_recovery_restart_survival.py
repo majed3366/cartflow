@@ -311,10 +311,14 @@ class RecoveryRestartSurvivalTests(unittest.TestCase):
         ):
             asyncio.run(_execute_resume_recovery_task(row))
 
-        db.session.refresh(row)
-        self.assertNotEqual(row.status, STATUS_RUNNING)
+        rid = int(row.id)
+        db.session.expire_all()
+        again = (
+            db.session.query(RecoverySchedule).filter(RecoverySchedule.id == rid).one()
+        )
+        self.assertNotEqual(again.status, STATUS_RUNNING)
         self.assertIn(
-            row.status,
+            again.status,
             (
                 STATUS_COMPLETED,
                 STATUS_SKIPPED_RESUME,
