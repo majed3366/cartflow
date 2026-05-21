@@ -567,21 +567,22 @@ def _build_admin_db_due_scanner_card_safe() -> dict[str, Any]:
 
         return build_db_due_scanner_health_admin_card()
     except Exception:
+        from services.admin_operational_health_language import build_standard_operational_decision
+
         return {
-            "title": "DB Due Scanner",
+            "title": "db_due_scanner",
             "title_ar": "فحص المهام المؤجلة",
-            "status": "unknown",
-            "status_emoji": "🟡",
-            "operational": {
-                "title_ar": "فحص المهام المؤجلة",
-                "status_line_ar": "🟡 غير متاح",
-                "has_risk_ar": "لا",
-                "needs_intervention_ar": "لا",
-                "merchant_impact_ar": "لا يوجد",
-                "suggested_action_ar": "راجع السجلات",
-                "last_problem_ar": "تعذّر تحميل المؤشرات",
-                "last_success_ar": "—",
-            },
+            "operational": build_standard_operational_decision(
+                title_ar="فحص المهام المؤجلة",
+                status_tier="watch",
+                risk_level="low",
+                customer_impact_ar="لا",
+                merchant_impact_ar="لا",
+                intervention="watch",
+                suggested_action_ar="تحقق من السجلات",
+                last_success_ar="—",
+                last_problem_ar="تعذّر تحميل المؤشرات",
+            ),
             "technical_detail_lines": ["DB Due Scanner: unavailable"],
             "detail_lines": ["DB Due Scanner: unavailable"],
         }
