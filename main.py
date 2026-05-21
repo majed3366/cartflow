@@ -7019,15 +7019,6 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
         )
         _consume_seq_slot_if_needed()
         return
-    _persist_cart_recovery_log(
-        store_slug=store_slug,
-        session_id=session_id,
-        cart_id=cart_id,
-        phone=phone,
-        message=text,
-        status="queued",
-        step=step_num,
-    )
     if _is_user_converted(recovery_key):
         _log_normal_recovery_attempt_skipped(
             attempt_index=step_num,
@@ -7367,6 +7358,58 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
             detail="send_after_reply_diag",
         )
 
+    from services.recovery_restart_survival import (
+        STATUS_SKIPPED_DUPLICATE,
+        finalize_recovery_schedule_durable,
+    )
+    from services.recovery_whatsapp_idempotency import (
+        check_whatsapp_recovery_send_idempotency,
+        log_whatsapp_recovery_idempotency_recorded,
+    )
+
+    wa_dup, wa_dup_status, _wa_idem_key = check_whatsapp_recovery_send_idempotency(
+        recovery_key=recovery_key,
+        step=step_num,
+        reason_tag=reason_tag,
+        customer_phone=phone,
+        store_slug=store_slug,
+        session_id=session_id,
+        cart_id=cart_id,
+    )
+    if wa_dup:
+        _log_normal_recovery_attempt_skipped(
+            attempt_index=step_num,
+            reason="skipped_duplicate",
+        )
+        _persist_cart_recovery_log(
+            store_slug=store_slug,
+            session_id=session_id,
+            cart_id=cart_id,
+            phone=phone,
+            message=text,
+            status="skipped_duplicate",
+            step=step_num,
+        )
+        finalize_recovery_schedule_durable(
+            recovery_key,
+            status=STATUS_SKIPPED_DUPLICATE,
+            multi_slot_index=multi_slot_index,
+            sequential_attempt_index=sequential_attempt_index,
+            detail=f"wa_idempotency:{wa_dup_status or 'hit'}",
+        )
+        _consume_seq_slot_if_needed()
+        return None
+
+    _persist_cart_recovery_log(
+        store_slug=store_slug,
+        session_id=session_id,
+        cart_id=cart_id,
+        phone=phone,
+        message=text,
+        status="queued",
+        step=step_num,
+    )
+
     if not try_begin_outbound_whatsapp_inflight(recovery_key, step_num):
         _persist_cart_recovery_log(
             store_slug=store_slug,
@@ -7376,6 +7419,13 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
             message=text,
             status="skipped_duplicate",
             step=step_num,
+        )
+        finalize_recovery_schedule_durable(
+            recovery_key,
+            status=STATUS_SKIPPED_DUPLICATE,
+            multi_slot_index=multi_slot_index,
+            sequential_attempt_index=sequential_attempt_index,
+            detail="inflight_duplicate",
         )
         _consume_seq_slot_if_needed()
         return None
@@ -7529,6 +7579,16 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
         status="mock_sent",
         sent_at=now,
         step=step_num,
+    )
+    log_whatsapp_recovery_idempotency_recorded(
+        recovery_key=recovery_key,
+        step=step_num,
+        reason_tag=reason_tag,
+        customer_phone=phone,
+        store_slug=store_slug,
+        session_id=session_id,
+        cart_id=cart_id,
+        log_status="mock_sent",
     )
     _consume_seq_slot_if_needed()
     # إن كان التحويل أثناء الإرسال: سلوك شبيه بالتخطي بعد خطوة أولى
