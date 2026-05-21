@@ -62,6 +62,28 @@ class AdminOperationalHealthLanguageTests(unittest.TestCase):
         self.assertIn("affected_stores_ar", summary)
         self.assertIn("verification_lines_ar", summary)
 
+    def test_verdict_fields_green_by_default(self) -> None:
+        control = build_admin_operational_control_readonly()
+        summary = build_operations_center_page_summary(control)
+        rl = int((control.get("admin_risk_summary") or {}).get("risk_level") or 0)
+        if rl == 0 and not (control.get("admin_risk_summary") or {}).get("actual_risk"):
+            self.assertEqual(summary["verdict_tier"], "ok")
+            self.assertIn("🟢", summary["verdict_ar"])
+            self.assertEqual(summary["q_system_healthy_ar"], "نعم")
+            self.assertEqual(summary["q_customer_risk_ar"], "لا")
+            self.assertEqual(summary["q_action_needed_ar"], "لا")
+        self.assertIn(summary["verdict_tier"], ("ok", "watch", "action"))
+        for key in (
+            "verdict_ar",
+            "verdict_label_ar",
+            "q_system_healthy_ar",
+            "q_customer_risk_ar",
+            "q_store_impact_ar",
+            "q_action_needed_ar",
+            "q_next_step_ar",
+        ):
+            self.assertTrue(summary.get(key), msg=key)
+
     def test_operational_layer_avoids_engineering_terms(self) -> None:
         payload = build_admin_operational_health_readonly()
         for key in ("db_due_scanner", "cart_event", "db_pool", "background_tasks", "whatsapp"):
@@ -94,13 +116,19 @@ class AdminOperationalHealthLanguageTests(unittest.TestCase):
         html = client.get("/admin/operational-health").text
         self.assertEqual(client.get("/admin/operational-health").status_code, 200)
         self.assertIn("مركز عمليات CartFlow", html)
-        self.assertIn("الملخص التشغيلي", html)
+        self.assertIn('id="operational-verdict"', html)
+        self.assertIn("الحكم التشغيلي", html)
+        self.assertIn("هل النظام سليم الآن", html)
+        self.assertIn("هل يوجد خطر على العملاء", html)
+        self.assertIn("هل يوجد أثر على المتاجر", html)
+        self.assertIn("هل يلزم إجراء", html)
+        self.assertIn("ماذا الآن", html)
+        self.assertTrue(
+            "🟢 النظام يعمل طبيعيًا" in html
+            or "🟡 يُفضّل المراقبة" in html
+            or "🔴 مطلوب تدخل الآن" in html,
+        )
         self.assertIn("المشكلة", html)
-        self.assertIn("المتاجر المتأثرة", html)
-        self.assertIn("العملاء المحتمل تأثرهم", html)
-        self.assertIn("درجة الإلحاح", html)
-        self.assertIn("كيف نتحقق أن المشكلة انتهت", html)
-        self.assertIn("ماذا نفعل الآن", html)
         for title in _OPERATIONAL_TITLES:
             self.assertIn(title, html, msg=title)
         self.assertEqual(html.count("تفاصيل تقنية (للدعم)"), 5)

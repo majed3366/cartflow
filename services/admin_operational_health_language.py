@@ -87,6 +87,56 @@ def build_operations_center_presentation_context(control: Dict[str, Any]) -> Dic
     }
 
 
+def _build_operations_center_verdict(
+    *,
+    rl: int,
+    actual_risk: bool,
+    stores: int,
+    customers: int,
+    recommended_action_ar: str,
+) -> Dict[str, str]:
+    """Single top-level verdict + five definitive answers (presentation only)."""
+    action = (recommended_action_ar or "مراقبة روتينية").strip()
+    stores_ar = "لا" if stores <= 0 else (f"{stores} متجر" if stores == 1 else f"{stores} متاجر")
+    customers_ar = "لا" if customers <= 0 else f"~{customers} عميل"
+
+    if rl >= 2 or (actual_risk and rl >= 1):
+        return {
+            "verdict_tier": "action",
+            "verdict_emoji": "🔴",
+            "verdict_ar": "🔴 مطلوب تدخل الآن",
+            "verdict_label_ar": "مطلوب تدخل الآن",
+            "q_system_healthy_ar": "لا",
+            "q_customer_risk_ar": "نعم",
+            "q_store_impact_ar": stores_ar if stores > 0 else "نعم — على مستوى المنصة",
+            "q_action_needed_ar": "نعم",
+            "q_next_step_ar": action,
+        }
+    if rl >= 1 or actual_risk:
+        return {
+            "verdict_tier": "watch",
+            "verdict_emoji": "🟡",
+            "verdict_ar": "🟡 يُفضّل المراقبة",
+            "verdict_label_ar": "يُفضّل المراقبة",
+            "q_system_healthy_ar": "نعم — مع تنبيهات للمراقبة",
+            "q_customer_risk_ar": "لا",
+            "q_store_impact_ar": "لا",
+            "q_action_needed_ar": "لا — مراقبة فقط",
+            "q_next_step_ar": "راقب خلال 10–15 دقيقة؛ لا تدخل عاجل",
+        }
+    return {
+        "verdict_tier": "ok",
+        "verdict_emoji": "🟢",
+        "verdict_ar": "🟢 النظام يعمل طبيعيًا",
+        "verdict_label_ar": "النظام يعمل طبيعيًا",
+        "q_system_healthy_ar": "نعم",
+        "q_customer_risk_ar": "لا",
+        "q_store_impact_ar": "لا",
+        "q_action_needed_ar": "لا",
+        "q_next_step_ar": "لا حاجة لأي تدخل — راقب الروتين",
+    }
+
+
 def build_operations_center_page_summary(control: Dict[str, Any]) -> Dict[str, Any]:
     """Top-of-page operations banner (presentation only)."""
     pctx = build_operations_center_presentation_context(control)
@@ -94,42 +144,48 @@ def build_operations_center_page_summary(control: Dict[str, Any]) -> Dict[str, A
     rl = pctx["risk_level"]
     stores = pctx["affected_stores_platform"]
     customers = pctx["estimated_customers_platform"]
+    actual_risk = bool(risk.get("actual_risk"))
+    recommended = pctx["recommended_action_platform"]
+    verdict = _build_operations_center_verdict(
+        rl=rl,
+        actual_risk=actual_risk,
+        stores=stores,
+        customers=customers,
+        recommended_action_ar=recommended,
+    )
 
     if rl == 0:
         summary = "لا توجد مشاكل تؤثر على العملاء حالياً"
-        customer_problem = "لا"
     elif rl == 1:
-        summary = "تم اكتشاف تنبيهات محدودة — تتم المراقبة"
-        customer_problem = "محتمل — مراقبة"
+        summary = "تنبيهات محدودة — المراقبة كافية ولا يوجد خطر فوري على العملاء"
     elif stores <= 2 and stores > 0:
         summary = f"قد تتأثر بعض الرسائل في {stores} متجر"
-        customer_problem = "نعم"
     elif rl >= 2:
         summary = "قد يتأثر تجربة العملاء — راجع البطاقات أدناه"
-        customer_problem = "نعم"
     else:
-        summary = "تم اكتشاف بطء محدود — تتم المراقبة"
-        customer_problem = "محتمل"
+        summary = "بطء محدود — المراقبة كافية حالياً"
 
     urgency = _URGENCY_AR.get(
         "high" if rl >= 3 else ("medium" if rl == 2 else ("low" if rl == 1 else "none")),
         "متوسطة",
     )
+    customers_ar = "لا" if customers <= 0 else f"~{customers} عميل"
 
     return {
         "title_ar": "مركز عمليات CartFlow",
         "title_en": "CartFlow Operations Center",
+        **verdict,
         "summary_ar": summary,
-        "customer_impacting_problem_ar": customer_problem,
-        "affected_stores_ar": "لا" if stores <= 0 else f"{stores} متجر",
-        "affected_customers_ar": "لا"
-        if customers <= 0
-        else (f"~{customers} عميل" if customers > 0 else "لا"),
+        "customer_impacting_problem_ar": verdict["q_customer_risk_ar"],
+        "affected_stores_ar": verdict["q_store_impact_ar"],
+        "affected_customers_ar": customers_ar
+        if verdict["verdict_tier"] == "action" and customers > 0
+        else ("لا" if customers <= 0 else customers_ar),
         "urgency_ar": urgency,
-        "recommended_action_ar": pctx["recommended_action_platform"],
+        "recommended_action_ar": recommended,
         "verification_lines_ar": list(pctx["verification_lines_platform"]),
         "risk_headline_ar": str(risk.get("headline_ar") or ""),
-        "risk_emoji": str(risk.get("status_emoji") or "🟢"),
+        "risk_emoji": verdict["verdict_emoji"],
     }
 
 

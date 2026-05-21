@@ -41,79 +41,73 @@
 
   <main class="mx-auto max-w-5xl space-y-8 px-4 py-8">
 
-    <!-- Operations banner -->
-    <section class="rounded-xl border border-indigo-200 bg-indigo-50/50 p-5 shadow-sm">
-      <div class="flex flex-wrap items-start gap-3">
-        <span class="text-3xl" aria-hidden="true">{{ oc.risk_emoji or risk.status_emoji or "🟢" }}</span>
-        <div class="min-w-0 flex-1">
-          <p class="text-xs font-medium text-indigo-800/80">الملخص التشغيلي</p>
-          <p class="mt-1 text-lg font-semibold text-slate-900">{{ oc.summary_ar or "—" }}</p>
-          {% if oc.risk_headline_ar %}
-          <p class="mt-1 text-sm text-slate-700">{{ oc.risk_headline_ar }}</p>
-          {% endif %}
+    {% set vt = oc.verdict_tier or "ok" %}
+    <!-- Immediate operational verdict (first 5 seconds) -->
+    <section
+      id="operational-verdict"
+      class="rounded-2xl border-2 p-6 shadow-md {% if vt == 'action' %}border-rose-400 bg-rose-50{% elif vt == 'watch' %}border-amber-400 bg-amber-50{% else %}border-emerald-400 bg-emerald-50{% endif %}"
+      aria-labelledby="verdict-heading"
+    >
+      <p class="text-xs font-semibold uppercase tracking-wide text-slate-600">الحكم التشغيلي — الآن</p>
+      <h2 id="verdict-heading" class="mt-2 text-3xl font-bold leading-tight text-slate-900 sm:text-4xl">
+        {{ oc.verdict_ar or "🟢 النظام يعمل طبيعيًا" }}
+      </h2>
+      <p class="mt-2 text-sm text-slate-700">{{ oc.summary_ar or "—" }}</p>
+
+      <div class="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <div class="rounded-xl bg-white/95 px-4 py-3 ring-1 ring-slate-200/80">
+          <p class="text-xs font-medium text-slate-500">١ — هل النظام سليم الآن؟</p>
+          <p class="mt-1 text-xl font-bold text-slate-900">{{ oc.q_system_healthy_ar or qa.is_healthy_ar or "—" }}</p>
+        </div>
+        <div class="rounded-xl bg-white/95 px-4 py-3 ring-1 ring-slate-200/80">
+          <p class="text-xs font-medium text-slate-500">٢ — هل يوجد خطر على العملاء؟</p>
+          <p class="mt-1 text-xl font-bold text-slate-900">{{ oc.q_customer_risk_ar or "—" }}</p>
+        </div>
+        <div class="rounded-xl bg-white/95 px-4 py-3 ring-1 ring-slate-200/80">
+          <p class="text-xs font-medium text-slate-500">٣ — هل يوجد أثر على المتاجر؟</p>
+          <p class="mt-1 text-xl font-bold text-slate-900">{{ oc.q_store_impact_ar or oc.affected_stores_ar or "—" }}</p>
+        </div>
+        <div class="rounded-xl bg-white/95 px-4 py-3 ring-1 ring-slate-200/80">
+          <p class="text-xs font-medium text-slate-500">٤ — هل يلزم إجراء؟</p>
+          <p class="mt-1 text-xl font-bold {% if vt == 'action' %}text-rose-800{% elif vt == 'watch' %}text-amber-900{% else %}text-emerald-800{% endif %}">{{ oc.q_action_needed_ar or "—" }}</p>
+        </div>
+        <div class="rounded-xl bg-white/95 px-4 py-3 ring-1 ring-slate-200/80 sm:col-span-2 lg:col-span-1">
+          <p class="text-xs font-medium text-slate-500">٥ — ماذا الآن؟</p>
+          <p class="mt-1 text-base font-bold leading-snug text-slate-900">{{ oc.q_next_step_ar or oc.recommended_action_ar or qa.what_to_do_ar or "—" }}</p>
         </div>
       </div>
-      <div class="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3 text-xs">
-        <div class="rounded-lg bg-white/90 px-3 py-2 ring-1 ring-indigo-100">
-          <p class="text-slate-500">هل يوجد مشكلة تؤثر على العملاء؟</p>
-          <p class="mt-0.5 font-semibold text-slate-900">{{ oc.customer_impacting_problem_ar or "—" }}</p>
-        </div>
-        <div class="rounded-lg bg-white/90 px-3 py-2 ring-1 ring-indigo-100">
-          <p class="text-slate-500">المتاجر المتأثرة</p>
-          <p class="mt-0.5 font-semibold text-slate-900">{{ oc.affected_stores_ar or "—" }}</p>
-        </div>
-        <div class="rounded-lg bg-white/90 px-3 py-2 ring-1 ring-indigo-100">
-          <p class="text-slate-500">العملاء المحتمل تأثرهم</p>
-          <p class="mt-0.5 font-semibold text-slate-900">{{ oc.affected_customers_ar or "—" }}</p>
-        </div>
-        <div class="rounded-lg bg-white/90 px-3 py-2 ring-1 ring-indigo-100">
-          <p class="text-slate-500">درجة الإلحاح</p>
-          <p class="mt-0.5 font-semibold text-slate-900">{{ oc.urgency_ar or "—" }}</p>
-        </div>
-        <div class="rounded-lg bg-white/90 px-3 py-2 ring-1 ring-indigo-100 sm:col-span-2">
-          <p class="text-slate-500">ماذا نفعل الآن؟</p>
-          <p class="mt-0.5 font-semibold text-indigo-950">{{ oc.recommended_action_ar or qa.what_to_do_ar or "—" }}</p>
-        </div>
-      </div>
-      {% if oc.verification_lines_ar %}
-      <div class="mt-3 rounded-lg bg-white/80 px-3 py-2 text-xs">
-        <p class="font-medium text-slate-600">كيف نتحقق أن المشكلة انتهت؟</p>
-        <ul class="mt-1 list-inside list-disc text-slate-800">
-          {% for line in oc.verification_lines_ar %}
-          <li>{{ line }}</li>
-          {% endfor %}
-        </ul>
-      </div>
+
+      {% if vt == 'action' and oc.affected_customers_ar and oc.affected_customers_ar != "لا" %}
+      <p class="mt-3 text-sm text-slate-700">
+        <span class="font-medium text-slate-500">تقدير العملاء المتأثرين:</span>
+        {{ oc.affected_customers_ar }}
+      </p>
       {% endif %}
     </section>
 
-    <!-- Six-second decision strip -->
-    <section class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 text-xs">
-      <div class="rounded-lg border border-slate-200 bg-white p-3">
-        <p class="font-medium text-slate-500">هل يوجد خطر؟</p>
-        <p class="mt-1 font-semibold text-slate-900">{{ oc.urgency_ar or "—" }}</p>
+    <details class="rounded-xl border border-slate-200 bg-white text-sm shadow-sm">
+      <summary class="cursor-pointer px-4 py-3 font-medium text-slate-600">تفاصيل إضافية للملخص (إلحاح، تحقق، سياق)</summary>
+      <div class="space-y-3 border-t border-slate-100 px-4 py-4 text-xs">
+        {% if oc.risk_headline_ar %}
+        <p class="text-slate-700">{{ oc.risk_headline_ar }}</p>
+        {% endif %}
+        <div class="grid gap-2 sm:grid-cols-3">
+          <div><span class="text-slate-500">درجة الإلحاح:</span> <span class="font-semibold">{{ oc.urgency_ar or "—" }}</span></div>
+          <div><span class="text-slate-500">إجراء تفصيلي:</span> <span class="font-semibold">{{ oc.recommended_action_ar or "—" }}</span></div>
+          <div><span class="text-slate-500">عملاء (تقدير):</span> <span class="font-semibold">{{ oc.affected_customers_ar or "لا" }}</span></div>
+        </div>
+        {% if oc.verification_lines_ar %}
+        <div>
+          <p class="font-medium text-slate-600">كيف نتحقق أن المشكلة انتهت؟</p>
+          <ul class="mt-1 list-inside list-disc text-slate-800">
+            {% for line in oc.verification_lines_ar %}
+            <li>{{ line }}</li>
+            {% endfor %}
+          </ul>
+        </div>
+        {% endif %}
       </div>
-      <div class="rounded-lg border border-slate-200 bg-white p-3">
-        <p class="font-medium text-slate-500">من المتأثر؟ (متاجر)</p>
-        <p class="mt-1 text-slate-800">{{ oc.affected_stores_ar or "—" }}</p>
-      </div>
-      <div class="rounded-lg border border-slate-200 bg-white p-3">
-        <p class="font-medium text-slate-500">كم عميلاً قد يتأثر؟</p>
-        <p class="mt-1 text-slate-800">{{ oc.affected_customers_ar or "—" }}</p>
-      </div>
-      <div class="rounded-lg border border-slate-200 bg-white p-3">
-        <p class="font-medium text-slate-500">ماذا أفعل؟</p>
-        <p class="mt-1 font-semibold text-slate-900">{{ oc.recommended_action_ar or "—" }}</p>
-      </div>
-      <div class="rounded-lg border border-slate-200 bg-white p-3">
-        <p class="font-medium text-slate-500">كيف أعرف أن المشكلة انتهت؟</p>
-        <p class="mt-1 text-slate-800">{{ (oc.verification_lines_ar or [])[0] or "راجع البطاقات أدناه" }}</p>
-      </div>
-      <div class="rounded-lg border border-slate-200 bg-white p-3">
-        <p class="font-medium text-slate-500">هل النظام يعمل طبيعي؟</p>
-        <p class="mt-1 font-semibold text-slate-900">{{ qa.is_healthy_ar or "—" }}</p>
-      </div>
-    </section>
+    </details>
 
     <!-- Component decisions — problem → impact → who → urgency → action → verify -->
     <section class="rounded-xl border border-slate-200 bg-white shadow-sm">
