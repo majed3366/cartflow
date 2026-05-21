@@ -172,11 +172,11 @@ def _explain_selection(
 
     if dashboard_zid and store_slug and dashboard_zid.casefold() != store_slug.casefold():
         parts.append(
-            "C) dashboard latest Store zid does not match requested store_slug — "
-            "POST/GET trigger-templates may save to a different merchant row than widget slug."
+            "C) dashboard canonical Store zid does not match requested store_slug — "
+            "check store_slug query/body on GET/POST trigger-templates."
         )
     elif dashboard_zid and store_slug and dashboard_zid.casefold() == store_slug.casefold():
-        parts.append("C) dashboard row zid matches requested store_slug.")
+        parts.append("C) dashboard canonical row zid matches requested store_slug.")
 
     if not fresh_matches_dashboard and dashboard_id and fresh_id and dashboard_id != fresh_id:
         parts.append(
@@ -209,13 +209,13 @@ def build_store_template_debug_report(
     try:
         db.create_all()
         from main import (  # noqa: PLC0415
-            _dashboard_recovery_store_row,
             _fresh_store_row_for_recovery_templates,
             _recovery_store_from_context,
         )
+        from services.dashboard_store_context import dashboard_canonical_store_row
         from services.recovery_store_lookup import resolve_recovery_store_row_canonical
 
-        dash_row = _dashboard_recovery_store_row()
+        dash_row = dashboard_canonical_store_row(ss, allow_schema_warm=True)
         runtime_row = resolve_recovery_store_row_canonical(ss, allow_schema_warm=True)
         fresh_row = _fresh_store_row_for_recovery_templates(ss)
         ctx_row = _recovery_store_from_context(
@@ -335,7 +335,7 @@ def build_store_template_debug_report(
             "pending_recovery_schedules": pending_n,
             "selected_source_explanation": explanation,
             "paths": {
-                "dashboard": "GET/POST /api/dashboard/trigger-templates → _dashboard_recovery_store_row() (latest Store.id)",
+                "dashboard": "GET/POST /api/dashboard/trigger-templates → dashboard_canonical_store_row(store_slug)",
                 "runtime_canonical": "resolve_recovery_store_row_canonical(store_slug) — exact zid, else widget provision/mirror",
                 "runtime_fresh": "_fresh_store_row_for_recovery_templates(store_slug) — used by delay_poll / schedule timing",
                 "runtime_context": "_recovery_store_from_context(recovery_key, store_slug)",

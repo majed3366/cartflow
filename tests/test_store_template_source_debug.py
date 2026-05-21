@@ -69,7 +69,9 @@ class StoreTemplateSourceDebugTests(unittest.TestCase):
         self.assertIn("runtime_store_id", body)
         self.assertIn("candidate_store_rows", body)
         self.assertIn("selected_source_explanation", body)
-        self.assertFalse(body.get("dashboard_equals_runtime_row"))
+        self.assertTrue(body.get("dashboard_equals_runtime_row"))
+        self.assertEqual(body.get("dashboard_store_zid"), "demo")
+        self.assertEqual(body.get("runtime_store_zid"), "demo")
 
     def test_report_detects_different_rows(self) -> None:
         rep = build_store_template_debug_report(store_slug="demo", reason="other")

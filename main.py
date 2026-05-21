@@ -13706,17 +13706,25 @@ def api_dashboard_messages():
 
 
 @app.get("/api/dashboard/trigger-templates")
-def api_dashboard_trigger_templates():
-    """قوالب ‎reason_templates‎ فقط — استعلام واحد عن ‎Store‎ دون تدفئة مخطط كاملة."""
+def api_dashboard_trigger_templates(
+    store_slug: Optional[str] = Query(None, max_length=255),
+):
+    """قوالب ‎reason_templates‎ — ‎Store‎ بحسب ‎store_slug‎ الكانوني (مطابق لمسار الاسترجاع)."""
     wall0 = time.perf_counter()
     try:
+        from services.dashboard_store_context import (
+            dashboard_canonical_store_row,
+            resolve_dashboard_merchant_store_slug,
+        )
         from services.trigger_templates_dashboard import (
             build_trigger_templates_get_payload,
         )
 
-        dash_store = _dashboard_recovery_store_row()
+        _merchant_dashboard_db_ready()
+        canon_slug = resolve_dashboard_merchant_store_slug(query_slug=store_slug)
+        dash_store = dashboard_canonical_store_row(canon_slug)
         tpl = build_trigger_templates_get_payload(dash_store)
-        return j({"ok": True, **tpl})
+        return j({"ok": True, "store_slug": canon_slug, **tpl})
     except Exception as e:  # noqa: BLE001
         db.session.rollback()
         log.warning("api_dashboard_trigger_templates: %s", e)
@@ -13763,7 +13771,18 @@ async def api_dashboard_trigger_templates_save(request: Request):
         except Exception:  # noqa: BLE001
             body = None
 
-        dash_store = _dashboard_recovery_store_row()
+        from services.dashboard_store_context import (
+            dashboard_canonical_store_row,
+            resolve_dashboard_merchant_store_slug,
+        )
+
+        _merchant_dashboard_db_ready()
+        canon_slug = "demo"
+        if isinstance(body, dict):
+            canon_slug = resolve_dashboard_merchant_store_slug(
+                body_slug=body.get("store_slug"),
+            )
+        dash_store = dashboard_canonical_store_row(canon_slug)
         if dash_store is None:
             log.warning(
                 "[TEMPLATE SAVE FAIL] store_slug=%s duration_ms=%s error=no_store",
@@ -13772,6 +13791,7 @@ async def api_dashboard_trigger_templates_save(request: Request):
             )
             return j({"ok": False, "error": "no_store"}, 404)
         store_id = getattr(dash_store, "id", None)
+        store_slug = canon_slug
         zs = getattr(dash_store, "zid_store_id", None)
         if isinstance(zs, str) and zs.strip():
             store_slug = zs.strip()[:255]

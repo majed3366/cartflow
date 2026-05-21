@@ -906,7 +906,7 @@
     }
   }
 
-  function tplStoreSlugForDebug() {
+  function tplMerchantStoreSlug() {
     try {
       if (
         typeof window.CARTFLOW_STORE_SLUG === "string" &&
@@ -922,7 +922,20 @@
     } catch (_slugErr) {
       /* ignore */
     }
-    return "(dashboard_latest_store)";
+    return "demo";
+  }
+
+  function tplStoreSlugForDebug() {
+    return tplMerchantStoreSlug();
+  }
+
+  function tplTriggerTemplatesGetUrl() {
+    var slug = tplMerchantStoreSlug();
+    return (
+      FETCH_URL_GET +
+      "?store_slug=" +
+      encodeURIComponent(slug)
+    );
   }
 
   function bumpTplApplyGen() {
@@ -1699,6 +1712,7 @@
       messages: messages,
     };
     body.selected_stage = activeIx;
+    body.store_slug = tplMerchantStoreSlug();
 
     var bodyStr = JSON.stringify(body);
     window.__maTplDebugLastReason = key;
@@ -2001,7 +2015,7 @@
         fetchOpts.signal = fetchAbort.signal;
       }
 
-      fetch(FETCH_URL_GET, fetchOpts)
+      fetch(tplTriggerTemplatesGetUrl(), fetchOpts)
         .then(function (resp) {
           var st = resp.status;
           return resp.json().then(

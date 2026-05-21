@@ -7,7 +7,9 @@ import unittest
 
 from fastapi.testclient import TestClient
 
+from extensions import db
 from main import app
+from models import Store
 
 
 class DashboardTriggerTemplatesApiTests(unittest.TestCase):
@@ -278,4 +280,80 @@ class TriggerTemplatesDashboardServiceTests(unittest.TestCase):
         self.assertEqual(ack.get("saved_reason_keys"), ["price"])
         self.assertEqual(len(ack.get("reason_rows") or []), 1)
         self.assertEqual(ack["reason_rows"][0]["delay_value"], 5.0)
+
+
+class DashboardTriggerTemplatesCanonicalStoreTests(unittest.TestCase):
+    def setUp(self) -> None:
+        import json
+        import uuid
+
+        self.client = TestClient(app)
+        z_latest = f"tpl-latest-{uuid.uuid4().hex[:8]}"
+        z_demo = "demo"
+        demo_rt = json.dumps(
+            {
+                "other": {
+                    "enabled": True,
+                    "message": "demo",
+                    "message_count": 1,
+                    "messages": [{"delay": 5, "unit": "minute", "text": "demo five"}],
+                }
+            }
+        )
+        latest_rt = json.dumps(
+            {
+                "other": {
+                    "enabled": True,
+                    "message": "latest",
+                    "message_count": 1,
+                    "messages": [{"delay": 99, "unit": "minute", "text": "latest"}],
+                }
+            }
+        )
+        db.create_all()
+        db.session.rollback()
+        for row in db.session.query(Store).filter_by(zid_store_id=z_demo).all():
+            db.session.delete(row)
+        db.session.commit()
+        row_demo = Store(zid_store_id=z_demo, reason_templates_json=demo_rt)
+        row_latest = Store(zid_store_id=z_latest, reason_templates_json=latest_rt)
+        db.session.add(row_demo)
+        db.session.add(row_latest)
+        db.session.commit()
+        self._z_latest = z_latest
+
+    def test_get_uses_demo_not_latest_store_when_slug_demo(self) -> None:
+        r = self.client.get("/api/dashboard/trigger-templates?store_slug=demo")
+        self.assertEqual(r.status_code, 200, r.text[:400])
+        p = r.json()
+        self.assertEqual(p.get("store_slug"), "demo")
+        other = next(x for x in p.get("reason_rows") or [] if x.get("key") == "other")
+        self.assertEqual(other.get("delay_value"), 5.0)
+
+    def test_post_and_debug_align_with_runtime_demo_row(self) -> None:
+        from services.trigger_template_ui_defaults import DASHBOARD_STAGE_TEXTS
+
+        stage1 = DASHBOARD_STAGE_TEXTS["other"][0]
+        body = {
+            "store_slug": "demo",
+            "reason_templates": {
+                "other": {
+                    "enabled": True,
+                    "message": stage1,
+                    "message_count": 1,
+                    "messages": [{"delay": 5, "unit": "minute", "text": stage1}],
+                }
+            },
+            "selected_stage": 0,
+        }
+        rp = self.client.post("/api/dashboard/trigger-templates", json=body)
+        self.assertEqual(rp.status_code, 200, rp.text[:400])
+        dbg = self.client.get("/dev/store-template-debug?store_slug=demo&reason=other")
+        self.assertEqual(dbg.status_code, 200)
+        rep = dbg.json()
+        self.assertTrue(rep.get("dashboard_equals_runtime_row"))
+        self.assertEqual(rep.get("dashboard_store_zid"), "demo")
+        self.assertEqual(rep.get("runtime_store_zid"), "demo")
+        timing = rep.get("runtime_timing_resolution") or {}
+        self.assertEqual(timing.get("effective_delay_seconds"), 300)
 
