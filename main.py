@@ -754,6 +754,7 @@ _DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT = frozenset(
         "/dev/create-vip-test-cart",
         "/dev/widget-runtime-config-verify",
         "/dev/recovery-restart-survival-verify",
+        "/dev/store-template-debug",
     }
 )
 
@@ -1576,6 +1577,25 @@ def dev_normal_recovery_debug(session_id: str = Query(...)) -> Any:
     if not _is_development_mode():
         return Response(status_code=404)
     return j(_normal_recovery_debug_for_session(session_id))
+
+
+@app.get("/dev/store-template-debug")
+def dev_store_template_debug(
+    store_slug: str = Query("demo", min_length=1, max_length=255),
+    reason: str = Query("other", min_length=1, max_length=64),
+) -> Any:
+    """
+    Read-only: compare dashboard trigger-template Store row vs runtime recovery Store row.
+    Does not change delays, templates, or recovery behavior.
+    """
+    from services.store_template_source_debug import build_store_template_debug_report
+
+    try:
+        _ensure_cartflow_api_db_warmed()
+        return j(build_store_template_debug_report(store_slug=store_slug, reason=reason))
+    except Exception as exc:  # noqa: BLE001
+        db.session.rollback()
+        return j({"ok": False, "error": str(exc)}, 500)
 
 
 @app.get("/dev/recovery-restart-survival-verify")
