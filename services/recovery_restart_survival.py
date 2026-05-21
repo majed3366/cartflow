@@ -29,6 +29,10 @@ STATUS_SKIPPED_RESUME = "skipped_resume_unsafe"
 STATUS_NEEDS_REVIEW = "needs_review"
 STATUS_FAILED_RESUME = "failed_resume"
 STATUS_FAILED_RESUME_STALE = "failed_resume_stale"
+STATUS_SKIPPED_DUPLICATE = "skipped_duplicate"
+STATUS_SKIPPED_NO_PHONE = "skipped_no_phone"
+STATUS_SKIPPED_NO_REASON = "skipped_no_reason"
+STATUS_WHATSAPP_FAILED = "whatsapp_failed"
 
 _TERMINAL = frozenset(
     {
@@ -38,8 +42,15 @@ _TERMINAL = frozenset(
         STATUS_NEEDS_REVIEW,
         STATUS_FAILED_RESUME,
         STATUS_FAILED_RESUME_STALE,
+        STATUS_SKIPPED_DUPLICATE,
+        STATUS_SKIPPED_NO_PHONE,
+        STATUS_SKIPPED_NO_REASON,
+        STATUS_WHATSAPP_FAILED,
     }
 )
+
+# Completed must not be downgraded to failed/skipped without explicit override + log.
+_PROTECTED_TERMINAL_NO_DOWNGRADE = frozenset({STATUS_COMPLETED})
 
 _DEFAULT_RUNNING_STALE_SECONDS = 600
 
@@ -113,6 +124,268 @@ def _log_resume_blocked(recovery_key: str, reason: str) -> None:
         print(f"reason={reason[:96]}", flush=True)
     except OSError:
         pass
+
+
+def _log_recovery_claim_attempt(
+    *,
+    recovery_key: str,
+    path: str,
+    row_id: Optional[int] = None,
+    step: Optional[int] = None,
+    current_status: Optional[str] = None,
+) -> None:
+    try:
+        print("[RECOVERY CLAIM ATTEMPT]", flush=True)
+        print(f"recovery_key={recovery_key[:120]}", flush=True)
+        print(f"path={(path or '-')[:64]}", flush=True)
+        if row_id is not None:
+            print(f"schedule_id={row_id}", flush=True)
+        if step is not None:
+            print(f"step={step}", flush=True)
+        if current_status:
+            print(f"current_status={current_status[:64]}", flush=True)
+    except OSError:
+        pass
+
+
+def _log_recovery_claimed(
+    *,
+    recovery_key: str,
+    path: str,
+    row_id: int,
+    step: int,
+) -> None:
+    try:
+        print("[RECOVERY CLAIMED]", flush=True)
+        print(f"recovery_key={recovery_key[:120]}", flush=True)
+        print(f"path={(path or '-')[:64]}", flush=True)
+        print(f"schedule_id={row_id}", flush=True)
+        print(f"step={step}", flush=True)
+    except OSError:
+        pass
+
+
+def _log_recovery_claim_skipped(
+    *,
+    recovery_key: str,
+    path: str,
+    reason: str,
+    row_id: Optional[int] = None,
+    current_status: Optional[str] = None,
+) -> None:
+    try:
+        print("[RECOVERY CLAIM SKIPPED]", flush=True)
+        print(f"recovery_key={recovery_key[:120]}", flush=True)
+        print(f"path={(path or '-')[:64]}", flush=True)
+        print(f"reason={(reason or '-')[:96]}", flush=True)
+        if row_id is not None:
+            print(f"schedule_id={row_id}", flush=True)
+        if current_status:
+            print(f"current_status={current_status[:64]}", flush=True)
+    except OSError:
+        pass
+
+
+def _log_recovery_terminal_update(
+    *,
+    recovery_key: str,
+    row_id: Optional[int],
+    from_status: str,
+    to_status: str,
+    detail: str,
+    overwrite: bool = False,
+) -> None:
+    try:
+        print("[RECOVERY TERMINAL UPDATE]", flush=True)
+        print(f"recovery_key={recovery_key[:120]}", flush=True)
+        if row_id is not None:
+            print(f"schedule_id={row_id}", flush=True)
+        print(f"from_status={(from_status or '-')[:64]}", flush=True)
+        print(f"to_status={(to_status or '-')[:64]}", flush=True)
+        print(f"detail={(detail or '-')[:96]}", flush=True)
+        if overwrite:
+            print("overwrite=justified", flush=True)
+    except OSError:
+        pass
+
+
+def _schedule_row_lookup(
+    *,
+    recovery_key: str,
+    multi_slot_index: Optional[int],
+    sequential_attempt_index: Optional[int],
+    row_id: Optional[int] = None,
+) -> Optional[RecoverySchedule]:
+    try:
+        if row_id is not None:
+            return db.session.get(RecoverySchedule, int(row_id))
+        step, msi = _step_keys(
+            multi_slot_index=multi_slot_index,
+            sequential_attempt_index=sequential_attempt_index,
+        )
+        rk = (recovery_key or "").strip()[:512]
+        if not rk:
+            return None
+        return (
+            db.session.query(RecoverySchedule)
+            .filter(
+                RecoverySchedule.recovery_key == rk,
+                RecoverySchedule.step == step,
+                RecoverySchedule.multi_slot_index == msi,
+            )
+            .first()
+        )
+    except SQLAlchemyError:
+        db.session.rollback()
+        return None
+
+
+def claim_recovery_schedule_execution(
+    *,
+    recovery_key: str,
+    multi_slot_index: Optional[int] = None,
+    sequential_attempt_index: Optional[int] = None,
+    row_id: Optional[int] = None,
+    path: str = "unknown",
+    accept_already_running: bool = False,
+) -> tuple[bool, str, Optional[RecoverySchedule]]:
+    """
+    Atomic DB gate: only ``scheduled`` → ``running``. Shared by live delay task and resume.
+    Returns (claimed, skip_reason, row).
+    """
+    rk = (recovery_key or "").strip()[:512]
+    step, msi = _step_keys(
+        multi_slot_index=multi_slot_index,
+        sequential_attempt_index=sequential_attempt_index,
+    )
+    row = _schedule_row_lookup(
+        recovery_key=rk,
+        multi_slot_index=multi_slot_index,
+        sequential_attempt_index=sequential_attempt_index,
+        row_id=row_id,
+    )
+    cur_st = (row.status if row is not None else None) or "missing"
+    _log_recovery_claim_attempt(
+        recovery_key=rk,
+        path=path,
+        row_id=getattr(row, "id", None),
+        step=step,
+        current_status=cur_st,
+    )
+    if row is None:
+        _log_recovery_claim_skipped(
+            recovery_key=rk,
+            path=path,
+            reason="schedule_row_missing",
+        )
+        return False, "schedule_row_missing", None
+
+    rid = int(row.id)
+    if row.status in _TERMINAL:
+        reason = f"already_terminal:{row.status}"
+        _log_recovery_claim_skipped(
+            recovery_key=rk,
+            path=path,
+            reason=reason,
+            row_id=rid,
+            current_status=row.status,
+        )
+        return False, reason, row
+
+    if row.status == STATUS_RUNNING:
+        if accept_already_running:
+            _log_recovery_claimed(
+                recovery_key=rk,
+                path=f"{path}_reentry",
+                row_id=rid,
+                step=step,
+            )
+            return True, "already_running_holder", row
+        _log_recovery_claim_skipped(
+            recovery_key=rk,
+            path=path,
+            reason="already_running",
+            row_id=rid,
+            current_status=row.status,
+        )
+        return False, "already_running", row
+
+    if row.status != STATUS_SCHEDULED:
+        reason = f"not_claimable:{row.status}"
+        _log_recovery_claim_skipped(
+            recovery_key=rk,
+            path=path,
+            reason=reason,
+            row_id=rid,
+            current_status=row.status,
+        )
+        return False, reason, row
+
+    try:
+        updated = (
+            db.session.query(RecoverySchedule)
+            .filter(
+                RecoverySchedule.id == rid,
+                RecoverySchedule.status == STATUS_SCHEDULED,
+            )
+            .update(
+                {
+                    RecoverySchedule.status: STATUS_RUNNING,
+                    RecoverySchedule.updated_at: _utc_now(),
+                },
+                synchronize_session=False,
+            )
+        )
+        db.session.commit()
+        if int(updated or 0) != 1:
+            db.session.expire(row)
+            fresh = db.session.get(RecoverySchedule, rid)
+            fst = (fresh.status if fresh else None) or "unknown"
+            _log_recovery_claim_skipped(
+                recovery_key=rk,
+                path=path,
+                reason="claim_race_lost",
+                row_id=rid,
+                current_status=fst,
+            )
+            return False, "claim_race_lost", fresh
+
+        db.session.expire(row)
+        claimed_row = db.session.get(RecoverySchedule, rid)
+        _log_recovery_claimed(
+            recovery_key=rk,
+            path=path,
+            row_id=rid,
+            step=step,
+        )
+        return True, "claimed", claimed_row
+    except SQLAlchemyError as exc:
+        db.session.rollback()
+        _log.warning("claim_recovery_schedule_execution failed: %s", exc)
+        _log_recovery_claim_skipped(
+            recovery_key=rk,
+            path=path,
+            reason="claim_db_error",
+        )
+        return False, "claim_db_error", row
+
+
+def map_cart_recovery_log_status_to_schedule_terminal(log_status: str) -> str:
+    """Map ``CartRecoveryLog.status`` to durable ``recovery_schedules.status``."""
+    s = (log_status or "").strip().lower()
+    if s in ("mock_sent", "sent_real"):
+        return STATUS_COMPLETED
+    if s == "whatsapp_failed":
+        return STATUS_WHATSAPP_FAILED
+    if s in ("skipped_duplicate",):
+        return STATUS_SKIPPED_DUPLICATE
+    if s in ("skipped_no_verified_phone", "skipped_missing_phone"):
+        return STATUS_SKIPPED_NO_PHONE
+    if s in ("skipped_missing_reason_tag",):
+        return STATUS_SKIPPED_NO_REASON
+    if s.startswith("skipped") or s.startswith("stopped"):
+        return STATUS_SKIPPED_RESUME
+    return STATUS_FAILED_RESUME
 
 
 def _log_resume_sent(recovery_key: str) -> None:
@@ -243,14 +516,8 @@ def infer_resume_task_terminal_status(
     log_row = _latest_cart_recovery_log_for_schedule(fresh)
     if log_row is not None:
         st = (log_row.status or "").strip()
-        if st in _NORMAL_RECOVERY_SENT_LOG_STATUSES:
-            return STATUS_COMPLETED, st
-        if st.startswith("skipped") or st.startswith("stopped"):
-            return STATUS_SKIPPED_RESUME, st
-        if st == "whatsapp_failed":
-            return STATUS_FAILED_RESUME, st
-        if st == "queued":
-            return STATUS_FAILED_RESUME, "send_queued_not_confirmed"
+        mapped = map_cart_recovery_log_status_to_schedule_terminal(st)
+        return mapped, st
 
     return STATUS_FAILED_RESUME, "resume_task_exited_without_terminal_log"
 
@@ -323,6 +590,7 @@ async def _execute_resume_recovery_task(row: RecoverySchedule) -> None:
         rc["store_slug"] = row.store_slug
         rc["resume_from_durable_schedule"] = True
         rc["durable_schedule_row_id"] = int(row.id)
+        rc["schedule_execution_claimed"] = True
         if ctx.get("schedule_timing") is not None:
             rc["schedule_timing"] = ctx.get("schedule_timing")
         abandon_phone = ctx.get("abandon_event_phone") or row.customer_phone
@@ -462,15 +730,18 @@ def finalize_recovery_schedule_durable(
     multi_slot_index: Optional[int] = None,
     sequential_attempt_index: Optional[int] = None,
     detail: Optional[str] = None,
-) -> None:
+    allow_terminal_overwrite: bool = False,
+) -> bool:
+    """Set terminal status from ``running`` (or justified overwrite). Returns whether updated."""
     rk = (recovery_key or "").strip()[:512]
     if not rk:
-        return
+        return False
     step, msi = _step_keys(
         multi_slot_index=multi_slot_index,
         sequential_attempt_index=sequential_attempt_index,
     )
     st = (status or "").strip()[:64] or STATUS_COMPLETED
+    det = (detail or "").strip()[:512]
     try:
         row = (
             db.session.query(RecoverySchedule)
@@ -482,14 +753,119 @@ def finalize_recovery_schedule_durable(
             .first()
         )
         if row is None:
-            return
+            return False
+        prev = (row.status or "").strip()
+        rid = int(row.id)
+
+        if prev in _TERMINAL:
+            if not allow_terminal_overwrite:
+                _log_recovery_claim_skipped(
+                    recovery_key=rk,
+                    path="terminal_update",
+                    reason="terminal_no_overwrite",
+                    row_id=rid,
+                    current_status=prev,
+                )
+                return False
+            if (
+                prev in _PROTECTED_TERMINAL_NO_DOWNGRADE
+                and st != prev
+                and st
+                not in (
+                    STATUS_COMPLETED,
+                    STATUS_CANCELLED,
+                    STATUS_NEEDS_REVIEW,
+                )
+            ):
+                _log_recovery_claim_skipped(
+                    recovery_key=rk,
+                    path="terminal_update",
+                    reason="completed_downgrade_blocked",
+                    row_id=rid,
+                    current_status=prev,
+                )
+                return False
+            _log_recovery_terminal_update(
+                recovery_key=rk,
+                row_id=rid,
+                from_status=prev,
+                to_status=st,
+                detail=det or "explicit_overwrite",
+                overwrite=True,
+            )
+        elif prev == STATUS_RUNNING:
+            _log_recovery_terminal_update(
+                recovery_key=rk,
+                row_id=rid,
+                from_status=prev,
+                to_status=st,
+                detail=det or "-",
+            )
+        else:
+            _log_recovery_claim_skipped(
+                recovery_key=rk,
+                path="terminal_update",
+                reason=f"not_running:{prev}",
+                row_id=rid,
+                current_status=prev,
+            )
+            return False
+
         row.status = st
         row.updated_at = _utc_now()
-        if detail:
-            row.last_error = str(detail)[:512]
+        if det:
+            row.last_error = det
         db.session.commit()
+        return True
     except SQLAlchemyError:
         db.session.rollback()
+        return False
+
+
+def release_claimed_schedule_execution_terminal(
+    recovery_context: Optional[Dict[str, Any]],
+    *,
+    exc_detail: str = "",
+) -> None:
+    """Finalize a claimed row still in ``running`` after execution (live or resume)."""
+    if not isinstance(recovery_context, dict):
+        return
+    if not recovery_context.get("schedule_execution_claimed"):
+        return
+    row_id = recovery_context.get("durable_schedule_row_id")
+    rk = (recovery_context.get("recovery_key") or "").strip()
+    if row_id is None and not rk:
+        return
+    try:
+        row = (
+            db.session.get(RecoverySchedule, int(row_id))
+            if row_id is not None
+            else None
+        )
+    except (SQLAlchemyError, TypeError, ValueError):
+        db.session.rollback()
+        row = None
+    if row is None and rk:
+        row = _schedule_row_lookup(
+            recovery_key=rk,
+            multi_slot_index=recovery_context.get("multi_slot_index"),
+            sequential_attempt_index=recovery_context.get("sequential_attempt_index"),
+        )
+    if row is None:
+        return
+    if row.status in _TERMINAL:
+        return
+    if row.status != STATUS_RUNNING:
+        return
+    status, detail = infer_resume_task_terminal_status(row, exc_detail=exc_detail)
+    msi = row.multi_slot_index if row.multi_slot_index >= 0 else None
+    finalize_recovery_schedule_durable(
+        row.recovery_key,
+        status=status,
+        multi_slot_index=msi,
+        sequential_attempt_index=row.sequential_attempt_index,
+        detail=detail,
+    )
 
 
 def load_context(row: RecoverySchedule) -> Dict[str, Any]:
@@ -630,26 +1006,6 @@ def evaluate_resume_safety(row: RecoverySchedule) -> tuple[bool, str]:
     return True, "allowed"
 
 
-def _claim_schedule_row(row_id: int) -> bool:
-    try:
-        updated = (
-            db.session.query(RecoverySchedule)
-            .filter(
-                RecoverySchedule.id == row_id,
-                RecoverySchedule.status == STATUS_SCHEDULED,
-            )
-            .update(
-                {RecoverySchedule.status: STATUS_RUNNING, RecoverySchedule.updated_at: _utc_now()},
-                synchronize_session=False,
-            )
-        )
-        db.session.commit()
-        return int(updated or 0) == 1
-    except SQLAlchemyError:
-        db.session.rollback()
-        return False
-
-
 async def resume_one_schedule(
     row: RecoverySchedule,
     *,
@@ -674,9 +1030,21 @@ async def resume_one_schedule(
     if not dispatch:
         return {"recovery_key": row.recovery_key, "dispatched": False, "reason": "dry_run_allowed"}
 
-    if not _claim_schedule_row(int(row.id)):
-        _log_resume_skipped(row.recovery_key, "duplicate_resume_claim")
-        return {"recovery_key": row.recovery_key, "dispatched": False, "reason": "duplicate_resume_claim"}
+    claimed, claim_reason, _claimed_row = claim_recovery_schedule_execution(
+        recovery_key=row.recovery_key,
+        multi_slot_index=row.multi_slot_index if row.multi_slot_index >= 0 else None,
+        sequential_attempt_index=row.sequential_attempt_index,
+        row_id=int(row.id),
+        path="resume_dispatch",
+    )
+    if not claimed:
+        skip = (
+            "duplicate_resume_claim"
+            if claim_reason in ("already_running", "claim_race_lost")
+            else claim_reason
+        )
+        _log_resume_skipped(row.recovery_key, skip)
+        return {"recovery_key": row.recovery_key, "dispatched": False, "reason": skip}
 
     import asyncio
 

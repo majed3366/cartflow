@@ -6258,7 +6258,10 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
     """
     store_slug, _bound_row = _bind_recovery_runtime_store_identity(recovery_key, store_slug)
     if recovery_context is not None:
+        _exec_tail = recovery_context.get("__schedule_exec_tail")
         recovery_context = dict(recovery_context)
+        if isinstance(_exec_tail, dict):
+            recovery_context["__schedule_exec_tail"] = _exec_tail
         recovery_context["store_slug"] = store_slug
         recovery_context["recovery_key"] = recovery_key
     store_pre = _bound_row or _recovery_store_from_context(
@@ -6349,6 +6352,38 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
         if seq_attempt is not None
         else (int(multi_slot_index) if multi_slot_index is not None else 1)
     )
+
+    from services.recovery_restart_survival import claim_recovery_schedule_execution
+
+    _resume_holder = bool(
+        recovery_context and recovery_context.get("resume_from_durable_schedule")
+    )
+    claimed, _claim_skip, sched_row = claim_recovery_schedule_execution(
+        recovery_key=recovery_key,
+        multi_slot_index=multi_slot_index,
+        sequential_attempt_index=sequential_attempt_index,
+        path="live_delay_task" if not _resume_holder else "resume_delay_task",
+        accept_already_running=_resume_holder,
+    )
+    if not claimed:
+        return
+
+    if recovery_context is None:
+        recovery_context = {}
+    else:
+        _tail_preserve = recovery_context.get("__schedule_exec_tail")
+        recovery_context = dict(recovery_context)
+        if isinstance(_tail_preserve, dict):
+            recovery_context["__schedule_exec_tail"] = _tail_preserve
+    recovery_context["schedule_execution_claimed"] = True
+    recovery_context["durable_schedule_row_id"] = int(sched_row.id)
+    recovery_context["recovery_key"] = recovery_key
+    recovery_context["multi_slot_index"] = multi_slot_index
+    recovery_context["sequential_attempt_index"] = sequential_attempt_index
+    _tail = recovery_context.get("__schedule_exec_tail")
+    if isinstance(_tail, dict):
+        _tail["needs_release"] = True
+
     if step_num > 1:
         _log_second_recovery_line(
             "[SECOND RECOVERY DELAY PASSED]",
@@ -6790,7 +6825,10 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
         resolve_timing_fn=resolve_recovery_schedule_timing,
     )
     if recovery_context is not None:
+        _exec_tail_gate = recovery_context.get("__schedule_exec_tail")
         recovery_context = dict(recovery_context)
+        if isinstance(_exec_tail_gate, dict):
+            recovery_context["__schedule_exec_tail"] = _exec_tail_gate
         recovery_context["schedule_timing"] = dict(gate_timing)
     gate_delay_seconds = float(gate_timing["effective_delay_seconds"])
     skip_delay_check = (
@@ -7617,6 +7655,10 @@ async def _run_recovery_sequence_after_cart_abandoned(
     from services.db_session_lifecycle import release_scoped_db_session, scoped_db_session_begin
 
     scoped_db_session_begin()
+    _exec_tail: dict[str, Any] = {"needs_release": False}
+    if recovery_context is None:
+        recovery_context = {}
+    recovery_context["__schedule_exec_tail"] = _exec_tail
     try:
         await _run_recovery_sequence_after_cart_abandoned_impl(
             recovery_key,
@@ -7643,6 +7685,12 @@ async def _run_recovery_sequence_after_cart_abandoned(
                 _session_recovery_seq_logged.pop(sk_err, None)
         print("[RECOVERY TASK CAUGHT ERROR]", str(e))
     finally:
+        if _exec_tail.get("needs_release"):
+            from services.recovery_restart_survival import (
+                release_claimed_schedule_execution_terminal,
+            )
+
+            release_claimed_schedule_execution_terminal(recovery_context)
         release_scoped_db_session()
     print("[RECOVERY TASK COMPLETED SAFELY]")
 
