@@ -52,7 +52,7 @@ class AdminOperationalHealthTests(unittest.TestCase):
         self.assertIn("db_due_scanner", cards)
         scanner = cards["db_due_scanner"]
         self.assertIn("operational", scanner)
-        self.assertEqual(scanner["operational"]["title_ar"], "فحص المهام المؤجلة")
+        self.assertEqual(scanner["operational"]["title_ar"], "متابعة الاسترجاعات المجدولة")
 
     def test_cart_event_sample_slow_warning(self) -> None:
         record_cart_event_finish_sample(
@@ -104,9 +104,11 @@ class AdminOperationalHealthTests(unittest.TestCase):
         self.assertEqual(r.status_code, 200, r.text[:400])
         self.assertIn("التحكم التشغيلي", r.text)
         self.assertIn("طبقة الأثر", r.text)
-        self.assertIn("هل النظام سليم", r.text)
+        self.assertIn("هل النظام يعمل طبيعي؟", r.text)
         self.assertIn("مركز التحكم التشغيلي", r.text)
-        self.assertIn("فحص المهام المؤجلة", r.text)
+        self.assertIn("متابعة الاسترجاعات المجدولة", r.text)
+        self.assertIn("متابعة نشاط العملاء", r.text)
+        self.assertIn("عمليات الاسترجاع التلقائي", r.text)
         self.assertIn("هل يؤثر على العملاء؟", r.text)
         self.assertIn("هل يؤثر على المتاجر؟", r.text)
         self.assertGreaterEqual(r.text.count("تفاصيل تقنية (للدعم)"), 5)

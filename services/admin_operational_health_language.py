@@ -40,6 +40,15 @@ _INTERVENTION_AR = {
     "required": "مطلوب تدخل",
 }
 
+# Operational card titles (Layer 1) — engineering names only in technical lines
+TITLE_DELAYED_RECOVERY_AR = "متابعة الاسترجاعات المجدولة"
+TITLE_CUSTOMER_ACTIVITY_AR = "متابعة نشاط العملاء"
+TITLE_INTERNAL_HEALTH_AR = "صحة النظام الداخلية"
+TITLE_AUTO_RECOVERY_AR = "عمليات الاسترجاع التلقائي"
+TITLE_CUSTOMER_COMMS_AR = "التواصل مع العملاء"
+
+_NO_RECENT_PROBLEMS_AR = "لا توجد مشاكل حديثة"
+
 
 def build_standard_operational_decision(
     *,
@@ -51,7 +60,7 @@ def build_standard_operational_decision(
     intervention: str,
     suggested_action_ar: str,
     last_success_ar: str,
-    last_problem_ar: str = "لا يوجد",
+    last_problem_ar: str = _NO_RECENT_PROBLEMS_AR,
 ) -> Dict[str, Any]:
     """
     Standard Layer 1 decision block for one operational health card.
@@ -69,7 +78,7 @@ def build_standard_operational_decision(
         "intervention": _INTERVENTION_AR.get(intervention, intervention),
         "suggested_action": suggested_action_ar,
         "last_success": last_success_ar or "—",
-        "last_problem": last_problem_ar or "لا يوجد",
+        "last_problem": last_problem_ar or _NO_RECENT_PROBLEMS_AR,
     }
     rows = [
         {"key": key, "label_ar": label, "value_ar": values[key]}
@@ -123,39 +132,39 @@ def build_db_due_scanner_operational_layer(h: Dict[str, Any]) -> Dict[str, Any]:
         tier, risk, intervention = "watch", "low", "no"
         customer = "لا"
         merchant = "لا"
-        action = "لا حاجة لأي تدخل — المراقبة التلقائية معطّلة"
-        last_success = "المراقبة غير مفعّلة حالياً"
-        last_problem = "لا يوجد"
+        action = "لا حاجة لأي تدخل — المتابعة التلقائية غير مفعّلة"
+        last_success = "لا متابعة تلقائية نشطة حالياً"
+        last_problem = _NO_RECENT_PROBLEMS_AR
     elif last_error:
         tier, risk, intervention = "action", "high", "required"
-        customer = "قد تتأخر عمليات الاسترجاع"
-        merchant = "قد تتأخر عمليات الاسترجاع"
-        action = "تحقق من سجلات [DB DUE SCANNER *] والتفاصيل التقنية أدناه"
+        customer = "قد تتأخر الاسترجاعات"
+        merchant = "قد تتأخر الاسترجاعات"
+        action = "مطلوب تدخل — تحقق من التفاصيل التقنية أو تواصل مع الدعم"
         ago = h.get("last_dispatch_ago")
         last_success = f"آخر معالجة ناجحة {ago}" if ago and total_dispatches else "—"
-        last_problem = f"آخر مشكلة: {str(last_error)[:120]}"
+        last_problem = f"آخر مشكلة مسجّلة — راجع التفاصيل التقنية"
     elif enabled and not loop_running:
         tier, risk, intervention = "action", "medium", "required"
-        customer = "قد تتأخر عمليات الاسترجاع"
-        merchant = "قد تتأخر عمليات الاسترجاع"
-        action = "تحقق من تشغيل حلقة المراقبة بعد إعادة التشغيل"
+        customer = "قد تتأخر الاسترجاعات"
+        merchant = "قد تتأخر الاسترجاعات"
+        action = "مطلوب تدخل — تحقق من استمرار المتابعة بعد إعادة التشغيل"
         last_success = (
             f"آخر معالجة ناجحة {h.get('last_dispatch_ago')}"
             if total_dispatches and h.get("last_dispatch_ago")
             else "—"
         )
-        last_problem = "المراقبة متوقفة بشكل غير طبيعي"
+        last_problem = "المتابعة التلقائية متوقفة"
     elif last_found > 0:
         tier, risk, intervention = "watch", "low", "watch"
         customer = "لا"
         merchant = "لا"
-        action = "راقب خلال 10 دقائق — قد تُعالج المهام في الدورة القادمة"
+        action = "يفضل المراقبة خلال 10 دقائق"
         last_success = (
             f"آخر معالجة ناجحة {h.get('last_dispatch_ago')}"
             if h.get("last_dispatch_ago")
             else "—"
         )
-        last_problem = "لا يوجد"
+        last_problem = _NO_RECENT_PROBLEMS_AR
     else:
         tier, risk, intervention = "ok", "none", "no"
         customer = "لا"
@@ -164,10 +173,10 @@ def build_db_due_scanner_operational_layer(h: Dict[str, Any]) -> Dict[str, Any]:
         if total_dispatches and h.get("last_dispatch_ago"):
             last_success = f"آخر معالجة ناجحة {h.get('last_dispatch_ago')}"
         elif loop_running:
-            last_success = "المراقبة تعمل — لا مشاكل حديثة"
+            last_success = "المتابعة تعمل — لا مشاكل حديثة"
         else:
             last_success = "—"
-        last_problem = "لا يوجد"
+        last_problem = _NO_RECENT_PROBLEMS_AR
 
     if status == "healthy" and tier == "ok":
         pass  # keep ok
@@ -175,7 +184,7 @@ def build_db_due_scanner_operational_layer(h: Dict[str, Any]) -> Dict[str, Any]:
         tier, risk = "watch", "low"
 
     return build_standard_operational_decision(
-        title_ar="فحص المهام المؤجلة",
+        title_ar=TITLE_DELAYED_RECOVERY_AR,
         status_tier=tier,
         risk_level=risk,
         customer_impact_ar=customer,
@@ -212,28 +221,28 @@ def enrich_cart_event_card_operational(card: Dict[str, Any]) -> Dict[str, Any]:
 
     if slow or status == "warn":
         tier, risk, intervention = "watch", "medium", "watch"
-        customer = "قد لا تُسجل الأحداث"
-        merchant = "قد تقل دقة التحليلات"
-        action = "راقب خلال 10 دقائق — تحقق من بطء استقبال السلة"
-        last_problem = str(card.get("last_status_ar") or "بطء في معالجة الطلبات")
+        customer = "قد لا تُسجل العمليات"
+        merchant = "قد تقل الدقة"
+        action = "يفضل المراقبة خلال 10 دقائق — راقب نشاط العملاء"
+        last_problem = "بطء في تسجيل نشاط العملاء"
         last_success = "—"
     elif status == "unknown":
         tier, risk, intervention = "watch", "low", "watch"
         customer = "لا"
         merchant = "لا"
-        action = "يفضل المراقبة — لا بيانات كافية بعد"
-        last_problem = "لا يوجد"
-        last_success = "لم يُسجَّل طلب بعد في هذه العملية"
+        action = "يفضل المراقبة خلال 10 دقائق"
+        last_problem = _NO_RECENT_PROBLEMS_AR
+        last_success = "لا نشاط مسجّل بعد في هذه الجلسة"
     else:
         tier, risk, intervention = "ok", "none", "no"
         customer = "لا"
         merchant = "لا"
         action = "لا حاجة لأي تدخل"
-        last_problem = "لا يوجد"
-        last_success = "آخر طلب طبيعي"
+        last_problem = _NO_RECENT_PROBLEMS_AR
+        last_success = "آخر نشاط مسجّل بنجاح"
 
     op = build_standard_operational_decision(
-        title_ar="استقبال أحداث السلة",
+        title_ar=TITLE_CUSTOMER_ACTIVITY_AR,
         status_tier=tier,
         risk_level=risk,
         customer_impact_ar=customer,
@@ -245,7 +254,7 @@ def enrich_cart_event_card_operational(card: Dict[str, Any]) -> Dict[str, Any]:
     )
     return _attach_operational(
         card,
-        title_ar="استقبال أحداث السلة",
+        title_ar=TITLE_CUSTOMER_ACTIVITY_AR,
         operational=op,
         technical_title="cart_event",
         technical_lines=[
@@ -265,28 +274,28 @@ def enrich_db_pool_card_operational(card: Dict[str, Any]) -> Dict[str, Any]:
 
     if timeout_n > 0:
         tier, risk, intervention = "action", "high", "required"
-        customer = "قد لا تُسجل الأحداث"
-        merchant = "قد تتأخر عمليات الاسترجاع"
-        action = "تحقق من ضغط القاعدة وحد المسبح (QueuePool)"
-        last_problem = f"انتهاء مهلة QueuePool: {timeout_n} مرة في هذه العملية"
+        customer = "قد لا تُسجل العمليات"
+        merchant = "قد تتأخر الاسترجاعات"
+        action = "مطلوب تدخل — تحقق من صحة النظام الداخلي (التفاصيل التقنية)"
+        last_problem = f"ضغط على النظام الداخلي ({timeout_n} تنبيه)"
         last_success = "—"
     elif status == "unknown":
         tier, risk, intervention = "watch", "low", "watch"
         customer = "لا"
         merchant = "لا"
-        action = "راقب خلال 10 دقائق"
-        last_problem = "لا يوجد"
+        action = "يفضل المراقبة خلال 10 دقائق"
+        last_problem = _NO_RECENT_PROBLEMS_AR
         last_success = "—"
     else:
         tier, risk, intervention = "ok", "none", "no"
         customer = "لا"
         merchant = "لا"
         action = "لا حاجة لأي تدخل"
-        last_problem = "لا يوجد"
-        last_success = "لا انتهاء مهلة مسبح في هذه العملية"
+        last_problem = _NO_RECENT_PROBLEMS_AR
+        last_success = "النظام الداخلي مستقر في هذه الجلسة"
 
     op = build_standard_operational_decision(
-        title_ar="اتصالات قاعدة البيانات",
+        title_ar=TITLE_INTERNAL_HEALTH_AR,
         status_tier=tier,
         risk_level=risk,
         customer_impact_ar=customer,
@@ -298,7 +307,7 @@ def enrich_db_pool_card_operational(card: Dict[str, Any]) -> Dict[str, Any]:
     )
     return _attach_operational(
         card,
-        title_ar="اتصالات قاعدة البيانات",
+        title_ar=TITLE_INTERNAL_HEALTH_AR,
         operational=op,
         technical_title="db_pool",
         technical_lines=[
@@ -317,25 +326,20 @@ def enrich_background_tasks_card_operational(card: Dict[str, Any]) -> Dict[str, 
     if status == "warn" or err_n > 0:
         tier, risk, intervention = "watch", "medium", "watch"
         customer = "قد تتأخر الرسائل"
-        merchant = "قد تتأخر عمليات الاسترجاع"
-        action = "راقب خلال 10 دقائق — تحقق من مسار الاسترداد والمهام الخلفية"
-        last_problem = f"إشارات أو أخطاء: {err_n}" if err_n else "مسار الاسترداد يحتاج مراجعة"
-        last_success = str(card.get("last_recovery_dispatch_ar") or "—")
+        merchant = "قد تتأخر الاسترجاعات"
+        action = "يفضل المراقبة خلال 10 دقائق — تحقق من عمليات الاسترجاع التلقائي"
+        last_problem = f"تنبيهات تشغيل ({err_n})" if err_n else "الاسترجاع التلقائي يحتاج مراجعة"
+        last_success = "آخر استرداد تم جدولته" if card.get("last_recovery_dispatch_ar") else "—"
     else:
         tier, risk, intervention = "ok", "none", "no"
         customer = "لا"
         merchant = "لا"
         action = "لا حاجة لأي تدخل"
-        last_problem = "لا يوجد"
-        last_success = (
-            f"آخر جدولة: {card.get('last_recovery_dispatch_ar')}"
-            if card.get("last_recovery_dispatch_ar")
-            and card.get("last_recovery_dispatch_ar") != "غير متاح حالياً"
-            else "مسار الاسترداد نشط"
-        )
+        last_problem = _NO_RECENT_PROBLEMS_AR
+        last_success = "آخر استرداد تم بنجاح — المسار نشط"
 
     op = build_standard_operational_decision(
-        title_ar="المهام الخلفية والاسترداد",
+        title_ar=TITLE_AUTO_RECOVERY_AR,
         status_tier=tier,
         risk_level=risk,
         customer_impact_ar=customer,
@@ -347,7 +351,7 @@ def enrich_background_tasks_card_operational(card: Dict[str, Any]) -> Dict[str, 
     )
     return _attach_operational(
         card,
-        title_ar="المهام الخلفية والاسترداد",
+        title_ar=TITLE_AUTO_RECOVERY_AR,
         operational=op,
         technical_title="background_tasks",
         technical_lines=[
@@ -369,34 +373,34 @@ def enrich_whatsapp_card_operational(card: Dict[str, Any]) -> Dict[str, Any]:
     if fail_n > 0:
         tier, risk, intervention = "action", "high", "required"
         customer = "قد تتأخر الرسائل"
-        merchant = "قد تتأخر عمليات الاسترداد"
-        action = "تحقق من إعدادات مزود واتساب وفشل الإرسال"
+        merchant = "قد تتأخر الاسترجاعات"
+        action = "مطلوب تدخل — تحقق من إعدادات التواصل مع العملاء"
         last_problem = f"فشل إرسال ({fail_n} خلال 24 ساعة)"
         last_success = "—"
     elif not configured:
         tier, risk, intervention = "watch", "medium", "watch"
         customer = "قد تتأخر الرسائل"
         merchant = "لا"
-        action = "تحقق من إعدادات المزود — الوضع تجريبي أو معطّل"
-        last_problem = failure_class or "المزود غير مُهيّأ"
+        action = "تحقق من إعدادات التواصل — الوضع تجريبي أو معطّل"
+        last_problem = "قناة التواصل غير مُفعّلة بالكامل"
         last_success = "—"
     elif status == "warn":
         tier, risk, intervention = "watch", "medium", "watch"
         customer = "قد تتأخر الرسائل"
         merchant = "لا"
-        action = "راقب خلال 10 دقائق"
-        last_problem = failure_class or "تنبيه مزود"
+        action = "يفضل المراقبة خلال 10 دقائق"
+        last_problem = "تنبيه على قناة التواصل"
         last_success = "—"
     else:
         tier, risk, intervention = "ok", "none", "no"
         customer = "لا"
         merchant = "لا"
         action = "لا حاجة لأي تدخل"
-        last_problem = "لا يوجد"
+        last_problem = _NO_RECENT_PROBLEMS_AR
         last_success = "آخر إرسال ناجح — لا فشل حديث"
 
     op = build_standard_operational_decision(
-        title_ar="إرسال واتساب",
+        title_ar=TITLE_CUSTOMER_COMMS_AR,
         status_tier=tier,
         risk_level=risk,
         customer_impact_ar=customer,
@@ -408,7 +412,7 @@ def enrich_whatsapp_card_operational(card: Dict[str, Any]) -> Dict[str, Any]:
     )
     return _attach_operational(
         card,
-        title_ar="إرسال واتساب",
+        title_ar=TITLE_CUSTOMER_COMMS_AR,
         operational=op,
         technical_title="whatsapp",
         technical_lines=[
@@ -426,7 +430,7 @@ def enrich_db_due_scanner_admin_card(card: Dict[str, Any]) -> Dict[str, Any]:
     op = build_db_due_scanner_operational_layer(h)
     return _attach_operational(
         h,
-        title_ar="فحص المهام المؤجلة",
+        title_ar=TITLE_DELAYED_RECOVERY_AR,
         operational=op,
         technical_title="db_due_scanner",
         technical_lines=build_db_due_scanner_technical_lines(h),

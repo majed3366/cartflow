@@ -571,9 +571,9 @@ def _build_admin_db_due_scanner_card_safe() -> dict[str, Any]:
 
         return {
             "title": "db_due_scanner",
-            "title_ar": "فحص المهام المؤجلة",
+            "title_ar": "متابعة الاسترجاعات المجدولة",
             "operational": build_standard_operational_decision(
-                title_ar="فحص المهام المؤجلة",
+                title_ar="متابعة الاسترجاعات المجدولة",
                 status_tier="watch",
                 risk_level="low",
                 customer_impact_ar="لا",

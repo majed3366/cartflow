@@ -18,6 +18,7 @@
   {% set metrics = risk.metrics or {} %}
   {% set diag = h.diagnostics_v1 or {} %}
   {% set cards = h.cards or diag.cards or {} %}
+  {% set rl = risk.risk_level | default(0) | int %}
 
   <header class="border-b border-slate-200 bg-white">
     <div class="mx-auto max-w-5xl px-4 py-5">
@@ -25,7 +26,7 @@
         <div>
           <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Admin — للتشغيل والدعم</p>
           <h1 class="mt-0.5 text-xl font-semibold text-slate-900">التحكم التشغيلي</h1>
-          <p class="mt-1 max-w-2xl text-sm leading-relaxed text-slate-600">ملخص تشغيلي أولاً — إجابة خلال 5 ثوانٍ: هل النظام بخير؟ هل هناك خطر؟ هل أحتاج فعل شيء؟</p>
+          <p class="mt-1 max-w-2xl text-sm leading-relaxed text-slate-600">مركز التحكم التشغيلي — خلال 5 ثوانٍ: هل النظام يعمل طبيعي؟ هل يوجد خطر؟ هل العملاء أو المتاجر متأثرون؟ هل يحتاج تدخل؟ ماذا نفعل الآن؟</p>
         </div>
         <div class="flex flex-wrap gap-2">
           <a href="/admin/operations" class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50">مركز التشغيل</a>
@@ -39,32 +40,40 @@
 
   <main class="mx-auto max-w-5xl space-y-8 px-4 py-8">
 
-    <!-- Quick answers strip -->
-    <section class="grid gap-2 sm:grid-cols-2 lg:grid-cols-5 text-xs">
+    <!-- Quick answers strip (operations-first labels; same underlying signals) -->
+    {% set risk_level_ar = "لا يوجد" if rl == 0 else ("منخفض" if rl == 1 else ("متوسط" if rl == 2 else "مرتفع")) %}
+    {% set wa_fail_n = metrics.whatsapp_failed_24h | default(0, true) %}
+    {% set customers_hit = (metrics.slow_cart_events_count or 0) > 0 or (wa_fail_n != 0 and wa_fail_n != "—" and wa_fail_n != "0") %}
+    {% set merchants_hit = (metrics.affected_stores or 0) > 0 or (metrics.queuepool_timeout_count or 0) > 0 %}
+    {% set needs_action = rl >= 2 or (actions_layer.get('items') or [])|length > 0 %}
+    <section class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 text-xs">
       <div class="rounded-lg border border-slate-200 bg-white p-3">
-        <p class="font-medium text-slate-500">هل النظام سليم؟</p>
+        <p class="font-medium text-slate-500">هل النظام يعمل طبيعي؟</p>
         <p class="mt-1 font-semibold text-slate-900">{{ qa.is_healthy_ar or "—" }}</p>
       </div>
       <div class="rounded-lg border border-slate-200 bg-white p-3">
-        <p class="font-medium text-slate-500">ما الذي يفشل؟</p>
-        <p class="mt-1 text-slate-800">{{ qa.what_failing_ar or "—" }}</p>
+        <p class="font-medium text-slate-500">هل يوجد خطر؟</p>
+        <p class="mt-1 font-semibold text-slate-900">{{ risk_level_ar }}</p>
       </div>
       <div class="rounded-lg border border-slate-200 bg-white p-3">
-        <p class="font-medium text-slate-500">من المتأثر؟</p>
-        <p class="mt-1 text-slate-800">{{ qa.who_affected_ar or "—" }}</p>
+        <p class="font-medium text-slate-500">هل العملاء متأثرون؟</p>
+        <p class="mt-1 text-slate-800">{{ "نعم — راجع البطاقات" if customers_hit else "لا" }}</p>
       </div>
       <div class="rounded-lg border border-slate-200 bg-white p-3">
-        <p class="font-medium text-slate-500">ماذا أفعل؟</p>
-        <p class="mt-1 text-slate-800">{{ qa.what_to_do_ar or "—" }}</p>
+        <p class="font-medium text-slate-500">هل المتاجر متأثرة؟</p>
+        <p class="mt-1 text-slate-800">{{ "نعم — " ~ (metrics.affected_stores or 0) ~ " متجر" if merchants_hit else "لا" }}</p>
       </div>
       <div class="rounded-lg border border-slate-200 bg-white p-3">
-        <p class="font-medium text-slate-500">هل تعافى؟</p>
-        <p class="mt-1 text-slate-800">{{ qa.did_recover_ar or "—" }}</p>
+        <p class="font-medium text-slate-500">هل يحتاج تدخل؟</p>
+        <p class="mt-1 text-slate-800">{{ "مطلوب تدخل" if rl >= 3 else ("يفضل المراقبة" if needs_action else "لا") }}</p>
+      </div>
+      <div class="rounded-lg border border-slate-200 bg-white p-3">
+        <p class="font-medium text-slate-500">ماذا نفعل الآن؟</p>
+        <p class="mt-1 font-semibold text-slate-900">{{ qa.what_to_do_ar or "—" }}</p>
       </div>
     </section>
 
     <!-- PART 1 — Risk summary -->
-    {% set rl = risk.risk_level | default(0) | int %}
     <section class="rounded-xl border p-5 shadow-sm {% if rl >= 3 %}border-orange-300 bg-orange-50/60{% elif rl == 2 %}border-rose-200 bg-rose-50/50{% elif rl == 1 %}border-amber-200 bg-amber-50/50{% else %}border-emerald-200 bg-emerald-50/40{% endif %}">
       <div class="flex flex-wrap items-center gap-3">
         <span class="text-2xl" aria-hidden="true">{{ risk.status_emoji or "🟢" }}</span>
@@ -86,11 +95,11 @@
           <span class="mt-0.5 block font-semibold tabular-nums">{{ metrics.whatsapp_failed_24h or "—" }}</span>
         </div>
         <div class="rounded-lg bg-white/80 px-3 py-2 ring-1 ring-slate-200/80">
-          <span class="text-slate-500">{{ (risk.metrics_labels_ar or {}).queuepool_timeout_count or "QueuePool" }}</span>
+          <span class="text-slate-500">{{ (risk.metrics_labels_ar or {}).queuepool_timeout_count or "ضغط النظام الداخلي" }}</span>
           <span class="mt-0.5 block font-semibold tabular-nums">{{ metrics.queuepool_timeout_count or 0 }}</span>
         </div>
         <div class="rounded-lg bg-white/80 px-3 py-2 ring-1 ring-slate-200/80">
-          <span class="text-slate-500">{{ (risk.metrics_labels_ar or {}).slow_cart_events_count or "cart-event بطيء" }}</span>
+          <span class="text-slate-500">{{ (risk.metrics_labels_ar or {}).slow_cart_events_count or "بطء نشاط العملاء" }}</span>
           <span class="mt-0.5 block font-semibold tabular-nums">{{ metrics.slow_cart_events_count or 0 }}</span>
         </div>
         <div class="rounded-lg bg-white/80 px-3 py-2 ring-1 ring-slate-200/80">
@@ -222,7 +231,7 @@
     <!-- Operations control center — fixed decision format per card -->
     <section class="rounded-xl border border-slate-200 bg-white shadow-sm">
       <h2 class="border-b border-slate-100 px-4 py-3 text-sm font-semibold text-slate-900">مركز التحكم التشغيلي</h2>
-      <p class="border-b border-slate-50 px-4 py-2 text-xs text-slate-500">نفس الأسئلة لكل مكوّن — التفاصيل التقنية أسفل كل بطاقة للدعم فقط</p>
+      <p class="border-b border-slate-50 px-4 py-2 text-xs text-slate-500">حالة → خطر → أثر → إجراء — التفاصيل التقنية أسفل كل بطاقة للدعم فقط</p>
       <div class="grid gap-4 px-4 py-4 lg:grid-cols-2">
         {% macro operational_decision_card(card, anchor_id) %}
         {% set op = card.operational or {} %}
