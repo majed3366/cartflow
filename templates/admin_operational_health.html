@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>CartFlow — التحكم التشغيلي</title>
+  <title>CartFlow — مركز العمليات</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="min-h-screen bg-slate-50 text-slate-800 antialiased">
@@ -19,14 +19,15 @@
   {% set diag = h.diagnostics_v1 or {} %}
   {% set cards = h.cards or diag.cards or {} %}
   {% set rl = risk.risk_level | default(0) | int %}
+  {% set oc = h.operations_center or {} %}
 
   <header class="border-b border-slate-200 bg-white">
     <div class="mx-auto max-w-5xl px-4 py-5">
       <div class="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Admin — للتشغيل والدعم</p>
-          <h1 class="mt-0.5 text-xl font-semibold text-slate-900">التحكم التشغيلي</h1>
-          <p class="mt-1 max-w-2xl text-sm leading-relaxed text-slate-600">مركز التحكم التشغيلي — خلال 5 ثوانٍ: هل النظام يعمل طبيعي؟ هل يوجد خطر؟ هل العملاء أو المتاجر متأثرون؟ هل يحتاج تدخل؟ ماذا نفعل الآن؟</p>
+          <p class="text-xs font-medium uppercase tracking-wide text-slate-400">CartFlow Operations Center</p>
+          <h1 class="mt-0.5 text-xl font-semibold text-slate-900">{{ oc.title_ar or "مركز عمليات CartFlow" }}</h1>
+          <p class="mt-1 max-w-2xl text-sm leading-relaxed text-slate-600">قرارات تشغيل خلال ثوانٍ: مشكلة → أثر → من المتأثر → ماذا نفعل → كيف نتحقق من الحل</p>
         </div>
         <div class="flex flex-wrap gap-2">
           <a href="/admin/operations" class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50">مركز التشغيل</a>
@@ -40,198 +41,84 @@
 
   <main class="mx-auto max-w-5xl space-y-8 px-4 py-8">
 
-    <!-- Quick answers strip (operations-first labels; same underlying signals) -->
-    {% set risk_level_ar = "لا يوجد" if rl == 0 else ("منخفض" if rl == 1 else ("متوسط" if rl == 2 else "مرتفع")) %}
-    {% set wa_fail_n = metrics.whatsapp_failed_24h | default(0, true) %}
-    {% set customers_hit = (metrics.slow_cart_events_count or 0) > 0 or (wa_fail_n != 0 and wa_fail_n != "—" and wa_fail_n != "0") %}
-    {% set merchants_hit = (metrics.affected_stores or 0) > 0 or (metrics.queuepool_timeout_count or 0) > 0 %}
-    {% set needs_action = rl >= 2 or (actions_layer.get('items') or [])|length > 0 %}
-    <section class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 text-xs">
-      <div class="rounded-lg border border-slate-200 bg-white p-3">
-        <p class="font-medium text-slate-500">هل النظام يعمل طبيعي؟</p>
-        <p class="mt-1 font-semibold text-slate-900">{{ qa.is_healthy_ar or "—" }}</p>
-      </div>
-      <div class="rounded-lg border border-slate-200 bg-white p-3">
-        <p class="font-medium text-slate-500">هل يوجد خطر؟</p>
-        <p class="mt-1 font-semibold text-slate-900">{{ risk_level_ar }}</p>
-      </div>
-      <div class="rounded-lg border border-slate-200 bg-white p-3">
-        <p class="font-medium text-slate-500">هل العملاء متأثرون؟</p>
-        <p class="mt-1 text-slate-800">{{ "نعم — راجع البطاقات" if customers_hit else "لا" }}</p>
-      </div>
-      <div class="rounded-lg border border-slate-200 bg-white p-3">
-        <p class="font-medium text-slate-500">هل المتاجر متأثرة؟</p>
-        <p class="mt-1 text-slate-800">{{ "نعم — " ~ (metrics.affected_stores or 0) ~ " متجر" if merchants_hit else "لا" }}</p>
-      </div>
-      <div class="rounded-lg border border-slate-200 bg-white p-3">
-        <p class="font-medium text-slate-500">هل يحتاج تدخل؟</p>
-        <p class="mt-1 text-slate-800">{{ "مطلوب تدخل" if rl >= 3 else ("يفضل المراقبة" if needs_action else "لا") }}</p>
-      </div>
-      <div class="rounded-lg border border-slate-200 bg-white p-3">
-        <p class="font-medium text-slate-500">ماذا نفعل الآن؟</p>
-        <p class="mt-1 font-semibold text-slate-900">{{ qa.what_to_do_ar or "—" }}</p>
-      </div>
-    </section>
-
-    <!-- PART 1 — Risk summary -->
-    <section class="rounded-xl border p-5 shadow-sm {% if rl >= 3 %}border-orange-300 bg-orange-50/60{% elif rl == 2 %}border-rose-200 bg-rose-50/50{% elif rl == 1 %}border-amber-200 bg-amber-50/50{% else %}border-emerald-200 bg-emerald-50/40{% endif %}">
-      <div class="flex flex-wrap items-center gap-3">
-        <span class="text-2xl" aria-hidden="true">{{ risk.status_emoji or "🟢" }}</span>
-        <div>
-          <h2 class="text-base font-semibold text-slate-900">{{ risk.status_label_ar or "—" }}</h2>
-          <p class="mt-1 text-sm text-slate-800">{{ risk.headline_ar or "—" }}</p>
-          {% if risk.subheadline_ar %}
-          <p class="mt-1 text-xs text-slate-600">{{ risk.subheadline_ar }}</p>
+    <!-- Operations banner -->
+    <section class="rounded-xl border border-indigo-200 bg-indigo-50/50 p-5 shadow-sm">
+      <div class="flex flex-wrap items-start gap-3">
+        <span class="text-3xl" aria-hidden="true">{{ oc.risk_emoji or risk.status_emoji or "🟢" }}</span>
+        <div class="min-w-0 flex-1">
+          <p class="text-xs font-medium text-indigo-800/80">الملخص التشغيلي</p>
+          <p class="mt-1 text-lg font-semibold text-slate-900">{{ oc.summary_ar or "—" }}</p>
+          {% if oc.risk_headline_ar %}
+          <p class="mt-1 text-sm text-slate-700">{{ oc.risk_headline_ar }}</p>
           {% endif %}
         </div>
       </div>
       <div class="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3 text-xs">
-        <div class="rounded-lg bg-white/80 px-3 py-2 ring-1 ring-slate-200/80">
-          <span class="text-slate-500">{{ (risk.metrics_labels_ar or {}).affected_stores or "متاجر متأثرة" }}</span>
-          <span class="mt-0.5 block font-semibold tabular-nums">{{ metrics.affected_stores or 0 }}</span>
+        <div class="rounded-lg bg-white/90 px-3 py-2 ring-1 ring-indigo-100">
+          <p class="text-slate-500">هل يوجد مشكلة تؤثر على العملاء؟</p>
+          <p class="mt-0.5 font-semibold text-slate-900">{{ oc.customer_impacting_problem_ar or "—" }}</p>
         </div>
-        <div class="rounded-lg bg-white/80 px-3 py-2 ring-1 ring-slate-200/80">
-          <span class="text-slate-500">{{ (risk.metrics_labels_ar or {}).whatsapp_failed_24h or "فشل واتساب" }}</span>
-          <span class="mt-0.5 block font-semibold tabular-nums">{{ metrics.whatsapp_failed_24h or "—" }}</span>
+        <div class="rounded-lg bg-white/90 px-3 py-2 ring-1 ring-indigo-100">
+          <p class="text-slate-500">المتاجر المتأثرة</p>
+          <p class="mt-0.5 font-semibold text-slate-900">{{ oc.affected_stores_ar or "—" }}</p>
         </div>
-        <div class="rounded-lg bg-white/80 px-3 py-2 ring-1 ring-slate-200/80">
-          <span class="text-slate-500">{{ (risk.metrics_labels_ar or {}).queuepool_timeout_count or "ضغط النظام الداخلي" }}</span>
-          <span class="mt-0.5 block font-semibold tabular-nums">{{ metrics.queuepool_timeout_count or 0 }}</span>
+        <div class="rounded-lg bg-white/90 px-3 py-2 ring-1 ring-indigo-100">
+          <p class="text-slate-500">العملاء المحتمل تأثرهم</p>
+          <p class="mt-0.5 font-semibold text-slate-900">{{ oc.affected_customers_ar or "—" }}</p>
         </div>
-        <div class="rounded-lg bg-white/80 px-3 py-2 ring-1 ring-slate-200/80">
-          <span class="text-slate-500">{{ (risk.metrics_labels_ar or {}).slow_cart_events_count or "بطء نشاط العملاء" }}</span>
-          <span class="mt-0.5 block font-semibold tabular-nums">{{ metrics.slow_cart_events_count or 0 }}</span>
+        <div class="rounded-lg bg-white/90 px-3 py-2 ring-1 ring-indigo-100">
+          <p class="text-slate-500">درجة الإلحاح</p>
+          <p class="mt-0.5 font-semibold text-slate-900">{{ oc.urgency_ar or "—" }}</p>
         </div>
-        <div class="rounded-lg bg-white/80 px-3 py-2 ring-1 ring-slate-200/80">
-          <span class="text-slate-500">{{ (risk.metrics_labels_ar or {}).provider_unstable or "المزود" }}</span>
-          <span class="mt-0.5 block font-semibold">{{ "نعم" if metrics.provider_unstable else "لا" }}</span>
-        </div>
-        <div class="rounded-lg bg-white/80 px-3 py-2 ring-1 ring-slate-200/80">
-          <span class="text-slate-500">{{ (risk.metrics_labels_ar or {}).background_task_failures or "خلفية" }}</span>
-          <span class="mt-0.5 block font-semibold tabular-nums">{{ metrics.background_task_failures or 0 }}</span>
+        <div class="rounded-lg bg-white/90 px-3 py-2 ring-1 ring-indigo-100 sm:col-span-2">
+          <p class="text-slate-500">ماذا نفعل الآن؟</p>
+          <p class="mt-0.5 font-semibold text-indigo-950">{{ oc.recommended_action_ar or qa.what_to_do_ar or "—" }}</p>
         </div>
       </div>
-      {% if h.latest_load_test_ar %}
-      <p class="mt-3 text-xs text-slate-600">{{ h.latest_load_test_ar }}</p>
-      {% endif %}
-      {% if h.latest_multi_store_load_test_ar %}
-      <p class="mt-1 text-xs text-slate-600">{{ h.latest_multi_store_load_test_ar }}</p>
-      {% endif %}
-      {% if h.latest_mixed_behavior_load_test_ar %}
-      <p class="mt-1 text-xs text-slate-600">{{ h.latest_mixed_behavior_load_test_ar }}</p>
-      {% endif %}
-      {% if h.latest_failure_simulation_ar %}
-      <p class="mt-1 text-xs text-slate-600">{{ h.latest_failure_simulation_ar }}</p>
-      {% endif %}
-    </section>
-
-    <!-- PART 2 — Impact -->
-    <section>
-      <h2 class="text-sm font-semibold text-slate-900 border-b border-slate-200 pb-2">طبقة الأثر</h2>
-      {% if impact_layer.has_issues %}
-      <div class="mt-4 space-y-3">
-        {% for item in impact_layer.get('items', []) %}
-        <article class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p class="text-xs font-medium text-slate-500">المشكلة</p>
-          <p class="text-sm font-semibold text-slate-900">{{ item.problem_ar }}</p>
-          <p class="mt-2 text-xs font-medium text-slate-500">الأثر</p>
-          <p class="text-sm text-slate-700">{{ item.impact_ar }}</p>
-          <p class="mt-2 text-xs text-slate-500">إن تُرك: {{ item.if_ignored_ar }}</p>
-          <div class="mt-3 flex flex-wrap gap-3 text-xs">
-            <span class="rounded-full bg-slate-100 px-2 py-0.5">المتأثر: {{ item.affected_ar }}</span>
-            <span class="rounded-full {% if item.urgency == 'high' %}bg-rose-100 text-rose-900{% elif item.urgency == 'medium' %}bg-amber-100 text-amber-900{% else %}bg-slate-100 text-slate-700{% endif %} px-2 py-0.5">الاستعجال: {{ item.urgency_ar }}</span>
-          </div>
-        </article>
-        {% endfor %}
+      {% if oc.verification_lines_ar %}
+      <div class="mt-3 rounded-lg bg-white/80 px-3 py-2 text-xs">
+        <p class="font-medium text-slate-600">كيف نتحقق أن المشكلة انتهت؟</p>
+        <ul class="mt-1 list-inside list-disc text-slate-800">
+          {% for line in oc.verification_lines_ar %}
+          <li>{{ line }}</li>
+          {% endfor %}
+        </ul>
       </div>
-      {% else %}
-      <p class="mt-3 text-sm text-slate-600">{{ impact_layer.empty_message_ar }}</p>
       {% endif %}
     </section>
 
-    <!-- PART 3 — Actions -->
-    <section>
-      <h2 class="text-sm font-semibold text-slate-900 border-b border-slate-200 pb-2">إجراء مقترح</h2>
-      {% if actions_layer.has_actions %}
-      <ul class="mt-4 space-y-3">
-        {% for act in actions_layer.get('items', []) %}
-        <li class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-indigo-100 bg-indigo-50/40 px-4 py-3">
-          <div class="min-w-0 flex-1">
-            <p class="text-xs text-indigo-800/80">{{ act.problem_ar }}</p>
-            <p class="mt-1 text-sm font-medium text-indigo-950">{{ act.recommended_action_ar }}</p>
-            <p class="mt-2 text-xs text-slate-600"><span class="font-medium">{{ act.why_label_ar or "لماذا؟" }}</span> {{ act.why_ar }}</p>
-          </div>
-          <a href="{{ act.detail_href }}" class="shrink-0 rounded-lg bg-white px-3 py-1.5 text-sm font-medium text-indigo-700 ring-1 ring-indigo-200 hover:bg-indigo-50">{{ act.detail_label_ar }}</a>
-        </li>
-        {% endfor %}
-      </ul>
-      {% else %}
-      <p class="mt-3 text-sm text-slate-600">{{ actions_layer.empty_message_ar }}</p>
-      {% endif %}
-    </section>
-
-    <!-- PART 4 — Verification -->
-    <section>
-      <h2 class="text-sm font-semibold text-slate-900 border-b border-slate-200 pb-2">التحقق — هل تعافى؟</h2>
-      {% if verify.has_recoveries %}
-      <ul class="mt-4 space-y-2">
-        {% for v in verify.get('items', []) %}
-        <li class="rounded-lg border border-emerald-200 bg-emerald-50/60 px-4 py-3 text-sm">
-          <p class="font-medium text-emerald-900">{{ v.headline_ar }}</p>
-          <p class="mt-1 text-emerald-800">{{ v.message_ar }}</p>
-          <p class="mt-1 text-xs text-emerald-700/80">{{ v.timestamp_ar }}</p>
-        </li>
-        {% endfor %}
-      </ul>
-      {% else %}
-      <p class="mt-3 text-sm text-slate-600">{{ verify.empty_message_ar }}</p>
-      {% endif %}
-    </section>
-
-    <!-- PART 5 — Revenue protection -->
-    <section class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-      <h2 class="text-sm font-semibold text-slate-900">حماية الإيراد</h2>
-      <p class="mt-1 text-xs text-slate-500">{{ revenue.headline_ar }}</p>
-      <div class="mt-4 grid gap-4 sm:grid-cols-2">
-        <div>
-          <p class="text-xs font-medium text-emerald-800">محمي</p>
-          <ul class="mt-2 space-y-1 text-sm">
-            {% for row in revenue.protected or [] %}
-            <li class="flex justify-between gap-2"><span class="text-slate-600">{{ row.label_ar }}</span><span class="font-semibold tabular-nums">{{ row.value }}</span></li>
-            {% endfor %}
-          </ul>
-        </div>
-        <div>
-          <p class="text-xs font-medium text-rose-800">خطر</p>
-          <ul class="mt-2 space-y-1 text-sm">
-            {% for row in revenue.risk or [] %}
-            <li class="flex justify-between gap-2"><span class="text-slate-600">{{ row.label_ar }}</span><span class="font-semibold tabular-nums">{{ row.value }}</span></li>
-            {% endfor %}
-          </ul>
-        </div>
+    <!-- Six-second decision strip -->
+    <section class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 text-xs">
+      <div class="rounded-lg border border-slate-200 bg-white p-3">
+        <p class="font-medium text-slate-500">هل يوجد خطر؟</p>
+        <p class="mt-1 font-semibold text-slate-900">{{ oc.urgency_ar or "—" }}</p>
       </div>
-      <p class="mt-3 text-sm text-slate-700">{{ revenue.summary_stable_ar }}</p>
-      <p class="text-sm text-slate-700">{{ revenue.summary_fail_ar }}</p>
+      <div class="rounded-lg border border-slate-200 bg-white p-3">
+        <p class="font-medium text-slate-500">من المتأثر؟ (متاجر)</p>
+        <p class="mt-1 text-slate-800">{{ oc.affected_stores_ar or "—" }}</p>
+      </div>
+      <div class="rounded-lg border border-slate-200 bg-white p-3">
+        <p class="font-medium text-slate-500">كم عميلاً قد يتأثر؟</p>
+        <p class="mt-1 text-slate-800">{{ oc.affected_customers_ar or "—" }}</p>
+      </div>
+      <div class="rounded-lg border border-slate-200 bg-white p-3">
+        <p class="font-medium text-slate-500">ماذا أفعل؟</p>
+        <p class="mt-1 font-semibold text-slate-900">{{ oc.recommended_action_ar or "—" }}</p>
+      </div>
+      <div class="rounded-lg border border-slate-200 bg-white p-3">
+        <p class="font-medium text-slate-500">كيف أعرف أن المشكلة انتهت؟</p>
+        <p class="mt-1 text-slate-800">{{ (oc.verification_lines_ar or [])[0] or "راجع البطاقات أدناه" }}</p>
+      </div>
+      <div class="rounded-lg border border-slate-200 bg-white p-3">
+        <p class="font-medium text-slate-500">هل النظام يعمل طبيعي؟</p>
+        <p class="mt-1 font-semibold text-slate-900">{{ qa.is_healthy_ar or "—" }}</p>
+      </div>
     </section>
 
-    <!-- PART 6 — Timeline -->
-    <section>
-      <h2 class="text-sm font-semibold text-slate-900 border-b border-slate-200 pb-2">الخط الزمني التشغيلي</h2>
-      <ol class="mt-4 space-y-2 border-r-2 border-slate-200 pr-4">
-        {% for ev in timeline.get('items', []) %}
-        <li class="relative text-sm">
-          <span class="absolute -right-[1.35rem] top-0.5 text-xs" aria-hidden="true">{{ ev.severity_emoji or "🟡" }}</span>
-          <span class="font-mono text-xs text-slate-500">{{ ev.time_ar }}</span>
-          <span class="mr-2 text-slate-800">{{ ev.message_ar }}</span>
-        </li>
-        {% endfor %}
-      </ol>
-    </section>
-
-    <!-- Operations control center — fixed decision format per card -->
+    <!-- Component decisions — problem → impact → who → urgency → action → verify -->
     <section class="rounded-xl border border-slate-200 bg-white shadow-sm">
-      <h2 class="border-b border-slate-100 px-4 py-3 text-sm font-semibold text-slate-900">مركز التحكم التشغيلي</h2>
-      <p class="border-b border-slate-50 px-4 py-2 text-xs text-slate-500">حالة → خطر → أثر → إجراء — التفاصيل التقنية أسفل كل بطاقة للدعم فقط</p>
+      <h2 class="border-b border-slate-100 px-4 py-3 text-sm font-semibold text-slate-900">قرارات حسب المكوّن</h2>
+      <p class="border-b border-slate-50 px-4 py-2 text-xs text-slate-500">المشكلة → الأثر → المتأثرون → الإلحاح → الإجراء → التحقق — التفاصيل التقنية للدعم فقط</p>
       <div class="grid gap-4 px-4 py-4 lg:grid-cols-2">
         {% macro operational_decision_card(card, anchor_id) %}
         {% set op = card.operational or {} %}
@@ -242,7 +129,19 @@
             {% for row in rows %}
             <div class="flex flex-col gap-0.5 sm:flex-row sm:justify-between sm:gap-3 {% if row.key == 'suggested_action' %}border-t border-slate-200/80 pt-2{% endif %}">
               <dt class="shrink-0 font-medium text-slate-500">{{ row.label_ar }}</dt>
-              <dd class="font-medium text-slate-900 {% if row.key == 'last_problem' %}text-rose-800/90{% elif row.key == 'last_success' %}text-emerald-800/90{% endif %}">{{ row.value_ar }}</dd>
+              {% if row.key == 'verification' and row.verification_lines %}
+              <dd class="min-w-0 flex-1 text-slate-900">
+                <ul class="list-inside list-disc space-y-0.5">
+                  {% for vline in row.verification_lines %}
+                  <li>{{ vline }}</li>
+                  {% endfor %}
+                </ul>
+              </dd>
+              {% elif row.key == 'suggested_action' %}
+              <dd class="whitespace-pre-line font-medium text-indigo-950">{{ row.value_ar or op.suggested_action_ar }}</dd>
+              {% else %}
+              <dd class="font-medium text-slate-900 {% if row.key == 'problem' %}text-rose-900/90{% elif row.key == 'urgency' and 'مرتفع' in (row.value_ar or '') %}text-rose-800{% endif %}">{{ row.value_ar }}</dd>
+              {% endif %}
             </div>
             {% else %}
             <p class="text-slate-500">—</p>
@@ -268,6 +167,57 @@
         {{ operational_decision_card(cards.get("whatsapp") or {}, "issue-whatsapp") }}
       </div>
     </section>
+
+    <!-- Supporting context (collapsed — not primary decision surface) -->
+    <details class="rounded-xl border border-slate-200 bg-white shadow-sm">
+      <summary class="cursor-pointer px-4 py-3 text-sm font-medium text-slate-600">سياق إضافي (مؤشرات، أثر، خط زمني)</summary>
+      <div class="space-y-6 border-t border-slate-100 px-4 py-4 text-sm">
+        <section class="rounded-lg border p-4 {% if rl >= 3 %}border-orange-200 bg-orange-50/40{% elif rl >= 2 %}border-rose-100 bg-rose-50/30{% elif rl == 1 %}border-amber-100 bg-amber-50/30{% else %}border-emerald-100 bg-emerald-50/30{% endif %}">
+          <h3 class="text-xs font-semibold text-slate-700">ملخص المخاطر (إشارة)</h3>
+          <p class="mt-1">{{ risk.status_emoji }} {{ risk.status_label_ar }} — {{ risk.headline_ar }}</p>
+          <details class="mt-2 text-xs text-slate-600">
+            <summary class="cursor-pointer">مؤشرات داعمة (للدعم)</summary>
+            <div class="mt-2 grid gap-2 sm:grid-cols-3">
+              <span>متاجر: {{ metrics.affected_stores or 0 }}</span>
+              <span>بطء نشاط: {{ metrics.slow_cart_events_count or 0 }}</span>
+              <span>ضغط داخلي: {{ metrics.queuepool_timeout_count or 0 }}</span>
+            </div>
+          </details>
+        </section>
+        {% if impact_layer.has_issues %}
+        <section>
+          <h3 class="text-xs font-semibold text-slate-700">طبقة الأثر</h3>
+          {% for item in impact_layer.get('items', []) %}
+          <p class="mt-2 text-xs"><strong>{{ item.problem_ar }}</strong> — {{ item.impact_ar }}</p>
+          {% endfor %}
+        </section>
+        {% endif %}
+        {% if actions_layer.has_actions %}
+        <section>
+          <h3 class="text-xs font-semibold text-slate-700">إجراءات مقترحة (تفصيل)</h3>
+          {% for act in actions_layer.get('items', []) %}
+          <p class="mt-2 text-xs">{{ act.problem_ar }} → {{ act.recommended_action_ar }}</p>
+          {% endfor %}
+        </section>
+        {% endif %}
+        {% if verify.has_recoveries %}
+        <section>
+          <h3 class="text-xs font-semibold text-slate-700">استعادات حديثة</h3>
+          {% for v in verify.get('items', []) %}
+          <p class="mt-1 text-xs text-emerald-800">{{ v.headline_ar }} — {{ v.message_ar }}</p>
+          {% endfor %}
+        </section>
+        {% endif %}
+        <section>
+          <h3 class="text-xs font-semibold text-slate-700">الخط الزمني التشغيلي</h3>
+          <ol class="mt-2 space-y-1 text-xs text-slate-600">
+            {% for ev in timeline.get('items', []) %}
+            <li>{{ ev.time_ar }} — {{ ev.message_ar }}</li>
+            {% endfor %}
+          </ol>
+        </section>
+      </div>
+    </details>
 
     <p class="text-xs text-slate-400 text-center pb-4">آخر تجميع: {{ h.generated_at_utc or "—" }}</p>
   </main>

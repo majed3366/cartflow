@@ -567,21 +567,21 @@ def _build_admin_db_due_scanner_card_safe() -> dict[str, Any]:
 
         return build_db_due_scanner_health_admin_card()
     except Exception:
-        from services.admin_operational_health_language import build_standard_operational_decision
+        from services.admin_operational_health_language import build_operations_center_decision
 
         return {
             "title": "db_due_scanner",
             "title_ar": "متابعة الاسترجاعات المجدولة",
-            "operational": build_standard_operational_decision(
+            "operational": build_operations_center_decision(
                 title_ar="متابعة الاسترجاعات المجدولة",
-                status_tier="watch",
-                risk_level="low",
-                customer_impact_ar="لا",
-                merchant_impact_ar="لا",
-                intervention="watch",
+                problem_ar="تعذّر تحميل مؤشرات المتابعة",
+                impact_ar="غير معروف",
+                affected_stores_ar="—",
+                affected_customers_ar="—",
+                urgency_ar="منخفضة",
                 suggested_action_ar="تحقق من السجلات",
-                last_success_ar="—",
-                last_problem_ar="تعذّر تحميل المؤشرات",
+                verification_lines=["إعادة تحميل الصفحة", "مراجعة التفاصيل التقنية"],
+                status_tier="watch",
             ),
             "technical_detail_lines": ["DB Due Scanner: unavailable"],
             "detail_lines": ["DB Due Scanner: unavailable"],
@@ -599,10 +599,20 @@ def build_admin_operational_health_readonly() -> dict[str, Any]:
     warnings = diag.get("warnings") or []
     cards = dict(diag.get("cards") or {})
     cards["db_due_scanner"] = _build_admin_db_due_scanner_card_safe()
+    operations_center: dict[str, Any] = {
+        "title_ar": "مركز عمليات CartFlow",
+        "summary_ar": "—",
+    }
     try:
-        from services.admin_operational_health_language import enrich_operational_health_cards
+        from services.admin_operational_health_language import (
+            build_operations_center_page_summary,
+            build_operations_center_presentation_context,
+            enrich_operational_health_cards,
+        )
 
-        cards = enrich_operational_health_cards(cards)
+        pctx = build_operations_center_presentation_context(control)
+        cards = enrich_operational_health_cards(cards, pctx)
+        operations_center = build_operations_center_page_summary(control)
     except Exception:
         pass
     admin_rt = {}
@@ -618,6 +628,7 @@ def build_admin_operational_health_readonly() -> dict[str, Any]:
     return {
         **control,
         "generated_at_utc": control.get("generated_at_utc"),
+        "operations_center": operations_center,
         "headlines": headlines,
         "cards": cards,
         "warnings": warnings,

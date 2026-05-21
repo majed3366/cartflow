@@ -102,18 +102,20 @@ class AdminOperationalHealthTests(unittest.TestCase):
         )
         r = client.get("/admin/operational-health")
         self.assertEqual(r.status_code, 200, r.text[:400])
-        self.assertIn("التحكم التشغيلي", r.text)
-        self.assertIn("طبقة الأثر", r.text)
+        self.assertIn("مركز عمليات CartFlow", r.text)
+        self.assertIn("الملخص التشغيلي", r.text)
+        self.assertIn("المشكلة", r.text)
         self.assertIn("هل النظام يعمل طبيعي؟", r.text)
-        self.assertIn("مركز التحكم التشغيلي", r.text)
         self.assertIn("متابعة الاسترجاعات المجدولة", r.text)
         self.assertIn("متابعة نشاط العملاء", r.text)
         self.assertIn("عمليات الاسترجاع التلقائي", r.text)
-        self.assertIn("هل يؤثر على العملاء؟", r.text)
+        self.assertIn("تؤثر على العملاء", r.text)
         self.assertIn("هل يؤثر على المتاجر؟", r.text)
         self.assertGreaterEqual(r.text.count("تفاصيل تقنية (للدعم)"), 5)
         scanner = build_admin_operational_health_readonly()["cards"]["db_due_scanner"]
-        self.assertEqual(len((scanner.get("operational") or {}).get("rows") or []), 8)
+        self.assertEqual(len((scanner.get("operational") or {}).get("rows") or []), 7)
+        payload_oc = build_admin_operational_health_readonly().get("operations_center") or {}
+        self.assertIn("summary_ar", payload_oc)
 
     def test_merchant_dashboard_excludes_scanner_diagnostics(self) -> None:
         client = TestClient(app)
