@@ -57,12 +57,22 @@ def _log_loop(tag: str, **fields: Any) -> None:
     print(f"[DB DUE SCANNER LOOP {tag}]{suffix}", flush=True)
 
 
+def is_db_due_scanner_loop_task_running() -> bool:
+    return _loop_task is not None and not _loop_task.done()
+
+
 async def run_db_due_scanner_loop_tick() -> Dict[str, Any]:
     """
     One scanner pass. Skips if a previous tick is still running (no overlap).
     """
     if _tick_lock.locked():
         _log_loop("SKIPPED", reason="tick_in_progress")
+        try:
+            from services.db_due_scanner_health import record_db_due_scanner_tick_skipped
+
+            record_db_due_scanner_tick_skipped(reason="tick_in_progress")
+        except Exception:  # noqa: BLE001
+            pass
         return {"skipped": True, "reason": "tick_in_progress"}
 
     async with _tick_lock:
@@ -85,10 +95,27 @@ async def run_db_due_scanner_loop_tick() -> Dict[str, Any]:
                 dispatched=out.get("dispatched", 0),
                 skipped=out.get("skipped", 0),
             )
+            try:
+                from services.db_due_scanner_health import record_db_due_scanner_tick_result
+
+                record_db_due_scanner_tick_result(out)
+            except Exception:  # noqa: BLE001
+                pass
             return out
         except Exception as exc:  # noqa: BLE001
             _log_loop("ERROR", detail=str(exc)[:200])
-            return {"error": str(exc), "skipped": False}
+            err_out: Dict[str, Any] = {"error": str(exc), "skipped": False}
+            try:
+                from services.db_due_scanner_health import (
+                    record_db_due_scanner_loop_error,
+                    record_db_due_scanner_tick_result,
+                )
+
+                record_db_due_scanner_loop_error(detail=str(exc))
+                record_db_due_scanner_tick_result(err_out)
+            except Exception:  # noqa: BLE001
+                pass
+            return err_out
 
 
 async def _db_due_scanner_loop_forever() -> None:
@@ -102,6 +129,12 @@ async def _db_due_scanner_loop_forever() -> None:
         except Exception as exc:  # noqa: BLE001
             _log_loop("ERROR", detail=str(exc)[:200])
             _log.warning("db due scanner loop tick failed: %s", exc)
+            try:
+                from services.db_due_scanner_health import record_db_due_scanner_loop_error
+
+                record_db_due_scanner_loop_error(detail=str(exc))
+            except Exception:  # noqa: BLE001
+                pass
 
 
 def start_db_due_recovery_scanner_loop() -> None:
@@ -130,6 +163,12 @@ def start_db_due_recovery_scanner_loop() -> None:
         _db_due_scanner_loop_forever(),
         name="recovery_db_due_scanner_loop",
     )
+    try:
+        from services.db_due_scanner_health import record_db_due_scanner_loop_started
+
+        record_db_due_scanner_loop_started()
+    except Exception:  # noqa: BLE001
+        pass
 
 
 async def stop_db_due_recovery_scanner_loop() -> None:
@@ -144,3 +183,9 @@ async def stop_db_due_recovery_scanner_loop() -> None:
         pass
     finally:
         _loop_task = None
+        try:
+            from services.db_due_scanner_health import record_db_due_scanner_loop_stopped
+
+            record_db_due_scanner_loop_stopped()
+        except Exception:  # noqa: BLE001
+            pass

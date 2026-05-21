@@ -146,3 +146,14 @@ def admin_load_test_failure_scenarios(
 
     summary = run_failure_scenarios_load_test(dry_run_whatsapp=bool(dry_run))
     return j(summary)
+
+
+@router.get("/api/admin/db-due-scanner-health")
+def admin_db_due_scanner_health(request: Request) -> Any:
+    """Read-only DB due scanner loop observability (admin session required)."""
+    denied = _admin_json_auth_or_error(request)
+    if denied is not None:
+        return denied
+    from services.db_due_scanner_health import build_db_due_scanner_health
+
+    return j(build_db_due_scanner_health())

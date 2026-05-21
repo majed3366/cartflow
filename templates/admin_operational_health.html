@@ -233,6 +233,16 @@
           <h3 class="font-semibold text-slate-800">مسبح DB</h3>
           <ul class="mt-1 text-slate-600">{% for line in pool.detail_lines_ar or [] %}<li>{{ line }}</li>{% endfor %}</ul>
         </article>
+        {% set scanner = cards.db_due_scanner or {} %}
+        <article id="issue-db-due-scanner" class="sm:col-span-2 font-mono text-[11px] leading-relaxed">
+          <h3 class="font-semibold text-slate-800">{{ scanner.title or "DB Due Scanner" }}</h3>
+          <ul class="mt-2 space-y-0.5 text-slate-600">
+            {% for line in scanner.detail_lines or [] %}
+            <li>{{ line }}</li>
+            {% endfor %}
+          </ul>
+          <p class="mt-2 text-slate-400">API: <code class="text-slate-500">GET /api/admin/db-due-scanner-health</code></p>
+        </article>
       </div>
     </details>
 

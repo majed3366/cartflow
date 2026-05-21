@@ -837,6 +837,9 @@ async def _startup_whatsapp_queue() -> None:
         from services.recovery_db_due_scanner_loop import start_db_due_recovery_scanner_loop
 
         start_db_due_recovery_scanner_loop()
+        from services.db_due_scanner_health import refresh_db_due_scanner_health_observability
+
+        refresh_db_due_scanner_health_observability()
     except Exception as exc:  # noqa: BLE001
         log.warning("startup db due scanner loop skipped: %s", exc)
     await start_whatsapp_queue_worker()

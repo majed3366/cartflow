@@ -393,6 +393,7 @@ flowchart LR
 | Tests | `tests/test_recovery_restart_survival.py`, `tests/test_recovery_store_context_isolation.py`, `tests/test_recovery_delay_unified.py` |
 | Dev ops | `GET /dev/recovery-restart-survival-verify`, `GET /dev/store-template-debug` |
 | DB due scanner (manual) | `services/recovery_db_due_scanner.py`, `scripts/db_due_scanner_verify.py` |
+| DB due scanner health (admin) | `services/db_due_scanner_health.py`, `GET /api/admin/db-due-scanner-health` |
 
 ---
 
