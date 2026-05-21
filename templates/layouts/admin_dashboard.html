@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{% block admin_title %}CartFlow Admin{% endblock %}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @media (max-width: 1023px) {
+      #admin-sidebar-panel.admin-sidebar-open { transform: translateX(0); }
+      #admin-sidebar-backdrop.admin-sidebar-open { opacity: 1; pointer-events: auto; }
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-slate-50 text-slate-800 antialiased">
+  <div class="flex min-h-screen flex-row-reverse">
+    {% include "partials/admin_sidebar.html" %}
+
+    <div id="admin-sidebar-backdrop"
+         class="fixed inset-0 z-30 bg-slate-900/40 opacity-0 pointer-events-none transition lg:hidden"
+         aria-hidden="true"></div>
+
+    <div class="flex min-h-screen min-w-0 flex-1 flex-col">
+      <header class="sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur">
+        <div class="flex items-center justify-between gap-3 px-4 py-3 sm:px-6">
+          <div class="flex min-w-0 flex-1 items-center gap-3">
+            <button type="button"
+                    id="admin-sidebar-toggle"
+                    class="rounded-lg border border-slate-200 p-2 text-slate-600 hover:bg-slate-50 lg:hidden"
+                    aria-controls="admin-sidebar-panel"
+                    aria-expanded="false"
+                    aria-label="فتح القائمة">
+              <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+              </svg>
+            </button>
+            <div class="min-w-0">
+              {% block admin_page_header %}
+              <h1 class="truncate text-base font-semibold text-slate-900 sm:text-lg">{{ admin_page_title_ar | default("لوحة الإدارة") }}</h1>
+              {% if admin_page_subtitle_ar %}
+              <p class="truncate text-xs text-slate-500 sm:text-sm">{{ admin_page_subtitle_ar }}</p>
+              {% endif %}
+              {% endblock %}
+            </div>
+          </div>
+          <form method="post" action="/admin/operations/logout" class="shrink-0">
+            <button type="submit" class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50">خروج</button>
+          </form>
+        </div>
+      </header>
+
+      <main class="flex-1 {% block admin_main_class %}mx-auto w-full max-w-6xl space-y-8 px-4 py-6 sm:px-6 sm:py-8{% endblock %}">
+        {% block admin_content %}{% endblock %}
+      </main>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var panel = document.getElementById("admin-sidebar-panel");
+      var backdrop = document.getElementById("admin-sidebar-backdrop");
+      var toggle = document.getElementById("admin-sidebar-toggle");
+      if (!panel || !toggle) return;
+      function setOpen(open) {
+        panel.classList.toggle("admin-sidebar-open", open);
+        if (backdrop) backdrop.classList.toggle("admin-sidebar-open", open);
+        toggle.setAttribute("aria-expanded", open ? "true" : "false");
+      }
+      toggle.addEventListener("click", function () {
+        setOpen(!panel.classList.contains("admin-sidebar-open"));
+      });
+      if (backdrop) {
+        backdrop.addEventListener("click", function () { setOpen(false); });
+      }
+      panel.querySelectorAll("a").forEach(function (a) {
+        a.addEventListener("click", function () {
+          if (window.matchMedia("(max-width: 1023px)").matches) setOpen(false);
+        });
+      });
+    })();
+  </script>
+</body>
+</html>

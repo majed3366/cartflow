@@ -59,8 +59,9 @@ class AdminOperationsDashboardTests(unittest.TestCase):
         r2 = client.get("/admin/operations")
         self.assertEqual(r2.status_code, 200, r2.text[:500])
         body = r2.text
-        self.assertIn("مركز التشغيل", body)
-        self.assertIn("Operational Control Center", body)
+        self.assertIn("CartFlow Admin", body)
+        self.assertIn("لوحة عامة", body)
+        self.assertIn('id="admin-sidebar-panel"', body)
         self.assertRegex(body, r"فئة المنصة:|تصنيف المنصة:")
         self.assertRegex(body, r"جاهزية الإعداد|صحة الإعداد|٤ —")
         self.assertIn("ملخص سريع", body)

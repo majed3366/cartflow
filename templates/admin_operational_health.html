@@ -1,12 +1,8 @@
-<!DOCTYPE html>
-<html lang="ar" dir="rtl">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>CartFlow — مركز العمليات</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="min-h-screen bg-slate-50 text-slate-800 antialiased">
+{% extends "layouts/admin_dashboard.html" %}
+{% block admin_title %}CartFlow Admin — مركز التشغيل{% endblock %}
+{% block admin_main_class %}mx-auto w-full max-w-5xl space-y-8 px-4 py-2 sm:px-0 sm:py-0{% endblock %}
+
+{% block admin_content %}
   {% set h = health %}
   {% set risk = h.admin_risk_summary or {} %}
   {% set impact_layer = h.admin_impact_layer or {} %}
@@ -20,28 +16,7 @@
   {% set cards = h.cards or diag.cards or {} %}
   {% set rl = risk.risk_level | default(0) | int %}
   {% set oc = h.operations_center or {} %}
-
-  <header class="border-b border-slate-200 bg-white">
-    <div class="mx-auto max-w-5xl px-4 py-5">
-      <div class="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p class="text-xs font-medium uppercase tracking-wide text-slate-400">CartFlow Operations Center</p>
-          <h1 class="mt-0.5 text-xl font-semibold text-slate-900">{{ oc.title_ar or "مركز عمليات CartFlow" }}</h1>
-          <p class="mt-1 max-w-2xl text-sm leading-relaxed text-slate-600">قرارات تشغيل خلال ثوانٍ: مشكلة → أثر → من المتأثر → ماذا نفعل → كيف نتحقق من الحل</p>
-        </div>
-        <div class="flex flex-wrap gap-2">
-          <a href="/admin/operations" class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50">مركز التشغيل</a>
-          <form method="post" action="/admin/operations/logout">
-            <button type="submit" class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50">خروج</button>
-          </form>
-        </div>
-      </div>
-    </div>
-  </header>
-
-  <main class="mx-auto max-w-5xl space-y-8 px-4 py-8">
-
-    {% set vt = oc.verdict_tier or "ok" %}
+  {% set vt = oc.verdict_tier or "ok" %}
     <!-- Immediate operational verdict (first 5 seconds) -->
     <section
       id="operational-verdict"
@@ -214,6 +189,4 @@
     </details>
 
     <p class="text-xs text-slate-400 text-center pb-4">آخر تجميع: {{ h.generated_at_utc or "—" }}</p>
-  </main>
-</body>
-</html>
+{% endblock %}

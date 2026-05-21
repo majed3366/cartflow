@@ -115,7 +115,9 @@ class AdminOperationalHealthLanguageTests(unittest.TestCase):
         )
         html = client.get("/admin/operational-health").text
         self.assertEqual(client.get("/admin/operational-health").status_code, 200)
-        self.assertIn("مركز عمليات CartFlow", html)
+        self.assertIn("CartFlow Admin", html)
+        self.assertIn('id="admin-sidebar-panel"', html)
+        self.assertIn("مركز التشغيل", html)
         self.assertIn('id="operational-verdict"', html)
         self.assertIn("الحكم التشغيلي", html)
         self.assertIn("هل النظام سليم الآن", html)

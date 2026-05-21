@@ -1,12 +1,7 @@
-<!DOCTYPE html>
-<html lang="ar" dir="rtl">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>CartFlow — مركز التشغيل</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="min-h-screen bg-slate-50 text-slate-800 antialiased">
+{% extends "layouts/admin_dashboard.html" %}
+{% block admin_title %}CartFlow Admin — لوحة عامة{% endblock %}
+
+{% block admin_content %}
   {% set ts = summary.trust_signals_summary or {} %}
   {% set agg = summary.aggregate_onboarding or {} %}
   {% set de = summary.degradation_flags or {} %}
@@ -21,35 +16,16 @@
   {% set phone_n = summary.stores_missing_phone_coverage_estimate or 0 %}
   {% set low_trust = trust_degraded_n + trust_unstable_n %}
 
-  <header class="border-b border-slate-200 bg-white">
-    <div class="mx-auto max-w-6xl px-4 py-5">
-      <div class="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Operational Control Center</p>
-          <h1 class="mt-0.5 text-xl font-semibold text-slate-900">مركز التشغيل — CartFlow</h1>
-          <p class="mt-1 max-w-2xl text-sm leading-relaxed text-slate-600">قراءة تشغيلية هادئة — المعنى والأولوية قبل الأرقام.</p>
-        </div>
-        <div class="flex flex-wrap gap-2">
-          <a href="/admin/operational-health" class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50">التحكم التشغيلي</a>
-          <form method="post" action="/admin/operations/logout">
-            <button type="submit" class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50">خروج</button>
-          </form>
-        </div>
-      </div>
-      <!-- Summary strip -->
-      <div class="mt-4 rounded-xl border border-slate-200/80 bg-white/90 px-4 py-3 shadow-sm ring-1 ring-slate-100">
-        <p class="text-xs font-medium text-slate-500">ملخص سريع</p>
-        <ul class="mt-2 space-y-1.5 text-sm leading-relaxed text-slate-800">
-          {% for line in g.summary_strip %}
-          <li class="flex gap-2"><span class="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-slate-400"></span><span>{{ line }}</span></li>
-          {% endfor %}
-        </ul>
-      </div>
-    </div>
-  </header>
+  <div class="rounded-xl border border-slate-200/80 bg-white/90 px-4 py-3 shadow-sm ring-1 ring-slate-100">
+    <p class="text-xs font-medium text-slate-500">ملخص سريع</p>
+    <ul class="mt-2 space-y-1.5 text-sm leading-relaxed text-slate-800">
+      {% for line in g.summary_strip %}
+      <li class="flex gap-2"><span class="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-slate-400"></span><span>{{ line }}</span></li>
+      {% endfor %}
+    </ul>
+  </div>
 
-  <main class="mx-auto max-w-6xl space-y-10 px-4 py-10">
-
+  <div class="space-y-10">
     <!-- 1 — Platform Status -->
     <section class="scroll-mt-8">
       <div class="mb-4 flex flex-wrap items-end justify-between gap-3 border-b border-slate-200 pb-3">
@@ -337,6 +313,5 @@
       </div>
       {% endif %}
     </section>
-  </main>
-</body>
-</html>
+  </div>
+{% endblock %}

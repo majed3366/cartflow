@@ -45,6 +45,97 @@ templates = Jinja2Templates(directory=str(_ROOT / "templates"))
 
 router = APIRouter(tags=["admin"])
 
+# Sidebar nav keys (presentation only — no business logic).
+ADMIN_NAV_OVERVIEW = "overview"
+ADMIN_NAV_OPS_HEALTH = "ops-health"
+
+_ADMIN_PLACEHOLDER_PAGES: tuple[tuple[str, str, str, str], ...] = (
+    (
+        "/admin/control",
+        "ops-control",
+        "التحكم التشغيلي",
+        "إجراءات تشغيل مستقبلية: إيقاف/تشغيل آمن، فحص يدوي، وضع آمن، وإعادة محاولة.",
+    ),
+    (
+        "/admin/alerts",
+        "ops-alerts",
+        "التنبيهات",
+        "عرض التنبيهات التشغيلية المركزية — قريباً.",
+    ),
+    (
+        "/admin/stores",
+        "stores-all",
+        "جميع المتاجر",
+        "عرض المتاجر وحالة التشغيل — قريباً.",
+    ),
+    (
+        "/admin/stores/paused",
+        "stores-paused",
+        "المتاجر المتوقفة",
+        "المتاجر المتوقفة أو المعطّلة — قريباً.",
+    ),
+    (
+        "/admin/stores/integration",
+        "stores-integration",
+        "حالة التكامل",
+        "حالة تكامل المتاجر مع المنصة — قريباً.",
+    ),
+    (
+        "/admin/subscriptions/plans",
+        "subs-plans",
+        "الباقات",
+        "إدارة باقات الاشتراك — قريباً.",
+    ),
+    (
+        "/admin/subscriptions/trial",
+        "subs-trial",
+        "التجريبي",
+        "حالة الفترة التجريبية للمتاجر — قريباً.",
+    ),
+    (
+        "/admin/subscriptions/renewals",
+        "subs-renewals",
+        "التجديدات",
+        "تجديدات الاشتراك والمواعيد — قريباً.",
+    ),
+    (
+        "/admin/reports/recovery",
+        "reports-recovery",
+        "تقارير الاسترجاع",
+        "تقارير الاسترجاع والأداء — قريباً.",
+    ),
+    (
+        "/admin/reports/whatsapp",
+        "reports-whatsapp",
+        "تقارير واتساب",
+        "تقارير إرسال واتساب — قريباً.",
+    ),
+    (
+        "/admin/reports/stores",
+        "reports-stores",
+        "تقارير المتاجر",
+        "تقارير أداء المتاجر — قريباً.",
+    ),
+    (
+        "/admin/system/health",
+        "system-health",
+        "صحة النظام",
+        "ملخص صحة النظام — للتفاصيل التشغيلية الفورية استخدم مركز التشغيل.",
+    ),
+    (
+        "/admin/system/logs",
+        "system-logs",
+        "السجلات",
+        "عرض سجلات النظام للدعم — قريباً.",
+    ),
+    (
+        "/admin/system/technical",
+        "system-technical",
+        "تفاصيل تقنية",
+        "تشخيصات تقنية للدعم — قريباً.",
+    ),
+)
+
 _PLATFORM_CATEGORY_LABEL_AR: dict[str, str] = {
     ADMIN_PLATFORM_CATEGORY_HEALTHY: "سليم",
     ADMIN_PLATFORM_CATEGORY_ONBOARDING_BLOCKED: "إعداد معطّل",
@@ -147,6 +238,35 @@ def _admin_session_or_redirect(request: Request, *, next_path: str) -> Optional[
     return None
 
 
+def _admin_placeholder_page(
+    request: Request,
+    *,
+    path: str,
+    nav_key: str,
+    title_ar: str,
+    description_ar: str,
+) -> Any:
+    denied = _admin_session_or_redirect(request, next_path=path)
+    if denied is not None:
+        return denied
+    return templates.TemplateResponse(
+        request,
+        "admin_placeholder.html",
+        {
+            "admin_active_nav": nav_key,
+            "admin_page_title_ar": title_ar,
+            "admin_page_subtitle_ar": description_ar,
+            "page_title_ar": title_ar,
+            "page_description_ar": description_ar,
+        },
+    )
+
+
+@router.get("/admin", response_class=HTMLResponse)
+def admin_root_redirect() -> RedirectResponse:
+    return RedirectResponse(url="/admin/operations", status_code=302)
+
+
 @router.post("/admin/operations/logout")
 def admin_operations_logout() -> RedirectResponse:
     resp = RedirectResponse(url="/admin/operations/login", status_code=303)
@@ -218,10 +338,18 @@ def admin_operational_health_page(request: Request) -> Any:
             "warnings": [],
             "headlines": {},
         }
+    oc = health.get("operations_center") or {}
     return templates.TemplateResponse(
         request,
         "admin_operational_health.html",
-        {"health": health},
+        {
+            "health": health,
+            "admin_active_nav": ADMIN_NAV_OPS_HEALTH,
+            "admin_page_title_ar": str(oc.get("title_ar") or "مركز التشغيل"),
+            "admin_page_subtitle_ar": (
+                "قرارات تشغيل خلال ثوانٍ: مشكلة → أثر → من المتأثر → ماذا نفعل → كيف نتحقق"
+            ),
+        },
     )
 
 
@@ -247,6 +375,9 @@ def admin_operations_dashboard(request: Request) -> Any:
         request,
         "admin_operations.html",
         {
+            "admin_active_nav": ADMIN_NAV_OVERVIEW,
+            "admin_page_title_ar": "لوحة عامة",
+            "admin_page_subtitle_ar": "قراءة تشغيلية هادئة — المعنى والأولوية قبل الأرقام.",
             "summary": summary,
             "platform_category_label_ar": _PLATFORM_CATEGORY_LABEL_AR.get(
                 platform_cat,
@@ -262,3 +393,33 @@ def admin_operations_dashboard(request: Request) -> Any:
             "action_meta": action_meta,
         },
     )
+
+
+def _register_admin_placeholder_routes() -> None:
+    for path, nav_key, title_ar, description_ar in _ADMIN_PLACEHOLDER_PAGES:
+
+        def _handler(
+            request: Request,
+            *,
+            _path: str = path,
+            _nav: str = nav_key,
+            _title: str = title_ar,
+            _desc: str = description_ar,
+        ) -> Any:
+            return _admin_placeholder_page(
+                request,
+                path=_path,
+                nav_key=_nav,
+                title_ar=_title,
+                description_ar=_desc,
+            )
+
+        router.add_api_route(
+            path,
+            _handler,
+            methods=["GET"],
+            response_class=HTMLResponse,
+        )
+
+
+_register_admin_placeholder_routes()
