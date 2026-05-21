@@ -1,6 +1,6 @@
 {% extends "layouts/admin_dashboard.html" %}
 {% block admin_title %}CartFlow Admin — مركز التشغيل{% endblock %}
-{% block admin_main_class %}mx-auto w-full max-w-5xl space-y-8 px-4 py-2 sm:px-0 sm:py-0{% endblock %}
+{% block admin_main_class %}mx-auto w-full max-w-5xl space-y-7 px-5 py-7 sm:px-8 sm:py-9{% endblock %}
 
 {% block admin_content %}
   {% set h = health %}
@@ -20,7 +20,7 @@
     <!-- Immediate operational verdict (first 5 seconds) -->
     <section
       id="operational-verdict"
-      class="rounded-2xl border-2 p-6 shadow-md {% if vt == 'action' %}border-rose-400 bg-rose-50{% elif vt == 'watch' %}border-amber-400 bg-amber-50{% else %}border-emerald-400 bg-emerald-50{% endif %}"
+      class="rounded-2xl border p-7 shadow-sm {% if vt == 'action' %}border-rose-200/90 bg-rose-50/80{% elif vt == 'watch' %}border-amber-200/90 bg-amber-50/80{% else %}border-emerald-200/90 bg-emerald-50/80{% endif %}"
       aria-labelledby="verdict-heading"
     >
       <p class="text-xs font-semibold uppercase tracking-wide text-slate-600">الحكم التشغيلي — الآن</p>
@@ -29,24 +29,24 @@
       </h2>
       <p class="mt-2 text-sm text-slate-700">{{ oc.summary_ar or "—" }}</p>
 
-      <div class="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-        <div class="rounded-xl bg-white/95 px-4 py-3 ring-1 ring-slate-200/80">
+      <div class="mt-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <div class="rounded-xl border border-white/80 bg-white/90 px-4 py-3.5 shadow-sm">
           <p class="text-xs font-medium text-slate-500">١ — هل النظام سليم الآن؟</p>
           <p class="mt-1 text-xl font-bold text-slate-900">{{ oc.q_system_healthy_ar or qa.is_healthy_ar or "—" }}</p>
         </div>
-        <div class="rounded-xl bg-white/95 px-4 py-3 ring-1 ring-slate-200/80">
+        <div class="rounded-xl border border-white/80 bg-white/90 px-4 py-3.5 shadow-sm">
           <p class="text-xs font-medium text-slate-500">٢ — هل يوجد خطر على العملاء؟</p>
           <p class="mt-1 text-xl font-bold text-slate-900">{{ oc.q_customer_risk_ar or "—" }}</p>
         </div>
-        <div class="rounded-xl bg-white/95 px-4 py-3 ring-1 ring-slate-200/80">
+        <div class="rounded-xl border border-white/80 bg-white/90 px-4 py-3.5 shadow-sm">
           <p class="text-xs font-medium text-slate-500">٣ — هل يوجد أثر على المتاجر؟</p>
           <p class="mt-1 text-xl font-bold text-slate-900">{{ oc.q_store_impact_ar or oc.affected_stores_ar or "—" }}</p>
         </div>
-        <div class="rounded-xl bg-white/95 px-4 py-3 ring-1 ring-slate-200/80">
+        <div class="rounded-xl border border-white/80 bg-white/90 px-4 py-3.5 shadow-sm">
           <p class="text-xs font-medium text-slate-500">٤ — هل يلزم إجراء؟</p>
           <p class="mt-1 text-xl font-bold {% if vt == 'action' %}text-rose-800{% elif vt == 'watch' %}text-amber-900{% else %}text-emerald-800{% endif %}">{{ oc.q_action_needed_ar or "—" }}</p>
         </div>
-        <div class="rounded-xl bg-white/95 px-4 py-3 ring-1 ring-slate-200/80 sm:col-span-2 lg:col-span-1">
+        <div class="rounded-xl border border-white/80 bg-white/90 px-4 py-3.5 shadow-sm sm:col-span-2 lg:col-span-1">
           <p class="text-xs font-medium text-slate-500">٥ — ماذا الآن؟</p>
           <p class="mt-1 text-base font-bold leading-snug text-slate-900">{{ oc.q_next_step_ar or oc.recommended_action_ar or qa.what_to_do_ar or "—" }}</p>
         </div>
@@ -60,9 +60,9 @@
       {% endif %}
     </section>
 
-    <details class="rounded-xl border border-slate-200 bg-white text-sm shadow-sm">
-      <summary class="cursor-pointer px-4 py-3 font-medium text-slate-600">تفاصيل إضافية للملخص (إلحاح، تحقق، سياق)</summary>
-      <div class="space-y-3 border-t border-slate-100 px-4 py-4 text-xs">
+    <details class="rounded-2xl border border-slate-200/70 bg-white text-sm shadow-sm">
+      <summary class="cursor-pointer px-5 py-3.5 font-medium text-slate-600">تفاصيل إضافية للملخص (إلحاح، تحقق، سياق)</summary>
+      <div class="space-y-4 border-t border-slate-100 px-5 py-5 text-xs">
         {% if oc.risk_headline_ar %}
         <p class="text-slate-700">{{ oc.risk_headline_ar }}</p>
         {% endif %}
@@ -85,14 +85,16 @@
     </details>
 
     <!-- Component decisions — problem → impact → who → urgency → action → verify -->
-    <section class="rounded-xl border border-slate-200 bg-white shadow-sm">
-      <h2 class="border-b border-slate-100 px-4 py-3 text-sm font-semibold text-slate-900">قرارات حسب المكوّن</h2>
-      <p class="border-b border-slate-50 px-4 py-2 text-xs text-slate-500">المشكلة → الأثر → المتأثرون → الإلحاح → الإجراء → التحقق — التفاصيل التقنية للدعم فقط</p>
-      <div class="grid gap-4 px-4 py-4 lg:grid-cols-2">
+    <section class="rounded-2xl border border-slate-200/70 bg-white shadow-sm">
+      <div class="border-b border-slate-100 px-5 py-4">
+        <h2 class="text-base font-semibold text-slate-900">قرارات حسب المكوّن</h2>
+        <p class="mt-1 text-xs text-slate-500">المشكلة → الأثر → المتأثرون → الإلحاح → الإجراء → التحقق — التفاصيل التقنية للدعم فقط</p>
+      </div>
+      <div class="grid gap-5 px-5 py-5 lg:grid-cols-2">
         {% macro operational_decision_card(card, anchor_id) %}
         {% set op = card.operational or {} %}
         {% set rows = op.rows or [] %}
-        <article id="{{ anchor_id }}" class="flex flex-col rounded-lg border border-slate-100 bg-slate-50/50 p-4 text-sm">
+        <article id="{{ anchor_id }}" class="flex flex-col rounded-xl border border-slate-200/60 bg-slate-50/40 p-5 text-sm">
           <h3 class="font-semibold text-slate-900">{{ op.title_ar or card.title_ar or "—" }}</h3>
           <dl class="mt-3 flex-1 space-y-2 text-xs text-slate-700">
             {% for row in rows %}
@@ -138,9 +140,9 @@
     </section>
 
     <!-- Supporting context (collapsed — not primary decision surface) -->
-    <details class="rounded-xl border border-slate-200 bg-white shadow-sm">
-      <summary class="cursor-pointer px-4 py-3 text-sm font-medium text-slate-600">سياق إضافي (مؤشرات، أثر، خط زمني)</summary>
-      <div class="space-y-6 border-t border-slate-100 px-4 py-4 text-sm">
+    <details class="rounded-2xl border border-slate-200/70 bg-white shadow-sm">
+      <summary class="cursor-pointer px-5 py-3.5 text-sm font-medium text-slate-600">سياق إضافي (مؤشرات، أثر، خط زمني)</summary>
+      <div class="space-y-6 border-t border-slate-100 px-5 py-5 text-sm">
         <section class="rounded-lg border p-4 {% if rl >= 3 %}border-orange-200 bg-orange-50/40{% elif rl >= 2 %}border-rose-100 bg-rose-50/30{% elif rl == 1 %}border-amber-100 bg-amber-50/30{% else %}border-emerald-100 bg-emerald-50/30{% endif %}">
           <h3 class="text-xs font-semibold text-slate-700">ملخص المخاطر (إشارة)</h3>
           <p class="mt-1">{{ risk.status_emoji }} {{ risk.status_label_ar }} — {{ risk.headline_ar }}</p>

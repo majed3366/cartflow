@@ -1,90 +1,91 @@
 {% set nav = admin_active_nav | default('') | string %}
 <aside id="admin-sidebar-panel"
-       class="fixed inset-y-0 right-0 z-40 flex w-64 flex-col border-l border-slate-200 bg-white shadow-lg transition-transform duration-200 translate-x-full lg:static lg:z-auto lg:translate-x-0 lg:shadow-none">
-  <div class="border-b border-slate-100 px-4 py-4">
-    <p class="text-xs font-semibold uppercase tracking-wide text-indigo-600">CartFlow Admin</p>
-    <p class="mt-0.5 text-sm font-bold text-slate-900">لوحة الإدارة</p>
+       dir="ltr"
+       class="fixed inset-y-0 left-0 z-40 flex w-[17rem] shrink-0 flex-col border-r border-slate-200/80 bg-white shadow-xl transition-transform duration-200 lg:static lg:z-auto lg:shadow-none">
+  <div class="border-b border-slate-100 px-5 py-5">
+    <p class="text-[11px] font-semibold uppercase tracking-wider text-indigo-600">CartFlow Admin</p>
+    <p class="mt-1 text-base font-bold text-slate-900">لوحة الإدارة</p>
   </div>
 
-  <nav class="flex-1 overflow-y-auto px-2 py-3 text-sm" aria-label="قائمة الإدارة">
-    <p class="px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400">نظرة عامة</p>
+  <nav class="flex-1 space-y-0.5 overflow-y-auto px-3 py-4" aria-label="قائمة الإدارة">
+    <p class="admin-section-title">نظرة عامة</p>
     <a href="/admin/operations"
-       class="mb-0.5 flex rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50 {% if nav == 'overview' %}bg-indigo-50 font-semibold text-indigo-900 ring-1 ring-indigo-100{% endif %}">
+       class="admin-nav-link{% if nav == 'overview' %} admin-nav-active{% endif %}">
       لوحة عامة
     </a>
 
-    <p class="mt-4 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400">التشغيل</p>
+    <p class="admin-section-title">التشغيل</p>
     <a href="/admin/operational-health"
-       class="mb-0.5 flex rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50 {% if nav == 'ops-health' %}bg-indigo-50 font-semibold text-indigo-900 ring-1 ring-indigo-100{% endif %}">
+       class="admin-nav-link{% if nav == 'ops-health' %} admin-nav-active{% endif %}">
       مركز التشغيل
     </a>
     <a href="/admin/control"
-       class="mb-0.5 flex rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50 {% if nav == 'ops-control' %}bg-indigo-50 font-semibold text-indigo-900 ring-1 ring-indigo-100{% endif %}">
+       class="admin-nav-link{% if nav == 'ops-control' %} admin-nav-active{% endif %}">
       التحكم التشغيلي
     </a>
     <a href="/admin/alerts"
-       class="mb-0.5 flex rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50 {% if nav == 'ops-alerts' %}bg-indigo-50 font-semibold text-indigo-900 ring-1 ring-indigo-100{% endif %}">
+       class="admin-nav-link{% if nav == 'ops-alerts' %} admin-nav-active{% endif %}">
       التنبيهات
     </a>
 
-    <p class="mt-4 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400">المتاجر</p>
+    <p class="admin-section-title">المتاجر</p>
     <a href="/admin/stores"
-       class="mb-0.5 flex rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50 {% if nav == 'stores-all' %}bg-indigo-50 font-semibold text-indigo-900 ring-1 ring-indigo-100{% endif %}">
+       class="admin-nav-link{% if nav == 'stores-all' %} admin-nav-active{% endif %}">
       جميع المتاجر
     </a>
     <a href="/admin/stores/paused"
-       class="mb-0.5 flex rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50 {% if nav == 'stores-paused' %}bg-indigo-50 font-semibold text-indigo-900 ring-1 ring-indigo-100{% endif %}">
+       class="admin-nav-link{% if nav == 'stores-paused' %} admin-nav-active{% endif %}">
       المتاجر المتوقفة
     </a>
     <a href="/admin/stores/integration"
-       class="mb-0.5 flex rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50 {% if nav == 'stores-integration' %}bg-indigo-50 font-semibold text-indigo-900 ring-1 ring-indigo-100{% endif %}">
+       class="admin-nav-link{% if nav == 'stores-integration' %} admin-nav-active{% endif %}">
       حالة التكامل
     </a>
 
-    <p class="mt-4 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400">الاشتراكات</p>
+    <p class="admin-section-title">الاشتراكات</p>
     <a href="/admin/subscriptions/plans"
-       class="mb-0.5 flex rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50 {% if nav == 'subs-plans' %}bg-indigo-50 font-semibold text-indigo-900 ring-1 ring-indigo-100{% endif %}">
+       class="admin-nav-link{% if nav == 'subs-plans' %} admin-nav-active{% endif %}">
       الباقات
     </a>
     <a href="/admin/subscriptions/trial"
-       class="mb-0.5 flex rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50 {% if nav == 'subs-trial' %}bg-indigo-50 font-semibold text-indigo-900 ring-1 ring-indigo-100{% endif %}">
+       class="admin-nav-link{% if nav == 'subs-trial' %} admin-nav-active{% endif %}">
       التجريبي
     </a>
     <a href="/admin/subscriptions/renewals"
-       class="mb-0.5 flex rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50 {% if nav == 'subs-renewals' %}bg-indigo-50 font-semibold text-indigo-900 ring-1 ring-indigo-100{% endif %}">
+       class="admin-nav-link{% if nav == 'subs-renewals' %} admin-nav-active{% endif %}">
       التجديدات
     </a>
 
-    <p class="mt-4 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400">التقارير</p>
+    <p class="admin-section-title">التقارير</p>
     <a href="/admin/reports/recovery"
-       class="mb-0.5 flex rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50 {% if nav == 'reports-recovery' %}bg-indigo-50 font-semibold text-indigo-900 ring-1 ring-indigo-100{% endif %}">
+       class="admin-nav-link{% if nav == 'reports-recovery' %} admin-nav-active{% endif %}">
       تقارير الاسترجاع
     </a>
     <a href="/admin/reports/whatsapp"
-       class="mb-0.5 flex rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50 {% if nav == 'reports-whatsapp' %}bg-indigo-50 font-semibold text-indigo-900 ring-1 ring-indigo-100{% endif %}">
+       class="admin-nav-link{% if nav == 'reports-whatsapp' %} admin-nav-active{% endif %}">
       تقارير واتساب
     </a>
     <a href="/admin/reports/stores"
-       class="mb-0.5 flex rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50 {% if nav == 'reports-stores' %}bg-indigo-50 font-semibold text-indigo-900 ring-1 ring-indigo-100{% endif %}">
+       class="admin-nav-link{% if nav == 'reports-stores' %} admin-nav-active{% endif %}">
       تقارير المتاجر
     </a>
 
-    <p class="mt-4 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400">النظام والدعم</p>
+    <p class="admin-section-title">النظام والدعم</p>
     <a href="/admin/system/health"
-       class="mb-0.5 flex rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50 {% if nav == 'system-health' %}bg-indigo-50 font-semibold text-indigo-900 ring-1 ring-indigo-100{% endif %}">
+       class="admin-nav-link{% if nav == 'system-health' %} admin-nav-active{% endif %}">
       صحة النظام
     </a>
     <a href="/admin/system/logs"
-       class="mb-0.5 flex rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50 {% if nav == 'system-logs' %}bg-indigo-50 font-semibold text-indigo-900 ring-1 ring-indigo-100{% endif %}">
+       class="admin-nav-link{% if nav == 'system-logs' %} admin-nav-active{% endif %}">
       السجلات
     </a>
     <a href="/admin/system/technical"
-       class="mb-0.5 flex rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50 {% if nav == 'system-technical' %}bg-indigo-50 font-semibold text-indigo-900 ring-1 ring-indigo-100{% endif %}">
+       class="admin-nav-link{% if nav == 'system-technical' %} admin-nav-active{% endif %}">
       تفاصيل تقنية
     </a>
   </nav>
 
-  <div class="border-t border-slate-100 px-4 py-3 text-[10px] text-slate-400">
+  <div class="border-t border-slate-100 px-5 py-4 text-[11px] leading-relaxed text-slate-400">
     واجهة إدارية — تنقل فقط
   </div>
 </aside>

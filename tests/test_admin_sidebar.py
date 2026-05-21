@@ -32,7 +32,9 @@ class AdminSidebarTests(unittest.TestCase):
         self.assertIn('id="admin-sidebar-panel"', t)
         self.assertIn("مركز التشغيل", t)
         self.assertIn('id="operational-verdict"', t)
-        self.assertIn("bg-indigo-50 font-semibold text-indigo-900", t)
+        self.assertIn("admin-nav-active", t)
+        self.assertIn('left-0', t)
+        self.assertIn('dir="rtl"', t)
         self.assertIn("/admin/operational-health", t)
 
     def test_operations_overview_active(self) -> None:
