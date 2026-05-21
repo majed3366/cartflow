@@ -3,8 +3,9 @@
 Manual DB due scanner for RecoverySchedule rows (queue/worker readiness v1).
 
 Finds durable rows with status=scheduled and due_at <= now, then dispatches each
-through execute_recovery_schedule. Not wired to startup/cron — invoke explicitly
-(e.g. scripts/db_due_scanner_verify.py).
+through execute_recovery_schedule. Manual: ``scripts/db_due_scanner_verify.py``.
+Optional automatic loop: ``services/recovery_db_due_scanner_loop.py`` when
+``CARTFLOW_DB_DUE_SCANNER_ENABLED=true``.
 """
 from __future__ import annotations
 
