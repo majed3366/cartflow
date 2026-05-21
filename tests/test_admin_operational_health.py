@@ -50,6 +50,9 @@ class AdminOperationalHealthTests(unittest.TestCase):
         self.assertIn("background_tasks", cards)
         self.assertIn("whatsapp", cards)
         self.assertIn("db_due_scanner", cards)
+        scanner = cards["db_due_scanner"]
+        self.assertIn("operational", scanner)
+        self.assertEqual(scanner["operational"]["title_ar"], "فحص المهام المؤجلة")
 
     def test_cart_event_sample_slow_warning(self) -> None:
         record_cart_event_finish_sample(
@@ -102,7 +105,10 @@ class AdminOperationalHealthTests(unittest.TestCase):
         self.assertIn("التحكم التشغيلي", r.text)
         self.assertIn("طبقة الأثر", r.text)
         self.assertIn("هل النظام سليم", r.text)
-        self.assertIn("DB Due Scanner", r.text)
+        self.assertIn("ملخص تشغيلي", r.text)
+        self.assertIn("فحص المهام المؤجلة", r.text)
+        self.assertIn("تفاصيل تقنية (للدعم)", r.text)
+        self.assertIn("هل يوجد خطر؟", r.text)
         self.assertIn("db-due-scanner-health", r.text)
 
     def test_merchant_dashboard_excludes_scanner_diagnostics(self) -> None:

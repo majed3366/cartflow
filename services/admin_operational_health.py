@@ -569,9 +569,21 @@ def _build_admin_db_due_scanner_card_safe() -> dict[str, Any]:
     except Exception:
         return {
             "title": "DB Due Scanner",
+            "title_ar": "فحص المهام المؤجلة",
             "status": "unknown",
             "status_emoji": "🟡",
-            "detail_lines": ["Unavailable"],
+            "operational": {
+                "title_ar": "فحص المهام المؤجلة",
+                "status_line_ar": "🟡 غير متاح",
+                "has_risk_ar": "لا",
+                "needs_intervention_ar": "لا",
+                "merchant_impact_ar": "لا يوجد",
+                "suggested_action_ar": "راجع السجلات",
+                "last_problem_ar": "تعذّر تحميل المؤشرات",
+                "last_success_ar": "—",
+            },
+            "technical_detail_lines": ["DB Due Scanner: unavailable"],
+            "detail_lines": ["DB Due Scanner: unavailable"],
         }
 
 
@@ -586,6 +598,12 @@ def build_admin_operational_health_readonly() -> dict[str, Any]:
     warnings = diag.get("warnings") or []
     cards = dict(diag.get("cards") or {})
     cards["db_due_scanner"] = _build_admin_db_due_scanner_card_safe()
+    try:
+        from services.admin_operational_health_language import enrich_operational_health_cards
+
+        cards = enrich_operational_health_cards(cards)
+    except Exception:
+        pass
     admin_rt = {}
     try:
         from services.cartflow_runtime_health import build_admin_runtime_summary

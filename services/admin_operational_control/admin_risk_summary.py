@@ -34,10 +34,10 @@ def build_admin_risk_summary(ctx: OperationalControlContext) -> dict[str, Any]:
         },
         "metrics_labels_ar": {
             "affected_stores": "متاجر متأثرة (فعلي)",
-            "whatsapp_failed_24h": "فشل واتساب (24 ساعة)",
-            "queuepool_timeout_count": "انتهاء مهلة QueuePool",
-            "slow_cart_events_count": "cart-event بطيء",
-            "provider_unstable": "إشارة عدم استقرار المزود",
+            "whatsapp_failed_24h": "فشل إرسال واتساب (24 ساعة)",
+            "queuepool_timeout_count": "ضغط على اتصالات القاعدة",
+            "slow_cart_events_count": "بطء استقبال السلة",
+            "provider_unstable": "عدم استقرار مزود الإرسال",
             "background_task_failures": "فشل مهام خلفية",
         },
     }

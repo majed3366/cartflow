@@ -17,15 +17,15 @@
   {% set qa = h.quick_answers or {} %}
   {% set metrics = risk.metrics or {} %}
   {% set diag = h.diagnostics_v1 or {} %}
-  {% set cards = diag.cards or h.cards or {} %}
+  {% set cards = h.cards or diag.cards or {} %}
 
   <header class="border-b border-slate-200 bg-white">
     <div class="mx-auto max-w-5xl px-4 py-5">
       <div class="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Admin — Operational Control v2</p>
+          <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Admin — للتشغيل والدعم</p>
           <h1 class="mt-0.5 text-xl font-semibold text-slate-900">التحكم التشغيلي</h1>
-          <p class="mt-1 max-w-2xl text-sm leading-relaxed text-slate-600">قراءة وإرشاد فقط — إجابة خلال 10 ثوانٍ</p>
+          <p class="mt-1 max-w-2xl text-sm leading-relaxed text-slate-600">ملخص تشغيلي أولاً — إجابة خلال 5 ثوانٍ: هل النظام بخير؟ هل هناك خطر؟ هل أحتاج فعل شيء؟</p>
         </div>
         <div class="flex flex-wrap gap-2">
           <a href="/admin/operations" class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50">مركز التشغيل</a>
@@ -219,30 +219,64 @@
       </ol>
     </section>
 
-    <!-- Collapsed v1 diagnostics -->
+    <!-- Layer 1 — Operational diagnostics -->
+    <section class="rounded-xl border border-slate-200 bg-white shadow-sm">
+      <h2 class="border-b border-slate-100 px-4 py-3 text-sm font-semibold text-slate-900">ملخص تشغيلي</h2>
+      <div class="grid gap-4 px-4 py-4 sm:grid-cols-2">
+        {% macro operational_card(card, anchor_id) %}
+        {% set op = card.operational or {} %}
+        <article id="{{ anchor_id }}" class="rounded-lg border border-slate-100 bg-slate-50/50 p-4 text-sm">
+          <h3 class="font-semibold text-slate-900">{{ op.title_ar or card.title_ar or "—" }}</h3>
+          <p class="mt-2 text-slate-800">{{ op.status_line_ar or "—" }}</p>
+          {% if op.summary_ar %}
+          <p class="mt-1 text-xs text-slate-600">{{ op.summary_ar }}</p>
+          {% endif %}
+          {% if op.monitoring_ar %}
+          <dl class="mt-3 space-y-1.5 text-xs text-slate-700">
+            <div class="flex justify-between gap-2"><dt>المراقبة</dt><dd class="font-medium">{{ op.monitoring_ar }}</dd></div>
+            <div class="flex justify-between gap-2"><dt>المهام المعالجة</dt><dd class="font-medium tabular-nums">{{ op.processed_tasks_ar or "—" }}</dd></div>
+            <div class="flex justify-between gap-2"><dt>يوجد مهام تحتاج تدخل</dt><dd class="font-medium">{{ op.pending_tasks_need_action_ar or op.needs_intervention_ar or "—" }}</dd></div>
+          </dl>
+          {% endif %}
+          <dl class="mt-3 grid gap-1.5 text-xs text-slate-700">
+            <div class="flex justify-between gap-2"><dt>هل يوجد خطر؟</dt><dd class="font-medium">{{ op.has_risk_ar or "—" }}</dd></div>
+            <div class="flex justify-between gap-2"><dt>هل يحتاج تدخل؟</dt><dd class="font-medium">{{ op.needs_intervention_ar or "—" }}</dd></div>
+            <div class="flex justify-between gap-2"><dt>أثر على المتاجر</dt><dd class="font-medium">{{ op.merchant_impact_ar or "—" }}</dd></div>
+            <div class="flex justify-between gap-2 border-t border-slate-200/80 pt-2"><dt>الإجراء المقترح</dt><dd class="font-medium text-slate-900">{{ op.suggested_action_ar or "—" }}</dd></div>
+            <div class="flex justify-between gap-2"><dt>آخر مشكلة</dt><dd class="font-medium text-rose-800/90">{{ op.last_problem_ar or "—" }}</dd></div>
+            <div class="flex justify-between gap-2"><dt>آخر نجاح</dt><dd class="font-medium text-emerald-800/90">{{ op.last_success_ar or "—" }}</dd></div>
+          </dl>
+        </article>
+        {% endmacro %}
+
+        {{ operational_card(cards.get("db_due_scanner") or {}, "issue-db-due-scanner") }}
+        {{ operational_card(cards.get("cart_event") or {}, "issue-cart-event") }}
+        {{ operational_card(cards.get("db_pool") or {}, "issue-db-pool") }}
+        {{ operational_card(cards.get("background_tasks") or {}, "issue-background-tasks") }}
+        {{ operational_card(cards.get("whatsapp") or {}, "issue-whatsapp") }}
+      </div>
+    </section>
+
+    <!-- Layer 2 — Technical details (support only) -->
     <details class="rounded-xl border border-slate-200 bg-white shadow-sm">
-      <summary class="cursor-pointer px-4 py-3 text-sm font-medium text-slate-700">تشخيصات تقنية (v1)</summary>
-      <div class="border-t border-slate-100 px-4 py-4 grid gap-4 sm:grid-cols-2 text-xs">
-        {% set ce = cards.cart_event or {} %}
-        {% set pool = cards.db_pool or {} %}
-        <article id="issue-cart-event">
-          <h3 class="font-semibold text-slate-800">cart-event</h3>
-          <p class="mt-1 text-slate-600">{{ ce.last_status_ar or "—" }}</p>
-        </article>
-        <article id="issue-db-pool">
-          <h3 class="font-semibold text-slate-800">مسبح DB</h3>
-          <ul class="mt-1 text-slate-600">{% for line in pool.detail_lines_ar or [] %}<li>{{ line }}</li>{% endfor %}</ul>
-        </article>
-        {% set scanner = cards.db_due_scanner or {} %}
-        <article id="issue-db-due-scanner" class="sm:col-span-2 font-mono text-[11px] leading-relaxed">
-          <h3 class="font-semibold text-slate-800">{{ scanner.title or "DB Due Scanner" }}</h3>
-          <ul class="mt-2 space-y-0.5 text-slate-600">
-            {% for line in scanner.detail_lines or [] %}
+      <summary class="cursor-pointer px-4 py-3 text-sm font-medium text-slate-600">تفاصيل تقنية (للدعم)</summary>
+      <div class="border-t border-slate-100 px-4 py-4 grid gap-4 sm:grid-cols-2 font-mono text-[11px] leading-relaxed text-slate-600">
+        {% for key, card in [
+          ("cart_event", cards.get("cart_event")),
+          ("db_pool", cards.get("db_pool")),
+          ("background_tasks", cards.get("background_tasks")),
+          ("whatsapp", cards.get("whatsapp")),
+          ("db_due_scanner", cards.get("db_due_scanner")),
+        ] %}
+        <article class="{% if key == 'db_due_scanner' %}sm:col-span-2{% endif %}">
+          <h3 class="font-semibold text-slate-700">{{ card.title or key }}</h3>
+          <ul class="mt-2 space-y-0.5">
+            {% for line in card.technical_detail_lines or card.detail_lines_ar or card.detail_lines or [] %}
             <li>{{ line }}</li>
             {% endfor %}
           </ul>
-          <p class="mt-2 text-slate-400">API: <code class="text-slate-500">GET /api/admin/db-due-scanner-health</code></p>
         </article>
+        {% endfor %}
       </div>
     </details>
 

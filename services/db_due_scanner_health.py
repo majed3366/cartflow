@@ -223,20 +223,7 @@ def refresh_db_due_scanner_health_observability() -> None:
 
 
 def build_db_due_scanner_health_admin_card() -> Dict[str, Any]:
-    """Formatted lines for Jinja admin diagnostics card."""
-    h = build_db_due_scanner_health()
-    return {
-        **h,
-        "title": "DB Due Scanner",
-        "detail_lines": [
-            f"Status: {h.get('status_emoji', '')} {h.get('status_label', '—')}",
-            f"Enabled: {str(h.get('enabled')).lower()}",
-            f"Interval: {int(h.get('interval_seconds') or 0)}s",
-            f"Loop running: {str(h.get('loop_running')).lower()}",
-            f"Last tick: {h.get('last_tick_ago') or '—'}",
-            f"Last dispatch: {h.get('last_dispatch_ago') or '—'}",
-            f"Last found / dispatched / skipped: {h.get('last_found')} / {h.get('last_dispatched')} / {h.get('last_skipped')}",
-            f"Total ticks / dispatches: {h.get('total_ticks')} / {h.get('total_dispatches')}",
-            f"Last error: {h.get('last_error') or 'None'}",
-        ],
-    }
+    """Admin operational-health card: Layer 1 operational + Layer 2 technical."""
+    from services.admin_operational_health_language import enrich_db_due_scanner_admin_card
+
+    return enrich_db_due_scanner_admin_card(build_db_due_scanner_health())
