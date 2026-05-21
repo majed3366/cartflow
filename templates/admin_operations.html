@@ -1,5 +1,6 @@
 {% extends "layouts/admin_dashboard.html" %}
 {% block admin_title %}CartFlow Admin — لوحة عامة{% endblock %}
+{% block admin_main_class %}w-full max-w-[88rem] space-y-8 px-6 py-8 lg:px-10 lg:py-10{% endblock %}
 
 {% block admin_content %}
   {% set ts = summary.trust_signals_summary or {} %}
@@ -16,7 +17,7 @@
   {% set phone_n = summary.stores_missing_phone_coverage_estimate or 0 %}
   {% set low_trust = trust_degraded_n + trust_unstable_n %}
 
-  <div class="rounded-xl border border-slate-200/80 bg-white/90 px-4 py-3 shadow-sm ring-1 ring-slate-100">
+  <div class="admin-card px-6 py-5">
     <p class="text-xs font-medium text-slate-500">ملخص سريع</p>
     <ul class="mt-2 space-y-1.5 text-sm leading-relaxed text-slate-800">
       {% for line in g.summary_strip %}

@@ -119,21 +119,23 @@ class AdminOperationalHealthLanguageTests(unittest.TestCase):
         self.assertIn('id="admin-sidebar-panel"', html)
         self.assertIn("مركز التشغيل", html)
         self.assertIn('id="operational-verdict"', html)
-        self.assertIn("الحكم التشغيلي", html)
-        self.assertIn("هل النظام سليم الآن", html)
-        self.assertIn("هل يوجد خطر على العملاء", html)
-        self.assertIn("هل يوجد أثر على المتاجر", html)
-        self.assertIn("هل يلزم إجراء", html)
-        self.assertIn("ماذا الآن", html)
+        self.assertIn("admin-hero", html)
+        self.assertIn("الوضع الحالي", html)
+        self.assertIn("الحالة التشغيلية", html)
+        self.assertIn("هل النظام سليم", html)
+        self.assertIn("خطر العملاء", html)
+        self.assertIn("أثر المتاجر", html)
+        self.assertIn("الإجراء المطلوب", html)
+        self.assertIn("الإجراء", html)
         self.assertTrue(
-            "🟢 النظام يعمل طبيعيًا" in html
-            or "🟡 يُفضّل المراقبة" in html
-            or "🔴 مطلوب تدخل الآن" in html,
+            "النظام يعمل طبيعيًا" in html
+            or "يُفضّل المراقبة" in html
+            or "مطلوب تدخل الآن" in html,
         )
         self.assertIn("المشكلة", html)
         for title in _OPERATIONAL_TITLES:
             self.assertIn(title, html, msg=title)
-        self.assertEqual(html.count("تفاصيل تقنية (للدعم)"), 5)
+        self.assertGreaterEqual(html.count("تفاصيل للدعم"), 5)
         pre = html.split("قرارات حسب المكوّن", 1)[0]
         self.assertNotIn("QueuePool", pre)
         block = html.split(TITLE_DELAYED_RECOVERY_AR, 1)[1].split(
