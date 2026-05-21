@@ -18,12 +18,14 @@ from services.recovery_restart_survival import (
     STATUS_FAILED_RESUME_STALE,
     STATUS_RUNNING,
     STATUS_SCHEDULED,
+    STATUS_SKIPPED_DUPLICATE,
     STATUS_SKIPPED_RESUME,
     _execute_resume_recovery_task,
     dev_verify_recovery_restart_survival,
     evaluate_resume_safety,
     inspect_persistence_state,
     persist_recovery_schedule_durable,
+    repair_stale_running_recovery_schedules,
     reconcile_stale_running_schedules,
     resume_one_schedule,
     run_recovery_resume_scan_sync,
@@ -342,6 +344,96 @@ class RecoveryRestartSurvivalTests(unittest.TestCase):
         self.assertGreaterEqual(n, 1)
         db.session.refresh(row)
         self.assertEqual(row.status, STATUS_FAILED_RESUME_STALE)
+
+    def test_stale_running_finalized_when_mock_sent_evidence(self) -> None:
+        rk = self._rk("stale-sent")
+        sid = "sess-stale-sent"
+        row = persist_recovery_schedule_durable(
+            recovery_key=rk,
+            store_slug="demo",
+            session_id=sid,
+            cart_id="cart-sent",
+            reason_tag="other",
+            abandon_event_phone="+966501112233",
+            delay_seconds_scheduled=60.0,
+            schedule_timing={"effective_delay_seconds": 60.0, "source": "reason_templates.messages"},
+            recovery_context={"recovery_key": rk},
+        )
+        assert row is not None
+        row.status = STATUS_RUNNING
+        row.updated_at = datetime.now(timezone.utc) - timedelta(seconds=900)
+        db.session.add(
+            CartRecoveryLog(
+                store_slug="demo",
+                session_id=sid,
+                cart_id="cart-sent",
+                phone="+966501112233",
+                message="sent",
+                status="mock_sent",
+                step=1,
+                sent_at=datetime.now(timezone.utc),
+            )
+        )
+        db.session.commit()
+        out = repair_stale_running_recovery_schedules(max_age_seconds=600)
+        self.assertGreaterEqual(out.get("finalized", 0), 1)
+        db.session.refresh(row)
+        self.assertEqual(row.status, STATUS_COMPLETED)
+
+    def test_stale_running_finalized_skipped_duplicate(self) -> None:
+        rk = self._rk("stale-dup")
+        sid = "sess-stale-dup"
+        row = persist_recovery_schedule_durable(
+            recovery_key=rk,
+            store_slug="demo",
+            session_id=sid,
+            cart_id="cart-dup",
+            reason_tag="other",
+            abandon_event_phone=None,
+            delay_seconds_scheduled=60.0,
+            schedule_timing={"effective_delay_seconds": 60.0, "source": "reason_templates.messages"},
+            recovery_context={"recovery_key": rk},
+        )
+        assert row is not None
+        row.status = STATUS_RUNNING
+        row.updated_at = datetime.now(timezone.utc) - timedelta(seconds=900)
+        db.session.add(
+            CartRecoveryLog(
+                store_slug="demo",
+                session_id=sid,
+                cart_id="cart-dup",
+                phone="+966501112233",
+                message="dup",
+                status="skipped_duplicate",
+                step=1,
+            )
+        )
+        db.session.commit()
+        repair_stale_running_recovery_schedules(max_age_seconds=600)
+        db.session.refresh(row)
+        self.assertEqual(row.status, STATUS_SKIPPED_DUPLICATE)
+
+    def test_stale_running_not_repaired_when_fresh(self) -> None:
+        rk = self._rk("fresh-run")
+        row = persist_recovery_schedule_durable(
+            recovery_key=rk,
+            store_slug="demo",
+            session_id="sess-fresh",
+            cart_id="cart-fresh",
+            reason_tag="other",
+            abandon_event_phone=None,
+            delay_seconds_scheduled=60.0,
+            schedule_timing={"effective_delay_seconds": 60.0, "source": "reason_templates.messages"},
+            recovery_context={"recovery_key": rk},
+        )
+        assert row is not None
+        row.status = STATUS_RUNNING
+        row.updated_at = datetime.now(timezone.utc) - timedelta(seconds=30)
+        db.session.commit()
+        out = repair_stale_running_recovery_schedules(max_age_seconds=600)
+        self.assertEqual(out.get("stale_detected", 0), 0)
+        db.session.refresh(row)
+        self.assertEqual(row.status, STATUS_RUNNING)
 
 
 if __name__ == "__main__":

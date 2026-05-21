@@ -546,35 +546,212 @@ def _finalize_running_schedule_row(
     )
 
 
+def _running_row_updated_at_utc(row: RecoverySchedule) -> datetime:
+    ua = row.updated_at
+    if ua is None:
+        return _utc_now() - timedelta(days=1)
+    if ua.tzinfo is None:
+        return ua.replace(tzinfo=timezone.utc)
+    return ua.astimezone(timezone.utc)
+
+
+def _is_running_schedule_stale(row: RecoverySchedule, cutoff: datetime) -> bool:
+    return _running_row_updated_at_utc(row) < cutoff
+
+
+def _log_recovery_stale_check(*, running_count: int, stale_threshold_seconds: int) -> None:
+    try:
+        print("[RECOVERY STALE CHECK]", flush=True)
+        print(f"running_rows={running_count}", flush=True)
+        print(f"stale_threshold_seconds={stale_threshold_seconds}", flush=True)
+    except OSError:
+        pass
+
+
+def _log_recovery_stale_detected(row: RecoverySchedule, *, age_seconds: float) -> None:
+    try:
+        print("[RECOVERY STALE DETECTED]", flush=True)
+        print(f"recovery_key={row.recovery_key[:120]}", flush=True)
+        print(f"schedule_id={row.id}", flush=True)
+        print(f"updated_at={_naive_utc(row.updated_at).isoformat()}", flush=True)
+        print(f"age_seconds={round(age_seconds, 1)}", flush=True)
+    except OSError:
+        pass
+
+
+def _log_recovery_stale_skipped(
+    row: RecoverySchedule, *, reason: str
+) -> None:
+    try:
+        print("[RECOVERY STALE SKIPPED]", flush=True)
+        print(f"recovery_key={row.recovery_key[:120]}", flush=True)
+        print(f"schedule_id={row.id}", flush=True)
+        print(f"reason={(reason or '-')[:96]}", flush=True)
+    except OSError:
+        pass
+
+
+def _log_recovery_stale_repaired(
+    row: RecoverySchedule, *, terminal_status: str, detail: str
+) -> None:
+    try:
+        print("[RECOVERY STALE REPAIRED]", flush=True)
+        print(f"recovery_key={row.recovery_key[:120]}", flush=True)
+        print(f"schedule_id={row.id}", flush=True)
+        print(f"terminal_status={terminal_status[:64]}", flush=True)
+        print(f"detail={(detail or '-')[:96]}", flush=True)
+    except OSError:
+        pass
+
+
+def _log_recovery_stale_finalized(
+    row: RecoverySchedule, *, terminal_status: str, detail: str
+) -> None:
+    try:
+        print("[RECOVERY STALE FINALIZED]", flush=True)
+        print(f"recovery_key={row.recovery_key[:120]}", flush=True)
+        print(f"schedule_id={row.id}", flush=True)
+        print(f"terminal_status={terminal_status[:64]}", flush=True)
+        print(f"detail={(detail or '-')[:96]}", flush=True)
+    except OSError:
+        pass
+
+
+def classify_stale_running_schedule_repair(
+    row: RecoverySchedule,
+    *,
+    stale_threshold_seconds: int,
+) -> tuple[str, str, str]:
+    """
+    Decide how to close a stale ``running`` row using DB evidence only.
+    Returns (action, terminal_status, detail) where action is ``finalize`` or ``repair``.
+    """
+    from services.recovery_whatsapp_idempotency import (
+        build_whatsapp_recovery_idempotency_key,
+        find_existing_whatsapp_recovery_send,
+    )
+
+    key = build_whatsapp_recovery_idempotency_key(
+        recovery_key=row.recovery_key,
+        step=int(row.step),
+        reason_tag=row.reason_tag,
+        customer_phone=row.customer_phone,
+        store_slug=row.store_slug,
+        session_id=row.session_id,
+        cart_id=row.cart_id,
+    )
+    wa_row = find_existing_whatsapp_recovery_send(key)
+    if wa_row is not None:
+        st = (wa_row.status or "").strip()
+        if st == "skipped_duplicate":
+            return (
+                "finalize",
+                STATUS_SKIPPED_DUPLICATE,
+                f"stale_wa_idempotency:{st}",
+            )
+        if st in ("mock_sent", "sent_real", "queued"):
+            return (
+                "finalize",
+                STATUS_COMPLETED,
+                f"stale_send_evidence:{st}",
+            )
+
+    log_row = _latest_cart_recovery_log_for_schedule(row)
+    if log_row is not None:
+        st = (log_row.status or "").strip()
+        if st == "skipped_duplicate":
+            return (
+                "finalize",
+                STATUS_SKIPPED_DUPLICATE,
+                f"stale_log:{st}",
+            )
+        mapped = map_cart_recovery_log_status_to_schedule_terminal(st)
+        if mapped == STATUS_COMPLETED:
+            return "finalize", STATUS_COMPLETED, f"stale_log:{st}"
+        if mapped in _TERMINAL and mapped != STATUS_FAILED_RESUME:
+            return "finalize", mapped, f"stale_log:{st}"
+
+    return (
+        "repair",
+        STATUS_FAILED_RESUME_STALE,
+        f"stale_no_send_evidence_{stale_threshold_seconds}s",
+    )
+
+
+def repair_stale_running_recovery_schedules(
+    *,
+    max_age_seconds: Optional[int] = None,
+) -> Dict[str, Any]:
+    """
+    Startup/due-scan only: repair ``running`` rows older than threshold using log evidence.
+    Does not reschedule for immediate retry (``failed_resume_stale``); send evidence → terminal.
+    """
+    age = int(max_age_seconds or _running_stale_seconds())
+    cutoff = _utc_now() - timedelta(seconds=age)
+    stats: Dict[str, Any] = {
+        "stale_threshold_seconds": age,
+        "running_checked": 0,
+        "stale_detected": 0,
+        "finalized": 0,
+        "repaired": 0,
+        "skipped_not_stale": 0,
+        "errors": 0,
+    }
+    try:
+        db.create_all()
+        running_rows: List[RecoverySchedule] = (
+            db.session.query(RecoverySchedule)
+            .filter(RecoverySchedule.status == STATUS_RUNNING)
+            .all()
+        )
+        stats["running_checked"] = len(running_rows)
+        _log_recovery_stale_check(
+            running_count=len(running_rows),
+            stale_threshold_seconds=age,
+        )
+        now = _utc_now()
+        for row in running_rows:
+            if not _is_running_schedule_stale(row, cutoff):
+                _log_recovery_stale_skipped(row, reason="not_stale_yet")
+                stats["skipped_not_stale"] += 1
+                continue
+
+            age_sec = (now - _running_row_updated_at_utc(row)).total_seconds()
+            stats["stale_detected"] += 1
+            _log_recovery_stale_detected(row, age_seconds=age_sec)
+
+            action, terminal_status, detail = classify_stale_running_schedule_repair(
+                row, stale_threshold_seconds=age
+            )
+            if action == "finalize":
+                _log_recovery_stale_finalized(
+                    row, terminal_status=terminal_status, detail=detail
+                )
+                stats["finalized"] += 1
+            else:
+                _log_recovery_stale_repaired(
+                    row, terminal_status=terminal_status, detail=detail
+                )
+                stats["repaired"] += 1
+            _finalize_running_schedule_row(
+                row, status=terminal_status, detail=detail
+            )
+        return stats
+    except SQLAlchemyError as exc:
+        db.session.rollback()
+        _log.warning("repair_stale_running_recovery_schedules failed: %s", exc)
+        stats["errors"] = 1
+        stats["error"] = str(exc)
+        return stats
+
+
 def reconcile_stale_running_schedules(
     *,
     max_age_seconds: Optional[int] = None,
 ) -> int:
-    """Mark long-lived running rows failed_resume_stale — safe before new dispatch."""
-    age = int(max_age_seconds or _running_stale_seconds())
-    cutoff = _utc_now() - timedelta(seconds=age)
-    n = 0
-    try:
-        stale: List[RecoverySchedule] = (
-            db.session.query(RecoverySchedule)
-            .filter(
-                RecoverySchedule.status == STATUS_RUNNING,
-                RecoverySchedule.updated_at < cutoff,
-            )
-            .all()
-        )
-        for row in stale:
-            _finalize_running_schedule_row(
-                row,
-                status=STATUS_FAILED_RESUME_STALE,
-                detail=f"running_timeout_{age}s",
-            )
-            n += 1
-        return n
-    except SQLAlchemyError as exc:
-        db.session.rollback()
-        _log.warning("reconcile_stale_running_schedules failed: %s", exc)
-        return 0
+    """Backward-compatible count of stale running rows repaired/finalized on startup scan."""
+    out = repair_stale_running_recovery_schedules(max_age_seconds=max_age_seconds)
+    return int(out.get("finalized", 0)) + int(out.get("repaired", 0))
 
 
 async def _execute_resume_recovery_task(row: RecoverySchedule) -> None:
@@ -1068,7 +1245,7 @@ async def run_recovery_resume_scan_async(
 
     try:
         db.create_all()
-        stale_n = reconcile_stale_running_schedules()
+        stale_repair = repair_stale_running_recovery_schedules()
         now = _utc_now()
         pending = (
             db.session.query(RecoverySchedule)
@@ -1096,7 +1273,9 @@ async def run_recovery_resume_scan_async(
         return {
             "enabled": True,
             "dry_run": dry_run,
-            "stale_running_reconciled": stale_n,
+            "stale_running_repair": stale_repair,
+            "stale_running_reconciled": int(stale_repair.get("finalized", 0))
+            + int(stale_repair.get("repaired", 0)),
             "pending_scheduled": pending,
             "due_processed": len(due_rows),
             "dispatched": dispatched,
