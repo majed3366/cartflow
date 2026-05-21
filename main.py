@@ -386,10 +386,10 @@ def _persist_durable_recovery_schedule(
     multi_slot_index: Optional[int] = None,
     sequential_attempt_index: Optional[int] = None,
     multi_message_text: Optional[str] = None,
-) -> None:
+) -> Any:
     from services.recovery_restart_survival import persist_recovery_schedule_durable
 
-    persist_recovery_schedule_durable(
+    return persist_recovery_schedule_durable(
         recovery_key=recovery_key,
         store_slug=store_slug,
         session_id=session_id,
@@ -402,6 +402,107 @@ def _persist_durable_recovery_schedule(
         multi_slot_index=multi_slot_index,
         sequential_attempt_index=sequential_attempt_index,
         multi_message_text=multi_message_text,
+    )
+
+
+def _recovery_vip_pre_delay_short_circuit(
+    recovery_key: str,
+    store_slug: str,
+    session_id: str,
+    cart_id: Optional[str],
+    abandon_event_phone: Optional[str],
+    recovery_context: Optional[Dict[str, Any]],
+) -> bool:
+    """Return True when VIP path handled this recovery (no delay dispatch)."""
+    store_slug, _bound_row = _bind_recovery_runtime_store_identity(recovery_key, store_slug)
+    store_pre = _bound_row or _recovery_store_from_context(
+        recovery_context, store_slug=store_slug, allow_schema_warm=True
+    )
+    cart_total_pre = _abandoned_cart_cart_value_for_recovery(cart_id)
+    if cart_total_pre is None or not is_vip_cart(cart_total_pre, store_pre):
+        return False
+    reason_row_pre = _cart_recovery_reason_latest_row(store_slug, session_id)
+    rt_pre = (reason_row_pre.reason or "").strip() if reason_row_pre else ""
+    _vip_recovery_decision_layer(rt_pre or None, store_pre)
+    ok_vip = _activate_vip_manual_cart_handling(
+        store_slug=store_slug,
+        session_id=session_id,
+        cart_id=cart_id,
+        cart_total=float(cart_total_pre),
+        store_obj=store_pre,
+        recovery_key=recovery_key,
+        reason_tag=rt_pre or None,
+        abandon_event_phone=abandon_event_phone,
+    )
+    if not ok_vip:
+        log.warning(
+            "[VIP ACTIVATION FAILED] session_id=%s recovery_key=%s — pre_delay_task_blocked",
+            session_id,
+            recovery_key,
+        )
+    _mark_vip_customer_recovery_closed(recovery_key)
+    return True
+
+
+async def _recovery_live_delay_dispatch_task(
+    schedule_id: int,
+    *,
+    recovery_key: str,
+    store_slug: str,
+    session_id: str,
+    cart_id: Optional[str],
+    abandon_event_phone: Optional[str] = None,
+    recovery_context: Optional[Dict[str, Any]] = None,
+    dispatch_source: str,
+) -> None:
+    """VIP gate then delay wait + execution via recovery delay dispatcher."""
+    from services.db_session_lifecycle import release_scoped_db_session, scoped_db_session_begin
+    from services.recovery_delay_dispatcher import dispatch_recovery_schedule
+    from services.recovery_execution_boundary import resolve_recovery_schedule_row
+
+    scoped_db_session_begin()
+    try:
+        if _recovery_vip_pre_delay_short_circuit(
+            recovery_key,
+            store_slug,
+            session_id,
+            cart_id,
+            abandon_event_phone,
+            recovery_context,
+        ):
+            return
+        row = resolve_recovery_schedule_row(schedule_id=int(schedule_id))
+        if row is None or row.due_at is None:
+            return
+        await dispatch_recovery_schedule(int(row.id), row.due_at, dispatch_source)
+    finally:
+        release_scoped_db_session()
+
+
+def _spawn_recovery_live_delay_dispatch(
+    schedule_row: Any,
+    *,
+    recovery_key: str,
+    store_slug: str,
+    session_id: str,
+    cart_id: Optional[str],
+    abandon_event_phone: Optional[str] = None,
+    recovery_context: Optional[Dict[str, Any]] = None,
+    dispatch_source: str,
+) -> None:
+    if schedule_row is None:
+        return
+    asyncio.create_task(
+        _recovery_live_delay_dispatch_task(
+            int(schedule_row.id),
+            recovery_key=recovery_key,
+            store_slug=store_slug,
+            session_id=session_id,
+            cart_id=cart_id,
+            abandon_event_phone=abandon_event_phone,
+            recovery_context=recovery_context,
+            dispatch_source=dispatch_source,
+        )
     )
 
 
@@ -6267,98 +6368,32 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
     post_delay_only = bool(
         recovery_context and recovery_context.get("recovery_post_delay_only")
     )
-    store_pre = _bound_row or _recovery_store_from_context(
-        recovery_context, store_slug=store_slug, allow_schema_warm=True
-    )
-    cart_total_pre = _abandoned_cart_cart_value_for_recovery(cart_id)
-    if not post_delay_only and cart_total_pre is not None and is_vip_cart(
-        cart_total_pre, store_pre
-    ):
-        reason_row_pre = _cart_recovery_reason_latest_row(store_slug, session_id)
-        rt_pre = (reason_row_pre.reason or "").strip() if reason_row_pre else ""
-        _vip_recovery_decision_layer(rt_pre or None, store_pre)
-        ok_vip = _activate_vip_manual_cart_handling(
-            store_slug=store_slug,
-            session_id=session_id,
-            cart_id=cart_id,
-            cart_total=float(cart_total_pre),
-            store_obj=store_pre,
-            recovery_key=recovery_key,
-            reason_tag=rt_pre or None,
-            abandon_event_phone=abandon_event_phone,
-        )
-        if not ok_vip:
-            log.warning(
-                "[VIP ACTIVATION FAILED] session_id=%s recovery_key=%s — pre_delay_task_blocked",
-                session_id,
-                recovery_key,
-            )
-        _mark_vip_customer_recovery_closed(recovery_key)
-        return
-
     if not post_delay_only:
-        scheduled_recovery_delay_minutes = delay_seconds / 60.0
-        from services.recovery_delay_unified import (
-            log_recovery_delay_scheduled,
-            timing_from_recovery_context,
-        )
+        if _recovery_vip_pre_delay_short_circuit(
+            recovery_key,
+            store_slug,
+            session_id,
+            cart_id,
+            abandon_event_phone,
+            recovery_context,
+        ):
+            return
+        from services.recovery_delay_dispatcher import dispatch_recovery_schedule
+        from services.recovery_execution_boundary import resolve_recovery_schedule_row
 
-        sched_timing = timing_from_recovery_context(recovery_context)
-        if sched_timing is None:
-            sched_timing = {
-                "effective_delay_seconds": float(delay_seconds),
-                "source": "scheduled_task_delay",
-                "reason_tag": (
-                    str(recovery_context.get("reason_tag") or "")
-                    if recovery_context
-                    else ""
-                ),
-                "stage": (
-                    int(sequential_attempt_index)
-                    if sequential_attempt_index is not None
-                    else (
-                        int(multi_slot_index)
-                        if multi_slot_index is not None
-                        else 1
-                    )
-                ),
-            }
-        log_recovery_delay_scheduled(
-            sched_timing,
-            recovery_key=recovery_key,
-            scheduled_delay_seconds=float(delay_seconds),
-        )
-        try:
-            print("[DELAY STARTED]", scheduled_recovery_delay_minutes, flush=True)
-            print("[DELAY STARTED SECONDS]", float(delay_seconds), flush=True)
-            if sched_timing:
-                print(
-                    "[DELAY STARTED SOURCE]",
-                    sched_timing.get("source"),
-                    "reason=",
-                    sched_timing.get("reason_tag"),
-                    flush=True,
-                )
-        except OSError:
-            pass
-        print("[DELAY WAITING]")
-        _note_recovery_delay_waiting_started(recovery_key)
-        from services.db_session_lifecycle import release_db_before_async_wait
-
-        await release_db_before_async_wait()
-        try:
-            await asyncio.sleep(delay_seconds)
-        except asyncio.CancelledError:
-            raise
-        print("[DELAY FINISHED]")
-        from services.recovery_execution_boundary import execute_recovery_schedule
-
-        await execute_recovery_schedule(
+        row = resolve_recovery_schedule_row(
             recovery_key=recovery_key,
             multi_slot_index=multi_slot_index,
             sequential_attempt_index=sequential_attempt_index,
-            source="live_delay_task",
         )
+        if row is None or row.due_at is None:
+            return
+        dispatch_src = "live_delay_task"
+        if recovery_context:
+            dispatch_src = str(
+                recovery_context.get("dispatch_source") or dispatch_src
+            )[:64]
+        await dispatch_recovery_schedule(int(row.id), row.due_at, dispatch_src)
         return
 
     seq_attempt = sequential_attempt_index
@@ -7128,7 +7163,10 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
     print("[CARTFLOW PRO LOGIC]")
     print("session_id=", session_id)
     print("reason_tag=", reason_tag)
-    print("delay_minutes=", scheduled_recovery_delay_minutes)
+    print(
+        "delay_minutes=",
+        float(gate_timing.get("effective_delay_seconds", delay_seconds)) / 60.0,
+    )
     print("delay_passed=", True)
     print("user_returned_to_site=", user_returned_to_site)
     print("purchase_completed=", purchase_completed)
@@ -7656,7 +7694,7 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
             "stage": next_idx,
         }
         seq_ctx["schedule_timing"] = seq_timing
-        _persist_durable_recovery_schedule(
+        seq_row = _persist_durable_recovery_schedule(
             recovery_key=recovery_key,
             store_slug=store_slug,
             session_id=session_id,
@@ -7668,18 +7706,15 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
             recovery_context=seq_ctx,
             sequential_attempt_index=next_idx,
         )
-        asyncio.create_task(
-            _run_recovery_sequence_after_cart_abandoned(
-                recovery_key,
-                gap_sec,
-                store_slug,
-                session_id,
-                cart_id,
-                follow_phone,
-                sequential_attempt_index=next_idx,
-                multi_message_text=None,
-                recovery_context=seq_ctx,
-            )
+        _spawn_recovery_live_delay_dispatch(
+            seq_row,
+            recovery_key=recovery_key,
+            store_slug=store_slug,
+            session_id=session_id,
+            cart_id=cart_id,
+            abandon_event_phone=follow_phone,
+            recovery_context=seq_ctx,
+            dispatch_source="sequential_followup",
         )
     with _recovery_session_lock:
         _session_recovery_sent[recovery_key] = True
@@ -7818,7 +7853,7 @@ def _schedule_recovery_multi_slots(
         slot_ctx = attach_schedule_timing_to_context(
             recovery_context, slot_timing
         )
-        _persist_durable_recovery_schedule(
+        slot_row = _persist_durable_recovery_schedule(
             recovery_key=recovery_key,
             store_slug=store_slug,
             session_id=session_id,
@@ -7831,18 +7866,15 @@ def _schedule_recovery_multi_slots(
             multi_slot_index=int(s["index"]),
             multi_message_text=str(s.get("text") or ""),
         )
-        asyncio.create_task(
-            _run_recovery_sequence_after_cart_abandoned(
-                recovery_key,
-                remain,
-                store_slug,
-                session_id,
-                cart_id,
-                abandon_event_phone,
-                multi_slot_index=int(s["index"]),
-                multi_message_text=str(s.get("text") or ""),
-                recovery_context=slot_ctx,
-            )
+        _spawn_recovery_live_delay_dispatch(
+            slot_row,
+            recovery_key=recovery_key,
+            store_slug=store_slug,
+            session_id=session_id,
+            cart_id=cart_id,
+            abandon_event_phone=abandon_event_phone,
+            recovery_context=slot_ctx,
+            dispatch_source="multi_slot",
         )
 
 
@@ -7988,7 +8020,7 @@ async def _run_recovery_dispatch_cart_abandoned_impl(
         recovery_key=recovery_key,
         scheduled_delay_seconds=float(remain),
     )
-    _persist_durable_recovery_schedule(
+    poll_row = _persist_durable_recovery_schedule(
         recovery_key=recovery_key,
         store_slug=store_slug,
         session_id=session_id,
@@ -7999,16 +8031,15 @@ async def _run_recovery_dispatch_cart_abandoned_impl(
         schedule_timing=timing,
         recovery_context=rc_arm3,
     )
-    asyncio.create_task(
-        _run_recovery_sequence_after_cart_abandoned(
-            recovery_key,
-            remain,
-            store_slug,
-            session_id,
-            cart_id,
-            abandon_event_phone,
-            recovery_context=rc_arm3,
-        )
+    _spawn_recovery_live_delay_dispatch(
+        poll_row,
+        recovery_key=recovery_key,
+        store_slug=store_slug,
+        session_id=session_id,
+        cart_id=cart_id,
+        abandon_event_phone=abandon_event_phone,
+        recovery_context=rc_arm3,
+        dispatch_source="delay_poll_dispatch",
     )
 
 

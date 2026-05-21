@@ -138,7 +138,7 @@ flowchart TB
 |------|----------|----------|
 | Timing resolution | `services/recovery_multi_message.resolve_recovery_schedule_timing`, `main._resolve_single_message_schedule_timing` | Unified `effective_delay_seconds` + `source` |
 | Logs | `services/recovery_delay_unified` | `[RECOVERY DELAY RESOLVED|SCHEDULED]`, `[TEMPLATE TIMING USED]` |
-| Sleep | `_run_recovery_sequence_after_cart_abandoned_impl` | `release_db_before_async_wait()` then `await asyncio.sleep(delay_seconds)` |
+| Sleep | `services/recovery_delay_dispatcher.dispatch_recovery_schedule` | `release_db_before_async_wait()` then `await` delay until `due_at`; then `execute_recovery_schedule` |
 | DB session | `services/db_session_lifecycle` | Scoped session per task; released before long sleep |
 
 ### 3.5 Restart resume

@@ -18,7 +18,7 @@
 | **Terminal protection** | Ready | No reclaim of `completed`; no downgrade |
 | **Delay source of truth** | Ready | `schedule_timing` / unified gate |
 | **Store context** | Ready | Canonical `store_slug` from `recovery_key` |
-| **Scheduling / delay wait** | **Not queue-ready yet** | Still `asyncio.sleep` in-process |
+| **Scheduling / delay wait** | **Partial** | `services/recovery_delay_dispatcher.dispatch_recovery_schedule` owns in-process wait; replace module for queue/cron later |
 | **Session in-memory guards** | **Partial** | Boundary is DB-only; pre-delay path still uses `_session_recovery_*` dicts |
 | **Multi-worker dispatch** | **Designed, not deployed** | Claim is DB-atomic; needs real queue + lease TTL ops |
 
@@ -30,6 +30,7 @@
 
 | Scenario (below) | Automated test(s) |
 |------------------|-------------------|
+| Delay dispatcher → execution | `tests/test_recovery_delay_dispatcher.py` |
 | Execution boundary duplicate | `tests/test_recovery_execution_boundary.py::test_second_execute_skipped_after_claim`, `tests/test_cartflow_queue_readiness_verification.py::test_scheduled_row_double_execute_single_run` |
 | Terminal cannot re-execute | `tests/test_recovery_execution_boundary.py::test_skips_terminal_schedule`, `tests/test_recovery_schedule_claim.py::test_terminal_not_claimable` |
 | Stale running + send evidence → `completed` | `tests/test_recovery_restart_survival.py::test_stale_running_finalized_when_mock_sent_evidence`, `tests/test_cartflow_queue_readiness_verification.py::test_stale_running_with_send_evidence_finalizes_completed` |
@@ -43,7 +44,7 @@
 **Run (focused):**
 
 ```bash
-python -m pytest tests/test_cartflow_queue_readiness_verification.py tests/test_recovery_execution_boundary.py tests/test_recovery_restart_survival.py tests/test_recovery_schedule_claim.py tests/test_recovery_whatsapp_idempotency.py tests/test_recovery_delay_unified.py -q
+python -m pytest tests/test_recovery_delay_dispatcher.py tests/test_cartflow_queue_readiness_verification.py tests/test_recovery_execution_boundary.py tests/test_recovery_restart_survival.py tests/test_recovery_schedule_claim.py tests/test_recovery_whatsapp_idempotency.py tests/test_recovery_delay_unified.py -q
 ```
 
 **Manual / staging:** Scenarios marked *manual* below still require a running app + widget abandon or process restart.
