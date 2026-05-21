@@ -150,7 +150,7 @@ def admin_load_test_failure_scenarios(
 
 @router.get("/api/admin/db-due-scanner-health")
 def admin_db_due_scanner_health(request: Request) -> Any:
-    """Read-only DB due scanner loop observability (admin session required)."""
+    """Read-only DB due scanner loop observability — admin session only; not merchant-facing."""
     denied = _admin_json_auth_or_error(request)
     if denied is not None:
         return denied

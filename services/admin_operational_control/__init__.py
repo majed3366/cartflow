@@ -123,19 +123,6 @@ def build_admin_operational_control_readonly() -> dict[str, Any]:
     except Exception:
         failure_simulation_line_ar = FAILURE_SIMULATION_DISPLAY_UNAVAILABLE_AR
 
-    def _db_due_scanner_admin_card_safe() -> dict[str, Any]:
-        try:
-            from services.db_due_scanner_health import build_db_due_scanner_health_admin_card
-
-            return build_db_due_scanner_health_admin_card()
-        except Exception:
-            return {
-                "title": "DB Due Scanner",
-                "status": "unknown",
-                "status_emoji": "🟡",
-                "detail_lines": ["Unavailable"],
-            }
-
     return {
         "version": "admin_operational_control_v2",
         "generated_at_utc": ctx.generated_at_utc,
@@ -157,7 +144,6 @@ def build_admin_operational_control_readonly() -> dict[str, Any]:
                 "db_pool": ctx.pool,
                 "background_tasks": ctx.bg,
                 "whatsapp": ctx.wa,
-                "db_due_scanner": _db_due_scanner_admin_card_safe(),
             },
             "warnings": ctx.warnings,
         },

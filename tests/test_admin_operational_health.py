@@ -49,6 +49,7 @@ class AdminOperationalHealthTests(unittest.TestCase):
         self.assertIn("db_pool", cards)
         self.assertIn("background_tasks", cards)
         self.assertIn("whatsapp", cards)
+        self.assertIn("db_due_scanner", cards)
 
     def test_cart_event_sample_slow_warning(self) -> None:
         record_cart_event_finish_sample(
@@ -101,3 +102,18 @@ class AdminOperationalHealthTests(unittest.TestCase):
         self.assertIn("التحكم التشغيلي", r.text)
         self.assertIn("طبقة الأثر", r.text)
         self.assertIn("هل النظام سليم", r.text)
+        self.assertIn("DB Due Scanner", r.text)
+        self.assertIn("db-due-scanner-health", r.text)
+
+    def test_merchant_dashboard_excludes_scanner_diagnostics(self) -> None:
+        client = TestClient(app)
+        r = client.get("/dashboard")
+        self.assertEqual(r.status_code, 200)
+        t = (r.text or "").lower()
+        for needle in (
+            "db due scanner",
+            "db-due-scanner",
+            "db_due_scanner",
+            "/api/admin/db-due-scanner-health",
+        ):
+            self.assertNotIn(needle, t, msg=f"merchant dashboard leaked: {needle}")

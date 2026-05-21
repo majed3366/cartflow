@@ -52,6 +52,8 @@ class AdminOperationalControlV2Tests(unittest.TestCase):
             "quick_answers",
         ):
             self.assertIn(key, p)
+        diag_cards = (p.get("diagnostics_v1") or {}).get("cards") or {}
+        self.assertNotIn("db_due_scanner", diag_cards)
 
     def test_risk_detected_on_pool_timeout(self) -> None:
         record_db_pool_timeout(detail="QueuePool limit")

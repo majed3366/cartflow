@@ -59,6 +59,9 @@ class MerchantStandaloneAppDashboardTests(unittest.TestCase):
         self.assertNotIn("ارجع للرئيسية", t)
         self.assertNotIn("recovery_ops_dashboard", t)
         self.assertNotIn("cartflow_runtime_health", t)
+        self.assertNotIn("db due scanner", t)
+        self.assertNotIn("db-due-scanner", t)
+        self.assertNotIn("/api/admin/db-due-scanner-health", t)
         self.assertIn("merchant_widget_panel.js", t)
         self.assertIn("merchant_dashboard_lazy.js", t)
 

@@ -558,6 +558,23 @@ def build_operational_control_context() -> "OperationalControlContext":
     )
 
 
+def _build_admin_db_due_scanner_card_safe() -> dict[str, Any]:
+    """
+    Admin operational-health only — not part of shared operational-control bundle.
+    """
+    try:
+        from services.db_due_scanner_health import build_db_due_scanner_health_admin_card
+
+        return build_db_due_scanner_health_admin_card()
+    except Exception:
+        return {
+            "title": "DB Due Scanner",
+            "status": "unknown",
+            "status_emoji": "🟡",
+            "detail_lines": ["Unavailable"],
+        }
+
+
 def build_admin_operational_health_readonly() -> dict[str, Any]:
     """
     Aggregate for GET /admin/operational-health — v2 control + v1 diagnostics.
@@ -567,6 +584,8 @@ def build_admin_operational_health_readonly() -> dict[str, Any]:
     control = build_admin_operational_control_readonly()
     diag = control.get("diagnostics_v1") or {}
     warnings = diag.get("warnings") or []
+    cards = dict(diag.get("cards") or {})
+    cards["db_due_scanner"] = _build_admin_db_due_scanner_card_safe()
     admin_rt = {}
     try:
         from services.cartflow_runtime_health import build_admin_runtime_summary
@@ -581,7 +600,7 @@ def build_admin_operational_health_readonly() -> dict[str, Any]:
         **control,
         "generated_at_utc": control.get("generated_at_utc"),
         "headlines": headlines,
-        "cards": diag.get("cards") or {},
+        "cards": cards,
         "warnings": warnings,
         "anomaly_types_preview": anomaly_ct,
         "needs_technical_attention": bool(
