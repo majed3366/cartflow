@@ -27,6 +27,8 @@ STATUS_COMPLETED = "completed"
 STATUS_CANCELLED = "cancelled"
 STATUS_SKIPPED_RESUME = "skipped_resume_unsafe"
 STATUS_NEEDS_REVIEW = "needs_review"
+STATUS_FAILED_RESUME = "failed_resume"
+STATUS_FAILED_RESUME_STALE = "failed_resume_stale"
 
 _TERMINAL = frozenset(
     {
@@ -34,8 +36,12 @@ _TERMINAL = frozenset(
         STATUS_CANCELLED,
         STATUS_SKIPPED_RESUME,
         STATUS_NEEDS_REVIEW,
+        STATUS_FAILED_RESUME,
+        STATUS_FAILED_RESUME_STALE,
     }
 )
+
+_DEFAULT_RUNNING_STALE_SECONDS = 600
 
 
 def _utc_now() -> datetime:
@@ -116,6 +122,241 @@ def _log_resume_sent(recovery_key: str) -> None:
         print("action=dispatched_resume_task", flush=True)
     except OSError:
         pass
+
+
+def _log_resume_task_enter(row: RecoverySchedule) -> None:
+    try:
+        print("[RESUME TASK ENTER]", flush=True)
+        print(f"recovery_key={row.recovery_key[:120]}", flush=True)
+        print(f"schedule_id={row.id}", flush=True)
+        print(f"store_slug={row.store_slug}", flush=True)
+        print(f"step={row.step}", flush=True)
+    except OSError:
+        pass
+
+
+def _log_resume_task_after_delay(row: RecoverySchedule) -> None:
+    try:
+        print("[RESUME TASK AFTER DELAY]", flush=True)
+        print(f"recovery_key={row.recovery_key[:120]}", flush=True)
+        print(f"schedule_id={row.id}", flush=True)
+    except OSError:
+        pass
+
+
+def _log_resume_task_finalize(
+    row: RecoverySchedule, status: str, detail: str
+) -> None:
+    try:
+        print("[RESUME TASK FINALIZE]", flush=True)
+        print(f"recovery_key={row.recovery_key[:120]}", flush=True)
+        print(f"schedule_id={row.id}", flush=True)
+        print(f"status={status}", flush=True)
+        print(f"detail={(detail or '-')[:96]}", flush=True)
+    except OSError:
+        pass
+
+
+def _log_resume_task_exception(row: RecoverySchedule, detail: str) -> None:
+    try:
+        print("[RESUME TASK EXCEPTION]", flush=True)
+        print(f"recovery_key={row.recovery_key[:120]}", flush=True)
+        print(f"schedule_id={row.id}", flush=True)
+        print(f"error={(detail or '-')[:200]}", flush=True)
+    except OSError:
+        pass
+
+
+def _running_stale_seconds() -> int:
+    raw = os.getenv("CARTFLOW_RECOVERY_RUNNING_STALE_SECONDS", "").strip()
+    if raw.isdigit():
+        return max(60, int(raw))
+    return _DEFAULT_RUNNING_STALE_SECONDS
+
+
+def _latest_cart_recovery_log_for_schedule(row: RecoverySchedule):
+    from models import CartRecoveryLog
+
+    sid = (row.session_id or "").strip()
+    cid = (row.cart_id or "").strip() if row.cart_id else ""
+    if not sid and not cid:
+        return None
+    try:
+        from sqlalchemy import or_
+
+        conds: list[Any] = []
+        if sid:
+            conds.append(CartRecoveryLog.session_id == sid)
+        if cid:
+            conds.append(CartRecoveryLog.cart_id == cid)
+        return (
+            db.session.query(CartRecoveryLog)
+            .filter(
+                CartRecoveryLog.step == int(row.step),
+                or_(*conds),
+            )
+            .order_by(CartRecoveryLog.id.desc())
+            .first()
+        )
+    except SQLAlchemyError:
+        db.session.rollback()
+        return None
+
+
+def infer_resume_task_terminal_status(
+    row: RecoverySchedule,
+    *,
+    exc_detail: str = "",
+) -> tuple[str, str]:
+    """Map post-task state to a terminal recovery_schedules.status (never leave running)."""
+    if exc_detail == "cancelled":
+        return STATUS_FAILED_RESUME, "task_cancelled"
+    if exc_detail:
+        return STATUS_FAILED_RESUME, exc_detail[:512]
+
+    try:
+        db.session.expire(row)
+        fresh = db.session.get(RecoverySchedule, int(row.id))
+    except SQLAlchemyError:
+        db.session.rollback()
+        fresh = row
+    if fresh is None:
+        return STATUS_FAILED_RESUME, "schedule_row_missing"
+
+    if fresh.status in _TERMINAL:
+        return str(fresh.status), (fresh.last_error or "already_terminal")[:512]
+
+    if fresh.status != STATUS_RUNNING:
+        return str(fresh.status), (fresh.last_error or "unexpected_non_running")[:512]
+
+    from main import (  # noqa: PLC0415
+        _NORMAL_RECOVERY_SENT_LOG_STATUSES,
+        _cart_recovery_log_has_successful_send_for_step,
+    )
+
+    step = int(fresh.step)
+    if _cart_recovery_log_has_successful_send_for_step(
+        fresh.session_id, fresh.cart_id, step
+    ):
+        return STATUS_COMPLETED, "send_logged"
+
+    log_row = _latest_cart_recovery_log_for_schedule(fresh)
+    if log_row is not None:
+        st = (log_row.status or "").strip()
+        if st in _NORMAL_RECOVERY_SENT_LOG_STATUSES:
+            return STATUS_COMPLETED, st
+        if st.startswith("skipped") or st.startswith("stopped"):
+            return STATUS_SKIPPED_RESUME, st
+        if st == "whatsapp_failed":
+            return STATUS_FAILED_RESUME, st
+        if st == "queued":
+            return STATUS_FAILED_RESUME, "send_queued_not_confirmed"
+
+    return STATUS_FAILED_RESUME, "resume_task_exited_without_terminal_log"
+
+
+def _finalize_running_schedule_row(
+    row: RecoverySchedule,
+    *,
+    status: str,
+    detail: str = "",
+) -> None:
+    try:
+        db.session.expire(row)
+        fresh = db.session.get(RecoverySchedule, int(row.id))
+    except SQLAlchemyError:
+        db.session.rollback()
+        fresh = row
+    if fresh is None or fresh.status != STATUS_RUNNING:
+        return
+    msi = fresh.multi_slot_index if fresh.multi_slot_index >= 0 else None
+    finalize_recovery_schedule_durable(
+        fresh.recovery_key,
+        status=status,
+        multi_slot_index=msi,
+        sequential_attempt_index=fresh.sequential_attempt_index,
+        detail=detail,
+    )
+
+
+def reconcile_stale_running_schedules(
+    *,
+    max_age_seconds: Optional[int] = None,
+) -> int:
+    """Mark long-lived running rows failed_resume_stale — safe before new dispatch."""
+    age = int(max_age_seconds or _running_stale_seconds())
+    cutoff = _utc_now() - timedelta(seconds=age)
+    n = 0
+    try:
+        stale: List[RecoverySchedule] = (
+            db.session.query(RecoverySchedule)
+            .filter(
+                RecoverySchedule.status == STATUS_RUNNING,
+                RecoverySchedule.updated_at < cutoff,
+            )
+            .all()
+        )
+        for row in stale:
+            _finalize_running_schedule_row(
+                row,
+                status=STATUS_FAILED_RESUME_STALE,
+                detail=f"running_timeout_{age}s",
+            )
+            n += 1
+        return n
+    except SQLAlchemyError as exc:
+        db.session.rollback()
+        _log.warning("reconcile_stale_running_schedules failed: %s", exc)
+        return 0
+
+
+async def _execute_resume_recovery_task(row: RecoverySchedule) -> None:
+    """
+    Run delayed recovery for a claimed schedule row; always finalize status in finally.
+    """
+    _log_resume_task_enter(row)
+    exc_detail = ""
+    try:
+        ctx = load_context(row)
+        rc = dict(ctx.get("recovery_context") or {})
+        rc["recovery_key"] = row.recovery_key
+        rc["store_slug"] = row.store_slug
+        rc["resume_from_durable_schedule"] = True
+        rc["durable_schedule_row_id"] = int(row.id)
+        if ctx.get("schedule_timing") is not None:
+            rc["schedule_timing"] = ctx.get("schedule_timing")
+        abandon_phone = ctx.get("abandon_event_phone") or row.customer_phone
+        multi_text = ctx.get("multi_message_text")
+        msi = row.multi_slot_index if row.multi_slot_index >= 0 else None
+
+        from main import _run_recovery_sequence_after_cart_abandoned  # noqa: PLC0415
+
+        await _run_recovery_sequence_after_cart_abandoned(
+            row.recovery_key,
+            0.0,
+            row.store_slug,
+            row.session_id,
+            row.cart_id,
+            abandon_phone,
+            multi_slot_index=msi,
+            multi_message_text=multi_text,
+            sequential_attempt_index=row.sequential_attempt_index,
+            recovery_context=rc,
+        )
+        _log_resume_task_after_delay(row)
+    except Exception as exc:  # noqa: BLE001
+        import asyncio
+
+        if isinstance(exc, asyncio.CancelledError):
+            exc_detail = "cancelled"
+            _log_resume_task_exception(row, exc_detail)
+            raise
+        exc_detail = str(exc)[:512]
+        _log_resume_task_exception(row, exc_detail)
+    finally:
+        status, detail = infer_resume_task_terminal_status(row, exc_detail=exc_detail)
+        _log_resume_task_finalize(row, status, detail)
+        _finalize_running_schedule_row(row, status=status, detail=detail)
 
 
 def persist_recovery_schedule_durable(
@@ -437,33 +678,9 @@ async def resume_one_schedule(
         _log_resume_skipped(row.recovery_key, "duplicate_resume_claim")
         return {"recovery_key": row.recovery_key, "dispatched": False, "reason": "duplicate_resume_claim"}
 
-    ctx = load_context(row)
-    rc = dict(ctx.get("recovery_context") or {})
-    rc["recovery_key"] = row.recovery_key
-    rc["store_slug"] = row.store_slug
-    rc["schedule_timing"] = ctx.get("schedule_timing")
-    abandon_phone = ctx.get("abandon_event_phone") or row.customer_phone
-    multi_text = ctx.get("multi_message_text")
-    msi = row.multi_slot_index if row.multi_slot_index >= 0 else None
-    seq_idx = row.sequential_attempt_index
-
     import asyncio
-    from main import _run_recovery_sequence_after_cart_abandoned  # noqa: PLC0415
 
-    asyncio.create_task(
-        _run_recovery_sequence_after_cart_abandoned(
-            row.recovery_key,
-            0.0,
-            row.store_slug,
-            row.session_id,
-            row.cart_id,
-            abandon_phone,
-            multi_slot_index=msi,
-            multi_message_text=multi_text,
-            sequential_attempt_index=seq_idx,
-            recovery_context=rc,
-        )
-    )
+    asyncio.create_task(_execute_resume_recovery_task(row))
     _log_resume_sent(row.recovery_key)
     return {"recovery_key": row.recovery_key, "dispatched": True, "reason": "allowed"}
 
@@ -483,6 +700,7 @@ async def run_recovery_resume_scan_async(
 
     try:
         db.create_all()
+        stale_n = reconcile_stale_running_schedules()
         now = _utc_now()
         pending = (
             db.session.query(RecoverySchedule)
@@ -510,6 +728,7 @@ async def run_recovery_resume_scan_async(
         return {
             "enabled": True,
             "dry_run": dry_run,
+            "stale_running_reconciled": stale_n,
             "pending_scheduled": pending,
             "due_processed": len(due_rows),
             "dispatched": dispatched,

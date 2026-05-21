@@ -6414,8 +6414,12 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
                 )
                 return
     else:
+        resume_durable = bool(
+            recovery_context
+            and recovery_context.get("resume_from_durable_schedule")
+        )
         with _recovery_session_lock:
-            if _session_recovery_logged.get(recovery_key):
+            if not resume_durable and _session_recovery_logged.get(recovery_key):
                 from services.cartflow_duplicate_guard import (
                     note_sequential_recovery_slot_duplicate,
                 )
@@ -7337,6 +7341,13 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
         )
         _consume_seq_slot_if_needed()
         return None
+    if recovery_context and recovery_context.get("resume_from_durable_schedule"):
+        try:
+            print("[RESUME TASK BEFORE SEND]", flush=True)
+            print(f"recovery_key={recovery_key[:120]}", flush=True)
+            print(f"step={step_num}", flush=True)
+        except OSError:
+            pass
     log.info(
         "outbound_phone_source=%s recovery_resolved_source=%s session_id=%s cart_id=%s",
         _outbound_phone_source_log_label(phone),
@@ -7362,6 +7373,18 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
     ok_flag = wa_dict.get("ok") is True
     sid_str = str(wa_dict.get("sid") or "").strip()
     status_raw = wa_dict.get("status")
+    if recovery_context and recovery_context.get("resume_from_durable_schedule"):
+        try:
+            print("[RESUME TASK SEND RESULT]", flush=True)
+            print(f"recovery_key={recovery_key[:120]}", flush=True)
+            print(f"ok={ok_flag}", flush=True)
+            print(f"sid={sid_str[:64]}", flush=True)
+            print(
+                f"status={status_raw if status_raw is not None else '-'}",
+                flush=True,
+            )
+        except OSError:
+            pass
 
     if multi_slot_index is not None:
         try:

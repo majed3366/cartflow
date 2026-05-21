@@ -14,12 +14,17 @@ from extensions import db
 from models import CartRecoveryLog, RecoverySchedule, Store
 from services.recovery_restart_survival import (
     STATUS_COMPLETED,
+    STATUS_FAILED_RESUME,
+    STATUS_FAILED_RESUME_STALE,
+    STATUS_RUNNING,
     STATUS_SCHEDULED,
     STATUS_SKIPPED_RESUME,
+    _execute_resume_recovery_task,
     dev_verify_recovery_restart_survival,
     evaluate_resume_safety,
     inspect_persistence_state,
     persist_recovery_schedule_durable,
+    reconcile_stale_running_schedules,
     resume_one_schedule,
     run_recovery_resume_scan_sync,
 )
@@ -272,6 +277,71 @@ class RecoveryRestartSurvivalTests(unittest.TestCase):
         body = r.json()
         self.assertIn("persistence", body)
         self.assertEqual(body["persistence"].get("table"), "recovery_schedules")
+
+    def test_resume_executor_finalizes_running_not_stuck(self) -> None:
+        """Durable resume must not leave recovery_schedules.status=running after task exits."""
+        import asyncio
+        from unittest.mock import AsyncMock
+
+        rk = self._rk("finalize")
+        row = persist_recovery_schedule_durable(
+            recovery_key=rk,
+            store_slug="demo",
+            session_id="sess-fin",
+            cart_id="cart-fin",
+            reason_tag="other",
+            abandon_event_phone="+966501112233",
+            delay_seconds_scheduled=0.0,
+            schedule_timing={"effective_delay_seconds": 0.0, "source": "reason_templates.messages"},
+            recovery_context={"recovery_key": rk, "store_slug": "demo"},
+        )
+        assert row is not None
+        row.status = STATUS_RUNNING
+        row.due_at = datetime.now(timezone.utc) - timedelta(seconds=1)
+        db.session.commit()
+        with main._recovery_session_lock:
+            main._session_recovery_logged[rk] = True
+
+        with patch(
+            "main._run_recovery_sequence_after_cart_abandoned",
+            new_callable=AsyncMock,
+            return_value=None,
+        ):
+            asyncio.run(_execute_resume_recovery_task(row))
+
+        db.session.refresh(row)
+        self.assertNotEqual(row.status, STATUS_RUNNING)
+        self.assertIn(
+            row.status,
+            (
+                STATUS_COMPLETED,
+                STATUS_SKIPPED_RESUME,
+                STATUS_FAILED_RESUME,
+                STATUS_FAILED_RESUME_STALE,
+            ),
+        )
+
+    def test_stale_running_reconciled(self) -> None:
+        rk = self._rk("stale")
+        row = persist_recovery_schedule_durable(
+            recovery_key=rk,
+            store_slug="demo",
+            session_id="sess-stale",
+            cart_id="cart-stale",
+            reason_tag="other",
+            abandon_event_phone=None,
+            delay_seconds_scheduled=60.0,
+            schedule_timing={"effective_delay_seconds": 60.0, "source": "reason_templates.messages"},
+            recovery_context={"recovery_key": rk},
+        )
+        assert row is not None
+        row.status = STATUS_RUNNING
+        row.updated_at = datetime.now(timezone.utc) - timedelta(seconds=900)
+        db.session.commit()
+        n = reconcile_stale_running_schedules(max_age_seconds=600)
+        self.assertGreaterEqual(n, 1)
+        db.session.refresh(row)
+        self.assertEqual(row.status, STATUS_FAILED_RESUME_STALE)
 
 
 if __name__ == "__main__":
