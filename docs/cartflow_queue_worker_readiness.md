@@ -40,7 +40,10 @@ For a normal (non-VIP) abandon with reason + phone:
 1. **In-process:** `handle_cart_abandoned` → `_try_claim_recovery_session` → `asyncio.create_task(_run_recovery_dispatch_cart_abandoned)` → (optional reason poll) → `_persist_durable_recovery_schedule` + `asyncio.create_task(_run_recovery_sequence_after_cart_abandoned)` with `remain = delay - elapsed`.
 2. **Durable:** Same flow writes/updates `recovery_schedules` with `due_at = now + remain` **before** the sleep task runs.
 
-After **process restart**, the in-process task is gone; **startup** runs `run_recovery_resume_scan_async` → `resume_one_schedule` → `execute_recovery_schedule(schedule_id, source=resume_scan)` → post-delay `_run_recovery_sequence_after_cart_abandoned_impl` (`recovery_post_delay_only=True`). The live path uses the same boundary after `[DELAY FINISHED]`.
+After **process restart**, the in-process task is gone; **startup** runs `run_recovery_resume_scan_async`:
+- **Due rows** (`due_at <= now`): `resume_one_schedule` → `execute_recovery_schedule(source=resume_scan)`.
+- **Future rows** (`due_at > now`, `scheduled`): `rearm_one_future_scheduled_recovery` → `spawn_recovery_schedule_dispatch` with preserved `due_at` (logs `[RECOVERY FUTURE REARM CHECK|REARMED|SKIPPED]`); waits until `due_at`, then `execute_recovery_schedule` via `[DELAY FINISHED]`.
+The live path uses the same boundary after `[DELAY FINISHED]`.
 
 **Queue implication:** A worker must treat **either** the asyncio task **or** the durable row as the single source of execution — never both actively driving send for the same `(recovery_key, step)` without distributed claiming.
 

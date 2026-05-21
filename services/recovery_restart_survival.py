@@ -86,13 +86,145 @@ def _step_keys(
     return step, msi
 
 
-def _log_resume_scan(*, count: int, due_count: int) -> None:
+def _log_resume_scan(*, count: int, due_count: int, future_count: int = 0) -> None:
     try:
         print("[RECOVERY RESUME SCAN]", flush=True)
         print(f"pending_scheduled={count}", flush=True)
         print(f"due_now={due_count}", flush=True)
+        print(f"future_rearm_candidates={future_count}", flush=True)
     except OSError:
         pass
+
+
+def _log_future_rearm(tag: str, *, schedule_id: int, recovery_key: str = "", detail: str = "") -> None:
+    try:
+        print(f"[RECOVERY FUTURE REARM {tag}]", flush=True)
+        print(f"schedule_id={int(schedule_id)}", flush=True)
+        if recovery_key:
+            print(f"recovery_key={recovery_key[:120]}", flush=True)
+        if detail:
+            print(f"detail={detail[:96]}", flush=True)
+    except OSError:
+        pass
+
+
+# Per-process guard: avoid duplicate delay tasks for the same schedule row on startup.
+_future_rearm_spawned: set[int] = set()
+
+
+def _schedule_due_at_utc(row: RecoverySchedule) -> datetime:
+    due = row.due_at
+    if due is None:
+        return _utc_now()
+    if due.tzinfo is None:
+        return due.replace(tzinfo=timezone.utc)
+    return due.astimezone(timezone.utc)
+
+
+def rearm_one_future_scheduled_recovery(
+    row: RecoverySchedule,
+    *,
+    dispatch: bool = True,
+) -> Dict[str, Any]:
+    """
+    Re-arm in-process delay dispatch for a future-due ``scheduled`` row (post-restart).
+
+    Does not execute early; preserves ``due_at`` via ``dispatch_recovery_schedule``.
+    """
+    sid = int(row.id)
+    rk = row.recovery_key
+    _log_future_rearm("CHECK", schedule_id=sid, recovery_key=rk)
+
+    if row.status != STATUS_SCHEDULED:
+        _log_future_rearm(
+            "SKIPPED",
+            schedule_id=sid,
+            recovery_key=rk,
+            detail=f"not_scheduled:{row.status}",
+        )
+        return {
+            "schedule_id": sid,
+            "recovery_key": rk,
+            "rearmed": False,
+            "reason": f"not_scheduled:{row.status}",
+        }
+
+    due_at = _schedule_due_at_utc(row)
+    now = _utc_now()
+    if due_at <= now:
+        _log_future_rearm(
+            "SKIPPED",
+            schedule_id=sid,
+            recovery_key=rk,
+            detail="already_due_use_resume_path",
+        )
+        return {
+            "schedule_id": sid,
+            "recovery_key": rk,
+            "rearmed": False,
+            "reason": "already_due",
+        }
+
+    if sid in _future_rearm_spawned:
+        _log_future_rearm(
+            "SKIPPED",
+            schedule_id=sid,
+            recovery_key=rk,
+            detail="already_rearmed_this_process",
+        )
+        return {
+            "schedule_id": sid,
+            "recovery_key": rk,
+            "rearmed": False,
+            "reason": "already_rearmed_this_process",
+        }
+
+    ok, safety_reason = evaluate_resume_safety(row, trust_durable_schedule=True)
+    if not ok:
+        _log_future_rearm(
+            "SKIPPED",
+            schedule_id=sid,
+            recovery_key=rk,
+            detail=safety_reason,
+        )
+        return {
+            "schedule_id": sid,
+            "recovery_key": rk,
+            "rearmed": False,
+            "reason": safety_reason,
+        }
+
+    if not dispatch:
+        return {
+            "schedule_id": sid,
+            "recovery_key": rk,
+            "rearmed": False,
+            "reason": "dry_run_allowed",
+            "would_rearm": True,
+            "due_at": _naive_utc(due_at).isoformat(),
+        }
+
+    from services.recovery_delay_dispatcher import spawn_recovery_schedule_dispatch
+
+    _future_rearm_spawned.add(sid)
+    spawn_recovery_schedule_dispatch(
+        sid,
+        due_at,
+        "resume_scan_future_rearm",
+    )
+    _log_future_rearm(
+        "REARMED",
+        schedule_id=sid,
+        recovery_key=rk,
+        detail=f"due_at={_naive_utc(due_at).isoformat()}",
+    )
+    return {
+        "schedule_id": sid,
+        "recovery_key": rk,
+        "rearmed": True,
+        "reason": "rearmed",
+        "due_at": _naive_utc(due_at).isoformat(),
+    }
 
 
 def _log_resume_candidate(row: RecoverySchedule) -> None:
@@ -1090,8 +1222,16 @@ def inspect_persistence_state() -> Dict[str, Any]:
         return {"error": str(exc)}
 
 
-def evaluate_resume_safety(row: RecoverySchedule) -> tuple[bool, str]:
-    """Pre-send checks — mirrors runtime gates without bypassing them."""
+def evaluate_resume_safety(
+    row: RecoverySchedule,
+    *,
+    trust_durable_schedule: bool = False,
+) -> tuple[bool, str]:
+    """Pre-send checks — mirrors runtime gates without bypassing them.
+
+    When ``trust_durable_schedule`` is True (resume/rearm of an existing DB row),
+    skip the legacy-timing fallback guard — ``due_at`` is already authoritative.
+    """
     from services.recovery_store_context import canonical_store_slug_from_recovery_key
     from services.reason_template_recovery import reason_template_blocks_recovery_whatsapp
 
@@ -1140,12 +1280,13 @@ def evaluate_resume_safety(row: RecoverySchedule) -> tuple[bool, str]:
     if rt and reason_template_blocks_recovery_whatsapp(rt, store_obj):
         return False, "template_disabled"
 
-    timing = ctx.get("schedule_timing") if isinstance(ctx.get("schedule_timing"), dict) else {}
-    src = str(timing.get("source") or row.delay_source or "")
-    if "legacy_recovery_delay" in src.casefold() and "test_patch" not in src:
-        fb = timing.get("fallback_reason")
-        if fb:
-            return False, f"unsafe_legacy_fallback:{fb}"
+    if not trust_durable_schedule:
+        timing = ctx.get("schedule_timing") if isinstance(ctx.get("schedule_timing"), dict) else {}
+        src = str(timing.get("source") or row.delay_source or "")
+        if "legacy_recovery_delay" in src.casefold() and "test_patch" not in src:
+            fb = timing.get("fallback_reason")
+            if fb:
+                return False, f"unsafe_legacy_fallback:{fb}"
 
     return True, "allowed"
 
@@ -1156,7 +1297,7 @@ async def resume_one_schedule(
     dispatch: bool = True,
 ) -> Dict[str, Any]:
     _log_resume_candidate(row)
-    ok, reason = evaluate_resume_safety(row)
+    ok, reason = evaluate_resume_safety(row, trust_durable_schedule=True)
     if not ok:
         if reason in ("store_context_mismatch", "store_template_mismatch", "unsafe_legacy_fallback"):
             _log_resume_blocked(row.recovery_key, reason)
@@ -1223,6 +1364,7 @@ async def run_recovery_resume_scan_async(
             .filter(RecoverySchedule.status == STATUS_SCHEDULED)
             .count()
         )
+        lim = max(1, int(max_dispatch))
         due_rows: List[RecoverySchedule] = (
             db.session.query(RecoverySchedule)
             .filter(
@@ -1230,10 +1372,24 @@ async def run_recovery_resume_scan_async(
                 RecoverySchedule.due_at <= now,
             )
             .order_by(RecoverySchedule.due_at.asc())
-            .limit(max(1, int(max_dispatch)))
+            .limit(lim)
             .all()
         )
-        _log_resume_scan(count=pending, due_count=len(due_rows))
+        future_rows: List[RecoverySchedule] = (
+            db.session.query(RecoverySchedule)
+            .filter(
+                RecoverySchedule.status == STATUS_SCHEDULED,
+                RecoverySchedule.due_at > now,
+            )
+            .order_by(RecoverySchedule.due_at.asc())
+            .limit(lim)
+            .all()
+        )
+        _log_resume_scan(
+            count=pending,
+            due_count=len(due_rows),
+            future_count=len(future_rows),
+        )
         outcomes: List[Dict[str, Any]] = []
         dispatched = 0
         for row in due_rows:
@@ -1241,6 +1397,13 @@ async def run_recovery_resume_scan_async(
             outcomes.append(out)
             if out.get("dispatched"):
                 dispatched += 1
+        future_outcomes: List[Dict[str, Any]] = []
+        future_rearmed = 0
+        for row in future_rows:
+            out = rearm_one_future_scheduled_recovery(row, dispatch=not dry_run)
+            future_outcomes.append(out)
+            if out.get("rearmed"):
+                future_rearmed += 1
         return {
             "enabled": True,
             "dry_run": dry_run,
@@ -1251,6 +1414,9 @@ async def run_recovery_resume_scan_async(
             "due_processed": len(due_rows),
             "dispatched": dispatched,
             "outcomes": outcomes,
+            "future_processed": len(future_rows),
+            "future_rearmed": future_rearmed,
+            "future_outcomes": future_outcomes,
         }
     except SQLAlchemyError as exc:
         db.session.rollback()

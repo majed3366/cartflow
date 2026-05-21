@@ -7,7 +7,7 @@ import os
 import unittest
 import uuid
 from datetime import datetime, timedelta, timezone
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import main
 from extensions import db
@@ -28,6 +28,7 @@ from services.recovery_restart_survival import (
     repair_stale_running_recovery_schedules,
     reconcile_stale_running_schedules,
     resume_one_schedule,
+    rearm_one_future_scheduled_recovery,
     run_recovery_resume_scan_sync,
 )
 from services.recovery_session_phone import recovery_phone_memory_clear
@@ -135,6 +136,49 @@ class RecoveryRestartSurvivalTests(unittest.TestCase):
         self.assertGreaterEqual(scan.get("due_processed", 0), 1)
         keys = [o.get("recovery_key") for o in scan.get("outcomes", [])]
         self.assertIn(rk, keys)
+
+    def test_future_scheduled_rearms_dispatcher_without_early_execute(self) -> None:
+        """Post-restart: future-due row re-arms delay dispatch; no immediate execution."""
+        rk = self._rk("future-rearm")
+        row = persist_recovery_schedule_durable(
+            recovery_key=rk,
+            store_slug="demo",
+            session_id="sess-future",
+            cart_id="cart-future",
+            reason_tag="other",
+            abandon_event_phone="+966501112233",
+            delay_seconds_scheduled=120.0,
+            schedule_timing={
+                "effective_delay_seconds": 120.0,
+                "source": "reason_templates.messages",
+            },
+            recovery_context={"recovery_key": rk, "store_slug": "demo"},
+        )
+        assert row is not None
+        due = datetime.now(timezone.utc) + timedelta(seconds=90)
+        row.due_at = due
+        db.session.commit()
+        with patch(
+            "services.recovery_delay_dispatcher.spawn_recovery_schedule_dispatch"
+        ) as mock_spawn:
+            with patch(
+                "services.recovery_restart_survival.resume_one_schedule",
+                new_callable=AsyncMock,
+            ) as mock_resume:
+                scan = run_recovery_resume_scan_sync(
+                    max_dispatch=10, dry_run=False, force=True
+                )
+        self.assertGreaterEqual(scan.get("future_processed", 0), 1)
+        self.assertGreaterEqual(scan.get("future_rearmed", 0), 1)
+        mock_resume.assert_not_called()
+        mock_spawn.assert_called()
+        call = mock_spawn.call_args
+        self.assertEqual(int(call[0][0]), int(row.id))
+        self.assertEqual(call[0][2], "resume_scan_future_rearm")
+        db.session.expire_all()
+        row_f = db.session.get(RecoverySchedule, int(row.id))
+        assert row_f is not None
+        self.assertEqual(row_f.status, STATUS_SCHEDULED)
 
     def test_scenario_b_purchase_blocks_resume(self) -> None:
         rk = self._rk("b")
