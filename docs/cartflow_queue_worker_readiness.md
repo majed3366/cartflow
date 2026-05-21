@@ -312,6 +312,7 @@ Use existing vocabulary where possible:
 
 ### Phase 1 — Worker-ready semantics (no new infra)
 
+- [x] **Manual DB due scanner (Part 9):** `services/recovery_db_due_scanner.py` — `scan_due_recovery_schedules(limit, source="db_due_scanner")` finds `scheduled` rows with `due_at <= now`, runs stale `running` repair, evaluates resume safety, then `await execute_recovery_schedule(schedule_id, source)` (claim + boundary unchanged). Logs `[DB DUE SCANNER START|FOUND|DISPATCH|SKIPPED|DONE]`. **Not** auto-wired to startup/cron; verify with `python scripts/db_due_scanner_verify.py`. Asyncio delay dispatcher and startup resume scan remain unchanged.
 - [ ] Document and test: **only resume OR task** executes per schedule row (feature flag to disable in-process sleep when durable row exists — **future code**, not in this audit).
 - [ ] Ensure every exit path from execution updates `recovery_schedules` (or delegate to resume wrapper pattern for all dispatches).
 - [ ] Move inflight send lock to DB/Redis-compatible implementation behind same API as `try_begin_outbound_whatsapp_inflight`.
@@ -387,6 +388,7 @@ flowchart LR
 | Models | `models.RecoverySchedule`, `models.CartRecoveryLog`, `models.CartRecoveryReason` |
 | Tests | `tests/test_recovery_restart_survival.py`, `tests/test_recovery_store_context_isolation.py`, `tests/test_recovery_delay_unified.py` |
 | Dev ops | `GET /dev/recovery-restart-survival-verify`, `GET /dev/store-template-debug` |
+| DB due scanner (manual) | `services/recovery_db_due_scanner.py`, `scripts/db_due_scanner_verify.py` |
 
 ---
 
