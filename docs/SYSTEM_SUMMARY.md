@@ -303,6 +303,7 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 
 | Date (UTC) | Summary |
 |------------|---------|
+| 2026-05-19 | **Admin Dashboard v2 — human understanding validation (docs):** `docs/admin_dashboard_human_understanding_validation.md` — 5-second clarity test; مركز التشغيل PASS; navigation PARTIAL PASS; no code changes. Commit: **`docs: admin dashboard human understanding validation report`**. |
 | 2026-05-19 | **Admin Dashboard v2 — SaaS visual hierarchy:** Hero status card (الوضع الحالي / الإجراء / أثر العملاء), level 1–4 layout, wider content (`max-w-[88rem]`), grouped sidebar + fixed left nav, IBM Plex Arabic; presentation only. Commit: **`ux: redesign admin dashboard visual hierarchy v2`**. |
 | 2026-05-19 | **Admin Dashboard v1 visual refinement:** Left-side LTR sidebar shell + RTL main column; softer borders/spacing; `admin-nav-active` accent; operational health cards/verdict styling only. Commit: **`ux: refine admin sidebar layout and visual hierarchy`**. |
 | 2026-05-19 | **Admin Dashboard v1 — sidebar architecture:** RTL admin layout (`layouts/admin_dashboard.html`, `partials/admin_sidebar.html`); `/admin/operational-health` → مركز التشغيل (active); `/admin/operations` → لوحة عامة; placeholder GET routes under `/admin/*` (قيد التطوير); merchant dashboard unchanged. Commit: **`ux: add admin sidebar architecture`**. |
