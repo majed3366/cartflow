@@ -94,6 +94,7 @@ def apply_purchase_truth_lifecycle_closure(
     source: str,
     evidence: str = "",
     ac: Any = None,
+    context_payload: Optional[dict[str, Any]] = None,
 ) -> None:
     """Emit ``[PURCHASE TRUTH]`` then terminal ``[PURCHASE LIFECYCLE CLOSED]``."""
     from services.purchase_lifecycle_closure import record_purchase_lifecycle_closure
@@ -119,6 +120,23 @@ def apply_purchase_truth_lifecycle_closure(
         ac=ac,
         mark_converted=True,
     )
+    try:
+        from services.purchase_attribution_v1 import run_purchase_attribution_after_truth_closure
+
+        run_purchase_attribution_after_truth_closure(
+            rk,
+            session_id=session_id,
+            cart_id=cart_id,
+            ac=ac,
+            context_payload=context_payload,
+            purchase_truth_source=source,
+        )
+    except Exception as exc:  # noqa: BLE001
+        log.warning(
+            "purchase attribution hook failed (closure complete): %s",
+            exc,
+            exc_info=True,
+        )
 
 
 def ingest_purchase_truth_payload(payload: dict[str, Any]) -> Optional[str]:
@@ -157,6 +175,7 @@ def ingest_purchase_truth_payload(payload: dict[str, Any]) -> Optional[str]:
         cart_id=(_cart_id_str_from_payload(payload) or "") or "",
         source=source,
         evidence=evidence,
+        context_payload=payload,
     )
     log.info("purchase truth ingested recovery_key=%s source=%s", key, source)
     return key

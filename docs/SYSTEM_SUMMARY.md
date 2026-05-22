@@ -303,6 +303,7 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 
 | Date (UTC) | Summary |
 |------------|---------|
+| 2026-05-19 | **Purchase Attribution v1:** `services/purchase_attribution_v1.py` — confidence levels (`confirmed_recovery` … `not_attributed`) after Purchase Truth closure; `[ATTRIBUTION DECISION]` log; optional `recovery_events` row; does not block closure. Commit: **`feat: add purchase attribution decision layer v1`**. |
 | 2026-05-19 | **Integrations Foundation v1:** `NormalizedPlatformEvent` + `PlatformAdapter` scaffolds (Zid/Salla/Shopify); `services/platform_integration_gateway.py` routes normalized events to cart abandon / Purchase Truth / phone / future lifecycle hook; logs `[PLATFORM EVENT *]`; no live platform OAuth or webhook wiring. Commit: **`feat: add integrations foundation adapter layer v1`**. |
 | 2026-05-19 | **Operational Control v1 (targeted):** `services/operational_control_v1.py` — pause WA / new scheduling / store / reason / continuation / provider; dry-run `[CONTROL DRY RUN]`; audit `[OPERATIONAL CONTROL EVENT]`; gates in `whatsapp_send`, `persist_recovery_schedule_durable` (new rows), continuation; `/admin/control` UI + API. Commit: **`feat: add targeted operational control foundation v1`**. |
 | 2026-05-19 | **Operational Maturity v1 (audit):** `docs/audit_operational_maturity_v1.md` + `tests/test_operational_maturity_audit_v1.py` — detect/explain/alert/control/verify matrix; admin health v2 PASS; kill switch + centralized alerts gaps. Commit: **`audit: verify operational maturity v1`**. |
