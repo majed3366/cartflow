@@ -303,6 +303,7 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 
 | Date (UTC) | Summary |
 |------------|---------|
+| 2026-05-19 | **Queue / Worker Maturity v1 (audit):** `docs/audit_queue_worker_maturity_v1.md` + `tests/test_queue_worker_maturity_audit_v1.py` — 10-scenario matrix (restart, duplicate, stale, resume, idempotency, terminal); multi-worker PARTIAL. Commit: **`audit: verify queue worker maturity v1`**. |
 | 2026-05-19 | **Lifecycle Truth Completion v1 (audit):** `docs/audit_lifecycle_truth_completion_v1.md` + `tests/test_lifecycle_truth_completion_audit_v1.py` — matrix for STOP/WAIT/CONTINUE/HANDOFF/FALLBACK/close paths; gaps checkout_started (widget-only), dual classifiers. Commit: **`audit: verify lifecycle truth completion v1`**. |
 | 2026-05-19 | **Purchase Truth v1:** `services/purchase_truth.py` — closure from `purchase_completed` / `order_paid` / `checkout_completed` / `order_created` / `purchase_event` (not reply text); `[PURCHASE TRUTH] verified=true` → `[PURCHASE LIFECYCLE CLOSED]`; wired on `POST /api/conversion`, cart-event conversion, `POST /dev/purchase-truth-test`. Commit: **`feat: add purchase truth lifecycle closure v1`**. |
 | 2026-05-19 | **Purchase lifecycle closure after PURCHASE intent:** `record_purchase_lifecycle_closure` always emits `[PURCHASE LIFECYCLE CLOSED]` or `[PURCHASE LIFECYCLE ALREADY CLOSED]`; hook no longer swallows closure errors; continuation re-logs when skipping closed sessions. Commit: **`fix: complete purchase lifecycle closure after purchase intent`**. |
