@@ -1,6 +1,6 @@
 {% extends "layouts/admin_dashboard.html" %}
 {% block admin_title %}CartFlow Admin — مركز التشغيل{% endblock %}
-{% block admin_main_class %}w-full max-w-[88rem] space-y-10 px-6 py-8 lg:px-10 lg:py-10{% endblock %}
+{% block admin_main_class %}w-full max-w-[88rem] space-y-10 px-6 py-8 pb-24 lg:px-10 lg:py-10 lg:pb-10{% endblock %}
 
 {% block admin_content %}
   {% set h = health %}
@@ -26,7 +26,7 @@
     aria-labelledby="verdict-heading"
   >
     <div class="flex flex-wrap items-start justify-between gap-4">
-      <span class="admin-level-tag">المستوى ١ — الحالة الحالية</span>
+      <span class="admin-level-tag">الحالة الآن</span>
       {% if h.generated_at_utc %}
       <span class="text-xs text-slate-500">آخر تحديث: {{ h.generated_at_utc }}</span>
       {% endif %}
@@ -76,7 +76,7 @@
   <section class="admin-card overflow-hidden">
     <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-6 py-4">
       <div>
-        <span class="admin-level-tag">المستوى ٢ — الإجراء المطلوب</span>
+        <span class="admin-level-tag">الإجراء المطلوب</span>
         <h3 class="mt-2 text-lg font-semibold text-slate-900">قرارات سريعة</h3>
       </div>
       <p class="text-sm font-semibold {% if vt == 'action' %}text-rose-700{% elif vt == 'watch' %}text-amber-800{% else %}text-emerald-700{% endif %}">
@@ -106,7 +106,7 @@
   {# Level 3 — Details #}
   <details class="admin-card group">
     <summary class="cursor-pointer list-none px-6 py-4 font-medium text-slate-700 transition hover:bg-slate-50/80">
-      <span class="admin-level-tag">المستوى ٣ — التفاصيل</span>
+      <span class="admin-level-tag">تفاصيل إضافية</span>
       <span class="mt-2 block text-base font-semibold text-slate-900">ملخص إضافي، تحقق، وسياق</span>
     </summary>
     <div class="space-y-5 border-t border-slate-100 px-6 py-6 text-sm">
@@ -143,9 +143,11 @@
   {# Level 3 — Component decisions #}
   <section class="admin-card overflow-hidden">
     <div class="border-b border-slate-100 px-6 py-5">
-      <span class="admin-level-tag">المستوى ٣ — التفاصيل</span>
+      <span class="admin-level-tag">تفاصيل إضافية</span>
       <h2 class="mt-2 text-xl font-semibold text-slate-900">قرارات حسب المكوّن</h2>
-      <p class="mt-1 text-sm text-slate-500">مشكلة → أثر → متأثرون → إلحاح → إجراء → تحقق</p>
+      <p class="mt-2 text-sm leading-relaxed text-slate-600">
+        هذا القسم يعرض حالة كل مكوّن بشكل مستقل — مشكلة → أثر → متأثرون → إلحاح → إجراء → تحقق.
+      </p>
     </div>
     <div class="grid gap-6 p-6 xl:grid-cols-2">
       {% macro operational_decision_card(card, anchor_id) %}
@@ -178,7 +180,7 @@
         {# Level 4 — Technical #}
         <details class="mt-5 rounded-xl border border-dashed border-slate-200 bg-white">
           <summary class="cursor-pointer px-4 py-3 text-xs font-semibold text-slate-500">
-            <span class="admin-level-tag">المستوى ٤ — تقني</span>
+            <span class="admin-level-tag">للدعم التقني</span>
             <span class="mr-2">تفاصيل للدعم</span>
           </summary>
           <ul class="border-t border-slate-100 px-4 py-3 font-mono text-[11px] leading-relaxed text-slate-600">
@@ -203,7 +205,7 @@
   {# Level 3 — Supporting context (collapsed) #}
   <details class="admin-card">
     <summary class="cursor-pointer px-6 py-4 text-sm font-medium text-slate-600 hover:bg-slate-50/50">
-      <span class="admin-level-tag">المستوى ٣ — سياق</span>
+      <span class="admin-level-tag">تفاصيل إضافية</span>
       <span class="mt-2 block font-semibold text-slate-800">مؤشرات، أثر، وخط زمني</span>
     </summary>
     <div class="space-y-6 border-t border-slate-100 px-6 py-6 text-sm">
@@ -253,4 +255,17 @@
       </section>
     </div>
   </details>
+
+  {# Mobile-only sticky verdict — reuses existing operations_center verdict #}
+  <div
+    id="admin-mobile-verdict-bar"
+    class="admin-mobile-verdict admin-mobile-verdict--{{ vt }} fixed inset-x-0 bottom-0 z-30 border-t px-4 py-3 lg:hidden"
+    dir="rtl"
+    role="status"
+    aria-live="polite"
+  >
+    <p class="text-center text-sm font-bold text-slate-900 sm:text-base">
+      {{ oc.verdict_ar or "🟢 النظام يعمل طبيعيًا" }}
+    </p>
+  </div>
 {% endblock %}

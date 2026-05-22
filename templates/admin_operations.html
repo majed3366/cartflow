@@ -60,7 +60,7 @@
           {% endif %}
         </div>
         <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p class="text-xs font-medium text-slate-500">المسح للثقة</p>
+          <p class="text-xs font-medium text-slate-500">متاجر تم فحصها</p>
           <p class="mt-1 text-2xl font-semibold tabular-nums text-slate-900">{{ summary.stores_scanned_for_trust or 0 }}</p>
           {% if (summary.stores_scanned_for_trust or 0) == 0 %}
           <p class="mt-2 text-xs leading-relaxed text-slate-500">لم يُمسَح متجر بعد — ستظهر البطاقات أوضح مع أول متاجر.</p>
@@ -71,7 +71,7 @@
           <p class="mt-1 text-2xl font-semibold tabular-nums text-emerald-700">{{ agg.onboarding_ready_stores or 0 }}</p>
         </div>
         <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p class="text-xs font-medium text-slate-500">بعوائق إعداد</p>
+          <p class="text-xs font-medium text-slate-500">متاجر تحتاج إعداد</p>
           <p class="mt-1 text-2xl font-semibold tabular-nums text-amber-800">{{ blocked_n }}</p>
           {% if blocked_n == 0 and (summary.stores_scanned_for_trust or 0) > 0 %}
           <p class="mt-2 text-xs leading-relaxed text-slate-500">{{ zm.onboarding_blocked }}</p>

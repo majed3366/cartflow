@@ -122,6 +122,8 @@ class AdminOperationalHealthLanguageTests(unittest.TestCase):
         self.assertIn("admin-hero", html)
         self.assertIn("الوضع الحالي", html)
         self.assertIn("الحالة التشغيلية", html)
+        self.assertIn("الحالة الآن", html)
+        self.assertIn("هذا القسم يعرض حالة كل مكوّن", html)
         self.assertIn("هل النظام سليم", html)
         self.assertIn("خطر العملاء", html)
         self.assertIn("أثر المتاجر", html)
