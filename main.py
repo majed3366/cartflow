@@ -5144,43 +5144,42 @@ def _is_user_converted(recovery_key: str) -> bool:
 
 
 def _mark_user_converted_for_payload(payload: dict[str, Any]) -> None:
+    """Purchase evidence → purchase truth → terminal lifecycle closure."""
+    try:
+        from services.purchase_truth import ingest_purchase_truth_payload
+
+        applied = ingest_purchase_truth_payload(payload)
+        if applied:
+            log.info("user_converted via purchase_truth recovery_key=%s", applied)
+            return
+    except Exception as exc:  # noqa: BLE001
+        log.warning("purchase_truth ingest failed: %s", exc, exc_info=True)
     key = _recovery_key_from_payload(payload)
     with _recovery_session_lock:
         _session_recovery_converted[key] = True
     log.info("user_converted recorded for recovery_key=%s", key)
-    try:
-        from services.purchase_lifecycle_closure import (
-            record_purchase_lifecycle_closure_from_conversion,
-        )
-
-        record_purchase_lifecycle_closure_from_conversion(
-            key,
-            session_id=_session_part_from_payload(payload),
-            cart_id=(_cart_id_str_from_payload(payload) or "") or "",
-            source="conversion_payload",
-        )
-    except Exception:  # noqa: BLE001
-        pass
 
 
 def _mark_session_converted(store_slug: str, session_id: str) -> str:
     """يضبط تحويلاً للجلسة (شراء مكتمل). يُرجع ‎recovery_key‎."""
+    payload = {
+        "store": store_slug,
+        "store_slug": store_slug,
+        "session_id": session_id,
+        "purchase_completed": True,
+    }
+    try:
+        from services.purchase_truth import ingest_purchase_truth_payload
+
+        applied = ingest_purchase_truth_payload(payload)
+        if applied:
+            return applied
+    except Exception as exc:  # noqa: BLE001
+        log.warning("purchase_truth session convert failed: %s", exc, exc_info=True)
     key = _recovery_key_from_store_and_session(store_slug, session_id)
     with _recovery_session_lock:
         _session_recovery_converted[key] = True
     log.info("conversion recorded for recovery_key=%s", key)
-    try:
-        from services.purchase_lifecycle_closure import (
-            record_purchase_lifecycle_closure_from_conversion,
-        )
-
-        record_purchase_lifecycle_closure_from_conversion(
-            key,
-            session_id=(session_id or "").strip(),
-            source="session_converted",
-        )
-    except Exception:  # noqa: BLE001
-        pass
     return key
 
 
@@ -9927,7 +9926,9 @@ async def api_cart_event(request: Request, background_tasks: BackgroundTasks):
 async def api_conversion(request: Request) -> Any:
     """
     يعلّم جلسة كمُحوّلة (شراء مكتمل) — يوقف تسلسل الاسترجاع.
-    جسم: ‎store_slug‎، ‎session_id‎؛ ‎purchase_completed: true‎ اختياري للتحقق.
+    جسم: ‎store_slug‎، ‎session_id‎؛ أحد أدلة الشراء:
+    ‎purchase_completed‎، ‎order_paid‎، ‎checkout_completed‎، ‎order_created‎،
+    أو ‎event‎ / ‎purchase_event‎ (مثل ‎purchase_event‎، ‎order_paid‎).
     """
     try:
         body = await request.json()
@@ -9941,9 +9942,24 @@ async def api_conversion(request: Request) -> Any:
         return j({"ok": False, "error": "store_slug_required"}, 400)
     if not isinstance(sid, str) or not str(sid).strip():
         return j({"ok": False, "error": "session_id_required"}, 400)
-    if "purchase_completed" in body and body.get("purchase_completed") is not True:
-        return j({"ok": False, "error": "purchase_completed_must_be_true"}, 400)
-    key = _mark_session_converted(str(ss).strip(), str(sid).strip())
+    for flag in ("purchase_completed", "order_paid", "checkout_completed", "order_created"):
+        if flag in body and body.get(flag) is not True:
+            return j({"ok": False, "error": f"{flag}_must_be_true"}, 400)
+    from services.purchase_truth import extract_purchase_truth_evidence
+
+    truth_payload = {
+        **body,
+        "store_slug": str(ss).strip(),
+        "store": str(ss).strip(),
+        "session_id": str(sid).strip(),
+    }
+    if extract_purchase_truth_evidence(truth_payload) is None:
+        return j({"ok": False, "error": "purchase_evidence_required"}, 400)
+    from services.purchase_truth import ingest_purchase_truth_payload
+
+    key = ingest_purchase_truth_payload(truth_payload)
+    if not key:
+        return j({"ok": False, "error": "purchase_evidence_required"}, 400)
     _sync_abandoned_cart_vip_after_live_cart_payload(
         {
             "store_slug": str(ss).strip(),
@@ -9951,11 +9967,59 @@ async def api_conversion(request: Request) -> Any:
             "purchase_completed": True,
         }
     )
+    truth = extract_purchase_truth_evidence(truth_payload)
     return j(
         {
             "ok": True,
             "purchase_completed": True,
             "recovery_key": key,
+            "purchase_truth_source": truth[0] if truth else None,
+        }
+    )
+
+
+@app.post("/dev/purchase-truth-test")
+async def dev_purchase_truth_test(request: Request) -> Any:
+    """
+    Manual/dev: simulate platform purchase evidence → ``[PURCHASE TRUTH]`` + lifecycle close.
+    Body: ``store_slug``, ``session_id``, and one of ``purchase_completed``, ``order_paid``,
+    ``checkout_completed``, ``order_created``, or ``event`` / ``purchase_event``.
+    """
+    try:
+        body = await request.json()
+    except Exception:  # noqa: BLE001
+        body = None
+    if not isinstance(body, dict):
+        return j({"ok": False, "error": "json_object_required"}, 400)
+    ss = body.get("store_slug") or body.get("store")
+    sid = body.get("session_id")
+    if not isinstance(ss, str) or not str(ss).strip():
+        return j({"ok": False, "error": "store_slug_required"}, 400)
+    if not isinstance(sid, str) or not str(sid).strip():
+        return j({"ok": False, "error": "session_id_required"}, 400)
+    truth_payload = {
+        **body,
+        "store_slug": str(ss).strip(),
+        "store": str(ss).strip(),
+        "session_id": str(sid).strip(),
+    }
+    from services.purchase_truth import (
+        extract_purchase_truth_evidence,
+        ingest_purchase_truth_payload,
+    )
+
+    truth = extract_purchase_truth_evidence(truth_payload)
+    if truth is None:
+        return j({"ok": False, "error": "purchase_evidence_required"}, 400)
+    key = ingest_purchase_truth_payload(truth_payload)
+    if not key:
+        return j({"ok": False, "error": "purchase_truth_apply_failed"}, 500)
+    return j(
+        {
+            "ok": True,
+            "recovery_key": key,
+            "purchase_truth_source": truth[0],
+            "verified": True,
         }
     )
 

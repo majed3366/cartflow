@@ -87,9 +87,15 @@ def test_conversion_marks_closed() -> None:
     buf = io.StringIO()
     with redirect_stdout(buf):
         main._mark_user_converted_for_payload(
-            {"store": "demo", "session_id": "s-conv", "cart_id": "c-conv"}
+            {
+                "store": "demo",
+                "session_id": "s-conv",
+                "cart_id": "c-conv",
+                "purchase_completed": True,
+            }
         )
     out = buf.getvalue()
+    assert "[PURCHASE TRUTH]" in out
     assert "[PURCHASE LIFECYCLE CLOSED]" in out
     assert main._is_user_converted("demo:s-conv")
 
