@@ -19,6 +19,7 @@ from services.reply_intent_handling import (
     classify_reply_lifecycle_intent_v1,
     handle_customer_reply_lifecycle_intent_v1,
     lifecycle_decision_for_reply_intent,
+    run_inbound_whatsapp_reply_intent_hook,
 )
 
 
@@ -73,6 +74,39 @@ class ReplyIntentLogFormatTests(unittest.TestCase):
         self.assertIn("intent=PRICE", out)
         self.assertIn("decision=HANDOFF", out)
         self.assertIn("action=handoff_later", out)
+
+
+class ReplyIntentHookTests(unittest.TestCase):
+    def test_empty_body_emits_hook_and_skipped(self) -> None:
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            run_inbound_whatsapp_reply_intent_hook("  ", "whatsapp:+966501234567")
+        out = buf.getvalue()
+        self.assertIn("[REPLY INTENT HOOK]", out)
+        self.assertIn("received=true", out)
+        self.assertIn("[REPLY INTENT SKIPPED]", out)
+        self.assertIn("reason=empty_body", out)
+
+    def test_no_cart_emits_context_false_and_skipped(self) -> None:
+        import os
+
+        os.environ.setdefault("CARTFLOW_CONTINUATION_AUTO_REPLY", "0")
+        import main
+
+        client = TestClient(main.app)
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            r = client.post(
+                "/webhook/whatsapp",
+                data={"Body": "غالي", "From": "whatsapp:+966599999999"},
+            )
+        self.assertEqual(r.status_code, 200)
+        out = buf.getvalue()
+        self.assertIn("[REPLY INTENT HOOK]", out)
+        self.assertIn("[REPLY INTENT CONTEXT]", out)
+        self.assertIn("found=false", out)
+        self.assertIn("[REPLY INTENT SKIPPED]", out)
+        self.assertIn("reason=no_recovery_context", out)
 
 
 class ReplyIntentWebhookIntegrationTests(unittest.TestCase):
@@ -135,6 +169,9 @@ class ReplyIntentWebhookIntegrationTests(unittest.TestCase):
             )
         self.assertEqual(r.status_code, 200)
         out = buf.getvalue()
+        self.assertIn("[REPLY INTENT HOOK]", out)
+        self.assertIn("[REPLY INTENT CONTEXT]", out)
+        self.assertIn("found=true", out)
         self.assertIn("[REPLY INTENT]", out)
         self.assertIn("intent=PRICE", out)
         self.assertIn("decision=HANDOFF", out)
@@ -148,9 +185,39 @@ class ReplyIntentWebhookIntegrationTests(unittest.TestCase):
             )
         self.assertEqual(r.status_code, 200)
         out = buf.getvalue()
+        self.assertIn("[REPLY INTENT HOOK]", out)
+        self.assertIn("[REPLY INTENT]", out)
         self.assertIn("intent=PURCHASE", out)
         self.assertIn("decision=STOP", out)
         self.assertIn("action=close_lifecycle", out)
+
+
+class ReplyIntentWebhookMainPathTests(unittest.TestCase):
+    """Ensures main.post /webhook/whatsapp calls the hook (not only behavioral module)."""
+
+    def setUp(self) -> None:
+        import os
+
+        os.environ.setdefault("CARTFLOW_CONTINUATION_AUTO_REPLY", "0")
+        import main
+
+        self.client = TestClient(main.app)
+
+    def test_main_webhook_always_emits_reply_intent_hook(self) -> None:
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            r = self.client.post(
+                "/webhook/whatsapp",
+                data={"Body": "غالي", "From": "whatsapp:+966599988877"},
+            )
+        self.assertEqual(r.status_code, 200)
+        out = buf.getvalue()
+        self.assertIn("[WA REPLY]", out)
+        self.assertIn("[REPLY INTENT HOOK]", out)
+        self.assertTrue(
+            "[REPLY INTENT]" in out or "[REPLY INTENT SKIPPED]" in out,
+            msg="every inbound reply must classify or skip explicitly",
+        )
 
 
 if __name__ == "__main__":

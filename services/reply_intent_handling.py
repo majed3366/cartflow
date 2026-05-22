@@ -8,7 +8,7 @@ recovery execution. Existing ``recovery_reply_intent`` / continuation engine unc
 from __future__ import annotations
 
 import logging
-from typing import Any, Optional, TypedDict
+from typing import Any, Optional, TypedDict  # noqa: TC003 — Any for ORM rows in hook
 
 from services.lifecycle_intelligence import (
     DECISION_FALLBACK,
@@ -176,6 +176,10 @@ def log_reply_intent_handling(
     cid = (cart_id or "").strip()
     if cid:
         lines.append(f"cart_id={cid[:64]}")
+    _emit_reply_intent_lines(lines)
+
+
+def _emit_reply_intent_lines(lines: list[str]) -> None:
     block = "\n".join(lines)
     try:
         print(block, flush=True)
@@ -185,6 +189,145 @@ def log_reply_intent_handling(
         log.info("%s", block.replace("\n", " | "))
     except Exception:  # noqa: BLE001
         pass
+
+
+def log_reply_intent_skipped(*, reason: str, detail: str = "", from_phone: str = "") -> None:
+    lines = ["[REPLY INTENT SKIPPED]", f"reason={reason}"]
+    if detail:
+        lines.append(f"detail={detail[:120]}")
+    fp = (from_phone or "").strip()
+    if fp:
+        lines.append(f"from_phone={fp[:40]}")
+    _emit_reply_intent_lines(lines)
+
+
+def _recovery_key_for_abandoned_cart(ac: Any, store: Any) -> str:
+    from main import _normalize_store_slug, _recovery_key_from_payload
+
+    slug = _normalize_store_slug(
+        {"store": getattr(store, "zid_store_id", None) or "default"}
+    )
+    pl = {
+        "store": slug,
+        "session_id": (getattr(ac, "recovery_session_id", None) or "").strip(),
+        "cart_id": (getattr(ac, "zid_cart_id", None) or "").strip(),
+    }
+    return _recovery_key_from_payload(pl)
+
+
+def run_inbound_whatsapp_reply_intent_hook(body: Any, from_number: Any) -> None:
+    """
+    Webhook entry: always logs hook + context; classifies or skips with explicit reason.
+
+    Does not send WhatsApp or mutate recovery schedules.
+    """
+    from sqlalchemy.exc import SQLAlchemyError
+
+    from extensions import db
+    from services.behavioral_recovery.state_store import (
+        normal_recovery_message_was_sent_for_abandoned,
+    )
+    from services.whatsapp_positive_reply import (
+        find_latest_abandoned_cart_for_customer_phone,
+        normalize_wa_customer_digits,
+    )
+
+    raw_body = str(body or "").strip()
+    from_raw = str(from_number or "").strip()
+    phone_key = normalize_wa_customer_digits(from_number)
+
+    _emit_reply_intent_lines(
+        [
+            "[REPLY INTENT HOOK]",
+            "received=true",
+            f"from_phone={from_raw[:48] or '-'}",
+            f"body={raw_body[:200] or '-'}",
+        ]
+    )
+
+    if not raw_body:
+        log_reply_intent_skipped(
+            reason="empty_body",
+            from_phone=from_raw,
+        )
+        return
+
+    if len(phone_key) < 11:
+        log_reply_intent_skipped(
+            reason="invalid_phone",
+            detail=phone_key or "missing",
+            from_phone=from_raw,
+        )
+        return
+
+    ac = None
+    store = None
+    try:
+        db.create_all()
+        ac, store = find_latest_abandoned_cart_for_customer_phone(phone_key)
+    except (SQLAlchemyError, OSError, TypeError, ValueError, RuntimeError) as exc:
+        try:
+            db.session.rollback()
+        except Exception:  # noqa: BLE001
+            pass
+        log_reply_intent_skipped(
+            reason="no_recovery_context",
+            detail=f"lookup_error:{type(exc).__name__}",
+            from_phone=from_raw,
+        )
+        return
+
+    if ac is None:
+        _emit_reply_intent_lines(
+            [
+                "[REPLY INTENT CONTEXT]",
+                "found=false",
+                f"phone_key={phone_key[:20]}",
+            ]
+        )
+        log_reply_intent_skipped(
+            reason="no_recovery_context",
+            detail="no_abandoned_cart",
+            from_phone=from_raw,
+        )
+        return
+
+    session_id = (getattr(ac, "recovery_session_id", None) or "").strip()
+    cart_id = (getattr(ac, "zid_cart_id", None) or "").strip()
+    recovery_key = _recovery_key_for_abandoned_cart(ac, store)
+
+    _emit_reply_intent_lines(
+        [
+            "[REPLY INTENT CONTEXT]",
+            "found=true",
+            f"session_id={session_id[:80] or '-'}",
+            f"cart_id={cart_id[:64] or '-'}",
+            f"recovery_key={recovery_key[:120]}",
+            f"phone_key={phone_key[:20]}",
+        ]
+    )
+
+    if bool(getattr(ac, "vip_mode", False)):
+        log_reply_intent_skipped(
+            reason="no_recovery_context",
+            detail="vip_cart",
+            from_phone=from_raw,
+        )
+        return
+
+    if not normal_recovery_message_was_sent_for_abandoned(ac):
+        log_reply_intent_skipped(
+            reason="no_recovery_context",
+            detail="no_prior_recovery_send",
+            from_phone=from_raw,
+        )
+        return
+
+    handle_customer_reply_lifecycle_intent_v1(
+        raw_body,
+        session_id=session_id,
+        cart_id=cart_id,
+    )
 
 
 def handle_customer_reply_lifecycle_intent_v1(

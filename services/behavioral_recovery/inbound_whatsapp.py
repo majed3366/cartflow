@@ -49,13 +49,6 @@ def process_inbound_behavioral_recovery(body: Any, from_number: Any) -> None:
             return
         if not normal_recovery_message_was_sent_for_abandoned(ac):
             return
-        from services.reply_intent_handling import handle_customer_reply_lifecycle_intent_v1
-
-        handle_customer_reply_lifecycle_intent_v1(
-            str(body or "").strip(),
-            session_id=(getattr(ac, "recovery_session_id", None) or "").strip(),
-            cart_id=(getattr(ac, "zid_cart_id", None) or "").strip(),
-        )
         prior_bh = behavioral_dict_for_abandoned_cart(ac)
         apply_interactive_transition_from_customer_reply(
             ac,

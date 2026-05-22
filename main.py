@@ -162,10 +162,12 @@ async def whatsapp_webhook(request: Request):
     print("[WA FROM]", from_number)
 
     try:
+        from services.reply_intent_handling import run_inbound_whatsapp_reply_intent_hook
         from services.whatsapp_positive_reply import (
             process_inbound_whatsapp_for_positive_intent,
         )
 
+        run_inbound_whatsapp_reply_intent_hook(message, from_number)
         process_inbound_behavioral_recovery(message, from_number)
         process_inbound_whatsapp_for_positive_intent(message, from_number)
     except Exception as inbound_err:  # noqa: BLE001
