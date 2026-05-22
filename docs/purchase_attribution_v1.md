@@ -42,7 +42,7 @@ Attribution **never blocks** lifecycle closure. Failures log a warning only.
 
 | Input | Source (best-effort) |
 |-------|----------------------|
-| `recovery_sent_at` | `CartRecoveryLog.sent_at` / `created_at`, in-memory `_session_recovery_sent` |
+| `recovery_sent_at` | **Latest** `CartRecoveryLog` for same `store_slug` + `session_id` (+ `cart_id` when set), ordered **desc** — not oldest row; stale sends outside window ignored |
 | `purchase_completed_at` | Now UTC, or payload `purchase_completed_at` / `converted_at` |
 | `customer_replied` | `cf_behavioral`, session helpers |
 | `returned_to_site` | `cf_behavioral` |

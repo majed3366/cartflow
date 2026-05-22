@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
@@ -53,6 +54,7 @@ class AttributionInputs:
     recovery_sent: bool = False
     recovery_blocked: bool = False
     attribution_window_hours: float = DEFAULT_ATTRIBUTION_WINDOW_HOURS
+    recovery_send_source: str = ""
 
 
 @dataclass
@@ -101,6 +103,190 @@ def _split_recovery_key(recovery_key: str) -> tuple[str, str]:
         store, _, sess = rk.partition(":")
         return store.strip(), sess.strip()
     return rk, ""
+
+
+_RECOVERY_SENT_STATUSES = frozenset({"sent_real", "mock_sent"})
+
+
+def _digits_only(phone: Optional[str]) -> str:
+    if not phone:
+        return ""
+    return re.sub(r"\D", "", str(phone).strip())[:32]
+
+
+def _phone_matches(row_phone: Optional[str], phone_digits: str) -> bool:
+    if not phone_digits:
+        return True
+    row_d = _digits_only(row_phone)
+    if not row_d:
+        return False
+    return row_d == phone_digits or row_d.endswith(phone_digits) or phone_digits.endswith(row_d)
+
+
+def _row_sent_timestamp(row: Any) -> Optional[datetime]:
+    ts = getattr(row, "sent_at", None) or getattr(row, "created_at", None)
+    if ts is None:
+        return None
+    return _ensure_aware(ts)
+
+
+def pick_latest_recovery_send_from_log_rows(
+    rows: list[Any],
+    *,
+    phone_digits: str = "",
+) -> tuple[Optional[datetime], str]:
+    """
+    Choose the newest successful recovery send from already-scoped rows (same session).
+    Prefer phone match when digits provided; never merge other sessions.
+    """
+    if not rows:
+        return None, "no_send_log"
+    ordered = sorted(
+        rows,
+        key=lambda r: (
+            _row_sent_timestamp(r) or datetime.min.replace(tzinfo=timezone.utc),
+            int(getattr(r, "id", 0) or 0),
+        ),
+        reverse=True,
+    )
+    if phone_digits:
+        for row in ordered:
+            if _phone_matches(getattr(row, "phone", None), phone_digits):
+                ts = _row_sent_timestamp(row)
+                if ts is not None:
+                    return ts, "cart_recovery_log_latest_phone"
+    row = ordered[0]
+    ts = _row_sent_timestamp(row)
+    if ts is None:
+        return None, "no_send_log"
+    return ts, "cart_recovery_log_latest_session"
+
+
+def select_latest_recovery_send_at(
+    *,
+    store_slug: str,
+    session_id: str,
+    cart_id: str = "",
+    customer_phone: str = "",
+) -> tuple[Optional[datetime], str]:
+    """
+    Latest ``CartRecoveryLog`` send for this recovery identity (not oldest, not other sessions).
+    """
+    sid = (session_id or "").strip()[:512]
+    if not sid:
+        return None, "missing_session_id"
+    ss = (store_slug or "").strip()[:255]
+    cid = (cart_id or "").strip()[:255]
+    phone_digits = _digits_only(customer_phone)
+    try:
+        from sqlalchemy import and_
+
+        from extensions import db
+        from models import CartRecoveryLog
+
+        db.create_all()
+        filters: list[Any] = [
+            CartRecoveryLog.session_id == sid,
+            CartRecoveryLog.status.in_(tuple(_RECOVERY_SENT_STATUSES)),
+            CartRecoveryLog.step.isnot(None),
+            CartRecoveryLog.step >= 1,
+        ]
+        if ss:
+            filters.append(CartRecoveryLog.store_slug == ss)
+        if cid:
+            filters.append(CartRecoveryLog.cart_id == cid)
+        rows = (
+            db.session.query(CartRecoveryLog)
+            .filter(and_(*filters))
+            .order_by(
+                CartRecoveryLog.sent_at.desc(),
+                CartRecoveryLog.created_at.desc(),
+                CartRecoveryLog.id.desc(),
+            )
+            .limit(20)
+            .all()
+        )
+        return pick_latest_recovery_send_from_log_rows(
+            list(rows),
+            phone_digits=phone_digits,
+        )
+    except Exception as exc:  # noqa: BLE001
+        try:
+            from extensions import db as _db
+
+            _db.session.rollback()
+        except Exception:
+            pass
+        log.debug("select_latest_recovery_send_at: %s", exc)
+        return None, "query_failed"
+
+
+def log_attribution_evidence(
+    *,
+    store_slug: str,
+    session_id: str,
+    cart_id: str,
+    recovery_key: str,
+    selected_recovery_sent_at: Optional[datetime],
+    purchase_completed_at: Optional[datetime],
+    source: str,
+) -> None:
+    sent_s = (
+        selected_recovery_sent_at.isoformat()
+        if selected_recovery_sent_at is not None
+        else "-"
+    )
+    purch_s = (
+        purchase_completed_at.isoformat()
+        if purchase_completed_at is not None
+        else "-"
+    )
+    elapsed_h = "-"
+    if (
+        selected_recovery_sent_at is not None
+        and purchase_completed_at is not None
+    ):
+        delta = _ensure_aware(purchase_completed_at) - _ensure_aware(
+            selected_recovery_sent_at
+        )
+        elapsed_h = f"{delta.total_seconds() / 3600:.2f}"
+    block = (
+        "[ATTRIBUTION EVIDENCE]\n"
+        f"store_slug={(store_slug or '-')[:255]}\n"
+        f"session_id={(session_id or '-')[:80]}\n"
+        f"cart_id={(cart_id or '-')[:64]}\n"
+        f"recovery_key={(recovery_key or '-')[:120]}\n"
+        f"selected_recovery_sent_at={sent_s}\n"
+        f"purchase_completed_at={purch_s}\n"
+        f"elapsed_hours={elapsed_h}\n"
+        f"source={(source or '-')[:64]}"
+    )
+    try:
+        print(block, flush=True)
+    except OSError:
+        pass
+    try:
+        log.info("%s", block.replace("\n", " | "))
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def _customer_phone_for_attribution(
+    recovery_key: str,
+    context_payload: Optional[dict[str, Any]],
+) -> str:
+    if isinstance(context_payload, dict):
+        for key in ("phone", "customer_phone", "abandon_event_phone"):
+            raw = context_payload.get(key)
+            if isinstance(raw, str) and raw.strip():
+                return raw.strip()[:100]
+    try:
+        from services.recovery_session_phone import get_recovery_customer_phone
+
+        p = get_recovery_customer_phone(recovery_key)
+        return (p or "").strip()[:100]
+    except Exception:  # noqa: BLE001
+        return ""
 
 
 def _strong_engagement(inp: AttributionInputs) -> bool:
@@ -178,6 +364,10 @@ def compute_attribution_decision(inp: AttributionInputs) -> AttributionDecision:
                 recommended_label=RECOMMENDED_LABELS[LEVEL_NOT_ATTRIBUTED],
             )
 
+    has_current_recovery_send = bool(
+        sent_at is not None and purchase_after and (inp.recovery_sent or sent_at)
+    )
+
     # --- confirmed_recovery ---
     if (inp.recovery_sent or sent_at is not None) and purchase_after and _strong_engagement(inp):
         reason = "reply_after_recovery_then_purchase"
@@ -208,7 +398,15 @@ def compute_attribution_decision(inp: AttributionInputs) -> AttributionDecision:
         )
 
     # --- assisted_recovery ---
-    if inp.reason_captured or (inp.reason_tag or "").strip() or inp.returned_to_site or _strong_engagement(inp):
+    if (
+        not has_current_recovery_send
+        and (
+            inp.reason_captured
+            or (inp.reason_tag or "").strip()
+            or inp.returned_to_site
+            or _strong_engagement(inp)
+        )
+    ):
         reason = "widget_or_reason_without_confirmed_recovery_chain"
         if inp.returned_to_site:
             reason = "return_or_widget_engagement_uncertain_influence"
@@ -223,6 +421,20 @@ def compute_attribution_decision(inp: AttributionInputs) -> AttributionDecision:
         )
 
     # --- organic_or_unknown ---
+    if not has_current_recovery_send:
+        reason = "no_current_recovery_send_evidence"
+        if "recovery_message_sent" in evidence and sent_at is None:
+            evidence.append("stale_or_unscoped_send_log_ignored")
+        return AttributionDecision(
+            attribution_level=LEVEL_ORGANIC,
+            confidence=CONFIDENCE_LOW,
+            reason=reason,
+            evidence=evidence or ["purchase_truth_only"],
+            window_hours=window_h,
+            purchase_after_recovery=False,
+            recommended_label=RECOMMENDED_LABELS[LEVEL_ORGANIC],
+        )
+
     return AttributionDecision(
         attribution_level=LEVEL_ORGANIC,
         confidence=CONFIDENCE_LOW,
@@ -384,42 +596,31 @@ def gather_attribution_inputs(
             customer_replied = customer_replied or customer_replied_flagged_for_session(
                 sid, cid or None
             )
-            for cart in carts:
-                if normal_recovery_message_was_sent_for_abandoned(cart):
-                    recovery_sent = True
-                    break
     except Exception as exc:  # noqa: BLE001
         log.debug("attribution behavioral gather: %s", exc)
 
+    customer_phone = _customer_phone_for_attribution(rk, context_payload)
+    send_source = ""
+    latest_ts, send_source = select_latest_recovery_send_at(
+        store_slug=ss,
+        session_id=sid,
+        cart_id=cid,
+        customer_phone=customer_phone,
+    )
+    window_td = timedelta(hours=max(1.0, float(attribution_window_hours)))
+    if latest_ts is not None:
+        recovery_sent_at = latest_ts
+        if purchase_at - recovery_sent_at <= window_td:
+            recovery_sent = True
+        else:
+            recovery_sent_at = None
+            send_source = f"{send_source}_stale_ignored"
+
     try:
         from extensions import db
-        from models import CartRecoveryLog, CartRecoveryReason
+        from models import CartRecoveryReason
 
         db.create_all()
-        conds = []
-        if sid:
-            conds.append(CartRecoveryLog.session_id == sid)
-        if cid:
-            conds.append(CartRecoveryLog.cart_id == cid)
-        if ss:
-            conds.append(CartRecoveryLog.store_slug == ss)
-        if conds:
-            from sqlalchemy import or_
-
-            row = (
-                db.session.query(CartRecoveryLog)
-                .filter(
-                    CartRecoveryLog.status.in_(("sent_real", "mock_sent")),
-                    or_(*conds),
-                )
-                .order_by(CartRecoveryLog.sent_at.asc(), CartRecoveryLog.created_at.asc())
-                .first()
-            )
-            if row is not None:
-                recovery_sent = True
-                ts = row.sent_at or row.created_at
-                if ts is not None:
-                    recovery_sent_at = _ensure_aware(ts)
         if ss and sid:
             rr = (
                 db.session.query(CartRecoveryReason.reason)
@@ -447,8 +648,11 @@ def gather_attribution_inputs(
         from main import _recovery_session_lock, _session_recovery_sent  # noqa: PLC0415
 
         with _recovery_session_lock:
-            if _session_recovery_sent.get(rk):
-                recovery_sent = True
+            memory_sent = bool(_session_recovery_sent.get(rk))
+        if memory_sent and recovery_sent_at is None and not recovery_sent:
+            recovery_sent_at = purchase_at - timedelta(minutes=1)
+            recovery_sent = True
+            send_source = "session_memory_recent_send"
     except Exception:
         pass
 
@@ -467,6 +671,7 @@ def gather_attribution_inputs(
         recovery_sent=recovery_sent,
         recovery_blocked=recovery_blocked,
         attribution_window_hours=attribution_window_hours,
+        recovery_send_source=send_source,
     )
 
 
@@ -496,6 +701,15 @@ def run_purchase_attribution_after_truth_closure(
         )
         decision = compute_attribution_decision(inp)
         ss = inp.store_slug or _split_recovery_key(recovery_key)[0]
+        log_attribution_evidence(
+            store_slug=ss,
+            session_id=inp.session_id or session_id,
+            cart_id=inp.cart_id or cart_id,
+            recovery_key=recovery_key,
+            selected_recovery_sent_at=inp.recovery_sent_at,
+            purchase_completed_at=inp.purchase_completed_at,
+            source=inp.recovery_send_source or "gather",
+        )
         log_attribution_decision(
             decision,
             store_slug=ss,

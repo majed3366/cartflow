@@ -9,6 +9,8 @@ from unittest.mock import patch
 
 import pytest
 
+from types import SimpleNamespace
+
 from services.purchase_attribution_v1 import (
     DEFAULT_ATTRIBUTION_WINDOW_HOURS,
     LEVEL_ASSISTED,
@@ -18,6 +20,7 @@ from services.purchase_attribution_v1 import (
     LEVEL_ORGANIC,
     AttributionInputs,
     compute_attribution_decision,
+    pick_latest_recovery_send_from_log_rows,
 )
 from services.purchase_lifecycle_closure import (
     reset_purchase_lifecycle_closure_for_tests as reset_closure,
@@ -87,6 +90,62 @@ def test_assisted_recovery_widget_reason_only() -> None:
     assert d.confidence == "low"
 
 
+def test_pick_latest_send_not_oldest() -> None:
+    old = _utc(2026, 5, 1, 10)
+    new = _utc(2026, 5, 20, 11)
+    rows = [
+        SimpleNamespace(id=1, sent_at=old, created_at=old, phone="+966511111111"),
+        SimpleNamespace(id=2, sent_at=new, created_at=new, phone="+966522222222"),
+    ]
+    ts, source = pick_latest_recovery_send_from_log_rows(rows)
+    assert ts == new
+    assert source == "cart_recovery_log_latest_session"
+
+
+def test_fresh_purchase_likely_not_outside_window() -> None:
+    sent = datetime.now(timezone.utc) - timedelta(minutes=30)
+    purchase = datetime.now(timezone.utc)
+    d = compute_attribution_decision(
+        _inp(
+            recovery_sent_at=sent,
+            purchase_completed_at=purchase,
+            recovery_sent=True,
+        )
+    )
+    assert d.attribution_level == LEVEL_LIKELY
+    assert d.reason.startswith("purchase_within_")
+    assert d.confidence == "medium"
+
+
+def test_stale_send_logs_organic_not_outside_window() -> None:
+    sent = _utc(2026, 5, 1, 10)
+    purchase = _utc(2026, 5, 20, 12)
+    d = compute_attribution_decision(
+        _inp(
+            recovery_sent_at=None,
+            purchase_completed_at=purchase,
+            recovery_sent=False,
+            reason_captured=True,
+            returned_to_site=True,
+        )
+    )
+    assert d.attribution_level in (LEVEL_ASSISTED, LEVEL_ORGANIC)
+    assert d.reason != "outside_attribution_window"
+
+
+def test_no_current_send_evidence_organic() -> None:
+    d = compute_attribution_decision(
+        _inp(
+            recovery_sent=False,
+            recovery_sent_at=None,
+            reason_captured=False,
+            returned_to_site=False,
+        )
+    )
+    assert d.attribution_level == LEVEL_ORGANIC
+    assert d.reason == "no_current_recovery_send_evidence"
+
+
 def test_organic_or_unknown_no_evidence() -> None:
     d = compute_attribution_decision(
         _inp(
@@ -96,7 +155,7 @@ def test_organic_or_unknown_no_evidence() -> None:
         )
     )
     assert d.attribution_level == LEVEL_ORGANIC
-    assert d.reason == "no_recovery_evidence"
+    assert d.reason == "no_current_recovery_send_evidence"
 
 
 def test_not_attributed_purchase_before_recovery() -> None:
