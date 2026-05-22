@@ -340,6 +340,23 @@ def _normalize_twilio_whatsapp_from(raw: str) -> str:
     return f"whatsapp:+{digits}"
 
 
+def resolve_twilio_status_callback_url() -> Optional[str]:
+    """
+    Per-message Twilio status callback for delivery truth.
+    Explicit TWILIO_STATUS_CALLBACK_URL, else CARTFLOW_PUBLIC_BASE_URL + path.
+    Returns None when unset — send proceeds without status_callback (accepted only).
+    """
+    explicit = (os.getenv("TWILIO_STATUS_CALLBACK_URL") or "").strip()
+    if explicit:
+        return explicit.rstrip("/")
+    base = (
+        os.getenv("CARTFLOW_PUBLIC_BASE_URL") or os.getenv("PUBLIC_BASE_URL") or ""
+    ).strip().rstrip("/")
+    if not base:
+        return None
+    return f"{base}/webhook/whatsapp/status"
+
+
 def _normalize_twilio_whatsapp_to(phone: str) -> str:
     """من حقل رقم أرضي إلى عنوان Twilio ‎whatsapp:+...‎"""
     raw = (phone or "").strip()
@@ -424,11 +441,16 @@ def send_whatsapp(
 
     try:
         client = Client(sid, token)
-        msg = client.messages.create(
-            from_=from_number,
-            body=body_text,
-            to=to_addr,
-        )
+        create_kwargs: Dict[str, Any] = {
+            "from_": from_number,
+            "body": body_text,
+            "to": to_addr,
+        }
+        status_callback_url = resolve_twilio_status_callback_url()
+        if status_callback_url:
+            create_kwargs["status_callback"] = status_callback_url
+            create_kwargs["status_callback_method"] = "POST"
+        msg = client.messages.create(**create_kwargs)
         twilio_status = getattr(msg, "status", None)
         print("WhatsApp sent successfully:", getattr(msg, "sid", None))
         result: Dict[str, Any] = {

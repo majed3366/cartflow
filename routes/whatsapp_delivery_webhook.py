@@ -2,6 +2,7 @@
 """Twilio / future Meta WhatsApp delivery status callbacks (additive)."""
 from __future__ import annotations
 
+import json
 import logging
 from typing import Any
 
@@ -11,6 +12,33 @@ from fastapi.responses import PlainTextResponse
 log = logging.getLogger("cartflow")
 
 router = APIRouter()
+
+_PROVIDER_TWILIO = "twilio"
+
+
+def _log_status_callback_received(payload: dict[str, Any]) -> None:
+    sid = str(
+        payload.get("MessageSid")
+        or payload.get("message_sid")
+        or payload.get("SmsSid")
+        or ""
+    ).strip()
+    status = str(
+        payload.get("MessageStatus")
+        or payload.get("message_status")
+        or payload.get("status")
+        or ""
+    ).strip()
+    try:
+        payload_repr = json.dumps(payload, ensure_ascii=False)[:800]
+    except (TypeError, ValueError):
+        payload_repr = str(payload)[:800]
+    line = (
+        f"[WA STATUS CALLBACK RECEIVED] provider={_PROVIDER_TWILIO} "
+        f"sid={sid} status={status} payload={payload_repr}"
+    )
+    print(line)
+    log.info("%s", line)
 
 
 def _form_to_dict(form: Any) -> dict[str, Any]:
@@ -43,6 +71,8 @@ async def whatsapp_status_webhook(request: Request) -> PlainTextResponse:
     except Exception as exc:  # noqa: BLE001
         log.warning("whatsapp status webhook parse failed: %s", exc)
         payload = {}
+
+    _log_status_callback_received(payload)
 
     try:
         from services.whatsapp_delivery_truth_v1 import ingest_twilio_status_callback

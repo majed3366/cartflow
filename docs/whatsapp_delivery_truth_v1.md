@@ -73,14 +73,13 @@ Existing `[WA SENT]` / `[WA STATUS]` are unchanged; they remain send-path observ
 - Normalizes → `ingest_twilio_status_callback` → upsert by `message_sid` (idempotent).
 - **Does not** run recovery, lifecycle, queue workers, or attribution.
 
-Configure in Twilio Console (Messaging / WhatsApp sender):
+Per-message callback (preferred): set **`TWILIO_STATUS_CALLBACK_URL`** or **`CARTFLOW_PUBLIC_BASE_URL`** on the server. `send_whatsapp` passes `status_callback` to Twilio `messages.create` when a URL resolves; otherwise truth stays at send-time acceptance only.
 
-- Status callback URL: `https://<your-host>/webhook/whatsapp/status`
-- Method: POST
+Fallback manual config (Twilio Console / Sandbox): Status callback URL `https://<your-host>/webhook/whatsapp/status`, method POST.
 
 ## Send path (additive)
 
-After successful `messages.create`, `record_provider_acceptance_from_send` records **`accepted_by_provider`** from the initial API status. Return value and recovery scheduling are unchanged.
+After successful `messages.create`, `record_provider_acceptance_from_send` records **`accepted_by_provider`** from the initial API status. When `status_callback` is registered, Twilio POSTs later statuses to `/webhook/whatsapp/status`. Return value and recovery scheduling are unchanged.
 
 ## Attribution / ROI (compatibility)
 

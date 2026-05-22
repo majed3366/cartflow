@@ -2,8 +2,9 @@
 """WhatsApp Delivery Truth v1 — acceptance ≠ delivery; webhook is observability only."""
 from __future__ import annotations
 
+import os
 import unittest
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from fastapi.testclient import TestClient
 
@@ -154,6 +155,96 @@ class WhatsappDeliveryTruthPersistenceTests(unittest.TestCase):
         truth = get_delivery_truth("SM_rank_1")
         assert truth is not None
         self.assertEqual(truth.truth_level, TRUTH_DELIVERED)
+
+
+class TwilioStatusCallbackWiringTests(unittest.TestCase):
+    def test_resolve_explicit_env(self) -> None:
+        from services.whatsapp_send import resolve_twilio_status_callback_url
+
+        with patch.dict(
+            os.environ,
+            {
+                "TWILIO_STATUS_CALLBACK_URL": "https://app.example/cb/",
+                "CARTFLOW_PUBLIC_BASE_URL": "https://ignored.example",
+            },
+            clear=False,
+        ):
+            self.assertEqual(
+                resolve_twilio_status_callback_url(),
+                "https://app.example/cb",
+            )
+
+    def test_resolve_public_base_fallback(self) -> None:
+        from services.whatsapp_send import resolve_twilio_status_callback_url
+
+        env = os.environ.copy()
+        env.pop("TWILIO_STATUS_CALLBACK_URL", None)
+        with patch.dict(
+            os.environ,
+            {"CARTFLOW_PUBLIC_BASE_URL": "https://cartflow.railway.app"},
+            clear=False,
+        ):
+            os.environ.pop("TWILIO_STATUS_CALLBACK_URL", None)
+            self.assertEqual(
+                resolve_twilio_status_callback_url(),
+                "https://cartflow.railway.app/webhook/whatsapp/status",
+            )
+
+    def test_resolve_none_when_unset(self) -> None:
+        from services.whatsapp_send import resolve_twilio_status_callback_url
+
+        with patch.dict(os.environ, {}, clear=False):
+            for key in (
+                "TWILIO_STATUS_CALLBACK_URL",
+                "CARTFLOW_PUBLIC_BASE_URL",
+                "PUBLIC_BASE_URL",
+            ):
+                os.environ.pop(key, None)
+            self.assertIsNone(resolve_twilio_status_callback_url())
+
+    @patch.dict(
+        os.environ,
+        {
+            "TWILIO_ACCOUNT_SID": "ACtest",
+            "TWILIO_AUTH_TOKEN": "tok",
+            "TWILIO_WHATSAPP_FROM": "whatsapp:+14155238886",
+            "TWILIO_STATUS_CALLBACK_URL": "https://app.example/webhook/whatsapp/status",
+        },
+        clear=False,
+    )
+    @patch("services.whatsapp_send.Client")
+    def test_send_passes_status_callback(self, mock_client_cls: MagicMock) -> None:
+        from services.whatsapp_send import send_whatsapp
+
+        mock_msg = MagicMock()
+        mock_msg.sid = "SM_cb_wire_1"
+        mock_msg.status = "queued"
+        mock_client_cls.return_value.messages.create.return_value = mock_msg
+
+        result = send_whatsapp("+966500000001", "test body")
+        self.assertTrue(result.get("ok"))
+        kwargs = mock_client_cls.return_value.messages.create.call_args.kwargs
+        self.assertEqual(
+            kwargs.get("status_callback"),
+            "https://app.example/webhook/whatsapp/status",
+        )
+        self.assertEqual(kwargs.get("status_callback_method"), "POST")
+
+    def test_status_webhook_emits_callback_received_log(self) -> None:
+        client = TestClient(app)
+        with patch("builtins.print") as mock_print:
+            resp = client.post(
+                "/webhook/whatsapp/status",
+                data={
+                    "MessageSid": "SM_log_1",
+                    "MessageStatus": "delivered",
+                },
+            )
+        self.assertEqual(resp.status_code, 200)
+        printed = " ".join(str(c[0][0]) for c in mock_print.call_args_list)
+        self.assertIn("[WA STATUS CALLBACK RECEIVED]", printed)
+        self.assertIn("SM_log_1", printed)
+        self.assertIn("delivered", printed)
 
 
 class WhatsappDeliveryStatusWebhookTests(unittest.TestCase):
