@@ -404,12 +404,12 @@ CONTINUATION_ACTION_WAIT = "wait_for_customer_reply"
 def resolve_continuation_action(contextual_intent: str) -> str:
     m = {
         "ready_for_checkout": CONTINUATION_ACTION_SEND_CHECKOUT,
-        "yes_to_cheaper_alternative": CONTINUATION_ACTION_SEND_CHEAPER,
+        "yes_to_cheaper_alternative": CONTINUATION_ACTION_REASSURANCE,
         "confirmation_generic": CONTINUATION_ACTION_SEND_CHECKOUT,
         "confirmation_after_shipping": CONTINUATION_ACTION_REASSURANCE,
         "wants_checkout_link": CONTINUATION_ACTION_RESEND_CHECKOUT,
-        "wants_cheaper_alternative": CONTINUATION_ACTION_SEND_CHEAPER,
-        "asks_price_detail": CONTINUATION_ACTION_EXPLAIN_PRICE,
+        "wants_cheaper_alternative": CONTINUATION_ACTION_REASSURANCE,
+        "asks_price_detail": CONTINUATION_ACTION_REASSURANCE,
         "asks_warranty_detail": CONTINUATION_ACTION_EXPLAIN_WARRANTY,
         "asks_quality_detail": CONTINUATION_ACTION_EXPLAIN_QUALITY,
         "asks_delivery_detail": CONTINUATION_ACTION_EXPLAIN_DELIVERY,
@@ -763,6 +763,9 @@ class ContinuationDecision:
     message_to_send: str
     should_send: bool
     merchant_offer_applied: bool = False
+    lifecycle_intent: str = ""
+    continuation_type: str = ""
+    stop_continuation: bool = False
 
 
 def _deploy_git_sha_for_logs() -> str:
@@ -827,7 +830,18 @@ def decide_continuation(
     )
     if action == CONTINUATION_ACTION_SEND_CHEAPER:
         _log_cheaper_continuation_decision(ac, vars_map)
-    msg = build_continuation_message(action, vars_map)
+    if action in (
+        CONTINUATION_ACTION_REASSURANCE,
+    ) and ctx in (
+        "wants_cheaper_alternative",
+        "yes_to_cheaper_alternative",
+        "asks_price_detail",
+    ):
+        from services.continuation_stabilization_v1 import _price_safe_message
+
+        msg = _price_safe_message(base)
+    else:
+        msg = build_continuation_message(action, vars_map)
     should_send = bool(
         msg.strip()
         and action
@@ -838,7 +852,7 @@ def decide_continuation(
     if action == CONTINUATION_ACTION_WAIT:
         should_send = False
     offer_applied = vars_map.get("merchant_offer_applied") == "1"
-    return ContinuationDecision(
+    dec = ContinuationDecision(
         base_intent=base,
         contextual_intent=ctx,
         action=action,
@@ -847,6 +861,15 @@ def decide_continuation(
         message_to_send=msg,
         should_send=should_send,
         merchant_offer_applied=offer_applied,
+    )
+    from services.continuation_stabilization_v1 import apply_continuation_stabilization_v1
+
+    sid = (getattr(ac, "recovery_session_id", None) or "").strip()
+    return apply_continuation_stabilization_v1(
+        inbound_body,
+        dec,
+        base_intent=base,
+        session_id=sid,
     )
 
 
@@ -961,8 +984,27 @@ def process_continuation_after_customer_reply(
         "continuation_summary_ar": summary_ar_out,
         "continuation_last_evaluated_at": utc_now_iso(),
     }
+    if dec.lifecycle_intent:
+        patch["continuation_lifecycle_intent"] = dec.lifecycle_intent
+    if dec.continuation_type:
+        patch["continuation_type_v1"] = dec.continuation_type
     if suppress_repeat_send:
         patch["continuation_repeat_suppressed"] = True
+
+    if dec.stop_continuation:
+        patch["continuation_automation_stopped"] = True
+        if dec.lifecycle_intent:
+            patch["continuation_lifecycle_intent"] = dec.lifecycle_intent
+        if dec.continuation_type:
+            patch["continuation_type_v1"] = dec.continuation_type
+        try:
+            print(
+                f"[CONTINUATION STOPPED] session_id={sid_log} "
+                f"intent={dec.lifecycle_intent} type={dec.continuation_type}",
+                flush=True,
+            )
+        except OSError:
+            pass
 
     if dec.action == CONTINUATION_ACTION_ESCALATE:
         patch["continuation_escalated_human"] = True

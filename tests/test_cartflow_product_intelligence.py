@@ -15,6 +15,7 @@ from services.cartflow_product_intelligence import (
     build_product_intelligence_snapshot,
 )
 from services.cartflow_reply_intent_engine import (
+    CONTINUATION_ACTION_REASSURANCE,
     CONTINUATION_ACTION_SEND_CHEAPER,
     build_continuation_message,
     decide_continuation,
@@ -269,7 +270,7 @@ class ProductIntelligenceTests(unittest.TestCase):
             ac=ac,
             prior_behavioral_before_reply={},
         )
-        self.assertEqual(d.action, CONTINUATION_ACTION_SEND_CHEAPER)
+        self.assertEqual(d.action, CONTINUATION_ACTION_REASSURANCE)
         self.assertTrue(d.should_send)
 
     def test_select_cheaper_rejects_cross_category_perfume(self) -> None:

@@ -74,7 +74,7 @@ def test_contextual_yes_price_abandonment_without_prior_strategy_key() -> None:
         prior_behavioral_before_reply={},
     )
     assert d.contextual_intent == "yes_to_cheaper_alternative"
-    assert d.action == CONTINUATION_ACTION_SEND_CHEAPER
+    assert d.action == CONTINUATION_ACTION_REASSURANCE
 
 
 def test_contextual_intent_yes_differs_by_prior_strategy() -> None:
@@ -144,12 +144,9 @@ def test_decide_wants_cheaper() -> None:
         prior_behavioral_before_reply={},
     )
     assert d.base_intent == "wants_cheaper"
-    assert d.action == CONTINUATION_ACTION_SEND_CHEAPER
-    assert (
-        "بسعر أقل" in d.message_to_send
-        or "ميزانيتك" in d.message_to_send
-        or "أنسب" in d.message_to_send
-    )
+    assert d.action == CONTINUATION_ACTION_REASSURANCE
+    assert "لقينا لك خيار" not in d.message_to_send
+    assert "أفهمك" in d.message_to_send
 
 
 def test_decide_asks_shipping() -> None:
@@ -182,9 +179,9 @@ def test_decide_asks_delivery() -> None:
         ac=ac,
     )
     assert d.base_intent == "asks_delivery"
-    assert d.action == CONTINUATION_ACTION_EXPLAIN_DELIVERY
-    assert "التوصيل يختلف" in d.message_to_send
-    assert d.summary_ar == "العميل يسأل عن موعد التوصيل"
+    assert "أيام عمل بسيطة" not in d.message_to_send
+    assert "يعتمد على عنوانك" in d.message_to_send
+    assert "العميل يسأل عن التوصيل" in d.summary_ar
 
 
 def test_decide_asks_warranty() -> None:
@@ -215,9 +212,9 @@ def test_decide_asks_price_uses_explain_template() -> None:
         ac=ac,
     )
     assert d.base_intent == "asks_price"
-    assert d.action == CONTINUATION_ACTION_EXPLAIN_PRICE
-    assert "السعر" in d.message_to_send
-    assert "السلة" in d.message_to_send
+    assert d.action == CONTINUATION_ACTION_REASSURANCE
+    assert "السبب الرئيسي" in d.message_to_send
+    assert d.continuation_type == "clarifying_question"
 
 
 def test_decide_hesitation() -> None:
@@ -247,8 +244,9 @@ def test_decide_rejection() -> None:
         reason_tag="",
         ac=ac,
     )
-    assert d.action == CONTINUATION_ACTION_GRACEFUL_EXIT
-    assert d.summary_ar == "العميل أنهى المحادثة بلباقة"
+    assert d.stop_continuation is True
+    assert d.should_send is False
+    assert "إيقاف" in d.summary_ar
 
 
 def test_decide_escalation_to_human() -> None:
