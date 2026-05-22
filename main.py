@@ -671,8 +671,22 @@ async def _run_dev_cartflow_delay_test_send(
     # مطابقة منطق منع الإزعاج قبل الإرسال — مسار تجربة فقط (لا recovery_key إنتاجي).
     user_returned_to_site = bool(simulate_user_return)
     purchase_completed = bool(simulate_purchase)
-    should_send = not (user_returned_to_site or purchase_completed)
     session_id_log = "(dev-delay-test)"
+    try:
+        with _recovery_session_lock:
+            _dev_sent = _dev_delay_test_send_count.get(
+                _dev_delay_test_attempt_key(phone, reason_tag), 0
+            )
+    except Exception:  # noqa: BLE001
+        _dev_sent = 0
+    _observe_lifecycle_intelligence_decision(
+        returned=user_returned_to_site,
+        purchased=purchase_completed,
+        reason_tag=reason_tag,
+        attempt_count=int(_dev_sent),
+        session_id=session_id_log,
+    )
+    should_send = not (user_returned_to_site or purchase_completed)
     print("[ANTI SPAM CHECK]")
     print("session_id=", session_id_log)
     print("user_returned_to_site=", user_returned_to_site)
@@ -3241,6 +3255,52 @@ def _log_second_recovery_check(
         customer_replied=bool(customer_replied),
         allowed=bool(allowed),
     )
+    try:
+        _observe_lifecycle_intelligence_decision(
+            returned=bool(user_returned_to_site),
+            purchased=bool(purchase_completed),
+            replied=bool(customer_replied),
+            reason_tag=rt or None,
+            attempt_count=int(sent_count),
+            session_id=(session_id or "").strip(),
+        )
+    except Exception:  # noqa: BLE001 — observation must not affect send path
+        pass
+
+
+def _observe_lifecycle_intelligence_decision(
+    *,
+    returned: bool = False,
+    purchased: bool = False,
+    replied: bool = False,
+    ignored: bool = False,
+    reason_tag: Optional[str] = None,
+    attempt_count: int = 0,
+    delay_pending: bool = False,
+    session_id: str = "",
+    recovery_key: str = "",
+) -> dict[str, Any]:
+    """Lifecycle Intelligence v1 — log behavior → decision → action; no send side effects."""
+    from services.lifecycle_intelligence import (
+        decide_lifecycle_recovery,
+        log_lifecycle_decision,
+    )
+
+    result = decide_lifecycle_recovery(
+        returned=bool(returned),
+        purchased=bool(purchased),
+        replied=bool(replied),
+        ignored=bool(ignored),
+        reason_tag=reason_tag,
+        attempt_count=int(attempt_count or 0),
+        delay_pending=bool(delay_pending),
+    )
+    log_lifecycle_decision(
+        result,
+        session_id=session_id,
+        recovery_key=recovery_key,
+    )
+    return result
 
 
 def _last_sent_phone_from_recovery_logs(
@@ -6538,6 +6598,18 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
     if step_num >= 2 and _normal_recovery_positive_reply_blocks_followup(
         session_id=session_id, cart_id=cart_id
     ):
+        _rt_li = (
+            str(recovery_context.get("reason_tag")).strip()
+            if recovery_context and recovery_context.get("reason_tag")
+            else None
+        )
+        _observe_lifecycle_intelligence_decision(
+            replied=True,
+            reason_tag=_rt_li,
+            attempt_count=int(step_num),
+            session_id=session_id,
+            recovery_key=recovery_key,
+        )
         try:
             print("[RECOVERY AUTOMATION STOPPED] reason=customer_replied", flush=True)
             log.info(
@@ -6581,6 +6653,18 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
                 except Exception:  # noqa: BLE001
                     pass
     if _is_user_converted(recovery_key):
+        _rt_li = (
+            str(recovery_context.get("reason_tag")).strip()
+            if recovery_context and recovery_context.get("reason_tag")
+            else None
+        )
+        _observe_lifecycle_intelligence_decision(
+            purchased=True,
+            reason_tag=_rt_li,
+            attempt_count=int(step_num),
+            session_id=session_id,
+            recovery_key=recovery_key,
+        )
         print("recovery sequence stopped: user converted (after initial delay, before step 1)")
         t1 = _recovery_message_for_step(1)
         _persist_cart_recovery_log(
@@ -6927,6 +7011,22 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
     print("should_send=", should_send)
 
     if not should_send:
+        _observe_lifecycle_intelligence_decision(
+            returned=bool(user_returned_eff),
+            purchased=bool(_is_user_converted(recovery_key)),
+            replied=bool(
+                _normal_recovery_positive_reply_blocks_followup(
+                    session_id=session_id, cart_id=cart_id
+                )
+                if (seq_follow or step_num > 1)
+                else False
+            ),
+            reason_tag=reason_tag,
+            attempt_count=int(gate_sent_count),
+            delay_pending=(_ds_tag == "delay_not_elapsed"),
+            session_id=session_id,
+            recovery_key=recovery_key,
+        )
         print("[DELAY BLOCKED] skipping send")
         nr_skip_reason = _ds_tag
         if _ds_tag == "max_attempts_reached":
@@ -7083,6 +7183,20 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
         log_recovery_check=True,
     )
     purchase_completed = _is_user_converted(recovery_key)
+    crep_anti = False
+    if step_num > 1:
+        crep_anti = _normal_recovery_positive_reply_blocks_followup(
+            session_id=session_id, cart_id=cart_id
+        )
+    _observe_lifecycle_intelligence_decision(
+        returned=bool(user_returned_to_site),
+        purchased=bool(purchase_completed),
+        replied=bool(crep_anti),
+        reason_tag=reason_tag,
+        attempt_count=int(step_num),
+        session_id=session_id,
+        recovery_key=recovery_key,
+    )
     should_send_anti_spam = (not user_returned_to_site) and (not purchase_completed)
     print("[ANTI SPAM CHECK]")
     print("session_id=", session_id)
