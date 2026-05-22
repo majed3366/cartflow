@@ -303,6 +303,7 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 
 | Date (UTC) | Summary |
 |------------|---------|
+| 2026-05-19 | **Purchase lifecycle closure after PURCHASE intent:** `record_purchase_lifecycle_closure` always emits `[PURCHASE LIFECYCLE CLOSED]` or `[PURCHASE LIFECYCLE ALREADY CLOSED]`; hook no longer swallows closure errors; continuation re-logs when skipping closed sessions. Commit: **`fix: complete purchase lifecycle closure after purchase intent`**. |
 | 2026-05-19 | **Purchase lifecycle closure propagation (verification):** `tests/test_purchase_lifecycle_closure_propagation.py` — documents dual classifiers (`recovery_reply_intent`=other vs lifecycle PURCHASE), converted-without-closed-log gap, full webhook log chain. Commit: **`test: verify purchase lifecycle closure propagation`**. |
 | 2026-05-19 | **Purchase completion + closed lifecycle v1:** `purchase_lifecycle_closure` — `terminal_state=closed_purchase`, `[PURCHASE LIFECYCLE CLOSED]`, `[RECOVERY BLOCKED] reason=lifecycle_closed_purchase`; wired on conversion, reply PURCHASE, recovery impl gate. Commit: **`feat: add purchase completion and closed lifecycle v1`**. |
 | 2026-05-19 | **Continuation Layer Stabilization v1:** Safe continuation by lifecycle intent (PRICE→reassurance/clarify, DELIVERY→shipping reassurance, PURCHASE/STOP→stop continuation); no `send_cheaper_alternative`; `[CONTINUATION DECISION]` logs. Commit: **`feat: stabilize continuation layer before product intelligence`**. |

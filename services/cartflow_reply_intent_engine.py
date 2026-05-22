@@ -916,6 +916,30 @@ def process_continuation_after_customer_reply(
             pass
 
     if str(bh.get("lifecycle_terminal_state") or "").strip() == "closed_purchase":
+        try:
+            from main import _recovery_key_from_payload, _normalize_store_slug
+            from services.purchase_lifecycle_closure import record_purchase_lifecycle_closure
+
+            ss_bh = _continuation_wa_trace_store_slug(ac) or _normalize_store_slug(
+                {"store": _store_slug_for_ac(ac)}
+            )
+            rk_bh = _recovery_key_from_payload(
+                {
+                    "store": ss_bh,
+                    "session_id": (getattr(ac, "recovery_session_id", None) or ""),
+                    "cart_id": (getattr(ac, "zid_cart_id", None) or ""),
+                }
+            )
+            if rk_bh:
+                record_purchase_lifecycle_closure(
+                    rk_bh,
+                    session_id=(getattr(ac, "recovery_session_id", None) or "").strip(),
+                    cart_id=(getattr(ac, "zid_cart_id", None) or "").strip(),
+                    source="continuation_terminal_closed_purchase",
+                    ac=ac,
+                )
+        except Exception:  # noqa: BLE001
+            pass
         _emit_continuation_stopped_purchase()
         log.info(
             "[CONTINUATION] skip: lifecycle terminal closed_purchase session_id=%s",
@@ -939,6 +963,15 @@ def process_continuation_after_customer_reply(
             }
         )
         if rk_cont_early and is_purchase_lifecycle_closed(rk_cont_early):
+            from services.purchase_lifecycle_closure import record_purchase_lifecycle_closure
+
+            record_purchase_lifecycle_closure(
+                rk_cont_early,
+                session_id=(getattr(ac, "recovery_session_id", None) or "").strip(),
+                cart_id=(getattr(ac, "zid_cart_id", None) or "").strip(),
+                source="continuation_purchase_already_closed",
+                ac=ac,
+            )
             _emit_continuation_stopped_purchase()
             log.info(
                 "[CONTINUATION] skip: purchase lifecycle closed session_id=%s",
@@ -987,6 +1020,13 @@ def process_continuation_after_customer_reply(
         if not rk_cont:
             rk_cont = rk_cont_early
         if rk_cont and is_purchase_lifecycle_closed(rk_cont):
+            record_purchase_lifecycle_closure(
+                rk_cont,
+                session_id=(getattr(ac, "recovery_session_id", None) or "").strip(),
+                cart_id=(getattr(ac, "zid_cart_id", None) or "").strip(),
+                source="continuation_purchase_already_closed",
+                ac=ac,
+            )
             _emit_continuation_stopped_purchase()
             log.info(
                 "[CONTINUATION] skip: purchase lifecycle closed session_id=%s",

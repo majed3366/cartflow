@@ -68,11 +68,9 @@ def test_dual_classifier_tam_altalib_recovery_other_lifecycle_purchase() -> None
     assert classify_reply_lifecycle_intent_v1(_TAM_ALTALIB) == INTENT_PURCHASE
 
 
-def test_converted_flag_can_stop_continuation_without_purchase_closed_log() -> None:
+def test_converted_flag_continuation_emits_purchase_closed_log() -> None:
     """
-    Reproduces production gap: converted memory without closure log.
-
-    Continuation emits [CONTINUATION STOPPED] but not [PURCHASE LIFECYCLE CLOSED].
+    When session was converted before closure log, continuation still emits proof.
     """
     import main
     from services.cartflow_reply_intent_engine import (
@@ -128,7 +126,9 @@ def test_converted_flag_can_stop_continuation_without_purchase_closed_log() -> N
     out = buf.getvalue()
     assert "[CONTINUATION STOPPED]" in out
     assert "intent=PURCHASE" in out
-    assert "[PURCHASE LIFECYCLE CLOSED]" not in out
+    assert "[PURCHASE LIFECYCLE CLOSED]" in out
+    assert "terminal_state=closed_purchase" in out
+    assert "future_recovery_allowed=false" in out
 
 
 def test_webhook_propagation_reply_intent_closed_continuation_stopped() -> None:

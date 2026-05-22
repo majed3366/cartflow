@@ -56,6 +56,17 @@ def test_record_logs_purchase_lifecycle_closed() -> None:
     assert is_purchase_lifecycle_closed("demo:s-closed")
 
 
+def test_record_already_closed_logs_explicitly() -> None:
+    record_purchase_lifecycle_closure("demo:s-already", session_id="s-already")
+    buf = io.StringIO()
+    with redirect_stdout(buf):
+        record_purchase_lifecycle_closure("demo:s-already", session_id="s-already")
+    out = buf.getvalue()
+    assert "[PURCHASE LIFECYCLE ALREADY CLOSED]" in out
+    assert "terminal_state=closed_purchase" in out
+    assert "[PURCHASE LIFECYCLE CLOSED]" not in out
+
+
 def test_block_recovery_after_closure() -> None:
     record_purchase_lifecycle_closure("demo:s-block", session_id="s-block")
     buf = io.StringIO()
