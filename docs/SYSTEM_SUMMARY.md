@@ -126,6 +126,7 @@ Server-side template control (**`exit_intent_*`** on **`Store`**): `services/sto
 |------|---------|
 | WhatsApp send / gates | `whatsapp_send.py` (`send_whatsapp`, `should_send_whatsapp`), `whatsapp_recovery.py`, `whatsapp_queue.py` |
 | WhatsApp delivery truth (v1) | `whatsapp_delivery_truth_v1.py` — `DeliveryTruth`, status webhook ingest, `whatsapp_delivery_truth` table; `queued` ≠ delivered; attribution hook reserved (`customer_delivered_for_attribution_future`). See `docs/whatsapp_delivery_truth_v1.md`. |
+| WhatsApp production reality (v2) | `whatsapp_production_reality_v2.py` — 24h window (`inside_24h` / `outside_24h` / `unknown`), `[WA WINDOW CHECK]` / `[WA TEMPLATE DECISION]` (observe only); store readiness + admin merchant level. See `docs/whatsapp_production_reality_v2.md`. |
 | Delays | `recovery_delay.py` (`get_recovery_delay` per tag), timing also in `whatsapp_send.recovery_delay_to_seconds` from `Store` |
 | Multi-message | `recovery_multi_message.py` (`multi_message_slots_for_abandon`) |
 | Reason templates | `reason_template_recovery.py`, `store_reason_templates.py`, `recovery_message_templates.py` |
@@ -305,6 +306,7 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 
 | Date (UTC) | Summary |
 |------------|---------|
+| 2026-05-19 | **WhatsApp Production Reality v2 foundation:** 24h window + template decision logs (no send gates); per-store `provider_connected` / `templates_ready` / `delivery_truth_ready`; admin merchant readiness signal. Commit: **`feat: add whatsapp production reality v2 foundation`**. |
 | 2026-05-19 | **Twilio send fix:** removed unsupported `status_callback_method` from `messages.create`; keep `status_callback` only; `[WA STATUS CALLBACK CONFIG]` log. Commit: **`fix: remove unsupported twilio status callback method`**. |
 | 2026-05-19 | **WhatsApp Delivery Truth callback wiring:** `TWILIO_STATUS_CALLBACK_URL` or `CARTFLOW_PUBLIC_BASE_URL` → `status_callback` on Twilio `messages.create`; `[WA STATUS CALLBACK RECEIVED]` on status webhook. Commit: **`fix: wire twilio status callbacks into delivery truth`**. |
 | 2026-05-19 | **WhatsApp Delivery Truth v1:** `services/whatsapp_delivery_truth_v1.py` + `POST /webhook/whatsapp/status` + `whatsapp_delivery_truth` table; truth levels (`accepted_by_provider` … `failed_delivery`); `[WA DELIVERY EVENT]` / `[WA DELIVERY TRUTH]`; send records acceptance only; attribution unchanged. Commit: **`feat: add whatsapp delivery truth foundation v1`**. |

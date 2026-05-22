@@ -440,6 +440,19 @@ def send_whatsapp(
     )
 
     try:
+        from services.whatsapp_production_reality_v2 import (
+            observe_outbound_whatsapp_context,
+        )
+
+        observe_outbound_whatsapp_context(
+            customer_phone=phone,
+            store_slug=(wa_trace_store_slug or "")[:255],
+            context="send_whatsapp",
+        )
+    except Exception:  # noqa: BLE001
+        pass
+
+    try:
         client = Client(sid, token)
         create_kwargs: Dict[str, Any] = {
             "from_": from_number,

@@ -340,6 +340,26 @@ def _whatsapp_card(admin_rt: dict[str, Any]) -> dict[str, Any]:
     else:
         lines.append("آخر فشل مزود: لا يوجد تصنيف حديث")
 
+    production_reality_v2: dict[str, Any] = {}
+    try:
+        from services.whatsapp_production_reality_v2 import (
+            build_platform_whatsapp_production_snapshot,
+        )
+
+        production_reality_v2 = build_platform_whatsapp_production_snapshot()
+        level = str(production_reality_v2.get("merchant_readiness_level") or "")
+        if level == "sandbox_only":
+            level_ar = "تجريبي فقط"
+        elif level == "production_ready":
+            level_ar = "جاهز للإنتاج"
+        elif level == "partial":
+            level_ar = "جزئي"
+        else:
+            level_ar = level or "—"
+        lines.append(f"جاهزية تاجر واتساب (v2): {level_ar}")
+    except Exception:  # noqa: BLE001
+        pass
+
     return {
         "status": status,
         "status_label_ar": "تنبيه" if status == "warn" else ("غير معروف" if status == "unknown" else "سليم"),
@@ -347,6 +367,7 @@ def _whatsapp_card(admin_rt: dict[str, Any]) -> dict[str, Any]:
         "recent_failed_24h": fail_i,
         "last_provider_failure_ar": failure_class or "—",
         "detail_lines_ar": lines,
+        "production_reality_v2": production_reality_v2,
     }
 
 
