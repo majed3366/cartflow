@@ -305,6 +305,7 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 
 | Date (UTC) | Summary |
 |------------|---------|
+| 2026-05-19 | **Twilio send fix:** removed unsupported `status_callback_method` from `messages.create`; keep `status_callback` only; `[WA STATUS CALLBACK CONFIG]` log. Commit: **`fix: remove unsupported twilio status callback method`**. |
 | 2026-05-19 | **WhatsApp Delivery Truth callback wiring:** `TWILIO_STATUS_CALLBACK_URL` or `CARTFLOW_PUBLIC_BASE_URL` → `status_callback` on Twilio `messages.create`; `[WA STATUS CALLBACK RECEIVED]` on status webhook. Commit: **`fix: wire twilio status callbacks into delivery truth`**. |
 | 2026-05-19 | **WhatsApp Delivery Truth v1:** `services/whatsapp_delivery_truth_v1.py` + `POST /webhook/whatsapp/status` + `whatsapp_delivery_truth` table; truth levels (`accepted_by_provider` … `failed_delivery`); `[WA DELIVERY EVENT]` / `[WA DELIVERY TRUTH]`; send records acceptance only; attribution unchanged. Commit: **`feat: add whatsapp delivery truth foundation v1`**. |
 | 2026-05-19 | **Purchase Attribution evidence fix:** latest recovery send per session/store (not oldest `CartRecoveryLog`); `[ATTRIBUTION EVIDENCE]` log; stale sends → `no_current_recovery_send_evidence`. Commit: **`fix: use current recovery evidence for purchase attribution`**. |

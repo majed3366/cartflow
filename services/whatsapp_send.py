@@ -449,7 +449,13 @@ def send_whatsapp(
         status_callback_url = resolve_twilio_status_callback_url()
         if status_callback_url:
             create_kwargs["status_callback"] = status_callback_url
-            create_kwargs["status_callback_method"] = "POST"
+            cfg_line = (
+                f"[WA STATUS CALLBACK CONFIG] enabled=true url={status_callback_url}"
+            )
+        else:
+            cfg_line = "[WA STATUS CALLBACK CONFIG] enabled=false url="
+        print(cfg_line)
+        logger.info("%s", cfg_line)
         msg = client.messages.create(**create_kwargs)
         twilio_status = getattr(msg, "status", None)
         print("WhatsApp sent successfully:", getattr(msg, "sid", None))

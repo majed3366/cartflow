@@ -228,7 +228,7 @@ class TwilioStatusCallbackWiringTests(unittest.TestCase):
             kwargs.get("status_callback"),
             "https://app.example/webhook/whatsapp/status",
         )
-        self.assertEqual(kwargs.get("status_callback_method"), "POST")
+        self.assertNotIn("status_callback_method", kwargs)
 
     def test_status_webhook_emits_callback_received_log(self) -> None:
         client = TestClient(app)
