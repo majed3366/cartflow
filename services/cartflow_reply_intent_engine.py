@@ -904,6 +904,50 @@ def process_continuation_after_customer_reply(
     if bh.get("continuation_escalated_human") is True:
         log.info("[CONTINUATION] skip: already escalated session_id=%s", ac.recovery_session_id)
         return
+
+    def _emit_continuation_stopped_purchase() -> None:
+        try:
+            print(
+                f"[CONTINUATION STOPPED] session_id={(getattr(ac, 'recovery_session_id', None) or '')[:80]} "
+                "intent=PURCHASE type=stopped",
+                flush=True,
+            )
+        except OSError:
+            pass
+
+    if str(bh.get("lifecycle_terminal_state") or "").strip() == "closed_purchase":
+        _emit_continuation_stopped_purchase()
+        log.info(
+            "[CONTINUATION] skip: lifecycle terminal closed_purchase session_id=%s",
+            ac.recovery_session_id,
+        )
+        return
+
+    rk_cont_early = ""
+    try:
+        from main import _recovery_key_from_payload, _normalize_store_slug
+        from services.purchase_lifecycle_closure import is_purchase_lifecycle_closed
+
+        ss = _continuation_wa_trace_store_slug(ac) or _normalize_store_slug(
+            {"store": _store_slug_for_ac(ac)}
+        )
+        rk_cont_early = _recovery_key_from_payload(
+            {
+                "store": ss,
+                "session_id": (getattr(ac, "recovery_session_id", None) or ""),
+                "cart_id": (getattr(ac, "zid_cart_id", None) or ""),
+            }
+        )
+        if rk_cont_early and is_purchase_lifecycle_closed(rk_cont_early):
+            _emit_continuation_stopped_purchase()
+            log.info(
+                "[CONTINUATION] skip: purchase lifecycle closed session_id=%s",
+                ac.recovery_session_id,
+            )
+            return
+    except Exception:  # noqa: BLE001
+        rk_cont_early = ""
+
     if bh.get("continuation_automation_stopped") is True:
         log.info("[CONTINUATION] skip: automation stopped session_id=%s", ac.recovery_session_id)
         return
@@ -917,6 +961,41 @@ def process_continuation_after_customer_reply(
         return
 
     reason_tag = _reason_tag_for_abandoned_cart(ac)
+    try:
+        from services.purchase_lifecycle_closure import (
+            block_recovery_if_purchase_lifecycle_closed,
+            is_purchase_lifecycle_closed,
+            record_purchase_lifecycle_closure,
+        )
+
+        rk_cont = ""
+        try:
+            from main import _recovery_key_from_payload, _normalize_store_slug
+
+            ss = _continuation_wa_trace_store_slug(ac) or _normalize_store_slug(
+                {"store": _store_slug_for_ac(ac)}
+            )
+            rk_cont = _recovery_key_from_payload(
+                {
+                    "store": ss,
+                    "session_id": (getattr(ac, "recovery_session_id", None) or ""),
+                    "cart_id": (getattr(ac, "zid_cart_id", None) or ""),
+                }
+            )
+        except Exception:  # noqa: BLE001
+            rk_cont = ""
+        if not rk_cont:
+            rk_cont = rk_cont_early
+        if rk_cont and is_purchase_lifecycle_closed(rk_cont):
+            _emit_continuation_stopped_purchase()
+            log.info(
+                "[CONTINUATION] skip: purchase lifecycle closed session_id=%s",
+                ac.recovery_session_id,
+            )
+            return
+    except Exception:  # noqa: BLE001
+        rk_cont = rk_cont_early or ""
+
     dec = decide_continuation(
         inbound_body=body,
         behavioral=bh,
@@ -1005,6 +1084,24 @@ def process_continuation_after_customer_reply(
             )
         except OSError:
             pass
+
+    try:
+        from services.purchase_lifecycle_closure import (
+            record_purchase_lifecycle_closure,
+        )
+        from services.reply_intent_handling import INTENT_PURCHASE
+
+        if dec.lifecycle_intent == INTENT_PURCHASE and rk_cont:
+            record_purchase_lifecycle_closure(
+                rk_cont,
+                session_id=sid_log,
+                cart_id=(getattr(ac, "zid_cart_id", None) or "").strip(),
+                reason="purchase_detected",
+                source="continuation_purchase_intent",
+                ac=ac,
+            )
+    except Exception:  # noqa: BLE001
+        pass
 
     if dec.action == CONTINUATION_ACTION_ESCALATE:
         patch["continuation_escalated_human"] = True

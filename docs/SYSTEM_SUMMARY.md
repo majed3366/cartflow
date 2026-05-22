@@ -303,6 +303,7 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 
 | Date (UTC) | Summary |
 |------------|---------|
+| 2026-05-19 | **Purchase completion + closed lifecycle v1:** `purchase_lifecycle_closure` — `terminal_state=closed_purchase`, `[PURCHASE LIFECYCLE CLOSED]`, `[RECOVERY BLOCKED] reason=lifecycle_closed_purchase`; wired on conversion, reply PURCHASE, recovery impl gate. Commit: **`feat: add purchase completion and closed lifecycle v1`**. |
 | 2026-05-19 | **Continuation Layer Stabilization v1:** Safe continuation by lifecycle intent (PRICE→reassurance/clarify, DELIVERY→shipping reassurance, PURCHASE/STOP→stop continuation); no `send_cheaper_alternative`; `[CONTINUATION DECISION]` logs. Commit: **`feat: stabilize continuation layer before product intelligence`**. |
 | 2026-05-19 | **Reply intent webhook hook:** `run_inbound_whatsapp_reply_intent_hook` from `POST /webhook/whatsapp` after `[WA REPLY]`; `[REPLY INTENT HOOK]` / `[REPLY INTENT CONTEXT]` / `[REPLY INTENT]` or `[REPLY INTENT SKIPPED]` (no silent skip). Commit: **`fix: connect inbound whatsapp replies to reply intent handling`**. |
 | 2026-05-19 | **Reply Intent Handling v1:** `services/reply_intent_handling.py` — WhatsApp reply → PURCHASE/STOP/PRICE/DELIVERY/UNKNOWN → lifecycle decision/action; `[REPLY INTENT]` logs on inbound behavioral path (additive). Commit: **`feat: add reply intent handling v1`**. |

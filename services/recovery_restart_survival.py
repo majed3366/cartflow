@@ -1249,6 +1249,18 @@ def evaluate_resume_safety(
     )
 
     if _is_user_converted(rk):
+        try:
+            from services.purchase_lifecycle_closure import (
+                block_recovery_if_purchase_lifecycle_closed,
+            )
+
+            block_recovery_if_purchase_lifecycle_closed(
+                rk,
+                session_id=(row.session_id or "").strip(),
+                cart_id=(row.cart_id or "").strip() if row.cart_id else "",
+            )
+        except Exception:  # noqa: BLE001
+            pass
         return False, "purchase_completed"
     if _recovery_resolve_user_returned_for_send(
         rk,

@@ -323,11 +323,25 @@ def run_inbound_whatsapp_reply_intent_hook(body: Any, from_number: Any) -> None:
         )
         return
 
-    handle_customer_reply_lifecycle_intent_v1(
+    ri_result = handle_customer_reply_lifecycle_intent_v1(
         raw_body,
         session_id=session_id,
         cart_id=cart_id,
     )
+    try:
+        from services.purchase_lifecycle_closure import (
+            record_purchase_lifecycle_closure_from_reply_intent,
+        )
+
+        record_purchase_lifecycle_closure_from_reply_intent(
+            ri_result,
+            recovery_key=recovery_key,
+            session_id=session_id,
+            cart_id=cart_id,
+            ac=ac,
+        )
+    except Exception:  # noqa: BLE001
+        pass
 
 
 def handle_customer_reply_lifecycle_intent_v1(

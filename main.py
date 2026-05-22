@@ -5148,6 +5148,19 @@ def _mark_user_converted_for_payload(payload: dict[str, Any]) -> None:
     with _recovery_session_lock:
         _session_recovery_converted[key] = True
     log.info("user_converted recorded for recovery_key=%s", key)
+    try:
+        from services.purchase_lifecycle_closure import (
+            record_purchase_lifecycle_closure_from_conversion,
+        )
+
+        record_purchase_lifecycle_closure_from_conversion(
+            key,
+            session_id=_session_part_from_payload(payload),
+            cart_id=(_cart_id_str_from_payload(payload) or "") or "",
+            source="conversion_payload",
+        )
+    except Exception:  # noqa: BLE001
+        pass
 
 
 def _mark_session_converted(store_slug: str, session_id: str) -> str:
@@ -5156,6 +5169,18 @@ def _mark_session_converted(store_slug: str, session_id: str) -> str:
     with _recovery_session_lock:
         _session_recovery_converted[key] = True
     log.info("conversion recorded for recovery_key=%s", key)
+    try:
+        from services.purchase_lifecycle_closure import (
+            record_purchase_lifecycle_closure_from_conversion,
+        )
+
+        record_purchase_lifecycle_closure_from_conversion(
+            key,
+            session_id=(session_id or "").strip(),
+            source="session_converted",
+        )
+    except Exception:  # noqa: BLE001
+        pass
     return key
 
 
@@ -6429,6 +6454,19 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
     نص الرسالة من محرّك القراءة حسب ‎reason_tag‎ المحفوظ، أو رسالة احتياطية.
     """
     store_slug, _bound_row = _bind_recovery_runtime_store_identity(recovery_key, store_slug)
+    try:
+        from services.purchase_lifecycle_closure import (
+            block_recovery_if_purchase_lifecycle_closed,
+        )
+
+        if block_recovery_if_purchase_lifecycle_closed(
+            recovery_key,
+            session_id=session_id,
+            cart_id=(cart_id or "") or "",
+        ):
+            return
+    except Exception:  # noqa: BLE001
+        pass
     if recovery_context is not None:
         _exec_tail = recovery_context.get("__schedule_exec_tail")
         recovery_context = dict(recovery_context)
