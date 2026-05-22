@@ -303,6 +303,7 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 
 | Date (UTC) | Summary |
 |------------|---------|
+| 2026-05-19 | **WhatsApp Production Reality v1 (audit):** `docs/whatsapp_production_reality_v1.md` + `tests/test_whatsapp_production_reality_audit_v1.py` — provider/template/24h/deliverability/ops matrix; verdict **PARTIAL**; no send/runtime changes. Commit: **`audit: verify whatsapp production reality v1`**. |
 | 2026-05-19 | **Product Intelligence Foundation v1:** `services/product_intelligence_foundation_v1.py` — `ProductContext`, `ProductContextResolver`, `ProductIntelligenceContext` (facts only); `[PRODUCT CONTEXT]` / `[PRODUCT INTELLIGENCE]` logs; no recovery/continuation/widget wiring. Separate from `cartflow_product_intelligence.py`. Commit: **`feat: add product intelligence foundation v1`**. |
 | 2026-05-19 | **Purchase Attribution v1:** `services/purchase_attribution_v1.py` — confidence levels (`confirmed_recovery` … `not_attributed`) after Purchase Truth closure; `[ATTRIBUTION DECISION]` log; optional `recovery_events` row; does not block closure. Commit: **`feat: add purchase attribution decision layer v1`**. |
 | 2026-05-19 | **Integrations Foundation v1:** `NormalizedPlatformEvent` + `PlatformAdapter` scaffolds (Zid/Salla/Shopify); `services/platform_integration_gateway.py` routes normalized events to cart abandon / Purchase Truth / phone / future lifecycle hook; logs `[PLATFORM EVENT *]`; no live platform OAuth or webhook wiring. Commit: **`feat: add integrations foundation adapter layer v1`**. |
