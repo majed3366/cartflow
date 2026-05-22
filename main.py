@@ -189,6 +189,32 @@ async def whatsapp_webhook(request: Request):
     return PlainTextResponse("OK")
 
 
+@app.post("/dev/whatsapp-window-simulate")
+def dev_whatsapp_window_simulate(payload: dict = Body(...)) -> dict[str, Any]:
+    """
+    Dev-only: simulate last customer inbound age and log WA v2 window/template checks.
+    Disabled unless ENV=development (see no_dev_in_production middleware).
+    No WhatsApp send, recovery, or lifecycle execution.
+    """
+    if not _is_development_mode():
+        from fastapi.responses import JSONResponse
+
+        return JSONResponse(status_code=404, content={"detail": "Not found"})
+    from services.whatsapp_production_reality_v2 import simulate_whatsapp_window_check_dev
+
+    phone = payload.get("phone")
+    hours_ago = payload.get("last_inbound_hours_ago")
+    if phone is None or hours_ago is None:
+        return {
+            "ok": False,
+            "error": "phone and last_inbound_hours_ago required",
+        }
+    return simulate_whatsapp_window_check_dev(
+        phone=str(phone),
+        last_inbound_hours_ago=float(hours_ago),
+    )
+
+
 @app.post("/dev/whatsapp-decision-test")
 def whatsapp_decision_test(payload: dict = Body(...)) -> dict[str, Any]:
     """تجربة قرار الواتساب + إرسال مباشر (يسجَّل أيضاً خارج ‎ENV=development‎ لمطابقة ‎/decision-check‎).

@@ -90,6 +90,23 @@ Admin operational health WhatsApp card includes Arabic label for v2 level.
 
 ---
 
+## Dev simulation (no wait for 24h)
+
+**`POST /dev/whatsapp-window-simulate`** — only when `ENV=development` (404 in production).
+
+```json
+{
+  "phone": "9665XXXXXXXX",
+  "last_inbound_hours_ago": 25
+}
+```
+
+Expect `[WA WINDOW CHECK] window=outside_24h` and `[WA TEMPLATE DECISION] template_required=true`.
+
+Use `last_inbound_hours_ago: 1` for `inside_24h` / `freeform_allowed=true`. No send or recovery runs.
+
+---
+
 ## Real verification (production)
 
 1. Customer replies on WhatsApp → `[WA WINDOW CHECK] window=inside_24h`

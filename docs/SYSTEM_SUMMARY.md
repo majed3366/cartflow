@@ -306,6 +306,7 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 
 | Date (UTC) | Summary |
 |------------|---------|
+| 2026-05-19 | **WhatsApp 24h window dev simulate:** `POST /dev/whatsapp-window-simulate` (`ENV=development` only) — seed `last_inbound_hours_ago` for `[WA WINDOW CHECK]` / `[WA TEMPLATE DECISION]` without real wait. Commit: **`test: add whatsapp window simulation endpoint`**. |
 | 2026-05-19 | **WhatsApp Production Reality v2 foundation:** 24h window + template decision logs (no send gates); per-store `provider_connected` / `templates_ready` / `delivery_truth_ready`; admin merchant readiness signal. Commit: **`feat: add whatsapp production reality v2 foundation`**. |
 | 2026-05-19 | **Twilio send fix:** removed unsupported `status_callback_method` from `messages.create`; keep `status_callback` only; `[WA STATUS CALLBACK CONFIG]` log. Commit: **`fix: remove unsupported twilio status callback method`**. |
 | 2026-05-19 | **WhatsApp Delivery Truth callback wiring:** `TWILIO_STATUS_CALLBACK_URL` or `CARTFLOW_PUBLIC_BASE_URL` → `status_callback` on Twilio `messages.create`; `[WA STATUS CALLBACK RECEIVED]` on status webhook. Commit: **`fix: wire twilio status callbacks into delivery truth`**. |

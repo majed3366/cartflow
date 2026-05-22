@@ -111,6 +111,7 @@ def record_customer_inbound_observed(
     customer_phone_key: str,
     observed_at: Optional[datetime] = None,
     store_slug: str = "",
+    persist_event: bool = True,
 ) -> None:
     """In-process + optional DB hint; does not send messages."""
     key = _phone_key(customer_phone_key)
@@ -121,7 +122,8 @@ def record_customer_inbound_observed(
         prev = _inbound_observed_at.get(key)
         if prev is None or at > _ensure_aware(prev):
             _inbound_observed_at[key] = at
-    _persist_inbound_observation_event(key, at, store_slug)
+    if persist_event:
+        _persist_inbound_observation_event(key, at, store_slug)
 
 
 def _persist_inbound_observation_event(
@@ -513,6 +515,49 @@ def observe_outbound_whatsapp_context(
         "window": window.to_dict(),
         "template": template.to_dict(),
         "store_readiness": store_ready.to_dict(),
+    }
+
+
+def simulate_whatsapp_window_check_dev(
+    *,
+    phone: str,
+    last_inbound_hours_ago: float,
+) -> dict[str, Any]:
+    """
+    Dev-only helper: seed last inbound time and emit window/template logs.
+    No WhatsApp send, recovery, or lifecycle changes.
+    """
+    key = _phone_key(phone)
+    if len(key) < 11:
+        return {"ok": False, "error": "invalid_phone"}
+    try:
+        hours_ago = float(last_inbound_hours_ago)
+    except (TypeError, ValueError):
+        return {"ok": False, "error": "invalid_last_inbound_hours_ago"}
+    now = _utc_now()
+    observed_at = now - timedelta(hours=max(0.0, hours_ago))
+    record_customer_inbound_observed(
+        customer_phone_key=key,
+        observed_at=observed_at,
+        persist_event=False,
+    )
+    window = evaluate_conversation_window(customer_phone_key=key, now=now)
+    template = decide_template_routing(window)
+    log_window_and_template_decision(
+        customer_phone_key=key,
+        window=window,
+        template=template,
+        context="dev_simulate",
+    )
+    return {
+        "ok": True,
+        "phone_key": key,
+        "last_inbound_hours_ago": hours_ago,
+        "simulated_inbound_at": observed_at.isoformat(),
+        "window": window.to_dict(),
+        "template": template.to_dict(),
+        "pass_inside_24h": window.conversation_window_status == WINDOW_INSIDE,
+        "pass_outside_24h": window.conversation_window_status == WINDOW_OUTSIDE,
     }
 
 
