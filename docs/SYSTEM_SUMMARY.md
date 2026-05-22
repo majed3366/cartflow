@@ -100,6 +100,7 @@ Server-side template control (**`exit_intent_*`** on **`Store`**): `services/sto
 | `GET /dev/widget-test`, `/dev/widget-test/cart` | `main.py` | **DEV-only legacy monolith harness** — HTML loads **`/static/cartflow_widget.js`** directly (no **`widget_loader`**, no **`cartflow_widget_runtime`**). **`no_dev_in_production`**: **`404`** unless **`ENV=development`**; intentionally **not** in **`_DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT`**. **`/demo/store`** remains **layered V2**. |
 | `POST /webhook/zid` | `main.py` | Zid webhook ingestion. |
 | `POST` / `GET /webhook/whatsapp` | `main.py` | Twilio / inbound hook stubs (`[WA REPLY]` logging). |
+| `POST /webhook/whatsapp/status` | `routes/whatsapp_delivery_webhook.py` | Twilio status callbacks → `whatsapp_delivery_truth_v1` (`[WA DELIVERY EVENT]` / `[WA DELIVERY TRUTH]`); no recovery execution. |
 | `GET /demo/store`, `/demo/store/cart`, `/demo/store/checkout`, `/demo/cart`, `/demo/cart/checkout`, `/demo/store/product/{id}` | `main.py` | **Commerce sandbox (default `store_slug=demo`):** multi-page catalog, cart, lightweight checkout. |
 | `GET /demo/store2`, `/demo/store2/cart`, `/demo/store2/checkout`, `/demo/store2/product/{id}` | `main.py` | Same UI with **isolation** (`demo2` slug / `demo2_cart` localStorage) for recovery tests. |
 
@@ -124,6 +125,7 @@ Server-side template control (**`exit_intent_*`** on **`Store`**): `services/sto
 | Area | Modules |
 |------|---------|
 | WhatsApp send / gates | `whatsapp_send.py` (`send_whatsapp`, `should_send_whatsapp`), `whatsapp_recovery.py`, `whatsapp_queue.py` |
+| WhatsApp delivery truth (v1) | `whatsapp_delivery_truth_v1.py` — `DeliveryTruth`, status webhook ingest, `whatsapp_delivery_truth` table; `queued` ≠ delivered; attribution hook reserved (`customer_delivered_for_attribution_future`). See `docs/whatsapp_delivery_truth_v1.md`. |
 | Delays | `recovery_delay.py` (`get_recovery_delay` per tag), timing also in `whatsapp_send.recovery_delay_to_seconds` from `Store` |
 | Multi-message | `recovery_multi_message.py` (`multi_message_slots_for_abandon`) |
 | Reason templates | `reason_template_recovery.py`, `store_reason_templates.py`, `recovery_message_templates.py` |
@@ -303,6 +305,7 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 
 | Date (UTC) | Summary |
 |------------|---------|
+| 2026-05-19 | **WhatsApp Delivery Truth v1:** `services/whatsapp_delivery_truth_v1.py` + `POST /webhook/whatsapp/status` + `whatsapp_delivery_truth` table; truth levels (`accepted_by_provider` … `failed_delivery`); `[WA DELIVERY EVENT]` / `[WA DELIVERY TRUTH]`; send records acceptance only; attribution unchanged. Commit: **`feat: add whatsapp delivery truth foundation v1`**. |
 | 2026-05-19 | **Purchase Attribution evidence fix:** latest recovery send per session/store (not oldest `CartRecoveryLog`); `[ATTRIBUTION EVIDENCE]` log; stale sends → `no_current_recovery_send_evidence`. Commit: **`fix: use current recovery evidence for purchase attribution`**. |
 | 2026-05-19 | **WhatsApp Production Reality v1 (audit):** `docs/whatsapp_production_reality_v1.md` + `tests/test_whatsapp_production_reality_audit_v1.py` — provider/template/24h/deliverability/ops matrix; verdict **PARTIAL**; no send/runtime changes. Commit: **`audit: verify whatsapp production reality v1`**. |
 | 2026-05-19 | **Product Intelligence Foundation v1:** `services/product_intelligence_foundation_v1.py` — `ProductContext`, `ProductContextResolver`, `ProductIntelligenceContext` (facts only); `[PRODUCT CONTEXT]` / `[PRODUCT INTELLIGENCE]` logs; no recovery/continuation/widget wiring. Separate from `cartflow_product_intelligence.py`. Commit: **`feat: add product intelligence foundation v1`**. |

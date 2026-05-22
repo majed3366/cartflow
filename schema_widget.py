@@ -871,6 +871,15 @@ def _ensure_recovery_schedules_table(db: Any) -> None:
         log.debug("schema_widget recovery_schedules: %s", e)
 
 
+def ensure_whatsapp_delivery_truth_schema(db: Any) -> None:
+    """جدول ‎whatsapp_delivery_truth‎ — حقيقة التسليم (v1)."""
+    try:
+        db.create_all()
+    except (OSError, SQLAlchemyError) as e:
+        db.session.rollback()
+        log.debug("schema_widget whatsapp_delivery_truth: %s", e)
+
+
 def ensure_store_widget_schema(db: Any) -> None:
     """يُنادى من مسارات ‎API‎ (لا يعتمد على ‎main‎)."""
     global _store_widget_schema_full_once

@@ -295,6 +295,40 @@ class CartRecoveryLog(Base):
     sent_at = Column(DateTime, nullable=True)
 
 
+class WhatsAppDeliveryTruth(Base):
+    """
+    Lightweight delivery truth by provider message SID (v1).
+    Provider acceptance (queued) ≠ delivered_to_customer.
+    """
+
+    __tablename__ = "whatsapp_delivery_truth"
+
+    id = Column(Integer, primary_key=True)
+    provider = Column(String(32), nullable=False, default="twilio", index=True)
+    message_sid = Column(String(128), nullable=False, unique=True, index=True)
+    customer_phone = Column(String(100), nullable=True)
+    store_slug = Column(String(255), nullable=True, index=True)
+    session_id = Column(String(512), nullable=True, index=True)
+    cart_id = Column(String(255), nullable=True)
+    recovery_key = Column(String(512), nullable=True, index=True)
+    send_status = Column(String(64), nullable=True)
+    delivery_status = Column(String(64), nullable=True)
+    read_status = Column(String(64), nullable=True)
+    provider_error = Column(String(512), nullable=True)
+    truth_level = Column(String(64), nullable=False, default="unknown", index=True)
+    last_event_time = Column(DateTime, nullable=False)
+    raw_last_payload = Column(Text, nullable=True)
+    created_at = Column(
+        DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
+    )
+    updated_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+
+
 class RecoveryEvent(Base):
     __tablename__ = "recovery_events"
 

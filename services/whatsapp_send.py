@@ -438,6 +438,21 @@ def send_whatsapp(
         }
         print("[WA SENT]", phone, result)
         print("[WA STATUS]", twilio_status)
+        try:
+            from services.whatsapp_delivery_truth_v1 import (
+                record_provider_acceptance_from_send,
+            )
+
+            record_provider_acceptance_from_send(
+                provider="twilio",
+                message_sid=str(msg.sid or ""),
+                send_status=str(twilio_status or "queued"),
+                customer_phone=phone or "",
+                store_slug=(wa_trace_store_slug or "")[:255],
+                session_id=(wa_trace_session_id or "")[:512],
+            )
+        except Exception:  # noqa: BLE001
+            pass
         return result
     except Exception as e:  # noqa: BLE001 — إرجاع خطأ المزود للمتصل
         print("Twilio WhatsApp send failed:", str(e))

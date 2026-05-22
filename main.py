@@ -265,8 +265,12 @@ import routes.admin_ops  # noqa: F401,E402 — registers /admin/ops/* on admin r
 import routes.operational_control_admin  # noqa: F401,E402 — /admin/control targeted controls v1
 from routes.demo_panel import router as demo_panel_router  # noqa: E402
 from routes.ops import router as ops_router  # noqa: E402
+from routes.whatsapp_delivery_webhook import (  # noqa: E402
+    router as whatsapp_delivery_webhook_router,
+)
 
 app.include_router(ops_router)
+app.include_router(whatsapp_delivery_webhook_router)
 app.include_router(admin_operations_router)
 app.include_router(cartflow_router)
 app.include_router(cart_recovery_reason_router)

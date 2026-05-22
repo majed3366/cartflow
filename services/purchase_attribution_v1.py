@@ -4,6 +4,9 @@ Purchase Attribution v1 — confidence-based influence estimate after Purchase T
 
 Additive only: does not change Purchase Truth closure, lifecycle, WhatsApp, schedules,
 widget, dashboard, or integrations gateway. Not absolute causality.
+
+Delivery truth (v1): Twilio ``queued`` / ``accepted_by_provider`` is not delivery proof.
+Future confidence may use ``whatsapp_delivery_truth_v1.customer_delivered_for_attribution_future``.
 """
 from __future__ import annotations
 
