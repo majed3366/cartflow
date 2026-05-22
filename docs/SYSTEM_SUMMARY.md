@@ -303,6 +303,7 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 
 | Date (UTC) | Summary |
 |------------|---------|
+| 2026-05-19 | **Reply Intent Handling v1:** `services/reply_intent_handling.py` — WhatsApp reply → PURCHASE/STOP/PRICE/DELIVERY/UNKNOWN → lifecycle decision/action; `[REPLY INTENT]` logs on inbound behavioral path (additive). Commit: **`feat: add reply intent handling v1`**. |
 | 2026-05-19 | **Lifecycle returned_to_site propagation (verification tests):** `tests/test_lifecycle_returned_to_site_propagation.py` — lifecycle mirrors `_recovery_resolve_user_returned_for_send` (not merchant precedence alone); demo FALLBACK explained by cooldown/passive paths; STOP when resolve true. Commit: **`test: verify returned_to_site lifecycle propagation`**. |
 | 2026-05-19 | **Lifecycle Intelligence v1:** `services/lifecycle_intelligence.py` — behavior → decision (STOP/CONTINUE/WAIT/HANDOFF/FALLBACK) → action hints; `[LIFECYCLE DECISION]` / `[LIFECYCLE ACTION]` logs on recovery send gates, second-recovery check, dev delay test; no WhatsApp/delay/scanner/API changes. Commit: **`feat: add lifecycle intelligence decision layer v1`**. |
 | 2026-05-19 | **Admin Dashboard v2.1 — ambiguity reduction (UX):** Sidebar subtitles; plain labels (الحالة الآن / الإجراء المطلوب / تفاصيل إضافية); component-section helper; mobile sticky verdict bar; لوحة عامة metric copy (متاجر تم فحصها / متاجر تحتاج إعداد). Commit: **`ux: reduce admin dashboard ambiguity after human validation`**. |
