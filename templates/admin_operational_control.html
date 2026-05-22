@@ -1,0 +1,159 @@
+{% extends "layouts/admin_dashboard.html" %}
+{% block admin_title %}CartFlow Admin — التحكم التشغيلي{% endblock %}
+{% block admin_main_class %}w-full max-w-[88rem] space-y-8 px-6 py-8 pb-24 lg:px-10{% endblock %}
+
+{% block admin_content %}
+{% set st = control_state %}
+{% set fl = st.flags or {} %}
+{% set ver = verification or {} %}
+
+<section class="admin-card px-6 py-6">
+  <p class="text-xs font-semibold uppercase tracking-wide text-indigo-600">عزل المشكلة — لا إيقاف كامل للمنصة</p>
+  <h2 class="mt-2 text-2xl font-bold text-slate-900">التحكم التشغيلي المستهدف</h2>
+  <p class="mt-2 max-w-3xl text-sm text-slate-600">
+    أوقف مكوّناً واحداً (واتساب، جدولة، متجر، سبب، متابعة، مزوّد) ثم تحقق ثم استأنف.
+    كل عناصر التحكم <strong>معطّلة افتراضياً</strong> حتى تفعّلها صراحةً.
+  </p>
+  {% if request.query_params.get('applied') %}
+  <p class="mt-4 rounded-lg bg-emerald-50 px-4 py-2 text-sm text-emerald-800">تم تطبيق الإجراء (راجع السجل والتحقق أدناه).</p>
+  {% endif %}
+  {% if request.query_params.get('resumed') %}
+  <p class="mt-4 rounded-lg bg-sky-50 px-4 py-2 text-sm text-sky-800">تم استئناف التشغيل للنطاق المحدد.</p>
+  {% endif %}
+</section>
+
+<section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+  <div class="admin-card px-5 py-4">
+    <span class="text-xs text-slate-500">wa_send_allowed</span>
+    <p class="mt-1 text-lg font-semibold {% if fl.wa_send_allowed %}text-emerald-700{% else %}text-rose-700{% endif %}">
+      {{ fl.wa_send_allowed }}
+    </p>
+  </div>
+  <div class="admin-card px-5 py-4">
+    <span class="text-xs text-slate-500">schedule_creation_allowed</span>
+    <p class="mt-1 text-lg font-semibold {% if fl.schedule_creation_allowed %}text-emerald-700{% else %}text-rose-700{% endif %}">
+      {{ fl.schedule_creation_allowed }}
+    </p>
+  </div>
+  <div class="admin-card px-5 py-4">
+    <span class="text-xs text-slate-500">continuation_allowed</span>
+    <p class="mt-1 text-lg font-semibold {% if fl.continuation_allowed %}text-emerald-700{% else %}text-rose-700{% endif %}">
+      {{ fl.continuation_allowed }}
+    </p>
+  </div>
+  <div class="admin-card px-5 py-4">
+    <span class="text-xs text-slate-500">provider_paused</span>
+    <p class="mt-1 text-lg font-semibold">{{ st.provider_paused }} {% if st.provider_id %}({{ st.provider_id }}){% endif %}</p>
+  </div>
+</section>
+
+<div class="grid gap-6 lg:grid-cols-2">
+  {% for key, label_ar, ctrl in controls %}
+  <section class="admin-card px-6 py-5">
+    <h3 class="text-base font-semibold text-slate-900">{{ label_ar }}</h3>
+    <form method="post" action="/admin/control/apply" class="mt-4 space-y-3">
+      <input type="hidden" name="control" value="{{ ctrl }}" />
+      <label class="flex items-center gap-2 text-sm">
+        <input type="checkbox" name="enabled" value="1" class="rounded border-slate-300" />
+        تفعيل الإيقاف (افتراضي: غير مفعّل)
+      </label>
+      {% if ctrl == 'pause_store' %}
+      <input type="text" name="store_slug" placeholder="store_slug" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" />
+      {% endif %}
+      {% if ctrl == 'pause_reason' %}
+      <input type="text" name="reason_tag" placeholder="price / shipping / quality" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" />
+      {% endif %}
+      {% if ctrl == 'pause_provider' %}
+      <select name="provider" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm">
+        <option value="twilio">Twilio</option>
+        <option value="meta">Meta</option>
+        <option value="all">all</option>
+      </select>
+      {% endif %}
+      <input type="text" name="reason" placeholder="سبب التشغيل (إلزامي للتدقيق)" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" required />
+      <input type="text" name="operator" value="admin" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" />
+      <label class="flex items-center gap-2 text-sm text-amber-800">
+        <input type="checkbox" name="dry_run" value="1" class="rounded" />
+        تجربة جافة — [CONTROL DRY RUN] بدون إيقاف فعلي
+      </label>
+      <button type="submit" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700">تطبيق</button>
+    </form>
+  </section>
+  {% endfor %}
+</div>
+
+<section class="admin-card px-6 py-6">
+  <h3 class="text-base font-semibold text-slate-900">استئناف (Resume)</h3>
+  <form method="post" action="/admin/control/resume" class="mt-4 flex flex-wrap items-end gap-3">
+    <select name="target" class="rounded-lg border border-slate-200 px-3 py-2 text-sm">
+      <option value="all">الكل</option>
+      <option value="wa">واتساب</option>
+      <option value="scheduling">جدولة</option>
+      <option value="store">متجر</option>
+      <option value="reason">سبب</option>
+      <option value="continuation">متابعة</option>
+      <option value="provider">مزوّد</option>
+    </select>
+    <input type="text" name="store_slug" placeholder="store_slug (اختياري)" class="rounded-lg border border-slate-200 px-3 py-2 text-sm" />
+    <input type="text" name="reason_tag" placeholder="reason (اختياري)" class="rounded-lg border border-slate-200 px-3 py-2 text-sm" />
+    <label class="flex items-center gap-2 text-sm">
+      <input type="checkbox" name="dry_run" value="1" class="rounded" /> dry-run
+    </label>
+    <button type="submit" class="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white">استئناف</button>
+  </form>
+</section>
+
+<section class="admin-card px-6 py-6">
+  <h3 class="text-base font-semibold text-slate-900">التحقق بعد التحكم</h3>
+  <div class="mt-4 grid gap-4 sm:grid-cols-2">
+    <div>
+      <p class="text-xs font-medium text-slate-500">متاجر متأثرة</p>
+      <ul class="mt-2 text-sm text-slate-800">
+        {% for s in ver.affected_stores or [] %}
+        <li>{{ s }}</li>
+        {% else %}
+        <li class="text-slate-400">— لا إيقاف متجر —</li>
+        {% endfor %}
+      </ul>
+    </div>
+    <div>
+      <p class="text-xs font-medium text-slate-500">استرجاعات نشطة (جدولة/تشغيل)</p>
+      <p class="mt-2 text-sm">مجدولة: {{ (ver.affected_recoveries or {}).scheduled_count | default(0) }}</p>
+      <p class="text-sm">قيد التشغيل: {{ (ver.affected_recoveries or {}).running_count | default(0) }}</p>
+    </div>
+  </div>
+  {% if ver.runtime_impact %}
+  <pre class="mt-4 overflow-x-auto rounded-lg bg-slate-50 p-4 text-xs text-slate-700">{{ ver.runtime_impact | tojson(indent=2) }}</pre>
+  {% endif %}
+</section>
+
+<section class="admin-card px-6 py-6">
+  <h3 class="text-base font-semibold text-slate-900">السجل — [OPERATIONAL CONTROL EVENT]</h3>
+  <div class="mt-4 overflow-x-auto">
+    <table class="min-w-full text-left text-sm">
+      <thead class="border-b text-xs uppercase text-slate-500">
+        <tr>
+          <th class="py-2 pr-4">وقت</th>
+          <th class="py-2 pr-4">مشغّل</th>
+          <th class="py-2 pr-4">نطاق</th>
+          <th class="py-2 pr-4">أثر</th>
+          <th class="py-2">dry</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for ev in (st.recent_events or [])|reverse %}
+        <tr class="border-b border-slate-100">
+          <td class="py-2 pr-4 text-xs">{{ ev.at_utc }}</td>
+          <td class="py-2 pr-4">{{ ev.operator }}</td>
+          <td class="py-2 pr-4">{{ ev.scope }}</td>
+          <td class="py-2 pr-4 max-w-md truncate" title="{{ ev.effect }}">{{ ev.effect }}</td>
+          <td class="py-2">{{ ev.dry_run }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5" class="py-4 text-slate-400">لا أحداث بعد.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

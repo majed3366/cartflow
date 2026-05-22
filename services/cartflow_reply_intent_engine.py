@@ -900,6 +900,26 @@ def process_continuation_after_customer_reply(
     if not normal_recovery_message_was_sent_for_abandoned(ac):
         return
 
+    try:
+        from services.operational_control_v1 import evaluate_continuation_allowed
+
+        trace_slug_oc = _continuation_wa_trace_store_slug(ac)
+        cont_ev = evaluate_continuation_allowed(store_slug=trace_slug_oc or None)
+        if not cont_ev.allowed:
+            log.info(
+                "[CONTINUATION] operational_control_blocked reason=%s scope=%s",
+                cont_ev.block_reason,
+                cont_ev.scope,
+            )
+            print(
+                f"[OPERATIONAL CONTROL] continuation_allowed=false "
+                f"reason={cont_ev.block_reason} scope={cont_ev.scope}",
+                flush=True,
+            )
+            return
+    except Exception:  # noqa: BLE001
+        pass
+
     bh = behavioral_dict_for_abandoned_cart(ac)
     if bh.get("continuation_escalated_human") is True:
         log.info("[CONTINUATION] skip: already escalated session_id=%s", ac.recovery_session_id)

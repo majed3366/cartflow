@@ -48,14 +48,9 @@ router = APIRouter(tags=["admin"])
 # Sidebar nav keys (presentation only — no business logic).
 ADMIN_NAV_OVERVIEW = "overview"
 ADMIN_NAV_OPS_HEALTH = "ops-health"
+ADMIN_NAV_OPS_CONTROL = "ops-control"
 
 _ADMIN_PLACEHOLDER_PAGES: tuple[tuple[str, str, str, str], ...] = (
-    (
-        "/admin/control",
-        "ops-control",
-        "التحكم التشغيلي",
-        "إجراءات تشغيل مستقبلية: إيقاف/تشغيل آمن، فحص يدوي، وضع آمن، وإعادة محاولة.",
-    ),
     (
         "/admin/alerts",
         "ops-alerts",

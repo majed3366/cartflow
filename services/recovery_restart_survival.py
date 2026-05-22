@@ -953,6 +953,20 @@ def persist_recovery_schedule_durable(
             .first()
         )
         if row is None:
+            try:
+                from services.operational_control_v1 import (
+                    operational_control_blocks_schedule_creation,
+                )
+
+                if operational_control_blocks_schedule_creation(
+                    store_slug=store_slug,
+                    reason_tag=reason_tag,
+                    is_new_row=True,
+                ):
+                    return None
+            except Exception:  # noqa: BLE001
+                pass
+        if row is None:
             row = RecoverySchedule(
                 recovery_key=rk,
                 store_slug=(store_slug or "").strip()[:255],

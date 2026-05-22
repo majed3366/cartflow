@@ -303,6 +303,7 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 
 | Date (UTC) | Summary |
 |------------|---------|
+| 2026-05-19 | **Operational Control v1 (targeted):** `services/operational_control_v1.py` — pause WA / new scheduling / store / reason / continuation / provider; dry-run `[CONTROL DRY RUN]`; audit `[OPERATIONAL CONTROL EVENT]`; gates in `whatsapp_send`, `persist_recovery_schedule_durable` (new rows), continuation; `/admin/control` UI + API. Commit: **`feat: add targeted operational control foundation v1`**. |
 | 2026-05-19 | **Operational Maturity v1 (audit):** `docs/audit_operational_maturity_v1.md` + `tests/test_operational_maturity_audit_v1.py` — detect/explain/alert/control/verify matrix; admin health v2 PASS; kill switch + centralized alerts gaps. Commit: **`audit: verify operational maturity v1`**. |
 | 2026-05-19 | **Queue / Worker Maturity v1 (audit):** `docs/audit_queue_worker_maturity_v1.md` + `tests/test_queue_worker_maturity_audit_v1.py` — 10-scenario matrix (restart, duplicate, stale, resume, idempotency, terminal); multi-worker PARTIAL. Commit: **`audit: verify queue worker maturity v1`**. |
 | 2026-05-19 | **Lifecycle Truth Completion v1 (audit):** `docs/audit_lifecycle_truth_completion_v1.md` + `tests/test_lifecycle_truth_completion_audit_v1.py` — matrix for STOP/WAIT/CONTINUE/HANDOFF/FALLBACK/close paths; gaps checkout_started (widget-only), dual classifiers. Commit: **`audit: verify lifecycle truth completion v1`**. |
