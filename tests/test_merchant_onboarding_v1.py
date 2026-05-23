@@ -35,12 +35,15 @@ class MerchantOnboardingV1Tests(unittest.TestCase):
         store.cartflow_widget_enabled = False
         store.store_whatsapp_number = ""
         store.whatsapp_recovery_enabled = True
-        flow = build_merchant_onboarding_flow(store, emit_logs=False)
+        store.merchant_user_id = 1
+        flow = build_merchant_onboarding_flow(
+            store, merchant_user_id=1, emit_logs=False
+        )
         self.assertTrue(flow.show_simplified_home)
         self.assertFalse(flow.onboarding_complete)
         self.assertEqual(flow.total_steps, TOTAL_GUIDED_STEPS)
         self.assertGreaterEqual(flow.completed_steps, 1)
-        self.assertEqual(flow.current_step_ar, "ربط واتساب")
+        self.assertEqual(flow.current_step_ar, "ربط المتجر")
         titles = [s.title_ar for s in flow.steps]
         self.assertIn("إنشاء الحساب", titles)
         self.assertIn("تفعيل الودجيت", titles)
@@ -60,14 +63,17 @@ class MerchantOnboardingV1Tests(unittest.TestCase):
             "first_recovered_cart": False,
         }
         store = MagicMock()
-        store.zid_store_id = "demo"
+        store.zid_store_id = "merchant-shop-ready"
         store.access_token = "tok"
         store.is_active = True
         store.recovery_attempts = 2
         store.cartflow_widget_enabled = True
         store.store_whatsapp_number = "+966500000001"
         store.whatsapp_recovery_enabled = True
-        flow = build_merchant_onboarding_flow(store, emit_logs=False)
+        store.merchant_user_id = 1
+        flow = build_merchant_onboarding_flow(
+            store, merchant_user_id=1, emit_logs=False
+        )
         self.assertTrue(flow.first_recovery_ready)
         self.assertTrue(flow.onboarding_complete)
         self.assertFalse(flow.show_simplified_home)

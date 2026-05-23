@@ -97,26 +97,41 @@ _STEP_SPECS: list[dict[str, str]] = [
 ]
 
 
-def _step_is_complete(step_id: str, store: Optional[Any], ev: dict[str, Any]) -> bool:
+def _step_is_complete(
+    step_id: str,
+    store: Optional[Any],
+    ev: dict[str, Any],
+    *,
+    merchant_user_id: Optional[int] = None,
+) -> bool:
+    """Onboarding-only milestones — stricter than global ``evaluate_onboarding_readiness``."""
     flags = ev.get("flags") or {}
     milestones = ev.get("milestones") or {}
 
     if step_id == "account":
-        return store is not None
+        if store is None or merchant_user_id is None:
+            return False
+        owner = getattr(store, "merchant_user_id", None)
+        if owner is not None and int(owner) != int(merchant_user_id):
+            return False
+        return True
+
+    if store is None:
+        return False
 
     if step_id == "store":
-        return bool(flags.get("store_connected")) and bool(flags.get("recovery_enabled"))
+        token_ok = bool((getattr(store, "access_token", None) or "").strip())
+        recovery_on = bool(flags.get("recovery_enabled"))
+        return token_ok and recovery_on
 
     if step_id == "whatsapp":
-        if store is None:
-            return False
         num = (getattr(store, "store_whatsapp_number", None) or "").strip()
         wa_on = bool(getattr(store, "whatsapp_recovery_enabled", True))
+        if not num or not wa_on:
+            return False
         if ev.get("sandbox_mode_active"):
-            return bool(num) and wa_on
-        return bool(num) and wa_on and bool(
-            flags.get("whatsapp_configured") or flags.get("provider_ready")
-        )
+            return True
+        return bool(flags.get("whatsapp_configured") or flags.get("provider_ready"))
 
     if step_id == "widget":
         return bool(flags.get("widget_installed"))
@@ -150,9 +165,14 @@ def _compute_state_index(steps: list[MerchantOnboardingStep]) -> int:
 def build_merchant_onboarding_flow(
     store: Optional[Any] = None,
     *,
+    merchant_user_id: Optional[int] = None,
     emit_logs: bool = True,
 ) -> MerchantOnboardingFlow:
-    ev = evaluate_onboarding_readiness(store)
+    ev = evaluate_onboarding_readiness(store) if store is not None else {
+        "ready": False,
+        "flags": {},
+        "milestones": {},
+    }
     steps_out: list[MerchantOnboardingStep] = []
     for i, spec in enumerate(_STEP_SPECS, start=1):
         sid = spec["id"]
@@ -163,7 +183,9 @@ def build_merchant_onboarding_flow(
                 title_ar=spec["title_ar"],
                 outcome_ar=spec["outcome_ar"],
                 action_href=spec["action_href"],
-                is_complete=_step_is_complete(sid, store, ev),
+                is_complete=_step_is_complete(
+                    sid, store, ev, merchant_user_id=merchant_user_id
+                ),
             )
         )
 
@@ -171,7 +193,7 @@ def build_merchant_onboarding_flow(
     incomplete = [s for s in steps_out if not s.is_complete]
     state_index = _compute_state_index(steps_out)
 
-    first_recovery_ready = completed >= TOTAL_GUIDED_STEPS or bool(ev.get("ready"))
+    first_recovery_ready = completed >= TOTAL_GUIDED_STEPS
     onboarding_complete = first_recovery_ready
 
     if incomplete:
@@ -199,11 +221,12 @@ def build_merchant_onboarding_flow(
 
     if emit_logs:
         log.info(
-            "[MERCHANT ONBOARDING] completed=%s/%s state=%s ready=%s",
+            "[MERCHANT ONBOARDING] completed=%s/%s state=%s ready=%s store_present=%s",
             completed,
             TOTAL_GUIDED_STEPS,
             state_index,
             first_recovery_ready,
+            store is not None,
         )
 
     return MerchantOnboardingFlow(

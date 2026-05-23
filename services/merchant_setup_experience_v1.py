@@ -233,11 +233,16 @@ def _sanitize_merchant_text(text: str) -> str:
 def build_merchant_setup_experience(
     store: Optional[Any] = None,
     *,
+    merchant_user_id: Optional[int] = None,
     emit_logs: bool = True,
 ) -> MerchantSetupExperience:
     from services.merchant_onboarding_v1 import build_merchant_onboarding_flow
 
-    flow = build_merchant_onboarding_flow(store, emit_logs=emit_logs)
+    flow = build_merchant_onboarding_flow(
+        store,
+        merchant_user_id=merchant_user_id,
+        emit_logs=emit_logs,
+    )
     remaining = max(0, flow.total_steps - flow.completed_steps)
     percent = int(round(100.0 * flow.completed_steps / flow.total_steps)) if flow.total_steps else 0
 
@@ -305,10 +310,38 @@ def merchant_copy_is_safe_for_display(experience: MerchantSetupExperience) -> bo
 
 def build_merchant_setup_experience_api_payload(
     store: Optional[Any] = None,
+    *,
+    cookies: Optional[dict[str, str]] = None,
 ) -> dict[str, Any]:
+    from services.merchant_onboarding_store import (
+        log_onboarding_flow_result,
+        resolve_merchant_onboarding_store,
+    )
     from services.merchant_onboarding_v1 import build_merchant_onboarding_flow
 
-    exp = build_merchant_setup_experience(store, emit_logs=False)
+    owned_store, resolution = resolve_merchant_onboarding_store(cookies=cookies)
+    if store is not None and owned_store is None:
+        pass
+    elif owned_store is not None:
+        store = owned_store
+
+    mid = resolution.merchant_id
+    exp = build_merchant_setup_experience(
+        store,
+        merchant_user_id=mid,
+        emit_logs=False,
+    )
+    flow = build_merchant_onboarding_flow(
+        store,
+        merchant_user_id=mid,
+        emit_logs=False,
+    )
+    log_onboarding_flow_result(
+        resolution,
+        ready=flow.onboarding_complete,
+        completed_steps=flow.completed_steps,
+    )
     out = exp.to_dict()
-    out.update(build_merchant_onboarding_flow(store, emit_logs=False).to_dict())
+    out.update(flow.to_dict())
+    out["merchant_store_display_name"] = resolution.store_name or "متجرك"
     return out

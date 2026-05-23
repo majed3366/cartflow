@@ -14051,7 +14051,7 @@ def api_dashboard_recovery_trend():
 
 
 @app.get("/api/dashboard/summary")
-def api_dashboard_summary():
+def api_dashboard_summary(request: Request):
     from services.dashboard_summary_query_profiler import (  # noqa: PLC0415
         dashboard_summary_profile_begin,
         dashboard_summary_profile_end,
@@ -14065,7 +14065,9 @@ def api_dashboard_summary():
             _merchant_dashboard_db_ready()
         with dashboard_summary_profile_span("_dashboard_recovery_store_row"):
             dash_store = _dashboard_recovery_store_row()
-        body = _api_json_dashboard_summary(dash_store)
+        body = _api_json_dashboard_summary(
+            dash_store, cookies=dict(request.cookies)
+        )
         return j({"ok": True, **body})
     except Exception as e:  # noqa: BLE001
         db.session.rollback()
@@ -14569,11 +14571,24 @@ def _merchant_phone_display_masked(raw: Optional[str]) -> str:
     return "••••" + digits[-4:]
 
 
-def _merchant_dashboard_shell_store_fields(dash_store: Optional[Any]) -> Dict[str, Any]:
+def _merchant_dashboard_shell_store_fields(
+    dash_store: Optional[Any],
+    *,
+    cookies: Optional[dict[str, str]] = None,
+) -> Dict[str, Any]:
     """حقول قراءة فقط من صف ‎Store‎ — بدون قوائم استرجاع أو تجميعات ثقيلة."""
-    store_name = "متجرك"
-    if dash_store is not None:
-        sn = (getattr(dash_store, "name", None) or "").strip()
+    from services.merchant_onboarding_store import (
+        merchant_store_display_name,
+        resolve_merchant_onboarding_store,
+    )
+
+    owned_store, _resolution = resolve_merchant_onboarding_store(cookies=cookies)
+    label_store = owned_store if owned_store is not None else dash_store
+    store_name = merchant_store_display_name(label_store)
+    if dash_store is not None and label_store is dash_store:
+        sn = (getattr(dash_store, "widget_display_name", None) or "").strip()
+        if not sn:
+            sn = (getattr(dash_store, "name", None) or "").strip()
         if sn:
             store_name = sn[:80]
     zid_disp = (
@@ -14624,7 +14639,11 @@ def _merchant_dashboard_shell_store_fields(dash_store: Optional[Any]) -> Dict[st
     }
 
 
-def _api_json_dashboard_summary(dash_store: Optional[Any]) -> Dict[str, Any]:
+def _api_json_dashboard_summary(
+    dash_store: Optional[Any],
+    *,
+    cookies: Optional[dict[str, str]] = None,
+) -> Dict[str, Any]:
     """‎KPI‎ + شهر + أسباب + شارة الواجهة + عداد السلال في القائمة (بدون استعلام قائمة VIP/متابعة)."""
     from services.dashboard_summary_query_profiler import (  # noqa: PLC0415
         dashboard_summary_profile_span,
@@ -14725,7 +14744,7 @@ def _api_json_dashboard_summary(dash_store: Optional[Any]) -> Dict[str, Any]:
         "merchant_nav_badge_followup": 0,
         "merchant_nav_badge_vip": 0,
         "merchant_setup_experience": build_merchant_setup_experience_api_payload(
-            dash_store
+            cookies=cookies
         ),
     }
 
@@ -14912,7 +14931,9 @@ def dashboard(request: Request):
     stall_trace_checkpoint("dashboard_after_merchant_db_ready")
     dash_store = _dashboard_recovery_store_row()
     now_utc = datetime.now(timezone.utc)
-    shell_store = _merchant_dashboard_shell_store_fields(dash_store)
+    shell_store = _merchant_dashboard_shell_store_fields(
+        dash_store, cookies=dict(request.cookies)
+    )
     stall_trace_checkpoint("dashboard_before_template_render")
     resp = templates.TemplateResponse(
         request,
@@ -15118,7 +15139,7 @@ def dashboard_vip_cart_settings(request: Request):
 
 
 @app.get("/api/merchant/setup-experience")
-def api_merchant_setup_experience():
+def api_merchant_setup_experience(request: Request):
     """بطاقة إعداد التاجر — نسخة آمنة دون مصطلحات تشغيل داخلية."""
     from services.merchant_setup_experience_v1 import (  # noqa: PLC0415
         build_merchant_setup_experience_api_payload,
@@ -15127,8 +15148,9 @@ def api_merchant_setup_experience():
     wall0 = time.perf_counter()
     _merchant_dashboard_db_ready()
     try:
-        dash_store = _dashboard_recovery_store_row()
-        payload = build_merchant_setup_experience_api_payload(dash_store)
+        payload = build_merchant_setup_experience_api_payload(
+            cookies=dict(request.cookies)
+        )
         return j({"ok": True, "merchant_setup_experience": payload})
     except (OSError, TypeError, ValueError) as e:
         log.warning("api merchant/setup-experience: %s", e)

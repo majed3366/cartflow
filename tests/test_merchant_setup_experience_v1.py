@@ -83,14 +83,17 @@ class MerchantSetupExperienceV1Tests(unittest.TestCase):
             "first_recovered_cart": False,
         }
         store = MagicMock()
-        store.zid_store_id = "demo"
+        store.zid_store_id = "merchant-shop-ready"
         store.access_token = "tok"
+        store.merchant_user_id = 1
         store.is_active = True
         store.recovery_attempts = 2
         store.cartflow_widget_enabled = True
         store.store_whatsapp_number = "+966500000001"
         store.whatsapp_recovery_enabled = True
-        exp = build_merchant_setup_experience(store, emit_logs=False)
+        exp = build_merchant_setup_experience(
+            store, merchant_user_id=1, emit_logs=False
+        )
         self.assertEqual(exp.setup_state_label_ar, SETUP_STATE_FULL)
         self.assertEqual(exp.readiness_percent, 100)
         self.assertEqual(exp.remaining_setup_count, 0)
