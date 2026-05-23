@@ -1,6 +1,6 @@
 :root {
   --topbar-height: 64px;
-  --sidebar-width: 200px;
+  --sidebar-width: 220px;
   --ma-content-max: 1120px;
   --ma-settings-max: 700px;
   --ma-topbar-h: var(--topbar-height);
@@ -1005,6 +1005,10 @@ nav.ma-sidebar-nav {
   height: 100%;
 }
 
+.ma-home-top:has(#ma-setup-experience-root[hidden]) {
+  grid-template-columns: 1fr;
+}
+
 .ma-home-reasons {
   margin-bottom: 16px;
 }
@@ -1863,7 +1867,6 @@ button.ma-vip-suggest-btn.va-btn {
 
 @media (max-width: 1100px) {
   .ma-gtb-date { display: none; }
-  .ma-gtb-account { max-width: 88px; }
 }
 
 /* ===== Mobile / tablet: drawer nav, full-width content, no desktop sidebar reserve ===== */

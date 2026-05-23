@@ -309,6 +309,7 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 
 | Date (UTC) | Summary |
 |------------|---------|
+| 2026-05-19 | **Sidebar width:** `--sidebar-width` 200px → 220px لقراءة أوضح للتسميات الطويلة. Commit: **`ui: increase dashboard sidebar width to 220px`**. |
 | 2026-05-19 | **Dashboard final polish:** جانبي 200px، إعدادات بعرض 700px، صف علوي للرئيسية (جاهزية + ملخص الشهر)، أدوات علوية (إشعارات/حساب/باقة/خروج placeholders). Commit: **`ui: final dashboard polish and compact layout`**. |
 | 2026-05-19 | **Dashboard naming cleanup:** قائمة الإعدادات (واتساب / الودجيت / الحساب والمتجر)، عنوان واحد في `pageTitle` + `pageSub`، حجز أسفل الجانبي للحساب/الباقة لاحقاً. Commit: **`ui: clean dashboard naming and preserve simple navigation`**. |
 | 2026-05-19 | **Merchant dashboard UX cleanup:** جانبي الرئيسية (نظرة عامة / إعداد / ملخص الشهر)، بطاقة جاهزية في المحتوى، إزالة معاينة الودجيت وإجراءات سريعة، ملخص الشهر بجانب KPI. Commit: **`ui: clean up merchant dashboard layout after navigation migration`**. |
