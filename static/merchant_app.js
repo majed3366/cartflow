@@ -7,12 +7,23 @@
     followup: "السلال",
     completed: "السلال",
     vip: "السلال",
-    messages: "الرسائل",
+    messages: "الرسائل المرسلة",
     reasons: "أسباب التردد",
     "trigger-templates": "قوالب الاسترجاع",
     widget: "الودجيت",
     whatsapp: "واتساب",
-    settings: "إعدادات عامة",
+    settings: "الحساب والمتجر",
+  };
+
+  var PAGE_SUBTITLES = {
+    messages: "سجل رسائل استرداد واتساب المسجّلة لمتجرك",
+    reasons: "توزيع أسباب ترك السلة خلال آخر 30 يوماً",
+    "trigger-templates":
+      "سلسلة مراحل الاسترجاع لكل سبب — طمأنة ثم عرض ثم بديل (وليس تكرار نفس الرسالة).",
+    widget: "مظهر الودجيت ومتى يظهر للعميل — بدون إعدادات تقنية معقدة",
+    whatsapp:
+      "رقم المتجر وتفعيل استرجاع الواتساب — تُحفظ لمتجرك دون إرسال تجريبي من هذه الصفحة",
+    settings: "تفضيلات تشغيلية بسيطة — لا تغيّر سلوك الاسترجاع أو الواتساب تلقائياً",
   };
 
   var CART_TAB_TITLES = {
@@ -162,9 +173,15 @@
     });
   }
 
-  function setPageTitle(text) {
+  function setPageTitle(text, pageKey) {
     var pt = byId("pageTitle");
+    var ps = byId("pageSub");
     if (pt) pt.textContent = text || "";
+    var sub = pageKey && PAGE_SUBTITLES[pageKey] ? PAGE_SUBTITLES[pageKey] : "";
+    if (ps) {
+      ps.textContent = sub;
+      ps.hidden = !sub;
+    }
   }
 
   function openSetupSteps() {
@@ -268,7 +285,7 @@
       var visiblePage = resolveCartPage(cartTab);
       var el = byId("page-" + visiblePage);
       if (el) el.classList.add("active");
-      setPageTitle(CART_TAB_TITLES[cartTab] || TITLES.carts);
+      setPageTitle(CART_TAB_TITLES[cartTab] || TITLES.carts, null);
       if (visiblePage === "carts") {
         initCartFiltersOnce();
         applyCartTabFilters(cartTab);
@@ -278,7 +295,7 @@
     } else {
       var pageEl = byId("page-" + page);
       if (pageEl) pageEl.classList.add("active");
-      setPageTitle(TITLES[page] || SECTION_LABELS[section] || "");
+      setPageTitle(TITLES[page] || SECTION_LABELS[section] || "", page);
       updateNavActive(page, null);
       if (page === "home") setHomeNavActive("overview");
       runPageHooks(page);

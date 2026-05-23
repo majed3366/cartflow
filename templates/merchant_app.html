@@ -41,7 +41,7 @@
     <button type="button" class="nav-item" data-home-nav="month" onclick="maHomeNav('month')">ملخص الشهر</button>
   </nav>
   <nav class="ma-ctx-panel ma-sidebar-nav" data-ma-ctx="carts" hidden aria-label="السلال">
-    <p class="ma-ctx-label">في هذا القسم</p>
+    <p class="ma-ctx-label">السلال</p>
     <button type="button" class="nav-item" data-nav="carts" data-cart-tab="all" onclick="goToCartTab('all')">الكل</button>
     <button type="button" class="nav-item" data-nav="followup" data-cart-tab="intervention" onclick="goToCartTab('intervention')">تحتاج تدخل<span class="nb nb-a" id="ma-nav-badge-followup" style="display:none;"></span></button>
     <button type="button" class="nav-item" data-nav="carts" data-cart-tab="waiting" onclick="goToCartTab('waiting')">بانتظار الإرسال<span class="nb nb-r" id="ma-nav-badge-abandoned" style="display:none;"></span></button>
@@ -55,17 +55,19 @@
     <button type="button" class="nav-item" data-nav="reasons" onclick="goTo('reasons')">أسباب التردد</button>
   </nav>
   <nav class="ma-ctx-panel ma-sidebar-nav" data-ma-ctx="settings" hidden aria-label="الإعدادات">
-    <p class="ma-ctx-label">في هذا القسم</p>
+    <p class="ma-ctx-label">الإعدادات</p>
     <button type="button" class="nav-item" data-nav="whatsapp" onclick="goTo('whatsapp')">واتساب</button>
     <button type="button" class="nav-item" data-nav="widget" onclick="goTo('widget')">الودجيت</button>
-    <button type="button" class="nav-item" data-nav="settings" onclick="goTo('settings')">إعدادات عامة</button>
+    <button type="button" class="nav-item" data-nav="settings" onclick="goTo('settings')">الحساب والمتجر</button>
   </nav>
+  <div class="ma-ctx-future-reserve" aria-hidden="true" hidden></div>
 </aside>
 
 <div class="ma-dashboard-frame ma-app-shell" id="ma-dashboard-frame">
   <main class="main ma-content-root" id="ma-content-root">
     <div class="ma-content-head">
       <h1 class="ma-content-title" id="pageTitle">الرئيسية</h1>
+      <p class="ma-content-sub" id="pageSub" hidden></p>
     </div>
 
   <div class="page active" id="page-home">
@@ -410,10 +412,6 @@
   </div>
 
   <div class="page" id="page-messages">
-    <div class="page-header">
-      <div class="page-h1">الرسائل المرسلة</div>
-      <div class="page-sub">سجل رسائل استرداد واتساب المسجّلة لمتجرك</div>
-    </div>
     <div class="card" id="ma-messages-card">
       {% if merchant_dashboard_lazy_shell %}
       <div class="ma-dash-skel" style="padding:40px 20px;text-align:center;color:var(--muted);">…</div>
@@ -441,10 +439,6 @@
   </div>
 
   <div class="page" id="page-reasons">
-    <div class="page-header">
-      <div class="page-h1">أسباب التردد</div>
-      <div class="page-sub">توزيع أسباب ترك السلة خلال آخر 30 يوماً</div>
-    </div>
     <div class="reasons-full-grid">
       <div class="reasons-full" id="ma-reasons-month-body">
         <h3>توزيع الأسباب — آخر 30 يوماً</h3>
@@ -475,10 +469,6 @@
   </div>
 
   <div class="page ma-tpl-page" id="page-trigger-templates">
-    <div class="page-header">
-      <div class="page-h1">قوالب حسب سبب التردد</div>
-      <div class="page-sub" id="ma-tpl-sub">سلسلة مراحل الاسترجاع لكل سبب — طمأنة ثم عرض ثم بديل (وليس تكرار نفس الرسالة).</div>
-    </div>
     <p class="ma-tpl-banner" id="ma-tpl-load-err" hidden>تعذر تحميل القوالب من الخادم.</p>
     <div id="ma-tpl-root" class="ma-tpl-root-wrap">
       {% if merchant_dashboard_lazy_shell %}
@@ -493,10 +483,6 @@
     {% set wp = merchant_widget_panel if merchant_widget_panel is defined else {} %}
     {% set tg = wp.trigger if wp.trigger is defined else {} %}
     <script type="application/json" id="ma-widget-bootstrap">{{ wp | tojson }}</script>
-    <div class="page-header">
-      <div class="page-h1">الودجيت</div>
-      <div class="page-sub">مظهر الودجيت ومتى يظهر للعميل — بدون إعدادات تقنية معقدة</div>
-    </div>
     <p class="ma-widget-banner" id="mw-save-msg" hidden></p>
     <div class="ma-widget-layout ma-widget-layout--simple">
       <div class="ma-widget-form">
@@ -643,15 +629,11 @@
   </div>
 
   <div class="page" id="page-whatsapp">
-    <div class="page-header">
-      <div class="page-h1">إعدادات واتساب</div>
-      <div class="page-sub">رقم المتجر وتفعيل استرجاع الواتساب — تُحفظ لمتجرك دون إرسال تجريبي من هذه الصفحة</div>
-    </div>
     <div id="ma-wa-settings-err" style="display:none;margin-bottom:10px;padding:10px 12px;border-radius:10px;border:1px solid #fecaca;background:#fef2f2;color:#991b1b;font-size:13px;"></div>
     <div id="ma-wa-settings-ok" style="display:none;margin-bottom:10px;padding:10px 12px;border-radius:10px;border:1px solid #bbf7d0;background:#f0fdf4;color:#166534;font-size:13px;">تم حفظ إعدادات السلال المهمة</div>
     <div class="settings-grid">
       <div class="setting-card ma-fw-card" style="grid-column:1/-1;">
-        <div class="setting-title">إعدادات واتساب المتجر</div>
+        <div class="setting-title">ربط واتساب المتجر</div>
         <div class="setting-desc">احفظ رقم واتساب وتفعيل رسائل الاسترجاع — لا يتم إرسال رسالة من هذه الصفحة</div>
         <form id="ma-wa-settings-form" class="ma-fw-form" autocomplete="off">
           <div class="setting-row" style="flex-direction:column;align-items:stretch;gap:6px;">
@@ -701,10 +683,6 @@
   </div>
 
   <div class="page" id="page-settings">
-    <div class="page-header">
-      <div class="page-h1">الإعدادات العامة</div>
-      <div class="page-sub">تفضيلات تشغيلية بسيطة — لا تغيّر سلوك الاسترجاع أو الواتساب تلقائياً</div>
-    </div>
     <div id="ma-general-settings-err" style="display:none;margin-bottom:10px;padding:10px 12px;border-radius:10px;border:1px solid #fecaca;background:#fef2f2;color:#991b1b;font-size:13px;"></div>
     <div id="ma-general-settings-ok" style="display:none;margin-bottom:10px;padding:10px 12px;border-radius:10px;border:1px solid #bbf7d0;background:#f0fdf4;color:#166534;font-size:13px;">تم حفظ الإعدادات</div>
     <form id="ma-general-settings-form" class="ma-fw-form" autocomplete="off">
