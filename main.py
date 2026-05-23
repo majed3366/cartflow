@@ -299,6 +299,7 @@ from routes.admin_operations import router as admin_operations_router  # noqa: E
 import routes.admin_ops  # noqa: F401,E402 — registers /admin/ops/* on admin router
 import routes.operational_control_admin  # noqa: F401,E402 — /admin/control targeted controls v1
 from routes.demo_panel import router as demo_panel_router  # noqa: E402
+from routes.merchant_auth import router as merchant_auth_router  # noqa: E402
 from routes.ops import router as ops_router  # noqa: E402
 from routes.whatsapp_delivery_webhook import (  # noqa: E402
     router as whatsapp_delivery_webhook_router,
@@ -310,6 +311,7 @@ app.include_router(admin_operations_router)
 app.include_router(cartflow_router)
 app.include_router(cart_recovery_reason_router)
 app.include_router(demo_panel_router, prefix="/demo")
+app.include_router(merchant_auth_router)
 
 from services.ai_message_builder import build_abandoned_cart_message  # noqa: E402
 from services.whatsapp_recovery import build_whatsapp_recovery_message  # noqa: E402
@@ -933,6 +935,36 @@ def _app_test_client() -> Any:
 
 
 @app.middleware("http")
+async def merchant_auth_gate_middleware(request: Request, call_next: Any) -> Any:
+    from services.merchant_auth_context import (
+        reset_merchant_auth_store_slug,
+        set_merchant_auth_store_slug,
+    )
+    from services.merchant_auth_v1 import (
+        development_dashboard_bypass_active,
+        path_requires_merchant_auth,
+        resolve_authenticated_store_slug,
+    )
+
+    path = request.url.path
+    slug = resolve_authenticated_store_slug(dict(request.cookies))
+    token = set_merchant_auth_store_slug(slug)
+    try:
+        if path_requires_merchant_auth(path):
+            if slug or development_dashboard_bypass_active():
+                return await call_next(request)
+            q = request.url.query
+            dest = path + (f"?{q}" if q else "")
+            login_url = "/login?next=" + quote(dest, safe="")
+            if request.method == "GET":
+                return RedirectResponse(url=login_url, status_code=302)
+            return j({"ok": False, "error": "auth_required"}, 401)
+        return await call_next(request)
+    finally:
+        reset_merchant_auth_store_slug(token)
+
+
+@app.middleware("http")
 async def set_embed_csp_middleware(request: Request, call_next: Any) -> Any:
     try:
         response = await call_next(request)
@@ -1329,7 +1361,15 @@ def _normal_carts_query_prof_wrap(span_name: str):
 
 @_normal_carts_query_prof_wrap("_dashboard_recovery_store_row")
 def _dashboard_recovery_store_row() -> Optional[Store]:
-    """آخر ‎Store‎ بحسب ‎id‎ — نفس الصف الذي تقرأه وتحدّثه ‎GET/POST /api/recovery-settings‎."""
+    """متجر الجلسة للتاجر المسجّل؛ وإلا آخر ‎Store‎ (أو demo في التطوير)."""
+    from services.dashboard_store_context import dashboard_canonical_store_row
+    from services.merchant_auth_context import get_merchant_auth_store_slug
+
+    slug = get_merchant_auth_store_slug()
+    if slug:
+        row = dashboard_canonical_store_row(slug, allow_schema_warm=False)
+        if row is not None:
+            return row
     try:
         return db.session.query(Store).order_by(Store.id.desc()).first()
     except (SQLAlchemyError, OSError):
@@ -1368,6 +1408,9 @@ def _ensure_cartflow_api_db_warmed() -> None:
             )
 
             ensure_widget_recovery_store_rows_on_warm()
+            from schema_merchant_auth import ensure_merchant_auth_schema
+
+            ensure_merchant_auth_schema(db)
             _cartflow_api_db_warmed = True
         except Exception as e:  # noqa: BLE001
             db.session.rollback()

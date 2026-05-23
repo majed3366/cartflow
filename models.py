@@ -112,6 +112,44 @@ class Store(Base):
     cf_merchant_offer_settings_json = Column(Text, nullable=True)
     # عدد مرات إرفاق عرض التاجر في رد الاستمرار (لـ offer_max_uses)
     cf_offer_applications_count = Column(Integer, default=0, nullable=False)
+    # حساب التاجر المالك (اختياري — متاجر demo/قديمة بدون ربط)
+    merchant_user_id = Column(
+        Integer, ForeignKey("merchant_users.id"), nullable=True, index=True
+    )
+
+
+class MerchantUser(Base):
+    __tablename__ = "merchant_users"
+
+    id = Column(Integer, primary_key=True)
+    email = Column(String(255), unique=True, nullable=False, index=True)
+    password_hash = Column(String(255), nullable=False)
+    merchant_name = Column(String(255), nullable=False)
+    primary_store_id = Column(Integer, ForeignKey("stores.id"), nullable=True, index=True)
+    created_at = Column(
+        DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
+    )
+    updated_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+
+
+class MerchantPasswordResetToken(Base):
+    __tablename__ = "merchant_password_reset_tokens"
+
+    id = Column(Integer, primary_key=True)
+    merchant_user_id = Column(
+        Integer, ForeignKey("merchant_users.id"), nullable=False, index=True
+    )
+    token_hash = Column(String(64), nullable=False, index=True)
+    expires_at = Column(DateTime, nullable=False)
+    used_at = Column(DateTime, nullable=True)
+    created_at = Column(
+        DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
+    )
 
 
 class AbandonedCart(Base):

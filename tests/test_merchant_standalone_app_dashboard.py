@@ -12,6 +12,10 @@ from main import app
 
 class MerchantStandaloneAppDashboardTests(unittest.TestCase):
     def setUp(self) -> None:
+        import os
+
+        os.environ["ENV"] = "development"
+        os.environ.setdefault("SECRET_KEY", "unit-test-secret-key-for-merchant-dashboard")
         self.client = TestClient(app)
 
     def test_dashboard_renders_merchant_app_marker(self) -> None:
@@ -26,20 +30,17 @@ class MerchantStandaloneAppDashboardTests(unittest.TestCase):
         html = r.text or ""
         for needle in (
             "الرئيسية",
-            "سلال الانتظار",
-            "سلال التفاعل",
-            "السلال المكتملة",
-            "سلال VIP",
-            "الرسائل المرسلة",
+            "بانتظار الإرسال",
+            "تحتاج تدخل",
+            "مكتملة",
+            "VIP",
+            "الرسائل",
             "أسباب التردد",
             "الودجيت",
-            "إعدادات واتساب",
-            "إعدادات عامة",
-            "توصيات",
+            "واتساب",
+            "الحساب والمتجر",
             "حفظ إعدادات الودجيت",
-            "معاينة سطح المكتب",
-            "معاينة الجوال",
-            "قوالب حسب سبب التردد",
+            "قوالب الاسترجاع",
             'id="page-trigger-templates"',
             "merchant_trigger_templates.js",
             'id="ma-widget-bootstrap"',

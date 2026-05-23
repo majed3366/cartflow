@@ -83,11 +83,13 @@ Server-side template control (**`exit_intent_*`** on **`Store`**): `services/sto
 - **`routes/cartflow.py`** — `APIRouter(prefix="/api/cartflow")`: analytics, ready, public-config, generate-whatsapp-message, reason, etc.
 - **`routes/cart_recovery_reason.py`** — `APIRouter(prefix="/api/cart-recovery")`: **`POST /reason`** (widget reason persistence).
 - **`routes/ops.py`**, **`routes/demo_panel.py`** — operational / demo utilities.
+- **`routes/merchant_auth.py`** — SaaS auth HTML: **`/login`**, **`/signup`**, **`/logout`**, **`/forgot-password`**, **`/reset-password`**; signed cookie session (`services/merchant_auth_http.py`); gate middleware on **`/dashboard*`** and **`/api/dashboard*`** (`ENV=development` demo bypass only).
 
 ### 3.2 Routes (representative)
 
 | Route | Module | Role |
 |--------|--------|------|
+| `GET`/`POST /login`, `/signup`, `GET /logout`, `/forgot-password`, `/reset-password` | `routes/merchant_auth.py` | Merchant account signup/login; PBKDF2 passwords; reset tokens (dev logs link when `ENV=development`). |
 | `POST /api/cart-event` | `main.py` | Cart events (`cart_abandoned`, conversion flags, etc.). |
 | `GET` / `POST /api/recovery-settings` | `main.py` | Store recovery + template + widget + VIP threshold merge/persist. |
 | `POST /api/conversion` | `main.py` | Marks session converted; stops recovery. |
@@ -231,9 +233,13 @@ Print-style trace: **`[DELAY STARTED]`**, **`[DELAY WAITING]`**, **`[DELAY FINIS
 
 ## 6) Data Models
 
+### `MerchantUser` / auth (`merchant_users`, `merchant_password_reset_tokens`)
+
+`MerchantUser`: `email`, `password_hash`, `merchant_name`, `primary_store_id`. Signup creates a **`Store`** row and sets **`stores.merchant_user_id`**. Password reset tokens stored hashed with expiry.
+
 ### `Store` (`stores`)
 
-Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recovery_delay_minutes`. WhatsApp / UX: `whatsapp_support_url`, `store_whatsapp_number`, `whatsapp_recovery_enabled`, `whatsapp_provider_mode` (merchant dashboard v1 — display/persist; send runtime still uses `config_system` gates), per-reason templates. **VIP (merchant prefs v1):** `vip_enabled`, `vip_notify_enabled`, `vip_note` (display/persist only); **`vip_cart_threshold`** still drives operational lane via `is_vip_cart` / `merchant_vip_threshold_int` (`template_*`, `trigger_templates_json`, `reason_templates_json`), `template_mode` / `tone` / `template_custom_text`, exit intent fields, widget customization (`widget_name`, `widget_primary_color`, `widget_style`). **VIP:** `vip_cart_threshold`.
+Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recovery_delay_minutes`. Optional **`merchant_user_id`** (FK) for SaaS ownership. WhatsApp / UX: `whatsapp_support_url`, `store_whatsapp_number`, `whatsapp_recovery_enabled`, `whatsapp_provider_mode` (merchant dashboard v1 — display/persist; send runtime still uses `config_system` gates), per-reason templates. **VIP (merchant prefs v1):** `vip_enabled`, `vip_notify_enabled`, `vip_note` (display/persist only); **`vip_cart_threshold`** still drives operational lane via `is_vip_cart` / `merchant_vip_threshold_int` (`template_*`, `trigger_templates_json`, `reason_templates_json`), `template_mode` / `tone` / `template_custom_text`, exit intent fields, widget customization (`widget_name`, `widget_primary_color`, `widget_style`). **VIP:** `vip_cart_threshold`.
 
 ### `AbandonedCart` (`abandoned_carts`)
 
@@ -309,6 +315,7 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 
 | Date (UTC) | Summary |
 |------------|---------|
+| 2026-05-19 | **Merchant auth foundation v1:** `/login` `/signup` `/logout` `/forgot-password` `/reset-password`، جلسة موقّعة، حماية `/dashboard` و`/api/dashboard`، تجاوز `ENV=development` فقط، نماذج `merchant_users` + ربط `stores.merchant_user_id`. Commit: **`feat: add merchant auth foundation v1`**. |
 | 2026-05-19 | **Sidebar width:** `--sidebar-width` 200px → 220px لقراءة أوضح للتسميات الطويلة. Commit: **`ui: increase dashboard sidebar width to 220px`**. |
 | 2026-05-19 | **Dashboard final polish:** جانبي 200px، إعدادات بعرض 700px، صف علوي للرئيسية (جاهزية + ملخص الشهر)، أدوات علوية (إشعارات/حساب/باقة/خروج placeholders). Commit: **`ui: final dashboard polish and compact layout`**. |
 | 2026-05-19 | **Dashboard naming cleanup:** قائمة الإعدادات (واتساب / الودجيت / الحساب والمتجر)، عنوان واحد في `pageTitle` + `pageSub`، حجز أسفل الجانبي للحساب/الباقة لاحقاً. Commit: **`ui: clean dashboard naming and preserve simple navigation`**. |

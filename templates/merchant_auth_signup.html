@@ -1,0 +1,28 @@
+{% extends "merchant_auth_base.html" %}
+{% block title %}إنشاء حساب — CartFlow{% endblock %}
+{% block content %}
+<div class="ma-auth-card">
+  <h1 class="ma-auth-title">إنشاء حساب تاجر</h1>
+  <p class="ma-auth-lead">ابدأ متابعة السلال المهجورة لمتجرك</p>
+  {% if error %}<p class="ma-auth-err">{{ error }}</p>{% endif %}
+  <form class="ma-auth-form" method="post" action="/signup">
+    <label class="ma-auth-label" for="merchant_name">اسم التاجر</label>
+    <input class="ma-auth-input" id="merchant_name" name="merchant_name" required value="{{ merchant_name | default('') }}">
+    {% if field_errors and field_errors.merchant_name %}<p class="ma-auth-field-err">{{ field_errors.merchant_name }}</p>{% endif %}
+    <label class="ma-auth-label" for="store_name">اسم المتجر</label>
+    <input class="ma-auth-input" id="store_name" name="store_name" required value="{{ store_name | default('') }}">
+    {% if field_errors and field_errors.store_name %}<p class="ma-auth-field-err">{{ field_errors.store_name }}</p>{% endif %}
+    <label class="ma-auth-label" for="email">البريد الإلكتروني</label>
+    <input class="ma-auth-input" id="email" name="email" type="email" autocomplete="email" required value="{{ email | default('') }}">
+    {% if field_errors and field_errors.email %}<p class="ma-auth-field-err">{{ field_errors.email }}</p>{% endif %}
+    <label class="ma-auth-label" for="password">كلمة المرور</label>
+    <input class="ma-auth-input" id="password" name="password" type="password" autocomplete="new-password" required>
+    {% if field_errors and field_errors.password %}<p class="ma-auth-field-err">{{ field_errors.password }}</p>{% endif %}
+    <label class="ma-auth-label" for="confirm_password">تأكيد كلمة المرور</label>
+    <input class="ma-auth-input" id="confirm_password" name="confirm_password" type="password" autocomplete="new-password" required>
+    {% if field_errors and field_errors.confirm_password %}<p class="ma-auth-field-err">{{ field_errors.confirm_password }}</p>{% endif %}
+    <button type="submit" class="ma-auth-btn">إنشاء الحساب</button>
+  </form>
+  <p class="ma-auth-foot">لديك حساب؟ <a href="/login">تسجيل الدخول</a></p>
+</div>
+{% endblock %}

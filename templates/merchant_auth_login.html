@@ -1,0 +1,20 @@
+{% extends "merchant_auth_base.html" %}
+{% block title %}تسجيل الدخول — CartFlow{% endblock %}
+{% block content %}
+<div class="ma-auth-card">
+  <h1 class="ma-auth-title">تسجيل الدخول</h1>
+  <p class="ma-auth-lead">ادخل إلى لوحة متجرك</p>
+  {% if success_msg %}<p class="ma-auth-ok">{{ success_msg }}</p>{% endif %}
+  {% if error %}<p class="ma-auth-err">{{ error }}</p>{% endif %}
+  <form class="ma-auth-form" method="post" action="/login">
+    <input type="hidden" name="next" value="{{ next_path | default('/dashboard') }}">
+    <label class="ma-auth-label" for="email">البريد الإلكتروني</label>
+    <input class="ma-auth-input" id="email" name="email" type="email" autocomplete="email" required value="{{ email | default('') }}">
+    <label class="ma-auth-label" for="password">كلمة المرور</label>
+    <input class="ma-auth-input" id="password" name="password" type="password" autocomplete="current-password" required>
+    <button type="submit" class="ma-auth-btn">دخول</button>
+  </form>
+  <p class="ma-auth-foot"><a href="/forgot-password">نسيت كلمة المرور؟</a></p>
+  <p class="ma-auth-foot">ليس لديك حساب؟ <a href="/signup">إنشاء حساب</a></p>
+</div>
+{% endblock %}
