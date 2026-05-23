@@ -579,6 +579,39 @@ def build_operational_control_context() -> "OperationalControlContext":
     )
 
 
+def _build_merchant_onboarding_card_safe() -> dict[str, Any]:
+    """جاهزية المتجر — onboarding reality v1 (read-only)."""
+    try:
+        from services.cartflow_onboarding_readiness import _resolve_dashboard_store_row
+        from services.merchant_onboarding_reality_v1 import (
+            build_merchant_onboarding_admin_card,
+        )
+
+        return build_merchant_onboarding_admin_card(_resolve_dashboard_store_row())
+    except Exception:  # noqa: BLE001
+        from services.admin_operational_health_language import (
+            build_operations_center_decision,
+        )
+
+        return {
+            "title": "merchant_onboarding",
+            "title_ar": "جاهزية المتجر",
+            "operational": build_operations_center_decision(
+                title_ar="جاهزية المتجر",
+                problem_ar="تعذّر تقييم الجاهزية",
+                impact_ar="غير معروف",
+                affected_stores_ar="—",
+                affected_customers_ar="—",
+                urgency_ar="منخفضة",
+                suggested_action_ar="أعد تحميل الصفحة",
+                verification_lines=["تحقق من السجلات"],
+                status_tier="watch",
+            ),
+            "technical_detail_lines": ["merchant_onboarding: unavailable"],
+            "detail_lines": ["merchant_onboarding: unavailable"],
+        }
+
+
 def _build_admin_db_due_scanner_card_safe() -> dict[str, Any]:
     """
     Admin operational-health only — not part of shared operational-control bundle.
@@ -620,6 +653,7 @@ def build_admin_operational_health_readonly() -> dict[str, Any]:
     warnings = diag.get("warnings") or []
     cards = dict(diag.get("cards") or {})
     cards["db_due_scanner"] = _build_admin_db_due_scanner_card_safe()
+    cards["merchant_onboarding"] = _build_merchant_onboarding_card_safe()
     operations_center: dict[str, Any] = {
         "title_ar": "مركز عمليات CartFlow",
         "summary_ar": "—",
