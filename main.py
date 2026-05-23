@@ -11442,9 +11442,28 @@ def auth_callback(request: Request):
     code = (request.query_params.get("code") or "").strip()
     if not code:
         return j({"status": "callback route exists"})
+    oauth_state = (request.query_params.get("state") or "").strip()
     body, status = exchange_code_for_token(code)
     if 200 <= status < 300 and isinstance(body, dict) and (body.get("access_token") or "").strip():
         try:
+            if oauth_state:
+                from services.merchant_store_connection_v1 import (  # noqa: PLC0415
+                    apply_oauth_token_to_merchant_store,
+                    parse_oauth_state,
+                )
+
+                parsed = parse_oauth_state(oauth_state)
+                if parsed is not None:
+                    store_id, merchant_id = parsed
+                    if apply_oauth_token_to_merchant_store(
+                        store_id=store_id,
+                        merchant_user_id=merchant_id,
+                        token_response=body,
+                    ):
+                        return RedirectResponse(
+                            url="/dashboard#settings?store_connected=1",
+                            status_code=302,
+                        )
             save_or_update_store_from_token_response(body)
         except SQLAlchemyError:
             db.session.rollback()
@@ -15136,6 +15155,84 @@ def dashboard_normal_alias(request: Request):
 def dashboard_vip_cart_settings(request: Request):
     """توافق خلفي — إعدادات ‎VIP‎ داخل تطبيق التاجر."""
     return RedirectResponse(url="/dashboard#vip", status_code=302)
+
+
+@app.get("/api/merchant/store-connection")
+def api_merchant_store_connection_status(request: Request):
+    """حالة ربط المتجر بالمنصة — للتاجر المصادق فقط."""
+    from services.merchant_store_connection_v1 import (  # noqa: PLC0415
+        build_merchant_store_connection_status,
+    )
+
+    wall0 = time.perf_counter()
+    _merchant_dashboard_db_ready()
+    try:
+        status = build_merchant_store_connection_status(
+            cookies=dict(request.cookies)
+        )
+        return j({"ok": True, "store_connection": status.to_api_dict()})
+    except (OSError, TypeError, ValueError) as e:
+        log.warning("api merchant/store-connection: %s", e)
+        return j({"ok": False, "error": "failed"}, 500)
+    finally:
+        _log_dashboard_profile(
+            endpoint="GET /api/merchant/store-connection",
+            section="merchant_store_connection",
+            wall_perf_start=wall0,
+        )
+
+
+@app.get("/api/merchant/store-connection/zid/connect")
+def api_merchant_store_connection_zid_connect(request: Request):
+    """بدء OAuth زد — إعادة توجيه للتاجر المصادق فقط."""
+    from integrations.zid_client import build_zid_authorize_url  # noqa: PLC0415
+    from services.merchant_store_connection_v1 import (  # noqa: PLC0415
+        issue_oauth_state,
+        resolve_connect_context,
+    )
+
+    _merchant_dashboard_db_ready()
+    store, merchant_id, err = resolve_connect_context(cookies=dict(request.cookies))
+    if merchant_id is None:
+        return RedirectResponse(url="/login?next=/dashboard%23settings", status_code=302)
+    if store is None:
+        return RedirectResponse(
+            url="/dashboard#settings?store_connect_error=1",
+            status_code=302,
+        )
+    url, err_payload = build_zid_authorize_url(
+        state=issue_oauth_state(
+            merchant_user_id=int(merchant_id),
+            store_id=int(store.id),
+        )
+    )
+    if not url:
+        return RedirectResponse(
+            url="/dashboard#settings?store_connect_pending=1",
+            status_code=302,
+        )
+    return RedirectResponse(url=url, status_code=302)
+
+
+@app.post("/api/merchant/store-connection/disconnect")
+def api_merchant_store_connection_disconnect(request: Request):
+    """فصل ربط OAuth — يمسح الرموز فقط على متجر التاجر."""
+    from services.merchant_store_connection_v1 import disconnect_merchant_store  # noqa: PLC0415
+
+    wall0 = time.perf_counter()
+    _merchant_dashboard_db_ready()
+    try:
+        ok, msg = disconnect_merchant_store(cookies=dict(request.cookies))
+        return j({"ok": ok, "message_ar": msg})
+    except SQLAlchemyError:
+        db.session.rollback()
+        return j({"ok": False, "error": "failed"}, 500)
+    finally:
+        _log_dashboard_profile(
+            endpoint="POST /api/merchant/store-connection/disconnect",
+            section="merchant_store_connection",
+            wall_perf_start=wall0,
+        )
 
 
 @app.get("/api/merchant/setup-experience")

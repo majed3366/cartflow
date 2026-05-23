@@ -690,6 +690,32 @@
   </div>
 
   <div class="page ma-page-compact" id="page-settings">
+    <div id="ma-store-connection-err" style="display:none;margin-bottom:10px;padding:10px 12px;border-radius:10px;border:1px solid #fecaca;background:#fef2f2;color:#991b1b;font-size:13px;"></div>
+    <div id="ma-store-connection-ok" style="display:none;margin-bottom:10px;padding:10px 12px;border-radius:10px;border:1px solid #bbf7d0;background:#f0fdf4;color:#166534;font-size:13px;"></div>
+    <div class="setting-card ma-fw-card ma-store-connection-card" id="ma-store-connection-root" style="grid-column:1/-1;margin-bottom:14px;">
+      <div class="ma-store-connection-head">
+        <div>
+          <div class="setting-title">ربط المتجر</div>
+          <div class="setting-desc">اربط متجرك لقراءة الطلبات والسلال تلقائياً.</div>
+        </div>
+        <span class="ma-sc-status-pill" id="ma-sc-status-pill">—</span>
+      </div>
+      <p class="ma-sc-status-desc" id="ma-sc-status-desc">جاري التحميل…</p>
+      <div class="ma-sc-connected-meta" id="ma-sc-connected-meta" hidden>
+        <div class="setting-row"><span class="setting-label">اسم المتجر</span><span class="setting-value" id="ma-sc-store-name">—</span></div>
+        <div class="setting-row"><span class="setting-label">المنصة</span><span class="setting-value" id="ma-sc-platform">—</span></div>
+        <div class="setting-row"><span class="setting-label">تاريخ الربط</span><span class="setting-value" id="ma-sc-connected-at">—</span></div>
+      </div>
+      <div class="ma-sc-actions" id="ma-sc-actions-not-connected">
+        <button type="button" class="ma-fw-save ma-sc-btn" id="ma-sc-connect-zid">ربط زد</button>
+        <button type="button" class="ma-fw-save ma-sc-btn ma-sc-btn-secondary" id="ma-sc-connect-salla">ربط سلة</button>
+      </div>
+      <div class="ma-sc-actions" id="ma-sc-actions-connected" hidden>
+        <button type="button" class="ma-fw-save ma-sc-btn ma-sc-btn-secondary" id="ma-sc-reconnect-zid">إعادة الربط</button>
+        <button type="button" class="ma-fw-save ma-sc-btn ma-sc-btn-danger" id="ma-sc-disconnect">فصل الربط</button>
+      </div>
+      <p class="ma-sc-footnote">Shopify قريباً</p>
+    </div>
     <div id="ma-general-settings-err" style="display:none;margin-bottom:10px;padding:10px 12px;border-radius:10px;border:1px solid #fecaca;background:#fef2f2;color:#991b1b;font-size:13px;"></div>
     <div id="ma-general-settings-ok" style="display:none;margin-bottom:10px;padding:10px 12px;border-radius:10px;border:1px solid #bbf7d0;background:#f0fdf4;color:#166534;font-size:13px;">تم حفظ الإعدادات</div>
     <form id="ma-general-settings-form" class="ma-fw-form" autocomplete="off">
@@ -796,6 +822,7 @@
 <script defer src="/static/merchant_dashboard_lazy.js"></script>
 <script defer src="/static/merchant_whatsapp_settings.js"></script>
 <script defer src="/static/merchant_vip_settings.js"></script>
+<script defer src="/static/merchant_store_connection.js"></script>
 <script defer src="/static/merchant_general_settings.js"></script>
 <script defer src="/static/merchant_trigger_templates.js"></script>
 <script defer src="/static/merchant_widget_panel.js"></script>

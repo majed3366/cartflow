@@ -39,6 +39,8 @@ class MerchantStandaloneAppDashboardTests(unittest.TestCase):
             "الودجيت",
             "واتساب",
             "الحساب والمتجر",
+            "ربط المتجر",
+            "اربط متجرك لقراءة الطلبات والسلال",
             "حفظ إعدادات الودجيت",
             "قوالب الاسترجاع",
             'id="page-trigger-templates"',

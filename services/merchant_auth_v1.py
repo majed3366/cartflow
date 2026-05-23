@@ -439,6 +439,8 @@ def path_requires_merchant_auth(path: str) -> bool:
         return True
     if p == "/api/dashboard" or p.startswith("/api/dashboard/"):
         return True
+    if p == "/api/merchant" or p.startswith("/api/merchant/"):
+        return True
     return False
 
 

@@ -84,7 +84,7 @@ Server-side template control (**`exit_intent_*`** on **`Store`**): `services/sto
 - **`routes/cart_recovery_reason.py`** — `APIRouter(prefix="/api/cart-recovery")`: **`POST /reason`** (widget reason persistence).
 - **`routes/ops.py`**, **`routes/demo_panel.py`** — operational / demo utilities.
 - **`routes/merchant_auth.py`** — SaaS auth HTML: **`/login`**, **`/signup`**, **`/logout`**, **`/forgot-password`**, **`/reset-password`**; signed cookie session (`services/merchant_auth_http.py`); gate middleware on **`/dashboard*`** and **`/api/dashboard*`** (`ENV=development` demo bypass only).
-- **`services/merchant_onboarding_v1.py`** + **`merchant_setup_experience_v1`** + **`merchant_onboarding_store.py`** — guided onboarding (5 steps); Store resolved only from authenticated merchant session (`get_primary_store_for_merchant`, no latest/demo fallback); **`ready`** when all 5 steps complete on that Store; display name via `merchant_store_display_name`; **`GET /api/dashboard/summary`** / **`GET /api/merchant/setup-experience`** pass request cookies for onboarding payload.
+- **`services/merchant_onboarding_v1.py`** + **`merchant_setup_experience_v1`** + **`merchant_onboarding_store.py`** + **`merchant_store_connection_v1.py`** — guided onboarding (5 steps); Store resolved only from authenticated merchant session; **`/dashboard#settings`** store connection card (Zid OAuth when `ZID_CLIENT_*` configured, else «ميزة الربط قيد الإعداد»); **`GET /api/merchant/store-connection`** (+ zid connect / disconnect).
 
 ### 3.2 Routes (representative)
 
@@ -316,6 +316,7 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 
 | Date (UTC) | Summary |
 |------------|---------|
+| 2026-05-23 | **Store connection setup v1:** `/dashboard#settings` — بطاقة «ربط المتجر» (غير مربوط / تم الربط)؛ `GET /api/merchant/store-connection`، `GET …/zid/connect` (OAuth زد مع `state` موقّع)، `POST …/disconnect`؛ `services/merchant_store_connection_v1.py` + `static/merchant_store_connection.js`؛ خطوة onboarding «ربط المتجر» تكتمل عند `access_token` حقيقي فقط. Commit: **`feat: add merchant store connection setup v1`**. |
 | 2026-05-23 | **Merchant onboarding store scoping:** `services/merchant_onboarding_store.py` — onboarding/readiness uses authenticated merchant Store only (no latest/demo/fallback); stricter step completion (OAuth token + WhatsApp for store step); `ready` only when all 5 guided steps complete; `[ONBOARDING STORE RESOLUTION]` logs; `merchant_store_display_name` fallback «متجرك». Recovery KPI store row unchanged. Commit: **`fix: scope merchant onboarding readiness to authenticated store`**. |
 | 2026-05-19 | **Merchant onboarding v1:** `services/merchant_onboarding_v1.py` — 5 خطوات مُستنتجة من `evaluate_onboarding_readiness`؛ بطاقة إعداد موجّهة (تقدّم X/5، أكمل الإعداد، قائمة ✓/◯)؛ `ma-onboarding-focus` يخفّي KPI/تحليلات حتى الجاهزية. Commit: **`feat: add merchant onboarding v1 and guided setup flow`**. |
 | 2026-05-19 | **Resend password reset:** `services/merchant_password_reset_email.py` — `RESEND_API_KEY` + `RESEND_FROM_EMAIL`، رابط مطلق عبر `CARTFLOW_PUBLIC_BASE_URL`، تجربة dev بدون مفتاح (سجل الرابط)، `/login?password_reset=1` بعد النجاح. Commit: **`feat: add resend password reset integration`**. |

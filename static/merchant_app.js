@@ -23,7 +23,8 @@
     widget: "مظهر الودجيت ومتى يظهر للعميل — بدون إعدادات تقنية معقدة",
     whatsapp:
       "رقم المتجر وتفعيل استرجاع الواتساب — تُحفظ لمتجرك دون إرسال تجريبي من هذه الصفحة",
-    settings: "تفضيلات تشغيلية بسيطة — لا تغيّر سلوك الاسترجاع أو الواتساب تلقائياً",
+    settings:
+      "ربط المتجر مع زد أو سلة، ثم تفضيلات الحساب — لا تغيّر الاسترجاع تلقائياً",
   };
 
   var CART_TAB_TITLES = {
@@ -244,6 +245,9 @@
     }
     if (typeof window.maInitVipSettingsPage === "function" && page === "vip") {
       window.maInitVipSettingsPage();
+    }
+    if (typeof window.maInitStoreConnectionPage === "function" && page === "settings") {
+      window.maInitStoreConnectionPage();
     }
     if (typeof window.maInitGeneralSettingsPage === "function" && page === "settings") {
       window.maInitGeneralSettingsPage();
