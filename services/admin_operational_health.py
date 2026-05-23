@@ -583,11 +583,11 @@ def _build_merchant_onboarding_card_safe() -> dict[str, Any]:
     """جاهزية المتجر — onboarding reality v1 (read-only)."""
     try:
         from services.cartflow_onboarding_readiness import _resolve_dashboard_store_row
-        from services.merchant_production_readiness_path_v1 import (
-            build_merchant_production_readiness_card,
+        from services.readiness_ownership_path_v1 import (
+            build_merchant_readiness_card_with_ownership,
         )
 
-        return build_merchant_production_readiness_card(_resolve_dashboard_store_row())
+        return build_merchant_readiness_card_with_ownership(_resolve_dashboard_store_row())
     except Exception:  # noqa: BLE001
         from services.admin_operational_health_language import (
             build_operations_center_decision,
