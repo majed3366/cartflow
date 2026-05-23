@@ -73,25 +73,24 @@
   }
 
   function applyGlobalTopbarSetup(mse) {
-    var lineEl = byId("ma-gtb-setup-line");
+    var pctEl = byId("ma-gtb-setup-pct");
+    var remEl = byId("ma-gtb-setup-remain");
     var wrap = byId("ma-gtb-setup");
-    if (!lineEl) return;
-    lineEl.classList.remove("ma-dash-skel");
+    if (!pctEl || !remEl) return;
+    pctEl.classList.remove("ma-dash-skel");
+    remEl.classList.remove("ma-dash-skel");
     if (!mse || !mse.show_card) {
-      lineEl.textContent = "لوحة متجرك";
+      pctEl.textContent = "—";
+      remEl.textContent = "لوحة متجرك";
       if (wrap) wrap.classList.remove("ma-gtb-setup--complete");
       return;
     }
-    var title = mse.card_title_ar || "متجرك";
+    var pct = parseInt(mse.readiness_percent, 10);
+    if (isNaN(pct)) pct = 0;
+    pctEl.textContent = String(pct) + "%";
     var n = parseInt(mse.remaining_setup_count, 10) || 0;
-    if (n === 0) {
-      lineEl.textContent = title + " — جاهز للتشغيل الكامل";
-    } else {
-      lineEl.textContent = title + " — ينقص: " + n + " إعدادات";
-    }
-    if (wrap) {
-      wrap.classList.toggle("ma-gtb-setup--complete", n === 0);
-    }
+    remEl.textContent = n === 0 ? "جاهز للتشغيل" : "ينقص: " + n;
+    if (wrap) wrap.classList.toggle("ma-gtb-setup--complete", n === 0);
   }
 
   function firstIncompleteStepIndex(steps) {
@@ -107,22 +106,25 @@
     var root = byId("ma-setup-experience-root");
     if (!root) return;
     if (!mse || !mse.show_card) {
-      root.style.display = "none";
+      root.hidden = true;
       root.innerHTML = "";
       return;
     }
-    var total = parseInt(mse.remaining_setup_count, 10) || 0;
     var steps = mse.steps || [];
+    var totalSteps = steps.length || parseInt(mse.remaining_setup_count, 10) || 0;
+    var remaining = parseInt(mse.remaining_setup_count, 10) || 0;
     var currentStep = firstIncompleteStepIndex(steps);
     var progressHtml =
-      currentStep > 0 && total > 0
+      currentStep > 0 && totalSteps > 0
         ? '<p class="ma-setup-step-progress">أنت على <strong>الخطوة ' +
           currentStep +
           " من " +
-          total +
+          totalSteps +
           "</strong></p>"
         : "";
-    root.style.display = "";
+    var showDetail =
+      document.body && document.body.classList.contains("ma-setup-detail-open");
+    root.hidden = !showDetail;
     root.innerHTML =
       '<div class="ma-setup-panel">' +
       '<p class="ma-setup-panel-lead">الخطوة التالية: <strong>' +
@@ -140,7 +142,7 @@
       "</div>" +
       '<div id="ma-setup-steps-panel" class="ma-setup-steps" hidden role="region" aria-label="خطوات الإعداد">' +
       setupStepsHtml(steps) +
-      (total === 0
+      (remaining === 0
         ? '<p style="margin:8px 0 0;font-size:12px;font-weight:700;color:#166534">اكتمل الإعداد — متجرك جاهز للتشغيل الكامل.</p>'
         : "") +
       "</div></div>";

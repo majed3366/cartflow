@@ -309,6 +309,7 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 
 | Date (UTC) | Summary |
 |------------|---------|
+| 2026-05-19 | **Dashboard architecture v2 (desktop/mobile):** شريط علوي ثابت + جانبي `position:fixed` (≥1024px) مع حجز عرض المحتوى؛ &lt;1024px درج hamburger فقط؛ شارة «جاهزية المتجر: N% / ينقص: N»؛ تفاصيل الإعداد عند الطلب على الرئيسية؛ تمرير `.ma-content-root` فقط. Commit: **`ui: finalize dashboard architecture desktop/mobile layout`**. |
 | 2026-05-19 | **Dashboard fixed layout stability:** flex frame (topbar + sidebar + scrollable main)، شارة إعداد سطر واحد في الشريط العلوي، بطاقة الرئيسية بدون تكرار، «الخطوة X من Y». Commit: **`ui: fix dashboard fixed layout and remove nested scrollbars`**. |
 | 2026-05-19 | **Dashboard topbar + sidebar scroll fix:** شريط علوي أخضر ثابت 64px + جانبي ثابت بدون تمرير داخلي + تمرير المحتوى فقط (`.ma-content-root`). Commit: **`ui: migrate dashboard to topbar + sidebar layout and remove nested scroll issues`**. |
 | 2026-05-19 | **Merchant dashboard top bar + contextual sidebar:** `merchant_app.html` — شريط علوي ثابت (CartFlow، حالة الإعداد، أقسام رئيسية) + جانبي سياقي حسب القسم؛ حذف تكرار تبويب السلال؛ `#templates` → قوالب. Commit: **`ui: restructure dashboard into top navigation + contextual sidebar`**. |

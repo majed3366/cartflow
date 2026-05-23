@@ -165,6 +165,26 @@
     if (pt) pt.textContent = text || "";
   }
 
+  function closeSetupDetail() {
+    document.body.classList.remove("ma-setup-detail-open");
+    var root = byId("ma-setup-experience-root");
+    if (root) root.hidden = true;
+  }
+
+  function openSetupDetail() {
+    document.body.classList.add("ma-setup-detail-open");
+    var root = byId("ma-setup-experience-root");
+    if (!root) return;
+    if (root.innerHTML.trim()) {
+      root.hidden = false;
+      requestAnimationFrame(function () {
+        root.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    }
+  }
+
+  window.maOpenSetupDetail = openSetupDetail;
+
   function updateNavActive(page, cartTab) {
     var section = pageToSection(page);
     document.querySelectorAll(".ma-context-sidebar .nav-item").forEach(function (b) {
@@ -245,6 +265,8 @@
       runPageHooks(page);
     }
 
+    if (page !== "home") closeSetupDetail();
+
     var cb = byId("ma-sidebar-toggle");
     if (cb) cb.checked = false;
     var scrollRoot = document.querySelector(".ma-content-root");
@@ -313,8 +335,9 @@
     var setupLink = byId("ma-gtb-setup");
     if (setupLink) {
       setupLink.addEventListener("click", function (ev) {
-        if (ev.target.closest("#ma-setup-toggle-btn")) return;
+        ev.preventDefault();
         goTo("home");
+        setTimeout(openSetupDetail, 0);
       });
     }
   }
