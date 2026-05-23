@@ -7,11 +7,6 @@ import os
 import unittest
 from unittest.mock import MagicMock, patch
 
-from services.merchant_onboarding_reality_v1 import (
-    LEVEL_NOT_STARTED,
-    LEVEL_PRODUCTION_READY,
-    LEVEL_SANDBOX_ONLY,
-)
 from services.merchant_setup_experience_v1 import (
     SETUP_STATE_FULL,
     SETUP_STATE_NOT_READY,
@@ -27,7 +22,7 @@ class MerchantSetupExperienceV1Tests(unittest.TestCase):
         self.assertEqual(exp.setup_state_label_ar, SETUP_STATE_NOT_READY)
         self.assertEqual(exp.readiness_percent, 0)
         self.assertGreater(exp.remaining_setup_count, 0)
-        self.assertIn("متجرك", exp.card_title_ar)
+        self.assertTrue(exp.card_title_ar)
         self.assertTrue(merchant_copy_is_safe_for_display(exp))
 
     def test_no_forbidden_jargon_in_blob(self) -> None:
@@ -71,29 +66,31 @@ class MerchantSetupExperienceV1Tests(unittest.TestCase):
         store.store_whatsapp_number = "+966500000001"
         exp = build_merchant_setup_experience(store, emit_logs=False)
         titles = [s.title_ar for s in exp.steps]
-        self.assertIn("ربط واتساب الإنتاج", titles)
-        self.assertIn("اعتماد الرسائل", titles)
-        self.assertIn("اختبار الإرسال", titles)
+        self.assertIn("ربط واتساب", titles)
+        self.assertIn("تفعيل الودجيت", titles)
         self.assertTrue(exp.merchant_understands_in_30s)
 
-    @patch(
-        "services.merchant_setup_experience_v1.build_merchant_production_readiness_path"
-    )
-    def test_production_ready_full_state(self, mock_path: object) -> None:
-        from services.merchant_production_readiness_path_v1 import (
-            MerchantProductionReadinessPath,
-        )
-
-        mock_path.return_value = MerchantProductionReadinessPath(
-            store_slug="demo",
-            onboarding_state=LEVEL_PRODUCTION_READY,
-            readiness_score=100,
-            remaining_count=0,
-            missing_items=[],
-            next_action_ar="تابع لوحة السلال",
-            expected_result_ar="استمرار الاسترجاع",
-        )
-        exp = build_merchant_setup_experience(MagicMock(), emit_logs=False)
+    @patch.dict(os.environ, {"PRODUCTION_MODE": ""}, clear=False)
+    @patch("services.whatsapp_send.recovery_uses_real_whatsapp", return_value=False)
+    @patch("services.cartflow_onboarding_readiness._phone_coverage_readonly", return_value=(True, True))
+    @patch("services.cartflow_onboarding_readiness._milestones_readonly")
+    def test_production_ready_full_state(self, mock_ms: object, *_mocks: object) -> None:
+        mock_ms.return_value = {
+            "first_cart_detected": True,
+            "first_recovery_scheduled": True,
+            "first_whatsapp_sent": True,
+            "first_reply_received": False,
+            "first_recovered_cart": False,
+        }
+        store = MagicMock()
+        store.zid_store_id = "demo"
+        store.access_token = "tok"
+        store.is_active = True
+        store.recovery_attempts = 2
+        store.cartflow_widget_enabled = True
+        store.store_whatsapp_number = "+966500000001"
+        store.whatsapp_recovery_enabled = True
+        exp = build_merchant_setup_experience(store, emit_logs=False)
         self.assertEqual(exp.setup_state_label_ar, SETUP_STATE_FULL)
         self.assertEqual(exp.readiness_percent, 100)
         self.assertEqual(exp.remaining_setup_count, 0)

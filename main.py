@@ -14630,7 +14630,7 @@ def _api_json_dashboard_summary(dash_store: Optional[Any]) -> Dict[str, Any]:
         dashboard_summary_profile_span,
     )
     from services.merchant_setup_experience_v1 import (  # noqa: PLC0415
-        build_merchant_setup_experience,
+        build_merchant_setup_experience_api_payload,
     )
     from services.merchant_whatsapp_readiness_ui import (  # noqa: PLC0415
         build_merchant_whatsapp_readiness_card,
@@ -14724,9 +14724,9 @@ def _api_json_dashboard_summary(dash_store: Optional[Any]) -> Dict[str, Any]:
         "merchant_nav_badge_abandoned": int(mstats.get("normal_cart_count") or 0),
         "merchant_nav_badge_followup": 0,
         "merchant_nav_badge_vip": 0,
-        "merchant_setup_experience": build_merchant_setup_experience(
-            dash_store, emit_logs=False
-        ).to_dict(),
+        "merchant_setup_experience": build_merchant_setup_experience_api_payload(
+            dash_store
+        ),
     }
 
 

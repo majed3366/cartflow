@@ -315,6 +315,7 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 
 | Date (UTC) | Summary |
 |------------|---------|
+| 2026-05-19 | **Merchant onboarding v1:** `services/merchant_onboarding_v1.py` — 5 خطوات مُستنتجة من `evaluate_onboarding_readiness`؛ بطاقة إعداد موجّهة (تقدّم X/5، أكمل الإعداد، قائمة ✓/◯)؛ `ma-onboarding-focus` يخفّي KPI/تحليلات حتى الجاهزية. Commit: **`feat: add merchant onboarding v1 and guided setup flow`**. |
 | 2026-05-19 | **Resend password reset:** `services/merchant_password_reset_email.py` — `RESEND_API_KEY` + `RESEND_FROM_EMAIL`، رابط مطلق عبر `CARTFLOW_PUBLIC_BASE_URL`، تجربة dev بدون مفتاح (سجل الرابط)، `/login?password_reset=1` بعد النجاح. Commit: **`feat: add resend password reset integration`**. |
 | 2026-05-19 | **Merchant signup fix (mobile):** `ensure_merchant_auth_schema` قبل `/signup` و`/login` (إنتاج بدون `create_all` عند الإقلاع)؛ نموذج تسجيل مبسّط (اسم المتجر فقط، `merchant_name` من اسم المتجر)؛ سجلات `[MERCHANT SIGNUP]` للتشخيص. Commit: **`fix: resolve mobile signup failure and simplify merchant signup`**. |
 | 2026-05-19 | **Merchant auth foundation v1:** `/login` `/signup` `/logout` `/forgot-password` `/reset-password`، جلسة موقّعة، حماية `/dashboard` و`/api/dashboard`، تجاوز `ENV=development` فقط، نماذج `merchant_users` + ربط `stores.merchant_user_id`. Commit: **`feat: add merchant auth foundation v1`**. |

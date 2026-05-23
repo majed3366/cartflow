@@ -1009,6 +1009,118 @@ nav.ma-sidebar-nav {
   grid-template-columns: 1fr;
 }
 
+/* Onboarding focus — hide advanced home blocks until first readiness */
+#page-home.ma-onboarding-focus .kpi-grid,
+#page-home.ma-onboarding-focus .ma-home-reasons,
+#page-home.ma-onboarding-focus .body-grid.ma-home-body,
+#page-home.ma-onboarding-focus .bottom-grid.ma-home-bottom,
+#page-home.ma-onboarding-focus #ma-home-month-summary {
+  display: none !important;
+}
+
+#page-home.ma-onboarding-focus .ma-home-top {
+  grid-template-columns: 1fr;
+}
+
+.ma-onb-panel .ma-setup-panel-lead {
+  margin: 0 0 14px;
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.ma-onb-progress-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #ecfdf5;
+  border: 1px solid #bbf7d0;
+}
+
+.ma-onb-progress-k {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.ma-onb-progress-v {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--green-dark);
+}
+
+.ma-onb-current {
+  margin-bottom: 14px;
+}
+
+.ma-onb-celebration {
+  margin: 0 0 8px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--green-dark);
+  line-height: 1.5;
+}
+
+.ma-onb-checklist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.ma-onb-checklist-item {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.ma-onb-checklist-item:last-child {
+  border-bottom: none;
+}
+
+.ma-onb-check {
+  flex-shrink: 0;
+  width: 22px;
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+.ma-onb-checklist-item.is-done .ma-onb-check {
+  color: var(--green-mid);
+}
+
+.ma-onb-check-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.ma-onb-check-title {
+  margin: 0 0 4px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.ma-onb-check-outcome-label {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.ma-onb-check-outcome {
+  margin: 2px 0 8px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text);
+}
+
 .ma-home-reasons {
   margin-bottom: 16px;
 }

@@ -35,53 +35,63 @@
     el.style.display = v > 0 ? "" : "none";
   }
 
+  function sectionFromHref(href) {
+    var h = String(href || "");
+    var i = h.indexOf("#");
+    if (i < 0) return "";
+    return h.slice(i + 1);
+  }
+
   function setupStepsHtml(steps) {
     if (!steps || !steps.length) return "";
-    var total = steps.length;
-    var html = '<ol class="m-0" style="list-style:none;padding:0;margin:0">';
+    var html = '<ul class="ma-onb-checklist">';
     for (var i = 0; i < steps.length; i++) {
       var st = steps[i];
-      var done = st.is_complete ? " is-done" : "";
-      var stepNum = i + 1;
+      var done = !!st.is_complete;
+      var mark = done ? "✓" : "◯";
+      var href = st.action_href || "#settings";
+      var sec = sectionFromHref(href);
+      var goAttr = sec
+        ? ' onclick="if(window.goTo){goTo(\'' + sec + "');}return false;\""
+        : "";
       html +=
-        '<li class="ma-setup-step' +
-        done +
-        '"><p class="ma-setup-step-index">الخطوة ' +
-        stepNum +
-        " من " +
-        total +
-        "</p>" +
-        '<p class="ma-setup-step-title">' +
+        '<li class="ma-onb-checklist-item' +
+        (done ? " is-done" : " is-pending") +
+        '">' +
+        '<span class="ma-onb-check" aria-hidden="true">' +
+        mark +
+        "</span>" +
+        '<div class="ma-onb-check-body">' +
+        '<p class="ma-onb-check-title">' +
         esc(st.title_ar) +
         "</p>" +
-        '<p class="ma-setup-step-outcome-label">النتيجة المتوقعة</p>' +
-        '<p class="ma-setup-step-outcome">' +
+        '<p class="ma-onb-check-outcome-label">النتيجة</p>' +
+        '<p class="ma-onb-check-outcome">' +
         esc(st.outcome_ar) +
         "</p>" +
-        '<a class="ma-setup-step-action" href="' +
-        esc(st.action_href || "#whatsapp") +
-        '" onclick="if(window.goTo){goTo(\'whatsapp\');}">' +
-        esc(st.complete_action_ar || "أكملت هذا الإعداد") +
-        "</a>";
-      if (i < steps.length - 1) {
-        html += '<p class="ma-setup-arrow" aria-hidden="true">↓</p>';
-      }
-      html += "</li>";
+        (done
+          ? ""
+          : '<a class="ma-setup-step-action" href="' +
+            esc(href) +
+            '"' +
+            goAttr +
+            ">انتقل لهذه الخطوة</a>") +
+        "</div></li>";
     }
-    html += "</ol>";
+    html += "</ul>";
     return html;
   }
 
-  function firstIncompleteStepIndex(steps) {
-    if (!steps || !steps.length) return 0;
-    for (var i = 0; i < steps.length; i++) {
-      if (!steps[i].is_complete) return i + 1;
-    }
-    return 0;
+  function applyOnboardingHomeFocus(mse) {
+    var home = byId("page-home");
+    if (!home) return;
+    var focus = !!(mse && mse.show_simplified_home);
+    home.classList.toggle("ma-onboarding-focus", focus);
   }
 
   function applyMerchantSetupExperience(mse) {
     var root = byId("ma-setup-experience-root");
+    applyOnboardingHomeFocus(mse);
     if (!root) return;
     if (!mse || !mse.show_card) {
       root.hidden = true;
@@ -89,57 +99,69 @@
       return;
     }
     var steps = mse.steps || [];
-    var totalSteps = steps.length || parseInt(mse.remaining_setup_count, 10) || 0;
-    var remaining = parseInt(mse.remaining_setup_count, 10) || 0;
-    var pct = parseInt(mse.readiness_percent, 10);
-    if (isNaN(pct)) pct = 0;
-    var title = esc(mse.card_title_ar || "متجرك قريب من التشغيل الكامل");
-    var remainLabel =
-      remaining === 0
-        ? "جاهز للتشغيل الكامل"
-        : remaining + " إعدادات";
-    var currentStep = firstIncompleteStepIndex(steps);
-    var progressHtml =
-      currentStep > 0 && totalSteps > 0
-        ? '<p class="ma-setup-step-progress">أنت على <strong>الخطوة ' +
-          currentStep +
-          " من " +
-          totalSteps +
-          "</strong></p>"
-        : "";
+    var totalSteps = parseInt(mse.total_steps, 10) || steps.length || 5;
+    var completed =
+      parseInt(mse.completed_steps, 10) ||
+      steps.filter(function (s) {
+        return s.is_complete;
+      }).length;
+    var remaining = parseInt(mse.remaining_setup_count, 10);
+    if (isNaN(remaining)) remaining = Math.max(0, totalSteps - completed);
+    var ready = !!(mse.onboarding_complete || mse.first_recovery_ready);
+    var title = esc(mse.card_title_ar || "إعداد متجرك");
+    var lead = esc(
+      mse.card_lead_ar ||
+        mse.celebration_message_ar ||
+        "أكمل الخطوات للوصول إلى أول جاهزية للاسترجاع."
+    );
+    var currentStep = esc(mse.current_step_ar || mse.next_step_ar || "—");
+    var currentOutcome = esc(
+      mse.current_outcome_ar || mse.outcome_summary_ar || "—"
+    );
+    var progressLabel = completed + " / " + totalSteps + " مكتمل";
+    var panelOpen = !ready;
     root.hidden = false;
     root.innerHTML =
-      '<div class="ma-setup-panel">' +
+      '<div class="ma-setup-panel ma-onb-panel">' +
       '<h2 class="ma-setup-home-title">' +
       title +
       "</h2>" +
-      '<div class="ma-setup-home-meta">' +
-      '<div class="ma-setup-home-row"><span class="ma-setup-home-k">الجاهزية</span><span class="ma-setup-home-v ma-setup-home-v--pct">' +
-      pct +
-      "%</span></div>" +
-      '<div class="ma-setup-home-row"><span class="ma-setup-home-k">تبقى</span><span class="ma-setup-home-v">' +
-      esc(remainLabel) +
-      "</span></div>" +
-      '<div class="ma-setup-home-row"><span class="ma-setup-home-k">الخطوة التالية</span><span class="ma-setup-home-v">' +
-      esc(mse.next_step_ar) +
-      "</span></div>" +
-      "</div>" +
-      progressHtml +
-      '<p class="ma-setup-panel-lead" style="font-size:12px;color:var(--muted);margin-bottom:12px">النتيجة: ' +
-      esc(mse.outcome_summary_ar) +
-      "</p>" +
-      '<div class="ma-setup-actions">' +
-      '<button type="button" class="ma-setup-btn-primary" id="ma-setup-toggle-btn" aria-expanded="false" aria-controls="ma-setup-steps-panel">عرض خطوات الإعداد</button>' +
-      '<a class="ma-setup-btn-secondary" href="' +
-      esc(mse.action_href || "#whatsapp") +
-      '" onclick="if(window.goTo){goTo(\'whatsapp\');return false;}">انتقل للخطوة الحالية</a>' +
-      "</div>" +
-      '<div id="ma-setup-steps-panel" class="ma-setup-steps" hidden role="region" aria-label="خطوات الإعداد">' +
-      setupStepsHtml(steps) +
-      (remaining === 0
-        ? '<p style="margin:8px 0 0;font-size:12px;font-weight:700;color:#166534">اكتمل الإعداد — متجرك جاهز للتشغيل الكامل.</p>'
-        : "") +
-      "</div></div>";
+      (lead ? '<p class="ma-setup-panel-lead">' + lead + "</p>" : "") +
+      (ready
+        ? '<p class="ma-onb-celebration">' +
+          esc(
+            mse.celebration_message_ar ||
+              "يمكن لـ CartFlow الآن البدء بمتابعة السلال."
+          ) +
+          "</p>"
+        : '<div class="ma-onb-progress-row">' +
+          '<span class="ma-onb-progress-k">التقدّم</span>' +
+          '<span class="ma-onb-progress-v">' +
+          esc(progressLabel) +
+          "</span></div>" +
+          '<div class="ma-setup-home-meta ma-onb-current">' +
+          '<div class="ma-setup-home-row"><span class="ma-setup-home-k">الخطوة الحالية</span><span class="ma-setup-home-v">' +
+          currentStep +
+          "</span></div>" +
+          '<div class="ma-setup-home-row"><span class="ma-setup-home-k">النتيجة المتوقعة</span><span class="ma-setup-home-v">' +
+          currentOutcome +
+          "</span></div></div>" +
+          '<div class="ma-setup-actions">' +
+          '<button type="button" class="ma-setup-btn-primary" id="ma-setup-toggle-btn" aria-expanded="' +
+          (panelOpen ? "true" : "false") +
+          '" aria-controls="ma-setup-steps-panel">أكمل الإعداد</button>' +
+          '<a class="ma-setup-btn-secondary" href="' +
+          esc(mse.action_href || "#settings") +
+          '" onclick="var s=\'' +
+          esc(sectionFromHref(mse.action_href || "")) +
+          "';if(window.goTo&&s){goTo(s);}return false;\">انتقل للخطوة</a>" +
+          "</div>" +
+          '<div id="ma-setup-steps-panel" class="ma-setup-steps"' +
+          (panelOpen ? "" : " hidden") +
+          ' role="region" aria-label="خطوات الإعداد">' +
+          setupStepsHtml(steps) +
+          "</div>") +
+      "</div>";
 
     var btn = byId("ma-setup-toggle-btn");
     var panel = byId("ma-setup-steps-panel");

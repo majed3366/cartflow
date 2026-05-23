@@ -235,53 +235,58 @@ def build_merchant_setup_experience(
     *,
     emit_logs: bool = True,
 ) -> MerchantSetupExperience:
-    path = build_merchant_production_readiness_path(store, emit_logs=False)
-    missing_codes = {m.code for m in path.missing_items}
-    state = path.onboarding_state
+    from services.merchant_onboarding_v1 import build_merchant_onboarding_flow
 
-    all_steps = _build_merchant_steps(missing_codes)
-    visible = _visible_setup_steps(all_steps)
-    incomplete = [s for s in visible if not s.is_complete]
-    remaining = len(incomplete)
+    flow = build_merchant_onboarding_flow(store, emit_logs=emit_logs)
+    remaining = max(0, flow.total_steps - flow.completed_steps)
+    percent = int(round(100.0 * flow.completed_steps / flow.total_steps)) if flow.total_steps else 0
 
-    percent = _merchant_progress_percent(all_steps, state, int(path.readiness_score or 0))
-
-    if incomplete:
-        next_step = _sanitize_merchant_text(incomplete[0].title_ar)
-        action_href = incomplete[0].action_href
+    if flow.onboarding_complete:
+        setup_label = SETUP_STATE_FULL
+    elif flow.completed_steps >= 3:
+        setup_label = SETUP_STATE_READY
+    elif flow.completed_steps >= 1:
+        setup_label = SETUP_STATE_NEAR
     else:
-        next_step = "تابع لوحة السلال"
-        action_href = "/dashboard#carts"
+        setup_label = SETUP_STATE_NOT_READY
 
-    outcome = _default_outcome_summary(state)
-    if incomplete:
-        outcome = incomplete[0].outcome_ar
+    steps_for_card: list[MerchantSetupStep] = [
+        MerchantSetupStep(
+            step_id=s.step_id,
+            order=s.order,
+            title_ar=s.title_ar,
+            outcome_ar=s.outcome_ar,
+            action_href=s.action_href,
+            complete_action_ar="أكمل الإعداد",
+            is_complete=s.is_complete,
+        )
+        for s in flow.steps
+    ]
 
-    setup_label = _setup_state_label(percent, state)
-    title = _card_title(state, percent)
+    next_step = flow.current_step_ar or "تابع لوحة السلال"
+    outcome = flow.current_outcome_ar or flow.card_lead_ar
 
     if emit_logs:
         log.info(
-            "[MERCHANT SETUP EXPERIENCE] percent=%s remaining=%s state=%s next=%s",
+            "[MERCHANT SETUP EXPERIENCE] percent=%s remaining=%s onboarding_complete=%s next=%s",
             percent,
             remaining,
-            setup_label,
+            flow.onboarding_complete,
             next_step,
         )
 
-    exp = MerchantSetupExperience(
-        show_card=True,
-        card_title_ar=title,
+    return MerchantSetupExperience(
+        show_card=flow.show_card,
+        card_title_ar=flow.card_title_ar,
         setup_state_label_ar=setup_label,
         readiness_percent=max(0, min(100, percent)),
         remaining_setup_count=remaining,
         outcome_summary_ar=outcome,
         next_step_ar=next_step,
-        action_href=action_href,
-        steps=visible,
-        merchant_understands_in_30s=bool(next_step and outcome and title),
+        action_href=flow.action_href,
+        steps=steps_for_card,
+        merchant_understands_in_30s=bool(next_step and outcome and flow.card_title_ar),
     )
-    return exp
 
 
 def merchant_copy_is_safe_for_display(experience: MerchantSetupExperience) -> bool:
@@ -301,4 +306,9 @@ def merchant_copy_is_safe_for_display(experience: MerchantSetupExperience) -> bo
 def build_merchant_setup_experience_api_payload(
     store: Optional[Any] = None,
 ) -> dict[str, Any]:
-    return build_merchant_setup_experience(store).to_dict()
+    from services.merchant_onboarding_v1 import build_merchant_onboarding_flow
+
+    exp = build_merchant_setup_experience(store, emit_logs=False)
+    out = exp.to_dict()
+    out.update(build_merchant_onboarding_flow(store, emit_logs=False).to_dict())
+    return out
