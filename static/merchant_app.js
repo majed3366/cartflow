@@ -154,10 +154,12 @@
     document.querySelectorAll(".ma-gtb-section").forEach(function (btn) {
       btn.classList.toggle("active", btn.getAttribute("data-ma-section") === sec);
     });
-    var sidebar = byId("ma-context-sidebar");
-    if (sidebar) {
-      sidebar.classList.toggle("ma-context-sidebar--home", sec === "home");
-    }
+  }
+
+  function setHomeNavActive(target) {
+    document.querySelectorAll("[data-home-nav]").forEach(function (btn) {
+      btn.classList.toggle("active", btn.getAttribute("data-home-nav") === target);
+    });
   }
 
   function setPageTitle(text) {
@@ -165,25 +167,41 @@
     if (pt) pt.textContent = text || "";
   }
 
-  function closeSetupDetail() {
-    document.body.classList.remove("ma-setup-detail-open");
+  function openSetupSteps() {
     var root = byId("ma-setup-experience-root");
-    if (root) root.hidden = true;
-  }
-
-  function openSetupDetail() {
-    document.body.classList.add("ma-setup-detail-open");
-    var root = byId("ma-setup-experience-root");
-    if (!root) return;
-    if (root.innerHTML.trim()) {
-      root.hidden = false;
+    var panel = byId("ma-setup-steps-panel");
+    var btn = byId("ma-setup-toggle-btn");
+    if (panel) panel.hidden = false;
+    if (btn) btn.setAttribute("aria-expanded", "true");
+    if (root) {
       requestAnimationFrame(function () {
         root.scrollIntoView({ behavior: "smooth", block: "start" });
       });
     }
   }
 
-  window.maOpenSetupDetail = openSetupDetail;
+  window.maHomeNav = function (target) {
+    var t = (target || "overview").trim();
+    goTo("home");
+    setHomeNavActive(t);
+    if (t === "setup") {
+      setTimeout(openSetupSteps, 0);
+      return;
+    }
+    if (t === "month") {
+      var monthEl = byId("ma-home-month-summary");
+      if (monthEl) {
+        requestAnimationFrame(function () {
+          monthEl.scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+      }
+      return;
+    }
+    var scrollRoot = document.querySelector(".ma-content-root");
+    if (scrollRoot) scrollRoot.scrollTop = 0;
+  };
+
+  window.maOpenSetupDetail = openSetupSteps;
 
   function updateNavActive(page, cartTab) {
     var section = pageToSection(page);
@@ -262,10 +280,9 @@
       if (pageEl) pageEl.classList.add("active");
       setPageTitle(TITLES[page] || SECTION_LABELS[section] || "");
       updateNavActive(page, null);
+      if (page === "home") setHomeNavActive("overview");
       runPageHooks(page);
     }
-
-    if (page !== "home") closeSetupDetail();
 
     var cb = byId("ma-sidebar-toggle");
     if (cb) cb.checked = false;
@@ -332,14 +349,6 @@
         goToSection(btn.getAttribute("data-ma-section") || "home");
       });
     });
-    var setupLink = byId("ma-gtb-setup");
-    if (setupLink) {
-      setupLink.addEventListener("click", function (ev) {
-        ev.preventDefault();
-        goTo("home");
-        setTimeout(openSetupDetail, 0);
-      });
-    }
   }
 
   document.addEventListener("DOMContentLoaded", function () {
