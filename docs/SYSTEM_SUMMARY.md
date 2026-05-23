@@ -309,6 +309,7 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 
 | Date (UTC) | Summary |
 |------------|---------|
+| 2026-05-19 | **Dashboard final polish:** جانبي 200px، إعدادات بعرض 700px، صف علوي للرئيسية (جاهزية + ملخص الشهر)، أدوات علوية (إشعارات/حساب/باقة/خروج placeholders). Commit: **`ui: final dashboard polish and compact layout`**. |
 | 2026-05-19 | **Dashboard naming cleanup:** قائمة الإعدادات (واتساب / الودجيت / الحساب والمتجر)، عنوان واحد في `pageTitle` + `pageSub`، حجز أسفل الجانبي للحساب/الباقة لاحقاً. Commit: **`ui: clean dashboard naming and preserve simple navigation`**. |
 | 2026-05-19 | **Merchant dashboard UX cleanup:** جانبي الرئيسية (نظرة عامة / إعداد / ملخص الشهر)، بطاقة جاهزية في المحتوى، إزالة معاينة الودجيت وإجراءات سريعة، ملخص الشهر بجانب KPI. Commit: **`ui: clean up merchant dashboard layout after navigation migration`**. |
 | 2026-05-19 | **Dashboard architecture v2 (desktop/mobile):** شريط علوي ثابت + جانبي `position:fixed` (≥1024px) مع حجز عرض المحتوى؛ &lt;1024px درج hamburger فقط؛ شارة «جاهزية المتجر: N% / ينقص: N»؛ تفاصيل الإعداد عند الطلب على الرئيسية؛ تمرير `.ma-content-root` فقط. Commit: **`ui: finalize dashboard architecture desktop/mobile layout`**. |

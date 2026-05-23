@@ -1,6 +1,8 @@
 :root {
   --topbar-height: 64px;
-  --sidebar-width: 220px;
+  --sidebar-width: 200px;
+  --ma-content-max: 1120px;
+  --ma-settings-max: 700px;
   --ma-topbar-h: var(--topbar-height);
   --ma-sidebar-w: var(--sidebar-width);
   --green:       #166534;
@@ -228,31 +230,53 @@ body {
   white-space: nowrap;
 }
 
-.ma-gtb-icon {
-  border: none;
+.ma-gtb-utils {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.ma-gtb-util {
+  border: 1px solid rgba(255, 255, 255, 0.2);
   background: rgba(255, 255, 255, 0.1);
-  font-size: 15px;
+  color: #fff;
+  font-size: 13px;
   cursor: pointer;
-  padding: 6px 8px;
+  padding: 6px 9px;
   border-radius: 8px;
   line-height: 1;
-}
-
-.ma-gtb-icon:hover {
-  background: rgba(255, 255, 255, 0.18);
-}
-
-.ma-gtb-account {
-  font-size: 11.5px;
-  font-weight: 600;
-  color: #fff;
-  max-width: 140px;
+  font-family: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   white-space: nowrap;
+}
+
+.ma-gtb-util:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.32);
+}
+
+.ma-gtb-util--text {
+  font-size: 11px;
+  font-weight: 600;
+  max-width: 120px;
+}
+
+.ma-gtb-util--text .ma-gtb-util-label {
   overflow: hidden;
   text-overflow: ellipsis;
-  padding: 6px 10px;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.08);
+}
+
+.ma-gtb-util--muted {
+  opacity: 0.72;
+  cursor: not-allowed;
+}
+
+.ma-gtb-util-ico {
+  font-size: 13px;
+  flex-shrink: 0;
 }
 
 /* ===== Dashboard shell: fixed topbar + fixed sidebar + scrolling main ===== */
@@ -301,7 +325,7 @@ body {
 }
 
 .ma-ctx-label {
-  margin: 16px 14px 8px;
+  margin: 14px 12px 6px;
   font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.06em;
@@ -327,9 +351,38 @@ body {
 }
 
 .ma-content-head {
-  padding: 20px 28px 8px;
+  padding: 16px 24px 6px;
   background: var(--bg);
   flex-shrink: 0;
+  max-width: var(--ma-content-max);
+  margin-inline: auto;
+  width: 100%;
+}
+
+#page-home,
+.ma-page-compact {
+  max-width: var(--ma-content-max);
+  margin-inline: auto;
+  width: 100%;
+}
+
+.ma-page-compact {
+  max-width: var(--ma-settings-max);
+  padding-bottom: 24px;
+}
+
+.ma-page-compact .settings-grid,
+.ma-page-compact .ma-widget-layout--simple {
+  max-width: 100%;
+}
+
+.ma-page-compact .ma-fw-card,
+.ma-page-compact .setting-card {
+  margin-bottom: 12px;
+}
+
+.ma-page-compact .page-header {
+  margin-bottom: 12px;
 }
 
 .ma-content-title {
@@ -374,9 +427,9 @@ body {
 }
 
 .page {
-  padding-left: 28px;
-  padding-right: 28px;
-  padding-bottom: 28px;
+  padding-left: 24px;
+  padding-right: 24px;
+  padding-bottom: 24px;
 }
 
 .page.active {
@@ -534,7 +587,7 @@ nav.ma-sidebar-nav {
 
 .ma-widget-layout--simple {
   display: block;
-  max-width: 680px;
+  max-width: 100%;
 }
 
 .ma-widget-preview-compact,
@@ -934,15 +987,31 @@ nav.ma-sidebar-nav {
 .up { color: var(--green-mid); }
 .neutral { color: var(--muted); }
 
-.ma-home-insights {
+.ma-home-top {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 18px;
-  margin-bottom: 18px;
+  gap: 16px;
+  margin-bottom: 16px;
+  align-items: stretch;
+}
+
+.ma-home-top-card {
+  margin: 0;
+  min-height: 0;
+}
+
+.ma-home-top .ma-setup-card {
+  margin-bottom: 0;
+  height: 100%;
+}
+
+.ma-home-reasons {
+  margin-bottom: 16px;
 }
 
 .body-grid.ma-home-body {
   grid-template-columns: 1fr;
+  margin-bottom: 16px;
 }
 
 .bottom-grid.ma-home-bottom {
@@ -1830,7 +1899,7 @@ button.ma-vip-suggest-btn.va-btn {
   .ma-gtb-setup-pct { font-size: 12px; }
   .ma-gtb-setup-remain { font-size: 9px; }
   .ma-gtb-date { display: none; }
-  .ma-gtb-account { display: none; }
+  .ma-gtb-util--muted { display: none; }
 
   .ma-dashboard-frame {
     right: 0;
@@ -1861,7 +1930,9 @@ button.ma-vip-suggest-btn.va-btn {
     overflow: hidden;
   }
 
-  .ma-home-insights { grid-template-columns: 1fr; }
+  .ma-home-top { grid-template-columns: 1fr; }
+  .ma-gtb-util--text .ma-gtb-util-label { display: none; }
+  .ma-gtb-util--text { padding: 6px 8px; max-width: none; }
   .bottom-grid { grid-template-columns: 1fr; }
   .page { padding-left: 16px; padding-right: 16px; padding-bottom: 16px; }
   .ma-content-head { padding: 14px 16px 6px; }

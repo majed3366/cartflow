@@ -28,8 +28,15 @@
   </div>
   <div class="ma-gtb-end">
     <span class="ma-gtb-date ma-dash-skel" id="ma-topbar-date">{{ merchant_ar_date_header | default("") }}</span>
-    <button type="button" class="ma-gtb-icon" aria-label="الإشعارات" title="الإشعارات">🔔</button>
-    <span class="ma-gtb-account" title="{{ merchant_store_display_name | default('متجرك') | e }}">👤 {{ merchant_store_display_name | default("متجرك") }}</span>
+    <div class="ma-gtb-utils" role="group" aria-label="أدوات الحساب">
+      <button type="button" class="ma-gtb-util" id="ma-gtb-notify" aria-label="الإشعارات" title="الإشعارات">🔔</button>
+      <button type="button" class="ma-gtb-util ma-gtb-util--text" id="ma-gtb-account-btn" title="{{ merchant_store_display_name | default('متجرك') | e }}">
+        <span class="ma-gtb-util-ico" aria-hidden="true">👤</span>
+        <span class="ma-gtb-util-label">{{ merchant_store_display_name | default("متجرك") }}</span>
+      </button>
+      <button type="button" class="ma-gtb-util ma-gtb-util--text ma-gtb-util--muted" disabled title="قريباً — إدارة الباقة">الباقة</button>
+      <button type="button" class="ma-gtb-util ma-gtb-util--text ma-gtb-util--muted" disabled title="قريباً — تسجيل الخروج">خروج</button>
+    </div>
   </div>
 </header>
 
@@ -49,7 +56,7 @@
     <button type="button" class="nav-item" data-nav="vip" data-cart-tab="vip" onclick="goToCartTab('vip')">VIP<span class="nb nb-a" id="ma-nav-badge-vip" style="display:none;"></span></button>
   </nav>
   <nav class="ma-ctx-panel ma-sidebar-nav" data-ma-ctx="comms" hidden aria-label="التواصل">
-    <p class="ma-ctx-label">في هذا القسم</p>
+    <p class="ma-ctx-label">التواصل</p>
     <button type="button" class="nav-item" data-nav="messages" onclick="goTo('messages')">الرسائل</button>
     <button type="button" class="nav-item" data-nav="trigger-templates" onclick="goTo('trigger-templates')">قوالب الاسترجاع</button>
     <button type="button" class="nav-item" data-nav="reasons" onclick="goTo('reasons')">أسباب التردد</button>
@@ -85,7 +92,25 @@
     </div>
     {% endif %}
 
-    <div id="ma-setup-experience-root" class="ma-setup-card" hidden aria-live="polite"></div>
+    <div class="ma-home-top">
+      <div id="ma-setup-experience-root" class="ma-setup-card ma-home-top-card" hidden aria-live="polite"></div>
+      <div class="card ma-home-top-card" id="ma-home-month-summary">
+        <div class="card-head"><div class="card-title">ملخص الشهر</div></div>
+        <div class="mini-grid">
+          {% if merchant_dashboard_lazy_shell %}
+          <div class="mc"><div class="mc-l">إجمالي السلال</div><div class="mc-v ma-dash-skel" id="ma-month-abandoned">{{ merchant_month_abandoned_fmt | default("…") }}</div></div>
+          <div class="mc"><div class="mc-l">تم استردادها</div><div class="mc-v ma-dash-skel" style="color:var(--green-mid);" id="ma-month-recovered">{{ merchant_month_recovered_fmt | default("…") }}</div></div>
+          <div class="mc"><div class="mc-l">نسبة الاسترداد</div><div class="mc-v ma-dash-skel" style="color:var(--green-mid);" id="ma-month-pct">{{ merchant_month_recovery_pct_fmt | default("…") }}٪</div></div>
+          <div class="mc"><div class="mc-l">إيرادات مستردة</div><div class="mc-v ma-dash-skel" id="ma-month-revenue">{{ merchant_month_revenue_fmt | default("…") }} ر</div></div>
+          {% else %}
+          <div class="mc"><div class="mc-l">إجمالي السلال</div><div class="mc-v">{{ merchant_month_abandoned_fmt | default("0") }}</div></div>
+          <div class="mc"><div class="mc-l">تم استردادها</div><div class="mc-v" style="color:var(--green-mid);">{{ merchant_month_recovered_fmt | default("0") }}</div></div>
+          <div class="mc"><div class="mc-l">نسبة الاسترداد</div><div class="mc-v" style="color:var(--green-mid);">{{ merchant_month_recovery_pct_fmt | default("0") }}٪</div></div>
+          <div class="mc"><div class="mc-l">إيرادات مستردة</div><div class="mc-v">{{ merchant_month_revenue_fmt | default("0") }} ر</div></div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
 
     <div class="kpi-grid">
       <div class="kpi">
@@ -135,40 +160,22 @@
       </div>
     </div>
 
-    <div class="ma-home-insights">
-      <div class="card">
-        <div class="card-head"><div class="card-title">أسباب التردد — الأسبوع</div><button type="button" class="card-link" onclick="goTo('reasons')">تقرير كامل</button></div>
-        <div class="reasons-body" id="ma-reasons-week-body">
-          {% if merchant_dashboard_lazy_shell %}
-          <div class="ma-dash-skel" style="padding:12px;color:var(--muted);">…</div>
-          {% else %}
-          {% for rr in merchant_reason_rows_week %}
-          <div class="r-row">
-            <div class="r-head"><span class="r-name">{{ rr.label_ar }}</span><span class="r-pct">{{ "%.0f"|format(rr.count_pct | float) }}٪</span></div>
-            <div class="track"><div class="fill" style="width: {{ rr.count_pct | float }}%; background: {{ rr.fill_color }};"></div></div>
-          </div>
-          {% else %}
-          <div class="empty-text" style="padding:12px;color:var(--muted);">لا توجد بيانات أسباب التردد لهذا الأسبوع</div>
-          {% endfor %}
-          {% if merchant_reason_insight_ar %}<div class="r-insight">{{ merchant_reason_insight_ar }}</div>{% endif %}
-          {% endif %}
+    <div class="card ma-home-reasons">
+      <div class="card-head"><div class="card-title">أسباب التردد — الأسبوع</div><button type="button" class="card-link" onclick="goTo('reasons')">تقرير كامل</button></div>
+      <div class="reasons-body" id="ma-reasons-week-body">
+        {% if merchant_dashboard_lazy_shell %}
+        <div class="ma-dash-skel" style="padding:12px;color:var(--muted);">…</div>
+        {% else %}
+        {% for rr in merchant_reason_rows_week %}
+        <div class="r-row">
+          <div class="r-head"><span class="r-name">{{ rr.label_ar }}</span><span class="r-pct">{{ "%.0f"|format(rr.count_pct | float) }}٪</span></div>
+          <div class="track"><div class="fill" style="width: {{ rr.count_pct | float }}%; background: {{ rr.fill_color }};"></div></div>
         </div>
-      </div>
-      <div class="card" id="ma-home-month-summary">
-        <div class="card-head"><div class="card-title">ملخص الشهر</div></div>
-        <div class="mini-grid">
-          {% if merchant_dashboard_lazy_shell %}
-          <div class="mc"><div class="mc-l">إجمالي السلال</div><div class="mc-v ma-dash-skel" id="ma-month-abandoned">{{ merchant_month_abandoned_fmt | default("…") }}</div></div>
-          <div class="mc"><div class="mc-l">تم استردادها</div><div class="mc-v ma-dash-skel" style="color:var(--green-mid);" id="ma-month-recovered">{{ merchant_month_recovered_fmt | default("…") }}</div></div>
-          <div class="mc"><div class="mc-l">نسبة الاسترداد</div><div class="mc-v ma-dash-skel" style="color:var(--green-mid);" id="ma-month-pct">{{ merchant_month_recovery_pct_fmt | default("…") }}٪</div></div>
-          <div class="mc"><div class="mc-l">إيرادات مستردة</div><div class="mc-v ma-dash-skel" id="ma-month-revenue">{{ merchant_month_revenue_fmt | default("…") }} ر</div></div>
-          {% else %}
-          <div class="mc"><div class="mc-l">إجمالي السلال</div><div class="mc-v">{{ merchant_month_abandoned_fmt | default("0") }}</div></div>
-          <div class="mc"><div class="mc-l">تم استردادها</div><div class="mc-v" style="color:var(--green-mid);">{{ merchant_month_recovered_fmt | default("0") }}</div></div>
-          <div class="mc"><div class="mc-l">نسبة الاسترداد</div><div class="mc-v" style="color:var(--green-mid);">{{ merchant_month_recovery_pct_fmt | default("0") }}٪</div></div>
-          <div class="mc"><div class="mc-l">إيرادات مستردة</div><div class="mc-v">{{ merchant_month_revenue_fmt | default("0") }} ر</div></div>
-          {% endif %}
-        </div>
+        {% else %}
+        <div class="empty-text" style="padding:12px;color:var(--muted);">لا توجد بيانات أسباب التردد لهذا الأسبوع</div>
+        {% endfor %}
+        {% if merchant_reason_insight_ar %}<div class="r-insight">{{ merchant_reason_insight_ar }}</div>{% endif %}
+        {% endif %}
       </div>
     </div>
 
@@ -479,7 +486,7 @@
     </div>
   </div>
 
-  <div class="page" id="page-widget">
+  <div class="page ma-page-compact" id="page-widget">
     {% set wp = merchant_widget_panel if merchant_widget_panel is defined else {} %}
     {% set tg = wp.trigger if wp.trigger is defined else {} %}
     <script type="application/json" id="ma-widget-bootstrap">{{ wp | tojson }}</script>
@@ -628,7 +635,7 @@
     </div>
   </div>
 
-  <div class="page" id="page-whatsapp">
+  <div class="page ma-page-compact" id="page-whatsapp">
     <div id="ma-wa-settings-err" style="display:none;margin-bottom:10px;padding:10px 12px;border-radius:10px;border:1px solid #fecaca;background:#fef2f2;color:#991b1b;font-size:13px;"></div>
     <div id="ma-wa-settings-ok" style="display:none;margin-bottom:10px;padding:10px 12px;border-radius:10px;border:1px solid #bbf7d0;background:#f0fdf4;color:#166534;font-size:13px;">تم حفظ إعدادات السلال المهمة</div>
     <div class="settings-grid">
@@ -682,7 +689,7 @@
     </div>
   </div>
 
-  <div class="page" id="page-settings">
+  <div class="page ma-page-compact" id="page-settings">
     <div id="ma-general-settings-err" style="display:none;margin-bottom:10px;padding:10px 12px;border-radius:10px;border:1px solid #fecaca;background:#fef2f2;color:#991b1b;font-size:13px;"></div>
     <div id="ma-general-settings-ok" style="display:none;margin-bottom:10px;padding:10px 12px;border-radius:10px;border:1px solid #bbf7d0;background:#f0fdf4;color:#166534;font-size:13px;">تم حفظ الإعدادات</div>
     <form id="ma-general-settings-form" class="ma-fw-form" autocomplete="off">
