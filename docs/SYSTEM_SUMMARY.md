@@ -48,7 +48,7 @@ CartFlow is a FastAPI application that:
 
 | Path / files | Purpose |
 |--------------|---------|
-| `GET /dashboard` | `merchant_app.html` (shell + lazy JSON) — KPIs، **بطاقة إعداد التاجر** (`merchant_setup_experience_v1`)، سلال، VIP، واتساب. `GET /dashboard/analytics` → `dashboard_v1.html` مع نفس البطاقة. |
+| `GET /dashboard` | `merchant_app.html` — قائمة مجمّعة + تبويبات **السلال** (الكل / تدخل / انتظار / مكتملة / VIP)؛ إعدادات مبسّطة للودجيت وVIP؛ lazy JSON عبر `/api/dashboard/*`. |
 | `GET /dashboard/recovery-settings` | `recovery_settings.html` — delay, attempts, WhatsApp fields; **`GET`/`POST /api/recovery-settings`**. |
 | `GET /dashboard#whatsapp` | `merchant_app.html` — merchant WhatsApp settings form (number, recovery toggle, provider mode); same **`/api/recovery-settings`** API. |
 | `GET /dashboard#vip` | `merchant_app.html` — VIP preferences (enable, threshold, notify toggle, note) + existing VIP cart table; **`/api/recovery-settings`**. |
@@ -309,6 +309,7 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 
 | Date (UTC) | Summary |
 |------------|---------|
+| 2026-05-19 | **Merchant Dashboard Simplification v1:** `merchant_app.html` — قائمة مجمّعة (الرئيسية / السلال / التواصل / الإعدادات)، شريط تبويب السلال، ودجيت وVIP مبسّطان، معاينة مدمجة؛ لا تغيير API أو منطق استرجاع. Commit: **`ui: simplify merchant dashboard navigation and setup pages`**. |
 | 2026-05-19 | **Merchant Setup Experience v1:** `merchant_setup_experience_v1.py` — بطاقة «متجرك قريب من التشغيل الكامل» (جاهزية/تبقى/نتيجة/خطوات)؛ `GET /api/dashboard/summary` + `GET /api/merchant/setup-experience`؛ لا risk/owner/callback للتاجر. Commit: **`feat: add merchant setup experience v1`**. |
 | 2026-05-19 | **Readiness Ownership Path v1:** `readiness_ownership_path_v1.py` — owner category per missing item; `[READINESS OWNER]`; admin «جاهزية المتجر» shows المشكلة/المسؤول/الإجراء/الأثر. Commit: **`feat: add readiness ownership path v1`**. |
 | 2026-05-19 | **Merchant Production Readiness Path v1:** `merchant_production_readiness_path_v1.py` — actionable next step, score %, missing items, admin card enrichment; `[MERCHANT NEXT ACTION]` log. Commit: **`feat: add merchant production readiness path v1`**. |

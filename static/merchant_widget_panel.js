@@ -139,6 +139,20 @@
     bo.innerHTML = optsHtml;
   }
 
+  function reasonLabelsForPreview() {
+    var parts = [];
+    var tb = byId("mw-reason-tbody");
+    if (tb) {
+      tb.querySelectorAll("tr[data-mw-reason-row]").forEach(function (tr) {
+        var onInp = tr.querySelector(".mw-reason-on");
+        var labEl = tr.querySelector(".mw-reason-label-fixed");
+        if (!labEl || !onInp || !onInp.checked) return;
+        parts.push(String(labEl.textContent || "").trim() || "—");
+      });
+    }
+    return parts;
+  }
+
   function refreshPreview() {
     var b = readBootstrap() || {};
     var wn = byId("mw-widget-name");
@@ -147,24 +161,80 @@
       titleFromBootstrap(b);
     var sub = questionFromBootstrap(b);
     var color = byId("mw-widget-color") ? byId("mw-widget-color").value : "#6C5CE7";
-    var tb = byId("mw-reason-tbody");
-    var parts = [];
-    if (tb) {
-      tb.querySelectorAll("tr[data-mw-reason-row]").forEach(function (tr) {
-        var onInp = tr.querySelector(".mw-reason-on");
-        var labEl = tr.querySelector(".mw-reason-label-fixed");
-        if (!labEl || !onInp || !onInp.checked) return;
-        var lab = String(labEl.textContent || "").trim() || "—";
-        parts.push(
+    var parts = reasonLabelsForPreview();
+    var optsHtml = parts
+      .map(function (lab) {
+        return (
           '<span class="wb-opt selected">' +
-            lab.replace(/</g, "&lt;").replace(/>/g, "&gt;") +
-            "</span>"
+          lab.replace(/</g, "&lt;").replace(/>/g, "&gt;") +
+          "</span>"
         );
-      });
-    }
-    var optsHtml = parts.join("");
+      })
+      .join("");
     fillPreviewPair("desk", title, sub, color, optsHtml);
     fillPreviewPair("mob", title, sub, color, optsHtml);
+  }
+
+  function syncReasonRowFromKey(key, checked) {
+    var tb = byId("mw-reason-tbody");
+    if (!tb) return;
+    tb.querySelectorAll("tr[data-mw-reason-row]").forEach(function (tr) {
+      var keyInp = tr.querySelector(".mw-reason-key");
+      if (!keyInp || (keyInp.value || "").trim().toLowerCase() !== key) return;
+      var onInp = tr.querySelector(".mw-reason-on");
+      if (onInp) onInp.checked = !!checked;
+    });
+  }
+
+  function syncSimpleFromTable() {
+    document.querySelectorAll(".mw-reason-on-simple").forEach(function (inp) {
+      var key = (inp.getAttribute("data-reason-key") || "").trim().toLowerCase();
+      if (!key) return;
+      var tb = byId("mw-reason-tbody");
+      var checked = false;
+      if (tb) {
+        tb.querySelectorAll("tr[data-mw-reason-row]").forEach(function (tr) {
+          var keyInp = tr.querySelector(".mw-reason-key");
+          if (!keyInp || (keyInp.value || "").trim().toLowerCase() !== key) return;
+          var onInp = tr.querySelector(".mw-reason-on");
+          checked = onInp ? !!onInp.checked : false;
+        });
+      }
+      inp.checked = checked;
+    });
+  }
+
+  function updateTimingSummary() {
+    var el = byId("mw-timing-summary");
+    if (!el) return;
+    var hesOn = byId("mw-hes-enabled");
+    var exitOn = byId("mw-exit-enabled");
+    var bits = [];
+    if (exitOn && exitOn.checked) bits.push("عند محاولة مغادرة الصفحة");
+    if (hesOn && hesOn.checked) bits.push("عند تردد العميل بعد إضافة السلة");
+    el.textContent =
+      bits.length > 0
+        ? "التوقيت المقترح: " + bits.join(" · ")
+        : "التوقيت المقترح: الودجيت غير مفعّل حالياً";
+  }
+
+  function wireReasonSimpleSync() {
+    document.querySelectorAll(".mw-reason-on-simple").forEach(function (inp) {
+      inp.addEventListener("change", function () {
+        var key = (inp.getAttribute("data-reason-key") || "").trim().toLowerCase();
+        syncReasonRowFromKey(key, inp.checked);
+        refreshPreview();
+      });
+    });
+    var tb = byId("mw-reason-tbody");
+    if (tb) {
+      tb.addEventListener("change", function (ev) {
+        if (ev.target && ev.target.classList.contains("mw-reason-on")) {
+          syncSimpleFromTable();
+          refreshPreview();
+        }
+      });
+    }
   }
 
   function bindReasonReorder() {
@@ -240,6 +310,10 @@
       el.addEventListener("input", refreshPreview);
       el.addEventListener("change", refreshPreview);
     });
+    ["mw-exit-enabled", "mw-hes-enabled"].forEach(function (id) {
+      var el = byId(id);
+      if (el) el.addEventListener("change", updateTimingSummary);
+    });
     var tb = byId("mw-reason-tbody");
     if (tb) {
       tb.addEventListener("input", refreshPreview);
@@ -268,9 +342,12 @@
   function init() {
     if (!byId("page-widget")) return;
     bindReasonReorder();
+    wireReasonSimpleSync();
     wireLive();
     wireHesitationDelayUi();
     wireSave();
+    syncSimpleFromTable();
+    updateTimingSummary();
     refreshPreview();
   }
 
@@ -282,6 +359,8 @@
       tb.removeAttribute("data-mw-bound");
     }
     bindReasonReorder();
+    wireReasonSimpleSync();
+    syncSimpleFromTable();
     refreshPreview();
   };
 
