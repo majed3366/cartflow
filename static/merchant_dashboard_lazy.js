@@ -68,7 +68,31 @@
     return html;
   }
 
+  function applyGlobalTopbarSetup(mse) {
+    var titleEl = byId("ma-gtb-setup-title");
+    var remEl = byId("ma-gtb-setup-remaining");
+    var wrap = byId("ma-gtb-setup");
+    if (!titleEl) return;
+    titleEl.classList.remove("ma-dash-skel");
+    if (!mse || !mse.show_card) {
+      titleEl.textContent = "لوحة متجرك";
+      if (remEl) remEl.textContent = "";
+      if (wrap) wrap.classList.remove("ma-gtb-setup--complete");
+      return;
+    }
+    titleEl.textContent = mse.card_title_ar || "متجرك";
+    var n = parseInt(mse.remaining_setup_count, 10) || 0;
+    if (remEl) {
+      remEl.textContent =
+        n === 0 ? "جاهز للتشغيل" : "ينقص: " + n + " إعدادات";
+    }
+    if (wrap) {
+      wrap.classList.toggle("ma-gtb-setup--complete", n === 0);
+    }
+  }
+
   function applyMerchantSetupExperience(mse) {
+    applyGlobalTopbarSetup(mse);
     var root = byId("ma-setup-experience-root");
     if (!root) return;
     if (!mse || !mse.show_card) {
@@ -128,16 +152,6 @@
   function applyTopbarReadiness(d) {
     var sk = (d.wa_state_key || "").trim();
     var badge = d.wa_badge_ar || "—";
-    var wrap = byId("ma-topbar-wa-wrap");
-    if (wrap) {
-      var muted = sk === "ready" ? "" : " wa-muted";
-      wrap.innerHTML =
-        '<div class="wa-pill' +
-        muted +
-        '"><div class="wa-dot"></div><span id="ma-topbar-wa-text">' +
-        esc(badge) +
-        "</span></div>";
-    }
     var pPill = byId("ma-page-whatsapp-ready-pill");
     var pTxt = byId("ma-page-whatsapp-ready-text");
     if (pPill && pTxt) {

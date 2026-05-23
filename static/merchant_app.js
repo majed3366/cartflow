@@ -9,7 +9,7 @@
     vip: "السلال",
     messages: "الرسائل",
     reasons: "أسباب التردد",
-    "trigger-templates": "القوالب",
+    "trigger-templates": "قوالب الاسترجاع",
     widget: "الودجيت",
     whatsapp: "واتساب",
     settings: "إعدادات عامة",
@@ -30,6 +30,27 @@
     vip: true,
   };
 
+  var PAGE_TO_SECTION = {
+    home: "home",
+    carts: "carts",
+    followup: "carts",
+    completed: "carts",
+    vip: "carts",
+    messages: "comms",
+    reasons: "comms",
+    "trigger-templates": "comms",
+    widget: "settings",
+    whatsapp: "settings",
+    settings: "settings",
+  };
+
+  var SECTION_LABELS = {
+    home: "الرئيسية",
+    carts: "السلال",
+    comms: "التواصل",
+    settings: "الإعدادات",
+  };
+
   var PAGE_FOR_HASH = {
     "": "home",
     "#": "home",
@@ -41,6 +62,7 @@
     "#messages": "messages",
     "#reasons": "reasons",
     "#trigger-templates": "trigger-templates",
+    "#templates": "trigger-templates",
     "#widget": "widget",
     "#whatsapp": "whatsapp",
     "#settings": "settings",
@@ -67,6 +89,10 @@
 
   function isCartSubPage(page) {
     return !!CART_SUB_PAGES[page];
+  }
+
+  function pageToSection(page) {
+    return PAGE_TO_SECTION[page] || "home";
   }
 
   function parseHash() {
@@ -118,63 +144,39 @@
     applyCartFilterMode(active ? active.getAttribute("data-filter") || "all" : "all");
   }
 
-  function setCartHubVisible(show) {
-    var hub = byId("ma-cart-hub-bar");
-    if (hub) hub.hidden = !show;
-    document.body.classList.toggle("ma-carts-hub-active", !!show);
-  }
-
-  function setCartTabUi(cartTab) {
-    var tab = cartTab || "all";
-    document.querySelectorAll("[data-cart-tab]").forEach(function (btn) {
-      btn.classList.toggle("active", btn.getAttribute("data-cart-tab") === tab);
+  function setContextSection(section) {
+    var sec = section || "home";
+    document.body.setAttribute("data-ma-section", sec);
+    document.querySelectorAll(".ma-ctx-panel").forEach(function (panel) {
+      var on = panel.getAttribute("data-ma-ctx") === sec;
+      panel.hidden = !on;
     });
-    var pt = byId("pageTitle");
-    if (pt) pt.textContent = CART_TAB_TITLES[tab] || TITLES.carts;
-  }
-
-  function resolveCartPage(cartTab) {
-    if (cartTab === "intervention") return "followup";
-    if (cartTab === "completed") return "completed";
-    if (cartTab === "vip") return "vip";
-    return "carts";
-  }
-
-  function applyCartTabFilters(cartTab) {
-    if (cartTab === "all") {
-      applyCartFilterMode("all");
-      var bar = document.querySelector("#page-carts .filter-bar");
-      if (bar) {
-        bar.querySelectorAll(".filter-btn").forEach(function (b) {
-          b.classList.toggle("active", b.getAttribute("data-filter") === "all");
-        });
-      }
-    } else if (cartTab === "waiting") {
-      applyCartFilterMode("all");
-      var barW = document.querySelector("#page-carts .filter-bar");
-      if (barW) {
-        barW.querySelectorAll(".filter-btn").forEach(function (b) {
-          b.classList.toggle("active", b.getAttribute("data-filter") === "all");
-        });
-      }
+    document.querySelectorAll(".ma-gtb-section").forEach(function (btn) {
+      btn.classList.toggle("active", btn.getAttribute("data-ma-section") === sec);
+    });
+    var sidebar = byId("ma-context-sidebar");
+    if (sidebar) {
+      sidebar.classList.toggle("ma-context-sidebar--home", sec === "home");
     }
   }
 
+  function setPageTitle(text) {
+    var pt = byId("pageTitle");
+    if (pt) pt.textContent = text || "";
+  }
+
   function updateNavActive(page, cartTab) {
-    document.querySelectorAll(".nav-item").forEach(function (b) {
+    var section = pageToSection(page);
+    document.querySelectorAll(".ma-context-sidebar .nav-item").forEach(function (b) {
       var k = b.getAttribute("data-nav");
       var t = b.getAttribute("data-cart-tab");
       var on = false;
-      if (cartTab && isCartSubPage(page)) {
+      if (section === "carts" && cartTab) {
         on = t === cartTab;
-      } else if (!cartTab) {
-        on = k === page && !t;
+      } else if (!t) {
+        on = k === page;
       }
       b.classList.toggle("active", on);
-    });
-    document.querySelectorAll(".ma-nav-group").forEach(function (g) {
-      var any = g.querySelector(".nav-item.active");
-      if (any) g.open = true;
     });
   }
 
@@ -193,21 +195,42 @@
     }
   }
 
+  function resolveCartPage(cartTab) {
+    if (cartTab === "intervention") return "followup";
+    if (cartTab === "completed") return "completed";
+    if (cartTab === "vip") return "vip";
+    return "carts";
+  }
+
+  function applyCartTabFilters(cartTab) {
+    if (cartTab === "all" || cartTab === "waiting") {
+      applyCartFilterMode("all");
+      var bar = document.querySelector("#page-carts .filter-bar");
+      if (bar) {
+        bar.querySelectorAll(".filter-btn").forEach(function (b) {
+          b.classList.toggle("active", b.getAttribute("data-filter") === "all");
+        });
+      }
+    }
+  }
+
   function activatePage(page, options) {
     options = options || {};
     var cartTab = options.cartTab;
+    var section = pageToSection(page);
 
     document.querySelectorAll(".page").forEach(function (p) {
       p.classList.remove("active");
     });
 
+    setContextSection(section);
+
     if (isCartSubPage(page)) {
       if (!cartTab) cartTab = CART_TAB_FOR_PAGE[page] || "all";
       var visiblePage = resolveCartPage(cartTab);
-      setCartHubVisible(true);
-      setCartTabUi(cartTab);
       var el = byId("page-" + visiblePage);
       if (el) el.classList.add("active");
+      setPageTitle(CART_TAB_TITLES[cartTab] || TITLES.carts);
       if (visiblePage === "carts") {
         initCartFiltersOnce();
         applyCartTabFilters(cartTab);
@@ -215,11 +238,9 @@
       updateNavActive(visiblePage, cartTab);
       runPageHooks(visiblePage);
     } else {
-      setCartHubVisible(false);
       var pageEl = byId("page-" + page);
       if (pageEl) pageEl.classList.add("active");
-      var pt = byId("pageTitle");
-      if (pt) pt.textContent = TITLES[page] || "";
+      setPageTitle(TITLES[page] || SECTION_LABELS[section] || "");
       updateNavActive(page, null);
       runPageHooks(page);
     }
@@ -254,35 +275,50 @@
     goTo(page, cartTab);
   };
 
+  window.goToSection = function (section) {
+    var sec = (section || "home").trim();
+    if (sec === "home") {
+      goTo("home");
+      return;
+    }
+    if (sec === "carts") {
+      goToCartTab("all");
+      return;
+    }
+    if (sec === "comms") {
+      goTo("messages");
+      return;
+    }
+    if (sec === "settings") {
+      goTo("whatsapp");
+      return;
+    }
+    goTo("home");
+  };
+
   window.merchantAppReinitCartFilters = function () {
     var bar = document.querySelector("#page-carts .filter-bar");
     if (bar) bar.removeAttribute("data-ma-bound");
     initCartFiltersOnce();
   };
 
-  function initCartHubBar() {
-    var hub = byId("ma-cart-hub-bar");
-    if (!hub || hub.getAttribute("data-ma-bound") === "1") return;
-    hub.setAttribute("data-ma-bound", "1");
-    hub.querySelectorAll("[data-cart-tab]").forEach(function (btn) {
+  function initGlobalTopbar() {
+    document.querySelectorAll(".ma-gtb-section").forEach(function (btn) {
       btn.addEventListener("click", function () {
-        var tab = btn.getAttribute("data-cart-tab") || "all";
-        goToCartTab(tab);
+        goToSection(btn.getAttribute("data-ma-section") || "home");
       });
     });
-  }
-
-  function initNavGroups() {
-    document.querySelectorAll(".ma-nav-group summary").forEach(function (sum) {
-      sum.addEventListener("click", function (ev) {
-        ev.stopPropagation();
+    var setupLink = byId("ma-gtb-setup");
+    if (setupLink) {
+      setupLink.addEventListener("click", function (ev) {
+        if (ev.target.closest("#ma-setup-toggle-btn")) return;
+        goTo("home");
       });
-    });
+    }
   }
 
   document.addEventListener("DOMContentLoaded", function () {
-    initCartHubBar();
-    initNavGroups();
+    initGlobalTopbar();
     syncFromHash();
   });
 

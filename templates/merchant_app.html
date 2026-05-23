@@ -13,74 +13,59 @@
 <input type="checkbox" id="ma-sidebar-toggle" class="ma-sidebar-toggle" autocomplete="off" aria-hidden="true">
 <div class="ma-scrim"><label for="ma-sidebar-toggle" aria-label="إغلاق القائمة"></label></div>
 
-<div class="sidebar">
-  <div class="brand">
-    <div class="brand-name">CartFlow</div>
-    <div class="brand-sub">وكيل المبيعات الذكي</div>
+<header class="ma-global-topbar" role="banner">
+  <div class="ma-gtb-start">
+    <label for="ma-sidebar-toggle" class="ma-gtb-menu" aria-label="فتح القائمة">☰</label>
+    <a class="ma-gtb-logo" href="#home" onclick="if(window.goToSection){goToSection('home');return false;}">CartFlow</a>
   </div>
-  <div class="store-pill">
-    <div class="s-led"></div>
-    <div class="s-name">{{ merchant_store_display_name | default("متجرك") }}</div>
-  </div>
-  <nav class="ma-sidebar-nav" aria-label="قائمة لوحة التاجر">
-    <button type="button" class="nav-item active" data-nav="home" onclick="goTo('home')"><span class="nav-ico">📊</span> الرئيسية</button>
-
-    <details class="ma-nav-group" id="ma-nav-group-carts" open>
-      <summary class="ma-nav-group-summary"><span class="nav-ico">🛒</span> السلال</summary>
-      <div class="ma-nav-group-items">
-        <button type="button" class="nav-item nav-item-sub" data-nav="carts" data-cart-tab="all" onclick="goToCartTab('all')">الكل</button>
-        <button type="button" class="nav-item nav-item-sub" data-nav="followup" data-cart-tab="intervention" onclick="goToCartTab('intervention')">تحتاج تدخل<span class="nb nb-a" id="ma-nav-badge-followup" style="display:none;"></span></button>
-        <button type="button" class="nav-item nav-item-sub" data-nav="carts" data-cart-tab="waiting" onclick="goToCartTab('waiting')">بانتظار الإرسال<span class="nb nb-r" id="ma-nav-badge-abandoned" style="display:none;"></span></button>
-        <button type="button" class="nav-item nav-item-sub" data-nav="completed" data-cart-tab="completed" onclick="goToCartTab('completed')">مكتملة</button>
-        <button type="button" class="nav-item nav-item-sub" data-nav="vip" data-cart-tab="vip" onclick="goToCartTab('vip')">VIP<span class="nb nb-a" id="ma-nav-badge-vip" style="display:none;"></span></button>
-      </div>
-    </details>
-
-    <details class="ma-nav-group" id="ma-nav-group-comms">
-      <summary class="ma-nav-group-summary"><span class="nav-ico">💬</span> التواصل</summary>
-      <div class="ma-nav-group-items">
-        <button type="button" class="nav-item nav-item-sub" data-nav="messages" onclick="goTo('messages')">الرسائل</button>
-        <button type="button" class="nav-item nav-item-sub" data-nav="trigger-templates" onclick="goTo('trigger-templates')">القوالب</button>
-        <button type="button" class="nav-item nav-item-sub" data-nav="reasons" onclick="goTo('reasons')">أسباب التردد</button>
-      </div>
-    </details>
-
-    <details class="ma-nav-group" id="ma-nav-group-settings">
-      <summary class="ma-nav-group-summary"><span class="nav-ico">⚙️</span> الإعدادات</summary>
-      <div class="ma-nav-group-items">
-        <button type="button" class="nav-item nav-item-sub" data-nav="whatsapp" onclick="goTo('whatsapp')">واتساب</button>
-        <button type="button" class="nav-item nav-item-sub" data-nav="widget" onclick="goTo('widget')">الودجيت</button>
-        <button type="button" class="nav-item nav-item-sub" data-nav="settings" onclick="goTo('settings')">عام</button>
-      </div>
-    </details>
+  <a class="ma-gtb-setup" id="ma-gtb-setup" href="#home" title="متابعة الإعداد">
+    <span class="ma-gtb-setup-title ma-dash-skel" id="ma-gtb-setup-title">متجرك قريب من التشغيل الكامل</span>
+    <span class="ma-gtb-setup-remaining" id="ma-gtb-setup-remaining"></span>
+  </a>
+  <nav class="ma-gtb-sections" aria-label="أقسام لوحة التاجر">
+    <button type="button" class="ma-gtb-section active" data-ma-section="home">الرئيسية</button>
+    <button type="button" class="ma-gtb-section" data-ma-section="carts">السلال</button>
+    <button type="button" class="ma-gtb-section" data-ma-section="comms">التواصل</button>
+    <button type="button" class="ma-gtb-section" data-ma-section="settings">الإعدادات</button>
   </nav>
-  <div class="sidebar-footer">
-    <div class="plan-tag">🟢 الخطة النشطة — احترافي</div>
+  <div class="ma-gtb-end">
+    <span class="ma-gtb-date ma-dash-skel" id="ma-topbar-date">{{ merchant_ar_date_header | default("") }}</span>
+    <button type="button" class="ma-gtb-icon" aria-label="الإشعارات" title="الإشعارات">🔔</button>
+    <span class="ma-gtb-account" title="{{ merchant_store_display_name | default('متجرك') | e }}">👤 {{ merchant_store_display_name | default("متجرك") }}</span>
   </div>
-</div>
+</header>
 
-<div class="main">
-  <div class="topbar">
-    <label for="ma-sidebar-toggle" class="ma-nav-open" aria-label="فتح القائمة">☰</label>
-    <div class="topbar-title" id="pageTitle">الرئيسية</div>
-    <div class="topbar-right">
-      {% if merchant_dashboard_lazy_shell %}
-      <div class="topbar-date" id="ma-topbar-date">{{ merchant_ar_date_header | default("") }}</div>
-      <div id="ma-topbar-wa-wrap"><div class="wa-pill ma-dash-skel wa-muted"><div class="wa-dot"></div><span id="ma-topbar-wa-text">{{ wa_badge_ar | default("—") }}</span></div></div>
-      {% else %}
-      <div class="topbar-date">{{ merchant_ar_date_header | default("") }}</div>
-      <div class="wa-pill {% if wa_state_key != 'ready' %}wa-muted{% endif %}"><div class="wa-dot"></div>{{ wa_badge_ar | default("—") }}</div>
-      {% endif %}
+<div class="ma-app-shell">
+  <aside class="ma-context-sidebar sidebar" id="ma-context-sidebar" aria-label="قائمة القسم الحالي">
+    <div class="ma-ctx-panel" data-ma-ctx="home" hidden>
+      <p class="ma-ctx-hint">نظرة سريعة على أداء متجرك اليوم</p>
     </div>
-  </div>
+    <nav class="ma-ctx-panel ma-sidebar-nav" data-ma-ctx="carts" hidden aria-label="السلال">
+      <p class="ma-ctx-label">في هذا القسم</p>
+      <button type="button" class="nav-item" data-nav="carts" data-cart-tab="all" onclick="goToCartTab('all')">الكل</button>
+      <button type="button" class="nav-item" data-nav="followup" data-cart-tab="intervention" onclick="goToCartTab('intervention')">تحتاج تدخل<span class="nb nb-a" id="ma-nav-badge-followup" style="display:none;"></span></button>
+      <button type="button" class="nav-item" data-nav="carts" data-cart-tab="waiting" onclick="goToCartTab('waiting')">بانتظار الإرسال<span class="nb nb-r" id="ma-nav-badge-abandoned" style="display:none;"></span></button>
+      <button type="button" class="nav-item" data-nav="completed" data-cart-tab="completed" onclick="goToCartTab('completed')">مكتملة</button>
+      <button type="button" class="nav-item" data-nav="vip" data-cart-tab="vip" onclick="goToCartTab('vip')">VIP<span class="nb nb-a" id="ma-nav-badge-vip" style="display:none;"></span></button>
+    </nav>
+    <nav class="ma-ctx-panel ma-sidebar-nav" data-ma-ctx="comms" hidden aria-label="التواصل">
+      <p class="ma-ctx-label">في هذا القسم</p>
+      <button type="button" class="nav-item" data-nav="messages" onclick="goTo('messages')">الرسائل</button>
+      <button type="button" class="nav-item" data-nav="trigger-templates" onclick="goTo('trigger-templates')">قوالب الاسترجاع</button>
+      <button type="button" class="nav-item" data-nav="reasons" onclick="goTo('reasons')">أسباب التردد</button>
+    </nav>
+    <nav class="ma-ctx-panel ma-sidebar-nav" data-ma-ctx="settings" hidden aria-label="الإعدادات">
+      <p class="ma-ctx-label">في هذا القسم</p>
+      <button type="button" class="nav-item" data-nav="whatsapp" onclick="goTo('whatsapp')">واتساب</button>
+      <button type="button" class="nav-item" data-nav="widget" onclick="goTo('widget')">الودجيت</button>
+      <button type="button" class="nav-item" data-nav="settings" onclick="goTo('settings')">إعدادات عامة</button>
+    </nav>
+  </aside>
 
-  <div class="ma-cart-hub-bar" id="ma-cart-hub-bar" hidden aria-label="تبويبات السلال">
-    <button type="button" class="ma-cart-tab" data-cart-tab="all">الكل</button>
-    <button type="button" class="ma-cart-tab" data-cart-tab="intervention">تحتاج تدخل</button>
-    <button type="button" class="ma-cart-tab" data-cart-tab="waiting">بانتظار الإرسال</button>
-    <button type="button" class="ma-cart-tab" data-cart-tab="completed">مكتملة</button>
-    <button type="button" class="ma-cart-tab" data-cart-tab="vip">VIP</button>
-  </div>
+  <div class="main ma-content-root">
+    <div class="ma-content-head">
+      <h1 class="ma-content-title" id="pageTitle">الرئيسية</h1>
+    </div>
 
   <div class="page active" id="page-home">
     {% if merchant_dashboard_lazy_shell %}
@@ -850,7 +835,8 @@
       </div>
     </div>
 
-</div>
+  </div><!-- /.main -->
+</div><!-- /.ma-app-shell -->
 
 <script defer src="/static/merchant_vip_automation_ui.js"></script>
 <script defer src="/static/merchant_dashboard_lazy.js"></script>
