@@ -1,0 +1,96 @@
+{# Merchant Setup Experience v1 — setup / outcome / progress only (no ops jargon). #}
+{% set mse = merchant_setup_experience %}
+{% if mse and mse.get("show_card") %}
+<section
+  class="mb-4 rounded-2xl border border-teal-100/90 bg-gradient-to-br from-teal-50/70 via-white to-slate-50/50 px-4 py-4 shadow-sm md:px-5"
+  aria-labelledby="cf-merchant-setup-title"
+  data-cf-merchant-setup-state="{{ mse.setup_state_label_ar | e }}"
+  data-cf-merchant-setup-percent="{{ mse.readiness_percent }}"
+>
+  <h2 id="cf-merchant-setup-title" class="m-0 text-base font-bold text-slate-900" lang="ar">
+    {{ mse.card_title_ar }}
+  </h2>
+
+  <dl class="mt-4 grid gap-2 text-sm text-slate-800 sm:grid-cols-2" lang="ar">
+    <div class="rounded-xl border border-slate-100/90 bg-white/80 px-3 py-2">
+      <dt class="text-[11px] font-semibold text-slate-500">جاهزية</dt>
+      <dd class="mt-0.5 text-lg font-bold tabular-nums text-teal-900">{{ mse.readiness_percent }}٪</dd>
+    </div>
+    <div class="rounded-xl border border-slate-100/90 bg-white/80 px-3 py-2">
+      <dt class="text-[11px] font-semibold text-slate-500">تبقى</dt>
+      <dd class="mt-0.5 text-lg font-bold text-slate-900">
+        {% if mse.remaining_setup_count == 0 %}لا إعدادات{% else %}{{ mse.remaining_setup_count }} إعدادات{% endif %}
+      </dd>
+    </div>
+    <div class="rounded-xl border border-slate-100/90 bg-white/80 px-3 py-2 sm:col-span-2">
+      <dt class="text-[11px] font-semibold text-slate-500">النتيجة</dt>
+      <dd class="mt-0.5 font-semibold leading-snug text-slate-900">{{ mse.outcome_summary_ar }}</dd>
+    </div>
+    <div class="rounded-xl border border-teal-50 bg-teal-50/40 px-3 py-2 sm:col-span-2">
+      <dt class="text-[11px] font-semibold text-teal-800/90">الخطوة التالية</dt>
+      <dd class="mt-0.5 font-bold text-teal-950">{{ mse.next_step_ar }}</dd>
+    </div>
+  </dl>
+
+  <p class="mt-2 mb-0 text-[11px] text-slate-500" lang="ar">
+    الحالة: <span class="font-semibold text-slate-700">{{ mse.setup_state_label_ar }}</span>
+  </p>
+
+  <div class="mt-4 flex flex-wrap items-center gap-2">
+    <button
+      type="button"
+      id="cf-merchant-setup-toggle"
+      class="inline-flex items-center justify-center rounded-xl border border-teal-600/20 bg-teal-700 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-teal-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-400"
+      aria-expanded="false"
+      aria-controls="cf-merchant-setup-steps-panel"
+      lang="ar"
+    >أكمل الإعداد</button>
+    <a
+      href="{{ mse.action_href }}"
+      class="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+      lang="ar"
+    >انتقل للخطوة</a>
+  </div>
+
+  <div
+    id="cf-merchant-setup-steps-panel"
+    class="mt-4 hidden rounded-xl border border-slate-100 bg-white/90 p-4"
+    hidden
+    role="region"
+    aria-label="خطوات الإعداد"
+  >
+    <ol class="m-0 list-none space-y-6 p-0" lang="ar">
+      {% for step in mse.steps %}
+      <li class="relative border-r-2 border-teal-200 pr-4 {% if step.is_complete %}opacity-60{% endif %}">
+        <p class="m-0 text-[10px] font-bold uppercase tracking-wide text-slate-400">{{ loop.index }}</p>
+        <p class="mt-1 mb-0 text-base font-bold text-slate-900">{{ step.title_ar }}</p>
+        <p class="mt-2 mb-0 text-xs text-slate-500">النتيجة المتوقعة</p>
+        <p class="mt-0.5 mb-0 text-sm leading-relaxed text-slate-700">{{ step.outcome_ar }}</p>
+        <a
+          href="{{ step.action_href }}"
+          class="mt-3 inline-flex items-center justify-center rounded-lg border border-teal-600/15 bg-teal-50 px-3 py-2 text-xs font-bold text-teal-900 hover:bg-teal-100"
+        >{{ step.complete_action_ar }}</a>
+        {% if not loop.last %}
+        <p class="mt-4 mb-0 text-center text-lg text-slate-300" aria-hidden="true">↓</p>
+        {% endif %}
+      </li>
+      {% endfor %}
+    </ol>
+    {% if mse.remaining_setup_count == 0 %}
+    <p class="m-0 text-sm font-semibold text-emerald-800" lang="ar">اكتمل الإعداد — متجرك جاهز للتشغيل الكامل.</p>
+    {% endif %}
+  </div>
+</section>
+<script>
+(function () {
+  var btn = document.getElementById("cf-merchant-setup-toggle");
+  var panel = document.getElementById("cf-merchant-setup-steps-panel");
+  if (!btn || !panel) return;
+  btn.addEventListener("click", function () {
+    var open = panel.classList.toggle("hidden");
+    panel.hidden = open;
+    btn.setAttribute("aria-expanded", open ? "false" : "true");
+  });
+})();
+</script>
+{% endif %}

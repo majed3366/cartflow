@@ -35,6 +35,96 @@
     el.style.display = v > 0 ? "" : "none";
   }
 
+  function setupStepsHtml(steps) {
+    if (!steps || !steps.length) return "";
+    var html = '<ol class="m-0" style="list-style:none;padding:0;margin:0">';
+    for (var i = 0; i < steps.length; i++) {
+      var st = steps[i];
+      var done = st.is_complete ? " is-done" : "";
+      html +=
+        '<li class="ma-setup-step' +
+        done +
+        '"><p style="margin:0;font-size:10px;font-weight:700;color:var(--muted)">' +
+        (i + 1) +
+        "</p>" +
+        '<p class="ma-setup-step-title">' +
+        esc(st.title_ar) +
+        "</p>" +
+        '<p class="ma-setup-step-outcome-label">النتيجة المتوقعة</p>' +
+        '<p class="ma-setup-step-outcome">' +
+        esc(st.outcome_ar) +
+        "</p>" +
+        '<a class="ma-setup-step-action" href="' +
+        esc(st.action_href || "#whatsapp") +
+        '" onclick="if(window.goTo){goTo(\'whatsapp\');}">' +
+        esc(st.complete_action_ar || "أكملت هذا الإعداد") +
+        "</a>";
+      if (i < steps.length - 1) {
+        html += '<p class="ma-setup-arrow" aria-hidden="true">↓</p>';
+      }
+      html += "</li>";
+    }
+    html += "</ol>";
+    return html;
+  }
+
+  function applyMerchantSetupExperience(mse) {
+    var root = byId("ma-setup-experience-root");
+    if (!root) return;
+    if (!mse || !mse.show_card) {
+      root.style.display = "none";
+      root.innerHTML = "";
+      return;
+    }
+    var remaining =
+      parseInt(mse.remaining_setup_count, 10) === 0
+        ? "لا إعدادات"
+        : String(mse.remaining_setup_count) + " إعدادات";
+    root.style.display = "";
+    root.innerHTML =
+      '<h2 class="ma-setup-title">' +
+      esc(mse.card_title_ar) +
+      "</h2>" +
+      '<dl class="ma-setup-grid">' +
+      '<div class="ma-setup-field"><dt>جاهزية</dt><dd>' +
+      esc(String(mse.readiness_percent)) +
+      "٪</dd></div>" +
+      '<div class="ma-setup-field"><dt>تبقى</dt><dd>' +
+      esc(remaining) +
+      "</dd></div>" +
+      '<div class="ma-setup-field ma-setup-field--wide"><dt>النتيجة</dt><dd>' +
+      esc(mse.outcome_summary_ar) +
+      "</dd></div>" +
+      '<div class="ma-setup-field ma-setup-field--wide" style="background:#f0fdfa;border-color:#99f6e4"><dt>الخطوة التالية</dt><dd>' +
+      esc(mse.next_step_ar) +
+      "</dd></div>" +
+      "</dl>" +
+      '<p class="ma-setup-state">الحالة: <strong>' +
+      esc(mse.setup_state_label_ar) +
+      "</strong></p>" +
+      '<div class="ma-setup-actions">' +
+      '<button type="button" class="ma-setup-btn-primary" id="ma-setup-toggle-btn" aria-expanded="false" aria-controls="ma-setup-steps-panel">أكمل الإعداد</button>' +
+      '<a class="ma-setup-btn-secondary" href="' +
+      esc(mse.action_href || "#whatsapp") +
+      '" onclick="if(window.goTo){goTo(\'whatsapp\');return false;}">انتقل للخطوة</a>' +
+      "</div>" +
+      '<div id="ma-setup-steps-panel" class="ma-setup-steps" hidden role="region" aria-label="خطوات الإعداد">' +
+      setupStepsHtml(mse.steps || []) +
+      (parseInt(mse.remaining_setup_count, 10) === 0
+        ? '<p style="margin:8px 0 0;font-size:12px;font-weight:700;color:#166534">اكتمل الإعداد — متجرك جاهز للتشغيل الكامل.</p>'
+        : "") +
+      "</div>";
+
+    var btn = byId("ma-setup-toggle-btn");
+    var panel = byId("ma-setup-steps-panel");
+    if (btn && panel) {
+      btn.addEventListener("click", function () {
+        panel.hidden = !panel.hidden;
+        btn.setAttribute("aria-expanded", panel.hidden ? "false" : "true");
+      });
+    }
+  }
+
   function applyTopbarReadiness(d) {
     var sk = (d.wa_state_key || "").trim();
     var badge = d.wa_badge_ar || "—";
@@ -96,6 +186,7 @@
     if (!d || !d.ok) return;
     setText("ma-topbar-date", d.merchant_ar_date_header || "");
     applyTopbarReadiness(d);
+    applyMerchantSetupExperience(d.merchant_setup_experience);
 
     setText("ma-kpi-abandoned", d.merchant_kpi_abandoned_fmt || "0");
     setText("ma-kpi-recovered", d.merchant_kpi_recovered_fmt || "0");

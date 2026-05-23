@@ -14471,6 +14471,9 @@ def _dashboard_v1_financial_context(
                 "width_pct": min(100.0, round(100.0 * float(cnt) / float(rmax), 1)),
             }
         )
+    from services.merchant_setup_experience_v1 import (  # noqa: PLC0415
+        build_merchant_setup_experience,
+    )
     from services.merchant_whatsapp_readiness_ui import (  # noqa: PLC0415
         build_merchant_whatsapp_readiness_card,
     )
@@ -14485,6 +14488,7 @@ def _dashboard_v1_financial_context(
         "reason_bar": reason_bar,
         "live_feed": live_rows,
         "whatsapp_readiness_card": build_merchant_whatsapp_readiness_card(ds),
+        "merchant_setup_experience": build_merchant_setup_experience(ds).to_dict(),
     }
 
 
@@ -14573,6 +14577,9 @@ def _api_json_dashboard_summary(dash_store: Optional[Any]) -> Dict[str, Any]:
     """‎KPI‎ + شهر + أسباب + شارة الواجهة + عداد السلال في القائمة (بدون استعلام قائمة VIP/متابعة)."""
     from services.dashboard_summary_query_profiler import (  # noqa: PLC0415
         dashboard_summary_profile_span,
+    )
+    from services.merchant_setup_experience_v1 import (  # noqa: PLC0415
+        build_merchant_setup_experience,
     )
     from services.merchant_whatsapp_readiness_ui import (  # noqa: PLC0415
         build_merchant_whatsapp_readiness_card,
@@ -14666,6 +14673,9 @@ def _api_json_dashboard_summary(dash_store: Optional[Any]) -> Dict[str, Any]:
         "merchant_nav_badge_abandoned": int(mstats.get("normal_cart_count") or 0),
         "merchant_nav_badge_followup": 0,
         "merchant_nav_badge_vip": 0,
+        "merchant_setup_experience": build_merchant_setup_experience(
+            dash_store, emit_logs=False
+        ).to_dict(),
     }
 
 
@@ -15054,6 +15064,30 @@ def dashboard_normal_alias(request: Request):
 def dashboard_vip_cart_settings(request: Request):
     """توافق خلفي — إعدادات ‎VIP‎ داخل تطبيق التاجر."""
     return RedirectResponse(url="/dashboard#vip", status_code=302)
+
+
+@app.get("/api/merchant/setup-experience")
+def api_merchant_setup_experience():
+    """بطاقة إعداد التاجر — نسخة آمنة دون مصطلحات تشغيل داخلية."""
+    from services.merchant_setup_experience_v1 import (  # noqa: PLC0415
+        build_merchant_setup_experience_api_payload,
+    )
+
+    wall0 = time.perf_counter()
+    _merchant_dashboard_db_ready()
+    try:
+        dash_store = _dashboard_recovery_store_row()
+        payload = build_merchant_setup_experience_api_payload(dash_store)
+        return j({"ok": True, "merchant_setup_experience": payload})
+    except (OSError, TypeError, ValueError) as e:
+        log.warning("api merchant/setup-experience: %s", e)
+        return j({"ok": False, "error": "failed"}, 500)
+    finally:
+        _log_dashboard_profile(
+            endpoint="GET /api/merchant/setup-experience",
+            section="merchant_setup_experience",
+            wall_perf_start=wall0,
+        )
 
 
 @app.get("/api/merchant-followup-actions")
