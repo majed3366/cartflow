@@ -309,6 +309,7 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 
 | Date (UTC) | Summary |
 |------------|---------|
+| 2026-05-19 | **Dashboard topbar + sidebar scroll fix:** شريط علوي أخضر ثابت 64px + جانبي ثابت بدون تمرير داخلي + تمرير المحتوى فقط (`.ma-content-root`). Commit: **`ui: migrate dashboard to topbar + sidebar layout and remove nested scroll issues`**. |
 | 2026-05-19 | **Merchant dashboard top bar + contextual sidebar:** `merchant_app.html` — شريط علوي ثابت (CartFlow، حالة الإعداد، أقسام رئيسية) + جانبي سياقي حسب القسم؛ حذف تكرار تبويب السلال؛ `#templates` → قوالب. Commit: **`ui: restructure dashboard into top navigation + contextual sidebar`**. |
 | 2026-05-19 | **Merchant Dashboard Simplification v1:** `merchant_app.html` — قائمة مجمّعة (الرئيسية / السلال / التواصل / الإعدادات)، شريط تبويب السلال، ودجيت وVIP مبسّطان، معاينة مدمجة؛ لا تغيير API أو منطق استرجاع. Commit: **`ui: simplify merchant dashboard navigation and setup pages`**. |
 | 2026-05-19 | **Merchant Setup Experience v1:** `merchant_setup_experience_v1.py` — بطاقة «متجرك قريب من التشغيل الكامل» (جاهزية/تبقى/نتيجة/خطوات)؛ `GET /api/dashboard/summary` + `GET /api/merchant/setup-experience`؛ لا risk/owner/callback للتاجر. Commit: **`feat: add merchant setup experience v1`**. |

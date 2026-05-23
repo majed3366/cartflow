@@ -18,16 +18,18 @@
     <label for="ma-sidebar-toggle" class="ma-gtb-menu" aria-label="فتح القائمة">☰</label>
     <a class="ma-gtb-logo" href="#home" onclick="if(window.goToSection){goToSection('home');return false;}">CartFlow</a>
   </div>
-  <a class="ma-gtb-setup" id="ma-gtb-setup" href="#home" title="متابعة الإعداد">
-    <span class="ma-gtb-setup-title ma-dash-skel" id="ma-gtb-setup-title">متجرك قريب من التشغيل الكامل</span>
-    <span class="ma-gtb-setup-remaining" id="ma-gtb-setup-remaining"></span>
-  </a>
-  <nav class="ma-gtb-sections" aria-label="أقسام لوحة التاجر">
-    <button type="button" class="ma-gtb-section active" data-ma-section="home">الرئيسية</button>
-    <button type="button" class="ma-gtb-section" data-ma-section="carts">السلال</button>
-    <button type="button" class="ma-gtb-section" data-ma-section="comms">التواصل</button>
-    <button type="button" class="ma-gtb-section" data-ma-section="settings">الإعدادات</button>
-  </nav>
+  <div class="ma-gtb-center">
+    <nav class="ma-gtb-sections" aria-label="أقسام لوحة التاجر">
+      <button type="button" class="ma-gtb-section active" data-ma-section="home">الرئيسية</button>
+      <button type="button" class="ma-gtb-section" data-ma-section="carts">السلال</button>
+      <button type="button" class="ma-gtb-section" data-ma-section="comms">التواصل</button>
+      <button type="button" class="ma-gtb-section" data-ma-section="settings">الإعدادات</button>
+    </nav>
+    <a class="ma-gtb-setup" id="ma-gtb-setup" href="#home" title="متابعة الإعداد">
+      <span class="ma-gtb-setup-title ma-dash-skel" id="ma-gtb-setup-title">متجرك قريب من التشغيل الكامل</span>
+      <span class="ma-gtb-setup-remaining" id="ma-gtb-setup-remaining"></span>
+    </a>
+  </div>
   <div class="ma-gtb-end">
     <span class="ma-gtb-date ma-dash-skel" id="ma-topbar-date">{{ merchant_ar_date_header | default("") }}</span>
     <button type="button" class="ma-gtb-icon" aria-label="الإشعارات" title="الإشعارات">🔔</button>

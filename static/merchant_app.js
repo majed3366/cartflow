@@ -247,7 +247,9 @@
 
     var cb = byId("ma-sidebar-toggle");
     if (cb) cb.checked = false;
-    window.scrollTo(0, 0);
+    var scrollRoot = document.querySelector(".ma-content-root");
+    if (scrollRoot) scrollRoot.scrollTop = 0;
+    else window.scrollTo(0, 0);
   }
 
   function syncFromHash() {

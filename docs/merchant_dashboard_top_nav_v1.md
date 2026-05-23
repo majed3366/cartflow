@@ -17,7 +17,9 @@ UI-only shell restructure. All hashes and pages unchanged.
 
 - **Top bar:** where am I (section + store setup status).
 - **Sidebar:** what can I do in this section (hidden/minimal on الرئيسية).
-- **Main:** single document scroll (no duplicate cart tab bar).
+- **Main:** single scroll on `.ma-content-root` only (`body { overflow: hidden }`).
+- **Top bar:** CartFlow green (`64px`), fixed.
+- **Sidebar:** fixed right, no visible internal scrollbar.
 
 ## Hash compatibility
 
