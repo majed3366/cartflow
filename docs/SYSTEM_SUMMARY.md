@@ -128,6 +128,7 @@ Server-side template control (**`exit_intent_*`** on **`Store`**): `services/sto
 | WhatsApp delivery truth (v1) | `whatsapp_delivery_truth_v1.py` — `DeliveryTruth`, status webhook ingest, `whatsapp_delivery_truth` table; `queued` ≠ delivered; attribution hook reserved (`customer_delivered_for_attribution_future`). See `docs/whatsapp_delivery_truth_v1.md`. |
 | WhatsApp production reality (v2) | `whatsapp_production_reality_v2.py` — 24h window (`inside_24h` / `outside_24h` / `unknown`), `[WA WINDOW CHECK]` / `[WA TEMPLATE DECISION]` (observe only); store readiness + admin merchant level. See `docs/whatsapp_production_reality_v2.md`. |
 | Merchant onboarding reality (v1) | `merchant_onboarding_reality_v1.py` — `[MERCHANT READINESS]` dimensions + admin «جاهزية المتجر»; audit `docs/audit_merchant_onboarding_reality_v1.md`. |
+| Merchant production readiness path (v1) | `merchant_production_readiness_path_v1.py` — score 0–100, missing items, `[MERCHANT NEXT ACTION]`, progression card; `docs/merchant_production_readiness_path_v1.md`. |
 | Delays | `recovery_delay.py` (`get_recovery_delay` per tag), timing also in `whatsapp_send.recovery_delay_to_seconds` from `Store` |
 | Multi-message | `recovery_multi_message.py` (`multi_message_slots_for_abandon`) |
 | Reason templates | `reason_template_recovery.py`, `store_reason_templates.py`, `recovery_message_templates.py` |
@@ -307,6 +308,7 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 
 | Date (UTC) | Summary |
 |------------|---------|
+| 2026-05-19 | **Merchant Production Readiness Path v1:** `merchant_production_readiness_path_v1.py` — actionable next step, score %, missing items, admin card enrichment; `[MERCHANT NEXT ACTION]` log. Commit: **`feat: add merchant production readiness path v1`**. |
 | 2026-05-19 | **Merchant Onboarding Reality v1 (audit):** `services/merchant_onboarding_reality_v1.py` + `docs/audit_merchant_onboarding_reality_v1.md` — readiness dimensions, `[MERCHANT READINESS]` log, admin card «جاهزية المتجر»; verdict self-serve to `production_ready` = NO. Commit: **`audit: verify merchant onboarding reality v1`**. |
 | 2026-05-19 | **WhatsApp 24h window dev simulate:** `POST /dev/whatsapp-window-simulate` (`ENV=development` only) — seed `last_inbound_hours_ago` for `[WA WINDOW CHECK]` / `[WA TEMPLATE DECISION]` without real wait. Commit: **`test: add whatsapp window simulation endpoint`**. |
 | 2026-05-19 | **WhatsApp Production Reality v2 foundation:** 24h window + template decision logs (no send gates); per-store `provider_connected` / `templates_ready` / `delivery_truth_ready`; admin merchant readiness signal. Commit: **`feat: add whatsapp production reality v2 foundation`**. |
