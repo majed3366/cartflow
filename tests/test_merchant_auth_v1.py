@@ -18,6 +18,7 @@ from services.merchant_auth_v1 import (
     hash_password,
     register_merchant_account,
     request_password_reset,
+    resolve_merchant_display_name,
     verify_password,
 )
 
@@ -46,12 +47,35 @@ class MerchantAuthV1Tests(unittest.TestCase):
         self.assertTrue(verify_password("secret-pass-12", h))
         self.assertFalse(verify_password("wrong", h))
 
+    def test_resolve_merchant_display_name_from_store(self) -> None:
+        self.assertEqual(
+            resolve_merchant_display_name("", "متجر الاختبار"),
+            "متجر الاختبار",
+        )
+
+    def test_signup_without_merchant_name_field(self) -> None:
+        email = f"signup-mobile-{uuid.uuid4().hex}@example.com"
+        r = self.client.post(
+            "/signup",
+            data={
+                "store_name": "متجر الجوال",
+                "email": email,
+                "password": "password123",
+                "confirm_password": "password123",
+            },
+            follow_redirects=False,
+        )
+        self.assertEqual(r.status_code, 303, r.text[:300])
+        u = db.session.query(MerchantUser).filter(MerchantUser.email == email).first()
+        self.assertIsNotNone(u)
+        assert u is not None
+        self.assertEqual(u.merchant_name, "متجر الجوال")
+
     def test_signup_login_dashboard_logout_flow(self) -> None:
         email = f"merchant-auth-{uuid.uuid4().hex}@example.com"
         r = self.client.post(
             "/signup",
             data={
-                "merchant_name": "تاجر تجريبي",
                 "store_name": "متجر الاختبار",
                 "email": email,
                 "password": "password123",
@@ -90,7 +114,6 @@ class MerchantAuthV1Tests(unittest.TestCase):
     def test_password_reset_dev_token_flow(self) -> None:
         reset_email = f"reset-flow-{uuid.uuid4().hex}@example.com"
         ok, _, user = register_merchant_account(
-            merchant_name="Reset User",
             store_name="Reset Store",
             email=reset_email,
             password="password123",
@@ -124,7 +147,6 @@ class MerchantAuthV1Tests(unittest.TestCase):
     def test_signup_creates_store_link(self) -> None:
         link_email = f"store-link-{uuid.uuid4().hex}@example.com"
         ok, _, user = register_merchant_account(
-            merchant_name="Store Link",
             store_name="متجر الربط",
             email=link_email,
             password="password123",

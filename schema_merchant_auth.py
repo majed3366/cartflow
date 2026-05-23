@@ -31,6 +31,10 @@ def ensure_merchant_auth_schema(db: Any) -> None:
         try:
             db.create_all()
             insp = inspect(db.engine)
+            if not insp.has_table("merchant_users"):
+                log.warning(
+                    "merchant auth schema: merchant_users table missing after create_all"
+                )
             if not insp.has_table("stores"):
                 _merchant_auth_schema_once = True
                 return

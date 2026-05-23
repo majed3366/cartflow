@@ -315,6 +315,7 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 
 | Date (UTC) | Summary |
 |------------|---------|
+| 2026-05-19 | **Merchant signup fix (mobile):** `ensure_merchant_auth_schema` قبل `/signup` و`/login` (إنتاج بدون `create_all` عند الإقلاع)؛ نموذج تسجيل مبسّط (اسم المتجر فقط، `merchant_name` من اسم المتجر)؛ سجلات `[MERCHANT SIGNUP]` للتشخيص. Commit: **`fix: resolve mobile signup failure and simplify merchant signup`**. |
 | 2026-05-19 | **Merchant auth foundation v1:** `/login` `/signup` `/logout` `/forgot-password` `/reset-password`، جلسة موقّعة، حماية `/dashboard` و`/api/dashboard`، تجاوز `ENV=development` فقط، نماذج `merchant_users` + ربط `stores.merchant_user_id`. Commit: **`feat: add merchant auth foundation v1`**. |
 | 2026-05-19 | **Sidebar width:** `--sidebar-width` 200px → 220px لقراءة أوضح للتسميات الطويلة. Commit: **`ui: increase dashboard sidebar width to 220px`**. |
 | 2026-05-19 | **Dashboard final polish:** جانبي 200px، إعدادات بعرض 700px، صف علوي للرئيسية (جاهزية + ملخص الشهر)، أدوات علوية (إشعارات/حساب/باقة/خروج placeholders). Commit: **`ui: final dashboard polish and compact layout`**. |

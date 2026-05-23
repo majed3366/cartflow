@@ -77,6 +77,24 @@ def normalize_email(raw: str) -> Optional[str]:
     return e
 
 
+def resolve_merchant_display_name(merchant_name: str, store_name: str) -> str:
+    """Public signup collects store name only; keep DB ``merchant_name`` populated."""
+    mn = (merchant_name or "").strip()
+    if len(mn) >= 2:
+        return mn[:255]
+    sn = (store_name or "").strip()
+    if len(sn) >= 2:
+        return sn[:255]
+    return ""
+
+
+def ensure_merchant_auth_db_ready() -> None:
+    """Idempotent DDL for auth tables/columns (production has no startup create_all)."""
+    from schema_merchant_auth import ensure_merchant_auth_schema
+
+    ensure_merchant_auth_schema(db)
+
+
 def _slugify_store_name(store_name: str) -> str:
     s = (store_name or "").strip().lower()
     s = re.sub(r"[^\w\s\u0600-\u06FF-]", "", s, flags=re.UNICODE)
@@ -176,18 +194,16 @@ def resolve_authenticated_store_slug(cookies: dict[str, str]) -> Optional[str]:
 
 def validate_signup_form(
     *,
-    merchant_name: str,
+    merchant_name: str = "",
     store_name: str,
     email: str,
     password: str,
     confirm_password: str,
 ) -> Tuple[bool, str, dict[str, str]]:
     errors: dict[str, str] = {}
-    mn = (merchant_name or "").strip()
     sn = (store_name or "").strip()
+    mn = resolve_merchant_display_name(merchant_name, store_name)
     em = normalize_email(email)
-    if len(mn) < 2:
-        errors["merchant_name"] = "أدخل اسم التاجر (حرفان على الأقل)."
     if len(sn) < 2:
         errors["store_name"] = "أدخل اسم المتجر (حرفان على الأقل)."
     if not em:
@@ -210,12 +226,13 @@ def validate_signup_form(
 
 def register_merchant_account(
     *,
-    merchant_name: str,
+    merchant_name: str = "",
     store_name: str,
     email: str,
     password: str,
 ) -> Tuple[bool, str, Optional[MerchantUser]]:
-    ok, msg, cleaned = validate_signup_form(
+    ensure_merchant_auth_db_ready()
+    ok, msg, validated = validate_signup_form(
         merchant_name=merchant_name,
         store_name=store_name,
         email=email,
@@ -223,18 +240,25 @@ def register_merchant_account(
         confirm_password=password,
     )
     if not ok:
+        field_keys = sorted(validated.keys()) if isinstance(validated, dict) else []
+        log.info(
+            "[MERCHANT SIGNUP] stage=validate outcome=fail reason=%s field_errors=%s",
+            msg,
+            field_keys,
+        )
         return False, msg, None
-    em = cleaned["email"]
+    em = validated["email"]
+    log.info("[MERCHANT SIGNUP] stage=validate outcome=ok")
     user = MerchantUser(
         email=em,
-        password_hash=hash_password(cleaned["password"]),
-        merchant_name=cleaned["merchant_name"],
+        password_hash=hash_password(validated["password"]),
+        merchant_name=validated["merchant_name"],
     )
-    zid = generate_unique_store_zid(cleaned["store_name"])
+    zid = generate_unique_store_zid(validated["store_name"])
     store = Store(
         zid_store_id=zid,
         merchant_user_id=None,
-        widget_display_name=cleaned["store_name"][:255],
+        widget_display_name=validated["store_name"][:255],
         recovery_delay=2,
         recovery_delay_unit="minutes",
         recovery_attempts=1,
@@ -247,13 +271,28 @@ def register_merchant_account(
         db.session.flush()
         user.primary_store_id = store.id
         db.session.commit()
+        log.info(
+            "[MERCHANT SIGNUP] stage=create outcome=ok user_id=%s store_id=%s",
+            user.id,
+            store.id,
+        )
         return True, "", user
-    except IntegrityError:
+    except IntegrityError as exc:
         db.session.rollback()
+        log.warning(
+            "[MERCHANT SIGNUP] stage=create outcome=integrity_error exc_type=%s exc=%s",
+            type(exc).__name__,
+            exc,
+        )
         return False, "هذا البريد مسجّل مسبقاً.", None
     except SQLAlchemyError as exc:
         db.session.rollback()
-        log.warning("merchant signup failed: %s", exc)
+        log.warning(
+            "[MERCHANT SIGNUP] stage=create outcome=db_error exc_type=%s exc=%s",
+            type(exc).__name__,
+            exc,
+            exc_info=True,
+        )
         return False, "تعذر إنشاء الحساب. حاول مرة أخرى.", None
 
 
@@ -409,7 +448,9 @@ __all__ = [
     "reset_token_is_valid",
     "authenticate_merchant",
     "development_dashboard_bypass_active",
+    "ensure_merchant_auth_db_ready",
     "generate_unique_store_zid",
+    "resolve_merchant_display_name",
     "get_merchant_user_by_email",
     "get_merchant_user_by_id",
     "get_primary_store_for_merchant",

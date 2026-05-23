@@ -2,6 +2,7 @@
 """Merchant auth HTML routes — login, signup, password reset."""
 from __future__ import annotations
 
+import logging
 import os
 from pathlib import Path
 from typing import Any, Optional
@@ -14,6 +15,7 @@ from services.merchant_auth_http import merchant_cookie_name
 from services.merchant_auth_v1 import (
     apply_password_reset,
     authenticate_merchant,
+    ensure_merchant_auth_db_ready,
     is_development_env,
     register_merchant_account,
     request_password_reset,
@@ -24,6 +26,8 @@ from services.merchant_auth_v1 import (
     validate_reset_password_form,
     validate_signup_form,
 )
+
+log = logging.getLogger("cartflow")
 
 _ROOT = Path(__file__).resolve().parent.parent
 templates = Jinja2Templates(directory=str(_ROOT / "templates"))
@@ -78,6 +82,7 @@ def merchant_login_post(
     password: str = Form(""),
     next: str = Form("/dashboard"),
 ):
+    ensure_merchant_auth_db_ready()
     ok, err = validate_login_form(email, password)
     if not ok:
         return templates.TemplateResponse(
@@ -123,6 +128,8 @@ def merchant_signup_post(
     password: str = Form(""),
     confirm_password: str = Form(""),
 ):
+    ensure_merchant_auth_db_ready()
+    ua = (request.headers.get("user-agent") or "")[:120]
     ok, msg, errors = validate_signup_form(
         merchant_name=merchant_name,
         store_name=store_name,
@@ -131,6 +138,11 @@ def merchant_signup_post(
         confirm_password=confirm_password,
     )
     if not ok:
+        log.info(
+            "[MERCHANT SIGNUP] http outcome=validate_fail fields=%s ua=%s",
+            sorted(errors.keys()) if isinstance(errors, dict) else [],
+            ua,
+        )
         return templates.TemplateResponse(
             request,
             "merchant_auth_signup.html",
@@ -138,7 +150,6 @@ def merchant_signup_post(
                 request,
                 error=msg,
                 field_errors=errors,
-                merchant_name=merchant_name,
                 store_name=store_name,
                 email=email,
             ),
@@ -151,18 +162,23 @@ def merchant_signup_post(
         password=password,
     )
     if not reg_ok or not user:
+        log.info(
+            "[MERCHANT SIGNUP] http outcome=create_fail reg_msg=%s ua=%s",
+            (reg_msg or "")[:80],
+            ua,
+        )
         return templates.TemplateResponse(
             request,
             "merchant_auth_signup.html",
             _auth_ctx(
                 request,
                 error=reg_msg or "تعذر إنشاء الحساب.",
-                merchant_name=merchant_name,
                 store_name=store_name,
                 email=email,
             ),
             status_code=400,
         )
+    log.info("[MERCHANT SIGNUP] http outcome=success user_id=%s ua=%s", user.id, ua)
     dest = safe_redirect_path("/dashboard")
     resp = RedirectResponse(url=dest, status_code=303)
     _attach_session_cookie(resp, session_cookie_value_for_user(user))
