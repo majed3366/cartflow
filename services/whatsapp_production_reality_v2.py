@@ -536,11 +536,9 @@ def simulate_whatsapp_window_check_dev(
         return {"ok": False, "error": "invalid_last_inbound_hours_ago"}
     now = _utc_now()
     observed_at = now - timedelta(hours=max(0.0, hours_ago))
-    record_customer_inbound_observed(
-        customer_phone_key=key,
-        observed_at=observed_at,
-        persist_event=False,
-    )
+    # Dev simulate must overwrite cache (record_* only advances forward in time).
+    with _inbound_lock:
+        _inbound_observed_at[key] = observed_at
     window = evaluate_conversation_window(customer_phone_key=key, now=now)
     template = decide_template_routing(window)
     log_window_and_template_decision(

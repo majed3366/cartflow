@@ -171,6 +171,24 @@ class WhatsappWindowSimulateDevTests(unittest.TestCase):
         self.assertTrue(tpl.get("freeform_allowed"))
         self.assertFalse(tpl.get("template_required"))
 
+    def test_simulate_same_phone_inside_then_outside(self) -> None:
+        """Regression: second simulate with older inbound must not keep first cache."""
+        phone = "966500000099"
+        inside = simulate_whatsapp_window_check_dev(
+            phone=phone, last_inbound_hours_ago=1
+        )
+        outside = simulate_whatsapp_window_check_dev(
+            phone=phone, last_inbound_hours_ago=25
+        )
+        self.assertEqual(
+            (inside.get("window") or {}).get("conversation_window_status"),
+            WINDOW_INSIDE,
+        )
+        self.assertEqual(
+            (outside.get("window") or {}).get("conversation_window_status"),
+            WINDOW_OUTSIDE,
+        )
+
     def test_simulate_outside_24h_helper(self) -> None:
         out = simulate_whatsapp_window_check_dev(
             phone="966500000011",
