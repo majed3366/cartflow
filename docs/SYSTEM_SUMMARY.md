@@ -89,7 +89,7 @@ Server-side template control (**`exit_intent_*`** on **`Store`**): `services/sto
 
 | Route | Module | Role |
 |--------|--------|------|
-| `GET`/`POST /login`, `/signup`, `GET /logout`, `/forgot-password`, `/reset-password` | `routes/merchant_auth.py` | Merchant account signup/login; PBKDF2 passwords; reset tokens (dev logs link when `ENV=development`). |
+| `GET`/`POST /login`, `/signup`, `GET /logout`, `/forgot-password`, `/reset-password` | `routes/merchant_auth.py` | Merchant account signup/login; PBKDF2 passwords; reset tokens via Resend (`RESEND_API_KEY`, `RESEND_FROM_EMAIL`) or dev log when `ENV=development` without key. |
 | `POST /api/cart-event` | `main.py` | Cart events (`cart_abandoned`, conversion flags, etc.). |
 | `GET` / `POST /api/recovery-settings` | `main.py` | Store recovery + template + widget + VIP threshold merge/persist. |
 | `POST /api/conversion` | `main.py` | Marks session converted; stops recovery. |
@@ -315,6 +315,7 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 
 | Date (UTC) | Summary |
 |------------|---------|
+| 2026-05-19 | **Resend password reset:** `services/merchant_password_reset_email.py` — `RESEND_API_KEY` + `RESEND_FROM_EMAIL`، رابط مطلق عبر `CARTFLOW_PUBLIC_BASE_URL`، تجربة dev بدون مفتاح (سجل الرابط)، `/login?password_reset=1` بعد النجاح. Commit: **`feat: add resend password reset integration`**. |
 | 2026-05-19 | **Merchant signup fix (mobile):** `ensure_merchant_auth_schema` قبل `/signup` و`/login` (إنتاج بدون `create_all` عند الإقلاع)؛ نموذج تسجيل مبسّط (اسم المتجر فقط، `merchant_name` من اسم المتجر)؛ سجلات `[MERCHANT SIGNUP]` للتشخيص. Commit: **`fix: resolve mobile signup failure and simplify merchant signup`**. |
 | 2026-05-19 | **Merchant auth foundation v1:** `/login` `/signup` `/logout` `/forgot-password` `/reset-password`، جلسة موقّعة، حماية `/dashboard` و`/api/dashboard`، تجاوز `ENV=development` فقط، نماذج `merchant_users` + ربط `stores.merchant_user_id`. Commit: **`feat: add merchant auth foundation v1`**. |
 | 2026-05-19 | **Sidebar width:** `--sidebar-width` 200px → 220px لقراءة أوضح للتسميات الطويلة. Commit: **`ui: increase dashboard sidebar width to 220px`**. |

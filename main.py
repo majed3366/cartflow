@@ -900,6 +900,14 @@ async def _startup_whatsapp_queue() -> None:
         refresh_db_due_scanner_health_observability()
     except Exception as exc:  # noqa: BLE001
         log.warning("startup db due scanner loop skipped: %s", exc)
+    try:
+        from services.merchant_password_reset_email import (
+            log_resend_password_reset_startup,
+        )
+
+        log_resend_password_reset_startup()
+    except Exception as exc:  # noqa: BLE001
+        log.warning("startup resend password reset check skipped: %s", exc)
     await start_whatsapp_queue_worker()
 
 

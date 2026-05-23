@@ -326,11 +326,20 @@ def _hash_reset_token(raw_token: str) -> str:
     return hashlib.sha256((raw_token or "").encode("utf-8")).hexdigest()
 
 
-def request_password_reset(email: str) -> Tuple[str, Optional[str]]:
+def request_password_reset(
+    email: str,
+    *,
+    reset_base_url: Optional[str] = None,
+) -> Tuple[str, Optional[str]]:
     """
     Returns (user_message, dev_reset_url_or_none).
     Same message whether or not email exists (no enumeration).
     """
+    from services.merchant_password_reset_email import (
+        build_password_reset_link,
+        deliver_password_reset_email,
+    )
+
     safe_msg = "إذا كان البريد مسجلاً، ستصلك تعليمات الاستعادة."
     em = normalize_email(email)
     if not em:
@@ -353,10 +362,8 @@ def request_password_reset(email: str) -> Tuple[str, Optional[str]]:
         db.session.rollback()
         log.warning("password reset token persist failed: %s", exc)
         return safe_msg, None
-    dev_url = None
-    if is_development_env():
-        dev_url = f"/reset-password?token={raw}"
-        log.info("[MERCHANT AUTH DEV] password reset link: %s", dev_url)
+    reset_link = build_password_reset_link(raw, base_url=reset_base_url)
+    _sent, dev_url = deliver_password_reset_email(to_email=em, reset_link=reset_link)
     return safe_msg, dev_url
 
 

@@ -26,6 +26,7 @@ from services.merchant_auth_v1 import (
     validate_reset_password_form,
     validate_signup_form,
 )
+from services.merchant_password_reset_email import public_reset_base_url
 
 log = logging.getLogger("cartflow")
 
@@ -61,16 +62,20 @@ def merchant_login_get(
     request: Request,
     next: Optional[str] = Query(None),
     registered: Optional[str] = Query(None),
+    password_reset: Optional[str] = Query(None),
 ):
+    success_msg = ""
+    if password_reset:
+        success_msg = "تم تحديث كلمة المرور بنجاح"
+    elif registered:
+        success_msg = "تم إنشاء حسابك. سجّل الدخول للمتابعة."
     return templates.TemplateResponse(
         request,
         "merchant_auth_login.html",
         _auth_ctx(
             request,
             next_path=safe_redirect_path(next),
-            success_msg="تم إنشاء حسابك. سجّل الدخول للمتابعة."
-            if registered
-            else "",
+            success_msg=success_msg,
         ),
     )
 
@@ -206,7 +211,8 @@ def merchant_forgot_password_post(
     request: Request,
     email: str = Form(""),
 ):
-    msg, dev_url = request_password_reset(email)
+    base = public_reset_base_url() or str(request.base_url).rstrip("/")
+    msg, dev_url = request_password_reset(email, reset_base_url=base)
     return templates.TemplateResponse(
         request,
         "merchant_auth_forgot_password.html",
@@ -256,4 +262,4 @@ def merchant_reset_password_post(
             _auth_ctx(request, token=token, error=apply_msg, invalid_token=True),
             status_code=400,
         )
-    return RedirectResponse(url="/login?registered=1", status_code=303)
+    return RedirectResponse(url="/login?password_reset=1", status_code=303)
