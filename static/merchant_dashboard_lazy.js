@@ -37,15 +37,19 @@
 
   function setupStepsHtml(steps) {
     if (!steps || !steps.length) return "";
+    var total = steps.length;
     var html = '<ol class="m-0" style="list-style:none;padding:0;margin:0">';
     for (var i = 0; i < steps.length; i++) {
       var st = steps[i];
       var done = st.is_complete ? " is-done" : "";
+      var stepNum = i + 1;
       html +=
         '<li class="ma-setup-step' +
         done +
-        '"><p style="margin:0;font-size:10px;font-weight:700;color:var(--muted)">' +
-        (i + 1) +
+        '"><p class="ma-setup-step-index">الخطوة ' +
+        stepNum +
+        " من " +
+        total +
         "</p>" +
         '<p class="ma-setup-step-title">' +
         esc(st.title_ar) +
@@ -69,26 +73,33 @@
   }
 
   function applyGlobalTopbarSetup(mse) {
-    var titleEl = byId("ma-gtb-setup-title");
-    var remEl = byId("ma-gtb-setup-remaining");
+    var lineEl = byId("ma-gtb-setup-line");
     var wrap = byId("ma-gtb-setup");
-    if (!titleEl) return;
-    titleEl.classList.remove("ma-dash-skel");
+    if (!lineEl) return;
+    lineEl.classList.remove("ma-dash-skel");
     if (!mse || !mse.show_card) {
-      titleEl.textContent = "لوحة متجرك";
-      if (remEl) remEl.textContent = "";
+      lineEl.textContent = "لوحة متجرك";
       if (wrap) wrap.classList.remove("ma-gtb-setup--complete");
       return;
     }
-    titleEl.textContent = mse.card_title_ar || "متجرك";
+    var title = mse.card_title_ar || "متجرك";
     var n = parseInt(mse.remaining_setup_count, 10) || 0;
-    if (remEl) {
-      remEl.textContent =
-        n === 0 ? "جاهز للتشغيل" : "ينقص: " + n + " إعدادات";
+    if (n === 0) {
+      lineEl.textContent = title + " — جاهز للتشغيل الكامل";
+    } else {
+      lineEl.textContent = title + " — ينقص: " + n + " إعدادات";
     }
     if (wrap) {
       wrap.classList.toggle("ma-gtb-setup--complete", n === 0);
     }
+  }
+
+  function firstIncompleteStepIndex(steps) {
+    if (!steps || !steps.length) return 0;
+    for (var i = 0; i < steps.length; i++) {
+      if (!steps[i].is_complete) return i + 1;
+    }
+    return 0;
   }
 
   function applyMerchantSetupExperience(mse) {
@@ -100,44 +111,39 @@
       root.innerHTML = "";
       return;
     }
-    var remaining =
-      parseInt(mse.remaining_setup_count, 10) === 0
-        ? "لا إعدادات"
-        : String(mse.remaining_setup_count) + " إعدادات";
+    var total = parseInt(mse.remaining_setup_count, 10) || 0;
+    var steps = mse.steps || [];
+    var currentStep = firstIncompleteStepIndex(steps);
+    var progressHtml =
+      currentStep > 0 && total > 0
+        ? '<p class="ma-setup-step-progress">أنت على <strong>الخطوة ' +
+          currentStep +
+          " من " +
+          total +
+          "</strong></p>"
+        : "";
     root.style.display = "";
     root.innerHTML =
-      '<h2 class="ma-setup-title">' +
-      esc(mse.card_title_ar) +
-      "</h2>" +
-      '<dl class="ma-setup-grid">' +
-      '<div class="ma-setup-field"><dt>جاهزية</dt><dd>' +
-      esc(String(mse.readiness_percent)) +
-      "٪</dd></div>" +
-      '<div class="ma-setup-field"><dt>تبقى</dt><dd>' +
-      esc(remaining) +
-      "</dd></div>" +
-      '<div class="ma-setup-field ma-setup-field--wide"><dt>النتيجة</dt><dd>' +
-      esc(mse.outcome_summary_ar) +
-      "</dd></div>" +
-      '<div class="ma-setup-field ma-setup-field--wide" style="background:#f0fdfa;border-color:#99f6e4"><dt>الخطوة التالية</dt><dd>' +
+      '<div class="ma-setup-panel">' +
+      '<p class="ma-setup-panel-lead">الخطوة التالية: <strong>' +
       esc(mse.next_step_ar) +
-      "</dd></div>" +
-      "</dl>" +
-      '<p class="ma-setup-state">الحالة: <strong>' +
-      esc(mse.setup_state_label_ar) +
       "</strong></p>" +
+      progressHtml +
+      '<p class="ma-setup-panel-lead" style="font-size:12px;color:var(--muted)">النتيجة: ' +
+      esc(mse.outcome_summary_ar) +
+      "</p>" +
       '<div class="ma-setup-actions">' +
-      '<button type="button" class="ma-setup-btn-primary" id="ma-setup-toggle-btn" aria-expanded="false" aria-controls="ma-setup-steps-panel">أكمل الإعداد</button>' +
+      '<button type="button" class="ma-setup-btn-primary" id="ma-setup-toggle-btn" aria-expanded="false" aria-controls="ma-setup-steps-panel">عرض كل خطوات الإعداد</button>' +
       '<a class="ma-setup-btn-secondary" href="' +
       esc(mse.action_href || "#whatsapp") +
-      '" onclick="if(window.goTo){goTo(\'whatsapp\');return false;}">انتقل للخطوة</a>' +
+      '" onclick="if(window.goTo){goTo(\'whatsapp\');return false;}">انتقل للخطوة الحالية</a>' +
       "</div>" +
       '<div id="ma-setup-steps-panel" class="ma-setup-steps" hidden role="region" aria-label="خطوات الإعداد">' +
-      setupStepsHtml(mse.steps || []) +
-      (parseInt(mse.remaining_setup_count, 10) === 0
+      setupStepsHtml(steps) +
+      (total === 0
         ? '<p style="margin:8px 0 0;font-size:12px;font-weight:700;color:#166534">اكتمل الإعداد — متجرك جاهز للتشغيل الكامل.</p>'
         : "") +
-      "</div>";
+      "</div></div>";
 
     var btn = byId("ma-setup-toggle-btn");
     var panel = byId("ma-setup-steps-panel");
