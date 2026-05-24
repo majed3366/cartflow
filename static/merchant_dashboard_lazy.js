@@ -180,37 +180,66 @@
     applyHomeOperationalAlerts(act && act.operational_alerts_ar);
   }
 
-  function applyMerchantActivation(act) {
-    var root = byId("ma-activation-root");
-    if (!root) return;
-    if (!isDashboardHomeActive()) {
-      hideActivationOffHome();
-      return;
+  function normalizeActivationDisplay(raw) {
+    return String(raw == null ? "" : raw)
+      .trim()
+      .toLowerCase();
+  }
+
+  function resolveActivationRenderPlan(act) {
+    var rawDisplay = act && act.activation_display;
+    var display = normalizeActivationDisplay(rawDisplay);
+    var plan = {
+      display: rawDisplay || "prominent",
+      renderMode: "prominent",
+      template: "activation_prominent_v1",
+      fallback: null,
+    };
+    if (!display) {
+      plan.fallback = "missing_activation_display_default_prominent";
+      return plan;
     }
-    if (!act || typeof act !== "object") {
-      hideActivationRootClear(root);
-      return;
+    if (display === "prominent") {
+      plan.renderMode = "prominent";
+      plan.template = "activation_prominent_v1";
+      return plan;
     }
-    var display = act.activation_display || "prominent";
+    if (display === "compact") {
+      plan.renderMode = "compact";
+      plan.template = "activation_compact_v1";
+      return plan;
+    }
     if (display === "hidden") {
-      display = "compact";
+      plan.renderMode = "compact";
+      plan.template = "activation_compact_v1";
+      plan.fallback = "server_hidden_upgraded_to_compact_on_home";
+      return plan;
     }
-    if (display !== "prominent" && display !== "compact") {
-      hideActivationRootClear(root);
-      return;
-    }
-    var milestones = act.milestones || [];
-    var states = act.summary_states || [];
-    var working = !!act.activation_working;
-    var compact = display === "compact";
-    var title = compact
-      ? "حالة التفعيل"
-      : working
-        ? "CartFlow يعمل على متجرك"
-        : "تفعيل سريع — أول نجاح";
-    var lead =
-      act.next_step_ar ||
-      "جرّب متجر الاختبار ثم راقب السلال هنا.";
+    plan.fallback = "unknown_activation_display_coerced_prominent";
+    return plan;
+  }
+
+  function logActivationRender(plan, act) {
+    console.log(
+      "[ACTIVATION RENDER]\n" +
+        "display=" +
+        String(plan.display) +
+        "\n" +
+        "render_mode=" +
+        String(plan.renderMode) +
+        "\n" +
+        "template=" +
+        String(plan.template) +
+        "\n" +
+        "fallback=" +
+        String(plan.fallback || "") +
+        "\n" +
+        "home_stage=" +
+        String((act && act.home_stage) || "")
+    );
+  }
+
+  function buildActivationMilestonesHtml(milestones) {
     var msHtml = "";
     var i;
     for (i = 0; i < milestones.length; i++) {
@@ -230,7 +259,12 @@
           : "") +
         "</span></li>";
     }
+    return msHtml;
+  }
+
+  function buildActivationTimelineHtml(states) {
     var stHtml = "";
+    var i;
     for (i = 0; i < states.length; i++) {
       var st = states[i];
       var liCls = "";
@@ -243,59 +277,10 @@
         esc(st.label_ar || "") +
         "</li>";
     }
-    var testUrl = act.test_store_url || "/dashboard/test-widget";
-    var delay = act.delay_hint_ar
-      ? '<p class="ma-activation-delay">' + esc(act.delay_hint_ar) + "</p>"
-      : "";
-    var summaryLines = act.activation_summary_lines_ar || [];
-    var compactBody = "";
-    for (i = 0; i < summaryLines.length; i++) {
-      compactBody +=
-        '<span class="ma-activation-compact-line">' +
-        esc(summaryLines[i]) +
-        "</span>";
-    }
-    if (act.last_activity_ar) {
-      compactBody +=
-        '<span class="ma-activation-compact-line">آخر نشاط: ' +
-        esc(act.last_activity_ar) +
-        "</span>";
-    }
-    var compactClass = compact ? " ma-activation-compact" : "";
-    var toggleBtn = compact
-      ? '<button type="button" class="ma-activation-compact-toggle" data-ma-act-expand="1">تفاصيل التفعيل</button>'
-      : "";
-    showActivationRoot(root);
-    root.innerHTML =
-      '<div class="ma-activation-card' +
-      compactClass +
-      '" id="ma-activation-card-inner">' +
-      "<h2 class=\"ma-activation-title\">" +
-      esc(title) +
-      "</h2>" +
-      (compact
-        ? '<div class="ma-activation-compact-body">' +
-          compactBody +
-          toggleBtn +
-          "</div>"
-        : '<p class="ma-activation-lead">' + esc(lead) + "</p>") +
-      (stHtml && !compact
-        ? '<ul class="ma-activation-timeline">' + stHtml + "</ul>"
-        : stHtml
-          ? '<ul class="ma-activation-timeline">' + stHtml + "</ul>"
-          : "") +
-      '<ul class="ma-activation-milestones">' +
-      msHtml +
-      "</ul>" +
-      '<div class="ma-activation-actions">' +
-      '<a class="ma-activation-btn ma-activation-btn-primary" href="' +
-      esc(testUrl) +
-      '" target="_blank" rel="noopener">فتح متجر الاختبار</a>' +
-      '<a class="ma-activation-btn ma-activation-btn-secondary" href="/dashboard#carts" onclick="if(window.goTo){goTo(\'carts\');}return false;">عرض السلال</a>' +
-      "</div>" +
-      delay +
-      (compact ? '<p class="ma-activation-lead">' + esc(lead) + "</p>" : "") +
-      "</div>";
+    return stHtml;
+  }
+
+  function bindActivationCompactExpand(root) {
     var card = byId("ma-activation-card-inner");
     var expandBtn = root.querySelector("[data-ma-act-expand]");
     if (expandBtn && card) {
@@ -308,10 +293,154 @@
     }
   }
 
+  function renderActivationProminent(act, root) {
+    var milestones = act.milestones || [];
+    var states = act.summary_states || [];
+    var working = !!act.activation_working;
+    var title = working
+      ? "CartFlow يعمل على متجرك"
+      : "تفعيل سريع — أول نجاح";
+    var lead =
+      act.next_step_ar ||
+      "جرّب متجر الاختبار ثم راقب السلال هنا.";
+    var msHtml = buildActivationMilestonesHtml(milestones);
+    var stHtml = buildActivationTimelineHtml(states);
+    var testUrl = act.test_store_url || "/dashboard/test-widget";
+    var delay = act.delay_hint_ar
+      ? '<p class="ma-activation-delay">' + esc(act.delay_hint_ar) + "</p>"
+      : "";
+    var timelineBlock = stHtml
+      ? '<ul class="ma-activation-timeline">' + stHtml + "</ul>"
+      : "";
+    showActivationRoot(root);
+    root.setAttribute("data-ma-activation-render-mode", "prominent");
+    root.innerHTML =
+      '<div class="ma-activation-card ma-activation-prominent" id="ma-activation-card-inner">' +
+      "<h2 class=\"ma-activation-title\">" +
+      esc(title) +
+      "</h2>" +
+      '<p class="ma-activation-lead">' +
+      esc(lead) +
+      "</p>" +
+      timelineBlock +
+      '<ul class="ma-activation-milestones">' +
+      msHtml +
+      "</ul>" +
+      '<div class="ma-activation-actions">' +
+      '<a class="ma-activation-btn ma-activation-btn-primary" href="' +
+      esc(testUrl) +
+      '" target="_blank" rel="noopener">فتح متجر الاختبار</a>' +
+      '<a class="ma-activation-btn ma-activation-btn-secondary" href="/dashboard#carts" onclick="if(window.goTo){goTo(\'carts\');}return false;">عرض السلال</a>' +
+      "</div>" +
+      delay +
+      "</div>";
+  }
+
+  function renderActivationCompact(act, root) {
+    var milestones = act.milestones || [];
+    var states = act.summary_states || [];
+    var lead =
+      act.next_step_ar ||
+      "جرّب متجر الاختبار ثم راقب السلال هنا.";
+    var msHtml = buildActivationMilestonesHtml(milestones);
+    var stHtml = buildActivationTimelineHtml(states);
+    var testUrl = act.test_store_url || "/dashboard/test-widget";
+    var delay = act.delay_hint_ar
+      ? '<p class="ma-activation-delay">' + esc(act.delay_hint_ar) + "</p>"
+      : "";
+    var summaryLines = act.activation_summary_lines_ar || [];
+    var compactBody = "";
+    var i;
+    for (i = 0; i < summaryLines.length; i++) {
+      compactBody +=
+        '<span class="ma-activation-compact-line">' +
+        esc(summaryLines[i]) +
+        "</span>";
+    }
+    if (act.last_activity_ar) {
+      compactBody +=
+        '<span class="ma-activation-compact-line">آخر نشاط: ' +
+        esc(act.last_activity_ar) +
+        "</span>";
+    }
+    var timelineBlock = stHtml
+      ? '<ul class="ma-activation-timeline">' + stHtml + "</ul>"
+      : "";
+    showActivationRoot(root);
+    root.setAttribute("data-ma-activation-render-mode", "compact");
+    root.innerHTML =
+      '<div class="ma-activation-card ma-activation-compact" id="ma-activation-card-inner">' +
+      "<h2 class=\"ma-activation-title\">" +
+      esc("حالة التفعيل") +
+      "</h2>" +
+      '<div class="ma-activation-compact-body">' +
+      compactBody +
+      '<button type="button" class="ma-activation-compact-toggle" data-ma-act-expand="1">تفاصيل التفعيل</button>' +
+      "</div>" +
+      timelineBlock +
+      '<ul class="ma-activation-milestones">' +
+      msHtml +
+      "</ul>" +
+      '<div class="ma-activation-actions">' +
+      '<a class="ma-activation-btn ma-activation-btn-primary" href="' +
+      esc(testUrl) +
+      '" target="_blank" rel="noopener">فتح متجر الاختبار</a>' +
+      '<a class="ma-activation-btn ma-activation-btn-secondary" href="/dashboard#carts" onclick="if(window.goTo){goTo(\'carts\');}return false;">عرض السلال</a>' +
+      "</div>" +
+      delay +
+      '<p class="ma-activation-lead">' +
+      esc(lead) +
+      "</p>" +
+      "</div>";
+    bindActivationCompactExpand(root);
+  }
+
+  function applyMerchantActivation(act) {
+    var root = byId("ma-activation-root");
+    if (!root) return;
+    if (!isDashboardHomeActive()) {
+      hideActivationOffHome();
+      return;
+    }
+    if (!act || typeof act !== "object") {
+      hideActivationRootClear(root);
+      return;
+    }
+    var plan = resolveActivationRenderPlan(act);
+    logActivationRender(plan, act);
+    if (plan.renderMode === "compact") {
+      renderActivationCompact(act, root);
+      return;
+    }
+    if (plan.renderMode === "prominent") {
+      renderActivationProminent(act, root);
+      return;
+    }
+    hideActivationRootClear(root);
+  }
+
+  function shouldShowActivationDebugPanel() {
+    try {
+      var q = new URLSearchParams(window.location.search || "");
+      if (q.get("activation_inspect") === "1") return true;
+    } catch (e) {
+      /* ignore */
+    }
+    return false;
+  }
+
   function applyActivationVisibilityDebug(d) {
     var dbg =
       (d && d.merchant_activation_visibility_debug) ||
       (d && d.merchant_activation && d.merchant_activation.activation_visibility_debug);
+    var panel = byId("ma-activation-debug");
+    if (!shouldShowActivationDebugPanel()) {
+      if (panel) {
+        panel.hidden = true;
+        panel.innerHTML = "";
+      }
+      if (!dbg) return;
+    }
     if (!dbg) return;
     var homeEl = byId("page-home");
     var actRoot = byId("ma-activation-root");
@@ -342,7 +471,6 @@
       ui_blocker_inferred: uiBlocker,
     };
     console.log("[ACTIVATION VISIBILITY]", merged);
-    var panel = byId("ma-activation-debug");
     if (!panel) return;
     var lines = [
       "DEBUG activation visibility (temporary)",
