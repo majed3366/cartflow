@@ -6545,6 +6545,17 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
     """
     store_slug, _bound_row = _bind_recovery_runtime_store_identity(recovery_key, store_slug)
     try:
+        from services.cartflow_purchase_truth import stop_if_purchased
+
+        if stop_if_purchased(
+            recovery_key,
+            session_id=session_id,
+            cart_id=(cart_id or "") or "",
+        ):
+            return
+    except Exception:  # noqa: BLE001
+        pass
+    try:
         from services.purchase_lifecycle_closure import (
             block_recovery_if_purchase_lifecycle_closed,
         )
@@ -10069,6 +10080,38 @@ async def api_conversion(request: Request) -> Any:
     )
 
 
+@app.get("/dev/purchase-truth-status")
+def dev_purchase_truth_status(
+    store_slug: Optional[str] = None,
+    session_id: Optional[str] = None,
+    recovery_key: Optional[str] = None,
+) -> Any:
+    """Dev-only: read durable purchase truth for a session."""
+    if not _is_development_mode():
+        return j({"ok": False, "error": "not_found"}, 404)
+    from services.cartflow_purchase_truth import (  # noqa: PLC0415
+        has_purchase,
+        purchase_context,
+    )
+
+    rk = (recovery_key or "").strip()
+    if not rk:
+        ss = (store_slug or "").strip()
+        sid = (session_id or "").strip()
+        if not ss or not sid:
+            return j({"ok": False, "error": "recovery_key_or_session_required"}, 400)
+        rk = f"{ss}:{sid}"
+    ctx = purchase_context(rk)
+    return j(
+        {
+            "ok": True,
+            "recovery_key": rk,
+            "purchase_detected": has_purchase(rk),
+            "purchase_context": ctx,
+        }
+    )
+
+
 @app.post("/dev/purchase-truth-test")
 async def dev_purchase_truth_test(request: Request) -> Any:
     """
@@ -10105,12 +10148,16 @@ async def dev_purchase_truth_test(request: Request) -> Any:
     key = ingest_purchase_truth_payload(truth_payload)
     if not key:
         return j({"ok": False, "error": "purchase_truth_apply_failed"}, 500)
+    from services.cartflow_purchase_truth import purchase_context  # noqa: PLC0415
+
     return j(
         {
             "ok": True,
             "recovery_key": key,
             "purchase_truth_source": truth[0],
             "verified": True,
+            "purchase_detected": True,
+            "purchase_context": purchase_context(key),
         }
     )
 

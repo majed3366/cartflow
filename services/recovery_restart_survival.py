@@ -1512,3 +1512,40 @@ def dev_verify_recovery_restart_survival(
         return out
     out["error"] = "unknown_action"
     return out
+
+
+def cancel_durable_schedules_for_purchase(
+    recovery_key: str,
+    *,
+    detail: str = "purchase_detected",
+) -> int:
+    """
+  Cancel pending durable recovery schedules when purchase truth is recorded.
+  Additive — does not alter send/decision logic.
+  """
+    rk = (recovery_key or "").strip()
+    if not rk:
+        return 0
+    det = (detail or "purchase_detected")[:512]
+    try:
+        rows = (
+            db.session.query(RecoverySchedule)
+            .filter(
+                RecoverySchedule.recovery_key == rk,
+                RecoverySchedule.status == STATUS_SCHEDULED,
+            )
+            .all()
+        )
+        if not rows:
+            return 0
+        n = 0
+        for row in rows:
+            row.status = STATUS_CANCELLED
+            row.last_error = det
+            row.updated_at = _utc_now()
+            n += 1
+        db.session.commit()
+        return n
+    except SQLAlchemyError:
+        db.session.rollback()
+        return 0
