@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""WhatsApp Production Reality v2 — window + template foundation (no send gates)."""
+"""WhatsApp Production Reality v2 — window + template foundation + production send gate."""
 from __future__ import annotations
 
 import os
@@ -191,7 +191,7 @@ class WhatsappWindowSimulateDevTests(unittest.TestCase):
 
     def test_simulate_outside_24h_helper(self) -> None:
         out = simulate_whatsapp_window_check_dev(
-            phone="966500000011",
+            phone="966500000022",
             last_inbound_hours_ago=25,
         )
         self.assertTrue(out.get("ok"))

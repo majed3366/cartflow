@@ -441,12 +441,26 @@ def send_whatsapp(
 
     try:
         from services.whatsapp_production_reality_v2 import (
+            enforce_whatsapp_template_window_before_send,
             observe_outbound_whatsapp_context,
+            resolve_store_for_template_enforcement,
         )
 
+        store_for_gate = resolve_store_for_template_enforcement(
+            (wa_trace_store_slug or "")[:255]
+        )
+        gate_block = enforce_whatsapp_template_window_before_send(
+            customer_phone=phone,
+            store_slug=(wa_trace_store_slug or "")[:255],
+            store=store_for_gate,
+            context="send_whatsapp",
+        )
+        if gate_block is not None:
+            return gate_block
         observe_outbound_whatsapp_context(
             customer_phone=phone,
             store_slug=(wa_trace_store_slug or "")[:255],
+            store=store_for_gate,
             context="send_whatsapp",
         )
     except Exception:  # noqa: BLE001
@@ -620,6 +634,9 @@ def resolve_whatsapp_recovery_log_status(wa_result: Any) -> str:
     if not isinstance(wa_result, dict):
         return "whatsapp_failed"
     if wa_result.get("ok") is not True:
+        explicit = str(wa_result.get("log_status") or "").strip()
+        if explicit == "blocked_template_required":
+            return "blocked_template_required"
         return "whatsapp_failed"
     sid = str(wa_result.get("sid") or "").strip()
     if sid:

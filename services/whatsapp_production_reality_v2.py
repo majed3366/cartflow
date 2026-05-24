@@ -1,13 +1,16 @@
 # -*- coding: utf-8 -*-
 """
-WhatsApp Production Reality v2 — 24h window + template routing foundation (observe only).
+WhatsApp Production Reality v2 — 24h window + template routing.
 
-Does not block sends, alter recovery, lifecycle, attribution, queue, or widget.
+Sandbox: observe-only (no send block).
+Production (``recovery_uses_real_whatsapp()``): blocks freeform Twilio sends when
+outside the 24h window (or unknown) and no provider-approved template signal.
 """
 from __future__ import annotations
 
 import json
 import logging
+import os
 import threading
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta, timezone
@@ -515,6 +518,143 @@ def observe_outbound_whatsapp_context(
         "window": window.to_dict(),
         "template": template.to_dict(),
         "store_readiness": store_ready.to_dict(),
+    }
+
+
+def provider_templates_approved_for_store(store: Optional[Any]) -> bool:
+    """
+    Provider-approved templates (Meta/Twilio), not local ``reason_templates_json`` alone.
+    Ops: ``CARTFLOW_WHATSAPP_PROVIDER_TEMPLATES_APPROVED=1``.
+    Future: ``Store.whatsapp_provider_templates_approved`` when present.
+    """
+    env = (os.getenv("CARTFLOW_WHATSAPP_PROVIDER_TEMPLATES_APPROVED") or "").strip().lower()
+    if env in ("1", "true", "yes", "on"):
+        return True
+    if store is None:
+        return False
+    flag = getattr(store, "whatsapp_provider_templates_approved", None)
+    if flag is True:
+        return True
+    if isinstance(flag, str) and flag.strip().lower() in ("1", "true", "yes", "on"):
+        return True
+    return False
+
+
+def resolve_store_for_template_enforcement(store_slug: str) -> Optional[Any]:
+    ss = (store_slug or "").strip()[:255]
+    if not ss:
+        return None
+    try:
+        from extensions import db
+        from models import Store
+        from sqlalchemy import or_
+
+        db.create_all()
+        return (
+            db.session.query(Store)
+            .filter(or_(Store.slug == ss, Store.zid_store_id == ss))
+            .first()
+        )
+    except Exception:  # noqa: BLE001
+        try:
+            from extensions import db as _db
+
+            _db.session.rollback()
+        except Exception:
+            pass
+        return None
+
+
+def evaluate_whatsapp_template_enforcement(
+    *,
+    customer_phone: str,
+    store_slug: str = "",
+    store: Optional[Any] = None,
+    abandoned_cart: Optional[Any] = None,
+    context: str = "outbound_send",
+) -> dict[str, Any]:
+    """Classify whether a Twilio recovery send may proceed (production gate)."""
+    from services.whatsapp_send import recovery_uses_real_whatsapp
+
+    production = bool(recovery_uses_real_whatsapp())
+    mode = "production" if production else "sandbox"
+    st = store
+    if st is None and store_slug:
+        st = resolve_store_for_template_enforcement(store_slug)
+    key = _phone_key(customer_phone)
+    window = evaluate_conversation_window(
+        customer_phone_key=key,
+        abandoned_cart=abandoned_cart,
+        store=st,
+    )
+    template = decide_template_routing(window)
+    template_available = provider_templates_approved_for_store(st)
+    window_24h = window.conversation_window_status
+    blocked = bool(
+        production and template.template_required and not template_available
+    )
+    reason = "template_required_outside_24h" if blocked else ""
+    action = "block" if blocked else "send"
+    return {
+        "mode": mode,
+        "window_24h": window_24h,
+        "template_available": template_available,
+        "template_required": template.template_required,
+        "freeform_allowed": template.freeform_allowed,
+        "action": action,
+        "reason": reason,
+        "blocked": blocked,
+        "context": context,
+        "store_slug": (store_slug or _store_slug(st))[:255],
+    }
+
+
+def log_wa_template_enforcement(result: dict[str, Any]) -> None:
+    tpl = "true" if result.get("template_available") else "false"
+    _emit_lines(
+        [
+            (
+                "[WA TEMPLATE ENFORCEMENT] "
+                f"mode={result.get('mode')} "
+                f"window_24h={result.get('window_24h')} "
+                f"template_available={tpl} "
+                f"action={result.get('action')} "
+                f"reason={result.get('reason') or '-'}"
+            )
+        ]
+    )
+
+
+def enforce_whatsapp_template_window_before_send(
+    *,
+    customer_phone: str,
+    store_slug: str = "",
+    store: Optional[Any] = None,
+    abandoned_cart: Optional[Any] = None,
+    context: str = "send_whatsapp",
+) -> Optional[dict[str, Any]]:
+    """
+    Production-only gate for ``send_whatsapp`` / ``send_whatsapp_real``.
+    Returns a block payload (``ok: false``) or ``None`` when send may proceed.
+    """
+    verdict = evaluate_whatsapp_template_enforcement(
+        customer_phone=customer_phone,
+        store_slug=store_slug,
+        store=store,
+        abandoned_cart=abandoned_cart,
+        context=context,
+    )
+    log_wa_template_enforcement(verdict)
+    if not verdict.get("blocked"):
+        return None
+    return {
+        "ok": False,
+        "error": "template_required_outside_24h",
+        "enforcement_blocked": True,
+        "log_status": "blocked_template_required",
+        "window_24h": verdict.get("window_24h"),
+        "template_available": verdict.get("template_available"),
+        "reason": verdict.get("reason"),
     }
 
 
