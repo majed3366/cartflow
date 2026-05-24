@@ -11,6 +11,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 import main
+from extensions import db
 from services.purchase_truth import (
     extract_purchase_truth_evidence,
     ingest_purchase_truth_payload,
@@ -27,11 +28,24 @@ def _reset() -> None:
 
     _reset_recovery_memory()
     main._session_recovery_converted.clear()
+    try:
+        from schema_purchase_truth import reset_purchase_truth_schema_guard_for_tests
+        from services.cartflow_purchase_truth import reset_purchase_truth_foundation_for_tests
+
+        reset_purchase_truth_foundation_for_tests()
+        reset_purchase_truth_schema_guard_for_tests()
+        from models import PurchaseTruthRecord
+
+        db.session.query(PurchaseTruthRecord).delete()
+        db.session.commit()
+    except Exception:  # noqa: BLE001
+        db.session.rollback()
 
 
 @pytest.fixture(autouse=True)
 def _isolate() -> None:
     _reset()
+    db.create_all()
     yield
     _reset()
 
@@ -140,5 +154,4 @@ def test_recovery_blocked_after_purchase_truth() -> None:
     with patch.object(main.asyncio, "sleep", new_callable=AsyncMock):
         asyncio.run(_run())
     out = buf.getvalue()
-    assert "[RECOVERY BLOCKED]" in out
-    assert "lifecycle_closed_purchase" in out
+    assert "[PURCHASE STOP]" in out

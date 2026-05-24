@@ -412,3 +412,33 @@ class MerchantFollowupAction(Base):
         onupdate=lambda: datetime.now(timezone.utc),
         nullable=False,
     )
+
+
+class PurchaseTruthRecord(Base):
+    """
+    Durable purchase evidence — survives process restart.
+    One row per recovery_key when purchase is verified.
+    """
+
+    __tablename__ = "purchase_truth_records"
+
+    id = Column(Integer, primary_key=True)
+    recovery_key = Column(String(512), nullable=False, unique=True, index=True)
+    purchase_detected = Column(Boolean, default=True, nullable=False)
+    purchase_time = Column(DateTime, nullable=False)
+    purchase_source = Column(String(128), nullable=False, index=True)
+    order_id = Column(String(255), nullable=True, index=True)
+    store_slug = Column(String(255), nullable=False, index=True)
+    session_id = Column(String(512), nullable=False, index=True)
+    cart_id = Column(String(255), nullable=True, index=True)
+    customer_phone = Column(String(100), nullable=True)
+    evidence_detail = Column(String(512), nullable=True)
+    created_at = Column(
+        DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
+    )
+    updated_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
