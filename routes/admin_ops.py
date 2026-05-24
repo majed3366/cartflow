@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-from fastapi import Body, Request
-from fastapi.responses import JSONResponse
+from fastapi import Body, Query, Request
+from fastapi.responses import HTMLResponse, JSONResponse
 
 from json_response import j
 from services.cartflow_admin_http_auth import (
@@ -20,7 +20,12 @@ from services.admin_multi_store_mixed_behavior_load_test import (
 )
 from services.admin_failure_simulation_load_test import run_failure_scenarios_load_test
 
-from routes.admin_operations import router
+from routes.admin_operations import (
+    ADMIN_NAV_OPS_HEALTH,
+    _admin_session_or_redirect,
+    router,
+    templates,
+)
 
 
 def _admin_json_auth_or_error(request: Request) -> Optional[JSONResponse]:
@@ -146,6 +151,46 @@ def admin_load_test_failure_scenarios(
 
     summary = run_failure_scenarios_load_test(dry_run_whatsapp=bool(dry_run))
     return j(summary)
+
+
+@router.get("/admin/support-diagnostics")
+def admin_support_diagnostics_api(
+    request: Request,
+    store_slug: str = Query("", description="Merchant store slug or zid_store_id"),
+    session_id: str = Query("", description="Optional widget session id"),
+    recovery_key: str = Query("", description="Optional recovery_key (store:session)"),
+) -> Any:
+    """Read-only support diagnostic JSON — admin session required."""
+    denied = _admin_json_auth_or_error(request)
+    if denied is not None:
+        return denied
+    from services.admin_support_diagnostics_v1 import build_admin_support_diagnostics
+
+    return j(
+        build_admin_support_diagnostics(
+            store_slug=store_slug,
+            session_id=session_id,
+            recovery_key=recovery_key,
+        )
+    )
+
+
+@router.get("/admin/support-diagnostics/ui", response_class=HTMLResponse)
+def admin_support_diagnostics_ui(request: Request) -> Any:
+    """Simple admin UI for support diagnostics."""
+    denied = _admin_session_or_redirect(
+        request, next_path="/admin/support-diagnostics/ui"
+    )
+    if denied is not None:
+        return denied
+    return templates.TemplateResponse(
+        request,
+        "admin_support_diagnostics.html",
+        {
+            "admin_nav_active": ADMIN_NAV_OPS_HEALTH,
+            "admin_page_title_ar": "تشخيص الدعم",
+        },
+    )
 
 
 @router.get("/api/admin/db-due-scanner-health")

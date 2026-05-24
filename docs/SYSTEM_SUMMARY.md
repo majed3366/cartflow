@@ -105,6 +105,8 @@ Server-side template control (**`exit_intent_*`** on **`Store`**): `services/sto
 | `POST /webhook/zid` | `main.py` | Zid webhook ingestion. |
 | `POST` / `GET /webhook/whatsapp` | `main.py` | Twilio / inbound hook stubs (`[WA REPLY]` logging). |
 | `POST /webhook/whatsapp/status` | `routes/whatsapp_delivery_webhook.py` | Twilio status callbacks → `whatsapp_delivery_truth_v1` (`[WA DELIVERY EVENT]` / `[WA DELIVERY TRUTH]`); no recovery execution. |
+| `GET /admin/support-diagnostics` | `routes/admin_ops.py` | Admin JSON: `build_admin_support_diagnostics` — What/Why/Action for support (session/store/recovery_key). |
+| `GET /admin/support-diagnostics/ui` | `routes/admin_ops.py` | Admin HTML «تشخيص الدعم» (sidebar under التشغيل). |
 | `GET /demo/store`, `/demo/store/cart`, `/demo/store/checkout`, `/demo/cart`, `/demo/cart/checkout`, `/demo/store/product/{id}` | `main.py` | **Commerce sandbox (default `store_slug=demo`):** multi-page catalog, cart, lightweight checkout. |
 | `GET /demo/store2`, `/demo/store2/cart`, `/demo/store2/checkout`, `/demo/store2/product/{id}` | `main.py` | Same UI with **isolation** (`demo2` slug / `demo2_cart` localStorage) for recovery tests. |
 
@@ -317,6 +319,7 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 
 | Date (UTC) | Summary |
 |------------|---------|
+| 2026-05-19 | **Admin support diagnostics v1:** `services/admin_support_diagnostics_v1.py` — read-only What/Why/Action from logs, schedules, delivery truth, purchase truth, onboarding; `GET /admin/support-diagnostics` + UI `/admin/support-diagnostics/ui`. Commit: **`feat: add admin support diagnostics v1`**. |
 | 2026-05-19 | **Founder hours reduction audit v1 (docs):** `docs/cartflow_founder_hours_reduction_audit_v1.md` — sandbox/production founder time by category, gap types A–D, self-serve matrix, P0–P2 savings, 10/50/100 merchant projection; verdict **high-touch onboarding** not low-touch SaaS today. Commit: **`docs: add founder hours reduction audit v1`**. |
 | 2026-05-19 | **WhatsApp template / 24h enforcement v1:** production `send_whatsapp` blocks freeform when outside/unknown 24h window without `CARTFLOW_WHATSAPP_PROVIDER_TEMPLATES_APPROVED`; `[WA TEMPLATE ENFORCEMENT]` logs; `blocked_template_required` log status; audit `docs/cartflow_whatsapp_template_24h_enforcement_audit_v1.md`. Commit: **`fix: enforce whatsapp template window guard`**. |
 | 2026-05-19 | **WhatsApp send operational truth v1:** `services/whatsapp_send.py` — `resolve_whatsapp_recovery_log_status` + `[WA SEND TRUTH]` logs; main recovery + VIP paths persist `sent_real` when Twilio returns `sid`, `mock_sent` when mock-only `ok`; idempotency `log_status` aligned. Commit: **`fix: align whatsapp send status with operational truth`**. |
