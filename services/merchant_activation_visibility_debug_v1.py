@@ -12,27 +12,8 @@ from services.merchant_dashboard_home_stage_v1 import (
     ACTIVATION_DISPLAY_HIDDEN,
     MerchantHomeLayout,
     _any_activation_milestone,
+    production_signal_reasons,
 )
-
-
-def _production_signal_reasons(
-    *,
-    first_recovered: bool,
-    month_recovered: int,
-    month_revenue: float,
-    first_sent: bool,
-    month_abandoned: int,
-) -> list[str]:
-    reasons: list[str] = []
-    if first_recovered:
-        reasons.append("first_recovered")
-    if int(month_recovered) > 0:
-        reasons.append("month_recovered_gt_0")
-    if float(month_revenue) > 0.0:
-        reasons.append("month_revenue_gt_0")
-    if first_sent and int(month_abandoned) >= 5:
-        reasons.append("first_sent_and_month_abandoned_gte_5")
-    return reasons
 
 
 def build_activation_visibility_debug(
@@ -56,12 +37,10 @@ def build_activation_visibility_debug(
         first_scheduled=first_scheduled,
         first_sent=first_sent,
     )
-    prod_reasons = _production_signal_reasons(
+    prod_reasons = production_signal_reasons(
         first_recovered=first_recovered,
         month_recovered=month_recovered,
         month_revenue=month_revenue,
-        first_sent=first_sent,
-        month_abandoned=month_abandoned,
     )
     has_production_signal = bool(prod_reasons)
     state_a = bool(not onboarding_complete or not first_cart or not any_ms)

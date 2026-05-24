@@ -48,6 +48,42 @@ def _any_activation_milestone(
     return bool(first_cart or first_reason or first_scheduled or first_sent)
 
 
+def production_signal_reasons(
+    *,
+    first_recovered: bool = False,
+    month_recovered: int = 0,
+    month_revenue: float = 0.0,
+) -> list[str]:
+    """
+    Reasons that classify a merchant as production (mature) for home layout.
+
+    Requires recovery outcome or revenue — not first send + abandoned volume alone.
+    """
+    reasons: list[str] = []
+    if first_recovered:
+        reasons.append("first_recovered")
+    if int(month_recovered) > 0:
+        reasons.append("month_recovered_gt_0")
+    if float(month_revenue) > 0.0:
+        reasons.append("month_revenue_gt_0")
+    return reasons
+
+
+def has_production_signal(
+    *,
+    first_recovered: bool = False,
+    month_recovered: int = 0,
+    month_revenue: float = 0.0,
+) -> bool:
+    return bool(
+        production_signal_reasons(
+            first_recovered=first_recovered,
+            month_recovered=month_recovered,
+            month_revenue=month_revenue,
+        )
+    )
+
+
 def _operational_alerts_from_readiness(ev: dict[str, Any]) -> list[str]:
     out: list[str] = []
     seen: set[str] = set()
@@ -92,11 +128,10 @@ def resolve_merchant_home_layout(
         first_sent=first_sent,
     )
 
-    has_production_signal = bool(
-        first_recovered
-        or int(month_recovered) > 0
-        or float(month_revenue) > 0.0
-        or (first_sent and int(month_abandoned) >= 5)
+    mature = has_production_signal(
+        first_recovered=first_recovered,
+        month_recovered=month_recovered,
+        month_revenue=month_revenue,
     )
 
     state_a = bool(
@@ -117,7 +152,7 @@ def resolve_merchant_home_layout(
 
     last_activity = (current_state_label_ar or "").strip() or "—"
 
-    if has_production_signal and not state_a:
+    if mature and not state_a:
         return MerchantHomeLayout(
             home_stage=HOME_STAGE_PRODUCTION,
             activation_display=ACTIVATION_DISPLAY_HIDDEN,
@@ -165,5 +200,7 @@ __all__ = [
     "ACTIVATION_DISPLAY_HIDDEN",
     "ACTIVATION_DISPLAY_PROMINENT",
     "MerchantHomeLayout",
+    "has_production_signal",
+    "production_signal_reasons",
     "resolve_merchant_home_layout",
 ]

@@ -317,6 +317,7 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 
 | Date (UTC) | Summary |
 |------------|---------|
+| 2026-05-19 | **Production activation hide criteria narrowed:** `has_production_signal()` — recovery/revenue only; removed `first_sent` + `month_abandoned >= 5`. Recently activated merchants stay `activated`/compact until real recovery. Commit: **`fix: narrow production activation hide criteria`**. |
 | 2026-05-19 | **Activation visibility debug v1:** `merchant_activation_visibility_debug` on `GET /api/dashboard/summary`; server log `[ACTIVATION VISIBILITY]`; temporary home debug band + console snapshot (`ui_blocker_inferred`). Diagnosis: stage `production`/`hidden` (B) + JS apply-once when not on home. Doc: `docs/cartflow_activation_visibility_debug_v1.md`. Commit: **`debug: inspect activation visibility state on dashboard home`**. |
 | 2026-05-19 | **Integration foundation audit v1 (docs):** `docs/cartflow_integration_foundation_audit_v1.md` (per-stage source of truth, platform dependency map, failure map, readiness verdict); `docs/cartflow_platform_integration_risks_v1.md`. Adapters/gateway exist; live ingress remains widget + `/api/cart-event`; Zid webhook upsert-only. Commit: **`docs: add integration foundation audit v1`**. |
 | 2026-05-19 | **Activation card home visibility:** scoped hide to `#page-home:not(.active)` descendants; explicit `display:block` for `#ma-activation-root` on active home; production stage shows compact strip on home only. Commit: **`fix: show activation card only on dashboard home`**. |

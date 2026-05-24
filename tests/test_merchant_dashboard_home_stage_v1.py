@@ -50,6 +50,32 @@ class TestMerchantHomeStage(unittest.TestCase):
         self.assertEqual(layout.home_stage, HOME_STAGE_PRODUCTION)
         self.assertEqual(layout.activation_display, ACTIVATION_DISPLAY_HIDDEN)
 
+    def test_first_sent_and_abandoned_volume_not_production(self) -> None:
+        """Previously misclassified as production via first_sent + month_abandoned >= 5."""
+        layout = resolve_merchant_home_layout(
+            None,
+            onboarding_complete=True,
+            first_cart=True,
+            first_sent=True,
+            activation_working=True,
+            month_abandoned=20,
+            month_recovered=0,
+            month_revenue=0.0,
+        )
+        self.assertEqual(layout.home_stage, HOME_STAGE_ACTIVATED)
+        self.assertEqual(layout.activation_display, ACTIVATION_DISPLAY_COMPACT)
+
+    def test_month_revenue_only_production(self) -> None:
+        layout = resolve_merchant_home_layout(
+            None,
+            onboarding_complete=True,
+            first_cart=True,
+            first_sent=True,
+            month_revenue=50.0,
+        )
+        self.assertEqual(layout.home_stage, HOME_STAGE_PRODUCTION)
+        self.assertEqual(layout.activation_display, ACTIVATION_DISPLAY_HIDDEN)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -25,9 +25,9 @@ After `cedd18f`, dashboard home shows KPI + month summary but not the activation
 | `first_recovered` | First recovered cart milestone |
 | `month_recovered_gt_0` | Any recovered carts in 30-day window |
 | `month_revenue_gt_0` | Any recovered revenue in window |
-| `first_sent_and_month_abandoned_gte_5` | First WhatsApp sent **and** ≥5 abandoned carts this month |
+| ~~`first_sent_and_month_abandoned_gte_5`~~ | **Removed (v1 fix):** was first WhatsApp + ≥5 abandoned — too aggressive |
 
-Many active stores hit production via **month stats** or **`first_sent` + 5+ abandoned**, not only “mature” merchants with real recovery revenue.
+**Fix (2026-05-19):** Production now requires `first_recovered`, `month_recovered_gt_0`, or `month_revenue_gt_0` only. Active merchants with sends/volume but no recovery stay **`activated` / `compact`**.
 
 ### Not primarily A — CSS alone
 
