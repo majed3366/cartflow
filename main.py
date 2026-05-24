@@ -323,6 +323,7 @@ from services.whatsapp_send import (  # noqa: E402
     _recovery_config,
     _recovery_delay_minutes_from_store,
     emit_recovery_wa_send_trace,
+    log_wa_send_truth,
     recovery_uses_real_whatsapp,
     send_whatsapp,
     should_send_whatsapp,
@@ -5067,8 +5068,10 @@ def _try_send_vip_neutral_customer_recovery_whatsapp(
         )
         wa_dict = wa_result if isinstance(wa_result, dict) else {}
         ok_flag = wa_dict.get("ok") is True
-        st_out = str(wa_dict.get("status") or "").strip()[:50] or (
-            "sent_real" if ok_flag else "whatsapp_failed"
+        st_out = (
+            log_wa_send_truth(wa_result=wa_dict, recovery_key=recovery_key)
+            if ok_flag
+            else "whatsapp_failed"
         )
         if ok_flag:
             with _recovery_session_lock:
@@ -7905,13 +7908,14 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
         return
 
     now = datetime.now(timezone.utc)
+    log_status = log_wa_send_truth(wa_result=wa_dict, recovery_key=recovery_key)
     _persist_cart_recovery_log(
         store_slug=store_slug,
         session_id=session_id,
         cart_id=cart_id,
         phone=phone,
         message=text,
-        status="mock_sent",
+        status=log_status,
         sent_at=now,
         step=step_num,
     )
@@ -7923,7 +7927,7 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
         store_slug=store_slug,
         session_id=session_id,
         cart_id=cart_id,
-        log_status="mock_sent",
+        log_status=log_status,
     )
     _consume_seq_slot_if_needed()
     # إن كان التحويل أثناء الإرسال: سلوك شبيه بالتخطي بعد خطوة أولى

@@ -595,3 +595,87 @@ def send_whatsapp_real(
     مطابق لـ‎ ``send_whatsapp`` (‎Twilio‎) — اسم قديم يستخدمه طابور الاسترجاع.
     """
     return send_whatsapp(phone, message, reason_tag=reason_tag, **kwargs)
+
+
+# ---------------------------------------------------------------------------
+# CartRecoveryLog.status source of truth (operational send outcome)
+# ---------------------------------------------------------------------------
+# | Outbound path              | Provider signal     | status_written   |
+# |----------------------------|---------------------|------------------|
+# | send_whatsapp_mock         | ok, no sid          | mock_sent        |
+# | send_whatsapp (Twilio)     | ok + sid            | sent_real        |
+# | send_whatsapp (Twilio)     | ok=false            | whatsapp_failed  |
+# | Pre-provider (main/queue)  | before API          | queued           |
+# | Idempotency / inflight dup | —                   | skipped_duplicate|
+# | Queue worker retry         | failed attempt      | failed_retry     |
+# | Queue worker exhausted     | —                   | failed_final     |
+# PRODUCTION_MODE / recovery_uses_real_whatsapp() describe readiness intent;
+# persisted status follows provider acceptance (sid) vs mock path (no sid).
+
+
+def resolve_whatsapp_recovery_log_status(wa_result: Any) -> str:
+    """
+    Canonical ``CartRecoveryLog.status`` after an outbound attempt completes.
+    """
+    if not isinstance(wa_result, dict):
+        return "whatsapp_failed"
+    if wa_result.get("ok") is not True:
+        return "whatsapp_failed"
+    sid = str(wa_result.get("sid") or "").strip()
+    if sid:
+        return "sent_real"
+    return "mock_sent"
+
+
+def whatsapp_send_truth_context(wa_result: Any) -> Dict[str, str]:
+    """Fields for ``[WA SEND TRUTH]`` verification logs."""
+    status_written = resolve_whatsapp_recovery_log_status(wa_result)
+    wa = wa_result if isinstance(wa_result, dict) else {}
+    sid = str(wa.get("sid") or "").strip()
+    ok = wa.get("ok") is True
+    err = str(wa.get("error") or "").strip()
+    if sid:
+        provider = "twilio"
+    elif ok:
+        provider = "mock"
+    elif err in ("twilio_not_configured", "twilio_invalid_from", "invalid_phone", "empty_message"):
+        provider = "none"
+    else:
+        provider = "twilio"
+    mode = "production" if recovery_uses_real_whatsapp() else "sandbox"
+    return {
+        "provider": provider,
+        "mode": mode,
+        "status_written": status_written,
+        "message_sid": sid,
+    }
+
+
+def log_wa_send_truth(
+    *,
+    wa_result: Any,
+    recovery_key: Optional[str] = None,
+) -> str:
+    """
+    Emit ``[WA SEND TRUTH]`` and return the status that callers should persist.
+    """
+    ctx = whatsapp_send_truth_context(wa_result)
+    rk = (recovery_key or "").strip()[:120]
+    try:
+        print("[WA SEND TRUTH]", flush=True)
+        print(f"provider={ctx['provider']}", flush=True)
+        print(f"mode={ctx['mode']}", flush=True)
+        print(f"status_written={ctx['status_written']}", flush=True)
+        print(f"message_sid={ctx['message_sid'][:64]}", flush=True)
+        print(f"recovery_key={rk or '-'}", flush=True)
+    except OSError:
+        pass
+    logger.info(
+        "[WA SEND TRUTH] provider=%s mode=%s status_written=%s message_sid=%s recovery_key=%s",
+        ctx["provider"],
+        ctx["mode"],
+        ctx["status_written"],
+        ctx["message_sid"][:64],
+        rk or "-",
+    )
+    return ctx["status_written"]
