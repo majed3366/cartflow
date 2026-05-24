@@ -60,8 +60,9 @@ Assume **worker A** and **worker B** share one database (typical multi-Uvicorn).
 | **Can both mark terminal?** | `finalize_recovery_schedule_durable` + `_TERMINAL` + `_PROTECTED_TERMINAL_NO_DOWNGRADE` | **PARTIAL** | Terminal rows not re-claimed (L416–425). Concurrent finalize possible but status should converge to terminal. |
 | **Can both bypass duplicate guard?** | Memory guard vs DB | **YES** (cross-process) | `cartflow_duplicate_guard` and `_session_recovery_started` are **not** shared (module L25–28, `main` L5777). `cartflow_queue_readiness.py` L183–186 documents multi-worker memory risk. |
 
-**Multi-worker ops minimum (not code — deployment):**
+**Multi-worker ops minimum:**
 
+- See **`docs/cartflow_queue_worker_runtime_rules.md`** — `CARTFLOW_RECOVERY_RESUME_ON_STARTUP` + startup logs `[RECOVERY SCHEDULER OWNER]`.
 - Run **one** recovery scheduler role per DB (single worker **or** `CARTFLOW_RECOVERY_RESUME_ON_STARTUP=0` on all but one instance).
 - Enable `CARTFLOW_DB_DUE_SCANNER_ENABLED` on **at most one** instance if used.
 - Do **not** scale HTTP workers for recovery volume without a future dedicated queue consumer.

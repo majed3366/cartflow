@@ -881,8 +881,12 @@ async def _startup_whatsapp_queue() -> None:
             exc_info=True,
         )
     try:
+        from services.recovery_scheduler_guardrails import (
+            log_recovery_scheduler_ownership_at_startup,
+        )
         from services.recovery_restart_survival import run_recovery_resume_scan_async
 
+        log_recovery_scheduler_ownership_at_startup()
         resume_out = await run_recovery_resume_scan_async(max_dispatch=25)
         if resume_out.get("dispatched"):
             log.info(

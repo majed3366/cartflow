@@ -1374,12 +1374,16 @@ async def run_recovery_resume_scan_async(
     dry_run: bool = False,
     force: bool = False,
 ) -> Dict[str, Any]:
-    if not force and os.getenv("CARTFLOW_RECOVERY_RESUME_ON_STARTUP", "1").strip().lower() in (
-        "0",
-        "false",
-        "no",
-    ):
-        return {"enabled": False, "dispatched": 0}
+    from services.recovery_scheduler_guardrails import (
+        is_recovery_resume_on_startup_enabled,
+    )
+
+    if not is_recovery_resume_on_startup_enabled(force=force):
+        return {
+            "enabled": False,
+            "dispatched": 0,
+            "reason": "resume_on_startup_disabled",
+        }
 
     try:
         db.create_all()
