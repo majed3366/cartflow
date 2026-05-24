@@ -648,10 +648,9 @@ def gather_attribution_inputs(
         log.debug("attribution db gather: %s", exc)
 
     try:
-        from main import _recovery_session_lock, _session_recovery_sent  # noqa: PLC0415
+        from services.cartflow_session_truth import has_sent_truth
 
-        with _recovery_session_lock:
-            memory_sent = bool(_session_recovery_sent.get(rk))
+        memory_sent = has_sent_truth(rk)
         if memory_sent and recovery_sent_at is None and not recovery_sent:
             recovery_sent_at = purchase_at - timedelta(minutes=1)
             recovery_sent = True

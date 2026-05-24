@@ -199,3 +199,16 @@ tests/operational/diagnostics.py L28–32     dict lengths (ops)
 - [ ] After restart + existing `mock_sent` log, spot-check: re-abandon scheduling vs `_cart_recovery_log_has_successful_send_for_step`.
 
 **No code was changed in this audit.**
+
+---
+
+## 11. Implementation v1 (2026-05-19) — read-path hardening
+
+| Read site | Before | After | Durable fallback |
+|-----------|--------|-------|------------------|
+| `main._is_user_converted` | `_session_recovery_converted.get` | `has_conversion_truth` | `purchase_truth_records`, `CartRecoveryLog.stopped_converted` |
+| `main` schedule skip (~L8541) | `_session_recovery_sent.get` | `has_sent_truth` | `CartRecoveryLog` `mock_sent` / `sent_real` |
+| `purchase_attribution_v1` gather | `_session_recovery_sent.get` | `has_sent_truth` | same |
+| `purchase_lifecycle_closure._lifecycle_already_closed_in_memory` | `_is_user_converted` | `session_conversion_cache_hit` only | **none** (idempotency during same ingest) |
+
+Writers unchanged. Module: `services/cartflow_session_truth.py`. Tests: `tests/test_cartflow_session_truth_hardening_v1.py`.

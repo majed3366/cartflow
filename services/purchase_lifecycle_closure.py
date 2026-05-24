@@ -100,6 +100,7 @@ def log_purchase_lifecycle_closure_skipped(*, reason: str, session_id: str = "",
 
 
 def _lifecycle_already_closed_in_memory(recovery_key: str) -> bool:
+    """Process-local closure only — must not use durable purchase truth (see session truth v1)."""
     rk = (recovery_key or "").strip()
     if not rk:
         return False
@@ -107,9 +108,9 @@ def _lifecycle_already_closed_in_memory(recovery_key: str) -> bool:
         if rk in _closed_keys:
             return True
     try:
-        from main import _is_user_converted  # noqa: PLC0415
+        from services.cartflow_session_truth import session_conversion_cache_hit
 
-        return bool(_is_user_converted(rk))
+        return session_conversion_cache_hit(rk)
     except Exception:  # noqa: BLE001
         return False
 

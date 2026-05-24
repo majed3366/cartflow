@@ -5230,8 +5230,9 @@ def _activate_vip_manual_cart_handling(
 
 
 def _is_user_converted(recovery_key: str) -> bool:
-    with _recovery_session_lock:
-        return bool(_session_recovery_converted.get(recovery_key))
+    from services.cartflow_session_truth import has_conversion_truth
+
+    return has_conversion_truth(recovery_key)
 
 
 def _mark_user_converted_for_payload(payload: dict[str, Any]) -> None:
@@ -8537,22 +8538,27 @@ def _execute_cart_abandon_recovery_schedule_continue(
             "recovery_state": "waiting_for_phone",
             "waiting_for_phone": True,
         }
-    with _recovery_session_lock:
-        if _session_recovery_sent.get(recovery_key):
-            print("recovery already sent, skipping")
-            _persist_cart_recovery_log(
-                store_slug=store_slug,
-                session_id=session_id_log,
-                cart_id=cart_id_log,
-                phone=None,
-                message=msg_log,
-                status="skipped_delay",
-            )
-            return {
-                "recovery_scheduled": False,
-                "recovery_skipped": True,
-                "recovery_state": "sent",
-            }
+    from services.cartflow_session_truth import has_sent_truth
+
+    if has_sent_truth(
+        recovery_key,
+        session_id=session_id_log,
+        cart_id=cart_id_log,
+    ):
+        print("recovery already sent, skipping")
+        _persist_cart_recovery_log(
+            store_slug=store_slug,
+            session_id=session_id_log,
+            cart_id=cart_id_log,
+            phone=None,
+            message=msg_log,
+            status="skipped_delay",
+        )
+        return {
+            "recovery_scheduled": False,
+            "recovery_skipped": True,
+            "recovery_state": "sent",
+        }
     if not _try_claim_recovery_session(recovery_key):
         print("recovery already scheduled, skipping")
         from services.cartflow_duplicate_guard import note_recovery_schedule_duplicate
