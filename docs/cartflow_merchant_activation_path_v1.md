@@ -271,9 +271,23 @@ flowchart LR
 
 ---
 
+## Verification — after Merchant Activation Fixes v1 (2026-05-19)
+
+| Metric | Before fixes | After fixes (expected) |
+|--------|--------------|-------------------------|
+| Landing → signup | **Broken** (`/register`) | **Works** (`/signup`, `/register` → 302) |
+| Scoped test path | **Broken** (`data-store=demo`) | **Works** (`/dashboard/test-widget` → `/demo/store?store_slug=…`) |
+| Dashboard proof | Delayed / wrong store | Same-store carts + activation card |
+| Time to belief **“it works”** | 30–45 min (guided) | **10–15 min** (signup + test store + 2 min delay + refresh carts) |
+| Time to belief **unguided** | Not in 10 min | **~15–20 min** (still needs WhatsApp number + abandon flow) |
+
+**Measure in production:** log `first_cart_detected` → `first_whatsapp_sent` wall time per `store_id`; compare cohort before/after deploy.
+
+---
+
 ## Document control
 
 | Item | Value |
 |------|--------|
-| Runtime changes | **None** |
-| Code touched | **None** (docs only) |
+| Audit (initial) | 2026-05-19 — docs only |
+| Fixes v1 | `services/merchant_activation_v1.py`, landing `/signup`, `/dashboard/test-widget`, activation card |

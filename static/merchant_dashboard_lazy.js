@@ -89,6 +89,85 @@
     home.classList.toggle("ma-onboarding-focus", focus);
   }
 
+  function applyMerchantActivation(act) {
+    var root = byId("ma-activation-root");
+    if (!root) return;
+    if (!act || typeof act !== "object") {
+      root.hidden = true;
+      root.innerHTML = "";
+      return;
+    }
+    var milestones = act.milestones || [];
+    var states = act.summary_states || [];
+    var working = !!act.activation_working;
+    var title = working
+      ? "CartFlow يعمل على متجرك"
+      : "تفعيل سريع — أول نجاح";
+    var lead =
+      act.next_step_ar ||
+      "جرّب متجر الاختبار ثم راقب السلال هنا.";
+    var msHtml = "";
+    var i;
+    for (i = 0; i < milestones.length; i++) {
+      var m = milestones[i];
+      var done = !!m.done;
+      msHtml +=
+        '<li class="' +
+        (done ? "is-done" : "is-pending") +
+        '">' +
+        '<span class="ma-act-mark" aria-hidden="true">' +
+        (done ? "✓" : "○") +
+        "</span>" +
+        "<span>" +
+        esc(m.title_ar || "") +
+        (m.hint_ar
+          ? '<span class="ma-act-hint">' + esc(m.hint_ar) + "</span>"
+          : "") +
+        "</span></li>";
+    }
+    var stHtml = "";
+    for (i = 0; i < states.length; i++) {
+      var st = states[i];
+      var cls = "ma-activation-timeline";
+      var liCls = "";
+      if (st.reached) liCls += " is-reached";
+      if (st.current) liCls += " is-current";
+      stHtml +=
+        "<li class=\"" +
+        liCls +
+        '">' +
+        esc(st.label_ar || "") +
+        "</li>";
+    }
+    var testUrl = act.test_store_url || "/dashboard/test-widget";
+    var delay = act.delay_hint_ar
+      ? '<p class="ma-activation-delay">' + esc(act.delay_hint_ar) + "</p>"
+      : "";
+    root.hidden = false;
+    root.innerHTML =
+      '<div class="ma-activation-card">' +
+      "<h2 class=\"ma-activation-title\">" +
+      esc(title) +
+      "</h2>" +
+      '<p class="ma-activation-lead">' +
+      esc(lead) +
+      "</p>" +
+      (stHtml
+        ? '<ul class="ma-activation-timeline">' + stHtml + "</ul>"
+        : "") +
+      '<ul class="ma-activation-milestones">' +
+      msHtml +
+      "</ul>" +
+      '<div class="ma-activation-actions">' +
+      '<a class="ma-activation-btn ma-activation-btn-primary" href="' +
+      esc(testUrl) +
+      '" target="_blank" rel="noopener">فتح متجر الاختبار</a>' +
+      '<a class="ma-activation-btn ma-activation-btn-secondary" href="/dashboard#carts" onclick="if(window.goTo){goTo(\'carts\');}return false;">عرض السلال</a>' +
+      "</div>" +
+      delay +
+      "</div>";
+  }
+
   function applyMerchantSetupExperience(mse) {
     var root = byId("ma-setup-experience-root");
     applyOnboardingHomeFocus(mse);
@@ -224,6 +303,7 @@
     if (!d || !d.ok) return;
     setText("ma-topbar-date", d.merchant_ar_date_header || "");
     applyTopbarReadiness(d);
+    applyMerchantActivation(d.merchant_activation);
     applyMerchantSetupExperience(d.merchant_setup_experience);
 
     setText("ma-kpi-abandoned", d.merchant_kpi_abandoned_fmt || "0");

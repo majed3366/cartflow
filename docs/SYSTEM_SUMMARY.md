@@ -85,6 +85,7 @@ Server-side template control (**`exit_intent_*`** on **`Store`**): `services/sto
 - **`routes/ops.py`**, **`routes/demo_panel.py`** — operational / demo utilities.
 - **`routes/merchant_auth.py`** — SaaS auth HTML: **`/login`**, **`/signup`**, **`/logout`**, **`/forgot-password`**, **`/reset-password`**; signed cookie session (`services/merchant_auth_http.py`); gate middleware on **`/dashboard*`** and **`/api/dashboard*`** (`ENV=development` demo bypass only).
 - **`services/merchant_onboarding_v1.py`** + **`merchant_setup_experience_v1`** + **`merchant_onboarding_store.py`** + **`merchant_store_connection_v1.py`** — guided onboarding (5 steps); Store resolved only from authenticated merchant session; **`/dashboard#settings`** store connection card (Zid OAuth when `ZID_CLIENT_*` configured, else «ميزة الربط قيد الإعداد»); **`GET /api/merchant/store-connection`** (+ zid connect / disconnect).
+- **`services/merchant_activation_v1.py`** — scoped activation demo (`GET /dashboard/test-widget` → `/demo/store?store_slug=…`); milestones + home activation card on **`GET /api/dashboard/summary`**; landing CTAs **`/signup`**.
 
 ### 3.2 Routes (representative)
 
@@ -317,6 +318,7 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 | Date (UTC) | Summary |
 |------------|---------|
 | 2026-05-19 | **Integration foundation audit v1 (docs):** `docs/cartflow_integration_foundation_audit_v1.md` (per-stage source of truth, platform dependency map, failure map, readiness verdict); `docs/cartflow_platform_integration_risks_v1.md`. Adapters/gateway exist; live ingress remains widget + `/api/cart-event`; Zid webhook upsert-only. Commit: **`docs: add integration foundation audit v1`**. |
+| 2026-05-19 | **Merchant Activation Fixes v1:** landing CTAs + `/register`→`/signup`; `/dashboard/test-widget` + `/demo/store?store_slug=` (merchant-owned); `services/merchant_activation_v1.py` milestones + home activation card; `GET /api/merchant/activation-status`. No recovery/delay/send changes. Commit: **`feat: improve merchant activation path v1`**. |
 | 2026-05-19 | **Merchant Activation Path v1 (docs):** `docs/cartflow_merchant_activation_path_v1.md` — activation map, first success = first send (not recovered KPI), &lt;10 min test verdict NO, `/demo/store` slug mismatch, P0/P1 friction; 30 min belief realistic with guided embed. Commit: **`docs: add merchant activation path audit v1`**. |
 | 2026-05-19 | **First Merchant Journey Audit v1 (docs):** `docs/cartflow_first_merchant_journey_audit_v1.md` — signup→trust friction map, time-to-value, dependencies, failure severities, trust verdict; conclusion **PARTIAL** (homepage `/register` dead-end; `/signup` + sandbox path viable; production/recovered KPI needs ops). Commit: **`docs: add first merchant journey audit v1`**. |
 | 2026-05-19 | **Failed recovery explanation v1:** `services/recovery_failure_explanation_v1.py` — `recent_failures` + `failed_detail` on `GET /dev/recovery-health` (status, reason, explanation, action); inventory `docs/cartflow_failed_recovery_inventory_v1.md`. Commit: **`feat: add failed recovery explanation visibility`**. |

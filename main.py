@@ -14856,7 +14856,26 @@ def _api_json_dashboard_summary(
         "merchant_setup_experience": build_merchant_setup_experience_api_payload(
             cookies=cookies
         ),
+        "merchant_activation": _merchant_activation_api_payload(
+            dash_store, cookies=cookies
+        ),
     }
+
+
+def _merchant_activation_api_payload(
+    dash_store: Optional[Any],
+    *,
+    cookies: Optional[dict[str, str]] = None,
+) -> dict[str, Any]:
+    from services.merchant_activation_v1 import (  # noqa: PLC0415
+        build_merchant_activation_api_payload,
+    )
+
+    try:
+        return build_merchant_activation_api_payload(dash_store, cookies=cookies)
+    except Exception as exc:  # noqa: BLE001
+        log.warning("merchant_activation payload: %s", exc)
+        return build_merchant_activation_api_payload(None, cookies=cookies)
 
 
 def _api_json_dashboard_normal_carts(
@@ -15322,6 +15341,28 @@ def api_merchant_store_connection_disconnect(request: Request):
         _log_dashboard_profile(
             endpoint="POST /api/merchant/store-connection/disconnect",
             section="merchant_store_connection",
+            wall_perf_start=wall0,
+        )
+
+
+@app.get("/api/merchant/activation-status")
+def api_merchant_activation_status(request: Request):
+    """حالة تفعيل التاجر — معالم أول نجاح ومسار الاختبار (قراءة فقط)."""
+    wall0 = time.perf_counter()
+    _merchant_dashboard_db_ready()
+    try:
+        dash_store = _dashboard_recovery_store_row()
+        payload = _merchant_activation_api_payload(
+            dash_store, cookies=dict(request.cookies)
+        )
+        return j({"ok": True, "merchant_activation": payload})
+    except (OSError, TypeError, ValueError) as e:
+        log.warning("api merchant/activation-status: %s", e)
+        return j({"ok": False, "error": "failed"}, 500)
+    finally:
+        _log_dashboard_profile(
+            endpoint="GET /api/merchant/activation-status",
+            section="merchant_activation",
             wall_perf_start=wall0,
         )
 
@@ -15841,6 +15882,12 @@ async def zid_webhook(request: Request):
 # صفحات تجريبية متعددة لمسار ‎/demo/store‎ (تنقّل مثل ‎PDP / cart‎ دون تغيير منطق الاسترجاع).
 def _demo_store_html_context(request: Request) -> dict[str, Any]:
     """سياق مشترك لـ‎ demo_store.html‎ — قائمة المنتجات أو صفحة السلة فقط."""
+    from services.merchant_activation_v1 import (  # noqa: PLC0415
+        merchant_activation_demo_nav_base,
+        resolve_activation_demo_for_request,
+    )
+
+    act = resolve_activation_demo_for_request(request)
     p = (request.url.path or "").rstrip("/") or "/"
     if p.endswith("/checkout"):
         title = "CartFlow — إتمام الطلب (تجربة)"
@@ -15854,16 +15901,28 @@ def _demo_store_html_context(request: Request) -> dict[str, Any]:
         title = "CartFlow — متجر تجريبي"
         h1 = "متجر تجربة — كتالوج ومسارات قريبة من المتاجر الحقيقية"
         view = "list"
+    if act.is_merchant_activation:
+        title = "CartFlow — تجربة متجرك"
+        h1 = "متجر تجربة — أحداثك تظهر في لوحة التحكم"
+
+    nav_base = merchant_activation_demo_nav_base(act)
+    widget_slug = act.widget_store_slug
     ctx = {
         "request": request,
-        "demo_store_slug": "demo",
+        "demo_store_slug": widget_slug,
+        "demo_data_store": widget_slug,
+        "demo_cart_key": act.demo_cart_key,
         "demo_page_title": title,
         "demo_h1": h1,
         "demo_view": view,
         "demo_product_key": None,
-        "demo_behavioral_nav_base": "/demo/store",
+        "demo_behavioral_nav_base": nav_base,
+        "merchant_activation_mode": act.is_merchant_activation,
+        "merchant_activation_banner_ar": act.banner_ar if act.is_merchant_activation else "",
+        "merchant_activation_denied": act.denied,
+        "merchant_activation_dashboard_href": "/dashboard#carts",
     }
-    ctx.update(demo_template_context_extras(nav_base="/demo/store"))
+    ctx.update(demo_template_context_extras(nav_base=nav_base))
     return merge_demo_primary_store_demo_queries(request, ctx)
 
 
@@ -15889,16 +15948,11 @@ def demo_store_product(request: Request, product_id: int):
         return PlainTextResponse("Not found", status_code=404)
     title = "CartFlow — صفحة منتج (تجربة)"
     h1 = "صفحة منتج — تنقّل تشغيلي"
-    pctx = {
-        "request": request,
-        "demo_store_slug": "demo",
-        "demo_page_title": title,
-        "demo_h1": h1,
-        "demo_view": "product",
-        "demo_product_key": key,
-        "demo_behavioral_nav_base": "/demo/store",
-    }
-    pctx.update(demo_template_context_extras(nav_base="/demo/store"))
+    pctx = _demo_store_html_context(request)
+    pctx["demo_page_title"] = title
+    pctx["demo_h1"] = h1
+    pctx["demo_view"] = "product"
+    pctx["demo_product_key"] = key
     return templates.TemplateResponse(
         request,
         "demo_store.html",
@@ -16030,12 +16084,23 @@ def home(request: Request):
 
 @app.get("/register")
 def register_placeholder(request: Request):
-    """صفحة تسجيل مؤقتة — روابط CTA من الصفحة العامة (بدون OTP/واتساب)."""
-    return templates.TemplateResponse(
-        request,
-        "register_placeholder.html",
-        {"request": request},
-    )
+    """إعادة توجيه — التسجيل الفعلي عند ‎/signup‎."""
+    return RedirectResponse(url="/signup", status_code=302)
+
+
+@app.get("/dashboard/test-widget")
+def dashboard_test_widget(request: Request):
+    """مسار تجربة موجّه — متجر تجريبي بمعرّف التاجر (جلسة مطلوبة)."""
+    from services.merchant_activation_v1 import merchant_activation_test_store_url  # noqa: PLC0415
+    from services.merchant_onboarding_store import resolve_merchant_onboarding_store  # noqa: PLC0415
+
+    store, _meta = resolve_merchant_onboarding_store(cookies=dict(request.cookies))
+    if store is None:
+        return RedirectResponse(url="/login?next=/dashboard/test-widget", status_code=302)
+    slug = (getattr(store, "zid_store_id", None) or "").strip()
+    if not slug:
+        return RedirectResponse(url="/dashboard#settings", status_code=302)
+    return RedirectResponse(url=merchant_activation_test_store_url(slug), status_code=302)
 
 
 # لا نستدعي ‎_ensure_db_schema()‎ عند التحميل — يتجنب الاتصال بقاعدة البيانات عند الإقلاع (أي ‎ASGI server‎)

@@ -21,6 +21,32 @@
       background: var(--bg);
       color: var(--ink);
     }
+    .cf-ma-banner {
+      max-width: 1120px;
+      margin: 0.65rem auto 0;
+      padding: 0.65rem 1rem;
+      background: #ecfdf5;
+      border: 1px solid #bbf7d0;
+      border-radius: 10px;
+      font-size: 0.9rem;
+      line-height: 1.5;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem 1rem;
+    }
+    .cf-ma-banner-warn {
+      background: #fffbeb;
+      border-color: #fcd34d;
+    }
+    .cf-ma-banner-link {
+      color: #15803d;
+      font-weight: 700;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+    .cf-ma-banner-link:hover { text-decoration: underline; }
     .topbar {
       background: #1c1917;
       color: #fafaf9;
@@ -746,6 +772,17 @@
       </div>
     </div>
   </div>
+  {% if merchant_activation_mode and merchant_activation_banner_ar %}
+  <div class="cf-ma-banner" role="status">
+    <p>{{ merchant_activation_banner_ar }}</p>
+    <a class="cf-ma-banner-link" href="{{ merchant_activation_dashboard_href|default('/dashboard#carts') }}">عرض لوحة السلال</a>
+  </div>
+  {% endif %}
+  {% if merchant_activation_denied %}
+  <div class="cf-ma-banner cf-ma-banner-warn" role="alert">
+    <p>معرّف المتجر غير متاح لهذه الجلسة — يُعرض المتجر التجريبي العام.</p>
+  </div>
+  {% endif %}
   <div class="cf-store-intro" id="cf-store-intro" hidden>
     <p class="cf-store-intro-text">جرب كيف نرجّع الفرصة لما العميل يتردد 👇</p>
     <div class="cf-store-intro-actions">

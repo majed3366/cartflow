@@ -22,7 +22,8 @@ def merge_demo_reset_query_into_context(request: Any, ctx: dict[str, Any]) -> di
     لا يمس قواعد الاسترجاع ولا المتاجر الإنتاجية.
     """
     slug = str(ctx.get("demo_store_slug") or "").strip()
-    if slug != _DEMO_PRIMARY_SLUG:
+    merchant_activation = bool(ctx.get("merchant_activation_mode"))
+    if slug != _DEMO_PRIMARY_SLUG and not merchant_activation:
         return ctx
     try:
         qp = getattr(request, "query_params", None)
@@ -40,7 +41,8 @@ def merge_demo_reset_query_into_context(request: Any, ctx: dict[str, Any]) -> di
     ctx["demo_reset_cart_event_id"] = cid
     try:
         log.info(
-            "[CF DEMO SESSION RESET] store_slug=demo session_id=%s cart_event_id=%s",
+            "[CF DEMO SESSION RESET] store_slug=%s session_id=%s cart_event_id=%s",
+            slug or "demo",
             (sid or "")[:80],
             (cid or "")[:80],
         )

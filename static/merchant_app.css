@@ -995,6 +995,132 @@ nav.ma-sidebar-nav {
   align-items: stretch;
 }
 
+#ma-activation-root {
+  grid-column: 1 / -1;
+}
+
+.ma-activation-card {
+  margin: 0;
+  padding: 16px 18px;
+  border-radius: 14px;
+  border: 1px solid #d1fae5;
+  background: #f8fffb;
+}
+
+.ma-activation-title {
+  margin: 0 0 6px;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--green-dark);
+}
+
+.ma-activation-lead {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.ma-activation-timeline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  margin: 0 0 14px;
+  padding: 0;
+  list-style: none;
+}
+
+.ma-activation-timeline li {
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid #e7e5e4;
+  background: #fff;
+  color: var(--muted);
+}
+
+.ma-activation-timeline li.is-reached {
+  border-color: #bbf7d0;
+  color: var(--green-dark);
+  background: #ecfdf5;
+}
+
+.ma-activation-timeline li.is-current {
+  font-weight: 700;
+  border-color: #86efac;
+}
+
+.ma-activation-milestones {
+  list-style: none;
+  margin: 0 0 14px;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.ma-activation-milestones li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.ma-activation-milestones .ma-act-mark {
+  flex-shrink: 0;
+  width: 1.1rem;
+  text-align: center;
+  color: var(--green-dark);
+}
+
+.ma-activation-milestones li.is-pending .ma-act-mark {
+  color: #a8a29e;
+}
+
+.ma-activation-milestones .ma-act-hint {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.ma-activation-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 10px;
+  align-items: center;
+}
+
+.ma-activation-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+  border: none;
+  cursor: pointer;
+}
+
+.ma-activation-btn-primary {
+  background: var(--green-mid);
+  color: #fff;
+}
+
+.ma-activation-btn-secondary {
+  background: #fff;
+  color: var(--green-dark);
+  border: 1px solid #bbf7d0;
+}
+
+.ma-activation-delay {
+  margin: 10px 0 0;
+  font-size: 12px;
+  color: #57534e;
+}
+
 .ma-home-top-card {
   margin: 0;
   min-height: 0;
