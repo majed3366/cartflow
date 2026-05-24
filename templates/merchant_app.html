@@ -92,8 +92,9 @@
     </div>
     {% endif %}
 
-    <div id="ma-activation-root" class="ma-home-activation-band" hidden aria-live="polite"></div>
-    <div class="ma-home-top">
+    <div id="ma-home-alerts-root" class="ma-home-alerts-band ma-home-section" hidden aria-live="polite"></div>
+    <div id="ma-activation-root" class="ma-home-activation-band ma-home-section" hidden aria-live="polite"></div>
+    <div class="ma-home-top ma-home-section ma-home-section-setup-month">
       <div id="ma-setup-experience-root" class="ma-setup-card ma-home-top-card" hidden aria-live="polite"></div>
       <div class="card ma-home-top-card" id="ma-home-month-summary">
         <div class="card-head"><div class="card-title">ملخص الشهر</div></div>
@@ -113,7 +114,7 @@
       </div>
     </div>
 
-    <div class="kpi-grid">
+    <div class="kpi-grid ma-home-section ma-home-section-kpi">
       <div class="kpi">
         <div class="kpi-stripe" style="background:#dc2626"></div>
         <span class="kpi-ico">🛒</span>
@@ -161,7 +162,7 @@
       </div>
     </div>
 
-    <div class="card ma-home-reasons">
+    <div class="card ma-home-reasons ma-home-section ma-home-section-reasons">
       <div class="card-head"><div class="card-title">أسباب التردد — الأسبوع</div><button type="button" class="card-link" onclick="goTo('reasons')">تقرير كامل</button></div>
       <div class="reasons-body" id="ma-reasons-week-body">
         {% if merchant_dashboard_lazy_shell %}
@@ -180,7 +181,7 @@
       </div>
     </div>
 
-    <div class="body-grid ma-home-body">
+    <div class="body-grid ma-home-body ma-home-section ma-home-section-carts">
       <div class="card">
         <div class="card-head">
           <div class="card-title">سلال الانتظار — آخر النشاطات</div>
@@ -211,7 +212,7 @@
       </div>
     </div>
 
-    <div class="bottom-grid ma-home-bottom">
+    <div class="bottom-grid ma-home-bottom ma-home-section ma-home-section-vip">
       <div class="card">
         <div class="card-head"><div class="card-title">👑 سلال VIP — تحتاج تدخلك</div><button type="button" class="card-link" onclick="goToCartTab('vip')">عرض الكل</button></div>
         <div id="ma-vip-home-list">

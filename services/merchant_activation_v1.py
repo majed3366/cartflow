@@ -344,10 +344,16 @@ def build_merchant_activation_api_payload(
     store: Optional[Any] = None,
     *,
     cookies: Optional[dict[str, str]] = None,
+    month_abandoned: int = 0,
+    month_recovered: int = 0,
+    month_revenue: float = 0.0,
 ) -> dict[str, Any]:
+    from services.merchant_dashboard_home_stage_v1 import resolve_merchant_home_layout
     from services.merchant_onboarding_store import resolve_merchant_onboarding_store
+    from services.merchant_onboarding_v1 import build_merchant_onboarding_flow
 
-    owned, _ = resolve_merchant_onboarding_store(cookies=cookies or {})
+    owned, resolution = resolve_merchant_onboarding_store(cookies=cookies or {})
+    mid = resolution.merchant_id
     if owned is not None:
         store = owned
     payload = build_merchant_activation_payload(store, cookies=cookies)
@@ -355,6 +361,27 @@ def build_merchant_activation_api_payload(
     out["store_slug"] = (
         (getattr(store, "zid_store_id", None) or "").strip() if store else ""
     )
+
+    flow = build_merchant_onboarding_flow(
+        store, merchant_user_id=mid, emit_logs=False
+    )
+    ms = out.get("milestones") or {}
+    first_reason = _first_reason_captured_readonly(store) if store else False
+    layout = resolve_merchant_home_layout(
+        store,
+        onboarding_complete=bool(flow.onboarding_complete),
+        first_cart=bool(ms.get("first_cart_detected")),
+        first_reason=first_reason,
+        first_scheduled=bool(ms.get("first_recovery_scheduled")),
+        first_sent=bool(ms.get("first_whatsapp_sent")),
+        first_recovered=bool(ms.get("first_recovered_cart")),
+        activation_working=bool(out.get("activation_working")),
+        current_state_label_ar=str(out.get("current_state_label_ar") or ""),
+        month_abandoned=int(month_abandoned),
+        month_recovered=int(month_recovered),
+        month_revenue=float(month_revenue or 0.0),
+    )
+    out.update(layout.to_dict())
     return out
 
 

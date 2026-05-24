@@ -14857,7 +14857,11 @@ def _api_json_dashboard_summary(
             cookies=cookies
         ),
         "merchant_activation": _merchant_activation_api_payload(
-            dash_store, cookies=cookies
+            dash_store,
+            cookies=cookies,
+            month_abandoned=int(month_win.get("abandoned_total") or 0),
+            month_recovered=int(month_win.get("recovered_total") or 0),
+            month_revenue=float(month_win.get("recovered_revenue") or 0.0),
         ),
     }
 
@@ -14866,16 +14870,31 @@ def _merchant_activation_api_payload(
     dash_store: Optional[Any],
     *,
     cookies: Optional[dict[str, str]] = None,
+    month_abandoned: int = 0,
+    month_recovered: int = 0,
+    month_revenue: float = 0.0,
 ) -> dict[str, Any]:
     from services.merchant_activation_v1 import (  # noqa: PLC0415
         build_merchant_activation_api_payload,
     )
 
     try:
-        return build_merchant_activation_api_payload(dash_store, cookies=cookies)
+        return build_merchant_activation_api_payload(
+            dash_store,
+            cookies=cookies,
+            month_abandoned=month_abandoned,
+            month_recovered=month_recovered,
+            month_revenue=month_revenue,
+        )
     except Exception as exc:  # noqa: BLE001
         log.warning("merchant_activation payload: %s", exc)
-        return build_merchant_activation_api_payload(None, cookies=cookies)
+        return build_merchant_activation_api_payload(
+            None,
+            cookies=cookies,
+            month_abandoned=month_abandoned,
+            month_recovered=month_recovered,
+            month_revenue=month_revenue,
+        )
 
 
 def _api_json_dashboard_normal_carts(

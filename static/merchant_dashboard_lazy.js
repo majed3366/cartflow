@@ -89,6 +89,42 @@
     home.classList.remove("ma-onboarding-focus");
   }
 
+  function applyHomeOperationalAlerts(alerts) {
+    var root = byId("ma-home-alerts-root");
+    if (!root) return;
+    var lines = alerts || [];
+    if (!lines.length) {
+      root.hidden = true;
+      root.innerHTML = "";
+      return;
+    }
+    var lis = "";
+    for (var i = 0; i < lines.length; i++) {
+      lis += "<li>" + esc(lines[i]) + "</li>";
+    }
+    root.hidden = false;
+    root.innerHTML =
+      '<div class="ma-home-alerts-inner">' +
+      '<p class="ma-home-alerts-title">تنبيهات تشغيلية</p>' +
+      '<ul class="ma-home-alerts-list">' +
+      lis +
+      "</ul></div>";
+  }
+
+  function applyHomeAdaptiveStage(act) {
+    var home = byId("page-home");
+    if (!home) return;
+    var stage = (act && act.home_stage) || "activation";
+    home.setAttribute("data-ma-home-stage", stage);
+    home.classList.remove(
+      "ma-home-stage-activation",
+      "ma-home-stage-activated",
+      "ma-home-stage-production"
+    );
+    home.classList.add("ma-home-stage-" + stage);
+    applyHomeOperationalAlerts(act && act.operational_alerts_ar);
+  }
+
   function applyMerchantActivation(act) {
     var root = byId("ma-activation-root");
     if (!root) return;
@@ -97,12 +133,21 @@
       root.innerHTML = "";
       return;
     }
+    var display = act.activation_display || "prominent";
+    if (display === "hidden") {
+      root.hidden = true;
+      root.innerHTML = "";
+      return;
+    }
     var milestones = act.milestones || [];
     var states = act.summary_states || [];
     var working = !!act.activation_working;
-    var title = working
-      ? "CartFlow يعمل على متجرك"
-      : "تفعيل سريع — أول نجاح";
+    var compact = display === "compact";
+    var title = compact
+      ? "حالة التفعيل"
+      : working
+        ? "CartFlow يعمل على متجرك"
+        : "تفعيل سريع — أول نجاح";
     var lead =
       act.next_step_ar ||
       "جرّب متجر الاختبار ثم راقب السلال هنا.";
@@ -128,12 +173,11 @@
     var stHtml = "";
     for (i = 0; i < states.length; i++) {
       var st = states[i];
-      var cls = "ma-activation-timeline";
       var liCls = "";
       if (st.reached) liCls += " is-reached";
       if (st.current) liCls += " is-current";
       stHtml +=
-        "<li class=\"" +
+        '<li class="' +
         liCls +
         '">' +
         esc(st.label_ar || "") +
@@ -143,18 +187,43 @@
     var delay = act.delay_hint_ar
       ? '<p class="ma-activation-delay">' + esc(act.delay_hint_ar) + "</p>"
       : "";
+    var summaryLines = act.activation_summary_lines_ar || [];
+    var compactBody = "";
+    for (i = 0; i < summaryLines.length; i++) {
+      compactBody +=
+        '<span class="ma-activation-compact-line">' +
+        esc(summaryLines[i]) +
+        "</span>";
+    }
+    if (act.last_activity_ar) {
+      compactBody +=
+        '<span class="ma-activation-compact-line">آخر نشاط: ' +
+        esc(act.last_activity_ar) +
+        "</span>";
+    }
+    var compactClass = compact ? " ma-activation-compact" : "";
+    var toggleBtn = compact
+      ? '<button type="button" class="ma-activation-compact-toggle" data-ma-act-expand="1">تفاصيل التفعيل</button>'
+      : "";
     root.hidden = false;
     root.innerHTML =
-      '<div class="ma-activation-card">' +
+      '<div class="ma-activation-card' +
+      compactClass +
+      '" id="ma-activation-card-inner">' +
       "<h2 class=\"ma-activation-title\">" +
       esc(title) +
       "</h2>" +
-      '<p class="ma-activation-lead">' +
-      esc(lead) +
-      "</p>" +
-      (stHtml
+      (compact
+        ? '<div class="ma-activation-compact-body">' +
+          compactBody +
+          toggleBtn +
+          "</div>"
+        : '<p class="ma-activation-lead">' + esc(lead) + "</p>") +
+      (stHtml && !compact
         ? '<ul class="ma-activation-timeline">' + stHtml + "</ul>"
-        : "") +
+        : stHtml
+          ? '<ul class="ma-activation-timeline">' + stHtml + "</ul>"
+          : "") +
       '<ul class="ma-activation-milestones">' +
       msHtml +
       "</ul>" +
@@ -165,7 +234,30 @@
       '<a class="ma-activation-btn ma-activation-btn-secondary" href="/dashboard#carts" onclick="if(window.goTo){goTo(\'carts\');}return false;">عرض السلال</a>' +
       "</div>" +
       delay +
+      (compact ? '<p class="ma-activation-lead">' + esc(lead) + "</p>" : "") +
       "</div>";
+    var card = byId("ma-activation-card-inner");
+    var expandBtn = root.querySelector("[data-ma-act-expand]");
+    if (expandBtn && card) {
+      expandBtn.addEventListener("click", function () {
+        card.classList.toggle("ma-activation-expanded");
+        expandBtn.textContent = card.classList.contains("ma-activation-expanded")
+          ? "إخفاء التفاصيل"
+          : "تفاصيل التفعيل";
+      });
+    }
+  }
+
+  function applyHomeLayoutAfterSetup(act, mse) {
+    applyHomeAdaptiveStage(act);
+    applyMerchantActivation(act);
+    if (act && act.hide_setup_card && mse) {
+      var setupRoot = byId("ma-setup-experience-root");
+      if (setupRoot && (mse.onboarding_complete || mse.first_recovery_ready)) {
+        setupRoot.hidden = true;
+        setupRoot.innerHTML = "";
+      }
+    }
   }
 
   function applyMerchantSetupExperience(mse) {
@@ -303,8 +395,8 @@
     if (!d || !d.ok) return;
     setText("ma-topbar-date", d.merchant_ar_date_header || "");
     applyTopbarReadiness(d);
-    applyMerchantActivation(d.merchant_activation);
     applyMerchantSetupExperience(d.merchant_setup_experience);
+    applyHomeLayoutAfterSetup(d.merchant_activation, d.merchant_setup_experience);
 
     setText("ma-kpi-abandoned", d.merchant_kpi_abandoned_fmt || "0");
     setText("ma-kpi-recovered", d.merchant_kpi_recovered_fmt || "0");
