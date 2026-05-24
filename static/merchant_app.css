@@ -720,6 +720,22 @@ nav.ma-sidebar-nav {
 .page { display: none; animation: fadeIn 0.2s ease; }
 .page.active { display: block; }
 
+/* Home overview is only visible on #page-home — never bleed into operational pages */
+#page-home:not(.active) {
+  display: none !important;
+}
+
+/* Operational subpages: execution-first, no home overview chrome */
+.page.active:not(#page-home) .kpi-grid,
+.page.active:not(#page-home) .ma-home-top,
+.page.active:not(#page-home) .ma-home-activation-band,
+.page.active:not(#page-home) #ma-home-alerts-root,
+.page.active:not(#page-home) .ma-home-section-kpi,
+.page.active:not(#page-home) .ma-home-section-setup-month,
+.page.active:not(#page-home) .ma-home-reasons.ma-home-section-reasons {
+  display: none !important;
+}
+
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: translateY(0); }
@@ -995,8 +1011,8 @@ nav.ma-sidebar-nav {
   align-items: stretch;
 }
 
-/* Adaptive home — single page, section order by merchant stage */
-#page-home {
+/* Adaptive home — control center only when الرئيسية is active */
+#page-home.page.active {
   display: flex;
   flex-direction: column;
   gap: 0;
