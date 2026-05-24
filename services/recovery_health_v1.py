@@ -352,6 +352,21 @@ def _protections_summary() -> dict[str, Any]:
     }
 
 
+def _failed_summary_line(recent_failures: dict[str, Any], counts: dict[str, Any]) -> str:
+    latest = recent_failures.get("latest")
+    n = int(counts.get("failed") or 0)
+    if not latest and n == 0:
+        return "No failed recovery schedules in the durable failure set."
+    if latest:
+        st = latest.get("status", "-")
+        reason = latest.get("reason", "-")
+        return (
+            f"{n} failed schedule(s) in aggregate; latest: status={st}, "
+            f"reason={reason}."
+        )
+    return f"{n} failed schedule(s); see recent_failures for detail."
+
+
 def _compute_overall_health(
     *,
     stuck: dict[str, Any],
@@ -411,6 +426,24 @@ def build_recovery_health_snapshot(*, emit_warn_log: bool = True) -> dict[str, A
         else "api_replica_no_resume"
     )
 
+    try:
+        from services.recovery_failure_explanation_v1 import (
+            build_recent_failures_snapshot,
+        )
+
+        recent_failures = build_recent_failures_snapshot(limit=10)
+    except Exception as exc:  # noqa: BLE001
+        recent_failures = {"error": str(exc)[:200], "count": 0, "latest": None}
+
+    if (
+        recent_failures.get("latest")
+        and health == "healthy"
+        and int(counts.get("failed") or 0) > 0
+    ):
+        latest_action = (recent_failures.get("latest") or {}).get("action_needed")
+        if latest_action in ("yes", "review"):
+            health = "warning"
+
     return {
         "ok": True,
         "health": health,
@@ -426,6 +459,13 @@ def build_recovery_health_snapshot(*, emit_warn_log: bool = True) -> dict[str, A
         "scheduled": int(counts.get("scheduled") or 0),
         "cancelled": int(counts.get("cancelled") or 0),
         "failed": int(counts.get("failed") or 0),
+        "failed_detail": {
+            "aggregate_failed_schedules": int(counts.get("failed") or 0),
+            "by_status": dict(counts.get("by_status") or {}),
+            "latest": recent_failures.get("latest"),
+            "summary": _failed_summary_line(recent_failures, counts),
+        },
+        "recent_failures": recent_failures,
         "counts": counts,
         "last_resume": hb.get("last_resume") or None,
         "last_claim": hb.get("last_claim") or None,
