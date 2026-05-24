@@ -14160,6 +14160,34 @@ def api_dashboard_recovery_trend():
         _log_dashboard_section_profile(section="recovery_trend", wall_perf_start=wall0)
 
 
+def _api_json_activation_inspect_only(
+    dash_store: Optional[Any],
+    *,
+    cookies: Optional[dict[str, str]] = None,
+) -> Dict[str, Any]:
+    """Activation inspect path — skips KPI/reason queries that can fail the full summary."""
+    from services.merchant_activation_live_inspect_v1 import (  # noqa: PLC0415
+        build_activation_inspect_body,
+    )
+
+    month_win = {
+        "abandoned_total": 0,
+        "recovered_total": 0,
+        "recovered_revenue": 0.0,
+    }
+    try:
+        month_win = _merchant_month_window_projection(dash_store, days=30)
+    except (SQLAlchemyError, OSError, TypeError, ValueError):
+        pass
+    return build_activation_inspect_body(
+        dash_store,
+        cookies=cookies,
+        month_abandoned=int(month_win.get("abandoned_total") or 0),
+        month_recovered=int(month_win.get("recovered_total") or 0),
+        month_revenue=float(month_win.get("recovered_revenue") or 0.0),
+    )
+
+
 @app.get("/api/dashboard/summary")
 def api_dashboard_summary(request: Request):
     from services.dashboard_summary_query_profiler import (  # noqa: PLC0415
@@ -14167,27 +14195,63 @@ def api_dashboard_summary(request: Request):
         dashboard_summary_profile_end,
         dashboard_summary_profile_span,
     )
+    from services.merchant_activation_live_inspect_v1 import (  # noqa: PLC0415
+        activation_inspect_error_payload,
+        activation_inspect_response,
+        log_activation_inspect_error,
+        resolve_activation_inspect_context,
+        wants_activation_inspect,
+    )
 
+    inspect_mode = wants_activation_inspect(request)
+    cookies = dict(request.cookies)
     wall0 = time.perf_counter()
     dashboard_summary_profile_begin()
+    dash_store: Optional[Any] = None
     try:
         with dashboard_summary_profile_span("_merchant_dashboard_db_ready"):
             _merchant_dashboard_db_ready()
         with dashboard_summary_profile_span("_dashboard_recovery_store_row"):
             dash_store = _dashboard_recovery_store_row()
-        body = _api_json_dashboard_summary(
-            dash_store, cookies=dict(request.cookies)
-        )
-        from services.merchant_activation_live_inspect_v1 import (  # noqa: PLC0415
-            activation_inspect_response,
-            wants_activation_inspect,
-        )
 
-        if wants_activation_inspect(request):
-            return j({"ok": True, **activation_inspect_response(body)})
+        if inspect_mode:
+            try:
+                inspect_body = _api_json_activation_inspect_only(
+                    dash_store, cookies=cookies
+                )
+                return j(
+                    {"ok": True, **activation_inspect_response(inspect_body)}
+                )
+            except Exception as exc:  # noqa: BLE001
+                db.session.rollback()
+                mid, slug = resolve_activation_inspect_context(
+                    dash_store, cookies=cookies
+                )
+                log_activation_inspect_error(
+                    exc, merchant_id=mid, store_slug=slug
+                )
+                return j(
+                    activation_inspect_error_payload(
+                        exc, merchant_id=mid, store_slug=slug
+                    ),
+                    200,
+                )
+
+        body = _api_json_dashboard_summary(dash_store, cookies=cookies)
         return j({"ok": True, **body})
     except Exception as e:  # noqa: BLE001
         db.session.rollback()
+        if inspect_mode:
+            mid, slug = resolve_activation_inspect_context(
+                dash_store, cookies=cookies
+            )
+            log_activation_inspect_error(e, merchant_id=mid, store_slug=slug)
+            return j(
+                activation_inspect_error_payload(
+                    e, merchant_id=mid, store_slug=slug
+                ),
+                200,
+            )
         log.warning("api_dashboard_summary: %s", e)
         return j({"ok": False, "error": "failed"}, 500)
     finally:

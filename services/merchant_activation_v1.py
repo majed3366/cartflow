@@ -9,7 +9,7 @@ from __future__ import annotations
 import logging
 import re
 from dataclasses import asdict, dataclass, field
-from typing import Any, Optional
+from typing import Any, Mapping, Optional
 from urllib.parse import quote
 
 from services.cartflow_onboarding_readiness import evaluate_onboarding_readiness
@@ -223,6 +223,34 @@ def _recovery_delay_hint_ar(store: Optional[Any]) -> str:
     return f"الإرسال متوقع خلال نحو {delay} دقيقة حسب مهلة الاسترجاع."
 
 
+def _activation_milestone_flags_for_layout(
+    store: Optional[Any],
+    activation_out: Mapping[str, Any],
+) -> tuple[bool, bool, bool, bool]:
+    """Milestone booleans for home layout (readiness dict), not the API list shape."""
+    ev = evaluate_onboarding_readiness(store) if store is not None else {}
+    ms = dict(ev.get("milestones") or {})
+    first_cart = bool(ms.get("first_cart_detected"))
+    first_scheduled = bool(ms.get("first_recovery_scheduled"))
+    first_sent = bool(ms.get("first_whatsapp_sent"))
+    first_recovered = bool(ms.get("first_recovered_cart"))
+
+    raw = activation_out.get("milestones")
+    if isinstance(raw, list):
+        for item in raw:
+            if not isinstance(item, dict):
+                continue
+            mid = str(item.get("milestone_id") or "")
+            done = bool(item.get("done"))
+            if mid == "first_cart":
+                first_cart = first_cart or done
+            elif mid == "first_scheduled":
+                first_scheduled = first_scheduled or done
+            elif mid == "first_message":
+                first_sent = first_sent or done
+    return first_cart, first_scheduled, first_sent, first_recovered
+
+
 def build_merchant_activation_payload(
     store: Optional[Any] = None,
     *,
@@ -365,13 +393,11 @@ def build_merchant_activation_api_payload(
     flow = build_merchant_onboarding_flow(
         store, merchant_user_id=mid, emit_logs=False
     )
-    ms = out.get("milestones") or {}
     first_reason = _first_reason_captured_readonly(store) if store else False
     onboarding_complete = bool(flow.onboarding_complete)
-    first_cart = bool(ms.get("first_cart_detected"))
-    first_scheduled = bool(ms.get("first_recovery_scheduled"))
-    first_sent = bool(ms.get("first_whatsapp_sent"))
-    first_recovered = bool(ms.get("first_recovered_cart"))
+    first_cart, first_scheduled, first_sent, first_recovered = (
+        _activation_milestone_flags_for_layout(store, out)
+    )
     activation_working = bool(out.get("activation_working"))
     layout = resolve_merchant_home_layout(
         store,

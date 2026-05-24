@@ -317,6 +317,7 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 
 | Date (UTC) | Summary |
 |------------|---------|
+| 2026-05-19 | **Activation inspect endpoint fix:** `?activation_inspect=1` uses activation-only path; explicit `activation_inspect_failed` + `[ACTIVATION INSPECT ERROR]` log; fixed `milestones` list `.get()` crash in `build_merchant_activation_api_payload`. Commit: **`fix: make activation inspect endpoint return debug payload`**. |
 | 2026-05-19 | **Live activation inspect (read-only):** `GET /api/dashboard/summary?activation_inspect=1` returns activation fields only; server log `[ACTIVATION STATE]`; `scripts/inspect_activation_state.py` for production curl. Commit: **`debug: inspect live activation state`** (not pushed). |
 | 2026-05-19 | **Production activation hide criteria narrowed:** `has_production_signal()` — recovery/revenue only; removed `first_sent` + `month_abandoned >= 5`. Recently activated merchants stay `activated`/compact until real recovery. Commit: **`fix: narrow production activation hide criteria`**. |
 | 2026-05-19 | **Activation visibility debug v1:** `merchant_activation_visibility_debug` on `GET /api/dashboard/summary`; server log `[ACTIVATION VISIBILITY]`; temporary home debug band + console snapshot (`ui_blocker_inferred`). Diagnosis: stage `production`/`hidden` (B) + JS apply-once when not on home. Doc: `docs/cartflow_activation_visibility_debug_v1.md`. Commit: **`debug: inspect activation visibility state on dashboard home`**. |
