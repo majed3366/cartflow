@@ -490,6 +490,17 @@ def claim_recovery_schedule_execution(
             row_id=rid,
             step=step,
         )
+        try:
+            from services.recovery_health_v1 import record_schedule_claim
+
+            record_schedule_claim(
+                recovery_key=rk,
+                schedule_id=rid,
+                path=path,
+                step=step,
+            )
+        except Exception:  # noqa: BLE001
+            pass
         return True, "claimed", claimed_row
     except SQLAlchemyError as exc:
         db.session.rollback()
@@ -1379,11 +1390,18 @@ async def run_recovery_resume_scan_async(
     )
 
     if not is_recovery_resume_on_startup_enabled(force=force):
-        return {
+        disabled_out = {
             "enabled": False,
             "dispatched": 0,
             "reason": "resume_on_startup_disabled",
         }
+        try:
+            from services.recovery_health_v1 import record_resume_scan_completed
+
+            record_resume_scan_completed(disabled_out)
+        except Exception:  # noqa: BLE001
+            pass
+        return disabled_out
 
     try:
         db.create_all()
@@ -1434,7 +1452,7 @@ async def run_recovery_resume_scan_async(
             future_outcomes.append(out)
             if out.get("rearmed"):
                 future_rearmed += 1
-        return {
+        scan_out = {
             "enabled": True,
             "dry_run": dry_run,
             "stale_running_repair": stale_repair,
@@ -1448,10 +1466,24 @@ async def run_recovery_resume_scan_async(
             "future_rearmed": future_rearmed,
             "future_outcomes": future_outcomes,
         }
+        try:
+            from services.recovery_health_v1 import record_resume_scan_completed
+
+            record_resume_scan_completed(scan_out)
+        except Exception:  # noqa: BLE001
+            pass
+        return scan_out
     except SQLAlchemyError as exc:
         db.session.rollback()
         _log.warning("recovery resume scan failed: %s", exc)
-        return {"enabled": True, "error": str(exc), "dispatched": 0}
+        err_out = {"enabled": True, "error": str(exc), "dispatched": 0}
+        try:
+            from services.recovery_health_v1 import record_resume_scan_completed
+
+            record_resume_scan_completed(err_out)
+        except Exception:  # noqa: BLE001
+            pass
+        return err_out
 
 
 def run_recovery_resume_scan_sync(

@@ -934,6 +934,7 @@ _DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT = frozenset(
         "/dev/create-vip-test-cart",
         "/dev/widget-runtime-config-verify",
         "/dev/recovery-restart-survival-verify",
+        "/dev/recovery-health",
         "/dev/store-template-debug",
     }
 )
@@ -1843,6 +1844,22 @@ def dev_recovery_restart_survival_verify(
     except Exception as exc:  # noqa: BLE001
         db.session.rollback()
         return j({"ok": False, "error": str(exc)}, 500)
+
+
+@app.get("/dev/recovery-health")
+def dev_recovery_health() -> Any:
+    """
+    Read-only recovery / worker health (v1). Allowed in production.
+    No recovery behavior changes.
+    """
+    from services.recovery_health_v1 import build_recovery_health_snapshot
+
+    try:
+        _ensure_cartflow_api_db_warmed()
+        return j(build_recovery_health_snapshot())
+    except Exception as exc:  # noqa: BLE001
+        db.session.rollback()
+        return j({"ok": False, "health": "warning", "error": str(exc)}, 500)
 
 
 @app.get("/dev/recovery-delay-verify")

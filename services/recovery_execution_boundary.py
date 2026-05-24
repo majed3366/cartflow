@@ -253,6 +253,18 @@ async def execute_recovery_schedule(
             schedule_id=int(row.id),
             source=src,
         )
+        try:
+            from services.recovery_health_v1 import record_execution_finished
+
+            record_execution_finished(
+                recovery_key=rk,
+                schedule_id=int(row.id),
+                source=src,
+                ok=True,
+                reason=out["reason"],
+            )
+        except Exception:  # noqa: BLE001
+            pass
         return out
     except Exception as exc:  # noqa: BLE001
         import asyncio

@@ -94,7 +94,10 @@ For load targets (100+ stores, 1000+ due rows), plan a **dedicated queue/worker*
 
 ```bash
 python -m pytest tests/test_recovery_scheduler_guardrails_v1.py -q
+curl -sS https://<host>/dev/recovery-health
 ```
+
+**Health endpoint:** `GET /dev/recovery-health` — stuck `running` rows, `pending_due`, scheduler owner mode, last resume/claim/execution heartbeats (`services/recovery_health_v1.py`). Production-allowed; read-only.
 
 After deploy, confirm logs on boot:
 
