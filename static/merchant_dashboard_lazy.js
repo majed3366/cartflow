@@ -27,6 +27,61 @@
     }
   }
 
+  var cachedMerchantActivation = null;
+  var cachedMerchantSetupExperience = null;
+
+  function isDashboardHomeActive() {
+    var home = byId("page-home");
+    return !!(home && home.classList.contains("active"));
+  }
+
+  function hideActivationOffHome() {
+    var root = byId("ma-activation-root");
+    if (!root) return;
+    root.hidden = true;
+    root.setAttribute("hidden", "");
+    root.classList.remove("ma-activation-on-home");
+  }
+
+  function showActivationRoot(root) {
+    if (!root) return;
+    root.hidden = false;
+    root.removeAttribute("hidden");
+    root.classList.add("ma-activation-on-home");
+  }
+
+  function hideActivationRootClear(root) {
+    if (!root) return;
+    root.hidden = true;
+    root.setAttribute("hidden", "");
+    root.classList.remove("ma-activation-on-home");
+    root.innerHTML = "";
+  }
+
+  function syncHomeActivationFromCache() {
+    var act = cachedMerchantActivation;
+    var mse = cachedMerchantSetupExperience;
+    var home = byId("page-home");
+    if (act && home) {
+      applyHomeAdaptiveStage(act);
+    }
+    if (!isDashboardHomeActive()) {
+      hideActivationOffHome();
+      return;
+    }
+    if (!act) {
+      return;
+    }
+    applyMerchantActivation(act);
+    if (act.hide_setup_card && mse) {
+      var setupRoot = byId("ma-setup-experience-root");
+      if (setupRoot && (mse.onboarding_complete || mse.first_recovery_ready)) {
+        setupRoot.hidden = true;
+        setupRoot.innerHTML = "";
+      }
+    }
+  }
+
   function setNavBadge(id, n) {
     var el = byId(id);
     if (!el) return;
@@ -128,24 +183,21 @@
   function applyMerchantActivation(act) {
     var root = byId("ma-activation-root");
     if (!root) return;
+    if (!isDashboardHomeActive()) {
+      hideActivationOffHome();
+      return;
+    }
     if (!act || typeof act !== "object") {
-      root.hidden = true;
-      root.classList.remove("ma-activation-on-home");
-      root.innerHTML = "";
+      hideActivationRootClear(root);
       return;
     }
     var display = act.activation_display || "prominent";
-    var homeEl = byId("page-home");
-    var onHome =
-      homeEl && homeEl.classList.contains("active");
-    if (display === "hidden" && !onHome) {
-      root.hidden = true;
-      root.classList.remove("ma-activation-on-home");
-      root.innerHTML = "";
-      return;
-    }
-    if (display === "hidden" && onHome) {
+    if (display === "hidden") {
       display = "compact";
+    }
+    if (display !== "prominent" && display !== "compact") {
+      hideActivationRootClear(root);
+      return;
     }
     var milestones = act.milestones || [];
     var states = act.summary_states || [];
@@ -213,8 +265,7 @@
     var toggleBtn = compact
       ? '<button type="button" class="ma-activation-compact-toggle" data-ma-act-expand="1">تفاصيل التفعيل</button>'
       : "";
-    root.hidden = false;
-    root.classList.add("ma-activation-on-home");
+    showActivationRoot(root);
     root.innerHTML =
       '<div class="ma-activation-card' +
       compactClass +
@@ -315,15 +366,9 @@
   }
 
   function applyHomeLayoutAfterSetup(act, mse) {
-    applyHomeAdaptiveStage(act);
-    applyMerchantActivation(act);
-    if (act && act.hide_setup_card && mse) {
-      var setupRoot = byId("ma-setup-experience-root");
-      if (setupRoot && (mse.onboarding_complete || mse.first_recovery_ready)) {
-        setupRoot.hidden = true;
-        setupRoot.innerHTML = "";
-      }
-    }
+    cachedMerchantActivation = act;
+    cachedMerchantSetupExperience = mse;
+    syncHomeActivationFromCache();
   }
 
   function applyMerchantSetupExperience(mse) {
@@ -1302,6 +1347,9 @@
   }
 
   window.maApplyVipCartsPayload = applyVipCarts;
+  window.maSyncHomeActivation = syncHomeActivationFromCache;
+
+  window.addEventListener("hashchange", syncHomeActivationFromCache);
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", bootLazyDashboard);

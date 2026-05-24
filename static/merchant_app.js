@@ -237,6 +237,9 @@
   }
 
   function runPageHooks(page) {
+    if (typeof window.maSyncHomeActivation === "function") {
+      window.maSyncHomeActivation();
+    }
     if (typeof window.maEnsureTriggerTemplatesLoaded === "function" && page === "trigger-templates") {
       window.maEnsureTriggerTemplatesLoaded();
     }
