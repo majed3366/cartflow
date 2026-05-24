@@ -317,6 +317,7 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 
 | Date (UTC) | Summary |
 |------------|---------|
+| 2026-05-19 | **Remove activation debug UI:** dropped `#ma-activation-debug` band and client `applyActivationVisibilityDebug`; inspect API + server `[ACTIVATION STATE]` logs retained. Commit: **`chore: remove temporary activation debug UI`**. |
 | 2026-05-19 | **Activation render mode fix:** explicit `renderActivationProminent` / `renderActivationCompact` + `[ACTIVATION RENDER]` logs; debug band only when `?activation_inspect=1`. Commit: **`fix: respect activation display mode in render path`**. |
 | 2026-05-19 | **Activation card client render fix:** `merchant_dashboard_lazy.js` caches activation payload, removes `#ma-activation-root[hidden]` on home, re-syncs on summary load + `hashchange` + `runPageHooks`; hidden off non-home routes. Commit: **`fix: render activation card on dashboard home`**. |
 | 2026-05-19 | **Activation inspect endpoint fix:** `?activation_inspect=1` uses activation-only path; explicit `activation_inspect_failed` + `[ACTIVATION INSPECT ERROR]` log; fixed `milestones` list `.get()` crash in `build_merchant_activation_api_payload`. Commit: **`fix: make activation inspect endpoint return debug payload`**. |
