@@ -995,8 +995,12 @@ nav.ma-sidebar-nav {
   align-items: stretch;
 }
 
-#ma-activation-root {
-  grid-column: 1 / -1;
+.ma-home-activation-band {
+  margin-bottom: 16px;
+}
+
+.ma-home-activation-band[hidden] {
+  display: none !important;
 }
 
 .ma-activation-card {
@@ -1135,17 +1139,9 @@ nav.ma-sidebar-nav {
   grid-template-columns: 1fr;
 }
 
-/* Onboarding focus — hide advanced home blocks until first readiness */
-#page-home.ma-onboarding-focus .kpi-grid,
-#page-home.ma-onboarding-focus .ma-home-reasons,
-#page-home.ma-onboarding-focus .body-grid.ma-home-body,
-#page-home.ma-onboarding-focus .bottom-grid.ma-home-bottom,
-#page-home.ma-onboarding-focus #ma-home-month-summary {
-  display: none !important;
-}
-
+/* Onboarding focus — keep overview visible; setup card may use full width in top row */
 #page-home.ma-onboarding-focus .ma-home-top {
-  grid-template-columns: 1fr;
+  grid-template-columns: 1fr 1fr;
 }
 
 .ma-onb-panel .ma-setup-panel-lead {

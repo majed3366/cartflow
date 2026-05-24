@@ -85,8 +85,8 @@
   function applyOnboardingHomeFocus(mse) {
     var home = byId("page-home");
     if (!home) return;
-    var focus = !!(mse && mse.show_simplified_home);
-    home.classList.toggle("ma-onboarding-focus", focus);
+    /* Keep KPI / month summary / overview visible — activation card is additive only. */
+    home.classList.remove("ma-onboarding-focus");
   }
 
   function applyMerchantActivation(act) {
