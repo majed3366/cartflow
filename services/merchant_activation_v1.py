@@ -367,21 +367,54 @@ def build_merchant_activation_api_payload(
     )
     ms = out.get("milestones") or {}
     first_reason = _first_reason_captured_readonly(store) if store else False
+    onboarding_complete = bool(flow.onboarding_complete)
+    first_cart = bool(ms.get("first_cart_detected"))
+    first_scheduled = bool(ms.get("first_recovery_scheduled"))
+    first_sent = bool(ms.get("first_whatsapp_sent"))
+    first_recovered = bool(ms.get("first_recovered_cart"))
+    activation_working = bool(out.get("activation_working"))
     layout = resolve_merchant_home_layout(
         store,
-        onboarding_complete=bool(flow.onboarding_complete),
-        first_cart=bool(ms.get("first_cart_detected")),
+        onboarding_complete=onboarding_complete,
+        first_cart=first_cart,
         first_reason=first_reason,
-        first_scheduled=bool(ms.get("first_recovery_scheduled")),
-        first_sent=bool(ms.get("first_whatsapp_sent")),
-        first_recovered=bool(ms.get("first_recovered_cart")),
-        activation_working=bool(out.get("activation_working")),
+        first_scheduled=first_scheduled,
+        first_sent=first_sent,
+        first_recovered=first_recovered,
+        activation_working=activation_working,
         current_state_label_ar=str(out.get("current_state_label_ar") or ""),
         month_abandoned=int(month_abandoned),
         month_recovered=int(month_recovered),
         month_revenue=float(month_revenue or 0.0),
     )
     out.update(layout.to_dict())
+    from services.merchant_activation_visibility_debug_v1 import (  # noqa: PLC0415
+        build_activation_visibility_debug,
+    )
+
+    dbg = build_activation_visibility_debug(
+        layout,
+        store_slug=str(out.get("store_slug") or ""),
+        onboarding_complete=onboarding_complete,
+        first_cart=first_cart,
+        first_reason=first_reason,
+        first_scheduled=first_scheduled,
+        first_sent=first_sent,
+        first_recovered=first_recovered,
+        activation_working=activation_working,
+        month_abandoned=int(month_abandoned),
+        month_recovered=int(month_recovered),
+        month_revenue=float(month_revenue or 0.0),
+    )
+    out["activation_visibility_debug"] = dbg
+    log.info(
+        "[ACTIVATION VISIBILITY] slug=%s stage=%s display=%s hide_setup=%s prod_reasons=%s",
+        dbg.get("store_slug") or "—",
+        dbg.get("home_stage"),
+        dbg.get("activation_display"),
+        dbg.get("hide_setup_card"),
+        dbg.get("production_signal_reasons"),
+    )
     return out
 
 

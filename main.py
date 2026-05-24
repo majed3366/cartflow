@@ -14822,6 +14822,13 @@ def _api_json_dashboard_summary(
     rev_today = float(kpis.get("recovered_revenue_today") or 0.0)
     rev_month = float(month_win.get("recovered_revenue") or 0.0)
     rec_pct_m = float(month_win.get("recovery_pct") or 0.0)
+    merchant_activation = _merchant_activation_api_payload(
+        dash_store,
+        cookies=cookies,
+        month_abandoned=int(month_win.get("abandoned_total") or 0),
+        month_recovered=int(month_win.get("recovered_total") or 0),
+        month_revenue=float(month_win.get("recovered_revenue") or 0.0),
+    )
     return {
         "merchant_ar_date_header": merchant_ar_weekday_date_header(now_utc),
         "wa_badge_ar": str(wa_card.get("badge_ar") or "—"),
@@ -14856,12 +14863,11 @@ def _api_json_dashboard_summary(
         "merchant_setup_experience": build_merchant_setup_experience_api_payload(
             cookies=cookies
         ),
-        "merchant_activation": _merchant_activation_api_payload(
-            dash_store,
-            cookies=cookies,
-            month_abandoned=int(month_win.get("abandoned_total") or 0),
-            month_recovered=int(month_win.get("recovered_total") or 0),
-            month_revenue=float(month_win.get("recovered_revenue") or 0.0),
+        "merchant_activation": merchant_activation,
+        "merchant_activation_visibility_debug": (
+            merchant_activation.get("activation_visibility_debug")
+            if isinstance(merchant_activation, dict)
+            else None
         ),
     }
 

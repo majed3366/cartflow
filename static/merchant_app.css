@@ -1068,6 +1068,29 @@ nav.ma-sidebar-nav {
   display: none !important;
 }
 
+/* Temporary: activation visibility debug (GET /api/dashboard/summary) */
+.ma-activation-debug-band {
+  margin: 8px 0 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px dashed #94a3b8;
+  background: #f8fafc;
+  color: #334155;
+  font-size: 11px;
+  line-height: 1.45;
+  order: 5;
+}
+
+.ma-activation-debug-pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 10px;
+  direction: ltr;
+  text-align: left;
+}
+
 #page-home.page.active .ma-home-activation-band.ma-activation-on-home:not([hidden]) {
   display: block !important;
 }

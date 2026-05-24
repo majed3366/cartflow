@@ -257,6 +257,63 @@
     }
   }
 
+  function applyActivationVisibilityDebug(d) {
+    var dbg =
+      (d && d.merchant_activation_visibility_debug) ||
+      (d && d.merchant_activation && d.merchant_activation.activation_visibility_debug);
+    if (!dbg) return;
+    var homeEl = byId("page-home");
+    var actRoot = byId("ma-activation-root");
+    var onHome = !!(homeEl && homeEl.classList.contains("active"));
+    var client = {
+      page_home_active: onHome,
+      location_hash: (typeof location !== "undefined" && location.hash) || "",
+      ma_activation_root_hidden: actRoot ? !!actRoot.hidden : null,
+      ma_activation_on_home: actRoot
+        ? actRoot.classList.contains("ma-activation-on-home")
+        : false,
+      ma_activation_inner_html_len: actRoot ? (actRoot.innerHTML || "").length : 0,
+    };
+    var uiBlocker = "ok_should_show";
+    if (!actRoot || !d.merchant_activation) {
+      uiBlocker = "missing_merchant_activation";
+    } else if (actRoot.hidden) {
+      uiBlocker =
+        dbg.activation_display === "hidden" && !onHome
+          ? "js_applied_while_not_on_home"
+          : "css_hidden_attr_or_js_cleared_root";
+    } else if (dbg.activation_display === "hidden" && onHome) {
+      uiBlocker = "server_hidden_upgraded_to_compact_expected";
+    }
+    var merged = {
+      server: dbg,
+      client: client,
+      ui_blocker_inferred: uiBlocker,
+    };
+    console.log("[ACTIVATION VISIBILITY]", merged);
+    var panel = byId("ma-activation-debug");
+    if (!panel) return;
+    var lines = [
+      "DEBUG activation visibility (temporary)",
+      "verdict_primary=" + (dbg.verdict_primary || "?"),
+      "home_stage=" + (dbg.home_stage || "?"),
+      "activation_display=" + (dbg.activation_display || "?"),
+      "hide_setup_card=" + String(!!dbg.hide_setup_card),
+      "production_signal_reasons=" +
+        JSON.stringify(dbg.production_signal_reasons || []),
+      "milestones=" + JSON.stringify(dbg.milestones || {}),
+      "month_window=" + JSON.stringify(dbg.month_window || {}),
+      "client.page_home_active=" + String(client.page_home_active),
+      "client.ma_activation_root_hidden=" + String(client.ma_activation_root_hidden),
+      "ui_blocker_inferred=" + uiBlocker,
+    ];
+    panel.hidden = false;
+    panel.innerHTML =
+      '<pre class="ma-activation-debug-pre">' +
+      esc(lines.join("\n")) +
+      "</pre>";
+  }
+
   function applyHomeLayoutAfterSetup(act, mse) {
     applyHomeAdaptiveStage(act);
     applyMerchantActivation(act);
@@ -406,6 +463,7 @@
     applyTopbarReadiness(d);
     applyMerchantSetupExperience(d.merchant_setup_experience);
     applyHomeLayoutAfterSetup(d.merchant_activation, d.merchant_setup_experience);
+    applyActivationVisibilityDebug(d);
 
     setText("ma-kpi-abandoned", d.merchant_kpi_abandoned_fmt || "0");
     setText("ma-kpi-recovered", d.merchant_kpi_recovered_fmt || "0");
