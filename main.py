@@ -3393,6 +3393,23 @@ def _observe_lifecycle_intelligence_decision(
         session_id=session_id,
         recovery_key=recovery_key,
     )
+    try:
+        from services.cartflow_lifecycle_truth import shadow_compare_at_intelligence_observe
+
+        shadow_compare_at_intelligence_observe(
+            intelligence_result=result,
+            recovery_key=recovery_key,
+            session_id=session_id,
+            purchased=bool(purchased),
+            replied=bool(replied),
+            returned=bool(returned),
+            delay_pending=bool(delay_pending),
+            ignored=bool(ignored),
+            reason_tag=reason_tag,
+            attempt_count=int(attempt_count or 0),
+        )
+    except Exception:  # noqa: BLE001 — shadow must not affect send path
+        pass
     return result
 
 
