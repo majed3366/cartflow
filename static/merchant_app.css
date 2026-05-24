@@ -720,20 +720,28 @@ nav.ma-sidebar-nav {
 .page { display: none; animation: fadeIn 0.2s ease; }
 .page.active { display: block; }
 
-/* Home overview is only visible on #page-home — never bleed into operational pages */
+/* Home overview only on الرئيسية — hide entire home page when another tab is active */
 #page-home:not(.active) {
   display: none !important;
 }
 
-/* Operational subpages: execution-first, no home overview chrome */
-.page.active:not(#page-home) .kpi-grid,
-.page.active:not(#page-home) .ma-home-top,
-.page.active:not(#page-home) .ma-home-activation-band,
-.page.active:not(#page-home) #ma-home-alerts-root,
-.page.active:not(#page-home) .ma-home-section-kpi,
-.page.active:not(#page-home) .ma-home-section-setup-month,
-.page.active:not(#page-home) .ma-home-reasons.ma-home-section-reasons {
+/* Belt-and-suspenders: home-only nodes never paint outside active #page-home */
+#page-home:not(.active) #ma-activation-root,
+#page-home:not(.active) #ma-home-alerts-root,
+#page-home:not(.active) .ma-home-section-kpi,
+#page-home:not(.active) .ma-home-section-setup-month,
+#page-home:not(.active) .ma-home-section-reasons,
+#page-home:not(.active) .ma-home-section-carts,
+#page-home:not(.active) .ma-home-section-vip {
   display: none !important;
+}
+
+/* Explicitly restore activation + alerts on home (guards must not suppress these) */
+#page-home.page.active #ma-activation-root:not([hidden]),
+#page-home.page.active #ma-home-alerts-root:not([hidden]) {
+  display: block !important;
+  width: 100%;
+  flex: 0 0 auto;
 }
 
 @keyframes fadeIn {
@@ -1058,6 +1066,10 @@ nav.ma-sidebar-nav {
 
 .ma-home-activation-band[hidden] {
   display: none !important;
+}
+
+#page-home.page.active .ma-home-activation-band.ma-activation-on-home:not([hidden]) {
+  display: block !important;
 }
 
 .ma-home-alerts-band {

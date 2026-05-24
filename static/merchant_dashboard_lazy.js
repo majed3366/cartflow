@@ -130,14 +130,22 @@
     if (!root) return;
     if (!act || typeof act !== "object") {
       root.hidden = true;
+      root.classList.remove("ma-activation-on-home");
       root.innerHTML = "";
       return;
     }
     var display = act.activation_display || "prominent";
-    if (display === "hidden") {
+    var homeEl = byId("page-home");
+    var onHome =
+      homeEl && homeEl.classList.contains("active");
+    if (display === "hidden" && !onHome) {
       root.hidden = true;
+      root.classList.remove("ma-activation-on-home");
       root.innerHTML = "";
       return;
+    }
+    if (display === "hidden" && onHome) {
+      display = "compact";
     }
     var milestones = act.milestones || [];
     var states = act.summary_states || [];
@@ -206,6 +214,7 @@
       ? '<button type="button" class="ma-activation-compact-toggle" data-ma-act-expand="1">تفاصيل التفعيل</button>'
       : "";
     root.hidden = false;
+    root.classList.add("ma-activation-on-home");
     root.innerHTML =
       '<div class="ma-activation-card' +
       compactClass +
