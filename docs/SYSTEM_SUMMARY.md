@@ -317,6 +317,7 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 
 | Date (UTC) | Summary |
 |------------|---------|
+| 2026-05-19 | **Purchase Truth audit v1 (docs):** `docs/cartflow_purchase_truth_audit_v1.md` — sources (`/api/conversion`, `purchase_truth_records`, cart-event flags, gateway code vs live Zid webhook), precedence purchase > reply > return > send, failure scenarios, attribution limits; verdict **PARTIAL**. Commit: **`docs: add purchase truth audit v1`**. |
 | 2026-05-19 | **Remove activation debug UI:** dropped `#ma-activation-debug` band and client `applyActivationVisibilityDebug`; inspect API + server `[ACTIVATION STATE]` logs retained. Commit: **`chore: remove temporary activation debug UI`**. |
 | 2026-05-19 | **Activation render mode fix:** explicit `renderActivationProminent` / `renderActivationCompact` + `[ACTIVATION RENDER]` logs; debug band only when `?activation_inspect=1`. Commit: **`fix: respect activation display mode in render path`**. |
 | 2026-05-19 | **Activation card client render fix:** `merchant_dashboard_lazy.js` caches activation payload, removes `#ma-activation-root[hidden]` on home, re-syncs on summary load + `hashchange` + `runPageHooks`; hidden off non-home routes. Commit: **`fix: render activation card on dashboard home`**. |
