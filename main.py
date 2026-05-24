@@ -14178,6 +14178,13 @@ def api_dashboard_summary(request: Request):
         body = _api_json_dashboard_summary(
             dash_store, cookies=dict(request.cookies)
         )
+        from services.merchant_activation_live_inspect_v1 import (  # noqa: PLC0415
+            activation_inspect_response,
+            wants_activation_inspect,
+        )
+
+        if wants_activation_inspect(request):
+            return j({"ok": True, **activation_inspect_response(body)})
         return j({"ok": True, **body})
     except Exception as e:  # noqa: BLE001
         db.session.rollback()

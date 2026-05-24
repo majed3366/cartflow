@@ -388,8 +388,17 @@ def build_merchant_activation_api_payload(
         month_revenue=float(month_revenue or 0.0),
     )
     out.update(layout.to_dict())
+    from services.merchant_dashboard_home_stage_v1 import (  # noqa: PLC0415
+        production_signal_reasons,
+    )
     from services.merchant_activation_visibility_debug_v1 import (  # noqa: PLC0415
         build_activation_visibility_debug,
+    )
+
+    out["production_signal_reasons"] = production_signal_reasons(
+        first_recovered=first_recovered,
+        month_recovered=int(month_recovered),
+        month_revenue=float(month_revenue or 0.0),
     )
 
     dbg = build_activation_visibility_debug(
@@ -407,13 +416,15 @@ def build_merchant_activation_api_payload(
         month_revenue=float(month_revenue or 0.0),
     )
     out["activation_visibility_debug"] = dbg
-    log.info(
-        "[ACTIVATION VISIBILITY] slug=%s stage=%s display=%s hide_setup=%s prod_reasons=%s",
-        dbg.get("store_slug") or "—",
-        dbg.get("home_stage"),
-        dbg.get("activation_display"),
-        dbg.get("hide_setup_card"),
-        dbg.get("production_signal_reasons"),
+    from services.merchant_activation_live_inspect_v1 import (  # noqa: PLC0415
+        log_activation_state_from_summary,
+    )
+
+    log_activation_state_from_summary(
+        {
+            "merchant_activation": out,
+            "merchant_activation_visibility_debug": dbg,
+        }
     )
     return out
 
