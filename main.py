@@ -4418,6 +4418,16 @@ def _normal_recovery_phase_steps_payload(
             attach_merchant_recovery_lifecycle_truth,
         )
 
+        _attach_store_slug = ""
+        try:
+            _ds = _dashboard_recovery_store_row()
+            _attach_store_slug = (
+                str(getattr(_ds, "zid_store_id", None) or "").strip()
+                if _ds is not None
+                else ""
+            )
+        except Exception:  # noqa: BLE001
+            _attach_store_slug = ""
         attach_merchant_recovery_lifecycle_truth(
             out_nr,
             ac=ac,
@@ -4430,6 +4440,7 @@ def _normal_recovery_phase_steps_payload(
             has_phone=bool((cust_raw or "").strip()),
             latest_log=_tail_row if _tail_row is not None else blocker_row,
             attempt_cap=max_disp,
+            store_slug=_attach_store_slug,
         )
     except Exception:  # noqa: BLE001
         pass
@@ -13516,6 +13527,11 @@ def _merchant_normal_recovery_light_payload_merchant_batch(
             )
         except (TypeError, ValueError):
             cap_lc = 1
+        _lc_store_slug = (
+            str(getattr(store_lc, "zid_store_id", None) or "").strip()
+            if store_lc is not None
+            else ""
+        )
         attach_merchant_recovery_lifecycle_truth(
             out,
             ac=ac0,
@@ -13529,6 +13545,7 @@ def _merchant_normal_recovery_light_payload_merchant_batch(
             latest_log=batch.latest_log_by_ac.get(aid0),
             matched_logs=matched_recovery_logs(ac0, batch.logs),
             attempt_cap=cap_lc,
+            store_slug=_lc_store_slug,
         )
     except Exception:  # noqa: BLE001
         pass
@@ -13633,6 +13650,11 @@ def _merchant_normal_recovery_light_payload(
             )
         except (TypeError, ValueError):
             cap_lc = 1
+        _ac_store_slug = (
+            str(getattr(store_ac, "zid_store_id", None) or "").strip()
+            if store_ac is not None
+            else ""
+        )
         attach_merchant_recovery_lifecycle_truth(
             out,
             ac=ac0,
@@ -13646,6 +13668,7 @@ def _merchant_normal_recovery_light_payload(
             latest_log=_normal_recovery_latest_recovery_log_row(ac0),
             matched_logs=None,
             attempt_cap=cap_lc,
+            store_slug=_ac_store_slug,
         )
     except Exception:  # noqa: BLE001
         pass
@@ -15976,6 +15999,18 @@ async def zid_webhook(request: Request):
     except SQLAlchemyError:
         db.session.rollback()
         log.warning("zid_webhook: cart upsert failed", exc_info=True)
+    try:
+        from services.zid_webhook_purchase_v2 import build_zid_purchase_truth_payload
+        from services.purchase_truth import ingest_purchase_truth_payload
+
+        pt_payload = build_zid_purchase_truth_payload(payload)
+        if pt_payload is not None:
+            rk = ingest_purchase_truth_payload(pt_payload)
+            out["purchase_truth_ingested"] = rk is not None
+            if rk:
+                out["recovery_key"] = rk
+    except Exception as exc:  # noqa: BLE001
+        log.warning("zid_webhook: purchase truth ingest failed: %s", exc)
     return j(out, 200)
 
 

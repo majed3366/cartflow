@@ -414,6 +414,31 @@ class MerchantFollowupAction(Base):
     )
 
 
+class LifecycleClosureRecord(Base):
+    """
+    Durable terminal lifecycle closure — survives process restart.
+    One row per recovery_key (canonical closure status).
+    """
+
+    __tablename__ = "lifecycle_closure_records"
+
+    id = Column(Integer, primary_key=True)
+    recovery_key = Column(String(512), nullable=False, unique=True, index=True)
+    closure_status = Column(String(64), nullable=False, index=True)
+    closure_reason = Column(String(128), nullable=False)
+    closure_source = Column(String(128), nullable=False)
+    closure_time = Column(DateTime, nullable=False)
+    created_at = Column(
+        DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
+    )
+    updated_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+
+
 class PurchaseTruthRecord(Base):
     """
     Durable purchase evidence — survives process restart.

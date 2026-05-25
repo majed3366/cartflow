@@ -31,7 +31,17 @@ def lifecycle_purchased_evidence(
     pk: str,
     cr: str,
     log_ss: frozenset[str],
+    recovery_key: str = "",
 ) -> bool:
+    rk = (recovery_key or "").strip()
+    if rk:
+        try:
+            from services.cartflow_purchase_truth import has_purchase
+
+            if has_purchase(rk):
+                return True
+        except Exception:  # noqa: BLE001
+            pass
     return bool(
         ls == "stopped_converted"
         or bk == "purchase_completed"

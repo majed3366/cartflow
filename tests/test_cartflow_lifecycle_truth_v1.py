@@ -210,10 +210,11 @@ def test_durable_purchase_truth_without_session_memory() -> None:
 # --- Shadow mode ---
 
 
-def test_shadow_mismatch_reply_over_return_precedence() -> None:
+def test_shadow_aligned_reply_over_return_precedence_v2() -> None:
+    """Intelligence and canonical both use purchase > reply > return (v2)."""
     intel = decide_lifecycle_recovery(returned=True, replied=True, attempt_count=1)
-    assert intel["behavior"] == BEHAVIOR_RETURNED_TO_SITE
-    assert legacy_canonical_from_intelligence(intel) == CANONICAL_RETURNED
+    assert intel["behavior"] == BEHAVIOR_CUSTOMER_REPLIED
+    assert legacy_canonical_from_intelligence(intel) == CANONICAL_REPLIED
 
     buf = io.StringIO()
     with redirect_stdout(buf):
@@ -224,9 +225,7 @@ def test_shadow_mismatch_reply_over_return_precedence() -> None:
             replied=True,
         )
     assert canonical.canonical_state == CANONICAL_REPLIED
-    assert "[LIFECYCLE TRUTH MISMATCH]" in buf.getvalue()
-    assert "legacy_canonical=returned" in buf.getvalue()
-    assert "canonical_canonical=replied" in buf.getvalue()
+    assert "[LIFECYCLE TRUTH MISMATCH]" not in buf.getvalue()
 
 
 def test_shadow_no_mismatch_when_intelligence_aligns_purchase() -> None:

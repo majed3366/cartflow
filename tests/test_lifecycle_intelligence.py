@@ -45,6 +45,16 @@ class LifecycleIntelligenceDecisionTests(unittest.TestCase):
         self.assertEqual(r["decision"], DECISION_HANDOFF)
         self.assertEqual(r["action"], "handoff_continuation")
 
+    def test_reply_beats_return_precedence(self) -> None:
+        from services.lifecycle_intelligence import resolve_lifecycle_behavior
+
+        self.assertEqual(
+            resolve_lifecycle_behavior(replied=True, returned=True, log_precedence=False),
+            BEHAVIOR_CUSTOMER_REPLIED,
+        )
+        r = decide_lifecycle_recovery(replied=True, returned=True)
+        self.assertEqual(r["behavior"], BEHAVIOR_CUSTOMER_REPLIED)
+
     def test_ignored_continues_with_next_step(self) -> None:
         r = decide_lifecycle_recovery(ignored=True, attempt_count=1)
         self.assertEqual(r["behavior"], BEHAVIOR_IGNORED)

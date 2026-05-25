@@ -102,7 +102,7 @@ Server-side template control (**`exit_intent_*`** on **`Store`**): `services/sto
 | `POST /api/carts/{id}/send` | `main.py` | إرسال يدوي للعميل على الصفحة الرئيسية للوحة (`send_whatsapp_message` Meta path) — **ليس مسار VIP**. |
 | `POST /dev/create-vip-test-cart` | `main.py` | Seed حقيقي: `AbandonedCart` VIP + `CartRecoveryReason` جلسة `test_vip_session` بدون ودجت (مسموح في الإنتاج عبر قائمة `_DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT`). |
 | `GET /dev/widget-test`, `/dev/widget-test/cart` | `main.py` | **DEV-only legacy monolith harness** — HTML loads **`/static/cartflow_widget.js`** directly (no **`widget_loader`**, no **`cartflow_widget_runtime`**). **`no_dev_in_production`**: **`404`** unless **`ENV=development`**; intentionally **not** in **`_DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT`**. **`/demo/store`** remains **layered V2**. |
-| `POST /webhook/zid` | `main.py` | Zid webhook ingestion. |
+| `POST /webhook/zid` | `main.py` | Zid webhook → cart upsert + purchase truth ingest when order-paid detected (`zid_webhook_purchase_v2`). |
 | `POST` / `GET /webhook/whatsapp` | `main.py` | Twilio / inbound hook stubs (`[WA REPLY]` logging). |
 | `POST /webhook/whatsapp/status` | `routes/whatsapp_delivery_webhook.py` | Twilio status callbacks → `whatsapp_delivery_truth_v1` (`[WA DELIVERY EVENT]` / `[WA DELIVERY TRUTH]`); no recovery execution. |
 | `GET /admin/support-diagnostics` | `routes/admin_ops.py` | Admin JSON: `build_admin_support_diagnostics` — What/Why/Action for support (session/store/recovery_key). |
@@ -319,6 +319,7 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 
 | Date (UTC) | Summary |
 |------------|---------|
+| 2026-05-19 | **Purchase Truth Completion v2:** canonical `ingest_purchase_truth`, Zid webhook ingest, reply `reply_purchase_claim` (low/medium), unified precedence purchase>reply>return, `lifecycle_closure_records`, dashboard `has_purchase` first. Doc: `docs/cartflow_purchase_truth_completion_v2.md`. Commit: **`fix: complete durable purchase truth v2`**. |
 | 2026-05-19 | **Admin support diagnostics UI v3:** final-truth precedence (purchase > read > delivered > sent > waiting > blocked > failed), «لماذا نعتقد ذلك» chain, noisy logs in collapsed «تفاصيل تشغيلية»; presentation-only. Commit: **`feat: add final truth layer and reduce diagnostics noise`**. |
 | 2026-05-19 | **Admin support diagnostics UI v2:** `/admin/support-diagnostics/ui` — verdict card (🟢/🟠/🔴), timeline, meaning, action block, merchant copy, technical details collapsed; presentation-only JS. Commit: **`feat: improve admin support diagnostics ui v2`**. |
 | 2026-05-19 | **Admin support diagnostics v1:** `services/admin_support_diagnostics_v1.py` — read-only What/Why/Action from logs, schedules, delivery truth, purchase truth, onboarding; `GET /admin/support-diagnostics` + UI `/admin/support-diagnostics/ui`. Commit: **`feat: add admin support diagnostics v1`**. |

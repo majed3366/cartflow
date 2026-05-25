@@ -339,6 +339,28 @@ def run_inbound_whatsapp_reply_intent_hook(body: Any, from_number: Any) -> None:
         cart_id=cart_id,
         ac=ac,
     )
+    if (ri_result.get("intent") or "").strip().upper() == INTENT_PURCHASE:
+        try:
+            from main import _normalize_store_slug
+            from services.purchase_truth import (
+                ingest_purchase_truth_from_reply_claim,
+                reply_purchase_confidence,
+            )
+
+            slug = _normalize_store_slug(
+                {"store": getattr(store, "zid_store_id", None) or "default"}
+            )
+            ingest_purchase_truth_from_reply_claim(
+                recovery_key=recovery_key,
+                store_slug=slug,
+                session_id=session_id,
+                cart_id=cart_id,
+                reply_preview=raw_body[:200],
+                confidence=reply_purchase_confidence(raw_body),
+                ac=ac,
+            )
+        except Exception as exc:  # noqa: BLE001
+            log.warning("reply purchase truth ingest failed: %s", exc)
 
 
 def handle_customer_reply_lifecycle_intent_v1(

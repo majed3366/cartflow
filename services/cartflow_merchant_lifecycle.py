@@ -35,6 +35,7 @@ def build_normal_recovery_merchant_lifecycle(
     recovery_log_statuses: Optional[Iterable[str]] = None,
     dashboard_customer_returned_track: bool = False,
     dashboard_return_intel_panel: bool = False,
+    recovery_key: str = "",
 ) -> dict[str, Any]:
     pk = _norm(phase_key) or "pending_send"
     cr = _norm(coarse)
@@ -48,7 +49,9 @@ def build_normal_recovery_merchant_lifecycle(
         cap = 1
 
     log_ss = recovery_log_statuses_lower(recovery_log_statuses)
-    purchased = lifecycle_purchased_evidence(ls=ls, bk=bk, pk=pk, cr=cr, log_ss=log_ss)
+    purchased = lifecycle_purchased_evidence(
+        ls=ls, bk=bk, pk=pk, cr=cr, log_ss=log_ss, recovery_key=recovery_key
+    )
     replied = lifecycle_replied_evidence(bh=bh, ls=ls, bk=bk, pk=pk, log_ss=log_ss)
     returned = lifecycle_returned_evidence(
         bh=bh,

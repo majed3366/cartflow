@@ -43,19 +43,57 @@ def resolve_lifecycle_behavior(
     replied: bool = False,
     ignored: bool = False,
     delay_pending: bool = False,
+    log_precedence: bool = True,
 ) -> str:
-    """Map boolean evidence to a single behavioral label (strict precedence)."""
+    """Map boolean evidence to a single behavioral label (strict precedence).
+
+    Precedence: purchase > reply > return > waiting > send (delay/ignored tails).
+    """
+    candidates = {
+        "purchase": bool(purchased),
+        "reply": bool(replied),
+        "return": bool(returned),
+        "ignored": bool(ignored),
+        "waiting": bool(delay_pending),
+    }
     if purchased:
-        return BEHAVIOR_PURCHASE_COMPLETED
-    if returned:
-        return BEHAVIOR_RETURNED_TO_SITE
-    if replied:
-        return BEHAVIOR_CUSTOMER_REPLIED
-    if ignored:
-        return BEHAVIOR_IGNORED
-    if delay_pending:
-        return BEHAVIOR_DELAY_WAITING
-    return BEHAVIOR_UNKNOWN
+        winner = BEHAVIOR_PURCHASE_COMPLETED
+    elif replied:
+        winner = BEHAVIOR_CUSTOMER_REPLIED
+    elif returned:
+        winner = BEHAVIOR_RETURNED_TO_SITE
+    elif ignored:
+        winner = BEHAVIOR_IGNORED
+    elif delay_pending:
+        winner = BEHAVIOR_DELAY_WAITING
+    else:
+        winner = BEHAVIOR_UNKNOWN
+    if log_precedence and winner != BEHAVIOR_UNKNOWN:
+        log_lifecycle_precedence(winner=winner, candidates=candidates)
+    return winner
+
+
+def log_lifecycle_precedence(
+    *,
+    winner: str,
+    candidates: dict[str, bool],
+) -> None:
+    """Audit log: ``[LIFECYCLE PRECEDENCE]`` for support and cross-module alignment."""
+    parts = [
+        "[LIFECYCLE PRECEDENCE]",
+        f"winner={(winner or '-')[:64]}",
+        "candidates="
+        + ",".join(f"{k}:{'true' if v else 'false'}" for k, v in sorted(candidates.items())),
+    ]
+    line = " ".join(parts)
+    try:
+        print(line, flush=True)
+    except OSError:
+        pass
+    try:
+        log.info("%s", line)
+    except Exception:  # noqa: BLE001
+        pass
 
 
 def decide_lifecycle_recovery(
@@ -71,7 +109,7 @@ def decide_lifecycle_recovery(
     """
     Convert behavioral evidence into one lifecycle decision.
 
-    Precedence: purchase → return → reply → ignored → delay wait → fallback.
+    Precedence: purchase → reply → return → ignored → delay wait → fallback.
     No message text; no persistence side effects.
     """
     behavior = resolve_lifecycle_behavior(

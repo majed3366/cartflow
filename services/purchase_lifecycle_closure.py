@@ -241,6 +241,20 @@ def record_purchase_lifecycle_closure(
     if mark_converted:
         _sync_main_session_terminal_flags(rk)
     _merge_closed_purchase_behavioral(ac, reason=reason, source=source)
+    try:
+        from services.lifecycle_closure_truth_v2 import (
+            CLOSURE_PURCHASE_COMPLETED,
+            record_durable_lifecycle_closure,
+        )
+
+        record_durable_lifecycle_closure(
+            rk,
+            closure_status=CLOSURE_PURCHASE_COMPLETED,
+            closure_reason=(reason or DEFAULT_CLOSE_REASON)[:128],
+            closure_source=(source or "purchase_detected")[:128],
+        )
+    except Exception as exc:  # noqa: BLE001
+        log.warning("durable purchase lifecycle closure sync: %s", exc)
 
 
 def record_purchase_lifecycle_closure_from_reply_intent(

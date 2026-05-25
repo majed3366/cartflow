@@ -79,6 +79,22 @@ def _format_sent_at_ar(dt: Any) -> str:
         return iso[:19]
 
 
+def _recovery_key_for_abandoned_cart(ac: Any, store_slug: str = "") -> str:
+    try:
+        from main import _normalize_store_slug, _recovery_key_from_payload
+
+        slug = (store_slug or "").strip() or _normalize_store_slug({"store": "default"})
+        return _recovery_key_from_payload(
+            {
+                "store": slug,
+                "session_id": (getattr(ac, "recovery_session_id", None) or "").strip(),
+                "cart_id": (getattr(ac, "zid_cart_id", None) or "").strip(),
+            }
+        )
+    except Exception:  # noqa: BLE001
+        return ""
+
+
 def _message_preview(text: Optional[str]) -> str:
     raw = (text or "").strip()
     if not raw:
@@ -213,6 +229,7 @@ def build_merchant_recovery_lifecycle_truth(
     latest_log: Any = None,
     matched_logs: Optional[list[Any]] = None,
     attempt_cap: int = 1,
+    store_slug: str = "",
 ) -> dict[str, Any]:
     """حقول موحّدة للوحة التاجر — قراءة فقط من سجلات ومؤشرات موجودة."""
     bh = behavioral if isinstance(behavioral, dict) else {}
@@ -221,7 +238,10 @@ def build_merchant_recovery_lifecycle_truth(
     pk = _norm(phase_key)
     cr = _norm(coarse)
 
-    purchased = lifecycle_purchased_evidence(ls=ls, bk="", pk=pk, cr=cr, log_ss=log_ss)
+    recovery_key = _recovery_key_for_abandoned_cart(ac, store_slug)
+    purchased = lifecycle_purchased_evidence(
+        ls=ls, bk="", pk=pk, cr=cr, log_ss=log_ss, recovery_key=recovery_key
+    )
     if not purchased and _norm(getattr(ac, "status", None)) == "recovered":
         purchased = True
     replied = lifecycle_replied_evidence(bh=bh, ls=ls, bk="", pk=pk, log_ss=log_ss)
@@ -256,13 +276,17 @@ def build_merchant_recovery_lifecycle_truth(
         )
 
     message_sent = sent_ct > 0 or bool(sent_logs) or ls in _SENT_STATUSES
-    scheduling = lifecycle_delay_scheduling_only(
-        ls=ls,
-        pk=pk,
-        purchased=purchased,
-        replied=replied,
-        returned=returned,
-    ) and not message_sent
+    scheduling = (
+        not purchased
+        and lifecycle_delay_scheduling_only(
+            ls=ls,
+            pk=pk,
+            purchased=purchased,
+            replied=replied,
+            returned=returned,
+        )
+        and not message_sent
+    )
     failed = ls == "whatsapp_failed"
     has_reason = bool((reason_tag or "").strip())
     missing_data = (not has_phone or not has_reason) and sent_ct < 1 and not message_sent
@@ -423,6 +447,7 @@ def attach_merchant_recovery_lifecycle_truth(
     latest_log: Any = None,
     matched_logs: Optional[list[Any]] = None,
     attempt_cap: int = 1,
+    store_slug: str = "",
 ) -> None:
     truth = build_merchant_recovery_lifecycle_truth(
         ac=ac,
@@ -436,5 +461,6 @@ def attach_merchant_recovery_lifecycle_truth(
         latest_log=latest_log,
         matched_logs=matched_logs,
         attempt_cap=attempt_cap,
+        store_slug=store_slug,
     )
     target.update(truth)
