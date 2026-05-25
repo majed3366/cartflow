@@ -146,6 +146,7 @@
     if (!home) return;
     var setupMode = !!(mse && mse.unified_p0 && mse.setup_mode);
     home.classList.toggle("ma-setup-mode", setupMode);
+    home.classList.toggle("ma-setup-daily-peek", setupMode);
     home.classList.remove("ma-onboarding-focus");
   }
 
@@ -441,6 +442,57 @@
     syncHomeActivationFromCache();
   }
 
+  function unifiedStepShortLabel(titleAr) {
+    var t = String(titleAr || "").trim();
+    if (t.length <= 28) return t;
+    return t.slice(0, 26) + "…";
+  }
+
+  function unifiedSetupProgressHtml(steps) {
+    if (!steps || !steps.length) return "";
+    var html = '<div class="ma-unified-progress-track" role="list" aria-label="مسار الإعداد">';
+    var i;
+    for (i = 0; i < steps.length; i++) {
+      var st = steps[i];
+      var done = !!st.is_complete && !st.locked;
+      var cur = !!st.is_current && !st.locked;
+      var locked = !!st.locked;
+      var state = locked
+        ? "is-locked"
+        : done
+          ? "is-done"
+          : cur
+            ? "is-current"
+            : "is-upcoming";
+      var icon = locked ? "🔒" : done ? "✓" : cur ? "▶" : "◯";
+      var stateAr = locked
+        ? "قادم"
+        : done
+          ? "مكتمل"
+          : cur
+            ? "الحالي"
+            : "قادم";
+      html +=
+        '<span class="ma-unified-progress-chip ' +
+        state +
+        '" role="listitem" title="' +
+        esc(st.title_ar || "") +
+        '">' +
+        '<span class="ma-unified-progress-icon" aria-hidden="true">' +
+        icon +
+        "</span>" +
+        '<span class="ma-unified-progress-text">' +
+        '<span class="ma-unified-progress-state">' +
+        esc(stateAr) +
+        "</span>" +
+        '<span class="ma-unified-progress-label">' +
+        esc(unifiedStepShortLabel(st.title_ar)) +
+        "</span></span></span>";
+    }
+    html += "</div>";
+    return html;
+  }
+
   function unifiedSetupStepsHtml(steps) {
     if (!steps || !steps.length) return "";
     var html = '<ul class="ma-onb-checklist ma-unified-setup-steps">';
@@ -454,8 +506,10 @@
           '<div class="ma-onb-check-body">' +
           '<p class="ma-onb-check-title">' +
           esc(st.title_ar || "") +
-          '</p><p class="ma-onb-check-outcome ma-unified-locked-hint">يُفتح بعد إثبات التجربة</p>' +
-          "</div></li>";
+          '</p><p class="ma-unified-locked-banner">يفتح بعد إثبات التجربة</p>' +
+          '<p class="ma-onb-check-outcome ma-unified-locked-hint">' +
+          esc(st.outcome_ar || "") +
+          "</p></div></li>";
         continue;
       }
       var done = !!st.is_complete;
@@ -469,13 +523,14 @@
         st.phase === "production"
           ? '<span class="ma-unified-phase ma-unified-phase-prod">إنتاج</span>'
           : '<span class="ma-unified-phase">تجربة</span>';
+      var mark = done ? "✓" : cur ? "▶" : "◯";
       html +=
         '<li class="ma-onb-checklist-item' +
         (done ? " is-done" : " is-pending") +
         (cur ? " is-current" : "") +
         '">' +
         '<span class="ma-onb-check" aria-hidden="true">' +
-        (done ? "✓" : cur ? "→" : "◯") +
+        mark +
         "</span>" +
         '<div class="ma-onb-check-body">' +
         phaseTag +
@@ -486,13 +541,13 @@
         '<p class="ma-onb-check-outcome">' +
         esc(st.outcome_ar || "") +
         "</p>";
-      if (st.proof_ar) {
+      if (st.proof_ar && !cur) {
         html +=
           '<p class="ma-unified-proof"><span class="ma-unified-proof-k">الإثبات:</span> ' +
           esc(st.proof_ar) +
           "</p>";
       }
-      if (!done) {
+      if (!done && !cur) {
         html +=
           '<a class="ma-setup-step-action" href="' +
           esc(href) +
@@ -508,6 +563,47 @@
     return html;
   }
 
+  function unifiedSetupHeroHtml(mse) {
+    var currentStep = esc(mse.current_step_ar || "—");
+    var currentOutcome = esc(mse.current_outcome_ar || "—");
+    var duration = mse.delay_hint_ar
+      ? '<p class="ma-setup-hero-duration"><span class="ma-setup-hero-k">المدة</span><span>' +
+        esc(mse.delay_hint_ar) +
+        "</span></p>"
+      : "";
+    var proof = mse.proof_ar
+      ? '<p class="ma-setup-hero-proof">' + esc(mse.proof_ar) + "</p>"
+      : "";
+    var primaryHref = esc(mse.action_href || mse.test_store_url || "/dashboard/test-widget");
+    var primaryLabel = esc(mse.action_label_ar || "انتقل للخطوة");
+    var isExternalTest =
+      String(mse.action_href || "").indexOf("/demo/store") >= 0 ||
+      String(mse.test_store_url || "").indexOf("/demo/store") >= 0;
+    var primaryTarget = isExternalTest ? ' target="_blank" rel="noopener"' : "";
+    return (
+      '<section class="ma-setup-hero" aria-label="الخطوة الحالية">' +
+      '<p class="ma-setup-hero-eyebrow">الخطوة الحالية</p>' +
+      '<h3 class="ma-setup-hero-title">' +
+      currentStep +
+      "</h3>" +
+      duration +
+      '<p class="ma-setup-hero-outcome"><span class="ma-setup-hero-k">النتيجة المتوقعة</span><span>' +
+      currentOutcome +
+      "</span></p>" +
+      proof +
+      '<div class="ma-setup-hero-actions">' +
+      '<a class="ma-setup-btn-primary ma-setup-hero-cta" href="' +
+      primaryHref +
+      '"' +
+      primaryTarget +
+      ">" +
+      primaryLabel +
+      "</a>" +
+      '<a class="ma-setup-btn-secondary" href="/dashboard/test-widget" target="_blank" rel="noopener">متجر الاختبار</a>' +
+      "</div></section>"
+    );
+  }
+
   function renderUnifiedSetupExperience(mse, root) {
     var steps = mse.steps || [];
     var totalSteps = parseInt(mse.total_steps, 10) || steps.length || 9;
@@ -520,21 +616,8 @@
     if (isNaN(remaining)) remaining = Math.max(0, totalSteps - completed);
     var ready = !mse.setup_mode;
     var title = esc(mse.card_title_ar || "متجرك قريب من التشغيل الكامل");
-    var lead = esc(mse.card_lead_ar || mse.next_step_ar || "");
-    var currentStep = esc(mse.current_step_ar || "—");
-    var currentOutcome = esc(mse.current_outcome_ar || "—");
-    var proof = esc(mse.proof_ar || "");
-    var progressLabel = completed + " / " + totalSteps + " مكتمل";
-    var delay = mse.delay_hint_ar
-      ? '<p class="ma-activation-delay">' + esc(mse.delay_hint_ar) + "</p>"
-      : "";
-    var primaryHref = esc(mse.action_href || mse.test_store_url || "/dashboard/test-widget");
-    var primaryLabel = esc(mse.action_label_ar || "انتقل للخطوة");
-    var isExternalTest =
-      String(mse.action_href || "").indexOf("/demo/store") >= 0 ||
-      String(mse.test_store_url || "").indexOf("/demo/store") >= 0;
-    var primaryTarget = isExternalTest ? ' target="_blank" rel="noopener"' : "";
-    var panelOpen = !ready;
+    var lead = esc(mse.card_lead_ar || "");
+    var panelOpen = false;
     root.hidden = false;
     root.setAttribute("data-ma-setup-unified", "1");
     root.innerHTML =
@@ -550,37 +633,13 @@
               "يمكن لـ CartFlow الآن البدء بمتابعة السلال."
           ) +
           "</p>"
-        : '<div class="ma-onb-progress-row">' +
-          '<span class="ma-onb-progress-k">التقدّم</span>' +
-          '<span class="ma-onb-progress-v">' +
-          esc(progressLabel) +
-          "</span></div>" +
-          '<div class="ma-setup-home-meta ma-onb-current">' +
-          '<div class="ma-setup-home-row"><span class="ma-setup-home-k">الخطوة التالية</span><span class="ma-setup-home-v">' +
-          currentStep +
-          "</span></div>" +
-          '<div class="ma-setup-home-row"><span class="ma-setup-home-k">ماذا تتوقع</span><span class="ma-setup-home-v">' +
-          currentOutcome +
-          "</span></div>" +
-          (proof
-            ? '<div class="ma-setup-home-row"><span class="ma-setup-home-k">الإثبات</span><span class="ma-setup-home-v">' +
-              proof +
-              "</span></div>"
-            : "") +
+        : unifiedSetupProgressHtml(steps) +
+          unifiedSetupHeroHtml(mse) +
+          '<p class="ma-setup-daily-peek-note">نظرة عامة وملخص الشهر وآخر السلال معروضة بالأسفل بشكل مختصر — ركّز على الخطوة الحالية أولاً.</p>' +
+          '<div class="ma-setup-steps-toolbar">' +
+          '<button type="button" class="ma-setup-btn-secondary" id="ma-setup-toggle-btn" aria-expanded="false" aria-controls="ma-setup-steps-panel">عرض كل الخطوات</button>' +
           "</div>" +
-          '<div class="ma-setup-actions ma-unified-setup-actions">' +
-          '<a class="ma-setup-btn-primary ma-activation-btn-primary" href="' +
-          primaryHref +
-          '"' +
-          primaryTarget +
-          ">" +
-          primaryLabel +
-          "</a>" +
-          '<a class="ma-setup-btn-secondary" href="/dashboard/test-widget" target="_blank" rel="noopener">متجر الاختبار</a>' +
-          "</div>" +
-          delay +
-          '<div id="ma-setup-steps-panel" class="ma-setup-steps"' +
-          (panelOpen ? "" : " hidden") +
+          '<div id="ma-setup-steps-panel" class="ma-setup-steps hidden"' +
           ' role="region" aria-label="مسار الإعداد الموحّد">' +
           unifiedSetupStepsHtml(steps) +
           "</div>") +
@@ -588,20 +647,6 @@
 
     var btn = byId("ma-setup-toggle-btn");
     var panel = byId("ma-setup-steps-panel");
-    if (!ready && !btn) {
-      var actions = root.querySelector(".ma-unified-setup-actions");
-      if (actions) {
-        var toggle = document.createElement("button");
-        toggle.type = "button";
-        toggle.className = "ma-setup-btn-secondary";
-        toggle.id = "ma-setup-toggle-btn";
-        toggle.setAttribute("aria-expanded", panelOpen ? "true" : "false");
-        toggle.setAttribute("aria-controls", "ma-setup-steps-panel");
-        toggle.textContent = "عرض كل الخطوات";
-        actions.appendChild(toggle);
-        btn = toggle;
-      }
-    }
     if (btn && panel) {
       btn.addEventListener("click", function () {
         panel.hidden = !panel.hidden;
