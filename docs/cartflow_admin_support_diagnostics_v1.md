@@ -40,3 +40,15 @@
 ## Module
 
 `services/admin_support_diagnostics_v1.py` — `build_admin_support_diagnostics()`, `list_support_question_inventory()`.
+
+## UI v2 (`/admin/support-diagnostics/ui`)
+
+Presentation-only (no API changes):
+
+1. **Verdict card** — emoji + title + الحالة + الإجراء (severity colors).
+2. **Timeline** — `recent_logs` + delivery truth, chronological.
+3. **ماذا يعني هذا؟** — support meaning.
+4. **ماذا نفعل الآن؟** — short action + optional detail.
+5. **رسالة للتاجر** — `merchant_safe_message` + copy.
+6. **تفاصيل تقنية** — collapsed JSON/evidence.
+7. Placeholders: اقتراح إصلاح، فتح الإعداد مباشرة.

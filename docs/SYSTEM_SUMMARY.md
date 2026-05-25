@@ -319,6 +319,7 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 
 | Date (UTC) | Summary |
 |------------|---------|
+| 2026-05-19 | **Admin support diagnostics UI v2:** `/admin/support-diagnostics/ui` — verdict card (🟢/🟠/🔴), timeline, meaning, action block, merchant copy, technical details collapsed; presentation-only JS. Commit: **`feat: improve admin support diagnostics ui v2`**. |
 | 2026-05-19 | **Admin support diagnostics v1:** `services/admin_support_diagnostics_v1.py` — read-only What/Why/Action from logs, schedules, delivery truth, purchase truth, onboarding; `GET /admin/support-diagnostics` + UI `/admin/support-diagnostics/ui`. Commit: **`feat: add admin support diagnostics v1`**. |
 | 2026-05-19 | **Founder hours reduction audit v1 (docs):** `docs/cartflow_founder_hours_reduction_audit_v1.md` — sandbox/production founder time by category, gap types A–D, self-serve matrix, P0–P2 savings, 10/50/100 merchant projection; verdict **high-touch onboarding** not low-touch SaaS today. Commit: **`docs: add founder hours reduction audit v1`**. |
 | 2026-05-19 | **WhatsApp template / 24h enforcement v1:** production `send_whatsapp` blocks freeform when outside/unknown 24h window without `CARTFLOW_WHATSAPP_PROVIDER_TEMPLATES_APPROVED`; `[WA TEMPLATE ENFORCEMENT]` logs; `blocked_template_required` log status; audit `docs/cartflow_whatsapp_template_24h_enforcement_audit_v1.md`. Commit: **`fix: enforce whatsapp template window guard`**. |

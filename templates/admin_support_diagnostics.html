@@ -1,58 +1,423 @@
 {% extends "layouts/admin_dashboard.html" %}
 {% block admin_title %}CartFlow Admin — تشخيص الدعم{% endblock %}
-{% block admin_main_class %}w-full max-w-3xl space-y-8 px-6 py-8 lg:px-10{% endblock %}
+{% block admin_main_class %}w-full max-w-4xl space-y-8 px-6 py-8 lg:px-10{% endblock %}
 
 {% block admin_content %}
+  <style>
+    .sd-verdict { border-radius: 1rem; padding: 1.25rem 1.5rem; border-width: 2px; }
+    .sd-verdict--info { background: #ecfdf5; border-color: #6ee7b7; }
+    .sd-verdict--warning { background: #fffbeb; border-color: #fcd34d; }
+    .sd-verdict--critical { background: #fef2f2; border-color: #fca5a5; }
+    .sd-verdict-title { font-size: 1.35rem; font-weight: 800; line-height: 1.35; }
+    .sd-verdict-emoji { font-size: 2rem; line-height: 1; }
+    .sd-block { border-radius: 0.75rem; border: 1px solid #e2e8f0; background: #fff; padding: 1rem 1.25rem; }
+    .sd-timeline { list-style: none; padding: 0; margin: 0; }
+    .sd-timeline li { display: flex; gap: 0.75rem; padding: 0.45rem 0; font-size: 0.9rem; color: #334155; border-bottom: 1px solid #f1f5f9; }
+    .sd-timeline li:last-child { border-bottom: none; }
+    .sd-timeline-time { font-variant-numeric: tabular-nums; color: #64748b; min-width: 3.2rem; font-size: 0.8rem; }
+    .sd-timeline-icon { width: 1.25rem; text-align: center; flex-shrink: 0; }
+    .sd-timeline--pending { color: #94a3b8; }
+    .sd-details summary { cursor: pointer; font-weight: 600; color: #475569; font-size: 0.875rem; }
+    .sd-details[open] summary { margin-bottom: 0.75rem; }
+    .sd-future { opacity: 0.55; border-style: dashed; }
+  </style>
+
   <section class="space-y-2">
     <p class="text-sm font-medium text-slate-500">الدعم</p>
     <h1 class="text-2xl font-bold text-slate-900">تشخيص الدعم</h1>
     <p class="text-sm text-slate-600">
-      إجابات جاهزة: ماذا حدث؟ لماذا؟ ماذا نفعل؟ — دون قراءة السجلات الخام.
+      ماذا حدث؟ لماذا؟ ماذا نفعل؟ — بدون قراءة JSON أو سجلات خام.
     </p>
   </section>
 
   <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
     <div class="grid gap-4 sm:grid-cols-2">
       <label class="block text-sm font-semibold text-slate-800">
-        store_slug
+        متجر (store_slug)
         <input id="sd-store" type="text" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" placeholder="demo" />
       </label>
       <label class="block text-sm font-semibold text-slate-800">
-        session_id (اختياري)
+        جلسة (اختياري)
         <input id="sd-session" type="text" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
       </label>
       <label class="block text-sm font-semibold text-slate-800 sm:col-span-2">
         recovery_key (اختياري)
-        <input id="sd-rk" type="text" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" placeholder="store:session" />
+        <input id="sd-rk" type="text" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-mono text-xs" placeholder="store:session" />
       </label>
     </div>
-    <button id="sd-check" type="button" class="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">
+    <button id="sd-check" type="button" class="rounded-lg bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-800">
       تحقق
     </button>
     <p id="sd-err" class="hidden text-sm text-red-600"></p>
   </section>
 
-  <section id="sd-result" class="hidden rounded-2xl border border-slate-200 bg-slate-50 p-6 space-y-4">
-    <div>
-      <span id="sd-severity" class="inline-block rounded-full px-2 py-0.5 text-xs font-semibold"></span>
-      <span id="sd-issue" class="ml-2 text-xs text-slate-500"></span>
-    </div>
-    <h2 id="sd-summary" class="text-lg font-bold text-slate-900"></h2>
-    <p class="text-sm"><span class="font-semibold text-slate-700">السبب:</span> <span id="sd-cause"></span></p>
-    <p class="text-sm"><span class="font-semibold text-slate-700">إجراء داخلي:</span> <span id="sd-action"></span></p>
-    <div class="rounded-xl bg-white p-4 border border-slate-200">
-      <p class="text-xs font-semibold text-slate-500 mb-1">رسالة للتاجر</p>
-      <p id="sd-merchant" class="text-sm text-slate-800"></p>
-    </div>
-    <div>
-      <p class="text-xs font-semibold text-slate-500 mb-2">أدلة</p>
-      <ul id="sd-evidence" class="list-disc list-inside text-xs text-slate-600 space-y-1"></ul>
-    </div>
-    <pre id="sd-raw" class="hidden text-xs overflow-auto rounded-lg bg-slate-900 text-slate-100 p-3 max-h-64"></pre>
-  </section>
+  <div id="sd-result" class="hidden space-y-5">
+
+    <!-- PART 1 — Verdict -->
+    <section id="sd-verdict" class="sd-verdict sd-verdict--info">
+      <div class="flex items-start gap-4">
+        <span id="sd-verdict-emoji" class="sd-verdict-emoji" aria-hidden="true">🟢</span>
+        <div class="min-w-0 flex-1 space-y-3">
+          <h2 id="sd-verdict-title" class="sd-verdict-title text-slate-900">—</h2>
+          <div class="text-sm text-slate-700 space-y-1">
+            <p><span class="font-bold text-slate-800">الحالة:</span> <span id="sd-verdict-status">—</span></p>
+            <p><span class="font-bold text-slate-800">الإجراء:</span> <span id="sd-verdict-action">—</span></p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PART 2 — Timeline -->
+    <section class="sd-block">
+      <h3 class="text-sm font-bold text-slate-800 mb-3">مسار الأحداث</h3>
+      <ul id="sd-timeline" class="sd-timeline"></ul>
+    </section>
+
+    <!-- PART 3 — Meaning -->
+    <section class="sd-block">
+      <h3 class="text-sm font-bold text-slate-800 mb-2">ماذا يعني هذا؟</h3>
+      <p id="sd-meaning" class="text-sm leading-relaxed text-slate-700">—</p>
+    </section>
+
+    <!-- PART 4 — Action -->
+    <section class="sd-block border-indigo-100 bg-indigo-50/40">
+      <h3 class="text-sm font-bold text-indigo-900 mb-2">ماذا نفعل الآن؟</h3>
+      <p id="sd-action-now" class="text-sm font-semibold text-indigo-950 leading-relaxed">—</p>
+      <p id="sd-action-detail" class="mt-2 text-xs text-indigo-800/80 hidden"></p>
+    </section>
+
+    <!-- PART 6 — Merchant -->
+    <section class="sd-block border-emerald-100 bg-emerald-50/50">
+      <h3 class="text-sm font-bold text-emerald-900 mb-2">رسالة للتاجر</h3>
+      <p id="sd-merchant" class="text-sm leading-relaxed text-emerald-950">—</p>
+      <button type="button" id="sd-copy-merchant" class="mt-3 hidden text-xs font-semibold text-emerald-700 underline">نسخ الرسالة</button>
+    </section>
+
+    <!-- PART 7 — Future -->
+    <section class="sd-block sd-future">
+      <h3 class="text-sm font-bold text-slate-500 mb-2">اقتراح إصلاح</h3>
+      <p class="text-xs text-slate-500">قريباً — إجراءات مقترحة تلقائياً من نوع المشكلة.</p>
+    </section>
+    <section class="sd-block sd-future">
+      <h3 class="text-sm font-bold text-slate-500 mb-2">فتح الإعداد مباشرة</h3>
+      <p class="text-xs text-slate-500">قريباً — رابط إلى إعدادات المتجر أو واتساب من هنا.</p>
+    </section>
+
+    <!-- PART 5 — Technical (collapsed) -->
+    <details class="sd-details sd-block bg-slate-50">
+      <summary>تفاصيل تقنية ▼</summary>
+      <div class="space-y-3 text-xs text-slate-600 font-mono">
+        <p><span class="font-sans font-semibold text-slate-700">issue_type:</span> <span id="sd-tech-issue"></span></p>
+        <p><span class="font-sans font-semibold text-slate-700">recovery_key:</span> <span id="sd-tech-rk"></span></p>
+        <p><span class="font-sans font-semibold text-slate-700">severity:</span> <span id="sd-tech-sev"></span></p>
+        <ul id="sd-tech-evidence" class="list-disc list-inside font-sans text-slate-600 space-y-0.5"></ul>
+        <pre id="sd-raw" class="overflow-auto rounded-lg bg-slate-900 text-slate-100 p-3 max-h-72 text-[11px]"></pre>
+      </div>
+    </details>
+  </div>
 
 <script>
 (function () {
+  var LOG_LABELS = {
+    sent_real: "تم إرسال الرسالة",
+    mock_sent: "إرسال تجريبي (وهمي)",
+    queued: "في قائمة الإرسال",
+    blocked_template_required: "إيقاف الإرسال — قالب مطلوب",
+    whatsapp_failed: "فشل إرسال واتساب",
+    stopped_converted: "توقف الاسترجاع — تم الشراء",
+    skipped_anti_spam: "توقف — عاد العميل للموقع",
+    returned_to_site: "توقف — عودة للموقع",
+    skipped_no_phone: "تخطي — لا يوجد رقم",
+    skipped_no_reason: "تخطي — سبب غير مكتمل",
+    skipped_duplicate: "تخطي — إرسال مكرر",
+    recovery_waiting_delay: "بانتظار مدة الانتظار",
+    provider_not_ready: "المزود غير جاهز",
+    store_not_ready: "المتجر غير جاهز",
+    cart_not_visible: "لا توجد سلة مسجّلة",
+    no_recovery_activity: "لا يوجد نشاط استرجاع"
+  };
+
+  var PRESENTATION = {
+    read_by_customer: {
+      emoji: "🟢",
+      title: "العميل قرأ الرسالة",
+      status: "تم إرسال الرسالة → وصلت → قرأها العميل",
+      actionShort: "انتظر الرد أو الشراء",
+      actionDetail: "لا حاجة لإعادة الإرسال الآن.",
+      meaning: "قرأ العميل الرسالة لكنه لم يشتِر ولم يرد حتى الآن — هذا سلوك طبيعي بعد القراءة."
+    },
+    delivered_to_customer: {
+      emoji: "🟢",
+      title: "الرسالة وصلت للعميل",
+      status: "تم الإرسال → وصلت إلى واتساب العميل",
+      actionShort: "انتظر القراءة أو الرد",
+      actionDetail: "تابع لوحة التحكم؛ لا تعيد الإرسال فوراً.",
+      meaning: "الرسالة وصلت للجهاز؛ قد يقرأها العميل قريباً."
+    },
+    sent_real: {
+      emoji: "🟠",
+      title: "تم إرسال الرسالة — بانتظار التأكيد",
+      status: "المزود قبل الإرسال — بانتظار وصول أو قراءة",
+      actionShort: "انتظر دقائق ثم تحقق من التسليم",
+      actionDetail: "إن طال الانتظار: افحص إعداد واتساب والرقم.",
+      meaning: "النظام أرسل الرسالة؛ الوصول للعميل قد يتأخر قليلاً."
+    },
+    mock_sent: {
+      emoji: "🟢",
+      title: "تجربة إرسال (وضع تجريبي)",
+      status: "سُجّل إرسال وهمي — لم يصل واتساب حقيقي للعميل",
+      actionShort: "أكمل إعداد الإنتاج للإرسال الحقيقي",
+      actionDetail: "وضّح للتاجر أن التجربة ناجحة تقنياً لكن ليست رسالة حقيقية.",
+      meaning: "الاختبار نجح داخل النظام؛ الإنتاج يحتاج تفعيل واتساب الحقيقي."
+    },
+    blocked_template_required: {
+      emoji: "🟠",
+      title: "رسائل واتساب تحتاج إكمال الإعداد",
+      status: "أوقف النظام الإرسال تلقائياً (خارج نافذة ٢٤ ساعة / بدون قالب معتمد)",
+      actionShort: "اعتماد القوالب ثم إعادة المحاولة",
+      actionDetail: "أكمل اعتماد قوالب Meta/Twilio ثم علّم الجاهزية في المنصة.",
+      meaning: "الحماية منعت إرسالاً قد يُرفض من واتساب — ليس عطلاً عشوائياً."
+    },
+    whatsapp_failed: {
+      emoji: "🔴",
+      title: "الرسالة لم تصل",
+      status: "فشل الإرسال عند مزود واتساب",
+      actionShort: "افحص إعداد واتساب",
+      actionDetail: "تحقق من Twilio، القوالب، الرقم، ووضع الإنتاج.",
+      meaning: "لم يقبل المزود الرسالة — يلزم مراجعة الإعداد وليس إعادة المحاولة العشوائية."
+    },
+    recovery_waiting_delay: {
+      emoji: "🟢",
+      title: "الاسترجاع مجدول — بانتظار الوقت",
+      status: "الرسالة ستُرسل بعد انتهاء مدة الانتظار",
+      actionShort: "انتظر",
+      actionDetail: "لا تتدخل قبل انتهاء المدة (غالباً دقيقتان).",
+      meaning: "لا يوجد عطل — النظام ينتظر قبل أول رسالة."
+    },
+    recovery_stopped_purchase: {
+      emoji: "🟢",
+      title: "توقف الاسترجاع — تم الشراء",
+      status: "سُجّل شراء — توقف الإرسال بشكل صحيح",
+      actionShort: "لا إجراء — النجاح المتوقع",
+      actionDetail: "",
+      meaning: "العميل أكمل الشراء؛ لا حاجة لمتابعة استرجاع."
+    },
+    missing_phone: {
+      emoji: "🟠",
+      title: "لا يمكن الإرسال — رقم غير متوفر",
+      status: "تخطي الإرسال لعدم وجود رقم جوال",
+      actionShort: "تحقق من الودجيت وجمع الرقم",
+      actionDetail: "",
+      meaning: "السلة لم تُسجّل برقم يمكن التواصل عبره."
+    },
+    provider_not_ready: {
+      emoji: "🟠",
+      title: "واتساب الإنتاج غير جاهز",
+      status: "المتجر لم يكتمل ربط المزود",
+      actionShort: "أكمل إعداد واتساب على الخادم",
+      actionDetail: "PRODUCTION_MODE و Twilio والقوالب.",
+      meaning: "الإرسال الحقيقي غير مفعّل بعد على مستوى المنصة."
+    },
+    cart_not_visible: {
+      emoji: "🟠",
+      title: "السلة غير ظاهرة في اللوحة",
+      status: "لا يوجد سجل سلة لهذه الجلسة",
+      actionShort: "تحقق من تثبيت الودجيت",
+      actionDetail: "جرّب /dashboard/test-widget وتأكد من store_slug.",
+      meaning: "الودجت قد لا يعمل على المتجر أو الجلسة خاطئة."
+    },
+    no_recovery_activity: {
+      emoji: "🟠",
+      title: "لا يوجد نشاط استرجاع بعد",
+      status: "لم تُسجّل رسائل أو جداول لهذه الجلسة",
+      actionShort: "جرّب اختبار سلة جديد",
+      actionDetail: "",
+      meaning: "إما الجلسة خاطئة أو لم يحدث ترك سلة بعد."
+    }
+  };
+
+  function fmtTime(iso) {
+    if (!iso) return "—";
+    try {
+      var d = new Date(iso);
+      if (isNaN(d.getTime())) return "—";
+      return d.toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit", hour12: false });
+    } catch (e) {
+      return "—";
+    }
+  }
+
+  function pickPresentation(d, ctx) {
+    var it = (d.issue_type || "").trim();
+    if (PRESENTATION[it]) return PRESENTATION[it];
+    if (d.severity === "critical") {
+      return {
+        emoji: "🔴",
+        title: d.summary || "مشكلة تحتاج تدخل",
+        status: d.likely_cause || "—",
+        actionShort: "راجع الإعداد واتصل بالتقني",
+        actionDetail: d.recommended_action || "",
+        meaning: d.likely_cause || d.summary || "—"
+      };
+    }
+    return {
+      emoji: "🟠",
+      title: d.summary || "يتطلب متابعة",
+      status: d.likely_cause || "—",
+      actionShort: "راجع التفاصيل التقنية",
+      actionDetail: d.recommended_action || "",
+      meaning: d.summary || "—"
+    };
+  }
+
+  function buildTimeline(data) {
+    var events = [];
+    var logs = (data.recent_logs || []).slice();
+    logs.sort(function (a, b) {
+      var ta = (a.sent_at || a.created_at || "");
+      var tb = (b.sent_at || b.created_at || "");
+      return ta < tb ? -1 : ta > tb ? 1 : 0;
+    });
+    logs.forEach(function (lg) {
+      var st = lg.status || "";
+      var label = LOG_LABELS[st] || st;
+      var icon = "✓";
+      if (st === "whatsapp_failed" || st === "blocked_template_required") icon = "✕";
+      else if (st === "queued") icon = "◐";
+      else if (st.indexOf("skipped") === 0 || st.indexOf("stopped") === 0) icon = "■";
+      events.push({
+        time: fmtTime(lg.sent_at || lg.created_at),
+        icon: icon,
+        text: label,
+        sortKey: lg.sent_at || lg.created_at || "",
+        pending: false
+      });
+    });
+    var dt = (data.context || {}).delivery_truth;
+    if (dt && dt.last_event_time) {
+      var tl = (dt.truth_level || "").trim();
+      if (tl === "delivered_to_customer") {
+        events.push({
+          time: fmtTime(dt.last_event_time),
+          icon: "✓",
+          text: "وصلت الرسالة للعميل",
+          sortKey: dt.last_event_time,
+          pending: false
+        });
+      }
+      if (tl === "read_by_customer") {
+        events.push({
+          time: fmtTime(dt.last_event_time),
+          icon: "✓",
+          text: "قرأ العميل الرسالة",
+          sortKey: dt.last_event_time,
+          pending: false
+        });
+      }
+    }
+    events.sort(function (a, b) {
+      return (a.sortKey || "") < (b.sortKey || "") ? -1 : (a.sortKey || "") > (b.sortKey || "") ? 1 : 0;
+    });
+    var d = data.diagnostic || {};
+    var pending = [];
+    if (d.issue_type === "read_by_customer" || d.issue_type === "delivered_to_customer") {
+      pending.push({ icon: "○", text: "بانتظار رد العميل" });
+      pending.push({ icon: "○", text: "بانتظار إتمام الشراء" });
+    } else if (d.issue_type === "recovery_waiting_delay" || d.issue_type === "queued") {
+      pending.push({ icon: "○", text: "بانتظار إرسال الرسالة" });
+    } else if (d.issue_type === "sent_real") {
+      pending.push({ icon: "○", text: "بانتظار تأكيد الوصول" });
+    }
+    return { done: events, pending: pending };
+  }
+
+  function applySeverityClass(sev) {
+    var card = document.getElementById("sd-verdict");
+    card.classList.remove("sd-verdict--info", "sd-verdict--warning", "sd-verdict--critical");
+    if (sev === "critical") card.classList.add("sd-verdict--critical");
+    else if (sev === "warning") card.classList.add("sd-verdict--warning");
+    else card.classList.add("sd-verdict--info");
+  }
+
+  function render(data) {
+    var d = data.diagnostic || {};
+    var pres = pickPresentation(d, data.context || {});
+    applySeverityClass(d.severity || "info");
+
+    document.getElementById("sd-verdict-emoji").textContent = pres.emoji;
+    document.getElementById("sd-verdict-title").textContent = pres.title;
+    document.getElementById("sd-verdict-status").textContent = pres.status;
+    document.getElementById("sd-verdict-action").textContent = pres.actionShort;
+
+    var meaning = pres.meaning;
+    if (d.merchant_safe_message && d.issue_type === "blocked_template_required") {
+      meaning = "النظام منع الإرسال لحماية الحساب — يلزم اعتماد قوالب واتساب قبل الرسائل خارج نافذة المحادثة.";
+    }
+    document.getElementById("sd-meaning").textContent = meaning;
+
+    document.getElementById("sd-action-now").textContent = pres.actionShort;
+    var ad = document.getElementById("sd-action-detail");
+    var detail = pres.actionDetail || d.recommended_action || "";
+    if (detail) {
+      ad.textContent = detail;
+      ad.classList.remove("hidden");
+    } else {
+      ad.classList.add("hidden");
+    }
+
+    var merchant = (d.merchant_safe_message || "").trim();
+    document.getElementById("sd-merchant").textContent = merchant || "—";
+    var copyBtn = document.getElementById("sd-copy-merchant");
+    if (merchant) {
+      copyBtn.classList.remove("hidden");
+      copyBtn.onclick = function () {
+        navigator.clipboard.writeText(merchant).catch(function () {});
+      };
+    } else {
+      copyBtn.classList.add("hidden");
+    }
+
+    var tl = buildTimeline(data);
+    var ul = document.getElementById("sd-timeline");
+    ul.innerHTML = "";
+    tl.done.forEach(function (ev) {
+      var li = document.createElement("li");
+      li.innerHTML =
+        '<span class="sd-timeline-time">' + ev.time + "</span>" +
+        '<span class="sd-timeline-icon">' + ev.icon + "</span>" +
+        "<span>" + ev.text + "</span>";
+      ul.appendChild(li);
+    });
+    tl.pending.forEach(function (ev) {
+      var li = document.createElement("li");
+      li.className = "sd-timeline--pending";
+      li.innerHTML =
+        '<span class="sd-timeline-time">—</span>' +
+        '<span class="sd-timeline-icon">' + ev.icon + "</span>" +
+        "<span>" + ev.text + "</span>";
+      ul.appendChild(li);
+    });
+    if (!tl.done.length && !tl.pending.length) {
+      var li = document.createElement("li");
+      li.className = "sd-timeline--pending";
+      li.textContent = "لا توجد أحداث مسجّلة بعد لهذه الجلسة.";
+      ul.appendChild(li);
+    }
+
+    document.getElementById("sd-tech-issue").textContent = d.issue_type || "—";
+    document.getElementById("sd-tech-rk").textContent =
+      (data.scope && data.scope.recovery_key) || "—";
+    document.getElementById("sd-tech-sev").textContent = d.severity || "—";
+    var evUl = document.getElementById("sd-tech-evidence");
+    evUl.innerHTML = "";
+    (d.evidence || []).forEach(function (line) {
+      var li = document.createElement("li");
+      li.textContent = line;
+      evUl.appendChild(li);
+    });
+    document.getElementById("sd-raw").textContent = JSON.stringify(data, null, 2);
+  }
+
   var btn = document.getElementById("sd-check");
   if (!btn) return;
   btn.addEventListener("click", function () {
@@ -72,41 +437,24 @@
     if (session) q.set("session_id", session);
     if (rk) q.set("recovery_key", rk);
     btn.disabled = true;
+    btn.textContent = "جاري التحقق…";
     fetch("/admin/support-diagnostics?" + q.toString(), { credentials: "same-origin" })
       .then(function (r) { return r.json(); })
       .then(function (data) {
         btn.disabled = false;
+        btn.textContent = "تحقق";
         if (!data.ok) {
           errEl.textContent = data.error || "فشل التشخيص";
           errEl.classList.remove("hidden");
           return;
         }
-        var d = data.diagnostic || {};
         resEl.classList.remove("hidden");
-        document.getElementById("sd-summary").textContent = d.summary || "—";
-        document.getElementById("sd-cause").textContent = d.likely_cause || "—";
-        document.getElementById("sd-action").textContent = d.recommended_action || "—";
-        document.getElementById("sd-merchant").textContent = d.merchant_safe_message || "—";
-        document.getElementById("sd-issue").textContent = d.issue_type || "";
-        var sev = document.getElementById("sd-severity");
-        sev.textContent = d.severity || "info";
-        sev.className = "inline-block rounded-full px-2 py-0.5 text-xs font-semibold ";
-        if (d.severity === "critical") sev.className += "bg-red-100 text-red-800";
-        else if (d.severity === "warning") sev.className += "bg-amber-100 text-amber-800";
-        else sev.className += "bg-emerald-100 text-emerald-800";
-        var ul = document.getElementById("sd-evidence");
-        ul.innerHTML = "";
-        (d.evidence || []).forEach(function (line) {
-          var li = document.createElement("li");
-          li.textContent = line;
-          ul.appendChild(li);
-        });
-        var raw = document.getElementById("sd-raw");
-        raw.textContent = JSON.stringify(data, null, 2);
-        raw.classList.remove("hidden");
+        render(data);
+        resEl.scrollIntoView({ behavior: "smooth", block: "start" });
       })
       .catch(function (e) {
         btn.disabled = false;
+        btn.textContent = "تحقق";
         errEl.textContent = String(e);
         errEl.classList.remove("hidden");
       });
