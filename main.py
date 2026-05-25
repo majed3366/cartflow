@@ -1425,6 +1425,11 @@ def _ensure_cartflow_api_db_warmed() -> None:
             from schema_merchant_auth import ensure_merchant_auth_schema
 
             ensure_merchant_auth_schema(db)
+            from schema_recovery_message_context import (
+                ensure_recovery_message_context_schema,
+            )
+
+            ensure_recovery_message_context_schema(db)
             _cartflow_api_db_warmed = True
         except Exception as e:  # noqa: BLE001
             db.session.rollback()
@@ -5766,10 +5771,43 @@ def _persist_cart_recovery_log(
     sent_at: Optional[datetime] = None,
     step: Optional[int] = None,
     skip_api_warm: bool = False,
+    recovery_key: Optional[str] = None,
+    reason_tag: Optional[str] = None,
+    message_context: Optional[dict[str, Any]] = None,
+    message_type: Optional[str] = None,
+    source: Optional[str] = None,
+    provider: Optional[str] = None,
+    provider_message_sid: Optional[str] = None,
 ) -> None:
     try:
         if not skip_api_warm:
             _ensure_cartflow_api_db_warmed()
+        from schema_recovery_message_context import (  # noqa: PLC0415
+            ensure_recovery_message_context_schema,
+        )
+        from services.recovery_message_context_v1 import (  # noqa: PLC0415
+            merge_persist_context,
+            serialize_context_json,
+        )
+
+        ensure_recovery_message_context_schema(db)
+        ctx = merge_persist_context(
+            message_context=message_context,
+            recovery_key=recovery_key or "",
+            store_slug=store_slug,
+            session_id=session_id,
+            cart_id=cart_id or "",
+            phone=phone,
+            message=message,
+            status=status,
+            step=step,
+            sent_at=sent_at,
+            reason_tag=reason_tag,
+            provider=provider or "",
+            provider_message_sid=provider_message_sid or "",
+            source=source or "",
+            message_type=message_type or "",
+        )
         row = CartRecoveryLog(
             store_slug=store_slug[:255],
             session_id=session_id[:512],
@@ -5778,6 +5816,14 @@ def _persist_cart_recovery_log(
             message=message or "",
             status=status[:50],
             step=step,
+            recovery_key=(ctx.recovery_key or None),
+            reason_tag=(ctx.reason_tag or None),
+            context_status=ctx.context_status,
+            context_json=serialize_context_json(ctx),
+            message_type=(ctx.message_type or None),
+            source=(ctx.source or None),
+            provider=(ctx.provider or None),
+            provider_message_sid=(ctx.provider_message_sid or None),
             created_at=datetime.now(timezone.utc),
             sent_at=sent_at,
         )
@@ -5810,7 +5856,7 @@ def _persist_cart_recovery_log(
             )
 
             maybe_record_closure_from_recovery_log(
-                recovery_key="",
+                recovery_key=(ctx.recovery_key or ""),
                 log_status=str(status),
                 store_slug=store_slug,
                 session_id=session_id,
@@ -5821,6 +5867,78 @@ def _persist_cart_recovery_log(
     except Exception as e:  # noqa: BLE001
         db.session.rollback()
         log.warning("CartRecoveryLog persist failed: %s", e)
+
+
+def _recovery_build_send_message_context_dict(
+    *,
+    recovery_key: str,
+    store_slug: str,
+    session_id: str,
+    cart_id: Optional[str],
+    phone: str,
+    reason_tag: Optional[str],
+    message_body: str,
+    step_num: int,
+    store_obj: Optional[Any],
+    reason_row: Optional[Any],
+    recovery_context: Optional[dict[str, Any]],
+) -> Optional[dict[str, Any]]:
+    try:
+        from services.recovery_message_context_v1 import (  # noqa: PLC0415
+            build_recovery_message_context,
+        )
+
+        ac_for_ctx = None
+        cid = (cart_id or "").strip()
+        sid = (session_id or "").strip()
+        if cid:
+            ac_for_ctx = (
+                db.session.query(AbandonedCart)
+                .filter(AbandonedCart.zid_cart_id == cid)
+                .first()
+            )
+        if ac_for_ctx is None and sid:
+            ac_for_ctx = (
+                db.session.query(AbandonedCart)
+                .filter(AbandonedCart.recovery_session_id == sid)
+                .order_by(AbandonedCart.last_seen_at.desc())
+                .first()
+            )
+        src = "recovery_sequence"
+        if isinstance(recovery_context, dict):
+            src = str(recovery_context.get("source") or src)
+        ctx_obj = build_recovery_message_context(
+            recovery_key=recovery_key,
+            store_slug=store_slug,
+            session_id=session_id,
+            cart_id=cid,
+            customer_phone=phone or "",
+            reason_tag=reason_tag,
+            message_body=message_body,
+            attempt=step_num,
+            source=src,
+            store=store_obj,
+            abandoned_cart=ac_for_ctx,
+            reason_row=reason_row,
+        )
+        return ctx_obj.to_dict()
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _recovery_persist_context_kwargs(
+    send_ctx: Optional[dict[str, Any]],
+    *,
+    recovery_key: str,
+    reason_tag: Optional[str],
+) -> dict[str, Any]:
+    out: dict[str, Any] = {
+        "recovery_key": recovery_key,
+        "reason_tag": reason_tag,
+    }
+    if send_ctx:
+        out["message_context"] = send_ctx
+    return out
 
 
 def _try_claim_recovery_session(recovery_key: str) -> bool:
@@ -7763,6 +7881,25 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
         _consume_seq_slot_if_needed()
         return None
 
+    _send_message_context = _recovery_build_send_message_context_dict(
+        recovery_key=recovery_key,
+        store_slug=store_slug,
+        session_id=session_id,
+        cart_id=cart_id,
+        phone=phone,
+        reason_tag=reason_tag,
+        message_body=text,
+        step_num=step_num,
+        store_obj=store_obj,
+        reason_row=reason_row,
+        recovery_context=recovery_context,
+    )
+    _persist_ctx_kw = _recovery_persist_context_kwargs(
+        _send_message_context,
+        recovery_key=recovery_key,
+        reason_tag=reason_tag,
+    )
+
     _persist_cart_recovery_log(
         store_slug=store_slug,
         session_id=session_id,
@@ -7771,6 +7908,7 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
         message=text,
         status="queued",
         step=step_num,
+        **_persist_ctx_kw,
     )
 
     if not try_begin_outbound_whatsapp_inflight(recovery_key, step_num):
@@ -7782,6 +7920,7 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
             message=text,
             status="skipped_duplicate",
             step=step_num,
+            **_persist_ctx_kw,
         )
         finalize_recovery_schedule_durable(
             recovery_key,
@@ -7910,6 +8049,7 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
                 message=text,
                 status="skipped_user_rejected_help",
                 step=step_num,
+                **_persist_ctx_kw,
             )
             print("[RECOVERY TASK EXIT CLEANLY]")
             print("reason=user_rejected_help_send_guard")
@@ -7927,6 +8067,7 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
             message=text,
             status="whatsapp_failed",
             step=step_num,
+            **_persist_ctx_kw,
         )
         print("recovery NOT marked as sent due to failure")
         _consume_seq_slot_if_needed()
@@ -7934,6 +8075,18 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
 
     now = datetime.now(timezone.utc)
     log_status = log_wa_send_truth(wa_result=wa_dict, recovery_key=recovery_key)
+    from services.whatsapp_send import whatsapp_send_truth_context  # noqa: PLC0415
+
+    wa_truth = whatsapp_send_truth_context(wa_dict)
+    final_ctx = dict(_send_message_context) if _send_message_context else {}
+    final_ctx.update(
+        {
+            "provider": wa_truth.get("provider") or "",
+            "provider_message_sid": wa_truth.get("message_sid") or "",
+            "send_status": log_status,
+            "sent_at": now.isoformat(),
+        }
+    )
     _persist_cart_recovery_log(
         store_slug=store_slug,
         session_id=session_id,
@@ -7943,6 +8096,13 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
         status=log_status,
         sent_at=now,
         step=step_num,
+        recovery_key=recovery_key,
+        reason_tag=reason_tag,
+        message_context=final_ctx,
+        provider=str(wa_truth.get("provider") or ""),
+        provider_message_sid=str(wa_truth.get("message_sid") or ""),
+        source=str(final_ctx.get("source") or "recovery_sequence"),
+        message_type=str(final_ctx.get("message_type") or ""),
     )
     log_whatsapp_recovery_idempotency_recorded(
         recovery_key=recovery_key,
@@ -12385,31 +12545,75 @@ def _merchant_recovery_message_history_rows(
     except (SQLAlchemyError, OSError, TypeError, ValueError):
         db.session.rollback()
         return out
+    from services.recovery_message_context_v1 import (  # noqa: PLC0415
+        CONTEXT_MISSING,
+        LEGACY_CONTEXT_MISSING,
+        context_from_log_row,
+        derive_messages_page_status,
+    )
+
     for lg in rows:
         st = (getattr(lg, "status", None) or "").strip().lower()
+        ctx = context_from_log_row(lg)
+        ctx_st = (ctx.get("context_status") or "").strip()
+        mp = derive_messages_page_status(st, context_status=ctx_st)
         if st == "sent_real":
             st_ar = "تم الإرسال"
             st_cls = "s-sent"
-        else:
+        elif st == "mock_sent":
             st_ar = "تم الإرسال (وضع تجريبي)"
             st_cls = "s-sent"
+        elif mp == "failed":
+            st_ar = "تعذّر الإرسال"
+            st_cls = "s-failed"
+        else:
+            st_ar = "—"
+            st_cls = "s-pending"
+        if ctx_st == CONTEXT_MISSING:
+            st_ar = "تم الإرسال — سياق السلة ناقص"
+            st_cls = "s-attention"
         ts = getattr(lg, "sent_at", None) or getattr(lg, "created_at", None)
         rel = merchant_relative_time_arabic(ts, now_utc=now_utc)
-        msg = (getattr(lg, "message", None) or "").strip()
+        msg = (ctx.get("message_body") or getattr(lg, "message", None) or "").strip()
         if len(msg) > 200:
             msg = msg[:200] + "…"
         step = getattr(lg, "step", None)
         step_ar = f"المحاولة {int(step)}" if step is not None else "—"
-        out.append(
-            {
-                "title_ar": "رسالة استرداد",
-                "preview_ar": msg or "—",
-                "time_ar": rel,
-                "status_ar": st_ar,
-                "status_row_class": st_cls,
-                "step_ar": step_ar,
-            }
-        )
+        cart_label = (ctx.get("cart_id") or getattr(lg, "cart_id", None) or "").strip()
+        if not cart_label:
+            cart_label = (ctx.get("session_id") or getattr(lg, "session_id", None) or "")[
+                :24
+            ]
+        row_out: dict[str, Any] = {
+            "title_ar": "رسالة استرداد",
+            "preview_ar": msg or "—",
+            "time_ar": rel,
+            "status_ar": st_ar,
+            "status_row_class": st_cls,
+            "step_ar": step_ar,
+            "cart_id": (ctx.get("cart_id") or getattr(lg, "cart_id", None) or "")[:255]
+            or None,
+            "session_id": (
+                ctx.get("session_id") or getattr(lg, "session_id", None) or ""
+            )[:512]
+            or None,
+            "recovery_key": (
+                ctx.get("recovery_key") or getattr(lg, "recovery_key", None) or ""
+            )[:512]
+            or None,
+            "reason_tag": (ctx.get("reason_tag") or getattr(lg, "reason_tag", None) or "")[
+                :64
+            ]
+            or None,
+            "cart_reference_ar": cart_label or "—",
+            "context_status": ctx_st or LEGACY_CONTEXT_MISSING,
+            "admin_context_warning_ar": (
+                "سياق السلة غير مربوط — للدعم فقط"
+                if ctx_st in (CONTEXT_MISSING, LEGACY_CONTEXT_MISSING)
+                else None
+            ),
+        }
+        out.append(row_out)
     return out
 
 
@@ -12592,17 +12796,25 @@ class MerchantNormalCartsBatchReads:
 def _recovery_log_row_matches_abandoned_cart(
     lg: CartRecoveryLog, ac: AbandonedCart
 ) -> bool:
-    sess = (getattr(ac, "recovery_session_id", None) or "").strip()[:512]
-    zid = (getattr(ac, "zid_cart_id", None) or "").strip()[:255]
-    ls = (getattr(lg, "session_id", None) or "").strip()[:512]
-    lc = (getattr(lg, "cart_id", None) or "").strip()[:255]
-    if sess and ls == sess:
-        return True
-    if zid and lc == zid:
-        return True
-    if zid and ls == zid:
-        return True
-    return False
+    from services.recovery_message_context_v1 import (  # noqa: PLC0415
+        log_row_matches_abandoned_cart,
+        recovery_key_from_parts,
+    )
+
+    store_slug = ""
+    try:
+        if getattr(ac, "store_id", None) is not None:
+            st = db.session.query(Store).filter_by(id=int(ac.store_id)).first()
+            if st is not None:
+                store_slug = (getattr(st, "zid_store_id", None) or "").strip()
+    except (TypeError, ValueError, SQLAlchemyError, OSError):
+        db.session.rollback()
+    rk = recovery_key_from_parts(
+        store_slug=store_slug,
+        session_id=(getattr(ac, "recovery_session_id", None) or "").strip(),
+        cart_id=(getattr(ac, "zid_cart_id", None) or "").strip(),
+    )
+    return log_row_matches_abandoned_cart(lg, ac, recovery_key=rk)
 
 
 def _merchant_dashboard_identity_anomaly_batched(
@@ -13089,6 +13301,7 @@ def _merchant_normal_dashboard_batch_reads(
     logs_loaded = len(logs)
     by_sess: dict[str, list[CartRecoveryLog]] = defaultdict(list)
     by_cart: dict[str, list[CartRecoveryLog]] = defaultdict(list)
+    by_rk: dict[str, list[CartRecoveryLog]] = defaultdict(list)
     _mbr_seg_t = time.perf_counter()
     _mbr_seg_q = merchant_dashboard_batch_reads_trace_peek_for_seg(_mbr_tr)
     with normal_carts_profile_span("loop:batch_index_recovery_logs_into_hash_maps"):
@@ -13099,6 +13312,9 @@ def _merchant_normal_dashboard_batch_reads(
             lc_l = (getattr(lg, "cart_id", None) or "").strip()
             if lc_l:
                 by_cart[lc_l].append(lg)
+            lrk = (getattr(lg, "recovery_key", None) or "").strip()
+            if lrk:
+                by_rk[lrk].append(lg)
     merchant_dashboard_batch_reads_trace_seg_end(
         _mbr_tr,
         _mbr_seg_t,
@@ -13127,6 +13343,21 @@ def _merchant_normal_dashboard_batch_reads(
             if zid_ac:
                 cand_l.extend(by_sess.get(zid_ac, ()))
                 cand_l.extend(by_cart.get(zid_ac, ()))
+            try:
+                from services.recovery_message_context_v1 import (  # noqa: PLC0415
+                    recovery_key_from_parts,
+                )
+
+                _batch_store_slug = (batch.slug or "").strip()
+                _ac_rk = recovery_key_from_parts(
+                    store_slug=_batch_store_slug,
+                    session_id=sid_ac,
+                    cart_id=zid_ac,
+                )
+                if _ac_rk:
+                    cand_l.extend(by_rk.get(_ac_rk, ()))
+            except Exception:  # noqa: BLE001
+                pass
             seen_lid: set[int] = set()
             matched_logs: list[CartRecoveryLog] = []
             for lg in cand_l:
@@ -14496,6 +14727,33 @@ def api_dashboard_widget_panel():
         return j({"ok": False, "error": "failed"}, 500)
     finally:
         _log_dashboard_section_profile(section="widget_panel", wall_perf_start=wall0)
+
+
+@app.get("/api/dashboard/recovery-message-truth-debug")
+def api_dashboard_recovery_message_truth_debug(
+    recovery_key: str = Query("", max_length=512),
+):
+    wall0 = time.perf_counter()
+    try:
+        from services.recovery_message_context_v1 import (  # noqa: PLC0415
+            build_recovery_message_truth_debug,
+        )
+
+        _merchant_dashboard_db_ready()
+        dash_store = _dashboard_recovery_store_row()
+        rk = (recovery_key or "").strip()
+        if not rk:
+            return j({"ok": False, "error": "recovery_key_required"}, 400)
+        body = build_recovery_message_truth_debug(rk, dash_store=dash_store)
+        return j({"ok": True, **body})
+    except Exception as e:  # noqa: BLE001
+        db.session.rollback()
+        log.warning("api_dashboard_recovery_message_truth_debug: %s", e)
+        return j({"ok": False, "error": "failed"}, 500)
+    finally:
+        _log_dashboard_section_profile(
+            section="recovery_message_truth_debug", wall_perf_start=wall0
+        )
 
 
 @app.get("/api/dashboard/messages")

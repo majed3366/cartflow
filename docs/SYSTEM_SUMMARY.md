@@ -320,6 +320,7 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 
 | Date (UTC) | Summary |
 |------------|---------|
+| 2026-05-19 | **Recovery message context & truth v1:** `services/recovery_message_context_v1.py` + `cart_recovery_logs` context columns; persist from recovery send + queue; carts/messages agreement + `GET /api/dashboard/recovery-message-truth-debug`. Commit: **`fix: unify recovery message context and cart truth v1`**. |
 | 2026-05-19 | **Reusable merchant demo/test actions:** completed sandbox steps show «تمت التجربة ✅» + «إعادة التجربة» (not hidden); `renderUnifiedSetupDemoToolsOnly` after setup complete; `MERCHANT_SETUP_RENDER_BUILD=ui-setup-v5-demo-reusable`. No recovery/WhatsApp/queue changes. Commit: **`fix: keep merchant demo and test actions reusable`**. |
 | 2026-05-19 | **Fix normal-carts excluding valid abandoned rows:** `blocked_missing_customer_phone` coarse → `pending` (not archived); removed `blocked` from `_NORMAL_RECOVERY_ARCHIVED_COARSE_STATUSES`; filter-step trace on `cart-visibility-debug` / `?debug_filter_trace=1`. Commit: **`fix: resolve dashboard normal carts excluding valid abandoned carts`**. |
 | 2026-05-19 | **Cart visibility debug path:** `[CF API] event received` + `[CF ABANDONED CART PERSIST]` logs on `cart_state_sync`; `GET /api/dashboard/cart-visibility-debug` returns latest 10 `AbandonedCart` rows with store scope / exclusion reasons vs `normal-carts`. Commit: **`debug: verify widget to dashboard cart visibility path`**. |

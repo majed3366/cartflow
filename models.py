@@ -327,6 +327,14 @@ class CartRecoveryLog(Base):
     message = Column(Text, default="", nullable=False)
     status = Column(String(50), nullable=False, index=True)
     step = Column(Integer, nullable=True, index=True)
+    recovery_key = Column(String(512), nullable=True, index=True)
+    reason_tag = Column(String(64), nullable=True)
+    context_status = Column(String(32), nullable=True, index=True)
+    context_json = Column(Text, nullable=True)
+    message_type = Column(String(64), nullable=True)
+    source = Column(String(64), nullable=True)
+    provider = Column(String(32), nullable=True)
+    provider_message_sid = Column(String(128), nullable=True)
     created_at = Column(
         DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
     )

@@ -433,6 +433,19 @@ def build_merchant_recovery_lifecycle_truth(
     if durable_closure:
         out["durable_lifecycle_closure"] = durable_closure
 
+    try:
+        from services.recovery_message_context_v1 import enrich_cart_row_truth_fields
+
+        enrich_cart_row_truth_fields(
+            out,
+            phase_key=phase_key,
+            coarse=cr,
+            sent_ct=int(sent_ct),
+            latest_log=latest_sent or latest_log,
+        )
+    except Exception:  # noqa: BLE001
+        pass
+
     if message_sent and not preview:
         _log_truth_gap(
             cart_id=cart_id,

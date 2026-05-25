@@ -239,6 +239,27 @@ async def _do_process_one_job_body(
         if ok:
             now = datetime.now(timezone.utc)
             st = "sent_real" if job.use_real else "mock_sent"
+            ctx_dict = None
+            try:
+                from services.recovery_message_context_v1 import (  # noqa: PLC0415
+                    build_recovery_message_context,
+                )
+
+                ctx_dict = build_recovery_message_context(
+                    recovery_key=job.recovery_key,
+                    store_slug=job.store_slug,
+                    session_id=job.session_id,
+                    cart_id=job.cart_id or "",
+                    customer_phone=job.phone,
+                    message_body=job.message,
+                    attempt=job.step,
+                    send_status=st,
+                    sent_at=now,
+                    source="whatsapp_queue",
+                    provider="twilio" if job.use_real else "mock",
+                ).to_dict()
+            except Exception:  # noqa: BLE001
+                ctx_dict = None
             persist(
                 store_slug=job.store_slug,
                 session_id=job.session_id,
@@ -248,6 +269,9 @@ async def _do_process_one_job_body(
                 status=st,
                 sent_at=now,
                 step=job.step,
+                recovery_key=job.recovery_key,
+                message_context=ctx_dict,
+                source="whatsapp_queue",
             )
             fut.set_result("success")
             return
