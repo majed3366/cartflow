@@ -1029,7 +1029,7 @@ class NormalRecoveryDashboardStatusTests(unittest.TestCase):
             )
             self.assertIn('data-normal-recovery-status="blocked"', html)
 
-    def test_normal_recovery_lifecycle_replied_archived_not_active(self) -> None:
+    def test_normal_recovery_lifecycle_replied_stays_active_until_terminal(self) -> None:
         st = self._store_attempts_1()
         slug = (st.zid_store_id or "demo").strip()
         sid = f"nr-lc-arch-{self._suffix}"
@@ -1064,14 +1064,35 @@ class NormalRecoveryDashboardStatusTests(unittest.TestCase):
         active = _normal_recovery_cart_alert_list(
             nr_session=sid, lifecycle="active", limit_groups=20, audience="ops"
         )
-        self.assertEqual(len(active), 0)
+        self.assertEqual(len(active), 1)
+        self.assertEqual(
+            (active[0].get("normal_recovery_status") or "").strip(), "replied"
+        )
         archived = _normal_recovery_cart_alert_list(
             nr_session=sid, lifecycle="archived", limit_groups=20, audience="ops"
         )
-        self.assertEqual(len(archived), 1)
-        self.assertEqual(
-            (archived[0].get("normal_recovery_status") or "").strip(), "replied"
+        self.assertEqual(len(archived), 0)
+        db.session.add(
+            CartRecoveryLog(
+                store_slug=slug,
+                session_id=sid,
+                cart_id=zid,
+                phone="966501111114",
+                message="",
+                status="stopped_converted",
+                step=2,
+                created_at=datetime.now(timezone.utc),
+            )
         )
+        db.session.commit()
+        active2 = _normal_recovery_cart_alert_list(
+            nr_session=sid, lifecycle="active", limit_groups=20, audience="ops"
+        )
+        self.assertEqual(len(active2), 0)
+        archived2 = _normal_recovery_cart_alert_list(
+            nr_session=sid, lifecycle="archived", limit_groups=20, audience="ops"
+        )
+        self.assertEqual(len(archived2), 1)
 
     def test_normal_recovery_lifecycle_pending_in_active(self) -> None:
         st = self._store_attempts_1()

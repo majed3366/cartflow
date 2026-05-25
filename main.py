@@ -3924,12 +3924,27 @@ def _normal_recovery_coarse_status(phase_key: str) -> str:
     return "pending"
 
 
-# حالات واجهة «مُنهية» — تُعرض في عرض السجل وليس في قائمة التشغيل الافتراضية.
+# حالات واجهة «مُنهية» — أرشيف التاجر فقط عند نتيجة نهائية (شراء / إيقاف / اكتمال تسلسل).
+_NORMAL_RECOVERY_TERMINAL_LOG_STATUSES = frozenset(
+    {
+        "stopped_converted",
+        "skipped_user_rejected_help",
+        "skipped_followup_customer_replied",
+        "returned_to_site",
+        "skipped_attempt_limit",
+        "skipped_anti_spam",
+    }
+)
+_NORMAL_RECOVERY_TERMINAL_PHASE_KEYS = frozenset(
+    {
+        "stopped_manual",
+        "stopped_purchase",
+        "recovery_complete",
+    }
+)
+# Coarse buckets that map to terminal archive (not sent/replied/returned engagement).
 _NORMAL_RECOVERY_ARCHIVED_COARSE_STATUSES = frozenset(
     {
-        "replied",
-        "clicked",
-        "returned",
         "ignored",
         "stopped",
         "converted",
@@ -3937,19 +3952,75 @@ _NORMAL_RECOVERY_ARCHIVED_COARSE_STATUSES = frozenset(
 )
 
 
-def _normal_recovery_group_is_archived(grp_sorted: list[AbandonedCart]) -> bool:
-    """تصنيف مجموعة صفوف ‎AbandonedCart‎ المجمّعة لنفس الجلسة/السلة — أرشيف مقابل نشط."""
+def _normal_recovery_group_is_terminal_archived(
+    grp_sorted: list[AbandonedCart],
+    *,
+    behavioral_override: Optional[dict[str, Any]] = None,
+    recovery_log_statuses: Optional[frozenset[str]] = None,
+    phase_key: Optional[str] = None,
+) -> bool:
+    """أرشيف التاجر فقط عند purchased / replied_stop / returned_stop / sequence_completed / manual_close."""
     if not grp_sorted:
         return False
-    bh = _normal_recovery_behavioral_merge_from_cart_group(grp_sorted)
-    log_u = _normal_recovery_recovery_log_statuses_lower_group(grp_sorted)
     ac0 = grp_sorted[0]
-    pk = _normal_recovery_dashboard_phase_key(
-        ac0,
-        behavioral_override=bh,
-        recovery_log_statuses=log_u,
-    )
+    if (getattr(ac0, "status", None) or "").strip().lower() == "recovered":
+        return True
+    if phase_key is None:
+        bh = (
+            behavioral_override
+            if behavioral_override is not None
+            else _normal_recovery_behavioral_merge_from_cart_group(grp_sorted)
+        )
+        log_u = (
+            recovery_log_statuses
+            if recovery_log_statuses is not None
+            else _normal_recovery_recovery_log_statuses_lower_group(grp_sorted)
+        )
+        pk = _normal_recovery_dashboard_phase_key(
+            ac0,
+            behavioral_override=bh,
+            recovery_log_statuses=log_u,
+        )
+    else:
+        pk = phase_key
+        log_u = (
+            recovery_log_statuses
+            if recovery_log_statuses is not None
+            else _normal_recovery_recovery_log_statuses_lower_group(grp_sorted)
+        )
+    if pk in _NORMAL_RECOVERY_TERMINAL_PHASE_KEYS:
+        return True
+    if log_u & _NORMAL_RECOVERY_TERMINAL_LOG_STATUSES:
+        return True
     return _normal_recovery_coarse_status(pk) in _NORMAL_RECOVERY_ARCHIVED_COARSE_STATUSES
+
+
+def _normal_recovery_merchant_lifecycle_bucket_ok(
+    *,
+    lc_raw: str,
+    terminal_archived: bool,
+    coarse: str,
+    stale_flag: bool,
+    log_statuses: frozenset[str],
+) -> bool:
+    """تبويب السلال النشط يبقي sent/replied/returned حتى نتيجة نهائية."""
+    lc = (lc_raw or "active").strip().lower()
+    cnorm = (coarse or "").strip().lower()
+    has_sent = bool(log_statuses & _NORMAL_RECOVERY_SENT_LOG_STATUSES)
+    if lc == "all":
+        return True
+    if lc == "active":
+        return not terminal_archived
+    if lc == "archived":
+        if terminal_archived:
+            return True
+        return bool(stale_flag and cnorm in ("pending", "sent") and not has_sent)
+    return True
+
+
+def _normal_recovery_group_is_archived(grp_sorted: list[AbandonedCart]) -> bool:
+    """تصنيف مجموعة صفوف ‎AbandonedCart‎ — أرشيف عند نتيجة نهائية فقط."""
+    return _normal_recovery_group_is_terminal_archived(grp_sorted)
 
 
 def _store_row_for_abandoned_cart(ac: AbandonedCart) -> Optional[Store]:
@@ -13085,7 +13156,12 @@ def _normal_recovery_group_is_archived_merchant_batch(
         recovery_log_statuses=log_u,
         batch=batch,
     )
-    return _normal_recovery_coarse_status(pk) in _NORMAL_RECOVERY_ARCHIVED_COARSE_STATUSES
+    return _normal_recovery_group_is_terminal_archived(
+        grp_sorted,
+        behavioral_override=bh,
+        recovery_log_statuses=log_u,
+        phase_key=pk,
+    )
 
 
 def _reason_tag_merchant_normal_batch(
@@ -13809,13 +13885,14 @@ def _merchant_normal_recovery_light_payload_merchant_batch(
     has_phone = bool(cust_raw)
     phone_line = "رقم العميل متوفر" if has_phone else "لا يوجد رقم للتواصل"
     sm = stale_meta if isinstance(stale_meta, dict) else {}
-    dormant_sales = bool(sm.get("stale")) or stale_flag
-    in_history_slice = bool(archived_group or dormant_sales)
+    cnorm_hist = (coarse or "").strip().lower()
+    dormant_sales = (bool(sm.get("stale")) or stale_flag) and cnorm_hist == "pending"
+    in_history_slice = bool(archived_group)
     hist_note = ""
-    if dormant_sales:
-        hist_note = merchant_history_case_note_ar(dormant_sales=True)
-    elif archived_group:
+    if archived_group:
         hist_note = merchant_history_case_note_ar(dormant_sales=False)
+    elif dormant_sales:
+        hist_note = merchant_history_case_note_ar(dormant_sales=True)
     trust = _normal_recovery_identity_trust_surface_merchant_batch(ac0, batch)
     rtag = (_reason_tag_merchant_normal_batch(ac0, batch) or "other").strip().lower()
     chip_cls, chip_lbl = merchant_reason_chip_class_and_label(rtag)
@@ -13934,13 +14011,14 @@ def _merchant_normal_recovery_light_payload(
     has_phone = bool((cust_raw or "").strip())
     phone_line = "رقم العميل متوفر" if has_phone else "لا يوجد رقم للتواصل"
     sm = stale_meta if isinstance(stale_meta, dict) else {}
-    dormant_sales = bool(sm.get("stale")) or stale_flag
-    in_history_slice = bool(archived_group or dormant_sales)
+    cnorm_hist = (coarse or "").strip().lower()
+    dormant_sales = (bool(sm.get("stale")) or stale_flag) and cnorm_hist == "pending"
+    in_history_slice = bool(archived_group)
     hist_note = ""
-    if dormant_sales:
-        hist_note = merchant_history_case_note_ar(dormant_sales=True)
-    elif archived_group:
+    if archived_group:
         hist_note = merchant_history_case_note_ar(dormant_sales=False)
+    elif dormant_sales:
+        hist_note = merchant_history_case_note_ar(dormant_sales=True)
     trust = _normal_recovery_identity_trust_surface(ac0)
     rtag = (_reason_tag_for_abandoned_cart(ac0) or "other").strip().lower()
     chip_cls, chip_lbl = merchant_reason_chip_class_and_label(rtag)
@@ -14092,24 +14170,6 @@ def _normal_recovery_merchant_lightweight_alert_list(
         npick = len(picked)
         _stale_diag = stale_meta_trace_enabled()
 
-        def _lifecycle_bucket_ok(
-            *,
-            archived: bool,
-            coarse: str,
-            stale_flag: bool,
-        ) -> bool:
-            if lc_raw == "all":
-                return True
-            in_history = archived or (
-                stale_flag and coarse in ("pending", "sent")
-            )
-            operational_active = (not archived) and (not stale_flag)
-            if lc_raw == "active":
-                return operational_active
-            if lc_raw == "archived":
-                return in_history
-            return True
-
         for pick_i, grp_sorted in enumerate(picked):
             arch = _normal_recovery_group_is_archived(grp_sorted)
             bh = _normal_recovery_behavioral_merge_from_cart_group(grp_sorted)
@@ -14130,10 +14190,12 @@ def _normal_recovery_merchant_lightweight_alert_list(
                 diag_pick_index=pick_i if _stale_diag else None,
                 diag_picked_groups_total=npick if _stale_diag else None,
             )
-            if not _lifecycle_bucket_ok(
-                archived=arch,
+            if not _normal_recovery_merchant_lifecycle_bucket_ok(
+                lc_raw=lc_raw,
+                terminal_archived=arch,
                 coarse=coarse,
                 stale_flag=stale_flag,
+                log_statuses=log_u,
             ):
                 continue
             out.append(
@@ -14290,7 +14352,12 @@ def _normal_recovery_merchant_lightweight_alert_list_for_api(
         lc_raw = (lifecycle or "active").strip().lower()
         if lc_raw not in ("active", "archived", "all"):
             lc_raw = "active"
-        q = db.session.query(AbandonedCart).filter(AbandonedCart.status == "abandoned")
+        if lc_raw == "archived":
+            q = db.session.query(AbandonedCart).filter(
+                AbandonedCart.status.in_(("abandoned", "recovered"))
+            )
+        else:
+            q = db.session.query(AbandonedCart).filter(AbandonedCart.status == "abandoned")
         _nr_scope = _normal_recovery_abandoned_scope_filter(dash_store)
         if _nr_scope is not None:
             q = q.filter(_nr_scope)
@@ -14356,30 +14423,6 @@ def _normal_recovery_merchant_lightweight_alert_list_for_api(
         npick = len(picked)
         _stale_diag = stale_meta_trace_enabled()
 
-        def _lifecycle_bucket_ok(
-            *,
-            archived: bool,
-            coarse: str,
-            stale_flag: bool,
-            log_statuses: frozenset[str],
-        ) -> bool:
-            if lc_raw == "all":
-                return True
-            has_sent = bool(log_statuses & _NORMAL_RECOVERY_SENT_LOG_STATUSES)
-            in_history = archived or (
-                stale_flag and coarse in ("pending", "sent")
-            )
-            operational_active = (not archived) and (not stale_flag)
-            if lc_raw == "active":
-                if archived:
-                    return False
-                if has_sent:
-                    return True
-                return operational_active
-            if lc_raw == "archived":
-                return in_history
-            return True
-
         _lat_loop_iters = 0
         for pick_i, grp_sorted in enumerate(picked):
             _lat_loop_iters += 1
@@ -14410,8 +14453,9 @@ def _normal_recovery_merchant_lightweight_alert_list_for_api(
                         diag_pick_index=pick_i if _stale_diag else None,
                         diag_picked_groups_total=npick if _stale_diag else None,
                     )
-                if not _lifecycle_bucket_ok(
-                    archived=arch,
+                if not _normal_recovery_merchant_lifecycle_bucket_ok(
+                    lc_raw=lc_raw,
+                    terminal_archived=arch,
                     coarse=coarse,
                     stale_flag=stale_flag,
                     log_statuses=log_u,
@@ -14536,24 +14580,6 @@ def _normal_recovery_cart_alert_list(
         npick = len(picked)
         _stale_diag = stale_meta_trace_enabled()
 
-        def _lifecycle_bucket_ok(
-            *,
-            archived: bool,
-            coarse: str,
-            stale_flag: bool,
-        ) -> bool:
-            if lc_raw == "all":
-                return True
-            in_history = archived or (
-                stale_flag and coarse in ("pending", "sent")
-            )
-            operational_active = (not archived) and (not stale_flag)
-            if lc_raw == "active":
-                return operational_active
-            if lc_raw == "archived":
-                return in_history
-            return True
-
         for pick_i, grp_sorted in enumerate(picked):
             arch = _normal_recovery_group_is_archived(grp_sorted)
             bh = _normal_recovery_behavioral_merge_from_cart_group(grp_sorted)
@@ -14574,10 +14600,12 @@ def _normal_recovery_cart_alert_list(
                 diag_pick_index=pick_i if _stale_diag else None,
                 diag_picked_groups_total=npick if _stale_diag else None,
             )
-            if not _lifecycle_bucket_ok(
-                archived=arch,
+            if not _normal_recovery_merchant_lifecycle_bucket_ok(
+                lc_raw=lc_raw,
+                terminal_archived=arch,
                 coarse=coarse,
                 stale_flag=stale_flag,
+                log_statuses=log_u,
             ):
                 continue
             out.append(

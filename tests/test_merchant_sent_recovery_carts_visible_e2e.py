@@ -6,6 +6,7 @@ Reproduces: messages show sent rows while normal-carts returns 0 rows / mismatch
 """
 from __future__ import annotations
 
+import json
 import unittest
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -24,6 +25,7 @@ from main import (  # noqa: E402
     _NORMAL_RECOVERY_SENT_LOG_STATUSES,
     _api_json_dashboard_messages,
     _api_json_dashboard_normal_carts,
+    _normal_recovery_merchant_lightweight_alert_list_for_api,
     _normal_carts_dashboard_stats,
     app,
 )
@@ -161,7 +163,7 @@ class MerchantSentRecoveryCartsVisibleE2ETests(unittest.TestCase):
         return body
 
     def test_sent_recovery_visible_on_messages_and_carts_apis(self) -> None:
-        st, _ac, _lg = self._seed_sent_recovery_cart()
+        st, ac, _lg = self._seed_sent_recovery_cart()
 
         with patch("main._dashboard_recovery_store_row", return_value=st):
             msgs = _api_json_dashboard_messages(st)
@@ -177,11 +179,14 @@ class MerchantSentRecoveryCartsVisibleE2ETests(unittest.TestCase):
 
         with patch("main._dashboard_recovery_store_row", return_value=st):
             stats2 = _normal_carts_dashboard_stats(st)
+        page_rows = body.get("merchant_carts_page_rows") or []
         self.assertGreaterEqual(int(stats2.get("normal_cart_count") or 0), 1)
-        self.assertEqual(
+        self.assertGreaterEqual(
             int(stats2.get("normal_cart_count") or 0),
-            len(body.get("merchant_carts_page_rows") or []),
+            len(page_rows),
         )
+        row_ids = {int(r.get("merchant_case_row_id") or 0) for r in page_rows}
+        self.assertIn(int(ac.id), row_ids)
 
     def test_sent_cart_outside_last_seen_cap_still_on_carts_api(self) -> None:
         """Sent log exists but cart is older than newest-N abandoned rows (merchant bug)."""
@@ -234,6 +239,77 @@ class MerchantSentRecoveryCartsVisibleE2ETests(unittest.TestCase):
             return_value=tiny,
         ):
             self._assert_cart_visible_in_normal_carts_api(st)
+
+    def _active_and_archived_rows(
+        self, st: Store, *, session_id: str
+    ) -> tuple[list[dict], list[dict]]:
+        with patch("main._dashboard_recovery_store_row", return_value=st):
+            active, _ = _normal_recovery_merchant_lightweight_alert_list_for_api(
+                50,
+                0,
+                nr_session=session_id,
+                lifecycle="active",
+                dash_store=st,
+            )
+            archived, _ = _normal_recovery_merchant_lightweight_alert_list_for_api(
+                50,
+                0,
+                nr_session=session_id,
+                lifecycle="archived",
+                dash_store=st,
+            )
+        return list(active), list(archived)
+
+    def test_sent_lifecycle_active_until_terminal_purchase(self) -> None:
+        """After send cart stays on active Carts; archives only after purchase terminal."""
+        st, ac, _lg = self._seed_sent_recovery_cart()
+        sid = ac.recovery_session_id or ""
+        slug = st.zid_store_id
+
+        with patch("main._dashboard_recovery_store_row", return_value=st):
+            msgs = _api_json_dashboard_messages(st)
+        self.assertGreaterEqual(len(msgs.get("merchant_message_history_rows") or []), 1)
+
+        body = self._assert_cart_visible_in_normal_carts_api(st)
+        sent_row = next(
+            r
+            for r in body.get("merchant_carts_page_rows") or []
+            if int(r.get("merchant_case_row_id") or 0) == int(ac.id)
+        )
+        self.assertEqual(sent_row.get("merchant_cart_bucket"), "sent")
+        self.assertIn(
+            "بانتظار تفاعل العميل",
+            sent_row.get("merchant_status_label_ar") or "",
+        )
+
+        ac.raw_payload = json.dumps(
+            {"cf_behavioral": {"customer_replied": True}}, ensure_ascii=False
+        )
+        db.session.commit()
+        active_mid, archived_mid = self._active_and_archived_rows(st, session_id=sid)
+        self.assertEqual(len(archived_mid), 0)
+        self.assertEqual(len(active_mid), 1)
+
+        now = datetime.now(timezone.utc)
+        db.session.add(
+            CartRecoveryLog(
+                store_slug=slug,
+                session_id=sid,
+                cart_id=ac.zid_cart_id,
+                phone="966501112233",
+                message="",
+                status="stopped_converted",
+                step=2,
+                created_at=now,
+            )
+        )
+        ac.status = "recovered"
+        db.session.commit()
+
+        active_end, archived_end = self._active_and_archived_rows(st, session_id=sid)
+        self.assertEqual(len(active_end), 0)
+        self.assertEqual(len(archived_end), 1)
+        self.assertEqual(archived_end[0].get("merchant_coarse_status"), "converted")
 
     def test_sent_recovery_visible_via_http_normal_carts_endpoint(self) -> None:
         st, _ac, _lg = self._seed_sent_recovery_cart()

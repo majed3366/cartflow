@@ -84,8 +84,10 @@ def merchant_coarse_to_status_row(
     if c == "converted":
         return ("s-recovered", "تم الاسترداد", False)
     if c == "sent":
-        return ("s-sent", "رسالة أُرسلت", False)
-    if c in ("pending", "replied", "clicked", "returned"):
+        return ("s-sent", "تم الإرسال — بانتظار تفاعل العميل", False)
+    if c == "pending":
+        return ("s-waiting", "بانتظار الإرسال", False)
+    if c in ("replied", "clicked", "returned"):
         return ("s-waiting", "جارٍ المتابعة", False)
     if c == "blocked":
         return ("s-attention", "يحتاج متابعة", True)
