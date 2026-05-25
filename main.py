@@ -5804,6 +5804,20 @@ def _persist_cart_recovery_log(
             )
         except Exception:
             pass
+        try:
+            from services.lifecycle_closure_records_v1 import (
+                maybe_record_closure_from_recovery_log,
+            )
+
+            maybe_record_closure_from_recovery_log(
+                recovery_key="",
+                log_status=str(status),
+                store_slug=store_slug,
+                session_id=session_id,
+                cart_id=cart_id,
+            )
+        except Exception:
+            pass
     except Exception as e:  # noqa: BLE001
         db.session.rollback()
         log.warning("CartRecoveryLog persist failed: %s", e)

@@ -319,6 +319,7 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 
 | Date (UTC) | Summary |
 |------------|---------|
+| 2026-05-19 | **Lifecycle closure records v1:** `lifecycle_closure_records` extended (return/reply/failed/cancelled/max_attempts/vip/user_rejected); `record_lifecycle_closure` + hooks on `CartRecoveryLog` / schedule cancel; admin/merchant read paths. Commit: **`fix: add durable lifecycle closure records v1`**. |
 | 2026-05-19 | **Purchase Truth Completion v2:** canonical `ingest_purchase_truth`, Zid webhook ingest, reply `reply_purchase_claim` (low/medium), unified precedence purchase>reply>return, `lifecycle_closure_records`, dashboard `has_purchase` first. Doc: `docs/cartflow_purchase_truth_completion_v2.md`. Commit: **`fix: complete durable purchase truth v2`**. |
 | 2026-05-19 | **Admin support diagnostics UI v3:** final-truth precedence (purchase > read > delivered > sent > waiting > blocked > failed), «لماذا نعتقد ذلك» chain, noisy logs in collapsed «تفاصيل تشغيلية»; presentation-only. Commit: **`feat: add final truth layer and reduce diagnostics noise`**. |
 | 2026-05-19 | **Admin support diagnostics UI v2:** `/admin/support-diagnostics/ui` — verdict card (🟢/🟠/🔴), timeline, meaning, action block, merchant copy, technical details collapsed; presentation-only JS. Commit: **`feat: improve admin support diagnostics ui v2`**. |

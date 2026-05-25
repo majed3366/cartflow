@@ -1117,6 +1117,21 @@ def finalize_recovery_schedule_durable(
         if det:
             row.last_error = det
         db.session.commit()
+        if st == STATUS_CANCELLED:
+            try:
+                from services.lifecycle_closure_records_v1 import (
+                    maybe_record_closure_from_schedule_cancel,
+                )
+
+                maybe_record_closure_from_schedule_cancel(
+                    recovery_key=rk,
+                    last_error=det or "",
+                    store_slug=(row.store_slug or ""),
+                    session_id=(row.session_id or ""),
+                    cart_id=row.cart_id,
+                )
+            except Exception:  # noqa: BLE001
+                pass
         return True
     except SQLAlchemyError:
         db.session.rollback()

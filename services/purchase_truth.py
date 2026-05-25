@@ -138,17 +138,20 @@ def ingest_purchase_truth(
     )
 
     if truth_written:
-        from services.lifecycle_closure_truth_v2 import (
+        from services.lifecycle_closure_records_v1 import (
             CLOSURE_PURCHASE_COMPLETED,
-            record_durable_lifecycle_closure,
+            record_lifecycle_closure,
         )
 
-        record_durable_lifecycle_closure(
+        record_lifecycle_closure(
             rk,
             closure_status=CLOSURE_PURCHASE_COMPLETED,
             closure_reason="purchase_truth_verified",
             closure_source=f"purchase_truth:{source}",
             closure_time=purchase_time,
+            store_slug=store_slug,
+            session_id=session_id,
+            cart_id=str(cart_id or ""),
         )
         if apply_lifecycle:
             apply_purchase_truth_lifecycle_closure(

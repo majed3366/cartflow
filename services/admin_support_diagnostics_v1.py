@@ -689,7 +689,34 @@ def build_admin_support_diagnostics(
             + ["purchase_truth=detected", f"recovery_key={rk[:120]}"],
         )
 
+    lifecycle_closure = None
+    if rk:
+        try:
+            from services.lifecycle_closure_records_v1 import get_durable_closure
+
+            lifecycle_closure = get_durable_closure(rk)
+        except Exception:  # noqa: BLE001
+            lifecycle_closure = None
+    if lifecycle_closure:
+        cs = lifecycle_closure.get("closure_status") or ""
+        diagnostic.evidence.append(f"lifecycle_closure={cs}")
+        if cs == "purchase_completed" and diagnostic.issue_type not in (
+            "recovery_stopped_purchase",
+            "stopped_converted",
+        ):
+            diagnostic = _diag(
+                issue_type="recovery_stopped_purchase",
+                summary="Lifecycle closed — purchase completed",
+                likely_cause=f"closure_source={lifecycle_closure.get('closure_source', '-')}",
+                severity=SEVERITY_INFO,
+                recommended_action="No further recovery; closure is durable.",
+                merchant_safe_message="تم إكمال الشراء — توقف الاسترجاع.",
+                evidence=diagnostic.evidence
+                + [f"closure_reason={lifecycle_closure.get('closure_reason', '-')}"],
+            )
+
     enrichment: dict[str, Any] = {
+        "lifecycle_closure": lifecycle_closure,
         "onboarding": {
             "ready": onboarding.get("ready"),
             "blocking_steps": onboarding.get("blocking_steps"),

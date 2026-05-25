@@ -13,10 +13,10 @@ from models import LifecycleClosureRecord, PurchaseTruthRecord, RecoverySchedule
 from schema_lifecycle_closure import reset_lifecycle_closure_schema_guard_for_tests
 from schema_purchase_truth import reset_purchase_truth_schema_guard_for_tests
 from services.cartflow_purchase_truth import has_purchase, reset_purchase_truth_foundation_for_tests
-from services.lifecycle_closure_truth_v2 import (
+from services.lifecycle_closure_records_v1 import (
     CLOSURE_PURCHASE_COMPLETED,
     get_durable_closure,
-    reset_lifecycle_closure_truth_for_tests,
+    reset_lifecycle_closure_records_for_tests,
 )
 from services.lifecycle_intelligence import (
     BEHAVIOR_CUSTOMER_REPLIED,
@@ -40,7 +40,7 @@ def _reset() -> None:
     reset_purchase_truth_foundation_for_tests()
     reset_purchase_truth_schema_guard_for_tests()
     reset_lifecycle_closure_schema_guard_for_tests()
-    reset_lifecycle_closure_truth_for_tests()
+    reset_lifecycle_closure_records_for_tests()
     import main
 
     main._session_recovery_converted.clear()

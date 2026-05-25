@@ -428,6 +428,9 @@ class LifecycleClosureRecord(Base):
     closure_reason = Column(String(128), nullable=False)
     closure_source = Column(String(128), nullable=False)
     closure_time = Column(DateTime, nullable=False)
+    store_slug = Column(String(255), nullable=True, index=True)
+    session_id = Column(String(512), nullable=True, index=True)
+    cart_id = Column(String(255), nullable=True, index=True)
     created_at = Column(
         DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
     )

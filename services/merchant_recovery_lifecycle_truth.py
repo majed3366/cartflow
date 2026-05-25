@@ -239,12 +239,25 @@ def build_merchant_recovery_lifecycle_truth(
     cr = _norm(coarse)
 
     recovery_key = _recovery_key_for_abandoned_cart(ac, store_slug)
+    durable_closure = None
+    if recovery_key:
+        try:
+            from services.lifecycle_closure_records_v1 import get_durable_closure
+
+            durable_closure = get_durable_closure(recovery_key)
+        except Exception:  # noqa: BLE001
+            durable_closure = None
+
     purchased = lifecycle_purchased_evidence(
         ls=ls, bk="", pk=pk, cr=cr, log_ss=log_ss, recovery_key=recovery_key
     )
+    if durable_closure and durable_closure.get("closure_status") == "purchase_completed":
+        purchased = True
     if not purchased and _norm(getattr(ac, "status", None)) == "recovered":
         purchased = True
     replied = lifecycle_replied_evidence(bh=bh, ls=ls, bk="", pk=pk, log_ss=log_ss)
+    if durable_closure and durable_closure.get("closure_status") == "customer_replied":
+        replied = True
     returned = lifecycle_returned_evidence(
         bh=bh,
         ls=ls,
@@ -255,6 +268,8 @@ def build_merchant_recovery_lifecycle_truth(
         dashboard_return_track=False,
         dashboard_return_intel_panel=False,
     )
+    if durable_closure and durable_closure.get("closure_status") == "returned_to_site":
+        returned = True
 
     sent_logs: list[Any] = []
     if matched_logs:
@@ -415,6 +430,8 @@ def build_merchant_recovery_lifecycle_truth(
             "merchant_lifecycle_next_action_ar"
         ),
     }
+    if durable_closure:
+        out["durable_lifecycle_closure"] = durable_closure
 
     if message_sent and not preview:
         _log_truth_gap(
