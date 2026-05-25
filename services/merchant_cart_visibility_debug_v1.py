@@ -142,6 +142,7 @@ def build_merchant_cart_visibility_debug_payload(
     scope_filter: Any = None,
     normal_carts_row_count: Optional[int] = None,
     normal_carts_error: Optional[str] = None,
+    target_cart_id: Optional[str] = None,
 ) -> dict[str, Any]:
     from extensions import db
     from models import AbandonedCart, Store
@@ -176,6 +177,20 @@ def build_merchant_cart_visibility_debug_payload(
         db.session.rollback()
         latest_global = [{"error": str(exc)[:200]}]
 
+    filter_trace: dict[str, Any] = {}
+    try:
+        from services.merchant_normal_carts_filter_trace_v1 import (  # noqa: PLC0415
+            trace_merchant_normal_carts_filters,
+        )
+
+        filter_trace = trace_merchant_normal_carts_filters(
+            dash_store=dash_store,
+            target_cart_id=target_cart_id,
+            lifecycle="active",
+        )
+    except Exception as exc:  # noqa: BLE001
+        filter_trace = {"error": str(exc)[:300]}
+
     return {
         "checked_at_utc": datetime.now(timezone.utc).isoformat(),
         "dashboard_store": {
@@ -203,6 +218,7 @@ def build_merchant_cart_visibility_debug_payload(
             "normal-carts lists status=abandoned rows matching dashboard store scope."
         ),
         "latest_carts": latest_global,
+        "normal_carts_filter_trace": filter_trace,
     }
 
 

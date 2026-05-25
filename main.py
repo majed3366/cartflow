@@ -3914,7 +3914,8 @@ def _normal_recovery_coarse_status(phase_key: str) -> str:
     if pk == "pending_send":
         return "pending"
     if pk == NORMAL_RECOVERY_PHASE_KEY_BLOCKED_MISSING_CUSTOMER_PHONE:
-        return "blocked"
+        # Merchant active tab: awaiting verified phone is operational, not history.
+        return "pending"
     return "pending"
 
 
@@ -3927,7 +3928,6 @@ _NORMAL_RECOVERY_ARCHIVED_COARSE_STATUSES = frozenset(
         "ignored",
         "stopped",
         "converted",
-        "blocked",
     }
 )
 
@@ -14347,13 +14347,36 @@ def api_dashboard_cart_visibility_debug(request: Request):
         except Exception as exc:  # noqa: BLE001
             db.session.rollback()
             nc_err = str(exc)[:200]
+        target_cid = (request.query_params.get("cart_id") or "").strip()[:255] or None
         payload = build_merchant_cart_visibility_debug_payload(
             dash_store=dash_store,
             auth_store_slug=get_merchant_auth_store_slug(),
             scope_filter=scope_filter,
             normal_carts_row_count=nc_count,
             normal_carts_error=nc_err,
+            target_cart_id=target_cid,
         )
+        try:
+            from services.merchant_normal_carts_filter_trace_v1 import (  # noqa: PLC0415
+                trace_merchant_normal_carts_filters,
+            )
+
+            ft = payload.get("normal_carts_filter_trace") or {}
+            log.info(
+                "[NORMAL CARTS FILTER TRACE] %s",
+                ft,
+            )
+            print(
+                "[NORMAL CARTS FILTER TRACE] "
+                f"after_store={ft.get('after_store')} "
+                f"after_vip={ft.get('after_vip')} "
+                f"after_grouping={ft.get('after_grouping')} "
+                f"after_lifecycle={ft.get('after_lifecycle')} "
+                f"final_rows={ft.get('final_rows')}",
+                flush=True,
+            )
+        except Exception:  # noqa: BLE001
+            pass
         return j({"ok": True, **payload})
     except Exception as e:  # noqa: BLE001
         db.session.rollback()
@@ -14383,6 +14406,29 @@ def api_dashboard_normal_carts(request: Request):
     try:
         dash_store = _dashboard_recovery_store_row()
         body, nc_prof = _api_json_dashboard_normal_carts(dash_store, request=request)
+        if (request.query_params.get("debug_filter_trace") or "").strip() in (
+            "1",
+            "true",
+            "yes",
+        ):
+            try:
+                from services.merchant_normal_carts_filter_trace_v1 import (  # noqa: PLC0415
+                    trace_merchant_normal_carts_filters,
+                )
+
+                body["normal_carts_filter_trace"] = trace_merchant_normal_carts_filters(
+                    dash_store=dash_store,
+                    target_cart_id=(request.query_params.get("cart_id") or "").strip()[
+                        :255
+                    ]
+                    or None,
+                )
+                log.info(
+                    "[NORMAL CARTS FILTER TRACE] %s",
+                    body["normal_carts_filter_trace"],
+                )
+            except Exception as ft_exc:  # noqa: BLE001
+                body["normal_carts_filter_trace"] = {"error": str(ft_exc)[:300]}
         return j({"ok": True, **body})
     except Exception as e:  # noqa: BLE001
         db.session.rollback()
