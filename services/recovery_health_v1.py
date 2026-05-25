@@ -305,11 +305,13 @@ def _schedule_counts() -> dict[str, Any]:
 
 def _protections_summary() -> dict[str, Any]:
     from services.recovery_scheduler_guardrails import (
+        build_scheduler_owner_health_fields,
         resolve_recovery_resume_on_startup_config,
     )
 
     sched = resolve_recovery_resume_on_startup_config()
-    owner_enabled = bool(sched["enabled"])
+    owner_fields = build_scheduler_owner_health_fields()
+    owner_enabled = bool(owner_fields["resume_on_startup_enabled"])
 
     restart_survival = "enabled"
     purchase_stop = "enabled"
@@ -342,6 +344,7 @@ def _protections_summary() -> dict[str, Any]:
             "status": "enabled" if owner_enabled else "disabled",
             "resume_on_startup": owner_enabled,
             "reason": sched.get("reason"),
+            **owner_fields,
         },
         "restart_survival": restart_survival,
         "purchase_stop": purchase_stop,
@@ -420,10 +423,10 @@ def build_recovery_health_snapshot(*, emit_warn_log: bool = True) -> dict[str, A
         except OSError:
             pass
 
-    scheduler_label = (
-        "owner"
-        if owner_enabled
-        else "api_replica_no_resume"
+    owner_fields = protections.get("scheduler_owner", {})
+    scheduler_label = str(
+        owner_fields.get("scheduler_owner_mode")
+        or ("owner" if owner_enabled else "api_replica")
     )
 
     try:
@@ -448,10 +451,14 @@ def build_recovery_health_snapshot(*, emit_warn_log: bool = True) -> dict[str, A
         "ok": True,
         "health": health,
         "scheduler": scheduler_label,
+        "scheduler_owner_mode": scheduler_label,
+        "resume_on_startup_enabled": bool(
+            owner_fields.get("resume_on_startup_enabled", owner_enabled)
+        ),
         "scheduler_detail": {
             "mode": scheduler_label,
             "resume_heartbeat": scheduler_status,
-            **protections.get("scheduler_owner", {}),
+            **owner_fields,
         },
         "stuck_running": stuck,
         "pending_due": int(counts.get("pending_due") or 0),

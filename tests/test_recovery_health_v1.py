@@ -92,10 +92,12 @@ def test_stuck_running_detected() -> None:
 
 
 def test_scheduler_owner_visible_from_env() -> None:
+    db.create_all()
     os.environ[ENV_RECOVERY_RESUME_ON_STARTUP] = "0"
     try:
         snap = build_recovery_health_snapshot(emit_warn_log=False)
-        assert snap["scheduler"] == "api_replica_no_resume"
+        assert snap["scheduler_owner_mode"] == "api_replica"
+        assert snap["resume_on_startup_enabled"] is False
         assert snap["protections"]["scheduler_owner"]["status"] == "disabled"
     finally:
         os.environ.pop(ENV_RECOVERY_RESUME_ON_STARTUP, None)
