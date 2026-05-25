@@ -811,7 +811,7 @@
           ' role="region" aria-label="جميع خطوات الإعداد">' +
           unifiedSetupStepsHtml(steps) +
           "</div></div>" +
-          '<p class="ma-setup-daily-peek-note">معاينة يومية (نظرة عامة · ملخص الشهر · آخر السلال) بالأسفل — باهتة حتى تنهي الإعداد.</p>") +
+          '<p class="ma-setup-daily-peek-note">معاينة يومية (نظرة عامة · ملخص الشهر · آخر السلال) بالأسفل — باهتة حتى تنهي الإعداد.</p>') +
       "</div>";
 
     var btn = byId("ma-setup-toggle-btn");
