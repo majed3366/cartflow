@@ -41,14 +41,15 @@
 
 `services/admin_support_diagnostics_v1.py` — `build_admin_support_diagnostics()`, `list_support_question_inventory()`.
 
-## UI v2 (`/admin/support-diagnostics/ui`)
+## UI v2–v3 (`/admin/support-diagnostics/ui`)
 
 Presentation-only (no API changes):
 
-1. **Verdict card** — emoji + title + الحالة + الإجراء (severity colors).
-2. **Timeline** — `recent_logs` + delivery truth, chronological.
-3. **ماذا يعني هذا؟** — support meaning.
-4. **ماذا نفعل الآن؟** — short action + optional detail.
-5. **رسالة للتاجر** — `merchant_safe_message` + copy.
-6. **تفاصيل تقنية** — collapsed JSON/evidence.
-7. Placeholders: اقتراح إصلاح، فتح الإعداد مباشرة.
+**v3 — final truth first**
+
+1. **النتيجة النهائية** — single outcome via precedence: purchase > read > delivered > sent > waiting > blocked > failed.
+2. **لماذا نعتقد ذلك؟** — strongest evidence chain only (no skipped_duplicate / queued noise).
+3. **ماذا يعني / ماذا نفعل / رسالة للتاجر** — unchanged intent.
+4. **مسار النتيجة (مختصر)** — optional 2+ step clean path.
+5. **تفاصيل تشغيلية (للدعم الفني) ▼** — all raw `recent_logs` including noise.
+6. **تفاصيل تقنية ▼** — JSON + API evidence.
