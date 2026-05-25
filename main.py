@@ -9475,6 +9475,19 @@ def _handle_cart_state_sync(
         f"[CART STATE UPSERT] mode={'created' if created else 'updated'} cart_id={ups_cid} "
         f"session_id={ups_sid} cart_total={row.cart_value} vip_mode={bool(row.vip_mode)} status={row.status}"
     )
+    try:
+        from services.merchant_cart_visibility_debug_v1 import (  # noqa: PLC0415
+            log_cf_abandoned_cart_persist,
+        )
+
+        log_cf_abandoned_cart_persist(
+            row,
+            store_slug=store_slug,
+            created=created,
+            event_path="cart_state_sync",
+        )
+    except Exception as _persist_log_exc:  # noqa: BLE001
+        log.debug("cf abandoned cart persist log skipped: %s", _persist_log_exc)
 
     _lane_diag = vip_operational_lane_diagnostics(row.cart_value, store_row)
     if lite_add:
@@ -9913,7 +9926,18 @@ async def api_cart_event(request: Request, background_tasks: BackgroundTasks):
             bg_tasks_queued=_bg_tasks_queued(),
         )
 
-        print("[CF API] event received")
+        print("[CF API] event received", flush=True)
+        try:
+            _ce_ev = str(payload.get("event") or "").strip() or "-"
+            _ce_store = str(
+                payload.get("store") or payload.get("store_slug") or ""
+            ).strip() or "-"
+            print(
+                f"[CF API] event received event={_ce_ev} store_slug={_ce_store}",
+                flush=True,
+            )
+        except OSError:
+            pass
         try:
             pl_snip = json.dumps(
                 _redact_secrets_for_log(payload), ensure_ascii=False, default=str
@@ -14298,6 +14322,47 @@ def api_dashboard_summary(request: Request):
     finally:
         dashboard_summary_profile_end()
         _log_dashboard_section_profile(section="summary", wall_perf_start=wall0)
+
+
+@app.get("/api/dashboard/cart-visibility-debug")
+def api_dashboard_cart_visibility_debug(request: Request):
+    """Temporary read-only: latest AbandonedCart rows vs dashboard store scope."""
+    wall0 = time.perf_counter()
+    try:
+        _merchant_dashboard_db_ready()
+        from services.merchant_auth_context import get_merchant_auth_store_slug
+        from services.merchant_cart_visibility_debug_v1 import (
+            build_merchant_cart_visibility_debug_payload,
+        )
+
+        dash_store = _dashboard_recovery_store_row()
+        scope_filter = _normal_recovery_abandoned_scope_filter(dash_store)
+        nc_count: Optional[int] = None
+        nc_err: Optional[str] = None
+        try:
+            body, _prof = _api_json_dashboard_normal_carts(
+                dash_store, request=request
+            )
+            nc_count = len(body.get("merchant_carts_page_rows") or [])
+        except Exception as exc:  # noqa: BLE001
+            db.session.rollback()
+            nc_err = str(exc)[:200]
+        payload = build_merchant_cart_visibility_debug_payload(
+            dash_store=dash_store,
+            auth_store_slug=get_merchant_auth_store_slug(),
+            scope_filter=scope_filter,
+            normal_carts_row_count=nc_count,
+            normal_carts_error=nc_err,
+        )
+        return j({"ok": True, **payload})
+    except Exception as e:  # noqa: BLE001
+        db.session.rollback()
+        log.warning("api_dashboard_cart_visibility_debug: %s", e)
+        return j({"ok": False, "error": "failed"}, 500)
+    finally:
+        _log_dashboard_section_profile(
+            section="cart_visibility_debug", wall_perf_start=wall0
+        )
 
 
 @app.get("/api/dashboard/normal-carts")
