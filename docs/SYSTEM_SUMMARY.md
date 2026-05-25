@@ -320,6 +320,7 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 
 | Date (UTC) | Summary |
 |------------|---------|
+| 2026-05-19 | **Unified setup prod visibility + debug:** `MERCHANT_SETUP_RENDER_BUILD` in HTML meta, lazy JS cache-bust, console/summary `merchant_setup_render_debug`; fail-open `show_card`/`unified_p0` (phase steps); hide only when `setup_mode === false`; sync re-applies setup on home. Commit: **`fix: make unified setup hero visible in production`**. |
 | 2026-05-19 | **Fix unified setup hero hidden on home:** `syncHomeActivationFromCache` no longer hides `#ma-setup-experience-root` when `first_recovery_ready` (sandbox) alone — only when `setup_mode === false` or `onboarding_complete`; explicit `removeAttribute('hidden')` after render; CSS restore on active `#page-home`; API payload pins `unified_p0`/`setup_mode`. Commit: **`fix: restore merchant setup hero rendering`**. |
 | 2026-05-19 | **Merchant setup polish v2 (UI):** hero-v2 dominates above fold (🎯/⏱/🎁 + primary CTA); completed steps in collapsed `<details>`; current in hero; locked/upcoming compact lanes; full roadmap optional; progress chips retained. Commit: **`feat: polish merchant setup hierarchy v2`**. |
 | 2026-05-19 | **Merchant setup polish v1 (UI):** unified path kept; setup mode shows dimmed peek for نظرة عامة / ملخص الشهر / آخر السلال; hero block (الخطوة الحالية + المدة + النتيجة + CTA); progress chips ✓/▶/🔒; production lock copy «يفتح بعد إثبات التجربة». Commit: **`feat: polish merchant setup clarity v1`**. |

@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="cartflow-merchant-setup-build" content="{{ merchant_setup_render_build | default('unknown') }}">
 <title>{{ merchant_html_title | default("CartFlow — لوحة التاجر") }}</title>
 <script>window.CARTFLOW_STORE_SLUG = "{{ merchant_store_slug | default('demo') }}";</script>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -821,7 +822,7 @@
 </div><!-- /.ma-dashboard-frame -->
 
 <script defer src="/static/merchant_vip_automation_ui.js"></script>
-<script defer src="/static/merchant_dashboard_lazy.js"></script>
+<script defer src="/static/merchant_dashboard_lazy.js?v={{ merchant_setup_render_build | default('unknown') }}"></script>
 <script defer src="/static/merchant_whatsapp_settings.js"></script>
 <script defer src="/static/merchant_vip_settings.js"></script>
 <script defer src="/static/merchant_store_connection.js"></script>

@@ -14872,6 +14872,7 @@ def _api_json_dashboard_summary(
     )
     from services.merchant_setup_experience_v1 import (  # noqa: PLC0415
         build_merchant_setup_experience_api_payload,
+        merchant_setup_render_debug_payload,
     )
     from services.merchant_whatsapp_readiness_ui import (  # noqa: PLC0415
         build_merchant_whatsapp_readiness_card,
@@ -14941,6 +14942,9 @@ def _api_json_dashboard_summary(
         month_recovered=int(month_win.get("recovered_total") or 0),
         month_revenue=float(month_win.get("recovered_revenue") or 0.0),
     )
+    merchant_setup_experience = build_merchant_setup_experience_api_payload(
+        cookies=cookies
+    )
     return {
         "merchant_ar_date_header": merchant_ar_weekday_date_header(now_utc),
         "wa_badge_ar": str(wa_card.get("badge_ar") or "—"),
@@ -14972,8 +14976,10 @@ def _api_json_dashboard_summary(
         "merchant_nav_badge_abandoned": int(mstats.get("normal_cart_count") or 0),
         "merchant_nav_badge_followup": 0,
         "merchant_nav_badge_vip": 0,
-        "merchant_setup_experience": build_merchant_setup_experience_api_payload(
-            cookies=cookies
+        "merchant_setup_experience": merchant_setup_experience,
+        "merchant_setup_render_debug": merchant_setup_render_debug_payload(
+            merchant_setup_experience,
+            activation=merchant_activation,
         ),
         "merchant_activation": merchant_activation,
         "merchant_activation_visibility_debug": (
@@ -15201,12 +15207,17 @@ def dashboard(request: Request):
         dash_store, cookies=dict(request.cookies)
     )
     stall_trace_checkpoint("dashboard_before_template_render")
+    from services.merchant_setup_render_build import (  # noqa: PLC0415
+        MERCHANT_SETUP_RENDER_BUILD,
+    )
+
     resp = templates.TemplateResponse(
         request,
         "merchant_app.html",
         {
             "request": request,
             "merchant_html_title": "CartFlow — لوحة التاجر",
+            "merchant_setup_render_build": MERCHANT_SETUP_RENDER_BUILD,
             "merchant_dashboard_lazy_shell": True,
             "merchant_ar_date_header": merchant_ar_weekday_date_header(now_utc),
             "merchant_nav_badge_abandoned": 0,

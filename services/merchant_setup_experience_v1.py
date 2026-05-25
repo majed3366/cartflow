@@ -303,4 +303,37 @@ def build_merchant_setup_experience_api_payload(
     )
     out = unified_api_payload(unified, flow_dict=flow.to_dict())
     out["merchant_store_display_name"] = resolution.store_name or "متجرك"
+    from services.merchant_setup_render_build import (  # noqa: PLC0415
+        MERCHANT_SETUP_RENDER_BUILD,
+    )
+
+    out["MERCHANT_SETUP_RENDER_BUILD"] = MERCHANT_SETUP_RENDER_BUILD
     return out
+
+
+def merchant_setup_render_debug_payload(
+    experience: dict[str, Any],
+    *,
+    activation: Optional[dict[str, Any]] = None,
+) -> dict[str, Any]:
+    """Read-only summary debug for unified setup visibility (no behavior change)."""
+    from services.merchant_setup_render_build import (  # noqa: PLC0415
+        MERCHANT_SETUP_RENDER_BUILD,
+    )
+
+    act = activation if isinstance(activation, dict) else {}
+    steps = experience.get("steps") if isinstance(experience.get("steps"), list) else []
+    return {
+        "MERCHANT_SETUP_RENDER_BUILD": MERCHANT_SETUP_RENDER_BUILD,
+        "unified_p0": experience.get("unified_p0"),
+        "setup_mode": experience.get("setup_mode"),
+        "show_card": experience.get("show_card"),
+        "onboarding_complete": experience.get("onboarding_complete"),
+        "first_recovery_ready": experience.get("first_recovery_ready"),
+        "hide_setup_card": act.get("hide_setup_card"),
+        "home_stage": act.get("home_stage"),
+        "step_count": len(steps),
+        "has_phase_steps": any(
+            isinstance(s, dict) and bool(s.get("phase")) for s in steps
+        ),
+    }

@@ -1,6 +1,9 @@
 /* Lazy-load merchant dashboard JSON sections (shell-first). Not storefront widget V2. */
+/* MERCHANT_SETUP_RENDER_BUILD=5cd57ad-prodvis1 */
 (function () {
   "use strict";
+
+  var MERCHANT_SETUP_RENDER_BUILD = "5cd57ad-prodvis1";
 
   function esc(s) {
     return String(s == null ? "" : s)
@@ -29,6 +32,59 @@
 
   var cachedMerchantActivation = null;
   var cachedMerchantSetupExperience = null;
+
+  function isUnifiedSetup(mse) {
+    if (!mse || typeof mse !== "object") return false;
+    if (mse.unified_p0 === true) return true;
+    if (mse.unified_p0 === false) return false;
+    var steps = mse.steps || [];
+    var i;
+    for (i = 0; i < steps.length; i++) {
+      if (steps[i] && steps[i].phase) return true;
+    }
+    return false;
+  }
+
+  function shouldRenderUnifiedSetup(mse) {
+    if (!isUnifiedSetup(mse)) return false;
+    if (mse.setup_mode === false) return false;
+    if (mse.show_card === false) return false;
+    return true;
+  }
+
+  function logSetupRenderDebug(label, payload) {
+    try {
+      console.info(
+        "[CartFlow] MERCHANT_SETUP_RENDER_BUILD=" + MERCHANT_SETUP_RENDER_BUILD
+      );
+      if (payload) {
+        console.info("[CartFlow] " + label, payload);
+      }
+    } catch (_e) {
+      /* ignore */
+    }
+  }
+
+  function probeSetupExperienceRoot() {
+    var root = byId("ma-setup-experience-root");
+    var home = byId("page-home");
+    if (!root) {
+      return { found: false };
+    }
+    var cs = window.getComputedStyle ? window.getComputedStyle(root) : null;
+    return {
+      found: true,
+      hiddenProperty: !!root.hidden,
+      hasHiddenAttr: root.hasAttribute("hidden"),
+      innerHTMLLength: (root.innerHTML || "").length,
+      display: cs ? cs.display : null,
+      visibility: cs ? cs.visibility : null,
+      parentPageHomeActive: !!(home && home.classList.contains("active")),
+      dataUnified: root.getAttribute("data-ma-setup-unified"),
+    };
+  }
+
+  window.maProbeSetupExperienceRoot = probeSetupExperienceRoot;
 
   function isDashboardHomeActive() {
     var home = byId("page-home");
@@ -72,7 +128,7 @@
     if (!act) {
       return;
     }
-    if (!(mse && mse.unified_p0)) {
+    if (!isUnifiedSetup(mse)) {
       applyMerchantActivation(act);
     } else {
       hideActivationForUnifiedSetup(mse);
@@ -84,6 +140,8 @@
         setupRoot.setAttribute("hidden", "");
         setupRoot.innerHTML = "";
       }
+    } else if (shouldRenderUnifiedSetup(mse) && isDashboardHomeActive()) {
+      applyMerchantSetupExperience(mse);
     }
   }
 
@@ -145,7 +203,7 @@
   function applyOnboardingHomeFocus(mse) {
     var home = byId("page-home");
     if (!home) return;
-    var setupMode = !!(mse && mse.unified_p0 && mse.setup_mode);
+    var setupMode = shouldRenderUnifiedSetup(mse);
     home.classList.toggle("ma-setup-mode", setupMode);
     home.classList.toggle("ma-setup-daily-peek", setupMode);
     home.classList.remove("ma-onboarding-focus");
@@ -154,7 +212,7 @@
   function hideActivationForUnifiedSetup(mse) {
     var root = byId("ma-activation-root");
     if (!root) return;
-    if (mse && mse.unified_p0) {
+    if (isUnifiedSetup(mse)) {
       root.hidden = true;
       root.innerHTML = "";
       root.classList.remove("ma-activation-on-home");
@@ -162,18 +220,12 @@
     }
   }
 
-  /** Unified setup stays visible until setup_mode is false (prod path done), not at sandbox alone. */
+  /** Hide unified setup only when prod path finished (setup_mode === false). */
   function shouldHideUnifiedSetupCard(act, mse) {
-    if (!act || !mse || !mse.unified_p0 || !act.hide_setup_card) {
+    if (!act || !mse || !isUnifiedSetup(mse) || !act.hide_setup_card) {
       return false;
     }
-    if (mse.setup_mode === false) {
-      return true;
-    }
-    if (mse.onboarding_complete) {
-      return true;
-    }
-    return false;
+    return mse.setup_mode === false;
   }
 
   function showSetupExperienceRoot(root) {
@@ -781,20 +833,24 @@
     applyOnboardingHomeFocus(mse);
     hideActivationForUnifiedSetup(mse);
     if (!root) return;
-    if (!mse || !mse.show_card) {
-      root.hidden = true;
-      root.innerHTML = "";
-      return;
-    }
-    if (mse.unified_p0 && mse.setup_mode === false) {
+    if (!mse || mse.show_card === false) {
       root.hidden = true;
       root.setAttribute("hidden", "");
       root.innerHTML = "";
+      logSetupRenderDebug("setup_skip", { reason: "show_card_false", mse: !!mse });
       return;
     }
-    if (mse.unified_p0) {
+    if (shouldRenderUnifiedSetup(mse)) {
       renderUnifiedSetupExperience(mse, root);
       showSetupExperienceRoot(root);
+      logSetupRenderDebug("setup_render_unified", probeSetupExperienceRoot());
+      return;
+    }
+    if (isUnifiedSetup(mse) && mse.setup_mode === false) {
+      root.hidden = true;
+      root.setAttribute("hidden", "");
+      root.innerHTML = "";
+      logSetupRenderDebug("setup_skip", { reason: "setup_mode_false" });
       return;
     }
     var steps = mse.steps || [];
@@ -920,11 +976,28 @@
   }
 
   function applySummary(d) {
-    if (!d || !d.ok) return;
+    if (!d || !d.ok) {
+      logSetupRenderDebug("summary_skip", { ok: !!(d && d.ok) });
+      return;
+    }
+    var dbg =
+      d.merchant_setup_render_debug ||
+      (d.merchant_setup_experience &&
+        d.merchant_setup_experience.MERCHANT_SETUP_RENDER_BUILD
+        ? {
+            MERCHANT_SETUP_RENDER_BUILD:
+              d.merchant_setup_experience.MERCHANT_SETUP_RENDER_BUILD,
+            unified_p0: d.merchant_setup_experience.unified_p0,
+            setup_mode: d.merchant_setup_experience.setup_mode,
+            show_card: d.merchant_setup_experience.show_card,
+          }
+        : null);
+    logSetupRenderDebug("summary_payload", dbg);
     setText("ma-topbar-date", d.merchant_ar_date_header || "");
     applyTopbarReadiness(d);
     applyMerchantSetupExperience(d.merchant_setup_experience);
     applyHomeLayoutAfterSetup(d.merchant_activation, d.merchant_setup_experience);
+    logSetupRenderDebug("summary_dom", probeSetupExperienceRoot());
 
     setText("ma-kpi-abandoned", d.merchant_kpi_abandoned_fmt || "0");
     setText("ma-kpi-recovered", d.merchant_kpi_recovered_fmt || "0");
@@ -1745,6 +1818,10 @@
   }
 
   function bootLazyDashboard() {
+    logSetupRenderDebug("boot", {
+      hasRenderUnified: typeof renderUnifiedSetupExperience === "function",
+      hasShouldHide: typeof shouldHideUnifiedSetupCard === "function",
+    });
     if (!document.body || document.body.getAttribute("data-cf-merchant-app") !== "1") {
       return;
     }
@@ -1764,6 +1841,7 @@
 
   window.maApplyVipCartsPayload = applyVipCarts;
   window.maSyncHomeActivation = syncHomeActivationFromCache;
+  window.MERCHANT_SETUP_RENDER_BUILD = MERCHANT_SETUP_RENDER_BUILD;
 
   window.addEventListener("hashchange", syncHomeActivationFromCache);
 
