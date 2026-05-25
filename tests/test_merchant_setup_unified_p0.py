@@ -48,6 +48,8 @@ class MerchantSetupUnifiedP0Tests(unittest.TestCase):
         self.assertFalse(any(s.locked for s in prod))
         verified = next(s for s in u.steps if s.step_id == SANDBOX_VERIFIED)
         self.assertTrue(verified.is_complete)
+        self.assertTrue(u.first_recovery_ready)
+        self.assertTrue(u.setup_mode)
 
     @patch("services.cartflow_onboarding_readiness._milestones_readonly")
     def test_setup_experience_api_shape_includes_unified(self, mock_ms: object) -> None:

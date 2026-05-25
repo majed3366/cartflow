@@ -738,7 +738,8 @@ nav.ma-sidebar-nav {
 
 /* Explicitly restore activation + alerts on home (guards must not suppress these) */
 #page-home.page.active #ma-activation-root:not([hidden]),
-#page-home.page.active #ma-home-alerts-root:not([hidden]) {
+#page-home.page.active #ma-home-alerts-root:not([hidden]),
+#page-home.page.active #ma-setup-experience-root:not([hidden]) {
   display: block !important;
   width: 100%;
   flex: 0 0 auto;

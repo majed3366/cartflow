@@ -77,10 +77,11 @@
     } else {
       hideActivationForUnifiedSetup(mse);
     }
-    if (act.hide_setup_card && mse) {
+    if (shouldHideUnifiedSetupCard(act, mse)) {
       var setupRoot = byId("ma-setup-experience-root");
-      if (setupRoot && (mse.onboarding_complete || mse.first_recovery_ready)) {
+      if (setupRoot) {
         setupRoot.hidden = true;
+        setupRoot.setAttribute("hidden", "");
         setupRoot.innerHTML = "";
       }
     }
@@ -159,6 +160,26 @@
       root.classList.remove("ma-activation-on-home");
       return;
     }
+  }
+
+  /** Unified setup stays visible until setup_mode is false (prod path done), not at sandbox alone. */
+  function shouldHideUnifiedSetupCard(act, mse) {
+    if (!act || !mse || !mse.unified_p0 || !act.hide_setup_card) {
+      return false;
+    }
+    if (mse.setup_mode === false) {
+      return true;
+    }
+    if (mse.onboarding_complete) {
+      return true;
+    }
+    return false;
+  }
+
+  function showSetupExperienceRoot(root) {
+    if (!root) return;
+    root.hidden = false;
+    root.removeAttribute("hidden");
   }
 
   function applyHomeOperationalAlerts(alerts) {
@@ -703,7 +724,7 @@
     var title = esc(mse.card_title_ar || "متجرك قريب من التشغيل الكامل");
     var contextLine =
       "CartFlow يسترجع السلات المهجورة عبر واتساب — اتبع الخطوة الحالية ثم أكمل الإنتاج.";
-    root.hidden = false;
+    showSetupExperienceRoot(root);
     root.setAttribute("data-ma-setup-unified", "1");
     root.innerHTML =
       '<div class="ma-setup-panel ma-onb-panel ma-unified-setup-panel ma-setup-v2">' +
@@ -765,13 +786,15 @@
       root.innerHTML = "";
       return;
     }
-    if (mse.unified_p0 && !mse.setup_mode) {
+    if (mse.unified_p0 && mse.setup_mode === false) {
       root.hidden = true;
+      root.setAttribute("hidden", "");
       root.innerHTML = "";
       return;
     }
     if (mse.unified_p0) {
       renderUnifiedSetupExperience(mse, root);
+      showSetupExperienceRoot(root);
       return;
     }
     var steps = mse.steps || [];
@@ -796,7 +819,7 @@
     );
     var progressLabel = completed + " / " + totalSteps + " مكتمل";
     var panelOpen = !ready;
-    root.hidden = false;
+    showSetupExperienceRoot(root);
     root.innerHTML =
       '<div class="ma-setup-panel ma-onb-panel">' +
       '<h2 class="ma-setup-home-title">' +

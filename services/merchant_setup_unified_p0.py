@@ -452,6 +452,8 @@ def unified_api_payload(
     exp = unified_to_setup_experience(unified)
     out = exp.to_dict()
     out.update(unified.to_dict())
+    out["unified_p0"] = True
+    out["setup_mode"] = unified.setup_mode
     if flow_dict:
         out["onboarding_complete"] = unified.onboarding_complete
         out["first_recovery_ready"] = unified.first_recovery_ready
