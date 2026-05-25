@@ -12231,7 +12231,17 @@ def _normal_carts_dashboard_stats(dash_store: Optional[Any] = None) -> dict[str,
         if vip_th is not None:
             base_q = base_q.filter(func.coalesce(AbandonedCart.cart_value, 0) < float(vip_th))
         q_abandoned = base_q.filter(AbandonedCart.status == "abandoned")
-        out["normal_cart_count"] = int(q_abandoned.count() or 0)
+        try:
+            visible_rows, _nc_prof = _normal_recovery_merchant_lightweight_alert_list_for_api(
+                250,
+                0,
+                lifecycle="active",
+                dash_store=dash_store,
+            )
+            out["normal_cart_count"] = len(visible_rows)
+        except (SQLAlchemyError, OSError, TypeError, ValueError):
+            db.session.rollback()
+            out["normal_cart_count"] = int(q_abandoned.count() or 0)
         out["normal_recovered_count"] = int(
             base_q.filter(AbandonedCart.status == "recovered").count() or 0
         )
@@ -12745,6 +12755,90 @@ def _normal_recovery_cart_activity_rank_map(
             ts = max(ts, cart_peak[zi])
         out[aid] = ts
     return out
+
+
+def _normal_recovery_cart_group_key(ac: AbandonedCart) -> str:
+    rs = (ac.recovery_session_id or "").strip()
+    if rs:
+        return f"rs:{rs}"
+    zi = (ac.zid_cart_id or "").strip()
+    if zi:
+        return f"zid:{zi}"
+    return f"id:{int(ac.id)}"
+
+
+def _ensure_sent_recovery_groups_in_pick(
+    picked: list[list[AbandonedCart]],
+    full_rows: list[AbandonedCart],
+    *,
+    store_slug: str,
+    max_extra_groups: int = 48,
+) -> list[list[AbandonedCart]]:
+    """
+    Guarantee groups with sent recovery logs stay in the pick set even when
+    max_pick_groups would otherwise drop them (old last_seen + many newer carts).
+    """
+    slug = (store_slug or "").strip()
+    if not slug or not full_rows:
+        return picked
+    picked_keys: set[str] = set()
+    for grp in picked:
+        if grp:
+            picked_keys.add(_normal_recovery_cart_group_key(grp[0]))
+    groups_by_key: dict[str, list[AbandonedCart]] = defaultdict(list)
+    for ac in full_rows:
+        groups_by_key[_normal_recovery_cart_group_key(ac)].append(ac)
+
+    def _sort_grp(grp: list[AbandonedCart]) -> list[AbandonedCart]:
+        def _ts(ac: AbandonedCart) -> datetime:
+            t = ac.last_seen_at
+            if t is None:
+                return datetime.min.replace(tzinfo=timezone.utc)
+            if t.tzinfo is None:
+                return t.replace(tzinfo=timezone.utc)
+            return t.astimezone(timezone.utc)
+
+        return sorted(grp, key=_ts, reverse=True)
+
+    try:
+        logs = (
+            db.session.query(CartRecoveryLog)
+            .filter(
+                CartRecoveryLog.store_slug == slug,
+                CartRecoveryLog.status.in_(_NORMAL_RECOVERY_SENT_LOG_STATUSES),
+            )
+            .order_by(
+                CartRecoveryLog.sent_at.desc().nullslast(),
+                CartRecoveryLog.id.desc(),
+            )
+            .limit(max(1, int(max_extra_groups)))
+            .all()
+        )
+    except (SQLAlchemyError, OSError, TypeError, ValueError):
+        db.session.rollback()
+        return picked
+    extra: list[list[AbandonedCart]] = []
+    for lg in logs:
+        sid = (getattr(lg, "session_id", None) or "").strip()[:512]
+        cid = (getattr(lg, "cart_id", None) or "").strip()[:255]
+        for gk in (
+            (f"rs:{sid}" if sid else ""),
+            (f"zid:{cid}" if cid else ""),
+        ):
+            if not gk or gk in picked_keys:
+                continue
+            grp = groups_by_key.get(gk)
+            if not grp:
+                continue
+            extra.append(_sort_grp(grp))
+            picked_keys.add(gk)
+            if len(extra) >= max(1, int(max_extra_groups)):
+                break
+        if len(extra) >= max(1, int(max_extra_groups)):
+            break
+    if not extra:
+        return picked
+    return extra + picked
 
 
 @dataclass
@@ -14062,6 +14156,87 @@ def _normal_recovery_merchant_lightweight_alert_list(
     return []
 
 
+def _augment_abandoned_candidates_with_sent_recovery_logs(
+    primary_rows: list[AbandonedCart],
+    *,
+    dash_store: Optional[Any],
+    scope_filter: Any,
+    augment_limit: int = 100,
+) -> list[AbandonedCart]:
+    """
+    Include abandoned rows tied to recent sent recovery logs even when outside the
+    last_seen candidate cap — aligns Carts tab with Messages (log-driven).
+    """
+    slug = (
+        (getattr(dash_store, "zid_store_id", None) or "").strip()
+        if dash_store is not None
+        else ""
+    )
+    if not slug:
+        return list(primary_rows)
+    seen: set[int] = set()
+    out: list[AbandonedCart] = []
+    for row in primary_rows:
+        aid = int(getattr(row, "id", 0) or 0)
+        if aid and aid not in seen:
+            seen.add(aid)
+            out.append(row)
+    try:
+        db.create_all()
+        logs = (
+            db.session.query(CartRecoveryLog)
+            .filter(
+                CartRecoveryLog.store_slug == slug,
+                CartRecoveryLog.status.in_(_NORMAL_RECOVERY_SENT_LOG_STATUSES),
+            )
+            .order_by(
+                CartRecoveryLog.sent_at.desc().nullslast(),
+                CartRecoveryLog.id.desc(),
+            )
+            .limit(max(1, int(augment_limit)))
+            .all()
+        )
+    except (SQLAlchemyError, OSError, TypeError, ValueError):
+        db.session.rollback()
+        return out
+    sess_ids: set[str] = set()
+    cart_ids: set[str] = set()
+    for lg in logs:
+        sid = (getattr(lg, "session_id", None) or "").strip()[:512]
+        cid = (getattr(lg, "cart_id", None) or "").strip()[:255]
+        if sid:
+            sess_ids.add(sid)
+        if cid:
+            cart_ids.add(cid)
+    if not sess_ids and not cart_ids:
+        return out
+    or_parts: list[Any] = []
+    if sess_ids:
+        or_parts.append(AbandonedCart.recovery_session_id.in_(list(sess_ids)))
+    if cart_ids:
+        or_parts.append(AbandonedCart.zid_cart_id.in_(list(cart_ids)))
+    try:
+        q_extra = db.session.query(AbandonedCart).filter(
+            AbandonedCart.status == "abandoned", or_(*or_parts)
+        )
+        if scope_filter is not None:
+            q_extra = q_extra.filter(scope_filter)
+        if dash_store is not None:
+            vip_th = merchant_vip_threshold_int(dash_store)
+            if vip_th is not None:
+                q_extra = q_extra.filter(
+                    func.coalesce(AbandonedCart.cart_value, 0) < float(vip_th)
+                )
+        for ac in q_extra.limit(max(1, int(augment_limit))).all():
+            aid = int(getattr(ac, "id", 0) or 0)
+            if aid and aid not in seen:
+                seen.add(aid)
+                out.append(ac)
+    except (SQLAlchemyError, OSError, TypeError, ValueError):
+        db.session.rollback()
+    return out
+
+
 @_normal_carts_query_prof_wrap("_normal_recovery_merchant_lightweight_alert_list_for_api")
 def _normal_recovery_merchant_lightweight_alert_list_for_api(
     page_limit: int = 50,
@@ -14136,6 +14311,11 @@ def _normal_recovery_merchant_lightweight_alert_list_for_api(
             full_rows = list(
                 q.order_by(AbandonedCart.last_seen_at.desc()).limit(row_cap).all()
             )
+        full_rows = _augment_abandoned_candidates_with_sent_recovery_logs(
+            full_rows,
+            dash_store=dash_store,
+            scope_filter=_nr_scope,
+        )
         _lat_ph(
             "after_abandoned_cart_candidate_query",
             row_cap=int(row_cap),
@@ -14158,6 +14338,11 @@ def _normal_recovery_merchant_lightweight_alert_list_for_api(
             cart_activity_utc=activity_map,
             max_pick_groups=max_pick,
         )
+        picked = _ensure_sent_recovery_groups_in_pick(
+            picked,
+            full_rows,
+            store_slug=slug_for_act,
+        )
         _lat_ph("after_vip_pick_priority_groups", picked_groups=len(picked))
         batch_reads = _merchant_normal_dashboard_batch_reads(full_rows, dash_store)
         _lat_ph(
@@ -14176,14 +14361,20 @@ def _normal_recovery_merchant_lightweight_alert_list_for_api(
             archived: bool,
             coarse: str,
             stale_flag: bool,
+            log_statuses: frozenset[str],
         ) -> bool:
             if lc_raw == "all":
                 return True
+            has_sent = bool(log_statuses & _NORMAL_RECOVERY_SENT_LOG_STATUSES)
             in_history = archived or (
                 stale_flag and coarse in ("pending", "sent")
             )
             operational_active = (not archived) and (not stale_flag)
             if lc_raw == "active":
+                if archived:
+                    return False
+                if has_sent:
+                    return True
                 return operational_active
             if lc_raw == "archived":
                 return in_history
@@ -14223,6 +14414,7 @@ def _normal_recovery_merchant_lightweight_alert_list_for_api(
                     archived=arch,
                     coarse=coarse,
                     stale_flag=stale_flag,
+                    log_statuses=log_u,
                 ):
                     continue
                 out.append(
