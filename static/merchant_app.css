@@ -1681,6 +1681,44 @@ nav.ma-sidebar-nav {
   opacity: 0.85;
 }
 
+.ma-setup-demo-done-badge {
+  margin: 6px 0 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--green-mid, #059669);
+}
+
+.ma-setup-demo-retry {
+  margin-top: 2px;
+}
+
+.ma-setup-demo-tools-list {
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ma-setup-demo-tool-row {
+  padding: 10px 0;
+  border-top: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.ma-setup-demo-tool-row:first-child {
+  border-top: none;
+  padding-top: 4px;
+}
+
+.ma-setup-demo-tool-title {
+  margin: 0 0 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text, #0f172a);
+}
+
+.ma-setup-demo-tools-primary {
+  margin-top: 8px;
+}
+
 .ma-setup-daily-peek-note {
   margin: 10px 0 0;
   font-size: 11px;

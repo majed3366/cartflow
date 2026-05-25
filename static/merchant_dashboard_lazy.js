@@ -1,9 +1,9 @@
 /* Lazy-load merchant dashboard JSON sections (shell-first). Not storefront widget V2. */
-/* MERCHANT_SETUP_RENDER_BUILD=ui-setup-v3 */
+/* MERCHANT_SETUP_RENDER_BUILD=ui-setup-v5-demo-reusable */
 (function () {
   "use strict";
 
-  var MERCHANT_SETUP_RENDER_BUILD = "ui-setup-v3";
+  var MERCHANT_SETUP_RENDER_BUILD = "ui-setup-v5-demo-reusable";
 
   function esc(s) {
     return String(s == null ? "" : s)
@@ -133,12 +133,13 @@
     } else {
       hideActivationForUnifiedSetup(mse);
     }
-    if (shouldHideUnifiedSetupCard(act, mse)) {
+    if (
+      shouldHideUnifiedSetupCard(act, mse) ||
+      (isUnifiedSetup(mse) && mse && mse.setup_mode === false)
+    ) {
       var setupRoot = byId("ma-setup-experience-root");
-      if (setupRoot) {
-        setupRoot.hidden = true;
-        setupRoot.setAttribute("hidden", "");
-        setupRoot.innerHTML = "";
+      if (setupRoot && isDashboardHomeActive()) {
+        renderUnifiedSetupDemoToolsOnly(mse, setupRoot);
       }
     } else if (shouldRenderUnifiedSetup(mse) && isDashboardHomeActive()) {
       applyMerchantSetupExperience(mse);
@@ -521,6 +522,139 @@
     return t.slice(0, 26) + "…";
   }
 
+  function isDemoStoreHref(href) {
+    return String(href || "").indexOf("/demo/store") >= 0;
+  }
+
+  function demoRetryHref(st, href) {
+    var h = href || (st && st.action_href) || "";
+    if (!isDemoStoreHref(h)) {
+      return h;
+    }
+    if (h.indexOf("reset_demo=1") >= 0) {
+      return h;
+    }
+    return h + (h.indexOf("?") >= 0 ? "&" : "?") + "reset_demo=1";
+  }
+
+  function unifiedSetupStepActionsHtml(st) {
+    if (!st || st.locked) {
+      return "";
+    }
+    var href = st.action_href || "#settings";
+    var sec = sectionFromHref(href);
+    var goAttr = sec
+      ? ' onclick="if(window.goTo){goTo(\'' + sec + "');}return false;\""
+      : "";
+    var extTarget = isDemoStoreHref(href) ? ' target="_blank" rel="noopener"' : "";
+    if (st.repeatable_demo) {
+      var done = !!st.is_complete;
+      var cur = !!st.is_current;
+      var badge = esc(st.completed_badge_ar || "تمت التجربة ✅");
+      var startLbl = esc(st.start_action_label_ar || "ابدأ التجربة");
+      var retryLbl = esc(st.retry_action_label_ar || "إعادة التجربة");
+      if (done) {
+        return (
+          '<p class="ma-setup-demo-done-badge" role="status">' +
+          badge +
+          "</p>" +
+          '<a class="ma-setup-step-action ma-setup-demo-retry" href="' +
+          esc(demoRetryHref(st, href)) +
+          '"' +
+          goAttr +
+          extTarget +
+          ">" +
+          retryLbl +
+          "</a>"
+        );
+      }
+      if (cur) {
+        return (
+          '<a class="ma-setup-step-action ma-setup-demo-start" href="' +
+          esc(href) +
+          '"' +
+          goAttr +
+          extTarget +
+          ">" +
+          startLbl +
+          "</a>"
+        );
+      }
+      return (
+        '<a class="ma-setup-step-action" href="' +
+        esc(href) +
+        '"' +
+        goAttr +
+        extTarget +
+        ">" +
+        esc(st.action_label_ar || startLbl) +
+        "</a>"
+      );
+    }
+    if (!st.is_complete && !st.is_current) {
+      return (
+        '<a class="ma-setup-step-action" href="' +
+        esc(href) +
+        '"' +
+        goAttr +
+        ">" +
+        esc(st.action_label_ar || "انتقل للخطوة") +
+        "</a>"
+      );
+    }
+    return "";
+  }
+
+  function renderUnifiedSetupDemoToolsOnly(mse, root) {
+    if (!mse || !root) {
+      return;
+    }
+    var demoSteps = [];
+    var steps = mse.steps || [];
+    var i;
+    for (i = 0; i < steps.length; i++) {
+      if (steps[i] && steps[i].repeatable_demo && !steps[i].locked) {
+        demoSteps.push(steps[i]);
+      }
+    }
+    var testUrl = esc(mse.test_store_url || "/dashboard/test-widget");
+    var testExt = isDemoStoreHref(mse.test_store_url || mse.action_href)
+      ? ' target="_blank" rel="noopener"'
+      : "";
+    var rows = "";
+    for (i = 0; i < demoSteps.length; i++) {
+      rows +=
+        '<li class="ma-setup-demo-tool-row">' +
+        '<p class="ma-setup-demo-tool-title">' +
+        esc(demoSteps[i].title_ar || "") +
+        "</p>" +
+        unifiedSetupStepActionsHtml(demoSteps[i]) +
+        "</li>";
+    }
+    showSetupExperienceRoot(root);
+    root.setAttribute("data-ma-setup-unified", "1");
+    root.setAttribute("data-ma-setup-demo-tools", "1");
+    root.innerHTML =
+      '<div class="ma-setup-panel ma-unified-setup-panel ma-setup-v3 ma-setup-demo-tools">' +
+      '<p class="ma-setup-v2-eyebrow">أدوات التجربة</p>' +
+      '<p class="ma-setup-v2-context">يمكن لفريقك إعادة التجربة في أي وقت — الإكمال لا يعطّل الأزرار.</p>' +
+      '<div class="ma-setup-hero-actions ma-setup-demo-tools-primary">' +
+      '<a class="ma-setup-btn-primary" href="' +
+      testUrl +
+      '"' +
+      testExt +
+      ">فتح متجر الاختبار</a>" +
+      '<a class="ma-setup-btn-secondary" href="/dashboard#carts" onclick="if(window.goTo){goTo(\'carts\');}return false;">عرض السلال</a>' +
+      "</div>" +
+      (rows
+        ? '<ul class="ma-setup-demo-tools-list">' + rows + "</ul>"
+        : "") +
+      "</div>";
+    logSetupRenderDebug("setup_render_demo_tools", {
+      demo_steps: demoSteps.length,
+    });
+  }
+
   function unifiedSetupProgressHtml(steps) {
     if (!steps || !steps.length) return "";
     var html =
@@ -575,11 +709,6 @@
       }
       var done = !!st.is_complete;
       var cur = !!st.is_current;
-      var href = st.action_href || "#settings";
-      var sec = sectionFromHref(href);
-      var goAttr = sec
-        ? ' onclick="if(window.goTo){goTo(\'' + sec + "');}return false;\""
-        : "";
       var phaseTag =
         st.phase === "production"
           ? '<span class="ma-unified-phase ma-unified-phase-prod">إنتاج</span>'
@@ -608,16 +737,7 @@
           esc(st.proof_ar) +
           "</p>";
       }
-      if (!done && !cur) {
-        html +=
-          '<a class="ma-setup-step-action" href="' +
-          esc(href) +
-          '"' +
-          goAttr +
-          ">" +
-          esc(st.action_label_ar || "انتقل للخطوة") +
-          "</a>";
-      }
+      html += unifiedSetupStepActionsHtml(st);
       html += "</div></li>";
     }
     html += "</ul>";
@@ -627,11 +747,27 @@
   function unifiedSetupHeroHtml(mse) {
     var currentStep = esc(mse.current_step_ar || "—");
     var currentOutcome = esc(mse.current_outcome_ar || "—");
-    var primaryHref = esc(mse.action_href || mse.test_store_url || "/dashboard/test-widget");
+    var rawHref = mse.action_href || mse.test_store_url || "/dashboard/test-widget";
+    var steps = mse.steps || [];
+    var curStep = null;
+    var i;
+    for (i = 0; i < steps.length; i++) {
+      if (steps[i] && steps[i].is_current && !steps[i].locked) {
+        curStep = steps[i];
+        break;
+      }
+    }
+    if (curStep && curStep.repeatable_demo && curStep.is_complete) {
+      rawHref = demoRetryHref(curStep, rawHref);
+    }
+    var primaryHref = esc(rawHref);
     var primaryLabel = esc(mse.action_label_ar || "ابدأ هذه الخطوة");
-    var isExternalTest =
-      String(mse.action_href || "").indexOf("/demo/store") >= 0 ||
-      String(mse.test_store_url || "").indexOf("/demo/store") >= 0;
+    if (curStep && curStep.repeatable_demo && !curStep.is_complete) {
+      primaryLabel = esc(
+        curStep.start_action_label_ar || mse.action_label_ar || "ابدأ التجربة"
+      );
+    }
+    var isExternalTest = isDemoStoreHref(rawHref);
     var primaryTarget = isExternalTest ? ' target="_blank" rel="noopener"' : "";
     return (
       '<section class="ma-setup-hero ma-setup-hero-v3" aria-label="الخطوة الحالية">' +
@@ -799,10 +935,8 @@
       return;
     }
     if (isUnifiedSetup(mse) && mse.setup_mode === false) {
-      root.hidden = true;
-      root.setAttribute("hidden", "");
-      root.innerHTML = "";
-      logSetupRenderDebug("setup_skip", { reason: "setup_mode_false" });
+      renderUnifiedSetupDemoToolsOnly(mse, root);
+      logSetupRenderDebug("setup_render_demo_tools", probeSetupExperienceRoot());
       return;
     }
     var steps = mse.steps || [];

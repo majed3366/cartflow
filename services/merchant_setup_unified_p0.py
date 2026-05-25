@@ -38,6 +38,10 @@ SANDBOX_FIRST_RECOVERY = "sandbox_first_recovery"
 SANDBOX_VIEW_CARTS = "sandbox_view_carts"
 SANDBOX_VERIFIED = "sandbox_verified"
 
+DEMO_COMPLETED_BADGE_AR = "تمت التجربة ✅"
+DEMO_RETRY_LABEL_AR = "إعادة التجربة"
+DEMO_START_LABEL_AR = "ابدأ التجربة"
+
 PROD_OAUTH = "prod_oauth"
 PROD_WHATSAPP = "prod_whatsapp"
 PROD_TEMPLATES = "prod_templates"
@@ -57,6 +61,10 @@ class UnifiedSetupStep:
     is_complete: bool = False
     is_current: bool = False
     locked: bool = False
+    repeatable_demo: bool = False
+    completed_badge_ar: str = ""
+    retry_action_label_ar: str = ""
+    start_action_label_ar: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -191,6 +199,7 @@ def _build_step_list(
             "action_href": test_url,
             "action_label_ar": "فتح متجر الاختبار",
             "done": sandbox["test_widget"],
+            "repeatable_demo": True,
         },
         {
             "id": SANDBOX_FIRST_RECOVERY,
@@ -201,6 +210,7 @@ def _build_step_list(
             "action_href": test_url,
             "action_label_ar": "متابعة التجربة",
             "done": sandbox["first_recovery"],
+            "repeatable_demo": True,
         },
         {
             "id": SANDBOX_VIEW_CARTS,
@@ -211,6 +221,7 @@ def _build_step_list(
             "action_href": "/dashboard#carts",
             "action_label_ar": "عرض السلال",
             "done": sandbox["view_carts"],
+            "repeatable_demo": True,
         },
         {
             "id": SANDBOX_VERIFIED,
@@ -221,6 +232,7 @@ def _build_step_list(
             "action_href": "/dashboard#carts",
             "action_label_ar": "مراجعة الإثبات",
             "done": sandbox["sandbox_verified"],
+            "repeatable_demo": True,
         },
     ]
     prod_unlocked = sandbox["sandbox_verified"]
@@ -276,6 +288,7 @@ def _build_step_list(
         is_current = not current_assigned and not locked and not done
         if is_current:
             current_assigned = True
+        repeatable = bool(spec.get("repeatable_demo")) and not locked
         steps.append(
             UnifiedSetupStep(
                 step_id=str(spec["id"]),
@@ -289,6 +302,10 @@ def _build_step_list(
                 is_complete=bool(spec["done"]) if not locked else False,
                 is_current=is_current,
                 locked=locked,
+                repeatable_demo=repeatable,
+                completed_badge_ar=DEMO_COMPLETED_BADGE_AR if repeatable else "",
+                retry_action_label_ar=DEMO_RETRY_LABEL_AR if repeatable else "",
+                start_action_label_ar=DEMO_START_LABEL_AR if repeatable else "",
             )
         )
 
@@ -368,9 +385,15 @@ def build_merchant_setup_unified_p0(
         )
     proof = (current.proof_ar if current else "") or act.delay_hint_ar or ""
     action_href = (current.action_href if current else "") or act.test_store_url
-    action_label = (
-        (current.action_label_ar if current else "") or "انتقل للخطوة"
-    )
+    if current is not None and current.repeatable_demo:
+        if not current.is_complete:
+            action_label = current.start_action_label_ar or DEMO_START_LABEL_AR
+        else:
+            action_label = current.retry_action_label_ar or DEMO_RETRY_LABEL_AR
+    else:
+        action_label = (
+            (current.action_label_ar if current else "") or "انتقل للخطوة"
+        )
 
     out = MerchantSetupUnifiedP0(
         unified_p0=True,
@@ -471,6 +494,9 @@ def unified_api_payload(
 
 
 __all__ = [
+    "DEMO_COMPLETED_BADGE_AR",
+    "DEMO_RETRY_LABEL_AR",
+    "DEMO_START_LABEL_AR",
     "MerchantSetupUnifiedP0",
     "UnifiedSetupStep",
     "build_merchant_setup_unified_p0",

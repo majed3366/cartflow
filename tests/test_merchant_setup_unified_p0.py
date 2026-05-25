@@ -6,6 +6,9 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 from services.merchant_setup_unified_p0 import (
+    DEMO_COMPLETED_BADGE_AR,
+    DEMO_RETRY_LABEL_AR,
+    DEMO_START_LABEL_AR,
     PROD_OAUTH,
     SANDBOX_TEST_WIDGET,
     SANDBOX_VERIFIED,
@@ -94,6 +97,43 @@ class MerchantSetupUnifiedP0Tests(unittest.TestCase):
         self.assertTrue(oauth.is_complete)
         widget_step = next(s for s in u.steps if s.step_id == SANDBOX_TEST_WIDGET)
         self.assertTrue(widget_step.is_complete)
+
+    @patch("services.merchant_setup_unified_p0.build_merchant_activation_payload")
+    @patch("services.merchant_setup_unified_p0.evaluate_onboarding_readiness")
+    def test_repeatable_demo_steps_keep_retry_labels_when_complete(
+        self, mock_ev: object, mock_act: object
+    ) -> None:
+        mock_ev.return_value = {
+            "milestones": {
+                "first_cart_detected": True,
+                "first_recovery_scheduled": True,
+                "first_whatsapp_sent": True,
+            },
+            "flags": {},
+        }
+        mock_act.return_value = MagicMock(
+            test_store_url=(
+                "/demo/store?store_slug=shop-demo&merchant_activation=1&reset_demo=1"
+            ),
+            delay_hint_ar="",
+            next_step_ar="",
+        )
+        store = MagicMock()
+        store.zid_store_id = "shop-demo"
+        store.merchant_user_id = 1
+        store.access_token = ""
+        store.store_whatsapp_number = ""
+        store.whatsapp_recovery_enabled = True
+        store.reason_templates_json = ""
+        store.cartflow_widget_enabled = True
+        u = build_merchant_setup_unified_p0(store, merchant_user_id=1, emit_logs=False)
+        widget = next(s for s in u.steps if s.step_id == SANDBOX_TEST_WIDGET)
+        self.assertTrue(widget.is_complete)
+        self.assertTrue(widget.repeatable_demo)
+        self.assertEqual(widget.completed_badge_ar, DEMO_COMPLETED_BADGE_AR)
+        self.assertEqual(widget.retry_action_label_ar, DEMO_RETRY_LABEL_AR)
+        self.assertEqual(widget.start_action_label_ar, DEMO_START_LABEL_AR)
+        self.assertIn("reset_demo=1", widget.action_href)
 
 
 if __name__ == "__main__":
