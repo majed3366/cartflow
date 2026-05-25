@@ -1,9 +1,9 @@
 /* Lazy-load merchant dashboard JSON sections (shell-first). Not storefront widget V2. */
-/* MERCHANT_SETUP_RENDER_BUILD=5cd57ad-prodvis1 */
+/* MERCHANT_SETUP_RENDER_BUILD=ui-setup-v3 */
 (function () {
   "use strict";
 
-  var MERCHANT_SETUP_RENDER_BUILD = "5cd57ad-prodvis1";
+  var MERCHANT_SETUP_RENDER_BUILD = "ui-setup-v3";
 
   function esc(s) {
     return String(s == null ? "" : s)
@@ -523,7 +523,8 @@
 
   function unifiedSetupProgressHtml(steps) {
     if (!steps || !steps.length) return "";
-    var html = '<div class="ma-unified-progress-track" role="list" aria-label="مسار الإعداد">';
+    var html =
+      '<div class="ma-setup-timeline-v3" role="list" aria-label="مسار الإعداد"><div class="ma-setup-timeline-v3-track">';
     var i;
     for (i = 0; i < steps.length; i++) {
       var st = steps[i];
@@ -531,38 +532,25 @@
       var cur = !!st.is_current && !st.locked;
       var locked = !!st.locked;
       var state = locked
-        ? "is-locked"
+        ? "is-upcoming"
         : done
           ? "is-done"
           : cur
             ? "is-current"
             : "is-upcoming";
-      var icon = locked ? "🔒" : done ? "✓" : cur ? "▶" : "◯";
-      var stateAr = locked
-        ? "قادم"
-        : done
-          ? "مكتمل"
-          : cur
-            ? "الحالي"
-            : "قادم";
       html +=
-        '<span class="ma-unified-progress-chip ' +
+        '<span class="ma-setup-timeline-v3-step ' +
         state +
         '" role="listitem" title="' +
         esc(st.title_ar || "") +
-        '">' +
-        '<span class="ma-unified-progress-icon" aria-hidden="true">' +
-        icon +
-        "</span>" +
-        '<span class="ma-unified-progress-text">' +
-        '<span class="ma-unified-progress-state">' +
-        esc(stateAr) +
-        "</span>" +
-        '<span class="ma-unified-progress-label">' +
-        esc(unifiedStepShortLabel(st.title_ar)) +
-        "</span></span></span>";
+        '"><span class="ma-setup-timeline-v3-dot" aria-hidden="true"></span></span>';
     }
-    html += "</div>";
+    html +=
+      '</div><div class="ma-setup-timeline-v3-legend" aria-hidden="true">' +
+      '<span class="ma-setup-timeline-v3-legend-item"><span class="ma-setup-timeline-v3-dot is-done"></span> مكتمل</span>' +
+      '<span class="ma-setup-timeline-v3-legend-item"><span class="ma-setup-timeline-v3-dot is-current"></span> الحالي</span>' +
+      '<span class="ma-setup-timeline-v3-legend-item"><span class="ma-setup-timeline-v3-dot is-upcoming"></span> قادم</span>' +
+      "</div></div>";
     return html;
   }
 
@@ -639,19 +627,6 @@
   function unifiedSetupHeroHtml(mse) {
     var currentStep = esc(mse.current_step_ar || "—");
     var currentOutcome = esc(mse.current_outcome_ar || "—");
-    var durationBlock = mse.delay_hint_ar
-      ? '<div class="ma-setup-hero-row">' +
-        '<span class="ma-setup-hero-icon" aria-hidden="true">⏱</span>' +
-        '<div class="ma-setup-hero-row-body">' +
-        '<span class="ma-setup-hero-k">الوقت المتوقع</span>' +
-        "<span>" +
-        esc(mse.delay_hint_ar) +
-        "</span></div></div>"
-      : '<div class="ma-setup-hero-row ma-setup-hero-row-muted">' +
-        '<span class="ma-setup-hero-icon" aria-hidden="true">⏱</span>' +
-        '<div class="ma-setup-hero-row-body">' +
-        '<span class="ma-setup-hero-k">الوقت المتوقع</span>' +
-        "<span>فور إكمال الخطوة (دقائق قليلة في التجربة)</span></div></div>";
     var primaryHref = esc(mse.action_href || mse.test_store_url || "/dashboard/test-widget");
     var primaryLabel = esc(mse.action_label_ar || "ابدأ هذه الخطوة");
     var isExternalTest =
@@ -659,21 +634,14 @@
       String(mse.test_store_url || "").indexOf("/demo/store") >= 0;
     var primaryTarget = isExternalTest ? ' target="_blank" rel="noopener"' : "";
     return (
-      '<section class="ma-setup-hero ma-setup-hero-v2" aria-label="الخطوة الحالية">' +
-      '<div class="ma-setup-hero-head">' +
-      '<span class="ma-setup-hero-icon ma-setup-hero-icon-lg" aria-hidden="true">🎯</span>' +
-      '<div><p class="ma-setup-hero-eyebrow">الخطوة الحالية</p>' +
+      '<section class="ma-setup-hero ma-setup-hero-v3" aria-label="الخطوة الحالية">' +
+      '<p class="ma-setup-hero-eyebrow">الخطوة الحالية</p>' +
       '<h3 class="ma-setup-hero-title">' +
       currentStep +
-      "</h3></div></div>" +
-      durationBlock +
-      '<div class="ma-setup-hero-row">' +
-      '<span class="ma-setup-hero-icon" aria-hidden="true">🎁</span>' +
-      '<div class="ma-setup-hero-row-body">' +
-      '<span class="ma-setup-hero-k">النتيجة المتوقعة</span>' +
-      "<span>" +
+      "</h3>" +
+      '<p class="ma-setup-hero-sub">' +
       currentOutcome +
-      "</span></div></div>" +
+      "</p>" +
       '<div class="ma-setup-hero-actions">' +
       '<a class="ma-setup-btn-primary ma-setup-hero-cta" href="' +
       primaryHref +
@@ -682,7 +650,6 @@
       ">" +
       primaryLabel +
       "</a>" +
-      '<a class="ma-setup-btn-secondary ma-setup-hero-secondary" href="/dashboard/test-widget" target="_blank" rel="noopener">متجر الاختبار</a>' +
       "</div></section>"
     );
   }
@@ -718,16 +685,8 @@
     var i;
     for (i = 0; i < steps.length; i++) {
       if (steps[i].locked) {
-        var st = steps[i];
         return (
-          '<div class="ma-setup-next-locked" role="status">' +
-          '<span class="ma-setup-next-locked-icon" aria-hidden="true">🔒</span>' +
-          '<div class="ma-setup-next-locked-body">' +
-          '<p class="ma-setup-next-locked-title">التالي: ' +
-          esc(st.title_ar || "") +
-          "</p>" +
-          '<p class="ma-setup-next-locked-hint">يفتح بعد إثبات التجربة</p>' +
-          "</div></div>"
+          '<p class="ma-setup-locked-v3" role="status">يفتح بعد إثبات التجربة</p>'
         );
       }
     }
@@ -737,7 +696,6 @@
   function unifiedSetupUpcomingCompactHtml(steps) {
     var upcoming = [];
     var i;
-    var maxShow = 2;
     for (i = 0; i < steps.length; i++) {
       var st = steps[i];
       if (!st.locked && !st.is_complete && !st.is_current) {
@@ -746,27 +704,21 @@
     }
     if (!upcoming.length) return "";
     var rows = "";
-    var n = Math.min(maxShow, upcoming.length);
-    for (i = 0; i < n; i++) {
+    for (i = 0; i < upcoming.length; i++) {
       rows +=
-        '<div class="ma-setup-upcoming-row">' +
-        '<span aria-hidden="true">◯</span>' +
+        '<div class="ma-setup-upcoming-v3-row">' +
         "<span>" +
         esc(upcoming[i].title_ar || "") +
         "</span></div>";
     }
-    var more =
-      upcoming.length > maxShow
-        ? '<p class="ma-setup-upcoming-more">+' +
-          (upcoming.length - maxShow) +
-          " خطوة أخرى في القائمة الكاملة</p>"
-        : "";
     return (
-      '<div class="ma-setup-upcoming-compact">' +
-      '<p class="ma-setup-upcoming-k">بعد الخطوة الحالية</p>' +
+      '<details class="ma-setup-upcoming-v3">' +
+      "<summary>الخطوات القادمة (" +
+      upcoming.length +
+      ")</summary>" +
+      '<div class="ma-setup-upcoming-v3-body">' +
       rows +
-      more +
-      "</div>"
+      "</div></details>"
     );
   }
 
@@ -775,11 +727,11 @@
     var ready = !mse.setup_mode;
     var title = esc(mse.card_title_ar || "متجرك قريب من التشغيل الكامل");
     var contextLine =
-      "CartFlow يسترجع السلات المهجورة عبر واتساب — اتبع الخطوة الحالية ثم أكمل الإنتاج.";
+      "اتبع الخطوة الحالية — لوحة التحكم اليومية تنتظرك بعد الإعداد.";
     showSetupExperienceRoot(root);
     root.setAttribute("data-ma-setup-unified", "1");
     root.innerHTML =
-      '<div class="ma-setup-panel ma-onb-panel ma-unified-setup-panel ma-setup-v2">' +
+      '<div class="ma-setup-panel ma-onb-panel ma-unified-setup-panel ma-setup-v2 ma-setup-v3">' +
       (ready
         ? '<h2 class="ma-setup-home-title">' +
           title +
