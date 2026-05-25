@@ -236,62 +236,17 @@ def build_merchant_setup_experience(
     merchant_user_id: Optional[int] = None,
     emit_logs: bool = True,
 ) -> MerchantSetupExperience:
-    from services.merchant_onboarding_v1 import build_merchant_onboarding_flow
+    from services.merchant_setup_unified_p0 import (
+        build_merchant_setup_unified_p0,
+        unified_to_setup_experience,
+    )
 
-    flow = build_merchant_onboarding_flow(
+    unified = build_merchant_setup_unified_p0(
         store,
         merchant_user_id=merchant_user_id,
         emit_logs=emit_logs,
     )
-    remaining = max(0, flow.total_steps - flow.completed_steps)
-    percent = int(round(100.0 * flow.completed_steps / flow.total_steps)) if flow.total_steps else 0
-
-    if flow.onboarding_complete:
-        setup_label = SETUP_STATE_FULL
-    elif flow.completed_steps >= 3:
-        setup_label = SETUP_STATE_READY
-    elif flow.completed_steps >= 1:
-        setup_label = SETUP_STATE_NEAR
-    else:
-        setup_label = SETUP_STATE_NOT_READY
-
-    steps_for_card: list[MerchantSetupStep] = [
-        MerchantSetupStep(
-            step_id=s.step_id,
-            order=s.order,
-            title_ar=s.title_ar,
-            outcome_ar=s.outcome_ar,
-            action_href=s.action_href,
-            complete_action_ar="أكمل الإعداد",
-            is_complete=s.is_complete,
-        )
-        for s in flow.steps
-    ]
-
-    next_step = flow.current_step_ar or "تابع لوحة السلال"
-    outcome = flow.current_outcome_ar or flow.card_lead_ar
-
-    if emit_logs:
-        log.info(
-            "[MERCHANT SETUP EXPERIENCE] percent=%s remaining=%s onboarding_complete=%s next=%s",
-            percent,
-            remaining,
-            flow.onboarding_complete,
-            next_step,
-        )
-
-    return MerchantSetupExperience(
-        show_card=flow.show_card,
-        card_title_ar=flow.card_title_ar,
-        setup_state_label_ar=setup_label,
-        readiness_percent=max(0, min(100, percent)),
-        remaining_setup_count=remaining,
-        outcome_summary_ar=outcome,
-        next_step_ar=next_step,
-        action_href=flow.action_href,
-        steps=steps_for_card,
-        merchant_understands_in_30s=bool(next_step and outcome and flow.card_title_ar),
-    )
+    return unified_to_setup_experience(unified)
 
 
 def merchant_copy_is_safe_for_display(experience: MerchantSetupExperience) -> bool:
@@ -326,7 +281,12 @@ def build_merchant_setup_experience_api_payload(
         store = owned_store
 
     mid = resolution.merchant_id
-    exp = build_merchant_setup_experience(
+    from services.merchant_setup_unified_p0 import (  # noqa: PLC0415
+        build_merchant_setup_unified_p0,
+        unified_api_payload,
+    )
+
+    unified = build_merchant_setup_unified_p0(
         store,
         merchant_user_id=mid,
         emit_logs=False,
@@ -338,10 +298,9 @@ def build_merchant_setup_experience_api_payload(
     )
     log_onboarding_flow_result(
         resolution,
-        ready=flow.onboarding_complete,
-        completed_steps=flow.completed_steps,
+        ready=unified.onboarding_complete,
+        completed_steps=unified.completed_steps,
     )
-    out = exp.to_dict()
-    out.update(flow.to_dict())
+    out = unified_api_payload(unified, flow_dict=flow.to_dict())
     out["merchant_store_display_name"] = resolution.store_name or "متجرك"
     return out

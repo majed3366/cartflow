@@ -445,8 +445,20 @@ def get_onboarding_dashboard_visibility(store: Optional[Any]) -> dict[str, Any]:
             t = BLOCKER_COPY[code].get("title_ar")
             if t and t not in titles:
                 titles.append(t)
+    sandbox_verified = False
+    try:
+        from services.merchant_setup_unified_p0 import (  # noqa: PLC0415
+            build_merchant_setup_unified_p0,
+        )
+
+        u = build_merchant_setup_unified_p0(store, emit_logs=False)
+        sandbox_verified = bool(u.sandbox_verified)
+    except Exception:  # noqa: BLE001
+        ms = ev.get("milestones") or {}
+        sandbox_verified = bool(ms.get("first_whatsapp_sent"))
+
     out = {
-        "show_strip": True,
+        "show_strip": bool(sandbox_verified),
         "ready": ev["ready"],
         "completion_percent": ev["completion_percent"],
         "status_ar": ev.get("merchant_status_ar") or "",

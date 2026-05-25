@@ -1297,6 +1297,66 @@ nav.ma-sidebar-nav {
   grid-template-columns: 1fr 1fr;
 }
 
+/* Unified setup mode P0 — daily dashboard hidden until setup_mode clears */
+#page-home.ma-setup-mode .ma-home-section-kpi,
+#page-home.ma-setup-mode .ma-home-section-reasons,
+#page-home.ma-setup-mode .ma-home-section-carts,
+#page-home.ma-setup-mode .ma-home-section-vip,
+#page-home.ma-setup-mode #ma-home-month-summary {
+  display: none;
+}
+
+#page-home.ma-setup-mode .ma-home-top {
+  grid-template-columns: 1fr;
+}
+
+#page-home.ma-setup-mode #ma-activation-root {
+  display: none !important;
+}
+
+.ma-unified-setup-panel .ma-unified-phase {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: #ecfdf5;
+  color: #166534;
+  margin-bottom: 4px;
+}
+
+.ma-unified-setup-panel .ma-unified-phase-prod {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.ma-onb-checklist-item.is-current {
+  background: #f0fdf4;
+  border-radius: 10px;
+  padding-inline: 8px;
+}
+
+.ma-onb-checklist-item.is-locked {
+  opacity: 0.55;
+}
+
+.ma-unified-proof {
+  margin: 6px 0 0;
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.ma-unified-proof-k {
+  font-weight: 700;
+  color: var(--text);
+}
+
+.ma-unified-locked-hint {
+  font-size: 11px;
+  color: var(--muted);
+}
+
 .ma-onb-panel .ma-setup-panel-lead {
   margin: 0 0 14px;
   font-size: 13px;

@@ -173,7 +173,7 @@ class CartflowOnboardingReadinessTests(unittest.TestCase):
         self.assertFalse(s.get("onboarding_ready"))
         self.assertTrue(s.get("runtime_warning"))
 
-    def test_dashboard_visibility_has_ar_status(self) -> None:
+    def test_dashboard_visibility_hides_strip_until_sandbox_verified(self) -> None:
         st = Store(
             zid_store_id="onb-vis",
             access_token="a",
@@ -184,16 +184,36 @@ class CartflowOnboardingReadinessTests(unittest.TestCase):
         db.session.add(st)
         db.session.commit()
         vis = onb.get_onboarding_dashboard_visibility(st)
-        self.assertTrue(vis.get("show_strip"))
+        self.assertFalse(vis.get("show_strip"))
         self.assertTrue(len(vis.get("status_ar") or "") > 0)
 
-    def test_operations_normal_carts_html_includes_onboarding_strip(self) -> None:
+    @patch("services.cartflow_onboarding_readiness._milestones_readonly")
+    def test_dashboard_visibility_strip_after_sandbox(self, mock_ms: object) -> None:
+        mock_ms.return_value = {
+            "first_cart_detected": True,
+            "first_recovery_scheduled": True,
+            "first_whatsapp_sent": True,
+            "first_reply_received": False,
+            "first_recovered_cart": False,
+        }
+        st = Store(
+            zid_store_id="onb-vis2",
+            access_token="a",
+            is_active=True,
+            recovery_attempts=1,
+            cartflow_widget_enabled=True,
+        )
+        db.session.add(st)
+        db.session.commit()
+        vis = onb.get_onboarding_dashboard_visibility(st)
+        self.assertTrue(vis.get("show_strip"))
+
+    def test_operations_normal_carts_html_ok_without_setup_strip(self) -> None:
         from fastapi.testclient import TestClient
 
         client = TestClient(app)
         r = client.get("/dashboard/normal-carts/operations")
         self.assertEqual(r.status_code, 200, r.text[:1500] if r.text else "")
-        self.assertIn("data-cf-onboarding-ready", (r.text or "").lower())
 
 
 if __name__ == "__main__":
