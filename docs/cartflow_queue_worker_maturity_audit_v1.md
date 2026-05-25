@@ -1,164 +1,200 @@
 # CartFlow Queue / Worker Maturity Audit v1
 
 **Date (UTC):** 2026-05-19  
-**Scope:** Read-only operational audit — delayed recovery under restart, duplicate dispatch, multi-worker, and load.  
-**Commit message:** `docs: add queue worker maturity audit v1`  
-**Related:** `docs/cartflow_queue_worker_readiness.md`, `docs/audit_queue_worker_maturity_v1.md`, `docs/cartflow_session_truth_audit.md`
-
-**No runtime changes** in this deliverable. Evidence is from code paths and existing tests (`tests/test_recovery_restart_survival.py`, `tests/test_recovery_execution_boundary.py`, `tests/test_queue_worker_maturity_audit_v1.py`, `tests/test_cartflow_queue_readiness_verification.py`).
+**Type:** Read-only audit — no Redis, Celery, queue refactors, or runtime changes.  
+**Commit:** `docs: add queue worker maturity audit v1`  
+**Related:** `docs/cartflow_queue_worker_readiness.md`, `docs/cartflow_queue_worker_runtime_rules.md`, `services/cartflow_queue_readiness.py`, `services/recovery_restart_survival.py`
 
 ---
 
-## Executive answer
+## Executive verdict
 
-> **Will recovery remain correct under multiple workers, restarts, and higher load?**
+| Question | Verdict |
+|----------|---------|
+| Can CartFlow survive **one API process**, restarts, and moderate delayed recovery? | **PASS** (with ops tuning) |
+| Can it survive **multiple Uvicorn workers** on one DB without discipline? | **PARTIAL** — DB claim + WA idempotency prevent most double sends; memory guards and per-worker startup scans do not |
+| Can it survive **50 / 100 / 500 stores** at current architecture? | **50–100: PARTIAL** · **500: FAIL** without dedicated scheduler + back-pressure |
+| Ready to add Redis/Celery **without** fixing gaps first? | **FAIL** — would duplicate three execution drivers unless one leader + queue ack design |
 
-| Deployment shape | Verdict |
-|------------------|---------|
-| **1 process**, restart OK, moderate delayed volume | **Likely safe** — durable `RecoverySchedule` + DB claim + WA idempotency + purchase stop + stale `running` repair cover the main failure modes. |
-| **Process restart** (same host, new PID) | **Likely safe** — resume scan + future rearm + session truth / purchase truth DB fallbacks; in-memory guards re-built or bypassed via DB. |
-| **2+ Uvicorn/API workers** on same DB without ops discipline | **Unsafe beyond ~1 active scheduler** — pre-delay guards (`_try_claim_recovery_session`, `_session_recovery_started`) are **process-local**; each worker runs **startup resume scan** by default; dual asyncio delay + DB due scanner can race until claim/idempotency wins. |
-| **100 stores × ~10 concurrent due recoveries** (single worker) | **Likely safe** with tuning (`max_dispatch=25`, scanner interval, `CARTFLOW_RECOVERY_RUNNING_STALE_SECONDS`). |
-| **1000+ due rows / minute** without a dedicated queue worker | **Unsafe** — no distributed job lease, no back-pressure queue; asyncio tasks + HTTP process CPU bound. |
-
-**Practical line:** Current system is **production-viable for single-worker (or effectively single-scheduler) CartFlow** with the reliability stack shipped through session truth + purchase truth + restart survival. It is **not yet a horizontally scaled multi-worker recovery engine** without configuration and a future dedicated worker/queue.
+**Overall maturity:** **PARTIAL** — strong **durable schedule + DB claim + log idempotency** stack for single-scheduler deployments; **not** a horizontally scaled multi-worker recovery engine yet.
 
 ---
 
-## Part 1 — Execution ownership map
+## Part 1 — Current async boundaries
 
-| Component | Owner module / entry | Claim / coordination | Idempotency | Risk |
-|-----------|----------------------|----------------------|-------------|------|
-| **RecoverySchedule (durable row)** | `models.RecoverySchedule`; `services/recovery_restart_survival.persist_recovery_schedule_durable` | Natural key: `recovery_key` + `step` + `multi_slot_index` (lookup in `_schedule_row_lookup`, L344–368) | Upsert/update row; terminal set `_TERMINAL` (L37–49) blocks re-claim | **Low** for persistence; **Medium** if two writers race before claim |
-| **Delayed execution (live path)** | `services/recovery_delay_dispatcher.dispatch_recovery_schedule` → `await asyncio.sleep` → `execute_recovery_schedule` | In-process only until boundary | Same row: `claim_recovery_schedule_execution` before send path | **Medium** — lost on crash until resume/scan |
-| **Delayed execution (DB boundary)** | `services/recovery_execution_boundary.execute_recovery_schedule` | `claim_recovery_schedule_execution` (`scheduled`→`running`, SQL update count=1, L456–483) | Terminal skip if already terminal; stale repair at entry (L99–116) | **Low** per row |
-| **Restart resume (due)** | `recovery_restart_survival.run_recovery_resume_scan_async` → `resume_one_schedule` | Claim then `asyncio.create_task(execute_recovery_schedule)` (L1344–1366) | `evaluate_resume_safety` + claim | **Low** with claim |
-| **Restart rearm (future due)** | `rearm_one_future_scheduled_recovery` + `spawn_recovery_schedule_dispatch` | Per-process `_future_rearm_spawned` (L111–112, L168–180) | One rearm per PID per `schedule_id` | **Medium** multi-worker — each PID may rearm |
-| **Startup orchestration** | `main._startup_whatsapp_queue` (L861–911): resume scan + optional DB due loop + WA queue worker | Env: `CARTFLOW_RECOVERY_RESUME_ON_STARTUP` (default on, L1377–1381) | `max_dispatch=25` per startup | **High** if N workers all scan |
-| **DB due scanner (manual/loop)** | `services/recovery_db_due_scanner.scan_due_recovery_schedules` | Same claim via `execute_recovery_schedule`; optional loop `recovery_db_due_scanner_loop` (`CARTFLOW_DB_DUE_SCANNER_ENABLED`, default **false**) | Stale repair first; `evaluate_resume_safety` | **Medium** — third path to due rows |
-| **Schedule claim (DB)** | `claim_recovery_schedule_execution` | Atomic `UPDATE … WHERE status='scheduled'` | `claim_race_lost`, `already_running`, `already_terminal` (L415–483) | **Low** |
-| **Session schedule claim (memory)** | `main._try_claim_recovery_session` (L5777–5784) | `_session_recovery_started[recovery_key]` under `_recovery_session_lock` | **Process-only** — no cross-worker | **High** multi-worker |
-| **Duplicate guard (memory)** | `services/cartflow_duplicate_guard` | Signatures + counters; `note_recovery_schedule_duplicate` | In-process TTL maps | **High** cross-process |
-| **Inflight send TTL** | `try_begin_outbound_whatsapp_inflight` (default **6s** TTL, L210–260) | `recovery_key:step:{n}` monotonic expiry | Blocks overlapping coroutines **same process** | **PARTIAL** |
-| **WA send idempotency (DB)** | `services/recovery_whatsapp_idempotency` | Query `CartRecoveryLog` for `mock_sent`/`sent_real`/`queued` per step | Survives restart/worker (module docstring L2) | **Low** |
-| **Resume safety** | `evaluate_resume_safety` (L1239–1317) | No claim — preflight | Blocks: purchase (`_is_user_converted`), return, `already_sent` log, template disabled | **Low** |
-| **Stale `running` repair** | `repair_stale_running_recovery_schedules` (default **600s**, L55, L575–579) | Age on `updated_at`; evidence from logs | `failed_resume_stale` or `completed` / `skipped_duplicate` (L752–809) | **Low** ops tuning |
-| **Purchase stop** | `cartflow_purchase_truth.stop_if_purchased` | Cancels schedules; durable `purchase_truth_records` | Session truth hardening reads DB on miss | **Low** |
-| **Sent truth (schedule skip)** | `cartflow_session_truth.has_sent_truth` at schedule time (`main` ~L8541) | DB log fallback | Complements memory `_session_recovery_sent` | **Low** post-hardening |
-| **WhatsApp queue worker** | `services/whatsapp_queue` + `start_whatsapp_queue_worker` at startup | **Separate** from normal recovery delay path | Retry/backoff for queued WA jobs — not the cart-abandon asyncio chain | N/A for recovery delay |
+There is **no external job queue**. Work is owned by the **FastAPI/Uvicorn process event loop** plus **durable `recovery_schedules` rows** polled on startup / optional DB scanner.
 
----
+| Domain | Runtime owner | Trigger / source | Persistence | Async mechanism |
+|--------|---------------|------------------|-------------|-----------------|
+| **Delay** | `services/recovery_delay_dispatcher.dispatch_recovery_schedule` | `asyncio.create_task` after abandon; startup **future rearm** (`rearm_one_future_scheduled_recovery`) | `RecoverySchedule.due_at`, `effective_delay_seconds`, `context_json` | `await asyncio.sleep` until `due_at`; DB session released before sleep (`db_session_lifecycle`) |
+| **Recovery execute** | `services/recovery_execution_boundary.execute_recovery_schedule` | After delay finishes, resume scan, or DB due scanner | Row `scheduled` → `running` → terminal | `asyncio.create_task` wrapping boundary (resume path) |
+| **Recovery schedule (HTTP)** | `main.handle_cart_abandoned` → `_run_recovery_dispatch_cart_abandoned*` | Widget `POST /api/cart-event` (`cart_abandoned`) | `persist_recovery_schedule_durable` before/at dispatch | `create_task` per session / per multi-slot |
+| **WhatsApp send (recovery)** | `main.send_whatsapp` / `services/whatsapp_send` | Recovery sequence after gates | `CartRecoveryLog` (`queued`, `sent_real`, `mock_sent`, `whatsapp_failed`) | Optional `services/whatsapp_queue` in-process worker |
+| **WhatsApp queue worker** | `services/whatsapp_queue.start_whatsapp_queue_worker` | Startup (`main._startup_whatsapp_queue`) | Logs + inflight map (process-local) | Per-loop `asyncio.Queue` |
+| **Purchase truth** | `services/purchase_truth.ingest_purchase_truth` | `/api/conversion`, cart-event flags, Zid webhook (v2), reply PURCHASE claim | `purchase_truth_records` | **Inline** on request path |
+| **Lifecycle closure** | `services/lifecycle_closure_records_v1` | Hook on terminal `CartRecoveryLog` + schedule cancel | `lifecycle_closure_records` | Inline after log persist |
+| **Inbound WhatsApp (reply)** | `main.whatsapp_webhook` → `reply_intent_handling` | Twilio/Meta POST `/webhook/whatsapp` | Behavioral + logs + optional purchase claim | Request handler (sync/async route) |
+| **Delivery callbacks** | `routes/whatsapp_delivery_webhook` → `ingest_twilio_status_callback` | Twilio POST `/webhook/whatsapp/status` | `whatsapp_delivery_truth` by `MessageSid` | Inline; **no recovery dispatch** |
+| **Zid / platform webhooks** | `main.zid_webhook` (+ gateway scaffold) | POST `/webhook/zid` | `RecoveryEvent` log, `AbandonedCart` upsert; purchase ingest when paid | Inline HTTP |
+| **Platform gateway (future)** | `services/platform_integration_gateway` | Normalized events (tests/dev) | In-process idempotency key set + burst dedupe | Inline / thread pool for abandon |
+| **Return-to-site** | `main.api_cart_event` / behavioral merge | Widget `user_returned_to_site` | `AbandonedCart` / `cf_behavioral`, `returned_to_site` log | Inline |
+| **Restart resume** | `recovery_restart_survival.run_recovery_resume_scan_async` | **Every** startup (default) | Scans `recovery_schedules` | Async scan; `max_dispatch=25` |
+| **DB due scanner (optional)** | `recovery_db_due_scanner` + loop | `CARTFLOW_DB_DUE_SCANNER_ENABLED` (default off in loop) | Same table as delay | Poll `due_at <= now`, limit 25 |
 
-## Part 2 — Multi-worker reality audit
+**Critical boundary rule:** Only **one** active driver should execute a given `(recovery_key, step, multi_slot_index)` row — today that is enforced **after** the row exists, via `claim_recovery_schedule_execution`, not at HTTP abandon time.
 
-Assume **worker A** and **worker B** share one database (typical multi-Uvicorn).
-
-| Question | Safeguard | YES / PARTIAL / NO | Evidence |
-|----------|-----------|-------------------|----------|
-| **Can both send?** | DB claim + WA idempotency + inflight TTL | **PARTIAL** | Second `execute_recovery_schedule` gets `already_running` or `claim_race_lost` (L427–483). Second provider call blocked by `check_whatsapp_recovery_send_idempotency` if first log row exists. **Gap:** two workers can each accept `cart_abandoned` and pass `_try_claim_recovery_session` on different processes (L5777–5784), creating **two asyncio delay tasks** for same session until schedule/claim converges. |
-| **Can both resume?** | Startup `run_recovery_resume_scan_async` on **each** worker | **PARTIAL** | Both scan due rows (L1394–1425). First claim wins; second `resume_one_schedule` → `duplicate_resume_claim` (L1352–1358). **Wasted work**, not necessarily double send. |
-| **Can both mark terminal?** | `finalize_recovery_schedule_durable` + `_TERMINAL` + `_PROTECTED_TERMINAL_NO_DOWNGRADE` | **PARTIAL** | Terminal rows not re-claimed (L416–425). Concurrent finalize possible but status should converge to terminal. |
-| **Can both bypass duplicate guard?** | Memory guard vs DB | **YES** (cross-process) | `cartflow_duplicate_guard` and `_session_recovery_started` are **not** shared (module L25–28, `main` L5777). `cartflow_queue_readiness.py` L183–186 documents multi-worker memory risk. |
-
-**Multi-worker ops minimum:**
-
-- See **`docs/cartflow_queue_worker_runtime_rules.md`** — `CARTFLOW_RECOVERY_RESUME_ON_STARTUP` + startup logs `[RECOVERY SCHEDULER OWNER]`.
-- Run **one** recovery scheduler role per DB (single worker **or** `CARTFLOW_RECOVERY_RESUME_ON_STARTUP=0` on all but one instance).
-- Enable `CARTFLOW_DB_DUE_SCANNER_ENABLED` on **at most one** instance if used.
-- Do **not** scale HTTP workers for recovery volume without a future dedicated queue consumer.
-
----
-
-## Part 3 — Queue absence audit
-
-There is **no Redis/Celery/RQ recovery job queue**. Current behavior:
-
-| Mechanism | Role | Limitation |
-|-----------|------|------------|
-| **`asyncio.sleep`** | Holds delay until `due_at` in live process (`recovery_delay_dispatcher`) | Dies on process exit; relies on DB row + resume/rearm |
-| **`RecoverySchedule` rows** | Durable `due_at`, `status`, `context_json` | Not a queue — polled by startup scan / optional DB scanner |
-| **Restart scans** | `run_recovery_resume_scan_async` + `repair_stale_running_recovery_schedules` | Cap `max_dispatch=25`; not full table scan for all due at once |
-| **Memory locks** | `_recovery_session_lock`, `_session_recovery_started`, duplicate guard inflight | **Single process** |
-| **DB rows** | `recovery_schedules`, `cart_recovery_logs`, `purchase_truth_records` | Coordination via claim + log idempotency, not lease queue |
-| **Duplicate guards** | HTTP burst throttle, schedule duplicate notes | Cross-worker weak |
-
-**Implication:** Recovery is **“durable schedule + in-process timer + periodic poll”**, not **“at-least-once job queue with worker lease”**.
+```mermaid
+flowchart LR
+  subgraph http [HTTP process]
+    CE[cart_abandoned]
+    CE --> MEM[_try_claim_recovery_session]
+    MEM --> PERSIST[persist RecoverySchedule]
+    PERSIST --> TASK[asyncio delay task]
+    TASK --> EXEC[execute_recovery_schedule]
+    EXEC --> CLAIM[DB claim scheduled to running]
+    CLAIM --> WA[send_whatsapp + CartRecoveryLog]
+  end
+  subgraph db [Durable DB]
+    RS[(recovery_schedules)]
+    CRL[(cart_recovery_logs)]
+    PT[(purchase_truth_records)]
+  end
+  PERSIST --> RS
+  WA --> CRL
+  EXEC --> RS
+```
 
 ---
 
-## Part 4 — Failure scenarios
+## Part 2 — Worker safety
 
-| Scenario | Protection | Status | Evidence |
-|----------|------------|--------|----------|
-| **Restart before `due_at`** | Future rearm preserves `due_at`; no early execute | **YES** | `rearm_one_future_scheduled_recovery` L124–166; tests `test_future_scheduled_rearms_dispatcher_without_early_execute` |
-| **Restart after `due_at`** | Resume scan → claim → execute | **YES** | `resume_one_schedule` L1320–1368; `test_scenario_a_due_after_restart_discoverable` |
-| **Restart during send** | WA idempotency + inflight TTL; stale repair if stuck `running` | **PARTIAL** | Idempotency before provider; stale repair after 600s with log evidence |
-| **Worker crash after send** | `CartRecoveryLog` + schedule finalize → `completed` | **YES** | `map_cart_recovery_log_status_to_schedule_terminal` L505–520; stale repair promotes send evidence |
-| **Provider timeout** | `whatsapp_failed` log; schedule terminal; queue retries on **separate** WA queue path | **PARTIAL** | Recovery inline path logs failure; retry policy depends on path |
-| **Duplicate wake** (abandon burst) | Memory claim + cart event throttle + DB claim | **PARTIAL** | `_try_claim_recovery_session`; `should_process_cart_event_burst`; `claim_race_lost` |
-| **DB slow** | SQLAlchemy errors → rollback; claim returns `claim_db_error` | **PARTIAL** | L494–502; may delay dispatch, not silently duplicate |
-| **Schedule stuck `running`** | `repair_stale_running_recovery_schedules` on startup scan / due scanner | **YES** | L813–876; `CARTFLOW_RECOVERY_RUNNING_STALE_SECONDS` |
-| **Multi-worker startup** | Each runs resume scan (default on) | **NO** (without ops) | `main` L884–886 every worker |
-| **Partial send failures** | Failed status; idempotency does not block retry on `whatsapp_failed` | **PARTIAL** | `_IDEMPOTENCY_BLOCK_STATUSES` excludes failures (`recovery_whatsapp_idempotency` L15–20) |
+| Capability | Verdict | Evidence |
+|------------|---------|----------|
+| **Duplicate prevention (send)** | **PASS** | `recovery_whatsapp_idempotency` blocks second `sent_real`/`mock_sent`/`queued` per step (`_IDEMPOTENCY_BLOCK_STATUSES`); `cartflow_duplicate_guard` inflight TTL (~6s) same process |
+| **Duplicate prevention (schedule task)** | **PARTIAL** | `_try_claim_recovery_session` + `_session_recovery_started` — **process-local** (`main`); DB upsert one row per `(recovery_key, step, slot)` but two workers can each spawn delay tasks before claim |
+| **Idempotency (restart)** | **PASS** | WA idempotency reads `CartRecoveryLog`; purchase `has_purchase`; closure `get_durable_closure`; schedule terminal set `_TERMINAL` |
+| **Inflight claims** | **PARTIAL** | DB `scheduled→running` UPDATE count=1 (`claim_recovery_schedule_execution`); memory inflight for WA same process only |
+| **Restart survival** | **PASS** | Resume scan + future rearm; `evaluate_resume_safety`; session truth DB fallback; tests `test_recovery_restart_survival.py` |
+| **Terminal states** | **PASS** | `_TERMINAL` blocks re-claim; `finalize_recovery_schedule_durable`; log→schedule mapping; stale `running` repair (`CARTFLOW_RECOVERY_RUNNING_STALE_SECONDS`, default 600s) |
+| **Ordering (multi-message)** | **PARTIAL** | Per-slot tasks + step index; assumes single scheduler or lucky claim races |
+| **Provider side-effect safety** | **PARTIAL** | Idempotency before Twilio; failures (`whatsapp_failed`) **not** in block set — retries allowed by design |
 
 ---
 
-## Part 5 — Existing safeguards inventory (production today)
+## Part 3 — Multi-worker risks
 
-| Safeguard | What it protects | Module / hook |
-|-----------|------------------|---------------|
-| **Restart survival** | Lost asyncio task after crash | `recovery_restart_survival` |
-| **DB claim `scheduled→running`** | Double execute on same schedule row | `claim_recovery_schedule_execution` |
-| **Execution boundary** | Single entry for worker-ready execute | `recovery_execution_boundary.execute_recovery_schedule` |
-| **Resume safety** | Resume only if purchase/return/sent/template gates pass | `evaluate_resume_safety` |
-| **Stale running repair** | Orphan `running` rows | `repair_stale_running_recovery_schedules` |
-| **Purchase stop** | Post-purchase recovery halt | `cartflow_purchase_truth.stop_if_purchased` |
-| **Purchase / session truth** | Restart/multi-worker conversion & sent hints | `cartflow_session_truth`, `has_purchase` |
-| **WA idempotency** | Double provider send per step | `recovery_whatsapp_idempotency` |
-| **Duplicate guard** | In-process spam / inflight overlap | `cartflow_duplicate_guard` |
-| **Terminal schedule states** | Re-run blocked | `_TERMINAL` in `recovery_restart_survival` |
-| **Lifecycle shadow** | Observability only | `cartflow_lifecycle_truth` (no execution change) |
-| **DB due scanner (optional)** | Picks up orphan `scheduled` past `due_at` | `recovery_db_due_scanner` (env-gated) |
+Assume **Worker A** and **Worker B** share one PostgreSQL/SQLite DB.
+
+| Risk question | Answer | Safeguard | Verdict |
+|---------------|--------|-----------|---------|
+| **Can two workers send the same recovery?** | Unlikely **same step** after first log | `claim_recovery_schedule_execution` + `check_whatsapp_recovery_send_idempotency` | **PARTIAL** — race window before first log row |
+| **Can restart replay tasks?** | Due rows re-dispatched; in-flight asyncio tasks **lost** | Resume scan + rearm; claim idempotent | **PASS** for due work; **PARTIAL** for duplicate scan load |
+| **Can schedule race?** | Yes — dual asyncio sleep + startup scan + optional DB scanner | First `scheduled→running` wins; others `claim_race_lost` / `already_running` | **PARTIAL** |
+| **Can both pass abandon gate?** | Yes | `_try_claim_recovery_session` not shared | **FAIL** cross-worker without ops |
+| **Can both run startup resume?** | Yes (default) | Each claims different rows or loses race | **PARTIAL** — wasted CPU, not usually double send |
+
+**Evidence logs:** `[RECOVERY CLAIMED]`, `[RECOVERY CLAIM SKIPPED] reason=claim_race_lost`, `[WA IDEMPOTENCY HIT]`, `[CARTFLOW DUPLICATE]`.
+
+**Ops minimum (no code):** One scheduler per DB — `CARTFLOW_RECOVERY_RESUME_ON_STARTUP=0` on all but one replica (`docs/cartflow_queue_worker_runtime_rules.md`).
 
 ---
 
-## Part 6 — Risks, gaps, priorities
+## Part 4 — Provider retries
 
-### Active protections (strengths)
+| Source | Retry behavior | Current safeguard | Verdict |
+|--------|----------------|-------------------|---------|
+| **Twilio send API** | App may retry via recovery path / WA queue `MAX_WA_SEND_ATTEMPTS` | Idempotency on success statuses; failed sends not blocked | **PARTIAL** |
+| **Twilio status callbacks** | Provider may POST duplicate status events | Upsert by `MessageSid` in `whatsapp_delivery_truth_v1`; does not re-run recovery | **PASS** for delivery truth |
+| **Twilio inbound reply** | Duplicate webhook deliveries possible | `cartflow_reply_intent_engine._inbound_duplicate_recent`; continuation dedupe | **PARTIAL** |
+| **Zid webhook** | Platform may retry HTTP | Signature verify (`verify_webhook_signature`); no global event-id dedupe table | **PARTIAL** — cart upsert idempotent by `zid_cart_id`; purchase ingest upserts truth |
+| **Platform gateway** | Future adapter retries | `build_idempotency_key` + in-process `_seen_external_events` (cap 5000, **not durable**) | **PARTIAL** / **FAIL** across restart |
+| **HTTP client retries** | Browser/widget burst | `should_process_cart_event_burst` (optional path); schedule/send guards | **PARTIAL** |
 
-1. **Durable schedule + atomic claim** — strongest multi-instance primitive today.  
-2. **Evidence-based stale repair** — reduces infinite `running`.  
-3. **DB-backed send idempotency** — last-line defense against double WhatsApp.  
-4. **Purchase truth + session truth** — stop/resume decisions survive restart.  
+**Duplicate callback risk to recovery:** Inbound **status** webhooks do **not** call recovery. Inbound **reply** webhooks can trigger continuation/reply intent — mitigated by reply dedupe + purchase/closure writes, not a distributed lock.
 
-### Gaps (ordered)
+---
 
-| Priority | Gap | Impact |
-|----------|-----|--------|
-| **P1** | Pre-delay **memory** claims (`_try_claim_recovery_session`, sent/started dicts) | Duplicate **tasks** across workers before DB row exists |
-| **P1** | **Every** API worker runs startup resume scan by default | Duplicate dispatch attempts; load amplification |
-| **P2** | Dual driver: asyncio sleep **and** DB scanner **and** resume | Race until claim; ops complexity |
-| **P2** | No distributed lease / queue ack | Cannot safely scale to many workers |
-| **P3** | `max_dispatch=25` caps | Large due backlogs drain slowly |
-| **P3** | Phone cache `recovery_session_phone` process-local | Worker B may miss phone until DB resolve |
+## Part 5 — Queue pressure (estimate)
 
-### Recommended future priorities (no implementation in v1)
+No queue depth metric — pressure appears as **DB rows**, **asyncio tasks**, and **HTTP latency**.
 
-1. **Dedicated recovery scheduler process** (or single leader election) — one resume/due consumer per DB.  
-2. **Real queue** (Redis stream / Celery) with visibility timeout and ack after `execute_recovery_schedule` success.  
-3. **Move pre-delay claim to DB** (e.g. insert `scheduled` before `create_task`, reject duplicate upsert).  
-4. **Ops defaults:** document `CARTFLOW_RECOVERY_RESUME_ON_STARTUP=0` for horizontal API replicas.  
-5. **Load test:** N due rows, M workers, measure duplicate `[WA IDEMPOTENCY HIT]` and `claim_race_lost` rates.
+| Scale | Abandons / due (order of magnitude) | First bottleneck | Why |
+|-------|--------------------------------------|------------------|-----|
+| **50 stores** | Low–moderate concurrent due | **Unlikely failure** | Single worker + `max_dispatch=25` keeps startup/repair bounded |
+| **100 stores** | Moderate; peaks at business hours | **PARTIAL — DB + event loop** | Many concurrent `asyncio` delay tasks; `CartRecoveryLog` growth; resume scan cap delays backlog drain |
+| **500 stores** | High concurrent due / minute | **FAIL — throughput** | No worker pool; no lease queue; triple driver (sleep + startup + scanner); API process bound to HTTP + recovery |
+
+| Subsystem | 50 stores | 100 stores | 500 stores |
+|-----------|-----------|------------|------------|
+| **DB (`recovery_schedules`, logs)** | OK | Growing index pressure | **First hard limit** — row scan, log writes, connection pool |
+| **Delay (asyncio sleep)** | OK | Many tasks in one loop | Task count + timer fairness |
+| **Worker (process)** | OK | CPU on resume storms | ** Saturated** |
+| **Callbacks (webhooks)** | OK | Inline on same process | Webhook latency competes with recovery |
+| **Logs (`CartRecoveryLog`)** | OK | Admin/query cost | Storage + write amplification |
+
+**Estimate:** At **500 stores** without a dedicated scheduler, expect **due backlog**, slow `max_dispatch=25` drain, and operator-visible `[RECOVERY STALE DETECTED]` / `needs_review` — not silent duplicate sends if idempotency holds.
+
+---
+
+## Part 6 — Recovery storms
+
+**Scenario:** Many recoveries become due the same minute (campaign, shared delay template, restart after outage).
+
+| Mechanism | Behavior |
+|-----------|----------|
+| **Startup resume** | `run_recovery_resume_scan_async(max_dispatch=25)` — only **25** due rows dispatched per scan |
+| **Stale repair first** | `repair_stale_running_recovery_schedules` runs before dispatch — reduces stuck `running` noise |
+| **Per-row claim** | Parallel tasks still compete; losers log `claim_race_lost` |
+| **WA queue** | Serializes provider sends per event loop — backlog in queue, not unbounded threads |
+| **Inflight / duplicate guard** | Short TTL blocks overlapping sends **same process** |
+| **No global rate limit** | No store-level or provider-level storm throttle beyond Twilio account limits |
+
+**Verdict:** **PARTIAL** — storms **degrade latency** and drain slowly; **unlikely** to mass-double-send if DB idempotency paths run. **FAIL** for sub-minute SLA at high due counts without external queue + worker pool.
+
+---
+
+## Part 7 — Source-of-truth conflicts
+
+When signals disagree, effective precedence for **stopping recovery** and **merchant-facing summary**:
+
+| Store | Role | Wins when |
+|-------|------|-----------|
+| **`purchase_truth_records`** | Durable purchase evidence | **Highest** — `has_purchase` / `stop_if_purchased` cancels schedules |
+| **`lifecycle_closure_records`** | Durable “why ended” | Explains terminal outcome; purchase rank 8 > reply > return (`lifecycle_closure_records_v1`) |
+| **`RecoverySchedule.status`** | Execution state machine | **Operational** truth for “will run again?” — terminal rows block claim |
+| **`CartRecoveryLog.status`** | Send/attempt audit trail | **Historical** — may show `queued` while purchase/closure says done; idempotency reads logs |
+| **Session memory** (`_session_recovery_*`) | Fast path same process | **Lowest cross-worker** — bypassed on resume via `resume_from_durable_schedule` + DB fallbacks |
+| **Dashboard / merchant lifecycle** | Presentation | Reads `has_purchase`, closure, logs — purchase + closure override noisy `queued` |
+| **Admin diagnostics** | Support read model | `has_purchase` + `lifecycle_closure` in context; purchase overrides queued log issue |
+
+**Lifecycle evaluator (shadow):** `cartflow_lifecycle_truth` — `purchase > reply > return > waiting > send` (observation; does not drive send).
+
+**Who wins example (queued + purchase):** **Purchase truth** stops execution; dashboard should show **purchased**; logs may still contain `queued` for support in collapsed/history views.
+
+---
+
+## Priority backlog (no fixes in v1)
+
+| Priority | Gap | Impact | Suggested direction (future) |
+|----------|-----|--------|------------------------------|
+| **P0** | Multiple workers with default **resume-on-startup** | Duplicate dispatch attempts, load amplification | Single scheduler role or `CARTFLOW_RECOVERY_RESUME_ON_STARTUP=0` on replicas |
+| **P0** | No distributed **job queue / lease** | Cannot safely scale recovery workers horizontally | Dedicated worker + ack after `execute_recovery_schedule` |
+| **P1** | Pre-delay **memory** claims (`_try_claim_recovery_session`) | Two workers → two delay tasks per session | Insert `scheduled` row **before** `create_task`; reject duplicate upsert |
+| **P1** | Triple driver: asyncio sleep + startup scan + DB scanner | Races until claim; ops confusion | One active driver per environment |
+| **P1** | Platform gateway idempotency **in-memory only** | Restart duplicates external events | Durable `external_event_id` table |
+| **P2** | `max_dispatch=25` cap | Large due backlogs after outage | Configurable batch + metrics |
+| **P2** | `recovery_session_phone` cache process-local | Extra DB resolve on cold worker | Always resolve phone from DB in worker path |
+| **P2** | `cart_recovery_logs` volume at 500 stores | Ops/DB cost | Archival + indexes (ops) |
 
 ---
 
 ## Verification references
 
 ```bash
-python -m pytest tests/test_queue_worker_maturity_audit_v1.py tests/test_recovery_restart_survival.py tests/test_cartflow_queue_readiness_verification.py tests/test_recovery_execution_boundary.py -q
+python -m pytest tests/test_queue_worker_maturity_audit_v1.py tests/test_recovery_restart_survival.py tests/test_recovery_execution_boundary.py tests/test_cartflow_queue_readiness_verification.py tests/test_cartflow_duplicate_prevention.py -q
 ```
 
-Manual ops grep:
+**Manual grep (production logs):**
 
 ```text
 [RECOVERY CLAIMED]
@@ -167,6 +203,7 @@ Manual ops grep:
 [RECOVERY STALE DETECTED]
 [PURCHASE STOP]
 [CARTFLOW DUPLICATE]
+[RECOVERY SCHEDULER OWNER]
 ```
 
 ---
@@ -176,5 +213,6 @@ Manual ops grep:
 | Item | Value |
 |------|--------|
 | Runtime changes | **None** |
-| New endpoints / tables | **None** |
-| Authoritative execution entry (future workers) | `execute_recovery_schedule(schedule_id=…)` |
+| New infrastructure | **None** |
+| Authoritative future worker entry | `execute_recovery_schedule(schedule_id=…, source=…)` |
+| Registry metadata | `services/cartflow_queue_readiness.py` |
