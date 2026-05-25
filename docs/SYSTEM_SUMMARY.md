@@ -320,6 +320,7 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 
 | Date (UTC) | Summary |
 |------------|---------|
+| 2026-05-19 | **Merchant setup polish v2 (UI):** hero-v2 dominates above fold (🎯/⏱/🎁 + primary CTA); completed steps in collapsed `<details>`; current in hero; locked/upcoming compact lanes; full roadmap optional; progress chips retained. Commit: **`feat: polish merchant setup hierarchy v2`**. |
 | 2026-05-19 | **Merchant setup polish v1 (UI):** unified path kept; setup mode shows dimmed peek for نظرة عامة / ملخص الشهر / آخر السلال; hero block (الخطوة الحالية + المدة + النتيجة + CTA); progress chips ✓/▶/🔒; production lock copy «يفتح بعد إثبات التجربة». Commit: **`feat: polish merchant setup clarity v1`**. |
 | 2026-05-19 | **Merchant setup unified P0:** `services/merchant_setup_unified_p0.py` — one guided path (sandbox: account → test-widget → recovery → carts → verified; then production OAuth/WhatsApp/templates/live widget) from existing evaluators; single home card (`unified_p0`); `ma-setup-mode` hides daily KPIs; activation card suppressed; carts onboarding strip after sandbox only. Commit: **`feat: unify merchant setup experience p0`**. |
 | 2026-05-19 | **Setup unification audit v1 (docs):** `docs/cartflow_setup_unification_audit_v1.md` — maps activation card, setup %, 5-step onboarding, settings/WhatsApp/widget/OAuth; one guided path (sandbox → production); Daily/Setup/Advanced/Admin split; ~25–45 min founder sandbox savings (P0). Commit: **`docs: add setup unification audit v1`**. |

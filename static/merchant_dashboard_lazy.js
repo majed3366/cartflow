@@ -566,31 +566,41 @@
   function unifiedSetupHeroHtml(mse) {
     var currentStep = esc(mse.current_step_ar || "—");
     var currentOutcome = esc(mse.current_outcome_ar || "—");
-    var duration = mse.delay_hint_ar
-      ? '<p class="ma-setup-hero-duration"><span class="ma-setup-hero-k">المدة</span><span>' +
+    var durationBlock = mse.delay_hint_ar
+      ? '<div class="ma-setup-hero-row">' +
+        '<span class="ma-setup-hero-icon" aria-hidden="true">⏱</span>' +
+        '<div class="ma-setup-hero-row-body">' +
+        '<span class="ma-setup-hero-k">الوقت المتوقع</span>' +
+        "<span>" +
         esc(mse.delay_hint_ar) +
-        "</span></p>"
-      : "";
-    var proof = mse.proof_ar
-      ? '<p class="ma-setup-hero-proof">' + esc(mse.proof_ar) + "</p>"
-      : "";
+        "</span></div></div>"
+      : '<div class="ma-setup-hero-row ma-setup-hero-row-muted">' +
+        '<span class="ma-setup-hero-icon" aria-hidden="true">⏱</span>' +
+        '<div class="ma-setup-hero-row-body">' +
+        '<span class="ma-setup-hero-k">الوقت المتوقع</span>' +
+        "<span>فور إكمال الخطوة (دقائق قليلة في التجربة)</span></div></div>";
     var primaryHref = esc(mse.action_href || mse.test_store_url || "/dashboard/test-widget");
-    var primaryLabel = esc(mse.action_label_ar || "انتقل للخطوة");
+    var primaryLabel = esc(mse.action_label_ar || "ابدأ هذه الخطوة");
     var isExternalTest =
       String(mse.action_href || "").indexOf("/demo/store") >= 0 ||
       String(mse.test_store_url || "").indexOf("/demo/store") >= 0;
     var primaryTarget = isExternalTest ? ' target="_blank" rel="noopener"' : "";
     return (
-      '<section class="ma-setup-hero" aria-label="الخطوة الحالية">' +
-      '<p class="ma-setup-hero-eyebrow">الخطوة الحالية</p>' +
+      '<section class="ma-setup-hero ma-setup-hero-v2" aria-label="الخطوة الحالية">' +
+      '<div class="ma-setup-hero-head">' +
+      '<span class="ma-setup-hero-icon ma-setup-hero-icon-lg" aria-hidden="true">🎯</span>' +
+      '<div><p class="ma-setup-hero-eyebrow">الخطوة الحالية</p>' +
       '<h3 class="ma-setup-hero-title">' +
       currentStep +
-      "</h3>" +
-      duration +
-      '<p class="ma-setup-hero-outcome"><span class="ma-setup-hero-k">النتيجة المتوقعة</span><span>' +
+      "</h3></div></div>" +
+      durationBlock +
+      '<div class="ma-setup-hero-row">' +
+      '<span class="ma-setup-hero-icon" aria-hidden="true">🎁</span>' +
+      '<div class="ma-setup-hero-row-body">' +
+      '<span class="ma-setup-hero-k">النتيجة المتوقعة</span>' +
+      "<span>" +
       currentOutcome +
-      "</span></p>" +
-      proof +
+      "</span></div></div>" +
       '<div class="ma-setup-hero-actions">' +
       '<a class="ma-setup-btn-primary ma-setup-hero-cta" href="' +
       primaryHref +
@@ -599,58 +609,148 @@
       ">" +
       primaryLabel +
       "</a>" +
-      '<a class="ma-setup-btn-secondary" href="/dashboard/test-widget" target="_blank" rel="noopener">متجر الاختبار</a>' +
+      '<a class="ma-setup-btn-secondary ma-setup-hero-secondary" href="/dashboard/test-widget" target="_blank" rel="noopener">متجر الاختبار</a>' +
       "</div></section>"
+    );
+  }
+
+  function unifiedSetupCompletedCollapsedHtml(steps) {
+    var done = [];
+    var i;
+    for (i = 0; i < steps.length; i++) {
+      if (steps[i].is_complete && !steps[i].locked) {
+        done.push(steps[i]);
+      }
+    }
+    if (!done.length) return "";
+    var lis = "";
+    for (i = 0; i < done.length; i++) {
+      lis +=
+        '<li class="ma-setup-done-line"><span aria-hidden="true">✓</span> ' +
+        esc(done[i].title_ar || "") +
+        "</li>";
+    }
+    return (
+      '<details class="ma-setup-done-collapse">' +
+      "<summary><span class=\"ma-setup-done-summary-icon\" aria-hidden=\"true\">✓</span> " +
+      done.length +
+      " خطوة مكتملة</summary>" +
+      '<ul class="ma-setup-done-list">' +
+      lis +
+      "</ul></details>"
+    );
+  }
+
+  function unifiedSetupNextLockedHtml(steps) {
+    var i;
+    for (i = 0; i < steps.length; i++) {
+      if (steps[i].locked) {
+        var st = steps[i];
+        return (
+          '<div class="ma-setup-next-locked" role="status">' +
+          '<span class="ma-setup-next-locked-icon" aria-hidden="true">🔒</span>' +
+          '<div class="ma-setup-next-locked-body">' +
+          '<p class="ma-setup-next-locked-title">التالي: ' +
+          esc(st.title_ar || "") +
+          "</p>" +
+          '<p class="ma-setup-next-locked-hint">يفتح بعد إثبات التجربة</p>' +
+          "</div></div>"
+        );
+      }
+    }
+    return "";
+  }
+
+  function unifiedSetupUpcomingCompactHtml(steps) {
+    var upcoming = [];
+    var i;
+    var maxShow = 2;
+    for (i = 0; i < steps.length; i++) {
+      var st = steps[i];
+      if (!st.locked && !st.is_complete && !st.is_current) {
+        upcoming.push(st);
+      }
+    }
+    if (!upcoming.length) return "";
+    var rows = "";
+    var n = Math.min(maxShow, upcoming.length);
+    for (i = 0; i < n; i++) {
+      rows +=
+        '<div class="ma-setup-upcoming-row">' +
+        '<span aria-hidden="true">◯</span>' +
+        "<span>" +
+        esc(upcoming[i].title_ar || "") +
+        "</span></div>";
+    }
+    var more =
+      upcoming.length > maxShow
+        ? '<p class="ma-setup-upcoming-more">+' +
+          (upcoming.length - maxShow) +
+          " خطوة أخرى في القائمة الكاملة</p>"
+        : "";
+    return (
+      '<div class="ma-setup-upcoming-compact">' +
+      '<p class="ma-setup-upcoming-k">بعد الخطوة الحالية</p>' +
+      rows +
+      more +
+      "</div>"
     );
   }
 
   function renderUnifiedSetupExperience(mse, root) {
     var steps = mse.steps || [];
-    var totalSteps = parseInt(mse.total_steps, 10) || steps.length || 9;
-    var completed =
-      parseInt(mse.completed_steps, 10) ||
-      steps.filter(function (s) {
-        return s.is_complete && !s.locked;
-      }).length;
-    var remaining = parseInt(mse.remaining_setup_count, 10);
-    if (isNaN(remaining)) remaining = Math.max(0, totalSteps - completed);
     var ready = !mse.setup_mode;
     var title = esc(mse.card_title_ar || "متجرك قريب من التشغيل الكامل");
-    var lead = esc(mse.card_lead_ar || "");
-    var panelOpen = false;
+    var contextLine =
+      "CartFlow يسترجع السلات المهجورة عبر واتساب — اتبع الخطوة الحالية ثم أكمل الإنتاج.";
     root.hidden = false;
     root.setAttribute("data-ma-setup-unified", "1");
     root.innerHTML =
-      '<div class="ma-setup-panel ma-onb-panel ma-unified-setup-panel">' +
-      '<h2 class="ma-setup-home-title">' +
-      title +
-      "</h2>" +
-      (lead ? '<p class="ma-setup-panel-lead">' + lead + "</p>" : "") +
+      '<div class="ma-setup-panel ma-onb-panel ma-unified-setup-panel ma-setup-v2">' +
       (ready
-        ? '<p class="ma-onb-celebration">' +
+        ? '<h2 class="ma-setup-home-title">' +
+          title +
+          "</h2>" +
+          '<p class="ma-onb-celebration">' +
           esc(
             mse.celebration_message_ar ||
               "يمكن لـ CartFlow الآن البدء بمتابعة السلال."
           ) +
           "</p>"
-        : unifiedSetupProgressHtml(steps) +
+        : '<p class="ma-setup-v2-eyebrow">' +
+          esc(title) +
+          "</p>" +
+          '<p class="ma-setup-v2-context">' +
+          esc(contextLine) +
+          "</p>" +
+          '<div class="ma-setup-v2-focus">' +
+          unifiedSetupProgressHtml(steps) +
           unifiedSetupHeroHtml(mse) +
-          '<p class="ma-setup-daily-peek-note">نظرة عامة وملخص الشهر وآخر السلال معروضة بالأسفل بشكل مختصر — ركّز على الخطوة الحالية أولاً.</p>' +
-          '<div class="ma-setup-steps-toolbar">' +
-          '<button type="button" class="ma-setup-btn-secondary" id="ma-setup-toggle-btn" aria-expanded="false" aria-controls="ma-setup-steps-panel">عرض كل الخطوات</button>' +
+          unifiedSetupNextLockedHtml(steps) +
+          unifiedSetupUpcomingCompactHtml(steps) +
+          unifiedSetupCompletedCollapsedHtml(steps) +
           "</div>" +
-          '<div id="ma-setup-steps-panel" class="ma-setup-steps hidden"' +
-          ' role="region" aria-label="مسار الإعداد الموحّد">' +
+          '<div class="ma-setup-v2-optional">' +
+          '<div class="ma-setup-steps-toolbar">' +
+          '<button type="button" class="ma-setup-btn-secondary" id="ma-setup-toggle-btn" aria-expanded="false" aria-controls="ma-setup-steps-panel">عرض كل خطوات الإعداد</button>' +
+          "</div>" +
+          '<div id="ma-setup-steps-panel" class="ma-setup-steps ma-setup-steps-full hidden"' +
+          ' role="region" aria-label="جميع خطوات الإعداد">' +
           unifiedSetupStepsHtml(steps) +
-          "</div>") +
+          "</div></div>" +
+          '<p class="ma-setup-daily-peek-note">معاينة يومية (نظرة عامة · ملخص الشهر · آخر السلال) بالأسفل — باهتة حتى تنهي الإعداد.</p>") +
       "</div>";
 
     var btn = byId("ma-setup-toggle-btn");
     var panel = byId("ma-setup-steps-panel");
     if (btn && panel) {
       btn.addEventListener("click", function () {
-        panel.hidden = !panel.hidden;
-        btn.setAttribute("aria-expanded", panel.hidden ? "false" : "true");
+        panel.classList.toggle("hidden");
+        var collapsed = panel.classList.contains("hidden");
+        btn.setAttribute("aria-expanded", collapsed ? "false" : "true");
+        btn.textContent = collapsed
+          ? "عرض كل خطوات الإعداد"
+          : "إخفاء قائمة الإعداد";
       });
     }
   }
