@@ -5900,6 +5900,19 @@ def _persist_cart_recovery_log(
         )
         db.session.add(row)
         db.session.commit()
+        try:
+            st_norm = str(status or "").strip().lower()
+            if st_norm in {"sent_real", "mock_sent", "queued"}:
+                msg = (
+                    "[SEND TRUTH] "
+                    f"store={store_slug[:64]} session_id={session_id[:64]} "
+                    f"cart_id={(cart_id or '')[:64]} status={st_norm} step={int(step or 0)} "
+                    f"log_id={int(getattr(row, 'id', 0) or 0)}"
+                )
+                print(msg, flush=True)
+                log.info("%s", msg)
+        except Exception:  # noqa: BLE001
+            pass
         from services.widget_config_cache import note_after_step1_from_recovery_log_attrs
 
         note_after_step1_from_recovery_log_attrs(
@@ -15049,6 +15062,30 @@ def api_dashboard_messages():
         _log_dashboard_section_profile(section="messages", wall_perf_start=wall0)
 
 
+@app.get("/api/dashboard/refresh-state")
+def api_dashboard_refresh_state():
+    wall0 = time.perf_counter()
+    try:
+        _merchant_dashboard_db_ready()
+        dash_store = _dashboard_recovery_store_row()
+        out = _merchant_dashboard_refresh_state_payload(dash_store)
+        try:
+            log.info(
+                "[DASHBOARD COUNTS] section=refresh-state sent_total=%s refresh_token=%s",
+                int(out.get("merchant_dashboard_refresh_sent_total") or 0),
+                str(out.get("merchant_dashboard_refresh_token") or ""),
+            )
+        except Exception:
+            pass
+        return j({"ok": True, **out})
+    except Exception as e:  # noqa: BLE001
+        db.session.rollback()
+        log.warning("api_dashboard_refresh_state: %s", e)
+        return j({"ok": False, "error": "failed"}, 500)
+    finally:
+        _log_dashboard_section_profile(section="refresh_state", wall_perf_start=wall0)
+
+
 @app.get("/api/dashboard/trigger-templates")
 def api_dashboard_trigger_templates(
     store_slug: Optional[str] = Query(None, max_length=255),
@@ -15507,6 +15544,49 @@ def _merchant_dashboard_shell_store_fields(
     }
 
 
+def _merchant_dashboard_refresh_state_payload(dash_store: Optional[Any]) -> dict[str, Any]:
+    """Shared refresh revision token for summary/carts/messages consistency."""
+    slug = (getattr(dash_store, "zid_store_id", None) or "").strip()
+    max_log_id = 0
+    max_sent_id = 0
+    sent_total = 0
+    try:
+        if slug:
+            max_log_id = int(
+                db.session.query(func.max(CartRecoveryLog.id))
+                .filter(CartRecoveryLog.store_slug == slug)
+                .scalar()
+                or 0
+            )
+            max_sent_id = int(
+                db.session.query(func.max(CartRecoveryLog.id))
+                .filter(
+                    CartRecoveryLog.store_slug == slug,
+                    CartRecoveryLog.status.in_(tuple(_NORMAL_RECOVERY_SENT_LOG_STATUSES)),
+                )
+                .scalar()
+                or 0
+            )
+            sent_total = int(
+                db.session.query(func.count(CartRecoveryLog.id))
+                .filter(
+                    CartRecoveryLog.store_slug == slug,
+                    CartRecoveryLog.status.in_(tuple(_NORMAL_RECOVERY_SENT_LOG_STATUSES)),
+                )
+                .scalar()
+                or 0
+            )
+    except (SQLAlchemyError, OSError, TypeError, ValueError):
+        db.session.rollback()
+    revision_token = f"{slug}:{max_log_id}:{max_sent_id}:{sent_total}"
+    return {
+        "merchant_dashboard_refresh_token": revision_token,
+        "merchant_dashboard_refresh_last_log_id": max_log_id,
+        "merchant_dashboard_refresh_last_sent_log_id": max_sent_id,
+        "merchant_dashboard_refresh_sent_total": sent_total,
+    }
+
+
 def _api_json_dashboard_summary(
     dash_store: Optional[Any],
     *,
@@ -15591,7 +15671,8 @@ def _api_json_dashboard_summary(
     merchant_setup_experience = build_merchant_setup_experience_api_payload(
         cookies=cookies
     )
-    return {
+    refresh_state = _merchant_dashboard_refresh_state_payload(dash_store)
+    out = {
         "merchant_ar_date_header": merchant_ar_weekday_date_header(now_utc),
         "wa_badge_ar": str(wa_card.get("badge_ar") or "—"),
         "wa_state_key": str(wa_card.get("state_key") or ""),
@@ -15634,6 +15715,18 @@ def _api_json_dashboard_summary(
             else None
         ),
     }
+    out.update(refresh_state)
+    try:
+        log.info(
+            "[DASHBOARD COUNTS] section=summary waiting_badge=%s active=%s sent_total=%s refresh_token=%s",
+            int(out.get("merchant_nav_badge_abandoned") or 0),
+            int(mstats.get("normal_cart_count") or 0),
+            int(refresh_state.get("merchant_dashboard_refresh_sent_total") or 0),
+            str(refresh_state.get("merchant_dashboard_refresh_token") or ""),
+        )
+    except Exception:
+        pass
+    return out
 
 
 def _merchant_activation_api_payload(
@@ -15719,6 +15812,13 @@ def _api_json_dashboard_normal_carts(
     cart_filter_counts = merchant_cart_filter_counts_from_rows(
         merchant_carts_page_rows
     )
+    refresh_state = _merchant_dashboard_refresh_state_payload(dash_store)
+    bucket_counts: dict[str, int] = {}
+    for row in merchant_carts_page_rows:
+        b = str(row.get("merchant_cart_primary_bucket") or "").strip().lower()
+        if not b:
+            continue
+        bucket_counts[b] = int(bucket_counts.get(b) or 0) + 1
     body: Dict[str, Any] = {
         "merchant_table_rows": table_rows,
         "merchant_carts_page_rows": merchant_carts_page_rows,
@@ -15727,6 +15827,21 @@ def _api_json_dashboard_normal_carts(
             merchant_carts_page_rows
         ),
     }
+    body.update(refresh_state)
+    try:
+        log.info(
+            "[CART CLASSIFIER] rows=%s buckets=%s",
+            len(merchant_carts_page_rows),
+            bucket_counts,
+        )
+        log.info(
+            "[DASHBOARD COUNTS] section=normal-carts counts=%s waiting_badge=%s refresh_token=%s",
+            cart_filter_counts,
+            int(body.get("merchant_nav_badge_abandoned") or 0),
+            str(refresh_state.get("merchant_dashboard_refresh_token") or ""),
+        )
+    except Exception:
+        pass
     return body, prof_nc
 
 
@@ -15832,10 +15947,12 @@ def _api_json_dashboard_messages(dash_store: Optional[Any]) -> Dict[str, Any]:
     last_send_ar = "—"
     if message_history_rows:
         last_send_ar = str(message_history_rows[0].get("time_ar") or "—")
-    return {
+    out = {
         "merchant_message_history_rows": message_history_rows,
         "merchant_wa_last_send_ar": last_send_ar,
     }
+    out.update(_merchant_dashboard_refresh_state_payload(dash_store))
+    return out
 
 
 @app.get("/dashboard")

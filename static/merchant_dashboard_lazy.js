@@ -32,6 +32,9 @@
 
   var cachedMerchantActivation = null;
   var cachedMerchantSetupExperience = null;
+  var merchantDashboardRefreshToken = "";
+  var merchantRefreshInFlight = false;
+  var merchantRefreshTimer = null;
 
   function isUnifiedSetup(mse) {
     if (!mse || typeof mse !== "object") return false;
@@ -62,6 +65,31 @@
       }
     } catch (_e) {
       /* ignore */
+    }
+  }
+
+  function logClientRefresh(label, payload) {
+    try {
+      if (payload) {
+        console.info("[CLIENT REFRESH] " + label, payload);
+      } else {
+        console.info("[CLIENT REFRESH] " + label);
+      }
+    } catch (_e) {
+      /* ignore */
+    }
+  }
+
+  function ingestRefreshToken(d, source) {
+    if (!d || !d.merchant_dashboard_refresh_token) return;
+    var next = String(d.merchant_dashboard_refresh_token || "");
+    if (!next) return;
+    if (next !== merchantDashboardRefreshToken) {
+      merchantDashboardRefreshToken = next;
+      logClientRefresh("token_update", {
+        source: source || "",
+        token: merchantDashboardRefreshToken,
+      });
     }
   }
 
@@ -1080,6 +1108,7 @@
         : null);
     logSetupRenderDebug("summary_payload", dbg);
     setText("ma-topbar-date", d.merchant_ar_date_header || "");
+    ingestRefreshToken(d, "summary");
     applyTopbarReadiness(d);
     applyMerchantSetupExperience(d.merchant_setup_experience);
     applyHomeLayoutAfterSetup(d.merchant_activation, d.merchant_setup_experience);
@@ -1524,6 +1553,7 @@
 
   function applyNormalCarts(d) {
     if (!d || !d.ok) return;
+    ingestRefreshToken(d, "normal-carts");
     var home = byId("ma-tbody-home-carts");
     if (home) {
       var tr = d.merchant_table_rows || [];
@@ -1795,6 +1825,7 @@
 
   function applyMessages(d) {
     if (!d || !d.ok) return;
+    ingestRefreshToken(d, "messages");
     var card = byId("ma-messages-card");
     if (!card) return;
     var rows = d.merchant_message_history_rows || [];
@@ -1916,7 +1947,10 @@
   }
 
   function fetchSection(url, applyFn, label) {
-    return fetch(url, { credentials: "same-origin" })
+    var u = String(url || "");
+    var sep = u.indexOf("?") >= 0 ? "&" : "?";
+    var bust = "_ts=" + Date.now();
+    return fetch(u + sep + bust, { credentials: "same-origin", cache: "no-store" })
       .then(function (r) {
         return r.json();
       })
@@ -1926,6 +1960,62 @@
       .catch(function () {
         /* section failed — shell remains */
       });
+  }
+
+  function refreshCoreSections(reason) {
+    if (merchantRefreshInFlight) return;
+    merchantRefreshInFlight = true;
+    logClientRefresh("refresh_start", {
+      reason: reason || "unknown",
+      token: merchantDashboardRefreshToken,
+    });
+    Promise.allSettled([
+      fetchSection("/api/dashboard/summary", applySummary, "summary"),
+      fetchSection("/api/dashboard/normal-carts", applyNormalCarts, "normal_carts"),
+      fetchSection("/api/dashboard/messages", applyMessages, "messages"),
+    ]).finally(function () {
+      merchantRefreshInFlight = false;
+      logClientRefresh("refresh_end", {
+        reason: reason || "unknown",
+        token: merchantDashboardRefreshToken,
+      });
+    });
+  }
+
+  function checkRefreshState() {
+    var u = "/api/dashboard/refresh-state?_ts=" + Date.now();
+    return fetch(u, { credentials: "same-origin", cache: "no-store" })
+      .then(function (r) {
+        return r.json();
+      })
+      .then(function (d) {
+        if (!d || !d.ok) return;
+        var next = String(d.merchant_dashboard_refresh_token || "");
+        if (!next) return;
+        if (!merchantDashboardRefreshToken) {
+          merchantDashboardRefreshToken = next;
+          logClientRefresh("token_init", { token: next });
+          return;
+        }
+        if (next !== merchantDashboardRefreshToken) {
+          var prev = merchantDashboardRefreshToken;
+          merchantDashboardRefreshToken = next;
+          logClientRefresh("token_changed", { from: prev, to: next });
+          refreshCoreSections("refresh_token_changed");
+        }
+      })
+      .catch(function () {
+        /* ignore refresh watcher failures */
+      });
+  }
+
+  function startRefreshWatcher() {
+    if (merchantRefreshTimer) return;
+    checkRefreshState();
+    merchantRefreshTimer = window.setInterval(function () {
+      if (document.hidden) return;
+      checkRefreshState();
+    }, 5000);
   }
 
   function bootLazyDashboard() {
@@ -1948,6 +2038,7 @@
       fetchSection("/api/dashboard/messages", applyMessages, "messages"),
     ];
     Promise.allSettled(jobs);
+    startRefreshWatcher();
   }
 
   window.maApplyVipCartsPayload = applyVipCarts;

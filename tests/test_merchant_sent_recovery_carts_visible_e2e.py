@@ -22,6 +22,7 @@ from main import (  # noqa: E402
     _NORMAL_RECOVERY_SENT_LOG_STATUSES,
     _api_json_dashboard_messages,
     _api_json_dashboard_normal_carts,
+    _merchant_dashboard_refresh_state_payload,
     _normal_recovery_merchant_lightweight_alert_list_for_api,
     _normal_carts_dashboard_stats,
     app,
@@ -241,6 +242,88 @@ class MerchantSentRecoveryCartsVisibleE2ETests(unittest.TestCase):
             return_value=tiny,
         ):
             self._assert_cart_visible_in_normal_carts_api(st)
+
+    def test_refresh_state_token_changes_on_new_send_and_payloads_align(self) -> None:
+        slug = f"mshop-{self._suffix}"
+        sid = f"sess-refresh-{self._suffix}"
+        zid = f"cf_cart_refresh_{self._suffix}"
+        now = datetime.now(timezone.utc)
+        st = Store(
+            zid_store_id=slug,
+            recovery_delay=1,
+            recovery_delay_unit="minutes",
+            recovery_attempts=1,
+            cartflow_widget_enabled=True,
+            whatsapp_recovery_enabled=True,
+        )
+        db.session.add(st)
+        db.session.flush()
+        ac = AbandonedCart(
+            store_id=int(st.id),
+            zid_cart_id=zid,
+            recovery_session_id=sid,
+            customer_phone="966501112233",
+            status="abandoned",
+            vip_mode=False,
+            cart_value=88.0,
+            last_seen_at=now,
+        )
+        db.session.add(ac)
+        db.session.commit()
+
+        with patch("main._dashboard_recovery_store_row", return_value=st):
+            before = _merchant_dashboard_refresh_state_payload(st)
+            r_before = self._client.get("/api/dashboard/refresh-state")
+        self.assertEqual(r_before.status_code, 200)
+        self.assertTrue((r_before.json() or {}).get("ok"))
+        self.assertEqual(
+            str((r_before.json() or {}).get("merchant_dashboard_refresh_token") or ""),
+            str(before.get("merchant_dashboard_refresh_token") or ""),
+        )
+
+        db.session.add(
+            CartRecoveryLog(
+                store_slug=slug,
+                session_id=sid,
+                cart_id=zid,
+                phone="966501112233",
+                message="مرحباً",
+                status="mock_sent",
+                step=1,
+                sent_at=now + timedelta(seconds=1),
+                created_at=now + timedelta(seconds=1),
+            )
+        )
+        db.session.commit()
+
+        with patch("main._dashboard_recovery_store_row", return_value=st):
+            after = _merchant_dashboard_refresh_state_payload(st)
+            r_after = self._client.get("/api/dashboard/refresh-state")
+            carts_body, _ = _api_json_dashboard_normal_carts(st)
+            msgs = _api_json_dashboard_messages(st)
+        self.assertEqual(r_after.status_code, 200)
+        self.assertTrue((r_after.json() or {}).get("ok"))
+        self.assertNotEqual(
+            str(after.get("merchant_dashboard_refresh_token") or ""),
+            str(before.get("merchant_dashboard_refresh_token") or ""),
+        )
+        self.assertEqual(
+            str((r_after.json() or {}).get("merchant_dashboard_refresh_token") or ""),
+            str(after.get("merchant_dashboard_refresh_token") or ""),
+        )
+        self.assertEqual(
+            str(carts_body.get("merchant_dashboard_refresh_token") or ""),
+            str(after.get("merchant_dashboard_refresh_token") or ""),
+        )
+        self.assertEqual(
+            str(msgs.get("merchant_dashboard_refresh_token") or ""),
+            str(after.get("merchant_dashboard_refresh_token") or ""),
+        )
+        self.assertGreaterEqual(
+            int((carts_body.get("merchant_cart_filter_counts") or {}).get("sent") or 0),
+            1,
+        )
+        self.assertGreaterEqual(len(msgs.get("merchant_message_history_rows") or []), 1)
 
     def _active_and_archived_rows(
         self, st: Store, *, session_id: str
