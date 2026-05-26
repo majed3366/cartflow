@@ -410,13 +410,8 @@ def merchant_nav_badge_active_cart_count(rows: list[dict[str, Any]]) -> int:
 
 
 def merchant_nav_badge_waiting_count(rows: list[dict[str, Any]]) -> int:
-    """Sidebar «بانتظار الإرسال» badge = waiting primary_bucket rows only."""
-    return sum(
-        1
-        for row in rows
-        if str(row.get("merchant_cart_primary_bucket") or "").strip().lower()
-        == PRIMARY_WAITING
-    )
+    """Sidebar «بانتظار الإرسال» badge = same filter as tab=waiting (not all active carts)."""
+    return len(merchant_cart_rows_matching_filter(rows, UI_FILTER_WAITING))
 
 
 # Hash ?tab= values (sidebar / URL) → filter-bar / row attribute mode.

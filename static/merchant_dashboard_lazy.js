@@ -1554,6 +1554,11 @@
     sf("sent", "ma-filt-sent");
     sf("attention", "ma-filt-attention");
     sf("nophone", "ma-filt-nophone");
+    if (d.merchant_nav_badge_abandoned != null) {
+      setNavBadge("ma-nav-badge-abandoned", d.merchant_nav_badge_abandoned);
+    } else if (fc.waiting != null) {
+      setNavBadge("ma-nav-badge-abandoned", fc.waiting);
+    }
     if (window.merchantAppReinitCartFilters) {
       window.merchantAppReinitCartFilters();
     }

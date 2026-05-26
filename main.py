@@ -15619,9 +15619,7 @@ def _api_json_dashboard_summary(
         ),
         "merchant_month_recovery_pct_fmt": f"{rec_pct_m:.1f}",
         "merchant_month_revenue_fmt": _merchant_dashboard_fmt_int(rev_month),
-        "merchant_nav_badge_abandoned": int(
-            mstats.get("merchant_nav_badge_waiting") or mstats.get("normal_cart_count") or 0
-        ),
+        "merchant_nav_badge_abandoned": int(mstats.get("merchant_nav_badge_waiting") or 0),
         "merchant_nav_badge_followup": 0,
         "merchant_nav_badge_vip": 0,
         "merchant_setup_experience": merchant_setup_experience,
@@ -15715,6 +15713,7 @@ def _api_json_dashboard_normal_carts(
     table_rows = list(merchant_carts_page_rows[:8])
     from services.merchant_cart_row_classifier import (  # noqa: PLC0415
         merchant_cart_filter_counts_from_rows,
+        merchant_nav_badge_waiting_count,
     )
 
     cart_filter_counts = merchant_cart_filter_counts_from_rows(
@@ -15724,6 +15723,9 @@ def _api_json_dashboard_normal_carts(
         "merchant_table_rows": table_rows,
         "merchant_carts_page_rows": merchant_carts_page_rows,
         "merchant_cart_filter_counts": cart_filter_counts,
+        "merchant_nav_badge_abandoned": merchant_nav_badge_waiting_count(
+            merchant_carts_page_rows
+        ),
     }
     return body, prof_nc
 

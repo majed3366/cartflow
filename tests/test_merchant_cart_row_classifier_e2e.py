@@ -16,6 +16,7 @@ from extensions import db
 
 from main import (  # noqa: E402
     _api_json_dashboard_messages,
+    _api_json_dashboard_summary,
     _normal_carts_dashboard_stats,
     _normal_recovery_merchant_lightweight_alert_list_for_api,
     app,
@@ -40,6 +41,7 @@ from services.merchant_cart_row_classifier import (  # noqa: E402
     merchant_cart_filter_counts_from_rows,
     merchant_cart_row_matches_filter,
     merchant_cart_rows_matching_filter,
+    merchant_nav_badge_waiting_count,
 )
 
 
@@ -217,6 +219,8 @@ class MerchantCartTabFilterE2ETests(unittest.TestCase):
         self.assertEqual(len(merchant_cart_rows_matching_filter(rows, w_mode)), fc[w_mode])
         self.assertEqual(len(merchant_cart_rows_matching_filter(rows, s_mode)), fc[s_mode])
         self.assertEqual(len(merchant_cart_rows_matching_filter(rows, a_mode)), fc[a_mode])
+        self.assertEqual(merchant_nav_badge_waiting_count(rows), fc[w_mode])
+        self.assertEqual(merchant_nav_badge_waiting_count(rows), len(w_visible))
 
     def test_sidebar_intervention_maps_to_attention_filter(self) -> None:
         row = self._row(
@@ -337,7 +341,13 @@ class MerchantCartRowClassifierApiE2ETests(unittest.TestCase):
 
         self.assertGreaterEqual(int(stats.get("normal_cart_count") or 0), 1)
         self.assertEqual(int(stats.get("normal_cart_count") or 0), len(rows))
+        self.assertEqual(int(stats.get("merchant_nav_badge_waiting") or 0), 0)
+        self.assertEqual(int(fc.get(UI_FILTER_WAITING) or 0), 0)
         self.assertGreaterEqual(len(msgs.get("merchant_message_history_rows") or []), 1)
+
+        with patch("main._dashboard_recovery_store_row", return_value=st):
+            summary = _api_json_dashboard_summary(st)
+        self.assertEqual(int(summary.get("merchant_nav_badge_abandoned") or 0), 0)
 
 
 if __name__ == "__main__":
