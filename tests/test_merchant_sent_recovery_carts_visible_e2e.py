@@ -325,6 +325,48 @@ class MerchantSentRecoveryCartsVisibleE2ETests(unittest.TestCase):
         )
         self.assertGreaterEqual(len(msgs.get("merchant_message_history_rows") or []), 1)
 
+    def test_debug_recovery_trace_reports_one_truth_chain(self) -> None:
+        st, ac, lg = self._seed_sent_recovery_cart()
+        db.session.add(
+            CartRecoveryLog(
+                store_slug=st.zid_store_id,
+                session_id=ac.recovery_session_id,
+                cart_id=ac.zid_cart_id,
+                phone="966501112233",
+                message=lg.message,
+                status="queued",
+                step=1,
+                recovery_key=lg.recovery_key,
+                reason_tag=lg.reason_tag,
+                context_status=lg.context_status,
+                context_json=lg.context_json,
+                message_type=lg.message_type,
+                source=lg.source,
+                created_at=datetime.now(timezone.utc) - timedelta(seconds=2),
+            )
+        )
+        db.session.commit()
+
+        with patch("main._dashboard_recovery_store_row", return_value=st):
+            r = self._client.get(
+                f"/api/debug/recovery-trace?recovery_key={lg.recovery_key}"
+            )
+        self.assertEqual(r.status_code, 200, msg=r.text)
+        js = r.json()
+        self.assertTrue(js.get("ok"), msg=js)
+        self.assertEqual(js.get("recovery_key"), lg.recovery_key)
+        self.assertEqual(js.get("cart_id"), ac.zid_cart_id)
+        self.assertEqual(js.get("session_id"), ac.recovery_session_id)
+        self.assertIn(
+            js.get("cart_classifier_bucket"),
+            ("sent", "waiting", "needs_followup", "recovered", "no_phone", None),
+        )
+        self.assertIsNotNone(js.get("message_body_before_send"))
+        self.assertIsNotNone(js.get("wa_payload_body"))
+        self.assertIsNotNone(js.get("persisted_log_body"))
+        self.assertIsNotNone(js.get("dashboard_message_body"))
+        self.assertEqual(js.get("divergence_layer"), None, msg=js)
+
     def _active_and_archived_rows(
         self, st: Store, *, session_id: str
     ) -> tuple[list[dict], list[dict]]:

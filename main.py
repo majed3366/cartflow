@@ -15046,6 +15046,221 @@ def api_dashboard_recovery_message_truth_debug(
         )
 
 
+@app.get("/api/debug/recovery-trace")
+def api_debug_recovery_trace(
+    recovery_key: str = Query("", max_length=512),
+):
+    """
+    End-to-end truth trace for one recovery send chain.
+    Source-of-truth investigation only (read-only).
+    """
+    wall0 = time.perf_counter()
+    try:
+        from services.recovery_message_context_v1 import context_from_log_row  # noqa: PLC0415
+
+        _merchant_dashboard_db_ready()
+        rk = (recovery_key or "").strip()
+        if not rk:
+            return j({"ok": False, "error": "recovery_key_required"}, 400)
+
+        dash_store = _dashboard_recovery_store_row()
+        logs = (
+            db.session.query(CartRecoveryLog)
+            .filter(CartRecoveryLog.recovery_key == rk)
+            .order_by(CartRecoveryLog.id.desc())
+            .limit(120)
+            .all()
+        )
+
+        sent_log = None
+        for lg in logs:
+            st = (getattr(lg, "status", None) or "").strip().lower()
+            if st in _NORMAL_RECOVERY_SENT_LOG_STATUSES:
+                sent_log = lg
+                break
+
+        queued_log = None
+        if sent_log is not None:
+            sent_step = int(getattr(sent_log, "step", None) or 0)
+            sent_id = int(getattr(sent_log, "id", 0) or 0)
+            for lg in logs:
+                if int(getattr(lg, "id", 0) or 0) >= sent_id:
+                    continue
+                st = (getattr(lg, "status", None) or "").strip().lower()
+                if st != "queued":
+                    continue
+                if sent_step > 0 and int(getattr(lg, "step", None) or 0) != sent_step:
+                    continue
+                queued_log = lg
+                break
+
+        ac = None
+        if sent_log is not None:
+            sid = (getattr(sent_log, "session_id", None) or "").strip()
+            cid = (getattr(sent_log, "cart_id", None) or "").strip()
+            q = db.session.query(AbandonedCart)
+            if cid:
+                ac = q.filter(AbandonedCart.zid_cart_id == cid).order_by(
+                    AbandonedCart.id.desc()
+                ).first()
+            if ac is None and sid:
+                ac = q.filter(AbandonedCart.recovery_session_id == sid).order_by(
+                    AbandonedCart.id.desc()
+                ).first()
+
+        sent_ctx = context_from_log_row(sent_log) if sent_log is not None else {}
+        queued_ctx = context_from_log_row(queued_log) if queued_log is not None else {}
+
+        template_selected = (
+            (sent_ctx.get("message_type") or queued_ctx.get("message_type") or "")
+            .strip()
+            or None
+        )
+        message_body_before_send = (
+            sent_ctx.get("message_body")
+            or queued_ctx.get("message_body")
+            or (getattr(queued_log, "message", None) if queued_log is not None else "")
+            or ""
+        ).strip()
+        wa_payload_body = (
+            sent_ctx.get("message_body")
+            or message_body_before_send
+            or (getattr(sent_log, "message", None) if sent_log is not None else "")
+            or ""
+        ).strip()
+        persisted_log_body = (
+            (getattr(sent_log, "message", None) if sent_log is not None else "")
+            or ""
+        ).strip()
+
+        dashboard_message_body = ""
+        dashboard_message_row = None
+        try:
+            msg_rows = _merchant_recovery_message_history_rows(dash_store, limit=80)
+        except Exception:
+            db.session.rollback()
+            msg_rows = []
+        sid_eff = (
+            (sent_ctx.get("session_id") or getattr(sent_log, "session_id", None) or "")
+            .strip()
+            if sent_log is not None
+            else ""
+        )
+        cid_eff = (
+            (sent_ctx.get("cart_id") or getattr(sent_log, "cart_id", None) or "").strip()
+            if sent_log is not None
+            else ""
+        )
+        for r in msg_rows:
+            rrk = (r.get("recovery_key") or "").strip()
+            rsid = (r.get("session_id") or "").strip()
+            rcid = (r.get("cart_id") or "").strip()
+            if rrk and rrk == rk:
+                dashboard_message_row = r
+                break
+            if sid_eff and rsid and sid_eff == rsid:
+                dashboard_message_row = r
+                break
+            if cid_eff and rcid and cid_eff == rcid:
+                dashboard_message_row = r
+                break
+        if isinstance(dashboard_message_row, dict):
+            dashboard_message_body = (
+                str(dashboard_message_row.get("preview_ar") or "").strip()
+            )
+
+        cart_classifier_bucket = None
+        cart_row = None
+        try:
+            carts_body, _ = _api_json_dashboard_normal_carts(dash_store)
+            cart_rows = carts_body.get("merchant_carts_page_rows") or []
+        except Exception:
+            db.session.rollback()
+            cart_rows = []
+        for r in cart_rows:
+            rrk = str(r.get("recovery_key") or "").strip()
+            rsid = str(r.get("session_id") or "").strip()
+            rcid = str(r.get("cart_id") or "").strip()
+            if rrk and rrk == rk:
+                cart_row = r
+                break
+            if sid_eff and rsid and sid_eff == rsid:
+                cart_row = r
+                break
+            if cid_eff and rcid and cid_eff == rcid:
+                cart_row = r
+                break
+        if isinstance(cart_row, dict):
+            cart_classifier_bucket = (
+                str(cart_row.get("merchant_cart_primary_bucket") or "").strip() or None
+            )
+
+        def _norm_body(s: str) -> str:
+            return " ".join((s or "").split()).strip()
+
+        b_before = _norm_body(message_body_before_send)
+        b_wa = _norm_body(wa_payload_body)
+        b_persist = _norm_body(persisted_log_body)
+        b_dash = _norm_body(dashboard_message_body)
+
+        divergence_layer = None
+        if b_before and b_wa and b_before != b_wa:
+            divergence_layer = "message_body_generation_to_wa_payload"
+        elif b_wa and b_persist and b_wa != b_persist:
+            divergence_layer = "wa_payload_to_persisted_log"
+        elif b_persist and b_dash and b_persist not in b_dash and b_dash not in b_persist:
+            divergence_layer = "persisted_log_to_dashboard_query"
+
+        out = {
+            "template_selected": template_selected,
+            "message_body_before_send": message_body_before_send or None,
+            "wa_payload_body": wa_payload_body or None,
+            "persisted_log_body": persisted_log_body or None,
+            "dashboard_message_body": dashboard_message_body or None,
+            "cart_classifier_bucket": cart_classifier_bucket,
+            "recovery_key": rk,
+            "cart_id": cid_eff or None,
+            "session_id": sid_eff or None,
+            "log_id": int(getattr(sent_log, "id", 0) or 0) if sent_log is not None else None,
+            "queued_log_id": (
+                int(getattr(queued_log, "id", 0) or 0) if queued_log is not None else None
+            ),
+            "matches": {
+                "before_vs_wa_payload": b_before == b_wa if (b_before or b_wa) else None,
+                "wa_payload_vs_persisted": b_wa == b_persist if (b_wa or b_persist) else None,
+                "persisted_vs_dashboard": (
+                    (b_persist in b_dash or b_dash in b_persist)
+                    if (b_persist and b_dash)
+                    else None
+                ),
+            },
+            "divergence_layer": divergence_layer,
+        }
+        log.info(
+            "[SEND TRUTH] recovery_key=%s log_id=%s template=%s",
+            rk,
+            out.get("log_id"),
+            out.get("template_selected"),
+        )
+        log.info(
+            "[DASHBOARD COUNTS] recovery_key=%s persisted_vs_dashboard=%s",
+            rk,
+            out.get("matches", {}).get("persisted_vs_dashboard"),
+        )
+        log.info(
+            "[CART CLASSIFIER] recovery_key=%s bucket=%s",
+            rk,
+            out.get("cart_classifier_bucket"),
+        )
+        return j({"ok": True, **out})
+    except Exception as e:  # noqa: BLE001
+        db.session.rollback()
+        log.warning("api_debug_recovery_trace: %s", e)
+        return j({"ok": False, "error": "failed"}, 500)
+    finally:
+        _log_dashboard_section_profile(section="debug_recovery_trace", wall_perf_start=wall0)
+
+
 @app.get("/api/dashboard/messages")
 def api_dashboard_messages():
     wall0 = time.perf_counter()
