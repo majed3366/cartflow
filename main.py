@@ -12309,7 +12309,13 @@ def _normal_carts_dashboard_stats(dash_store: Optional[Any] = None) -> dict[str,
                 lifecycle="active",
                 dash_store=dash_store,
             )
-            out["normal_cart_count"] = len(visible_rows)
+            from services.merchant_cart_row_classifier import (  # noqa: PLC0415
+                merchant_nav_badge_active_cart_count,
+            )
+
+            out["normal_cart_count"] = merchant_nav_badge_active_cart_count(
+                visible_rows
+            )
         except (SQLAlchemyError, OSError, TypeError, ValueError):
             db.session.rollback()
             out["normal_cart_count"] = int(q_abandoned.count() or 0)
@@ -13896,31 +13902,87 @@ def _merchant_normal_recovery_light_payload_merchant_batch(
     trust = _normal_recovery_identity_trust_surface_merchant_batch(ac0, batch)
     rtag = (_reason_tag_merchant_normal_batch(ac0, batch) or "other").strip().lower()
     chip_cls, chip_lbl = merchant_reason_chip_class_and_label(rtag)
-    st_row_cls, st_lbl, next_urgent = merchant_coarse_to_status_row(
-        coarse, has_phone=has_phone
-    )
-    next_ar = merchant_next_action_hint_ar(
-        coarse=coarse,
-        has_phone=has_phone,
-        is_dormant_case=in_history_slice,
-    )
     cnorm = (coarse or "").strip().lower()
-    if cnorm == "converted":
-        cart_bucket = "recovered"
-    elif cnorm == "sent":
-        cart_bucket = "sent"
-    elif cnorm == "blocked":
-        cart_bucket = "attention"
-    elif not has_phone:
-        cart_bucket = "nophone"
-    else:
-        cart_bucket = "other"
+    bh_lc_pre = _normal_recovery_behavioral_merge_from_cart_group(grp_sorted)
+    log_u_pre = _normal_recovery_recovery_log_statuses_union_merchant_batch(
+        grp_sorted, batch
+    )
+    pk_pre = _normal_recovery_dashboard_phase_key_merchant_batch(
+        ac0,
+        behavioral_override=bh_lc_pre,
+        recovery_log_statuses=log_u_pre,
+        batch=batch,
+    )
+    sent_ct_pre = int(batch.sent_real_count.get(aid0, 0) or 0)
+    latest_log_pre = batch.latest_log_by_ac.get(aid0)
+    latest_st_pre = (
+        (getattr(latest_log_pre, "status", None) or "").strip()
+        if latest_log_pre is not None
+        else ""
+    )
+    purchased_flag = False
+    try:
+        from services.cartflow_purchase_truth import has_purchase  # noqa: PLC0415
+
+        store_lc_pre = batch.store_row_for_cart(ac0)
+        _slug_pre = (
+            str(getattr(store_lc_pre, "zid_store_id", None) or "").strip()
+            if store_lc_pre is not None
+            else ""
+        )
+        if _slug_pre:
+            rk_pre = _recovery_key_from_payload(
+                {
+                    "store": _slug_pre,
+                    "session_id": (getattr(ac0, "recovery_session_id", None) or "").strip(),
+                    "cart_id": (getattr(ac0, "zid_cart_id", None) or "").strip(),
+                }
+            )
+            if rk_pre:
+                purchased_flag = bool(has_purchase(rk_pre))
+    except Exception:  # noqa: BLE001
+        purchased_flag = False
+    from services.merchant_cart_row_classifier import (  # noqa: PLC0415
+        apply_merchant_cart_classification_to_payload,
+        classify_merchant_cart_row,
+    )
+
+    row_class = classify_merchant_cart_row(
+        cart=ac0,
+        logs=batch.logs,
+        purchase_truth=purchased_flag,
+        cart_status=str(getattr(ac0, "status", None) or ""),
+        has_phone=has_phone,
+        sent_count=sent_ct_pre,
+        log_statuses=log_u_pre,
+        phase_key=pk_pre,
+        coarse=cnorm,
+        phone_blocked_before_send=(
+            pk_pre == NORMAL_RECOVERY_PHASE_KEY_BLOCKED_MISSING_CUSTOMER_PHONE
+        ),
+        behavioral=bh_lc_pre,
+        latest_log_status=latest_st_pre,
+    )
+    if archived_group and row_class.is_active:
+        row_class = classify_merchant_cart_row(
+            cart=ac0,
+            logs=batch.logs,
+            purchase_truth=True,
+            cart_status=str(getattr(ac0, "status", None) or ""),
+            has_phone=has_phone,
+            sent_count=sent_ct_pre,
+            log_statuses=log_u_pre,
+            phase_key=pk_pre,
+            coarse="converted",
+            phone_blocked_before_send=False,
+            behavioral=bh_lc_pre,
+            latest_log_status=latest_st_pre,
+        )
     out: dict[str, Any] = {
         "merchant_recovery_kind": "normal_case",
         "merchant_case_row_id": int(getattr(ac0, "id", 0) or 0),
         "merchant_cart_value": float(ac0.cart_value or 0.0),
         "merchant_business_state_ar": merchant_business_state_label_ar(coarse),
-        "merchant_next_action_ar": next_ar,
         "merchant_phone_line_ar": phone_line,
         "merchant_is_history_slice": in_history_slice,
         "merchant_history_note_ar": hist_note,
@@ -13931,28 +13993,19 @@ def _merchant_normal_recovery_light_payload_merchant_batch(
             getattr(ac0, "last_seen_at", None),
             now_utc=nu,
         ),
-        "merchant_status_row_class": st_row_cls,
-        "merchant_status_label_ar": st_lbl,
-        "merchant_next_action_urgent": bool(next_urgent and not in_history_slice),
         "merchant_coarse_status": cnorm,
         "merchant_has_customer_phone": bool(has_phone),
-        "merchant_cart_bucket": cart_bucket,
     }
+    apply_merchant_cart_classification_to_payload(out, row_class)
+    out["merchant_next_action_urgent"] = bool(
+        row_class.merchant_next_action_urgent and not in_history_slice
+    )
     if trust:
         out["merchant_identity_trust_ar"] = trust
-    ac0 = grp_sorted[0]
-    aid0 = int(getattr(ac0, "id", 0) or 0)
-    bh_lc = _normal_recovery_behavioral_merge_from_cart_group(grp_sorted)
-    log_u_lc = _normal_recovery_recovery_log_statuses_union_merchant_batch(
-        grp_sorted, batch
-    )
-    pk_lc = _normal_recovery_dashboard_phase_key_merchant_batch(
-        ac0,
-        behavioral_override=bh_lc,
-        recovery_log_statuses=log_u_lc,
-        batch=batch,
-    )
-    sent_ct_lc = int(batch.sent_real_count.get(aid0, 0) or 0)
+    bh_lc = bh_lc_pre
+    log_u_lc = log_u_pre
+    pk_lc = pk_pre
+    sent_ct_lc = sent_ct_pre
     try:
         from services.merchant_recovery_lifecycle_truth import (
             attach_merchant_recovery_lifecycle_truth,
@@ -15654,17 +15707,13 @@ def _api_json_dashboard_normal_carts(
             "phones_loaded": 0,
         }
     table_rows = list(merchant_carts_page_rows[:8])
-    cart_filter_counts: dict[str, int] = {
-        "all": len(merchant_carts_page_rows),
-        "recovered": 0,
-        "sent": 0,
-        "attention": 0,
-        "nophone": 0,
-    }
-    for _cr in merchant_carts_page_rows:
-        bk = str(_cr.get("merchant_cart_bucket") or "other").strip().lower()
-        if bk in ("recovered", "sent", "attention", "nophone"):
-            cart_filter_counts[bk] = int(cart_filter_counts.get(bk, 0)) + 1
+    from services.merchant_cart_row_classifier import (  # noqa: PLC0415
+        merchant_cart_filter_counts_from_rows,
+    )
+
+    cart_filter_counts = merchant_cart_filter_counts_from_rows(
+        merchant_carts_page_rows
+    )
     body: Dict[str, Any] = {
         "merchant_table_rows": table_rows,
         "merchant_carts_page_rows": merchant_carts_page_rows,

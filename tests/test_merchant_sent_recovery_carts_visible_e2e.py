@@ -16,10 +16,7 @@ from fastapi.testclient import TestClient
 
 import models  # noqa: F401
 
-from extensions import db, init_database
-
-init_database("sqlite:///:memory:")
-db.create_all()
+from extensions import db
 
 from main import (  # noqa: E402
     _NORMAL_RECOVERY_SENT_LOG_STATUSES,
@@ -160,6 +157,11 @@ class MerchantSentRecoveryCartsVisibleE2ETests(unittest.TestCase):
         sent_rows = [r for r in rows if r.get("merchant_cart_bucket") == "sent"]
         self.assertGreaterEqual(len(sent_rows), 1)
         self.assertEqual(int(fc.get("sent")), len(sent_rows))
+        for sr in sent_rows:
+            self.assertIn(
+                "بانتظار تفاعل العميل",
+                sr.get("merchant_status_label_ar") or "",
+            )
         return body
 
     def test_sent_recovery_visible_on_messages_and_carts_apis(self) -> None:
