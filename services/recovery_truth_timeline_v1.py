@@ -9,15 +9,19 @@ Statuses (ordered):
 from __future__ import annotations
 
 import logging
+import re
 from datetime import datetime, timezone
 from typing import Any, Optional
 
+from sqlalchemy import func
 from sqlalchemy.exc import SQLAlchemyError
 
 from extensions import db
 from models import RecoveryTruthTimelineEvent
 
 log = logging.getLogger("cartflow")
+
+TABLE_NAME = "recovery_truth_timeline_events"
 
 STATUS_SCHEDULED = "scheduled"
 STATUS_DELAY_STARTED = "delay_started"
@@ -41,7 +45,6 @@ CANONICAL_ORDER: tuple[str, ...] = (
 
 _ORDER_INDEX = {s: i for i, s in enumerate(CANONICAL_ORDER)}
 
-# Record at most once per recovery_key (customer_reply may repeat).
 _MONOTONIC_ONCE = frozenset(
     {
         STATUS_SCHEDULED,
@@ -57,6 +60,16 @@ _MONOTONIC_ONCE = frozenset(
 _PROVIDER_SEND_STATUSES = frozenset({STATUS_PROVIDER_QUEUED, STATUS_PROVIDER_SENT})
 _PROVIDER_SENT_STATUSES = frozenset({STATUS_PROVIDER_SENT})
 _LOG_SENT = frozenset({"sent_real", "mock_sent"})
+
+_TRACE_STATUSES = frozenset(
+    {
+        STATUS_SCHEDULED,
+        STATUS_DELAY_STARTED,
+        STATUS_BEFORE_SEND,
+        STATUS_PROVIDER_QUEUED,
+        STATUS_PROVIDER_SENT,
+    }
+)
 
 
 def _norm(s: Any) -> str:
@@ -88,6 +101,96 @@ def _dt_iso(dt: Any) -> str:
         return ""
 
 
+def _db_label() -> str:
+    try:
+        eng = db.engine
+        url = str(getattr(eng, "url", "") or "")
+        if not url:
+            return "unknown"
+        masked = re.sub(r":([^:@/]+)@", r":***@", url)
+        dialect = getattr(getattr(eng, "dialect", None), "name", None) or "unknown"
+        return f"{dialect}|{masked[:200]}"
+    except Exception:  # noqa: BLE001
+        return "unknown"
+
+
+def _table_exists() -> bool:
+    try:
+        from sqlalchemy import inspect
+
+        return bool(inspect(db.engine).has_table(TABLE_NAME))
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def _emit_timeline_write(
+    *,
+    recovery_key: str,
+    status: str,
+    insert_success: str,
+    source: str = "",
+    table: str = TABLE_NAME,
+    row_id: Optional[int] = None,
+    error: str = "",
+    verify_count: Optional[int] = None,
+) -> None:
+    ts = _dt_iso(_utc_now())
+    parts = [
+        "[TIMELINE WRITE]",
+        f"recovery_key={recovery_key[:512] or '-'}",
+        f"status={status or '-'}",
+        f"insert_success={insert_success}",
+        f"table={table}",
+        f"db={_db_label()}",
+        f"timestamp={ts}",
+    ]
+    if source:
+        parts.append(f"source={source[:128]}")
+    if row_id is not None:
+        parts.append(f"row_id={int(row_id)}")
+    if verify_count is not None:
+        parts.append(f"verify_count={int(verify_count)}")
+    if error:
+        parts.append(f"error={error[:240]}")
+    line = " ".join(parts)
+    try:
+        print(line, flush=True)
+    except OSError:
+        pass
+    try:
+        log.info("%s", line)
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def ensure_timeline_table_ready() -> bool:
+    """Create table if missing; return whether table exists."""
+    try:
+        from schema_recovery_truth_timeline import (  # noqa: PLC0415
+            ensure_recovery_truth_timeline_schema,
+        )
+
+        ensure_recovery_truth_timeline_schema(db)
+    except Exception as exc:  # noqa: BLE001
+        _emit_timeline_write(
+            recovery_key="-",
+            status="-",
+            insert_success="schema_failed",
+            source="ensure_timeline_table_ready",
+            error=str(exc)[:240],
+        )
+        return False
+    exists = _table_exists()
+    if not exists:
+        _emit_timeline_write(
+            recovery_key="-",
+            status="-",
+            insert_success="table_missing",
+            source="ensure_timeline_table_ready",
+        )
+    return exists
+
+
 def record_recovery_truth_event(
     *,
     recovery_key: str,
@@ -99,11 +202,31 @@ def record_recovery_truth_event(
 ) -> bool:
     """
     Persist one timeline transition. Returns True when a new row was written.
+    Always emits [TIMELINE WRITE] for trace statuses (and on failures).
     """
     rk = _norm(recovery_key)[:512]
     st = _norm(status)[:64]
+    src = _norm(source)[:128] or "unknown"
+    trace = st in _TRACE_STATUSES or st in _MONOTONIC_ONCE
+
+    if trace:
+        _emit_timeline_write(
+            recovery_key=rk,
+            status=st,
+            insert_success="attempt",
+            source=src,
+        )
+
     if not rk or not st:
+        if trace:
+            _emit_timeline_write(
+                recovery_key=rk or "-",
+                status=st or "-",
+                insert_success="skipped_empty",
+                source=src,
+            )
         return False
+
     slug = _norm(store_slug)[:255]
     sid = _norm(session_id)[:512]
     cid = _norm(cart_id)[:255]
@@ -111,12 +234,19 @@ def record_recovery_truth_event(
         slug, sid_from_rk = parse_recovery_key(rk)
         if not sid and sid_from_rk:
             sid = sid_from_rk
-    try:
-        from schema_recovery_truth_timeline import (  # noqa: PLC0415
-            ensure_recovery_truth_timeline_schema,
-        )
 
-        ensure_recovery_truth_timeline_schema(db)
+    if not ensure_timeline_table_ready():
+        if trace:
+            _emit_timeline_write(
+                recovery_key=rk,
+                status=st,
+                insert_success="false",
+                source=src,
+                error="table_not_ready",
+            )
+        return False
+
+    try:
         if st in _MONOTONIC_ONCE:
             exists = (
                 db.session.query(RecoveryTruthTimelineEvent.id)
@@ -127,32 +257,153 @@ def record_recovery_truth_event(
                 .first()
             )
             if exists is not None:
+                if trace:
+                    _emit_timeline_write(
+                        recovery_key=rk,
+                        status=st,
+                        insert_success="skipped_duplicate",
+                        source=src,
+                        row_id=int(getattr(exists, "id", 0) or 0) or None,
+                    )
                 return False
+
         row = RecoveryTruthTimelineEvent(
             recovery_key=rk,
             store_slug=slug or "unknown",
             session_id=sid or None,
             cart_id=cid or None,
             status=st,
-            source=_norm(source)[:128] or "unknown",
+            source=src,
             created_at=_utc_now(),
         )
         db.session.add(row)
         db.session.commit()
-        try:
-            log.info(
-                "[RECOVERY TRUTH TIMELINE] status=%s recovery_key=%s source=%s",
-                st,
-                rk[:120],
-                _norm(source)[:64],
+        row_id = int(getattr(row, "id", 0) or 0)
+        verify_count = (
+            db.session.query(func.count(RecoveryTruthTimelineEvent.id))
+            .filter(
+                RecoveryTruthTimelineEvent.recovery_key == rk,
+                RecoveryTruthTimelineEvent.status == st,
             )
-        except Exception:  # noqa: BLE001
-            pass
-        return True
+            .scalar()
+        )
+        try:
+            verify_count = int(verify_count or 0)
+        except (TypeError, ValueError):
+            verify_count = 0
+
+        if trace:
+            _emit_timeline_write(
+                recovery_key=rk,
+                status=st,
+                insert_success="true" if verify_count > 0 else "verify_miss",
+                source=src,
+                row_id=row_id or None,
+                verify_count=verify_count,
+            )
+        return verify_count > 0
     except SQLAlchemyError as exc:
         db.session.rollback()
-        log.warning("record_recovery_truth_event failed: %s", exc)
+        if trace:
+            _emit_timeline_write(
+                recovery_key=rk,
+                status=st,
+                insert_success="false",
+                source=src,
+                error=str(exc)[:240],
+            )
+        else:
+            log.warning("record_recovery_truth_event failed: %s", exc)
         return False
+    except Exception as exc:  # noqa: BLE001
+        db.session.rollback()
+        if trace:
+            _emit_timeline_write(
+                recovery_key=rk,
+                status=st,
+                insert_success="false",
+                source=src,
+                error=str(exc)[:240],
+            )
+        return False
+
+
+def diagnose_timeline_persistence(recovery_key: str) -> dict[str, Any]:
+    """Read-only: table presence, row counts, nearby keys (debug)."""
+    rk = _norm(recovery_key)[:512]
+    slug, sid = parse_recovery_key(rk)
+    out: dict[str, Any] = {
+        "recovery_key": rk or None,
+        "table": TABLE_NAME,
+        "db": _db_label(),
+        "table_exists": False,
+        "rows_exact_key": 0,
+        "rows_session_suffix": 0,
+        "rows_store_slug": 0,
+        "statuses_exact_key": [],
+        "sample_recovery_keys_same_session": [],
+        "sample_recovery_keys_same_store": [],
+    }
+    if not rk:
+        return out
+    try:
+        ensure_timeline_table_ready()
+        out["table_exists"] = _table_exists()
+        if not out["table_exists"]:
+            return out
+        out["rows_exact_key"] = int(
+            db.session.query(func.count(RecoveryTruthTimelineEvent.id))
+            .filter(RecoveryTruthTimelineEvent.recovery_key == rk)
+            .scalar()
+            or 0
+        )
+        if sid:
+            out["rows_session_suffix"] = int(
+                db.session.query(func.count(RecoveryTruthTimelineEvent.id))
+                .filter(RecoveryTruthTimelineEvent.recovery_key.like(f"%:{sid}"))
+                .scalar()
+                or 0
+            )
+            keys_sess = (
+                db.session.query(RecoveryTruthTimelineEvent.recovery_key)
+                .filter(RecoveryTruthTimelineEvent.recovery_key.like(f"%:{sid}"))
+                .distinct()
+                .limit(12)
+                .all()
+            )
+            out["sample_recovery_keys_same_session"] = [
+                _norm(k[0]) for k in keys_sess if k and _norm(k[0])
+            ]
+        if slug:
+            out["rows_store_slug"] = int(
+                db.session.query(func.count(RecoveryTruthTimelineEvent.id))
+                .filter(RecoveryTruthTimelineEvent.store_slug == slug)
+                .scalar()
+                or 0
+            )
+            keys_store = (
+                db.session.query(RecoveryTruthTimelineEvent.recovery_key)
+                .filter(RecoveryTruthTimelineEvent.store_slug == slug)
+                .order_by(RecoveryTruthTimelineEvent.id.desc())
+                .distinct()
+                .limit(12)
+                .all()
+            )
+            out["sample_recovery_keys_same_store"] = [
+                _norm(k[0]) for k in keys_store if k and _norm(k[0])
+            ]
+        status_rows = (
+            db.session.query(RecoveryTruthTimelineEvent.status)
+            .filter(RecoveryTruthTimelineEvent.recovery_key == rk)
+            .all()
+        )
+        out["statuses_exact_key"] = sorted(
+            {_norm(r[0]) for r in status_rows if r and _norm(r[0])}
+        )
+    except SQLAlchemyError as exc:
+        db.session.rollback()
+        out["error"] = str(exc)[:240]
+    return out
 
 
 def get_recovery_truth_timeline(recovery_key: str) -> list[dict[str, Any]]:
@@ -160,12 +411,9 @@ def get_recovery_truth_timeline(recovery_key: str) -> list[dict[str, Any]]:
     rk = _norm(recovery_key)[:512]
     if not rk:
         return []
+    if not ensure_timeline_table_ready():
+        return []
     try:
-        from schema_recovery_truth_timeline import (  # noqa: PLC0415
-            ensure_recovery_truth_timeline_schema,
-        )
-
-        ensure_recovery_truth_timeline_schema(db)
         rows = (
             db.session.query(RecoveryTruthTimelineEvent)
             .filter(RecoveryTruthTimelineEvent.recovery_key == rk)
@@ -191,6 +439,7 @@ def get_recovery_truth_timeline(recovery_key: str) -> list[dict[str, Any]]:
                 "session_id": _norm(getattr(row, "session_id", None)) or None,
                 "cart_id": _norm(getattr(row, "cart_id", None)) or None,
                 "recovery_key": rk,
+                "row_id": int(getattr(row, "id", 0) or 0) or None,
             }
         )
     out.sort(
@@ -216,10 +465,6 @@ def provider_send_proven(
     log_statuses: Optional[Any] = None,
     sent_count: int = 0,
 ) -> bool:
-    """
-    Dashboard may show «تم الإرسال» only when provider_sent (or sent log) is proven.
-    Queued alone is not sufficient.
-    """
     ts = timeline_status_set(recovery_key)
     if ts & _PROVIDER_SENT_STATUSES:
         return True
@@ -241,13 +486,8 @@ def customer_reply_proven(
     *,
     behavioral: Optional[dict[str, Any]] = None,
 ) -> bool:
-    ts = timeline_status_set(recovery_key)
-    if STATUS_CUSTOMER_REPLY in ts:
-        return True
-    bh = behavioral if isinstance(behavioral, dict) else {}
-    if bh.get("customer_replied") is True and STATUS_CUSTOMER_REPLY in ts:
-        return True
-    return False
+    del behavioral
+    return STATUS_CUSTOMER_REPLY in timeline_status_set(recovery_key)
 
 
 def continuation_started_proven(recovery_key: str) -> bool:
@@ -259,7 +499,7 @@ def customer_reply_proven_for_dashboard(
     *,
     behavioral: Optional[dict[str, Any]] = None,
 ) -> bool:
-    """«بدأ متابعة الاعتراض» requires durable customer_reply event."""
+    del behavioral
     return STATUS_CUSTOMER_REPLY in timeline_status_set(recovery_key)
 
 
@@ -273,6 +513,7 @@ def map_cart_recovery_log_status_to_timeline(status: str) -> Optional[str]:
 
 
 __all__ = [
+    "_emit_timeline_write",
     "CANONICAL_ORDER",
     "STATUS_BEFORE_SEND",
     "STATUS_CONTINUATION_STARTED",
@@ -282,8 +523,11 @@ __all__ = [
     "STATUS_PROVIDER_SENT",
     "STATUS_SCHEDULED",
     "STATUS_WEBHOOK_DELIVERED",
+    "TABLE_NAME",
     "continuation_started_proven",
     "customer_reply_proven_for_dashboard",
+    "diagnose_timeline_persistence",
+    "ensure_timeline_table_ready",
     "get_recovery_truth_timeline",
     "map_cart_recovery_log_status_to_timeline",
     "provider_send_proven",

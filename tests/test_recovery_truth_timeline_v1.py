@@ -19,6 +19,7 @@ from services.recovery_truth_timeline_v1 import (
     STATUS_PROVIDER_QUEUED,
     STATUS_PROVIDER_SENT,
     STATUS_SCHEDULED,
+    diagnose_timeline_persistence,
     get_recovery_truth_timeline,
     provider_send_proven,
     record_recovery_truth_event,
@@ -131,6 +132,23 @@ class RecoveryTruthTimelineTests(unittest.TestCase):
         self.assertTrue(body.get("ok"))
         self.assertEqual(len(body.get("timeline") or []), 1)
         self.assertEqual(body["timeline"][0]["status"], STATUS_CUSTOMER_REPLY)
+        pers = body.get("persistence") or {}
+        self.assertTrue(pers.get("table_exists"))
+        self.assertGreaterEqual(int(pers.get("rows_exact_key") or 0), 1)
+
+    def test_diagnose_timeline_persistence(self) -> None:
+        rk = f"demo:diag_{self._suffix}"
+        record_recovery_truth_event(
+            recovery_key=rk,
+            status=STATUS_SCHEDULED,
+            source="test",
+            store_slug="demo",
+            session_id=f"diag_{self._suffix}",
+        )
+        d = diagnose_timeline_persistence(rk)
+        self.assertTrue(d.get("table_exists"))
+        self.assertGreaterEqual(int(d.get("rows_exact_key") or 0), 1)
+        self.assertIn(STATUS_SCHEDULED, d.get("statuses_exact_key") or [])
 
 
 if __name__ == "__main__":

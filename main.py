@@ -1868,14 +1868,19 @@ def dev_recovery_truth(recovery_key: str = Query("", max_length=512)) -> Any:
         return j({"ok": False, "error": "recovery_key_required"}, 400)
     try:
         _ensure_cartflow_api_db_warmed()
-        from services.recovery_truth_timeline_v1 import get_recovery_truth_timeline
+        from services.recovery_truth_timeline_v1 import (
+            diagnose_timeline_persistence,
+            get_recovery_truth_timeline,
+        )
 
         timeline = get_recovery_truth_timeline(rk)
+        persistence = diagnose_timeline_persistence(rk)
         return j(
             {
                 "ok": True,
                 "recovery_key": rk,
                 "timeline": timeline,
+                "persistence": persistence,
             }
         )
     except Exception as exc:  # noqa: BLE001
@@ -2464,8 +2469,8 @@ def _note_recovery_delay_waiting_started(recovery_key: str) -> None:
             store_slug=slug,
             session_id=sid,
         )
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001
+        log.warning("timeline hook delay_started: %s", exc)
 
 
 def _recovery_delay_waiting_started_for_key(recovery_key: str) -> bool:
@@ -4849,8 +4854,8 @@ def _log_recovery_context_before_send(
         )
     except OSError:
         pass
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001
+        log.warning("timeline hook before_send: %s", exc)
 
 
 def _load_latest_store_for_recovery() -> Optional[Store]:
@@ -5968,22 +5973,39 @@ def _persist_cart_recovery_log(
         db.session.commit()
         try:
             from services.recovery_truth_timeline_v1 import (  # noqa: PLC0415
+                _emit_timeline_write,
                 map_cart_recovery_log_status_to_timeline,
                 record_recovery_truth_event,
             )
 
             tl_st = map_cart_recovery_log_status_to_timeline(str(status or ""))
-            if tl_st:
+            rk_tl = (ctx.recovery_key or recovery_key or "").strip()
+            if not rk_tl:
+                rk_tl = _recovery_key_from_payload(
+                    {
+                        "store": store_slug,
+                        "session_id": session_id,
+                        "cart_id": cart_id or "",
+                    }
+                )
+            if tl_st and rk_tl:
                 record_recovery_truth_event(
-                    recovery_key=(ctx.recovery_key or recovery_key or "").strip(),
+                    recovery_key=rk_tl,
                     status=tl_st,
                     source="_persist_cart_recovery_log",
                     store_slug=store_slug,
                     session_id=session_id,
                     cart_id=(cart_id or "") if cart_id else "",
                 )
-        except Exception:  # noqa: BLE001
-            pass
+            elif tl_st:
+                _emit_timeline_write(
+                    recovery_key=rk_tl or "-",
+                    status=tl_st,
+                    insert_success="skipped_no_recovery_key",
+                    source="_persist_cart_recovery_log",
+                )
+        except Exception as exc:  # noqa: BLE001
+            log.warning("timeline hook persist_cart_recovery_log: %s", exc)
         try:
             st_norm = str(status or "").strip().lower()
             if st_norm in {"sent_real", "mock_sent", "queued"}:

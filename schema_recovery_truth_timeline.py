@@ -33,10 +33,15 @@ def ensure_recovery_truth_timeline_schema(db: Any) -> None:
             insp = inspect(db.engine)
             if not insp.has_table("recovery_truth_timeline_events"):
                 db.create_all()
-            _schema_once = True
+            if insp.has_table("recovery_truth_timeline_events"):
+                _schema_once = True
+            else:
+                log.warning(
+                    "recovery_truth_timeline_events table missing after create_all"
+                )
         except (OSError, SQLAlchemyError) as exc:
             db.session.rollback()
-            log.debug("recovery_truth_timeline schema: %s", exc)
+            log.warning("recovery_truth_timeline schema: %s", exc)
 
 
 __all__ = [

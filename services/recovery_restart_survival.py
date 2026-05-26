@@ -1031,8 +1031,8 @@ def persist_recovery_schedule_durable(
                 session_id=(session_id or "").strip(),
                 cart_id=(str(cart_id).strip() if cart_id else ""),
             )
-        except Exception:  # noqa: BLE001
-            pass
+        except Exception as exc:  # noqa: BLE001
+            _log.warning("timeline hook scheduled: %s", exc)
         return row
     except SQLAlchemyError as exc:
         db.session.rollback()
