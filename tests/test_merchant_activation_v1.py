@@ -29,6 +29,42 @@ class TestActivationDemoResolution(unittest.TestCase):
         self.assertTrue(act.denied)
         self.assertEqual(act.widget_store_slug, "demo")
 
+    def test_merchant_activation_without_store_slug_never_demo(self) -> None:
+        import uuid
+
+        from extensions import db
+        from models import Store
+        from schema_merchant_auth import ensure_merchant_auth_schema
+        from services.merchant_auth_http import merchant_cookie_name
+        from services.merchant_auth_v1 import (
+            register_merchant_account,
+            session_cookie_value_for_user,
+        )
+
+        db.create_all()
+        ensure_merchant_auth_schema(db)
+        email = f"ma-demo-{uuid.uuid4().hex}@example.com"
+        ok, err, user = register_merchant_account(
+            store_name="Activation Demo Store",
+            email=email,
+            password="password123",
+        )
+        self.assertTrue(ok, err)
+        st = (
+            db.session.query(Store)
+            .filter(Store.merchant_user_id == int(user.id))
+            .order_by(Store.id.desc())
+            .first()
+        )
+        self.assertIsNotNone(st)
+        req = MagicMock()
+        req.query_params = {"merchant_activation": "1"}
+        cookies = {merchant_cookie_name(): session_cookie_value_for_user(user)}
+        act = resolve_activation_demo_for_request(req, cookies=cookies)
+        self.assertEqual(act.widget_store_slug, (st.zid_store_id or "").strip())
+        self.assertNotEqual((st.zid_store_id or "").strip(), "demo")
+        self.assertTrue(act.is_merchant_activation)
+
     def test_public_demo_slug(self) -> None:
         req = MagicMock()
         req.query_params = {"store_slug": "demo"}

@@ -2525,11 +2525,15 @@ _DEFAULT_DECISION_FALLBACK_MESSAGE = (
 
 
 def _normalize_store_slug(payload: dict[str, Any]) -> str:
+    from services.merchant_test_widget_store_v1 import coerce_cart_event_store_slug
+
+    raw = ""
     for key in ("store", "store_slug"):
-        raw = payload.get(key)
-        if isinstance(raw, str) and raw.strip():
-            return raw.strip()
-    return "default"
+        val = payload.get(key)
+        if isinstance(val, str) and val.strip():
+            raw = val.strip()
+            break
+    return coerce_cart_event_store_slug(raw)
 
 
 def _session_part_from_payload(payload: dict[str, Any]) -> str:
@@ -17203,6 +17207,49 @@ def _demo_store_html_context(request: Request) -> dict[str, Any]:
     return merge_demo_primary_store_demo_queries(request, ctx)
 
 
+def _demo_store_request_guard(request: Request) -> Optional[Any]:
+    """Redirect merchant test flows away from anonymous demo slug."""
+    from services.merchant_activation_v1 import (  # noqa: PLC0415
+        merchant_activation_test_store_url,
+    )
+    from services.merchant_test_widget_store_v1 import (  # noqa: PLC0415
+        merchant_activation_requires_login,
+        merchant_authenticated_store_slug,
+    )
+
+    qp = request.query_params
+    ma_flag = str(qp.get("merchant_activation") or "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+    )
+    cookies = dict(request.cookies)
+    if merchant_activation_requires_login(
+        merchant_activation=ma_flag, cookies=cookies
+    ):
+        q = request.url.query
+        dest = request.url.path + (f"?{q}" if q else "")
+        return RedirectResponse(
+            url="/login?next=" + quote(dest, safe=""),
+            status_code=302,
+        )
+    requested = (
+        (qp.get("store_slug") or qp.get("store") or "").strip()[:128]
+    )
+    owner = merchant_authenticated_store_slug(cookies=cookies) or ""
+    if ma_flag and owner and not requested:
+        return RedirectResponse(
+            url=merchant_activation_test_store_url(owner),
+            status_code=302,
+        )
+    if ma_flag and owner and requested.casefold() in ("demo", "demo2"):
+        return RedirectResponse(
+            url=merchant_activation_test_store_url(owner),
+            status_code=302,
+        )
+    return None
+
+
 @app.get("/demo/cart")
 @app.get("/demo/store")
 @app.get("/demo/store/cart")
@@ -17210,6 +17257,9 @@ def _demo_store_html_context(request: Request) -> dict[str, Any]:
 @app.get("/demo/cart/checkout")
 def demo_store(request: Request):
     """متجر وهمي للتجارب الداخلية (ويدجت / أحداث سلة — بدون منصات حقيقية)."""
+    guard = _demo_store_request_guard(request)
+    if guard is not None:
+        return guard
     return templates.TemplateResponse(
         request,
         "demo_store.html",
@@ -17220,6 +17270,9 @@ def demo_store(request: Request):
 @app.get("/demo/store/product/{product_id:int}")
 def demo_store_product(request: Request, product_id: int):
     """صفحة منتج وهمية — نفس ‎localStorage‎ للسلة وحالة الجلسة للاختبار التشغيلي."""
+    guard = _demo_store_request_guard(request)
+    if guard is not None:
+        return guard
     key = _DEMO_BEHAVIORAL_PRODUCT_BY_NUM.get(int(product_id))
     if not key:
         return PlainTextResponse("Not found", status_code=404)

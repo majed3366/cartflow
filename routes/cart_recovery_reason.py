@@ -56,7 +56,11 @@ async def post_widget_cart_recovery_reason(request: Request) -> Any:
         if not isinstance(body, dict):
             return j({"ok": False, "saved": False, "error": "json_object_required"}, 400)
 
-        ss = (str(body.get("store_slug", "") or "")).strip()[:255]
+        from services.merchant_test_widget_store_v1 import coerce_cart_event_store_slug
+
+        ss = coerce_cart_event_store_slug(
+            (str(body.get("store_slug", "") or "")).strip()[:255]
+        )
         sid = (str(body.get("session_id", "") or "")).strip()[:512]
         tag_raw = body.get("reason_tag")
         reason_tag = (

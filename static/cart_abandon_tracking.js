@@ -275,12 +275,7 @@
     if (!okR[r]) {
       r = "page_load";
     }
-    var storeSlug =
-      typeof window.CARTFLOW_STORE_SLUG !== "undefined" &&
-      window.CARTFLOW_STORE_SLUG !== null &&
-      String(window.CARTFLOW_STORE_SLUG).trim() !== ""
-        ? String(window.CARTFLOW_STORE_SLUG).trim()
-        : "demo";
+    var storeSlug = getCartflowStoreSlugForPayload();
     var cartArr =
       typeof window.cart !== "undefined" && window.cart !== null && Array.isArray(window.cart)
         ? window.cart
@@ -416,6 +411,31 @@
   // يُلزِم id واحداً لكل تبويب حتى عند تزامن ‎beforeunload + visibility‎ أو فشل ‎sessionStorage‎
   var _cachedRecoverySessionId = null;
 
+  function cartflowIsPublicSandboxStoreSlug(slug) {
+    var s = String(slug || "").trim().toLowerCase();
+    return !s || s === "demo" || s === "demo2" || s === "default";
+  }
+
+  function cartflowStoreSlugFromWidgetLoader() {
+    try {
+      var scripts = document.getElementsByTagName("script");
+      var i;
+      for (i = scripts.length - 1; i >= 0; i--) {
+        var node = scripts[i];
+        if (String(node.src || "").indexOf("widget_loader") === -1) {
+          continue;
+        }
+        var ds = node.getAttribute("data-store");
+        if (ds && String(ds).trim()) {
+          return String(ds).trim();
+        }
+      }
+    } catch (eWl) {
+      /* ignore */
+    }
+    return "";
+  }
+
   function getCartflowStoreSlugForPayload() {
     try {
       if (
@@ -423,10 +443,20 @@
         window.CARTFLOW_STORE_SLUG !== null &&
         String(window.CARTFLOW_STORE_SLUG).trim() !== ""
       ) {
-        return String(window.CARTFLOW_STORE_SLUG).trim();
+        var fromWin = String(window.CARTFLOW_STORE_SLUG).trim();
+        if (!cartflowIsPublicSandboxStoreSlug(fromWin)) {
+          return fromWin;
+        }
       }
     } catch (eSl) {
       /* ignore */
+    }
+    var fromLoader = cartflowStoreSlugFromWidgetLoader();
+    if (fromLoader && !cartflowIsPublicSandboxStoreSlug(fromLoader)) {
+      return fromLoader;
+    }
+    if (fromLoader) {
+      return fromLoader;
     }
     return "demo";
   }
@@ -787,12 +817,7 @@
     if (cartflowIsSessionConverted()) {
       return;
     }
-    var storeSlug =
-      typeof window.CARTFLOW_STORE_SLUG !== "undefined" &&
-      window.CARTFLOW_STORE_SLUG !== null &&
-      String(window.CARTFLOW_STORE_SLUG).trim() !== ""
-        ? String(window.CARTFLOW_STORE_SLUG).trim()
-        : "demo";
+    var storeSlug = getCartflowStoreSlugForPayload();
     var cartArr =
       typeof window.cart !== "undefined" && window.cart !== null && Array.isArray(window.cart)
         ? window.cart

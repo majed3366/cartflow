@@ -93,6 +93,27 @@ def _public_demo_slug(slug: str) -> bool:
     return slug.casefold() in ("demo", "demo2")
 
 
+def _activation_demo_resolution_for_owner(
+    owner_slug: str,
+    *,
+    ma_flag: bool,
+    requested: str = "",
+) -> ActivationDemoResolution:
+    out = ActivationDemoResolution()
+    out.widget_store_slug = owner_slug
+    safe = re.sub(r"[^a-zA-Z0-9_\-]", "_", owner_slug)[:64]
+    out.demo_cart_key = f"ma_{safe}_cart"
+    out.is_merchant_activation = bool(ma_flag)
+    out.merchant_store_slug = owner_slug
+    out.banner_ar = (
+        f"أنت تختبر متجرك ({owner_slug}) — الأحداث تظهر في لوحة التحكم الخاصة بك."
+    )
+    if requested and requested != owner_slug and not _public_demo_slug(requested):
+        out.denied = True
+        out.deny_reason = "store_slug_redirected_to_owner"
+    return out
+
+
 def resolve_activation_demo_for_request(
     request: Any,
     *,
@@ -101,8 +122,8 @@ def resolve_activation_demo_for_request(
     """
   Resolve widget ``data-store`` for ``/demo/store``.
 
-  - ``demo`` / ``demo2``: public sandbox (unchanged).
-  - Other slugs: only when merchant session owns that ``zid_store_id``.
+  - ``demo`` / ``demo2``: public sandbox (unchanged) when not merchant activation.
+  - Merchant activation: always authenticated merchant ``zid_store_id`` — never ``demo``.
   """
     out = ActivationDemoResolution()
     try:
@@ -122,6 +143,28 @@ def resolve_activation_demo_for_request(
             "yes",
         )
 
+    ck = cookies if cookies is not None else {}
+    if not ck:
+        try:
+            ck = dict(getattr(request, "cookies", {}) or {})
+        except Exception:  # noqa: BLE001
+            ck = {}
+    from services.merchant_onboarding_store import resolve_merchant_onboarding_store
+    from services.merchant_test_widget_store_v1 import (  # noqa: PLC0415
+        merchant_authenticated_store_slug,
+    )
+
+    owner_slug = merchant_authenticated_store_slug(cookies=ck) or ""
+
+    if ma_flag:
+        if not owner_slug:
+            out.denied = True
+            out.deny_reason = "auth_required"
+            return out
+        return _activation_demo_resolution_for_owner(
+            owner_slug, ma_flag=True, requested=requested
+        )
+
     if not requested:
         out.widget_store_slug = "demo"
         out.demo_cart_key = "demo_cart"
@@ -132,14 +175,6 @@ def resolve_activation_demo_for_request(
         out.demo_cart_key = "demo2_cart" if requested == "demo2" else "demo_cart"
         return out
 
-    from services.merchant_onboarding_store import resolve_merchant_onboarding_store
-
-    ck = cookies if cookies is not None else {}
-    if not ck:
-        try:
-            ck = dict(getattr(request, "cookies", {}) or {})
-        except Exception:  # noqa: BLE001
-            ck = {}
     store, meta = resolve_merchant_onboarding_store(cookies=ck)
     owner_slug = (
         (getattr(store, "zid_store_id", None) or "").strip() if store is not None else ""
@@ -158,15 +193,9 @@ def resolve_activation_demo_for_request(
         out.demo_cart_key = "demo_cart"
         return out
 
-    out.widget_store_slug = owner_slug
-    safe = re.sub(r"[^a-zA-Z0-9_\-]", "_", owner_slug)[:64]
-    out.demo_cart_key = f"ma_{safe}_cart"
-    out.is_merchant_activation = ma_flag or True
-    out.merchant_store_slug = owner_slug
-    out.banner_ar = (
-        f"أنت تختبر متجرك ({owner_slug}) — الأحداث تظهر في لوحة التحكم الخاصة بك."
+    return _activation_demo_resolution_for_owner(
+        owner_slug, ma_flag=False, requested=requested
     )
-    return out
 
 
 def merchant_activation_demo_nav_base(resolution: ActivationDemoResolution) -> str:

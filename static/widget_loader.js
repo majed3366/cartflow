@@ -121,6 +121,26 @@
     /* ignore */
   }
 
+  (function cartflowInitStoreSlugFromLoaderTag() {
+    try {
+      var scripts = document.getElementsByTagName("script");
+      var i;
+      for (i = scripts.length - 1; i >= 0; i--) {
+        var node = scripts[i];
+        if (String(node.src || "").indexOf("widget_loader") === -1) {
+          continue;
+        }
+        var ds = node.getAttribute("data-store");
+        if (ds && String(ds).trim()) {
+          window.CARTFLOW_STORE_SLUG = String(ds).trim();
+        }
+        break;
+      }
+    } catch (eInitSlug) {
+      /* ignore */
+    }
+  })();
+
   window.__cartflow_loader_build = RUNTIME_VERSION;
   try {
     console.log("[CARTFLOW RUNTIME] loader_build=" + RUNTIME_VERSION);

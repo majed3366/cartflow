@@ -14,6 +14,44 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     return "";
   }
 
+  function isPublicSandboxStoreSlug(slug) {
+    var s = String(slug || "").trim().toLowerCase();
+    return !s || s === "demo" || s === "demo2" || s === "default";
+  }
+
+  function storeSlugFromWidgetLoaderScript() {
+    try {
+      var scripts = document.getElementsByTagName("script");
+      var i;
+      for (i = scripts.length - 1; i >= 0; i--) {
+        var node = scripts[i];
+        var src = String(node.src || "");
+        if (src.indexOf("widget_loader") === -1) {
+          continue;
+        }
+        var ds = node.getAttribute("data-store");
+        if (ds && String(ds).trim()) {
+          return String(ds).trim();
+        }
+      }
+    } catch (eWl) {}
+    return "";
+  }
+
+  function storeSlugFromMerchantActivationQuery() {
+    try {
+      var qs = new URLSearchParams(window.location.search || "");
+      if (String(qs.get("merchant_activation") || "").trim() !== "1") {
+        return "";
+      }
+      var slug = String(qs.get("store_slug") || qs.get("store") || "").trim();
+      if (slug && !isPublicSandboxStoreSlug(slug)) {
+        return slug;
+      }
+    } catch (eQ) {}
+    return "";
+  }
+
   function storeSlug() {
     try {
       if (
@@ -21,12 +59,36 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
         window.CARTFLOW_STORE_SLUG !== null &&
         String(window.CARTFLOW_STORE_SLUG).trim()
       ) {
-        return String(window.CARTFLOW_STORE_SLUG).trim();
+        var fromWin = String(window.CARTFLOW_STORE_SLUG).trim();
+        if (!isPublicSandboxStoreSlug(fromWin)) {
+          return fromWin;
+        }
       }
     } catch (eSl) {}
+    var fromLoader = storeSlugFromWidgetLoaderScript();
+    if (fromLoader && !isPublicSandboxStoreSlug(fromLoader)) {
+      return fromLoader;
+    }
+    var fromMa = storeSlugFromMerchantActivationQuery();
+    if (fromMa) {
+      return fromMa;
+    }
     var m = typeof document !== "undefined" ? document.querySelector("[data-cartflow-store]") : null;
     if (m && m.getAttribute("data-cartflow-store")) {
-      return String(m.getAttribute("data-cartflow-store")).trim();
+      var fromAttr = String(m.getAttribute("data-cartflow-store")).trim();
+      if (fromAttr && !isPublicSandboxStoreSlug(fromAttr)) {
+        return fromAttr;
+      }
+    }
+    if (fromLoader) {
+      return fromLoader;
+    }
+    if (
+      typeof window.CARTFLOW_STORE_SLUG !== "undefined" &&
+      window.CARTFLOW_STORE_SLUG !== null &&
+      String(window.CARTFLOW_STORE_SLUG).trim()
+    ) {
+      return String(window.CARTFLOW_STORE_SLUG).trim();
     }
     return "demo";
   }
