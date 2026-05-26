@@ -24,6 +24,8 @@ from main import (  # noqa: E402
 from models import AbandonedCart, CartRecoveryLog, Store  # noqa: E402
 from schema_recovery_message_context import ensure_recovery_message_context_schema  # noqa: E402
 from services.merchant_cart_row_classifier import (  # noqa: E402
+    CUSTOMER_ENGAGED_CONTINUATION_LABEL_AR,
+    PRIMARY_CUSTOMER_ENGAGED,
     PRIMARY_NEEDS_FOLLOWUP,
     PRIMARY_NO_PHONE,
     PRIMARY_RECOVERED,
@@ -43,6 +45,16 @@ from services.merchant_cart_row_classifier import (  # noqa: E402
     merchant_cart_rows_matching_filter,
     merchant_nav_badge_waiting_count,
 )
+from services.recovery_truth_timeline_v1 import (  # noqa: E402
+    STATUS_CONTINUATION_STARTED,
+    STATUS_CUSTOMER_REPLY,
+    STATUS_PROVIDER_SENT,
+    record_recovery_truth_event,
+)
+from schema_recovery_truth_timeline import (  # noqa: E402
+    ensure_recovery_truth_timeline_schema,
+    reset_recovery_truth_timeline_schema_guard_for_tests,
+)
 
 
 def _tabs_for_bucket(rows: list[dict], bucket: str) -> list[dict]:
@@ -50,6 +62,14 @@ def _tabs_for_bucket(rows: list[dict], bucket: str) -> list[dict]:
 
 
 class MerchantCartRowClassifierUnitTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        reset_recovery_truth_timeline_schema_guard_for_tests()
+
+    def setUp(self) -> None:
+        db.create_all()
+        ensure_recovery_truth_timeline_schema(db)
+
     def test_a_waiting_only_in_waiting_tab(self) -> None:
         cl = classify_merchant_cart_row(
             has_phone=True,
@@ -75,7 +95,7 @@ class MerchantCartRowClassifierUnitTests(unittest.TestCase):
         self.assertIn(UI_FILTER_SENT, cl.visible_tabs)
         self.assertIn(UI_FILTER_ALL, cl.visible_tabs)
 
-    def test_c_sent_with_customer_reply_not_needs_followup(self) -> None:
+    def test_c_sent_with_customer_reply_uses_customer_engaged_bucket(self) -> None:
         cl = classify_merchant_cart_row(
             has_phone=True,
             sent_count=1,
@@ -84,8 +104,41 @@ class MerchantCartRowClassifierUnitTests(unittest.TestCase):
             phase_key="behavioral_replied",
             behavioral={"customer_replied": True},
         )
-        self.assertEqual(cl.primary_bucket, PRIMARY_SENT)
-        self.assertNotEqual(cl.primary_bucket, PRIMARY_NEEDS_FOLLOWUP)
+        self.assertEqual(cl.primary_bucket, PRIMARY_CUSTOMER_ENGAGED)
+        self.assertNotEqual(cl.merchant_status_label_ar, SENT_STATUS_LABEL_AR)
+        self.assertIn(UI_FILTER_ATTENTION, cl.visible_tabs)
+
+    def test_timeline_reply_and_continuation_aligns_all_tab_label(self) -> None:
+        rk = f"demo:tl-class-{uuid.uuid4().hex[:8]}"
+        record_recovery_truth_event(
+            recovery_key=rk,
+            status=STATUS_PROVIDER_SENT,
+            source="test",
+            store_slug="demo",
+        )
+        record_recovery_truth_event(
+            recovery_key=rk,
+            status=STATUS_CUSTOMER_REPLY,
+            source="test",
+            store_slug="demo",
+        )
+        record_recovery_truth_event(
+            recovery_key=rk,
+            status=STATUS_CONTINUATION_STARTED,
+            source="test",
+            store_slug="demo",
+        )
+        cl = classify_merchant_cart_row(
+            has_phone=True,
+            sent_count=1,
+            log_statuses=frozenset({"mock_sent"}),
+            coarse="sent",
+            recovery_key=rk,
+        )
+        self.assertEqual(cl.primary_bucket, PRIMARY_CUSTOMER_ENGAGED)
+        self.assertEqual(cl.merchant_status_label_ar, CUSTOMER_ENGAGED_CONTINUATION_LABEL_AR)
+        self.assertIn(UI_FILTER_ATTENTION, cl.visible_tabs)
+        self.assertNotIn(UI_FILTER_SENT, cl.visible_tabs)
 
     def test_d_reply_needing_action_in_needs_followup(self) -> None:
         cl = classify_merchant_cart_row(
@@ -221,6 +274,22 @@ class MerchantCartTabFilterE2ETests(unittest.TestCase):
         self.assertEqual(len(merchant_cart_rows_matching_filter(rows, a_mode)), fc[a_mode])
         self.assertEqual(merchant_nav_badge_waiting_count(rows), fc[w_mode])
         self.assertEqual(merchant_nav_badge_waiting_count(rows), len(w_visible))
+
+    def test_customer_engaged_row_in_attention_tab(self) -> None:
+        engaged = self._row(
+            has_phone=True,
+            sent_count=1,
+            log_statuses=frozenset({"mock_sent"}),
+            coarse="replied",
+            behavioral={"customer_replied": True},
+        )
+        self.assertEqual(engaged["merchant_cart_primary_bucket"], PRIMARY_CUSTOMER_ENGAGED)
+        self.assertTrue(
+            merchant_cart_row_matches_filter(engaged, cart_tab_to_filter_mode("attention"))
+        )
+        self.assertFalse(
+            merchant_cart_row_matches_filter(engaged, cart_tab_to_filter_mode("sent"))
+        )
 
     def test_sidebar_intervention_maps_to_attention_filter(self) -> None:
         row = self._row(

@@ -29,12 +29,15 @@ TERMINAL_PURCHASE_LOG_STATUSES = frozenset({"stopped_converted"})
 PRIMARY_WAITING = "waiting"
 PRIMARY_SENT = "sent"
 PRIMARY_NEEDS_FOLLOWUP = "needs_followup"
+PRIMARY_CUSTOMER_ENGAGED = "customer_engaged"
 PRIMARY_RECOVERED = "recovered"
 PRIMARY_NO_PHONE = "no_phone"
 
 SENT_STATUS_LABEL_AR = "تم الإرسال — بانتظار تفاعل العميل"
 WAITING_STATUS_LABEL_AR = "بانتظار الإرسال"
 NEEDS_FOLLOWUP_STATUS_LABEL_AR = "يحتاج متابعة"
+CUSTOMER_ENGAGED_CONTINUATION_LABEL_AR = "تفاعل العميل — بدأ متابعة الاعتراض"
+CUSTOMER_ENGAGED_REPLY_LABEL_AR = "تفاعل العميل"
 RECOVERED_STATUS_LABEL_AR = "تم الاسترجاع"
 NO_PHONE_STATUS_LABEL_AR = "لا يوجد رقم للتواصل"
 
@@ -50,6 +53,7 @@ _PRIMARY_TO_UI_BUCKET: dict[str, str] = {
     PRIMARY_WAITING: UI_FILTER_WAITING,
     PRIMARY_SENT: UI_FILTER_SENT,
     PRIMARY_NEEDS_FOLLOWUP: UI_FILTER_ATTENTION,
+    PRIMARY_CUSTOMER_ENGAGED: UI_FILTER_ATTENTION,
     PRIMARY_RECOVERED: UI_FILTER_RECOVERED,
     PRIMARY_NO_PHONE: UI_FILTER_NOPHONE,
 }
@@ -58,6 +62,7 @@ _BUCKET_STATUS_ROW_CLASS: dict[str, str] = {
     PRIMARY_WAITING: "s-waiting",
     PRIMARY_SENT: "s-sent",
     PRIMARY_NEEDS_FOLLOWUP: "s-attention",
+    PRIMARY_CUSTOMER_ENGAGED: "s-attention",
     PRIMARY_RECOVERED: "s-recovered",
     PRIMARY_NO_PHONE: "s-attention",
 }
@@ -125,6 +130,44 @@ def _purchased_truth(
     if log_ss & TERMINAL_PURCHASE_LOG_STATUSES:
         return True
     return False
+
+
+def _customer_engagement_truth(
+    *,
+    recovery_key: str,
+    log_ss: frozenset[str],
+    coarse: str,
+    sent_count: int,
+    behavioral: Mapping[str, Any],
+) -> tuple[bool, bool]:
+    """
+    (customer_replied, continuation_started) from canonical timeline first,
+    then legacy behavioral/coarse when send is already proven.
+    """
+    rk = (recovery_key or "").strip()
+    if rk:
+        try:
+            from services.recovery_truth_timeline_v1 import (
+                STATUS_CONTINUATION_STARTED,
+                STATUS_CUSTOMER_REPLY,
+                timeline_status_set,
+            )
+
+            ts = timeline_status_set(rk)
+            if STATUS_CUSTOMER_REPLY in ts:
+                return True, STATUS_CONTINUATION_STARTED in ts
+        except Exception:  # noqa: BLE001
+            pass
+
+    msg_sent = bool(sent_count >= 1 or log_ss & SENT_LOG_STATUSES)
+    if not msg_sent:
+        return False, False
+    cnorm = _norm_status(coarse)
+    if behavioral.get("customer_replied") is True:
+        return True, False
+    if cnorm in ("replied", "clicked", "returned", "engaged"):
+        return True, False
+    return False, False
 
 
 def _needs_followup_truth(
@@ -207,6 +250,8 @@ def _visible_tabs_for_primary(primary: str, *, is_active: bool) -> tuple[str, ..
         return (UI_FILTER_ALL, UI_FILTER_SENT)
     if primary == PRIMARY_NEEDS_FOLLOWUP:
         return (UI_FILTER_ALL, UI_FILTER_ATTENTION)
+    if primary == PRIMARY_CUSTOMER_ENGAGED:
+        return (UI_FILTER_ALL, UI_FILTER_ATTENTION)
     if primary == PRIMARY_WAITING:
         if is_active:
             return (UI_FILTER_ALL, UI_FILTER_WAITING)
@@ -236,7 +281,8 @@ def classify_merchant_cart_row(
     """
     Deterministic primary bucket for one merchant cart row.
 
-    Precedence: recovered → no_phone (pre-send) → needs_followup → sent → waiting.
+    Precedence: recovered → no_phone (pre-send) → customer_engaged (timeline reply)
+    → needs_followup → sent → waiting.
     """
     del schedule, closure  # reserved for future schedule/closure wiring
     if cart is not None:
@@ -290,6 +336,41 @@ def classify_merchant_cart_row(
             merchant_cart_bucket=UI_FILTER_NOPHONE,
             merchant_status_row_class=_BUCKET_STATUS_ROW_CLASS[PRIMARY_NO_PHONE],
             merchant_next_action_urgent=True,
+        )
+
+    rk_eff = (recovery_key or "").strip()
+    engaged_reply, engaged_cont = _customer_engagement_truth(
+        recovery_key=rk_eff,
+        log_ss=log_ss,
+        coarse=cnorm,
+        sent_count=int(sent_count or 0),
+        behavioral=bh,
+    )
+    if engaged_reply and _sent_truth(
+        sent_count=int(sent_count or 0),
+        log_ss=log_ss,
+        coarse=cnorm,
+        latest_log_status=latest,
+        recovery_key=rk_eff,
+    ):
+        if engaged_cont:
+            status_ar = CUSTOMER_ENGAGED_CONTINUATION_LABEL_AR
+            next_ar = "النظام يتابع الاعتراض — لا حاجة لرسائل إرسال إضافية آلية."
+        else:
+            status_ar = CUSTOMER_ENGAGED_REPLY_LABEL_AR
+            next_ar = "سيتابع النظام المسار تلقائياً."
+        return MerchantCartRowClassification(
+            primary_bucket=PRIMARY_CUSTOMER_ENGAGED,
+            merchant_status_label_ar=status_ar,
+            next_action_label_ar=next_ar,
+            is_active=True,
+            is_terminal=False,
+            visible_tabs=_visible_tabs_for_primary(
+                PRIMARY_CUSTOMER_ENGAGED, is_active=True
+            ),
+            merchant_cart_bucket=UI_FILTER_ATTENTION,
+            merchant_status_row_class=_BUCKET_STATUS_ROW_CLASS[PRIMARY_CUSTOMER_ENGAGED],
+            merchant_next_action_urgent=False,
         )
 
     if _needs_followup_truth(
