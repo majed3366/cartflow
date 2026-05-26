@@ -1455,8 +1455,112 @@
     return merchantLifecycleCompact(mc).status;
   }
 
+  function customerLifecycleExplanationHtml(mc) {
+    if (!mc || !mc.customer_lifecycle_state) {
+      return merchantLifecycleCompactHtml(mc);
+    }
+    var h =
+      '<div class="recovery-truth recovery-truth-compact customer-lifecycle-v1" aria-label="حالة دورة العميل">';
+    h +=
+      '<div class="recovery-truth-line"><strong>الحالة:</strong> ' +
+      esc(mc.customer_lifecycle_label_ar || "—") +
+      "</div>";
+  if (mc.customer_lifecycle_what_happened_ar) {
+      h +=
+        '<div class="recovery-truth-line"><strong>ماذا حدث؟</strong> ' +
+        esc(mc.customer_lifecycle_what_happened_ar) +
+        "</div>";
+    }
+    if (mc.customer_lifecycle_system_did_ar) {
+      h +=
+        '<div class="recovery-truth-line"><strong>ماذا فعل النظام؟</strong> ' +
+        esc(mc.customer_lifecycle_system_did_ar) +
+        "</div>";
+    }
+    if (mc.customer_lifecycle_what_next_ar) {
+      h +=
+        '<div class="recovery-truth-line"><strong>التالي:</strong> ' +
+        esc(mc.customer_lifecycle_what_next_ar) +
+        "</div>";
+    }
+    if (mc.customer_lifecycle_next_followup_line_ar) {
+      h +=
+        '<div class="recovery-truth-line"><strong>المتابعة:</strong> ' +
+        esc(mc.customer_lifecycle_next_followup_line_ar) +
+        "</div>";
+    }
+    h +=
+      '<div class="recovery-truth-line"><strong>تدخل التاجر:</strong> ' +
+      esc(mc.customer_lifecycle_merchant_needed_ar || "لا") +
+      "</div>";
+    var act = String(mc.customer_lifecycle_dashboard_action || "").trim();
+    var rk = String(mc.recovery_key || "").trim();
+    if (act === "archive" && rk) {
+      h +=
+        '<div class="recovery-truth-actions"><button type="button" class="cf-lc-btn" data-lc-archive data-recovery-key="' +
+        esc(rk) +
+        '">أرشفة</button></div>';
+    } else if (act === "reopen" && rk) {
+      h +=
+        '<div class="recovery-truth-actions"><button type="button" class="cf-lc-btn" data-lc-reopen data-recovery-key="' +
+        esc(rk) +
+        '">إعادة فتح</button></div>';
+    }
+    return h + "</div>";
+  }
+
   function lifecycleTruthHtml(mc) {
-    return merchantLifecycleCompactHtml(mc);
+    return customerLifecycleExplanationHtml(mc);
+  }
+
+  function bindCustomerLifecycleActions(root) {
+    if (!root || !root.querySelectorAll) return;
+    root.querySelectorAll("[data-lc-archive]").forEach(function (btn) {
+      if (btn._lcBound) return;
+      btn._lcBound = true;
+      btn.addEventListener("click", function () {
+        var rk = btn.getAttribute("data-recovery-key") || "";
+        if (!rk) return;
+        fetch("/api/dashboard/cart-lifecycle/archive", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "same-origin",
+          body: JSON.stringify({ recovery_key: rk }),
+        })
+          .then(function (r) {
+            return r.json();
+          })
+          .then(function (d) {
+            if (d && d.ok) {
+              fetchSection("/api/dashboard/normal-carts", applyNormalCarts, "normal-carts");
+            }
+          })
+          .catch(function () {});
+      });
+    });
+    root.querySelectorAll("[data-lc-reopen]").forEach(function (btn) {
+      if (btn._lcBound) return;
+      btn._lcBound = true;
+      btn.addEventListener("click", function () {
+        var rk = btn.getAttribute("data-recovery-key") || "";
+        if (!rk) return;
+        fetch("/api/dashboard/cart-lifecycle/reopen", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "same-origin",
+          body: JSON.stringify({ recovery_key: rk }),
+        })
+          .then(function (r) {
+            return r.json();
+          })
+          .then(function (d) {
+            if (d && d.ok) {
+              fetchSection("/api/dashboard/normal-carts", applyNormalCarts, "normal-carts");
+            }
+          })
+          .catch(function () {});
+      });
+    });
   }
 
   function cartRowHome(mc) {
@@ -1512,6 +1616,13 @@
       tabsJson = "[]";
     }
     var urg = mc.merchant_next_action_urgent ? " urgent" : "";
+    var statusLbl =
+      mc.customer_lifecycle_label_ar || mc.merchant_status_label_ar || "—";
+    var nextLbl =
+      mc.customer_lifecycle_label_ar ||
+      merchantNextLineShort(mc) ||
+      mc.merchant_next_action_ar ||
+      "—";
     return (
       '<tr data-ma-filter="' +
       b +
@@ -1533,12 +1644,12 @@
       '<td><span class="st ' +
       esc(mc.merchant_status_row_class || "s-waiting") +
       '\"><span class="sd"></span>' +
-      esc(mc.merchant_status_label_ar || "—") +
+      esc(statusLbl) +
       "</span></td>" +
       '<td><div class="next' +
       urg +
       '">' +
-      esc(merchantNextLineShort(mc) || mc.merchant_next_action_ar || "—") +
+      esc(nextLbl) +
       "</div>" +
       lifecycleTruthHtml(mc) +
       "</td>" +
@@ -1573,6 +1684,7 @@
       } else {
         allb.innerHTML = pr.map(cartRowFull).join("");
       }
+      bindCustomerLifecycleActions(allb);
     }
     var fc = d.merchant_cart_filter_counts || {};
     function sf(k, id) {

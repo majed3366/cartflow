@@ -315,6 +315,29 @@ class RecoverySchedule(Base):
     )
 
 
+class MerchantCartLifecycleArchive(Base):
+    """Merchant manual / auto archive for normal-cart lifecycle (dashboard only)."""
+
+    __tablename__ = "merchant_cart_lifecycle_archives"
+
+    id = Column(Integer, primary_key=True)
+    recovery_key = Column(String(512), nullable=False, unique=True, index=True)
+    store_slug = Column(String(255), nullable=False, index=True)
+    abandoned_cart_id = Column(Integer, nullable=True, index=True)
+    is_archived = Column(Boolean, default=True, nullable=False, index=True)
+    archive_source = Column(String(64), nullable=False, default="manual")
+    archived_at = Column(
+        DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
+    )
+    reopened_at = Column(DateTime, nullable=True)
+    updated_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+
+
 class CartRecoveryLog(Base):
     """تسجيل محاولات الاسترجاع (وهمي/تخطٍ) دون الاعتماد على واتساب حقيقي."""
     __tablename__ = "cart_recovery_logs"

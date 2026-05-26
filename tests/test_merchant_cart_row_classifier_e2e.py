@@ -45,6 +45,11 @@ from services.merchant_cart_row_classifier import (  # noqa: E402
     merchant_cart_rows_matching_filter,
     merchant_nav_badge_waiting_count,
 )
+from services.customer_lifecycle_states_v1 import (  # noqa: E402
+    LABEL_AR,
+    STATE_ARCHIVED,
+    STATE_WAITING_CUSTOMER_REPLY,
+)
 from services.recovery_truth_timeline_v1 import (  # noqa: E402
     STATUS_CONTINUATION_STARTED,
     STATUS_CUSTOMER_REPLY,
@@ -402,8 +407,17 @@ class MerchantCartRowClassifierApiE2ETests(unittest.TestCase):
         row = rows[0]
         self.assertEqual(row.get("merchant_cart_primary_bucket"), PRIMARY_SENT)
         self.assertEqual(row.get("merchant_cart_bucket"), UI_FILTER_SENT)
-        self.assertIn(SENT_STATUS_LABEL_AR, row.get("merchant_status_label_ar") or "")
-        self.assertNotIn("جارٍ المتابعة", row.get("merchant_status_label_ar") or "")
+        lbl = row.get("merchant_status_label_ar") or ""
+        lc_state = row.get("customer_lifecycle_state") or ""
+        self.assertIn(
+            lc_state,
+            (STATE_WAITING_CUSTOMER_REPLY, STATE_ARCHIVED),
+        )
+        if lc_state == STATE_WAITING_CUSTOMER_REPLY:
+            self.assertEqual(lbl, LABEL_AR[STATE_WAITING_CUSTOMER_REPLY])
+        else:
+            self.assertEqual(lbl, LABEL_AR[STATE_ARCHIVED])
+        self.assertNotIn("جارٍ المتابعة", lbl)
 
         self.assertGreaterEqual(int(fc.get(UI_FILTER_SENT) or 0), 1)
         self._assert_tab_counts_match_rows(rows, fc)

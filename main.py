@@ -13724,7 +13724,7 @@ def _merchant_normal_dashboard_batch_reads(
                     recovery_key_from_parts,
                 )
 
-                _batch_store_slug = (batch.slug or "").strip()
+                _batch_store_slug = slug
                 _ac_rk = recovery_key_from_parts(
                     store_slug=_batch_store_slug,
                     session_id=sid_ac,
@@ -14125,6 +14125,8 @@ def _merchant_normal_recovery_light_payload_merchant_batch(
         else ""
     )
     purchased_flag = False
+    rk_pre = ""
+    cap_lc = 1
     try:
         from services.cartflow_purchase_truth import has_purchase  # noqa: PLC0415
 
@@ -14260,6 +14262,47 @@ def _merchant_normal_recovery_light_payload_merchant_batch(
             matched_logs=matched_recovery_logs(ac0, batch.logs),
             attempt_cap=cap_lc,
             store_slug=_lc_store_slug,
+        )
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        from services.customer_lifecycle_states_v1 import (  # noqa: PLC0415
+            attach_customer_lifecycle_state_v1,
+        )
+        from services.merchant_cart_lifecycle_archive_v1 import (  # noqa: PLC0415
+            is_merchant_archived,
+        )
+
+        rk_lc = (out.get("recovery_key") or rk_pre or "").strip()
+        next_due_iso = None
+        if rk_lc:
+            with _recovery_session_lock:
+                next_due_iso = _session_recovery_followup_next_due_at.get(rk_lc)
+        vip_lane = False
+        try:
+            _vip_store = batch.store_row_for_cart(ac0)
+            vip_lane = bool(
+                abandoned_cart_in_vip_operational_lane(ac0, _vip_store)
+            )
+        except Exception:  # noqa: BLE001
+            vip_lane = False
+        attach_customer_lifecycle_state_v1(
+            out,
+            recovery_key=rk_lc,
+            phase_key=pk_lc,
+            coarse=cnorm,
+            sent_count=sent_ct_lc,
+            attempt_cap=cap_lc,
+            log_statuses=log_u_lc,
+            behavioral=bh_lc,
+            purchase_truth=purchased_flag,
+            cart_status=str(getattr(ac0, "status", None) or ""),
+            merchant_archived=is_merchant_archived(rk_lc) if rk_lc else False,
+            terminal_history_archived=in_history_slice,
+            is_vip_lane=vip_lane,
+            has_phone=has_phone,
+            abandoned_cart_id=int(getattr(ac0, "id", 0) or 0) or None,
+            next_attempt_due_at=next_due_iso,
         )
     except Exception:  # noqa: BLE001
         pass
@@ -15193,6 +15236,52 @@ def api_dashboard_vip_carts():
         return j({"ok": False, "error": "failed"}, 500)
     finally:
         _log_dashboard_section_profile(section="vip_carts", wall_perf_start=wall0)
+
+
+@app.post("/api/dashboard/cart-lifecycle/archive")
+async def api_dashboard_cart_lifecycle_archive(request: Request) -> Any:
+    """Manual archive — dashboard lifecycle only (does not stop recovery workers)."""
+    try:
+        body = await request.json()
+    except Exception:  # noqa: BLE001
+        body = {}
+    if not isinstance(body, dict):
+        body = {}
+    rk = (body.get("recovery_key") or "").strip()[:512]
+    if not rk:
+        return j({"ok": False, "error": "recovery_key_required"}, 400)
+    store_slug = (body.get("store_slug") or "").strip()[:255]
+    if not store_slug and ":" in rk:
+        store_slug = rk.split(":", 1)[0].strip()[:255]
+    ac_id = body.get("abandoned_cart_id")
+    try:
+        ac_id_i = int(ac_id) if ac_id is not None else None
+    except (TypeError, ValueError):
+        ac_id_i = None
+    from services.merchant_cart_lifecycle_archive_v1 import archive_recovery_key
+
+    return j(archive_recovery_key(
+        recovery_key=rk,
+        store_slug=store_slug,
+        abandoned_cart_id=ac_id_i,
+    ))
+
+
+@app.post("/api/dashboard/cart-lifecycle/reopen")
+async def api_dashboard_cart_lifecycle_reopen(request: Request) -> Any:
+    """Reopen a merchant-archived cart for dashboard active list."""
+    try:
+        body = await request.json()
+    except Exception:  # noqa: BLE001
+        body = {}
+    if not isinstance(body, dict):
+        body = {}
+    rk = (body.get("recovery_key") or "").strip()[:512]
+    if not rk:
+        return j({"ok": False, "error": "recovery_key_required"}, 400)
+    from services.merchant_cart_lifecycle_archive_v1 import reopen_recovery_key
+
+    return j(reopen_recovery_key(rk))
 
 
 @app.get("/api/dashboard/followups")
