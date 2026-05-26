@@ -52,7 +52,9 @@ def build_normal_recovery_merchant_lifecycle(
     purchased = lifecycle_purchased_evidence(
         ls=ls, bk=bk, pk=pk, cr=cr, log_ss=log_ss, recovery_key=recovery_key
     )
-    replied = lifecycle_replied_evidence(bh=bh, ls=ls, bk=bk, pk=pk, log_ss=log_ss)
+    replied = lifecycle_replied_evidence(
+        bh=bh, ls=ls, bk=bk, pk=pk, log_ss=log_ss, recovery_key=recovery_key
+    )
     returned = lifecycle_returned_evidence(
         bh=bh,
         ls=ls,
@@ -100,11 +102,17 @@ def build_normal_recovery_merchant_lifecycle(
         )
 
     if replied:
+        from services.recovery_truth_timeline_v1 import continuation_started_proven
+
+        outcome = "تفاعل العميل — نتابع المسار تلقائياً."
+        next_ar = "سيتابع النظام المسار المناسب تلقائياً."
+        if rk and continuation_started_proven(rk):
+            outcome = "تفاعل العميل — بدأ النظام متابعة الاعتراض."
         return pack(
             "customer_replied",
             "العميل تفاعل مع الرسالة",
-            "تفاعل العميل — بدأ النظام متابعة المسار المناسب.",
-            "سيتابع النظام المسار المناسب تلقائياً.",
+            outcome,
+            next_ar,
         )
 
     if returned:
@@ -169,12 +177,15 @@ def build_normal_recovery_merchant_lifecycle(
         )
 
     if sent_n >= 1 and pk in ("first_message_sent", "reminder_sent") and cr == "sent":
-        return pack(
-            "awaiting_customer_after_send",
-            "أُرسلت رسالة استرجاع",
-            "تم إرسال الرسالة — ننتظر تفاعل العميل.",
-            "ننتظر تفاعل العميل — سيتابع النظام تلقائياً.",
-        )
+        from services.recovery_truth_timeline_v1 import provider_send_proven
+
+        if provider_send_proven(rk, log_statuses=log_ss, sent_count=sent_n):
+            return pack(
+                "awaiting_customer_after_send",
+                "أُرسلت رسالة استرجاع",
+                "تم إرسال الرسالة — ننتظر تفاعل العميل.",
+                "ننتظر تفاعل العميل — سيتابع النظام تلقائياً.",
+            )
 
     if pk == "ignored":
         return pack(

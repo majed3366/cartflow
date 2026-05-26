@@ -425,6 +425,23 @@ def ingest_twilio_status_callback(payload: dict[str, Any]) -> dict[str, Any]:
     if level == TRUTH_READ:
         truth.read_status = status
     persist_delivery_truth(truth, event_payload=dict(payload))
+    if level == TRUTH_DELIVERED and (truth.recovery_key or "").strip():
+        try:
+            from services.recovery_truth_timeline_v1 import (  # noqa: PLC0415
+                STATUS_WEBHOOK_DELIVERED,
+                record_recovery_truth_event,
+            )
+
+            record_recovery_truth_event(
+                recovery_key=(truth.recovery_key or "").strip(),
+                status=STATUS_WEBHOOK_DELIVERED,
+                source="ingest_twilio_status_callback",
+                store_slug=(truth.store_slug or "").strip(),
+                session_id=(truth.session_id or "").strip(),
+                cart_id=(truth.cart_id or "").strip(),
+            )
+        except Exception:  # noqa: BLE001
+            pass
     return {"ok": True, "truth_level": truth.truth_level, "truth": truth.to_dict()}
 
 

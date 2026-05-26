@@ -58,7 +58,18 @@ def lifecycle_replied_evidence(
     bk: str,
     pk: str,
     log_ss: frozenset[str],
+    recovery_key: str = "",
 ) -> bool:
+    rk = (recovery_key or "").strip()
+    if rk:
+        try:
+            from services.recovery_truth_timeline_v1 import (
+                customer_reply_proven_for_dashboard,
+            )
+
+            return customer_reply_proven_for_dashboard(rk, behavioral=bh)
+        except Exception:  # noqa: BLE001
+            pass
     return bool(
         bh.get("customer_replied") is True
         or pk == "behavioral_replied"

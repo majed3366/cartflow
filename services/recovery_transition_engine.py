@@ -135,3 +135,26 @@ def apply_interactive_transition_from_customer_reply(
         sid,
         cid,
     )
+    try:
+        from main import _recovery_key_from_payload, _store_row_for_abandoned_cart  # noqa: PLC0415
+        from services.recovery_truth_timeline_v1 import (  # noqa: PLC0415
+            STATUS_CUSTOMER_REPLY,
+            record_recovery_truth_event,
+        )
+
+        st = _store_row_for_abandoned_cart(ac)
+        slug = (getattr(st, "zid_store_id", None) or "").strip() if st else ""
+        rk = _recovery_key_from_payload(
+            {"store": slug, "session_id": sid, "cart_id": cid}
+        )
+        if rk:
+            record_recovery_truth_event(
+                recovery_key=rk,
+                status=STATUS_CUSTOMER_REPLY,
+                source="apply_interactive_transition_from_customer_reply",
+                store_slug=slug,
+                session_id=sid,
+                cart_id=cid,
+            )
+    except Exception:  # noqa: BLE001
+        pass

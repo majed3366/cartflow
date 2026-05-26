@@ -1017,6 +1017,22 @@ def persist_recovery_schedule_durable(
             ]
             row.updated_at = now
         db.session.commit()
+        try:
+            from services.recovery_truth_timeline_v1 import (  # noqa: PLC0415
+                STATUS_SCHEDULED,
+                record_recovery_truth_event,
+            )
+
+            record_recovery_truth_event(
+                recovery_key=rk,
+                status=STATUS_SCHEDULED,
+                source="persist_recovery_schedule_durable",
+                store_slug=(store_slug or "").strip(),
+                session_id=(session_id or "").strip(),
+                cart_id=(str(cart_id).strip() if cart_id else ""),
+            )
+        except Exception:  # noqa: BLE001
+            pass
         return row
     except SQLAlchemyError as exc:
         db.session.rollback()

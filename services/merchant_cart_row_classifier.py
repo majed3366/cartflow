@@ -7,8 +7,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Mapping, Optional
 
-# Log statuses that mean a provider send path was taken (incl. queue before delivery).
-SENT_LOG_STATUSES = frozenset({"sent_real", "mock_sent", "queued"})
+# Completed provider send only — queued is scheduling, not «تم الإرسال».
+SENT_LOG_STATUSES = frozenset({"sent_real", "mock_sent"})
 
 FAILED_SEND_LOG_STATUSES = frozenset(
     {"whatsapp_failed", "failed_final", "failed_retry"}
@@ -158,14 +158,15 @@ def _sent_truth(
     log_ss: frozenset[str],
     coarse: str,
     latest_log_status: str,
+    recovery_key: str = "",
 ) -> bool:
-    if sent_count >= 1:
-        return True
-    if log_ss & SENT_LOG_STATUSES:
-        return True
-    if _norm_status(latest_log_status) in SENT_LOG_STATUSES:
-        return True
-    if coarse == "sent":
+    from services.recovery_truth_timeline_v1 import provider_send_proven
+
+    if provider_send_proven(
+        recovery_key,
+        log_statuses=log_ss,
+        sent_count=sent_count,
+    ):
         return True
     return False
 
@@ -230,6 +231,7 @@ def classify_merchant_cart_row(
     phone_blocked_before_send: bool = False,
     behavioral: Optional[Mapping[str, Any]] = None,
     latest_log_status: str = "",
+    recovery_key: str = "",
 ) -> MerchantCartRowClassification:
     """
     Deterministic primary bucket for one merchant cart row.
@@ -317,6 +319,7 @@ def classify_merchant_cart_row(
         log_ss=log_ss,
         coarse=cnorm,
         latest_log_status=latest,
+        recovery_key=recovery_key,
     ):
         return MerchantCartRowClassification(
             primary_bucket=PRIMARY_SENT,

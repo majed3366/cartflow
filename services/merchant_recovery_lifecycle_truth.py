@@ -255,9 +255,15 @@ def build_merchant_recovery_lifecycle_truth(
         purchased = True
     if not purchased and _norm(getattr(ac, "status", None)) == "recovered":
         purchased = True
-    replied = lifecycle_replied_evidence(bh=bh, ls=ls, bk="", pk=pk, log_ss=log_ss)
+    replied = lifecycle_replied_evidence(
+        bh=bh, ls=ls, bk="", pk=pk, log_ss=log_ss, recovery_key=recovery_key
+    )
     if durable_closure and durable_closure.get("closure_status") == "customer_replied":
-        replied = True
+        from services.recovery_truth_timeline_v1 import customer_reply_proven_for_dashboard
+
+        replied = customer_reply_proven_for_dashboard(
+            recovery_key, behavioral=bh
+        ) or replied
     returned = lifecycle_returned_evidence(
         bh=bh,
         ls=ls,
@@ -290,7 +296,13 @@ def build_merchant_recovery_lifecycle_truth(
             ),
         )
 
-    message_sent = sent_ct > 0 or bool(sent_logs) or ls in _SENT_STATUSES
+    from services.recovery_truth_timeline_v1 import provider_send_proven
+
+    message_sent = provider_send_proven(
+        recovery_key,
+        log_statuses=log_ss,
+        sent_count=int(sent_ct or 0),
+    )
     scheduling = (
         not purchased
         and lifecycle_delay_scheduling_only(
@@ -354,7 +366,11 @@ def build_merchant_recovery_lifecycle_truth(
     )
 
     if replied and not purchased:
-        whatsapp_line_ar = "تفاعل العميل — بدأ النظام متابعة المسار المناسب."
+        from services.recovery_truth_timeline_v1 import continuation_started_proven
+
+        whatsapp_line_ar = "تفاعل العميل — نتابع المسار تلقائياً."
+        if recovery_key and continuation_started_proven(recovery_key):
+            whatsapp_line_ar = "تفاعل العميل — بدأ النظام متابعة الاعتراض."
     elif returned and not purchased:
         whatsapp_line_ar = "العميل عاد للموقع — أوقفنا الرسائل تلقائياً."
     elif purchased:
@@ -395,6 +411,7 @@ def build_merchant_recovery_lifecycle_truth(
         recovery_log_statuses=log_ss,
         dashboard_customer_returned_track=returned,
         dashboard_return_intel_panel=False,
+        recovery_key=recovery_key,
     )
 
     cart_id = str(getattr(ac, "zid_cart_id", None) or "").strip()[:255]

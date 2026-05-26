@@ -375,6 +375,25 @@ class WhatsAppDeliveryTruth(Base):
     )
 
 
+class RecoveryTruthTimelineEvent(Base):
+    """
+    Append-only proven transitions for one recovery_key (dashboard truth / debug).
+    """
+
+    __tablename__ = "recovery_truth_timeline_events"
+
+    id = Column(Integer, primary_key=True)
+    recovery_key = Column(String(512), nullable=False, index=True)
+    store_slug = Column(String(255), nullable=False, index=True)
+    session_id = Column(String(512), nullable=True, index=True)
+    cart_id = Column(String(255), nullable=True, index=True)
+    status = Column(String(64), nullable=False, index=True)
+    source = Column(String(128), nullable=False, default="")
+    created_at = Column(
+        DateTime, default=lambda: datetime.now(timezone.utc), nullable=False, index=True
+    )
+
+
 class RecoveryEvent(Base):
     __tablename__ = "recovery_events"
 

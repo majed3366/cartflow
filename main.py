@@ -936,6 +936,7 @@ _DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT = frozenset(
         "/dev/widget-runtime-config-verify",
         "/dev/recovery-restart-survival-verify",
         "/dev/recovery-health",
+        "/dev/recovery-truth",
         "/dev/store-template-debug",
     }
 )
@@ -1430,6 +1431,11 @@ def _ensure_cartflow_api_db_warmed() -> None:
             )
 
             ensure_recovery_message_context_schema(db)
+            from schema_recovery_truth_timeline import (  # noqa: PLC0415
+                ensure_recovery_truth_timeline_schema,
+            )
+
+            ensure_recovery_truth_timeline_schema(db)
             _cartflow_api_db_warmed = True
         except Exception as e:  # noqa: BLE001
             db.session.rollback()
@@ -1846,6 +1852,31 @@ def dev_recovery_restart_survival_verify(
                 recovery_key=recovery_key,
                 dry_run=dry_run,
             )
+        )
+    except Exception as exc:  # noqa: BLE001
+        db.session.rollback()
+        return j({"ok": False, "error": str(exc)}, 500)
+
+
+@app.get("/dev/recovery-truth")
+def dev_recovery_truth(recovery_key: str = Query("", max_length=512)) -> Any:
+    """
+    Ordered proven transitions for one recovery_key (read-only debug).
+    """
+    rk = (recovery_key or "").strip()
+    if not rk:
+        return j({"ok": False, "error": "recovery_key_required"}, 400)
+    try:
+        _ensure_cartflow_api_db_warmed()
+        from services.recovery_truth_timeline_v1 import get_recovery_truth_timeline
+
+        timeline = get_recovery_truth_timeline(rk)
+        return j(
+            {
+                "ok": True,
+                "recovery_key": rk,
+                "timeline": timeline,
+            }
         )
     except Exception as exc:  # noqa: BLE001
         db.session.rollback()
@@ -2419,6 +2450,22 @@ def _note_recovery_delay_waiting_started(recovery_key: str) -> None:
     now = datetime.now(timezone.utc)
     with _recovery_session_lock:
         _session_recovery_delay_wait_started_at[rk] = now
+    try:
+        from services.recovery_truth_timeline_v1 import (  # noqa: PLC0415
+            STATUS_DELAY_STARTED,
+            record_recovery_truth_event,
+        )
+
+        slug, sid = rk.split(":", 1) if ":" in rk else (rk, "")
+        record_recovery_truth_event(
+            recovery_key=rk,
+            status=STATUS_DELAY_STARTED,
+            source="_note_recovery_delay_waiting_started",
+            store_slug=slug,
+            session_id=sid,
+        )
+    except Exception:  # noqa: BLE001
+        pass
 
 
 def _recovery_delay_waiting_started_for_key(recovery_key: str) -> bool:
@@ -4787,7 +4834,22 @@ def _log_recovery_context_before_send(
             phone_store_slug=canon or tpl_z,
             selected_store_slug=display_store_slug,
         )
+        from services.recovery_truth_timeline_v1 import (  # noqa: PLC0415
+            STATUS_BEFORE_SEND,
+            record_recovery_truth_event,
+        )
+
+        record_recovery_truth_event(
+            recovery_key=(recovery_key or "").strip(),
+            status=STATUS_BEFORE_SEND,
+            source="_log_recovery_context_before_send",
+            store_slug=display_store_slug if display_store_slug != "-" else canon,
+            session_id=(session_id or "").strip(),
+            cart_id=(str(cart_id or "") or "").strip(),
+        )
     except OSError:
+        pass
+    except Exception:  # noqa: BLE001
         pass
 
 
@@ -5904,6 +5966,24 @@ def _persist_cart_recovery_log(
         )
         db.session.add(row)
         db.session.commit()
+        try:
+            from services.recovery_truth_timeline_v1 import (  # noqa: PLC0415
+                map_cart_recovery_log_status_to_timeline,
+                record_recovery_truth_event,
+            )
+
+            tl_st = map_cart_recovery_log_status_to_timeline(str(status or ""))
+            if tl_st:
+                record_recovery_truth_event(
+                    recovery_key=(ctx.recovery_key or recovery_key or "").strip(),
+                    status=tl_st,
+                    source="_persist_cart_recovery_log",
+                    store_slug=store_slug,
+                    session_id=session_id,
+                    cart_id=(cart_id or "") if cart_id else "",
+                )
+        except Exception:  # noqa: BLE001
+            pass
         try:
             st_norm = str(status or "").strip().lower()
             if st_norm in {"sent_real", "mock_sent", "queued"}:
@@ -14031,6 +14111,7 @@ def _merchant_normal_recovery_light_payload_merchant_batch(
         ),
         behavioral=bh_lc_pre,
         latest_log_status=latest_st_pre,
+        recovery_key=rk_pre or "",
     )
     if archived_group and row_class.is_active:
         row_class = classify_merchant_cart_row(
@@ -14046,6 +14127,7 @@ def _merchant_normal_recovery_light_payload_merchant_batch(
             phone_blocked_before_send=False,
             behavioral=bh_lc_pre,
             latest_log_status=latest_st_pre,
+            recovery_key=rk_pre or "",
         )
     out: dict[str, Any] = {
         "merchant_recovery_kind": "normal_case",

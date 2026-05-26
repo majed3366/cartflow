@@ -1180,6 +1180,34 @@ def process_continuation_after_customer_reply(
         and dec.action != CONTINUATION_ACTION_ESCALATE
         and _cooldown_allows_auto_reply(phone_key)
     ):
+        try:
+            from main import _recovery_key_from_payload, _normalize_store_slug  # noqa: PLC0415
+            from services.recovery_truth_timeline_v1 import (  # noqa: PLC0415
+                STATUS_CONTINUATION_STARTED,
+                record_recovery_truth_event,
+            )
+
+            ss_cont = _continuation_wa_trace_store_slug(ac) or _normalize_store_slug(
+                {"store": _store_slug_for_ac(ac)}
+            )
+            rk_cont_send = _recovery_key_from_payload(
+                {
+                    "store": ss_cont,
+                    "session_id": (getattr(ac, "recovery_session_id", None) or ""),
+                    "cart_id": (getattr(ac, "zid_cart_id", None) or ""),
+                }
+            )
+            if rk_cont_send:
+                record_recovery_truth_event(
+                    recovery_key=rk_cont_send,
+                    status=STATUS_CONTINUATION_STARTED,
+                    source="process_continuation_after_customer_reply",
+                    store_slug=ss_cont,
+                    session_id=sid_log,
+                    cart_id=(getattr(ac, "zid_cart_id", None) or "").strip(),
+                )
+        except Exception:  # noqa: BLE001
+            pass
         from services.whatsapp_send import send_whatsapp_real
 
         phone_out = _resolve_outbound_e164_for_continuation(ac, phone_key)
