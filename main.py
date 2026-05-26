@@ -32,7 +32,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 from extensions import db, init_database, remove_scoped_session
 from integrations.zid_client import exchange_code_for_token, verify_webhook_signature
 from json_response import UTF8JSONResponse, j
-from sqlalchemy import and_, exists, func, inspect, or_, text
+from sqlalchemy import and_, exists, func, inspect, literal, or_, text
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from decision_engine import decide_recovery_action
@@ -12621,30 +12621,32 @@ def _merchant_cart_recovery_send_count(
 
 
 def _merchant_recovery_message_history_rows(
-    dash_store: Optional[Any], *, limit: int = 35
+    dash_store: Optional[Any],
+    *,
+    limit: int = 35,
+    ensure_recovery_keys: Optional[list[str]] = None,
+    ensure_log_ids: Optional[list[int]] = None,
 ) -> list[dict[str, Any]]:
     """آخر محاولات إرسال مسجّلة للمتجر الحالي — نص مختصر للتاجر فقط."""
     out: list[dict[str, Any]] = []
     if dash_store is None:
         return out
-    slug = (getattr(dash_store, "zid_store_id", None) or "").strip()[:255]
+    from services.merchant_dashboard_recovery_resolve_v1 import (  # noqa: PLC0415
+        sent_logs_for_store,
+        store_slug_from_dash,
+    )
+
+    slug = store_slug_from_dash(dash_store)
     if not slug:
         return out
     lim = max(1, min(int(limit), 80))
     now_utc = datetime.now(timezone.utc)
     try:
-        rows = (
-            db.session.query(CartRecoveryLog)
-            .filter(
-                CartRecoveryLog.store_slug == slug,
-                CartRecoveryLog.status.in_(tuple(_NORMAL_RECOVERY_SENT_LOG_STATUSES)),
-            )
-            .order_by(
-                CartRecoveryLog.sent_at.desc().nullslast(),
-                CartRecoveryLog.created_at.desc(),
-            )
-            .limit(lim)
-            .all()
+        rows = sent_logs_for_store(
+            slug,
+            limit=max(lim, 200),
+            ensure_recovery_keys=ensure_recovery_keys,
+            ensure_log_ids=ensure_log_ids,
         )
     except (SQLAlchemyError, OSError, TypeError, ValueError):
         db.session.rollback()
@@ -12695,6 +12697,7 @@ def _merchant_recovery_message_history_rows(
             "status_ar": st_ar,
             "status_row_class": st_cls,
             "step_ar": step_ar,
+            "log_id": int(getattr(lg, "id", 0) or 0) or None,
             "cart_id": (ctx.get("cart_id") or getattr(lg, "cart_id", None) or "")[:255]
             or None,
             "session_id": (
@@ -12718,7 +12721,7 @@ def _merchant_recovery_message_history_rows(
             ),
         }
         out.append(row_out)
-    return out
+    return out[:lim]
 
 
 def _normal_recovery_abandoned_scope_filter(
@@ -12757,6 +12760,22 @@ def _normal_recovery_abandoned_scope_filter(
                     AbandonedCart.zid_cart_id.isnot(None),
                     CartRecoveryLog.cart_id.isnot(None),
                     CartRecoveryLog.cart_id == AbandonedCart.zid_cart_id,
+                ),
+                and_(
+                    CartRecoveryLog.recovery_key.isnot(None),
+                    AbandonedCart.recovery_session_id.isnot(None),
+                    CartRecoveryLog.recovery_key
+                    == func.concat(
+                        slug,
+                        literal(":"),
+                        AbandonedCart.recovery_session_id,
+                    ),
+                ),
+                and_(
+                    CartRecoveryLog.recovery_key.isnot(None),
+                    AbandonedCart.zid_cart_id.isnot(None),
+                    CartRecoveryLog.recovery_key
+                    == func.concat(slug, literal(":"), AbandonedCart.zid_cart_id),
                 ),
             ),
         )
@@ -12895,19 +12914,11 @@ def _ensure_sent_recovery_groups_in_pick(
         return sorted(grp, key=_ts, reverse=True)
 
     try:
-        logs = (
-            db.session.query(CartRecoveryLog)
-            .filter(
-                CartRecoveryLog.store_slug == slug,
-                CartRecoveryLog.status.in_(_NORMAL_RECOVERY_SENT_LOG_STATUSES),
-            )
-            .order_by(
-                CartRecoveryLog.sent_at.desc().nullslast(),
-                CartRecoveryLog.id.desc(),
-            )
-            .limit(max(1, int(max_extra_groups)))
-            .all()
+        from services.merchant_dashboard_recovery_resolve_v1 import (  # noqa: PLC0415
+            sent_logs_for_store,
         )
+
+        logs = sent_logs_for_store(slug, limit=max(1, int(max_extra_groups)))
     except (SQLAlchemyError, OSError, TypeError, ValueError):
         db.session.rollback()
         return picked
@@ -12915,10 +12926,12 @@ def _ensure_sent_recovery_groups_in_pick(
     for lg in logs:
         sid = (getattr(lg, "session_id", None) or "").strip()[:512]
         cid = (getattr(lg, "cart_id", None) or "").strip()[:255]
-        for gk in (
-            (f"rs:{sid}" if sid else ""),
-            (f"zid:{cid}" if cid else ""),
-        ):
+        keys_to_try: list[str] = []
+        if sid:
+            keys_to_try.append(f"rs:{sid}")
+        if cid:
+            keys_to_try.append(f"zid:{cid}")
+        for gk in keys_to_try:
             if not gk or gk in picked_keys:
                 continue
             grp = groups_by_key.get(gk)
@@ -13463,17 +13476,37 @@ def _merchant_normal_dashboard_batch_reads(
         rows_loaded=len(full_rows),
     )
     combined_sess = set(sess_pool) | set(cid_pool)
+    rk_pool: set[str] = set()
+    for ac in full_rows:
+        sid_ac = (getattr(ac, "recovery_session_id", None) or "").strip()[:512]
+        zid_ac = (getattr(ac, "zid_cart_id", None) or "").strip()[:255]
+        if not slug:
+            continue
+        try:
+            from services.recovery_message_context_v1 import (  # noqa: PLC0415
+                recovery_key_from_parts,
+            )
+
+            _rk = recovery_key_from_parts(
+                store_slug=slug, session_id=sid_ac, cart_id=zid_ac
+            )
+            if _rk:
+                rk_pool.add(_rk)
+        except Exception:  # noqa: BLE001
+            pass
 
     logs: list[CartRecoveryLog] = []
     _mbr_seg_t = time.perf_counter()
     _mbr_seg_q = merchant_dashboard_batch_reads_trace_peek_for_seg(_mbr_tr)
     try:
-        if combined_sess or cid_pool:
+        if combined_sess or cid_pool or rk_pool:
             or_parts_log: list[Any] = []
             if combined_sess:
                 or_parts_log.append(CartRecoveryLog.session_id.in_(list(combined_sess)))
             if cid_pool:
                 or_parts_log.append(CartRecoveryLog.cart_id.in_(list(cid_pool)))
+            if rk_pool:
+                or_parts_log.append(CartRecoveryLog.recovery_key.in_(list(rk_pool)))
             if or_parts_log:
                 with normal_carts_profile_span("sql:batch_cart_recovery_logs_bulk"):
                     logs = (
@@ -13481,6 +13514,17 @@ def _merchant_normal_dashboard_batch_reads(
                         .filter(or_(*or_parts_log))
                         .all()
                     )
+            if slug:
+                from services.merchant_dashboard_recovery_resolve_v1 import (  # noqa: PLC0415
+                    sent_logs_for_store,
+                )
+
+                by_lid = {int(getattr(x, "id", 0) or 0): x for x in logs}
+                for lg in sent_logs_for_store(slug, limit=250):
+                    lid = int(getattr(lg, "id", 0) or 0)
+                    if lid:
+                        by_lid[lid] = lg
+                logs = list(by_lid.values())
     except (SQLAlchemyError, OSError, TypeError, ValueError):
         db.session.rollback()
         logs = []
@@ -13558,7 +13602,11 @@ def _merchant_normal_dashboard_batch_reads(
                 if not lg_id or lg_id in seen_lid:
                     continue
                 seen_lid.add(lg_id)
-                if _recovery_log_row_matches_abandoned_cart(lg, ac):
+                from services.merchant_dashboard_recovery_resolve_v1 import (  # noqa: PLC0415
+                    log_matches_cart_identity,
+                )
+
+                if log_matches_cart_identity(lg, ac, store_slug=slug):
                     matched_logs.append(lg)
             stset = frozenset(
                 str((getattr(x, "status", None) or "")).strip().lower()
@@ -14014,6 +14062,21 @@ def _merchant_normal_recovery_light_payload_merchant_batch(
         "merchant_has_customer_phone": bool(has_phone),
     }
     apply_merchant_cart_classification_to_payload(out, row_class)
+    from services.merchant_dashboard_recovery_resolve_v1 import (  # noqa: PLC0415
+        cart_row_identity_fields,
+    )
+
+    _slug_id = (
+        str(getattr(batch.store_row_for_cart(ac0), "zid_store_id", None) or "").strip()
+        if batch.store_row_for_cart(ac0) is not None
+        else str(getattr(batch, "slug", None) or "").strip()
+    )
+    out.update(cart_row_identity_fields(ac0, store_slug=_slug_id))
+    lrk_log = batch.latest_log_by_ac.get(aid0)
+    if lrk_log is not None:
+        _lrk = (getattr(lrk_log, "recovery_key", None) or "").strip()
+        if _lrk:
+            out["recovery_key"] = _lrk
     out["merchant_next_action_urgent"] = bool(
         row_class.merchant_next_action_urgent and not in_history_slice
     )
@@ -14314,25 +14377,18 @@ def _augment_abandoned_candidates_with_sent_recovery_logs(
             seen.add(aid)
             out.append(row)
     try:
-        db.create_all()
-        logs = (
-            db.session.query(CartRecoveryLog)
-            .filter(
-                CartRecoveryLog.store_slug == slug,
-                CartRecoveryLog.status.in_(_NORMAL_RECOVERY_SENT_LOG_STATUSES),
-            )
-            .order_by(
-                CartRecoveryLog.sent_at.desc().nullslast(),
-                CartRecoveryLog.id.desc(),
-            )
-            .limit(max(1, int(augment_limit)))
-            .all()
+        from services.merchant_dashboard_recovery_resolve_v1 import (  # noqa: PLC0415
+            sent_logs_for_store,
         )
+
+        db.create_all()
+        logs = sent_logs_for_store(slug, limit=max(1, int(augment_limit)))
     except (SQLAlchemyError, OSError, TypeError, ValueError):
         db.session.rollback()
         return out
     sess_ids: set[str] = set()
     cart_ids: set[str] = set()
+    rk_ids: set[str] = set()
     for lg in logs:
         sid = (getattr(lg, "session_id", None) or "").strip()[:512]
         cid = (getattr(lg, "cart_id", None) or "").strip()[:255]
@@ -14340,7 +14396,10 @@ def _augment_abandoned_candidates_with_sent_recovery_logs(
             sess_ids.add(sid)
         if cid:
             cart_ids.add(cid)
-    if not sess_ids and not cart_ids:
+        lrk = (getattr(lg, "recovery_key", None) or "").strip()[:512]
+        if lrk:
+            rk_ids.add(lrk)
+    if not sess_ids and not cart_ids and not rk_ids:
         return out
     or_parts: list[Any] = []
     if sess_ids:
@@ -14352,7 +14411,15 @@ def _augment_abandoned_candidates_with_sent_recovery_logs(
             AbandonedCart.status == "abandoned", or_(*or_parts)
         )
         if scope_filter is not None:
-            q_extra = q_extra.filter(scope_filter)
+            sent_parts: list[Any] = []
+            if cart_ids:
+                sent_parts.append(AbandonedCart.zid_cart_id.in_(list(cart_ids)))
+            if sess_ids:
+                sent_parts.append(AbandonedCart.recovery_session_id.in_(list(sess_ids)))
+            if sent_parts:
+                q_extra = q_extra.filter(or_(scope_filter, or_(*sent_parts)))
+            else:
+                q_extra = q_extra.filter(scope_filter)
         if dash_store is not None:
             vip_th = merchant_vip_threshold_int(dash_store)
             if vip_th is not None:
@@ -15133,13 +15200,6 @@ def api_debug_recovery_trace(
             or ""
         ).strip()
 
-        dashboard_message_body = ""
-        dashboard_message_row = None
-        try:
-            msg_rows = _merchant_recovery_message_history_rows(dash_store, limit=80)
-        except Exception:
-            db.session.rollback()
-            msg_rows = []
         sid_eff = (
             (sent_ctx.get("session_id") or getattr(sent_log, "session_id", None) or "")
             .strip()
@@ -15151,49 +15211,76 @@ def api_debug_recovery_trace(
             if sent_log is not None
             else ""
         )
-        for r in msg_rows:
-            rrk = (r.get("recovery_key") or "").strip()
-            rsid = (r.get("session_id") or "").strip()
-            rcid = (r.get("cart_id") or "").strip()
-            if rrk and rrk == rk:
-                dashboard_message_row = r
-                break
-            if sid_eff and rsid and sid_eff == rsid:
-                dashboard_message_row = r
-                break
-            if cid_eff and rcid and cid_eff == rcid:
-                dashboard_message_row = r
-                break
-        if isinstance(dashboard_message_row, dict):
-            dashboard_message_body = (
-                str(dashboard_message_row.get("preview_ar") or "").strip()
+        log_id_eff = (
+            int(getattr(sent_log, "id", 0) or 0) if sent_log is not None else None
+        )
+
+        dashboard_message_body = ""
+        dashboard_message_row = None
+        try:
+            from services.merchant_dashboard_recovery_resolve_v1 import (  # noqa: PLC0415
+                find_dashboard_cart_row,
+                find_dashboard_message_row,
             )
 
-        cart_classifier_bucket = None
-        cart_row = None
-        try:
+            msg_rows = _merchant_recovery_message_history_rows(
+                dash_store,
+                limit=80,
+                ensure_recovery_keys=[rk],
+                ensure_log_ids=[log_id_eff] if log_id_eff else None,
+            )
+            dashboard_message_row = find_dashboard_message_row(
+                msg_rows,
+                recovery_key=rk,
+                cart_id=cid_eff,
+                session_id=sid_eff,
+                log_id=log_id_eff,
+            )
+            if dashboard_message_row is None and persisted_log_body:
+                dashboard_message_body = persisted_log_body
+            elif isinstance(dashboard_message_row, dict):
+                dashboard_message_body = str(
+                    dashboard_message_row.get("preview_ar") or ""
+                ).strip()
+
             carts_body, _ = _api_json_dashboard_normal_carts(dash_store)
             cart_rows = carts_body.get("merchant_carts_page_rows") or []
+            cart_row = find_dashboard_cart_row(
+                cart_rows,
+                recovery_key=rk,
+                cart_id=cid_eff,
+                session_id=sid_eff,
+            )
         except Exception:
             db.session.rollback()
-            cart_rows = []
-        for r in cart_rows:
-            rrk = str(r.get("recovery_key") or "").strip()
-            rsid = str(r.get("session_id") or "").strip()
-            rcid = str(r.get("cart_id") or "").strip()
-            if rrk and rrk == rk:
-                cart_row = r
-                break
-            if sid_eff and rsid and sid_eff == rsid:
-                cart_row = r
-                break
-            if cid_eff and rcid and cid_eff == rcid:
-                cart_row = r
-                break
+            cart_row = None
+            dashboard_message_row = None
+
+        cart_classifier_bucket = None
         if isinstance(cart_row, dict):
             cart_classifier_bucket = (
-                str(cart_row.get("merchant_cart_primary_bucket") or "").strip() or None
+                str(
+                    cart_row.get("merchant_cart_primary_bucket")
+                    or cart_row.get("merchant_cart_bucket")
+                    or ""
+                ).strip()
+                or None
             )
+        elif sent_log is not None and persisted_log_body:
+            from services.merchant_cart_row_classifier import (  # noqa: PLC0415
+                classify_merchant_cart_row,
+            )
+
+            if ac is not None:
+                cl = classify_merchant_cart_row(
+                    has_phone=bool((getattr(ac, "customer_phone", None) or "").strip()),
+                    sent_count=1,
+                    log_statuses=frozenset(
+                        {(getattr(sent_log, "status", None) or "").strip().lower()}
+                    ),
+                    coarse="sent",
+                )
+                cart_classifier_bucket = cl.primary_bucket
 
         def _norm_body(s: str) -> str:
             return " ".join((s or "").split()).strip()
