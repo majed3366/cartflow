@@ -30,7 +30,7 @@ class RecoveryStoreContextIsolationTests(unittest.TestCase):
         )
         self.assertIsNone(canonical_store_slug_from_recovery_key("nocolon"))
 
-    def test_coerce_prefers_recovery_key_over_hint(self) -> None:
+    def test_coerce_keeps_sandbox_without_authenticated_merchant(self) -> None:
         with patch(
             "services.recovery_store_context.log_store_context_mismatch"
         ) as mismatch:
@@ -39,7 +39,18 @@ class RecoveryStoreContextIsolationTests(unittest.TestCase):
                 "loadtest-store-020",
             )
         self.assertEqual(slug, "demo")
-        mismatch.assert_called_once()
+        mismatch.assert_not_called()
+
+    def test_coerce_prefers_authenticated_merchant_over_sandbox_rk(self) -> None:
+        with patch(
+            "services.merchant_test_widget_store_v1.merchant_authenticated_store_slug",
+            return_value="cartflow3-91bd2e",
+        ):
+            slug = coerce_recovery_runtime_store_slug(
+                "demo:sess-a",
+                "cartflow3-91bd2e",
+            )
+        self.assertEqual(slug, "cartflow3-91bd2e")
 
     def test_recovery_store_from_context_never_uses_stale_store_id(self) -> None:
         db.create_all()
@@ -162,26 +173,31 @@ class RecoveryStoreContextIsolationTests(unittest.TestCase):
     def test_bind_identity_aligns_slug_and_row(self) -> None:
         db.create_all()
         main._ensure_store_widget_schema()
-        for row in db.session.query(Store).filter_by(zid_store_id="demo").all():
-            db.session.delete(row)
+        for z in ("demo", "loadtest-store-020"):
+            for row in db.session.query(Store).filter_by(zid_store_id=z).all():
+                db.session.delete(row)
         db.session.commit()
-        row_demo = Store(
-            zid_store_id="demo",
+        row_lt = Store(
+            zid_store_id="loadtest-store-020",
             recovery_delay=1,
             recovery_delay_unit="minutes",
             recovery_attempts=1,
         )
-        db.session.add(row_demo)
+        db.session.add(row_lt)
         db.session.commit()
 
-        slug, row = main._bind_recovery_runtime_store_identity(
-            "demo:bind-test",
-            "loadtest-store-020",
-        )
-        self.assertEqual(slug, "demo")
+        with patch(
+            "services.merchant_test_widget_store_v1.merchant_authenticated_store_slug",
+            return_value="loadtest-store-020",
+        ):
+            slug, row = main._bind_recovery_runtime_store_identity(
+                "demo:bind-test",
+                "loadtest-store-020",
+            )
+        self.assertEqual(slug, "loadtest-store-020")
         self.assertIsNotNone(row)
         assert row is not None
-        self.assertEqual(row.zid_store_id, "demo")
+        self.assertEqual(row.zid_store_id, "loadtest-store-020")
 
     def test_store_context_check_ok_when_aligned(self) -> None:
         ok = log_store_context_check(

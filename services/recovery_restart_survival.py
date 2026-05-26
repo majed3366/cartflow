@@ -914,6 +914,52 @@ async def _execute_resume_recovery_task(row: RecoverySchedule) -> None:
         _log_resume_task_exception(row, str(exc)[:512])
 
 
+def reconcile_schedule_row_identity(
+    row: RecoverySchedule,
+    *,
+    source_function: str = "reconcile_schedule_row_identity",
+) -> tuple[str, str, str]:
+    """Align schedule row + embedded context with merchant store when rk prefix is sandbox."""
+    from services.recovery_store_context import (  # noqa: PLC0415
+        reconcile_recovery_identity,
+    )
+
+    ctx_blob = load_context(row)
+    rc = dict(ctx_blob.get("recovery_context") or {})
+    schedule_rk = (row.recovery_key or "").strip()[:512]
+    rk, slug, sid = reconcile_recovery_identity(
+        recovery_key=schedule_rk,
+        store_slug=(row.store_slug or "").strip(),
+        session_id=(row.session_id or "").strip(),
+        recovery_context=rc,
+    )
+    changed = (
+        rk != schedule_rk
+        or slug != (row.store_slug or "").strip()
+        or (sid and sid != (row.session_id or "").strip())
+    )
+    if changed and rk:
+        row.recovery_key = rk
+        row.store_slug = slug[:255]
+        if sid:
+            row.session_id = sid[:512]
+        if isinstance(rc, dict):
+            rc["recovery_key"] = rk
+            rc["store_slug"] = slug
+            if sid:
+                rc["session_id"] = sid
+            ctx_blob["recovery_context"] = rc
+            row.context_json = json.dumps(ctx_blob, ensure_ascii=False, default=str)[
+                :65000
+            ]
+        try:
+            db.session.commit()
+        except SQLAlchemyError as exc:
+            db.session.rollback()
+            _log.warning("%s commit failed: %s", source_function, exc)
+    return rk, slug, sid
+
+
 def persist_recovery_schedule_durable(
     *,
     recovery_key: str,
@@ -930,7 +976,22 @@ def persist_recovery_schedule_durable(
     multi_message_text: Optional[str] = None,
 ) -> Optional[RecoverySchedule]:
     """Upsert durable row before asyncio sleep — survives process restart."""
-    rk = (recovery_key or "").strip()[:512]
+    from services.recovery_store_context import reconcile_recovery_identity  # noqa: PLC0415
+
+    rc_in = dict(recovery_context or {})
+    rk, store_slug, session_id = reconcile_recovery_identity(
+        recovery_key=(recovery_key or "").strip(),
+        store_slug=(store_slug or "").strip(),
+        session_id=(session_id or "").strip(),
+        recovery_context=rc_in,
+    )
+    if rc_in:
+        rc_in["recovery_key"] = rk
+        rc_in["store_slug"] = store_slug
+        if session_id:
+            rc_in["session_id"] = session_id
+        recovery_context = rc_in
+    rk = (rk or "").strip()[:512]
     if not rk:
         return None
     step, msi = _step_keys(
@@ -1019,7 +1080,6 @@ def persist_recovery_schedule_durable(
         db.session.commit()
         try:
             from services.recovery_truth_timeline_v1 import (  # noqa: PLC0415
-                STATUS_SCHEDULED,
                 record_recovery_truth_event,
             )
 

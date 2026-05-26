@@ -26,6 +26,7 @@ from services.recovery_restart_survival import (
     classify_stale_running_schedule_repair,
     finalize_recovery_schedule_durable,
     load_context,
+    reconcile_schedule_row_identity,
     release_claimed_schedule_execution_terminal,
 )
 
@@ -81,6 +82,7 @@ def _build_recovery_context_from_schedule_row(
     *,
     source: str,
 ) -> Dict[str, Any]:
+    reconcile_schedule_row_identity(row, source_function="_build_recovery_context_from_schedule_row")
     ctx = load_context(row)
     rc = dict(ctx.get("recovery_context") or {})
     rc["recovery_key"] = row.recovery_key
@@ -162,7 +164,9 @@ async def execute_recovery_schedule(
             )
             return out
 
-        rk = row.recovery_key
+        rk, _slug, _sid = reconcile_schedule_row_identity(
+            row, source_function="execute_recovery_schedule"
+        )
         out["schedule_id"] = int(row.id)
         out["recovery_key"] = rk
         _log_execution(

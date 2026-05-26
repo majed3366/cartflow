@@ -2447,9 +2447,37 @@ def _note_recovery_flow_armed_now(recovery_key: str) -> None:
         _session_recovery_flow_armed_at[rk] = now
 
 
-def _note_recovery_delay_waiting_started(recovery_key: str) -> None:
+def _note_recovery_delay_waiting_started(
+    recovery_key: str,
+    *,
+    dashboard_store: str = "",
+    schedule_recovery_key: str = "",
+    ctx_recovery_key: str = "",
+    derived_store_slug: str = "",
+    source_function: str = "",
+    store_slug: str = "",
+    session_id: str = "",
+    recovery_context: Optional[Dict[str, Any]] = None,
+) -> None:
     """Marks that outbound recovery passed VIP/pre-checks and is in the configured delay sleep."""
-    rk = (recovery_key or "").strip()
+    from services.recovery_store_context import (  # noqa: PLC0415
+        log_recovery_identity_source,
+        reconcile_recovery_identity,
+    )
+
+    rk, slug, sid = reconcile_recovery_identity(
+        recovery_key=(recovery_key or "").strip(),
+        store_slug=(store_slug or derived_store_slug or dashboard_store or "").strip(),
+        session_id=(session_id or "").strip(),
+        recovery_context=recovery_context,
+    )
+    log_recovery_identity_source(
+        dashboard_store=dashboard_store or slug,
+        schedule_recovery_key=schedule_recovery_key or recovery_key,
+        ctx_recovery_key=ctx_recovery_key,
+        derived_store_slug=derived_store_slug or slug,
+        source_function=source_function or "_note_recovery_delay_waiting_started",
+    )
     if not rk:
         return
     now = datetime.now(timezone.utc)
@@ -2461,7 +2489,6 @@ def _note_recovery_delay_waiting_started(recovery_key: str) -> None:
             record_recovery_truth_event,
         )
 
-        slug, sid = rk.split(":", 1) if ":" in rk else (rk, "")
         record_recovery_truth_event(
             recovery_key=rk,
             status=STATUS_DELAY_STARTED,
@@ -4698,6 +4725,13 @@ def _build_recovery_context_from_arm(
 ) -> Dict[str, Any]:
     """مصدر واحد للهوية عند تسليح الاسترجاع — يُمرَّر للمهمة المؤجّلة دون إعادة اختراع ‎store‎ لاحقاً."""
     rt = (reason_tag or "").strip().lower()[:128] if reason_tag else None
+    from services.recovery_store_context import reconcile_recovery_identity  # noqa: PLC0415
+
+    recovery_key, store_slug, session_id = reconcile_recovery_identity(
+        recovery_key=recovery_key,
+        store_slug=store_slug,
+        session_id=session_id,
+    )
     canon_slug = _coerce_recovery_runtime_store_slug(recovery_key, store_slug)
     sid_pk: Optional[int] = None
     if store_row is not None:
@@ -4757,17 +4791,8 @@ def _recovery_store_from_context(
     allow_schema_warm: bool = True,
 ) -> Optional[Any]:
     rk_raw = str((recovery_context or {}).get("recovery_key") or "")
-    rk_merchant = _store_slug_from_recovery_key(rk_raw) if rk_raw else None
     hint = (store_slug or "").strip()
-    if rk_merchant and hint and hint.casefold() != rk_merchant.casefold():
-        from services.recovery_store_context import log_store_context_mismatch
-
-        log_store_context_mismatch(
-            recovery_key=rk_raw,
-            canonical_store_slug=rk_merchant,
-            hint_store_slug=hint,
-        )
-    slug_eff = rk_merchant or hint
+    slug_eff = _coerce_recovery_runtime_store_slug(rk_raw, hint) if (rk_raw or hint) else ""
     if slug_eff:
         exact = _store_row_by_zid_store_id_exact(
             slug_eff, allow_schema_warm=allow_schema_warm
@@ -9141,11 +9166,19 @@ async def handle_cart_abandoned(
     print("[HANDLE CART ABANDONED ENTERED]")
     store_slug = _normalize_store_slug(payload)
     recovery_key = _recovery_key_from_payload(payload)
+    from services.recovery_store_context import reconcile_recovery_identity  # noqa: PLC0415
+
+    session_id_log_pre = _session_part_from_payload(payload)
+    recovery_key, store_slug, session_id_log_pre = reconcile_recovery_identity(
+        recovery_key=recovery_key,
+        store_slug=store_slug,
+        session_id=session_id_log_pre,
+    )
     store_slug = _coerce_recovery_runtime_store_slug(recovery_key, store_slug)
     print("store:", store_slug)
     payload = _ensure_cart_abandon_payload_has_cart_id(payload, recovery_key)
     print("recovery key:", recovery_key)
-    session_id_log = _session_part_from_payload(payload)
+    session_id_log = session_id_log_pre or _session_part_from_payload(payload)
     print("[SESSION]", session_id_log)
     cart_id_log = _cart_id_str_from_payload(payload)
     _inject_cf_test_customer_phone_into_abandon_payload(payload)

@@ -106,31 +106,41 @@ async def dispatch_recovery_schedule(
 
     scoped_db_session_begin()
     src = (source or "unknown").strip()[:64]
-    sid = int(schedule_id)
+    sched_id = int(schedule_id)
     out: Dict[str, Any] = {
         "ok": False,
-        "schedule_id": sid,
+        "schedule_id": sched_id,
         "source": src,
         "reason": "",
     }
     exc_detail = ""
     try:
-        row = resolve_recovery_schedule_row(schedule_id=sid)
+        row = resolve_recovery_schedule_row(schedule_id=sched_id)
         if row is None:
             out["reason"] = "schedule_row_missing"
             _log_dispatch(
                 "SKIPPED",
-                schedule_id=sid,
+                schedule_id=sched_id,
                 source=src,
                 detail=out["reason"],
             )
             return out
 
-        rk = row.recovery_key
+        schedule_rk_raw = (row.recovery_key or "").strip()
+        ctx = load_context(row)
+        rc = dict(ctx.get("recovery_context") or {})
+        ctx_rk_raw = (str(rc.get("recovery_key") or "")).strip()
+        from services.recovery_restart_survival import (  # noqa: PLC0415
+            reconcile_schedule_row_identity,
+        )
+
+        rk, slug, sess_id = reconcile_schedule_row_identity(
+            row, source_function="dispatch_recovery_schedule"
+        )
         out["recovery_key"] = rk
         _log_dispatch(
             "REQUEST",
-            schedule_id=sid,
+            schedule_id=sched_id,
             source=src,
             recovery_key=rk,
             run_at=_coerce_run_at(run_at) if row.due_at is None else row.due_at,
@@ -140,7 +150,7 @@ async def dispatch_recovery_schedule(
             out["reason"] = f"already_terminal:{row.status}"
             _log_dispatch(
                 "SKIPPED",
-                schedule_id=sid,
+                schedule_id=sched_id,
                 source=src,
                 recovery_key=rk,
                 detail=out["reason"],
@@ -151,7 +161,7 @@ async def dispatch_recovery_schedule(
             out["reason"] = f"not_scheduled:{row.status}"
             _log_dispatch(
                 "SKIPPED",
-                schedule_id=sid,
+                schedule_id=sched_id,
                 source=src,
                 recovery_key=rk,
                 detail=out["reason"],
@@ -167,7 +177,6 @@ async def dispatch_recovery_schedule(
         now = datetime.now(timezone.utc)
         wait_seconds = max(0.0, (due_at - now).total_seconds())
 
-        ctx = load_context(row)
         rc = dict(ctx.get("recovery_context") or {})
         sched_timing = timing_from_recovery_context(rc)
         if sched_timing is None and ctx.get("schedule_timing"):
@@ -200,7 +209,7 @@ async def dispatch_recovery_schedule(
 
         _log_dispatch(
             "SCHEDULED",
-            schedule_id=sid,
+            schedule_id=sched_id,
             source=src,
             recovery_key=rk,
             run_at=due_at,
@@ -210,9 +219,19 @@ async def dispatch_recovery_schedule(
         try:
             from main import _note_recovery_delay_waiting_started  # noqa: PLC0415
 
-            _note_recovery_delay_waiting_started(rk)
-        except Exception:  # noqa: BLE001
-            pass
+            _note_recovery_delay_waiting_started(
+                rk,
+                dashboard_store=slug,
+                schedule_recovery_key=schedule_rk_raw,
+                ctx_recovery_key=ctx_rk_raw,
+                derived_store_slug=slug,
+                source_function="dispatch_recovery_schedule",
+                store_slug=slug,
+                session_id=sess_id,
+                recovery_context=rc,
+            )
+        except Exception as exc:  # noqa: BLE001
+            _log.warning("delay_started hook: %s", exc)
 
         print("[DELAY WAITING]")
         await release_db_before_async_wait()
@@ -225,14 +244,14 @@ async def dispatch_recovery_schedule(
         print("[DELAY FINISHED]")
         _log_dispatch(
             "DUE",
-            schedule_id=sid,
+            schedule_id=sched_id,
             source=src,
             recovery_key=rk,
             run_at=due_at,
         )
 
         exec_out = await execute_recovery_schedule(
-            schedule_id=sid,
+            schedule_id=sched_id,
             source=src,
         )
         out["execution"] = exec_out
@@ -248,7 +267,7 @@ async def dispatch_recovery_schedule(
         out["error"] = exc_detail
         _log_dispatch(
             "FAILED",
-            schedule_id=sid,
+            schedule_id=sched_id,
             source=src,
             detail=exc_detail,
         )
@@ -257,7 +276,7 @@ async def dispatch_recovery_schedule(
         if exc_detail == "cancelled":
             _log_dispatch(
                 "FAILED",
-                schedule_id=sid,
+                schedule_id=sched_id,
                 source=src,
                 detail=exc_detail,
             )
