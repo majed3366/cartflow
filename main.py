@@ -15113,6 +15113,58 @@ def api_dashboard_recovery_message_truth_debug(
         )
 
 
+@app.get("/api/debug/cart-presence")
+def api_debug_cart_presence(
+    recovery_key: str = Query("", max_length=512),
+    lifecycle: str = Query("active", max_length=32),
+    limit: int = Query(50, ge=1, le=250),
+    offset: int = Query(0, ge=0),
+):
+    """
+    Trace which pipeline stage excludes a cart from GET /api/dashboard/normal-carts.
+    Read-only — no UI side effects.
+    """
+    wall0 = time.perf_counter()
+    try:
+        from services.merchant_cart_presence_trace_v1 import (  # noqa: PLC0415
+            trace_merchant_cart_presence,
+        )
+
+        _merchant_dashboard_db_ready()
+        rk = (recovery_key or "").strip()
+        if not rk:
+            return j({"ok": False, "error": "recovery_key_required"}, 400)
+        dash_store = _dashboard_recovery_store_row()
+        body = trace_merchant_cart_presence(
+            rk,
+            dash_store=dash_store,
+            page_limit=int(limit),
+            page_offset=int(offset),
+            lifecycle=(lifecycle or "active").strip().lower(),
+        )
+        flags = {
+            k: body[k]
+            for k in (
+                "candidate",
+                "augmented",
+                "grouped",
+                "picked",
+                "classified",
+                "returned_in_api",
+            )
+            if k in body
+        }
+        return j({"ok": True, **flags, **body})
+    except Exception as e:  # noqa: BLE001
+        db.session.rollback()
+        log.warning("api_debug_cart_presence: %s", e)
+        return j({"ok": False, "error": "failed"}, 500)
+    finally:
+        _log_dashboard_section_profile(
+            section="cart_presence_debug", wall_perf_start=wall0
+        )
+
+
 @app.get("/api/debug/recovery-trace")
 def api_debug_recovery_trace(
     recovery_key: str = Query("", max_length=512),
