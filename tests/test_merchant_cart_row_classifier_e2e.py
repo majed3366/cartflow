@@ -35,8 +35,11 @@ from services.merchant_cart_row_classifier import (  # noqa: E402
     UI_FILTER_RECOVERED,
     UI_FILTER_SENT,
     UI_FILTER_WAITING,
+    cart_tab_to_filter_mode,
     classify_merchant_cart_row,
     merchant_cart_filter_counts_from_rows,
+    merchant_cart_row_matches_filter,
+    merchant_cart_rows_matching_filter,
 )
 
 
@@ -145,6 +148,89 @@ class MerchantCartRowClassifierUnitTests(unittest.TestCase):
         )
         self.assertEqual(cl.primary_bucket, PRIMARY_NO_PHONE)
         self.assertIn(UI_FILTER_NOPHONE, cl.visible_tabs)
+
+
+class MerchantCartTabFilterE2ETests(unittest.TestCase):
+    """Tab URL modes must show only rows matching classifier buckets (same as counts)."""
+
+    def _row(self, **kwargs) -> dict:
+        cl = classify_merchant_cart_row(**kwargs)
+        return cl.to_payload_fields()
+
+    def test_tab_waiting_sent_attention_only_matching_rows(self) -> None:
+        waiting = self._row(
+            has_phone=True,
+            sent_count=0,
+            log_statuses=frozenset(),
+            coarse="pending",
+            phase_key="pending_send",
+        )
+        sent = self._row(
+            has_phone=True,
+            sent_count=1,
+            log_statuses=frozenset({"mock_sent"}),
+            coarse="sent",
+            phase_key="first_message_sent",
+        )
+        followup = self._row(
+            has_phone=True,
+            sent_count=1,
+            log_statuses=frozenset({"mock_sent", "whatsapp_failed"}),
+            coarse="blocked",
+            phase_key="pending_send",
+        )
+        rows = [waiting, sent, followup]
+
+        self.assertEqual(waiting["merchant_cart_primary_bucket"], PRIMARY_WAITING)
+        self.assertEqual(sent["merchant_cart_primary_bucket"], PRIMARY_SENT)
+        self.assertEqual(followup["merchant_cart_primary_bucket"], PRIMARY_NEEDS_FOLLOWUP)
+
+        w_mode = cart_tab_to_filter_mode("waiting")
+        s_mode = cart_tab_to_filter_mode("sent")
+        a_mode = cart_tab_to_filter_mode("attention")
+
+        self.assertEqual(w_mode, UI_FILTER_WAITING)
+        self.assertEqual(s_mode, UI_FILTER_SENT)
+        self.assertEqual(a_mode, UI_FILTER_ATTENTION)
+
+        w_visible = merchant_cart_rows_matching_filter(rows, w_mode)
+        s_visible = merchant_cart_rows_matching_filter(rows, s_mode)
+        a_visible = merchant_cart_rows_matching_filter(rows, a_mode)
+
+        self.assertEqual(len(w_visible), 1)
+        self.assertEqual(w_visible[0]["merchant_cart_primary_bucket"], PRIMARY_WAITING)
+        self.assertFalse(merchant_cart_row_matches_filter(sent, w_mode))
+        self.assertFalse(merchant_cart_row_matches_filter(followup, w_mode))
+
+        self.assertEqual(len(s_visible), 1)
+        self.assertEqual(s_visible[0]["merchant_cart_primary_bucket"], PRIMARY_SENT)
+        self.assertFalse(merchant_cart_row_matches_filter(waiting, s_mode))
+
+        self.assertEqual(len(a_visible), 1)
+        self.assertEqual(
+            a_visible[0]["merchant_cart_primary_bucket"], PRIMARY_NEEDS_FOLLOWUP
+        )
+        self.assertFalse(merchant_cart_row_matches_filter(waiting, a_mode))
+        self.assertFalse(merchant_cart_row_matches_filter(sent, a_mode))
+
+        fc = merchant_cart_filter_counts_from_rows(rows)
+        self.assertEqual(len(merchant_cart_rows_matching_filter(rows, w_mode)), fc[w_mode])
+        self.assertEqual(len(merchant_cart_rows_matching_filter(rows, s_mode)), fc[s_mode])
+        self.assertEqual(len(merchant_cart_rows_matching_filter(rows, a_mode)), fc[a_mode])
+
+    def test_sidebar_intervention_maps_to_attention_filter(self) -> None:
+        row = self._row(
+            has_phone=True,
+            sent_count=1,
+            log_statuses=frozenset({"whatsapp_failed"}),
+            coarse="blocked",
+        )
+        self.assertTrue(
+            merchant_cart_row_matches_filter(row, cart_tab_to_filter_mode("intervention"))
+        )
+        self.assertFalse(
+            merchant_cart_row_matches_filter(row, cart_tab_to_filter_mode("waiting"))
+        )
 
 
 class MerchantCartRowClassifierApiE2ETests(unittest.TestCase):

@@ -407,3 +407,66 @@ def merchant_nav_badge_active_cart_count(rows: list[dict[str, Any]]) -> int:
         if row.get("merchant_cart_is_active", True):
             n += 1
     return n
+
+
+def merchant_nav_badge_waiting_count(rows: list[dict[str, Any]]) -> int:
+    """Sidebar «بانتظار الإرسال» badge = waiting primary_bucket rows only."""
+    return sum(
+        1
+        for row in rows
+        if str(row.get("merchant_cart_primary_bucket") or "").strip().lower()
+        == PRIMARY_WAITING
+    )
+
+
+# Hash ?tab= values (sidebar / URL) → filter-bar / row attribute mode.
+CART_TAB_URL_TO_FILTER_MODE: dict[str, str] = {
+    "all": UI_FILTER_ALL,
+    "waiting": UI_FILTER_WAITING,
+    "sent": UI_FILTER_SENT,
+    "intervention": UI_FILTER_ATTENTION,
+    "attention": UI_FILTER_ATTENTION,
+    "followup": UI_FILTER_ATTENTION,
+    "completed": UI_FILTER_RECOVERED,
+    "recovered": UI_FILTER_RECOVERED,
+    "nophone": UI_FILTER_NOPHONE,
+    "no_phone": UI_FILTER_NOPHONE,
+}
+
+
+def cart_tab_to_filter_mode(cart_tab: Optional[str]) -> str:
+    """Map dashboard cart tab (URL or sidebar) to classifier filter mode."""
+    key = (cart_tab or UI_FILTER_ALL).strip().lower()
+    return CART_TAB_URL_TO_FILTER_MODE.get(key, key)
+
+
+def merchant_cart_row_matches_filter(
+    row: Mapping[str, Any],
+    filter_mode: str,
+) -> bool:
+    """
+    Whether a row is visible for a cart tab / filter-bar mode.
+    Uses primary_bucket first, then visible_tabs (same rules as JS filter).
+    """
+    mode = (filter_mode or UI_FILTER_ALL).strip().lower()
+    if mode == UI_FILTER_ALL:
+        return True
+    primary = str(row.get("merchant_cart_primary_bucket") or "").strip().lower()
+    if primary and primary == mode:
+        return True
+    ui_bucket = str(row.get("merchant_cart_bucket") or "").strip().lower()
+    if ui_bucket and ui_bucket == mode:
+        return True
+    tabs = row.get("merchant_cart_visible_tabs") or []
+    if isinstance(tabs, (list, tuple)):
+        for tab in tabs:
+            if str(tab or "").strip().lower() == mode:
+                return True
+    return False
+
+
+def merchant_cart_rows_matching_filter(
+    rows: list[dict[str, Any]],
+    filter_mode: str,
+) -> list[dict[str, Any]]:
+    return [r for r in rows if merchant_cart_row_matches_filter(r, filter_mode)]

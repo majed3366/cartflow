@@ -12311,9 +12311,13 @@ def _normal_carts_dashboard_stats(dash_store: Optional[Any] = None) -> dict[str,
             )
             from services.merchant_cart_row_classifier import (  # noqa: PLC0415
                 merchant_nav_badge_active_cart_count,
+                merchant_nav_badge_waiting_count,
             )
 
             out["normal_cart_count"] = merchant_nav_badge_active_cart_count(
+                visible_rows
+            )
+            out["merchant_nav_badge_waiting"] = merchant_nav_badge_waiting_count(
                 visible_rows
             )
         except (SQLAlchemyError, OSError, TypeError, ValueError):
@@ -15615,7 +15619,9 @@ def _api_json_dashboard_summary(
         ),
         "merchant_month_recovery_pct_fmt": f"{rec_pct_m:.1f}",
         "merchant_month_revenue_fmt": _merchant_dashboard_fmt_int(rev_month),
-        "merchant_nav_badge_abandoned": int(mstats.get("normal_cart_count") or 0),
+        "merchant_nav_badge_abandoned": int(
+            mstats.get("merchant_nav_badge_waiting") or mstats.get("normal_cart_count") or 0
+        ),
         "merchant_nav_badge_followup": 0,
         "merchant_nav_badge_vip": 0,
         "merchant_setup_experience": merchant_setup_experience,

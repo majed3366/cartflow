@@ -128,12 +128,43 @@
     return { page: page, cartTab: cartTab };
   }
 
+  function rowMatchesCartFilterMode(tr, mode) {
+    var m = (mode || "all").trim().toLowerCase();
+    if (m === "all") return true;
+    var primary = (tr.getAttribute("data-ma-primary-bucket") || "").trim().toLowerCase();
+    if (primary && primary === m) return true;
+    var ui = (tr.getAttribute("data-ma-filter") || "").trim().toLowerCase();
+    if (ui && ui === m) return true;
+    var tabsRaw = tr.getAttribute("data-ma-visible-tabs") || "";
+    if (tabsRaw) {
+      try {
+        var tabs = JSON.parse(tabsRaw);
+        if (Array.isArray(tabs)) {
+          for (var i = 0; i < tabs.length; i++) {
+            if (String(tabs[i] || "").trim().toLowerCase() === m) return true;
+          }
+        }
+      } catch (e) {
+        /* ignore */
+      }
+    }
+    return false;
+  }
+
+  function cartTabToFilterMode(cartTab) {
+    var t = (cartTab || "all").trim().toLowerCase();
+    if (t === "intervention" || t === "followup") return "attention";
+    if (t === "completed") return "recovered";
+    if (t === "no_phone") return "nophone";
+    return t;
+  }
+
   function applyCartFilterMode(mode) {
     var tbody = document.querySelector("#page-carts tbody");
     if (!tbody) return;
+    var m = cartTabToFilterMode(mode);
     tbody.querySelectorAll("tr[data-ma-filter]").forEach(function (tr) {
-      var b = tr.getAttribute("data-ma-filter") || "other";
-      var show = mode === "all" || b === mode;
+      var show = rowMatchesCartFilterMode(tr, m);
       tr.style.display = show ? "" : "none";
     });
   }
@@ -265,14 +296,14 @@
   }
 
   function applyCartTabFilters(cartTab) {
-    if (cartTab === "all" || cartTab === "waiting") {
-      applyCartFilterMode("all");
-      var bar = document.querySelector("#page-carts .filter-bar");
-      if (bar) {
-        bar.querySelectorAll(".filter-btn").forEach(function (b) {
-          b.classList.toggle("active", b.getAttribute("data-filter") === "all");
-        });
-      }
+    var mode = cartTabToFilterMode(cartTab);
+    applyCartFilterMode(mode);
+    var bar = document.querySelector("#page-carts .filter-bar");
+    if (bar) {
+      bar.querySelectorAll(".filter-btn").forEach(function (b) {
+        var f = (b.getAttribute("data-filter") || "").trim().toLowerCase();
+        b.classList.toggle("active", f === mode);
+      });
     }
   }
 
@@ -360,6 +391,8 @@
     }
     goTo("home");
   };
+
+  window.applyCartTabFilters = applyCartTabFilters;
 
   window.merchantAppReinitCartFilters = function () {
     var bar = document.querySelector("#page-carts .filter-bar");

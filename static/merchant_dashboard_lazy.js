@@ -1475,10 +1475,21 @@
       ? '<span class="ph-ok">✓</span>'
       : '<span class="ph-no">✗</span>';
     var b = esc(mc.merchant_cart_bucket || "other");
+    var primary = esc(mc.merchant_cart_primary_bucket || b);
+    var tabsJson = "[]";
+    try {
+      tabsJson = esc(JSON.stringify(mc.merchant_cart_visible_tabs || []));
+    } catch (eTabs) {
+      tabsJson = "[]";
+    }
     var urg = mc.merchant_next_action_urgent ? " urgent" : "";
     return (
       '<tr data-ma-filter="' +
       b +
+      '" data-ma-primary-bucket="' +
+      primary +
+      '" data-ma-visible-tabs="' +
+      tabsJson +
       '">' +
       "<td><div class=\"camt\">" +
       v.toLocaleString("en-US") +
@@ -1545,6 +1556,15 @@
     sf("nophone", "ma-filt-nophone");
     if (window.merchantAppReinitCartFilters) {
       window.merchantAppReinitCartFilters();
+    }
+    try {
+      var hashQs = (location.hash || "").split("?")[1] || "";
+      var tab = new URLSearchParams(hashQs).get("tab");
+      if (tab && typeof window.applyCartTabFilters === "function") {
+        window.applyCartTabFilters(tab);
+      }
+    } catch (eHash) {
+      /* ignore */
     }
   }
 
