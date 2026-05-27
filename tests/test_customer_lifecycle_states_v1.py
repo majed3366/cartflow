@@ -19,6 +19,8 @@ from schema_recovery_truth_timeline import (
 from services.customer_lifecycle_states_v1 import (
     STATE_ARCHIVED,
     STATE_CUSTOMER_ENGAGED,
+    STATE_CUSTOMER_REPLY,
+    STATE_RETURN_TO_SITE,
     STATE_WAITING_CUSTOMER_REPLY,
     STATE_WAITING_NEXT_SCHEDULED,
     classify_customer_lifecycle_state_v1,
@@ -90,7 +92,57 @@ class CustomerLifecycleStatesV1Tests(unittest.TestCase):
         )
         self.assertEqual(lc.state_key, STATE_CUSTOMER_ENGAGED)
         self.assertIn("تفاعل العميل", lc.label_ar)
+        self.assertIn("متابعة", lc.label_ar)
         self.assertNotIn("بانتظار تفاعل العميل", lc.label_ar)
+
+    def test_customer_reply_without_continuation_is_reply_only(self) -> None:
+        rk = f"demo:lc-reply-only-{self._suffix}"
+        record_recovery_truth_event(
+            recovery_key=rk,
+            status=STATUS_PROVIDER_SENT,
+            source="test",
+            store_slug="demo",
+        )
+        record_recovery_truth_event(
+            recovery_key=rk,
+            status=STATUS_CUSTOMER_REPLY,
+            source="test",
+            store_slug="demo",
+        )
+        lc = classify_customer_lifecycle_state_v1(
+            recovery_key=rk,
+            sent_count=1,
+            attempt_cap=2,
+            log_statuses=frozenset({"mock_sent"}),
+            coarse="replied",
+            behavioral={"customer_replied": True},
+        )
+        self.assertEqual(lc.state_key, STATE_CUSTOMER_REPLY)
+        self.assertEqual(lc.label_ar, "رد العميل")
+        self.assertNotIn("تفاعل العميل", lc.label_ar)
+
+    def test_return_to_site_not_customer_engaged(self) -> None:
+        rk = f"demo:lc-return-{self._suffix}"
+        record_recovery_truth_event(
+            recovery_key=rk,
+            status=STATUS_PROVIDER_SENT,
+            source="test",
+            store_slug="demo",
+        )
+        lc = classify_customer_lifecycle_state_v1(
+            recovery_key=rk,
+            phase_key="customer_returned",
+            coarse="returned",
+            sent_count=1,
+            attempt_cap=2,
+            log_statuses=frozenset({"mock_sent", "returned_to_site"}),
+            behavioral={"customer_returned_to_site": True},
+        )
+        self.assertEqual(lc.state_key, STATE_RETURN_TO_SITE)
+        self.assertIn("عاد العميل للموقع", lc.label_ar)
+        self.assertNotIn("تفاعل العميل", lc.label_ar)
+        self.assertNotIn("أرسل النظام متابعة", lc.system_did_ar)
+        self.assertEqual(lc.what_happened_ar, "عاد العميل للموقع.")
 
     def test_ignored_with_future_schedule_waiting_next(self) -> None:
         rk = f"demo:lc-ign-{self._suffix}"

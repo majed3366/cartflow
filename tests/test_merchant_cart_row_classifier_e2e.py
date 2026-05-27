@@ -25,12 +25,16 @@ from models import AbandonedCart, CartRecoveryLog, Store  # noqa: E402
 from schema_recovery_message_context import ensure_recovery_message_context_schema  # noqa: E402
 from services.merchant_cart_row_classifier import (  # noqa: E402
     CUSTOMER_ENGAGED_CONTINUATION_LABEL_AR,
+    CUSTOMER_REPLY_LABEL_AR,
     PRIMARY_CUSTOMER_ENGAGED,
+    PRIMARY_CUSTOMER_REPLY,
     PRIMARY_NEEDS_FOLLOWUP,
     PRIMARY_NO_PHONE,
     PRIMARY_RECOVERED,
+    PRIMARY_RETURN_TO_SITE,
     PRIMARY_SENT,
     PRIMARY_WAITING,
+    RETURN_TO_SITE_LABEL_AR,
     SENT_STATUS_LABEL_AR,
     UI_FILTER_ALL,
     UI_FILTER_ATTENTION,
@@ -100,18 +104,45 @@ class MerchantCartRowClassifierUnitTests(unittest.TestCase):
         self.assertIn(UI_FILTER_SENT, cl.visible_tabs)
         self.assertIn(UI_FILTER_ALL, cl.visible_tabs)
 
-    def test_c_sent_with_customer_reply_uses_customer_engaged_bucket(self) -> None:
+    def test_c_sent_with_customer_reply_uses_customer_reply_bucket(self) -> None:
+        rk = f"demo:cl-reply-{uuid.uuid4().hex[:8]}"
+        record_recovery_truth_event(
+            recovery_key=rk,
+            status=STATUS_PROVIDER_SENT,
+            source="test",
+            store_slug="demo",
+        )
+        record_recovery_truth_event(
+            recovery_key=rk,
+            status=STATUS_CUSTOMER_REPLY,
+            source="test",
+            store_slug="demo",
+        )
         cl = classify_merchant_cart_row(
             has_phone=True,
             sent_count=1,
             log_statuses=frozenset({"mock_sent"}),
-            coarse="replied",
-            phase_key="behavioral_replied",
-            behavioral={"customer_replied": True},
+            coarse="sent",
+            phase_key="first_message_sent",
+            recovery_key=rk,
         )
-        self.assertEqual(cl.primary_bucket, PRIMARY_CUSTOMER_ENGAGED)
-        self.assertNotEqual(cl.merchant_status_label_ar, SENT_STATUS_LABEL_AR)
+        self.assertEqual(cl.primary_bucket, PRIMARY_CUSTOMER_REPLY)
+        self.assertEqual(cl.merchant_status_label_ar, CUSTOMER_REPLY_LABEL_AR)
         self.assertIn(UI_FILTER_ATTENTION, cl.visible_tabs)
+
+    def test_return_to_site_not_customer_engaged_bucket(self) -> None:
+        cl = classify_merchant_cart_row(
+            has_phone=True,
+            sent_count=1,
+            log_statuses=frozenset({"mock_sent", "returned_to_site"}),
+            coarse="returned",
+            phase_key="customer_returned",
+            behavioral={"customer_returned_to_site": True},
+        )
+        self.assertEqual(cl.primary_bucket, PRIMARY_RETURN_TO_SITE)
+        self.assertEqual(cl.merchant_status_label_ar, RETURN_TO_SITE_LABEL_AR)
+        self.assertIn(UI_FILTER_SENT, cl.visible_tabs)
+        self.assertNotIn("تفاعل العميل", cl.merchant_status_label_ar)
 
     def test_timeline_reply_and_continuation_aligns_all_tab_label(self) -> None:
         rk = f"demo:tl-class-{uuid.uuid4().hex[:8]}"
@@ -281,12 +312,31 @@ class MerchantCartTabFilterE2ETests(unittest.TestCase):
         self.assertEqual(merchant_nav_badge_waiting_count(rows), len(w_visible))
 
     def test_customer_engaged_row_in_attention_tab(self) -> None:
+        rk = f"demo:cl-eng-{uuid.uuid4().hex[:8]}"
+        record_recovery_truth_event(
+            recovery_key=rk,
+            status=STATUS_PROVIDER_SENT,
+            source="test",
+            store_slug="demo",
+        )
+        record_recovery_truth_event(
+            recovery_key=rk,
+            status=STATUS_CUSTOMER_REPLY,
+            source="test",
+            store_slug="demo",
+        )
+        record_recovery_truth_event(
+            recovery_key=rk,
+            status=STATUS_CONTINUATION_STARTED,
+            source="test",
+            store_slug="demo",
+        )
         engaged = self._row(
             has_phone=True,
             sent_count=1,
             log_statuses=frozenset({"mock_sent"}),
-            coarse="replied",
-            behavioral={"customer_replied": True},
+            coarse="sent",
+            recovery_key=rk,
         )
         self.assertEqual(engaged["merchant_cart_primary_bucket"], PRIMARY_CUSTOMER_ENGAGED)
         self.assertTrue(

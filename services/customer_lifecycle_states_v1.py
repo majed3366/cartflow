@@ -18,6 +18,8 @@ STATE_ACTIVE = "active"
 STATE_WAITING_FIRST_SEND = "waiting_first_send"
 STATE_WAITING_CUSTOMER_REPLY = "waiting_customer_reply"
 STATE_CUSTOMER_ENGAGED = "customer_engaged"
+STATE_CUSTOMER_REPLY = "customer_reply"
+STATE_RETURN_TO_SITE = "return_to_site"
 STATE_WAITING_NEXT_SCHEDULED = "waiting_next_scheduled"
 STATE_NEEDS_INTERVENTION = "needs_intervention"
 STATE_COMPLETED = "completed"
@@ -27,7 +29,9 @@ LABEL_AR: dict[str, str] = {
     STATE_ACTIVE: "السلة نشطة",
     STATE_WAITING_FIRST_SEND: "بانتظار الإرسال",
     STATE_WAITING_CUSTOMER_REPLY: "بانتظار تفاعل العميل",
+    STATE_CUSTOMER_REPLY: "رد العميل",
     STATE_CUSTOMER_ENGAGED: "تفاعل العميل — أرسل النظام متابعة",
+    STATE_RETURN_TO_SITE: "عاد العميل للموقع — نراقب هل يكمل الطلب",
     STATE_WAITING_NEXT_SCHEDULED: "بانتظار المتابعة التالية",
     STATE_NEEDS_INTERVENTION: "تحتاج تدخل",
     STATE_COMPLETED: "تمت الاستعادة",
@@ -38,7 +42,9 @@ ROW_CLASS: dict[str, str] = {
     STATE_ACTIVE: "s-waiting",
     STATE_WAITING_FIRST_SEND: "s-waiting",
     STATE_WAITING_CUSTOMER_REPLY: "s-sent",
+    STATE_CUSTOMER_REPLY: "s-attention",
     STATE_CUSTOMER_ENGAGED: "s-attention",
+    STATE_RETURN_TO_SITE: "s-sent",
     STATE_WAITING_NEXT_SCHEDULED: "s-sent",
     STATE_NEEDS_INTERVENTION: "s-attention",
     STATE_COMPLETED: "s-recovered",
@@ -57,6 +63,7 @@ INTERVENTION_LOG = frozenset(
     }
 )
 EXHAUSTED_LOG = frozenset({"skipped_attempt_limit", "skipped_reason_template_disabled"})
+RETURN_TO_SITE_LOG = frozenset({"returned_to_site", "user_returned"})
 
 
 @dataclass(frozen=True)
@@ -208,17 +215,40 @@ def _provider_sent(
         return bool(sent_count >= 1 or log_ss & SENT_LOG)
 
 
-def _customer_replied(
+def _customer_replied(recovery_key: str) -> bool:
+    """WhatsApp/webhook reply only — canonical timeline ``customer_reply``."""
+    rk = (recovery_key or "").strip()
+    if not rk:
+        return False
+    try:
+        from services.recovery_truth_timeline_v1 import customer_reply_proven
+
+        return customer_reply_proven(rk)
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def _return_to_site_detected(
+    *,
     recovery_key: str,
-    behavioral: Mapping[str, Any],
+    phase_key: str,
     coarse: str,
+    log_ss: frozenset[str],
+    behavioral: Mapping[str, Any],
 ) -> bool:
-    tl = _timeline_flags(recovery_key)
-    if tl["customer_reply"]:
+    if _customer_replied(recovery_key):
+        return False
+    pk = (phase_key or "").strip()
+    cnorm = _norm(coarse)
+    if pk == "customer_returned" or cnorm == "returned":
         return True
-    if behavioral.get("customer_replied") is True:
+    if log_ss & RETURN_TO_SITE_LOG:
         return True
-    return _norm(coarse) in ("replied", "engaged", "clicked")
+    if behavioral.get("customer_returned_to_site") is True:
+        return True
+    if behavioral.get("user_returned_to_site") is True:
+        return True
+    return False
 
 
 def _templates_exhausted(
@@ -352,17 +382,41 @@ def classify_customer_lifecycle_state_v1(
             dashboard_action="archive",
         )
 
-    replied = _customer_replied(rk, bh, cnorm)
+    replied = _customer_replied(rk)
     sent_proven = _provider_sent(rk, log_ss, sent_n)
 
-    if replied and sent_proven:
+    if replied and sent_proven and tl["continuation_started"]:
         return _pack(
             STATE_CUSTOMER_ENGAGED,
             what_happened="ردّ العميل بعد رسالة الاسترجاع.",
-            system_did="أرسل النظام متابعة الاعتراض تلقائياً."
-            if tl["continuation_started"]
-            else "يتابع النظام مسار التفاعل تلقائياً.",
+            system_did="أرسل النظام متابعة الاعتراض تلقائياً.",
             what_next="لا حاجة لرسائل إرسال إضافية — المتابعة آلية.",
+            merchant_needed="لا",
+            dashboard_action="archive",
+        )
+
+    if replied and sent_proven:
+        return _pack(
+            STATE_CUSTOMER_REPLY,
+            what_happened="ردّ العميل على رسالة الاسترجاع.",
+            system_did="سجّلنا الرد — المتابعة التلقائية تبدأ عند الحاجة.",
+            what_next="نراقب هل يكمّل الطلب أو يرد مرة أخرى.",
+            merchant_needed="لا",
+            dashboard_action="archive",
+        )
+
+    if _return_to_site_detected(
+        recovery_key=rk,
+        phase_key=pk,
+        coarse=cnorm,
+        log_ss=log_ss,
+        behavioral=bh,
+    ):
+        return _pack(
+            STATE_RETURN_TO_SITE,
+            what_happened="عاد العميل للموقع.",
+            system_did="أوقف أو علّق المتابعة مؤقتًا حتى لا يزعج العميل.",
+            what_next="ننتظر هل يكمل الطلب أو يغادر.",
             merchant_needed="لا",
             dashboard_action="archive",
         )
@@ -512,6 +566,8 @@ __all__ = [
     "STATE_ARCHIVED",
     "STATE_COMPLETED",
     "STATE_CUSTOMER_ENGAGED",
+    "STATE_CUSTOMER_REPLY",
+    "STATE_RETURN_TO_SITE",
     "STATE_NEEDS_INTERVENTION",
     "STATE_WAITING_CUSTOMER_REPLY",
     "STATE_WAITING_FIRST_SEND",
