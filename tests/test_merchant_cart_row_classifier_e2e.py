@@ -455,8 +455,6 @@ class MerchantCartRowClassifierApiE2ETests(unittest.TestCase):
         fc = merchant_cart_filter_counts_from_rows(rows)
         self.assertEqual(len(rows), 1)
         row = rows[0]
-        self.assertEqual(row.get("merchant_cart_primary_bucket"), PRIMARY_SENT)
-        self.assertEqual(row.get("merchant_cart_bucket"), UI_FILTER_SENT)
         lbl = row.get("merchant_status_label_ar") or ""
         lc_state = row.get("customer_lifecycle_state") or ""
         self.assertIn(
@@ -464,16 +462,26 @@ class MerchantCartRowClassifierApiE2ETests(unittest.TestCase):
             (STATE_WAITING_CUSTOMER_REPLY, STATE_ARCHIVED),
         )
         if lc_state == STATE_WAITING_CUSTOMER_REPLY:
+            self.assertEqual(row.get("merchant_cart_primary_bucket"), PRIMARY_SENT)
+            self.assertEqual(row.get("merchant_cart_bucket"), UI_FILTER_SENT)
             self.assertEqual(lbl, LABEL_AR[STATE_WAITING_CUSTOMER_REPLY])
         else:
+            self.assertEqual(row.get("merchant_cart_primary_bucket"), "archived")
+            self.assertEqual(row.get("merchant_cart_bucket"), "archived")
             self.assertEqual(lbl, LABEL_AR[STATE_ARCHIVED])
         self.assertNotIn("جارٍ المتابعة", lbl)
 
-        self.assertGreaterEqual(int(fc.get(UI_FILTER_SENT) or 0), 1)
+        if lc_state == STATE_WAITING_CUSTOMER_REPLY:
+            self.assertGreaterEqual(int(fc.get(UI_FILTER_SENT) or 0), 1)
+        else:
+            self.assertEqual(int(fc.get(UI_FILTER_SENT) or 0), 0)
         self._assert_tab_counts_match_rows(rows, fc)
 
-        self.assertGreaterEqual(int(stats.get("normal_cart_count") or 0), 1)
-        self.assertEqual(int(stats.get("normal_cart_count") or 0), len(rows))
+        if lc_state == STATE_WAITING_CUSTOMER_REPLY:
+            self.assertGreaterEqual(int(stats.get("normal_cart_count") or 0), 1)
+            self.assertEqual(int(stats.get("normal_cart_count") or 0), len(rows))
+        else:
+            self.assertEqual(int(stats.get("normal_cart_count") or 0), 0)
         self.assertEqual(int(stats.get("merchant_nav_badge_waiting") or 0), 0)
         self.assertEqual(int(fc.get(UI_FILTER_WAITING) or 0), 0)
         self.assertGreaterEqual(len(msgs.get("merchant_message_history_rows") or []), 1)

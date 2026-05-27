@@ -65,6 +65,24 @@ INTERVENTION_LOG = frozenset(
 EXHAUSTED_LOG = frozenset({"skipped_attempt_limit", "skipped_reason_template_disabled"})
 RETURN_TO_SITE_LOG = frozenset({"returned_to_site", "user_returned"})
 
+UI_FILTER_ALL = "all"
+UI_FILTER_SENT = "sent"
+UI_FILTER_ATTENTION = "attention"
+UI_FILTER_RECOVERED = "recovered"
+UI_FILTER_NOPHONE = "nophone"
+UI_FILTER_WAITING = "waiting"
+UI_FILTER_ARCHIVED = "archived"
+
+PRIMARY_WAITING = "waiting"
+PRIMARY_SENT = "sent"
+PRIMARY_NEEDS_FOLLOWUP = "needs_followup"
+PRIMARY_CUSTOMER_ENGAGED = "customer_engaged"
+PRIMARY_CUSTOMER_REPLY = "customer_reply"
+PRIMARY_RETURN_TO_SITE = "return_to_site"
+PRIMARY_RECOVERED = "recovered"
+PRIMARY_NO_PHONE = "no_phone"
+PRIMARY_ARCHIVED = "archived"
+
 
 @dataclass(frozen=True)
 class CustomerLifecycleStateV1:
@@ -94,6 +112,114 @@ class CustomerLifecycleStateV1:
             "customer_lifecycle_completed_variant": self.completed_variant or None,
             "customer_lifecycle_is_archived_visual": self.state_key == STATE_ARCHIVED,
         }
+
+
+def lifecycle_state_to_filter_bucket(state_key: str) -> str:
+    sk = (state_key or "").strip().lower()
+    if sk in (STATE_ACTIVE, STATE_WAITING_FIRST_SEND):
+        return UI_FILTER_WAITING
+    if sk in (STATE_WAITING_CUSTOMER_REPLY, STATE_WAITING_NEXT_SCHEDULED, STATE_RETURN_TO_SITE):
+        return UI_FILTER_SENT
+    if sk in (STATE_CUSTOMER_REPLY, STATE_CUSTOMER_ENGAGED, STATE_NEEDS_INTERVENTION):
+        return UI_FILTER_ATTENTION
+    if sk == STATE_COMPLETED:
+        return UI_FILTER_RECOVERED
+    if sk == STATE_ARCHIVED:
+        return UI_FILTER_ARCHIVED
+    return UI_FILTER_WAITING
+
+
+def lifecycle_state_to_primary_bucket(state_key: str) -> str:
+    sk = (state_key or "").strip().lower()
+    if sk in (STATE_ACTIVE, STATE_WAITING_FIRST_SEND):
+        return PRIMARY_WAITING
+    if sk == STATE_WAITING_CUSTOMER_REPLY:
+        return PRIMARY_SENT
+    if sk == STATE_WAITING_NEXT_SCHEDULED:
+        return PRIMARY_NEEDS_FOLLOWUP
+    if sk == STATE_CUSTOMER_REPLY:
+        return PRIMARY_CUSTOMER_REPLY
+    if sk == STATE_CUSTOMER_ENGAGED:
+        return PRIMARY_CUSTOMER_ENGAGED
+    if sk == STATE_RETURN_TO_SITE:
+        return PRIMARY_RETURN_TO_SITE
+    if sk == STATE_NEEDS_INTERVENTION:
+        return PRIMARY_NEEDS_FOLLOWUP
+    if sk == STATE_COMPLETED:
+        return PRIMARY_RECOVERED
+    if sk == STATE_ARCHIVED:
+        return PRIMARY_ARCHIVED
+    return PRIMARY_WAITING
+
+
+def lifecycle_state_visible_tabs(state_key: str) -> tuple[str, ...]:
+    b = lifecycle_state_to_filter_bucket(state_key)
+    if b == UI_FILTER_ARCHIVED:
+        return (UI_FILTER_ALL,)
+    return (UI_FILTER_ALL, b)
+
+
+def lifecycle_filter_counts_from_rows(rows: list[dict[str, Any]]) -> dict[str, int]:
+    counts = {
+        UI_FILTER_ALL: len(rows),
+        UI_FILTER_SENT: 0,
+        UI_FILTER_ATTENTION: 0,
+        UI_FILTER_RECOVERED: 0,
+        UI_FILTER_NOPHONE: 0,
+        UI_FILTER_WAITING: 0,
+    }
+    for row in rows:
+        sk = str(row.get("customer_lifecycle_state") or "").strip().lower()
+        tabs = lifecycle_state_visible_tabs(sk)
+        if UI_FILTER_WAITING in tabs:
+            counts[UI_FILTER_WAITING] = int(counts[UI_FILTER_WAITING]) + 1
+        if UI_FILTER_SENT in tabs:
+            counts[UI_FILTER_SENT] = int(counts[UI_FILTER_SENT]) + 1
+        if UI_FILTER_ATTENTION in tabs:
+            counts[UI_FILTER_ATTENTION] = int(counts[UI_FILTER_ATTENTION]) + 1
+        if UI_FILTER_RECOVERED in tabs:
+            counts[UI_FILTER_RECOVERED] = int(counts[UI_FILTER_RECOVERED]) + 1
+        if UI_FILTER_NOPHONE in tabs:
+            counts[UI_FILTER_NOPHONE] = int(counts[UI_FILTER_NOPHONE]) + 1
+    return counts
+
+
+def lifecycle_nav_badge_waiting_count(rows: list[dict[str, Any]]) -> int:
+    n = 0
+    for row in rows:
+        sk = str(row.get("customer_lifecycle_state") or "").strip().lower()
+        if lifecycle_state_to_filter_bucket(sk) == UI_FILTER_WAITING:
+            n += 1
+    return n
+
+
+def lifecycle_truth_consistency_for_row(row: Mapping[str, Any]) -> tuple[bool, str]:
+    sk = str(row.get("customer_lifecycle_state") or "").strip().lower()
+    if not sk:
+        return False, "missing_customer_lifecycle_state"
+    tab_expected = lifecycle_state_to_filter_bucket(sk)
+    bucket = str(row.get("merchant_cart_bucket") or "").strip().lower()
+    if tab_expected != bucket:
+        return False, f"bucket_mismatch expected={tab_expected} got={bucket or '-'}"
+    chip = str(
+        row.get("customer_lifecycle_label_ar")
+        or row.get("merchant_status_label_ar")
+        or ""
+    ).strip()
+    if not chip:
+        return False, "missing_chip_label"
+    arch_vis = bool(row.get("customer_lifecycle_is_archived_visual"))
+    if arch_vis and sk != STATE_ARCHIVED:
+        return False, "archived_visual_without_archived_state"
+    if sk == STATE_ARCHIVED and not arch_vis:
+        return False, "archived_state_without_archived_visual"
+    if sk == STATE_RETURN_TO_SITE and (
+        "تفاعل العميل" in chip or "رد العميل" in chip
+    ):
+        return False, "return_state_with_reply_chip"
+    if sk == STATE_WAITING_FIRST_SEND and "الإرسال" not in chip:
+        return False, "waiting_send_chip_mismatch"
+    return True, "ok"
 
 
 def _norm(s: Any) -> str:
@@ -551,12 +677,21 @@ def attach_customer_lifecycle_state_v1(
     target.update(lc.to_payload_fields())
     target["merchant_status_label_ar"] = lc.label_ar
     target["merchant_status_row_class"] = lc.status_row_class
+    tab_bucket = lifecycle_state_to_filter_bucket(lc.state_key)
+    primary_bucket = lifecycle_state_to_primary_bucket(lc.state_key)
+    target["merchant_cart_primary_bucket"] = primary_bucket
+    target["merchant_cart_bucket"] = tab_bucket
+    target["merchant_cart_visible_tabs"] = list(lifecycle_state_visible_tabs(lc.state_key))
     if lc.state_key == STATE_COMPLETED:
         target["merchant_cart_is_terminal"] = True
         target["merchant_cart_is_active"] = False
     elif lc.state_key == STATE_ARCHIVED:
-        target["merchant_cart_is_terminal"] = False
+        target["merchant_cart_is_terminal"] = True
+        target["merchant_cart_is_active"] = False
         target["merchant_is_history_slice"] = True
+    else:
+        target["merchant_cart_is_terminal"] = False
+        target["merchant_cart_is_active"] = True
     return lc
 
 
@@ -575,4 +710,10 @@ __all__ = [
     "CustomerLifecycleStateV1",
     "attach_customer_lifecycle_state_v1",
     "classify_customer_lifecycle_state_v1",
+    "lifecycle_filter_counts_from_rows",
+    "lifecycle_nav_badge_waiting_count",
+    "lifecycle_state_to_filter_bucket",
+    "lifecycle_state_to_primary_bucket",
+    "lifecycle_state_visible_tabs",
+    "lifecycle_truth_consistency_for_row",
 ]

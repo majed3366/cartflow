@@ -1888,6 +1888,83 @@ def dev_recovery_truth(recovery_key: str = Query("", max_length=512)) -> Any:
         return j({"ok": False, "error": str(exc)}, 500)
 
 
+@app.get("/dev/lifecycle-truth-check")
+def dev_lifecycle_truth_check(recovery_key: str = Query("", max_length=512)) -> Any:
+    rk = (recovery_key or "").strip()
+    if not rk:
+        return j({"ok": False, "error": "recovery_key_required"}, 400)
+    try:
+        _ensure_cartflow_api_db_warmed()
+        from services.customer_lifecycle_states_v1 import (  # noqa: PLC0415
+            lifecycle_state_to_filter_bucket,
+            lifecycle_truth_consistency_for_row,
+        )
+        from services.recovery_truth_timeline_v1 import (  # noqa: PLC0415
+            get_recovery_truth_timeline,
+            timeline_status_set,
+        )
+
+        dash_store = _dashboard_recovery_store_row()
+        rows, _prof = _normal_recovery_merchant_lightweight_alert_list_for_api(
+            page_limit=200,
+            page_offset=0,
+            lifecycle="all",
+            dash_store=dash_store,
+        )
+        row = None
+        for cand in rows:
+            if str(cand.get("recovery_key") or "").strip() == rk:
+                row = cand
+                break
+        timeline = get_recovery_truth_timeline(rk)
+        timeline_statuses = sorted(timeline_status_set(rk))
+        if row is None:
+            return j(
+                {
+                    "ok": True,
+                    "recovery_key": rk,
+                    "timeline": timeline,
+                    "customer_lifecycle_state": None,
+                    "dashboard_tab": None,
+                    "dashboard_chip": None,
+                    "archive_state": None,
+                    "count_bucket": None,
+                    "consistent": False,
+                    "reason": "recovery_key_not_present_in_dashboard_rows",
+                }
+            )
+        state = str(row.get("customer_lifecycle_state") or "").strip().lower()
+        tab = lifecycle_state_to_filter_bucket(state)
+        chip = str(
+            row.get("customer_lifecycle_label_ar")
+            or row.get("merchant_status_label_ar")
+            or ""
+        ).strip()
+        archive_state = (
+            "archived" if bool(row.get("customer_lifecycle_is_archived_visual")) else "active"
+        )
+        bucket = str(row.get("merchant_cart_bucket") or "").strip().lower() or None
+        consistent, reason = lifecycle_truth_consistency_for_row(row)
+        return j(
+            {
+                "ok": True,
+                "recovery_key": rk,
+                "timeline": timeline,
+                "timeline_statuses": timeline_statuses,
+                "customer_lifecycle_state": state or None,
+                "dashboard_tab": tab,
+                "dashboard_chip": chip or None,
+                "archive_state": archive_state,
+                "count_bucket": bucket,
+                "consistent": bool(consistent),
+                "reason": reason,
+            }
+        )
+    except Exception as exc:  # noqa: BLE001
+        db.session.rollback()
+        return j({"ok": False, "error": str(exc)}, 500)
+
+
 @app.get("/dev/recovery-health")
 def dev_recovery_health() -> Any:
     """
@@ -16661,18 +16738,18 @@ def _api_json_dashboard_normal_carts(
             "phones_loaded": 0,
         }
     table_rows = list(merchant_carts_page_rows[:8])
-    from services.merchant_cart_row_classifier import (  # noqa: PLC0415
-        merchant_cart_filter_counts_from_rows,
-        merchant_nav_badge_waiting_count,
+    from services.customer_lifecycle_states_v1 import (  # noqa: PLC0415
+        lifecycle_filter_counts_from_rows,
+        lifecycle_nav_badge_waiting_count,
     )
 
-    cart_filter_counts = merchant_cart_filter_counts_from_rows(
+    cart_filter_counts = lifecycle_filter_counts_from_rows(
         merchant_carts_page_rows
     )
     refresh_state = _merchant_dashboard_refresh_state_payload(dash_store)
     bucket_counts: dict[str, int] = {}
     for row in merchant_carts_page_rows:
-        b = str(row.get("merchant_cart_primary_bucket") or "").strip().lower()
+        b = str(row.get("customer_lifecycle_state") or "").strip().lower()
         if not b:
             continue
         bucket_counts[b] = int(bucket_counts.get(b) or 0) + 1
@@ -16680,7 +16757,7 @@ def _api_json_dashboard_normal_carts(
         "merchant_table_rows": table_rows,
         "merchant_carts_page_rows": merchant_carts_page_rows,
         "merchant_cart_filter_counts": cart_filter_counts,
-        "merchant_nav_badge_abandoned": merchant_nav_badge_waiting_count(
+        "merchant_nav_badge_abandoned": lifecycle_nav_badge_waiting_count(
             merchant_carts_page_rows
         ),
     }
