@@ -150,6 +150,7 @@ class CustomerLifecycleStatesV1Tests(unittest.TestCase):
         )
         self.assertEqual(lc.state_key, STATE_ARCHIVED)
         self.assertEqual(lc.dashboard_action, "reopen")
+        self.assertTrue(lc.to_payload_fields()["customer_lifecycle_is_archived_visual"])
         reopen = reopen_recovery_key(rk)
         self.assertTrue(reopen.get("ok"))
         self.assertFalse(is_merchant_archived(rk))

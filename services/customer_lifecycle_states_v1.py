@@ -42,7 +42,7 @@ ROW_CLASS: dict[str, str] = {
     STATE_WAITING_NEXT_SCHEDULED: "s-sent",
     STATE_NEEDS_INTERVENTION: "s-attention",
     STATE_COMPLETED: "s-recovered",
-    STATE_ARCHIVED: "s-recovered",
+    STATE_ARCHIVED: "s-archived",
 }
 
 SENT_LOG = frozenset({"sent_real", "mock_sent"})
@@ -85,6 +85,7 @@ class CustomerLifecycleStateV1:
             or None,
             "customer_lifecycle_status_row_class": self.status_row_class,
             "customer_lifecycle_completed_variant": self.completed_variant or None,
+            "customer_lifecycle_is_archived_visual": self.state_key == STATE_ARCHIVED,
         }
 
 

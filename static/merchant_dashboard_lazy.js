@@ -1455,9 +1455,79 @@
     return merchantLifecycleCompact(mc).status;
   }
 
+  var lastNormalCartsPageRows = [];
+
+  function isArchivedVisual(mc) {
+    if (!mc) return false;
+    if (mc.customer_lifecycle_is_archived_visual === true) return true;
+    return String(mc.customer_lifecycle_state || "").trim() === "archived";
+  }
+
+  function cartLifecycleStatusClass(mc) {
+    if (isArchivedVisual(mc)) return "s-archived";
+    return (
+      mc.customer_lifecycle_status_row_class ||
+      mc.merchant_status_row_class ||
+      "s-waiting"
+    );
+  }
+
+  function cartLifecycleStatusLabel(mc) {
+    if (isArchivedVisual(mc)) return "✓ مؤرشفة";
+    return (
+      mc.customer_lifecycle_label_ar || mc.merchant_status_label_ar || "—"
+    );
+  }
+
+  function sortCartsArchivedLast(rows) {
+    return rows.slice().sort(function (a, b) {
+      var aa = isArchivedVisual(a) ? 1 : 0;
+      var bb = isArchivedVisual(b) ? 1 : 0;
+      if (aa !== bb) return aa - bb;
+      return 0;
+    });
+  }
+
+  function cartLifecycleActionBtnHtml(mc) {
+    var rk = String(mc.recovery_key || "").trim();
+    var act = String(mc.customer_lifecycle_dashboard_action || "").trim();
+    if (!rk) return "";
+    if (act === "archive") {
+      return (
+        '<div class="recovery-truth-actions"><button type="button" class="cf-lc-btn cf-lc-btn-archive" data-lc-archive data-recovery-key="' +
+        esc(rk) +
+        '"><span class="cf-lc-btn-icon" aria-hidden="true">🗂</span> نقل للأرشيف</button></div>'
+      );
+    }
+    if (act === "reopen") {
+      return (
+        '<div class="recovery-truth-actions"><button type="button" class="cf-lc-btn cf-lc-btn-reopen" data-lc-reopen data-recovery-key="' +
+        esc(rk) +
+        '"><span class="cf-lc-btn-icon" aria-hidden="true">↩</span> إعادة فتح</button></div>'
+      );
+    }
+    return "";
+  }
+
+  function customerLifecycleArchivedCompactHtml(mc) {
+    var h =
+      '<div class="recovery-truth recovery-truth-compact customer-lifecycle-v1 customer-lifecycle-archived" aria-label="سلة مؤرشفة">';
+    h +=
+      '<div class="lc-archived-head"><span class="lc-archived-badge">مؤرشفة ✓</span></div>';
+    h +=
+      '<p class="lc-archived-line">تم إغلاق هذه الحالة من العرض النشط.</p>';
+    h +=
+      '<p class="lc-archived-line lc-archived-muted">لن يرسل النظام متابعات لهذه الحالة أثناء الأرشفة.</p>';
+    h += cartLifecycleActionBtnHtml(mc);
+    return h + "</div>";
+  }
+
   function customerLifecycleExplanationHtml(mc) {
     if (!mc || !mc.customer_lifecycle_state) {
       return merchantLifecycleCompactHtml(mc);
+    }
+    if (isArchivedVisual(mc)) {
+      return customerLifecycleArchivedCompactHtml(mc);
     }
     var h =
       '<div class="recovery-truth recovery-truth-compact customer-lifecycle-v1" aria-label="حالة دورة العميل">';
@@ -1465,7 +1535,7 @@
       '<div class="recovery-truth-line"><strong>الحالة:</strong> ' +
       esc(mc.customer_lifecycle_label_ar || "—") +
       "</div>";
-  if (mc.customer_lifecycle_what_happened_ar) {
+    if (mc.customer_lifecycle_what_happened_ar) {
       h +=
         '<div class="recovery-truth-line"><strong>ماذا حدث؟</strong> ' +
         esc(mc.customer_lifecycle_what_happened_ar) +
@@ -1493,20 +1563,36 @@
       '<div class="recovery-truth-line"><strong>تدخل التاجر:</strong> ' +
       esc(mc.customer_lifecycle_merchant_needed_ar || "لا") +
       "</div>";
-    var act = String(mc.customer_lifecycle_dashboard_action || "").trim();
-    var rk = String(mc.recovery_key || "").trim();
-    if (act === "archive" && rk) {
-      h +=
-        '<div class="recovery-truth-actions"><button type="button" class="cf-lc-btn" data-lc-archive data-recovery-key="' +
-        esc(rk) +
-        '">أرشفة</button></div>';
-    } else if (act === "reopen" && rk) {
-      h +=
-        '<div class="recovery-truth-actions"><button type="button" class="cf-lc-btn" data-lc-reopen data-recovery-key="' +
-        esc(rk) +
-        '">إعادة فتح</button></div>';
-    }
+    h += cartLifecycleActionBtnHtml(mc);
     return h + "</div>";
+  }
+
+  function patchCartRowArchivedVisual(rk, archived) {
+    var key = String(rk || "").trim();
+    if (!key) return;
+    lastNormalCartsPageRows.forEach(function (mc) {
+      if (String(mc.recovery_key || "").trim() !== key) return;
+      if (archived) {
+        mc.customer_lifecycle_is_archived_visual = true;
+        mc.customer_lifecycle_state = "archived";
+        mc.customer_lifecycle_label_ar = "مؤرشفة";
+        mc.customer_lifecycle_dashboard_action = "reopen";
+        mc.customer_lifecycle_status_row_class = "s-archived";
+        mc.merchant_status_row_class = "s-archived";
+        mc.merchant_status_label_ar = "مؤرشفة";
+        mc.merchant_next_action_urgent = false;
+      } else {
+        mc.customer_lifecycle_is_archived_visual = false;
+      }
+    });
+  }
+
+  function rerenderAllCartsTable() {
+    var allb = byId("ma-tbody-all-carts");
+    if (!allb) return;
+    var sorted = sortCartsArchivedLast(lastNormalCartsPageRows);
+    allb.innerHTML = sorted.map(cartRowFull).join("");
+    bindCustomerLifecycleActions(allb);
   }
 
   function lifecycleTruthHtml(mc) {
@@ -1532,7 +1618,13 @@
           })
           .then(function (d) {
             if (d && d.ok) {
-              fetchSection("/api/dashboard/normal-carts", applyNormalCarts, "normal-carts");
+              patchCartRowArchivedVisual(rk, true);
+              rerenderAllCartsTable();
+              fetchSection(
+                "/api/dashboard/normal-carts",
+                applyNormalCarts,
+                "normal-carts"
+              );
             }
           })
           .catch(function () {});
@@ -1555,7 +1647,12 @@
           })
           .then(function (d) {
             if (d && d.ok) {
-              fetchSection("/api/dashboard/normal-carts", applyNormalCarts, "normal-carts");
+              patchCartRowArchivedVisual(rk, false);
+              fetchSection(
+                "/api/dashboard/normal-carts",
+                applyNormalCarts,
+                "normal-carts"
+              );
             }
           })
           .catch(function () {});
@@ -1584,15 +1681,18 @@
       esc(mc.merchant_reason_chip_label_ar || "—") +
       "</span></td>" +
       '<td><span class="st ' +
-      esc(mc.merchant_status_row_class || "s-waiting") +
+      esc(cartLifecycleStatusClass(mc)) +
       '\"><span class="sd"></span>' +
-      esc(mc.merchant_status_label_ar || "—") +
+      esc(cartLifecycleStatusLabel(mc)) +
       "</span></td>" +
-      '<td><div class="next' +
-      urg +
-      '">' +
-      esc(merchantNextLineShort(mc) || mc.merchant_next_action_ar || "—") +
-      "</div>" +
+      "<td>" +
+      (isArchivedVisual(mc)
+        ? ""
+        : '<div class="next' +
+          urg +
+          '">' +
+          esc(merchantNextLineShort(mc) || mc.merchant_next_action_ar || "—") +
+          "</div>") +
       lifecycleTruthHtml(mc) +
       "</td>" +
       "<td>" +
@@ -1615,9 +1715,10 @@
     } catch (eTabs) {
       tabsJson = "[]";
     }
-    var urg = mc.merchant_next_action_urgent ? " urgent" : "";
-    var statusLbl =
-      mc.customer_lifecycle_label_ar || mc.merchant_status_label_ar || "—";
+    var urg =
+      mc.merchant_next_action_urgent && !isArchivedVisual(mc) ? " urgent" : "";
+    var archived = isArchivedVisual(mc);
+    var statusLbl = cartLifecycleStatusLabel(mc);
     var nextLbl =
       mc.customer_lifecycle_label_ar ||
       merchantNextLineShort(mc) ||
@@ -1630,7 +1731,9 @@
       primary +
       '" data-ma-visible-tabs="' +
       tabsJson +
-      '">' +
+      '"' +
+      (archived ? ' class="ma-row-archived" data-ma-archived-visual="1"' : "") +
+      ">" +
       "<td><div class=\"camt\">" +
       v.toLocaleString("en-US") +
       ' ر</div><div class="ctime">' +
@@ -1642,15 +1745,14 @@
       esc(mc.merchant_reason_chip_label_ar || "—") +
       "</span></td>" +
       '<td><span class="st ' +
-      esc(mc.merchant_status_row_class || "s-waiting") +
+      esc(cartLifecycleStatusClass(mc)) +
       '\"><span class="sd"></span>' +
       esc(statusLbl) +
       "</span></td>" +
-      '<td><div class="next' +
-      urg +
-      '">' +
-      esc(nextLbl) +
-      "</div>" +
+      "<td>" +
+      (archived
+        ? ""
+        : '<div class="next' + urg + '">' + esc(nextLbl) + "</div>") +
       lifecycleTruthHtml(mc) +
       "</td>" +
       '<td><div class="ctime">' +
@@ -1677,7 +1779,8 @@
     }
     var allb = byId("ma-tbody-all-carts");
     if (allb) {
-      var pr = d.merchant_carts_page_rows || [];
+      lastNormalCartsPageRows = d.merchant_carts_page_rows || [];
+      var pr = sortCartsArchivedLast(lastNormalCartsPageRows);
       if (!pr.length) {
         allb.innerHTML =
           '<tr><td colspan="6" class="empty-state" style="border:none;"><div class="empty-icon">🛒</div><div class="empty-text">لا توجد سلال متروكة مسجّلة حالياً ضمن نطاق متجرك</div></td></tr>';
