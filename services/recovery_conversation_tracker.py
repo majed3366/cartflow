@@ -137,6 +137,20 @@ def conversation_dashboard_extras(
     normal_recovery_continuation_state_key = str(
         bh.get("continuation_state") or ""
     ).strip()
+    normal_recovery_continuation_explanation_ar = str(
+        bh.get("continuation_dashboard_explanation_ar") or ""
+    ).strip()
+    if not normal_recovery_continuation_explanation_ar:
+        try:
+            from services.continuation_decision_trace_v1 import (  # noqa: PLC0415
+                continuation_explanation_for_dashboard,
+            )
+
+            normal_recovery_continuation_explanation_ar = (
+                continuation_explanation_for_dashboard(bh)
+            )
+        except Exception:  # noqa: BLE001
+            pass
     if st != "recovered":
         normal_recovery_return_context_key = str(
             bh.get("recovery_return_context") or ""
@@ -360,4 +374,5 @@ def conversation_dashboard_extras(
         "normal_recovery_passive_browsing_hint_ar": passive_hint_ar,
         "normal_recovery_continuation_summary_ar": normal_recovery_continuation_summary_ar,
         "normal_recovery_continuation_state_key": normal_recovery_continuation_state_key,
+        "normal_recovery_continuation_explanation_ar": normal_recovery_continuation_explanation_ar,
     }

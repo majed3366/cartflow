@@ -766,6 +766,10 @@ class ContinuationDecision:
     lifecycle_intent: str = ""
     continuation_type: str = ""
     stop_continuation: bool = False
+    chosen_path: str = ""
+    template_name: str = ""
+    fallback_used: bool = False
+    dashboard_explanation_ar: str = ""
 
 
 def _deploy_git_sha_for_logs() -> str:
@@ -865,11 +869,22 @@ def decide_continuation(
     from services.continuation_stabilization_v1 import apply_continuation_stabilization_v1
 
     sid = (getattr(ac, "recovery_session_id", None) or "").strip()
-    return apply_continuation_stabilization_v1(
+    stabilized = apply_continuation_stabilization_v1(
         inbound_body,
         dec,
         base_intent=base,
         session_id=sid,
+        reason_tag=reason_tag,
+    )
+    from services.continuation_decision_trace_v1 import enrich_continuation_decision
+
+    store_slug_trace = _store_slug_for_ac(ac)
+    return enrich_continuation_decision(
+        stabilized,
+        reason_tag=reason_tag,
+        customer_reply=inbound_body,
+        vars_map=vars_map,
+        store_slug=store_slug_trace,
     )
 
 
@@ -1127,6 +1142,14 @@ def process_continuation_after_customer_reply(
         patch["continuation_lifecycle_intent"] = dec.lifecycle_intent
     if dec.continuation_type:
         patch["continuation_type_v1"] = dec.continuation_type
+    if dec.chosen_path:
+        patch["continuation_chosen_path"] = dec.chosen_path
+    if dec.template_name:
+        patch["continuation_template_name"] = dec.template_name
+    patch["continuation_fallback_used"] = bool(dec.fallback_used)
+    if dec.dashboard_explanation_ar:
+        patch["continuation_dashboard_explanation_ar"] = dec.dashboard_explanation_ar
+    patch["continuation_trace_reason_tag"] = (reason_tag or "").strip()[:64]
     if suppress_repeat_send:
         patch["continuation_repeat_suppressed"] = True
 
@@ -1198,10 +1221,29 @@ def process_continuation_after_customer_reply(
                 }
             )
             if rk_cont_send:
+                from services.continuation_decision_trace_v1 import (  # noqa: PLC0415
+                    build_continuation_trace_v1,
+                    log_continuation_trace,
+                )
+
+                trace = build_continuation_trace_v1(
+                    recovery_key=rk_cont_send,
+                    reason_tag=reason_tag,
+                    customer_reply=body,
+                    action=dec.action,
+                    contextual_intent=dec.contextual_intent,
+                    base_intent=dec.base_intent,
+                    lifecycle_intent=dec.lifecycle_intent,
+                    continuation_state=dec.continuation_state,
+                    store_slug=ss_cont,
+                )
+                log_continuation_trace(trace)
                 record_recovery_truth_event(
                     recovery_key=rk_cont_send,
                     status=STATUS_CONTINUATION_STARTED,
-                    source="process_continuation_after_customer_reply",
+                    source=trace.timeline_source_suffix(
+                        "process_continuation_after_customer_reply"
+                    ),
                     store_slug=ss_cont,
                     session_id=sid_log,
                     cart_id=(getattr(ac, "zid_cart_id", None) or "").strip(),

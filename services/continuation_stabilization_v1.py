@@ -11,6 +11,7 @@ import logging
 from dataclasses import replace
 from typing import TYPE_CHECKING
 
+from services.continuation_decision_trace_v1 import normalize_reason_tag_for_trace
 from services.reply_intent_handling import (
     INTENT_DELIVERY,
     INTENT_PRICE,
@@ -88,6 +89,7 @@ def apply_continuation_stabilization_v1(
     *,
     base_intent: str,
     session_id: str = "",
+    reason_tag: str = "",
 ) -> ContinuationDecision:
     """
     Override continuation actions/messages for v1 safe paths.
@@ -106,6 +108,79 @@ def apply_continuation_stabilization_v1(
 
     lifecycle_intent = classify_reply_lifecycle_intent_v1(inbound_body)
     sid = (session_id or "").strip()
+    reason_norm = normalize_reason_tag_for_trace(reason_tag)
+
+    if reason_norm == "price" and base_intent == "confirmation_yes":
+        ctype = _price_continuation_type(base_intent)
+        msg = _price_safe_message(base_intent)
+        log_continuation_decision(
+            lifecycle_intent=INTENT_PRICE,
+            continuation_type=ctype,
+            session_id=sid,
+        )
+        ctx = decision.contextual_intent or "yes_to_cheaper_alternative"
+        act = CONTINUATION_ACTION_REASSURANCE
+        return replace(
+            decision,
+            action=act,
+            message_to_send=msg,
+            should_send=bool(msg.strip()),
+            continuation_state=continuation_state_key(ctx, act),
+            summary_ar="العميل وافق بعد اعتراض السعر — متابعة بسياق السعر",
+            lifecycle_intent=INTENT_PRICE,
+            continuation_type=ctype,
+            stop_continuation=False,
+        )
+
+    if reason_norm == "quality" and base_intent in (
+        "confirmation_yes",
+        "asks_quality",
+    ):
+        from services.cartflow_reply_intent_engine import (
+            CONTINUATION_ACTION_EXPLAIN_QUALITY,
+            build_continuation_message,
+        )
+
+        act = CONTINUATION_ACTION_EXPLAIN_QUALITY
+        msg = build_continuation_message(act, {})
+        log_continuation_decision(
+            lifecycle_intent=INTENT_UNKNOWN,
+            continuation_type=CONTINUATION_TYPE_REASSURANCE,
+            session_id=sid,
+        )
+        ctx = decision.contextual_intent or "asks_quality_detail"
+        return replace(
+            decision,
+            action=act,
+            message_to_send=msg,
+            should_send=bool(msg.strip()),
+            continuation_state=continuation_state_key(ctx, act),
+            summary_ar="العميل يتحدث عن الجودة — توضيح مناسب",
+            lifecycle_intent=INTENT_UNKNOWN,
+            continuation_type=CONTINUATION_TYPE_REASSURANCE,
+            stop_continuation=False,
+        )
+
+    if reason_norm in ("shipping", "delivery") and base_intent == "confirmation_yes":
+        log_continuation_decision(
+            lifecycle_intent=INTENT_DELIVERY,
+            continuation_type=CONTINUATION_TYPE_SHIPPING_REASSURANCE,
+            session_id=sid,
+        )
+        ctx = decision.contextual_intent or "confirmation_after_shipping"
+        act = CONTINUATION_ACTION_EXPLAIN_SHIPPING
+        msg = DELIVERY_SAFE_REASSURANCE_AR
+        return replace(
+            decision,
+            action=act,
+            message_to_send=msg,
+            should_send=bool(msg.strip()),
+            continuation_state=continuation_state_key(ctx, act),
+            summary_ar="العميل وافق بعد اعتراض الشحن — متابعة بسياق الشحن",
+            lifecycle_intent=INTENT_DELIVERY,
+            continuation_type=CONTINUATION_TYPE_SHIPPING_REASSURANCE,
+            stop_continuation=False,
+        )
 
     if lifecycle_intent == INTENT_PURCHASE:
         log_continuation_decision(

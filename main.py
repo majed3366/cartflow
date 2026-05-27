@@ -14304,6 +14304,16 @@ def _merchant_normal_recovery_light_payload_merchant_batch(
             abandoned_cart_id=int(getattr(ac0, "id", 0) or 0) or None,
             next_attempt_due_at=next_due_iso,
         )
+        try:
+            from services.continuation_decision_trace_v1 import (  # noqa: PLC0415
+                continuation_explanation_for_dashboard,
+            )
+
+            _cont_expl = continuation_explanation_for_dashboard(bh_lc)
+            if _cont_expl:
+                out["customer_lifecycle_continuation_explanation_ar"] = _cont_expl
+        except Exception:  # noqa: BLE001
+            pass
     except Exception:  # noqa: BLE001
         pass
     return out

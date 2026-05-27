@@ -1522,6 +1522,20 @@
     return h + "</div>";
   }
 
+  function continuationDecisionExplanationHtml(mc) {
+    var expl =
+      mc.customer_lifecycle_continuation_explanation_ar ||
+      mc.normal_recovery_continuation_explanation_ar ||
+      "";
+    expl = String(expl || "").trim();
+    if (!expl) return "";
+    return (
+      '<div class="recovery-truth-line recovery-truth-highlight customer-lifecycle-cont-expl">' +
+      esc(expl) +
+      "</div>"
+    );
+  }
+
   function customerLifecycleExplanationHtml(mc) {
     if (!mc || !mc.customer_lifecycle_state) {
       return merchantLifecycleCompactHtml(mc);
@@ -1563,6 +1577,7 @@
       '<div class="recovery-truth-line"><strong>تدخل التاجر:</strong> ' +
       esc(mc.customer_lifecycle_merchant_needed_ar || "لا") +
       "</div>";
+    h += continuationDecisionExplanationHtml(mc);
     h += cartLifecycleActionBtnHtml(mc);
     return h + "</div>";
   }

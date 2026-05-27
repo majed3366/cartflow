@@ -75,6 +75,8 @@ def test_contextual_yes_price_abandonment_without_prior_strategy_key() -> None:
     )
     assert d.contextual_intent == "yes_to_cheaper_alternative"
     assert d.action == CONTINUATION_ACTION_REASSURANCE
+    assert d.chosen_path == "price_handling"
+    assert "السعر" in (d.dashboard_explanation_ar or "")
 
 
 def test_contextual_intent_yes_differs_by_prior_strategy() -> None:
