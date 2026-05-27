@@ -113,6 +113,27 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     return true;
   }
 
+  function postAssistHandoff() {
+    var url = apiBase()
+      ? apiBase() + "/api/cartflow/assist-handoff"
+      : "/api/cartflow/assist-handoff";
+    return fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        store_slug: storeSlug(),
+        session_id: sessionId(),
+      }),
+    }).then(function (r) {
+      return r.json().then(function (j) {
+        if (!r.ok) {
+          return { ok: false, status: r.status, body: j };
+        }
+        return j;
+      });
+    });
+  }
+
   function postReason(payload) {
     var url = apiBase()
       ? apiBase() + "/api/cartflow/reason"
@@ -280,6 +301,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     storeSlug: storeSlug,
     sessionId: sessionId,
     postReason: postReason,
+    postAssistHandoff: postAssistHandoff,
     fetchReady: fetchReady,
     fetchPublicConfig: fetchPublicConfig,
     reasonPostOk: cfCartflowReasonPostOk,

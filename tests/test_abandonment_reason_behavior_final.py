@@ -222,7 +222,13 @@ class AbandonmentReasonBehaviorFinalTests(unittest.TestCase):
         self.assertTrue(jg.get("ok"))
         self.assertIn("whatsapp_url", jg)
         # Handoff: postReason then fetch public-config in widget
-        self.assertIn("postReason({ reason: \"human_support\" })", self.widget_src)
+        v2_flows = os.path.join(
+            _ROOT, "static", "cartflow_widget_runtime", "cartflow_widget_flows.js"
+        )
+        with open(v2_flows, encoding="utf-8") as f:
+            v2_src = f.read()
+        self.assertIn("postAssistHandoff", v2_src)
+        self.assertIn("[CF ASSIST HANDOFF]", v2_src)
 
 
 if __name__ == "__main__":

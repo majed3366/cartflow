@@ -140,20 +140,18 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
   }
 
   function handoffAssistThenOpenWa() {
-    return Cf.Api
-      .postReason({ reason: "human_support" })
-      .then(function (pj) {
-        if (!Cf.Api.reasonPostOk(pj)) {
-          return;
-        }
-        return Cf.Api.fetchPublicConfig().then(function (cfg) {
-          Cf.Config.applyPayload(cfg, "public_config");
-          try {
-            if (cfg && cfg.whatsapp_url) {
-              window.open(cfg.whatsapp_url, "_blank", "noopener,noreferrer");
-            }
-          } catch (eW) {}
-        });
+    try {
+      console.log("[CF ASSIST HANDOFF] continuation_only=true open_whatsapp=true");
+    } catch (eHf) {}
+    return Cf.Api.fetchPublicConfig()
+      .then(function (cfg) {
+        Cf.Config.applyPayload(cfg, "public_config");
+        try {
+          if (cfg && cfg.whatsapp_url) {
+            window.open(cfg.whatsapp_url, "_blank", "noopener,noreferrer");
+          }
+        } catch (eW) {}
+        return Cf.Api.postAssistHandoff().catch(function () {});
       })
       .catch(function () {});
   }

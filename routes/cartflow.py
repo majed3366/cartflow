@@ -44,8 +44,10 @@ from services.vip_abandoned_cart_phone import (
 )
 from services.normal_recovery_phone_persist import apply_normal_recovery_phone_to_session
 from services.recovery_reason_preserve import (
+    HANDOFF_ONLY_REASON_VALUES,
     PHONE_CAPTURE_REASON_VALUES,
     effective_cart_recovery_reason_row_value,
+    is_handoff_only_reason,
 )
 
 log = logging.getLogger("cartflow")
@@ -387,6 +389,57 @@ def cartflow_public_config(
     return j(public_http_payload(norm, cart_total, snap))
 
 
+@router.post("/assist-handoff")
+async def post_assist_handoff(request: Request) -> Any:
+    """
+    «أحتاج مساعدة الآن» — audit only: لا جدولة استرجاع ولا استبدال سبب الاعتراض.
+    """
+    try:
+        from main import _ensure_cartflow_api_db_warmed
+
+        _ensure_cartflow_api_db_warmed()
+    except (OSError, SQLAlchemyError):
+        db.session.rollback()
+    try:
+        try:
+            body = await request.json()
+        except Exception:  # noqa: BLE001
+            body = None
+        if not isinstance(body, dict):
+            return j({"ok": False, "error": "json_object_required"}, 400)
+        ss = (str(body.get("store_slug", "")) or "").strip()[:255]
+        sid = (str(body.get("session_id", "")) or "").strip()[:512]
+        if not ss or not sid:
+            return j({"ok": False, "error": "store_slug_session_required"}, 400)
+        row = AbandonmentReasonLog(
+            store_slug=ss,
+            session_id=sid,
+            reason="human_support",
+            sub_category=None,
+            custom_text=None,
+        )
+        db.session.add(row)
+        db.session.commit()
+        log.info(
+            "[CF ASSIST HANDOFF] session_id=%s store_slug=%s continuation_only=true",
+            sid[:64],
+            ss[:64],
+        )
+        print(
+            "[CF ASSIST HANDOFF] session_id="
+            + sid[:64]
+            + " store_slug="
+            + ss[:64]
+            + " continuation_only=true",
+            flush=True,
+        )
+        return j({"ok": True, "continuation_only": True})
+    except (SQLAlchemyError, OSError) as e:
+        db.session.rollback()
+        log.warning("cartflow assist-handoff: %s", e)
+        return j({"ok": False, "error": "persist_failed"}, 500)
+
+
 @router.post("/reason")
 async def post_abandonment_reason(request: Request) -> Any:
     """
@@ -531,10 +584,15 @@ async def post_abandonment_reason(request: Request) -> Any:
             crr_phone = None
         if crr is not None:
             prev_reason_lc = (crr.reason or "").strip().lower()
-            if (
+            preserve_prior_reason = bool(
                 reason in PHONE_CAPTURE_REASON_VALUES
+                or reason in HANDOFF_ONLY_REASON_VALUES
+            )
+            if (
+                preserve_prior_reason
                 and prev_reason_lc
                 and prev_reason_lc not in PHONE_CAPTURE_REASON_VALUES
+                and prev_reason_lc not in HANDOFF_ONLY_REASON_VALUES
             ):
                 stored_reason = effective_cart_recovery_reason_row_value(
                     incoming_reason=reason,
@@ -543,12 +601,28 @@ async def post_abandonment_reason(request: Request) -> Any:
                 crr.reason = stored_reason[:32]
                 crr.customer_phone = crr_phone
                 crr.updated_at = now
-                log.info(
-                    "[PHONE CAPTURE] session_id=%s incoming=%s preserved_reason=%s",
-                    (sid or "")[:64],
-                    reason,
-                    (crr.reason or "")[:64],
-                )
+                if reason in HANDOFF_ONLY_REASON_VALUES:
+                    log.info(
+                        "[CF ASSIST HANDOFF] session_id=%s preserved_reason=%s "
+                        "skip_recovery_schedule=true",
+                        (sid or "")[:64],
+                        (crr.reason or "")[:64],
+                    )
+                    print(
+                        "[CF ASSIST HANDOFF] session_id="
+                        + (sid or "")[:64]
+                        + " preserved_reason="
+                        + (crr.reason or "")[:64]
+                        + " skip_recovery_schedule=true",
+                        flush=True,
+                    )
+                else:
+                    log.info(
+                        "[PHONE CAPTURE] session_id=%s incoming=%s preserved_reason=%s",
+                        (sid or "")[:64],
+                        reason,
+                        (crr.reason or "")[:64],
+                    )
             else:
                 crr.reason = reason
                 crr.sub_category = sub_for_row
@@ -635,16 +709,20 @@ async def post_abandonment_reason(request: Request) -> Any:
                     alert_err,
                     exc_info=True,
                 )
-        try:
-            from main import _schedule_normal_recovery_after_cart_recovery_reason_saved
+        if not is_handoff_only_reason(reason):
+            try:
+                from main import _schedule_normal_recovery_after_cart_recovery_reason_saved
 
-            await _schedule_normal_recovery_after_cart_recovery_reason_saved(
-                store_slug=ss,
-                session_id=sid,
-                body=body,
-            )
-        except Exception as hook_err:  # noqa: BLE001
-            log.warning("cartflow/reason recovery reschedule hook skipped: %s", hook_err)
+                await _schedule_normal_recovery_after_cart_recovery_reason_saved(
+                    store_slug=ss,
+                    session_id=sid,
+                    body=body,
+                )
+            except Exception as hook_err:  # noqa: BLE001
+                log.warning(
+                    "cartflow/reason recovery reschedule hook skipped: %s",
+                    hook_err,
+                )
 
         _log_reason_save_profile(
             wall_perf_start=perf_rs,
