@@ -8,9 +8,13 @@ Statuses (ordered):
 """
 from __future__ import annotations
 
+import contextvars
+import inspect
 import logging
 import re
+import time
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Optional
 
 from sqlalchemy import func
@@ -22,6 +26,56 @@ from models import RecoveryTruthTimelineEvent
 log = logging.getLogger("cartflow")
 
 TABLE_NAME = "recovery_truth_timeline_events"
+
+_timeline_profile_request_path: contextvars.ContextVar[str] = contextvars.ContextVar(
+    "timeline_ensure_profile_request_path",
+    default="-",
+)
+
+
+def set_timeline_profile_request_path(path: str) -> None:
+    """Set by HTTP middleware for [TIMELINE ENSURE PROFILE] request_path."""
+    _timeline_profile_request_path.set((path or "-")[:512] or "-")
+
+
+def reset_timeline_profile_request_path() -> None:
+    _timeline_profile_request_path.set("-")
+
+
+def _timeline_ensure_profile_request_path() -> str:
+    p = (_timeline_profile_request_path.get() or "").strip()
+    if p and p != "-":
+        return p[:512]
+    try:
+        from services.db_request_audit import _audit_bucket  # noqa: PLC0415
+
+        bucket = _audit_bucket.get()
+        if bucket and bucket.get("path"):
+            return str(bucket["path"])[:512]
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        from services.cart_event_request_scope import (  # noqa: PLC0415
+            cart_event_profile_take_meta,
+        )
+
+        meta = cart_event_profile_take_meta()
+        if meta.get("path"):
+            return str(meta["path"])[:512]
+    except Exception:  # noqa: BLE001
+        pass
+    return "-"
+
+
+def _timeline_ensure_caller_label() -> tuple[str, str]:
+    """Return (caller=file:line:func, endpoint=function name)."""
+    for fr in inspect.stack()[2:14]:
+        if "recovery_truth_timeline_v1.py" in (fr.filename or ""):
+            continue
+        name = Path(fr.filename or "").name
+        caller = f"{name}:{fr.lineno}:{fr.function}"
+        return caller, fr.function or "-"
+    return "-", "-"
 
 STATUS_SCHEDULED = "scheduled"
 STATUS_DELAY_STARTED = "delay_started"
@@ -163,15 +217,35 @@ def _emit_timeline_write(
         pass
 
 
-def ensure_timeline_table_ready() -> bool:
+def ensure_timeline_table_ready(*, recovery_key: str = "") -> bool:
     """Create table if missing; return whether table exists."""
+    t0 = time.perf_counter()
+    caller, endpoint = _timeline_ensure_caller_label()
+    request_path = _timeline_ensure_profile_request_path()
+    rk_log = (_norm(recovery_key) or "-")[:512]
+    executed_schema_check = False
     try:
+        import schema_recovery_truth_timeline as sch  # noqa: PLC0415
+
+        schema_once_before = bool(sch._schema_once)
         from schema_recovery_truth_timeline import (  # noqa: PLC0415
             ensure_recovery_truth_timeline_schema,
         )
 
         ensure_recovery_truth_timeline_schema(db)
+        executed_schema_check = not schema_once_before
     except Exception as exc:  # noqa: BLE001
+        duration_ms = (time.perf_counter() - t0) * 1000.0
+        log.info(
+            "[TIMELINE ENSURE PROFILE] caller=%s duration_ms=%.2f endpoint=%s "
+            "recovery_key=%s request_path=%s executed_schema_check=%s",
+            caller,
+            duration_ms,
+            endpoint,
+            rk_log,
+            request_path,
+            "false",
+        )
         _emit_timeline_write(
             recovery_key="-",
             status="-",
@@ -181,6 +255,17 @@ def ensure_timeline_table_ready() -> bool:
         )
         return False
     exists = _table_exists()
+    duration_ms = (time.perf_counter() - t0) * 1000.0
+    log.info(
+        "[TIMELINE ENSURE PROFILE] caller=%s duration_ms=%.2f endpoint=%s "
+        "recovery_key=%s request_path=%s executed_schema_check=%s",
+        caller,
+        duration_ms,
+        endpoint,
+        rk_log,
+        request_path,
+        "true" if executed_schema_check else "false",
+    )
     if not exists:
         _emit_timeline_write(
             recovery_key="-",
@@ -235,7 +320,7 @@ def record_recovery_truth_event(
         if not sid and sid_from_rk:
             sid = sid_from_rk
 
-    if not ensure_timeline_table_ready():
+    if not ensure_timeline_table_ready(recovery_key=rk):
         if trace:
             _emit_timeline_write(
                 recovery_key=rk,
@@ -347,7 +432,7 @@ def diagnose_timeline_persistence(recovery_key: str) -> dict[str, Any]:
     if not rk:
         return out
     try:
-        ensure_timeline_table_ready()
+        ensure_timeline_table_ready(recovery_key=rk)
         out["table_exists"] = _table_exists()
         if not out["table_exists"]:
             return out
@@ -411,7 +496,7 @@ def get_recovery_truth_timeline(recovery_key: str) -> list[dict[str, Any]]:
     rk = _norm(recovery_key)[:512]
     if not rk:
         return []
-    if not ensure_timeline_table_ready():
+    if not ensure_timeline_table_ready(recovery_key=rk):
         return []
     try:
         rows = (
@@ -529,6 +614,8 @@ __all__ = [
     "diagnose_timeline_persistence",
     "ensure_timeline_table_ready",
     "get_recovery_truth_timeline",
+    "reset_timeline_profile_request_path",
+    "set_timeline_profile_request_path",
     "map_cart_recovery_log_status_to_timeline",
     "provider_send_proven",
     "record_recovery_truth_event",

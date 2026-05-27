@@ -1021,6 +1021,16 @@ async def db_scoped_session_cleanup(request: Request, call_next: Any) -> Any:
 
     maybe_install_engine_listener()
     audit_request_begin(request)
+    _tl_prof_path = getattr(getattr(request, "url", None), "path", "") or ""
+    try:
+        from services.recovery_truth_timeline_v1 import (  # noqa: PLC0415
+            reset_timeline_profile_request_path,
+            set_timeline_profile_request_path,
+        )
+
+        set_timeline_profile_request_path(_tl_prof_path)
+    except Exception:  # noqa: BLE001
+        pass
     stall_trace_checkpoint("request_received_mw")
     try:
         response = await call_next(request)
@@ -1032,6 +1042,14 @@ async def db_scoped_session_cleanup(request: Request, call_next: Any) -> Any:
 
         release_scoped_db_session()
         audit_request_end()
+        try:
+            from services.recovery_truth_timeline_v1 import (  # noqa: PLC0415
+                reset_timeline_profile_request_path,
+            )
+
+            reset_timeline_profile_request_path()
+        except Exception:  # noqa: BLE001
+            pass
 
 
 def _app_route_get_exists(path: str) -> bool:
