@@ -1965,6 +1965,243 @@ def dev_lifecycle_truth_check(recovery_key: str = Query("", max_length=512)) -> 
         return j({"ok": False, "error": str(exc)}, 500)
 
 
+@app.get("/dev/merchant-truth-trace")
+def dev_merchant_truth_trace(recovery_key: str = Query("", max_length=512)) -> Any:
+    rk = (recovery_key or "").strip()
+    if not rk:
+        return j({"ok": False, "error": "recovery_key_required"}, 400)
+    try:
+        _ensure_cartflow_api_db_warmed()
+        from services.recovery_truth_timeline_v1 import (  # noqa: PLC0415
+            get_recovery_truth_timeline,
+            timeline_status_set,
+        )
+        from services.recovery_truth_timeline_v1 import parse_recovery_key as _parse_rk  # noqa: PLC0415
+        from services.customer_lifecycle_states_v1 import (  # noqa: PLC0415
+            attach_customer_lifecycle_state_v1,
+            lifecycle_state_to_filter_bucket,
+        )
+        from models import AbandonedCart, CartRecoveryReason, Store  # noqa: PLC0415
+    except Exception as exc:  # noqa: BLE001
+        return j({"ok": False, "error": str(exc)}, 500)
+
+    try:
+        store_slug, session_id = _parse_rk(rk)
+        store_slug = (store_slug or "").strip()[:255]
+        session_id = (session_id or "").strip()[:512]
+
+        dash_store = None
+        if store_slug:
+            dash_store = (
+                db.session.query(Store)
+                .filter(Store.zid_store_id == store_slug)
+                .order_by(Store.id.desc())
+                .first()
+            )
+
+        # AbandonedCart row probe (best-effort: latest row for this session in this store).
+        ac_row = None
+        if session_id:
+            q = db.session.query(AbandonedCart).filter(
+                AbandonedCart.recovery_session_id == session_id
+            )
+            if dash_store is not None and getattr(dash_store, "id", None) is not None:
+                q = q.filter(AbandonedCart.store_id == int(dash_store.id))
+            ac_row = q.order_by(AbandonedCart.id.desc()).first()
+
+        ac_id = int(getattr(ac_row, "id", 0) or 0) or None
+        ac_cart_id = (getattr(ac_row, "zid_cart_id", None) or "").strip()[:255] if ac_row else ""
+        ac_cart_value = float(getattr(ac_row, "cart_value", 0.0) or 0.0) if ac_row else None
+        ac_created_at = getattr(ac_row, "created_at", None) if ac_row else None
+        ac_updated_at = getattr(ac_row, "updated_at", None) if ac_row else None
+        ac_last_seen_at = getattr(ac_row, "last_seen_at", None) if ac_row else None
+        ac_store_id = getattr(ac_row, "store_id", None) if ac_row else None
+
+        raw_payload = {}
+        try:
+            raw_payload = getattr(ac_row, "raw_payload", None) if ac_row is not None else None
+            raw_payload = raw_payload if isinstance(raw_payload, dict) else {}
+        except Exception:  # noqa: BLE001
+            raw_payload = {}
+        payload_cart_total = None
+        try:
+            if "cart_total" in raw_payload and raw_payload.get("cart_total") is not None:
+                payload_cart_total = float(raw_payload.get("cart_total"))
+        except (TypeError, ValueError):
+            payload_cart_total = None
+
+        # Reason tag probe
+        reason_tag = None
+        try:
+            rr = (
+                db.session.query(CartRecoveryReason)
+                .filter(
+                    CartRecoveryReason.store_slug == store_slug,
+                    CartRecoveryReason.session_id == session_id,
+                )
+                .order_by(CartRecoveryReason.updated_at.desc())
+                .first()
+            )
+            reason_tag = (getattr(rr, "reason", None) or "").strip().lower()[:64] if rr else None
+        except Exception:  # noqa: BLE001
+            db.session.rollback()
+
+        timeline = get_recovery_truth_timeline(rk)
+        statuses = sorted(timeline_status_set(rk))
+
+        # Dashboard row probe (use the same normal-carts builder, but scope store from recovery_key).
+        dash_rows, _prof = _normal_recovery_merchant_lightweight_alert_list_for_api(
+            page_limit=220,
+            page_offset=0,
+            lifecycle="all",
+            dash_store=dash_store,
+            nr_session=session_id or None,
+        )
+        dash_row = None
+        for r in dash_rows:
+            if str(r.get("recovery_key") or "").strip() == rk:
+                dash_row = r
+                break
+        dash_cart_value = (
+            float(dash_row.get("merchant_cart_value") or 0.0) if isinstance(dash_row, dict) else None
+        )
+        dash_bucket = (
+            str(dash_row.get("merchant_cart_bucket") or "").strip().lower()
+            if isinstance(dash_row, dict)
+            else None
+        )
+        dash_row_id = (
+            int(dash_row.get("merchant_case_row_id") or 0) or None
+            if isinstance(dash_row, dict)
+            else None
+        )
+        dash_archive_flag = (
+            bool(dash_row.get("customer_lifecycle_is_archived_visual"))
+            if isinstance(dash_row, dict)
+            else False
+        )
+
+        lifecycle_state = None
+        lifecycle_bucket = None
+        if isinstance(dash_row, dict):
+            lifecycle_state = str(dash_row.get("customer_lifecycle_state") or "").strip().lower() or None
+            lifecycle_bucket = lifecycle_state_to_filter_bucket(lifecycle_state or "")
+        else:
+            # Fallback: compute lifecycle from evidence even if row missing.
+            tmp: dict[str, Any] = {}
+            attach_customer_lifecycle_state_v1(
+                tmp,
+                recovery_key=rk,
+                phase_key="",
+                coarse="",
+                sent_count=0,
+                log_statuses=None,
+                behavioral=None,
+                purchase_truth=False,
+                cart_status="",
+                merchant_archived=False,
+                terminal_history_archived=False,
+                is_vip_lane=False,
+                has_phone=True,
+            )
+            lifecycle_state = str(tmp.get("customer_lifecycle_state") or "").strip().lower() or None
+            lifecycle_bucket = lifecycle_state_to_filter_bucket(lifecycle_state or "")
+
+        # Consistency checks (no behavior change; logs only)
+        consistent = True
+        reasons: list[str] = []
+        if dash_row is None:
+            consistent = False
+            reasons.append("dashboard_row_missing_for_recovery_key")
+        else:
+            dash_rk = str(dash_row.get("recovery_key") or "").strip()
+            if dash_rk != rk:
+                consistent = False
+                reasons.append("dashboard_recovery_key_mismatch")
+            # Compare cart totals across layers (prefer payload cart_total if present, else AbandonedCart.cart_value).
+            latest_total = payload_cart_total if payload_cart_total is not None else ac_cart_value
+            if latest_total is not None and dash_cart_value is not None:
+                if abs(float(dash_cart_value) - float(latest_total)) > 0.0001:
+                    consistent = False
+                    reasons.append("dashboard_cart_total_mismatch")
+        # Enforce bucket equality (tab==bucket) when row exists.
+        if dash_row is not None and lifecycle_bucket and dash_bucket and lifecycle_bucket != dash_bucket:
+            consistent = False
+            reasons.append("dashboard_bucket_mismatch_vs_lifecycle")
+
+        try:
+            msg = (
+                "[MERCHANT TRUTH] "
+                f"cart_total={dash_cart_value if dash_cart_value is not None else '-'} "
+                f"cart_id={(ac_cart_id or '-')[:80]} "
+                f"session_id={(session_id or '-')[:80]} "
+                f"recovery_key={(rk or '-')[:200]} "
+                f"dashboard_row={dash_row_id if dash_row_id is not None else '-'} "
+                f"bucket={dash_bucket or '-'} "
+                f"consistent={'true' if consistent else 'false'}"
+            )
+            print(msg, flush=True)
+            log.info("%s", msg)
+        except Exception:  # noqa: BLE001
+            pass
+        if not consistent:
+            try:
+                vmsg = "[MERCHANT TRUTH VIOLATION] " + " ".join(reasons)[:500]
+                print(vmsg, flush=True)
+                log.warning("%s", vmsg)
+            except Exception:  # noqa: BLE001
+                pass
+
+        def _iso(dt: Any) -> Any:
+            try:
+                if dt is None:
+                    return None
+                return dt.isoformat()
+            except Exception:
+                return None
+
+        return j(
+            {
+                "ok": True,
+                "store_slug": store_slug or None,
+                "session_id": session_id or None,
+                "cart_id": ac_cart_id or None,
+                "recovery_key": rk,
+                "cart_total": payload_cart_total if payload_cart_total is not None else ac_cart_value,
+                "cart_total_source": (
+                    "abandoned_cart.raw_payload.cart_total"
+                    if payload_cart_total is not None
+                    else "abandoned_cart.cart_value"
+                )
+                if (payload_cart_total is not None or ac_cart_value is not None)
+                else None,
+                "reason_tag": reason_tag,
+                "abandoned_cart_id": ac_id,
+                "abandoned_cart_store_id": int(ac_store_id) if ac_store_id is not None else None,
+                "timeline_statuses": statuses,
+                "timeline": timeline,
+                "customer_lifecycle_state": lifecycle_state,
+                "dashboard_bucket": dash_bucket,
+                "dashboard_row_id": dash_row_id,
+                "archive_flag": bool(dash_archive_flag),
+                "created_at": _iso(ac_created_at),
+                "updated_at": _iso(ac_updated_at),
+                "last_seen_at": _iso(ac_last_seen_at),
+                "dashboard_cart_value": dash_cart_value,
+                "dashboard_row_recovery_key": (
+                    str(dash_row.get("recovery_key") or "").strip()
+                    if isinstance(dash_row, dict)
+                    else None
+                ),
+                "consistent": bool(consistent),
+                "reason": ",".join(reasons) if reasons else "ok",
+            }
+        )
+    except Exception as exc:  # noqa: BLE001
+        db.session.rollback()
+        return j({"ok": False, "error": str(exc)}, 500)
+
+
 @app.get("/dev/recovery-health")
 def dev_recovery_health() -> Any:
     """
