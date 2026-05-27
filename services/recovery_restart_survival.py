@@ -33,6 +33,8 @@ STATUS_SKIPPED_DUPLICATE = "skipped_duplicate"
 STATUS_SKIPPED_NO_PHONE = "skipped_no_phone"
 STATUS_SKIPPED_NO_REASON = "skipped_no_reason"
 STATUS_WHATSAPP_FAILED = "whatsapp_failed"
+STATUS_IGNORED_DEMO_STARTUP = "ignored_demo_startup"
+STATUS_SKIPPED_DEMO_RESUME = "skipped_demo_resume"
 
 _TERMINAL = frozenset(
     {
@@ -46,6 +48,8 @@ _TERMINAL = frozenset(
         STATUS_SKIPPED_NO_PHONE,
         STATUS_SKIPPED_NO_REASON,
         STATUS_WHATSAPP_FAILED,
+        STATUS_IGNORED_DEMO_STARTUP,
+        STATUS_SKIPPED_DEMO_RESUME,
     }
 )
 
@@ -96,6 +100,181 @@ def _log_resume_scan(*, count: int, due_count: int, future_count: int = 0) -> No
         pass
 
 
+def _is_development_runtime() -> bool:
+    return (os.getenv("ENV") or "").strip().lower() == "development"
+
+
+def production_startup_demo_filter_active(*, force: bool = False) -> bool:
+    """When true, startup resume scan skips sandbox demo/demo2 schedules."""
+    if force:
+        return False
+    if _is_development_runtime():
+        return False
+    off = (os.getenv("CARTFLOW_RESUME_FILTER_DEMO") or "").strip().lower()
+    if off in ("0", "false", "no", "off"):
+        return False
+    return True
+
+
+def schedule_effective_store_slug(row: RecoverySchedule) -> str:
+    from services.recovery_store_context import canonical_store_slug_from_recovery_key
+
+    return (
+        canonical_store_slug_from_recovery_key(row.recovery_key)
+        or (row.store_slug or "")
+    ).strip()
+
+
+def is_sandbox_recovery_schedule(row: RecoverySchedule) -> bool:
+    from services.merchant_test_widget_store_v1 import is_public_widget_sandbox_slug
+
+    return is_public_widget_sandbox_slug(schedule_effective_store_slug(row))
+
+
+def recovery_resume_filter_decision(
+    row: RecoverySchedule,
+    *,
+    force: bool = False,
+) -> tuple[str, str]:
+    """
+    Classify one scheduled row for startup resume scan.
+
+    Returns (decision, reason) where decision is
+    resume | skip_demo | skip_stale | skip_terminal.
+    """
+    st = (row.status or "").strip()
+    if st in _TERMINAL:
+        return "skip_terminal", f"status={st}"
+    if not production_startup_demo_filter_active(force=force):
+        return "resume", "filter_inactive"
+    if not is_sandbox_recovery_schedule(row):
+        return "resume", "merchant_allowed"
+    overdue_sec = (_utc_now() - _schedule_due_at_utc(row)).total_seconds()
+    if overdue_sec > 86400:
+        return "skip_stale", "sandbox_overdue_on_production_startup"
+    return "skip_demo", "sandbox_not_resumed_on_production_startup"
+
+
+def _mark_schedule_row_terminal_from_scheduled(
+    row: RecoverySchedule,
+    *,
+    status: str,
+    detail: str,
+) -> bool:
+    """Close a ``scheduled`` row without claiming ``running`` (startup demo filter)."""
+    prev = (row.status or "").strip()
+    if prev != STATUS_SCHEDULED:
+        return False
+    st = (status or "").strip()[:64] or STATUS_IGNORED_DEMO_STARTUP
+    det = (detail or "").strip()[:512]
+    row.status = st
+    row.updated_at = _utc_now()
+    if det:
+        row.last_error = det
+    _log_recovery_terminal_update(
+        recovery_key=(row.recovery_key or "").strip(),
+        row_id=int(row.id),
+        from_status=prev,
+        to_status=st,
+        detail=det or "-",
+    )
+    try:
+        db.session.commit()
+    except SQLAlchemyError:
+        db.session.rollback()
+        return False
+    return True
+
+
+def log_recovery_resume_filter(
+    *,
+    store_slug: str,
+    recovery_key: str,
+    decision: str,
+    reason: str,
+) -> None:
+    line = (
+        f"[RECOVERY RESUME FILTER] store_slug={store_slug or '-'} "
+        f"recovery_key={(recovery_key or '-')[:512]} "
+        f"decision={decision} reason={reason}"
+    )
+    try:
+        print(line, flush=True)
+    except OSError:
+        pass
+    _log.info("%s", line)
+
+
+def ignore_sandbox_schedules_for_production_startup(
+    *,
+    dry_run: bool = False,
+    force: bool = False,
+    batch_limit: int = 500,
+) -> Dict[str, Any]:
+    """
+    Mark sandbox demo/demo2 scheduled rows ignored before resume scan.
+
+    Merchant production slugs (e.g. cartflow3) are never touched.
+    """
+    out: Dict[str, Any] = {
+        "active": production_startup_demo_filter_active(force=force),
+        "ignored": 0,
+        "dry_run": dry_run,
+    }
+    if not out["active"]:
+        return out
+    try:
+        from sqlalchemy import or_
+
+        sandbox_clause = or_(
+            RecoverySchedule.store_slug.in_(("demo", "demo2", "default")),
+            RecoverySchedule.recovery_key.like("demo:%"),
+            RecoverySchedule.recovery_key.like("demo2:%"),
+            RecoverySchedule.recovery_key.like("default:%"),
+        )
+        rows: List[RecoverySchedule] = (
+            db.session.query(RecoverySchedule)
+            .filter(
+                RecoverySchedule.status == STATUS_SCHEDULED,
+                sandbox_clause,
+            )
+            .order_by(RecoverySchedule.due_at.asc())
+            .limit(max(1, int(batch_limit)))
+            .all()
+        )
+        for row in rows:
+            if not is_sandbox_recovery_schedule(row):
+                continue
+            slug = schedule_effective_store_slug(row)
+            rk = (row.recovery_key or "").strip()
+            decision, reason = recovery_resume_filter_decision(row, force=force)
+            log_recovery_resume_filter(
+                store_slug=slug,
+                recovery_key=rk,
+                decision=decision,
+                reason=reason,
+            )
+            if decision == "resume":
+                continue
+            if not dry_run:
+                terminal = (
+                    STATUS_SKIPPED_DEMO_RESUME
+                    if decision == "skip_stale"
+                    else STATUS_IGNORED_DEMO_STARTUP
+                )
+                _mark_schedule_row_terminal_from_scheduled(
+                    row,
+                    status=terminal,
+                    detail=f"{decision}:{reason}",
+                )
+            out["ignored"] = int(out["ignored"]) + 1
+    except SQLAlchemyError as exc:
+        db.session.rollback()
+        out["error"] = str(exc)[:240]
+        _log.warning("ignore_sandbox_schedules_for_production_startup: %s", exc)
+    return out
+
+
 def _log_future_rearm(tag: str, *, schedule_id: int, recovery_key: str = "", detail: str = "") -> None:
     try:
         print(f"[RECOVERY FUTURE REARM {tag}]", flush=True)
@@ -125,6 +304,7 @@ def rearm_one_future_scheduled_recovery(
     row: RecoverySchedule,
     *,
     dispatch: bool = True,
+    force: bool = False,
 ) -> Dict[str, Any]:
     """
     Re-arm in-process delay dispatch for a future-due ``scheduled`` row (post-restart).
@@ -134,6 +314,34 @@ def rearm_one_future_scheduled_recovery(
     sid = int(row.id)
     rk = row.recovery_key
     _log_future_rearm("CHECK", schedule_id=sid, recovery_key=rk)
+
+    slug = schedule_effective_store_slug(row)
+    filt_decision, filt_reason = recovery_resume_filter_decision(row, force=force)
+    log_recovery_resume_filter(
+        store_slug=slug,
+        recovery_key=(rk or "").strip(),
+        decision=filt_decision,
+        reason=filt_reason,
+    )
+    if filt_decision != "resume":
+        if dispatch and filt_decision != "skip_terminal":
+            terminal = (
+                STATUS_SKIPPED_DEMO_RESUME
+                if filt_decision == "skip_stale"
+                else STATUS_IGNORED_DEMO_STARTUP
+            )
+            _mark_schedule_row_terminal_from_scheduled(
+                row,
+                status=terminal,
+                detail=f"{filt_decision}:{filt_reason}",
+            )
+        return {
+            "schedule_id": sid,
+            "recovery_key": rk,
+            "rearmed": False,
+            "reason": filt_reason,
+            "filter_decision": filt_decision,
+        }
 
     if row.status != STATUS_SCHEDULED:
         _log_future_rearm(
@@ -1423,7 +1631,42 @@ async def resume_one_schedule(
     row: RecoverySchedule,
     *,
     dispatch: bool = True,
+    force: bool = False,
 ) -> Dict[str, Any]:
+    slug = schedule_effective_store_slug(row)
+    rk = (row.recovery_key or "").strip()
+    decision, filt_reason = recovery_resume_filter_decision(row, force=force)
+    log_recovery_resume_filter(
+        store_slug=slug,
+        recovery_key=rk,
+        decision=decision,
+        reason=filt_reason,
+    )
+    if decision != "resume":
+        if not dispatch:
+            return {
+                "recovery_key": rk,
+                "dispatched": False,
+                "reason": filt_reason,
+                "filter_decision": decision,
+            }
+        terminal = (
+            STATUS_SKIPPED_DEMO_RESUME
+            if decision == "skip_stale"
+            else STATUS_IGNORED_DEMO_STARTUP
+        )
+        _mark_schedule_row_terminal_from_scheduled(
+            row,
+            status=terminal,
+            detail=f"{decision}:{filt_reason}",
+        )
+        return {
+            "recovery_key": rk,
+            "dispatched": False,
+            "reason": filt_reason,
+            "filter_decision": decision,
+        }
+
     _log_resume_candidate(row)
     ok, reason = evaluate_resume_safety(row, trust_durable_schedule=True)
     if not ok:
@@ -1497,6 +1740,10 @@ async def run_recovery_resume_scan_async(
     try:
         db.create_all()
         stale_repair = repair_stale_running_recovery_schedules()
+        demo_filter = ignore_sandbox_schedules_for_production_startup(
+            dry_run=dry_run,
+            force=force,
+        )
         now = _utc_now()
         pending = (
             db.session.query(RecoverySchedule)
@@ -1532,20 +1779,25 @@ async def run_recovery_resume_scan_async(
         outcomes: List[Dict[str, Any]] = []
         dispatched = 0
         for row in due_rows:
-            out = await resume_one_schedule(row, dispatch=not dry_run)
+            out = await resume_one_schedule(
+                row, dispatch=not dry_run, force=force
+            )
             outcomes.append(out)
             if out.get("dispatched"):
                 dispatched += 1
         future_outcomes: List[Dict[str, Any]] = []
         future_rearmed = 0
         for row in future_rows:
-            out = rearm_one_future_scheduled_recovery(row, dispatch=not dry_run)
+            out = rearm_one_future_scheduled_recovery(
+                row, dispatch=not dry_run, force=force
+            )
             future_outcomes.append(out)
             if out.get("rearmed"):
                 future_rearmed += 1
         scan_out = {
             "enabled": True,
             "dry_run": dry_run,
+            "demo_startup_filter": demo_filter,
             "stale_running_repair": stale_repair,
             "stale_running_reconciled": int(stale_repair.get("finalized", 0))
             + int(stale_repair.get("repaired", 0)),

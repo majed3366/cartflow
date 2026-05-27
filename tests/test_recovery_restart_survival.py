@@ -279,6 +279,10 @@ class RecoveryRestartSurvivalTests(unittest.TestCase):
             recovery_context={"recovery_key": rk, "store_slug": "loadtest-store-020"},
         )
         assert row is not None
+        # persist reconciles demo rk → merchant slug; force mismatch for safety gate test.
+        row.recovery_key = rk
+        row.store_slug = "loadtest-store-020"
+        db.session.commit()
         ok, reason = evaluate_resume_safety(row)
         self.assertFalse(ok)
         self.assertEqual(reason, "store_context_mismatch")

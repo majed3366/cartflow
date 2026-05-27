@@ -5396,8 +5396,19 @@ def _recovery_store_from_context(
         )
         if exact is not None:
             return exact
-    if rk_merchant:
-        return None
+    try:
+        from services.recovery_store_context import (  # noqa: PLC0415
+            canonical_store_slug_from_recovery_key,
+        )
+        from services.merchant_test_widget_store_v1 import (  # noqa: PLC0415
+            is_public_widget_sandbox_slug,
+        )
+
+        rk_slug = canonical_store_slug_from_recovery_key(rk_raw) or slug_eff
+        if rk_slug and not is_public_widget_sandbox_slug(rk_slug) and exact is None:
+            return None
+    except Exception:  # noqa: BLE001
+        pass
     if not recovery_context:
         return _load_store_row_for_recovery(
             store_slug,
