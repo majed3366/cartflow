@@ -1582,7 +1582,7 @@
     return h + "</div>";
   }
 
-  function patchCartRowArchivedVisual(rk, archived) {
+  function patchCartRowArchivedVisual(rk, archived, lifecycle) {
     var key = String(rk || "").trim();
     if (!key) return;
     lastNormalCartsPageRows.forEach(function (mc) {
@@ -1595,6 +1595,19 @@
         mc.customer_lifecycle_status_row_class = "s-archived";
         mc.merchant_status_row_class = "s-archived";
         mc.merchant_status_label_ar = "مؤرشفة";
+        mc.merchant_next_action_urgent = false;
+      } else if (lifecycle && typeof lifecycle === "object") {
+        Object.keys(lifecycle).forEach(function (k) {
+          if (lifecycle[k] !== undefined && lifecycle[k] !== null) {
+            mc[k] = lifecycle[k];
+          }
+        });
+        if (lifecycle.merchant_status_label_ar) {
+          mc.merchant_status_label_ar = lifecycle.merchant_status_label_ar;
+        }
+        if (lifecycle.merchant_status_row_class) {
+          mc.merchant_status_row_class = lifecycle.merchant_status_row_class;
+        }
         mc.merchant_next_action_urgent = false;
       } else {
         mc.customer_lifecycle_is_archived_visual = false;
@@ -1662,7 +1675,8 @@
           })
           .then(function (d) {
             if (d && d.ok) {
-              patchCartRowArchivedVisual(rk, false);
+              patchCartRowArchivedVisual(rk, false, d.lifecycle || null);
+              rerenderAllCartsTable();
               fetchSection(
                 "/api/dashboard/normal-carts",
                 applyNormalCarts,

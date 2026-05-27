@@ -4635,9 +4635,26 @@ def _normal_recovery_group_is_terminal_archived(
         )
     if pk in _NORMAL_RECOVERY_TERMINAL_PHASE_KEYS:
         return True
-    if log_u & _NORMAL_RECOVERY_TERMINAL_LOG_STATUSES:
+    sent_n = _cart_recovery_sent_real_count_for_abandoned(ac0)
+    store_ac = _store_row_for_abandoned_cart(ac0)
+    try:
+        max_a = max(
+            1,
+            int(_normal_recovery_configured_message_count_for_abandoned_cart(ac0, store_ac)),
+        )
+    except (TypeError, ValueError):
+        max_a = 1
+    log_u_eff = log_u
+    if "skipped_attempt_limit" in log_u and sent_n < max_a:
+        log_u_eff = frozenset(x for x in log_u if x != "skipped_attempt_limit")
+    if log_u_eff & _NORMAL_RECOVERY_TERMINAL_LOG_STATUSES:
         return True
-    return _normal_recovery_coarse_status(pk) in _NORMAL_RECOVERY_ARCHIVED_COARSE_STATUSES
+    coarse = _normal_recovery_coarse_status(pk)
+    if coarse in _NORMAL_RECOVERY_ARCHIVED_COARSE_STATUSES:
+        if coarse == "ignored" and sent_n >= 1 and sent_n < max_a:
+            return False
+        return True
+    return False
 
 
 def _normal_recovery_merchant_lifecycle_bucket_ok(
@@ -15866,9 +15883,17 @@ async def api_dashboard_cart_lifecycle_reopen(request: Request) -> Any:
     rk = (body.get("recovery_key") or "").strip()[:512]
     if not rk:
         return j({"ok": False, "error": "recovery_key_required"}, 400)
+    from services.customer_lifecycle_states_v1 import (  # noqa: PLC0415
+        lifecycle_payload_for_reopen,
+    )
     from services.merchant_cart_lifecycle_archive_v1 import reopen_recovery_key
 
-    return j(reopen_recovery_key(rk))
+    result = reopen_recovery_key(rk)
+    if result.get("ok"):
+        life = lifecycle_payload_for_reopen(rk)
+        if life:
+            result["lifecycle"] = life
+    return j(result)
 
 
 @app.get("/api/dashboard/followups")

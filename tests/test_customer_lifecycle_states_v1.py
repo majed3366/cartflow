@@ -224,6 +224,50 @@ class CustomerLifecycleStatesV1Tests(unittest.TestCase):
         )
         self.assertEqual(lc.state_key, STATE_WAITING_CUSTOMER_REPLY)
 
+    def test_provider_sent_not_archived_when_attempt_limit_skip_early(self) -> None:
+        """Step-2 skip log must not archive after first send (cap=1 or partial cap)."""
+        rk = f"demo:lc-cap1-{self._suffix}"
+        record_recovery_truth_event(
+            recovery_key=rk,
+            status=STATUS_PROVIDER_SENT,
+            source="test",
+            store_slug="demo",
+        )
+        lc = classify_customer_lifecycle_state_v1(
+            recovery_key=rk,
+            sent_count=1,
+            attempt_cap=1,
+            log_statuses=frozenset({"mock_sent", "skipped_attempt_limit"}),
+            coarse="sent",
+            terminal_history_archived=True,
+        )
+        self.assertEqual(lc.state_key, STATE_WAITING_CUSTOMER_REPLY)
+        self.assertNotEqual(lc.state_key, STATE_ARCHIVED)
+
+    def test_terminal_history_with_provider_sent_stays_waiting(self) -> None:
+        rk = f"demo:lc-term-{self._suffix}"
+        record_recovery_truth_event(
+            recovery_key=rk,
+            status=STATUS_PROVIDER_SENT,
+            source="test",
+            store_slug="demo",
+        )
+        lc = classify_customer_lifecycle_state_v1(
+            recovery_key=rk,
+            sent_count=1,
+            attempt_cap=2,
+            log_statuses=frozenset({"mock_sent", "skipped_attempt_limit"}),
+            coarse="sent",
+            terminal_history_archived=True,
+        )
+        self.assertEqual(lc.state_key, STATE_WAITING_CUSTOMER_REPLY)
+
+    def test_reopen_idempotent_without_persisted_row(self) -> None:
+        rk = f"demo:lc-reopen-{self._suffix}"
+        out = reopen_recovery_key(rk)
+        self.assertTrue(out.get("ok"))
+        self.assertFalse(out.get("archived"))
+
 
 if __name__ == "__main__":
     unittest.main()

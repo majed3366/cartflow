@@ -105,11 +105,21 @@ def reopen_recovery_key(recovery_key: str) -> dict[str, Any]:
             .first()
         )
         if row is None:
-            return {"ok": False, "error": "not_archived"}
+            return {
+                "ok": True,
+                "recovery_key": rk,
+                "archived": False,
+                "cleared_persisted": False,
+            }
         row.is_archived = False
         row.reopened_at = _utc_now()
         db.session.commit()
-        return {"ok": True, "recovery_key": rk, "archived": False}
+        return {
+            "ok": True,
+            "recovery_key": rk,
+            "archived": False,
+            "cleared_persisted": True,
+        }
     except SQLAlchemyError as exc:
         db.session.rollback()
         return {"ok": False, "error": str(exc)[:240]}

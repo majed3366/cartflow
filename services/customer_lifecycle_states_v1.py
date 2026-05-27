@@ -6,6 +6,7 @@ Maps timeline + schedule + archive flags to merchant-facing lifecycle states.
 """
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Any, Mapping, Optional
@@ -13,6 +14,8 @@ from typing import Any, Mapping, Optional
 from sqlalchemy.exc import SQLAlchemyError
 
 from extensions import db
+
+log = logging.getLogger(__name__)
 
 STATE_ACTIVE = "active"
 STATE_WAITING_FIRST_SEND = "waiting_first_send"
@@ -377,18 +380,44 @@ def _return_to_site_detected(
     return False
 
 
-def _templates_exhausted(
+def _recovery_messages_exhausted_for_archive(
     *,
     sent_count: int,
     attempt_cap: int,
     log_ss: frozenset[str],
 ) -> bool:
+    """True only when no further recovery templates will be sent without merchant reopen."""
     cap = max(1, int(attempt_cap or 1))
-    if int(sent_count or 0) >= cap:
+    sent_n = int(sent_count or 0)
+    if "skipped_reason_template_disabled" in log_ss:
         return True
-    if log_ss & EXHAUSTED_LOG:
-        return True
-    return False
+    if "skipped_attempt_limit" in log_ss:
+        # Scheduler may log step>N skip while customer still awaits reply (e.g. cap=1).
+        return sent_n >= cap and cap > 1
+    return sent_n >= cap and cap > 1
+
+
+def _log_archive_decision(
+    *,
+    recovery_key: str,
+    provider_sent: bool,
+    messages_exhausted: bool,
+    manual_archive: bool,
+    auto_archive: bool,
+    archive_reason: str,
+    final_state: str,
+) -> None:
+    log.info(
+        "[ARCHIVE DECISION] recovery_key=%s provider_sent=%s messages_exhausted=%s "
+        "manual_archive=%s auto_archive=%s archive_reason=%s final_state=%s",
+        (recovery_key or "-")[:512],
+        provider_sent,
+        messages_exhausted,
+        manual_archive,
+        auto_archive,
+        archive_reason or "-",
+        final_state or "-",
+    )
 
 
 def _needs_intervention(
@@ -467,15 +496,52 @@ def classify_customer_lifecycle_state_v1(
     sent_n = int(sent_count or 0)
     tl = _timeline_flags(rk)
     now = _utc_now()
+    sent_proven_early = _provider_sent(rk, log_ss, sent_n)
+    exhausted_early = _recovery_messages_exhausted_for_archive(
+        sent_count=sent_n, attempt_cap=cap, log_ss=log_ss
+    )
 
-    if merchant_archived or terminal_history_archived:
-        return _pack(
-            STATE_ARCHIVED,
-            what_happened="أُغلقت السلة من لوحة التاجر أو اكتمل مسار الرسائل دون تفاعل.",
-            system_did="أوقفنا المتابعة الآلية لهذه السلة.",
-            what_next="يمكنك إعادة فتحها للمراجعة فقط.",
-            merchant_needed="لا",
-            dashboard_action="reopen",
+    def _finish(
+        lc: CustomerLifecycleStateV1,
+        *,
+        archive_reason: str,
+        auto_archive: bool = False,
+    ) -> CustomerLifecycleStateV1:
+        _log_archive_decision(
+            recovery_key=rk,
+            provider_sent=sent_proven_early,
+            messages_exhausted=exhausted_early,
+            manual_archive=merchant_archived,
+            auto_archive=auto_archive,
+            archive_reason=archive_reason,
+            final_state=lc.state_key,
+        )
+        return lc
+
+    if merchant_archived:
+        return _finish(
+            _pack(
+                STATE_ARCHIVED,
+                what_happened="أُغلقت السلة من لوحة التاجر.",
+                system_did="أوقفنا المتابعة الآلية لهذه السلة.",
+                what_next="يمكنك إعادة فتحها للمراجعة فقط.",
+                merchant_needed="لا",
+                dashboard_action="reopen",
+            ),
+            archive_reason="manual_archive",
+        )
+
+    if terminal_history_archived and not sent_proven_early:
+        return _finish(
+            _pack(
+                STATE_ARCHIVED,
+                what_happened="أُغلقت السلة من السجل التاريخي.",
+                system_did="أوقفنا المتابعة الآلية لهذه السلة.",
+                what_next="يمكنك إعادة فتحها للمراجعة فقط.",
+                merchant_needed="لا",
+                dashboard_action="reopen",
+            ),
+            archive_reason="terminal_history",
         )
 
     purchased = bool(
@@ -486,49 +552,61 @@ def classify_customer_lifecycle_state_v1(
     )
     if purchased:
         variant = "purchased" if purchase_truth or cnorm == "converted" else "recovered"
-        return _pack(
-            STATE_COMPLETED,
-            what_happened="اكتملت عملية الشراء أو استُعيدت السلة.",
-            system_did="أنهينا مهمة الاسترجاع لهذه السلة.",
-            what_next="لا مزيد من رسائل الاسترجاع الآلية.",
-            merchant_needed="لا",
-            dashboard_action="none",
-            completed_variant=variant,
+        return _finish(
+            _pack(
+                STATE_COMPLETED,
+                what_happened="اكتملت عملية الشراء أو استُعيدت السلة.",
+                system_did="أنهينا مهمة الاسترجاع لهذه السلة.",
+                what_next="لا مزيد من رسائل الاسترجاع الآلية.",
+                merchant_needed="لا",
+                dashboard_action="none",
+                completed_variant=variant,
+            ),
+            archive_reason="purchased",
         )
 
     if _needs_intervention(
         log_ss=log_ss, phase_key=pk, is_vip_lane=is_vip_lane
     ):
-        return _pack(
+        return _finish(
+            _pack(
             STATE_NEEDS_INTERVENTION,
             what_happened="تحتاج السلة تدخلاً خاصاً (VIP أو قناة أو معالجة يدوية).",
             system_did="أوقفنا الإرسال الآلي أو تعذّر إكماله.",
             what_next="راجع السلة واتخذ إجراءً يدوياً عند الحاجة.",
             merchant_needed="نعم",
             dashboard_action="archive",
+        ),
+            archive_reason="needs_intervention",
         )
 
     replied = _customer_replied(rk)
-    sent_proven = _provider_sent(rk, log_ss, sent_n)
+    sent_proven = sent_proven_early
 
     if replied and sent_proven and tl["continuation_started"]:
-        return _pack(
+        return _finish(
+            _pack(
             STATE_CUSTOMER_ENGAGED,
             what_happened="ردّ العميل بعد رسالة الاسترجاع.",
             system_did="أرسل النظام متابعة الاعتراض تلقائياً.",
             what_next="لا حاجة لرسائل إرسال إضافية — المتابعة آلية.",
             merchant_needed="لا",
             dashboard_action="archive",
+        ),
+            archive_reason="customer_engaged",
         )
 
     if replied and sent_proven:
-        return _pack(
+        return _finish(
+            _pack(
             STATE_CUSTOMER_REPLY,
             what_happened="ردّ العميل على رسالة الاسترجاع.",
             system_did="سجّلنا الرد — المتابعة التلقائية تبدأ عند الحاجة.",
             what_next="نراقب هل يكمّل الطلب أو يرد مرة أخرى.",
             merchant_needed="لا",
             dashboard_action="archive",
+        ),
+            archive_reason="customer_reply",
         )
 
     if _return_to_site_detected(
@@ -538,18 +616,19 @@ def classify_customer_lifecycle_state_v1(
         log_ss=log_ss,
         behavioral=bh,
     ):
-        return _pack(
+        return _finish(
+            _pack(
             STATE_RETURN_TO_SITE,
             what_happened="عاد العميل للموقع.",
             system_did="أوقف أو علّق المتابعة مؤقتًا حتى لا يزعج العميل.",
             what_next="ننتظر هل يكمل الطلب أو يغادر.",
             merchant_needed="لا",
             dashboard_action="archive",
+        ),
+            archive_reason="return_to_site",
         )
 
-    exhausted = _templates_exhausted(
-        sent_count=sent_n, attempt_cap=cap, log_ss=log_ss
-    )
+    exhausted = exhausted_early
 
     due_at = _next_schedule_due_at(rk)
     if due_at is None and next_attempt_due_at:
@@ -574,7 +653,8 @@ def classify_customer_lifecycle_state_v1(
         and not replied
     ):
         eta = _format_eta_ar((due_at - now).total_seconds())
-        return _pack(
+        return _finish(
+            _pack(
             STATE_WAITING_NEXT_SCHEDULED,
             what_happened="العميل لم يرد على الرسالة السابقة بعد.",
             system_did="أرسل النظام الرسالة الأولى (أو السابقة) وفق القالب.",
@@ -582,26 +662,35 @@ def classify_customer_lifecycle_state_v1(
             merchant_needed="لا",
             dashboard_action="archive",
             next_followup_line=f"المتابعة القادمة بعد: {eta}",
+        ),
+            archive_reason="waiting_next_scheduled",
         )
 
     if sent_proven and not replied and not exhausted:
-        return _pack(
+        return _finish(
+            _pack(
             STATE_WAITING_CUSTOMER_REPLY,
             what_happened="أُرسلت رسالة استرجاع للعميل.",
             system_did="أرسل النظام رسالة واتساب وفق سبب التردد.",
             what_next="ننتظر تفاعل العميل.",
             merchant_needed="لا",
             dashboard_action="archive",
+        ),
+            archive_reason="provider_sent_waiting_reply",
         )
 
     if exhausted and not replied:
-        return _pack(
+        return _finish(
+            _pack(
             STATE_ARCHIVED,
             what_happened="استُنفدت قوالب المتابعة دون رد من العميل.",
             system_did="أوقفنا الرسائل الآلية لهذه السلة.",
             what_next="يمكنك إعادة فتحها أو تركها في السجل.",
             merchant_needed="لا",
             dashboard_action="reopen",
+        ),
+            archive_reason="messages_exhausted",
+            auto_archive=True,
         )
 
     if (
@@ -611,30 +700,39 @@ def classify_customer_lifecycle_state_v1(
         or cnorm == "pending"
     ) and not sent_proven:
         if not has_phone:
-            return _pack(
+            return _finish(
+                _pack(
                 STATE_NEEDS_INTERVENTION,
                 what_happened="لا يوجد رقم موثوق لإكمال الإرسال.",
                 system_did="لم يُرسل شيء بعد — بانتظار بيانات العميل.",
                 what_next="أضف رقم العميل ليكمل النظام المسار.",
                 merchant_needed="نعم",
                 dashboard_action="archive",
+            ),
+                archive_reason="missing_phone",
             )
-        return _pack(
+        return _finish(
+            _pack(
             STATE_WAITING_FIRST_SEND,
             what_happened="السلة في انتظار أول رسالة استرجاع.",
             system_did="جدولنا المتابعة وفق التأخير المضبوط.",
             what_next="ستُرسل الرسالة تلقائياً عند حلول الموعد.",
             merchant_needed="لا",
             dashboard_action="archive",
+        ),
+            archive_reason="waiting_first_send",
         )
 
-    return _pack(
+    return _finish(
+        _pack(
         STATE_ACTIVE,
         what_happened="السلة قيد المتابعة في النظام.",
         system_did="يراقب النظام النشاط والسبب والتوقيت.",
         what_next="سيتابع النظام تلقائياً دون تدخل.",
         merchant_needed="لا",
         dashboard_action="archive",
+    ),
+        archive_reason="active_default",
     )
 
 
@@ -695,6 +793,45 @@ def attach_customer_lifecycle_state_v1(
     return lc
 
 
+def lifecycle_payload_for_reopen(recovery_key: str) -> dict[str, Any]:
+    """Rebuild dashboard lifecycle fields after reopen (display-only archive cleared)."""
+    rk = (recovery_key or "").strip()[:512]
+    if not rk:
+        return {}
+    log_ss: set[str] = set()
+    sent_n = 0
+    try:
+        from models import CartRecoveryLog  # noqa: PLC0415
+
+        rows = (
+            db.session.query(CartRecoveryLog.status)
+            .filter(CartRecoveryLog.recovery_key == rk)
+            .limit(200)
+            .all()
+        )
+        for row in rows:
+            st = _norm(row[0] if row else "")
+            if st:
+                log_ss.add(st)
+            if st in SENT_LOG:
+                sent_n += 1
+    except SQLAlchemyError:
+        db.session.rollback()
+    lc = classify_customer_lifecycle_state_v1(
+        recovery_key=rk,
+        sent_count=sent_n,
+        attempt_cap=max(2, sent_n or 1),
+        log_statuses=frozenset(log_ss),
+        coarse="sent" if sent_n else "pending",
+        merchant_archived=False,
+        terminal_history_archived=False,
+    )
+    fields = lc.to_payload_fields()
+    fields["merchant_status_label_ar"] = lc.label_ar
+    fields["merchant_status_row_class"] = lc.status_row_class
+    return fields
+
+
 __all__ = [
     "LABEL_AR",
     "STATE_ACTIVE",
@@ -710,6 +847,7 @@ __all__ = [
     "CustomerLifecycleStateV1",
     "attach_customer_lifecycle_state_v1",
     "classify_customer_lifecycle_state_v1",
+    "lifecycle_payload_for_reopen",
     "lifecycle_filter_counts_from_rows",
     "lifecycle_nav_badge_waiting_count",
     "lifecycle_state_to_filter_bucket",
