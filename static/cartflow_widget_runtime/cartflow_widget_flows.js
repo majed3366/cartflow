@@ -37,6 +37,15 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     return /\b\/demo\//i.test(String(window.location.pathname || ""));
   }
 
+  function isMerchantActivationMode() {
+    try {
+      var qs = new URLSearchParams(window.location.search || "");
+      return String(qs.get("merchant_activation") || "").trim() === "1";
+    } catch (eMa) {
+      return false;
+    }
+  }
+
   function primaryHex() {
     var M = Cf.Config.merchant();
     return (M && M.widget_primary_color) || "#6366f1";
@@ -292,6 +301,23 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       onAssist: function () {
         handoffAssistThenOpenWa();
       },
+      onStartNewTest:
+        isMerchantActivationMode() &&
+        typeof window.cartflowStartNewMerchantTestLifecycle === "function"
+          ? function () {
+              try {
+                window.cartflowStartNewMerchantTestLifecycle({
+                  reason: "widget_start_new_test_action",
+                });
+                try {
+                  console.log(
+                    "[TEST SESSION RESET] reason=widget_start_new_test_action"
+                  );
+                } catch (eLogRs) {}
+                window.location.reload();
+              } catch (eRs) {}
+            }
+          : null,
       onBackReasons: function () {
         mountReasonList();
       },

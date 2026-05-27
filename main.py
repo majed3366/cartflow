@@ -2673,6 +2673,254 @@ def _synthetic_zid_cart_id_from_recovery_key(recovery_key: str) -> str:
     return f"cf_w_{h}"[:255]
 
 
+def _payload_bool(v: Any) -> bool:
+    if isinstance(v, bool):
+        return v
+    if v is None:
+        return False
+    s = str(v).strip().lower()
+    return s in ("1", "true", "yes", "on")
+
+
+def _merchant_test_widget_payload_enabled(payload: dict[str, Any]) -> bool:
+    if not isinstance(payload, dict):
+        return False
+    if _payload_bool(payload.get("merchant_activation")):
+        return True
+    tw = str(payload.get("test_widget_identity") or "").strip().lower()
+    return tw == "merchant_activation"
+
+
+def _test_widget_identity_truth_flags(
+    *,
+    store_slug: str,
+    session_id: str,
+    cart_id: str,
+    recovery_key: str,
+) -> dict[str, bool]:
+    out = {
+        "provider_sent": False,
+        "customer_reply": False,
+        "continuation_started": False,
+        "returned_to_site": False,
+        "archived": False,
+        "completed": False,
+        "purchased": False,
+        "exhausted": False,
+    }
+    rk = (recovery_key or "").strip()
+    sid = (session_id or "").strip()[:512]
+    ss = (store_slug or "").strip()[:255]
+    try:
+        from services.recovery_truth_timeline_v1 import (
+            STATUS_CONTINUATION_STARTED,
+            STATUS_CUSTOMER_REPLY,
+            STATUS_PROVIDER_SENT,
+            timeline_status_set,
+        )
+
+        ts = timeline_status_set(rk)
+        out["provider_sent"] = STATUS_PROVIDER_SENT in ts
+        out["customer_reply"] = STATUS_CUSTOMER_REPLY in ts
+        out["continuation_started"] = STATUS_CONTINUATION_STARTED in ts
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        from services.merchant_cart_lifecycle_archive_v1 import is_merchant_archived
+
+        out["archived"] = bool(rk and is_merchant_archived(rk))
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        from services.cartflow_purchase_truth import has_purchase
+
+        out["purchased"] = bool(rk and has_purchase(rk))
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        q = db.session.query(CartRecoveryLog.status).filter(CartRecoveryLog.session_id == sid)
+        if rk:
+            q = q.filter(
+                or_(CartRecoveryLog.recovery_key == rk, CartRecoveryLog.recovery_key.is_(None))
+            )
+        if ss:
+            q = q.filter(CartRecoveryLog.store_slug == ss)
+        logs = [str(r[0] or "").strip().lower() for r in q.all()]
+        log_s = frozenset(x for x in logs if x)
+        out["returned_to_site"] = bool(
+            "returned_to_site" in log_s or "user_returned" in log_s
+        )
+        out["exhausted"] = bool(
+            "skipped_attempt_limit" in log_s
+            or "skipped_reason_template_disabled" in log_s
+        )
+    except Exception:  # noqa: BLE001
+        db.session.rollback()
+    try:
+        qac = db.session.query(AbandonedCart.status).filter(
+            AbandonedCart.recovery_session_id == sid
+        )
+        if ss:
+            st = (
+                db.session.query(Store.id).filter(Store.zid_store_id == ss).order_by(Store.id.desc()).first()
+            )
+            if st is not None:
+                qac = qac.filter(AbandonedCart.store_id == int(st[0]))
+        ac = qac.order_by(AbandonedCart.id.desc()).first()
+        if ac is not None:
+            st_lc = str(ac[0] or "").strip().lower()
+            if st_lc == "recovered":
+                out["completed"] = True
+    except Exception:  # noqa: BLE001
+        db.session.rollback()
+    if out["purchased"]:
+        out["completed"] = True
+    return out
+
+
+def _test_widget_identity_is_reusable(flags: dict[str, bool]) -> tuple[bool, str]:
+    if not isinstance(flags, dict):
+        return True, "no_flags"
+    for k in (
+        "provider_sent",
+        "customer_reply",
+        "continuation_started",
+        "returned_to_site",
+        "archived",
+        "completed",
+        "purchased",
+        "exhausted",
+    ):
+        if bool(flags.get(k)):
+            return False, f"progressed_{k}"
+    return True, "waiting_or_scheduled_only"
+
+
+def _clear_test_widget_identity_runtime_state(recovery_key: str) -> None:
+    rk = (recovery_key or "").strip()
+    if not rk:
+        return
+    with _recovery_session_lock:
+        _session_recovery_sent.pop(rk, None)
+        _session_recovery_converted.pop(rk, None)
+        _session_recovery_flow_armed_at.pop(rk, None)
+        _session_recovery_followup_next_due_at.pop(rk, None)
+        _recovery_pending_reason_arm_ctx.pop(rk, None)
+        _recovery_pending_phone_arm_ctx.pop(rk, None)
+
+
+def _emit_test_identity_check_log(
+    *,
+    store_slug: str,
+    old_session_id: str,
+    old_cart_id: str,
+    old_recovery_key: str,
+    old_lifecycle_truth: dict[str, bool],
+    new_cart_id: str,
+    decision: str,
+    reason: str,
+) -> None:
+    truth_compact = ",".join(
+        f"{k}:{'1' if bool(old_lifecycle_truth.get(k)) else '0'}"
+        for k in sorted(old_lifecycle_truth.keys())
+    ) or "-"
+    lines = [
+        "[TEST IDENTITY CHECK]",
+        f"store_slug={store_slug or '-'}",
+        f"old_session_id={old_session_id or '-'}",
+        f"old_cart_id={old_cart_id or '-'}",
+        f"old_recovery_key={old_recovery_key or '-'}",
+        f"old_lifecycle_truth={truth_compact}",
+        f"new_cart_id={new_cart_id or '-'}",
+        f"decision={decision}",
+        f"reason={reason or '-'}",
+    ]
+    block = "\n".join(lines)
+    try:
+        print(block, flush=True)
+    except OSError:
+        pass
+    try:
+        log.info("%s", block.replace("\n", " | "))
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def _merchant_test_widget_identity_contract(
+    request: Request,
+    payload: dict[str, Any],
+) -> tuple[dict[str, Any], Optional[dict[str, Any]]]:
+    if not _merchant_test_widget_payload_enabled(payload):
+        return payload, None
+    ev = str(payload.get("event") or "").strip().lower()
+    if ev != "cart_abandoned":
+        return payload, None
+
+    from services.merchant_test_widget_store_v1 import merchant_authenticated_store_slug
+
+    cookies = dict(getattr(request, "cookies", {}) or {})
+    auth_slug = (merchant_authenticated_store_slug(cookies=cookies) or "").strip()[:255]
+    out = dict(payload)
+    if auth_slug:
+        out["store"] = auth_slug
+        out["store_slug"] = auth_slug
+    store_slug = _normalize_store_slug(out)
+    old_sid = _session_part_from_payload(out)
+    old_cid = (_cart_id_str_from_payload(out) or "").strip()
+    old_rk = _recovery_key_from_payload(out)
+    flags = _test_widget_identity_truth_flags(
+        store_slug=store_slug,
+        session_id=old_sid,
+        cart_id=old_cid,
+        recovery_key=old_rk,
+    )
+    reusable, reason = _test_widget_identity_is_reusable(flags)
+    decision = "reuse" if reusable else "reset"
+    _emit_test_identity_check_log(
+        store_slug=store_slug,
+        old_session_id=old_sid,
+        old_cart_id=old_cid,
+        old_recovery_key=old_rk,
+        old_lifecycle_truth=flags,
+        new_cart_id=old_cid,
+        decision=decision,
+        reason=reason,
+    )
+    if reusable:
+        return out, None
+
+    new_sid = f"s_{uuid.uuid4()}"
+    new_cid = f"cf_tw_{uuid.uuid4().hex[:16]}"
+    out["session_id"] = new_sid
+    out["cart_id"] = new_cid
+    new_rk = _recovery_key_from_payload(out)
+    _clear_test_widget_identity_runtime_state(old_rk)
+    try:
+        print(
+            "[TEST SESSION RESET]\n"
+            f"store_slug={store_slug or '-'}\n"
+            f"old_session_id={old_sid or '-'}\n"
+            f"new_session_id={new_sid}\n"
+            f"old_recovery_key={old_rk or '-'}\n"
+            f"new_recovery_key={new_rk}\n"
+            f"reason={reason}",
+            flush=True,
+        )
+    except OSError:
+        pass
+    return out, {
+        "test_identity_reset": True,
+        "identity_reset_reason": reason,
+        "old_session_id": old_sid,
+        "new_session_id": new_sid,
+        "old_cart_id": old_cid,
+        "new_cart_id": new_cid,
+        "old_recovery_key": old_rk,
+        "new_recovery_key": new_rk,
+        "store_slug": store_slug,
+    }
+
+
 def _collect_abandoned_cart_rows_for_merge(
     *,
     cart_ids: list[str],
@@ -10278,6 +10526,17 @@ async def api_cart_event(request: Request, background_tasks: BackgroundTasks):
         if not isinstance(payload, dict):
             payload = {}
 
+        identity_reset_meta: Optional[dict[str, Any]] = None
+        try:
+            payload, identity_reset_meta = _merchant_test_widget_identity_contract(
+                request, payload
+            )
+        except Exception as _id_exc:  # noqa: BLE001
+            try:
+                log.warning("merchant test widget identity contract skipped: %s", _id_exc)
+            except Exception:  # noqa: BLE001
+                pass
+
         op_ctx = _cart_event_operational_begin(payload)
         try:
             print(
@@ -10360,6 +10619,8 @@ async def api_cart_event(request: Request, background_tasks: BackgroundTasks):
                 payload, background_tasks=background_tasks
             )
             out_sync.update(sync_out)
+            if identity_reset_meta:
+                out_sync.update(identity_reset_meta)
             op_ctx["db_work"] = "cart_state_sync"
             if sync_out.get("ok") is False:
                 op_ctx["recovery_outcome"] = "sync_error"
@@ -10409,6 +10670,8 @@ async def api_cart_event(request: Request, background_tasks: BackgroundTasks):
             out_abandon: dict[str, Any] = {"ok": True, "event": event}
             abandon_out = await handle_cart_abandoned(background_tasks, payload)
             out_abandon.update(abandon_out)
+            if identity_reset_meta:
+                out_abandon.update(identity_reset_meta)
             op_ctx["db_work"] = "cart_abandoned"
             _cart_event_operational_note_recovery(op_ctx, abandon_out)
             stall_trace_checkpoint(
@@ -17667,6 +17930,97 @@ def dashboard_test_widget(request: Request):
     if not slug:
         return RedirectResponse(url="/dashboard#settings", status_code=302)
     return RedirectResponse(url=merchant_activation_test_store_url(slug), status_code=302)
+
+
+@app.post("/api/test-widget/new-lifecycle")
+async def api_test_widget_new_lifecycle(request: Request) -> Any:
+    """Client-triggered reset for merchant test widget identity only."""
+    try:
+        body = await request.json()
+    except Exception:  # noqa: BLE001
+        body = {}
+    if not isinstance(body, dict):
+        body = {}
+    store_slug = (str(body.get("store_slug") or "").strip())[:255]
+    old_sid = (str(body.get("old_session_id") or "").strip())[:512]
+    old_cid = (str(body.get("old_cart_id") or "").strip())[:255]
+    old_rk = (str(body.get("old_recovery_key") or "").strip())[:512]
+    new_sid = (str(body.get("new_session_id") or "").strip())[:512]
+    new_cid = (str(body.get("new_cart_id") or "").strip())[:255]
+    new_rk = (str(body.get("new_recovery_key") or "").strip())[:512]
+    reason = (str(body.get("reason") or "merchant_start_new_test").strip())[:120]
+    if not old_rk and store_slug and old_sid:
+        old_rk = _recovery_key_from_store_and_session(store_slug, old_sid)
+    if not new_rk and store_slug and new_sid:
+        new_rk = _recovery_key_from_store_and_session(store_slug, new_sid)
+    if old_rk:
+        _clear_test_widget_identity_runtime_state(old_rk)
+    line = (
+        "[TEST SESSION RESET]\n"
+        f"store_slug={store_slug or '-'}\n"
+        f"old_session_id={old_sid or '-'}\n"
+        f"new_session_id={new_sid or '-'}\n"
+        f"old_recovery_key={old_rk or '-'}\n"
+        f"new_recovery_key={new_rk or '-'}\n"
+        f"reason={reason}"
+    )
+    try:
+        print(line, flush=True)
+    except OSError:
+        pass
+    try:
+        log.info("%s", line.replace("\n", " | "))
+    except Exception:  # noqa: BLE001
+        pass
+    return j(
+        {
+            "ok": True,
+            "store_slug": store_slug or None,
+            "old_session_id": old_sid or None,
+            "new_session_id": new_sid or None,
+            "old_cart_id": old_cid or None,
+            "new_cart_id": new_cid or None,
+            "old_recovery_key": old_rk or None,
+            "new_recovery_key": new_rk or None,
+            "reason": reason,
+        }
+    )
+
+
+@app.get("/dev/test-widget-identity-trace")
+def dev_test_widget_identity_trace(
+    store_slug: str = Query("", max_length=255),
+    session_id: str = Query("", max_length=512),
+    cart_id: str = Query("", max_length=255),
+) -> Any:
+    ss = (store_slug or "").strip()[:255]
+    sid = (session_id or "").strip()[:512]
+    cid = (cart_id or "").strip()[:255]
+    if not ss or not sid:
+        return j(
+            {"ok": False, "error": "store_slug_and_session_id_required"},
+            400,
+        )
+    rk = _recovery_key_from_store_and_session(ss, sid)
+    flags = _test_widget_identity_truth_flags(
+        store_slug=ss,
+        session_id=sid,
+        cart_id=cid,
+        recovery_key=rk,
+    )
+    reusable, reason = _test_widget_identity_is_reusable(flags)
+    return j(
+        {
+            "ok": True,
+            "store_slug": ss,
+            "session_id": sid,
+            "cart_id": cid or None,
+            "recovery_key": rk,
+            "lifecycle_truth_flags": flags,
+            "identity_reusable": reusable,
+            "identity_reuse_reason": reason,
+        }
+    )
 
 
 # لا نستدعي ‎_ensure_db_schema()‎ عند التحميل — يتجنب الاتصال بقاعدة البيانات عند الإقلاع (أي ‎ASGI server‎)

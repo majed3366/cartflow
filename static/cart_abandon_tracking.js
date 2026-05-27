@@ -752,6 +752,142 @@
   }
   window.cartflowFreshSessionForDelayTest = freshRecoverySessionForDelayTest;
 
+  function isMerchantActivationTestWidgetMode() {
+    try {
+      var qs = new URLSearchParams(window.location.search || "");
+      return String(qs.get("merchant_activation") || "").trim() === "1";
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function clearWidgetTestIdentityState() {
+    var ssRm = [
+      "cartflow_recovery_session_id",
+      "cartflow_cart_event_id",
+      "cartflow_converted",
+      "cartflow_recovery_flow_started",
+      "cartflow_reason_tag",
+      "cartflow_reason_sub_tag",
+      "cartflow_recovery_last_activity",
+      "cartflow_demo_test_phone_sync_logged_v1",
+      "cartflow_cf_exit_intent_fired_sess_v2",
+      "cartflow_cf_suppress_after_dismiss",
+      "cartflow_demo_store_widget_armed",
+      "cartflow_recovery_engagement_v1",
+    ];
+    var i;
+    for (i = 0; i < ssRm.length; i++) {
+      try {
+        window.sessionStorage.removeItem(ssRm[i]);
+      } catch (eS) {}
+    }
+    var lsRm = [
+      "cartflow_recovery_return_state_v1",
+      "cartflow_return_tracker_throttle_v1",
+      "replyai_session",
+      "cartflow_customer_phone",
+    ];
+    for (i = 0; i < lsRm.length; i++) {
+      try {
+        window.localStorage.removeItem(lsRm[i]);
+      } catch (eL) {}
+    }
+    try {
+      if (typeof window.CARTFLOW_DEMO_CART_KEY === "string" && window.CARTFLOW_DEMO_CART_KEY.trim()) {
+        window.localStorage.removeItem(window.CARTFLOW_DEMO_CART_KEY);
+        window.localStorage.setItem(window.CARTFLOW_DEMO_CART_KEY, "[]");
+      }
+    } catch (eD) {}
+    try {
+      if (
+        window.CartflowWidgetRuntime &&
+        window.CartflowWidgetRuntime.State &&
+        window.CartflowWidgetRuntime.State.internals
+      ) {
+        var st = window.CartflowWidgetRuntime.State.internals;
+        st.pending_reason_payload = null;
+        st.pending_reason_detail = null;
+        st.pending_reason_key = null;
+        st.background_retry_meta = null;
+        st.background_save_failed = false;
+      }
+    } catch (eR) {}
+  }
+
+  function newIdentityId(prefix) {
+    var p = String(prefix || "x");
+    if (typeof window.crypto !== "undefined" && window.crypto.randomUUID) {
+      return p + "_" + window.crypto.randomUUID();
+    }
+    return p + "_" + String(Date.now()) + "_" + String(Math.random()).slice(2, 8);
+  }
+
+  function startNewMerchantTestLifecycle(opts) {
+    opts = opts || {};
+    var oldSid = getRecoverySessionId();
+    var oldCid = getStableCartEventIdForTracking();
+    var storeSlug = getCartflowStoreSlugForPayload();
+    var oldRk = String(storeSlug || "") + ":" + String(oldSid || "");
+    clearWidgetTestIdentityState();
+    _cachedRecoverySessionId = null;
+    var newSid = newIdentityId("s");
+    var newCid = newIdentityId("cf_tw");
+    try {
+      window.sessionStorage.setItem(CARTFLOW_SESSION_KEY, newSid);
+      window.sessionStorage.setItem(CF_CART_EVENT_ID_STORAGE_KEY, newCid);
+      _cachedRecoverySessionId = newSid;
+    } catch (eSs2) {}
+    try {
+      window.cart = [];
+    } catch (eWc) {}
+    _abandonEventSentToBackend = false;
+    var newRk = String(storeSlug || "") + ":" + String(newSid || "");
+    try {
+      console.log(
+        "[TEST SESSION RESET] store_slug=" +
+          String(storeSlug || "-") +
+          " old_session_id=" +
+          String(oldSid || "-") +
+          " new_session_id=" +
+          String(newSid || "-") +
+          " old_recovery_key=" +
+          String(oldRk || "-") +
+          " new_recovery_key=" +
+          String(newRk || "-") +
+          " reason=" +
+          String(opts.reason || "merchant_start_new_test")
+      );
+    } catch (eLog) {}
+    try {
+      fetch("/api/test-widget/new-lifecycle", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({
+          store_slug: storeSlug,
+          old_session_id: oldSid,
+          old_cart_id: oldCid,
+          old_recovery_key: oldRk,
+          new_session_id: newSid,
+          new_cart_id: newCid,
+          new_recovery_key: newRk,
+          reason: String(opts.reason || "merchant_start_new_test"),
+        }),
+      }).catch(function () {});
+    } catch (eReq) {}
+    return {
+      store_slug: storeSlug,
+      old_session_id: oldSid,
+      old_cart_id: oldCid,
+      old_recovery_key: oldRk,
+      new_session_id: newSid,
+      new_cart_id: newCid,
+      new_recovery_key: newRk,
+    };
+  }
+  window.cartflowStartNewMerchantTestLifecycle = startNewMerchantTestLifecycle;
+
   function getRecoverySessionId() {
     if (_cachedRecoverySessionId) {
       return _cachedRecoverySessionId;
@@ -832,6 +968,10 @@
       cart_total: cartTotal,
       cart: cartArr,
     };
+    if (isMerchantActivationTestWidgetMode()) {
+      bodyObj.merchant_activation = true;
+      bodyObj.test_widget_identity = "merchant_activation";
+    }
     var ph = getOptionalCartflowCustomerPhone();
     if (ph) {
       bodyObj.phone = ph;
@@ -871,6 +1011,37 @@
           if (st === 200 && body && body.ok !== false) {
             /* Refresh merged context (reason tags, activity) after confirmed abandon. */
             cartflowMarkRecoveryFlowStarted();
+            if (
+              body &&
+              body.test_identity_reset === true &&
+              body.new_session_id &&
+              body.new_cart_id
+            ) {
+              try {
+                window.sessionStorage.setItem(CARTFLOW_SESSION_KEY, String(body.new_session_id));
+                window.sessionStorage.setItem(
+                  CF_CART_EVENT_ID_STORAGE_KEY,
+                  String(body.new_cart_id)
+                );
+                _cachedRecoverySessionId = String(body.new_session_id);
+              } catch (eSw) {}
+              try {
+                console.log(
+                  "[TEST SESSION RESET] store_slug=" +
+                    String(storeSlug || "-") +
+                    " old_session_id=" +
+                    String(body.old_session_id || "-") +
+                    " new_session_id=" +
+                    String(body.new_session_id || "-") +
+                    " old_recovery_key=" +
+                    String(body.old_recovery_key || "-") +
+                    " new_recovery_key=" +
+                    String(body.new_recovery_key || "-") +
+                    " reason=" +
+                    String(body.identity_reset_reason || "server_contract_reset")
+                );
+              } catch (eLogReset) {}
+            }
           }
         } catch (eOk) {
           /* ignore */

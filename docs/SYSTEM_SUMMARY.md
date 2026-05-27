@@ -93,7 +93,7 @@ Server-side template control (**`exit_intent_*`** on **`Store`**): `services/sto
 | Route | Module | Role |
 |--------|--------|------|
 | `GET`/`POST /login`, `/signup`, `GET /logout`, `/forgot-password`, `/reset-password` | `routes/merchant_auth.py` | Merchant account signup/login; PBKDF2 passwords; reset tokens via Resend (`RESEND_API_KEY`, `RESEND_FROM_EMAIL`) or dev log when `ENV=development` without key. |
-| `POST /api/cart-event` | `main.py` | Cart events (`cart_abandoned`, conversion flags, etc.). |
+| `POST /api/cart-event` | `main.py` | Cart events (`cart_abandoned`, conversion flags, etc.). Merchant test-widget contract (when `merchant_activation=1`): enforce authenticated `store_slug`, evaluate old lifecycle truth, auto-reset to fresh `session_id`/`cart_id`/`recovery_key` when identity is not reusable. |
 | `GET` / `POST /api/recovery-settings` | `main.py` | Store recovery + template + widget + VIP threshold merge/persist. |
 | `POST /api/conversion` | `main.py` | Marks session converted; stops recovery. |
 | `POST /api/cart-recovery/reason` | `routes/cart_recovery_reason.py` | Upsert `CartRecoveryReason` (Layer D). |
@@ -321,6 +321,7 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 
 | Date (UTC) | Summary |
 |------------|---------|
+| 2026-05-26 | **Merchant test-widget lifecycle identity contract:** `api_cart_event` enforces merchant-activation identity isolation (`store_slug` owner only; `[TEST IDENTITY CHECK]` reuse/reset with lifecycle truth flags; auto-reset to fresh `session_id`/`cart_id`/`recovery_key` after progressed truth; old runtime arm/cache cleared); new reset API `POST /api/test-widget/new-lifecycle`; new trace endpoint `GET /dev/test-widget-identity-trace`; widget exposes **بدء تجربة جديدة** and emits reset metadata. Commit: **`fix: enforce merchant test widget lifecycle identity contract`**. |
 | 2026-05-26 | **Return vs reply lifecycle:** `customer_lifecycle_states_v1` + `merchant_cart_row_classifier` split `return_to_site` («عاد العميل للموقع»), `customer_reply` («رد العميل», timeline only), `customer_engaged` (continuation after timeline `customer_reply` + `continuation_started`); site return no longer shows «تفاعل العميل». Commit: **`fix: separate return-to-site from customer reply lifecycle state`**. |
 | 2026-05-26 | **Assist handoff no new lifecycle:** V2 «أحتاج مساعدة الآن» opens WhatsApp via `fetchPublicConfig` + optional `POST /api/cartflow/assist-handoff` (audit only); `human_support` on `/api/cartflow/reason` preserves prior objection reason and skips `_schedule_normal_recovery_after_cart_recovery_reason_saved`. Commit: **`fix: prevent help continuation from creating new recovery lifecycle`**. |
 | 2026-05-26 | **Continuation decision trace v1:** `[CONTINUATION TRACE]` before continuation send (`recovery_key`, `reason_tag`, `customer_reply`, `chosen_path`, `template_name`, `fallback_used`, `next_state`, `store_slug`); compact trace in timeline `source` on `continuation_started`; behavioral + `customer_lifecycle_continuation_explanation_ar` on dashboard («اختار النظام هذا الرد لأن الاعتراض = …»); price/shipping/quality/نعم reason-aware stabilization. Commit: **`add continuation trace and verify reason-to-response mapping`**. |

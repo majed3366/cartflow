@@ -52,6 +52,15 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     return "";
   }
 
+  function merchantActivationMode() {
+    try {
+      var qs = new URLSearchParams(window.location.search || "");
+      return String(qs.get("merchant_activation") || "").trim() === "1";
+    } catch (eQm) {
+      return false;
+    }
+  }
+
   function storeSlug() {
     try {
       if (
@@ -123,6 +132,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       body: JSON.stringify({
         store_slug: storeSlug(),
         session_id: sessionId(),
+        merchant_activation: merchantActivationMode(),
       }),
     }).then(function (r) {
       return r.json().then(function (j) {
@@ -142,6 +152,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       store_slug: storeSlug(),
       session_id: sessionId(),
       reason: payload.reason,
+      merchant_activation: merchantActivationMode(),
     };
     if (payload.custom_text != null && String(payload.custom_text) !== "") {
       body.custom_text = String(payload.custom_text);

@@ -310,6 +310,9 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     }
     addPrimary("أكمل الطلب", opts.onContinueCart);
     addSecondary("أحتاج مساعدة الآن", opts.onAssist);
+    if (opts.onStartNewTest && typeof opts.onStartNewTest === "function") {
+      addSecondary("بدء تجربة جديدة", opts.onStartNewTest);
+    }
     addSecondary("رجوع للأسباب", opts.onBackReasons);
     if (opts.onRetryBackgroundSave && typeof opts.onRetryBackgroundSave === "function") {
       var rz = document.createElement("button");

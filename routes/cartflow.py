@@ -409,6 +409,22 @@ async def post_assist_handoff(request: Request) -> Any:
             return j({"ok": False, "error": "json_object_required"}, 400)
         ss = (str(body.get("store_slug", "")) or "").strip()[:255]
         sid = (str(body.get("session_id", "")) or "").strip()[:512]
+        ma = str(body.get("merchant_activation") or "").strip().lower() in (
+            "1",
+            "true",
+            "yes",
+        )
+        if ma:
+            try:
+                from services.merchant_test_widget_store_v1 import (  # noqa: PLC0415
+                    merchant_authenticated_store_slug,
+                )
+
+                owner = merchant_authenticated_store_slug(cookies=dict(request.cookies))
+                if owner:
+                    ss = str(owner).strip()[:255]
+            except Exception:  # noqa: BLE001
+                pass
         if not ss or not sid:
             return j({"ok": False, "error": "store_slug_session_required"}, 400)
         row = AbandonmentReasonLog(
@@ -462,6 +478,22 @@ async def post_abandonment_reason(request: Request) -> Any:
             return j({"ok": False, "error": "json_object_required"}, 400)
         ss = (str(body.get("store_slug", "")) or "").strip()[:255]
         sid = (str(body.get("session_id", "")) or "").strip()[:512]
+        ma = str(body.get("merchant_activation") or "").strip().lower() in (
+            "1",
+            "true",
+            "yes",
+        )
+        if ma:
+            try:
+                from services.merchant_test_widget_store_v1 import (  # noqa: PLC0415
+                    merchant_authenticated_store_slug,
+                )
+
+                owner = merchant_authenticated_store_slug(cookies=dict(request.cookies))
+                if owner:
+                    ss = str(owner).strip()[:255]
+            except Exception:  # noqa: BLE001
+                pass
         reason = (str(body.get("reason", "")) or "").strip().lower()[:32]
         sub_raw = body.get("sub_category")
         sub_cat: Optional[str] = None

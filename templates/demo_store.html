@@ -759,6 +759,16 @@
       </div>
       <div class="topbar-actions">
         <button type="button" class="btn-replay" id="cf-btn-replay-demo" title="إعادة عرض المقدّمة ومسار التجربة">إعادة التجربة</button>
+        {% if merchant_activation_mode %}
+        <button
+          type="button"
+          class="btn-replay"
+          id="cf-btn-start-new-test"
+          title="بدء تجربة جديدة: Session/Cart/Recovery جديدة دون تسجيل خروج"
+        >
+          بدء تجربة جديدة
+        </button>
+        {% endif %}
         {% set _cf_q_phone = (request.query_params.get('cf_test_phone') or '')|trim %}
         {% if _cf_q_phone %}
         <a
@@ -1013,6 +1023,25 @@
           replay.addEventListener("click", function () {
             if (typeof window.cfDemoReplayExperience === "function") {
               window.cfDemoReplayExperience();
+            }
+          });
+        }
+        var startNew = document.getElementById("cf-btn-start-new-test");
+        if (startNew) {
+          startNew.addEventListener("click", function () {
+            try {
+              if (typeof window.cartflowStartNewMerchantTestLifecycle === "function") {
+                window.cartflowStartNewMerchantTestLifecycle({
+                  reason: "merchant_topbar_start_new_test",
+                });
+              }
+            } catch (eRs) {}
+            try {
+              var u = new URL(window.location.href);
+              u.searchParams.set("reset_demo", "1");
+              window.location.href = u.pathname + u.search + u.hash;
+            } catch (eNav) {
+              window.location.reload();
             }
           });
         }
