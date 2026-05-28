@@ -83,7 +83,12 @@ def clamp_simulation_store_count(stores_count: int) -> int:
     return max(1, min(_MAX_STORES, n))
 
 
-def provision_simulation_store(index: int, *, run_id: str) -> Store:
+def provision_simulation_store(
+    index: int,
+    *,
+    run_id: str,
+    template_save_ms_out: Optional[list[float]] = None,
+) -> Store:
     """Upsert one sim-store-* row; never touches other merchants."""
     slug = sim_store_slug(index)
     row = db.session.query(Store).filter(Store.zid_store_id == slug).first()
@@ -100,6 +105,7 @@ def provision_simulation_store(index: int, *, run_id: str) -> Store:
     row.recovery_delay = 1
     row.recovery_delay_unit = "minutes"
     row.is_active = True
+    t_tpl = time.perf_counter()
     apply_reason_templates_from_body(
         row,
         {
@@ -124,6 +130,8 @@ def provision_simulation_store(index: int, *, run_id: str) -> Store:
         },
     )
     db.session.commit()
+    if template_save_ms_out is not None:
+        template_save_ms_out.append((time.perf_counter() - t_tpl) * 1000.0)
     db.session.refresh(row)
     return row
 
@@ -197,6 +205,47 @@ def cleanup_simulation_data() -> dict[str, Any]:
 
 
 @dataclass
+class _StoreTiming:
+    setup_ms: float = 0.0
+    template_save_ms: float = 0.0
+    schedule_create_ms: float = 0.0
+    simulated_send_ms: float = 0.0
+    dashboard_check_ms: float = 0.0
+    reply_check_ms: float = 0.0
+    return_check_ms: float = 0.0
+    purchase_check_ms: float = 0.0
+    cleanup_or_commit_ms: float = 0.0
+    per_store_elapsed_ms: float = 0.0
+
+    def as_dict(self) -> dict[str, float]:
+        return {
+            "setup_ms": round(self.setup_ms, 2),
+            "template_save_ms": round(self.template_save_ms, 2),
+            "schedule_create_ms": round(self.schedule_create_ms, 2),
+            "simulated_send_ms": round(self.simulated_send_ms, 2),
+            "dashboard_check_ms": round(self.dashboard_check_ms, 2),
+            "reply_check_ms": round(self.reply_check_ms, 2),
+            "return_check_ms": round(self.return_check_ms, 2),
+            "purchase_check_ms": round(self.purchase_check_ms, 2),
+            "cleanup_or_commit_ms": round(self.cleanup_or_commit_ms, 2),
+        }
+
+    def slowest_stage_name(self) -> str:
+        pairs = [
+            ("setup_ms", self.setup_ms),
+            ("template_save_ms", self.template_save_ms),
+            ("schedule_create_ms", self.schedule_create_ms),
+            ("simulated_send_ms", self.simulated_send_ms),
+            ("dashboard_check_ms", self.dashboard_check_ms),
+            ("reply_check_ms", self.reply_check_ms),
+            ("return_check_ms", self.return_check_ms),
+            ("purchase_check_ms", self.purchase_check_ms),
+            ("cleanup_or_commit_ms", self.cleanup_or_commit_ms),
+        ]
+        return max(pairs, key=lambda p: p[1])[0]
+
+
+@dataclass
 class _StoreSimState:
     store_slug: str = ""
     recovery_key: str = ""
@@ -217,6 +266,7 @@ class _StoreSimState:
     failures: list[str] = field(default_factory=list)
     payload_ms_samples: list[float] = field(default_factory=list)
     lifecycle_ms_samples: list[float] = field(default_factory=list)
+    timing: _StoreTiming = field(default_factory=_StoreTiming)
 
 
 def _whatsapp_guard_patches() -> list[Any]:
@@ -258,6 +308,30 @@ def _dashboard_row(
     return None
 
 
+def _peek_dashboard_lifecycle_ms(recovery_key: str) -> float:
+    """Read per-row lifecycle_ms from active dashboard perf state (simulation only)."""
+    from services.dashboard_normal_carts_perf_v1 import _get_state  # noqa: PLC0415
+
+    perf = _get_state()
+    if perf is None:
+        return 0.0
+    rk = _norm(recovery_key)
+    for sample in reversed(perf.row_samples):
+        if _norm(sample.get("recovery_key")) == rk:
+            try:
+                return max(0.0, float(sample.get("lifecycle_ms") or 0.0))
+            except (TypeError, ValueError):
+                return 0.0
+    if perf.row_samples:
+        try:
+            return max(
+                0.0, float(perf.row_samples[-1].get("lifecycle_ms") or 0.0)
+            )
+        except (TypeError, ValueError):
+            pass
+    return max(0.0, float(perf.lifecycle_attach_ms or 0.0))
+
+
 def _measure_dashboard(
     store_row: Store,
     recovery_key: str,
@@ -265,7 +339,7 @@ def _measure_dashboard(
     *,
     session_id: str,
     cart_id: str,
-) -> Optional[dict[str, Any]]:
+) -> tuple[Optional[dict[str, Any]], float]:
     from services.dashboard_normal_carts_perf_v1 import (  # noqa: PLC0415
         dashboard_normal_carts_perf_begin,
         dashboard_normal_carts_perf_emit,
@@ -279,16 +353,21 @@ def _measure_dashboard(
         session_id=session_id,
         cart_id=cart_id,
     )
+    lc_ms = _peek_dashboard_lifecycle_ms(recovery_key)
     dashboard_normal_carts_perf_emit(wall_perf_start=wall0)
+    wall_ms = (time.perf_counter() - wall0) * 1000.0
 
-    st.payload_ms_samples.append(round((time.perf_counter() - wall0) * 1000.0, 2))
-    if row is not None:
-        lc_ms = float(row.get("customer_lifecycle_attach_ms") or 0.0)
-        if lc_ms <= 0:
-            lc_ms = float(row.get("lifecycle_ms") or 0.0)
-        if lc_ms > 0:
-            st.lifecycle_ms_samples.append(lc_ms)
-    return row
+    st.payload_ms_samples.append(round(wall_ms, 2))
+    if lc_ms > 0:
+        st.lifecycle_ms_samples.append(round(lc_ms, 2))
+    elif row is not None:
+        row_lc = float(row.get("customer_lifecycle_attach_ms") or 0.0)
+        if row_lc <= 0:
+            row_lc = float(row.get("lifecycle_ms") or 0.0)
+        if row_lc > 0:
+            st.lifecycle_ms_samples.append(round(row_lc, 2))
+            lc_ms = row_lc
+    return row, wall_ms
 
 
 def _save_reason_price(store_slug: str, session_id: str, phone: str) -> None:
@@ -389,11 +468,13 @@ def _simulate_send(
 
 def _simulate_one_store(index: int, *, run_id: str, dry_run: bool) -> _StoreSimState:
     st = _StoreSimState()
+    store_wall0 = time.perf_counter()
     slug = sim_store_slug(index)
     st.store_slug = slug
     st.session_id = f"sim-sess-{index:03d}-{run_id[:8]}"
     st.cart_id = f"sim-cart-{index:03d}-{run_id[:8]}"
     st.recovery_key = f"{slug}:{st.session_id}"
+    tm = st.timing
 
     if not dry_run:
         st.failures.append("dry_run_required")
@@ -404,7 +485,13 @@ def _simulate_one_store(index: int, *, run_id: str, dry_run: bool) -> _StoreSimS
         return st
 
     # 1–3: store + template
-    store_row = provision_simulation_store(index, run_id=run_id)
+    t_setup = time.perf_counter()
+    tpl_ms_holder: list[float] = []
+    store_row = provision_simulation_store(
+        index, run_id=run_id, template_save_ms_out=tpl_ms_holder
+    )
+    if tpl_ms_holder:
+        tm.template_save_ms += tpl_ms_holder[0]
     st.store_row = store_row
     parsed = parse_reason_templates_column(
         getattr(store_row, "reason_templates_json", None)
@@ -434,12 +521,18 @@ def _simulate_one_store(index: int, *, run_id: str, dry_run: bool) -> _StoreSimS
         last_seen_at=_utc_now(),
     )
     db.session.add(ac)
+    t_commit = time.perf_counter()
     db.session.commit()
+    tm.cleanup_or_commit_ms += (time.perf_counter() - t_commit) * 1000.0
 
     # 2: hesitation reason = price
+    t_commit = time.perf_counter()
     _save_reason_price(slug, st.session_id, phone)
+    tm.cleanup_or_commit_ms += (time.perf_counter() - t_commit) * 1000.0
+    tm.setup_ms += (time.perf_counter() - t_setup) * 1000.0
 
     # 4–5: schedule step 1 + simulate first send
+    t_sched = time.perf_counter()
     _create_schedule(
         recovery_key=st.recovery_key,
         store_slug=slug,
@@ -457,15 +550,17 @@ def _simulate_one_store(index: int, *, run_id: str, dry_run: bool) -> _StoreSimS
         .first()
         is not None
     )
+    tm.schedule_create_ms += (time.perf_counter() - t_sched) * 1000.0
 
     # 11a: visible before send (abandoned cart in scope; no send logs yet)
-    row_before = _measure_dashboard(
+    row_before, dash_ms = _measure_dashboard(
         store_row,
         st.recovery_key,
         st,
         session_id=st.session_id,
         cart_id=st.cart_id,
     )
+    tm.dashboard_check_ms += dash_ms
     visible_before = row_before is not None
     if not visible_before:
         from services.recovery_dashboard_inclusion_truth import (  # noqa: PLC0415
@@ -483,6 +578,7 @@ def _simulate_one_store(index: int, *, run_id: str, dry_run: bool) -> _StoreSimS
     if not visible_before:
         st.failures.append("not_visible_before_send")
 
+    t_send = time.perf_counter()
     _simulate_send(
         store_slug=slug,
         session_id=st.session_id,
@@ -492,14 +588,16 @@ def _simulate_one_store(index: int, *, run_id: str, dry_run: bool) -> _StoreSimS
         run_id=run_id,
     )
     st.step1_sent_simulated = True
+    tm.simulated_send_ms += (time.perf_counter() - t_send) * 1000.0
 
-    row_after_1 = _measure_dashboard(
+    row_after_1, dash_ms = _measure_dashboard(
         store_row,
         st.recovery_key,
         st,
         session_id=st.session_id,
         cart_id=st.cart_id,
     )
+    tm.dashboard_check_ms += dash_ms
     if row_after_1 is None:
         st.failures.append("not_visible_after_first_send")
     elif _norm(row_after_1.get("merchant_cart_bucket")) != "sent":
@@ -508,6 +606,7 @@ def _simulate_one_store(index: int, *, run_id: str, dry_run: bool) -> _StoreSimS
         )
 
     # 6–7: step 2 schedule + send
+    t_sched = time.perf_counter()
     _create_schedule(
         recovery_key=st.recovery_key,
         store_slug=slug,
@@ -526,6 +625,9 @@ def _simulate_one_store(index: int, *, run_id: str, dry_run: bool) -> _StoreSimS
         .first()
         is not None
     )
+    tm.schedule_create_ms += (time.perf_counter() - t_sched) * 1000.0
+
+    t_send = time.perf_counter()
     _simulate_send(
         store_slug=slug,
         session_id=st.session_id,
@@ -552,15 +654,19 @@ def _simulate_one_store(index: int, *, run_id: str, dry_run: bool) -> _StoreSimS
             created_at=now,
         )
     )
+    t_commit = time.perf_counter()
     db.session.commit()
+    tm.cleanup_or_commit_ms += (time.perf_counter() - t_commit) * 1000.0
+    tm.simulated_send_ms += (time.perf_counter() - t_send) * 1000.0
 
-    row_after_2 = _measure_dashboard(
+    row_after_2, dash_ms = _measure_dashboard(
         store_row,
         st.recovery_key,
         st,
         session_id=st.session_id,
         cart_id=st.cart_id,
     )
+    tm.dashboard_check_ms += dash_ms
     st.dashboard_visible = row_after_2 is not None
     if not st.dashboard_visible:
         st.failures.append("not_visible_after_2_of_2")
@@ -576,6 +682,7 @@ def _simulate_one_store(index: int, *, run_id: str, dry_run: bool) -> _StoreSimS
             st.failures.append("archived_after_2_of_2")
 
     # 8: customer reply
+    t_reply = time.perf_counter()
     record_recovery_truth_event(
         recovery_key=st.recovery_key,
         status=STATUS_CUSTOMER_REPLY,
@@ -584,13 +691,14 @@ def _simulate_one_store(index: int, *, run_id: str, dry_run: bool) -> _StoreSimS
         session_id=st.session_id,
         cart_id=st.cart_id,
     )
-    row_reply = _measure_dashboard(
+    row_reply, dash_ms = _measure_dashboard(
         store_row,
         st.recovery_key,
         st,
         session_id=st.session_id,
         cart_id=st.cart_id,
     )
+    tm.reply_check_ms += (time.perf_counter() - t_reply) * 1000.0
     st.reply_state = _norm(
         (row_reply or {}).get("customer_lifecycle_state")
     )
@@ -602,6 +710,7 @@ def _simulate_one_store(index: int, *, run_id: str, dry_run: bool) -> _StoreSimS
         st.failures.append(f"reply_state_unexpected={st.reply_state}")
 
     # 9: return to site
+    t_return = time.perf_counter()
     db.session.add(
         CartRecoveryLog(
             store_slug=slug,
@@ -618,14 +727,17 @@ def _simulate_one_store(index: int, *, run_id: str, dry_run: bool) -> _StoreSimS
             created_at=_utc_now(),
         )
     )
+    t_commit = time.perf_counter()
     db.session.commit()
-    row_return = _measure_dashboard(
+    tm.cleanup_or_commit_ms += (time.perf_counter() - t_commit) * 1000.0
+    row_return, dash_ms = _measure_dashboard(
         store_row,
         st.recovery_key,
         st,
         session_id=st.session_id,
         cart_id=st.cart_id,
     )
+    tm.return_check_ms += (time.perf_counter() - t_return) * 1000.0
     st.return_state = _norm(
         (row_return or {}).get("customer_lifecycle_state")
     )
@@ -652,6 +764,7 @@ def _simulate_one_store(index: int, *, run_id: str, dry_run: bool) -> _StoreSimS
     # 10: purchase
     from services.purchase_truth import has_purchase, ingest_purchase_truth  # noqa: PLC0415
 
+    t_purchase = time.perf_counter()
     ingest_purchase_truth(
         recovery_key=st.recovery_key,
         purchase_source=SIM_SOURCE,
@@ -663,13 +776,14 @@ def _simulate_one_store(index: int, *, run_id: str, dry_run: bool) -> _StoreSimS
         evidence_detail="simulation_report",
         context_payload={"simulation": True, "sim_run_id": run_id},
     )
-    row_purchase = _measure_dashboard(
+    row_purchase, dash_ms = _measure_dashboard(
         store_row,
         st.recovery_key,
         st,
         session_id=st.session_id,
         cart_id=st.cart_id,
     )
+    tm.purchase_check_ms += (time.perf_counter() - t_purchase) * 1000.0
     st.purchase_state = _norm(
         (row_purchase or {}).get("customer_lifecycle_state")
     )
@@ -678,7 +792,62 @@ def _simulate_one_store(index: int, *, run_id: str, dry_run: bool) -> _StoreSimS
     elif st.purchase_state != "completed" and has_purchase(st.recovery_key):
         st.purchase_state = "completed"
 
+    tm.per_store_elapsed_ms = round((time.perf_counter() - store_wall0) * 1000.0, 2)
     return st
+
+
+_TIMING_BREAKDOWN_KEYS: tuple[str, ...] = (
+    "setup_ms",
+    "template_save_ms",
+    "schedule_create_ms",
+    "simulated_send_ms",
+    "dashboard_check_ms",
+    "reply_check_ms",
+    "return_check_ms",
+    "purchase_check_ms",
+    "cleanup_or_commit_ms",
+)
+
+
+def _aggregate_timing_breakdown(
+    store_timings: list[_StoreTiming],
+    *,
+    initial_cleanup_ms: float = 0.0,
+) -> dict[str, float]:
+    totals = {k: 0.0 for k in _TIMING_BREAKDOWN_KEYS}
+    for tm in store_timings:
+        d = tm.as_dict()
+        for k in _TIMING_BREAKDOWN_KEYS:
+            totals[k] += float(d.get(k) or 0.0)
+    out = {k: round(v, 2) for k, v in totals.items()}
+    out["initial_cleanup_ms"] = round(max(0.0, float(initial_cleanup_ms)), 2)
+    return out
+
+
+def _resolve_slowest_store(per_store: list[dict[str, Any]]) -> Optional[str]:
+    if not per_store:
+        return None
+    row = max(
+        per_store,
+        key=lambda r: float(r.get("per_store_elapsed_ms") or 0.0),
+    )
+    slug = _norm(row.get("store_slug"))
+    return slug or None
+
+
+def _resolve_slowest_stage(
+    store_timings: list[_StoreTiming],
+    *,
+    initial_cleanup_ms: float = 0.0,
+) -> str:
+    best_name = "initial_cleanup_ms"
+    best_ms = float(initial_cleanup_ms)
+    for tm in store_timings:
+        for name, ms in tm.as_dict().items():
+            if float(ms) > best_ms:
+                best_ms = float(ms)
+                best_name = name
+    return best_name
 
 
 def run_cartflow_simulation_report(
@@ -711,12 +880,17 @@ def run_cartflow_simulation_report(
     per_store: list[dict[str, Any]] = []
     payload_ms_all: list[float] = []
     lifecycle_ms_all: list[float] = []
+    store_timings: list[_StoreTiming] = []
+    initial_cleanup_ms = 0.0
 
     patches = _whatsapp_guard_patches()
     started = time.perf_counter()
 
     def _run() -> None:
+        nonlocal initial_cleanup_ms
+        t_cleanup = time.perf_counter()
         cleanup_simulation_data()
+        initial_cleanup_ms = (time.perf_counter() - t_cleanup) * 1000.0
         for i in range(1, n + 1):
             st = _simulate_one_store(i, run_id=run_id, dry_run=True)
             passed = not st.failures
@@ -732,6 +906,7 @@ def run_cartflow_simulation_report(
                     )
             payload_ms_all.extend(st.payload_ms_samples)
             lifecycle_ms_all.extend(st.lifecycle_ms_samples)
+            store_timings.append(st.timing)
             per_store.append(
                 {
                     "store_slug": st.store_slug,
@@ -747,6 +922,9 @@ def run_cartflow_simulation_report(
                     "reply_state": st.reply_state,
                     "return_state": st.return_state,
                     "purchase_state": st.purchase_state,
+                    "per_store_elapsed_ms": st.timing.per_store_elapsed_ms,
+                    "timing": st.timing.as_dict(),
+                    "slowest_stage": st.timing.slowest_stage_name(),
                     "pass": passed,
                 }
             )
@@ -769,12 +947,21 @@ def run_cartflow_simulation_report(
     fail_count = len(per_store) - pass_count
     total_scenarios = n * _SCENARIOS_PER_STORE
 
-    def _avg(vals: list[float]) -> Optional[float]:
+    def _avg(vals: list[float]) -> float:
         if not vals:
-            return None
+            return 0.0
         return round(sum(vals) / len(vals), 2)
 
     elapsed_ms = round((time.perf_counter() - started) * 1000.0, 1)
+    timing_breakdown = _aggregate_timing_breakdown(
+        store_timings,
+        initial_cleanup_ms=initial_cleanup_ms,
+    )
+    slowest_store = _resolve_slowest_store(per_store)
+    slowest_stage = _resolve_slowest_stage(
+        store_timings,
+        initial_cleanup_ms=initial_cleanup_ms,
+    )
 
     return {
         "ok": fail_count == 0,
@@ -791,6 +978,9 @@ def run_cartflow_simulation_report(
         "avg_dashboard_payload_ms": _avg(payload_ms_all),
         "avg_lifecycle_ms": _avg(lifecycle_ms_all),
         "elapsed_ms": elapsed_ms,
+        "timing_breakdown": timing_breakdown,
+        "slowest_store": slowest_store,
+        "slowest_stage": slowest_stage,
         "failed_cases": failed_cases,
         "per_store_summary": per_store,
         "warnings": warnings,

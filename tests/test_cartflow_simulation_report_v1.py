@@ -48,12 +48,34 @@ class CartflowSimulationReportTests(unittest.TestCase):
         self.assertFalse(report.get("production_merchants_touched"))
         summaries = report.get("per_store_summary") or []
         self.assertEqual(len(summaries), 2)
+        self.assertIsInstance(report.get("avg_lifecycle_ms"), (int, float))
+        self.assertGreater(float(report.get("avg_lifecycle_ms") or 0), 0.0)
+        tb = report.get("timing_breakdown") or {}
+        for key in (
+            "setup_ms",
+            "template_save_ms",
+            "schedule_create_ms",
+            "simulated_send_ms",
+            "dashboard_check_ms",
+            "reply_check_ms",
+            "return_check_ms",
+            "purchase_check_ms",
+            "cleanup_or_commit_ms",
+            "initial_cleanup_ms",
+        ):
+            self.assertIn(key, tb)
+            self.assertIsInstance(tb[key], (int, float))
+        self.assertTrue(report.get("slowest_store"))
+        self.assertTrue(report.get("slowest_stage"))
         for row in summaries:
             self.assertTrue(row.get("pass"))
             self.assertTrue(row.get("template_saved"))
             self.assertEqual(row.get("configured_count"), 2)
             self.assertEqual(row.get("dashboard_bucket_after_2_of_2"), "sent")
             self.assertEqual(row.get("purchase_state"), "completed")
+            self.assertGreater(float(row.get("per_store_elapsed_ms") or 0), 0.0)
+            self.assertIn("timing", row)
+            self.assertIn("slowest_stage", row)
 
     def test_stores_above_10_without_expanded_rejected(self) -> None:
         report = run_cartflow_simulation_report(stores=20, dry_run=True, expanded=False)
