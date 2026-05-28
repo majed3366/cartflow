@@ -12,7 +12,7 @@ DEFAULT_MERCHANT_DASHBOARD_STORE_SLUG = "demo"
 def normalize_merchant_store_slug(raw: Optional[str]) -> Optional[str]:
     """Strip and reject placeholder slugs; None if empty."""
     s = (raw or "").strip()[:255]
-    if not s or s == "(dashboard_latest_store)":
+    if not s or s in ("(dashboard_latest_store)", "(unknown)", "(null)"):
         return None
     return s
 
@@ -25,12 +25,20 @@ def resolve_dashboard_merchant_store_slug(
 ) -> str:
     """
     Merchant dashboard runtime-facing store key.
-    Priority: query → POST body → header → demo (demo dashboard default).
+    Priority: query → POST body → header → authenticated merchant slug → demo.
     """
     for cand in (query_slug, body_slug, header_slug):
         n = normalize_merchant_store_slug(cand)
         if n:
             return n
+    try:
+        from services.merchant_auth_context import get_merchant_auth_store_slug
+
+        auth = normalize_merchant_store_slug(get_merchant_auth_store_slug())
+        if auth:
+            return auth
+    except Exception:  # noqa: BLE001
+        pass
     return DEFAULT_MERCHANT_DASHBOARD_STORE_SLUG
 
 

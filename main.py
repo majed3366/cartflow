@@ -16760,6 +16760,7 @@ def api_dashboard_refresh_state():
 
 @app.get("/api/dashboard/trigger-templates")
 def api_dashboard_trigger_templates(
+    request: Request,
     store_slug: Optional[str] = Query(None, max_length=255),
 ):
     """قوالب ‎reason_templates‎ — ‎Store‎ بحسب ‎store_slug‎ الكانوني (مطابق لمسار الاسترجاع)."""
@@ -16774,7 +16775,10 @@ def api_dashboard_trigger_templates(
         )
 
         _merchant_dashboard_db_ready()
-        canon_slug = resolve_dashboard_merchant_store_slug(query_slug=store_slug)
+        canon_slug = resolve_dashboard_merchant_store_slug(
+            query_slug=store_slug,
+            header_slug=request.headers.get("x-store-slug"),
+        )
         dash_store = dashboard_canonical_store_row(canon_slug)
         tpl = build_trigger_templates_get_payload(dash_store)
         return j({"ok": True, "store_slug": canon_slug, **tpl})
@@ -16799,7 +16803,10 @@ def api_dashboard_trigger_templates(
 
 
 @app.post("/api/dashboard/trigger-templates")
-async def api_dashboard_trigger_templates_save(request: Request):
+async def api_dashboard_trigger_templates_save(
+    request: Request,
+    store_slug: Optional[str] = Query(None, max_length=255),
+):
     """دمج جزئي لـ ‎reason_templates‎ على آخر ‎Store‎ — استجابة خفيفة دون إعادة بناء ٦ صفوف."""
     wall0 = time.perf_counter()
     store_id: Any = None
@@ -16833,7 +16840,9 @@ async def api_dashboard_trigger_templates_save(request: Request):
         canon_slug = "demo"
         if isinstance(body, dict):
             canon_slug = resolve_dashboard_merchant_store_slug(
+                query_slug=store_slug,
                 body_slug=body.get("store_slug"),
+                header_slug=request.headers.get("x-store-slug"),
             )
         dash_store = dashboard_canonical_store_row(canon_slug)
         if dash_store is None:
