@@ -956,6 +956,7 @@ _DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT = frozenset(
         "/dev/recovery-health",
         "/dev/recovery-truth",
         "/dev/store-template-debug",
+        "/dev/template-truth",
         "/dev/attempt-2-trace",
         "/dev/recovery-operational-truth",
     }
@@ -1865,6 +1866,22 @@ def dev_store_template_debug(
     try:
         _ensure_cartflow_api_db_warmed()
         return j(build_store_template_debug_report(store_slug=store_slug, reason=reason))
+    except Exception as exc:  # noqa: BLE001
+        db.session.rollback()
+        return j({"ok": False, "error": str(exc)}, 500)
+
+
+@app.get("/dev/template-truth")
+def dev_template_truth(
+    store_slug: str = Query("demo", min_length=1, max_length=255),
+    reason: str = Query("other", min_length=1, max_length=64),
+) -> Any:
+    """Read-only: prove dashboard template storage vs runtime resolver lookup."""
+    from services.template_truth_debug import build_template_truth_report
+
+    try:
+        _ensure_cartflow_api_db_warmed()
+        return j(build_template_truth_report(store_slug=store_slug, reason=reason))
     except Exception as exc:  # noqa: BLE001
         db.session.rollback()
         return j({"ok": False, "error": str(exc)}, 500)

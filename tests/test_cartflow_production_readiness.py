@@ -114,6 +114,29 @@ class CartflowProductionReadinessTests(unittest.TestCase):
             if prev is not None:
                 os.environ["ENV"] = prev
 
+    def test_template_truth_on_production_dev_allowlist(self) -> None:
+        from fastapi.testclient import TestClient
+
+        from main import _DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT, app
+
+        self.assertIn(
+            "/dev/template-truth",
+            _DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT,
+        )
+        client = TestClient(app)
+        prev = os.environ.pop("ENV", None)
+        try:
+            r = client.get("/dev/template-truth?store_slug=demo&reason=price")
+            self.assertNotEqual(404, r.status_code, r.text[:300])
+            self.assertEqual(200, r.status_code, r.text[:300])
+            body = r.json()
+            self.assertIn("store_found", body)
+            self.assertIn("runtime_lookup_key", body)
+            self.assertIn("template_entry_found", body)
+        finally:
+            if prev is not None:
+                os.environ["ENV"] = prev
+
     def test_widget_runtime_config_verify_on_production_dev_allowlist(self) -> None:
         """Read-only verify route must bypass no_dev_in_production when ENV is unset (Railway)."""
         from main import _DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT
