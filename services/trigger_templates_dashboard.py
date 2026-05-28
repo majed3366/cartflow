@@ -13,6 +13,7 @@ from services.recovery_template_defaults import guided_defaults_for_api
 from services.store_reason_templates import (
     normalize_delay_unit,
     parse_reason_templates_column,
+    reason_template_key_is_persisted,
 )
 from services.trigger_template_ui_defaults import (
     _coerce_messages_list,
@@ -123,7 +124,7 @@ def _reason_row_from_enriched(key: str, ent: Dict[str, Any]) -> Dict[str, Any]:
     fallback_msg = str(ent.get("message") or "").strip()
     message_one = text0 if text0 else fallback_msg
 
-    return {
+    row_out = {
         "key": key,
         "label_ar": _LABEL_AR.get(key, key),
         "enabled": enabled,
@@ -133,6 +134,29 @@ def _reason_row_from_enriched(key: str, ent: Dict[str, Any]) -> Dict[str, Any]:
         "message_count": mc,
         "messages": msgs_in[:3] if msgs_in else [],
     }
+    src = ent.get("config_source")
+    if src in ("stored", "defaults"):
+        row_out["config_source"] = src
+    return row_out
+
+
+def _reason_row_for_parsed_key(
+    key: str, parsed: Dict[str, Dict[str, Any]]
+) -> Dict[str, Any]:
+    if not reason_template_key_is_persisted(parsed, key):
+        row = _default_row_for_reason(key, message_count=1)
+        row["config_source"] = "defaults"
+        return row
+    raw_ent = dict(parsed.get(key) or {})
+    try:
+        ent = enrich_reason_entry_for_dashboard(key, raw_ent)
+        ent["config_source"] = "stored"
+        return _reason_row_from_enriched(key, ent)
+    except Exception as exc:  # noqa: BLE001
+        _log.warning("trigger_templates enrich failed for %s: %s", key, exc)
+        row = _default_row_for_reason(key, message_count=1)
+        row["config_source"] = "defaults"
+        return row
 
 
 def build_reason_row_for_key(store_row: Optional[Any], key: str) -> Dict[str, Any]:
@@ -140,21 +164,19 @@ def build_reason_row_for_key(store_row: Optional[Any], key: str) -> Dict[str, An
     if key not in TRIGGER_TEMPLATE_PAGE_KEYS:
         return _default_row_for_reason("price")
     if store_row is None:
-        return _default_row_for_reason(key)
+        row = _default_row_for_reason(key, message_count=1)
+        row["config_source"] = "defaults"
+        return row
     try:
         parsed = parse_reason_templates_column(
             getattr(store_row, "reason_templates_json", None)
         )
     except Exception as exc:  # noqa: BLE001
         _log.warning("trigger_templates parse failed for %s: %s", key, exc)
-        return _default_row_for_reason(key)
-    raw_ent = parsed.get(key) if isinstance(parsed.get(key), dict) else {}
-    try:
-        ent = enrich_reason_entry_for_dashboard(key, dict(raw_ent))
-        return _reason_row_from_enriched(key, ent)
-    except Exception as exc:  # noqa: BLE001
-        _log.warning("trigger_templates enrich failed for %s: %s", key, exc)
-        return _default_row_for_reason(key)
+        row = _default_row_for_reason(key, message_count=1)
+        row["config_source"] = "defaults"
+        return row
+    return _reason_row_for_parsed_key(key, parsed)
 
 
 def build_trigger_templates_save_ack(
@@ -191,13 +213,13 @@ def build_trigger_templates_get_payload(store_row: Optional[Any]) -> Dict[str, A
 
     reason_rows: List[Dict[str, Any]] = []
     for key in TRIGGER_TEMPLATE_PAGE_KEYS:
-        raw_ent = parsed.get(key) if isinstance(parsed.get(key), dict) else {}
         try:
-            ent = enrich_reason_entry_for_dashboard(key, dict(raw_ent))
-            reason_rows.append(_reason_row_from_enriched(key, ent))
+            reason_rows.append(_reason_row_for_parsed_key(key, parsed))
         except Exception as exc:  # noqa: BLE001
-            _log.warning("trigger_templates enrich failed for %s: %s", key, exc)
-            reason_rows.append(_default_row_for_reason(key))
+            _log.warning("trigger_templates row failed for %s: %s", key, exc)
+            row = _default_row_for_reason(key, message_count=1)
+            row["config_source"] = "defaults"
+            reason_rows.append(row)
 
     if not reason_rows:
         return build_fallback_trigger_templates_payload()

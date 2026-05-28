@@ -47,6 +47,8 @@ class TemplateTruthDebugTests(unittest.TestCase):
             self.assertEqual("price", body.get("entry_key_found"))
             self.assertGreaterEqual(int(body.get("message_count") or 0), 2)
             self.assertGreaterEqual(int(body.get("materialized_len") or 0), 2)
+            self.assertGreaterEqual(int(body.get("slots_len") or 0), 2)
+            self.assertIsNone(body.get("miss_reason"))
         finally:
             row2 = db.session.query(Store).filter(Store.zid_store_id == "demo").first()
             if row2 is not None:

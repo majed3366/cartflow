@@ -133,6 +133,53 @@ def parse_reason_templates_column(raw: Any) -> Dict[str, Dict[str, Any]]:
     return out
 
 
+def reason_template_key_is_persisted(
+    parsed: Dict[str, Dict[str, Any]], key: str
+) -> bool:
+    """مفتاح موجود في ‎reason_templates_json‎ المحفوظ (ليس صفاً افتراضياً للعرض فقط)."""
+    kk = str(key).strip().lower()
+    return kk in parsed and isinstance(parsed.get(kk), dict)
+
+
+def _finalize_reason_entry_for_storage(entry: Dict[str, Any]) -> Dict[str, Any]:
+    """شكل موحّد لـ runtime و GET: ‎message_count‎ + ‎messages[]‎ + ‎message‎ للرسالة الأولى."""
+    out = dict(entry)
+    mc = _coerce_message_count(out.get("message_count"))
+    msgs = _parse_messages_column(out.get("messages"))
+    if msgs:
+        out["messages"] = msgs
+        mc = max(mc, len(msgs))
+        first_text = str(msgs[0].get("text") or "").strip()
+        if first_text:
+            out["message"] = first_text
+    else:
+        out.pop("messages", None)
+    legacy = str(out.get("message") or "").strip()
+    if legacy and not msgs and mc >= 1:
+        dv, unit = 1.0, "minute"
+        msgs = [{"delay": dv, "unit": unit, "text": legacy[:_MAX_MESSAGE_CHARS]}]
+        out["messages"] = msgs
+    out["message_count"] = mc
+    if not str(out.get("message") or "").strip() and msgs:
+        out["message"] = str(msgs[0].get("text") or "").strip()[:_MAX_MESSAGE_CHARS]
+    return out
+
+
+def _mirror_reason_entry_to_trigger_templates(
+    trigger_base: Dict[str, Dict[str, Any]], tag: str, reason_entry: Dict[str, Any]
+) -> None:
+    """مزامنة خفيفة لعمود ‎trigger_templates_json‎ (مسار نص قديم) من أول رسالة محفوظة."""
+    msg = str(reason_entry.get("message") or "").strip()
+    if not msg:
+        msgs = reason_entry.get("messages")
+        if isinstance(msgs, list) and msgs and isinstance(msgs[0], dict):
+            msg = str(msgs[0].get("text") or "").strip()
+    trigger_base[tag] = {
+        "enabled": bool(reason_entry.get("enabled", True)),
+        "message": msg[:_MAX_MESSAGE_CHARS],
+    }
+
+
 def apply_reason_templates_from_body(row: Any, body: Dict[str, Any]) -> None:
     """دمج جزئي لحقول ‎reason_templates‎ في جسم الـ POST."""
     if "reason_templates" not in body:
@@ -141,6 +188,7 @@ def apply_reason_templates_from_body(row: Any, body: Dict[str, Any]) -> None:
     base = parse_reason_templates_column(getattr(row, "reason_templates_json", None))
     if not isinstance(incoming, dict):
         return
+    trigger_mirror: Optional[Dict[str, Dict[str, Any]]] = None
     for tag, entry in incoming.items():
         tt = str(tag).strip().lower()
         if tt not in _REASON_TAGS:
@@ -160,9 +208,19 @@ def apply_reason_templates_from_body(row: Any, body: Dict[str, Any]) -> None:
         if "messages" in entry:
             parsed_msgs = _parse_messages_column(entry.get("messages"))
             if parsed_msgs:
-                prev["messages"] = parsed_msgs
-            elif isinstance(entry.get("messages"), list) and len(entry["messages"]) == 0:
-                prev.pop("messages", None)
+                prev_msgs = _parse_messages_column(prev.get("messages"))
+                mc_target = _coerce_message_count(
+                    entry.get("message_count")
+                    if "message_count" in entry
+                    else prev.get("message_count")
+                )
+                merged_msgs: List[Dict[str, Any]] = []
+                for i in range(mc_target):
+                    if i < len(parsed_msgs):
+                        merged_msgs.append(parsed_msgs[i])
+                    elif i < len(prev_msgs):
+                        merged_msgs.append(prev_msgs[i])
+                prev["messages"] = merged_msgs
         if "guided_attempts" in entry:
             inc_ga = entry.get("guided_attempts")
             if inc_ga is None:
@@ -202,8 +260,19 @@ def apply_reason_templates_from_body(row: Any, body: Dict[str, Any]) -> None:
                 prev["widget_reason_label_ar"] = str(wlab).strip()[
                     :_MAX_WIDGET_REASON_LABEL_CHARS
                 ]
-        base[tt] = prev
+        base[tt] = _finalize_reason_entry_for_storage(prev)
+        if trigger_mirror is None:
+            from services.store_trigger_templates import parse_trigger_templates_column
+
+            trigger_mirror = parse_trigger_templates_column(
+                getattr(row, "trigger_templates_json", None)
+            )
+        _mirror_reason_entry_to_trigger_templates(trigger_mirror, tt, base[tt])
     row.reason_templates_json = json.dumps(base, ensure_ascii=False) if base else None
+    if trigger_mirror is not None:
+        row.trigger_templates_json = (
+            json.dumps(trigger_mirror, ensure_ascii=False) if trigger_mirror else None
+        )
 
 
 def reason_templates_fields_for_api(row: Optional[Any]) -> Dict[str, Any]:

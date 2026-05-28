@@ -209,6 +209,28 @@ def test_multi_slots_returns_two_with_defaults_padding() -> None:
     assert slots[1]["unit_display"] == "hour"
 
 
+def test_finalize_aligns_message_count_with_messages_len() -> None:
+    row = _Row()
+    body = {
+        "reason_templates": {
+            "price": {
+                "enabled": True,
+                "message": "أولى",
+                "message_count": 2,
+                "messages": [
+                    {"delay": 3, "unit": "minute", "text": "أولى"},
+                    {"delay": 1, "unit": "hour", "text": "ثانية"},
+                ],
+            }
+        }
+    }
+    apply_reason_templates_from_body(row, body)
+    parsed = parse_reason_templates_column(row.reason_templates_json)
+    assert parsed["price"]["message_count"] == 2
+    assert len(parsed["price"]["messages"]) == 2
+    assert parsed["price"]["message"] == "أولى"
+
+
 def test_parse_and_apply_preserves_messages() -> None:
     row = _Row()
     body = {

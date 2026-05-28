@@ -32,6 +32,57 @@ class DashboardTriggerTemplatesApiTests(unittest.TestCase):
             (p.get("section_title_ar") or "").strip(), "قوالب حسب سبب التردد"
         )
 
+    def test_post_two_message_price_persists_reason_templates_json(self) -> None:
+        import json
+
+        from services.store_reason_templates import parse_reason_templates_column
+
+        body = {
+            "store_slug": "demo",
+            "reason_templates": {
+                "price": {
+                    "enabled": True,
+                    "message": "رسالة أولى",
+                    "message_count": 2,
+                    "messages": [
+                        {"delay": 3, "unit": "minute", "text": "رسالة أولى"},
+                        {"delay": 1, "unit": "hour", "text": "رسالة ثانية"},
+                    ],
+                }
+            },
+        }
+        db.create_all()
+        row = db.session.query(Store).filter(Store.zid_store_id == "demo").first()
+        if row is None:
+            row = Store(zid_store_id="demo", recovery_attempts=1)
+            db.session.add(row)
+            db.session.commit()
+        prev = getattr(row, "reason_templates_json", None)
+        try:
+            rp = self.client.post("/api/dashboard/trigger-templates", json=body)
+            self.assertEqual(rp.status_code, 200, rp.text[:400])
+            db.session.refresh(row)
+            parsed = parse_reason_templates_column(row.reason_templates_json)
+            self.assertIn("price", parsed)
+            self.assertEqual(parsed["price"]["message_count"], 2)
+            self.assertEqual(len(parsed["price"]["messages"]), 2)
+            truth = self.client.get("/dev/template-truth?store_slug=demo&reason=price")
+            self.assertEqual(truth.status_code, 200, truth.text[:400])
+            rep = truth.json()
+            self.assertIsNotNone(rep.get("raw_reason_templates_json"))
+            self.assertTrue(rep.get("template_entry_found"))
+            self.assertEqual(rep.get("entry_key_found"), "price")
+            self.assertEqual(rep.get("message_count"), 2)
+            self.assertEqual(rep.get("messages_array_len"), 2)
+            self.assertEqual(rep.get("materialized_len"), 2)
+            self.assertGreaterEqual(int(rep.get("slots_len") or 0), 2)
+            self.assertIsNone(rep.get("miss_reason"))
+        finally:
+            row2 = db.session.query(Store).filter(Store.zid_store_id == "demo").first()
+            if row2 is not None:
+                row2.reason_templates_json = prev
+                db.session.commit()
+
     def test_post_merges_one_reason_then_get_roundtrip(self) -> None:
         g = self.client.get("/api/dashboard/trigger-templates")
         self.assertEqual(g.status_code, 200)
@@ -181,6 +232,45 @@ class DashboardTriggerTemplatesApiTests(unittest.TestCase):
 
 
 class TriggerTemplatesDashboardServiceTests(unittest.TestCase):
+    def test_empty_store_rows_marked_defaults_not_stored(self) -> None:
+        from services.trigger_templates_dashboard import build_trigger_templates_get_payload
+
+        class _Mini:
+            reason_templates_json = None
+
+        rows = build_trigger_templates_get_payload(_Mini())["reason_rows"]
+        for row in rows:
+            self.assertEqual(row.get("config_source"), "defaults")
+
+    def test_stored_price_row_marked_stored(self) -> None:
+        import json
+
+        from services.trigger_templates_dashboard import build_trigger_templates_get_payload
+
+        class _Mini:
+            reason_templates_json = json.dumps(
+                {
+                    "price": {
+                        "enabled": True,
+                        "message": "محفوظ",
+                        "message_count": 2,
+                        "messages": [
+                            {"delay": 1, "unit": "minute", "text": "أولى"},
+                            {"delay": 2, "unit": "hour", "text": "ثانية"},
+                        ],
+                    }
+                }
+            )
+
+        price = next(
+            r
+            for r in build_trigger_templates_get_payload(_Mini())["reason_rows"]
+            if r["key"] == "price"
+        )
+        self.assertEqual(price.get("config_source"), "stored")
+        self.assertEqual(price.get("message_count"), 2)
+        self.assertEqual(len(price.get("messages") or []), 2)
+
     def test_build_payload_for_empty_namespace(self) -> None:
         from services.trigger_templates_dashboard import build_trigger_templates_get_payload
 

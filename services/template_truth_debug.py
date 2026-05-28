@@ -51,6 +51,7 @@ def build_template_truth_report(
             "messages_array_len": diag.get("messages_array_len"),
             "guided_attempts_keys": diag.get("guided_attempts_keys"),
             "materialized_len": diag.get("materialized_len"),
+            "slots_len": diag.get("slots_len"),
             "miss_reason": diag.get("miss_reason"),
             "dashboard_store_id": int(getattr(dash_row, "id", 0) or 0) if dash_row is not None else None,
             "dashboard_store_zid": (getattr(dash_row, "zid_store_id", None) or "").strip() if dash_row is not None else None,
