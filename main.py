@@ -956,6 +956,7 @@ _DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT = frozenset(
         "/dev/recovery-truth",
         "/dev/store-template-debug",
         "/dev/attempt-2-trace",
+        "/dev/recovery-operational-truth",
     }
 )
 
@@ -1940,6 +1941,151 @@ def dev_attempt2_trace(recovery_key: str = Query("", max_length=512)) -> Any:
         trace = build_attempt2_trace(rk)
         emit_attempt2_trace_log(trace, path="dev_endpoint")
         return j({"ok": True, "trace": trace})
+    except Exception as exc:  # noqa: BLE001
+        db.session.rollback()
+        return j({"ok": False, "error": str(exc)}, 500)
+
+
+@app.get("/dev/recovery-operational-truth")
+def dev_recovery_operational_truth(recovery_key: str = Query("", max_length=512)) -> Any:
+    """Unified runtime/dashboard operational truth from durable schedules."""
+    rk = (recovery_key or "").strip()
+    if not rk:
+        return j({"ok": False, "error": "recovery_key_required"}, 400)
+    try:
+        _ensure_cartflow_api_db_warmed()
+        from services.cartflow_session_truth import parse_recovery_key  # noqa: PLC0415
+        from services.recovery_multi_message import (  # noqa: PLC0415
+            diagnose_multi_message_config,
+            resolve_configured_message_count,
+        )
+        from services.recovery_restart_survival import load_context  # noqa: PLC0415
+
+        store_slug, session_id = parse_recovery_key(rk)
+        store_slug = (store_slug or "").strip()[:255]
+        session_id = (session_id or "").strip()[:512]
+        if not store_slug or not session_id:
+            return j({"ok": False, "error": "invalid_recovery_key"}, 400)
+
+        store_row = _fresh_store_row_for_recovery_templates(store_slug) or _load_store_row_for_recovery(
+            store_slug
+        )
+        reason_tag = _reason_tag_for_session(store_slug, session_id)
+        if not reason_tag:
+            rr_any = _cart_recovery_reason_latest_row_any_store(session_id)
+            reason_tag = (rr_any.reason or "").strip() if rr_any is not None else None
+        reason_tag = (reason_tag or "").strip() or None
+
+        ac_row = (
+            db.session.query(AbandonedCart)
+            .filter(AbandonedCart.recovery_session_id == session_id)
+            .order_by(AbandonedCart.id.desc())
+            .first()
+        )
+        cart_id = (getattr(ac_row, "zid_cart_id", None) or "").strip() if ac_row else ""
+        conds: list[Any] = [RecoverySchedule.store_slug == store_slug]
+        if cart_id:
+            conds.append(
+                or_(
+                    RecoverySchedule.session_id == session_id,
+                    RecoverySchedule.cart_id == cart_id,
+                )
+            )
+        else:
+            conds.append(RecoverySchedule.session_id == session_id)
+        sched_rows = (
+            db.session.query(RecoverySchedule)
+            .filter(*conds)
+            .order_by(RecoverySchedule.step.asc(), RecoverySchedule.id.asc())
+            .all()
+        )
+        rc_ctx: Optional[dict[str, Any]] = None
+        if sched_rows:
+            ctx0 = load_context(sched_rows[-1]).get("recovery_context")
+            if isinstance(ctx0, dict):
+                rc_ctx = dict(ctx0)
+        configured_count, configured_source = resolve_configured_message_count(
+            reason_tag,
+            store_row,
+            recovery_context=rc_ctx,
+        )
+        sent_count = _normal_recovery_gate_sent_count(rk, session_id, cart_id or None)
+        next_due: Optional[datetime] = None
+        schedule_rows_out: list[dict[str, Any]] = []
+        blocked_by = "-"
+        for sr in sched_rows:
+            st = (getattr(sr, "status", None) or "").strip().lower()
+            due = getattr(sr, "due_at", None)
+            if due is not None:
+                if due.tzinfo is None:
+                    due = due.replace(tzinfo=timezone.utc)
+                else:
+                    due = due.astimezone(timezone.utc)
+            if st in ("scheduled", "running") and due is not None:
+                if next_due is None or due < next_due:
+                    next_due = due
+            schedule_rows_out.append(
+                {
+                    "id": int(getattr(sr, "id", 0) or 0),
+                    "status": st,
+                    "step": int(getattr(sr, "step", 1) or 1),
+                    "sequential_attempt_index": getattr(sr, "sequential_attempt_index", None),
+                    "multi_slot_index": getattr(sr, "multi_slot_index", None),
+                    "due_at": due.isoformat() if due else None,
+                    "created_at": (
+                        sr.created_at.isoformat() if getattr(sr, "created_at", None) else None
+                    ),
+                }
+            )
+        dash_store = _dashboard_recovery_store_row()
+        rows_dash, _ = _normal_recovery_merchant_lightweight_alert_list_for_api(
+            page_limit=200,
+            page_offset=0,
+            nr_session=session_id,
+            nr_cart=cart_id or None,
+            lifecycle="all",
+            dash_store=dash_store,
+        )
+        dash_row = None
+        for rr in rows_dash:
+            if str(rr.get("recovery_key") or "").strip() == rk:
+                dash_row = rr
+                break
+        if dash_row is None and rows_dash:
+            dash_row = rows_dash[0]
+        dashboard_visible = dash_row is not None
+        dashboard_bucket = (
+            str(dash_row.get("merchant_cart_primary_bucket") or dash_row.get("merchant_coarse_status") or "")
+            if dash_row
+            else ""
+        )
+        td = diagnose_multi_message_config(reason_tag, store_row)
+        if td.get("miss_reason"):
+            blocked_by = str(td.get("miss_reason"))
+        elif next_due is None and int(configured_count) > int(sent_count):
+            blocked_by = "next_schedule_missing"
+        decision = (
+            "schedule_next"
+            if int(configured_count) > int(sent_count)
+            else "stop_sequence"
+        )
+        out = {
+            "ok": True,
+            "recovery_key": rk,
+            "abandoned_cart_exists": ac_row is not None,
+            "reason_tag": reason_tag,
+            "configured_count": int(configured_count),
+            "configured_count_source": configured_source,
+            "sent_count": int(sent_count),
+            "schedule_rows": schedule_rows_out,
+            "dashboard_visible": dashboard_visible,
+            "dashboard_bucket": dashboard_bucket,
+            "next_attempt_due_at": next_due.isoformat() if next_due else None,
+            "blocked_by": blocked_by,
+            "decision": decision,
+            "template_diagnosis": td,
+        }
+        return j(out)
     except Exception as exc:  # noqa: BLE001
         db.session.rollback()
         return j({"ok": False, "error": str(exc)}, 500)
@@ -13706,6 +13852,25 @@ def _normal_recovery_abandoned_scope_filter(
         except (TypeError, ValueError):
             pass
     if slug:
+        reason_match = exists().where(
+            CartRecoveryReason.store_slug == slug,
+            AbandonedCart.recovery_session_id.isnot(None),
+            CartRecoveryReason.session_id == AbandonedCart.recovery_session_id,
+        )
+        schedule_match = exists().where(
+            RecoverySchedule.store_slug == slug,
+            or_(
+                and_(
+                    AbandonedCart.recovery_session_id.isnot(None),
+                    RecoverySchedule.session_id == AbandonedCart.recovery_session_id,
+                ),
+                and_(
+                    AbandonedCart.zid_cart_id.isnot(None),
+                    RecoverySchedule.cart_id.isnot(None),
+                    RecoverySchedule.cart_id == AbandonedCart.zid_cart_id,
+                ),
+            ),
+        )
         log_match = exists().where(
             CartRecoveryLog.store_slug == slug,
             or_(
@@ -13737,6 +13902,8 @@ def _normal_recovery_abandoned_scope_filter(
             ),
         )
         parts.append(log_match)
+        parts.append(reason_match)
+        parts.append(schedule_match)
     if not parts:
         return None
     return or_(*parts)
@@ -13917,6 +14084,9 @@ class MerchantNormalCartsBatchReads:
     latest_log_by_ac: dict[int, Optional[CartRecoveryLog]]
     skipped_nv_by_ac: dict[int, Optional[CartRecoveryLog]]
     status_union_by_ac: dict[int, frozenset[str]]
+    schedule_rows_by_ac: dict[int, list[RecoverySchedule]]
+    schedule_status_union_by_ac: dict[int, frozenset[str]]
+    next_due_by_ac: dict[int, Optional[str]]
     reason_store_by_session: dict[str, CartRecoveryReason]
     reason_any_by_session: dict[str, CartRecoveryReason]
     peers_non_vip: list[AbandonedCart]
@@ -14068,6 +14238,9 @@ def _normal_recovery_dashboard_phase_key_merchant_batch(
             return "stopped_manual"
     aid = int(getattr(ac, "id", 0) or 0)
     sent_n = int(batch.sent_real_count.get(aid, 0) or 0)
+    sched_statuses = batch.schedule_status_union_by_ac.get(aid, frozenset())
+    has_step1_pending = "step1_pending" in sched_statuses
+    has_followup_pending = "followup_pending" in sched_statuses
     log_last = batch.latest_log_by_ac.get(aid)
     if log_last is not None:
         ls = (getattr(log_last, "status", None) or "").strip().lower()
@@ -14097,10 +14270,14 @@ def _normal_recovery_dashboard_phase_key_merchant_batch(
         return "reminder_sent"
     if sent_n >= 2:
         return "reminder_sent"
+    if sent_n == 1 and has_followup_pending:
+        return "pending_second_attempt"
     if sent_n == 1 and max_a >= 2:
         return "pending_second_attempt"
     if sent_n == 1:
         return "first_message_sent"
+    if has_step1_pending:
+        return "pending_send"
     if _normal_recovery_is_missing_verified_phone_send_blocked_merchant_batch(ac, batch):
         return NORMAL_RECOVERY_PHASE_KEY_BLOCKED_MISSING_CUSTOMER_PHONE
     return "pending_send"
@@ -14521,6 +14698,9 @@ def _merchant_normal_dashboard_batch_reads(
     sent_real_count: dict[int, int] = {}
     latest_log_by_ac: dict[int, Optional[CartRecoveryLog]] = {}
     skipped_nv_by_ac: dict[int, Optional[CartRecoveryLog]] = {}
+    schedule_rows_by_ac: dict[int, list[RecoverySchedule]] = {}
+    schedule_status_union_by_ac: dict[int, frozenset[str]] = {}
+    next_due_by_ac: dict[int, Optional[str]] = {}
 
     _mbr_seg_t = time.perf_counter()
     _mbr_seg_q = merchant_dashboard_batch_reads_trace_peek_for_seg(_mbr_tr)
@@ -14608,6 +14788,64 @@ def _merchant_normal_dashboard_batch_reads(
         "loop_per_abandoned_recovery_log_projection",
         rows_loaded=len(full_rows),
     )
+
+    schedule_rows: list[RecoverySchedule] = []
+    try:
+        or_sched: list[Any] = []
+        if sess_pool:
+            or_sched.append(RecoverySchedule.session_id.in_(list(sess_pool)))
+        if cid_pool:
+            or_sched.append(RecoverySchedule.cart_id.in_(list(cid_pool)))
+        if or_sched:
+            with normal_carts_profile_span("sql:batch_recovery_schedules_bulk"):
+                schedule_rows = (
+                    db.session.query(RecoverySchedule)
+                    .filter(RecoverySchedule.store_slug == slug)
+                    .filter(or_(*or_sched))
+                    .all()
+                )
+    except (SQLAlchemyError, OSError, TypeError, ValueError):
+        db.session.rollback()
+        schedule_rows = []
+    for ac in full_rows:
+        aid_ac = int(getattr(ac, "id", 0) or 0)
+        if not aid_ac:
+            continue
+        sid_ac = (getattr(ac, "recovery_session_id", None) or "").strip()[:512]
+        zid_ac = (getattr(ac, "zid_cart_id", None) or "").strip()[:255]
+        matched_sched: list[RecoverySchedule] = []
+        for sr in schedule_rows:
+            s_sid = (getattr(sr, "session_id", None) or "").strip()[:512]
+            s_cid = (getattr(sr, "cart_id", None) or "").strip()[:255]
+            if sid_ac and s_sid == sid_ac:
+                matched_sched.append(sr)
+                continue
+            if zid_ac and s_cid == zid_ac:
+                matched_sched.append(sr)
+                continue
+        schedule_rows_by_ac[aid_ac] = matched_sched
+        st_set: set[str] = set()
+        next_due_dt: Optional[datetime] = None
+        for sr in matched_sched:
+            st = (getattr(sr, "status", None) or "").strip().lower()
+            step_n = int(getattr(sr, "step", 1) or 1)
+            if st in ("scheduled", "running"):
+                if step_n <= 1:
+                    st_set.add("step1_pending")
+                if step_n >= 2:
+                    st_set.add("followup_pending")
+                due = getattr(sr, "due_at", None)
+                if due is not None:
+                    if due.tzinfo is None:
+                        due = due.replace(tzinfo=timezone.utc)
+                    else:
+                        due = due.astimezone(timezone.utc)
+                    if next_due_dt is None or due < next_due_dt:
+                        next_due_dt = due
+            if st:
+                st_set.add(st)
+        schedule_status_union_by_ac[aid_ac] = frozenset(st_set)
+        next_due_by_ac[aid_ac] = next_due_dt.isoformat() if next_due_dt else None
 
     reason_store_by_session: dict[str, CartRecoveryReason] = {}
     reason_any_by_session: dict[str, CartRecoveryReason] = {}
@@ -14859,6 +15097,9 @@ def _merchant_normal_dashboard_batch_reads(
         latest_log_by_ac=latest_log_by_ac,
         skipped_nv_by_ac=skipped_nv_by_ac,
         status_union_by_ac=status_union_by_ac,
+        schedule_rows_by_ac=schedule_rows_by_ac,
+        schedule_status_union_by_ac=schedule_status_union_by_ac,
+        next_due_by_ac=next_due_by_ac,
         reason_store_by_session=reason_store_by_session,
         reason_any_by_session=reason_any_by_session,
         peers_non_vip=peers_non_vip,
@@ -15102,8 +15343,8 @@ def _merchant_normal_recovery_light_payload_merchant_batch(
         )
 
         rk_lc = (out.get("recovery_key") or rk_pre or "").strip()
-        next_due_iso = None
-        if rk_lc:
+        next_due_iso = batch.next_due_by_ac.get(aid0)
+        if next_due_iso is None and rk_lc:
             with _recovery_session_lock:
                 next_due_iso = _session_recovery_followup_next_due_at.get(rk_lc)
         vip_lane = False
