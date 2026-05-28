@@ -23,6 +23,7 @@ STATE_WAITING_CUSTOMER_REPLY = "waiting_customer_reply"
 STATE_CUSTOMER_ENGAGED = "customer_engaged"
 STATE_CUSTOMER_REPLY = "customer_reply"
 STATE_RETURN_TO_SITE = "return_to_site"
+STATE_WAITING_PURCHASE_WINDOW = "waiting_purchase_window"
 STATE_WAITING_NEXT_SCHEDULED = "waiting_next_scheduled"
 STATE_NEEDS_INTERVENTION = "needs_intervention"
 STATE_COMPLETED = "completed"
@@ -35,6 +36,7 @@ LABEL_AR: dict[str, str] = {
     STATE_CUSTOMER_REPLY: "رد العميل",
     STATE_CUSTOMER_ENGAGED: "تفاعل العميل — أرسل النظام متابعة",
     STATE_RETURN_TO_SITE: "عاد العميل للموقع — نراقب هل يكمل الطلب",
+    STATE_WAITING_PURCHASE_WINDOW: "عاد العميل للموقع — أوقفنا المتابعة مؤقتًا",
     STATE_WAITING_NEXT_SCHEDULED: "بانتظار المتابعة التالية",
     STATE_NEEDS_INTERVENTION: "تحتاج تدخل",
     STATE_COMPLETED: "تمت الاستعادة",
@@ -48,6 +50,7 @@ ROW_CLASS: dict[str, str] = {
     STATE_CUSTOMER_REPLY: "s-attention",
     STATE_CUSTOMER_ENGAGED: "s-attention",
     STATE_RETURN_TO_SITE: "s-sent",
+    STATE_WAITING_PURCHASE_WINDOW: "s-sent",
     STATE_WAITING_NEXT_SCHEDULED: "s-sent",
     STATE_NEEDS_INTERVENTION: "s-attention",
     STATE_COMPLETED: "s-recovered",
@@ -121,7 +124,12 @@ def lifecycle_state_to_filter_bucket(state_key: str) -> str:
     sk = (state_key or "").strip().lower()
     if sk in (STATE_ACTIVE, STATE_WAITING_FIRST_SEND):
         return UI_FILTER_WAITING
-    if sk in (STATE_WAITING_CUSTOMER_REPLY, STATE_WAITING_NEXT_SCHEDULED, STATE_RETURN_TO_SITE):
+    if sk in (
+        STATE_WAITING_CUSTOMER_REPLY,
+        STATE_WAITING_NEXT_SCHEDULED,
+        STATE_RETURN_TO_SITE,
+        STATE_WAITING_PURCHASE_WINDOW,
+    ):
         return UI_FILTER_SENT
     if sk in (STATE_CUSTOMER_REPLY, STATE_CUSTOMER_ENGAGED, STATE_NEEDS_INTERVENTION):
         return UI_FILTER_ATTENTION
@@ -144,7 +152,7 @@ def lifecycle_state_to_primary_bucket(state_key: str) -> str:
         return PRIMARY_CUSTOMER_REPLY
     if sk == STATE_CUSTOMER_ENGAGED:
         return PRIMARY_CUSTOMER_ENGAGED
-    if sk == STATE_RETURN_TO_SITE:
+    if sk in (STATE_RETURN_TO_SITE, STATE_WAITING_PURCHASE_WINDOW):
         return PRIMARY_RETURN_TO_SITE
     if sk == STATE_NEEDS_INTERVENTION:
         return PRIMARY_NEEDS_FOLLOWUP
@@ -216,10 +224,12 @@ def lifecycle_truth_consistency_for_row(row: Mapping[str, Any]) -> tuple[bool, s
         return False, "archived_visual_without_archived_state"
     if sk == STATE_ARCHIVED and not arch_vis:
         return False, "archived_state_without_archived_visual"
-    if sk == STATE_RETURN_TO_SITE and (
+    if sk in (STATE_RETURN_TO_SITE, STATE_WAITING_PURCHASE_WINDOW) and (
         "تفاعل العميل" in chip or "رد العميل" in chip
     ):
         return False, "return_state_with_reply_chip"
+    if sk == STATE_WAITING_PURCHASE_WINDOW and "أوقفنا المتابعة" not in chip:
+        return False, "purchase_window_chip_mismatch"
     if sk == STATE_WAITING_FIRST_SEND and "الإرسال" not in chip:
         return False, "waiting_send_chip_mismatch"
     return True, "ok"
@@ -609,27 +619,6 @@ def classify_customer_lifecycle_state_v1(
             archive_reason="customer_reply",
         )
 
-    if _return_to_site_detected(
-        recovery_key=rk,
-        phase_key=pk,
-        coarse=cnorm,
-        log_ss=log_ss,
-        behavioral=bh,
-    ):
-        return _finish(
-            _pack(
-            STATE_RETURN_TO_SITE,
-            what_happened="عاد العميل للموقع.",
-            system_did="أوقف أو علّق المتابعة مؤقتًا حتى لا يزعج العميل.",
-            what_next="ننتظر هل يكمل الطلب أو يغادر.",
-            merchant_needed="لا",
-            dashboard_action="archive",
-        ),
-            archive_reason="return_to_site",
-        )
-
-    exhausted = exhausted_early
-
     due_at = _next_schedule_due_at(rk)
     if due_at is None and next_attempt_due_at:
         try:
@@ -640,6 +629,50 @@ def classify_customer_lifecycle_state_v1(
                 due_at = due_at.replace(tzinfo=timezone.utc)
         except (TypeError, ValueError):
             due_at = None
+
+    if _return_to_site_detected(
+        recovery_key=rk,
+        phase_key=pk,
+        coarse=cnorm,
+        log_ss=log_ss,
+        behavioral=bh,
+    ):
+        has_next_template = sent_n < cap
+        delay_pending = due_at is not None and due_at > now
+        next_line = ""
+        if sent_proven and has_next_template and delay_pending:
+            next_line = (
+                f"إن لم يُكمل الشراء، متابعة محتملة بعد: "
+                f"{_format_eta_ar((due_at - now).total_seconds())}"
+            )
+        if sent_proven:
+            return _finish(
+                _pack(
+                    STATE_WAITING_PURCHASE_WINDOW,
+                    what_happened="عاد العميل للموقع بعد رسالة الاسترجاع.",
+                    system_did="أوقفنا المتابعة مؤقتًا — لا ضغط فوري على العميل.",
+                    what_next=(
+                        "نراقب إن أكمل الشراء؛ وإن لم يشترِ قد تُرسل متابعة لاحقة وفق الإعداد."
+                    ),
+                    merchant_needed="لا",
+                    dashboard_action="none",
+                    next_followup_line=next_line,
+                ),
+                archive_reason="waiting_purchase_window",
+            )
+        return _finish(
+            _pack(
+                STATE_RETURN_TO_SITE,
+                what_happened="عاد العميل للموقع.",
+                system_did="أوقفنا المتابعة مؤقتًا حتى لا يزعج العميل.",
+                what_next="ننتظر هل يكمل الطلب أو يغادر.",
+                merchant_needed="لا",
+                dashboard_action="none",
+            ),
+            archive_reason="return_to_site",
+        )
+
+    exhausted = exhausted_early
 
     ignored_phase = pk == "ignored" or cnorm == "ignored"
     has_next_template = sent_n < cap
@@ -844,6 +877,7 @@ __all__ = [
     "STATE_WAITING_CUSTOMER_REPLY",
     "STATE_WAITING_FIRST_SEND",
     "STATE_WAITING_NEXT_SCHEDULED",
+    "STATE_WAITING_PURCHASE_WINDOW",
     "CustomerLifecycleStateV1",
     "attach_customer_lifecycle_state_v1",
     "classify_customer_lifecycle_state_v1",

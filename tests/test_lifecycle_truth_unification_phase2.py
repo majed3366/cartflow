@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 from main import app
 from services.customer_lifecycle_states_v1 import (
     STATE_ARCHIVED,
-    STATE_RETURN_TO_SITE,
+    STATE_WAITING_PURCHASE_WINDOW,
     STATE_WAITING_FIRST_SEND,
     attach_customer_lifecycle_state_v1,
     lifecycle_filter_counts_from_rows,
@@ -28,9 +28,11 @@ def test_attach_lifecycle_sets_bucket_from_owner_state() -> None:
         behavioral={"user_returned_to_site": True},
         attempt_cap=2,
     )
-    assert lc.state_key == STATE_RETURN_TO_SITE
+    assert lc.state_key == STATE_WAITING_PURCHASE_WINDOW
     assert payload["merchant_cart_bucket"] == "sent"
     assert payload["merchant_cart_primary_bucket"] == "return_to_site"
+    assert payload["merchant_cart_is_active"] is True
+    assert payload["merchant_cart_is_terminal"] is False
     assert payload["merchant_cart_visible_tabs"] == ["all", "sent"]
 
 
@@ -50,7 +52,10 @@ def test_attach_archived_marks_terminal_and_not_active() -> None:
 def test_counts_derive_from_lifecycle_state_only() -> None:
     rows = [
         {"customer_lifecycle_state": STATE_WAITING_FIRST_SEND, "merchant_cart_bucket": "sent"},
-        {"customer_lifecycle_state": STATE_RETURN_TO_SITE, "merchant_cart_bucket": "waiting"},
+        {
+            "customer_lifecycle_state": STATE_WAITING_PURCHASE_WINDOW,
+            "merchant_cart_bucket": "sent",
+        },
         {"customer_lifecycle_state": STATE_ARCHIVED, "merchant_cart_bucket": "attention"},
     ]
     counts = lifecycle_filter_counts_from_rows(rows)

@@ -40,7 +40,7 @@ WAITING_STATUS_LABEL_AR = "بانتظار الإرسال"
 NEEDS_FOLLOWUP_STATUS_LABEL_AR = "يحتاج متابعة"
 CUSTOMER_ENGAGED_CONTINUATION_LABEL_AR = "تفاعل العميل — أرسل النظام متابعة"
 CUSTOMER_REPLY_LABEL_AR = "رد العميل"
-RETURN_TO_SITE_LABEL_AR = "عاد العميل للموقع — نراقب هل يكمل الطلب"
+RETURN_TO_SITE_LABEL_AR = "عاد العميل للموقع — أوقفنا المتابعة مؤقتًا"
 RECOVERED_STATUS_LABEL_AR = "تم الاسترجاع"
 NO_PHONE_STATUS_LABEL_AR = "لا يوجد رقم للتواصل"
 

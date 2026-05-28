@@ -4593,9 +4593,8 @@ _NORMAL_RECOVERY_TERMINAL_LOG_STATUSES = frozenset(
         "stopped_converted",
         "skipped_user_rejected_help",
         "skipped_followup_customer_replied",
-        "returned_to_site",
+        # returned_to_site / skipped_anti_spam are temporary pause signals — not terminal closure.
         "skipped_attempt_limit",
-        "skipped_anti_spam",
     }
 )
 _NORMAL_RECOVERY_TERMINAL_PHASE_KEYS = frozenset(
@@ -14794,21 +14793,31 @@ def _merchant_normal_recovery_light_payload_merchant_batch(
         recovery_key=rk_pre or "",
     )
     if archived_group and row_class.is_active:
-        row_class = classify_merchant_cart_row(
-            cart=ac0,
-            logs=batch.logs,
-            purchase_truth=True,
-            cart_status=str(getattr(ac0, "status", None) or ""),
-            has_phone=has_phone,
-            sent_count=sent_ct_pre,
-            log_statuses=log_u_pre,
-            phase_key=pk_pre,
-            coarse="converted",
-            phone_blocked_before_send=False,
-            behavioral=bh_lc_pre,
-            latest_log_status=latest_st_pre,
-            recovery_key=rk_pre or "",
-        )
+        # Never downgrade active engagement (return/sent/reply) to converted for history slice.
+        _pause_engagement = pk_pre in (
+            "customer_returned",
+            "first_message_sent",
+            "reminder_sent",
+            "pending_second_attempt",
+            "behavioral_replied",
+            "behavioral_link_clicked",
+        ) or cnorm in ("returned", "sent", "replied", "clicked", "pending")
+        if not _pause_engagement:
+            row_class = classify_merchant_cart_row(
+                cart=ac0,
+                logs=batch.logs,
+                purchase_truth=True,
+                cart_status=str(getattr(ac0, "status", None) or ""),
+                has_phone=has_phone,
+                sent_count=sent_ct_pre,
+                log_statuses=log_u_pre,
+                phase_key=pk_pre,
+                coarse="converted",
+                phone_blocked_before_send=False,
+                behavioral=bh_lc_pre,
+                latest_log_status=latest_st_pre,
+                recovery_key=rk_pre or "",
+            )
     out: dict[str, Any] = {
         "merchant_recovery_kind": "normal_case",
         "merchant_case_row_id": int(getattr(ac0, "id", 0) or 0),

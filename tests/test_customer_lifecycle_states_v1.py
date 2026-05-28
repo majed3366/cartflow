@@ -23,6 +23,8 @@ from services.customer_lifecycle_states_v1 import (
     STATE_RETURN_TO_SITE,
     STATE_WAITING_CUSTOMER_REPLY,
     STATE_WAITING_NEXT_SCHEDULED,
+    STATE_WAITING_PURCHASE_WINDOW,
+    attach_customer_lifecycle_state_v1,
     classify_customer_lifecycle_state_v1,
 )
 from services.merchant_cart_lifecycle_archive_v1 import (
@@ -138,11 +140,37 @@ class CustomerLifecycleStatesV1Tests(unittest.TestCase):
             log_statuses=frozenset({"mock_sent", "returned_to_site"}),
             behavioral={"customer_returned_to_site": True},
         )
-        self.assertEqual(lc.state_key, STATE_RETURN_TO_SITE)
-        self.assertIn("عاد العميل للموقع", lc.label_ar)
+        self.assertEqual(lc.state_key, STATE_WAITING_PURCHASE_WINDOW)
+        self.assertIn("أوقفنا المتابعة مؤقتًا", lc.label_ar)
         self.assertNotIn("تفاعل العميل", lc.label_ar)
         self.assertNotIn("أرسل النظام متابعة", lc.system_did_ar)
-        self.assertEqual(lc.what_happened_ar, "عاد العميل للموقع.")
+        self.assertEqual(lc.dashboard_action, "none")
+        self.assertNotIn("مؤرشفة", lc.label_ar)
+
+    def test_return_after_send_stays_active_not_terminal_history(self) -> None:
+        rk = f"demo:lc-ret-active-{self._suffix}"
+        record_recovery_truth_event(
+            recovery_key=rk,
+            status=STATUS_PROVIDER_SENT,
+            source="test",
+            store_slug="demo",
+        )
+        payload: dict[str, object] = {}
+        lc = attach_customer_lifecycle_state_v1(
+            payload,
+            recovery_key=rk,
+            phase_key="customer_returned",
+            coarse="returned",
+            sent_count=1,
+            attempt_cap=2,
+            log_statuses=frozenset({"mock_sent", "returned_to_site"}),
+            behavioral={"user_returned_to_site": True},
+            terminal_history_archived=True,
+        )
+        self.assertEqual(lc.state_key, STATE_WAITING_PURCHASE_WINDOW)
+        self.assertTrue(payload.get("merchant_cart_is_active"))
+        self.assertFalse(payload.get("merchant_cart_is_terminal"))
+        self.assertFalse(payload.get("customer_lifecycle_is_archived_visual"))
 
     def test_ignored_with_future_schedule_waiting_next(self) -> None:
         rk = f"demo:lc-ign-{self._suffix}"
