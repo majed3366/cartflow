@@ -257,6 +257,24 @@ async def dispatch_recovery_schedule(
         out["execution"] = exec_out
         out["ok"] = bool(exec_out.get("ok"))
         out["reason"] = str(exec_out.get("reason") or "finished")
+        try:
+            from services.recovery_attempt2_trace_v1 import (  # noqa: PLC0415
+                _row_is_attempt2,
+                trace_attempt2_for_recovery_key,
+            )
+
+            if _row_is_attempt2(row):
+                trace_attempt2_for_recovery_key(
+                    rk,
+                    path=f"dispatch_recovery_schedule:{src}",
+                    extra={
+                        "dispatch_called": "true_after_execute",
+                        "execute_ok": bool(exec_out.get("ok")),
+                        "execute_reason": str(exec_out.get("reason") or ""),
+                    },
+                )
+        except Exception:  # noqa: BLE001
+            pass
         return out
     except Exception as exc:  # noqa: BLE001
         if isinstance(exc, asyncio.CancelledError):

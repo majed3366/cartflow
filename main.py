@@ -538,6 +538,21 @@ def _spawn_recovery_live_delay_dispatch(
     dispatch_source: str,
 ) -> None:
     if schedule_row is None:
+        try:
+            from services.recovery_attempt2_trace_v1 import (  # noqa: PLC0415
+                trace_attempt2_for_recovery_key,
+            )
+
+            trace_attempt2_for_recovery_key(
+                recovery_key,
+                path=f"spawn_dispatch_skipped:{dispatch_source}",
+                extra={
+                    "blocked_by": "schedule_row_none",
+                    "decision": "spawn_dispatch_skipped",
+                },
+            )
+        except Exception as exc:  # noqa: BLE001
+            log.warning("attempt2 trace spawn skip failed: %s", exc)
         return
     asyncio.create_task(
         _recovery_live_delay_dispatch_task(
@@ -1903,6 +1918,27 @@ def dev_recovery_truth(recovery_key: str = Query("", max_length=512)) -> Any:
                 "persistence": persistence,
             }
         )
+    except Exception as exc:  # noqa: BLE001
+        db.session.rollback()
+        return j({"ok": False, "error": str(exc)}, 500)
+
+
+@app.get("/dev/attempt-2-trace")
+def dev_attempt2_trace(recovery_key: str = Query("", max_length=512)) -> Any:
+    """Durable attempt-2 schedule/dispatch snapshot for one recovery_key."""
+    rk = (recovery_key or "").strip()
+    if not rk:
+        return j({"ok": False, "error": "recovery_key_required"}, 400)
+    try:
+        _ensure_cartflow_api_db_warmed()
+        from services.recovery_attempt2_trace_v1 import (  # noqa: PLC0415
+            build_attempt2_trace,
+            emit_attempt2_trace_log,
+        )
+
+        trace = build_attempt2_trace(rk)
+        emit_attempt2_trace_log(trace, path="dev_endpoint")
+        return j({"ok": True, "trace": trace})
     except Exception as exc:  # noqa: BLE001
         db.session.rollback()
         return j({"ok": False, "error": str(exc)}, 500)
@@ -8220,6 +8256,21 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
         _log_normal_recovery_attempt_decision(
             attempt_index=step_num, allowed=False, reason=_ds_tag
         )
+    if int(step_num) >= 2:
+        try:
+            from services.recovery_attempt2_trace_v1 import (  # noqa: PLC0415
+                trace_attempt2_at_send_gate,
+            )
+
+            trace_attempt2_at_send_gate(
+                recovery_key,
+                step_num=int(step_num),
+                allowed=bool(should_send),
+                block_reason=str(_ds_tag if not should_send else ""),
+                path="recovery_send_gate",
+            )
+        except Exception as exc:  # noqa: BLE001
+            log.warning("attempt2 trace send gate failed: %s", exc)
     log_final_delay_gate(
         gate_timing,
         recovery_key=recovery_key,
@@ -9110,6 +9161,20 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
             recovery_context=seq_ctx,
             sequential_attempt_index=next_idx,
         )
+        try:
+            from services.recovery_attempt2_trace_v1 import (  # noqa: PLC0415
+                trace_attempt2_after_followup_scheduled,
+            )
+
+            trace_attempt2_after_followup_scheduled(
+                recovery_key,
+                seq_row=seq_row,
+                next_idx=int(next_idx),
+                due_dt_iso=due_dt.isoformat(),
+                path="sequential_followup_persist",
+            )
+        except Exception as exc:  # noqa: BLE001
+            log.warning("attempt2 trace after schedule failed: %s", exc)
         _spawn_recovery_live_delay_dispatch(
             seq_row,
             recovery_key=recovery_key,
@@ -9288,6 +9353,21 @@ def _schedule_recovery_multi_slots(
             multi_slot_index=int(s["index"]),
             multi_message_text=str(s.get("text") or ""),
         )
+        if int(s.get("index") or 0) >= 2:
+            try:
+                from services.recovery_attempt2_trace_v1 import (  # noqa: PLC0415
+                    trace_attempt2_after_followup_scheduled,
+                )
+
+                trace_attempt2_after_followup_scheduled(
+                    recovery_key,
+                    seq_row=slot_row,
+                    next_idx=int(s["index"]),
+                    due_dt_iso="",
+                    path="multi_slot_persist",
+                )
+            except Exception as exc:  # noqa: BLE001
+                log.warning("attempt2 trace multi slot persist failed: %s", exc)
         _spawn_recovery_live_delay_dispatch(
             slot_row,
             recovery_key=recovery_key,

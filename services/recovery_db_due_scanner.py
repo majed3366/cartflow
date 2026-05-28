@@ -85,6 +85,23 @@ async def scan_due_recovery_schedules(
         for row in due_rows:
             rk = row.recovery_key
             sid = int(row.id)
+            try:
+                from services.recovery_attempt2_trace_v1 import (  # noqa: PLC0415
+                    _row_is_attempt2,
+                    trace_attempt2_for_recovery_key,
+                )
+
+                if _row_is_attempt2(row):
+                    trace_attempt2_for_recovery_key(
+                        rk,
+                        path="db_due_scanner_candidate",
+                        extra={
+                            "schedule_id": sid,
+                            "picked_by_scanner": not dry_run,
+                        },
+                    )
+            except Exception:  # noqa: BLE001
+                pass
             ok, reason = evaluate_resume_safety(row)
             if not ok:
                 out["skipped"] += 1
