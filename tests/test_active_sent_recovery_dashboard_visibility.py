@@ -22,6 +22,11 @@ from services.customer_lifecycle_states_v1 import STATE_WAITING_CUSTOMER_REPLY
 
 class ActiveSentRecoveryDashboardVisibilityTests(unittest.TestCase):
     def setUp(self) -> None:
+        from services.dashboard_normal_carts_guard_v1 import (  # noqa: PLC0415
+            dashboard_nc_guard_begin,
+        )
+
+        dashboard_nc_guard_begin()
         db.create_all()
         self._suffix = uuid.uuid4().hex[:10]
 

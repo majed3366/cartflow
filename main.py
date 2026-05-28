@@ -14733,19 +14733,30 @@ def _merchant_normal_dashboard_batch_reads(
                     logs = (
                         db.session.query(CartRecoveryLog)
                         .filter(or_(*or_parts_log))
+                        .order_by(CartRecoveryLog.id.desc())
+                        .limit(3000)
                         .all()
                     )
             if slug:
-                from services.merchant_dashboard_recovery_resolve_v1 import (  # noqa: PLC0415
-                    sent_logs_for_store,
-                )
+                try:
+                    from services.dashboard_normal_carts_guard_v1 import (  # noqa: PLC0415
+                        dashboard_nc_skip_optional_db,
+                    )
 
-                by_lid = {int(getattr(x, "id", 0) or 0): x for x in logs}
-                for lg in sent_logs_for_store(slug, limit=250):
-                    lid = int(getattr(lg, "id", 0) or 0)
-                    if lid:
-                        by_lid[lid] = lg
-                logs = list(by_lid.values())
+                    _skip_sent_enrich = dashboard_nc_skip_optional_db()
+                except Exception:  # noqa: BLE001
+                    _skip_sent_enrich = False
+                if not _skip_sent_enrich:
+                    from services.merchant_dashboard_recovery_resolve_v1 import (  # noqa: PLC0415
+                        sent_logs_for_store,
+                    )
+
+                    by_lid = {int(getattr(x, "id", 0) or 0): x for x in logs}
+                    for lg in sent_logs_for_store(slug, limit=250):
+                        lid = int(getattr(lg, "id", 0) or 0)
+                        if lid:
+                            by_lid[lid] = lg
+                    logs = list(by_lid.values())
     except (SQLAlchemyError, OSError, TypeError, ValueError):
         db.session.rollback()
         logs = []
@@ -15543,8 +15554,17 @@ def _merchant_normal_recovery_light_payload_merchant_batch(
         rk_lc = (out.get("recovery_key") or rk_pre or "").strip()
         next_due_iso = batch.next_due_by_ac.get(aid0)
         if next_due_iso is None and rk_lc:
-            with _recovery_session_lock:
-                next_due_iso = _session_recovery_followup_next_due_at.get(rk_lc)
+            try:
+                from services.dashboard_normal_carts_guard_v1 import (  # noqa: PLC0415
+                    dashboard_nc_skip_optional_db,
+                )
+
+                _skip_sess_lock = dashboard_nc_skip_optional_db()
+            except Exception:  # noqa: BLE001
+                _skip_sess_lock = False
+            if not _skip_sess_lock:
+                with _recovery_session_lock:
+                    next_due_iso = _session_recovery_followup_next_due_at.get(rk_lc)
         vip_lane = False
         try:
             _vip_store = batch.store_row_for_cart(ac0)
@@ -15984,6 +16004,11 @@ def _normal_recovery_merchant_lightweight_alert_list_for_api(
     }
     desired_end = max(0, int(page_offset or 0)) + max(1, int(page_limit or 50))
     try:
+        from services.dashboard_normal_carts_guard_v1 import (  # noqa: PLC0415
+            dashboard_nc_deadline_exceeded,
+            dashboard_nc_log_stage,
+            dashboard_nc_mark_partial,
+        )
         from services.dashboard_normal_carts_perf_v1 import (  # noqa: PLC0415
             dashboard_normal_carts_perf_record_loads,
             dashboard_normal_carts_perf_stage,
@@ -16049,6 +16074,12 @@ def _normal_recovery_merchant_lightweight_alert_list_for_api(
                 scope_filter=_nr_scope,
             )
         dashboard_normal_carts_perf_record_loads(abandoned_carts=len(full_rows))
+        dashboard_nc_log_stage(
+            "candidates_loaded",
+            candidate_rows=len(full_rows),
+            row_cap=int(row_cap),
+            max_pick=int(max_pick),
+        )
         _lat_ph(
             "after_abandoned_cart_candidate_query",
             row_cap=int(row_cap),
@@ -16058,6 +16089,9 @@ def _normal_recovery_merchant_lightweight_alert_list_for_api(
         )
         if not full_rows:
             _lat_ph("early_out_no_candidates")
+            return [], dict(prof_empty)
+        if dashboard_nc_deadline_exceeded():
+            dashboard_nc_mark_partial("candidates_loaded")
             return [], dict(prof_empty)
         slug_for_act = (
             (getattr(dash_store, "zid_store_id", None) or "").strip()
@@ -16077,8 +16111,16 @@ def _normal_recovery_merchant_lightweight_alert_list_for_api(
             store_slug=slug_for_act,
         )
         _lat_ph("after_vip_pick_priority_groups", picked_groups=len(picked))
+        if dashboard_nc_deadline_exceeded():
+            dashboard_nc_mark_partial("before_batch_reads")
+            return [], dict(prof_empty)
         with dashboard_normal_carts_perf_stage("batch_reads"):
             batch_reads = _merchant_normal_dashboard_batch_reads(full_rows, dash_store)
+        dashboard_nc_log_stage(
+            "batch_reads_done",
+            logs_loaded=int(getattr(batch_reads, "logs_loaded", 0) or 0),
+            picked_groups=len(picked),
+        )
         _lat_ph(
             "after_merchant_normal_dashboard_batch_reads",
             logs_loaded=int(getattr(batch_reads, "logs_loaded", 0) or 0),
@@ -16091,7 +16133,11 @@ def _normal_recovery_merchant_lightweight_alert_list_for_api(
         _stale_diag = stale_meta_trace_enabled()
 
         _lat_loop_iters = 0
+        dashboard_nc_log_stage("payload_rows_start", picked_groups=npick)
         for pick_i, grp_sorted in enumerate(picked):
+            if dashboard_nc_deadline_exceeded():
+                dashboard_nc_mark_partial("payload_row")
+                break
             _lat_loop_iters += 1
             with normal_carts_profile_span("loop:for_grp_sorted_in_picked"):
                 arch = _normal_recovery_group_is_archived_merchant_batch(
@@ -16158,6 +16204,11 @@ def _normal_recovery_merchant_lightweight_alert_list_for_api(
                 pass
             log.info("%s", _sm_summ)
 
+        dashboard_nc_log_stage(
+            "payload_rows_done",
+            rows_built=len(out),
+            loop_iterations=int(_lat_loop_iters),
+        )
         _lat_ph(
             "after_group_build_loop",
             loop_iterations=int(_lat_loop_iters),
@@ -16511,12 +16562,19 @@ def api_dashboard_cart_visibility_debug(request: Request):
 
 @app.get("/api/dashboard/normal-carts")
 def api_dashboard_normal_carts(request: Request):
+    from services.dashboard_normal_carts_guard_v1 import (  # noqa: PLC0415
+        dashboard_nc_guard_begin,
+        dashboard_nc_guard_payload,
+        dashboard_nc_log_stage,
+        dashboard_nc_mark_partial,
+        dashboard_nc_partial_active,
+    )
     from services.normal_carts_query_profiler import (
         normal_carts_profile_begin,
         normal_carts_profile_end,
     )
 
-    wall0 = time.perf_counter()
+    wall0 = dashboard_nc_guard_begin()
     from services.dashboard_normal_carts_perf_v1 import (  # noqa: PLC0415
         dashboard_normal_carts_perf_begin,
         dashboard_normal_carts_perf_emit,
@@ -16532,7 +16590,20 @@ def api_dashboard_normal_carts(request: Request):
     }
     try:
         dash_store = _dashboard_recovery_store_row()
+        dashboard_nc_log_stage(
+            "store_resolved",
+            store_slug=(
+                (getattr(dash_store, "zid_store_id", None) or "")[:64]
+                if dash_store is not None
+                else "-"
+            ),
+        )
         body, nc_prof = _api_json_dashboard_normal_carts(dash_store, request=request)
+        body.update(dashboard_nc_guard_payload())
+        dashboard_nc_log_stage(
+            "response_ready",
+            rows=len(body.get("merchant_carts_page_rows") or []),
+        )
         if (request.query_params.get("debug_filter_trace") or "").strip() in (
             "1",
             "true",
@@ -16556,10 +16627,13 @@ def api_dashboard_normal_carts(request: Request):
                 )
             except Exception as ft_exc:  # noqa: BLE001
                 body["normal_carts_filter_trace"] = {"error": str(ft_exc)[:300]}
+        if dashboard_nc_partial_active():
+            body.setdefault("ok", True)
         return j({"ok": True, **body})
     except Exception as e:  # noqa: BLE001
         db.session.rollback()
         log.warning("api_dashboard_normal_carts: %s", e)
+        dashboard_nc_log_stage("exception", error=str(e)[:120])
         return j({"ok": False, "error": "failed"}, 500)
     finally:
         from services.normal_carts_query_profiler import normal_carts_profile_end
@@ -17561,6 +17635,21 @@ def _merchant_dashboard_refresh_state_payload(dash_store: Optional[Any]) -> dict
     max_log_id = 0
     max_sent_id = 0
     sent_total = 0
+    try:
+        from services.dashboard_normal_carts_guard_v1 import (  # noqa: PLC0415
+            dashboard_nc_skip_optional_db,
+        )
+
+        if dashboard_nc_skip_optional_db():
+            revision_token = f"{slug}:partial:0:0:0"
+            return {
+                "merchant_dashboard_refresh_token": revision_token,
+                "merchant_dashboard_refresh_last_log_id": 0,
+                "merchant_dashboard_refresh_last_sent_log_id": 0,
+                "merchant_dashboard_refresh_sent_total": 0,
+            }
+    except Exception:  # noqa: BLE001
+        pass
     try:
         if slug:
             max_log_id = int(

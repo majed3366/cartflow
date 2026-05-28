@@ -164,6 +164,15 @@ def _has_recent_queued_followup(
     store_slug: str,
     since_utc: datetime,
 ) -> bool:
+    try:
+        from services.dashboard_normal_carts_guard_v1 import (  # noqa: PLC0415
+            dashboard_nc_skip_optional_db,
+        )
+
+        if dashboard_nc_skip_optional_db():
+            return False
+    except Exception:  # noqa: BLE001
+        pass
     # Schema is ensured at startup (_ensure_cartflow_api_db_warmed); do not run create_all in dashboard hot path.
     ins = queued_followup_schema_inspection_enabled()
     q0 = _peek_audit_query_count() if ins else None

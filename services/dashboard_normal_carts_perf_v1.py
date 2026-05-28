@@ -242,8 +242,37 @@ def _emit_row_perf_slowest(st: _PerfState) -> None:
 def dashboard_normal_carts_perf_emit(*, wall_perf_start: float) -> None:
     """Emit one [DASHBOARD PERF] line — always when perf was begun for this request."""
     st = _get_state()
+    partial_suffix = ""
+    try:
+        from services.dashboard_normal_carts_guard_v1 import (  # noqa: PLC0415
+            dashboard_nc_partial_active,
+            dashboard_nc_timeout_stage,
+        )
+
+        if dashboard_nc_partial_active():
+            partial_suffix = (
+                f" partial=1 timeout_stage={dashboard_nc_timeout_stage() or 'unknown'}"
+            )
+    except Exception:  # noqa: BLE001
+        pass
     try:
         if st is None:
+            total_ms = round((time.perf_counter() - float(wall_perf_start)) * 1000.0, 1)
+            line = (
+                "[DASHBOARD PERF] "
+                f"total_ms={total_ms} "
+                "queries=n/a carts=0 schedules=0 logs=0 "
+                "lifecycle_ms=0 clarity_ms=0 payload_ms=0 "
+                f"slow_stage=perf_state_missing{partial_suffix}"
+            )
+            try:
+                log.info("%s", line)
+            except Exception:  # noqa: BLE001
+                pass
+            try:
+                print(line, flush=True)
+            except OSError:
+                pass
             return
         total_ms = round((time.perf_counter() - float(wall_perf_start)) * 1000.0, 1)
         slow = _resolve_slow_stage(st)
@@ -257,7 +286,7 @@ def dashboard_normal_carts_perf_emit(*, wall_perf_start: float) -> None:
             f"lifecycle_ms={round(st.lifecycle_attach_ms, 1)} "
             f"clarity_ms={round(st.followup_clarity_ms, 1)} "
             f"payload_ms={round(st.render_payload_ms, 1)} "
-            f"slow_stage={slow}"
+            f"slow_stage={slow}{partial_suffix}"
         )
         try:
             log.info("%s", line)
