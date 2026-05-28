@@ -3651,6 +3651,180 @@ def _resolve_abandoned_cart_row_for_vip_live_sync(
     return keep
 
 
+def _abandoned_cart_canonical_recovery_key(ac: AbandonedCart, fallback_slug: str) -> str:
+    """نفس ‎recovery_key‎ الذي تحسبه اللوحة لهذا الصف (‎store_slug:session‎ من ‎zid_store_id‎)."""
+    store_slug = (fallback_slug or "").strip()
+    try:
+        sid_store = getattr(ac, "store_id", None)
+        if sid_store is not None:
+            st = db.session.get(Store, int(sid_store))
+            zsid = (getattr(st, "zid_store_id", None) or "").strip() if st is not None else ""
+            if zsid:
+                store_slug = zsid
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        from services.recovery_message_context_v1 import (  # noqa: PLC0415
+            recovery_key_from_parts,
+        )
+
+        return recovery_key_from_parts(
+            store_slug=store_slug,
+            session_id=(getattr(ac, "recovery_session_id", None) or "").strip(),
+            cart_id=(getattr(ac, "zid_cart_id", None) or "").strip(),
+        )
+    except Exception:  # noqa: BLE001
+        return ""
+
+
+_RECONCILE_TERMINAL_STATUSES = frozenset({"recovered", "archived", "deleted"})
+
+
+def reconcile_purchase_with_active_recovery_carts(
+    *,
+    recovery_key: str,
+    store_slug: str = "",
+    session_id: str = "",
+    cart_id: str = "",
+    purchase_source: str = "",
+    order_id: str = "",
+    customer_phone: str = "",
+) -> dict[str, Any]:
+    """
+    يجسر شراءً مُسجّلاً إلى صف(صفوف) الاسترجاع النشِط حتى تُغلق اللوحة الحالة حتى لو
+    اختلف ‎recovery_key‎ للتحويل عن ‎recovery_key‎ القانوني للسلة (انجراف الجلسة/السلة/
+    المتجر بعد العودة للموقع، أو سلال مفتاحها ‎cart_id‎ فقط).
+
+    لكل سلة مطابقة: يسجّل ‎purchase truth‎ + إغلاق دورة الحياة تحت ‎recovery_key‎ القانوني
+    للسلة ويعلّمها ‎recovered‎. لا يغيّر إرسال واتساب أو الجدولة أو ربط الأسباب أو حالات
+    دورة الحياة غير المتعلقة بالشراء.
+    """
+    primary_rk = (recovery_key or "").strip()
+    slug = (store_slug or "").strip()
+    if not slug and primary_rk and ":" in primary_rk:
+        slug = primary_rk.split(":", 1)[0]
+    result: dict[str, Any] = {
+        "primary_recovery_key": primary_rk,
+        "matched_carts": [],
+        "bridged_keys": [],
+        "carts_marked_recovered": 0,
+    }
+    if not primary_rk:
+        return result
+    try:
+        from services.cartflow_purchase_truth import (  # noqa: PLC0415
+            has_purchase,
+            record_purchase,
+        )
+        from services.purchase_lifecycle_closure import (  # noqa: PLC0415
+            record_purchase_lifecycle_closure,
+        )
+    except Exception:  # noqa: BLE001
+        return result
+
+    try:
+        store_row = _load_store_row_for_recovery(slug, allow_latest_fallback=False)
+    except Exception:  # noqa: BLE001
+        store_row = None
+
+    cid_in = (cart_id or "").strip()[:255]
+    try:
+        cands = _collect_abandoned_cart_rows_for_merge(
+            cart_ids=[cid_in] if cid_in else [],
+            session_id=(session_id or "").strip() or None,
+            recovery_key=primary_rk,
+            store_row=store_row,
+        )
+    except Exception:  # noqa: BLE001
+        db.session.rollback()
+        return result
+
+    dirty = False
+    for ac in cands:
+        aid = int(getattr(ac, "id", 0) or 0)
+        if not aid:
+            continue
+        ac_rk = _abandoned_cart_canonical_recovery_key(ac, slug)
+        status_norm = str(getattr(ac, "status", "") or "").strip().lower()
+        result["matched_carts"].append(
+            {
+                "abandoned_cart_id": aid,
+                "session_id": (getattr(ac, "recovery_session_id", None) or ""),
+                "cart_id": (getattr(ac, "zid_cart_id", None) or ""),
+                "store_id": getattr(ac, "store_id", None),
+                "status": status_norm,
+                "recovery_key": ac_rk,
+            }
+        )
+        if ac_rk and ac_rk != primary_rk and not has_purchase(ac_rk):
+            try:
+                record_purchase(
+                    recovery_key=ac_rk,
+                    purchase_source=purchase_source or "conversion_reconcile",
+                    store_slug=slug,
+                    session_id=(getattr(ac, "recovery_session_id", None) or session_id or ""),
+                    cart_id=(getattr(ac, "zid_cart_id", None) or cid_in or "") or None,
+                    order_id=(order_id or "") or None,
+                    customer_phone=(customer_phone or "") or None,
+                    evidence_detail=f"reconcile_from={primary_rk}"[:512],
+                    apply_lifecycle=True,
+                )
+                result["bridged_keys"].append(ac_rk)
+            except Exception:  # noqa: BLE001
+                pass
+        if status_norm not in _RECONCILE_TERMINAL_STATUSES:
+            try:
+                ac.status = "recovered"
+                ac.recovered_at = datetime.now(timezone.utc)
+                if getattr(ac, "vip_mode", False):
+                    ac.vip_mode = False
+                dirty = True
+                result["carts_marked_recovered"] = int(result["carts_marked_recovered"]) + 1
+            except Exception:  # noqa: BLE001
+                pass
+        if ac_rk:
+            try:
+                record_purchase_lifecycle_closure(
+                    ac_rk,
+                    session_id=(getattr(ac, "recovery_session_id", None) or session_id or ""),
+                    cart_id=(getattr(ac, "zid_cart_id", None) or cid_in or ""),
+                    reason="purchase_detected",
+                    source=f"conversion_reconcile:{purchase_source or 'conversion'}"[:128],
+                    ac=ac,
+                    mark_converted=True,
+                )
+            except Exception:  # noqa: BLE001
+                pass
+    if dirty:
+        try:
+            db.session.commit()
+        except Exception:  # noqa: BLE001
+            db.session.rollback()
+    if result["matched_carts"]:
+        _emit_reconcile_log(result)
+    return result
+
+
+def _emit_reconcile_log(result: dict[str, Any]) -> None:
+    block = "\n".join(
+        [
+            "[PURCHASE RECOVERY RECONCILE]",
+            f"primary_recovery_key={result.get('primary_recovery_key') or '-'}",
+            f"matched_carts={len(result.get('matched_carts') or [])}",
+            f"bridged_keys={','.join(result.get('bridged_keys') or []) or '-'}",
+            f"carts_marked_recovered={result.get('carts_marked_recovered', 0)}",
+        ]
+    )
+    try:
+        print(block, flush=True)
+    except OSError:
+        pass
+    try:
+        log.info("%s", block.replace("\n", " | "))
+    except Exception:  # noqa: BLE001
+        pass
+
+
 _vip_dedupe_last_run_mono: float = 0.0
 _VIP_DEDUPE_MIN_INTERVAL_SEC = 180.0
 
@@ -11631,6 +11805,83 @@ def dev_purchase_truth_status(
             "recovery_key": rk,
             "purchase_detected": has_purchase(rk),
             "purchase_context": ctx,
+        }
+    )
+
+
+@app.get("/dev/purchase-truth-trace")
+def dev_purchase_truth_trace(
+    recovery_key: Optional[str] = None,
+    store_slug: Optional[str] = None,
+    session_id: Optional[str] = None,
+    cart_id: Optional[str] = None,
+) -> Any:
+    """
+    Dev-only: trace purchase-truth reconciliation between a conversion key and the
+    active recovery cart(s). Shows durable truth, lifecycle closure, and each matched
+    AbandonedCart with its canonical recovery_key + per-cart purchase detection.
+    """
+    if not _is_development_mode():
+        return j({"ok": False, "error": "not_found"}, 404)
+    from services.cartflow_purchase_truth import (  # noqa: PLC0415
+        has_purchase,
+        purchase_context,
+    )
+    from services.lifecycle_closure_records_v1 import (  # noqa: PLC0415
+        get_durable_closure,
+    )
+
+    rk = (recovery_key or "").strip()
+    slug = (store_slug or "").strip()
+    sid = (session_id or "").strip()
+    cid = (cart_id or "").strip()
+    if not rk:
+        if slug and sid:
+            rk = _recovery_key_from_payload(
+                {"store": slug, "session_id": sid, "cart_id": cid}
+            )
+        else:
+            return j(
+                {"ok": False, "error": "recovery_key_or_store_session_required"}, 400
+            )
+    if not slug and ":" in rk:
+        slug = rk.split(":", 1)[0]
+
+    matched: list[dict[str, Any]] = []
+    try:
+        store_row = _load_store_row_for_recovery(slug, allow_latest_fallback=False)
+        cands = _collect_abandoned_cart_rows_for_merge(
+            cart_ids=[cid] if cid else [],
+            session_id=sid or None,
+            recovery_key=rk,
+            store_row=store_row,
+        )
+        for ac in cands:
+            ac_rk = _abandoned_cart_canonical_recovery_key(ac, slug)
+            matched.append(
+                {
+                    "abandoned_cart_id": int(getattr(ac, "id", 0) or 0),
+                    "session_id": (getattr(ac, "recovery_session_id", None) or ""),
+                    "cart_id": (getattr(ac, "zid_cart_id", None) or ""),
+                    "store_id": getattr(ac, "store_id", None),
+                    "status": str(getattr(ac, "status", "") or "").strip().lower(),
+                    "recovery_key": ac_rk,
+                    "purchase_detected": has_purchase(ac_rk) if ac_rk else False,
+                }
+            )
+    except Exception as exc:  # noqa: BLE001
+        db.session.rollback()
+        matched = [{"error": str(exc)[:200]}]
+
+    return j(
+        {
+            "ok": True,
+            "recovery_key": rk,
+            "store_slug": slug,
+            "purchase_detected": has_purchase(rk),
+            "purchase_context": purchase_context(rk),
+            "durable_closure": get_durable_closure(rk),
+            "matched_active_carts": matched,
         }
     )
 

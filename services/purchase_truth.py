@@ -162,8 +162,27 @@ def ingest_purchase_truth(
                 evidence=evidence_detail,
                 context_payload=context_payload,
             )
+            _reconcile_active_recovery_carts(
+                recovery_key=rk,
+                store_slug=store_slug or "",
+                session_id=session_id or "",
+                cart_id=str(cart_id or ""),
+                purchase_source=source,
+                order_id=str(order_id or ""),
+                customer_phone=str(customer_phone or ""),
+            )
 
     return truth_written
+
+
+def _reconcile_active_recovery_carts(**kwargs: Any) -> None:
+    """Bridge recorded purchase to the active recovery cart(s) so the dashboard closes them."""
+    try:
+        from main import reconcile_purchase_with_active_recovery_carts  # noqa: PLC0415
+
+        reconcile_purchase_with_active_recovery_carts(**kwargs)
+    except Exception as exc:  # noqa: BLE001
+        log.warning("purchase truth: active recovery reconcile skipped: %s", exc)
 
 
 def ingest_purchase_truth_from_reply_claim(
