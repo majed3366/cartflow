@@ -400,3 +400,106 @@ def multi_message_slots_for_abandon(
         )
 
     return slots
+
+
+def resolve_configured_message_count(
+    reason_tag: Optional[str],
+    store: Any,
+    *,
+    recovery_context: Optional[Dict[str, Any]] = None,
+) -> tuple[int, str]:
+    """
+    عدد رسائل التسلسل المفعّل للاسترجاع — مصدر واحد للوحة والـ runtime.
+
+    الأولوية: ‎recovery_context.configured_message_count‎ (جدولة دائمة) →
+    ‎multi_message_slots_for_abandon‎ → ‎Store.recovery_attempts‎.
+    """
+    if isinstance(recovery_context, dict):
+        raw_ctx = recovery_context.get("configured_message_count")
+        if raw_ctx is not None:
+            try:
+                n_ctx = max(1, int(raw_ctx))
+                _emit_multi_message_config_log(
+                    reason_tag=reason_tag,
+                    configured_count=n_ctx,
+                    source="recovery_context",
+                    recovery_key=str(recovery_context.get("recovery_key") or "")[:128],
+                )
+                return n_ctx, "recovery_context"
+            except (TypeError, ValueError):
+                pass
+
+    slots = multi_message_slots_for_abandon(reason_tag, store)
+    if slots is not None:
+        n_slots = max(1, len(slots))
+        _emit_multi_message_config_log(
+            reason_tag=reason_tag,
+            configured_count=n_slots,
+            source="reason_templates.multi",
+            slot_count=n_slots,
+        )
+        return n_slots, "reason_templates.multi"
+
+    from services.whatsapp_send import _max_recovery_attempts
+
+    n_store = max(1, int(_max_recovery_attempts(store)))
+    _emit_multi_message_config_log(
+        reason_tag=reason_tag,
+        configured_count=n_store,
+        source="store.recovery_attempts",
+    )
+    return n_store, "store.recovery_attempts"
+
+
+def _emit_multi_message_config_log(
+    *,
+    reason_tag: Optional[str],
+    configured_count: int,
+    source: str,
+    recovery_key: str = "",
+    slot_count: Optional[int] = None,
+) -> None:
+    parts = [
+        "[MULTI MESSAGE] follow_up_config_loaded",
+        f"reason_tag={reason_tag or '-'}",
+        f"configured_count={int(configured_count)}",
+        f"source={source}",
+    ]
+    if slot_count is not None:
+        parts.append(f"slot_count={int(slot_count)}")
+    if recovery_key:
+        parts.append(f"recovery_key={recovery_key}")
+    line = " ".join(parts)
+    try:
+        print(line, flush=True)
+    except OSError:
+        pass
+    _log.info("%s", line)
+
+
+def emit_multi_message_continuation_decision(
+    *,
+    configured_count: int,
+    current_attempt: int,
+    remaining_attempts: int,
+    next_attempt_due_at: Optional[str] = None,
+    decision: str,
+    recovery_key: Optional[str] = None,
+) -> None:
+    line = (
+        "[MULTI MESSAGE] configured_count=%s current_attempt=%s remaining_attempts=%s "
+        "next_attempt_due_at=%s decision=%s recovery_key=%s"
+        % (
+            int(configured_count),
+            int(current_attempt),
+            int(remaining_attempts),
+            (next_attempt_due_at or "-")[:64],
+            (decision or "").strip()[:32],
+            (recovery_key or "-")[:128],
+        )
+    )
+    try:
+        print(line, flush=True)
+    except OSError:
+        pass
+    _log.info("%s", line)

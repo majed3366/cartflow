@@ -346,5 +346,43 @@ class NormalRecoverySequenceCountingTests(unittest.TestCase):
                 db.session.commit()
 
 
+    def test_runtime_configured_count_from_templates_when_cap_cleared(self) -> None:
+        """Worker restart: in-memory cap gone but templates still define 2 messages."""
+        db.create_all()
+        st = main._load_store_row_for_recovery("demo")
+        self.assertIsNotNone(st)
+        prev_att = getattr(st, "recovery_attempts", None)
+        prev_tpl = getattr(st, "reason_templates_json", None)
+        st.recovery_attempts = 1
+        st.reason_templates_json = json.dumps(
+            {
+                "price": {
+                    "enabled": True,
+                    "message": "أساسية",
+                    "message_count": 2,
+                    "messages": [
+                        {"delay": 1, "unit": "minute", "text": "أولى"},
+                        {"delay": 1, "unit": "minute", "text": "ثانية"},
+                    ],
+                }
+            }
+        )
+        db.session.commit()
+        try:
+            k = "demo:seq-resume-cap"
+            main._session_recovery_multi_attempt_cap.pop(k, None)
+            n = main._normal_recovery_configured_message_count_from_runtime(
+                k, st, reason_tag="price"
+            )
+            self.assertEqual(2, n)
+            self.assertEqual(2, main._session_recovery_multi_attempt_cap.get(k))
+        finally:
+            st2 = main._load_store_row_for_recovery("demo")
+            if st2 is not None:
+                st2.recovery_attempts = prev_att
+                st2.reason_templates_json = prev_tpl
+                db.session.commit()
+
+
 if __name__ == "__main__":
     unittest.main()

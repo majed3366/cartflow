@@ -6,6 +6,7 @@ import json
 from services.recovery_multi_message import (
     delay_to_seconds,
     multi_message_slots_for_abandon,
+    resolve_configured_message_count,
     resolve_recovery_schedule_timing,
 )
 from services.store_reason_templates import apply_reason_templates_from_body, parse_reason_templates_column
@@ -243,6 +244,34 @@ def test_parse_widget_reason_label_ar_roundtrip() -> None:
     p = parse_reason_templates_column(row.reason_templates_json)
     assert p["price"]["message"] == "نص استرجاع طويل للواتساب"
     assert p["price"]["widget_reason_label_ar"] == "السعر"
+
+
+def test_resolve_configured_message_count_prefers_context_then_templates() -> None:
+    class _S:
+        reason_templates_json = json.dumps(
+            {
+                "price": {
+                    "enabled": True,
+                    "message": "أساسية",
+                    "message_count": 2,
+                    "messages": [
+                        {"delay": 1, "unit": "minute", "text": "أولى"},
+                        {"delay": 1, "unit": "minute", "text": "ثانية"},
+                    ],
+                }
+            }
+        )
+        recovery_attempts = 1
+
+    n_tpl, src_tpl = resolve_configured_message_count("price", _S())
+    assert n_tpl == 2
+    assert src_tpl == "reason_templates.multi"
+
+    n_ctx, src_ctx = resolve_configured_message_count(
+        "price", _S(), recovery_context={"configured_message_count": 3}
+    )
+    assert n_ctx == 3
+    assert src_ctx == "recovery_context"
 
 
 def test_apply_widget_label_only_preserves_recovery_message() -> None:

@@ -357,8 +357,10 @@ from services.reason_template_recovery import (
 from services.recovery_conversation_tracker import conversation_dashboard_extras
 from services.recovery_delay import get_recovery_delay as _legacy_get_recovery_delay  # noqa: E402
 from services.recovery_multi_message import (
+    emit_multi_message_continuation_decision,
     emit_template_timing_used,
     multi_message_slots_for_abandon,
+    resolve_configured_message_count,
     resolve_recovery_schedule_timing,
 )
 
@@ -3911,19 +3913,84 @@ def _second_recovery_diagnose_should_send(
     return True, "allowed"
 
 
+def _sync_recovery_multi_attempt_cap(
+    recovery_key: str,
+    configured_count: int,
+    *,
+    source: str = "",
+) -> None:
+    """مزامنة حد التسلسل في الذاكرة مع العدد المحلول (قوالب / سياق / متجر)."""
+    try:
+        cap = max(1, int(configured_count))
+    except (TypeError, ValueError):
+        return
+    with _recovery_session_lock:
+        prev = _session_recovery_multi_attempt_cap.get(recovery_key)
+        if prev is None or cap > int(prev):
+            _session_recovery_multi_attempt_cap[recovery_key] = cap
+
+
 def _normal_recovery_configured_message_count_from_runtime(
     recovery_key: str,
     store_obj: Any,
+    *,
+    reason_tag: Optional[str] = None,
+    recovery_context: Optional[Dict[str, Any]] = None,
 ) -> int:
-    """عدد رسائل التسلسل المفعّل: ‎multi_message‎ من القوالب أو ‎Store.recovery_attempts‎."""
+    """عدد رسائل التسلسل المفعّل: سياق دائم → قوالب متعددة → ‎Store.recovery_attempts‎."""
+    rt = (reason_tag or "").strip() or None
+    if not rt and isinstance(recovery_context, dict):
+        raw_rt = recovery_context.get("reason_tag")
+        rt = str(raw_rt).strip() if raw_rt else None
+    ctx_in = recovery_context
+    if isinstance(ctx_in, dict) and not ctx_in.get("recovery_key"):
+        ctx_in = dict(ctx_in)
+        ctx_in["recovery_key"] = recovery_key
+    count, source = resolve_configured_message_count(
+        rt, store_obj, recovery_context=ctx_in
+    )
+    _sync_recovery_multi_attempt_cap(recovery_key, count, source=source)
+    return max(1, int(count))
+
+
+def _normal_recovery_durable_sent_count(
+    session_id: str,
+    cart_id: Optional[str],
+) -> int:
+    """عدد إرسالات الاسترجاع الناجحة من ‎CartRecoveryLog‎ (لبوابة ما بعد إعادة التشغيل)."""
+    conds: list[Any] = []
+    sid = (session_id or "").strip()[:512]
+    cid = (cart_id or "").strip()[:255] if cart_id else ""
+    if sid:
+        conds.append(CartRecoveryLog.session_id == sid)
+    if cid:
+        conds.append(CartRecoveryLog.cart_id == cid)
+    if not conds:
+        return 0
+    try:
+        db.create_all()
+        n = (
+            db.session.query(func.count(CartRecoveryLog.id))
+            .filter(CartRecoveryLog.status.in_(_NORMAL_RECOVERY_SENT_LOG_STATUSES))
+            .filter(or_(*conds))
+            .scalar()
+        )
+        return int(n or 0)
+    except (SQLAlchemyError, OSError, TypeError, ValueError):
+        db.session.rollback()
+        return 0
+
+
+def _normal_recovery_gate_sent_count(
+    recovery_key: str,
+    session_id: str,
+    cart_id: Optional[str],
+) -> int:
+    """أقصى عدد مرسل في الذاكرة أو السجل الدائم — لا يُرجع للخلف عن الحقيقة."""
     with _recovery_session_lock:
-        multi_cap = _session_recovery_multi_attempt_cap.get(recovery_key)
-    if multi_cap is not None:
-        try:
-            return max(1, int(multi_cap))
-        except (TypeError, ValueError):
-            return max(1, int(_max_recovery_attempts(store_obj)))
-    return max(1, int(_max_recovery_attempts(store_obj)))
+        mem = int(_session_recovery_send_count.get(recovery_key, 0) or 0)
+    durable = _normal_recovery_durable_sent_count(session_id, cart_id)
+    return max(mem, durable)
 
 
 def _normal_recovery_configured_message_count_for_abandoned_cart(
@@ -5337,6 +5404,10 @@ def _build_recovery_context_from_arm(
                 sid_pk = int(raw_pk)
             except (TypeError, ValueError):
                 sid_pk = None
+    cfg_count, cfg_source = resolve_configured_message_count(
+        rt, store_row, recovery_context=None
+    )
+    _sync_recovery_multi_attempt_cap(recovery_key, cfg_count, source=cfg_source)
     return {
         "store_slug": canon_slug[:255],
         "store_id": sid_pk,
@@ -5346,6 +5417,8 @@ def _build_recovery_context_from_arm(
         "reason_tag": rt if rt else None,
         "cart_total": _abandoned_cart_cart_value_for_recovery(cart_id),
         "abandon_event_phone": abandon_event_phone,
+        "configured_message_count": int(cfg_count),
+        "configured_message_count_source": str(cfg_source)[:64],
     }
 
 
@@ -8011,10 +8084,14 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
         text = _DEFAULT_DECISION_FALLBACK_MESSAGE
 
     configured_message_count = _normal_recovery_configured_message_count_from_runtime(
-        recovery_key, store_obj
+        recovery_key,
+        store_obj,
+        reason_tag=reason_tag or rt_raw,
+        recovery_context=recovery_context,
     )
-    with _recovery_session_lock:
-        gate_sent_count = _session_recovery_send_count.get(recovery_key, 0)
+    gate_sent_count = _normal_recovery_gate_sent_count(
+        recovery_key, session_id, cart_id
+    )
     _log_normal_recovery_sequence_config(
         configured_message_count=configured_message_count,
         sent_count=gate_sent_count,
@@ -8966,9 +9043,14 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
             print("[RECOVERY FULLY COMPLETED]")
         return
 
-    with _recovery_session_lock:
-        cur_sent = _session_recovery_send_count.get(recovery_key, 0)
-    cfg_seq = _normal_recovery_configured_message_count_from_runtime(recovery_key, store_obj)
+    cur_sent = _normal_recovery_gate_sent_count(recovery_key, session_id, cart_id)
+    cfg_seq = _normal_recovery_configured_message_count_from_runtime(
+        recovery_key,
+        store_obj,
+        reason_tag=reason_tag,
+        recovery_context=recovery_context,
+    )
+    remaining_seq = max(0, int(cfg_seq) - int(cur_sent))
     if cur_sent < cfg_seq:
         gap_sec = float(_second_attempt_delay_minutes_from_store(store_obj)) * 60.0
         next_idx = int(cur_sent) + 1
@@ -8977,6 +9059,14 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
         due_dt = datetime.now(timezone.utc) + timedelta(seconds=gap_sec)
         with _recovery_session_lock:
             _session_recovery_followup_next_due_at[recovery_key] = due_dt.isoformat()
+        emit_multi_message_continuation_decision(
+            configured_count=cfg_seq,
+            current_attempt=int(step_num),
+            remaining_attempts=remaining_seq,
+            next_attempt_due_at=due_dt.isoformat(),
+            decision="schedule_next",
+            recovery_key=recovery_key,
+        )
         if int(next_idx) == 2:
             _log_second_recovery_line(
                 "[SECOND RECOVERY SCHEDULED]",
@@ -9030,8 +9120,17 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
             recovery_context=seq_ctx,
             dispatch_source="sequential_followup",
         )
-    with _recovery_session_lock:
-        _session_recovery_sent[recovery_key] = True
+    else:
+        emit_multi_message_continuation_decision(
+            configured_count=cfg_seq,
+            current_attempt=int(step_num),
+            remaining_attempts=0,
+            next_attempt_due_at=None,
+            decision="stop_sequence",
+            recovery_key=recovery_key,
+        )
+        with _recovery_session_lock:
+            _session_recovery_sent[recovery_key] = True
     _finalize_durable_recovery_schedule(
         recovery_key,
         status="completed",
@@ -9116,9 +9215,18 @@ def _schedule_recovery_multi_slots(
         print("count=", len(slots))
     except Exception:  # noqa: BLE001
         pass
+    slot_count = len(slots)
     with _recovery_session_lock:
         _session_recovery_multi_verified_indexes.pop(recovery_key, None)
-        _session_recovery_multi_attempt_cap[recovery_key] = len(slots)
+        _session_recovery_multi_attempt_cap[recovery_key] = slot_count
+    emit_multi_message_continuation_decision(
+        configured_count=slot_count,
+        current_attempt=0,
+        remaining_attempts=slot_count,
+        next_attempt_due_at=None,
+        decision="schedule_next",
+        recovery_key=recovery_key,
+    )
     for s in slots:
         try:
             print(f"[MULTI MESSAGE SCHEDULED] index={s['index']}")
