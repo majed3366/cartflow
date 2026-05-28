@@ -955,6 +955,7 @@ _DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT = frozenset(
         "/dev/recovery-health",
         "/dev/recovery-truth",
         "/dev/store-template-debug",
+        "/dev/attempt-2-trace",
     }
 )
 

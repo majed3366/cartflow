@@ -69,6 +69,29 @@ class CartflowProductionReadinessTests(unittest.TestCase):
         dbg_block = any("/debug/db" in x for x in body["blocking_issues"])
         self.assertFalse(dbg_block)
 
+    def test_attempt2_trace_on_production_dev_allowlist(self) -> None:
+        """Attempt-2 debug trace must be reachable when ENV is unset (Railway production)."""
+        from fastapi.testclient import TestClient
+
+        from main import _DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT, app
+
+        self.assertIn(
+            "/dev/attempt-2-trace",
+            _DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT,
+        )
+        client = TestClient(app)
+        prev = os.environ.pop("ENV", None)
+        try:
+            r = client.get("/dev/attempt-2-trace")
+            self.assertNotEqual(404, r.status_code, r.text[:300])
+            self.assertEqual(400, r.status_code)
+            body = r.json()
+            self.assertFalse(body.get("ok"))
+            self.assertEqual("recovery_key_required", body.get("error"))
+        finally:
+            if prev is not None:
+                os.environ["ENV"] = prev
+
     def test_widget_runtime_config_verify_on_production_dev_allowlist(self) -> None:
         """Read-only verify route must bypass no_dev_in_production when ENV is unset (Railway)."""
         from main import _DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT
