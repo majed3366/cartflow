@@ -402,8 +402,8 @@ def _recovery_messages_exhausted_for_archive(
     if "skipped_reason_template_disabled" in log_ss:
         return True
     if "skipped_attempt_limit" in log_ss:
-        # Scheduler may log step>N skip while customer still awaits reply (e.g. cap=1).
-        return sent_n >= cap and cap > 1
+        # Scheduler step>N skip after templates sent — keep on active/sent until reply.
+        return False
     return sent_n >= cap and cap > 1
 
 

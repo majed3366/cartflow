@@ -2069,13 +2069,20 @@ def dev_recovery_operational_truth(recovery_key: str = Query("", max_length=512)
             if str(rr.get("recovery_key") or "").strip() == rk:
                 dash_row = rr
                 break
-        if dash_row is None and rows_dash:
-            dash_row = rows_dash[0]
         dashboard_visible = dash_row is not None
         dashboard_bucket = (
             str(dash_row.get("merchant_cart_primary_bucket") or dash_row.get("merchant_coarse_status") or "")
             if dash_row
             else ""
+        )
+        from services.recovery_dashboard_inclusion_truth import (  # noqa: PLC0415
+            build_recovery_dashboard_inclusion_truth,
+        )
+
+        inclusion = build_recovery_dashboard_inclusion_truth(
+            recovery_key=rk,
+            dash_store=dash_store,
+            lifecycle="active",
         )
         td = diagnose_multi_message_config(reason_tag, store_row)
         if td.get("miss_reason"):
@@ -2098,6 +2105,18 @@ def dev_recovery_operational_truth(recovery_key: str = Query("", max_length=512)
             "schedule_rows": schedule_rows_out,
             "dashboard_visible": dashboard_visible,
             "dashboard_bucket": dashboard_bucket,
+            "dashboard_exclusion_reason": inclusion.get("dashboard_exclusion_reason"),
+            "abandoned_cart_id": inclusion.get("abandoned_cart_id"),
+            "store_id": inclusion.get("store_id"),
+            "row_scope_match": inclusion.get("row_scope_match"),
+            "excluded_by_filter": inclusion.get("excluded_by_filter"),
+            "excluded_by_archive": inclusion.get("excluded_by_archive"),
+            "excluded_by_tab": inclusion.get("excluded_by_tab"),
+            "excluded_by_group_merge": inclusion.get("excluded_by_group_merge"),
+            "selected_dashboard_row_id": inclusion.get("selected_dashboard_row_id"),
+            "cart_recovery_reason_exists": inclusion.get("cart_recovery_reason_exists"),
+            "recovery_schedule_row_count": inclusion.get("recovery_schedule_row_count"),
+            "cart_recovery_log_sent_count": inclusion.get("cart_recovery_log_sent_count"),
             "next_attempt_due_at": next_due.isoformat() if next_due else None,
             "blocked_by": blocked_by,
             "decision": decision,
@@ -4936,7 +4955,8 @@ def _normal_recovery_group_is_terminal_archived(
     except (TypeError, ValueError):
         max_a = 1
     log_u_eff = log_u
-    if "skipped_attempt_limit" in log_u and sent_n < max_a:
+    if "skipped_attempt_limit" in log_u:
+        # Post-sequence scheduler skip (step > N) is not merchant terminal closure.
         log_u_eff = frozenset(x for x in log_u if x != "skipped_attempt_limit")
     if log_u_eff & _NORMAL_RECOVERY_TERMINAL_LOG_STATUSES:
         return True

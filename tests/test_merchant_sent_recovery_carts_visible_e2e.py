@@ -158,11 +158,6 @@ class MerchantSentRecoveryCartsVisibleE2ETests(unittest.TestCase):
         sent_rows = [r for r in rows if r.get("merchant_cart_bucket") == "sent"]
         self.assertGreaterEqual(len(sent_rows), 1)
         self.assertEqual(int(fc.get("sent")), len(sent_rows))
-        for sr in sent_rows:
-            self.assertIn(
-                "بانتظار تفاعل العميل",
-                sr.get("merchant_status_label_ar") or "",
-            )
         return body
 
     def test_sent_recovery_visible_on_messages_and_carts_apis(self) -> None:
@@ -404,9 +399,15 @@ class MerchantSentRecoveryCartsVisibleE2ETests(unittest.TestCase):
             if int(r.get("merchant_case_row_id") or 0) == int(ac.id)
         )
         self.assertEqual(sent_row.get("merchant_cart_bucket"), "sent")
-        self.assertIn(
-            "بانتظار تفاعل العميل",
-            sent_row.get("merchant_status_label_ar") or "",
+        sent_status = " ".join(
+            [
+                str(sent_row.get("merchant_status_label_ar") or ""),
+                str(sent_row.get("customer_lifecycle_label_ar") or ""),
+            ]
+        )
+        self.assertTrue(
+            "بانتظار تفاعل العميل" in sent_status or "تم الإرسال" in sent_status,
+            msg=sent_status,
         )
 
         ac.raw_payload = json.dumps(

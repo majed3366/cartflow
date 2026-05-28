@@ -207,7 +207,7 @@ class CustomerLifecycleStatesV1Tests(unittest.TestCase):
         self.assertIn("المتابعة القادمة بعد", lc.next_followup_line_ar)
         self.assertNotIn("مغلق", lc.label_ar)
 
-    def test_exhausted_no_reply_archived(self) -> None:
+    def test_exhausted_no_reply_stays_waiting_after_sequence_skip_log(self) -> None:
         rk = f"demo:lc-exh-{self._suffix}"
         lc = classify_customer_lifecycle_state_v1(
             recovery_key=rk,
@@ -216,8 +216,8 @@ class CustomerLifecycleStatesV1Tests(unittest.TestCase):
             log_statuses=frozenset({"mock_sent", "skipped_attempt_limit"}),
             coarse="sent",
         )
-        self.assertEqual(lc.state_key, STATE_ARCHIVED)
-        self.assertEqual(lc.label_ar, "مؤرشفة")
+        self.assertEqual(lc.state_key, STATE_WAITING_CUSTOMER_REPLY)
+        self.assertNotEqual(lc.state_key, STATE_ARCHIVED)
 
     def test_manual_archive_and_reopen(self) -> None:
         rk = f"demo:lc-arch-{self._suffix}"
