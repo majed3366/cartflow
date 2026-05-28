@@ -70,6 +70,20 @@ def normal_carts_profile_end() -> None:
         _stack.set(None)
 
 
+def top_exclusive_wall_span() -> tuple[str, float]:
+    """Slowest span by exclusive wall time (for [DASHBOARD PERF] slow_stage)."""
+    if not _stats:
+        return ("", 0.0)
+    best_fn = ""
+    best_ms = 0.0
+    for fn, st in _stats.items():
+        exc = float(st.exclusive_wall_ms or 0.0)
+        if exc > best_ms:
+            best_ms = exc
+            best_fn = fn
+    return (best_fn, best_ms)
+
+
 def _peek_query_count() -> Optional[int]:
     try:
         from services.db_request_audit import peek_request_audit_bucket_for_profile

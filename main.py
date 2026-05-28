@@ -15176,6 +15176,17 @@ def _merchant_normal_dashboard_batch_reads(
         rows_loaded=batch.phones_loaded,
     )
     merchant_dashboard_batch_reads_trace_finish(_mbr_tr)
+    try:
+        from services.dashboard_normal_carts_perf_v1 import (  # noqa: PLC0415
+            dashboard_normal_carts_perf_record_loads,
+        )
+
+        dashboard_normal_carts_perf_record_loads(
+            recovery_log_rows=int(logs_loaded or 0),
+            recovery_schedule_rows=len(schedule_rows),
+        )
+    except Exception:  # noqa: BLE001
+        pass
     return batch
 
 
@@ -15399,6 +15410,7 @@ def _merchant_normal_recovery_light_payload_merchant_batch(
             )
         except Exception:  # noqa: BLE001
             vip_lane = False
+        _lc_perf0 = time.perf_counter()
         attach_customer_lifecycle_state_v1(
             out,
             recovery_key=rk_lc,
@@ -15428,10 +15440,21 @@ def _merchant_normal_recovery_light_payload_merchant_batch(
         except Exception:  # noqa: BLE001
             pass
         try:
+            from services.dashboard_normal_carts_perf_v1 import (  # noqa: PLC0415
+                dashboard_normal_carts_perf_add_lifecycle_ms,
+            )
+
+            dashboard_normal_carts_perf_add_lifecycle_ms(
+                (time.perf_counter() - _lc_perf0) * 1000.0
+            )
+        except Exception:  # noqa: BLE001
+            pass
+        try:
             from services.merchant_followup_clarity_v1 import (  # noqa: PLC0415
                 attach_merchant_followup_clarity,
             )
 
+            _fc_perf0 = time.perf_counter()
             attach_merchant_followup_clarity(
                 out,
                 sent_count=sent_ct_lc,
@@ -15440,6 +15463,16 @@ def _merchant_normal_recovery_light_payload_merchant_batch(
                 schedule_rows=batch.schedule_rows_by_ac.get(aid0),
                 purchased=purchased_flag,
             )
+            try:
+                from services.dashboard_normal_carts_perf_v1 import (  # noqa: PLC0415
+                    dashboard_normal_carts_perf_add_clarity_ms,
+                )
+
+                dashboard_normal_carts_perf_add_clarity_ms(
+                    (time.perf_counter() - _fc_perf0) * 1000.0
+                )
+            except Exception:  # noqa: BLE001
+                pass
         except Exception:  # noqa: BLE001
             pass
     except Exception:  # noqa: BLE001
@@ -15783,6 +15816,10 @@ def _normal_recovery_merchant_lightweight_alert_list_for_api(
     }
     desired_end = max(0, int(page_offset or 0)) + max(1, int(page_limit or 50))
     try:
+        from services.dashboard_normal_carts_perf_v1 import (  # noqa: PLC0415
+            dashboard_normal_carts_perf_record_loads,
+            dashboard_normal_carts_perf_stage,
+        )
         from services.lightweight_alert_list_trace import (
             lightweight_alert_list_trace_ctx_begin,
             lightweight_alert_list_trace_enabled,
@@ -15833,15 +15870,17 @@ def _normal_recovery_merchant_lightweight_alert_list_for_api(
             220, min(500, desired_end * 8)
         )
         max_pick = 24 if lc_raw == "all" else max(96, min(160, desired_end * 3))
-        with normal_carts_profile_span("sql:abandoned_cart_candidates_page_query"):
-            full_rows = list(
-                q.order_by(AbandonedCart.last_seen_at.desc()).limit(row_cap).all()
+        with dashboard_normal_carts_perf_stage("abandoned_candidates"):
+            with normal_carts_profile_span("sql:abandoned_cart_candidates_page_query"):
+                full_rows = list(
+                    q.order_by(AbandonedCart.last_seen_at.desc()).limit(row_cap).all()
+                )
+            full_rows = _augment_abandoned_candidates_with_sent_recovery_logs(
+                full_rows,
+                dash_store=dash_store,
+                scope_filter=_nr_scope,
             )
-        full_rows = _augment_abandoned_candidates_with_sent_recovery_logs(
-            full_rows,
-            dash_store=dash_store,
-            scope_filter=_nr_scope,
-        )
+        dashboard_normal_carts_perf_record_loads(abandoned_carts=len(full_rows))
         _lat_ph(
             "after_abandoned_cart_candidate_query",
             row_cap=int(row_cap),
@@ -15870,7 +15909,8 @@ def _normal_recovery_merchant_lightweight_alert_list_for_api(
             store_slug=slug_for_act,
         )
         _lat_ph("after_vip_pick_priority_groups", picked_groups=len(picked))
-        batch_reads = _merchant_normal_dashboard_batch_reads(full_rows, dash_store)
+        with dashboard_normal_carts_perf_stage("batch_reads"):
+            batch_reads = _merchant_normal_dashboard_batch_reads(full_rows, dash_store)
         _lat_ph(
             "after_merchant_normal_dashboard_batch_reads",
             logs_loaded=int(getattr(batch_reads, "logs_loaded", 0) or 0),
@@ -15920,18 +15960,19 @@ def _normal_recovery_merchant_lightweight_alert_list_for_api(
                     log_statuses=log_u,
                 ):
                     continue
-                out.append(
-                    _merchant_normal_recovery_light_payload_merchant_batch(
-                        grp_sorted,
-                        dash_store,
-                        batch_reads,
-                        coarse=coarse,
-                        stale_meta=stale_meta,
-                        archived_group=arch,
-                        stale_flag=stale_flag,
-                        now_utc=now_utc,
+                with dashboard_normal_carts_perf_stage("payload_row"):
+                    out.append(
+                        _merchant_normal_recovery_light_payload_merchant_batch(
+                            grp_sorted,
+                            dash_store,
+                            batch_reads,
+                            coarse=coarse,
+                            stale_meta=stale_meta,
+                            archived_group=arch,
+                            stale_flag=stale_flag,
+                            now_utc=now_utc,
+                        )
                     )
-                )
                 if len(out) >= desired_end:
                     break
 
@@ -16306,6 +16347,12 @@ def api_dashboard_normal_carts(request: Request):
     )
 
     wall0 = time.perf_counter()
+    from services.dashboard_normal_carts_perf_v1 import (  # noqa: PLC0415
+        dashboard_normal_carts_perf_begin,
+        dashboard_normal_carts_perf_emit,
+    )
+
+    dashboard_normal_carts_perf_begin()
     normal_carts_profile_begin()
     nc_prof = {
         "carts_count": 0,
@@ -16348,6 +16395,7 @@ def api_dashboard_normal_carts(request: Request):
         from services.normal_carts_query_profiler import normal_carts_profile_end
 
         normal_carts_profile_end()
+        dashboard_normal_carts_perf_emit(wall_perf_start=wall0)
         _log_dashboard_section_profile(section="normal_carts", wall_perf_start=wall0)
         _log_normal_carts_profile(
             wall_perf_start=wall0,
@@ -17596,44 +17644,57 @@ def _api_json_dashboard_normal_carts(
             "reasons_loaded": 0,
             "phones_loaded": 0,
         }
-    table_rows = list(merchant_carts_page_rows[:8])
-    from services.customer_lifecycle_states_v1 import (  # noqa: PLC0415
-        lifecycle_filter_counts_from_rows,
-        lifecycle_nav_badge_waiting_count,
+    from services.dashboard_normal_carts_perf_v1 import (  # noqa: PLC0415
+        dashboard_normal_carts_perf_add_render_payload_ms,
+        dashboard_normal_carts_perf_stage,
     )
 
-    cart_filter_counts = lifecycle_filter_counts_from_rows(
-        merchant_carts_page_rows
-    )
-    refresh_state = _merchant_dashboard_refresh_state_payload(dash_store)
-    bucket_counts: dict[str, int] = {}
-    for row in merchant_carts_page_rows:
-        b = str(row.get("customer_lifecycle_state") or "").strip().lower()
-        if not b:
-            continue
-        bucket_counts[b] = int(bucket_counts.get(b) or 0) + 1
-    body: Dict[str, Any] = {
-        "merchant_table_rows": table_rows,
-        "merchant_carts_page_rows": merchant_carts_page_rows,
-        "merchant_cart_filter_counts": cart_filter_counts,
-        "merchant_nav_badge_abandoned": lifecycle_nav_badge_waiting_count(
+    _render0 = time.perf_counter()
+    with dashboard_normal_carts_perf_stage("render_payload"):
+        table_rows = list(merchant_carts_page_rows[:8])
+        from services.customer_lifecycle_states_v1 import (  # noqa: PLC0415
+            lifecycle_filter_counts_from_rows,
+            lifecycle_nav_badge_waiting_count,
+        )
+
+        cart_filter_counts = lifecycle_filter_counts_from_rows(
             merchant_carts_page_rows
-        ),
-    }
-    body.update(refresh_state)
+        )
+        refresh_state = _merchant_dashboard_refresh_state_payload(dash_store)
+        bucket_counts: dict[str, int] = {}
+        for row in merchant_carts_page_rows:
+            b = str(row.get("customer_lifecycle_state") or "").strip().lower()
+            if not b:
+                continue
+            bucket_counts[b] = int(bucket_counts.get(b) or 0) + 1
+        body: Dict[str, Any] = {
+            "merchant_table_rows": table_rows,
+            "merchant_carts_page_rows": merchant_carts_page_rows,
+            "merchant_cart_filter_counts": cart_filter_counts,
+            "merchant_nav_badge_abandoned": lifecycle_nav_badge_waiting_count(
+                merchant_carts_page_rows
+            ),
+        }
+        body.update(refresh_state)
+        try:
+            log.info(
+                "[CART CLASSIFIER] rows=%s buckets=%s",
+                len(merchant_carts_page_rows),
+                bucket_counts,
+            )
+            log.info(
+                "[DASHBOARD COUNTS] section=normal-carts counts=%s waiting_badge=%s refresh_token=%s",
+                cart_filter_counts,
+                int(body.get("merchant_nav_badge_abandoned") or 0),
+                str(refresh_state.get("merchant_dashboard_refresh_token") or ""),
+            )
+        except Exception:
+            pass
     try:
-        log.info(
-            "[CART CLASSIFIER] rows=%s buckets=%s",
-            len(merchant_carts_page_rows),
-            bucket_counts,
+        dashboard_normal_carts_perf_add_render_payload_ms(
+            (time.perf_counter() - _render0) * 1000.0
         )
-        log.info(
-            "[DASHBOARD COUNTS] section=normal-carts counts=%s waiting_badge=%s refresh_token=%s",
-            cart_filter_counts,
-            int(body.get("merchant_nav_badge_abandoned") or 0),
-            str(refresh_state.get("merchant_dashboard_refresh_token") or ""),
-        )
-    except Exception:
+    except Exception:  # noqa: BLE001
         pass
     return body, prof_nc
 
