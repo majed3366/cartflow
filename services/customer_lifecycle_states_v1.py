@@ -396,15 +396,14 @@ def _recovery_messages_exhausted_for_archive(
     attempt_cap: int,
     log_ss: frozenset[str],
 ) -> bool:
-    """True only when no further recovery templates will be sent without merchant reopen."""
-    cap = max(1, int(attempt_cap or 1))
-    sent_n = int(sent_count or 0)
+    """True only for explicit automation closure — not when all templates were sent."""
+    del sent_count, attempt_cap
     if "skipped_reason_template_disabled" in log_ss:
         return True
+    # Full sequence + scheduler skip: stay active/sent until purchase / manual / opt-out.
     if "skipped_attempt_limit" in log_ss:
-        # Scheduler step>N skip after templates sent — keep on active/sent until reply.
         return False
-    return sent_n >= cap and cap > 1
+    return False
 
 
 def _log_archive_decision(

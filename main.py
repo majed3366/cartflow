@@ -2071,7 +2071,12 @@ def dev_recovery_operational_truth(recovery_key: str = Query("", max_length=512)
                 break
         dashboard_visible = dash_row is not None
         dashboard_bucket = (
-            str(dash_row.get("merchant_cart_primary_bucket") or dash_row.get("merchant_coarse_status") or "")
+            str(
+                dash_row.get("merchant_cart_bucket")
+                or dash_row.get("merchant_cart_primary_bucket")
+                or dash_row.get("merchant_coarse_status")
+                or ""
+            )
             if dash_row
             else ""
         )
@@ -4962,7 +4967,8 @@ def _normal_recovery_group_is_terminal_archived(
         return True
     coarse = _normal_recovery_coarse_status(pk)
     if coarse in _NORMAL_RECOVERY_ARCHIVED_COARSE_STATUSES:
-        if coarse == "ignored" and sent_n >= 1 and sent_n < max_a:
+        # Sent recoveries stay active until explicit terminal log (opt-out, purchase, …).
+        if coarse == "ignored" and sent_n >= 1:
             return False
         return True
     return False

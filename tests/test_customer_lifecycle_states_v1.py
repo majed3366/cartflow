@@ -219,6 +219,25 @@ class CustomerLifecycleStatesV1Tests(unittest.TestCase):
         self.assertEqual(lc.state_key, STATE_WAITING_CUSTOMER_REPLY)
         self.assertNotEqual(lc.state_key, STATE_ARCHIVED)
 
+    def test_full_sequence_sent_without_skip_log_stays_sent_not_archived(self) -> None:
+        """All templates sent (sent_count == cap) must not auto-archive."""
+        rk = f"demo:lc-full-{self._suffix}"
+        record_recovery_truth_event(
+            recovery_key=rk,
+            status=STATUS_PROVIDER_SENT,
+            source="test",
+            store_slug="demo",
+        )
+        lc = classify_customer_lifecycle_state_v1(
+            recovery_key=rk,
+            sent_count=2,
+            attempt_cap=2,
+            log_statuses=frozenset({"mock_sent", "mock_sent"}),
+            coarse="sent",
+        )
+        self.assertEqual(lc.state_key, STATE_WAITING_CUSTOMER_REPLY)
+        self.assertNotEqual(lc.state_key, STATE_ARCHIVED)
+
     def test_manual_archive_and_reopen(self) -> None:
         rk = f"demo:lc-arch-{self._suffix}"
         out = archive_recovery_key(recovery_key=rk, store_slug="demo")
