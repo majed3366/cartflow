@@ -544,15 +544,52 @@ def timeline_status_set(recovery_key: str) -> frozenset[str]:
     )
 
 
+def bulk_timeline_status_sets(
+    recovery_keys: Any,
+) -> dict[str, frozenset[str]]:
+    """One query for many keys — dashboard normal-carts batch path."""
+    keys: list[str] = []
+    seen: set[str] = set()
+    for raw in recovery_keys or ():
+        rk = _norm(str(raw))[:512]
+        if rk and rk not in seen:
+            seen.add(rk)
+            keys.append(rk)
+    if not keys:
+        return {}
+    if not ensure_timeline_table_ready(recovery_key=keys[0]):
+        return {}
+    try:
+        rows = (
+            db.session.query(
+                RecoveryTruthTimelineEvent.recovery_key,
+                RecoveryTruthTimelineEvent.status,
+            )
+            .filter(RecoveryTruthTimelineEvent.recovery_key.in_(keys))
+            .all()
+        )
+    except SQLAlchemyError:
+        db.session.rollback()
+        return {}
+    acc: dict[str, set[str]] = {k: set() for k in keys}
+    for rk_raw, st_raw in rows:
+        rk = _norm(rk_raw)[:512]
+        st = _norm(st_raw)
+        if not rk or not st:
+            continue
+        if rk not in acc:
+            acc[rk] = set()
+        acc[rk].add(st)
+    return {k: frozenset(v) for k, v in acc.items()}
+
+
 def provider_send_proven(
     recovery_key: str,
     *,
     log_statuses: Optional[Any] = None,
     sent_count: int = 0,
+    timeline_statuses: Optional[frozenset[str]] = None,
 ) -> bool:
-    ts = timeline_status_set(recovery_key)
-    if ts & _PROVIDER_SENT_STATUSES:
-        return True
     log_ss: set[str] = set()
     if log_statuses:
         for raw in log_statuses:
@@ -561,9 +598,15 @@ def provider_send_proven(
                 log_ss.add(t)
     if log_ss & _LOG_SENT:
         return True
-    if int(sent_count or 0) >= 1 and log_ss & _LOG_SENT:
+    if int(sent_count or 0) >= 1:
         return True
-    return False
+    rk = _norm(recovery_key)[:512]
+    if not rk:
+        return False
+    if timeline_statuses is not None:
+        return bool(timeline_statuses & _PROVIDER_SENT_STATUSES)
+    ts = timeline_status_set(rk)
+    return bool(ts & _PROVIDER_SENT_STATUSES)
 
 
 def customer_reply_proven(
@@ -571,8 +614,13 @@ def customer_reply_proven(
     *,
     behavioral: Optional[dict[str, Any]] = None,
 ) -> bool:
-    del behavioral
-    return STATUS_CUSTOMER_REPLY in timeline_status_set(recovery_key)
+    bh = behavioral if isinstance(behavioral, dict) else {}
+    if bh.get("customer_replied") is True:
+        return True
+    rk = _norm(recovery_key)[:512]
+    if not rk:
+        return False
+    return STATUS_CUSTOMER_REPLY in timeline_status_set(rk)
 
 
 def continuation_started_proven(recovery_key: str) -> bool:

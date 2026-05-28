@@ -179,7 +179,11 @@ def build_normal_recovery_merchant_lifecycle(
     if sent_n >= 1 and pk in ("first_message_sent", "reminder_sent") and cr == "sent":
         from services.recovery_truth_timeline_v1 import provider_send_proven
 
-        if provider_send_proven(rk, log_statuses=log_ss, sent_count=sent_n):
+        if provider_send_proven(
+            recovery_key,
+            log_statuses=log_ss,
+            sent_count=sent_n,
+        ):
             return pack(
                 "awaiting_customer_after_send",
                 "أُرسلت رسالة استرجاع",

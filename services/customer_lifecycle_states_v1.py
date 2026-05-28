@@ -278,7 +278,11 @@ def _format_eta_ar(delta_seconds: float) -> str:
     return f"{days} يوماً"
 
 
-def _timeline_flags(recovery_key: str) -> dict[str, bool]:
+def _timeline_flags(
+    recovery_key: str,
+    *,
+    timeline_statuses: Optional[frozenset[str]] = None,
+) -> dict[str, bool]:
     rk = (recovery_key or "").strip()
     out = {
         "scheduled": False,
@@ -287,7 +291,7 @@ def _timeline_flags(recovery_key: str) -> dict[str, bool]:
         "customer_reply": False,
         "continuation_started": False,
     }
-    if not rk:
+    if not rk and not timeline_statuses:
         return out
     try:
         from services.recovery_truth_timeline_v1 import (  # noqa: PLC0415
@@ -299,7 +303,11 @@ def _timeline_flags(recovery_key: str) -> dict[str, bool]:
             timeline_status_set,
         )
 
-        ts = timeline_status_set(rk)
+        ts = (
+            timeline_statuses
+            if timeline_statuses is not None
+            else timeline_status_set(rk)
+        )
         out["scheduled"] = STATUS_SCHEDULED in ts
         out["delay_started"] = STATUS_DELAY_STARTED in ts
         out["provider_sent"] = STATUS_PROVIDER_SENT in ts
@@ -343,26 +351,44 @@ def _provider_sent(
     recovery_key: str,
     log_ss: frozenset[str],
     sent_count: int,
+    *,
+    timeline_statuses: Optional[frozenset[str]] = None,
 ) -> bool:
     try:
         from services.recovery_truth_timeline_v1 import provider_send_proven
 
         return provider_send_proven(
-            recovery_key, log_statuses=log_ss, sent_count=int(sent_count or 0)
+            recovery_key,
+            log_statuses=log_ss,
+            sent_count=int(sent_count or 0),
+            timeline_statuses=timeline_statuses,
         )
     except Exception:  # noqa: BLE001
         return bool(sent_count >= 1 or log_ss & SENT_LOG)
 
 
-def _customer_replied(recovery_key: str) -> bool:
+def _customer_replied(
+    recovery_key: str,
+    *,
+    behavioral: Optional[Mapping[str, Any]] = None,
+    timeline_statuses: Optional[frozenset[str]] = None,
+) -> bool:
     """WhatsApp/webhook reply only — canonical timeline ``customer_reply``."""
+    bh = behavioral if isinstance(behavioral, dict) else {}
+    if bh.get("customer_replied") is True:
+        return True
     rk = (recovery_key or "").strip()
     if not rk:
         return False
     try:
-        from services.recovery_truth_timeline_v1 import customer_reply_proven
+        from services.recovery_truth_timeline_v1 import (  # noqa: PLC0415
+            STATUS_CUSTOMER_REPLY,
+            customer_reply_proven,
+        )
 
-        return customer_reply_proven(rk)
+        if timeline_statuses is not None:
+            return STATUS_CUSTOMER_REPLY in timeline_statuses
+        return customer_reply_proven(rk, behavioral=bh)
     except Exception:  # noqa: BLE001
         return False
 
@@ -493,6 +519,7 @@ def classify_customer_lifecycle_state_v1(
     is_vip_lane: bool = False,
     has_phone: bool = True,
     next_attempt_due_at: Optional[str] = None,
+    timeline_statuses: Optional[frozenset[str]] = None,
 ) -> CustomerLifecycleStateV1:
     """Classify one cart row for dashboard lifecycle display."""
     rk = (recovery_key or "").strip()
@@ -503,9 +530,11 @@ def classify_customer_lifecycle_state_v1(
     cst = _norm(cart_status)
     cap = max(1, int(attempt_cap or 1))
     sent_n = int(sent_count or 0)
-    tl = _timeline_flags(rk)
+    tl = _timeline_flags(rk, timeline_statuses=timeline_statuses)
     now = _utc_now()
-    sent_proven_early = _provider_sent(rk, log_ss, sent_n)
+    sent_proven_early = _provider_sent(
+        rk, log_ss, sent_n, timeline_statuses=timeline_statuses
+    )
     exhausted_early = _recovery_messages_exhausted_for_archive(
         sent_count=sent_n, attempt_cap=cap, log_ss=log_ss
     )
@@ -589,7 +618,9 @@ def classify_customer_lifecycle_state_v1(
             archive_reason="needs_intervention",
         )
 
-    replied = _customer_replied(rk)
+    replied = _customer_replied(
+        rk, behavioral=bh, timeline_statuses=timeline_statuses
+    )
     sent_proven = sent_proven_early
 
     if replied and sent_proven and tl["continuation_started"]:
@@ -618,8 +649,8 @@ def classify_customer_lifecycle_state_v1(
             archive_reason="customer_reply",
         )
 
-    due_at = _next_schedule_due_at(rk)
-    if due_at is None and next_attempt_due_at:
+    due_at: Optional[datetime] = None
+    if next_attempt_due_at:
         try:
             due_at = datetime.fromisoformat(
                 str(next_attempt_due_at).replace("Z", "+00:00")
@@ -628,6 +659,8 @@ def classify_customer_lifecycle_state_v1(
                 due_at = due_at.replace(tzinfo=timezone.utc)
         except (TypeError, ValueError):
             due_at = None
+    if due_at is None:
+        due_at = _next_schedule_due_at(rk)
 
     if _return_to_site_detected(
         recovery_key=rk,
@@ -786,6 +819,7 @@ def attach_customer_lifecycle_state_v1(
     has_phone: bool = True,
     abandoned_cart_id: Optional[int] = None,
     next_attempt_due_at: Optional[str] = None,
+    timeline_statuses: Optional[frozenset[str]] = None,
 ) -> CustomerLifecycleStateV1:
     """Attach lifecycle v1 fields; sync primary dashboard status label."""
     lc = classify_customer_lifecycle_state_v1(
@@ -803,6 +837,7 @@ def attach_customer_lifecycle_state_v1(
         is_vip_lane=is_vip_lane,
         has_phone=has_phone,
         next_attempt_due_at=next_attempt_due_at,
+        timeline_statuses=timeline_statuses,
     )
     target.update(lc.to_payload_fields())
     target["merchant_status_label_ar"] = lc.label_ar

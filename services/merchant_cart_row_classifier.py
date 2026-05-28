@@ -144,6 +144,8 @@ def _customer_engagement_truth(
     recovery_key: str,
     log_ss: frozenset[str],
     sent_count: int,
+    behavioral: Optional[Mapping[str, Any]] = None,
+    timeline_statuses: Optional[frozenset[str]] = None,
 ) -> tuple[bool, bool]:
     """
     (customer_replied, continuation_started) from canonical timeline only.
@@ -154,14 +156,28 @@ def _customer_engagement_truth(
     msg_sent = bool(sent_count >= 1 or log_ss & SENT_LOG_STATUSES)
     if not msg_sent:
         return False, False
+    bh = behavioral if isinstance(behavioral, dict) else {}
     try:
         from services.recovery_truth_timeline_v1 import (
             STATUS_CONTINUATION_STARTED,
+            STATUS_CUSTOMER_REPLY,
             customer_reply_proven,
             continuation_started_proven,
         )
 
-        if not customer_reply_proven(rk):
+        if timeline_statuses is not None:
+            if STATUS_CUSTOMER_REPLY not in timeline_statuses:
+                if not bh.get("customer_replied"):
+                    return False, False
+            return True, STATUS_CONTINUATION_STARTED in timeline_statuses
+        if bh.get("customer_replied") is True:
+            cont = (
+                continuation_started_proven(rk)
+                if rk
+                else False
+            )
+            return True, cont
+        if not customer_reply_proven(rk, behavioral=bh):
             return False, False
         return True, continuation_started_proven(rk)
     except Exception:  # noqa: BLE001
@@ -175,12 +191,20 @@ def _return_to_site_truth(
     coarse: str,
     log_ss: frozenset[str],
     behavioral: Mapping[str, Any],
+    timeline_statuses: Optional[frozenset[str]] = None,
 ) -> bool:
     try:
-        from services.recovery_truth_timeline_v1 import customer_reply_proven
+        from services.recovery_truth_timeline_v1 import (
+            STATUS_CUSTOMER_REPLY,
+            customer_reply_proven,
+        )
 
-        if recovery_key and customer_reply_proven(recovery_key):
-            return False
+        if recovery_key:
+            if timeline_statuses is not None:
+                if STATUS_CUSTOMER_REPLY in timeline_statuses:
+                    return False
+            elif customer_reply_proven(recovery_key):
+                return False
     except Exception:  # noqa: BLE001
         pass
     pk = (phase_key or "").strip()
@@ -228,6 +252,7 @@ def _sent_truth(
     coarse: str,
     latest_log_status: str,
     recovery_key: str = "",
+    timeline_statuses: Optional[frozenset[str]] = None,
 ) -> bool:
     from services.recovery_truth_timeline_v1 import provider_send_proven
 
@@ -235,6 +260,7 @@ def _sent_truth(
         recovery_key,
         log_statuses=log_ss,
         sent_count=sent_count,
+        timeline_statuses=timeline_statuses,
     ):
         return True
     return False
@@ -307,6 +333,7 @@ def classify_merchant_cart_row(
     behavioral: Optional[Mapping[str, Any]] = None,
     latest_log_status: str = "",
     recovery_key: str = "",
+    timeline_statuses: Optional[frozenset[str]] = None,
 ) -> MerchantCartRowClassification:
     """
     Deterministic primary bucket for one merchant cart row.
@@ -373,6 +400,8 @@ def classify_merchant_cart_row(
         recovery_key=rk_eff,
         log_ss=log_ss,
         sent_count=int(sent_count or 0),
+        behavioral=bh,
+        timeline_statuses=timeline_statuses,
     )
     if engaged_reply and _sent_truth(
         sent_count=int(sent_count or 0),
@@ -380,6 +409,7 @@ def classify_merchant_cart_row(
         coarse=cnorm,
         latest_log_status=latest,
         recovery_key=rk_eff,
+        timeline_statuses=timeline_statuses,
     ):
         if engaged_cont:
             status_ar = CUSTOMER_ENGAGED_CONTINUATION_LABEL_AR
@@ -407,12 +437,14 @@ def classify_merchant_cart_row(
         coarse=cnorm,
         log_ss=log_ss,
         behavioral=bh,
+        timeline_statuses=timeline_statuses,
     ) and _sent_truth(
         sent_count=int(sent_count or 0),
         log_ss=log_ss,
         coarse=cnorm,
         latest_log_status=latest,
         recovery_key=rk_eff,
+        timeline_statuses=timeline_statuses,
     ):
         return MerchantCartRowClassification(
             primary_bucket=PRIMARY_RETURN_TO_SITE,
@@ -456,6 +488,7 @@ def classify_merchant_cart_row(
         coarse=cnorm,
         latest_log_status=latest,
         recovery_key=recovery_key,
+        timeline_statuses=timeline_statuses,
     ):
         return MerchantCartRowClassification(
             primary_bucket=PRIMARY_SENT,

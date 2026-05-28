@@ -7,7 +7,7 @@ import logging
 import time
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from typing import Iterator, Optional
+from typing import Any, Iterator, Optional
 
 log = logging.getLogger("cartflow")
 
@@ -27,6 +27,7 @@ class _PerfState:
     render_payload_ms: float = 0.0
     stage_ms: dict[str, float] = field(default_factory=dict)
     slow_stage: str = "-"
+    row_samples: list[dict[str, Any]] = field(default_factory=list)
 
 
 _state: contextvars.ContextVar[Optional[_PerfState]] = contextvars.ContextVar(
@@ -176,6 +177,68 @@ def _resolve_slow_stage(st: _PerfState) -> str:
     return f"{best_name}({round(best_ms, 1)}ms)"
 
 
+def dashboard_normal_carts_perf_record_row(
+    *,
+    cart_id: str,
+    recovery_key: str,
+    row_ms: float,
+    lifecycle_ms: float = 0.0,
+    classifier_ms: float = 0.0,
+    archive_check_ms: float = 0.0,
+    log_lookup_ms: float = 0.0,
+    schedule_lookup_ms: float = 0.0,
+    lifecycle_truth_ms: float = 0.0,
+    clarity_ms: float = 0.0,
+    db_queries_delta: Optional[int] = None,
+) -> None:
+    st = _get_state()
+    if st is None:
+        return
+    st.row_samples.append(
+        {
+            "cart_id": (cart_id or "-")[:80],
+            "recovery_key": (recovery_key or "-")[:120],
+            "row_ms": round(float(row_ms), 1),
+            "lifecycle_ms": round(float(lifecycle_ms), 1),
+            "classifier_ms": round(float(classifier_ms), 1),
+            "archive_check_ms": round(float(archive_check_ms), 1),
+            "log_lookup_ms": round(float(log_lookup_ms), 1),
+            "schedule_lookup_ms": round(float(schedule_lookup_ms), 1),
+            "lifecycle_truth_ms": round(float(lifecycle_truth_ms), 1),
+            "clarity_ms": round(float(clarity_ms), 1),
+            "db_queries": db_queries_delta,
+        }
+    )
+
+
+def _emit_row_perf_slowest(st: _PerfState) -> None:
+    if not st.row_samples:
+        return
+    top = sorted(st.row_samples, key=lambda r: float(r.get("row_ms") or 0), reverse=True)[:5]
+    parts: list[str] = []
+    for row in top:
+        parts.append(
+            "{cart_id}|{rk}|row_ms={row_ms}|lifecycle_ms={lifecycle_ms}|"
+            "classifier_ms={classifier_ms}|lifecycle_truth_ms={lifecycle_truth_ms}".format(
+                cart_id=row.get("cart_id") or "-",
+                rk=row.get("recovery_key") or "-",
+                row_ms=row.get("row_ms"),
+                lifecycle_ms=row.get("lifecycle_ms"),
+                classifier_ms=row.get("classifier_ms"),
+                lifecycle_truth_ms=row.get("lifecycle_truth_ms"),
+            )
+        )
+    line = f"[DASHBOARD ROW PERF] slow_rows=[{'; '.join(parts)}]"
+    try:
+        log.info("%s", line)
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        print(line, flush=True)
+    except OSError:
+        pass
+
+
 def dashboard_normal_carts_perf_emit(*, wall_perf_start: float) -> None:
     """Emit one [DASHBOARD PERF] line — always when perf was begun for this request."""
     st = _get_state()
@@ -204,9 +267,20 @@ def dashboard_normal_carts_perf_emit(*, wall_perf_start: float) -> None:
             print(line, flush=True)
         except OSError:
             pass
+        _emit_row_perf_slowest(st)
     finally:
         _active.set(False)
         _state.set(None)
+
+
+def dashboard_normal_carts_perf_peek_queries() -> Optional[int]:
+    raw = _peek_db_query_count()
+    if raw in ("n/a", "?", ""):
+        return None
+    try:
+        return int(raw)
+    except (TypeError, ValueError):
+        return None
 
 
 __all__ = [
@@ -216,6 +290,8 @@ __all__ = [
     "dashboard_normal_carts_perf_add_render_payload_ms",
     "dashboard_normal_carts_perf_begin",
     "dashboard_normal_carts_perf_emit",
+    "dashboard_normal_carts_perf_peek_queries",
     "dashboard_normal_carts_perf_record_loads",
+    "dashboard_normal_carts_perf_record_row",
     "dashboard_normal_carts_perf_stage",
 ]

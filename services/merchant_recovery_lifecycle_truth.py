@@ -230,6 +230,10 @@ def build_merchant_recovery_lifecycle_truth(
     matched_logs: Optional[list[Any]] = None,
     attempt_cap: int = 1,
     store_slug: str = "",
+    purchase_truth: bool = False,
+    durable_closure: Optional[dict[str, Any]] = None,
+    timeline_statuses: Optional[frozenset[str]] = None,
+    durable_closure_prefetched: bool = False,
 ) -> dict[str, Any]:
     """حقول موحّدة للوحة التاجر — قراءة فقط من سجلات ومؤشرات موجودة."""
     bh = behavioral if isinstance(behavioral, dict) else {}
@@ -239,8 +243,7 @@ def build_merchant_recovery_lifecycle_truth(
     cr = _norm(coarse)
 
     recovery_key = _recovery_key_for_abandoned_cart(ac, store_slug)
-    durable_closure = None
-    if recovery_key:
+    if durable_closure is None and recovery_key and not durable_closure_prefetched:
         try:
             from services.lifecycle_closure_records_v1 import get_durable_closure
 
@@ -249,7 +252,13 @@ def build_merchant_recovery_lifecycle_truth(
             durable_closure = None
 
     purchased = lifecycle_purchased_evidence(
-        ls=ls, bk="", pk=pk, cr=cr, log_ss=log_ss, recovery_key=recovery_key
+        ls=ls,
+        bk="",
+        pk=pk,
+        cr=cr,
+        log_ss=log_ss,
+        recovery_key=recovery_key,
+        purchase_truth=bool(purchase_truth),
     )
     if durable_closure and durable_closure.get("closure_status") == "purchase_completed":
         purchased = True
@@ -259,11 +268,17 @@ def build_merchant_recovery_lifecycle_truth(
         bh=bh, ls=ls, bk="", pk=pk, log_ss=log_ss, recovery_key=recovery_key
     )
     if durable_closure and durable_closure.get("closure_status") == "customer_replied":
-        from services.recovery_truth_timeline_v1 import customer_reply_proven_for_dashboard
+        from services.recovery_truth_timeline_v1 import (
+            STATUS_CUSTOMER_REPLY,
+            customer_reply_proven_for_dashboard,
+        )
 
-        replied = customer_reply_proven_for_dashboard(
-            recovery_key, behavioral=bh
-        ) or replied
+        if timeline_statuses is not None:
+            replied = STATUS_CUSTOMER_REPLY in timeline_statuses or replied
+        else:
+            replied = customer_reply_proven_for_dashboard(
+                recovery_key, behavioral=bh
+            ) or replied
     returned = lifecycle_returned_evidence(
         bh=bh,
         ls=ls,
@@ -302,6 +317,7 @@ def build_merchant_recovery_lifecycle_truth(
         recovery_key,
         log_statuses=log_ss,
         sent_count=int(sent_ct or 0),
+        timeline_statuses=timeline_statuses,
     )
     scheduling = (
         not purchased
@@ -366,10 +382,18 @@ def build_merchant_recovery_lifecycle_truth(
     )
 
     if replied and not purchased:
-        from services.recovery_truth_timeline_v1 import continuation_started_proven
+        from services.recovery_truth_timeline_v1 import (
+            STATUS_CONTINUATION_STARTED,
+            continuation_started_proven,
+        )
 
         whatsapp_line_ar = "تفاعل العميل — نتابع المسار تلقائياً."
-        if recovery_key and continuation_started_proven(recovery_key):
+        cont = False
+        if timeline_statuses is not None:
+            cont = STATUS_CONTINUATION_STARTED in timeline_statuses
+        elif recovery_key:
+            cont = continuation_started_proven(recovery_key)
+        if cont:
             whatsapp_line_ar = "تفاعل العميل — بدأ النظام متابعة الاعتراض."
     elif returned and not purchased:
         whatsapp_line_ar = "العميل عاد للموقع — أوقفنا الرسائل تلقائياً."
@@ -495,6 +519,10 @@ def attach_merchant_recovery_lifecycle_truth(
     matched_logs: Optional[list[Any]] = None,
     attempt_cap: int = 1,
     store_slug: str = "",
+    purchase_truth: bool = False,
+    durable_closure: Optional[dict[str, Any]] = None,
+    timeline_statuses: Optional[frozenset[str]] = None,
+    durable_closure_prefetched: bool = False,
 ) -> None:
     truth = build_merchant_recovery_lifecycle_truth(
         ac=ac,
@@ -509,5 +537,9 @@ def attach_merchant_recovery_lifecycle_truth(
         matched_logs=matched_logs,
         attempt_cap=attempt_cap,
         store_slug=store_slug,
+        purchase_truth=purchase_truth,
+        durable_closure=durable_closure,
+        timeline_statuses=timeline_statuses,
+        durable_closure_prefetched=durable_closure_prefetched,
     )
     target.update(truth)
