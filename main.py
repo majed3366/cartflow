@@ -15427,6 +15427,21 @@ def _merchant_normal_recovery_light_payload_merchant_batch(
                 out["customer_lifecycle_continuation_explanation_ar"] = _cont_expl
         except Exception:  # noqa: BLE001
             pass
+        try:
+            from services.merchant_followup_clarity_v1 import (  # noqa: PLC0415
+                attach_merchant_followup_clarity,
+            )
+
+            attach_merchant_followup_clarity(
+                out,
+                sent_count=sent_ct_lc,
+                configured_count=cap_lc,
+                next_attempt_due_at=next_due_iso,
+                schedule_rows=batch.schedule_rows_by_ac.get(aid0),
+                purchased=purchased_flag,
+            )
+        except Exception:  # noqa: BLE001
+            pass
     except Exception:  # noqa: BLE001
         pass
     return out

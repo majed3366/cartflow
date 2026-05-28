@@ -271,6 +271,66 @@ class ActiveSentRecoveryDashboardVisibilityTests(unittest.TestCase):
         self.assertEqual(row.get("merchant_cart_bucket"), "sent")
         self.assertNotEqual(row.get("merchant_cart_primary_bucket"), "archived")
 
+    def test_full_sequence_includes_followup_clarity_fields(self) -> None:
+        slug = f"vis-cl-{self._suffix}"
+        sid = f"sess-vis-cl-{self._suffix}"
+        zid = f"cf_vis_cl_{self._suffix}"
+        rk = f"{slug}:{sid}"
+        now = datetime.now(timezone.utc)
+        st = Store(
+            zid_store_id=slug,
+            recovery_attempts=2,
+            recovery_delay=1,
+            recovery_delay_unit="minutes",
+        )
+        db.session.add(st)
+        db.session.flush()
+        ac = AbandonedCart(
+            store_id=int(st.id),
+            zid_cart_id=zid,
+            recovery_session_id=sid,
+            customer_phone="966501114433",
+            status="abandoned",
+            vip_mode=False,
+            cart_value=55.0,
+            last_seen_at=now,
+        )
+        db.session.add(ac)
+        db.session.flush()
+        for step, stt in ((1, "sent_real"), (2, "sent_real"), (3, "skipped_attempt_limit")):
+            db.session.add(
+                CartRecoveryLog(
+                    store_slug=slug,
+                    session_id=sid,
+                    cart_id=zid,
+                    phone="966501114433",
+                    message=f"m{step}",
+                    status=stt,
+                    step=step,
+                    recovery_key=rk,
+                    sent_at=now,
+                    created_at=now,
+                )
+            )
+        db.session.commit()
+
+        with patch("main._dashboard_recovery_store_row", return_value=st):
+            body, _ = _api_json_dashboard_normal_carts(st)
+        row = next(
+            (
+                r
+                for r in (body.get("merchant_carts_page_rows") or [])
+                if str(r.get("recovery_key") or "").strip() == rk
+            ),
+            None,
+        )
+        self.assertIsNotNone(row)
+        self.assertEqual(row.get("merchant_followup_progress_ar"), "تم إرسال ٢ من ٢")
+        self.assertEqual(
+            row.get("merchant_followup_sequence_line_ar"),
+            "اكتملت سلسلة المتابعة — بانتظار تفاعل العميل",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

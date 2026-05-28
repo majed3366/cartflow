@@ -1404,6 +1404,7 @@
         esc(c.waiting) +
         "</div>";
     }
+    h += merchantFollowupClarityHtml(mc);
     if (c.action && c.action !== "—" && !c.isSent) {
       h +=
         '<div class="recovery-truth-line"><strong>الإجراء:</strong> ' +
@@ -1522,6 +1523,35 @@
     return h + "</div>";
   }
 
+  function merchantFollowupClarityHtml(mc) {
+    if (!mc) return "";
+    var prog = String(mc.merchant_followup_progress_ar || "").trim();
+    var seq = String(mc.merchant_followup_sequence_line_ar || "").trim();
+    var nxt = String(mc.merchant_followup_next_line_ar || "").trim();
+    if (!prog && !seq && !nxt) return "";
+    var h =
+      '<div class="recovery-truth-followup-clarity" aria-label="تقدم المتابعة">';
+    if (prog) {
+      h +=
+        '<div class="recovery-truth-line merchant-followup-progress"><strong>المتابعة:</strong> ' +
+        esc(prog) +
+        "</div>";
+    }
+    if (seq) {
+      h +=
+        '<div class="recovery-truth-line recovery-truth-muted merchant-followup-sequence">' +
+        esc(seq) +
+        "</div>";
+    }
+    if (nxt) {
+      h +=
+        '<div class="recovery-truth-line merchant-followup-next">' +
+        esc(nxt) +
+        "</div>";
+    }
+    return h + "</div>";
+  }
+
   function continuationDecisionExplanationHtml(mc) {
     var expl =
       mc.customer_lifecycle_continuation_explanation_ar ||
@@ -1573,6 +1603,7 @@
         esc(mc.customer_lifecycle_next_followup_line_ar) +
         "</div>";
     }
+    h += merchantFollowupClarityHtml(mc);
     h +=
       '<div class="recovery-truth-line"><strong>تدخل التاجر:</strong> ' +
       esc(mc.customer_lifecycle_merchant_needed_ar || "لا") +
