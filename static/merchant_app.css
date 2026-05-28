@@ -2255,6 +2255,8 @@ tr.ma-row-archived .next.urgent { font-weight: 400; color: inherit; }
 .c-think { background: #fce7f3; color: #be185d; }
 .c-thinking { background: #fce7f3; color: #be185d; }
 .c-trust { background: #ffedd5; color: #c2410c; }
+.c-quality { background: #dcfce7; color: #15803d; }
+.c-warranty { background: #fef3c7; color: #b45309; }
 .c-other { background: #f1f5f9; color: #475569; }
 
 .st {

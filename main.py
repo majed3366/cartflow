@@ -48,6 +48,7 @@ from services.merchant_dashboard_reference_ui import (
     merchant_ar_weekday_date_header,
     merchant_coarse_to_status_row,
     merchant_reason_chip_class_and_label,
+    merchant_reason_canonical_key,
     merchant_reason_panel_rows_from_counts,
     merchant_relative_time_arabic,
     merchant_vip_avatar_letter,
@@ -15478,6 +15479,8 @@ def _merchant_normal_recovery_light_payload_merchant_batch(
         "merchant_last_seen_display": _format_reason_ts(getattr(ac0, "last_seen_at", None)),
         "merchant_reason_chip_class": chip_cls,
         "merchant_reason_chip_label_ar": chip_lbl,
+        "merchant_reason_canonical": merchant_reason_canonical_key(rtag),
+        "reason_tag": rtag,
         "merchant_time_relative_ar": merchant_relative_time_arabic(
             getattr(ac0, "last_seen_at", None),
             now_utc=nu,
@@ -15729,6 +15732,8 @@ def _merchant_normal_recovery_light_payload(
         "merchant_last_seen_display": _format_reason_ts(getattr(ac0, "last_seen_at", None)),
         "merchant_reason_chip_class": chip_cls,
         "merchant_reason_chip_label_ar": chip_lbl,
+        "merchant_reason_canonical": merchant_reason_canonical_key(rtag),
+        "reason_tag": rtag,
         "merchant_time_relative_ar": merchant_relative_time_arabic(
             getattr(ac0, "last_seen_at", None),
             now_utc=nu,

@@ -5,6 +5,8 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Optional
 
+from services.reason_template_recovery import canonical_reason_template_key
+
 _WEEKDAYS_AR = (
     "الاثنين",
     "الثلاثاء",
@@ -57,18 +59,42 @@ def merchant_relative_time_arabic(
     return f"منذ {days} أيام"
 
 
+def merchant_reason_canonical_key(reason_tag: Optional[str]) -> str:
+    """Map widget/runtime reason_tag to dashboard display bucket key (no trust merge)."""
+    raw = (reason_tag or "").strip().lower()
+    if not raw:
+        return "other"
+    canon = canonical_reason_template_key(raw)
+    if canon:
+        return str(canon).strip().lower()
+    if raw in ("price_high",):
+        return "price"
+    if raw in ("shipping_cost", "delivery_time"):
+        return "shipping"
+    if raw in ("quality_uncertainty",):
+        return "quality"
+    return raw
+
+
+# Per-reason merchant chip — aligned with widget labels (merchant_widget_panel), not trust rollup.
+_MERCHANT_REASON_CHIP: dict[str, tuple[str, str]] = {
+    "price": ("c-price", "💰 السعر مرتفع"),
+    "shipping": ("c-shipping", "🚚 تكلفة الشحن"),
+    "delivery": ("c-shipping", "🚚 مدة التوصيل"),
+    "thinking": ("c-thinking", "🤔 يفكر في القرار"),
+    "quality": ("c-quality", "الجودة"),
+    "warranty": ("c-warranty", "الضمان"),
+    "human_support": ("c-trust", "🔒 دعم بشري"),
+    "other": ("c-other", "💭 أخرى"),
+}
+
+
 def merchant_reason_chip_class_and_label(reason_tag: str) -> tuple[str, str]:
-    """فئة الشارة + النص التجاري (مع رمز) — بدون كشف وسوم خام."""
-    k = (reason_tag or "").strip().lower()
-    if k in ("price", "price_high"):
-        return ("c-price", "💰 السعر مرتفع")
-    if k in ("shipping", "delivery"):
-        return ("c-shipping", "🚚 تكلفة الشحن")
-    if k == "thinking":
-        return ("c-thinking", "🤔 يفكر في القرار")
-    if k in ("warranty", "quality", "human_support"):
-        return ("c-trust", "🔒 الثقة بالمتجر")
-    return ("c-other", "💭 أخرى")
+    """فئة الشارة + النص التجاري — preserves original reason (quality stays الجودة)."""
+    key = merchant_reason_canonical_key(reason_tag)
+    if key in _MERCHANT_REASON_CHIP:
+        return _MERCHANT_REASON_CHIP[key]
+    return _MERCHANT_REASON_CHIP["other"]
 
 
 def merchant_coarse_to_status_row(
@@ -110,7 +136,7 @@ def merchant_reason_panel_rows_from_counts(
         ("🔒 الثقة بالمتجر", "trust", "#f97316"),
         ("💭 أخرى", "other", "#94a3b8"),
     ]
-    trust_keys = frozenset({"warranty", "quality", "human_support"})
+    trust_keys = frozenset({"warranty", "human_support"})
     bucket: dict[str, int] = {
         "price": 0,
         "shipping": 0,
@@ -127,6 +153,8 @@ def merchant_reason_panel_rows_from_counts(
             bucket["shipping"] += v
         elif k == "thinking":
             bucket["thinking"] += v
+        elif k == "quality" or k.startswith("quality_"):
+            bucket["other"] += v
         elif k in trust_keys:
             bucket["trust"] += v
         else:
