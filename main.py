@@ -291,6 +291,7 @@ from models import (  # noqa: E402
     MessageLog,
     ObjectionTrack,
     RecoveryEvent,
+    RecoverySchedule,
     Store,
 )
 from routes.cartflow import router as cartflow_router  # noqa: E402
