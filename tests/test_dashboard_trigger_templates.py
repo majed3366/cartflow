@@ -16,6 +16,60 @@ class DashboardTriggerTemplatesApiTests(unittest.TestCase):
     def setUp(self) -> None:
         self.client = TestClient(app)
 
+    def test_post_demo_body_persists_on_authenticated_merchant_store(self) -> None:
+        from unittest.mock import patch
+
+        from services.store_reason_templates import parse_reason_templates_column
+
+        z_merchant = "tpl-auth-merchant-zid"
+        db.create_all()
+        for row in db.session.query(Store).filter(
+            Store.zid_store_id.in_([z_merchant, "demo"])
+        ).all():
+            db.session.delete(row)
+        db.session.commit()
+        merchant_row = Store(zid_store_id=z_merchant, recovery_attempts=1)
+        demo_row = Store(zid_store_id="demo", recovery_attempts=1)
+        db.session.add(merchant_row)
+        db.session.add(demo_row)
+        db.session.commit()
+        body = {
+            "store_slug": "demo",
+            "reason_templates": {
+                "price": {
+                    "enabled": True,
+                    "message": "رسالة أولى",
+                    "message_count": 2,
+                    "messages": [
+                        {"delay": 3, "unit": "minute", "text": "رسالة أولى"},
+                        {"delay": 1, "unit": "hour", "text": "رسالة ثانية"},
+                    ],
+                }
+            },
+        }
+        try:
+            with patch(
+                "services.merchant_auth_context.get_merchant_auth_store_slug",
+                return_value=z_merchant,
+            ):
+                rp = self.client.post("/api/dashboard/trigger-templates", json=body)
+            self.assertEqual(rp.status_code, 200, rp.text[:400])
+            db.session.refresh(merchant_row)
+            parsed = parse_reason_templates_column(merchant_row.reason_templates_json)
+            self.assertIn("price", parsed)
+            self.assertEqual(parsed["price"]["message_count"], 2)
+            truth = self.client.get(
+                f"/dev/template-truth?store_slug={z_merchant}&reason=price"
+            )
+            self.assertTrue(truth.json().get("template_entry_found"))
+            self.assertIsNotNone(truth.json().get("raw_reason_templates_json"))
+        finally:
+            for row in db.session.query(Store).filter(
+                Store.zid_store_id.in_([z_merchant, "demo"])
+            ).all():
+                db.session.delete(row)
+            db.session.commit()
+
     def test_get_returns_reason_rows_ordered(self) -> None:
         r = self.client.get("/api/dashboard/trigger-templates")
         self.assertEqual(r.status_code, 200, r.text[:400])

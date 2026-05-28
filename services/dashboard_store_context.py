@@ -2,11 +2,12 @@
 """Canonical merchant dashboard Store row — same zid as runtime recovery (never latest Store.id)."""
 from __future__ import annotations
 
-from typing import Optional
+from typing import Any, Dict, Optional, Tuple
 
 from models import Store
 
 DEFAULT_MERCHANT_DASHBOARD_STORE_SLUG = "demo"
+_WIDGET_PLACEHOLDER_SLUGS = frozenset({"demo", "demo2", "default"})
 
 
 def normalize_merchant_store_slug(raw: Optional[str]) -> Optional[str]:
@@ -47,8 +48,61 @@ def dashboard_canonical_store_row(
     *,
     allow_schema_warm: bool = True,
 ) -> Optional[Store]:
-    """Same Store row as runtime: resolve_recovery_store_row_canonical(store_slug)."""
+    """Same Store row as runtime: exact zid lookup via resolve_recovery_store_row_canonical."""
     from services.recovery_store_lookup import resolve_recovery_store_row_canonical
 
-    ss = resolve_dashboard_merchant_store_slug(query_slug=store_slug)
+    ss = normalize_merchant_store_slug(store_slug)
+    if not ss:
+        return None
     return resolve_recovery_store_row_canonical(ss, allow_schema_warm=allow_schema_warm)
+
+
+def resolve_dashboard_trigger_templates_store(
+    *,
+    query_slug: Optional[str] = None,
+    body: Optional[Dict[str, Any]] = None,
+    header_slug: Optional[str] = None,
+    allow_schema_warm: bool = True,
+) -> Tuple[str, Optional[Store]]:
+    """
+    Store row for trigger-template GET/POST — aligned with _dashboard_recovery_store_row.
+
+    When the client sends a widget placeholder slug (demo) but the merchant session is
+    authenticated to a real store, persist on the authenticated store row.
+    """
+    body_slug = body.get("store_slug") if isinstance(body, dict) else None
+    canon = resolve_dashboard_merchant_store_slug(
+        query_slug=query_slug,
+        body_slug=body_slug,
+        header_slug=header_slug,
+    )
+    row = dashboard_canonical_store_row(canon, allow_schema_warm=allow_schema_warm)
+
+    auth: Optional[str] = None
+    try:
+        from services.merchant_auth_context import get_merchant_auth_store_slug
+
+        auth = normalize_merchant_store_slug(get_merchant_auth_store_slug())
+    except Exception:  # noqa: BLE001
+        auth = None
+
+    if auth and auth not in _WIDGET_PLACEHOLDER_SLUGS:
+        if row is None or canon in _WIDGET_PLACEHOLDER_SLUGS:
+            auth_row = dashboard_canonical_store_row(auth, allow_schema_warm=allow_schema_warm)
+            if auth_row is not None:
+                row = auth_row
+                canon = auth
+
+    if row is None:
+        try:
+            from extensions import db
+
+            row = db.session.query(Store).order_by(Store.id.desc()).first()
+        except Exception:  # noqa: BLE001
+            row = None
+        if row is not None:
+            zs = getattr(row, "zid_store_id", None)
+            if isinstance(zs, str) and zs.strip():
+                canon = zs.strip()[:255]
+
+    return canon, row

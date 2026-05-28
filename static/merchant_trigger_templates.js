@@ -938,6 +938,18 @@
     );
   }
 
+  function tplTriggerTemplatesPostUrl() {
+    return tplTriggerTemplatesGetUrl().replace(FETCH_URL_GET, FETCH_URL_POST);
+  }
+
+  function tplSaveRequestHeaders() {
+    var slug = tplMerchantStoreSlug();
+    return {
+      "Content-Type": "application/json",
+      "X-Store-Slug": slug,
+    };
+  }
+
   function bumpTplApplyGen() {
     var g = (window.__trigger_templates_apply_gen || 0) + 1;
     window.__trigger_templates_apply_gen = g;
@@ -1741,15 +1753,15 @@
       unit: unit,
       payload_bytes: bodyStr.length,
       apply_gen: window.__trigger_templates_apply_gen,
-      endpoint: FETCH_URL_POST,
+      endpoint: tplTriggerTemplatesPostUrl(),
     });
 
     if (st) st.textContent = "جاري الحفظ…";
 
-    fetch(FETCH_URL_POST, {
+    fetch(tplTriggerTemplatesPostUrl(), {
       method: "POST",
       credentials: "same-origin",
-      headers: { "Content-Type": "application/json" },
+      headers: tplSaveRequestHeaders(),
       body: bodyStr,
     })
       .then(function (r) {

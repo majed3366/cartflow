@@ -16784,19 +16784,17 @@ def api_dashboard_trigger_templates(
     wall0 = time.perf_counter()
     try:
         from services.dashboard_store_context import (
-            dashboard_canonical_store_row,
-            resolve_dashboard_merchant_store_slug,
+            resolve_dashboard_trigger_templates_store,
         )
         from services.trigger_templates_dashboard import (
             build_trigger_templates_get_payload,
         )
 
         _merchant_dashboard_db_ready()
-        canon_slug = resolve_dashboard_merchant_store_slug(
+        canon_slug, dash_store = resolve_dashboard_trigger_templates_store(
             query_slug=store_slug,
             header_slug=request.headers.get("x-store-slug"),
         )
-        dash_store = dashboard_canonical_store_row(canon_slug)
         tpl = build_trigger_templates_get_payload(dash_store)
         return j({"ok": True, "store_slug": canon_slug, **tpl})
     except Exception as e:  # noqa: BLE001
@@ -16822,18 +16820,23 @@ def api_dashboard_trigger_templates(
 @app.post("/api/dashboard/trigger-templates")
 async def api_dashboard_trigger_templates_save(
     request: Request,
-    store_slug: Optional[str] = Query(None, max_length=255),
+    store_slug_query: Optional[str] = Query(None, alias="store_slug", max_length=255),
 ):
     """دمج جزئي لـ ‎reason_templates‎ على آخر ‎Store‎ — استجابة خفيفة دون إعادة بناء ٦ صفوف."""
     wall0 = time.perf_counter()
     store_id: Any = None
-    store_slug = "(unknown)"
+    resolved_store_slug = "(unknown)"
+    body_store_slug_raw: Any = None
+    query_store_slug_raw: Any = store_slug_query
     reason_keys: list[str] = []
     reason_key = ""
     selected_stage = 0
     delay_value: Any = None
     delay_unit = ""
     payload_bytes = 0
+    json_before: Any = None
+    json_after: Any = None
+    db_commit_success = False
 
     def _elapsed_ms() -> int:
         return round((time.perf_counter() - wall0) * 1000)
@@ -16849,36 +16852,36 @@ async def api_dashboard_trigger_templates_save(
             body = None
 
         from services.dashboard_store_context import (
-            dashboard_canonical_store_row,
-            resolve_dashboard_merchant_store_slug,
+            resolve_dashboard_trigger_templates_store,
         )
 
         _merchant_dashboard_db_ready()
-        canon_slug = "demo"
-        if isinstance(body, dict):
-            canon_slug = resolve_dashboard_merchant_store_slug(
-                query_slug=store_slug,
-                body_slug=body.get("store_slug"),
-                header_slug=request.headers.get("x-store-slug"),
-            )
-        dash_store = dashboard_canonical_store_row(canon_slug)
+        body_store_slug_raw = (
+            body.get("store_slug") if isinstance(body, dict) else None
+        )
+        canon_slug, dash_store = resolve_dashboard_trigger_templates_store(
+            query_slug=store_slug_query,
+            body=body if isinstance(body, dict) else None,
+            header_slug=request.headers.get("x-store-slug"),
+        )
         if dash_store is None:
             log.warning(
                 "[TEMPLATE SAVE FAIL] store_slug=%s duration_ms=%s error=no_store",
-                store_slug,
+                resolved_store_slug,
                 _elapsed_ms(),
             )
             return j({"ok": False, "error": "no_store"}, 404)
         store_id = getattr(dash_store, "id", None)
-        store_slug = canon_slug
+        resolved_store_slug = canon_slug
         zs = getattr(dash_store, "zid_store_id", None)
         if isinstance(zs, str) and zs.strip():
-            store_slug = zs.strip()[:255]
+            resolved_store_slug = zs.strip()[:255]
+        json_before = getattr(dash_store, "reason_templates_json", None)
 
         if not isinstance(body, dict):
             log.warning(
                 "[TEMPLATE SAVE FAIL] store_slug=%s duration_ms=%s error=json_object_required",
-                store_slug,
+                resolved_store_slug,
                 _elapsed_ms(),
             )
             return j({"ok": False, "error": "json_object_required"}, 400)
@@ -16886,7 +16889,7 @@ async def api_dashboard_trigger_templates_save(
         if not isinstance(rt, dict):
             log.warning(
                 "[TEMPLATE SAVE FAIL] store_slug=%s duration_ms=%s error=reason_templates_object_required",
-                store_slug,
+                resolved_store_slug,
                 _elapsed_ms(),
             )
             return j({"ok": False, "error": "reason_templates_object_required"}, 400)
@@ -16916,7 +16919,7 @@ async def api_dashboard_trigger_templates_save(
 
         log.info(
             "[TEMPLATE SAVE START] store_slug=%s reason=%s selected_stage=%s delay_value=%s delay_unit=%s duration_ms=%s",
-            store_slug,
+            resolved_store_slug,
             reason_key,
             selected_stage,
             delay_value,
@@ -16925,23 +16928,60 @@ async def api_dashboard_trigger_templates_save(
         )
         log.info(
             "[TEMPLATE SAVE PAYLOAD SIZE] store_slug=%s bytes=%s reason_keys=%s",
-            store_slug,
+            resolved_store_slug,
             payload_bytes,
             ",".join(reason_keys),
         )
         log_pool_checkpoint(
             "[DB POOL BEFORE TEMPLATE SAVE]",
-            store_slug=store_slug,
+            store_slug=resolved_store_slug,
             reason=reason_key,
         )
 
         patch = {"reason_templates": rt}
-        log.info("[TEMPLATE SAVE DB START] store_slug=%s", store_slug)
+        log.info("[TEMPLATE SAVE DB START] store_slug=%s", resolved_store_slug)
         apply_reason_templates_from_body(dash_store, patch)
-        db.session.commit()
+        try:
+            db.session.commit()
+            db_commit_success = True
+        except Exception as commit_exc:  # noqa: BLE001
+            db.session.rollback()
+            db_commit_success = False
+            json_after = getattr(dash_store, "reason_templates_json", None)
+            log.info(
+                "[TRIGGER TEMPLATE SAVE] resolved_store_slug=%s store_id=%s "
+                "body_store_slug=%s query_store_slug=%s reason_keys=%s "
+                "persisted_reason_templates_json_before=%s "
+                "persisted_reason_templates_json_after=%s db_commit_success=false",
+                resolved_store_slug,
+                store_id,
+                body_store_slug_raw,
+                query_store_slug_raw,
+                ",".join(reason_keys),
+                json_before,
+                json_after,
+            )
+            raise commit_exc
+        if store_id is not None:
+            db.session.refresh(dash_store)
+        json_after = getattr(dash_store, "reason_templates_json", None)
+        log.info(
+            "[TRIGGER TEMPLATE SAVE] resolved_store_slug=%s store_id=%s "
+            "body_store_slug=%s query_store_slug=%s reason_keys=%s "
+            "persisted_reason_templates_json_before=%s "
+            "persisted_reason_templates_json_after=%s db_commit_success=%s",
+            resolved_store_slug,
+            store_id,
+            body_store_slug_raw,
+            query_store_slug_raw,
+            ",".join(reason_keys),
+            json_before,
+            json_after,
+            "true" if db_commit_success else "false",
+        )
         log.info(
             "[TEMPLATE SAVE DB DONE] store_slug=%s duration_ms=%s",
-            store_slug,
+            resolved_store_slug,
             _elapsed_ms(),
         )
 
@@ -16955,13 +16995,13 @@ async def api_dashboard_trigger_templates_save(
         )
         log_pool_checkpoint(
             "[DB POOL AFTER TEMPLATE SAVE]",
-            store_slug=store_slug,
+            store_slug=resolved_store_slug,
             reason=reason_key,
             duration_ms=_elapsed_ms(),
         )
         log.info(
             "[TEMPLATE SAVE SUCCESS] store_slug=%s reason=%s duration_ms=%s response_rows=%s",
-            store_slug,
+            resolved_store_slug,
             reason_key,
             _elapsed_ms(),
             len(ack.get("reason_rows") or []),
@@ -16969,9 +17009,23 @@ async def api_dashboard_trigger_templates_save(
         return j(ack)
     except Exception as e:  # noqa: BLE001
         db.session.rollback()
+        if not db_commit_success:
+            log.info(
+                "[TRIGGER TEMPLATE SAVE] resolved_store_slug=%s store_id=%s "
+                "body_store_slug=%s query_store_slug=%s reason_keys=%s "
+                "persisted_reason_templates_json_before=%s "
+                "persisted_reason_templates_json_after=%s db_commit_success=false",
+                resolved_store_slug,
+                store_id,
+                body_store_slug_raw,
+                query_store_slug_raw,
+                ",".join(reason_keys),
+                json_before,
+                json_after,
+            )
         log.warning(
             "[TEMPLATE SAVE FAIL] store_slug=%s reason=%s duration_ms=%s err=%s",
-            store_slug,
+            resolved_store_slug,
             reason_key,
             _elapsed_ms(),
             e,
