@@ -959,6 +959,7 @@ _DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT = frozenset(
         "/dev/template-truth",
         "/dev/attempt-2-trace",
         "/dev/recovery-operational-truth",
+        "/dev/cartflow-simulation-report",
     }
 )
 
@@ -1882,6 +1883,39 @@ def dev_template_truth(
     try:
         _ensure_cartflow_api_db_warmed()
         return j(build_template_truth_report(store_slug=store_slug, reason=reason))
+    except Exception as exc:  # noqa: BLE001
+        db.session.rollback()
+        return j({"ok": False, "error": str(exc)}, 500)
+
+
+@app.get("/dev/cartflow-simulation-report")
+def dev_cartflow_simulation_report(
+    stores: int = Query(10, ge=1, le=100),
+    dry_run: bool = Query(True),
+    expanded: bool = Query(False),
+    cleanup: bool = Query(False),
+) -> Any:
+    """
+    Multi-store recovery dry-run simulation (sim-store-* only).
+
+    No WhatsApp/Twilio/Meta; no production merchant rows. Use cleanup=true to purge.
+    """
+    from services.cartflow_simulation_report_v1 import (  # noqa: PLC0415
+        cleanup_simulation_data,
+        run_cartflow_simulation_report,
+    )
+
+    try:
+        _ensure_cartflow_api_db_warmed()
+        if cleanup:
+            return j(cleanup_simulation_data())
+        return j(
+            run_cartflow_simulation_report(
+                stores=stores,
+                dry_run=dry_run,
+                expanded=expanded,
+            )
+        )
     except Exception as exc:  # noqa: BLE001
         db.session.rollback()
         return j({"ok": False, "error": str(exc)}, 500)
