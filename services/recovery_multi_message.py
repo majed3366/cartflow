@@ -328,13 +328,156 @@ def resolve_recovery_schedule_timing(
     }
 
 
+def _guided_attempts_max_index(entry: Dict[str, Any]) -> int:
+    ga = entry.get("guided_attempts")
+    if not isinstance(ga, dict) or not ga:
+        return 0
+    mx = 0
+    for k in ga.keys():
+        try:
+            mx = max(mx, int(str(k).strip()))
+        except (TypeError, ValueError):
+            continue
+    return mx
+
+
+def _materialize_entry_messages(
+    entry: Dict[str, Any],
+    canon: str,
+    reason_tag: Optional[str],
+    store: Any,
+) -> List[Dict[str, Any]]:
+    """
+    يبني ‎messages[]‎ من ‎messages‎ أو ‎guided_attempts‎ أو ‎message‎ + ‎message_count‎
+    (لوحة قد تحفظ ‎message_count=2‎ دون مصفوفة ‎messages‎).
+    """
+    from services.store_reason_templates import (
+        _coerce_message_count,
+        _parse_guided_attempts_column,
+        _parse_messages_column,
+    )
+
+    parsed = _parse_messages_column(entry.get("messages"))
+    mc = _coerce_message_count(entry.get("message_count"))
+    ga = _parse_guided_attempts_column(entry.get("guided_attempts"))
+    ga_max = _guided_attempts_max_index(entry)
+    if parsed:
+        mc = max(mc, min(3, len(parsed)))
+    if ga_max >= 2:
+        mc = max(mc, min(3, ga_max))
+    if mc <= 1:
+        return parsed
+
+    legacy_msg = str(entry.get("message") or "").strip()
+    built: List[Dict[str, Any]] = []
+    for i in range(mc):
+        raw_item: Dict[str, Any] = {}
+        if i < len(parsed) and isinstance(parsed[i], dict):
+            raw_item = dict(parsed[i])
+        key = str(i + 1)
+        text = str(raw_item.get("text") or "").strip()
+        if not text and ga.get(key):
+            text = str(ga.get(key) or "").strip()
+        if not text and i == 0 and legacy_msg:
+            text = legacy_msg
+        if not text:
+            text = get_recovery_message(reason_tag, i + 1, store)
+        delay_num = raw_item.get("delay")
+        unit_eff = raw_item.get("unit")
+        if delay_num is None or unit_eff is None:
+            slot_defaults = _default_slot_delay_tuple(canon, i)
+            delay_num = slot_defaults[0]
+            unit_eff = slot_defaults[1]
+        try:
+            delay_f = float(delay_num)
+        except (TypeError, ValueError):
+            delay_f = float(_default_slot_delay_tuple(canon, i)[0])
+        unit_s = normalize_delay_unit(unit_eff) or str(
+            _default_slot_delay_tuple(canon, i)[1]
+        )
+        built.append(
+            {
+                "delay": delay_f,
+                "unit": unit_s,
+                "text": text,
+            }
+        )
+    return built
+
+
+def diagnose_multi_message_config(
+    reason_tag: Optional[str],
+    store: Any,
+) -> Dict[str, Any]:
+    """سبب فشل ‎reason_templates.multi‎ — للتشخيص في الإنتاج."""
+    out: Dict[str, Any] = {
+        "reason_tag": (reason_tag or "").strip() or None,
+        "canon": None,
+        "store_found": store is not None,
+        "store_zid": (
+            (getattr(store, "zid_store_id", None) or "").strip() if store is not None else None
+        ),
+        "template_entry_found": False,
+        "enabled": None,
+        "message_count": None,
+        "messages_array_len": 0,
+        "guided_attempts_keys": [],
+        "materialized_len": 0,
+        "slots_len": None,
+        "miss_reason": None,
+    }
+    canon = canonical_reason_template_key(reason_tag)
+    out["canon"] = canon
+    if canon is None:
+        out["miss_reason"] = "unknown_reason_canon"
+        return out
+    if store is None:
+        out["miss_reason"] = "store_row_missing"
+        return out
+    templates = parse_reason_templates_column(
+        getattr(store, "reason_templates_json", None)
+    )
+    entry = templates.get(canon)
+    if entry is None:
+        out["miss_reason"] = "no_template_entry"
+        return out
+    out["template_entry_found"] = True
+    out["enabled"] = bool(entry.get("enabled", True))
+    if not out["enabled"]:
+        out["miss_reason"] = "template_disabled"
+        return out
+    try:
+        out["message_count"] = int(entry.get("message_count") or 1)
+    except (TypeError, ValueError):
+        out["message_count"] = 1
+    msgs = entry.get("messages")
+    if isinstance(msgs, list):
+        out["messages_array_len"] = len(msgs)
+    ga = entry.get("guided_attempts")
+    if isinstance(ga, dict):
+        out["guided_attempts_keys"] = sorted(str(k) for k in ga.keys())
+    materialized = _materialize_entry_messages(entry, canon, reason_tag, store)
+    out["materialized_len"] = len(materialized)
+    slots = multi_message_slots_for_abandon(reason_tag, store)
+    out["slots_len"] = len(slots) if slots is not None else None
+    if slots is not None:
+        out["miss_reason"] = None
+    elif out["materialized_len"] <= 1:
+        out["miss_reason"] = "effective_message_count_lte_1"
+    elif out["messages_array_len"] == 0 and not out["guided_attempts_keys"]:
+        out["miss_reason"] = "messages_missing_no_guided_attempts"
+    else:
+        out["miss_reason"] = "slots_build_failed"
+    return out
+
+
 def multi_message_slots_for_abandon(
     reason_tag: Optional[str],
     store: Any,
 ) -> Optional[List[Dict[str, Any]]]:
     """
-    يُرجع قائمة خانات الجدولة إذا كان ‎messages‎ غير فارغة و‎max(message_count, len(messages)) > 1‎.
-    وإلا ‎None‎ (المسار القديم برسالة واحدة).
+    يُرجع قائمة خانات الجدولة إذا كان ‎max(message_count, len(messages), guided) > 1‎.
+    يُكمّل ‎messages‎ من ‎guided_attempts‎ / ‎message‎ عند غياب المصفوفة.
     """
     canon = canonical_reason_template_key(reason_tag)
     if canon is None:
@@ -347,18 +490,12 @@ def multi_message_slots_for_abandon(
         return None
     if not bool(entry.get("enabled", True)):
         return None
-    messages_raw = entry.get("messages")
-    if messages_raw is None:
+
+    messages_work = _materialize_entry_messages(entry, canon, reason_tag, store)
+    if not messages_work:
         return None
-    if not isinstance(messages_raw, list) or len(messages_raw) == 0:
-        return None
-    try:
-        mc_stored = int(entry.get("message_count") or 1)
-    except (TypeError, ValueError):
-        mc_stored = 1
-    mc_stored = max(1, min(3, mc_stored))
-    msg_len = min(3, len(messages_raw))
-    mc = max(mc_stored, msg_len)
+
+    mc = min(3, len(messages_work))
     if mc <= 1:
         return None
 
@@ -367,11 +504,11 @@ def multi_message_slots_for_abandon(
 
     for i in range(mc):
         raw_item: Dict[str, Any] = {}
-        if i < len(messages_raw) and isinstance(messages_raw[i], dict):
-            raw_item = messages_raw[i]
+        if i < len(messages_work) and isinstance(messages_work[i], dict):
+            raw_item = messages_work[i]
 
         parsed_delay = _read_stage_delay_from_entry(
-            {"messages": messages_raw},
+            {"messages": messages_work},
             canon,
             i,
         )
@@ -411,23 +548,14 @@ def resolve_configured_message_count(
     """
     عدد رسائل التسلسل المفعّل للاسترجاع — مصدر واحد للوحة والـ runtime.
 
-    الأولوية: ‎recovery_context.configured_message_count‎ (جدولة دائمة) →
-    ‎multi_message_slots_for_abandon‎ → ‎Store.recovery_attempts‎.
+    الأولوية: قوالب حية (‎reason_templates.multi‎) → ‎recovery_context‎ (فقط إن
+    مُسجَّل من multi سابقاً) → ‎Store.recovery_attempts‎.
     """
+    rk_log = ""
+    ctx_src = ""
     if isinstance(recovery_context, dict):
-        raw_ctx = recovery_context.get("configured_message_count")
-        if raw_ctx is not None:
-            try:
-                n_ctx = max(1, int(raw_ctx))
-                _emit_multi_message_config_log(
-                    reason_tag=reason_tag,
-                    configured_count=n_ctx,
-                    source="recovery_context",
-                    recovery_key=str(recovery_context.get("recovery_key") or "")[:128],
-                )
-                return n_ctx, "recovery_context"
-            except (TypeError, ValueError):
-                pass
+        rk_log = str(recovery_context.get("recovery_key") or "")[:128]
+        ctx_src = str(recovery_context.get("configured_message_count_source") or "").strip()
 
     slots = multi_message_slots_for_abandon(reason_tag, store)
     if slots is not None:
@@ -436,9 +564,26 @@ def resolve_configured_message_count(
             reason_tag=reason_tag,
             configured_count=n_slots,
             source="reason_templates.multi",
+            recovery_key=rk_log,
             slot_count=n_slots,
         )
         return n_slots, "reason_templates.multi"
+
+    if isinstance(recovery_context, dict):
+        raw_ctx = recovery_context.get("configured_message_count")
+        if raw_ctx is not None and ctx_src == "reason_templates.multi":
+            try:
+                n_ctx = max(1, int(raw_ctx))
+                if n_ctx > 1:
+                    _emit_multi_message_config_log(
+                        reason_tag=reason_tag,
+                        configured_count=n_ctx,
+                        source="recovery_context",
+                        recovery_key=rk_log,
+                    )
+                    return n_ctx, "recovery_context"
+            except (TypeError, ValueError):
+                pass
 
     from services.whatsapp_send import _max_recovery_attempts
 
@@ -447,6 +592,7 @@ def resolve_configured_message_count(
         reason_tag=reason_tag,
         configured_count=n_store,
         source="store.recovery_attempts",
+        recovery_key=rk_log,
     )
     return n_store, "store.recovery_attempts"
 

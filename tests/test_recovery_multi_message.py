@@ -156,13 +156,35 @@ def test_multi_slots_when_message_count_stale_but_two_messages() -> None:
     assert slots[1]["index"] == 2
 
 
-def test_multi_slots_none_when_messages_missing() -> None:
+def test_multi_slots_when_messages_missing_but_message_count_two() -> None:
     class _S:
         reason_templates_json = json.dumps(
             {"price": {"enabled": True, "message": "x", "message_count": 2}}
         )
 
-    assert multi_message_slots_for_abandon("price_high", _S()) is None
+    slots = multi_message_slots_for_abandon("price_high", _S())
+    assert slots is not None
+    assert len(slots) == 2
+
+
+def test_multi_slots_from_guided_attempts_without_messages_array() -> None:
+    class _S:
+        reason_templates_json = json.dumps(
+            {
+                "price": {
+                    "enabled": True,
+                    "message": "أساسية",
+                    "message_count": 2,
+                    "guided_attempts": {"1": "أولى", "2": "ثانية"},
+                }
+            }
+        )
+
+    slots = multi_message_slots_for_abandon("price", _S())
+    assert slots is not None
+    assert len(slots) == 2
+    assert "أولى" in slots[0]["text"]
+    assert "ثانية" in slots[1]["text"]
 
 
 def test_multi_slots_returns_two_with_defaults_padding() -> None:
@@ -268,10 +290,26 @@ def test_resolve_configured_message_count_prefers_context_then_templates() -> No
     assert src_tpl == "reason_templates.multi"
 
     n_ctx, src_ctx = resolve_configured_message_count(
-        "price", _S(), recovery_context={"configured_message_count": 3}
+        "shipping",
+        _S(),
+        recovery_context={
+            "configured_message_count": 3,
+            "configured_message_count_source": "reason_templates.multi",
+        },
     )
     assert n_ctx == 3
     assert src_ctx == "recovery_context"
+
+    n_stale, src_stale = resolve_configured_message_count(
+        "price",
+        _S(),
+        recovery_context={
+            "configured_message_count": 1,
+            "configured_message_count_source": "store.recovery_attempts",
+        },
+    )
+    assert n_stale == 2
+    assert src_stale == "reason_templates.multi"
 
 
 def test_apply_widget_label_only_preserves_recovery_message() -> None:

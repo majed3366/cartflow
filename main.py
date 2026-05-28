@@ -3983,8 +3983,14 @@ def _normal_recovery_configured_message_count_from_runtime(
     if isinstance(ctx_in, dict) and not ctx_in.get("recovery_key"):
         ctx_in = dict(ctx_in)
         ctx_in["recovery_key"] = recovery_key
+    store_for_resolve = store_obj
+    slug_resolve = _coerce_recovery_runtime_store_slug(recovery_key, "")
+    if slug_resolve:
+        fresh_row = _fresh_store_row_for_recovery_templates(slug_resolve)
+        if fresh_row is not None:
+            store_for_resolve = fresh_row
     count, source = resolve_configured_message_count(
-        rt, store_obj, recovery_context=ctx_in
+        rt, store_for_resolve, recovery_context=ctx_in
     )
     _sync_recovery_multi_attempt_cap(recovery_key, count, source=source)
     return max(1, int(count))
@@ -5441,8 +5447,9 @@ def _build_recovery_context_from_arm(
                 sid_pk = int(raw_pk)
             except (TypeError, ValueError):
                 sid_pk = None
+    store_arm = _fresh_store_row_for_recovery_templates(canon_slug) or store_row
     cfg_count, cfg_source = resolve_configured_message_count(
-        rt, store_row, recovery_context=None
+        rt, store_arm, recovery_context=None
     )
     _sync_recovery_multi_attempt_cap(recovery_key, cfg_count, source=cfg_source)
     return {

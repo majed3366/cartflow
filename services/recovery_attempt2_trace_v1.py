@@ -146,37 +146,72 @@ def build_attempt2_trace(recovery_key: str) -> Dict[str, Any]:
     cart_id: Optional[str] = None
 
     store_obj = None
+    store_obj_fresh = None
     reason_tag: Optional[str] = None
     try:
         from main import (  # noqa: PLC0415
+            _cart_recovery_reason_latest_row,
+            _cart_recovery_reason_latest_row_any_store,
+            _fresh_store_row_for_recovery_templates,
             _load_store_row_for_recovery,
             _normal_recovery_gate_sent_count,
             _reason_tag_for_session,
             _session_recovery_followup_next_due_at,
         )
+        from services.recovery_multi_message import diagnose_multi_message_config
 
         store_obj = _load_store_row_for_recovery(store_slug or "")
+        store_obj_fresh = _fresh_store_row_for_recovery_templates(store_slug or "")
         reason_tag = _reason_tag_for_session(store_slug or "", session_id or "") or None
+        if not reason_tag and session_id:
+            row_any = _cart_recovery_reason_latest_row_any_store(session_id)
+            if row_any is not None:
+                reason_tag = (row_any.reason or "").strip() or None
+        if not reason_tag and store_slug and session_id:
+            row_ss = _cart_recovery_reason_latest_row(store_slug, session_id)
+            if row_ss is not None:
+                reason_tag = (row_ss.reason or "").strip() or None
         sent_count = _normal_recovery_gate_sent_count(rk, session_id or "", cart_id)
         mem_due = (_session_recovery_followup_next_due_at.get(rk) or "").strip()
     except Exception as exc:  # noqa: BLE001
         _log.warning("attempt2 trace runtime helpers failed: %s", exc)
         sent_count = 0
         mem_due = ""
+        diagnose_multi_message_config = None  # type: ignore[misc, assignment]
 
     attempt2_row = _find_attempt2_schedule_row(rk)
     schedule_rows = _all_schedule_rows(rk)
 
     recovery_ctx: Dict[str, Any] = {}
+    ctx_configured_count: Optional[int] = None
+    ctx_configured_source: Optional[str] = None
     if attempt2_row is not None:
         ctx = load_context(attempt2_row)
         rc = ctx.get("recovery_context")
         if isinstance(rc, dict):
             recovery_ctx = rc
+            raw_cc = rc.get("configured_message_count")
+            if raw_cc is not None:
+                try:
+                    ctx_configured_count = int(raw_cc)
+                except (TypeError, ValueError):
+                    ctx_configured_count = None
+            ctx_configured_source = (
+                str(rc.get("configured_message_count_source") or "").strip() or None
+            )
+            if not reason_tag and rc.get("reason_tag"):
+                reason_tag = str(rc.get("reason_tag")).strip() or None
         cart_id = (attempt2_row.cart_id or "").strip() or cart_id
 
+    store_for_templates = store_obj_fresh or store_obj
+    template_diag: Dict[str, Any] = {}
+    if diagnose_multi_message_config is not None:
+        template_diag = diagnose_multi_message_config(reason_tag, store_for_templates)
+
     cfg_count, cfg_source = resolve_configured_message_count(
-        reason_tag, store_obj, recovery_context=recovery_ctx or None
+        reason_tag,
+        store_for_templates,
+        recovery_context=recovery_ctx or None,
     )
 
     now = _utc_now()
@@ -263,6 +298,20 @@ def build_attempt2_trace(recovery_key: str) -> Dict[str, Any]:
         "store_slug": store_slug,
         "session_id": session_id,
         "cart_id": cart_id,
+        "reason_tag": reason_tag,
+        "store_zid_runtime": (
+            (getattr(store_obj, "zid_store_id", None) or "").strip()
+            if store_obj is not None
+            else None
+        ),
+        "store_zid_fresh": (
+            (getattr(store_obj_fresh, "zid_store_id", None) or "").strip()
+            if store_obj_fresh is not None
+            else None
+        ),
+        "recovery_context_configured_count": ctx_configured_count,
+        "recovery_context_configured_source": ctx_configured_source,
+        "template_diagnosis": template_diag,
         "configured_count": int(cfg_count),
         "configured_count_source": cfg_source,
         "sent_count": int(sent_count),
