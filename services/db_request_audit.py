@@ -10,7 +10,8 @@ import contextvars
 import logging
 import os
 import time
-from typing import Any, Dict, Optional
+from contextlib import contextmanager
+from typing import Any, Dict, Iterator, Optional
 
 from sqlalchemy import event
 from sqlalchemy.engine import Engine
@@ -65,6 +66,87 @@ def maybe_install_engine_listener() -> None:
 
     @event.listens_for(eng, "before_cursor_execute", retval=False)
     def _count_cursor(
+        conn: Any,
+        cursor: Any,
+        statement: str,
+        parameters: Any,
+        context: Any,
+        executemany: Any,
+    ) -> None:
+        bucket = _audit_bucket.get()
+        if bucket is None:
+            return
+        bucket["queries"] = int(bucket.get("queries") or 0) + 1
+        stmt = (statement or "").lower()
+        if any(
+            tok in stmt
+            for tok in (
+                " from stores",
+                " join stores",
+                '"stores"',
+                "`stores`",
+                "stores.",
+            )
+        ):
+            bucket["store_hits"] = int(bucket.get("store_hits") or 0) + 1
+        if any(
+            tok in stmt
+            for tok in (
+                "abandoned_cart",
+                "cart_recovery_reason",
+                "cart_recovery_log",
+                "recovery_event",
+                "abandonment_reason",
+                "merchant_followup",
+            )
+        ):
+            bucket["recovery_hits"] = int(bucket.get("recovery_hits") or 0) + 1
+        elif any(tok in stmt for tok in ("objection_track", "message_log")):
+            bucket["analytics_hits"] = int(bucket.get("analytics_hits") or 0) + 1
+
+    _engine_listener_registered = True
+
+
+@contextmanager
+def audit_profile_span(label: str) -> Iterator[Dict[str, Any]]:
+    """
+    Standalone query counter for simulation/deep-profile spans (no HTTP request).
+    Always installs the engine listener when used; does not alter app behavior
+    outside the span.
+    """
+    prev = _audit_bucket.get()
+    maybe_install_engine_listener_force()
+    bucket: Dict[str, Any] = {
+        "endpoint": (label or "profile_span")[:512],
+        "path": (label or "profile_span")[:512],
+        "method": "PROFILE",
+        "queries": 0,
+        "store_hits": 0,
+        "recovery_hits": 0,
+        "analytics_hits": 0,
+        "t0": time.perf_counter(),
+    }
+    _audit_bucket.set(bucket)
+    try:
+        yield bucket
+    finally:
+        _audit_bucket.set(prev)
+
+
+def maybe_install_engine_listener_force() -> None:
+    """Install SQL counter listener even when request audit middleware is off."""
+    global _engine_listener_registered
+    if _engine_listener_registered:
+        return
+    try:
+        from extensions import db
+
+        eng = db.engine
+    except Exception:  # noqa: BLE001
+        return
+
+    @event.listens_for(eng, "before_cursor_execute", retval=False)
+    def _count_cursor_force(
         conn: Any,
         cursor: Any,
         statement: str,

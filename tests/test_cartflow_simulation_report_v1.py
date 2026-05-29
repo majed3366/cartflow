@@ -72,6 +72,22 @@ class CartflowSimulationReportTests(unittest.TestCase):
             self.assertIsInstance(tb[key], (int, float))
         self.assertTrue(report.get("slowest_store"))
         self.assertTrue(report.get("slowest_stage"))
+        dpr = report.get("deep_profile_report") or {}
+        self.assertIn("dashboard_check_ms", dpr)
+        self.assertIn("purchase_check_ms", dpr)
+        self.assertIn("top_slowest_functions", dpr)
+        self.assertGreaterEqual(len(dpr.get("top_slowest_functions") or []), 1)
+        dash_bd = (dpr.get("dashboard_check_ms") or {}).get("breakdown_ms") or {}
+        for key in ("db_ms", "lifecycle_ms", "grouping_ms", "merge_ms", "other_ms"):
+            self.assertIn(key, dash_bd)
+        purch_bd = (dpr.get("purchase_check_ms") or {}).get("breakdown_ms") or {}
+        for key in (
+            "record_truth_ms",
+            "lifecycle_closure_ms",
+            "reconcile_active_carts_ms",
+            "dashboard_after_purchase_ms",
+        ):
+            self.assertIn(key, purch_bd)
         for row in summaries:
             self.assertTrue(row.get("pass"))
             self.assertTrue(row.get("template_saved"))

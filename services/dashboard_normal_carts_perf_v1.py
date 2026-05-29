@@ -239,6 +239,36 @@ def _emit_row_perf_slowest(st: _PerfState) -> None:
         pass
 
 
+def dashboard_normal_carts_perf_snapshot() -> dict[str, Any]:
+    """Read-only perf state for simulation deep-profile (does not end the span)."""
+    st = _get_state()
+    if st is None:
+        return {}
+    row_lifecycle = sum(
+        float(r.get("lifecycle_ms") or 0.0) for r in (st.row_samples or ())
+    )
+    row_classifier = sum(
+        float(r.get("classifier_ms") or 0.0) for r in (st.row_samples or ())
+    )
+    row_lifecycle_truth = sum(
+        float(r.get("lifecycle_truth_ms") or 0.0) for r in (st.row_samples or ())
+    )
+    return {
+        "stage_ms": dict(st.stage_ms or {}),
+        "lifecycle_attach_ms": round(float(st.lifecycle_attach_ms or 0.0), 2),
+        "followup_clarity_ms": round(float(st.followup_clarity_ms or 0.0), 2),
+        "render_payload_ms": round(float(st.render_payload_ms or 0.0), 2),
+        "abandoned_cart_count_loaded": int(st.abandoned_cart_count_loaded or 0),
+        "recovery_schedule_rows_loaded": int(st.recovery_schedule_rows_loaded or 0),
+        "recovery_log_rows_loaded": int(st.recovery_log_rows_loaded or 0),
+        "row_samples_count": len(st.row_samples or ()),
+        "row_lifecycle_ms_sum": round(row_lifecycle, 2),
+        "row_classifier_ms_sum": round(row_classifier, 2),
+        "row_lifecycle_truth_ms_sum": round(row_lifecycle_truth, 2),
+        "slow_stage": st.slow_stage or "-",
+    }
+
+
 def dashboard_normal_carts_perf_emit(*, wall_perf_start: float) -> None:
     """Emit one [DASHBOARD PERF] line — always when perf was begun for this request."""
     st = _get_state()
@@ -320,6 +350,7 @@ __all__ = [
     "dashboard_normal_carts_perf_begin",
     "dashboard_normal_carts_perf_emit",
     "dashboard_normal_carts_perf_peek_queries",
+    "dashboard_normal_carts_perf_snapshot",
     "dashboard_normal_carts_perf_record_loads",
     "dashboard_normal_carts_perf_record_row",
     "dashboard_normal_carts_perf_stage",

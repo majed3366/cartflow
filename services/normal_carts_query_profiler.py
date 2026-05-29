@@ -61,6 +61,33 @@ def normal_carts_profile_begin() -> None:
     _stats.clear()
 
 
+def normal_carts_profile_begin_for_simulation() -> None:
+    """Enable subprofiler for simulation deep-profile (logging/metrics only)."""
+    _active.set(True)
+    _stack.set([])
+    _stats.clear()
+
+
+def normal_carts_profile_snapshot() -> list[dict[str, Any]]:
+    """Copy span stats without clearing (simulation deep-profile)."""
+    out: list[dict[str, Any]] = []
+    for fn, st in _stats.items():
+        if st.calls < 1:
+            continue
+        out.append(
+            {
+                "fn": fn,
+                "calls": int(st.calls),
+                "queries_inclusive": int(st.inclusive_queries),
+                "queries_exclusive": int(st.exclusive_queries),
+                "wall_ms_inclusive": round(float(st.inclusive_wall_ms), 2),
+                "wall_ms_exclusive": round(float(st.exclusive_wall_ms), 2),
+            }
+        )
+    out.sort(key=lambda r: (-float(r.get("wall_ms_exclusive") or 0), r.get("fn") or ""))
+    return out
+
+
 def normal_carts_profile_end() -> None:
     try:
         if normal_carts_query_profiling_active():

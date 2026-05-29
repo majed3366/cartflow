@@ -339,7 +339,41 @@ def _measure_dashboard(
     *,
     session_id: str,
     cart_id: str,
+    deep_acc: Optional[Any] = None,
 ) -> tuple[Optional[dict[str, Any]], float]:
+    def _fetch_row() -> Optional[dict[str, Any]]:
+        return _dashboard_row(
+            store_row,
+            recovery_key,
+            session_id=session_id,
+            cart_id=cart_id,
+        )
+
+    if deep_acc is not None:
+        from services.simulation_deep_profile_v1 import profile_dashboard_check  # noqa: PLC0415
+
+        row, wall_ms, sample = profile_dashboard_check(_fetch_row)
+        deep_acc.record_dashboard(
+            wall_ms=wall_ms,
+            queries=int(sample.get("queries") or 0),
+            perf_snap=sample.get("perf") or {},
+            span_snap=sample.get("spans") or [],
+        )
+        perf = sample.get("perf") if isinstance(sample.get("perf"), dict) else {}
+        lc_ms = float(perf.get("lifecycle_attach_ms") or 0.0) + float(
+            perf.get("row_lifecycle_ms_sum") or 0.0
+        )
+        st.payload_ms_samples.append(round(wall_ms, 2))
+        if lc_ms > 0:
+            st.lifecycle_ms_samples.append(round(lc_ms, 2))
+        elif row is not None:
+            row_lc = float(row.get("customer_lifecycle_attach_ms") or 0.0)
+            if row_lc <= 0:
+                row_lc = float(row.get("lifecycle_ms") or 0.0)
+            if row_lc > 0:
+                st.lifecycle_ms_samples.append(round(row_lc, 2))
+        return row, wall_ms
+
     from services.dashboard_normal_carts_perf_v1 import (  # noqa: PLC0415
         dashboard_normal_carts_perf_begin,
         dashboard_normal_carts_perf_emit,
@@ -347,12 +381,7 @@ def _measure_dashboard(
 
     wall0 = time.perf_counter()
     dashboard_normal_carts_perf_begin()
-    row = _dashboard_row(
-        store_row,
-        recovery_key,
-        session_id=session_id,
-        cart_id=cart_id,
-    )
+    row = _fetch_row()
     lc_ms = _peek_dashboard_lifecycle_ms(recovery_key)
     dashboard_normal_carts_perf_emit(wall_perf_start=wall0)
     wall_ms = (time.perf_counter() - wall0) * 1000.0
@@ -466,7 +495,9 @@ def _simulate_send(
     db.session.commit()
 
 
-def _simulate_one_store(index: int, *, run_id: str, dry_run: bool) -> _StoreSimState:
+def _simulate_one_store(
+    index: int, *, run_id: str, dry_run: bool, deep_acc: Optional[Any] = None
+) -> _StoreSimState:
     st = _StoreSimState()
     store_wall0 = time.perf_counter()
     slug = sim_store_slug(index)
@@ -559,6 +590,7 @@ def _simulate_one_store(index: int, *, run_id: str, dry_run: bool) -> _StoreSimS
         st,
         session_id=st.session_id,
         cart_id=st.cart_id,
+        deep_acc=deep_acc,
     )
     tm.dashboard_check_ms += dash_ms
     visible_before = row_before is not None
@@ -596,6 +628,7 @@ def _simulate_one_store(index: int, *, run_id: str, dry_run: bool) -> _StoreSimS
         st,
         session_id=st.session_id,
         cart_id=st.cart_id,
+        deep_acc=deep_acc,
     )
     tm.dashboard_check_ms += dash_ms
     if row_after_1 is None:
@@ -665,6 +698,7 @@ def _simulate_one_store(index: int, *, run_id: str, dry_run: bool) -> _StoreSimS
         st,
         session_id=st.session_id,
         cart_id=st.cart_id,
+        deep_acc=deep_acc,
     )
     tm.dashboard_check_ms += dash_ms
     st.dashboard_visible = row_after_2 is not None
@@ -697,6 +731,7 @@ def _simulate_one_store(index: int, *, run_id: str, dry_run: bool) -> _StoreSimS
         st,
         session_id=st.session_id,
         cart_id=st.cart_id,
+        deep_acc=deep_acc,
     )
     tm.reply_check_ms += (time.perf_counter() - t_reply) * 1000.0
     st.reply_state = _norm(
@@ -736,6 +771,7 @@ def _simulate_one_store(index: int, *, run_id: str, dry_run: bool) -> _StoreSimS
         st,
         session_id=st.session_id,
         cart_id=st.cart_id,
+        deep_acc=deep_acc,
     )
     tm.return_check_ms += (time.perf_counter() - t_return) * 1000.0
     st.return_state = _norm(
@@ -764,26 +800,59 @@ def _simulate_one_store(index: int, *, run_id: str, dry_run: bool) -> _StoreSimS
     # 10: purchase
     from services.purchase_truth import has_purchase, ingest_purchase_truth  # noqa: PLC0415
 
-    t_purchase = time.perf_counter()
-    ingest_purchase_truth(
-        recovery_key=st.recovery_key,
-        purchase_source=SIM_SOURCE,
-        store_slug=slug,
-        session_id=st.session_id,
-        cart_id=st.cart_id,
-        order_id=f"sim-order-{index:03d}",
-        customer_phone=phone,
-        evidence_detail="simulation_report",
-        context_payload={"simulation": True, "sim_run_id": run_id},
-    )
-    row_purchase, dash_ms = _measure_dashboard(
-        store_row,
-        st.recovery_key,
-        st,
-        session_id=st.session_id,
-        cart_id=st.cart_id,
-    )
-    tm.purchase_check_ms += (time.perf_counter() - t_purchase) * 1000.0
+    def _ingest_purchase() -> None:
+        ingest_purchase_truth(
+            recovery_key=st.recovery_key,
+            purchase_source=SIM_SOURCE,
+            store_slug=slug,
+            session_id=st.session_id,
+            cart_id=st.cart_id,
+            order_id=f"sim-order-{index:03d}",
+            customer_phone=phone,
+            evidence_detail="simulation_report",
+            context_payload={"simulation": True, "sim_run_id": run_id},
+        )
+
+    def _dash_after_purchase() -> Optional[dict[str, Any]]:
+        return _dashboard_row(
+            store_row,
+            st.recovery_key,
+            session_id=st.session_id,
+            cart_id=st.cart_id,
+        )
+
+    if deep_acc is not None:
+        from services.simulation_deep_profile_v1 import profile_purchase_check  # noqa: PLC0415
+
+        row_purchase, purchase_total_ms, psample = profile_purchase_check(
+            ingest_fn=_ingest_purchase,
+            dashboard_fn=_dash_after_purchase,
+        )
+        deep_acc.record_purchase(
+            total_ms=purchase_total_ms,
+            ingest_ms=float(psample.get("ingest_ms") or 0.0),
+            record_truth_ms=float(psample.get("record_truth_ms") or 0.0),
+            lifecycle_ms=float(psample.get("lifecycle_ms") or 0.0),
+            reconcile_ms=float(psample.get("reconcile_ms") or 0.0),
+            dashboard_ms=float(psample.get("dashboard_ms") or 0.0),
+            ingest_queries=int(psample.get("ingest_queries") or 0),
+            reconcile_queries=int(psample.get("reconcile_queries") or 0),
+            dashboard_queries=int(psample.get("dashboard_queries") or 0),
+            span_snap=psample.get("dashboard_spans") or [],
+        )
+        tm.purchase_check_ms += purchase_total_ms
+        tm.dashboard_check_ms += float(psample.get("dashboard_ms") or 0.0)
+    else:
+        t_purchase = time.perf_counter()
+        _ingest_purchase()
+        row_purchase, dash_ms = _measure_dashboard(
+            store_row,
+            st.recovery_key,
+            st,
+            session_id=st.session_id,
+            cart_id=st.cart_id,
+        )
+        tm.purchase_check_ms += (time.perf_counter() - t_purchase) * 1000.0
     st.purchase_state = _norm(
         (row_purchase or {}).get("customer_lifecycle_state")
     )
@@ -882,6 +951,9 @@ def run_cartflow_simulation_report(
     lifecycle_ms_all: list[float] = []
     store_timings: list[_StoreTiming] = []
     initial_cleanup_ms = 0.0
+    from services.simulation_deep_profile_v1 import DeepProfileAccumulator  # noqa: PLC0415
+
+    deep_acc = DeepProfileAccumulator()
 
     patches = _whatsapp_guard_patches()
     started = time.perf_counter()
@@ -892,7 +964,7 @@ def run_cartflow_simulation_report(
         cleanup_simulation_data()
         initial_cleanup_ms = (time.perf_counter() - t_cleanup) * 1000.0
         for i in range(1, n + 1):
-            st = _simulate_one_store(i, run_id=run_id, dry_run=True)
+            st = _simulate_one_store(i, run_id=run_id, dry_run=True, deep_acc=deep_acc)
             passed = not st.failures
             if not passed:
                 for detail in st.failures:
@@ -962,6 +1034,7 @@ def run_cartflow_simulation_report(
         store_timings,
         initial_cleanup_ms=initial_cleanup_ms,
     )
+    deep_profile_report = deep_acc.build_report()
 
     return {
         "ok": fail_count == 0,
@@ -981,6 +1054,7 @@ def run_cartflow_simulation_report(
         "timing_breakdown": timing_breakdown,
         "slowest_store": slowest_store,
         "slowest_stage": slowest_stage,
+        "deep_profile_report": deep_profile_report,
         "failed_cases": failed_cases,
         "per_store_summary": per_store,
         "warnings": warnings,
