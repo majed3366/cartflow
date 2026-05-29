@@ -482,7 +482,12 @@ def _bulk_load_opportunities(
         (
             "loop:batch_resolve_customer_phone_per_abandoned",
             "_merchant_normal_batch_resolve_customer_phone_raw",
-            "Phone resolution runs once per abandoned row; batch path already bulk-loads message_logs and reasons — extend map coverage or skip redundant lookups.",
+            "RESOLVED: bulk phone map in batch_reads (loop:batch_resolve_customer_phone_bulk).",
+        ),
+        (
+            "sql:batch_cart_recovery_reason_by_session",
+            "CartRecoveryReason dual store+any query",
+            "RESOLVED: merged single bulk query (merchant_reason_bulk_prefetch_v1).",
         ),
         (
             "merchant_group_stale_meta",
@@ -655,6 +660,7 @@ def build_next_bottleneck_report(
     top_slowest_functions: list[dict[str, Any]],
     queued_followup_optimization: Optional[dict[str, Any]] = None,
     phone_resolution_optimization: Optional[dict[str, Any]] = None,
+    reason_bulk_optimization: Optional[dict[str, Any]] = None,
     span_profiler: Optional[list[dict[str, Any]]] = None,
 ) -> dict[str, Any]:
     """
@@ -670,6 +676,11 @@ def build_next_bottleneck_report(
     pr = (
         phone_resolution_optimization
         if isinstance(phone_resolution_optimization, dict)
+        else {}
+    )
+    rb = (
+        reason_bulk_optimization
+        if isinstance(reason_bulk_optimization, dict)
         else {}
     )
 
@@ -739,6 +750,10 @@ def build_next_bottleneck_report(
     pr_db_after = float(pr_after.get("phone_resolution_db_queries") or 0)
     phone_removed = bool(pr.get("per_row_db_eliminated")) and pr_fallback <= 0 and pr_db_after <= 0
 
+    rb_after = (rb.get("after_avg_per_dashboard_check") or {}) if rb else {}
+    rb_queries_after = float(rb_after.get("reason_bulk_queries") or 0)
+    reason_removed = bool(rb.get("dual_query_eliminated")) and rb_queries_after <= 1.0
+
     ranked_n1 = sorted(
         n_plus_one,
         key=lambda r: (-int(r.get("query_count") or 0), str(r.get("span") or "")),
@@ -792,7 +807,38 @@ def build_next_bottleneck_report(
         if "cart_recovery_reason" in span.lower():
             reason_query_est = max(reason_query_est, int(row.get("query_count") or 0))
 
-    if qf_removed and qf_per_group <= 0 and not queued_n1 and phone_removed:
+    if qf_removed and qf_per_group <= 0 and not queued_n1 and phone_removed and reason_removed:
+        if top_n1:
+            next_bottleneck = top_n1_span
+            rationale = (
+                "Queued-followup, phone bulk prefetch, and merged reason bulk query active. "
+                f"Next highest SQL span: {top_n1_span} (~{top_n1_queries} queries/check)."
+            )
+        elif top_child:
+            next_bottleneck = str(top_child.get("span") or "")
+            rationale = (
+                "Queued-followup, phone, and reason bulk optimizations active. Top profiler "
+                f"child span: {next_bottleneck} "
+                f"(~{int(top_child.get('query_count') or 0)} queries/check). "
+                + simulation_caveat
+            )
+        elif top_repeated:
+            fp0 = top_repeated[0]
+            next_bottleneck = str(fp0.get("fingerprint") or "unknown_sql")[:120]
+            rationale = (
+                "Queued-followup, phone, and reason bulk optimizations active. Dominant "
+                f"repeated SQL (schema noise filtered): count={fp0.get('count')}. "
+                + simulation_caveat
+            )
+        else:
+            next_bottleneck = "sql:abandoned_cart_candidates_page_query"
+            rationale = (
+                "Queued-followup, phone, and reason bulk optimizations active. "
+                "Next structural cost: abandoned_carts candidate page query on partial checks "
+                "or remaining batch_reads SQL under cooperative wall budget. "
+                + simulation_caveat
+            )
+    elif qf_removed and qf_per_group <= 0 and not queued_n1 and phone_removed:
         if reason_dual_n1 or reason_query_est >= 2:
             next_bottleneck = "sql:batch_cart_recovery_reason_by_session"
             rationale = (
@@ -888,12 +934,16 @@ def build_next_bottleneck_report(
         rationale = f"Top N+1 span: {top_n1_span} (~{top_n1_queries} queries/check)."
 
     report_title = (
-        "Next dashboard hot-path bottleneck (post phone-resolution optimization)"
-        if phone_removed
+        "Next dashboard hot-path bottleneck (post reason-bulk merge)"
+        if reason_removed
         else (
-            "Next dashboard hot-path bottleneck (post queued-followup optimization)"
-            if qf_removed and qf_per_group <= 0
-            else "Next dashboard hot-path bottleneck"
+            "Next dashboard hot-path bottleneck (post phone-resolution optimization)"
+            if phone_removed
+            else (
+                "Next dashboard hot-path bottleneck (post queued-followup optimization)"
+                if qf_removed and qf_per_group <= 0
+                else "Next dashboard hot-path bottleneck"
+            )
         )
     )
 
@@ -901,6 +951,7 @@ def build_next_bottleneck_report(
         "title": report_title,
         "queued_followup_n1_removed": qf_removed and qf_per_group <= 0,
         "phone_resolution_n1_removed": phone_removed,
+        "reason_bulk_dual_query_removed": reason_removed,
         "total_dashboard_queries_avg_per_check": total_dashboard_queries,
         "dashboard_check_ms_avg_per_call": dashboard_check_avg_ms,
         "top_repeated_queries": top_repeated,
@@ -925,6 +976,13 @@ def build_next_bottleneck_report(
             "per_row_db_eliminated": bool(pr.get("per_row_db_eliminated")),
             "phone_resolution_fallback_count_avg": pr_fallback,
             "phone_resolution_db_queries_after_avg": pr_db_after,
+        },
+        "reason_bulk_optimization": {
+            "dual_query_eliminated": bool(rb.get("dual_query_eliminated")),
+            "reason_bulk_queries_after_avg": rb_queries_after,
+            "fallback_reason_rows_used_avg": float(
+                rb_after.get("fallback_reason_rows_used") or 0
+            ),
         },
     }
 

@@ -176,6 +176,8 @@ class DeepProfileAccumulator:
     phone_resolution_loop_total: int = 0
     phone_resolution_fallback_total: int = 0
     phone_resolution_db_total: int = 0
+    reason_bulk_queries_total: int = 0
+    reason_fallback_rows_total: int = 0
 
     def record_dashboard(
         self,
@@ -187,6 +189,7 @@ class DeepProfileAccumulator:
         hot_path_audit: Optional[dict[str, Any]] = None,
         queued_followup_snap: Optional[dict[str, Any]] = None,
         phone_resolution_snap: Optional[dict[str, Any]] = None,
+        reason_bulk_snap: Optional[dict[str, Any]] = None,
     ) -> None:
         self.dashboard_calls += 1
         self.dashboard_wall_ms += max(0.0, float(wall_ms))
@@ -260,6 +263,13 @@ class DeepProfileAccumulator:
             )
             self.phone_resolution_db_total += int(
                 phone_resolution_snap.get("phone_resolution_db_queries_after") or 0
+            )
+        if isinstance(reason_bulk_snap, dict):
+            self.reason_bulk_queries_total += int(
+                reason_bulk_snap.get("reason_bulk_queries_after") or 0
+            )
+            self.reason_fallback_rows_total += int(
+                reason_bulk_snap.get("fallback_reason_rows_used") or 0
             )
 
     def record_purchase(
@@ -390,6 +400,23 @@ class DeepProfileAccumulator:
                 )
             except Exception:  # noqa: BLE001
                 phone_resolution_comparison = None
+        reason_bulk_comparison: Optional[dict[str, Any]] = None
+        if self.dashboard_calls > 0:
+            try:
+                from services.merchant_reason_bulk_prefetch_v1 import (  # noqa: PLC0415
+                    build_reason_bulk_comparison,
+                )
+
+                dc = max(1, self.dashboard_calls)
+                reason_bulk_comparison = build_reason_bulk_comparison(
+                    avg_total_dashboard_queries=float(self.dashboard_queries) / float(dc),
+                    avg_reason_bulk_queries_after=float(self.reason_bulk_queries_total)
+                    / float(dc),
+                    avg_fallback_reason_rows_used=float(self.reason_fallback_rows_total)
+                    / float(dc),
+                )
+            except Exception:  # noqa: BLE001
+                reason_bulk_comparison = None
         next_bottleneck_report: Optional[dict[str, Any]] = None
         try:
             from services.dashboard_hot_path_query_audit_v1 import (  # noqa: PLC0415
@@ -409,6 +436,7 @@ class DeepProfileAccumulator:
                 top_slowest_functions=self._top_functions(5),
                 queued_followup_optimization=queued_followup_comparison,
                 phone_resolution_optimization=phone_resolution_comparison,
+                reason_bulk_optimization=reason_bulk_comparison,
                 span_profiler=[
                     {
                         "function": fn,
@@ -481,6 +509,7 @@ class DeepProfileAccumulator:
             "hot_path_query_audit": hot_path_audit,
             "queued_followup_optimization": queued_followup_comparison,
             "phone_resolution_optimization": phone_resolution_comparison,
+            "reason_bulk_optimization": reason_bulk_comparison,
             "next_bottleneck_report": next_bottleneck_report,
             "notes": [
                 "dashboard_check_ms includes all _measure_dashboard calls (before/after send, reply, return, purchase).",
@@ -505,6 +534,10 @@ def profile_dashboard_check(
         phone_resolution_prof_reset,
         phone_resolution_prof_snapshot,
     )
+    from services.merchant_reason_bulk_prefetch_v1 import (  # noqa: PLC0415
+        reason_bulk_prof_reset,
+        reason_bulk_prof_snapshot,
+    )
     from services.merchant_queued_followup_prefetch_v1 import (  # noqa: PLC0415
         queued_followup_prof_reset,
         queued_followup_prof_snapshot,
@@ -525,6 +558,7 @@ def profile_dashboard_check(
         hot_path_query_audit_begin()
         queued_followup_prof_reset()
         phone_resolution_prof_reset()
+        reason_bulk_prof_reset()
         normal_carts_profile_begin_for_simulation()
         dashboard_normal_carts_perf_begin()
         row = run_dashboard()
@@ -546,6 +580,7 @@ def profile_dashboard_check(
             "hot_path_query_audit": hot_path_audit,
             "queued_followup": queued_followup_prof_snapshot(),
             "phone_resolution": phone_resolution_prof_snapshot(),
+            "reason_bulk": reason_bulk_prof_snapshot(),
         }
     return row, wall_ms, sample
 

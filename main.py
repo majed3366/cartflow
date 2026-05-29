@@ -15370,53 +15370,31 @@ def _merchant_normal_dashboard_batch_reads(
     reasons_rows_fetched = 0
     reason_sess_keys = combined_sess
     try:
+        from services.merchant_reason_bulk_prefetch_v1 import (  # noqa: PLC0415
+            bulk_load_reason_maps_by_session,
+            reason_bulk_prof_reset,
+        )
+
+        reason_bulk_prof_reset()
         with normal_carts_profile_span("sql:batch_cart_recovery_reason_by_session"):
-            if slug and reason_sess_keys:
-                _mbr_seg_t = time.perf_counter()
-                _mbr_seg_q = merchant_dashboard_batch_reads_trace_peek_for_seg(_mbr_tr)
-                rs_rows = (
-                    db.session.query(CartRecoveryReason)
-                    .filter(
-                        CartRecoveryReason.store_slug == slug,
-                        CartRecoveryReason.session_id.in_(list(reason_sess_keys)),
-                    )
-                    .order_by(CartRecoveryReason.updated_at.desc())
-                    .all()
-                )
-                reasons_rows_fetched += len(rs_rows)
-                for r in rs_rows:
-                    k = (getattr(r, "session_id", None) or "").strip()[:512]
-                    if k and k not in reason_store_by_session:
-                        reason_store_by_session[k] = r
-                merchant_dashboard_batch_reads_trace_seg_end(
-                    _mbr_tr,
-                    _mbr_seg_t,
-                    _mbr_seg_q,
-                    "sql_reasons_by_store_slug_and_session_keys",
-                    rows_loaded=len(rs_rows),
-                )
             if reason_sess_keys:
                 _mbr_seg_t = time.perf_counter()
                 _mbr_seg_q = merchant_dashboard_batch_reads_trace_peek_for_seg(_mbr_tr)
-                ra_rows = (
-                    db.session.query(CartRecoveryReason)
-                    .filter(
-                        CartRecoveryReason.session_id.in_(list(reason_sess_keys))
-                    )
-                    .order_by(CartRecoveryReason.updated_at.desc())
-                    .all()
+                (
+                    reason_store_by_session,
+                    reason_any_by_session,
+                    reasons_rows_fetched,
+                    _reason_fallback_used,
+                ) = bulk_load_reason_maps_by_session(
+                    store_slug=slug,
+                    session_keys=reason_sess_keys,
                 )
-                reasons_rows_fetched += len(ra_rows)
-                for r in ra_rows:
-                    k = (getattr(r, "session_id", None) or "").strip()[:512]
-                    if k and k not in reason_any_by_session:
-                        reason_any_by_session[k] = r
                 merchant_dashboard_batch_reads_trace_seg_end(
                     _mbr_tr,
                     _mbr_seg_t,
                     _mbr_seg_q,
-                    "sql_reasons_by_session_keys_any_store",
-                    rows_loaded=len(ra_rows),
+                    "sql_reasons_merged_by_session_keys",
+                    rows_loaded=reasons_rows_fetched,
                 )
     except (SQLAlchemyError, OSError, TypeError, ValueError):
         db.session.rollback()

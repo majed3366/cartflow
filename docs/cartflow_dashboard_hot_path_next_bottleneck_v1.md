@@ -1,42 +1,42 @@
-# Dashboard hot-path: next bottleneck (post phone-resolution optimization)
+# Dashboard hot-path: next bottleneck (post reason-bulk merge)
 
 **Date:** 2026-05-29  
 **Run:** `GET /dev/cartflow-simulation-report?stores=100&dry_run=true&expanded=true`  
-**Prior fixes:** queued-followup N+1 (`perf: remove queued followup n+1 from dashboard hot path`); phone resolution N+1 (`perf: remove phone resolution n+1 from dashboard hot path`)  
-**JSON fields:** `deep_profile_report.phone_resolution_optimization`, `deep_profile_report.next_bottleneck_report`
+**Prior fixes:** queued-followup N+1; phone resolution N+1; reason bulk merge  
+**JSON fields:** `deep_profile_report.reason_bulk_optimization`, `deep_profile_report.next_bottleneck_report`
 
 ---
 
 ## Executive summary
 
-**Phone-resolution per-row DB loop is resolved.** `loop:batch_resolve_customer_phone_per_abandoned` replaced by `loop:batch_resolve_customer_phone_bulk` — one in-memory pass over prefetched batch maps; **0** phone-resolution DB queries and **0** fallbacks to the raw per-row resolver on the normal-carts dashboard path.
+**Dual CartRecoveryReason bulk queries are resolved.** Store-scoped + any-store reason loads merged into **one** SQL round-trip with in-memory precedence (current store first, cross-store fallback only when store row missing).
 
-**Next bottleneck:** `sql:abandoned_cart_candidates_page_query` — dominant repeated SQL on partial/timeout dashboard checks under 100-store load (~7 avg/check in prior audit). On completed batch-read paths, dual `cart_recovery_reason` bulk queries (~2/check) remain the top fixed-count SQL cost.
+**Next bottleneck:** `sql:abandoned_cart_candidates_page_query` — dominant repeated SQL on partial/timeout dashboard checks under 100-store load.
 
 ---
 
-## 100-store simulation metrics (post phone opt)
+## 100-store simulation metrics (post reason merge)
 
-| Metric | Before phone opt | After phone opt |
-|--------|----------------:|----------------:|
-| `total_dashboard_queries` (avg/check) | **46.95** | **46.95** |
-| `dashboard_check_ms` (avg/check) | **117.38 ms** | **128.47 ms** |
-| Phone-resolution DB queries (avg/check) | ~150 (audit baseline) | **0.0** |
-| `phone_resolution_fallback_count` (avg/check) | N/A | **0.0** |
-| `phone_resolution_loop_count` (avg/check) | per-row (~220 calls) | **0.02** (most checks timeout before batch_reads) |
-| Queued-followup per-group DB queries | **0.0** | **0.0** |
+| Metric | Post phone opt | Post reason merge |
+|--------|---------------:|------------------:|
+| `total_dashboard_queries` (avg/check) | 46.95 | **46.8** |
+| `dashboard_check_ms` (avg/check) | 128.47 ms | **104.68 ms** |
+| Reason bulk queries (avg/check) | ~2 (baseline) | **0.01** (most checks timeout before batch_reads) |
+| `fallback_reason_rows_used` (avg/check) | — | **0.0** |
+| `dual_query_eliminated` | — | **true** |
 
-### Phone-resolution optimization confirmed
+On **completed** batch-read paths, reason bulk drops from **2 → 1** query/check.
+
+### Reason bulk optimization confirmed
 
 ```json
 {
-  "phone_resolution_db_queries_before": 150,
+  "reason_bulk_queries_before": 2,
   "after_avg_per_dashboard_check": {
-    "phone_resolution_db_queries": 0.0,
-    "phone_resolution_loop_count": 0.02,
-    "phone_resolution_fallback_count": 0.0
+    "reason_bulk_queries": 0.01,
+    "fallback_reason_rows_used": 0.0
   },
-  "per_row_db_eliminated": true
+  "dual_query_eliminated": true
 }
 ```
 
@@ -46,10 +46,10 @@
 
 | Question | Answer |
 |----------|--------|
-| Queued-followup N+1 removed? | **Yes** — 0 per-group DB queries |
-| Phone resolution N+1 removed? | **Yes** — 0 phone DB queries, 0 fallbacks |
-| Next bottleneck | **`sql:abandoned_cart_candidates_page_query`** (partial-check dominant); **`sql:batch_cart_recovery_reason_by_session`** dual-query (~2/check) on completed reads |
-| Recommended next optimization (not implemented) | Merge dual cart_recovery_reason bulk queries; profile candidate page query under full batch_reads completion |
+| Queued-followup N+1 removed? | **Yes** |
+| Phone resolution N+1 removed? | **Yes** |
+| Reason dual bulk removed? | **Yes** — merged single query |
+| Next bottleneck | **`sql:abandoned_cart_candidates_page_query`** |
 
 ---
 
@@ -59,4 +59,4 @@
 GET /dev/cartflow-simulation-report?stores=100&dry_run=true&expanded=true
 ```
 
-Inspect: `deep_profile_report.phone_resolution_optimization`, `deep_profile_report.next_bottleneck_report`
+Inspect: `deep_profile_report.reason_bulk_optimization`, `deep_profile_report.next_bottleneck_report`
