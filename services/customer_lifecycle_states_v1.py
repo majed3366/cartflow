@@ -776,6 +776,12 @@ def classify_customer_lifecycle_state_v1(
             ),
                 archive_reason="missing_phone",
             )
+        next_line_fs = ""
+        if due_at is not None and due_at > now:
+            next_line_fs = (
+                f"الإرسال الأول بعد: "
+                f"{_format_eta_ar((due_at - now).total_seconds())}"
+            )
         return _finish(
             _pack(
             STATE_WAITING_FIRST_SEND,
@@ -784,6 +790,7 @@ def classify_customer_lifecycle_state_v1(
             what_next="ستُرسل الرسالة تلقائياً عند حلول الموعد.",
             merchant_needed="لا",
             dashboard_action="archive",
+            next_followup_line=next_line_fs,
         ),
             archive_reason="waiting_first_send",
         )

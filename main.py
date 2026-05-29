@@ -10059,12 +10059,25 @@ def _execute_cart_abandon_recovery_schedule_continue(
     do_upsert = not skip_abandon_upsert
     if skip_abandon_upsert:
         cid_probe = (str(cart_id_log or "").strip()[:255]) or ""
+        sid_probe = (str(session_id_log or "").strip()[:512]) or ""
         skip_ok = False
         if cid_probe:
             try:
                 skip_ok = (
                     db.session.query(AbandonedCart.id)
                     .filter(AbandonedCart.zid_cart_id == cid_probe)
+                    .limit(1)
+                    .first()
+                    is not None
+                )
+            except SQLAlchemyError:
+                db.session.rollback()
+                skip_ok = False
+        if not skip_ok and sid_probe:
+            try:
+                skip_ok = (
+                    db.session.query(AbandonedCart.id)
+                    .filter(AbandonedCart.recovery_session_id == sid_probe)
                     .limit(1)
                     .first()
                     is not None
@@ -14282,6 +14295,9 @@ def _normal_recovery_abandoned_scope_filter(
     return or_(*parts)
 
 
+_ACTIVE_RECOVERY_SCHEDULE_STATUSES = frozenset({"scheduled", "running"})
+
+
 @_normal_carts_query_prof_wrap("_normal_recovery_cart_activity_rank_map")
 def _normal_recovery_cart_activity_rank_map(
     rows: list[AbandonedCart],
@@ -14354,6 +14370,65 @@ def _normal_recovery_cart_activity_rank_map(
             if ck:
                 prev = cart_peak.get(ck, epoch)
                 cart_peak[ck] = max(prev, mxt)
+    reason_sess_peak: dict[str, datetime] = {}
+    sched_sess_peak: dict[str, datetime] = {}
+    sched_cart_peak: dict[str, datetime] = {}
+    try:
+        if slug and sids:
+            r_agg = (
+                db.session.query(
+                    CartRecoveryReason.session_id,
+                    func.max(CartRecoveryReason.updated_at).label("mx"),
+                )
+                .filter(
+                    CartRecoveryReason.store_slug == slug,
+                    CartRecoveryReason.session_id.in_(list(sids)),
+                )
+                .group_by(CartRecoveryReason.session_id)
+                .all()
+            )
+            for sid_r, mx in r_agg:
+                if mx is None:
+                    continue
+                sk = str(sid_r or "").strip()[:512]
+                if not sk:
+                    continue
+                mxt = mx if mx.tzinfo else mx.replace(tzinfo=timezone.utc)
+                reason_sess_peak[sk] = mxt
+        sched_or: list[Any] = []
+        if sids:
+            sched_or.append(RecoverySchedule.session_id.in_(list(sids)))
+        if cids:
+            sched_or.append(RecoverySchedule.cart_id.in_(list(cids)))
+        if slug and sched_or:
+            s_agg = (
+                db.session.query(
+                    RecoverySchedule.session_id,
+                    RecoverySchedule.cart_id,
+                    func.max(RecoverySchedule.due_at).label("mx"),
+                )
+                .filter(
+                    RecoverySchedule.store_slug == slug,
+                    RecoverySchedule.status.in_(tuple(_ACTIVE_RECOVERY_SCHEDULE_STATUSES)),
+                )
+                .filter(or_(*sched_or))
+                .group_by(RecoverySchedule.session_id, RecoverySchedule.cart_id)
+                .all()
+            )
+            for sid_s, cid_s, mx in s_agg:
+                if mx is None:
+                    continue
+                mxt = mx if mx.tzinfo else mx.replace(tzinfo=timezone.utc)
+                sk = str(sid_s or "").strip()[:512]
+                ck = str(cid_s or "").strip()[:255]
+                if sk:
+                    prev = sched_sess_peak.get(sk, epoch)
+                    sched_sess_peak[sk] = max(prev, mxt)
+                if ck:
+                    prev = sched_cart_peak.get(ck, epoch)
+                    sched_cart_peak[ck] = max(prev, mxt)
+    except (SQLAlchemyError, OSError, TypeError, ValueError):
+        db.session.rollback()
     for ac in rows:
         aid = int(ac.id)
         ts = out.get(aid, epoch)
@@ -14363,6 +14438,12 @@ def _normal_recovery_cart_activity_rank_map(
             ts = max(ts, sess_peak[rs])
         if zi and zi in cart_peak:
             ts = max(ts, cart_peak[zi])
+        if rs and rs in reason_sess_peak:
+            ts = max(ts, reason_sess_peak[rs])
+        if rs and rs in sched_sess_peak:
+            ts = max(ts, sched_sess_peak[rs])
+        if zi and zi in sched_cart_peak:
+            ts = max(ts, sched_cart_peak[zi])
         out[aid] = ts
     return out
 
@@ -15850,6 +15931,20 @@ def _merchant_normal_recovery_light_payload_merchant_batch(
 
         rk_lc = (out.get("recovery_key") or rk_pre or "").strip()
         next_due_iso = batch.next_due_by_ac.get(aid0)
+        if next_due_iso is None:
+            try:
+                from services.merchant_followup_clarity_v1 import (  # noqa: PLC0415
+                    _next_due_from_schedules,
+                )
+
+                _nd = _next_due_from_schedules(
+                    batch.schedule_rows_by_ac.get(aid0),
+                    now=nu,
+                )
+                if _nd is not None:
+                    next_due_iso = _nd.isoformat()
+            except Exception:  # noqa: BLE001
+                pass
         if next_due_iso is None and rk_lc:
             try:
                 from services.dashboard_normal_carts_guard_v1 import (  # noqa: PLC0415
@@ -15892,6 +15987,8 @@ def _merchant_normal_recovery_light_payload_merchant_batch(
             next_attempt_due_at=next_due_iso,
             timeline_statuses=tl_pre,
         )
+        if next_due_iso:
+            out["next_attempt_due_at"] = next_due_iso
         lifecycle_ms = (time.perf_counter() - _lc_perf0) * 1000.0
         try:
             from services.continuation_decision_trace_v1 import (  # noqa: PLC0415
@@ -16129,6 +16226,11 @@ def _normal_recovery_merchant_lightweight_alert_list(
         full_rows = list(
             q.order_by(AbandonedCart.last_seen_at.desc()).limit(row_cap).all()
         )
+        full_rows = _augment_abandoned_candidates_for_recovery_dashboard(
+            full_rows,
+            dash_store=dash_store,
+            scope_filter=_nr_scope,
+        )
         slug_for_act = (
             (getattr(dash_store, "zid_store_id", None) or "").strip()
             if dash_store is not None
@@ -16140,6 +16242,11 @@ def _normal_recovery_merchant_lightweight_alert_list(
             full_rows,
             cart_activity_utc=activity_map,
             max_pick_groups=max_pick,
+        )
+        picked = _ensure_recovery_visibility_groups_in_pick(
+            picked,
+            full_rows,
+            store_slug=slug_for_act,
         )
         now_utc = datetime.now(timezone.utc)
         npick = len(picked)
@@ -16278,6 +16385,361 @@ def _augment_abandoned_candidates_with_sent_recovery_logs(
     return out
 
 
+def _recent_active_recovery_signal_id_pairs(
+    store_slug: str,
+    *,
+    limit: int = 100,
+) -> list[tuple[str, str]]:
+    """(session_id, cart_id) من سبب محفوظ أو جدولة ‎scheduled/running‎ — للوحة قبل أول إرسال."""
+    slug = (store_slug or "").strip()
+    if not slug:
+        return []
+    lim = max(1, int(limit))
+    pairs: list[tuple[str, str]] = []
+    seen: set[tuple[str, str]] = set()
+
+    def _add(sid: str, cid: str) -> None:
+        sk = (sid or "").strip()[:512]
+        ck = (cid or "").strip()[:255]
+        if not sk and not ck:
+            return
+        key = (sk, ck)
+        if key in seen:
+            return
+        seen.add(key)
+        pairs.append(key)
+
+    try:
+        db.create_all()
+        for rr in (
+            db.session.query(CartRecoveryReason)
+            .filter(CartRecoveryReason.store_slug == slug)
+            .order_by(CartRecoveryReason.updated_at.desc())
+            .limit(lim)
+            .all()
+        ):
+            _add(
+                str(getattr(rr, "session_id", None) or ""),
+                "",
+            )
+    except (SQLAlchemyError, OSError, TypeError, ValueError):
+        db.session.rollback()
+    try:
+        for sr in (
+            db.session.query(RecoverySchedule)
+            .filter(
+                RecoverySchedule.store_slug == slug,
+                RecoverySchedule.status.in_(tuple(_ACTIVE_RECOVERY_SCHEDULE_STATUSES)),
+            )
+            .order_by(RecoverySchedule.due_at.desc())
+            .limit(lim)
+            .all()
+        ):
+            _add(
+                str(getattr(sr, "session_id", None) or ""),
+                str(getattr(sr, "cart_id", None) or ""),
+            )
+    except (SQLAlchemyError, OSError, TypeError, ValueError):
+        db.session.rollback()
+    return pairs[:lim]
+
+
+def _ensure_abandoned_cart_for_active_recovery_signal(
+    *,
+    store_slug: str,
+    session_id: str,
+    cart_id: str,
+    dash_store: Optional[Any],
+) -> Optional[AbandonedCart]:
+    """صف ‎AbandonedCart‎ للوحة عند وجود سبب/جدولة دون اشتراط سجل إرسال."""
+    slug = (store_slug or "").strip()
+    sid = (session_id or "").strip()[:512]
+    cid = (cart_id or "").strip()[:255]
+    if not slug or (not sid and not cid):
+        return None
+    store_row = dash_store if dash_store is not None else _dashboard_recovery_store_row()
+    rk = _recovery_key_from_store_and_session(slug, sid) if sid else ""
+    cart_ids_probe = [cid] if cid else []
+    try:
+        cands = _collect_abandoned_cart_rows_for_merge(
+            cart_ids=cart_ids_probe,
+            session_id=sid or None,
+            recovery_key=rk,
+            store_row=store_row if store_row is not None else None,
+        )
+    except (SQLAlchemyError, OSError, TypeError, ValueError):
+        db.session.rollback()
+        cands = []
+    row = _pick_canonical_abandoned_cart_row(cands)
+    now_utc = datetime.now(timezone.utc)
+    if row is not None:
+        st = (getattr(row, "status", None) or "").strip().lower()
+        if st == "recovered":
+            return None
+        if st != "abandoned":
+            row.status = "abandoned"
+        if sid and not (getattr(row, "recovery_session_id", None) or "").strip():
+            row.recovery_session_id = sid
+        ts = row.last_seen_at
+        if ts is None or (
+            ts.replace(tzinfo=timezone.utc)
+            if ts.tzinfo is None
+            else ts.astimezone(timezone.utc)
+        ) < now_utc - timedelta(days=30):
+            row.last_seen_at = now_utc
+        try:
+            db.session.commit()
+        except SQLAlchemyError:
+            db.session.rollback()
+        return row
+
+    zid = cid or (_synthetic_zid_cart_id_from_recovery_key(rk) if rk else "")
+    if not zid:
+        return None
+    phone: Optional[str] = None
+    try:
+        if sid:
+            rr = (
+                db.session.query(CartRecoveryReason)
+                .filter(
+                    CartRecoveryReason.store_slug == slug,
+                    CartRecoveryReason.session_id == sid,
+                )
+                .first()
+            )
+            if rr is not None:
+                phone = (getattr(rr, "customer_phone", None) or "").strip() or None
+    except (SQLAlchemyError, OSError):
+        db.session.rollback()
+    if not phone and sid:
+        try:
+            sr = (
+                db.session.query(RecoverySchedule)
+                .filter(
+                    RecoverySchedule.store_slug == slug,
+                    RecoverySchedule.session_id == sid,
+                    RecoverySchedule.status.in_(tuple(_ACTIVE_RECOVERY_SCHEDULE_STATUSES)),
+                )
+                .order_by(RecoverySchedule.due_at.asc())
+                .first()
+            )
+            if sr is not None:
+                phone = (getattr(sr, "customer_phone", None) or "").strip() or None
+        except (SQLAlchemyError, OSError):
+            db.session.rollback()
+    store_id: Optional[int] = None
+    if store_row is not None and getattr(store_row, "id", None) is not None:
+        try:
+            store_id = int(store_row.id)
+        except (TypeError, ValueError):
+            store_id = None
+    row = AbandonedCart(
+        store_id=store_id,
+        zid_cart_id=zid[:255],
+        recovery_session_id=sid or None,
+        customer_phone=phone,
+        status="abandoned",
+        vip_mode=False,
+        cart_value=0.0,
+        last_seen_at=now_utc,
+    )
+    try:
+        db.session.add(row)
+        db.session.commit()
+        db.session.refresh(row)
+    except SQLAlchemyError:
+        db.session.rollback()
+        return None
+    return row
+
+
+def _augment_abandoned_candidates_with_active_recovery_signals(
+    primary_rows: list[AbandonedCart],
+    *,
+    dash_store: Optional[Any],
+    scope_filter: Any,
+    augment_limit: int = 100,
+) -> list[AbandonedCart]:
+    """
+    Include abandoned rows with reason or scheduled/running recovery even when
+  missing from the last_seen candidate cap and before any sent log exists.
+    """
+    slug = (
+        (getattr(dash_store, "zid_store_id", None) or "").strip()
+        if dash_store is not None
+        else ""
+    )
+    if not slug:
+        return list(primary_rows)
+    seen: set[int] = set()
+    out: list[AbandonedCart] = []
+    for row in primary_rows:
+        aid = int(getattr(row, "id", 0) or 0)
+        if aid and aid not in seen:
+            seen.add(aid)
+            out.append(row)
+    pairs = _recent_active_recovery_signal_id_pairs(slug, limit=max(1, int(augment_limit)))
+    if not pairs:
+        return out
+    sess_ids: set[str] = set()
+    cart_ids: set[str] = set()
+    for sid, cid in pairs:
+        if sid:
+            sess_ids.add(sid)
+        if cid:
+            cart_ids.add(cid)
+    or_parts: list[Any] = []
+    if sess_ids:
+        or_parts.append(AbandonedCart.recovery_session_id.in_(list(sess_ids)))
+    if cart_ids:
+        or_parts.append(AbandonedCart.zid_cart_id.in_(list(cart_ids)))
+    if or_parts:
+        try:
+            q_extra = db.session.query(AbandonedCart).filter(
+                AbandonedCart.status == "abandoned", or_(*or_parts)
+            )
+            if scope_filter is not None:
+                sig_parts: list[Any] = []
+                if cart_ids:
+                    sig_parts.append(AbandonedCart.zid_cart_id.in_(list(cart_ids)))
+                if sess_ids:
+                    sig_parts.append(
+                        AbandonedCart.recovery_session_id.in_(list(sess_ids))
+                    )
+                if sig_parts:
+                    q_extra = q_extra.filter(or_(scope_filter, or_(*sig_parts)))
+                else:
+                    q_extra = q_extra.filter(scope_filter)
+            vip_th = merchant_vip_threshold_int(dash_store)
+            if vip_th is not None:
+                q_extra = q_extra.filter(
+                    func.coalesce(AbandonedCart.cart_value, 0) < float(vip_th)
+                )
+            for ac in q_extra.limit(max(1, int(augment_limit))).all():
+                aid = int(getattr(ac, "id", 0) or 0)
+                if aid and aid not in seen:
+                    seen.add(aid)
+                    out.append(ac)
+        except (SQLAlchemyError, OSError, TypeError, ValueError):
+            db.session.rollback()
+    for sid, cid in pairs[: max(1, int(augment_limit))]:
+        try:
+            ensured = _ensure_abandoned_cart_for_active_recovery_signal(
+                store_slug=slug,
+                session_id=sid,
+                cart_id=cid,
+                dash_store=dash_store,
+            )
+        except (SQLAlchemyError, OSError, TypeError, ValueError):
+            db.session.rollback()
+            ensured = None
+        if ensured is None:
+            continue
+        aid = int(getattr(ensured, "id", 0) or 0)
+        if aid and aid not in seen:
+            seen.add(aid)
+            out.append(ensured)
+    return out
+
+
+def _augment_abandoned_candidates_for_recovery_dashboard(
+    primary_rows: list[AbandonedCart],
+    *,
+    dash_store: Optional[Any],
+    scope_filter: Any,
+    augment_limit: int = 100,
+) -> list[AbandonedCart]:
+    rows = _augment_abandoned_candidates_with_sent_recovery_logs(
+        primary_rows,
+        dash_store=dash_store,
+        scope_filter=scope_filter,
+        augment_limit=augment_limit,
+    )
+    return _augment_abandoned_candidates_with_active_recovery_signals(
+        rows,
+        dash_store=dash_store,
+        scope_filter=scope_filter,
+        augment_limit=augment_limit,
+    )
+
+
+def _ensure_active_recovery_signal_groups_in_pick(
+    picked: list[list[AbandonedCart]],
+    full_rows: list[AbandonedCart],
+    *,
+    store_slug: str,
+    max_extra_groups: int = 48,
+) -> list[list[AbandonedCart]]:
+    """Keep reason/scheduled carts in pick set (same cap bypass as sent logs)."""
+    slug = (store_slug or "").strip()
+    if not slug or not full_rows:
+        return picked
+    picked_keys: set[str] = set()
+    for grp in picked:
+        if grp:
+            picked_keys.add(_normal_recovery_cart_group_key(grp[0]))
+    groups_by_key: dict[str, list[AbandonedCart]] = defaultdict(list)
+    for ac in full_rows:
+        groups_by_key[_normal_recovery_cart_group_key(ac)].append(ac)
+
+    def _sort_grp(grp: list[AbandonedCart]) -> list[AbandonedCart]:
+        def _ts(ac: AbandonedCart) -> datetime:
+            t = ac.last_seen_at
+            if t is None:
+                return datetime.min.replace(tzinfo=timezone.utc)
+            if t.tzinfo is None:
+                return t.replace(tzinfo=timezone.utc)
+            return t.astimezone(timezone.utc)
+
+        return sorted(grp, key=_ts, reverse=True)
+
+    extra: list[list[AbandonedCart]] = []
+    for sid, cid in _recent_active_recovery_signal_id_pairs(
+        slug, limit=max(1, int(max_extra_groups))
+    ):
+        keys_to_try: list[str] = []
+        if sid:
+            keys_to_try.append(f"rs:{sid}")
+        if cid:
+            keys_to_try.append(f"zid:{cid}")
+        for gk in keys_to_try:
+            if not gk or gk in picked_keys:
+                continue
+            grp = groups_by_key.get(gk)
+            if not grp:
+                continue
+            extra.append(_sort_grp(grp))
+            picked_keys.add(gk)
+            if len(extra) >= max(1, int(max_extra_groups)):
+                break
+        if len(extra) >= max(1, int(max_extra_groups)):
+            break
+    if not extra:
+        return picked
+    return extra + picked
+
+
+def _ensure_recovery_visibility_groups_in_pick(
+    picked: list[list[AbandonedCart]],
+    full_rows: list[AbandonedCart],
+    *,
+    store_slug: str,
+    max_extra_groups: int = 48,
+) -> list[list[AbandonedCart]]:
+    picked = _ensure_sent_recovery_groups_in_pick(
+        picked,
+        full_rows,
+        store_slug=store_slug,
+        max_extra_groups=max_extra_groups,
+    )
+    return _ensure_active_recovery_signal_groups_in_pick(
+        picked,
+        full_rows,
+        store_slug=store_slug,
+        max_extra_groups=max_extra_groups,
+    )
+
+
 @_normal_carts_query_prof_wrap("_normal_recovery_merchant_lightweight_alert_list_for_api")
 def _normal_recovery_merchant_lightweight_alert_list_for_api(
     page_limit: int = 50,
@@ -16367,7 +16829,7 @@ def _normal_recovery_merchant_lightweight_alert_list_for_api(
                 full_rows = list(
                     q.order_by(AbandonedCart.last_seen_at.desc()).limit(row_cap).all()
                 )
-            full_rows = _augment_abandoned_candidates_with_sent_recovery_logs(
+            full_rows = _augment_abandoned_candidates_for_recovery_dashboard(
                 full_rows,
                 dash_store=dash_store,
                 scope_filter=_nr_scope,
@@ -16404,7 +16866,7 @@ def _normal_recovery_merchant_lightweight_alert_list_for_api(
             cart_activity_utc=activity_map,
             max_pick_groups=max_pick,
         )
-        picked = _ensure_sent_recovery_groups_in_pick(
+        picked = _ensure_recovery_visibility_groups_in_pick(
             picked,
             full_rows,
             store_slug=slug_for_act,
@@ -16584,6 +17046,11 @@ def _normal_recovery_cart_alert_list(
         full_rows = list(
             q.order_by(AbandonedCart.last_seen_at.desc()).limit(row_cap).all()
         )
+        full_rows = _augment_abandoned_candidates_for_recovery_dashboard(
+            full_rows,
+            dash_store=dash_store,
+            scope_filter=_nr_scope,
+        )
         slug_for_act = (
             (getattr(dash_store, "zid_store_id", None) or "").strip()
             if dash_store is not None
@@ -16595,6 +17062,11 @@ def _normal_recovery_cart_alert_list(
             full_rows,
             cart_activity_utc=activity_map,
             max_pick_groups=max_pick,
+        )
+        picked = _ensure_recovery_visibility_groups_in_pick(
+            picked,
+            full_rows,
+            store_slug=slug_for_act,
         )
         now_utc = datetime.now(timezone.utc)
         npick = len(picked)

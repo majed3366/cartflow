@@ -128,8 +128,8 @@ def trace_merchant_cart_presence(
     lifecycle: str = "active",
 ) -> dict[str, Any]:
     from main import (  # noqa: PLC0415
-        _augment_abandoned_candidates_with_sent_recovery_logs,
-        _ensure_sent_recovery_groups_in_pick,
+        _augment_abandoned_candidates_for_recovery_dashboard,
+        _ensure_recovery_visibility_groups_in_pick,
         _merchant_normal_dashboard_batch_reads,
         _merchant_normal_recovery_light_payload_merchant_batch,
         _normal_recovery_abandoned_scope_filter,
@@ -246,7 +246,7 @@ def trace_merchant_cart_presence(
     in_candidate = bool(target_ids & candidate_ids)
     out["candidate"] = in_candidate
 
-    full_rows = _augment_abandoned_candidates_with_sent_recovery_logs(
+    full_rows = _augment_abandoned_candidates_for_recovery_dashboard(
         list(candidate_rows),
         dash_store=dash_store,
         scope_filter=nr_scope,
@@ -271,7 +271,7 @@ def trace_merchant_cart_presence(
         cart_activity_utc=activity_map,
         max_pick_groups=max_pick,
     )
-    picked = _ensure_sent_recovery_groups_in_pick(
+    picked = _ensure_recovery_visibility_groups_in_pick(
         picked_before,
         full_rows,
         store_slug=slug_for_act,
