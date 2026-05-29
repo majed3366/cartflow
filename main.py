@@ -14991,6 +14991,17 @@ def _merchant_normal_batch_resolve_customer_phone_raw(
     dash_store: Optional[Any],
     batch: MerchantNormalCartsBatchReads,
 ) -> str:
+    aid = int(getattr(ac, "id", 0) or 0)
+    if aid and aid in batch.cust_phone_by_ac:
+        return (batch.cust_phone_by_ac.get(aid) or "").strip()
+    try:
+        from services.merchant_phone_resolution_prefetch_v1 import (  # noqa: PLC0415
+            phone_resolution_prof_record_fallback,
+        )
+
+        phone_resolution_prof_record_fallback()
+    except Exception:  # noqa: BLE001
+        pass
     sid = (getattr(ac, "recovery_session_id", None) or "").strip()
     zid = (getattr(ac, "zid_cart_id", None) or "").strip() or None
     if not sid:
@@ -15623,14 +15634,25 @@ def _merchant_normal_dashboard_batch_reads(
     cust_map: dict[int, str] = {}
     _mbr_seg_t = time.perf_counter()
     _mbr_seg_q = merchant_dashboard_batch_reads_trace_peek_for_seg(_mbr_tr)
-    for ac_ph in full_rows:
-        with normal_carts_profile_span("loop:batch_resolve_customer_phone_per_abandoned"):
-            aid_ph = int(getattr(ac_ph, "id", 0) or 0)
-            if not aid_ph:
-                continue
-            cust_map[aid_ph] = _merchant_normal_batch_resolve_customer_phone_raw(
-                ac_ph, dash_store, batch
-            ).strip()
+    try:
+        from services.merchant_phone_resolution_prefetch_v1 import (  # noqa: PLC0415
+            build_cust_phone_by_ac_bulk,
+            phone_resolution_prof_reset,
+        )
+
+        phone_resolution_prof_reset()
+        with normal_carts_profile_span("loop:batch_resolve_customer_phone_bulk"):
+            cust_map = build_cust_phone_by_ac_bulk(full_rows, dash_store, batch)
+    except Exception:  # noqa: BLE001
+        phone_resolution_prof_reset()
+        for ac_ph in full_rows:
+            with normal_carts_profile_span("loop:batch_resolve_customer_phone_per_abandoned"):
+                aid_ph = int(getattr(ac_ph, "id", 0) or 0)
+                if not aid_ph:
+                    continue
+                cust_map[aid_ph] = _merchant_normal_batch_resolve_customer_phone_raw(
+                    ac_ph, dash_store, batch
+                ).strip()
     batch.cust_phone_by_ac = cust_map
     batch.phones_loaded = sum(1 for vx in cust_map.values() if vx)
     merchant_dashboard_batch_reads_trace_seg_end(

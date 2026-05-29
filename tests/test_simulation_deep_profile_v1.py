@@ -137,6 +137,10 @@ class SimulationDeepProfileTests(unittest.TestCase):
                 ],
                 "hot_path_functions": {},
             },
+            queued_followup_snap={
+                "queued_followup_per_group_db_queries": 0,
+                "queued_followup_bulk_prefetch_queries": 1,
+            },
         )
         report = acc.build_report()
         self.assertIn("next_bottleneck_report", report)
@@ -145,6 +149,44 @@ class SimulationDeepProfileTests(unittest.TestCase):
                 "phone_resolution_is_next_bottleneck"
             )
         )
+
+    def test_build_report_phone_resolution_removed_next_bottleneck(self) -> None:
+        from services.dashboard_hot_path_query_audit_v1 import build_next_bottleneck_report
+
+        nbr = build_next_bottleneck_report(
+            dashboard_check_ms={
+                "avg_queries_per_call": 45.0,
+                "avg_wall_ms_per_call": 110.0,
+            },
+            hot_path_query_audit={
+                "top_repeated_queries": [],
+                "n_plus_one_patterns": [
+                    {
+                        "span": "sql:batch_cart_recovery_reason_by_session",
+                        "query_count": 2,
+                    }
+                ],
+                "duplicate_lookups": [],
+                "queries_by_span": [],
+            },
+            top_slowest_functions=[],
+            queued_followup_optimization={
+                "n_plus_one_removed": True,
+                "after_avg_per_dashboard_check": {
+                    "queued_followup_per_group_db_queries": 0.0,
+                },
+            },
+            phone_resolution_optimization={
+                "per_row_db_eliminated": True,
+                "after_avg_per_dashboard_check": {
+                    "phone_resolution_fallback_count": 0.0,
+                    "phone_resolution_db_queries": 0.0,
+                },
+            },
+        )
+        self.assertTrue(nbr.get("phone_resolution_n1_removed"))
+        self.assertFalse(nbr.get("phone_resolution_is_next_bottleneck"))
+        self.assertIn("cart_recovery_reason", str(nbr.get("next_bottleneck") or ""))
 
 
 if __name__ == "__main__":

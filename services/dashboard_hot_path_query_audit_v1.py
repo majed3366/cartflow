@@ -609,6 +609,7 @@ def public_hot_path_query_report(report: dict[str, Any]) -> dict[str, Any]:
 _PHONE_BOTTLENECK_SPANS: frozenset[str] = frozenset(
     {
         "loop:batch_resolve_customer_phone_per_abandoned",
+        "loop:batch_resolve_customer_phone_bulk",
         "_merchant_normal_batch_resolve_customer_phone_raw",
         "_merchant_normal_batch_extended_phone_resolve",
         "_resolve_cartflow_recovery_phone",
@@ -653,16 +654,22 @@ def build_next_bottleneck_report(
     hot_path_query_audit: Optional[dict[str, Any]],
     top_slowest_functions: list[dict[str, Any]],
     queued_followup_optimization: Optional[dict[str, Any]] = None,
+    phone_resolution_optimization: Optional[dict[str, Any]] = None,
     span_profiler: Optional[list[dict[str, Any]]] = None,
 ) -> dict[str, Any]:
     """
-    Post-queued-followup-opt audit: identify the next dashboard hot-path bottleneck.
+    Post hot-path optimization audit: identify the next dashboard bottleneck.
     Metrics only — no behavior changes.
     """
     hot = hot_path_query_audit if isinstance(hot_path_query_audit, dict) else {}
     qf = (
         queued_followup_optimization
         if isinstance(queued_followup_optimization, dict)
+        else {}
+    )
+    pr = (
+        phone_resolution_optimization
+        if isinstance(phone_resolution_optimization, dict)
         else {}
     )
 
@@ -727,6 +734,11 @@ def build_next_bottleneck_report(
     qf_after = (qf.get("after_avg_per_dashboard_check") or {}) if qf else {}
     qf_per_group = float(qf_after.get("queued_followup_per_group_db_queries") or 0)
 
+    pr_after = (pr.get("after_avg_per_dashboard_check") or {}) if pr else {}
+    pr_fallback = float(pr_after.get("phone_resolution_fallback_count") or 0)
+    pr_db_after = float(pr_after.get("phone_resolution_db_queries") or 0)
+    phone_removed = bool(pr.get("per_row_db_eliminated")) and pr_fallback <= 0 and pr_db_after <= 0
+
     ranked_n1 = sorted(
         n_plus_one,
         key=lambda r: (-int(r.get("query_count") or 0), str(r.get("span") or "")),
@@ -764,7 +776,59 @@ def build_next_bottleneck_report(
         "for per-row loops in the audit sample. Structural code-path analysis still applies."
     )
 
-    if qf_removed and qf_per_group <= 0 and not queued_n1:
+    reason_dual_n1 = [
+        p
+        for p in n_plus_one
+        if "cart_recovery_reason" in str(p.get("span") or "").lower()
+        or "reason" in str(p.get("span") or "").lower()
+    ]
+    reason_query_est = sum(int(p.get("query_count") or 0) for p in reason_dual_n1)
+    for row in hot.get("queries_by_span") or ():
+        span = str(row.get("span") or "")
+        if "cart_recovery_reason" in span.lower():
+            reason_query_est = max(reason_query_est, int(row.get("query_count") or 0))
+    for row in profiler_child_spans:
+        span = str(row.get("span") or "")
+        if "cart_recovery_reason" in span.lower():
+            reason_query_est = max(reason_query_est, int(row.get("query_count") or 0))
+
+    if qf_removed and qf_per_group <= 0 and not queued_n1 and phone_removed:
+        if reason_dual_n1 or reason_query_est >= 2:
+            next_bottleneck = "sql:batch_cart_recovery_reason_by_session"
+            rationale = (
+                "Queued-followup and phone-resolution per-row DB loops are eliminated. "
+                f"Next fixed-count SQL cost: dual cart_recovery_reason bulk queries "
+                f"(store-scoped + any-store, ~{reason_query_est} queries/check on completed reads)."
+            )
+        elif top_n1:
+            next_bottleneck = top_n1_span
+            rationale = (
+                f"Queued-followup and phone bulk prefetch active. Next highest SQL N+1 span: "
+                f"{top_n1_span} (~{top_n1_queries} queries/check)."
+            )
+        elif top_child:
+            next_bottleneck = str(top_child.get("span") or "")
+            rationale = (
+                f"Queued-followup and phone bulk prefetch active. Top profiler child span: "
+                f"{next_bottleneck} (~{int(top_child.get('query_count') or 0)} queries/check). "
+                + simulation_caveat
+            )
+        elif top_repeated:
+            fp0 = top_repeated[0]
+            next_bottleneck = str(fp0.get("fingerprint") or "unknown_sql")[:120]
+            rationale = (
+                "Queued-followup and phone bulk prefetch active. Dominant repeated SQL "
+                f"(schema noise filtered): count={fp0.get('count')}. "
+                + simulation_caveat
+            )
+        else:
+            next_bottleneck = "sql:batch_cart_recovery_reason_by_session"
+            rationale = (
+                "Queued-followup and phone bulk prefetch active. Pre-audit structural analysis "
+                "identifies dual cart_recovery_reason queries as next fixed-count SQL cost. "
+                + simulation_caveat
+            )
+    elif qf_removed and qf_per_group <= 0 and not queued_n1:
         if phone_n1 or phone_query_est >= 3:
             phone_is_next = True
             next_bottleneck = "loop:batch_resolve_customer_phone_per_abandoned"
@@ -823,9 +887,20 @@ def build_next_bottleneck_report(
         next_bottleneck = top_n1_span
         rationale = f"Top N+1 span: {top_n1_span} (~{top_n1_queries} queries/check)."
 
+    report_title = (
+        "Next dashboard hot-path bottleneck (post phone-resolution optimization)"
+        if phone_removed
+        else (
+            "Next dashboard hot-path bottleneck (post queued-followup optimization)"
+            if qf_removed and qf_per_group <= 0
+            else "Next dashboard hot-path bottleneck"
+        )
+    )
+
     return {
-        "title": "Next dashboard hot-path bottleneck (post queued-followup optimization)",
+        "title": report_title,
         "queued_followup_n1_removed": qf_removed and qf_per_group <= 0,
+        "phone_resolution_n1_removed": phone_removed,
         "total_dashboard_queries_avg_per_check": total_dashboard_queries,
         "dashboard_check_ms_avg_per_call": dashboard_check_avg_ms,
         "top_repeated_queries": top_repeated,
@@ -845,6 +920,11 @@ def build_next_bottleneck_report(
             "name": "merchant_group_stale_meta -> _has_recent_queued_followup",
             "removed": qf_removed and qf_per_group <= 0,
             "after_per_group_db_queries_avg": qf_per_group,
+        },
+        "phone_resolution_optimization": {
+            "per_row_db_eliminated": bool(pr.get("per_row_db_eliminated")),
+            "phone_resolution_fallback_count_avg": pr_fallback,
+            "phone_resolution_db_queries_after_avg": pr_db_after,
         },
     }
 

@@ -360,6 +360,7 @@ def _measure_dashboard(
             span_snap=sample.get("spans") or [],
             hot_path_audit=sample.get("hot_path_query_audit"),
             queued_followup_snap=sample.get("queued_followup"),
+            phone_resolution_snap=sample.get("phone_resolution"),
         )
         perf = sample.get("perf") if isinstance(sample.get("perf"), dict) else {}
         lc_ms = float(perf.get("lifecycle_attach_ms") or 0.0) + float(
