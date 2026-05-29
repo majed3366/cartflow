@@ -487,7 +487,7 @@ def _bulk_load_opportunities(
         (
             "merchant_group_stale_meta",
             "CartRecoveryLog queued probe",
-            "Stale meta calls _has_recent_queued_followup per picked group — bulk prefetch queued logs for session/cart keys from batch_reads.",
+            "RESOLVED: bulk prefetch in batch_reads (sql:batch_queued_followup_logs_bulk).",
         ),
         (
             "loop:for_grp_sorted_in_picked",
@@ -606,9 +606,253 @@ def public_hot_path_query_report(report: dict[str, Any]) -> dict[str, Any]:
     return {k: v for k, v in (report or {}).items() if not str(k).startswith("_")}
 
 
+_PHONE_BOTTLENECK_SPANS: frozenset[str] = frozenset(
+    {
+        "loop:batch_resolve_customer_phone_per_abandoned",
+        "_merchant_normal_batch_resolve_customer_phone_raw",
+        "_merchant_normal_batch_extended_phone_resolve",
+        "_resolve_cartflow_recovery_phone",
+    }
+)
+_QUEUED_FOLLOWUP_SPANS: frozenset[str] = frozenset({"merchant_group_stale_meta"})
+
+
+def _is_schema_noise_fingerprint(fp: str) -> bool:
+    f = (fp or "").strip().lower()
+    return f.startswith("pragma ") or "table_info" in f or "table_xinfo" in f
+
+
+def _aggregate_profiler_child_spans(hot: dict[str, Any]) -> list[dict[str, Any]]:
+    agg: dict[str, dict[str, Any]] = {}
+    for _root, block in (hot.get("hot_path_functions") or {}).items():
+        if not isinstance(block, dict):
+            continue
+        for row in block.get("child_spans") or ():
+            if not isinstance(row, dict):
+                continue
+            span = str(row.get("span") or "")
+            if not span:
+                continue
+            cur = agg.setdefault(
+                span,
+                {"span": span, "query_count": 0, "calls": 0},
+            )
+            cur["query_count"] = max(
+                int(cur.get("query_count") or 0), int(row.get("query_count") or 0)
+            )
+            cur["calls"] = max(int(cur.get("calls") or 0), int(row.get("calls") or 0))
+    return sorted(
+        agg.values(),
+        key=lambda r: (-int(r.get("query_count") or 0), str(r.get("span") or "")),
+    )
+
+
+def build_next_bottleneck_report(
+    *,
+    dashboard_check_ms: dict[str, Any],
+    hot_path_query_audit: Optional[dict[str, Any]],
+    top_slowest_functions: list[dict[str, Any]],
+    queued_followup_optimization: Optional[dict[str, Any]] = None,
+    span_profiler: Optional[list[dict[str, Any]]] = None,
+) -> dict[str, Any]:
+    """
+    Post-queued-followup-opt audit: identify the next dashboard hot-path bottleneck.
+    Metrics only — no behavior changes.
+    """
+    hot = hot_path_query_audit if isinstance(hot_path_query_audit, dict) else {}
+    qf = (
+        queued_followup_optimization
+        if isinstance(queued_followup_optimization, dict)
+        else {}
+    )
+
+    total_dashboard_queries = round(
+        float(dashboard_check_ms.get("avg_queries_per_call") or 0), 2
+    )
+    dashboard_check_avg_ms = round(
+        float(dashboard_check_ms.get("avg_wall_ms_per_call") or 0), 2
+    )
+
+    top_repeated_raw = hot.get("top_repeated_queries") or []
+    top_repeated = [
+        x
+        for x in top_repeated_raw
+        if not _is_schema_noise_fingerprint(str(x.get("fingerprint") or ""))
+    ][:10]
+    n_plus_one = hot.get("n_plus_one_patterns") or []
+    duplicate_lookups = hot.get("duplicate_lookups") or []
+    top5_slow = (top_slowest_functions or [])[:5]
+    profiler_child_spans = _aggregate_profiler_child_spans(hot)
+    bulk_opportunities = hot.get("bulk_load_opportunities") or []
+
+    phone_n1 = [
+        p
+        for p in n_plus_one
+        if str(p.get("span") or "") in _PHONE_BOTTLENECK_SPANS
+        or "phone" in str(p.get("span") or "").lower()
+    ]
+    queued_n1 = [
+        p for p in n_plus_one if str(p.get("span") or "") in _QUEUED_FOLLOWUP_SPANS
+    ]
+    other_n1 = [p for p in n_plus_one if p not in phone_n1 and p not in queued_n1]
+
+    phone_query_est = sum(int(p.get("query_count") or 0) for p in phone_n1)
+    phone_calls_est = 0
+    for fn in _PHONE_BOTTLENECK_SPANS:
+        for row in hot.get("queries_by_span") or ():
+            if str(row.get("span") or "") == fn:
+                phone_query_est = max(
+                    phone_query_est, int(row.get("query_count") or 0)
+                )
+        for row in profiler_child_spans:
+            if str(row.get("span") or "") == fn:
+                phone_query_est = max(
+                    phone_query_est, int(row.get("query_count") or 0)
+                )
+                phone_calls_est = max(
+                    phone_calls_est, int(row.get("calls") or 0)
+                )
+    if isinstance(span_profiler, list):
+        for row in span_profiler:
+            fn = str(row.get("function") or "")
+            if fn in _PHONE_BOTTLENECK_SPANS or fn.startswith("loop:batch_resolve"):
+                phone_query_est = max(
+                    phone_query_est, int(row.get("total_queries") or 0)
+                )
+                phone_calls_est = max(
+                    phone_calls_est, int(row.get("calls") or 0)
+                )
+
+    qf_removed = bool(qf.get("n_plus_one_removed"))
+    qf_after = (qf.get("after_avg_per_dashboard_check") or {}) if qf else {}
+    qf_per_group = float(qf_after.get("queued_followup_per_group_db_queries") or 0)
+
+    ranked_n1 = sorted(
+        n_plus_one,
+        key=lambda r: (-int(r.get("query_count") or 0), str(r.get("span") or "")),
+    )
+    top_n1 = ranked_n1[0] if ranked_n1 else None
+    top_n1_span = str((top_n1 or {}).get("span") or "")
+    top_n1_queries = int((top_n1 or {}).get("query_count") or 0)
+
+    phone_opp = next(
+        (
+            o
+            for o in bulk_opportunities
+            if "phone" in str(o.get("location") or "").lower()
+            or "phone" in str(o.get("callee_or_table") or "").lower()
+        ),
+        None,
+    )
+
+    non_bulk_child = [
+        r
+        for r in profiler_child_spans
+        if not str(r.get("span") or "").startswith("sql:batch")
+        and int(r.get("query_count") or 0) > 0
+    ]
+    top_child = non_bulk_child[0] if non_bulk_child else (
+        profiler_child_spans[0] if profiler_child_spans else None
+    )
+
+    phone_is_next = False
+    next_bottleneck = ""
+    rationale = ""
+    simulation_caveat = (
+        "Under 100-store simulation load many dashboard checks hit the cooperative "
+        "wall budget before batch_reads completes, which suppresses SQL fingerprints "
+        "for per-row loops in the audit sample. Structural code-path analysis still applies."
+    )
+
+    if qf_removed and qf_per_group <= 0 and not queued_n1:
+        if phone_n1 or phone_query_est >= 3:
+            phone_is_next = True
+            next_bottleneck = "loop:batch_resolve_customer_phone_per_abandoned"
+            rationale = (
+                "Queued-followup per-group DB probes are eliminated (0 per-group queries). "
+                f"Phone resolution loop remains: ~{phone_query_est} profiler/SQL-attributed "
+                "queries on loop:batch_resolve_customer_phone_per_abandoned / "
+                "_merchant_normal_batch_resolve_customer_phone_raw (once per abandoned row)."
+            )
+        elif phone_opp and int(phone_opp.get("observed_calls") or 0) >= 1:
+            phone_is_next = True
+            next_bottleneck = "loop:batch_resolve_customer_phone_per_abandoned"
+            rationale = (
+                "Queued-followup N+1 removed (0 per-group DB). Phone resolution loop is "
+                "the next structural N+1 in batch_reads — per-row "
+                "_merchant_normal_batch_resolve_customer_phone_raw over ~row_cap candidates. "
+                + simulation_caveat
+            )
+        elif top_n1:
+            next_bottleneck = top_n1_span
+            rationale = (
+                f"Queued-followup N+1 removed. Next highest SQL N+1 span: "
+                f"{top_n1_span} (~{top_n1_queries} queries/check)."
+            )
+        elif top_child:
+            next_bottleneck = str(top_child.get("span") or "")
+            rationale = (
+                f"Queued-followup N+1 removed. Top profiler child span by query count: "
+                f"{next_bottleneck} (~{int(top_child.get('query_count') or 0)} queries/check). "
+                + simulation_caveat
+            )
+        elif top_repeated:
+            fp0 = top_repeated[0]
+            next_bottleneck = str(fp0.get("fingerprint") or "unknown_sql")[:120]
+            rationale = (
+                "Queued-followup N+1 removed. Dominant repeated SQL (schema noise filtered): "
+                f"count={fp0.get('count')}. "
+                + simulation_caveat
+            )
+        else:
+            phone_is_next = True
+            next_bottleneck = "loop:batch_resolve_customer_phone_per_abandoned"
+            rationale = (
+                "Queued-followup N+1 removed. No SQL N+1 captured in this sample; "
+                "pre-audit structural analysis identifies phone resolution loop as next "
+                "per-row cost in _merchant_normal_dashboard_batch_reads. "
+                + simulation_caveat
+            )
+    elif queued_n1:
+        next_bottleneck = "merchant_group_stale_meta"
+        rationale = (
+            "Queued-followup per-group queries still present — optimization may not "
+            "be active on this path."
+        )
+    elif top_n1:
+        next_bottleneck = top_n1_span
+        rationale = f"Top N+1 span: {top_n1_span} (~{top_n1_queries} queries/check)."
+
+    return {
+        "title": "Next dashboard hot-path bottleneck (post queued-followup optimization)",
+        "queued_followup_n1_removed": qf_removed and qf_per_group <= 0,
+        "total_dashboard_queries_avg_per_check": total_dashboard_queries,
+        "dashboard_check_ms_avg_per_call": dashboard_check_avg_ms,
+        "top_repeated_queries": top_repeated,
+        "profiler_child_spans": profiler_child_spans[:15],
+        "n_plus_one_patterns": ranked_n1[:15],
+        "n_plus_one_phone_resolution": phone_n1,
+        "n_plus_one_other": other_n1,
+        "duplicate_lookups": duplicate_lookups[:10],
+        "top_slowest_functions": top5_slow,
+        "phone_resolution_is_next_bottleneck": phone_is_next,
+        "phone_resolution_query_estimate": phone_query_est,
+        "phone_resolution_calls_estimate": phone_calls_est,
+        "next_bottleneck": next_bottleneck,
+        "rationale": rationale,
+        "simulation_caveat": simulation_caveat,
+        "prior_bottleneck_resolved": {
+            "name": "merchant_group_stale_meta -> _has_recent_queued_followup",
+            "removed": qf_removed and qf_per_group <= 0,
+            "after_per_group_db_queries_avg": qf_per_group,
+        },
+    }
+
+
 __all__ = [
     "HOT_PATH_ROOTS",
     "build_hot_path_query_report",
+    "build_next_bottleneck_report",
     "extract_sql_tables",
     "hot_path_query_audit_active",
     "hot_path_query_audit_begin",

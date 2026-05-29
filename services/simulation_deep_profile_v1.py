@@ -359,6 +359,40 @@ class DeepProfileAccumulator:
                 )
             except Exception:  # noqa: BLE001
                 queued_followup_comparison = None
+        next_bottleneck_report: Optional[dict[str, Any]] = None
+        try:
+            from services.dashboard_hot_path_query_audit_v1 import (  # noqa: PLC0415
+                build_next_bottleneck_report,
+            )
+
+            next_bottleneck_report = build_next_bottleneck_report(
+                dashboard_check_ms={
+                    "avg_queries_per_call": self._avg(
+                        float(self.dashboard_queries), self.dashboard_calls
+                    ),
+                    "avg_wall_ms_per_call": self._avg(
+                        self.dashboard_wall_ms, self.dashboard_calls
+                    ),
+                },
+                hot_path_query_audit=hot_path_audit,
+                top_slowest_functions=self._top_functions(5),
+                queued_followup_optimization=queued_followup_comparison,
+                span_profiler=[
+                    {
+                        "function": fn,
+                        "total_queries": int(agg.queries),
+                        "total_wall_ms": round(agg.wall_ms, 2),
+                        "calls": int(agg.calls),
+                    }
+                    for fn, agg in sorted(
+                        self.fn_wall.items(),
+                        key=lambda kv: (-kv[1].queries, kv[0]),
+                    )
+                    if not str(fn).startswith("purchase")
+                ][:30],
+            )
+        except Exception:  # noqa: BLE001
+            next_bottleneck_report = None
         return {
             "dashboard_check_ms": {
                 "calls": self.dashboard_calls,
@@ -414,6 +448,7 @@ class DeepProfileAccumulator:
             },
             "hot_path_query_audit": hot_path_audit,
             "queued_followup_optimization": queued_followup_comparison,
+            "next_bottleneck_report": next_bottleneck_report,
             "notes": [
                 "dashboard_check_ms includes all _measure_dashboard calls (before/after send, reply, return, purchase).",
                 "purchase_check_ms wall time spans ingest_purchase_truth plus final dashboard read.",

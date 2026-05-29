@@ -77,6 +77,75 @@ class SimulationDeepProfileTests(unittest.TestCase):
         report = acc.build_report()
         self.assertIn("hot_path_query_audit", report)
 
+    def test_build_report_includes_next_bottleneck_report(self) -> None:
+        from services.dashboard_hot_path_query_audit_v1 import build_next_bottleneck_report
+
+        nbr = build_next_bottleneck_report(
+            dashboard_check_ms={
+                "avg_queries_per_call": 610.0,
+                "avg_wall_ms_per_call": 120.0,
+            },
+            hot_path_query_audit={
+                "top_repeated_queries": [{"fingerprint": "select phone", "count": 220}],
+                "n_plus_one_patterns": [
+                    {
+                        "span": "loop:batch_resolve_customer_phone_per_abandoned",
+                        "query_count": 220,
+                        "span_calls": 220,
+                    }
+                ],
+                "duplicate_lookups": [],
+                "queries_by_span": [],
+            },
+            top_slowest_functions=[
+                {
+                    "function": "_merchant_normal_dashboard_batch_reads",
+                    "total_wall_ms": 80.0,
+                    "total_queries": 400,
+                }
+            ],
+            queued_followup_optimization={
+                "n_plus_one_removed": True,
+                "after_avg_per_dashboard_check": {
+                    "queued_followup_per_group_db_queries": 0.0,
+                },
+            },
+        )
+        self.assertTrue(nbr.get("phone_resolution_is_next_bottleneck"))
+        acc = DeepProfileAccumulator()
+        acc.record_dashboard(
+            wall_ms=120.0,
+            queries=610,
+            perf_snap={},
+            span_snap=[],
+            hot_path_audit={
+                "top_repeated_queries": [],
+                "n_plus_one_patterns": [
+                    {
+                        "span": "loop:batch_resolve_customer_phone_per_abandoned",
+                        "query_count": 50,
+                    }
+                ],
+                "duplicate_lookups": [],
+                "bulk_load_opportunities": [
+                    {
+                        "location": "loop:batch_resolve_customer_phone_per_abandoned",
+                        "callee_or_table": "_merchant_normal_batch_resolve_customer_phone_raw",
+                        "observed_calls": 220,
+                        "observed_query_count": 50,
+                    }
+                ],
+                "hot_path_functions": {},
+            },
+        )
+        report = acc.build_report()
+        self.assertIn("next_bottleneck_report", report)
+        self.assertTrue(
+            (report.get("next_bottleneck_report") or {}).get(
+                "phone_resolution_is_next_bottleneck"
+            )
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
