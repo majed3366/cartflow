@@ -9,7 +9,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
-from typing import Any, Mapping, Optional
+from typing import Any, Mapping, Optional, Sequence
 
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -28,6 +28,7 @@ STATE_WAITING_NEXT_SCHEDULED = "waiting_next_scheduled"
 STATE_NEEDS_INTERVENTION = "needs_intervention"
 STATE_COMPLETED = "completed"
 STATE_ARCHIVED = "archived"
+STATE_RECOVERY_FOLLOWUP_COMPLETE = "recovery_followup_complete"
 
 LABEL_AR: dict[str, str] = {
     STATE_ACTIVE: "السلة نشطة",
@@ -41,6 +42,7 @@ LABEL_AR: dict[str, str] = {
     STATE_NEEDS_INTERVENTION: "تحتاج تدخل",
     STATE_COMPLETED: "تمت الاستعادة",
     STATE_ARCHIVED: "مؤرشفة",
+    STATE_RECOVERY_FOLLOWUP_COMPLETE: "انتهت متابعة CartFlow",
 }
 
 ROW_CLASS: dict[str, str] = {
@@ -55,6 +57,7 @@ ROW_CLASS: dict[str, str] = {
     STATE_NEEDS_INTERVENTION: "s-attention",
     STATE_COMPLETED: "s-recovered",
     STATE_ARCHIVED: "s-archived",
+    STATE_RECOVERY_FOLLOWUP_COMPLETE: "s-sent",
 }
 
 SENT_LOG = frozenset({"sent_real", "mock_sent"})
@@ -129,6 +132,7 @@ def lifecycle_state_to_filter_bucket(state_key: str) -> str:
         STATE_WAITING_NEXT_SCHEDULED,
         STATE_RETURN_TO_SITE,
         STATE_WAITING_PURCHASE_WINDOW,
+        STATE_RECOVERY_FOLLOWUP_COMPLETE,
     ):
         return UI_FILTER_SENT
     if sk in (STATE_CUSTOMER_REPLY, STATE_CUSTOMER_ENGAGED, STATE_NEEDS_INTERVENTION):
@@ -144,7 +148,7 @@ def lifecycle_state_to_primary_bucket(state_key: str) -> str:
     sk = (state_key or "").strip().lower()
     if sk in (STATE_ACTIVE, STATE_WAITING_FIRST_SEND):
         return PRIMARY_WAITING
-    if sk == STATE_WAITING_CUSTOMER_REPLY:
+    if sk in (STATE_WAITING_CUSTOMER_REPLY, STATE_RECOVERY_FOLLOWUP_COMPLETE):
         return PRIMARY_SENT
     if sk == STATE_WAITING_NEXT_SCHEDULED:
         return PRIMARY_NEEDS_FOLLOWUP
@@ -416,6 +420,105 @@ def _return_to_site_detected(
     return False
 
 
+def _recovery_sequence_complete(
+    *,
+    sent_count: int,
+    attempt_cap: int,
+    log_ss: frozenset[str],
+) -> bool:
+    """All configured recovery sends finished (no further automated messages pending)."""
+    cap = max(1, int(attempt_cap or 1))
+    sent_n = int(sent_count or 0)
+    if sent_n >= cap:
+        return True
+    if "skipped_attempt_limit" in log_ss:
+        return True
+    return False
+
+
+def _parse_utc_datetime(raw: Any) -> Optional[datetime]:
+    if raw is None:
+        return None
+    if isinstance(raw, datetime):
+        dt = raw
+    else:
+        try:
+            dt = datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
+        except (TypeError, ValueError):
+            return None
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
+
+
+def _last_provider_sent_at_utc(
+    *,
+    recovery_key: str,
+    last_provider_sent_at: Optional[str] = None,
+    matched_logs: Optional[Sequence[Any]] = None,
+) -> Optional[datetime]:
+    """Latest provider send timestamp for post-sequence engagement window."""
+    parsed = _parse_utc_datetime(last_provider_sent_at)
+    if parsed is not None:
+        return parsed
+    best: Optional[datetime] = None
+    for lg in matched_logs or ():
+        st = _norm(getattr(lg, "status", None))
+        if st not in SENT_LOG:
+            continue
+        t = getattr(lg, "sent_at", None) or getattr(lg, "created_at", None)
+        ts = _parse_utc_datetime(t)
+        if ts is None:
+            continue
+        if best is None or ts > best:
+            best = ts
+    if best is not None:
+        return best
+    rk = (recovery_key or "").strip()[:512]
+    if not rk:
+        return None
+    try:
+        from models import CartRecoveryLog  # noqa: PLC0415
+
+        rows = (
+            db.session.query(CartRecoveryLog.sent_at, CartRecoveryLog.created_at)
+            .filter(
+                CartRecoveryLog.recovery_key == rk,
+                CartRecoveryLog.status.in_(tuple(SENT_LOG)),
+            )
+            .order_by(CartRecoveryLog.id.desc())
+            .limit(24)
+            .all()
+        )
+        for sent_at, created_at in rows:
+            ts = _parse_utc_datetime(sent_at) or _parse_utc_datetime(created_at)
+            if ts is None:
+                continue
+            if best is None or ts > best:
+                best = ts
+    except SQLAlchemyError:
+        db.session.rollback()
+    return best
+
+
+def _post_sequence_engagement_window_expired(
+    *,
+    last_sent_at: Optional[datetime],
+    now: datetime,
+) -> bool:
+    if last_sent_at is None:
+        return False
+    try:
+        from services.normal_recovery_merchant_view_config import (  # noqa: PLC0415
+            post_recovery_sequence_engagement_wait_minutes,
+        )
+
+        wait_m = max(0, int(post_recovery_sequence_engagement_wait_minutes()))
+    except (TypeError, ValueError):
+        wait_m = 2880
+    return now >= last_sent_at + timedelta(minutes=wait_m)
+
+
 def _recovery_messages_exhausted_for_archive(
     *,
     sent_count: int,
@@ -503,6 +606,23 @@ def _pack(
     )
 
 
+def last_provider_sent_at_iso_from_recovery_logs(
+    *,
+    matched_logs: Optional[Sequence[Any]] = None,
+    latest_log: Optional[Any] = None,
+    recovery_key: str = "",
+) -> Optional[str]:
+    """ISO timestamp of the latest provider send for dashboard lifecycle windows."""
+    logs: list[Any] = list(matched_logs or ())
+    if latest_log is not None:
+        logs.append(latest_log)
+    dt = _last_provider_sent_at_utc(
+        recovery_key=recovery_key,
+        matched_logs=logs,
+    )
+    return dt.isoformat() if dt is not None else None
+
+
 def classify_customer_lifecycle_state_v1(
     *,
     recovery_key: str = "",
@@ -520,6 +640,8 @@ def classify_customer_lifecycle_state_v1(
     has_phone: bool = True,
     next_attempt_due_at: Optional[str] = None,
     timeline_statuses: Optional[frozenset[str]] = None,
+    last_provider_sent_at: Optional[str] = None,
+    matched_logs: Optional[Sequence[Any]] = None,
 ) -> CustomerLifecycleStateV1:
     """Classify one cart row for dashboard lifecycle display."""
     rk = (recovery_key or "").strip()
@@ -731,6 +853,38 @@ def classify_customer_lifecycle_state_v1(
             archive_reason="waiting_next_scheduled",
         )
 
+    sequence_complete = _recovery_sequence_complete(
+        sent_count=sent_n, attempt_cap=cap, log_ss=log_ss
+    )
+    if (
+        sent_proven
+        and not replied
+        and not exhausted
+        and sequence_complete
+        and not has_next_template
+        and not delay_pending
+    ):
+        last_sent = _last_provider_sent_at_utc(
+            recovery_key=rk,
+            last_provider_sent_at=last_provider_sent_at,
+            matched_logs=matched_logs,
+        )
+        if _post_sequence_engagement_window_expired(
+            last_sent_at=last_sent, now=now
+        ):
+            return _finish(
+                _pack(
+                    STATE_RECOVERY_FOLLOWUP_COMPLETE,
+                    what_happened="تم إرسال جميع رسائل المتابعة ولم يحدث تفاعل.",
+                    system_did="أكمل CartFlow جميع خطوات الاسترجاع الآلية.",
+                    what_next="لا توجد إجراءات مجدولة.",
+                    merchant_needed="لا",
+                    dashboard_action="none",
+                    label_override=LABEL_AR[STATE_RECOVERY_FOLLOWUP_COMPLETE],
+                ),
+                archive_reason="recovery_sequence_engagement_window_expired",
+            )
+
     if sent_proven and not replied and not exhausted:
         return _finish(
             _pack(
@@ -827,6 +981,8 @@ def attach_customer_lifecycle_state_v1(
     abandoned_cart_id: Optional[int] = None,
     next_attempt_due_at: Optional[str] = None,
     timeline_statuses: Optional[frozenset[str]] = None,
+    last_provider_sent_at: Optional[str] = None,
+    matched_logs: Optional[Sequence[Any]] = None,
 ) -> CustomerLifecycleStateV1:
     """Attach lifecycle v1 fields; sync primary dashboard status label."""
     lc = classify_customer_lifecycle_state_v1(
@@ -845,6 +1001,8 @@ def attach_customer_lifecycle_state_v1(
         has_phone=has_phone,
         next_attempt_due_at=next_attempt_due_at,
         timeline_statuses=timeline_statuses,
+        last_provider_sent_at=last_provider_sent_at,
+        matched_logs=matched_logs,
     )
     target.update(lc.to_payload_fields())
     target["merchant_status_label_ar"] = lc.label_ar
@@ -919,9 +1077,11 @@ __all__ = [
     "STATE_WAITING_FIRST_SEND",
     "STATE_WAITING_NEXT_SCHEDULED",
     "STATE_WAITING_PURCHASE_WINDOW",
+    "STATE_RECOVERY_FOLLOWUP_COMPLETE",
     "CustomerLifecycleStateV1",
     "attach_customer_lifecycle_state_v1",
     "classify_customer_lifecycle_state_v1",
+    "last_provider_sent_at_iso_from_recovery_logs",
     "lifecycle_payload_for_reopen",
     "lifecycle_filter_counts_from_rows",
     "lifecycle_nav_badge_waiting_count",

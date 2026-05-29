@@ -15966,6 +15966,18 @@ def _merchant_normal_recovery_light_payload_merchant_batch(
         except Exception:  # noqa: BLE001
             vip_lane = False
         _lc_perf0 = time.perf_counter()
+        try:
+            from services.customer_lifecycle_states_v1 import (  # noqa: PLC0415
+                last_provider_sent_at_iso_from_recovery_logs,
+            )
+
+            _last_sent_iso = last_provider_sent_at_iso_from_recovery_logs(
+                matched_logs=batch.matched_logs_by_ac.get(aid0, []),
+                latest_log=batch.latest_log_by_ac.get(aid0),
+                recovery_key=rk_lc,
+            )
+        except Exception:  # noqa: BLE001
+            _last_sent_iso = None
         attach_customer_lifecycle_state_v1(
             out,
             recovery_key=rk_lc,
@@ -15986,6 +15998,8 @@ def _merchant_normal_recovery_light_payload_merchant_batch(
             abandoned_cart_id=int(getattr(ac0, "id", 0) or 0) or None,
             next_attempt_due_at=next_due_iso,
             timeline_statuses=tl_pre,
+            last_provider_sent_at=_last_sent_iso,
+            matched_logs=batch.matched_logs_by_ac.get(aid0, []),
         )
         if next_due_iso:
             out["next_attempt_due_at"] = next_due_iso

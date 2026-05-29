@@ -38,5 +38,16 @@ def normal_recovery_merchant_stale_config() -> dict[str, Any]:
         "active_pending_window_minutes": _env_int(
             "CARTFLOW_ACTIVE_PENDING_WINDOW_MINUTES", 4320
         ),
+        "post_sequence_engagement_wait_minutes": _env_int(
+            "CARTFLOW_POST_SEQUENCE_ENGAGEMENT_WAIT_MINUTES", 2880
+        ),
         "stale_archive_enabled": _env_bool("CARTFLOW_STALE_ARCHIVE_ENABLED", True),
     }
+
+
+def post_recovery_sequence_engagement_wait_minutes() -> int:
+    """After the final recovery send, how long to show «بانتظار تفاعل العميل» before closure."""
+    return int(
+        normal_recovery_merchant_stale_config().get("post_sequence_engagement_wait_minutes")
+        or 2880
+    )
