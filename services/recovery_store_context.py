@@ -23,6 +23,36 @@ def session_part_from_recovery_key(recovery_key: Optional[str]) -> str:
     return rk.split(":", 1)[1].strip()[:512]
 
 
+def resolve_purchase_truth_store_slug(
+    *,
+    recovery_key: str,
+    payload_store_slug: str = "",
+) -> str:
+    """
+    Authoritative store for durable purchase truth + lifecycle closure.
+
+    When ``recovery_key`` uses a merchant zid but checkout payload still sends
+    ``store_slug=demo``, the recovery_key prefix wins so reconciliation matches
+    the active merchant cart.
+    """
+    from services.merchant_test_widget_store_v1 import (  # noqa: PLC0415
+        coerce_cart_event_store_slug,
+    )
+
+    rk_slug = (canonical_store_slug_from_recovery_key(recovery_key) or "").strip()
+    raw = (payload_store_slug or "").strip()
+    coerced = coerce_cart_event_store_slug(raw) if raw else ""
+
+    if rk_slug and not is_public_widget_sandbox_slug(rk_slug):
+        if not raw or is_public_widget_sandbox_slug(raw) or raw.casefold() != rk_slug.casefold():
+            return rk_slug
+    if coerced:
+        return coerced
+    if rk_slug:
+        return rk_slug
+    return raw or "default"
+
+
 def reconcile_recovery_identity(
     *,
     recovery_key: str,

@@ -166,6 +166,45 @@ def _memory_put(evidence: PurchaseEvidence) -> None:
         _memory_records[evidence.recovery_key] = evidence.to_context_dict()
 
 
+def bulk_has_purchase(recovery_keys: Any) -> dict[str, bool]:
+    """Single query for dashboard batch — same truth as repeated has_purchase calls."""
+    keys: list[str] = []
+    seen: set[str] = set()
+    for raw in recovery_keys or ():
+        rk = (str(raw) or "").strip()[:512]
+        if rk and rk not in seen:
+            seen.add(rk)
+            keys.append(rk)
+    if not keys:
+        return {}
+    out: dict[str, bool] = {}
+    with _lock:
+        for rk in keys:
+            if rk in _memory_records:
+                out[rk] = True
+    remaining = [k for k in keys if k not in out]
+    if not remaining:
+        return out
+    try:
+        ensure_purchase_truth_schema(db)
+        rows = (
+            db.session.query(PurchaseTruthRecord.recovery_key)
+            .filter(
+                PurchaseTruthRecord.recovery_key.in_(remaining),
+                PurchaseTruthRecord.purchase_detected.is_(True),
+            )
+            .all()
+        )
+        for row in rows:
+            rk = (row[0] if row else "") or ""
+            rk = str(rk).strip()[:512]
+            if rk:
+                out[rk] = True
+    except Exception:  # noqa: BLE001
+        db.session.rollback()
+    return out
+
+
 def has_purchase(recovery_key: str) -> bool:
     rk = (recovery_key or "").strip()
     if not rk:
@@ -397,9 +436,12 @@ def record_purchase_from_payload(payload: dict[str, Any]) -> Optional[str]:
     if not rk:
         return None
 
-    store_slug = (
-        str(payload.get("store_slug") or payload.get("store") or "").strip()
-        or rk.split(":", 1)[0]
+    from services.recovery_store_context import resolve_purchase_truth_store_slug  # noqa: PLC0415
+
+    payload_slug = str(payload.get("store_slug") or payload.get("store") or "").strip()
+    store_slug = resolve_purchase_truth_store_slug(
+        recovery_key=rk,
+        payload_store_slug=payload_slug,
     )
     phone = (
         str(

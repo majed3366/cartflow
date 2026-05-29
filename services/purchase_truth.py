@@ -32,6 +32,19 @@ _REPLY_STRONG_PHRASES = frozenset(
 )
 
 
+def resolve_purchase_truth_store_slug(
+    *,
+    recovery_key: str,
+    payload_store_slug: str = "",
+) -> str:
+    """Facade — see ``services.recovery_store_context.resolve_purchase_truth_store_slug``."""
+    from services.recovery_store_context import (  # noqa: PLC0415
+        resolve_purchase_truth_store_slug as _resolve,
+    )
+
+    return _resolve(recovery_key=recovery_key, payload_store_slug=payload_store_slug)
+
+
 def _emit_block(tag: str, **fields: Any) -> None:
     lines = [f"[{tag}]"]
     for k, v in fields.items():
@@ -111,6 +124,11 @@ def ingest_purchase_truth(
             reason="missing_key_or_source",
         )
         return False
+
+    store_slug = resolve_purchase_truth_store_slug(
+        recovery_key=rk,
+        payload_store_slug=store_slug or "",
+    )
 
     already = has_purchase(rk)
     truth_written = record_purchase(
@@ -331,10 +349,18 @@ def ingest_purchase_truth_payload(payload: dict[str, Any]) -> Optional[str]:
     if not rk:
         return None
 
-    store_slug = (
-        str(payload.get("store_slug") or payload.get("store") or "").strip()
-        or rk.split(":", 1)[0]
+    payload_slug = str(payload.get("store_slug") or payload.get("store") or "").strip()
+    store_slug = resolve_purchase_truth_store_slug(
+        recovery_key=rk,
+        payload_store_slug=payload_slug,
     )
+    if payload_slug and store_slug.casefold() != payload_slug.casefold():
+        _emit_block(
+            "PURCHASE TRUTH STORE RESOLVED",
+            recovery_key=rk,
+            payload_store_slug=payload_slug,
+            resolved_store_slug=store_slug,
+        )
     phone = (
         str(
             payload.get("customer_phone")
@@ -371,4 +397,5 @@ __all__ = [
     "ingest_purchase_truth_payload",
     "log_purchase_truth",
     "reply_purchase_confidence",
+    "resolve_purchase_truth_store_slug",
 ]

@@ -11781,14 +11781,32 @@ async def api_conversion(request: Request) -> Any:
     if extract_purchase_truth_evidence(truth_payload) is None:
         return j({"ok": False, "error": "purchase_evidence_required"}, 400)
     from services.purchase_truth import ingest_purchase_truth_payload
+    from services.recovery_store_context import canonical_store_slug_from_recovery_key
 
+    cid_raw = body.get("cart_id")
+    cid_s = str(cid_raw).strip() if cid_raw is not None else ""
     key = ingest_purchase_truth_payload(truth_payload)
     if not key:
         return j({"ok": False, "error": "purchase_evidence_required"}, 400)
+    resolved_slug = canonical_store_slug_from_recovery_key(key) or str(ss).strip()
+    try:
+        print(
+            "[CONVERSION INGEST] "
+            f"payload_store_slug={str(ss).strip()} "
+            f"resolved_store_slug={resolved_slug} "
+            f"session_id={str(sid).strip()} "
+            f"cart_id={cid_s or '-'} "
+            f"recovery_key={key}",
+            flush=True,
+        )
+    except OSError:
+        pass
     _sync_abandoned_cart_vip_after_live_cart_payload(
         {
-            "store_slug": str(ss).strip(),
+            "store_slug": resolved_slug,
+            "store": resolved_slug,
             "session_id": str(sid).strip(),
+            "cart_id": cid_s or None,
             "purchase_completed": True,
         }
     )

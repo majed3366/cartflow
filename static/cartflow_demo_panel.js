@@ -25,6 +25,57 @@
     return "demo";
   }
 
+  function isSandboxStoreSlug(slug) {
+    var s = (slug != null ? String(slug).trim().toLowerCase() : "") || "";
+    return !s || s === "demo" || s === "demo2" || s === "default";
+  }
+
+  /** Prefer merchant store from durable recovery state when page slug is sandbox demo. */
+  function getStoreSlugForConversion() {
+    var base = getStoreSlug();
+    if (!isSandboxStoreSlug(base)) {
+      return base;
+    }
+    try {
+      var raw = window.localStorage.getItem("cartflow_recovery_return_state_v1");
+      if (raw) {
+        var st = JSON.parse(raw);
+        if (st && st.store_slug && String(st.store_slug).trim()) {
+          var fromState = String(st.store_slug).trim();
+          if (!isSandboxStoreSlug(fromState)) {
+            return fromState;
+          }
+        }
+      }
+    } catch (e) {
+      /* ignore */
+    }
+    try {
+      var wl = document.querySelector('script[data-store]');
+      if (wl && wl.getAttribute("data-store")) {
+        var ds = String(wl.getAttribute("data-store")).trim();
+        if (ds && !isSandboxStoreSlug(ds)) {
+          return ds;
+        }
+      }
+    } catch (e2) {
+      /* ignore */
+    }
+    return base;
+  }
+
+  function getCartIdForConversion() {
+    try {
+      var cid = window.sessionStorage.getItem("cartflow_cart_event_id");
+      if (cid && String(cid).trim()) {
+        return String(cid).trim().slice(0, 255);
+      }
+    } catch (e) {
+      /* ignore */
+    }
+    return "";
+  }
+
   function getSessionId() {
     if (typeof window.cartflowGetSessionId === "function") {
       return window.cartflowGetSessionId();
@@ -615,11 +666,18 @@
       setText("cf-demo-conversion", "no session");
       return Promise.resolve();
     }
-    return postJson("/api/conversion", {
-      store_slug: getStoreSlug(),
+    var storeSlug = getStoreSlugForConversion();
+    var cartId = getCartIdForConversion();
+    var body = {
+      store_slug: storeSlug,
+      store: storeSlug,
       session_id: sid,
       purchase_completed: true,
-    }).then(function (res) {
+    };
+    if (cartId) {
+      body.cart_id = cartId;
+    }
+    return postJson("/api/conversion", body).then(function (res) {
       var j = (res && res.body) || {};
       if (j && j.ok) {
         setClientConverted(true);

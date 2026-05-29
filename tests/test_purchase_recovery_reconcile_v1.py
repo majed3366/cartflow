@@ -211,3 +211,77 @@ def test_purchase_truth_trace_route_allowlisted_for_production() -> None:
         getattr(r, "path", None) == "/dev/purchase-truth-trace"
         for r in main.app.router.routes
     )
+
+
+def test_resolve_purchase_truth_store_slug_merchant_rk_wins_demo() -> None:
+    from services.recovery_store_context import resolve_purchase_truth_store_slug
+
+    slug = resolve_purchase_truth_store_slug(
+        recovery_key="cartflow2-43a23b:s_abc",
+        payload_store_slug="demo",
+    )
+    assert slug == "cartflow2-43a23b"
+
+
+def test_demo_payload_merchant_coercion_stores_merchant_slug_and_reconciles() -> None:
+    """Checkout sends demo but recovery_key is merchant-coerced → durable truth + cart match."""
+    from unittest.mock import patch
+
+    from services.cartflow_purchase_truth import purchase_context
+    from services.lifecycle_closure_records_v1 import get_durable_closure
+    from services.purchase_truth import ingest_purchase_truth_payload
+
+    merchant_slug = "m-purchase-slug-coerce"
+    st = db.session.query(Store).filter(Store.zid_store_id == merchant_slug).first()
+    if st is None:
+        st = Store(
+            zid_store_id=merchant_slug,
+            recovery_delay=1,
+            recovery_delay_unit="minutes",
+        )
+        db.session.add(st)
+        db.session.commit()
+    sid = "s-purchase-coerce"
+    cid = "c-purchase-coerce"
+    db.session.query(AbandonedCart).filter(AbandonedCart.zid_cart_id == cid).delete(
+        synchronize_session=False
+    )
+    db.session.commit()
+    ac = AbandonedCart(
+        store_id=int(st.id),
+        zid_cart_id=cid,
+        recovery_session_id=sid,
+        customer_phone="+966500000099",
+        status="abandoned",
+        vip_mode=False,
+    )
+    db.session.add(ac)
+    db.session.commit()
+    aid = int(ac.id)
+
+    with patch(
+        "services.merchant_test_widget_store_v1.merchant_authenticated_store_slug",
+        return_value=merchant_slug,
+    ):
+        key = ingest_purchase_truth_payload(
+            {
+                "store_slug": "demo",
+                "store": "demo",
+                "session_id": sid,
+                "cart_id": cid,
+                "purchase_completed": True,
+            }
+        )
+
+    assert key == f"{merchant_slug}:{sid}"
+    ctx = purchase_context(key)
+    assert ctx is not None
+    assert ctx.get("store_slug") == merchant_slug
+    closure = get_durable_closure(key)
+    assert closure is not None
+    assert closure.get("store_slug") == merchant_slug
+
+    db.session.expire_all()
+    refreshed = db.session.get(AbandonedCart, aid)
+    assert refreshed is not None
+    assert str(refreshed.status or "").strip().lower() == "recovered"
