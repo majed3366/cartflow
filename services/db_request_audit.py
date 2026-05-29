@@ -30,6 +30,15 @@ _engine_listener_registered = False
 _SLOW_MS_DEFAULT = 750.0
 
 
+def _maybe_record_hot_path_sql(statement: str) -> None:
+    try:
+        from services.dashboard_hot_path_query_audit_v1 import hot_path_query_audit_record_sql
+
+        hot_path_query_audit_record_sql(statement)
+    except Exception:  # noqa: BLE001
+        pass
+
+
 def audit_enabled() -> bool:
     try:
         from services.cartflow_observability_mode import (
@@ -77,6 +86,7 @@ def maybe_install_engine_listener() -> None:
         if bucket is None:
             return
         bucket["queries"] = int(bucket.get("queries") or 0) + 1
+        _maybe_record_hot_path_sql(statement)
         stmt = (statement or "").lower()
         if any(
             tok in stmt
@@ -158,6 +168,7 @@ def maybe_install_engine_listener_force() -> None:
         if bucket is None:
             return
         bucket["queries"] = int(bucket.get("queries") or 0) + 1
+        _maybe_record_hot_path_sql(statement)
         stmt = (statement or "").lower()
         if any(
             tok in stmt

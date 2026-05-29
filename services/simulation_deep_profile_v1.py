@@ -179,6 +179,7 @@ class DeepProfileAccumulator:
         queries: int,
         perf_snap: dict[str, Any],
         span_snap: list[dict[str, Any]],
+        hot_path_audit: Optional[dict[str, Any]] = None,
     ) -> None:
         self.dashboard_calls += 1
         self.dashboard_wall_ms += max(0.0, float(wall_ms))
@@ -223,6 +224,19 @@ class DeepProfileAccumulator:
         self.dashboard_merge_ms += merge_ms
         self.dashboard_lifecycle_ms += lifecycle_ms
         self.dashboard_other_ms += other_ms
+        if hot_path_audit:
+            try:
+                from services.dashboard_hot_path_query_audit_v1 import (  # noqa: PLC0415
+                    hot_path_query_audit_merge_sample,
+                )
+
+                hot_path_query_audit_merge_sample(
+                    total_queries=int(queries),
+                    span_snap=span_snap,
+                    audit_report=hot_path_audit,
+                )
+            except Exception:  # noqa: BLE001
+                pass
 
     def record_purchase(
         self,
@@ -301,6 +315,19 @@ class DeepProfileAccumulator:
             if profiled_total > 0
             else 0.0
         )
+        hot_path_audit: Optional[dict[str, Any]] = None
+        if self.dashboard_calls > 0:
+            try:
+                from services.dashboard_hot_path_query_audit_v1 import (  # noqa: PLC0415
+                    hot_path_query_audit_merged_report,
+                    public_hot_path_query_report,
+                )
+
+                hot_path_audit = public_hot_path_query_report(
+                    hot_path_query_audit_merged_report()
+                )
+            except Exception:  # noqa: BLE001
+                hot_path_audit = None
         return {
             "dashboard_check_ms": {
                 "calls": self.dashboard_calls,
@@ -354,6 +381,7 @@ class DeepProfileAccumulator:
                 "dashboard_check_pct": dash_pct,
                 "purchase_check_pct": round(100.0 - dash_pct, 1) if dash_pct else 0.0,
             },
+            "hot_path_query_audit": hot_path_audit,
             "notes": [
                 "dashboard_check_ms includes all _measure_dashboard calls (before/after send, reply, return, purchase).",
                 "purchase_check_ms wall time spans ingest_purchase_truth plus final dashboard read.",
@@ -368,6 +396,11 @@ def profile_dashboard_check(
     run_dashboard: Callable[[], Optional[dict[str, Any]]],
 ) -> tuple[Optional[dict[str, Any]], float, dict[str, Any]]:
     """Wrap one dashboard truth check; returns (row, wall_ms, profile_sample)."""
+    from services.dashboard_hot_path_query_audit_v1 import (  # noqa: PLC0415
+        build_hot_path_query_report,
+        hot_path_query_audit_begin,
+        hot_path_query_audit_end,
+    )
     from services.dashboard_normal_carts_perf_v1 import (  # noqa: PLC0415
         dashboard_normal_carts_perf_begin,
         dashboard_normal_carts_perf_emit,
@@ -381,11 +414,17 @@ def profile_dashboard_check(
 
     with audit_profile_span("sim:dashboard_check") as bucket:
         wall0 = time.perf_counter()
+        hot_path_query_audit_begin()
         normal_carts_profile_begin_for_simulation()
         dashboard_normal_carts_perf_begin()
         row = run_dashboard()
         perf_snap = dashboard_normal_carts_perf_snapshot()
         span_snap = normal_carts_profile_snapshot()
+        hot_path_audit = build_hot_path_query_report(
+            total_queries=int(bucket.get("queries") or 0),
+            span_snap=span_snap,
+        )
+        hot_path_query_audit_end()
         dashboard_normal_carts_perf_emit(wall_perf_start=wall0)
         normal_carts_profile_end()
         wall_ms = (time.perf_counter() - wall0) * 1000.0
@@ -394,6 +433,7 @@ def profile_dashboard_check(
             "wall_ms": round(wall_ms, 2),
             "perf": perf_snap,
             "spans": span_snap,
+            "hot_path_query_audit": hot_path_audit,
         }
     return row, wall_ms, sample
 

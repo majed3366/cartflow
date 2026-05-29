@@ -25,6 +25,9 @@ _active: contextvars.ContextVar[bool] = contextvars.ContextVar(
 _stack: contextvars.ContextVar[Optional[List[Dict[str, Any]]]] = contextvars.ContextVar(
     "nc_query_prof_stack", default=None
 )
+_span_names: contextvars.ContextVar[Optional[List[str]]] = contextvars.ContextVar(
+    "nc_query_prof_span_names", default=None
+)
 
 
 @dataclass
@@ -43,9 +46,16 @@ def normal_carts_query_profiling_active() -> bool:
     return bool(_active.get())
 
 
+def normal_carts_current_span_stack() -> list[str]:
+    """Active normal-carts profiler span names (innermost last)."""
+    names = _span_names.get()
+    return list(names) if names else []
+
+
 def normal_carts_profile_begin() -> None:
     _active.set(False)
     _stack.set(None)
+    _span_names.set(None)
     try:
         from services.cartflow_observability_mode import (
             observability_normal_carts_subprofiler_enabled,
@@ -58,6 +68,7 @@ def normal_carts_profile_begin() -> None:
         return
     _active.set(True)
     _stack.set([])
+    _span_names.set([])
     _stats.clear()
 
 
@@ -65,6 +76,7 @@ def normal_carts_profile_begin_for_simulation() -> None:
     """Enable subprofiler for simulation deep-profile (logging/metrics only)."""
     _active.set(True)
     _stack.set([])
+    _span_names.set([])
     _stats.clear()
 
 
@@ -95,6 +107,7 @@ def normal_carts_profile_end() -> None:
     finally:
         _active.set(False)
         _stack.set(None)
+        _span_names.set(None)
 
 
 def top_exclusive_wall_span() -> tuple[str, float]:
@@ -150,9 +163,13 @@ def normal_carts_profile_span(fn: str) -> Iterator[None]:
     }
     stk = _stack_get()
     stk.append(frame)
+    names = list(_span_names.get() or [])
+    names.append(fn)
+    names_token = _span_names.set(names)
     try:
         yield
     finally:
+        _span_names.reset(names_token)
         popped = stk.pop()
         if popped is not frame:
             try:

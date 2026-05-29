@@ -358,6 +358,7 @@ def _measure_dashboard(
             queries=int(sample.get("queries") or 0),
             perf_snap=sample.get("perf") or {},
             span_snap=sample.get("spans") or [],
+            hot_path_audit=sample.get("hot_path_query_audit"),
         )
         perf = sample.get("perf") if isinstance(sample.get("perf"), dict) else {}
         lc_ms = float(perf.get("lifecycle_attach_ms") or 0.0) + float(
@@ -951,9 +952,13 @@ def run_cartflow_simulation_report(
     lifecycle_ms_all: list[float] = []
     store_timings: list[_StoreTiming] = []
     initial_cleanup_ms = 0.0
+    from services.dashboard_hot_path_query_audit_v1 import (  # noqa: PLC0415
+        hot_path_query_audit_merge_reset,
+    )
     from services.simulation_deep_profile_v1 import DeepProfileAccumulator  # noqa: PLC0415
 
     deep_acc = DeepProfileAccumulator()
+    hot_path_query_audit_merge_reset()
 
     patches = _whatsapp_guard_patches()
     started = time.perf_counter()

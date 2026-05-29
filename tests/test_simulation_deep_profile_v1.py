@@ -61,6 +61,22 @@ class SimulationDeepProfileTests(unittest.TestCase):
         self.assertIn("function", top[0])
         self.assertIn("total_wall_ms", top[0])
 
+    def test_build_report_includes_hot_path_query_audit_key(self) -> None:
+        acc = DeepProfileAccumulator()
+        acc.record_dashboard(
+            wall_ms=10.0,
+            queries=0,
+            perf_snap={},
+            span_snap=[],
+            hot_path_audit={
+                "title": "Where the 0 queries come from",
+                "total_queries": 0,
+                "hot_path_functions": {},
+            },
+        )
+        report = acc.build_report()
+        self.assertIn("hot_path_query_audit", report)
+
 
 if __name__ == "__main__":
     unittest.main()
