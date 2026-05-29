@@ -932,7 +932,32 @@ async def _startup_whatsapp_queue() -> None:
         log_resend_password_reset_startup()
     except Exception as exc:  # noqa: BLE001
         log.warning("startup resend password reset check skipped: %s", exc)
+    _log_registered_route_at_startup("/dev/purchase-truth-trace")
     await start_whatsapp_queue_worker()
+
+
+def _log_registered_route_at_startup(path: str) -> None:
+    """Prove a route is registered in the running app instance (production log)."""
+    try:
+        registered = any(
+            getattr(r, "path", None) == path for r in app.router.routes
+        )
+    except Exception:  # noqa: BLE001
+        registered = False
+    allowed_in_prod = path in _DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT
+    line = (
+        f"[ROUTE REGISTERED] {path} "
+        f"registered={'true' if registered else 'false'} "
+        f"allowed_in_prod={'true' if allowed_in_prod else 'false'}"
+    )
+    try:
+        print(line, flush=True)
+    except OSError:
+        pass
+    try:
+        log.info("%s", line)
+    except Exception:  # noqa: BLE001
+        pass
 
 
 def _is_development_mode() -> bool:
@@ -961,6 +986,7 @@ _DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT = frozenset(
         "/dev/attempt-2-trace",
         "/dev/recovery-operational-truth",
         "/dev/cartflow-simulation-report",
+        "/dev/purchase-truth-trace",
     }
 )
 
@@ -11817,12 +11843,11 @@ def dev_purchase_truth_trace(
     cart_id: Optional[str] = None,
 ) -> Any:
     """
-    Dev-only: trace purchase-truth reconciliation between a conversion key and the
-    active recovery cart(s). Shows durable truth, lifecycle closure, and each matched
-    AbandonedCart with its canonical recovery_key + per-cart purchase detection.
+    Diagnostic (allowed in production): trace purchase-truth reconciliation between a
+    conversion key and the active recovery cart(s). Shows durable truth, lifecycle
+    closure, and each matched AbandonedCart with its canonical recovery_key + per-cart
+    purchase detection.
     """
-    if not _is_development_mode():
-        return j({"ok": False, "error": "not_found"}, 404)
     from services.cartflow_purchase_truth import (  # noqa: PLC0415
         has_purchase,
         purchase_context,

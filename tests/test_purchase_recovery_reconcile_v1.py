@@ -175,8 +175,10 @@ def test_purchase_truth_trace_endpoint() -> None:
         }
     )
 
+    # Diagnostic must respond even outside development mode (production parity):
+    # allowlisted in middleware + no in-endpoint dev-only 404 guard.
     prev_env = os.environ.get("ENV")
-    os.environ["ENV"] = "development"
+    os.environ["ENV"] = "production"
     try:
         client = TestClient(main.app)
         r = client.get(
@@ -198,3 +200,14 @@ def test_purchase_truth_trace_endpoint() -> None:
             os.environ.pop("ENV", None)
         else:
             os.environ["ENV"] = prev_env
+
+
+def test_purchase_truth_trace_route_allowlisted_for_production() -> None:
+    """Route is registered and allowed in production (no 404 gate)."""
+    import main
+
+    assert "/dev/purchase-truth-trace" in main._DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT
+    assert any(
+        getattr(r, "path", None) == "/dev/purchase-truth-trace"
+        for r in main.app.router.routes
+    )
