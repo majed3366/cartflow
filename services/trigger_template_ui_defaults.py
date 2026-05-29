@@ -198,11 +198,20 @@ def _should_apply_recommended_delay(
     raw_t = (raw_text or "").strip()
     if is_loadtest_placeholder(raw_t):
         return True
+    try:
+        delay_f = float(slot.get("delay", 0))
+    except (TypeError, ValueError):
+        delay_f = 0.0
+    unit_s = str(slot.get("unit") or "minute")
+    # Stage 1: upgrade legacy seed delays only when copy is on the wrong stage —
+    # not when merchant kept default reassurance text but chose a custom delay (e.g. 2 min).
+    if index == 0:
+        if _stage1_needs_repair(key, raw_t or (fallback_message or "").strip(), defaults):
+            return _is_generic_legacy_delay(index, delay_f, unit_s)
+        return False
     if _text_is_defaultish_for_delay(
         key, index, raw_t, defaults, fallback_message=fallback_message
-    ) and _is_generic_legacy_delay(
-        index, float(slot.get("delay", 0)), str(slot.get("unit") or "minute")
-    ):
+    ) and _is_generic_legacy_delay(index, delay_f, unit_s):
         return True
     return False
 

@@ -77,6 +77,52 @@ class TriggerTemplateUiDefaultsTests(unittest.TestCase):
         self.assertEqual(out["messages"][1]["delay"], 5.0)
         self.assertEqual(out["messages"][1]["unit"], "hour")
 
+    def test_enrich_preserves_merchant_two_minute_stage1_default_text(self) -> None:
+        """Merchant sets 2 min on stage 1 with default reassurance copy — must not reset to 60."""
+        stage1 = DASHBOARD_STAGE_TEXTS["price"][0]
+        ent = {
+            "enabled": True,
+            "message": stage1,
+            "message_count": 3,
+            "messages": [
+                {"delay": 2, "unit": "minute", "text": stage1},
+                {"delay": 5, "unit": "hour", "text": DASHBOARD_STAGE_TEXTS["price"][1]},
+                {"delay": 120, "unit": "hour", "text": DASHBOARD_STAGE_TEXTS["price"][2]},
+            ],
+        }
+        out = enrich_reason_entry_for_dashboard("price", ent)
+        self.assertEqual(out["messages"][0]["delay"], 2.0)
+        self.assertEqual(out["messages"][0]["unit"], "minute")
+        self.assertEqual(out["messages"][1]["delay"], 5.0)
+        self.assertEqual(out["messages"][2]["delay"], 120.0)
+        self.assertEqual(out["message_count"], 3)
+
+    def test_get_payload_preserves_two_minute_three_message_price(self) -> None:
+        stage1 = DASHBOARD_STAGE_TEXTS["price"][0]
+        stored = {
+            "price": {
+                "enabled": True,
+                "message": stage1,
+                "message_count": 3,
+                "messages": [
+                    {"delay": 2, "unit": "minute", "text": stage1},
+                    {"delay": 5, "unit": "hour", "text": DASHBOARD_STAGE_TEXTS["price"][1]},
+                    {"delay": 120, "unit": "hour", "text": DASHBOARD_STAGE_TEXTS["price"][2]},
+                ],
+            }
+        }
+
+        class _Mini:
+            reason_templates_json = json.dumps(stored)
+
+        rows = build_trigger_templates_get_payload(_Mini())["reason_rows"]
+        price = next(r for r in rows if r["key"] == "price")
+        self.assertEqual(price["message_count"], 3)
+        self.assertEqual(price["delay_value"], 2.0)
+        self.assertEqual(price["delay_unit"], "minute")
+        self.assertEqual(price["messages"][0]["delay"], 2.0)
+        self.assertEqual(price["messages"][0]["unit"], "minute")
+
     def test_enrich_preserves_merchant_five_minute_stage1_default_text(self) -> None:
         stage1 = DASHBOARD_STAGE_TEXTS["price"][0]
         ent = {

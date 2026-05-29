@@ -255,6 +255,32 @@
     return false;
   }
 
+  function stage1NeedsRepair(reasonKey, text) {
+    var t = String(text || "").trim();
+    if (!t) return false;
+    if (isLoadtestPlaceholder(t)) return true;
+    var offer = presetTextForStage(reasonKey, 1);
+    if (offer && t === offer) return true;
+    var stage2 = presetTextForStage(reasonKey, 2);
+    if (stage2 && t === stage2) return true;
+    return false;
+  }
+
+  function shouldApplyRecommendedDelay(reasonKey, index, had, txt, d, u, rowMessage) {
+    if (!had) return true;
+    if (isLoadtestPlaceholder(txt)) return true;
+    if (index === 0) {
+      return (
+        stage1NeedsRepair(reasonKey, txt || rowMessage) &&
+        isGenericLegacyDelay(index, d, u)
+      );
+    }
+    return (
+      isGenericLegacyDelay(index, d, u) &&
+      textIsDefaultishForDelay(reasonKey, index, txt, rowMessage)
+    );
+  }
+
   function applyRecommendedDelaysToRow(reasonKey, row) {
     if (!row || !reasonKey) return row;
     var mc = parseInt(row.message_count, 10) || 1;
@@ -268,11 +294,15 @@
       var d =
         typeof slot.delay === "number" ? slot.delay : parseFloat(slot.delay);
       var u = slot.unit || "minute";
-      var apply =
-        !had ||
-        isLoadtestPlaceholder(txt) ||
-        (isGenericLegacyDelay(i, d, u) &&
-          textIsDefaultishForDelay(reasonKey, i, txt, row.message));
+      var apply = shouldApplyRecommendedDelay(
+        reasonKey,
+        i,
+        had,
+        txt,
+        d,
+        u,
+        row.message
+      );
       if (apply) {
         var enc = recommendedDelayEncodedForApi(reasonKey, i);
         var fillTxt = txt || presetTextForStage(reasonKey, i);
