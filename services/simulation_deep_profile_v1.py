@@ -171,6 +171,8 @@ class DeepProfileAccumulator:
     purchase_reconcile_queries: int = 0
     purchase_dashboard_queries: int = 0
     fn_wall: dict[str, _SpanAgg] = field(default_factory=lambda: defaultdict(_SpanAgg))
+    queued_followup_per_group_db_total: int = 0
+    queued_followup_bulk_prefetch_total: int = 0
 
     def record_dashboard(
         self,
@@ -180,6 +182,7 @@ class DeepProfileAccumulator:
         perf_snap: dict[str, Any],
         span_snap: list[dict[str, Any]],
         hot_path_audit: Optional[dict[str, Any]] = None,
+        queued_followup_snap: Optional[dict[str, Any]] = None,
     ) -> None:
         self.dashboard_calls += 1
         self.dashboard_wall_ms += max(0.0, float(wall_ms))
@@ -237,6 +240,13 @@ class DeepProfileAccumulator:
                 )
             except Exception:  # noqa: BLE001
                 pass
+        if isinstance(queued_followup_snap, dict):
+            self.queued_followup_per_group_db_total += int(
+                queued_followup_snap.get("queued_followup_per_group_db_queries") or 0
+            )
+            self.queued_followup_bulk_prefetch_total += int(
+                queued_followup_snap.get("queued_followup_bulk_prefetch_queries") or 0
+            )
 
     def record_purchase(
         self,
@@ -328,6 +338,27 @@ class DeepProfileAccumulator:
                 )
             except Exception:  # noqa: BLE001
                 hot_path_audit = None
+        queued_followup_comparison: Optional[dict[str, Any]] = None
+        if self.dashboard_calls > 0:
+            try:
+                from services.merchant_queued_followup_prefetch_v1 import (  # noqa: PLC0415
+                    build_queued_followup_comparison,
+                )
+
+                dc = max(1, self.dashboard_calls)
+                queued_followup_comparison = build_queued_followup_comparison(
+                    avg_total_dashboard_queries=float(self.dashboard_queries) / float(dc),
+                    avg_queued_followup_per_group_db=float(
+                        self.queued_followup_per_group_db_total
+                    )
+                    / float(dc),
+                    avg_queued_followup_bulk_prefetch=float(
+                        self.queued_followup_bulk_prefetch_total
+                    )
+                    / float(dc),
+                )
+            except Exception:  # noqa: BLE001
+                queued_followup_comparison = None
         return {
             "dashboard_check_ms": {
                 "calls": self.dashboard_calls,
@@ -382,6 +413,7 @@ class DeepProfileAccumulator:
                 "purchase_check_pct": round(100.0 - dash_pct, 1) if dash_pct else 0.0,
             },
             "hot_path_query_audit": hot_path_audit,
+            "queued_followup_optimization": queued_followup_comparison,
             "notes": [
                 "dashboard_check_ms includes all _measure_dashboard calls (before/after send, reply, return, purchase).",
                 "purchase_check_ms wall time spans ingest_purchase_truth plus final dashboard read.",
@@ -401,6 +433,10 @@ def profile_dashboard_check(
         hot_path_query_audit_begin,
         hot_path_query_audit_end,
     )
+    from services.merchant_queued_followup_prefetch_v1 import (  # noqa: PLC0415
+        queued_followup_prof_reset,
+        queued_followup_prof_snapshot,
+    )
     from services.dashboard_normal_carts_perf_v1 import (  # noqa: PLC0415
         dashboard_normal_carts_perf_begin,
         dashboard_normal_carts_perf_emit,
@@ -415,6 +451,7 @@ def profile_dashboard_check(
     with audit_profile_span("sim:dashboard_check") as bucket:
         wall0 = time.perf_counter()
         hot_path_query_audit_begin()
+        queued_followup_prof_reset()
         normal_carts_profile_begin_for_simulation()
         dashboard_normal_carts_perf_begin()
         row = run_dashboard()
@@ -434,6 +471,7 @@ def profile_dashboard_check(
             "perf": perf_snap,
             "spans": span_snap,
             "hot_path_query_audit": hot_path_audit,
+            "queued_followup": queued_followup_prof_snapshot(),
         }
     return row, wall_ms, sample
 

@@ -14560,6 +14560,7 @@ class MerchantNormalCartsBatchReads:
     merchant_archived_by_rk: dict[str, bool] = field(default_factory=dict)
     timeline_statuses_by_rk: dict[str, frozenset[str]] = field(default_factory=dict)
     durable_closure_by_rk: dict[str, dict[str, Any]] = field(default_factory=dict)
+    queued_followup_prefetch: Any = None
 
     def store_row_for_cart(self, ac: AbandonedCart) -> Optional[Store]:
         ds = self.dash_store
@@ -15092,6 +15093,36 @@ def _merchant_normal_dashboard_batch_reads(
         except Exception:  # noqa: BLE001
             pass
 
+    queued_followup_prefetch = None
+    if slug and (combined_sess or cid_pool or rk_pool):
+        _mbr_seg_t = time.perf_counter()
+        _mbr_seg_q = merchant_dashboard_batch_reads_trace_peek_for_seg(_mbr_tr)
+        try:
+            from services.merchant_queued_followup_prefetch_v1 import (  # noqa: PLC0415
+                bulk_load_queued_followup_index,
+            )
+
+            with normal_carts_profile_span("sql:batch_queued_followup_logs_bulk"):
+                queued_followup_prefetch = bulk_load_queued_followup_index(
+                    store_slug=slug,
+                    session_ids=sess_pool,
+                    cart_ids=cid_pool,
+                    recovery_keys=rk_pool,
+                )
+        except Exception:  # noqa: BLE001
+            queued_followup_prefetch = None
+        merchant_dashboard_batch_reads_trace_seg_end(
+            _mbr_tr,
+            _mbr_seg_t,
+            _mbr_seg_q,
+            "sql_queued_followup_bulk_prefetch",
+            rows_loaded=(
+                int(getattr(queued_followup_prefetch, "rows_loaded", 0) or 0)
+                if queued_followup_prefetch is not None
+                else 0
+            ),
+        )
+
     logs: list[CartRecoveryLog] = []
     _mbr_seg_t = time.perf_counter()
     _mbr_seg_q = merchant_dashboard_batch_reads_trace_peek_for_seg(_mbr_tr)
@@ -15587,6 +15618,7 @@ def _merchant_normal_dashboard_batch_reads(
         reasons_rows_fetched=reasons_rows_fetched,
         peers_loaded=peers_loaded,
         message_logs_loaded=message_logs_loaded,
+        queued_followup_prefetch=queued_followup_prefetch,
     )
     cust_map: dict[int, str] = {}
     _mbr_seg_t = time.perf_counter()
@@ -16932,6 +16964,12 @@ def _normal_recovery_merchant_lightweight_alert_list_for_api(
                 )
                 coarse = _normal_recovery_coarse_status(pk)
                 with normal_carts_profile_span("merchant_group_stale_meta"):
+                    _rk_stale = (
+                        batch_reads.recovery_key_by_ac.get(
+                            int(getattr(ac0, "id", 0) or 0)
+                        )
+                        or ""
+                    ).strip()
                     stale_flag, stale_meta = merchant_group_stale_meta(
                         grp_sorted,
                         store_slug=slug_for_act,
@@ -16940,6 +16978,8 @@ def _normal_recovery_merchant_lightweight_alert_list_for_api(
                         now_utc=now_utc,
                         diag_pick_index=pick_i if _stale_diag else None,
                         diag_picked_groups_total=npick if _stale_diag else None,
+                        queued_followup_prefetch=batch_reads.queued_followup_prefetch,
+                        recovery_key=_rk_stale,
                     )
                 if not _normal_recovery_merchant_lifecycle_bucket_ok(
                     lc_raw=lc_raw,

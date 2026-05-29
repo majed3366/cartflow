@@ -163,6 +163,8 @@ def _has_recent_queued_followup(
     *,
     store_slug: str,
     since_utc: datetime,
+    queued_followup_prefetch: Any = None,
+    recovery_key: str = "",
 ) -> bool:
     try:
         from services.dashboard_normal_carts_guard_v1 import (  # noqa: PLC0415
@@ -195,7 +197,24 @@ def _has_recent_queued_followup(
                 "early_return_no_recovery_log_conds_skip_create_all_and_select"
             )
             return False
+        if queued_followup_prefetch is not None:
+            inspect_path = "prefetch_index_recent_queued_lookup"
+            return bool(
+                queued_followup_prefetch.has_recent_for_abandoned(
+                    ac0,
+                    since_utc=since_utc,
+                    recovery_key=recovery_key,
+                )
+            )
         inspect_path = "select_recent_queued_recovery_log_first"
+        try:
+            from services.merchant_queued_followup_prefetch_v1 import (  # noqa: PLC0415
+                queued_followup_prof_record_per_group_db,
+            )
+
+            queued_followup_prof_record_per_group_db()
+        except Exception:  # noqa: BLE001
+            pass
         row = (
             db.session.query(CartRecoveryLog.id)
             .filter(
@@ -236,6 +255,8 @@ def merchant_group_stale_meta(
     now_utc: Optional[datetime] = None,
     diag_pick_index: Optional[int] = None,
     diag_picked_groups_total: Optional[int] = None,
+    queued_followup_prefetch: Any = None,
+    recovery_key: str = "",
 ) -> tuple[bool, dict[str, Any]]:
     """
     خامل تجاري: ‎pending/sent‎ + تجاوز النافذة + لا ‎queued‎ بعد آخر نشاط معنٍ.
@@ -308,7 +329,11 @@ def merchant_group_stale_meta(
         cond_cnt = len(_cart_recovery_log_conds_for_abandoned(grp_sorted[0]))
         since = last_act - timedelta(minutes=2)
         hq = _has_recent_queued_followup(
-            grp_sorted, store_slug=store_slug, since_utc=since
+            grp_sorted,
+            store_slug=store_slug,
+            since_utc=since,
+            queued_followup_prefetch=queued_followup_prefetch,
+            recovery_key=recovery_key,
         )
         if hq:
             path = "queued_followup_present"

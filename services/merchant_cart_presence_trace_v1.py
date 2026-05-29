@@ -322,6 +322,10 @@ def trace_merchant_cart_presence(
             activity_map=activity_map,
             coarse=coarse,
             now_utc=now_utc,
+            queued_followup_prefetch=batch_reads.queued_followup_prefetch,
+            recovery_key=(
+                batch_reads.recovery_key_by_ac.get(int(getattr(ac0, "id", 0) or 0)) or ""
+            ).strip(),
         )
         if not _normal_recovery_merchant_lifecycle_bucket_ok(
             lc_raw=lc_raw,
