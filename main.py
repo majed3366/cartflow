@@ -556,6 +556,20 @@ def _spawn_recovery_live_delay_dispatch(
         except Exception as exc:  # noqa: BLE001
             log.warning("attempt2 trace spawn skip failed: %s", exc)
         return
+    try:
+        from services.recovery_process_role_v1 import (  # noqa: PLC0415
+            log_delay_dispatch_skipped,
+            process_role_may_spawn_delay_dispatch,
+        )
+
+        if not process_role_may_spawn_delay_dispatch():
+            log_delay_dispatch_skipped(
+                source=dispatch_source,
+                schedule_id=int(getattr(schedule_row, "id", 0) or 0) or None,
+            )
+            return
+    except Exception:  # noqa: BLE001
+        pass
     asyncio.create_task(
         _recovery_live_delay_dispatch_task(
             int(schedule_row.id),
@@ -901,11 +915,13 @@ async def _startup_whatsapp_queue() -> None:
             exc_info=True,
         )
     try:
+        from services.recovery_process_role_v1 import log_scheduler_owner_at_startup
         from services.recovery_scheduler_guardrails import (
             log_recovery_scheduler_ownership_at_startup,
         )
         from services.recovery_restart_survival import run_recovery_resume_scan_async
 
+        log_scheduler_owner_at_startup()
         log_recovery_scheduler_ownership_at_startup()
         resume_out = await run_recovery_resume_scan_async(max_dispatch=25)
         if resume_out.get("dispatched"):

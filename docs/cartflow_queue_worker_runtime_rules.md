@@ -9,13 +9,62 @@
 
 Until a real job queue with distributed lease/ack exists:
 
-> **Exactly one** CartFlow process per database should run the startup **resume scan** and **future-due re-arm**.
+> **Exactly one** CartFlow process per database should run the startup **resume scan**, **DB due scanner**, and **in-process delay dispatch**.
 
-All horizontal API replicas must set resume to **disabled**.
+All horizontal API replicas must use **`CARTFLOW_PROCESS_ROLE=api`**.
 
 ---
 
-## Environment variable
+## Process role (recommended for real merchants)
+
+| Env | Value |
+|-----|--------|
+| `CARTFLOW_PROCESS_ROLE` | `api` \| `scheduler` \| *(unset = legacy single-process)* |
+
+### API replicas
+
+```env
+CARTFLOW_PROCESS_ROLE=api
+CARTFLOW_RECOVERY_RESUME_ON_STARTUP=0
+```
+
+- Does **not** run startup resume scan
+- Does **not** run DB due scanner loop
+- Does **not** spawn in-process delay dispatch (rows persist; scheduler picks up due work)
+- Serves HTTP normally
+
+Startup log:
+
+```text
+[SCHEDULER OWNER] role=api resume_enabled=false due_scanner=false
+```
+
+### Scheduler service (one instance per database)
+
+```env
+CARTFLOW_PROCESS_ROLE=scheduler
+CARTFLOW_RECOVERY_RESUME_ON_STARTUP=1
+CARTFLOW_DB_DUE_SCANNER_ENABLED=true
+CARTFLOW_DUE_SCANNER_LIMIT=100
+```
+
+- Runs startup resume scan + future re-arm
+- Runs DB due scanner loop (when enabled)
+- Owns delay dispatch for abandons handled on this process
+
+Startup log:
+
+```text
+[SCHEDULER OWNER] role=scheduler resume_enabled=true due_scanner=true
+```
+
+### Legacy (unset `CARTFLOW_PROCESS_ROLE`)
+
+Current single-process behavior unchanged: resume on by default, scanner off unless env set, delay dispatch on abandon.
+
+---
+
+## Environment variable (resume scan — still applies when role unset or scheduler)
 
 | Role | `CARTFLOW_RECOVERY_RESUME_ON_STARTUP` |
 |------|--------------------------------------|
@@ -100,7 +149,18 @@ Example (conceptual):
 
 ---
 
-## Health endpoint (no log access required)
+## Health endpoints (no log access required)
+
+`GET /health/scheduler` — lightweight LB/ops probe (all environments):
+
+| Field | Meaning |
+|-------|---------|
+| `role` | `api`, `scheduler`, or `unset` |
+| `resume_enabled` | Effective resume-on-startup for this process |
+| `due_scanner_enabled` | DB due scanner loop active on this process |
+| `due_scanner_limit` | Rows per scanner tick |
+| `overdue_scheduled_count` | `scheduled` with `due_at <= now` (global DB) |
+| `running_stale_count` | `running` older than stale threshold |
 
 `GET /dev/recovery-health` — allowed in production (`main._DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT`).
 
@@ -136,7 +196,8 @@ Extra workers increase HTTP throughput but can **duplicate** recovery scheduling
 ## Verification
 
 ```bash
-python -m pytest tests/test_recovery_scheduler_guardrails_v1.py -q
+python -m pytest tests/test_recovery_process_role_v1.py tests/test_recovery_scheduler_guardrails_v1.py -q
+curl -sS https://<host>/health/scheduler
 curl -sS https://<host>/dev/recovery-health
 ```
 

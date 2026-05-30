@@ -78,6 +78,17 @@ def spawn_recovery_schedule_dispatch(
     source: str,
 ) -> None:
     """Fire-and-forget in-process delay dispatch (asyncio task)."""
+    try:
+        from services.recovery_process_role_v1 import (  # noqa: PLC0415
+            log_delay_dispatch_skipped,
+            process_role_may_spawn_delay_dispatch,
+        )
+
+        if not process_role_may_spawn_delay_dispatch():
+            log_delay_dispatch_skipped(source=source, schedule_id=int(schedule_id))
+            return
+    except Exception:  # noqa: BLE001
+        pass
     asyncio.create_task(
         dispatch_recovery_schedule(int(schedule_id), run_at, source),
         name=f"recovery_dispatch_{int(schedule_id)}",

@@ -61,6 +61,20 @@ def health(
     return j(out)
 
 
+@router.get("/health/scheduler")
+def health_scheduler() -> Any:
+    """
+    Recovery scheduler ownership + backlog snapshot (read-only).
+
+    Safe for load balancers and ops; does not trigger resume or dispatch.
+    """
+    from services.recovery_process_role_v1 import build_scheduler_health_snapshot
+
+    snap = build_scheduler_health_snapshot()
+    status = 503 if not snap.get("ok") else 200
+    return j(snap, status)
+
+
 @router.get("/debug/db")
 def debug_db() -> Any:
     uri = str(get_database_url() or "")

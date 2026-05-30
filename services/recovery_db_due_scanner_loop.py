@@ -44,8 +44,13 @@ def db_due_scanner_loop_interval_seconds() -> float:
 
 
 def db_due_scanner_loop_limit() -> int:
+    raw = (
+        (os.getenv("CARTFLOW_DUE_SCANNER_LIMIT") or "").strip()
+        or (os.getenv("CARTFLOW_DB_DUE_SCANNER_LIMIT") or "").strip()
+        or str(_DEFAULT_LIMIT)
+    )
     try:
-        v = int((os.getenv("CARTFLOW_DB_DUE_SCANNER_LIMIT") or "").strip() or _DEFAULT_LIMIT)
+        v = int(raw)
     except (TypeError, ValueError):
         v = _DEFAULT_LIMIT
     return max(1, v)
@@ -141,8 +146,16 @@ def start_db_due_recovery_scanner_loop() -> None:
     """Start background loop on the running event loop (call from FastAPI startup)."""
     global _loop_task
 
-    if not is_db_due_scanner_loop_enabled():
-        return
+    try:
+        from services.recovery_process_role_v1 import (  # noqa: PLC0415
+            process_role_effective_due_scanner_enabled,
+        )
+
+        if not process_role_effective_due_scanner_enabled():
+            return
+    except Exception:  # noqa: BLE001
+        if not is_db_due_scanner_loop_enabled():
+            return
 
     try:
         loop = asyncio.get_running_loop()
