@@ -25,6 +25,8 @@ from services.admin_operations_center_v1 import (
     _build_top_risks,
     _compute_trend_from_counts,
     _escalate_severity,
+    _INVESTIGATION_STEPS_AR,
+    _investigation_steps_for_kind,
     _ownership_for_kind,
     _OWNERSHIP_BY_KIND,
     _pick_happened_at,
@@ -70,7 +72,7 @@ class AdminOperationsCenterV1Tests(unittest.TestCase):
 
     def test_build_payload_has_required_sections(self) -> None:
         payload = build_admin_operations_center_v1_readonly()
-        self.assertEqual(payload.get("version"), "admin_operations_center_v2_0")
+        self.assertEqual(payload.get("version"), "admin_operations_center_v2_1")
         health = payload.get("system_health_summary") or {}
         for key in (
             "status_key",
@@ -179,6 +181,8 @@ class AdminOperationsCenterV1Tests(unittest.TestCase):
             self.assertIn("records_hidden", alert)
             self.assertIn("owner_key", alert)
             self.assertIn("owner_ar", alert)
+            self.assertIn("investigation_steps_ar", alert)
+            self.assertIsInstance(alert.get("investigation_steps_ar"), list)
             records = alert.get("records") or []
             self.assertLessEqual(len(records), 5)
             if alert.get("records_total", 0) > 5:
@@ -210,6 +214,74 @@ class AdminOperationsCenterV1Tests(unittest.TestCase):
             self.assertEqual(meta["severity"], sev)
             self.assertEqual(meta["severity_ar"], sev_ar)
             self.assertEqual(meta["priority_order"], order)
+
+    def test_all_alert_kinds_have_investigation_catalog(self) -> None:
+        expected_steps = {
+            "store_needs_setup": [
+                "راجع حالة إعداد المتجر.",
+                "تحقق من الحقول الناقصة.",
+                "تأكد من اكتمال خطوات التفعيل.",
+            ],
+            "whatsapp_missing": [
+                "تحقق من إعداد واتساب للمتجر.",
+                "راجع حالة مزود الإرسال.",
+                "تأكد من اكتمال الربط.",
+            ],
+            "no_cart_events": [
+                "تحقق من تحميل الودجيت.",
+                "راجع آخر cart event.",
+                "اختبر إضافة منتج للسلة.",
+            ],
+            "stale_recovery": [
+                "راجع حالة Scheduler.",
+                "تحقق من وقت آخر تحديث.",
+                "راجع سجل الاسترجاع.",
+            ],
+            "failed_recovery": [
+                "راجع سبب الفشل.",
+                "تحقق من مزود الإرسال.",
+                "راجع سجل المحاولة الأخيرة.",
+            ],
+        }
+        for kind, steps in expected_steps.items():
+            self.assertEqual(_investigation_steps_for_kind(kind), steps)
+
+    def test_investigation_fallback_unknown_kind(self) -> None:
+        steps = _investigation_steps_for_kind("unknown_alert_kind")
+        self.assertEqual(
+            steps,
+            ["راجع التفاصيل المتاحة.", "تحقق من السجلات المرتبطة."],
+        )
+
+    def test_alert_with_records_includes_investigation_steps(self) -> None:
+        alert = _alert_with_records(
+            kind="stale_recovery",
+            title_ar="x",
+            detail_ar="x",
+        )
+        self.assertEqual(len(alert["investigation_steps_ar"]), 3)
+        self.assertIn("Scheduler", alert["investigation_steps_ar"][0])
+
+    def test_top_risks_include_investigation_steps(self) -> None:
+        alerts = [
+            _alert_with_records(
+                kind="failed_recovery",
+                title_ar="f",
+                detail_ar="f",
+                records=[{"store_slug": "s1"}],
+                records_total=1,
+            ),
+        ]
+        top = _build_top_risks(alerts)
+        steps = top["risks"][0]["investigation_steps_ar"]
+        self.assertEqual(len(steps), 3)
+        self.assertEqual(steps[0], "راجع سبب الفشل.")
+
+    def test_page_renders_investigation_guidance(self) -> None:
+        self._login()
+        r = self.client.get("/admin/operations")
+        self.assertEqual(r.status_code, 200)
+        self.assertIn("من أين أبدأ؟", r.text)
 
     def test_alert_with_records_applies_explanations_by_kind(self) -> None:
         alert = _alert_with_records(

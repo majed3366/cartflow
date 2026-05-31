@@ -83,6 +83,40 @@ _ALERT_EXPLANATIONS_AR: dict[str, dict[str, str]] = {
     },
 }
 
+# Guided investigation steps per alert kind (v2.1).
+_INVESTIGATION_STEPS_AR: dict[str, list[str]] = {
+    "store_needs_setup": [
+        "راجع حالة إعداد المتجر.",
+        "تحقق من الحقول الناقصة.",
+        "تأكد من اكتمال خطوات التفعيل.",
+    ],
+    "whatsapp_missing": [
+        "تحقق من إعداد واتساب للمتجر.",
+        "راجع حالة مزود الإرسال.",
+        "تأكد من اكتمال الربط.",
+    ],
+    "no_cart_events": [
+        "تحقق من تحميل الودجيت.",
+        "راجع آخر cart event.",
+        "اختبر إضافة منتج للسلة.",
+    ],
+    "stale_recovery": [
+        "راجع حالة Scheduler.",
+        "تحقق من وقت آخر تحديث.",
+        "راجع سجل الاسترجاع.",
+    ],
+    "failed_recovery": [
+        "راجع سبب الفشل.",
+        "تحقق من مزود الإرسال.",
+        "راجع سجل المحاولة الأخيرة.",
+    ],
+}
+
+_DEFAULT_INVESTIGATION_STEPS_AR: list[str] = [
+    "راجع التفاصيل المتاحة.",
+    "تحقق من السجلات المرتبطة.",
+]
+
 # Operational severity + priority per alert kind (v1.3).
 _ALERT_SEVERITY_AR: dict[str, dict[str, Any]] = {
     "stale_recovery": {
@@ -336,6 +370,14 @@ def _ownership_for_kind(kind: str) -> dict[str, str]:
         "owner_ar": _OPERATIONAL_OWNERS_AR.get(owner_key)
         or _OPERATIONAL_OWNERS_AR["unknown"],
     }
+
+
+def _investigation_steps_for_kind(kind: str) -> list[str]:
+    """Ordered investigation hints for an alert kind (read-only)."""
+    steps = _INVESTIGATION_STEPS_AR.get(_safe_str(kind, 64))
+    if steps:
+        return [str(s).strip() for s in steps if str(s).strip()]
+    return list(_DEFAULT_INVESTIGATION_STEPS_AR)
 
 
 def _escalate_severity(current: str, candidate: str) -> str:
@@ -884,6 +926,7 @@ def _risk_row_from_alert_record(
         or _safe_str(alert.get("why_ar"), 300),
         "suggested_next_step_ar": copy.get("suggested_next_step_ar")
         or _safe_str(alert.get("suggested_fix_ar"), 300),
+        "investigation_steps_ar": _investigation_steps_for_kind(kind),
         **_ownership_for_kind(kind),
         "_recency_ts": _recency_timestamp(_record_recency_key(rec)),
         "_priority_order": sev_meta["priority_order"],
@@ -941,6 +984,7 @@ def _build_top_risks(alerts: list[dict[str, Any]]) -> dict[str, Any]:
                 "suggested_next_step_ar": row.get("suggested_next_step_ar") or "",
                 "owner_key": row.get("owner_key") or "unknown",
                 "owner_ar": row.get("owner_ar") or _OPERATIONAL_OWNERS_AR["unknown"],
+                "investigation_steps_ar": list(row.get("investigation_steps_ar") or []),
             }
         )
     return {
@@ -1366,6 +1410,7 @@ def _alert_with_records(
         "suggested_fix_ar": suggested_fix_ar or expl.get("suggested_fix_ar") or "",
         "owner_key": owner["owner_key"],
         "owner_ar": owner["owner_ar"],
+        "investigation_steps_ar": _investigation_steps_for_kind(kind),
         "records": shown,
         "records_total": total,
         "records_hidden": hidden,
@@ -1815,7 +1860,7 @@ def build_admin_operations_center_v1_readonly() -> dict[str, Any]:
     root_cause_groups = _build_root_cause_groups(alerts)
 
     return {
-        "version": "admin_operations_center_v2_0",
+        "version": "admin_operations_center_v2_1",
         "generated_at_utc": _utc_now().isoformat(),
         "system_health_summary": system_health_summary,
         "store_health_snapshot": store_health_snapshot,
@@ -1851,4 +1896,6 @@ __all__ = [
     "_build_root_cause_groups",
     "_sort_root_cause_groups",
     "_escalate_severity",
+    "_investigation_steps_for_kind",
+    "_INVESTIGATION_STEPS_AR",
 ]
