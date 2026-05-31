@@ -18,13 +18,19 @@ from services.admin_operations_center_v1 import (
     _ALERT_SEVERITY_AR,
     _alert_with_records,
     _build_operational_trends,
+    _build_operational_timeline,
     _build_store_health_snapshot,
     _build_system_health_summary,
     _build_top_risks,
     _compute_trend_from_counts,
+    _pick_happened_at,
+    _recency_timestamp,
     _risk_row_from_alert_record,
     _sort_alerts,
+    _sort_operational_timeline,
     _sort_top_risks,
+    _timeline_event_from_alert_record,
+    _timeline_event_row,
     build_admin_operations_center_v1_readonly,
 )
 from services.cartflow_admin_http_auth import admin_cookie_name
@@ -59,7 +65,7 @@ class AdminOperationsCenterV1Tests(unittest.TestCase):
 
     def test_build_payload_has_required_sections(self) -> None:
         payload = build_admin_operations_center_v1_readonly()
-        self.assertEqual(payload.get("version"), "admin_operations_center_v1_7")
+        self.assertEqual(payload.get("version"), "admin_operations_center_v1_8")
         health = payload.get("system_health_summary") or {}
         for key in (
             "status_key",
@@ -84,6 +90,10 @@ class AdminOperationsCenterV1Tests(unittest.TestCase):
         top = payload.get("top_risks") or {}
         self.assertIn("risks", top)
         self.assertLessEqual(len(top.get("risks") or []), 5)
+        timeline = payload.get("operational_timeline") or {}
+        self.assertIn("events", timeline)
+        self.assertIn("window_hours", timeline)
+        self.assertLessEqual(len(timeline.get("events") or []), 25)
         sch = payload.get("scheduler") or {}
         for key in ("role", "overdue_scheduled_count", "running_stale_count"):
             self.assertIn(key, sch)
@@ -314,6 +324,81 @@ class AdminOperationsCenterV1Tests(unittest.TestCase):
         r = self.client.get("/admin/operations")
         self.assertEqual(r.status_code, 200)
         self.assertIn("أهم المخاطر الحالية", r.text)
+
+    def test_timeline_ordering(self) -> None:
+        now = datetime.now(timezone.utc)
+        older = (now - timedelta(hours=2)).isoformat()
+        newer = (now - timedelta(minutes=30)).isoformat()
+        events = [
+            _timeline_event_row(
+                event_type="failed_recovery",
+                store_slug="a",
+                store_name="A",
+                happened_at=older,
+                sort_ts=_recency_timestamp(older),
+            ),
+            _timeline_event_row(
+                event_type="stale_recovery",
+                store_slug="b",
+                store_name="B",
+                happened_at=newer,
+                sort_ts=_recency_timestamp(newer),
+            ),
+        ]
+        ordered = _sort_operational_timeline(events)
+        self.assertEqual(ordered[0]["happened_at"], newer)
+        self.assertEqual(ordered[1]["happened_at"], older)
+
+    def test_timeline_cap_at_25(self) -> None:
+        now_iso = datetime.now(timezone.utc).isoformat()
+        alerts = []
+        for i in range(30):
+            alerts.append(
+                _alert_with_records(
+                    kind="store_needs_setup",
+                    title_ar=f"s{i}",
+                    detail_ar=f"s{i}",
+                    records=[
+                        {
+                            "store_slug": f"store-{i}",
+                            "display_name": f"S{i}",
+                            "updated_at": now_iso,
+                        }
+                    ],
+                    records_total=1,
+                )
+            )
+        timeline = _build_operational_timeline(alerts, [])
+        self.assertEqual(timeline["shown_count"], 25)
+        self.assertEqual(len(timeline["events"]), 25)
+        self.assertGreaterEqual(timeline["total_candidates"], 25)
+
+    def test_timeline_timestamp_fallback(self) -> None:
+        happened_at, sort_ts = _pick_happened_at({}, "updated_at", "due_at", "created_at")
+        self.assertEqual(happened_at, "غير متوفر")
+        self.assertEqual(sort_ts, 0.0)
+
+    def test_timeline_missing_store_fields_safe(self) -> None:
+        now_iso = datetime.now(timezone.utc).isoformat()
+        window_start = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=24)
+        window_end = datetime.now(timezone.utc).replace(tzinfo=None)
+        row = _timeline_event_from_alert_record(
+            kind="store_needs_setup",
+            record={"store_slug": "bare-only", "updated_at": now_iso},
+            store_lookup={},
+            window_start=window_start,
+            window_end=window_end,
+        )
+        self.assertIsNotNone(row)
+        assert row is not None
+        self.assertEqual(row["store_slug"], "bare-only")
+        self.assertEqual(row["store_name"], "bare-only")
+
+    def test_page_renders_operational_timeline_section(self) -> None:
+        self._login()
+        r = self.client.get("/admin/operations")
+        self.assertEqual(r.status_code, 200)
+        self.assertIn("آخر الأحداث التشغيلية", r.text)
 
     def test_trend_improving(self) -> None:
         t = _compute_trend_from_counts(3, 7)

@@ -320,6 +320,62 @@
     {% endif %}
   </section>
 
+  <!-- Operational timeline (v1.8) -->
+  {% set otl = ops.operational_timeline or {} %}
+  {% set timeline_events = otl.events or [] %}
+  <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <h2 class="text-base font-semibold text-slate-900">آخر الأحداث التشغيلية</h2>
+    <p class="mt-1 text-sm text-slate-600">آخر {{ otl.max_shown | default(25) }} حدث خلال {{ otl.window_hours | default(24) }} ساعة — الأحدث أولًا (قراءة فقط).</p>
+    {% if timeline_events %}
+    <div class="mt-4 overflow-x-auto rounded-xl border border-slate-200">
+      <table class="min-w-full divide-y divide-slate-200 text-sm">
+        <thead class="bg-slate-50 text-right text-xs font-medium text-slate-500">
+          <tr>
+            <th class="px-3 py-2">الوقت</th>
+            <th class="px-3 py-2">الحدث</th>
+            <th class="px-3 py-2">المتجر</th>
+            <th class="px-3 py-2">الأهمية</th>
+            <th class="px-3 py-2">تفاصيل</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100 bg-white">
+          {% for e in timeline_events %}
+          <tr class="align-top hover:bg-slate-50/80">
+            <td class="whitespace-nowrap px-3 py-2 text-xs text-slate-600" dir="ltr">{{ e.happened_at or 'غير متوفر' }}</td>
+            <td class="px-3 py-2 font-medium text-slate-900">{{ e.title_ar or '—' }}</td>
+            <td class="px-3 py-2 text-slate-700">
+              {{ e.store_name or e.store_slug or '—' }}
+              {% if e.store_slug and e.store_name and e.store_name != e.store_slug %}
+              <span class="text-xs text-slate-400" dir="ltr">({{ e.store_slug }})</span>
+              {% elif e.store_slug and not e.store_name %}
+              <span dir="ltr">{{ e.store_slug }}</span>
+              {% endif %}
+            </td>
+            <td class="whitespace-nowrap px-3 py-2">
+              {% set esev = e.severity or 'low' %}
+              {% if esev == 'critical' %}
+              <span class="inline-flex rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-xs font-medium text-rose-800">{{ e.severity_ar or 'حرج' }}</span>
+              {% elif esev == 'high' %}
+              <span class="inline-flex rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-900">{{ e.severity_ar or 'عالي' }}</span>
+              {% elif esev == 'medium' %}
+              <span class="inline-flex rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">{{ e.severity_ar or 'متوسط' }}</span>
+              {% else %}
+              <span class="inline-flex rounded-full border border-slate-100 bg-white px-2 py-0.5 text-xs font-medium text-slate-500">{{ e.severity_ar or 'منخفض' }}</span>
+              {% endif %}
+            </td>
+            <td class="px-3 py-2 text-xs leading-relaxed text-slate-600">{{ e.short_detail_ar or '—' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="mt-4 rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-6 text-center">
+      <p class="text-sm text-slate-600">لا أحداث تشغيلية في النافذة الزمنية الحالية.</p>
+    </div>
+    {% endif %}
+  </section>
+
   <!-- D) Basic Alerts -->
   <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
     <h2 class="text-base font-semibold text-slate-900">د — تنبيهات أساسية</h2>

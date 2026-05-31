@@ -140,6 +140,41 @@ _STORE_SNAPSHOT_KINDS = frozenset(
 _MAX_STORE_SNAPSHOT = 150
 _TREND_WINDOW_HOURS = 24
 _MAX_TOP_RISKS = 5
+_MAX_TIMELINE_EVENTS = 25
+_MAX_TIMELINE_FETCH = 100
+
+_TIMELINE_EVENT_KINDS = frozenset(
+    {
+        "stale_recovery",
+        "failed_recovery",
+        "whatsapp_missing",
+        "no_cart_events",
+        "store_needs_setup",
+    }
+)
+
+_TIMELINE_EVENT_COPY: dict[str, dict[str, str]] = {
+    "failed_recovery": {
+        "title_ar": "فشل استرجاع",
+        "short_detail_ar": "تم تسجيل محاولة استرجاع بحالة فشل.",
+    },
+    "stale_recovery": {
+        "title_ar": "استرجاع عالق",
+        "short_detail_ar": "تم رصد استرجاع لم يكتمل خلال المدة المتوقعة.",
+    },
+    "whatsapp_missing": {
+        "title_ar": "واتساب غير جاهز",
+        "short_detail_ar": "المتجر لا يملك إعداد واتساب صالحًا للإرسال.",
+    },
+    "no_cart_events": {
+        "title_ar": "غياب أحداث السلة",
+        "short_detail_ar": "لم يتم رصد أحداث سلة حديثة لهذا المتجر.",
+    },
+    "store_needs_setup": {
+        "title_ar": "إعداد المتجر غير مكتمل",
+        "short_detail_ar": "لا تزال هناك خطوات إعداد ناقصة.",
+    },
+}
 
 _TOP_RISK_KINDS = frozenset(
     {
@@ -773,6 +808,387 @@ def _build_top_risks(alerts: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
+def _timeline_window_bounds() -> tuple[datetime, datetime]:
+    """Last 24h window (naive UTC, aligned with schedule queries)."""
+    now = _naive_now()
+    return now - timedelta(hours=_TREND_WINDOW_HOURS), now
+
+
+def _naive_dt_timestamp(dt: datetime) -> float:
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.timestamp()
+
+
+def _timestamp_in_window(sort_ts: float, start: datetime, end: datetime) -> bool:
+    if sort_ts <= 0:
+        return False
+    start_ts = _naive_dt_timestamp(start)
+    end_ts = _naive_dt_timestamp(end)
+    return start_ts <= sort_ts < end_ts
+
+
+def _pick_happened_at(record: dict[str, Any], *fields: str) -> tuple[str, float]:
+    rec = record if isinstance(record, dict) else {}
+    for field in fields:
+        val = rec.get(field)
+        if isinstance(val, datetime):
+            iso = _fmt_dt(val)
+            if iso:
+                return iso, _naive_dt_timestamp(val)
+        iso = _fmt_dt(val) if val is not None and not isinstance(val, str) else None
+        if iso:
+            return iso, _recency_timestamp(iso)
+        s = _safe_str(val, 64)
+        if s and s != "غير متوفر":
+            return s, _recency_timestamp(s)
+    return "غير متوفر", 0.0
+
+
+def _timeline_event_row(
+    *,
+    event_type: str,
+    store_slug: str,
+    store_name: str,
+    happened_at: str,
+    sort_ts: float,
+) -> dict[str, Any]:
+    copy = _TIMELINE_EVENT_COPY.get(event_type) or {}
+    sev = _severity_for_kind(event_type)
+    slug = _safe_str(store_slug, 128)
+    name = _safe_str(store_name, 128) or slug or "—"
+    return {
+        "event_type": event_type,
+        "title_ar": copy.get("title_ar") or event_type,
+        "store_slug": slug,
+        "store_name": name,
+        "severity": sev["severity"],
+        "severity_ar": sev["severity_ar"],
+        "happened_at": happened_at or "غير متوفر",
+        "short_detail_ar": copy.get("short_detail_ar") or "",
+        "_sort_ts": sort_ts,
+    }
+
+
+def _sort_operational_timeline(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    def _key(row: dict[str, Any]) -> tuple[float, str, str]:
+        return (
+            -_safe_int(row.get("_sort_ts"), 0),
+            _safe_str(row.get("store_slug"), 128),
+            _safe_str(row.get("event_type"), 64),
+        )
+
+    return sorted(events, key=_key)
+
+
+def _timeline_event_from_alert_record(
+    *,
+    kind: str,
+    record: dict[str, Any],
+    store_lookup: dict[str, dict[str, Any]],
+    window_start: datetime,
+    window_end: datetime,
+) -> dict[str, Any] | None:
+    if kind not in _TIMELINE_EVENT_KINDS:
+        return None
+    rec = record if isinstance(record, dict) else {}
+    slug = _safe_str(rec.get("store_slug"), 128)
+    meta = store_lookup.get(slug) or {}
+    name = _safe_str(rec.get("display_name"), 128) or _safe_str(meta.get("display_name"), 128)
+    if kind in ("failed_recovery", "stale_recovery"):
+        happened_at, sort_ts = _pick_happened_at(rec, "updated_at", "due_at")
+    elif kind == "no_cart_events":
+        happened_at, sort_ts = _pick_happened_at(
+            rec, "updated_at", "last_cart_event_at", "created_at"
+        )
+    else:
+        happened_at, sort_ts = _pick_happened_at(rec, "updated_at", "created_at")
+    if not _timestamp_in_window(sort_ts, window_start, window_end):
+        return None
+    return _timeline_event_row(
+        event_type=kind,
+        store_slug=slug,
+        store_name=name or slug,
+        happened_at=happened_at,
+        sort_ts=sort_ts,
+    )
+
+
+def _fetch_failed_recovery_timeline_rows(
+    start: datetime, end: datetime
+) -> list[Any]:
+    try:
+        db.create_all()
+        return (
+            db.session.query(
+                RecoverySchedule.recovery_key,
+                RecoverySchedule.store_slug,
+                RecoverySchedule.status,
+                RecoverySchedule.updated_at,
+                RecoverySchedule.due_at,
+                RecoverySchedule.last_error,
+            )
+            .filter(
+                RecoverySchedule.status.in_(tuple(_FAILED_STATUSES)),
+                RecoverySchedule.updated_at >= start,
+                RecoverySchedule.updated_at < end,
+            )
+            .order_by(RecoverySchedule.updated_at.desc())
+            .limit(_MAX_TIMELINE_FETCH)
+            .all()
+        )
+    except SQLAlchemyError:
+        db.session.rollback()
+        return []
+
+
+def _fetch_stale_recovery_timeline_rows(
+    start: datetime, end: datetime
+) -> list[Any]:
+    stale_cutoff = end - timedelta(seconds=_RUNNING_STALE_SECONDS)
+    try:
+        db.create_all()
+        return (
+            db.session.query(
+                RecoverySchedule.recovery_key,
+                RecoverySchedule.store_slug,
+                RecoverySchedule.status,
+                RecoverySchedule.updated_at,
+                RecoverySchedule.due_at,
+                RecoverySchedule.last_error,
+            )
+            .filter(
+                RecoverySchedule.updated_at >= start,
+                RecoverySchedule.updated_at < end,
+                or_(
+                    and_(
+                        RecoverySchedule.status == "scheduled",
+                        RecoverySchedule.due_at <= end,
+                    ),
+                    and_(
+                        RecoverySchedule.status == "running",
+                        RecoverySchedule.updated_at <= stale_cutoff,
+                    ),
+                ),
+            )
+            .order_by(RecoverySchedule.updated_at.desc())
+            .limit(_MAX_TIMELINE_FETCH)
+            .all()
+        )
+    except SQLAlchemyError:
+        db.session.rollback()
+        return []
+
+
+def _store_timeline_events_in_window(
+    start: datetime,
+    end: datetime,
+    *,
+    last_event_by_store: dict[int, datetime],
+) -> list[dict[str, Any]]:
+    from services.cartflow_onboarding_readiness import evaluate_onboarding_readiness
+
+    events: list[dict[str, Any]] = []
+    try:
+        db.create_all()
+        rows = (
+            db.session.query(Store)
+            .filter(
+                or_(
+                    and_(Store.updated_at >= start, Store.updated_at < end),
+                    and_(Store.created_at >= start, Store.created_at < end),
+                )
+            )
+            .limit(_MAX_STORES)
+            .all()
+        )
+        cutoff = _naive_now() - timedelta(days=_RECENT_CART_DAYS)
+        recent_store_ids: set[int] = set()
+        for row in (
+            db.session.query(AbandonedCart.store_id)
+            .filter(
+                AbandonedCart.store_id.isnot(None),
+                AbandonedCart.last_seen_at >= cutoff,
+            )
+            .distinct()
+            .all()
+        ):
+            sid = row[0] if row else None
+            if sid is not None:
+                try:
+                    recent_store_ids.add(int(sid))
+                except (TypeError, ValueError):
+                    pass
+
+        for st in rows:
+            ev = evaluate_onboarding_readiness(st)
+            slug = _safe_str(getattr(st, "zid_store_id", None), 128)
+            name = (
+                _safe_str(getattr(st, "widget_name", None), 128) or slug or "متجر"
+            )
+            store_id = int(getattr(st, "id", 0) or 0)
+            has_recent = store_id in recent_store_ids if store_id else False
+            milestones = (
+                ev.get("milestones") if isinstance(ev.get("milestones"), dict) else {}
+            )
+            first_cart = bool(milestones.get("first_cart_detected"))
+            blocking = {str(x).strip() for x in (ev.get("blocking_steps") or [])}
+            last_cart_at = last_event_by_store.get(store_id) if store_id else None
+            ts_record = {
+                "updated_at": getattr(st, "updated_at", None),
+                "created_at": getattr(st, "created_at", None),
+                "last_cart_event_at": last_cart_at,
+            }
+            base_happened_at, base_sort_ts = _pick_happened_at(
+                ts_record, "updated_at", "last_cart_event_at", "created_at"
+            )
+            if not _timestamp_in_window(base_sort_ts, start, end):
+                continue
+
+            if not ev.get("ready"):
+                events.append(
+                    _timeline_event_row(
+                        event_type="store_needs_setup",
+                        store_slug=slug,
+                        store_name=name,
+                        happened_at=base_happened_at,
+                        sort_ts=base_sort_ts,
+                    )
+                )
+            if "whatsapp_not_connected" in blocking or "provider_not_ready" in blocking:
+                events.append(
+                    _timeline_event_row(
+                        event_type="whatsapp_missing",
+                        store_slug=slug,
+                        store_name=name,
+                        happened_at=base_happened_at,
+                        sort_ts=base_sort_ts,
+                    )
+                )
+            if not has_recent and not first_cart:
+                events.append(
+                    _timeline_event_row(
+                        event_type="no_cart_events",
+                        store_slug=slug,
+                        store_name=name,
+                        happened_at=base_happened_at,
+                        sort_ts=base_sort_ts,
+                    )
+                )
+    except SQLAlchemyError:
+        db.session.rollback()
+    except Exception:  # noqa: BLE001
+        pass
+    return events
+
+
+def _build_operational_timeline(
+    alerts: list[dict[str, Any]] | None = None,
+    store_rows: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    """Operational timeline — last 24h events from existing truth (read-only)."""
+    window_start, window_end = _timeline_window_bounds()
+    lookup = _store_lookup_by_slug(store_rows or [])
+    candidates: list[dict[str, Any]] = []
+    seen: set[tuple[str, str, str]] = set()
+
+    def _add(row: dict[str, Any] | None) -> None:
+        if not row:
+            return
+        dedupe_key = (
+            _safe_str(row.get("event_type"), 64),
+            _safe_str(row.get("store_slug"), 128),
+            _safe_str(row.get("happened_at"), 64),
+        )
+        if dedupe_key in seen:
+            return
+        seen.add(dedupe_key)
+        candidates.append(row)
+
+    for row in _fetch_failed_recovery_timeline_rows(window_start, window_end):
+        rec = _recovery_record(row)
+        slug = _safe_str(rec.get("store_slug"), 128)
+        meta = lookup.get(slug) or {}
+        name = _safe_str(meta.get("display_name"), 128) or slug
+        happened_at, sort_ts = _pick_happened_at(rec, "updated_at", "due_at")
+        _add(
+            _timeline_event_row(
+                event_type="failed_recovery",
+                store_slug=slug,
+                store_name=name,
+                happened_at=happened_at,
+                sort_ts=sort_ts,
+            )
+        )
+
+    for row in _fetch_stale_recovery_timeline_rows(window_start, window_end):
+        rec = _recovery_record(row)
+        slug = _safe_str(rec.get("store_slug"), 128)
+        meta = lookup.get(slug) or {}
+        name = _safe_str(meta.get("display_name"), 128) or slug
+        happened_at, sort_ts = _pick_happened_at(rec, "updated_at", "due_at")
+        _add(
+            _timeline_event_row(
+                event_type="stale_recovery",
+                store_slug=slug,
+                store_name=name,
+                happened_at=happened_at,
+                sort_ts=sort_ts,
+            )
+        )
+
+    last_event_by_store = _last_cart_event_by_store_id()
+    for ev in _store_timeline_events_in_window(
+        window_start, window_end, last_event_by_store=last_event_by_store
+    ):
+        _add(ev)
+
+    for alert in alerts or []:
+        if not isinstance(alert, dict):
+            continue
+        kind = _safe_str(alert.get("kind"), 64)
+        if kind not in _TIMELINE_EVENT_KINDS:
+            continue
+        for rec in alert.get("records") or []:
+            if not isinstance(rec, dict):
+                continue
+            _add(
+                _timeline_event_from_alert_record(
+                    kind=kind,
+                    record=rec,
+                    store_lookup=lookup,
+                    window_start=window_start,
+                    window_end=window_end,
+                )
+            )
+
+    ranked = _sort_operational_timeline(candidates)[:_MAX_TIMELINE_EVENTS]
+    events: list[dict[str, Any]] = []
+    for row in ranked:
+        events.append(
+            {
+                "event_type": row.get("event_type"),
+                "title_ar": row.get("title_ar"),
+                "store_slug": row.get("store_slug") or "",
+                "store_name": row.get("store_name") or "—",
+                "severity": row.get("severity"),
+                "severity_ar": row.get("severity_ar"),
+                "happened_at": row.get("happened_at") or "غير متوفر",
+                "short_detail_ar": row.get("short_detail_ar") or "",
+            }
+        )
+    return {
+        "window_hours": _TREND_WINDOW_HOURS,
+        "window_start_utc": _fmt_dt(window_start.replace(tzinfo=timezone.utc)),
+        "window_end_utc": _fmt_dt(window_end.replace(tzinfo=timezone.utc)),
+        "events": events,
+        "total_candidates": len(candidates),
+        "shown_count": len(events),
+        "max_shown": _MAX_TIMELINE_EVENTS,
+        "available": True,
+    }
+
+
 def _alert_with_records(
     *,
     kind: str,
@@ -1243,14 +1659,16 @@ def build_admin_operations_center_v1_readonly() -> dict[str, Any]:
     store_health_snapshot = _build_store_health_snapshot(alerts, store_rows)
     operational_trends = _build_operational_trends()
     top_risks = _build_top_risks(alerts)
+    operational_timeline = _build_operational_timeline(alerts, store_rows)
 
     return {
-        "version": "admin_operations_center_v1_7",
+        "version": "admin_operations_center_v1_8",
         "generated_at_utc": _utc_now().isoformat(),
         "system_health_summary": system_health_summary,
         "store_health_snapshot": store_health_snapshot,
         "operational_trends": operational_trends,
         "top_risks": top_risks,
+        "operational_timeline": operational_timeline,
         "scheduler": scheduler,
         "recovery": recovery,
         "store_readiness": store_readiness,
@@ -1269,4 +1687,8 @@ __all__ = [
     "_compute_trend_from_counts",
     "_build_top_risks",
     "_sort_top_risks",
+    "_build_operational_timeline",
+    "_sort_operational_timeline",
+    "_pick_happened_at",
+    "_timeline_event_from_alert_record",
 ]
