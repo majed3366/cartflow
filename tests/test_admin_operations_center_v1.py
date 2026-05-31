@@ -23,6 +23,8 @@ from services.admin_operations_center_v1 import (
     _build_system_health_summary,
     _build_top_risks,
     _compute_trend_from_counts,
+    _ownership_for_kind,
+    _OWNERSHIP_BY_KIND,
     _pick_happened_at,
     _recency_timestamp,
     _risk_row_from_alert_record,
@@ -65,7 +67,7 @@ class AdminOperationsCenterV1Tests(unittest.TestCase):
 
     def test_build_payload_has_required_sections(self) -> None:
         payload = build_admin_operations_center_v1_readonly()
-        self.assertEqual(payload.get("version"), "admin_operations_center_v1_8")
+        self.assertEqual(payload.get("version"), "admin_operations_center_v1_9")
         health = payload.get("system_health_summary") or {}
         for key in (
             "status_key",
@@ -169,6 +171,8 @@ class AdminOperationsCenterV1Tests(unittest.TestCase):
             self.assertIn("records", alert)
             self.assertIn("records_total", alert)
             self.assertIn("records_hidden", alert)
+            self.assertIn("owner_key", alert)
+            self.assertIn("owner_ar", alert)
             records = alert.get("records") or []
             self.assertLessEqual(len(records), 5)
             if alert.get("records_total", 0) > 5:
@@ -399,6 +403,66 @@ class AdminOperationsCenterV1Tests(unittest.TestCase):
         r = self.client.get("/admin/operations")
         self.assertEqual(r.status_code, 200)
         self.assertIn("آخر الأحداث التشغيلية", r.text)
+
+    def test_ownership_mapping(self) -> None:
+        cases = {
+            "store_needs_setup": ("merchant_setup", "إعداد المتجر"),
+            "whatsapp_missing": ("whatsapp_provider", "مزود واتساب"),
+            "no_cart_events": ("widget_integration", "الودجيت / التكامل"),
+            "stale_recovery": ("scheduler", "المجدول"),
+            "failed_recovery": ("cartflow_system", "نظام CartFlow"),
+        }
+        for kind, (key, label) in cases.items():
+            owner = _ownership_for_kind(kind)
+            self.assertEqual(owner["owner_key"], key, msg=kind)
+            self.assertEqual(owner["owner_ar"], label, msg=kind)
+            self.assertEqual(_OWNERSHIP_BY_KIND.get(kind), key)
+
+    def test_ownership_fallback_unknown(self) -> None:
+        owner = _ownership_for_kind("nonexistent_kind")
+        self.assertEqual(owner["owner_key"], "unknown")
+        self.assertEqual(owner["owner_ar"], "غير محدد")
+
+    def test_alert_with_records_includes_ownership(self) -> None:
+        alert = _alert_with_records(
+            kind="failed_recovery",
+            title_ar="x",
+            detail_ar="x",
+        )
+        self.assertEqual(alert["owner_key"], "cartflow_system")
+        self.assertEqual(alert["owner_ar"], "نظام CartFlow")
+
+    def test_top_risks_include_ownership(self) -> None:
+        alerts = [
+            _alert_with_records(
+                kind="stale_recovery",
+                title_ar="crit",
+                detail_ar="crit",
+                records=[{"store_slug": "a-store", "display_name": "A"}],
+                records_total=1,
+            ),
+        ]
+        top = _build_top_risks(alerts)
+        self.assertEqual(top["risks"][0]["owner_key"], "scheduler")
+        self.assertEqual(top["risks"][0]["owner_ar"], "المجدول")
+
+    def test_timeline_events_include_ownership(self) -> None:
+        now_iso = datetime.now(timezone.utc).isoformat()
+        row = _timeline_event_row(
+            event_type="whatsapp_missing",
+            store_slug="s1",
+            store_name="S1",
+            happened_at=now_iso,
+            sort_ts=0.0,
+        )
+        self.assertEqual(row["owner_key"], "whatsapp_provider")
+        self.assertEqual(row["owner_ar"], "مزود واتساب")
+
+    def test_page_renders_ownership_on_alerts_risks_timeline(self) -> None:
+        self._login()
+        r = self.client.get("/admin/operations")
+        self.assertEqual(r.status_code, 200)
+        self.assertGreaterEqual(r.text.count("المالك المحتمل:"), 2)
 
     def test_trend_improving(self) -> None:
         t = _compute_trend_from_counts(3, 7)

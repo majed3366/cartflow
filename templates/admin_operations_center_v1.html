@@ -310,6 +310,9 @@
           <span class="font-medium text-slate-500">الخطوة المقترحة:</span> {{ r.suggested_next_step_ar }}
         </p>
         {% endif %}
+        <p class="mt-1 text-xs text-slate-600">
+          <span class="font-medium text-slate-500">المالك المحتمل:</span> {{ r.owner_ar or 'غير محدد' }}
+        </p>
       </div>
       {% endfor %}
     </div>
@@ -335,6 +338,7 @@
             <th class="px-3 py-2">الحدث</th>
             <th class="px-3 py-2">المتجر</th>
             <th class="px-3 py-2">الأهمية</th>
+            <th class="px-3 py-2">المالك</th>
             <th class="px-3 py-2">تفاصيل</th>
           </tr>
         </thead>
@@ -363,6 +367,7 @@
               <span class="inline-flex rounded-full border border-slate-100 bg-white px-2 py-0.5 text-xs font-medium text-slate-500">{{ e.severity_ar or 'منخفض' }}</span>
               {% endif %}
             </td>
+            <td class="whitespace-nowrap px-3 py-2 text-xs text-slate-600">{{ e.owner_ar or 'غير محدد' }}</td>
             <td class="px-3 py-2 text-xs leading-relaxed text-slate-600">{{ e.short_detail_ar or '—' }}</td>
           </tr>
           {% endfor %}
@@ -420,7 +425,10 @@
                 {% if a.suggested_fix_ar %}
                 <p class="{% if a.why_ar %}mt-1{% endif %}"><span class="font-medium text-slate-600">الإجراء المقترح:</span> {{ a.suggested_fix_ar }}</p>
                 {% endif %}
+                <p class="{% if a.why_ar or a.suggested_fix_ar %}mt-1{% endif %}"><span class="font-medium text-slate-600">المالك المحتمل:</span> {{ a.owner_ar or 'غير محدد' }}</p>
               </div>
+              {% else %}
+              <p class="mt-2 text-xs text-slate-600"><span class="font-medium text-slate-500">المالك المحتمل:</span> {{ a.owner_ar or 'غير محدد' }}</p>
               {% endif %}
               {% if a.records %}
               <div class="mt-3 space-y-2">

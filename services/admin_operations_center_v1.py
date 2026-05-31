@@ -118,6 +118,23 @@ _DEFAULT_ALERT_SEVERITY: dict[str, Any] = {
     "priority_order": 999,
 }
 
+_OPERATIONAL_OWNERS_AR: dict[str, str] = {
+    "merchant_setup": "إعداد المتجر",
+    "whatsapp_provider": "مزود واتساب",
+    "cartflow_system": "نظام CartFlow",
+    "scheduler": "المجدول",
+    "widget_integration": "الودجيت / التكامل",
+    "unknown": "غير محدد",
+}
+
+_OWNERSHIP_BY_KIND: dict[str, str] = {
+    "store_needs_setup": "merchant_setup",
+    "whatsapp_missing": "whatsapp_provider",
+    "no_cart_events": "widget_integration",
+    "stale_recovery": "scheduler",
+    "failed_recovery": "cartflow_system",
+}
+
 _VALID_SEVERITY_BUCKETS = frozenset({"critical", "high", "medium", "low"})
 
 _SEVERITY_RANK: dict[str, int] = {
@@ -301,6 +318,16 @@ def _severity_for_kind(kind: str) -> dict[str, Any]:
         "priority_order": _safe_int(
             meta.get("priority_order"), _DEFAULT_ALERT_SEVERITY["priority_order"]
         ),
+    }
+
+
+def _ownership_for_kind(kind: str) -> dict[str, str]:
+    """Operational ownership classification (read-only)."""
+    owner_key = _OWNERSHIP_BY_KIND.get(_safe_str(kind, 64)) or "unknown"
+    return {
+        "owner_key": owner_key,
+        "owner_ar": _OPERATIONAL_OWNERS_AR.get(owner_key)
+        or _OPERATIONAL_OWNERS_AR["unknown"],
     }
 
 
@@ -743,6 +770,7 @@ def _risk_row_from_alert_record(
         or _safe_str(alert.get("why_ar"), 300),
         "suggested_next_step_ar": copy.get("suggested_next_step_ar")
         or _safe_str(alert.get("suggested_fix_ar"), 300),
+        **_ownership_for_kind(kind),
         "_recency_ts": _recency_timestamp(_record_recency_key(rec)),
         "_priority_order": sev_meta["priority_order"],
         "_store_slug_sort": slug or "",
@@ -797,6 +825,8 @@ def _build_top_risks(alerts: list[dict[str, Any]]) -> dict[str, Any]:
                 "affected_store_name": row.get("affected_store_name") or "—",
                 "why_it_matters_ar": row.get("why_it_matters_ar") or "",
                 "suggested_next_step_ar": row.get("suggested_next_step_ar") or "",
+                "owner_key": row.get("owner_key") or "unknown",
+                "owner_ar": row.get("owner_ar") or _OPERATIONAL_OWNERS_AR["unknown"],
             }
         )
     return {
@@ -857,6 +887,7 @@ def _timeline_event_row(
     sev = _severity_for_kind(event_type)
     slug = _safe_str(store_slug, 128)
     name = _safe_str(store_name, 128) or slug or "—"
+    owner = _ownership_for_kind(event_type)
     return {
         "event_type": event_type,
         "title_ar": copy.get("title_ar") or event_type,
@@ -866,6 +897,8 @@ def _timeline_event_row(
         "severity_ar": sev["severity_ar"],
         "happened_at": happened_at or "غير متوفر",
         "short_detail_ar": copy.get("short_detail_ar") or "",
+        "owner_key": owner["owner_key"],
+        "owner_ar": owner["owner_ar"],
         "_sort_ts": sort_ts,
     }
 
@@ -1175,6 +1208,8 @@ def _build_operational_timeline(
                 "severity_ar": row.get("severity_ar"),
                 "happened_at": row.get("happened_at") or "غير متوفر",
                 "short_detail_ar": row.get("short_detail_ar") or "",
+                "owner_key": row.get("owner_key") or "unknown",
+                "owner_ar": row.get("owner_ar") or _OPERATIONAL_OWNERS_AR["unknown"],
             }
         )
     return {
@@ -1205,6 +1240,7 @@ def _alert_with_records(
     hidden = max(0, total - len(shown))
     expl = _ALERT_EXPLANATIONS_AR.get(kind) or {}
     sev = _severity_for_kind(kind)
+    owner = _ownership_for_kind(kind)
     return {
         "kind": kind,
         "severity": sev["severity"],
@@ -1214,6 +1250,8 @@ def _alert_with_records(
         "detail_ar": detail_ar,
         "why_ar": why_ar or expl.get("why_ar") or "",
         "suggested_fix_ar": suggested_fix_ar or expl.get("suggested_fix_ar") or "",
+        "owner_key": owner["owner_key"],
+        "owner_ar": owner["owner_ar"],
         "records": shown,
         "records_total": total,
         "records_hidden": hidden,
@@ -1662,7 +1700,7 @@ def build_admin_operations_center_v1_readonly() -> dict[str, Any]:
     operational_timeline = _build_operational_timeline(alerts, store_rows)
 
     return {
-        "version": "admin_operations_center_v1_8",
+        "version": "admin_operations_center_v1_9",
         "generated_at_utc": _utc_now().isoformat(),
         "system_health_summary": system_health_summary,
         "store_health_snapshot": store_health_snapshot,
@@ -1691,4 +1729,7 @@ __all__ = [
     "_sort_operational_timeline",
     "_pick_happened_at",
     "_timeline_event_from_alert_record",
+    "_ownership_for_kind",
+    "_OWNERSHIP_BY_KIND",
+    "_OPERATIONAL_OWNERS_AR",
 ]

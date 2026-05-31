@@ -324,7 +324,7 @@ def admin_operations_dashboard(request: Request) -> Any:
         ops = build_admin_operations_center_v1_readonly()
     except Exception:  # noqa: BLE001
         ops = {
-            "version": "admin_operations_center_v1_8",
+            "version": "admin_operations_center_v1_9",
             "generated_at_utc": None,
             "system_health_summary": {
                 "status_key": "stable",
