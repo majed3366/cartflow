@@ -19,10 +19,12 @@ from services.admin_operations_center_v1 import (
     _alert_with_records,
     _build_operational_trends,
     _build_operational_timeline,
+    _build_root_cause_groups,
     _build_store_health_snapshot,
     _build_system_health_summary,
     _build_top_risks,
     _compute_trend_from_counts,
+    _escalate_severity,
     _ownership_for_kind,
     _OWNERSHIP_BY_KIND,
     _pick_happened_at,
@@ -30,6 +32,7 @@ from services.admin_operations_center_v1 import (
     _risk_row_from_alert_record,
     _sort_alerts,
     _sort_operational_timeline,
+    _sort_root_cause_groups,
     _sort_top_risks,
     _timeline_event_from_alert_record,
     _timeline_event_row,
@@ -67,7 +70,7 @@ class AdminOperationsCenterV1Tests(unittest.TestCase):
 
     def test_build_payload_has_required_sections(self) -> None:
         payload = build_admin_operations_center_v1_readonly()
-        self.assertEqual(payload.get("version"), "admin_operations_center_v1_9")
+        self.assertEqual(payload.get("version"), "admin_operations_center_v2_0")
         health = payload.get("system_health_summary") or {}
         for key in (
             "status_key",
@@ -96,6 +99,9 @@ class AdminOperationsCenterV1Tests(unittest.TestCase):
         self.assertIn("events", timeline)
         self.assertIn("window_hours", timeline)
         self.assertLessEqual(len(timeline.get("events") or []), 25)
+        rcg = payload.get("root_cause_groups") or {}
+        self.assertIn("groups", rcg)
+        self.assertIn("total_groups", rcg)
         sch = payload.get("scheduler") or {}
         for key in ("role", "overdue_scheduled_count", "running_stale_count"):
             self.assertIn(key, sch)
@@ -463,6 +469,126 @@ class AdminOperationsCenterV1Tests(unittest.TestCase):
         r = self.client.get("/admin/operations")
         self.assertEqual(r.status_code, 200)
         self.assertGreaterEqual(r.text.count("المالك المحتمل:"), 2)
+
+    def test_root_cause_groups_ownership_grouping(self) -> None:
+        alerts = [
+            _alert_with_records(
+                kind="whatsapp_missing",
+                title_ar="wa1",
+                detail_ar="wa1",
+                records=[{"store_slug": "s1"}, {"store_slug": "s2"}],
+                records_total=2,
+            ),
+            _alert_with_records(
+                kind="whatsapp_missing",
+                title_ar="wa2",
+                detail_ar="wa2",
+                records=[{"store_slug": "s3"}],
+                records_total=1,
+            ),
+            _alert_with_records(
+                kind="store_needs_setup",
+                title_ar="setup",
+                detail_ar="setup",
+                records=[{"store_slug": "s4"}],
+                records_total=1,
+            ),
+        ]
+        rcg = _build_root_cause_groups(alerts)
+        groups = {g["owner_key"]: g for g in rcg["groups"]}
+        self.assertEqual(groups["whatsapp_provider"]["alerts_count"], 2)
+        self.assertEqual(groups["merchant_setup"]["alerts_count"], 1)
+        self.assertIn("whatsapp_missing", groups["whatsapp_provider"]["alert_kinds"])
+        self.assertIn("store_needs_setup", groups["merchant_setup"]["alert_kinds"])
+
+    def test_root_cause_groups_severity_escalation(self) -> None:
+        alerts = [
+            _alert_with_records(
+                kind="no_cart_events",
+                title_ar="low",
+                detail_ar="low",
+                records=[{"store_slug": "a"}],
+                records_total=1,
+            ),
+            _alert_with_records(
+                kind="stale_recovery",
+                title_ar="crit",
+                detail_ar="crit",
+                records=[{"store_slug": "b"}],
+                records_total=1,
+            ),
+        ]
+        rcg = _build_root_cause_groups(alerts)
+        scheduler = next(g for g in rcg["groups"] if g["owner_key"] == "scheduler")
+        self.assertEqual(scheduler["highest_severity"], "critical")
+        self.assertEqual(scheduler["highest_severity_ar"], "حرج")
+        self.assertEqual(_escalate_severity("low", "critical"), "critical")
+        self.assertEqual(_escalate_severity("critical", "high"), "critical")
+
+    def test_root_cause_groups_store_counting(self) -> None:
+        alerts = [
+            _alert_with_records(
+                kind="whatsapp_missing",
+                title_ar="wa",
+                detail_ar="wa",
+                records=[
+                    {"store_slug": "s1"},
+                    {"store_slug": "s2"},
+                    {"store_slug": "s1"},
+                ],
+                records_total=3,
+            ),
+            _alert_with_records(
+                kind="whatsapp_missing",
+                title_ar="wa2",
+                detail_ar="wa2",
+                records=[{"store_slug": "s2"}, {"store_slug": "s3"}],
+                records_total=2,
+            ),
+        ]
+        rcg = _build_root_cause_groups(alerts)
+        wa = next(g for g in rcg["groups"] if g["owner_key"] == "whatsapp_provider")
+        self.assertEqual(wa["stores_count"], 3)
+
+    def test_root_cause_groups_sorting(self) -> None:
+        groups = [
+            {
+                "owner_key": "whatsapp_provider",
+                "owner_ar": "مزود واتساب",
+                "alerts_count": 6,
+                "stores_count": 4,
+                "highest_severity": "high",
+                "highest_severity_ar": "عالي",
+                "alert_kinds": ["whatsapp_missing"],
+            },
+            {
+                "owner_key": "scheduler",
+                "owner_ar": "المجدول",
+                "alerts_count": 1,
+                "stores_count": 1,
+                "highest_severity": "critical",
+                "highest_severity_ar": "حرج",
+                "alert_kinds": ["stale_recovery"],
+            },
+            {
+                "owner_key": "merchant_setup",
+                "owner_ar": "إعداد المتجر",
+                "alerts_count": 2,
+                "stores_count": 2,
+                "highest_severity": "medium",
+                "highest_severity_ar": "متوسط",
+                "alert_kinds": ["store_needs_setup"],
+            },
+        ]
+        ordered = _sort_root_cause_groups(groups)
+        self.assertEqual(ordered[0]["owner_key"], "scheduler")
+        self.assertEqual(ordered[1]["owner_key"], "whatsapp_provider")
+
+    def test_page_renders_root_cause_groups_section(self) -> None:
+        self._login()
+        r = self.client.get("/admin/operations")
+        self.assertEqual(r.status_code, 200)
+        self.assertIn("مصادر المشاكل الرئيسية", r.text)
 
     def test_trend_improving(self) -> None:
         t = _compute_trend_from_counts(3, 7)

@@ -144,6 +144,13 @@ _SEVERITY_RANK: dict[str, int] = {
     "low": 3,
 }
 
+_SEVERITY_AR_BY_BUCKET: dict[str, str] = {
+    "critical": "حرج",
+    "high": "عالي",
+    "medium": "متوسط",
+    "low": "منخفض",
+}
+
 _STORE_SNAPSHOT_KINDS = frozenset(
     {
         "store_needs_setup",
@@ -328,6 +335,113 @@ def _ownership_for_kind(kind: str) -> dict[str, str]:
         "owner_key": owner_key,
         "owner_ar": _OPERATIONAL_OWNERS_AR.get(owner_key)
         or _OPERATIONAL_OWNERS_AR["unknown"],
+    }
+
+
+def _escalate_severity(current: str, candidate: str) -> str:
+    cur = _safe_str(current, 32).lower()
+    cand = _safe_str(candidate, 32).lower()
+    if cand not in _VALID_SEVERITY_BUCKETS:
+        cand = "low"
+    if cur not in _VALID_SEVERITY_BUCKETS:
+        return cand
+    if _SEVERITY_RANK.get(cand, 99) < _SEVERITY_RANK.get(cur, 99):
+        return cand
+    return cur
+
+
+def _severity_ar_for_bucket(bucket: str) -> str:
+    key = _safe_str(bucket, 32).lower()
+    return _SEVERITY_AR_BY_BUCKET.get(key) or _SEVERITY_AR_BY_BUCKET["low"]
+
+
+def _store_slugs_from_alert(alert: dict[str, Any]) -> set[str]:
+    slugs: set[str] = set()
+    for rec in alert.get("records") or []:
+        if not isinstance(rec, dict):
+            continue
+        slug = _safe_str(rec.get("store_slug"), 128)
+        if slug:
+            slugs.add(slug)
+    return slugs
+
+
+def _sort_root_cause_groups(groups: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    def _key(row: dict[str, Any]) -> tuple[int, int, int, str]:
+        sev = _safe_str(row.get("highest_severity"), 32).lower()
+        return (
+            _SEVERITY_RANK.get(sev, 99),
+            -_safe_int(row.get("alerts_count"), 0),
+            -_safe_int(row.get("stores_count"), 0),
+            _safe_str(row.get("owner_key"), 64),
+        )
+
+    return sorted(groups, key=_key)
+
+
+def _build_root_cause_groups(alerts: list[dict[str, Any]]) -> dict[str, Any]:
+    """Aggregate alerts by operational owner (read-only root cause groups)."""
+    grouped: dict[str, dict[str, Any]] = {}
+
+    for alert in alerts or []:
+        if not isinstance(alert, dict):
+            continue
+        kind = _safe_str(alert.get("kind"), 64)
+        owner_key = _safe_str(alert.get("owner_key"), 64) or _ownership_for_kind(kind)[
+            "owner_key"
+        ]
+        owner_ar = (
+            _safe_str(alert.get("owner_ar"), 64)
+            or _OPERATIONAL_OWNERS_AR.get(owner_key)
+            or _OPERATIONAL_OWNERS_AR["unknown"]
+        )
+        if owner_key not in _OPERATIONAL_OWNERS_AR:
+            owner_key = "unknown"
+            owner_ar = _OPERATIONAL_OWNERS_AR["unknown"]
+
+        if owner_key not in grouped:
+            grouped[owner_key] = {
+                "owner_key": owner_key,
+                "owner_ar": owner_ar,
+                "alerts_count": 0,
+                "_store_slugs": set(),
+                "highest_severity": "low",
+                "_alert_kinds": set(),
+            }
+
+        bucket = grouped[owner_key]
+        bucket["alerts_count"] = _safe_int(bucket.get("alerts_count"), 0) + 1
+        bucket["_store_slugs"].update(_store_slugs_from_alert(alert))
+        bucket["highest_severity"] = _escalate_severity(
+            str(bucket.get("highest_severity") or "low"),
+            _alert_severity_bucket(alert),
+        )
+        if kind:
+            bucket["_alert_kinds"].add(kind)
+
+    groups: list[dict[str, Any]] = []
+    for row in grouped.values():
+        highest = _safe_str(row.get("highest_severity"), 32).lower()
+        if highest not in _VALID_SEVERITY_BUCKETS:
+            highest = "low"
+        kinds = sorted(str(k) for k in (row.get("_alert_kinds") or set()) if k)
+        groups.append(
+            {
+                "owner_key": row.get("owner_key") or "unknown",
+                "owner_ar": row.get("owner_ar") or _OPERATIONAL_OWNERS_AR["unknown"],
+                "alerts_count": _safe_int(row.get("alerts_count"), 0),
+                "stores_count": len(row.get("_store_slugs") or set()),
+                "highest_severity": highest,
+                "highest_severity_ar": _severity_ar_for_bucket(highest),
+                "alert_kinds": kinds,
+            }
+        )
+
+    sorted_groups = _sort_root_cause_groups(groups)
+    return {
+        "groups": sorted_groups,
+        "total_groups": len(sorted_groups),
+        "available": True,
     }
 
 
@@ -1698,15 +1812,17 @@ def build_admin_operations_center_v1_readonly() -> dict[str, Any]:
     operational_trends = _build_operational_trends()
     top_risks = _build_top_risks(alerts)
     operational_timeline = _build_operational_timeline(alerts, store_rows)
+    root_cause_groups = _build_root_cause_groups(alerts)
 
     return {
-        "version": "admin_operations_center_v1_9",
+        "version": "admin_operations_center_v2_0",
         "generated_at_utc": _utc_now().isoformat(),
         "system_health_summary": system_health_summary,
         "store_health_snapshot": store_health_snapshot,
         "operational_trends": operational_trends,
         "top_risks": top_risks,
         "operational_timeline": operational_timeline,
+        "root_cause_groups": root_cause_groups,
         "scheduler": scheduler,
         "recovery": recovery,
         "store_readiness": store_readiness,
@@ -1732,4 +1848,7 @@ __all__ = [
     "_ownership_for_kind",
     "_OWNERSHIP_BY_KIND",
     "_OPERATIONAL_OWNERS_AR",
+    "_build_root_cause_groups",
+    "_sort_root_cause_groups",
+    "_escalate_severity",
 ]

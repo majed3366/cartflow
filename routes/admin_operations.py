@@ -324,7 +324,7 @@ def admin_operations_dashboard(request: Request) -> Any:
         ops = build_admin_operations_center_v1_readonly()
     except Exception:  # noqa: BLE001
         ops = {
-            "version": "admin_operations_center_v1_9",
+            "version": "admin_operations_center_v2_0",
             "generated_at_utc": None,
             "system_health_summary": {
                 "status_key": "stable",
@@ -360,6 +360,11 @@ def admin_operations_dashboard(request: Request) -> Any:
                 "total_candidates": 0,
                 "shown_count": 0,
                 "max_shown": 25,
+                "available": True,
+            },
+            "root_cause_groups": {
+                "groups": [],
+                "total_groups": 0,
                 "available": True,
             },
             "scheduler": {

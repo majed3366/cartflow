@@ -109,7 +109,7 @@ Server-side template control (**`exit_intent_*`** on **`Store`**): `services/sto
 | `POST /webhook/whatsapp/status` | `routes/whatsapp_delivery_webhook.py` | Twilio status callbacks → `whatsapp_delivery_truth_v1` (`[WA DELIVERY EVENT]` / `[WA DELIVERY TRUTH]`); no recovery execution. |
 | `GET /admin/support-diagnostics` | `routes/admin_ops.py` | Admin JSON: `build_admin_support_diagnostics` — What/Why/Action for support (session/store/recovery_key). |
 | `GET /admin/support-diagnostics/ui` | `routes/admin_ops.py` | Admin HTML «تشخيص الدعم» (sidebar under التشغيل). |
-| `GET /admin/operations` | `routes/admin_operations.py` | **Admin Operations Center v1.9** — read-only scheduler health, aggregates, alerts, trends, top risks, operational timeline, **ownership classification** (`owner_key` / `owner_ar` on alerts/risks/timeline); `CARTFLOW_ADMIN_PASSWORD` session. |
+| `GET /admin/operations` | `routes/admin_operations.py` | **Admin Operations Center v2.0** — read-only ops dashboard: health, alerts, trends, top risks, timeline, ownership, **root cause groups** (`root_cause_groups` by owner); `CARTFLOW_ADMIN_PASSWORD` session. |
 | `GET /admin/operational-health` | `routes/admin_operations.py` | Deep operational control / risk cards (`services/admin_operational_health.py`). |
 | `GET /health/scheduler` | `main.py` | Scheduler role + overdue/stale counts (same source as ops center scheduler card). |
 | `GET /demo/store`, `/demo/store/cart`, `/demo/store/checkout`, `/demo/cart`, `/demo/cart/checkout`, `/demo/store/product/{id}` | `main.py` | **Commerce sandbox (default `store_slug=demo`):** multi-page catalog, cart, lightweight checkout. |
@@ -325,6 +325,7 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 
 | Date (UTC) | Summary |
 |------------|---------|
+| 2026-05-29 | **Admin Operations Center v2.0 — root cause groups:** `root_cause_groups` on `/admin/operations` — «مصادر المشاكل الرئيسية» aggregates alerts by `owner_key` with alerts/stores counts, severity escalation, and distinct alert kinds; sorted critical-first; read-only. Commit: **`feat: add root cause groups`**. |
 | 2026-05-29 | **Admin Operations Center v1.9 — operational ownership:** `owner_key` / `owner_ar` on alerts, top risks, and operational timeline — maps each alert kind to merchant setup, WhatsApp provider, widget integration, scheduler, or CartFlow system; «المالك المحتمل» in UI; read-only, no behavior changes. Commit: **`feat: add operational ownership classification`**. |
 | 2026-05-29 | **Admin Operations Center v1.8 — operational timeline:** `operational_timeline` on `/admin/operations` — «آخر الأحداث التشغيلية» (last 24h, max 25, newest first) from failed/stale recovery and store setup/WhatsApp/no-cart truth; compact read-only table; no behavior changes. Commit: **`feat: add operational timeline`**. |
 | 2026-05-31 | **Admin Operations Center v1.7 — top risks:** `top_risks` on `/admin/operations` — «أهم المخاطر الحالية» (max 5) from existing alerts by severity/recency; Arabic why-it-matters + suggested next step per risk kind; read-only. Commit: **`feat: add top risks section to admin operations center`**. |
