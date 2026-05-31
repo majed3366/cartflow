@@ -4030,3 +4030,54 @@ button.ma-vip-suggest-btn.va-btn {
   display: inline-flex;
   font-size: 0.8125rem;
 }
+
+@media (max-width: 639px) {
+  .ma-journey-v2-title-main {
+    font-size: 1rem;
+    line-height: 1.35;
+  }
+
+  .ma-journey-v2-progress-meta {
+    flex-wrap: wrap;
+    font-size: 0.75rem;
+  }
+
+  .ma-journey-v2-step {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: 0.75rem;
+  }
+
+  .ma-journey-v2-title,
+  .ma-journey-v2-why {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .ma-journey-v2-action,
+  .ma-journey-ready-cta,
+  .ma-journey-gate-card .ma-setup-btn-primary {
+    width: 100%;
+    justify-content: center;
+    box-sizing: border-box;
+  }
+
+  .ma-journey-gate-card {
+    padding: 1rem;
+    margin: 0 0 0.75rem;
+  }
+
+  .ma-journey-ready-checklist {
+    padding-inline-start: 1.25rem;
+  }
+}
+
+@media (max-width: 390px) {
+  .ma-journey-v2-mark {
+    font-size: 0.875rem;
+  }
+
+  .ma-journey-v2-progress-pct {
+    font-size: 0.75rem;
+  }
+}

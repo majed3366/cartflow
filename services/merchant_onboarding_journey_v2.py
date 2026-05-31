@@ -17,6 +17,7 @@ from services.merchant_setup_unified_p0 import (
     MerchantSetupUnifiedP0,
     build_merchant_setup_unified_p0,
 )
+from services.cartflow_onboarding_readiness import evaluate_onboarding_readiness
 
 _FORBIDDEN = re.compile(
     r"\boauth\b|\bwebhook\b|\bprovider\b|\bruntime\b|recovery engine|"
@@ -125,12 +126,11 @@ def _sanitize(text: str) -> str:
 def _flags_from_unified(
     unified: MerchantSetupUnifiedP0,
     store: Optional[Any],
+    ev: Optional[dict[str, Any]] = None,
 ) -> dict[str, bool]:
     slug = (getattr(store, "zid_store_id", None) or "").strip() if store else ""
     by_id = {s.step_id: s for s in unified.steps}
     account = bool(by_id.get("sandbox_account") and by_id["sandbox_account"].is_complete)
-    if store is not None and not account:
-        account = True
     widget_test = bool(
         by_id.get("sandbox_test_widget") and by_id["sandbox_test_widget"].is_complete
     )
@@ -144,6 +144,7 @@ def _flags_from_unified(
     )
     ready = unified.onboarding_complete
     test_url = unified.test_store_url or merchant_activation_test_store_url(slug)
+    recovery_on = bool((ev or {}).get("flags", {}).get("recovery_enabled"))
     return {
         "account": account,
         "widget_test": widget_test,
@@ -151,9 +152,25 @@ def _flags_from_unified(
         "configure_whatsapp": whatsapp,
         "review_messages": review_messages,
         "ready_for_launch": ready and live_widget,
+        "live_widget": live_widget,
+        "recovery_enabled": recovery_on,
         "test_url": test_url,
         "sandbox_verified": unified.sandbox_verified,
     }
+
+
+def _readiness_checklist(flags: dict[str, bool]) -> list[str]:
+    """Merchant-safe checklist — only lines backed by current activation flags."""
+    lines: list[str] = []
+    if flags.get("live_widget") or flags.get("ready_for_launch"):
+        lines.append("الودجيت مُعدّ")
+    if flags.get("connect_store"):
+        lines.append("المتجر مربوط")
+    if flags.get("configure_whatsapp"):
+        lines.append("واتساب مُعدّ")
+    if flags.get("recovery_enabled"):
+        lines.append("الاسترجاع مفعّل")
+    return lines
 
 
 def _assign_statuses(checks: list[tuple[str, bool]]) -> list[str]:
@@ -185,7 +202,8 @@ def build_activation_journey_v2(
         merchant_user_id=merchant_user_id,
         emit_logs=False,
     )
-    flags = _flags_from_unified(u, store)
+    ev = evaluate_onboarding_readiness(store) if store is not None else {}
+    flags = _flags_from_unified(u, store, ev)
     test_url = str(flags.get("test_url") or "/dashboard/test-widget")
 
     specs: list[dict[str, Any]] = [
@@ -359,14 +377,11 @@ def build_activation_journey_v2(
 
     readiness: Optional[ReadinessCard] = None
     if complete:
+        checklist = _readiness_checklist(flags)
         readiness = ReadinessCard(
             title_ar="متجرك جاهز للتشغيل",
             lead_ar="CartFlow يراقب الآن السلال المهجورة ويشرح كل خطوة.",
-            checklist_ar=[
-                "الودجيت مُعدّ",
-                "واتساب مُعدّ",
-                "رسائل الاسترجاع مفعّلة",
-            ],
+            checklist_ar=checklist,
             footer_ar="يمكنك متابعة السلال والرسائل من لوحة التحكم.",
             cta_href="/dashboard#carts",
             cta_label_ar="الذهاب إلى لوحة السلال",
