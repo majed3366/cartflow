@@ -1491,51 +1491,176 @@
 
   function cartRowMatchesFilterMode(mc, mode) {
     var m = (mode || "all").trim().toLowerCase();
+    if (m === "completed") m = "recovered";
     if (m === "all") return true;
     if (!mc) return false;
     var primary = String(mc.merchant_cart_primary_bucket || "")
       .trim()
       .toLowerCase();
-    if (primary && primary === m) return true;
+    if (primary && (primary === m || (m === "recovered" && primary === "completed"))) {
+      return true;
+    }
     var bucket = String(mc.merchant_cart_bucket || "").trim().toLowerCase();
-    if (bucket && bucket === m) return true;
+    if (
+      bucket &&
+      (bucket === m || (m === "recovered" && bucket === "completed"))
+    ) {
+      return true;
+    }
     var tabs = mc.merchant_cart_visible_tabs;
     if (Array.isArray(tabs)) {
       for (var i = 0; i < tabs.length; i++) {
-        if (String(tabs[i] || "").trim().toLowerCase() === m) return true;
+        var tk = String(tabs[i] || "").trim().toLowerCase();
+        if (tk === m || (m === "recovered" && tk === "completed")) return true;
       }
     }
     if (m === "recovered") {
-      var lc = String(mc.customer_lifecycle_state || "").trim().toLowerCase();
-      if (lc === "completed") return true;
-      if (String(mc.customer_lifecycle_completed_variant || "").trim() === "purchased") {
-        return true;
+      return isCompletedDashboardRow(mc);
+    }
+    return false;
+  }
+
+  function isCompletedDashboardRow(mc) {
+    if (!mc) return false;
+    var lc = String(mc.customer_lifecycle_state || "").trim().toLowerCase();
+    if (lc === "completed") return true;
+    if (String(mc.merchant_coarse_status || "").trim().toLowerCase() === "converted") {
+      return true;
+    }
+    if (String(mc.customer_lifecycle_completed_variant || "").trim() === "purchased") {
+      return true;
+    }
+    var primary = String(mc.merchant_cart_primary_bucket || "").trim().toLowerCase();
+    if (primary === "recovered" || primary === "completed") return true;
+    var bucket = String(mc.merchant_cart_bucket || "").trim().toLowerCase();
+    if (bucket === "recovered" || bucket === "completed") return true;
+    var tabs = mc.merchant_cart_visible_tabs;
+    if (Array.isArray(tabs)) {
+      for (var i = 0; i < tabs.length; i++) {
+        var tk = String(tabs[i] || "").trim().toLowerCase();
+        if (tk === "recovered" || tk === "completed") return true;
       }
     }
+    var lbl = String(
+      mc.customer_lifecycle_label_ar || mc.merchant_status_label_ar || ""
+    );
+    if (lbl.indexOf("تم الشراء") >= 0) return true;
+    if (lbl.indexOf("تمت الاستعادة") >= 0) return true;
+    if (lbl.indexOf("تم الاسترجاع") >= 0) return true;
+    if (mc.merchant_cart_is_terminal === true && lbl.indexOf("تم") >= 0) {
+      return true;
+    }
+    return false;
+  }
+
+  function trLooksCompletedRow(tr) {
+    if (!tr) return false;
+    if (tr.getAttribute("data-ma-completed") === "1") return true;
+    if (tr.getAttribute("data-ma-archived-visual") === "1") return false;
+    var filter = (tr.getAttribute("data-ma-filter") || "").trim().toLowerCase();
+    if (filter === "recovered" || filter === "completed") return true;
+    var primary = (tr.getAttribute("data-ma-primary-bucket") || "")
+      .trim()
+      .toLowerCase();
+    if (primary === "recovered" || primary === "completed") return true;
+    try {
+      var tabs = JSON.parse(tr.getAttribute("data-ma-visible-tabs") || "[]");
+      if (Array.isArray(tabs)) {
+        for (var i = 0; i < tabs.length; i++) {
+          var tk = String(tabs[i] || "").trim().toLowerCase();
+          if (tk === "recovered" || tk === "completed") return true;
+        }
+      }
+    } catch (eTabs) {
+      /* ignore */
+    }
+    var txt = tr.textContent || "";
+    if (txt.indexOf("تم الشراء") >= 0) return true;
+    if (txt.indexOf("تمت الاستعادة") >= 0) return true;
     return false;
   }
 
   function completedCartsFromRows(rows) {
     return sortCartsArchivedLast(rows || []).filter(function (mc) {
-      return cartRowMatchesFilterMode(mc, "recovered");
+      return isCompletedDashboardRow(mc);
     });
+  }
+
+  function completedRowsHtmlFromAllTableDom() {
+    var src = document.querySelector("#ma-tbody-all-carts");
+    if (!src) return "";
+    var html = "";
+    var n = 0;
+    src.querySelectorAll("tr[data-ma-filter]").forEach(function (tr) {
+      if (!trLooksCompletedRow(tr)) return;
+      html += tr.outerHTML;
+      n += 1;
+    });
+    return n ? html : "";
+  }
+
+  function logCompletedTab(total, completed, source) {
+    try {
+      console.log(
+        "[COMPLETED TAB] rows_total=" +
+          String(total == null ? 0 : total) +
+          " completed_rows=" +
+          String(completed == null ? 0 : completed) +
+          (source ? " source=" + source : "")
+      );
+    } catch (eLog) {
+      /* ignore */
+    }
   }
 
   function applyCompletedCartsTable(rows) {
     var tbody = byId("ma-tbody-completed");
-    if (!tbody) return;
-    var completed = completedCartsFromRows(rows);
-    if (!completed.length) {
-      tbody.innerHTML =
-        '<tr><td colspan="6" class="empty-state" style="border:none;"><div class="empty-icon">✅</div><div class="empty-text">لا توجد سلال مكتملة حالياً ضمن نطاق متجرك</div></td></tr>';
+    var total = (rows || []).length;
+    if (!tbody) {
+      logCompletedTab(total, 0, "missing_tbody");
       return;
     }
-    tbody.innerHTML = completed.map(cartRowFull).join("");
-    bindCustomerLifecycleActions(tbody);
+    var completed = completedCartsFromRows(rows);
+    if (completed.length) {
+      tbody.innerHTML = completed.map(cartRowFull).join("");
+      bindCustomerLifecycleActions(tbody);
+      logCompletedTab(total, completed.length, "payload");
+      return;
+    }
+    var domHtml = completedRowsHtmlFromAllTableDom();
+    if (domHtml) {
+      tbody.innerHTML = domHtml;
+      bindCustomerLifecycleActions(tbody);
+      var domCount = tbody.querySelectorAll("tr[data-ma-filter]").length;
+      logCompletedTab(total, domCount, "dom_from_all_tab");
+      return;
+    }
+    tbody.innerHTML =
+      '<tr><td colspan="6" class="empty-state" style="border:none;"><div class="empty-icon">✅</div><div class="empty-text">لا توجد سلال مكتملة حالياً ضمن نطاق متجرك</div></td></tr>';
+    logCompletedTab(total, 0, "empty");
   }
 
   window.maRefreshCompletedCartsTable = function () {
-    applyCompletedCartsTable(lastNormalCartsPageRows);
+    var rows = lastNormalCartsPageRows || [];
+    if (!rows.length && window.__maNormalCartsPageRows) {
+      rows = window.__maNormalCartsPageRows;
+    }
+    applyCompletedCartsTable(rows);
+    if (
+      !rows.length &&
+      !window.__maCompletedTabFetchPending &&
+      typeof fetchSection === "function"
+    ) {
+      window.__maCompletedTabFetchPending = true;
+      fetchSection(
+        "/api/dashboard/normal-carts",
+        function (d) {
+          window.__maCompletedTabFetchPending = false;
+          applyNormalCarts(d);
+        },
+        "normal_carts_completed_retry"
+      );
+    }
   };
 
   function cartLifecycleActionBtnHtml(mc) {
@@ -1833,6 +1958,7 @@
       merchantNextLineShort(mc) ||
       mc.merchant_next_action_ar ||
       "—";
+    var completedRow = isCompletedDashboardRow(mc);
     return (
       '<tr data-ma-filter="' +
       b +
@@ -1841,6 +1967,7 @@
       '" data-ma-visible-tabs="' +
       tabsJson +
       '"' +
+      (completedRow ? ' data-ma-completed="1"' : "") +
       (archived ? ' class="ma-row-archived" data-ma-archived-visual="1"' : "") +
       ">" +
       "<td><div class=\"camt\">" +
@@ -1876,6 +2003,8 @@
   function applyNormalCarts(d) {
     if (!d || !d.ok) return;
     ingestRefreshToken(d, "normal-carts");
+    lastNormalCartsPageRows = d.merchant_carts_page_rows || [];
+    window.__maNormalCartsPageRows = lastNormalCartsPageRows;
     var home = byId("ma-tbody-home-carts");
     if (home) {
       var tr = d.merchant_table_rows || [];
@@ -1888,7 +2017,6 @@
     }
     var allb = byId("ma-tbody-all-carts");
     if (allb) {
-      lastNormalCartsPageRows = d.merchant_carts_page_rows || [];
       var pr = sortCartsArchivedLast(lastNormalCartsPageRows);
       if (!pr.length) {
         allb.innerHTML =
@@ -2373,7 +2501,20 @@
   window.maSyncHomeActivation = syncHomeActivationFromCache;
   window.MERCHANT_SETUP_RENDER_BUILD = MERCHANT_SETUP_RENDER_BUILD;
 
-  window.addEventListener("hashchange", syncHomeActivationFromCache);
+  window.addEventListener("hashchange", function () {
+    syncHomeActivationFromCache();
+    try {
+      var hashRaw = (location.hash || "").split("?")[0].toLowerCase();
+      if (
+        hashRaw === "#completed" &&
+        typeof window.maRefreshCompletedCartsTable === "function"
+      ) {
+        window.maRefreshCompletedCartsTable();
+      }
+    } catch (eHash) {
+      /* ignore */
+    }
+  });
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", bootLazyDashboard);

@@ -159,6 +159,8 @@
     return t;
   }
 
+  window.rowMatchesCartFilterMode = rowMatchesCartFilterMode;
+
   function applyCartFilterMode(mode) {
     var tbody = document.querySelector("#page-carts tbody");
     if (!tbody) return;
