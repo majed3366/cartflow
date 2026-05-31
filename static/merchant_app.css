@@ -3821,3 +3821,212 @@ button.ma-vip-suggest-btn.va-btn {
     gap: 8px;
   }
 }
+
+/* Onboarding Journey V2 */
+.ma-journey-v2-panel {
+  padding: 0;
+}
+
+.ma-journey-v2-head {
+  margin-bottom: 1rem;
+}
+
+.ma-journey-v2-title-main {
+  font-size: 1.125rem;
+  font-weight: 800;
+  color: var(--green);
+  margin-bottom: 0.75rem;
+}
+
+.ma-journey-v2-progress-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+  color: var(--muted);
+  margin-bottom: 0.375rem;
+}
+
+.ma-journey-v2-progress-pct {
+  font-weight: 700;
+  color: var(--green);
+}
+
+.ma-journey-v2-progress-bar {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--border);
+  overflow: hidden;
+}
+
+.ma-journey-v2-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--green-mid), var(--green));
+  border-radius: 999px;
+  transition: width 0.35s ease;
+}
+
+.ma-journey-v2-checklist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.625rem;
+}
+
+.ma-journey-v2-step {
+  display: flex;
+  gap: 0.625rem;
+  align-items: flex-start;
+  padding: 0.625rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.ma-journey-v2-step.is-current {
+  border-color: var(--green-mid);
+  background: var(--green-bg);
+  box-shadow: 0 0 0 1px rgba(22, 163, 74, 0.12);
+}
+
+.ma-journey-v2-step.is-done {
+  opacity: 0.92;
+}
+
+.ma-journey-v2-step.is-locked {
+  opacity: 0.72;
+}
+
+.ma-journey-v2-mark {
+  flex-shrink: 0;
+  font-size: 1rem;
+  line-height: 1.4;
+}
+
+.ma-journey-v2-title {
+  font-weight: 700;
+  font-size: 0.875rem;
+  margin-bottom: 0.2rem;
+}
+
+.ma-journey-v2-why {
+  font-size: 0.8125rem;
+  color: var(--muted);
+  margin-bottom: 0.5rem;
+}
+
+.ma-journey-v2-action {
+  display: inline-flex;
+  margin-top: 0.25rem;
+  font-size: 0.8125rem;
+  padding: 0.4rem 0.875rem;
+}
+
+.ma-journey-v2-hint {
+  margin-top: 0.75rem;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.ma-journey-ready-card {
+  text-align: center;
+  padding: 0.5rem 0.25rem;
+}
+
+.ma-journey-ready-title {
+  font-size: 1.125rem;
+  font-weight: 800;
+  color: var(--green);
+  margin-bottom: 0.5rem;
+}
+
+.ma-journey-ready-lead {
+  color: var(--muted);
+  font-size: 0.875rem;
+  margin-bottom: 0.75rem;
+}
+
+.ma-journey-ready-checklist {
+  list-style: none;
+  margin: 0 0 0.75rem;
+  padding: 0;
+  text-align: right;
+}
+
+.ma-journey-ready-line {
+  font-size: 0.8125rem;
+  padding: 0.25rem 0;
+}
+
+.ma-journey-ready-footer {
+  font-size: 0.8125rem;
+  color: var(--muted);
+  margin-bottom: 0.875rem;
+}
+
+.ma-journey-ready-cta {
+  display: inline-flex;
+}
+
+.nav-item.is-journey-locked::after {
+  content: " 🔒";
+  font-size: 0.75rem;
+  opacity: 0.85;
+}
+
+.ma-journey-gate {
+  margin-bottom: 1rem;
+}
+
+.ma-journey-gate-card {
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  background: var(--green-bg);
+  padding: 1.25rem 1rem;
+  text-align: center;
+}
+
+.ma-journey-gate-kicker {
+  font-size: 0.75rem;
+  color: var(--green);
+  font-weight: 700;
+  margin-bottom: 0.375rem;
+}
+
+.ma-journey-gate-title {
+  font-size: 1rem;
+  font-weight: 800;
+  margin-bottom: 0.375rem;
+}
+
+.ma-journey-gate-body {
+  font-size: 0.8125rem;
+  color: var(--muted);
+  margin-bottom: 0.875rem;
+}
+
+.page.ma-journey-gated > :not(.ma-journey-gate) {
+  opacity: 0.35;
+  pointer-events: none;
+  user-select: none;
+}
+
+.ma-journey-empty {
+  padding: 1rem 0.5rem;
+  text-align: center;
+}
+
+.ma-journey-empty-body {
+  font-size: 0.8125rem;
+  color: var(--muted);
+  margin: 0.5rem 0 0.875rem;
+  max-width: 22rem;
+  margin-inline: auto;
+}
+
+.ma-journey-empty-cta {
+  display: inline-flex;
+  font-size: 0.8125rem;
+}

@@ -308,6 +308,11 @@ def build_merchant_setup_experience_api_payload(
     )
 
     out["MERCHANT_SETUP_RENDER_BUILD"] = MERCHANT_SETUP_RENDER_BUILD
+    from services.merchant_onboarding_journey_v2 import (  # noqa: PLC0415
+        attach_journey_to_setup_payload,
+    )
+
+    attach_journey_to_setup_payload(out, store, merchant_user_id=mid)
     return out
 
 

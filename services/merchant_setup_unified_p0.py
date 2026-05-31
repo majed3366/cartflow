@@ -240,8 +240,8 @@ def _build_step_list(
         {
             "id": PROD_OAUTH,
             "order": 6,
-            "title_ar": "ربط متجر زد (OAuth)",
-            "outcome_ar": "مزامنة الطلبات مع منصة زد",
+            "title_ar": "ربط المتجر",
+            "outcome_ar": "مزامنة الطلبات مع منصة متجرك",
             "proof_ar": "يظهر «متجر مربوط» في إعدادات الحساب.",
             "action_href": "/dashboard#settings",
             "action_label_ar": "ربط المتجر",

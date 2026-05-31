@@ -335,6 +335,9 @@
       }
       updateNavActive(visiblePage, cartTab);
       runPageHooks(visiblePage);
+      if (typeof window.maApplyJourneyPageGate === "function") {
+        window.maApplyJourneyPageGate(visiblePage);
+      }
     } else {
       var pageEl = byId("page-" + page);
       if (pageEl) pageEl.classList.add("active");
@@ -342,6 +345,9 @@
       updateNavActive(page, null);
       if (page === "home") setHomeNavActive("overview");
       runPageHooks(page);
+      if (typeof window.maApplyJourneyPageGate === "function") {
+        window.maApplyJourneyPageGate(page);
+      }
     }
 
     var cb = byId("ma-sidebar-toggle");

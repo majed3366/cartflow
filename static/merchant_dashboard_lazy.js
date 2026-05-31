@@ -886,8 +886,271 @@
     );
   }
 
+  function hasActivationJourneyV2(mse) {
+    return !!(mse && mse.activation_journey_v2 && mse.onboarding_journey_v2);
+  }
+
+  function journeyStepMark(status) {
+    if (status === "done") return "✅";
+    if (status === "current") return "▶";
+    return "🔒";
+  }
+
+  function journeyStepActionHtml(st) {
+    if (!st || st.status !== "current") return "";
+    var href = st.action_href || "#home";
+    var sec = sectionFromHref(href);
+    var goAttr = sec
+      ? ' onclick="if(window.goTo){goTo(\'' + sec + "');}return false;\""
+      : "";
+    var extTarget =
+      String(href).indexOf("/demo/store") >= 0
+        ? ' target="_blank" rel="noopener"'
+        : "";
+    return (
+      '<a class="ma-journey-v2-action ma-setup-btn-primary" href="' +
+      esc(href) +
+      '"' +
+      goAttr +
+      extTarget +
+      ">" +
+      esc(st.action_label_ar || "متابعة") +
+      "</a>"
+    );
+  }
+
+  function renderActivationJourneyV2(journey, root, mse) {
+    var steps = journey.steps || [];
+    var pct = parseInt(journey.progress_percent, 10) || 0;
+    var label = esc(journey.progress_label_ar || "");
+    var title = esc(journey.journey_title_ar || "تفعيل المتجر");
+    var listHtml = "";
+    var i;
+    for (i = 0; i < steps.length; i++) {
+      var st = steps[i];
+      var cls =
+        "ma-journey-v2-step is-" +
+        String(st.status || "locked").replace(/[^a-z]/g, "");
+      listHtml +=
+        '<li class="' +
+        cls +
+        '">' +
+        '<span class="ma-journey-v2-mark" aria-hidden="true">' +
+        journeyStepMark(st.status) +
+        "</span>" +
+        '<div class="ma-journey-v2-body">' +
+        '<p class="ma-journey-v2-title">' +
+        esc(st.title_ar || "") +
+        "</p>" +
+        '<p class="ma-journey-v2-why">' +
+        esc(st.why_ar || "") +
+        "</p>" +
+        journeyStepActionHtml(st) +
+        "</div></li>";
+    }
+    showSetupExperienceRoot(root);
+    root.setAttribute("data-ma-setup-unified", "1");
+    root.setAttribute("data-ma-journey-v2", "1");
+    root.innerHTML =
+      '<div class="ma-setup-panel ma-journey-v2-panel">' +
+      '<div class="ma-journey-v2-head">' +
+      "<h2 class=\"ma-journey-v2-title-main\">" +
+      title +
+      "</h2>" +
+      '<div class="ma-journey-v2-progress" role="status">' +
+      '<div class="ma-journey-v2-progress-meta">' +
+      '<span class="ma-journey-v2-progress-label">' +
+      label +
+      "</span>" +
+      '<span class="ma-journey-v2-progress-pct">' +
+      pct +
+      "٪</span></div>" +
+      '<div class="ma-journey-v2-progress-bar" aria-hidden="true">' +
+      '<div class="ma-journey-v2-progress-fill" style="width:' +
+      pct +
+      '%;"></div></div></div></div>' +
+      '<ul class="ma-journey-v2-checklist" aria-label="خطوات التفعيل">' +
+      listHtml +
+      "</ul>" +
+      (mse && mse.delay_hint_ar
+        ? '<p class="ma-journey-v2-hint">' + esc(mse.delay_hint_ar) + "</p>"
+        : "") +
+      "</div>";
+  }
+
+  function renderJourneyReadinessCard(journey, root) {
+    var card = journey.readiness_card;
+    if (!card) return;
+    showSetupExperienceRoot(root);
+    root.setAttribute("data-ma-journey-v2", "ready");
+    var lines = (card.checklist_ar || [])
+      .map(function (line) {
+        return (
+          '<li class="ma-journey-ready-line"><span aria-hidden="true">✓</span> ' +
+          esc(line) +
+          "</li>"
+        );
+      })
+      .join("");
+    root.innerHTML =
+      '<div class="ma-setup-panel ma-journey-ready-card">' +
+      "<h2 class=\"ma-journey-ready-title\">" +
+      esc(card.title_ar || "") +
+      "</h2>" +
+      '<p class="ma-journey-ready-lead">' +
+      esc(card.lead_ar || "") +
+      "</p>" +
+      '<ul class="ma-journey-ready-checklist">' +
+      lines +
+      "</ul>" +
+      '<p class="ma-journey-ready-footer">' +
+      esc(card.footer_ar || "") +
+      "</p>" +
+      '<a class="ma-setup-btn-primary ma-journey-ready-cta" href="' +
+      esc(card.cta_href || "/dashboard#carts") +
+      '" onclick="if(window.goTo){goTo(\'carts\');}return false;">' +
+      esc(card.cta_label_ar || "الذهاب إلى لوحة السلال") +
+      "</a></div>";
+  }
+
+  function applyActivationJourneyNavLocks(journey) {
+    var locks = (journey && journey.nav_locks) || {};
+    document.querySelectorAll(".ma-context-sidebar .nav-item[data-nav]").forEach(
+      function (btn) {
+        var page = btn.getAttribute("data-nav") || "";
+        var lock = locks[page];
+        var locked = !!(lock && lock.unlocked === false);
+        btn.classList.toggle("is-journey-locked", locked);
+        if (locked) {
+          btn.setAttribute("data-journey-lock", "1");
+          btn.setAttribute("title", lock.reason_ar || "");
+        } else {
+          btn.removeAttribute("data-journey-lock");
+          btn.removeAttribute("title");
+        }
+      }
+    );
+  }
+
+  function applyJourneyEmptyStates(journey) {
+    if (!journey || journey.onboarding_complete) return;
+    var hints = journey.empty_states || {};
+    var cartsEmpty = document.querySelector("#page-carts tbody tr td.empty-state");
+    if (cartsEmpty && hints.carts) {
+      var h = hints.carts;
+      cartsEmpty.innerHTML =
+        '<div class="ma-journey-empty">' +
+        '<div class="empty-icon">🛒</div>' +
+        '<div class="empty-text ma-journey-empty-title">' +
+        esc(h.title_ar || "") +
+        "</div>" +
+        '<p class="ma-journey-empty-body">' +
+        esc(h.body_ar || "") +
+        "</p>" +
+        '<a class="ma-setup-btn-primary ma-journey-empty-cta" href="' +
+        esc(h.cta_href || "#") +
+        '">' +
+        esc(h.cta_label_ar || "متابعة") +
+        "</a></div>";
+    }
+    var msgEmpty = document.querySelector("#page-messages .empty-state");
+    if (msgEmpty && hints.messages) {
+      var hm = hints.messages;
+      msgEmpty.innerHTML =
+        '<div class="ma-journey-empty">' +
+        '<div class="empty-icon">💬</div>' +
+        '<div class="empty-text ma-journey-empty-title">' +
+        esc(hm.title_ar || "") +
+        "</div>" +
+        '<p class="ma-journey-empty-body">' +
+        esc(hm.body_ar || "") +
+        "</p>" +
+        '<a class="ma-setup-btn-primary ma-journey-empty-cta" href="' +
+        esc(hm.cta_href || "#whatsapp") +
+        '" onclick="if(window.goTo){goTo(\'whatsapp\');}return false;">' +
+        esc(hm.cta_label_ar || "متابعة") +
+        "</a></div>";
+    }
+  }
+
+  function ensureJourneyGateElement(page) {
+    var pageEl = byId("page-" + page);
+    if (!pageEl) return null;
+    var gateId = "ma-journey-gate-" + page;
+    var gate = byId(gateId);
+    if (!gate) {
+      gate = document.createElement("div");
+      gate.id = gateId;
+      gate.className = "ma-journey-gate";
+      gate.hidden = true;
+      gate.setAttribute("hidden", "");
+      pageEl.insertBefore(gate, pageEl.firstChild);
+    }
+    return gate;
+  }
+
+  function maApplyJourneyPageGate(page) {
+    var journey = window.__maActivationJourney;
+    if (!journey || journey.onboarding_complete) {
+      document.querySelectorAll(".ma-journey-gate").forEach(function (g) {
+        g.hidden = true;
+        g.setAttribute("hidden", "");
+      });
+      document.querySelectorAll(".page.active .ma-page-inner").forEach(function (el) {
+        el.classList.remove("ma-journey-gated");
+      });
+      return;
+    }
+    var gatedPages = ["settings", "whatsapp", "trigger-templates", "widget"];
+    var i;
+    for (i = 0; i < gatedPages.length; i++) {
+      var p = gatedPages[i];
+      var gate = ensureJourneyGateElement(p);
+      var lock = journey.nav_locks && journey.nav_locks[p];
+      var pageEl = byId("page-" + p);
+      if (!gate || !pageEl) continue;
+      if (p === page && lock && lock.unlocked === false) {
+        gate.hidden = false;
+        gate.removeAttribute("hidden");
+        gate.innerHTML =
+          '<div class="ma-journey-gate-card">' +
+          '<p class="ma-journey-gate-kicker">🔒 ' +
+          esc(lock.required_step_title_ar || "") +
+          "</p>" +
+          '<h3 class="ma-journey-gate-title">أكمل الخطوة السابقة أولاً</h3>' +
+          '<p class="ma-journey-gate-body">' +
+          esc(lock.reason_ar || "أكمل الخطوات بالترتيب لفتح هذا القسم.") +
+          "</p>" +
+          '<a class="ma-setup-btn-primary" href="' +
+          esc(lock.cta_href || "/dashboard#home") +
+          '">' +
+          esc(lock.cta_label_ar || "متابعة الإعداد") +
+          "</a></div>";
+        pageEl.classList.add("ma-journey-gated");
+      } else {
+        gate.hidden = true;
+        gate.setAttribute("hidden", "");
+        if (p === page) pageEl.classList.remove("ma-journey-gated");
+      }
+    }
+  }
+
+  window.maApplyJourneyPageGate = maApplyJourneyPageGate;
+
+  function applyActivationJourneySideEffects(journey) {
+    window.__maActivationJourney = journey || null;
+    applyActivationJourneyNavLocks(journey);
+    applyJourneyEmptyStates(journey);
+    try {
+      var raw = (location.hash || "").split("?")[0].toLowerCase();
+      var page = raw.replace(/^#/, "") || "home";
+      maApplyJourneyPageGate(page);
+    } catch (e) {
+      maApplyJourneyPageGate("home");
+    }
+  }
+
   function renderUnifiedSetupExperience(mse, root) {
-    var steps = mse.steps || [];
     var ready = !mse.setup_mode;
     var title = esc(mse.card_title_ar || "متجرك قريب من التشغيل الكامل");
     var contextLine =
@@ -957,7 +1220,17 @@
       return;
     }
     if (shouldRenderUnifiedSetup(mse)) {
-      renderUnifiedSetupExperience(mse, root);
+      if (hasActivationJourneyV2(mse)) {
+        var journey = mse.activation_journey_v2;
+        if (mse.onboarding_complete && journey.readiness_card) {
+          renderJourneyReadinessCard(journey, root);
+        } else {
+          renderActivationJourneyV2(journey, root, mse);
+        }
+        applyActivationJourneySideEffects(journey);
+      } else {
+        renderUnifiedSetupExperience(mse, root);
+      }
       showSetupExperienceRoot(root);
       logSetupRenderDebug("setup_render_unified", probeSetupExperienceRoot());
       return;
@@ -1111,6 +1384,14 @@
     ingestRefreshToken(d, "summary");
     applyTopbarReadiness(d);
     applyMerchantSetupExperience(d.merchant_setup_experience);
+    if (
+      d.merchant_setup_experience &&
+      d.merchant_setup_experience.activation_journey_v2
+    ) {
+      applyActivationJourneySideEffects(
+        d.merchant_setup_experience.activation_journey_v2
+      );
+    }
     applyHomeLayoutAfterSetup(d.merchant_activation, d.merchant_setup_experience);
     logSetupRenderDebug("summary_dom", probeSetupExperienceRoot());
 
