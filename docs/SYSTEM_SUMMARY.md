@@ -8,7 +8,7 @@ CartFlow is a FastAPI application that:
 - Receives **cart lifecycle events** (e.g. abandon, conversion) via **`POST /api/cart-event`** and schedules **delayed WhatsApp recovery** (Twilio path in `services/whatsapp_send.py`; Meta Cloud API path in `main.send_whatsapp_message` for interactive CTA messages used elsewhere).
 - Persists **store settings**, **abandoned carts**, **recovery reasons**, and **recovery logs** in SQLAlchemy models (`models.py`), with optional schema patches via `schema_widget.py`.
 - Serves **merchant dashboards** as Jinja2 HTML under `/dashboard/*`, loading/saving settings through **`GET`/`POST /api/recovery-settings`** and related APIs.
-- **`GET /`** — public marketing landing (`templates/cartflow_landing.html`): Arabic RTL **Landing V2.1** — premium dark-green/glass SaaS layout, widget→WhatsApp→dashboard preview (illustrative only), honest beta/FAQ copy; CTAs **`/signup`** and **`/login`**.
+- **`GET /`** — public marketing landing (`templates/cartflow_landing.html`): Arabic RTL **product-story landing** — behavior + objection + recovery + explanation (hero flow, real dashboard screenshots for objection reasons / recovery templates / carts / widget / WhatsApp); no fake ROI; CTAs **`/signup`** and **`/login`**.
 
 ---
 
@@ -325,6 +325,7 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 
 | Date (UTC) | Summary |
 |------------|---------|
+| 2026-05-31 | **Landing — real product story:** `cartflow_landing.html` rebuilt around actual product (objection reasons, recovery template stages, carts dashboard visibility, widget/WhatsApp as supporting components); real screenshots in `static/img/landing/`; honest beta copy — no fake ROI or integration claims. |
 | 2026-05-29 | **Landing V2.1 — premium dark-green polish:** `cartflow_landing.html` restyled with dark green/glass reference direction (hero glow, Tajawal, product preview grid, FAQ accordion); safe widget-first copy only — no fake metrics, AI, ROI, or unfinished integration claims. Commit: **`style: polish landing page premium visual direction`**. |
 | 2026-05-29 | **Landing V2 — product experience hero:** `cartflow_landing.html` rebuilt with reference-inspired layout — full header nav, hero product scene (CSS widget → WhatsApp → dashboard mockup, no fake metrics), widget-first messaging, 5-step flow, benefits/pricing/FAQ anchors, dark-green final CTA; routes unchanged. Commit: **`style: rebuild landing hero as product experience`**. |
 | 2026-05-29 | **Landing visual identity — dashboard alignment:** `cartflow_landing.html` restyled to match merchant dashboard green/white palette (`#166534` / `#16a34a`), tighter section spacing, dashboard-inspired header accent, CSS-only illustrative dashboard mockup (no fake stats); CTAs unchanged. Commit: **`style: align landing page with cartflow dashboard identity`**. |

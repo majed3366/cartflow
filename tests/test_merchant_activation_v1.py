@@ -11,6 +11,8 @@ from services.merchant_activation_v1 import (
     resolve_activation_demo_for_request,
     sanitize_activation_store_slug,
 )
+
+
 class TestMerchantActivationSlug(unittest.TestCase):
     def test_sanitize_rejects_empty(self) -> None:
         self.assertEqual(sanitize_activation_store_slug(""), "")
@@ -102,26 +104,44 @@ class TestActivationRoutes(unittest.TestCase):
         self.assertNotIn('href="/register"', body)
         self.assertNotIn('href="/dashboard"', body)
 
-    def test_landing_merchant_entry_copy(self) -> None:
+    def test_landing_product_story_copy(self) -> None:
         r = self.client.get("/")
         self.assertEqual(r.status_code, 200)
         body = r.text
-        self.assertIn("كل سلة مترددة", body)
-        self.assertIn("فرصة لم تنتهِ بعد", body)
-        self.assertIn("CartFlow يحاول مساعدة العميل أثناء وجوده في المتجر", body)
+        self.assertIn("CartFlow يفهم السبب", body)
+        self.assertIn("CartFlow يساعد", body)
+        self.assertIn("CartFlow يشرح النتيجة", body)
         self.assertIn("ابدأ الآن مجاناً", body)
         self.assertIn("تسجيل الدخول", body)
-        self.assertIn("الودجيت أولاً", body)
-        self.assertIn("واتساب عند الحاجة", body)
-        self.assertIn("لوحة توضّح ما حدث", body)
-        self.assertIn("شوف كيف يعمل CartFlow", body)
-        self.assertIn("العميل يضيف للسلة", body)
-        self.assertIn("CartFlow يحاول المساعدة أثناء وجود العميل", body)
-        self.assertIn("المحاولة الأولى تتم داخل الموقع", body)
-        self.assertIn("الداشبورد يشرح ما حدث", body)
-        self.assertIn("استرجاع داخل الموقع أولاً", body)
-        self.assertIn("ابدأ تجربة CartFlow الآن", body)
-        self.assertIn("حالياً في مرحلة الإطلاق التجريبي", body)
+        self.assertIn("كيف يفكر CartFlow", body)
+        self.assertIn("CartFlow يختار الإجراء المناسب", body)
+        self.assertIn("النتيجة تظهر للتاجر", body)
+        self.assertIn("لماذا يتردد العملاء", body)
+        self.assertIn("يفكر في القرار", body)
+        self.assertIn("الثقة بالمتجر", body)
+        self.assertIn("مسار استرجاع", body)
+        self.assertIn("طمأنة", body)
+        self.assertIn("عرض / كود خصم", body)
+        self.assertIn("بديل / باقة", body)
+        self.assertIn("الخطوة التالية", body)
+        self.assertIn("سبب التردد", body)
+        self.assertIn("مرحلة الإطلاق التجريبي", body)
+        self.assertIn("ليس مجرد رسائل واتساب", body)
+
+    def test_landing_real_product_screenshots(self) -> None:
+        r = self.client.get("/")
+        body = r.text
+        for path in (
+            "/static/img/landing/objection_reasons.png",
+            "/static/img/landing/recovery_templates.png",
+            "/static/img/landing/carts_dashboard.png",
+            "/static/img/landing/widget_settings.png",
+            "/static/img/landing/whatsapp_settings.png",
+            "/static/img/landing/cart-next-step.png",
+        ):
+            self.assertIn(path, body, msg=f"missing screenshot {path}")
+        self.assertIn("أسباب التردد", body)
+        self.assertIn("قوالب الاسترجاع", body)
 
     def test_landing_no_fake_stats_or_placeholders(self) -> None:
         r = self.client.get("/")
@@ -141,7 +161,6 @@ class TestActivationRoutes(unittest.TestCase):
             "zid",
             "shopify",
             "whatsapp business api",
-            "كوبون",
             "placeholder",
             "lorem ipsum",
             'href="#"',
@@ -149,29 +168,11 @@ class TestActivationRoutes(unittest.TestCase):
         ):
             self.assertNotIn(banned, body, msg=f"unexpected {banned!r}")
 
-    def test_landing_product_experience_mockup(self) -> None:
-        r = self.client.get("/")
-        body = r.text
-        self.assertIn("تحتاج مساعدة؟", body)
-        self.assertIn("متابعة واتساب", body)
-        self.assertIn("السلال المترددة", body)
-        self.assertIn("معاينة توضيحية", body)
-        self.assertIn('href="#how"', body)
-        self.assertIn("#060e09", body)
-
     def test_landing_mobile_viewport(self) -> None:
         r = self.client.get("/")
         self.assertIn('name="viewport"', r.text)
         self.assertIn('dir="rtl"', r.text)
         self.assertIn('lang="ar"', r.text)
-
-    def test_landing_dashboard_green_identity(self) -> None:
-        r = self.client.get("/")
-        body = r.text
-        self.assertIn("#16a34a", body)
-        self.assertIn("#166534", body)
-        self.assertNotIn("#4f46e5", body)
-        self.assertIn("معاينة توضيحية", body)
 
     def test_landing_honest_faq(self) -> None:
         r = self.client.get("/")
