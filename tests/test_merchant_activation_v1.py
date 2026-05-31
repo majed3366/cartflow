@@ -107,14 +107,18 @@ class TestActivationRoutes(unittest.TestCase):
         self.assertEqual(r.status_code, 200)
         body = r.text
         self.assertIn("استرجع السلال المترددة بذكاء ووضوح", body)
-        self.assertIn("CartFlow يفهم سبب تردد العميل من الودجيت", body)
-        self.assertIn("ابدأ الآن", body)
+        self.assertIn("CartFlow يحاول استعادة العميل أثناء وجوده في المتجر", body)
+        self.assertIn("ابدأ الآن مجاناً", body)
         self.assertIn("تسجيل الدخول", body)
-        self.assertIn("كيف يعمل؟", body)
+        self.assertIn("الودجيت أولاً", body)
+        self.assertIn("واتساب عند الحاجة", body)
+        self.assertIn("كيف يعمل CartFlow؟", body)
         self.assertIn("العميل يضيف للسلة", body)
+        self.assertIn("CartFlow يحاول المساعدة أثناء وجود العميل", body)
+        self.assertIn("المحاولة الأولى تتم داخل الموقع", body)
         self.assertIn("الداشبورد يشرح ما حدث", body)
-        self.assertIn("لماذا يناسب التجار؟", body)
-        self.assertIn("ابدأ تجربة CartFlow", body)
+        self.assertIn("استرجاع داخل الموقع أولاً", body)
+        self.assertIn("ابدأ تجربة CartFlow الآن", body)
         self.assertIn("حالياً في مرحلة الإطلاق التجريبي والتحسين المستمر", body)
 
     def test_landing_no_fake_stats_or_placeholders(self) -> None:
@@ -123,12 +127,25 @@ class TestActivationRoutes(unittest.TestCase):
         for banned in (
             "500 stores",
             "500 متجر",
+            "128",
+            "12,450",
+            "35%",
             "placeholder",
             "lorem ipsum",
-            "href=\"#\"",
+            'href="#"',
             "href=\"javascript:",
         ):
             self.assertNotIn(banned, body, msg=f"unexpected {banned!r}")
+
+    def test_landing_product_experience_mockup(self) -> None:
+        r = self.client.get("/")
+        body = r.text
+        self.assertIn("تحتاج مساعدة؟", body)
+        self.assertIn("متابعة واتساب", body)
+        self.assertIn("السلال المترددة", body)
+        self.assertIn("معاينة توضيحية", body)
+        self.assertIn("الرئيسية", body)
+        self.assertIn('href="#how"', body)
 
     def test_landing_mobile_viewport(self) -> None:
         r = self.client.get("/")
@@ -142,7 +159,7 @@ class TestActivationRoutes(unittest.TestCase):
         self.assertIn("#16a34a", body)
         self.assertIn("#166534", body)
         self.assertNotIn("#4f46e5", body)
-        self.assertIn("معاينة توضيحية للوحة التاجر", body)
+        self.assertIn("معاينة توضيحية", body)
 
     def test_landing_cta_routes_work(self) -> None:
         signup = self.client.get("/signup", follow_redirects=False)

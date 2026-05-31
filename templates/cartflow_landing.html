@@ -1,34 +1,36 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="ar" dir="rtl" id="top">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>CartFlow — استرجع السلال المترددة بذكاء ووضوح</title>
-  <meta name="description" content="CartFlow يفهم سبب تردد العميل من الودجيت، يتابع عبر واتساب في الوقت المناسب، ويعرض للتاجر ما حدث بوضوح في لوحة التحكم." />
+  <meta name="description" content="CartFlow يحاول استعادة العميل عبر الودجيت أثناء وجوده في المتجر، ثم يتابع عبر واتساب عند الحاجة، ويعرض للتاجر ما حدث في لوحة التحكم." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <style>
-    /* Palette aligned with merchant_app.css / dashboard identity */
     :root {
       --green: #166534;
       --green-mid: #16a34a;
       --green-soft: #dcfce7;
       --green-dark: #14532d;
       --green-bg: #f0fdf4;
+      --wa: #25d366;
       --bg: #f8fafc;
       --surface: #ffffff;
       --border: #e2e8f0;
       --text: #0f172a;
       --muted: #64748b;
-      --radius: 12px;
-      --radius-lg: 16px;
-      --shadow: 0 4px 16px rgba(15, 23, 42, 0.07);
-      --shadow-sm: 0 1px 4px rgba(0, 0, 0, 0.06);
-      --max: 68rem;
+      --radius: 14px;
+      --radius-lg: 18px;
+      --shadow: 0 8px 28px rgba(15, 23, 42, 0.08);
+      --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.06);
+      --max: 76rem;
     }
 
     *, *::before, *::after { box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
 
     body {
       margin: 0;
@@ -37,9 +39,10 @@
       background: var(--bg);
       line-height: 1.6;
       -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
     }
 
-    a { color: inherit; }
+    a { color: inherit; text-decoration: none; }
 
     .cf-shell {
       max-width: var(--max);
@@ -47,21 +50,14 @@
       padding: 0 1.125rem;
     }
 
-    /* Header — dashboard-inspired green accent */
+    /* ===== Header ===== */
     .cf-header {
       position: sticky;
       top: 0;
-      z-index: 30;
+      z-index: 50;
       background: var(--surface);
       border-bottom: 1px solid var(--border);
       box-shadow: var(--shadow-sm);
-    }
-
-    .cf-header::before {
-      content: "";
-      display: block;
-      height: 3px;
-      background: linear-gradient(90deg, var(--green-dark) 0%, var(--green-mid) 50%, var(--green) 100%);
     }
 
     .cf-header__inner {
@@ -69,56 +65,87 @@
       align-items: center;
       justify-content: space-between;
       gap: 0.75rem;
-      min-height: 3.5rem;
-      padding-top: 0.375rem;
-      padding-bottom: 0.375rem;
+      min-height: 4rem;
     }
 
     .cf-logo {
       display: inline-flex;
       align-items: center;
-      gap: 0.375rem;
+      gap: 0.5rem;
       font-weight: 700;
-      font-size: 1.0625rem;
-      text-decoration: none;
-      color: var(--text);
+      font-size: 1.125rem;
+      flex-shrink: 0;
     }
 
-    .cf-logo__mark {
-      width: 1.625rem;
-      height: 1.625rem;
-      border-radius: 8px;
+    .cf-logo__icon {
+      width: 2rem;
+      height: 2rem;
+      border-radius: 10px;
       background: linear-gradient(145deg, var(--green-mid), var(--green-dark));
-      box-shadow: 0 2px 8px rgba(22, 101, 52, 0.25);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 0.875rem;
+      box-shadow: 0 2px 10px rgba(22, 101, 52, 0.3);
     }
 
     .cf-logo span { color: var(--green-mid); }
 
-    .cf-nav {
+    .cf-header__nav {
+      display: none;
+      align-items: center;
+      gap: 1.25rem;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--muted);
+    }
+
+    @media (min-width: 960px) {
+      .cf-header__nav { display: flex; }
+    }
+
+    .cf-header__nav a:hover,
+    .cf-header__nav a.is-active {
+      color: var(--green);
+    }
+
+    .cf-header__nav a.is-active {
+      font-weight: 600;
+      box-shadow: inset 0 -2px 0 var(--green-mid);
+      padding-bottom: 0.125rem;
+    }
+
+    .cf-header__actions {
       display: flex;
       align-items: center;
       gap: 0.5rem;
-      flex-wrap: wrap;
+      flex-shrink: 0;
     }
 
     .cf-btn {
       display: inline-flex;
       align-items: center;
       justify-content: center;
+      gap: 0.375rem;
       padding: 0.5rem 1rem;
       border-radius: 10px;
-      font-size: 0.875rem;
+      font-size: 0.8125rem;
       font-weight: 600;
-      text-decoration: none;
       border: 1px solid transparent;
-      transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+      transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
       white-space: nowrap;
+      cursor: pointer;
+    }
+
+    @media (min-width: 480px) {
+      .cf-btn { font-size: 0.875rem; padding: 0.5625rem 1.0625rem; }
     }
 
     .cf-btn--primary {
       background: linear-gradient(180deg, var(--green-mid) 0%, var(--green) 100%);
       color: #fff;
-      box-shadow: 0 4px 14px rgba(22, 163, 74, 0.28);
+      box-shadow: 0 4px 14px rgba(22, 163, 74, 0.3);
     }
 
     .cf-btn--primary:hover {
@@ -131,75 +158,158 @@
       border-color: rgba(22, 163, 74, 0.35);
     }
 
-    .cf-btn--ghost:hover {
-      background: var(--green-soft);
-      border-color: var(--green-mid);
+    .cf-btn--ghost:hover { background: var(--green-soft); }
+
+    .cf-btn--white {
+      background: #fff;
+      color: var(--green-dark);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
     }
+
+    .cf-btn--white:hover { background: var(--green-soft); }
 
     .cf-btn--lg {
-      padding: 0.6875rem 1.25rem;
+      padding: 0.75rem 1.375rem;
       font-size: 0.9375rem;
+      border-radius: 12px;
     }
 
-    /* Hero — tighter, stronger */
+    .cf-btn__arrow { font-size: 0.875em; opacity: 0.9; }
+
+    /* ===== Hero ===== */
     .cf-hero {
-      padding: 2rem 0 2.25rem;
+      padding: 1.75rem 0 2rem;
       background:
-        radial-gradient(ellipse 80% 60% at 100% 0%, rgba(220, 252, 231, 0.9) 0%, transparent 55%),
-        radial-gradient(ellipse 60% 50% at 0% 100%, rgba(240, 253, 244, 0.95) 0%, transparent 50%),
-        var(--surface);
+        radial-gradient(ellipse 90% 70% at 80% 0%, rgba(220, 252, 231, 0.85) 0%, transparent 60%),
+        linear-gradient(180deg, var(--green-bg) 0%, var(--surface) 45%, var(--bg) 100%);
       border-bottom: 1px solid var(--border);
     }
 
     .cf-hero__grid {
       display: grid;
-      gap: 1.5rem;
+      gap: 1.75rem;
       align-items: center;
     }
 
-    @media (min-width: 900px) {
+    @media (min-width: 960px) {
       .cf-hero__grid {
-        grid-template-columns: 1fr 1.05fr;
+        grid-template-columns: 1fr 1.15fr;
         gap: 2rem;
       }
     }
 
-    .cf-eyebrow {
-      display: inline-block;
-      margin-bottom: 0.625rem;
-      padding: 0.3rem 0.7rem;
-      border-radius: 999px;
-      background: var(--green-soft);
-      color: var(--green);
-      font-size: 0.75rem;
-      font-weight: 600;
-      border: 1px solid rgba(22, 163, 74, 0.2);
-    }
+    .cf-hero__copy { order: 1; }
+
+    .cf-hero__visual { order: 2; }
 
     .cf-hero h1 {
       margin: 0 0 0.75rem;
-      font-size: clamp(1.625rem, 4.2vw, 2.375rem);
-      line-height: 1.28;
+      font-size: clamp(1.75rem, 4.5vw, 2.5rem);
+      line-height: 1.25;
       font-weight: 700;
-      letter-spacing: -0.02em;
       color: var(--green-dark);
+      letter-spacing: -0.02em;
     }
 
     .cf-hero__lead {
       margin: 0 0 1.25rem;
-      max-width: 34rem;
       font-size: clamp(0.9375rem, 2vw, 1.0625rem);
       color: var(--muted);
+      max-width: 36rem;
     }
 
     .cf-hero__actions {
       display: flex;
       flex-wrap: wrap;
       gap: 0.625rem;
+      margin-bottom: 1rem;
     }
 
-    /* CSS-only dashboard mockup */
-    .cf-mock {
+    .cf-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    .cf-chips li {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.35rem 0.7rem;
+      border-radius: 999px;
+      background: var(--surface);
+      border: 1px solid rgba(22, 163, 74, 0.25);
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--green);
+    }
+
+    .cf-chips li::before {
+      content: "✓";
+      color: var(--green-mid);
+      font-size: 0.6875rem;
+    }
+
+    /* ===== Product scene mockup ===== */
+    .cf-scene {
+      position: relative;
+      min-height: 20rem;
+      padding: 0.5rem 0 1rem;
+    }
+
+    @media (min-width: 960px) {
+      .cf-scene { min-height: 22rem; padding-bottom: 0.5rem; }
+    }
+
+    .cf-scene__label {
+      text-align: center;
+      font-size: 0.6875rem;
+      font-weight: 600;
+      color: var(--green);
+      margin-bottom: 0.625rem;
+    }
+
+    .cf-scene__flow {
+      display: flex;
+      justify-content: center;
+      gap: 0.375rem;
+      flex-wrap: wrap;
+      margin-bottom: 0.75rem;
+      font-size: 0.625rem;
+      font-weight: 600;
+      color: var(--muted);
+    }
+
+    .cf-scene__flow span {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      padding: 0.2rem 0.45rem;
+      border-radius: 999px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+    }
+
+    .cf-scene__flow em {
+      font-style: normal;
+      color: var(--green-mid);
+    }
+
+    .cf-scene__canvas {
+      position: relative;
+      width: 100%;
+      max-width: 34rem;
+      margin: 0 auto;
+      min-height: 18rem;
+    }
+
+    /* Dashboard */
+    .cf-dash {
+      position: relative;
+      z-index: 1;
       border: 1px solid var(--border);
       border-radius: var(--radius-lg);
       background: var(--surface);
@@ -208,186 +318,258 @@
       font-size: 0.6875rem;
     }
 
-    .cf-mock__label {
-      padding: 0.375rem 0.625rem;
-      background: var(--green-bg);
-      color: var(--green);
-      font-size: 0.6875rem;
-      font-weight: 600;
-      text-align: center;
-      border-bottom: 1px solid rgba(22, 163, 74, 0.15);
-    }
-
-    .cf-mock__topbar {
-      height: 2rem;
+    .cf-dash__bar {
+      height: 1.75rem;
       padding: 0 0.625rem;
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      background: linear-gradient(180deg, var(--green-mid) 0%, var(--green-dark) 100%);
+      background: linear-gradient(180deg, var(--green-mid), var(--green-dark));
       color: #fff;
       font-weight: 600;
+      font-size: 0.625rem;
     }
 
-    .cf-mock__topbar-dots {
+    .cf-dash__body {
+      display: grid;
+      grid-template-columns: 2.25rem 1fr;
+      min-height: 9rem;
+    }
+
+    .cf-dash__side {
+      background: var(--green-dark);
+      padding: 0.5rem 0.35rem;
       display: flex;
-      gap: 0.25rem;
+      flex-direction: column;
+      gap: 0.35rem;
     }
 
-    .cf-mock__topbar-dots i {
-      width: 0.375rem;
-      height: 0.375rem;
-      border-radius: 999px;
-      background: rgba(255, 255, 255, 0.45);
+    .cf-dash__side i {
+      display: block;
+      height: 0.45rem;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.2);
       font-style: normal;
     }
 
-    .cf-mock__body {
-      display: grid;
-      grid-template-columns: 3.5rem 1fr;
-      min-height: 11rem;
+    .cf-dash__side i:first-child {
+      background: rgba(255, 255, 255, 0.55);
     }
 
-    .cf-mock__sidebar {
-      background: #f1f5f9;
-      border-left: 1px solid var(--border);
-      padding: 0.5rem 0.375rem;
-      display: flex;
-      flex-direction: column;
-      gap: 0.375rem;
-    }
-
-    .cf-mock__nav-item {
-      height: 0.5rem;
-      border-radius: 4px;
-      background: #cbd5e1;
-    }
-
-    .cf-mock__nav-item--active {
-      background: var(--green-mid);
-      box-shadow: 0 0 0 1px rgba(22, 163, 74, 0.2);
-    }
-
-    .cf-mock__main {
-      padding: 0.625rem;
-      position: relative;
+    .cf-dash__main {
+      padding: 0.5rem;
       background: var(--bg);
     }
 
-    .cf-mock__cards {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 0.375rem;
-      margin-bottom: 0.5rem;
+    .cf-dash__title {
+      font-weight: 700;
+      color: var(--green-dark);
+      margin-bottom: 0.375rem;
+      font-size: 0.625rem;
     }
 
-    .cf-mock__chip {
-      padding: 0.375rem 0.25rem;
+    .cf-dash__metrics {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.3rem;
+    }
+
+    .cf-dash__metric {
+      padding: 0.35rem 0.25rem;
       border-radius: 8px;
       background: var(--surface);
       border: 1px solid var(--border);
       text-align: center;
-      color: var(--muted);
-      font-size: 0.625rem;
-      line-height: 1.35;
     }
 
-    .cf-mock__chip strong {
-      display: block;
+    .cf-dash__metric dt {
+      font-size: 0.5625rem;
+      color: var(--muted);
+      font-weight: 500;
+    }
+
+    .cf-dash__metric dd {
+      margin: 0.15rem 0 0;
+      font-size: 0.5625rem;
+      font-weight: 700;
       color: var(--green-dark);
+    }
+
+    /* Widget popup */
+    .cf-widget {
+      position: absolute;
+      z-index: 3;
+      top: 0.25rem;
+      inset-inline-start: -0.25rem;
+      width: min(11rem, 42vw);
+      padding: 0.5rem;
+      border-radius: 12px;
+      background: var(--surface);
+      border: 1px solid rgba(22, 163, 74, 0.3);
+      box-shadow: 0 10px 28px rgba(15, 23, 42, 0.14);
+      font-size: 0.5625rem;
+    }
+
+    @media (min-width: 960px) {
+      .cf-widget { inset-inline-start: -1rem; width: 11.5rem; }
+    }
+
+    .cf-widget__tag {
+      display: inline-block;
+      margin-bottom: 0.25rem;
+      padding: 0.1rem 0.35rem;
+      border-radius: 999px;
+      background: var(--green-soft);
+      color: var(--green);
+      font-weight: 700;
+      font-size: 0.5rem;
+    }
+
+    .cf-widget h3 {
+      margin: 0 0 0.25rem;
       font-size: 0.6875rem;
       font-weight: 700;
+      color: var(--green-dark);
     }
 
-    .cf-mock__table {
-      border-radius: 8px;
+    .cf-widget p {
+      margin: 0 0 0.375rem;
+      color: var(--muted);
+      line-height: 1.45;
+      font-size: 0.5625rem;
+    }
+
+    .cf-widget__btns {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.25rem;
+    }
+
+    .cf-widget__btns span {
+      padding: 0.15rem 0.35rem;
+      border-radius: 6px;
+      background: var(--bg);
       border: 1px solid var(--border);
-      background: var(--surface);
-      overflow: hidden;
-    }
-
-    .cf-mock__row {
-      display: grid;
-      grid-template-columns: 1fr auto;
-      gap: 0.375rem;
-      align-items: center;
-      padding: 0.375rem 0.5rem;
-      border-bottom: 1px solid #f1f5f9;
+      font-weight: 600;
       color: var(--text);
     }
 
-    .cf-mock__row:last-child { border-bottom: none; }
-
-    .cf-mock__badge {
-      padding: 0.125rem 0.375rem;
-      border-radius: 999px;
-      font-size: 0.5625rem;
-      font-weight: 600;
-      white-space: nowrap;
-    }
-
-    .cf-mock__badge--amber {
-      background: #fef3c7;
-      color: #b45309;
-    }
-
-    .cf-mock__badge--green {
-      background: var(--green-soft);
-      color: var(--green);
-    }
-
-    .cf-mock__widget {
-      position: absolute;
-      left: 0.5rem;
-      bottom: 0.5rem;
-      width: 5.5rem;
-      padding: 0.375rem;
-      border-radius: 10px;
-      background: var(--surface);
-      border: 1px solid rgba(22, 163, 74, 0.25);
-      box-shadow: 0 6px 18px rgba(15, 23, 42, 0.12);
-    }
-
-    .cf-mock__widget-title {
-      font-weight: 700;
-      color: var(--green-dark);
-      margin-bottom: 0.25rem;
-      font-size: 0.625rem;
-    }
-
-    .cf-mock__widget-line {
-      height: 0.3125rem;
-      border-radius: 999px;
-      background: #e2e8f0;
-      margin-bottom: 0.25rem;
-    }
-
-    .cf-mock__widget-btn {
-      height: 0.625rem;
-      border-radius: 6px;
+    .cf-widget__btns span.is-primary {
       background: var(--green-mid);
-      margin-top: 0.25rem;
+      color: #fff;
+      border-color: var(--green-mid);
     }
 
-    /* Sections — reduced vertical rhythm */
+    /* WhatsApp phone */
+    .cf-wa {
+      position: absolute;
+      z-index: 4;
+      bottom: 0.5rem;
+      inset-inline-end: -0.5rem;
+      width: min(9.5rem, 38vw);
+      border-radius: 14px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      box-shadow: 0 12px 32px rgba(15, 23, 42, 0.15);
+      overflow: hidden;
+      font-size: 0.5625rem;
+    }
+
+    @media (min-width: 960px) {
+      .cf-wa { inset-inline-end: -1.25rem; width: 10rem; }
+    }
+
+    .cf-wa__head {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.375rem 0.5rem;
+      background: #075e54;
+      color: #fff;
+      font-weight: 600;
+      font-size: 0.5625rem;
+    }
+
+    .cf-wa__icon {
+      width: 1.125rem;
+      height: 1.125rem;
+      border-radius: 999px;
+      background: var(--wa);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.5rem;
+    }
+
+    .cf-wa__chat {
+      padding: 0.5rem;
+      background: #e5ddd5;
+      min-height: 5rem;
+    }
+
+    .cf-wa__bubble {
+      max-width: 95%;
+      padding: 0.35rem 0.45rem;
+      border-radius: 8px 8px 2px 8px;
+      background: #fff;
+      color: var(--text);
+      line-height: 1.45;
+      margin-bottom: 0.375rem;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+    }
+
+    .cf-wa__cta {
+      display: block;
+      text-align: center;
+      padding: 0.3rem;
+      border-radius: 8px;
+      background: var(--green-mid);
+      color: #fff;
+      font-weight: 700;
+      font-size: 0.5625rem;
+    }
+
+    /* Flow arrows */
+    .cf-arrow {
+      position: absolute;
+      z-index: 2;
+      color: var(--green-mid);
+      font-size: 0.75rem;
+      font-weight: 700;
+      opacity: 0.65;
+      pointer-events: none;
+    }
+
+    .cf-arrow--w2wa {
+      top: 38%;
+      inset-inline-start: 28%;
+      transform: rotate(-25deg);
+    }
+
+    .cf-arrow--wa2d {
+      bottom: 28%;
+      inset-inline-start: 52%;
+      transform: rotate(15deg);
+    }
+
+    /* ===== Sections ===== */
     .cf-section {
       padding: 2rem 0;
     }
 
     .cf-section--alt {
       background: var(--surface);
-      border-top: 1px solid var(--border);
-      border-bottom: 1px solid var(--border);
+      border-block: 1px solid var(--border);
     }
 
     .cf-section__head {
-      max-width: 36rem;
-      margin-bottom: 1.25rem;
+      text-align: center;
+      max-width: 40rem;
+      margin: 0 auto 1.5rem;
     }
 
     .cf-section__head h2 {
       margin: 0 0 0.375rem;
-      font-size: clamp(1.25rem, 2.8vw, 1.5rem);
+      font-size: clamp(1.25rem, 3vw, 1.625rem);
       font-weight: 700;
       color: var(--green-dark);
     }
@@ -406,42 +588,85 @@
       gap: 0.75rem;
     }
 
-    @media (min-width: 640px) {
-      .cf-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    }
-
-    @media (min-width: 1024px) {
-      .cf-steps { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+    @media (min-width: 768px) {
+      .cf-steps {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 0.625rem;
+      }
     }
 
     .cf-step {
-      background: var(--bg);
+      position: relative;
+      background: var(--surface);
       border: 1px solid var(--border);
       border-radius: var(--radius);
-      padding: 0.875rem;
+      padding: 1rem 0.75rem;
       box-shadow: var(--shadow-sm);
+      text-align: center;
     }
 
     .cf-section--alt .cf-step { background: var(--bg); }
+
+    @media (min-width: 768px) {
+      .cf-step:not(:last-child)::after {
+        content: "←";
+        position: absolute;
+        top: 50%;
+        inset-inline-start: -0.55rem;
+        transform: translateY(-50%);
+        color: var(--green-mid);
+        font-size: 0.75rem;
+        opacity: 0.5;
+      }
+    }
+
+    .cf-step__icon {
+      width: 2.25rem;
+      height: 2.25rem;
+      margin: 0 auto 0.5rem;
+      border-radius: 10px;
+      background: var(--green-soft);
+      color: var(--green);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+    }
 
     .cf-step__num {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 1.5rem;
-      height: 1.5rem;
-      margin-bottom: 0.5rem;
+      width: 1.25rem;
+      height: 1.25rem;
+      margin-bottom: 0.375rem;
       border-radius: 999px;
-      background: var(--green-soft);
-      color: var(--green);
-      font-size: 0.75rem;
+      background: var(--green-mid);
+      color: #fff;
+      font-size: 0.6875rem;
       font-weight: 700;
     }
 
     .cf-step p {
       margin: 0;
-      font-size: 0.875rem;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      color: var(--text);
+      line-height: 1.45;
+    }
+
+    .cf-step__note {
+      display: block;
+      margin-top: 0.375rem;
+      font-size: 0.6875rem;
       font-weight: 500;
+      color: var(--green);
+      line-height: 1.4;
+    }
+
+    .cf-step--highlight {
+      border-color: rgba(22, 163, 74, 0.4);
+      background: var(--green-bg);
     }
 
     .cf-benefits {
@@ -449,250 +674,398 @@
       margin: 0;
       padding: 0;
       display: grid;
-      gap: 0.75rem;
+      gap: 0.875rem;
     }
 
     @media (min-width: 768px) {
       .cf-benefits { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
 
+    @media (min-width: 1100px) {
+      .cf-benefits { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    }
+
     .cf-benefit {
-      display: flex;
-      gap: 0.75rem;
-      padding: 0.875rem 1rem;
+      padding: 1.125rem;
       border: 1px solid var(--border);
       border-radius: var(--radius);
       background: var(--surface);
       box-shadow: var(--shadow-sm);
+      transition: box-shadow 0.15s, border-color 0.15s;
+    }
+
+    .cf-benefit:hover {
+      border-color: rgba(22, 163, 74, 0.35);
+      box-shadow: var(--shadow);
     }
 
     .cf-benefit__icon {
-      flex-shrink: 0;
-      width: 2rem;
-      height: 2rem;
-      border-radius: 10px;
-      background: var(--green-soft);
-      color: var(--green-mid);
-      display: inline-flex;
+      width: 2.5rem;
+      height: 2.5rem;
+      margin-bottom: 0.625rem;
+      border-radius: 12px;
+      background: linear-gradient(145deg, var(--green-soft), var(--green-bg));
+      color: var(--green);
+      display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 0.875rem;
+      font-size: 1.125rem;
       font-weight: 700;
     }
 
     .cf-benefit h3 {
-      margin: 0 0 0.2rem;
+      margin: 0 0 0.375rem;
       font-size: 0.9375rem;
-      font-weight: 600;
-      color: var(--text);
+      font-weight: 700;
+      color: var(--green-dark);
     }
 
     .cf-benefit p {
       margin: 0;
       font-size: 0.8125rem;
       color: var(--muted);
+      line-height: 1.5;
     }
 
     .cf-trust {
-      border: 1px dashed rgba(22, 163, 74, 0.35);
-      border-radius: var(--radius);
-      padding: 1rem 1.125rem;
-      background: var(--green-bg);
-      color: var(--muted);
-      font-size: 0.875rem;
-    }
-
-    .cf-trust strong {
-      display: block;
-      margin-bottom: 0.25rem;
-      color: var(--green-dark);
-      font-weight: 600;
-    }
-
-    .cf-cta {
-      padding: 2rem 0 2.5rem;
       text-align: center;
+      padding: 0.75rem 1rem;
+      font-size: 0.8125rem;
+      color: var(--muted);
+      max-width: 42rem;
+      margin: 0 auto;
     }
 
-    .cf-cta__box {
+    .cf-pricing-note {
+      text-align: center;
+      padding: 1.25rem;
+      border-radius: var(--radius);
+      background: var(--green-bg);
+      border: 1px solid rgba(22, 163, 74, 0.2);
+      max-width: 28rem;
+      margin: 0 auto;
+      font-size: 0.875rem;
+      color: var(--muted);
+    }
+
+    .cf-pricing-note strong {
+      display: block;
+      color: var(--green-dark);
+      margin-bottom: 0.25rem;
+    }
+
+    .cf-faq {
       max-width: 36rem;
       margin: 0 auto;
-      padding: 1.5rem 1.25rem;
-      border-radius: var(--radius-lg);
-      background: linear-gradient(135deg, var(--green-soft) 0%, var(--surface) 55%, var(--green-bg) 100%);
-      border: 1px solid rgba(22, 163, 74, 0.25);
-      box-shadow: var(--shadow-sm);
+      display: grid;
+      gap: 0.625rem;
     }
 
-    .cf-cta__box h2 {
-      margin: 0 0 0.5rem;
-      font-size: clamp(1.125rem, 2.8vw, 1.4375rem);
-      font-weight: 700;
+    .cf-faq details {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      padding: 0.75rem 1rem;
+    }
+
+    .cf-faq summary {
+      font-weight: 600;
       color: var(--green-dark);
+      cursor: pointer;
+      font-size: 0.875rem;
     }
 
-    .cf-cta__box p {
-      margin: 0 0 1.125rem;
+    .cf-faq p {
+      margin: 0.5rem 0 0;
+      font-size: 0.8125rem;
       color: var(--muted);
-      font-size: 0.875rem;
+    }
+
+    /* Final CTA */
+    .cf-cta {
+      padding: 2rem 0 2.25rem;
+    }
+
+    .cf-cta__banner {
+      border-radius: var(--radius-lg);
+      padding: 2rem 1.5rem;
+      text-align: center;
+      background: linear-gradient(135deg, var(--green-dark) 0%, var(--green) 55%, var(--green-mid) 100%);
+      box-shadow: 0 12px 40px rgba(20, 83, 45, 0.35);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .cf-cta__banner::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at 85% 50%, rgba(255, 255, 255, 0.08) 0%, transparent 45%);
+      pointer-events: none;
+    }
+
+    .cf-cta__banner h2 {
+      position: relative;
+      margin: 0 0 0.5rem;
+      font-size: clamp(1.25rem, 3vw, 1.75rem);
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .cf-cta__banner p {
+      position: relative;
+      margin: 0 0 1.25rem;
+      color: rgba(255, 255, 255, 0.88);
+      font-size: 0.9375rem;
+      max-width: 32rem;
+      margin-inline: auto;
     }
 
     .cf-footer {
       border-top: 1px solid var(--border);
-      padding: 1rem 0 1.5rem;
+      padding: 1.25rem 0 1.75rem;
       text-align: center;
       font-size: 0.75rem;
       color: #94a3b8;
       background: var(--surface);
     }
+
+    .cf-footer a { color: var(--green); font-weight: 600; }
   </style>
 </head>
 <body>
   <header class="cf-header">
     <div class="cf-shell cf-header__inner">
       <a class="cf-logo" href="/">
-        <span class="cf-logo__mark" aria-hidden="true"></span>
+        <span class="cf-logo__icon" aria-hidden="true">🛒</span>
         Cart<span>Flow</span>
       </a>
-      <nav class="cf-nav" aria-label="التنقل الرئيسي">
+      <nav class="cf-header__nav" aria-label="التنقل">
+        <a href="/" class="is-active">الرئيسية</a>
+        <a href="#how">كيف يعمل</a>
+        <a href="#features">المميزات</a>
+        <a href="#pricing">الأسعار</a>
+        <a href="#faq">الأسئلة الشائعة</a>
+        <a href="#contact">تواصل معنا</a>
+      </nav>
+      <div class="cf-header__actions">
         <a class="cf-btn cf-btn--ghost" href="/login">تسجيل الدخول</a>
         <a class="cf-btn cf-btn--primary" href="/signup">ابدأ الآن</a>
-      </nav>
+      </div>
     </div>
   </header>
 
   <main>
     <section class="cf-hero" aria-labelledby="hero-title">
       <div class="cf-shell cf-hero__grid">
-        <div>
-          <span class="cf-eyebrow">استرجاع السلال · واتساب · وضوح للتاجر</span>
+        <div class="cf-hero__copy">
           <h1 id="hero-title">استرجع السلال المترددة بذكاء ووضوح</h1>
           <p class="cf-hero__lead">
-            CartFlow يفهم سبب تردد العميل من الودجيت، ثم يتابع عبر واتساب في الوقت المناسب، ويعرض للتاجر ما حدث بوضوح.
+            CartFlow يحاول استعادة العميل أثناء وجوده في المتجر عبر الودجيت، ثم يتابع عبر واتساب عند الحاجة، ويعرض للتاجر ما حدث بوضوح.
           </p>
           <div class="cf-hero__actions">
-            <a class="cf-btn cf-btn--primary cf-btn--lg" href="/signup">ابدأ الآن</a>
+            <a class="cf-btn cf-btn--primary cf-btn--lg" href="/signup">
+              ابدأ الآن مجاناً <span class="cf-btn__arrow" aria-hidden="true">←</span>
+            </a>
             <a class="cf-btn cf-btn--ghost cf-btn--lg" href="/login">تسجيل الدخول</a>
           </div>
+          <ul class="cf-chips" aria-label="مسار CartFlow">
+            <li>الودجيت أولاً</li>
+            <li>واتساب عند الحاجة</li>
+            <li>لوحة واضحة للتاجر</li>
+          </ul>
         </div>
 
-        <aside class="cf-mock" aria-label="معاينة توضيحية للوحة التاجر — ليست بيانات حقيقية">
-          <p class="cf-mock__label">معاينة توضيحية للوحة التاجر</p>
-          <div class="cf-mock__topbar">
-            <span>CartFlow</span>
-            <span class="cf-mock__topbar-dots" aria-hidden="true"><i></i><i></i><i></i></span>
-          </div>
-          <div class="cf-mock__body">
-            <div class="cf-mock__sidebar" aria-hidden="true">
-              <span class="cf-mock__nav-item cf-mock__nav-item--active"></span>
-              <span class="cf-mock__nav-item"></span>
-              <span class="cf-mock__nav-item"></span>
+        <div class="cf-hero__visual">
+          <div class="cf-scene" aria-label="معاينة توضيحية — الودجيت أولاً، ثم واتساب، ثم لوحة التاجر">
+            <p class="cf-scene__label">معاينة توضيحية — ليست بيانات حقيقية</p>
+            <div class="cf-scene__flow" aria-hidden="true">
+              <span>الموقع <em>→</em> الودجيت</span>
+              <span>واتساب <em>→</em> لوحة التاجر</span>
             </div>
-            <div class="cf-mock__main">
-              <div class="cf-mock__cards">
-                <div class="cf-mock__chip"><strong>سلة</strong>مترددة</div>
-                <div class="cf-mock__chip"><strong>متابعة</strong>مجدولة</div>
-                <div class="cf-mock__chip"><strong>حالة</strong>واضحة</div>
-              </div>
-              <div class="cf-mock__table">
-                <div class="cf-mock__row">
-                  <span>عميل · سبب التردد</span>
-                  <span class="cf-mock__badge cf-mock__badge--amber">قيد المتابعة</span>
+            <div class="cf-scene__canvas">
+              <span class="cf-arrow cf-arrow--w2wa" aria-hidden="true">→</span>
+              <span class="cf-arrow cf-arrow--wa2d" aria-hidden="true">→</span>
+
+              <article class="cf-widget" aria-label="ودجيت المتجر">
+                <span class="cf-widget__tag">أثناء التصفح</span>
+                <h3>تحتاج مساعدة؟</h3>
+                <p>لاحظنا أنك توقفت عند السلة. ما الذي يمنعك من إكمال الطلب؟</p>
+                <div class="cf-widget__btns">
+                  <span>السعر</span>
+                  <span>الشحن</span>
+                  <span class="is-primary">أكمل الطلب</span>
                 </div>
-                <div class="cf-mock__row">
-                  <span>عميل · واتساب</span>
-                  <span class="cf-mock__badge cf-mock__badge--green">تم الشراء</span>
+              </article>
+
+              <article class="cf-dash" aria-label="لوحة التاجر">
+                <div class="cf-dash__bar">CartFlow — لوحة التاجر</div>
+                <div class="cf-dash__body">
+                  <div class="cf-dash__side" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+                  <div class="cf-dash__main">
+                    <p class="cf-dash__title">نظرة عامة</p>
+                    <dl class="cf-dash__metrics">
+                      <div class="cf-dash__metric">
+                        <dt>السلال المترددة</dt>
+                        <dd>—</dd>
+                      </div>
+                      <div class="cf-dash__metric">
+                        <dt>تم الاسترجاع</dt>
+                        <dd>مثال توضيحي</dd>
+                      </div>
+                      <div class="cf-dash__metric">
+                        <dt>أسباب التردد</dt>
+                        <dd>—</dd>
+                      </div>
+                    </dl>
+                  </div>
                 </div>
-              </div>
-              <div class="cf-mock__widget" aria-hidden="true">
-                <div class="cf-mock__widget-title">الودجيت</div>
-                <div class="cf-mock__widget-line"></div>
-                <div class="cf-mock__widget-line" style="width:70%"></div>
-                <div class="cf-mock__widget-btn"></div>
-              </div>
+              </article>
+
+              <article class="cf-wa" aria-label="متابعة واتساب">
+                <div class="cf-wa__head">
+                  <span class="cf-wa__icon" aria-hidden="true">✓</span>
+                  <span>متابعة واتساب</span>
+                </div>
+                <div class="cf-wa__chat">
+                  <div class="cf-wa__bubble">
+                    مرحباً، لاحظنا أنك لم تكمل طلبك. هل تحتاج مساعدة؟
+                  </div>
+                  <span class="cf-wa__cta">أكمل الطلب</span>
+                </div>
+              </article>
             </div>
           </div>
-        </aside>
+        </div>
       </div>
     </section>
 
-    <section class="cf-section cf-section--alt" aria-labelledby="how-title">
+    <section class="cf-section cf-section--alt" id="how" aria-labelledby="how-title">
       <div class="cf-shell">
         <div class="cf-section__head">
-          <h2 id="how-title">كيف يعمل؟</h2>
-          <p>مسار بسيط من السلة إلى المتابعة — بدون تعقيد للتاجر.</p>
+          <h2 id="how-title">كيف يعمل CartFlow؟</h2>
+          <p>الودجيت أولاً، واتساب ثانياً، واللوحة تشرح — مسار واضح من السلة إلى النتيجة.</p>
         </div>
         <ol class="cf-steps">
-          <li class="cf-step"><span class="cf-step__num">1</span><p>العميل يضيف للسلة</p></li>
-          <li class="cf-step"><span class="cf-step__num">2</span><p>الودجيت يفهم سبب التردد</p></li>
-          <li class="cf-step"><span class="cf-step__num">3</span><p>CartFlow يقرر الوقت المناسب</p></li>
-          <li class="cf-step"><span class="cf-step__num">4</span><p>واتساب يتابع عند الحاجة</p></li>
-          <li class="cf-step"><span class="cf-step__num">5</span><p>الداشبورد يشرح ما حدث</p></li>
+          <li class="cf-step">
+            <div class="cf-step__icon" aria-hidden="true">🛒</div>
+            <span class="cf-step__num">1</span>
+            <p>العميل يضيف للسلة</p>
+          </li>
+          <li class="cf-step">
+            <div class="cf-step__icon" aria-hidden="true">💬</div>
+            <span class="cf-step__num">2</span>
+            <p>الودجيت يفهم سبب التردد</p>
+          </li>
+          <li class="cf-step cf-step--highlight">
+            <div class="cf-step__icon" aria-hidden="true">🌐</div>
+            <span class="cf-step__num">3</span>
+            <p>CartFlow يحاول المساعدة أثناء وجود العميل</p>
+            <span class="cf-step__note">المحاولة الأولى تتم داخل الموقع قبل أن يغادر العميل.</span>
+          </li>
+          <li class="cf-step">
+            <div class="cf-step__icon" aria-hidden="true">📱</div>
+            <span class="cf-step__num">4</span>
+            <p>واتساب يتابع عند الحاجة</p>
+          </li>
+          <li class="cf-step">
+            <div class="cf-step__icon" aria-hidden="true">📊</div>
+            <span class="cf-step__num">5</span>
+            <p>الداشبورد يشرح ما حدث</p>
+          </li>
         </ol>
       </div>
     </section>
 
-    <section class="cf-section" aria-labelledby="merchants-title">
+    <section class="cf-section" id="features" aria-labelledby="features-title">
       <div class="cf-shell">
         <div class="cf-section__head">
-          <h2 id="merchants-title">لماذا يناسب التجار؟</h2>
-          <p>فائدة عملية بدون وعود مبالغ فيها — تركيز على الوضوح والمتابعة الذكية.</p>
+          <h2 id="features-title">لماذا يناسب التجار؟</h2>
+          <p>الودجيت أولاً، واتساب ثانياً، واللوحة تشرح — فوائد عملية للتاجر.</p>
         </div>
         <ul class="cf-benefits">
           <li class="cf-benefit">
-            <span class="cf-benefit__icon" aria-hidden="true">↘</span>
-            <div>
-              <h3>تقليل السلال المفقودة</h3>
-              <p>متابعة العملاء المترددين قبل أن تضيع الفرصة.</p>
-            </div>
+            <div class="cf-benefit__icon" aria-hidden="true">🌐</div>
+            <h3>استرجاع داخل الموقع أولاً</h3>
+            <p>نحاول مساعدة العميل قبل مغادرته.</p>
           </li>
           <li class="cf-benefit">
-            <span class="cf-benefit__icon" aria-hidden="true">?</span>
-            <div>
-              <h3>فهم أسباب التردد</h3>
-              <p>الودجيت يسجّل السبب لتعرف لماذا لم يكمل العميل.</p>
-            </div>
+            <div class="cf-benefit__icon" aria-hidden="true">📱</div>
+            <h3>متابعة واتساب عند الحاجة</h3>
+            <p>إذا لم يكتمل الطلب، تتم المتابعة في الوقت المناسب.</p>
           </li>
           <li class="cf-benefit">
-            <span class="cf-benefit__icon" aria-hidden="true">◎</span>
-            <div>
-              <h3>متابعة تلقائية بدون إزعاج</h3>
-              <p>رسائل واتساب في التوقيت المناسب — ليس في كل لحظة.</p>
-            </div>
+            <div class="cf-benefit__icon" aria-hidden="true">?</div>
+            <h3>فهم أسباب التردد</h3>
+            <p>السعر، الشحن، الجودة، الضمان، أو سبب آخر.</p>
           </li>
           <li class="cf-benefit">
-            <span class="cf-benefit__icon" aria-hidden="true">▣</span>
-            <div>
-              <h3>لوحة توضّح الحالة والنتيجة</h3>
-              <p>ترى السلال، المتابعات، وما إذا تم الشراء — في مكان واحد.</p>
-            </div>
+            <div class="cf-benefit__icon" aria-hidden="true">▣</div>
+            <h3>لوحة تشرح النتيجة</h3>
+            <p>يعرف التاجر ما حدث ولماذا توقفت أو اكتملت المتابعة.</p>
           </li>
         </ul>
       </div>
     </section>
 
-    <section class="cf-section cf-section--alt" aria-labelledby="trust-title">
+    <section class="cf-section cf-section--alt" id="pricing" aria-labelledby="pricing-title">
       <div class="cf-shell">
-        <div class="cf-trust">
-          <strong id="trust-title">شفافية وصدق</strong>
-          حالياً في مرحلة الإطلاق التجريبي والتحسين المستمر. لا نعرض أرقاماً أو شعارات عملاء غير حقيقية — نركز على بناء أداة موثوقة للتجار.
+        <div class="cf-section__head">
+          <h2 id="pricing-title">الأسعار</h2>
+        </div>
+        <div class="cf-pricing-note">
+          <strong>مرحلة الإطلاق التجريبي</strong>
+          ابدأ مجاناً الآن — لا نعرض خططاً أو أرقاماً تسويقية وهمية. التسعير النهائي يُعلَن لاحقاً بشفافية.
+          <div style="margin-top:0.75rem">
+            <a class="cf-btn cf-btn--primary" href="/signup">ابدأ الآن مجاناً</a>
+          </div>
         </div>
       </div>
     </section>
 
-    <section class="cf-cta" aria-labelledby="final-cta-title">
+    <section class="cf-section" id="faq" aria-labelledby="faq-title">
       <div class="cf-shell">
-        <div class="cf-cta__box">
-          <h2 id="final-cta-title">ابدأ تجربة CartFlow</h2>
-          <p>أنشئ حسابك، اربط متجرك، وابدأ رؤية السلال والمتابعات من لوحة التاجر.</p>
-          <a class="cf-btn cf-btn--primary cf-btn--lg" href="/signup">ابدأ تجربة CartFlow</a>
+        <div class="cf-section__head">
+          <h2 id="faq-title">الأسئلة الشائعة</h2>
+        </div>
+        <div class="cf-faq">
+          <details>
+            <summary>هل CartFlow يعتمد على واتساب فقط؟</summary>
+            <p>لا. المحاولة الأولى تتم عبر الودجيت داخل المتجر. واتساب يُستخدم للمتابعة عند الحاجة إذا لم يكتمل الطلب.</p>
+          </details>
+          <details>
+            <summary>ماذا يرى التاجر في اللوحة؟</summary>
+            <p>حالة السلال، أسباب التردد، المتابعات، وما إذا اكتمل الطلب — بشكل واضح وقراءة فقط.</p>
+          </details>
+          <details>
+            <summary>هل أحتاج بطاقة ائتمان للبدء؟</summary>
+            <p>لا في المرحلة التجريبية. أنشئ حسابك وابدأ من صفحة التسجيل.</p>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <p class="cf-trust" id="trust">
+      حالياً في مرحلة الإطلاق التجريبي والتحسين المستمر، لا نعرض أرقاماً أو شعارات عملاء غير حقيقية.
+    </p>
+
+    <section class="cf-cta" id="contact" aria-labelledby="final-cta-title">
+      <div class="cf-shell">
+        <div class="cf-cta__banner">
+          <h2 id="final-cta-title">ابدأ تجربة CartFlow الآن</h2>
+          <p>أنشئ حسابك، اربط متجرك، وابدأ رؤية السلال المترددة من لوحة التاجر.</p>
+          <a class="cf-btn cf-btn--white cf-btn--lg" href="/signup">
+            ابدأ الآن مجاناً <span class="cf-btn__arrow" aria-hidden="true">←</span>
+          </a>
         </div>
       </div>
     </section>
   </main>
 
   <footer class="cf-footer">
-    <div class="cf-shell">CartFlow © 2026</div>
+    <div class="cf-shell">
+      CartFlow © 2026 · <a href="mailto:support@smartreplyai.net" id="contact-email">تواصل معنا</a>
+    </div>
   </footer>
 </body>
 </html>
