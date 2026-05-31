@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import unittest
+from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
@@ -40,6 +41,9 @@ from services.admin_operations_center_v1 import (
     _timeline_event_from_alert_record,
     _timeline_event_row,
     build_admin_operations_center_v1_readonly,
+    build_admin_operations_command_center_readonly,
+    build_admin_operations_investigation_section_readonly,
+    build_admin_operations_analytics_section_readonly,
 )
 from services.cartflow_admin_http_auth import admin_cookie_name
 from services.recovery_process_role_v1 import build_scheduler_health_snapshot
@@ -122,9 +126,79 @@ class AdminOperationsCenterV1Tests(unittest.TestCase):
             self.assertIn(key, st)
         self.assertIsInstance(payload.get("alerts"), list)
 
+    def test_command_center_payload_excludes_lazy_sections(self) -> None:
+        payload = build_admin_operations_command_center_readonly()
+        self.assertEqual(payload.get("version"), "admin_operations_center_v2_2")
+        for key in (
+            "system_health_summary",
+            "top_risks",
+            "store_health_snapshot",
+            "health_scheduler_path",
+            "generated_at_utc",
+        ):
+            self.assertIn(key, payload)
+        for lazy_key in (
+            "operational_trends",
+            "operational_timeline",
+            "root_cause_groups",
+            "scheduler",
+            "recovery",
+            "store_readiness",
+            "alerts",
+        ):
+            self.assertNotIn(lazy_key, payload, msg=f"command center must not include {lazy_key}")
+
+    def test_command_center_does_not_build_analytics(self) -> None:
+        with patch(
+            "services.admin_operations_center_v1._build_operational_trends"
+        ) as mock_trends, patch(
+            "services.admin_operations_center_v1._build_operational_timeline"
+        ) as mock_timeline, patch(
+            "services.admin_operations_center_v1._build_root_cause_groups"
+        ) as mock_rcg:
+            build_admin_operations_command_center_readonly()
+            mock_trends.assert_not_called()
+            mock_timeline.assert_not_called()
+            mock_rcg.assert_not_called()
+
+    def test_investigation_section_payload(self) -> None:
+        payload = build_admin_operations_investigation_section_readonly()
+        self.assertEqual(payload.get("section"), "investigation")
+        sch = payload.get("scheduler") or {}
+        for key in ("role", "overdue_scheduled_count", "running_stale_count"):
+            self.assertIn(key, sch)
+        rec = payload.get("recovery") or {}
+        for key in ("scheduled", "running", "completed", "failed", "expired"):
+            self.assertIn(key, rec)
+        st = payload.get("store_readiness") or {}
+        for key in (
+            "total_stores",
+            "ready_stores",
+            "stores_missing_whatsapp",
+            "stores_no_recent_cart_events",
+            "stores_needing_setup",
+        ):
+            self.assertIn(key, st)
+        self.assertIsInstance(payload.get("alerts"), list)
+        for lazy_key in ("operational_trends", "operational_timeline", "root_cause_groups"):
+            self.assertNotIn(lazy_key, payload)
+
+    def test_analytics_section_payload(self) -> None:
+        payload = build_admin_operations_analytics_section_readonly()
+        self.assertEqual(payload.get("section"), "analytics")
+        trends = payload.get("operational_trends") or {}
+        self.assertIn("trends", trends)
+        self.assertIn("window_hours", trends)
+        timeline = payload.get("operational_timeline") or {}
+        self.assertIn("events", timeline)
+        rcg = payload.get("root_cause_groups") or {}
+        self.assertIn("groups", rcg)
+        for lazy_key in ("scheduler", "recovery", "store_readiness", "alerts"):
+            self.assertNotIn(lazy_key, payload)
+
     def test_scheduler_card_matches_health_endpoint(self) -> None:
         health = build_scheduler_health_snapshot()
-        payload = build_admin_operations_center_v1_readonly()
+        payload = build_admin_operations_investigation_section_readonly()
         sch = payload.get("scheduler") or {}
         self.assertEqual(sch.get("role"), health.get("role"))
         self.assertEqual(
@@ -148,7 +222,50 @@ class AdminOperationsCenterV1Tests(unittest.TestCase):
         self.assertIn("ops-command-center", body)
         self.assertIn("ops-investigation-panel", body)
         self.assertIn("ops-analytics-panel", body)
+        self.assertIn("ops-investigation-content", body)
+        self.assertIn("ops-analytics-content", body)
+        self.assertIn("bindLazySection", body)
         self.assertIn('id="admin-sidebar-panel"', body)
+
+    def test_lazy_section_endpoints_authenticated(self) -> None:
+        self._login()
+        inv = self.client.get("/admin/operations/section/investigation")
+        self.assertEqual(inv.status_code, 200, inv.text[:300])
+        for label in (
+            "صحة المجدول",
+            "حالات الاسترجاع",
+            "جاهزية المتاجر",
+            "تنبيهات أساسية",
+        ):
+            self.assertIn(label, inv.text, msg=f"missing {label} in investigation")
+        ana = self.client.get("/admin/operations/section/analytics")
+        self.assertEqual(ana.status_code, 200, ana.text[:300])
+        for label in (
+            "اتجاهات التشغيل",
+            "آخر الأحداث التشغيلية",
+            "مصادر المشاكل الرئيسية",
+        ):
+            self.assertIn(label, ana.text, msg=f"missing {label} in analytics")
+
+    def test_lazy_sections_require_auth(self) -> None:
+        for path in (
+            "/admin/operations/section/investigation",
+            "/admin/operations/section/analytics",
+        ):
+            r = self.client.get(path, follow_redirects=False)
+            self.assertEqual(r.status_code, 302, path)
+            self.assertIn("/admin/operations/login", r.headers.get("location", ""))
+
+    def test_initial_page_excludes_lazy_section_content(self) -> None:
+        self._login()
+        r = self.client.get("/admin/operations")
+        self.assertEqual(r.status_code, 200)
+        body = r.text
+        self.assertNotIn("أ — صحة المجدول", body)
+        self.assertNotIn("المؤشر", body)
+        self.assertIn('data-lazy-state="idle"', body)
+        self.assertIn('id="ops-investigation-content"', body)
+        self.assertIn('id="ops-analytics-content"', body)
 
     def test_page_ia_collapsible_sections_closed_by_default(self) -> None:
         self._login()
@@ -161,18 +278,20 @@ class AdminOperationsCenterV1Tests(unittest.TestCase):
 
     def test_page_ia_investigation_and_analytics_content_preserved(self) -> None:
         self._login()
-        r = self.client.get("/admin/operations")
-        self.assertEqual(r.status_code, 200)
-        for label in (
-            "صحة المجدول",
-            "حالات الاسترجاع",
-            "جاهزية المتاجر",
-            "تنبيهات أساسية",
-            "اتجاهات التشغيل",
-            "آخر الأحداث التشغيلية",
-            "مصادر المشاكل الرئيسية",
+        inv = self.client.get("/admin/operations/section/investigation")
+        self.assertEqual(inv.status_code, 200)
+        ana = self.client.get("/admin/operations/section/analytics")
+        self.assertEqual(ana.status_code, 200)
+        for label, body in (
+            ("صحة المجدول", inv.text),
+            ("حالات الاسترجاع", inv.text),
+            ("جاهزية المتاجر", inv.text),
+            ("تنبيهات أساسية", inv.text),
+            ("اتجاهات التشغيل", ana.text),
+            ("آخر الأحداث التشغيلية", ana.text),
+            ("مصادر المشاكل الرئيسية", ana.text),
         ):
-            self.assertIn(label, r.text, msg=f"missing {label}")
+            self.assertIn(label, body, msg=f"missing {label}")
 
     def test_page_redirects_without_session(self) -> None:
         r = self.client.get("/admin/operations", follow_redirects=False)
@@ -181,7 +300,7 @@ class AdminOperationsCenterV1Tests(unittest.TestCase):
 
     def test_alerts_table_or_empty_state(self) -> None:
         self._login()
-        r = self.client.get("/admin/operations")
+        r = self.client.get("/admin/operations/section/investigation")
         self.assertEqual(r.status_code, 200)
         self.assertTrue(
             "لا تنبيهات تشغيلية بارزة" in r.text or "<table" in r.text,
@@ -307,8 +426,11 @@ class AdminOperationsCenterV1Tests(unittest.TestCase):
         self.assertEqual(steps[0], "راجع سبب الفشل.")
 
     def test_page_renders_investigation_guidance(self) -> None:
+        payload = build_admin_operations_investigation_section_readonly()
+        if not payload.get("alerts"):
+            self.skipTest("no alerts in current DB")
         self._login()
-        r = self.client.get("/admin/operations")
+        r = self.client.get("/admin/operations/section/investigation")
         self.assertEqual(r.status_code, 200)
         self.assertIn("من أين أبدأ؟", r.text)
 
@@ -386,7 +508,7 @@ class AdminOperationsCenterV1Tests(unittest.TestCase):
 
     def test_page_renders_evidence_when_present(self) -> None:
         self._login()
-        r = self.client.get("/admin/operations")
+        r = self.client.get("/admin/operations/section/investigation")
         self.assertEqual(r.status_code, 200)
         if "الأدلة المرتبطة" in r.text:
             self.assertIn("Recovery Key:", r.text)
@@ -586,7 +708,7 @@ class AdminOperationsCenterV1Tests(unittest.TestCase):
 
     def test_page_renders_operational_timeline_section(self) -> None:
         self._login()
-        r = self.client.get("/admin/operations")
+        r = self.client.get("/admin/operations/section/analytics")
         self.assertEqual(r.status_code, 200)
         self.assertIn("آخر الأحداث التشغيلية", r.text)
 
@@ -646,10 +768,13 @@ class AdminOperationsCenterV1Tests(unittest.TestCase):
 
     def test_page_renders_ownership_on_alerts_risks_timeline(self) -> None:
         self._login()
-        r = self.client.get("/admin/operations")
-        self.assertEqual(r.status_code, 200)
-        if "المالك المحتمل:" in r.text:
-            self.assertGreaterEqual(r.text.count("المالك المحتمل:"), 1)
+        inv = self.client.get("/admin/operations/section/investigation")
+        self.assertEqual(inv.status_code, 200)
+        ana = self.client.get("/admin/operations/section/analytics")
+        self.assertEqual(ana.status_code, 200)
+        combined = inv.text + ana.text
+        if "المالك المحتمل:" in combined:
+            self.assertGreaterEqual(combined.count("المالك المحتمل:"), 1)
 
     def test_root_cause_groups_ownership_grouping(self) -> None:
         alerts = [
@@ -767,7 +892,7 @@ class AdminOperationsCenterV1Tests(unittest.TestCase):
 
     def test_page_renders_root_cause_groups_section(self) -> None:
         self._login()
-        r = self.client.get("/admin/operations")
+        r = self.client.get("/admin/operations/section/analytics")
         self.assertEqual(r.status_code, 200)
         self.assertIn("مصادر المشاكل الرئيسية", r.text)
 
@@ -813,7 +938,7 @@ class AdminOperationsCenterV1Tests(unittest.TestCase):
 
     def test_page_renders_operational_trends_section(self) -> None:
         self._login()
-        r = self.client.get("/admin/operations")
+        r = self.client.get("/admin/operations/section/analytics")
         self.assertEqual(r.status_code, 200)
         self.assertIn("اتجاهات التشغيل", r.text)
         body = r.text
@@ -1133,11 +1258,11 @@ class AdminOperationsCenterV1Tests(unittest.TestCase):
                 db.session.rollback()
 
     def test_page_renders_severity_labels_when_alerts_present(self) -> None:
-        payload = build_admin_operations_center_v1_readonly()
+        payload = build_admin_operations_investigation_section_readonly()
         if not payload.get("alerts"):
             self.skipTest("no alerts in current DB")
         self._login()
-        r = self.client.get("/admin/operations")
+        r = self.client.get("/admin/operations/section/investigation")
         self.assertEqual(r.status_code, 200)
         body = r.text
         self.assertIn("الأولوية", body)
@@ -1149,11 +1274,11 @@ class AdminOperationsCenterV1Tests(unittest.TestCase):
             self.assertIn(sev_ar, body)
 
     def test_page_renders_explanation_labels_when_alerts_present(self) -> None:
-        payload = build_admin_operations_center_v1_readonly()
+        payload = build_admin_operations_investigation_section_readonly()
         if not payload.get("alerts"):
             self.skipTest("no alerts in current DB")
         self._login()
-        r = self.client.get("/admin/operations")
+        r = self.client.get("/admin/operations/section/investigation")
         self.assertEqual(r.status_code, 200)
         self.assertIn("لماذا ظهر", r.text)
         self.assertIn("الإجراء المقترح", r.text)

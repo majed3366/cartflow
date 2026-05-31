@@ -311,6 +311,11 @@ def admin_operational_health_page(request: Request) -> Any:
     )
 
 
+_OPS_LAZY_SECTION_ERROR_HTML = (
+    '<p class="text-sm text-rose-700 py-6 text-center">تعذر تحميل هذا القسم الآن.</p>'
+)
+
+
 @router.get("/admin/operations", response_class=HTMLResponse)
 def admin_operations_dashboard(request: Request) -> Any:
     denied = _admin_session_or_redirect(request, next_path="/admin/operations")
@@ -318,10 +323,10 @@ def admin_operations_dashboard(request: Request) -> Any:
         return denied
     try:
         from services.admin_operations_center_v1 import (  # noqa: PLC0415
-            build_admin_operations_center_v1_readonly,
+            build_admin_operations_command_center_readonly,
         )
 
-        ops = build_admin_operations_center_v1_readonly()
+        ops = build_admin_operations_command_center_readonly()
     except Exception:  # noqa: BLE001
         ops = {
             "version": "admin_operations_center_v2_2",
@@ -342,11 +347,6 @@ def admin_operations_dashboard(request: Request) -> Any:
                 "total_stores": 0,
                 "available": True,
             },
-            "operational_trends": {
-                "window_hours": 24,
-                "trends": [],
-                "available": True,
-            },
             "top_risks": {
                 "risks": [],
                 "total_candidates": 0,
@@ -354,44 +354,6 @@ def admin_operations_dashboard(request: Request) -> Any:
                 "max_shown": 5,
                 "available": True,
             },
-            "operational_timeline": {
-                "window_hours": 24,
-                "events": [],
-                "total_candidates": 0,
-                "shown_count": 0,
-                "max_shown": 25,
-                "available": True,
-            },
-            "root_cause_groups": {
-                "groups": [],
-                "total_groups": 0,
-                "available": True,
-            },
-            "scheduler": {
-                "role": "غير متوفر",
-                "overdue_scheduled_count": 0,
-                "running_stale_count": 0,
-                "resume_enabled": False,
-                "due_scanner_enabled": False,
-                "ok": False,
-            },
-            "recovery": {
-                "scheduled": 0,
-                "running": 0,
-                "completed": 0,
-                "failed": 0,
-                "expired": 0,
-                "available": False,
-            },
-            "store_readiness": {
-                "total_stores": 0,
-                "ready_stores": 0,
-                "stores_missing_whatsapp": 0,
-                "stores_no_recent_cart_events": 0,
-                "stores_needing_setup": 0,
-                "available": False,
-            },
-            "alerts": [],
             "health_scheduler_path": "/health/scheduler",
         }
     return templates.TemplateResponse(
@@ -403,6 +365,50 @@ def admin_operations_dashboard(request: Request) -> Any:
             "admin_page_subtitle_ar": "قراءة تشغيلية موحّدة — مجدول، استرجاع، متاجر، تنبيهات.",
             "ops": ops,
         },
+    )
+
+
+@router.get("/admin/operations/section/investigation", response_class=HTMLResponse)
+def admin_operations_section_investigation(request: Request) -> Any:
+    denied = _admin_session_or_redirect(
+        request, next_path="/admin/operations/section/investigation"
+    )
+    if denied is not None:
+        return denied
+    try:
+        from services.admin_operations_center_v1 import (  # noqa: PLC0415
+            build_admin_operations_investigation_section_readonly,
+        )
+
+        ops = build_admin_operations_investigation_section_readonly()
+    except Exception:  # noqa: BLE001
+        return HTMLResponse(_OPS_LAZY_SECTION_ERROR_HTML, status_code=500)
+    return templates.TemplateResponse(
+        request,
+        "partials/admin_operations_investigation_section.html",
+        {"ops": ops},
+    )
+
+
+@router.get("/admin/operations/section/analytics", response_class=HTMLResponse)
+def admin_operations_section_analytics(request: Request) -> Any:
+    denied = _admin_session_or_redirect(
+        request, next_path="/admin/operations/section/analytics"
+    )
+    if denied is not None:
+        return denied
+    try:
+        from services.admin_operations_center_v1 import (  # noqa: PLC0415
+            build_admin_operations_analytics_section_readonly,
+        )
+
+        ops = build_admin_operations_analytics_section_readonly()
+    except Exception:  # noqa: BLE001
+        return HTMLResponse(_OPS_LAZY_SECTION_ERROR_HTML, status_code=500)
+    return templates.TemplateResponse(
+        request,
+        "partials/admin_operations_analytics_section.html",
+        {"ops": ops},
     )
 
 

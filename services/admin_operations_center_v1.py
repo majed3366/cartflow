@@ -1898,8 +1898,7 @@ def _build_basic_alerts(
     return _sort_alerts(alerts)[:_MAX_ALERTS]
 
 
-def build_admin_operations_center_v1_readonly() -> dict[str, Any]:
-    """Read-only payload for Admin Operations Center v1."""
+def _build_ops_scheduler_card() -> dict[str, Any]:
     from services.recovery_process_role_v1 import build_scheduler_health_snapshot
 
     scheduler_raw = build_scheduler_health_snapshot()
@@ -1913,7 +1912,12 @@ def build_admin_operations_center_v1_readonly() -> dict[str, Any]:
     }
     if scheduler_raw.get("database_error"):
         scheduler["database_error"] = str(scheduler_raw.get("database_error"))[:200]
+    return scheduler
 
+
+def _build_ops_shared_context() -> dict[str, Any]:
+    """Scheduler, recovery, readiness, alerts — shared by command + lazy sections."""
+    scheduler = _build_ops_scheduler_card()
     recovery = _recovery_status_summary()
     store_readiness, store_rows = _store_readiness_summary()
     alerts = _build_basic_alerts(
@@ -1921,25 +1925,77 @@ def build_admin_operations_center_v1_readonly() -> dict[str, Any]:
         recovery=recovery,
         stores=store_rows,
     )
-    system_health_summary = _build_system_health_summary(alerts)
-    store_health_snapshot = _build_store_health_snapshot(alerts, store_rows)
-    operational_trends = _build_operational_trends()
-    top_risks = _build_top_risks(alerts)
-    operational_timeline = _build_operational_timeline(alerts, store_rows)
-    root_cause_groups = _build_root_cause_groups(alerts)
-
     return {
-        "version": "admin_operations_center_v2_2",
-        "generated_at_utc": _utc_now().isoformat(),
-        "system_health_summary": system_health_summary,
-        "store_health_snapshot": store_health_snapshot,
-        "operational_trends": operational_trends,
-        "top_risks": top_risks,
-        "operational_timeline": operational_timeline,
-        "root_cause_groups": root_cause_groups,
         "scheduler": scheduler,
         "recovery": recovery,
         "store_readiness": store_readiness,
+        "store_rows": store_rows,
+        "alerts": alerts,
+    }
+
+
+def build_admin_operations_command_center_readonly() -> dict[str, Any]:
+    """Lightweight initial payload for /admin/operations (command center only)."""
+    ctx = _build_ops_shared_context()
+    alerts = ctx["alerts"]
+    store_rows = ctx["store_rows"]
+    return {
+        "version": "admin_operations_center_v2_2",
+        "generated_at_utc": _utc_now().isoformat(),
+        "system_health_summary": _build_system_health_summary(alerts),
+        "top_risks": _build_top_risks(alerts),
+        "store_health_snapshot": _build_store_health_snapshot(alerts, store_rows),
+        "health_scheduler_path": "/health/scheduler",
+    }
+
+
+def build_admin_operations_investigation_section_readonly() -> dict[str, Any]:
+    """Lazy investigation section: scheduler, recovery, readiness, alerts."""
+    ctx = _build_ops_shared_context()
+    return {
+        "section": "investigation",
+        "version": "admin_operations_center_v2_2",
+        "generated_at_utc": _utc_now().isoformat(),
+        "scheduler": ctx["scheduler"],
+        "recovery": ctx["recovery"],
+        "store_readiness": ctx["store_readiness"],
+        "alerts": ctx["alerts"],
+        "health_scheduler_path": "/health/scheduler",
+    }
+
+
+def build_admin_operations_analytics_section_readonly() -> dict[str, Any]:
+    """Lazy analytics section: trends, timeline, root cause groups."""
+    ctx = _build_ops_shared_context()
+    alerts = ctx["alerts"]
+    store_rows = ctx["store_rows"]
+    return {
+        "section": "analytics",
+        "version": "admin_operations_center_v2_2",
+        "generated_at_utc": _utc_now().isoformat(),
+        "operational_trends": _build_operational_trends(),
+        "operational_timeline": _build_operational_timeline(alerts, store_rows),
+        "root_cause_groups": _build_root_cause_groups(alerts),
+    }
+
+
+def build_admin_operations_center_v1_readonly() -> dict[str, Any]:
+    """Full read-only payload (all sections — tests and compatibility)."""
+    ctx = _build_ops_shared_context()
+    alerts = ctx["alerts"]
+    store_rows = ctx["store_rows"]
+    return {
+        "version": "admin_operations_center_v2_2",
+        "generated_at_utc": _utc_now().isoformat(),
+        "system_health_summary": _build_system_health_summary(alerts),
+        "store_health_snapshot": _build_store_health_snapshot(alerts, store_rows),
+        "operational_trends": _build_operational_trends(),
+        "top_risks": _build_top_risks(alerts),
+        "operational_timeline": _build_operational_timeline(alerts, store_rows),
+        "root_cause_groups": _build_root_cause_groups(alerts),
+        "scheduler": ctx["scheduler"],
+        "recovery": ctx["recovery"],
+        "store_readiness": ctx["store_readiness"],
         "alerts": alerts,
         "health_scheduler_path": "/health/scheduler",
     }
@@ -1947,6 +2003,9 @@ def build_admin_operations_center_v1_readonly() -> dict[str, Any]:
 
 __all__ = [
     "build_admin_operations_center_v1_readonly",
+    "build_admin_operations_command_center_readonly",
+    "build_admin_operations_investigation_section_readonly",
+    "build_admin_operations_analytics_section_readonly",
     "_ALERT_SEVERITY_AR",
     "_sort_alerts",
     "_build_system_health_summary",
