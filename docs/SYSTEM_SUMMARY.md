@@ -325,6 +325,7 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 
 | Date (UTC) | Summary |
 |------------|---------|
+| 2026-05-31 | **Admin Operations Center v1.7 — top risks:** `top_risks` on `/admin/operations` — «أهم المخاطر الحالية» (max 5) from existing alerts by severity/recency; Arabic why-it-matters + suggested next step per risk kind; read-only. Commit: **`feat: add top risks section to admin operations center`**. |
 | 2026-05-31 | **Admin Operations Center v1.6 — operational trends:** `operational_trends` on `/admin/operations` — «اتجاهات التشغيل» compares last 24h vs previous 24h for failed/stale recovery and store setup/WhatsApp gaps; trend arrows (↑ تزايد / ↓ تحسن / → مستقر); read-only aggregates only. Commit: **`feat: add operational trend awareness`**. |
 | 2026-05-31 | **Admin Operations Center v1.5 — store health snapshot:** `store_health_snapshot` on `/admin/operations` — «حالة المتاجر» table merges alert-affected stores (setup/WA/no-cart/failed/stale), escalates severity, sorts critical-first; read-only. Commit: **`feat: add store health snapshot to admin operations center`**. |
 | 2026-05-31 | **Admin Operations Center v1.4 — system health summary:** `system_health_summary` on `/admin/operations` — top «حالة النظام الآن» hero from alert severity counts (urgent_attention / needs_followup / stable_with_notes / stable) + حرج/عالي/متوسط/منخفض chips; read-only, no behavior changes. Commit: **`feat: add admin system health summary`**. |

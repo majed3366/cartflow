@@ -139,6 +139,47 @@ _STORE_SNAPSHOT_KINDS = frozenset(
 
 _MAX_STORE_SNAPSHOT = 150
 _TREND_WINDOW_HOURS = 24
+_MAX_TOP_RISKS = 5
+
+_TOP_RISK_KINDS = frozenset(
+    {
+        "stale_recovery",
+        "failed_recovery",
+        "whatsapp_missing",
+        "no_cart_events",
+        "store_needs_setup",
+    }
+)
+
+_TOP_RISK_COPY: dict[str, dict[str, str]] = {
+    "stale_recovery": {
+        "risk_title_ar": "استرجاع عالق",
+        "why_it_matters_ar": (
+            "قد يشير إلى مشكلة تشغيلية تمنع إكمال دورة الاسترجاع."
+        ),
+        "suggested_next_step_ar": "راجع حالة الـ Scheduler وسجل الاسترجاع.",
+    },
+    "failed_recovery": {
+        "risk_title_ar": "استرجاع فاشل",
+        "why_it_matters_ar": "قد يؤدي إلى فقدان فرصة استرجاع سلة محتملة.",
+        "suggested_next_step_ar": "راجع تفاصيل الفشل ومزود الإرسال.",
+    },
+    "whatsapp_missing": {
+        "risk_title_ar": "واتساب غير جاهز",
+        "why_it_matters_ar": "لن يتمكن المتجر من إرسال رسائل الاسترجاع.",
+        "suggested_next_step_ar": "استكمل إعداد واتساب للمتجر.",
+    },
+    "no_cart_events": {
+        "risk_title_ar": "لا توجد أحداث سلة",
+        "why_it_matters_ar": "قد يشير إلى مشكلة في الودجيت أو التكامل.",
+        "suggested_next_step_ar": "اختبر إضافة منتج للسلة وتحقق من وصول الأحداث.",
+    },
+    "store_needs_setup": {
+        "risk_title_ar": "إعداد المتجر غير مكتمل",
+        "why_it_matters_ar": "قد يمنع تشغيل CartFlow بشكل صحيح.",
+        "suggested_next_step_ar": "استكمل خطوات الإعداد الأساسية.",
+    },
+}
 
 _SYSTEM_HEALTH_STATUS_AR: dict[str, dict[str, str]] = {
     "urgent_attention": {
@@ -617,6 +658,121 @@ def _build_operational_trends() -> dict[str, Any]:
     }
 
 
+def _record_recency_key(record: dict[str, Any]) -> str:
+    rec = record if isinstance(record, dict) else {}
+    for field in ("updated_at", "due_at", "last_cart_event_at"):
+        val = _safe_str(rec.get(field), 64)
+        if val and val != "غير متوفر":
+            return val
+    return ""
+
+
+def _recency_timestamp(recency: str) -> float:
+    raw = _safe_str(recency, 64)
+    if not raw or raw == "غير متوفر":
+        return 0.0
+    try:
+        dt = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.timestamp()
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _risk_row_from_alert_record(
+    *,
+    kind: str,
+    alert: dict[str, Any],
+    record: dict[str, Any] | None,
+) -> dict[str, Any]:
+    copy = _TOP_RISK_COPY.get(kind) or {}
+    sev_meta = _severity_for_kind(kind)
+    sev = _alert_severity_bucket(alert)
+    sev_ar = _safe_str(alert.get("severity_ar"), 32) or sev_meta["severity_ar"]
+    rec = record if isinstance(record, dict) else {}
+    slug = _safe_str(rec.get("store_slug"), 128)
+    name = _safe_str(rec.get("display_name"), 128) or slug or "—"
+    if not slug and kind in ("stale_recovery", "failed_recovery"):
+        slug = _safe_str(rec.get("store_slug"), 128)
+    return {
+        "risk_kind": kind,
+        "risk_title_ar": copy.get("risk_title_ar")
+        or _safe_str(alert.get("title_ar"), 128)
+        or kind,
+        "severity": sev,
+        "severity_ar": sev_ar,
+        "affected_store": slug or "",
+        "affected_store_name": name,
+        "why_it_matters_ar": copy.get("why_it_matters_ar")
+        or _safe_str(alert.get("why_ar"), 300),
+        "suggested_next_step_ar": copy.get("suggested_next_step_ar")
+        or _safe_str(alert.get("suggested_fix_ar"), 300),
+        "_recency_ts": _recency_timestamp(_record_recency_key(rec)),
+        "_priority_order": sev_meta["priority_order"],
+        "_store_slug_sort": slug or "",
+    }
+
+
+def _sort_top_risks(risks: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    def _key(row: dict[str, Any]) -> tuple[int, float, int, str]:
+        sev = _safe_str(row.get("severity"), 32).lower()
+        return (
+            _SEVERITY_RANK.get(sev, 99),
+            -_safe_int(row.get("_recency_ts"), 0),
+            _safe_int(row.get("_priority_order"), 999),
+            _safe_str(row.get("_store_slug_sort"), 128),
+        )
+
+    return sorted(risks, key=_key)
+
+
+def _build_top_risks(alerts: list[dict[str, Any]]) -> dict[str, Any]:
+    """Top operational risks from existing alerts (read-only, max 5)."""
+    candidates: list[dict[str, Any]] = []
+    for alert in alerts or []:
+        if not isinstance(alert, dict):
+            continue
+        kind = _safe_str(alert.get("kind"), 64)
+        if kind not in _TOP_RISK_KINDS:
+            continue
+        records = alert.get("records") or []
+        if records:
+            for rec in records:
+                if not isinstance(rec, dict):
+                    continue
+                candidates.append(
+                    _risk_row_from_alert_record(kind=kind, alert=alert, record=rec)
+                )
+        else:
+            candidates.append(
+                _risk_row_from_alert_record(kind=kind, alert=alert, record=None)
+            )
+
+    ranked = _sort_top_risks(candidates)[:_MAX_TOP_RISKS]
+    risks: list[dict[str, Any]] = []
+    for row in ranked:
+        risks.append(
+            {
+                "risk_kind": row.get("risk_kind"),
+                "risk_title_ar": row.get("risk_title_ar"),
+                "severity": row.get("severity"),
+                "severity_ar": row.get("severity_ar"),
+                "affected_store": row.get("affected_store") or "",
+                "affected_store_name": row.get("affected_store_name") or "—",
+                "why_it_matters_ar": row.get("why_it_matters_ar") or "",
+                "suggested_next_step_ar": row.get("suggested_next_step_ar") or "",
+            }
+        )
+    return {
+        "risks": risks,
+        "total_candidates": len(candidates),
+        "shown_count": len(risks),
+        "max_shown": _MAX_TOP_RISKS,
+        "available": True,
+    }
+
+
 def _alert_with_records(
     *,
     kind: str,
@@ -1086,13 +1242,15 @@ def build_admin_operations_center_v1_readonly() -> dict[str, Any]:
     system_health_summary = _build_system_health_summary(alerts)
     store_health_snapshot = _build_store_health_snapshot(alerts, store_rows)
     operational_trends = _build_operational_trends()
+    top_risks = _build_top_risks(alerts)
 
     return {
-        "version": "admin_operations_center_v1_6",
+        "version": "admin_operations_center_v1_7",
         "generated_at_utc": _utc_now().isoformat(),
         "system_health_summary": system_health_summary,
         "store_health_snapshot": store_health_snapshot,
         "operational_trends": operational_trends,
+        "top_risks": top_risks,
         "scheduler": scheduler,
         "recovery": recovery,
         "store_readiness": store_readiness,
@@ -1109,4 +1267,6 @@ __all__ = [
     "_build_store_health_snapshot",
     "_build_operational_trends",
     "_compute_trend_from_counts",
+    "_build_top_risks",
+    "_sort_top_risks",
 ]

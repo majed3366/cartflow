@@ -20,8 +20,11 @@ from services.admin_operations_center_v1 import (
     _build_operational_trends,
     _build_store_health_snapshot,
     _build_system_health_summary,
+    _build_top_risks,
     _compute_trend_from_counts,
+    _risk_row_from_alert_record,
     _sort_alerts,
+    _sort_top_risks,
     build_admin_operations_center_v1_readonly,
 )
 from services.cartflow_admin_http_auth import admin_cookie_name
@@ -56,7 +59,7 @@ class AdminOperationsCenterV1Tests(unittest.TestCase):
 
     def test_build_payload_has_required_sections(self) -> None:
         payload = build_admin_operations_center_v1_readonly()
-        self.assertEqual(payload.get("version"), "admin_operations_center_v1_6")
+        self.assertEqual(payload.get("version"), "admin_operations_center_v1_7")
         health = payload.get("system_health_summary") or {}
         for key in (
             "status_key",
@@ -78,6 +81,9 @@ class AdminOperationsCenterV1Tests(unittest.TestCase):
         self.assertIn("trends", trends)
         self.assertIn("window_hours", trends)
         self.assertEqual(len(trends.get("trends") or []), 4)
+        top = payload.get("top_risks") or {}
+        self.assertIn("risks", top)
+        self.assertLessEqual(len(top.get("risks") or []), 5)
         sch = payload.get("scheduler") or {}
         for key in ("role", "overdue_scheduled_count", "running_stale_count"):
             self.assertIn(key, sch)
@@ -236,6 +242,78 @@ class AdminOperationsCenterV1Tests(unittest.TestCase):
         )
         ordered = _sort_alerts([low_count, high_count])
         self.assertEqual(ordered[0]["records_total"], 9)
+
+    def test_top_risks_severity_ordering(self) -> None:
+        alerts = [
+            _alert_with_records(
+                kind="no_cart_events",
+                title_ar="low",
+                detail_ar="low",
+                records=[{"store_slug": "z-store", "display_name": "Z"}],
+                records_total=1,
+            ),
+            _alert_with_records(
+                kind="stale_recovery",
+                title_ar="crit",
+                detail_ar="crit",
+                records=[
+                    {
+                        "store_slug": "a-store",
+                        "display_name": "A",
+                        "updated_at": "2026-05-31T10:00:00+00:00",
+                    }
+                ],
+                records_total=1,
+            ),
+            _alert_with_records(
+                kind="failed_recovery",
+                title_ar="high",
+                detail_ar="high",
+                records=[{"store_slug": "m-store", "display_name": "M"}],
+                records_total=1,
+            ),
+        ]
+        top = _build_top_risks(alerts)
+        kinds = [r["risk_kind"] for r in top["risks"]]
+        self.assertEqual(kinds[0], "stale_recovery")
+        self.assertEqual(kinds[1], "failed_recovery")
+        self.assertEqual(kinds[2], "no_cart_events")
+
+    def test_top_risks_cap_at_five(self) -> None:
+        alerts = []
+        for i in range(8):
+            alerts.append(
+                _alert_with_records(
+                    kind="store_needs_setup",
+                    title_ar=f"s{i}",
+                    detail_ar=f"s{i}",
+                    records=[{"store_slug": f"store-{i}", "display_name": f"S{i}"}],
+                    records_total=1,
+                )
+            )
+        top = _build_top_risks(alerts)
+        self.assertEqual(top["shown_count"], 5)
+        self.assertEqual(top["total_candidates"], 8)
+        self.assertEqual(len(top["risks"]), 5)
+
+    def test_top_risks_missing_store_fields_safe(self) -> None:
+        row = _risk_row_from_alert_record(
+            kind="store_needs_setup",
+            alert=_alert_with_records(
+                kind="store_needs_setup",
+                title_ar="x",
+                detail_ar="x",
+            ),
+            record={"store_slug": "bare-only"},
+        )
+        self.assertEqual(row["affected_store"], "bare-only")
+        self.assertEqual(row["affected_store_name"], "bare-only")
+
+    def test_page_renders_top_risks_section(self) -> None:
+        self._login()
+        r = self.client.get("/admin/operations")
+        self.assertEqual(r.status_code, 200)
+        self.assertIn("أهم المخاطر الحالية", r.text)
 
     def test_trend_improving(self) -> None:
         t = _compute_trend_from_counts(3, 7)

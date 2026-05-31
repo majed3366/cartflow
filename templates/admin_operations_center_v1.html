@@ -266,6 +266,60 @@
     {% endif %}
   </section>
 
+  <!-- Top risks (v1.7) -->
+  {% set tr = ops.top_risks or {} %}
+  {% set risk_rows = tr.risks or [] %}
+  <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <h2 class="text-base font-semibold text-slate-900">أهم المخاطر الحالية</h2>
+    <p class="mt-1 text-sm text-slate-600">أول {{ tr.max_shown | default(5) }} مخاطر تشغيلية — مرتبة حسب الأولوية (قراءة فقط).</p>
+    {% if risk_rows %}
+    <div class="mt-4 space-y-3">
+      {% for r in risk_rows %}
+      <div class="rounded-xl border border-slate-100 bg-slate-50/50 px-4 py-3 text-sm">
+        <div class="flex flex-wrap items-start justify-between gap-2">
+          <p class="font-semibold text-slate-900">{{ r.risk_title_ar or '—' }}</p>
+          {% set rsev = r.severity or 'low' %}
+          {% if rsev == 'critical' %}
+          <span class="inline-flex rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-xs font-medium text-rose-800">{{ r.severity_ar or 'حرج' }}</span>
+          {% elif rsev == 'high' %}
+          <span class="inline-flex rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-900">{{ r.severity_ar or 'عالي' }}</span>
+          {% elif rsev == 'medium' %}
+          <span class="inline-flex rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">{{ r.severity_ar or 'متوسط' }}</span>
+          {% else %}
+          <span class="inline-flex rounded-full border border-slate-100 bg-white px-2 py-0.5 text-xs font-medium text-slate-500">{{ r.severity_ar or 'منخفض' }}</span>
+          {% endif %}
+        </div>
+        {% if r.affected_store or r.affected_store_name %}
+        <p class="mt-2 text-xs text-slate-600">
+          <span class="font-medium text-slate-500">المتجر:</span>
+          {{ r.affected_store_name or r.affected_store or '—' }}
+          {% if r.affected_store and r.affected_store_name and r.affected_store_name != r.affected_store %}
+          <span class="text-slate-400" dir="ltr">({{ r.affected_store }})</span>
+          {% elif r.affected_store and not r.affected_store_name %}
+          <span dir="ltr">{{ r.affected_store }}</span>
+          {% endif %}
+        </p>
+        {% endif %}
+        {% if r.why_it_matters_ar %}
+        <p class="mt-2 text-xs leading-relaxed text-slate-700">
+          <span class="font-medium text-slate-500">لماذا يهم؟</span> {{ r.why_it_matters_ar }}
+        </p>
+        {% endif %}
+        {% if r.suggested_next_step_ar %}
+        <p class="mt-1 text-xs leading-relaxed text-slate-600">
+          <span class="font-medium text-slate-500">الخطوة المقترحة:</span> {{ r.suggested_next_step_ar }}
+        </p>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="mt-4 rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-6 text-center">
+      <p class="text-sm text-slate-600">لا مخاطر تشغيلية بارزة في القائمة حاليًا.</p>
+    </div>
+    {% endif %}
+  </section>
+
   <!-- D) Basic Alerts -->
   <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
     <h2 class="text-base font-semibold text-slate-900">د — تنبيهات أساسية</h2>
