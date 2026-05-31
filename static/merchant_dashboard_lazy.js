@@ -1489,6 +1489,55 @@
     });
   }
 
+  function cartRowMatchesFilterMode(mc, mode) {
+    var m = (mode || "all").trim().toLowerCase();
+    if (m === "all") return true;
+    if (!mc) return false;
+    var primary = String(mc.merchant_cart_primary_bucket || "")
+      .trim()
+      .toLowerCase();
+    if (primary && primary === m) return true;
+    var bucket = String(mc.merchant_cart_bucket || "").trim().toLowerCase();
+    if (bucket && bucket === m) return true;
+    var tabs = mc.merchant_cart_visible_tabs;
+    if (Array.isArray(tabs)) {
+      for (var i = 0; i < tabs.length; i++) {
+        if (String(tabs[i] || "").trim().toLowerCase() === m) return true;
+      }
+    }
+    if (m === "recovered") {
+      var lc = String(mc.customer_lifecycle_state || "").trim().toLowerCase();
+      if (lc === "completed") return true;
+      if (String(mc.customer_lifecycle_completed_variant || "").trim() === "purchased") {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function completedCartsFromRows(rows) {
+    return sortCartsArchivedLast(rows || []).filter(function (mc) {
+      return cartRowMatchesFilterMode(mc, "recovered");
+    });
+  }
+
+  function applyCompletedCartsTable(rows) {
+    var tbody = byId("ma-tbody-completed");
+    if (!tbody) return;
+    var completed = completedCartsFromRows(rows);
+    if (!completed.length) {
+      tbody.innerHTML =
+        '<tr><td colspan="6" class="empty-state" style="border:none;"><div class="empty-icon">✅</div><div class="empty-text">لا توجد سلال مكتملة حالياً ضمن نطاق متجرك</div></td></tr>';
+      return;
+    }
+    tbody.innerHTML = completed.map(cartRowFull).join("");
+    bindCustomerLifecycleActions(tbody);
+  }
+
+  window.maRefreshCompletedCartsTable = function () {
+    applyCompletedCartsTable(lastNormalCartsPageRows);
+  };
+
   function cartLifecycleActionBtnHtml(mc) {
     var rk = String(mc.recovery_key || "").trim();
     var act = String(mc.customer_lifecycle_dashboard_action || "").trim();
@@ -1849,6 +1898,7 @@
       }
       bindCustomerLifecycleActions(allb);
     }
+    applyCompletedCartsTable(lastNormalCartsPageRows);
     var fc = d.merchant_cart_filter_counts || {};
     function sf(k, id) {
       var el = byId(id);
@@ -1868,9 +1918,12 @@
       window.merchantAppReinitCartFilters();
     }
     try {
+      var hashRaw = (location.hash || "").split("?")[0].toLowerCase();
       var hashQs = (location.hash || "").split("?")[1] || "";
       var tab = new URLSearchParams(hashQs).get("tab");
-      if (tab && typeof window.applyCartTabFilters === "function") {
+      if (hashRaw === "#completed" && typeof window.maRefreshCompletedCartsTable === "function") {
+        window.maRefreshCompletedCartsTable();
+      } else if (tab && typeof window.applyCartTabFilters === "function") {
         window.applyCartTabFilters(tab);
       }
     } catch (eHash) {

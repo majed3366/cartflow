@@ -328,6 +328,9 @@
         initCartFiltersOnce();
         applyCartTabFilters(cartTab);
       }
+      if (visiblePage === "completed" && typeof window.maRefreshCompletedCartsTable === "function") {
+        window.maRefreshCompletedCartsTable();
+      }
       updateNavActive(visiblePage, cartTab);
       runPageHooks(visiblePage);
     } else {

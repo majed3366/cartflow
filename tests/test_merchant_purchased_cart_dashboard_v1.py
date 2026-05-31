@@ -114,6 +114,12 @@ class MerchantPurchasedCartDashboardTests(unittest.TestCase):
         self.assertIn("recovered", tabs)
         fc = body.get("merchant_cart_filter_counts") or {}
         self.assertGreaterEqual(int(fc.get("recovered") or 0), 1)
+        tabs = match.get("merchant_cart_visible_tabs") or []
+        self.assertIn("recovered", tabs)
+        self.assertTrue(
+            match.get("merchant_cart_bucket") == "recovered"
+            or str(match.get("customer_lifecycle_state") or "").strip().lower() == "completed"
+        )
 
     def test_recovered_cart_augmented_without_purchase_truth_row(self) -> None:
         """Sent log + status recovered still surfaces when purchase truth is in-memory only."""

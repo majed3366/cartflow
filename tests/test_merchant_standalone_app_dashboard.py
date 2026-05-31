@@ -77,6 +77,7 @@ class MerchantStandaloneAppDashboardTests(unittest.TestCase):
             'id="page-carts"',
             'id="page-followup"',
             'id="page-completed"',
+            'id="ma-tbody-completed"',
             'id="page-vip"',
             'id="page-messages"',
             'id="page-reasons"',
