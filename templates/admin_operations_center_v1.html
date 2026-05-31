@@ -9,602 +9,594 @@
   {% set alerts = ops.alerts or [] %}
   {% set health = ops.system_health_summary or {} %}
   {% set health_key = health.status_key or 'stable' %}
-
-  <!-- System health summary (v1.4) -->
-  <section class="admin-card px-6 py-5 {% if health_key == 'urgent_attention' %}border-rose-200/80 bg-gradient-to-br from-rose-50/40 to-white{% elif health_key == 'needs_followup' %}border-amber-200/80 bg-gradient-to-br from-amber-50/30 to-white{% elif health_key == 'stable_with_notes' %}border-slate-200 bg-gradient-to-br from-slate-50/50 to-white{% else %}border-emerald-200/60 bg-gradient-to-br from-emerald-50/30 to-white{% endif %}">
-    <p class="text-xs font-medium text-slate-500">حالة النظام الآن</p>
-    <p class="mt-2 text-2xl font-semibold text-slate-900">{{ health.status_ar or 'مستقرة' }}</p>
-    <p class="mt-2 max-w-3xl text-sm leading-relaxed text-slate-600">
-      {{ health.description_ar or 'لا توجد تنبيهات تشغيلية ظاهرة حاليًا.' }}
-    </p>
-    <dl class="mt-4 flex flex-wrap gap-3 text-xs">
-      <div class="rounded-lg border border-rose-100 bg-rose-50/60 px-3 py-2">
-        <dt class="font-medium text-rose-800">حرج</dt>
-        <dd class="mt-0.5 text-lg font-semibold tabular-nums text-rose-900">{{ health.critical_count | default(0) }}</dd>
-      </div>
-      <div class="rounded-lg border border-amber-100 bg-amber-50/50 px-3 py-2">
-        <dt class="font-medium text-amber-900">عالي</dt>
-        <dd class="mt-0.5 text-lg font-semibold tabular-nums text-amber-950">{{ health.high_count | default(0) }}</dd>
-      </div>
-      <div class="rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2">
-        <dt class="font-medium text-slate-700">متوسط</dt>
-        <dd class="mt-0.5 text-lg font-semibold tabular-nums text-slate-900">{{ health.medium_count | default(0) }}</dd>
-      </div>
-      <div class="rounded-lg border border-slate-100 bg-slate-50/60 px-3 py-2">
-        <dt class="font-medium text-slate-500">منخفض</dt>
-        <dd class="mt-0.5 text-lg font-semibold tabular-nums text-slate-700">{{ health.low_count | default(0) }}</dd>
-      </div>
-      {% if health.total_alerts is not none %}
-      <div class="rounded-lg border border-slate-100 bg-white/80 px-3 py-2">
-        <dt class="font-medium text-slate-500">إجمالي التنبيهات</dt>
-        <dd class="mt-0.5 text-lg font-semibold tabular-nums text-slate-800">{{ health.total_alerts | default(0) }}</dd>
-      </div>
-      {% endif %}
-    </dl>
-  </section>
-
-  <div class="admin-card px-6 py-5">
-    <p class="text-xs font-medium text-slate-500">مركز العمليات — قراءة فقط</p>
-    <p class="mt-2 text-sm leading-relaxed text-slate-700">
-      ملخص تشغيلي هادئ للمنصة: المجدول، حالات الاسترجاع، جاهزية المتاجر، وتنبيهات أساسية.
-      لا إجراءات تلقائية من هذه الصفحة.
-    </p>
-    <p class="mt-2 text-xs text-slate-400">
-      آخر بناء: {{ ops.generated_at_utc or "—" }}
-      · مصدر المجدول: <code class="rounded bg-slate-100 px-1">{{ ops.health_scheduler_path or "/health/scheduler" }}</code>
-    </p>
-  </div>
-
-  <div class="grid gap-4 lg:grid-cols-2">
-    <!-- A) Scheduler Health -->
-    <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <h2 class="text-base font-semibold text-slate-900">أ — صحة المجدول</h2>
-      <p class="mt-1 text-sm text-slate-600">نفس حقيقة <span dir="ltr">/health/scheduler</span> — للقراءة فقط.</p>
-      <dl class="mt-4 grid gap-3 sm:grid-cols-2">
-        <div class="rounded-xl border border-slate-100 bg-slate-50/80 px-4 py-3">
-          <dt class="text-xs font-medium text-slate-500">الدور (role)</dt>
-          <dd class="mt-1 text-lg font-semibold tabular-nums text-slate-900" dir="ltr">{{ sch.role or "غير متوفر" }}</dd>
-        </div>
-        <div class="rounded-xl border border-slate-100 bg-slate-50/80 px-4 py-3">
-          <dt class="text-xs font-medium text-slate-500">جدولة متأخرة</dt>
-          <dd class="mt-1 text-lg font-semibold tabular-nums {% if (sch.overdue_scheduled_count or 0) > 0 %}text-amber-800{% else %}text-slate-900{% endif %}">
-            {{ sch.overdue_scheduled_count if sch.overdue_scheduled_count is not none else "غير متوفر" }}
-          </dd>
-        </div>
-        <div class="rounded-xl border border-slate-100 bg-slate-50/80 px-4 py-3">
-          <dt class="text-xs font-medium text-slate-500">تشغيل عالق (running stale)</dt>
-          <dd class="mt-1 text-lg font-semibold tabular-nums {% if (sch.running_stale_count or 0) > 0 %}text-rose-700{% else %}text-slate-900{% endif %}">
-            {{ sch.running_stale_count if sch.running_stale_count is not none else "غير متوفر" }}
-          </dd>
-        </div>
-        <div class="rounded-xl border border-slate-100 bg-slate-50/80 px-4 py-3">
-          <dt class="text-xs font-medium text-slate-500">Resume / Due scanner</dt>
-          <dd class="mt-1 text-sm font-medium text-slate-800">
-            {% if sch.resume_enabled %}Resume: مفعّل{% else %}Resume: متوقف{% endif %}
-            ·
-            {% if sch.due_scanner_enabled %}Scanner: مفعّل{% else %}Scanner: متوقف{% endif %}
-          </dd>
-        </div>
-      </dl>
-      {% if sch.database_error %}
-      <p class="mt-3 text-xs text-rose-700">تعذّر قراءة قاعدة البيانات: {{ sch.database_error }}</p>
-      {% endif %}
-    </section>
-
-    <!-- B) Recovery Status Summary -->
-    <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <h2 class="text-base font-semibold text-slate-900">ب — حالات الاسترجاع (RecoverySchedule)</h2>
-      <p class="mt-1 text-sm text-slate-600">أعداد مجمّعة — بدون استعلام لكل صف.</p>
-      {% if rec.available == false %}
-      <p class="mt-4 text-sm text-amber-800">غير متوفر مؤقتاً{% if rec.error %}: {{ rec.error }}{% endif %}</p>
-      {% else %}
-      <dl class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
-        <div class="rounded-xl border border-slate-100 px-3 py-2.5">
-          <dt class="text-xs text-slate-500">scheduled</dt>
-          <dd class="text-xl font-semibold tabular-nums">{{ rec.scheduled | default(0) }}</dd>
-        </div>
-        <div class="rounded-xl border border-slate-100 px-3 py-2.5">
-          <dt class="text-xs text-slate-500">running</dt>
-          <dd class="text-xl font-semibold tabular-nums">{{ rec.running | default(0) }}</dd>
-        </div>
-        <div class="rounded-xl border border-slate-100 px-3 py-2.5">
-          <dt class="text-xs text-slate-500">completed</dt>
-          <dd class="text-xl font-semibold tabular-nums text-emerald-700">{{ rec.completed | default(0) }}</dd>
-        </div>
-        <div class="rounded-xl border border-slate-100 px-3 py-2.5">
-          <dt class="text-xs text-slate-500">failed</dt>
-          <dd class="text-xl font-semibold tabular-nums text-rose-700">{{ rec.failed | default(0) }}</dd>
-        </div>
-        <div class="rounded-xl border border-slate-100 px-3 py-2.5">
-          <dt class="text-xs text-slate-500">expired</dt>
-          <dd class="text-xl font-semibold tabular-nums text-slate-700">{{ rec.expired | default(0) }}</dd>
-        </div>
-      </dl>
-      {% endif %}
-    </section>
-
-    <!-- C) Store Readiness -->
-    <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm lg:col-span-2">
-      <h2 class="text-base font-semibold text-slate-900">ج — جاهزية المتاجر</h2>
-      <p class="mt-1 text-sm text-slate-600">قراءة من تقييم الإعداد الحالي — حتى {{ st._scan_cap | default(400) }} متجر.</p>
-      {% if st.available == false %}
-      <p class="mt-4 text-sm text-amber-800">غير متوفر{% if st.error %}: {{ st.error }}{% endif %}</p>
-      {% else %}
-      <dl class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-        <div class="rounded-xl border border-slate-100 bg-slate-50/60 px-4 py-3">
-          <dt class="text-xs text-slate-500">إجمالي المتاجر</dt>
-          <dd class="mt-1 text-2xl font-semibold tabular-nums">{{ st.total_stores | default(0) }}</dd>
-        </div>
-        <div class="rounded-xl border border-emerald-100 bg-emerald-50/50 px-4 py-3">
-          <dt class="text-xs text-emerald-800">جاهز</dt>
-          <dd class="mt-1 text-2xl font-semibold tabular-nums text-emerald-800">{{ st.ready_stores | default(0) }}</dd>
-        </div>
-        <div class="rounded-xl border border-amber-100 bg-amber-50/40 px-4 py-3">
-          <dt class="text-xs text-amber-900">يحتاج إعداد</dt>
-          <dd class="mt-1 text-2xl font-semibold tabular-nums text-amber-900">{{ st.stores_needing_setup | default(0) }}</dd>
-        </div>
-        <div class="rounded-xl border border-rose-100 bg-rose-50/40 px-4 py-3">
-          <dt class="text-xs text-rose-900">واتساب ناقص</dt>
-          <dd class="mt-1 text-2xl font-semibold tabular-nums text-rose-800">{{ st.stores_missing_whatsapp | default(0) }}</dd>
-        </div>
-        <div class="rounded-xl border border-slate-100 px-4 py-3">
-          <dt class="text-xs text-slate-500">بلا أحداث سلة حديثة</dt>
-          <dd class="mt-1 text-2xl font-semibold tabular-nums">{{ st.stores_no_recent_cart_events | default(0) }}</dd>
-        </div>
-      </dl>
-      {% endif %}
-    </section>
-  </div>
-
-  <!-- Store health snapshot (v1.5) -->
-  {% set snap = ops.store_health_snapshot or {} %}
-  {% set snap_stores = snap.stores or [] %}
-  <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-    <h2 class="text-base font-semibold text-slate-900">حالة المتاجر</h2>
-    <p class="mt-1 text-sm text-slate-600">متاجر تحتاج انتباهًا — مدمجة حسب الأولوية والتنبيهات النشطة.</p>
-    {% if snap_stores %}
-    <div class="mt-4 overflow-x-auto rounded-xl border border-slate-200">
-      <table class="min-w-full divide-y divide-slate-200 text-sm">
-        <thead class="bg-slate-50 text-right text-xs font-medium text-slate-500">
-          <tr>
-            <th class="px-4 py-2.5">المتجر</th>
-            <th class="px-4 py-2.5">الحالة</th>
-            <th class="px-4 py-2.5">الأولوية</th>
-            <th class="px-4 py-2.5">عدد التنبيهات</th>
-            <th class="px-4 py-2.5">آخر حدث سلة</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-slate-100 bg-white">
-          {% for row in snap_stores %}
-          <tr class="hover:bg-slate-50/80 align-top">
-            <td class="px-4 py-2.5">
-              <p class="font-medium text-slate-900">{{ row.display_name or row.store_slug or '—' }}</p>
-              {% if row.store_slug and row.display_name and row.display_name != row.store_slug %}
-              <p class="mt-0.5 text-xs text-slate-400" dir="ltr">{{ row.store_slug }}</p>
-              {% elif row.store_slug %}
-              <p class="mt-0.5 text-xs text-slate-400" dir="ltr">{{ row.store_slug }}</p>
-              {% endif %}
-              {% if row.alert_kinds %}
-              <div class="mt-2 flex flex-wrap gap-1">
-                {% for k in row.alert_kinds %}
-                <span class="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600">{{ k }}</span>
-                {% endfor %}
-              </div>
-              {% endif %}
-            </td>
-            <td class="px-4 py-2.5 text-slate-700">{{ row.readiness_status_ar or 'غير متوفر' }}</td>
-            <td class="px-4 py-2.5 whitespace-nowrap">
-              {% set sev = row.highest_severity or 'low' %}
-              {% if sev == 'critical' %}
-              <span class="inline-flex rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-xs font-medium text-rose-800">{{ row.highest_severity_ar or 'حرج' }}</span>
-              {% elif sev == 'high' %}
-              <span class="inline-flex rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-900">{{ row.highest_severity_ar or 'عالي' }}</span>
-              {% elif sev == 'medium' %}
-              <span class="inline-flex rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">{{ row.highest_severity_ar or 'متوسط' }}</span>
-              {% else %}
-              <span class="inline-flex rounded-full border border-slate-100 bg-slate-50 px-2 py-0.5 text-xs font-medium text-slate-500">{{ row.highest_severity_ar or 'منخفض' }}</span>
-              {% endif %}
-            </td>
-            <td class="px-4 py-2.5 tabular-nums text-slate-800">{{ row.alerts_count | default(0) }}</td>
-            <td class="px-4 py-2.5 text-slate-600" dir="ltr">{{ row.last_cart_event_at or 'غير متوفر' }}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-    {% else %}
-    <div class="mt-4 rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-6 text-center">
-      <p class="text-sm text-slate-600">لا متاجر بارزة في التنبيهات الحالية.</p>
-    </div>
-    {% endif %}
-  </section>
-
-  <!-- Operational trends (v1.6) -->
-  {% set ot = ops.operational_trends or {} %}
-  {% set trend_rows = ot.trends or [] %}
-  <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-    <h2 class="text-base font-semibold text-slate-900">اتجاهات التشغيل</h2>
-    <p class="mt-1 text-sm text-slate-600">
-      مقارنة آخر {{ ot.window_hours | default(24) }} ساعة بالـ {{ ot.window_hours | default(24) }} ساعة السابقة — قراءة فقط.
-    </p>
-    {% if trend_rows %}
-    <div class="mt-4 overflow-x-auto rounded-xl border border-slate-200">
-      <table class="min-w-full divide-y divide-slate-200 text-sm">
-        <thead class="bg-slate-50 text-right text-xs font-medium text-slate-500">
-          <tr>
-            <th class="px-4 py-2.5">المؤشر</th>
-            <th class="px-4 py-2.5">الحالي</th>
-            <th class="px-4 py-2.5">السابق</th>
-            <th class="px-4 py-2.5">الاتجاه</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-slate-100 bg-white">
-          {% for t in trend_rows %}
-          <tr class="hover:bg-slate-50/80">
-            <td class="px-4 py-2.5 font-medium text-slate-900">{{ t.metric_ar or t.metric_key or '—' }}</td>
-            <td class="px-4 py-2.5 tabular-nums text-slate-800">{{ t.current_count | default(0) }}</td>
-            <td class="px-4 py-2.5 tabular-nums text-slate-500">{{ t.previous_count | default(0) }}</td>
-            <td class="px-4 py-2.5 whitespace-nowrap">
-              {% set tk = t.trend_key or 'stable' %}
-              {% if tk == 'worsening' %}
-              <span class="text-sm font-medium text-amber-900">{{ t.trend_ar or '↑ تزايد' }}</span>
-              {% elif tk == 'improving' %}
-              <span class="text-sm font-medium text-emerald-800">{{ t.trend_ar or '↓ تحسن' }}</span>
-              {% else %}
-              <span class="text-sm font-medium text-slate-600">{{ t.trend_ar or '→ مستقر' }}</span>
-              {% endif %}
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-    {% else %}
-    <div class="mt-4 rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-6 text-center">
-      <p class="text-sm text-slate-600">→ مستقر — لا بيانات كافية للمقارنة حاليًا.</p>
-    </div>
-    {% endif %}
-  </section>
-
-  <!-- Top risks (v1.7) -->
   {% set tr = ops.top_risks or {} %}
   {% set risk_rows = tr.risks or [] %}
-  <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-    <h2 class="text-base font-semibold text-slate-900">أهم المخاطر الحالية</h2>
-    <p class="mt-1 text-sm text-slate-600">أول {{ tr.max_shown | default(5) }} مخاطر تشغيلية — مرتبة حسب الأولوية (قراءة فقط).</p>
-    {% if risk_rows %}
-    <div class="mt-4 space-y-3">
-      {% for r in risk_rows %}
-      <div class="rounded-xl border border-slate-100 bg-slate-50/50 px-4 py-3 text-sm">
-        <div class="flex flex-wrap items-start justify-between gap-2">
-          <p class="font-semibold text-slate-900">{{ r.risk_title_ar or '—' }}</p>
-          {% set rsev = r.severity or 'low' %}
-          {% if rsev == 'critical' %}
-          <span class="inline-flex rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-xs font-medium text-rose-800">{{ r.severity_ar or 'حرج' }}</span>
-          {% elif rsev == 'high' %}
-          <span class="inline-flex rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-900">{{ r.severity_ar or 'عالي' }}</span>
-          {% elif rsev == 'medium' %}
-          <span class="inline-flex rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">{{ r.severity_ar or 'متوسط' }}</span>
-          {% else %}
-          <span class="inline-flex rounded-full border border-slate-100 bg-white px-2 py-0.5 text-xs font-medium text-slate-500">{{ r.severity_ar or 'منخفض' }}</span>
-          {% endif %}
-        </div>
-        {% if r.affected_store or r.affected_store_name %}
-        <p class="mt-2 text-xs text-slate-600">
-          <span class="font-medium text-slate-500">المتجر:</span>
-          {{ r.affected_store_name or r.affected_store or '—' }}
-          {% if r.affected_store and r.affected_store_name and r.affected_store_name != r.affected_store %}
-          <span class="text-slate-400" dir="ltr">({{ r.affected_store }})</span>
-          {% elif r.affected_store and not r.affected_store_name %}
-          <span dir="ltr">{{ r.affected_store }}</span>
-          {% endif %}
-        </p>
-        {% endif %}
-        {% if r.why_it_matters_ar %}
-        <p class="mt-2 text-xs leading-relaxed text-slate-700">
-          <span class="font-medium text-slate-500">لماذا يهم؟</span> {{ r.why_it_matters_ar }}
-        </p>
-        {% endif %}
-        {% if r.suggested_next_step_ar %}
-        <p class="mt-1 text-xs leading-relaxed text-slate-600">
-          <span class="font-medium text-slate-500">الخطوة المقترحة:</span> {{ r.suggested_next_step_ar }}
-        </p>
-        {% endif %}
-        <p class="mt-1 text-xs text-slate-600">
-          <span class="font-medium text-slate-500">المالك المحتمل:</span> {{ r.owner_ar or 'غير محدد' }}
-        </p>
-        {% if r.investigation_steps_ar %}
-        <div class="mt-2 text-xs leading-relaxed text-slate-700">
-          <p class="font-medium text-slate-500">من أين أبدأ؟</p>
-          <ol class="mt-1 list-decimal space-y-0.5 pr-4 text-slate-600">
-            {% for step in r.investigation_steps_ar %}
-            <li>{{ step }}</li>
-            {% endfor %}
-          </ol>
-        </div>
-        {% endif %}
-        {% if r.evidence %}
-        <div class="mt-2 rounded-lg border border-slate-100 bg-white px-3 py-2 text-xs leading-relaxed text-slate-600">
-          <p class="font-medium text-slate-500">الأدلة المرتبطة</p>
-          {% if r.evidence.recovery_key %}
-          <p class="mt-1"><span class="font-medium text-slate-500">Recovery Key:</span> <span class="break-all" dir="ltr">{{ r.evidence.recovery_key }}</span></p>
-          {% endif %}
-          {% if r.evidence.schedule_id is not none %}
-          <p class="mt-1"><span class="font-medium text-slate-500">Schedule ID:</span> <span dir="ltr">{{ r.evidence.schedule_id }}</span></p>
-          {% endif %}
-          {% if r.evidence.store_slug %}
-          <p class="mt-1"><span class="font-medium text-slate-500">Store:</span> <span dir="ltr">{{ r.evidence.store_slug }}</span></p>
-          {% endif %}
-          {% if r.evidence.last_status %}
-          <p class="mt-1"><span class="font-medium text-slate-500">Last Status:</span> <span dir="ltr">{{ r.evidence.last_status }}</span></p>
-          {% endif %}
-          {% if r.evidence.last_updated_at %}
-          <p class="mt-1"><span class="font-medium text-slate-500">Last Updated:</span> <span dir="ltr">{{ r.evidence.last_updated_at }}</span></p>
-          {% endif %}
-        </div>
-        {% endif %}
-      </div>
-      {% endfor %}
-    </div>
-    {% else %}
-    <div class="mt-4 rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-6 text-center">
-      <p class="text-sm text-slate-600">لا مخاطر تشغيلية بارزة في القائمة حاليًا.</p>
-    </div>
-    {% endif %}
-  </section>
-
-  <!-- Root cause groups (v2.0) -->
+  {% set snap = ops.store_health_snapshot or {} %}
+  {% set snap_stores = snap.stores or [] %}
+  {% set ot = ops.operational_trends or {} %}
+  {% set trend_rows = ot.trends or [] %}
   {% set rcg = ops.root_cause_groups or {} %}
   {% set cause_groups = rcg.groups or [] %}
-  <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-    <h2 class="text-base font-semibold text-slate-900">مصادر المشاكل الرئيسية</h2>
-    <p class="mt-1 text-sm text-slate-600">تجميع التنبيهات حسب المالك التشغيلي — قراءة فقط.</p>
-    {% if cause_groups %}
-    <div class="mt-4 space-y-3">
-      {% for g in cause_groups %}
-      <div class="rounded-xl border border-slate-100 bg-slate-50/50 px-4 py-3 text-sm">
-        <div class="flex flex-wrap items-start justify-between gap-2">
-          <p class="font-semibold text-slate-900">{{ g.owner_ar or 'غير محدد' }}</p>
-          {% set gsev = g.highest_severity or 'low' %}
-          {% if gsev == 'critical' %}
-          <span class="inline-flex rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-xs font-medium text-rose-800">{{ g.highest_severity_ar or 'حرج' }}</span>
-          {% elif gsev == 'high' %}
-          <span class="inline-flex rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-900">{{ g.highest_severity_ar or 'عالي' }}</span>
-          {% elif gsev == 'medium' %}
-          <span class="inline-flex rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">{{ g.highest_severity_ar or 'متوسط' }}</span>
-          {% else %}
-          <span class="inline-flex rounded-full border border-slate-100 bg-white px-2 py-0.5 text-xs font-medium text-slate-500">{{ g.highest_severity_ar or 'منخفض' }}</span>
-          {% endif %}
-        </div>
-        <p class="mt-2 text-xs text-slate-600">
-          {% set ac = g.alerts_count | default(0) %}
-          {% if ac == 1 %}1 تنبيه{% else %}{{ ac }} تنبيهات{% endif %}
-          ·
-          {% set sc = g.stores_count | default(0) %}
-          {% if sc == 1 %}1 متجر{% else %}{{ sc }} متاجر{% endif %}
-        </p>
-        {% if g.alert_kinds %}
-        <p class="mt-1 text-xs text-slate-500">
-          <span class="font-medium text-slate-500">أنواع التنبيه:</span>
-          {% for k in g.alert_kinds %}<span class="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[11px]" dir="ltr">{{ k }}</span>{% if not loop.last %} {% endif %}{% endfor %}
-        </p>
-        {% endif %}
-      </div>
-      {% endfor %}
-    </div>
-    {% else %}
-    <div class="mt-4 rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-6 text-center">
-      <p class="text-sm text-slate-600">لا توجد مجموعات مشاكل ظاهرة حاليًا.</p>
-    </div>
-    {% endif %}
-  </section>
-
-  <!-- Operational timeline (v1.8) -->
   {% set otl = ops.operational_timeline or {} %}
   {% set timeline_events = otl.events or [] %}
-  <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-    <h2 class="text-base font-semibold text-slate-900">آخر الأحداث التشغيلية</h2>
-    <p class="mt-1 text-sm text-slate-600">آخر {{ otl.max_shown | default(25) }} حدث خلال {{ otl.window_hours | default(24) }} ساعة — الأحدث أولًا (قراءة فقط).</p>
-    {% if timeline_events %}
-    <div class="mt-4 overflow-x-auto rounded-xl border border-slate-200">
-      <table class="min-w-full divide-y divide-slate-200 text-sm">
-        <thead class="bg-slate-50 text-right text-xs font-medium text-slate-500">
-          <tr>
-            <th class="px-3 py-2">الوقت</th>
-            <th class="px-3 py-2">الحدث</th>
-            <th class="px-3 py-2">المتجر</th>
-            <th class="px-3 py-2">الأهمية</th>
-            <th class="px-3 py-2">المالك</th>
-            <th class="px-3 py-2">تفاصيل</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-slate-100 bg-white">
-          {% for e in timeline_events %}
-          <tr class="align-top hover:bg-slate-50/80">
-            <td class="whitespace-nowrap px-3 py-2 text-xs text-slate-600" dir="ltr">{{ e.happened_at or 'غير متوفر' }}</td>
-            <td class="px-3 py-2 font-medium text-slate-900">{{ e.title_ar or '—' }}</td>
-            <td class="px-3 py-2 text-slate-700">
-              {{ e.store_name or e.store_slug or '—' }}
-              {% if e.store_slug and e.store_name and e.store_name != e.store_slug %}
-              <span class="text-xs text-slate-400" dir="ltr">({{ e.store_slug }})</span>
-              {% elif e.store_slug and not e.store_name %}
-              <span dir="ltr">{{ e.store_slug }}</span>
-              {% endif %}
-            </td>
-            <td class="whitespace-nowrap px-3 py-2">
-              {% set esev = e.severity or 'low' %}
-              {% if esev == 'critical' %}
-              <span class="inline-flex rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-xs font-medium text-rose-800">{{ e.severity_ar or 'حرج' }}</span>
-              {% elif esev == 'high' %}
-              <span class="inline-flex rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-900">{{ e.severity_ar or 'عالي' }}</span>
-              {% elif esev == 'medium' %}
-              <span class="inline-flex rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">{{ e.severity_ar or 'متوسط' }}</span>
-              {% else %}
-              <span class="inline-flex rounded-full border border-slate-100 bg-white px-2 py-0.5 text-xs font-medium text-slate-500">{{ e.severity_ar or 'منخفض' }}</span>
-              {% endif %}
-            </td>
-            <td class="whitespace-nowrap px-3 py-2 text-xs text-slate-600">{{ e.owner_ar or 'غير محدد' }}</td>
-            <td class="px-3 py-2 text-xs leading-relaxed text-slate-600">{{ e.short_detail_ar or '—' }}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-    {% else %}
-    <div class="mt-4 rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-6 text-center">
-      <p class="text-sm text-slate-600">لا أحداث تشغيلية في النافذة الزمنية الحالية.</p>
-    </div>
-    {% endif %}
-  </section>
 
-  <!-- D) Basic Alerts -->
-  <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-    <h2 class="text-base font-semibold text-slate-900">د — تنبيهات أساسية</h2>
-    <p class="mt-1 text-sm text-slate-600">قراءة فقط — بدون أزرار إصلاح أو إيقاف. التفاصيل تحت كل تنبيه تحدد السجل المتأثر.</p>
-    {% if alerts %}
-    <div class="mt-4 overflow-x-auto rounded-xl border border-slate-200">
-      <table class="min-w-full divide-y divide-slate-200 text-sm">
-        <thead class="bg-slate-50 text-right text-xs font-medium text-slate-500">
-          <tr>
-            <th class="px-4 py-2.5">الأولوية</th>
-            <th class="px-4 py-2.5">النوع</th>
-            <th class="px-4 py-2.5">العنوان</th>
-            <th class="px-4 py-2.5">التفاصيل</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-slate-100 bg-white">
-          {% for a in alerts %}
-          <tr class="hover:bg-slate-50/80 align-top">
-            <td class="px-4 py-2.5 whitespace-nowrap">
-              {% set sev = a.severity or 'low' %}
-              {% if sev == 'critical' %}
-              <span class="inline-flex rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-xs font-medium text-rose-800">{{ a.severity_ar or 'حرج' }}</span>
-              {% elif sev == 'high' %}
-              <span class="inline-flex rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-900">{{ a.severity_ar or 'عالي' }}</span>
-              {% elif sev == 'medium' %}
-              <span class="inline-flex rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">{{ a.severity_ar or 'متوسط' }}</span>
-              {% else %}
-              <span class="inline-flex rounded-full border border-slate-100 bg-slate-50 px-2 py-0.5 text-xs font-medium text-slate-500">{{ a.severity_ar or 'منخفض' }}</span>
-              {% endif %}
-            </td>
-            <td class="px-4 py-2.5 whitespace-nowrap">
-              <span class="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">{{ a.kind }}</span>
-            </td>
-            <td class="px-4 py-2.5 font-medium text-slate-900">{{ a.title_ar }}</td>
-            <td class="px-4 py-2.5 text-slate-600">
-              <p>{{ a.detail_ar }}</p>
-              {% if a.why_ar or a.suggested_fix_ar %}
-              <div class="mt-2 space-y-1 rounded-lg border border-slate-100 bg-white px-3 py-2 text-xs leading-relaxed">
-                {% if a.why_ar %}
-                <p><span class="font-medium text-slate-600">لماذا ظهر؟</span> {{ a.why_ar }}</p>
+  <!-- LEVEL 1 — COMMAND CENTER (always visible) -->
+  <div class="space-y-6" id="ops-command-center">
+    <div class="admin-card px-6 py-4">
+      <p class="text-xs font-medium text-slate-500">مركز القيادة — قراءة فقط</p>
+      <p class="mt-1 text-xs text-slate-400">
+        آخر بناء: {{ ops.generated_at_utc or "—" }}
+        · مصدر المجدول: <code class="rounded bg-slate-100 px-1">{{ ops.health_scheduler_path or "/health/scheduler" }}</code>
+      </p>
+    </div>
+
+    <!-- 1. System health summary -->
+    <section class="admin-card px-6 py-5 {% if health_key == 'urgent_attention' %}border-rose-200/80 bg-gradient-to-br from-rose-50/40 to-white{% elif health_key == 'needs_followup' %}border-amber-200/80 bg-gradient-to-br from-amber-50/30 to-white{% elif health_key == 'stable_with_notes' %}border-slate-200 bg-gradient-to-br from-slate-50/50 to-white{% else %}border-emerald-200/60 bg-gradient-to-br from-emerald-50/30 to-white{% endif %}">
+      <p class="text-xs font-medium text-slate-500">حالة النظام الآن</p>
+      <p class="mt-2 text-2xl font-semibold text-slate-900">{{ health.status_ar or 'مستقرة' }}</p>
+      <p class="mt-2 max-w-3xl text-sm leading-relaxed text-slate-600">
+        {{ health.description_ar or 'لا توجد تنبيهات تشغيلية ظاهرة حاليًا.' }}
+      </p>
+      <dl class="mt-4 flex flex-wrap gap-3 text-xs">
+        <div class="rounded-lg border border-rose-100 bg-rose-50/60 px-3 py-2">
+          <dt class="font-medium text-rose-800">حرج</dt>
+          <dd class="mt-0.5 text-lg font-semibold tabular-nums text-rose-900">{{ health.critical_count | default(0) }}</dd>
+        </div>
+        <div class="rounded-lg border border-amber-100 bg-amber-50/50 px-3 py-2">
+          <dt class="font-medium text-amber-900">عالي</dt>
+          <dd class="mt-0.5 text-lg font-semibold tabular-nums text-amber-950">{{ health.high_count | default(0) }}</dd>
+        </div>
+        <div class="rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2">
+          <dt class="font-medium text-slate-700">متوسط</dt>
+          <dd class="mt-0.5 text-lg font-semibold tabular-nums text-slate-900">{{ health.medium_count | default(0) }}</dd>
+        </div>
+        <div class="rounded-lg border border-slate-100 bg-slate-50/60 px-3 py-2">
+          <dt class="font-medium text-slate-500">منخفض</dt>
+          <dd class="mt-0.5 text-lg font-semibold tabular-nums text-slate-700">{{ health.low_count | default(0) }}</dd>
+        </div>
+        {% if health.total_alerts is not none %}
+        <div class="rounded-lg border border-slate-100 bg-white/80 px-3 py-2">
+          <dt class="font-medium text-slate-500">إجمالي التنبيهات</dt>
+          <dd class="mt-0.5 text-lg font-semibold tabular-nums text-slate-800">{{ health.total_alerts | default(0) }}</dd>
+        </div>
+        {% endif %}
+      </dl>
+    </section>
+
+    <!-- 2. Top risks (command summary — no investigation depth) -->
+    <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <h2 class="text-base font-semibold text-slate-900">أهم المخاطر الحالية</h2>
+      <p class="mt-1 text-sm text-slate-600">أول {{ tr.max_shown | default(5) }} مخاطر تشغيلية — مرتبة حسب الأولوية (قراءة فقط).</p>
+      {% if risk_rows %}
+      <div class="mt-4 space-y-3">
+        {% for r in risk_rows %}
+        <div class="rounded-xl border border-slate-100 bg-slate-50/50 px-4 py-3 text-sm">
+          <div class="flex flex-wrap items-start justify-between gap-2">
+            <p class="font-semibold text-slate-900">{{ r.risk_title_ar or '—' }}</p>
+            {% set rsev = r.severity or 'low' %}
+            {% if rsev == 'critical' %}
+            <span class="inline-flex rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-xs font-medium text-rose-800">{{ r.severity_ar or 'حرج' }}</span>
+            {% elif rsev == 'high' %}
+            <span class="inline-flex rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-900">{{ r.severity_ar or 'عالي' }}</span>
+            {% elif rsev == 'medium' %}
+            <span class="inline-flex rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">{{ r.severity_ar or 'متوسط' }}</span>
+            {% else %}
+            <span class="inline-flex rounded-full border border-slate-100 bg-white px-2 py-0.5 text-xs font-medium text-slate-500">{{ r.severity_ar or 'منخفض' }}</span>
+            {% endif %}
+          </div>
+          {% if r.affected_store or r.affected_store_name %}
+          <p class="mt-2 text-xs text-slate-600">
+            <span class="font-medium text-slate-500">المتجر:</span>
+            {{ r.affected_store_name or r.affected_store or '—' }}
+            {% if r.affected_store and r.affected_store_name and r.affected_store_name != r.affected_store %}
+            <span class="text-slate-400" dir="ltr">({{ r.affected_store }})</span>
+            {% elif r.affected_store and not r.affected_store_name %}
+            <span dir="ltr">{{ r.affected_store }}</span>
+            {% endif %}
+          </p>
+          {% endif %}
+          {% if r.why_it_matters_ar %}
+          <p class="mt-2 text-xs leading-relaxed text-slate-700">
+            <span class="font-medium text-slate-500">لماذا يهم؟</span> {{ r.why_it_matters_ar }}
+          </p>
+          {% endif %}
+          {% if r.suggested_next_step_ar %}
+          <p class="mt-1 text-xs leading-relaxed text-slate-600">
+            <span class="font-medium text-slate-500">الخطوة المقترحة:</span> {{ r.suggested_next_step_ar }}
+          </p>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="mt-4 rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-6 text-center">
+        <p class="text-sm text-slate-600">لا مخاطر تشغيلية بارزة في القائمة حاليًا.</p>
+      </div>
+      {% endif %}
+    </section>
+
+    <!-- 3. Store health snapshot -->
+    <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <h2 class="text-base font-semibold text-slate-900">حالة المتاجر</h2>
+      <p class="mt-1 text-sm text-slate-600">متاجر تحتاج انتباهًا — مدمجة حسب الأولوية والتنبيهات النشطة.</p>
+      {% if snap_stores %}
+      <div class="mt-4 overflow-x-auto rounded-xl border border-slate-200">
+        <table class="min-w-full divide-y divide-slate-200 text-sm">
+          <thead class="bg-slate-50 text-right text-xs font-medium text-slate-500">
+            <tr>
+              <th class="px-4 py-2.5">المتجر</th>
+              <th class="px-4 py-2.5">الحالة</th>
+              <th class="px-4 py-2.5">الأولوية</th>
+              <th class="px-4 py-2.5">عدد التنبيهات</th>
+              <th class="px-4 py-2.5">آخر حدث سلة</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100 bg-white">
+            {% for row in snap_stores %}
+            <tr class="hover:bg-slate-50/80 align-top">
+              <td class="px-4 py-2.5">
+                <p class="font-medium text-slate-900">{{ row.display_name or row.store_slug or '—' }}</p>
+                {% if row.store_slug and row.display_name and row.display_name != row.store_slug %}
+                <p class="mt-0.5 text-xs text-slate-400" dir="ltr">{{ row.store_slug }}</p>
+                {% elif row.store_slug %}
+                <p class="mt-0.5 text-xs text-slate-400" dir="ltr">{{ row.store_slug }}</p>
                 {% endif %}
-                {% if a.suggested_fix_ar %}
-                <p class="{% if a.why_ar %}mt-1{% endif %}"><span class="font-medium text-slate-600">الإجراء المقترح:</span> {{ a.suggested_fix_ar }}</p>
-                {% endif %}
-                <p class="{% if a.why_ar or a.suggested_fix_ar %}mt-1{% endif %}"><span class="font-medium text-slate-600">المالك المحتمل:</span> {{ a.owner_ar or 'غير محدد' }}</p>
-              </div>
-              {% else %}
-              <p class="mt-2 text-xs text-slate-600"><span class="font-medium text-slate-500">المالك المحتمل:</span> {{ a.owner_ar or 'غير محدد' }}</p>
-              {% endif %}
-              {% if a.investigation_steps_ar %}
-              <div class="mt-2 rounded-lg border border-slate-100 bg-white px-3 py-2 text-xs leading-relaxed">
-                <p class="font-medium text-slate-600">من أين أبدأ؟</p>
-                <ol class="mt-1 list-decimal space-y-0.5 pr-4 text-slate-600">
-                  {% for step in a.investigation_steps_ar %}
-                  <li>{{ step }}</li>
+                {% if row.alert_kinds %}
+                <div class="mt-2 flex flex-wrap gap-1">
+                  {% for k in row.alert_kinds %}
+                  <span class="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600">{{ k }}</span>
                   {% endfor %}
-                </ol>
-              </div>
-              {% endif %}
-              {% if a.evidence %}
-              <div class="mt-2 rounded-lg border border-slate-100 bg-slate-50/60 px-3 py-2 text-xs leading-relaxed text-slate-600">
-                <p class="font-medium text-slate-600">الأدلة المرتبطة</p>
-                {% if a.evidence.recovery_key %}
-                <p class="mt-1"><span class="font-medium text-slate-500">Recovery Key:</span> <span class="break-all" dir="ltr">{{ a.evidence.recovery_key }}</span></p>
-                {% endif %}
-                {% if a.evidence.schedule_id is not none %}
-                <p class="mt-1"><span class="font-medium text-slate-500">Schedule ID:</span> <span dir="ltr">{{ a.evidence.schedule_id }}</span></p>
-                {% endif %}
-                {% if a.evidence.store_slug %}
-                <p class="mt-1"><span class="font-medium text-slate-500">Store:</span> <span dir="ltr">{{ a.evidence.store_slug }}</span></p>
-                {% endif %}
-                {% if a.evidence.last_status %}
-                <p class="mt-1"><span class="font-medium text-slate-500">Last Status:</span> <span dir="ltr">{{ a.evidence.last_status }}</span></p>
-                {% endif %}
-                {% if a.evidence.last_updated_at %}
-                <p class="mt-1"><span class="font-medium text-slate-500">Last Updated:</span> <span dir="ltr">{{ a.evidence.last_updated_at }}</span></p>
-                {% endif %}
-              </div>
-              {% endif %}
-              {% if a.records %}
-              <div class="mt-3 space-y-2">
-                {% for r in a.records %}
-                <div class="rounded-lg border border-slate-100 bg-slate-50/70 px-3 py-2 text-xs leading-relaxed">
-                  {% if r.display_name or r.store_slug %}
-                  <p><span class="font-medium text-slate-500">المتجر:</span>
-                    {{ r.display_name or r.store_slug }}
-                    {% if r.store_slug and r.display_name and r.display_name != r.store_slug %}
-                    <span class="text-slate-400" dir="ltr">({{ r.store_slug }})</span>
-                    {% endif %}
-                  </p>
-                  {% elif r.store_slug %}
-                  <p dir="ltr"><span class="font-medium text-slate-500">المتجر:</span> {{ r.store_slug }}</p>
-                  {% endif %}
-                  {% if r.recovery_key %}
-                  <p class="mt-1 break-all" dir="ltr"><span class="font-medium text-slate-500">مفتاح الاسترجاع:</span> {{ r.recovery_key }}</p>
-                  {% endif %}
-                  {% if r.status %}
-                  <p class="mt-1"><span class="font-medium text-slate-500">الحالة:</span> <span dir="ltr">{{ r.status }}</span></p>
-                  {% endif %}
-                  {% if r.readiness_status_ar %}
-                  <p class="mt-1"><span class="font-medium text-slate-500">الحالة:</span> {{ r.readiness_status_ar }}</p>
-                  {% endif %}
-                  {% if r.readiness_ready is defined and r.readiness_ready is not none %}
-                  <p class="mt-1"><span class="font-medium text-slate-500">جاهزية:</span> {% if r.readiness_ready %}جاهز{% else %}غير جاهز{% endif %}{% if r.readiness_percent is not none %} · {{ r.readiness_percent }}%{% endif %}</p>
-                  {% endif %}
-                  {% if r.missing_setup_labels_ar %}
-                  <p class="mt-1"><span class="font-medium text-slate-500">تفاصيل إضافية:</span> {{ r.missing_setup_labels_ar | join(' · ') }}</p>
-                  {% elif r.missing_setup_fields %}
-                  <p class="mt-1" dir="ltr"><span class="font-medium text-slate-500">تفاصيل إضافية:</span> {{ r.missing_setup_fields | join(', ') }}</p>
-                  {% endif %}
-                  {% if r.whatsapp_flags_ar %}
-                  <p class="mt-1"><span class="font-medium text-slate-500">تفاصيل إضافية:</span> {{ r.whatsapp_flags_ar | join(' · ') }}</p>
-                  {% endif %}
-                  {% if r.last_cart_event_at %}
-                  <p class="mt-1"><span class="font-medium text-slate-500">آخر حدث سلة:</span> <span dir="ltr">{{ r.last_cart_event_at }}</span>{% if r.recent_window_days %} <span class="text-slate-400">(نافذة {{ r.recent_window_days }} أيام)</span>{% endif %}</p>
-                  {% endif %}
-                  {% if r.updated_at %}
-                  <p class="mt-1"><span class="font-medium text-slate-500">آخر تحديث:</span> <span dir="ltr">{{ r.updated_at }}</span></p>
-                  {% endif %}
-                  {% if r.due_at %}
-                  <p class="mt-1"><span class="font-medium text-slate-500">موعد الاستحقاق:</span> <span dir="ltr">{{ r.due_at }}</span></p>
-                  {% endif %}
-                  {% if r.stale_reason_ar %}
-                  <p class="mt-1"><span class="font-medium text-slate-500">تفاصيل إضافية:</span> {{ r.stale_reason_ar }}</p>
-                  {% endif %}
-                  {% if r.extra_detail_ar %}
-                  <p class="mt-1 text-slate-500">{{ r.extra_detail_ar }}</p>
-                  {% endif %}
                 </div>
-                {% endfor %}
-              </div>
-              {% if (a.records_hidden or 0) > 0 %}
-              <p class="mt-2 text-xs font-medium text-slate-500">+ {{ a.records_hidden }} أخرى</p>
+                {% endif %}
+              </td>
+              <td class="px-4 py-2.5 text-slate-700">{{ row.readiness_status_ar or 'غير متوفر' }}</td>
+              <td class="px-4 py-2.5 whitespace-nowrap">
+                {% set sev = row.highest_severity or 'low' %}
+                {% if sev == 'critical' %}
+                <span class="inline-flex rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-xs font-medium text-rose-800">{{ row.highest_severity_ar or 'حرج' }}</span>
+                {% elif sev == 'high' %}
+                <span class="inline-flex rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-900">{{ row.highest_severity_ar or 'عالي' }}</span>
+                {% elif sev == 'medium' %}
+                <span class="inline-flex rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">{{ row.highest_severity_ar or 'متوسط' }}</span>
+                {% else %}
+                <span class="inline-flex rounded-full border border-slate-100 bg-slate-50 px-2 py-0.5 text-xs font-medium text-slate-500">{{ row.highest_severity_ar or 'منخفض' }}</span>
+                {% endif %}
+              </td>
+              <td class="px-4 py-2.5 tabular-nums text-slate-800">{{ row.alerts_count | default(0) }}</td>
+              <td class="px-4 py-2.5 text-slate-600" dir="ltr">{{ row.last_cart_event_at or 'غير متوفر' }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="mt-4 rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-6 text-center">
+        <p class="text-sm text-slate-600">لا متاجر بارزة في التنبيهات الحالية.</p>
+      </div>
+      {% endif %}
+    </section>
+  </div>
+
+  <!-- LEVEL 2 — INVESTIGATION (collapsed by default) -->
+  <details id="ops-investigation-panel" class="group rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-6 py-4 marker:content-none [&::-webkit-details-marker]:hidden">
+      <div>
+        <h2 class="text-base font-semibold text-slate-900">التحقيق والتشخيص</h2>
+        <p class="mt-0.5 text-sm text-slate-600">تنبيهات تفصيلية، المالك، خطوات التحقيق، والأدلة — للاستخدام عند التحقيق في مشكلة.</p>
+      </div>
+      <span class="shrink-0 text-xs font-medium text-slate-500 group-open:hidden">عرض</span>
+      <span class="hidden shrink-0 text-xs font-medium text-slate-500 group-open:inline">إخفاء</span>
+    </summary>
+    <div class="space-y-8 border-t border-slate-100 px-6 py-5">
+      <div class="grid gap-4 lg:grid-cols-2">
+        <!-- Scheduler Health -->
+        <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <h3 class="text-base font-semibold text-slate-900">أ — صحة المجدول</h3>
+          <p class="mt-1 text-sm text-slate-600">نفس حقيقة <span dir="ltr">/health/scheduler</span> — للقراءة فقط.</p>
+          <dl class="mt-4 grid gap-3 sm:grid-cols-2">
+            <div class="rounded-xl border border-slate-100 bg-slate-50/80 px-4 py-3">
+              <dt class="text-xs font-medium text-slate-500">الدور (role)</dt>
+              <dd class="mt-1 text-lg font-semibold tabular-nums text-slate-900" dir="ltr">{{ sch.role or "غير متوفر" }}</dd>
+            </div>
+            <div class="rounded-xl border border-slate-100 bg-slate-50/80 px-4 py-3">
+              <dt class="text-xs font-medium text-slate-500">جدولة متأخرة</dt>
+              <dd class="mt-1 text-lg font-semibold tabular-nums {% if (sch.overdue_scheduled_count or 0) > 0 %}text-amber-800{% else %}text-slate-900{% endif %}">
+                {{ sch.overdue_scheduled_count if sch.overdue_scheduled_count is not none else "غير متوفر" }}
+              </dd>
+            </div>
+            <div class="rounded-xl border border-slate-100 bg-slate-50/80 px-4 py-3">
+              <dt class="text-xs font-medium text-slate-500">تشغيل عالق (running stale)</dt>
+              <dd class="mt-1 text-lg font-semibold tabular-nums {% if (sch.running_stale_count or 0) > 0 %}text-rose-700{% else %}text-slate-900{% endif %}">
+                {{ sch.running_stale_count if sch.running_stale_count is not none else "غير متوفر" }}
+              </dd>
+            </div>
+            <div class="rounded-xl border border-slate-100 bg-slate-50/80 px-4 py-3">
+              <dt class="text-xs font-medium text-slate-500">Resume / Due scanner</dt>
+              <dd class="mt-1 text-sm font-medium text-slate-800">
+                {% if sch.resume_enabled %}Resume: مفعّل{% else %}Resume: متوقف{% endif %}
+                ·
+                {% if sch.due_scanner_enabled %}Scanner: مفعّل{% else %}Scanner: متوقف{% endif %}
+              </dd>
+            </div>
+          </dl>
+          {% if sch.database_error %}
+          <p class="mt-3 text-xs text-rose-700">تعذّر قراءة قاعدة البيانات: {{ sch.database_error }}</p>
+          {% endif %}
+        </section>
+
+        <!-- Recovery Status Summary -->
+        <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <h3 class="text-base font-semibold text-slate-900">ب — حالات الاسترجاع (RecoverySchedule)</h3>
+          <p class="mt-1 text-sm text-slate-600">أعداد مجمّعة — بدون استعلام لكل صف.</p>
+          {% if rec.available == false %}
+          <p class="mt-4 text-sm text-amber-800">غير متوفر مؤقتاً{% if rec.error %}: {{ rec.error }}{% endif %}</p>
+          {% else %}
+          <dl class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <div class="rounded-xl border border-slate-100 px-3 py-2.5">
+              <dt class="text-xs text-slate-500">scheduled</dt>
+              <dd class="text-xl font-semibold tabular-nums">{{ rec.scheduled | default(0) }}</dd>
+            </div>
+            <div class="rounded-xl border border-slate-100 px-3 py-2.5">
+              <dt class="text-xs text-slate-500">running</dt>
+              <dd class="text-xl font-semibold tabular-nums">{{ rec.running | default(0) }}</dd>
+            </div>
+            <div class="rounded-xl border border-slate-100 px-3 py-2.5">
+              <dt class="text-xs text-slate-500">completed</dt>
+              <dd class="text-xl font-semibold tabular-nums text-emerald-700">{{ rec.completed | default(0) }}</dd>
+            </div>
+            <div class="rounded-xl border border-slate-100 px-3 py-2.5">
+              <dt class="text-xs text-slate-500">failed</dt>
+              <dd class="text-xl font-semibold tabular-nums text-rose-700">{{ rec.failed | default(0) }}</dd>
+            </div>
+            <div class="rounded-xl border border-slate-100 px-3 py-2.5">
+              <dt class="text-xs text-slate-500">expired</dt>
+              <dd class="text-xl font-semibold tabular-nums text-slate-700">{{ rec.expired | default(0) }}</dd>
+            </div>
+          </dl>
+          {% endif %}
+        </section>
+
+        <!-- Store Readiness -->
+        <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm lg:col-span-2">
+          <h3 class="text-base font-semibold text-slate-900">ج — جاهزية المتاجر</h3>
+          <p class="mt-1 text-sm text-slate-600">قراءة من تقييم الإعداد الحالي — حتى {{ st._scan_cap | default(400) }} متجر.</p>
+          {% if st.available == false %}
+          <p class="mt-4 text-sm text-amber-800">غير متوفر{% if st.error %}: {{ st.error }}{% endif %}</p>
+          {% else %}
+          <dl class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            <div class="rounded-xl border border-slate-100 bg-slate-50/60 px-4 py-3">
+              <dt class="text-xs text-slate-500">إجمالي المتاجر</dt>
+              <dd class="mt-1 text-2xl font-semibold tabular-nums">{{ st.total_stores | default(0) }}</dd>
+            </div>
+            <div class="rounded-xl border border-emerald-100 bg-emerald-50/50 px-4 py-3">
+              <dt class="text-xs text-emerald-800">جاهز</dt>
+              <dd class="mt-1 text-2xl font-semibold tabular-nums text-emerald-800">{{ st.ready_stores | default(0) }}</dd>
+            </div>
+            <div class="rounded-xl border border-amber-100 bg-amber-50/40 px-4 py-3">
+              <dt class="text-xs text-amber-900">يحتاج إعداد</dt>
+              <dd class="mt-1 text-2xl font-semibold tabular-nums text-amber-900">{{ st.stores_needing_setup | default(0) }}</dd>
+            </div>
+            <div class="rounded-xl border border-rose-100 bg-rose-50/40 px-4 py-3">
+              <dt class="text-xs text-rose-900">واتساب ناقص</dt>
+              <dd class="mt-1 text-2xl font-semibold tabular-nums text-rose-800">{{ st.stores_missing_whatsapp | default(0) }}</dd>
+            </div>
+            <div class="rounded-xl border border-slate-100 px-4 py-3">
+              <dt class="text-xs text-slate-500">بلا أحداث سلة حديثة</dt>
+              <dd class="mt-1 text-2xl font-semibold tabular-nums">{{ st.stores_no_recent_cart_events | default(0) }}</dd>
+            </div>
+          </dl>
+          {% endif %}
+        </section>
+      </div>
+
+      <!-- Basic Alerts (with owner, investigation, evidence) -->
+      <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <h3 class="text-base font-semibold text-slate-900">تنبيهات أساسية</h3>
+        <p class="mt-1 text-sm text-slate-600">قراءة فقط — بدون أزرار إصلاح أو إيقاف. التفاصيل تحت كل تنبيه تحدد السجل المتأثر.</p>
+        {% if alerts %}
+        <div class="mt-4 overflow-x-auto rounded-xl border border-slate-200">
+          <table class="min-w-full divide-y divide-slate-200 text-sm">
+            <thead class="bg-slate-50 text-right text-xs font-medium text-slate-500">
+              <tr>
+                <th class="px-4 py-2.5">الأولوية</th>
+                <th class="px-4 py-2.5">النوع</th>
+                <th class="px-4 py-2.5">العنوان</th>
+                <th class="px-4 py-2.5">التفاصيل</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 bg-white">
+              {% for a in alerts %}
+              <tr class="hover:bg-slate-50/80 align-top">
+                <td class="px-4 py-2.5 whitespace-nowrap">
+                  {% set sev = a.severity or 'low' %}
+                  {% if sev == 'critical' %}
+                  <span class="inline-flex rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-xs font-medium text-rose-800">{{ a.severity_ar or 'حرج' }}</span>
+                  {% elif sev == 'high' %}
+                  <span class="inline-flex rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-900">{{ a.severity_ar or 'عالي' }}</span>
+                  {% elif sev == 'medium' %}
+                  <span class="inline-flex rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">{{ a.severity_ar or 'متوسط' }}</span>
+                  {% else %}
+                  <span class="inline-flex rounded-full border border-slate-100 bg-slate-50 px-2 py-0.5 text-xs font-medium text-slate-500">{{ a.severity_ar or 'منخفض' }}</span>
+                  {% endif %}
+                </td>
+                <td class="px-4 py-2.5 whitespace-nowrap">
+                  <span class="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">{{ a.kind }}</span>
+                </td>
+                <td class="px-4 py-2.5 font-medium text-slate-900">{{ a.title_ar }}</td>
+                <td class="px-4 py-2.5 text-slate-600">
+                  <p>{{ a.detail_ar }}</p>
+                  {% if a.why_ar or a.suggested_fix_ar %}
+                  <div class="mt-2 space-y-1 rounded-lg border border-slate-100 bg-white px-3 py-2 text-xs leading-relaxed">
+                    {% if a.why_ar %}
+                    <p><span class="font-medium text-slate-600">لماذا ظهر؟</span> {{ a.why_ar }}</p>
+                    {% endif %}
+                    {% if a.suggested_fix_ar %}
+                    <p class="{% if a.why_ar %}mt-1{% endif %}"><span class="font-medium text-slate-600">الإجراء المقترح:</span> {{ a.suggested_fix_ar }}</p>
+                    {% endif %}
+                    <p class="{% if a.why_ar or a.suggested_fix_ar %}mt-1{% endif %}"><span class="font-medium text-slate-600">المالك المحتمل:</span> {{ a.owner_ar or 'غير محدد' }}</p>
+                  </div>
+                  {% else %}
+                  <p class="mt-2 text-xs text-slate-600"><span class="font-medium text-slate-500">المالك المحتمل:</span> {{ a.owner_ar or 'غير محدد' }}</p>
+                  {% endif %}
+                  {% if a.investigation_steps_ar %}
+                  <div class="mt-2 rounded-lg border border-slate-100 bg-white px-3 py-2 text-xs leading-relaxed">
+                    <p class="font-medium text-slate-600">من أين أبدأ؟</p>
+                    <ol class="mt-1 list-decimal space-y-0.5 pr-4 text-slate-600">
+                      {% for step in a.investigation_steps_ar %}
+                      <li>{{ step }}</li>
+                      {% endfor %}
+                    </ol>
+                  </div>
+                  {% endif %}
+                  {% if a.evidence %}
+                  <div class="mt-2 rounded-lg border border-slate-100 bg-slate-50/60 px-3 py-2 text-xs leading-relaxed text-slate-600">
+                    <p class="font-medium text-slate-600">الأدلة المرتبطة</p>
+                    {% if a.evidence.recovery_key %}
+                    <p class="mt-1"><span class="font-medium text-slate-500">Recovery Key:</span> <span class="break-all" dir="ltr">{{ a.evidence.recovery_key }}</span></p>
+                    {% endif %}
+                    {% if a.evidence.schedule_id is not none %}
+                    <p class="mt-1"><span class="font-medium text-slate-500">Schedule ID:</span> <span dir="ltr">{{ a.evidence.schedule_id }}</span></p>
+                    {% endif %}
+                    {% if a.evidence.store_slug %}
+                    <p class="mt-1"><span class="font-medium text-slate-500">Store:</span> <span dir="ltr">{{ a.evidence.store_slug }}</span></p>
+                    {% endif %}
+                    {% if a.evidence.last_status %}
+                    <p class="mt-1"><span class="font-medium text-slate-500">Last Status:</span> <span dir="ltr">{{ a.evidence.last_status }}</span></p>
+                    {% endif %}
+                    {% if a.evidence.last_updated_at %}
+                    <p class="mt-1"><span class="font-medium text-slate-500">Last Updated:</span> <span dir="ltr">{{ a.evidence.last_updated_at }}</span></p>
+                    {% endif %}
+                  </div>
+                  {% endif %}
+                  {% if a.records %}
+                  <div class="mt-3 space-y-2">
+                    {% for r in a.records %}
+                    <div class="rounded-lg border border-slate-100 bg-slate-50/70 px-3 py-2 text-xs leading-relaxed">
+                      {% if r.display_name or r.store_slug %}
+                      <p><span class="font-medium text-slate-500">المتجر:</span>
+                        {{ r.display_name or r.store_slug }}
+                        {% if r.store_slug and r.display_name and r.display_name != r.store_slug %}
+                        <span class="text-slate-400" dir="ltr">({{ r.store_slug }})</span>
+                        {% endif %}
+                      </p>
+                      {% elif r.store_slug %}
+                      <p dir="ltr"><span class="font-medium text-slate-500">المتجر:</span> {{ r.store_slug }}</p>
+                      {% endif %}
+                      {% if r.recovery_key %}
+                      <p class="mt-1 break-all" dir="ltr"><span class="font-medium text-slate-500">مفتاح الاسترجاع:</span> {{ r.recovery_key }}</p>
+                      {% endif %}
+                      {% if r.status %}
+                      <p class="mt-1"><span class="font-medium text-slate-500">الحالة:</span> <span dir="ltr">{{ r.status }}</span></p>
+                      {% endif %}
+                      {% if r.readiness_status_ar %}
+                      <p class="mt-1"><span class="font-medium text-slate-500">الحالة:</span> {{ r.readiness_status_ar }}</p>
+                      {% endif %}
+                      {% if r.readiness_ready is defined and r.readiness_ready is not none %}
+                      <p class="mt-1"><span class="font-medium text-slate-500">جاهزية:</span> {% if r.readiness_ready %}جاهز{% else %}غير جاهز{% endif %}{% if r.readiness_percent is not none %} · {{ r.readiness_percent }}%{% endif %}</p>
+                      {% endif %}
+                      {% if r.missing_setup_labels_ar %}
+                      <p class="mt-1"><span class="font-medium text-slate-500">تفاصيل إضافية:</span> {{ r.missing_setup_labels_ar | join(' · ') }}</p>
+                      {% elif r.missing_setup_fields %}
+                      <p class="mt-1" dir="ltr"><span class="font-medium text-slate-500">تفاصيل إضافية:</span> {{ r.missing_setup_fields | join(', ') }}</p>
+                      {% endif %}
+                      {% if r.whatsapp_flags_ar %}
+                      <p class="mt-1"><span class="font-medium text-slate-500">تفاصيل إضافية:</span> {{ r.whatsapp_flags_ar | join(' · ') }}</p>
+                      {% endif %}
+                      {% if r.last_cart_event_at %}
+                      <p class="mt-1"><span class="font-medium text-slate-500">آخر حدث سلة:</span> <span dir="ltr">{{ r.last_cart_event_at }}</span>{% if r.recent_window_days %} <span class="text-slate-400">(نافذة {{ r.recent_window_days }} أيام)</span>{% endif %}</p>
+                      {% endif %}
+                      {% if r.updated_at %}
+                      <p class="mt-1"><span class="font-medium text-slate-500">آخر تحديث:</span> <span dir="ltr">{{ r.updated_at }}</span></p>
+                      {% endif %}
+                      {% if r.due_at %}
+                      <p class="mt-1"><span class="font-medium text-slate-500">موعد الاستحقاق:</span> <span dir="ltr">{{ r.due_at }}</span></p>
+                      {% endif %}
+                      {% if r.stale_reason_ar %}
+                      <p class="mt-1"><span class="font-medium text-slate-500">تفاصيل إضافية:</span> {{ r.stale_reason_ar }}</p>
+                      {% endif %}
+                      {% if r.extra_detail_ar %}
+                      <p class="mt-1 text-slate-500">{{ r.extra_detail_ar }}</p>
+                      {% endif %}
+                    </div>
+                    {% endfor %}
+                  </div>
+                  {% if (a.records_hidden or 0) > 0 %}
+                  <p class="mt-2 text-xs font-medium text-slate-500">+ {{ a.records_hidden }} أخرى</p>
+                  {% endif %}
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="mt-4 rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-8 text-center">
+          <p class="text-sm font-medium text-slate-800">لا تنبيهات تشغيلية بارزة حالياً.</p>
+          <p class="mt-1 text-sm text-slate-500">هذا طبيعي عندما تكون المنصة هادئة أو البيانات محدودة.</p>
+        </div>
+        {% endif %}
+      </section>
+    </div>
+  </details>
+
+  <!-- LEVEL 3 — ANALYTICS (collapsed by default) -->
+  <details id="ops-analytics-panel" class="group rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-6 py-4 marker:content-none [&::-webkit-details-marker]:hidden">
+      <div>
+        <h2 class="text-base font-semibold text-slate-900">التحليل والاتجاهات</h2>
+        <p class="mt-0.5 text-sm text-slate-600">اتجاهات التشغيل، الأحداث الأخيرة، ومصادر المشاكل — للتحليل وليس للإجراء الفوري.</p>
+      </div>
+      <span class="shrink-0 text-xs font-medium text-slate-500 group-open:hidden">عرض</span>
+      <span class="hidden shrink-0 text-xs font-medium text-slate-500 group-open:inline">إخفاء</span>
+    </summary>
+    <div class="space-y-8 border-t border-slate-100 px-6 py-5">
+      <!-- Operational trends -->
+      <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <h3 class="text-base font-semibold text-slate-900">اتجاهات التشغيل</h3>
+        <p class="mt-1 text-sm text-slate-600">
+          مقارنة آخر {{ ot.window_hours | default(24) }} ساعة بالـ {{ ot.window_hours | default(24) }} ساعة السابقة — قراءة فقط.
+        </p>
+        {% if trend_rows %}
+        <div class="mt-4 overflow-x-auto rounded-xl border border-slate-200">
+          <table class="min-w-full divide-y divide-slate-200 text-sm">
+            <thead class="bg-slate-50 text-right text-xs font-medium text-slate-500">
+              <tr>
+                <th class="px-4 py-2.5">المؤشر</th>
+                <th class="px-4 py-2.5">الحالي</th>
+                <th class="px-4 py-2.5">السابق</th>
+                <th class="px-4 py-2.5">الاتجاه</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 bg-white">
+              {% for t in trend_rows %}
+              <tr class="hover:bg-slate-50/80">
+                <td class="px-4 py-2.5 font-medium text-slate-900">{{ t.metric_ar or t.metric_key or '—' }}</td>
+                <td class="px-4 py-2.5 tabular-nums text-slate-800">{{ t.current_count | default(0) }}</td>
+                <td class="px-4 py-2.5 tabular-nums text-slate-500">{{ t.previous_count | default(0) }}</td>
+                <td class="px-4 py-2.5 whitespace-nowrap">
+                  {% set tk = t.trend_key or 'stable' %}
+                  {% if tk == 'worsening' %}
+                  <span class="text-sm font-medium text-amber-900">{{ t.trend_ar or '↑ تزايد' }}</span>
+                  {% elif tk == 'improving' %}
+                  <span class="text-sm font-medium text-emerald-800">{{ t.trend_ar or '↓ تحسن' }}</span>
+                  {% else %}
+                  <span class="text-sm font-medium text-slate-600">{{ t.trend_ar or '→ مستقر' }}</span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="mt-4 rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-6 text-center">
+          <p class="text-sm text-slate-600">→ مستقر — لا بيانات كافية للمقارنة حاليًا.</p>
+        </div>
+        {% endif %}
+      </section>
+
+      <!-- Operational timeline -->
+      <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <h3 class="text-base font-semibold text-slate-900">آخر الأحداث التشغيلية</h3>
+        <p class="mt-1 text-sm text-slate-600">آخر {{ otl.max_shown | default(25) }} حدث خلال {{ otl.window_hours | default(24) }} ساعة — الأحدث أولًا (قراءة فقط).</p>
+        {% if timeline_events %}
+        <div class="mt-4 overflow-x-auto rounded-xl border border-slate-200">
+          <table class="min-w-full divide-y divide-slate-200 text-sm">
+            <thead class="bg-slate-50 text-right text-xs font-medium text-slate-500">
+              <tr>
+                <th class="px-3 py-2">الوقت</th>
+                <th class="px-3 py-2">الحدث</th>
+                <th class="px-3 py-2">المتجر</th>
+                <th class="px-3 py-2">الأهمية</th>
+                <th class="px-3 py-2">المالك</th>
+                <th class="px-3 py-2">تفاصيل</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 bg-white">
+              {% for e in timeline_events %}
+              <tr class="align-top hover:bg-slate-50/80">
+                <td class="whitespace-nowrap px-3 py-2 text-xs text-slate-600" dir="ltr">{{ e.happened_at or 'غير متوفر' }}</td>
+                <td class="px-3 py-2 font-medium text-slate-900">{{ e.title_ar or '—' }}</td>
+                <td class="px-3 py-2 text-slate-700">
+                  {{ e.store_name or e.store_slug or '—' }}
+                  {% if e.store_slug and e.store_name and e.store_name != e.store_slug %}
+                  <span class="text-xs text-slate-400" dir="ltr">({{ e.store_slug }})</span>
+                  {% elif e.store_slug and not e.store_name %}
+                  <span dir="ltr">{{ e.store_slug }}</span>
+                  {% endif %}
+                </td>
+                <td class="whitespace-nowrap px-3 py-2">
+                  {% set esev = e.severity or 'low' %}
+                  {% if esev == 'critical' %}
+                  <span class="inline-flex rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-xs font-medium text-rose-800">{{ e.severity_ar or 'حرج' }}</span>
+                  {% elif esev == 'high' %}
+                  <span class="inline-flex rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-900">{{ e.severity_ar or 'عالي' }}</span>
+                  {% elif esev == 'medium' %}
+                  <span class="inline-flex rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">{{ e.severity_ar or 'متوسط' }}</span>
+                  {% else %}
+                  <span class="inline-flex rounded-full border border-slate-100 bg-white px-2 py-0.5 text-xs font-medium text-slate-500">{{ e.severity_ar or 'منخفض' }}</span>
+                  {% endif %}
+                </td>
+                <td class="whitespace-nowrap px-3 py-2 text-xs text-slate-600">{{ e.owner_ar or 'غير محدد' }}</td>
+                <td class="px-3 py-2 text-xs leading-relaxed text-slate-600">{{ e.short_detail_ar or '—' }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="mt-4 rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-6 text-center">
+          <p class="text-sm text-slate-600">لا أحداث تشغيلية في النافذة الزمنية الحالية.</p>
+        </div>
+        {% endif %}
+      </section>
+
+      <!-- Root cause groups -->
+      <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <h3 class="text-base font-semibold text-slate-900">مصادر المشاكل الرئيسية</h3>
+        <p class="mt-1 text-sm text-slate-600">تجميع التنبيهات حسب المالك التشغيلي — قراءة فقط.</p>
+        {% if cause_groups %}
+        <div class="mt-4 space-y-3">
+          {% for g in cause_groups %}
+          <div class="rounded-xl border border-slate-100 bg-slate-50/50 px-4 py-3 text-sm">
+            <div class="flex flex-wrap items-start justify-between gap-2">
+              <p class="font-semibold text-slate-900">{{ g.owner_ar or 'غير محدد' }}</p>
+              {% set gsev = g.highest_severity or 'low' %}
+              {% if gsev == 'critical' %}
+              <span class="inline-flex rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-xs font-medium text-rose-800">{{ g.highest_severity_ar or 'حرج' }}</span>
+              {% elif gsev == 'high' %}
+              <span class="inline-flex rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-900">{{ g.highest_severity_ar or 'عالي' }}</span>
+              {% elif gsev == 'medium' %}
+              <span class="inline-flex rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">{{ g.highest_severity_ar or 'متوسط' }}</span>
+              {% else %}
+              <span class="inline-flex rounded-full border border-slate-100 bg-white px-2 py-0.5 text-xs font-medium text-slate-500">{{ g.highest_severity_ar or 'منخفض' }}</span>
               {% endif %}
-              {% endif %}
-            </td>
-          </tr>
+            </div>
+            <p class="mt-2 text-xs text-slate-600">
+              {% set ac = g.alerts_count | default(0) %}
+              {% if ac == 1 %}1 تنبيه{% else %}{{ ac }} تنبيهات{% endif %}
+              ·
+              {% set sc = g.stores_count | default(0) %}
+              {% if sc == 1 %}1 متجر{% else %}{{ sc }} متاجر{% endif %}
+            </p>
+            {% if g.alert_kinds %}
+            <p class="mt-1 text-xs text-slate-500">
+              <span class="font-medium text-slate-500">أنواع التنبيه:</span>
+              {% for k in g.alert_kinds %}<span class="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[11px]" dir="ltr">{{ k }}</span>{% if not loop.last %} {% endif %}{% endfor %}
+            </p>
+            {% endif %}
+          </div>
           {% endfor %}
-        </tbody>
-      </table>
+        </div>
+        {% else %}
+        <div class="mt-4 rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-6 text-center">
+          <p class="text-sm text-slate-600">لا توجد مجموعات مشاكل ظاهرة حاليًا.</p>
+        </div>
+        {% endif %}
+      </section>
     </div>
-    {% else %}
-    <div class="mt-4 rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-8 text-center">
-      <p class="text-sm font-medium text-slate-800">لا تنبيهات تشغيلية بارزة حالياً.</p>
-      <p class="mt-1 text-sm text-slate-500">هذا طبيعي عندما تكون المنصة هادئة أو البيانات محدودة.</p>
-    </div>
-    {% endif %}
-  </section>
+  </details>
 
   <p class="pb-8 text-xs text-slate-400">
     للتشخيص العميق: <a href="/admin/operational-health" class="text-indigo-700 underline decoration-indigo-200 underline-offset-2">مركز التشغيل التفصيلي</a>
