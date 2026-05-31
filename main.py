@@ -5232,6 +5232,7 @@ def _normal_recovery_merchant_lifecycle_bucket_ok(
     coarse: str,
     stale_flag: bool,
     log_statuses: frozenset[str],
+    purchased_terminal: bool = False,
 ) -> bool:
     """تبويب السلال النشط يبقي sent/replied/returned حتى نتيجة نهائية."""
     lc = (lc_raw or "active").strip().lower()
@@ -5240,6 +5241,8 @@ def _normal_recovery_merchant_lifecycle_bucket_ok(
     if lc == "all":
         return True
     if lc == "active":
+        if purchased_terminal:
+            return True
         return not terminal_archived
     if lc == "archived":
         if terminal_archived:
@@ -16292,6 +16295,8 @@ def _normal_recovery_merchant_lightweight_alert_list(
             full_rows,
             dash_store=dash_store,
             scope_filter=_nr_scope,
+            nr_session=ns or None,
+            nr_cart=nc or None,
         )
         slug_for_act = (
             (getattr(dash_store, "zid_store_id", None) or "").strip()
@@ -16334,12 +16339,22 @@ def _normal_recovery_merchant_lightweight_alert_list(
                 diag_pick_index=pick_i if _stale_diag else None,
                 diag_picked_groups_total=npick if _stale_diag else None,
             )
+            from services.merchant_purchased_cart_dashboard_v1 import (  # noqa: PLC0415
+                purchased_terminal_visible_on_active_lifecycle_tab,
+            )
+
             if not _normal_recovery_merchant_lifecycle_bucket_ok(
                 lc_raw=lc_raw,
                 terminal_archived=arch,
                 coarse=coarse,
                 stale_flag=stale_flag,
                 log_statuses=log_u,
+                purchased_terminal=purchased_terminal_visible_on_active_lifecycle_tab(
+                    terminal_archived=arch,
+                    ac=ac0,
+                    log_statuses=log_u,
+                    coarse=coarse,
+                ),
             ):
                 continue
             out.append(
@@ -16418,8 +16433,13 @@ def _augment_abandoned_candidates_with_sent_recovery_logs(
     if cart_ids:
         or_parts.append(AbandonedCart.zid_cart_id.in_(list(cart_ids)))
     try:
+        from services.merchant_purchased_cart_dashboard_v1 import (  # noqa: PLC0415
+            DASHBOARD_AUGMENT_CART_STATUSES,
+        )
+
         q_extra = db.session.query(AbandonedCart).filter(
-            AbandonedCart.status == "abandoned", or_(*or_parts)
+            AbandonedCart.status.in_(DASHBOARD_AUGMENT_CART_STATUSES),
+            or_(*or_parts),
         )
         if scope_filter is not None:
             sent_parts: list[Any] = []
@@ -16657,8 +16677,13 @@ def _augment_abandoned_candidates_with_active_recovery_signals(
         or_parts.append(AbandonedCart.zid_cart_id.in_(list(cart_ids)))
     if or_parts:
         try:
+            from services.merchant_purchased_cart_dashboard_v1 import (  # noqa: PLC0415
+                DASHBOARD_AUGMENT_CART_STATUSES,
+            )
+
             q_extra = db.session.query(AbandonedCart).filter(
-                AbandonedCart.status == "abandoned", or_(*or_parts)
+                AbandonedCart.status.in_(DASHBOARD_AUGMENT_CART_STATUSES),
+                or_(*or_parts),
             )
             if scope_filter is not None:
                 sig_parts: list[Any] = []
@@ -16710,18 +16735,32 @@ def _augment_abandoned_candidates_for_recovery_dashboard(
     dash_store: Optional[Any],
     scope_filter: Any,
     augment_limit: int = 100,
+    nr_session: Optional[str] = None,
+    nr_cart: Optional[str] = None,
 ) -> list[AbandonedCart]:
+    from services.merchant_purchased_cart_dashboard_v1 import (  # noqa: PLC0415
+        augment_abandoned_candidates_with_purchased_recovery_carts,
+    )
+
     rows = _augment_abandoned_candidates_with_sent_recovery_logs(
         primary_rows,
         dash_store=dash_store,
         scope_filter=scope_filter,
         augment_limit=augment_limit,
     )
-    return _augment_abandoned_candidates_with_active_recovery_signals(
+    rows = _augment_abandoned_candidates_with_active_recovery_signals(
         rows,
         dash_store=dash_store,
         scope_filter=scope_filter,
         augment_limit=augment_limit,
+    )
+    return augment_abandoned_candidates_with_purchased_recovery_carts(
+        rows,
+        dash_store=dash_store,
+        scope_filter=scope_filter,
+        augment_limit=min(60, max(1, int(augment_limit))),
+        nr_session=nr_session,
+        nr_cart=nr_cart,
     )
 
 
@@ -16895,6 +16934,8 @@ def _normal_recovery_merchant_lightweight_alert_list_for_api(
                 full_rows,
                 dash_store=dash_store,
                 scope_filter=_nr_scope,
+                nr_session=ns or None,
+                nr_cart=nc or None,
             )
         dashboard_normal_carts_perf_record_loads(abandoned_carts=len(full_rows))
         dashboard_nc_log_stage(
@@ -16997,12 +17038,32 @@ def _normal_recovery_merchant_lightweight_alert_list_for_api(
                         queued_followup_prefetch=batch_reads.queued_followup_prefetch,
                         recovery_key=_rk_stale,
                     )
+                from services.merchant_purchased_cart_dashboard_v1 import (  # noqa: PLC0415
+                    purchased_terminal_visible_on_active_lifecycle_tab,
+                )
+
+                _rk_pt = (
+                    batch_reads.recovery_key_by_ac.get(int(getattr(ac0, "id", 0) or 0))
+                    or ""
+                ).strip()
+                _purch_pt = (
+                    bool(batch_reads.purchase_truth_by_rk.get(_rk_pt))
+                    if _rk_pt
+                    else False
+                )
                 if not _normal_recovery_merchant_lifecycle_bucket_ok(
                     lc_raw=lc_raw,
                     terminal_archived=arch,
                     coarse=coarse,
                     stale_flag=stale_flag,
                     log_statuses=log_u,
+                    purchased_terminal=purchased_terminal_visible_on_active_lifecycle_tab(
+                        terminal_archived=arch,
+                        ac=ac0,
+                        log_statuses=log_u,
+                        purchase_truth=_purch_pt,
+                        coarse=coarse,
+                    ),
                 ):
                     continue
                 with dashboard_normal_carts_perf_stage("payload_row"):
@@ -17120,6 +17181,8 @@ def _normal_recovery_cart_alert_list(
             full_rows,
             dash_store=dash_store,
             scope_filter=_nr_scope,
+            nr_session=ns or None,
+            nr_cart=nc or None,
         )
         slug_for_act = (
             (getattr(dash_store, "zid_store_id", None) or "").strip()

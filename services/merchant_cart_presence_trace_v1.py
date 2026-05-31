@@ -327,12 +327,29 @@ def trace_merchant_cart_presence(
                 batch_reads.recovery_key_by_ac.get(int(getattr(ac0, "id", 0) or 0)) or ""
             ).strip(),
         )
+        from services.merchant_purchased_cart_dashboard_v1 import (  # noqa: PLC0415
+            purchased_terminal_visible_on_active_lifecycle_tab,
+        )
+
+        _rk_pt = (
+            batch_reads.recovery_key_by_ac.get(int(getattr(ac0, "id", 0) or 0)) or ""
+        ).strip()
+        _purch_pt = (
+            bool(batch_reads.purchase_truth_by_rk.get(_rk_pt)) if _rk_pt else False
+        )
         if not _normal_recovery_merchant_lifecycle_bucket_ok(
             lc_raw=lc_raw,
             terminal_archived=arch,
             coarse=coarse,
             stale_flag=stale_flag,
             log_statuses=log_u,
+            purchased_terminal=purchased_terminal_visible_on_active_lifecycle_tab(
+                terminal_archived=arch,
+                ac=ac0,
+                log_statuses=log_u,
+                purchase_truth=_purch_pt,
+                coarse=coarse,
+            ),
         ):
             lifecycle_excluded = True
             continue

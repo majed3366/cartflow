@@ -435,9 +435,21 @@ class MerchantSentRecoveryCartsVisibleE2ETests(unittest.TestCase):
         db.session.commit()
 
         active_end, archived_end = self._active_and_archived_rows(st, session_id=sid)
-        self.assertEqual(len(active_end), 0)
+        self.assertEqual(len(active_end), 1)
         self.assertEqual(len(archived_end), 1)
-        self.assertEqual(archived_end[0].get("merchant_coarse_status"), "converted")
+        purchased_row = active_end[0]
+        self.assertEqual(purchased_row.get("merchant_coarse_status"), "converted")
+        self.assertEqual(
+            str(purchased_row.get("customer_lifecycle_state") or "").strip().lower(),
+            "completed",
+        )
+        self.assertIn(
+            "تم الشراء",
+            str(purchased_row.get("customer_lifecycle_label_ar") or ""),
+        )
+        fc = purchased_row.get("merchant_cart_visible_tabs") or []
+        self.assertIn("recovered", fc)
+        self.assertIn("all", fc)
 
     def test_sent_recovery_visible_via_http_normal_carts_endpoint(self) -> None:
         st, _ac, _lg = self._seed_sent_recovery_cart()

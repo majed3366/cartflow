@@ -363,9 +363,16 @@ def classify_merchant_cart_row(
         log_ss=log_ss,
     )
     if purchased:
+        status_ar = (
+            "تم الشراء"
+            if bool(purchase_truth)
+            or pk in ("stopped_purchase", "recovery_complete")
+            or cnorm == "converted"
+            else RECOVERED_STATUS_LABEL_AR
+        )
         return MerchantCartRowClassification(
             primary_bucket=PRIMARY_RECOVERED,
-            merchant_status_label_ar=RECOVERED_STATUS_LABEL_AR,
+            merchant_status_label_ar=status_ar,
             next_action_label_ar="تمت عملية الشراء — انتهت مهمة الاسترجاع.",
             is_active=False,
             is_terminal=True,
