@@ -17,6 +17,7 @@ from services.admin_operations_center_v1 import (
     _ALERT_EXPLANATIONS_AR,
     _ALERT_SEVERITY_AR,
     _alert_with_records,
+    _build_store_health_snapshot,
     _build_system_health_summary,
     _sort_alerts,
     build_admin_operations_center_v1_readonly,
@@ -53,7 +54,7 @@ class AdminOperationsCenterV1Tests(unittest.TestCase):
 
     def test_build_payload_has_required_sections(self) -> None:
         payload = build_admin_operations_center_v1_readonly()
-        self.assertEqual(payload.get("version"), "admin_operations_center_v1_4")
+        self.assertEqual(payload.get("version"), "admin_operations_center_v1_5")
         health = payload.get("system_health_summary") or {}
         for key in (
             "status_key",
@@ -67,6 +68,10 @@ class AdminOperationsCenterV1Tests(unittest.TestCase):
             "total_alerts",
         ):
             self.assertIn(key, health)
+        snap = payload.get("store_health_snapshot") or {}
+        self.assertIn("stores", snap)
+        self.assertIn("total_stores", snap)
+        self.assertIn("available", snap)
         sch = payload.get("scheduler") or {}
         for key in ("role", "overdue_scheduled_count", "running_stale_count"):
             self.assertIn(key, sch)
@@ -225,6 +230,115 @@ class AdminOperationsCenterV1Tests(unittest.TestCase):
         )
         ordered = _sort_alerts([low_count, high_count])
         self.assertEqual(ordered[0]["records_total"], 9)
+
+    def test_store_snapshot_merges_multiple_alert_kinds(self) -> None:
+        slug = "merge-store-1"
+        store_rows = [
+            {
+                "store_slug": slug,
+                "display_name": "Merge Store",
+                "ready": False,
+                "readiness_status_ar": "غير جاهز",
+                "last_cart_event_at": None,
+            }
+        ]
+        alerts = [
+            _alert_with_records(
+                kind="store_needs_setup",
+                title_ar="setup",
+                detail_ar="setup",
+                records=[{"store_slug": slug, "display_name": "Merge Store"}],
+                records_total=1,
+            ),
+            _alert_with_records(
+                kind="whatsapp_missing",
+                title_ar="wa",
+                detail_ar="wa",
+                records=[{"store_slug": slug, "display_name": "Merge Store"}],
+                records_total=1,
+            ),
+        ]
+        snap = _build_store_health_snapshot(alerts, store_rows)
+        self.assertEqual(snap["total_stores"], 1)
+        row = snap["stores"][0]
+        self.assertEqual(row["store_slug"], slug)
+        self.assertEqual(row["alerts_count"], 2)
+        self.assertEqual(set(row["alert_kinds"]), {"store_needs_setup", "whatsapp_missing"})
+
+    def test_store_snapshot_severity_escalation(self) -> None:
+        slug = "sev-store"
+        alerts = [
+            _alert_with_records(
+                kind="no_cart_events",
+                title_ar="low",
+                detail_ar="low",
+                records=[{"store_slug": slug}],
+                records_total=1,
+            ),
+            _alert_with_records(
+                kind="stale_recovery",
+                title_ar="crit",
+                detail_ar="crit",
+                records=[{"store_slug": slug, "recovery_key": "k1"}],
+                records_total=1,
+            ),
+        ]
+        snap = _build_store_health_snapshot(alerts, [])
+        row = snap["stores"][0]
+        self.assertEqual(row["highest_severity"], "critical")
+        self.assertEqual(row["highest_severity_ar"], "حرج")
+
+    def test_store_snapshot_sort_order(self) -> None:
+        alerts = [
+            _alert_with_records(
+                kind="no_cart_events",
+                title_ar="a",
+                detail_ar="a",
+                records=[{"store_slug": "z-low-store"}],
+                records_total=1,
+            ),
+            _alert_with_records(
+                kind="failed_recovery",
+                title_ar="b",
+                detail_ar="b",
+                records=[{"store_slug": "m-high-store"}],
+                records_total=1,
+            ),
+            _alert_with_records(
+                kind="stale_recovery",
+                title_ar="c",
+                detail_ar="c",
+                records=[{"store_slug": "a-crit-store"}],
+                records_total=1,
+            ),
+        ]
+        snap = _build_store_health_snapshot(alerts, [])
+        slugs = [r["store_slug"] for r in snap["stores"]]
+        self.assertEqual(slugs[0], "a-crit-store")
+        self.assertEqual(slugs[1], "m-high-store")
+        self.assertEqual(slugs[2], "z-low-store")
+
+    def test_store_snapshot_missing_fields_safe(self) -> None:
+        alerts = [
+            _alert_with_records(
+                kind="store_needs_setup",
+                title_ar="x",
+                detail_ar="x",
+                records=[{"store_slug": "bare-slug"}],
+                records_total=1,
+            ),
+        ]
+        snap = _build_store_health_snapshot(alerts, [])
+        row = snap["stores"][0]
+        self.assertEqual(row["display_name"], "bare-slug")
+        self.assertEqual(row["last_cart_event_at"], "غير متوفر")
+        self.assertIn(row["readiness_status_ar"], ("غير متوفر", "جاهز"))
+
+    def test_page_renders_store_health_section(self) -> None:
+        self._login()
+        r = self.client.get("/admin/operations")
+        self.assertEqual(r.status_code, 200)
+        self.assertIn("حالة المتاجر", r.text)
 
     def test_system_health_stable_when_no_alerts(self) -> None:
         health = _build_system_health_summary([])

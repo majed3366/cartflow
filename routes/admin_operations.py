@@ -324,7 +324,7 @@ def admin_operations_dashboard(request: Request) -> Any:
         ops = build_admin_operations_center_v1_readonly()
     except Exception:  # noqa: BLE001
         ops = {
-            "version": "admin_operations_center_v1_4",
+            "version": "admin_operations_center_v1_5",
             "generated_at_utc": None,
             "system_health_summary": {
                 "status_key": "stable",
@@ -336,6 +336,11 @@ def admin_operations_dashboard(request: Request) -> Any:
                 "medium_count": 0,
                 "low_count": 0,
                 "total_alerts": 0,
+            },
+            "store_health_snapshot": {
+                "stores": [],
+                "total_stores": 0,
+                "available": True,
             },
             "scheduler": {
                 "role": "غير متوفر",

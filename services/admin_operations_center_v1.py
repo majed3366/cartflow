@@ -120,6 +120,25 @@ _DEFAULT_ALERT_SEVERITY: dict[str, Any] = {
 
 _VALID_SEVERITY_BUCKETS = frozenset({"critical", "high", "medium", "low"})
 
+_SEVERITY_RANK: dict[str, int] = {
+    "critical": 0,
+    "high": 1,
+    "medium": 2,
+    "low": 3,
+}
+
+_STORE_SNAPSHOT_KINDS = frozenset(
+    {
+        "store_needs_setup",
+        "whatsapp_missing",
+        "no_cart_events",
+        "failed_recovery",
+        "stale_recovery",
+    }
+)
+
+_MAX_STORE_SNAPSHOT = 150
+
 _SYSTEM_HEALTH_STATUS_AR: dict[str, dict[str, str]] = {
     "urgent_attention": {
         "status_ar": "تحتاج انتباه عاجل",
@@ -273,6 +292,161 @@ def _build_system_health_summary(alerts: list[dict[str, Any]]) -> dict[str, Any]
         "medium_count": medium_count,
         "low_count": low_count,
         "total_alerts": total_alerts,
+    }
+
+
+def _severity_ar_for_bucket(severity: str) -> str:
+    sev = _safe_str(severity, 32).lower()
+    for meta in _ALERT_SEVERITY_AR.values():
+        if meta.get("severity") == sev:
+            return str(meta.get("severity_ar") or _DEFAULT_ALERT_SEVERITY["severity_ar"])
+    return str(_DEFAULT_ALERT_SEVERITY["severity_ar"])
+
+
+def _escalate_severity(current: str, new: str) -> str:
+    cur_rank = _SEVERITY_RANK.get(_safe_str(current, 32).lower(), 99)
+    new_rank = _SEVERITY_RANK.get(_safe_str(new, 32).lower(), 99)
+    if new_rank < cur_rank:
+        return _safe_str(new, 32).lower() or "low"
+    return _safe_str(current, 32).lower() or "low"
+
+
+def _store_lookup_by_slug(store_rows: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    out: dict[str, dict[str, Any]] = {}
+    for row in store_rows or []:
+        if not isinstance(row, dict):
+            continue
+        slug = _safe_str(row.get("store_slug"), 128)
+        if slug:
+            out[slug] = row
+    return out
+
+
+def _empty_store_snapshot_row(
+    slug: str,
+    store_meta: dict[str, Any] | None,
+) -> dict[str, Any]:
+    meta = store_meta if isinstance(store_meta, dict) else {}
+    ready = bool(meta.get("ready"))
+    return {
+        "store_slug": slug,
+        "display_name": _safe_str(meta.get("display_name"), 128) or slug,
+        "highest_severity": "low",
+        "highest_severity_ar": _DEFAULT_ALERT_SEVERITY["severity_ar"],
+        "alerts_count": 0,
+        "alert_kinds": [],
+        "readiness_status": "ready" if ready else "not_ready",
+        "readiness_status_ar": _safe_str(meta.get("readiness_status_ar"), 200)
+        or ("جاهز" if ready else "غير متوفر"),
+        "last_cart_event_at": meta.get("last_cart_event_at") or "غير متوفر",
+    }
+
+
+def _merge_store_snapshot_row(
+    entry: dict[str, Any],
+    *,
+    kind: str,
+    severity: str,
+    record: dict[str, Any] | None,
+    store_meta: dict[str, Any] | None,
+) -> None:
+    kinds: list[str] = list(entry.get("alert_kinds") or [])
+    if kind and kind not in kinds:
+        kinds.append(kind)
+        entry["alerts_count"] = _safe_int(entry.get("alerts_count")) + 1
+    entry["alert_kinds"] = kinds
+
+    highest = _escalate_severity(str(entry.get("highest_severity") or "low"), severity)
+    entry["highest_severity"] = highest
+    entry["highest_severity_ar"] = _severity_ar_for_bucket(highest)
+
+    rec = record if isinstance(record, dict) else {}
+    meta = store_meta if isinstance(store_meta, dict) else {}
+
+    display = _safe_str(rec.get("display_name"), 128) or _safe_str(meta.get("display_name"), 128)
+    if display:
+        entry["display_name"] = display
+    elif not entry.get("display_name"):
+        entry["display_name"] = entry.get("store_slug") or "—"
+
+    if meta:
+        ready = bool(meta.get("ready"))
+        entry["readiness_status"] = "ready" if ready else "not_ready"
+        status_ar = _safe_str(meta.get("readiness_status_ar"), 200)
+        if status_ar:
+            entry["readiness_status_ar"] = status_ar
+    elif rec.get("readiness_ready") is not None:
+        ready = bool(rec.get("readiness_ready"))
+        entry["readiness_status"] = "ready" if ready else "not_ready"
+        status_ar = _safe_str(rec.get("readiness_status_ar"), 200)
+        if status_ar:
+            entry["readiness_status_ar"] = status_ar
+
+    last_at = _safe_str(rec.get("last_cart_event_at"), 64) or meta.get("last_cart_event_at")
+    if last_at and last_at != "غير متوفر":
+        entry["last_cart_event_at"] = last_at
+    elif not entry.get("last_cart_event_at"):
+        entry["last_cart_event_at"] = "غير متوفر"
+
+
+def _sort_store_snapshot_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    def _key(row: dict[str, Any]) -> tuple[int, int, str]:
+        sev = _safe_str(row.get("highest_severity"), 32).lower()
+        rank = _SEVERITY_RANK.get(sev, 99)
+        count = _safe_int(row.get("alerts_count"))
+        slug = _safe_str(row.get("store_slug"), 128)
+        return (rank, -count, slug)
+
+    return sorted(rows, key=_key)
+
+
+def _build_store_health_snapshot(
+    alerts: list[dict[str, Any]],
+    store_rows: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Merge alert-affected stores into one row per store (read-only)."""
+    lookup = _store_lookup_by_slug(store_rows)
+    merged: dict[str, dict[str, Any]] = {}
+
+    for alert in alerts or []:
+        if not isinstance(alert, dict):
+            continue
+        kind = _safe_str(alert.get("kind"), 64)
+        if kind not in _STORE_SNAPSHOT_KINDS:
+            continue
+        severity = _alert_severity_bucket(alert)
+        records = alert.get("records") or []
+        if not records:
+            continue
+
+        slugs_in_alert: dict[str, dict[str, Any] | None] = {}
+        for rec in records:
+            if not isinstance(rec, dict):
+                continue
+            slug = _safe_str(rec.get("store_slug"), 128)
+            if not slug:
+                continue
+            if slug not in slugs_in_alert:
+                slugs_in_alert[slug] = rec
+            elif slugs_in_alert[slug] is None:
+                slugs_in_alert[slug] = rec
+
+        for slug, sample_rec in slugs_in_alert.items():
+            if slug not in merged:
+                merged[slug] = _empty_store_snapshot_row(slug, lookup.get(slug))
+            _merge_store_snapshot_row(
+                merged[slug],
+                kind=kind,
+                severity=severity,
+                record=sample_rec,
+                store_meta=lookup.get(slug),
+            )
+
+    stores = _sort_store_snapshot_rows(list(merged.values()))[:_MAX_STORE_SNAPSHOT]
+    return {
+        "stores": stores,
+        "total_stores": len(stores),
+        "available": True,
     }
 
 
@@ -743,11 +917,13 @@ def build_admin_operations_center_v1_readonly() -> dict[str, Any]:
         stores=store_rows,
     )
     system_health_summary = _build_system_health_summary(alerts)
+    store_health_snapshot = _build_store_health_snapshot(alerts, store_rows)
 
     return {
-        "version": "admin_operations_center_v1_4",
+        "version": "admin_operations_center_v1_5",
         "generated_at_utc": _utc_now().isoformat(),
         "system_health_summary": system_health_summary,
+        "store_health_snapshot": store_health_snapshot,
         "scheduler": scheduler,
         "recovery": recovery,
         "store_readiness": store_readiness,
@@ -761,4 +937,5 @@ __all__ = [
     "_ALERT_SEVERITY_AR",
     "_sort_alerts",
     "_build_system_health_summary",
+    "_build_store_health_snapshot",
 ]

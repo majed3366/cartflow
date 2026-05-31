@@ -325,6 +325,7 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 
 | Date (UTC) | Summary |
 |------------|---------|
+| 2026-05-31 | **Admin Operations Center v1.5 — store health snapshot:** `store_health_snapshot` on `/admin/operations` — «حالة المتاجر» table merges alert-affected stores (setup/WA/no-cart/failed/stale), escalates severity, sorts critical-first; read-only. Commit: **`feat: add store health snapshot to admin operations center`**. |
 | 2026-05-31 | **Admin Operations Center v1.4 — system health summary:** `system_health_summary` on `/admin/operations` — top «حالة النظام الآن» hero from alert severity counts (urgent_attention / needs_followup / stable_with_notes / stable) + حرج/عالي/متوسط/منخفض chips; read-only, no behavior changes. Commit: **`feat: add admin system health summary`**. |
 | 2026-05-31 | **Admin Operations Center v1.3 — alert severity ordering:** each alert has `severity` / `severity_ar` / `priority_order` (حرج → عالي → متوسط → منخفض); alerts sorted by priority then `records_total`; compact severity badge column on `/admin/operations` — read-only, no behavior changes. Commit: **`feat: add admin alert severity ordering`**. |
 | 2026-05-31 | **Admin Operations Center v1.2 — alert why/fix copy:** each alert on `/admin/operations` includes `why_ar` + `suggested_fix_ar` (store setup, WhatsApp, no cart events, failed/stale recovery); template shows «لماذا ظهر؟» and «الإجراء المقترح» under alert details — text only, no actions. Commit: **`feat: add admin alert explanations`**. |
