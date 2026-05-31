@@ -106,20 +106,22 @@ class TestActivationRoutes(unittest.TestCase):
         r = self.client.get("/")
         self.assertEqual(r.status_code, 200)
         body = r.text
-        self.assertIn("استرجع السلال المترددة بذكاء ووضوح", body)
-        self.assertIn("CartFlow يحاول استعادة العميل أثناء وجوده في المتجر", body)
+        self.assertIn("كل سلة مترددة", body)
+        self.assertIn("فرصة لم تنتهِ بعد", body)
+        self.assertIn("CartFlow يحاول مساعدة العميل أثناء وجوده في المتجر", body)
         self.assertIn("ابدأ الآن مجاناً", body)
         self.assertIn("تسجيل الدخول", body)
         self.assertIn("الودجيت أولاً", body)
         self.assertIn("واتساب عند الحاجة", body)
-        self.assertIn("كيف يعمل CartFlow؟", body)
+        self.assertIn("لوحة توضّح ما حدث", body)
+        self.assertIn("شوف كيف يعمل CartFlow", body)
         self.assertIn("العميل يضيف للسلة", body)
         self.assertIn("CartFlow يحاول المساعدة أثناء وجود العميل", body)
         self.assertIn("المحاولة الأولى تتم داخل الموقع", body)
         self.assertIn("الداشبورد يشرح ما حدث", body)
         self.assertIn("استرجاع داخل الموقع أولاً", body)
         self.assertIn("ابدأ تجربة CartFlow الآن", body)
-        self.assertIn("حالياً في مرحلة الإطلاق التجريبي والتحسين المستمر", body)
+        self.assertIn("حالياً في مرحلة الإطلاق التجريبي", body)
 
     def test_landing_no_fake_stats_or_placeholders(self) -> None:
         r = self.client.get("/")
@@ -130,6 +132,16 @@ class TestActivationRoutes(unittest.TestCase):
             "128",
             "12,450",
             "35%",
+            "70%",
+            "٧٠٪",
+            "3×",
+            "٣×",
+            "ذكاء اصطناعي",
+            "salla",
+            "zid",
+            "shopify",
+            "whatsapp business api",
+            "كوبون",
             "placeholder",
             "lorem ipsum",
             'href="#"',
@@ -144,8 +156,8 @@ class TestActivationRoutes(unittest.TestCase):
         self.assertIn("متابعة واتساب", body)
         self.assertIn("السلال المترددة", body)
         self.assertIn("معاينة توضيحية", body)
-        self.assertIn("الرئيسية", body)
         self.assertIn('href="#how"', body)
+        self.assertIn("#060e09", body)
 
     def test_landing_mobile_viewport(self) -> None:
         r = self.client.get("/")
@@ -160,6 +172,14 @@ class TestActivationRoutes(unittest.TestCase):
         self.assertIn("#166534", body)
         self.assertNotIn("#4f46e5", body)
         self.assertIn("معاينة توضيحية", body)
+
+    def test_landing_honest_faq(self) -> None:
+        r = self.client.get("/")
+        body = r.text
+        self.assertIn("هل CartFlow يعتمد على واتساب فقط؟", body)
+        self.assertIn("هل أحتاج تكامل رسمي الآن؟", body)
+        self.assertIn("هل النتائج مضمونة؟", body)
+        self.assertIn("لا نعرض نسب استرجاع", body)
 
     def test_landing_cta_routes_work(self) -> None:
         signup = self.client.get("/signup", follow_redirects=False)
