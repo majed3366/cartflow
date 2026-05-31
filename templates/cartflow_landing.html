@@ -300,7 +300,12 @@
       border-radius: var(--radius);
       overflow: hidden;
       background: var(--surface);
-      box-shadow: 0 4px 16px rgba(15, 23, 42, 0.06);
+      box-shadow: 0 8px 28px rgba(15, 23, 42, 0.09);
+    }
+
+    .sec__grid--2 .shot {
+      align-self: center;
+      width: 100%;
     }
 
     .shot img {
@@ -308,6 +313,17 @@
       width: 100%;
       height: auto;
       vertical-align: top;
+      image-rendering: -webkit-optimize-contrast;
+    }
+
+    @media (min-width: 900px) {
+      .sec__grid--2 .shot img {
+        max-height: none;
+      }
+    }
+
+    .comps .shot {
+      box-shadow: 0 4px 18px rgba(15, 23, 42, 0.07);
     }
 
     .shot figcaption {
@@ -466,8 +482,8 @@
           <img
             src="/static/img/landing/carts_dashboard.png"
             alt="لقطة من لوحة السلال — قيمة السلة، سبب التردد، الحالة، والخطوة التالية"
-            width="390"
-            height="844"
+            width="471"
+            height="658"
             loading="lazy"
             decoding="async"
           />
@@ -483,8 +499,8 @@
           <img
             src="/static/img/landing/objection_reasons.png"
             alt="صفحة أسباب التردد — توزيع أسباب ترك السلة"
-            width="390"
-            height="844"
+            width="471"
+            height="696"
             loading="lazy"
             decoding="async"
           />
@@ -533,8 +549,8 @@
           <img
             src="/static/img/landing/recovery_templates.png"
             alt="صفحة قوالب الاسترجاع — مراحل طمأنة وعرض وبديل"
-            width="390"
-            height="844"
+            width="471"
+            height="554"
             loading="lazy"
             decoding="async"
           />
@@ -550,8 +566,8 @@
           <img
             src="/static/img/landing/cart-next-step.png"
             alt="بطاقة سلة — الخطوة التالية: ماذا حدث، ماذا فعل النظام، ما التالي"
-            width="390"
-            height="844"
+            width="471"
+            height="566"
             loading="lazy"
             decoding="async"
           />
@@ -602,8 +618,8 @@
               <img
                 src="/static/img/landing/widget_settings.png"
                 alt="إعدادات الودجيت — المظهر ووقت الظهور وأسباب التردد"
-                width="390"
-                height="844"
+                width="471"
+                height="634"
                 loading="lazy"
                 decoding="async"
               />
@@ -617,8 +633,8 @@
               <img
                 src="/static/img/landing/whatsapp_settings.png"
                 alt="إعدادات واتساب — قواعد الإرسال والحالة"
-                width="390"
-                height="844"
+                width="471"
+                height="498"
                 loading="lazy"
                 decoding="async"
               />
@@ -632,8 +648,8 @@
               <img
                 src="/static/img/landing/objection_reasons.png"
                 alt="لوحة التاجر — أسباب التردد والتوصيات"
-                width="390"
-                height="844"
+                width="471"
+                height="696"
                 loading="lazy"
                 decoding="async"
               />
