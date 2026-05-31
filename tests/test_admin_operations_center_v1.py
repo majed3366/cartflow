@@ -26,6 +26,7 @@ from services.admin_operations_center_v1 import (
     _compute_trend_from_counts,
     _escalate_severity,
     _INVESTIGATION_STEPS_AR,
+    _evidence_from_record,
     _investigation_steps_for_kind,
     _ownership_for_kind,
     _OWNERSHIP_BY_KIND,
@@ -72,7 +73,7 @@ class AdminOperationsCenterV1Tests(unittest.TestCase):
 
     def test_build_payload_has_required_sections(self) -> None:
         payload = build_admin_operations_center_v1_readonly()
-        self.assertEqual(payload.get("version"), "admin_operations_center_v2_1")
+        self.assertEqual(payload.get("version"), "admin_operations_center_v2_2")
         health = payload.get("system_health_summary") or {}
         for key in (
             "status_key",
@@ -282,6 +283,85 @@ class AdminOperationsCenterV1Tests(unittest.TestCase):
         r = self.client.get("/admin/operations")
         self.assertEqual(r.status_code, 200)
         self.assertIn("من أين أبدأ؟", r.text)
+
+    def test_evidence_from_recovery_record(self) -> None:
+        evidence = _evidence_from_record(
+            {
+                "recovery_key": "demo:abc123",
+                "schedule_id": 42,
+                "store_slug": "demo-store",
+                "status": "whatsapp_failed",
+                "updated_at": "2026-05-31T12:14:00+00:00",
+            }
+        )
+        self.assertEqual(evidence["recovery_key"], "demo:abc123")
+        self.assertEqual(evidence["schedule_id"], 42)
+        self.assertEqual(evidence["store_slug"], "demo-store")
+        self.assertEqual(evidence["last_status"], "whatsapp_failed")
+        self.assertEqual(evidence["last_updated_at"], "2026-05-31 12:14")
+
+    def test_evidence_missing_fields_omitted(self) -> None:
+        evidence = _evidence_from_record({"store_slug": "only-store"})
+        self.assertEqual(evidence, {"store_slug": "only-store"})
+        self.assertNotIn("recovery_key", evidence)
+        self.assertNotIn("schedule_id", evidence)
+
+    def test_alert_with_records_includes_evidence_when_available(self) -> None:
+        alert = _alert_with_records(
+            kind="failed_recovery",
+            title_ar="x",
+            detail_ar="x",
+            records=[
+                {
+                    "recovery_key": "demo:abc123",
+                    "schedule_id": 7,
+                    "store_slug": "demo",
+                    "status": "failed_resume",
+                    "updated_at": "2026-05-31T10:00:00+00:00",
+                }
+            ],
+        )
+        self.assertIn("evidence", alert)
+        self.assertEqual(alert["evidence"]["recovery_key"], "demo:abc123")
+        self.assertEqual(alert["evidence"]["schedule_id"], 7)
+
+    def test_alert_without_evidence_omits_key(self) -> None:
+        alert = _alert_with_records(
+            kind="store_needs_setup",
+            title_ar="x",
+            detail_ar="x",
+            records=[],
+        )
+        self.assertNotIn("evidence", alert)
+
+    def test_top_risks_include_evidence_when_available(self) -> None:
+        alerts = [
+            _alert_with_records(
+                kind="stale_recovery",
+                title_ar="s",
+                detail_ar="s",
+                records=[
+                    {
+                        "recovery_key": "k1",
+                        "schedule_id": 99,
+                        "store_slug": "s1",
+                        "status": "running",
+                        "updated_at": "2026-05-31T08:00:00+00:00",
+                    }
+                ],
+                records_total=1,
+            ),
+        ]
+        top = _build_top_risks(alerts)
+        self.assertIn("evidence", top["risks"][0])
+        self.assertEqual(top["risks"][0]["evidence"]["schedule_id"], 99)
+
+    def test_page_renders_evidence_when_present(self) -> None:
+        self._login()
+        r = self.client.get("/admin/operations")
+        self.assertEqual(r.status_code, 200)
+        if "الأدلة المرتبطة" in r.text:
+            self.assertIn("Recovery Key:", r.text)
 
     def test_alert_with_records_applies_explanations_by_kind(self) -> None:
         alert = _alert_with_records(

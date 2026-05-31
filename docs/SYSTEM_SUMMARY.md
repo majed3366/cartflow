@@ -109,7 +109,7 @@ Server-side template control (**`exit_intent_*`** on **`Store`**): `services/sto
 | `POST /webhook/whatsapp/status` | `routes/whatsapp_delivery_webhook.py` | Twilio status callbacks → `whatsapp_delivery_truth_v1` (`[WA DELIVERY EVENT]` / `[WA DELIVERY TRUTH]`); no recovery execution. |
 | `GET /admin/support-diagnostics` | `routes/admin_ops.py` | Admin JSON: `build_admin_support_diagnostics` — What/Why/Action for support (session/store/recovery_key). |
 | `GET /admin/support-diagnostics/ui` | `routes/admin_ops.py` | Admin HTML «تشخيص الدعم» (sidebar under التشغيل). |
-| `GET /admin/operations` | `routes/admin_operations.py` | **Admin Operations Center v2.1** — read-only ops dashboard with guided investigation (`investigation_steps_ar` on alerts and top risks); `CARTFLOW_ADMIN_PASSWORD` session. |
+| `GET /admin/operations` | `routes/admin_operations.py` | **Admin Operations Center v2.2** — read-only ops dashboard with evidence references (`evidence` on alerts/top risks: recovery_key, schedule_id, store_slug, status, updated_at); `CARTFLOW_ADMIN_PASSWORD` session. |
 | `GET /admin/operational-health` | `routes/admin_operations.py` | Deep operational control / risk cards (`services/admin_operational_health.py`). |
 | `GET /health/scheduler` | `main.py` | Scheduler role + overdue/stale counts (same source as ops center scheduler card). |
 | `GET /demo/store`, `/demo/store/cart`, `/demo/store/checkout`, `/demo/cart`, `/demo/cart/checkout`, `/demo/store/product/{id}` | `main.py` | **Commerce sandbox (default `store_slug=demo`):** multi-page catalog, cart, lightweight checkout. |
@@ -325,6 +325,7 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 
 | Date (UTC) | Summary |
 |------------|---------|
+| 2026-05-29 | **Admin Operations Center v2.2 — evidence references:** `evidence` on alerts and top risks — «الأدلة المرتبطة» shows recovery_key, schedule_id, store_slug, last_status, last_updated_at from existing records only; empty evidence hidden; read-only. Commit: **`feat: add operational evidence references`**. |
 | 2026-05-29 | **Admin Operations Center v2.1 — guided investigation:** `investigation_steps_ar` on alerts and top risks — «من أين أبدأ؟» ordered steps per alert kind with safe fallback for unknown kinds; read-only hints only. Commit: **`feat: add guided investigation hints`**. |
 | 2026-05-29 | **Admin Operations Center v2.0 — root cause groups:** `root_cause_groups` on `/admin/operations` — «مصادر المشاكل الرئيسية» aggregates alerts by `owner_key` with alerts/stores counts, severity escalation, and distinct alert kinds; sorted critical-first; read-only. Commit: **`feat: add root cause groups`**. |
 | 2026-05-29 | **Admin Operations Center v1.9 — operational ownership:** `owner_key` / `owner_ar` on alerts, top risks, and operational timeline — maps each alert kind to merchant setup, WhatsApp provider, widget integration, scheduler, or CartFlow system; «المالك المحتمل» in UI; read-only, no behavior changes. Commit: **`feat: add operational ownership classification`**. |

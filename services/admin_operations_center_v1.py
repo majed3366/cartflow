@@ -380,6 +380,60 @@ def _investigation_steps_for_kind(kind: str) -> list[str]:
     return list(_DEFAULT_INVESTIGATION_STEPS_AR)
 
 
+def _evidence_display_dt(val: Any) -> str | None:
+    """Compact UTC display for evidence timestamps (from existing values only)."""
+    if isinstance(val, datetime):
+        iso = _fmt_dt(val)
+    else:
+        iso = None
+    if not iso:
+        s = _safe_str(val, 64)
+        if not s or s == "غير متوفر":
+            return None
+        iso = s
+    try:
+        dt = datetime.fromisoformat(iso.replace("Z", "+00:00"))
+        if dt.tzinfo is not None:
+            dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
+        return dt.strftime("%Y-%m-%d %H:%M")
+    except (TypeError, ValueError):
+        return iso[:19] if iso else None
+
+
+def _evidence_from_record(record: dict[str, Any] | None) -> dict[str, Any]:
+    """Build safe evidence references from an existing alert record (read-only)."""
+    rec = record if isinstance(record, dict) else {}
+    evidence: dict[str, Any] = {}
+
+    recovery_key = _safe_str(rec.get("recovery_key"), 512)
+    if recovery_key:
+        evidence["recovery_key"] = recovery_key
+
+    schedule_id = rec.get("schedule_id")
+    if schedule_id is None:
+        schedule_id = rec.get("id")
+    try:
+        sid = int(schedule_id) if schedule_id is not None else 0
+        if sid > 0:
+            evidence["schedule_id"] = sid
+    except (TypeError, ValueError):
+        pass
+
+    store_slug = _safe_str(rec.get("store_slug"), 128)
+    if store_slug:
+        evidence["store_slug"] = store_slug
+
+    last_status = _safe_str(rec.get("status"), 64)
+    if last_status:
+        evidence["last_status"] = last_status
+
+    last_updated = _evidence_display_dt(rec.get("updated_at"))
+    if last_updated:
+        evidence["last_updated_at"] = last_updated
+
+    return evidence
+
+
 def _escalate_severity(current: str, candidate: str) -> str:
     cur = _safe_str(current, 32).lower()
     cand = _safe_str(candidate, 32).lower()
@@ -927,6 +981,7 @@ def _risk_row_from_alert_record(
         "suggested_next_step_ar": copy.get("suggested_next_step_ar")
         or _safe_str(alert.get("suggested_fix_ar"), 300),
         "investigation_steps_ar": _investigation_steps_for_kind(kind),
+        "evidence": _evidence_from_record(rec if rec else None),
         **_ownership_for_kind(kind),
         "_recency_ts": _recency_timestamp(_record_recency_key(rec)),
         "_priority_order": sev_meta["priority_order"],
@@ -972,8 +1027,7 @@ def _build_top_risks(alerts: list[dict[str, Any]]) -> dict[str, Any]:
     ranked = _sort_top_risks(candidates)[:_MAX_TOP_RISKS]
     risks: list[dict[str, Any]] = []
     for row in ranked:
-        risks.append(
-            {
+        item: dict[str, Any] = {
                 "risk_kind": row.get("risk_kind"),
                 "risk_title_ar": row.get("risk_title_ar"),
                 "severity": row.get("severity"),
@@ -985,8 +1039,11 @@ def _build_top_risks(alerts: list[dict[str, Any]]) -> dict[str, Any]:
                 "owner_key": row.get("owner_key") or "unknown",
                 "owner_ar": row.get("owner_ar") or _OPERATIONAL_OWNERS_AR["unknown"],
                 "investigation_steps_ar": list(row.get("investigation_steps_ar") or []),
-            }
-        )
+        }
+        evidence = dict(row.get("evidence") or {})
+        if evidence:
+            item["evidence"] = evidence
+        risks.append(item)
     return {
         "risks": risks,
         "total_candidates": len(candidates),
@@ -1399,7 +1456,9 @@ def _alert_with_records(
     expl = _ALERT_EXPLANATIONS_AR.get(kind) or {}
     sev = _severity_for_kind(kind)
     owner = _ownership_for_kind(kind)
-    return {
+    primary = shown[0] if shown else None
+    evidence = _evidence_from_record(primary if isinstance(primary, dict) else None)
+    payload: dict[str, Any] = {
         "kind": kind,
         "severity": sev["severity"],
         "severity_ar": sev["severity_ar"],
@@ -1415,6 +1474,9 @@ def _alert_with_records(
         "records_total": total,
         "records_hidden": hidden,
     }
+    if evidence:
+        payload["evidence"] = evidence
+    return payload
 
 
 def _recovery_status_summary() -> dict[str, Any]:
@@ -1587,6 +1649,7 @@ def _fetch_schedule_rows(*, status_filter: Any) -> list[Any]:
         db.create_all()
         return (
             db.session.query(
+                RecoverySchedule.id,
                 RecoverySchedule.recovery_key,
                 RecoverySchedule.store_slug,
                 RecoverySchedule.status,
@@ -1615,6 +1678,12 @@ def _recovery_record(
         "status": _safe_str(getattr(row, "status", None), 64),
         "updated_at": _fmt_dt(getattr(row, "updated_at", None)) or "غير متوفر",
     }
+    try:
+        row_id = getattr(row, "id", None)
+        if row_id is not None:
+            rec["schedule_id"] = int(row_id)
+    except (TypeError, ValueError):
+        pass
     due = _fmt_dt(getattr(row, "due_at", None))
     if due:
         rec["due_at"] = due
@@ -1860,7 +1929,7 @@ def build_admin_operations_center_v1_readonly() -> dict[str, Any]:
     root_cause_groups = _build_root_cause_groups(alerts)
 
     return {
-        "version": "admin_operations_center_v2_1",
+        "version": "admin_operations_center_v2_2",
         "generated_at_utc": _utc_now().isoformat(),
         "system_health_summary": system_health_summary,
         "store_health_snapshot": store_health_snapshot,
@@ -1898,4 +1967,5 @@ __all__ = [
     "_escalate_severity",
     "_investigation_steps_for_kind",
     "_INVESTIGATION_STEPS_AR",
+    "_evidence_from_record",
 ]
