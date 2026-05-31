@@ -136,6 +136,14 @@ class TestActivationRoutes(unittest.TestCase):
         self.assertIn('dir="rtl"', r.text)
         self.assertIn('lang="ar"', r.text)
 
+    def test_landing_dashboard_green_identity(self) -> None:
+        r = self.client.get("/")
+        body = r.text
+        self.assertIn("#16a34a", body)
+        self.assertIn("#166534", body)
+        self.assertNotIn("#4f46e5", body)
+        self.assertIn("معاينة توضيحية للوحة التاجر", body)
+
     def test_landing_cta_routes_work(self) -> None:
         signup = self.client.get("/signup", follow_redirects=False)
         self.assertEqual(signup.status_code, 200)
