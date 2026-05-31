@@ -98,7 +98,51 @@ class TestActivationRoutes(unittest.TestCase):
         self.assertEqual(r.status_code, 200)
         body = r.text
         self.assertIn('href="/signup"', body)
+        self.assertIn('href="/login"', body)
         self.assertNotIn('href="/register"', body)
+        self.assertNotIn('href="/dashboard"', body)
+
+    def test_landing_merchant_entry_copy(self) -> None:
+        r = self.client.get("/")
+        self.assertEqual(r.status_code, 200)
+        body = r.text
+        self.assertIn("استرجع السلال المترددة بذكاء ووضوح", body)
+        self.assertIn("CartFlow يفهم سبب تردد العميل من الودجيت", body)
+        self.assertIn("ابدأ الآن", body)
+        self.assertIn("تسجيل الدخول", body)
+        self.assertIn("كيف يعمل؟", body)
+        self.assertIn("العميل يضيف للسلة", body)
+        self.assertIn("الداشبورد يشرح ما حدث", body)
+        self.assertIn("لماذا يناسب التجار؟", body)
+        self.assertIn("ابدأ تجربة CartFlow", body)
+        self.assertIn("حالياً في مرحلة الإطلاق التجريبي والتحسين المستمر", body)
+
+    def test_landing_no_fake_stats_or_placeholders(self) -> None:
+        r = self.client.get("/")
+        body = r.text.lower()
+        for banned in (
+            "500 stores",
+            "500 متجر",
+            "placeholder",
+            "lorem ipsum",
+            "href=\"#\"",
+            "href=\"javascript:",
+        ):
+            self.assertNotIn(banned, body, msg=f"unexpected {banned!r}")
+
+    def test_landing_mobile_viewport(self) -> None:
+        r = self.client.get("/")
+        self.assertIn('name="viewport"', r.text)
+        self.assertIn('dir="rtl"', r.text)
+        self.assertIn('lang="ar"', r.text)
+
+    def test_landing_cta_routes_work(self) -> None:
+        signup = self.client.get("/signup", follow_redirects=False)
+        self.assertEqual(signup.status_code, 200)
+        self.assertIn("إنشاء حساب", signup.text)
+        login = self.client.get("/login", follow_redirects=False)
+        self.assertEqual(login.status_code, 200)
+        self.assertIn("تسجيل الدخول", login.text)
 
     def test_test_widget_requires_login(self) -> None:
         r = self.client.get("/dashboard/test-widget", follow_redirects=False)

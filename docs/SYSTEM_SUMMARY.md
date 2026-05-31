@@ -8,7 +8,7 @@ CartFlow is a FastAPI application that:
 - Receives **cart lifecycle events** (e.g. abandon, conversion) via **`POST /api/cart-event`** and schedules **delayed WhatsApp recovery** (Twilio path in `services/whatsapp_send.py`; Meta Cloud API path in `main.send_whatsapp_message` for interactive CTA messages used elsewhere).
 - Persists **store settings**, **abandoned carts**, **recovery reasons**, and **recovery logs** in SQLAlchemy models (`models.py`), with optional schema patches via `schema_widget.py`.
 - Serves **merchant dashboards** as Jinja2 HTML under `/dashboard/*`, loading/saving settings through **`GET`/`POST /api/recovery-settings`** and related APIs.
-- **`GET /`** — public marketing page: `templates/cartflow_landing.html` (inline styles; may use `static/img/cartflow_landing_reference.jpg` when the build serves a pixel reference); **`GET /register`** — placeholder registration links from CTAs.
+- **`GET /`** — public marketing landing (`templates/cartflow_landing.html`): Arabic RTL merchant entry flow (hero, how-it-works, benefits, honest beta trust block); CTAs **`/signup`** (ابدأ الآن) and **`/login`** (تسجيل الدخول); **`GET /register`** redirects to **`/signup`**.
 
 ---
 
@@ -325,6 +325,7 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 
 | Date (UTC) | Summary |
 |------------|---------|
+| 2026-05-29 | **Merchant Entry Flow v1 — landing to signup:** `GET /` rebuilt as Arabic RTL SaaS landing (`cartflow_landing.html`) — hero, how-it-works (5 steps), merchant benefits, honest beta trust block, final CTA; real links to **`/signup`** and **`/login`** (no pixel reference / placeholder CTAs); tests in `test_merchant_activation_v1.py`. Commit: **`feat: add merchant entry landing flow`**. |
 | 2026-05-29 | **Admin Operations Performance v1 — lazy load collapsed sections:** `/admin/operations` initial payload builds command center only (`system_health_summary`, `top_risks`, `store_health_snapshot`); investigation (scheduler, recovery, readiness, alerts) and analytics (trends, timeline, root causes) load on first panel expand via `GET /admin/operations/section/investigation` and `/section/analytics` with client-side fetch-once cache; same admin auth; no recovery/scheduler/WhatsApp changes. Commit: **`perf: lazy load admin operations sections`**. |
 | 2026-05-29 | **Admin Operations Center IA v1 — page reorganization:** `/admin/operations` template-only three-level layout — Command Center (حالة النظام، أهم المخاطر، حالة المتاجر always visible), collapsible «التحقيق والتشخيص» (alerts + scheduler/recovery/readiness), collapsible «التحليل والاتجاهات» (trends, timeline, root causes); no payload/behavior changes. Commit: **`refactor: reorganize admin operations information architecture`**. |
 | 2026-05-29 | **Admin Operations Center v2.2 — evidence references:** `evidence` on alerts and top risks — «الأدلة المرتبطة» shows recovery_key, schedule_id, store_slug, last_status, last_updated_at from existing records only; empty evidence hidden; read-only. Commit: **`feat: add operational evidence references`**. |
