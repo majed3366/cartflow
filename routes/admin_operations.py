@@ -324,7 +324,7 @@ def admin_operations_dashboard(request: Request) -> Any:
         ops = build_admin_operations_center_v1_readonly()
     except Exception:  # noqa: BLE001
         ops = {
-            "version": "admin_operations_center_v1_1",
+            "version": "admin_operations_center_v1_2",
             "generated_at_utc": None,
             "scheduler": {
                 "role": "غير متوفر",

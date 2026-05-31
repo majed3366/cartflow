@@ -14,6 +14,7 @@ from main import app
 from models import RecoverySchedule, Store
 from services.recovery_restart_survival import STATUS_RUNNING, STATUS_WHATSAPP_FAILED
 from services.admin_operations_center_v1 import (
+    _ALERT_EXPLANATIONS_AR,
     _alert_with_records,
     build_admin_operations_center_v1_readonly,
 )
@@ -49,7 +50,7 @@ class AdminOperationsCenterV1Tests(unittest.TestCase):
 
     def test_build_payload_has_required_sections(self) -> None:
         payload = build_admin_operations_center_v1_readonly()
-        self.assertEqual(payload.get("version"), "admin_operations_center_v1_1")
+        self.assertEqual(payload.get("version"), "admin_operations_center_v1_2")
         sch = payload.get("scheduler") or {}
         for key in ("role", "overdue_scheduled_count", "running_stale_count"):
             self.assertIn(key, sch)
@@ -111,6 +112,13 @@ class AdminOperationsCenterV1Tests(unittest.TestCase):
             self.assertIn("kind", alert)
             self.assertIn("title_ar", alert)
             self.assertIn("detail_ar", alert)
+            self.assertIn("why_ar", alert)
+            self.assertIn("suggested_fix_ar", alert)
+            self.assertTrue(alert.get("why_ar"), msg=f"missing why_ar for {alert.get('kind')}")
+            self.assertTrue(
+                alert.get("suggested_fix_ar"),
+                msg=f"missing suggested_fix_ar for {alert.get('kind')}",
+            )
             self.assertIn("records", alert)
             self.assertIn("records_total", alert)
             self.assertIn("records_hidden", alert)
@@ -118,6 +126,31 @@ class AdminOperationsCenterV1Tests(unittest.TestCase):
             self.assertLessEqual(len(records), 5)
             if alert.get("records_total", 0) > 5:
                 self.assertGreater(alert.get("records_hidden", 0), 0)
+
+    def test_all_alert_kinds_have_explanation_catalog(self) -> None:
+        for kind in (
+            "store_needs_setup",
+            "whatsapp_missing",
+            "no_cart_events",
+            "failed_recovery",
+            "stale_recovery",
+        ):
+            self.assertIn(kind, _ALERT_EXPLANATIONS_AR)
+            self.assertTrue(_ALERT_EXPLANATIONS_AR[kind].get("why_ar"))
+            self.assertTrue(_ALERT_EXPLANATIONS_AR[kind].get("suggested_fix_ar"))
+
+    def test_alert_with_records_applies_explanations_by_kind(self) -> None:
+        alert = _alert_with_records(
+            kind="failed_recovery",
+            severity="danger",
+            title_ar="test",
+            detail_ar="test",
+        )
+        self.assertEqual(alert["why_ar"], _ALERT_EXPLANATIONS_AR["failed_recovery"]["why_ar"])
+        self.assertEqual(
+            alert["suggested_fix_ar"],
+            _ALERT_EXPLANATIONS_AR["failed_recovery"]["suggested_fix_ar"],
+        )
 
     def test_alert_with_records_hidden_count(self) -> None:
         recs = [{"recovery_key": f"k{i}", "status": "failed"} for i in range(8)]
@@ -261,15 +294,15 @@ class AdminOperationsCenterV1Tests(unittest.TestCase):
             except Exception:  # noqa: BLE001
                 db.session.rollback()
 
-    def test_page_renders_alert_detail_labels(self) -> None:
+    def test_page_renders_explanation_labels_when_alerts_present(self) -> None:
+        payload = build_admin_operations_center_v1_readonly()
+        if not payload.get("alerts"):
+            self.skipTest("no alerts in current DB")
         self._login()
         r = self.client.get("/admin/operations")
         self.assertEqual(r.status_code, 200)
-        body = r.text
-        if "مفتاح الاسترجاع" in body or "المتجر:" in body:
-            self.assertTrue(
-                "مفتاح الاسترجاع" in body or "آخر حدث سلة" in body or "تفاصيل إضافية" in body
-            )
+        self.assertIn("لماذا ظهر", r.text)
+        self.assertIn("الإجراء المقترح", r.text)
 
 
 if __name__ == "__main__":

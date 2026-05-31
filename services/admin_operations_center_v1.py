@@ -40,6 +40,49 @@ _EXPIRED_STATUSES = frozenset(
     }
 )
 
+# Read-only admin copy — why + suggested fix per alert kind (v1.2).
+_ALERT_EXPLANATIONS_AR: dict[str, dict[str, str]] = {
+    "store_needs_setup": {
+        "why_ar": "ظهر هذا التنبيه لأن المتجر لم يكمل إعداداته الأساسية بعد.",
+        "suggested_fix_ar": (
+            "راجع إعدادات المتجر وأكمل الحقول الناقصة قبل تفعيل الاسترجاع."
+        ),
+    },
+    "whatsapp_missing": {
+        "why_ar": "ظهر هذا التنبيه لأن المتجر لا يملك إعداد واتساب جاهزًا للإرسال.",
+        "suggested_fix_ar": (
+            "أكمل ربط مزود واتساب أو رقم الإرسال قبل تشغيل الاسترجاع الفعلي."
+        ),
+    },
+    "no_cart_events": {
+        "why_ar": (
+            "ظهر هذا التنبيه لأن النظام لم يستقبل أحداث سلة حديثة "
+            "لهذا المتجر خلال آخر 7 أيام."
+        ),
+        "suggested_fix_ar": (
+            "تحقق من تركيب الودجيت أو التكامل، ثم اختبر إضافة منتج للسلة "
+            "للتأكد من وصول الأحداث."
+        ),
+    },
+    "failed_recovery": {
+        "why_ar": "ظهر هذا التنبيه لأن محاولة استرجاع واحدة أو أكثر انتهت بحالة فشل.",
+        "suggested_fix_ar": (
+            "راجع تفاصيل الاسترجاع والخطأ المختصر، ثم تحقق من مزود واتساب "
+            "أو بيانات العميل قبل إعادة المحاولة يدويًا."
+        ),
+    },
+    "stale_recovery": {
+        "why_ar": (
+            "ظهر هذا التنبيه لأن هناك استرجاعًا عالقًا في حالة تشغيل "
+            "لمدة أطول من المتوقع."
+        ),
+        "suggested_fix_ar": (
+            "راجع مفتاح الاسترجاع ووقت آخر تحديث، ثم تحقق من حالة "
+            "الـ Scheduler قبل اتخاذ أي إجراء."
+        ),
+    },
+}
+
 
 def _utc_now() -> datetime:
     return datetime.now(timezone.utc)
@@ -100,16 +143,21 @@ def _alert_with_records(
     detail_ar: str,
     records: list[dict[str, Any]] | None = None,
     records_total: int | None = None,
+    why_ar: str | None = None,
+    suggested_fix_ar: str | None = None,
 ) -> dict[str, Any]:
     recs = list(records or [])
     total = _safe_int(records_total, len(recs))
     shown = recs[:_MAX_RECORDS_PER_ALERT]
     hidden = max(0, total - len(shown))
+    expl = _ALERT_EXPLANATIONS_AR.get(kind) or {}
     return {
         "kind": kind,
         "severity": severity,
         "title_ar": title_ar,
         "detail_ar": detail_ar,
+        "why_ar": why_ar or expl.get("why_ar") or "",
+        "suggested_fix_ar": suggested_fix_ar or expl.get("suggested_fix_ar") or "",
         "records": shown,
         "records_total": total,
         "records_hidden": hidden,
@@ -564,7 +612,7 @@ def build_admin_operations_center_v1_readonly() -> dict[str, Any]:
     )
 
     return {
-        "version": "admin_operations_center_v1_1",
+        "version": "admin_operations_center_v1_2",
         "generated_at_utc": _utc_now().isoformat(),
         "scheduler": scheduler,
         "recovery": recovery,

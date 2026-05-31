@@ -150,6 +150,16 @@
             <td class="px-4 py-2.5 font-medium text-slate-900">{{ a.title_ar }}</td>
             <td class="px-4 py-2.5 text-slate-600">
               <p>{{ a.detail_ar }}</p>
+              {% if a.why_ar or a.suggested_fix_ar %}
+              <div class="mt-2 space-y-1 rounded-lg border border-slate-100 bg-white px-3 py-2 text-xs leading-relaxed">
+                {% if a.why_ar %}
+                <p><span class="font-medium text-slate-600">لماذا ظهر؟</span> {{ a.why_ar }}</p>
+                {% endif %}
+                {% if a.suggested_fix_ar %}
+                <p class="{% if a.why_ar %}mt-1{% endif %}"><span class="font-medium text-slate-600">الإجراء المقترح:</span> {{ a.suggested_fix_ar }}</p>
+                {% endif %}
+              </div>
+              {% endif %}
               {% if a.records %}
               <div class="mt-3 space-y-2">
                 {% for r in a.records %}
