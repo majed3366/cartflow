@@ -325,6 +325,7 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 
 | Date (UTC) | Summary |
 |------------|---------|
+| 2026-05-29 | **Landing — focused product assets:** landing screenshots re-cropped to feature-only assets (chart/recommendations, recovery stages, cart card, widget controls, WhatsApp toggle+status); tighter section spacing; `scripts/crop_landing_screenshots.py` loads originals from git. Commit: **`style: transform screenshots into focused product assets`**. |
 | 2026-05-29 | **Landing — screenshot presentation cleanup:** cropped real product screenshots in `static/img/landing/` (remove Safari chrome, tighten to UI); `scripts/crop_landing_screenshots.py`; `.shot` CSS polish + correct intrinsic dimensions on landing images. Commit: **`style: clean landing screenshots and improve product presentation`**. |
 | 2026-05-31 | **Landing — real product story:** `cartflow_landing.html` rebuilt around actual product (objection reasons, recovery template stages, carts dashboard visibility, widget/WhatsApp as supporting components); real screenshots in `static/img/landing/`; honest beta copy — no fake ROI or integration claims. |
 | 2026-05-29 | **Landing V2.1 — premium dark-green polish:** `cartflow_landing.html` restyled with dark green/glass reference direction (hero glow, Tajawal, product preview grid, FAQ accordion); safe widget-first copy only — no fake metrics, AI, ROI, or unfinished integration claims. Commit: **`style: polish landing page premium visual direction`**. |
