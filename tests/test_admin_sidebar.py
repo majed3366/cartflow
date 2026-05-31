@@ -48,14 +48,14 @@ class AdminSidebarTests(unittest.TestCase):
     def test_operations_overview_active(self) -> None:
         r = self.client.get("/admin/operations")
         self.assertEqual(r.status_code, 200)
-        self.assertIn("لوحة عامة", r.text)
+        self.assertIn("مركز العمليات", r.text)
         self.assertIn('href="/admin/operations"', r.text)
 
-    def test_placeholder_control(self) -> None:
+    def test_control_page_renders(self) -> None:
         r = self.client.get("/admin/control")
         self.assertEqual(r.status_code, 200)
-        self.assertIn("قيد التطوير", r.text)
         self.assertIn("التحكم التشغيلي", r.text)
+        self.assertIn("/admin/control/apply", r.text)
         self.assertNotIn('id="operational-verdict"', r.text)
 
     def test_placeholder_stores(self) -> None:

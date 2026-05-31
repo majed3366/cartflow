@@ -12,11 +12,6 @@ from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
-from services.cartflow_admin_operational_guidance import derive_admin_operational_guidance
-from services.cartflow_admin_action_guidance import (
-    actionable_panel_meta,
-    derive_actionable_operational_items,
-)
 from services.cartflow_admin_http_auth import (
     admin_cookie_name,
     admin_password_configured,
@@ -25,20 +20,6 @@ from services.cartflow_admin_http_auth import (
     verify_admin_password,
 )
 from services.admin_operational_health import build_admin_operational_health_readonly
-from services.cartflow_admin_operational_summary import (
-    ADMIN_PLATFORM_CATEGORY_DEGRADED,
-    ADMIN_PLATFORM_CATEGORY_HEALTHY,
-    ADMIN_PLATFORM_CATEGORY_ONBOARDING_BLOCKED,
-    ADMIN_PLATFORM_CATEGORY_OPERATIONAL_ATTENTION,
-    ADMIN_PLATFORM_CATEGORY_PROVIDER_ATTENTION,
-    ADMIN_PLATFORM_CATEGORY_RUNTIME_WARNING,
-    ADMIN_PLATFORM_CATEGORY_SANDBOX_ONLY,
-    TRUST_DEGRADED,
-    TRUST_PARTIAL,
-    TRUST_READY,
-    TRUST_UNSTABLE,
-    build_admin_operational_summary_readonly,
-)
 
 _ROOT = Path(__file__).resolve().parent.parent
 templates = Jinja2Templates(directory=str(_ROOT / "templates"))
@@ -130,24 +111,6 @@ _ADMIN_PLACEHOLDER_PAGES: tuple[tuple[str, str, str, str], ...] = (
         "تشخيصات تقنية للدعم — قريباً.",
     ),
 )
-
-_PLATFORM_CATEGORY_LABEL_AR: dict[str, str] = {
-    ADMIN_PLATFORM_CATEGORY_HEALTHY: "سليم",
-    ADMIN_PLATFORM_CATEGORY_ONBOARDING_BLOCKED: "إعداد معطّل",
-    ADMIN_PLATFORM_CATEGORY_PROVIDER_ATTENTION: "مزود",
-    ADMIN_PLATFORM_CATEGORY_RUNTIME_WARNING: "تشغيل",
-    ADMIN_PLATFORM_CATEGORY_OPERATIONAL_ATTENTION: "تشغيل دقيق",
-    ADMIN_PLATFORM_CATEGORY_DEGRADED: "متدهور",
-    ADMIN_PLATFORM_CATEGORY_SANDBOX_ONLY: "تجربة فقط",
-}
-
-_TRUST_BUCKET_LABEL_AR: dict[str, str] = {
-    TRUST_READY: "جاهز",
-    TRUST_PARTIAL: "جزئي",
-    TRUST_DEGRADED: "ضعيف",
-    TRUST_UNSTABLE: "غير مستقر",
-}
-
 
 def _render_login(request: Request, *, error: bool, next_path: str) -> Any:
     return templates.TemplateResponse(
@@ -353,39 +316,51 @@ def admin_operations_dashboard(request: Request) -> Any:
     denied = _admin_session_or_redirect(request, next_path="/admin/operations")
     if denied is not None:
         return denied
-    summary = build_admin_operational_summary_readonly()
-    guidance = derive_admin_operational_guidance(summary)
-    action_items = derive_actionable_operational_items(
-        summary, priority_key=str(guidance.get("priority_key") or "")
-    )
-    action_meta = actionable_panel_meta(
-        summary,
-        priority_key=str(guidance.get("priority_key") or ""),
-        action_items=action_items,
-    )
-    agg = summary.get("aggregate_onboarding") or {}
-    tcounts = agg.get("trust_bucket_counts") or {}
-    platform_cat = str(summary.get("platform_admin_category") or "")
+    try:
+        from services.admin_operations_center_v1 import (  # noqa: PLC0415
+            build_admin_operations_center_v1_readonly,
+        )
+
+        ops = build_admin_operations_center_v1_readonly()
+    except Exception:  # noqa: BLE001
+        ops = {
+            "version": "admin_operations_center_v1",
+            "generated_at_utc": None,
+            "scheduler": {
+                "role": "غير متوفر",
+                "overdue_scheduled_count": 0,
+                "running_stale_count": 0,
+                "resume_enabled": False,
+                "due_scanner_enabled": False,
+                "ok": False,
+            },
+            "recovery": {
+                "scheduled": 0,
+                "running": 0,
+                "completed": 0,
+                "failed": 0,
+                "expired": 0,
+                "available": False,
+            },
+            "store_readiness": {
+                "total_stores": 0,
+                "ready_stores": 0,
+                "stores_missing_whatsapp": 0,
+                "stores_no_recent_cart_events": 0,
+                "stores_needing_setup": 0,
+                "available": False,
+            },
+            "alerts": [],
+            "health_scheduler_path": "/health/scheduler",
+        }
     return templates.TemplateResponse(
         request,
-        "admin_operations.html",
+        "admin_operations_center_v1.html",
         {
             "admin_active_nav": ADMIN_NAV_OVERVIEW,
-            "admin_page_title_ar": "لوحة عامة",
-            "admin_page_subtitle_ar": "قراءة تشغيلية هادئة — المعنى والأولوية قبل الأرقام.",
-            "summary": summary,
-            "platform_category_label_ar": _PLATFORM_CATEGORY_LABEL_AR.get(
-                platform_cat,
-                platform_cat or "—",
-            ),
-            "trust_bucket_labels_ar": _TRUST_BUCKET_LABEL_AR,
-            "trust_ready_n": int(tcounts.get(TRUST_READY, 0)),
-            "trust_partial_n": int(tcounts.get(TRUST_PARTIAL, 0)),
-            "trust_degraded_n": int(tcounts.get(TRUST_DEGRADED, 0)),
-            "trust_unstable_n": int(tcounts.get(TRUST_UNSTABLE, 0)),
-            "guidance": guidance,
-            "action_items": action_items,
-            "action_meta": action_meta,
+            "admin_page_title_ar": "مركز العمليات",
+            "admin_page_subtitle_ar": "قراءة تشغيلية موحّدة — مجدول، استرجاع، متاجر، تنبيهات.",
+            "ops": ops,
         },
     )
 
