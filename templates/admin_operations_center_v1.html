@@ -130,6 +130,7 @@
       <table class="min-w-full divide-y divide-slate-200 text-sm">
         <thead class="bg-slate-50 text-right text-xs font-medium text-slate-500">
           <tr>
+            <th class="px-4 py-2.5">الأولوية</th>
             <th class="px-4 py-2.5">النوع</th>
             <th class="px-4 py-2.5">العنوان</th>
             <th class="px-4 py-2.5">التفاصيل</th>
@@ -139,13 +140,19 @@
           {% for a in alerts %}
           <tr class="hover:bg-slate-50/80 align-top">
             <td class="px-4 py-2.5 whitespace-nowrap">
-              {% if a.severity == 'danger' %}
-              <span class="rounded-full bg-rose-100 px-2 py-0.5 text-xs font-medium text-rose-800">{{ a.kind }}</span>
-              {% elif a.severity == 'warning' %}
-              <span class="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-900">{{ a.kind }}</span>
+              {% set sev = a.severity or 'low' %}
+              {% if sev == 'critical' %}
+              <span class="inline-flex rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-xs font-medium text-rose-800">{{ a.severity_ar or 'حرج' }}</span>
+              {% elif sev == 'high' %}
+              <span class="inline-flex rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-900">{{ a.severity_ar or 'عالي' }}</span>
+              {% elif sev == 'medium' %}
+              <span class="inline-flex rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">{{ a.severity_ar or 'متوسط' }}</span>
               {% else %}
-              <span class="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">{{ a.kind }}</span>
+              <span class="inline-flex rounded-full border border-slate-100 bg-slate-50 px-2 py-0.5 text-xs font-medium text-slate-500">{{ a.severity_ar or 'منخفض' }}</span>
               {% endif %}
+            </td>
+            <td class="px-4 py-2.5 whitespace-nowrap">
+              <span class="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">{{ a.kind }}</span>
             </td>
             <td class="px-4 py-2.5 font-medium text-slate-900">{{ a.title_ar }}</td>
             <td class="px-4 py-2.5 text-slate-600">

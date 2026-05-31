@@ -83,6 +83,41 @@ _ALERT_EXPLANATIONS_AR: dict[str, dict[str, str]] = {
     },
 }
 
+# Operational severity + priority per alert kind (v1.3).
+_ALERT_SEVERITY_AR: dict[str, dict[str, Any]] = {
+    "stale_recovery": {
+        "severity": "critical",
+        "severity_ar": "حرج",
+        "priority_order": 10,
+    },
+    "failed_recovery": {
+        "severity": "high",
+        "severity_ar": "عالي",
+        "priority_order": 20,
+    },
+    "whatsapp_missing": {
+        "severity": "high",
+        "severity_ar": "عالي",
+        "priority_order": 30,
+    },
+    "store_needs_setup": {
+        "severity": "medium",
+        "severity_ar": "متوسط",
+        "priority_order": 40,
+    },
+    "no_cart_events": {
+        "severity": "low",
+        "severity_ar": "منخفض",
+        "priority_order": 50,
+    },
+}
+
+_DEFAULT_ALERT_SEVERITY: dict[str, Any] = {
+    "severity": "low",
+    "severity_ar": "منخفض",
+    "priority_order": 999,
+}
+
 
 def _utc_now() -> datetime:
     return datetime.now(timezone.utc)
@@ -135,10 +170,34 @@ def _blocking_labels_ar(codes: list[str]) -> list[str]:
     return labels
 
 
+def _severity_for_kind(kind: str) -> dict[str, Any]:
+    meta = _ALERT_SEVERITY_AR.get(kind) or {}
+    return {
+        "severity": str(meta.get("severity") or _DEFAULT_ALERT_SEVERITY["severity"]),
+        "severity_ar": str(meta.get("severity_ar") or _DEFAULT_ALERT_SEVERITY["severity_ar"]),
+        "priority_order": _safe_int(
+            meta.get("priority_order"), _DEFAULT_ALERT_SEVERITY["priority_order"]
+        ),
+    }
+
+
+def _sort_alerts(alerts: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """priority_order asc → records_total desc → kind → title_ar."""
+
+    def _key(alert: dict[str, Any]) -> tuple[int, int, str, str]:
+        sev = _severity_for_kind(str(alert.get("kind") or ""))
+        priority = _safe_int(alert.get("priority_order"), sev["priority_order"])
+        total = _safe_int(alert.get("records_total"), 0)
+        kind = str(alert.get("kind") or "")
+        title = str(alert.get("title_ar") or "")
+        return (priority, -total, kind, title)
+
+    return sorted(alerts, key=_key)
+
+
 def _alert_with_records(
     *,
     kind: str,
-    severity: str,
     title_ar: str,
     detail_ar: str,
     records: list[dict[str, Any]] | None = None,
@@ -151,9 +210,12 @@ def _alert_with_records(
     shown = recs[:_MAX_RECORDS_PER_ALERT]
     hidden = max(0, total - len(shown))
     expl = _ALERT_EXPLANATIONS_AR.get(kind) or {}
+    sev = _severity_for_kind(kind)
     return {
         "kind": kind,
-        "severity": severity,
+        "severity": sev["severity"],
+        "severity_ar": sev["severity_ar"],
+        "priority_order": sev["priority_order"],
         "title_ar": title_ar,
         "detail_ar": detail_ar,
         "why_ar": why_ar or expl.get("why_ar") or "",
@@ -377,7 +439,6 @@ def _group_recovery_alerts(
     *,
     rows: list[Any],
     kind: str,
-    severity: str,
     title_ar: str,
     stale_reason_ar: str | None = None,
 ) -> list[dict[str, Any]]:
@@ -393,7 +454,6 @@ def _group_recovery_alerts(
         alerts.append(
             _alert_with_records(
                 kind=kind,
-                severity=severity,
                 title_ar=title_ar,
                 detail_ar=f"المتجر {slug}: {cnt} جدولة.",
                 records=recs,
@@ -484,7 +544,6 @@ def _build_basic_alerts(
             _group_recovery_alerts(
                 rows=overdue_rows,
                 kind="stale_recovery",
-                severity="warning",
                 title_ar="استرجاع متأخر",
                 stale_reason_ar="متأخرة عن موعد الاستحقاق",
             )
@@ -493,7 +552,6 @@ def _build_basic_alerts(
         alerts.append(
             _alert_with_records(
                 kind="stale_recovery",
-                severity="warning",
                 title_ar="استرجاع متأخر",
                 detail_ar=f"يوجد {overdue} جدولة متأخرة عن موعدها.",
             )
@@ -504,7 +562,6 @@ def _build_basic_alerts(
             _group_recovery_alerts(
                 rows=running_stale_rows,
                 kind="stale_recovery",
-                severity="warning",
                 title_ar="تشغيل عالق",
                 stale_reason_ar="running بدون تحديث حديث",
             )
@@ -513,7 +570,6 @@ def _build_basic_alerts(
         alerts.append(
             _alert_with_records(
                 kind="stale_recovery",
-                severity="warning",
                 title_ar="تشغيل عالق",
                 detail_ar=(
                     f"يوجد {running_stale} جدولة في حالة running "
@@ -528,7 +584,6 @@ def _build_basic_alerts(
             _group_recovery_alerts(
                 rows=failed_rows,
                 kind="failed_recovery",
-                severity="danger",
                 title_ar="استرجاع فاشل",
             )
         )
@@ -536,7 +591,6 @@ def _build_basic_alerts(
         alerts.append(
             _alert_with_records(
                 kind="failed_recovery",
-                severity="danger",
                 title_ar="استرجاع فاشل",
                 detail_ar=f"إجمالي الجدولات الفاشلة: {failed_total}.",
             )
@@ -549,7 +603,6 @@ def _build_basic_alerts(
             alerts.append(
                 _alert_with_records(
                     kind="store_needs_setup",
-                    severity="info",
                     title_ar="متجر يحتاج إعداد",
                     detail_ar=f"{name} — لم يكتمل الإعداد بعد.",
                     records=[_store_setup_record(st)],
@@ -560,7 +613,6 @@ def _build_basic_alerts(
             alerts.append(
                 _alert_with_records(
                     kind="whatsapp_missing",
-                    severity="warning",
                     title_ar="واتساب غير مكتمل",
                     detail_ar=f"{name} — إعداد واتساب/المزود ناقص.",
                     records=[_whatsapp_record(st)],
@@ -571,7 +623,6 @@ def _build_basic_alerts(
             alerts.append(
                 _alert_with_records(
                     kind="no_cart_events",
-                    severity="info",
                     title_ar="لا أحداث سلة حديثة",
                     detail_ar=(
                         f"{name} — لا سلال حديثة خلال "
@@ -581,10 +632,10 @@ def _build_basic_alerts(
                     records_total=1,
                 )
             )
-        if len(alerts) >= _MAX_ALERTS:
+        if len(alerts) >= _MAX_ALERTS * 2:
             break
 
-    return alerts[:_MAX_ALERTS]
+    return _sort_alerts(alerts)[:_MAX_ALERTS]
 
 
 def build_admin_operations_center_v1_readonly() -> dict[str, Any]:
@@ -612,7 +663,7 @@ def build_admin_operations_center_v1_readonly() -> dict[str, Any]:
     )
 
     return {
-        "version": "admin_operations_center_v1_2",
+        "version": "admin_operations_center_v1_3",
         "generated_at_utc": _utc_now().isoformat(),
         "scheduler": scheduler,
         "recovery": recovery,
@@ -622,4 +673,8 @@ def build_admin_operations_center_v1_readonly() -> dict[str, Any]:
     }
 
 
-__all__ = ["build_admin_operations_center_v1_readonly"]
+__all__ = [
+    "build_admin_operations_center_v1_readonly",
+    "_ALERT_SEVERITY_AR",
+    "_sort_alerts",
+]

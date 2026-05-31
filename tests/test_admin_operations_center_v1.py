@@ -15,7 +15,9 @@ from models import RecoverySchedule, Store
 from services.recovery_restart_survival import STATUS_RUNNING, STATUS_WHATSAPP_FAILED
 from services.admin_operations_center_v1 import (
     _ALERT_EXPLANATIONS_AR,
+    _ALERT_SEVERITY_AR,
     _alert_with_records,
+    _sort_alerts,
     build_admin_operations_center_v1_readonly,
 )
 from services.cartflow_admin_http_auth import admin_cookie_name
@@ -50,7 +52,7 @@ class AdminOperationsCenterV1Tests(unittest.TestCase):
 
     def test_build_payload_has_required_sections(self) -> None:
         payload = build_admin_operations_center_v1_readonly()
-        self.assertEqual(payload.get("version"), "admin_operations_center_v1_2")
+        self.assertEqual(payload.get("version"), "admin_operations_center_v1_3")
         sch = payload.get("scheduler") or {}
         for key in ("role", "overdue_scheduled_count", "running_stale_count"):
             self.assertIn(key, sch)
@@ -114,6 +116,10 @@ class AdminOperationsCenterV1Tests(unittest.TestCase):
             self.assertIn("detail_ar", alert)
             self.assertIn("why_ar", alert)
             self.assertIn("suggested_fix_ar", alert)
+            self.assertIn("severity", alert)
+            self.assertIn("severity_ar", alert)
+            self.assertIn("priority_order", alert)
+            self.assertTrue(alert.get("severity_ar"), msg=f"missing severity_ar for {alert.get('kind')}")
             self.assertTrue(alert.get("why_ar"), msg=f"missing why_ar for {alert.get('kind')}")
             self.assertTrue(
                 alert.get("suggested_fix_ar"),
@@ -139,10 +145,24 @@ class AdminOperationsCenterV1Tests(unittest.TestCase):
             self.assertTrue(_ALERT_EXPLANATIONS_AR[kind].get("why_ar"))
             self.assertTrue(_ALERT_EXPLANATIONS_AR[kind].get("suggested_fix_ar"))
 
+    def test_all_alert_kinds_have_severity_catalog(self) -> None:
+        expected = {
+            "stale_recovery": ("critical", "حرج", 10),
+            "failed_recovery": ("high", "عالي", 20),
+            "whatsapp_missing": ("high", "عالي", 30),
+            "store_needs_setup": ("medium", "متوسط", 40),
+            "no_cart_events": ("low", "منخفض", 50),
+        }
+        for kind, (sev, sev_ar, order) in expected.items():
+            self.assertIn(kind, _ALERT_SEVERITY_AR)
+            meta = _ALERT_SEVERITY_AR[kind]
+            self.assertEqual(meta["severity"], sev)
+            self.assertEqual(meta["severity_ar"], sev_ar)
+            self.assertEqual(meta["priority_order"], order)
+
     def test_alert_with_records_applies_explanations_by_kind(self) -> None:
         alert = _alert_with_records(
             kind="failed_recovery",
-            severity="danger",
             title_ar="test",
             detail_ar="test",
         )
@@ -151,12 +171,51 @@ class AdminOperationsCenterV1Tests(unittest.TestCase):
             alert["suggested_fix_ar"],
             _ALERT_EXPLANATIONS_AR["failed_recovery"]["suggested_fix_ar"],
         )
+        self.assertEqual(alert["severity"], "high")
+        self.assertEqual(alert["severity_ar"], "عالي")
+        self.assertEqual(alert["priority_order"], 20)
+
+    def test_sort_alerts_priority_order(self) -> None:
+        unsorted = [
+            _alert_with_records(kind="no_cart_events", title_ar="z", detail_ar="z"),
+            _alert_with_records(kind="stale_recovery", title_ar="a", detail_ar="a"),
+            _alert_with_records(kind="whatsapp_missing", title_ar="b", detail_ar="b"),
+            _alert_with_records(kind="failed_recovery", title_ar="c", detail_ar="c"),
+            _alert_with_records(kind="store_needs_setup", title_ar="d", detail_ar="d"),
+        ]
+        ordered = _sort_alerts(unsorted)
+        kinds = [a["kind"] for a in ordered]
+        self.assertEqual(
+            kinds,
+            [
+                "stale_recovery",
+                "failed_recovery",
+                "whatsapp_missing",
+                "store_needs_setup",
+                "no_cart_events",
+            ],
+        )
+
+    def test_sort_alerts_tiebreak_by_records_total(self) -> None:
+        low_count = _alert_with_records(
+            kind="failed_recovery",
+            title_ar="a",
+            detail_ar="a",
+            records_total=1,
+        )
+        high_count = _alert_with_records(
+            kind="failed_recovery",
+            title_ar="b",
+            detail_ar="b",
+            records_total=9,
+        )
+        ordered = _sort_alerts([low_count, high_count])
+        self.assertEqual(ordered[0]["records_total"], 9)
 
     def test_alert_with_records_hidden_count(self) -> None:
         recs = [{"recovery_key": f"k{i}", "status": "failed"} for i in range(8)]
         alert = _alert_with_records(
             kind="failed_recovery",
-            severity="danger",
             title_ar="test",
             detail_ar="test",
             records=recs,
@@ -293,6 +352,22 @@ class AdminOperationsCenterV1Tests(unittest.TestCase):
                 db.session.commit()
             except Exception:  # noqa: BLE001
                 db.session.rollback()
+
+    def test_page_renders_severity_labels_when_alerts_present(self) -> None:
+        payload = build_admin_operations_center_v1_readonly()
+        if not payload.get("alerts"):
+            self.skipTest("no alerts in current DB")
+        self._login()
+        r = self.client.get("/admin/operations")
+        self.assertEqual(r.status_code, 200)
+        body = r.text
+        self.assertIn("الأولوية", body)
+        for label in ("حرج", "عالي", "متوسط", "منخفض"):
+            if label in body:
+                break
+        else:
+            sev_ar = (payload["alerts"][0].get("severity_ar") or "")
+            self.assertIn(sev_ar, body)
 
     def test_page_renders_explanation_labels_when_alerts_present(self) -> None:
         payload = build_admin_operations_center_v1_readonly()
