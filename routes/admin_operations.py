@@ -324,8 +324,19 @@ def admin_operations_dashboard(request: Request) -> Any:
         ops = build_admin_operations_center_v1_readonly()
     except Exception:  # noqa: BLE001
         ops = {
-            "version": "admin_operations_center_v1_3",
+            "version": "admin_operations_center_v1_4",
             "generated_at_utc": None,
+            "system_health_summary": {
+                "status_key": "stable",
+                "status_ar": "مستقرة",
+                "description_ar": "لا توجد تنبيهات تشغيلية ظاهرة حاليًا.",
+                "highest_severity": "none",
+                "critical_count": 0,
+                "high_count": 0,
+                "medium_count": 0,
+                "low_count": 0,
+                "total_alerts": 0,
+            },
             "scheduler": {
                 "role": "غير متوفر",
                 "overdue_scheduled_count": 0,

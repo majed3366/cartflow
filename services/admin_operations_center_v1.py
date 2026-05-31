@@ -118,6 +118,33 @@ _DEFAULT_ALERT_SEVERITY: dict[str, Any] = {
     "priority_order": 999,
 }
 
+_VALID_SEVERITY_BUCKETS = frozenset({"critical", "high", "medium", "low"})
+
+_SYSTEM_HEALTH_STATUS_AR: dict[str, dict[str, str]] = {
+    "urgent_attention": {
+        "status_ar": "تحتاج انتباه عاجل",
+        "description_ar": (
+            "توجد تنبيهات حرجة تحتاج مراجعة قبل الاعتماد على التشغيل الطبيعي."
+        ),
+    },
+    "needs_followup": {
+        "status_ar": "تحتاج متابعة",
+        "description_ar": (
+            "توجد تنبيهات عالية الأهمية، لكن لا توجد مؤشرات حرجة حاليًا."
+        ),
+    },
+    "stable_with_notes": {
+        "status_ar": "مستقرة مع ملاحظات",
+        "description_ar": (
+            "النظام يعمل، مع وجود ملاحظات تشغيلية يمكن مراجعتها."
+        ),
+    },
+    "stable": {
+        "status_ar": "مستقرة",
+        "description_ar": "لا توجد تنبيهات تشغيلية ظاهرة حاليًا.",
+    },
+}
+
 
 def _utc_now() -> datetime:
     return datetime.now(timezone.utc)
@@ -193,6 +220,60 @@ def _sort_alerts(alerts: list[dict[str, Any]]) -> list[dict[str, Any]]:
         return (priority, -total, kind, title)
 
     return sorted(alerts, key=_key)
+
+
+def _alert_severity_bucket(alert: dict[str, Any]) -> str:
+    """Normalize alert severity; unknown values count as low."""
+    sev = _safe_str(alert.get("severity"), 32).lower()
+    if sev in _VALID_SEVERITY_BUCKETS:
+        return sev
+    return str(_severity_for_kind(str(alert.get("kind") or ""))["severity"])
+
+
+def _build_system_health_summary(alerts: list[dict[str, Any]]) -> dict[str, Any]:
+    """Top-level operational health derived from alert severities (read-only)."""
+    critical_count = 0
+    high_count = 0
+    medium_count = 0
+    low_count = 0
+    for alert in alerts or []:
+        bucket = _alert_severity_bucket(alert if isinstance(alert, dict) else {})
+        if bucket == "critical":
+            critical_count += 1
+        elif bucket == "high":
+            high_count += 1
+        elif bucket == "medium":
+            medium_count += 1
+        else:
+            low_count += 1
+
+    total_alerts = critical_count + high_count + medium_count + low_count
+
+    if critical_count > 0:
+        status_key = "urgent_attention"
+        highest_severity = "critical"
+    elif high_count > 0:
+        status_key = "needs_followup"
+        highest_severity = "high"
+    elif medium_count > 0 or low_count > 0:
+        status_key = "stable_with_notes"
+        highest_severity = "medium" if medium_count > 0 else "low"
+    else:
+        status_key = "stable"
+        highest_severity = "none"
+
+    copy = _SYSTEM_HEALTH_STATUS_AR.get(status_key) or _SYSTEM_HEALTH_STATUS_AR["stable"]
+    return {
+        "status_key": status_key,
+        "status_ar": copy["status_ar"],
+        "description_ar": copy["description_ar"],
+        "highest_severity": highest_severity,
+        "critical_count": critical_count,
+        "high_count": high_count,
+        "medium_count": medium_count,
+        "low_count": low_count,
+        "total_alerts": total_alerts,
+    }
 
 
 def _alert_with_records(
@@ -661,10 +742,12 @@ def build_admin_operations_center_v1_readonly() -> dict[str, Any]:
         recovery=recovery,
         stores=store_rows,
     )
+    system_health_summary = _build_system_health_summary(alerts)
 
     return {
-        "version": "admin_operations_center_v1_3",
+        "version": "admin_operations_center_v1_4",
         "generated_at_utc": _utc_now().isoformat(),
+        "system_health_summary": system_health_summary,
         "scheduler": scheduler,
         "recovery": recovery,
         "store_readiness": store_readiness,
@@ -677,4 +760,5 @@ __all__ = [
     "build_admin_operations_center_v1_readonly",
     "_ALERT_SEVERITY_AR",
     "_sort_alerts",
+    "_build_system_health_summary",
 ]

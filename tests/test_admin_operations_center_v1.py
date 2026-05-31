@@ -17,6 +17,7 @@ from services.admin_operations_center_v1 import (
     _ALERT_EXPLANATIONS_AR,
     _ALERT_SEVERITY_AR,
     _alert_with_records,
+    _build_system_health_summary,
     _sort_alerts,
     build_admin_operations_center_v1_readonly,
 )
@@ -52,7 +53,20 @@ class AdminOperationsCenterV1Tests(unittest.TestCase):
 
     def test_build_payload_has_required_sections(self) -> None:
         payload = build_admin_operations_center_v1_readonly()
-        self.assertEqual(payload.get("version"), "admin_operations_center_v1_3")
+        self.assertEqual(payload.get("version"), "admin_operations_center_v1_4")
+        health = payload.get("system_health_summary") or {}
+        for key in (
+            "status_key",
+            "status_ar",
+            "description_ar",
+            "highest_severity",
+            "critical_count",
+            "high_count",
+            "medium_count",
+            "low_count",
+            "total_alerts",
+        ):
+            self.assertIn(key, health)
         sch = payload.get("scheduler") or {}
         for key in ("role", "overdue_scheduled_count", "running_stale_count"):
             self.assertIn(key, sch)
@@ -211,6 +225,67 @@ class AdminOperationsCenterV1Tests(unittest.TestCase):
         )
         ordered = _sort_alerts([low_count, high_count])
         self.assertEqual(ordered[0]["records_total"], 9)
+
+    def test_system_health_stable_when_no_alerts(self) -> None:
+        health = _build_system_health_summary([])
+        self.assertEqual(health["status_key"], "stable")
+        self.assertEqual(health["status_ar"], "مستقرة")
+        self.assertEqual(health["highest_severity"], "none")
+        self.assertEqual(health["total_alerts"], 0)
+
+    def test_system_health_urgent_attention(self) -> None:
+        alerts = [
+            _alert_with_records(kind="stale_recovery", title_ar="x", detail_ar="x"),
+        ]
+        health = _build_system_health_summary(alerts)
+        self.assertEqual(health["status_key"], "urgent_attention")
+        self.assertEqual(health["status_ar"], "تحتاج انتباه عاجل")
+        self.assertEqual(health["critical_count"], 1)
+        self.assertEqual(health["highest_severity"], "critical")
+
+    def test_system_health_needs_followup(self) -> None:
+        alerts = [
+            _alert_with_records(kind="failed_recovery", title_ar="x", detail_ar="x"),
+            _alert_with_records(kind="whatsapp_missing", title_ar="y", detail_ar="y"),
+        ]
+        health = _build_system_health_summary(alerts)
+        self.assertEqual(health["status_key"], "needs_followup")
+        self.assertEqual(health["status_ar"], "تحتاج متابعة")
+        self.assertEqual(health["high_count"], 2)
+        self.assertEqual(health["critical_count"], 0)
+
+    def test_system_health_stable_with_notes_medium(self) -> None:
+        alerts = [
+            _alert_with_records(kind="store_needs_setup", title_ar="x", detail_ar="x"),
+        ]
+        health = _build_system_health_summary(alerts)
+        self.assertEqual(health["status_key"], "stable_with_notes")
+        self.assertEqual(health["medium_count"], 1)
+        self.assertEqual(health["highest_severity"], "medium")
+
+    def test_system_health_stable_with_notes_low_only(self) -> None:
+        alerts = [
+            _alert_with_records(kind="no_cart_events", title_ar="x", detail_ar="x"),
+        ]
+        health = _build_system_health_summary(alerts)
+        self.assertEqual(health["status_key"], "stable_with_notes")
+        self.assertEqual(health["low_count"], 1)
+        self.assertEqual(health["highest_severity"], "low")
+
+    def test_system_health_unknown_severity_counts_as_low(self) -> None:
+        alerts = [{"kind": "unknown_kind", "severity": "weird"}]
+        health = _build_system_health_summary(alerts)
+        self.assertEqual(health["low_count"], 1)
+        self.assertEqual(health["status_key"], "stable_with_notes")
+
+    def test_page_renders_system_health_section(self) -> None:
+        self._login()
+        r = self.client.get("/admin/operations")
+        self.assertEqual(r.status_code, 200)
+        self.assertIn("حالة النظام الآن", r.text)
+        payload = build_admin_operations_center_v1_readonly()
+        health = payload.get("system_health_summary") or {}
+        self.assertIn(health.get("status_ar") or "مستقرة", r.text)
 
     def test_alert_with_records_hidden_count(self) -> None:
         recs = [{"recovery_key": f"k{i}", "status": "failed"} for i in range(8)]

@@ -7,6 +7,41 @@
   {% set rec = ops.recovery or {} %}
   {% set st = ops.store_readiness or {} %}
   {% set alerts = ops.alerts or [] %}
+  {% set health = ops.system_health_summary or {} %}
+  {% set health_key = health.status_key or 'stable' %}
+
+  <!-- System health summary (v1.4) -->
+  <section class="admin-card px-6 py-5 {% if health_key == 'urgent_attention' %}border-rose-200/80 bg-gradient-to-br from-rose-50/40 to-white{% elif health_key == 'needs_followup' %}border-amber-200/80 bg-gradient-to-br from-amber-50/30 to-white{% elif health_key == 'stable_with_notes' %}border-slate-200 bg-gradient-to-br from-slate-50/50 to-white{% else %}border-emerald-200/60 bg-gradient-to-br from-emerald-50/30 to-white{% endif %}">
+    <p class="text-xs font-medium text-slate-500">حالة النظام الآن</p>
+    <p class="mt-2 text-2xl font-semibold text-slate-900">{{ health.status_ar or 'مستقرة' }}</p>
+    <p class="mt-2 max-w-3xl text-sm leading-relaxed text-slate-600">
+      {{ health.description_ar or 'لا توجد تنبيهات تشغيلية ظاهرة حاليًا.' }}
+    </p>
+    <dl class="mt-4 flex flex-wrap gap-3 text-xs">
+      <div class="rounded-lg border border-rose-100 bg-rose-50/60 px-3 py-2">
+        <dt class="font-medium text-rose-800">حرج</dt>
+        <dd class="mt-0.5 text-lg font-semibold tabular-nums text-rose-900">{{ health.critical_count | default(0) }}</dd>
+      </div>
+      <div class="rounded-lg border border-amber-100 bg-amber-50/50 px-3 py-2">
+        <dt class="font-medium text-amber-900">عالي</dt>
+        <dd class="mt-0.5 text-lg font-semibold tabular-nums text-amber-950">{{ health.high_count | default(0) }}</dd>
+      </div>
+      <div class="rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2">
+        <dt class="font-medium text-slate-700">متوسط</dt>
+        <dd class="mt-0.5 text-lg font-semibold tabular-nums text-slate-900">{{ health.medium_count | default(0) }}</dd>
+      </div>
+      <div class="rounded-lg border border-slate-100 bg-slate-50/60 px-3 py-2">
+        <dt class="font-medium text-slate-500">منخفض</dt>
+        <dd class="mt-0.5 text-lg font-semibold tabular-nums text-slate-700">{{ health.low_count | default(0) }}</dd>
+      </div>
+      {% if health.total_alerts is not none %}
+      <div class="rounded-lg border border-slate-100 bg-white/80 px-3 py-2">
+        <dt class="font-medium text-slate-500">إجمالي التنبيهات</dt>
+        <dd class="mt-0.5 text-lg font-semibold tabular-nums text-slate-800">{{ health.total_alerts | default(0) }}</dd>
+      </div>
+      {% endif %}
+    </dl>
+  </section>
 
   <div class="admin-card px-6 py-5">
     <p class="text-xs font-medium text-slate-500">مركز العمليات — قراءة فقط</p>
