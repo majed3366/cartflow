@@ -219,6 +219,53 @@
     {% endif %}
   </section>
 
+  <!-- Operational trends (v1.6) -->
+  {% set ot = ops.operational_trends or {} %}
+  {% set trend_rows = ot.trends or [] %}
+  <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <h2 class="text-base font-semibold text-slate-900">اتجاهات التشغيل</h2>
+    <p class="mt-1 text-sm text-slate-600">
+      مقارنة آخر {{ ot.window_hours | default(24) }} ساعة بالـ {{ ot.window_hours | default(24) }} ساعة السابقة — قراءة فقط.
+    </p>
+    {% if trend_rows %}
+    <div class="mt-4 overflow-x-auto rounded-xl border border-slate-200">
+      <table class="min-w-full divide-y divide-slate-200 text-sm">
+        <thead class="bg-slate-50 text-right text-xs font-medium text-slate-500">
+          <tr>
+            <th class="px-4 py-2.5">المؤشر</th>
+            <th class="px-4 py-2.5">الحالي</th>
+            <th class="px-4 py-2.5">السابق</th>
+            <th class="px-4 py-2.5">الاتجاه</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100 bg-white">
+          {% for t in trend_rows %}
+          <tr class="hover:bg-slate-50/80">
+            <td class="px-4 py-2.5 font-medium text-slate-900">{{ t.metric_ar or t.metric_key or '—' }}</td>
+            <td class="px-4 py-2.5 tabular-nums text-slate-800">{{ t.current_count | default(0) }}</td>
+            <td class="px-4 py-2.5 tabular-nums text-slate-500">{{ t.previous_count | default(0) }}</td>
+            <td class="px-4 py-2.5 whitespace-nowrap">
+              {% set tk = t.trend_key or 'stable' %}
+              {% if tk == 'worsening' %}
+              <span class="text-sm font-medium text-amber-900">{{ t.trend_ar or '↑ تزايد' }}</span>
+              {% elif tk == 'improving' %}
+              <span class="text-sm font-medium text-emerald-800">{{ t.trend_ar or '↓ تحسن' }}</span>
+              {% else %}
+              <span class="text-sm font-medium text-slate-600">{{ t.trend_ar or '→ مستقر' }}</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="mt-4 rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-6 text-center">
+      <p class="text-sm text-slate-600">→ مستقر — لا بيانات كافية للمقارنة حاليًا.</p>
+    </div>
+    {% endif %}
+  </section>
+
   <!-- D) Basic Alerts -->
   <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
     <h2 class="text-base font-semibold text-slate-900">د — تنبيهات أساسية</h2>

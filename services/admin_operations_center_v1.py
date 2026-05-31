@@ -10,7 +10,7 @@ from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from sqlalchemy import func
+from sqlalchemy import and_, func, or_
 from sqlalchemy.exc import SQLAlchemyError
 
 from extensions import db
@@ -138,6 +138,7 @@ _STORE_SNAPSHOT_KINDS = frozenset(
 )
 
 _MAX_STORE_SNAPSHOT = 150
+_TREND_WINDOW_HOURS = 24
 
 _SYSTEM_HEALTH_STATUS_AR: dict[str, dict[str, str]] = {
     "urgent_attention": {
@@ -446,6 +447,172 @@ def _build_store_health_snapshot(
     return {
         "stores": stores,
         "total_stores": len(stores),
+        "available": True,
+    }
+
+
+def _trend_window_bounds() -> tuple[datetime, datetime, datetime, datetime]:
+    """Current and previous 24h windows (naive UTC, aligned with schedule queries)."""
+    now = _naive_now()
+    current_end = now
+    current_start = now - timedelta(hours=_TREND_WINDOW_HOURS)
+    previous_end = current_start
+    previous_start = now - timedelta(hours=_TREND_WINDOW_HOURS * 2)
+    return current_start, current_end, previous_start, previous_end
+
+
+def _compute_trend_from_counts(current_count: int, previous_count: int) -> dict[str, Any]:
+    current = _safe_int(current_count)
+    previous = _safe_int(previous_count)
+    delta = current - previous
+    if current > previous:
+        trend_key = "worsening"
+        trend_ar = "↑ تزايد"
+    elif current < previous:
+        trend_key = "improving"
+        trend_ar = "↓ تحسن"
+    else:
+        trend_key = "stable"
+        trend_ar = "→ مستقر"
+    return {
+        "current_count": current,
+        "previous_count": previous,
+        "delta": delta,
+        "trend_key": trend_key,
+        "trend_ar": trend_ar,
+    }
+
+
+def _count_failed_recovery_in_window(start: datetime, end: datetime) -> int:
+    try:
+        db.create_all()
+        return _safe_int(
+            db.session.query(func.count(RecoverySchedule.id))
+            .filter(
+                RecoverySchedule.status.in_(tuple(_FAILED_STATUSES)),
+                RecoverySchedule.updated_at >= start,
+                RecoverySchedule.updated_at < end,
+            )
+            .scalar()
+        )
+    except SQLAlchemyError:
+        db.session.rollback()
+        return 0
+
+
+def _count_stale_recovery_in_window(start: datetime, end: datetime) -> int:
+    stale_cutoff = end - timedelta(seconds=_RUNNING_STALE_SECONDS)
+    try:
+        db.create_all()
+        return _safe_int(
+            db.session.query(func.count(RecoverySchedule.id))
+            .filter(
+                RecoverySchedule.updated_at >= start,
+                RecoverySchedule.updated_at < end,
+                or_(
+                    and_(
+                        RecoverySchedule.status == "scheduled",
+                        RecoverySchedule.due_at <= end,
+                    ),
+                    and_(
+                        RecoverySchedule.status == "running",
+                        RecoverySchedule.updated_at <= stale_cutoff,
+                    ),
+                ),
+            )
+            .scalar()
+        )
+    except SQLAlchemyError:
+        db.session.rollback()
+        return 0
+
+
+def _count_stores_readiness_in_window(
+    start: datetime,
+    end: datetime,
+    *,
+    whatsapp_only: bool,
+) -> int:
+    from services.cartflow_onboarding_readiness import evaluate_onboarding_readiness
+
+    try:
+        db.create_all()
+        rows = (
+            db.session.query(Store)
+            .filter(
+                or_(
+                    and_(Store.updated_at >= start, Store.updated_at < end),
+                    and_(Store.created_at >= start, Store.created_at < end),
+                )
+            )
+            .limit(_MAX_STORES)
+            .all()
+        )
+        count = 0
+        for st in rows:
+            ev = evaluate_onboarding_readiness(st)
+            blocking = {str(x).strip() for x in (ev.get("blocking_steps") or [])}
+            if whatsapp_only:
+                if "whatsapp_not_connected" in blocking or "provider_not_ready" in blocking:
+                    count += 1
+            elif not ev.get("ready"):
+                count += 1
+        return count
+    except SQLAlchemyError:
+        db.session.rollback()
+        return 0
+    except Exception:  # noqa: BLE001
+        return 0
+
+
+def _build_operational_trends() -> dict[str, Any]:
+    """24h vs previous 24h operational trend counts (read-only)."""
+    cur_start, cur_end, prev_start, prev_end = _trend_window_bounds()
+    metrics: list[tuple[str, str, Any]] = [
+        (
+            "failed_recovery",
+            "استرجاع فاشل",
+            lambda s, e: _count_failed_recovery_in_window(s, e),
+        ),
+        (
+            "stale_recovery",
+            "استرجاع عالق / متأخر",
+            lambda s, e: _count_stale_recovery_in_window(s, e),
+        ),
+        (
+            "stores_needing_setup",
+            "متاجر تحتاج إعداد",
+            lambda s, e: _count_stores_readiness_in_window(s, e, whatsapp_only=False),
+        ),
+        (
+            "stores_without_whatsapp",
+            "متاجر بدون واتساب",
+            lambda s, e: _count_stores_readiness_in_window(s, e, whatsapp_only=True),
+        ),
+    ]
+    trends: list[dict[str, Any]] = []
+    for metric_key, metric_ar, counter in metrics:
+        try:
+            current = _safe_int(counter(cur_start, cur_end))
+            previous = _safe_int(counter(prev_start, prev_end))
+        except Exception:  # noqa: BLE001
+            current = 0
+            previous = 0
+        row = _compute_trend_from_counts(current, previous)
+        trends.append(
+            {
+                "metric_key": metric_key,
+                "metric_ar": metric_ar,
+                **row,
+            }
+        )
+    return {
+        "window_hours": _TREND_WINDOW_HOURS,
+        "current_window_start_utc": _fmt_dt(cur_start.replace(tzinfo=timezone.utc)),
+        "current_window_end_utc": _fmt_dt(cur_end.replace(tzinfo=timezone.utc)),
+        "previous_window_start_utc": _fmt_dt(prev_start.replace(tzinfo=timezone.utc)),
+        "previous_window_end_utc": _fmt_dt(prev_end.replace(tzinfo=timezone.utc)),
+        "trends": trends,
         "available": True,
     }
 
@@ -918,12 +1085,14 @@ def build_admin_operations_center_v1_readonly() -> dict[str, Any]:
     )
     system_health_summary = _build_system_health_summary(alerts)
     store_health_snapshot = _build_store_health_snapshot(alerts, store_rows)
+    operational_trends = _build_operational_trends()
 
     return {
-        "version": "admin_operations_center_v1_5",
+        "version": "admin_operations_center_v1_6",
         "generated_at_utc": _utc_now().isoformat(),
         "system_health_summary": system_health_summary,
         "store_health_snapshot": store_health_snapshot,
+        "operational_trends": operational_trends,
         "scheduler": scheduler,
         "recovery": recovery,
         "store_readiness": store_readiness,
@@ -938,4 +1107,6 @@ __all__ = [
     "_sort_alerts",
     "_build_system_health_summary",
     "_build_store_health_snapshot",
+    "_build_operational_trends",
+    "_compute_trend_from_counts",
 ]

@@ -17,8 +17,10 @@ from services.admin_operations_center_v1 import (
     _ALERT_EXPLANATIONS_AR,
     _ALERT_SEVERITY_AR,
     _alert_with_records,
+    _build_operational_trends,
     _build_store_health_snapshot,
     _build_system_health_summary,
+    _compute_trend_from_counts,
     _sort_alerts,
     build_admin_operations_center_v1_readonly,
 )
@@ -54,7 +56,7 @@ class AdminOperationsCenterV1Tests(unittest.TestCase):
 
     def test_build_payload_has_required_sections(self) -> None:
         payload = build_admin_operations_center_v1_readonly()
-        self.assertEqual(payload.get("version"), "admin_operations_center_v1_5")
+        self.assertEqual(payload.get("version"), "admin_operations_center_v1_6")
         health = payload.get("system_health_summary") or {}
         for key in (
             "status_key",
@@ -72,6 +74,10 @@ class AdminOperationsCenterV1Tests(unittest.TestCase):
         self.assertIn("stores", snap)
         self.assertIn("total_stores", snap)
         self.assertIn("available", snap)
+        trends = payload.get("operational_trends") or {}
+        self.assertIn("trends", trends)
+        self.assertIn("window_hours", trends)
+        self.assertEqual(len(trends.get("trends") or []), 4)
         sch = payload.get("scheduler") or {}
         for key in ("role", "overdue_scheduled_count", "running_stale_count"):
             self.assertIn(key, sch)
@@ -230,6 +236,56 @@ class AdminOperationsCenterV1Tests(unittest.TestCase):
         )
         ordered = _sort_alerts([low_count, high_count])
         self.assertEqual(ordered[0]["records_total"], 9)
+
+    def test_trend_improving(self) -> None:
+        t = _compute_trend_from_counts(3, 7)
+        self.assertEqual(t["trend_key"], "improving")
+        self.assertEqual(t["trend_ar"], "↓ تحسن")
+        self.assertEqual(t["delta"], -4)
+
+    def test_trend_worsening(self) -> None:
+        t = _compute_trend_from_counts(8, 4)
+        self.assertEqual(t["trend_key"], "worsening")
+        self.assertEqual(t["trend_ar"], "↑ تزايد")
+        self.assertEqual(t["delta"], 4)
+
+    def test_trend_stable(self) -> None:
+        t = _compute_trend_from_counts(5, 5)
+        self.assertEqual(t["trend_key"], "stable")
+        self.assertEqual(t["trend_ar"], "→ مستقر")
+        self.assertEqual(t["delta"], 0)
+
+    def test_trend_empty_data_stable(self) -> None:
+        t = _compute_trend_from_counts(0, 0)
+        self.assertEqual(t["trend_key"], "stable")
+        self.assertEqual(t["current_count"], 0)
+        self.assertEqual(t["previous_count"], 0)
+
+    def test_operational_trends_payload_shape(self) -> None:
+        trends = _build_operational_trends()
+        self.assertTrue(trends.get("available"))
+        self.assertEqual(trends.get("window_hours"), 24)
+        for row in trends.get("trends") or []:
+            for key in (
+                "metric_key",
+                "metric_ar",
+                "current_count",
+                "previous_count",
+                "delta",
+                "trend_key",
+                "trend_ar",
+            ):
+                self.assertIn(key, row)
+
+    def test_page_renders_operational_trends_section(self) -> None:
+        self._login()
+        r = self.client.get("/admin/operations")
+        self.assertEqual(r.status_code, 200)
+        self.assertIn("اتجاهات التشغيل", r.text)
+        body = r.text
+        self.assertTrue(
+            "↓ تحسن" in body or "↑ تزايد" in body or "→ مستقر" in body or "استرجاع فاشل" in body
+        )
 
     def test_store_snapshot_merges_multiple_alert_kinds(self) -> None:
         slug = "merge-store-1"
