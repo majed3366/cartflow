@@ -11551,6 +11551,14 @@ async def api_cart_event(request: Request, background_tasks: BackgroundTasks):
 
         op_ctx = _cart_event_operational_begin(payload)
         try:
+            from services.journey_identity_resolver_v1 import (  # noqa: PLC0415
+                maybe_log_journey_identity_shadow,
+            )
+
+            maybe_log_journey_identity_shadow(payload, source="cart_event")
+        except Exception:  # noqa: BLE001
+            pass
+        try:
             print(
                 "[CART-EVENT] start "
                 f"event={op_ctx.get('event')} "
@@ -11812,6 +11820,14 @@ async def api_conversion(request: Request) -> Any:
     }
     if extract_purchase_truth_evidence(truth_payload) is None:
         return j({"ok": False, "error": "purchase_evidence_required"}, 400)
+    try:
+        from services.journey_identity_resolver_v1 import (  # noqa: PLC0415
+            maybe_log_journey_identity_shadow,
+        )
+
+        maybe_log_journey_identity_shadow(truth_payload, source="conversion_api")
+    except Exception:  # noqa: BLE001
+        pass
     from services.purchase_truth import ingest_purchase_truth_payload
     from services.recovery_store_context import canonical_store_slug_from_recovery_key
 

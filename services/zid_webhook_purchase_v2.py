@@ -105,6 +105,14 @@ def build_zid_purchase_truth_payload(payload: dict[str, Any]) -> Optional[dict[s
     if order_id:
         out["order_id"] = order_id
         out["zid_order_id"] = order_id
+    try:
+        from services.journey_identity_resolver_v1 import (  # noqa: PLC0415
+            maybe_log_journey_identity_shadow,
+        )
+
+        maybe_log_journey_identity_shadow(out, source="zid_purchase_truth_payload")
+    except Exception:  # noqa: BLE001
+        pass
     return out
 
 

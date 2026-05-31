@@ -1202,6 +1202,22 @@ def persist_recovery_schedule_durable(
     rk = (rk or "").strip()[:512]
     if not rk:
         return None
+    try:
+        from services.journey_identity_resolver_v1 import (  # noqa: PLC0415
+            maybe_log_journey_identity_shadow,
+        )
+
+        maybe_log_journey_identity_shadow(
+            {
+                "store": store_slug,
+                "store_slug": store_slug,
+                "session_id": session_id,
+                "cart_id": cart_id,
+            },
+            source="recovery_schedule_create",
+        )
+    except Exception:  # noqa: BLE001
+        pass
     step, msi = _step_keys(
         multi_slot_index=multi_slot_index,
         sequential_attempt_index=sequential_attempt_index,

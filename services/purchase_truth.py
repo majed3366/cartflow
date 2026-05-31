@@ -349,6 +349,15 @@ def ingest_purchase_truth_payload(payload: dict[str, Any]) -> Optional[str]:
     if not rk:
         return None
 
+    try:
+        from services.journey_identity_resolver_v1 import (  # noqa: PLC0415
+            maybe_log_journey_identity_shadow,
+        )
+
+        maybe_log_journey_identity_shadow(payload, source="purchase_truth_ingest")
+    except Exception:  # noqa: BLE001
+        pass
+
     payload_slug = str(payload.get("store_slug") or payload.get("store") or "").strip()
     store_slug = resolve_purchase_truth_store_slug(
         recovery_key=rk,
