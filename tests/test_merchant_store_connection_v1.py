@@ -46,6 +46,7 @@ class MerchantStoreConnectionV1Tests(unittest.TestCase):
         os.environ.pop("ZID_CLIENT_SECRET", None)
         os.environ.pop("OAUTH_REDIRECT_URI", None)
         os.environ.pop("CARTFLOW_PUBLIC_BASE_URL", None)
+        os.environ.pop("ZID_OAUTH_SCOPE", None)
         db.session.remove()
 
     def test_new_merchant_shows_not_connected(self) -> None:
@@ -210,7 +211,57 @@ class MerchantStoreConnectionV1Tests(unittest.TestCase):
         loc = r.headers.get("location") or ""
         self.assertIn("oauth.zid.sa/oauth/authorize", loc)
         self.assertIn("redirect_uri=https%3A%2F%2Fapp.example%2Fauth%2Fcallback", loc)
+        self.assertIn("response_type=code", loc)
+        self.assertIn("scope=abandoned_carts.read+orders.read", loc)
         self.assertIn("state=", loc)
+
+    def test_zid_connect_scope_override_via_env(self) -> None:
+        os.environ["ZID_CLIENT_ID"] = "test-client-id"
+        os.environ["ZID_CLIENT_SECRET"] = "test-client-secret"
+        os.environ["ZID_OAUTH_SCOPE"] = "orders.read webhooks.read_write"
+        email = f"sc-scope-{uuid.uuid4().hex}@example.com"
+        ok, _, user = register_merchant_account(
+            store_name="متجر",
+            email=email,
+            password="password123",
+        )
+        self.assertTrue(ok)
+        assert user is not None
+        cookies = {merchant_cookie_name(): session_cookie_value_for_user(user)}
+        r = self.client.get(
+            "/api/merchant/store-connection/zid/connect",
+            cookies=cookies,
+            follow_redirects=False,
+        )
+        loc = r.headers.get("location") or ""
+        self.assertIn("scope=orders.read+webhooks.read_write", loc)
+
+    def test_zid_connect_empty_scope_env_omits_scope(self) -> None:
+        os.environ["ZID_CLIENT_ID"] = "test-client-id"
+        os.environ["ZID_CLIENT_SECRET"] = "test-client-secret"
+        os.environ["ZID_OAUTH_SCOPE"] = ""
+        email = f"sc-noscope-{uuid.uuid4().hex}@example.com"
+        ok, _, user = register_merchant_account(
+            store_name="متجر",
+            email=email,
+            password="password123",
+        )
+        self.assertTrue(ok)
+        assert user is not None
+        cookies = {merchant_cookie_name(): session_cookie_value_for_user(user)}
+        r = self.client.get(
+            "/api/merchant/store-connection/zid/connect",
+            cookies=cookies,
+            follow_redirects=False,
+        )
+        loc = r.headers.get("location") or ""
+        self.assertNotIn("scope=", loc)
+
+    def test_get_zid_oauth_scope_default(self) -> None:
+        os.environ.pop("ZID_OAUTH_SCOPE", None)
+        from integrations.zid_client import get_zid_oauth_scope
+
+        self.assertEqual(get_zid_oauth_scope(), "abandoned_carts.read orders.read")
 
     def test_auth_callback_success_redirects_to_dashboard(self) -> None:
         os.environ["ZID_CLIENT_ID"] = "test-client-id"

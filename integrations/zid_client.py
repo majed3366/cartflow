@@ -11,7 +11,7 @@ import logging
 import os
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional, Tuple, TYPE_CHECKING
-from urllib.parse import urlparse
+from urllib.parse import urlencode, urlparse
 
 import requests
 
@@ -30,6 +30,9 @@ ZID_PROFILE_API = os.getenv(
 )
 ZID_OAUTH_TOKEN_URL = f"{ZID_OAUTH_BASE}/oauth/token"
 ZID_OAUTH_AUTHORIZE_URL = f"{ZID_OAUTH_BASE}/oauth/authorize"
+# Minimal CartFlow scopes — must be enabled in Partner Dashboard Application Scopes.
+# Override with ZID_OAUTH_SCOPE (space-separated). Set ZID_OAUTH_SCOPE= to omit scope.
+_DEFAULT_ZID_OAUTH_SCOPE = "abandoned_carts.read orders.read"
 
 
 def get_oauth_redirect_uri() -> str:
@@ -82,19 +85,57 @@ def emit_zid_oauth_trace(tag: str, **fields: Any) -> None:
         pass
 
 
-def zid_oauth_start_trace(*, has_state: bool, state_len: int = 0) -> None:
-    uri = get_oauth_redirect_uri()
-    parsed = urlparse(uri)
+def get_zid_oauth_scope() -> str:
+    """
+    OAuth scope string for authorize URL (space-separated per Zid docs).
+
+    Unset ZID_OAUTH_SCOPE → default minimal CartFlow scopes.
+    ZID_OAUTH_SCOPE= (empty) → omit scope param (legacy/debug).
+    """
+    if "ZID_OAUTH_SCOPE" in os.environ:
+        return (os.environ.get("ZID_OAUTH_SCOPE") or "").strip()
+    return _DEFAULT_ZID_OAUTH_SCOPE
+
+
+def _safe_authorize_url_for_log(authorize_url: str, *, client_id: str) -> str:
+    """Authorize URL with client_id redacted — safe to copy from logs for manual browser test."""
+    cid = (client_id or "").strip()
+    if not cid:
+        return authorize_url[:512]
+    return authorize_url.replace(cid, "[REDACTED]", 1)[:512]
+
+
+def zid_oauth_start_trace(
+    *,
+    authorize_url: str,
+    query: dict[str, str],
+    client_id_present: bool,
+) -> None:
+    redirect_uri = query.get("redirect_uri") or get_oauth_redirect_uri()
+    redirect_parsed = urlparse(redirect_uri)
+    auth_parsed = urlparse(authorize_url)
     emit_zid_oauth_trace(
         "ZID OAUTH START",
-        redirect_uri=uri,
-        redirect_host=(parsed.netloc or "-")[:128],
-        redirect_path=(parsed.path or "-")[:128],
+        authorize_host=(auth_parsed.netloc or "-")[:128],
+        authorize_path=(auth_parsed.path or "-")[:128],
+        response_type=(query.get("response_type") or "-")[:32],
+        client_id_present=str(bool(client_id_present)).lower(),
+        redirect_uri=redirect_uri,
+        redirect_host=(redirect_parsed.netloc or "-")[:128],
+        redirect_path=(redirect_parsed.path or "-")[:128],
         redirect_source=_oauth_redirect_uri_source_tag(),
-        has_client_id=str(bool((os.getenv("ZID_CLIENT_ID") or "").strip())).lower(),
-        has_state=str(bool(has_state)).lower(),
-        state_len=str(int(state_len)),
-        scope=(os.getenv("ZID_OAUTH_SCOPE") or "-")[:128],
+        scope=(query.get("scope") or "-")[:128],
+        scope_source=(
+            "env"
+            if "ZID_OAUTH_SCOPE" in os.environ
+            else ("default" if query.get("scope") else "omitted")
+        )[:32],
+        state_present=str(bool((query.get("state") or "").strip())).lower(),
+        state_len=str(len((query.get("state") or ""))),
+        authorize_url_safe=_safe_authorize_url_for_log(
+            authorize_url,
+            client_id=query.get("client_id") or "",
+        ),
     )
 
 
@@ -239,22 +280,25 @@ def build_zid_authorize_url(*, state: str = "") -> Tuple[Optional[str], Optional
                 "missing_environment_variables": missing,
             },
         )
-    from urllib.parse import urlencode
-
     redirect_uri = get_oauth_redirect_uri()
     q: dict[str, str] = {
         "client_id": client_id,
         "redirect_uri": redirect_uri,
         "response_type": "code",
     }
-    scope = (os.getenv("ZID_OAUTH_SCOPE") or "").strip()
+    scope = get_zid_oauth_scope()
     if scope:
         q["scope"] = scope
     st = (state or "").strip()
     if st:
         q["state"] = st
-    zid_oauth_start_trace(has_state=bool(st), state_len=len(st))
-    return f"{ZID_OAUTH_AUTHORIZE_URL}?{urlencode(q)}", None
+    authorize_url = f"{ZID_OAUTH_AUTHORIZE_URL}?{urlencode(q)}"
+    zid_oauth_start_trace(
+        authorize_url=authorize_url,
+        query=q,
+        client_id_present=bool(client_id),
+    )
+    return authorize_url, None
 
 
 def exchange_code_for_token(code: str) -> Tuple[dict, int]:
