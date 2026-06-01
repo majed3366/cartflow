@@ -7,9 +7,11 @@ from __future__ import annotations
 import base64
 import hashlib
 import hmac
+import logging
 import os
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional, Tuple, TYPE_CHECKING
+from urllib.parse import urlparse
 
 import requests
 
@@ -18,16 +20,113 @@ if TYPE_CHECKING:
 else:
     StarletteRequest = Any
 
+log = logging.getLogger("cartflow")
+
 ZID_OAUTH_BASE = (os.getenv("ZID_OAUTH_BASE") or "https://oauth.zid.sa").rstrip("/")
-OAUTH_REDIRECT_URI = (os.getenv("OAUTH_REDIRECT_URI") or "").strip() or (
-    "https://smartreplyai.net/auth/callback"
-)
+_DEFAULT_OAUTH_CALLBACK = "https://smartreplyai.net/auth/callback"
 ZID_API_BASE = (os.getenv("ZID_API_BASE") or "https://api.zid.sa/v1").rstrip("/")
 ZID_PROFILE_API = os.getenv(
     "ZID_PROFILE_API_URL", "https://api.zid.sa/v1/managers/account/profile"
 )
 ZID_OAUTH_TOKEN_URL = f"{ZID_OAUTH_BASE}/oauth/token"
 ZID_OAUTH_AUTHORIZE_URL = f"{ZID_OAUTH_BASE}/oauth/authorize"
+
+
+def get_oauth_redirect_uri() -> str:
+    """
+    OAuth callback URL sent to Zid — must match Partner Dashboard allowed redirection URLs.
+
+    Priority: OAUTH_REDIRECT_URI → CARTFLOW_PUBLIC_BASE_URL/auth/callback → default.
+    """
+    explicit = (os.getenv("OAUTH_REDIRECT_URI") or "").strip()
+    if explicit:
+        return explicit.rstrip("/")
+    base = (
+        os.getenv("CARTFLOW_PUBLIC_BASE_URL") or os.getenv("PUBLIC_BASE_URL") or ""
+    ).strip().rstrip("/")
+    if base:
+        return f"{base}/auth/callback"
+    return _DEFAULT_OAUTH_CALLBACK
+
+
+# Back-compat: callers that read module constant see resolved value at import time.
+OAUTH_REDIRECT_URI = get_oauth_redirect_uri()
+
+
+def _oauth_redirect_uri_source_tag() -> str:
+    if (os.getenv("OAUTH_REDIRECT_URI") or "").strip():
+        return "OAUTH_REDIRECT_URI"
+    base = (
+        os.getenv("CARTFLOW_PUBLIC_BASE_URL") or os.getenv("PUBLIC_BASE_URL") or ""
+    ).strip()
+    if base:
+        return "public_base_url"
+    return "default"
+
+
+def emit_zid_oauth_trace(tag: str, **fields: Any) -> None:
+    """Safe structured OAuth logs — never tokens or secrets."""
+    lines = [f"[{tag}]"]
+    for k, v in fields.items():
+        if v is None:
+            continue
+        lines.append(f"{k}={str(v)[:220]}")
+    block = "\n".join(lines)
+    try:
+        print(block, flush=True)
+    except OSError:
+        pass
+    try:
+        log.info("%s", block.replace("\n", " | "))
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def zid_oauth_start_trace(*, has_state: bool, state_len: int = 0) -> None:
+    uri = get_oauth_redirect_uri()
+    parsed = urlparse(uri)
+    emit_zid_oauth_trace(
+        "ZID OAUTH START",
+        redirect_uri=uri,
+        redirect_host=(parsed.netloc or "-")[:128],
+        redirect_path=(parsed.path or "-")[:128],
+        redirect_source=_oauth_redirect_uri_source_tag(),
+        has_client_id=str(bool((os.getenv("ZID_CLIENT_ID") or "").strip())).lower(),
+        has_state=str(bool(has_state)).lower(),
+        state_len=str(int(state_len)),
+        scope=(os.getenv("ZID_OAUTH_SCOPE") or "-")[:128],
+    )
+
+
+def zid_oauth_callback_trace(*, has_code: bool, has_state: bool) -> None:
+    emit_zid_oauth_trace(
+        "ZID OAUTH CALLBACK HIT",
+        has_code=str(bool(has_code)).lower(),
+        has_state=str(bool(has_state)).lower(),
+    )
+
+
+def zid_oauth_token_exchange_trace(*, success: bool, status_code: int, detail: str = "") -> None:
+    emit_zid_oauth_trace(
+        "ZID OAUTH TOKEN EXCHANGE",
+        success=str(bool(success)).lower(),
+        status_code=str(int(status_code)),
+        detail=(detail or "-")[:128],
+    )
+
+
+def zid_oauth_store_linked_trace(
+    *,
+    store_slug: str = "",
+    merchant_user_id: Optional[int] = None,
+    store_id: Optional[int] = None,
+) -> None:
+    emit_zid_oauth_trace(
+        "ZID OAUTH STORE LINKED",
+        store_slug=(store_slug or "-")[:128],
+        merchant_user_id=str(int(merchant_user_id)) if merchant_user_id is not None else "-",
+        store_id=str(int(store_id)) if store_id is not None else "-",
+    )
 
 
 def parse_zid_store_id_from_token(data: dict[str, Any]) -> Optional[str]:
@@ -142,14 +241,19 @@ def build_zid_authorize_url(*, state: str = "") -> Tuple[Optional[str], Optional
         )
     from urllib.parse import urlencode
 
+    redirect_uri = get_oauth_redirect_uri()
     q: dict[str, str] = {
         "client_id": client_id,
-        "redirect_uri": OAUTH_REDIRECT_URI,
+        "redirect_uri": redirect_uri,
         "response_type": "code",
     }
+    scope = (os.getenv("ZID_OAUTH_SCOPE") or "").strip()
+    if scope:
+        q["scope"] = scope
     st = (state or "").strip()
     if st:
         q["state"] = st
+    zid_oauth_start_trace(has_state=bool(st), state_len=len(st))
     return f"{ZID_OAUTH_AUTHORIZE_URL}?{urlencode(q)}", None
 
 
@@ -173,7 +277,7 @@ def exchange_code_for_token(code: str) -> Tuple[dict, int]:
         "grant_type": "authorization_code",
         "client_id": client_id,
         "client_secret": client_secret,
-        "redirect_uri": OAUTH_REDIRECT_URI,
+        "redirect_uri": get_oauth_redirect_uri(),
         "code": code,
     }
     try:
@@ -183,6 +287,7 @@ def exchange_code_for_token(code: str) -> Tuple[dict, int]:
             timeout=30,
         )
     except requests.RequestException as e:
+        zid_oauth_token_exchange_trace(success=False, status_code=502, detail="request_failed")
         return (
             {
                 "error": "Failed to reach Zid OAuth token endpoint",
@@ -193,6 +298,9 @@ def exchange_code_for_token(code: str) -> Tuple[dict, int]:
     try:
         body: Any = tr.json()
     except Exception:
+        zid_oauth_token_exchange_trace(
+            success=False, status_code=tr.status_code, detail="non_json_response"
+        )
         return (
             {
                 "error": "Zid returned a non-JSON response",
@@ -201,6 +309,17 @@ def exchange_code_for_token(code: str) -> Tuple[dict, int]:
             },
             tr.status_code,
         )
+    ok = 200 <= tr.status_code < 300 and isinstance(body, dict) and bool(
+        (body.get("access_token") or "").strip()
+    )
+    err_hint = ""
+    if isinstance(body, dict) and not ok:
+        err_hint = str(body.get("error") or body.get("message") or "")[:128]
+    zid_oauth_token_exchange_trace(
+        success=ok,
+        status_code=tr.status_code,
+        detail=err_hint or ("ok" if ok else "no_access_token"),
+    )
     if isinstance(body, dict):
         return (body, tr.status_code)
     return ({"response": body}, tr.status_code)

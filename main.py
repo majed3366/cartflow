@@ -13351,10 +13351,23 @@ def _redact_secrets_for_log(obj: Any) -> Any:
 @app.get("/auth/callback")
 def auth_callback(request: Request):
     # ‎OAuth 2.0‎: بدون ‎code‎ — تأكيد المسار؛ مع ‎code‎ — تبادل واستبدال الرموز دون إرجاع ‎access_token‎ للعميل
+    from integrations.zid_client import (  # noqa: PLC0415
+        zid_oauth_callback_trace,
+        zid_oauth_store_linked_trace,
+    )
+    from urllib.parse import urlencode  # noqa: PLC0415
+
+    def _dashboard_oauth_redirect(**params: str) -> RedirectResponse:
+        clean = {k: v for k, v in params.items() if v}
+        qs = urlencode(clean) if clean else ""
+        frag = "#settings" + (f"?{qs}" if qs else "")
+        return RedirectResponse(url=f"/dashboard{frag}", status_code=302)
+
     code = (request.query_params.get("code") or "").strip()
+    oauth_state = (request.query_params.get("state") or "").strip()
+    zid_oauth_callback_trace(has_code=bool(code), has_state=bool(oauth_state))
     if not code:
         return j({"status": "callback route exists"})
-    oauth_state = (request.query_params.get("state") or "").strip()
     body, status = exchange_code_for_token(code)
     if 200 <= status < 300 and isinstance(body, dict) and (body.get("access_token") or "").strip():
         try:
@@ -13372,20 +13385,22 @@ def auth_callback(request: Request):
                         merchant_user_id=merchant_id,
                         token_response=body,
                     ):
-                        return RedirectResponse(
-                            url="/dashboard#settings?store_connected=1",
-                            status_code=302,
+                        row = db.session.get(Store, int(store_id))
+                        zid_oauth_store_linked_trace(
+                            store_slug=str(getattr(row, "zid_store_id", None) or "")[:128],
+                            merchant_user_id=int(merchant_id),
+                            store_id=int(store_id),
                         )
+                        return _dashboard_oauth_redirect(store_connected="1")
             save_or_update_store_from_token_response(body)
         except SQLAlchemyError:
             db.session.rollback()
-            return j({"ok": False, "error": "failed_to_persist_store"}, 500)
-        return j({"ok": True, "message": "connected"}, 200)
-    if 200 <= status < 300 and isinstance(body, dict):
-        return j({"ok": False, "error": "no_access_token_in_response"}, status)
+            return _dashboard_oauth_redirect(store_connect_error="persist_failed")
+        return _dashboard_oauth_redirect(store_connected="1", oauth_legacy="1")
+    err = "token_exchange_failed"
     if isinstance(body, dict):
-        return j(body, status)
-    return j({"error": "invalid_token_response_format"}, status)
+        err = str(body.get("error") or body.get("message") or err)[:64]
+    return _dashboard_oauth_redirect(store_connect_error=err)
 
 
 _REASON_LABELS_AR: dict[str, str] = {
@@ -19234,6 +19249,12 @@ def api_merchant_store_connection_status(request: Request):
             section="merchant_store_connection",
             wall_perf_start=wall0,
         )
+
+
+@app.get("/auth/zid")
+def auth_zid_oauth_start(request: Request):
+    """Zid Partner Redirect URL entry — same OAuth start as merchant dashboard connect."""
+    return api_merchant_store_connection_zid_connect(request)
 
 
 @app.get("/api/merchant/store-connection/zid/connect")
