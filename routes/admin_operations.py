@@ -443,6 +443,54 @@ def admin_operations_snapshot_export(
     return j({"ok": True, "snapshot": snapshot})
 
 
+@router.get("/admin/operations/recovery-resume-inspect")
+def admin_recovery_resume_inspect(
+    request: Request,
+    store_slug: str = Query(""),
+    status: str = Query(""),
+    resume_only: int = Query(0),
+    stale_only: int = Query(0),
+    limit: int = Query(100),
+) -> Any:
+    """Read-only recovery resume inspect — no DB writes."""
+    denied = _admin_json_auth(request)
+    if denied is not None:
+        return denied
+    from services.admin_recovery_resume_inspect_scan_v1 import (  # noqa: PLC0415
+        build_recovery_resume_inspect_readonly,
+    )
+
+    payload = build_recovery_resume_inspect_readonly(
+        store_slug=(store_slug or "").strip(),
+        status=(status or "").strip(),
+        resume_only=bool(int(resume_only or 0)),
+        stale_only=bool(int(stale_only or 0)),
+        limit=int(limit or 100),
+    )
+    return j({"ok": True, **payload})
+
+
+@router.get("/admin/operations/recovery-resume-scan")
+def admin_recovery_resume_scan(
+    request: Request,
+    store_slug: str = Query(""),
+    limit: int = Query(100),
+) -> Any:
+    """Dry-run recovery resume scan simulation — no execution or DB writes."""
+    denied = _admin_json_auth(request)
+    if denied is not None:
+        return denied
+    from services.admin_recovery_resume_inspect_scan_v1 import (  # noqa: PLC0415
+        build_recovery_resume_scan_readonly,
+    )
+
+    payload = build_recovery_resume_scan_readonly(
+        store_slug=(store_slug or "").strip(),
+        limit=int(limit or 100),
+    )
+    return j({"ok": True, **payload})
+
+
 def _register_admin_placeholder_routes() -> None:
     for path, nav_key, title_ar, description_ar in _ADMIN_PLACEHOLDER_PAGES:
 

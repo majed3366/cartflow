@@ -1939,12 +1939,17 @@ def build_admin_operations_command_center_readonly() -> dict[str, Any]:
     ctx = _build_ops_shared_context()
     alerts = ctx["alerts"]
     store_rows = ctx["store_rows"]
+    from services.admin_recovery_resume_inspect_scan_v1 import (  # noqa: PLC0415
+        build_recovery_resume_health_summary_readonly,
+    )
+
     return {
         "version": "admin_operations_center_v2_2",
         "generated_at_utc": _utc_now().isoformat(),
         "system_health_summary": _build_system_health_summary(alerts),
         "top_risks": _build_top_risks(alerts),
         "store_health_snapshot": _build_store_health_snapshot(alerts, store_rows),
+        "recovery_resume_health": build_recovery_resume_health_summary_readonly(),
         "health_scheduler_path": "/health/scheduler",
     }
 
