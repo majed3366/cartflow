@@ -8,9 +8,11 @@ import os
 from pathlib import Path
 from typing import Any, Optional
 
-from fastapi import APIRouter, Form, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi import APIRouter, Form, Query, Request
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
+
+from json_response import j
 
 from services.cartflow_admin_http_auth import (
     admin_cookie_name,
@@ -193,6 +195,15 @@ def _admin_session_or_redirect(request: Request, *, next_path: str) -> Optional[
             url=f"/admin/operations/login?next={next_path}",
             status_code=302,
         )
+    return None
+
+
+def _admin_json_auth(request: Request) -> Optional[JSONResponse]:
+    if not admin_password_configured():
+        return JSONResponse({"ok": False, "error": "admin_not_configured"}, status_code=503)
+    cookie = request.cookies.get(admin_cookie_name())
+    if not admin_session_cookie_valid(cookie):
+        return JSONResponse({"ok": False, "error": "unauthorized"}, status_code=401)
     return None
 
 
@@ -410,6 +421,26 @@ def admin_operations_section_analytics(request: Request) -> Any:
         "partials/admin_operations_analytics_section.html",
         {"ops": ops},
     )
+
+
+@router.get("/admin/operations/snapshot")
+def admin_operations_snapshot_export(
+    request: Request,
+    store_slug: str = Query(""),
+) -> Any:
+    """Read-only operational snapshot JSON for support and incident investigation."""
+    denied = _admin_json_auth(request)
+    if denied is not None:
+        return denied
+    from services.admin_operational_snapshot_v1 import (  # noqa: PLC0415
+        build_admin_operational_snapshot_v1,
+    )
+
+    snapshot = build_admin_operational_snapshot_v1(
+        store_slug=(store_slug or "").strip(),
+        generated_by="admin_session",
+    )
+    return j({"ok": True, "snapshot": snapshot})
 
 
 def _register_admin_placeholder_routes() -> None:
