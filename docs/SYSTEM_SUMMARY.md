@@ -261,7 +261,7 @@ Print-style trace: **`[DELAY STARTED]`**, **`[DELAY WAITING]`**, **`[DELAY FINIS
 
 ### `MerchantUser` / auth (`merchant_users`, `merchant_password_reset_tokens`)
 
-`MerchantUser`: `email`, `password_hash`, `merchant_name`, `primary_store_id`. Signup creates a **`Store`** row and sets **`stores.merchant_user_id`**. Password reset tokens stored hashed with expiry.
+`MerchantUser`: `email`, `password_hash`, `merchant_name`, `primary_store_id`. Signup creates a **`Store`** row and sets **`stores.merchant_user_id`** + **`primary_store_id`** (startup DDL via `schema_merchant_auth`); orphan accounts without a store can complete signup with the same email/password. **`POST /signup`** logs **`[SIGNUP 400]`** on validation/register failure. Password reset tokens stored hashed with expiry.
 
 ### `Store` (`stores`)
 
@@ -341,6 +341,7 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 
 | Date (UTC) | Summary |
 |------------|---------|
+| 2026-06-02 | **Signup 400 / orphan merchant store link:** `POST /signup` logs `[SIGNUP 400]` before each 400 (`reason`, field presence, `existing_user`, `orphan_user_no_store`, `validation_error`); `schema_merchant_auth` ensures `merchant_users.primary_store_id` (+ name/timestamps) and `stores.merchant_user_id`; signup completes **orphan** `MerchantUser` rows (no store) when password matches; post-commit `[MERCHANT SIGNUP] stage=verify` checks `primary_store_id` ↔ `stores.merchant_user_id`. Commit: **`fix: root cause signup store relationship failure`**. |
 | 2026-06-02 | **`/auth/zid` branch trace:** `[ZID AUTH/ZID BRANCH]` logs `reason`, `merchant_id`, `store_present`, `resolution_source`, `merchant_cookie_present`, cookie names — `dev_oauth` only when `ZID_DEV_OAUTH_ENABLED` and no `cartflow_merchant_session`; else `legacy_connect`. Commit: **`debug: trace auth_zid branch selection`**. |
 | 2026-06-02 | **Zid OAuth store schema (production):** `stores.integration_source` + `stores.connected_at` via `schema_zid_dev_oauth.ensure_store_zid_integration_schema` at API DB warm + merchant dashboard ready; startup log `[STORE ZID SCHEMA]`; Alembic `z1a2b3c4d5e6_add_store_zid_integration_columns`. Fixes `UndefinedColumn` on deploy without migration. Commit: **`fix: apply missing store schema for zid oauth`**. |
 | 2026-06-02 | **Zid install/OAuth root-cause audit:** `docs/zid_installation_oauth_root_cause_audit_v1.md` — failure at Zid installation creation (installs=0, AppErrorNotFound/403 In Review); CartFlow OAuth spec-compliant; empty callback = no OAuth code redirect. Temp `[ZID OAUTH AUDIT]` on `/auth/zid` and `/auth/callback` (referer, UA, query keys). Commit: **`debug: audit zid installation and oauth activation flow`**. |

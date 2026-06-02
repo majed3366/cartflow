@@ -16,6 +16,7 @@ from schema_merchant_auth import reset_merchant_auth_schema_guard_for_tests
 from services.merchant_auth_http import merchant_cookie_name
 from services.merchant_auth_v1 import (
     hash_password,
+    merchant_user_has_linked_store,
     register_merchant_account,
     request_password_reset,
     resolve_merchant_display_name,
@@ -158,6 +159,55 @@ class MerchantAuthV1Tests(unittest.TestCase):
         assert store is not None
         self.assertTrue(store.zid_store_id)
         self.assertEqual(user.primary_store_id, store.id)
+
+    def test_signup_400_when_email_already_has_store(self) -> None:
+        email = f"dup-store-{uuid.uuid4().hex}@example.com"
+        ok, _, _user = register_merchant_account(
+            store_name="متجر أول",
+            email=email,
+            password="password123",
+        )
+        self.assertTrue(ok)
+        r = self.client.post(
+            "/signup",
+            data={
+                "store_name": "متجر ثان",
+                "email": email,
+                "password": "password123",
+                "confirm_password": "password123",
+            },
+            follow_redirects=False,
+        )
+        self.assertEqual(r.status_code, 400)
+
+    def test_signup_completes_orphan_merchant_without_store(self) -> None:
+        email = f"orphan-{uuid.uuid4().hex}@example.com"
+        orphan = MerchantUser(
+            email=email,
+            password_hash=hash_password("password123"),
+            merchant_name="حساب بدون متجر",
+        )
+        db.session.add(orphan)
+        db.session.commit()
+        self.assertFalse(merchant_user_has_linked_store(orphan))
+        r = self.client.post(
+            "/signup",
+            data={
+                "store_name": "متجر مكتمل",
+                "email": email,
+                "password": "password123",
+                "confirm_password": "password123",
+            },
+            follow_redirects=False,
+        )
+        self.assertEqual(r.status_code, 303, r.text[:400])
+        db.session.expire_all()
+        u = db.session.query(MerchantUser).filter(MerchantUser.email == email).one()
+        store = db.session.query(Store).filter(Store.merchant_user_id == u.id).first()
+        self.assertIsNotNone(store)
+        assert store is not None
+        self.assertEqual(u.primary_store_id, store.id)
+        self.assertTrue(merchant_user_has_linked_store(u))
 
 
 if __name__ == "__main__":

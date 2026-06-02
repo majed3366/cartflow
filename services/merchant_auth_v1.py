@@ -192,6 +192,63 @@ def resolve_authenticated_store_slug(cookies: dict[str, str]) -> Optional[str]:
     return zid or None
 
 
+def merchant_user_has_linked_store(user: MerchantUser) -> bool:
+    return get_primary_store_for_merchant(user) is not None
+
+
+def signup_audit_context(
+    *,
+    email: str = "",
+    password: str = "",
+    merchant_name: str = "",
+) -> dict[str, Any]:
+    em = normalize_email(email)
+    existing = get_merchant_user_by_email(em) if em else None
+    orphan = (
+        existing is not None and not merchant_user_has_linked_store(existing)
+    )
+    return {
+        "email_present": bool((email or "").strip()),
+        "password_present": bool((password or "").strip()),
+        "merchant_name_present": bool((merchant_name or "").strip()),
+        "existing_user": existing is not None,
+        "orphan_user_no_store": orphan,
+        "existing_user_id": int(existing.id) if existing is not None else None,
+    }
+
+
+def log_signup_400(
+    *,
+    reason: str,
+    validation_error: str = "",
+    email: str = "",
+    password: str = "",
+    merchant_name: str = "",
+    reg_msg: str = "",
+) -> None:
+    ctx = signup_audit_context(
+        email=email, password=password, merchant_name=merchant_name
+    )
+    line = (
+        "[SIGNUP 400] "
+        f"reason={reason} "
+        f"email_present={str(ctx['email_present']).lower()} "
+        f"password_present={str(ctx['password_present']).lower()} "
+        f"merchant_name_present={str(ctx['merchant_name_present']).lower()} "
+        f"existing_user={str(ctx['existing_user']).lower()} "
+        f"orphan_user_no_store={str(ctx['orphan_user_no_store']).lower()} "
+        f"validation_error={validation_error or '-'} "
+        f"reg_msg={(reg_msg or '-')[:120]}"
+    )
+    if ctx.get("existing_user_id") is not None:
+        line += f" existing_user_id={ctx['existing_user_id']}"
+    try:
+        print(line, flush=True)
+    except OSError:
+        pass
+    log.info("%s", line)
+
+
 def validate_signup_form(
     *,
     merchant_name: str = "",
@@ -208,8 +265,10 @@ def validate_signup_form(
         errors["store_name"] = "أدخل اسم المتجر (حرفان على الأقل)."
     if not em:
         errors["email"] = "أدخل بريداً إلكترونياً صالحاً."
-    elif get_merchant_user_by_email(em):
-        errors["email"] = "هذا البريد مسجّل مسبقاً."
+    else:
+        existing = get_merchant_user_by_email(em)
+        if existing is not None and merchant_user_has_linked_store(existing):
+            errors["email"] = "هذا البريد مسجّل مسبقاً."
     if len(password or "") < _MIN_PASSWORD_LEN:
         errors["password"] = f"كلمة المرور {_MIN_PASSWORD_LEN} أحرف على الأقل."
     if password != confirm_password:
@@ -222,6 +281,51 @@ def validate_signup_form(
         "email": em or "",
         "password": password,
     }
+
+
+def format_signup_field_errors(errors: dict[str, str]) -> str:
+    if not errors:
+        return "-"
+    return ",".join(f"{k}={v[:80]}" for k, v in sorted(errors.items()))
+
+
+def _verify_merchant_store_linkage(user: MerchantUser) -> tuple[bool, str]:
+    """Post-commit check: MerchantUser ↔ Store bidirectional link."""
+    try:
+        db.session.refresh(user)
+    except SQLAlchemyError:
+        db.session.rollback()
+    store = get_primary_store_for_merchant(user)
+    if store is None:
+        return False, "no_store_resolved"
+    owner = getattr(store, "merchant_user_id", None)
+    if owner is None or int(owner) != int(user.id):
+        return False, "store_merchant_user_id_mismatch"
+    pid = getattr(user, "primary_store_id", None)
+    if pid is None or int(pid) != int(store.id):
+        return False, "primary_store_id_mismatch"
+    return True, "ok"
+
+
+def _link_store_to_merchant_user(
+    user: MerchantUser,
+    *,
+    store_name: str,
+) -> tuple[bool, str, Optional[Store]]:
+    zid = generate_unique_store_zid(store_name)
+    store = Store(
+        zid_store_id=zid,
+        merchant_user_id=int(user.id),
+        widget_display_name=store_name[:255],
+        recovery_delay=2,
+        recovery_delay_unit="minutes",
+        recovery_attempts=1,
+    )
+    db.session.add(store)
+    db.session.flush()
+    user.primary_store_id = int(store.id)
+    db.session.flush()
+    return True, "", store
 
 
 def register_merchant_account(
@@ -249,33 +353,70 @@ def register_merchant_account(
         return False, msg, None
     em = validated["email"]
     log.info("[MERCHANT SIGNUP] stage=validate outcome=ok")
-    user = MerchantUser(
-        email=em,
-        password_hash=hash_password(validated["password"]),
-        merchant_name=validated["merchant_name"],
-    )
-    zid = generate_unique_store_zid(validated["store_name"])
-    store = Store(
-        zid_store_id=zid,
-        merchant_user_id=None,
-        widget_display_name=validated["store_name"][:255],
-        recovery_delay=2,
-        recovery_delay_unit="minutes",
-        recovery_attempts=1,
+    existing = get_merchant_user_by_email(em)
+    orphan_complete = (
+        existing is not None and not merchant_user_has_linked_store(existing)
     )
     try:
-        db.session.add(user)
-        db.session.flush()
-        store.merchant_user_id = user.id
-        db.session.add(store)
-        db.session.flush()
-        user.primary_store_id = store.id
-        db.session.commit()
+        if orphan_complete:
+            assert existing is not None
+            if not verify_password(validated["password"], existing.password_hash):
+                log.info(
+                    "[MERCHANT SIGNUP] stage=orphan_complete outcome=fail "
+                    "user_id=%s reason=wrong_password",
+                    existing.id,
+                )
+                return False, "هذا البريد مسجّل مسبقاً.", None
+            user = existing
+            if validated["merchant_name"]:
+                user.merchant_name = validated["merchant_name"]
+            link_ok, link_err, store = _link_store_to_merchant_user(
+                user, store_name=validated["store_name"]
+            )
+            if not link_ok or store is None:
+                db.session.rollback()
+                return False, link_err or "تعذر ربط المتجر بالحساب.", None
+            db.session.commit()
+            db.session.refresh(user)
+            db.session.refresh(store)
+            mode = "orphan_link"
+        else:
+            user = MerchantUser(
+                email=em,
+                password_hash=hash_password(validated["password"]),
+                merchant_name=validated["merchant_name"],
+            )
+            db.session.add(user)
+            db.session.flush()
+            link_ok, link_err, store = _link_store_to_merchant_user(
+                user, store_name=validated["store_name"]
+            )
+            if not link_ok or store is None:
+                db.session.rollback()
+                return False, link_err or "تعذر إنشاء المتجر.", None
+            db.session.commit()
+            db.session.refresh(user)
+            db.session.refresh(store)
+            mode = "new_user"
+        linked, link_reason = _verify_merchant_store_linkage(user)
         log.info(
-            "[MERCHANT SIGNUP] stage=create outcome=ok user_id=%s store_id=%s",
+            "[MERCHANT SIGNUP] stage=create outcome=ok mode=%s user_id=%s store_id=%s "
+            "primary_store_id=%s store_merchant_user_id=%s verify_ok=%s verify_reason=%s",
+            mode,
             user.id,
             store.id,
+            getattr(user, "primary_store_id", None),
+            getattr(store, "merchant_user_id", None),
+            linked,
+            link_reason,
         )
+        if not linked:
+            log.error(
+                "[MERCHANT SIGNUP] stage=verify outcome=fail user_id=%s reason=%s",
+                user.id,
+                link_reason,
+            )
+            return False, "تعذر إنشاء الحساب. حاول مرة أخرى.", None
         return True, "", user
     except IntegrityError as exc:
         db.session.rollback()
@@ -467,8 +608,12 @@ __all__ = [
     "is_development_env",
     "merchant_id_from_request_cookies",
     "normalize_email",
+    "format_signup_field_errors",
+    "log_signup_400",
+    "merchant_user_has_linked_store",
     "register_merchant_account",
     "request_password_reset",
+    "signup_audit_context",
     "resolve_authenticated_store_slug",
     "safe_redirect_path",
     "session_cookie_value_for_user",

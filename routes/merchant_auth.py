@@ -13,10 +13,12 @@ from fastapi.templating import Jinja2Templates
 
 from services.merchant_auth_http import merchant_cookie_name
 from services.merchant_auth_v1 import (
+    format_signup_field_errors,
     apply_password_reset,
     authenticate_merchant,
     ensure_merchant_auth_db_ready,
     is_development_env,
+    log_signup_400,
     register_merchant_account,
     request_password_reset,
     safe_redirect_path,
@@ -143,6 +145,13 @@ def merchant_signup_post(
         confirm_password=confirm_password,
     )
     if not ok:
+        log_signup_400(
+            reason="validation_failed",
+            validation_error=format_signup_field_errors(errors),
+            email=email,
+            password=password,
+            merchant_name=merchant_name,
+        )
         log.info(
             "[MERCHANT SIGNUP] http outcome=validate_fail fields=%s ua=%s",
             sorted(errors.keys()) if isinstance(errors, dict) else [],
@@ -167,6 +176,14 @@ def merchant_signup_post(
         password=password,
     )
     if not reg_ok or not user:
+        log_signup_400(
+            reason="register_failed",
+            validation_error="-",
+            email=email,
+            password=password,
+            merchant_name=merchant_name,
+            reg_msg=reg_msg or "",
+        )
         log.info(
             "[MERCHANT SIGNUP] http outcome=create_fail reg_msg=%s ua=%s",
             (reg_msg or "")[:80],
