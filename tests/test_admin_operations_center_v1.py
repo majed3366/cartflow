@@ -213,19 +213,32 @@ class AdminOperationsCenterV1Tests(unittest.TestCase):
         r = self.client.get("/admin/operations")
         self.assertEqual(r.status_code, 200, r.text[:500])
         body = r.text
-        self.assertIn("مركز العمليات", body)
-        self.assertIn("حالة النظام الآن", body)
-        self.assertIn("أهم المخاطر الحالية", body)
+        self.assertIn("حالة المنصة", body)
+        self.assertIn("المتاجر النشطة", body)
+        self.assertIn("المتاجر المتأثرة", body)
+        self.assertIn("التنبيهات المفتوحة", body)
+        self.assertIn("الاسترجاعات اليوم", body)
+        self.assertIn("أكبر مشكلة الآن", body)
         self.assertIn("حالة المتاجر", body)
-        self.assertIn("التحقيق والتشخيص", body)
-        self.assertIn("التحليل والاتجاهات", body)
-        self.assertIn("ops-command-center", body)
+        self.assertIn("ops-executive-summary", body)
+        self.assertIn('id="admin-sidebar-panel"', body)
+        # Technical lazy panels are NOT on the executive overview.
+        self.assertNotIn("ops-investigation-panel", body)
+        self.assertNotIn("ops-analytics-panel", body)
+        self.assertNotIn("bindLazySection", body)
+
+    def test_support_diagnostics_page_hosts_technical_panels(self) -> None:
+        self._login()
+        r = self.client.get("/admin/diagnostics")
+        self.assertEqual(r.status_code, 200, r.text[:500])
+        body = r.text
+        self.assertIn("Recovery Resume Health", body)
+        self.assertIn("تفاصيل تقنية (للدعم فقط)", body)
         self.assertIn("ops-investigation-panel", body)
         self.assertIn("ops-analytics-panel", body)
         self.assertIn("ops-investigation-content", body)
         self.assertIn("ops-analytics-content", body)
         self.assertIn("bindLazySection", body)
-        self.assertIn('id="admin-sidebar-panel"', body)
 
     def test_lazy_section_endpoints_authenticated(self) -> None:
         self._login()
@@ -261,20 +274,24 @@ class AdminOperationsCenterV1Tests(unittest.TestCase):
         r = self.client.get("/admin/operations")
         self.assertEqual(r.status_code, 200)
         body = r.text
+        # Executive overview must not embed technical section content.
         self.assertNotIn("أ — صحة المجدول", body)
         self.assertNotIn("المؤشر", body)
+        self.assertNotIn('id="ops-investigation-content"', body)
+        self.assertNotIn('id="ops-analytics-content"', body)
+
+    def test_diagnostics_page_lazy_sections_closed_by_default(self) -> None:
+        self._login()
+        r = self.client.get("/admin/diagnostics")
+        self.assertEqual(r.status_code, 200)
+        body = r.text
         self.assertIn('data-lazy-state="idle"', body)
         self.assertIn('id="ops-investigation-content"', body)
         self.assertIn('id="ops-analytics-content"', body)
-
-    def test_page_ia_collapsible_sections_closed_by_default(self) -> None:
-        self._login()
-        r = self.client.get("/admin/operations")
-        self.assertEqual(r.status_code, 200)
-        self.assertIn('id="ops-investigation-panel"', r.text)
-        self.assertIn('id="ops-analytics-panel"', r.text)
-        self.assertNotIn('id="ops-investigation-panel" open', r.text)
-        self.assertNotIn('id="ops-analytics-panel" open', r.text)
+        self.assertIn('id="ops-investigation-panel"', body)
+        self.assertIn('id="ops-analytics-panel"', body)
+        self.assertNotIn('id="ops-investigation-panel" open', body)
+        self.assertNotIn('id="ops-analytics-panel" open', body)
 
     def test_page_ia_investigation_and_analytics_content_preserved(self) -> None:
         self._login()
@@ -635,7 +652,51 @@ class AdminOperationsCenterV1Tests(unittest.TestCase):
         self._login()
         r = self.client.get("/admin/operations")
         self.assertEqual(r.status_code, 200)
-        self.assertIn("أهم المخاطر الحالية", r.text)
+        self.assertIn("أكبر مشكلة الآن", r.text)
+
+    def test_current_issues_business_language_builder(self) -> None:
+        from services.admin_operations_center_v1 import _build_current_issues
+
+        alerts = [
+            _alert_with_records(
+                kind="failed_recovery",
+                title_ar="x",
+                detail_ar="x",
+                records=[{"store_slug": "s1"}, {"store_slug": "s2"}],
+                records_total=2,
+            ),
+            _alert_with_records(
+                kind="no_cart_events",
+                title_ar="y",
+                detail_ar="y",
+                records=[{"store_slug": "s3"}],
+                records_total=1,
+            ),
+        ]
+        ci = _build_current_issues(alerts)
+        self.assertEqual(ci["total"], 2)
+        first = ci["issues"][0]
+        # failed_recovery (high) should outrank no_cart_events (low).
+        self.assertEqual(first["kind"], "failed_recovery")
+        self.assertEqual(first["title_ar"], "رسائل الاسترجاع لا يتم تسليمها")
+        self.assertEqual(first["affected_count"], 2)
+        for key in ("impact_ar", "owner_ar", "action_ar", "verification_ar", "affected_label_ar"):
+            self.assertTrue(first.get(key), msg=f"missing {key}")
+
+    def test_command_center_includes_executive_summary_and_issues(self) -> None:
+        payload = build_admin_operations_command_center_readonly()
+        ex = payload.get("executive_summary") or {}
+        for key in (
+            "platform_status_ar",
+            "platform_status_tone",
+            "active_stores",
+            "affected_stores",
+            "open_alerts",
+            "recoveries_today",
+        ):
+            self.assertIn(key, ex)
+        self.assertIn("current_issues", payload)
+        self.assertIn("issues", payload["current_issues"])
 
     def test_timeline_ordering(self) -> None:
         now = datetime.now(timezone.utc)
@@ -1111,10 +1172,10 @@ class AdminOperationsCenterV1Tests(unittest.TestCase):
         self._login()
         r = self.client.get("/admin/operations")
         self.assertEqual(r.status_code, 200)
-        self.assertIn("حالة النظام الآن", r.text)
-        payload = build_admin_operations_center_v1_readonly()
-        health = payload.get("system_health_summary") or {}
-        self.assertIn(health.get("status_ar") or "مستقرة", r.text)
+        self.assertIn("حالة المنصة", r.text)
+        payload = build_admin_operations_command_center_readonly()
+        ex = payload.get("executive_summary") or {}
+        self.assertIn(ex.get("platform_status_ar") or "مستقرة", r.text)
 
     def test_alert_with_records_hidden_count(self) -> None:
         recs = [{"recovery_key": f"k{i}", "status": "failed"} for i in range(8)]

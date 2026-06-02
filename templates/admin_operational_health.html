@@ -72,6 +72,13 @@
     {% endif %}
   </section>
 
+  {# Quick links to operational tools (presentation only) #}
+  <nav class="flex flex-wrap items-center gap-2 text-sm" aria-label="أدوات التشغيل">
+    <a href="/admin/control" class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 font-medium text-slate-700 shadow-sm hover:bg-slate-50">التحكم التشغيلي</a>
+    <a href="/admin/diagnostics" class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 font-medium text-slate-700 shadow-sm hover:bg-slate-50">تشخيص الدعم</a>
+    <a href="/admin/operations" class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 font-medium text-slate-700 shadow-sm hover:bg-slate-50">النظرة العامة</a>
+  </nav>
+
   {# Level 2 — Action required (quick decisions) #}
   <section class="admin-card overflow-hidden">
     <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-6 py-4">
@@ -254,6 +261,17 @@
           {% endfor %}
         </ol>
       </section>
+      {% if h.latest_load_test_ar or h.latest_multi_store_load_test_ar or h.latest_mixed_behavior_load_test_ar or h.latest_failure_simulation_ar %}
+      <section>
+        <h3 class="font-semibold text-slate-800">آخر اختبارات الضغط (للدعم)</h3>
+        <ul class="mt-2 space-y-1 text-sm text-slate-600">
+          {% if h.latest_load_test_ar %}<li class="rounded-lg bg-slate-50 px-3 py-2">{{ h.latest_load_test_ar }}</li>{% endif %}
+          {% if h.latest_multi_store_load_test_ar %}<li class="rounded-lg bg-slate-50 px-3 py-2">{{ h.latest_multi_store_load_test_ar }}</li>{% endif %}
+          {% if h.latest_mixed_behavior_load_test_ar %}<li class="rounded-lg bg-slate-50 px-3 py-2">{{ h.latest_mixed_behavior_load_test_ar }}</li>{% endif %}
+          {% if h.latest_failure_simulation_ar %}<li class="rounded-lg bg-slate-50 px-3 py-2">{{ h.latest_failure_simulation_ar }}</li>{% endif %}
+        </ul>
+      </section>
+      {% endif %}
     </div>
   </details>
 

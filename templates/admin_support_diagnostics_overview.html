@@ -1,0 +1,149 @@
+{% extends "layouts/admin_dashboard.html" %}
+{% block admin_title %}CartFlow Admin — تشخيص الدعم{% endblock %}
+{% block admin_main_class %}w-full max-w-[88rem] space-y-6 px-6 py-8 lg:px-10 lg:py-10{% endblock %}
+
+{% block admin_content %}
+  {% set rr = ops.recovery_resume_health or {} %}
+
+  <!-- Support-only banner -->
+  <section class="rounded-2xl border border-slate-300 bg-slate-50 px-6 py-4">
+    <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">تفاصيل تقنية — للدعم فقط</p>
+    <p class="mt-1 text-sm text-slate-600">
+      أدوات تشخيص تقنية لفريق الدعم (مفاتيح، حالات داخلية، عدّادات تشغيل). ليست مخصصة للمراقبة التنفيذية.
+      آخر بناء: {{ ops.generated_at_utc or "—" }}
+      · مصدر المجدول: <code class="rounded bg-white px-1" dir="ltr">{{ ops.health_scheduler_path or "/health/scheduler" }}</code>
+    </p>
+  </section>
+
+  <!-- Deep tools quick links -->
+  <section class="grid gap-3 sm:grid-cols-3">
+    <a href="/admin/operational-health" class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm hover:bg-slate-50">
+      <p class="font-semibold text-slate-900">مركز التشغيل التفصيلي</p>
+      <p class="mt-0.5 text-xs text-slate-500">مخاطر، مكوّنات، عدّادات تشغيل</p>
+    </a>
+    <a href="/admin/support-diagnostics/ui" class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm hover:bg-slate-50">
+      <p class="font-semibold text-slate-900">بحث في جلسة/استرجاع</p>
+      <p class="mt-0.5 text-xs text-slate-500">ماذا حدث؟ لماذا؟ ماذا نفعل؟</p>
+    </a>
+    <a href="/admin/control" class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm hover:bg-slate-50">
+      <p class="font-semibold text-slate-900">التحكم التشغيلي</p>
+      <p class="mt-0.5 text-xs text-slate-500">إيقاف/استئناف يدوي</p>
+    </a>
+  </section>
+
+  <!-- Recovery Resume Health (read-only inspect / dry-run scan) -->
+  <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm" id="ops-recovery-resume-health">
+    <h2 class="text-base font-semibold text-slate-900">Recovery Resume Health</h2>
+    <p class="mt-1 text-sm text-slate-600">قراءة فقط — هل هناك استرجاعات مؤهلة للاستئناف؟ هل توجد صفوف running عالقة؟</p>
+    <dl class="mt-4 grid grid-cols-2 gap-3 text-xs sm:grid-cols-4">
+      <div class="rounded-lg border border-emerald-100 bg-emerald-50/50 px-3 py-2">
+        <dt class="font-medium text-emerald-900">Resume Eligible</dt>
+        <dd class="mt-0.5 text-lg font-semibold tabular-nums text-emerald-950">{{ rr.resume_eligible | default(0) }}</dd>
+      </div>
+      <div class="rounded-lg border border-rose-100 bg-rose-50/50 px-3 py-2">
+        <dt class="font-medium text-rose-900">Stale Running</dt>
+        <dd class="mt-0.5 text-lg font-semibold tabular-nums text-rose-950">{{ rr.stale_running | default(0) }}</dd>
+      </div>
+      <div class="rounded-lg border border-amber-100 bg-amber-50/50 px-3 py-2">
+        <dt class="font-medium text-amber-950">Scheduled Due Now</dt>
+        <dd class="mt-0.5 text-lg font-semibold tabular-nums text-amber-950">{{ rr.scheduled_due_now | default(0) }}</dd>
+      </div>
+      <div class="rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2">
+        <dt class="font-medium text-slate-700">Running Count</dt>
+        <dd class="mt-0.5 text-lg font-semibold tabular-nums text-slate-900">{{ rr.running | default(0) }}</dd>
+      </div>
+    </dl>
+    <div class="mt-4 flex flex-wrap gap-2">
+      <button type="button" id="ops-recovery-resume-inspect-btn"
+        class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-800 hover:bg-slate-50">
+        Inspect
+      </button>
+      <button type="button" id="ops-recovery-resume-scan-btn"
+        class="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-medium text-indigo-900 hover:bg-indigo-100">
+        Scan (Dry Run)
+      </button>
+    </div>
+    <p class="mt-2 text-[11px] text-slate-400">يفتح JSON في تبويب جديد — لا إصلاح ولا إرسال.</p>
+  </section>
+
+  <!-- TECHNICAL DETAILS (Support Only) — investigation -->
+  <details id="ops-investigation-panel" class="group rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-6 py-4 marker:content-none [&::-webkit-details-marker]:hidden">
+      <div>
+        <h2 class="text-base font-semibold text-slate-900">تفاصيل تقنية (للدعم فقط) — التحقيق والتشخيص</h2>
+        <p class="mt-0.5 text-sm text-slate-600">صحة المجدول، إحصاءات RecoverySchedule، جاهزية المتاجر، التنبيهات الأساسية، المفاتيح والمعرّفات.</p>
+      </div>
+      <span class="shrink-0 text-xs font-medium text-slate-500 group-open:hidden">عرض</span>
+      <span class="hidden shrink-0 text-xs font-medium text-slate-500 group-open:inline">إخفاء</span>
+    </summary>
+    <div id="ops-investigation-content" class="border-t border-slate-100 px-6 py-5" data-lazy-state="idle" hidden></div>
+  </details>
+
+  <!-- TECHNICAL DETAILS (Support Only) — analytics -->
+  <details id="ops-analytics-panel" class="group rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-6 py-4 marker:content-none [&::-webkit-details-marker]:hidden">
+      <div>
+        <h2 class="text-base font-semibold text-slate-900">تفاصيل تقنية (للدعم فقط) — التحليل والاتجاهات</h2>
+        <p class="mt-0.5 text-sm text-slate-600">اتجاهات التشغيل، الأحداث الأخيرة، ومصادر المشاكل — للتحليل وليس للإجراء الفوري.</p>
+      </div>
+      <span class="shrink-0 text-xs font-medium text-slate-500 group-open:hidden">عرض</span>
+      <span class="hidden shrink-0 text-xs font-medium text-slate-500 group-open:inline">إخفاء</span>
+    </summary>
+    <div id="ops-analytics-content" class="border-t border-slate-100 px-6 py-5" data-lazy-state="idle" hidden></div>
+  </details>
+
+  <script>
+  (function () {
+    var inspectBtn = document.getElementById('ops-recovery-resume-inspect-btn');
+    var scanBtn = document.getElementById('ops-recovery-resume-scan-btn');
+    if (inspectBtn) {
+      inspectBtn.addEventListener('click', function () {
+        window.open('/admin/operations/recovery-resume-inspect', '_blank', 'noopener');
+      });
+    }
+    if (scanBtn) {
+      scanBtn.addEventListener('click', function () {
+        window.open('/admin/operations/recovery-resume-scan', '_blank', 'noopener');
+      });
+    }
+  })();
+  (function () {
+    var LOAD_ERROR = '<p class="text-sm text-rose-700 py-6 text-center">تعذر تحميل هذا القسم الآن.</p>';
+    var LOADING = '<p class="text-sm text-slate-500 py-6 text-center">جاري التحميل...</p>';
+    function bindLazySection(panelId, containerId, url) {
+      var panel = document.getElementById(panelId);
+      var container = document.getElementById(containerId);
+      if (!panel || !container) return;
+      var loaded = false;
+      var loading = false;
+      panel.addEventListener('toggle', function () {
+        if (!panel.open) return;
+        container.hidden = false;
+        if (loaded || loading) return;
+        loading = true;
+        container.setAttribute('data-lazy-state', 'loading');
+        container.innerHTML = LOADING;
+        fetch(url, { credentials: 'same-origin', headers: { Accept: 'text/html' } })
+          .then(function (res) {
+            if (!res.ok) throw new Error('load failed');
+            return res.text();
+          })
+          .then(function (html) {
+            container.innerHTML = html;
+            container.setAttribute('data-lazy-state', 'loaded');
+            loaded = true;
+          })
+          .catch(function () {
+            container.innerHTML = LOAD_ERROR;
+            container.setAttribute('data-lazy-state', 'error');
+          })
+          .finally(function () {
+            loading = false;
+          });
+      });
+    }
+    bindLazySection('ops-investigation-panel', 'ops-investigation-content', '/admin/operations/section/investigation');
+    bindLazySection('ops-analytics-panel', 'ops-analytics-content', '/admin/operations/section/analytics');
+  })();
+  </script>
+{% endblock %}

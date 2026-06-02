@@ -14,8 +14,11 @@ from sqlalchemy import and_, func, or_
 from sqlalchemy.exc import SQLAlchemyError
 
 from extensions import db
-from models import AbandonedCart, RecoverySchedule, Store
+from models import AbandonedCart, CartRecoveryLog, RecoverySchedule, Store
 from services.cartflow_onboarding_readiness import BLOCKER_COPY
+
+# Recovery message log statuses that represent an actual send (read-only display).
+_RECOVERY_SENT_LOG_STATUSES = frozenset({"mock_sent", "sent_real"})
 
 _MAX_STORES = 400
 _RECENT_CART_DAYS = 7
@@ -296,6 +299,54 @@ _SYSTEM_HEALTH_STATUS_AR: dict[str, dict[str, str]] = {
     "stable": {
         "status_ar": "مستقرة",
         "description_ar": "لا توجد تنبيهات تشغيلية ظاهرة حاليًا.",
+    },
+}
+
+# Executive "traffic light" tone per system-health status (presentation only).
+_PLATFORM_STATUS_TONE: dict[str, str] = {
+    "urgent_attention": "action",
+    "needs_followup": "watch",
+    "stable_with_notes": "ok",
+    "stable": "ok",
+}
+
+# Business-language framing per operational issue kind (read-only presentation).
+# Structure mirrors: Problem → Impact → Owner → Suggested Action → Verification.
+_BUSINESS_ISSUE_COPY_AR: dict[str, dict[str, str]] = {
+    "stale_recovery": {
+        "title_ar": "عمليات استرجاع متوقفة أو متأخرة",
+        "impact_ar": "قد لا تُرسل رسائل الاسترجاع في وقتها المناسب.",
+        "owner_ar": "المجدول / CartFlow",
+        "action_ar": "راجع حالة المجدول وأعد فحص العمليات المتأخرة.",
+        "verification_ar": "تأكد أن العمليات المتأخرة عادت إلى الجدولة الطبيعية.",
+    },
+    "failed_recovery": {
+        "title_ar": "رسائل الاسترجاع لا يتم تسليمها",
+        "impact_ar": "قد تفقد المتاجر فرص استرجاع سلات متروكة.",
+        "owner_ar": "مزود واتساب / CartFlow",
+        "action_ar": "راجع حالة مزود التسليم (واتساب).",
+        "verification_ar": "تأكد من تسليم آخر رسالة استرجاع بنجاح.",
+    },
+    "whatsapp_missing": {
+        "title_ar": "إعداد واتساب غير مكتمل",
+        "impact_ar": "لن يتمكن المتجر من إرسال رسائل الاسترجاع.",
+        "owner_ar": "المتجر / مزود واتساب",
+        "action_ar": "أكمل ربط واتساب ورقم الإرسال للمتجر.",
+        "verification_ar": "تأكد أن المتجر أصبح جاهزًا لإرسال واتساب.",
+    },
+    "store_needs_setup": {
+        "title_ar": "متاجر لم تكمل الإعداد",
+        "impact_ar": "لن يعمل الاسترجاع بشكل صحيح قبل اكتمال الإعداد.",
+        "owner_ar": "المتجر",
+        "action_ar": "ساعد المتجر على إكمال خطوات الإعداد الأساسية.",
+        "verification_ar": "تأكد أن المتجر أصبح في حالة جاهز.",
+    },
+    "no_cart_events": {
+        "title_ar": "لا توجد أحداث سلة حديثة",
+        "impact_ar": "قد يشير إلى مشكلة في تركيب الودجيت أو التكامل.",
+        "owner_ar": "الودجيت / التكامل",
+        "action_ar": "تحقق من تركيب الودجيت واختبر إضافة منتج للسلة.",
+        "verification_ar": "تأكد من وصول حدث سلة جديد بعد الاختبار.",
     },
 }
 
@@ -1934,11 +1985,171 @@ def _build_ops_shared_context() -> dict[str, Any]:
     }
 
 
+def _count_recoveries_today() -> int:
+    """Read-only count of recovery messages actually sent since UTC midnight."""
+    try:
+        db.create_all()
+        start = _naive_now().replace(hour=0, minute=0, second=0, microsecond=0)
+        return _safe_int(
+            db.session.query(func.count(CartRecoveryLog.id))
+            .filter(
+                CartRecoveryLog.status.in_(tuple(_RECOVERY_SENT_LOG_STATUSES)),
+                CartRecoveryLog.created_at >= start,
+            )
+            .scalar()
+        )
+    except SQLAlchemyError:
+        db.session.rollback()
+        return 0
+    except Exception:  # noqa: BLE001
+        return 0
+
+
+def _platform_status_tone(status_key: str) -> str:
+    return _PLATFORM_STATUS_TONE.get(_safe_str(status_key, 64), "ok")
+
+
+def _affected_stores_label_ar(count: int) -> str:
+    """Arabic count phrasing for affected stores (presentation only)."""
+    n = _safe_int(count)
+    if n <= 0:
+        return "غير محدد"
+    if n == 1:
+        return "متجر واحد"
+    if n == 2:
+        return "متجرين"
+    if 3 <= n <= 10:
+        return f"{n} متاجر"
+    return f"{n} متجرًا"
+
+
+def _build_current_issues(alerts: list[dict[str, Any]]) -> dict[str, Any]:
+    """Operational alerts re-expressed in business language (read-only).
+
+    Groups existing alerts by kind into one issue per kind:
+    Problem → Impact → Affected → Owner → Suggested Action → Verification.
+    """
+    grouped: dict[str, dict[str, Any]] = {}
+    for alert in alerts or []:
+        if not isinstance(alert, dict):
+            continue
+        kind = _safe_str(alert.get("kind"), 64)
+        if kind not in _BUSINESS_ISSUE_COPY_AR:
+            continue
+        bucket = grouped.setdefault(
+            kind,
+            {"_slugs": set(), "_records": 0, "severity": "low"},
+        )
+        bucket["_slugs"].update(_store_slugs_from_alert(alert))
+        bucket["_records"] += _safe_int(
+            alert.get("records_total"), len(alert.get("records") or [])
+        )
+        bucket["severity"] = _escalate_severity(
+            str(bucket.get("severity") or "low"), _alert_severity_bucket(alert)
+        )
+
+    issues: list[dict[str, Any]] = []
+    for kind, bucket in grouped.items():
+        copy = _BUSINESS_ISSUE_COPY_AR[kind]
+        affected = len(bucket.get("_slugs") or set()) or _safe_int(bucket.get("_records"))
+        sev = _safe_str(bucket.get("severity"), 32).lower() or "low"
+        if sev not in _VALID_SEVERITY_BUCKETS:
+            sev = "low"
+        issues.append(
+            {
+                "kind": kind,
+                "severity": sev,
+                "severity_ar": _severity_ar_for_bucket(sev),
+                "title_ar": copy["title_ar"],
+                "impact_ar": copy["impact_ar"],
+                "owner_ar": copy["owner_ar"],
+                "action_ar": copy["action_ar"],
+                "verification_ar": copy["verification_ar"],
+                "affected_count": affected,
+                "affected_label_ar": _affected_stores_label_ar(affected),
+            }
+        )
+
+    issues.sort(
+        key=lambda r: (
+            _SEVERITY_RANK.get(_safe_str(r.get("severity"), 32).lower(), 99),
+            -_safe_int(r.get("affected_count")),
+            _safe_str(r.get("kind"), 64),
+        )
+    )
+    return {"issues": issues, "total": len(issues), "available": True}
+
+
+def _build_executive_summary(
+    *,
+    system_health: dict[str, Any],
+    store_readiness: dict[str, Any],
+    store_health_snapshot: dict[str, Any],
+    recoveries_today: int,
+) -> dict[str, Any]:
+    """Top-level executive KPIs for the operations overview (read-only)."""
+    sh = system_health if isinstance(system_health, dict) else {}
+    sr = store_readiness if isinstance(store_readiness, dict) else {}
+    snap = store_health_snapshot if isinstance(store_health_snapshot, dict) else {}
+    status_key = _safe_str(sh.get("status_key"), 64) or "stable"
+    return {
+        "platform_status_key": status_key,
+        "platform_status_ar": _safe_str(sh.get("status_ar"), 64) or "مستقرة",
+        "platform_status_tone": _platform_status_tone(status_key),
+        "platform_description_ar": _safe_str(sh.get("description_ar"), 300),
+        "active_stores": _safe_int(sr.get("total_stores")),
+        "ready_stores": _safe_int(sr.get("ready_stores")),
+        "affected_stores": _safe_int(snap.get("total_stores")),
+        "open_alerts": _safe_int(sh.get("total_alerts")),
+        "recoveries_today": _safe_int(recoveries_today),
+    }
+
+
 def build_admin_operations_command_center_readonly() -> dict[str, Any]:
-    """Lightweight initial payload for /admin/operations (command center only)."""
+    """Lightweight initial payload for /admin/operations (executive overview)."""
     ctx = _build_ops_shared_context()
     alerts = ctx["alerts"]
     store_rows = ctx["store_rows"]
+    store_readiness = ctx["store_readiness"]
+    from services.admin_recovery_resume_inspect_scan_v1 import (  # noqa: PLC0415
+        build_recovery_resume_health_summary_readonly,
+    )
+
+    system_health = _build_system_health_summary(alerts)
+    store_health_snapshot = _build_store_health_snapshot(alerts, store_rows)
+    return {
+        "version": "admin_operations_center_v2_2",
+        "generated_at_utc": _utc_now().isoformat(),
+        "executive_summary": _build_executive_summary(
+            system_health=system_health,
+            store_readiness=store_readiness,
+            store_health_snapshot=store_health_snapshot,
+            recoveries_today=_count_recoveries_today(),
+        ),
+        "current_issues": _build_current_issues(alerts),
+        "system_health_summary": system_health,
+        "top_risks": _build_top_risks(alerts),
+        "store_health_snapshot": store_health_snapshot,
+        "recovery_resume_health": build_recovery_resume_health_summary_readonly(),
+        "health_scheduler_path": "/health/scheduler",
+    }
+
+
+def build_admin_operations_current_issues_readonly() -> dict[str, Any]:
+    """Full current-issues view in business language (read-only)."""
+    ctx = _build_ops_shared_context()
+    alerts = ctx["alerts"]
+    return {
+        "version": "admin_operations_center_v2_2",
+        "generated_at_utc": _utc_now().isoformat(),
+        "system_health_summary": _build_system_health_summary(alerts),
+        "current_issues": _build_current_issues(alerts),
+        "health_scheduler_path": "/health/scheduler",
+    }
+
+
+def build_admin_support_diagnostics_overview_readonly() -> dict[str, Any]:
+    """Initial payload for the Support Diagnostics page (recovery resume health)."""
     from services.admin_recovery_resume_inspect_scan_v1 import (  # noqa: PLC0415
         build_recovery_resume_health_summary_readonly,
     )
@@ -1946,9 +2157,6 @@ def build_admin_operations_command_center_readonly() -> dict[str, Any]:
     return {
         "version": "admin_operations_center_v2_2",
         "generated_at_utc": _utc_now().isoformat(),
-        "system_health_summary": _build_system_health_summary(alerts),
-        "top_risks": _build_top_risks(alerts),
-        "store_health_snapshot": _build_store_health_snapshot(alerts, store_rows),
         "recovery_resume_health": build_recovery_resume_health_summary_readonly(),
         "health_scheduler_path": "/health/scheduler",
     }
@@ -2009,8 +2217,14 @@ def build_admin_operations_center_v1_readonly() -> dict[str, Any]:
 __all__ = [
     "build_admin_operations_center_v1_readonly",
     "build_admin_operations_command_center_readonly",
+    "build_admin_operations_current_issues_readonly",
+    "build_admin_support_diagnostics_overview_readonly",
     "build_admin_operations_investigation_section_readonly",
     "build_admin_operations_analytics_section_readonly",
+    "_build_current_issues",
+    "_build_executive_summary",
+    "_BUSINESS_ISSUE_COPY_AR",
+    "_count_recoveries_today",
     "_ALERT_SEVERITY_AR",
     "_sort_alerts",
     "_build_system_health_summary",

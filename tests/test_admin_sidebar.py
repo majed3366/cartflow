@@ -31,8 +31,10 @@ class AdminSidebarTests(unittest.TestCase):
         self.assertIn("CartFlow Admin", t)
         self.assertIn('id="admin-sidebar-panel"', t)
         self.assertIn("مركز التشغيل", t)
-        self.assertIn("مراقبة المخاطر والحالة", t)
-        self.assertIn("إجراءات وتشغيل يدوي", t)
+        # Simplified sidebar: executive monitoring + support diagnostics groups.
+        self.assertIn("المراقبة التنفيذية", t)
+        self.assertIn("تشخيص الدعم", t)
+        self.assertIn("التحكم التشغيلي", t)
         self.assertIn('id="admin-mobile-verdict-bar"', t)
         self.assertIn('id="operational-verdict"', t)
         self.assertIn("admin-nav-active", t)
@@ -43,13 +45,17 @@ class AdminSidebarTests(unittest.TestCase):
         self.assertIn("admin-nav-group", t)
         self.assertIn('left-0', t)
         self.assertIn('dir="rtl"', t)
-        self.assertIn("/admin/operational-health", t)
+        # Operational health is now a support/deep page reachable via quick links.
+        self.assertIn('href="/admin/diagnostics"', t)
+        self.assertIn('href="/admin/control"', t)
 
     def test_operations_overview_active(self) -> None:
         r = self.client.get("/admin/operations")
         self.assertEqual(r.status_code, 200)
-        self.assertIn("مركز العمليات", r.text)
+        self.assertIn("نظرة عامة", r.text)
         self.assertIn('href="/admin/operations"', r.text)
+        self.assertIn('href="/admin/operations/issues"', r.text)
+        self.assertIn('href="/admin/diagnostics"', r.text)
 
     def test_control_page_renders(self) -> None:
         r = self.client.get("/admin/control")
@@ -61,7 +67,7 @@ class AdminSidebarTests(unittest.TestCase):
     def test_placeholder_stores(self) -> None:
         r = self.client.get("/admin/stores")
         self.assertEqual(r.status_code, 200)
-        self.assertIn("جميع المتاجر", r.text)
+        self.assertIn("المتاجر", r.text)
         self.assertIn("قيد التطوير", r.text)
 
     def test_placeholder_subscriptions(self) -> None:

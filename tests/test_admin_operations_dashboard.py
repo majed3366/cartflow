@@ -58,14 +58,21 @@ class AdminOperationsDashboardTests(unittest.TestCase):
         self.assertEqual(r2.status_code, 200, r2.text[:500])
         body = r2.text
         self.assertIn("CartFlow Admin", body)
-        self.assertIn("مركز العمليات", body)
+        self.assertIn("نظرة عامة", body)
         self.assertIn('id="admin-sidebar-panel"', body)
-        self.assertIn("صحة المجدول", body)
-        self.assertIn("حالات الاسترجاع", body)
-        self.assertIn("جاهزية المتاجر", body)
-        self.assertIn("تنبيهات أساسية", body)
+        # Executive summary metrics replace technical operational sections.
+        self.assertIn("حالة المنصة", body)
+        self.assertIn("المتاجر النشطة", body)
+        self.assertIn("المتاجر المتأثرة", body)
+        self.assertIn("التنبيهات المفتوحة", body)
+        self.assertIn("الاسترجاعات اليوم", body)
+        self.assertIn("أكبر مشكلة الآن", body)
+        # Technical sections must NOT be on the executive overview.
+        self.assertNotIn("صحة المجدول", body)
+        self.assertNotIn("جاهزية المتاجر", body)
+        self.assertNotIn("Recovery Resume Health", body)
 
-    def test_v1_sections_render(self) -> None:
+    def test_technical_sections_live_under_support_diagnostics(self) -> None:
         os.environ["CARTFLOW_ADMIN_PASSWORD"] = "dashboard-auth-test-pass-9"
         os.environ["SECRET_KEY"] = "unit-test-secret-key-for-admin-cookie-hmac-"
         client = TestClient(app)
@@ -73,32 +80,25 @@ class AdminOperationsDashboardTests(unittest.TestCase):
             "/admin/operations/login",
             data={"password": "dashboard-auth-test-pass-9"},
         )
-        r = client.get("/admin/operations")
-        self.assertEqual(r.status_code, 200)
+        r = client.get("/admin/diagnostics")
+        self.assertEqual(r.status_code, 200, r.text[:500])
         body = r.text
+        self.assertIn("Recovery Resume Health", body)
+        self.assertIn("Resume Eligible", body)
+        self.assertIn("Scheduled Due Now", body)
+        self.assertIn("Running Count", body)
+        self.assertIn("تفاصيل تقنية (للدعم فقط)", body)
         self.assertIn("/health/scheduler", body)
-        self.assertIn("scheduled", body)
-        self.assertIn("running", body)
-        self.assertIn("completed", body)
+        # Lazy technical panels reuse the existing section endpoints.
+        self.assertIn("ops-investigation-panel", body)
+        self.assertIn("ops-analytics-panel", body)
+        # Investigation endpoint (relocated, still functional).
+        inv = client.get("/admin/operations/section/investigation")
+        self.assertEqual(inv.status_code, 200)
+        for label in ("scheduled", "running", "completed", "صحة المجدول"):
+            self.assertIn(label, inv.text)
 
-    def test_store_readiness_counts_when_stores_present(self) -> None:
-        os.environ["CARTFLOW_ADMIN_PASSWORD"] = "dashboard-auth-test-pass-9"
-        os.environ["SECRET_KEY"] = "unit-test-secret-key-for-admin-cookie-hmac-"
-        payload = build_admin_operations_center_v1_readonly()
-        st = payload.get("store_readiness") or {}
-        if int(st.get("total_stores") or 0) < 1:
-            self.skipTest("no stores to assert readiness numerics")
-        client = TestClient(app)
-        client.post(
-            "/admin/operations/login",
-            data={"password": "dashboard-auth-test-pass-9"},
-        )
-        r = client.get("/admin/operations")
-        self.assertEqual(r.status_code, 200)
-        self.assertIn("إجمالي المتاجر", r.text)
-        self.assertIn("جاهز", r.text)
-
-    def test_alerts_table_or_empty_state(self) -> None:
+    def test_overview_shows_active_stores_metric(self) -> None:
         os.environ["CARTFLOW_ADMIN_PASSWORD"] = "dashboard-auth-test-pass-9"
         os.environ["SECRET_KEY"] = "unit-test-secret-key-for-admin-cookie-hmac-"
         client = TestClient(app)
@@ -108,9 +108,20 @@ class AdminOperationsDashboardTests(unittest.TestCase):
         )
         r = client.get("/admin/operations")
         self.assertEqual(r.status_code, 200)
-        has_empty = "لا تنبيهات تشغيلية بارزة" in r.text
-        has_table = "<table" in r.text
-        self.assertTrue(has_empty or has_table)
+        self.assertIn("المتاجر النشطة", r.text)
+        self.assertIn("حالة المتاجر", r.text)
+
+    def test_current_issues_page_business_language(self) -> None:
+        os.environ["CARTFLOW_ADMIN_PASSWORD"] = "dashboard-auth-test-pass-9"
+        os.environ["SECRET_KEY"] = "unit-test-secret-key-for-admin-cookie-hmac-"
+        client = TestClient(app)
+        client.post(
+            "/admin/operations/login",
+            data={"password": "dashboard-auth-test-pass-9"},
+        )
+        r = client.get("/admin/operations/issues")
+        self.assertEqual(r.status_code, 200, r.text[:500])
+        self.assertIn("المشاكل الحالية", r.text)
 
     def test_no_secrets_in_html(self) -> None:
         os.environ["CARTFLOW_ADMIN_PASSWORD"] = "super-secret-dashboard-pass-xyz-99"

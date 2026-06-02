@@ -17,44 +17,21 @@
 
   <nav class="flex-1 overflow-y-auto px-4 py-5" aria-label="قائمة الإدارة">
     <div class="admin-nav-group">
-      <p class="admin-nav-group-title">نظرة عامة</p>
-      {{ admin_nav_item("/admin/operations", "overview", "مركز العمليات", "مجدول · استرجاع · متاجر") }}
+      <p class="admin-nav-group-title">المراقبة التنفيذية</p>
+      {{ admin_nav_item("/admin/operations", "overview", "نظرة عامة", "حالة المنصة باختصار") }}
+      {{ admin_nav_item("/admin/operations/issues", "current-issues", "المشاكل الحالية", "ماذا نفعل الآن؟") }}
     </div>
 
     <div class="admin-nav-group">
-      <p class="admin-nav-group-title">التشغيل</p>
-      {{ admin_nav_item("/admin/operational-health", "ops-health", "مركز التشغيل", "مراقبة المخاطر والحالة") }}
-      {{ admin_nav_item("/admin/support-diagnostics/ui", "ops-support-diag", "تشخيص الدعم", "ماذا حدث؟ لماذا؟ ماذا نفعل؟") }}
-      {{ admin_nav_item("/admin/control", "ops-control", "التحكم التشغيلي", "إجراءات وتشغيل يدوي") }}
-      {{ admin_nav_item("/admin/alerts", "ops-alerts", "التنبيهات", "تنبيهات وتذكيرات") }}
+      <p class="admin-nav-group-title">الإدارة</p>
+      {{ admin_nav_item("/admin/stores", "stores", "المتاجر", "إدارة ومتابعة") }}
+      {{ admin_nav_item("/admin/whatsapp", "whatsapp", "واتساب", "حالة الإرسال") }}
+      {{ admin_nav_item("/admin/integrations", "integrations", "التكاملات", "حالة الربط") }}
     </div>
 
     <div class="admin-nav-group">
-      <p class="admin-nav-group-title">المتاجر — إدارة ومتابعة</p>
-      {{ admin_nav_item("/admin/stores", "stores-all", "جميع المتاجر", "") }}
-      {{ admin_nav_item("/admin/stores/paused", "stores-paused", "المتاجر المتوقفة", "") }}
-      {{ admin_nav_item("/admin/stores/integration", "stores-integration", "حالة التكامل", "") }}
-    </div>
-
-    <div class="admin-nav-group">
-      <p class="admin-nav-group-title">الاشتراكات — الباقات والتجديد</p>
-      {{ admin_nav_item("/admin/subscriptions/plans", "subs-plans", "الباقات", "") }}
-      {{ admin_nav_item("/admin/subscriptions/trial", "subs-trial", "التجريبي", "") }}
-      {{ admin_nav_item("/admin/subscriptions/renewals", "subs-renewals", "التجديدات", "") }}
-    </div>
-
-    <div class="admin-nav-group">
-      <p class="admin-nav-group-title">التقارير — الأداء والنتائج</p>
-      {{ admin_nav_item("/admin/reports/recovery", "reports-recovery", "تقارير الاسترجاع", "") }}
-      {{ admin_nav_item("/admin/reports/whatsapp", "reports-whatsapp", "تقارير واتساب", "") }}
-      {{ admin_nav_item("/admin/reports/stores", "reports-stores", "تقارير المتاجر", "") }}
-    </div>
-
-    <div class="admin-nav-group">
-      <p class="admin-nav-group-title">النظام والدعم</p>
-      {{ admin_nav_item("/admin/system/health", "system-health", "صحة النظام", "قراءة عامة — للتفاصيل مركز التشغيل") }}
-      {{ admin_nav_item("/admin/system/logs", "system-logs", "السجلات", "") }}
-      {{ admin_nav_item("/admin/system/technical", "system-technical", "تفاصيل تقنية", "") }}
+      <p class="admin-nav-group-title">الدعم</p>
+      {{ admin_nav_item("/admin/diagnostics", "support-diagnostics", "تشخيص الدعم", "أدوات تقنية — للدعم فقط") }}
     </div>
   </nav>
 

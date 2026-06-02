@@ -30,31 +30,50 @@ router = APIRouter(tags=["admin"])
 
 # Sidebar nav keys (presentation only — no business logic).
 ADMIN_NAV_OVERVIEW = "overview"
-ADMIN_NAV_OPS_HEALTH = "ops-health"
-ADMIN_NAV_OPS_CONTROL = "ops-control"
+ADMIN_NAV_CURRENT_ISSUES = "current-issues"
+ADMIN_NAV_STORES = "stores"
+ADMIN_NAV_WHATSAPP = "whatsapp"
+ADMIN_NAV_INTEGRATIONS = "integrations"
+ADMIN_NAV_SUPPORT_DIAG = "support-diagnostics"
+# Retained for deep diagnostics surfaces reached from Support Diagnostics.
+ADMIN_NAV_OPS_HEALTH = ADMIN_NAV_SUPPORT_DIAG
+ADMIN_NAV_OPS_CONTROL = ADMIN_NAV_SUPPORT_DIAG
 
 _ADMIN_PLACEHOLDER_PAGES: tuple[tuple[str, str, str, str], ...] = (
     (
+        "/admin/stores",
+        ADMIN_NAV_STORES,
+        "المتاجر",
+        "إدارة ومتابعة المتاجر — قريباً.",
+    ),
+    (
+        "/admin/whatsapp",
+        ADMIN_NAV_WHATSAPP,
+        "واتساب",
+        "حالة واتساب وإعدادات الإرسال — قريباً.",
+    ),
+    (
+        "/admin/integrations",
+        ADMIN_NAV_INTEGRATIONS,
+        "التكاملات",
+        "حالة تكامل المتاجر مع المنصة — قريباً.",
+    ),
+    # Legacy paths kept reachable (no longer in primary navigation).
+    (
         "/admin/alerts",
-        "ops-alerts",
+        ADMIN_NAV_CURRENT_ISSUES,
         "التنبيهات",
         "عرض التنبيهات التشغيلية المركزية — قريباً.",
     ),
     (
-        "/admin/stores",
-        "stores-all",
-        "جميع المتاجر",
-        "عرض المتاجر وحالة التشغيل — قريباً.",
-    ),
-    (
         "/admin/stores/paused",
-        "stores-paused",
+        ADMIN_NAV_STORES,
         "المتاجر المتوقفة",
         "المتاجر المتوقفة أو المعطّلة — قريباً.",
     ),
     (
         "/admin/stores/integration",
-        "stores-integration",
+        ADMIN_NAV_INTEGRATIONS,
         "حالة التكامل",
         "حالة تكامل المتاجر مع المنصة — قريباً.",
     ),
@@ -84,7 +103,7 @@ _ADMIN_PLACEHOLDER_PAGES: tuple[tuple[str, str, str, str], ...] = (
     ),
     (
         "/admin/reports/whatsapp",
-        "reports-whatsapp",
+        ADMIN_NAV_WHATSAPP,
         "تقارير واتساب",
         "تقارير إرسال واتساب — قريباً.",
     ),
@@ -96,19 +115,19 @@ _ADMIN_PLACEHOLDER_PAGES: tuple[tuple[str, str, str, str], ...] = (
     ),
     (
         "/admin/system/health",
-        "system-health",
+        ADMIN_NAV_SUPPORT_DIAG,
         "صحة النظام",
-        "ملخص صحة النظام — للتفاصيل التشغيلية الفورية استخدم مركز التشغيل.",
+        "ملخص صحة النظام — للتفاصيل التشغيلية استخدم تشخيص الدعم.",
     ),
     (
         "/admin/system/logs",
-        "system-logs",
+        ADMIN_NAV_SUPPORT_DIAG,
         "السجلات",
         "عرض سجلات النظام للدعم — قريباً.",
     ),
     (
         "/admin/system/technical",
-        "system-technical",
+        ADMIN_NAV_SUPPORT_DIAG,
         "تفاصيل تقنية",
         "تشخيصات تقنية للدعم — قريباً.",
     ),
@@ -342,6 +361,18 @@ def admin_operations_dashboard(request: Request) -> Any:
         ops = {
             "version": "admin_operations_center_v2_2",
             "generated_at_utc": None,
+            "executive_summary": {
+                "platform_status_key": "stable",
+                "platform_status_ar": "مستقرة",
+                "platform_status_tone": "ok",
+                "platform_description_ar": "لا توجد تنبيهات تشغيلية ظاهرة حاليًا.",
+                "active_stores": 0,
+                "ready_stores": 0,
+                "affected_stores": 0,
+                "open_alerts": 0,
+                "recoveries_today": 0,
+            },
+            "current_issues": {"issues": [], "total": 0, "available": True},
             "system_health_summary": {
                 "status_key": "stable",
                 "status_ar": "مستقرة",
@@ -372,8 +403,82 @@ def admin_operations_dashboard(request: Request) -> Any:
         "admin_operations_center_v1.html",
         {
             "admin_active_nav": ADMIN_NAV_OVERVIEW,
-            "admin_page_title_ar": "مركز العمليات",
-            "admin_page_subtitle_ar": "قراءة تشغيلية موحّدة — مجدول، استرجاع، متاجر، تنبيهات.",
+            "admin_page_title_ar": "نظرة عامة تنفيذية",
+            "admin_page_subtitle_ar": (
+                "هل المنصة بصحة جيدة؟ ما أكبر مشكلة الآن؟ كم متجرًا متأثر؟"
+            ),
+            "ops": ops,
+        },
+    )
+
+
+@router.get("/admin/operations/issues", response_class=HTMLResponse)
+def admin_operations_current_issues(request: Request) -> Any:
+    denied = _admin_session_or_redirect(
+        request, next_path="/admin/operations/issues"
+    )
+    if denied is not None:
+        return denied
+    try:
+        from services.admin_operations_center_v1 import (  # noqa: PLC0415
+            build_admin_operations_current_issues_readonly,
+        )
+
+        ops = build_admin_operations_current_issues_readonly()
+    except Exception:  # noqa: BLE001
+        ops = {
+            "version": "admin_operations_center_v2_2",
+            "generated_at_utc": None,
+            "system_health_summary": {
+                "status_key": "stable",
+                "status_ar": "مستقرة",
+                "description_ar": "لا توجد تنبيهات تشغيلية ظاهرة حاليًا.",
+                "total_alerts": 0,
+            },
+            "current_issues": {"issues": [], "total": 0, "available": True},
+            "health_scheduler_path": "/health/scheduler",
+        }
+    return templates.TemplateResponse(
+        request,
+        "admin_operations_current_issues.html",
+        {
+            "admin_active_nav": ADMIN_NAV_CURRENT_ISSUES,
+            "admin_page_title_ar": "المشاكل الحالية",
+            "admin_page_subtitle_ar": (
+                "مشكلة → الأثر → المتأثر → المسؤول → الإجراء المقترح → التحقق"
+            ),
+            "ops": ops,
+        },
+    )
+
+
+@router.get("/admin/diagnostics", response_class=HTMLResponse)
+def admin_support_diagnostics_overview(request: Request) -> Any:
+    denied = _admin_session_or_redirect(request, next_path="/admin/diagnostics")
+    if denied is not None:
+        return denied
+    try:
+        from services.admin_operations_center_v1 import (  # noqa: PLC0415
+            build_admin_support_diagnostics_overview_readonly,
+        )
+
+        ops = build_admin_support_diagnostics_overview_readonly()
+    except Exception:  # noqa: BLE001
+        ops = {
+            "version": "admin_operations_center_v2_2",
+            "generated_at_utc": None,
+            "recovery_resume_health": {},
+            "health_scheduler_path": "/health/scheduler",
+        }
+    return templates.TemplateResponse(
+        request,
+        "admin_support_diagnostics_overview.html",
+        {
+            "admin_active_nav": ADMIN_NAV_SUPPORT_DIAG,
+            "admin_page_title_ar": "تشخيص الدعم",
+            "admin_page_subtitle_ar": (
+                "أدوات تقنية للدعم فقط — صحة الاستئناف، المجدول، الإحصاءات، والاتجاهات."
+            ),
             "ops": ops,
         },
     )
