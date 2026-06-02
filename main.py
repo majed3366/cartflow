@@ -271,6 +271,10 @@ app.add_middleware(
     allowed_hosts=["*"],
 )
 
+from services.cartflow_storefront_cors_v1 import StorefrontWidgetCorsMiddleware  # noqa: E402
+
+app.add_middleware(StorefrontWidgetCorsMiddleware)
+
 
 app.state.secret_key = os.getenv("SECRET_KEY", "dev-only-change-in-production")
 _ROOT = os.path.dirname(os.path.abspath(__file__))

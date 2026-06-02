@@ -343,7 +343,7 @@ async def post_generate_whatsapp_message(request: Request) -> Any:
 def cartflow_ready(
     background_tasks: BackgroundTasks,
     store_slug: str = Query(..., min_length=1, max_length=255),
-    session_id: str = Query(..., min_length=1, max_length=512),
+    session_id: str = Query("", max_length=512),
 ) -> Any:
     """
     ‎true‎ عند تسجيل ‎step1‎ استرجاع واتساب (مرسَل/وهمي) لنفس ‎store_slug + session_id‎.

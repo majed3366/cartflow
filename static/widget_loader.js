@@ -11,7 +11,7 @@
 (function () {
   "use strict";
 
-  var RUNTIME_VERSION = "v2-cart-identity-verify-2";
+  var RUNTIME_VERSION = "v2-zid-cors-ready-guard-1";
 
   function cartflowWidgetLoaderScriptUrl() {
     try {

@@ -33,6 +33,17 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
         if (ds && String(ds).trim()) {
           return String(ds).trim();
         }
+        if (src) {
+          try {
+            var qu = new URL(src, window.location.href).searchParams;
+            var fromQs = qu.get("store") || qu.get("store_slug") || "";
+            if (fromQs && String(fromQs).trim()) {
+              return String(fromQs).trim();
+            }
+          } catch (eQs) {
+            /* ignore */
+          }
+        }
       }
     } catch (eWl) {}
     return "";
@@ -104,9 +115,38 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
 
   function sessionId() {
     if (typeof window.cartflowGetSessionId === "function") {
-      return String(window.cartflowGetSessionId() || "").trim();
+      var fromFn = String(window.cartflowGetSessionId() || "").trim();
+      if (fromFn) {
+        return fromFn;
+      }
     }
-    return "";
+    var storageKey = "cartflow_recovery_session_id";
+    try {
+      var sid =
+        (window.sessionStorage && window.sessionStorage.getItem(storageKey)) ||
+        (window.localStorage && window.localStorage.getItem(storageKey)) ||
+        "";
+      sid = String(sid || "").trim();
+      if (sid) {
+        return sid;
+      }
+      sid =
+        "cf-" +
+        Date.now().toString(36) +
+        "-" +
+        Math.random().toString(36).slice(2, 10);
+      if (window.sessionStorage) {
+        window.sessionStorage.setItem(storageKey, sid);
+      }
+      return sid;
+    } catch (eSid) {
+      return (
+        "cf-" +
+        Date.now().toString(36) +
+        "-" +
+        Math.random().toString(36).slice(2, 10)
+      );
+    }
   }
 
   function cfCartflowReasonPostOk(j) {
@@ -229,11 +269,37 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
   var _sessionPublicConfigCached = null;
   var _readyFetchInFlight = null;
   var _readyLastNetworkDoneAt = 0;
+  var _readyBlocked = false;
+  var _readyBlockedLogged = false;
   var READY_NETWORK_MIN_GAP_MS = 2200;
+
+  function logReadyBlockedOnce(reason) {
+    if (_readyBlockedLogged) {
+      return;
+    }
+    _readyBlockedLogged = true;
+    try {
+      console.warn("[CF READY BLOCKED]", String(reason || "unknown"));
+    } catch (eLog) {
+      /* ignore */
+    }
+  }
+
+  function markReadyBlocked(reason) {
+    _readyBlocked = true;
+    logReadyBlockedOnce(reason);
+  }
 
   function fetchReady() {
     if (/\b\/demo\//i.test(String(window.location.pathname || ""))) {
       return Promise.resolve({ demo: true, after_step1: true, ok: true });
+    }
+    if (_readyBlocked) {
+      return Promise.resolve(
+        _sessionReadyCached != null
+          ? _sessionReadyCached
+          : { ok: false, after_step1: false, ready_blocked: true }
+      );
     }
     if (_sessionReadyCached != null && _sessionReadyCached.after_step1) {
       return Promise.resolve(_sessionReadyCached);
@@ -264,6 +330,11 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       encodeURIComponent(sessionId());
     _readyFetchInFlight = fetch(u, { method: "GET" })
       .then(function (r) {
+        if (!r.ok) {
+          if (r.status === 422 || r.status >= 500) {
+            markReadyBlocked("http_" + r.status);
+          }
+        }
         return r.json().then(function (j) {
           _readyLastNetworkDoneAt = Date.now();
           if (j != null && typeof j === "object") {
@@ -278,7 +349,10 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       })
       .catch(function () {
         _readyLastNetworkDoneAt = Date.now();
-        return _sessionReadyCached != null ? _sessionReadyCached : { ok: false };
+        markReadyBlocked("network_or_cors");
+        return _sessionReadyCached != null
+          ? _sessionReadyCached
+          : { ok: false, after_step1: false, ready_blocked: true };
       })
       .finally(function () {
         _readyFetchInFlight = null;
@@ -290,6 +364,13 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     if (_sessionPublicConfigCached != null) {
       return Promise.resolve(_sessionPublicConfigCached);
     }
+    if (_readyBlocked) {
+      return Promise.resolve(
+        _sessionPublicConfigCached != null
+          ? _sessionPublicConfigCached
+          : { ok: false, ready_blocked: true }
+      );
+    }
     var bb = apiBase();
     var u =
       (bb || "") +
@@ -297,14 +378,19 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       "?store_slug=" +
       encodeURIComponent(storeSlug()) +
       cartTotalSuffix();
-    return fetch(u, { method: "GET" }).then(function (r) {
-      return r.json().then(function (j) {
-        if (j != null && typeof j === "object" && j.ok !== false) {
-          _sessionPublicConfigCached = j;
-        }
-        return j;
+    return fetch(u, { method: "GET" })
+      .then(function (r) {
+        return r.json().then(function (j) {
+          if (j != null && typeof j === "object" && j.ok !== false) {
+            _sessionPublicConfigCached = j;
+          }
+          return j;
+        });
+      })
+      .catch(function () {
+        markReadyBlocked("public_config_network_or_cors");
+        return { ok: false, ready_blocked: true };
       });
-    });
   }
 
   var Api = {

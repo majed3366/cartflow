@@ -724,6 +724,10 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     function tick() {
       pollTickIx += 1;
       Cf.Api.fetchReady().then(function (j) {
+        if (j && j.ready_blocked) {
+          finalizeOnce("ready_blocked");
+          return;
+        }
         Cf.Config.applyPayload(j, "ready");
         mirrorCartTotals();
 
