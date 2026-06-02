@@ -1,5 +1,7 @@
 # CartFlow Brand System v1
 
+> **Superseded by [`cartflow_brand_foundation_v1/`](cartflow_brand_foundation_v1/)** — approved Visual Identity board. This file is retained for history only. Do not use its blue-token palette or exploration references in new work.
+
 **Status:** Official visual identity foundation  
 **Version:** 1.0  
 **Date:** 2026-06-01  

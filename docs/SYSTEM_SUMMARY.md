@@ -73,15 +73,15 @@ Server-side template control (**`exit_intent_*`** on **`Store`**): `services/sto
 
 **How UI interacts with backend:** JSON `fetch` / XHR to FastAPI routes; dashboards use embedded scripts or `static/cartflow_dashboard_messages.js` for shared save/load patterns against **`/api/recovery-settings`**.
 
-### 2.5 Brand / visual identity (v1 foundation)
+### 2.5 Brand / visual identity (official foundation v1)
 
 | Asset | Role |
 |--------|------|
-| `branding/cartflow_brand_system_v1.md` | Official visual identity spec — philosophy, color, typography, shape language, motion, and surface guidelines (landing, dashboard, widget, Zid marketplace). **Spec only** — product UI not yet migrated. |
-| `branding/logo_exploration_v2/` | SaaS logo exploration (Flow Decision, Path Outcome, Abstract Journey) with scored evaluations; **Direction 1 Flow Decision** recommended. Supersedes v1 (removed). |
-| `branding/logo_validation_v1/` | Direction 1 validation board — mock contexts (landing, merchant/admin headers, Zid icon, favicon, mobile); `validation_board.html` + `validation_board.png`. Not applied to production. |
+| `branding/cartflow_brand_foundation_v1/` | **Official source of truth** — approved Visual Identity board: CF monogram logo, six-color green palette, Tajawal typography, process + dashboard icons, governance. Spec only until product UI migration. |
+| `branding/cartflow_brand_system_v1.md` | Superseded historical spec (blue tokens) — do not use for new work. |
+| `branding/logo_exploration_v1/`, `logo_exploration_v2/`, `logo_validation_v1/` | **Frozen** exploration archive — do not use in production. |
 
-Brand meaning: **Understand → Decide → Act → Recover**; visual metaphor **Node → Path → Decision → Outcome**. Current production UI still uses legacy landing green (`static/cartflow_landing.css`) and widget default purple (`#6C5CE7`) until a redesign phase applies v1 tokens.
+Product UI may still use legacy styling (landing green variants, widget purple `#6C5CE7`) until each surface is migrated per foundation guidelines.
 
 ---
 

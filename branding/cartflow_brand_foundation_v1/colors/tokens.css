@@ -1,0 +1,18 @@
+/**
+ * CartFlow Official Color Tokens v1
+ * Source: Visual Identity Board (approved). Do not add colors outside this file.
+ */
+:root {
+  --cf-primary: #1E6B4A;
+  --cf-secondary: #2DA36A;
+  --cf-accent: #A7E3C4;
+  --cf-background: #E9F7EF;
+  --cf-surface: #F6FBF8;
+  --cf-text: #344054;
+
+  /* Derived (same palette family only) */
+  --cf-primary-hover: #185a3e;
+  --cf-border: #cce8d8;
+  --cf-text-muted: #667085;
+  --cf-on-primary: #F6FBF8;
+}
