@@ -90,9 +90,9 @@ def resolve_merchant_display_name(merchant_name: str, store_name: str) -> str:
 
 def ensure_merchant_auth_db_ready() -> None:
     """Idempotent DDL for auth tables/columns (production has no startup create_all)."""
-    from schema_merchant_auth import ensure_merchant_auth_schema
+    from schema_production_store_bootstrap import ensure_production_store_schema
 
-    ensure_merchant_auth_schema(db)
+    ensure_production_store_schema(db, context="merchant_auth")
 
 
 def _slugify_store_name(store_name: str) -> str:

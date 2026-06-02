@@ -13,7 +13,7 @@ from typing import Any, Optional
 
 from extensions import db
 from models import Store
-from schema_zid_dev_oauth import ensure_store_zid_integration_schema
+from schema_production_store_bootstrap import ensure_production_store_schema
 
 log = logging.getLogger("cartflow")
 
@@ -250,7 +250,7 @@ def persist_zid_dev_store_from_token_response(
         persist_oauth_tokens_on_store_row,
     )
 
-    ensure_store_zid_integration_schema(db)
+    ensure_production_store_schema(db, context="zid_oauth_persist")
     access = (token_response.get("access_token") or "").strip()
     if not access:
         return None
@@ -275,7 +275,7 @@ def persist_zid_dev_store_from_token_response(
 
 def build_zid_dev_store_status_readonly() -> dict[str, Any]:
     """Read-only status for the latest zid_dev-connected store (no token leakage)."""
-    ensure_store_zid_integration_schema(db)
+    ensure_production_store_schema(db, context="zid_dev_status")
     row = (
         db.session.query(Store)
         .filter(Store.integration_source == ZID_DEV_INTEGRATION_SOURCE)

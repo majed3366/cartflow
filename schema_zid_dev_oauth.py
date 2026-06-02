@@ -11,8 +11,8 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 log = logging.getLogger("cartflow")
 
 _SCHEMA_COLUMNS = (
-    ("integration_source", "VARCHAR(64)", "VARCHAR(64)"),
-    ("connected_at", "DATETIME", "TIMESTAMP WITH TIME ZONE"),
+    ("integration_source", "TEXT", "TEXT"),
+    ("connected_at", "DATETIME", "TIMESTAMP NULL"),
 )
 
 _schema_ensured = False
@@ -80,7 +80,7 @@ def ensure_store_zid_integration_schema(db) -> bool:
     """
     global _schema_ensured
     if _schema_ensured:
-        return True
+        return bool(verify_store_zid_integration_schema(db).get("ok"))
     try:
         insp = inspect(db.engine)
         if "stores" not in insp.get_table_names():

@@ -1028,6 +1028,20 @@ def _app_test_client() -> Any:
 
 
 @app.middleware("http")
+async def production_store_schema_middleware(request: Request, call_next: Any) -> Any:
+    """Run production store DDL before any handler may query Store ORM columns."""
+    try:
+        from schema_production_store_bootstrap import (
+            ensure_production_store_schema_before_request,
+        )
+
+        ensure_production_store_schema_before_request(db)
+    except Exception as exc:  # noqa: BLE001
+        log.warning("production store schema middleware skipped: %s", exc)
+    return await call_next(request)
+
+
+@app.middleware("http")
 async def merchant_auth_gate_middleware(request: Request, call_next: Any) -> Any:
     from services.merchant_auth_context import (
         reset_merchant_auth_store_slug,
@@ -1505,6 +1519,9 @@ def _ensure_cartflow_api_db_warmed() -> None:
             return
         try:
             db.create_all()
+            from schema_production_store_bootstrap import ensure_production_store_schema
+
+            schema_ok = ensure_production_store_schema(db, context="startup")
             _ensure_store_widget_schema()
             from schema_widget import (
                 ensure_cart_recovery_reason_phone_schema,
@@ -1519,9 +1536,6 @@ def _ensure_cartflow_api_db_warmed() -> None:
             )
 
             ensure_widget_recovery_store_rows_on_warm()
-            from schema_merchant_auth import ensure_merchant_auth_schema
-
-            ensure_merchant_auth_schema(db)
             from schema_recovery_message_context import (
                 ensure_recovery_message_context_schema,
             )
@@ -1532,14 +1546,12 @@ def _ensure_cartflow_api_db_warmed() -> None:
             )
 
             ensure_recovery_truth_timeline_schema(db)
-            from schema_zid_dev_oauth import (  # noqa: PLC0415
-                ensure_store_zid_integration_schema,
-                log_store_zid_integration_schema_status,
-            )
-
-            ensure_store_zid_integration_schema(db)
-            log_store_zid_integration_schema_status(db, context="startup")
-            _cartflow_api_db_warmed = True
+            _cartflow_api_db_warmed = schema_ok
+            if not schema_ok:
+                log.error(
+                    "cartflow api db warm: production store schema not verified — "
+                    "see [PRODUCTION DB SCHEMA] and scripts/production_store_schema_repair.sql"
+                )
         except Exception as e:  # noqa: BLE001
             db.session.rollback()
             log.warning("cartflow api db warm failed (will retry later): %s", e)
@@ -1548,10 +1560,10 @@ def _ensure_cartflow_api_db_warmed() -> None:
 @_normal_carts_query_prof_wrap("_merchant_dashboard_db_ready")
 def _merchant_dashboard_db_ready() -> None:
     """لوحة التاجر: لا ‎create_all‎ في المسار الساخن — التدفئة عند الإقلاع فقط."""
-    if _cartflow_api_db_warmed:
-        from schema_zid_dev_oauth import ensure_store_zid_integration_schema  # noqa: PLC0415
+    from schema_production_store_bootstrap import ensure_production_store_schema
 
-        ensure_store_zid_integration_schema(db)
+    if _cartflow_api_db_warmed:
+        ensure_production_store_schema(db, context="dashboard")
         return
     _ensure_cartflow_api_db_warmed()
 

@@ -28,6 +28,66 @@ def reset_merchant_auth_schema_guard_for_tests() -> None:
     _merchant_auth_schema_once = False
 
 
+def verify_merchant_auth_schema(db: Any) -> dict[str, Any]:
+    """Read-only check for minimum merchant ↔ store linkage columns."""
+    required_user_cols = ["primary_store_id"]
+    out: dict[str, Any] = {
+        "ok": False,
+        "missing_tables": [],
+        "missing_columns": [],
+        "present_columns": [],
+    }
+    try:
+        insp = inspect(db.engine)
+        if not insp.has_table("merchant_users"):
+            out["missing_tables"].append("merchant_users")
+        else:
+            existing = {c["name"] for c in insp.get_columns("merchant_users")}
+            for name in required_user_cols:
+                if name not in existing:
+                    out["missing_columns"].append(f"merchant_users.{name}")
+                else:
+                    out["present_columns"].append(f"merchant_users.{name}")
+        if insp.has_table("stores"):
+            store_cols = {c["name"] for c in insp.get_columns("stores")}
+            if "merchant_user_id" not in store_cols:
+                out["missing_columns"].append("stores.merchant_user_id")
+            else:
+                out["present_columns"].append("stores.merchant_user_id")
+        else:
+            out["missing_tables"].append("stores")
+        out["ok"] = not out["missing_tables"] and not out["missing_columns"]
+        return out
+    except SQLAlchemyError as exc:
+        out["error"] = type(exc).__name__
+        return out
+
+
+def log_merchant_auth_schema_status(db: Any, *, context: str = "startup") -> dict[str, Any]:
+    status = verify_merchant_auth_schema(db)
+    tag = "[MERCHANT AUTH SCHEMA]"
+    if status.get("ok"):
+        line = (
+            f"{tag} context={context} ok=true "
+            "ensured=merchant_users+stores_linkage_columns"
+        )
+        level = logging.INFO
+    else:
+        line = (
+            f"{tag} context={context} ok=false "
+            f"missing={','.join(status.get('missing_columns') or []) or '-'}"
+        )
+        if status.get("missing_tables"):
+            line += f" missing_tables={','.join(status['missing_tables'])}"
+        level = logging.ERROR
+    try:
+        print(line, flush=True)
+    except OSError:
+        pass
+    log.log(level, "%s", line)
+    return status
+
+
 def _add_column_if_missing(
     db: Any,
     *,
@@ -49,13 +109,13 @@ def _add_column_if_missing(
     existing.add(name)
 
 
-def ensure_merchant_auth_schema(db: Any) -> None:
+def ensure_merchant_auth_schema(db: Any) -> bool:
     global _merchant_auth_schema_once
     if _merchant_auth_schema_once:
-        return
+        return bool(verify_merchant_auth_schema(db).get("ok"))
     with _merchant_auth_schema_once_lock:
         if _merchant_auth_schema_once:
-            return
+            return bool(verify_merchant_auth_schema(db).get("ok"))
         try:
             db.create_all()
             insp = inspect(db.engine)
@@ -93,7 +153,7 @@ def ensure_merchant_auth_schema(db: Any) -> None:
                         if dialect in ("postgresql", "postgres"):
                             stmt = (
                                 "ALTER TABLE stores ADD COLUMN IF NOT EXISTS "
-                                "merchant_user_id INTEGER REFERENCES merchant_users(id)"
+                                "merchant_user_id INTEGER NULL"
                             )
                         else:
                             stmt = (
@@ -102,6 +162,7 @@ def ensure_merchant_auth_schema(db: Any) -> None:
                             )
                         db.session.execute(text(stmt))
                         db.session.commit()
+                        cols.add("merchant_user_id")
                     except SQLAlchemyError as exc:
                         db.session.rollback()
                         log.warning(
@@ -109,8 +170,11 @@ def ensure_merchant_auth_schema(db: Any) -> None:
                             exc,
                         )
 
-            _merchant_auth_schema_once = True
-            log.info("[MERCHANT AUTH SCHEMA] ensured merchant_users + stores linkage columns")
+            status = verify_merchant_auth_schema(db)
+            _merchant_auth_schema_once = bool(status.get("ok"))
+            return _merchant_auth_schema_once
         except SQLAlchemyError as exc:
             db.session.rollback()
             log.warning("merchant auth schema ensure skipped: %s", exc)
+            return False
+    return bool(verify_merchant_auth_schema(db).get("ok"))
