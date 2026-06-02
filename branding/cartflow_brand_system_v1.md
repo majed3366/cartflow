@@ -300,7 +300,7 @@ Communicate **cart lifecycle operations** and **merchant control** — not “se
 
 | Asset | Spec | Notes |
 |-------|------|-------|
-| App icon | 512×512 PNG | Direction chosen from logo exploration; see `/branding/logo_exploration_v1/` |
+| App icon | 512×512 PNG | Direction chosen from logo exploration; see `/branding/logo_exploration_v2/` |
 | Cover / banner | 1200×630 or platform spec | Muted surface, one mark, one headline |
 | Screenshots | Real product UI | Frame with `cf-border`; no fake metrics |
 | Short description | ≤ 160 chars | Lead with Understand → Decide → Act → Recover |
@@ -403,13 +403,15 @@ Current landing uses legacy green (`--cf-green`). **Future redesign** adopts thi
 
 ## 13. Logo System (summary)
 
-Full exploration: [`logo_exploration_v1/`](logo_exploration_v1/)
+Full exploration: [`logo_exploration_v2/`](logo_exploration_v2/)
 
-| Direction | Concept | Best for |
-|-----------|---------|----------|
-| **A — Geometric Abstraction** | Grid node + orthogonal path | App icon, favicon, admin density |
-| **B — Flow Symbol** | Continuous path with decision notch | Marketing, marketplace cover |
-| **C — Journey Mark** | Three nodes + resolving path | Dashboard co-brand, lifecycle story |
+| Direction | Concept | Status |
+|-----------|---------|--------|
+| **1 — Flow Decision** | Flow pauses; solid form resolves | **Recommended winner** (v2) |
+| **2 — Path Outcome** | Path stops; outcome block | Exploration only |
+| **3 — Abstract Journey** | Layered depth → resolution | Exploration only |
+
+*v1 exploration (architecture-style diagrams) removed in v2 reset.*
 
 **Wordmark:** `CartFlow` — IBM Plex Sans SemiBold; `Cart` in `cf-ink`, `Flow` in `cf-primary` (optional) or unified `cf-ink` for formal contexts.
 
@@ -422,7 +424,7 @@ Full exploration: [`logo_exploration_v1/`](logo_exploration_v1/)
 ```
 branding/
 ├── cartflow_brand_system_v1.md          ← this document
-└── logo_exploration_v1/
+└── logo_exploration_v2/
     ├── direction_a_geometric_abstraction/
     ├── direction_b_flow_symbol/
     └── direction_c_journey_mark/
