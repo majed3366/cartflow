@@ -112,6 +112,19 @@ def config_system_verify():
     }
 
 
+@app.get("/dev/zid-dev-store-status")
+def dev_zid_dev_store_status():
+    """Read-only Zid development-store OAuth connection status (no access_token)."""
+    if not _is_development_mode() and not (
+        (os.getenv("ZID_DEV_OAUTH_ENABLED") or "").strip().lower()
+        in ("1", "true", "yes", "on")
+    ):
+        return PlainTextResponse("Not found", status_code=404)
+    from services.zid_dev_oauth_v1 import build_zid_dev_store_status_readonly  # noqa: PLC0415
+
+    return j(build_zid_dev_store_status_readonly())
+
+
 @app.get("/dev/admin-operational-summary")
 def dev_admin_operational_summary():
     """ملخص تشغيلي للمشرف — قراءة فقط؛ يعمل مع ‎ENV=development‎ فقط."""
@@ -13350,10 +13363,17 @@ def _redact_secrets_for_log(obj: Any) -> Any:
 
 @app.get("/auth/callback")
 def auth_callback(request: Request):
-    # ‎OAuth 2.0‎: بدون ‎code‎ — تأكيد المسار؛ مع ‎code‎ — تبادل واستبدال الرموز دون إرجاع ‎access_token‎ للعميل
+    # OAuth 2.0: merchant dashboard (signed state) or Zid dev-store install (ZID_DEV_OAUTH_ENABLED).
     from integrations.zid_client import (  # noqa: PLC0415
         zid_oauth_callback_trace,
         zid_oauth_store_linked_trace,
+    )
+    from services.zid_dev_oauth_v1 import (  # noqa: PLC0415
+        ZID_DEV_INTEGRATION_SOURCE,
+        _MISSING_CODE_MESSAGE,
+        persist_zid_dev_store_from_token_response,
+        zid_dev_oauth_enabled,
+        zid_dev_oauth_log,
     )
     from urllib.parse import urlencode  # noqa: PLC0415
 
@@ -13365,42 +13385,62 @@ def auth_callback(request: Request):
 
     code = (request.query_params.get("code") or "").strip()
     oauth_state = (request.query_params.get("state") or "").strip()
+    zid_dev_oauth_log("callback_received")
+    zid_dev_oauth_log("code_present", value="true" if code else "false")
     zid_oauth_callback_trace(has_code=bool(code), has_state=bool(oauth_state))
     if not code:
-        return j({"status": "callback route exists"})
+        return j({"ok": False, "message": _MISSING_CODE_MESSAGE}, 400)
     body, status = exchange_code_for_token(code)
-    if 200 <= status < 300 and isinstance(body, dict) and (body.get("access_token") or "").strip():
-        try:
-            if oauth_state:
-                from services.merchant_store_connection_v1 import (  # noqa: PLC0415
-                    apply_oauth_token_to_merchant_store,
-                    parse_oauth_state,
-                )
+    token_ok = (
+        200 <= status < 300
+        and isinstance(body, dict)
+        and bool((body.get("access_token") or "").strip())
+    )
+    zid_dev_oauth_log("token_exchange_success", value="true" if token_ok else "false")
+    if not token_ok:
+        err = "token_exchange_failed"
+        if isinstance(body, dict):
+            err = str(body.get("error") or body.get("message") or err)[:64]
+        return _dashboard_oauth_redirect(store_connect_error=err)
+    try:
+        if oauth_state:
+            from services.merchant_store_connection_v1 import (  # noqa: PLC0415
+                apply_oauth_token_to_merchant_store,
+                parse_oauth_state,
+            )
 
-                parsed = parse_oauth_state(oauth_state)
-                if parsed is not None:
-                    store_id, merchant_id = parsed
-                    if apply_oauth_token_to_merchant_store(
-                        store_id=store_id,
-                        merchant_user_id=merchant_id,
-                        token_response=body,
-                    ):
-                        row = db.session.get(Store, int(store_id))
-                        zid_oauth_store_linked_trace(
-                            store_slug=str(getattr(row, "zid_store_id", None) or "")[:128],
-                            merchant_user_id=int(merchant_id),
-                            store_id=int(store_id),
-                        )
-                        return _dashboard_oauth_redirect(store_connected="1")
-            save_or_update_store_from_token_response(body)
-        except SQLAlchemyError:
-            db.session.rollback()
+            parsed = parse_oauth_state(oauth_state)
+            if parsed is not None:
+                store_id, merchant_id = parsed
+                if apply_oauth_token_to_merchant_store(
+                    store_id=store_id,
+                    merchant_user_id=merchant_id,
+                    token_response=body,
+                ):
+                    row = db.session.get(Store, int(store_id))
+                    zid_oauth_store_linked_trace(
+                        store_slug=str(getattr(row, "zid_store_id", None) or "")[:128],
+                        merchant_user_id=int(merchant_id),
+                        store_id=int(store_id),
+                    )
+                    zid_dev_oauth_log("store_connected", value="true")
+                    return _dashboard_oauth_redirect(store_connected="1")
+        if zid_dev_oauth_enabled():
+            row = persist_zid_dev_store_from_token_response(body)
+            if row is not None:
+                zid_dev_oauth_log("store_connected", value="true")
+                return _dashboard_oauth_redirect(
+                    store_connected="1",
+                    integration=ZID_DEV_INTEGRATION_SOURCE,
+                )
+            zid_dev_oauth_log("store_connected", value="false")
             return _dashboard_oauth_redirect(store_connect_error="persist_failed")
-        return _dashboard_oauth_redirect(store_connected="1", oauth_legacy="1")
-    err = "token_exchange_failed"
-    if isinstance(body, dict):
-        err = str(body.get("error") or body.get("message") or err)[:64]
-    return _dashboard_oauth_redirect(store_connect_error=err)
+        zid_dev_oauth_log("store_connected", value="false")
+        return _dashboard_oauth_redirect(store_connect_error="dev_oauth_disabled")
+    except SQLAlchemyError:
+        db.session.rollback()
+        zid_dev_oauth_log("store_connected", value="false")
+        return _dashboard_oauth_redirect(store_connect_error="persist_failed")
 
 
 _REASON_LABELS_AR: dict[str, str] = {

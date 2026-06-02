@@ -293,8 +293,8 @@ class MerchantStoreConnectionV1Tests(unittest.TestCase):
 
     def test_auth_callback_missing_code_on_probe(self) -> None:
         r = self.client.get("/auth/callback", follow_redirects=False)
-        self.assertEqual(r.status_code, 200)
-        self.assertIn("callback route exists", (r.text or ""))
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("no authorization code", (r.json().get("message") or "").lower())
 
     def test_auth_callback_token_failure_redirects(self) -> None:
         with mock.patch(

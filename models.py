@@ -30,6 +30,9 @@ class Store(Base):
     refresh_token = Column(Text, nullable=True)
     token_expires_at = Column(DateTime, nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
+    # مصدر الربط (مثلاً zid_dev لمتجر التطوير في زد) — يُملأ عبر OAuth فقط
+    integration_source = Column(String(64), nullable=True, index=True)
+    connected_at = Column(DateTime, nullable=True)
     # إعدادات الاسترجاع (لاحقاً) — بدون واجهة بعد
     recovery_delay = Column(Integer, default=2, nullable=False)
     recovery_delay_unit = Column(
