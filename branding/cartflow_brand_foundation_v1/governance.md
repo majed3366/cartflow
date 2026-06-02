@@ -29,7 +29,7 @@ The following are **approved and locked**:
 
 - **No new logo exploration** without explicit written approval from product owner
 - **No geometry changes** to C arc, node, or F bars
-- **No alternative marks** in production (including Direction 1 Flow Decision, v1 network diagrams)
+- **No alternative marks** in production (archived explorations under `_archive/logo_explorations/`)
 - **No** cart, WhatsApp, chat bubble, or robot symbols as brand marks
 
 ### 3.2 Color
@@ -58,9 +58,7 @@ The following are **approved and locked**:
 | Path | Status |
 |------|--------|
 | `branding/cartflow_brand_system_v1.md` | Superseded by this foundation |
-| `branding/logo_exploration_v1/` | Archived — do not use |
-| `branding/logo_exploration_v2/` | Archived — do not use |
-| `branding/logo_validation_v1/` | Archived — do not use |
+| `branding/_archive/logo_explorations/` | Archived — do not use |
 
 ---
 

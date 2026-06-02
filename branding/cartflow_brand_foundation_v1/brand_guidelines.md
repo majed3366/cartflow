@@ -61,26 +61,34 @@ Outcome / recovery
 
 ### 3.1 Symbol (CF monogram)
 
-Approved geometry — **do not alter**:
+Approved geometry from Visual Identity board — **do not alter**. Reference: `applications/cartflow_visual_identity_board_v1.png`.
 
-- **C** — thick primary green arc (`#1E6B4A`)
-- **Node** — accent circle inside C (`#A7E3C4`)
-- **F** — two accent rounded bars (`#A7E3C4`)
+Four elements with consistent white-space gutters (no connecting strokes):
+
+| Element | Shape | Color |
+|---------|-------|-------|
+| **C** | Thick letterform — rounded outer curve, flat vertical inner edge on the right | `#1E6B4A` |
+| **Node** | Solid circle centered in the C opening | `#A7E3C4` |
+| **F top** | Small horizontal pill (rounded rectangle) | `#A7E3C4` |
+| **F bottom** | Larger tall rounded flag / leaf shape | `#2DA36A` |
+
+**Not approved:** open stroke arcs, uniform accent bars, gap-pause Flow Decision marks, or dot-only reinterpretations.
+
+Master viewBox: `0 0 48 48` — scale uniformly only.
 
 ### 3.2 Wordmark
 
-- **Cart** — `#1E6B4A` · Tajawal Bold  
-- **Flow** — `#2DA36A` · Tajawal Bold  
+- **Cart** — `#1E6B4A` · Tajawal Bold (700)  
+- **Flow** — `#2DA36A` · Tajawal Medium (500)  
 
 ### 3.3 Approved files (`logo/`)
 
 | File | Use |
 |------|-----|
-| `primary_logo.svg` / `.png` | Headers, marketing, documents |
-| `icon_only.svg` / `.png` | Compact chrome, avatars |
-| `icon_light.svg` / `.png` | Light backgrounds |
-| `icon_dark.svg` / `.png` | App icon, Zid, dark bands |
-| `favicon.svg` / `.png` | Browser tab |
+| `primary_logo.svg` / `.png` | Headers, marketing, documents (symbol + wordmark) |
+| `icon_only.svg` / `.png` | Compact chrome, sidebars |
+| `app_icon.svg` / `.png` | App store, Zid marketplace (512×512, primary green field) |
+| `favicon.svg` / `.png` | Browser tab (32×32, white field, full-color symbol) |
 
 ---
 
@@ -101,10 +109,10 @@ No text, UI chrome, or other marks may enter this zone.
 | Favicon | 16×16 px | `favicon` — symbol only |
 | Sidebar / mobile | 24×24 px | `icon_only` |
 | Dashboard header | 28–32 px symbol | `primary_logo` or icon + text |
-| App icon | 512×512 px | `icon_dark` |
+| App icon / Zid | 512×512 px | `app_icon` |
 | Print | 12 mm symbol height | vector `primary_logo.svg` |
 
-Below 16px — use `icon_dark` simplified mark only; do not use full wordmark.
+Below 16px — use `favicon` asset; do not use full wordmark.
 
 ---
 
@@ -113,16 +121,16 @@ Below 16px — use `icon_dark` simplified mark only; do not use full wordmark.
 **Do**
 
 - Use approved SVG first; PNG when raster required
-- Use `icon_dark` on app stores and Zid
+- Use `app_icon` on app stores and Zid
 - Use `primary_logo` on landing and dashboard headers
 - Maintain proportions — scale uniformly
 
 **Do not**
 
-- Redraw or tweak arc thickness, node size, or F bar positions
+- Redraw or tweak C thickness, node size, leaf shapes, or gutter spacing
 - Rotate, skew, stretch, or add shadows to the symbol
 - Place symbol on busy photography without a `cf-surface` plate
-- Use legacy exploration marks (Direction 1 Flow Decision, v1 diagrams)
+- Use archived exploration marks (`branding/_archive/logo_explorations/`)
 - Change wordmark colors outside approved palette
 
 ---
@@ -210,7 +218,7 @@ Process icon sequence in motion diagrams: **Understand → Decide → Communicat
 
 ## 12. Exploration status
 
-**Frozen.** Prior explorations (`logo_exploration_v1`, `logo_exploration_v2`, `logo_validation_v1`) are historical only. Do not use their marks or blue-token palette in new work.
+**Frozen.** Prior explorations archived at `branding/_archive/logo_explorations/`. Do not use their marks in new work.
 
 ---
 

@@ -26,7 +26,7 @@
 
 ## Exploration
 
-**Frozen.** Do not use `logo_exploration_v1`, `logo_exploration_v2`, or `logo_validation_v1` assets in new work.
+**Frozen.** Do not use `branding/_archive/logo_explorations/` assets in new work.
 
 ---
 

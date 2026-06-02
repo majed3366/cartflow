@@ -9,9 +9,9 @@ Official application mockups are defined on the **Visual Identity board** (sourc
 | Merchant dashboard | Board — Merchant Dashboard | Dark green sidebar, white content, green chart accents |
 | Admin dashboard | Board — Merchant Dashboard pattern | Same chrome family; admin copy differs |
 | Widget | Board — Mobile / WhatsApp widget mock | Green header, Understand icon, calm chat surface |
-| Zid marketplace | Board — App Icon + listing context | Use `logo/icon_dark.svg` at 512×512 |
-| Mobile app icon | Board — App Icon | `icon_dark` on rounded square |
-| Favicon | Board — Favicon in browser tab | `logo/favicon.svg` |
+| Zid marketplace | Board — App Icon | `../logo/app_icon.svg` at 512×512 |
+| Mobile app icon | Board — App Icon | `app_icon` |
+| Favicon | Board — Favicon | `logo/favicon.svg` |
 
 ## Logo files to use per surface
 
@@ -19,9 +19,8 @@ Official application mockups are defined on the **Visual Identity board** (sourc
 |---------|--------|
 | Landing / dashboard header | `../logo/primary_logo.svg` |
 | Sidebar collapsed | `../logo/icon_only.svg` |
-| App store / Zid | `../logo/icon_dark.png` (512) |
+| App store / Zid | `../logo/app_icon.png` (512) |
 | Favicon | `../logo/favicon.png` (32) |
-| Light embed | `../logo/icon_light.svg` |
 
 ## Adoption status
 

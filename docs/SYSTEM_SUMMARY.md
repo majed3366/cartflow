@@ -79,7 +79,7 @@ Server-side template control (**`exit_intent_*`** on **`Store`**): `services/sto
 |--------|------|
 | `branding/cartflow_brand_foundation_v1/` | **Official source of truth** — approved Visual Identity board: CF monogram logo, six-color green palette, Tajawal typography, process + dashboard icons, governance. Spec only until product UI migration. |
 | `branding/cartflow_brand_system_v1.md` | Superseded historical spec (blue tokens) — do not use for new work. |
-| `branding/logo_exploration_v1/`, `logo_exploration_v2/`, `logo_validation_v1/` | **Frozen** exploration archive — do not use in production. |
+| `branding/_archive/logo_explorations/` | **Frozen** exploration archive (v1, v2, validation) — do not use in production. |
 
 Product UI may still use legacy styling (landing green variants, widget purple `#6C5CE7`) until each surface is migrated per foundation guidelines.
 

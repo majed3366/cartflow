@@ -1,14 +1,20 @@
 # CartFlow Logo Assets v1
 
-**Status:** Approved — geometry frozen  
-**Source:** Visual Identity board CF monogram
+**Status:** Approved — geometry matches Visual Identity board  
+**Reference:** `../applications/cartflow_visual_identity_board_v1.png`
 
 | File | Format | Use |
 |------|--------|-----|
-| `primary_logo.svg` / `.png` | Horizontal lockup | Landing, docs, email headers |
-| `icon_only.svg` / `.png` | Symbol | Sidebar, compact UI |
-| `icon_light.svg` / `.png` | Symbol on surface | Light embeds |
-| `icon_dark.svg` / `.png` | Symbol on primary | App store, Zid (512) |
-| `favicon.svg` / `.png` | 32px symbol | Browser tab |
+| `primary_logo.svg` / `.png` | Symbol + wordmark | Landing, docs, dashboard headers |
+| `icon_only.svg` / `.png` | CF monogram only | Sidebar, compact UI |
+| `app_icon.svg` / `.png` | Symbol on `#1E6B4A` field (512) | Zid, app stores |
+| `favicon.svg` / `.png` | Symbol on white (32) | Browser tab |
 
-PNG exports are raster companions to SVG masters. **Always prefer SVG** for web when possible.
+## Symbol geometry (locked)
+
+- **C** — filled thick letterform `#1E6B4A`
+- **Node** — circle `#A7E3C4`
+- **F top** — pill `#A7E3C4`
+- **F bottom** — tall leaf `#2DA36A`
+
+PNG exports are raster companions to SVG masters. Prefer SVG for web.
