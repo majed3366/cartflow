@@ -128,3 +128,30 @@ class ZidDevOauthV1Tests(unittest.TestCase):
             )
         self.assertEqual(r.status_code, 302)
         self.assertIn("dev_oauth_disabled", r.headers.get("location") or "")
+
+    def test_auth_zid_dev_install_skips_login_and_starts_oauth(self) -> None:
+        r = self.client.get("/auth/zid", follow_redirects=False)
+        self.assertEqual(r.status_code, 302)
+        loc = r.headers.get("location") or ""
+        self.assertIn("oauth.zid.sa/oauth/authorize", loc)
+        self.assertIn("client_id=test-client-id", loc)
+        self.assertIn("redirect_uri=", loc)
+        self.assertIn("response_type=code", loc)
+        self.assertIn("abandoned_carts.read", loc)
+        self.assertIn("orders.read", loc)
+        self.assertNotIn("/login", loc)
+        self.assertNotIn("state=", loc)
+
+    def test_auth_zid_dev_disabled_requires_login(self) -> None:
+        os.environ["ZID_DEV_OAUTH_ENABLED"] = "0"
+        r = self.client.get("/auth/zid", follow_redirects=False)
+        self.assertEqual(r.status_code, 302)
+        self.assertIn("/login", r.headers.get("location") or "")
+
+    def test_api_zid_connect_still_requires_login_when_dev_enabled(self) -> None:
+        r = self.client.get(
+            "/api/merchant/store-connection/zid/connect",
+            follow_redirects=False,
+        )
+        self.assertEqual(r.status_code, 302)
+        self.assertIn("/login", r.headers.get("location") or "")

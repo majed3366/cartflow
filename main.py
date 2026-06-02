@@ -19293,7 +19293,30 @@ def api_merchant_store_connection_status(request: Request):
 
 @app.get("/auth/zid")
 def auth_zid_oauth_start(request: Request):
-    """Zid Partner Redirect URL entry — same OAuth start as merchant dashboard connect."""
+    """
+    Zid Partner Redirect URL (App Market install).
+
+    When ZID_DEV_OAUTH_ENABLED=1 and the merchant has no CartFlow session, start OAuth
+    without signed state (development-store install). Logged-in merchants still get
+    signed state. Dashboard connect uses /api/merchant/store-connection/zid/connect.
+    """
+    from integrations.zid_client import build_zid_authorize_url  # noqa: PLC0415
+    from services.merchant_store_connection_v1 import resolve_connect_context  # noqa: PLC0415
+    from services.zid_dev_oauth_v1 import zid_dev_oauth_enabled, zid_dev_oauth_log  # noqa: PLC0415
+
+    if zid_dev_oauth_enabled():
+        _merchant_dashboard_db_ready()
+        _store, merchant_id, _err = resolve_connect_context(cookies=dict(request.cookies))
+        if merchant_id is None:
+            url, _err_payload = build_zid_authorize_url(state="")
+            if not url:
+                zid_dev_oauth_log("install_authorize_skipped", value="oauth_not_configured")
+                return RedirectResponse(
+                    url="/dashboard#settings?store_connect_pending=1",
+                    status_code=302,
+                )
+            zid_dev_oauth_log("install_authorize_redirect")
+            return RedirectResponse(url=url, status_code=302)
     return api_merchant_store_connection_zid_connect(request)
 
 
