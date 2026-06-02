@@ -53,6 +53,20 @@ Per [Zid Create your First App](https://docs.zid.sa/create-first-app) and [Test 
 4. **Expected:** login → **permission/consent** screen listing scopes → redirect to `https://smartreplyai.net/auth/callback?code=…`.
 5. **Failure signal:** login → Zid merchant dashboard/orders with **no** redirect to CartFlow → OAuth authorization did not complete (check callback URL, scopes, app status).
 
+## Symptom: consent screen OK, callback has no `?code=`
+
+If the merchant sees Zid permissions and lands on `https://smartreplyai.net/auth/callback` **without** `code`:
+
+| Check | Action |
+|-------|--------|
+| **oauth/authorize ran** | Consent screen implies yes — confirm browser Network shows `oauth.zid.sa/oauth/authorize` before callback. |
+| **Callback URL = `redirect_uri`** | Partner **Callback URL** must exactly match `OAUTH_REDIRECT_URI` / authorize `redirect_uri` (`https://smartreplyai.net/auth/callback`, no trailing slash, no `www`). |
+| **Redirection URL ≠ Callback** | **Redirection URL** must be `https://smartreplyai.net/auth/zid`, not the callback path. |
+| **Scopes** | Every scope in the authorize URL must be enabled under **Application Scopes**. Production may send `webhooks.read_write` via `ZID_OAUTH_SCOPE` — remove it from Railway or enable it in the dashboard. |
+| **App Keys** | Client ID in authorize must match **App Keys**; secret is for token exchange only. |
+| **Server query string** | Check `[ZID OAUTH CALLBACK QUERY]` in deploy logs or dev JSON (`callback_query_safe`, `oauth_error`). Empty server query with `#code=` in the browser bar = fragment (not supported). |
+| **OAuth vs listing** | App must have **OAuth 2.0** keys and scopes, not marketplace listing fields only. |
+
 ## Log markers (success path)
 
 ```

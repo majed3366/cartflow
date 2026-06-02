@@ -62,6 +62,16 @@ class ZidDevOauthV1Tests(unittest.TestCase):
         self.assertEqual(r.status_code, 400)
         data = r.json()
         self.assertIn("no authorization code", (data.get("message") or "").lower())
+        self.assertTrue(data.get("callback_query_empty"))
+        self.assertEqual(data.get("callback_query_keys"), [])
+        self.assertEqual(data.get("callback_query_safe"), "(empty)")
+        r2 = self.client.get(
+            "/auth/callback?error=access_denied&error_description=denied",
+            follow_redirects=False,
+        )
+        data2 = r2.json()
+        self.assertEqual(data2.get("oauth_error"), "access_denied")
+        self.assertIn("error=access_denied", data2.get("callback_query_safe") or "")
 
     def test_auth_callback_dev_flow_redirects_and_persists(self) -> None:
         zid = f"zid-dev-{self._suffix}"

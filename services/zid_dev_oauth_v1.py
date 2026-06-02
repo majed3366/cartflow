@@ -63,6 +63,51 @@ def zid_dev_oauth_runtime_check_log(*, branch: str) -> None:
         pass
 
 
+def zid_dev_oauth_callback_query_log(request: Any) -> dict[str, Any]:
+    """
+    Log and summarize the callback query string (never log authorization codes).
+
+    Browsers do not send URL fragments (#...) to the server — empty query with
+    #code= in the address bar appears as no code here.
+    """
+    raw_query = str(getattr(getattr(request, "url", None), "query", None) or "")
+    keys = list(getattr(request, "query_params", {}).keys())
+    safe_parts: list[str] = []
+    qp = getattr(request, "query_params", None)
+    for key in keys:
+        val = (qp.get(key) or "").strip() if qp is not None else ""
+        if key == "code":
+            safe_parts.append("code=[REDACTED]")
+        else:
+            safe_parts.append(f"{key}={val[:160]}")
+    query_safe = "&".join(safe_parts) if safe_parts else "(empty)"
+    line = (
+        "[ZID OAUTH CALLBACK QUERY] "
+        f"keys={','.join(keys) if keys else '-'} "
+        f"raw_len={len(raw_query)} query_safe={query_safe[:480]}"
+    )
+    try:
+        print(line, flush=True)
+    except OSError:
+        pass
+    try:
+        log.info("%s", line)
+    except Exception:  # noqa: BLE001
+        pass
+    oauth_error = (qp.get("error") or "").strip() if qp is not None else ""
+    oauth_error_description = (
+        (qp.get("error_description") or "").strip()[:220] if qp is not None else ""
+    )
+    return {
+        "callback_query_keys": keys,
+        "callback_query_empty": not bool(keys),
+        "callback_query_safe": query_safe[:480],
+        "callback_raw_query_len": len(raw_query),
+        "oauth_error": oauth_error or None,
+        "oauth_error_description": oauth_error_description or None,
+    }
+
+
 def zid_dev_oauth_log(event: str, **fields: str) -> None:
     parts = [f"[ZID OAUTH DEV] {event}"]
     for k, v in fields.items():

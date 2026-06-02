@@ -13374,6 +13374,7 @@ def auth_callback(request: Request):
         persist_zid_dev_store_from_token_response,
         zid_dev_oauth_enabled,
         zid_dev_oauth_log,
+        zid_dev_oauth_callback_query_log,
     )
     from urllib.parse import urlencode  # noqa: PLC0415
 
@@ -13387,9 +13388,17 @@ def auth_callback(request: Request):
     oauth_state = (request.query_params.get("state") or "").strip()
     zid_dev_oauth_log("callback_received")
     zid_dev_oauth_log("code_present", value="true" if code else "false")
-    zid_oauth_callback_trace(has_code=bool(code), has_state=bool(oauth_state))
+    query_diag = zid_dev_oauth_callback_query_log(request)
+    zid_oauth_callback_trace(
+        has_code=bool(code),
+        has_state=bool(oauth_state),
+        query_keys=",".join(query_diag.get("callback_query_keys") or []) or "-",
+    )
     if not code:
-        return j({"ok": False, "message": _MISSING_CODE_MESSAGE}, 400)
+        payload: dict[str, Any] = {"ok": False, "message": _MISSING_CODE_MESSAGE}
+        if zid_dev_oauth_enabled():
+            payload.update(query_diag)
+        return j(payload, 400)
     body, status = exchange_code_for_token(code)
     token_ok = (
         200 <= status < 300

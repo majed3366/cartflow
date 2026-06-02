@@ -139,11 +139,17 @@ def zid_oauth_start_trace(
     )
 
 
-def zid_oauth_callback_trace(*, has_code: bool, has_state: bool) -> None:
+def zid_oauth_callback_trace(
+    *,
+    has_code: bool,
+    has_state: bool,
+    query_keys: str = "-",
+) -> None:
     emit_zid_oauth_trace(
         "ZID OAUTH CALLBACK HIT",
         has_code=str(bool(has_code)).lower(),
         has_state=str(bool(has_state)).lower(),
+        query_keys=(query_keys or "-")[:256],
     )
 
 
