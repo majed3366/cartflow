@@ -19320,20 +19320,45 @@ def auth_zid_oauth_start(request: Request):
     signed state. Dashboard connect uses /api/merchant/store-connection/zid/connect.
     """
     from integrations.zid_client import build_zid_authorize_url  # noqa: PLC0415
+    from services.merchant_onboarding_store import (  # noqa: PLC0415
+        resolve_merchant_onboarding_store,
+    )
     from services.merchant_store_connection_v1 import resolve_connect_context  # noqa: PLC0415
     from services.zid_dev_oauth_v1 import (  # noqa: PLC0415
+        zid_auth_zid_branch_trace_log,
         zid_dev_oauth_enabled,
         zid_dev_oauth_log,
         zid_dev_oauth_runtime_check_log,
         zid_oauth_activation_audit_log,
     )
 
+    dev_enabled = zid_dev_oauth_enabled()
+    cookies = dict(request.cookies)
     branch = "legacy_connect"
-    if zid_dev_oauth_enabled():
+    reason = "zid_dev_oauth_disabled"
+    store: Any = None
+    merchant_id: Optional[int] = None
+    connect_err = ""
+    resolution_source = "-"
+
+    if dev_enabled:
         _merchant_dashboard_db_ready()
-        _store, merchant_id, _err = resolve_connect_context(cookies=dict(request.cookies))
+        store, merchant_id, connect_err = resolve_connect_context(cookies=cookies)
+        _, meta = resolve_merchant_onboarding_store(cookies=cookies)
+        resolution_source = (meta.source or "-")[:64]
         if merchant_id is None:
             branch = "dev_oauth"
+            reason = "no_merchant_session_cookie"
+            zid_auth_zid_branch_trace_log(
+                request=request,
+                branch=branch,
+                reason=reason,
+                enabled=dev_enabled,
+                merchant_id=merchant_id,
+                store=store,
+                connect_err=connect_err,
+                resolution_source=resolution_source,
+            )
             zid_dev_oauth_runtime_check_log(branch=branch)
             zid_oauth_activation_audit_log(route="/auth/zid", request=request, branch=branch)
             url, _err_payload = build_zid_authorize_url(state="")
@@ -19345,6 +19370,22 @@ def auth_zid_oauth_start(request: Request):
                 )
             zid_dev_oauth_log("install_authorize_redirect")
             return RedirectResponse(url=url, status_code=302)
+        reason = (
+            "merchant_session_no_store"
+            if store is None
+            else "merchant_session_with_store"
+        )
+
+    zid_auth_zid_branch_trace_log(
+        request=request,
+        branch=branch,
+        reason=reason,
+        enabled=dev_enabled,
+        merchant_id=merchant_id,
+        store=store,
+        connect_err=connect_err,
+        resolution_source=resolution_source,
+    )
     zid_dev_oauth_runtime_check_log(branch=branch)
     zid_oauth_activation_audit_log(route="/auth/zid", request=request, branch=branch)
     return api_merchant_store_connection_zid_connect(request)

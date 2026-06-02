@@ -63,6 +63,55 @@ def zid_dev_oauth_runtime_check_log(*, branch: str) -> None:
         pass
 
 
+def zid_auth_zid_branch_trace_log(
+    *,
+    request: Any,
+    branch: str,
+    reason: str,
+    enabled: bool,
+    merchant_id: Optional[int] = None,
+    store: Any = None,
+    connect_err: str = "",
+    resolution_source: str = "",
+) -> None:
+    """
+    Trace why GET /auth/zid chose dev_oauth vs legacy_connect (no behavior change).
+
+    dev_oauth only when ZID_DEV_OAUTH_ENABLED and merchant_id is None (no session cookie).
+    legacy_connect when flag off OR any valid merchant session cookie is present.
+    """
+    from services.merchant_auth_http import merchant_cookie_name
+
+    ck = dict(getattr(request, "cookies", {}) or {})
+    cookie_names = sorted(ck.keys())[:16]
+    mcn = merchant_cookie_name()
+    has_merchant_cookie = mcn in ck
+    store_id = getattr(store, "id", None) if store is not None else None
+    line = (
+        "[ZID AUTH/ZID BRANCH] "
+        f"enabled={'true' if enabled else 'false'} "
+        f"branch={branch} "
+        f"reason={reason} "
+        f"commit={_resolve_deploy_commit_short()} "
+        f"merchant_id={merchant_id if merchant_id is not None else '-'} "
+        f"store_present={'true' if store is not None else 'false'} "
+        f"store_id={store_id if store_id is not None else '-'} "
+        f"resolution_source={(resolution_source or '-')[:64]} "
+        f"connect_err={(connect_err or '-')[:120]} "
+        f"merchant_cookie_present={'true' if has_merchant_cookie else 'false'} "
+        f"merchant_cookie_name={mcn} "
+        f"cookie_names={','.join(cookie_names) if cookie_names else '-'}"
+    )
+    try:
+        print(line, flush=True)
+    except OSError:
+        pass
+    try:
+        log.info("%s", line)
+    except Exception:  # noqa: BLE001
+        pass
+
+
 def zid_oauth_activation_audit_log(
     *,
     route: str,

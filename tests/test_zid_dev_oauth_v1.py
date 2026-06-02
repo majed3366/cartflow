@@ -12,6 +12,11 @@ from fastapi.testclient import TestClient
 from extensions import db
 from main import app
 from models import Store
+from services.merchant_auth_http import merchant_cookie_name
+from services.merchant_auth_v1 import (
+    register_merchant_account,
+    session_cookie_value_for_user,
+)
 from services.zid_dev_oauth_v1 import (
     ZID_DEV_INTEGRATION_SOURCE,
     build_zid_dev_store_status_readonly,
@@ -144,7 +149,9 @@ class ZidDevOauthV1Tests(unittest.TestCase):
             "services.zid_dev_oauth_v1.zid_oauth_activation_audit_log"
         ) as audit_log, mock.patch(
             "services.zid_dev_oauth_v1.zid_dev_oauth_runtime_check_log"
-        ):
+        ), mock.patch(
+            "services.zid_dev_oauth_v1.zid_auth_zid_branch_trace_log"
+        ) as branch_trace:
             r = self.client.get("/auth/zid", follow_redirects=False)
         self.assertEqual(r.status_code, 302)
         loc = r.headers.get("location") or ""
@@ -158,6 +165,37 @@ class ZidDevOauthV1Tests(unittest.TestCase):
         self.assertNotIn("state=", loc)
         audit_log.assert_called()
         self.assertEqual(audit_log.call_args.kwargs.get("branch"), "dev_oauth")
+        branch_trace.assert_called()
+        self.assertEqual(
+            branch_trace.call_args.kwargs.get("reason"),
+            "no_merchant_session_cookie",
+        )
+
+    def test_auth_zid_with_merchant_cookie_uses_legacy_connect(self) -> None:
+        email = f"zid-legacy-{self._suffix}@example.com"
+        ok, _, user = register_merchant_account(
+            store_name="متجر",
+            email=email,
+            password="password123",
+        )
+        self.assertTrue(ok)
+        assert user is not None
+        cookies = {merchant_cookie_name(): session_cookie_value_for_user(user)}
+        with mock.patch(
+            "services.zid_dev_oauth_v1.zid_auth_zid_branch_trace_log"
+        ) as branch_trace:
+            r = self.client.get("/auth/zid", cookies=cookies, follow_redirects=False)
+        self.assertEqual(r.status_code, 302)
+        loc = r.headers.get("location") or ""
+        self.assertIn("oauth.zid.sa/oauth/authorize", loc)
+        self.assertIn("state=", loc)
+        branch_trace.assert_called()
+        self.assertEqual(branch_trace.call_args.kwargs.get("branch"), "legacy_connect")
+        self.assertEqual(
+            branch_trace.call_args.kwargs.get("reason"),
+            "merchant_session_with_store",
+        )
+        self.assertEqual(branch_trace.call_args.kwargs.get("merchant_id"), int(user.id))
 
     def test_auth_callback_audit_logs_empty_query(self) -> None:
         with mock.patch(
