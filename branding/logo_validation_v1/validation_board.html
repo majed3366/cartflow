@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CartFlow — Direction 1 Validation Board</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Tajawal:wght@400;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --cf-ink: #0f172a;
+      --cf-muted: #64748b;
+      --cf-border: #e2e8f0;
+      --cf-surface: #ffffff;
+      --cf-surface-muted: #f8fafc;
+      --cf-primary: #2563eb;
+      --cf-primary-muted: #dbeafe;
+      --cf-node: #1e293b;
+      --board-w: 2400px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: "IBM Plex Sans", system-ui, sans-serif;
+      background: #eef1f6;
+      color: var(--cf-ink);
+      padding: 32px;
+    }
+
+    .board {
+      width: var(--board-w);
+      max-width: 100%;
+      margin: 0 auto;
+      background: var(--cf-surface);
+      border: 1px solid var(--cf-border);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 24px 64px rgba(15, 23, 42, 0.08);
+    }
+
+    .board-header {
+      padding: 28px 36px 20px;
+      border-bottom: 1px solid var(--cf-border);
+      background: linear-gradient(180deg, #fff 0%, var(--cf-surface-muted) 100%);
+    }
+
+    .board-header h1 {
+      font-size: 22px;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+    }
+
+    .board-header p {
+      margin-top: 6px;
+      font-size: 13px;
+      color: var(--cf-muted);
+      max-width: 720px;
+      line-height: 1.5;
+    }
+
+    .board-meta {
+      display: flex;
+      gap: 12px;
+      margin-top: 14px;
+      flex-wrap: wrap;
+    }
+
+    .tag {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: var(--cf-primary-muted);
+      color: var(--cf-primary);
+    }
+
+    .tag--warn {
+      background: #fef3c7;
+      color: #b45309;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0;
+    }
+
+    .cell {
+      border-right: 1px solid var(--cf-border);
+      border-bottom: 1px solid var(--cf-border);
+      padding: 20px 22px 24px;
+      min-height: 320px;
+      background: var(--cf-surface-muted);
+    }
+
+    .cell:nth-child(3n) { border-right: none; }
+    .cell:nth-child(n+4) { border-bottom: none; }
+
+    .cell-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--cf-muted);
+      margin-bottom: 14px;
+    }
+
+    .cell-num {
+      color: var(--cf-primary);
+      margin-inline-end: 6px;
+    }
+
+    .mock {
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid var(--cf-border);
+      background: var(--cf-surface);
+      box-shadow: 0 4px 16px rgba(15, 23, 42, 0.06);
+    }
+
+    /* Shared mark — geometry locked from exploration v2 */
+    .cf-mark { display: inline-block; flex-shrink: 0; }
+    .cf-mark svg { display: block; }
+
+    .lockup {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .wordmark {
+      font-weight: 700;
+      color: var(--cf-ink);
+      letter-spacing: -0.02em;
+    }
+
+    .wordmark--landing {
+      font-family: "Tajawal", "IBM Plex Sans Arabic", sans-serif;
+      font-weight: 800;
+      font-size: 17px;
+    }
+
+    .wordmark--merchant {
+      font-family: "IBM Plex Sans Arabic", sans-serif;
+      font-size: 18px;
+    }
+
+    .wordmark--admin {
+      font-family: "IBM Plex Sans", sans-serif;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #4f46e5;
+    }
+
+    /* 1 Landing header */
+    .mock-landing .hdr {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      min-height: 56px;
+      background: #fff;
+      border-bottom: 1px solid var(--cf-border);
+      direction: rtl;
+      font-family: "Tajawal", sans-serif;
+    }
+
+    .mock-landing nav {
+      display: flex;
+      gap: 16px;
+      font-size: 12px;
+      color: var(--cf-muted);
+    }
+
+    .mock-landing .acts {
+      display: flex;
+      gap: 6px;
+    }
+
+    .mock-landing .btn {
+      font-size: 11px;
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-family: inherit;
+    }
+
+    .mock-landing .btn--ghost {
+      border: 1px solid var(--cf-border);
+      background: #fff;
+      color: var(--cf-muted);
+    }
+
+    .mock-landing .btn--primary {
+      background: #16a34a;
+      color: #fff;
+      border: none;
+    }
+
+    /* 2 Merchant dashboard header */
+    .mock-merchant .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 14px;
+      min-height: 52px;
+      background: #fff;
+      border-bottom: 1px solid var(--cf-border);
+      direction: rtl;
+      font-family: "IBM Plex Sans Arabic", sans-serif;
+    }
+
+    .mock-merchant .sections {
+      display: flex;
+      gap: 4px;
+      font-size: 11px;
+    }
+
+    .mock-merchant .sections span {
+      padding: 6px 10px;
+      border-radius: 8px;
+      color: var(--cf-muted);
+    }
+
+    .mock-merchant .sections span.active {
+      background: #eef2ff;
+      color: #4338ca;
+      font-weight: 600;
+    }
+
+    .mock-merchant .utils {
+      font-size: 10px;
+      color: var(--cf-muted);
+    }
+
+    /* 3 Admin dashboard header */
+    .mock-admin .sidebar-head {
+      padding: 18px 20px;
+      background: rgba(255,255,255,0.85);
+      border-bottom: 1px solid var(--cf-border);
+      direction: ltr;
+    }
+
+    .mock-admin .sidebar-head .title {
+      margin-top: 10px;
+      font-family: "IBM Plex Sans Arabic", sans-serif;
+      font-size: 15px;
+      font-weight: 600;
+      direction: rtl;
+      text-align: right;
+    }
+
+    .mock-admin .sidebar-head .sub {
+      font-size: 10px;
+      color: var(--cf-muted);
+      direction: rtl;
+      text-align: right;
+      margin-top: 2px;
+    }
+
+    /* 4 Zid marketplace */
+    .mock-zid {
+      padding: 20px;
+      background: #fafafa;
+    }
+
+    .mock-zid .card {
+      display: flex;
+      gap: 14px;
+      padding: 16px;
+      background: #fff;
+      border-radius: 12px;
+      border: 1px solid #e5e7eb;
+      direction: rtl;
+      font-family: "IBM Plex Sans Arabic", sans-serif;
+    }
+
+    .mock-zid .icon {
+      width: 72px;
+      height: 72px;
+      border-radius: 16px;
+      overflow: hidden;
+      flex-shrink: 0;
+      border: 1px solid var(--cf-border);
+    }
+
+    .mock-zid .icon img { width: 100%; height: 100%; display: block; }
+
+    .mock-zid h3 {
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    .mock-zid p {
+      font-size: 11px;
+      color: var(--cf-muted);
+      margin-top: 4px;
+      line-height: 1.45;
+    }
+
+    .mock-zid .install {
+      margin-top: 10px;
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 600;
+      color: #fff;
+      background: #7c3aed;
+      padding: 6px 14px;
+      border-radius: 8px;
+    }
+
+    /* 5 Browser favicon */
+    .mock-favicon {
+      padding: 20px;
+    }
+
+    .browser-chrome {
+      border-radius: 10px 10px 0 0;
+      overflow: hidden;
+      border: 1px solid #cbd5e1;
+      background: #e2e8f0;
+    }
+
+    .browser-tabs {
+      display: flex;
+      align-items: flex-end;
+      gap: 2px;
+      padding: 8px 10px 0;
+      background: #dee4ed;
+    }
+
+    .tab {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px 8px;
+      background: #f1f5f9;
+      border-radius: 8px 8px 0 0;
+      font-size: 11px;
+      color: var(--cf-muted);
+      max-width: 180px;
+    }
+
+    .tab.active {
+      background: #fff;
+      color: var(--cf-ink);
+    }
+
+    .tab-favicon {
+      width: 16px;
+      height: 16px;
+      border-radius: 3px;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .browser-bar {
+      background: #fff;
+      padding: 10px 14px;
+      font-size: 11px;
+      color: var(--cf-muted);
+      border-top: 1px solid var(--cf-border);
+    }
+
+    .favicon-sizes {
+      display: flex;
+      gap: 20px;
+      margin-top: 16px;
+      align-items: flex-end;
+    }
+
+    .favicon-size label {
+      display: block;
+      font-size: 10px;
+      color: var(--cf-muted);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .favicon-box {
+      background: #fff;
+      border: 1px solid var(--cf-border);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .favicon-box--16 { width: 48px; height: 48px; }
+    .favicon-box--32 { width: 64px; height: 64px; }
+
+    /* 6 Mobile app icon */
+    .mock-mobile {
+      display: flex;
+      justify-content: center;
+      padding: 12px 0 4px;
+    }
+
+    .phone {
+      width: 160px;
+      border-radius: 24px;
+      border: 3px solid #1e293b;
+      background: #0f172a;
+      padding: 10px 8px 14px;
+      box-shadow: 0 12px 32px rgba(15, 23, 42, 0.2);
+    }
+
+    .phone-notch {
+      width: 48px;
+      height: 5px;
+      background: #334155;
+      border-radius: 99px;
+      margin: 0 auto 12px;
+    }
+
+    .phone-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      padding: 8px 6px;
+    }
+
+    .phone-icon {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .phone-icon img,
+    .phone-icon .app-icon-wrap {
+      width: 44px;
+      height: 44px;
+      border-radius: 11px;
+      overflow: hidden;
+    }
+
+    .phone-icon span {
+      font-size: 8px;
+      color: #94a3b8;
+      font-family: "IBM Plex Sans", sans-serif;
+    }
+
+    .phone-icon--hero .app-icon-wrap {
+      box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.5);
+    }
+
+    .verdict {
+      padding: 24px 36px 32px;
+      border-top: 1px solid var(--cf-border);
+      background: #fff;
+    }
+
+    .verdict h2 {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+
+    .verdict ul {
+      list-style: none;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px 24px;
+      font-size: 12px;
+      color: var(--cf-muted);
+    }
+
+    .verdict li::before {
+      content: "☐ ";
+      color: var(--cf-primary);
+    }
+  </style>
+</head>
+<body>
+  <!-- Inline SVG symbol: Direction 1 geometry (do not alter) -->
+  <svg xmlns="http://www.w3.org/2000/svg" style="display:none">
+    <symbol id="cf-mark" viewBox="0 0 32 32">
+      <rect x="5" y="13" width="11" height="6" rx="3" stroke="#2563EB" stroke-width="2" fill="none"/>
+      <rect x="18" y="12" width="9" height="8" rx="4" fill="#1E293B"/>
+    </symbol>
+    <symbol id="cf-mark-on-muted" viewBox="0 0 32 32">
+      <rect width="32" height="32" fill="#DBEAFE"/>
+      <rect x="5" y="13" width="11" height="6" rx="3" stroke="#2563EB" stroke-width="2" fill="none"/>
+      <rect x="18" y="12" width="9" height="8" rx="4" fill="#1E293B"/>
+    </symbol>
+  </svg>
+
+  <div class="board" id="validation-board">
+    <header class="board-header">
+      <h1>CartFlow Brand Validation Board — Direction 1: Flow Decision</h1>
+      <p>Mock contexts only. Logo geometry unchanged from exploration v2. Production pages not modified. Use this board to decide if Direction 1 works as the official CartFlow identity.</p>
+      <div class="board-meta">
+        <span class="tag">Validation v1</span>
+        <span class="tag">Direction 1 only</span>
+        <span class="tag tag--warn">Not production</span>
+      </div>
+    </header>
+
+    <div class="grid">
+      <!-- 1 Landing -->
+      <section class="cell">
+        <p class="cell-label"><span class="cell-num">1</span>Landing page header</p>
+        <div class="mock mock-landing">
+          <div class="hdr">
+            <div class="lockup">
+              <span class="cf-mark"><svg width="28" height="28"><use href="#cf-mark"/></svg></span>
+              <span class="wordmark wordmark--landing">CartFlow</span>
+            </div>
+            <nav>
+              <span>كيف يعمل</span>
+              <span>اللوحة</span>
+              <span>الأسعار</span>
+            </nav>
+            <div class="acts">
+              <button type="button" class="btn btn--ghost">دخول</button>
+              <button type="button" class="btn btn--primary">ابدأ</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2 Merchant -->
+      <section class="cell">
+        <p class="cell-label"><span class="cell-num">2</span>Merchant dashboard header</p>
+        <div class="mock mock-merchant">
+          <div class="topbar">
+            <div class="lockup">
+              <span class="cf-mark"><svg width="26" height="26"><use href="#cf-mark"/></svg></span>
+              <span class="wordmark wordmark--merchant">CartFlow</span>
+            </div>
+            <div class="sections">
+              <span class="active">الرئيسية</span>
+              <span>السلال</span>
+              <span>التواصل</span>
+              <span>الإعدادات</span>
+            </div>
+            <div class="utils">متجرك · خروج</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3 Admin -->
+      <section class="cell">
+        <p class="cell-label"><span class="cell-num">3</span>Admin dashboard header</p>
+        <div class="mock mock-admin">
+          <div class="sidebar-head">
+            <span class="cf-mark"><svg width="36" height="36"><use href="#cf-mark"/></svg></span>
+            <p class="wordmark wordmark--admin">CartFlow Admin</p>
+            <p class="title">عمليات المنصة</p>
+            <p class="sub">Replaces CF monogram in sidebar head</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- 4 Zid marketplace -->
+      <section class="cell">
+        <p class="cell-label"><span class="cell-num">4</span>Zid marketplace app icon</p>
+        <div class="mock mock-zid">
+          <div class="card">
+            <div class="icon">
+              <img src="../logo_exploration_v2/Direction_1_FlowDecision/app_icon_preview.png" alt="Zid listing icon" width="72" height="72" />
+            </div>
+            <div>
+              <h3>CartFlow</h3>
+              <p>يفهم التردد · يقرر · يتصرف · يسترد — نظام تشغيل لسلة المتجر</p>
+              <span class="install">تثبيت</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 5 Favicon -->
+      <section class="cell">
+        <p class="cell-label"><span class="cell-num">5</span>Browser favicon</p>
+        <div class="mock mock-favicon">
+          <div class="browser-chrome">
+            <div class="browser-tabs">
+              <div class="tab">
+                <span class="tab-favicon"><svg width="16" height="16"><use href="#cf-mark-on-muted"/></svg></span>
+                <span>Other tab</span>
+              </div>
+              <div class="tab active">
+                <span class="tab-favicon"><svg width="16" height="16"><use href="#cf-mark-on-muted"/></svg></span>
+                <span>CartFlow — Dashboard</span>
+              </div>
+            </div>
+            <div class="browser-bar">app.cartflow.sa/dashboard</div>
+          </div>
+          <div class="favicon-sizes">
+            <div class="favicon-size">
+              <label>16px</label>
+              <div class="favicon-box favicon-box--16">
+                <svg width="16" height="16"><use href="#cf-mark-on-muted"/></svg>
+              </div>
+            </div>
+            <div class="favicon-size">
+              <label>32px</label>
+              <div class="favicon-box favicon-box--32">
+                <svg width="32" height="32"><use href="#cf-mark-on-muted"/></svg>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 6 Mobile -->
+      <section class="cell">
+        <p class="cell-label"><span class="cell-num">6</span>Mobile app icon</p>
+        <div class="mock mock-mobile">
+          <div class="phone">
+            <div class="phone-notch"></div>
+            <div class="phone-grid">
+              <div class="phone-icon"><div style="width:44px;height:44px;border-radius:11px;background:#334155"></div><span>Mail</span></div>
+              <div class="phone-icon phone-icon--hero">
+                <div class="app-icon-wrap">
+                  <img src="../logo_exploration_v2/Direction_1_FlowDecision/app_icon_preview.png" alt="CartFlow app icon" width="44" height="44" />
+                </div>
+                <span>CartFlow</span>
+              </div>
+              <div class="phone-icon"><div style="width:44px;height:44px;border-radius:11px;background:#334155"></div><span>Settings</span></div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <footer class="verdict">
+      <h2>Validation checklist (human decision)</h2>
+      <ul>
+        <li>Mark readable at 16px favicon</li>
+        <li>Professional in merchant dashboard chrome</li>
+        <li>Distinct from CF monogram in admin</li>
+        <li>Strong enough for Zid marketplace listing</li>
+        <li>Pairs with Arabic wordmark on landing</li>
+        <li>No ecommerce / WhatsApp misread</li>
+        <li>Approve as official identity</li>
+        <li>Requires geometry tuning before finalize</li>
+      </ul>
+    </footer>
+  </div>
+</body>
+</html>
