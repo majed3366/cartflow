@@ -7,11 +7,12 @@
  *
  * Logs: ‎[CF LEGACY WIDGET LOAD BLOCKED]‎ (default-V2 substituted for accidental legacy path);
  *       ‎[CF LEGACY WIDGET LOAD ALLOWED]‎ (legacy opt-in). ‎GET /dev/widget-test‎ bypasses this file.
+ * Cross-origin embed (Zid): sets ‎CARTFLOW_RECOVERY_WIDGET_MODE‎ — approved cart-recovery V2, not browsing assistant.
  */
 (function () {
   "use strict";
 
-  var RUNTIME_VERSION = "v2-zid-cors-ready-guard-1";
+  var RUNTIME_VERSION = "v2-zid-recovery-widget-1";
 
   function cartflowWidgetLoaderScriptUrl() {
     try {
@@ -73,6 +74,37 @@
   }
 
   cartflowEnsureEmbedOriginFromLoader();
+
+  /** Cross-origin embed (e.g. Zid): approved cart-recovery V2, not browsing assistant. */
+  function cartflowIsStorefrontEmbed() {
+    try {
+      var apiBase = window.CARTFLOW_API_BASE;
+      if (!apiBase || !String(apiBase).trim()) {
+        return false;
+      }
+      var pageOrigin = String(window.location.origin || "").replace(/\/+$/, "");
+      var loaderOrigin = String(apiBase).replace(/\/+$/, "");
+      return !!(pageOrigin && loaderOrigin && pageOrigin !== loaderOrigin);
+    } catch (eEmb) {
+      return false;
+    }
+  }
+
+  function cartflowEnsureStorefrontRecoveryMode() {
+    if (!cartflowIsStorefrontEmbed()) {
+      return;
+    }
+    try {
+      window.CARTFLOW_WIDGET_RUNTIME_V2 = true;
+      window.CARTFLOW_RUNTIME_VERSION = RUNTIME_VERSION;
+      window.CARTFLOW_RECOVERY_WIDGET_MODE = true;
+      console.log("[CARTFLOW RECOVERY MODE] storefront_embed=true runtime=" + RUNTIME_VERSION);
+    } catch (eMode) {
+      /* ignore */
+    }
+  }
+
+  cartflowEnsureStorefrontRecoveryMode();
 
   function cartflowAllowLegacyWidgetExplicit() {
     try {
@@ -442,6 +474,7 @@
       if (cartflowIsDemoStorePrimaryV2Path()) {
         window.CARTFLOW_WIDGET_RUNTIME_V2 = true;
       }
+      cartflowEnsureStorefrontRecoveryMode();
     } catch (eV2set) {}
 
     var runtimeV2Explicit = window.CARTFLOW_WIDGET_RUNTIME_V2 === true;

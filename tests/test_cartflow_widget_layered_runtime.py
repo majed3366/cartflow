@@ -63,3 +63,5 @@ class CartflowWidgetLayeredRuntimeTests(unittest.TestCase):
         self.assertIn("cartflow_widget.js", s)
         self.assertIn("cartflowIsDemoStorePrimaryV2Path", s)
         self.assertIn("/demo/store", s)
+        self.assertIn("CARTFLOW_RECOVERY_WIDGET_MODE", s)
+        self.assertIn("cartflowEnsureStorefrontRecoveryMode", s)

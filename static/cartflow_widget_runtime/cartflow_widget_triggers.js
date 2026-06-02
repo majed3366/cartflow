@@ -92,17 +92,46 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     return true;
   }
 
+  function storefrontRecoveryModeActive() {
+    try {
+      return window.CARTFLOW_RECOVERY_WIDGET_MODE === true;
+    } catch (eRm) {
+      return false;
+    }
+  }
+
+  function haveCartApproxFromStorefrontPath() {
+    try {
+      if (!storefrontRecoveryModeActive()) {
+        return false;
+      }
+      var path = String(window.location.pathname || "").toLowerCase();
+      var href = String(window.location.href || "").toLowerCase();
+      return (
+        /\/cart(?:\/|$|\?|#)/.test(path) ||
+        /\/checkout(?:\/|$|\?|#)/.test(path) ||
+        /\/basket(?:\/|$|\?|#)/.test(path) ||
+        /\/(cart|checkout|basket)(?:\/|$|\?|#)/.test(href)
+      );
+    } catch (ePath) {
+      return false;
+    }
+  }
+
   function haveCartApprox() {
     try {
-      return (
+      if (
         typeof window.cart !== "undefined" &&
         window.cart != null &&
         Array.isArray(window.cart) &&
         window.cart.length > 0
-      );
+      ) {
+        return true;
+      }
     } catch (eHc) {
-      return false;
+      /* ignore */
     }
+    return haveCartApproxFromStorefrontPath();
   }
 
   function hesitationMs() {

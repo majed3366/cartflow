@@ -130,7 +130,18 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     } catch (eS) {}
   }
 
+  function isStorefrontRecoveryMode() {
+    try {
+      return window.CARTFLOW_RECOVERY_WIDGET_MODE === true;
+    } catch (eRm) {
+      return false;
+    }
+  }
+
   function getCartRecoveryQuestion() {
+    if (isStorefrontRecoveryMode()) {
+      return "تحتاج مساعدة قبل ما تطلع؟";
+    }
     return "تبي أساعدك تكمل طلبك؟";
   }
 
@@ -782,6 +793,10 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
             showBubbleCartRecovery(String(tag || "cart_timer"));
           },
           fireExitNoCart: function () {
+            if (isStorefrontRecoveryMode()) {
+              showBubbleCartRecovery("exit_intent_storefront_recovery");
+              return;
+            }
             if (!Cf.Triggers.haveCartApprox()) {
               showExitNoCart();
             }
