@@ -33,6 +33,36 @@ def zid_dev_oauth_enabled() -> bool:
     )
 
 
+def _resolve_deploy_commit_short() -> str:
+    for key in (
+        "RAILWAY_GIT_COMMIT_SHA",
+        "GIT_COMMIT",
+        "SOURCE_VERSION",
+        "COMMIT_SHA",
+    ):
+        val = (os.getenv(key) or "").strip()
+        if val:
+            return val[:7]
+    return "unknown"
+
+
+def zid_dev_oauth_runtime_check_log(*, branch: str) -> None:
+    """Temporary runtime branch marker for Zid dev install OAuth verification."""
+    enabled = "true" if zid_dev_oauth_enabled() else "false"
+    line = (
+        f"[ZID DEV CHECK] enabled={enabled} "
+        f"commit={_resolve_deploy_commit_short()} branch={branch}"
+    )
+    try:
+        print(line, flush=True)
+    except OSError:
+        pass
+    try:
+        log.info("%s", line)
+    except Exception:  # noqa: BLE001
+        pass
+
+
 def zid_dev_oauth_log(event: str, **fields: str) -> None:
     parts = [f"[ZID OAUTH DEV] {event}"]
     for k, v in fields.items():

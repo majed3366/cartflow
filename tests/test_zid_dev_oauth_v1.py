@@ -130,7 +130,10 @@ class ZidDevOauthV1Tests(unittest.TestCase):
         self.assertIn("dev_oauth_disabled", r.headers.get("location") or "")
 
     def test_auth_zid_dev_install_skips_login_and_starts_oauth(self) -> None:
-        r = self.client.get("/auth/zid", follow_redirects=False)
+        with mock.patch(
+            "services.zid_dev_oauth_v1.zid_dev_oauth_runtime_check_log"
+        ) as check_log:
+            r = self.client.get("/auth/zid", follow_redirects=False)
         self.assertEqual(r.status_code, 302)
         loc = r.headers.get("location") or ""
         self.assertIn("oauth.zid.sa/oauth/authorize", loc)
@@ -141,6 +144,7 @@ class ZidDevOauthV1Tests(unittest.TestCase):
         self.assertIn("orders.read", loc)
         self.assertNotIn("/login", loc)
         self.assertNotIn("state=", loc)
+        check_log.assert_called_once_with(branch="dev_oauth")
 
     def test_auth_zid_dev_disabled_requires_login(self) -> None:
         os.environ["ZID_DEV_OAUTH_ENABLED"] = "0"
