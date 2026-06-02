@@ -370,6 +370,7 @@ def admin_operations_dashboard(request: Request) -> Any:
                 "ready_stores": 0,
                 "affected_stores": 0,
                 "open_alerts": 0,
+                "open_issues": 0,
                 "recoveries_today": 0,
             },
             "current_issues": {"issues": [], "total": 0, "available": True},
@@ -405,7 +406,7 @@ def admin_operations_dashboard(request: Request) -> Any:
             "admin_active_nav": ADMIN_NAV_OVERVIEW,
             "admin_page_title_ar": "نظرة عامة تنفيذية",
             "admin_page_subtitle_ar": (
-                "هل المنصة بصحة جيدة؟ ما أكبر مشكلة الآن؟ كم متجرًا متأثر؟"
+                "حالة المنصة · المشاكل الحالية · المتأثرون · ماذا نفعل الآن"
             ),
             "ops": ops,
         },

@@ -64,9 +64,11 @@ class AdminOperationsDashboardTests(unittest.TestCase):
         self.assertIn("حالة المنصة", body)
         self.assertIn("المتاجر النشطة", body)
         self.assertIn("المتاجر المتأثرة", body)
-        self.assertIn("التنبيهات المفتوحة", body)
+        self.assertIn("المشاكل المفتوحة", body)
         self.assertIn("الاسترجاعات اليوم", body)
-        self.assertIn("أكبر مشكلة الآن", body)
+        self.assertIn("المشاكل الحالية", body)
+        self.assertIn("ops-current-issues-core", body)
+        self.assertIn("المشاكل المفتوحة", body)
         # Technical sections must NOT be on the executive overview.
         self.assertNotIn("صحة المجدول", body)
         self.assertNotIn("جاهزية المتاجر", body)
@@ -109,7 +111,7 @@ class AdminOperationsDashboardTests(unittest.TestCase):
         r = client.get("/admin/operations")
         self.assertEqual(r.status_code, 200)
         self.assertIn("المتاجر النشطة", r.text)
-        self.assertIn("حالة المتاجر", r.text)
+        self.assertIn("المتاجر التي تحتاج انتباهًا", r.text)
 
     def test_current_issues_page_business_language(self) -> None:
         os.environ["CARTFLOW_ADMIN_PASSWORD"] = "dashboard-auth-test-pass-9"

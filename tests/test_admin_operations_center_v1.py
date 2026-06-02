@@ -216,10 +216,12 @@ class AdminOperationsCenterV1Tests(unittest.TestCase):
         self.assertIn("حالة المنصة", body)
         self.assertIn("المتاجر النشطة", body)
         self.assertIn("المتاجر المتأثرة", body)
-        self.assertIn("التنبيهات المفتوحة", body)
+        self.assertIn("المشاكل المفتوحة", body)
         self.assertIn("الاسترجاعات اليوم", body)
-        self.assertIn("أكبر مشكلة الآن", body)
-        self.assertIn("حالة المتاجر", body)
+        self.assertIn("المشاكل الحالية", body)
+        self.assertIn("ops-current-issues-core", body)
+        self.assertIn("ماذا نفعل الآن", body)
+        self.assertIn("المتاجر التي تحتاج انتباهًا", body)
         self.assertIn("ops-executive-summary", body)
         self.assertIn('id="admin-sidebar-panel"', body)
         # Technical lazy panels are NOT on the executive overview.
@@ -652,7 +654,8 @@ class AdminOperationsCenterV1Tests(unittest.TestCase):
         self._login()
         r = self.client.get("/admin/operations")
         self.assertEqual(r.status_code, 200)
-        self.assertIn("أكبر مشكلة الآن", r.text)
+        self.assertIn("المشاكل الحالية", r.text)
+        self.assertIn("ops-current-issues-core", r.text)
 
     def test_current_issues_business_language_builder(self) -> None:
         from services.admin_operations_center_v1 import _build_current_issues
@@ -680,8 +683,17 @@ class AdminOperationsCenterV1Tests(unittest.TestCase):
         self.assertEqual(first["kind"], "failed_recovery")
         self.assertEqual(first["title_ar"], "رسائل الاسترجاع لا يتم تسليمها")
         self.assertEqual(first["affected_count"], 2)
-        for key in ("impact_ar", "owner_ar", "action_ar", "verification_ar", "affected_label_ar"):
+        for key in (
+            "impact_ar",
+            "where_ar",
+            "owner_ar",
+            "action_ar",
+            "verification_ar",
+            "affected_label_ar",
+            "problem_ar",
+        ):
             self.assertTrue(first.get(key), msg=f"missing {key}")
+        self.assertEqual(first["where_ar"], "قناة واتساب / إرسال الاسترجاع")
 
     def test_command_center_includes_executive_summary_and_issues(self) -> None:
         payload = build_admin_operations_command_center_readonly()
@@ -692,6 +704,7 @@ class AdminOperationsCenterV1Tests(unittest.TestCase):
             "active_stores",
             "affected_stores",
             "open_alerts",
+            "open_issues",
             "recoveries_today",
         ):
             self.assertIn(key, ex)
@@ -1114,7 +1127,7 @@ class AdminOperationsCenterV1Tests(unittest.TestCase):
         self._login()
         r = self.client.get("/admin/operations")
         self.assertEqual(r.status_code, 200)
-        self.assertIn("حالة المتاجر", r.text)
+        self.assertIn("المتاجر التي تحتاج انتباهًا", r.text)
 
     def test_system_health_stable_when_no_alerts(self) -> None:
         health = _build_system_health_summary([])

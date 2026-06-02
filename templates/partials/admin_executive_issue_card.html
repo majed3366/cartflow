@@ -1,0 +1,46 @@
+{# Business-language issue card — Problem → Impact → Where → Owner → Action → Verification #}
+{% set sev = issue.severity or 'low' %}
+<article id="issue-{{ issue.kind }}" class="rounded-2xl border bg-white p-5 shadow-sm sm:p-6
+  {% if sev == 'critical' %}border-rose-200{% elif sev == 'high' %}border-amber-200{% else %}border-slate-200{% endif %}">
+  <div class="flex flex-wrap items-start justify-between gap-3">
+    <div class="min-w-0 flex-1">
+      <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">المشكلة</p>
+      <h3 class="mt-1 text-lg font-semibold text-slate-900">{{ issue.problem_ar or issue.title_ar }}</h3>
+    </div>
+    {% if sev == 'critical' %}
+    <span class="inline-flex shrink-0 rounded-full border border-rose-200 bg-rose-50 px-2.5 py-0.5 text-xs font-medium text-rose-800">{{ issue.severity_ar or 'حرج' }}</span>
+    {% elif sev == 'high' %}
+    <span class="inline-flex shrink-0 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-900">{{ issue.severity_ar or 'عالي' }}</span>
+    {% elif sev == 'medium' %}
+    <span class="inline-flex shrink-0 rounded-full border border-slate-200 bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700">{{ issue.severity_ar or 'متوسط' }}</span>
+    {% else %}
+    <span class="inline-flex shrink-0 rounded-full border border-slate-100 bg-slate-50 px-2.5 py-0.5 text-xs font-medium text-slate-500">{{ issue.severity_ar or 'منخفض' }}</span>
+    {% endif %}
+  </div>
+  <dl class="mt-4 grid gap-x-8 gap-y-4 sm:grid-cols-2">
+    <div>
+      <dt class="text-xs font-semibold uppercase tracking-wide text-slate-400">الأثر</dt>
+      <dd class="mt-1 text-sm leading-relaxed text-slate-700">{{ issue.impact_ar }}</dd>
+    </div>
+    <div>
+      <dt class="text-xs font-semibold uppercase tracking-wide text-slate-400">أين</dt>
+      <dd class="mt-1 text-sm leading-relaxed text-slate-700">{{ issue.where_ar or '—' }}</dd>
+    </div>
+    <div>
+      <dt class="text-xs font-semibold uppercase tracking-wide text-slate-400">المتأثر</dt>
+      <dd class="mt-1 text-sm leading-relaxed text-slate-700">{{ issue.affected_label_ar }}</dd>
+    </div>
+    <div>
+      <dt class="text-xs font-semibold uppercase tracking-wide text-slate-400">المسؤول</dt>
+      <dd class="mt-1 text-sm leading-relaxed text-slate-700">{{ issue.owner_ar }}</dd>
+    </div>
+    <div class="sm:col-span-2">
+      <dt class="text-xs font-semibold uppercase tracking-wide text-slate-400">الإجراء المقترح</dt>
+      <dd class="mt-1 text-sm font-medium leading-relaxed text-indigo-950">{{ issue.action_ar }}</dd>
+    </div>
+    <div class="sm:col-span-2">
+      <dt class="text-xs font-semibold uppercase tracking-wide text-slate-400">التحقق</dt>
+      <dd class="mt-1 text-sm leading-relaxed text-slate-700">{{ issue.verification_ar }}</dd>
+    </div>
+  </dl>
+</article>

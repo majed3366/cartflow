@@ -311,32 +311,36 @@ _PLATFORM_STATUS_TONE: dict[str, str] = {
 }
 
 # Business-language framing per operational issue kind (read-only presentation).
-# Structure mirrors: Problem → Impact → Owner → Suggested Action → Verification.
+# Structure mirrors: Problem → Impact → Where → Owner → Suggested Action → Verification.
 _BUSINESS_ISSUE_COPY_AR: dict[str, dict[str, str]] = {
     "stale_recovery": {
-        "title_ar": "عمليات استرجاع متوقفة أو متأخرة",
-        "impact_ar": "قد لا تُرسل رسائل الاسترجاع في وقتها المناسب.",
-        "owner_ar": "المجدول / CartFlow",
-        "action_ar": "راجع حالة المجدول وأعد فحص العمليات المتأخرة.",
-        "verification_ar": "تأكد أن العمليات المتأخرة عادت إلى الجدولة الطبيعية.",
+        "title_ar": "تأخير في معالجة الاسترجاع",
+        "impact_ar": "قد تتأخر رسائل الاسترجاع عن موعدها وتفوت فرصًا على المتاجر.",
+        "where_ar": "معالجة الاسترجاع المجدولة",
+        "owner_ar": "CartFlow / المجدول",
+        "action_ar": "راجع حالة المعالجة المجدولة وتأكد من عدم وجود صفوف عالقة.",
+        "verification_ar": "تأكد أن الاسترجاعات المتأخرة عادت إلى المسار الطبيعي.",
     },
     "failed_recovery": {
         "title_ar": "رسائل الاسترجاع لا يتم تسليمها",
         "impact_ar": "قد تفقد المتاجر فرص استرجاع سلات متروكة.",
+        "where_ar": "قناة واتساب / إرسال الاسترجاع",
         "owner_ar": "مزود واتساب / CartFlow",
         "action_ar": "راجع حالة مزود التسليم (واتساب).",
         "verification_ar": "تأكد من تسليم آخر رسالة استرجاع بنجاح.",
     },
     "whatsapp_missing": {
-        "title_ar": "إعداد واتساب غير مكتمل",
-        "impact_ar": "لن يتمكن المتجر من إرسال رسائل الاسترجاع.",
+        "title_ar": "مشكلة في مزود التسليم",
+        "impact_ar": "لن يتمكن المتجر من إرسال رسائل الاسترجاع حتى يكتمل الربط.",
+        "where_ar": "إعداد واتساب للمتجر",
         "owner_ar": "المتجر / مزود واتساب",
         "action_ar": "أكمل ربط واتساب ورقم الإرسال للمتجر.",
         "verification_ar": "تأكد أن المتجر أصبح جاهزًا لإرسال واتساب.",
     },
     "store_needs_setup": {
-        "title_ar": "متاجر لم تكمل الإعداد",
+        "title_ar": "متجر يحتاج انتباهًا",
         "impact_ar": "لن يعمل الاسترجاع بشكل صحيح قبل اكتمال الإعداد.",
+        "where_ar": "إعداد المتجر والتفعيل",
         "owner_ar": "المتجر",
         "action_ar": "ساعد المتجر على إكمال خطوات الإعداد الأساسية.",
         "verification_ar": "تأكد أن المتجر أصبح في حالة جاهز.",
@@ -344,6 +348,7 @@ _BUSINESS_ISSUE_COPY_AR: dict[str, dict[str, str]] = {
     "no_cart_events": {
         "title_ar": "لا توجد أحداث سلة حديثة",
         "impact_ar": "قد يشير إلى مشكلة في تركيب الودجيت أو التكامل.",
+        "where_ar": "تتبع السلة / الودجيت على المتجر",
         "owner_ar": "الودجيت / التكامل",
         "action_ar": "تحقق من تركيب الودجيت واختبر إضافة منتج للسلة.",
         "verification_ar": "تأكد من وصول حدث سلة جديد بعد الاختبار.",
@@ -2061,7 +2066,9 @@ def _build_current_issues(alerts: list[dict[str, Any]]) -> dict[str, Any]:
                 "severity": sev,
                 "severity_ar": _severity_ar_for_bucket(sev),
                 "title_ar": copy["title_ar"],
+                "problem_ar": copy["title_ar"],
                 "impact_ar": copy["impact_ar"],
+                "where_ar": copy.get("where_ar") or "عبر المنصة",
                 "owner_ar": copy["owner_ar"],
                 "action_ar": copy["action_ar"],
                 "verification_ar": copy["verification_ar"],
@@ -2117,16 +2124,20 @@ def build_admin_operations_command_center_readonly() -> dict[str, Any]:
 
     system_health = _build_system_health_summary(alerts)
     store_health_snapshot = _build_store_health_snapshot(alerts, store_rows)
+    current_issues = _build_current_issues(alerts)
+    executive_summary = _build_executive_summary(
+        system_health=system_health,
+        store_readiness=store_readiness,
+        store_health_snapshot=store_health_snapshot,
+        recoveries_today=_count_recoveries_today(),
+    )
+    # Open issues count aligns with business-language issue cards (presentation only).
+    executive_summary["open_issues"] = _safe_int(current_issues.get("total"))
     return {
         "version": "admin_operations_center_v2_2",
         "generated_at_utc": _utc_now().isoformat(),
-        "executive_summary": _build_executive_summary(
-            system_health=system_health,
-            store_readiness=store_readiness,
-            store_health_snapshot=store_health_snapshot,
-            recoveries_today=_count_recoveries_today(),
-        ),
-        "current_issues": _build_current_issues(alerts),
+        "executive_summary": executive_summary,
+        "current_issues": current_issues,
         "system_health_summary": system_health,
         "top_risks": _build_top_risks(alerts),
         "store_health_snapshot": store_health_snapshot,
