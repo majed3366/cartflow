@@ -63,6 +63,65 @@ def zid_dev_oauth_runtime_check_log(*, branch: str) -> None:
         pass
 
 
+def zid_oauth_activation_audit_log(
+    *,
+    route: str,
+    request: Any,
+    code: str = "",
+    oauth_state: str = "",
+    oauth_error: str = "",
+    branch: str = "",
+) -> None:
+    """
+    Temporary audit-only logging for Zid install/OAuth activation (no behavior change).
+
+    Captures referer/user-agent to distinguish oauth.zid.sa redirects vs dashboard navigation.
+    """
+    headers = getattr(request, "headers", None)
+    referer = "-"
+    user_agent = "-"
+    if headers is not None:
+        referer = (headers.get("referer") or headers.get("Referer") or "-")[:220]
+        user_agent = (headers.get("user-agent") or headers.get("User-Agent") or "-")[:220]
+    qp = getattr(request, "query_params", None)
+    keys = list(qp.keys()) if qp is not None else []
+    raw_query = str(getattr(getattr(request, "url", None), "query", None) or "")
+    code_val = (code or "").strip()
+    state_val = (oauth_state or "").strip()
+    err_val = (oauth_error or "").strip()
+    if qp is not None and not err_val:
+        err_val = (qp.get("error") or "").strip()
+    parts = [
+        "[ZID OAUTH AUDIT]",
+        f"route={route}",
+        f"query_keys={','.join(keys) if keys else '-'}",
+        f"query_empty={str(not bool(keys)).lower()}",
+        f"raw_query_len={len(raw_query)}",
+        f"code_present={str(bool(code_val)).lower()}",
+        f"error_present={str(bool(err_val)).lower()}",
+        f"state_present={str(bool(state_val)).lower()}",
+        f"state_len={len(state_val)}",
+        f"referer={referer}",
+        f"user_agent={user_agent}",
+    ]
+    if branch:
+        parts.append(f"branch={branch}")
+    if err_val:
+        parts.append(f"oauth_error={err_val[:120]}")
+    err_desc = (qp.get("error_description") or "").strip()[:160] if qp is not None else ""
+    if err_desc:
+        parts.append(f"oauth_error_description={err_desc}")
+    line = " ".join(parts)
+    try:
+        print(line, flush=True)
+    except OSError:
+        pass
+    try:
+        log.info("%s", line)
+    except Exception:  # noqa: BLE001
+        pass
+
+
 def zid_dev_oauth_callback_query_log(request: Any) -> dict[str, Any]:
     """
     Log and summarize the callback query string (never log authorization codes).
@@ -97,6 +156,13 @@ def zid_dev_oauth_callback_query_log(request: Any) -> dict[str, Any]:
     oauth_error = (qp.get("error") or "").strip() if qp is not None else ""
     oauth_error_description = (
         (qp.get("error_description") or "").strip()[:220] if qp is not None else ""
+    )
+    zid_oauth_activation_audit_log(
+        route="/auth/callback",
+        request=request,
+        oauth_error=oauth_error,
+        oauth_state=(qp.get("state") or "").strip() if qp is not None else "",
+        code=(qp.get("code") or "").strip() if qp is not None else "",
     )
     return {
         "callback_query_keys": keys,

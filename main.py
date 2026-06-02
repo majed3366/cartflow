@@ -19315,6 +19315,7 @@ def auth_zid_oauth_start(request: Request):
         zid_dev_oauth_enabled,
         zid_dev_oauth_log,
         zid_dev_oauth_runtime_check_log,
+        zid_oauth_activation_audit_log,
     )
 
     branch = "legacy_connect"
@@ -19324,6 +19325,7 @@ def auth_zid_oauth_start(request: Request):
         if merchant_id is None:
             branch = "dev_oauth"
             zid_dev_oauth_runtime_check_log(branch=branch)
+            zid_oauth_activation_audit_log(route="/auth/zid", request=request, branch=branch)
             url, _err_payload = build_zid_authorize_url(state="")
             if not url:
                 zid_dev_oauth_log("install_authorize_skipped", value="oauth_not_configured")
@@ -19334,6 +19336,7 @@ def auth_zid_oauth_start(request: Request):
             zid_dev_oauth_log("install_authorize_redirect")
             return RedirectResponse(url=url, status_code=302)
     zid_dev_oauth_runtime_check_log(branch=branch)
+    zid_oauth_activation_audit_log(route="/auth/zid", request=request, branch=branch)
     return api_merchant_store_connection_zid_connect(request)
 
 
