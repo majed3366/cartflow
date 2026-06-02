@@ -1532,6 +1532,13 @@ def _ensure_cartflow_api_db_warmed() -> None:
             )
 
             ensure_recovery_truth_timeline_schema(db)
+            from schema_zid_dev_oauth import (  # noqa: PLC0415
+                ensure_store_zid_integration_schema,
+                log_store_zid_integration_schema_status,
+            )
+
+            ensure_store_zid_integration_schema(db)
+            log_store_zid_integration_schema_status(db, context="startup")
             _cartflow_api_db_warmed = True
         except Exception as e:  # noqa: BLE001
             db.session.rollback()
@@ -1542,6 +1549,9 @@ def _ensure_cartflow_api_db_warmed() -> None:
 def _merchant_dashboard_db_ready() -> None:
     """لوحة التاجر: لا ‎create_all‎ في المسار الساخن — التدفئة عند الإقلاع فقط."""
     if _cartflow_api_db_warmed:
+        from schema_zid_dev_oauth import ensure_store_zid_integration_schema  # noqa: PLC0415
+
+        ensure_store_zid_integration_schema(db)
         return
     _ensure_cartflow_api_db_warmed()
 
