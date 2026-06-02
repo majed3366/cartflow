@@ -73,6 +73,15 @@ Server-side template control (**`exit_intent_*`** on **`Store`**): `services/sto
 
 **How UI interacts with backend:** JSON `fetch` / XHR to FastAPI routes; dashboards use embedded scripts or `static/cartflow_dashboard_messages.js` for shared save/load patterns against **`/api/recovery-settings`**.
 
+### 2.5 Brand / visual identity (v1 foundation)
+
+| Asset | Role |
+|--------|------|
+| `branding/cartflow_brand_system_v1.md` | Official visual identity spec — philosophy, color, typography, shape language, motion, and surface guidelines (landing, dashboard, widget, Zid marketplace). **Spec only** — product UI not yet migrated. |
+| `branding/logo_exploration_v1/` | Three abstract logo directions (A geometric, B flow, C journey) with SVG concept marks — no cart/WhatsApp/chat symbolism. |
+
+Brand meaning: **Understand → Decide → Act → Recover**; visual metaphor **Node → Path → Decision → Outcome**. Current production UI still uses legacy landing green (`static/cartflow_landing.css`) and widget default purple (`#6C5CE7`) until a redesign phase applies v1 tokens.
+
 ---
 
 ## 3) Backend Layer
@@ -329,6 +338,7 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 
 | Date (UTC) | Summary |
 |------------|---------|
+| 2026-06-01 | **CartFlow Brand System v1 (foundation):** `branding/cartflow_brand_system_v1.md` — official visual identity (philosophy, color, typography, shape/motion, marketplace/dashboard/widget/landing guidelines); `branding/logo_exploration_v1/` — three abstract logo directions (A/B/C) with SVG concepts. Spec only — no product UI redesign. Commit: **`brand: create cartflow brand system v1 foundation`**. |
 | 2026-06-01 | **Recovery resume inspect/scan v1:** `admin_recovery_resume_inspect_scan_v1.py`; `GET /admin/operations/recovery-resume-inspect` + `recovery-resume-scan` (dry-run only, no DB writes); Recovery Resume Health card on `/admin/operations`; docs `docs/recovery_resume_inspect_scan_v1.md`; tests `tests/test_admin_recovery_resume_inspect_scan_v1.py`. Commit: **`ops: add recovery resume inspect scan v1`**. |
 | 2026-06-01 | **Operational snapshot export v1:** `services/admin_operational_snapshot_v1.py` + `GET /admin/operations/snapshot` (admin JSON, optional `?store_slug=`); read-only bundle (runtime health, readiness, recovery counts, signals, recent events, support context) with secret redaction; docs `docs/admin_operational_snapshot_v1.md`; tests `tests/test_admin_operational_snapshot_v1.py`. Commit: **`ops: add operational snapshot export v1`**. |
 | 2026-06-01 | **Admin control readiness audit:** `docs/admin_operations_control_readiness_audit.md` — full operational signal inventory, control readiness matrix (Diagnostic / Actionable / Future Actionable), dangerous controls list, Phase 1 recommendations (3–5 admin-only controls), roadmap. Audit only — no behavior/UX changes. Commit: **`ops: admin control readiness audit`**. |
