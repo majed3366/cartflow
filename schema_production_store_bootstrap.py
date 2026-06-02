@@ -26,9 +26,13 @@ def reset_production_store_schema_bootstrap_for_tests() -> None:
     _bootstrap_verified_ok = False
     from schema_merchant_auth import reset_merchant_auth_schema_guard_for_tests
     from schema_zid_dev_oauth import reset_store_zid_integration_schema_cache_for_tests
+    from schema_zid_widget_install import (
+        reset_store_zid_widget_install_schema_cache_for_tests,
+    )
 
     reset_merchant_auth_schema_guard_for_tests()
     reset_store_zid_integration_schema_cache_for_tests()
+    reset_store_zid_widget_install_schema_cache_for_tests()
 
 
 def log_production_database_identity(*, context: str = "startup") -> dict[str, str]:
@@ -62,19 +66,27 @@ def log_production_database_identity(*, context: str = "startup") -> dict[str, s
 def verify_production_store_schema(db: Any) -> dict[str, Any]:
     from schema_merchant_auth import verify_merchant_auth_schema
     from schema_zid_dev_oauth import verify_store_zid_integration_schema
+    from schema_zid_widget_install import verify_store_zid_widget_install_schema
 
     merchant = verify_merchant_auth_schema(db)
     zid = verify_store_zid_integration_schema(db)
+    widget = verify_store_zid_widget_install_schema(db)
     missing = sorted(
         set(merchant.get("missing_columns") or [])
         | set(merchant.get("missing_tables") or [])
         | set(zid.get("missing_columns") or [])
+        | set(widget.get("missing_columns") or [])
     )
-    ok = bool(merchant.get("ok")) and bool(zid.get("ok"))
+    ok = (
+        bool(merchant.get("ok"))
+        and bool(zid.get("ok"))
+        and bool(widget.get("ok"))
+    )
     return {
         "ok": ok,
         "merchant_auth": merchant,
         "zid_integration": zid,
+        "zid_widget_install": widget,
         "missing": missing,
     }
 
@@ -105,14 +117,20 @@ def ensure_production_store_schema(db: Any, *, context: str = "startup") -> bool
             ensure_store_zid_integration_schema,
             log_store_zid_integration_schema_status,
         )
+        from schema_zid_widget_install import (
+            ensure_store_zid_widget_install_schema,
+            log_store_zid_widget_install_schema_status,
+        )
 
         ensure_merchant_auth_schema(db)
         log_merchant_auth_schema_status(db, context=context)
         zid_ok = ensure_store_zid_integration_schema(db)
         zid_status = log_store_zid_integration_schema_status(db, context=context)
+        widget_ok = ensure_store_zid_widget_install_schema(db)
+        log_store_zid_widget_install_schema_status(db, context=context)
 
         status = verify_production_store_schema(db)
-        ok = bool(status.get("ok")) and zid_ok
+        ok = bool(status.get("ok")) and zid_ok and widget_ok
         tag = "[PRODUCTION DB SCHEMA]"
         if ok:
             _bootstrap_verified_ok = True

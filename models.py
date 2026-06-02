@@ -33,6 +33,11 @@ class Store(Base):
     # مصدر الربط (مثلاً zid_dev لمتجر التطوير في زد) — يُملأ عبر OAuth فقط
     integration_source = Column(String(64), nullable=True, index=True)
     connected_at = Column(DateTime, nullable=True)
+    # تثبيت ودجت واجهة زد (Partner Custom Snippet + تحقق متجر)
+    widget_installation_status = Column(String(32), nullable=True)
+    widget_installed_at = Column(DateTime, nullable=True)
+    widget_last_seen_at = Column(DateTime, nullable=True)
+    widget_install_error = Column(Text, nullable=True)
     # إعدادات الاسترجاع (لاحقاً) — بدون واجهة بعد
     recovery_delay = Column(Integer, default=2, nullable=False)
     recovery_delay_unit = Column(

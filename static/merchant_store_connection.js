@@ -63,6 +63,45 @@
       setText("ma-sc-store-name", d.store_name || "—");
       setText("ma-sc-platform", d.platform_ar || "—");
       setText("ma-sc-connected-at", d.connected_at_ar || "—");
+      setText(
+        "ma-sc-store-connected-check",
+        d.store_connected_ok ? "✅" : "—"
+      );
+      var wPill = byId("ma-sc-widget-pill");
+      if (wPill) {
+        var wStatus = (d.widget_installation_status || "").toLowerCase();
+        wPill.textContent = d.widget_status_label_ar || "—";
+        wPill.classList.remove(
+          "is-widget-installed",
+          "is-widget-installing",
+          "is-widget-failed",
+          "is-widget-unsupported"
+        );
+        if (d.widget_installed_ok || wStatus === "installed") {
+          wPill.classList.add("is-widget-installed");
+        } else if (wStatus === "installing" || wStatus === "pending_partner_snippet") {
+          wPill.classList.add("is-widget-installing");
+        } else if (wStatus === "failed") {
+          wPill.classList.add("is-widget-failed");
+        } else if (wStatus === "unsupported") {
+          wPill.classList.add("is-widget-unsupported");
+        }
+      }
+      var wDesc = byId("ma-sc-widget-desc");
+      if (wDesc) {
+        var wCopy = (d.widget_status_description_ar || "").trim();
+        wDesc.textContent = wCopy;
+        wDesc.hidden = !wCopy;
+      }
+    } else {
+      setText("ma-sc-store-connected-check", "—");
+      var wPillOff = byId("ma-sc-widget-pill");
+      if (wPillOff) wPillOff.textContent = "—";
+      var wDescOff = byId("ma-sc-widget-desc");
+      if (wDescOff) {
+        wDescOff.textContent = "";
+        wDescOff.hidden = true;
+      }
     }
 
     var notConn = byId("ma-sc-actions-not-connected");

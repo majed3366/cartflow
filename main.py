@@ -19297,6 +19297,36 @@ def dashboard_vip_cart_settings(request: Request):
     return RedirectResponse(url="/dashboard#vip", status_code=302)
 
 
+@app.post("/api/storefront/widget-seen")
+async def api_storefront_widget_seen(request: Request):
+    """Storefront loader beacon — updates widget_last_seen_at (no auth)."""
+    from services.zid_storefront_widget_install_v1 import (  # noqa: PLC0415
+        record_widget_storefront_seen,
+    )
+
+    try:
+        body = await request.json()
+    except Exception:  # noqa: BLE001
+        body = {}
+    if not isinstance(body, dict):
+        body = {}
+    store_slug = (
+        (body.get("store") or body.get("store_slug") or request.query_params.get("store") or "")
+        .strip()
+    )
+    if not store_slug:
+        return j({"ok": False, "error": "missing_store"}, 400)
+    try:
+        print(
+            f"[WIDGET STOREFRONT LOAD] store={store_slug[:128]}",
+            flush=True,
+        )
+    except OSError:
+        pass
+    updated = record_widget_storefront_seen(store_slug=store_slug)
+    return j({"ok": True, "updated": updated})
+
+
 @app.get("/api/merchant/store-connection")
 def api_merchant_store_connection_status(request: Request):
     """حالة ربط المتجر بالمنصة — للتاجر المصادق فقط."""

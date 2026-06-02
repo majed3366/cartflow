@@ -121,6 +121,69 @@
     /* ignore */
   }
 
+  (function cartflowStorefrontWidgetSeenBeacon() {
+    try {
+      var p = window.location.pathname || "";
+      if (/\/demo\b/i.test(p) || /^\/dev(\/|$)/i.test(p)) {
+        return;
+      }
+      var slug = "";
+      try {
+        slug = window.CARTFLOW_STORE_SLUG || "";
+      } catch (eS0) {
+        slug = "";
+      }
+      if (!slug) {
+        var scripts = document.getElementsByTagName("script");
+        var i;
+        for (i = scripts.length - 1; i >= 0; i--) {
+          var node = scripts[i];
+          if (String(node.src || "").indexOf("widget_loader") === -1) {
+            continue;
+          }
+          var ds = node.getAttribute("data-store");
+          if (ds && String(ds).trim()) {
+            slug = String(ds).trim();
+          }
+          break;
+        }
+      }
+      if (!slug || slug === "demo") {
+        return;
+      }
+      console.log("[WIDGET STOREFRONT LOAD] store=" + slug);
+      var origin = "";
+      try {
+        var loaderNode = document.querySelector('script[src*="widget_loader"]');
+        if (loaderNode && loaderNode.src) {
+          origin = new URL(loaderNode.src, window.location.href).origin;
+        }
+      } catch (eO) {
+        origin = "";
+      }
+      if (!origin) {
+        return;
+      }
+      var payload = JSON.stringify({ store: slug });
+      if (navigator.sendBeacon) {
+        navigator.sendBeacon(
+          origin + "/api/storefront/widget-seen",
+          new Blob([payload], { type: "application/json" })
+        );
+      } else {
+        fetch(origin + "/api/storefront/widget-seen", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: payload,
+          credentials: "omit",
+          keepalive: true,
+        }).catch(function () {});
+      }
+    } catch (eBeacon) {
+      /* ignore */
+    }
+  })();
+
   (function cartflowInitStoreSlugFromLoaderTag() {
     try {
       var scripts = document.getElementsByTagName("script");

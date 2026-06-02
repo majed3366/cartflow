@@ -270,6 +270,18 @@ def persist_zid_dev_store_from_token_response(
     row.connected_at = now
     row.is_active = True
     db.session.commit()
+    try:
+        from services.zid_storefront_widget_install_v1 import (  # noqa: PLC0415
+            maybe_install_zid_storefront_widget,
+        )
+
+        maybe_install_zid_storefront_widget(row, trigger="zid_dev_oauth")
+    except Exception as exc:  # noqa: BLE001
+        log.warning(
+            "zid_dev_oauth widget_install_trigger_failed zid=%s err=%s",
+            zid[:64],
+            type(exc).__name__,
+        )
     return row
 
 

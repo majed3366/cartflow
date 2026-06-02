@@ -53,6 +53,10 @@ Per [Zid Create your First App](https://docs.zid.sa/create-first-app) and [Test 
 4. **Expected:** login → **permission/consent** screen listing scopes → redirect to `https://smartreplyai.net/auth/callback?code=…`.
 5. **Failure signal:** login → Zid merchant dashboard/orders with **no** redirect to CartFlow → OAuth authorization did not complete (check callback URL, scopes, app status).
 
+## Storefront widget (Partner Custom Snippet)
+
+After OAuth, CartFlow auto-verifies widget install via the official Partner Snippet path (not per-store paste). One-time setup: **`docs/zid_partner_widget_snippet_v1.md`**. Env: `ZID_API_AUTHORIZATION`, optional `ZID_PARTNER_WIDGET_SNIPPET_APPROVED=1`.
+
 ## Symptom: consent screen OK, callback has no `?code=`
 
 If the merchant sees Zid permissions and lands on `https://smartreplyai.net/auth/callback` **without** `code`:

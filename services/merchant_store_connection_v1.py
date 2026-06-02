@@ -66,6 +66,14 @@ class MerchantStoreConnectionStatus:
     salla_connect_available: bool
     shopify_note_ar: str
     pending_setup_message_ar: str
+    widget_installation_status: Optional[str] = None
+    widget_status_label_ar: str = "—"
+    widget_status_description_ar: str = ""
+    widget_installed_at_ar: str = "—"
+    widget_last_seen_at_ar: str = "—"
+    widget_install_error: Optional[str] = None
+    store_connected_ok: bool = False
+    widget_installed_ok: bool = False
 
     def to_api_dict(self) -> dict[str, Any]:
         return {
@@ -80,6 +88,14 @@ class MerchantStoreConnectionStatus:
             "salla_connect_available": self.salla_connect_available,
             "shopify_note_ar": self.shopify_note_ar,
             "pending_setup_message_ar": self.pending_setup_message_ar,
+            "widget_installation_status": self.widget_installation_status,
+            "widget_status_label_ar": self.widget_status_label_ar,
+            "widget_status_description_ar": self.widget_status_description_ar,
+            "widget_installed_at_ar": self.widget_installed_at_ar,
+            "widget_last_seen_at_ar": self.widget_last_seen_at_ar,
+            "widget_install_error": self.widget_install_error,
+            "store_connected_ok": self.store_connected_ok,
+            "widget_installed_ok": self.widget_installed_ok,
         }
 
 
@@ -88,12 +104,18 @@ def build_merchant_store_connection_status(
     cookies: Optional[dict[str, str]] = None,
 ) -> MerchantStoreConnectionStatus:
     from integrations.zid_client import zid_oauth_configured
+    from services.zid_storefront_widget_install_v1 import build_widget_install_api_fields
 
     store, meta = resolve_merchant_onboarding_store(cookies=cookies)
     store_name = meta.store_name or merchant_store_display_name(store)
     connected = is_merchant_store_platform_connected(store)
     zid_ready = zid_oauth_configured()
     pending_msg = "ميزة الربط قيد الإعداد"
+    widget_fields = (
+        build_widget_install_api_fields(store, connected=connected)
+        if store is not None
+        else build_widget_install_api_fields(None, connected=False)
+    )
 
     if connected and store is not None:
         at = getattr(store, "updated_at", None) or getattr(store, "created_at", None)
@@ -109,6 +131,17 @@ def build_merchant_store_connection_status(
             salla_connect_available=False,
             shopify_note_ar="Shopify قريباً",
             pending_setup_message_ar=pending_msg,
+            widget_installation_status=widget_fields.get("widget_installation_status"),
+            widget_status_label_ar=widget_fields.get("widget_status_label_ar") or "—",
+            widget_status_description_ar=widget_fields.get(
+                "widget_status_description_ar"
+            )
+            or "",
+            widget_installed_at_ar=widget_fields.get("widget_installed_at_ar") or "—",
+            widget_last_seen_at_ar=widget_fields.get("widget_last_seen_at_ar") or "—",
+            widget_install_error=widget_fields.get("widget_install_error"),
+            store_connected_ok=True,
+            widget_installed_ok=bool(widget_fields.get("widget_installed_ok")),
         )
 
     return MerchantStoreConnectionStatus(
@@ -123,6 +156,8 @@ def build_merchant_store_connection_status(
         salla_connect_available=False,
         shopify_note_ar="Shopify قريباً",
         pending_setup_message_ar=pending_msg,
+        store_connected_ok=False,
+        widget_installed_ok=False,
     )
 
 
@@ -187,6 +222,18 @@ def apply_oauth_token_to_merchant_store(
         merchant_user_id,
         (row.zid_store_id or "")[:64],
     )
+    try:
+        from services.zid_storefront_widget_install_v1 import (  # noqa: PLC0415
+            maybe_install_zid_storefront_widget,
+        )
+
+        maybe_install_zid_storefront_widget(row, trigger="merchant_oauth")
+    except Exception as exc:  # noqa: BLE001
+        log.warning(
+            "[STORE CONNECTION] widget_install_trigger_failed store_id=%s err=%s",
+            store_id,
+            type(exc).__name__,
+        )
     return True
 
 

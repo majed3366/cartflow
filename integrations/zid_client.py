@@ -433,6 +433,130 @@ def fetch_orders(store: Any) -> Tuple[dict, int]:
     return ({"data": body}, r.status_code)
 
 
+ZID_APP_SCRIPTS_URL = (
+    os.getenv("ZID_APP_SCRIPTS_URL") or "https://api.zid.sa/v1/scripts"
+).rstrip("/")
+ZID_MANAGER_STORE_URL = (
+    os.getenv("ZID_MANAGER_STORE_URL") or f"{ZID_API_BASE}/managers/account/store"
+).rstrip("/")
+
+
+def fetch_zid_app_scripts_manifest() -> Tuple[dict, int]:
+    """
+    Partner project manifest (GET /api/v1/scripts) — approved external_scripts + snippets.
+    Requires ZID_API_AUTHORIZATION (Partner project token).
+    """
+    auth = (os.getenv("ZID_API_AUTHORIZATION") or "").strip()
+    if not auth:
+        return ({}, 0)
+    h = {
+        "Authorization": f"Bearer {auth}" if not auth.lower().startswith("bearer ") else auth,
+        "Accept": "application/json",
+        "Accept-Language": "en",
+    }
+    try:
+        r = requests.get(ZID_APP_SCRIPTS_URL, headers=h, timeout=20)
+    except requests.RequestException:
+        return ({}, 0)
+    try:
+        body: Any = r.json()
+    except Exception:
+        return ({}, r.status_code)
+    if isinstance(body, dict):
+        return (body, r.status_code)
+    return ({}, r.status_code)
+
+
+def fetch_zid_manager_store_url(access_token: str) -> Optional[str]:
+    """Storefront base URL from GET /v1/managers/account/store."""
+    token = (access_token or "").strip()
+    if not token:
+        return None
+    try:
+        r = requests.get(
+            ZID_MANAGER_STORE_URL,
+            headers=_manager_headers(token),
+            timeout=20,
+        )
+    except requests.RequestException:
+        return None
+    if r.status_code // 100 != 2:
+        return None
+    try:
+        j = r.json()
+    except Exception:
+        return None
+    if not isinstance(j, dict):
+        return None
+    for path in (
+        ("store", "url"),
+        ("data", "store", "url"),
+        ("data", "url"),
+    ):
+        cur: Any = j
+        for p in path:
+            if not isinstance(cur, dict):
+                cur = None
+                break
+            cur = cur.get(p)
+        if isinstance(cur, str) and cur.strip():
+            return cur.strip().rstrip("/")
+    return None
+
+
+def probe_storefront_for_widget_loader(
+    store_url: str,
+    *,
+    loader_url: str,
+) -> Tuple[bool, str]:
+    """
+    Best-effort check that Zid serves CartFlow loader on the merchant storefront.
+    Uses official storefront GET /api/v1/scripts when available, else homepage HTML.
+    """
+    base = (store_url or "").strip().rstrip("/")
+    if not base:
+        return False, "no_store_url"
+    scripts_url = f"{base}/api/v1/scripts"
+    detail = "scripts_probe_skipped"
+    try:
+        r = requests.get(
+            scripts_url,
+            headers={"Accept": "application/json"},
+            timeout=15,
+        )
+        if r.status_code // 100 == 2:
+            text = (r.text or "")[:8000]
+            if _html_contains_widget_marker(text, loader_url):
+                return True, "storefront_scripts_api"
+        detail = f"scripts_http_{r.status_code}"
+    except requests.RequestException as exc:
+        detail = type(exc).__name__
+    try:
+        hp = requests.get(
+            base,
+            headers={"Accept": "text/html"},
+            timeout=15,
+            allow_redirects=True,
+        )
+        if hp.status_code // 100 == 2:
+            if _html_contains_widget_marker((hp.text or "")[:120000], loader_url):
+                return True, "storefront_homepage"
+        detail = f"homepage_http_{hp.status_code}"
+    except requests.RequestException as exc:
+        detail = type(exc).__name__
+    return False, detail
+
+
+def _html_contains_widget_marker(html: str, loader_url: str) -> bool:
+    low = (html or "").lower()
+    if "widget_loader" in low or "cartflow" in low:
+        return True
+    path = urlparse(loader_url).path
+    if path and path.lower() in low:
+        return True
+    return False
+
+
 def verify_webhook_signature(
     req: "StarletteRequest", raw_body: Optional[bytes] = None
 ) -> bool:
