@@ -7,7 +7,28 @@
 (function () {
   "use strict";
 
-  var BASE = "/static/cartflow_widget_runtime/";
+  function resolveRuntimeModuleBase() {
+    try {
+      var root = window.__CARTFLOW_STATIC_ROOT__;
+      if (root && String(root).trim()) {
+        return String(root).replace(/\/+$/, "") + "/cartflow_widget_runtime/";
+      }
+    } catch (eRoot) {
+      /* ignore */
+    }
+    try {
+      var cur = document.currentScript;
+      if (cur && cur.src) {
+        var u = new URL(cur.src, window.location.href);
+        return u.origin + u.pathname.replace(/[^/]+$/, "");
+      }
+    } catch (eCur) {
+      /* ignore */
+    }
+    return "/static/cartflow_widget_runtime/";
+  }
+
+  var BASE = resolveRuntimeModuleBase();
     var RUNTIME_TAG = window.CARTFLOW_RUNTIME_VERSION || "layered-runtime-v18";
   try {
     if (/^\/demo\/store(?:\/|$)/i.test(String(window.location.pathname || ""))) {

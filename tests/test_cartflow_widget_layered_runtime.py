@@ -13,7 +13,8 @@ _LOADER = _ROOT / "static" / "widget_loader.js"
 class CartflowWidgetLayeredRuntimeTests(unittest.TestCase):
     def test_v2_loader_orders_modules_and_busts_cache(self) -> None:
         s = (_RUNTIME / "cartflow_widget_loader.js").read_text(encoding="utf-8")
-        self.assertIn("[CF V2 LOAD START]", s)
+        self.assertIn("resolveRuntimeModuleBase", s)
+        self.assertIn("__CARTFLOW_STATIC_ROOT__", s)
         self.assertIn("[CF V2 PRIMARY RUNTIME]", s)
         self.assertIn("layered-runtime-v18", s)
         p = s.index("cartflow_widget_phone.js")
@@ -56,7 +57,9 @@ class CartflowWidgetLayeredRuntimeTests(unittest.TestCase):
         self.assertIn("__CARTFLOW_ALLOW_LEGACY_WIDGET", s)
         self.assertIn("[CF LEGACY WIDGET LOAD BLOCKED]", s)
         self.assertIn("[CF LEGACY WIDGET LOAD ALLOWED]", s)
-        self.assertIn("/static/cartflow_widget_runtime/cartflow_widget_loader.js", s)
-        self.assertIn("/static/cartflow_widget.js", s)
+        self.assertIn("cartflowStaticAssetUrl", s)
+        self.assertIn("__CARTFLOW_STATIC_ROOT__", s)
+        self.assertIn("cartflow_widget_runtime/cartflow_widget_loader.js", s)
+        self.assertIn("cartflow_widget.js", s)
         self.assertIn("cartflowIsDemoStorePrimaryV2Path", s)
         self.assertIn("/demo/store", s)
