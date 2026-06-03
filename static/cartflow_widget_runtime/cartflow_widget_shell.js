@@ -232,6 +232,9 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
   }
 
   function expandShell() {
+    if (storefrontShellBlocked()) {
+      return;
+    }
     var w = rootFromDom();
     if (!w || w.getAttribute("data-cf-shell-minimized") !== "1") {
       return;
@@ -512,8 +515,28 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     return { root: w, createdNew: createdNew };
   }
 
+  function storefrontShellBlocked() {
+    try {
+      if (window.CARTFLOW_RECOVERY_WIDGET_MODE !== true) {
+        return false;
+      }
+      var st = window.CartflowWidgetRuntime.State.internals;
+      if (st.v2MerchantConfigFailed) {
+        return true;
+      }
+      if (!st.v2MerchantConfigResolved) {
+        return true;
+      }
+    } catch (eBlk) {}
+    return false;
+  }
+
   function open(opts) {
     opts = opts || {};
+    if (storefrontShellBlocked()) {
+      shellLog("[CF SHELL OPEN BLOCKED]", { gate: "config_not_resolved" });
+      return null;
+    }
     dedupeShellRoots();
     var hadRoot = !!rootFromDom();
     var ph = opts.primaryColor || merchantPrimaryHex() || "#6366F1";

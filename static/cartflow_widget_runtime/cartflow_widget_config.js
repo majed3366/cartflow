@@ -176,7 +176,46 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     return null;
   }
 
-  function normalizePrimaryHex(raw) {
+  function isRealStorefrontEmbed() {
+    try {
+      if (window.CARTFLOW_RECOVERY_WIDGET_MODE === true) {
+        return true;
+      }
+      var apiBase = window.CARTFLOW_API_BASE;
+      var pageOrigin = String(window.location.origin || "").replace(/\/+$/, "");
+      var loaderOrigin = String(apiBase || "").replace(/\/+$/, "");
+      if (loaderOrigin && pageOrigin && loaderOrigin !== pageOrigin) {
+        return true;
+      }
+    } catch (eEmb) {}
+    return false;
+  }
+
+  function merchantConfigInternals() {
+    try {
+      return window.CartflowWidgetRuntime.State.internals;
+    } catch (eSt) {
+      return null;
+    }
+  }
+
+  function merchantConfigResolved() {
+    var st = merchantConfigInternals();
+    return !!(st && st.v2MerchantConfigResolved);
+  }
+
+  function isPublicConfigSource(sourceNote) {
+    var s = String(sourceNote || "");
+    return s === "public_config_first" || s === "public_config";
+  }
+
+  function shouldApplyVisualForSource(sourceNote) {
+    if (!isRealStorefrontEmbed()) {
+      return true;
+    }
+    return isPublicConfigSource(sourceNote);
+  }
+
     if (raw == null) {
       return null;
     }
@@ -213,7 +252,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
         return String(window.__cartflow_loader_build).trim();
       }
     } catch (eRv) {}
-    return "v2-visible-dom-truth-1";
+    return "v2-config-before-paint-1";
   }
 
   function cartflowBeaconApiOrigin() {
@@ -347,6 +386,9 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
   }
 
   function scheduleStorefrontDomTruthBeacon(tag) {
+    if (isRealStorefrontEmbed() && !merchantConfigResolved()) {
+      return;
+    }
     domBeaconAttempts = 0;
     if (domBeaconTimer) {
       try {
@@ -456,6 +498,13 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     scheduleStorefrontDomTruthBeacon("applyVisual");
   }
 
+  function applyVisualIfAllowed(j, sourceNote) {
+    if (!shouldApplyVisualForSource(sourceNote)) {
+      return;
+    }
+    applyVisual(j);
+  }
+
   function templates() {
     return CRT._templates && typeof CRT._templates === "object" ? CRT._templates : {};
   }
@@ -511,7 +560,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       } catch (eR) {}
     }
     applyMerchantGate(j);
-    applyVisual(j);
+    applyVisualIfAllowed(j, sourceNote);
     logTitleTruth("applyPayload", {
       payload_widget_name: j.widget_name,
       payload_widget_display_name: j.widget_display_name,
@@ -578,6 +627,9 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
 
   var Config = {
     applyPayload: applyPayload,
+    isRealStorefrontEmbed: isRealStorefrontEmbed,
+    merchantConfigResolved: merchantConfigResolved,
+    shouldApplyVisualForSource: shouldApplyVisualForSource,
     scheduleStorefrontDomTruthBeacon: scheduleStorefrontDomTruthBeacon,
     readShellDomTruth: readShellDomTruth,
     logWidgetSettingsTruth: logWidgetSettingsTruth,

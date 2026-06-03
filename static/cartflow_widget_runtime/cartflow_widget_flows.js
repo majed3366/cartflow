@@ -6,7 +6,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
   "use strict";
 
   var Cf = window.CartflowWidgetRuntime;
-  var FLOW_VERSION = "v2-widget-name-color-truth-1";
+  var FLOW_VERSION = "v2-config-before-paint-1";
   var SS_V2_PHONE_PROMPT_DONE = "cartflow_cf_v2_optional_phone_done";
   /** Polling cadence/caps for `/api/cartflow/ready` bootstrap (avoid unbounded churn). */
   var READY_POLL_INTERVAL_MS = 120;
@@ -153,7 +153,40 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     }
   }
 
-  function getCartRecoveryQuestion() {
+  function isRealStorefrontEmbed() {
+    try {
+      if (Cf.Config && typeof Cf.Config.isRealStorefrontEmbed === "function") {
+        return Cf.Config.isRealStorefrontEmbed();
+      }
+    } catch (eEmb) {}
+    return isStorefrontRecoveryMode();
+  }
+
+  function storefrontUiBlocked() {
+    if (!isRealStorefrontEmbed()) {
+      return false;
+    }
+    if (st().v2MerchantConfigFailed) {
+      return true;
+    }
+    return !st().v2MerchantConfigResolved;
+  }
+
+  function logConfigBeforeFirstUi() {
+    if (!isRealStorefrontEmbed() || st().v2ConfigLoggedBeforeUi) {
+      return;
+    }
+    st().v2ConfigLoggedBeforeUi = true;
+    try {
+      var M = Cf.Config.merchant();
+      console.log("[CF STOREFRONT CONFIG BEFORE FIRST UI]", {
+        widget_name: M && M.widget_brand_name,
+        widget_primary_color: M && M.widget_primary_color,
+        config_resolved: st().v2MerchantConfigResolved,
+      });
+    } catch (eLog) {}
+  }
+
     return "تبي أساعدك تكمل طلبك؟";
   }
 
@@ -547,6 +580,15 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
   }
 
   function showBubbleCartRecovery(tagNote) {
+    if (storefrontUiBlocked()) {
+      try {
+        console.log("[CF WIDGET BLOCKED V2]", {
+          gate: st().v2MerchantConfigFailed ? "config_load_failed" : "config_not_resolved",
+        });
+      } catch (eCfg) {}
+      return;
+    }
+    logConfigBeforeFirstUi();
     if (!merchantAllowsUi()) {
       try {
         console.log("[CF WIDGET BLOCKED V2]", { gate: "merchant_delay_or_disabled" });
@@ -628,6 +670,10 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
   /** Exit intent branches */
 
   function showExitNoCart() {
+    if (storefrontUiBlocked()) {
+      return;
+    }
+    logConfigBeforeFirstUi();
     if (!merchantAllowsUi()) {
       return;
     }
@@ -778,75 +824,110 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     }
     Cf._v2FlowsStarted = true;
 
-    Cf.Api.fetchReady().then(function (j) {
-      Cf.Config.applyPayload(j || {}, "primed");
-      mirrorCartTotals();
+    function bootTriggersAfterConfig() {
+      ensureStep1Then(function () {
+        if (!merchantAllowsUi()) {
+          try {
+            console.log("[CartflowWidgetRuntimeV2] merchant gate pauses hesitation UI");
+          } catch (eM) {}
+        }
 
-      function bootTriggersAfterConfig() {
-        ensureStep1Then(function () {
-          if (!merchantAllowsUi()) {
-            try {
-              console.log("[CartflowWidgetRuntimeV2] merchant gate pauses hesitation UI");
-            } catch (eM) {}
-          }
-
-          Cf.Triggers.init({
-            flowsRef: {},
-            fireCartRecovery: function (tag) {
-              if (st().bubbleShown) {
+        Cf.Triggers.init({
+          flowsRef: {},
+          fireCartRecovery: function (tag) {
+            if (st().bubbleShown) {
+              return;
+            }
+            showBubbleCartRecovery(String(tag || "cart_timer"));
+          },
+          fireExitNoCart: function () {
+            if (isStorefrontRecoveryMode()) {
+              showBubbleCartRecovery("exit_intent_storefront_recovery");
+              return;
+            }
+            if (!Cf.Triggers.haveCartApprox()) {
+              showExitNoCart();
+            }
+          },
+          fireExitWithCart: function () {
+            if (Cf.Triggers.haveCartApprox()) {
+              if (shouldBlockCartTriggers()) {
                 return;
               }
-              showBubbleCartRecovery(String(tag || "cart_timer"));
-            },
-            fireExitNoCart: function () {
-              if (isStorefrontRecoveryMode()) {
-                showBubbleCartRecovery("exit_intent_storefront_recovery");
+              if (v2ShellOccupiedPreventExitIntentDuplicates()) {
+                try {
+                  console.log("[CF TRIGGER BLOCKED] reason=already_open");
+                } catch (eBl) {}
                 return;
               }
-              if (!Cf.Triggers.haveCartApprox()) {
-                showExitNoCart();
-              }
-            },
-            fireExitWithCart: function () {
-              if (Cf.Triggers.haveCartApprox()) {
-                if (shouldBlockCartTriggers()) {
-                  return;
-                }
-                if (v2ShellOccupiedPreventExitIntentDuplicates()) {
-                  try {
-                    console.log("[CF TRIGGER BLOCKED] reason=already_open");
-                  } catch (eBl) {}
-                  return;
-                }
-                showBubbleCartRecovery("exit_intent_with_cart");
-              }
-            },
-          });
-
-          try {
-            console.log("[CF V2 FULLY ISOLATED]", { flows: FLOW_VERSION });
-          } catch (eIso) {}
-
-          emitGuide("cartflow-demo-bubble-visible", {});
-          try {
-            console.log("[CARTFLOW WIDGET V2 FLOWS]", FLOW_VERSION);
-          } catch (eFs) {}
+              showBubbleCartRecovery("exit_intent_with_cart");
+            }
+          },
         });
-      }
 
-      Cf.Api.fetchPublicConfig().then(function (pc) {
-        if (pc && typeof pc === "object" && pc.ok !== false) {
-          Cf.Config.applyPayload(pc, "public_config_first");
-          mirrorCartTotals();
-          st().v2PublicConfigHydrated = true;
+        try {
+          console.log("[CF V2 FULLY ISOLATED]", { flows: FLOW_VERSION });
+        } catch (eIso) {}
+
+        emitGuide("cartflow-demo-bubble-visible", {});
+        try {
+          console.log("[CARTFLOW WIDGET V2 FLOWS]", FLOW_VERSION);
+        } catch (eFs) {}
+      });
+    }
+
+    function afterPublicConfig(pc) {
+      var ok = pc && typeof pc === "object" && pc.ok !== false;
+      if (ok) {
+        Cf.Config.applyPayload(pc, "public_config_first");
+        mirrorCartTotals();
+        st().v2PublicConfigHydrated = true;
+        if (isRealStorefrontEmbed()) {
+          st().v2MerchantConfigResolved = true;
+          try {
+            console.log("[CF CONFIG LOADED V2]", {
+              source: "public_config_first",
+              before_first_ui: true,
+              store_slug: Cf.Api.storeSlug && Cf.Api.storeSlug(),
+            });
+          } catch (eCl) {}
         }
         try {
           if (typeof notifyStep1PublicConfigHydrated === "function") {
             notifyStep1PublicConfigHydrated();
           }
         } catch (ePc) {}
+      } else if (isRealStorefrontEmbed()) {
+        st().v2MerchantConfigFailed = true;
+        try {
+          console.log("[CF CONFIG LOAD FAILED]", {
+            store_slug: Cf.Api.storeSlug && Cf.Api.storeSlug(),
+            ready_blocked: !!(pc && pc.ready_blocked),
+          });
+        } catch (eCf) {}
+        return;
+      }
+
+      if (isRealStorefrontEmbed()) {
+        Cf.Api.fetchReady().then(function (j) {
+          Cf.Config.applyPayload(j || {}, "primed");
+          mirrorCartTotals();
+          bootTriggersAfterConfig();
+        });
+      } else {
         bootTriggersAfterConfig();
-      });
+      }
+    }
+
+    if (isRealStorefrontEmbed()) {
+      Cf.Api.fetchPublicConfig().then(afterPublicConfig);
+      return;
+    }
+
+    Cf.Api.fetchReady().then(function (j) {
+      Cf.Config.applyPayload(j || {}, "primed");
+      mirrorCartTotals();
+      Cf.Api.fetchPublicConfig().then(afterPublicConfig);
     });
   }
 

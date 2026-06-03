@@ -260,11 +260,21 @@ class StorefrontRuntimeTruthApiWiringTests(unittest.TestCase):
         config = (_ROOT / "static" / "cartflow_widget_runtime" / "cartflow_widget_config.js").read_text(
             encoding="utf-8"
         )
+        state = (_ROOT / "static" / "cartflow_widget_runtime" / "cartflow_widget_state.js").read_text(
+            encoding="utf-8"
+        )
+        flows = (_ROOT / "static" / "cartflow_widget_runtime" / "cartflow_widget_flows.js").read_text(
+            encoding="utf-8"
+        )
         panel = (_ROOT / "static" / "merchant_widget_panel.js").read_text(encoding="utf-8")
         general = (_ROOT / "static" / "merchant_general_settings.js").read_text(encoding="utf-8")
         self.assertIn("runtime_version", loader)
         self.assertIn("scheduleStorefrontDomTruthBeacon", config)
         self.assertIn("rendered_title_text", config)
+        self.assertIn("shouldApplyVisualForSource", config)
+        self.assertIn("v2MerchantConfigResolved", state)
+        self.assertIn("config_not_resolved", flows)
+        self.assertIn("CF CONFIG LOAD FAILED", flows)
         self.assertIn("storefront_runtime_truth", panel)
         self.assertIn("storefront_runtime_truth", general)
 
