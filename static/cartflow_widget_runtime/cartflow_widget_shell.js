@@ -21,7 +21,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
         return String(window.CARTFLOW_RUNTIME_VERSION).trim();
       }
     } catch (eRv) {}
-    return "v2-shell-title-instrument-1";
+    return "v2-merchant-chrome-tokens-1";
   }
 
   function merchantBrandNameSnapshot() {
@@ -201,12 +201,159 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     return null;
   }
 
+  var DEFAULT_PRIMARY = "#6366F1";
+
+  function parseHex6(hex) {
+    if (!hex) {
+      return null;
+    }
+    var s = String(hex).trim().replace(/^#/, "");
+    if (s.length === 3) {
+      s =
+        s.charAt(0) +
+        s.charAt(0) +
+        s.charAt(1) +
+        s.charAt(1) +
+        s.charAt(2) +
+        s.charAt(2);
+    }
+    if (!/^[0-9A-Fa-f]{6}$/.test(s)) {
+      return null;
+    }
+    return {
+      r: parseInt(s.slice(0, 2), 16),
+      g: parseInt(s.slice(2, 4), 16),
+      b: parseInt(s.slice(4, 6), 16),
+    };
+  }
+
+  function hexByte(n) {
+    var s = Math.max(0, Math.min(255, Math.round(n))).toString(16);
+    return s.length < 2 ? "0" + s : s;
+  }
+
+  function darkenHex(hex, amount) {
+    var rgb = parseHex6(hex);
+    if (!rgb) {
+      return hex || DEFAULT_PRIMARY;
+    }
+    var f = 1 - (amount == null ? 0.15 : amount);
+    return (
+      "#" +
+      hexByte(rgb.r * f) +
+      hexByte(rgb.g * f) +
+      hexByte(rgb.b * f)
+    ).toUpperCase();
+  }
+
+  function merchantColorIsActive() {
+    try {
+      if (Cf.State && Cf.State.internals && Cf.State.internals.v2MerchantConfigResolved) {
+        return !!merchantPrimaryHex();
+      }
+    } catch (eMc) {}
+    return false;
+  }
+
+  function resolvedPrimary(primaryHex) {
+    return primaryHex || merchantPrimaryHex() || DEFAULT_PRIMARY;
+  }
+
+  function shellBackgroundGradient(primaryHex) {
+    if (!merchantColorIsActive()) {
+      return "linear-gradient(165deg,#1e1b4b 0%,#312e81 42%,#1e1b4b 100%)";
+    }
+    return "linear-gradient(165deg,#111318 0%,#171b22 50%,#12151a 100%)";
+  }
+
+  function shellBorderRgba(primaryHex, alpha) {
+    var rgb = parseHex6(resolvedPrimary(primaryHex));
+    if (!rgb) {
+      return "rgba(99,102,241," + (alpha == null ? 0.45 : alpha) + ")";
+    }
+    return (
+      "rgba(" +
+      rgb.r +
+      "," +
+      rgb.g +
+      "," +
+      rgb.b +
+      "," +
+      (alpha == null ? 0.4 : alpha) +
+      ")"
+    );
+  }
+
+  function launcherBackground(primaryHex) {
+    if (!merchantColorIsActive()) {
+      return "linear-gradient(165deg,#1e1b4b 0%,#312e81 52%,#1e3a5f 100%)";
+    }
+    var rgb = parseHex6(resolvedPrimary(primaryHex));
+    if (!rgb) {
+      return "linear-gradient(165deg,#15181e 0%,#12151a 100%)";
+    }
+    return (
+      "linear-gradient(165deg,rgba(" +
+      rgb.r +
+      "," +
+      rgb.g +
+      "," +
+      rgb.b +
+      ",0.18) 0%,#15181e 55%,#12151a 100%)"
+    );
+  }
+
+  function primaryButtonGradient(primaryHex) {
+    var base = resolvedPrimary(primaryHex);
+    return "linear-gradient(180deg," + base + " 0%," + darkenHex(base, 0.14) + " 100%)";
+  }
+
+  function inputBorderCss(primaryHex) {
+    return "1px solid " + shellBorderRgba(primaryHex, 0.38);
+  }
+
+  function applyShellSurfaceStyles(w, primaryHex) {
+    if (!w || w.getAttribute("data-cf-shell-minimized") === "1") {
+      return;
+    }
+    var fill = resolvedPrimary(primaryHex);
+    try {
+      w.style.background = shellBackgroundGradient(fill);
+      w.style.border = "1px solid " + shellBorderRgba(fill, merchantColorIsActive() ? 0.4 : 0.45);
+    } catch (eSurf) {}
+  }
+
+  function applyLauncherSurfaceStyles(w, primaryHex) {
+    if (!w) {
+      return;
+    }
+    var fill = resolvedPrimary(primaryHex);
+    try {
+      w.style.background = launcherBackground(fill);
+      w.style.border = "1px solid " + shellBorderRgba(fill, merchantColorIsActive() ? 0.5 : 0.55);
+    } catch (eLaunch) {}
+  }
+
+  var ChromeTokens = {
+    DEFAULT_PRIMARY: DEFAULT_PRIMARY,
+    resolvedPrimary: resolvedPrimary,
+    merchantColorIsActive: merchantColorIsActive,
+    shellBackgroundGradient: shellBackgroundGradient,
+    shellBorderRgba: shellBorderRgba,
+    launcherBackground: launcherBackground,
+    primaryButtonGradient: primaryButtonGradient,
+    inputBorderCss: inputBorderCss,
+    applyShellSurfaceStyles: applyShellSurfaceStyles,
+    darkenHex: darkenHex,
+  };
+  Cf.ChromeTokens = ChromeTokens;
+
   function refreshChromeColor(w) {
     w = w || rootFromDom();
     if (!w) {
       return;
     }
-    var fill = merchantPrimaryHex() || "#6366F1";
+    var fill = resolvedPrimary(null);
     var bar = w.querySelector('[data-cf-chrome="1"]');
     if (bar) {
       try {
@@ -218,6 +365,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
   function refreshShellVisuals() {
     var w = rootFromDom();
     refreshChromeColor(w);
+    applyShellSurfaceStyles(w, merchantPrimaryHex());
     applyShellTitle(w, "refreshShellVisuals");
     try {
       if (Cf.Ui && typeof Cf.Ui.restampPrimaryButtons === "function") {
@@ -466,9 +614,8 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       w.style.borderRadius = "999px";
       w.style.overflow = "hidden";
       w.style.cursor = "default";
-      w.style.background =
-        "linear-gradient(165deg,#1e1b4b 0%,#312e81 52%,#1e3a5f 100%)";
-      w.style.border = "1px solid rgba(99,102,241,.55)";
+      w.style.background = launcherBackground(merchantPrimaryHex());
+      w.style.border = "1px solid " + shellBorderRgba(merchantPrimaryHex(), merchantColorIsActive() ? 0.5 : 0.55);
       w.style.boxShadow = "0 4px 14px rgba(2,6,23,.45)";
       w.style.fontSize = "0";
       w.style.lineHeight = "1";
@@ -525,7 +672,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       }
     }
 
-    var fill = primaryHex || "#6366F1";
+    var fill = resolvedPrimary(primaryHex);
     w.style.cssText =
       "position:fixed;z-index:2147483640;" +
       "width:" +
@@ -544,11 +691,11 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       "px;" +
       "right:max(12px,env(safe-area-inset-right));bottom:max(12px,env(safe-area-inset-bottom));" +
       "box-sizing:border-box;padding:11px;border-radius:14px;" +
-      "background:linear-gradient(165deg,#1e1b4b 0%,#312e81 42%,#1e1b4b 100%);" +
-      "color:#f1f5f9;border:1px solid rgba(99,102,241,.45);" +
+      "color:#f1f5f9;" +
       "box-shadow:0 18px 48px rgba(2,6,23,.72), inset 0 1px 0 rgba(255,255,255,.06);" +
       "font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;font-size:14px;line-height:1.42;" +
       "overflow:hidden;";
+    applyShellSurfaceStyles(w, fill);
 
     var inner = w.querySelector("[data-cf-shell-inner]");
     if (!inner) {
@@ -685,7 +832,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     }
     dedupeShellRoots();
     var hadRoot = !!rootFromDom();
-    var ph = opts.primaryColor || merchantPrimaryHex() || "#6366F1";
+    var ph = opts.primaryColor || merchantPrimaryHex() || DEFAULT_PRIMARY;
     var r = ensureShell(ph);
     var w = r.root;
     try {

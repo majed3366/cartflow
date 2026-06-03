@@ -10,6 +10,47 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     "display:flex;flex-direction:column;gap:6px;margin-top:2px;width:100%;box-sizing:border-box;";
   var textPrimary = "margin:0;color:rgba(241,245,249,.95);";
   var textMuted = "margin:0;color:rgba(226,232,240,.82);";
+  var DEFAULT_PRIMARY = "#6366f1";
+
+  function chromeTokens() {
+    return Cf.ChromeTokens || null;
+  }
+
+  function resolvedPrimary(primaryHex) {
+    var ct = chromeTokens();
+    if (ct && typeof ct.resolvedPrimary === "function") {
+      return ct.resolvedPrimary(primaryHex);
+    }
+    if (primaryHex) {
+      return primaryHex;
+    }
+    try {
+      if (Cf.Config && typeof Cf.Config.merchant === "function") {
+        var c = Cf.Config.merchant().widget_primary_color;
+        if (typeof c === "string" && c.trim()) {
+          return String(c).trim();
+        }
+      }
+    } catch (eRp) {}
+    return DEFAULT_PRIMARY;
+  }
+
+  function primaryButtonGradient(primaryHex) {
+    var ct = chromeTokens();
+    if (ct && typeof ct.primaryButtonGradient === "function") {
+      return ct.primaryButtonGradient(primaryHex);
+    }
+    var hex = resolvedPrimary(primaryHex);
+    return "linear-gradient(180deg," + hex + " 0%," + hex + " 100%)";
+  }
+
+  function inputBorderCss(primaryHex) {
+    var ct = chromeTokens();
+    if (ct && typeof ct.inputBorderCss === "function") {
+      return ct.inputBorderCss(primaryHex);
+    }
+    return "1px solid rgba(99,102,241,.38)";
+  }
 
   function bubbleRoot() {
     if (Cf.Shell && typeof Cf.Shell.getRoot === "function") {
@@ -27,15 +68,15 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
   }
 
   function stampPrimary(btn, primaryHex) {
-    var hex = primaryHex || "#6366f1";
+    var hex = resolvedPrimary(primaryHex);
     try {
       btn.setAttribute("data-cf-btn-primary", "1");
     } catch (eAttr) {}
     btn.style.cssText =
       "cursor:pointer;display:inline-flex;align-items:center;justify-content:center;text-align:center;border-radius:9px;" +
-      "background:linear-gradient(180deg," +
-      hex +
-      " 0%,#4f46e5 100%);color:#fafafa;width:100%;box-sizing:border-box;" +
+      "background:" +
+      primaryButtonGradient(hex) +
+      ";color:#fafafa;width:100%;box-sizing:border-box;" +
       "padding:9px 10px;line-height:1.35;font-weight:600;font-size:13px;" +
       "border:1px solid rgba(255,255,255,.12);box-shadow:0 1px 0 rgba(255,255,255,.12) inset;";
   }
@@ -48,11 +89,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     if (!root) {
       return;
     }
-    var ph = primaryHex;
-    if (!ph && Cf.Config && typeof Cf.Config.merchant === "function") {
-      ph = Cf.Config.merchant().widget_primary_color;
-    }
-    ph = ph || "#6366f1";
+    var ph = resolvedPrimary(primaryHex);
     try {
       var nodes = root.querySelectorAll("[data-cf-btn-primary]");
       var i;
@@ -85,7 +122,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     }
     Cf.Shell.open({ primaryColor: opts.primaryColor });
     Cf.Shell.setStep("yes_no");
-    var ph = opts.primaryColor || "#6366f1";
+    var ph = resolvedPrimary(opts.primaryColor);
     var frag = document.createDocumentFragment();
     var p = document.createElement("p");
     p.style.cssText =
@@ -150,7 +187,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     }
     Cf.Shell.open({ primaryColor: opts.primaryColor });
     Cf.Shell.setStep("reason");
-    var ph = opts.primaryColor || "#6366f1";
+    var ph = resolvedPrimary(opts.primaryColor);
     var frag = document.createDocumentFragment();
     var p = document.createElement("p");
     p.style.cssText =
@@ -198,7 +235,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     }
     Cf.Shell.open({ primaryColor: opts.primaryColor });
     Cf.Shell.setStep("exit_browsing");
-    var ph = opts.primaryColor || "#6366f1";
+    var ph = resolvedPrimary(opts.primaryColor);
     var frag = document.createDocumentFragment();
     var p = document.createElement("p");
     p.style.cssText = textPrimary + "margin-bottom:10px;font-size:14px;line-height:1.5;";
@@ -228,7 +265,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     }
     Cf.Shell.open({ primaryColor: opts.primaryColor });
     Cf.Shell.setStep("phone");
-    var ph = opts.primaryColor || "#6366f1";
+    var ph = resolvedPrimary(opts.primaryColor);
     var frag = document.createDocumentFragment();
     var t = document.createElement("p");
     t.style.cssText =
@@ -244,7 +281,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     inp.placeholder = "05xxxxxxxx";
     inp.setAttribute("dir", "ltr");
     inp.style.cssText =
-      "width:100%;box-sizing:border-box;border-radius:9px;border:1px solid rgba(99,102,241,.38);" +
+      "width:100%;box-sizing:border-box;border-radius:9px;border:" + inputBorderCss(ph) + ";" +
       "background:rgba(15,23,42,.65);padding:9px 10px;margin-bottom:6px;font:inherit;font-size:14px;color:#f8fafc;" +
       "outline:none;";
     try {
@@ -313,7 +350,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     }
     Cf.Shell.open({ primaryColor: opts.primaryColor });
     Cf.Shell.setStep("continuation");
-    var ph = opts.primaryColor || "#6366f1";
+    var ph = resolvedPrimary(opts.primaryColor);
     var bullets = Array.isArray(opts.bullets) ? opts.bullets : [];
     var compact = opts.compactRecovery === true;
     var frag = document.createDocumentFragment();
@@ -387,7 +424,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     }
     Cf.Shell.open({ primaryColor: opts.primaryColor });
     Cf.Shell.setStep("phone");
-    var ph = opts.primaryColor || "#6366f1";
+    var ph = resolvedPrimary(opts.primaryColor);
     var frag = document.createDocumentFragment();
     var t = document.createElement("p");
     t.style.cssText =
@@ -399,7 +436,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     inp.placeholder = "05xxxxxxxx";
     inp.setAttribute("dir", "ltr");
     inp.style.cssText =
-      "width:100%;box-sizing:border-box;border-radius:9px;border:1px solid rgba(99,102,241,.38);" +
+      "width:100%;box-sizing:border-box;border-radius:9px;border:" + inputBorderCss(ph) + ";" +
       "background:rgba(15,23,42,.65);padding:9px 10px;margin-bottom:6px;font:inherit;font-size:14px;color:#f8fafc;" +
       "outline:none;";
     frag.appendChild(inp);
@@ -449,7 +486,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     }
     Cf.Shell.open({ primaryColor: opts.primaryColor });
     Cf.Shell.setStep("other_recovery");
-    var ph = opts.primaryColor || "#6366f1";
+    var ph = resolvedPrimary(opts.primaryColor);
     var frag = document.createDocumentFragment();
     var hi = document.createElement("p");
     hi.style.cssText = textPrimary + "margin-bottom:8px;font-size:13px;line-height:1.5;font-weight:600;";
@@ -462,7 +499,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     var ta = document.createElement("textarea");
     ta.rows = 2;
     ta.style.cssText =
-      "width:100%;box-sizing:border-box;border-radius:9px;border:1px solid rgba(99,102,241,.38);" +
+      "width:100%;box-sizing:border-box;border-radius:9px;border:" + inputBorderCss(ph) + ";" +
       "background:rgba(15,23,42,.65);padding:8px;margin-bottom:8px;font:inherit;" +
       "resize:none;height:52px;min-height:52px;max-height:52px;color:#f8fafc;";
     frag.appendChild(ta);
@@ -519,7 +556,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     }
     Cf.Shell.open({ primaryColor: opts.primaryColor });
     Cf.Shell.setStep("other_draft");
-    var ph = opts.primaryColor || "#6366f1";
+    var ph = resolvedPrimary(opts.primaryColor);
     var frag = document.createDocumentFragment();
     var hi = document.createElement("p");
     hi.style.cssText = textPrimary + "margin-bottom:8px;font-size:13px;line-height:1.5;";
@@ -528,7 +565,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     var ta = document.createElement("textarea");
     ta.rows = 3;
     ta.style.cssText =
-      "width:100%;box-sizing:border-box;border-radius:9px;border:1px solid rgba(99,102,241,.38);" +
+      "width:100%;box-sizing:border-box;border-radius:9px;border:" + inputBorderCss(ph) + ";" +
       "background:rgba(15,23,42,.65);padding:8px;margin-bottom:6px;font:inherit;resize:vertical;color:#f8fafc;";
     frag.appendChild(ta);
     var err = document.createElement("p");

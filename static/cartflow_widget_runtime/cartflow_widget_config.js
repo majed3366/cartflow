@@ -253,7 +253,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
         return String(window.__cartflow_loader_build).trim();
       }
     } catch (eRv) {}
-    return "v2-shell-title-instrument-1";
+    return "v2-merchant-chrome-tokens-1";
   }
 
   function cartflowBeaconApiOrigin() {

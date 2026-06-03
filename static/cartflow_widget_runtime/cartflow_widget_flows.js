@@ -62,6 +62,10 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
   }
 
   function primaryHex() {
+    var ct = Cf.ChromeTokens;
+    if (ct && typeof ct.resolvedPrimary === "function") {
+      return ct.resolvedPrimary(null);
+    }
     var M = Cf.Config.merchant();
     return (M && M.widget_primary_color) || "#6366f1";
   }
