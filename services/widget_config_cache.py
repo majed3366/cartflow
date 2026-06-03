@@ -132,23 +132,10 @@ def build_snapshot_from_store_row(store_row: Optional[Any]) -> Dict[str, Any]:
 
 
 def _public_payload_keys_from_dashboard_row(sess: Any, row: Any) -> List[str]:
-    from services.db_pool_diagnostics import cached_top_store_id
+    from services.store_identity_v1 import list_public_cache_keys_for_store_row
+    from services.widget_config_cache import normalize_store_slug
 
-    keys: List[str] = []
-    zs = getattr(row, "zid_store_id", None)
-    if isinstance(zs, str) and zs.strip():
-        keys.append(zs.strip()[:255])
-    try:
-        top = cached_top_store_id(sess)
-        rid = getattr(row, "id", None)
-        if (
-            top is not None
-            and rid is not None
-            and int(top) == int(rid)  # type: ignore[arg-type]
-        ):
-            keys.extend(["demo", "default", "cartflow-default-recovery"])
-    except Exception:  # noqa: BLE001
-        pass
+    keys = list_public_cache_keys_for_store_row(row)
     seen: Set[str] = set()
     out: List[str] = []
     for k in keys:

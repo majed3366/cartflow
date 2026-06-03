@@ -213,8 +213,23 @@ def apply_oauth_token_to_merchant_store(
             owner,
         )
         return False
+    prior_zid = (getattr(row, "zid_store_id", None) or "").strip()
     if not persist_oauth_tokens_on_store_row(row, token_response):
         return False
+    try:
+        from services.store_identity_v1 import sync_zid_store_identities_after_oauth
+
+        sync_zid_store_identities_after_oauth(
+            row,
+            token_response=token_response,
+            prior_zid=prior_zid,
+        )
+    except Exception as exc:  # noqa: BLE001
+        log.warning(
+            "[STORE CONNECTION] identity_sync_failed store_id=%s err=%s",
+            store_id,
+            type(exc).__name__,
+        )
     db.session.commit()
     log.info(
         "[STORE CONNECTION] oauth_applied store_id=%s merchant_id=%s zid_store_id=%s",

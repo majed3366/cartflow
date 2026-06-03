@@ -190,7 +190,8 @@ def parse_zid_store_id_from_token(data: dict[str, Any]) -> Optional[str]:
     return None
 
 
-def fetch_zid_store_id_from_profile(access_token: str) -> Optional[str]:
+def fetch_zid_manager_profile(access_token: str) -> Optional[dict[str, Any]]:
+    """Full manager profile JSON — used for store identity sync."""
     auth_bearer = (os.getenv("ZID_API_AUTHORIZATION") or "").strip()
     h: dict[str, str] = {
         "X-MANAGER-TOKEN": access_token,
@@ -205,7 +206,15 @@ def fetch_zid_store_id_from_profile(access_token: str) -> Optional[str]:
         return None
     if r.status_code // 100 != 2:
         return None
-    j = r.json()
+    try:
+        j = r.json()
+    except Exception:
+        return None
+    return j if isinstance(j, dict) else None
+
+
+def fetch_zid_store_id_from_profile(access_token: str) -> Optional[str]:
+    j = fetch_zid_manager_profile(access_token)
     if not isinstance(j, dict):
         return None
     for path in (

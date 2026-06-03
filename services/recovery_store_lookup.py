@@ -84,34 +84,27 @@ def log_recovery_template_lookup(
         pass
 
 
-def _copy_recovery_settings_fields(src: Store, dst: Store) -> None:
-    for attr in _RECOVERY_MIRROR_ATTRS:
-        if hasattr(src, attr):
-            setattr(dst, attr, getattr(src, attr))
-
-
-def _store_count() -> int:
-    try:
-        return int(db.session.query(Store.id).count())
-    except (SQLAlchemyError, OSError):
-        db.session.rollback()
-        return 0
-
-
 def _query_store_by_zid(zid: str) -> Optional[Store]:
+    """Resolve via canonical store identity layer (aliases + cartflow_zid)."""
+    from services.store_identity_v1 import (
+        canonical_store_slug_on_row,
+        resolve_store_row_by_identifier,
+    )
+
     ss = (zid or "").strip()
     if not ss:
         return None
     try:
-        return db.session.query(Store).filter(Store.zid_store_id == ss).first()
-    except (SQLAlchemyError, OSError):
-        db.session.rollback()
-        return None
-
-
-def _dashboard_latest_store() -> Optional[Store]:
-    try:
-        return db.session.query(Store).order_by(Store.id.desc()).first()
+        row, via = resolve_store_row_by_identifier(ss)
+        if row is not None:
+            log_recovery_store_lookup(
+                canonical_store=ss,
+                matched_store_id=getattr(row, "id", None),
+                matched_zid=canonical_store_slug_on_row(row),
+                found=True,
+                action=via,
+            )
+        return row
     except (SQLAlchemyError, OSError):
         db.session.rollback()
         return None
@@ -124,7 +117,7 @@ def ensure_recovery_store_row_for_zid(
 ) -> Optional[Store]:
     """
     Ensure a Store row exists for canonical widget/recovery zid.
-    May align a single-tenant dashboard row or provision demo/demo2 with mirrored settings.
+    Provisions sandbox widget slugs (demo/demo2/default) only — no latest-store fallback.
     """
     ss = (zid or "").strip()[:255]
     if not ss:
@@ -140,45 +133,7 @@ def ensure_recovery_store_row_for_zid(
 
     row = _query_store_by_zid(ss)
     if row is not None:
-        log_recovery_store_lookup(
-            canonical_store=ss,
-            matched_store_id=getattr(row, "id", None),
-            matched_zid=getattr(row, "zid_store_id", None),
-            found=True,
-            action="exact_match",
-        )
         return row
-
-    dash = _dashboard_latest_store()
-    dash_zid = (
-        (getattr(dash, "zid_store_id", None) or "").strip() if dash is not None else ""
-    )
-
-    if dash is not None and dash_zid == ss:
-        log_recovery_store_lookup(
-            canonical_store=ss,
-            matched_store_id=getattr(dash, "id", None),
-            matched_zid=dash_zid,
-            found=True,
-            action="dashboard_latest_same_zid",
-        )
-        return dash
-
-    if dash is not None and _store_count() == 1 and is_widget_recovery_zid(ss):
-        if not dash_zid or dash_zid == CARTFLOW_DEFAULT_RECOVERY_STORE_ZID:
-            try:
-                dash.zid_store_id = ss
-                db.session.commit()
-                log_recovery_store_lookup(
-                    canonical_store=ss,
-                    matched_store_id=getattr(dash, "id", None),
-                    matched_zid=ss,
-                    found=True,
-                    action="single_tenant_zid_align",
-                )
-                return dash
-            except (SQLAlchemyError, IntegrityError, OSError):
-                db.session.rollback()
 
     if not is_widget_recovery_zid(ss):
         log_recovery_store_lookup(
@@ -196,21 +151,18 @@ def ensure_recovery_store_row_for_zid(
         recovery_delay_unit="minutes",
         recovery_attempts=1,
     )
-    if dash is not None and dash_zid and dash_zid != ss:
-        _copy_recovery_settings_fields(dash, new_row)
-        mirror_action = "provision_widget_row_mirror_dashboard"
-    else:
-        mirror_action = "provision_widget_row_new"
-
     try:
         db.session.add(new_row)
         db.session.commit()
+        from services.store_identity_v1 import ensure_cartflow_zid_alias_for_store
+
+        ensure_cartflow_zid_alias_for_store(new_row)
         log_recovery_store_lookup(
             canonical_store=ss,
             matched_store_id=getattr(new_row, "id", None),
             matched_zid=ss,
             found=True,
-            action=mirror_action,
+            action="provision_widget_row_new",
         )
         return new_row
     except IntegrityError:
@@ -220,7 +172,7 @@ def ensure_recovery_store_row_for_zid(
             log_recovery_store_lookup(
                 canonical_store=ss,
                 matched_store_id=getattr(row, "id", None),
-                matched_zid=ss,
+                matched_zid=getattr(row, "zid_store_id", None),
                 found=True,
                 action="provision_race_retry",
             )
@@ -242,7 +194,7 @@ def resolve_recovery_store_row_canonical(
     *,
     allow_schema_warm: bool = True,
 ) -> Optional[Store]:
-    """Exact zid lookup, then safe provision for widget recovery slugs."""
+    """Identity-aware lookup, then safe provision for widget recovery slugs only."""
     ss = (zid or "").strip()[:255]
     if not ss:
         log_recovery_store_lookup(
@@ -256,13 +208,6 @@ def resolve_recovery_store_row_canonical(
 
     row = _query_store_by_zid(ss)
     if row is not None:
-        log_recovery_store_lookup(
-            canonical_store=ss,
-            matched_store_id=getattr(row, "id", None),
-            matched_zid=getattr(row, "zid_store_id", None),
-            found=True,
-            action="exact_match",
-        )
         return row
 
     return ensure_recovery_store_row_for_zid(ss, allow_schema_warm=allow_schema_warm)

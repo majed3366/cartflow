@@ -263,12 +263,23 @@ def persist_zid_dev_store_from_token_response(
     if row is None:
         row = Store(zid_store_id=zid, is_active=True)
         db.session.add(row)
+    prior_zid = (getattr(row, "zid_store_id", None) or "").strip()
     if not persist_oauth_tokens_on_store_row(row, token_response):
         return None
     now = datetime.now(timezone.utc)
     row.integration_source = ZID_DEV_INTEGRATION_SOURCE
     row.connected_at = now
     row.is_active = True
+    try:
+        from services.store_identity_v1 import sync_zid_store_identities_after_oauth
+
+        sync_zid_store_identities_after_oauth(
+            row,
+            token_response=token_response,
+            prior_zid=prior_zid if prior_zid != (row.zid_store_id or "").strip() else None,
+        )
+    except Exception:  # noqa: BLE001
+        pass
     db.session.commit()
     try:
         from services.zid_storefront_widget_install_v1 import (  # noqa: PLC0415

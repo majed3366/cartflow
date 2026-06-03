@@ -13,7 +13,17 @@ def canonical_store_slug_from_recovery_key(recovery_key: Optional[str]) -> Optio
     if not rk or ":" not in rk:
         return None
     head = rk.split(":", 1)[0].strip()[:255]
-    return head if head else None
+    if not head:
+        return None
+    try:
+        from services.store_identity_v1 import resolve_canonical_store_slug
+
+        canon = resolve_canonical_store_slug(head)
+        if canon:
+            return canon
+    except Exception:  # noqa: BLE001
+        pass
+    return head
 
 
 def session_part_from_recovery_key(recovery_key: Optional[str]) -> str:
@@ -119,10 +129,15 @@ def coerce_recovery_runtime_store_slug(
 ) -> str:
     """
     Prefer authenticated merchant hint over sandbox recovery_key prefix.
-    Otherwise keep sandbox canon (ignore stale non-sandbox dashboard hints).
+    Normalize platform aliases (Zid permalink, numeric id, etc.) to cartflow zid.
     """
+    from services.store_identity_v1 import resolve_canonical_store_slug
+
     canon = canonical_store_slug_from_recovery_key(recovery_key)
     hint = (store_slug_hint or "").strip()[:255]
+    if hint:
+        resolved_hint = resolve_canonical_store_slug(hint) or hint
+        hint = resolved_hint
     auth_slug = ""
     try:
         from services.merchant_test_widget_store_v1 import (  # noqa: PLC0415
@@ -132,6 +147,8 @@ def coerce_recovery_runtime_store_slug(
         auth_slug = (merchant_authenticated_store_slug() or "").strip()[:255]
     except Exception:  # noqa: BLE001
         auth_slug = ""
+    if auth_slug:
+        auth_slug = resolve_canonical_store_slug(auth_slug) or auth_slug
 
     if hint and not is_public_widget_sandbox_slug(hint):
         if not canon or is_public_widget_sandbox_slug(canon):

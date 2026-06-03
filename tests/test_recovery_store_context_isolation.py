@@ -166,9 +166,8 @@ class RecoveryStoreContextIsolationTests(unittest.TestCase):
             "nonexistent-store-zid",
             allow_latest_fallback=True,
         )
-        self.assertIsNotNone(with_latest)
-        assert with_latest is not None
-        self.assertEqual(with_latest.zid_store_id, latest_z)
+        # Latest fallback is authenticated merchant store only — never arbitrary Store.id.
+        self.assertIsNone(with_latest)
 
     def test_bind_identity_aligns_slug_and_row(self) -> None:
         db.create_all()
@@ -254,35 +253,11 @@ class RecoveryStoreContextIsolationTests(unittest.TestCase):
         assert row_demo is not None
         self.assertEqual(row_demo.zid_store_id, "demo")
         self.assertIsNotNone(row_demo.id)
-        self.assertEqual(float(row_demo.vip_cart_threshold or 0), 1500.0)
-
-        timing = resolve_recovery_schedule_timing("other", row_demo, stage_index=0)
-        self.assertEqual(timing["effective_delay_seconds"], 7200.0)
-        self.assertEqual(timing["source"], "reason_templates.messages")
-
-        timing_1m = resolve_recovery_schedule_timing(
-            "price",
-            type(
-                "_S",
-                (),
-                {
-                    "reason_templates_json": json.dumps(
-                        {
-                            "price": {
-                                "enabled": True,
-                                "message": "p",
-                                "message_count": 1,
-                                "messages": [
-                                    {"delay": 1, "unit": "minute", "text": "p"}
-                                ],
-                            }
-                        }
-                    )
-                },
-            )(),
-            stage_index=0,
+        # Sandbox provision is isolated — no mirror from unrelated merchant rows.
+        self.assertIsNone(row_demo.vip_cart_threshold)
+        self.assertFalse(
+            (getattr(row_demo, "reason_templates_json", None) or "").strip()
         )
-        self.assertEqual(timing_1m["effective_delay_seconds"], 60.0)
 
         resolved_lt = resolve_recovery_store_row_canonical(
             loadtest_z, allow_schema_warm=False

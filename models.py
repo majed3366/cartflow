@@ -124,6 +124,37 @@ class Store(Base):
     merchant_user_id = Column(
         Integer, ForeignKey("merchant_users.id"), nullable=True, index=True
     )
+    identity_aliases = relationship(
+        "StoreIdentityAlias",
+        backref="store",
+        lazy="dynamic",
+        cascade="all, delete-orphan",
+    )
+
+
+class StoreIdentityAlias(Base):
+    """
+    Platform-agnostic alias → CartFlow Store row.
+
+    All storefront slugs, OAuth ids, and dashboard keys resolve through this table.
+    """
+
+    __tablename__ = "store_identity_aliases"
+
+    id = Column(Integer, primary_key=True)
+    store_id = Column(Integer, ForeignKey("stores.id"), nullable=False, index=True)
+    alias_kind = Column(String(64), nullable=False, index=True)
+    alias_value = Column(String(255), nullable=False, unique=True, index=True)
+    platform = Column(String(32), nullable=True, index=True)
+    created_at = Column(
+        DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
+    )
+    updated_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
 
 
 class MerchantUser(Base):

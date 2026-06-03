@@ -217,13 +217,13 @@ def _should_skip_reinstall(store: Any, *, force: bool) -> bool:
 
 def record_widget_storefront_seen(*, store_slug: str) -> bool:
     """Update widget_last_seen_at when loader runs on a real storefront."""
-    from models import Store
+    from services.store_identity_v1 import resolve_store_row_by_identifier
 
     slug = (store_slug or "").strip()
     if not slug or slug.lower() in ("demo", "default", "demo2"):
         return False
     ensure_store_zid_widget_install_schema(db)
-    row = db.session.query(Store).filter(Store.zid_store_id == slug).first()
+    row, _via = resolve_store_row_by_identifier(slug)
     if row is None:
         return False
     now = _utc_now()
@@ -307,6 +307,12 @@ def maybe_install_zid_storefront_widget(
             )
             storefront_ok = found
             storefront_detail = detail
+            try:
+                from services.store_identity_v1 import sync_zid_store_identities_after_oauth
+
+                sync_zid_store_identities_after_oauth(store, store_url=store_url)
+            except Exception:  # noqa: BLE001
+                pass
 
     now = _utc_now()
 

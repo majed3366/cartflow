@@ -325,6 +325,12 @@ def _link_store_to_merchant_user(
     db.session.flush()
     user.primary_store_id = int(store.id)
     db.session.flush()
+    try:
+        from services.store_identity_v1 import ensure_cartflow_zid_alias_for_store
+
+        ensure_cartflow_zid_alias_for_store(store)
+    except Exception:  # noqa: BLE001
+        pass
     return True, "", store
 
 

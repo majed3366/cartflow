@@ -1490,7 +1490,7 @@ def _normal_carts_query_prof_wrap(span_name: str):
 
 @_normal_carts_query_prof_wrap("_dashboard_recovery_store_row")
 def _dashboard_recovery_store_row() -> Optional[Store]:
-    """متجر الجلسة للتاجر المسجّل؛ وإلا آخر ‎Store‎ (أو demo في التطوير)."""
+    """Authenticated merchant Store only — no latest-store fallback."""
     from services.dashboard_store_context import dashboard_canonical_store_row
     from services.merchant_auth_context import get_merchant_auth_store_slug
 
@@ -1499,11 +1499,7 @@ def _dashboard_recovery_store_row() -> Optional[Store]:
         row = dashboard_canonical_store_row(slug, allow_schema_warm=False)
         if row is not None:
             return row
-    try:
-        return db.session.query(Store).order_by(Store.id.desc()).first()
-    except (SQLAlchemyError, OSError):
-        db.session.rollback()
-        return None
+    return None
 
 
 _cartflow_api_db_warm_lock = threading.Lock()
@@ -1540,6 +1536,16 @@ def _ensure_cartflow_api_db_warmed() -> None:
             )
 
             ensure_widget_recovery_store_rows_on_warm()
+            from schema_store_identity import ensure_store_identity_schema
+
+            ensure_store_identity_schema(db)
+            from services.store_identity_v1 import (
+                backfill_store_identity_aliases_from_stores,
+                sync_connected_platform_identities,
+            )
+
+            backfill_store_identity_aliases_from_stores()
+            sync_connected_platform_identities()
             from schema_recovery_message_context import (
                 ensure_recovery_message_context_schema,
             )

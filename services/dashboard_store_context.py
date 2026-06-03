@@ -93,16 +93,4 @@ def resolve_dashboard_trigger_templates_store(
                 row = auth_row
                 canon = auth
 
-    if row is None:
-        try:
-            from extensions import db
-
-            row = db.session.query(Store).order_by(Store.id.desc()).first()
-        except Exception:  # noqa: BLE001
-            row = None
-        if row is not None:
-            zs = getattr(row, "zid_store_id", None)
-            if isinstance(zs, str) and zs.strip():
-                canon = zs.strip()[:255]
-
     return canon, row
