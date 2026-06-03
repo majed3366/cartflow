@@ -3,7 +3,9 @@ from __future__ import annotations
 
 from services.store_widget_customization import (
     apply_widget_customization_from_body,
+    canonical_widget_name_on_row,
     normalize_widget_primary_hex,
+    reconcile_widget_name_columns,
     widget_customization_fields_for_api,
 )
 
@@ -44,6 +46,21 @@ def test_apply_widget_name_empty_resets_default() -> None:
     r = _Row()
     apply_widget_customization_from_body(r, {"widget_name": "   "})
     assert r.widget_name == "مساعد المتجر"
+
+
+def test_canonical_prefers_display_name_when_widget_name_is_default() -> None:
+    class _Row:
+        widget_name = "مساعد المتجر"
+        widget_display_name = "CARTFLOW"
+        widget_primary_color = "#6C5CE7"
+        widget_style = "modern"
+
+    r = _Row()
+    assert canonical_widget_name_on_row(r) == "CARTFLOW"
+    d = widget_customization_fields_for_api(r)
+    assert d["widget_name"] == "CARTFLOW"
+    reconcile_widget_name_columns(r)
+    assert r.widget_name == "CARTFLOW"
 
 
 def test_invalid_style_in_body_ignored() -> None:

@@ -20,6 +20,8 @@
 
 **Operational truth today:** The **Widget** section in the merchant app (`#page-widget`, `POST /api/dashboard/merchant-widget-settings`) and **Recovery settings** gate/delay fields are the reliable controls for the live Zid widget. **General Settings** `widget_enabled` / `widget_display_name` are **not** wired into `public-config` or V2 runtime.
 
+**Update (2026-06-02, `fix: widget title runtime truth`):** Header uses `Config.merchant().widget_brand_name` ← `applyVisual` ← `public-config` `widget_name`. Failure mode when `widget_display_name=CARTFLOW` but `widget_name` stayed default `مساعد المتجر` — dashboard showed CARTFLOW via display fallback while API served default. Fixed via canonical name resolution + sync cache load on miss.
+
 ---
 
 ## Audit table

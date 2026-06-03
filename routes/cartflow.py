@@ -29,13 +29,12 @@ from services.recovery_session_phone import (
     recovery_key_for_reason_session,
 )
 from services.widget_config_cache import (
+    ensure_snapshot_for_hot_path,
     get_snapshot,
     install_cart_recovery_ready_signals_once,
-    maybe_schedule_background_refresh,
     normalize_store_slug,
     public_http_payload,
     ready_http_payload,
-    warmup_snapshot_sync_pytest,
 )
 from services.vip_cart import is_vip_cart
 from services.vip_abandoned_cart_phone import (
@@ -352,15 +351,12 @@ def cartflow_ready(
     (‎CartRecoveryLog‎ تُطبَّع بعد الالتزام دون هذا المسار).
     """
     norm = normalize_store_slug(store_slug)
-    snap = get_snapshot(norm)
-    if snap is None:
-        warmup_snapshot_sync_pytest(norm)
-        snap = get_snapshot(norm)
-    if snap is not None:
+    had_cache = get_snapshot(norm) is not None
+    snap = ensure_snapshot_for_hot_path(norm, background_tasks)
+    if had_cache:
         log.info("[WIDGET CONFIG CACHE HIT] store_slug=%s", norm[:80])
     else:
-        log.info("[WIDGET CONFIG CACHE MISS_SAFE_DEFAULT] store_slug=%s", norm[:80])
-        maybe_schedule_background_refresh(norm, background_tasks)
+        log.info("[WIDGET CONFIG CACHE LOADED] store_slug=%s", norm[:80])
     return j(ready_http_payload(norm, session_id, snap))
 
 
@@ -377,15 +373,12 @@ def cartflow_public_config(
     المنسوخة وقيمة ‎cart_total‎ في الاستعلام.
     """
     norm = normalize_store_slug(store_slug)
-    snap = get_snapshot(norm)
-    if snap is None:
-        warmup_snapshot_sync_pytest(norm)
-        snap = get_snapshot(norm)
-    if snap is not None:
+    had_cache = get_snapshot(norm) is not None
+    snap = ensure_snapshot_for_hot_path(norm, background_tasks)
+    if had_cache:
         log.info("[WIDGET CONFIG CACHE HIT] store_slug=%s", norm[:80])
     else:
-        log.info("[WIDGET CONFIG CACHE MISS_SAFE_DEFAULT] store_slug=%s", norm[:80])
-        maybe_schedule_background_refresh(norm, background_tasks)
+        log.info("[WIDGET CONFIG CACHE LOADED] store_slug=%s", norm[:80])
     return j(public_http_payload(norm, cart_total, snap))
 
 

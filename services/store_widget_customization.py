@@ -29,16 +29,43 @@ def normalize_widget_primary_hex(raw: Any) -> str:
     return _DEFAULT_PRIMARY
 
 
+def is_default_widget_name(value: Any) -> bool:
+    if not isinstance(value, str):
+        return True
+    return value.strip() == _DEFAULT_WIDGET_NAME
+
+
+def reconcile_widget_name_columns(row: Any) -> None:
+    """
+    Align legacy split: ‎widget_display_name=CARTFLOW‎ with ‎widget_name=مساعد المتجر‎ (default).
+    """
+    if row is None:
+        return
+    name_raw = getattr(row, "widget_name", None)
+    disp_raw = getattr(row, "widget_display_name", None)
+    name_s = name_raw.strip() if isinstance(name_raw, str) else ""
+    disp_s = disp_raw.strip() if isinstance(disp_raw, str) else ""
+    if (not name_s or is_default_widget_name(name_s)) and disp_s:
+        row.widget_name = disp_s[:_MAX_WIDGET_NAME_LEN]
+        return
+    if name_s and not is_default_widget_name(name_s) and not disp_s:
+        row.widget_display_name = name_s[:255]
+
+
 def canonical_widget_name_on_row(row: Optional[Any]) -> str:
-    """Storefront/dashboard canonical name — ‎widget_name‎ with ‎widget_display_name‎ fallback."""
+    """Storefront canonical name — non-default ‎widget_name‎, else ‎widget_display_name‎."""
     if row is None:
         return _DEFAULT_WIDGET_NAME
     name_raw = getattr(row, "widget_name", None)
-    if isinstance(name_raw, str) and name_raw.strip():
-        return name_raw.strip()[:_MAX_WIDGET_NAME_LEN]
     disp_raw = getattr(row, "widget_display_name", None)
-    if isinstance(disp_raw, str) and disp_raw.strip():
-        return disp_raw.strip()[:_MAX_WIDGET_NAME_LEN]
+    name_s = name_raw.strip() if isinstance(name_raw, str) else ""
+    disp_s = disp_raw.strip() if isinstance(disp_raw, str) else ""
+    if name_s and not is_default_widget_name(name_s):
+        return name_s[:_MAX_WIDGET_NAME_LEN]
+    if disp_s:
+        return disp_s[:_MAX_WIDGET_NAME_LEN]
+    if name_s:
+        return name_s[:_MAX_WIDGET_NAME_LEN]
     return _DEFAULT_WIDGET_NAME
 
 
@@ -46,6 +73,8 @@ def apply_widget_customization_from_body(row: Any, body: Dict[str, Any]) -> None
     if "widget_name" in body:
         n = str(body.get("widget_name") or "").strip()
         row.widget_name = (n[:_MAX_WIDGET_NAME_LEN] if n else _DEFAULT_WIDGET_NAME)
+        if n:
+            row.widget_display_name = n[:255]
     if "widget_primary_color" in body:
         row.widget_primary_color = normalize_widget_primary_hex(
             body.get("widget_primary_color")
@@ -75,8 +104,13 @@ def widget_customization_fields_for_api(row: Optional[Any]) -> Dict[str, str]:
         style_s = style_raw.strip().lower()
     else:
         style_s = _DEFAULT_STYLE
+    disp_out = ""
+    disp_raw = getattr(row, "widget_display_name", None) if row is not None else None
+    if isinstance(disp_raw, str) and disp_raw.strip():
+        disp_out = disp_raw.strip()[:255]
     return {
         "widget_name": name_s,
+        "widget_display_name": disp_out or name_s,
         "widget_primary_color": color_s,
         "widget_style": style_s,
     }

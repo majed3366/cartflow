@@ -11,16 +11,26 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
   var HEADER_DEFAULT = "مساعدة";
 
   function merchantShellTitle() {
+    var out = HEADER_DEFAULT;
+    var brand = null;
     try {
       if (Cf.Config && typeof Cf.Config.merchant === "function") {
         var M = Cf.Config.merchant();
-        var n = M && M.widget_brand_name;
-        if (typeof n === "string" && n.trim()) {
-          return String(n).trim().slice(0, 120);
+        brand = M && M.widget_brand_name;
+        if (typeof brand === "string" && brand.trim()) {
+          out = String(brand).trim().slice(0, 120);
         }
       }
     } catch (eT) {}
-    return HEADER_DEFAULT;
+    try {
+      console.log("[CF WIDGET TITLE TRUTH]", {
+        tag: "merchantShellTitle",
+        rendered: out,
+        config_brand_name: brand,
+        header_fallback: HEADER_DEFAULT,
+      });
+    } catch (eLog) {}
+    return out;
   }
 
   function applyShellTitle(w) {

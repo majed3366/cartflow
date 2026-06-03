@@ -56,6 +56,21 @@ class WidgetSettingsRuntimeTruthWiringTests(unittest.TestCase):
         ).json()
         self.assertFalse(pub.get("cartflow_widget_enabled"))
 
+    def test_split_columns_display_name_reaches_public_config(self) -> None:
+        ss = self._widget_public_store_slug()
+        row = db.session.query(Store).order_by(Store.id.desc()).first()
+        self.assertIsNotNone(row)
+        row.widget_name = "مساعد المتجر"
+        row.widget_display_name = "CARTFLOW"
+        db.session.commit()
+        from services.widget_config_cache import update_from_dashboard_store_row
+
+        update_from_dashboard_store_row(row)
+        pub = self.client.get(
+            "/api/cartflow/public-config", params={"store_slug": ss}
+        ).json()
+        self.assertEqual(pub.get("widget_name"), "CARTFLOW")
+
     def test_general_widget_name_reaches_public_config(self) -> None:
         ss = self._widget_public_store_slug()
         pr = self.client.post(

@@ -113,8 +113,11 @@ def build_snapshot_from_store_row(store_row: Optional[Any]) -> Dict[str, Any]:
     from services.cartflow_widget_public_bundle import (
         merge_widget_template_bundle_from_store_row,
     )
+    from services.store_widget_customization import reconcile_widget_name_columns
     from services.vip_cart import merchant_vip_threshold_int
 
+    if store_row is not None:
+        reconcile_widget_name_columns(store_row)
     tpl = merge_widget_template_bundle_from_store_row(store_row)
     wa: Optional[str] = None
     if store_row is not None:
@@ -164,6 +167,12 @@ def update_from_dashboard_store_row(store_row: Any) -> None:
 
     if store_row is None:
         return
+    try:
+        from services.store_widget_customization import reconcile_widget_name_columns
+
+        reconcile_widget_name_columns(store_row)
+    except Exception:  # noqa: BLE001
+        pass
     snap = build_snapshot_from_store_row(store_row)
     sess = db.session
     ks = _public_payload_keys_from_dashboard_row(sess, store_row)
@@ -204,6 +213,39 @@ def get_snapshot(norm_slug: str) -> Optional[Dict[str, Any]]:
     with _lock:
         got = _store_snapshots.get(norm_slug)
         return dict(got) if isinstance(got, dict) else None
+
+
+def ensure_snapshot_for_hot_path(
+    norm_slug: str, background_tasks: Optional[Any] = None
+) -> Dict[str, Any]:
+    """
+    Storefront hot path: use memory cache; on miss load Store from DB synchronously
+    so widget_name/color are not stuck on safe defaults until a background refresh.
+    """
+    slug = normalize_store_slug(norm_slug)
+    snap = get_snapshot(slug)
+    if snap is not None:
+        return snap
+    if os.environ.get("PYTEST_CURRENT_TEST"):
+        warmup_snapshot_sync_pytest(slug)
+        snap = get_snapshot(slug)
+        if snap is not None:
+            return snap
+    try:
+        snap_new = _load_snapshot_from_db(slug)
+        with _lock:
+            _store_snapshots[slug] = snap_new
+            _refresh_fail_until_mono.pop(slug, None)
+        log.info("[WIDGET CONFIG CACHE SYNC_LOAD] store_slug=%s", slug[:80])
+        return snap_new
+    except Exception as exc:  # noqa: BLE001
+        log.warning(
+            "[WIDGET CONFIG CACHE SYNC_LOAD_FAILED] store_slug=%s err=%s",
+            slug[:80],
+            exc,
+        )
+        maybe_schedule_background_refresh(slug, background_tasks)
+        return build_snapshot_from_store_row(None)
 
 
 def ready_after_step1_memory(store_slug: str, session_id: str) -> bool:
@@ -291,7 +333,29 @@ def _load_snapshot_from_db(norm_slug: str) -> Dict[str, Any]:
 
     with isolated_db_session() as sess:
         row = store_row_for_widget_public_session(sess, norm_slug)
-        return build_snapshot_from_store_row(row)
+        snap = build_snapshot_from_store_row(row)
+        if row is not None:
+            try:
+                from services.store_widget_customization import (
+                    canonical_widget_name_on_row,
+                    is_default_widget_name,
+                )
+
+                name_col = getattr(row, "widget_name", None)
+                if isinstance(name_col, str) and is_default_widget_name(name_col):
+                    canon = canonical_widget_name_on_row(row)
+                    if canon and not is_default_widget_name(canon):
+                        row.widget_name = canon
+                        sess.commit()
+                        log.info(
+                            "[WIDGET NAME RECONCILE] store_slug=%s widget_name=%s",
+                            norm_slug[:80],
+                            canon[:80],
+                        )
+                        snap = build_snapshot_from_store_row(row)
+            except Exception:  # noqa: BLE001
+                sess.rollback()
+        return snap
 
 
 def _release_refresh_busy(norm_slug: str) -> None:

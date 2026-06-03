@@ -136,12 +136,53 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     } catch (eW) {}
   }
 
+  function logTitleTruth(tag, extra) {
+    try {
+      var payload = {
+        tag: tag || "?",
+        payload_widget_name:
+          extra && extra.payload_widget_name != null ? extra.payload_widget_name : null,
+        payload_widget_display_name:
+          extra && extra.payload_widget_display_name != null
+            ? extra.payload_widget_display_name
+            : null,
+        resolved_brand_name: CRT.merchant.widget_brand_name,
+        merchant_fn: CRT.merchant,
+      };
+      console.log("[CF WIDGET TITLE TRUTH]", payload);
+    } catch (eLt) {}
+  }
+
+  function resolveBrandNameFromPayload(j) {
+    if (!j || typeof j !== "object") {
+      return null;
+    }
+    var def = "مساعد المتجر";
+    var nm =
+      "widget_name" in j && typeof j.widget_name === "string" ? j.widget_name.trim() : "";
+    var disp =
+      "widget_display_name" in j && typeof j.widget_display_name === "string"
+        ? j.widget_display_name.trim()
+        : "";
+    if (nm && nm !== def) {
+      return nm.slice(0, 120);
+    }
+    if (disp) {
+      return disp.slice(0, 120);
+    }
+    if (nm) {
+      return nm.slice(0, 120);
+    }
+    return null;
+  }
+
   function applyVisual(j) {
     if (!j || typeof j !== "object") {
       return;
     }
-    if ("widget_name" in j && typeof j.widget_name === "string" && j.widget_name.trim()) {
-      CRT.merchant.widget_brand_name = String(j.widget_name).trim().slice(0, 120);
+    var resolved = resolveBrandNameFromPayload(j);
+    if (resolved) {
+      CRT.merchant.widget_brand_name = resolved;
     }
     if (
       "widget_primary_color" in j &&
@@ -159,6 +200,10 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
         CRT.merchant.widget_chrome_style = st;
       }
     }
+    logTitleTruth("applyVisual", {
+      payload_widget_name: j.widget_name,
+      payload_widget_display_name: j.widget_display_name,
+    });
     try {
       var Sh = window.CartflowWidgetRuntime && window.CartflowWidgetRuntime.Shell;
       if (Sh && typeof Sh.refreshTitle === "function") {
@@ -223,11 +268,18 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     }
     applyMerchantGate(j);
     applyVisual(j);
+    logTitleTruth("applyPayload", {
+      payload_widget_name: j.widget_name,
+      payload_widget_display_name: j.widget_display_name,
+      source: sourceNote || "?",
+    });
     try {
       console.log("[WIDGET CONFIG LOADED V2]", {
         source: sourceNote || "?",
         phone_capture_mode: phoneCaptureMode(),
         hesitation_seconds: hesitationDelaySeconds(),
+        widget_name: j.widget_name,
+        widget_brand_name: CRT.merchant.widget_brand_name,
       });
     } catch (eLo) {}
   }
