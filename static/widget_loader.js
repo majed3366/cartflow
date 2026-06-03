@@ -12,7 +12,7 @@
 (function () {
   "use strict";
 
-  var RUNTIME_VERSION = "v2-zid-recovery-widget-1";
+  var RUNTIME_VERSION = "v2-approved-recovery-flow-1";
 
   function cartflowWidgetLoaderScriptUrl() {
     try {

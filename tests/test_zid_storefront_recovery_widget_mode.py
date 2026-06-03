@@ -23,6 +23,7 @@ class ZidStorefrontRecoveryWidgetModeTests(unittest.TestCase):
     def test_recovery_question_routes_to_reason_list_not_browsing(self) -> None:
         flows = _FLOWS.read_text(encoding="utf-8")
         self.assertIn("CARTFLOW_RECOVERY_WIDGET_MODE", flows)
+        self.assertIn('return "تبي أساعدك تكمل طلبك؟"', flows)
         self.assertIn("exit_intent_storefront_recovery", flows)
         self.assertIn("showBubbleCartRecovery", flows)
         self.assertIn("mountReasonList();", flows)

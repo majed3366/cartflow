@@ -273,17 +273,26 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     Cf.Shell.open({ primaryColor: opts.primaryColor });
     Cf.Shell.setStep("continuation");
     var ph = opts.primaryColor || "#6366f1";
-    var msgs = opts.messages || {};
-    var rk = String(opts.reasonKey || "other").toLowerCase();
-    var txt =
-      msgs[rk] ||
-      "تمام 👍\nأنا معك إذا احتجت أي توضيح قبل تكمل الطلب.";
+    var bullets = Array.isArray(opts.bullets) ? opts.bullets : [];
+    var compact = opts.compactRecovery === true;
     var frag = document.createDocumentFragment();
-    var p = document.createElement("p");
-    p.style.cssText =
-      textPrimary + "margin-bottom:10px;font-size:13px;line-height:1.55;white-space:pre-line;";
-    p.textContent = txt;
-    frag.appendChild(p);
+    if (bullets.length > 0) {
+      var head = document.createElement("p");
+      head.style.cssText =
+        textPrimary + "margin-bottom:6px;font-size:13px;line-height:1.45;font-weight:600;";
+      head.textContent = "قد يفيدك:";
+      frag.appendChild(head);
+      var ul = document.createElement("ul");
+      ul.style.cssText =
+        "margin:0 0 10px 0;padding:0 18px 0 0;list-style:disc;color:rgba(241,245,249,.92);font-size:13px;line-height:1.5;";
+      bullets.forEach(function (line) {
+        var li = document.createElement("li");
+        li.style.cssText = "margin-bottom:4px;";
+        li.textContent = String(line || "");
+        ul.appendChild(li);
+      });
+      frag.appendChild(ul);
+    }
     var row = document.createElement("div");
     row.style.cssText = rowStyleCol;
     function addPrimary(label, fn) {
@@ -293,6 +302,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       stampPrimary(b, ph);
       b.addEventListener("click", function (e) {
         e.preventDefault();
+        e.stopPropagation();
         fn();
       });
       row.appendChild(b);
@@ -304,16 +314,26 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       stampSecondaryOutline(b);
       b.addEventListener("click", function (e) {
         e.preventDefault();
+        e.stopPropagation();
         fn();
       });
       row.appendChild(b);
     }
     addPrimary("أكمل الطلب", opts.onContinueCart);
-    addSecondary("أحتاج مساعدة الآن", opts.onAssist);
+    if (typeof opts.onThanks === "function") {
+      addSecondary("شكراً", opts.onThanks);
+    }
+    if (!compact) {
+      if (typeof opts.onAssist === "function") {
+        addSecondary("أحتاج مساعدة الآن", opts.onAssist);
+      }
+      if (typeof opts.onBackReasons === "function") {
+        addSecondary("رجوع للأسباب", opts.onBackReasons);
+      }
+    }
     if (opts.onStartNewTest && typeof opts.onStartNewTest === "function") {
       addSecondary("بدء تجربة جديدة", opts.onStartNewTest);
     }
-    addSecondary("رجوع للأسباب", opts.onBackReasons);
     if (opts.onRetryBackgroundSave && typeof opts.onRetryBackgroundSave === "function") {
       var rz = document.createElement("button");
       rz.type = "button";
@@ -333,6 +353,127 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     try {
       console.log("[CF V2 SHOW CONTINUATION]");
     } catch (eCo) {}
+  }
+
+  function renderOptionalPhoneFollowup(opts) {
+    if (!Cf.Shell) {
+      return;
+    }
+    Cf.Shell.open({ primaryColor: opts.primaryColor });
+    Cf.Shell.setStep("phone");
+    var ph = opts.primaryColor || "#6366f1";
+    var frag = document.createDocumentFragment();
+    var t = document.createElement("p");
+    t.style.cssText =
+      textPrimary + "margin-bottom:8px;font-size:13px;line-height:1.45;font-weight:600;";
+    t.textContent = opts.title || "اترك رقمك للمتابعة";
+    frag.appendChild(t);
+    var inp = document.createElement("input");
+    inp.type = "tel";
+    inp.placeholder = "05xxxxxxxx";
+    inp.setAttribute("dir", "ltr");
+    inp.style.cssText =
+      "width:100%;box-sizing:border-box;border-radius:9px;border:1px solid rgba(99,102,241,.38);" +
+      "background:rgba(15,23,42,.65);padding:9px 10px;margin-bottom:6px;font:inherit;font-size:14px;color:#f8fafc;" +
+      "outline:none;";
+    frag.appendChild(inp);
+    var err = document.createElement("p");
+    err.style.cssText = "margin:0 0 8px;color:#fecaca;font-size:12px;line-height:1.35;";
+    err.textContent = "";
+    frag.appendChild(err);
+    var row = document.createElement("div");
+    row.style.cssText = rowStyleCol;
+    var save = document.createElement("button");
+    save.type = "button";
+    save.textContent = "حفظ الرقم";
+    stampPrimary(save, ph);
+    var skip = document.createElement("button");
+    skip.type = "button";
+    skip.textContent = "تخطي";
+    stampSecondaryOutline(skip);
+    skip.addEventListener("click", function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      opts.onSkip();
+    });
+    save.addEventListener("click", function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      err.textContent = "";
+      var pn = Cf.State.normalizePhoneDigits(inp.value);
+      if (!pn) {
+        err.textContent = "رقم غير صحيح";
+        return;
+      }
+      opts.onSave(pn);
+    });
+    row.appendChild(save);
+    row.appendChild(skip);
+    frag.appendChild(row);
+    Cf.Shell.setContent(frag, "phone_optional");
+    try {
+      console.log("[CF V2 SHOW PHONE OPTIONAL]");
+    } catch (ePo) {}
+  }
+
+  function renderOtherRecoveryForm(opts) {
+    if (!Cf.Shell) {
+      return;
+    }
+    Cf.Shell.open({ primaryColor: opts.primaryColor });
+    Cf.Shell.setStep("other_recovery");
+    var ph = opts.primaryColor || "#6366f1";
+    var frag = document.createDocumentFragment();
+    var hi = document.createElement("p");
+    hi.style.cssText = textPrimary + "margin-bottom:8px;font-size:13px;line-height:1.5;font-weight:600;";
+    hi.textContent = "وش السبب اللي مخلّيك متردد؟";
+    frag.appendChild(hi);
+    var hint = document.createElement("p");
+    hint.style.cssText = textMuted + "margin-bottom:6px;font-size:12px;line-height:1.4;";
+    hint.textContent = "اختياري — يمكنك ترك الملاحظة فارغة";
+    frag.appendChild(hint);
+    var ta = document.createElement("textarea");
+    ta.rows = 3;
+    ta.style.cssText =
+      "width:100%;box-sizing:border-box;border-radius:9px;border:1px solid rgba(99,102,241,.38);" +
+      "background:rgba(15,23,42,.65);padding:8px;margin-bottom:8px;font:inherit;resize:vertical;color:#f8fafc;";
+    frag.appendChild(ta);
+    var row = document.createElement("div");
+    row.style.cssText = rowStyleCol;
+    var cont = document.createElement("button");
+    cont.type = "button";
+    cont.textContent = "أكمل الطلب";
+    stampPrimary(cont, ph);
+    var thanks = document.createElement("button");
+    thanks.type = "button";
+    thanks.textContent = "شكراً";
+    stampSecondaryOutline(thanks);
+    cont.addEventListener("click", function (e) {
+      e.preventDefault();
+      opts.onContinueCart(String(ta.value || "").trim());
+    });
+    thanks.addEventListener("click", function (e) {
+      e.preventDefault();
+      opts.onThanks(String(ta.value || "").trim());
+    });
+    row.appendChild(cont);
+    row.appendChild(thanks);
+    frag.appendChild(row);
+    if (opts.onBack) {
+      var back = document.createElement("button");
+      back.type = "button";
+      back.style.cssText = btnGhostStyle();
+      back.textContent = "رجوع";
+      back.addEventListener("click", function (e) {
+        e.preventDefault();
+        opts.onBack();
+      });
+      frag.appendChild(back);
+    }
+    Cf.Shell.setContent(frag, "other_recovery");
+    try {
+      console.log("[CF V2 SHOW OTHER RECOVERY]");
+    } catch (eOr) {}
   }
 
   function hideBubble() {
@@ -449,6 +590,8 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     renderPhoneStep: renderPhoneStep,
     renderContinuation: renderContinuation,
     renderOtherDraftForm: renderOtherDraftForm,
+    renderOtherRecoveryForm: renderOtherRecoveryForm,
+    renderOptionalPhoneFollowup: renderOptionalPhoneFollowup,
     renderPriceBranches: renderPriceBranches,
     hideBubble: hideBubble,
     bubbleRoot: bubbleRoot,

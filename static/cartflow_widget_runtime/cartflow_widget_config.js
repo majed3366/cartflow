@@ -181,7 +181,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       quality: "الجودة",
       warranty: "الضمان",
       shipping: "الشحن",
-      delivery: "مدة التوصيل",
+      delivery: "التوصيل",
       other: "سبب آخر",
     };
   }

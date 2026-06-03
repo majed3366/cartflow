@@ -6,7 +6,8 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
   "use strict";
 
   var Cf = window.CartflowWidgetRuntime;
-  var FLOW_VERSION = "v2-layer-alpha1";
+  var FLOW_VERSION = "v2-approved-recovery-flow-1";
+  var SS_V2_PHONE_PROMPT_DONE = "cartflow_cf_v2_optional_phone_done";
   /** Polling cadence/caps for `/api/cartflow/ready` bootstrap (avoid unbounded churn). */
   var READY_POLL_INTERVAL_MS = 120;
   var MAX_READY_POLL_DURATION_MS = 75000;
@@ -16,22 +17,36 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
   /** Set while `ensureStep1Then` is waiting; public-config completion pings this if still pending. */
   var notifyStep1PublicConfigHydrated = null;
 
-  var CONTINUATION = {
-    price: "أفهم 👍\nخلني أساعدك بخيار أنسب أو أوضح لك القيمة بشكل أفضل.",
-    shipping: "واضح إن الشحن مهم لك 👍\nأقدر أوضح لك خيارات الشحن أو الأسرع للطلب.",
-    delivery: "أكيد 👍\nخلني أوضح لك مدة التوصيل المتوقعة بشكل أدق.",
-    quality: "أتفهم 👍\nأقدر أوضح لك الجودة والتفاصيل بشكل أفضل.",
-    warranty: "أكيد 👍\nأوضح لك سياسة الضمان والاستبدال بكل بساطة.",
-    thinking:
-      "خذ وقتك 👍\nأقدر أقارن لك بين الخيارات أو أوضح اللي يهمك قبل لا تكمّل.",
-    other: "تمام 👍\nأنا معك إذا احتجت أي توضيح قبل تكمل الطلب.",
+  /** Short in-widget hints only — persuasion stays in background recovery/WhatsApp. */
+  var RECOVERY_SUGGESTIONS = {
+    price: [
+      "الدفع لاحقاً",
+      "منتج مشابه بسعر أقل",
+      "توضيح القيمة مقابل السعر",
+    ],
+    shipping: [
+      "معرفة تكلفة الشحن",
+      "مدة الشحن",
+      "الشحن المجاني إن وجد",
+    ],
+    quality: ["تقييمات العملاء", "مواصفات المنتج", "الضمان"],
+    delivery: [
+      "موعد الوصول المتوقع",
+      "خيارات التوصيل المتاحة",
+      "حالة التوصيل في منطقتك",
+    ],
+    warranty: [
+      "مدة الضمان",
+      "ما الذي يشمله الضمان",
+      "سياسة الاستبدال والاسترجاع",
+    ],
+    thinking: [
+      "مقارنة بين الخيارات",
+      "توضيح ما يهمك قبل الإكمال",
+      "متابعة لاحقة عند الحاجة",
+    ],
+    other: [],
   };
-
-  var PRICE_SUB_ROWS = [
-    { r: "price_discount_request", label: "أبحث عن كود خصم" },
-    { r: "price_budget_issue", label: "السعر أعلى من ميزانيتي" },
-    { r: "price_cheaper_alternative", label: "أريد خيار أرخص" },
-  ];
 
   function isDemoPath() {
     return /\b\/demo\//i.test(String(window.location.pathname || ""));
@@ -139,10 +154,99 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
   }
 
   function getCartRecoveryQuestion() {
-    if (isStorefrontRecoveryMode()) {
-      return "تحتاج مساعدة قبل ما تطلع؟";
-    }
     return "تبي أساعدك تكمل طلبك؟";
+  }
+
+  function recoverySuggestionBullets(reasonKey) {
+    var rk = String(reasonKey || "other").toLowerCase();
+    var list = RECOVERY_SUGGESTIONS[rk];
+    return Array.isArray(list) ? list.slice() : [];
+  }
+
+  function markWidgetDismissed() {
+    try {
+      window.sessionStorage.setItem("cartflow_cf_suppress_after_dismiss", "1");
+    } catch (eDs) {}
+    setBubbleShown(false);
+  }
+
+  function gracefulCloseWidget() {
+    markWidgetDismissed();
+    try {
+      if (Cf.Shell && typeof Cf.Shell.minimizeLauncher === "function") {
+        Cf.Shell.minimizeLauncher();
+        return;
+      }
+    } catch (eMin) {}
+    try {
+      Cf.Ui.hideBubble();
+    } catch (eHb) {}
+  }
+
+  function optionalPhonePromptAlreadyDone() {
+    try {
+      return window.sessionStorage.getItem(SS_V2_PHONE_PROMPT_DONE) === "1";
+    } catch (eP) {
+      return false;
+    }
+  }
+
+  function markOptionalPhonePromptDone() {
+    try {
+      window.sessionStorage.setItem(SS_V2_PHONE_PROMPT_DONE, "1");
+    } catch (eM) {}
+  }
+
+  function handleThanksAfterReason(reasonKey) {
+    var rk = String(reasonKey || st().pending_reason_key || "other").toLowerCase();
+    var payload = st().pending_reason_payload || { reason: rk };
+    var detail = st().pending_reason_detail || {};
+    var subCat = detail.sub_category != null ? detail.sub_category : null;
+    var textHint =
+      detail.custom_text != null ? String(detail.custom_text) : "";
+
+    try {
+      console.log("[CF V2 THANKS]", { reason_key: rk });
+    } catch (eTh) {}
+
+    if (Cf.State.hasValidStoredPhone()) {
+      runBackgroundReasonPhoneSave({
+        payload: Object.assign({}, payload),
+        phoneNorm: Cf.State.getStoredPhoneNorm(),
+        subHint: subCat != null ? String(subCat) : "",
+        textHint: textHint,
+        reasonKey: rk,
+        kind: "reason_phone",
+      });
+      gracefulCloseWidget();
+      return;
+    }
+
+    if (optionalPhonePromptAlreadyDone()) {
+      gracefulCloseWidget();
+      return;
+    }
+    markOptionalPhonePromptDone();
+
+    Cf.Ui.renderOptionalPhoneFollowup({
+      primaryColor: primaryHex(),
+      title: "اترك رقمك للمتابعة",
+      onSave: function (pn) {
+        runBackgroundReasonPhoneSave({
+          payload: Object.assign({}, payload),
+          phoneNorm: pn,
+          subHint: subCat != null ? String(subCat) : "",
+          textHint: textHint,
+          reasonKey: rk,
+          kind: "reason_phone",
+        });
+        gracefulCloseWidget();
+      },
+      onSkip: function () {
+        gracefulCloseWidget();
+      },
+    });
+    setBubbleShown(true);
   }
 
   function scrollToCartOrCheckout() {
@@ -301,16 +405,18 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       }
     } catch (eRm2) {}
     var retryMeta = st().background_retry_meta;
+    var rk = String(reasonKey || "other").toLowerCase();
     Cf.Ui.renderContinuation({
       primaryColor: primaryHex(),
-      messages: CONTINUATION,
-      reasonKey: reasonKey,
+      bullets: recoverySuggestionBullets(rk),
+      reasonKey: rk,
+      compactRecovery: true,
       retryLabel: "إعادة إرسال",
       onContinueCart: function () {
         scrollToCartOrCheckout();
       },
-      onAssist: function () {
-        handoffAssistThenOpenWa();
+      onThanks: function () {
+        handleThanksAfterReason(rk);
       },
       onStartNewTest:
         isMerchantActivationMode() &&
@@ -329,9 +435,6 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
               } catch (eRs) {}
             }
           : null,
-      onBackReasons: function () {
-        mountReasonList();
-      },
       onRetryBackgroundSave:
         retryMeta != null
           ? function () {
@@ -356,9 +459,12 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
 
   /** ---- Reason flow internals ---- */
 
-  function openReasonPhoneImmediate(reasonKey, payload, detail) {
-    var rk = String(reasonKey || "").toLowerCase();
+  function openReasonPath(reasonKey, payload, detail) {
     detail = detail || {};
+    var rk = String(reasonKey || "").toLowerCase();
+    var subCat =
+      detail.sub_category != null ? detail.sub_category : null;
+
     st().pending_reason_key = rk;
     st().pending_reason_payload = Object.assign({}, payload || {});
     st().pending_reason_detail = Object.assign({}, detail || {});
@@ -366,94 +472,11 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       console.log("[CF REASON SELECTED V2]", { reason_key: rk });
     } catch (eR) {}
     try {
-      console.log("[CF UX REASON INSTANT]", { reason_key: rk });
-    } catch (eUx) {}
-
-    Cf.Ui.renderPhoneStep({
-      primaryColor: primaryHex(),
-      optimisticSave: true,
-      onBack: function () {
-        mountReasonList();
-      },
-      onSave: function (pn) {
-        try {
-          console.log("[CF UX PHONE INSTANT]", { reason_key: rk });
-        } catch (ePh) {}
-        var subCat =
-          detail.sub_category != null ? detail.sub_category : null;
-        showContinuation(rk, subCat);
-        runBackgroundReasonPhoneSave({
-          payload: Object.assign({}, payload || {}),
-          phoneNorm: pn,
-          subHint: subCat != null ? String(subCat) : "",
-          textHint:
-            detail.custom_text != null ? String(detail.custom_text) : "",
-          reasonKey: rk,
-          continuationSub: subCat,
-          kind: "reason_phone",
-        });
-        return Promise.resolve();
-      },
-    });
-    setBubbleShown(true);
-    try {
-      var root =
-        Cf.Shell && Cf.Shell.getRoot ? Cf.Shell.getRoot() : null;
-      if (root) {
-        root.setAttribute("data-cf-after-reason-phone-step", "1");
-      }
-    } catch (eAt) {}
-  }
-
-  function openReasonPath(reasonKey, payload, detail) {
-    detail = detail || {};
-    var rk = String(reasonKey || "").toLowerCase();
-    var pcm = String(Cf.Config.phoneCaptureMode() || "after_reason").toLowerCase();
-    var has = Cf.State.hasValidStoredPhone();
-    var subCat =
-      detail.sub_category != null ? detail.sub_category : null;
-
-    if (pcm === "none") {
-      st().pending_reason_key = rk;
-      st().pending_reason_payload = Object.assign({}, payload || {});
-      st().pending_reason_detail = Object.assign({}, detail || {});
-      try {
-        console.log("[CF UX REASON INSTANT]", {
-          reason_key: rk,
-          path: "to_continuation_direct",
-          pcm: pcm,
-        });
-      } catch (eUr) {}
-
-      showContinuation(rk, subCat);
-      runBackgroundReasonOnly(
-        Object.assign({}, payload || {}),
-        rk,
-        subCat
-      );
-      return;
-    }
-
-    if (pcm === "after_reason") {
-      openReasonPhoneImmediate(rk, payload, detail);
-      return;
-    }
-
-    if (!has) {
-      openReasonPhoneImmediate(rk, payload, detail);
-      return;
-    }
-
-    st().pending_reason_key = rk;
-    st().pending_reason_payload = Object.assign({}, payload || {});
-    st().pending_reason_detail = Object.assign({}, detail || {});
-    try {
       console.log("[CF UX REASON INSTANT]", {
         reason_key: rk,
-        path: "to_continuation_direct",
-        pcm: pcm,
+        path: "to_suggestions",
       });
-    } catch (eUr2) {}
+    } catch (eUx) {}
 
     showContinuation(rk, subCat);
     runBackgroundReasonOnly(
@@ -491,33 +514,33 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       primaryColor: primaryHex(),
       rows: rows,
       onPick: function (item) {
-        if (item.r === "price") {
-          Cf.Ui.renderPriceBranches({
-            primaryColor: primaryHex(),
-            options: PRICE_SUB_ROWS.map(function (x) {
-              return { r: x.r, label: x.label };
-            }),
-            onPick: function (sub) {
-              openReasonPath(
-                "price",
-                { reason: "price", sub_category: sub.r },
-                { sub_category: sub.r }
-              );
-            },
-            onBack: mountReasonList,
-          });
-          return;
-        }
         if (item.r === "other") {
-          Cf.Ui.renderOtherDraftForm({
+          Cf.Ui.renderOtherRecoveryForm({
             primaryColor: primaryHex(),
             onBack: mountReasonList,
-            onSubmit: function (note) {
-              openReasonPath(
-                "other",
-                { reason: "other", custom_text: note },
-                { custom_text: note }
-              );
+            onContinueCart: function (note) {
+              var noteStr = String(note || "").trim();
+              var payload = { reason: "other" };
+              if (noteStr) {
+                payload.custom_text = noteStr;
+              }
+              st().pending_reason_key = "other";
+              st().pending_reason_payload = Object.assign({}, payload);
+              st().pending_reason_detail = { custom_text: noteStr };
+              runBackgroundReasonOnly(payload, "other", null);
+              scrollToCartOrCheckout();
+            },
+            onThanks: function (note) {
+              var noteStr = String(note || "").trim();
+              var payload = { reason: "other" };
+              if (noteStr) {
+                payload.custom_text = noteStr;
+              }
+              st().pending_reason_key = "other";
+              st().pending_reason_payload = Object.assign({}, payload);
+              st().pending_reason_detail = { custom_text: noteStr };
+              runBackgroundReasonOnly(payload, "other", null);
+              handleThanksAfterReason("other");
             },
           });
           return;

@@ -79,6 +79,8 @@ class V2WidgetBaselineLockTests(unittest.TestCase):
         self.assertIn("[CF V2 SHOW PHONE]", ui)
         self.assertIn("[CF V2 SHOW CONTINUATION]", ui)
         self.assertIn("أكمل الطلب", ui)
+        self.assertIn("شكراً", ui)
+        self.assertIn("قد يفيدك", ui)
 
     def test_cart_recovery_no_minimizes_or_hides(self) -> None:
         """Baseline: «لا» on cart recovery yes/no minimizes launcher (not only close)."""
