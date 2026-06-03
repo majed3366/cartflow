@@ -12,7 +12,7 @@
 (function () {
   "use strict";
 
-  var RUNTIME_VERSION = "v2-widget-name-color-truth-1";
+  var RUNTIME_VERSION = "v2-storefront-store-slug-1";
 
   function cartflowWidgetLoaderScriptUrl() {
     try {
@@ -74,6 +74,37 @@
   }
 
   cartflowEnsureEmbedOriginFromLoader();
+
+  function cartflowEnsureStoreSlugResolverLoaded() {
+    if (typeof window.cartflowResolveStorefrontStoreSlug === "function") {
+      return;
+    }
+    var url =
+      cartflowStaticAssetUrl("cartflow_storefront_store_slug.js") +
+      "?v=" +
+      encodeURIComponent(RUNTIME_VERSION);
+    try {
+      var xhr = new XMLHttpRequest();
+      xhr.open("GET", url, false);
+      xhr.send(null);
+      if (xhr.status >= 200 && xhr.status < 300 && xhr.responseText) {
+        (0, eval)(xhr.responseText);
+      }
+    } catch (eResolverLoad) {
+      /* runtime api may still resolve later */
+    }
+  }
+
+  function cartflowApplyResolvedStoreSlug() {
+    cartflowEnsureStoreSlugResolverLoaded();
+    if (typeof window.cartflowResolveStorefrontStoreSlug !== "function") {
+      return;
+    }
+    var resolved = window.cartflowResolveStorefrontStoreSlug();
+    if (resolved && resolved.slug) {
+      window.CARTFLOW_STORE_SLUG = resolved.slug;
+    }
+  }
 
   /** Cross-origin embed (e.g. Zid): approved cart-recovery V2, not browsing assistant. */
   function cartflowIsStorefrontEmbed() {
@@ -222,26 +253,12 @@
       if (/\/demo\b/i.test(p) || /^\/dev(\/|$)/i.test(p)) {
         return;
       }
+      cartflowApplyResolvedStoreSlug();
       var slug = "";
       try {
         slug = window.CARTFLOW_STORE_SLUG || "";
       } catch (eS0) {
         slug = "";
-      }
-      if (!slug) {
-        var scripts = document.getElementsByTagName("script");
-        var i;
-        for (i = scripts.length - 1; i >= 0; i--) {
-          var node = scripts[i];
-          if (String(node.src || "").indexOf("widget_loader") === -1) {
-            continue;
-          }
-          var ds = node.getAttribute("data-store");
-          if (ds && String(ds).trim()) {
-            slug = String(ds).trim();
-          }
-          break;
-        }
       }
       if (!slug || slug === "demo") {
         return;
@@ -281,29 +298,7 @@
 
   (function cartflowInitStoreSlugFromLoaderTag() {
     try {
-      var scripts = document.getElementsByTagName("script");
-      var i;
-      for (i = scripts.length - 1; i >= 0; i--) {
-        var node = scripts[i];
-        if (String(node.src || "").indexOf("widget_loader") === -1) {
-          continue;
-        }
-        var ds = node.getAttribute("data-store");
-        if (ds && String(ds).trim()) {
-          window.CARTFLOW_STORE_SLUG = String(ds).trim();
-        } else if (node.src) {
-          try {
-            var qu = new URL(node.src, window.location.href).searchParams;
-            var fromQs = qu.get("store") || qu.get("store_slug") || "";
-            if (fromQs && String(fromQs).trim()) {
-              window.CARTFLOW_STORE_SLUG = String(fromQs).trim();
-            }
-          } catch (eQs) {
-            /* ignore */
-          }
-        }
-        break;
-      }
+      cartflowApplyResolvedStoreSlug();
     } catch (eInitSlug) {
       /* ignore */
     }
