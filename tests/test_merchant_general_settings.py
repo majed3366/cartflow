@@ -56,7 +56,9 @@ class MerchantGeneralSettingsTests(unittest.TestCase):
         self.assertIn("settings_notify_vip", data)
         self.assertIn("settings_notify_recovery_success", data)
         self.assertIn("settings_notify_whatsapp_failure", data)
+        self.assertIn("cartflow_widget_enabled", data)
         self.assertIn("widget_enabled", data)
+        self.assertIn("widget_name", data)
         self.assertIn("widget_display_name", data)
         self.assertIn("merchant_automation_mode", data)
         self.assertIn("merchant_automation_mode_ar", data)
@@ -85,8 +87,8 @@ class MerchantGeneralSettingsTests(unittest.TestCase):
                 "settings_notify_vip": False,
                 "settings_notify_recovery_success": True,
                 "settings_notify_whatsapp_failure": True,
-                "widget_enabled": True,
-                "widget_display_name": "CART",
+                "cartflow_widget_enabled": True,
+                "widget_name": "CART",
                 "merchant_settings_scope": "general",
             },
         )
@@ -95,25 +97,26 @@ class MerchantGeneralSettingsTests(unittest.TestCase):
         self.assertTrue(j1.get("ok"))
         self.assertEqual(j1.get("merchant_automation_mode"), "auto")
         self.assertFalse(j1.get("settings_notify_vip"))
-        self.assertEqual(j1.get("widget_display_name"), "CART")
+        self.assertEqual(j1.get("widget_name"), "CART")
 
         j_get = self.client.get("/api/recovery-settings").json()
         self.assertEqual(j_get.get("merchant_automation_mode"), "auto")
         self.assertFalse(j_get.get("settings_notify_vip"))
-        self.assertEqual(j_get.get("widget_display_name"), "CART")
+        self.assertEqual(j_get.get("widget_name"), "CART")
 
         saved = db.session.get(Store, self.row.id)
         assert saved is not None
         self.assertEqual(saved.merchant_automation_mode, "auto")
         self.assertFalse(bool(saved.settings_notify_vip))
-        self.assertEqual((saved.widget_display_name or "").strip(), "CART")
+        self.assertEqual((saved.widget_name or "").strip(), "CART")
+        self.assertTrue(bool(saved.cartflow_widget_enabled))
 
     def test_general_only_post_does_not_rewrite_widget_trigger_json(self) -> None:
         before = widget_trigger_config_from_store_row(self.row)
         self.client.post(
             "/api/recovery-settings",
             json={
-                "widget_display_name": "CartFlow",
+                "widget_name": "CartFlow",
                 "merchant_settings_scope": "general",
             },
         )
@@ -122,7 +125,7 @@ class MerchantGeneralSettingsTests(unittest.TestCase):
         assert refreshed is not None
         after = widget_trigger_config_from_store_row(refreshed)
         self.assertEqual(after, before)
-        self.assertEqual((refreshed.widget_display_name or "").strip(), "CartFlow")
+        self.assertEqual((refreshed.widget_name or "").strip(), "CartFlow")
 
     def test_general_only_patch_response_is_minimal(self) -> None:
         post = self.client.post(
@@ -151,17 +154,17 @@ class MerchantGeneralSettingsTests(unittest.TestCase):
             },
         )
         self.assertEqual(post.status_code, 200, post.text[:400])
-        self.assertEqual(post.json().get("widget_display_name"), "TEST123")
+        self.assertEqual(post.json().get("widget_name"), "TEST123")
 
         get_after = self.client.get("/api/recovery-settings").json()
-        self.assertEqual(get_after.get("widget_display_name"), "TEST123")
+        self.assertEqual(get_after.get("widget_name"), "TEST123")
         self.assertEqual(
             get_after.get("settings_widget_name_display_ar"), "TEST123"
         )
 
         saved = db.session.get(Store, self.row.id)
         assert saved is not None
-        self.assertEqual((saved.widget_display_name or "").strip(), "TEST123")
+        self.assertEqual((saved.widget_name or "").strip(), "TEST123")
 
     def test_general_save_does_not_rewrite_recovery_delay(self) -> None:
         self.row.recovery_delay = 17

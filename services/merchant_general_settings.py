@@ -13,7 +13,15 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from extensions import db
 from models import Store
+from services.cartflow_widget_recovery_gate import cartflow_widget_recovery_gate_fields_for_api
 from services.merchant_dashboard_reference_ui import merchant_relative_time_arabic
+from services.store_widget_customization import (
+    _DEFAULT_WIDGET_NAME,
+    _MAX_WIDGET_NAME_LEN,
+    apply_widget_customization_from_body,
+    canonical_widget_name_on_row,
+    widget_customization_fields_for_api,
+)
 
 _log = logging.getLogger("cartflow.merchant_general_settings")
 
@@ -34,7 +42,9 @@ _GENERAL_PATCH_KEYS = frozenset(
         "settings_notify_recovery_success",
         "settings_notify_whatsapp_failure",
         "widget_enabled",
+        "cartflow_widget_enabled",
         "widget_display_name",
+        "widget_name",
         "merchant_automation_mode",
         "merchant_settings_scope",
     }
@@ -150,13 +160,15 @@ def notifications_summary_ar(store: Optional[Any]) -> str:
 
 
 def widget_display_name_for_api(store: Optional[Any]) -> Optional[str]:
+    """Legacy alias — same canonical string as ‎widget_name‎ for dashboards."""
     if store is None:
         return None
-    raw = getattr(store, "widget_display_name", None)
-    if not isinstance(raw, str):
-        return None
-    trimmed = raw.strip()[:255]
-    return trimmed or None
+    name = canonical_widget_name_on_row(store)
+    if name == _DEFAULT_WIDGET_NAME:
+        disp = getattr(store, "widget_display_name", None)
+        if isinstance(disp, str) and disp.strip():
+            return disp.strip()[:255]
+    return name if name != _DEFAULT_WIDGET_NAME else None
 
 
 def settings_updated_at_ar(store: Optional[Any]) -> str:
@@ -171,7 +183,11 @@ def settings_updated_at_ar(store: Optional[Any]) -> str:
 def merchant_general_settings_fields_for_api(store: Optional[Any]) -> Dict[str, Any]:
     ensure_store_merchant_general_settings_schema()
     mode = merchant_automation_mode(store)
-    wname = widget_display_name_for_api(store)
+    gate = cartflow_widget_recovery_gate_fields_for_api(store)
+    wc = widget_customization_fields_for_api(store)
+    widget_on = bool(gate.get("cartflow_widget_enabled", True))
+    wname = wc.get("widget_name") or _DEFAULT_WIDGET_NAME
+    wname_disp = wname if wname != _DEFAULT_WIDGET_NAME else (widget_display_name_for_api(store) or wname)
     return {
         "settings_notify_vip": _bool_from_store(
             getattr(store, "settings_notify_vip", None), default=True
@@ -182,14 +198,14 @@ def merchant_general_settings_fields_for_api(store: Optional[Any]) -> Dict[str, 
         "settings_notify_whatsapp_failure": _bool_from_store(
             getattr(store, "settings_notify_whatsapp_failure", None), default=True
         ),
-        "widget_enabled": _bool_from_store(
-            getattr(store, "widget_enabled", None), default=True
-        ),
-        "widget_display_name": wname,
+        "cartflow_widget_enabled": widget_on,
+        "widget_enabled": widget_on,
+        "widget_name": wname,
+        "widget_display_name": wname_disp,
         "merchant_automation_mode": mode,
         "merchant_automation_mode_ar": automation_mode_label_ar(mode),
         "settings_notifications_summary_ar": notifications_summary_ar(store),
-        "settings_widget_name_display_ar": wname or "—",
+        "settings_widget_name_display_ar": wname_disp or "—",
         "settings_updated_at_ar": settings_updated_at_ar(store),
     }
 
@@ -212,7 +228,9 @@ def is_merchant_general_settings_only_patch(body: Optional[Dict[str, Any]]) -> b
             "settings_notify_recovery_success",
             "settings_notify_whatsapp_failure",
             "widget_enabled",
+            "cartflow_widget_enabled",
             "widget_display_name",
+            "widget_name",
             "merchant_automation_mode",
         }
     )
@@ -294,8 +312,16 @@ def post_merchant_general_settings_only(body: Dict[str, Any]) -> Tuple[Dict[str,
             saved_mode,
         )
 
+    anchor = saved if saved is not None else row
+    try:
+        from services.widget_config_cache import update_from_dashboard_store_row
+
+        update_from_dashboard_store_row(anchor)
+    except Exception:  # noqa: BLE001
+        pass
+
     payload = merchant_general_settings_patch_response(
-        saved if saved is not None else row, total_duration_ms=duration_ms
+        anchor, total_duration_ms=duration_ms
     )
     payload["apply_handlers_skipped"] = True
     return payload, 200
@@ -322,16 +348,32 @@ def apply_merchant_general_settings_from_body(row: Store, body: Dict[str, Any]) 
         row.settings_notify_whatsapp_failure = _bool_from_body(
             body.get("settings_notify_whatsapp_failure"), default=True
         )
-    if "widget_enabled" in body:
-        row.widget_enabled = _bool_from_body(body.get("widget_enabled"), default=True)
-    if "widget_display_name" in body:
-        raw = body.get("widget_display_name")
-        if raw is None:
-            row.widget_display_name = None
-        elif isinstance(raw, str) and not raw.strip():
+    if "cartflow_widget_enabled" in body or "widget_enabled" in body:
+        raw_en = (
+            body.get("cartflow_widget_enabled")
+            if "cartflow_widget_enabled" in body
+            else body.get("widget_enabled")
+        )
+        enabled = _bool_from_body(raw_en, default=True)
+        row.cartflow_widget_enabled = enabled
+        row.widget_enabled = enabled
+    if "widget_name" in body or "widget_display_name" in body:
+        raw_nm = body.get("widget_name") if "widget_name" in body else body.get("widget_display_name")
+        apply_widget_customization_from_body(
+            row,
+            {
+                "widget_name": (
+                    _DEFAULT_WIDGET_NAME
+                    if raw_nm is None or (isinstance(raw_nm, str) and not raw_nm.strip())
+                    else str(raw_nm).strip()[:_MAX_WIDGET_NAME_LEN]
+                )
+            },
+        )
+        canon = canonical_widget_name_on_row(row)
+        if canon == _DEFAULT_WIDGET_NAME:
             row.widget_display_name = None
         else:
-            row.widget_display_name = str(raw).strip()[:255]
+            row.widget_display_name = canon[:255]
     if "merchant_automation_mode" in body:
         row.merchant_automation_mode = normalize_automation_mode(
             body.get("merchant_automation_mode")

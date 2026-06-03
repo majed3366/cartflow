@@ -90,7 +90,11 @@
     }
     if (hc) t.hesitation_condition = hc.value || "after_cart_add";
     if (sc) t.visibility_page_scope = sc.value || "all";
-    t.widget_brand_line_ar = "";
+    if (typeof t.widget_brand_line_ar !== "string") {
+      t.widget_brand_line_ar = String(
+        (base && base.trigger && base.trigger.widget_brand_line_ar) || ""
+      ).trim().slice(0, 120);
+    }
     if (phoneEl) t.widget_phone_capture_mode = phoneEl.value;
     if (sd) t.suppress_after_widget_dismiss = !!sd.checked;
     if (sp) t.suppress_after_purchase = !!sp.checked;

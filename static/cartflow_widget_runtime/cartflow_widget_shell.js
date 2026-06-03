@@ -9,6 +9,29 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
   var Cf = window.CartflowWidgetRuntime;
   var WIDGET_BODY_SELECTOR = ".cartflow-widget-body";
   var HEADER_DEFAULT = "مساعدة";
+
+  function merchantShellTitle() {
+    try {
+      if (Cf.Config && typeof Cf.Config.merchant === "function") {
+        var M = Cf.Config.merchant();
+        var n = M && M.widget_brand_name;
+        if (typeof n === "string" && n.trim()) {
+          return String(n).trim().slice(0, 120);
+        }
+      }
+    } catch (eT) {}
+    return HEADER_DEFAULT;
+  }
+
+  function applyShellTitle(w) {
+    if (!w) {
+      return;
+    }
+    var title = w.querySelector("[data-cf-shell-title]");
+    if (title) {
+      title.textContent = merchantShellTitle();
+    }
+  }
   /** Expanded storefront shell — fixed width/height; scroll only if content overflows stage. */
   var SHELL_EXPANDED_WIDTH_PX = 280;
   var SHELL_EXPANDED_OUTER_H_PX = 296;
@@ -355,7 +378,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       title.setAttribute("data-cf-shell-title", "1");
       title.style.cssText =
         "font-weight:700;font-size:13px;color:#eef2ff;letter-spacing:.01em;";
-      title.textContent = HEADER_DEFAULT;
+      title.textContent = merchantShellTitle();
       var closeBtn = document.createElement("button");
       closeBtn.type = "button";
       closeBtn.setAttribute("data-cf-shell-close", "1");
@@ -426,6 +449,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     }
 
     bindCloseButtonOnce(w);
+    applyShellTitle(w);
 
     return { root: w, createdNew: createdNew };
   }
@@ -442,6 +466,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
         w = rootFromDom();
       }
     } catch (eExp) {}
+    applyShellTitle(w);
     if (r.createdNew) {
       shellLog("[CF SHELL OPEN]", { created: true });
     } else if (hadRoot) {
@@ -697,6 +722,10 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     }, 3200);
   }
 
+  function refreshTitle() {
+    applyShellTitle(rootFromDom());
+  }
+
   var Shell = {
     open: open,
     close: close,
@@ -708,6 +737,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     showSuccess: showSuccess,
     minimizeLauncher: minimizeLauncher,
     expand: expandShell,
+    refreshTitle: refreshTitle,
     getRoot: getRoot,
     getContentMount: getContentMount,
   };

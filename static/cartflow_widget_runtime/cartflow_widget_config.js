@@ -159,6 +159,12 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
         CRT.merchant.widget_chrome_style = st;
       }
     }
+    try {
+      var Sh = window.CartflowWidgetRuntime && window.CartflowWidgetRuntime.Shell;
+      if (Sh && typeof Sh.refreshTitle === "function") {
+        Sh.refreshTitle();
+      }
+    } catch (eTi) {}
   }
 
   function templates() {

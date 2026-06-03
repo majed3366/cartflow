@@ -29,6 +29,19 @@ def normalize_widget_primary_hex(raw: Any) -> str:
     return _DEFAULT_PRIMARY
 
 
+def canonical_widget_name_on_row(row: Optional[Any]) -> str:
+    """Storefront/dashboard canonical name — ‎widget_name‎ with ‎widget_display_name‎ fallback."""
+    if row is None:
+        return _DEFAULT_WIDGET_NAME
+    name_raw = getattr(row, "widget_name", None)
+    if isinstance(name_raw, str) and name_raw.strip():
+        return name_raw.strip()[:_MAX_WIDGET_NAME_LEN]
+    disp_raw = getattr(row, "widget_display_name", None)
+    if isinstance(disp_raw, str) and disp_raw.strip():
+        return disp_raw.strip()[:_MAX_WIDGET_NAME_LEN]
+    return _DEFAULT_WIDGET_NAME
+
+
 def apply_widget_customization_from_body(row: Any, body: Dict[str, Any]) -> None:
     if "widget_name" in body:
         n = str(body.get("widget_name") or "").strip()
@@ -50,11 +63,7 @@ def widget_customization_fields_for_api(row: Optional[Any]) -> Dict[str, str]:
             "widget_primary_color": _DEFAULT_PRIMARY,
             "widget_style": _DEFAULT_STYLE,
         }
-    name_raw = getattr(row, "widget_name", None)
-    if isinstance(name_raw, str) and name_raw.strip():
-        name_s = name_raw.strip()[:_MAX_WIDGET_NAME_LEN]
-    else:
-        name_s = _DEFAULT_WIDGET_NAME
+    name_s = canonical_widget_name_on_row(row)
     col_raw = getattr(row, "widget_primary_color", None)
     color_s = (
         normalize_widget_primary_hex(col_raw)

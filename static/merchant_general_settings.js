@@ -71,9 +71,20 @@
     setCk("ma-general-notify-vip", d.settings_notify_vip !== false);
     setCk("ma-general-notify-recovery", d.settings_notify_recovery_success !== false);
     setCk("ma-general-notify-wa-fail", d.settings_notify_whatsapp_failure !== false);
-    setCk("ma-general-widget-enabled", d.widget_enabled !== false);
+    setCk(
+      "ma-general-widget-enabled",
+      d.cartflow_widget_enabled !== false && d.widget_enabled !== false
+    );
     var name = byId("ma-general-widget-name");
-    if (name) name.value = d.widget_display_name != null ? String(d.widget_display_name) : "";
+    if (name) {
+      var nm =
+        d.widget_name != null && String(d.widget_name).trim()
+          ? String(d.widget_name)
+          : d.widget_display_name != null
+            ? String(d.widget_display_name)
+            : "";
+      name.value = nm;
+    }
     var mode = d.merchant_automation_mode || "manual";
     setRadio("merchant_automation_mode", mode);
     setReadOnly(d);
@@ -96,10 +107,10 @@
       settings_notify_whatsapp_failure: !!(
         byId("ma-general-notify-wa-fail") && byId("ma-general-notify-wa-fail").checked
       ),
-      widget_enabled: !!(
+      cartflow_widget_enabled: !!(
         byId("ma-general-widget-enabled") && byId("ma-general-widget-enabled").checked
       ),
-      widget_display_name:
+      widget_name:
         byId("ma-general-widget-name") && byId("ma-general-widget-name").value != null
           ? String(byId("ma-general-widget-name").value)
           : "",

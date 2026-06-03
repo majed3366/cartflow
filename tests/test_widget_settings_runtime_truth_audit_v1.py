@@ -51,33 +51,21 @@ class WidgetSettingsRuntimeTruthAuditTests(unittest.TestCase):
         self.assertIn("cartflow_widget_enabled", bundle)
         self.assertIn("widget_name", bundle)
 
-    def test_general_widget_enabled_save_does_not_change_public_gate(self) -> None:
+    def test_general_widget_enabled_maps_to_public_gate(self) -> None:
         ss = self._widget_public_store_slug()
-        en = self.client.post(
-            "/api/dashboard/merchant-widget-settings",
-            json={"cartflow_widget_enabled": True},
+        pr = self.client.post(
+            "/api/recovery-settings",
+            json={
+                "widget_enabled": False,
+                "merchant_settings_scope": "general",
+            },
         )
-        self.assertEqual(en.status_code, 200, en.text)
-        row = db.session.query(Store).order_by(Store.id.desc()).first()
-        self.assertIsNotNone(row)
-        apply_merchant_general_settings_from_body(
-            row, {"widget_enabled": False, "merchant_settings_scope": "general"}
-        )
-        db.session.commit()
-        db.session.refresh(row)
-        self.assertFalse(bool(getattr(row, "widget_enabled", True)))
-        self.assertTrue(bool(getattr(row, "cartflow_widget_enabled", False)))
-        from services.widget_config_cache import update_from_dashboard_store_row
-
-        fresh = db.session.get(Store, row.id)
-        update_from_dashboard_store_row(fresh)
+        self.assertEqual(pr.status_code, 200, pr.text)
         pub = self.client.get(
             "/api/cartflow/public-config", params={"store_slug": ss}
         ).json()
         self.assertTrue(pub.get("ok"), pub)
-        self.assertNotIn("widget_enabled", pub)
-        # General toggle does not map to storefront gate field.
-        self.assertTrue(pub.get("cartflow_widget_enabled", False))
+        self.assertFalse(pub.get("cartflow_widget_enabled"))
 
     def test_widget_color_reaches_public_config_after_dashboard_save(self) -> None:
         ss = self._widget_public_store_slug()
@@ -110,12 +98,12 @@ class WidgetSettingsRuntimeTruthAuditTests(unittest.TestCase):
         self.assertNotIn("widget_chrome_style", shell)
         self.assertNotIn("widget_style", shell)
 
-    def test_widget_name_not_applied_to_shell_header(self) -> None:
+    def test_widget_name_applied_to_shell_header(self) -> None:
         shell = _SHELL.read_text(encoding="utf-8")
         config = _CONFIG.read_text(encoding="utf-8")
         self.assertIn("widget_brand_name", config)
-        self.assertIn('HEADER_DEFAULT = "مساعدة"', shell)
-        self.assertNotIn("widget_brand_name", shell)
+        self.assertIn("merchantShellTitle", shell)
+        self.assertIn("widget_brand_name", shell)
 
     def test_recovery_question_hardcoded_not_exit_intent_template(self) -> None:
         flows = _FLOWS.read_text(encoding="utf-8")
@@ -124,9 +112,9 @@ class WidgetSettingsRuntimeTruthAuditTests(unittest.TestCase):
         self.assertNotIn("exit_intent_custom_text", flows)
         self.assertNotIn("exit_intent_template_mode", flows)
 
-    def test_merchant_widget_panel_clears_brand_line_on_save(self) -> None:
+    def test_merchant_widget_panel_does_not_clear_brand_line_on_save(self) -> None:
         panel = _PANEL_JS.read_text(encoding="utf-8")
-        self.assertIn('t.widget_brand_line_ar = "";', panel)
+        self.assertNotIn('t.widget_brand_line_ar = "";', panel)
 
     def test_public_bundle_source_documents_customization_fields(self) -> None:
         src = _BUNDLE_PY.read_text(encoding="utf-8")
