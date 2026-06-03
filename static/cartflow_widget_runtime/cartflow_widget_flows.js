@@ -187,6 +187,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     } catch (eLog) {}
   }
 
+  function getCartRecoveryQuestion() {
     return "تبي أساعدك تكمل طلبك؟";
   }
 

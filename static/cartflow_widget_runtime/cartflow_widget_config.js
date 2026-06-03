@@ -216,6 +216,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     return isPublicConfigSource(sourceNote);
   }
 
+  function normalizePrimaryHex(raw) {
     if (raw == null) {
       return null;
     }
