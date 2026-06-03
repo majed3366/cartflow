@@ -14,6 +14,14 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
   var SHELL_EXPANDED_OUTER_H_PX = 296;
   var SHELL_STAGE_HEIGHT_PX = 228;
   var SHELL_CONTENT_MAX_H_PX = 228;
+  var SHELL_LAUNCHER_SIZE_PX = 40;
+  var SHELL_COMPACT_VIEWS = {
+    yes_no: 1,
+    reason_grid: 1,
+    continuation: 1,
+    other_recovery: 1,
+    phone_optional: 1,
+  };
 
   function shellLog(tag, meta) {
     try {
@@ -128,7 +136,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     chip.style.cssText =
       "display:none;box-sizing:border-box;position:absolute;left:0;top:0;width:100%;height:100%;" +
       "align-items:center;justify-content:center;margin:0;border:0;background:transparent;" +
-      "cursor:pointer;color:#f8fafc;font-size:22px;font-weight:700;line-height:1;padding:0;";
+      "cursor:pointer;color:#f8fafc;font-size:17px;font-weight:700;line-height:1;padding:0;";
     w.appendChild(chip);
     chip.addEventListener(
       "click",
@@ -217,9 +225,12 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       w.style.bottom = "max(12px,env(safe-area-inset-bottom))";
       w.style.left = "";
       w.style.top = "";
-      w.style.width = "52px";
-      w.style.height = "52px";
-      w.style.maxWidth = "52px";
+      w.style.width = SHELL_LAUNCHER_SIZE_PX + "px";
+      w.style.minWidth = SHELL_LAUNCHER_SIZE_PX + "px";
+      w.style.maxWidth = SHELL_LAUNCHER_SIZE_PX + "px";
+      w.style.height = SHELL_LAUNCHER_SIZE_PX + "px";
+      w.style.minHeight = SHELL_LAUNCHER_SIZE_PX + "px";
+      w.style.maxHeight = SHELL_LAUNCHER_SIZE_PX + "px";
       w.style.padding = "0";
       w.style.margin = "0";
       w.style.borderRadius = "999px";
@@ -227,8 +238,8 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       w.style.cursor = "default";
       w.style.background =
         "linear-gradient(165deg,#1e1b4b 0%,#312e81 52%,#1e3a5f 100%)";
-      w.style.border = "1px solid rgba(99,102,241,.5)";
-      w.style.boxShadow = "0 10px 28px rgba(2,6,23,.52)";
+      w.style.border = "1px solid rgba(99,102,241,.55)";
+      w.style.boxShadow = "0 4px 14px rgba(2,6,23,.45)";
       w.style.fontSize = "0";
       w.style.lineHeight = "1";
       w.style.fontFamily =
@@ -557,18 +568,25 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     applyStableContentViewport(getContentMount());
   }
 
-  function applyStableContentViewport(mount) {
+  function applyStableContentViewport(mount, mountedView) {
     if (!mount) {
       return;
     }
+    var viewKey = mountedView != null ? String(mountedView) : "";
+    var compact = !!(viewKey && SHELL_COMPACT_VIEWS[viewKey]);
     try {
       mount.style.boxSizing = "border-box";
       mount.style.minHeight = "0";
       mount.style.height = "auto";
       mount.style.maxHeight = SHELL_CONTENT_MAX_H_PX + "px";
-      mount.style.overflowY = "auto";
       mount.style.overflowX = "hidden";
-      mount.style.scrollbarWidth = "thin";
+      if (compact) {
+        mount.style.overflowY = "hidden";
+        mount.style.scrollbarWidth = "";
+      } else {
+        mount.style.overflowY = "auto";
+        mount.style.scrollbarWidth = "thin";
+      }
     } catch (eVp) {}
   }
 
@@ -577,7 +595,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     if (!mount) {
       return;
     }
-    applyStableContentViewport(mount);
+    applyStableContentViewport(mount, mountedView);
     while (mount.firstChild) {
       mount.removeChild(mount.firstChild);
     }
@@ -608,6 +626,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       mount.appendChild(content);
     }
     patchShell({ mountedView: mountedView != null ? mountedView : null });
+    applyStableContentViewport(mount, mountedView);
   }
 
   function setLoading(on) {

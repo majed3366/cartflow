@@ -432,13 +432,14 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     frag.appendChild(hi);
     var hint = document.createElement("p");
     hint.style.cssText = textMuted + "margin-bottom:6px;font-size:12px;line-height:1.4;";
-    hint.textContent = "اختياري — يمكنك ترك الملاحظة فارغة";
+    hint.textContent = "(اختياري)";
     frag.appendChild(hint);
     var ta = document.createElement("textarea");
-    ta.rows = 3;
+    ta.rows = 2;
     ta.style.cssText =
       "width:100%;box-sizing:border-box;border-radius:9px;border:1px solid rgba(99,102,241,.38);" +
-      "background:rgba(15,23,42,.65);padding:8px;margin-bottom:8px;font:inherit;resize:vertical;color:#f8fafc;";
+      "background:rgba(15,23,42,.65);padding:8px;margin-bottom:8px;font:inherit;" +
+      "resize:none;height:52px;min-height:52px;max-height:52px;color:#f8fafc;";
     frag.appendChild(ta);
     var row = document.createElement("div");
     row.style.cssText = rowStyleCol;

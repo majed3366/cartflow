@@ -24,6 +24,14 @@ class StorefrontWidgetUxPolishTests(unittest.TestCase):
         self.assertIn("applyExpandedShellLayout", shell)
         self.assertIn('mount.style.minHeight = "0"', shell)
         self.assertIn("applyStableContentViewport", shell)
+        self.assertIn("other_recovery", shell)
+        self.assertIn('mount.style.overflowY = "hidden"', shell)
+
+    def test_compact_launcher_size(self) -> None:
+        shell = _SHELL.read_text(encoding="utf-8")
+        self.assertIn("SHELL_LAUNCHER_SIZE_PX", shell)
+        self.assertIn("SHELL_LAUNCHER_SIZE_PX = 40", shell)
+        self.assertIn("w.style.minHeight = SHELL_LAUNCHER_SIZE_PX", shell)
 
     def test_thanks_and_no_use_minimize_polite(self) -> None:
         flows = _FLOWS.read_text(encoding="utf-8")

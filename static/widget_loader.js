@@ -12,7 +12,7 @@
 (function () {
   "use strict";
 
-  var RUNTIME_VERSION = "v2-storefront-ux-final-1";
+  var RUNTIME_VERSION = "v2-storefront-ux-cleanup-1";
 
   function cartflowWidgetLoaderScriptUrl() {
     try {
