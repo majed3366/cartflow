@@ -26,7 +26,7 @@ CartFlow is a FastAPI application that:
 
 **Primary backend calls from storefront widgets:**
 
-- **V2 (`cartflow_widget_api.js`):** `POST /api/cartflow/reason`, `GET /api/cartflow/ready`, `GET /api/cartflow/public-config` (`routes/cartflow.py`).
+- **V2 (`cartflow_widget_fetch.js`, namespace `Api`):** `POST /api/cartflow/reason`, `GET /api/cartflow/ready`, `GET /api/cartflow/public-config` (`routes/cartflow.py`).
 - **Legacy (`cartflow_widget.js`):** `POST /api/cart-recovery/reason` — persist widget **Layer D** (`routes/cart_recovery_reason.py`); `POST /api/cartflow/reason` alternate path (`routes/cartflow.py`).
 - Shared / either surface as wired: `GET /api/recovery/primary-reason` — `main.py`; `POST /api/cartflow/generate-whatsapp-message` — mock WhatsApp preview (no DB write in that handler).
 
@@ -343,6 +343,7 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 
 | Date (UTC) | Summary |
 |------------|---------|
+| 2026-06-02 | **V2 bootstrap + beacon fix:** renamed `cartflow_widget_api.js` → `cartflow_widget_fetch.js` (production WAF returned 500 for static path containing `_api`, blocking module chain after config); loader continues on module load failure; widget-seen beacon deferred fire-and-forget to `POST /api/storefront/widget-seen` with warn-only errors; fixed missing `storefrontShellBlocked()` + `ensureShell` return object. Runtime `v2-beacon-bootstrap-fix-1`. Commit: **`fix: make widget truth beacon non-blocking and restore V2 bootstrap`**. |
 | 2026-06-02 | **Merchant widget chrome tokens:** V2 shell/UI use `Cf.ChromeTokens` — when merchant color resolves on embed, shell background is neutral dark (not purple gradient); chrome bar, borders, primary buttons, and input focus borders derive from merchant hex; default purple/indigo only when no merchant config. Runtime `v2-merchant-chrome-tokens-1`. Commit: **`fix: apply merchant widget color consistently across shell`**. |
 | 2026-06-02 | **Shell title write instrumentation:** `[CF SHELL TITLE WRITE]` on every `[data-cf-shell-title]` DOM write (`render_source`, `runtime_version`, `title_value`, `timestamp`, `config_widget_brand_name`, config gate flags); MutationObserver catches external overwrites. Runtime `v2-shell-title-instrument-1`. |
 | 2026-06-02 | **Store slug no-demo on platform hosts:** hostname permalink first on `*.zid.store` / Salla; inline hostname fallback in `widget_loader.js` + `cartflow_widget_api.js` when resolver script missing; `[CF STORE SLUG RESOLVE]` diagnostics; never `demo` on platform hosts. Runtime `v2-store-slug-no-demo-1`. Commit: **`fix: prevent demo fallback on real storefront hosts`**. |

@@ -21,7 +21,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
         return String(window.CARTFLOW_RUNTIME_VERSION).trim();
       }
     } catch (eRv) {}
-    return "v2-merchant-chrome-tokens-1";
+    return "v2-beacon-bootstrap-fix-1";
   }
 
   function merchantBrandNameSnapshot() {
@@ -654,6 +654,22 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     );
   }
 
+  function storefrontShellBlocked() {
+    try {
+      if (window.CARTFLOW_RECOVERY_WIDGET_MODE !== true) {
+        return false;
+      }
+      var st = window.CartflowWidgetRuntime.State.internals;
+      if (st.v2MerchantConfigFailed) {
+        return true;
+      }
+      if (!st.v2MerchantConfigResolved) {
+        return true;
+      }
+    } catch (eBlk) {}
+    return false;
+  }
+
   function ensureShell(primaryHex) {
     dedupeShellRoots();
 
@@ -809,19 +825,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
 
     bindCloseButtonOnce(w);
     applyShellTitle(w, "ensureShell_tail");
-    try {
-      if (window.CARTFLOW_RECOVERY_WIDGET_MODE !== true) {
-        return false;
-      }
-      var st = window.CartflowWidgetRuntime.State.internals;
-      if (st.v2MerchantConfigFailed) {
-        return true;
-      }
-      if (!st.v2MerchantConfigResolved) {
-        return true;
-      }
-    } catch (eBlk) {}
-    return false;
+    return { root: w, createdNew: createdNew };
   }
 
   function open(opts) {

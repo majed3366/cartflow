@@ -16,7 +16,10 @@ class CartflowWidgetLayeredRuntimeTests(unittest.TestCase):
         self.assertIn("resolveRuntimeModuleBase", s)
         self.assertIn("__CARTFLOW_STATIC_ROOT__", s)
         self.assertIn("[CF V2 PRIMARY RUNTIME]", s)
-        self.assertIn("layered-runtime-v18", s)
+        self.assertNotIn("cartflow_widget_api.js", s)
+        self.assertIn("cartflow_widget_fetch.js", s)
+        self.assertIn("[CF V2 MODULE FAILED]", s)
+        self.assertIn("continuing chain", s)
         p = s.index("cartflow_widget_phone.js")
         sh = s.index("cartflow_widget_shell.js")
         u = s.index("cartflow_widget_ui.js")
@@ -43,7 +46,7 @@ class CartflowWidgetLayeredRuntimeTests(unittest.TestCase):
             "cartflow_widget_flows.js",
             "cartflow_widget_phone.js",
             "cartflow_widget_shell.js",
-            "cartflow_widget_api.js",
+            "cartflow_widget_fetch.js",
             "cartflow_widget_ui.js",
             "cartflow_widget_legacy_bridge.js",
         )

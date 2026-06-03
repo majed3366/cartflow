@@ -1,5 +1,6 @@
 /**
  * Fetch / POST façade for widget runtime (no triggers, no DOM).
+ * File is named cartflow_widget_fetch.js (not *_api*) so CDN/WAF rules do not block the static URL.
  */
 window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
 (function () {

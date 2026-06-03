@@ -253,7 +253,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
         return String(window.__cartflow_loader_build).trim();
       }
     } catch (eRv) {}
-    return "v2-merchant-chrome-tokens-1";
+    return "v2-beacon-bootstrap-fix-1";
   }
 
   function cartflowBeaconApiOrigin() {
@@ -344,6 +344,10 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     };
   }
 
+  function storefrontWidgetSeenUrl(origin) {
+    return String(origin || "").replace(/\/+$/, "") + "/api/storefront/widget-seen";
+  }
+
   function postStorefrontDomTruthBeacon(tag, dom) {
     try {
       var p = window.location.pathname || "";
@@ -369,57 +373,73 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
         timestamp: new Date().toISOString(),
         beacon_tag: tag || "dom_truth",
       });
+      var url = storefrontWidgetSeenUrl(origin);
       if (navigator.sendBeacon) {
-        navigator.sendBeacon(
-          origin + "/api/storefront/widget-seen",
-          new Blob([payload], { type: "application/json" })
-        );
+        try {
+          navigator.sendBeacon(url, new Blob([payload], { type: "application/json" }));
+        } catch (eSb) {
+          console.warn("[CF WIDGET SEEN BEACON WARN]", "sendBeacon_failed", eSb);
+        }
       } else {
-        fetch(origin + "/api/storefront/widget-seen", {
+        fetch(url, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: payload,
           credentials: "omit",
           keepalive: true,
-        }).catch(function () {});
+        }).catch(function (eFetch) {
+          console.warn("[CF WIDGET SEEN BEACON WARN]", "fetch_failed", eFetch);
+        });
       }
-    } catch (ePost) {}
+    } catch (ePost) {
+      try {
+        console.warn("[CF WIDGET SEEN BEACON WARN]", "beacon_crash", ePost);
+      } catch (eWp) {}
+    }
   }
 
   function scheduleStorefrontDomTruthBeacon(tag) {
     if (isRealStorefrontEmbed() && !merchantConfigResolved()) {
       return;
     }
-    domBeaconAttempts = 0;
-    if (domBeaconTimer) {
+    setTimeout(function () {
       try {
-        clearTimeout(domBeaconTimer);
-      } catch (eCt) {}
-      domBeaconTimer = null;
-    }
-    function attempt() {
-      domBeaconAttempts += 1;
-      var dom = readShellDomTruth();
-      var hasTitle = dom && dom.rendered_title_text;
-      var hasColor = dom && dom.rendered_primary_color_computed;
-      if (hasTitle && hasColor) {
-        postStorefrontDomTruthBeacon(tag, dom);
-        return;
+        domBeaconAttempts = 0;
+        if (domBeaconTimer) {
+          try {
+            clearTimeout(domBeaconTimer);
+          } catch (eCt) {}
+          domBeaconTimer = null;
+        }
+        function attempt() {
+          domBeaconAttempts += 1;
+          var dom = readShellDomTruth();
+          var hasTitle = dom && dom.rendered_title_text;
+          var hasColor = dom && dom.rendered_primary_color_computed;
+          if (hasTitle && hasColor) {
+            postStorefrontDomTruthBeacon(tag, dom);
+            return;
+          }
+          var hasRoot = false;
+          try {
+            var Sh = window.CartflowWidgetRuntime && window.CartflowWidgetRuntime.Shell;
+            hasRoot = !!(Sh && typeof Sh.getRoot === "function" && Sh.getRoot());
+          } catch (eHr) {}
+          if (hasRoot && domBeaconAttempts < DOM_BEACON_MAX_ATTEMPTS) {
+            domBeaconTimer = setTimeout(attempt, 250);
+            return;
+          }
+          if (hasRoot || domBeaconAttempts >= DOM_BEACON_MAX_ATTEMPTS) {
+            postStorefrontDomTruthBeacon(tag, dom || {});
+          }
+        }
+        domBeaconTimer = setTimeout(attempt, 0);
+      } catch (eSched) {
+        try {
+          console.warn("[CF WIDGET SEEN BEACON WARN]", "schedule_crash", eSched);
+        } catch (eSw) {}
       }
-      var hasRoot = false;
-      try {
-        var Sh = window.CartflowWidgetRuntime && window.CartflowWidgetRuntime.Shell;
-        hasRoot = !!(Sh && typeof Sh.getRoot === "function" && Sh.getRoot());
-      } catch (eHr) {}
-      if (hasRoot && domBeaconAttempts < DOM_BEACON_MAX_ATTEMPTS) {
-        domBeaconTimer = setTimeout(attempt, 250);
-        return;
-      }
-      if (hasRoot || domBeaconAttempts >= DOM_BEACON_MAX_ATTEMPTS) {
-        postStorefrontDomTruthBeacon(tag, dom || {});
-      }
-    }
-    domBeaconTimer = setTimeout(attempt, 0);
+    }, 0);
   }
 
   function logWidgetSettingsTruth(tag, extra) {

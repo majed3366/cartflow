@@ -48,7 +48,7 @@ class V2WidgetBaselineLockTests(unittest.TestCase):
         self.assertIn("var MODULES = [", loader)
         for name in (
             "cartflow_widget_config.js",
-            "cartflow_widget_api.js",
+            "cartflow_widget_fetch.js",
             "cartflow_widget_state.js",
             "cartflow_widget_triggers.js",
             "cartflow_widget_phone.js",

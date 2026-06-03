@@ -12,7 +12,7 @@
 (function () {
   "use strict";
 
-  var RUNTIME_VERSION = "v2-merchant-chrome-tokens-1";
+  var RUNTIME_VERSION = "v2-beacon-bootstrap-fix-1";
 
   function cartflowExtractHostnameSlugInline(host) {
     if (typeof window.cartflowExtractStoreSlugFromHostname === "function") {
@@ -306,66 +306,78 @@
     /* ignore */
   }
 
-  (function cartflowStorefrontWidgetSeenBeacon() {
-    try {
-      var p = window.location.pathname || "";
-      if (/\/demo\b/i.test(p) || /^\/dev(\/|$)/i.test(p)) {
-        return;
-      }
-      cartflowApplyResolvedStoreSlug();
-      var slug = "";
+  function cartflowPostWidgetSeenBeacon(origin, payloadJson) {
+    var url = String(origin || "").replace(/\/+$/, "") + "/api/storefront/widget-seen";
+    if (navigator.sendBeacon) {
       try {
-        slug = window.CARTFLOW_STORE_SLUG || "";
-      } catch (eS0) {
-        slug = "";
+        navigator.sendBeacon(url, new Blob([payloadJson], { type: "application/json" }));
+      } catch (eSb) {
+        console.warn("[CF WIDGET SEEN BEACON WARN]", "sendBeacon_failed", eSb);
       }
-      if (!slug) {
-        slug = cartflowExtractHostnameSlugInline(window.location.hostname);
-      }
-      if (!slug || slug === "demo") {
-        if (cartflowIsPlatformStoreHostInline()) {
+    } else {
+      fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: payloadJson,
+        credentials: "omit",
+        keepalive: true,
+      }).catch(function (eFetch) {
+        console.warn("[CF WIDGET SEEN BEACON WARN]", "fetch_failed", eFetch);
+      });
+    }
+  }
+
+  function cartflowScheduleWidgetSeenBeacon() {
+    setTimeout(function () {
+      try {
+        var p = window.location.pathname || "";
+        if (/\/demo\b/i.test(p) || /^\/dev(\/|$)/i.test(p)) {
           return;
         }
-        return;
-      }
-      console.log("[WIDGET STOREFRONT LOAD] store=" + slug);
-      var origin = "";
-      try {
-        var loaderNode = document.querySelector('script[src*="widget_loader"]');
-        if (loaderNode && loaderNode.src) {
-          origin = new URL(loaderNode.src, window.location.href).origin;
+        cartflowApplyResolvedStoreSlug();
+        var slug = "";
+        try {
+          slug = window.CARTFLOW_STORE_SLUG || "";
+        } catch (eS0) {
+          slug = "";
         }
-      } catch (eO) {
-        origin = "";
+        if (!slug) {
+          slug = cartflowExtractHostnameSlugInline(window.location.hostname);
+        }
+        if (!slug || slug === "demo") {
+          if (cartflowIsPlatformStoreHostInline()) {
+            return;
+          }
+          return;
+        }
+        console.log("[WIDGET STOREFRONT LOAD] store=" + slug);
+        var origin = "";
+        try {
+          var loaderNode = document.querySelector('script[src*="widget_loader"]');
+          if (loaderNode && loaderNode.src) {
+            origin = new URL(loaderNode.src, window.location.href).origin;
+          }
+        } catch (eO) {
+          origin = "";
+        }
+        if (!origin) {
+          return;
+        }
+        var payload = JSON.stringify({
+          store: slug,
+          store_slug: slug,
+          runtime_version: RUNTIME_VERSION,
+          page_url: String(window.location.href || "").slice(0, 2048),
+          timestamp: new Date().toISOString(),
+        });
+        cartflowPostWidgetSeenBeacon(origin, payload);
+      } catch (eBeacon) {
+        console.warn("[CF WIDGET SEEN BEACON WARN]", "beacon_crash", eBeacon);
       }
-      if (!origin) {
-        return;
-      }
-      var payload = JSON.stringify({
-        store: slug,
-        store_slug: slug,
-        runtime_version: RUNTIME_VERSION,
-        page_url: String(window.location.href || "").slice(0, 2048),
-        timestamp: new Date().toISOString(),
-      });
-      if (navigator.sendBeacon) {
-        navigator.sendBeacon(
-          origin + "/api/storefront/widget-seen",
-          new Blob([payload], { type: "application/json" })
-        );
-      } else {
-        fetch(origin + "/api/storefront/widget-seen", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: payload,
-          credentials: "omit",
-          keepalive: true,
-        }).catch(function () {});
-      }
-    } catch (eBeacon) {
-      /* ignore */
-    }
-  })();
+    }, 0);
+  }
+
+  cartflowScheduleWidgetSeenBeacon();
 
   (function cartflowInitStoreSlugFromLoaderTag() {
     try {

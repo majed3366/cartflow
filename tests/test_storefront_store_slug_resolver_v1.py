@@ -10,7 +10,7 @@ from services.store_identity_v1 import extract_zid_permalink_from_url
 _ROOT = pathlib.Path(__file__).resolve().parent.parent
 _RESOLVER = _ROOT / "static" / "cartflow_storefront_store_slug.js"
 _LOADER = _ROOT / "static" / "widget_loader.js"
-_API = _ROOT / "static" / "cartflow_widget_runtime" / "cartflow_widget_api.js"
+_API = _ROOT / "static" / "cartflow_widget_runtime" / "cartflow_widget_fetch.js"
 
 
 class StorefrontStoreSlugResolverTests(unittest.TestCase):
@@ -41,10 +41,10 @@ class StorefrontStoreSlugResolverTests(unittest.TestCase):
         self.assertIn("cartflow_storefront_store_slug.js", loader)
         self.assertIn("cartflowEnsureStoreSlugResolverLoaded", loader)
         self.assertIn("cartflowApplyResolvedStoreSlug", loader)
-        self.assertIn("v2-store-slug-no-demo-1", loader)
+        self.assertIn("RUNTIME_VERSION", loader)
         self.assertIn("cartflowExtractHostnameSlugInline", loader)
         init_ix = loader.index("cartflowInitStoreSlugFromLoaderTag")
-        beacon_ix = loader.index("cartflowStorefrontWidgetSeenBeacon")
+        beacon_ix = loader.index("cartflowScheduleWidgetSeenBeacon")
         self.assertLess(beacon_ix, init_ix)
 
     def test_runtime_api_delegates_to_resolver(self) -> None:

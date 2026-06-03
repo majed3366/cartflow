@@ -41,7 +41,7 @@
   /** Must match filesystem; order preserves dependencies between modules. */
   var MODULES = [
     "cartflow_widget_config.js",
-    "cartflow_widget_api.js",
+    "cartflow_widget_fetch.js",
     "cartflow_widget_state.js",
     "cartflow_widget_triggers.js",
     "cartflow_widget_phone.js",
@@ -139,11 +139,8 @@
 
   function loadIndex(i, chainOk) {
     chainOk = chainOk !== false;
-    if (!chainOk) {
-      return;
-    }
     if (i >= MODULES.length) {
-      v2Log("[CF V2 ALL MODULES LOADED]", { count: MODULES.length });
+      v2Log("[CF V2 ALL MODULES LOADED]", { count: MODULES.length, chain_ok: chainOk });
       if (!namespacesOk()) {
         v2Log("[CF V2 BOOTSTRAP BLOCKED]", { missing: getMissingNamespaces() });
         return;
@@ -158,11 +155,13 @@
     s.src = BASE + name + "?v=" + encodeURIComponent(RUNTIME_TAG);
     s.onload = function () {
       v2Log("[CF V2 MODULE LOADED]", name);
-      loadIndex(i + 1, true);
+      loadIndex(i + 1, chainOk);
     };
     s.onerror = function () {
-      v2Log("[CF V2 MODULE FAILED]", name);
-      loadIndex(i + 1, false);
+      try {
+        console.warn("[CF V2 MODULE FAILED]", name, "(continuing chain)");
+      } catch (eWf) {}
+      loadIndex(i + 1, chainOk);
     };
 
     try {
@@ -170,8 +169,10 @@
         s
       );
     } catch (eApp) {
-      v2Log("[CF V2 MODULE FAILED]", name + " (append)");
-      loadIndex(i + 1, false);
+      try {
+        console.warn("[CF V2 MODULE FAILED]", name + " (append)", eApp);
+      } catch (eWa) {}
+      loadIndex(i + 1, chainOk);
     }
   }
 
