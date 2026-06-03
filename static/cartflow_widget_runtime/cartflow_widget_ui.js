@@ -99,7 +99,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
   function btnGhostStyle() {
     return (
       "margin-top:6px;border:1px solid rgba(226,232,240,.26);cursor:pointer;border-radius:9px;" +
-      "background:rgba(255,255,255,.06);color:rgba(241,245,249,.9);width:100%;padding:8px 10px;font-weight:600;font-size:12px;";
+      "background:rgba(255,255,255,.06);color:rgba(241,245,249,.9);width:100%;padding:8px 10px;font-weight:600;font-size:12px;"
     );
   }
 
