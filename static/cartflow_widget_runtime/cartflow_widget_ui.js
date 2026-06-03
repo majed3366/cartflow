@@ -8,18 +8,15 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
   var Cf = window.CartflowWidgetRuntime;
   var rowStyleCol =
     "display:flex;flex-direction:column;gap:6px;margin-top:2px;width:100%;box-sizing:border-box;";
-  var textPrimary = "margin:0;color:rgba(241,245,249,.95);";
-  var textMuted = "margin:0;color:rgba(226,232,240,.82);";
-  var DEFAULT_PRIMARY = "#6366f1";
 
-  function chromeTokens() {
-    return Cf.ChromeTokens || null;
+  function theme() {
+    return Cf.Theme || null;
   }
 
   function resolvedPrimary(primaryHex) {
-    var ct = chromeTokens();
-    if (ct && typeof ct.resolvedPrimary === "function") {
-      return ct.resolvedPrimary(primaryHex);
+    var th = theme();
+    if (th && typeof th.resolvedPrimary === "function") {
+      return th.resolvedPrimary(primaryHex);
     }
     if (primaryHex) {
       return primaryHex;
@@ -32,24 +29,35 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
         }
       }
     } catch (eRp) {}
-    return DEFAULT_PRIMARY;
+    return "#888888";
   }
 
-  function primaryButtonGradient(primaryHex) {
-    var ct = chromeTokens();
-    if (ct && typeof ct.primaryButtonGradient === "function") {
-      return ct.primaryButtonGradient(primaryHex);
-    }
-    var hex = resolvedPrimary(primaryHex);
-    return "linear-gradient(180deg," + hex + " 0%," + hex + " 100%)";
+  function textPrimary(extra) {
+    var th = theme();
+    return th ? th.textPrimaryCss(extra) : "margin:0;color:rgba(248,250,252,.96);" + (extra || "");
   }
 
-  function inputBorderCss(primaryHex) {
-    var ct = chromeTokens();
-    if (ct && typeof ct.inputBorderCss === "function") {
-      return ct.inputBorderCss(primaryHex);
+  function textMuted(extra) {
+    var th = theme();
+    return th ? th.textMutedCss(extra) : "margin:0;color:rgba(226,232,240,.82);" + (extra || "");
+  }
+
+  function inputFieldStyle(ph) {
+    var th = theme();
+    if (th) {
+      th.refresh(ph);
+      return th.inputFieldCss();
     }
-    return "1px solid rgba(99,102,241,.38)";
+    return "width:100%;box-sizing:border-box;border-radius:9px;border:1px solid rgba(255,255,255,.2);background:rgba(0,0,0,.35);padding:9px 10px;color:#f8fafc;outline:none;";
+  }
+
+  function inputFieldCompactStyle(ph) {
+    var th = theme();
+    if (th) {
+      th.refresh(ph);
+      return th.inputFieldCssCompact();
+    }
+    return "width:100%;box-sizing:border-box;border-radius:9px;border:1px solid rgba(255,255,255,.2);background:rgba(0,0,0,.35);padding:8px;color:#f8fafc;";
   }
 
   function bubbleRoot() {
@@ -68,17 +76,14 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
   }
 
   function stampPrimary(btn, primaryHex) {
-    var hex = resolvedPrimary(primaryHex);
+    var th = theme();
+    if (th) {
+      th.refresh(primaryHex);
+    }
     try {
       btn.setAttribute("data-cf-btn-primary", "1");
     } catch (eAttr) {}
-    btn.style.cssText =
-      "cursor:pointer;display:inline-flex;align-items:center;justify-content:center;text-align:center;border-radius:9px;" +
-      "background:" +
-      primaryButtonGradient(hex) +
-      ";color:#fafafa;width:100%;box-sizing:border-box;" +
-      "padding:9px 10px;line-height:1.35;font-weight:600;font-size:13px;" +
-      "border:1px solid rgba(255,255,255,.12);box-shadow:0 1px 0 rgba(255,255,255,.12) inset;";
+    btn.style.cssText = th ? th.primaryButtonCss() : "cursor:pointer;border-radius:9px;padding:9px 10px;width:100%;";
   }
 
   function restampPrimaryButtons(primaryHex) {
@@ -100,11 +105,8 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
   }
 
   function stampSecondaryOutline(btn) {
-    btn.style.cssText =
-      "cursor:pointer;display:inline-flex;align-items:center;justify-content:center;text-align:center;border-radius:9px;" +
-      "background:rgba(255,255,255,.07);color:#e2e8f0;width:100%;box-sizing:border-box;" +
-      "padding:9px 10px;line-height:1.35;font-weight:600;font-size:13px;" +
-      "border:1px solid rgba(226,232,240,.25);";
+    var th = theme();
+    btn.style.cssText = th ? th.secondaryButtonCss() : "cursor:pointer;border-radius:9px;padding:9px 10px;width:100%;";
   }
 
   function clear(primaryHex) {
@@ -126,7 +128,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     var frag = document.createDocumentFragment();
     var p = document.createElement("p");
     p.style.cssText =
-      textPrimary + "margin-bottom:10px;font-size:14px;line-height:1.5;font-weight:500;";
+      textPrimary("margin-bottom:10px;font-size:14px;line-height:1.5;font-weight:500;");
     p.textContent = opts.question || "";
     frag.appendChild(p);
     var row = document.createElement("div");
@@ -159,10 +161,8 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
   }
 
   function btnGhostStyle() {
-    return (
-      "margin-top:6px;border:1px solid rgba(226,232,240,.26);cursor:pointer;border-radius:9px;" +
-      "background:rgba(255,255,255,.06);color:rgba(241,245,249,.9);width:100%;padding:8px 10px;font-weight:600;font-size:12px;"
-    );
+    var th = theme();
+    return th ? th.ghostButtonCss() : "margin-top:6px;cursor:pointer;border-radius:9px;padding:8px 10px;width:100%;";
   }
 
   function appendBackButton(frag, onBack) {
@@ -191,7 +191,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     var frag = document.createDocumentFragment();
     var p = document.createElement("p");
     p.style.cssText =
-      textPrimary + "margin-bottom:8px;font-size:13px;line-height:1.45;font-weight:600;";
+      textPrimary("margin-bottom:8px;font-size:13px;line-height:1.45;font-weight:600;");
     p.textContent = opts.title || "وش أكثر شيء مخليك متردد؟ تبيني أساعدك";
     frag.appendChild(p);
     var row = document.createElement("div");
@@ -238,7 +238,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     var ph = resolvedPrimary(opts.primaryColor);
     var frag = document.createDocumentFragment();
     var p = document.createElement("p");
-    p.style.cssText = textPrimary + "margin-bottom:10px;font-size:14px;line-height:1.5;";
+    p.style.cssText = textPrimary("margin-bottom:10px;font-size:14px;line-height:1.5;");
     p.textContent = opts.title || "";
     frag.appendChild(p);
     var row = document.createElement("div");
@@ -269,21 +269,18 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     var frag = document.createDocumentFragment();
     var t = document.createElement("p");
     t.style.cssText =
-      textPrimary + "margin-bottom:6px;font-size:13px;line-height:1.4;font-weight:700;";
+      textPrimary("margin-bottom:6px;font-size:13px;line-height:1.4;font-weight:700;");
     t.textContent = "رقم الجوال لإكمال المتابعة";
     frag.appendChild(t);
     var s = document.createElement("p");
-    s.style.cssText = textMuted + "margin-bottom:8px;font-size:12px;line-height:1.4;";
+    s.style.cssText = textMuted("margin-bottom:8px;font-size:12px;line-height:1.4;");
     s.textContent = "نستخدمه فقط لمتابعة طلبك إذا احتجت مساعدة.";
     frag.appendChild(s);
     var inp = document.createElement("input");
     inp.type = "tel";
     inp.placeholder = "05xxxxxxxx";
     inp.setAttribute("dir", "ltr");
-    inp.style.cssText =
-      "width:100%;box-sizing:border-box;border-radius:9px;border:" + inputBorderCss(ph) + ";" +
-      "background:rgba(15,23,42,.65);padding:9px 10px;margin-bottom:6px;font:inherit;font-size:14px;color:#f8fafc;" +
-      "outline:none;";
+    inp.style.cssText = inputFieldStyle(ph) + "margin-bottom:6px;";
     try {
       var norm = Cf.State ? Cf.State.getStoredPhoneNorm() : "";
       if (norm && norm.slice(0, 3) === "966") {
@@ -357,12 +354,12 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     if (bullets.length > 0) {
       var head = document.createElement("p");
       head.style.cssText =
-        textPrimary + "margin-bottom:6px;font-size:13px;line-height:1.45;font-weight:600;";
+        textPrimary("margin-bottom:6px;font-size:13px;line-height:1.45;font-weight:600;");
       head.textContent = "قد يفيدك:";
       frag.appendChild(head);
       var ul = document.createElement("ul");
       ul.style.cssText =
-        "margin:0 0 10px 0;padding:0 18px 0 0;list-style:none;color:rgba(241,245,249,.92);font-size:13px;line-height:1.5;";
+        "margin:0 0 10px 0;padding:0 18px 0 0;list-style:none;color:rgba(248,250,252,.92);font-size:13px;line-height:1.5;";
       bullets.forEach(function (line) {
         var li = document.createElement("li");
         li.style.cssText =
@@ -428,17 +425,14 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     var frag = document.createDocumentFragment();
     var t = document.createElement("p");
     t.style.cssText =
-      textPrimary + "margin-bottom:8px;font-size:13px;line-height:1.45;font-weight:600;";
+      textPrimary("margin-bottom:8px;font-size:13px;line-height:1.45;font-weight:600;");
     t.textContent = opts.title || "اترك رقمك للمتابعة";
     frag.appendChild(t);
     var inp = document.createElement("input");
     inp.type = "tel";
     inp.placeholder = "05xxxxxxxx";
     inp.setAttribute("dir", "ltr");
-    inp.style.cssText =
-      "width:100%;box-sizing:border-box;border-radius:9px;border:" + inputBorderCss(ph) + ";" +
-      "background:rgba(15,23,42,.65);padding:9px 10px;margin-bottom:6px;font:inherit;font-size:14px;color:#f8fafc;" +
-      "outline:none;";
+    inp.style.cssText = inputFieldStyle(ph) + "margin-bottom:6px;";
     frag.appendChild(inp);
     var err = document.createElement("p");
     err.style.cssText = "margin:0 0 8px;color:#fecaca;font-size:12px;line-height:1.35;";
@@ -489,19 +483,16 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     var ph = resolvedPrimary(opts.primaryColor);
     var frag = document.createDocumentFragment();
     var hi = document.createElement("p");
-    hi.style.cssText = textPrimary + "margin-bottom:8px;font-size:13px;line-height:1.5;font-weight:600;";
+    hi.style.cssText = textPrimary("margin-bottom:8px;font-size:13px;line-height:1.5;font-weight:600;");
     hi.textContent = "وش السبب اللي مخلّيك متردد؟";
     frag.appendChild(hi);
     var hint = document.createElement("p");
-    hint.style.cssText = textMuted + "margin-bottom:6px;font-size:12px;line-height:1.4;";
+    hint.style.cssText = textMuted("margin-bottom:6px;font-size:12px;line-height:1.4;");
     hint.textContent = "(اختياري)";
     frag.appendChild(hint);
     var ta = document.createElement("textarea");
     ta.rows = 2;
-    ta.style.cssText =
-      "width:100%;box-sizing:border-box;border-radius:9px;border:" + inputBorderCss(ph) + ";" +
-      "background:rgba(15,23,42,.65);padding:8px;margin-bottom:8px;font:inherit;" +
-      "resize:none;height:52px;min-height:52px;max-height:52px;color:#f8fafc;";
+    ta.style.cssText = inputFieldCompactStyle(ph) + "resize:none;height:52px;min-height:52px;max-height:52px;margin-bottom:8px;";
     frag.appendChild(ta);
     var row = document.createElement("div");
     row.style.cssText = rowStyleCol;
@@ -559,14 +550,12 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     var ph = resolvedPrimary(opts.primaryColor);
     var frag = document.createDocumentFragment();
     var hi = document.createElement("p");
-    hi.style.cssText = textPrimary + "margin-bottom:8px;font-size:13px;line-height:1.5;";
+    hi.style.cssText = textPrimary("margin-bottom:8px;font-size:13px;line-height:1.5;");
     hi.textContent = "اكتب ملاحظتك باختصار 👇";
     frag.appendChild(hi);
     var ta = document.createElement("textarea");
     ta.rows = 3;
-    ta.style.cssText =
-      "width:100%;box-sizing:border-box;border-radius:9px;border:" + inputBorderCss(ph) + ";" +
-      "background:rgba(15,23,42,.65);padding:8px;margin-bottom:6px;font:inherit;resize:vertical;color:#f8fafc;";
+    ta.style.cssText = inputFieldCompactStyle(ph) + "margin-bottom:6px;resize:vertical;";
     frag.appendChild(ta);
     var err = document.createElement("p");
     err.style.cssText = "color:#fecaca;font-size:12px;margin:4px 0;";

@@ -21,7 +21,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
         return String(window.CARTFLOW_RUNTIME_VERSION).trim();
       }
     } catch (eRv) {}
-    return "v2-beacon-bootstrap-fix-1";
+    return "v2-merchant-theme-tokens-1";
   }
 
   function merchantBrandNameSnapshot() {
@@ -189,7 +189,15 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     }
   }
 
+  function theme() {
+    return Cf.Theme || null;
+  }
+
   function merchantPrimaryHex() {
+    var th = theme();
+    if (th && typeof th.merchantPrimaryHex === "function") {
+      return th.merchantPrimaryHex();
+    }
     try {
       if (Cf.Config && typeof Cf.Config.merchant === "function") {
         var c = Cf.Config.merchant().widget_primary_color;
@@ -201,125 +209,30 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     return null;
   }
 
-  var DEFAULT_PRIMARY = "#6366F1";
-
-  function parseHex6(hex) {
-    if (!hex) {
-      return null;
-    }
-    var s = String(hex).trim().replace(/^#/, "");
-    if (s.length === 3) {
-      s =
-        s.charAt(0) +
-        s.charAt(0) +
-        s.charAt(1) +
-        s.charAt(1) +
-        s.charAt(2) +
-        s.charAt(2);
-    }
-    if (!/^[0-9A-Fa-f]{6}$/.test(s)) {
-      return null;
-    }
-    return {
-      r: parseInt(s.slice(0, 2), 16),
-      g: parseInt(s.slice(2, 4), 16),
-      b: parseInt(s.slice(4, 6), 16),
-    };
-  }
-
-  function hexByte(n) {
-    var s = Math.max(0, Math.min(255, Math.round(n))).toString(16);
-    return s.length < 2 ? "0" + s : s;
-  }
-
-  function darkenHex(hex, amount) {
-    var rgb = parseHex6(hex);
-    if (!rgb) {
-      return hex || DEFAULT_PRIMARY;
-    }
-    var f = 1 - (amount == null ? 0.15 : amount);
-    return (
-      "#" +
-      hexByte(rgb.r * f) +
-      hexByte(rgb.g * f) +
-      hexByte(rgb.b * f)
-    ).toUpperCase();
-  }
-
-  function merchantColorIsActive() {
-    try {
-      if (Cf.State && Cf.State.internals && Cf.State.internals.v2MerchantConfigResolved) {
-        return !!merchantPrimaryHex();
-      }
-    } catch (eMc) {}
-    return false;
-  }
-
   function resolvedPrimary(primaryHex) {
-    return primaryHex || merchantPrimaryHex() || DEFAULT_PRIMARY;
-  }
-
-  function shellBackgroundGradient(primaryHex) {
-    if (!merchantColorIsActive()) {
-      return "linear-gradient(165deg,#1e1b4b 0%,#312e81 42%,#1e1b4b 100%)";
+    var th = theme();
+    if (th && typeof th.resolvedPrimary === "function") {
+      return th.resolvedPrimary(primaryHex);
     }
-    return "linear-gradient(165deg,#111318 0%,#171b22 50%,#12151a 100%)";
-  }
-
-  function shellBorderRgba(primaryHex, alpha) {
-    var rgb = parseHex6(resolvedPrimary(primaryHex));
-    if (!rgb) {
-      return "rgba(99,102,241," + (alpha == null ? 0.45 : alpha) + ")";
-    }
-    return (
-      "rgba(" +
-      rgb.r +
-      "," +
-      rgb.g +
-      "," +
-      rgb.b +
-      "," +
-      (alpha == null ? 0.4 : alpha) +
-      ")"
-    );
-  }
-
-  function launcherBackground(primaryHex) {
-    if (!merchantColorIsActive()) {
-      return "linear-gradient(165deg,#1e1b4b 0%,#312e81 52%,#1e3a5f 100%)";
-    }
-    var rgb = parseHex6(resolvedPrimary(primaryHex));
-    if (!rgb) {
-      return "linear-gradient(165deg,#15181e 0%,#12151a 100%)";
-    }
-    return (
-      "linear-gradient(165deg,rgba(" +
-      rgb.r +
-      "," +
-      rgb.g +
-      "," +
-      rgb.b +
-      ",0.18) 0%,#15181e 55%,#12151a 100%)"
-    );
-  }
-
-  function primaryButtonGradient(primaryHex) {
-    var base = resolvedPrimary(primaryHex);
-    return "linear-gradient(180deg," + base + " 0%," + darkenHex(base, 0.14) + " 100%)";
-  }
-
-  function inputBorderCss(primaryHex) {
-    return "1px solid " + shellBorderRgba(primaryHex, 0.38);
+    return primaryHex || merchantPrimaryHex() || "#888888";
   }
 
   function applyShellSurfaceStyles(w, primaryHex) {
     if (!w || w.getAttribute("data-cf-shell-minimized") === "1") {
       return;
     }
-    var fill = resolvedPrimary(primaryHex);
+    var th = theme();
+    if (!th) {
+      return;
+    }
+    th.refresh(primaryHex);
+    th.applyCssVars(w);
+    var t = th.tokens();
     try {
-      w.style.background = shellBackgroundGradient(fill);
-      w.style.border = "1px solid " + shellBorderRgba(fill, merchantColorIsActive() ? 0.4 : 0.45);
+      w.style.background = th.shellBackground();
+      w.style.border = "1px solid " + th.shellBorder(0.48);
+      w.style.boxShadow = t.shadowShell;
+      w.style.color = "#f8fafc";
     } catch (eSurf) {}
   }
 
@@ -327,33 +240,31 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     if (!w) {
       return;
     }
-    var fill = resolvedPrimary(primaryHex);
+    var th = theme();
+    if (!th) {
+      return;
+    }
+    th.refresh(primaryHex);
+    th.applyCssVars(w);
+    var t = th.tokens();
     try {
-      w.style.background = launcherBackground(fill);
-      w.style.border = "1px solid " + shellBorderRgba(fill, merchantColorIsActive() ? 0.5 : 0.55);
+      w.style.background = th.launcherBackground();
+      w.style.border = "1px solid " + th.shellBorder(0.52);
+      w.style.boxShadow = t.shadowLauncher;
     } catch (eLaunch) {}
   }
-
-  var ChromeTokens = {
-    DEFAULT_PRIMARY: DEFAULT_PRIMARY,
-    resolvedPrimary: resolvedPrimary,
-    merchantColorIsActive: merchantColorIsActive,
-    shellBackgroundGradient: shellBackgroundGradient,
-    shellBorderRgba: shellBorderRgba,
-    launcherBackground: launcherBackground,
-    primaryButtonGradient: primaryButtonGradient,
-    inputBorderCss: inputBorderCss,
-    applyShellSurfaceStyles: applyShellSurfaceStyles,
-    darkenHex: darkenHex,
-  };
-  Cf.ChromeTokens = ChromeTokens;
 
   function refreshChromeColor(w) {
     w = w || rootFromDom();
     if (!w) {
       return;
     }
-    var fill = resolvedPrimary(null);
+    var th = theme();
+    if (!th) {
+      return;
+    }
+    th.refresh(merchantPrimaryHex());
+    var fill = th.tokens().chromeBar;
     var bar = w.querySelector('[data-cf-chrome="1"]');
     if (bar) {
       try {
@@ -364,6 +275,13 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
 
   function refreshShellVisuals() {
     var w = rootFromDom();
+    var th = theme();
+    if (th) {
+      th.refresh(merchantPrimaryHex());
+      if (w) {
+        th.applyCssVars(w);
+      }
+    }
     refreshChromeColor(w);
     applyShellSurfaceStyles(w, merchantPrimaryHex());
     applyShellTitle(w, "refreshShellVisuals");
@@ -382,6 +300,9 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
         Cf.Config.scheduleStorefrontDomTruthBeacon("refreshShellVisuals");
       }
     } catch (eBc) {}
+    if (th && typeof th.auditLegacyPurple === "function") {
+      th.auditLegacyPurple(w);
+    }
   }
   /** Expanded storefront shell — fixed width/height; scroll only if content overflows stage. */
   var SHELL_EXPANDED_WIDTH_PX = 280;
@@ -510,7 +431,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     chip.style.cssText =
       "display:none;box-sizing:border-box;position:absolute;left:0;top:0;width:100%;height:100%;" +
       "align-items:center;justify-content:center;margin:0;border:0;background:transparent;" +
-      "cursor:pointer;color:#f8fafc;font-size:17px;font-weight:700;line-height:1;padding:0;";
+      "cursor:pointer;" + (theme() ? theme().launcherChipCss() : "color:#f8fafc;font-size:17px;font-weight:700;line-height:1;padding:0;");
     w.appendChild(chip);
     chip.addEventListener(
       "click",
@@ -614,9 +535,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       w.style.borderRadius = "999px";
       w.style.overflow = "hidden";
       w.style.cursor = "default";
-      w.style.background = launcherBackground(merchantPrimaryHex());
-      w.style.border = "1px solid " + shellBorderRgba(merchantPrimaryHex(), merchantColorIsActive() ? 0.5 : 0.55);
-      w.style.boxShadow = "0 4px 14px rgba(2,6,23,.45)";
+      applyLauncherSurfaceStyles(w, merchantPrimaryHex());
       w.style.fontSize = "0";
       w.style.lineHeight = "1";
       w.style.fontFamily =
@@ -707,8 +626,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       "px;" +
       "right:max(12px,env(safe-area-inset-right));bottom:max(12px,env(safe-area-inset-bottom));" +
       "box-sizing:border-box;padding:11px;border-radius:14px;" +
-      "color:#f1f5f9;" +
-      "box-shadow:0 18px 48px rgba(2,6,23,.72), inset 0 1px 0 rgba(255,255,255,.06);" +
+      "color:#f8fafc;" +
       "font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;font-size:14px;line-height:1.42;" +
       "overflow:hidden;";
     applyShellSurfaceStyles(w, fill);
@@ -746,8 +664,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
         "display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 0 6px 0;";
       var title = document.createElement("span");
       title.setAttribute("data-cf-shell-title", "1");
-      title.style.cssText =
-        "font-weight:700;font-size:13px;color:#eef2ff;letter-spacing:.01em;";
+      title.style.cssText = theme() ? theme().titleCss() : "font-weight:700;font-size:13px;color:#f8fafc;";
       writeShellTitleText(
         title,
         merchantShellTitle(),
@@ -758,8 +675,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       closeBtn.type = "button";
       closeBtn.setAttribute("data-cf-shell-close", "1");
       closeBtn.setAttribute("aria-label", "إغلاق");
-      closeBtn.style.cssText =
-        "border:0;background:transparent;color:rgba(226,232,240,.82);cursor:pointer;font-size:20px;line-height:1;padding:2px 6px;border-radius:8px;";
+      closeBtn.style.cssText = theme() ? theme().closeButtonCss() : "border:0;background:transparent;color:#e2e8f0;cursor:pointer;font-size:20px;line-height:1;padding:2px 6px;border-radius:8px;";
       closeBtn.textContent = "×";
       head.appendChild(title);
       head.appendChild(closeBtn);
@@ -803,9 +719,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     if (!stage.querySelector("[data-cf-shell-loading]")) {
       var load = document.createElement("div");
       load.setAttribute("data-cf-shell-loading", "1");
-      load.style.cssText =
-        "display:none;position:absolute;left:0;right:0;top:0;bottom:0;align-items:center;justify-content:center;" +
-        "flex-direction:row;background:rgba(15,23,42,.45);border-radius:10px;z-index:4;font-size:12px;color:#e2e8f0;";
+      load.style.cssText = theme() ? theme().loadingOverlayCss() : "display:none;position:absolute;inset:0;background:rgba(0,0,0,.45);border-radius:10px;z-index:4;font-size:12px;color:#f1f5f9;";
       load.textContent = "…";
       var mEl = stage.querySelector(WIDGET_BODY_SELECTOR);
       if (mEl) {
@@ -818,8 +732,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     if (!w.querySelector("[data-cf-shell-footer]")) {
       var foot = document.createElement("div");
       foot.setAttribute("data-cf-shell-footer", "1");
-      foot.style.cssText =
-        "margin-top:8px;min-height:0;font-size:12px;line-height:1.35;color:rgba(226,232,240,.92);display:none;";
+      foot.style.cssText = theme() ? theme().footerCss() : "margin-top:8px;font-size:12px;line-height:1.35;color:#e2e8f0;display:none;";
       inner.appendChild(foot);
     }
 
@@ -836,7 +749,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     }
     dedupeShellRoots();
     var hadRoot = !!rootFromDom();
-    var ph = opts.primaryColor || merchantPrimaryHex() || DEFAULT_PRIMARY;
+    var ph = opts.primaryColor || merchantPrimaryHex();
     var r = ensureShell(ph);
     var w = r.root;
     try {
@@ -1079,7 +992,9 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
           ? "#fecaca"
           : opts.tone === "success"
           ? "#86efac"
-          : "#e2e8f0";
+          : theme()
+          ? theme().tokens().primaryLight
+          : "#f1f5f9";
     } catch (eC) {}
   }
 

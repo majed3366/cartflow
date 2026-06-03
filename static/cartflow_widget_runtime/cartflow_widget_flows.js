@@ -62,12 +62,12 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
   }
 
   function primaryHex() {
-    var ct = Cf.ChromeTokens;
-    if (ct && typeof ct.resolvedPrimary === "function") {
-      return ct.resolvedPrimary(null);
+    var th = Cf.Theme;
+    if (th && typeof th.resolvedPrimary === "function") {
+      return th.resolvedPrimary(null);
     }
     var M = Cf.Config.merchant();
-    return (M && M.widget_primary_color) || "#6366f1";
+    return (M && M.widget_primary_color) || "#888888";
   }
 
   /** Keep cart totals / VIP mirrors in sync; V2 bundle does not load legacy cartflow_widget.js. */

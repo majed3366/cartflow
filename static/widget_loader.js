@@ -12,7 +12,7 @@
 (function () {
   "use strict";
 
-  var RUNTIME_VERSION = "v2-beacon-bootstrap-fix-1";
+  var RUNTIME_VERSION = "v2-merchant-theme-tokens-1";
 
   function cartflowExtractHostnameSlugInline(host) {
     if (typeof window.cartflowExtractStoreSlugFromHostname === "function") {

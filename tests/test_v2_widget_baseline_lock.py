@@ -50,6 +50,7 @@ class V2WidgetBaselineLockTests(unittest.TestCase):
             "cartflow_widget_config.js",
             "cartflow_widget_fetch.js",
             "cartflow_widget_state.js",
+            "cartflow_widget_theme.js",
             "cartflow_widget_triggers.js",
             "cartflow_widget_phone.js",
             "cartflow_widget_shell.js",

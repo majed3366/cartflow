@@ -42,12 +42,14 @@ class CartflowWidgetLayeredRuntimeTests(unittest.TestCase):
             "cartflow_widget_loader.js",
             "cartflow_widget_config.js",
             "cartflow_widget_state.js",
+            "cartflow_widget_theme.js",
             "cartflow_widget_triggers.js",
             "cartflow_widget_flows.js",
             "cartflow_widget_phone.js",
             "cartflow_widget_shell.js",
             "cartflow_widget_fetch.js",
             "cartflow_widget_ui.js",
+            "cartflow_widget_theme.js",
             "cartflow_widget_legacy_bridge.js",
         )
         for name in expected:

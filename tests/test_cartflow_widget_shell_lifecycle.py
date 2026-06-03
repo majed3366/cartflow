@@ -55,10 +55,9 @@ class CartflowWidgetShellLifecycleTests(unittest.TestCase):
 
     def test_shell_exposes_merchant_chrome_tokens(self) -> None:
         s = _SHELL.read_text(encoding="utf-8")
-        self.assertIn("Cf.ChromeTokens = ChromeTokens", s)
-        self.assertIn("shellBackgroundGradient", s)
-        self.assertIn("merchantColorIsActive", s)
+        self.assertIn("Cf.Theme", s)
         self.assertIn("applyShellSurfaceStyles", s)
+        self.assertNotIn("Cf.ChromeTokens", s)
 
     def test_shell_has_storefront_block_gate_and_ensure_return(self) -> None:
         s = _SHELL.read_text(encoding="utf-8")

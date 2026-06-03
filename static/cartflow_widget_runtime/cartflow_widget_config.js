@@ -253,7 +253,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
         return String(window.__cartflow_loader_build).trim();
       }
     } catch (eRv) {}
-    return "v2-beacon-bootstrap-fix-1";
+    return "v2-merchant-theme-tokens-1";
   }
 
   function cartflowBeaconApiOrigin() {
@@ -504,6 +504,12 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       payload_widget_name: j.widget_name,
       payload_widget_display_name: j.widget_display_name,
     });
+    try {
+      var Th = window.CartflowWidgetRuntime && window.CartflowWidgetRuntime.Theme;
+      if (Th && typeof Th.refresh === "function") {
+        Th.refresh(CRT.merchant.widget_primary_color);
+      }
+    } catch (eTh) {}
     try {
       var Sh = window.CartflowWidgetRuntime && window.CartflowWidgetRuntime.Shell;
       if (Sh && typeof Sh.refreshShellVisuals === "function") {
