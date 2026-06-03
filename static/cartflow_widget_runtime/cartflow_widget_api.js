@@ -81,11 +81,23 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     }
   }
 
+  function isPlatformStorefrontHost() {
+    try {
+      if (typeof window.cartflowExtractStoreSlugFromHostname === "function") {
+        return !!window.cartflowExtractStoreSlugFromHostname(window.location.hostname);
+      }
+    } catch (ePlat) {}
+    return false;
+  }
+
   function storeSlug() {
     if (typeof window.cartflowResolveStorefrontStoreSlug === "function") {
       var resolved = window.cartflowResolveStorefrontStoreSlug();
       if (resolved && resolved.slug) {
         return String(resolved.slug).trim();
+      }
+      if (isPlatformStorefrontHost()) {
+        return "";
       }
     }
     try {
@@ -124,6 +136,12 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       String(window.CARTFLOW_STORE_SLUG).trim()
     ) {
       return String(window.CARTFLOW_STORE_SLUG).trim();
+    }
+    if (isPlatformStorefrontHost()) {
+      try {
+        console.warn("[CF STORE SLUG UNRESOLVED PLATFORM HOST]");
+      } catch (ePlatApi) {}
+      return "";
     }
     try {
       console.warn("[CF STORE SLUG FALLBACK DEMO]");

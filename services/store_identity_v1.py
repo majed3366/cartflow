@@ -8,6 +8,8 @@ prefixes, dashboard slugs, and widget public-config store_slug values.
 from __future__ import annotations
 
 import logging
+import threading
+import time
 from typing import Any, Iterable, List, Optional, Tuple
 from urllib.parse import urlparse
 
@@ -17,6 +19,11 @@ from extensions import db
 from models import Store, StoreIdentityAlias
 
 _log = logging.getLogger("cartflow.store_identity")
+
+WIDGET_SANDBOX_SLUGS = frozenset({"demo", "demo2", "default"})
+_link_attempt_mono: dict[str, float] = {}
+_link_lock = threading.Lock()
+_LINK_ATTEMPT_COOLDOWN_SEC = 90.0
 
 # Alias kinds (stable contract — do not rename without migration)
 ALIAS_KIND_CARTFLOW_ZID = "cartflow_zid"
@@ -63,6 +70,130 @@ def extract_zid_permalink_from_url(url: str) -> Optional[str]:
         if sub and "." not in sub:
             return sub[:255]
     return None
+
+
+def is_widget_sandbox_slug(slug: str) -> bool:
+    return (slug or "").strip().casefold() in WIDGET_SANDBOX_SLUGS
+
+
+def looks_like_zid_storefront_permalink(slug: str) -> bool:
+    """Zid permalink segment from ``{slug}.zid.store`` — not a sandbox slug."""
+    ss = normalize_identity_value(slug)
+    if not ss or is_widget_sandbox_slug(ss):
+        return False
+    if len(ss) > 64 or " " in ss or "/" in ss:
+        return False
+    return all(ch.isalnum() or ch in "-_" for ch in ss)
+
+
+def warm_widget_config_cache_for_store_row(row: Any) -> None:
+    """Push dashboard widget snapshot to every alias cache key for this Store."""
+    if row is None:
+        return
+    try:
+        from services.widget_config_cache import update_from_dashboard_store_row
+
+        update_from_dashboard_store_row(row)
+    except Exception as exc:  # noqa: BLE001
+        _log.warning("widget cache warm after identity sync skipped: %s", exc)
+
+
+def _permalink_values_from_profile(profile: Any) -> set[str]:
+    out: set[str] = set()
+    for kind, val, _plat in collect_zid_identities_from_profile(profile):
+        if kind == ALIAS_KIND_ZID_PERMALINK and val:
+            out.add(normalize_identity_value(val).casefold())
+    return out
+
+
+def attempt_link_zid_storefront_slug(identifier: str) -> ResolveMatch:
+    """
+    When a Zid permalink slug misses alias resolution, match connected stores
+    via live Zid manager profile and register aliases (throttled per slug).
+    """
+    ss = normalize_identity_value(identifier)
+    if not ss or not looks_like_zid_storefront_permalink(ss):
+        return None, "not_found"
+
+    mono = time.monotonic()
+    with _link_lock:
+        last = float(_link_attempt_mono.get(ss) or 0.0)
+        if mono - last < _LINK_ATTEMPT_COOLDOWN_SEC:
+            return None, "link_throttled"
+        _link_attempt_mono[ss] = mono
+
+    try:
+        rows = (
+            db.session.query(Store)
+            .filter(Store.access_token.isnot(None))
+            .filter(Store.access_token != "")
+            .all()
+        )
+    except (SQLAlchemyError, OSError):
+        db.session.rollback()
+        return None, "not_found"
+
+    target_cf = ss.casefold()
+    matched_rows: List[Store] = []
+    for row in rows:
+        token = (getattr(row, "access_token", None) or "").strip()
+        if not token:
+            continue
+        profile: Optional[dict[str, Any]] = None
+        try:
+            from integrations.zid_client import fetch_zid_manager_profile
+
+            profile = fetch_zid_manager_profile(token)
+        except Exception as exc:  # noqa: BLE001
+            _log.warning(
+                "storefront slug link profile fetch skipped store_id=%s err=%s",
+                getattr(row, "id", None),
+                type(exc).__name__,
+            )
+            continue
+        permalinks = _permalink_values_from_profile(profile)
+        if target_cf not in permalinks:
+            continue
+        try:
+            sync_zid_store_identities_after_oauth(
+                row,
+                profile=profile,
+                store_url=f"https://{ss}.zid.store/",
+            )
+            matched_rows.append(row)
+        except Exception as exc:  # noqa: BLE001
+            _log.warning(
+                "storefront slug link sync skipped store_id=%s err=%s",
+                getattr(row, "id", None),
+                type(exc).__name__,
+            )
+
+    if len(matched_rows) == 1:
+        try:
+            db.session.commit()
+        except (SQLAlchemyError, OSError):
+            db.session.rollback()
+            return None, "link_commit_failed"
+        warm_widget_config_cache_for_store_row(matched_rows[0])
+        return resolve_store_row_by_identifier(ss)
+
+    if len(matched_rows) > 1:
+        _log.warning(
+            "[STORE IDENTITY LINK AMBIGUOUS] slug=%s matches=%s",
+            ss[:64],
+            [getattr(r, "id", None) for r in matched_rows],
+        )
+        return None, "link_ambiguous"
+
+    return None, "link_no_match"
+
+
+def resolve_store_row_for_storefront_api(identifier: str) -> ResolveMatch:
+    """Identity resolve with one-shot Zid permalink link attempt for storefront hot paths."""
+    row, via = resolve_store_row_by_identifier(identifier)
+    if row is not None:
+        return row, via
+    return attempt_link_zid_storefront_slug(identifier)
 
 
 def log_store_identity_resolve(
@@ -352,6 +483,7 @@ def sync_zid_store_identities_after_oauth(
     prior_zid: Optional[str] = None,
     store_url: Optional[str] = None,
     profile: Optional[dict[str, Any]] = None,
+    warm_cache: bool = True,
 ) -> None:
     """
     Register all known Zid identifiers for a Store after OAuth or storefront verify.
@@ -435,6 +567,18 @@ def sync_zid_store_identities_after_oauth(
         (current_zid or "-")[:64],
         n,
     )
+    if warm_cache:
+        warm_widget_config_cache_for_store_row(store)
+
+
+def sync_zid_identities_for_dashboard_store(row: Any) -> None:
+    """Refresh Zid alias rows from live profile before dashboard cache invalidation."""
+    if row is None:
+        return
+    token = (getattr(row, "access_token", None) or "").strip()
+    if not token:
+        return
+    sync_zid_store_identities_after_oauth(row, warm_cache=False)
 
 
 def backfill_store_identity_aliases_from_stores(*, session: Any = None) -> int:
@@ -511,17 +655,24 @@ __all__ = [
     "PLATFORM_CARTFLOW",
     "PLATFORM_SALLA",
     "PLATFORM_ZID",
+    "WIDGET_SANDBOX_SLUGS",
+    "attempt_link_zid_storefront_slug",
     "backfill_store_identity_aliases_from_stores",
     "canonical_store_slug_on_row",
     "collect_zid_identities_from_profile",
     "ensure_cartflow_zid_alias_for_store",
     "extract_zid_permalink_from_url",
+    "is_widget_sandbox_slug",
     "list_public_cache_keys_for_store_row",
+    "looks_like_zid_storefront_permalink",
     "normalize_identity_value",
     "register_identity_aliases",
     "register_store_identity_alias",
     "resolve_canonical_store_slug",
     "resolve_store_row_by_identifier",
+    "resolve_store_row_for_storefront_api",
     "sync_connected_platform_identities",
+    "sync_zid_identities_for_dashboard_store",
     "sync_zid_store_identities_after_oauth",
+    "warm_widget_config_cache_for_store_row",
 ]

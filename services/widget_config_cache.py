@@ -155,6 +155,12 @@ def update_from_dashboard_store_row(store_row: Any) -> None:
     if store_row is None:
         return
     try:
+        from services.store_identity_v1 import sync_zid_identities_for_dashboard_store
+
+        sync_zid_identities_for_dashboard_store(store_row)
+    except Exception:  # noqa: BLE001
+        db.session.rollback()
+    try:
         from services.store_widget_customization import reconcile_widget_name_columns
 
         reconcile_widget_name_columns(store_row)

@@ -24,7 +24,8 @@ class StorefrontStoreSlugResolverTests(unittest.TestCase):
         self.assertIn(".zid.store", src)
         self.assertIn(".salla.sa", src)
         self.assertIn(".salla.store", src)
-        self.assertIn("[CF STORE SLUG FALLBACK DEMO]", src)
+        self.assertIn("isPlatformStorefrontHost", src)
+        self.assertIn("platform_host_unresolved", src)
         self.assertIn("window.cartflowResolveStorefrontStoreSlug", src)
         chain_ix = src.index("var chain = [")
         chain_block = src[chain_ix : chain_ix + 400]
@@ -41,7 +42,7 @@ class StorefrontStoreSlugResolverTests(unittest.TestCase):
         self.assertIn("cartflow_storefront_store_slug.js", loader)
         self.assertIn("cartflowEnsureStoreSlugResolverLoaded", loader)
         self.assertIn("cartflowApplyResolvedStoreSlug", loader)
-        self.assertIn("v2-storefront-store-slug-1", loader)
+        self.assertIn("v2-store-identity-truth-1", loader)
         init_ix = loader.index("cartflowInitStoreSlugFromLoaderTag")
         beacon_ix = loader.index("cartflowStorefrontWidgetSeenBeacon")
         self.assertLess(beacon_ix, init_ix)

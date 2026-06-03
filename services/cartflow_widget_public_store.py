@@ -33,13 +33,12 @@ def store_row_for_widget_public_session(
 
 
 def store_row_for_widget_public_api(store_slug: str) -> Optional[Store]:
-    """Same canonical resolver as merchant dashboard (‎resolve_recovery_store_row_canonical‎)."""
-    from services.recovery_store_lookup import resolve_recovery_store_row_canonical
+    """Canonical resolver + one-shot Zid permalink link for storefront hot paths."""
+    from services.store_identity_v1 import resolve_store_row_for_storefront_api
 
     try:
-        return resolve_recovery_store_row_canonical(
-            store_slug, allow_schema_warm=False
-        )
+        row, _via = resolve_store_row_for_storefront_api(store_slug)
+        return row
     except (SQLAlchemyError, OSError):
         db.session.rollback()
         return None

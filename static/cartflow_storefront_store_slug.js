@@ -274,8 +274,23 @@
       }
     }
 
+    if (isPlatformStorefrontHost()) {
+      try {
+        console.warn("[CF STORE SLUG UNRESOLVED PLATFORM HOST]");
+      } catch (ePlat) {}
+      return { slug: "", source: "platform_host_unresolved" };
+    }
+
     logDemoFallback();
     return { slug: "demo", source: "fallback_demo" };
+  }
+
+  function isPlatformStorefrontHost() {
+    try {
+      return !!extractSlugFromHostname(window.location.hostname);
+    } catch (eHostChk) {
+      return false;
+    }
   }
 
   window.cartflowResolveStorefrontStoreSlug = resolveStorefrontStoreSlug;

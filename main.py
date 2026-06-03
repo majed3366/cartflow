@@ -1016,6 +1016,7 @@ _DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT = frozenset(
         "/dev/recovery-truth",
         "/dev/store-template-debug",
         "/dev/template-truth",
+        "/dev/store-identity-runtime-truth",
         "/dev/attempt-2-trace",
         "/dev/recovery-operational-truth",
         "/dev/cartflow-simulation-report",
@@ -1971,6 +1972,33 @@ def dev_template_truth(
     try:
         _ensure_cartflow_api_db_warmed()
         return j(build_template_truth_report(store_slug=store_slug, reason=reason))
+    except Exception as exc:  # noqa: BLE001
+        db.session.rollback()
+        return j({"ok": False, "error": str(exc)}, 500)
+
+
+@app.get("/dev/store-identity-runtime-truth")
+def dev_store_identity_runtime_truth(
+    storefront_slug: str = Query("", min_length=0, max_length=255),
+    store_slug: str = Query("", min_length=0, max_length=255),
+) -> Any:
+    """Verify dashboard Store row vs storefront slug resolution + public-config truth."""
+    from services.store_identity_runtime_truth_v1 import (
+        build_store_identity_runtime_truth_report,
+    )
+
+    sf = (storefront_slug or store_slug or "").strip()
+    if not sf:
+        return j({"ok": False, "error": "storefront_slug_required"}, 400)
+    try:
+        _ensure_cartflow_api_db_warmed()
+        dash_row = _dashboard_recovery_store_row()
+        return j(
+            build_store_identity_runtime_truth_report(
+                storefront_slug=sf,
+                dashboard_store_row=dash_row,
+            )
+        )
     except Exception as exc:  # noqa: BLE001
         db.session.rollback()
         return j({"ok": False, "error": str(exc)}, 500)

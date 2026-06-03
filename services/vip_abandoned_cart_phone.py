@@ -13,15 +13,15 @@ from models import AbandonedCart, Store
 def resolve_store_row_for_cartflow_slug_session(
     session: Any, store_slug: str
 ) -> Optional[Store]:
-    """قراءة ‎Store‎ حسب ‎store_slug‎ — جلسة ‎SQLAlchemy‎ صريحة (مسار الخلفية/الاختبارات)."""
+    """قراءة ‎Store‎ حسب ‎store_slug‎ — canonical identity layer only."""
+    from services.store_identity_v1 import resolve_store_row_by_identifier
+
     ss = (store_slug or "").strip()[:255]
     if not ss:
         return None
     try:
-        row = session.query(Store).filter(Store.zid_store_id == ss).first()
-        if row is not None:
-            return row
-        return session.query(Store).order_by(Store.id.desc()).first()
+        row, _via = resolve_store_row_by_identifier(ss, session=session)
+        return row
     except (SQLAlchemyError, OSError):
         session.rollback()
         return None

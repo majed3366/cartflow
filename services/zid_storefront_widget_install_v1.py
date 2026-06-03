@@ -217,13 +217,13 @@ def _should_skip_reinstall(store: Any, *, force: bool) -> bool:
 
 def record_widget_storefront_seen(*, store_slug: str) -> bool:
     """Update widget_last_seen_at when loader runs on a real storefront."""
-    from services.store_identity_v1 import resolve_store_row_by_identifier
+    from services.store_identity_v1 import resolve_store_row_for_storefront_api
 
     slug = (store_slug or "").strip()
     if not slug or slug.lower() in ("demo", "default", "demo2"):
         return False
     ensure_store_zid_widget_install_schema(db)
-    row, _via = resolve_store_row_by_identifier(slug)
+    row, _via = resolve_store_row_for_storefront_api(slug)
     if row is None:
         return False
     now = _utc_now()
