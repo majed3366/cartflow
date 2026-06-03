@@ -7,6 +7,7 @@
 
   var SANDBOX = { demo: 1, demo2: 1, default: 1 };
   var _demoFallbackLogged = false;
+  var _lastDiagnostic = null;
 
   function normalizeSlug(raw) {
     var s = String(raw == null ? "" : raw).trim();
@@ -41,6 +42,14 @@
       }
     }
     return "";
+  }
+
+  function isPlatformStorefrontHost() {
+    try {
+      return !!extractSlugFromHostname(window.location.hostname);
+    } catch (eHostChk) {
+      return false;
+    }
   }
 
   function extractSlugFromStoreUrl(raw) {
@@ -124,6 +133,23 @@
       }
     }
     return s;
+  }
+
+  function collectZidGlobals() {
+    var out = {};
+    try {
+      if (window.store && typeof window.store === "object") {
+        out.store_permalink = window.store.permalink;
+        out.store_url = window.store.url;
+      }
+    } catch (eSt) {}
+    try {
+      if (window.zid && window.zid.store && typeof window.zid.store === "object") {
+        out.zid_permalink = window.zid.store.permalink;
+        out.zid_url = window.zid.store.url;
+      }
+    } catch (eZid) {}
+    return out;
   }
 
   function slugFromPlatformGlobals() {
@@ -211,12 +237,39 @@
     return result;
   }
 
-  function logResolved(result) {
+  function buildDiagnosticContext(loader, dataStore, queryStore) {
+    var loaderSrc = "";
     try {
-      console.log("[CF STORE SLUG RESOLVED]", {
-        slug: result.slug,
-        source: result.source,
-      });
+      loaderSrc = loader && loader.src ? String(loader.src) : "";
+    } catch (eSrc) {}
+    return {
+      location_hostname: (function () {
+        try {
+          return window.location.hostname || "";
+        } catch (eH) {
+          return "";
+        }
+      })(),
+      current_script_src: loaderSrc,
+      data_store: dataStore || "",
+      query_store: queryStore || "",
+      zid_globals: collectZidGlobals(),
+    };
+  }
+
+  function logCfStoreSlugResolve(ctx, result) {
+    try {
+      var payload = {
+        location_hostname: ctx.location_hostname,
+        current_script_src: ctx.current_script_src,
+        data_store: ctx.data_store,
+        query_store: ctx.query_store,
+        zid_globals: ctx.zid_globals,
+        resolved_slug: result && result.slug ? result.slug : "",
+        resolved_source: result && result.source ? result.source : "",
+      };
+      _lastDiagnostic = payload;
+      console.log("[CF STORE SLUG RESOLVE]", payload);
     } catch (eLog) {
       /* ignore */
     }
@@ -237,6 +290,16 @@
   function resolveStorefrontStoreSlug(opts) {
     opts = opts || {};
     var allowSandbox = opts.allowSandbox === true;
+    var platformHost = isPlatformStorefrontHost();
+
+    var loader = findWidgetLoaderScript();
+    var attrHit = slugFromScriptAttributes(loader);
+    var queryHit = slugFromLoaderUrlQuery(loader);
+    var diagCtx = buildDiagnosticContext(
+      loader,
+      attrHit.slug || "",
+      queryHit.slug || ""
+    );
 
     try {
       if (
@@ -245,54 +308,64 @@
         window.CARTFLOW_STORE_SLUG !== null
       ) {
         var preset = normalizeSlug(window.CARTFLOW_STORE_SLUG);
-        if (preset && (allowSandbox || !isSandboxSlug(preset))) {
+        if (preset && !platformHost && (allowSandbox || !isSandboxSlug(preset))) {
           var presetResult = { slug: preset, source: "window_cartflow_store_slug" };
-          logResolved(presetResult);
+          logCfStoreSlugResolve(diagCtx, presetResult);
           return presetResult;
+        }
+        if (preset && platformHost && !isSandboxSlug(preset) && (allowSandbox || !isSandboxSlug(preset))) {
+          var presetPlatform = { slug: preset, source: "window_cartflow_store_slug" };
+          logCfStoreSlugResolve(diagCtx, presetPlatform);
+          return presetPlatform;
         }
       }
     } catch (ePreset) {
       /* ignore */
     }
 
-    var loader = findWidgetLoaderScript();
-    var chain = [
-      slugFromScriptAttributes(loader),
-      slugFromLoaderUrlQuery(loader),
-      slugFromPlatformGlobals(),
-      slugFromHostname(),
-      slugFromMerchantActivationQuery(),
-      slugFromDomAttribute(),
-    ];
+    var chain = platformHost
+      ? [
+          slugFromHostname(),
+          attrHit,
+          queryHit,
+          slugFromPlatformGlobals(),
+          slugFromMerchantActivationQuery(),
+          slugFromDomAttribute(),
+        ]
+      : [
+          attrHit,
+          queryHit,
+          slugFromPlatformGlobals(),
+          slugFromHostname(),
+          slugFromMerchantActivationQuery(),
+          slugFromDomAttribute(),
+        ];
 
     var i;
     for (i = 0; i < chain.length; i++) {
       var hit = acceptCandidate(chain[i], allowSandbox);
       if (hit) {
-        logResolved(hit);
+        logCfStoreSlugResolve(diagCtx, hit);
         return hit;
       }
     }
 
-    if (isPlatformStorefrontHost()) {
+    if (platformHost) {
       try {
-        console.warn("[CF STORE SLUG UNRESOLVED PLATFORM HOST]");
+        console.warn("[CF STORE SLUG UNRESOLVED PLATFORM HOST]", diagCtx);
       } catch (ePlat) {}
-      return { slug: "", source: "platform_host_unresolved" };
+      var unresolved = { slug: "", source: "platform_host_unresolved" };
+      logCfStoreSlugResolve(diagCtx, unresolved);
+      return unresolved;
     }
 
     logDemoFallback();
-    return { slug: "demo", source: "fallback_demo" };
-  }
-
-  function isPlatformStorefrontHost() {
-    try {
-      return !!extractSlugFromHostname(window.location.hostname);
-    } catch (eHostChk) {
-      return false;
-    }
+    var demoResult = { slug: "demo", source: "fallback_demo" };
+    logCfStoreSlugResolve(diagCtx, demoResult);
+    return demoResult;
   }
 
   window.cartflowResolveStorefrontStoreSlug = resolveStorefrontStoreSlug;
   window.cartflowExtractStoreSlugFromHostname = extractSlugFromHostname;
+  window.cartflowIsPlatformStorefrontHost = isPlatformStorefrontHost;
 })();

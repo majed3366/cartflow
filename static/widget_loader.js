@@ -12,7 +12,38 @@
 (function () {
   "use strict";
 
-  var RUNTIME_VERSION = "v2-config-before-paint-1";
+  var RUNTIME_VERSION = "v2-store-slug-no-demo-1";
+
+  function cartflowExtractHostnameSlugInline(host) {
+    if (typeof window.cartflowExtractStoreSlugFromHostname === "function") {
+      return String(window.cartflowExtractStoreSlugFromHostname(host) || "").trim();
+    }
+    var h = String(host || "").toLowerCase().trim();
+    if (!h) {
+      return "";
+    }
+    var suffixes = [".zid.store", ".salla.sa", ".salla.store"];
+    var i;
+    for (i = 0; i < suffixes.length; i++) {
+      var suf = suffixes[i];
+      if (h.length > suf.length && h.slice(-suf.length) === suf) {
+        var sub = h.slice(0, -suf.length);
+        if (sub && sub.indexOf(".") === -1 && /^[a-z0-9_-]+$/i.test(sub)) {
+          return sub;
+        }
+      }
+    }
+    return "";
+  }
+
+  function cartflowIsPlatformStoreHostInline() {
+    try {
+      if (typeof window.cartflowIsPlatformStorefrontHost === "function") {
+        return !!window.cartflowIsPlatformStorefrontHost();
+      }
+    } catch (eFn) {}
+    return !!cartflowExtractHostnameSlugInline(window.location.hostname);
+  }
 
   function cartflowWidgetLoaderScriptUrl() {
     try {
@@ -97,12 +128,40 @@
 
   function cartflowApplyResolvedStoreSlug() {
     cartflowEnsureStoreSlugResolverLoaded();
-    if (typeof window.cartflowResolveStorefrontStoreSlug !== "function") {
+    var slug = "";
+    var source = "";
+    if (typeof window.cartflowResolveStorefrontStoreSlug === "function") {
+      var resolved = window.cartflowResolveStorefrontStoreSlug();
+      if (resolved && resolved.slug) {
+        slug = String(resolved.slug).trim();
+        source = resolved.source || "";
+      }
+    }
+    if (!slug) {
+      slug = cartflowExtractHostnameSlugInline(window.location.hostname);
+      if (slug) {
+        source = "hostname_inline_fallback";
+      }
+    }
+    if (slug && slug !== "demo") {
+      window.CARTFLOW_STORE_SLUG = slug;
       return;
     }
-    var resolved = window.cartflowResolveStorefrontStoreSlug();
-    if (resolved && resolved.slug) {
-      window.CARTFLOW_STORE_SLUG = resolved.slug;
+    if (cartflowIsPlatformStoreHostInline()) {
+      try {
+        if (window.CARTFLOW_STORE_SLUG === "demo") {
+          delete window.CARTFLOW_STORE_SLUG;
+        }
+      } catch (eClr) {
+        window.CARTFLOW_STORE_SLUG = "";
+      }
+      try {
+        console.warn("[CF STORE SLUG UNRESOLVED PLATFORM HOST]");
+      } catch (ePlat) {}
+      return;
+    }
+    if (slug === "demo") {
+      window.CARTFLOW_STORE_SLUG = slug;
     }
   }
 
@@ -260,7 +319,13 @@
       } catch (eS0) {
         slug = "";
       }
+      if (!slug) {
+        slug = cartflowExtractHostnameSlugInline(window.location.hostname);
+      }
       if (!slug || slug === "demo") {
+        if (cartflowIsPlatformStoreHostInline()) {
+          return;
+        }
         return;
       }
       console.log("[WIDGET STOREFRONT LOAD] store=" + slug);

@@ -19,6 +19,44 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     return !s || s === "demo" || s === "demo2" || s === "default";
   }
 
+  function extractSlugFromHostnameInline(host) {
+    if (typeof window.cartflowExtractStoreSlugFromHostname === "function") {
+      return String(window.cartflowExtractStoreSlugFromHostname(host) || "").trim();
+    }
+    var h = String(host || "").toLowerCase().trim();
+    if (!h) {
+      return "";
+    }
+    var suffixes = [".zid.store", ".salla.sa", ".salla.store"];
+    var i;
+    for (i = 0; i < suffixes.length; i++) {
+      var suf = suffixes[i];
+      if (h.length > suf.length && h.slice(-suf.length) === suf) {
+        var sub = h.slice(0, -suf.length);
+        if (sub && sub.indexOf(".") === -1 && /^[a-z0-9_-]+$/i.test(sub)) {
+          return sub;
+        }
+      }
+    }
+    return "";
+  }
+
+  function isPlatformStorefrontHost() {
+    try {
+      if (typeof window.cartflowIsPlatformStorefrontHost === "function") {
+        return !!window.cartflowIsPlatformStorefrontHost();
+      }
+    } catch (eFn) {}
+    try {
+      return !!extractSlugFromHostnameInline(window.location.hostname);
+    } catch (ePlat) {}
+    return false;
+  }
+
+  function slugFromHostnameInline() {
+    return extractSlugFromHostnameInline(window.location.hostname);
+  }
+
   function storeSlugFromWidgetLoaderScript() {
     if (typeof window.cartflowResolveStorefrontStoreSlug === "function") {
       var resolved = window.cartflowResolveStorefrontStoreSlug();
@@ -81,15 +119,6 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     }
   }
 
-  function isPlatformStorefrontHost() {
-    try {
-      if (typeof window.cartflowExtractStoreSlugFromHostname === "function") {
-        return !!window.cartflowExtractStoreSlugFromHostname(window.location.hostname);
-      }
-    } catch (ePlat) {}
-    return false;
-  }
-
   function storeSlug() {
     if (typeof window.cartflowResolveStorefrontStoreSlug === "function") {
       var resolved = window.cartflowResolveStorefrontStoreSlug();
@@ -100,6 +129,10 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
         return "";
       }
     }
+    var fromHost = slugFromHostnameInline();
+    if (fromHost && !isPublicSandboxStoreSlug(fromHost)) {
+      return fromHost;
+    }
     try {
       if (
         typeof window.CARTFLOW_STORE_SLUG !== "undefined" &&
@@ -109,6 +142,9 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
         var fromWin = String(window.CARTFLOW_STORE_SLUG).trim();
         if (!isPublicSandboxStoreSlug(fromWin)) {
           return fromWin;
+        }
+        if (isPlatformStorefrontHost()) {
+          return fromHost || "";
         }
       }
     } catch (eSl) {}
@@ -127,15 +163,8 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
         return fromAttr;
       }
     }
-    if (fromLoader) {
-      return fromLoader;
-    }
-    if (
-      typeof window.CARTFLOW_STORE_SLUG !== "undefined" &&
-      window.CARTFLOW_STORE_SLUG !== null &&
-      String(window.CARTFLOW_STORE_SLUG).trim()
-    ) {
-      return String(window.CARTFLOW_STORE_SLUG).trim();
+    if (fromHost) {
+      return fromHost;
     }
     if (isPlatformStorefrontHost()) {
       try {

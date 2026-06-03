@@ -27,22 +27,22 @@ class StorefrontStoreSlugResolverTests(unittest.TestCase):
         self.assertIn("isPlatformStorefrontHost", src)
         self.assertIn("platform_host_unresolved", src)
         self.assertIn("window.cartflowResolveStorefrontStoreSlug", src)
-        chain_ix = src.index("var chain = [")
-        chain_block = src[chain_ix : chain_ix + 400]
-        attrs_ix = chain_block.index("slugFromScriptAttributes")
-        query_ix = chain_block.index("slugFromLoaderUrlQuery")
-        globals_ix = chain_block.index("slugFromPlatformGlobals")
-        host_ix = chain_block.index("slugFromHostname")
-        self.assertLess(attrs_ix, query_ix)
-        self.assertLess(query_ix, globals_ix)
-        self.assertLess(globals_ix, host_ix)
+        self.assertIn("CF STORE SLUG RESOLVE", src)
+        self.assertIn("hostname_permalink", src)
+        self.assertNotIn("[CF STORE SLUG RESOLVED]", src)
+        platform_chain_ix = src.index("? [")
+        platform_block = src[platform_chain_ix : platform_chain_ix + 220]
+        host_ix = platform_block.index("slugFromHostname")
+        attrs_ix = platform_block.index("attrHit")
+        self.assertLess(host_ix, attrs_ix)
 
     def test_widget_loader_wires_resolver_before_runtime(self) -> None:
         loader = _LOADER.read_text(encoding="utf-8")
         self.assertIn("cartflow_storefront_store_slug.js", loader)
         self.assertIn("cartflowEnsureStoreSlugResolverLoaded", loader)
         self.assertIn("cartflowApplyResolvedStoreSlug", loader)
-        self.assertIn("v2-store-identity-truth-1", loader)
+        self.assertIn("v2-store-slug-no-demo-1", loader)
+        self.assertIn("cartflowExtractHostnameSlugInline", loader)
         init_ix = loader.index("cartflowInitStoreSlugFromLoaderTag")
         beacon_ix = loader.index("cartflowStorefrontWidgetSeenBeacon")
         self.assertLess(beacon_ix, init_ix)
@@ -50,7 +50,8 @@ class StorefrontStoreSlugResolverTests(unittest.TestCase):
     def test_runtime_api_delegates_to_resolver(self) -> None:
         api = _API.read_text(encoding="utf-8")
         self.assertIn("cartflowResolveStorefrontStoreSlug", api)
-        self.assertIn("[CF STORE SLUG FALLBACK DEMO]", api)
+        self.assertIn("extractSlugFromHostnameInline", api)
+        self.assertIn("slugFromHostnameInline", api)
         self.assertIn("data-store-slug", api)
 
     def test_hostname_permalink_matches_server_identity_for_zid(self) -> None:
