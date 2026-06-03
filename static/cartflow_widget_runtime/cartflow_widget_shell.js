@@ -83,6 +83,11 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
         Cf.Config.logWidgetSettingsTruth("refreshShellVisuals");
       }
     } catch (eLs) {}
+    try {
+      if (Cf.Config && typeof Cf.Config.scheduleStorefrontDomTruthBeacon === "function") {
+        Cf.Config.scheduleStorefrontDomTruthBeacon("refreshShellVisuals");
+      }
+    } catch (eBc) {}
   }
   /** Expanded storefront shell — fixed width/height; scroll only if content overflows stage. */
   var SHELL_EXPANDED_WIDTH_PX = 280;
@@ -257,6 +262,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     } catch (eVi) {}
     w.removeAttribute("data-cf-shell-minimized");
     patchShell({ isMinimized: false, isOpen: true });
+    refreshShellVisuals();
     shellLog("[CF SHELL EXPAND]", {});
   }
 

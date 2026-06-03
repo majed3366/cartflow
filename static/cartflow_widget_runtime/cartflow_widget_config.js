@@ -203,13 +203,17 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     return null;
   }
 
+  var domBeaconTimer = null;
+  var domBeaconAttempts = 0;
+  var DOM_BEACON_MAX_ATTEMPTS = 60;
+
   function cartflowRuntimeVersion() {
     try {
       if (typeof window.__cartflow_loader_build === "string" && window.__cartflow_loader_build.trim()) {
         return String(window.__cartflow_loader_build).trim();
       }
     } catch (eRv) {}
-    return "v2-storefront-truth-gate-1";
+    return "v2-visible-dom-truth-1";
   }
 
   function cartflowBeaconApiOrigin() {
@@ -244,7 +248,63 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     return "";
   }
 
-  function postStorefrontRuntimeBeacon(tag) {
+  function computedStyleColor(el) {
+    if (!el || !window.getComputedStyle) {
+      return null;
+    }
+    try {
+      var cs = window.getComputedStyle(el);
+      var bg = (cs && (cs.backgroundColor || cs.background)) || "";
+      if (bg && bg !== "transparent" && bg !== "rgba(0, 0, 0, 0)") {
+        return String(bg).trim();
+      }
+    } catch (eCs) {}
+    return null;
+  }
+
+  function CfShellRenderedVisuals() {
+    try {
+      var Sh = window.CartflowWidgetRuntime && window.CartflowWidgetRuntime.Shell;
+      if (!Sh || typeof Sh.getRoot !== "function") {
+        return null;
+      }
+      var w = Sh.getRoot();
+      if (!w) {
+        return null;
+      }
+      var title = null;
+      var color = null;
+      var tEl = w.querySelector("[data-cf-shell-title]");
+      if (tEl) {
+        title = String(tEl.textContent || "").trim();
+      }
+      var bar = w.querySelector('[data-cf-chrome="1"]');
+      color = computedStyleColor(bar);
+      if (!color) {
+        var btn = w.querySelector("[data-cf-btn-primary]");
+        color = computedStyleColor(btn);
+      }
+      if (!color && bar && bar.style && bar.style.background) {
+        color = String(bar.style.background).trim();
+      }
+      return { title: title, color: color };
+    } catch (eVis) {
+      return null;
+    }
+  }
+
+  function readShellDomTruth() {
+    var vis = CfShellRenderedVisuals();
+    if (!vis) {
+      return null;
+    }
+    return {
+      rendered_title_text: vis.title || null,
+      rendered_primary_color_computed: vis.color || null,
+    };
+  }
+
+  function postStorefrontDomTruthBeacon(tag, dom) {
     try {
       var p = window.location.pathname || "";
       if (/\/demo\b/i.test(p) || /^\/dev(\/|$)/i.test(p)) {
@@ -258,22 +318,16 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       if (!origin) {
         return;
       }
-      var renderedTitle = CRT.merchant.widget_brand_name || null;
-      var renderedColor = CRT.merchant.widget_primary_color || null;
-      var vis = CfShellRenderedVisuals();
-      if (vis) {
-        if (vis.title) renderedTitle = vis.title;
-        if (vis.color) renderedColor = vis.color;
-      }
+      dom = dom || readShellDomTruth() || {};
       var payload = JSON.stringify({
         store: slug,
         store_slug: slug,
-        widget_name: renderedTitle,
-        widget_color: renderedColor,
+        rendered_title_text: dom.rendered_title_text,
+        rendered_primary_color_computed: dom.rendered_primary_color_computed,
         runtime_version: cartflowRuntimeVersion(),
         page_url: String(window.location.href || "").slice(0, 2048),
         timestamp: new Date().toISOString(),
-        beacon_tag: tag || "applyVisual",
+        beacon_tag: tag || "dom_truth",
       });
       if (navigator.sendBeacon) {
         navigator.sendBeacon(
@@ -292,30 +346,37 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     } catch (ePost) {}
   }
 
-  function CfShellRenderedVisuals() {
-    try {
-      var Sh = window.CartflowWidgetRuntime && window.CartflowWidgetRuntime.Shell;
-      if (!Sh || typeof Sh.getRoot !== "function") {
-        return null;
-      }
-      var w = Sh.getRoot();
-      if (!w) {
-        return null;
-      }
-      var title = null;
-      var color = null;
-      var tEl = w.querySelector("[data-cf-shell-title]");
-      if (tEl) {
-        title = tEl.textContent;
-      }
-      var bar = w.querySelector('[data-cf-chrome="1"]');
-      if (bar && bar.style && bar.style.background) {
-        color = bar.style.background;
-      }
-      return { title: title, color: color };
-    } catch (eVis) {
-      return null;
+  function scheduleStorefrontDomTruthBeacon(tag) {
+    domBeaconAttempts = 0;
+    if (domBeaconTimer) {
+      try {
+        clearTimeout(domBeaconTimer);
+      } catch (eCt) {}
+      domBeaconTimer = null;
     }
+    function attempt() {
+      domBeaconAttempts += 1;
+      var dom = readShellDomTruth();
+      var hasTitle = dom && dom.rendered_title_text;
+      var hasColor = dom && dom.rendered_primary_color_computed;
+      if (hasTitle && hasColor) {
+        postStorefrontDomTruthBeacon(tag, dom);
+        return;
+      }
+      var hasRoot = false;
+      try {
+        var Sh = window.CartflowWidgetRuntime && window.CartflowWidgetRuntime.Shell;
+        hasRoot = !!(Sh && typeof Sh.getRoot === "function" && Sh.getRoot());
+      } catch (eHr) {}
+      if (hasRoot && domBeaconAttempts < DOM_BEACON_MAX_ATTEMPTS) {
+        domBeaconTimer = setTimeout(attempt, 250);
+        return;
+      }
+      if (hasRoot || domBeaconAttempts >= DOM_BEACON_MAX_ATTEMPTS) {
+        postStorefrontDomTruthBeacon(tag, dom || {});
+      }
+    }
+    domBeaconTimer = setTimeout(attempt, 0);
   }
 
   function logWidgetSettingsTruth(tag, extra) {
@@ -392,7 +453,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       api_widget_name: j.widget_name,
       api_widget_primary_color: j.widget_primary_color,
     });
-    postStorefrontRuntimeBeacon("applyVisual");
+    scheduleStorefrontDomTruthBeacon("applyVisual");
   }
 
   function templates() {
@@ -517,6 +578,8 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
 
   var Config = {
     applyPayload: applyPayload,
+    scheduleStorefrontDomTruthBeacon: scheduleStorefrontDomTruthBeacon,
+    readShellDomTruth: readShellDomTruth,
     logWidgetSettingsTruth: logWidgetSettingsTruth,
     widgetTrigger: widgetTrigger,
     phoneCaptureMode: phoneCaptureMode,

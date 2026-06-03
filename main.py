@@ -2005,9 +2005,12 @@ def dev_store_identity_runtime_truth(
     storefront_slug: str = Query("", min_length=0, max_length=255),
     store_slug: str = Query("", min_length=0, max_length=255),
 ) -> Any:
-    """Verify dashboard Store row vs storefront slug resolution + public-config truth."""
+    """Verify dashboard vs public-config vs visible storefront DOM (latest beacon)."""
     from services.store_identity_runtime_truth_v1 import (
         build_store_identity_runtime_truth_report,
+    )
+    from services.storefront_runtime_truth_gate_v1 import (
+        merge_dom_truth_into_identity_report,
     )
 
     sf = (storefront_slug or store_slug or "").strip()
@@ -2016,12 +2019,17 @@ def dev_store_identity_runtime_truth(
     try:
         _ensure_cartflow_api_db_warmed()
         dash_row = _dashboard_recovery_store_row()
-        return j(
-            build_store_identity_runtime_truth_report(
-                storefront_slug=sf,
-                dashboard_store_row=dash_row,
-            )
+        report = build_store_identity_runtime_truth_report(
+            storefront_slug=sf,
+            dashboard_store_row=dash_row,
         )
+        if dash_row is not None:
+            report = merge_dom_truth_into_identity_report(
+                report,
+                dashboard_store_row=dash_row,
+                storefront_slug=sf,
+            )
+        return j(report)
     except Exception as exc:  # noqa: BLE001
         db.session.rollback()
         return j({"ok": False, "error": str(exc)}, 500)

@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -31,11 +32,57 @@ def _utc_now() -> datetime:
 
 
 def _norm_color(raw: Any) -> str:
-    return str(raw or "").strip().casefold()
+    return _norm_color_dom(raw)
 
 
 def _norm_name(raw: Any) -> str:
     return str(raw or "").strip()
+
+
+_RGB_RE = re.compile(
+    r"rgba?\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})",
+    re.IGNORECASE,
+)
+
+
+def _norm_color_dom(raw: Any) -> str:
+    """Normalize hex or computed ``rgb()`` / ``rgba()`` for DOM vs DB comparison."""
+    s = str(raw or "").strip()
+    if not s:
+        return ""
+    if s.casefold().startswith("rgb"):
+        m = _RGB_RE.match(s)
+        if m:
+            parts = [max(0, min(255, int(m.group(i)))) for i in range(1, 4)]
+            return "#{:02x}{:02x}{:02x}".format(*parts).casefold()
+    if s.startswith("#"):
+        h = s[1:]
+        if len(h) == 3:
+            h = "".join(c * 2 for c in h)
+        if len(h) == 6:
+            return f"#{h}".casefold()
+    bare = s.lstrip("#")
+    if len(bare) == 6 and re.fullmatch(r"[0-9a-f]{6}", bare, re.IGNORECASE):
+        return f"#{bare}".casefold()
+    return s.casefold()
+
+
+def beacon_dom_truth_fields(beacon: Optional[dict[str, Any]]) -> Tuple[Optional[str], Optional[str]]:
+    """
+    Visible storefront DOM values from the latest beacon only.
+    Ignores intended/config fields (``widget_name``, ``widget_color``).
+    """
+    if not beacon:
+        return None, None
+    title = beacon.get("rendered_title_text")
+    if title is None:
+        title = beacon.get("rendered_widget_title")
+    color = beacon.get("rendered_primary_color_computed")
+    if color is None:
+        color = beacon.get("rendered_widget_color")
+    title_s = _norm_name(title) if title is not None and str(title).strip() else None
+    color_s = _norm_color_dom(color) if color is not None and str(color).strip() else None
+    return title_s or None, color_s or None
 
 
 def merchant_message_for_status(status: str) -> str:
@@ -159,8 +206,9 @@ def evaluate_storefront_runtime_truth(
         }
 
     beacon = parse_beacon_on_row(store_row) or {}
-    beacon_name = beacon.get("widget_name") or beacon.get("rendered_widget_name")
-    beacon_color = beacon.get("widget_color") or beacon.get("rendered_widget_color")
+    beacon_dom_name, beacon_dom_color = beacon_dom_truth_fields(beacon)
+    beacon_intended_name = beacon.get("widget_name") or beacon.get("rendered_widget_name")
+    beacon_intended_color = beacon.get("widget_color") or beacon.get("rendered_widget_color")
     beacon_slug = (
         beacon.get("store_slug")
         or beacon.get("store")
@@ -171,14 +219,16 @@ def evaluate_storefront_runtime_truth(
     pub_color = identity_report.get("public_config_color")
 
     name_ok, name_reason = _triple_match(
-        db_val=db_name, pub_val=pub_name, beacon_val=beacon_name
+        db_val=db_name, pub_val=pub_name, beacon_val=beacon_dom_name
     )
     color_ok, color_reason = _triple_match(
         db_val=db_color,
         pub_val=pub_color,
-        beacon_val=beacon_color,
-        normalizer=_norm_color,
+        beacon_val=beacon_dom_color,
+        normalizer=_norm_color_dom,
     )
+    dom_name_ok = bool(beacon_dom_name) and _norm_name(db_name) == beacon_dom_name
+    dom_color_ok = bool(beacon_dom_color) and _norm_color_dom(db_color) == beacon_dom_color
 
     checks = dict(identity_report.get("checks") or {})
     checks["db_public_config_name"] = identity_report.get("checks", {}).get(
@@ -189,6 +239,9 @@ def evaluate_storefront_runtime_truth(
     )
     checks["beacon_name_match"] = name_ok
     checks["beacon_color_match"] = color_ok
+    checks["beacon_dom_name_match"] = dom_name_ok
+    checks["beacon_dom_color_match"] = dom_color_ok
+    checks["beacon_dom_present"] = bool(beacon_dom_name and beacon_dom_color)
 
     mismatch_reasons: List[str] = []
     if not checks.get("storefront_resolved"):
@@ -199,18 +252,32 @@ def evaluate_storefront_runtime_truth(
         mismatch_reasons.append(name_reason or "widget_name_mismatch")
     if not checks.get("db_public_config_color"):
         mismatch_reasons.append(color_reason or "widget_color_mismatch")
+    if not beacon_dom_name:
+        mismatch_reasons.append("beacon_dom_title_missing")
+    if not beacon_dom_color:
+        mismatch_reasons.append("beacon_dom_color_missing")
     if not name_ok:
-        mismatch_reasons.append(name_reason or "beacon_name_mismatch")
+        mismatch_reasons.append(name_reason or "beacon_dom_name_mismatch")
     if not color_ok:
-        mismatch_reasons.append(color_reason or "beacon_color_mismatch")
+        mismatch_reasons.append(color_reason or "beacon_dom_color_mismatch")
+    if not dom_name_ok and beacon_dom_name:
+        mismatch_reasons.append("dashboard_dom_title_mismatch")
+    if not dom_color_ok and beacon_dom_color:
+        mismatch_reasons.append("dashboard_dom_color_mismatch")
     if beacon_slug and sf and _norm_name(beacon_slug) != _norm_name(sf):
         mismatch_reasons.append("beacon_slug_mismatch")
 
     if not sf or not checks.get("storefront_resolved"):
         status = TRUTH_STATUS_UNRESOLVED
-    elif name_ok and color_ok and identity_report.get("passed"):
+    elif (
+        dom_name_ok
+        and dom_color_ok
+        and name_ok
+        and color_ok
+        and identity_report.get("passed")
+    ):
         status = TRUTH_STATUS_VERIFIED
-    elif not beacon_name and identity_report.get("passed"):
+    elif not beacon_dom_name and identity_report.get("passed"):
         status = TRUTH_STATUS_PENDING
     else:
         status = TRUTH_STATUS_MISMATCH
@@ -240,8 +307,12 @@ def evaluate_storefront_runtime_truth(
         "dashboard_widget_color": db_color,
         "public_config_widget_name": pub_name,
         "public_config_color": pub_color,
-        "beacon_widget_name": beacon_name,
-        "beacon_widget_color": beacon_color,
+        "beacon_rendered_title_text": beacon_dom_name,
+        "beacon_rendered_primary_color_computed": beacon_dom_color,
+        "beacon_intended_widget_name": beacon_intended_name,
+        "beacon_intended_widget_color": beacon_intended_color,
+        "beacon_widget_name": beacon_dom_name,
+        "beacon_widget_color": beacon_dom_color,
         "beacon_store_slug": beacon_slug,
         "beacon_runtime_version": beacon.get("runtime_version"),
         "beacon_page_url": beacon.get("page_url"),
@@ -407,14 +478,23 @@ def record_storefront_runtime_beacon(payload: dict[str, Any]) -> Tuple[bool, Opt
             pass
         return False, None
 
+    rendered_title = (
+        payload.get("rendered_title_text")
+        or payload.get("rendered_widget_title")
+    )
+    rendered_color = (
+        payload.get("rendered_primary_color_computed")
+        or payload.get("rendered_widget_color")
+    )
     beacon_doc = {
         "store_slug": slug,
         "store": slug,
-        "widget_name": payload.get("widget_name") or payload.get("rendered_widget_name"),
-        "widget_color": payload.get("widget_color") or payload.get("rendered_widget_color"),
+        "rendered_title_text": rendered_title,
+        "rendered_primary_color_computed": rendered_color,
         "runtime_version": payload.get("runtime_version"),
         "page_url": payload.get("page_url"),
         "timestamp": payload.get("timestamp") or _utc_now().isoformat(),
+        "beacon_tag": payload.get("beacon_tag"),
     }
     row.widget_last_runtime_slug = slug[:255]
     row.widget_last_beacon_json = json.dumps(beacon_doc, ensure_ascii=False)[:8000]
@@ -495,7 +575,37 @@ def build_admin_widget_settings_mismatch_alerts(
     return alerts
 
 
+def merge_dom_truth_into_identity_report(
+    report: Dict[str, Any],
+    *,
+    dashboard_store_row: Any,
+    storefront_slug: str,
+) -> Dict[str, Any]:
+    """Override ``passed`` unless latest beacon confirms visible DOM matches dashboard."""
+    gate = evaluate_storefront_runtime_truth(
+        dashboard_store_row,
+        storefront_slug=storefront_slug,
+        trigger="identity_runtime_truth",
+    )
+    out = dict(report)
+    out["storefront_dom_truth"] = gate
+    checks = dict(out.get("checks") or {})
+    checks["storefront_dom_verified"] = bool(gate.get("verified"))
+    checks["beacon_dom_present"] = (gate.get("checks") or {}).get("beacon_dom_present")
+    out["checks"] = checks
+    out["passed"] = bool(
+        checks.get("storefront_resolved")
+        and checks.get("alias_match")
+        and checks.get("widget_name_match")
+        and checks.get("widget_color_match")
+        and gate.get("verified")
+    )
+    return out
+
+
 __all__ = [
+    "beacon_dom_truth_fields",
+    "merge_dom_truth_into_identity_report",
     "MSG_MISMATCH_AR",
     "MSG_PENDING_AR",
     "MSG_VERIFIED_AR",

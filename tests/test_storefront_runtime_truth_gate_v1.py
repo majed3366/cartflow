@@ -89,8 +89,8 @@ class StorefrontRuntimeTruthGateTests(unittest.TestCase):
         self.store.widget_last_beacon_json = json.dumps(
             {
                 "store_slug": self.zid_permalink,
-                "widget_name": "CARTFLOW",
-                "widget_color": "#AABBCC",
+                "rendered_title_text": "CARTFLOW",
+                "rendered_primary_color_computed": "#AABBCC",
                 "runtime_version": "v2-test",
             }
         )
@@ -104,12 +104,29 @@ class StorefrontRuntimeTruthGateTests(unittest.TestCase):
         self.assertTrue(gate["verified"])
         self.assertEqual(gate["message_ar"], MSG_VERIFIED_AR)
 
-    def test_mismatch_when_beacon_color_differs(self) -> None:
+    def test_intended_beacon_without_dom_fields_stays_pending(self) -> None:
         self.store.widget_last_beacon_json = json.dumps(
             {
                 "store_slug": self.zid_permalink,
                 "widget_name": "CARTFLOW",
-                "widget_color": "#000000",
+                "widget_color": "#AABBCC",
+            }
+        )
+        db.session.commit()
+        gate = evaluate_storefront_runtime_truth(
+            self.store,
+            storefront_slug=self.zid_permalink,
+            trigger="test",
+        )
+        self.assertEqual(gate["status"], TRUTH_STATUS_PENDING)
+        self.assertFalse(gate["verified"])
+
+    def test_mismatch_when_beacon_color_differs(self) -> None:
+        self.store.widget_last_beacon_json = json.dumps(
+            {
+                "store_slug": self.zid_permalink,
+                "rendered_title_text": "CARTFLOW",
+                "rendered_primary_color_computed": "#000000",
             }
         )
         db.session.commit()
@@ -127,8 +144,8 @@ class StorefrontRuntimeTruthGateTests(unittest.TestCase):
         updated, store_id = record_storefront_runtime_beacon(
             {
                 "store_slug": self.zid_permalink,
-                "widget_name": "CARTFLOW",
-                "widget_color": "#AABBCC",
+                "rendered_title_text": "CARTFLOW",
+                "rendered_primary_color_computed": "#AABBCC",
                 "runtime_version": "v2-test",
                 "page_url": f"https://{self.zid_permalink}.zid.store/",
                 "timestamp": "2026-06-02T12:00:00Z",
@@ -141,7 +158,7 @@ class StorefrontRuntimeTruthGateTests(unittest.TestCase):
         assert row is not None
         self.assertEqual(row.widget_runtime_truth_status, TRUTH_STATUS_VERIFIED)
         beacon = json.loads(row.widget_last_beacon_json or "{}")
-        self.assertEqual(beacon.get("widget_name"), "CARTFLOW")
+        self.assertEqual(beacon.get("rendered_title_text"), "CARTFLOW")
 
     def test_post_save_gate_returns_truth_payload(self) -> None:
         gate = run_post_save_storefront_truth_gate(
@@ -226,8 +243,8 @@ class StorefrontRuntimeTruthApiWiringTests(unittest.TestCase):
             "/api/storefront/widget-seen",
             json={
                 "store_slug": permalink,
-                "widget_name": "BEACON",
-                "widget_color": "#112233",
+                "rendered_title_text": "BEACON",
+                "rendered_primary_color_computed": "#112233",
                 "runtime_version": "v2-test",
                 "page_url": f"https://{permalink}.zid.store/",
                 "timestamp": "2026-06-02T12:00:00Z",
@@ -246,7 +263,8 @@ class StorefrontRuntimeTruthApiWiringTests(unittest.TestCase):
         panel = (_ROOT / "static" / "merchant_widget_panel.js").read_text(encoding="utf-8")
         general = (_ROOT / "static" / "merchant_general_settings.js").read_text(encoding="utf-8")
         self.assertIn("runtime_version", loader)
-        self.assertIn("postStorefrontRuntimeBeacon", config)
+        self.assertIn("scheduleStorefrontDomTruthBeacon", config)
+        self.assertIn("rendered_title_text", config)
         self.assertIn("storefront_runtime_truth", panel)
         self.assertIn("storefront_runtime_truth", general)
 

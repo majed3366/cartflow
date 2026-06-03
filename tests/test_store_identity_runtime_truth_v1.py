@@ -60,9 +60,28 @@ class StoreIdentityRuntimeTruthTests(unittest.TestCase):
         db.session.rollback()
 
     def test_runtime_truth_passes_when_aliases_aligned(self) -> None:
+        import json
+
+        from services.storefront_runtime_truth_gate_v1 import (
+            merge_dom_truth_into_identity_report,
+        )
+
+        self.store.widget_last_beacon_json = json.dumps(
+            {
+                "store_slug": self.zid_permalink,
+                "rendered_title_text": "CARTFLOW",
+                "rendered_primary_color_computed": "#AABBCC",
+            }
+        )
+        db.session.commit()
         report = build_store_identity_runtime_truth_report(
             storefront_slug=self.zid_permalink,
             dashboard_store_row=self.store,
+        )
+        report = merge_dom_truth_into_identity_report(
+            report,
+            dashboard_store_row=self.store,
+            storefront_slug=self.zid_permalink,
         )
         self.assertTrue(report["passed"])
         self.assertTrue(report["alias_match"])
