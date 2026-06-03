@@ -12,7 +12,7 @@
 (function () {
   "use strict";
 
-  var RUNTIME_VERSION = "v2-store-slug-no-demo-1";
+  var RUNTIME_VERSION = "v2-shell-title-instrument-1";
 
   function cartflowExtractHostnameSlugInline(host) {
     if (typeof window.cartflowExtractStoreSlugFromHostname === "function") {

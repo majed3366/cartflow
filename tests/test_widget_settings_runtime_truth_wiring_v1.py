@@ -92,7 +92,10 @@ class WidgetSettingsRuntimeTruthWiringTests(unittest.TestCase):
         ui = (_ROOT / "static" / "cartflow_widget_runtime" / "cartflow_widget_ui.js").read_text(
             encoding="utf-8"
         )
-        self.assertIn("function merchantShellTitle()", shell)
+        self.assertIn("merchantShellTitle", shell)
+        self.assertIn("CF SHELL TITLE WRITE", shell)
+        self.assertIn("writeShellTitleText", shell)
+        self.assertIn("ensureShell_create_title", shell)
         self.assertIn("widget_brand_name", shell)
         self.assertIn("refreshShellVisuals", shell)
         self.assertIn("logWidgetSettingsTruth", config)

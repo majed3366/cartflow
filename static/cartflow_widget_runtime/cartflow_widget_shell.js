@@ -9,6 +9,147 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
   var Cf = window.CartflowWidgetRuntime;
   var WIDGET_BODY_SELECTOR = ".cartflow-widget-body";
   var HEADER_DEFAULT = "مساعدة";
+  var _shellTitleWriteSeq = 0;
+  var _shellTitleWriteInternal = false;
+
+  function runtimeVersionTag() {
+    try {
+      if (typeof window.__cartflow_loader_build === "string" && window.__cartflow_loader_build.trim()) {
+        return String(window.__cartflow_loader_build).trim();
+      }
+      if (typeof window.CARTFLOW_RUNTIME_VERSION === "string" && window.CARTFLOW_RUNTIME_VERSION.trim()) {
+        return String(window.CARTFLOW_RUNTIME_VERSION).trim();
+      }
+    } catch (eRv) {}
+    return "v2-shell-title-instrument-1";
+  }
+
+  function merchantBrandNameSnapshot() {
+    try {
+      if (Cf.Config && typeof Cf.Config.merchant === "function") {
+        var M = Cf.Config.merchant();
+        return M && M.widget_brand_name != null ? String(M.widget_brand_name) : null;
+      }
+    } catch (eMb) {}
+    return null;
+  }
+
+  function configGateSnapshot() {
+    var out = {
+      v2_merchant_config_resolved: null,
+      v2_public_config_hydrated: null,
+    };
+    try {
+      var st = Cf.State && Cf.State.internals;
+      if (st) {
+        out.v2_merchant_config_resolved = !!st.v2MerchantConfigResolved;
+        out.v2_public_config_hydrated = !!st.v2PublicConfigHydrated;
+      }
+    } catch (eGs) {}
+    return out;
+  }
+
+  function logShellTitleWrite(titleEl, titleValue, renderSource, extra) {
+    try {
+      var prev = titleEl ? String(titleEl.textContent || "") : "";
+      _shellTitleWriteSeq += 1;
+      var payload = {
+        seq: _shellTitleWriteSeq,
+        render_source: String(renderSource || "unknown"),
+        runtime_version: runtimeVersionTag(),
+        title_value: titleValue == null ? "" : String(titleValue),
+        previous_value: prev,
+        timestamp: new Date().toISOString(),
+        config_widget_brand_name: merchantBrandNameSnapshot(),
+      };
+      var gates = configGateSnapshot();
+      payload.v2_merchant_config_resolved = gates.v2_merchant_config_resolved;
+      payload.v2_public_config_hydrated = gates.v2_public_config_hydrated;
+      if (extra && typeof extra === "object") {
+        for (var k in extra) {
+          if (Object.prototype.hasOwnProperty.call(extra, k)) {
+            payload[k] = extra[k];
+          }
+        }
+      }
+      try {
+        window.__cfShellTitleWriteLog = window.__cfShellTitleWriteLog || [];
+        window.__cfShellTitleWriteLog.push(payload);
+      } catch (eMem) {}
+      console.log("[CF SHELL TITLE WRITE]", payload);
+    } catch (eLog) {}
+  }
+
+  function writeShellTitleText(titleEl, titleValue, renderSource, extra) {
+    if (!titleEl) {
+      return;
+    }
+    logShellTitleWrite(titleEl, titleValue, renderSource, extra);
+    _shellTitleWriteInternal = true;
+    try {
+      titleEl.textContent = titleValue == null ? "" : String(titleValue);
+    } finally {
+      _shellTitleWriteInternal = false;
+    }
+  }
+
+  function isShellTitleElement(el) {
+    try {
+      return !!(el && el.getAttribute && el.getAttribute("data-cf-shell-title") === "1");
+    } catch (eIs) {
+      return false;
+    }
+  }
+
+  function installShellTitleExternalWriteProbe() {
+    if (typeof MutationObserver === "undefined") {
+      return;
+    }
+    if (window.__cfShellTitleMutationProbeInstalled) {
+      return;
+    }
+    window.__cfShellTitleMutationProbeInstalled = true;
+    var obs = new MutationObserver(function (records) {
+      var i;
+      for (i = 0; i < records.length; i++) {
+        var rec = records[i];
+        if (_shellTitleWriteInternal) {
+          continue;
+        }
+        var titleEl = null;
+        if (rec.type === "characterData" && rec.target && rec.target.parentElement) {
+          titleEl = rec.target.parentElement;
+        } else if (isShellTitleElement(rec.target)) {
+          titleEl = rec.target;
+        }
+        if (!isShellTitleElement(titleEl)) {
+          continue;
+        }
+        logShellTitleWrite(titleEl, String(titleEl.textContent || ""), "mutation_observer_external", {
+          mutation_type: rec.type,
+        });
+      }
+    });
+    function arm() {
+      if (!document.body) {
+        return;
+      }
+      try {
+        obs.observe(document.body, {
+          subtree: true,
+          characterData: true,
+          childList: true,
+        });
+      } catch (eObs) {}
+    }
+    if (document.body) {
+      arm();
+    } else {
+      document.addEventListener("DOMContentLoaded", arm);
+    }
+  }
+
+  installShellTitleExternalWriteProbe();
 
   function merchantShellTitle() {
     var out = HEADER_DEFAULT;
@@ -33,13 +174,18 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     return out;
   }
 
-  function applyShellTitle(w) {
+  function applyShellTitle(w, renderSource) {
     if (!w) {
       return;
     }
     var title = w.querySelector("[data-cf-shell-title]");
     if (title) {
-      title.textContent = merchantShellTitle();
+      writeShellTitleText(
+        title,
+        merchantShellTitle(),
+        renderSource || "applyShellTitle",
+        { merchant_shell_title_fn: "merchantShellTitle" }
+      );
     }
   }
 
@@ -72,7 +218,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
   function refreshShellVisuals() {
     var w = rootFromDom();
     refreshChromeColor(w);
-    applyShellTitle(w);
+    applyShellTitle(w, "refreshShellVisuals");
     try {
       if (Cf.Ui && typeof Cf.Ui.restampPrimaryButtons === "function") {
         Cf.Ui.restampPrimaryButtons(merchantPrimaryHex());
@@ -439,7 +585,12 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       title.setAttribute("data-cf-shell-title", "1");
       title.style.cssText =
         "font-weight:700;font-size:13px;color:#eef2ff;letter-spacing:.01em;";
-      title.textContent = merchantShellTitle();
+      writeShellTitleText(
+        title,
+        merchantShellTitle(),
+        "ensureShell_create_title",
+        { merchant_shell_title_fn: "merchantShellTitle" }
+      );
       var closeBtn = document.createElement("button");
       closeBtn.type = "button";
       closeBtn.setAttribute("data-cf-shell-close", "1");
@@ -510,12 +661,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     }
 
     bindCloseButtonOnce(w);
-    applyShellTitle(w);
-
-    return { root: w, createdNew: createdNew };
-  }
-
-  function storefrontShellBlocked() {
+    applyShellTitle(w, "ensureShell_tail");
     try {
       if (window.CARTFLOW_RECOVERY_WIDGET_MODE !== true) {
         return false;
@@ -805,7 +951,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
   }
 
   function refreshTitle() {
-    applyShellTitle(rootFromDom());
+    applyShellTitle(rootFromDom(), "refreshTitle");
   }
 
   var Shell = {
