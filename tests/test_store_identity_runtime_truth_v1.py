@@ -16,6 +16,7 @@ from services.store_identity_v1 import (
     ALIAS_KIND_CARTFLOW_ZID,
     ALIAS_KIND_ZID_PERMALINK,
     PLATFORM_ZID,
+    ensure_zid_permalink_alias_for_dashboard_store,
     register_store_identity_alias,
     sync_zid_store_identities_after_oauth,
 )
@@ -81,6 +82,24 @@ class StoreIdentityRuntimeTruthTests(unittest.TestCase):
         self.assertTrue(report["checks"]["widget_name_match"])
         self.assertTrue(report["checks"]["widget_color_match"])
         self.assertEqual(report["public_config_widget_name"], "UPDATED NAME")
+
+    @mock.patch("services.store_identity_v1.verify_zid_storefront_permalink_reachable")
+    @mock.patch("services.store_identity_v1.fetch_zid_identity_sources_for_store")
+    def test_dashboard_link_registers_permalink_via_storefront_probe(
+        self,
+        mock_sources: mock.MagicMock,
+        mock_reachable: mock.MagicMock,
+    ) -> None:
+        permalink = f"probe{uuid.uuid4().hex[:5]}"
+        mock_sources.return_value = (None, None, None)
+        mock_reachable.return_value = True
+        row, via = ensure_zid_permalink_alias_for_dashboard_store(self.store, permalink)
+        self.assertIsNotNone(row)
+        assert row is not None
+        self.assertEqual(int(row.id), int(self.store.id))
+        self.assertIn("alias", via)
+        resolved, _ = ensure_zid_permalink_alias_for_dashboard_store(self.store, permalink)
+        self.assertIsNotNone(resolved)
 
     @mock.patch("integrations.zid_client.fetch_zid_manager_profile")
     def test_attempt_link_registers_permalink_from_profile(

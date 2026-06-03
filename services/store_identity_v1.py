@@ -106,6 +106,236 @@ def _permalink_values_from_profile(profile: Any) -> set[str]:
     return out
 
 
+def _permalink_values_from_zid_sources(
+    *,
+    profile: Any = None,
+    manager_store: Any = None,
+    store_url: Optional[str] = None,
+) -> set[str]:
+    out: set[str] = set()
+    for src in (profile, manager_store):
+        out.update(_permalink_values_from_profile(src))
+    if store_url:
+        pl = extract_zid_permalink_from_url(store_url)
+        if pl:
+            out.add(normalize_identity_value(pl).casefold())
+    return out
+
+
+def _append_zid_permalink_candidate(
+    out: List[Tuple[str, str, Optional[str]]],
+    raw: Any,
+) -> None:
+    if raw is None:
+        return
+    s = normalize_identity_value(raw)
+    if not s:
+        return
+    from_url = extract_zid_permalink_from_url(s)
+    if from_url:
+        out.append((ALIAS_KIND_ZID_PERMALINK, from_url, PLATFORM_ZID))
+        return
+    if looks_like_zid_storefront_permalink(s):
+        out.append((ALIAS_KIND_ZID_PERMALINK, s, PLATFORM_ZID))
+
+
+def verify_zid_storefront_permalink_reachable(permalink: str) -> bool:
+    """Best-effort: Zid storefront host responds for ``{permalink}.zid.store``."""
+    ss = normalize_identity_value(permalink)
+    if not looks_like_zid_storefront_permalink(ss):
+        return False
+    url = f"https://{ss}.zid.store/"
+    try:
+        import requests
+
+        r = requests.get(
+            url,
+            timeout=12,
+            allow_redirects=True,
+            headers={"Accept": "text/html,application/json"},
+        )
+        return r.status_code // 100 == 2
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def log_store_identity_link_attempt(
+    *,
+    slug: str,
+    store_id: Optional[int],
+    access_token_present: bool,
+    profile_ok: bool,
+    manager_store_ok: bool,
+    permalink_values: Iterable[str],
+    matched: bool,
+    reason: str,
+) -> None:
+    try:
+        vals = ",".join(sorted({normalize_identity_value(v) for v in permalink_values if v})[:8])
+        print("[STORE IDENTITY LINK]", flush=True)
+        print(f"slug={(slug or '-')[:64]}", flush=True)
+        print(f"store_id={store_id if store_id is not None else '-'}", flush=True)
+        print(f"access_token_present={'true' if access_token_present else 'false'}", flush=True)
+        print(f"profile_ok={'true' if profile_ok else 'false'}", flush=True)
+        print(f"manager_store_ok={'true' if manager_store_ok else 'false'}", flush=True)
+        print(f"permalink_values={vals or '-'}", flush=True)
+        print(f"matched={'true' if matched else 'false'}", flush=True)
+        print(f"reason={(reason or '-')[:64]}", flush=True)
+    except OSError:
+        pass
+
+
+def fetch_zid_identity_sources_for_store(
+    store: Any,
+) -> Tuple[Optional[dict[str, Any]], Optional[dict[str, Any]], Optional[str]]:
+    """Profile JSON, manager/store JSON, and resolved storefront URL."""
+    token = (getattr(store, "access_token", None) or "").strip()
+    if not token:
+        return None, None, None
+    profile: Optional[dict[str, Any]] = None
+    manager_store: Optional[dict[str, Any]] = None
+    store_url: Optional[str] = None
+    try:
+        from integrations.zid_client import (
+            fetch_zid_manager_profile,
+            fetch_zid_manager_store_payload,
+            fetch_zid_manager_store_url,
+        )
+
+        profile = fetch_zid_manager_profile(token)
+        manager_store = fetch_zid_manager_store_payload(token)
+        store_url = fetch_zid_manager_store_url(token)
+    except Exception as exc:  # noqa: BLE001
+        _log.warning(
+            "zid identity source fetch skipped store_id=%s err=%s",
+            getattr(store, "id", None),
+            type(exc).__name__,
+        )
+    return profile, manager_store, store_url
+
+
+def collect_zid_identities_from_manager_store(payload: Any) -> List[Tuple[str, str, Optional[str]]]:
+    """Extract ids from GET /managers/account/store response."""
+    return collect_zid_identities_from_profile(payload)
+
+
+def permalink_belongs_to_store(
+    store: Any,
+    permalink: str,
+    *,
+    profile: Any = None,
+    manager_store: Any = None,
+    store_url: Optional[str] = None,
+    allow_storefront_probe: bool = False,
+) -> Tuple[bool, str]:
+    """Decide whether ``permalink`` is this Store's Zid storefront slug."""
+    ss = normalize_identity_value(permalink)
+    if not ss or not looks_like_zid_storefront_permalink(ss):
+        return False, "invalid_slug"
+    target = ss.casefold()
+    permalinks = _permalink_values_from_zid_sources(
+        profile=profile,
+        manager_store=manager_store,
+        store_url=store_url,
+    )
+    if target in permalinks:
+        return True, "zid_api_permalink"
+    if allow_storefront_probe and verify_zid_storefront_permalink_reachable(ss):
+        token = (getattr(store, "access_token", None) or "").strip()
+        if token:
+            return True, "storefront_probe_with_token"
+    return False, "permalink_not_in_zid_api"
+
+
+def register_zid_permalink_alias_for_store(
+    store: Any,
+    permalink: str,
+    *,
+    profile: Any = None,
+    manager_store: Any = None,
+    store_url: Optional[str] = None,
+) -> bool:
+    """Register ``zid_permalink`` alias and sync all Zid ids for one Store row."""
+    ss = normalize_identity_value(permalink)
+    sid = getattr(store, "id", None)
+    if not ss or sid is None:
+        return False
+    sync_zid_store_identities_after_oauth(
+        store,
+        profile=profile,
+        store_url=store_url or f"https://{ss}.zid.store/",
+        warm_cache=False,
+    )
+    ok = register_store_identity_alias(
+        store_id=int(sid),
+        alias_kind=ALIAS_KIND_ZID_PERMALINK,
+        alias_value=ss,
+        platform=PLATFORM_ZID,
+    )
+    try:
+        db.session.commit()
+    except (SQLAlchemyError, OSError):
+        db.session.rollback()
+        return False
+    warm_widget_config_cache_for_store_row(store)
+    return ok
+
+
+def ensure_zid_permalink_alias_for_dashboard_store(
+    store: Any,
+    permalink: str,
+) -> ResolveMatch:
+    """
+    Link a Zid storefront slug to the authenticated merchant Store row.
+    Used when global link scan fails but dashboard store has a Zid token.
+    """
+    ss = normalize_identity_value(permalink)
+    if store is None or not ss:
+        return None, "not_found"
+    row, via = resolve_store_row_by_identifier(ss)
+    if row is not None:
+        return row, via
+
+    token = (getattr(store, "access_token", None) or "").strip()
+    profile, manager_store, store_url = fetch_zid_identity_sources_for_store(store)
+    belongs, belong_reason = permalink_belongs_to_store(
+        store,
+        ss,
+        profile=profile,
+        manager_store=manager_store,
+        store_url=store_url,
+        allow_storefront_probe=True,
+    )
+    log_store_identity_link_attempt(
+        slug=ss,
+        store_id=getattr(store, "id", None),
+        access_token_present=bool(token),
+        profile_ok=isinstance(profile, dict),
+        manager_store_ok=isinstance(manager_store, dict),
+        permalink_values=_permalink_values_from_zid_sources(
+            profile=profile,
+            manager_store=manager_store,
+            store_url=store_url,
+        ),
+        matched=belongs,
+        reason=belong_reason if belongs else "dashboard_link_no_match",
+    )
+    if not belongs:
+        if not token:
+            return None, "link_no_token"
+        return None, "link_no_match"
+
+    if register_zid_permalink_alias_for_store(
+        store,
+        ss,
+        profile=profile,
+        manager_store=manager_store,
+        store_url=store_url,
+    ):
+        return resolve_store_row_by_identifier(ss)
+    return None, "link_register_failed"
+
+
 def attempt_link_zid_storefront_slug(identifier: str) -> ResolveMatch:
     """
     When a Zid permalink slug misses alias resolution, match connected stores
@@ -135,32 +365,68 @@ def attempt_link_zid_storefront_slug(identifier: str) -> ResolveMatch:
 
     target_cf = ss.casefold()
     matched_rows: List[Store] = []
+    tokened_rows: List[Store] = []
+    last_reason = "link_no_match"
     for row in rows:
         token = (getattr(row, "access_token", None) or "").strip()
         if not token:
             continue
-        profile: Optional[dict[str, Any]] = None
-        try:
-            from integrations.zid_client import fetch_zid_manager_profile
-
-            profile = fetch_zid_manager_profile(token)
-        except Exception as exc:  # noqa: BLE001
-            _log.warning(
-                "storefront slug link profile fetch skipped store_id=%s err=%s",
-                getattr(row, "id", None),
-                type(exc).__name__,
+        tokened_rows.append(row)
+        profile, manager_store, store_url = fetch_zid_identity_sources_for_store(row)
+        permalinks = _permalink_values_from_zid_sources(
+            profile=profile,
+            manager_store=manager_store,
+            store_url=store_url,
+        )
+        profile_ok = isinstance(profile, dict)
+        manager_ok = isinstance(manager_store, dict)
+        if not profile_ok and not manager_ok and not store_url:
+            last_reason = "link_profile_fetch_failed"
+            log_store_identity_link_attempt(
+                slug=ss,
+                store_id=getattr(row, "id", None),
+                access_token_present=True,
+                profile_ok=False,
+                manager_store_ok=False,
+                permalink_values=[],
+                matched=False,
+                reason=last_reason,
             )
             continue
-        permalinks = _permalink_values_from_profile(profile)
         if target_cf not in permalinks:
-            continue
-        try:
-            sync_zid_store_identities_after_oauth(
+            belongs, belong_reason = permalink_belongs_to_store(
                 row,
+                ss,
                 profile=profile,
-                store_url=f"https://{ss}.zid.store/",
+                manager_store=manager_store,
+                store_url=store_url,
+                allow_storefront_probe=False,
             )
-            matched_rows.append(row)
+            log_store_identity_link_attempt(
+                slug=ss,
+                store_id=getattr(row, "id", None),
+                access_token_present=True,
+                profile_ok=profile_ok,
+                manager_store_ok=manager_ok,
+                permalink_values=permalinks,
+                matched=belongs,
+                reason=belong_reason,
+            )
+            if not belongs:
+                if not permalinks:
+                    last_reason = "link_permalink_missing_in_zid_api"
+                continue
+            last_reason = belong_reason
+
+        try:
+            if register_zid_permalink_alias_for_store(
+                row,
+                ss,
+                profile=profile,
+                manager_store=manager_store,
+                store_url=store_url or f"https://{ss}.zid.store/",
+            ):
+                matched_rows.append(row)
         except Exception as exc:  # noqa: BLE001
             _log.warning(
                 "storefront slug link sync skipped store_id=%s err=%s",
@@ -169,12 +435,6 @@ def attempt_link_zid_storefront_slug(identifier: str) -> ResolveMatch:
             )
 
     if len(matched_rows) == 1:
-        try:
-            db.session.commit()
-        except (SQLAlchemyError, OSError):
-            db.session.rollback()
-            return None, "link_commit_failed"
-        warm_widget_config_cache_for_store_row(matched_rows[0])
         return resolve_store_row_by_identifier(ss)
 
     if len(matched_rows) > 1:
@@ -185,14 +445,51 @@ def attempt_link_zid_storefront_slug(identifier: str) -> ResolveMatch:
         )
         return None, "link_ambiguous"
 
-    return None, "link_no_match"
+    if len(tokened_rows) == 0:
+        return None, "link_no_token"
+
+    if len(tokened_rows) == 1:
+        only = tokened_rows[0]
+        profile, manager_store, store_url = fetch_zid_identity_sources_for_store(only)
+        belongs, belong_reason = permalink_belongs_to_store(
+            only,
+            ss,
+            profile=profile,
+            manager_store=manager_store,
+            store_url=store_url,
+            allow_storefront_probe=True,
+        )
+        if belongs and register_zid_permalink_alias_for_store(
+            only,
+            ss,
+            profile=profile,
+            manager_store=manager_store,
+            store_url=store_url or f"https://{ss}.zid.store/",
+        ):
+            return resolve_store_row_by_identifier(ss)
+        last_reason = belong_reason if not belongs else "link_register_failed"
+
+    try:
+        print(f"[STORE IDENTITY LINK FAIL] slug={ss[:64]} reason={last_reason}", flush=True)
+    except OSError:
+        pass
+    return None, last_reason
 
 
-def resolve_store_row_for_storefront_api(identifier: str) -> ResolveMatch:
-    """Identity resolve with one-shot Zid permalink link attempt for storefront hot paths."""
+def resolve_store_row_for_storefront_api(
+    identifier: str,
+    *,
+    dashboard_store: Any = None,
+) -> ResolveMatch:
+    """Identity resolve with Zid permalink link attempt for storefront hot paths."""
     row, via = resolve_store_row_by_identifier(identifier)
     if row is not None:
         return row, via
+    ss = normalize_identity_value(identifier)
+    if dashboard_store is not None and ss and looks_like_zid_storefront_permalink(ss):
+        row, via = ensure_zid_permalink_alias_for_dashboard_store(dashboard_store, ss)
+        if row is not None:
+            return row, via
     return attempt_link_zid_storefront_slug(identifier)
 
 
@@ -455,6 +752,8 @@ def collect_zid_identities_from_profile(profile: Any) -> List[Tuple[str, str, Op
     if not isinstance(store_obj, dict):
         store_obj = _walk(profile, ("store",))
     if not isinstance(store_obj, dict):
+        store_obj = _walk(profile, ("data",))
+    if not isinstance(store_obj, dict):
         store_obj = {}
 
     numeric = store_obj.get("id")
@@ -465,13 +764,22 @@ def collect_zid_identities_from_profile(profile: Any) -> List[Tuple[str, str, Op
     if uuid_val is not None and str(uuid_val).strip():
         out.append((ALIAS_KIND_ZID_UUID, str(uuid_val).strip(), PLATFORM_ZID))
 
-    for url_key in ("url", "permalink", "domain"):
+    for url_key in ("url", "permalink", "domain", "store_url", "link"):
         raw_url = store_obj.get(url_key)
         if isinstance(raw_url, str) and raw_url.strip():
-            permalink = extract_zid_permalink_from_url(raw_url)
-            if permalink:
-                out.append((ALIAS_KIND_ZID_PERMALINK, permalink, PLATFORM_ZID))
-                break
+            _append_zid_permalink_candidate(out, raw_url.strip())
+
+    for slug_key in (
+        "permalink",
+        "username",
+        "slug",
+        "subdomain",
+        "store_username",
+        "store_permalink",
+    ):
+        raw_slug = store_obj.get(slug_key)
+        if isinstance(raw_slug, str) and raw_slug.strip():
+            _append_zid_permalink_candidate(out, raw_slug.strip())
 
     return out
 
@@ -535,18 +843,29 @@ def sync_zid_store_identities_after_oauth(
     if profile is None:
         access = (getattr(store, "access_token", None) or "").strip()
         if access:
-            try:
-                from integrations.zid_client import fetch_zid_manager_profile
-
-                profile = fetch_zid_manager_profile(access)
-            except Exception as exc:  # noqa: BLE001
-                _log.warning("zid profile fetch for identity sync skipped: %s", exc)
+            profile, manager_store_payload, manager_store_url = (
+                fetch_zid_identity_sources_for_store(store)
+            )
+        else:
+            manager_store_payload = None
+            manager_store_url = None
+    else:
+        access = (getattr(store, "access_token", None) or "").strip()
+        manager_store_payload = None
+        manager_store_url = None
+        if access:
+            _prof, manager_store_payload, manager_store_url = (
+                fetch_zid_identity_sources_for_store(store)
+            )
 
     if isinstance(profile, dict):
         aliases.extend(collect_zid_identities_from_profile(profile))
+    if isinstance(manager_store_payload, dict):
+        aliases.extend(collect_zid_identities_from_manager_store(manager_store_payload))
 
-    if store_url:
-        permalink = extract_zid_permalink_from_url(store_url)
+    effective_store_url = store_url or manager_store_url
+    if effective_store_url:
+        permalink = extract_zid_permalink_from_url(effective_store_url)
         if permalink:
             aliases.append((ALIAS_KIND_ZID_PERMALINK, permalink, PLATFORM_ZID))
 
@@ -579,6 +898,22 @@ def sync_zid_identities_for_dashboard_store(row: Any) -> None:
     if not token:
         return
     sync_zid_store_identities_after_oauth(row, warm_cache=False)
+    profile, manager_store, store_url = fetch_zid_identity_sources_for_store(row)
+    for pl in _permalink_values_from_zid_sources(
+        profile=profile,
+        manager_store=manager_store,
+        store_url=store_url,
+    ):
+        register_store_identity_alias(
+            store_id=int(row.id),
+            alias_kind=ALIAS_KIND_ZID_PERMALINK,
+            alias_value=pl,
+            platform=PLATFORM_ZID,
+        )
+    try:
+        db.session.commit()
+    except (SQLAlchemyError, OSError):
+        db.session.rollback()
 
 
 def backfill_store_identity_aliases_from_stores(*, session: Any = None) -> int:
@@ -659,20 +994,26 @@ __all__ = [
     "attempt_link_zid_storefront_slug",
     "backfill_store_identity_aliases_from_stores",
     "canonical_store_slug_on_row",
+    "collect_zid_identities_from_manager_store",
     "collect_zid_identities_from_profile",
     "ensure_cartflow_zid_alias_for_store",
+    "ensure_zid_permalink_alias_for_dashboard_store",
     "extract_zid_permalink_from_url",
+    "fetch_zid_identity_sources_for_store",
     "is_widget_sandbox_slug",
     "list_public_cache_keys_for_store_row",
     "looks_like_zid_storefront_permalink",
     "normalize_identity_value",
+    "permalink_belongs_to_store",
     "register_identity_aliases",
     "register_store_identity_alias",
+    "register_zid_permalink_alias_for_store",
     "resolve_canonical_store_slug",
     "resolve_store_row_by_identifier",
     "resolve_store_row_for_storefront_api",
     "sync_connected_platform_identities",
     "sync_zid_identities_for_dashboard_store",
     "sync_zid_store_identities_after_oauth",
+    "verify_zid_storefront_permalink_reachable",
     "warm_widget_config_cache_for_store_row",
 ]

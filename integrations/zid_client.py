@@ -213,6 +213,28 @@ def fetch_zid_manager_profile(access_token: str) -> Optional[dict[str, Any]]:
     return j if isinstance(j, dict) else None
 
 
+def fetch_zid_manager_store_payload(access_token: str) -> Optional[dict[str, Any]]:
+    """Full JSON from GET /v1/managers/account/store — often has storefront URL."""
+    token = (access_token or "").strip()
+    if not token:
+        return None
+    try:
+        r = requests.get(
+            ZID_MANAGER_STORE_URL,
+            headers=_manager_headers(token),
+            timeout=20,
+        )
+    except requests.RequestException:
+        return None
+    if r.status_code // 100 != 2:
+        return None
+    try:
+        j = r.json()
+    except Exception:
+        return None
+    return j if isinstance(j, dict) else None
+
+
 def fetch_zid_store_id_from_profile(access_token: str) -> Optional[str]:
     j = fetch_zid_manager_profile(access_token)
     if not isinstance(j, dict):

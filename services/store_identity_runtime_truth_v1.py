@@ -9,9 +9,13 @@ from models import StoreIdentityAlias
 from services.cartflow_widget_public_store import store_row_for_widget_public_api
 from services.store_identity_v1 import (
     canonical_store_slug_on_row,
+    ensure_zid_permalink_alias_for_dashboard_store,
+    fetch_zid_identity_sources_for_store,
     list_public_cache_keys_for_store_row,
     normalize_identity_value,
+    resolve_store_row_by_identifier,
     resolve_store_row_for_storefront_api,
+    _permalink_values_from_zid_sources,
 )
 from services.cartflow_widget_recovery_gate import (
     cartflow_widget_recovery_gate_fields_for_api,
@@ -81,8 +85,36 @@ def build_store_identity_runtime_truth_report(
     dash_id = getattr(dashboard_store_row, "id", None) if dashboard_store_row is not None else None
     dash_slug = canonical_store_slug_on_row(dashboard_store_row)
 
+    link_attempted = False
+    if dashboard_store_row is not None and sf:
+        existing, _ev = resolve_store_row_by_identifier(sf)
+        if existing is None:
+            link_attempted = True
+            ensure_zid_permalink_alias_for_dashboard_store(dashboard_store_row, sf)
+
     resolved_row, resolved_via = resolve_store_row_for_storefront_api(sf)
     resolved_id = getattr(resolved_row, "id", None) if resolved_row is not None else None
+
+    zid_diag: dict[str, Any] = {}
+    if dashboard_store_row is not None:
+        token = (getattr(dashboard_store_row, "access_token", None) or "").strip()
+        profile, manager_store, store_url = fetch_zid_identity_sources_for_store(
+            dashboard_store_row
+        )
+        zid_diag = {
+            "access_token_present": bool(token),
+            "profile_fetched": isinstance(profile, dict),
+            "manager_store_fetched": isinstance(manager_store, dict),
+            "manager_store_url": store_url,
+            "permalink_values_from_zid_api": sorted(
+                _permalink_values_from_zid_sources(
+                    profile=profile,
+                    manager_store=manager_store,
+                    store_url=store_url,
+                )
+            ),
+            "dashboard_link_attempted": link_attempted,
+        }
 
     alias_match = (
         dash_id is not None
@@ -186,6 +218,7 @@ def build_store_identity_runtime_truth_report(
         ),
         "cache_keys": cache_keys,
         "cache_hits": cache_hits,
+        "zid_identity": zid_diag,
     }
 
 

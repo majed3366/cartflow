@@ -16,6 +16,8 @@ from services.store_identity_v1 import (
     ALIAS_KIND_ZID_PERMALINK,
     ALIAS_KIND_ZID_UUID,
     PLATFORM_ZID,
+    collect_zid_identities_from_profile,
+    ensure_zid_permalink_alias_for_dashboard_store,
     extract_zid_permalink_from_url,
     list_public_cache_keys_for_store_row,
     register_store_identity_alias,
@@ -158,6 +160,19 @@ class StoreIdentityV1Tests(unittest.TestCase):
         self.assertIsNotNone(row)
         assert row is not None
         self.assertEqual(int(row.id), int(self.store.id))
+
+    def test_collect_bare_permalink_slug_from_profile(self) -> None:
+        profile = {
+            "data": {
+                "store": {
+                    "id": 3121837,
+                    "permalink": "4hz49e",
+                }
+            }
+        }
+        ids = collect_zid_identities_from_profile(profile)
+        kinds = {k: v for k, v, _p in ids}
+        self.assertEqual(kinds.get(ALIAS_KIND_ZID_PERMALINK), "4hz49e")
 
     def test_sync_zid_identities_from_profile_shape(self) -> None:
         profile = {
