@@ -341,6 +341,7 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 
 | Date (UTC) | Summary |
 |------------|---------|
+| 2026-06-02 | **Widget settings runtime truth audit:** `docs/widget_settings_runtime_truth_audit_v1.md` — dashboard→DB→`public-config`→V2 runtime→Zid storefront chain; 14 PASS / 6 FAIL / 4 N/A (General `widget_enabled`/`widget_display_name` not in public bundle; `widget_style`/name/exit copy not applied on V2 storefront). Tests: `tests/test_widget_settings_runtime_truth_audit_v1.py`. Commit: **`audit: widget settings runtime truth verification`**. |
 | 2026-06-02 | **Storefront widget UX cleanup:** `سبب آخر` uses compact no-scroll viewport (`overflow:hidden` on `other_recovery` + fixed 52px textarea); minimized launcher **40px** circle (clears expanded `minHeight`/`maxHeight` so chip does not inherit 296px shell). Runtime `v2-storefront-ux-cleanup-1`. Commit: **`fix: final storefront widget ux cleanup`**. |
 | 2026-06-02 | **Storefront widget UX finalization:** fixed `280×296px` expanded shell; content area `min-height:0` + `max-height:228px` (scroll only on overflow); approved suggestion copy per reason; bullet `•` list. Runtime `v2-storefront-ux-final-1`. Commit: **`fix: finalize storefront widget ux consistency`**. |
 | 2026-06-02 | **V2 UI bootstrap syntax fix:** removed stray `;` after string concat in `cartflow_widget_ui.js` `btnGhostStyle()` (line ~102) that caused `Uncaught SyntaxError` and `[CF V2 BOOTSTRAP BLOCKED]`. Runtime `v2-ui-syntax-fix-1`. |
