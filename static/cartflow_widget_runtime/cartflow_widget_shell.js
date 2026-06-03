@@ -9,6 +9,9 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
   var Cf = window.CartflowWidgetRuntime;
   var WIDGET_BODY_SELECTOR = ".cartflow-widget-body";
   var HEADER_DEFAULT = "مساعدة";
+  /** Stable expanded panel — inner content scrolls; outer shell height stays fixed. */
+  var SHELL_STAGE_MIN_H_PX = 212;
+  var SHELL_CONTENT_VIEWPORT_H_PX = 188;
 
   function shellLog(tag, meta) {
     try {
@@ -249,7 +252,13 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       function (e) {
         e.preventDefault();
         e.stopPropagation();
-        close({ syncDismiss: true });
+        try {
+          if (Cf.State && Cf.State.internals) {
+            Cf.State.internals.bubbleShown = false;
+          }
+        } catch (eBs) {}
+        minimizeLauncher();
+        shellLog("[CF SHELL CHROME MINIMIZE]", { source: "close_button" });
       },
       false
     );
@@ -340,7 +349,10 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     if (!stage) {
       stage = document.createElement("div");
       stage.setAttribute("data-cf-shell-stage", "1");
-      stage.style.cssText = "position:relative;display:block;min-height:0;";
+      stage.style.cssText =
+        "position:relative;display:block;min-height:" +
+        SHELL_STAGE_MIN_H_PX +
+        "px;";
       var legacyBody = w.querySelector(WIDGET_BODY_SELECTOR);
       if (legacyBody && legacyBody.parentNode === inner) {
         inner.insertBefore(stage, legacyBody);
@@ -359,7 +371,13 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       var mount = document.createElement("div");
       mount.className = "cartflow-widget-body";
       mount.setAttribute("data-cf-shell-content", "1");
-      mount.style.cssText = "display:block;position:relative;z-index:1;min-height:0;";
+      mount.style.cssText =
+        "display:block;position:relative;z-index:1;box-sizing:border-box;" +
+        "min-height:" +
+        SHELL_CONTENT_VIEWPORT_H_PX +
+        "px;max-height:" +
+        SHELL_CONTENT_VIEWPORT_H_PX +
+        "px;overflow-y:auto;overflow-x:hidden;";
       stage.appendChild(mount);
     }
 
@@ -498,11 +516,25 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
    * @param {*} content HTMLElement, DocumentFragment, or string (trusted internal markup only; prefer fragment from Ui)
    * @param {string} [mountedView] optional view key for state.shell.mountedView
    */
+  function applyStableContentViewport(mount) {
+    if (!mount) {
+      return;
+    }
+    try {
+      mount.style.boxSizing = "border-box";
+      mount.style.minHeight = SHELL_CONTENT_VIEWPORT_H_PX + "px";
+      mount.style.maxHeight = SHELL_CONTENT_VIEWPORT_H_PX + "px";
+      mount.style.overflowY = "auto";
+      mount.style.overflowX = "hidden";
+    } catch (eVp) {}
+  }
+
   function setContent(content, mountedView) {
     var mount = getContentMount();
     if (!mount) {
       return;
     }
+    applyStableContentViewport(mount);
     while (mount.firstChild) {
       mount.removeChild(mount.firstChild);
     }

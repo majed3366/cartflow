@@ -91,7 +91,7 @@ class V2WidgetBaselineLockTests(unittest.TestCase):
         self.assertGreater(anchor, 0, "cart recovery renderYesNo anchor missing")
         window = flows[anchor : anchor + 1800]
         self.assertIn("onNo: function () {", window)
-        self.assertIn("minimizeLauncher()", window)
+        self.assertIn("minimizeWidgetPolite()", window)
 
 
 if __name__ == "__main__":

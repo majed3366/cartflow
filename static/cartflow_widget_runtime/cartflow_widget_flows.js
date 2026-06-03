@@ -6,7 +6,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
   "use strict";
 
   var Cf = window.CartflowWidgetRuntime;
-  var FLOW_VERSION = "v2-approved-recovery-flow-1";
+  var FLOW_VERSION = "v2-storefront-widget-ux-polish-1";
   var SS_V2_PHONE_PROMPT_DONE = "cartflow_cf_v2_optional_phone_done";
   /** Polling cadence/caps for `/api/cartflow/ready` bootstrap (avoid unbounded churn). */
   var READY_POLL_INTERVAL_MS = 120;
@@ -170,8 +170,8 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     setBubbleShown(false);
   }
 
-  function gracefulCloseWidget() {
-    markWidgetDismissed();
+  function minimizeWidgetPolite() {
+    setBubbleShown(false);
     try {
       if (Cf.Shell && typeof Cf.Shell.minimizeLauncher === "function") {
         Cf.Shell.minimizeLauncher();
@@ -181,6 +181,17 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     try {
       Cf.Ui.hideBubble();
     } catch (eHb) {}
+  }
+
+  function gracefulCloseWidget() {
+    minimizeWidgetPolite();
+  }
+
+  function showContinuationForPending() {
+    var rk = String(st().pending_reason_key || "other").toLowerCase();
+    var det = st().pending_reason_detail || {};
+    var subCat = det.sub_category != null ? det.sub_category : null;
+    showContinuationQuiet(rk, subCat);
   }
 
   function optionalPhonePromptAlreadyDone() {
@@ -231,6 +242,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     Cf.Ui.renderOptionalPhoneFollowup({
       primaryColor: primaryHex(),
       title: "اترك رقمك للمتابعة",
+      onBack: showContinuationForPending,
       onSave: function (pn) {
         runBackgroundReasonPhoneSave({
           payload: Object.assign({}, payload),
@@ -321,9 +333,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
         });
         try {
           if (Cf.Shell && Cf.Shell.showError) {
-            Cf.Shell.showError(
-              "تعذّر حفظ البيانات. يمكنك الضغط على «إعادة إرسال»."
-            );
+            Cf.Shell.showError("تعذّر حفظ البيانات. حاول مرة أخرى لاحقاً.");
           }
         } catch (eE) {}
         showContinuationQuiet(meta.reasonKey, meta.continuationSub);
@@ -388,9 +398,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
         };
         try {
           if (Cf.Shell && Cf.Shell.showError) {
-            Cf.Shell.showError(
-              "تعذّر حفظ البيانات. يمكنك الضغط على «إعادة إرسال»."
-            );
+            Cf.Shell.showError("تعذّر حفظ البيانات. حاول مرة أخرى لاحقاً.");
           }
         } catch (eSe2) {}
         showContinuationQuiet(rk, continuationSub);
@@ -404,19 +412,20 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
         b.removeAttribute("data-cf-after-reason-phone-step");
       }
     } catch (eRm2) {}
-    var retryMeta = st().background_retry_meta;
     var rk = String(reasonKey || "other").toLowerCase();
     Cf.Ui.renderContinuation({
       primaryColor: primaryHex(),
       bullets: recoverySuggestionBullets(rk),
       reasonKey: rk,
       compactRecovery: true,
-      retryLabel: "إعادة إرسال",
       onContinueCart: function () {
         scrollToCartOrCheckout();
       },
       onThanks: function () {
         handleThanksAfterReason(rk);
+      },
+      onBackReasons: function () {
+        mountReasonList();
       },
       onStartNewTest:
         isMerchantActivationMode() &&
@@ -433,24 +442,6 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
                 } catch (eLogRs) {}
                 window.location.reload();
               } catch (eRs) {}
-            }
-          : null,
-      onRetryBackgroundSave:
-        retryMeta != null
-          ? function () {
-              var m = st().background_retry_meta;
-              if (!m) {
-                return;
-              }
-              if (m.kind === "reason_only") {
-                runBackgroundReasonOnly(
-                  Object.assign({}, m.payload),
-                  m.reasonKey,
-                  m.continuationSub
-                );
-              } else {
-                runBackgroundReasonPhoneSave(Object.assign({}, m));
-              }
             }
           : null,
     });
@@ -615,21 +606,13 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       },
       onNo: function () {
         try {
-          if (Cf.Shell && typeof Cf.Shell.minimizeLauncher === "function") {
-            Cf.Shell.minimizeLauncher();
-          } else {
-            Cf.Ui.hideBubble();
-          }
-        } catch (eNo) {
-          Cf.Ui.hideBubble();
-        }
-        setBubbleShown(false);
-        try {
           if (window.CartFlowState) {
             window.CartFlowState.userRejectedHelp = true;
             window.CartFlowState.rejectionTimestamp = Date.now();
           }
         } catch (eNr) {}
+        markWidgetDismissed();
+        minimizeWidgetPolite();
       },
     });
     setBubbleShown(true);
@@ -701,8 +684,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
         });
       },
       onNo: function () {
-        Cf.Ui.hideBubble();
-        setBubbleShown(false);
+        minimizeWidgetPolite();
       },
     });
     setBubbleShown(true);

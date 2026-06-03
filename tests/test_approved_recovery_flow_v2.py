@@ -59,8 +59,22 @@ class ApprovedRecoveryFlowV2Tests(unittest.TestCase):
         self.assertGreater(idx, 0)
         self.assertIn("أبحث عن منتج", flows[idx : idx + 1200])
 
+    def test_back_on_suggestion_screen(self) -> None:
+        flows = _FLOWS.read_text(encoding="utf-8")
+        ui = _UI.read_text(encoding="utf-8")
+        self.assertIn("onBackReasons", flows)
+        self.assertIn("mountReasonList();", flows.split("onBackReasons")[1][:120])
+        self.assertIn("appendBackButton", ui)
+        self.assertIn('back.textContent = "رجوع"', ui)
+
+    def test_no_retry_button_in_compact_recovery(self) -> None:
+        flows = _FLOWS.read_text(encoding="utf-8")
+        ui = _UI.read_text(encoding="utf-8")
+        self.assertNotIn("onRetryBackgroundSave", flows.split("showContinuationQuiet")[1][:900])
+        self.assertNotIn("إعادة إرسال", ui.split("renderOtherDraftForm")[0])
+
     def test_runtime_version_bumped(self) -> None:
-        self.assertIn("v2-approved-recovery-flow-1", _LOADER.read_text(encoding="utf-8"))
+        self.assertIn("v2-storefront-widget-ux-polish-1", _LOADER.read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":

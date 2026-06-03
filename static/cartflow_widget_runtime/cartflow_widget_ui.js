@@ -99,8 +99,24 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
   function btnGhostStyle() {
     return (
       "margin-top:6px;border:1px solid rgba(226,232,240,.26);cursor:pointer;border-radius:9px;" +
-      "background:rgba(255,255,255,.06);color:rgba(241,245,249,.9);width:100%;padding:8px 10px;font-weight:600;font-size:12px;"
+      "background:rgba(255,255,255,.06);color:rgba(241,245,249,.9);width:100%;padding:8px 10px;font-weight:600;font-size:12px;";
     );
+  }
+
+  function appendBackButton(frag, onBack) {
+    if (typeof onBack !== "function") {
+      return;
+    }
+    var back = document.createElement("button");
+    back.type = "button";
+    back.style.cssText = btnGhostStyle();
+    back.textContent = "رجوع";
+    back.addEventListener("click", function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      onBack();
+    });
+    frag.appendChild(back);
   }
 
   function renderReasonGrid(opts) {
@@ -327,28 +343,12 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       if (typeof opts.onAssist === "function") {
         addSecondary("أحتاج مساعدة الآن", opts.onAssist);
       }
-      if (typeof opts.onBackReasons === "function") {
-        addSecondary("رجوع للأسباب", opts.onBackReasons);
-      }
     }
     if (opts.onStartNewTest && typeof opts.onStartNewTest === "function") {
       addSecondary("بدء تجربة جديدة", opts.onStartNewTest);
     }
-    if (opts.onRetryBackgroundSave && typeof opts.onRetryBackgroundSave === "function") {
-      var rz = document.createElement("button");
-      rz.type = "button";
-      rz.textContent = opts.retryLabel || "إعادة إرسال";
-      rz.style.cssText =
-        "border:1px solid rgba(251,191,36,.45);cursor:pointer;border-radius:9px;background:rgba(120,53,15,.35);" +
-        "color:#fde68a;width:100%;box-sizing:border-box;padding:9px 10px;font:inherit;font-weight:600;";
-      rz.addEventListener("click", function (e) {
-        e.preventDefault();
-        e.stopPropagation();
-        opts.onRetryBackgroundSave();
-      });
-      row.appendChild(rz);
-    }
     frag.appendChild(row);
+    appendBackButton(frag, opts.onBackReasons);
     Cf.Shell.setContent(frag, "continuation");
     try {
       console.log("[CF V2 SHOW CONTINUATION]");
@@ -410,6 +410,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     row.appendChild(save);
     row.appendChild(skip);
     frag.appendChild(row);
+    appendBackButton(frag, opts.onBack);
     Cf.Shell.setContent(frag, "phone_optional");
     try {
       console.log("[CF V2 SHOW PHONE OPTIONAL]");
@@ -459,17 +460,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     row.appendChild(cont);
     row.appendChild(thanks);
     frag.appendChild(row);
-    if (opts.onBack) {
-      var back = document.createElement("button");
-      back.type = "button";
-      back.style.cssText = btnGhostStyle();
-      back.textContent = "رجوع";
-      back.addEventListener("click", function (e) {
-        e.preventDefault();
-        opts.onBack();
-      });
-      frag.appendChild(back);
-    }
+    appendBackButton(frag, opts.onBack);
     Cf.Shell.setContent(frag, "other_recovery");
     try {
       console.log("[CF V2 SHOW OTHER RECOVERY]");
@@ -477,6 +468,10 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
   }
 
   function hideBubble() {
+    if (Cf.Shell && typeof Cf.Shell.minimizeLauncher === "function") {
+      Cf.Shell.minimizeLauncher();
+      return;
+    }
     if (Cf.Shell && typeof Cf.Shell.close === "function") {
       Cf.Shell.close({ syncDismiss: false });
       return;
