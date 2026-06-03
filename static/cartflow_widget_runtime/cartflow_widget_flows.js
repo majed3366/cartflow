@@ -6,7 +6,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
   "use strict";
 
   var Cf = window.CartflowWidgetRuntime;
-  var FLOW_VERSION = "v2-storefront-widget-ux-polish-1";
+  var FLOW_VERSION = "v2-storefront-ux-final-1";
   var SS_V2_PHONE_PROMPT_DONE = "cartflow_cf_v2_optional_phone_done";
   /** Polling cadence/caps for `/api/cartflow/ready` bootstrap (avoid unbounded churn). */
   var READY_POLL_INTERVAL_MS = 120;
@@ -21,24 +21,24 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
   var RECOVERY_SUGGESTIONS = {
     price: [
       "الدفع لاحقاً",
-      "منتج مشابه بسعر أقل",
-      "توضيح القيمة مقابل السعر",
+      "معرفة خيارات الشراء المتاحة",
+      "الاطلاع على تفاصيل المنتج",
     ],
     shipping: [
       "معرفة تكلفة الشحن",
-      "مدة الشحن",
+      "مدة الشحن المتوقعة",
       "الشحن المجاني إن وجد",
     ],
     quality: ["تقييمات العملاء", "مواصفات المنتج", "الضمان"],
     delivery: [
-      "موعد الوصول المتوقع",
+      "موعد التوصيل المتوقع",
       "خيارات التوصيل المتاحة",
-      "حالة التوصيل في منطقتك",
+      "متابعة حالة الطلب",
     ],
     warranty: [
       "مدة الضمان",
-      "ما الذي يشمله الضمان",
       "سياسة الاستبدال والاسترجاع",
+      "شروط الضمان",
     ],
     thinking: [
       "مقارنة بين الخيارات",

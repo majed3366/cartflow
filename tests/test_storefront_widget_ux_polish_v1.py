@@ -20,9 +20,10 @@ class StorefrontWidgetUxPolishTests(unittest.TestCase):
 
     def test_stable_content_viewport(self) -> None:
         shell = _SHELL.read_text(encoding="utf-8")
-        self.assertIn("SHELL_CONTENT_VIEWPORT_H_PX", shell)
+        self.assertIn("SHELL_EXPANDED_WIDTH_PX", shell)
+        self.assertIn("applyExpandedShellLayout", shell)
+        self.assertIn('mount.style.minHeight = "0"', shell)
         self.assertIn("applyStableContentViewport", shell)
-        self.assertIn("overflow-y:auto", shell.replace("Y", "y").lower() or shell)
 
     def test_thanks_and_no_use_minimize_polite(self) -> None:
         flows = _FLOWS.read_text(encoding="utf-8")

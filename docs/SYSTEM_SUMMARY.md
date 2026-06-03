@@ -341,6 +341,7 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 
 | Date (UTC) | Summary |
 |------------|---------|
+| 2026-06-02 | **Storefront widget UX finalization:** fixed `280×296px` expanded shell; content area `min-height:0` + `max-height:228px` (scroll only on overflow); approved suggestion copy per reason; bullet `•` list. Runtime `v2-storefront-ux-final-1`. Commit: **`fix: finalize storefront widget ux consistency`**. |
 | 2026-06-02 | **V2 UI bootstrap syntax fix:** removed stray `;` after string concat in `cartflow_widget_ui.js` `btnGhostStyle()` (line ~102) that caused `Uncaught SyntaxError` and `[CF V2 BOOTSTRAP BLOCKED]`. Runtime `v2-ui-syntax-fix-1`. |
 | 2026-06-02 | **Storefront widget UX polish:** `رجوع` on suggestion/other/phone screens → reason list; × / `لا` / `شكراً` minimize to launcher chip (reopen via `?` bubble); removed dead `إعادة إرسال` from compact recovery; fixed shell viewport height (`212px` stage / scrollable `188px` content). Runtime `v2-storefront-widget-ux-polish-1`. Commit: **`fix: polish storefront widget recovery ux`**. |
 | 2026-06-02 | **Approved V2 recovery UX (storefront + demo):** layered runtime shows `تبي أساعدك تكمل طلبك؟` → reasons → short `قد يفيدك:` bullets (no long in-widget persuasion) → `أكمل الطلب` / `شكراً`; optional phone `اترك رقمك للمتابعة` once after `شكراً` when phone missing; reason persisted in background; no price sub-menu or pre-reason phone gate. Runtime `v2-approved-recovery-flow-1`. Commit: **`fix: align storefront widget with approved recovery flow`**. |

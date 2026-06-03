@@ -300,11 +300,12 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       frag.appendChild(head);
       var ul = document.createElement("ul");
       ul.style.cssText =
-        "margin:0 0 10px 0;padding:0 18px 0 0;list-style:disc;color:rgba(241,245,249,.92);font-size:13px;line-height:1.5;";
+        "margin:0 0 10px 0;padding:0 18px 0 0;list-style:none;color:rgba(241,245,249,.92);font-size:13px;line-height:1.5;";
       bullets.forEach(function (line) {
         var li = document.createElement("li");
-        li.style.cssText = "margin-bottom:4px;";
-        li.textContent = String(line || "");
+        li.style.cssText =
+          "margin-bottom:4px;padding-right:0;position:relative;";
+        li.textContent = "• " + String(line || "");
         ul.appendChild(li);
       });
       frag.appendChild(ul);

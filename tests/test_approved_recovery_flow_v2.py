@@ -23,6 +23,9 @@ class ApprovedRecoveryFlowV2Tests(unittest.TestCase):
         self.assertIn("RECOVERY_SUGGESTIONS", flows)
         self.assertIn("قد يفيدك", _UI.read_text(encoding="utf-8"))
         self.assertIn("الدفع لاحقاً", flows)
+        self.assertIn("معرفة خيارات الشراء المتاحة", flows)
+        self.assertIn("متابعة حالة الطلب", flows)
+        self.assertIn("شروط الضمان", flows)
         self.assertIn("شكراً", _UI.read_text(encoding="utf-8"))
         ui = _UI.read_text(encoding="utf-8")
         compact_block = ui.split("if (!compact)", 1)[0]
@@ -74,7 +77,7 @@ class ApprovedRecoveryFlowV2Tests(unittest.TestCase):
         self.assertNotIn("إعادة إرسال", ui.split("renderOtherDraftForm")[0])
 
     def test_runtime_version_bumped(self) -> None:
-        self.assertIn("v2-storefront-widget-ux-polish-1", _LOADER.read_text(encoding="utf-8"))
+        self.assertIn("v2-storefront-ux-final-1", _LOADER.read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":
