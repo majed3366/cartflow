@@ -324,6 +324,18 @@ def post_merchant_general_settings_only(body: Dict[str, Any]) -> Tuple[Dict[str,
         anchor, total_duration_ms=duration_ms
     )
     payload["apply_handlers_skipped"] = True
+    try:
+        from services.storefront_runtime_truth_gate_v1 import (  # noqa: PLC0415
+            attach_truth_gate_to_merchant_response,
+            run_post_save_storefront_truth_gate,
+        )
+
+        gate = run_post_save_storefront_truth_gate(
+            anchor, trigger="general_settings_save"
+        )
+        payload = attach_truth_gate_to_merchant_response(payload, gate)
+    except Exception as exc:  # noqa: BLE001
+        _log.warning("general settings truth gate skipped: %s", exc)
     return payload, 200
 
 

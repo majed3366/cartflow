@@ -38,6 +38,12 @@ class Store(Base):
     widget_installed_at = Column(DateTime, nullable=True)
     widget_last_seen_at = Column(DateTime, nullable=True)
     widget_install_error = Column(Text, nullable=True)
+    # Storefront runtime truth gate (beacon + verification status)
+    widget_last_runtime_slug = Column(String(255), nullable=True)
+    widget_last_beacon_json = Column(Text, nullable=True)
+    widget_runtime_truth_status = Column(String(32), nullable=True)
+    widget_runtime_truth_json = Column(Text, nullable=True)
+    widget_runtime_truth_at = Column(DateTime, nullable=True)
     # إعدادات الاسترجاع (لاحقاً) — بدون واجهة بعد
     recovery_delay = Column(Integer, default=2, nullable=False)
     recovery_delay_unit = Column(

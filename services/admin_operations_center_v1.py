@@ -67,6 +67,16 @@ _ALERT_EXPLANATIONS_AR: dict[str, dict[str, str]] = {
             "للتأكد من وصول الأحداث."
         ),
     },
+    "widget_settings_mismatch": {
+        "why_ar": (
+            "ظهر هذا التنبيه لأن إعدادات الودجيت في لوحة التاجر "
+            "لا تطابق public-config أو آخر beacon من المتجر."
+        ),
+        "suggested_fix_ar": (
+            "راجع Store Identity aliases وslug المتجر، ثم تحقق من "
+            "public-config وbeacon الودجيت على واجهة المتجر."
+        ),
+    },
     "failed_recovery": {
         "why_ar": "ظهر هذا التنبيه لأن محاولة استرجاع واحدة أو أكثر انتهت بحالة فشل.",
         "suggested_fix_ar": (
@@ -102,6 +112,11 @@ _INVESTIGATION_STEPS_AR: dict[str, list[str]] = {
         "تحقق من تحميل الودجيت.",
         "راجع آخر cart event.",
         "اختبر إضافة منتج للسلة.",
+    ],
+    "widget_settings_mismatch": [
+        "راجع slug المتجر وaliases.",
+        "قارن dashboard vs public-config.",
+        "راجع آخر storefront beacon.",
     ],
     "stale_recovery": [
         "راجع حالة Scheduler.",
@@ -147,6 +162,11 @@ _ALERT_SEVERITY_AR: dict[str, dict[str, Any]] = {
         "severity_ar": "منخفض",
         "priority_order": 50,
     },
+    "widget_settings_mismatch": {
+        "severity": "high",
+        "severity_ar": "عالي",
+        "priority_order": 25,
+    },
 }
 
 _DEFAULT_ALERT_SEVERITY: dict[str, Any] = {
@@ -170,6 +190,7 @@ _OWNERSHIP_BY_KIND: dict[str, str] = {
     "no_cart_events": "widget_integration",
     "stale_recovery": "scheduler",
     "failed_recovery": "cartflow_system",
+    "widget_settings_mismatch": "widget_integration",
 }
 
 _VALID_SEVERITY_BUCKETS = frozenset({"critical", "high", "medium", "low"})
@@ -352,6 +373,20 @@ _BUSINESS_ISSUE_COPY_AR: dict[str, dict[str, str]] = {
         "owner_ar": "الودجيت / التكامل",
         "action_ar": "تحقق من تركيب الودجيت واختبر إضافة منتج للسلة.",
         "verification_ar": "تأكد من وصول حدث سلة جديد بعد الاختبار.",
+    },
+    "widget_settings_mismatch": {
+        "title_ar": "عدم تطابق هوية المتجر / إعدادات الودجيت",
+        "impact_ar": "قد يرى العملاء إعدادات افتراضية بدل إعدادات التاجر على المتجر.",
+        "where_ar": "Store Identity / public-config / storefront beacon",
+        "owner_ar": "CartFlow / الودجيت",
+        "action_ar": (
+            "راجع aliases وslug المتجر، وقارن dashboard مع public-config "
+            "وآخر beacon."
+        ),
+        "verification_ar": (
+            "تأكد أن widget_runtime_truth_status=verified "
+            "وأن الاسم واللون متطابقان في الثلاثة مصادر."
+        ),
     },
 }
 
@@ -1682,6 +1717,16 @@ def _store_readiness_summary() -> tuple[dict[str, Any], list[dict[str, Any]]]:
                         "whatsapp_not_connected" in blocking_set
                         or "provider_not_ready" in blocking_set
                     ),
+                    "widget_runtime_truth_status": (
+                        getattr(st, "widget_runtime_truth_status", None) or ""
+                    )[:32],
+                    "widget_runtime_truth_json": getattr(
+                        st, "widget_runtime_truth_json", None
+                    ),
+                    "widget_last_runtime_slug": (
+                        getattr(st, "widget_last_runtime_slug", None) or ""
+                    )[:128],
+                    "widget_last_seen_at": _fmt_dt(getattr(st, "widget_last_seen_at", None)),
                 }
             )
 
@@ -1950,6 +1995,16 @@ def _build_basic_alerts(
             )
         if len(alerts) >= _MAX_ALERTS * 2:
             break
+
+    try:
+        from services.storefront_runtime_truth_gate_v1 import (
+            build_admin_widget_settings_mismatch_alerts,
+        )
+
+        mismatch_alerts = build_admin_widget_settings_mismatch_alerts(stores=stores)
+        alerts.extend(mismatch_alerts)
+    except Exception:  # noqa: BLE001
+        pass
 
     return _sort_alerts(alerts)[:_MAX_ALERTS]
 

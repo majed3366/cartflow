@@ -24,11 +24,11 @@
     }
   }
 
-  function showOk() {
+  function showOk(msg) {
     setBoxVisible(byId("ma-general-settings-err"), false);
     var ok = byId("ma-general-settings-ok");
     if (ok) {
-      ok.textContent = "تم حفظ الإعدادات";
+      ok.textContent = msg || "تم حفظ الإعدادات";
       setBoxVisible(ok, true);
     }
   }
@@ -170,7 +170,10 @@
           if (window.maVipAutomation && x.data.merchant_automation_mode) {
             window.maVipAutomation.setMode(x.data.merchant_automation_mode);
           }
-          showOk();
+          var truthMsg =
+            x.data.storefront_runtime_truth &&
+            x.data.storefront_runtime_truth.message_ar;
+          showOk(truthMsg || "تم حفظ الإعدادات — نتحقق من ظهورها في المتجر");
         } else {
           showErr((x.data && x.data.error) || "فشل الحفظ");
         }

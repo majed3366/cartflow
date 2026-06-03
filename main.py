@@ -1778,7 +1778,8 @@ def _dev_apply_recovery_settings_update(
     if request_body is not None and is_merchant_vip_only_patch(request_body):
         return merchant_vip_settings_patch_response(anchor), 200
     if request_body is not None and is_merchant_general_settings_only_patch(request_body):
-        return merchant_general_settings_patch_response(anchor), 200
+        resp = merchant_general_settings_patch_response(anchor)
+        return _merge_storefront_truth_into_save_payload(resp, anchor, trigger="general_settings_save"), 200
     wa: Optional[str] = getattr(anchor, "whatsapp_support_url", None)
     if not (isinstance(wa, str) and wa.strip()):
         wa = None
@@ -1816,7 +1817,29 @@ def _dev_apply_recovery_settings_update(
     payload.update(merchant_vip_settings_fields_for_api(anchor, include_activity=False))
     payload.update(merchant_general_settings_fields_for_api(anchor))
     payload["guided_recovery_defaults"] = guided_defaults_for_api()
+    payload = _merge_storefront_truth_into_save_payload(
+        payload, anchor, trigger="recovery_settings_save"
+    )
     return payload, 200
+
+
+def _merge_storefront_truth_into_save_payload(
+    payload: Dict[str, Any],
+    store_row: Any,
+    *,
+    trigger: str = "dashboard_save",
+) -> Dict[str, Any]:
+    try:
+        from services.storefront_runtime_truth_gate_v1 import (  # noqa: PLC0415
+            attach_truth_gate_to_merchant_response,
+            run_post_save_storefront_truth_gate,
+        )
+
+        gate = run_post_save_storefront_truth_gate(store_row, trigger=trigger)
+        return attach_truth_gate_to_merchant_response(payload, gate)
+    except Exception as exc:  # noqa: BLE001
+        log.warning("storefront truth gate on save skipped: %s", exc)
+        return payload
 
 # ‎/dev/recovery-flow-test?type=…‎ — بدون قراءة من ‎DB‎
 _RECOVERY_TEST_SCENARIOS = {
@@ -2998,7 +3021,13 @@ async def api_merchant_widget_settings(request: Request):
         from services.merchant_widget_panel import merchant_widget_panel_bundle  # noqa: PLC0415
 
         panel = merchant_widget_panel_bundle(fresh if fresh is not None else row)
-        return j({"ok": True, "merchant_widget_panel": panel})
+        payload = {"ok": True, "merchant_widget_panel": panel}
+        payload = _merge_storefront_truth_into_save_payload(
+            payload,
+            fresh if fresh is not None else row,
+            trigger="merchant_widget_settings_save",
+        )
+        return j(payload)
     except Exception as e:  # noqa: BLE001
         db.session.rollback()
         return j({"ok": False, "error": str(e)}, 500)
@@ -19337,9 +19366,9 @@ def dashboard_vip_cart_settings(request: Request):
 
 @app.post("/api/storefront/widget-seen")
 async def api_storefront_widget_seen(request: Request):
-    """Storefront loader beacon — updates widget_last_seen_at (no auth)."""
-    from services.zid_storefront_widget_install_v1 import (  # noqa: PLC0415
-        record_widget_storefront_seen,
+    """Storefront loader/runtime beacon — widget seen + runtime truth."""
+    from services.storefront_runtime_truth_gate_v1 import (  # noqa: PLC0415
+        record_storefront_runtime_beacon,
     )
 
     try:
@@ -19361,8 +19390,8 @@ async def api_storefront_widget_seen(request: Request):
         )
     except OSError:
         pass
-    updated = record_widget_storefront_seen(store_slug=store_slug)
-    return j({"ok": True, "updated": updated})
+    updated, store_id = record_storefront_runtime_beacon(body)
+    return j({"ok": True, "updated": updated, "store_id": store_id})
 
 
 @app.get("/api/merchant/store-connection")

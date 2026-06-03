@@ -297,7 +297,12 @@
           if (x.j.merchant_widget_panel) {
             writeBootstrap(x.j.merchant_widget_panel);
           }
-          showSaveMsg("تم حفظ الإعدادات بنجاح", true);
+          var truthMsg =
+            x.j.storefront_runtime_truth && x.j.storefront_runtime_truth.message_ar;
+          showSaveMsg(
+            truthMsg || "تم حفظ الإعدادات — نتحقق من ظهورها في المتجر",
+            true
+          );
           refreshPreview();
         })
         .catch(function () {

@@ -203,6 +203,121 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     return null;
   }
 
+  function cartflowRuntimeVersion() {
+    try {
+      if (typeof window.__cartflow_loader_build === "string" && window.__cartflow_loader_build.trim()) {
+        return String(window.__cartflow_loader_build).trim();
+      }
+    } catch (eRv) {}
+    return "v2-storefront-truth-gate-1";
+  }
+
+  function cartflowBeaconApiOrigin() {
+    try {
+      if (typeof window.CARTFLOW_API_BASE === "string" && window.CARTFLOW_API_BASE.trim()) {
+        return String(window.CARTFLOW_API_BASE).replace(/\/+$/, "");
+      }
+      var Cf = window.CartflowWidgetRuntime;
+      if (Cf && Cf.Api && typeof Cf.Api.apiBase === "function") {
+        var b = Cf.Api.apiBase();
+        if (b) return b;
+      }
+      var loaderNode = document.querySelector('script[src*="widget_loader"]');
+      if (loaderNode && loaderNode.src) {
+        return new URL(loaderNode.src, window.location.href).origin;
+      }
+    } catch (eBo) {}
+    return "";
+  }
+
+  function cartflowBeaconStoreSlug() {
+    try {
+      var Cf = window.CartflowWidgetRuntime;
+      if (Cf && Cf.Api && typeof Cf.Api.storeSlug === "function") {
+        var s = Cf.Api.storeSlug();
+        if (s) return String(s).trim();
+      }
+    } catch (eSs) {}
+    try {
+      if (window.CARTFLOW_STORE_SLUG) return String(window.CARTFLOW_STORE_SLUG).trim();
+    } catch (eS1) {}
+    return "";
+  }
+
+  function postStorefrontRuntimeBeacon(tag) {
+    try {
+      var p = window.location.pathname || "";
+      if (/\/demo\b/i.test(p) || /^\/dev(\/|$)/i.test(p)) {
+        return;
+      }
+      var slug = cartflowBeaconStoreSlug();
+      if (!slug || slug === "demo") {
+        return;
+      }
+      var origin = cartflowBeaconApiOrigin();
+      if (!origin) {
+        return;
+      }
+      var renderedTitle = CRT.merchant.widget_brand_name || null;
+      var renderedColor = CRT.merchant.widget_primary_color || null;
+      var vis = CfShellRenderedVisuals();
+      if (vis) {
+        if (vis.title) renderedTitle = vis.title;
+        if (vis.color) renderedColor = vis.color;
+      }
+      var payload = JSON.stringify({
+        store: slug,
+        store_slug: slug,
+        widget_name: renderedTitle,
+        widget_color: renderedColor,
+        runtime_version: cartflowRuntimeVersion(),
+        page_url: String(window.location.href || "").slice(0, 2048),
+        timestamp: new Date().toISOString(),
+        beacon_tag: tag || "applyVisual",
+      });
+      if (navigator.sendBeacon) {
+        navigator.sendBeacon(
+          origin + "/api/storefront/widget-seen",
+          new Blob([payload], { type: "application/json" })
+        );
+      } else {
+        fetch(origin + "/api/storefront/widget-seen", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: payload,
+          credentials: "omit",
+          keepalive: true,
+        }).catch(function () {});
+      }
+    } catch (ePost) {}
+  }
+
+  function CfShellRenderedVisuals() {
+    try {
+      var Sh = window.CartflowWidgetRuntime && window.CartflowWidgetRuntime.Shell;
+      if (!Sh || typeof Sh.getRoot !== "function") {
+        return null;
+      }
+      var w = Sh.getRoot();
+      if (!w) {
+        return null;
+      }
+      var title = null;
+      var color = null;
+      var tEl = w.querySelector("[data-cf-shell-title]");
+      if (tEl) {
+        title = tEl.textContent;
+      }
+      var bar = w.querySelector('[data-cf-chrome="1"]');
+      if (bar && bar.style && bar.style.background) {
+        color = bar.style.background;
+      }
+      return { title: title, color: color };
+    } catch (eVis) {
+      return null;
+    }
+  }
+
   function logWidgetSettingsTruth(tag, extra) {
     try {
       var Cf = window.CartflowWidgetRuntime;
@@ -277,6 +392,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       api_widget_name: j.widget_name,
       api_widget_primary_color: j.widget_primary_color,
     });
+    postStorefrontRuntimeBeacon("applyVisual");
   }
 
   function templates() {

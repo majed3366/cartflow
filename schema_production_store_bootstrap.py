@@ -129,6 +129,10 @@ def ensure_production_store_schema(db: Any, *, context: str = "startup") -> bool
             ensure_store_zid_widget_install_schema,
             log_store_zid_widget_install_schema_status,
         )
+        from schema_storefront_runtime_truth import (
+            ensure_storefront_runtime_truth_schema,
+            verify_storefront_runtime_truth_schema,
+        )
 
         ensure_merchant_auth_schema(db)
         log_merchant_auth_schema_status(db, context=context)
@@ -144,10 +148,11 @@ def ensure_production_store_schema(db: Any, *, context: str = "startup") -> bool
         zid_status = log_store_zid_integration_schema_status(db, context=context)
         widget_ok = ensure_store_zid_widget_install_schema(db)
         log_store_zid_widget_install_schema_status(db, context=context)
+        truth_ok = ensure_storefront_runtime_truth_schema(db)
 
         status = verify_production_store_schema(db)
         identity_ok = bool(verify_store_identity_schema(db).get("ok"))
-        ok = bool(status.get("ok")) and zid_ok and widget_ok and identity_ok
+        ok = bool(status.get("ok")) and zid_ok and widget_ok and identity_ok and truth_ok
         tag = "[PRODUCTION DB SCHEMA]"
         if ok:
             _bootstrap_verified_ok = True

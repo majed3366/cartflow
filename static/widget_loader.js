@@ -276,7 +276,13 @@
       if (!origin) {
         return;
       }
-      var payload = JSON.stringify({ store: slug });
+      var payload = JSON.stringify({
+        store: slug,
+        store_slug: slug,
+        runtime_version: RUNTIME_VERSION,
+        page_url: String(window.location.href || "").slice(0, 2048),
+        timestamp: new Date().toISOString(),
+      });
       if (navigator.sendBeacon) {
         navigator.sendBeacon(
           origin + "/api/storefront/widget-seen",
