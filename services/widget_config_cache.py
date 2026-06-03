@@ -326,36 +326,64 @@ def public_http_payload(
     }
 
 
+def log_widget_settings_truth_from_snapshot(
+    store_slug: str, snap: Dict[str, Any], *, row: Optional[Any] = None
+) -> None:
+    """Structured server log for dashboard → API truth checks."""
+    tpl = snap.get("template_bundle") if isinstance(snap.get("template_bundle"), dict) else {}
+    if not tpl and isinstance(snap, dict):
+        tpl = {k: v for k, v in snap.items() if k not in ("ok", "whatsapp_url", "vip_threshold")}
+    api_name = tpl.get("widget_name") if isinstance(tpl, dict) else None
+    api_color = tpl.get("widget_primary_color") if isinstance(tpl, dict) else None
+    log.info(
+        "[WIDGET SETTINGS TRUTH] store_slug=%s db_store_id=%s db_zid=%s "
+        "db_widget_name=%s db_widget_display_name=%s db_widget_primary_color=%s "
+        "api_widget_name=%s api_widget_primary_color=%s",
+        (store_slug or "")[:80],
+        getattr(row, "id", None) if row is not None else None,
+        (getattr(row, "zid_store_id", None) or "")[:80] if row is not None else None,
+        (getattr(row, "widget_name", None) or "")[:80] if row is not None else None,
+        (getattr(row, "widget_display_name", None) or "")[:80] if row is not None else None,
+        (getattr(row, "widget_primary_color", None) or "")[:16] if row is not None else None,
+        (str(api_name or ""))[:80],
+        (str(api_color or ""))[:16],
+    )
+
+
 def _load_snapshot_from_db(norm_slug: str) -> Dict[str, Any]:
-    """قراءة فقط من الجداول الموجودة — بدون ‎DDL‎ ولا ‎create_all‎ (مسار خلفية/اختبار)."""
+    """Load Store via canonical zid resolver (same row as merchant dashboard)."""
 
-    from services.cartflow_widget_public_store import store_row_for_widget_public_session
+    from services.cartflow_widget_public_store import store_row_for_widget_public_api
 
-    with isolated_db_session() as sess:
-        row = store_row_for_widget_public_session(sess, norm_slug)
-        snap = build_snapshot_from_store_row(row)
-        if row is not None:
-            try:
-                from services.store_widget_customization import (
-                    canonical_widget_name_on_row,
-                    is_default_widget_name,
-                )
+    row = store_row_for_widget_public_api(norm_slug)
+    if row is not None:
+        try:
+            from services.store_widget_customization import (
+                canonical_widget_name_on_row,
+                is_default_widget_name,
+                reconcile_widget_name_columns,
+            )
 
-                name_col = getattr(row, "widget_name", None)
-                if isinstance(name_col, str) and is_default_widget_name(name_col):
-                    canon = canonical_widget_name_on_row(row)
-                    if canon and not is_default_widget_name(canon):
-                        row.widget_name = canon
-                        sess.commit()
-                        log.info(
-                            "[WIDGET NAME RECONCILE] store_slug=%s widget_name=%s",
-                            norm_slug[:80],
-                            canon[:80],
-                        )
-                        snap = build_snapshot_from_store_row(row)
-            except Exception:  # noqa: BLE001
-                sess.rollback()
-        return snap
+            reconcile_widget_name_columns(row)
+            name_col = getattr(row, "widget_name", None)
+            if isinstance(name_col, str) and is_default_widget_name(name_col):
+                canon = canonical_widget_name_on_row(row)
+                if canon and not is_default_widget_name(canon):
+                    row.widget_name = canon
+                    db.session.commit()
+                    log.info(
+                        "[WIDGET NAME RECONCILE] store_slug=%s widget_name=%s",
+                        norm_slug[:80],
+                        canon[:80],
+                    )
+        except Exception:  # noqa: BLE001
+            db.session.rollback()
+    snap = build_snapshot_from_store_row(row)
+    try:
+        log_widget_settings_truth_from_snapshot(norm_slug, snap, row=row)
+    except Exception:  # noqa: BLE001
+        pass
+    return snap
 
 
 def _release_refresh_busy(norm_slug: str) -> None:

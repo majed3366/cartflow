@@ -12,7 +12,7 @@
 (function () {
   "use strict";
 
-  var RUNTIME_VERSION = "v2-widget-title-truth-1";
+  var RUNTIME_VERSION = "v2-widget-name-color-truth-1";
 
   function cartflowWidgetLoaderScriptUrl() {
     try {

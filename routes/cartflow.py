@@ -379,6 +379,14 @@ def cartflow_public_config(
         log.info("[WIDGET CONFIG CACHE HIT] store_slug=%s", norm[:80])
     else:
         log.info("[WIDGET CONFIG CACHE LOADED] store_slug=%s", norm[:80])
+    try:
+        from services.cartflow_widget_public_store import store_row_for_widget_public_api
+        from services.widget_config_cache import log_widget_settings_truth_from_snapshot
+
+        _truth_row = store_row_for_widget_public_api(norm)
+        log_widget_settings_truth_from_snapshot(norm, snap, row=_truth_row)
+    except Exception:  # noqa: BLE001
+        pass
     return j(public_http_payload(norm, cart_total, snap))
 
 

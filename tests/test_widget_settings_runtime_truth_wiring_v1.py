@@ -89,10 +89,19 @@ class WidgetSettingsRuntimeTruthWiringTests(unittest.TestCase):
     def test_v2_shell_uses_merchant_brand_title(self) -> None:
         shell = _SHELL.read_text(encoding="utf-8")
         config = _CONFIG.read_text(encoding="utf-8")
+        ui = (_ROOT / "static" / "cartflow_widget_runtime" / "cartflow_widget_ui.js").read_text(
+            encoding="utf-8"
+        )
         self.assertIn("function merchantShellTitle()", shell)
         self.assertIn("widget_brand_name", shell)
-        self.assertIn("refreshTitle", shell)
-        self.assertIn("Sh.refreshTitle", config)
+        self.assertIn("refreshShellVisuals", shell)
+        self.assertIn("logWidgetSettingsTruth", config)
+        self.assertIn("WIDGET SETTINGS TRUTH", config)
+        self.assertIn("restampPrimaryButtons", ui)
+        flows = (_ROOT / "static" / "cartflow_widget_runtime" / "cartflow_widget_flows.js").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("bootTriggersAfterConfig", flows)
 
     def test_merchant_widget_panel_preserves_brand_line(self) -> None:
         panel = _PANEL_JS.read_text(encoding="utf-8")

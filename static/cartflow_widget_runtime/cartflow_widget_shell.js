@@ -42,6 +42,48 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       title.textContent = merchantShellTitle();
     }
   }
+
+  function merchantPrimaryHex() {
+    try {
+      if (Cf.Config && typeof Cf.Config.merchant === "function") {
+        var c = Cf.Config.merchant().widget_primary_color;
+        if (typeof c === "string" && c.trim()) {
+          return String(c).trim();
+        }
+      }
+    } catch (ePh) {}
+    return null;
+  }
+
+  function refreshChromeColor(w) {
+    w = w || rootFromDom();
+    if (!w) {
+      return;
+    }
+    var fill = merchantPrimaryHex() || "#6366F1";
+    var bar = w.querySelector('[data-cf-chrome="1"]');
+    if (bar) {
+      try {
+        bar.style.background = fill;
+      } catch (eBc) {}
+    }
+  }
+
+  function refreshShellVisuals() {
+    var w = rootFromDom();
+    refreshChromeColor(w);
+    applyShellTitle(w);
+    try {
+      if (Cf.Ui && typeof Cf.Ui.restampPrimaryButtons === "function") {
+        Cf.Ui.restampPrimaryButtons(merchantPrimaryHex());
+      }
+    } catch (eRp) {}
+    try {
+      if (Cf.Config && typeof Cf.Config.logWidgetSettingsTruth === "function") {
+        Cf.Config.logWidgetSettingsTruth("refreshShellVisuals");
+      }
+    } catch (eLs) {}
+  }
   /** Expanded storefront shell — fixed width/height; scroll only if content overflows stage. */
   var SHELL_EXPANDED_WIDTH_PX = 280;
   var SHELL_EXPANDED_OUTER_H_PX = 296;
@@ -468,7 +510,8 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     opts = opts || {};
     dedupeShellRoots();
     var hadRoot = !!rootFromDom();
-    var r = ensureShell(opts.primaryColor);
+    var ph = opts.primaryColor || merchantPrimaryHex() || "#6366F1";
+    var r = ensureShell(ph);
     var w = r.root;
     try {
       if (w && w.getAttribute("data-cf-shell-minimized") === "1") {
@@ -476,7 +519,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
         w = rootFromDom();
       }
     } catch (eExp) {}
-    applyShellTitle(w);
+    refreshShellVisuals();
     if (r.createdNew) {
       shellLog("[CF SHELL OPEN]", { created: true });
     } else if (hadRoot) {
@@ -748,6 +791,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     minimizeLauncher: minimizeLauncher,
     expand: expandShell,
     refreshTitle: refreshTitle,
+    refreshShellVisuals: refreshShellVisuals,
     getRoot: getRoot,
     getContentMount: getContentMount,
   };

@@ -372,12 +372,22 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       );
     }
     var bb = apiBase();
+    var rt = "";
+    try {
+      rt =
+        typeof window.CARTFLOW_RUNTIME_VERSION === "string"
+          ? window.CARTFLOW_RUNTIME_VERSION
+          : typeof window.__cartflow_loader_build === "string"
+            ? window.__cartflow_loader_build
+            : "";
+    } catch (eRt) {}
     var u =
       (bb || "") +
       "/api/cartflow/public-config" +
       "?store_slug=" +
       encodeURIComponent(storeSlug()) +
-      cartTotalSuffix();
+      cartTotalSuffix() +
+      (rt ? "&_rt=" + encodeURIComponent(rt) : "");
     return fetch(u, { method: "GET" })
       .then(function (r) {
         return r.json().then(function (j) {

@@ -6,7 +6,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
   "use strict";
 
   var Cf = window.CartflowWidgetRuntime;
-  var FLOW_VERSION = "v2-widget-title-truth-1";
+  var FLOW_VERSION = "v2-widget-name-color-truth-1";
   var SS_V2_PHONE_PROMPT_DONE = "cartflow_cf_v2_optional_phone_done";
   /** Polling cadence/caps for `/api/cartflow/ready` bootstrap (avoid unbounded churn). */
   var READY_POLL_INTERVAL_MS = 120;
@@ -782,55 +782,57 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       Cf.Config.applyPayload(j || {}, "primed");
       mirrorCartTotals();
 
-      ensureStep1Then(function () {
-        if (!merchantAllowsUi()) {
+      function bootTriggersAfterConfig() {
+        ensureStep1Then(function () {
+          if (!merchantAllowsUi()) {
+            try {
+              console.log("[CartflowWidgetRuntimeV2] merchant gate pauses hesitation UI");
+            } catch (eM) {}
+          }
+
+          Cf.Triggers.init({
+            flowsRef: {},
+            fireCartRecovery: function (tag) {
+              if (st().bubbleShown) {
+                return;
+              }
+              showBubbleCartRecovery(String(tag || "cart_timer"));
+            },
+            fireExitNoCart: function () {
+              if (isStorefrontRecoveryMode()) {
+                showBubbleCartRecovery("exit_intent_storefront_recovery");
+                return;
+              }
+              if (!Cf.Triggers.haveCartApprox()) {
+                showExitNoCart();
+              }
+            },
+            fireExitWithCart: function () {
+              if (Cf.Triggers.haveCartApprox()) {
+                if (shouldBlockCartTriggers()) {
+                  return;
+                }
+                if (v2ShellOccupiedPreventExitIntentDuplicates()) {
+                  try {
+                    console.log("[CF TRIGGER BLOCKED] reason=already_open");
+                  } catch (eBl) {}
+                  return;
+                }
+                showBubbleCartRecovery("exit_intent_with_cart");
+              }
+            },
+          });
+
           try {
-            console.log("[CartflowWidgetRuntimeV2] merchant gate pauses hesitation UI");
-          } catch (eM) {}
-        }
+            console.log("[CF V2 FULLY ISOLATED]", { flows: FLOW_VERSION });
+          } catch (eIso) {}
 
-        Cf.Triggers.init({
-          flowsRef: {},
-          fireCartRecovery: function (tag) {
-            if (st().bubbleShown) {
-              return;
-            }
-            showBubbleCartRecovery(String(tag || "cart_timer"));
-          },
-          fireExitNoCart: function () {
-            if (isStorefrontRecoveryMode()) {
-              showBubbleCartRecovery("exit_intent_storefront_recovery");
-              return;
-            }
-            if (!Cf.Triggers.haveCartApprox()) {
-              showExitNoCart();
-            }
-          },
-          fireExitWithCart: function () {
-            if (Cf.Triggers.haveCartApprox()) {
-              if (shouldBlockCartTriggers()) {
-                return;
-              }
-              if (v2ShellOccupiedPreventExitIntentDuplicates()) {
-                try {
-                  console.log("[CF TRIGGER BLOCKED] reason=already_open");
-                } catch (eBl) {}
-                return;
-              }
-              showBubbleCartRecovery("exit_intent_with_cart");
-            }
-          },
+          emitGuide("cartflow-demo-bubble-visible", {});
+          try {
+            console.log("[CARTFLOW WIDGET V2 FLOWS]", FLOW_VERSION);
+          } catch (eFs) {}
         });
-
-        try {
-          console.log("[CF V2 FULLY ISOLATED]", { flows: FLOW_VERSION });
-        } catch (eIso) {}
-
-        emitGuide("cartflow-demo-bubble-visible", {});
-        try {
-          console.log("[CARTFLOW WIDGET V2 FLOWS]", FLOW_VERSION);
-        } catch (eFs) {}
-      });
+      }
 
       Cf.Api.fetchPublicConfig().then(function (pc) {
         if (pc && typeof pc === "object" && pc.ok !== false) {
@@ -843,6 +845,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
             notifyStep1PublicConfigHydrated();
           }
         } catch (ePc) {}
+        bootTriggersAfterConfig();
       });
     });
   }

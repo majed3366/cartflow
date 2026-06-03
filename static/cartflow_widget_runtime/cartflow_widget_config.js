@@ -176,6 +176,71 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     return null;
   }
 
+  function normalizePrimaryHex(raw) {
+    if (raw == null) {
+      return null;
+    }
+    var s = String(raw).trim();
+    if (/^#[0-9A-Fa-f]{6}$/i.test(s)) {
+      return "#" + s.slice(1).toUpperCase();
+    }
+    if (/^#[0-9A-Fa-f]{3}$/i.test(s)) {
+      var h = s.slice(1);
+      return (
+        "#" +
+        (h.charAt(0) +
+          h.charAt(0) +
+          h.charAt(1) +
+          h.charAt(1) +
+          h.charAt(2) +
+          h.charAt(2))
+      ).toUpperCase();
+    }
+    var bare = s.replace(/^#/, "");
+    if (/^[0-9A-Fa-f]{6}$/i.test(bare)) {
+      return "#" + bare.toUpperCase();
+    }
+    return null;
+  }
+
+  function logWidgetSettingsTruth(tag, extra) {
+    try {
+      var Cf = window.CartflowWidgetRuntime;
+      var slug = "";
+      if (Cf.Api && typeof Cf.Api.storeSlug === "function") {
+        slug = Cf.Api.storeSlug();
+      }
+      var renderedTitle = null;
+      var renderedColor = null;
+      if (Cf.Shell && typeof Cf.Shell.getRoot === "function") {
+        var w = Cf.Shell.getRoot();
+        if (w) {
+          var tEl = w.querySelector("[data-cf-shell-title]");
+          if (tEl) {
+            renderedTitle = tEl.textContent;
+          }
+          var bar = w.querySelector('[data-cf-chrome="1"]');
+          if (bar && bar.style) {
+            renderedColor = bar.style.background || null;
+          }
+        }
+      }
+      console.log("[WIDGET SETTINGS TRUTH]", {
+        tag: tag || "?",
+        store_slug: slug,
+        api_widget_name: extra && extra.api_widget_name != null ? extra.api_widget_name : null,
+        api_widget_primary_color:
+          extra && extra.api_widget_primary_color != null
+            ? extra.api_widget_primary_color
+            : null,
+        runtime_widget_name: CRT.merchant.widget_brand_name,
+        runtime_widget_primary_color: CRT.merchant.widget_primary_color,
+        rendered_widget_title: renderedTitle,
+        rendered_widget_color: renderedColor,
+      });
+    } catch (eWt) {}
+  }
+
   function applyVisual(j) {
     if (!j || typeof j !== "object") {
       return;
@@ -184,14 +249,10 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     if (resolved) {
       CRT.merchant.widget_brand_name = resolved;
     }
-    if (
-      "widget_primary_color" in j &&
-      j.widget_primary_color != null &&
-      String(j.widget_primary_color).trim()
-    ) {
-      var raw = String(j.widget_primary_color).trim();
-      if (/^#[0-9A-Fa-f]{6}$/.test(raw)) {
-        CRT.merchant.widget_primary_color = "#" + raw.slice(1).toUpperCase();
+    if ("widget_primary_color" in j && j.widget_primary_color != null) {
+      var hex = normalizePrimaryHex(j.widget_primary_color);
+      if (hex) {
+        CRT.merchant.widget_primary_color = hex;
       }
     }
     if ("widget_style" in j && typeof j.widget_style === "string") {
@@ -206,10 +267,16 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     });
     try {
       var Sh = window.CartflowWidgetRuntime && window.CartflowWidgetRuntime.Shell;
-      if (Sh && typeof Sh.refreshTitle === "function") {
+      if (Sh && typeof Sh.refreshShellVisuals === "function") {
+        Sh.refreshShellVisuals();
+      } else if (Sh && typeof Sh.refreshTitle === "function") {
         Sh.refreshTitle();
       }
     } catch (eTi) {}
+    logWidgetSettingsTruth("applyVisual", {
+      api_widget_name: j.widget_name,
+      api_widget_primary_color: j.widget_primary_color,
+    });
   }
 
   function templates() {
@@ -334,6 +401,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
 
   var Config = {
     applyPayload: applyPayload,
+    logWidgetSettingsTruth: logWidgetSettingsTruth,
     widgetTrigger: widgetTrigger,
     phoneCaptureMode: phoneCaptureMode,
     hesitationDelaySeconds: hesitationDelaySeconds,

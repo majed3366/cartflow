@@ -28,6 +28,9 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
 
   function stampPrimary(btn, primaryHex) {
     var hex = primaryHex || "#6366f1";
+    try {
+      btn.setAttribute("data-cf-btn-primary", "1");
+    } catch (eAttr) {}
     btn.style.cssText =
       "cursor:pointer;display:inline-flex;align-items:center;justify-content:center;text-align:center;border-radius:9px;" +
       "background:linear-gradient(180deg," +
@@ -35,6 +38,28 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       " 0%,#4f46e5 100%);color:#fafafa;width:100%;box-sizing:border-box;" +
       "padding:9px 10px;line-height:1.35;font-weight:600;font-size:13px;" +
       "border:1px solid rgba(255,255,255,.12);box-shadow:0 1px 0 rgba(255,255,255,.12) inset;";
+  }
+
+  function restampPrimaryButtons(primaryHex) {
+    if (!Cf.Shell || typeof Cf.Shell.getRoot !== "function") {
+      return;
+    }
+    var root = Cf.Shell.getRoot();
+    if (!root) {
+      return;
+    }
+    var ph = primaryHex;
+    if (!ph && Cf.Config && typeof Cf.Config.merchant === "function") {
+      ph = Cf.Config.merchant().widget_primary_color;
+    }
+    ph = ph || "#6366f1";
+    try {
+      var nodes = root.querySelectorAll("[data-cf-btn-primary]");
+      var i;
+      for (i = 0; i < nodes.length; i++) {
+        stampPrimary(nodes[i], ph);
+      }
+    } catch (eRs) {}
   }
 
   function stampSecondaryOutline(btn) {
@@ -580,6 +605,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
   var Ui = {
     showBubble: showBubble,
     ensureBubble: ensureBubble,
+    restampPrimaryButtons: restampPrimaryButtons,
     clearBody: clear,
     renderYesNo: renderYesNo,
     renderReasonGrid: renderReasonGrid,
