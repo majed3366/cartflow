@@ -97,14 +97,30 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
   // Zid adapter (fully implemented, layered detection)
   // ---------------------------------------------------------------------------
 
+  // During the initial page-load window, count-based layers only hydrate the
+  // baseline (state only); they never dispatch a normalized cart event. This
+  // prevents the existing cart from looking like a fresh add-to-cart on load.
+  var ZID_LOAD_WINDOW_MS = 3000;
+
   var zidCartEventSource = {
     platform: "zid",
     _bridge: null,
     _lastCount: null,
+    _lastTotal: null,
+    _hydrated: false,
+    _loadWindowActive: true,
     _globalsTries: 0,
 
     init: function (bridge) {
       this._bridge = bridge;
+      var self = this;
+      try {
+        setTimeout(function () {
+          self._loadWindowActive = false;
+        }, ZID_LOAD_WINDOW_MS);
+      } catch (eW) {
+        this._loadWindowActive = false;
+      }
       this._pollGlobals();
       this._scanCartDom();
       this._urlHeuristic();
@@ -121,23 +137,83 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       }
     },
 
-    _maybeEmitFromCount: function (detectedBy, count, total) {
+    _diag: function (layerName, emittedType, count, total, reason) {
+      var url = "";
+      try {
+        url = String(window.location.href || "").slice(0, 512);
+      } catch (eU) {}
+      try {
+        console.log("[CF ZID DETECTION LAYER]", {
+          layer_name: layerName,
+          emitted_event_type: emittedType || null,
+          cart_count: count != null ? count : null,
+          cart_total: total != null ? total : null,
+          page_url: url,
+          trigger_reason: reason,
+        });
+      } catch (eD) {}
+    },
+
+    /**
+     * Count/total-driven layers funnel through here. Root-cause guard against
+     * false positives: the first observation (and anything during the initial
+     * page-load window) ONLY hydrates baseline state — it never dispatches.
+     * A normalized event is emitted afterwards only on a real cart mutation
+     * (count increased/decreased, total changed, or emptied).
+     */
+    _maybeEmitFromCount: function (layerName, detectedBy, count, total) {
       if (count == null) {
         return;
       }
-      if (this._lastCount != null && count === this._lastCount) {
+      if (this._loadWindowActive || !this._hydrated) {
+        this._hydrated = true;
+        this._lastCount = count;
+        this._lastTotal = total != null ? total : this._lastTotal;
+        this._diag(
+          layerName,
+          null,
+          count,
+          total,
+          this._loadWindowActive
+            ? "initial_load_window_hydration_only"
+            : "post_load_baseline_hydration"
+        );
         return;
       }
-      var prev = this._lastCount;
+      var prevCount = this._lastCount;
+      var prevTotal = this._lastTotal;
+      var totalChanged =
+        total != null && prevTotal != null && total !== prevTotal;
+      if (count === prevCount && !totalChanged) {
+        return;
+      }
       this._lastCount = count;
+      if (total != null) {
+        this._lastTotal = total;
+      }
       if (count <= 0) {
-        if (prev != null && prev > 0) {
-          this._signal(detectedBy, "cart_empty", { items_count: 0, cart_total: total });
+        if (prevCount != null && prevCount > 0) {
+          this._diag(layerName, "cart_empty", count, total, "cart_emptied");
+          this._signal(detectedBy, "cart_empty", {
+            items_count: 0,
+            cart_total: total,
+          });
         }
         return;
       }
-      var type =
-        prev == null ? "cart_detected" : count > prev ? "add_to_cart" : "cart_updated";
+      var type;
+      var reason;
+      if (prevCount != null && count > prevCount) {
+        type = "add_to_cart";
+        reason = "cart_count_increased";
+      } else if (prevCount != null && count < prevCount) {
+        type = "cart_updated";
+        reason = "cart_count_decreased";
+      } else {
+        type = "cart_updated";
+        reason = "cart_total_changed";
+      }
+      this._diag(layerName, type, count, total, reason);
       this._signal(detectedBy, type, { items_count: count, cart_total: total });
     },
 
@@ -194,7 +270,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
         self._globalsTries += 1;
         var g = self._readGlobalCart();
         if (g && g.count != null) {
-          self._maybeEmitFromCount("platform_api", g.count, g.total);
+          self._maybeEmitFromCount("global_cart_object", "platform_api", g.count, g.total);
         }
         if (self._globalsTries < 20) {
           setTimeout(tick, 1000);
@@ -215,7 +291,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
         try {
           var rows = document.querySelectorAll(CART_ITEM_SELECTOR);
           if (rows && rows.length > 0) {
-            self._maybeEmitFromCount("dom_observer", rows.length, null);
+            self._maybeEmitFromCount("cart_page_dom", "dom_observer", rows.length, null);
           }
         } catch (eD) {}
       }
@@ -252,12 +328,25 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
               if (!hit) {
                 return;
               }
+              // Explicit user action — always a real signal, even on first load.
+              self._diag(
+                "add_to_cart_click",
+                "add_to_cart",
+                self._lastCount,
+                self._lastTotal,
+                "explicit_add_to_cart_click"
+              );
               self._signal("dom_observer", "add_to_cart", {});
-              // Re-read globals shortly after the click resolves.
+              // Re-read globals shortly after the click resolves (baseline sync).
               setTimeout(function () {
                 var g = self._readGlobalCart();
                 if (g && g.count != null) {
-                  self._maybeEmitFromCount("platform_api", g.count, g.total);
+                  self._maybeEmitFromCount(
+                    "global_cart_object",
+                    "platform_api",
+                    g.count,
+                    g.total
+                  );
                 }
               }, 1200);
             } catch (eClick) {}
@@ -294,12 +383,12 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       try {
         var initial = readBadges();
         if (initial != null) {
-          self._maybeEmitFromCount("dom_observer", initial, null);
+          self._maybeEmitFromCount("cart_badge_observer", "dom_observer", initial, null);
         }
         var obs = new MutationObserver(function () {
           var v = readBadges();
           if (v != null) {
-            self._maybeEmitFromCount("dom_observer", v, null);
+            self._maybeEmitFromCount("cart_badge_observer", "dom_observer", v, null);
           }
         });
         obs.observe(document.documentElement || document.body, {
@@ -315,16 +404,34 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     // Layer 5: network/fetch/XHR observer for cart requests (safe, non-blocking).
     _installNetworkObserver: function () {
       var self = this;
-      function onCartRequest(url) {
+      // A cart request never dispatches by itself. It only re-reads the
+      // authoritative cart, which emits solely on a real mutation. Only
+      // mutating methods (or unknown) trigger the re-read; a GET /cart on
+      // page load can no longer manufacture a false event.
+      function onCartRequest(url, method) {
         try {
           if (!url || !CART_NETWORK_RE.test(String(url))) {
             return;
           }
-          self._signal("network_intercept", "cart_updated", {});
+          var m = String(method || "").toUpperCase();
+          var mutating =
+            m === "" ||
+            m === "POST" ||
+            m === "PUT" ||
+            m === "PATCH" ||
+            m === "DELETE";
+          if (!mutating) {
+            return;
+          }
           setTimeout(function () {
             var g = self._readGlobalCart();
             if (g && g.count != null) {
-              self._maybeEmitFromCount("platform_api", g.count, g.total);
+              self._maybeEmitFromCount(
+                "network_request",
+                "network_intercept",
+                g.count,
+                g.total
+              );
             }
           }, 800);
         } catch (eCr) {}
@@ -333,10 +440,14 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
         if (typeof window.fetch === "function" && !window.__cfCartFetchWrapped) {
           window.__cfCartFetchWrapped = true;
           var origFetch = window.fetch;
-          window.fetch = function (input) {
+          window.fetch = function (input, init) {
             try {
               var url = typeof input === "string" ? input : input && input.url;
-              onCartRequest(url);
+              var method =
+                (init && init.method) ||
+                (input && typeof input === "object" && input.method) ||
+                "GET";
+              onCartRequest(url, method);
             } catch (eF) {}
             return origFetch.apply(this, arguments);
           };
@@ -352,6 +463,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
           XHR.prototype.open = function (method, url) {
             try {
               this.__cfCartUrl = url;
+              this.__cfCartMethod = method;
             } catch (eU) {}
             return origOpen.apply(this, arguments);
           };
@@ -359,8 +471,9 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
           XHR.prototype.send = function () {
             try {
               var u = this.__cfCartUrl;
+              var mth = this.__cfCartMethod;
               this.addEventListener("load", function () {
-                onCartRequest(u);
+                onCartRequest(u, mth);
               });
             } catch (eSnd) {}
             return origSend.apply(this, arguments);
@@ -372,16 +485,22 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     },
 
     // Layer 6: URL/cart-page heuristic (fallback only).
+    // Being on a cart page is NOT a cart mutation. This layer no longer
+    // dispatches on load — it only records that we are on a cart page.
+    // A normalized event still requires an explicit add or a real change.
     _urlHeuristic: function () {
       if (!isCartPagePath()) {
         return;
       }
       var self = this;
       setTimeout(function () {
-        // Only fire if no stronger signal already set the count.
-        if (self._lastCount == null) {
-          self._signal("url_cart_page", "cart_detected", {});
-        }
+        self._diag(
+          "url_cart_page",
+          null,
+          self._lastCount,
+          self._lastTotal,
+          "url_fallback_no_emit_on_load"
+        );
       }, 2500);
     },
   };

@@ -146,6 +146,25 @@ class CartBridgeJsWiringTests(unittest.TestCase):
         ):
             self.assertIn(name, text)
 
+    def test_zid_adapter_suppresses_false_positive_on_load(self) -> None:
+        text = _SOURCES.read_text(encoding="utf-8")
+        # Per-layer detection diagnostics present.
+        self.assertIn("[CF ZID DETECTION LAYER]", text)
+        for key in (
+            "layer_name",
+            "emitted_event_type",
+            "cart_count",
+            "cart_total",
+            "page_url",
+            "trigger_reason",
+        ):
+            self.assertIn(key, text)
+        # Initial-load hydration must populate state only (no dispatch).
+        self.assertIn("_loadWindowActive", text)
+        self.assertIn("initial_load_window_hydration_only", text)
+        # URL fallback no longer emits on page load.
+        self.assertIn("url_fallback_no_emit_on_load", text)
+
     def test_triggers_exposes_normalized_entry(self) -> None:
         text = _TRIGGERS.read_text(encoding="utf-8")
         self.assertIn("onNormalizedCartEvent", text)
@@ -163,7 +182,7 @@ class CartBridgeJsWiringTests(unittest.TestCase):
 
     def test_widget_loader_runtime_version_bumped(self) -> None:
         text = _WIDGET_LOADER.read_text(encoding="utf-8")
-        self.assertIn("v2-cart-event-bridge-1", text)
+        self.assertIn("v2-cart-bridge-falsepos-fix-1", text)
 
 
 if __name__ == "__main__":
