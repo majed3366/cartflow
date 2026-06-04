@@ -2537,28 +2537,117 @@
   }
 
   function messageRowHtml(mr) {
+    // Communication Log row: who / what type / when / delivery status only.
+    // Cart value, reason tag, lifecycle and next-step intentionally excluded —
+    // those belong to the Carts page. Full text/details live in the modal.
     return (
-      '<div class="msg-row">' +
+      '<div class="msg-row"' +
+      ' data-msg-full="' +
+      esc(mr.full_message_ar || mr.preview_ar || "—") +
+      '" data-msg-phone="' +
+      esc(mr.phone_masked || "—") +
+      '" data-msg-template="' +
+      esc(mr.template_ar || mr.message_type_ar || "—") +
+      '" data-msg-sent="' +
+      esc(mr.sent_full_ar || mr.time_ar || "—") +
+      '" data-msg-provider="' +
+      esc(mr.provider_status_ar || "—") +
+      '" data-msg-key="' +
+      esc(mr.recovery_key || "—") +
+      '" data-msg-cart="' +
+      esc(mr.cart_id || "") +
+      '">' +
       '<div class="msg-avatar">💬</div>' +
       '<div class="msg-body">' +
       '<div class="msg-header">' +
       '<div class="msg-name">' +
-      esc(mr.title_ar || "رسالة استرداد") +
+      esc(mr.message_type_ar || mr.title_ar || "رسالة استرداد") +
       '</div><div class="msg-time">' +
       esc(mr.time_ar || "—") +
       "</div></div>" +
-      '<div class="msg-text">' +
-      esc(mr.preview_ar || "—") +
-      '</div><div class="msg-tags">' +
+      '<div class="msg-meta"><span class="msg-phone" dir="ltr">' +
+      esc(mr.phone_masked || "—") +
+      "</span></div>" +
+      '<div class="msg-tags">' +
       '<span class="st ' +
-      esc(mr.status_row_class || "s-sent") +
+      esc(mr.delivery_status_class || mr.status_row_class || "s-sent") +
       '\"><span class="sd"></span>' +
-      esc(mr.status_ar || "—") +
-      '</span><span class="chip c-other" style="margin-right:6px;">' +
-      esc(mr.step_ar || "—") +
-      "</span></div></div></div>"
+      esc(mr.delivery_status_ar || mr.status_ar || "—") +
+      '</span>' +
+      '<button type="button" class="ma-msg-view" onclick="cfOpenMessageModal(this)">عرض الرسالة</button>' +
+      "</div></div></div>"
     );
   }
+
+  var cfMsgModalCartId = "";
+
+  function cfSetMsgField(id, val) {
+    var el = byId(id);
+    if (el) {
+      el.textContent = val == null || val === "" ? "—" : String(val);
+    }
+  }
+
+  function cfOpenMessageModal(el) {
+    try {
+      var row = el && el.closest ? el.closest(".msg-row") : null;
+      if (!row) return;
+      var d = row.dataset || {};
+      cfSetMsgField("ma-msg-full", d.msgFull || "—");
+      cfSetMsgField("ma-msg-phone", d.msgPhone || "—");
+      cfSetMsgField("ma-msg-template", d.msgTemplate || "—");
+      cfSetMsgField("ma-msg-sent", d.msgSent || "—");
+      cfSetMsgField("ma-msg-provider", d.msgProvider || "—");
+      cfSetMsgField("ma-msg-key", d.msgKey || "—");
+      cfMsgModalCartId = d.msgCart || "";
+      var openCartBtn = byId("ma-msg-open-cart");
+      if (openCartBtn) {
+        openCartBtn.disabled = false;
+      }
+      var m = byId("ma-msg-modal");
+      if (m) {
+        m.hidden = false;
+        m.classList.add("open");
+      }
+    } catch (eOpen) {}
+  }
+
+  function cfCloseMessageModal() {
+    var m = byId("ma-msg-modal");
+    if (m) {
+      m.hidden = true;
+      m.classList.remove("open");
+    }
+  }
+
+  function cfOpenRelatedCart() {
+    cfCloseMessageModal();
+    try {
+      if (typeof window.goTo === "function") {
+        window.goTo("carts");
+        return;
+      }
+    } catch (eGo) {}
+    try {
+      window.location.hash = "#carts";
+    } catch (eHash) {}
+  }
+
+  try {
+    document.addEventListener(
+      "keydown",
+      function (ev) {
+        if (ev && ev.key === "Escape") {
+          cfCloseMessageModal();
+        }
+      },
+      false
+    );
+  } catch (eKd) {}
+
+  window.cfOpenMessageModal = cfOpenMessageModal;
+  window.cfCloseMessageModal = cfCloseMessageModal;
+  window.cfOpenRelatedCart = cfOpenRelatedCart;
 
   function applyMessages(d) {
     if (!d || !d.ok) return;

@@ -444,17 +444,26 @@
       <div class="ma-dash-skel" style="padding:40px 20px;text-align:center;color:var(--muted);">…</div>
       {% else %}
       {% for mr in merchant_message_history_rows %}
-      <div class="msg-row">
+      <div class="msg-row"
+        data-msg-full="{{ mr.full_message_ar | default('—') }}"
+        data-msg-phone="{{ mr.phone_masked | default('—') }}"
+        data-msg-template="{{ mr.template_ar | default('—') }}"
+        data-msg-sent="{{ mr.sent_full_ar | default(mr.time_ar) | default('—') }}"
+        data-msg-provider="{{ mr.provider_status_ar | default('—') }}"
+        data-msg-key="{{ mr.recovery_key | default('—') }}"
+        data-msg-cart="{{ mr.cart_id | default('') }}">
         <div class="msg-avatar">💬</div>
         <div class="msg-body">
           <div class="msg-header">
-            <div class="msg-name">{{ mr.title_ar | default("رسالة استرداد") }}</div>
+            <div class="msg-name">{{ mr.message_type_ar | default("رسالة استرداد") }}</div>
             <div class="msg-time">{{ mr.time_ar | default("—") }}</div>
           </div>
-          <div class="msg-text">{{ mr.preview_ar | default("—") }}</div>
+          <div class="msg-meta">
+            <span class="msg-phone" dir="ltr">{{ mr.phone_masked | default("—") }}</span>
+          </div>
           <div class="msg-tags">
-            <span class="st {{ mr.status_row_class | default('s-sent') }}"><span class="sd"></span>{{ mr.status_ar | default("—") }}</span>
-            <span class="chip c-other" style="margin-right:6px;">{{ mr.step_ar | default("—") }}</span>
+            <span class="st {{ mr.delivery_status_class | default('s-sent') }}"><span class="sd"></span>{{ mr.delivery_status_ar | default("—") }}</span>
+            <button type="button" class="ma-msg-view" onclick="cfOpenMessageModal(this)">عرض الرسالة</button>
           </div>
         </div>
       </div>
@@ -462,6 +471,32 @@
       <div class="empty-state" style="padding:40px 20px;"><div class="empty-icon">💬</div><div class="empty-text">لا توجد رسائل مرسلة بعد</div></div>
       {% endfor %}
       {% endif %}
+    </div>
+  </div>
+
+  <div class="ma-msg-modal" id="ma-msg-modal" role="dialog" aria-modal="true" aria-labelledby="ma-msg-modal-title" hidden>
+    <div class="ma-msg-modal-backdrop" onclick="cfCloseMessageModal()"></div>
+    <div class="ma-msg-modal-card">
+      <div class="ma-msg-modal-head">
+        <h3 id="ma-msg-modal-title">تفاصيل الرسالة</h3>
+        <button type="button" class="ma-msg-modal-x" aria-label="إغلاق" onclick="cfCloseMessageModal()">×</button>
+      </div>
+      <div class="ma-msg-modal-body">
+        <div class="ma-msg-field">
+          <span class="ma-msg-label">نص الرسالة</span>
+          <div class="ma-msg-fulltext" id="ma-msg-full">—</div>
+        </div>
+        <div class="ma-msg-grid">
+          <div class="ma-msg-field"><span class="ma-msg-label">رقم العميل</span><span id="ma-msg-phone" dir="ltr">—</span></div>
+          <div class="ma-msg-field"><span class="ma-msg-label">القالب المستخدم</span><span id="ma-msg-template">—</span></div>
+          <div class="ma-msg-field"><span class="ma-msg-label">وقت الإرسال</span><span id="ma-msg-sent" dir="ltr">—</span></div>
+          <div class="ma-msg-field"><span class="ma-msg-label">حالة المزود</span><span id="ma-msg-provider">—</span></div>
+          <div class="ma-msg-field ma-msg-field-wide"><span class="ma-msg-label">مفتاح الاسترجاع</span><span id="ma-msg-key" class="ma-msg-mono" dir="ltr">—</span></div>
+        </div>
+      </div>
+      <div class="ma-msg-modal-foot">
+        <button type="button" class="ma-msg-open-cart" id="ma-msg-open-cart" onclick="cfOpenRelatedCart()">فتح السلة المرتبطة</button>
+      </div>
     </div>
   </div>
 

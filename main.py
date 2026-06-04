@@ -14332,6 +14332,62 @@ def _merchant_cart_recovery_send_count(
         return 0
 
 
+def _mask_customer_phone(raw: Any) -> str:
+    """قناع رقم العميل لسجل التواصل — مثال: 9665XXXX123 (لا يكشف الرقم كاملاً)."""
+    digits = "".join(ch for ch in str(raw or "") if ch.isdigit())
+    if not digits:
+        return "—"
+    if len(digits) <= 7:
+        keep_tail = digits[-2:]
+        masked = "X" * max(1, len(digits) - len(keep_tail))
+        return masked + keep_tail
+    return digits[:4] + "XXXX" + digits[-3:]
+
+
+def _message_type_label_ar(message_type: Any) -> str:
+    """نوع الرسالة لسجل التواصل (لا يكرر حالة السلة)."""
+    m = str(message_type or "").strip().lower()
+    if m in ("follow_up", "followup", "follow-up", "reminder"):
+        return "رسالة متابعة"
+    if m in ("vip", "vip_alert", "vip-alert", "vip_manual"):
+        return "تنبيه VIP"
+    if m in ("reply", "inbound", "customer_reply", "received", "incoming"):
+        return "رد العميل"
+    return "رسالة استرداد"
+
+
+def _message_provider_status_ar(status: Any, provider: Any, sid: Any) -> str:
+    """حالة المزود لسجل التواصل (معلومة تسليم فقط)."""
+    s = str(status or "").strip().lower()
+    prov = str(provider or "").strip()
+    sid_s = str(sid or "").strip()
+    parts: list[str] = []
+    if prov:
+        parts.append(prov)
+    if s == "sent_real":
+        parts.append("تم الإرسال عبر المزود")
+    elif s == "mock_sent":
+        parts.append("وضع تجريبي")
+    elif s:
+        parts.append(s)
+    if sid_s:
+        parts.append("معرّف المزود: " + sid_s[:64])
+    return " — ".join(parts) if parts else "—"
+
+
+def _message_sent_full_ar(ts: Any) -> str:
+    """وقت الإرسال المطلق (UTC) لنافذة عرض الرسالة."""
+    if ts is None:
+        return "—"
+    try:
+        dt = ts
+        if getattr(dt, "tzinfo", None) is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.astimezone(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    except (ValueError, TypeError, AttributeError, OSError):
+        return "—"
+
+
 def _merchant_recovery_message_history_rows(
     dash_store: Optional[Any],
     *,
@@ -14402,6 +14458,14 @@ def _merchant_recovery_message_history_rows(
             cart_label = (ctx.get("session_id") or getattr(lg, "session_id", None) or "")[
                 :24
             ]
+        full_msg = (ctx.get("message_body") or getattr(lg, "message", None) or "").strip()
+        if len(full_msg) > 4000:
+            full_msg = full_msg[:4000] + "…"
+        mtype = (ctx.get("message_type") or getattr(lg, "message_type", None) or "").strip()
+        phone_raw = getattr(lg, "phone", None)
+        provider = getattr(lg, "provider", None)
+        provider_sid = getattr(lg, "provider_message_sid", None)
+        type_ar = _message_type_label_ar(mtype)
         row_out: dict[str, Any] = {
             "title_ar": "رسالة استرداد",
             "preview_ar": msg or "—",
@@ -14409,6 +14473,16 @@ def _merchant_recovery_message_history_rows(
             "status_ar": st_ar,
             "status_row_class": st_cls,
             "step_ar": step_ar,
+            "phone_masked": _mask_customer_phone(phone_raw),
+            "message_type_ar": type_ar,
+            "delivery_status_ar": st_ar,
+            "delivery_status_class": st_cls,
+            "full_message_ar": full_msg or "—",
+            "template_ar": type_ar,
+            "provider_status_ar": _message_provider_status_ar(
+                st, provider, provider_sid
+            ),
+            "sent_full_ar": _message_sent_full_ar(ts),
             "log_id": int(getattr(lg, "id", 0) or 0) or None,
             "cart_id": (ctx.get("cart_id") or getattr(lg, "cart_id", None) or "")[:255]
             or None,
