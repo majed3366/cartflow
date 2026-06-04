@@ -121,6 +121,55 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     });
   }
 
+  /**
+   * TEMP DIAGNOSTICS (no behavior change): full read-only snapshot of the
+   * hesitation-path state. Used to trace whether the hesitation timer ever
+   * arms / fires / dispatches on real storefronts. Never mutates state.
+   */
+  function hesitationStateSnapshot(extra) {
+    var tr = diagSafe(function () {
+      return (Cf.Config && Cf.Config.widgetTrigger
+        ? Cf.Config.widgetTrigger()
+        : null) || {};
+    }) || {};
+    var snap = {
+      cart_detected: diagSafe(haveCartApprox),
+      hesitation_enabled: tr.hesitation_trigger_enabled !== false,
+      hesitation_after_seconds: diagSafe(function () {
+        return Cf.Config && typeof Cf.Config.hesitationDelaySeconds === "function"
+          ? Cf.Config.hesitationDelaySeconds()
+          : null;
+      }),
+      delay_ms: diagSafe(hesitationMs),
+      hesitation_condition: diagSafe(function () {
+        return Cf.Config && typeof Cf.Config.hesitationCondition === "function"
+          ? Cf.Config.hesitationCondition()
+          : null;
+      }),
+      widget_globally_allowed: diagSafe(function () {
+        return Cf.Config.widgetGloballyAllowed();
+      }),
+      widget_disabled_effective: diagSafe(merchantWidgetDisabled),
+      session_converted: diagSafe(function () {
+        return Cf.State.sessionConvertedBlock();
+      }),
+      frequency_blocked: !!st().bubbleShown,
+      suppression_dismiss: diagSafe(function () {
+        return Cf.State.readDismissSuppress();
+      }),
+      recovery_mode: diagSafe(storefrontRecoveryModeActive),
+      trigger_init_done: v2TriggerInitDone,
+    };
+    if (extra) {
+      try {
+        Object.keys(extra).forEach(function (k) {
+          snap[k] = extra[k];
+        });
+      } catch (eMrg) {}
+    }
+    return snap;
+  }
+
   function merchantWidgetDisabled() {
     try {
       var M = Cf.Config.merchant();
@@ -259,14 +308,35 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
         Cf.State.clearV2HesitationDeadlinePersisted();
       }
     } catch (eClr) {}
+    trigLog(
+      "[CF HESITATION TIMER FIRED]",
+      hesitationStateSnapshot({
+        timer: "hesitation_anchor",
+        deadline_at: dl != null && isFinite(dl) ? dl : null,
+        drift_ms: dl != null && isFinite(dl) ? Date.now() - dl : null,
+      })
+    );
     emitHesitationFireLogs(dl);
     logFired("add_to_cart", {
       timer: "hesitation_anchor",
     });
     if (typeof Hooks.fireCartRecovery === "function") {
+      trigLog(
+        "[CF HESITATION DISPATCH]",
+        hesitationStateSnapshot({ dispatch: "cart_hesitation_timer", via: "hook" })
+      );
       Hooks.fireCartRecovery("cart_hesitation_timer");
     } else if (flowsRef && typeof flowsRef.onHesitationTimerFire === "function") {
+      trigLog(
+        "[CF HESITATION DISPATCH]",
+        hesitationStateSnapshot({ dispatch: "cart_hesitation_timer", via: "flowsRef" })
+      );
       flowsRef.onHesitationTimerFire();
+    } else {
+      trigLog(
+        "[CF HESITATION SKIPPED]",
+        hesitationStateSnapshot({ stage: "dispatch", reason: "no_dispatch_hook" })
+      );
     }
   }
 
@@ -393,10 +463,23 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
         collectTriggerGateDiagnostics("cart_hesitation")
       );
       emitTriggerDecision("cart_hesitation", false, g.reason || "widget_disabled");
+      trigLog(
+        "[CF HESITATION SKIPPED]",
+        hesitationStateSnapshot({
+          stage: "schedule_gate",
+          reason: g.reason || "widget_disabled",
+        })
+      );
       return;
     }
     emitTriggerDecision("cart_hesitation", true, null);
     logAllowed({ path: "hesitation_schedule" });
+    trigLog(
+      "[CF HESITATION ARMED]",
+      hesitationStateSnapshot({
+        arm_base: typeof timingOpts.armBaseAtMs === "number" ? "resumed" : "now",
+      })
+    );
 
     if (stRef.hesitationAnchorTimer != null) {
       logCleared({ cause: "timer_replaced", timer: "hesitation_anchor" });
@@ -430,6 +513,16 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       timer: "hesitation_anchor",
       configured_delay_ms: msConfigured,
     });
+
+    trigLog(
+      "[CF HESITATION TIMER START]",
+      hesitationStateSnapshot({
+        timer: "hesitation_anchor",
+        countdown_ms: remainingMs,
+        configured_delay_ms: msConfigured,
+        expected_fire_at: deadline,
+      })
+    );
 
     stRef.hesitationAnchorTimer = setTimeout(function () {
       fireCartRecoveryAfterHesitation(stRef, flowsRef);
@@ -479,13 +572,30 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
 
   function onV2CartChannel(sourceTag, detail) {
     detail = detail || {};
-    if (detectAddToCart(sourceTag, detail)) {
+    var isAdd = detectAddToCart(sourceTag, detail);
+    if (isAdd) {
       logReceived("add_to_cart", { via: sourceTag });
     } else {
       logReceived("cart_channel", { via: sourceTag });
     }
+    trigLog(
+      "[CF HESITATION ARMED]",
+      hesitationStateSnapshot({
+        stage: "cart_channel",
+        via: sourceTag,
+        detected_add_to_cart: isAdd,
+      })
+    );
 
     if (!Cf.State || typeof Cf.State.mirrorCartTotalsFromGlobals !== "function") {
+      trigLog(
+        "[CF HESITATION SKIPPED]",
+        hesitationStateSnapshot({
+          stage: "cart_channel",
+          via: sourceTag,
+          reason: "state_unavailable",
+        })
+      );
       return;
     }
     Cf.State.mirrorCartTotalsFromGlobals();
@@ -503,6 +613,14 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       try {
         v2DeferredScheduleReasons.push(sourceTag);
       } catch (ePu) {}
+      trigLog(
+        "[CF HESITATION SKIPPED]",
+        hesitationStateSnapshot({
+          stage: "cart_channel",
+          via: sourceTag,
+          reason: "trigger_init_not_done_deferred",
+        })
+      );
       return;
     }
 
@@ -777,11 +895,35 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
             Cf.State.clearV2HesitationDeadlinePersisted();
           }
         } catch (eCl2) {}
+        trigLog(
+          "[CF HESITATION TIMER FIRED]",
+          hesitationStateSnapshot({
+            timer: "hesitation_catch_up",
+            deadline_at: dl != null && isFinite(dl) ? dl : null,
+            via: "visibility_resume",
+          })
+        );
         emitHesitationFireLogs(dl);
         logFired("visibility_resume", { timer: "hesitation_catch_up" });
         delayResumeDidShow = true;
         if (typeof Hooks.fireCartRecovery === "function") {
+          trigLog(
+            "[CF HESITATION DISPATCH]",
+            hesitationStateSnapshot({
+              dispatch: "cart_hesitation_timer",
+              via: "visibility_resume",
+            })
+          );
           Hooks.fireCartRecovery("cart_hesitation_timer");
+        } else {
+          trigLog(
+            "[CF HESITATION SKIPPED]",
+            hesitationStateSnapshot({
+              stage: "dispatch",
+              via: "visibility_resume",
+              reason: "no_dispatch_hook",
+            })
+          );
         }
         try {
           console.log("[CF DELAY RESUME COMPLETE]", { show: delayResumeDidShow });
@@ -815,6 +957,15 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
         var tick = function () {
           fireCartRecoveryAfterHesitation(stRef, {});
         };
+        trigLog(
+          "[CF HESITATION TIMER START]",
+          hesitationStateSnapshot({
+            timer: "hesitation_anchor",
+            countdown_ms: armDelay,
+            expected_fire_at: dl,
+            via: "visibility_resume_rearm",
+          })
+        );
         if (armDelay <= 0) {
           tick();
           delayResumeDidShow = true;
