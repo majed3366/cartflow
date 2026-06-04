@@ -491,6 +491,7 @@ def record_storefront_runtime_beacon(payload: dict[str, Any]) -> Tuple[bool, Opt
         "store": slug,
         "rendered_title_text": rendered_title,
         "rendered_primary_color_computed": rendered_color,
+        "runtime_truth": payload.get("runtime_truth"),
         "runtime_version": payload.get("runtime_version"),
         "page_url": payload.get("page_url"),
         "timestamp": payload.get("timestamp") or _utc_now().isoformat(),

@@ -77,6 +77,16 @@ _ALERT_EXPLANATIONS_AR: dict[str, dict[str, str]] = {
             "public-config وbeacon الودجيت على واجهة المتجر."
         ),
     },
+    "widget_runtime_mismatch": {
+        "why_ar": (
+            "ظهر هذا التنبيه لأن إعداد تشغيل الودجيت (تفعيل، خروج، تردد، "
+            "تأخير، تردد) في اللوحة لا يطابق ما يستخدمه المتجر فعلياً."
+        ),
+        "suggested_fix_ar": (
+            "قارن dashboard وpublic-config مع سجلات [CF * TRUTH] في المتجر، "
+            "ثم أعد حفظ الإعدادات وحدّث الصفحة (hard refresh)."
+        ),
+    },
     "failed_recovery": {
         "why_ar": "ظهر هذا التنبيه لأن محاولة استرجاع واحدة أو أكثر انتهت بحالة فشل.",
         "suggested_fix_ar": (
@@ -117,6 +127,11 @@ _INVESTIGATION_STEPS_AR: dict[str, list[str]] = {
         "راجع slug المتجر وaliases.",
         "قارن dashboard vs public-config.",
         "راجع آخر storefront beacon.",
+    ],
+    "widget_runtime_mismatch": [
+        "راجع [CF ENABLE TRUTH] و[CF DELAY TRUTH] في المتجر.",
+        "قارن dashboard vs public-config vs runtime beacon.",
+        "أعد حفظ الإعدادات ثم hard refresh.",
     ],
     "stale_recovery": [
         "راجع حالة Scheduler.",
@@ -167,6 +182,11 @@ _ALERT_SEVERITY_AR: dict[str, dict[str, Any]] = {
         "severity_ar": "عالي",
         "priority_order": 25,
     },
+    "widget_runtime_mismatch": {
+        "severity": "high",
+        "severity_ar": "عالي",
+        "priority_order": 26,
+    },
 }
 
 _DEFAULT_ALERT_SEVERITY: dict[str, Any] = {
@@ -191,6 +211,7 @@ _OWNERSHIP_BY_KIND: dict[str, str] = {
     "stale_recovery": "scheduler",
     "failed_recovery": "cartflow_system",
     "widget_settings_mismatch": "widget_integration",
+    "widget_runtime_mismatch": "widget_integration",
 }
 
 _VALID_SEVERITY_BUCKETS = frozenset({"critical", "high", "medium", "low"})
@@ -2003,6 +2024,16 @@ def _build_basic_alerts(
 
         mismatch_alerts = build_admin_widget_settings_mismatch_alerts(stores=stores)
         alerts.extend(mismatch_alerts)
+    except Exception:  # noqa: BLE001
+        pass
+
+    try:
+        from services.widget_settings_runtime_truth_v1 import (
+            build_admin_widget_runtime_mismatch_alerts,
+        )
+
+        runtime_alerts = build_admin_widget_runtime_mismatch_alerts(stores=stores)
+        alerts.extend(runtime_alerts)
     except Exception:  # noqa: BLE001
         pass
 

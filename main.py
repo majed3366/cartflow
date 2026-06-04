@@ -1017,6 +1017,7 @@ _DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT = frozenset(
         "/dev/store-template-debug",
         "/dev/template-truth",
         "/dev/store-identity-runtime-truth",
+        "/dev/widget-runtime-truth",
         "/dev/attempt-2-trace",
         "/dev/recovery-operational-truth",
         "/dev/cartflow-simulation-report",
@@ -2029,6 +2030,32 @@ def dev_store_identity_runtime_truth(
                 dashboard_store_row=dash_row,
                 storefront_slug=sf,
             )
+        return j(report)
+    except Exception as exc:  # noqa: BLE001
+        db.session.rollback()
+        return j({"ok": False, "error": str(exc)}, 500)
+
+
+@app.get("/dev/widget-runtime-truth")
+def dev_widget_runtime_truth(
+    storefront_slug: str = Query("", min_length=0, max_length=255),
+    store_slug: str = Query("", min_length=0, max_length=255),
+) -> Any:
+    """Verify widget enable/exit/hesitation/delay/frequency: dashboard vs public-config vs runtime."""
+    from services.widget_settings_runtime_truth_v1 import (
+        evaluate_widget_settings_runtime_truth,
+    )
+
+    sf = (storefront_slug or store_slug or "").strip()
+    if not sf:
+        return j({"ok": False, "error": "storefront_slug_required"}, 400)
+    try:
+        _ensure_cartflow_api_db_warmed()
+        dash_row = _dashboard_recovery_store_row()
+        report = evaluate_widget_settings_runtime_truth(
+            dash_row,
+            storefront_slug=sf,
+        )
         return j(report)
     except Exception as exc:  # noqa: BLE001
         db.session.rollback()

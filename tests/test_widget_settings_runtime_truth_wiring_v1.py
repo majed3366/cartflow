@@ -105,6 +105,14 @@ class WidgetSettingsRuntimeTruthWiringTests(unittest.TestCase):
             encoding="utf-8"
         )
         self.assertIn("bootTriggersAfterConfig", flows)
+        self.assertIn("[CF ENABLE TRUTH]", config)
+        self.assertIn("collectRuntimeTruthSnapshot", config)
+
+    def test_dev_widget_runtime_truth_route_registered(self) -> None:
+        from main import app  # noqa: PLC0415
+
+        paths = {getattr(r, "path", "") for r in app.routes}
+        self.assertIn("/dev/widget-runtime-truth", paths)
 
     def test_merchant_widget_panel_preserves_brand_line(self) -> None:
         panel = _PANEL_JS.read_text(encoding="utf-8")

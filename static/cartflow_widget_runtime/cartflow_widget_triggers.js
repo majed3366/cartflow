@@ -790,6 +790,11 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     trigLog("[CF TRIGGER ORCHESTRATOR READY]", {
       hesitation_condition: cond,
     });
+    try {
+      if (Cf.Config && typeof Cf.Config.logWidgetSettingsRuntimeTruth === "function") {
+        Cf.Config.logWidgetSettingsRuntimeTruth("triggers_init");
+      }
+    } catch (eTr) {}
 
     return {
       scheduleCartHesitation: function () {

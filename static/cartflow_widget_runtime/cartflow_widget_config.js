@@ -125,6 +125,8 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
         }
       }
       CRT.merchant.prompt_not_before_ms = Date.now() + merchantDelayMs(dv, du);
+      CRT.merchant.delay_value_applied = dv;
+      CRT.merchant.delay_unit_applied = du;
     }
     if ("vip_cart_threshold" in j && j.vip_cart_threshold != null) {
       var t = Number(j.vip_cart_threshold);
@@ -363,11 +365,13 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
         return;
       }
       dom = dom || readShellDomTruth() || {};
+      var runtimeTruth = collectRuntimeTruthSnapshot();
       var payload = JSON.stringify({
         store: slug,
         store_slug: slug,
         rendered_title_text: dom.rendered_title_text,
         rendered_primary_color_computed: dom.rendered_primary_color_computed,
+        runtime_truth: runtimeTruth,
         runtime_version: cartflowRuntimeVersion(),
         page_url: String(window.location.href || "").slice(0, 2048),
         timestamp: new Date().toISOString(),
@@ -530,6 +534,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       return;
     }
     applyVisual(j);
+    logWidgetSettingsRuntimeTruth("applyVisual");
   }
 
   function templates() {
@@ -570,6 +575,85 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     return CRT._trigger || CRT.defaults;
   }
 
+  function collectRuntimeTruthSnapshot() {
+    var tr = widgetTrigger();
+    var M = CRT.merchant;
+    var enabled = M.widget_enabled !== false;
+    var delayBlocked = false;
+    try {
+      delayBlocked =
+        typeof M.prompt_not_before_ms === "number" &&
+        isFinite(M.prompt_not_before_ms) &&
+        Date.now() < M.prompt_not_before_ms;
+    } catch (eDb) {}
+    var delayRemaining = 0;
+    try {
+      if (typeof M.prompt_not_before_ms === "number" && isFinite(M.prompt_not_before_ms)) {
+        delayRemaining = Math.max(0, M.prompt_not_before_ms - Date.now());
+      }
+    } catch (eDr) {}
+    return {
+      widget_enabled: enabled,
+      widget_disabled_effective:
+        !enabled || delayBlocked || !widgetGloballyAllowed(),
+      exit_intent_enabled: !(tr && tr.exit_intent_enabled === false),
+      hesitation_trigger_enabled: !(tr && tr.hesitation_trigger_enabled === false),
+      exit_intent_frequency: normalizeToken(
+        tr.exit_intent_frequency,
+        ["per_session", "per_24h", "no_rapid_repeat"],
+        "per_session"
+      ),
+      hesitation_after_seconds: hesitationDelaySeconds(),
+      delay_remaining_ms: delayRemaining,
+      delay_configured_value:
+        M.delay_value_applied != null ? M.delay_value_applied : 0,
+      delay_configured_unit: M.delay_unit_applied || "minutes",
+      delay_configured_ms: merchantDelayMs(
+        M.delay_value_applied != null ? M.delay_value_applied : 0,
+        M.delay_unit_applied || "minutes"
+      ),
+      prompt_not_before_ms: M.prompt_not_before_ms,
+      widget_globally_allowed: widgetGloballyAllowed(),
+      visibility_page_scope: tr.visibility_page_scope || "all",
+    };
+  }
+
+  function logWidgetSettingsRuntimeTruth(sourceNote) {
+    var snap = collectRuntimeTruthSnapshot();
+    try {
+      window.__cfWidgetRuntimeTruth = snap;
+    } catch (eMem) {}
+    try {
+      console.log("[CF ENABLE TRUTH]", {
+        source: sourceNote || "?",
+        widget_enabled: snap.widget_enabled,
+        widget_disabled_effective: snap.widget_disabled_effective,
+        widget_globally_allowed: snap.widget_globally_allowed,
+        delay_remaining_ms: snap.delay_remaining_ms,
+      });
+      console.log("[CF EXIT INTENT TRUTH]", {
+        source: sourceNote || "?",
+        exit_intent_enabled: snap.exit_intent_enabled,
+        exit_intent_frequency: snap.exit_intent_frequency,
+      });
+      console.log("[CF HESITATION TRUTH]", {
+        source: sourceNote || "?",
+        hesitation_trigger_enabled: snap.hesitation_trigger_enabled,
+        hesitation_after_seconds: snap.hesitation_after_seconds,
+      });
+      console.log("[CF DELAY TRUTH]", {
+        source: sourceNote || "?",
+        delay_remaining_ms: snap.delay_remaining_ms,
+        prompt_not_before_ms: snap.prompt_not_before_ms,
+      });
+      console.log("[CF FREQUENCY TRUTH]", {
+        source: sourceNote || "?",
+        exit_intent_frequency: snap.exit_intent_frequency,
+      });
+    } catch (eLog) {}
+    return snap;
+  }
+
   function applyPayload(j, sourceNote) {
     if (!j || typeof j !== "object") {
       return;
@@ -588,6 +672,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     }
     applyMerchantGate(j);
     applyVisualIfAllowed(j, sourceNote);
+    logWidgetSettingsRuntimeTruth(sourceNote || "applyPayload");
     logTitleTruth("applyPayload", {
       payload_widget_name: j.widget_name,
       payload_widget_display_name: j.widget_display_name,
@@ -660,6 +745,8 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     scheduleStorefrontDomTruthBeacon: scheduleStorefrontDomTruthBeacon,
     readShellDomTruth: readShellDomTruth,
     logWidgetSettingsTruth: logWidgetSettingsTruth,
+    collectRuntimeTruthSnapshot: collectRuntimeTruthSnapshot,
+    logWidgetSettingsRuntimeTruth: logWidgetSettingsRuntimeTruth,
     widgetTrigger: widgetTrigger,
     phoneCaptureMode: phoneCaptureMode,
     hesitationDelaySeconds: hesitationDelaySeconds,
