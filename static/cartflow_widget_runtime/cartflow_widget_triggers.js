@@ -235,6 +235,18 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     }
   }
 
+  function cartBridgeHasCart() {
+    try {
+      return !!(
+        Cf.CartBridge &&
+        typeof Cf.CartBridge.hasCart === "function" &&
+        Cf.CartBridge.hasCart()
+      );
+    } catch (eCb) {
+      return false;
+    }
+  }
+
   function haveCartApprox() {
     try {
       if (
@@ -247,6 +259,9 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       }
     } catch (eHc) {
       /* ignore */
+    }
+    if (cartBridgeHasCart()) {
+      return true;
     }
     return haveCartApproxFromStorefrontPath();
   }
@@ -625,6 +640,38 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     }
 
     scheduleCartHesitation(st(), {});
+  }
+
+  /**
+   * Single entry from the platform-neutral Cart Event Bridge.
+   * The orchestrator (not the platform adapter) decides display: arm-type
+   * cart events route into the existing hesitation scheduling path, which
+   * enforces Enable / Hesitation / Delay / Frequency / Suppression gates.
+   * Returns true when hesitation was armed (or deferred to flush).
+   */
+  function onNormalizedCartEvent(evt) {
+    evt = evt || {};
+    var type = String(evt.event_type || "");
+    var armTypes = { add_to_cart: 1, cart_detected: 1, cart_updated: 1 };
+    if (type === "cart_removed" || type === "cart_empty") {
+      return false;
+    }
+    if (!armTypes[type]) {
+      return false;
+    }
+    onV2CartChannel("cart_bridge", {
+      kind: "add_to_cart",
+      reason: "add",
+      normalized: evt,
+    });
+    try {
+      var s = st();
+      return !!(
+        s.hesitationAnchorTimer != null || s.cfV2HesitationDeferredBaseAt != null
+      );
+    } catch (eRet) {
+      return false;
+    }
   }
 
   function scheduleExitIntentTimer(st) {
@@ -1052,6 +1099,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     init: init,
     haveCartApprox: haveCartApprox,
     receiveTrigger: receiveTrigger,
+    onNormalizedCartEvent: onNormalizedCartEvent,
   };
   window.CartflowWidgetRuntime.Triggers = Triggers;
 })();

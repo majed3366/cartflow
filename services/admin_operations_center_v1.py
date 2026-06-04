@@ -87,6 +87,18 @@ _ALERT_EXPLANATIONS_AR: dict[str, dict[str, str]] = {
             "ثم أعد حفظ الإعدادات وحدّث الصفحة (hard refresh)."
         ),
     },
+    "cart_event_bridge_missing": {
+        "why_ar": (
+            "ظهر هذا التنبيه لأن الودجيت مُركّب وpublic-config محمّل وصفحة "
+            "السلة مفتوحة، لكن لم يصل أي حدث سلة موحّد (CartFlowCartEvent) من "
+            "جسر أحداث السلة."
+        ),
+        "suggested_fix_ar": (
+            "راجع Cart Event Bridge ومحوّل المنصة (zidCartEventSource) عبر "
+            "سجلات [CF CART EVENT SOURCE] و[CF CART EVENT NORMALIZED]، وتأكد "
+            "أن المتجر يطلق إشارة إضافة/تحديث السلة."
+        ),
+    },
     "failed_recovery": {
         "why_ar": "ظهر هذا التنبيه لأن محاولة استرجاع واحدة أو أكثر انتهت بحالة فشل.",
         "suggested_fix_ar": (
@@ -132,6 +144,11 @@ _INVESTIGATION_STEPS_AR: dict[str, list[str]] = {
         "راجع [CF ENABLE TRUTH] و[CF DELAY TRUTH] في المتجر.",
         "قارن dashboard vs public-config vs runtime beacon.",
         "أعد حفظ الإعدادات ثم hard refresh.",
+    ],
+    "cart_event_bridge_missing": [
+        "راجع [CF CART EVENT SOURCE] و[CF CART EVENT NORMALIZED] في المتصفح.",
+        "تأكد من تركيب الودجيت وتشغيل محوّل المنصة (zidCartEventSource).",
+        "اختبر إضافة منتج للسلة وراقب وصول حدث سلة موحّد.",
     ],
     "stale_recovery": [
         "راجع حالة Scheduler.",
@@ -187,6 +204,11 @@ _ALERT_SEVERITY_AR: dict[str, dict[str, Any]] = {
         "severity_ar": "عالي",
         "priority_order": 26,
     },
+    "cart_event_bridge_missing": {
+        "severity": "medium",
+        "severity_ar": "متوسط",
+        "priority_order": 45,
+    },
 }
 
 _DEFAULT_ALERT_SEVERITY: dict[str, Any] = {
@@ -212,6 +234,7 @@ _OWNERSHIP_BY_KIND: dict[str, str] = {
     "failed_recovery": "cartflow_system",
     "widget_settings_mismatch": "widget_integration",
     "widget_runtime_mismatch": "widget_integration",
+    "cart_event_bridge_missing": "widget_integration",
 }
 
 _VALID_SEVERITY_BUCKETS = frozenset({"critical", "high", "medium", "low"})
@@ -1748,6 +1771,9 @@ def _store_readiness_summary() -> tuple[dict[str, Any], list[dict[str, Any]]]:
                         getattr(st, "widget_last_runtime_slug", None) or ""
                     )[:128],
                     "widget_last_seen_at": _fmt_dt(getattr(st, "widget_last_seen_at", None)),
+                    "widget_last_beacon_json": getattr(
+                        st, "widget_last_beacon_json", None
+                    ),
                 }
             )
 
@@ -2034,6 +2060,16 @@ def _build_basic_alerts(
 
         runtime_alerts = build_admin_widget_runtime_mismatch_alerts(stores=stores)
         alerts.extend(runtime_alerts)
+    except Exception:  # noqa: BLE001
+        pass
+
+    try:
+        from services.widget_settings_runtime_truth_v1 import (
+            build_cart_event_bridge_missing_alerts,
+        )
+
+        bridge_alerts = build_cart_event_bridge_missing_alerts(stores=stores)
+        alerts.extend(bridge_alerts)
     except Exception:  # noqa: BLE001
         pass
 

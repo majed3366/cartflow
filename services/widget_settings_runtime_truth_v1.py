@@ -5,6 +5,7 @@ Widget settings runtime truth — dashboard vs public-config vs storefront runti
 from __future__ import annotations
 
 import json
+import re
 from typing import Any, Dict, List, Optional, Tuple
 
 from extensions import db
@@ -269,6 +270,37 @@ def _compare_settings(
     return len(mismatches) == 0, mismatches
 
 
+def _empty_cart_bridge_state() -> Dict[str, Any]:
+    return {
+        "last_event_type": None,
+        "last_event_source_platform": None,
+        "last_detected_by": None,
+        "last_items_count": None,
+        "last_cart_total": None,
+        "last_event_at": None,
+        "hesitation_armed_from_cart_event": False,
+    }
+
+
+def cart_bridge_state_from_beacon(beacon: Optional[dict[str, Any]]) -> Dict[str, Any]:
+    """Read the normalized cart-bridge snapshot carried in the runtime-truth beacon."""
+    rt = _parse_runtime_truth_raw(beacon)
+    cb = rt.get("cart_bridge") if isinstance(rt, dict) else None
+    if not isinstance(cb, dict):
+        return _empty_cart_bridge_state()
+    return {
+        "last_event_type": cb.get("last_event_type"),
+        "last_event_source_platform": cb.get("last_event_source_platform"),
+        "last_detected_by": cb.get("last_detected_by"),
+        "last_items_count": cb.get("last_items_count"),
+        "last_cart_total": cb.get("last_cart_total"),
+        "last_event_at": cb.get("last_event_at"),
+        "hesitation_armed_from_cart_event": bool(
+            cb.get("hesitation_armed_from_cart_event")
+        ),
+    }
+
+
 def evaluate_widget_settings_runtime_truth(
     store_row: Any,
     *,
@@ -355,6 +387,7 @@ def evaluate_widget_settings_runtime_truth(
             else None,
         },
         "mismatches": mismatches,
+        "cart_bridge": cart_bridge_state_from_beacon(beacon),
         "beacon_runtime_version": beacon.get("runtime_version"),
         "beacon_timestamp": beacon.get("timestamp"),
     }
@@ -421,8 +454,102 @@ def build_admin_widget_runtime_mismatch_alerts(
     return alerts
 
 
+def _beacon_dict_from_store(store: dict[str, Any]) -> Optional[dict[str, Any]]:
+    raw = store.get("widget_last_beacon_json")
+    if isinstance(raw, dict):
+        return raw
+    if isinstance(raw, str) and raw.strip():
+        try:
+            parsed = json.loads(raw)
+            return parsed if isinstance(parsed, dict) else None
+        except (TypeError, ValueError, json.JSONDecodeError):
+            return None
+    return None
+
+
+def _platform_from_page_url(page_url: str) -> str:
+    u = str(page_url or "").lower()
+    if ".zid.store" in u:
+        return "zid"
+    if ".salla." in u or "salla.sa" in u:
+        return "salla"
+    if ".myshopify.com" in u or "shopify" in u:
+        return "shopify"
+    return "generic"
+
+
+_CART_PAGE_RE = re.compile(r"/(cart|checkout|basket)(?:[/?#]|$)", re.IGNORECASE)
+
+
+def build_cart_event_bridge_missing_alerts(
+    *,
+    stores: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """
+    Future-facing, read-only admin alert: the widget is installed and
+    public-config loaded, the merchant is on a cart/checkout page, yet no
+    normalized CartFlow cart event was received (cart bridge not connected).
+    """
+    from services.admin_operations_center_v1 import _alert_with_records
+
+    alerts: list[dict[str, Any]] = []
+    for st in stores:
+        beacon = _beacon_dict_from_store(st)
+        if not beacon:
+            continue
+        rt = _parse_runtime_truth_raw(beacon)
+        if not rt:
+            continue
+        if _norm_bool(rt.get("config_loaded")) is not True:
+            continue
+        page_url = str(beacon.get("page_url") or "")
+        if not page_url or not _CART_PAGE_RE.search(page_url):
+            continue
+        cb = rt.get("cart_bridge") if isinstance(rt, dict) else None
+        last_event_at = cb.get("last_event_at") if isinstance(cb, dict) else None
+        if last_event_at:
+            continue
+
+        slug = st.get("store_slug") or st.get("widget_last_runtime_slug") or ""
+        platform = _platform_from_page_url(page_url)
+        name = st.get("display_name") or slug or "متجر"
+        record = {
+            "store_slug": slug,
+            "platform": platform,
+            "page_url": page_url[:512],
+            "expected_signal": (
+                "normalized CartFlowCartEvent (add_to_cart / cart_detected)"
+            ),
+            "detected_storefront_state": (
+                "cart/checkout page visited with public-config loaded, "
+                "but no cart bridge event received"
+            ),
+            "suggested_fix_ar": (
+                "تحقق من اتصال Cart Event Bridge ومحوّل المنصة "
+                "(zidCartEventSource): راجع سجلات [CF CART EVENT SOURCE] و"
+                "[CF CART EVENT NORMALIZED] في المتصفح، وتأكد أن المتجر يطلق "
+                "إشارة إضافة/تحديث السلة."
+            ),
+        }
+        alerts.append(
+            _alert_with_records(
+                kind="cart_event_bridge_missing",
+                title_ar="جسر أحداث السلة غير متصل",
+                detail_ar=(
+                    f"{name} — الودجيت مُركّب وpublic-config محمّل وصفحة السلة "
+                    "مفتوحة، لكن لم يصل أي حدث سلة موحّد إلى CartFlow."
+                ),
+                records=[record],
+                records_total=1,
+            )
+        )
+    return alerts
+
+
 __all__ = [
     "build_admin_widget_runtime_mismatch_alerts",
+    "build_cart_event_bridge_missing_alerts",
+    "cart_bridge_state_from_beacon",
     "dashboard_widget_settings",
     "evaluate_widget_settings_runtime_truth",
     "public_config_widget_settings",

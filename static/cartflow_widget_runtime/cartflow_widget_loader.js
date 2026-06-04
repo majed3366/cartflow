@@ -45,6 +45,8 @@
     "cartflow_widget_state.js",
     "cartflow_widget_theme.js",
     "cartflow_widget_triggers.js",
+    "cartflow_cart_sources.js",
+    "cartflow_cart_event_bridge.js",
     "cartflow_widget_phone.js",
     "cartflow_widget_shell.js",
     "cartflow_widget_ui.js",

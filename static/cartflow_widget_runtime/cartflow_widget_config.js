@@ -645,10 +645,18 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       }
     } catch (eDr) {}
     var disabledEffective = !enabled || delayBlocked || !widgetGloballyAllowed();
+    var cartBridge = null;
+    try {
+      var CB = window.CartflowWidgetRuntime && window.CartflowWidgetRuntime.CartBridge;
+      if (CB && typeof CB.getState === "function") {
+        cartBridge = CB.getState();
+      }
+    } catch (eCb) {}
     return {
       widget_enabled: enabled,
       config_loaded: configLoaded,
       widget_rendered: shellRendered,
+      cart_bridge: cartBridge,
       disabled_effective: disabledEffective,
       widget_disabled_effective: disabledEffective,
       exit_intent_enabled: !(tr && tr.exit_intent_enabled === false),
