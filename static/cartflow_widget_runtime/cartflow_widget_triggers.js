@@ -6,6 +6,19 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
 (function () {
   "use strict";
 
+  // TEMP DIAGNOSTICS (no behavior change): prove this module actually evaluates
+  // on the real storefront and surface any evaluation exception with a stack,
+  // so we can tell a fetch/parse failure ([CF V2 MODULE FAILED]) apart from a
+  // runtime error that aborts registration.
+  try {
+    console.log("[CF TRIGGERS INIT]", {
+      build: window.CARTFLOW_RUNTIME_VERSION || "",
+      runtime_present: !!window.CartflowWidgetRuntime,
+      href: (window.location && window.location.href) || "",
+    });
+  } catch (eTrigInit) {}
+
+  try {
   var Cf = window.CartflowWidgetRuntime;
   var Hooks = {
     fireCartRecovery: null,
@@ -1102,4 +1115,32 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     onNormalizedCartEvent: onNormalizedCartEvent,
   };
   window.CartflowWidgetRuntime.Triggers = Triggers;
+  try {
+    console.log("[CF TRIGGERS REGISTERED]", {
+      has_init: typeof window.CartflowWidgetRuntime.Triggers.init === "function",
+      has_receive:
+        typeof window.CartflowWidgetRuntime.Triggers.receiveTrigger === "function",
+      has_normalized_cart:
+        typeof window.CartflowWidgetRuntime.Triggers.onNormalizedCartEvent ===
+        "function",
+    });
+  } catch (eTrigReg) {}
+
+  // The Triggers object IS the V2 trigger orchestrator (see file header). Expose
+  // it under the orchestrator namespace too so any bootstrap consumer that looks
+  // up TriggerOrchestrator resolves it. Additive — does not change gating/flow.
+  window.CartflowWidgetRuntime.TriggerOrchestrator = Triggers;
+  try {
+    console.log("[CF ORCHESTRATOR REGISTERED]", {
+      present: !!window.CartflowWidgetRuntime.TriggerOrchestrator,
+    });
+  } catch (eOrcReg) {}
+  } catch (eTriggersFatal) {
+    try {
+      console.error(
+        "[CF TRIGGERS ERROR]",
+        (eTriggersFatal && eTriggersFatal.stack) || String(eTriggersFatal)
+      );
+    } catch (eTrigErrLog) {}
+  }
 })();

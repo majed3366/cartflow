@@ -12,7 +12,7 @@
 (function () {
   "use strict";
 
-  var RUNTIME_VERSION = "v2-cart-bridge-falsepos-fix-1";
+  var RUNTIME_VERSION = "v2-triggers-register-diag-1";
 
   function cartflowExtractHostnameSlugInline(host) {
     if (typeof window.cartflowExtractStoreSlugFromHostname === "function") {
