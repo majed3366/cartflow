@@ -31,6 +31,7 @@ class CartflowStorefrontCorsUnitTests(unittest.TestCase):
         self.assertTrue(widget_cors_path_matches("/api/cartflow/public-config"))
         self.assertTrue(widget_cors_path_matches("/api/cartflow/reason"))
         self.assertTrue(widget_cors_path_matches("/api/cart-event"))
+        self.assertTrue(widget_cors_path_matches("/api/storefront/widget-seen"))
         self.assertFalse(widget_cors_path_matches("/api/recovery-settings"))
 
 
@@ -88,6 +89,42 @@ class CartflowStorefrontCorsHttpTests(unittest.TestCase):
         )
         self.assertEqual(200, r.status_code)
         self.assertEqual(self.zid_origin, r.headers.get("access-control-allow-origin"))
+
+    def test_options_preflight_widget_seen(self) -> None:
+        r = self.client.options(
+            "/api/storefront/widget-seen",
+            headers={
+                "Origin": self.zid_origin,
+                "Access-Control-Request-Method": "POST",
+                "Access-Control-Request-Headers": "Content-Type",
+            },
+        )
+        self.assertEqual(204, r.status_code)
+        self.assertEqual(self.zid_origin, r.headers.get("access-control-allow-origin"))
+        self.assertIn("POST", r.headers.get("access-control-allow-methods", ""))
+        self.assertIn("Content-Type", r.headers.get("access-control-allow-headers", ""))
+
+    def test_post_widget_seen_zid_origin_acao(self) -> None:
+        r = self.client.post(
+            "/api/storefront/widget-seen",
+            json={
+                "store_slug": "demo",
+                "runtime_truth": {"widget_enabled": False, "config_loaded": True},
+            },
+            headers={"Origin": self.zid_origin},
+        )
+        self.assertEqual(200, r.status_code, r.text)
+        self.assertEqual(self.zid_origin, r.headers.get("access-control-allow-origin"))
+        self.assertTrue((r.json() or {}).get("ok"))
+
+    def test_post_widget_seen_foreign_origin_no_acao(self) -> None:
+        r = self.client.post(
+            "/api/storefront/widget-seen",
+            json={"store_slug": "demo"},
+            headers={"Origin": "https://not-zid.example.com"},
+        )
+        self.assertEqual(200, r.status_code)
+        self.assertIsNone(r.headers.get("access-control-allow-origin"))
 
 
 if __name__ == "__main__":
