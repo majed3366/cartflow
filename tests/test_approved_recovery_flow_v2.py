@@ -21,11 +21,11 @@ class ApprovedRecoveryFlowV2Tests(unittest.TestCase):
     def test_suggestion_bullets_not_long_paragraphs(self) -> None:
         flows = _FLOWS.read_text(encoding="utf-8")
         self.assertIn("RECOVERY_SUGGESTIONS", flows)
-        self.assertIn("قد يفيدك", _UI.read_text(encoding="utf-8"))
-        self.assertIn("الدفع لاحقاً", flows)
-        self.assertIn("معرفة خيارات الشراء المتاحة", flows)
-        self.assertIn("متابعة حالة الطلب", flows)
-        self.assertIn("شروط الضمان", flows)
+        self.assertIn("قبل إكمال الطلب:", _UI.read_text(encoding="utf-8"))
+        self.assertIn("راجع خيارات الدفع المتاحة", flows)
+        self.assertIn("قارن السعر بقيمة المنتج ومواصفاته", flows)
+        self.assertIn("راجع خيارات التوصيل المتاحة", flows)
+        self.assertIn("اطلع على شروط الضمان", flows)
         self.assertIn("شكراً", _UI.read_text(encoding="utf-8"))
         ui = _UI.read_text(encoding="utf-8")
         compact_block = ui.split("if (!compact)", 1)[0]
@@ -46,7 +46,7 @@ class ApprovedRecoveryFlowV2Tests(unittest.TestCase):
 
     def test_other_reason_form_copy(self) -> None:
         ui = _UI.read_text(encoding="utf-8")
-        self.assertIn("وش السبب اللي مخلّيك متردد؟", ui)
+        self.assertIn("ما السبب الذي يجعلك متردداً؟", ui)
         self.assertIn("renderOtherRecoveryForm", ui)
         self.assertIn("اختياري", ui)
 
@@ -77,7 +77,7 @@ class ApprovedRecoveryFlowV2Tests(unittest.TestCase):
         self.assertNotIn("إعادة إرسال", ui.split("renderOtherDraftForm")[0])
 
     def test_runtime_version_bumped(self) -> None:
-        self.assertIn("v2-triggers-register-diag-1", _LOADER.read_text(encoding="utf-8"))
+        self.assertIn("v2-reason-guidance-copy-1", _LOADER.read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":

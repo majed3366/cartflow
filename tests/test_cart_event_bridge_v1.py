@@ -182,7 +182,7 @@ class CartBridgeJsWiringTests(unittest.TestCase):
 
     def test_widget_loader_runtime_version_bumped(self) -> None:
         text = _WIDGET_LOADER.read_text(encoding="utf-8")
-        self.assertIn("v2-triggers-register-diag-1", text)
+        self.assertIn("v2-reason-guidance-copy-1", text)
 
 
 if __name__ == "__main__":

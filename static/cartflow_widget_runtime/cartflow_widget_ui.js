@@ -355,7 +355,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       var head = document.createElement("p");
       head.style.cssText =
         textPrimary("margin-bottom:6px;font-size:13px;line-height:1.45;font-weight:600;");
-      head.textContent = "قد يفيدك:";
+      head.textContent = "قبل إكمال الطلب:";
       frag.appendChild(head);
       var ul = document.createElement("ul");
       ul.style.cssText =
@@ -484,7 +484,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     var frag = document.createDocumentFragment();
     var hi = document.createElement("p");
     hi.style.cssText = textPrimary("margin-bottom:8px;font-size:13px;line-height:1.5;font-weight:600;");
-    hi.textContent = "وش السبب اللي مخلّيك متردد؟";
+    hi.textContent = "ما السبب الذي يجعلك متردداً؟";
     frag.appendChild(hi);
     var hint = document.createElement("p");
     hint.style.cssText = textMuted("margin-bottom:6px;font-size:12px;line-height:1.4;");
