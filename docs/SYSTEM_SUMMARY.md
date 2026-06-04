@@ -343,6 +343,7 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 
 | Date (UTC) | Summary |
 |------------|---------|
+| 2026-06-04 | **widget-seen credentialed CORS:** `apply_storefront_widget_cors_headers` now emits `Access-Control-Allow-Credentials: true` alongside exact-origin ACAO on both OPTIONS preflight and POST (`StorefrontWidgetCorsMiddleware`), satisfying browser `credentials:'include'` requirement so the runtime-truth beacon to `POST /api/storefront/widget-seen` persists. No wildcard; widget JS unchanged. Commit: **`fix: support credentials for widget-seen runtime beacon`**. |
 | 2026-06-04 | **Storefront widget-seen CORS:** `StorefrontWidgetCorsMiddleware` allowlist includes `POST /api/storefront/widget-seen` for `https://*.zid.store` (OPTIONS preflight + echo ACAO). Commit: **`fix: allow storefront widget-seen beacon CORS`**. |
 | 2026-06-04 | **widgetGloballyAllowed ReferenceError fix:** hoisted `widgetGloballyAllowed()` to module scope in `cartflow_widget_config.js` (was only on `Config` export; `collectRuntimeTruthSnapshot` called bare name). Commit: **`fix widgetGloballyAllowed runtime dependency`**. |
 | 2026-06-04 | **Widget runtime truth pending semantics:** `/dev/widget-runtime-truth` sets `passed=false` when runtime beacon missing (`pending`); `config_match`/`partial_pass` when dashboard==public-config only; disabled storefront posts config runtime beacon (`config_loaded`, `widget_rendered`, `disabled_effective`) without shell. Commit: **`fix: correct widget runtime truth pending semantics`**. |

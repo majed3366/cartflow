@@ -101,6 +101,9 @@ class CartflowStorefrontCorsHttpTests(unittest.TestCase):
         )
         self.assertEqual(204, r.status_code)
         self.assertEqual(self.zid_origin, r.headers.get("access-control-allow-origin"))
+        self.assertEqual(
+            "true", r.headers.get("access-control-allow-credentials")
+        )
         self.assertIn("POST", r.headers.get("access-control-allow-methods", ""))
         self.assertIn("Content-Type", r.headers.get("access-control-allow-headers", ""))
 
@@ -115,6 +118,9 @@ class CartflowStorefrontCorsHttpTests(unittest.TestCase):
         )
         self.assertEqual(200, r.status_code, r.text)
         self.assertEqual(self.zid_origin, r.headers.get("access-control-allow-origin"))
+        self.assertEqual(
+            "true", r.headers.get("access-control-allow-credentials")
+        )
         self.assertTrue((r.json() or {}).get("ok"))
 
     def test_post_widget_seen_foreign_origin_no_acao(self) -> None:

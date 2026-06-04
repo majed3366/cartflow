@@ -93,6 +93,7 @@ def apply_storefront_widget_cors_headers(response, *, origin: str) -> None:
     if not o or not is_allowed_storefront_widget_origin(o):
         return
     response.headers["Access-Control-Allow-Origin"] = o
+    response.headers["Access-Control-Allow-Credentials"] = "true"
     response.headers["Vary"] = "Origin"
     response.headers["Access-Control-Allow-Methods"] = _WIDGET_CORS_ALLOW_METHODS
     response.headers["Access-Control-Allow-Headers"] = _WIDGET_CORS_ALLOW_HEADERS
