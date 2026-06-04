@@ -56,6 +56,48 @@
 
   window.__cartflow_runtime_v2_build = RUNTIME_TAG;
 
+  // Additive, read-only widget health snapshot (Observability only).
+  // Consumed by the runtime-truth beacon so Admin Operations → Widget Health
+  // can detect module/bootstrap failures even when bootstrap is blocked.
+  function widgetHealth() {
+    try {
+      if (!window.__cartflowWidgetHealth) {
+        window.__cartflowWidgetHealth = {
+          runtime_version: RUNTIME_TAG,
+          module_load_status: "loading",
+          loaded_modules: [],
+          failed_modules: [],
+          bootstrap_ready: false,
+          bootstrap_blocked: false,
+          missing_runtime_objects: [],
+          updated_at: new Date().toISOString(),
+        };
+      }
+      return window.__cartflowWidgetHealth;
+    } catch (eWh) {
+      return {};
+    }
+  }
+
+  function setHealth(patch) {
+    try {
+      var h = widgetHealth();
+      for (var k in patch) {
+        if (Object.prototype.hasOwnProperty.call(patch, k)) {
+          h[k] = patch[k];
+        }
+      }
+      h.updated_at = new Date().toISOString();
+      try {
+        if (window.CartflowWidgetRuntime) {
+          window.CartflowWidgetRuntime.__health = h;
+        }
+      } catch (eMir) {}
+    } catch (eSh) {}
+  }
+
+  widgetHealth();
+
   function v2Log(tag, meta) {
     try {
       if (meta !== undefined && meta !== null) {
@@ -118,7 +160,9 @@
 
   function runBootstrap() {
     if (!namespacesOk()) {
-      v2Log("[CF V2 BOOTSTRAP BLOCKED]", { missing: getMissingNamespaces() });
+      var missingNs = getMissingNamespaces();
+      setHealth({ bootstrap_blocked: true, bootstrap_ready: false, missing_runtime_objects: missingNs });
+      v2Log("[CF V2 BOOTSTRAP BLOCKED]", { missing: missingNs });
       return false;
     }
     v2Log("[CF V2 BOOTSTRAP START]", {});
@@ -126,17 +170,20 @@
       if (typeof window.__cartflowV2Bootstrap === "function") {
         window.__cartflowV2Bootstrap();
       } else {
+        setHealth({ bootstrap_blocked: true, bootstrap_ready: false, missing_runtime_objects: ["__cartflowV2Bootstrap"] });
         v2Log("[CF V2 BOOTSTRAP BLOCKED]", {
           missing: ["__cartflowV2Bootstrap"],
         });
         return false;
       }
     } catch (eBo) {
+      setHealth({ bootstrap_blocked: true, bootstrap_ready: false, last_runtime_error: String((eBo && eBo.message) || eBo || "bootstrap_error") });
       try {
         console.warn("[CF V2 BOOTSTRAP ERROR]", eBo);
       } catch (eW) {}
       return false;
     }
+    setHealth({ bootstrap_ready: true, bootstrap_blocked: false });
     v2Log("[CF V2 BOOTSTRAP READY]", {});
     return true;
   }
@@ -144,8 +191,15 @@
   function loadIndex(i, chainOk) {
     chainOk = chainOk !== false;
     if (i >= MODULES.length) {
+      var hEnd = widgetHealth();
+      var anyFailed = (hEnd.failed_modules || []).length > 0;
+      setHealth({
+        module_load_status: anyFailed ? "failed" : "ok",
+        missing_runtime_objects: getMissingNamespaces(),
+      });
       v2Log("[CF V2 ALL MODULES LOADED]", { count: MODULES.length, chain_ok: chainOk });
       if (!namespacesOk()) {
+        setHealth({ bootstrap_blocked: true, bootstrap_ready: false, missing_runtime_objects: getMissingNamespaces() });
         v2Log("[CF V2 BOOTSTRAP BLOCKED]", { missing: getMissingNamespaces() });
         return;
       }
@@ -158,10 +212,17 @@
     s.async = false;
     s.src = BASE + name + "?v=" + encodeURIComponent(RUNTIME_TAG);
     s.onload = function () {
+      try {
+        widgetHealth().loaded_modules.push(name);
+      } catch (eLm) {}
       v2Log("[CF V2 MODULE LOADED]", name);
       loadIndex(i + 1, chainOk);
     };
     s.onerror = function () {
+      try {
+        widgetHealth().failed_modules.push(name);
+        setHealth({ module_load_status: "failed" });
+      } catch (eFm) {}
       try {
         console.warn("[CF V2 MODULE FAILED]", name, "(continuing chain)");
       } catch (eWf) {}
@@ -173,6 +234,10 @@
         s
       );
     } catch (eApp) {
+      try {
+        widgetHealth().failed_modules.push(name);
+        setHealth({ module_load_status: "failed" });
+      } catch (eFm2) {}
       try {
         console.warn("[CF V2 MODULE FAILED]", name + " (append)", eApp);
       } catch (eWa) {}

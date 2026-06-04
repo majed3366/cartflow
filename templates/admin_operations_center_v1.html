@@ -113,6 +113,19 @@
   </section>
   {% endif %}
 
+  <!-- WIDGET HEALTH — Operations & Observability (lazy) -->
+  <details id="ops-widget-health-panel" class="group rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 marker:content-none [&::-webkit-details-marker]:hidden">
+      <div>
+        <span class="text-base font-semibold text-slate-900">صحة الودجِت (Widget Health)</span>
+        <span class="mt-0.5 block text-sm text-slate-500">رصد استباقي لمشاكل تشغيل/تكامل الودجِت لكل متجر — للقراءة فقط</span>
+      </div>
+      <span class="shrink-0 text-xs font-medium text-slate-500 group-open:hidden">عرض</span>
+      <span class="hidden shrink-0 text-xs font-medium text-slate-500 group-open:inline">إخفاء</span>
+    </summary>
+    <div id="ops-widget-health-content" class="border-t border-slate-100 px-5 py-4" data-lazy-state="idle" hidden></div>
+  </details>
+
   <!-- AFFECTED STORES — secondary, collapsed -->
   <details class="rounded-2xl border border-slate-200 bg-white shadow-sm">
     <summary class="cursor-pointer list-none px-5 py-4 marker:content-none [&::-webkit-details-marker]:hidden">
@@ -164,4 +177,36 @@
     للأدوات التقنية (JSON، مفاتيح، عدّادات داخلية):
     <a href="/admin/diagnostics" class="text-indigo-700 underline decoration-indigo-200 underline-offset-2">تشخيص الدعم (للدعم فقط)</a>
   </p>
+
+  <script>
+  (function () {
+    var LOAD_ERROR = '<p class="text-sm text-rose-700 py-6 text-center">تعذر تحميل هذا القسم الآن.</p>';
+    var LOADING = '<p class="text-sm text-slate-500 py-6 text-center">جاري التحميل...</p>';
+    var panel = document.getElementById('ops-widget-health-panel');
+    var container = document.getElementById('ops-widget-health-content');
+    if (!panel || !container) return;
+    var loaded = false;
+    var loading = false;
+    panel.addEventListener('toggle', function () {
+      if (!panel.open) return;
+      container.hidden = false;
+      if (loaded || loading) return;
+      loading = true;
+      container.setAttribute('data-lazy-state', 'loading');
+      container.innerHTML = LOADING;
+      fetch('/admin/operations/section/widget-health', { credentials: 'same-origin', headers: { Accept: 'text/html' } })
+        .then(function (res) { if (!res.ok) throw new Error('load failed'); return res.text(); })
+        .then(function (html) {
+          container.innerHTML = html;
+          container.setAttribute('data-lazy-state', 'loaded');
+          loaded = true;
+        })
+        .catch(function () {
+          container.innerHTML = LOAD_ERROR;
+          container.setAttribute('data-lazy-state', 'error');
+        })
+        .finally(function () { loading = false; });
+    });
+  })();
+  </script>
 {% endblock %}

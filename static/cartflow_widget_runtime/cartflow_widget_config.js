@@ -652,11 +652,33 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
         cartBridge = CB.getState();
       }
     } catch (eCb) {}
+    var widgetHealth = null;
+    try {
+      var WH = window.__cartflowWidgetHealth;
+      if (WH && typeof WH === "object") {
+        widgetHealth = {
+          module_load_status: WH.module_load_status || null,
+          failed_modules: WH.failed_modules || [],
+          bootstrap_ready: WH.bootstrap_ready === true,
+          bootstrap_blocked: WH.bootstrap_blocked === true,
+          missing_runtime_objects: WH.missing_runtime_objects || [],
+          runtime_version: WH.runtime_version || cartflowRuntimeVersion(),
+          widget_shown: shellRendered,
+          last_cart_event_type: cartBridge ? cartBridge.last_event_type : null,
+          last_cart_event_at: cartBridge ? cartBridge.last_event_at : null,
+          hesitation_armed: cartBridge
+            ? cartBridge.hesitation_armed_from_cart_event === true
+            : false,
+          last_runtime_error: WH.last_runtime_error || null,
+        };
+      }
+    } catch (eWh) {}
     return {
       widget_enabled: enabled,
       config_loaded: configLoaded,
       widget_rendered: shellRendered,
       cart_bridge: cartBridge,
+      widget_health: widgetHealth,
       disabled_effective: disabledEffective,
       widget_disabled_effective: disabledEffective,
       exit_intent_enabled: !(tr && tr.exit_intent_enabled === false),
