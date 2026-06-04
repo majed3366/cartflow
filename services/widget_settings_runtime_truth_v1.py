@@ -109,7 +109,7 @@ def public_config_widget_settings(
     }
 
 
-def runtime_widget_settings_from_beacon(beacon: Optional[dict[str, Any]]) -> Dict[str, Any]:
+def _parse_runtime_truth_raw(beacon: Optional[dict[str, Any]]) -> Dict[str, Any]:
     if not beacon:
         return {}
     rt = beacon.get("runtime_truth")
@@ -122,6 +122,37 @@ def runtime_widget_settings_from_beacon(beacon: Optional[dict[str, Any]]) -> Dic
             rt = {}
     if not isinstance(rt, dict):
         rt = {}
+    return rt
+
+
+def runtime_truth_beacon_present(beacon: Optional[dict[str, Any]]) -> bool:
+    """True when storefront posted a config/runtime truth snapshot (not DOM-only)."""
+    rt = _parse_runtime_truth_raw(beacon)
+    if not rt:
+        return False
+    if _norm_bool(rt.get("config_loaded")) is True:
+        return True
+    return _norm_bool(rt.get("widget_enabled")) is not None
+
+
+def _disabled_runtime_beacon_ok(runtime: Dict[str, Any]) -> bool:
+    disabled_eff = bool(
+        runtime.get("disabled_effective") or runtime.get("widget_disabled_effective")
+    )
+    return (
+        runtime.get("enabled") is False
+        and runtime.get("config_loaded") is True
+        and runtime.get("widget_rendered") is False
+        and disabled_eff
+    )
+
+
+def runtime_widget_settings_from_beacon(beacon: Optional[dict[str, Any]]) -> Dict[str, Any]:
+    if not beacon:
+        return {}
+    rt = _parse_runtime_truth_raw(beacon)
+    if not rt:
+        return {}
     out: Dict[str, Any] = {}
     en = _norm_bool(rt.get("widget_enabled"))
     if en is not None:
@@ -160,8 +191,18 @@ def runtime_widget_settings_from_beacon(beacon: Optional[dict[str, Any]]) -> Dic
         out["prompt_not_before_ms"] = rt.get("prompt_not_before_ms")
     if "widget_disabled_effective" in rt:
         out["widget_disabled_effective"] = bool(rt.get("widget_disabled_effective"))
+    if "disabled_effective" in rt:
+        out["disabled_effective"] = bool(rt.get("disabled_effective"))
+    elif "widget_disabled_effective" in rt:
+        out["disabled_effective"] = bool(rt.get("widget_disabled_effective"))
     if "widget_globally_allowed" in rt:
         out["widget_globally_allowed"] = bool(rt.get("widget_globally_allowed"))
+    cfg = _norm_bool(rt.get("config_loaded"))
+    if cfg is not None:
+        out["config_loaded"] = cfg
+    rendered = _norm_bool(rt.get("widget_rendered"))
+    if rendered is not None:
+        out["widget_rendered"] = rendered
     return out
 
 
@@ -266,16 +307,21 @@ def evaluate_widget_settings_runtime_truth(
         label_right="runtime",
     ) if runtime else (False, [])
 
-    runtime_present = bool(runtime)
+    runtime_present = runtime_truth_beacon_present(beacon)
+    config_match = dash_pub_ok
     if not sf:
         status = "unresolved"
         passed = False
     elif not runtime_present:
         status = "pending"
-        passed = dash_pub_ok
+        passed = False
     elif dash_pub_ok and dash_rt_ok and pub_rt_ok:
-        status = "verified"
-        passed = True
+        if dash.get("enabled") is False and not _disabled_runtime_beacon_ok(runtime):
+            status = "mismatch"
+            passed = False
+        else:
+            status = "verified"
+            passed = True
     else:
         status = "mismatch"
         passed = False
@@ -289,14 +335,20 @@ def evaluate_widget_settings_runtime_truth(
         "store_slug": sf or None,
         "passed": passed,
         "status": status,
+        "config_match": config_match,
+        "partial_pass": config_match,
         "dashboard": dash,
         "public_config": pub,
         "runtime": runtime if runtime_present else None,
         "checks": {
             "dashboard_public_config": dash_pub_ok,
+            "config_match": config_match,
             "dashboard_runtime": dash_rt_ok if runtime_present else None,
             "public_config_runtime": pub_rt_ok if runtime_present else None,
             "runtime_beacon_present": runtime_present,
+            "disabled_runtime_ok": _disabled_runtime_beacon_ok(runtime)
+            if runtime_present and dash.get("enabled") is False
+            else None,
             "identity_enabled_match": identity_pub.get("public_config_widget_enabled")
             == dash.get("enabled")
             if dash
@@ -374,5 +426,6 @@ __all__ = [
     "dashboard_widget_settings",
     "evaluate_widget_settings_runtime_truth",
     "public_config_widget_settings",
+    "runtime_truth_beacon_present",
     "runtime_widget_settings_from_beacon",
 ]

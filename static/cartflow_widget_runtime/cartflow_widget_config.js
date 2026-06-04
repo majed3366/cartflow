@@ -350,7 +350,16 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     return String(origin || "").replace(/\/+$/, "") + "/api/storefront/widget-seen";
   }
 
-  function postStorefrontDomTruthBeacon(tag, dom) {
+  function widgetShellRendered() {
+    try {
+      var Sh = window.CartflowWidgetRuntime && window.CartflowWidgetRuntime.Shell;
+      return !!(Sh && typeof Sh.getRoot === "function" && Sh.getRoot());
+    } catch (eWr) {
+      return false;
+    }
+  }
+
+  function postStorefrontRuntimeTruthBeacon(tag, dom) {
     try {
       var p = window.location.pathname || "";
       if (/\/demo\b/i.test(p) || /^\/dev(\/|$)/i.test(p)) {
@@ -375,7 +384,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
         runtime_version: cartflowRuntimeVersion(),
         page_url: String(window.location.href || "").slice(0, 2048),
         timestamp: new Date().toISOString(),
-        beacon_tag: tag || "dom_truth",
+        beacon_tag: tag || "runtime_truth",
       });
       var url = storefrontWidgetSeenUrl(origin);
       if (navigator.sendBeacon) {
@@ -402,6 +411,35 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     }
   }
 
+  function postStorefrontDomTruthBeacon(tag, dom) {
+    postStorefrontRuntimeTruthBeacon(tag || "dom_truth", dom);
+  }
+
+  function scheduleStorefrontRuntimeTruthBeacon(tag) {
+    var waitAttempts = 0;
+    function tick() {
+      waitAttempts += 1;
+      if (isRealStorefrontEmbed() && !merchantConfigResolved()) {
+        if (waitAttempts < 80) {
+          setTimeout(tick, 50);
+          return;
+        }
+      }
+      var snap = collectRuntimeTruthSnapshot();
+      var disabled =
+        snap.widget_disabled_effective === true || snap.disabled_effective === true;
+      if (disabled || !widgetShellRendered()) {
+        postStorefrontRuntimeTruthBeacon(tag || "config_runtime", {});
+        if (!disabled && widgetShellRendered()) {
+          scheduleStorefrontDomTruthBeacon(tag);
+        }
+        return;
+      }
+      scheduleStorefrontDomTruthBeacon(tag);
+    }
+    setTimeout(tick, 0);
+  }
+
   function scheduleStorefrontDomTruthBeacon(tag) {
     if (isRealStorefrontEmbed() && !merchantConfigResolved()) {
       return;
@@ -421,20 +459,16 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
           var hasTitle = dom && dom.rendered_title_text;
           var hasColor = dom && dom.rendered_primary_color_computed;
           if (hasTitle && hasColor) {
-            postStorefrontDomTruthBeacon(tag, dom);
+            postStorefrontRuntimeTruthBeacon(tag, dom);
             return;
           }
-          var hasRoot = false;
-          try {
-            var Sh = window.CartflowWidgetRuntime && window.CartflowWidgetRuntime.Shell;
-            hasRoot = !!(Sh && typeof Sh.getRoot === "function" && Sh.getRoot());
-          } catch (eHr) {}
+          var hasRoot = widgetShellRendered();
           if (hasRoot && domBeaconAttempts < DOM_BEACON_MAX_ATTEMPTS) {
             domBeaconTimer = setTimeout(attempt, 250);
             return;
           }
           if (hasRoot || domBeaconAttempts >= DOM_BEACON_MAX_ATTEMPTS) {
-            postStorefrontDomTruthBeacon(tag, dom || {});
+            postStorefrontRuntimeTruthBeacon(tag, dom || {});
           }
         }
         domBeaconTimer = setTimeout(attempt, 0);
@@ -579,6 +613,11 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     var tr = widgetTrigger();
     var M = CRT.merchant;
     var enabled = M.widget_enabled !== false;
+    var configLoaded = merchantConfigResolved();
+    if (!isRealStorefrontEmbed()) {
+      configLoaded = true;
+    }
+    var shellRendered = widgetShellRendered();
     var delayBlocked = false;
     try {
       delayBlocked =
@@ -592,10 +631,13 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
         delayRemaining = Math.max(0, M.prompt_not_before_ms - Date.now());
       }
     } catch (eDr) {}
+    var disabledEffective = !enabled || delayBlocked || !widgetGloballyAllowed();
     return {
       widget_enabled: enabled,
-      widget_disabled_effective:
-        !enabled || delayBlocked || !widgetGloballyAllowed(),
+      config_loaded: configLoaded,
+      widget_rendered: shellRendered,
+      disabled_effective: disabledEffective,
+      widget_disabled_effective: disabledEffective,
       exit_intent_enabled: !(tr && tr.exit_intent_enabled === false),
       hesitation_trigger_enabled: !(tr && tr.hesitation_trigger_enabled === false),
       exit_intent_frequency: normalizeToken(
@@ -627,6 +669,9 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       console.log("[CF ENABLE TRUTH]", {
         source: sourceNote || "?",
         widget_enabled: snap.widget_enabled,
+        config_loaded: snap.config_loaded,
+        widget_rendered: snap.widget_rendered,
+        disabled_effective: snap.disabled_effective,
         widget_disabled_effective: snap.widget_disabled_effective,
         widget_globally_allowed: snap.widget_globally_allowed,
         delay_remaining_ms: snap.delay_remaining_ms,
@@ -687,6 +732,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
         widget_brand_name: CRT.merchant.widget_brand_name,
       });
     } catch (eLo) {}
+    scheduleStorefrontRuntimeTruthBeacon(sourceNote || "applyPayload");
   }
 
   function phoneCaptureMode() {
@@ -743,6 +789,8 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     merchantConfigResolved: merchantConfigResolved,
     shouldApplyVisualForSource: shouldApplyVisualForSource,
     scheduleStorefrontDomTruthBeacon: scheduleStorefrontDomTruthBeacon,
+    scheduleStorefrontRuntimeTruthBeacon: scheduleStorefrontRuntimeTruthBeacon,
+    postStorefrontRuntimeTruthBeacon: postStorefrontRuntimeTruthBeacon,
     readShellDomTruth: readShellDomTruth,
     logWidgetSettingsTruth: logWidgetSettingsTruth,
     collectRuntimeTruthSnapshot: collectRuntimeTruthSnapshot,

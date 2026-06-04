@@ -107,6 +107,8 @@ class WidgetSettingsRuntimeTruthWiringTests(unittest.TestCase):
         self.assertIn("bootTriggersAfterConfig", flows)
         self.assertIn("[CF ENABLE TRUTH]", config)
         self.assertIn("collectRuntimeTruthSnapshot", config)
+        self.assertIn("scheduleStorefrontRuntimeTruthBeacon", config)
+        self.assertIn("config_loaded", config)
 
     def test_dev_widget_runtime_truth_route_registered(self) -> None:
         from main import app  # noqa: PLC0415

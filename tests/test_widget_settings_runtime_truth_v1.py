@@ -12,6 +12,7 @@ from models import Store
 from services.widget_settings_runtime_truth_v1 import (
     build_admin_widget_runtime_mismatch_alerts,
     evaluate_widget_settings_runtime_truth,
+    runtime_truth_beacon_present,
     runtime_widget_settings_from_beacon,
 )
 
@@ -61,9 +62,58 @@ class WidgetSettingsRuntimeTruthServiceTests(unittest.TestCase):
             storefront_slug=slug,
         )
         self.assertEqual(report["status"], "pending")
-        self.assertTrue(report["passed"])
+        self.assertFalse(report["passed"])
+        self.assertTrue(report["config_match"])
+        self.assertTrue(report["partial_pass"])
+        self.assertFalse(runtime_truth_beacon_present({}))
         self.assertIn("enabled", report["dashboard"])
         self.assertFalse(report["dashboard"]["exit_intent"])
+
+    def test_evaluate_verified_when_disabled_beacon_matches(self) -> None:
+        db.create_all()
+        slug = f"truth-disabled-{uuid.uuid4().hex[:8]}"
+        row = Store(zid_store_id=slug)
+        row.cartflow_widget_enabled = False
+        row.cf_widget_trigger_settings_json = json.dumps(
+            {
+                "exit_intent_enabled": True,
+                "hesitation_trigger_enabled": True,
+                "exit_intent_frequency": "per_session",
+            },
+            ensure_ascii=False,
+        )
+        row.widget_last_beacon_json = json.dumps(
+            {
+                "store_slug": slug,
+                "runtime_truth": {
+                    "widget_enabled": False,
+                    "config_loaded": True,
+                    "widget_rendered": False,
+                    "disabled_effective": True,
+                    "exit_intent_enabled": True,
+                    "hesitation_trigger_enabled": True,
+                    "exit_intent_frequency": "per_session",
+                    "hesitation_after_seconds": 20,
+                    "delay_configured_value": 0,
+                    "delay_configured_unit": "minutes",
+                },
+            },
+            ensure_ascii=False,
+        )
+        db.session.add(row)
+        db.session.commit()
+        from services.widget_config_cache import update_from_dashboard_store_row
+
+        update_from_dashboard_store_row(row)
+        report = evaluate_widget_settings_runtime_truth(
+            row,
+            storefront_slug=slug,
+        )
+        self.assertEqual(report["status"], "verified")
+        self.assertTrue(report["passed"])
+        self.assertTrue(report["checks"]["disabled_runtime_ok"])
+        self.assertFalse(report["runtime"]["enabled"])
+        self.assertFalse(report["runtime"]["widget_rendered"])
 
     def test_evaluate_mismatch_when_beacon_differs(self) -> None:
         db.create_all()
