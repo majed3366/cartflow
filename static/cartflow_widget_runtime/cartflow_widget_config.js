@@ -609,6 +609,19 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     return CRT._trigger || CRT.defaults;
   }
 
+  function widgetGloballyAllowed() {
+    var tr = widgetTrigger();
+    try {
+      if (tr.visibility_widget_globally_enabled === false) {
+        return false;
+      }
+      if (tr.visibility_temporarily_disabled === true) {
+        return false;
+      }
+    } catch (eVs) {}
+    return true;
+  }
+
   function collectRuntimeTruthSnapshot() {
     var tr = widgetTrigger();
     var M = CRT.merchant;
@@ -825,18 +838,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       } catch (eD) {}
       return d;
     },
-    widgetGloballyAllowed: function () {
-      var tr = widgetTrigger();
-      try {
-        if (tr.visibility_widget_globally_enabled === false) {
-          return false;
-        }
-        if (tr.visibility_temporarily_disabled === true) {
-          return false;
-        }
-      } catch (eVs) {}
-      return true;
-    },
+    widgetGloballyAllowed: widgetGloballyAllowed,
   };
   window.CartflowWidgetRuntime.Config = Config;
 })();
