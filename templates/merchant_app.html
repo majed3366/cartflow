@@ -444,7 +444,7 @@
       <div class="ma-dash-skel" style="padding:40px 20px;text-align:center;color:var(--muted);">…</div>
       {% else %}
       {% for mr in merchant_message_history_rows %}
-      <div class="msg-row"
+      <div class="msg-row" data-msg-index="{{ loop.index0 }}"
         data-msg-full="{{ mr.full_message_ar | default('—') }}"
         data-msg-phone="{{ mr.phone_masked | default('—') }}"
         data-msg-template="{{ mr.template_ar | default('—') }}"
@@ -460,9 +460,11 @@
           </div>
           <div class="msg-meta">
             <span class="msg-phone" dir="ltr">{{ mr.phone_masked | default("—") }}</span>
+            {% if mr.delivery_dots %}<span class="msg-dots" title="{{ mr.delivery_outcome_ar | default('') }}">{{ mr.delivery_dots }}</span>{% endif %}
           </div>
           <div class="msg-tags">
-            <span class="st {{ mr.delivery_status_class | default('s-sent') }}"><span class="sd"></span>{{ mr.delivery_status_ar | default("—") }}</span>
+            <span class="st {{ mr.delivery_status_class | default('s-sent') }}"><span class="sd"></span>{{ mr.delivery_outcome_ar | default(mr.delivery_status_ar) | default("—") }}</span>
+            {% if mr.customer_reply_ar %}<span class="msg-reply-badge">💬 رد العميل</span>{% endif %}
             <button type="button" class="ma-msg-view" onclick="cfOpenMessageModal(this)">عرض الرسالة</button>
           </div>
         </div>
@@ -491,8 +493,34 @@
           <div class="ma-msg-field"><span class="ma-msg-label">القالب المستخدم</span><span id="ma-msg-template">—</span></div>
           <div class="ma-msg-field"><span class="ma-msg-label">وقت الإرسال</span><span id="ma-msg-sent" dir="ltr">—</span></div>
           <div class="ma-msg-field"><span class="ma-msg-label">حالة المزود</span><span id="ma-msg-provider">—</span></div>
-          <div class="ma-msg-field ma-msg-field-wide"><span class="ma-msg-label">مفتاح الاسترجاع</span><span id="ma-msg-key" class="ma-msg-mono" dir="ltr">—</span></div>
         </div>
+
+        <div class="ma-msg-section">
+          <span class="ma-msg-label">مسار التسليم</span>
+          <div class="ma-msg-delivery" id="ma-msg-delivery"></div>
+        </div>
+
+        <div class="ma-msg-section" id="ma-msg-reply-wrap" hidden>
+          <span class="ma-msg-label">رد العميل</span>
+          <div class="ma-msg-reply" id="ma-msg-reply">—</div>
+        </div>
+
+        <div class="ma-msg-section">
+          <span class="ma-msg-label">الخط الزمني للتواصل</span>
+          <div class="ma-msg-timeline" id="ma-msg-comm"></div>
+        </div>
+
+        <details class="ma-msg-tech">
+          <summary>التفاصيل التقنية</summary>
+          <div class="ma-msg-grid">
+            <div class="ma-msg-field ma-msg-field-wide"><span class="ma-msg-label">Message SID</span><span id="ma-msg-sid" class="ma-msg-mono" dir="ltr">—</span></div>
+            <div class="ma-msg-field ma-msg-field-wide"><span class="ma-msg-label">مفتاح الاسترجاع</span><span id="ma-msg-key" class="ma-msg-mono" dir="ltr">—</span></div>
+            <div class="ma-msg-field ma-msg-field-wide"><span class="ma-msg-label">استجابة المزود</span><span id="ma-msg-provider-resp" class="ma-msg-mono" dir="ltr">—</span></div>
+            <div class="ma-msg-field"><span class="ma-msg-label">معرّف الجلسة</span><span id="ma-msg-session" class="ma-msg-mono" dir="ltr">—</span></div>
+            <div class="ma-msg-field"><span class="ma-msg-label">معرّف السلة</span><span id="ma-msg-cartid" class="ma-msg-mono" dir="ltr">—</span></div>
+            <div class="ma-msg-field"><span class="ma-msg-label">معرّف السجل</span><span id="ma-msg-logid" class="ma-msg-mono" dir="ltr">—</span></div>
+          </div>
+        </details>
       </div>
       <div class="ma-msg-modal-foot">
         <button type="button" class="ma-msg-open-cart" id="ma-msg-open-cart" onclick="cfOpenRelatedCart()">فتح السلة المرتبطة</button>

@@ -2536,26 +2536,24 @@
     setNavBadge("ma-nav-badge-followup", d.merchant_nav_badge_followup);
   }
 
-  function messageRowHtml(mr) {
-    // Communication Log row: who / what type / when / delivery status only.
+  // Communication Timeline rows are driven by this array (modal reads by index).
+  var cfMsgRows = [];
+
+  function messageRowHtml(mr, idx) {
+    // Communication Timeline row: who / what type / when / delivery outcome.
     // Cart value, reason tag, lifecycle and next-step intentionally excluded —
-    // those belong to the Carts page. Full text/details live in the modal.
+    // those belong to the Carts page. Full text/timeline lives in the modal.
+    var dots = mr.delivery_dots || "";
+    var outcome = mr.delivery_outcome_ar || mr.delivery_status_ar || mr.status_ar || "—";
+    var replyBadge = mr.customer_reply_ar
+      ? '<span class="msg-reply-badge">💬 رد العميل</span>'
+      : "";
+    var dotsHtml = dots
+      ? '<span class="msg-dots" title="' + esc(outcome) + '">' + esc(dots) + "</span>"
+      : "";
     return (
-      '<div class="msg-row"' +
-      ' data-msg-full="' +
-      esc(mr.full_message_ar || mr.preview_ar || "—") +
-      '" data-msg-phone="' +
-      esc(mr.phone_masked || "—") +
-      '" data-msg-template="' +
-      esc(mr.template_ar || mr.message_type_ar || "—") +
-      '" data-msg-sent="' +
-      esc(mr.sent_full_ar || mr.time_ar || "—") +
-      '" data-msg-provider="' +
-      esc(mr.provider_status_ar || "—") +
-      '" data-msg-key="' +
-      esc(mr.recovery_key || "—") +
-      '" data-msg-cart="' +
-      esc(mr.cart_id || "") +
+      '<div class="msg-row" data-msg-index="' +
+      idx +
       '">' +
       '<div class="msg-avatar">💬</div>' +
       '<div class="msg-body">' +
@@ -2567,13 +2565,16 @@
       "</div></div>" +
       '<div class="msg-meta"><span class="msg-phone" dir="ltr">' +
       esc(mr.phone_masked || "—") +
-      "</span></div>" +
+      "</span>" +
+      dotsHtml +
+      "</div>" +
       '<div class="msg-tags">' +
       '<span class="st ' +
       esc(mr.delivery_status_class || mr.status_row_class || "s-sent") +
       '\"><span class="sd"></span>' +
-      esc(mr.delivery_status_ar || mr.status_ar || "—") +
-      '</span>' +
+      esc(outcome) +
+      "</span>" +
+      replyBadge +
       '<button type="button" class="ma-msg-view" onclick="cfOpenMessageModal(this)">عرض الرسالة</button>' +
       "</div></div></div>"
     );
@@ -2588,18 +2589,101 @@
     }
   }
 
+  function cfRenderDeliveryTimeline(steps) {
+    var host = byId("ma-msg-delivery");
+    if (!host) return;
+    if (!steps || !steps.length) {
+      host.innerHTML = '<span class="ma-msg-empty">—</span>';
+      return;
+    }
+    host.innerHTML = steps
+      .map(function (s) {
+        return (
+          '<span class="ma-msg-step ma-msg-step-' +
+          esc(s.state || "pending") +
+          '"><span class="ma-msg-step-dot">' +
+          esc(s.emoji || "⚪") +
+          '</span>' +
+          esc(s.label_ar || "") +
+          "</span>"
+        );
+      })
+      .join('<span class="ma-msg-step-sep">↓</span>');
+  }
+
+  function cfRenderCommTimeline(events) {
+    var host = byId("ma-msg-comm");
+    if (!host) return;
+    if (!events || !events.length) {
+      host.innerHTML = '<span class="ma-msg-empty">—</span>';
+      return;
+    }
+    host.innerHTML = events
+      .map(function (ev) {
+        return (
+          '<div class="ma-msg-tl-item">' +
+          '<span class="ma-msg-tl-emoji">' +
+          esc(ev.emoji || "•") +
+          "</span>" +
+          '<span class="ma-msg-tl-label">' +
+          esc(ev.label_ar || "") +
+          "</span>" +
+          '<span class="ma-msg-tl-at">' +
+          esc(ev.at_ar || "") +
+          "</span>" +
+          "</div>"
+        );
+      })
+      .join("");
+  }
+
   function cfOpenMessageModal(el) {
     try {
       var row = el && el.closest ? el.closest(".msg-row") : null;
       if (!row) return;
-      var d = row.dataset || {};
-      cfSetMsgField("ma-msg-full", d.msgFull || "—");
-      cfSetMsgField("ma-msg-phone", d.msgPhone || "—");
-      cfSetMsgField("ma-msg-template", d.msgTemplate || "—");
-      cfSetMsgField("ma-msg-sent", d.msgSent || "—");
-      cfSetMsgField("ma-msg-provider", d.msgProvider || "—");
-      cfSetMsgField("ma-msg-key", d.msgKey || "—");
-      cfMsgModalCartId = d.msgCart || "";
+      var idx = parseInt((row.dataset || {}).msgIndex, 10);
+      var mr =
+        !isNaN(idx) && cfMsgRows && cfMsgRows[idx] ? cfMsgRows[idx] : null;
+      if (!mr) {
+        // SSR fallback (lazy data not yet loaded): basic fields from data-*.
+        var d = row.dataset || {};
+        mr = {
+          full_message_ar: d.msgFull,
+          phone_masked: d.msgPhone,
+          template_ar: d.msgTemplate,
+          sent_full_ar: d.msgSent,
+          provider_status_ar: d.msgProvider,
+          recovery_key: d.msgKey,
+          cart_id: d.msgCart,
+        };
+      }
+      cfSetMsgField("ma-msg-full", mr.full_message_ar || "—");
+      cfSetMsgField("ma-msg-phone", mr.phone_masked || "—");
+      cfSetMsgField("ma-msg-template", mr.template_ar || mr.message_type_ar || "—");
+      cfSetMsgField("ma-msg-sent", mr.sent_full_ar || mr.time_ar || "—");
+      cfSetMsgField("ma-msg-provider", mr.provider_status_ar || "—");
+      cfSetMsgField("ma-msg-sid", mr.provider_message_sid || "—");
+      cfSetMsgField("ma-msg-key", mr.recovery_key || "—");
+      cfSetMsgField("ma-msg-provider-resp", mr.provider_response_ar || "—");
+      cfSetMsgField("ma-msg-session", mr.session_id || "—");
+      cfSetMsgField("ma-msg-cartid", mr.cart_id || "—");
+      cfSetMsgField("ma-msg-logid", mr.log_id || "—");
+
+      cfRenderDeliveryTimeline(mr.delivery_timeline);
+      cfRenderCommTimeline(mr.communication_timeline);
+
+      var replyWrap = byId("ma-msg-reply-wrap");
+      if (replyWrap) {
+        if (mr.customer_reply_ar) {
+          cfSetMsgField("ma-msg-reply", mr.customer_reply_ar);
+          replyWrap.hidden = false;
+        } else {
+          cfSetMsgField("ma-msg-reply", "لا يوجد رد");
+          replyWrap.hidden = false;
+        }
+      }
+
+      cfMsgModalCartId = mr.cart_id || "";
       var openCartBtn = byId("ma-msg-open-cart");
       if (openCartBtn) {
         openCartBtn.disabled = false;
@@ -2655,11 +2739,16 @@
     var card = byId("ma-messages-card");
     if (!card) return;
     var rows = d.merchant_message_history_rows || [];
+    cfMsgRows = rows;
     if (!rows.length) {
       card.innerHTML =
         '<div class="empty-state" style="padding:40px 20px;"><div class="empty-icon">💬</div><div class="empty-text">لا توجد رسائل مرسلة بعد</div></div>';
     } else {
-      card.innerHTML = rows.map(messageRowHtml).join("");
+      card.innerHTML = rows
+        .map(function (mr, i) {
+          return messageRowHtml(mr, i);
+        })
+        .join("");
     }
     setText("ma-wa-last-send", d.merchant_wa_last_send_ar || "—");
   }

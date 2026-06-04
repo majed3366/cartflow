@@ -14388,6 +14388,259 @@ def _message_sent_full_ar(ts: Any) -> str:
         return "—"
 
 
+def _build_message_delivery_timeline(
+    log_status: Any, truth: Any
+) -> tuple[list[dict[str, Any]], str, str]:
+    """
+    سلسلة تسليم الرسالة (Queued → Sent → Delivered/Failed) من حقيقة التسليم.
+    يُرجع (steps, outcome_ar, dots) — للعرض فقط، لا يغيّر أي قرار إرسال.
+    """
+    from services.whatsapp_delivery_truth_v1 import (  # noqa: PLC0415
+        TRUTH_ACCEPTED,
+        TRUTH_DELIVERED,
+        TRUTH_FAILED,
+        TRUTH_READ,
+        TRUTH_SENT,
+        truth_level_rank,
+    )
+
+    st = (str(log_status or "")).strip().lower()
+    level = ((getattr(truth, "truth_level", "") or "") if truth else "").strip()
+    rank = truth_level_rank(level) if level else 0
+    # Distinguish send failure (never left us) from delivery failure (sent, not delivered).
+    send_failed = st == "whatsapp_failed"
+    delivery_failed = level == TRUTH_FAILED
+    failed = send_failed or delivery_failed
+    sent_reached = (not send_failed) and (
+        st in ("sent_real", "mock_sent")
+        or rank >= truth_level_rank(TRUTH_SENT)
+        or delivery_failed
+    )
+    queued_reached = (
+        st in ("sent_real", "mock_sent", "queued")
+        or rank >= truth_level_rank(TRUTH_ACCEPTED)
+        or sent_reached
+        or failed
+    )
+    delivered_reached = (not failed) and rank >= truth_level_rank(TRUTH_DELIVERED)
+    read_reached = (not failed) and rank >= truth_level_rank(TRUTH_READ)
+
+    steps: list[dict[str, Any]] = []
+    steps.append(
+        {
+            "emoji": "🟡" if queued_reached else "⚪",
+            "label_ar": "في قائمة الإرسال",
+            "state": "reached" if queued_reached else "pending",
+        }
+    )
+    steps.append(
+        {
+            "emoji": "🟢" if sent_reached else "⚪",
+            "label_ar": "تم الإرسال",
+            "state": "reached" if sent_reached else "pending",
+        }
+    )
+    if failed:
+        steps.append({"emoji": "🔴", "label_ar": "تعذّر التسليم", "state": "failed"})
+        outcome = "تعذّر التسليم"
+    elif read_reached:
+        steps.append({"emoji": "🟢", "label_ar": "تم التسليم", "state": "reached"})
+        steps.append({"emoji": "🔵", "label_ar": "تم الاطلاع", "state": "reached"})
+        outcome = "تم الاطلاع"
+    elif delivered_reached:
+        steps.append({"emoji": "🟢", "label_ar": "تم التسليم", "state": "reached"})
+        outcome = "تم التسليم"
+    else:
+        steps.append(
+            {
+                "emoji": "⚪",
+                "label_ar": "بانتظار تأكيد التسليم",
+                "state": "pending",
+            }
+        )
+        outcome = (
+            "بانتظار تأكيد التسليم"
+            if sent_reached
+            else ("في قائمة الإرسال" if queued_reached else "—")
+        )
+    dots = "".join(s["emoji"] for s in steps)
+    return steps, outcome, dots
+
+
+def _build_message_communication_timeline(
+    *,
+    type_ar: str,
+    sent_full_ar: str,
+    delivered: bool,
+    delivered_at_ar: str,
+    failed: bool,
+    reply_text: str,
+    reply_at_ar: str,
+) -> list[dict[str, Any]]:
+    """أحداث التواصل الزمنية لهذه الرسالة فقط (أساس مركز التواصل)."""
+    tl: list[dict[str, Any]] = [
+        {
+            "emoji": "📤",
+            "label_ar": f"تم إرسال {type_ar}",
+            "at_ar": sent_full_ar or "—",
+        }
+    ]
+    if failed:
+        tl.append(
+            {
+                "emoji": "⚠️",
+                "label_ar": "تعذّر تسليم الرسالة",
+                "at_ar": delivered_at_ar or "—",
+            }
+        )
+    elif delivered:
+        tl.append(
+            {
+                "emoji": "✅",
+                "label_ar": "وصلت الرسالة للعميل",
+                "at_ar": delivered_at_ar or "—",
+            }
+        )
+    if reply_text:
+        tl.append(
+            {
+                "emoji": "💬",
+                "label_ar": f"ردّ العميل: {reply_text}",
+                "at_ar": reply_at_ar or "—",
+            }
+        )
+    return tl
+
+
+def _merchant_message_delivery_truth_map(sids: list[str]) -> dict[str, Any]:
+    """قراءة مجمّعة لحقيقة التسليم حسب ‎message_sid‎ (للعرض فقط)."""
+    out: dict[str, Any] = {}
+    clean = [s[:128] for s in sids if s]
+    if not clean:
+        return out
+    try:
+        from models import WhatsAppDeliveryTruth  # noqa: PLC0415
+
+        rows = (
+            db.session.query(WhatsAppDeliveryTruth)
+            .filter(WhatsAppDeliveryTruth.message_sid.in_(clean))
+            .all()
+        )
+        for r in rows:
+            sid = (getattr(r, "message_sid", None) or "").strip()
+            if sid:
+                out[sid] = r
+    except (SQLAlchemyError, OSError, TypeError, ValueError):
+        db.session.rollback()
+    return out
+
+
+def _merchant_customer_reply_map(phone_keys: list[str]) -> dict[str, Any]:
+    """أحدث رد وارد للعميل حسب مفتاح الهاتف المُطبّع (‎MerchantFollowupAction‎)."""
+    out: dict[str, Any] = {}
+    clean = sorted({k for k in phone_keys if k and len(k) >= 9})
+    if not clean:
+        return out
+    try:
+        from models import MerchantFollowupAction  # noqa: PLC0415
+
+        rows = (
+            db.session.query(MerchantFollowupAction)
+            .filter(MerchantFollowupAction.customer_phone.in_(clean))
+            .order_by(MerchantFollowupAction.updated_at.asc())
+            .all()
+        )
+        for r in rows:
+            key = (getattr(r, "customer_phone", None) or "").strip()
+            if key:
+                out[key] = r  # asc order → keep latest
+    except (SQLAlchemyError, OSError, TypeError, ValueError):
+        db.session.rollback()
+    return out
+
+
+def _enrich_message_rows_with_communication_truth(
+    pairs: list[tuple[dict[str, Any], Any]], *, now_utc: datetime
+) -> None:
+    """
+    إضافة سلسلة التسليم + رد العميل + الخط الزمني للتواصل لكل صف (للعرض فقط).
+    قراءة فقط — لا تمسّ الإرسال أو الجدولة أو تصنيف دورة الحياة.
+    """
+    if not pairs:
+        return
+    try:
+        from services.whatsapp_positive_reply import (  # noqa: PLC0415
+            normalize_wa_customer_digits,
+        )
+
+        sids = [
+            (getattr(lg, "provider_message_sid", None) or "").strip()
+            for _row, lg in pairs
+        ]
+        phone_keys = [
+            normalize_wa_customer_digits(getattr(lg, "phone", None))
+            for _row, lg in pairs
+        ]
+        truth_map = _merchant_message_delivery_truth_map(sids)
+        reply_map = _merchant_customer_reply_map(phone_keys)
+
+        for (row, lg), pkey in zip(pairs, phone_keys):
+            sid = (getattr(lg, "provider_message_sid", None) or "").strip()
+            truth = truth_map.get(sid[:128]) if sid else None
+            steps, outcome_ar, dots = _build_message_delivery_timeline(
+                getattr(lg, "status", None), truth
+            )
+            delivered = any(
+                s["label_ar"] in ("تم التسليم", "تم الاطلاع") and s["state"] == "reached"
+                for s in steps
+            )
+            failed = any(s["state"] == "failed" for s in steps)
+            delivered_at_ar = "—"
+            provider_resp = "—"
+            if truth is not None:
+                ev = getattr(truth, "last_event_time", None)
+                delivered_at_ar = merchant_relative_time_arabic(ev, now_utc=now_utc)
+                provider_resp = (
+                    (getattr(truth, "provider_error", None) or "").strip()
+                    or (getattr(truth, "delivery_status", None) or "").strip()
+                    or (getattr(truth, "truth_level", None) or "").strip()
+                    or "—"
+                )
+            reply_row = reply_map.get(pkey) if pkey else None
+            reply_text = ""
+            reply_at_ar = ""
+            if reply_row is not None:
+                reply_text = (getattr(reply_row, "inbound_message", None) or "").strip()[
+                    :512
+                ]
+                rts = getattr(reply_row, "updated_at", None) or getattr(
+                    reply_row, "created_at", None
+                )
+                reply_at_ar = merchant_relative_time_arabic(rts, now_utc=now_utc)
+
+            row["delivery_timeline"] = steps
+            row["delivery_outcome_ar"] = outcome_ar
+            row["delivery_dots"] = dots
+            row["customer_reply_ar"] = reply_text or None
+            row["customer_reply_at_ar"] = reply_at_ar or None
+            row["provider_message_sid"] = (sid[:128] or None) if sid else None
+            row["provider_response_ar"] = provider_resp
+            row["communication_timeline"] = _build_message_communication_timeline(
+                type_ar=row.get("message_type_ar") or "رسالة استرداد",
+                sent_full_ar=row.get("sent_full_ar") or row.get("time_ar") or "—",
+                delivered=delivered,
+                delivered_at_ar=delivered_at_ar,
+                failed=failed,
+                reply_text=reply_text,
+                reply_at_ar=reply_at_ar,
+            )
+    except (SQLAlchemyError, OSError, TypeError, ValueError, ImportError):
+        try:
+            db.session.rollback()
+        except (SQLAlchemyError, OSError):
+            pass
+
+
 def _merchant_recovery_message_history_rows(
     dash_store: Optional[Any],
     *,
@@ -14397,6 +14650,7 @@ def _merchant_recovery_message_history_rows(
 ) -> list[dict[str, Any]]:
     """آخر محاولات إرسال مسجّلة للمتجر الحالي — نص مختصر للتاجر فقط."""
     out: list[dict[str, Any]] = []
+    logs_seq: list[Any] = []
     if dash_store is None:
         return out
     from services.merchant_dashboard_recovery_resolve_v1 import (  # noqa: PLC0415
@@ -14507,7 +14761,12 @@ def _merchant_recovery_message_history_rows(
             ),
         }
         out.append(row_out)
-    return out[:lim]
+        logs_seq.append(lg)
+    kept = out[:lim]
+    _enrich_message_rows_with_communication_truth(
+        list(zip(kept, logs_seq[: len(kept)])), now_utc=now_utc
+    )
+    return kept
 
 
 def _normal_recovery_abandoned_scope_filter(
