@@ -53,6 +53,74 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     trigLog("[CF TRIGGER CLEARED]", extra || {});
   }
 
+  /**
+   * TEMP DIAGNOSTICS (no behavior change): snapshot every individual gate
+   * condition so the single reason a trigger is blocked is visible on real
+   * storefronts. Pure read-only; never mutates state or alters gating.
+   */
+  function diagSafe(fn) {
+    try {
+      return fn();
+    } catch (eDs) {
+      return null;
+    }
+  }
+
+  function collectTriggerGateDiagnostics(triggerTag) {
+    var tr = diagSafe(function () {
+      return (Cf.Config && Cf.Config.widgetTrigger
+        ? Cf.Config.widgetTrigger()
+        : null) || {};
+    }) || {};
+    var M = diagSafe(function () {
+      return (Cf.Config && Cf.Config.merchant ? Cf.Config.merchant() : null) || {};
+    }) || {};
+    var promptNotBefore = null;
+    try {
+      if (
+        typeof M.prompt_not_before_ms === "number" &&
+        isFinite(M.prompt_not_before_ms)
+      ) {
+        promptNotBefore = M.prompt_not_before_ms;
+      }
+    } catch (ePnb) {}
+    return {
+      widget_disabled_effective: diagSafe(merchantWidgetDisabled),
+      widget_globally_allowed: diagSafe(function () {
+        return Cf.Config.widgetGloballyAllowed();
+      }),
+      exit_intent_enabled: !!tr.exit_intent_enabled,
+      hesitation_enabled: tr.hesitation_trigger_enabled !== false,
+      frequency_blocked: !!st().bubbleShown,
+      session_suppressed:
+        diagSafe(function () {
+          return Cf.State.sessionConvertedBlock();
+        }) === true ||
+        diagSafe(function () {
+          return Cf.State.readDismissSuppress();
+        }) === true,
+      delay_not_ready: diagSafe(function () {
+        return !!(
+          Cf.State.hesitationDelayWallActive &&
+          Cf.State.hesitationDelayWallActive()
+        );
+      }),
+      prompt_not_before_ms: promptNotBefore,
+      cart_required: true,
+      cart_detected: diagSafe(haveCartApprox),
+      recovery_mode: diagSafe(storefrontRecoveryModeActive),
+      trigger_tag: String(triggerTag || ""),
+    };
+  }
+
+  function emitTriggerDecision(triggerTag, allowed, blockReason) {
+    trigLog("[CF TRIGGER DECISION]", {
+      trigger_tag: String(triggerTag || ""),
+      allowed: !!allowed,
+      block_reason: allowed ? null : blockReason || "unknown",
+    });
+  }
+
   function merchantWidgetDisabled() {
     try {
       var M = Cf.Config.merchant();
@@ -320,8 +388,14 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       logBlocked(g.reason || "widget_disabled", {
         path: "hesitation_schedule",
       });
+      trigLog(
+        "[CF TRIGGER BLOCKED REASON]",
+        collectTriggerGateDiagnostics("cart_hesitation")
+      );
+      emitTriggerDecision("cart_hesitation", false, g.reason || "widget_disabled");
       return;
     }
+    emitTriggerDecision("cart_hesitation", true, null);
     logAllowed({ path: "hesitation_schedule" });
 
     if (stRef.hesitationAnchorTimer != null) {
@@ -441,6 +515,11 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     var g = gateExitIntentTimer();
     if (!g.ok) {
       logBlocked(g.reason, { path: "exit_intent_schedule" });
+      trigLog(
+        "[CF TRIGGER BLOCKED REASON]",
+        collectTriggerGateDiagnostics("exit_intent")
+      );
+      emitTriggerDecision("exit_intent", false, g.reason);
       return;
     }
 
@@ -606,10 +685,20 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       var gm = gateCartRecoveryOpen("manual_debug");
       if (!gm.ok) {
         logBlocked(gm.reason, { source: source });
+        trigLog(
+          "[CF TRIGGER BLOCKED REASON]",
+          collectTriggerGateDiagnostics("manual_debug")
+        );
+        emitTriggerDecision("manual_debug", false, gm.reason);
         return false;
       }
       if (typeof Hooks.fireCartRecovery !== "function") {
         logBlocked("widget_disabled", { source: source, note: "hooks_missing" });
+        trigLog(
+          "[CF TRIGGER BLOCKED REASON]",
+          collectTriggerGateDiagnostics("manual_debug")
+        );
+        emitTriggerDecision("manual_debug", false, "hooks_missing");
         return false;
       }
       logFired("manual_debug", { direct: true });
@@ -744,6 +833,11 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     }
 
     logBlocked("widget_disabled", { source: source, note: "unknown_trigger_source" });
+    trigLog(
+      "[CF TRIGGER BLOCKED REASON]",
+      collectTriggerGateDiagnostics(String(source || "unknown"))
+    );
+    emitTriggerDecision(String(source || "unknown"), false, "unknown_trigger_source");
     return false;
   }
 
