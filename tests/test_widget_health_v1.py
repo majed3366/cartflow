@@ -201,6 +201,41 @@ class WidgetHealthSectionTests(unittest.TestCase):
         self.assertEqual(out["issues"][0]["severity"], STATUS_CRITICAL)
 
 
+class WidgetHealthIssueGroupingTests(unittest.TestCase):
+    """V3 presentation-only grouping (route layer, no service changes)."""
+
+    def _groups(self, issues):
+        from routes.admin_operations import _widget_health_issue_groups
+
+        return _widget_health_issue_groups(issues)
+
+    def test_identical_issues_collapse_into_one_group(self):
+        issues = [
+            {"kind": "runtime_beacon_missing", "severity": "warning", "store_slug": "a", "store_name": "A"},
+            {"kind": "runtime_beacon_missing", "severity": "warning", "store_slug": "b", "store_name": "B"},
+            {"kind": "runtime_beacon_missing", "severity": "warning", "store_slug": "c", "store_name": "C"},
+        ]
+        groups = self._groups(issues)
+        self.assertEqual(len(groups), 1)
+        self.assertEqual(groups[0]["count"], 3)
+        self.assertEqual(len(groups[0]["stores"]), 3)
+
+    def test_groups_sorted_critical_first_then_count(self):
+        issues = [
+            {"kind": "runtime_beacon_missing", "severity": "warning", "store_slug": "a", "store_name": "A"},
+            {"kind": "runtime_beacon_missing", "severity": "warning", "store_slug": "b", "store_name": "B"},
+            {"kind": "widget_bootstrap_blocked", "severity": "critical", "store_slug": "c", "store_name": "C"},
+        ]
+        groups = self._groups(issues)
+        self.assertEqual(groups[0]["kind"], "widget_bootstrap_blocked")
+        self.assertEqual(groups[0]["severity"], "critical")
+        self.assertEqual(groups[1]["kind"], "runtime_beacon_missing")
+        self.assertEqual(groups[1]["count"], 2)
+
+    def test_empty_issues_yields_no_groups(self):
+        self.assertEqual(self._groups([]), [])
+
+
 class WidgetHealthJsWiringTests(unittest.TestCase):
     def test_loader_records_widget_health(self):
         text = _LOADER.read_text(encoding="utf-8")
@@ -216,6 +251,17 @@ class WidgetHealthJsWiringTests(unittest.TestCase):
 
     def test_widget_loader_runtime_version_bumped(self):
         self.assertIn("v2-widget-health-v1", _WIDGET_LOADER.read_text(encoding="utf-8"))
+
+    def test_admin_template_defaults_to_real_and_groups(self):
+        overview = (_ROOT / "templates" / "admin_operations_center_v1.html").read_text(encoding="utf-8")
+        self.assertIn("DEFAULT_TYPE = 'real'", overview)
+        self.assertIn("data-wh-group", overview)
+        partial = (
+            _ROOT / "templates" / "partials" / "admin_operations_widget_health_section.html"
+        ).read_text(encoding="utf-8")
+        self.assertIn("data-wh-group", partial)
+        self.assertIn("data-wh-affected-store", partial)
+        self.assertIn("data-wh-count", partial)
 
 
 if __name__ == "__main__":

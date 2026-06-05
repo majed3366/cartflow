@@ -529,6 +529,49 @@ def admin_operations_section_analytics(request: Request) -> Any:
     )
 
 
+def _widget_health_issue_groups(issues: Any) -> list[dict[str, Any]]:
+    """Presentation-only aggregation: group detected issues by kind.
+
+    Does NOT touch detection/scoring (services/widget_health_v1.py). Builds a
+    grouped view so one platform-wide problem shows once with an affected-store
+    count + expandable list, ordered by severity then affected count.
+    """
+    order = {"critical": 2, "warning": 1, "healthy": 0}
+    groups: dict[str, dict[str, Any]] = {}
+    for it in issues or []:
+        kind = it.get("kind")
+        grp = groups.get(kind)
+        if grp is None:
+            grp = {
+                "kind": kind,
+                "severity": it.get("severity"),
+                "severity_ar": it.get("severity_ar"),
+                "severity_emoji": it.get("severity_emoji"),
+                "problem_ar": it.get("problem_ar"),
+                "impact_ar": it.get("impact_ar"),
+                "suggested_action_ar": it.get("suggested_action_ar"),
+                "verification_ar": it.get("verification_ar"),
+                "stores": [],
+            }
+            groups[kind] = grp
+        grp["stores"].append(
+            {
+                "store_slug": it.get("store_slug"),
+                "store_name": it.get("store_name"),
+                "where_ar": it.get("where_ar"),
+                "technical_details": it.get("technical_details"),
+            }
+        )
+    out = list(groups.values())
+    for grp in out:
+        grp["count"] = len(grp["stores"])
+    out.sort(
+        key=lambda g: (order.get(g.get("severity"), 1), g.get("count", 0)),
+        reverse=True,
+    )
+    return out
+
+
 @router.get("/admin/operations/section/widget-health", response_class=HTMLResponse)
 def admin_operations_section_widget_health(request: Request) -> Any:
     denied = _admin_session_or_redirect(
@@ -542,6 +585,9 @@ def admin_operations_section_widget_health(request: Request) -> Any:
         )
 
         health = build_admin_widget_health_section_readonly()
+        # Presentation-only: grouped issue view (no detection changes).
+        health = dict(health)
+        health["issue_groups"] = _widget_health_issue_groups(health.get("issues"))
     except Exception:  # noqa: BLE001
         return HTMLResponse(_OPS_LAZY_SECTION_ERROR_HTML, status_code=500)
     return templates.TemplateResponse(

@@ -179,34 +179,45 @@
   </p>
 
   <script>
-  // Widget Health UX V2 — UI-only, additive filters (no record/service changes).
+  // Widget Health UX V2/V3 — UI-only, additive filters + grouped-issue counts
+  // (no record/service/detection changes).
   (function () {
     var ROOT_ID = 'ops-widget-health-content';
-    var state = { type: 'all', showHealthy: false };
+    var DEFAULT_TYPE = 'real';
+    var state = { type: DEFAULT_TYPE, showHealthy: false };
 
     function root() { return document.getElementById(ROOT_ID); }
     function forEach(list, fn) { Array.prototype.forEach.call(list || [], fn); }
+    function typeMatch(ty) { return state.type === 'all' || state.type === ty; }
 
     function apply() {
       var r = root();
       if (!r) return;
-      var visIssues = 0;
-      forEach(r.querySelectorAll('[data-wh-issue]'), function (el) {
-        var ty = el.getAttribute('data-store-type');
-        var show = state.type === 'all' || state.type === ty;
-        el.style.display = show ? '' : 'none';
-        if (show) visIssues++;
+      // Grouped issues: recompute affected-store count per active filter; hide
+      // a group when no affected store matches the current store-type filter.
+      var visGroups = 0;
+      forEach(r.querySelectorAll('[data-wh-group]'), function (grp) {
+        var n = 0;
+        forEach(grp.querySelectorAll('[data-wh-affected-store]'), function (s) {
+          var match = typeMatch(s.getAttribute('data-store-type'));
+          s.style.display = match ? '' : 'none';
+          if (match) n++;
+        });
+        forEach(grp.querySelectorAll('[data-wh-count]'), function (c) { c.textContent = '(' + n + ')'; });
+        forEach(grp.querySelectorAll('[data-wh-affected-count]'), function (c) { c.textContent = n; });
+        grp.style.display = n > 0 ? '' : 'none';
+        if (n > 0) visGroups++;
       });
       var visRows = 0;
       forEach(r.querySelectorAll('[data-wh-row]'), function (el) {
         var ty = el.getAttribute('data-store-type');
         var st = el.getAttribute('data-status');
-        var show = (state.type === 'all' || state.type === ty) && (state.showHealthy || st !== 'healthy');
+        var show = typeMatch(ty) && (state.showHealthy || st !== 'healthy');
         el.style.display = show ? '' : 'none';
         if (show) visRows++;
       });
       var ie = r.querySelector('[data-wh-issues-empty]');
-      if (ie) { if (visIssues === 0 && r.querySelector('[data-wh-issue]')) { ie.classList.remove('hidden'); } else { ie.classList.add('hidden'); } }
+      if (ie) { if (visGroups === 0 && r.querySelector('[data-wh-group]')) { ie.classList.remove('hidden'); } else { ie.classList.add('hidden'); } }
       var re = r.querySelector('[data-wh-rows-empty]');
       if (re) { if (visRows === 0 && r.querySelector('[data-wh-row]')) { re.classList.remove('hidden'); } else { re.classList.add('hidden'); } }
       forEach(r.querySelectorAll('[data-wh-type-btn]'), function (b) {
@@ -218,7 +229,7 @@
 
     window.cfWhSetType = function (t) { state.type = t; apply(); };
     window.cfWhToggleHealthy = function (cb) { state.showHealthy = !!(cb && cb.checked); apply(); };
-    window.cfWidgetHealthInit = function () { state = { type: 'all', showHealthy: false }; apply(); };
+    window.cfWidgetHealthInit = function () { state = { type: DEFAULT_TYPE, showHealthy: false }; apply(); };
 
     var LOAD_ERROR = '<p class="text-sm text-rose-700 py-6 text-center">تعذر تحميل هذا القسم الآن.</p>';
     var LOADING = '<p class="text-sm text-slate-500 py-6 text-center">جاري التحميل...</p>';

@@ -1,6 +1,7 @@
 {% set summary = health.summary or {} %}
 {% set rows = health.stores or [] %}
 {% set issues = health.issues or [] %}
+{% set issue_groups = health.issue_groups or [] %}
 {%- macro store_type(slug) -%}
 {%- set s = (slug or '')|lower -%}
 {%- set ns = namespace(t='real') -%}
@@ -35,44 +36,58 @@
   <div class="flex flex-wrap items-center gap-2">
     <span class="text-xs font-medium text-slate-500">نوع المتجر:</span>
     <div class="inline-flex overflow-hidden rounded-lg border border-slate-200 text-sm">
-      <button type="button" data-wh-type-btn="all" onclick="cfWhSetType('all')" class="px-3 py-1.5 font-medium text-slate-700 hover:bg-slate-50">الكل</button>
-      <button type="button" data-wh-type-btn="real" onclick="cfWhSetType('real')" class="border-r border-slate-200 px-3 py-1.5 font-medium text-slate-700 hover:bg-slate-50">متاجر حقيقية</button>
+      <button type="button" data-wh-type-btn="real" onclick="cfWhSetType('real')" class="px-3 py-1.5 font-medium text-slate-700 hover:bg-slate-50">متاجر حقيقية</button>
       <button type="button" data-wh-type-btn="test" onclick="cfWhSetType('test')" class="border-r border-slate-200 px-3 py-1.5 font-medium text-slate-700 hover:bg-slate-50">متاجر اختبار</button>
+      <button type="button" data-wh-type-btn="all" onclick="cfWhSetType('all')" class="border-r border-slate-200 px-3 py-1.5 font-medium text-slate-700 hover:bg-slate-50">الكل</button>
     </div>
     <span class="text-xs text-slate-400">(فلترة عرض فقط — لا تُعدّل أي سجل)</span>
   </div>
 
-  <!-- PRIMARY: Current Widget Issues (action-first) -->
+  <!-- PRIMARY: Current Widget Issues — grouped by problem (action-first) -->
   <section>
     <h3 class="text-base font-semibold text-slate-900">المشاكل الحالية للودجِت</h3>
-    <p class="mt-0.5 text-sm text-slate-600">ما يحتاج إجراءً الآن — مُرتّب حسب الخطورة. للقراءة فقط.</p>
-    {% if issues %}
+    <p class="mt-0.5 text-sm text-slate-600">كل مشكلة مرة واحدة مع عدد المتاجر المتأثرة — مُرتّبة حسب الخطورة. للقراءة فقط.</p>
+    {% if issue_groups %}
     <ul class="mt-3 space-y-3">
-      {% for it in issues %}
-      <li data-wh-issue data-store-slug="{{ it.store_slug }}" data-store-type="{{ store_type(it.store_slug) }}" data-status="{{ it.severity }}"
+      {% for g in issue_groups %}
+      <li data-wh-group data-kind="{{ g.kind }}" data-status="{{ g.severity }}"
         class="rounded-2xl border p-4 shadow-sm
-        {% if it.severity == 'critical' %}border-rose-200 bg-rose-50/50
-        {% elif it.severity == 'warning' %}border-amber-200 bg-amber-50/40
+        {% if g.severity == 'critical' %}border-rose-200 bg-rose-50/50
+        {% elif g.severity == 'warning' %}border-amber-200 bg-amber-50/40
         {% else %}border-slate-200 bg-white{% endif %}">
         <div class="flex items-start justify-between gap-3">
-          <p class="text-sm font-semibold text-slate-900">{{ it.severity_emoji }} {{ it.problem_ar }}</p>
+          <p class="text-sm font-semibold text-slate-900">{{ g.severity_emoji }} {{ g.problem_ar }} <span data-wh-count class="text-slate-500">({{ g.count }})</span></p>
           <span class="shrink-0 rounded-full border px-2 py-0.5 text-xs font-medium
-            {% if it.severity == 'critical' %}border-rose-200 bg-rose-50 text-rose-800
-            {% elif it.severity == 'warning' %}border-amber-200 bg-amber-50 text-amber-900
-            {% else %}border-slate-200 bg-slate-50 text-slate-600{% endif %}">{{ it.severity_ar }}</span>
+            {% if g.severity == 'critical' %}border-rose-200 bg-rose-50 text-rose-800
+            {% elif g.severity == 'warning' %}border-amber-200 bg-amber-50 text-amber-900
+            {% else %}border-slate-200 bg-slate-50 text-slate-600{% endif %}">{{ g.severity_ar }}</span>
         </div>
         <div class="mt-3 space-y-2.5 text-sm">
-          <div class="flex gap-2"><span class="w-24 shrink-0 text-xs font-medium text-slate-500">الأثر</span><span class="text-slate-800">{{ it.impact_ar }}</span></div>
-          <div class="flex gap-2"><span class="w-24 shrink-0 text-xs font-medium text-slate-500">أين</span><span class="text-slate-800">{{ it.store_name }} <span dir="ltr" class="text-slate-500">({{ it.store_slug }})</span>{% if it.where_ar %} — <span dir="ltr">{{ it.where_ar }}</span>{% endif %}</span></div>
-          <div class="flex gap-2"><span class="w-24 shrink-0 text-xs font-medium text-slate-500">الإجراء المقترح</span><span class="text-slate-800">{{ it.suggested_action_ar }}</span></div>
-          <div class="flex gap-2"><span class="w-24 shrink-0 text-xs font-medium text-slate-500">التحقق</span><span class="text-slate-800" dir="auto">{{ it.verification_ar }}</span></div>
+          <div class="flex gap-2"><span class="w-28 shrink-0 text-xs font-medium text-slate-500">المتاجر المتأثرة</span><span class="font-semibold text-slate-800"><span data-wh-affected-count>{{ g.count }}</span> متجر</span></div>
+          <div class="flex gap-2"><span class="w-28 shrink-0 text-xs font-medium text-slate-500">الأثر</span><span class="text-slate-800">{{ g.impact_ar }}</span></div>
+          <div class="flex gap-2"><span class="w-28 shrink-0 text-xs font-medium text-slate-500">الإجراء المقترح</span><span class="text-slate-800">{{ g.suggested_action_ar }}</span></div>
+          <div class="flex gap-2"><span class="w-28 shrink-0 text-xs font-medium text-slate-500">التحقق</span><span class="text-slate-800" dir="auto">{{ g.verification_ar }}</span></div>
         </div>
-        {% if it.technical_details %}
         <details class="mt-3 rounded-xl border border-slate-200 bg-white/70">
-          <summary class="cursor-pointer list-none px-3 py-2 text-xs font-medium text-slate-500 marker:content-none [&::-webkit-details-marker]:hidden">تفاصيل تقنية</summary>
-          <pre class="overflow-x-auto border-t border-slate-100 px-3 py-2 text-xs text-slate-700" dir="ltr">{{ it.technical_details | tojson(indent=2) }}</pre>
+          <summary class="cursor-pointer list-none px-3 py-2 text-xs font-medium text-slate-600 marker:content-none [&::-webkit-details-marker]:hidden">عرض المتاجر المتأثرة</summary>
+          <ul class="divide-y divide-slate-100 border-t border-slate-100">
+            {% for s in g.stores %}
+            <li data-wh-affected-store data-store-slug="{{ s.store_slug }}" data-store-type="{{ store_type(s.store_slug) }}" class="px-3 py-2 text-sm">
+              <div class="flex items-center gap-2">
+                <span class="font-medium text-slate-800">{{ s.store_name }}</span>
+                <span dir="ltr" class="text-xs text-slate-400">({{ s.store_slug }})</span>
+                {% if s.where_ar %}<span dir="ltr" class="text-xs text-slate-400">— {{ s.where_ar }}</span>{% endif %}
+              </div>
+              {% if s.technical_details %}
+              <details class="mt-1 rounded-lg border border-slate-200 bg-slate-50/70">
+                <summary class="cursor-pointer list-none px-2 py-1 text-xs font-medium text-slate-500 marker:content-none [&::-webkit-details-marker]:hidden">تفاصيل تقنية</summary>
+                <pre class="overflow-x-auto border-t border-slate-100 px-2 py-1 text-xs text-slate-700" dir="ltr">{{ s.technical_details | tojson(indent=2) }}</pre>
+              </details>
+              {% endif %}
+            </li>
+            {% endfor %}
+          </ul>
         </details>
-        {% endif %}
       </li>
       {% endfor %}
     </ul>
