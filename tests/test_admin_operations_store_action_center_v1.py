@@ -96,6 +96,9 @@ class StoreActionCenterTests(unittest.TestCase):
         rc = store["primary_root_cause"]
         self.assertEqual(rc["root_cause_id"], "ROOT_CAUSE_WIDGET_RUNTIME")
         self.assertEqual(rc["display_name_en"], "Widget Runtime Missing")
+        self.assertEqual(store["priority"], "HIGH")
+        self.assertEqual(store["priority_display_en"], "⚠ Needs Review")
+        self.assertEqual(store["primary_root_cause_name_en"], "Widget Runtime Missing")
 
     def test_whatsapp_and_setup_issues(self) -> None:
         store_rows = [
@@ -158,6 +161,8 @@ class StoreActionCenterTests(unittest.TestCase):
         self.assertEqual(store["root_cause_count_label"], "1 Root Cause")
         self.assertEqual(store["highest_severity"], "critical")
         self.assertEqual(store["root_causes"][0]["severity"], "critical")
+        self.assertEqual(store["priority"], "CRITICAL")
+        self.assertEqual(store["priority_display_en"], "🔥 Requires Immediate Action")
 
     def test_production_action_queue_excludes_healthy(self) -> None:
         store_rows = [
@@ -242,6 +247,51 @@ class StoreActionCenterTests(unittest.TestCase):
         )
         self.assertEqual(payload["summary"]["root_cause_count"], 1)
         self.assertEqual(payload["summary"]["warning_root_cause_count"], 1)
+        self.assertEqual(store["priority"], "HIGH")
+        self.assertEqual(payload["summary"]["high_priority_store_count"], 1)
+
+    def test_queue_sorted_critical_before_high(self) -> None:
+        store_rows = [
+            {
+                "store_slug": "high_store",
+                "display_name": "Alpha High",
+                "ready": True,
+                "whatsapp_missing": False,
+            },
+            {
+                "store_slug": "crit_store",
+                "display_name": "Zulu Critical",
+                "ready": True,
+                "whatsapp_missing": False,
+                "widget_runtime_truth_status": "mismatch",
+            },
+        ]
+        widget_health = {
+            "issues": [
+                {
+                    "kind": "runtime_beacon_missing",
+                    "severity": "warning",
+                    "store_slug": "high_store",
+                    "store_name": "Alpha High",
+                }
+            ]
+        }
+        with patch(
+            "services.widget_health_v1.build_admin_widget_health_section_readonly",
+            return_value=widget_health,
+        ):
+            payload = build_store_action_center_readonly(
+                store_rows=store_rows,
+                alerts=[],
+            )
+        queue = payload["production_action_queue"]
+        self.assertEqual(len(queue), 2)
+        self.assertEqual(queue[0]["store_slug"], "crit_store")
+        self.assertEqual(queue[0]["priority"], "CRITICAL")
+        self.assertEqual(queue[1]["store_slug"], "high_store")
+        self.assertEqual(queue[1]["priority"], "HIGH")
+        self.assertEqual(payload["summary"]["critical_priority_store_count"], 1)
+        self.assertEqual(payload["summary"]["high_priority_store_count"], 1)
 
 
 if __name__ == "__main__":

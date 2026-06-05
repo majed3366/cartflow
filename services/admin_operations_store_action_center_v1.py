@@ -14,6 +14,11 @@ from services.admin_operations_production_truth_v1 import (
     count_dev_test_buckets,
     is_production_store,
 )
+from services.admin_operations_operational_priority_v1 import (
+    apply_store_operational_priority,
+    sort_stores_by_operational_priority,
+    summarize_operational_priority_stores,
+)
 from services.admin_operations_root_cause_groups_v1 import (
     group_issues_into_root_causes,
     root_cause_count_label,
@@ -339,6 +344,12 @@ def _store_row_from_bucket(bucket: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _apply_priority_layer(queue: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Presentation-only operational priority classification and sort."""
+    enriched = [apply_store_operational_priority(row) for row in queue]
+    return sort_stores_by_operational_priority(enriched)
+
+
 def _finalize_stores(stores: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
     out: list[dict[str, Any]] = []
     for bucket in stores.values():
@@ -348,13 +359,7 @@ def _finalize_stores(stores: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
         row = _store_row_from_bucket(bucket)
         if row.get("has_issues"):
             out.append(row)
-    out.sort(
-        key=lambda s: (
-            _SEVERITY_RANK.get(str(s.get("highest_severity") or "warning"), 99),
-            str(s.get("store_name") or s.get("store_slug") or ""),
-        )
-    )
-    return out
+    return _apply_priority_layer(out)
 
 
 def _build_queue_rows(
@@ -387,17 +392,7 @@ def _build_queue_rows(
             merged[slug] = bucket
 
     rows = [_store_row_from_bucket(b) for b in merged.values()]
-    rows.sort(
-        key=lambda s: (
-            0 if s.get("has_issues") else 1,
-            _SEVERITY_RANK.get(
-                str(s.get("highest_severity") or "healthy"),
-                99 if s.get("has_issues") else 100,
-            ),
-            str(s.get("store_name") or s.get("store_slug") or ""),
-        )
-    )
-    return rows
+    return _apply_priority_layer(rows)
 
 
 def _split_queues(rows: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
@@ -433,9 +428,9 @@ def _build_summary(
 
     prod = _counts(production_queue)
     demo = _counts(demo_test_queue)
-    rc_metrics = summarize_root_causes(
-        [s for s in production_queue if s.get("has_issues")]
-    )
+    affected_prod = [s for s in production_queue if s.get("has_issues")]
+    rc_metrics = summarize_root_causes(affected_prod)
+    prio_metrics = summarize_operational_priority_stores(affected_prod)
     highest = "healthy"
     if prod["affected_count"] > 0:
         for sev in ("critical", "warning", "information"):
@@ -467,6 +462,10 @@ def _build_summary(
         "root_cause_count": rc_metrics["root_cause_count"],
         "critical_root_cause_count": rc_metrics["critical_root_cause_count"],
         "warning_root_cause_count": rc_metrics["warning_root_cause_count"],
+        "critical_priority_store_count": prio_metrics["critical_priority_store_count"],
+        "high_priority_store_count": prio_metrics["high_priority_store_count"],
+        "medium_priority_store_count": prio_metrics["medium_priority_store_count"],
+        "monitoring_store_count": prio_metrics["monitoring_store_count"],
     }
 
 

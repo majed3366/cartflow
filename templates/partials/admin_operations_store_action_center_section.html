@@ -61,15 +61,24 @@
 {% endmacro %}
 
 {% macro store_queue_row(store) %}
+  {% set prio_tone = 'slate' %}
+  {% if store.priority == 'CRITICAL' %}{% set prio_tone = 'rose' %}
+  {% elif store.priority == 'HIGH' %}{% set prio_tone = 'amber' %}
+  {% elif store.priority == 'MEDIUM' %}{% set prio_tone = 'amber' %}
+  {% elif store.priority == 'LOW' %}{% set prio_tone = 'sky' %}{% endif %}
   <details class="group rounded-lg border border-slate-200 bg-white shadow-sm open:border-slate-300">
     <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 marker:content-none [&::-webkit-details-marker]:hidden">
       <div class="min-w-0 flex-1">
-        <p class="text-sm font-semibold text-slate-900">
-          <span>{{ store.severity_emoji }}</span>
-          <span class="ml-1">{{ store.store_name or 'Store' }}</span>
-          <span class="ml-1 font-normal text-slate-500">({{ store.root_cause_count_label or store.issue_count_label }})</span>
+        <p class="text-xs font-semibold
+          {% if prio_tone == 'rose' %}text-rose-800
+          {% elif prio_tone == 'amber' %}text-amber-900
+          {% elif prio_tone == 'sky' %}text-sky-800
+          {% else %}text-slate-700{% endif %}">
+          {{ store.priority_display_en or 'ℹ Monitoring' }}
         </p>
-        <p class="mt-0.5 truncate font-mono text-xs text-slate-500" dir="ltr">{{ store.store_slug or '—' }}</p>
+        <p class="mt-1 text-sm font-semibold text-slate-900">{{ store.store_name or 'Store' }}</p>
+        <p class="mt-0.5 text-sm text-slate-600">{{ store.primary_root_cause_name_en or '—' }}</p>
+        <p class="mt-0.5 truncate font-mono text-xs text-slate-400" dir="ltr">{{ store.store_slug or '—' }}</p>
       </div>
       <span class="shrink-0 text-xs font-medium text-slate-400 group-open:hidden">Expand</span>
       <span class="hidden shrink-0 text-xs font-medium text-slate-400 group-open:inline">Collapse</span>
@@ -121,6 +130,28 @@
     <p class="mt-1 text-sm text-emerald-900">{{ healthy.message_en or 'No production stores currently require intervention.' }}</p>
   </div>
   {% endif %}
+
+  <div class="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+    <p class="text-xs font-medium text-slate-500">Operational priority</p>
+    <dl class="mt-2 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
+      <div>
+        <dt class="text-xs font-medium text-slate-500">Critical Stores</dt>
+        <dd class="mt-0.5 text-lg font-semibold tabular-nums text-rose-700">{{ summary.critical_priority_store_count | default(0) }}</dd>
+      </div>
+      <div>
+        <dt class="text-xs font-medium text-slate-500">High Priority Stores</dt>
+        <dd class="mt-0.5 text-lg font-semibold tabular-nums text-amber-800">{{ summary.high_priority_store_count | default(0) }}</dd>
+      </div>
+      <div>
+        <dt class="text-xs font-medium text-slate-500">Medium Priority Stores</dt>
+        <dd class="mt-0.5 text-lg font-semibold tabular-nums text-amber-700">{{ summary.medium_priority_store_count | default(0) }}</dd>
+      </div>
+      <div>
+        <dt class="text-xs font-medium text-slate-500">Monitoring Stores</dt>
+        <dd class="mt-0.5 text-lg font-semibold tabular-nums text-sky-700">{{ summary.monitoring_store_count | default(0) }}</dd>
+      </div>
+    </dl>
+  </div>
 
   {% set action_queue = sac.production_action_queue or [] %}
 

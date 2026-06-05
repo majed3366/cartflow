@@ -419,6 +419,10 @@ def admin_operations_dashboard(request: Request) -> Any:
                     "root_cause_count": 0,
                     "critical_root_cause_count": 0,
                     "warning_root_cause_count": 0,
+                    "critical_priority_store_count": 0,
+                    "high_priority_store_count": 0,
+                    "medium_priority_store_count": 0,
+                    "monitoring_store_count": 0,
                 },
                 "dev_test": {
                     "demo_stores": 0,
