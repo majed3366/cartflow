@@ -2242,6 +2242,9 @@ def _build_current_issues(alerts: list[dict[str, Any]]) -> dict[str, Any]:
                 "where_en": en.get("where_en"),
                 "action_en": en.get("action_en"),
                 "verification_en": en.get("verification_en"),
+                "investigation_intro_en": en.get("investigation_intro_en"),
+                "investigation_lines_en": en.get("investigation_lines_en") or [],
+                "verification_lines_en": en.get("verification_lines_en") or [],
                 "affected_count": affected,
                 "affected_label_ar": _affected_stores_label_ar(affected),
             }

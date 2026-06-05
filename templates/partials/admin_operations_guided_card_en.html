@@ -15,7 +15,18 @@
   </div>
   <div>
     <dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">Recommended Action</dt>
-    <dd class="mt-1 text-sm font-medium leading-relaxed text-indigo-950">{{ g.action_en or action_en or '—' }}</dd>
+    <dd class="mt-1 text-sm font-medium leading-relaxed text-indigo-950">
+      {{ g.action_en or action_en or '—' }}
+      {% set ilines = g.investigation_lines_en or investigation_lines_en or [] %}
+      {% if ilines %}
+      <p class="mt-2 text-xs font-semibold uppercase tracking-wide text-slate-500">{{ g.investigation_intro_en or investigation_intro_en or 'If unresolved:' }}</p>
+      <ul class="mt-1 list-inside list-disc space-y-0.5 text-sm font-normal text-slate-700">
+        {% for line in ilines %}
+        <li>{{ line }}</li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+    </dd>
   </div>
   <div>
     <dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">Verification</dt>
