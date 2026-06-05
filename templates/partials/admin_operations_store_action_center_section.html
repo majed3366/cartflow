@@ -2,49 +2,25 @@
 {% set summary = sac.summary or {} %}
 {% set dev = sac.dev_test or {} %}
 {% macro root_cause_card(rc) %}
+  {% set signals = rc.affected_signals or [] %}
+  {% set ilines = rc.investigation_lines_en or [] %}
+  {% set vlines = rc.verification_lines_en or [] %}
+  {% set has_technical = (rc.impact_en or signals or ilines) %}
   <div class="rounded-lg border border-slate-100 bg-slate-50/40 px-4 py-4">
     <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">
       <span>{{ rc.severity_emoji }}</span>
       <span class="ml-1">Root Cause</span>
     </p>
     <p class="mt-1 text-base font-semibold text-slate-900">{{ rc.display_name_en or rc.problem_en or '—' }}</p>
+
     <dl class="mt-4 space-y-4">
       <div>
-        <dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">Impact</dt>
-        <dd class="mt-1 text-sm leading-relaxed text-slate-800">{{ rc.impact_en or '—' }}</dd>
-      </div>
-      {% set signals = rc.affected_signals or [] %}
-      {% if signals %}
-      <div>
-        <dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">Affected Signals</dt>
-        <dd class="mt-1">
-          <ul class="list-inside list-disc space-y-0.5 text-sm text-slate-800">
-            {% for signal in signals %}
-            <li>{{ signal }}</li>
-            {% endfor %}
-          </ul>
-        </dd>
-      </div>
-      {% endif %}
-      <div>
-        <dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">Recommended Action</dt>
-        <dd class="mt-1 text-sm font-medium leading-relaxed text-indigo-950">
-          {{ rc.action_en or '—' }}
-          {% set ilines = rc.investigation_lines_en or [] %}
-          {% if ilines %}
-          <p class="mt-2 text-xs font-semibold uppercase tracking-wide text-slate-500">{{ rc.investigation_intro_en or 'If unresolved:' }}</p>
-          <ul class="mt-1 list-inside list-disc space-y-0.5 text-sm font-normal text-slate-700">
-            {% for line in ilines %}
-            <li>{{ line }}</li>
-            {% endfor %}
-          </ul>
-          {% endif %}
-        </dd>
+        <dt class="text-xs font-semibold uppercase tracking-wide text-indigo-700">Recommended Action</dt>
+        <dd class="mt-1 text-sm font-medium leading-relaxed text-indigo-950">{{ rc.action_en or '—' }}</dd>
       </div>
       <div>
-        <dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">Verification</dt>
+        <dt class="text-xs font-semibold uppercase tracking-wide text-emerald-700">Verification</dt>
         <dd class="mt-1 text-sm leading-relaxed text-slate-800">
-          {% set vlines = rc.verification_lines_en or [] %}
           {% if vlines %}
           <ul class="list-inside list-disc space-y-0.5">
             {% for line in vlines %}
@@ -57,6 +33,46 @@
         </dd>
       </div>
     </dl>
+
+    {% if has_technical %}
+    <details class="mt-4 rounded-lg border border-slate-200 bg-white">
+      <summary class="cursor-pointer list-none px-3 py-2.5 text-xs font-semibold text-slate-600 marker:content-none [&::-webkit-details-marker]:hidden">
+        Technical Context
+      </summary>
+      <dl class="space-y-4 border-t border-slate-100 px-3 py-3">
+        {% if rc.impact_en %}
+        <div>
+          <dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">Impact</dt>
+          <dd class="mt-1 text-sm leading-relaxed text-slate-700">{{ rc.impact_en }}</dd>
+        </div>
+        {% endif %}
+        {% if signals %}
+        <div>
+          <dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">Affected Signals</dt>
+          <dd class="mt-1">
+            <ul class="list-inside list-disc space-y-0.5 text-sm text-slate-700">
+              {% for signal in signals %}
+              <li>{{ signal }}</li>
+              {% endfor %}
+            </ul>
+          </dd>
+        </div>
+        {% endif %}
+        {% if ilines %}
+        <div>
+          <dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">{{ rc.investigation_intro_en or 'Investigation hints' }}</dt>
+          <dd class="mt-1">
+            <ul class="list-inside list-disc space-y-0.5 text-sm text-slate-700">
+              {% for line in ilines %}
+              <li>{{ line }}</li>
+              {% endfor %}
+            </ul>
+          </dd>
+        </div>
+        {% endif %}
+      </dl>
+    </details>
+    {% endif %}
   </div>
 {% endmacro %}
 
