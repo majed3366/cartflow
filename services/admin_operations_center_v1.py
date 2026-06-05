@@ -2306,9 +2306,15 @@ def build_admin_operations_command_center_readonly() -> dict[str, Any]:
     )
     # Open issues count aligns with business-language issue cards (presentation only).
     executive_summary["open_issues"] = _safe_int(current_issues.get("total"))
+    from services.admin_operations_critical_alerts_v1 import (  # noqa: PLC0415
+        build_critical_alerts_readonly,
+    )
+
+    critical_alerts = build_critical_alerts_readonly()
     return {
-        "version": "admin_operations_center_v2_2",
+        "version": "admin_operations_center_v2_3",
         "generated_at_utc": _utc_now().isoformat(),
+        "critical_alerts": critical_alerts,
         "executive_summary": executive_summary,
         "current_issues": current_issues,
         "system_health_summary": system_health,

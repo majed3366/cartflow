@@ -181,6 +181,17 @@ _ALERT_RULES: dict[str, dict[str, Any]] = {
             "New cart events appear after test",
         ],
     },
+    "request_health_failure": {
+        "action_en": "Inspect the affected endpoint and confirm it responds successfully.",
+        "investigation_intro_en": "If unresolved:",
+        "investigation_lines_en": [
+            "Open Dashboard Initialization technical details",
+            "Review Request Health diagnostics for the failing stage",
+        ],
+        "verification_lines_en": [
+            "No active failures detected",
+        ],
+    },
 }
 
 # English problem/impact/where for Current Issues cards (presentation-only).
@@ -270,6 +281,11 @@ _ISSUE_EN: dict[str, dict[str, str]] = {
         "problem_en": "No recent cart events detected.",
         "impact_en": "May indicate widget install or integration problems.",
         "where_en": "Cart tracking / storefront widget",
+    },
+    "request_health_failure": {
+        "problem_en": "Critical request failures detected.",
+        "impact_en": "Affected pages or APIs may be unavailable.",
+        "where_en": "Request Health",
     },
 }
 
