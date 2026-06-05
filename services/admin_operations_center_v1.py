@@ -432,6 +432,14 @@ _BUSINESS_ISSUE_COPY_AR: dict[str, dict[str, str]] = {
             "وأن الاسم واللون متطابقان في الثلاثة مصادر."
         ),
     },
+    "dashboard_db_init_slow": {
+        "title_ar": "تهيئة لوحة التاجر أبطأ من المتوقع",
+        "impact_ar": "قد تتأخر تحميل لوحة التاجر أو صفحات التجربة.",
+        "where_ar": "تهيئة لوحة التاجر",
+        "owner_ar": "CartFlow / البنية التحتية",
+        "action_ar": "راجع مراحل تهيئة DB Ready في السجلات ([DB READY STAGE]).",
+        "verification_ar": "تأكد أن آخر مدة تهيئة عادت إلى أقل من 3 ثوانٍ.",
+    },
 }
 
 
@@ -2070,6 +2078,15 @@ def _build_basic_alerts(
 
         bridge_alerts = build_cart_event_bridge_missing_alerts(stores=stores)
         alerts.extend(bridge_alerts)
+    except Exception:  # noqa: BLE001
+        pass
+
+    try:
+        from services.db_ready_admin_v1 import build_db_ready_admin_alert  # noqa: PLC0415
+
+        db_ready_alert = build_db_ready_admin_alert()
+        if db_ready_alert:
+            alerts.append(db_ready_alert)
     except Exception:  # noqa: BLE001
         pass
 

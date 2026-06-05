@@ -1,0 +1,68 @@
+{% set h = health %}
+{% set v = h.verification or {} %}
+{% set t = h.technical or {} %}
+<div class="space-y-5" data-db-ready-root>
+  <section class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+    <div class="flex flex-wrap items-start justify-between gap-3">
+      <div>
+        <h3 class="text-base font-semibold text-slate-900">Dashboard Initialization</h3>
+        <p class="mt-1 text-sm text-slate-600">{{ h.problem_en or 'Dashboard initialization health' }}</p>
+      </div>
+      <span class="inline-flex items-center gap-1 rounded-full border px-3 py-1 text-sm font-medium
+        {% if h.status == 'blocking' %}border-rose-200 bg-rose-50 text-rose-800
+        {% elif h.status == 'slow' %}border-amber-200 bg-amber-50 text-amber-900
+        {% else %}border-emerald-200 bg-emerald-50 text-emerald-800{% endif %}">
+        {{ h.status_emoji or '🟢' }} {{ h.status_label or 'Healthy' }}
+      </span>
+    </div>
+
+    <dl class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div class="rounded-lg border border-slate-100 bg-slate-50/80 px-3 py-2.5">
+        <dt class="text-xs font-medium text-slate-500">Impact</dt>
+        <dd class="mt-1 text-sm text-slate-800">{{ h.impact_en or '—' }}</dd>
+      </div>
+      <div class="rounded-lg border border-slate-100 bg-slate-50/80 px-3 py-2.5">
+        <dt class="text-xs font-medium text-slate-500">Where</dt>
+        <dd class="mt-1 text-sm text-slate-800">{{ h.where_en or '—' }}</dd>
+      </div>
+      <div class="rounded-lg border border-slate-100 bg-slate-50/80 px-3 py-2.5">
+        <dt class="text-xs font-medium text-slate-500">Suggested action</dt>
+        <dd class="mt-1 text-sm text-slate-800">{{ h.action_en or '—' }}</dd>
+      </div>
+      <div class="rounded-lg border border-slate-100 bg-slate-50/80 px-3 py-2.5">
+        <dt class="text-xs font-medium text-slate-500">Last success</dt>
+        <dd class="mt-1 text-sm font-medium {% if v.last_success %}text-emerald-800{% else %}text-rose-800{% endif %}">
+          {% if v.last_success %}Yes{% else %}No{% if v.last_failure %}: {{ v.last_failure }}{% endif %}{% endif %}
+        </dd>
+      </div>
+    </dl>
+
+    <div class="mt-4 grid gap-3 sm:grid-cols-3">
+      <div class="rounded-lg border border-slate-100 px-3 py-2.5">
+        <dt class="text-xs font-medium text-slate-500">Last duration</dt>
+        <dd class="mt-1 text-lg font-semibold tabular-nums text-slate-900">{{ v.last_duration_ms | default(0) }} ms</dd>
+      </div>
+      <div class="rounded-lg border border-slate-100 px-3 py-2.5">
+        <dt class="text-xs font-medium text-slate-500">Average duration</dt>
+        <dd class="mt-1 text-lg font-semibold tabular-nums text-slate-900">{{ v.avg_duration_ms | default(0) }} ms</dd>
+      </div>
+      <div class="rounded-lg border border-slate-100 px-3 py-2.5">
+        <dt class="text-xs font-medium text-slate-500">Worst duration</dt>
+        <dd class="mt-1 text-lg font-semibold tabular-nums text-slate-900">{{ v.worst_duration_ms | default(0) }} ms</dd>
+      </div>
+    </div>
+
+    <details class="mt-4 rounded-lg border border-slate-100 bg-slate-50/50 px-4 py-3">
+      <summary class="cursor-pointer text-sm font-medium text-slate-700">Technical details</summary>
+      <dl class="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+        <div><dt class="inline text-slate-500">last_trace_id:</dt> <dd class="inline font-mono text-slate-800">{{ t.last_trace_id or '—' }}</dd></div>
+        <div><dt class="inline text-slate-500">last_stage:</dt> <dd class="inline font-mono text-slate-800">{{ t.last_stage or '—' }}</dd></div>
+        <div><dt class="inline text-slate-500">last_duration_ms:</dt> <dd class="inline tabular-nums text-slate-800">{{ t.last_duration_ms | default(0) }}</dd></div>
+        <div><dt class="inline text-slate-500">lock_wait_ms:</dt> <dd class="inline tabular-nums text-slate-800">{{ t.lock_wait_ms | default(0) }}</dd></div>
+        <div><dt class="inline text-slate-500">query_count:</dt> <dd class="inline tabular-nums text-slate-800">{{ t.query_count | default(0) }}</dd></div>
+        <div><dt class="inline text-slate-500">total_sql_ms:</dt> <dd class="inline tabular-nums text-slate-800">{{ t.total_sql_ms | default(0) }}</dd></div>
+        <div class="sm:col-span-2"><dt class="inline text-slate-500">last_seen_at:</dt> <dd class="inline text-slate-800">{{ t.last_seen_at or '—' }}</dd></div>
+      </dl>
+    </details>
+  </section>
+</div>

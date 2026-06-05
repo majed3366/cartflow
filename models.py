@@ -589,3 +589,32 @@ class OperationalControlSnapshot(Base):
         onupdate=lambda: datetime.now(timezone.utc),
         nullable=False,
     )
+
+
+class DbReadyOperationalSnapshot(Base):
+    """
+    Lightweight DB ready timing snapshot — singleton row (id=1).
+    Survives restart; used by Admin Operations dashboard health.
+    """
+
+    __tablename__ = "db_ready_operational_snapshots"
+
+    id = Column(Integer, primary_key=True)
+    last_duration_ms = Column(Float, default=0.0, nullable=False)
+    worst_duration_ms = Column(Float, default=0.0, nullable=False)
+    avg_duration_ms = Column(Float, default=0.0, nullable=False)
+    sample_count = Column(Integer, default=0, nullable=False)
+    last_stage = Column(String(64), nullable=True)
+    last_trace_id = Column(String(16), nullable=True)
+    last_lock_wait_ms = Column(Float, default=0.0, nullable=False)
+    last_query_count = Column(Integer, default=0, nullable=False)
+    last_sql_ms = Column(Float, default=0.0, nullable=False)
+    last_success = Column(Boolean, default=True, nullable=False)
+    last_failure_message = Column(String(255), nullable=True)
+    status = Column(String(16), nullable=False, default="healthy")
+    last_seen_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )

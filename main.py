@@ -1513,71 +1513,106 @@ def _ensure_cartflow_api_db_warmed() -> None:
     مرة واحدة لكل عملية: ‎create_all‎ + مخطط الودجت/المتجر + أعمدة أسباب الاسترجاع + ‎Store‎ الافتراضي.
     يُستدعى من مسارات ‎cart-event‎ ومساعداتها لتجنّب آلاف أوامر ‎inspector/DDL‎ المتكررة.
     """
-    global _cartflow_api_db_warmed
-    if _cartflow_api_db_warmed:
-        return
-    with _cartflow_api_db_warm_lock:
+    from services.db_ready_diag_v1 import (  # noqa: PLC0415
+        db_ready_log_stage,
+        db_ready_run,
+        db_ready_stage,
+        db_ready_trace_active,
+        db_ready_instrumented_lock,
+    )
+
+    def _warm_body() -> None:
+        global _cartflow_api_db_warmed
         if _cartflow_api_db_warmed:
+            db_ready_log_stage("warm_already_done")
             return
-        try:
-            db.create_all()
-            from schema_production_store_bootstrap import ensure_production_store_schema
+        with db_ready_instrumented_lock(_cartflow_api_db_warm_lock, "db_warm"):
+            if _cartflow_api_db_warmed:
+                db_ready_log_stage("warm_double_check_hit")
+                return
+            try:
+                with db_ready_stage("create_all"):
+                    db.create_all()
+                with db_ready_stage("production_schema"):
+                    from schema_production_store_bootstrap import ensure_production_store_schema
 
-            schema_ok = ensure_production_store_schema(db, context="startup")
-            _ensure_store_widget_schema()
-            from schema_widget import (
-                ensure_cart_recovery_reason_phone_schema,
-                ensure_cart_recovery_reason_rejection_schema,
-            )
+                    schema_ok = ensure_production_store_schema(db, context="startup")
+                with db_ready_stage("widget_schema"):
+                    _ensure_store_widget_schema()
+                with db_ready_stage("reason_phone_schema"):
+                    from schema_widget import ensure_cart_recovery_reason_phone_schema
 
-            ensure_cart_recovery_reason_phone_schema(db)
-            ensure_cart_recovery_reason_rejection_schema(db)
-            _ensure_default_store_for_recovery()
-            from services.recovery_store_lookup import (
-                ensure_widget_recovery_store_rows_on_warm,
-            )
+                    ensure_cart_recovery_reason_phone_schema(db)
+                with db_ready_stage("reason_rejection_schema"):
+                    from schema_widget import ensure_cart_recovery_reason_rejection_schema
 
-            ensure_widget_recovery_store_rows_on_warm()
-            from schema_store_identity import ensure_store_identity_schema
+                    ensure_cart_recovery_reason_rejection_schema(db)
+                with db_ready_stage("default_store"):
+                    _ensure_default_store_for_recovery()
+                with db_ready_stage("widget_recovery_rows"):
+                    from services.recovery_store_lookup import (
+                        ensure_widget_recovery_store_rows_on_warm,
+                    )
 
-            ensure_store_identity_schema(db)
-            from services.store_identity_v1 import (
-                backfill_store_identity_aliases_from_stores,
-                sync_connected_platform_identities,
-            )
+                    ensure_widget_recovery_store_rows_on_warm()
+                with db_ready_stage("store_identity_schema"):
+                    from schema_store_identity import ensure_store_identity_schema
 
-            backfill_store_identity_aliases_from_stores()
-            sync_connected_platform_identities()
-            from schema_recovery_message_context import (
-                ensure_recovery_message_context_schema,
-            )
+                    ensure_store_identity_schema(db)
+                with db_ready_stage("identity_backfill"):
+                    from services.store_identity_v1 import (
+                        backfill_store_identity_aliases_from_stores,
+                    )
 
-            ensure_recovery_message_context_schema(db)
-            from schema_recovery_truth_timeline import (  # noqa: PLC0415
-                ensure_recovery_truth_timeline_schema,
-            )
+                    backfill_store_identity_aliases_from_stores()
+                with db_ready_stage("platform_sync"):
+                    from services.store_identity_v1 import sync_connected_platform_identities
 
-            ensure_recovery_truth_timeline_schema(db)
-            _cartflow_api_db_warmed = schema_ok
-            if not schema_ok:
-                log.error(
-                    "cartflow api db warm: production store schema not verified — "
-                    "see [PRODUCTION DB SCHEMA] and scripts/production_store_schema_repair.sql"
-                )
-        except Exception as e:  # noqa: BLE001
-            db.session.rollback()
-            log.warning("cartflow api db warm failed (will retry later): %s", e)
+                    sync_connected_platform_identities()
+                with db_ready_stage("recovery_message_context"):
+                    from schema_recovery_message_context import (
+                        ensure_recovery_message_context_schema,
+                    )
+
+                    ensure_recovery_message_context_schema(db)
+                with db_ready_stage("recovery_truth_timeline"):
+                    from schema_recovery_truth_timeline import (  # noqa: PLC0415
+                        ensure_recovery_truth_timeline_schema,
+                    )
+
+                    ensure_recovery_truth_timeline_schema(db)
+                _cartflow_api_db_warmed = schema_ok
+                if not schema_ok:
+                    log.error(
+                        "cartflow api db warm: production store schema not verified — "
+                        "see [PRODUCTION DB SCHEMA] and scripts/production_store_schema_repair.sql"
+                    )
+            except Exception as e:  # noqa: BLE001
+                db.session.rollback()
+                log.warning("cartflow api db warm failed (will retry later): %s", e)
+
+    if db_ready_trace_active():
+        _warm_body()
+    else:
+        with db_ready_run(source="warm"):
+            _warm_body()
 
 
 @_normal_carts_query_prof_wrap("_merchant_dashboard_db_ready")
 def _merchant_dashboard_db_ready() -> None:
     """لوحة التاجر: لا ‎create_all‎ في المسار الساخن — التدفئة عند الإقلاع فقط."""
     from schema_production_store_bootstrap import ensure_production_store_schema
+    from services.db_ready_diag_v1 import (  # noqa: PLC0415
+        db_ready_run,
+        db_ready_stage,
+    )
 
-    if _cartflow_api_db_warmed:
-        ensure_production_store_schema(db, context="dashboard")
-        return
-    _ensure_cartflow_api_db_warmed()
+    with db_ready_run(source="dashboard"):
+        if _cartflow_api_db_warmed:
+            with db_ready_stage("schema_verify"):
+                ensure_production_store_schema(db, context="dashboard")
+            return
+        _ensure_cartflow_api_db_warmed()
 
 
 def _merge_recovery_settings_post_body(body: Dict[str, Any]) -> Dict[str, Any]:

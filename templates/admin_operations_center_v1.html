@@ -113,6 +113,19 @@
   </section>
   {% endif %}
 
+  <!-- DASHBOARD DB READY — Request / initialization health (lazy) -->
+  <details id="ops-db-ready-panel" class="group rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 marker:content-none [&::-webkit-details-marker]:hidden">
+      <div>
+        <span class="text-base font-semibold text-slate-900">Dashboard Initialization (Request Health)</span>
+        <span class="mt-0.5 block text-sm text-slate-500">DB Ready stage timing — root-cause isolation (read-only)</span>
+      </div>
+      <span class="shrink-0 text-xs font-medium text-slate-500 group-open:hidden">عرض</span>
+      <span class="hidden shrink-0 text-xs font-medium text-slate-500 group-open:inline">إخفاء</span>
+    </summary>
+    <div id="ops-db-ready-content" class="border-t border-slate-100 px-5 py-4" data-lazy-state="idle" hidden></div>
+  </details>
+
   <!-- WIDGET HEALTH — Operations & Observability (lazy) -->
   <details id="ops-widget-health-panel" class="group rounded-2xl border border-slate-200 bg-white shadow-sm">
     <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 marker:content-none [&::-webkit-details-marker]:hidden">
@@ -177,6 +190,39 @@
     للأدوات التقنية (JSON، مفاتيح، عدّادات داخلية):
     <a href="/admin/diagnostics" class="text-indigo-700 underline decoration-indigo-200 underline-offset-2">تشخيص الدعم (للدعم فقط)</a>
   </p>
+
+  <script>
+  // Dashboard DB Ready health — lazy section (read-only observability).
+  (function () {
+    var LOAD_ERROR = '<p class="text-sm text-rose-700 py-6 text-center">Failed to load this section.</p>';
+    var LOADING = '<p class="text-sm text-slate-500 py-6 text-center">Loading...</p>';
+    var panel = document.getElementById('ops-db-ready-panel');
+    var container = document.getElementById('ops-db-ready-content');
+    if (!panel || !container) return;
+    var loaded = false;
+    var loading = false;
+    panel.addEventListener('toggle', function () {
+      if (!panel.open) return;
+      container.hidden = false;
+      if (loaded || loading) return;
+      loading = true;
+      container.setAttribute('data-lazy-state', 'loading');
+      container.innerHTML = LOADING;
+      fetch('/admin/operations/section/db-ready-health', { credentials: 'same-origin', headers: { Accept: 'text/html' } })
+        .then(function (res) { if (!res.ok) throw new Error('load failed'); return res.text(); })
+        .then(function (html) {
+          container.innerHTML = html;
+          container.setAttribute('data-lazy-state', 'loaded');
+          loaded = true;
+        })
+        .catch(function () {
+          container.innerHTML = LOAD_ERROR;
+          container.setAttribute('data-lazy-state', 'error');
+        })
+        .finally(function () { loading = false; });
+    });
+  })();
+  </script>
 
   <script>
   // Widget Health UX V2/V3 — UI-only, additive filters + grouped-issue counts

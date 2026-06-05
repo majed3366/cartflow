@@ -106,53 +106,71 @@ def ensure_production_store_schema(db: Any, *, context: str = "startup") -> bool
     Returns True only when verification passes (never caches a failed run).
     """
     global _bootstrap_verified_ok
+    from services.db_ready_diag_v1 import (  # noqa: PLC0415
+        db_ready_instrumented_lock,
+        db_ready_stage,
+        db_ready_trace_active,
+    )
+
     if _bootstrap_verified_ok:
-        status = verify_production_store_schema(db)
+        with db_ready_stage("schema_verify_cached"):
+            status = verify_production_store_schema(db)
         return bool(status.get("ok"))
 
-    with _bootstrap_lock:
+    def _bootstrap_body() -> bool:
+        global _bootstrap_verified_ok
         if _bootstrap_verified_ok:
-            status = verify_production_store_schema(db)
+            with db_ready_stage("schema_verify_cached"):
+                status = verify_production_store_schema(db)
             return bool(status.get("ok"))
 
         log_production_database_identity(context=context)
 
-        from schema_merchant_auth import (
-            ensure_merchant_auth_schema,
-            log_merchant_auth_schema_status,
-        )
-        from schema_zid_dev_oauth import (
-            ensure_store_zid_integration_schema,
-            log_store_zid_integration_schema_status,
-        )
-        from schema_zid_widget_install import (
-            ensure_store_zid_widget_install_schema,
-            log_store_zid_widget_install_schema_status,
-        )
-        from schema_storefront_runtime_truth import (
-            ensure_storefront_runtime_truth_schema,
-            verify_storefront_runtime_truth_schema,
-        )
+        with db_ready_stage("bootstrap_merchant_auth"):
+            from schema_merchant_auth import (
+                ensure_merchant_auth_schema,
+                log_merchant_auth_schema_status,
+            )
 
-        ensure_merchant_auth_schema(db)
-        log_merchant_auth_schema_status(db, context=context)
-        from schema_store_identity import (
-            ensure_store_identity_schema,
-            log_store_identity_schema_status,
-            verify_store_identity_schema,
-        )
+            ensure_merchant_auth_schema(db)
+            log_merchant_auth_schema_status(db, context=context)
+        with db_ready_stage("bootstrap_store_identity"):
+            from schema_store_identity import (
+                ensure_store_identity_schema,
+                log_store_identity_schema_status,
+                verify_store_identity_schema,
+            )
 
-        ensure_store_identity_schema(db)
-        log_store_identity_schema_status(db, context=context)
-        zid_ok = ensure_store_zid_integration_schema(db)
-        zid_status = log_store_zid_integration_schema_status(db, context=context)
-        widget_ok = ensure_store_zid_widget_install_schema(db)
-        log_store_zid_widget_install_schema_status(db, context=context)
-        truth_ok = ensure_storefront_runtime_truth_schema(db)
+            ensure_store_identity_schema(db)
+            log_store_identity_schema_status(db, context=context)
+        with db_ready_stage("bootstrap_zid_integration"):
+            from schema_zid_dev_oauth import (
+                ensure_store_zid_integration_schema,
+                log_store_zid_integration_schema_status,
+            )
 
-        status = verify_production_store_schema(db)
-        identity_ok = bool(verify_store_identity_schema(db).get("ok"))
-        ok = bool(status.get("ok")) and zid_ok and widget_ok and identity_ok and truth_ok
+            zid_ok = ensure_store_zid_integration_schema(db)
+            zid_status = log_store_zid_integration_schema_status(db, context=context)
+        with db_ready_stage("bootstrap_widget_install"):
+            from schema_zid_widget_install import (
+                ensure_store_zid_widget_install_schema,
+                log_store_zid_widget_install_schema_status,
+            )
+
+            widget_ok = ensure_store_zid_widget_install_schema(db)
+            log_store_zid_widget_install_schema_status(db, context=context)
+        with db_ready_stage("bootstrap_storefront_truth"):
+            from schema_storefront_runtime_truth import (
+                ensure_storefront_runtime_truth_schema,
+                verify_storefront_runtime_truth_schema,
+            )
+
+            truth_ok = ensure_storefront_runtime_truth_schema(db)
+
+        with db_ready_stage("schema_verify"):
+            status = verify_production_store_schema(db)
+            identity_ok = bool(verify_store_identity_schema(db).get("ok"))
+            ok = bool(status.get("ok")) and zid_ok and widget_ok and identity_ok and truth_ok
         tag = "[PRODUCTION DB SCHEMA]"
         if ok:
             _bootstrap_verified_ok = True
@@ -177,6 +195,12 @@ def ensure_production_store_schema(db: Any, *, context: str = "startup") -> bool
                 tag,
             )
         return ok
+
+    if db_ready_trace_active():
+        with db_ready_instrumented_lock(_bootstrap_lock, "bootstrap"):
+            return _bootstrap_body()
+    with _bootstrap_lock:
+        return _bootstrap_body()
 
 
 def ensure_production_store_schema_before_request(db: Any) -> None:

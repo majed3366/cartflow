@@ -656,6 +656,28 @@ def _widget_health_needs_attention(stores: Any) -> list[dict[str, Any]]:
     return rows
 
 
+@router.get("/admin/operations/section/db-ready-health", response_class=HTMLResponse)
+def admin_operations_section_db_ready_health(request: Request) -> Any:
+    denied = _admin_session_or_redirect(
+        request, next_path="/admin/operations/section/db-ready-health"
+    )
+    if denied is not None:
+        return denied
+    try:
+        from services.db_ready_admin_v1 import (  # noqa: PLC0415
+            build_admin_db_ready_health_section_readonly,
+        )
+
+        health = build_admin_db_ready_health_section_readonly()
+    except Exception:  # noqa: BLE001
+        return HTMLResponse(_OPS_LAZY_SECTION_ERROR_HTML, status_code=500)
+    return templates.TemplateResponse(
+        request,
+        "partials/admin_operations_db_ready_section.html",
+        {"health": health},
+    )
+
+
 @router.get("/admin/operations/section/widget-health", response_class=HTMLResponse)
 def admin_operations_section_widget_health(request: Request) -> Any:
     denied = _admin_session_or_redirect(
