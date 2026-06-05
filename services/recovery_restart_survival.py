@@ -1690,13 +1690,21 @@ async def resume_one_schedule(
             _log_resume_blocked(row.recovery_key, reason)
         else:
             _log_resume_skipped(row.recovery_key, reason)
-        finalize_recovery_schedule_durable(
-            row.recovery_key,
-            status=STATUS_SKIPPED_RESUME,
-            multi_slot_index=row.multi_slot_index if row.multi_slot_index >= 0 else None,
-            sequential_attempt_index=row.sequential_attempt_index,
-            detail=reason,
-        )
+        prev_status = (row.status or "").strip()
+        if prev_status == STATUS_SCHEDULED:
+            _mark_schedule_row_terminal_from_scheduled(
+                row,
+                status=STATUS_SKIPPED_RESUME,
+                detail=reason,
+            )
+        else:
+            finalize_recovery_schedule_durable(
+                row.recovery_key,
+                status=STATUS_SKIPPED_RESUME,
+                multi_slot_index=row.multi_slot_index if row.multi_slot_index >= 0 else None,
+                sequential_attempt_index=row.sequential_attempt_index,
+                detail=reason,
+            )
         return {"recovery_key": row.recovery_key, "dispatched": False, "reason": reason}
 
     if not dispatch:
