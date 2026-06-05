@@ -3,7 +3,8 @@
 Targeted operational control v1 — additive gates (no lifecycle/queue/recovery logic changes).
 
 Isolate failing components: pause WA, scheduling, store, reason, continuation, provider.
-Everything disabled by default; in-process state (per worker until shared store added).
+Everything disabled by default; durable singleton DB snapshot shared across workers
+(operational_control_store_v1) with in-process cache reloaded before gate reads.
 """
 from __future__ import annotations
 
@@ -64,6 +65,7 @@ class GateEvaluation:
 
 _state = OperationalControlState()
 _events: Deque[dict[str, Any]] = deque(maxlen=_MAX_EVENTS)
+_db_cache_updated_at: Optional[datetime] = None
 
 
 def _utc_now_iso() -> str:
@@ -83,7 +85,53 @@ def _norm_provider(provider: Optional[str]) -> str:
     return p if p in KNOWN_PROVIDERS else "twilio"
 
 
+def _hydrate_state_from_dict(data: dict[str, Any]) -> OperationalControlState:
+    return OperationalControlState(
+        platform_wa_paused=bool(data.get("platform_wa_paused")),
+        platform_schedule_paused=bool(data.get("platform_schedule_paused")),
+        platform_continuation_paused=bool(data.get("platform_continuation_paused")),
+        provider_paused=bool(data.get("provider_paused")),
+        provider_id=data.get("provider_id"),
+        paused_stores=set(data.get("paused_stores") or []),
+        paused_reasons=set(data.get("paused_reasons") or []),
+    )
+
+
+def _ensure_state_fresh_from_db() -> None:
+    """Reload in-process cache when durable snapshot is newer (shared across workers)."""
+    global _state, _db_cache_updated_at
+    try:
+        from services.operational_control_store_v1 import load_durable_operational_control
+
+        data, db_updated = load_durable_operational_control()
+        if data is None:
+            return
+        if db_updated is not None and _db_cache_updated_at == db_updated:
+            return
+        with _CONTROL_LOCK:
+            if db_updated is not None and _db_cache_updated_at == db_updated:
+                return
+            _state = _hydrate_state_from_dict(data)
+            _db_cache_updated_at = db_updated
+    except Exception as exc:  # noqa: BLE001
+        log.warning("operational control db refresh failed: %s", exc)
+
+
+def _persist_state_to_db() -> None:
+    global _db_cache_updated_at
+    try:
+        from services.operational_control_store_v1 import persist_durable_operational_control
+
+        with _CONTROL_LOCK:
+            updated = persist_durable_operational_control(_state)
+        if updated is not None:
+            _db_cache_updated_at = updated
+    except Exception as exc:  # noqa: BLE001
+        log.warning("operational control db persist failed: %s", exc)
+
+
 def get_operational_control_state() -> dict[str, Any]:
+    _ensure_state_fresh_from_db()
     with _CONTROL_LOCK:
         st = _state
         return {
@@ -108,10 +156,30 @@ def get_operational_control_state() -> dict[str, Any]:
 
 
 def clear_operational_control_state_for_tests() -> None:
-    global _state
+    global _state, _db_cache_updated_at
     with _CONTROL_LOCK:
         _state = OperationalControlState()
         _events.clear()
+        _db_cache_updated_at = None
+    try:
+        from schema_operational_control import reset_operational_control_schema_guard_for_tests
+        from services.operational_control_store_v1 import (
+            reset_durable_operational_control_for_tests,
+        )
+
+        reset_operational_control_schema_guard_for_tests()
+        reset_durable_operational_control_for_tests()
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def simulate_operational_control_process_restart_for_tests() -> None:
+    """Drop in-process cache only — mimics worker restart; durable row must survive."""
+    global _state, _db_cache_updated_at
+    with _CONTROL_LOCK:
+        _state = OperationalControlState()
+        _events.clear()
+        _db_cache_updated_at = None
 
 
 def _emit_control_event(
@@ -183,6 +251,7 @@ def evaluate_wa_send_allowed(
     store_slug: Optional[str] = None,
     reason_tag: Optional[str] = None,
 ) -> GateEvaluation:
+    _ensure_state_fresh_from_db()
     with _CONTROL_LOCK:
         if _state.platform_wa_paused:
             return GateEvaluation(
@@ -225,6 +294,7 @@ def evaluate_schedule_creation_allowed(
 ) -> GateEvaluation:
     if not is_new_row:
         return GateEvaluation(allowed=True, flag_name="schedule_creation_allowed")
+    _ensure_state_fresh_from_db()
     with _CONTROL_LOCK:
         if _state.platform_schedule_paused:
             return GateEvaluation(
@@ -251,6 +321,7 @@ def evaluate_schedule_creation_allowed(
 
 
 def evaluate_continuation_allowed(*, store_slug: Optional[str] = None) -> GateEvaluation:
+    _ensure_state_fresh_from_db()
     with _CONTROL_LOCK:
         if _state.platform_continuation_paused:
             return GateEvaluation(
@@ -275,6 +346,7 @@ def evaluate_provider_send(
 ) -> GateEvaluation:
     """Provider pause blocks real provider path; mock/fallback remains visible in response."""
     prov = _norm_provider(provider)
+    _ensure_state_fresh_from_db()
     with _CONTROL_LOCK:
         if not _state.provider_paused:
             return GateEvaluation(allowed=True, flag_name="provider_send_allowed")
@@ -389,6 +461,7 @@ def apply_operational_control(
             st.provider_paused = bool(enabled)
             st.provider_id = _norm_provider(provider) if enabled else None
 
+    _persist_state_to_db()
     _emit_control_event(
         operator=operator,
         reason=reason,
@@ -459,6 +532,7 @@ def resume_operational_control(
             elif tgt == "all":
                 st.paused_reasons.clear()
 
+    _persist_state_to_db()
     _emit_control_event(
         operator=operator,
         reason=reason,
@@ -486,6 +560,7 @@ def preview_state_after(
 ) -> OperationalControlState:
     import copy
 
+    _ensure_state_fresh_from_db()
     with _CONTROL_LOCK:
         st = copy.deepcopy(_state)
     if control == CONTROL_PAUSE_WA:
@@ -518,6 +593,7 @@ def build_operational_control_verification(
 ) -> dict[str, Any]:
     """Post-control impact: stores, in-flight schedules, runtime flags."""
     if preview_apply is None:
+        _ensure_state_fresh_from_db()
         with _CONTROL_LOCK:
             import copy
 

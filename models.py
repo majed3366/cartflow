@@ -565,3 +565,27 @@ class PurchaseTruthRecord(Base):
         onupdate=lambda: datetime.now(timezone.utc),
         nullable=False,
     )
+
+
+class OperationalControlSnapshot(Base):
+    """
+    Durable platform operational controls — singleton row (id=1).
+    Survives process restart and is shared across workers.
+    """
+
+    __tablename__ = "operational_control_snapshots"
+
+    id = Column(Integer, primary_key=True)
+    platform_wa_paused = Column(Boolean, default=False, nullable=False)
+    platform_schedule_paused = Column(Boolean, default=False, nullable=False)
+    platform_continuation_paused = Column(Boolean, default=False, nullable=False)
+    provider_paused = Column(Boolean, default=False, nullable=False)
+    provider_id = Column(String(32), nullable=True)
+    paused_stores_json = Column(Text, nullable=False, default="[]")
+    paused_reasons_json = Column(Text, nullable=False, default="[]")
+    updated_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )

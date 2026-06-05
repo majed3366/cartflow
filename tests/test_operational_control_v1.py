@@ -5,6 +5,9 @@ from __future__ import annotations
 import unittest
 from unittest.mock import patch
 
+import main  # noqa: F401 — app/db context for durable snapshot tests
+from extensions import db
+from models import OperationalControlSnapshot
 from services.operational_control_v1 import (
     CONTROL_PAUSE_CONTINUATION,
     CONTROL_PAUSE_REASON,
@@ -19,11 +22,13 @@ from services.operational_control_v1 import (
     get_operational_control_state,
     operational_control_blocks_whatsapp_send,
     resume_operational_control,
+    simulate_operational_control_process_restart_for_tests,
 )
 
 
 class OperationalControlV1Tests(unittest.TestCase):
     def setUp(self) -> None:
+        db.create_all()
         clear_operational_control_state_for_tests()
 
     def tearDown(self) -> None:
@@ -152,6 +157,37 @@ class OperationalControlV1Tests(unittest.TestCase):
         self.assertIn("affected_stores", v)
         self.assertIn("affected_recoveries", v)
         self.assertIn("runtime_impact", v)
+
+    def test_pause_wa_survives_process_restart(self) -> None:
+        with patch("builtins.print"):
+            apply_operational_control(
+                control=CONTROL_PAUSE_WA,
+                enabled=True,
+                operator="tester",
+                reason="incident",
+            )
+        row = db.session.get(OperationalControlSnapshot, 1)
+        self.assertIsNotNone(row)
+        self.assertTrue(row.platform_wa_paused)
+
+        simulate_operational_control_process_restart_for_tests()
+        self.assertFalse(evaluate_wa_send_allowed().allowed)
+        blocked = operational_control_blocks_whatsapp_send(store_slug="demo")
+        self.assertIsNotNone(blocked)
+        self.assertEqual(blocked.get("error"), "platform_wa_paused")
+
+    def test_pause_store_survives_process_restart(self) -> None:
+        with patch("builtins.print"):
+            apply_operational_control(
+                control=CONTROL_PAUSE_STORE,
+                enabled=True,
+                store_slug="shop-a",
+                operator="tester",
+                reason="store_issue",
+            )
+        simulate_operational_control_process_restart_for_tests()
+        self.assertFalse(evaluate_wa_send_allowed(store_slug="shop-a").allowed)
+        self.assertTrue(evaluate_wa_send_allowed(store_slug="shop-b").allowed)
 
 
 if __name__ == "__main__":
