@@ -266,7 +266,9 @@ class MerchantSentRecoveryCartsVisibleE2ETests(unittest.TestCase):
         db.session.add(ac)
         db.session.commit()
 
-        with patch("main._dashboard_recovery_store_row", return_value=st):
+        with patch("main._merchant_dashboard_db_ready"), patch(
+            "main._dashboard_recovery_store_row", return_value=st
+        ):
             before = _merchant_dashboard_refresh_state_payload(st)
             r_before = self._client.get("/api/dashboard/refresh-state")
         self.assertEqual(r_before.status_code, 200)
@@ -291,7 +293,9 @@ class MerchantSentRecoveryCartsVisibleE2ETests(unittest.TestCase):
         )
         db.session.commit()
 
-        with patch("main._dashboard_recovery_store_row", return_value=st):
+        with patch("main._merchant_dashboard_db_ready"), patch(
+            "main._dashboard_recovery_store_row", return_value=st
+        ):
             after = _merchant_dashboard_refresh_state_payload(st)
             r_after = self._client.get("/api/dashboard/refresh-state")
             carts_body, _ = _api_json_dashboard_normal_carts(st)
