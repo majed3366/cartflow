@@ -1,0 +1,35 @@
+{# Operations-first card: Problem → Impact → Where → Recommended Action → Verification #}
+{% set g = guided or {} %}
+<dl class="mt-4 space-y-4">
+  <div>
+    <dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">Problem</dt>
+    <dd class="mt-1 text-sm leading-relaxed text-slate-900">{{ g.problem_en or problem_en or '—' }}</dd>
+  </div>
+  <div>
+    <dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">Impact</dt>
+    <dd class="mt-1 text-sm leading-relaxed text-slate-800">{{ g.impact_en or impact_en or '—' }}</dd>
+  </div>
+  <div>
+    <dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">Where</dt>
+    <dd class="mt-1 text-sm leading-relaxed text-slate-800">{{ g.where_en or where_en or '—' }}</dd>
+  </div>
+  <div>
+    <dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">Recommended Action</dt>
+    <dd class="mt-1 text-sm font-medium leading-relaxed text-indigo-950">{{ g.action_en or action_en or '—' }}</dd>
+  </div>
+  <div>
+    <dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">Verification</dt>
+    <dd class="mt-1 text-sm leading-relaxed text-slate-800">
+      {% set vlines = g.verification_lines_en or verification_lines_en or [] %}
+      {% if vlines %}
+      <ul class="list-inside list-disc space-y-0.5">
+        {% for line in vlines %}
+        <li>{{ line }}</li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      {{ g.verification_en or verification_en or '—' }}
+      {% endif %}
+    </dd>
+  </div>
+</dl>

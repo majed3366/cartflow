@@ -542,6 +542,11 @@ def _widget_health_issue_groups(issues: Any) -> list[dict[str, Any]]:
         kind = it.get("kind")
         grp = groups.get(kind)
         if grp is None:
+            from services.admin_operations_action_engine_v1 import (  # noqa: PLC0415
+                resolve_widget_issue_guidance,
+            )
+
+            en = resolve_widget_issue_guidance(str(kind or ""))
             grp = {
                 "kind": kind,
                 "severity": it.get("severity"),
@@ -551,6 +556,11 @@ def _widget_health_issue_groups(issues: Any) -> list[dict[str, Any]]:
                 "impact_ar": it.get("impact_ar"),
                 "suggested_action_ar": it.get("suggested_action_ar"),
                 "verification_ar": it.get("verification_ar"),
+                "problem_en": en.get("problem_en"),
+                "impact_en": en.get("impact_en"),
+                "where_en": en.get("where_en"),
+                "suggested_action_en": en.get("suggested_action_en"),
+                "verification_en": en.get("verification_en"),
                 "stores": [],
             }
             groups[kind] = grp

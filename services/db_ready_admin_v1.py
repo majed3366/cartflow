@@ -14,6 +14,7 @@ from services.db_ready_operational_snapshot_v1 import (
     status_label_ar,
 )
 from services.db_ready_restart_survival_v1 import restart_survival_public_view
+from services.admin_operations_action_engine_v1 import resolve_dashboard_db_ready_guidance
 
 SECTION_KEY = "dashboard_db_ready"
 
@@ -53,20 +54,28 @@ def build_admin_db_ready_health_section_readonly() -> dict[str, Any]:
     startup_duration = round(float(snap.get("startup_warm_duration_ms") or 0.0), 1)
     cached_verification = snap.get("last_request_cached_verification")
     restart_survival = restart_survival_public_view(snap)
+    guided = resolve_dashboard_db_ready_guidance(
+        operational_status=status,
+        diagnostics={
+            "last_duration_ms": last_ms,
+            "startup_warm_status": startup_status,
+            "last_request_cached_verification": cached_verification,
+            "restart_survival": restart_survival,
+        },
+    )
 
     return {
         "section": SECTION_KEY,
         "status": status,
         "status_emoji": status_emoji(status),
         "status_label": status_label_ar(status),
-        "problem_en": "Dashboard initialization is slower than expected",
-        "impact_en": "Merchant dashboard or demo pages may load slowly",
-        "where_en": "Dashboard Initialization",
-        "action_en": "Inspect DB Ready initialization stages",
-        "problem_ar": "تهيئة لوحة التاجر أبطأ من المتوقع",
-        "impact_ar": "قد تتأخر تحميل لوحة التاجر أو صفحات التجربة",
-        "where_ar": "تهيئة لوحة التاجر",
-        "action_ar": "راجع مراحل تهيئة DB Ready في السجلات",
+        "problem_en": guided["problem_en"],
+        "impact_en": guided["impact_en"],
+        "where_en": guided["where_en"],
+        "action_en": guided["action_en"],
+        "verification_en": guided["verification_en"],
+        "verification_lines_en": guided.get("verification_lines_en") or [],
+        "guided": guided,
         "startup_warm": {
             "status": startup_status,
             "duration_ms": startup_duration,

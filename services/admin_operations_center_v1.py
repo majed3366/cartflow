@@ -2220,6 +2220,11 @@ def _build_current_issues(alerts: list[dict[str, Any]]) -> dict[str, Any]:
         sev = _safe_str(bucket.get("severity"), 32).lower() or "low"
         if sev not in _VALID_SEVERITY_BUCKETS:
             sev = "low"
+        from services.admin_operations_action_engine_v1 import (  # noqa: PLC0415
+            resolve_current_issue_guidance,
+        )
+
+        en = resolve_current_issue_guidance(kind)
         issues.append(
             {
                 "kind": kind,
@@ -2232,6 +2237,11 @@ def _build_current_issues(alerts: list[dict[str, Any]]) -> dict[str, Any]:
                 "owner_ar": copy["owner_ar"],
                 "action_ar": copy["action_ar"],
                 "verification_ar": copy["verification_ar"],
+                "problem_en": en.get("problem_en"),
+                "impact_en": en.get("impact_en"),
+                "where_en": en.get("where_en"),
+                "action_en": en.get("action_en"),
+                "verification_en": en.get("verification_en"),
                 "affected_count": affected,
                 "affected_label_ar": _affected_stores_label_ar(affected),
             }
