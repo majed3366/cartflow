@@ -209,6 +209,11 @@ _ALERT_SEVERITY_AR: dict[str, dict[str, Any]] = {
         "severity_ar": "متوسط",
         "priority_order": 45,
     },
+    "dashboard_restart_survival_failed": {
+        "severity": "high",
+        "severity_ar": "عالي",
+        "priority_order": 22,
+    },
 }
 
 _DEFAULT_ALERT_SEVERITY: dict[str, Any] = {
@@ -439,6 +444,17 @@ _BUSINESS_ISSUE_COPY_AR: dict[str, dict[str, str]] = {
         "owner_ar": "CartFlow / البنية التحتية",
         "action_ar": "راجع مراحل تهيئة DB Ready في السجلات ([DB READY STAGE]).",
         "verification_ar": "تأكد أن آخر مدة تهيئة عادت إلى أقل من 3 ثوانٍ.",
+    },
+    "dashboard_restart_survival_failed": {
+        "title_ar": "فشل حماية إقلاع لوحة التاجر",
+        "impact_ar": "قد يواجه أول تاجر بعد إعادة التشغيل بطئاً في التحميل.",
+        "where_ar": "تهيئة لوحة التاجر",
+        "owner_ar": "CartFlow / البنية التحتية",
+        "action_ar": "راجع تنفيذ Startup Warm في السجلات ([RESTART SURVIVAL]).",
+        "verification_ar": (
+            "تأكد أن Startup warm = succeeded وأن أول طلب dashboard استخدم "
+            "cached verification وأقل من 1000ms."
+        ),
     },
 }
 
@@ -2087,6 +2103,11 @@ def _build_basic_alerts(
         db_ready_alert = build_db_ready_admin_alert()
         if db_ready_alert:
             alerts.append(db_ready_alert)
+        from services.db_ready_admin_v1 import build_restart_survival_admin_alert  # noqa: PLC0415
+
+        restart_alert = build_restart_survival_admin_alert()
+        if restart_alert:
+            alerts.append(restart_alert)
     except Exception:  # noqa: BLE001
         pass
 

@@ -912,6 +912,12 @@ def api_recover_redirect(t: str = Query(..., min_length=6, max_length=2048)):
 @app.on_event("startup")
 async def _startup_whatsapp_queue() -> None:
     try:
+        from services.db_ready_restart_survival_v1 import record_restart_cycle_begin
+
+        record_restart_cycle_begin()
+    except Exception as exc:  # noqa: BLE001
+        log.warning("startup restart survival cycle begin skipped: %s", exc)
+    try:
         from services.db_ready_startup_warm_v1 import start_db_ready_startup_warm_async
 
         start_db_ready_startup_warm_async(
@@ -1624,15 +1630,17 @@ def _merchant_dashboard_db_ready(*, allow_defer: bool = False) -> bool:
         wait_for_startup_warm,
     )
 
+    wall_t0 = time.perf_counter()
     was_warmed_at_entry = bool(_cartflow_api_db_warmed)
     if should_defer_user_db_ready(allow_defer=allow_defer):
         record_request_cached_verification(False)
         return False
     if not was_warmed_at_entry:
         wait_for_startup_warm(timeout_s=dashboard_warm_wait_budget_s())
+    needed_request_warm = not _cartflow_api_db_warmed
 
     with db_ready_run(source="dashboard"):
-        if not _cartflow_api_db_warmed:
+        if needed_request_warm:
             _ensure_cartflow_api_db_warmed(trace_source="dashboard")
         with db_ready_stage(
             "production_schema",
@@ -1640,6 +1648,19 @@ def _merchant_dashboard_db_ready(*, allow_defer: bool = False) -> bool:
         ):
             ensure_production_store_schema(db, context="dashboard")
         record_request_cached_verification(was_warmed_at_entry)
+        duration_ms = (time.perf_counter() - wall_t0) * 1000.0
+        try:
+            from services.db_ready_restart_survival_v1 import (  # noqa: PLC0415
+                record_first_dashboard_request,
+            )
+
+            record_first_dashboard_request(
+                duration_ms=duration_ms,
+                cached_verification=was_warmed_at_entry,
+                heavy_warm_in_request=needed_request_warm,
+            )
+        except Exception:  # noqa: BLE001
+            pass
         return True
 
 

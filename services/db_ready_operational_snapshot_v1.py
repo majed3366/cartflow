@@ -44,7 +44,27 @@ _cache: dict[str, Any] = {
     "startup_warm_duration_ms": 0.0,
     "startup_warm_error": None,
     "last_request_cached_verification": None,
+    "restart_startup_at": None,
+    "restart_warm_completed_at": None,
+    "restart_first_dashboard_at": None,
+    "restart_first_dashboard_duration_ms": 0.0,
+    "restart_first_dashboard_cached_verification": None,
+    "restart_first_dashboard_heavy_warm": False,
+    "restart_survival_result": "pending",
+    "restart_survival_evaluated_at": None,
 }
+
+
+def _dt_iso(val: Any) -> Optional[str]:
+    if val is None:
+        return None
+    if isinstance(val, datetime):
+        dt = val
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.astimezone(timezone.utc).isoformat()
+    s = str(val).strip()
+    return s if s else None
 
 
 def _utc_now() -> datetime:
@@ -155,9 +175,99 @@ def record_startup_warm_snapshot(payload: dict[str, Any]) -> None:
         )
         snap = dict(_cache)
     _persist_snapshot(snap, startup_warm_only=True)
+    try:
+        from services.db_ready_restart_survival_v1 import (  # noqa: PLC0415
+            observe_startup_warm_status_change,
+        )
+
+        observe_startup_warm_status_change(status=status)
+    except Exception:  # noqa: BLE001
+        pass
 
 
-def _persist_snapshot(snap: dict[str, Any], *, startup_warm_only: bool = False) -> None:
+def record_restart_survival_snapshot(snap: dict[str, Any]) -> None:
+    """Persist restart survival verification fields."""
+    allowed = {
+        "startup_warm_status",
+        "startup_warm_duration_ms",
+        "startup_warm_error",
+        "restart_startup_at",
+        "restart_warm_completed_at",
+        "restart_first_dashboard_at",
+        "restart_first_dashboard_duration_ms",
+        "restart_first_dashboard_cached_verification",
+        "restart_first_dashboard_heavy_warm",
+        "restart_survival_result",
+        "restart_survival_evaluated_at",
+    }
+    patch = {k: snap[k] for k in allowed if k in snap}
+    with _cache_lock:
+        _cache.update(patch)
+        merged = dict(_cache)
+    _persist_snapshot(merged, restart_survival_only=True)
+
+
+def _parse_snap_dt(val: Any) -> Optional[datetime]:
+    if val is None:
+        return None
+    if isinstance(val, datetime):
+        return val.replace(tzinfo=None) if val.tzinfo else val
+    try:
+        s = str(val).strip()
+        if not s:
+            return None
+        if s.endswith("Z"):
+            s = s[:-1] + "+00:00"
+        dt = datetime.fromisoformat(s)
+        return dt.replace(tzinfo=None) if dt.tzinfo else dt
+    except (TypeError, ValueError):
+        return None
+
+
+def _apply_restart_survival_row_fields(
+    row: Any,
+    snap: dict[str, Any],
+    *,
+    apply: bool,
+) -> None:
+    if not apply:
+        return
+    if "restart_startup_at" in snap:
+        row.restart_startup_at = _parse_snap_dt(snap.get("restart_startup_at"))
+    if "restart_warm_completed_at" in snap:
+        row.restart_warm_completed_at = _parse_snap_dt(snap.get("restart_warm_completed_at"))
+    if "restart_first_dashboard_at" in snap:
+        row.restart_first_dashboard_at = _parse_snap_dt(
+            snap.get("restart_first_dashboard_at")
+        )
+    if "restart_first_dashboard_duration_ms" in snap:
+        row.restart_first_dashboard_duration_ms = float(
+            snap.get("restart_first_dashboard_duration_ms") or 0.0
+        )
+    if "restart_first_dashboard_cached_verification" in snap:
+        rcv = snap.get("restart_first_dashboard_cached_verification")
+        row.restart_first_dashboard_cached_verification = (
+            bool(rcv) if rcv is not None else None
+        )
+    if "restart_first_dashboard_heavy_warm" in snap:
+        hw = snap.get("restart_first_dashboard_heavy_warm")
+        row.restart_first_dashboard_heavy_warm = bool(hw) if hw is not None else None
+    if "restart_survival_result" in snap:
+        row.restart_survival_result = str(snap.get("restart_survival_result") or "pending")[
+            :8
+        ]
+    if "restart_survival_evaluated_at" in snap:
+        row.restart_survival_evaluated_at = _parse_snap_dt(
+            snap.get("restart_survival_evaluated_at")
+        )
+
+
+def _persist_snapshot(
+    snap: dict[str, Any],
+    *,
+    startup_warm_only: bool = False,
+    restart_survival_only: bool = False,
+) -> None:
     try:
         from extensions import db
         from models import DbReadyOperationalSnapshot
@@ -168,7 +278,7 @@ def _persist_snapshot(snap: dict[str, Any], *, startup_warm_only: bool = False) 
         if row is None:
             row = DbReadyOperationalSnapshot(id=SNAPSHOT_ROW_ID)
             db.session.add(row)
-        if not startup_warm_only:
+        if not startup_warm_only and not restart_survival_only:
             row.last_duration_ms = float(snap.get("last_duration_ms") or 0.0)
             row.worst_duration_ms = float(snap.get("worst_duration_ms") or 0.0)
             row.avg_duration_ms = float(snap.get("avg_duration_ms") or 0.0)
@@ -203,15 +313,17 @@ def _persist_snapshot(snap: dict[str, Any], *, startup_warm_only: bool = False) 
             except (TypeError, ValueError):
                 row.stage_classifications_json = "[]"
             row.last_seen_at = _utc_now()
-        row.startup_warm_status = str(snap.get("startup_warm_status") or "not_started")[:16]
-        row.startup_warm_duration_ms = float(snap.get("startup_warm_duration_ms") or 0.0)
-        sw_err = snap.get("startup_warm_error")
-        row.startup_warm_error = (str(sw_err)[:255] if sw_err else None)
-        lrcv = snap.get("last_request_cached_verification")
-        row.last_request_cached_verification = (
-            bool(lrcv) if lrcv is not None else None
-        )
-        if startup_warm_only:
+        if not restart_survival_only:
+            row.startup_warm_status = str(snap.get("startup_warm_status") or "not_started")[:16]
+            row.startup_warm_duration_ms = float(snap.get("startup_warm_duration_ms") or 0.0)
+            sw_err = snap.get("startup_warm_error")
+            row.startup_warm_error = (str(sw_err)[:255] if sw_err else None)
+            lrcv = snap.get("last_request_cached_verification")
+            row.last_request_cached_verification = (
+                bool(lrcv) if lrcv is not None else None
+            )
+        _apply_restart_survival_row_fields(row, snap, apply=restart_survival_only)
+        if startup_warm_only or restart_survival_only:
             row.last_seen_at = _utc_now()
         db.session.commit()
     except Exception as exc:  # noqa: BLE001
@@ -292,6 +404,35 @@ def load_db_ready_operational_snapshot(*, reload_db: bool = True) -> dict[str, A
                             "last_request_cached_verification": getattr(
                                 row, "last_request_cached_verification", None
                             ),
+                            "restart_startup_at": _dt_iso(
+                                getattr(row, "restart_startup_at", None)
+                            ),
+                            "restart_warm_completed_at": _dt_iso(
+                                getattr(row, "restart_warm_completed_at", None)
+                            ),
+                            "restart_first_dashboard_at": _dt_iso(
+                                getattr(row, "restart_first_dashboard_at", None)
+                            ),
+                            "restart_first_dashboard_duration_ms": round(
+                                float(
+                                    getattr(row, "restart_first_dashboard_duration_ms", 0.0)
+                                    or 0.0
+                                ),
+                                1,
+                            ),
+                            "restart_first_dashboard_cached_verification": getattr(
+                                row, "restart_first_dashboard_cached_verification", None
+                            ),
+                            "restart_first_dashboard_heavy_warm": bool(
+                                getattr(row, "restart_first_dashboard_heavy_warm", False)
+                                or False
+                            ),
+                            "restart_survival_result": str(
+                                getattr(row, "restart_survival_result", None) or "pending"
+                            ),
+                            "restart_survival_evaluated_at": _dt_iso(
+                                getattr(row, "restart_survival_evaluated_at", None)
+                            ),
                         }
                     )
         except Exception as exc:  # noqa: BLE001
@@ -328,6 +469,14 @@ def clear_db_ready_operational_snapshot_for_tests() -> None:
                 "startup_warm_duration_ms": 0.0,
                 "startup_warm_error": None,
                 "last_request_cached_verification": None,
+                "restart_startup_at": None,
+                "restart_warm_completed_at": None,
+                "restart_first_dashboard_at": None,
+                "restart_first_dashboard_duration_ms": 0.0,
+                "restart_first_dashboard_cached_verification": None,
+                "restart_first_dashboard_heavy_warm": False,
+                "restart_survival_result": "pending",
+                "restart_survival_evaluated_at": None,
             }
         )
     from schema_db_ready_operational import reset_db_ready_operational_schema_guard_for_tests
@@ -342,6 +491,7 @@ __all__ = [
     "clear_db_ready_operational_snapshot_for_tests",
     "load_db_ready_operational_snapshot",
     "record_db_ready_run",
+    "record_restart_survival_snapshot",
     "record_startup_warm_snapshot",
     "status_emoji",
     "status_label_ar",

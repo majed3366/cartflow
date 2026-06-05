@@ -13,6 +13,7 @@ from services.db_ready_operational_snapshot_v1 import (
     status_emoji,
     status_label_ar,
 )
+from services.db_ready_restart_survival_v1 import restart_survival_public_view
 
 SECTION_KEY = "dashboard_db_ready"
 
@@ -51,6 +52,7 @@ def build_admin_db_ready_health_section_readonly() -> dict[str, Any]:
     startup_status = str(snap.get("startup_warm_status") or "not_started")
     startup_duration = round(float(snap.get("startup_warm_duration_ms") or 0.0), 1)
     cached_verification = snap.get("last_request_cached_verification")
+    restart_survival = restart_survival_public_view(snap)
 
     return {
         "section": SECTION_KEY,
@@ -73,6 +75,7 @@ def build_admin_db_ready_health_section_readonly() -> dict[str, Any]:
             "headline_ar": startup_ar,
             "last_request_cached_verification": cached_verification,
         },
+        "restart_survival": restart_survival,
         "verification": {
             "last_duration_ms": last_ms,
             "avg_duration_ms": avg_ms,
@@ -111,6 +114,33 @@ def build_admin_db_ready_health_section_readonly() -> dict[str, Any]:
     }
 
 
+def build_restart_survival_admin_alert() -> dict[str, Any] | None:
+    snap = load_db_ready_operational_snapshot(reload_db=False)
+    rs = restart_survival_public_view(snap)
+    result = str(rs.get("verification_result") or "PENDING").strip().upper()
+    if result != "FAIL":
+        return None
+    return {
+        "kind": "dashboard_restart_survival_failed",
+        "severity": "high",
+        "title_ar": "فشل حماية إقلاع لوحة التاجر",
+        "detail_ar": (
+            f"Startup warm: {rs.get('startup_warm_status') or '—'} — "
+            f"first dashboard: {rs.get('first_dashboard_duration_ms') or 0}ms"
+        ),
+        "records_total": 1,
+        "meta": {
+            "startup_warm_status": rs.get("startup_warm_status"),
+            "startup_warm_duration_ms": rs.get("startup_warm_duration_ms"),
+            "first_dashboard_duration_ms": rs.get("first_dashboard_duration_ms"),
+            "first_dashboard_cached_verification": rs.get(
+                "first_dashboard_cached_verification"
+            ),
+            "verification_result": result,
+        },
+    }
+
+
 def build_db_ready_admin_alert() -> dict[str, Any] | None:
     """Operational alert when status is slow or blocking."""
     snap = load_db_ready_operational_snapshot(reload_db=False)
@@ -141,4 +171,5 @@ __all__ = [
     "SECTION_KEY",
     "build_admin_db_ready_health_section_readonly",
     "build_db_ready_admin_alert",
+    "build_restart_survival_admin_alert",
 ]

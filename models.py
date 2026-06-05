@@ -622,6 +622,14 @@ class DbReadyOperationalSnapshot(Base):
     startup_warm_duration_ms = Column(Float, default=0.0, nullable=False)
     startup_warm_error = Column(String(255), nullable=True)
     last_request_cached_verification = Column(Boolean, nullable=True)
+    restart_startup_at = Column(DateTime, nullable=True)
+    restart_warm_completed_at = Column(DateTime, nullable=True)
+    restart_first_dashboard_at = Column(DateTime, nullable=True)
+    restart_first_dashboard_duration_ms = Column(Float, default=0.0, nullable=False)
+    restart_first_dashboard_cached_verification = Column(Boolean, nullable=True)
+    restart_first_dashboard_heavy_warm = Column(Boolean, nullable=True)
+    restart_survival_result = Column(String(8), nullable=False, default="pending")
+    restart_survival_evaluated_at = Column(DateTime, nullable=True)
     last_seen_at = Column(
         DateTime,
         default=lambda: datetime.now(timezone.utc),
