@@ -75,27 +75,33 @@ def log_store_identity_schema_status(db: Any, *, context: str = "startup") -> di
 def ensure_store_identity_schema(db: Any) -> bool:
     """Create store_identity_aliases via ORM metadata when missing."""
     global _schema_ensured
+    from services.db_ready_diag_v1 import db_ready_substage  # noqa: PLC0415
+
     if _schema_ensured:
-        return bool(verify_store_identity_schema(db).get("ok"))
+        with db_ready_substage("store_identity_verify_cached"):
+            return bool(verify_store_identity_schema(db).get("ok"))
     try:
         import models  # noqa: F401
 
-        models.StoreIdentityAlias.__table__.create(bind=db.engine, checkfirst=True)
+        with db_ready_substage("store_identity_create_table"):
+            models.StoreIdentityAlias.__table__.create(bind=db.engine, checkfirst=True)
         dialect = (db.engine.dialect.name or "").lower()
         if dialect in ("postgresql", "postgres"):
-            for stmt in (
-                "CREATE INDEX IF NOT EXISTS ix_store_identity_aliases_store_id "
-                "ON store_identity_aliases (store_id)",
-                "CREATE UNIQUE INDEX IF NOT EXISTS ix_store_identity_aliases_alias_value "
-                "ON store_identity_aliases (alias_value)",
-            ):
-                try:
-                    db.session.execute(text(stmt))
-                    db.session.commit()
-                except (OSError, SQLAlchemyError, IntegrityError):
-                    db.session.rollback()
+            with db_ready_substage("store_identity_indexes"):
+                for stmt in (
+                    "CREATE INDEX IF NOT EXISTS ix_store_identity_aliases_store_id "
+                    "ON store_identity_aliases (store_id)",
+                    "CREATE UNIQUE INDEX IF NOT EXISTS ix_store_identity_aliases_alias_value "
+                    "ON store_identity_aliases (alias_value)",
+                ):
+                    try:
+                        db.session.execute(text(stmt))
+                        db.session.commit()
+                    except (OSError, SQLAlchemyError, IntegrityError):
+                        db.session.rollback()
         _schema_ensured = True
-        return bool(verify_store_identity_schema(db).get("ok"))
+        with db_ready_substage("store_identity_verify"):
+            return bool(verify_store_identity_schema(db).get("ok"))
     except (OSError, SQLAlchemyError, IntegrityError) as exc:
         db.session.rollback()
         log.warning("ensure_store_identity_schema failed: %s", exc)

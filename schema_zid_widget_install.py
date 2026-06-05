@@ -76,33 +76,41 @@ def log_store_zid_widget_install_schema_status(db, *, context: str = "startup") 
 def ensure_store_zid_widget_install_schema(db) -> bool:
     """Add widget install tracking columns on stores when missing."""
     global _schema_ensured
+    from services.db_ready_diag_v1 import db_ready_substage  # noqa: PLC0415
+
     if _schema_ensured:
-        return bool(verify_store_zid_widget_install_schema(db).get("ok"))
+        with db_ready_substage("widget_install_verify_cached"):
+            return bool(verify_store_zid_widget_install_schema(db).get("ok"))
     try:
-        insp = inspect(db.engine)
-        if "stores" not in insp.get_table_names():
-            return False
-        dialect = (db.engine.dialect.name or "").lower()
-        existing = {c["name"] for c in insp.get_columns("stores")}
+        dialect = ""
+        existing: set[str] = set()
+        with db_ready_substage("widget_install_inspect"):
+            insp = inspect(db.engine)
+            if "stores" not in insp.get_table_names():
+                return False
+            dialect = (db.engine.dialect.name or "").lower()
+            existing = {c["name"] for c in insp.get_columns("stores")}
         for name, sqlite_sql, pg_sql in _SCHEMA_COLUMNS:
             if name in existing:
                 continue
-            if dialect in ("postgresql", "postgres"):
-                stmt = f"ALTER TABLE stores ADD COLUMN IF NOT EXISTS {name} {pg_sql}"
-            else:
-                stmt = f"ALTER TABLE stores ADD COLUMN {name} {sqlite_sql}"
-            try:
-                db.session.execute(text(stmt))
-                db.session.commit()
-                existing.add(name)
-            except (OSError, SQLAlchemyError, IntegrityError) as exc:
-                db.session.rollback()
-                log.warning(
-                    "ensure_store_zid_widget_install_schema: add %s failed: %s",
-                    name,
-                    exc,
-                )
-        status = verify_store_zid_widget_install_schema(db)
+            with db_ready_substage(f"widget_{name}"):
+                if dialect in ("postgresql", "postgres"):
+                    stmt = f"ALTER TABLE stores ADD COLUMN IF NOT EXISTS {name} {pg_sql}"
+                else:
+                    stmt = f"ALTER TABLE stores ADD COLUMN {name} {sqlite_sql}"
+                try:
+                    db.session.execute(text(stmt))
+                    db.session.commit()
+                    existing.add(name)
+                except (OSError, SQLAlchemyError, IntegrityError) as exc:
+                    db.session.rollback()
+                    log.warning(
+                        "ensure_store_zid_widget_install_schema: add %s failed: %s",
+                        name,
+                        exc,
+                    )
+        with db_ready_substage("widget_install_verify"):
+            status = verify_store_zid_widget_install_schema(db)
         _schema_ensured = bool(status.get("ok"))
         return _schema_ensured
     except (OSError, SQLAlchemyError) as exc:

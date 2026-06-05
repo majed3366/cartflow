@@ -52,6 +52,47 @@
       </div>
     </div>
 
+    <div class="mt-4 grid gap-3 sm:grid-cols-3">
+      <div class="rounded-lg border border-amber-100 bg-amber-50/60 px-3 py-2.5">
+        <dt class="text-xs font-medium text-amber-800">Slowest sub-stage (by queries)</dt>
+        <dd class="mt-1 font-mono text-sm text-amber-950">{{ t.top_substage or '—' }}</dd>
+      </div>
+      <div class="rounded-lg border border-amber-100 bg-amber-50/60 px-3 py-2.5">
+        <dt class="text-xs font-medium text-amber-800">Sub-stage query count</dt>
+        <dd class="mt-1 text-lg font-semibold tabular-nums text-amber-950">{{ t.top_substage_queries | default(0) }}</dd>
+      </div>
+      <div class="rounded-lg border border-amber-100 bg-amber-50/60 px-3 py-2.5">
+        <dt class="text-xs font-medium text-amber-800">Sub-stage SQL time</dt>
+        <dd class="mt-1 text-lg font-semibold tabular-nums text-amber-950">{{ t.top_substage_sql_ms | default(0) }} ms</dd>
+      </div>
+    </div>
+
+    {% set top_substages = t.top_substages or [] %}
+    {% if top_substages %}
+    <div class="mt-4 overflow-x-auto rounded-lg border border-slate-100">
+      <table class="min-w-full divide-y divide-slate-200 text-sm">
+        <thead class="bg-slate-50 text-left text-xs font-medium text-slate-500">
+          <tr>
+            <th class="px-3 py-2">Sub-stage</th>
+            <th class="px-3 py-2">Queries</th>
+            <th class="px-3 py-2">SQL ms</th>
+            <th class="px-3 py-2">Elapsed ms</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100 bg-white">
+          {% for row in top_substages %}
+          <tr>
+            <td class="px-3 py-2 font-mono text-slate-800">{{ row.stage or '—' }}</td>
+            <td class="px-3 py-2 tabular-nums">{{ row.query_count | default(0) }}</td>
+            <td class="px-3 py-2 tabular-nums">{{ row.sql_ms | default(0) }}</td>
+            <td class="px-3 py-2 tabular-nums">{{ row.elapsed_ms | default(0) }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+
     <details class="mt-4 rounded-lg border border-slate-100 bg-slate-50/50 px-4 py-3">
       <summary class="cursor-pointer text-sm font-medium text-slate-700">Technical details</summary>
       <dl class="mt-3 grid gap-2 text-sm sm:grid-cols-2">
@@ -61,6 +102,7 @@
         <div><dt class="inline text-slate-500">lock_wait_ms:</dt> <dd class="inline tabular-nums text-slate-800">{{ t.lock_wait_ms | default(0) }}</dd></div>
         <div><dt class="inline text-slate-500">query_count:</dt> <dd class="inline tabular-nums text-slate-800">{{ t.query_count | default(0) }}</dd></div>
         <div><dt class="inline text-slate-500">total_sql_ms:</dt> <dd class="inline tabular-nums text-slate-800">{{ t.total_sql_ms | default(0) }}</dd></div>
+        <div><dt class="inline text-slate-500">top_substage_elapsed_ms:</dt> <dd class="inline tabular-nums text-slate-800">{{ t.top_substage_elapsed_ms | default(0) }}</dd></div>
         <div class="sm:col-span-2"><dt class="inline text-slate-500">last_seen_at:</dt> <dd class="inline text-slate-800">{{ t.last_seen_at or '—' }}</dd></div>
       </dl>
     </details>

@@ -918,26 +918,30 @@ def sync_zid_identities_for_dashboard_store(row: Any) -> None:
 
 def backfill_store_identity_aliases_from_stores(*, session: Any = None) -> int:
     """Ensure every Store with ``zid_store_id`` has a cartflow_zid alias row."""
+    from services.db_ready_diag_v1 import db_ready_substage  # noqa: PLC0415
+
     sess = session or db.session
     n = 0
     try:
-        rows = sess.query(Store).filter(Store.zid_store_id.isnot(None)).all()
+        with db_ready_substage("identity_backfill_query"):
+            rows = sess.query(Store).filter(Store.zid_store_id.isnot(None)).all()
     except (SQLAlchemyError, OSError):
         sess.rollback()
         return 0
-    for row in rows:
-        zid = canonical_store_slug_on_row(row)
-        sid = getattr(row, "id", None)
-        if not zid or sid is None:
-            continue
-        if register_store_identity_alias(
-            store_id=int(sid),
-            alias_kind=ALIAS_KIND_CARTFLOW_ZID,
-            alias_value=zid,
-            platform=PLATFORM_CARTFLOW,
-            session=sess,
-        ):
-            n += 1
+    with db_ready_substage("identity_backfill_register"):
+        for row in rows:
+            zid = canonical_store_slug_on_row(row)
+            sid = getattr(row, "id", None)
+            if not zid or sid is None:
+                continue
+            if register_store_identity_alias(
+                store_id=int(sid),
+                alias_kind=ALIAS_KIND_CARTFLOW_ZID,
+                alias_value=zid,
+                platform=PLATFORM_CARTFLOW,
+                session=sess,
+            ):
+                n += 1
     if session is None:
         try:
             sess.commit()
@@ -951,33 +955,37 @@ def sync_connected_platform_identities(*, session: Any = None) -> int:
     For platform-connected stores, refresh Zid/Salla alias rows from live profile/API.
     Called once per process warm — not a request-time fallback.
     """
+    from services.db_ready_diag_v1 import db_ready_substage  # noqa: PLC0415
+
     sess = session or db.session
     n = 0
     try:
-        rows = (
-            sess.query(Store)
-            .filter(Store.access_token.isnot(None))
-            .filter(Store.access_token != "")
-            .all()
-        )
+        with db_ready_substage("platform_sync_query"):
+            rows = (
+                sess.query(Store)
+                .filter(Store.access_token.isnot(None))
+                .filter(Store.access_token != "")
+                .all()
+            )
     except (SQLAlchemyError, OSError):
         sess.rollback()
         return 0
-    for row in rows:
-        token = (getattr(row, "access_token", None) or "").strip()
-        if not token:
-            continue
-        src = (getattr(row, "integration_source", None) or "").strip().lower()
-        if src.startswith("zid") or src == "":
-            try:
-                sync_zid_store_identities_after_oauth(row)
-                n += 1
-            except Exception as exc:  # noqa: BLE001
-                _log.warning(
-                    "platform identity sync skipped store_id=%s err=%s",
-                    getattr(row, "id", None),
-                    type(exc).__name__,
-                )
+    with db_ready_substage("platform_sync_loop"):
+        for row in rows:
+            token = (getattr(row, "access_token", None) or "").strip()
+            if not token:
+                continue
+            src = (getattr(row, "integration_source", None) or "").strip().lower()
+            if src.startswith("zid") or src == "":
+                try:
+                    sync_zid_store_identities_after_oauth(row)
+                    n += 1
+                except Exception as exc:  # noqa: BLE001
+                    _log.warning(
+                        "platform identity sync skipped store_id=%s err=%s",
+                        getattr(row, "id", None),
+                        type(exc).__name__,
+                    )
     return n
 
 

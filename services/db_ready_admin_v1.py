@@ -58,6 +58,13 @@ def build_admin_db_ready_health_section_readonly() -> dict[str, Any]:
             "total_sql_ms": round(float(snap.get("last_sql_ms") or 0.0), 1),
             "sample_count": int(snap.get("sample_count") or 0),
             "last_seen_at": snap.get("last_seen_at"),
+            "top_substage": snap.get("last_top_substage") or "",
+            "top_substage_queries": int(snap.get("last_top_substage_queries") or 0),
+            "top_substage_sql_ms": round(float(snap.get("last_top_substage_sql_ms") or 0.0), 1),
+            "top_substage_elapsed_ms": round(
+                float(snap.get("last_top_substage_elapsed_ms") or 0.0), 1
+            ),
+            "top_substages": snap.get("top_substages") or [],
         },
         "snapshot": snap,
     }

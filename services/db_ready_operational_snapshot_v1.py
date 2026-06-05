@@ -6,6 +6,7 @@ In-process cache mirrors DB row for fast admin reads.
 """
 from __future__ import annotations
 
+import json
 import logging
 import threading
 from datetime import datetime, timezone
@@ -33,6 +34,11 @@ _cache: dict[str, Any] = {
     "last_failure_message": None,
     "status": "healthy",
     "last_seen_at": None,
+    "last_top_substage": "",
+    "last_top_substage_queries": 0,
+    "last_top_substage_sql_ms": 0.0,
+    "last_top_substage_elapsed_ms": 0.0,
+    "top_substages": [],
 }
 
 
@@ -81,6 +87,13 @@ def record_db_ready_run(payload: dict[str, Any]) -> None:
     err = payload.get("error")
     status = classify_db_ready_status(duration_ms)
     now = _utc_now()
+    top_substage = str(payload.get("top_substage") or "")[:64]
+    top_q = int(payload.get("top_substage_queries") or 0)
+    top_sql = round(float(payload.get("top_substage_sql_ms") or 0.0), 1)
+    top_el = round(float(payload.get("top_substage_elapsed_ms") or 0.0), 1)
+    top_substages = payload.get("top_substages") or []
+    if not isinstance(top_substages, list):
+        top_substages = []
 
     with _cache_lock:
         n = int(_cache.get("sample_count") or 0) + 1
@@ -102,6 +115,11 @@ def record_db_ready_run(payload: dict[str, Any]) -> None:
                 "last_failure_message": (str(err)[:255] if err else None),
                 "status": status,
                 "last_seen_at": now.isoformat(),
+                "last_top_substage": top_substage,
+                "last_top_substage_queries": top_q,
+                "last_top_substage_sql_ms": top_sql,
+                "last_top_substage_elapsed_ms": top_el,
+                "top_substages": top_substages[:15],
             }
         )
         snap = dict(_cache)
@@ -133,6 +151,19 @@ def _persist_snapshot(snap: dict[str, Any]) -> None:
         err = snap.get("last_failure_message")
         row.last_failure_message = (str(err)[:255] if err else None)
         row.status = str(snap.get("status") or "healthy")[:16]
+        row.last_top_substage = (snap.get("last_top_substage") or "")[:64] or None
+        row.last_top_substage_queries = int(snap.get("last_top_substage_queries") or 0)
+        row.last_top_substage_sql_ms = float(snap.get("last_top_substage_sql_ms") or 0.0)
+        row.last_top_substage_elapsed_ms = float(
+            snap.get("last_top_substage_elapsed_ms") or 0.0
+        )
+        try:
+            row.top_substages_json = json.dumps(
+                snap.get("top_substages") or [],
+                ensure_ascii=False,
+            )[:8000]
+        except (TypeError, ValueError):
+            row.top_substages_json = "[]"
         row.last_seen_at = _utc_now()
         db.session.commit()
     except Exception as exc:  # noqa: BLE001
@@ -156,6 +187,13 @@ def load_db_ready_operational_snapshot(*, reload_db: bool = True) -> dict[str, A
             ensure_db_ready_operational_schema(db)
             row = db.session.get(DbReadyOperationalSnapshot, SNAPSHOT_ROW_ID)
             if row is not None:
+                top_substages: list[Any] = []
+                try:
+                    raw_top = json.loads(row.top_substages_json or "[]")
+                    if isinstance(raw_top, list):
+                        top_substages = raw_top[:15]
+                except (TypeError, ValueError):
+                    top_substages = []
                 with _cache_lock:
                     _cache.update(
                         {
@@ -176,6 +214,17 @@ def load_db_ready_operational_snapshot(*, reload_db: bool = True) -> dict[str, A
                                 if row.last_seen_at
                                 else None
                             ),
+                            "last_top_substage": str(row.last_top_substage or ""),
+                            "last_top_substage_queries": int(
+                                row.last_top_substage_queries or 0
+                            ),
+                            "last_top_substage_sql_ms": round(
+                                float(row.last_top_substage_sql_ms or 0.0), 1
+                            ),
+                            "last_top_substage_elapsed_ms": round(
+                                float(row.last_top_substage_elapsed_ms or 0.0), 1
+                            ),
+                            "top_substages": top_substages,
                         }
                     )
         except Exception as exc:  # noqa: BLE001
@@ -202,6 +251,11 @@ def clear_db_ready_operational_snapshot_for_tests() -> None:
                 "last_failure_message": None,
                 "status": "healthy",
                 "last_seen_at": None,
+                "last_top_substage": "",
+                "last_top_substage_queries": 0,
+                "last_top_substage_sql_ms": 0.0,
+                "last_top_substage_elapsed_ms": 0.0,
+                "top_substages": [],
             }
         )
     from schema_db_ready_operational import reset_db_ready_operational_schema_guard_for_tests

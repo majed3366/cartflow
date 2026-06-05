@@ -612,6 +612,11 @@ class DbReadyOperationalSnapshot(Base):
     last_success = Column(Boolean, default=True, nullable=False)
     last_failure_message = Column(String(255), nullable=True)
     status = Column(String(16), nullable=False, default="healthy")
+    last_top_substage = Column(String(64), nullable=True)
+    last_top_substage_queries = Column(Integer, default=0, nullable=False)
+    last_top_substage_sql_ms = Column(Float, default=0.0, nullable=False)
+    last_top_substage_elapsed_ms = Column(Float, default=0.0, nullable=False)
+    top_substages_json = Column(Text, nullable=False, default="[]")
     last_seen_at = Column(
         DateTime,
         default=lambda: datetime.now(timezone.utc),

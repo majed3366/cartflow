@@ -888,70 +888,97 @@ def ensure_store_widget_schema(db: Any) -> None:
     with _store_widget_schema_full_once_lock:
         if _store_widget_schema_full_once:
             return
-        _ensure_store_recovery_delay_minutes_column(db)
-        _ensure_store_second_attempt_delay_minutes_column(db)
-        _ensure_reason_subcategory_columns(db)
-        ensure_recovery_reason_widget_schema(db)
-        _ensure_recovery_reason_customer_phone_column(db)
-        _ensure_recovery_reason_rejection_columns(db)
-        _ensure_store_whatsapp_recovery_template_columns(db)
-        _ensure_store_trigger_templates_json_column(db)
-        _ensure_store_reason_templates_json_column(db)
-        _ensure_store_template_control_columns(db)
-        _ensure_store_exit_intent_template_columns(db)
-        _ensure_store_widget_customization_columns(db)
-        _ensure_store_vip_cart_threshold_column(db)
-        _ensure_store_vip_offer_columns(db)
-        _ensure_store_cartflow_widget_recovery_gate_columns(db)
-        _ensure_store_widget_trigger_settings_column(db)
-        _ensure_store_product_intelligence_columns(db)
+        from services.db_ready_diag_v1 import db_ready_substage  # noqa: PLC0415
+
+        with db_ready_substage("widget_recovery_delay_minutes"):
+            _ensure_store_recovery_delay_minutes_column(db)
+        with db_ready_substage("widget_second_attempt_delay"):
+            _ensure_store_second_attempt_delay_minutes_column(db)
+        with db_ready_substage("widget_reason_subcategory"):
+            _ensure_reason_subcategory_columns(db)
+        with db_ready_substage("widget_recovery_reason_widget"):
+            ensure_recovery_reason_widget_schema(db)
+        with db_ready_substage("widget_recovery_reason_phone"):
+            _ensure_recovery_reason_customer_phone_column(db)
+        with db_ready_substage("widget_recovery_reason_rejection"):
+            _ensure_recovery_reason_rejection_columns(db)
+        with db_ready_substage("widget_whatsapp_recovery_template"):
+            _ensure_store_whatsapp_recovery_template_columns(db)
+        with db_ready_substage("widget_trigger_templates_json"):
+            _ensure_store_trigger_templates_json_column(db)
+        with db_ready_substage("widget_reason_templates_json"):
+            _ensure_store_reason_templates_json_column(db)
+        with db_ready_substage("widget_template_control"):
+            _ensure_store_template_control_columns(db)
+        with db_ready_substage("widget_exit_intent_template"):
+            _ensure_store_exit_intent_template_columns(db)
+        with db_ready_substage("widget_customization"):
+            _ensure_store_widget_customization_columns(db)
+        with db_ready_substage("widget_vip_cart_threshold"):
+            _ensure_store_vip_cart_threshold_column(db)
+        with db_ready_substage("widget_vip_offer"):
+            _ensure_store_vip_offer_columns(db)
+        with db_ready_substage("widget_cartflow_recovery_gate"):
+            _ensure_store_cartflow_widget_recovery_gate_columns(db)
+        with db_ready_substage("widget_trigger_settings"):
+            _ensure_store_widget_trigger_settings_column(db)
+        with db_ready_substage("widget_product_intelligence"):
+            _ensure_store_product_intelligence_columns(db)
         from services.merchant_whatsapp_settings import (  # noqa: PLC0415
             ensure_store_whatsapp_merchant_settings_schema,
         )
 
-        ensure_store_whatsapp_merchant_settings_schema()
+        with db_ready_substage("widget_whatsapp_merchant_settings"):
+            ensure_store_whatsapp_merchant_settings_schema()
         from services.merchant_vip_settings import (  # noqa: PLC0415
             ensure_store_merchant_vip_settings_schema,
         )
 
-        ensure_store_merchant_vip_settings_schema()
+        with db_ready_substage("widget_merchant_vip_settings"):
+            ensure_store_merchant_vip_settings_schema()
         from services.merchant_general_settings import (  # noqa: PLC0415
             ensure_store_merchant_general_settings_schema,
         )
 
-        ensure_store_merchant_general_settings_schema()
-        _ensure_recovery_schedules_table(db)
-        _ensure_abandoned_cart_vip_mode_column(db)
-        _ensure_abandoned_cart_vip_lifecycle_status_column(db)
-        _ensure_abandoned_cart_recovery_session_id_column(db)
+        with db_ready_substage("widget_merchant_general_settings"):
+            ensure_store_merchant_general_settings_schema()
+        with db_ready_substage("widget_recovery_schedules_table"):
+            _ensure_recovery_schedules_table(db)
+        with db_ready_substage("widget_abandoned_cart_vip_mode"):
+            _ensure_abandoned_cart_vip_mode_column(db)
+        with db_ready_substage("widget_abandoned_cart_vip_lifecycle"):
+            _ensure_abandoned_cart_vip_lifecycle_status_column(db)
+        with db_ready_substage("widget_abandoned_cart_session_id"):
+            _ensure_abandoned_cart_recovery_session_id_column(db)
         global _store_abandonment_schema_ensured
         if not _store_abandonment_schema_ensured:
             try:
-                db.create_all()
-                insp = inspect(db.engine)
-                if insp.has_table("stores"):
-                    existing = {c["name"] for c in insp.get_columns("stores")}
-                    if "whatsapp_support_url" not in existing:
-                        try:
-                            db.session.execute(
-                                text(
-                                    "ALTER TABLE stores ADD COLUMN whatsapp_support_url VARCHAR(2048)"
+                with db_ready_substage("widget_abandonment_whatsapp_columns"):
+                    db.create_all()
+                    insp = inspect(db.engine)
+                    if insp.has_table("stores"):
+                        existing = {c["name"] for c in insp.get_columns("stores")}
+                        if "whatsapp_support_url" not in existing:
+                            try:
+                                db.session.execute(
+                                    text(
+                                        "ALTER TABLE stores ADD COLUMN whatsapp_support_url VARCHAR(2048)"
+                                    )
                                 )
-                            )
-                            db.session.commit()
-                        except (OSError, SQLAlchemyError, IntegrityError):
-                            db.session.rollback()
-                    existing = {c["name"] for c in insp.get_columns("stores")}
-                    if "store_whatsapp_number" not in existing:
-                        try:
-                            db.session.execute(
-                                text(
-                                    "ALTER TABLE stores ADD COLUMN store_whatsapp_number VARCHAR(64)"
+                                db.session.commit()
+                            except (OSError, SQLAlchemyError, IntegrityError):
+                                db.session.rollback()
+                        existing = {c["name"] for c in insp.get_columns("stores")}
+                        if "store_whatsapp_number" not in existing:
+                            try:
+                                db.session.execute(
+                                    text(
+                                        "ALTER TABLE stores ADD COLUMN store_whatsapp_number VARCHAR(64)"
+                                    )
                                 )
-                            )
-                            db.session.commit()
-                        except (OSError, SQLAlchemyError, IntegrityError):
-                            db.session.rollback()
+                                db.session.commit()
+                            except (OSError, SQLAlchemyError, IntegrityError):
+                                db.session.rollback()
                 _store_abandonment_schema_ensured = True
             except (OSError, SQLAlchemyError) as e:
                 db.session.rollback()

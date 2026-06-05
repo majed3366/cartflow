@@ -111,15 +111,21 @@ def _add_column_if_missing(
 
 def ensure_merchant_auth_schema(db: Any) -> bool:
     global _merchant_auth_schema_once
+    from services.db_ready_diag_v1 import db_ready_substage  # noqa: PLC0415
+
     if _merchant_auth_schema_once:
-        return bool(verify_merchant_auth_schema(db).get("ok"))
+        with db_ready_substage("merchant_auth_verify_cached"):
+            return bool(verify_merchant_auth_schema(db).get("ok"))
     with _merchant_auth_schema_once_lock:
         if _merchant_auth_schema_once:
-            return bool(verify_merchant_auth_schema(db).get("ok"))
+            with db_ready_substage("merchant_auth_verify_cached"):
+                return bool(verify_merchant_auth_schema(db).get("ok"))
         try:
-            db.create_all()
-            insp = inspect(db.engine)
-            dialect = getattr(getattr(db.engine, "dialect", None), "name", "") or ""
+            with db_ready_substage("merchant_auth_create_all"):
+                db.create_all()
+            with db_ready_substage("merchant_auth_inspect"):
+                insp = inspect(db.engine)
+                dialect = getattr(getattr(db.engine, "dialect", None), "name", "") or ""
 
             if not insp.has_table("merchant_users"):
                 log.warning(
@@ -128,53 +134,57 @@ def ensure_merchant_auth_schema(db: Any) -> bool:
             else:
                 cols = {c["name"] for c in insp.get_columns("merchant_users")}
                 for name, sqlite_sql, pg_sql in _MERCHANT_USER_COLUMNS:
-                    try:
-                        _add_column_if_missing(
-                            db,
-                            table="merchant_users",
-                            name=name,
-                            sqlite_sql=sqlite_sql,
-                            pg_sql=pg_sql,
-                            existing=cols,
-                            dialect=dialect,
-                        )
-                    except SQLAlchemyError as exc:
-                        db.session.rollback()
-                        log.warning(
-                            "merchant auth schema: add merchant_users.%s failed: %s",
-                            name,
-                            exc,
-                        )
+                    with db_ready_substage(f"merchant_auth_users_{name}"):
+                        try:
+                            _add_column_if_missing(
+                                db,
+                                table="merchant_users",
+                                name=name,
+                                sqlite_sql=sqlite_sql,
+                                pg_sql=pg_sql,
+                                existing=cols,
+                                dialect=dialect,
+                            )
+                        except SQLAlchemyError as exc:
+                            db.session.rollback()
+                            log.warning(
+                                "merchant auth schema: add merchant_users.%s failed: %s",
+                                name,
+                                exc,
+                            )
 
             if insp.has_table("stores"):
                 cols = {c["name"] for c in insp.get_columns("stores")}
                 if "merchant_user_id" not in cols:
-                    try:
-                        if dialect in ("postgresql", "postgres"):
-                            stmt = (
-                                "ALTER TABLE stores ADD COLUMN IF NOT EXISTS "
-                                "merchant_user_id INTEGER NULL"
+                    with db_ready_substage("merchant_auth_stores_user_id"):
+                        try:
+                            if dialect in ("postgresql", "postgres"):
+                                stmt = (
+                                    "ALTER TABLE stores ADD COLUMN IF NOT EXISTS "
+                                    "merchant_user_id INTEGER NULL"
+                                )
+                            else:
+                                stmt = (
+                                    "ALTER TABLE stores ADD COLUMN "
+                                    "merchant_user_id INTEGER"
+                                )
+                            db.session.execute(text(stmt))
+                            db.session.commit()
+                            cols.add("merchant_user_id")
+                        except SQLAlchemyError as exc:
+                            db.session.rollback()
+                            log.warning(
+                                "merchant auth schema: add stores.merchant_user_id failed: %s",
+                                exc,
                             )
-                        else:
-                            stmt = (
-                                "ALTER TABLE stores ADD COLUMN "
-                                "merchant_user_id INTEGER"
-                            )
-                        db.session.execute(text(stmt))
-                        db.session.commit()
-                        cols.add("merchant_user_id")
-                    except SQLAlchemyError as exc:
-                        db.session.rollback()
-                        log.warning(
-                            "merchant auth schema: add stores.merchant_user_id failed: %s",
-                            exc,
-                        )
 
-            status = verify_merchant_auth_schema(db)
+            with db_ready_substage("merchant_auth_verify"):
+                status = verify_merchant_auth_schema(db)
             _merchant_auth_schema_once = bool(status.get("ok"))
             return _merchant_auth_schema_once
         except SQLAlchemyError as exc:
             db.session.rollback()
             log.warning("merchant auth schema ensure skipped: %s", exc)
             return False
-    return bool(verify_merchant_auth_schema(db).get("ok"))
+    with db_ready_substage("merchant_auth_verify_cached"):
+        return bool(verify_merchant_auth_schema(db).get("ok"))

@@ -71,11 +71,16 @@ def verify_production_store_schema(db: Any) -> dict[str, Any]:
     from schema_store_identity import verify_store_identity_schema
     from schema_zid_dev_oauth import verify_store_zid_integration_schema
     from schema_zid_widget_install import verify_store_zid_widget_install_schema
+    from services.db_ready_diag_v1 import db_ready_substage  # noqa: PLC0415
 
-    merchant = verify_merchant_auth_schema(db)
-    zid = verify_store_zid_integration_schema(db)
-    widget = verify_store_zid_widget_install_schema(db)
-    identity = verify_store_identity_schema(db)
+    with db_ready_substage("verify_merchant_auth"):
+        merchant = verify_merchant_auth_schema(db)
+    with db_ready_substage("verify_zid_integration"):
+        zid = verify_store_zid_integration_schema(db)
+    with db_ready_substage("verify_widget_install"):
+        widget = verify_store_zid_widget_install_schema(db)
+    with db_ready_substage("verify_store_identity"):
+        identity = verify_store_identity_schema(db)
     missing = sorted(
         set(merchant.get("missing_columns") or [])
         | set(merchant.get("missing_tables") or [])

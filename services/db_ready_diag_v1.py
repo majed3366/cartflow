@@ -19,6 +19,8 @@ log = logging.getLogger("cartflow")
 
 _PREFIX_STAGE = "[DB READY STAGE]"
 _PREFIX_LOCK = "[DB READY LOCK]"
+_PREFIX_SUBSTAGE = "[DB READY SUBSTAGE]"
+_PREFIX_TOP = "[DB READY TOP STAGES]"
 
 _active: ContextVar[bool] = ContextVar("db_ready_diag_active", default=False)
 _depth: ContextVar[int] = ContextVar("db_ready_diag_depth", default=0)
@@ -28,6 +30,9 @@ _source: ContextVar[str] = ContextVar("db_ready_source", default="")
 _slowest_stage: ContextVar[str] = ContextVar("db_ready_slowest_stage", default="")
 _slowest_ms: ContextVar[float] = ContextVar("db_ready_slowest_ms", default=0.0)
 _last_lock_wait_ms: ContextVar[float] = ContextVar("db_ready_last_lock_wait_ms", default=0.0)
+_substage_rows: ContextVar[Optional[list[dict[str, Any]]]] = ContextVar(
+    "db_ready_substage_rows", default=None
+)
 
 _sql_bucket: ContextVar[Optional[dict[str, Any]]] = ContextVar(
     "db_ready_sql_bucket", default=None
@@ -108,6 +113,104 @@ def _emit_lock(lock: str, *, wait_ms: Optional[float] = None, hold_ms: Optional[
         pass
 
 
+def _substage_list() -> list[dict[str, Any]]:
+    rows = _substage_rows.get()
+    return rows if rows is not None else []
+
+
+def _record_substage(
+    name: str,
+    *,
+    query_count: int,
+    sql_ms: float,
+    elapsed_ms: float,
+) -> None:
+    st = (name or "unknown").strip()[:64]
+    row = {
+        "stage": st,
+        "query_count": max(0, int(query_count)),
+        "sql_ms": round(max(0.0, float(sql_ms)), 1),
+        "elapsed_ms": round(max(0.0, float(elapsed_ms)), 1),
+    }
+    rows = _substage_list()
+    rows.append(row)
+    _substage_rows.set(rows)
+
+
+def _emit_substage(
+    name: str,
+    *,
+    query_count: int,
+    sql_ms: float,
+    elapsed_ms: float,
+) -> None:
+    st = (name or "unknown").strip()[:64]
+    parts = [
+        _PREFIX_SUBSTAGE,
+        f"stage={st}",
+        f"query_count={max(0, int(query_count))}",
+        f"sql_ms={round(max(0.0, float(sql_ms)), 1)}",
+        f"elapsed_ms={round(max(0.0, float(elapsed_ms)), 1)}",
+    ]
+    tid = str(_trace_id.get() or "").strip()
+    if tid:
+        parts.append(f"trace_id={tid}")
+    line = " ".join(parts)
+    try:
+        log.info("%s", line)
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        print(line, flush=True)
+    except OSError:
+        pass
+
+
+def _top_substages_sorted() -> list[dict[str, Any]]:
+    rows = list(_substage_list())
+    rows.sort(
+        key=lambda r: (
+            -int(r.get("query_count") or 0),
+            -float(r.get("sql_ms") or 0.0),
+            -float(r.get("elapsed_ms") or 0.0),
+        )
+    )
+    return rows
+
+
+def _emit_top_stages() -> list[dict[str, Any]]:
+    ranked = _top_substages_sorted()
+    if not ranked:
+        return []
+    tid = str(_trace_id.get() or "").strip()
+    header = _PREFIX_TOP
+    if tid:
+        header = f"{header} trace_id={tid}"
+    try:
+        log.info("%s", header)
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        print(header, flush=True)
+    except OSError:
+        pass
+    for row in ranked[:15]:
+        st = str(row.get("stage") or "unknown")
+        q = int(row.get("query_count") or 0)
+        sql_ms = round(float(row.get("sql_ms") or 0.0), 1)
+        el = round(float(row.get("elapsed_ms") or 0.0), 1)
+        block = f"{_PREFIX_TOP} stage={st} queries={q} sql_ms={sql_ms} elapsed_ms={el}"
+        try:
+            log.info("%s", block)
+        except Exception:  # noqa: BLE001
+            pass
+        try:
+            print(block, flush=True)
+        except OSError:
+            pass
+    return ranked
+
+
 def _maybe_install_sql_listener() -> None:
     global _sql_listener_registered
     if _sql_listener_registered:
@@ -167,6 +270,7 @@ def _begin_trace(*, source: str) -> str:
     _slowest_stage.set("")
     _slowest_ms.set(0.0)
     _last_lock_wait_ms.set(0.0)
+    _substage_rows.set([])
     _active.set(True)
     return tid
 
@@ -175,6 +279,8 @@ def _finish_trace(*, success: bool, error: Optional[str] = None) -> None:
     duration_ms = _elapsed_ms()
     slow_st = str(_slowest_stage.get() or "").strip() or "unknown"
     q, sql_ms = _peek_sql_stats()
+    top_ranked = _emit_top_stages()
+    top = top_ranked[0] if top_ranked else {}
     payload = {
         "trace_id": str(_trace_id.get() or ""),
         "source": str(_source.get() or ""),
@@ -186,6 +292,11 @@ def _finish_trace(*, success: bool, error: Optional[str] = None) -> None:
         "total_sql_ms": sql_ms,
         "success": bool(success),
         "error": (error or "")[:255] or None,
+        "top_substage": str(top.get("stage") or "")[:64] or None,
+        "top_substage_queries": int(top.get("query_count") or 0),
+        "top_substage_sql_ms": round(float(top.get("sql_ms") or 0.0), 1),
+        "top_substage_elapsed_ms": round(float(top.get("elapsed_ms") or 0.0), 1),
+        "top_substages": top_ranked[:15],
     }
     _emit_stage("exit", success="1" if success else "0", **{
         k: v for k, v in payload.items() if k not in ("success", "error") and v is not None
@@ -202,7 +313,28 @@ def _finish_trace(*, success: bool, error: Optional[str] = None) -> None:
     _trace_id.set("")
     _t0.set(0.0)
     _source.set("")
+    _substage_rows.set(None)
     _sql_bucket.set(None)
+
+
+@contextmanager
+def db_ready_substage(name: str) -> Iterator[None]:
+    """Fine-grained substage — emits [DB READY SUBSTAGE] with query/sql/elapsed deltas."""
+    st = (name or "unknown").strip()[:64]
+    if not db_ready_trace_active():
+        yield
+        return
+    st0 = time.perf_counter()
+    q0, s0 = _peek_sql_stats()
+    try:
+        yield
+    finally:
+        q1, s1 = _peek_sql_stats()
+        qd = max(0, q1 - q0)
+        sd = round(max(0.0, s1 - s0), 1)
+        ed = _stage_elapsed_ms(st0)
+        _record_substage(st, query_count=qd, sql_ms=sd, elapsed_ms=ed)
+        _emit_substage(st, query_count=qd, sql_ms=sd, elapsed_ms=ed)
 
 
 @contextmanager
@@ -247,14 +379,18 @@ def db_ready_stage(stage: str) -> Iterator[None]:
     finally:
         q1, s1 = _peek_sql_stats()
         stage_ms = _stage_elapsed_ms(st0)
+        qd = max(0, q1 - q0)
+        sd = round(max(0.0, s1 - s0), 1)
         if stage_ms > float(_slowest_ms.get() or 0.0):
             _slowest_ms.set(stage_ms)
             _slowest_stage.set(st)
+        _record_substage(st, query_count=qd, sql_ms=sd, elapsed_ms=stage_ms)
+        _emit_substage(st, query_count=qd, sql_ms=sd, elapsed_ms=stage_ms)
         _emit_stage(
             f"{st}_done",
             stage_t0=st0,
-            query_count=max(0, q1 - q0),
-            total_sql_ms=round(max(0.0, s1 - s0), 1),
+            query_count=qd,
+            total_sql_ms=sd,
         )
 
 
@@ -295,6 +431,7 @@ def clear_db_ready_diag_for_tests() -> None:
     _slowest_stage.set("")
     _slowest_ms.set(0.0)
     _last_lock_wait_ms.set(0.0)
+    _substage_rows.set(None)
     _sql_bucket.set(None)
 
 
@@ -304,5 +441,6 @@ __all__ = [
     "db_ready_log_stage",
     "db_ready_run",
     "db_ready_stage",
+    "db_ready_substage",
     "db_ready_trace_active",
 ]

@@ -17,6 +17,7 @@ from services.db_ready_diag_v1 import (
     db_ready_log_stage,
     db_ready_run,
     db_ready_stage,
+    db_ready_substage,
 )
 from services.db_ready_operational_snapshot_v1 import (
     classify_db_ready_status,
@@ -40,18 +41,55 @@ class DbReadyDiagV1Tests(unittest.TestCase):
         buf = io.StringIO()
         with redirect_stdout(buf):
             with db_ready_run(source="test"):
-                with db_ready_stage("create_all"):
+                with db_ready_substage("create_all"):
                     time.sleep(0.01)
+                with db_ready_substage("widget_product_intelligence"):
+                    time.sleep(0.005)
                 db_ready_log_stage("custom_marker")
         text = buf.getvalue()
         self.assertIn("[DB READY STAGE]", text)
         self.assertIn("stage=enter", text)
-        self.assertIn("stage=create_all_start", text)
-        self.assertIn("stage=create_all_done", text)
-        self.assertIn("stage_elapsed_ms=", text)
+        self.assertIn("[DB READY SUBSTAGE]", text)
+        self.assertIn("stage=create_all", text)
+        self.assertIn("stage=widget_product_intelligence", text)
         self.assertIn("query_count=", text)
-        self.assertIn("trace_id=", text)
+        self.assertIn("[DB READY TOP STAGES]", text)
         self.assertIn("stage=exit", text)
+
+    def test_substage_ranking_and_snapshot(self) -> None:
+        record_db_ready_run(
+            {
+                "trace_id": "rank1234",
+                "duration_ms": 9755.0,
+                "slowest_stage": "widget_schema",
+                "lock_wait_ms": 0.0,
+                "query_count": 964,
+                "total_sql_ms": 6258.9,
+                "success": True,
+                "top_substage": "widget_product_intelligence",
+                "top_substage_queries": 742,
+                "top_substage_sql_ms": 4100.0,
+                "top_substage_elapsed_ms": 5200.0,
+                "top_substages": [
+                    {
+                        "stage": "widget_product_intelligence",
+                        "query_count": 742,
+                        "sql_ms": 4100.0,
+                        "elapsed_ms": 5200.0,
+                    },
+                    {
+                        "stage": "merchant_auth_verify",
+                        "query_count": 134,
+                        "sql_ms": 900.0,
+                        "elapsed_ms": 1100.0,
+                    },
+                ],
+            }
+        )
+        section = build_admin_db_ready_health_section_readonly()
+        self.assertEqual(section["technical"]["top_substage"], "widget_product_intelligence")
+        self.assertEqual(section["technical"]["top_substage_queries"], 742)
+        self.assertEqual(len(section["technical"]["top_substages"]), 2)
 
     def test_status_classification(self) -> None:
         self.assertEqual(classify_db_ready_status(500), "healthy")
