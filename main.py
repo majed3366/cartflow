@@ -1520,6 +1520,11 @@ def _ensure_cartflow_api_db_warmed() -> None:
         db_ready_trace_active,
         db_ready_instrumented_lock,
     )
+    from services.db_ready_stage_reason_v1 import (  # noqa: PLC0415
+        probe_identity_backfill_reason,
+        probe_production_schema_reason,
+        probe_widget_schema_reason,
+    )
 
     def _warm_body() -> None:
         global _cartflow_api_db_warmed
@@ -1533,11 +1538,11 @@ def _ensure_cartflow_api_db_warmed() -> None:
             try:
                 with db_ready_stage("create_all"):
                     db.create_all()
-                with db_ready_stage("production_schema"):
+                with db_ready_stage("production_schema", reason=probe_production_schema_reason(context="startup")):
                     from schema_production_store_bootstrap import ensure_production_store_schema
 
                     schema_ok = ensure_production_store_schema(db, context="startup")
-                with db_ready_stage("widget_schema"):
+                with db_ready_stage("widget_schema", reason=probe_widget_schema_reason()):
                     _ensure_store_widget_schema()
                 with db_ready_stage("reason_phone_schema"):
                     from schema_widget import ensure_cart_recovery_reason_phone_schema
@@ -1559,12 +1564,13 @@ def _ensure_cartflow_api_db_warmed() -> None:
                     from schema_store_identity import ensure_store_identity_schema
 
                     ensure_store_identity_schema(db)
-                with db_ready_stage("identity_backfill"):
+                with db_ready_stage("identity_backfill", reason=probe_identity_backfill_reason()) as id_meta:
                     from services.store_identity_v1 import (
                         backfill_store_identity_aliases_from_stores,
                     )
 
-                    backfill_store_identity_aliases_from_stores()
+                    inserted = backfill_store_identity_aliases_from_stores(diag_meta=id_meta)
+                    id_meta["rows_inserted"] = int(inserted or 0)
                 with db_ready_stage("platform_sync"):
                     from services.store_identity_v1 import sync_connected_platform_identities
 
@@ -1606,10 +1612,14 @@ def _merchant_dashboard_db_ready() -> None:
         db_ready_run,
         db_ready_stage,
     )
+    from services.db_ready_stage_reason_v1 import probe_production_schema_reason  # noqa: PLC0415
 
     with db_ready_run(source="dashboard"):
         if _cartflow_api_db_warmed:
-            with db_ready_stage("schema_verify"):
+            with db_ready_stage(
+                "production_schema",
+                reason=probe_production_schema_reason(context="dashboard"),
+            ):
                 ensure_production_store_schema(db, context="dashboard")
             return
         _ensure_cartflow_api_db_warmed()

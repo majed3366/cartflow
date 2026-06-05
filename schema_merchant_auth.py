@@ -28,6 +28,11 @@ def reset_merchant_auth_schema_guard_for_tests() -> None:
     _merchant_auth_schema_once = False
 
 
+def merchant_auth_schema_warm_done() -> bool:
+    """Read-only: merchant auth schema warm completed this process (diagnostics)."""
+    return bool(_merchant_auth_schema_once)
+
+
 def verify_merchant_auth_schema(db: Any) -> dict[str, Any]:
     """Read-only check for minimum merchant ↔ store linkage columns."""
     required_user_cols = ["primary_store_id"]

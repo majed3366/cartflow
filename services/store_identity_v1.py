@@ -916,19 +916,32 @@ def sync_zid_identities_for_dashboard_store(row: Any) -> None:
         db.session.rollback()
 
 
-def backfill_store_identity_aliases_from_stores(*, session: Any = None) -> int:
+def backfill_store_identity_aliases_from_stores(
+    *,
+    session: Any = None,
+    diag_meta: dict[str, Any] | None = None,
+) -> int:
     """Ensure every Store with ``zid_store_id`` has a cartflow_zid alias row."""
     from services.db_ready_diag_v1 import db_ready_substage  # noqa: PLC0415
+    from services.db_ready_stage_reason_v1 import (  # noqa: PLC0415
+        probe_identity_backfill_register_reason,
+    )
 
     sess = session or db.session
     n = 0
+    rows: list[Any] = []
     try:
-        with db_ready_substage("identity_backfill_query"):
+        with db_ready_substage("identity_backfill_query") as q_meta:
             rows = sess.query(Store).filter(Store.zid_store_id.isnot(None)).all()
+            q_meta["rows_scanned"] = len(rows)
+            if diag_meta is not None:
+                diag_meta["rows_scanned"] = len(rows)
     except (SQLAlchemyError, OSError):
         sess.rollback()
         return 0
-    with db_ready_substage("identity_backfill_register"):
+    reg_reason = probe_identity_backfill_register_reason(rows_scanned=len(rows))
+    with db_ready_substage("identity_backfill_register", reason=reg_reason) as reg_meta:
+        reg_meta["rows_scanned"] = len(rows)
         for row in rows:
             zid = canonical_store_slug_on_row(row)
             sid = getattr(row, "id", None)
@@ -942,6 +955,12 @@ def backfill_store_identity_aliases_from_stores(*, session: Any = None) -> int:
                 session=sess,
             ):
                 n += 1
+        reg_meta["rows_inserted"] = n
+        if n > 0:
+            reg_meta["reason"] = probe_identity_backfill_register_reason(
+                rows_scanned=len(rows),
+                rows_inserted=n,
+            )
     if session is None:
         try:
             sess.commit()

@@ -22,6 +22,11 @@ def reset_store_widget_schema_full_guard_for_tests() -> None:
     _store_widget_schema_full_once = False
 
 
+def store_widget_schema_warm_done() -> bool:
+    """Read-only: process-wide widget schema warm completed (diagnostics)."""
+    return bool(_store_widget_schema_full_once)
+
+
 _store_abandonment_schema_ensured = False
 _recovery_reason_widget_cols_ensured = False
 _recovery_reason_rejection_cols_ensured = False

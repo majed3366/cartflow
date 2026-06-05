@@ -39,6 +39,7 @@ _cache: dict[str, Any] = {
     "last_top_substage_sql_ms": 0.0,
     "last_top_substage_elapsed_ms": 0.0,
     "top_substages": [],
+    "stage_classifications": [],
 }
 
 
@@ -94,6 +95,9 @@ def record_db_ready_run(payload: dict[str, Any]) -> None:
     top_substages = payload.get("top_substages") or []
     if not isinstance(top_substages, list):
         top_substages = []
+    stage_classifications = payload.get("stage_classifications") or []
+    if not isinstance(stage_classifications, list):
+        stage_classifications = []
 
     with _cache_lock:
         n = int(_cache.get("sample_count") or 0) + 1
@@ -120,6 +124,7 @@ def record_db_ready_run(payload: dict[str, Any]) -> None:
                 "last_top_substage_sql_ms": top_sql,
                 "last_top_substage_elapsed_ms": top_el,
                 "top_substages": top_substages[:15],
+                "stage_classifications": stage_classifications[:10],
             }
         )
         snap = dict(_cache)
@@ -164,6 +169,13 @@ def _persist_snapshot(snap: dict[str, Any]) -> None:
             )[:8000]
         except (TypeError, ValueError):
             row.top_substages_json = "[]"
+        try:
+            row.stage_classifications_json = json.dumps(
+                snap.get("stage_classifications") or [],
+                ensure_ascii=False,
+            )[:8000]
+        except (TypeError, ValueError):
+            row.stage_classifications_json = "[]"
         row.last_seen_at = _utc_now()
         db.session.commit()
     except Exception as exc:  # noqa: BLE001
@@ -188,12 +200,19 @@ def load_db_ready_operational_snapshot(*, reload_db: bool = True) -> dict[str, A
             row = db.session.get(DbReadyOperationalSnapshot, SNAPSHOT_ROW_ID)
             if row is not None:
                 top_substages: list[Any] = []
+                stage_classifications: list[Any] = []
                 try:
                     raw_top = json.loads(row.top_substages_json or "[]")
                     if isinstance(raw_top, list):
                         top_substages = raw_top[:15]
                 except (TypeError, ValueError):
                     top_substages = []
+                try:
+                    raw_cls = json.loads(row.stage_classifications_json or "[]")
+                    if isinstance(raw_cls, list):
+                        stage_classifications = raw_cls[:10]
+                except (TypeError, ValueError):
+                    stage_classifications = []
                 with _cache_lock:
                     _cache.update(
                         {
@@ -225,6 +244,7 @@ def load_db_ready_operational_snapshot(*, reload_db: bool = True) -> dict[str, A
                                 float(row.last_top_substage_elapsed_ms or 0.0), 1
                             ),
                             "top_substages": top_substages,
+                            "stage_classifications": stage_classifications,
                         }
                     )
         except Exception as exc:  # noqa: BLE001
@@ -256,6 +276,7 @@ def clear_db_ready_operational_snapshot_for_tests() -> None:
                 "last_top_substage_sql_ms": 0.0,
                 "last_top_substage_elapsed_ms": 0.0,
                 "top_substages": [],
+                "stage_classifications": [],
             }
         )
     from schema_db_ready_operational import reset_db_ready_operational_schema_guard_for_tests

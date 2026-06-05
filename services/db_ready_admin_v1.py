@@ -65,8 +65,10 @@ def build_admin_db_ready_health_section_readonly() -> dict[str, Any]:
                 float(snap.get("last_top_substage_elapsed_ms") or 0.0), 1
             ),
             "top_substages": snap.get("top_substages") or [],
+            "stage_classifications": snap.get("stage_classifications") or [],
         },
         "snapshot": snap,
+        "stage_classifications": snap.get("stage_classifications") or [],
     }
 
 

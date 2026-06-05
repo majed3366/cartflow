@@ -21,6 +21,11 @@ _bootstrap_lock = threading.Lock()
 _bootstrap_verified_ok = False
 
 
+def production_store_bootstrap_verified() -> bool:
+    """Read-only: production store bootstrap verified this process (diagnostics)."""
+    return bool(_bootstrap_verified_ok)
+
+
 def reset_production_store_schema_bootstrap_for_tests() -> None:
     global _bootstrap_verified_ok
     _bootstrap_verified_ok = False
@@ -116,6 +121,10 @@ def ensure_production_store_schema(db: Any, *, context: str = "startup") -> bool
         db_ready_stage,
         db_ready_trace_active,
     )
+    from services.db_ready_stage_reason_v1 import (  # noqa: PLC0415
+        probe_bootstrap_merchant_auth_reason,
+        probe_production_schema_reason,
+    )
 
     if _bootstrap_verified_ok:
         with db_ready_stage("schema_verify_cached"):
@@ -131,7 +140,10 @@ def ensure_production_store_schema(db: Any, *, context: str = "startup") -> bool
 
         log_production_database_identity(context=context)
 
-        with db_ready_stage("bootstrap_merchant_auth"):
+        with db_ready_stage(
+            "bootstrap_merchant_auth",
+            reason=probe_bootstrap_merchant_auth_reason(),
+        ):
             from schema_merchant_auth import (
                 ensure_merchant_auth_schema,
                 log_merchant_auth_schema_status,

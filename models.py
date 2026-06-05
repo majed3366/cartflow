@@ -617,6 +617,7 @@ class DbReadyOperationalSnapshot(Base):
     last_top_substage_sql_ms = Column(Float, default=0.0, nullable=False)
     last_top_substage_elapsed_ms = Column(Float, default=0.0, nullable=False)
     top_substages_json = Column(Text, nullable=False, default="[]")
+    stage_classifications_json = Column(Text, nullable=False, default="[]")
     last_seen_at = Column(
         DateTime,
         default=lambda: datetime.now(timezone.utc),

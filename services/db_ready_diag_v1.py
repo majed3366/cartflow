@@ -124,6 +124,10 @@ def _record_substage(
     query_count: int,
     sql_ms: float,
     elapsed_ms: float,
+    reason: str = "",
+    rows_scanned: int = 0,
+    rows_updated: int = 0,
+    rows_inserted: int = 0,
 ) -> None:
     st = (name or "unknown").strip()[:64]
     row = {
@@ -131,6 +135,10 @@ def _record_substage(
         "query_count": max(0, int(query_count)),
         "sql_ms": round(max(0.0, float(sql_ms)), 1),
         "elapsed_ms": round(max(0.0, float(elapsed_ms)), 1),
+        "reason": (reason or "unknown").strip()[:64],
+        "rows_scanned": max(0, int(rows_scanned)),
+        "rows_updated": max(0, int(rows_updated)),
+        "rows_inserted": max(0, int(rows_inserted)),
     }
     rows = _substage_list()
     rows.append(row)
@@ -143,15 +151,29 @@ def _emit_substage(
     query_count: int,
     sql_ms: float,
     elapsed_ms: float,
+    reason: str = "",
+    rows_scanned: int = 0,
+    rows_updated: int = 0,
+    rows_inserted: int = 0,
 ) -> None:
     st = (name or "unknown").strip()[:64]
     parts = [
         _PREFIX_SUBSTAGE,
         f"stage={st}",
+        f"reason={(reason or 'unknown').strip()[:64]}",
         f"query_count={max(0, int(query_count))}",
         f"sql_ms={round(max(0.0, float(sql_ms)), 1)}",
         f"elapsed_ms={round(max(0.0, float(elapsed_ms)), 1)}",
     ]
+    rs = max(0, int(rows_scanned))
+    ru = max(0, int(rows_updated))
+    ri = max(0, int(rows_inserted))
+    if rs or st.startswith("identity_backfill"):
+        parts.append(f"rows_scanned={rs}")
+    if ru:
+        parts.append(f"rows_updated={ru}")
+    if ri or st.startswith("identity_backfill"):
+        parts.append(f"rows_inserted={ri}")
     tid = str(_trace_id.get() or "").strip()
     if tid:
         parts.append(f"trace_id={tid}")
@@ -281,6 +303,14 @@ def _finish_trace(*, success: bool, error: Optional[str] = None) -> None:
     q, sql_ms = _peek_sql_stats()
     top_ranked = _emit_top_stages()
     top = top_ranked[0] if top_ranked else {}
+    try:
+        from services.db_ready_stage_reason_v1 import (  # noqa: PLC0415
+            build_tracked_classifications,
+        )
+
+        stage_classifications = build_tracked_classifications(_substage_list())
+    except Exception:  # noqa: BLE001
+        stage_classifications = []
     payload = {
         "trace_id": str(_trace_id.get() or ""),
         "source": str(_source.get() or ""),
@@ -297,6 +327,7 @@ def _finish_trace(*, success: bool, error: Optional[str] = None) -> None:
         "top_substage_sql_ms": round(float(top.get("sql_ms") or 0.0), 1),
         "top_substage_elapsed_ms": round(float(top.get("elapsed_ms") or 0.0), 1),
         "top_substages": top_ranked[:15],
+        "stage_classifications": stage_classifications,
     }
     _emit_stage("exit", success="1" if success else "0", **{
         k: v for k, v in payload.items() if k not in ("success", "error") and v is not None
@@ -317,24 +348,69 @@ def _finish_trace(*, success: bool, error: Optional[str] = None) -> None:
     _sql_bucket.set(None)
 
 
+def _new_substage_meta(*, reason: Optional[str] = None) -> dict[str, Any]:
+    return {
+        "reason": (reason or "").strip()[:64],
+        "rows_scanned": 0,
+        "rows_updated": 0,
+        "rows_inserted": 0,
+    }
+
+
+def _finalize_substage_record(
+    name: str,
+    meta: dict[str, Any],
+    *,
+    query_count: int,
+    sql_ms: float,
+    elapsed_ms: float,
+) -> None:
+    reason = str(meta.get("reason") or "unknown").strip()[:64]
+    rows_scanned = int(meta.get("rows_scanned") or 0)
+    rows_updated = int(meta.get("rows_updated") or 0)
+    rows_inserted = int(meta.get("rows_inserted") or 0)
+    _record_substage(
+        name,
+        query_count=query_count,
+        sql_ms=sql_ms,
+        elapsed_ms=elapsed_ms,
+        reason=reason,
+        rows_scanned=rows_scanned,
+        rows_updated=rows_updated,
+        rows_inserted=rows_inserted,
+    )
+    _emit_substage(
+        name,
+        query_count=query_count,
+        sql_ms=sql_ms,
+        elapsed_ms=elapsed_ms,
+        reason=reason,
+        rows_scanned=rows_scanned,
+        rows_updated=rows_updated,
+        rows_inserted=rows_inserted,
+    )
+
+
 @contextmanager
-def db_ready_substage(name: str) -> Iterator[None]:
-    """Fine-grained substage — emits [DB READY SUBSTAGE] with query/sql/elapsed deltas."""
+def db_ready_substage(name: str, *, reason: Optional[str] = None) -> Iterator[dict[str, Any]]:
+    """Fine-grained substage — emits [DB READY SUBSTAGE] with query/sql/elapsed + reason."""
     st = (name or "unknown").strip()[:64]
+    meta = _new_substage_meta(reason=reason)
     if not db_ready_trace_active():
-        yield
+        yield meta
         return
     st0 = time.perf_counter()
     q0, s0 = _peek_sql_stats()
     try:
-        yield
+        yield meta
     finally:
         q1, s1 = _peek_sql_stats()
         qd = max(0, q1 - q0)
         sd = round(max(0.0, s1 - s0), 1)
         ed = _stage_elapsed_ms(st0)
-        _record_substage(st, query_count=qd, sql_ms=sd, elapsed_ms=ed)
-        _emit_substage(st, query_count=qd, sql_ms=sd, elapsed_ms=ed)
+        if not (meta.get("reason") or "").strip():
+            meta["reason"] = "unknown"
+        _finalize_substage_record(st, meta, query_count=qd, sql_ms=sd, elapsed_ms=ed)
 
 
 @contextmanager
@@ -365,17 +441,18 @@ def db_ready_run(*, source: str = "dashboard") -> Iterator[None]:
 
 
 @contextmanager
-def db_ready_stage(stage: str) -> Iterator[None]:
-    """Log stage_start/done with per-stage query + sql deltas."""
+def db_ready_stage(stage: str, *, reason: Optional[str] = None) -> Iterator[dict[str, Any]]:
+    """Log stage_start/done with per-stage query + sql deltas + root-cause reason."""
     st = (stage or "unknown").strip()[:64]
+    meta = _new_substage_meta(reason=reason)
     if not db_ready_trace_active():
-        yield
+        yield meta
         return
     st0 = time.perf_counter()
     q0, s0 = _peek_sql_stats()
-    _emit_stage(f"{st}_start")
+    _emit_stage(f"{st}_start", reason=(meta.get("reason") or None))
     try:
-        yield
+        yield meta
     finally:
         q1, s1 = _peek_sql_stats()
         stage_ms = _stage_elapsed_ms(st0)
@@ -384,13 +461,17 @@ def db_ready_stage(stage: str) -> Iterator[None]:
         if stage_ms > float(_slowest_ms.get() or 0.0):
             _slowest_ms.set(stage_ms)
             _slowest_stage.set(st)
-        _record_substage(st, query_count=qd, sql_ms=sd, elapsed_ms=stage_ms)
-        _emit_substage(st, query_count=qd, sql_ms=sd, elapsed_ms=stage_ms)
+        if not (meta.get("reason") or "").strip():
+            meta["reason"] = "unknown"
+        _finalize_substage_record(st, meta, query_count=qd, sql_ms=sd, elapsed_ms=stage_ms)
         _emit_stage(
             f"{st}_done",
             stage_t0=st0,
             query_count=qd,
             total_sql_ms=sd,
+            reason=meta.get("reason"),
+            rows_scanned=meta.get("rows_scanned"),
+            rows_inserted=meta.get("rows_inserted"),
         )
 
 

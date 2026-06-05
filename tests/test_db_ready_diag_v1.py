@@ -50,6 +50,7 @@ class DbReadyDiagV1Tests(unittest.TestCase):
         self.assertIn("[DB READY STAGE]", text)
         self.assertIn("stage=enter", text)
         self.assertIn("[DB READY SUBSTAGE]", text)
+        self.assertIn("reason=", text)
         self.assertIn("stage=create_all", text)
         self.assertIn("stage=widget_product_intelligence", text)
         self.assertIn("query_count=", text)
@@ -84,12 +85,36 @@ class DbReadyDiagV1Tests(unittest.TestCase):
                         "elapsed_ms": 1100.0,
                     },
                 ],
+                "stage_classifications": [
+                    {
+                        "stage": "widget_schema",
+                        "reason": "cache_miss",
+                        "query_count": 606,
+                        "sql_ms": 4100.0,
+                        "elapsed_ms": 5200.0,
+                        "rows_scanned": 0,
+                        "rows_updated": 0,
+                        "rows_inserted": 0,
+                    },
+                    {
+                        "stage": "identity_backfill_register",
+                        "reason": "backfill_needed",
+                        "query_count": 128,
+                        "sql_ms": 900.0,
+                        "elapsed_ms": 1100.0,
+                        "rows_scanned": 45,
+                        "rows_updated": 0,
+                        "rows_inserted": 12,
+                    },
+                ],
             }
         )
         section = build_admin_db_ready_health_section_readonly()
         self.assertEqual(section["technical"]["top_substage"], "widget_product_intelligence")
         self.assertEqual(section["technical"]["top_substage_queries"], 742)
         self.assertEqual(len(section["technical"]["top_substages"]), 2)
+        self.assertEqual(len(section["stage_classifications"]), 2)
+        self.assertEqual(section["stage_classifications"][0]["reason"], "cache_miss")
 
     def test_status_classification(self) -> None:
         self.assertEqual(classify_db_ready_status(500), "healthy")
@@ -170,8 +195,8 @@ class DbReadyMainIntegrationTests(unittest.TestCase):
                 main._merchant_dashboard_db_ready()
         text = buf.getvalue()
         self.assertIn("[DB READY STAGE] stage=enter", text)
-        self.assertIn("stage=schema_verify_start", text)
-        self.assertIn("stage=schema_verify_done", text)
+        self.assertIn("stage=production_schema_start", text)
+        self.assertIn("stage=production_schema_done", text)
 
 
 if __name__ == "__main__":
