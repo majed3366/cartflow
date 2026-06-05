@@ -359,7 +359,7 @@ def admin_operations_dashboard(request: Request) -> Any:
         ops = build_admin_operations_command_center_readonly()
     except Exception:  # noqa: BLE001
         ops = {
-            "version": "admin_operations_center_v2_3",
+            "version": "admin_operations_center_v2_4",
             "generated_at_utc": None,
             "executive_summary": {
                 "platform_status_key": "stable",
@@ -392,6 +392,25 @@ def admin_operations_dashboard(request: Request) -> Any:
                     "verification_en": "All monitored systems are operating normally.",
                 },
                 "alerts": [],
+            },
+            "store_action_center": {
+                "section": "store_action_center",
+                "status": "healthy",
+                "summary": {
+                    "affected_count": 0,
+                    "highest_severity": "healthy",
+                    "highest_severity_emoji": "🟢",
+                    "highest_severity_label": "Healthy",
+                    "critical_count": 0,
+                    "warning_count": 0,
+                    "information_count": 0,
+                },
+                "healthy": {
+                    "status_label": "Healthy",
+                    "message_en": "No stores currently require operational intervention.",
+                    "verification_en": "All monitored stores are operating normally.",
+                },
+                "stores": [],
             },
             "system_health_summary": {
                 "status_key": "stable",

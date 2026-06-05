@@ -77,7 +77,7 @@ class AdminOperationsCenterV1Tests(unittest.TestCase):
 
     def test_build_payload_has_required_sections(self) -> None:
         payload = build_admin_operations_center_v1_readonly()
-        self.assertEqual(payload.get("version"), "admin_operations_center_v2_3")
+        self.assertEqual(payload.get("version"), "admin_operations_center_v2_4")
         health = payload.get("system_health_summary") or {}
         for key in (
             "status_key",
@@ -128,7 +128,7 @@ class AdminOperationsCenterV1Tests(unittest.TestCase):
 
     def test_command_center_payload_excludes_lazy_sections(self) -> None:
         payload = build_admin_operations_command_center_readonly()
-        self.assertEqual(payload.get("version"), "admin_operations_center_v2_3")
+        self.assertEqual(payload.get("version"), "admin_operations_center_v2_4")
         for key in (
             "system_health_summary",
             "top_risks",

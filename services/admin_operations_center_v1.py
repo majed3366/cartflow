@@ -2311,10 +2311,19 @@ def build_admin_operations_command_center_readonly() -> dict[str, Any]:
     )
 
     critical_alerts = build_critical_alerts_readonly()
+    from services.admin_operations_store_action_center_v1 import (  # noqa: PLC0415
+        build_store_action_center_readonly,
+    )
+
+    store_action_center = build_store_action_center_readonly(
+        store_rows=store_rows,
+        alerts=alerts,
+    )
     return {
-        "version": "admin_operations_center_v2_3",
+        "version": "admin_operations_center_v2_4",
         "generated_at_utc": _utc_now().isoformat(),
         "critical_alerts": critical_alerts,
+        "store_action_center": store_action_center,
         "executive_summary": executive_summary,
         "current_issues": current_issues,
         "system_health_summary": system_health,

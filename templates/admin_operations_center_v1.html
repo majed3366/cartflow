@@ -5,6 +5,7 @@
 {% block admin_content %}
   {% set ex = ops.executive_summary or {} %}
   {% set critical_alerts = ops.critical_alerts or {} %}
+  {% set store_action_center = ops.store_action_center or {} %}
   {% set tone = ex.platform_status_tone or 'ok' %}
   {% set ci = ops.current_issues or {} %}
   {% set issues = ci.issues or [] %}
@@ -15,6 +16,9 @@
 
   <!-- CRITICAL ALERTS — top-level operational hook (V2) -->
   {% include "partials/admin_operations_critical_alerts_section.html" %}
+
+  <!-- STORE ACTION CENTER — store-level operational hook (V3) -->
+  {% include "partials/admin_operations_store_action_center_section.html" %}
 
   <!-- EXECUTIVE SUMMARY — first thing seen -->
   <section id="ops-executive-summary" class="space-y-4">
