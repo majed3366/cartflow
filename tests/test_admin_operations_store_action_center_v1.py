@@ -5,9 +5,9 @@ from __future__ import annotations
 import unittest
 from unittest.mock import patch
 
+from services.admin_operations_production_truth_v1 import classify_store_environment
 from services.admin_operations_store_action_center_v1 import (
     build_store_action_center_readonly,
-    classify_store_environment,
 )
 
 
@@ -154,6 +154,33 @@ class StoreActionCenterTests(unittest.TestCase):
         store = payload["production_queue"][0]
         self.assertEqual(store["issue_count_label"], "1 Critical")
         self.assertEqual(store["highest_severity"], "critical")
+
+    def test_production_action_queue_excludes_healthy(self) -> None:
+        store_rows = [
+            {
+                "store_slug": "healthy_prod",
+                "display_name": "Healthy Prod",
+                "ready": True,
+                "whatsapp_missing": False,
+            },
+            {
+                "store_slug": "needs_action",
+                "display_name": "Needs Action",
+                "ready": False,
+                "whatsapp_missing": False,
+            },
+        ]
+        with patch(
+            "services.widget_health_v1.build_admin_widget_health_section_readonly",
+            return_value={"issues": []},
+        ):
+            payload = build_store_action_center_readonly(
+                store_rows=store_rows,
+                alerts=[],
+            )
+        action_slugs = [s["store_slug"] for s in payload["production_action_queue"]]
+        self.assertEqual(action_slugs, ["needs_action"])
+        self.assertEqual(payload["summary"]["affected_count"], 1)
 
 
 if __name__ == "__main__":

@@ -10,6 +10,7 @@ from __future__ import annotations
 from typing import Any, Optional
 
 from services.admin_operations_action_engine_v1 import resolve_current_issue_guidance
+from services.admin_operations_production_truth_v1 import is_production_store
 
 SECTION_KEY = "critical_alerts"
 
@@ -167,6 +168,7 @@ def _collect_widget_runtime_alert() -> Optional[dict[str, Any]]:
         it
         for it in (health.get("issues") or [])
         if str(it.get("kind") or "") in _WIDGET_RUNTIME_KINDS
+        and is_production_store(str(it.get("store_slug") or ""))
     ]
     if not matches:
         return None

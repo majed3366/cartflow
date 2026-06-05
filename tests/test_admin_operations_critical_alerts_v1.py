@@ -136,6 +136,31 @@ class CriticalAlertsBuilderTests(unittest.TestCase):
         kinds = [a["kind"] for a in payload["alerts"]]
         self.assertIn("request_health_failure", kinds)
 
+    def test_widget_runtime_alert_ignores_demo_stores(self) -> None:
+        widget_health = {
+            "issues": [
+                {
+                    "kind": "runtime_beacon_missing",
+                    "severity": "critical",
+                    "store_slug": "loadtest-store-013",
+                    "store_name": "Load Test",
+                }
+            ]
+        }
+        with patch(
+            "services.widget_health_v1.build_admin_widget_health_section_readonly",
+            return_value=widget_health,
+        ):
+            record_restart_survival_snapshot(
+                {
+                    "startup_warm_status": "succeeded",
+                    "restart_survival_result": "PASS",
+                }
+            )
+            payload = build_critical_alerts_readonly()
+        kinds = [a["kind"] for a in payload["alerts"]]
+        self.assertNotIn("widget_runtime_missing", kinds)
+
 
 if __name__ == "__main__":
     unittest.main()

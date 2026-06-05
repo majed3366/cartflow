@@ -359,7 +359,7 @@ def admin_operations_dashboard(request: Request) -> Any:
         ops = build_admin_operations_command_center_readonly()
     except Exception:  # noqa: BLE001
         ops = {
-            "version": "admin_operations_center_v2_4",
+            "version": "admin_operations_center_v2_5",
             "generated_at_utc": None,
             "executive_summary": {
                 "platform_status_key": "stable",
@@ -369,6 +369,10 @@ def admin_operations_dashboard(request: Request) -> Any:
                 "active_stores": 0,
                 "ready_stores": 0,
                 "affected_stores": 0,
+                "production_affected_stores": 0,
+                "production_critical_stores": 0,
+                "production_warning_stores": 0,
+                "production_healthy_stores": 0,
                 "open_alerts": 0,
                 "open_issues": 0,
                 "recoveries_today": 0,
@@ -408,7 +412,17 @@ def admin_operations_dashboard(request: Request) -> Any:
                     "production_store_count": 0,
                     "demo_test_store_count": 0,
                     "production_affected_count": 0,
+                    "production_critical_count": 0,
+                    "production_warning_count": 0,
+                    "production_healthy_count": 0,
                     "demo_test_affected_count": 0,
+                },
+                "dev_test": {
+                    "demo_stores": 0,
+                    "loadtest_stores": 0,
+                    "sandbox_stores": 0,
+                    "other_test_stores": 0,
+                    "affected_in_scan": 0,
                 },
                 "healthy": {
                     "status_label": "Healthy",
@@ -417,6 +431,7 @@ def admin_operations_dashboard(request: Request) -> Any:
                 },
                 "stores": [],
                 "production_queue": [],
+                "production_action_queue": [],
                 "demo_test_queue": [],
             },
             "system_health_summary": {
@@ -433,6 +448,7 @@ def admin_operations_dashboard(request: Request) -> Any:
             "store_health_snapshot": {
                 "stores": [],
                 "total_stores": 0,
+                "production_only": True,
                 "available": True,
             },
             "top_risks": {

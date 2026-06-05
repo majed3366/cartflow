@@ -2285,6 +2285,24 @@ def _build_executive_summary(
     }
 
 
+def _filter_production_store_snapshot(
+    snapshot: dict[str, Any],
+) -> dict[str, Any]:
+    """Presentation-only: operational affected-store list is production merchants."""
+    from services.admin_operations_production_truth_v1 import is_production_store  # noqa: PLC0415
+
+    snap = dict(snapshot or {})
+    stores = [
+        s
+        for s in (snap.get("stores") or [])
+        if isinstance(s, dict) and is_production_store(str(s.get("store_slug") or ""))
+    ]
+    snap["stores"] = stores
+    snap["total_stores"] = len(stores)
+    snap["production_only"] = True
+    return snap
+
+
 def build_admin_operations_command_center_readonly() -> dict[str, Any]:
     """Lightweight initial payload for /admin/operations (executive overview)."""
     ctx = _build_ops_shared_context()
@@ -2319,8 +2337,23 @@ def build_admin_operations_command_center_readonly() -> dict[str, Any]:
         store_rows=store_rows,
         alerts=alerts,
     )
+    sac_summary = store_action_center.get("summary") or {}
+    executive_summary["affected_stores"] = _safe_int(sac_summary.get("affected_count"))
+    executive_summary["production_affected_stores"] = _safe_int(
+        sac_summary.get("production_affected_count")
+    )
+    executive_summary["production_critical_stores"] = _safe_int(
+        sac_summary.get("production_critical_count")
+    )
+    executive_summary["production_warning_stores"] = _safe_int(
+        sac_summary.get("production_warning_count")
+    )
+    executive_summary["production_healthy_stores"] = _safe_int(
+        sac_summary.get("production_healthy_count")
+    )
+    store_health_snapshot = _filter_production_store_snapshot(store_health_snapshot)
     return {
-        "version": "admin_operations_center_v2_4",
+        "version": "admin_operations_center_v2_5",
         "generated_at_utc": _utc_now().isoformat(),
         "critical_alerts": critical_alerts,
         "store_action_center": store_action_center,

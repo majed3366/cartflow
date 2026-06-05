@@ -711,6 +711,19 @@ class AdminOperationsCenterV1Tests(unittest.TestCase):
         self.assertIn("current_issues", payload)
         self.assertIn("issues", payload["current_issues"])
 
+    def test_executive_summary_affected_matches_store_action_center(self) -> None:
+        payload = build_admin_operations_command_center_readonly()
+        ex = payload.get("executive_summary") or {}
+        sac = payload.get("store_action_center") or {}
+        summary = sac.get("summary") or {}
+        self.assertEqual(ex.get("affected_stores"), summary.get("affected_count"))
+        self.assertEqual(
+            ex.get("production_affected_stores"),
+            summary.get("production_affected_count"),
+        )
+        snap = payload.get("store_health_snapshot") or {}
+        self.assertTrue(snap.get("production_only"))
+
     def test_timeline_ordering(self) -> None:
         now = datetime.now(timezone.utc)
         older = (now - timedelta(hours=2)).isoformat()

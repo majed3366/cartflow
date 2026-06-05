@@ -10,6 +10,10 @@ from __future__ import annotations
 from typing import Any, Optional
 
 from services.admin_operations_action_engine_v1 import resolve_current_issue_guidance
+from services.admin_operations_production_truth_v1 import (
+    count_dev_test_buckets,
+    is_production_store,
+)
 
 SECTION_KEY = "store_action_center"
 
@@ -73,26 +77,6 @@ _WIDGET_SEVERITY_TO_STORE: dict[str, str] = {
     "warning": "warning",
     "healthy": "information",
 }
-
-_DEMO_TEST_TOKENS = (
-    "sim-store",
-    "loadtest",
-    "cartflow-default",
-    "test",
-    "e2e",
-    "demo",
-    "staging",
-    "sandbox",
-)
-
-
-def classify_store_environment(slug: str) -> str:
-    """Presentation-only bucket: production | demo_test."""
-    s = (slug or "").strip().lower()
-    for tok in _DEMO_TEST_TOKENS:
-        if tok in s:
-            return "demo_test"
-    return "production"
 
 
 def _normalize_kind(kind: str) -> str:
@@ -318,7 +302,7 @@ def _store_row_from_bucket(bucket: dict[str, Any]) -> dict[str, Any]:
     return {
         "store_slug": slug,
         "store_name": bucket.get("store_name") or slug or "Store",
-        "environment": classify_store_environment(slug),
+        "environment": "demo_test" if not is_production_store(slug) else "production",
         "highest_severity": highest,
         "severity_emoji": emoji,
         "severity_label": label,
@@ -336,6 +320,9 @@ def _store_row_from_bucket(bucket: dict[str, Any]) -> dict[str, Any]:
 def _finalize_stores(stores: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
     out: list[dict[str, Any]] = []
     for bucket in stores.values():
+        slug = str(bucket.get("store_slug") or "")
+        if not is_production_store(slug):
+            continue
         row = _store_row_from_bucket(bucket)
         if row.get("has_issues"):
             out.append(row)
@@ -395,10 +382,10 @@ def _split_queues(rows: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], lis
     production: list[dict[str, Any]] = []
     demo_test: list[dict[str, Any]] = []
     for row in rows:
-        if row.get("environment") == "demo_test":
-            demo_test.append(row)
-        else:
+        if is_production_store(str(row.get("store_slug") or "")):
             production.append(row)
+        else:
+            demo_test.append(row)
     return production, demo_test
 
 
@@ -424,33 +411,50 @@ def _build_summary(
 
     prod = _counts(production_queue)
     demo = _counts(demo_test_queue)
-    all_affected = prod["affected_count"] + demo["affected_count"]
     highest = "healthy"
-    if all_affected:
+    if prod["affected_count"] > 0:
         for sev in ("critical", "warning", "information"):
-            if prod.get(f"{sev}_count", 0) + demo.get(f"{sev}_count", 0) > 0:
+            if prod.get(f"{sev}_count", 0) > 0:
                 highest = sev
                 break
     emoji, label = _SEVERITY_META.get(highest, ("🟢", "Healthy"))
-    if not all_affected:
+    if prod["affected_count"] == 0:
         emoji, label = "🟢", "Healthy"
 
     return {
-        "affected_count": all_affected,
+        # Operational truth — production merchants only.
+        "affected_count": prod["affected_count"],
         "highest_severity": highest,
         "highest_severity_emoji": emoji,
         "highest_severity_label": label,
-        "critical_count": prod["critical_count"] + demo["critical_count"],
-        "warning_count": prod["warning_count"] + demo["warning_count"],
-        "information_count": prod["information_count"] + demo["information_count"],
-        "healthy_count": prod["healthy_count"] + demo["healthy_count"],
+        "critical_count": prod["critical_count"],
+        "warning_count": prod["warning_count"],
+        "information_count": prod["information_count"],
+        "healthy_count": prod["healthy_count"],
         "production_store_count": prod["store_count"],
-        "demo_test_store_count": demo["store_count"],
         "production_affected_count": prod["affected_count"],
-        "demo_test_affected_count": demo["affected_count"],
         "production_critical_count": prod["critical_count"],
         "production_warning_count": prod["warning_count"],
         "production_healthy_count": prod["healthy_count"],
+        "demo_test_store_count": demo["store_count"],
+        "demo_test_affected_count": demo["affected_count"],
+        "all_affected_count": prod["affected_count"] + demo["affected_count"],
+    }
+
+
+def _dev_test_breakdown(
+    *,
+    demo_test_queue: list[dict[str, Any]],
+    store_rows: list[dict[str, Any]],
+) -> dict[str, int]:
+    base = count_dev_test_buckets(store_rows)
+    # Ensure buckets reflect scanned rows even if queue is partial.
+    return {
+        "demo_stores": base.get("demo", 0),
+        "loadtest_stores": base.get("loadtest", 0),
+        "sandbox_stores": base.get("sandbox", 0),
+        "other_test_stores": base.get("other_test", 0),
+        "affected_in_scan": sum(1 for s in demo_test_queue if s.get("has_issues")),
     }
 
 
@@ -479,6 +483,11 @@ def build_store_action_center_readonly(
         production_queue=production_queue,
         demo_test_queue=demo_test_queue,
     )
+    dev_test = _dev_test_breakdown(
+        demo_test_queue=demo_test_queue,
+        store_rows=store_rows,
+    )
+    production_action_queue = [s for s in production_queue if s.get("has_issues")]
 
     production_affected = summary.get("production_affected_count", 0)
     if production_affected == 0:
@@ -486,12 +495,13 @@ def build_store_action_center_readonly(
         if summary.get("demo_test_affected_count", 0) > 0:
             healthy_msg = (
                 "No production stores currently require intervention. "
-                "See Demo/Test Stores below."
+                "Development & Test activity is listed separately below."
             )
         return {
             "section": SECTION_KEY,
             "status": "healthy",
             "summary": summary,
+            "dev_test": dev_test,
             "healthy": {
                 "status_label": "Healthy",
                 "message_en": healthy_msg,
@@ -502,6 +512,7 @@ def build_store_action_center_readonly(
             },
             "stores": stores,
             "production_queue": production_queue,
+            "production_action_queue": production_action_queue,
             "demo_test_queue": demo_test_queue,
         }
 
@@ -509,9 +520,11 @@ def build_store_action_center_readonly(
         "section": SECTION_KEY,
         "status": "affected",
         "summary": summary,
+        "dev_test": dev_test,
         "healthy": None,
         "stores": stores,
         "production_queue": production_queue,
+        "production_action_queue": production_action_queue,
         "demo_test_queue": demo_test_queue,
     }
 
@@ -519,5 +532,4 @@ def build_store_action_center_readonly(
 __all__ = [
     "SECTION_KEY",
     "build_store_action_center_readonly",
-    "classify_store_environment",
 ]

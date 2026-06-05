@@ -1,7 +1,7 @@
 {% set sac = store_action_center or {} %}
 {% set summary = sac.summary or {} %}
+{% set dev = sac.dev_test or {} %}
 {% macro store_queue_row(store) %}
-  {% if store.has_issues %}
   <details class="group rounded-lg border border-slate-200 bg-white shadow-sm open:border-slate-300">
     <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 marker:content-none [&::-webkit-details-marker]:hidden">
       <div class="min-w-0 flex-1">
@@ -16,9 +16,7 @@
       <span class="hidden shrink-0 text-xs font-medium text-slate-400 group-open:inline">Collapse</span>
     </summary>
     <div class="border-t border-slate-100 px-4 py-4">
-      <p class="text-sm font-semibold text-slate-900">{{ store.store_name or 'Store' }}</p>
-      <p class="mt-0.5 font-mono text-xs text-slate-500" dir="ltr">{{ store.store_slug or '—' }}</p>
-      <div class="mt-4 space-y-5">
+      <div class="mt-1 space-y-5">
         {% for issue in store.issues or [] %}
         <div class="{% if not loop.last %}border-b border-slate-100 pb-5{% endif %}">
           <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">Issue {{ loop.index }}</p>
@@ -30,30 +28,19 @@
       </div>
     </div>
   </details>
-  {% else %}
-  <div class="flex items-center justify-between gap-3 rounded-lg border border-emerald-100 bg-emerald-50/40 px-4 py-2.5">
-    <div class="min-w-0 flex-1">
-      <p class="text-sm font-medium text-emerald-950">
-        <span>🟢</span>
-        <span class="ml-1">{{ store.store_name or 'Store' }}</span>
-      </p>
-      <p class="mt-0.5 truncate font-mono text-xs text-emerald-800/70" dir="ltr">{{ store.store_slug or '—' }}</p>
-    </div>
-    <span class="shrink-0 text-xs font-medium text-emerald-700">Healthy</span>
-  </div>
-  {% endif %}
 {% endmacro %}
 
 <section id="ops-store-action-center" class="space-y-4">
   <div>
-    <p class="text-xs font-medium text-slate-500">Operations queue — read-only</p>
+    <p class="text-xs font-medium text-slate-500">Production merchants — read-only</p>
     <h2 class="mt-0.5 text-lg font-semibold text-slate-900">Store Action Center</h2>
   </div>
 
   <div class="rounded-xl border border-slate-200 bg-slate-50/60 px-4 py-3">
-    <dl class="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-5">
+    <p class="text-xs font-medium text-slate-500">Production operational truth</p>
+    <dl class="mt-2 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
       <div>
-        <dt class="text-xs font-medium text-slate-500">Affected Stores</dt>
+        <dt class="text-xs font-medium text-slate-500">Affected Production Stores</dt>
         <dd class="mt-0.5 text-lg font-semibold tabular-nums text-slate-900">{{ summary.affected_count | default(0) }}</dd>
       </div>
       <div>
@@ -65,14 +52,8 @@
         <dd class="mt-0.5 text-lg font-semibold tabular-nums text-amber-800">{{ summary.warning_count | default(0) }}</dd>
       </div>
       <div>
-        <dt class="text-xs font-medium text-slate-500">Healthy Stores</dt>
+        <dt class="text-xs font-medium text-slate-500">Healthy Production Stores</dt>
         <dd class="mt-0.5 text-lg font-semibold tabular-nums text-emerald-700">{{ summary.healthy_count | default(0) }}</dd>
-      </div>
-      <div class="sm:col-span-2 lg:col-span-1">
-        <dt class="text-xs font-medium text-slate-500">Production / Demo·Test</dt>
-        <dd class="mt-0.5 text-sm font-medium text-slate-800">
-          {{ summary.production_store_count | default(0) }} / {{ summary.demo_test_store_count | default(0) }}
-        </dd>
       </div>
     </dl>
   </div>
@@ -82,44 +63,45 @@
   <div class="rounded-2xl border border-emerald-200 bg-emerald-50/50 px-4 py-3">
     <p class="text-base font-semibold text-emerald-950">{{ healthy.status_label or 'Healthy' }}</p>
     <p class="mt-1 text-sm text-emerald-900">{{ healthy.message_en or 'No production stores currently require intervention.' }}</p>
-    {% if (summary.demo_test_affected_count | default(0)) > 0 %}
-    <p class="mt-2 text-xs text-slate-600">Demo/Test Stores with issues: {{ summary.demo_test_affected_count }}</p>
-    {% endif %}
   </div>
   {% endif %}
 
-  {% set prod_queue = sac.production_queue or [] %}
-  {% set demo_queue = sac.demo_test_queue or [] %}
+  {% set action_queue = sac.production_action_queue or [] %}
 
   <div class="space-y-2">
-    <h3 class="text-sm font-semibold text-slate-800">
-      Production Stores
-      <span class="font-normal text-slate-500">({{ summary.production_store_count | default(0) }})</span>
-    </h3>
-    {% if prod_queue %}
+    <h3 class="text-sm font-semibold text-slate-800">Production Stores Requiring Action</h3>
+    {% if action_queue %}
     <div class="space-y-2">
-      {% for store in prod_queue %}
+      {% for store in action_queue %}
       {{ store_queue_row(store) }}
       {% endfor %}
     </div>
     {% else %}
-    <p class="rounded-lg border border-dashed border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">No production stores in scan.</p>
+    <p class="rounded-lg border border-dashed border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">No production stores currently require action.</p>
     {% endif %}
   </div>
 
-  <div class="space-y-2">
-    <h3 class="text-sm font-semibold text-slate-800">
-      Demo/Test Stores
-      <span class="font-normal text-slate-500">({{ summary.demo_test_store_count | default(0) }})</span>
-    </h3>
-    {% if demo_queue %}
-    <div class="space-y-2">
-      {% for store in demo_queue %}
-      {{ store_queue_row(store) }}
-      {% endfor %}
+  <details class="rounded-xl border border-slate-200 bg-slate-50/40">
+    <summary class="cursor-pointer list-none px-4 py-3 marker:content-none [&::-webkit-details-marker]:hidden">
+      <span class="text-sm font-semibold text-slate-700">Development &amp; Test Stores</span>
+      <span class="mt-1 block text-xs font-normal text-slate-500">
+        Demo: {{ dev.demo_stores | default(0) }} · Load Test: {{ dev.loadtest_stores | default(0) }} · Sandbox: {{ dev.sandbox_stores | default(0) }}
+        {% if (dev.affected_in_scan | default(0)) > 0 %} · {{ dev.affected_in_scan }} with issues{% endif %}
+      </span>
+    </summary>
+    <div class="border-t border-slate-200 px-4 py-3">
+      {% set demo_queue = sac.demo_test_queue or [] %}
+      {% if demo_queue %}
+      <div class="space-y-2">
+        {% for store in demo_queue %}
+        {% if store.has_issues %}
+        {{ store_queue_row(store) }}
+        {% endif %}
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="text-sm text-slate-600">No development or test stores in scan.</p>
+      {% endif %}
     </div>
-    {% else %}
-    <p class="rounded-lg border border-dashed border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">No demo/test stores in scan.</p>
-    {% endif %}
-  </div>
+  </details>
 </section>
