@@ -236,6 +236,60 @@ class WidgetHealthIssueGroupingTests(unittest.TestCase):
         self.assertEqual(self._groups([]), [])
 
 
+class WidgetHealthNeedsAttentionTests(unittest.TestCase):
+    """V4 manager-first summary (route layer, presentation-only)."""
+
+    def _attn(self, stores):
+        from routes.admin_operations import _widget_health_needs_attention
+
+        return _widget_health_needs_attention(stores)
+
+    def test_one_row_per_affected_store_business_language(self):
+        stores = [
+            {"store_name": "CartFlow", "store_slug": "cf", "status": "critical",
+             "issues": [{"kind": "widget_not_seen", "severity": "critical", "problem_ar": "x"}]},
+            {"store_name": "X", "store_slug": "x", "status": "warning",
+             "issues": [{"kind": "runtime_beacon_missing", "severity": "warning", "problem_ar": "x"}]},
+            {"store_name": "OK", "store_slug": "ok", "status": "healthy", "issues": []},
+        ]
+        attn = self._attn(stores)
+        self.assertEqual(len(attn), 2)  # healthy excluded
+        names = {a["store_name"] for a in attn}
+        self.assertEqual(names, {"CartFlow", "X"})
+        cf = next(a for a in attn if a["store_name"] == "CartFlow")
+        self.assertEqual(cf["headline_ar"], "الودجت لا يظهر للعملاء")
+        self.assertEqual(cf["priority_key"], "high")
+        # No technical terms leak into the headline.
+        for a in attn:
+            low = a["headline_ar"].lower()
+            self.assertNotIn("beacon", low)
+            self.assertNotIn("runtime", low)
+            self.assertNotIn("config", low)
+
+    def test_high_priority_sorted_first(self):
+        stores = [
+            {"store_name": "Low", "store_slug": "lo", "status": "warning",
+             "issues": [{"kind": "widget_settings_mismatch", "severity": "warning", "problem_ar": "x"}]},
+            {"store_name": "High", "store_slug": "hi", "status": "critical",
+             "issues": [{"kind": "widget_bootstrap_blocked", "severity": "critical", "problem_ar": "x"}]},
+        ]
+        attn = self._attn(stores)
+        self.assertEqual(attn[0]["store_name"], "High")
+        self.assertEqual(attn[0]["priority_ar"], "عالية")
+
+    def test_picks_most_important_issue_per_store(self):
+        stores = [
+            {"store_name": "Multi", "store_slug": "m", "status": "critical",
+             "issues": [
+                 {"kind": "widget_settings_mismatch", "severity": "warning", "problem_ar": "x"},
+                 {"kind": "widget_bootstrap_blocked", "severity": "critical", "problem_ar": "x"},
+             ]},
+        ]
+        attn = self._attn(stores)
+        self.assertEqual(len(attn), 1)
+        self.assertEqual(attn[0]["headline_ar"], "تعذر تشغيل الودجت")
+
+
 class WidgetHealthJsWiringTests(unittest.TestCase):
     def test_loader_records_widget_health(self):
         text = _LOADER.read_text(encoding="utf-8")
@@ -256,12 +310,20 @@ class WidgetHealthJsWiringTests(unittest.TestCase):
         overview = (_ROOT / "templates" / "admin_operations_center_v1.html").read_text(encoding="utf-8")
         self.assertIn("DEFAULT_TYPE = 'real'", overview)
         self.assertIn("data-wh-group", overview)
+        self.assertIn("data-wh-attn", overview)
         partial = (
             _ROOT / "templates" / "partials" / "admin_operations_widget_health_section.html"
         ).read_text(encoding="utf-8")
         self.assertIn("data-wh-group", partial)
         self.assertIn("data-wh-affected-store", partial)
         self.assertIn("data-wh-count", partial)
+        # V4: manager-first summary is the first section.
+        self.assertIn("data-wh-attn", partial)
+        self.assertIn("المتاجر التي تحتاج انتباهاً", partial)
+        self.assertLess(
+            partial.index("المتاجر التي تحتاج انتباهاً"),
+            partial.index("المشاكل الحالية للودجِت"),
+        )
 
 
 if __name__ == "__main__":

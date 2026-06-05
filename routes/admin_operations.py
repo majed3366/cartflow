@@ -572,6 +572,90 @@ def _widget_health_issue_groups(issues: Any) -> list[dict[str, Any]]:
     return out
 
 
+# Business-language summaries for the manager-first operational view (V4).
+# Presentation-only mapping; never used by detection/scoring.
+_WIDGET_HEALTH_HEADLINE_AR: dict[str, str] = {
+    "runtime_beacon_missing": "لا تصل إشارات التشغيل",
+    "widget_not_seen": "الودجت لا يظهر للعملاء",
+    "widget_bootstrap_blocked": "تعذر تشغيل الودجت",
+    "widget_module_failed": "تعذر تشغيل الودجت",
+    "widget_runtime_object_missing": "تعذر تشغيل الودجت",
+    "public_config_not_loaded": "إعدادات الودجت غير مكتملة",
+    "cart_event_bridge_missing": "لا يتم رصد نشاط السلة",
+    "store_identity_mismatch": "مشكلة في ربط المتجر",
+    "widget_settings_mismatch": "إعدادات الودجت غير متطابقة",
+    "widget_not_shown_after_cart_event": "الودجت لا يظهر للعملاء",
+    "hesitation_not_armed": "لا يظهر الودجت بعد إضافة منتج",
+    "cart_event_false_positive": "رصد نشاط سلة غير دقيق",
+    "widget_cors_error": "مشكلة في حفظ بيانات التشغيل",
+}
+_WIDGET_HEALTH_PRIORITY: dict[str, str] = {
+    "widget_module_failed": "high",
+    "widget_bootstrap_blocked": "high",
+    "widget_runtime_object_missing": "high",
+    "widget_not_seen": "high",
+    "widget_not_shown_after_cart_event": "high",
+    "runtime_beacon_missing": "medium",
+    "public_config_not_loaded": "medium",
+    "cart_event_bridge_missing": "medium",
+    "hesitation_not_armed": "medium",
+    "widget_settings_mismatch": "low",
+    "store_identity_mismatch": "low",
+    "cart_event_false_positive": "low",
+    "widget_cors_error": "low",
+}
+_PRIORITY_AR = {"high": "عالية", "medium": "متوسطة", "low": "منخفضة"}
+_PRIORITY_RANK = {"high": 3, "medium": 2, "low": 1}
+
+
+def _widget_health_needs_attention(stores: Any) -> list[dict[str, Any]]:
+    """Presentation-only: one business-language row per affected store.
+
+    Picks each store's single most important detected issue and renders it in
+    operational language (no beacon/runtime/API terms). Built from existing
+    Widget Health data; no detection/scoring changes.
+    """
+    sev_rank = {"critical": 2, "warning": 1, "healthy": 0}
+    rows: list[dict[str, Any]] = []
+    for st in stores or []:
+        if st.get("status") == "healthy":
+            continue
+        issues = st.get("issues") or []
+        if not issues:
+            continue
+        top = max(
+            issues,
+            key=lambda it: (
+                sev_rank.get(it.get("severity"), 0),
+                _PRIORITY_RANK.get(
+                    _WIDGET_HEALTH_PRIORITY.get(it.get("kind"), "medium"), 2
+                ),
+            ),
+        )
+        kind = top.get("kind")
+        prio = _WIDGET_HEALTH_PRIORITY.get(kind, "medium")
+        rows.append(
+            {
+                "store_name": st.get("store_name"),
+                "store_slug": st.get("store_slug"),
+                "status": st.get("status"),
+                "headline_ar": _WIDGET_HEALTH_HEADLINE_AR.get(
+                    kind, top.get("problem_ar") or ""
+                ),
+                "priority_key": prio,
+                "priority_ar": _PRIORITY_AR.get(prio, prio),
+            }
+        )
+    rows.sort(
+        key=lambda r: (
+            _PRIORITY_RANK.get(r.get("priority_key"), 2),
+            sev_rank.get(r.get("status"), 0),
+        ),
+        reverse=True,
+    )
+    return rows
+
+
 @router.get("/admin/operations/section/widget-health", response_class=HTMLResponse)
 def admin_operations_section_widget_health(request: Request) -> Any:
     denied = _admin_session_or_redirect(
@@ -585,9 +669,11 @@ def admin_operations_section_widget_health(request: Request) -> Any:
         )
 
         health = build_admin_widget_health_section_readonly()
-        # Presentation-only: grouped issue view (no detection changes).
+        # Presentation-only: grouped issue view + manager-first summary
+        # (no detection changes).
         health = dict(health)
         health["issue_groups"] = _widget_health_issue_groups(health.get("issues"))
+        health["needs_attention"] = _widget_health_needs_attention(health.get("stores"))
     except Exception:  # noqa: BLE001
         return HTMLResponse(_OPS_LAZY_SECTION_ERROR_HTML, status_code=500)
     return templates.TemplateResponse(

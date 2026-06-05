@@ -11,6 +11,43 @@
 {{- ns.t -}}
 {%- endmacro -%}
 <div class="space-y-5" data-wh-root>
+{% set needs_attention = health.needs_attention or [] %}
+
+  <!-- SECTION 1: Manager-first operational summary -->
+  <section>
+    <h3 class="text-base font-semibold text-slate-900">المتاجر التي تحتاج انتباهاً</h3>
+    <p class="mt-0.5 text-sm text-slate-600">ملخص سريع — ما يحتاج تدخلاً الآن</p>
+    {% if needs_attention %}
+    <div class="mt-3 overflow-x-auto rounded-xl border border-slate-200">
+      <table class="min-w-full divide-y divide-slate-200 text-sm">
+        <thead class="bg-slate-50 text-right text-xs font-medium text-slate-500">
+          <tr>
+            <th class="px-4 py-2.5">المتجر</th>
+            <th class="px-4 py-2.5">الحالة</th>
+            <th class="px-4 py-2.5">الأولوية</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100 bg-white">
+          {% for a in needs_attention %}
+          <tr data-wh-attn data-store-slug="{{ a.store_slug }}" data-store-type="{{ store_type(a.store_slug) }}" data-status="{{ a.status }}" class="align-top hover:bg-slate-50/80">
+            <td class="px-4 py-2.5 font-medium text-slate-900">{{ a.store_name }}</td>
+            <td class="px-4 py-2.5 text-slate-800">{{ a.headline_ar }}</td>
+            <td class="px-4 py-2.5 whitespace-nowrap">
+              <span class="inline-flex rounded-full border px-2 py-0.5 text-xs font-medium
+                {% if a.priority_key == 'high' %}border-rose-200 bg-rose-50 text-rose-800
+                {% elif a.priority_key == 'medium' %}border-amber-200 bg-amber-50 text-amber-900
+                {% else %}border-slate-200 bg-slate-50 text-slate-600{% endif %}">{{ a.priority_ar }}</span>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <p data-wh-attn-empty class="mt-3 hidden rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-6 text-center text-sm text-slate-600">لا متاجر تحتاج انتباهاً ضمن الفلتر الحالي.</p>
+    {% else %}
+    <p class="mt-3 rounded-xl border border-dashed border-emerald-200 bg-emerald-50/50 px-4 py-6 text-center text-sm text-emerald-800">لا توجد متاجر تحتاج انتباهاً حالياً.</p>
+    {% endif %}
+  </section>
 
   <!-- Status summary -->
   <div class="grid gap-3 sm:grid-cols-4">

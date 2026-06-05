@@ -193,6 +193,15 @@
     function apply() {
       var r = root();
       if (!r) return;
+      // Section 1 manager-first summary: filter affected rows by store type.
+      var visAttn = 0;
+      forEach(r.querySelectorAll('[data-wh-attn]'), function (el) {
+        var show = typeMatch(el.getAttribute('data-store-type'));
+        el.style.display = show ? '' : 'none';
+        if (show) visAttn++;
+      });
+      var ae = r.querySelector('[data-wh-attn-empty]');
+      if (ae) { if (visAttn === 0 && r.querySelector('[data-wh-attn]')) { ae.classList.remove('hidden'); } else { ae.classList.add('hidden'); } }
       // Grouped issues: recompute affected-store count per active filter; hide
       // a group when no affected store matches the current store-type filter.
       var visGroups = 0;
