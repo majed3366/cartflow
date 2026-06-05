@@ -135,6 +135,26 @@ def _ensure_restart_survival_columns(db: Any, insp: Any) -> None:
             "ALTER TABLE db_ready_operational_snapshots "
             "ADD COLUMN restart_survival_evaluated_at TIMESTAMP"
         )
+    if "restart_first_dashboard_used_safe_path" not in cols:
+        alters.append(
+            "ALTER TABLE db_ready_operational_snapshots "
+            "ADD COLUMN restart_first_dashboard_used_safe_path BOOLEAN"
+        )
+    if "restart_survival_timing" not in cols:
+        alters.append(
+            "ALTER TABLE db_ready_operational_snapshots "
+            "ADD COLUMN restart_survival_timing VARCHAR(64) NOT NULL DEFAULT 'unknown'"
+        )
+    if "restart_survival_protected" not in cols:
+        alters.append(
+            "ALTER TABLE db_ready_operational_snapshots "
+            "ADD COLUMN restart_survival_protected BOOLEAN"
+        )
+    if "restart_survival_reason" not in cols:
+        alters.append(
+            "ALTER TABLE db_ready_operational_snapshots "
+            "ADD COLUMN restart_survival_reason VARCHAR(64)"
+        )
     for stmt in alters:
         try:
             db.session.execute(text(stmt))

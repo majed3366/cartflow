@@ -628,7 +628,11 @@ class DbReadyOperationalSnapshot(Base):
     restart_first_dashboard_duration_ms = Column(Float, default=0.0, nullable=False)
     restart_first_dashboard_cached_verification = Column(Boolean, nullable=True)
     restart_first_dashboard_heavy_warm = Column(Boolean, nullable=True)
+    restart_first_dashboard_used_safe_path = Column(Boolean, nullable=True)
     restart_survival_result = Column(String(8), nullable=False, default="pending")
+    restart_survival_timing = Column(String(64), nullable=False, default="unknown")
+    restart_survival_protected = Column(Boolean, nullable=True)
+    restart_survival_reason = Column(String(64), nullable=True)
     restart_survival_evaluated_at = Column(DateTime, nullable=True)
     last_seen_at = Column(
         DateTime,

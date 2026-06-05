@@ -50,7 +50,11 @@ _cache: dict[str, Any] = {
     "restart_first_dashboard_duration_ms": 0.0,
     "restart_first_dashboard_cached_verification": None,
     "restart_first_dashboard_heavy_warm": False,
+    "restart_first_dashboard_used_safe_path": None,
     "restart_survival_result": "pending",
+    "restart_survival_timing": "unknown",
+    "restart_survival_protected": None,
+    "restart_survival_reason": None,
     "restart_survival_evaluated_at": None,
 }
 
@@ -197,7 +201,11 @@ def record_restart_survival_snapshot(snap: dict[str, Any]) -> None:
         "restart_first_dashboard_duration_ms",
         "restart_first_dashboard_cached_verification",
         "restart_first_dashboard_heavy_warm",
+        "restart_first_dashboard_used_safe_path",
         "restart_survival_result",
+        "restart_survival_timing",
+        "restart_survival_protected",
+        "restart_survival_reason",
         "restart_survival_evaluated_at",
     }
     patch = {k: snap[k] for k in allowed if k in snap}
@@ -252,10 +260,22 @@ def _apply_restart_survival_row_fields(
     if "restart_first_dashboard_heavy_warm" in snap:
         hw = snap.get("restart_first_dashboard_heavy_warm")
         row.restart_first_dashboard_heavy_warm = bool(hw) if hw is not None else None
+    if "restart_first_dashboard_used_safe_path" in snap:
+        sp = snap.get("restart_first_dashboard_used_safe_path")
+        row.restart_first_dashboard_used_safe_path = bool(sp) if sp is not None else None
     if "restart_survival_result" in snap:
         row.restart_survival_result = str(snap.get("restart_survival_result") or "pending")[
             :8
         ]
+    if "restart_survival_timing" in snap:
+        row.restart_survival_timing = str(snap.get("restart_survival_timing") or "unknown")[
+            :64
+        ]
+    if "restart_survival_protected" in snap:
+        prot = snap.get("restart_survival_protected")
+        row.restart_survival_protected = bool(prot) if prot is not None else None
+    if "restart_survival_reason" in snap:
+        row.restart_survival_reason = (str(snap.get("restart_survival_reason") or "")[:64] or None)
     if "restart_survival_evaluated_at" in snap:
         row.restart_survival_evaluated_at = _parse_snap_dt(
             snap.get("restart_survival_evaluated_at")
@@ -427,8 +447,20 @@ def load_db_ready_operational_snapshot(*, reload_db: bool = True) -> dict[str, A
                                 getattr(row, "restart_first_dashboard_heavy_warm", False)
                                 or False
                             ),
+                            "restart_first_dashboard_used_safe_path": getattr(
+                                row, "restart_first_dashboard_used_safe_path", None
+                            ),
                             "restart_survival_result": str(
                                 getattr(row, "restart_survival_result", None) or "pending"
+                            ),
+                            "restart_survival_timing": str(
+                                getattr(row, "restart_survival_timing", None) or "unknown"
+                            ),
+                            "restart_survival_protected": getattr(
+                                row, "restart_survival_protected", None
+                            ),
+                            "restart_survival_reason": getattr(
+                                row, "restart_survival_reason", None
                             ),
                             "restart_survival_evaluated_at": _dt_iso(
                                 getattr(row, "restart_survival_evaluated_at", None)
@@ -475,7 +507,11 @@ def clear_db_ready_operational_snapshot_for_tests() -> None:
                 "restart_first_dashboard_duration_ms": 0.0,
                 "restart_first_dashboard_cached_verification": None,
                 "restart_first_dashboard_heavy_warm": False,
+                "restart_first_dashboard_used_safe_path": None,
                 "restart_survival_result": "pending",
+                "restart_survival_timing": "unknown",
+                "restart_survival_protected": None,
+                "restart_survival_reason": None,
                 "restart_survival_evaluated_at": None,
             }
         )

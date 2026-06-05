@@ -102,15 +102,29 @@
           </dd>
         </div>
       </dl>
-      <div class="mt-3 flex items-center gap-2">
-        <span class="text-xs font-medium text-slate-500">Verification result</span>
-        <span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold
-          {% if rs.verification_result == 'PASS' %}bg-emerald-100 text-emerald-900
-          {% elif rs.verification_result == 'FAIL' %}bg-rose-100 text-rose-900
-          {% else %}bg-violet-100 text-violet-900{% endif %}">
-          {{ rs.verification_result or 'PENDING' }}
-        </span>
+      <div class="mt-3 flex flex-wrap items-center gap-3">
+        <div class="flex items-center gap-2">
+          <span class="text-xs font-medium text-slate-500">Result</span>
+          <span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold
+            {% if rs.verification_result == 'PASS' %}bg-emerald-100 text-emerald-900
+            {% elif rs.verification_result == 'FAIL' %}bg-rose-100 text-rose-900
+            {% else %}bg-violet-100 text-violet-900{% endif %}">
+            {{ rs.verification_result or 'PENDING' }}
+          </span>
+        </div>
+        {% if rs.timing %}
+        <div class="flex items-center gap-2">
+          <span class="text-xs font-medium text-slate-500">Timing</span>
+          <span class="font-mono text-xs text-slate-800">{{ rs.timing }}</span>
+        </div>
+        {% endif %}
       </div>
+      {% if rs.pass_headline_ar %}
+      <p class="mt-2 text-sm font-medium text-emerald-900" dir="rtl">{{ rs.pass_headline_ar }}</p>
+      {% endif %}
+      {% if rs.timing_label_ar %}
+      <p class="mt-1 text-sm text-slate-700" dir="rtl"><span class="font-medium">Timing:</span> {{ rs.timing_label_ar }}</p>
+      {% endif %}
     </div>
 
     <div class="mt-4 grid gap-3 sm:grid-cols-3">

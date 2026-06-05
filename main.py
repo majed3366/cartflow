@@ -1657,6 +1657,7 @@ def _merchant_dashboard_db_ready(*, allow_defer: bool = False) -> bool:
             record_first_dashboard_request(
                 duration_ms=duration_ms,
                 cached_verification=was_warmed_at_entry,
+                used_safe_path=not needed_request_warm,
                 heavy_warm_in_request=needed_request_warm,
             )
         except Exception:  # noqa: BLE001
