@@ -18526,12 +18526,105 @@ def api_dashboard_messages():
 
 
 @app.get("/api/dashboard/refresh-state")
-def api_dashboard_refresh_state():
+def api_dashboard_refresh_state(request: Request):
+    from services.dashboard_refresh_state_guard_v1 import (  # noqa: PLC0415
+        refresh_state_deadline_exceeded,
+        refresh_state_guard_begin,
+        refresh_state_log_deadline_exceeded,
+        refresh_state_log_stage,
+        refresh_state_minimal_payload,
+    )
+
     wall0 = time.perf_counter()
+    refresh_state_guard_begin(request)
+    store_slug_hint = ""
     try:
+        from services.merchant_auth_context import get_merchant_auth_store_slug  # noqa: PLC0415
+
+        store_slug_hint = (get_merchant_auth_store_slug() or "").strip()[:255]
+    except Exception:  # noqa: BLE001
+        store_slug_hint = ""
+    refresh_state_log_stage(
+        "request_entered",
+        store_slug=store_slug_hint or None,
+    )
+    try:
+        if refresh_state_deadline_exceeded():
+            refresh_state_log_deadline_exceeded(
+                stage="request_entered",
+                store_slug=store_slug_hint or None,
+            )
+            out = refresh_state_minimal_payload(
+                store_slug=store_slug_hint or None,
+                stage="request_entered",
+            )
+            refresh_state_log_stage(
+                "response_ready",
+                store_slug=store_slug_hint or None,
+                partial="1",
+            )
+            return j({"ok": True, **out})
+
+        st0 = time.perf_counter()
+        refresh_state_log_stage("db_ready_start", store_slug=store_slug_hint or None)
         _merchant_dashboard_db_ready()
+        refresh_state_log_stage(
+            "db_ready_done",
+            store_slug=store_slug_hint or None,
+            stage_t0=st0,
+        )
+        if refresh_state_deadline_exceeded():
+            refresh_state_log_deadline_exceeded(
+                stage="db_ready_done",
+                store_slug=store_slug_hint or None,
+            )
+            out = refresh_state_minimal_payload(
+                store_slug=store_slug_hint or None,
+                stage="db_ready_done",
+            )
+            refresh_state_log_stage(
+                "response_ready",
+                store_slug=store_slug_hint or None,
+                partial="1",
+            )
+            return j({"ok": True, **out})
+
+        st0 = time.perf_counter()
+        refresh_state_log_stage("store_row_start", store_slug=store_slug_hint or None)
         dash_store = _dashboard_recovery_store_row()
+        if dash_store is not None:
+            store_slug_hint = (
+                getattr(dash_store, "zid_store_id", None) or store_slug_hint or ""
+            ).strip()[:255]
+        refresh_state_log_stage(
+            "store_row_done",
+            store_slug=store_slug_hint or None,
+            stage_t0=st0,
+        )
+        if refresh_state_deadline_exceeded():
+            refresh_state_log_deadline_exceeded(
+                stage="store_row_done",
+                store_slug=store_slug_hint or None,
+            )
+            out = refresh_state_minimal_payload(
+                store_slug=store_slug_hint or None,
+                stage="store_row_done",
+            )
+            refresh_state_log_stage(
+                "response_ready",
+                store_slug=store_slug_hint or None,
+                partial="1",
+            )
+            return j({"ok": True, **out})
+
+        st0 = time.perf_counter()
+        refresh_state_log_stage("payload_start", store_slug=store_slug_hint or None)
         out = _merchant_dashboard_refresh_state_payload(dash_store)
+        refresh_state_log_stage(
+            "payload_done",
+            store_slug=store_slug_hint or None,
+            stage_t0=st0,
+        )
         try:
             log.info(
                 "[DASHBOARD COUNTS] section=refresh-state sent_total=%s refresh_token=%s",
@@ -18540,10 +18633,20 @@ def api_dashboard_refresh_state():
             )
         except Exception:
             pass
+        refresh_state_log_stage(
+            "response_ready",
+            store_slug=store_slug_hint or None,
+            partial="0",
+        )
         return j({"ok": True, **out})
     except Exception as e:  # noqa: BLE001
         db.session.rollback()
         log.warning("api_dashboard_refresh_state: %s", e)
+        refresh_state_log_stage(
+            "response_ready",
+            store_slug=store_slug_hint or None,
+            error="failed",
+        )
         return j({"ok": False, "error": "failed"}, 500)
     finally:
         _log_dashboard_section_profile(section="refresh_state", wall_perf_start=wall0)
@@ -20470,12 +20573,22 @@ async def zid_webhook(request: Request):
 # صفحات تجريبية متعددة لمسار ‎/demo/store‎ (تنقّل مثل ‎PDP / cart‎ دون تغيير منطق الاسترجاع).
 def _demo_store_html_context(request: Request) -> dict[str, Any]:
     """سياق مشترك لـ‎ demo_store.html‎ — قائمة المنتجات أو صفحة السلة فقط."""
+    import time as _time
+
+    from services.demo_store_request_diag_v1 import demo_store_context_log_stage  # noqa: PLC0415
     from services.merchant_activation_v1 import (  # noqa: PLC0415
         merchant_activation_demo_nav_base,
         resolve_activation_demo_for_request,
     )
 
+    st0 = _time.perf_counter()
+    demo_store_context_log_stage("resolve_activation_start")
     act = resolve_activation_demo_for_request(request)
+    demo_store_context_log_stage(
+        "resolve_activation_done",
+        stage_t0=st0,
+        store_slug=act.widget_store_slug,
+    )
     p = (request.url.path or "").rstrip("/") or "/"
     if p.endswith("/checkout"):
         title = "CartFlow — إتمام الطلب (تجربة)"
@@ -20510,7 +20623,14 @@ def _demo_store_html_context(request: Request) -> dict[str, Any]:
         "merchant_activation_denied": act.denied,
         "merchant_activation_dashboard_href": "/dashboard#carts",
     }
+    st0 = _time.perf_counter()
+    demo_store_context_log_stage("extras_start", store_slug=widget_slug)
     ctx.update(demo_template_context_extras(nav_base=nav_base))
+    demo_store_context_log_stage(
+        "extras_done",
+        stage_t0=st0,
+        store_slug=widget_slug,
+    )
     return merge_demo_primary_store_demo_queries(request, ctx)
 
 
@@ -20564,14 +20684,29 @@ def _demo_store_request_guard(request: Request) -> Optional[Any]:
 @app.get("/demo/cart/checkout")
 def demo_store(request: Request):
     """متجر وهمي للتجارب الداخلية (ويدجت / أحداث سلة — بدون منصات حقيقية)."""
-    guard = _demo_store_request_guard(request)
-    if guard is not None:
-        return guard
-    return templates.TemplateResponse(
-        request,
-        "demo_store.html",
-        _demo_store_html_context(request),
+    from services.demo_store_request_diag_v1 import (  # noqa: PLC0415
+        begin_demo_store_trace,
+        demo_store_log_stage,
     )
+
+    begin_demo_store_trace(request)
+    demo_store_log_stage("request_entered", request=request)
+    guard = _demo_store_request_guard(request)
+    demo_store_log_stage("guard_done", request=request)
+    if guard is not None:
+        demo_store_log_stage("response_ready", request=request, redirect="1")
+        return guard
+    demo_store_log_stage("context_start", request=request)
+    ctx = _demo_store_html_context(request)
+    demo_store_log_stage(
+        "context_done",
+        request=request,
+        store_slug=ctx.get("demo_store_slug"),
+    )
+    demo_store_log_stage("template_start", request=request)
+    resp = templates.TemplateResponse(request, "demo_store.html", ctx)
+    demo_store_log_stage("response_ready", request=request)
+    return resp
 
 
 @app.get("/demo/store/product/{product_id:int}")
