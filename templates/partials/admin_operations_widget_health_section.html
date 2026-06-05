@@ -1,9 +1,17 @@
 {% set summary = health.summary or {} %}
 {% set rows = health.stores or [] %}
 {% set issues = health.issues or [] %}
-<div class="space-y-5">
+{%- macro store_type(slug) -%}
+{%- set s = (slug or '')|lower -%}
+{%- set ns = namespace(t='real') -%}
+{%- for tok in ['sim-store', 'loadtest', 'cartflow-default', 'test', 'e2e', 'demo', 'staging', 'sandbox'] -%}
+{%- if tok in s -%}{%- set ns.t = 'test' -%}{%- endif -%}
+{%- endfor -%}
+{{- ns.t -}}
+{%- endmacro -%}
+<div class="space-y-5" data-wh-root>
 
-  <!-- Summary counts -->
+  <!-- Status summary -->
   <div class="grid gap-3 sm:grid-cols-4">
     <div class="rounded-xl border border-slate-100 bg-slate-50/80 px-4 py-3">
       <dt class="text-xs font-medium text-slate-500">المتاجر</dt>
@@ -23,14 +31,26 @@
     </div>
   </div>
 
-  <!-- Phase 2: Widget Issues (Problem -> Impact -> Where -> Suggested Action -> Verification) -->
+  <!-- Store type filter (UI-only, additive) -->
+  <div class="flex flex-wrap items-center gap-2">
+    <span class="text-xs font-medium text-slate-500">نوع المتجر:</span>
+    <div class="inline-flex overflow-hidden rounded-lg border border-slate-200 text-sm">
+      <button type="button" data-wh-type-btn="all" onclick="cfWhSetType('all')" class="px-3 py-1.5 font-medium text-slate-700 hover:bg-slate-50">الكل</button>
+      <button type="button" data-wh-type-btn="real" onclick="cfWhSetType('real')" class="border-r border-slate-200 px-3 py-1.5 font-medium text-slate-700 hover:bg-slate-50">متاجر حقيقية</button>
+      <button type="button" data-wh-type-btn="test" onclick="cfWhSetType('test')" class="border-r border-slate-200 px-3 py-1.5 font-medium text-slate-700 hover:bg-slate-50">متاجر اختبار</button>
+    </div>
+    <span class="text-xs text-slate-400">(فلترة عرض فقط — لا تُعدّل أي سجل)</span>
+  </div>
+
+  <!-- PRIMARY: Current Widget Issues (action-first) -->
   <section>
-    <h3 class="text-base font-semibold text-slate-900">مشاكل الودجِت</h3>
-    <p class="mt-0.5 text-sm text-slate-600">رصد استباقي لمشاكل التشغيل قبل أن يبلّغ التاجر — للقراءة فقط.</p>
+    <h3 class="text-base font-semibold text-slate-900">المشاكل الحالية للودجِت</h3>
+    <p class="mt-0.5 text-sm text-slate-600">ما يحتاج إجراءً الآن — مُرتّب حسب الخطورة. للقراءة فقط.</p>
     {% if issues %}
     <ul class="mt-3 space-y-3">
       {% for it in issues %}
-      <li class="rounded-2xl border p-4 shadow-sm
+      <li data-wh-issue data-store-slug="{{ it.store_slug }}" data-store-type="{{ store_type(it.store_slug) }}" data-status="{{ it.severity }}"
+        class="rounded-2xl border p-4 shadow-sm
         {% if it.severity == 'critical' %}border-rose-200 bg-rose-50/50
         {% elif it.severity == 'warning' %}border-amber-200 bg-amber-50/40
         {% else %}border-slate-200 bg-white{% endif %}">
@@ -41,14 +61,14 @@
             {% elif it.severity == 'warning' %}border-amber-200 bg-amber-50 text-amber-900
             {% else %}border-slate-200 bg-slate-50 text-slate-600{% endif %}">{{ it.severity_ar }}</span>
         </div>
-        <dl class="mt-2 grid gap-2 text-sm sm:grid-cols-2">
-          <div><dt class="text-xs font-medium text-slate-500">الأثر</dt><dd class="text-slate-800">{{ it.impact_ar }}</dd></div>
-          <div><dt class="text-xs font-medium text-slate-500">أين</dt><dd class="text-slate-800">{{ it.store_name }} <span dir="ltr" class="text-slate-500">({{ it.store_slug }})</span>{% if it.where_ar %} — <span dir="ltr">{{ it.where_ar }}</span>{% endif %}</dd></div>
-          <div><dt class="text-xs font-medium text-slate-500">الإجراء المقترح</dt><dd class="text-slate-800">{{ it.suggested_action_ar }}</dd></div>
-          <div><dt class="text-xs font-medium text-slate-500">التحقق</dt><dd class="text-slate-800" dir="auto">{{ it.verification_ar }}</dd></div>
-        </dl>
+        <div class="mt-3 space-y-2.5 text-sm">
+          <div class="flex gap-2"><span class="w-24 shrink-0 text-xs font-medium text-slate-500">الأثر</span><span class="text-slate-800">{{ it.impact_ar }}</span></div>
+          <div class="flex gap-2"><span class="w-24 shrink-0 text-xs font-medium text-slate-500">أين</span><span class="text-slate-800">{{ it.store_name }} <span dir="ltr" class="text-slate-500">({{ it.store_slug }})</span>{% if it.where_ar %} — <span dir="ltr">{{ it.where_ar }}</span>{% endif %}</span></div>
+          <div class="flex gap-2"><span class="w-24 shrink-0 text-xs font-medium text-slate-500">الإجراء المقترح</span><span class="text-slate-800">{{ it.suggested_action_ar }}</span></div>
+          <div class="flex gap-2"><span class="w-24 shrink-0 text-xs font-medium text-slate-500">التحقق</span><span class="text-slate-800" dir="auto">{{ it.verification_ar }}</span></div>
+        </div>
         {% if it.technical_details %}
-        <details class="mt-2 rounded-xl border border-slate-200 bg-white/70">
+        <details class="mt-3 rounded-xl border border-slate-200 bg-white/70">
           <summary class="cursor-pointer list-none px-3 py-2 text-xs font-medium text-slate-500 marker:content-none [&::-webkit-details-marker]:hidden">تفاصيل تقنية</summary>
           <pre class="overflow-x-auto border-t border-slate-100 px-3 py-2 text-xs text-slate-700" dir="ltr">{{ it.technical_details | tojson(indent=2) }}</pre>
         </details>
@@ -56,63 +76,83 @@
       </li>
       {% endfor %}
     </ul>
+    <p data-wh-issues-empty class="mt-3 hidden rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-6 text-center text-sm text-slate-600">لا مشاكل مطابقة للفلتر الحالي.</p>
     {% else %}
     <p class="mt-3 rounded-xl border border-dashed border-emerald-200 bg-emerald-50/50 px-4 py-6 text-center text-sm text-emerald-800">لا توجد مشاكل ودجِت بارزة حالياً.</p>
     {% endif %}
   </section>
 
-  <!-- Phase 1: per-store health view -->
-  <section>
-    <h3 class="text-base font-semibold text-slate-900">صحة الودجِت لكل متجر</h3>
-    {% if rows %}
-    <div class="mt-3 overflow-x-auto rounded-xl border border-slate-200">
-      <table class="min-w-full divide-y divide-slate-200 text-sm">
-        <thead class="bg-slate-50 text-right text-xs font-medium text-slate-500">
-          <tr>
-            <th class="px-3 py-2.5">المتجر</th>
-            <th class="px-3 py-2.5">المنصة</th>
-            <th class="px-3 py-2.5">الإصدار</th>
-            <th class="px-3 py-2.5">مثبّت</th>
-            <th class="px-3 py-2.5">public-config</th>
-            <th class="px-3 py-2.5">beacon</th>
-            <th class="px-3 py-2.5">الهوية</th>
-            <th class="px-3 py-2.5">جسر السلة</th>
-            <th class="px-3 py-2.5">تسليح التردد</th>
-            <th class="px-3 py-2.5">ظهر؟</th>
-            <th class="px-3 py-2.5">الحالة</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-slate-100 bg-white">
-          {% for r in rows %}
-          <tr class="align-top hover:bg-slate-50/80">
-            <td class="px-3 py-2.5 font-medium text-slate-900">{{ r.store_name }}<span class="block text-xs text-slate-400" dir="ltr">{{ r.store_slug }}</span></td>
-            <td class="px-3 py-2.5 text-slate-700" dir="ltr">{{ r.platform }}</td>
-            <td class="px-3 py-2.5 text-slate-700" dir="ltr">{{ r.runtime_version or '—' }}</td>
-            <td class="px-3 py-2.5">{{ '🟢' if r.widget_installed else '⚪' }}</td>
-            <td class="px-3 py-2.5">{{ '🟢' if r.public_config_loaded else '⚪' }}</td>
-            <td class="px-3 py-2.5">{{ '🟢' if r.runtime_beacon_received else '⚪' }}</td>
-            <td class="px-3 py-2.5">{{ '🟢' if r.store_identity_resolved else '⚪' }}</td>
-            <td class="px-3 py-2.5">
-              {% if r.cart_event_bridge_status == 'ok' %}🟢
-              {% elif r.cart_event_bridge_status == 'missing' %}🔴
-              {% else %}⚪{% endif %}
-            </td>
-            <td class="px-3 py-2.5">{{ '🟢' if r.hesitation_armed else '⚪' }}</td>
-            <td class="px-3 py-2.5">{% if r.widget_shown is none %}⚪{% elif r.widget_shown %}🟢{% else %}🔴{% endif %}</td>
-            <td class="px-3 py-2.5 whitespace-nowrap">
-              <span class="inline-flex rounded-full border px-2 py-0.5 text-xs font-medium
-                {% if r.status == 'critical' %}border-rose-200 bg-rose-50 text-rose-800
-                {% elif r.status == 'warning' %}border-amber-200 bg-amber-50 text-amber-900
-                {% else %}border-emerald-200 bg-emerald-50 text-emerald-800{% endif %}">{{ r.status_emoji }} {{ r.status_ar }}</span>
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+  <!-- SECONDARY: full per-store health matrix, collapsed -->
+  <details class="group rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 marker:content-none [&::-webkit-details-marker]:hidden">
+      <div>
+        <span class="text-base font-semibold text-slate-900">تشخيص المتاجر (Store Diagnostics)</span>
+        <span class="mt-0.5 block text-sm text-slate-500">المصفوفة الكاملة لكل متجر — للقراءة فقط</span>
+      </div>
+      <span class="shrink-0 text-xs font-medium text-slate-500 group-open:hidden">عرض</span>
+      <span class="hidden shrink-0 text-xs font-medium text-slate-500 group-open:inline">إخفاء</span>
+    </summary>
+    <div class="border-t border-slate-100 px-5 py-4">
+      <label class="mb-3 inline-flex cursor-pointer items-center gap-2 text-sm text-slate-700">
+        <input type="checkbox" data-wh-healthy-toggle onchange="cfWhToggleHealthy(this)" class="h-4 w-4 rounded border-slate-300 text-indigo-600">
+        إظهار المتاجر السليمة
+      </label>
+      {% if rows %}
+      <div class="overflow-x-auto rounded-xl border border-slate-200">
+        <table class="min-w-full divide-y divide-slate-200 text-sm">
+          <thead class="bg-slate-50 text-right text-xs font-medium text-slate-500">
+            <tr>
+              <th class="px-3 py-2.5">المتجر</th>
+              <th class="px-3 py-2.5">المنصة</th>
+              <th class="px-3 py-2.5">الإصدار</th>
+              <th class="px-3 py-2.5">مثبّت</th>
+              <th class="px-3 py-2.5">public-config</th>
+              <th class="px-3 py-2.5">beacon</th>
+              <th class="px-3 py-2.5">الهوية</th>
+              <th class="px-3 py-2.5">جسر السلة</th>
+              <th class="px-3 py-2.5">تسليح التردد</th>
+              <th class="px-3 py-2.5">ظهر؟</th>
+              <th class="px-3 py-2.5">آخر خطأ</th>
+              <th class="px-3 py-2.5">آخر ظهور</th>
+              <th class="px-3 py-2.5">الحالة</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100 bg-white">
+            {% for r in rows %}
+            <tr data-wh-row data-store-slug="{{ r.store_slug }}" data-store-type="{{ store_type(r.store_slug) }}" data-status="{{ r.status }}"
+              class="align-top hover:bg-slate-50/80"{% if r.status == 'healthy' %} style="display:none"{% endif %}>
+              <td class="px-3 py-2.5 font-medium text-slate-900">{{ r.store_name }}<span class="block text-xs text-slate-400" dir="ltr">{{ r.store_slug }}</span></td>
+              <td class="px-3 py-2.5 text-slate-700" dir="ltr">{{ r.platform }}</td>
+              <td class="px-3 py-2.5 text-slate-700" dir="ltr">{{ r.runtime_version or '—' }}</td>
+              <td class="px-3 py-2.5">{{ '🟢' if r.widget_installed else '⚪' }}</td>
+              <td class="px-3 py-2.5">{{ '🟢' if r.public_config_loaded else '⚪' }}</td>
+              <td class="px-3 py-2.5">{{ '🟢' if r.runtime_beacon_received else '⚪' }}</td>
+              <td class="px-3 py-2.5">{{ '🟢' if r.store_identity_resolved else '⚪' }}</td>
+              <td class="px-3 py-2.5">
+                {% if r.cart_event_bridge_status == 'ok' %}🟢
+                {% elif r.cart_event_bridge_status == 'missing' %}🔴
+                {% else %}⚪{% endif %}
+              </td>
+              <td class="px-3 py-2.5">{{ '🟢' if r.hesitation_armed else '⚪' }}</td>
+              <td class="px-3 py-2.5">{% if r.widget_shown is none %}⚪{% elif r.widget_shown %}🟢{% else %}🔴{% endif %}</td>
+              <td class="px-3 py-2.5 text-slate-700" dir="ltr">{{ r.last_runtime_error or '—' }}</td>
+              <td class="px-3 py-2.5 text-slate-700" dir="ltr">{{ r.last_seen or '—' }}</td>
+              <td class="px-3 py-2.5 whitespace-nowrap">
+                <span class="inline-flex rounded-full border px-2 py-0.5 text-xs font-medium
+                  {% if r.status == 'critical' %}border-rose-200 bg-rose-50 text-rose-800
+                  {% elif r.status == 'warning' %}border-amber-200 bg-amber-50 text-amber-900
+                  {% else %}border-emerald-200 bg-emerald-50 text-emerald-800{% endif %}">{{ r.status_emoji }} {{ r.status_ar }}</span>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <p data-wh-rows-empty class="mt-3 hidden rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-6 text-center text-sm text-slate-600">لا متاجر مطابقة للفلتر الحالي.</p>
+      {% else %}
+      <p class="rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-6 text-center text-sm text-slate-600">لا توجد متاجر لعرض صحة الودجِت بعد.</p>
+      {% endif %}
     </div>
-    {% else %}
-    <p class="mt-3 rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-6 text-center text-sm text-slate-600">لا توجد متاجر لعرض صحة الودجِت بعد.</p>
-    {% endif %}
-  </section>
+  </details>
 
 </div>

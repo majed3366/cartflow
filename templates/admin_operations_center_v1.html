@@ -179,7 +179,47 @@
   </p>
 
   <script>
+  // Widget Health UX V2 — UI-only, additive filters (no record/service changes).
   (function () {
+    var ROOT_ID = 'ops-widget-health-content';
+    var state = { type: 'all', showHealthy: false };
+
+    function root() { return document.getElementById(ROOT_ID); }
+    function forEach(list, fn) { Array.prototype.forEach.call(list || [], fn); }
+
+    function apply() {
+      var r = root();
+      if (!r) return;
+      var visIssues = 0;
+      forEach(r.querySelectorAll('[data-wh-issue]'), function (el) {
+        var ty = el.getAttribute('data-store-type');
+        var show = state.type === 'all' || state.type === ty;
+        el.style.display = show ? '' : 'none';
+        if (show) visIssues++;
+      });
+      var visRows = 0;
+      forEach(r.querySelectorAll('[data-wh-row]'), function (el) {
+        var ty = el.getAttribute('data-store-type');
+        var st = el.getAttribute('data-status');
+        var show = (state.type === 'all' || state.type === ty) && (state.showHealthy || st !== 'healthy');
+        el.style.display = show ? '' : 'none';
+        if (show) visRows++;
+      });
+      var ie = r.querySelector('[data-wh-issues-empty]');
+      if (ie) { if (visIssues === 0 && r.querySelector('[data-wh-issue]')) { ie.classList.remove('hidden'); } else { ie.classList.add('hidden'); } }
+      var re = r.querySelector('[data-wh-rows-empty]');
+      if (re) { if (visRows === 0 && r.querySelector('[data-wh-row]')) { re.classList.remove('hidden'); } else { re.classList.add('hidden'); } }
+      forEach(r.querySelectorAll('[data-wh-type-btn]'), function (b) {
+        var active = b.getAttribute('data-wh-type-btn') === state.type;
+        if (active) { b.classList.add('bg-indigo-600', 'text-white'); b.classList.remove('text-slate-700'); }
+        else { b.classList.remove('bg-indigo-600', 'text-white'); b.classList.add('text-slate-700'); }
+      });
+    }
+
+    window.cfWhSetType = function (t) { state.type = t; apply(); };
+    window.cfWhToggleHealthy = function (cb) { state.showHealthy = !!(cb && cb.checked); apply(); };
+    window.cfWidgetHealthInit = function () { state = { type: 'all', showHealthy: false }; apply(); };
+
     var LOAD_ERROR = '<p class="text-sm text-rose-700 py-6 text-center">تعذر تحميل هذا القسم الآن.</p>';
     var LOADING = '<p class="text-sm text-slate-500 py-6 text-center">جاري التحميل...</p>';
     var panel = document.getElementById('ops-widget-health-panel');
@@ -200,6 +240,7 @@
           container.innerHTML = html;
           container.setAttribute('data-lazy-state', 'loaded');
           loaded = true;
+          try { window.cfWidgetHealthInit(); } catch (eInit) {}
         })
         .catch(function () {
           container.innerHTML = LOAD_ERROR;
