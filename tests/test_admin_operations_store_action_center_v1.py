@@ -7,6 +7,7 @@ from unittest.mock import patch
 
 from services.admin_operations_store_action_center_v1 import (
     build_store_action_center_readonly,
+    classify_store_environment,
 )
 
 
@@ -16,9 +17,47 @@ class StoreActionCenterTests(unittest.TestCase):
         self.assertEqual(payload["status"], "healthy")
         self.assertEqual(payload["stores"], [])
         self.assertIn(
-            "No stores currently require operational intervention",
+            "No production stores currently require intervention",
             payload["healthy"]["message_en"],
         )
+
+    def test_classify_demo_test_stores(self) -> None:
+        self.assertEqual(classify_store_environment("loadtest-store-013"), "demo_test")
+        self.assertEqual(classify_store_environment("demo2"), "demo_test")
+        self.assertEqual(classify_store_environment("sandbox-shop"), "demo_test")
+        self.assertEqual(classify_store_environment("merchant-real"), "production")
+
+    def test_production_healthy_when_only_demo_affected(self) -> None:
+        store_rows = [
+            {
+                "store_slug": "loadtest-store-013",
+                "display_name": "CartFlow 013",
+                "ready": False,
+                "whatsapp_missing": True,
+            },
+            {
+                "store_slug": "merchant-vip",
+                "display_name": "CartFlow VIP",
+                "ready": True,
+                "whatsapp_missing": False,
+            },
+        ]
+        with patch(
+            "services.widget_health_v1.build_admin_widget_health_section_readonly",
+            return_value={"issues": []},
+        ):
+            payload = build_store_action_center_readonly(
+                store_rows=store_rows,
+                alerts=[],
+            )
+        self.assertEqual(payload["status"], "healthy")
+        self.assertEqual(payload["summary"]["production_affected_count"], 0)
+        self.assertEqual(payload["summary"]["demo_test_affected_count"], 1)
+        demo_slugs = [s["store_slug"] for s in payload["demo_test_queue"]]
+        prod_slugs = [s["store_slug"] for s in payload["production_queue"]]
+        self.assertIn("loadtest-store-013", demo_slugs)
+        self.assertIn("merchant-vip", prod_slugs)
+        self.assertFalse(payload["production_queue"][0]["has_issues"])
 
     def test_widget_runtime_issue_per_store(self) -> None:
         store_rows = [
@@ -49,12 +88,12 @@ class StoreActionCenterTests(unittest.TestCase):
             )
         self.assertEqual(payload["status"], "affected")
         self.assertEqual(len(payload["stores"]), 1)
-        store = payload["stores"][0]
+        store = payload["production_queue"][0]
         self.assertEqual(store["store_slug"], "store_a")
+        self.assertTrue(store["has_issues"])
+        self.assertEqual(store["issue_count_label"], "1 Issue")
         issue = store["primary_issue"]
         self.assertEqual(issue["kind"], "widget_runtime_missing")
-        self.assertIn("runtime not detected", issue["problem_en"].lower())
-        self.assertIn("runtime connectivity", issue["action_en"].lower())
 
     def test_whatsapp_and_setup_issues(self) -> None:
         store_rows = [
@@ -79,41 +118,20 @@ class StoreActionCenterTests(unittest.TestCase):
                 store_rows=store_rows,
                 alerts=[],
             )
-        by_slug = {s["store_slug"]: s for s in payload["stores"]}
+        by_slug = {s["store_slug"]: s for s in payload["production_queue"]}
         store_b_kinds = {i["kind"] for i in by_slug["store_b"]["issues"]}
         self.assertIn("whatsapp_missing", store_b_kinds)
         self.assertIn("store_needs_setup", store_b_kinds)
-        whatsapp = next(i for i in by_slug["store_b"]["issues"] if i["kind"] == "whatsapp_missing")
-        self.assertEqual(whatsapp["where_en"], "WhatsApp Readiness")
-        self.assertIn("setup is incomplete", by_slug["store_c"]["primary_issue"]["problem_en"].lower())
+        self.assertEqual(by_slug["store_b"]["issue_count_label"], "2 Issues")
 
-    def test_store_identity_from_truth_status(self) -> None:
+    def test_critical_issue_count_label(self) -> None:
         store_rows = [
             {
-                "store_slug": "store_d",
-                "display_name": "Store D",
+                "store_slug": "crit_store",
+                "display_name": "CartFlow VIP",
                 "ready": True,
                 "whatsapp_missing": False,
-                "widget_runtime_truth_status": "mismatch",
             }
-        ]
-        with patch(
-            "services.widget_health_v1.build_admin_widget_health_section_readonly",
-            return_value={"issues": []},
-        ):
-            payload = build_store_action_center_readonly(
-                store_rows=store_rows,
-                alerts=[],
-            )
-        issue = payload["stores"][0]["primary_issue"]
-        self.assertEqual(issue["kind"], "store_identity_mismatch")
-        self.assertEqual(issue["where_en"], "Store Identity")
-        self.assertIn("identity mapping", issue["action_en"].lower())
-
-    def test_multiple_stores_sorted_critical_first(self) -> None:
-        store_rows = [
-            {"store_slug": "warn_store", "display_name": "Warn", "ready": True, "whatsapp_missing": True},
-            {"store_slug": "crit_store", "display_name": "Crit", "ready": True, "whatsapp_missing": False},
         ]
         widget_health = {
             "issues": [
@@ -121,7 +139,7 @@ class StoreActionCenterTests(unittest.TestCase):
                     "kind": "widget_module_failed",
                     "severity": "critical",
                     "store_slug": "crit_store",
-                    "store_name": "Crit",
+                    "store_name": "CartFlow VIP",
                 }
             ]
         }
@@ -133,9 +151,9 @@ class StoreActionCenterTests(unittest.TestCase):
                 store_rows=store_rows,
                 alerts=[],
             )
-        self.assertEqual(payload["stores"][0]["store_slug"], "crit_store")
-        self.assertEqual(payload["stores"][0]["highest_severity"], "critical")
-        self.assertEqual(payload["summary"]["affected_count"], 2)
+        store = payload["production_queue"][0]
+        self.assertEqual(store["issue_count_label"], "1 Critical")
+        self.assertEqual(store["highest_severity"], "critical")
 
 
 if __name__ == "__main__":

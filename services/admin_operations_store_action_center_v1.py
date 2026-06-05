@@ -74,6 +74,26 @@ _WIDGET_SEVERITY_TO_STORE: dict[str, str] = {
     "healthy": "information",
 }
 
+_DEMO_TEST_TOKENS = (
+    "sim-store",
+    "loadtest",
+    "cartflow-default",
+    "test",
+    "e2e",
+    "demo",
+    "staging",
+    "sandbox",
+)
+
+
+def classify_store_environment(slug: str) -> str:
+    """Presentation-only bucket: production | demo_test."""
+    s = (slug or "").strip().lower()
+    for tok in _DEMO_TEST_TOKENS:
+        if tok in s:
+            return "demo_test"
+    return "production"
+
 
 def _normalize_kind(kind: str) -> str:
     k = (kind or "").strip()
@@ -268,32 +288,57 @@ def _collect_alert_issues(
             _add_issue(stores, slug=slug, name=name, kind=kind, severity=sev)
 
 
+def _issue_count_label(*, count: int, highest_severity: str) -> str:
+    if count <= 0:
+        return "Healthy"
+    if count == 1 and highest_severity == "critical":
+        return "1 Critical"
+    suffix = "Issue" if count == 1 else "Issues"
+    return f"{count} {suffix}"
+
+
+def _store_row_from_bucket(bucket: dict[str, Any]) -> dict[str, Any]:
+    issues = list((bucket.get("issues_by_kind") or {}).values())
+    issues.sort(
+        key=lambda i: (
+            _SEVERITY_RANK.get(str(i.get("severity") or "warning"), 99),
+            str(i.get("kind") or ""),
+        )
+    )
+    slug = str(bucket.get("store_slug") or "")
+    if issues:
+        highest = str(bucket.get("highest_severity") or "warning")
+    else:
+        highest = "healthy"
+    if highest == "healthy":
+        emoji, label = "🟢", "Healthy"
+    else:
+        emoji, label = _SEVERITY_META.get(highest, ("🟡", "Warning"))
+    issue_count = len(issues)
+    return {
+        "store_slug": slug,
+        "store_name": bucket.get("store_name") or slug or "Store",
+        "environment": classify_store_environment(slug),
+        "highest_severity": highest,
+        "severity_emoji": emoji,
+        "severity_label": label,
+        "issue_count": issue_count,
+        "issue_count_label": _issue_count_label(
+            count=issue_count,
+            highest_severity=highest,
+        ),
+        "issues": issues,
+        "primary_issue": issues[0] if issues else None,
+        "has_issues": issue_count > 0,
+    }
+
+
 def _finalize_stores(stores: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
     out: list[dict[str, Any]] = []
     for bucket in stores.values():
-        issues = list((bucket.get("issues_by_kind") or {}).values())
-        if not issues:
-            continue
-        issues.sort(
-            key=lambda i: (
-                _SEVERITY_RANK.get(str(i.get("severity") or "warning"), 99),
-                str(i.get("kind") or ""),
-            )
-        )
-        highest = str(bucket.get("highest_severity") or "warning")
-        emoji, label = _SEVERITY_META.get(highest, ("🟡", "Warning"))
-        out.append(
-            {
-                "store_slug": bucket.get("store_slug") or "",
-                "store_name": bucket.get("store_name") or "",
-                "highest_severity": highest,
-                "severity_emoji": emoji,
-                "severity_label": label,
-                "issue_count": len(issues),
-                "issues": issues,
-                "primary_issue": issues[0],
-            }
-        )
+        row = _store_row_from_bucket(bucket)
+        if row.get("has_issues"):
+            out.append(row)
     out.sort(
         key=lambda s: (
             _SEVERITY_RANK.get(str(s.get("highest_severity") or "warning"), 99),
@@ -303,29 +348,109 @@ def _finalize_stores(stores: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
     return out
 
 
-def _build_summary(stores: list[dict[str, Any]]) -> dict[str, Any]:
-    counts = {"critical": 0, "warning": 0, "information": 0}
-    for store in stores:
-        sev = str(store.get("highest_severity") or "warning")
-        if sev in counts:
-            counts[sev] += 1
-    highest = "healthy"
-    if stores:
-        highest = min(
-            (str(s.get("highest_severity") or "warning") for s in stores),
-            key=lambda x: _SEVERITY_RANK.get(x, 99),
+def _build_queue_rows(
+    *,
+    store_rows: list[dict[str, Any]],
+    grouped: dict[str, dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """One row per scanned store — affected and healthy."""
+    merged: dict[str, dict[str, Any]] = {}
+    for st in store_rows or []:
+        if not isinstance(st, dict):
+            continue
+        slug = str(st.get("store_slug") or "").strip()
+        if not slug:
+            continue
+        name = str(st.get("display_name") or slug)
+        merged[slug] = {
+            "store_slug": slug,
+            "store_name": name,
+            "highest_severity": "healthy",
+            "issues_by_kind": {},
+        }
+    for slug, bucket in grouped.items():
+        if slug in merged:
+            merged[slug]["issues_by_kind"] = dict(bucket.get("issues_by_kind") or {})
+            merged[slug]["highest_severity"] = bucket.get("highest_severity") or "warning"
+            if bucket.get("store_name"):
+                merged[slug]["store_name"] = bucket["store_name"]
+        elif bucket.get("issues_by_kind"):
+            merged[slug] = bucket
+
+    rows = [_store_row_from_bucket(b) for b in merged.values()]
+    rows.sort(
+        key=lambda s: (
+            0 if s.get("has_issues") else 1,
+            _SEVERITY_RANK.get(
+                str(s.get("highest_severity") or "healthy"),
+                99 if s.get("has_issues") else 100,
+            ),
+            str(s.get("store_name") or s.get("store_slug") or ""),
         )
+    )
+    return rows
+
+
+def _split_queues(rows: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    production: list[dict[str, Any]] = []
+    demo_test: list[dict[str, Any]] = []
+    for row in rows:
+        if row.get("environment") == "demo_test":
+            demo_test.append(row)
+        else:
+            production.append(row)
+    return production, demo_test
+
+
+def _build_summary(
+    *,
+    production_queue: list[dict[str, Any]],
+    demo_test_queue: list[dict[str, Any]],
+) -> dict[str, Any]:
+    def _counts(queue: list[dict[str, Any]]) -> dict[str, int]:
+        affected = [s for s in queue if s.get("has_issues")]
+        critical = sum(1 for s in affected if s.get("highest_severity") == "critical")
+        warning = sum(1 for s in affected if s.get("highest_severity") == "warning")
+        information = sum(1 for s in affected if s.get("highest_severity") == "information")
+        healthy = sum(1 for s in queue if not s.get("has_issues"))
+        return {
+            "store_count": len(queue),
+            "affected_count": len(affected),
+            "critical_count": critical,
+            "warning_count": warning,
+            "information_count": information,
+            "healthy_count": healthy,
+        }
+
+    prod = _counts(production_queue)
+    demo = _counts(demo_test_queue)
+    all_affected = prod["affected_count"] + demo["affected_count"]
+    highest = "healthy"
+    if all_affected:
+        for sev in ("critical", "warning", "information"):
+            if prod.get(f"{sev}_count", 0) + demo.get(f"{sev}_count", 0) > 0:
+                highest = sev
+                break
     emoji, label = _SEVERITY_META.get(highest, ("🟢", "Healthy"))
-    if not stores:
+    if not all_affected:
         emoji, label = "🟢", "Healthy"
+
     return {
-        "affected_count": len(stores),
+        "affected_count": all_affected,
         "highest_severity": highest,
         "highest_severity_emoji": emoji,
         "highest_severity_label": label,
-        "critical_count": counts["critical"],
-        "warning_count": counts["warning"],
-        "information_count": counts["information"],
+        "critical_count": prod["critical_count"] + demo["critical_count"],
+        "warning_count": prod["warning_count"] + demo["warning_count"],
+        "information_count": prod["information_count"] + demo["information_count"],
+        "healthy_count": prod["healthy_count"] + demo["healthy_count"],
+        "production_store_count": prod["store_count"],
+        "demo_test_store_count": demo["store_count"],
+        "production_affected_count": prod["affected_count"],
+        "demo_test_affected_count": demo["affected_count"],
+        "production_critical_count": prod["critical_count"],
+        "production_warning_count": prod["warning_count"],
+        "production_healthy_count": prod["healthy_count"],
     }
 
 
@@ -347,23 +472,37 @@ def build_store_action_center_readonly(
     _collect_readiness_issues(grouped, store_rows=store_rows)
     _collect_alert_issues(grouped, alerts=alerts)
 
+    queue_rows = _build_queue_rows(store_rows=store_rows, grouped=grouped)
+    production_queue, demo_test_queue = _split_queues(queue_rows)
     stores = _finalize_stores(grouped)
-    summary = _build_summary(stores)
+    summary = _build_summary(
+        production_queue=production_queue,
+        demo_test_queue=demo_test_queue,
+    )
 
-    if not stores:
+    production_affected = summary.get("production_affected_count", 0)
+    if production_affected == 0:
+        healthy_msg = "No production stores currently require intervention."
+        if summary.get("demo_test_affected_count", 0) > 0:
+            healthy_msg = (
+                "No production stores currently require intervention. "
+                "See Demo/Test Stores below."
+            )
         return {
             "section": SECTION_KEY,
             "status": "healthy",
             "summary": summary,
             "healthy": {
                 "status_label": "Healthy",
-                "message_en": "No stores currently require operational intervention.",
-                "verification_en": "All monitored stores are operating normally.",
+                "message_en": healthy_msg,
+                "verification_en": "All monitored production stores are operating normally.",
                 "verification_lines_en": [
-                    "All monitored stores are operating normally.",
+                    "All monitored production stores are operating normally.",
                 ],
             },
-            "stores": [],
+            "stores": stores,
+            "production_queue": production_queue,
+            "demo_test_queue": demo_test_queue,
         }
 
     return {
@@ -372,10 +511,13 @@ def build_store_action_center_readonly(
         "summary": summary,
         "healthy": None,
         "stores": stores,
+        "production_queue": production_queue,
+        "demo_test_queue": demo_test_queue,
     }
 
 
 __all__ = [
     "SECTION_KEY",
     "build_store_action_center_readonly",
+    "classify_store_environment",
 ]

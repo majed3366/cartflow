@@ -1,78 +1,125 @@
 {% set sac = store_action_center or {} %}
 {% set summary = sac.summary or {} %}
-<section id="ops-store-action-center" class="space-y-4">
-  <div class="flex flex-wrap items-end justify-between gap-2">
-    <div>
-      <p class="text-xs font-medium text-slate-500">Store-level — read-only</p>
-      <h2 class="mt-0.5 text-lg font-semibold text-slate-900">Store Action Center</h2>
-      <p class="mt-0.5 text-sm text-slate-600">Which stores need action, and what to verify after</p>
-    </div>
-    {% if sac.status == 'affected' %}
-    <div class="flex flex-wrap items-center gap-2 text-sm">
-      <span class="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-1 font-medium text-slate-800">
-        {{ summary.affected_count | default(0) }} affected store{{ 's' if (summary.affected_count | default(0)) != 1 else '' }}
-      </span>
-      <span class="inline-flex items-center gap-1 rounded-full border px-3 py-1 font-medium
-        {% if summary.highest_severity == 'critical' %}border-rose-200 bg-rose-50 text-rose-800
-        {% elif summary.highest_severity == 'warning' %}border-amber-200 bg-amber-50 text-amber-900
-        {% elif summary.highest_severity == 'information' %}border-sky-200 bg-sky-50 text-sky-900
-        {% else %}border-emerald-200 bg-emerald-50 text-emerald-800{% endif %}">
-        {{ summary.highest_severity_emoji or '🟢' }} {{ summary.highest_severity_label or 'Healthy' }}
-      </span>
-    </div>
-    {% endif %}
-  </div>
-
-  {% if sac.status == 'healthy' %}
-  {% set healthy = sac.healthy or {} %}
-  <div class="rounded-2xl border border-emerald-200 bg-emerald-50/50 p-5 shadow-sm">
-    <dl class="space-y-3">
-      <div>
-        <dt class="text-xs font-semibold uppercase tracking-wide text-emerald-800">Status</dt>
-        <dd class="mt-1 text-base font-semibold text-emerald-950">{{ healthy.status_label or 'Healthy' }}</dd>
+{% macro store_queue_row(store) %}
+  {% if store.has_issues %}
+  <details class="group rounded-lg border border-slate-200 bg-white shadow-sm open:border-slate-300">
+    <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 marker:content-none [&::-webkit-details-marker]:hidden">
+      <div class="min-w-0 flex-1">
+        <p class="text-sm font-semibold text-slate-900">
+          <span>{{ store.severity_emoji }}</span>
+          <span class="ml-1">{{ store.store_name or 'Store' }}</span>
+          <span class="ml-1 font-normal text-slate-500">({{ store.issue_count_label }})</span>
+        </p>
+        <p class="mt-0.5 truncate font-mono text-xs text-slate-500" dir="ltr">{{ store.store_slug or '—' }}</p>
       </div>
-      <div>
-        <dt class="text-xs font-semibold uppercase tracking-wide text-emerald-800">Message</dt>
-        <dd class="mt-1 text-sm text-emerald-900">{{ healthy.message_en or 'No stores currently require operational intervention.' }}</dd>
-      </div>
-      <div>
-        <dt class="text-xs font-semibold uppercase tracking-wide text-emerald-800">Verification</dt>
-        <dd class="mt-1 text-sm text-emerald-900">{{ healthy.verification_en or 'All monitored stores are operating normally.' }}</dd>
-      </div>
-    </dl>
-  </div>
-  {% else %}
-  <div class="space-y-4">
-    {% for store in sac.stores or [] %}
-    <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <div class="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 pb-4">
-        <div>
-          <h3 class="text-base font-semibold text-slate-900">{{ store.store_name or 'Store' }}</h3>
-          <p class="mt-0.5 font-mono text-xs text-slate-500" dir="ltr">{{ store.store_slug or '—' }}</p>
-        </div>
-        <div class="flex flex-wrap items-center gap-2">
-          <span class="inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-medium
-            {% if store.highest_severity == 'critical' %}border-rose-200 bg-rose-50 text-rose-800
-            {% elif store.highest_severity == 'warning' %}border-amber-200 bg-amber-50 text-amber-900
-            {% else %}border-sky-200 bg-sky-50 text-sky-900{% endif %}">
-            {{ store.severity_emoji }} {{ store.severity_label }}
-          </span>
-          {% if (store.issue_count | default(1)) > 1 %}
-          <span class="text-xs text-slate-500">{{ store.issue_count }} issues</span>
-          {% endif %}
-        </div>
-      </div>
+      <span class="shrink-0 text-xs font-medium text-slate-400 group-open:hidden">Expand</span>
+      <span class="hidden shrink-0 text-xs font-medium text-slate-400 group-open:inline">Collapse</span>
+    </summary>
+    <div class="border-t border-slate-100 px-4 py-4">
+      <p class="text-sm font-semibold text-slate-900">{{ store.store_name or 'Store' }}</p>
+      <p class="mt-0.5 font-mono text-xs text-slate-500" dir="ltr">{{ store.store_slug or '—' }}</p>
       <div class="mt-4 space-y-5">
         {% for issue in store.issues or [] %}
         <div class="{% if not loop.last %}border-b border-slate-100 pb-5{% endif %}">
+          <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">Issue {{ loop.index }}</p>
           {% with guided=issue %}
           {% include "partials/admin_operations_guided_card_en.html" %}
           {% endwith %}
         </div>
         {% endfor %}
       </div>
-    </article>
-    {% endfor %}
+    </div>
+  </details>
+  {% else %}
+  <div class="flex items-center justify-between gap-3 rounded-lg border border-emerald-100 bg-emerald-50/40 px-4 py-2.5">
+    <div class="min-w-0 flex-1">
+      <p class="text-sm font-medium text-emerald-950">
+        <span>🟢</span>
+        <span class="ml-1">{{ store.store_name or 'Store' }}</span>
+      </p>
+      <p class="mt-0.5 truncate font-mono text-xs text-emerald-800/70" dir="ltr">{{ store.store_slug or '—' }}</p>
+    </div>
+    <span class="shrink-0 text-xs font-medium text-emerald-700">Healthy</span>
   </div>
   {% endif %}
+{% endmacro %}
+
+<section id="ops-store-action-center" class="space-y-4">
+  <div>
+    <p class="text-xs font-medium text-slate-500">Operations queue — read-only</p>
+    <h2 class="mt-0.5 text-lg font-semibold text-slate-900">Store Action Center</h2>
+  </div>
+
+  <div class="rounded-xl border border-slate-200 bg-slate-50/60 px-4 py-3">
+    <dl class="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-5">
+      <div>
+        <dt class="text-xs font-medium text-slate-500">Affected Stores</dt>
+        <dd class="mt-0.5 text-lg font-semibold tabular-nums text-slate-900">{{ summary.affected_count | default(0) }}</dd>
+      </div>
+      <div>
+        <dt class="text-xs font-medium text-slate-500">Critical Stores</dt>
+        <dd class="mt-0.5 text-lg font-semibold tabular-nums text-rose-700">{{ summary.critical_count | default(0) }}</dd>
+      </div>
+      <div>
+        <dt class="text-xs font-medium text-slate-500">Warning Stores</dt>
+        <dd class="mt-0.5 text-lg font-semibold tabular-nums text-amber-800">{{ summary.warning_count | default(0) }}</dd>
+      </div>
+      <div>
+        <dt class="text-xs font-medium text-slate-500">Healthy Stores</dt>
+        <dd class="mt-0.5 text-lg font-semibold tabular-nums text-emerald-700">{{ summary.healthy_count | default(0) }}</dd>
+      </div>
+      <div class="sm:col-span-2 lg:col-span-1">
+        <dt class="text-xs font-medium text-slate-500">Production / Demo·Test</dt>
+        <dd class="mt-0.5 text-sm font-medium text-slate-800">
+          {{ summary.production_store_count | default(0) }} / {{ summary.demo_test_store_count | default(0) }}
+        </dd>
+      </div>
+    </dl>
+  </div>
+
+  {% if sac.status == 'healthy' %}
+  {% set healthy = sac.healthy or {} %}
+  <div class="rounded-2xl border border-emerald-200 bg-emerald-50/50 px-4 py-3">
+    <p class="text-base font-semibold text-emerald-950">{{ healthy.status_label or 'Healthy' }}</p>
+    <p class="mt-1 text-sm text-emerald-900">{{ healthy.message_en or 'No production stores currently require intervention.' }}</p>
+    {% if (summary.demo_test_affected_count | default(0)) > 0 %}
+    <p class="mt-2 text-xs text-slate-600">Demo/Test Stores with issues: {{ summary.demo_test_affected_count }}</p>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {% set prod_queue = sac.production_queue or [] %}
+  {% set demo_queue = sac.demo_test_queue or [] %}
+
+  <div class="space-y-2">
+    <h3 class="text-sm font-semibold text-slate-800">
+      Production Stores
+      <span class="font-normal text-slate-500">({{ summary.production_store_count | default(0) }})</span>
+    </h3>
+    {% if prod_queue %}
+    <div class="space-y-2">
+      {% for store in prod_queue %}
+      {{ store_queue_row(store) }}
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="rounded-lg border border-dashed border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">No production stores in scan.</p>
+    {% endif %}
+  </div>
+
+  <div class="space-y-2">
+    <h3 class="text-sm font-semibold text-slate-800">
+      Demo/Test Stores
+      <span class="font-normal text-slate-500">({{ summary.demo_test_store_count | default(0) }})</span>
+    </h3>
+    {% if demo_queue %}
+    <div class="space-y-2">
+      {% for store in demo_queue %}
+      {{ store_queue_row(store) }}
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="rounded-lg border border-dashed border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">No demo/test stores in scan.</p>
+    {% endif %}
+  </div>
 </section>
