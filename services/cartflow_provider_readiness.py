@@ -311,6 +311,9 @@ def classify_provider_failure(
     if not blob.strip():
         return FAILURE_UNKNOWN
 
+    if "provider_timeout" in blob:
+        return FAILURE_UNAVAILABLE
+
     if "twilio_not_configured" in blob or (
         "not configured" in blob and "twilio" in blob
     ):

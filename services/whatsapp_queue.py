@@ -101,12 +101,14 @@ def _one_send(
     *,
     trace_session_id: Optional[str] = None,
     trace_store_slug: Optional[str] = None,
+    recovery_key: Optional[str] = None,
 ) -> Dict[str, Any]:
     trace_kw: Dict[str, Any] = {
         "wa_trace_path": os.path.abspath(__file__),
         "wa_trace_session_id": trace_session_id,
         "wa_trace_store_slug": trace_store_slug,
         "wa_trace_delay_passed": WA_TRACE_DELAY_UNSPECIFIED,
+        "recovery_key": recovery_key,
     }
     if use_real:
         return send_whatsapp_real(phone, message, **trace_kw)
@@ -211,6 +213,7 @@ async def _do_process_one_job_body(
                 job.message,
                 trace_session_id=job.session_id,
                 trace_store_slug=job.store_slug,
+                recovery_key=job.recovery_key,
             )
             ok = _is_send_ok(r)
         except Exception as e:  # noqa: BLE001

@@ -11,9 +11,12 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional
 
 from sqlalchemy import and_
-from twilio.rest import Client
-
 from config_system import get_cartflow_config
+from services.provider_send_timeout_v1 import (
+    build_twilio_client,
+    log_provider_failure,
+    twilio_messages_create,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -378,6 +381,7 @@ def send_whatsapp(
     message: str,
     *,
     reason_tag: Optional[str] = None,
+    recovery_key: Optional[str] = None,
     wa_trace_path: Optional[str] = None,
     wa_trace_session_id: Optional[str] = None,
     wa_trace_store_slug: Optional[str] = None,
@@ -466,8 +470,9 @@ def send_whatsapp(
     except Exception:  # noqa: BLE001
         pass
 
+    rk = (recovery_key or "")[:120] or None
     try:
-        client = Client(sid, token)
+        client = build_twilio_client(sid, token)
         create_kwargs: Dict[str, Any] = {
             "from_": from_number,
             "body": body_text,
@@ -483,7 +488,34 @@ def send_whatsapp(
             cfg_line = "[WA STATUS CALLBACK CONFIG] enabled=false url="
         print(cfg_line)
         logger.info("%s", cfg_line)
-        msg = client.messages.create(**create_kwargs)
+        send_out = twilio_messages_create(
+            client,
+            recovery_key=rk,
+            **create_kwargs,
+        )
+        if send_out.get("ok") is not True:
+            err = str(send_out.get("error") or "provider_send_failed")
+            if err == "provider_timeout":
+                return {
+                    "ok": False,
+                    "error": "provider_timeout",
+                    "provider": send_out.get("provider") or "twilio",
+                    "timeout_seconds": send_out.get("timeout_seconds"),
+                    "failure_class": send_out.get("failure_class") or "provider_unavailable",
+                    "recovery_key": rk,
+                }
+            log_provider_failure(
+                provider="twilio",
+                reason=err[:256],
+                recovery_key=rk,
+            )
+            return {
+                "ok": False,
+                "error": err,
+                "provider": "twilio",
+                "recovery_key": rk,
+            }
+        msg = send_out.get("msg")
         twilio_status = getattr(msg, "status", None)
         print("WhatsApp sent successfully:", getattr(msg, "sid", None))
         result: Dict[str, Any] = {
@@ -512,6 +544,11 @@ def send_whatsapp(
     except Exception as e:  # noqa: BLE001 — إرجاع خطأ المزود للمتصل
         print("Twilio WhatsApp send failed:", str(e))
         logger.warning("Twilio WhatsApp send failed: %s", e, exc_info=True)
+        log_provider_failure(
+            provider="twilio",
+            reason=str(e)[:256],
+            recovery_key=rk,
+        )
         try:
             from services.cartflow_sentry import capture_whatsapp_failure
 
@@ -524,7 +561,7 @@ def send_whatsapp(
             )
         except Exception:  # noqa: BLE001
             pass
-        return {"ok": False, "error": str(e)}
+        return {"ok": False, "error": str(e), "provider": "twilio", "recovery_key": rk}
 
 
 def send_whatsapp_mock(
@@ -657,6 +694,8 @@ def whatsapp_send_truth_context(wa_result: Any) -> Dict[str, str]:
         provider = "mock"
     elif err in ("twilio_not_configured", "twilio_invalid_from", "invalid_phone", "empty_message"):
         provider = "none"
+    elif err == "provider_timeout":
+        provider = "twilio"
     else:
         provider = "twilio"
     mode = "production" if recovery_uses_real_whatsapp() else "sandbox"

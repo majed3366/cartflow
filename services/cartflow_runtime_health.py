@@ -305,6 +305,20 @@ def build_runtime_health_snapshot() -> dict[str, Any]:
     except Exception:
         pr_ready = {}
 
+    provider_send_events: list[dict[str, Any]] = []
+    provider_timeout_seconds: Optional[float] = None
+    try:
+        from services.provider_send_timeout_v1 import (  # noqa: PLC0415
+            drain_recent_provider_send_events,
+            provider_send_timeout_seconds,
+        )
+
+        provider_send_events = drain_recent_provider_send_events(limit=20)
+        provider_timeout_seconds = provider_send_timeout_seconds()
+    except Exception:  # noqa: BLE001
+        provider_send_events = []
+        provider_timeout_seconds = None
+
     return {
         "recovery_runtime": {
             "runtime_active": recovery_active,
@@ -366,6 +380,8 @@ def build_runtime_health_snapshot() -> dict[str, Any]:
             "provider_runtime_available": wa_ready,
             **tw,
             "recent_send_failures_24h": fail_n,
+            "provider_send_timeout_seconds": provider_timeout_seconds,
+            "recent_provider_send_events": provider_send_events,
             "provider_effectively_disabled": not tw["twilio_env_present"],
             "provider_readiness_ready": bool(pr_ready.get("ready", False)),
             "provider_readiness_configured": bool(pr_ready.get("configured", False)),
