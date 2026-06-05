@@ -416,6 +416,9 @@ def admin_operations_dashboard(request: Request) -> Any:
                     "production_warning_count": 0,
                     "production_healthy_count": 0,
                     "demo_test_affected_count": 0,
+                    "root_cause_count": 0,
+                    "critical_root_cause_count": 0,
+                    "warning_root_cause_count": 0,
                 },
                 "dev_test": {
                     "demo_stores": 0,

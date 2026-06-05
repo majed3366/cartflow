@@ -14,6 +14,11 @@ from services.admin_operations_production_truth_v1 import (
     count_dev_test_buckets,
     is_production_store,
 )
+from services.admin_operations_root_cause_groups_v1 import (
+    group_issues_into_root_causes,
+    root_cause_count_label,
+    summarize_root_causes,
+)
 
 SECTION_KEY = "store_action_center"
 
@@ -92,7 +97,13 @@ def _escalate_severity(current: str, incoming: str) -> str:
     return cur if _SEVERITY_RANK[cur] <= _SEVERITY_RANK[inc] else inc
 
 
-def _build_issue(kind: str, *, severity: str) -> dict[str, Any]:
+def _build_issue(
+    kind: str,
+    *,
+    severity: str,
+    source_kind: str | None = None,
+) -> dict[str, Any]:
+    raw = (source_kind or kind or "").strip()
     k = _normalize_kind(kind)
     guidance = resolve_current_issue_guidance(k)
     preset = dict(_STORE_ISSUE_PRESENTATION.get(k) or {})
@@ -104,6 +115,7 @@ def _build_issue(kind: str, *, severity: str) -> dict[str, Any]:
         verification_lines = [verification_en]
     return {
         "kind": k,
+        "source_kind": raw or k,
         "severity": sev,
         "severity_emoji": emoji,
         "severity_label": label,
@@ -152,8 +164,9 @@ def _add_issue(
     if not slug:
         return
     bucket = _store_bucket(stores, slug=slug, name=name)
-    k = _normalize_kind(kind)
-    issue = _build_issue(k, severity=severity)
+    raw_kind = (kind or "").strip()
+    k = _normalize_kind(raw_kind)
+    issue = _build_issue(k, severity=severity, source_kind=raw_kind)
     existing = bucket["issues_by_kind"].get(k)
     if existing is None or _SEVERITY_RANK.get(issue["severity"], 99) < _SEVERITY_RANK.get(
         existing.get("severity", "information"), 99
@@ -299,6 +312,11 @@ def _store_row_from_bucket(bucket: dict[str, Any]) -> dict[str, Any]:
     else:
         emoji, label = _SEVERITY_META.get(highest, ("🟡", "Warning"))
     issue_count = len(issues)
+    root_causes = group_issues_into_root_causes(issues)
+    root_cause_count = len(root_causes)
+    if root_causes:
+        highest = str(root_causes[0].get("severity") or highest)
+        emoji, label = _SEVERITY_META.get(highest, ("🟡", "Warning"))
     return {
         "store_slug": slug,
         "store_name": bucket.get("store_name") or slug or "Store",
@@ -311,9 +329,13 @@ def _store_row_from_bucket(bucket: dict[str, Any]) -> dict[str, Any]:
             count=issue_count,
             highest_severity=highest,
         ),
+        "root_cause_count": root_cause_count,
+        "root_cause_count_label": root_cause_count_label(count=root_cause_count),
+        "root_causes": root_causes,
         "issues": issues,
+        "primary_root_cause": root_causes[0] if root_causes else None,
         "primary_issue": issues[0] if issues else None,
-        "has_issues": issue_count > 0,
+        "has_issues": root_cause_count > 0,
     }
 
 
@@ -411,6 +433,9 @@ def _build_summary(
 
     prod = _counts(production_queue)
     demo = _counts(demo_test_queue)
+    rc_metrics = summarize_root_causes(
+        [s for s in production_queue if s.get("has_issues")]
+    )
     highest = "healthy"
     if prod["affected_count"] > 0:
         for sev in ("critical", "warning", "information"):
@@ -439,6 +464,9 @@ def _build_summary(
         "demo_test_store_count": demo["store_count"],
         "demo_test_affected_count": demo["affected_count"],
         "all_affected_count": prod["affected_count"] + demo["affected_count"],
+        "root_cause_count": rc_metrics["root_cause_count"],
+        "critical_root_cause_count": rc_metrics["critical_root_cause_count"],
+        "warning_root_cause_count": rc_metrics["warning_root_cause_count"],
     }
 
 
