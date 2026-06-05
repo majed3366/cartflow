@@ -116,9 +116,10 @@ class RequestHangDiagV1Tests(unittest.TestCase):
         client = TestClient(main.app)
         buf = io.StringIO()
 
-        def _slow_ready() -> None:
+        def _slow_ready(**_kwargs: object) -> bool:
             # Wall budget clamps to >= 1.0s; exceed it inside db_ready.
             time.sleep(1.15)
+            return True
 
         with patch.dict("os.environ", {"ENV": "development", "CARTFLOW_REFRESH_STATE_WALL_BUDGET_S": "1"}):
             with patch("main._merchant_dashboard_db_ready", side_effect=_slow_ready):

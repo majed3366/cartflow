@@ -618,6 +618,10 @@ class DbReadyOperationalSnapshot(Base):
     last_top_substage_elapsed_ms = Column(Float, default=0.0, nullable=False)
     top_substages_json = Column(Text, nullable=False, default="[]")
     stage_classifications_json = Column(Text, nullable=False, default="[]")
+    startup_warm_status = Column(String(16), nullable=False, default="not_started")
+    startup_warm_duration_ms = Column(Float, default=0.0, nullable=False)
+    startup_warm_error = Column(String(255), nullable=True)
+    last_request_cached_verification = Column(Boolean, nullable=True)
     last_seen_at = Column(
         DateTime,
         default=lambda: datetime.now(timezone.utc),

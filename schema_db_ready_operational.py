@@ -7,7 +7,7 @@ import threading
 from typing import Any
 
 import models  # noqa: F401
-from sqlalchemy import inspect
+from sqlalchemy import inspect, text
 from sqlalchemy.exc import SQLAlchemyError
 
 log = logging.getLogger("cartflow")
@@ -36,10 +36,55 @@ def ensure_db_ready_operational_schema(db: Any) -> None:
                     "db ready operational schema: db_ready_operational_snapshots "
                     "missing after create_all"
                 )
+            else:
+                _ensure_startup_warm_columns(db, insp)
         except SQLAlchemyError as exc:
             log.warning("db ready operational schema ensure failed: %s", exc)
         finally:
             _schema_once = True
+
+
+def _ensure_startup_warm_columns(db: Any, insp: Any) -> None:
+    """Add Step 4B.3 startup warm columns when table already exists."""
+    try:
+        cols = {c["name"] for c in insp.get_columns("db_ready_operational_snapshots")}
+    except Exception:  # noqa: BLE001
+        return
+    dialect = db.engine.dialect.name
+    alters: list[str] = []
+    if "startup_warm_status" not in cols:
+        alters.append(
+            "ALTER TABLE db_ready_operational_snapshots "
+            "ADD COLUMN startup_warm_status VARCHAR(16) NOT NULL DEFAULT 'not_started'"
+        )
+    if "startup_warm_duration_ms" not in cols:
+        alters.append(
+            "ALTER TABLE db_ready_operational_snapshots "
+            "ADD COLUMN startup_warm_duration_ms FLOAT NOT NULL DEFAULT 0"
+        )
+    if "startup_warm_error" not in cols:
+        alters.append(
+            "ALTER TABLE db_ready_operational_snapshots "
+            "ADD COLUMN startup_warm_error VARCHAR(255)"
+        )
+    if "last_request_cached_verification" not in cols:
+        if dialect == "sqlite":
+            alters.append(
+                "ALTER TABLE db_ready_operational_snapshots "
+                "ADD COLUMN last_request_cached_verification BOOLEAN"
+            )
+        else:
+            alters.append(
+                "ALTER TABLE db_ready_operational_snapshots "
+                "ADD COLUMN last_request_cached_verification BOOLEAN"
+            )
+    for stmt in alters:
+        try:
+            db.session.execute(text(stmt))
+            db.session.commit()
+        except SQLAlchemyError as exc:
+            db.session.rollback()
+            log.warning("db ready operational column migrate skipped: %s", exc)
 
 
 __all__ = [

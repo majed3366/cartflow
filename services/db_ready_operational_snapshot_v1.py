@@ -40,6 +40,10 @@ _cache: dict[str, Any] = {
     "last_top_substage_elapsed_ms": 0.0,
     "top_substages": [],
     "stage_classifications": [],
+    "startup_warm_status": "not_started",
+    "startup_warm_duration_ms": 0.0,
+    "startup_warm_error": None,
+    "last_request_cached_verification": None,
 }
 
 
@@ -132,7 +136,28 @@ def record_db_ready_run(payload: dict[str, Any]) -> None:
     _persist_snapshot(snap)
 
 
-def _persist_snapshot(snap: dict[str, Any]) -> None:
+def record_startup_warm_snapshot(payload: dict[str, Any]) -> None:
+    """Update startup warm fields in cache + durable row (does not affect run metrics)."""
+    status = str(payload.get("startup_warm_status") or "not_started").strip()[:16]
+    duration_ms = round(float(payload.get("startup_warm_duration_ms") or 0.0), 1)
+    err = payload.get("startup_warm_error")
+    cached = payload.get("last_request_cached_verification")
+    with _cache_lock:
+        _cache.update(
+            {
+                "startup_warm_status": status,
+                "startup_warm_duration_ms": duration_ms,
+                "startup_warm_error": (str(err)[:255] if err else None),
+                "last_request_cached_verification": (
+                    bool(cached) if cached is not None else None
+                ),
+            }
+        )
+        snap = dict(_cache)
+    _persist_snapshot(snap, startup_warm_only=True)
+
+
+def _persist_snapshot(snap: dict[str, Any], *, startup_warm_only: bool = False) -> None:
     try:
         from extensions import db
         from models import DbReadyOperationalSnapshot
@@ -143,40 +168,51 @@ def _persist_snapshot(snap: dict[str, Any]) -> None:
         if row is None:
             row = DbReadyOperationalSnapshot(id=SNAPSHOT_ROW_ID)
             db.session.add(row)
-        row.last_duration_ms = float(snap.get("last_duration_ms") or 0.0)
-        row.worst_duration_ms = float(snap.get("worst_duration_ms") or 0.0)
-        row.avg_duration_ms = float(snap.get("avg_duration_ms") or 0.0)
-        row.sample_count = int(snap.get("sample_count") or 0)
-        row.last_stage = (snap.get("last_stage") or "")[:64] or None
-        row.last_trace_id = (snap.get("last_trace_id") or "")[:16] or None
-        row.last_lock_wait_ms = float(snap.get("last_lock_wait_ms") or 0.0)
-        row.last_query_count = int(snap.get("last_query_count") or 0)
-        row.last_sql_ms = float(snap.get("last_sql_ms") or 0.0)
-        row.last_success = bool(snap.get("last_success", True))
-        err = snap.get("last_failure_message")
-        row.last_failure_message = (str(err)[:255] if err else None)
-        row.status = str(snap.get("status") or "healthy")[:16]
-        row.last_top_substage = (snap.get("last_top_substage") or "")[:64] or None
-        row.last_top_substage_queries = int(snap.get("last_top_substage_queries") or 0)
-        row.last_top_substage_sql_ms = float(snap.get("last_top_substage_sql_ms") or 0.0)
-        row.last_top_substage_elapsed_ms = float(
-            snap.get("last_top_substage_elapsed_ms") or 0.0
+        if not startup_warm_only:
+            row.last_duration_ms = float(snap.get("last_duration_ms") or 0.0)
+            row.worst_duration_ms = float(snap.get("worst_duration_ms") or 0.0)
+            row.avg_duration_ms = float(snap.get("avg_duration_ms") or 0.0)
+            row.sample_count = int(snap.get("sample_count") or 0)
+            row.last_stage = (snap.get("last_stage") or "")[:64] or None
+            row.last_trace_id = (snap.get("last_trace_id") or "")[:16] or None
+            row.last_lock_wait_ms = float(snap.get("last_lock_wait_ms") or 0.0)
+            row.last_query_count = int(snap.get("last_query_count") or 0)
+            row.last_sql_ms = float(snap.get("last_sql_ms") or 0.0)
+            row.last_success = bool(snap.get("last_success", True))
+            err = snap.get("last_failure_message")
+            row.last_failure_message = (str(err)[:255] if err else None)
+            row.status = str(snap.get("status") or "healthy")[:16]
+            row.last_top_substage = (snap.get("last_top_substage") or "")[:64] or None
+            row.last_top_substage_queries = int(snap.get("last_top_substage_queries") or 0)
+            row.last_top_substage_sql_ms = float(snap.get("last_top_substage_sql_ms") or 0.0)
+            row.last_top_substage_elapsed_ms = float(
+                snap.get("last_top_substage_elapsed_ms") or 0.0
+            )
+            try:
+                row.top_substages_json = json.dumps(
+                    snap.get("top_substages") or [],
+                    ensure_ascii=False,
+                )[:8000]
+            except (TypeError, ValueError):
+                row.top_substages_json = "[]"
+            try:
+                row.stage_classifications_json = json.dumps(
+                    snap.get("stage_classifications") or [],
+                    ensure_ascii=False,
+                )[:8000]
+            except (TypeError, ValueError):
+                row.stage_classifications_json = "[]"
+            row.last_seen_at = _utc_now()
+        row.startup_warm_status = str(snap.get("startup_warm_status") or "not_started")[:16]
+        row.startup_warm_duration_ms = float(snap.get("startup_warm_duration_ms") or 0.0)
+        sw_err = snap.get("startup_warm_error")
+        row.startup_warm_error = (str(sw_err)[:255] if sw_err else None)
+        lrcv = snap.get("last_request_cached_verification")
+        row.last_request_cached_verification = (
+            bool(lrcv) if lrcv is not None else None
         )
-        try:
-            row.top_substages_json = json.dumps(
-                snap.get("top_substages") or [],
-                ensure_ascii=False,
-            )[:8000]
-        except (TypeError, ValueError):
-            row.top_substages_json = "[]"
-        try:
-            row.stage_classifications_json = json.dumps(
-                snap.get("stage_classifications") or [],
-                ensure_ascii=False,
-            )[:8000]
-        except (TypeError, ValueError):
-            row.stage_classifications_json = "[]"
-        row.last_seen_at = _utc_now()
+        if startup_warm_only:
+            row.last_seen_at = _utc_now()
         db.session.commit()
     except Exception as exc:  # noqa: BLE001
         log.warning("db ready snapshot persist failed: %s", exc)
@@ -245,6 +281,17 @@ def load_db_ready_operational_snapshot(*, reload_db: bool = True) -> dict[str, A
                             ),
                             "top_substages": top_substages,
                             "stage_classifications": stage_classifications,
+                            "startup_warm_status": str(
+                                getattr(row, "startup_warm_status", None) or "not_started"
+                            ),
+                            "startup_warm_duration_ms": round(
+                                float(getattr(row, "startup_warm_duration_ms", 0.0) or 0.0),
+                                1,
+                            ),
+                            "startup_warm_error": getattr(row, "startup_warm_error", None),
+                            "last_request_cached_verification": getattr(
+                                row, "last_request_cached_verification", None
+                            ),
                         }
                     )
         except Exception as exc:  # noqa: BLE001
@@ -277,6 +324,10 @@ def clear_db_ready_operational_snapshot_for_tests() -> None:
                 "last_top_substage_elapsed_ms": 0.0,
                 "top_substages": [],
                 "stage_classifications": [],
+                "startup_warm_status": "not_started",
+                "startup_warm_duration_ms": 0.0,
+                "startup_warm_error": None,
+                "last_request_cached_verification": None,
             }
         )
     from schema_db_ready_operational import reset_db_ready_operational_schema_guard_for_tests
@@ -291,6 +342,7 @@ __all__ = [
     "clear_db_ready_operational_snapshot_for_tests",
     "load_db_ready_operational_snapshot",
     "record_db_ready_run",
+    "record_startup_warm_snapshot",
     "status_emoji",
     "status_label_ar",
 ]

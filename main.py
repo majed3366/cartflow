@@ -912,10 +912,14 @@ def api_recover_redirect(t: str = Query(..., min_length=6, max_length=2048)):
 @app.on_event("startup")
 async def _startup_whatsapp_queue() -> None:
     try:
-        _ensure_cartflow_api_db_warmed()
+        from services.db_ready_startup_warm_v1 import start_db_ready_startup_warm_async
+
+        start_db_ready_startup_warm_async(
+            warm_fn=lambda: _ensure_cartflow_api_db_warmed(trace_source="startup"),
+        )
     except Exception as exc:  # noqa: BLE001
         log.warning(
-            "startup cartflow api db warm skipped: %s",
+            "startup cartflow api db warm scheduling skipped: %s",
             exc,
             exc_info=True,
         )
@@ -1508,7 +1512,7 @@ _cartflow_api_db_warm_lock = threading.Lock()
 _cartflow_api_db_warmed = False
 
 
-def _ensure_cartflow_api_db_warmed() -> None:
+def _ensure_cartflow_api_db_warmed(*, trace_source: str = "warm") -> None:
     """
     مرة واحدة لكل عملية: ‎create_all‎ + مخطط الودجت/المتجر + أعمدة أسباب الاسترجاع + ‎Store‎ الافتراضي.
     يُستدعى من مسارات ‎cart-event‎ ومساعداتها لتجنّب آلاف أوامر ‎inspector/DDL‎ المتكررة.
@@ -1600,12 +1604,12 @@ def _ensure_cartflow_api_db_warmed() -> None:
     if db_ready_trace_active():
         _warm_body()
     else:
-        with db_ready_run(source="warm"):
+        with db_ready_run(source=(trace_source or "warm")[:32]):
             _warm_body()
 
 
 @_normal_carts_query_prof_wrap("_merchant_dashboard_db_ready")
-def _merchant_dashboard_db_ready() -> None:
+def _merchant_dashboard_db_ready(*, allow_defer: bool = False) -> bool:
     """لوحة التاجر: لا ‎create_all‎ في المسار الساخن — التدفئة عند الإقلاع فقط."""
     from schema_production_store_bootstrap import ensure_production_store_schema
     from services.db_ready_diag_v1 import (  # noqa: PLC0415
@@ -1613,16 +1617,30 @@ def _merchant_dashboard_db_ready() -> None:
         db_ready_stage,
     )
     from services.db_ready_stage_reason_v1 import probe_production_schema_reason  # noqa: PLC0415
+    from services.db_ready_startup_warm_v1 import (  # noqa: PLC0415
+        dashboard_warm_wait_budget_s,
+        record_request_cached_verification,
+        should_defer_user_db_ready,
+        wait_for_startup_warm,
+    )
+
+    was_warmed_at_entry = bool(_cartflow_api_db_warmed)
+    if should_defer_user_db_ready(allow_defer=allow_defer):
+        record_request_cached_verification(False)
+        return False
+    if not was_warmed_at_entry:
+        wait_for_startup_warm(timeout_s=dashboard_warm_wait_budget_s())
 
     with db_ready_run(source="dashboard"):
-        if _cartflow_api_db_warmed:
-            with db_ready_stage(
-                "production_schema",
-                reason=probe_production_schema_reason(context="dashboard"),
-            ):
-                ensure_production_store_schema(db, context="dashboard")
-            return
-        _ensure_cartflow_api_db_warmed()
+        if not _cartflow_api_db_warmed:
+            _ensure_cartflow_api_db_warmed(trace_source="dashboard")
+        with db_ready_stage(
+            "production_schema",
+            reason=probe_production_schema_reason(context="dashboard"),
+        ):
+            ensure_production_store_schema(db, context="dashboard")
+        record_request_cached_verification(was_warmed_at_entry)
+        return True
 
 
 def _merge_recovery_settings_post_body(body: Dict[str, Any]) -> Dict[str, Any]:
@@ -18612,7 +18630,22 @@ def api_dashboard_refresh_state(request: Request):
 
         st0 = time.perf_counter()
         refresh_state_log_stage("db_ready_start", store_slug=store_slug_hint or None)
-        _merchant_dashboard_db_ready()
+        if not _merchant_dashboard_db_ready(allow_defer=True):
+            refresh_state_log_stage(
+                "db_ready_deferred",
+                store_slug=store_slug_hint or None,
+                stage_t0=st0,
+            )
+            out = refresh_state_minimal_payload(
+                store_slug=store_slug_hint or None,
+                stage="startup_warm_in_progress",
+            )
+            refresh_state_log_stage(
+                "response_ready",
+                store_slug=store_slug_hint or None,
+                partial="1",
+            )
+            return j({"ok": True, **out})
         refresh_state_log_stage(
             "db_ready_done",
             store_slug=store_slug_hint or None,
