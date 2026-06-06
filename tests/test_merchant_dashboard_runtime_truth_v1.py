@@ -7,8 +7,13 @@ import json
 import unittest
 import uuid
 from datetime import datetime, timedelta, timezone
+from unittest.mock import patch
+
+from fastapi.testclient import TestClient
+
 from extensions import db
 from main import (
+    app,
     _api_json_dashboard_vip_carts,
     _merchant_batch_manual_archived,
     _merchant_dashboard_refresh_state_payload,
@@ -35,6 +40,9 @@ from services.merchant_cart_lifecycle_archive_v1 import (
     reopen_recovery_key,
     reopen_recovery_keys,
 )
+from services.merchant_dashboard_recovery_resolve_v1 import (
+    canonical_recovery_keys_for_abandoned_cart,
+)
 from services.recovery_message_context_v1 import recovery_key_from_parts
 from services.recovery_multi_message import resolve_recovery_schedule_timing
 from services.store_reason_templates import apply_reason_templates_from_body
@@ -45,6 +53,7 @@ class MerchantDashboardRuntimeTruthTests(unittest.TestCase):
     def setUp(self) -> None:
         db.create_all()
         self._suffix = uuid.uuid4().hex[:12]
+        self._client = TestClient(app)
     def tearDown(self) -> None:
         try:
             for model, filt in (
@@ -381,6 +390,235 @@ class MerchantDashboardRuntimeTruthTests(unittest.TestCase):
             "لا يوجد رقم متاح",
             proj_nophone.get("manual_contact_unavailable_ar") or "",
         )
+
+    def test_canonical_recovery_keys_for_abandoned_cart_includes_parts_and_log(
+        self,
+    ) -> None:
+        slug = f"rt-alias-{self._suffix}"
+        sid = f"s-alias-{self._suffix}"
+        zid = f"z-alias-{self._suffix}"
+        st = Store(zid_store_id=slug, recovery_attempts=1)
+        db.session.add(st)
+        db.session.flush()
+        ac = AbandonedCart(
+            store_id=int(st.id),
+            zid_cart_id=zid,
+            recovery_session_id=sid,
+            status="abandoned",
+            cart_value=50.0,
+        )
+        db.session.add(ac)
+        db.session.commit()
+        rk_parts = recovery_key_from_parts(store_slug=slug, session_id=sid, cart_id=zid)
+        rk_log = f"{slug}:log-{self._suffix}"
+        keys = canonical_recovery_keys_for_abandoned_cart(
+            ac,
+            store_slug=slug,
+            recovery_key=rk_log,
+        )
+        self.assertIn(rk_log, keys)
+        self.assertIn(rk_parts, keys)
+
+    @patch("services.merchant_auth_v1.development_dashboard_bypass_active", return_value=True)
+    @patch("main._dashboard_recovery_store_row")
+    def test_archive_http_endpoint_persists_and_hides_active(
+        self, mock_dash_store, _mock_auth_bypass
+    ) -> None:
+        slug = f"rt-arch-http-{self._suffix}"
+        sid = f"s-arch-http-{self._suffix}"
+        zid = f"z-arch-http-{self._suffix}"
+        now = datetime.now(timezone.utc)
+        st = Store(zid_store_id=slug, recovery_attempts=1, vip_cart_threshold=5000)
+        db.session.add(st)
+        db.session.flush()
+        ac = AbandonedCart(
+            store_id=int(st.id),
+            zid_cart_id=zid,
+            recovery_session_id=sid,
+            customer_phone="966501111111",
+            status="abandoned",
+            cart_value=80.0,
+            last_seen_at=now,
+        )
+        db.session.add(ac)
+        db.session.flush()
+        rk_parts = recovery_key_from_parts(store_slug=slug, session_id=sid, cart_id=zid)
+        rk_log = f"{slug}:log-http-{self._suffix}"
+        db.session.add(
+            CartRecoveryLog(
+                store_slug=slug,
+                session_id=sid,
+                cart_id=zid,
+                recovery_key=rk_log,
+                phone="966501111111",
+                message="m1",
+                status="mock_sent",
+                step=1,
+                created_at=now,
+                sent_at=now,
+            )
+        )
+        db.session.commit()
+        mock_dash_store.return_value = st
+
+        resp = self._client.post(
+            "/api/dashboard/cart-lifecycle/archive",
+            json={
+                "recovery_key": rk_log,
+                "store_slug": slug,
+                "abandoned_cart_id": int(ac.id),
+                "session_id": sid,
+                "cart_id": zid,
+            },
+        )
+        self.assertEqual(resp.status_code, 200, resp.text)
+        body = resp.json()
+        self.assertTrue(body.get("ok"), body)
+        self.assertTrue(is_merchant_archived(rk_log))
+        self.assertTrue(is_merchant_archived(rk_parts))
+
+        active_rows, _ = _normal_recovery_merchant_lightweight_alert_list_for_api(
+            page_limit=20,
+            nr_session=sid,
+            lifecycle="active",
+            dash_store=st,
+        )
+        self.assertEqual(len(active_rows), 0)
+
+    @patch("services.merchant_auth_v1.development_dashboard_bypass_active", return_value=True)
+    @patch("main._dashboard_recovery_store_row")
+    def test_reopen_http_endpoint_restores_active_visibility(
+        self, mock_dash_store, _mock_auth_bypass
+    ) -> None:
+        slug = f"rt-reopen-http-{self._suffix}"
+        sid = f"s-reopen-http-{self._suffix}"
+        zid = f"z-reopen-http-{self._suffix}"
+        now = datetime.now(timezone.utc)
+        st = Store(zid_store_id=slug, recovery_attempts=1)
+        db.session.add(st)
+        db.session.flush()
+        ac = AbandonedCart(
+            store_id=int(st.id),
+            zid_cart_id=zid,
+            recovery_session_id=sid,
+            customer_phone="966501222222",
+            status="abandoned",
+            cart_value=120.0,
+            last_seen_at=now,
+        )
+        db.session.add(ac)
+        db.session.flush()
+        rk_log = f"{slug}:log-reopen-{self._suffix}"
+        db.session.add(
+            CartRecoveryLog(
+                store_slug=slug,
+                session_id=sid,
+                cart_id=zid,
+                recovery_key=rk_log,
+                phone="966501222222",
+                message="m1",
+                status="mock_sent",
+                step=1,
+                created_at=now,
+                sent_at=now,
+            )
+        )
+        db.session.commit()
+        mock_dash_store.return_value = st
+
+        arch = self._client.post(
+            "/api/dashboard/cart-lifecycle/archive",
+            json={
+                "recovery_key": rk_log,
+                "store_slug": slug,
+                "abandoned_cart_id": int(ac.id),
+                "session_id": sid,
+                "cart_id": zid,
+            },
+        )
+        self.assertTrue(arch.json().get("ok"), arch.text)
+
+        reopen = self._client.post(
+            "/api/dashboard/cart-lifecycle/reopen",
+            json={
+                "recovery_key": rk_log,
+                "store_slug": slug,
+                "abandoned_cart_id": int(ac.id),
+                "session_id": sid,
+                "cart_id": zid,
+            },
+        )
+        self.assertEqual(reopen.status_code, 200, reopen.text)
+        self.assertTrue(reopen.json().get("ok"), reopen.json())
+        self.assertFalse(is_merchant_archived(rk_log))
+
+        active_rows, _ = _normal_recovery_merchant_lightweight_alert_list_for_api(
+            page_limit=20,
+            nr_session=sid,
+            lifecycle="active",
+            dash_store=st,
+        )
+        self.assertEqual(len(active_rows), 1)
+
+    @patch("services.merchant_auth_v1.development_dashboard_bypass_active", return_value=True)
+    @patch("main._dashboard_recovery_store_row")
+    def test_vip_manual_contact_endpoint_no_phone_unavailable(
+        self, mock_dash_store, _mock_auth_bypass
+    ) -> None:
+        slug = f"rt-vip-mc-np-{self._suffix}"
+        st = Store(zid_store_id=slug, vip_cart_threshold=500, recovery_attempts=1)
+        db.session.add(st)
+        db.session.flush()
+        ac = AbandonedCart(
+            store_id=int(st.id),
+            zid_cart_id=f"z-vip-mc-np-{self._suffix}",
+            recovery_session_id=f"s-vip-mc-np-{self._suffix}",
+            status="abandoned",
+            cart_value=900.0,
+            vip_mode=True,
+            last_seen_at=datetime.now(timezone.utc),
+        )
+        db.session.add(ac)
+        db.session.commit()
+        mock_dash_store.return_value = st
+
+        resp = self._client.get(f"/api/dashboard/vip-cart/{int(ac.id)}/manual-contact")
+        self.assertEqual(resp.status_code, 400, resp.text)
+        body = resp.json()
+        self.assertFalse(body.get("ok"))
+        self.assertFalse(body.get("manual_contact_available"))
+        self.assertIn("لا يوجد رقم متاح", body.get("error") or body.get("manual_contact_unavailable_ar") or "")
+
+    @patch("services.merchant_auth_v1.development_dashboard_bypass_active", return_value=True)
+    @patch("main._dashboard_recovery_store_row")
+    def test_vip_manual_contact_endpoint_with_phone_returns_action(
+        self, mock_dash_store, _mock_auth_bypass
+    ) -> None:
+        slug = f"rt-vip-mc-p-{self._suffix}"
+        st = Store(zid_store_id=slug, vip_cart_threshold=500, recovery_attempts=1)
+        db.session.add(st)
+        db.session.flush()
+        ac = AbandonedCart(
+            store_id=int(st.id),
+            zid_cart_id=f"z-vip-mc-p-{self._suffix}",
+            recovery_session_id=f"s-vip-mc-p-{self._suffix}",
+            customer_phone="966504444444",
+            status="abandoned",
+            cart_value=950.0,
+            vip_mode=True,
+            last_seen_at=datetime.now(timezone.utc),
+        )
+        db.session.add(ac)
+        db.session.commit()
+        mock_dash_store.return_value = st
+
+        resp = self._client.get(f"/api/dashboard/vip-cart/{int(ac.id)}/manual-contact")
+        self.assertEqual(resp.status_code, 200, resp.text)
+        body = resp.json()
+        self.assertTrue(body.get("ok"), body)
+        self.assertTrue(body.get("manual_contact_available"))
+        self.assertEqual(body.get("action"), "open_whatsapp")
+        self.assertTrue(str(body.get("contact_href") or "").startswith("https://wa.me/"))
 
 
 if __name__ == "__main__":

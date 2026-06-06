@@ -18310,6 +18310,8 @@ async def api_dashboard_cart_lifecycle_archive(request: Request) -> Any:
         ac_id_i = int(ac_id) if ac_id is not None else None
     except (TypeError, ValueError):
         ac_id_i = None
+    body_session = (body.get("session_id") or "").strip()[:512]
+    body_cart_id = (body.get("cart_id") or "").strip()[:255]
     from services.merchant_cart_lifecycle_archive_v1 import archive_recovery_keys
 
     alias_keys: list[str] = [rk]
@@ -18318,6 +18320,17 @@ async def api_dashboard_cart_lifecycle_archive(request: Request) -> Any:
         try:
             ac_row = db.session.get(AbandonedCart, ac_id_i)
         except (SQLAlchemyError, OSError, TypeError, ValueError):
+            db.session.rollback()
+            ac_row = None
+    if ac_row is None and body_session:
+        try:
+            ac_row = (
+                db.session.query(AbandonedCart)
+                .filter(AbandonedCart.recovery_session_id == body_session)
+                .order_by(AbandonedCart.id.desc())
+                .first()
+            )
+        except (SQLAlchemyError, OSError):
             db.session.rollback()
             ac_row = None
     if ac_row is None and store_slug:
@@ -18333,9 +18346,20 @@ async def api_dashboard_cart_lifecycle_archive(request: Request) -> Any:
         except (SQLAlchemyError, OSError):
             db.session.rollback()
             ac_row = None
+    if ac_row is None and body_cart_id and store_slug:
+        try:
+            ac_row = (
+                db.session.query(AbandonedCart)
+                .filter(AbandonedCart.zid_cart_id == body_cart_id)
+                .order_by(AbandonedCart.id.desc())
+                .first()
+            )
+        except (SQLAlchemyError, OSError):
+            db.session.rollback()
+            ac_row = None
     if ac_row is not None:
         from services.merchant_dashboard_recovery_resolve_v1 import (  # noqa: PLC0415
-            canonical_recovery_keys_for_cart,
+            canonical_recovery_keys_for_abandoned_cart,
         )
 
         slug_eff = store_slug
@@ -18348,13 +18372,18 @@ async def api_dashboard_cart_lifecycle_archive(request: Request) -> Any:
                     )
             except (SQLAlchemyError, OSError, TypeError, ValueError):
                 db.session.rollback()
-        for k in canonical_recovery_keys_for_cart(
+        for k in canonical_recovery_keys_for_abandoned_cart(
             ac_row,
             store_slug=slug_eff or store_slug,
             recovery_key=rk,
         ):
             if k and k not in alias_keys:
                 alias_keys.append(k)
+        if ac_id_i is None:
+            try:
+                ac_id_i = int(getattr(ac_row, "id", 0) or 0) or None
+            except (TypeError, ValueError):
+                ac_id_i = None
 
     return j(
         archive_recovery_keys(
@@ -18391,6 +18420,8 @@ async def api_dashboard_cart_lifecycle_reopen(request: Request) -> Any:
         ac_id_i = int(ac_id) if ac_id is not None else None
     except (TypeError, ValueError):
         ac_id_i = None
+    body_session = (body.get("session_id") or "").strip()[:512]
+    body_cart_id = (body.get("cart_id") or "").strip()[:255]
     ac_row: Optional[AbandonedCart] = None
     if ac_id_i is not None:
         try:
@@ -18398,12 +18429,34 @@ async def api_dashboard_cart_lifecycle_reopen(request: Request) -> Any:
         except (SQLAlchemyError, OSError, TypeError, ValueError):
             db.session.rollback()
             ac_row = None
+    if ac_row is None and body_session:
+        try:
+            ac_row = (
+                db.session.query(AbandonedCart)
+                .filter(AbandonedCart.recovery_session_id == body_session)
+                .order_by(AbandonedCart.id.desc())
+                .first()
+            )
+        except (SQLAlchemyError, OSError):
+            db.session.rollback()
+            ac_row = None
+    if ac_row is None and body_cart_id:
+        try:
+            ac_row = (
+                db.session.query(AbandonedCart)
+                .filter(AbandonedCart.zid_cart_id == body_cart_id)
+                .order_by(AbandonedCart.id.desc())
+                .first()
+            )
+        except (SQLAlchemyError, OSError):
+            db.session.rollback()
+            ac_row = None
     if ac_row is not None:
         from services.merchant_dashboard_recovery_resolve_v1 import (  # noqa: PLC0415
-            canonical_recovery_keys_for_cart,
+            canonical_recovery_keys_for_abandoned_cart,
         )
 
-        for k in canonical_recovery_keys_for_cart(
+        for k in canonical_recovery_keys_for_abandoned_cart(
             ac_row,
             store_slug=store_slug,
             recovery_key=rk,
@@ -20681,6 +20734,78 @@ def _resolve_store_for_vip_merchant_alert(
         if phone2:
             return fb
     return primary
+
+
+@app.get("/api/dashboard/vip-cart/{cart_row_id}/manual-contact")
+def api_dashboard_vip_cart_manual_contact(cart_row_id: int):
+    """Read-only VIP manual customer contact truth — no WhatsApp send."""
+    try:
+        db.create_all()
+        ac = db.session.get(AbandonedCart, int(cart_row_id))
+        if ac is None:
+            return j(
+                {
+                    "ok": False,
+                    "error": "لم يتم العثور على السلة",
+                    "manual_contact_available": False,
+                },
+                404,
+            )
+        dash_store = _dashboard_recovery_store_row()
+        store_lane = _store_row_for_abandoned_cart(ac) or dash_store
+        if not abandoned_cart_in_vip_operational_lane(ac, store_lane):
+            return j(
+                {
+                    "ok": False,
+                    "error": "هذه السلة ليست في وضع VIP",
+                    "manual_contact_available": False,
+                },
+                400,
+            )
+        vc = _vip_dashboard_cart_alert_dict_from_group(
+            [ac], store_lane or dash_store
+        )
+        proj = _merchant_vip_row_safe_projection(
+            vc,
+            avatar_letter="A",
+            dash_store=store_lane or dash_store,
+        )
+        href = str(proj.get("contact_href") or "").strip()
+        if proj.get("manual_contact_available") and href.startswith("https://wa.me/"):
+            return j(
+                {
+                    "ok": True,
+                    "action": "open_whatsapp",
+                    "manual_contact_available": True,
+                    "contact_href": href,
+                    "has_phone": True,
+                }
+            )
+        unavailable = (
+            proj.get("manual_contact_unavailable_ar")
+            or "لا يوجد رقم متاح — تواصل يدوي غير ممكن حتى يتوفر رقم العميل"
+        )
+        return j(
+            {
+                "ok": False,
+                "error": unavailable,
+                "manual_contact_available": False,
+                "has_phone": bool(proj.get("has_phone")),
+                "manual_contact_unavailable_ar": unavailable,
+            },
+            400,
+        )
+    except Exception as e:  # noqa: BLE001
+        db.session.rollback()
+        log.warning("vip manual contact truth failed: %s", e, exc_info=True)
+        return j(
+            {
+                "ok": False,
+                "error": "خطأ غير متوقع في الخادم",
+                "manual_contact_available": False,
+            },
+            500,
+        )
 
 
 @app.post("/api/dashboard/vip-cart/{cart_row_id}/merchant-alert")

@@ -27,6 +27,33 @@ def store_slug_from_dash(dash_store: Any) -> str:
     return _norm(getattr(dash_store, "zid_store_id", None))[:255]
 
 
+def canonical_recovery_keys_for_abandoned_cart(
+    ac: AbandonedCart,
+    *,
+    store_slug: str = "",
+    recovery_key: str = "",
+) -> list[str]:
+    """All recovery_key aliases for one AbandonedCart row (parts vs log drift safe)."""
+    slug = _norm(store_slug)
+    if not slug:
+        sid_raw = getattr(ac, "store_id", None)
+        if sid_raw is not None:
+            try:
+                from models import Store
+
+                st_row = db.session.get(Store, int(sid_raw))
+                if st_row is not None:
+                    slug = _norm(getattr(st_row, "zid_store_id", None))
+            except Exception:  # noqa: BLE001
+                db.session.rollback()
+    return canonical_recovery_keys_for_cart(
+        store_slug=slug,
+        session_id=_norm(getattr(ac, "recovery_session_id", None)),
+        cart_id=_norm(getattr(ac, "zid_cart_id", None)),
+        recovery_key=recovery_key,
+    )
+
+
 def canonical_recovery_keys_for_cart(
     *,
     store_slug: str,
@@ -275,6 +302,7 @@ def cart_row_identity_fields(ac: AbandonedCart, *, store_slug: str) -> dict[str,
         "recovery_key": rk,
         "session_id": sid,
         "cart_id": cid,
+        "store_slug": slug,
     }
 
 
@@ -310,6 +338,7 @@ def log_matches_cart_identity(
 
 __all__ = [
     "SENT_LOG_STATUSES",
+    "canonical_recovery_keys_for_abandoned_cart",
     "canonical_recovery_keys_for_cart",
     "cart_row_identity_fields",
     "find_dashboard_cart_row",
