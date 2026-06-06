@@ -46,7 +46,7 @@
     if (m === "manual") {
       var noPhoneMsg =
         vr.manual_contact_unavailable_ar ||
-        "لا يوجد رقم متاح — تواصل يدوي غير ممكن حتى يتوفر رقم العميل";
+        "لا يوجد رقم عميل متاح — تواصل يدوي غير ممكن حتى يتوفر رقم العميل";
       var btn = href
         ? '<a class="va-btn" href="' +
           esc(href) +
@@ -101,7 +101,7 @@
     if (m === "manual") {
       var noPhoneMsg =
         vr.manual_contact_unavailable_ar ||
-        "لا يوجد رقم متاح — تواصل يدوي غير ممكن حتى يتوفر رقم العميل";
+        "لا يوجد رقم عميل متاح — تواصل يدوي غير ممكن حتى يتوفر رقم العميل";
       return href
         ? '<a class="' + cls + '" href="' + esc(href) + '" target="_blank" rel="noopener noreferrer">تواصل يدوي (VIP)' + suffix + "</a>"
         : '<span class="' + cls + ' is-disabled" title="' + esc(noPhoneMsg) + '">تواصل يدوي (VIP)' + suffix + "</span>";

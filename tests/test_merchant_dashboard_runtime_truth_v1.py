@@ -14,6 +14,7 @@ from fastapi.testclient import TestClient
 from extensions import db
 from main import (
     app,
+    _api_json_dashboard_normal_carts,
     _api_json_dashboard_vip_carts,
     _merchant_batch_manual_archived,
     _merchant_dashboard_refresh_state_payload,
@@ -22,8 +23,10 @@ from main import (
     _normal_recovery_merchant_lifecycle_bucket_ok,
     _normal_recovery_merchant_lightweight_alert_list_for_api,
     _vip_dashboard_cart_alert_dict_from_group,
+    _vip_dashboard_customer_phone_raw,
     _vip_priority_cart_alert_list,
 )
+from services.vip_abandoned_cart_phone import apply_vip_phone_capture_to_abandoned_carts
 from services.recovery_restart_survival import persist_recovery_schedule_durable
 from models import (
     AbandonedCart,
@@ -342,7 +345,7 @@ class MerchantDashboardRuntimeTruthTests(unittest.TestCase):
         self.assertTrue(str(with_phone.get("contact_href") or "").startswith("https://wa.me/"))
         self.assertFalse(without_phone.get("manual_contact_available"))
         self.assertIn(
-            "لا يوجد رقم متاح",
+            "لا يوجد رقم عميل متاح",
             without_phone.get("manual_contact_unavailable_ar") or "",
         )
 
@@ -387,7 +390,7 @@ class MerchantDashboardRuntimeTruthTests(unittest.TestCase):
         self.assertTrue(str(proj_phone.get("contact_href") or "").startswith("https://wa.me/"))
         self.assertFalse(proj_nophone.get("manual_contact_available"))
         self.assertIn(
-            "لا يوجد رقم متاح",
+            "لا يوجد رقم عميل متاح",
             proj_nophone.get("manual_contact_unavailable_ar") or "",
         )
 
@@ -484,6 +487,66 @@ class MerchantDashboardRuntimeTruthTests(unittest.TestCase):
             dash_store=st,
         )
         self.assertEqual(len(active_rows), 0)
+        all_rows, _ = _normal_recovery_merchant_lightweight_alert_list_for_api(
+            page_limit=20,
+            nr_session=sid,
+            lifecycle="all",
+            dash_store=st,
+        )
+        self.assertEqual(len(all_rows), 0)
+        archived_rows, _ = _normal_recovery_merchant_lightweight_alert_list_for_api(
+            page_limit=20,
+            nr_session=sid,
+            lifecycle="archived",
+            dash_store=st,
+        )
+        self.assertEqual(len(archived_rows), 1)
+        self.assertEqual(
+            str(archived_rows[0].get("customer_lifecycle_dashboard_action") or ""),
+            "reopen",
+        )
+
+        dash_body, _ = _api_json_dashboard_normal_carts(st)
+        active_payload = dash_body.get("merchant_carts_page_rows") or []
+        active_for_sid = [
+            r
+            for r in active_payload
+            if str(r.get("session_id") or "").strip() == sid
+            or sid in str(r.get("recovery_key") or "")
+        ]
+        self.assertEqual(len(active_for_sid), 0)
+        arch_payload = dash_body.get("merchant_archived_carts_page_rows") or []
+        arch_for_sid = [
+            r
+            for r in arch_payload
+            if str(r.get("session_id") or "").strip() == sid
+            or sid in str(r.get("recovery_key") or "")
+        ]
+        self.assertEqual(len(arch_for_sid), 1)
+        self.assertTrue(
+            arch_for_sid[0].get("customer_lifecycle_is_archived_visual")
+            or str(arch_for_sid[0].get("customer_lifecycle_state") or "") == "archived"
+        )
+
+        reopen = self._client.post(
+            "/api/dashboard/cart-lifecycle/reopen",
+            json={
+                "recovery_key": rk_log,
+                "store_slug": slug,
+                "abandoned_cart_id": int(ac.id),
+                "session_id": sid,
+                "cart_id": zid,
+            },
+        )
+        self.assertEqual(reopen.status_code, 200, reopen.text)
+        self.assertTrue(reopen.json().get("ok"), reopen.json())
+        active_after, _ = _normal_recovery_merchant_lightweight_alert_list_for_api(
+            page_limit=20,
+            nr_session=sid,
+            lifecycle="active",
+            dash_store=st,
+        )
+        self.assertEqual(len(active_after), 1)
 
     @patch("services.merchant_auth_v1.development_dashboard_bypass_active", return_value=True)
     @patch("main._dashboard_recovery_store_row")
@@ -587,7 +650,10 @@ class MerchantDashboardRuntimeTruthTests(unittest.TestCase):
         body = resp.json()
         self.assertFalse(body.get("ok"))
         self.assertFalse(body.get("manual_contact_available"))
-        self.assertIn("لا يوجد رقم متاح", body.get("error") or body.get("manual_contact_unavailable_ar") or "")
+        self.assertIn(
+            "لا يوجد رقم عميل متاح",
+            body.get("error") or body.get("manual_contact_unavailable_ar") or "",
+        )
 
     @patch("services.merchant_auth_v1.development_dashboard_bypass_active", return_value=True)
     @patch("main._dashboard_recovery_store_row")
@@ -619,6 +685,59 @@ class MerchantDashboardRuntimeTruthTests(unittest.TestCase):
         self.assertTrue(body.get("manual_contact_available"))
         self.assertEqual(body.get("action"), "open_whatsapp")
         self.assertTrue(str(body.get("contact_href") or "").startswith("https://wa.me/"))
+
+    def test_vip_phone_capture_threshold_lane_without_vip_mode_persists(self) -> None:
+        """VIP عتبة فقط (بدون vip_mode مسبقاً): التقاط الرقم يظهر في لوحة VIP وتواصل يدوي."""
+        slug = f"rt-vip-ph-{self._suffix}"
+        sid = f"s-vip-ph-{self._suffix}"
+        zid = f"z-vip-ph-{self._suffix}"
+        st = Store(zid_store_id=slug, vip_cart_threshold=500, recovery_attempts=1)
+        db.session.add(st)
+        db.session.flush()
+        now = datetime.now(timezone.utc)
+        ac = AbandonedCart(
+            store_id=int(st.id),
+            zid_cart_id=zid,
+            recovery_session_id=sid,
+            customer_phone=None,
+            status="abandoned",
+            cart_value=1200.0,
+            vip_mode=False,
+            last_seen_at=now,
+        )
+        db.session.add(ac)
+        db.session.commit()
+
+        n = apply_vip_phone_capture_to_abandoned_carts(
+            store_slug=slug,
+            recovery_session_id=sid,
+            normalized_phone="966505555555",
+        )
+        self.assertEqual(n, 1)
+        db.session.commit()
+        db.session.refresh(ac)
+        self.assertEqual("966505555555", (ac.customer_phone or "").strip())
+        self.assertTrue(ac.vip_mode)
+
+        resolved = _vip_dashboard_customer_phone_raw(ac, st)
+        self.assertEqual("966505555555", resolved.strip())
+
+        vc = _vip_dashboard_cart_alert_dict_from_group([ac], st)
+        proj = _merchant_vip_row_safe_projection(vc, avatar_letter="V", dash_store=st)
+        self.assertTrue(proj.get("has_phone"))
+        self.assertTrue(proj.get("manual_contact_available"))
+        self.assertTrue(str(proj.get("contact_href") or "").startswith("https://wa.me/"))
+
+        with patch(
+            "services.merchant_auth_v1.development_dashboard_bypass_active",
+            return_value=True,
+        ), patch("main._dashboard_recovery_store_row", return_value=st):
+            resp = self._client.get(f"/api/dashboard/vip-cart/{int(ac.id)}/manual-contact")
+        self.assertEqual(resp.status_code, 200, resp.text)
+        mc_body = resp.json()
+        self.assertTrue(mc_body.get("ok"))
+        self.assertTrue(mc_body.get("manual_contact_available"))
+        self.assertTrue(str(mc_body.get("contact_href") or "").startswith("https://wa.me/"))
 
 
 if __name__ == "__main__":

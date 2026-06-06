@@ -7763,10 +7763,13 @@ def _vip_dashboard_customer_phone_raw(
     prefer_persisted_cart_column_before_memory: bool = False,
 ) -> str:
     """
-    جوال عميل لوحة VIP: ‎CartRecoveryReason‎ (سلاسل ‎slug‎ للوحة ومن آخر سبب للجلسة)،
-    ذاكرة الجلسة، ‎AbandonedCart.customer_phone‎، ثم ‎CartRecoveryReason‎ لأي ‎slug‎ بنفس الجلسة، ثم ‎raw_payload‎.
-    عند ‎prefer_persisted_cart_column_before_memory‎ (بطاقات الاسترجاع العادي): عمود السلة قبل ذاكرة الجلسة المؤقتة.
+    جوال عميل لوحة VIP: ‎AbandonedCart.customer_phone‎ أولاً (حقيقة الصف)، ثم ‎CartRecoveryReason‎،
+    ذاكرة الجلسة، ‎raw_payload‎. يمنع فقدان الرقم عند اختلاف ‎store_slug‎ بين الودجت واللوحة.
     """
+    col_first = _strip_recovery_phone(getattr(ac, "customer_phone", None))
+    if col_first:
+        return col_first
+
     sid = (getattr(ac, "recovery_session_id", None) or "").strip()
     slugs = list(_vip_candidate_store_slugs_for_dashboard(dashboard_store, ac))
     if sid:
@@ -14422,7 +14425,7 @@ def _merchant_vip_row_safe_projection(
     elif phone:
         href = f"https://wa.me/{phone}"
     manual_unavailable_ar = (
-        "لا يوجد رقم متاح — تواصل يدوي غير ممكن حتى يتوفر رقم العميل"
+        "لا يوجد رقم عميل متاح — تواصل يدوي غير ممكن حتى يتوفر رقم العميل"
     )
     return {
         "id": rid,
@@ -19801,8 +19804,17 @@ def _api_json_dashboard_normal_carts(
                 dash_store=dash_store,
             )
         )
+        archived_carts_page_rows, _arch_prof = (
+            _normal_recovery_merchant_lightweight_alert_list_for_api(
+                page_limit,
+                page_offset,
+                lifecycle="archived",
+                dash_store=dash_store,
+            )
+        )
     except (SQLAlchemyError, OSError, TypeError, ValueError):
         merchant_carts_page_rows = []
+        archived_carts_page_rows = []
         prof_nc = {
             "carts_count": 0,
             "logs_loaded": 0,
@@ -19835,6 +19847,8 @@ def _api_json_dashboard_normal_carts(
         body: Dict[str, Any] = {
             "merchant_table_rows": table_rows,
             "merchant_carts_page_rows": merchant_carts_page_rows,
+            "merchant_archived_carts_page_rows": archived_carts_page_rows,
+            "merchant_archived_cart_count": len(archived_carts_page_rows),
             "merchant_cart_filter_counts": cart_filter_counts,
             "merchant_nav_badge_abandoned": lifecycle_nav_badge_waiting_count(
                 merchant_carts_page_rows
@@ -20783,7 +20797,7 @@ def api_dashboard_vip_cart_manual_contact(cart_row_id: int):
             )
         unavailable = (
             proj.get("manual_contact_unavailable_ar")
-            or "لا يوجد رقم متاح — تواصل يدوي غير ممكن حتى يتوفر رقم العميل"
+            or "لا يوجد رقم عميل متاح — تواصل يدوي غير ممكن حتى يتوفر رقم العميل"
         )
         return j(
             {

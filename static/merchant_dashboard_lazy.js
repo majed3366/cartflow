@@ -1738,6 +1738,7 @@
   }
 
   var lastNormalCartsPageRows = [];
+  var lastArchivedCartsPageRows = [];
 
   function isArchivedVisual(mc) {
     if (!mc) return false;
@@ -1801,8 +1802,13 @@
     return false;
   }
 
+  function isArchivedDestinationRow(mc) {
+    return isArchivedVisual(mc);
+  }
+
   function isCompletedDashboardRow(mc) {
     if (!mc) return false;
+    if (isArchivedDestinationRow(mc)) return true;
     var lc = String(mc.customer_lifecycle_state || "").trim().toLowerCase();
     if (lc === "completed") return true;
     if (String(mc.merchant_coarse_status || "").trim().toLowerCase() === "converted") {
@@ -1836,8 +1842,8 @@
 
   function trLooksCompletedRow(tr) {
     if (!tr) return false;
+    if (tr.getAttribute("data-ma-archived-visual") === "1") return true;
     if (tr.getAttribute("data-ma-completed") === "1") return true;
-    if (tr.getAttribute("data-ma-archived-visual") === "1") return false;
     var filter = (tr.getAttribute("data-ma-filter") || "").trim().toLowerCase();
     if (filter === "recovered" || filter === "completed") return true;
     var primary = (tr.getAttribute("data-ma-primary-bucket") || "")
@@ -1861,10 +1867,21 @@
     return false;
   }
 
-  function completedCartsFromRows(rows) {
-    return sortCartsArchivedLast(rows || []).filter(function (mc) {
-      return isCompletedDashboardRow(mc);
-    });
+  function completedCartsFromRows(rows, archivedRows) {
+    var seen = {};
+    var out = [];
+    function push(mc) {
+      if (!mc || !isCompletedDashboardRow(mc)) return;
+      var rk = String(mc.recovery_key || "").trim();
+      var rid = mc.merchant_case_row_id != null ? String(mc.merchant_case_row_id) : "";
+      var key = rk || rid || String(mc.session_id || "").trim();
+      if (key && seen[key]) return;
+      if (key) seen[key] = true;
+      out.push(mc);
+    }
+    (archivedRows || []).forEach(push);
+    (rows || []).forEach(push);
+    return sortCartsArchivedLast(out);
   }
 
   function completedRowsHtmlFromAllTableDom() {
@@ -1894,14 +1911,14 @@
     }
   }
 
-  function applyCompletedCartsTable(rows) {
+  function applyCompletedCartsTable(rows, archivedRows) {
     var tbody = byId("ma-tbody-completed");
-    var total = (rows || []).length;
+    var total = (rows || []).length + (archivedRows || []).length;
     if (!tbody) {
       logCompletedTab(total, 0, "missing_tbody");
       return;
     }
-    var completed = completedCartsFromRows(rows);
+    var completed = completedCartsFromRows(rows, archivedRows);
     if (completed.length) {
       tbody.innerHTML = completed.map(cartRowFull).join("");
       bindCustomerLifecycleActions(tbody);
@@ -1923,10 +1940,11 @@
 
   window.maRefreshCompletedCartsTable = function () {
     var rows = lastNormalCartsPageRows || [];
+    var archived = lastArchivedCartsPageRows || [];
     if (!rows.length && window.__maNormalCartsPageRows) {
       rows = window.__maNormalCartsPageRows;
     }
-    applyCompletedCartsTable(rows);
+    applyCompletedCartsTable(rows, archived);
     if (
       !rows.length &&
       !window.__maCompletedTabFetchPending &&
@@ -2071,16 +2089,19 @@
   function findCartRowContext(rk) {
     var key = String(rk || "").trim();
     if (!key) return null;
-    for (var i = 0; i < lastNormalCartsPageRows.length; i++) {
-      var mc = lastNormalCartsPageRows[i];
-      if (String(mc.recovery_key || "").trim() === key) return mc;
-      var sid = String(mc.session_id || "").trim();
-      if (sid && key.indexOf(":") >= 0) {
-        var tail = key.split(":").slice(1).join(":");
-        if (tail === sid) return mc;
+    var pools = [lastNormalCartsPageRows, lastArchivedCartsPageRows];
+    for (var p = 0; p < pools.length; p++) {
+      for (var i = 0; i < pools[p].length; i++) {
+        var mc = pools[p][i];
+        if (String(mc.recovery_key || "").trim() === key) return mc;
+        var sid = String(mc.session_id || "").trim();
+        if (sid && key.indexOf(":") >= 0) {
+          var tail = key.split(":").slice(1).join(":");
+          if (tail === sid) return mc;
+        }
+        var rid = mc.merchant_case_row_id || mc.id;
+        if (rid && key === String(rid)) return mc;
       }
-      var rid = mc.merchant_case_row_id || mc.id;
-      if (rid && key === String(rid)) return mc;
     }
     return null;
   }
@@ -2194,7 +2215,12 @@
               rerenderHomeCartsTable();
               fetchSection(
                 "/api/dashboard/normal-carts",
-                applyNormalCarts,
+                function (payload) {
+                  applyNormalCarts(payload);
+                  if (typeof window.goToCartTab === "function") {
+                    window.goToCartTab("completed");
+                  }
+                },
                 "normal-carts"
               );
             } else {
@@ -2358,6 +2384,7 @@
     if (!d || !d.ok) return;
     ingestRefreshToken(d, "normal-carts");
     lastNormalCartsPageRows = d.merchant_carts_page_rows || [];
+    lastArchivedCartsPageRows = d.merchant_archived_carts_page_rows || [];
     window.__maNormalCartsPageRows = lastNormalCartsPageRows;
     var home = byId("ma-tbody-home-carts");
     if (home) {
@@ -2381,7 +2408,7 @@
       }
       bindCustomerLifecycleActions(allb);
     }
-    applyCompletedCartsTable(lastNormalCartsPageRows);
+    applyCompletedCartsTable(lastNormalCartsPageRows, lastArchivedCartsPageRows);
     var fc = d.merchant_cart_filter_counts || {};
     function sf(k, id) {
       var el = byId(id);
@@ -2482,7 +2509,7 @@
       var href = vr.contact_href || "";
       var noPhoneMsg =
         vr.manual_contact_unavailable_ar ||
-        "لا يوجد رقم متاح — تواصل يدوي غير ممكن حتى يتوفر رقم العميل";
+        "لا يوجد رقم عميل متاح — تواصل يدوي غير ممكن حتى يتوفر رقم العميل";
       btn = href
         ? '<a class="va-btn" href="' +
           esc(href) +

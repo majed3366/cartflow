@@ -8,6 +8,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from extensions import db
 from models import AbandonedCart, Store
+from services.vip_cart import abandoned_cart_in_vip_operational_lane, merchant_vip_threshold_int
 
 
 def resolve_store_row_for_cartflow_slug_session(
@@ -59,7 +60,6 @@ def apply_vip_phone_capture_to_abandoned_carts(
     q = (
         db.session.query(AbandonedCart)
         .filter(AbandonedCart.recovery_session_id == sid)
-        .filter(AbandonedCart.vip_mode.is_(True))
         .filter(AbandonedCart.status == "abandoned")
     )
     if store_row is not None:
@@ -68,7 +68,13 @@ def apply_vip_phone_capture_to_abandoned_carts(
             (AbandonedCart.store_id == vid) | (AbandonedCart.store_id.is_(None))  # type: ignore[union-attr]
         )
     for ac in q.all():
+        vip_flag = bool(getattr(ac, "vip_mode", False))
+        in_lane = abandoned_cart_in_vip_operational_lane(ac, store_row)
+        if not vip_flag and not in_lane:
+            continue
         ac.customer_phone = phone
+        if in_lane and not vip_flag:
+            ac.vip_mode = True
         n += 1
     return n
 
