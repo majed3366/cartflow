@@ -88,12 +88,20 @@
     if (!d || !d.merchant_dashboard_refresh_token) return;
     var next = String(d.merchant_dashboard_refresh_token || "");
     if (!next) return;
-    if (next !== merchantDashboardRefreshToken) {
+    var prev = merchantDashboardRefreshToken;
+    if (next !== prev) {
       merchantDashboardRefreshToken = next;
       logClientRefresh("token_update", {
         source: source || "",
         token: merchantDashboardRefreshToken,
       });
+      if (
+        normalCartsBootComplete &&
+        !merchantRefreshInFlight &&
+        (source || "") !== "refresh-state"
+      ) {
+        fetchNormalCarts("token_" + (source || "payload"));
+      }
     }
   }
 

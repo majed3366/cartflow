@@ -57,3 +57,20 @@ Acceptance:
 - `time_to_visible_ms` materially below 39,038 ms
 
 Evidence: `scripts/_production_visual_gate_out/stability/`
+
+---
+
+## Production verification (`7539e30` on smartreplyai.net)
+
+| Metric | Before | After |
+|--------|-------:|------:|
+| Dashboard reload DOM visibility (3 runs) | ~39,038 ms (first paint) | **17.6 – 26.2 ms** |
+| Isolated `normal-carts` API | ~4,204 ms | **3,685 – 3,819 ms** |
+| False empty «لا توجد سلال» | intermittent | **none** (3/3 runs) |
+| Count parity `filter_all` = DOM rows | mismatch risk | **3 = 3** (3/3) |
+| `dashboard_partial` empty overwrite | yes | **no** |
+| Deploy marker `boot_priority` | absent | **present** |
+
+Screenshots: `scripts/_production_visual_gate_out/stability/stability_load_1.png` … `_3.png`
+
+**Note:** Fresh cart after widget journey may still take longer to appear in the API row set until `merchant_dashboard_refresh_token` advances (server-side). Reload stability and existing-row retention are fixed; token-triggered `fetchNormalCarts` added for faster new-cart pickup.
