@@ -58,6 +58,34 @@ def test_resolve_schedule_timing_other_two_hours() -> None:
     assert t["source"] == "reason_templates.messages"
 
 
+def test_resolve_schedule_timing_quality_ninety_minutes_legacy_message_only() -> None:
+    """Dashboard saves message text without messages[] — delay must match UI default (90 min)."""
+    from services.trigger_template_ui_defaults import DASHBOARD_STAGE_TEXTS
+
+    stage1 = DASHBOARD_STAGE_TEXTS["quality"][0]
+    row = _Row()
+    apply_reason_templates_from_body(
+        row,
+        {
+            "reason_templates": {
+                "quality": {
+                    "enabled": True,
+                    "message": stage1,
+                    "message_count": 1,
+                }
+            }
+        },
+    )
+    templates = parse_reason_templates_column(row.reason_templates_json)
+    assert templates["quality"]["messages"][0]["delay"] == 90.0
+    assert templates["quality"]["messages"][0]["unit"] == "minute"
+
+    t = resolve_recovery_schedule_timing("quality", row, stage_index=0)
+    assert t["effective_delay_seconds"] == 5400.0
+    assert t["effective_delay_seconds"] != 120.0
+    assert t["effective_delay_seconds"] != 180.0
+
+
 def test_resolve_schedule_timing_warranty_five_minutes() -> None:
     class _S:
         reason_templates_json = json.dumps(

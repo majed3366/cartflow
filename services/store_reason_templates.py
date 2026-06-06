@@ -141,7 +141,11 @@ def reason_template_key_is_persisted(
     return kk in parsed and isinstance(parsed.get(kk), dict)
 
 
-def _finalize_reason_entry_for_storage(entry: Dict[str, Any]) -> Dict[str, Any]:
+def _finalize_reason_entry_for_storage(
+    entry: Dict[str, Any],
+    *,
+    reason_tag: str = "",
+) -> Dict[str, Any]:
     """شكل موحّد لـ runtime و GET: ‎message_count‎ + ‎messages[]‎ + ‎message‎ للرسالة الأولى."""
     out = dict(entry)
     mc = _coerce_message_count(out.get("message_count"))
@@ -156,7 +160,10 @@ def _finalize_reason_entry_for_storage(entry: Dict[str, Any]) -> Dict[str, Any]:
         out.pop("messages", None)
     legacy = str(out.get("message") or "").strip()
     if legacy and not msgs and mc >= 1:
-        dv, unit = 1.0, "minute"
+        from services.trigger_template_ui_defaults import stage_default_delay_ui
+
+        tag = str(reason_tag or "other").strip().lower() or "other"
+        dv, unit = stage_default_delay_ui(tag, 0)
         msgs = [{"delay": dv, "unit": unit, "text": legacy[:_MAX_MESSAGE_CHARS]}]
         out["messages"] = msgs
     out["message_count"] = mc
@@ -260,7 +267,15 @@ def apply_reason_templates_from_body(row: Any, body: Dict[str, Any]) -> None:
                 prev["widget_reason_label_ar"] = str(wlab).strip()[
                     :_MAX_WIDGET_REASON_LABEL_CHARS
                 ]
-        base[tt] = _finalize_reason_entry_for_storage(prev)
+        try:
+            from services.trigger_template_ui_defaults import (  # noqa: PLC0415
+                enrich_reason_entry_for_dashboard,
+            )
+
+            prev = enrich_reason_entry_for_dashboard(tt, prev)
+        except Exception:  # noqa: BLE001
+            pass
+        base[tt] = _finalize_reason_entry_for_storage(prev, reason_tag=tt)
         if trigger_mirror is None:
             from services.store_trigger_templates import parse_trigger_templates_column
 

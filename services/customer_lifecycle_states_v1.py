@@ -260,26 +260,35 @@ def _utc_now() -> datetime:
     return datetime.now(timezone.utc)
 
 
+_AR_DIGITS = "٠١٢٣٤٥٦٧٨٩"
+
+
+def _ar_num(value: int) -> str:
+    n = max(0, int(value or 0))
+    return "".join(_AR_DIGITS[int(ch)] for ch in str(n))
+
+
 def _format_eta_ar(delta_seconds: float) -> str:
+    """Minutes for sub-hour and non-whole-hour delays (e.g. 90m); hours only when exact."""
     sec = max(0, int(delta_seconds))
-    if sec < 3600:
-        m = max(1, sec // 60)
-        return f"{m} دقيقة" if m != 1 else "دقيقة"
-    if sec < 86400:
-        h = max(1, sec // 3600)
+    if sec >= 86400 and sec % 86400 == 0:
+        days = sec // 86400
+        if days == 1:
+            return "يوم"
+        if days == 2:
+            return "يومين"
+        if days <= 10:
+            return f"{_ar_num(days)} أيام"
+        return f"{_ar_num(days)} يوماً"
+    if sec >= 3600 and sec % 3600 == 0:
+        h = sec // 3600
         if h == 1:
             return "ساعة"
         if h == 2:
             return "ساعتين"
-        return f"{h} ساعات"
-    days = max(1, sec // 86400)
-    if days == 1:
-        return "يوم"
-    if days == 2:
-        return "يومين"
-    if days <= 10:
-        return f"{days} أيام"
-    return f"{days} يوماً"
+        return f"{_ar_num(h)} ساعات"
+    m = max(1, sec // 60)
+    return f"{_ar_num(m)} دقيقة" if m != 1 else "دقيقة"
 
 
 def _timeline_flags(
@@ -320,6 +329,32 @@ def _timeline_flags(
     except Exception:  # noqa: BLE001
         pass
     return out
+
+
+def _scheduled_effective_delay_seconds(recovery_key: str) -> Optional[float]:
+    """Configured delay on the pending schedule row (template truth, not live countdown)."""
+    rk = (recovery_key or "").strip()[:512]
+    if not rk:
+        return None
+    try:
+        from models import RecoverySchedule
+
+        from services.recovery_restart_survival import STATUS_SCHEDULED
+
+        row = (
+            db.session.query(RecoverySchedule.effective_delay_seconds)
+            .filter(
+                RecoverySchedule.recovery_key == rk,
+                RecoverySchedule.status == STATUS_SCHEDULED,
+            )
+            .order_by(RecoverySchedule.due_at.asc())
+            .first()
+        )
+        if row and row[0] is not None:
+            return float(row[0])
+    except SQLAlchemyError:
+        db.session.rollback()
+    return None
 
 
 def _next_schedule_due_at(recovery_key: str) -> Optional[datetime]:
@@ -931,10 +966,13 @@ def classify_customer_lifecycle_state_v1(
                 archive_reason="missing_phone",
             )
         next_line_fs = ""
-        if due_at is not None and due_at > now:
+        eta_sec = _scheduled_effective_delay_seconds(rk)
+        if eta_sec is None and due_at is not None and due_at > now:
+            eta_sec = (due_at - now).total_seconds()
+        if eta_sec is not None and eta_sec > 0:
             next_line_fs = (
                 f"الإرسال الأول بعد: "
-                f"{_format_eta_ar((due_at - now).total_seconds())}"
+                f"{_format_eta_ar(eta_sec)}"
             )
         return _finish(
             _pack(

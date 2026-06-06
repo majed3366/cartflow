@@ -14,25 +14,26 @@ def _ar_num(value: int) -> str:
 
 
 def _format_eta_ar(delta_seconds: float) -> str:
+    """Minutes for sub-hour and non-whole-hour delays (e.g. 90m); hours only when exact."""
     sec = max(0, int(delta_seconds))
-    if sec < 3600:
-        m = max(1, sec // 60)
-        return f"{_ar_num(m)} دقيقة" if m != 1 else "دقيقة"
-    if sec < 86400:
-        h = max(1, sec // 3600)
+    if sec >= 86400 and sec % 86400 == 0:
+        days = sec // 86400
+        if days == 1:
+            return "يوم"
+        if days == 2:
+            return "يومين"
+        if days <= 10:
+            return f"{_ar_num(days)} أيام"
+        return f"{_ar_num(days)} يوماً"
+    if sec >= 3600 and sec % 3600 == 0:
+        h = sec // 3600
         if h == 1:
             return "ساعة"
         if h == 2:
             return "ساعتين"
         return f"{_ar_num(h)} ساعات"
-    days = max(1, sec // 86400)
-    if days == 1:
-        return "يوم"
-    if days == 2:
-        return "يومين"
-    if days <= 10:
-        return f"{_ar_num(days)} أيام"
-    return f"{_ar_num(days)} يوماً"
+    m = max(1, sec // 60)
+    return f"{_ar_num(m)} دقيقة" if m != 1 else "دقيقة"
 
 
 def _parse_due_iso(raw: Optional[str]) -> Optional[datetime]:

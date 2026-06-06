@@ -2356,7 +2356,9 @@
     if (!btn) {
       var href = ban.contact_href || "";
       btn = href
-        ? '<a class="va-btn" href="' + esc(href) + '">تواصل يدوي (VIP) ←</a>'
+        ? '<a class="va-btn" href="' +
+          esc(href) +
+          '" rel="noopener noreferrer" target="_blank">تواصل يدوي (VIP) ←</a>'
         : '<span class="va-btn is-disabled" role="button" aria-disabled="true">تواصل يدوي (VIP) ←</span>';
     }
     host.innerHTML =
@@ -2377,7 +2379,9 @@
     if (!btn) {
       var href = vr.contact_href || "";
       btn = href
-        ? '<a class="vbtn" href="' + esc(href) + '">تواصل يدوي (VIP)</a>'
+        ? '<a class="vbtn" href="' +
+          esc(href) +
+          '" rel="noopener noreferrer" target="_blank">تواصل يدوي (VIP)</a>'
         : '<span class="vbtn is-disabled">تواصل يدوي (VIP)</span>';
     }
     return (
@@ -2402,15 +2406,27 @@
         : "";
     if (!btn) {
       var href = vr.contact_href || "";
+      var noPhoneMsg =
+        vr.manual_contact_unavailable_ar ||
+        "لا يوجد رقم متاح — تواصل يدوي غير ممكن حتى يتوفر رقم العميل";
       btn = href
         ? '<a class="va-btn" href="' +
           esc(href) +
-          '" rel="noopener noreferrer">تواصل يدوي (VIP) ←</a>'
-        : '<span class="va-btn is-disabled">تواصل يدوي (VIP) ←</span>';
+          '" rel="noopener noreferrer" target="_blank">تواصل يدوي (VIP) ←</a>'
+        : '<span class="va-btn is-disabled" title="' +
+          esc(noPhoneMsg) +
+          '">تواصل يدوي (VIP) ←</span><div class="ma-vip-no-phone-ar">' +
+          esc(noPhoneMsg) +
+          "</div>";
     }
     var hp = vr.has_phone
       ? '<span class="ph-ok">✓ متوفر</span>'
-      : '<span class="ph-no">✗ غير متوفر</span>';
+      : '<span class="ph-no" title="' +
+        esc(
+          vr.manual_contact_unavailable_ar ||
+            "لا يوجد رقم متاح — تواصل يدوي غير ممكن حتى يتوفر رقم العميل"
+        ) +
+        '">✗ غير متوفر</span>';
     return (
       "<tr><td><div class=\"camt\">" +
       esc(vr.amount_display) +
@@ -2467,9 +2483,12 @@
     var list = byId("ma-vip-home-list");
     if (list) {
       var rows = d.merchant_vip_rows || [];
+      var alertLine = String(d.merchant_vip_alert_state_ar || "").trim();
       if (!rows.length) {
         list.innerHTML =
-          '<div class="empty-state"><div class="empty-icon">👑</div><div class="empty-text">لا سلال VIP تحتاج تدخلك حالياً</div><p class="ma-vip-load-diag">آخر تحقق: تم تحميل البيانات بنجاح</p></div>';
+          '<div class="empty-state"><div class="empty-icon">👑</div><div class="empty-text">' +
+          esc(alertLine || "لا سلال VIP تحتاج تدخلك حالياً") +
+          '</div><p class="ma-vip-load-diag">آخر تحقق: تم تحميل البيانات بنجاح</p></div>';
       } else {
         list.innerHTML = rows.map(vipItemHtml).join("");
       }
@@ -2888,6 +2907,7 @@
       fetchSection("/api/dashboard/summary", applySummary, "summary"),
       fetchSection("/api/dashboard/normal-carts", applyNormalCarts, "normal_carts"),
       fetchSection("/api/dashboard/messages", applyMessages, "messages"),
+      fetchSection("/api/dashboard/vip-carts", applyVipCarts, "vip_carts"),
     ]).finally(function () {
       merchantRefreshInFlight = false;
       logClientRefresh("refresh_end", {

@@ -44,14 +44,23 @@
     var href = vr.contact_href || "";
     var m = normalizeMode(mode);
     if (m === "manual") {
+      var noPhoneMsg =
+        vr.manual_contact_unavailable_ar ||
+        "لا يوجد رقم متاح — تواصل يدوي غير ممكن حتى يتوفر رقم العميل";
       var btn = href
         ? '<a class="va-btn" href="' +
           esc(href) +
-          '" rel="noopener noreferrer">تواصل يدوي (VIP) ←</a>'
-        : '<span class="va-btn is-disabled">تواصل يدوي (VIP) ←</span>';
+          '" rel="noopener noreferrer" target="_blank">تواصل يدوي (VIP) ←</a>'
+        : '<span class="va-btn is-disabled" title="' +
+          esc(noPhoneMsg) +
+          '">تواصل يدوي (VIP) ←</span>';
+      var noPhoneLine = href
+        ? ""
+        : '<div class="ma-vip-no-phone-ar">' + esc(noPhoneMsg) + "</div>";
       return (
         '<div class="ma-vip-action-wrap">' +
         btn +
+        noPhoneLine +
         '<div class="ma-vip-action-desc">أنت تراجع وتتواصل بنفسك</div></div>'
       );
     }
@@ -90,9 +99,12 @@
     var cls = className || "va-btn";
     var suffix = arrow ? " ←" : "";
     if (m === "manual") {
+      var noPhoneMsg =
+        vr.manual_contact_unavailable_ar ||
+        "لا يوجد رقم متاح — تواصل يدوي غير ممكن حتى يتوفر رقم العميل";
       return href
-        ? '<a class="' + cls + '" href="' + esc(href) + '">تواصل يدوي (VIP)' + suffix + "</a>"
-        : '<span class="' + cls + ' is-disabled">تواصل يدوي (VIP)' + suffix + "</span>";
+        ? '<a class="' + cls + '" href="' + esc(href) + '" target="_blank" rel="noopener noreferrer">تواصل يدوي (VIP)' + suffix + "</a>"
+        : '<span class="' + cls + ' is-disabled" title="' + esc(noPhoneMsg) + '">تواصل يدوي (VIP)' + suffix + "</span>";
     }
     if (m === "assistant") {
       return (

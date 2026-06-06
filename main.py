@@ -5455,22 +5455,52 @@ def _normal_recovery_merchant_lifecycle_bucket_ok(
     stale_flag: bool,
     log_statuses: frozenset[str],
     purchased_terminal: bool = False,
+    merchant_manual_archived: bool = False,
 ) -> bool:
     """تبويب السلال النشط يبقي sent/replied/returned حتى نتيجة نهائية."""
     lc = (lc_raw or "active").strip().lower()
     cnorm = (coarse or "").strip().lower()
     has_sent = bool(log_statuses & _NORMAL_RECOVERY_SENT_LOG_STATUSES)
     if lc == "all":
+        if merchant_manual_archived:
+            return False
         return True
     if lc == "active":
+        if merchant_manual_archived:
+            return False
         if purchased_terminal:
             return True
         return not terminal_archived
     if lc == "archived":
+        if merchant_manual_archived:
+            return True
         if terminal_archived:
             return True
         return bool(stale_flag and cnorm in ("pending", "sent") and not has_sent)
     return True
+
+
+def _merchant_batch_manual_archived(
+    ac: AbandonedCart,
+    batch: "MerchantNormalCartsBatchReads",
+) -> bool:
+    """True when dashboard manual archive row exists for any candidate recovery key."""
+    aid = int(getattr(ac, "id", 0) or 0)
+    if not aid:
+        return False
+    keys: list[str] = []
+    rk_parts = (batch.recovery_key_by_ac.get(aid) or "").strip()
+    if rk_parts:
+        keys.append(rk_parts)
+    lg = batch.latest_log_by_ac.get(aid)
+    if lg is not None:
+        lrk = (getattr(lg, "recovery_key", None) or "").strip()
+        if lrk:
+            keys.append(lrk)
+    for rk in keys:
+        if rk and batch.merchant_archived_by_rk.get(rk):
+            return True
+    return False
 
 
 def _normal_recovery_group_is_archived(grp_sorted: list[AbandonedCart]) -> bool:
@@ -10509,11 +10539,12 @@ def _execute_cart_abandon_recovery_schedule_continue(
     print("entered recovery handler")
     log.info("cart abandoned received")
     reason_tag_sync = reason_for_schedule
-    slots_sync = multi_message_slots_for_abandon(reason_tag_sync, store_row)
+    store_tpl = _fresh_store_row_for_recovery_templates(store_slug) or store_row
+    slots_sync = multi_message_slots_for_abandon(reason_tag_sync, store_tpl)
     if slots_sync:
         rc_sync = _build_recovery_context_from_arm(
             store_slug=store_slug,
-            store_row=store_row,
+            store_row=store_tpl,
             session_id=session_id_log,
             cart_id=cart_id_log,
             recovery_key=recovery_key,
@@ -14390,12 +14421,22 @@ def _merchant_vip_row_safe_projection(
         href = f"https://wa.me/{phone}?text={quote(msg)}"
     elif phone:
         href = f"https://wa.me/{phone}"
+    manual_unavailable_ar = (
+        "لا يوجد رقم متاح — تواصل يدوي غير ممكن حتى يتوفر رقم العميل"
+    )
     return {
+        "id": rid,
         "avatar_letter": avatar_letter,
         "amount_display": str(int(val)),
         "subtitle_ar": f"{rel} • {reason_lbl}",
         "contact_href": href,
         "has_phone": bool(phone),
+        "manual_contact_available": bool(phone and href),
+        "manual_contact_unavailable_ar": (
+            None if phone and href else manual_unavailable_ar
+        ),
+        "vip_alert_actionable": True,
+        "vip_lifecycle_label_ar": vc.get("vip_lifecycle_label_ar"),
     }
 
 
@@ -16319,6 +16360,11 @@ def _merchant_normal_dashboard_batch_reads(
         if rk_cap:
             batch.recovery_key_by_ac[aid_cap] = rk_cap
             rk_keys.append(rk_cap)
+        lg_cap = latest_log_by_ac.get(aid_cap)
+        if lg_cap is not None:
+            lrk_cap = (getattr(lg_cap, "recovery_key", None) or "").strip()
+            if lrk_cap and lrk_cap not in rk_keys:
+                rk_keys.append(lrk_cap)
         store_cap = batch.store_row_for_cart(ac_cap)
         try:
             batch.configured_cap_by_ac[aid_cap] = max(
@@ -16348,6 +16394,27 @@ def _merchant_normal_dashboard_batch_reads(
             arch_bulk = bulk_merchant_archived(rk_keys)
             for rk_a in rk_keys:
                 batch.merchant_archived_by_rk[rk_a] = bool(arch_bulk.get(rk_a))
+            for ac_cap in full_rows:
+                aid_arch = int(getattr(ac_cap, "id", 0) or 0)
+                if not aid_arch:
+                    continue
+                cand_arch: list[str] = []
+                rk_parts_arch = (batch.recovery_key_by_ac.get(aid_arch) or "").strip()
+                if rk_parts_arch:
+                    cand_arch.append(rk_parts_arch)
+                lg_arch = latest_log_by_ac.get(aid_arch)
+                if lg_arch is not None:
+                    lrk_arch = (getattr(lg_arch, "recovery_key", None) or "").strip()
+                    if lrk_arch:
+                        cand_arch.append(lrk_arch)
+                if not cand_arch:
+                    continue
+                archived_any = any(
+                    batch.merchant_archived_by_rk.get(k) for k in cand_arch if k
+                )
+                for k in cand_arch:
+                    if k:
+                        batch.merchant_archived_by_rk[k] = bool(archived_any)
         except Exception:  # noqa: BLE001
             pass
         try:
@@ -16953,19 +17020,26 @@ def _normal_recovery_merchant_lightweight_alert_list(
             full_rows,
             store_slug=slug_for_act,
         )
+        batch_reads = _merchant_normal_dashboard_batch_reads(full_rows, dash_store)
         now_utc = datetime.now(timezone.utc)
         npick = len(picked)
         _stale_diag = stale_meta_trace_enabled()
 
         for pick_i, grp_sorted in enumerate(picked):
-            arch = _normal_recovery_group_is_archived(grp_sorted)
+            arch = _normal_recovery_group_is_archived_merchant_batch(
+                grp_sorted, batch_reads
+            )
             bh = _normal_recovery_behavioral_merge_from_cart_group(grp_sorted)
-            log_u = _normal_recovery_recovery_log_statuses_lower_group(grp_sorted)
+            log_u = _normal_recovery_recovery_log_statuses_union_merchant_batch(
+                grp_sorted,
+                batch_reads,
+            )
             ac0 = grp_sorted[0]
-            pk = _normal_recovery_dashboard_phase_key(
+            pk = _normal_recovery_dashboard_phase_key_merchant_batch(
                 ac0,
                 behavioral_override=bh,
                 recovery_log_statuses=log_u,
+                batch=batch_reads,
             )
             coarse = _normal_recovery_coarse_status(pk)
             stale_flag, stale_meta = merchant_group_stale_meta(
@@ -16987,6 +17061,9 @@ def _normal_recovery_merchant_lightweight_alert_list(
                 coarse=coarse,
                 stale_flag=stale_flag,
                 log_statuses=log_u,
+                merchant_manual_archived=_merchant_batch_manual_archived(
+                    ac0, batch_reads
+                ),
                 purchased_terminal=purchased_terminal_visible_on_active_lifecycle_tab(
                     terminal_archived=arch,
                     ac=ac0,
@@ -17695,6 +17772,9 @@ def _normal_recovery_merchant_lightweight_alert_list_for_api(
                     coarse=coarse,
                     stale_flag=stale_flag,
                     log_statuses=log_u,
+                    merchant_manual_archived=_merchant_batch_manual_archived(
+                        ac0, batch_reads
+                    ),
                     purchased_terminal=purchased_terminal_visible_on_active_lifecycle_tab(
                         terminal_archived=arch,
                         ac=ac0,
@@ -18230,13 +18310,59 @@ async def api_dashboard_cart_lifecycle_archive(request: Request) -> Any:
         ac_id_i = int(ac_id) if ac_id is not None else None
     except (TypeError, ValueError):
         ac_id_i = None
-    from services.merchant_cart_lifecycle_archive_v1 import archive_recovery_key
+    from services.merchant_cart_lifecycle_archive_v1 import archive_recovery_keys
 
-    return j(archive_recovery_key(
-        recovery_key=rk,
-        store_slug=store_slug,
-        abandoned_cart_id=ac_id_i,
-    ))
+    alias_keys: list[str] = [rk]
+    ac_row: Optional[AbandonedCart] = None
+    if ac_id_i is not None:
+        try:
+            ac_row = db.session.get(AbandonedCart, ac_id_i)
+        except (SQLAlchemyError, OSError, TypeError, ValueError):
+            db.session.rollback()
+            ac_row = None
+    if ac_row is None and store_slug:
+        try:
+            sid_guess = rk.split(":", 1)[1].strip() if ":" in rk else ""
+            if sid_guess:
+                ac_row = (
+                    db.session.query(AbandonedCart)
+                    .filter(AbandonedCart.recovery_session_id == sid_guess)
+                    .order_by(AbandonedCart.id.desc())
+                    .first()
+                )
+        except (SQLAlchemyError, OSError):
+            db.session.rollback()
+            ac_row = None
+    if ac_row is not None:
+        from services.merchant_dashboard_recovery_resolve_v1 import (  # noqa: PLC0415
+            canonical_recovery_keys_for_cart,
+        )
+
+        slug_eff = store_slug
+        if not slug_eff and getattr(ac_row, "store_id", None):
+            try:
+                st_row = db.session.get(Store, int(ac_row.store_id))
+                if st_row is not None:
+                    slug_eff = (
+                        str(getattr(st_row, "zid_store_id", None) or "").strip()
+                    )
+            except (SQLAlchemyError, OSError, TypeError, ValueError):
+                db.session.rollback()
+        for k in canonical_recovery_keys_for_cart(
+            ac_row,
+            store_slug=slug_eff or store_slug,
+            recovery_key=rk,
+        ):
+            if k and k not in alias_keys:
+                alias_keys.append(k)
+
+    return j(
+        archive_recovery_keys(
+            recovery_keys=alias_keys,
+            store_slug=store_slug,
+            abandoned_cart_id=ac_id_i,
+        )
+    )
 
 
 @app.post("/api/dashboard/cart-lifecycle/reopen")
@@ -18254,9 +18380,38 @@ async def api_dashboard_cart_lifecycle_reopen(request: Request) -> Any:
     from services.customer_lifecycle_states_v1 import (  # noqa: PLC0415
         lifecycle_payload_for_reopen,
     )
-    from services.merchant_cart_lifecycle_archive_v1 import reopen_recovery_key
+    from services.merchant_cart_lifecycle_archive_v1 import reopen_recovery_keys
 
-    result = reopen_recovery_key(rk)
+    alias_keys: list[str] = [rk]
+    store_slug = (body.get("store_slug") or "").strip()[:255]
+    if not store_slug and ":" in rk:
+        store_slug = rk.split(":", 1)[0].strip()[:255]
+    ac_id = body.get("abandoned_cart_id")
+    try:
+        ac_id_i = int(ac_id) if ac_id is not None else None
+    except (TypeError, ValueError):
+        ac_id_i = None
+    ac_row: Optional[AbandonedCart] = None
+    if ac_id_i is not None:
+        try:
+            ac_row = db.session.get(AbandonedCart, ac_id_i)
+        except (SQLAlchemyError, OSError, TypeError, ValueError):
+            db.session.rollback()
+            ac_row = None
+    if ac_row is not None:
+        from services.merchant_dashboard_recovery_resolve_v1 import (  # noqa: PLC0415
+            canonical_recovery_keys_for_cart,
+        )
+
+        for k in canonical_recovery_keys_for_cart(
+            ac_row,
+            store_slug=store_slug,
+            recovery_key=rk,
+        ):
+            if k and k not in alias_keys:
+                alias_keys.append(k)
+
+    result = reopen_recovery_keys(alias_keys)
     if result.get("ok"):
         life = lifecycle_payload_for_reopen(rk)
         if life:
@@ -19295,18 +19450,20 @@ def _merchant_dashboard_refresh_state_payload(dash_store: Optional[Any]) -> dict
     max_log_id = 0
     max_sent_id = 0
     sent_total = 0
+    max_archive_rev = 0
     try:
         from services.dashboard_normal_carts_guard_v1 import (  # noqa: PLC0415
             dashboard_nc_skip_optional_db,
         )
 
         if dashboard_nc_skip_optional_db():
-            revision_token = f"{slug}:partial:0:0:0"
+            revision_token = f"{slug}:partial:0:0:0:0"
             return {
                 "merchant_dashboard_refresh_token": revision_token,
                 "merchant_dashboard_refresh_last_log_id": 0,
                 "merchant_dashboard_refresh_last_sent_log_id": 0,
                 "merchant_dashboard_refresh_sent_total": 0,
+                "merchant_dashboard_refresh_archive_rev": 0,
             }
     except Exception:  # noqa: BLE001
         pass
@@ -19336,14 +19493,50 @@ def _merchant_dashboard_refresh_state_payload(dash_store: Optional[Any]) -> dict
                 .scalar()
                 or 0
             )
+            try:
+                from models import MerchantCartLifecycleArchive  # noqa: PLC0415
+                from sqlalchemy import case  # noqa: PLC0415
+
+                arch_max_id = int(
+                    db.session.query(
+                        func.coalesce(func.max(MerchantCartLifecycleArchive.id), 0)
+                    )
+                    .filter(MerchantCartLifecycleArchive.store_slug == slug)
+                    .scalar()
+                    or 0
+                )
+                arch_active = int(
+                    db.session.query(
+                        func.coalesce(
+                            func.sum(
+                                case(
+                                    (
+                                        MerchantCartLifecycleArchive.is_archived.is_(True),
+                                        1,
+                                    ),
+                                    else_=0,
+                                )
+                            ),
+                            0,
+                        )
+                    )
+                    .filter(MerchantCartLifecycleArchive.store_slug == slug)
+                    .scalar()
+                    or 0
+                )
+                max_archive_rev = arch_max_id * 2 + arch_active
+            except (SQLAlchemyError, OSError, TypeError, ValueError):
+                db.session.rollback()
+                max_archive_rev = 0
     except (SQLAlchemyError, OSError, TypeError, ValueError):
         db.session.rollback()
-    revision_token = f"{slug}:{max_log_id}:{max_sent_id}:{sent_total}"
+    revision_token = f"{slug}:{max_log_id}:{max_sent_id}:{sent_total}:{max_archive_rev}"
     return {
         "merchant_dashboard_refresh_token": revision_token,
         "merchant_dashboard_refresh_last_log_id": max_log_id,
         "merchant_dashboard_refresh_last_sent_log_id": max_sent_id,
         "merchant_dashboard_refresh_sent_total": sent_total,
+        "merchant_dashboard_refresh_archive_rev": max_archive_rev,
     }
 
 
@@ -19661,12 +19854,24 @@ def _api_json_dashboard_vip_carts(dash_store: Optional[Any]) -> Dict[str, Any]:
             "amount_line": f"سلة بقيمة {amt_int:,} ريال — {proj0.get('subtitle_ar', '')}",
             "contact_href": proj0.get("contact_href") or "",
         }
+    vip_th = merchant_vip_threshold_int(dash_store)
+    vip_threshold_configured = vip_th is not None
     return {
         "merchant_vip_banner": vip_banner,
         "merchant_vip_rows": vip_rows,
         "merchant_vip_page_rows": vip_page_rows,
         "merchant_nav_badge_vip": len(vip_raw) if vip_raw else 0,
         "merchant_automation_mode": merchant_automation_mode(dash_store),
+        "merchant_vip_threshold_configured": vip_threshold_configured,
+        "merchant_vip_alert_state_ar": (
+            f"سلال VIP نشطة: {len(vip_raw)}"
+            if vip_raw
+            else (
+                "لم يُضبط حد VIP للمتجر — فعّل الحد من الإعدادات"
+                if not vip_threshold_configured
+                else "لا سلال VIP نشطة تحتاج تدخلك الآن"
+            )
+        ),
     }
 
 

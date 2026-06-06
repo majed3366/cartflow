@@ -12,17 +12,6 @@ from services.store_reason_templates import normalize_delay_unit, parse_reason_t
 
 _log = logging.getLogger("cartflow")
 
-_DEFAULT_MULTI_DELAYS: Dict[str, List[Tuple[float, str]]] = {
-    "price": [(2.0, "minute"), (2.0, "hour"), (24.0, "hour")],
-    "shipping": [(5.0, "minute"), (1.0, "hour"), (12.0, "hour")],
-    "warranty": [(5.0, "minute"), (2.0, "hour"), (24.0, "hour")],
-    "thinking": [(3.0, "minute"), (1.0, "hour"), (24.0, "hour")],
-    "quality": [(3.0, "minute"), (2.0, "hour"), (24.0, "hour")],
-    "delivery": [(4.0, "minute"), (1.0, "hour"), (18.0, "hour")],
-    "other": [(3.0, "minute"), (1.0, "hour"), (24.0, "hour")],
-}
-
-
 def delay_to_seconds(delay: float, unit: str) -> float:
     u = normalize_delay_unit(unit) or "minute"
     if u == "hour":
@@ -31,12 +20,10 @@ def delay_to_seconds(delay: float, unit: str) -> float:
 
 
 def _default_slot_delay_tuple(canon: str, stage_index: int) -> Tuple[float, str]:
-    defaults = _DEFAULT_MULTI_DELAYS.get(
-        canon,
-        [(3.0, "minute"), (1.0, "hour"), (24.0, "hour")],
-    )
-    row = defaults[stage_index] if stage_index < len(defaults) else defaults[-1]
-    return (float(row[0]), str(row[1]))
+    """Same defaults as merchant trigger-template UI (``DASHBOARD_STAGE_DELAYS``)."""
+    from services.trigger_template_ui_defaults import stage_default_delay_ui
+
+    return stage_default_delay_ui(canon, stage_index)
 
 
 def _legacy_recovery_delay_seconds(reason_tag: Optional[str]) -> float:
@@ -261,7 +248,11 @@ def resolve_recovery_schedule_timing(
             "fallback_reason": "template_disabled",
         }
 
-    from_template = _read_stage_delay_from_entry(entry, canon, stage_index)
+    materialized = _materialize_entry_messages(entry, canon, reason_tag, store)
+    entry_for_delay = dict(entry)
+    if materialized:
+        entry_for_delay["messages"] = materialized
+    from_template = _read_stage_delay_from_entry(entry_for_delay, canon, stage_index)
     if from_template is not None:
         delay_num, unit_eff, sec = from_template
         log_recovery_template_lookup(
