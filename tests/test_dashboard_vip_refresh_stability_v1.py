@@ -78,6 +78,11 @@ class DashboardVipRefreshStabilityTests(unittest.TestCase):
         self.assertIn("__maVipCartsTestHooks", self._lazy_js)
         self.assertIn("maFetchVipCartsNow", self._lazy_js)
 
+    def test_lazy_js_early_hydrate_before_boot(self) -> None:
+        js = self._lazy_js
+        self.assertIn("earlyHydrateDashboardCaches", js)
+        self.assertIn("hydrateVipCartsCache();", js)
+
     def test_dashboard_vip_shell_has_skeleton_not_false_empty(self) -> None:
         r = self._client.get("/dashboard")
         self.assertEqual(r.status_code, 200, r.text[:400])

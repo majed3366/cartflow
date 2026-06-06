@@ -3642,6 +3642,16 @@
     }
   });
 
+  function earlyHydrateDashboardCaches() {
+    if (!document.body || document.body.getAttribute("data-cf-merchant-app") !== "1") {
+      return;
+    }
+    hydrateNormalCartsCache();
+    hydrateVipCartsCache();
+  }
+
+  earlyHydrateDashboardCaches();
+
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", bootLazyDashboard);
   } else {
