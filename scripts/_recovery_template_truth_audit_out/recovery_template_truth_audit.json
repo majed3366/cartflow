@@ -1,0 +1,679 @@
+{
+  "audit_at_utc": "2026-06-06T19:04:13.328868+00:00",
+  "base": "https://smartreplyai.net",
+  "truth_marker": "PRICE_TEMPLATE_TRUTH_TEST_60_MIN",
+  "expected_delay_seconds": 3600,
+  "auth": {
+    "mode": "signup",
+    "email": "cf.tpl.truth.49d0dedb71@smartreplyai.net",
+    "password": "CfTplTruth!49d0dedb"
+  },
+  "dashboard_template_save": {
+    "post": {
+      "ok": true,
+      "save_ack": true,
+      "saved_reason_keys": [
+        "price"
+      ],
+      "reason_rows": [
+        {
+          "key": "price",
+          "label_ar": "السعر",
+          "enabled": true,
+          "message": "PRICE_TEMPLATE_TRUTH_TEST_60_MIN",
+          "delay_value": 60,
+          "delay_unit": "minute",
+          "message_count": 1,
+          "messages": [
+            {
+              "delay": 60,
+              "unit": "minute",
+              "text": "PRICE_TEMPLATE_TRUTH_TEST_60_MIN"
+            }
+          ],
+          "config_source": "stored"
+        }
+      ],
+      "_http_status": 200
+    },
+    "get": {
+      "ok": true,
+      "store_slug": "tpltruth-49d0de-3e1896",
+      "section_title_ar": "قوالب حسب سبب التردد",
+      "section_subtitle_ar": "تحكم في رسالة الاسترجاع لكل سبب من أسباب التردد.",
+      "reason_rows": [
+        {
+          "key": "price",
+          "label_ar": "السعر",
+          "enabled": true,
+          "message": "PRICE_TEMPLATE_TRUTH_TEST_60_MIN",
+          "delay_value": 60,
+          "delay_unit": "minute",
+          "message_count": 1,
+          "messages": [
+            {
+              "delay": 60,
+              "unit": "minute",
+              "text": "PRICE_TEMPLATE_TRUTH_TEST_60_MIN"
+            }
+          ],
+          "config_source": "stored"
+        },
+        {
+          "key": "quality",
+          "label_ar": "الجودة",
+          "enabled": true,
+          "message": "نحب نطمنك 👍 إذا عندك أي سؤال عن جودة المنتج أو تفاصيله نوضحها لك باختصار.",
+          "delay_value": 90,
+          "delay_unit": "minute",
+          "message_count": 1,
+          "messages": [
+            {
+              "delay": 90,
+              "unit": "minute",
+              "text": "نحب نطمنك 👍 إذا عندك أي سؤال عن جودة المنتج أو تفاصيله نوضحها لك باختصار."
+            }
+          ],
+          "config_source": "defaults"
+        },
+        {
+          "key": "shipping",
+          "label_ar": "الشحن",
+          "enabled": true,
+          "message": "نوضح لك خيارات الشحن والتكلفة بكل اختصار 👍",
+          "delay_value": 30,
+          "delay_unit": "minute",
+          "message_count": 1,
+          "messages": [
+            {
+              "delay": 30,
+              "unit": "minute",
+              "text": "نوضح لك خيارات الشحن والتكلفة بكل اختصار 👍"
+            }
+          ],
+          "config_source": "defaults"
+        },
+        {
+          "key": "delivery",
+          "label_ar": "مدة التوصيل",
+          "enabled": true,
+          "message": "نقدر نوضح لك مدة التوصيل المتوقعة قبل ما تكمل الطلب 👍",
+          "delay_value": 30,
+          "delay_unit": "minute",
+          "message_count": 1,
+          "messages": [
+            {
+              "delay": 30,
+              "unit": "minute",
+              "text": "نقدر نوضح لك مدة التوصيل المتوقعة قبل ما تكمل الطلب 👍"
+            }
+          ],
+          "config_source": "defaults"
+        },
+        {
+          "key": "warranty",
+          "label_ar": "الضمان",
+          "enabled": true,
+          "message": "نوضح لك تفاصيل الضمان أو الاستبدال بكل بساطة 👍",
+          "delay_value": 2,
+          "delay_unit": "hour",
+          "message_count": 1,
+          "messages": [
+            {
+              "delay": 2,
+              "unit": "hour",
+              "text": "نوضح لك تفاصيل الضمان أو الاستبدال بكل بساطة 👍"
+            }
+          ],
+          "config_source": "defaults"
+        },
+        {
+          "key": "other",
+          "label_ar": "سبب آخر",
+          "enabled": true,
+          "message": "نقدر نساعدك بأي استفسار قبل إكمال الطلب 👍",
+          "delay_value": 3,
+          "delay_unit": "hour",
+          "message_count": 1,
+          "messages": [
+            {
+              "delay": 3,
+              "unit": "hour",
+              "text": "نقدر نساعدك بأي استفسار قبل إكمال الطلب 👍"
+            }
+          ],
+          "config_source": "defaults"
+        }
+      ],
+      "guided_defaults": {
+        "price": {
+          "1": "هلا 👋 لاحظنا إنك ما كمّلت الطلب — نقدر نساعدك بخطوة بسيطة إذا حاب.",
+          "2": "إذا عندك أي استفسار أو تردد بالطلب نقدر نساعدك 👍",
+          "3": "طلبك ما زال محفوظ 👍 إذا حاب تكمل قبل نفاد الكمية."
+        },
+        "quality": {
+          "1": "هلا 👋 الجودة تهمنا مثلك — إذا في نقطة تحتاج توضيح نقدر نسهّلها عليك.",
+          "2": "نقدر نطمّنك على معايير الجودة 👍 اسأل براحتك، بدون ضغط.",
+          "3": "تذكير ودود 👌 طلبك محفوظ، ونسعد لو حاب تكمل."
+        },
+        "shipping": {
+          "1": "هلا 👋 بخصوص الشحن — إذا عندك أي استفسار عن التكلفة أو الخيارات نقدر نوضح لك بسرعة.",
+          "2": "تفاصيل الشحن مهمة 👍 إذا في شي يوقفك قولّنا ونساعدك بدون تعقيد.",
+          "3": "طلبك لسه محفوظ 🚚 إذا حاب تكمل نراجع معك أفضل خيار للشحن."
+        },
+        "delivery": {
+          "1": "هلا 👋 بخصوص موعد التوصيل — نقدر نعطيك توضيح بسيط عن المدة المتوقعة إذا حاب.",
+          "2": "نوعدك بالوضوح بموعد التوصيل 👍 أي استفسار عن الوقت حنا حاضرين.",
+          "3": "تذكير لطيف 👌 طلبك منتظر إكماله — إذا يناسبك تقدر تكمل الآن."
+        },
+        "warranty": {
+          "1": "هلا 👋 بخصوص الضمان — إذا تحب نلخّص لك أهم النقاط بجمل قصيرة نقدر.",
+          "2": "الضمان جزء من راحتك 👍 أي سؤال نجاوبك بكل صراحة.",
+          "3": "طلبك ما زال متاح للإكمال 👍 إذا حاب تكمل نكون سعداء نخدمك."
+        },
+        "other": {
+          "1": "هلا 👋 لاحظنا ما كمّلت الطلب — إذا في شي وقفك قولّنا ونشوف لك حل بسيط.",
+          "2": "نحب نطمّنك 👍 نقدر نجاوب ونبسّط لك الخطوة اللي تناسبك.",
+          "3": "طلبك محفوظ 👌 إذا حاب ترجع وتكمل، نحن هنا."
+        }
+      },
+      "_http_status": 200
+    }
+  },
+  "store_slug": "tpltruth-49d0de-3e1896",
+  "dev_template_truth": {
+    "ok": true,
+    "store_slug": "tpltruth-49d0de-3e1896",
+    "reason": "price",
+    "store_found": true,
+    "store_id": 159,
+    "store_zid": "tpltruth-49d0de-3e1896",
+    "raw_reason_templates_json": "{\"price\": {\"enabled\": true, \"message\": \"PRICE_TEMPLATE_TRUTH_TEST_60_MIN\", \"message_count\": 1, \"messages\": [{\"delay\": 60.0, \"unit\": \"minute\", \"text\": \"PRICE_TEMPLATE_TRUTH_TEST_60_MIN\"}]}}",
+    "dashboard_trigger_templates_response": {
+      "section_title_ar": "قوالب حسب سبب التردد",
+      "section_subtitle_ar": "تحكم في رسالة الاسترجاع لكل سبب من أسباب التردد.",
+      "reason_rows": [
+        {
+          "key": "price",
+          "label_ar": "السعر",
+          "enabled": true,
+          "message": "PRICE_TEMPLATE_TRUTH_TEST_60_MIN",
+          "delay_value": 60,
+          "delay_unit": "minute",
+          "message_count": 1,
+          "messages": [
+            {
+              "delay": 60,
+              "unit": "minute",
+              "text": "PRICE_TEMPLATE_TRUTH_TEST_60_MIN"
+            }
+          ],
+          "config_source": "stored"
+        },
+        {
+          "key": "quality",
+          "label_ar": "الجودة",
+          "enabled": true,
+          "message": "نحب نطمنك 👍 إذا عندك أي سؤال عن جودة المنتج أو تفاصيله نوضحها لك باختصار.",
+          "delay_value": 90,
+          "delay_unit": "minute",
+          "message_count": 1,
+          "messages": [
+            {
+              "delay": 90,
+              "unit": "minute",
+              "text": "نحب نطمنك 👍 إذا عندك أي سؤال عن جودة المنتج أو تفاصيله نوضحها لك باختصار."
+            }
+          ],
+          "config_source": "defaults"
+        },
+        {
+          "key": "shipping",
+          "label_ar": "الشحن",
+          "enabled": true,
+          "message": "نوضح لك خيارات الشحن والتكلفة بكل اختصار 👍",
+          "delay_value": 30,
+          "delay_unit": "minute",
+          "message_count": 1,
+          "messages": [
+            {
+              "delay": 30,
+              "unit": "minute",
+              "text": "نوضح لك خيارات الشحن والتكلفة بكل اختصار 👍"
+            }
+          ],
+          "config_source": "defaults"
+        },
+        {
+          "key": "delivery",
+          "label_ar": "مدة التوصيل",
+          "enabled": true,
+          "message": "نقدر نوضح لك مدة التوصيل المتوقعة قبل ما تكمل الطلب 👍",
+          "delay_value": 30,
+          "delay_unit": "minute",
+          "message_count": 1,
+          "messages": [
+            {
+              "delay": 30,
+              "unit": "minute",
+              "text": "نقدر نوضح لك مدة التوصيل المتوقعة قبل ما تكمل الطلب 👍"
+            }
+          ],
+          "config_source": "defaults"
+        },
+        {
+          "key": "warranty",
+          "label_ar": "الضمان",
+          "enabled": true,
+          "message": "نوضح لك تفاصيل الضمان أو الاستبدال بكل بساطة 👍",
+          "delay_value": 2,
+          "delay_unit": "hour",
+          "message_count": 1,
+          "messages": [
+            {
+              "delay": 2,
+              "unit": "hour",
+              "text": "نوضح لك تفاصيل الضمان أو الاستبدال بكل بساطة 👍"
+            }
+          ],
+          "config_source": "defaults"
+        },
+        {
+          "key": "other",
+          "label_ar": "سبب آخر",
+          "enabled": true,
+          "message": "نقدر نساعدك بأي استفسار قبل إكمال الطلب 👍",
+          "delay_value": 3,
+          "delay_unit": "hour",
+          "message_count": 1,
+          "messages": [
+            {
+              "delay": 3,
+              "unit": "hour",
+              "text": "نقدر نساعدك بأي استفسار قبل إكمال الطلب 👍"
+            }
+          ],
+          "config_source": "defaults"
+        }
+      ],
+      "guided_defaults": {
+        "price": {
+          "1": "هلا 👋 لاحظنا إنك ما كمّلت الطلب — نقدر نساعدك بخطوة بسيطة إذا حاب.",
+          "2": "إذا عندك أي استفسار أو تردد بالطلب نقدر نساعدك 👍",
+          "3": "طلبك ما زال محفوظ 👍 إذا حاب تكمل قبل نفاد الكمية."
+        },
+        "quality": {
+          "1": "هلا 👋 الجودة تهمنا مثلك — إذا في نقطة تحتاج توضيح نقدر نسهّلها عليك.",
+          "2": "نقدر نطمّنك على معايير الجودة 👍 اسأل براحتك، بدون ضغط.",
+          "3": "تذكير ودود 👌 طلبك محفوظ، ونسعد لو حاب تكمل."
+        },
+        "shipping": {
+          "1": "هلا 👋 بخصوص الشحن — إذا عندك أي استفسار عن التكلفة أو الخيارات نقدر نوضح لك بسرعة.",
+          "2": "تفاصيل الشحن مهمة 👍 إذا في شي يوقفك قولّنا ونساعدك بدون تعقيد.",
+          "3": "طلبك لسه محفوظ 🚚 إذا حاب تكمل نراجع معك أفضل خيار للشحن."
+        },
+        "delivery": {
+          "1": "هلا 👋 بخصوص موعد التوصيل — نقدر نعطيك توضيح بسيط عن المدة المتوقعة إذا حاب.",
+          "2": "نوعدك بالوضوح بموعد التوصيل 👍 أي استفسار عن الوقت حنا حاضرين.",
+          "3": "تذكير لطيف 👌 طلبك منتظر إكماله — إذا يناسبك تقدر تكمل الآن."
+        },
+        "warranty": {
+          "1": "هلا 👋 بخصوص الضمان — إذا تحب نلخّص لك أهم النقاط بجمل قصيرة نقدر.",
+          "2": "الضمان جزء من راحتك 👍 أي سؤال نجاوبك بكل صراحة.",
+          "3": "طلبك ما زال متاح للإكمال 👍 إذا حاب تكمل نكون سعداء نخدمك."
+        },
+        "other": {
+          "1": "هلا 👋 لاحظنا ما كمّلت الطلب — إذا في شي وقفك قولّنا ونشوف لك حل بسيط.",
+          "2": "نحب نطمّنك 👍 نقدر نجاوب ونبسّط لك الخطوة اللي تناسبك.",
+          "3": "طلبك محفوظ 👌 إذا حاب ترجع وتكمل، نحن هنا."
+        }
+      }
+    },
+    "runtime_lookup_key": "price",
+    "template_entry_found": true,
+    "entry_key_found": "price",
+    "message_count": 1,
+    "messages_array_len": 1,
+    "guided_attempts_keys": [],
+    "materialized_len": 1,
+    "slots_len": null,
+    "miss_reason": "effective_message_count_lte_1",
+    "dashboard_store_id": 159,
+    "dashboard_store_zid": "tpltruth-49d0de-3e1896",
+    "runtime_store_id": 159,
+    "runtime_store_zid": "tpltruth-49d0de-3e1896",
+    "_http_status": 200
+  },
+  "dev_store_template_debug": {
+    "ok": true,
+    "store_slug": "tpltruth-49d0de-3e1896",
+    "reason": "price",
+    "reason_canon": "price",
+    "recovery_key_probe": "tpltruth-49d0de-3e1896:template-debug",
+    "dashboard_store_id": 159,
+    "dashboard_store_zid": "tpltruth-49d0de-3e1896",
+    "dashboard_row": {
+      "id": 159,
+      "zid_store_id": "tpltruth-49d0de-3e1896",
+      "created_at": "2026-06-06T19:04:24.008983Z",
+      "updated_at": "2026-06-06T19:04:35.187410Z",
+      "has_reason_templates_json": true,
+      "reason_canon": "price",
+      "other_message_count": 1,
+      "other_delay": 60,
+      "other_unit": "minute",
+      "other_text": "PRICE_TEMPLATE_TRUTH_TEST_60_MIN"
+    },
+    "runtime_store_id": 159,
+    "runtime_store_zid": "tpltruth-49d0de-3e1896",
+    "runtime_row": {
+      "id": 159,
+      "zid_store_id": "tpltruth-49d0de-3e1896",
+      "created_at": "2026-06-06T19:04:24.008983Z",
+      "updated_at": "2026-06-06T19:04:35.187410Z",
+      "has_reason_templates_json": true,
+      "reason_canon": "price",
+      "other_message_count": 1,
+      "other_delay": 60,
+      "other_unit": "minute",
+      "other_text": "PRICE_TEMPLATE_TRUTH_TEST_60_MIN"
+    },
+    "runtime_context_store_id": 159,
+    "runtime_context_store_zid": "tpltruth-49d0de-3e1896",
+    "fresh_recovery_templates_store_id": 159,
+    "fresh_recovery_templates_store_zid": "tpltruth-49d0de-3e1896",
+    "fresh_row": {
+      "id": 159,
+      "zid_store_id": "tpltruth-49d0de-3e1896",
+      "created_at": "2026-06-06T19:04:24.008983Z",
+      "updated_at": "2026-06-06T19:04:35.187410Z",
+      "has_reason_templates_json": true,
+      "reason_canon": "price",
+      "other_message_count": 1,
+      "other_delay": 60,
+      "other_unit": "minute",
+      "other_text": "PRICE_TEMPLATE_TRUTH_TEST_60_MIN"
+    },
+    "dashboard_equals_runtime_row": true,
+    "fresh_equals_runtime_row": true,
+    "fresh_equals_dashboard_row": true,
+    "runtime_timing_resolution": {
+      "reason_tag": "price",
+      "canon": "price",
+      "stage": 1,
+      "template_delay_value": 60,
+      "template_delay_unit": "minute",
+      "effective_delay_seconds": 3600,
+      "source": "reason_templates.messages",
+      "fallback_reason": null
+    },
+    "fresh_timing_resolution": null,
+    "dashboard_timing_resolution": null,
+    "cart_event_scoped_cache": {
+      "cart_event_scope_active": false,
+      "cache_key": "zid:tpltruth-49d0de-3e1896",
+      "scoped_store_cache_hit": false,
+      "scoped_cached_store_id": null,
+      "scoped_cached_zid": null
+    },
+    "candidate_store_rows": [
+      {
+        "id": 159,
+        "zid_store_id": "tpltruth-49d0de-3e1896",
+        "created_at": "2026-06-06T19:04:24.008983Z",
+        "updated_at": "2026-06-06T19:04:35.187410Z",
+        "has_reason_templates_json": true,
+        "reason_canon": "price",
+        "other_message_count": 1,
+        "other_delay": 60,
+        "other_unit": "minute",
+        "other_text": "PRICE_TEMPLATE_TRUTH_TEST_60_MIN"
+      },
+      {
+        "id": 23,
+        "zid_store_id": "demo2",
+        "created_at": "2026-05-20T21:22:26.295572Z",
+        "updated_at": "2026-05-23T16:27:47.785279Z",
+        "has_reason_templates_json": true,
+        "reason_canon": "price",
+        "other_message_count": 3,
+        "other_delay": 1,
+        "other_unit": "minute",
+        "other_text": "اختبار السعر123"
+      },
+      {
+        "id": 22,
+        "zid_store_id": "demo",
+        "created_at": "2026-05-20T21:22:26.236106Z",
+        "updated_at": "2026-05-28T03:57:52.797550Z",
+        "has_reason_templates_json": true,
+        "reason_canon": "price",
+        "other_message_count": 2,
+        "other_delay": 2,
+        "other_unit": "minute",
+        "other_text": "اختبار السعر123"
+      },
+      {
+        "id": 1,
+        "zid_store_id": "cartflow-default-recovery",
+        "created_at": "2026-05-11T11:46:59.970617Z",
+        "updated_at": "2026-05-17T22:50:31.446831Z",
+        "has_reason_templates_json": true,
+        "reason_canon": "price",
+        "other_message_count": 1,
+        "other_delay": 1,
+        "other_unit": "minute",
+        "other_text": "نحب نطمّنك 👍 أي استفسار عن السعر أو طريقة الدفع نقدر نوضّحه باختصار."
+      }
+    ],
+    "pending_recovery_schedules": 0,
+    "selected_source_explanation": "A) dashboard and runtime resolve the SAME Store row (id=159, zid='tpltruth-49d0de-3e1896'). B) _fresh_store_row_for_recovery_templates matches runtime canonical lookup. C) dashboard canonical row zid matches requested store_slug.",
+    "paths": {
+      "dashboard": "GET/POST /api/dashboard/trigger-templates → dashboard_canonical_store_row(store_slug)",
+      "runtime_canonical": "resolve_recovery_store_row_canonical(store_slug) — exact zid, else widget provision/mirror",
+      "runtime_fresh": "_fresh_store_row_for_recovery_templates(store_slug) — used by delay_poll / schedule timing",
+      "runtime_context": "_recovery_store_from_context(recovery_key, store_slug)"
+    },
+    "_http_status": 200
+  },
+  "cart_flow": {
+    "session_id": "s_tpl_truth_2e2c03c57d40",
+    "cart_id": "cf_cart_e2b000a0-0967-4f90-ac29-7d4a1006d094",
+    "recovery_key": "tpltruth-49d0de-3e1896:cf_cart_e2b000a0-0967-4f90-ac29-7d4a1006d094",
+    "steps": [
+      {
+        "name": "cart_state_sync",
+        "status": 200,
+        "body": {
+          "ok": true,
+          "event": "cart_state_sync",
+          "cart_state_sync": true,
+          "vip_mode": false,
+          "status": "abandoned",
+          "cart_total": 149,
+          "vip_cart_threshold": null,
+          "is_vip": false,
+          "vip_from_cart_total": true,
+          "operational_lane": "normal",
+          "is_vip_cart": false,
+          "_http_status": 200
+        }
+      },
+      {
+        "name": "cart_abandoned",
+        "status": 200,
+        "body": {
+          "ok": true,
+          "event": "cart_abandoned",
+          "recovery_scheduled": false,
+          "recovery_skipped": true,
+          "recovery_state": "waiting_for_reason",
+          "waiting_for_reason": true,
+          "_http_status": 200
+        }
+      },
+      {
+        "name": "cartflow_reason",
+        "status": 200,
+        "body": {
+          "ok": true,
+          "_http_status": 200
+        }
+      }
+    ]
+  },
+  "recovery_key": "tpltruth-49d0de-3e1896:cf_cart_e2b000a0-0967-4f90-ac29-7d4a1006d094",
+  "dev_recovery_operational_truth": {
+    "ok": true,
+    "recovery_key": "tpltruth-49d0de-3e1896:s_tpl_truth_2e2c03c57d40",
+    "abandoned_cart_exists": true,
+    "reason_tag": "price",
+    "configured_count": 1,
+    "configured_count_source": "store.recovery_attempts",
+    "sent_count": 0,
+    "schedule_rows": [],
+    "dashboard_visible": false,
+    "dashboard_bucket": "",
+    "dashboard_exclusion_reason": "no_sent_log",
+    "abandoned_cart_id": 4148,
+    "store_id": 159,
+    "row_scope_match": true,
+    "excluded_by_filter": false,
+    "excluded_by_archive": false,
+    "excluded_by_tab": false,
+    "excluded_by_group_merge": false,
+    "selected_dashboard_row_id": null,
+    "cart_recovery_reason_exists": true,
+    "recovery_schedule_row_count": 0,
+    "cart_recovery_log_sent_count": 0,
+    "next_attempt_due_at": null,
+    "blocked_by": "effective_message_count_lte_1",
+    "decision": "schedule_next",
+    "template_diagnosis": {
+      "reason_tag": "price",
+      "canon": "price",
+      "store_found": true,
+      "store_zid": "tpltruth-49d0de-3e1896",
+      "template_entry_found": true,
+      "enabled": true,
+      "message_count": 1,
+      "messages_array_len": 1,
+      "guided_attempts_keys": [],
+      "materialized_len": 1,
+      "slots_len": null,
+      "miss_reason": "effective_message_count_lte_1"
+    },
+    "_http_status": 200
+  },
+  "dev_recovery_operational_truth_cart_key": {
+    "ok": true,
+    "recovery_key": "tpltruth-49d0de-3e1896:cf_cart_e2b000a0-0967-4f90-ac29-7d4a1006d094",
+    "abandoned_cart_exists": false,
+    "reason_tag": null,
+    "configured_count": 1,
+    "configured_count_source": "store.recovery_attempts",
+    "sent_count": 0,
+    "schedule_rows": [],
+    "dashboard_visible": true,
+    "dashboard_bucket": "archived",
+    "dashboard_exclusion_reason": "terminal_archived_or_lifecycle_tab",
+    "abandoned_cart_id": null,
+    "store_id": null,
+    "row_scope_match": false,
+    "excluded_by_filter": false,
+    "excluded_by_archive": true,
+    "excluded_by_tab": true,
+    "excluded_by_group_merge": false,
+    "selected_dashboard_row_id": null,
+    "cart_recovery_reason_exists": false,
+    "recovery_schedule_row_count": 0,
+    "cart_recovery_log_sent_count": 0,
+    "next_attempt_due_at": null,
+    "blocked_by": "unknown_reason_canon",
+    "decision": "schedule_next",
+    "template_diagnosis": {
+      "reason_tag": null,
+      "canon": null,
+      "store_found": true,
+      "store_zid": "tpltruth-49d0de-3e1896",
+      "template_entry_found": false,
+      "enabled": null,
+      "message_count": null,
+      "messages_array_len": 0,
+      "guided_attempts_keys": [],
+      "materialized_len": 0,
+      "slots_len": null,
+      "miss_reason": "unknown_reason_canon"
+    },
+    "_http_status": 200
+  },
+  "identity_trace": {
+    "parse_error": true,
+    "raw": "",
+    "status": 404,
+    "_http_status": 404
+  },
+  "api_normal_carts": {
+    "ok": true,
+    "row_count": 2
+  },
+  "dashboard_row": null,
+  "api_messages": {
+    "ok": true,
+    "merchant_message_history_rows": [],
+    "merchant_wa_last_send_ar": "—",
+    "merchant_dashboard_refresh_token": "tpltruth-49d0de-3e1896:1048:0:0:0",
+    "merchant_dashboard_refresh_last_log_id": 1048,
+    "merchant_dashboard_refresh_last_sent_log_id": 0,
+    "merchant_dashboard_refresh_sent_total": 0,
+    "merchant_dashboard_refresh_archive_rev": 0,
+    "_http_status": 200
+  },
+  "truth_chain_summary": {
+    "saved_template": {
+      "table": "Store.reason_templates_json",
+      "message": "PRICE_TEMPLATE_TRUTH_TEST_60_MIN",
+      "delay": 60,
+      "unit": "minute",
+      "message_hash": "530b4aba1335a7ed"
+    },
+    "runtime_timing_resolver": {
+      "effective_delay_seconds": 3600,
+      "source": "reason_templates.messages",
+      "template_delay_value": 60,
+      "template_delay_unit": "minute"
+    },
+    "recovery_schedule": {
+      "rows": [],
+      "delay_seconds_from_due": null,
+      "next_attempt_due_at": null
+    },
+    "reason_tag": "price",
+    "template_diagnosis": {
+      "reason_tag": "price",
+      "canon": "price",
+      "store_found": true,
+      "store_zid": "tpltruth-49d0de-3e1896",
+      "template_entry_found": true,
+      "enabled": true,
+      "message_count": 1,
+      "messages_array_len": 1,
+      "guided_attempts_keys": [],
+      "materialized_len": 1,
+      "slots_len": null,
+      "miss_reason": "effective_message_count_lte_1"
+    },
+    "dashboard_row_delay_fields": {
+      "merchant_followup_next_line_ar": null,
+      "merchant_reason_chip_label_ar": null,
+      "reason_tag": null
+    },
+    "message_logs_matching": [],
+    "divergence": {
+      "delay_saved_vs_runtime_sec": 0.0,
+      "delay_saved_vs_schedule_sec": null,
+      "message_saved_hash": "530b4aba1335a7ed",
+      "runtime_timing_source": "reason_templates.messages"
+    }
+  }
+}

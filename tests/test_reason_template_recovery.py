@@ -49,6 +49,22 @@ def test_resolve_uses_reason_template_message_when_enabled() -> None:
     assert msg == "نص سبب الشحن المخصص"
 
 
+def test_resolve_uses_messages_array_text_when_message_field_empty() -> None:
+    class _S:
+        reason_templates_json = json.dumps(
+            {
+                "price": {
+                    "enabled": True,
+                    "message": "",
+                    "messages": [{"delay": 60, "unit": "minute", "text": "FROM_MESSAGES_ARRAY"}],
+                }
+            }
+        )
+
+    msg = resolve_recovery_whatsapp_message_with_reason_templates("price", store=_S())
+    assert msg == "FROM_MESSAGES_ARRAY"
+
+
 def test_resolve_falls_back_when_empty_message() -> None:
     class _S:
         reason_templates_json = json.dumps(

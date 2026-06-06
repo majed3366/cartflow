@@ -149,6 +149,60 @@ def reason_template_blocks_recovery_whatsapp(reason_tag: Optional[str], store: A
     return False
 
 
+def _first_saved_reason_template_message(entry: Dict[str, Any]) -> str:
+    msg = str(entry.get("message") or "").strip()
+    if msg:
+        return msg
+    msgs = entry.get("messages")
+    if isinstance(msgs, list) and msgs and isinstance(msgs[0], dict):
+        return str(msgs[0].get("text") or "").strip()
+    return ""
+
+
+def emit_recovery_template_truth_log(
+    *,
+    store_slug: str = "",
+    store_id: Any = None,
+    recovery_key: str = "",
+    reason_tag: str = "",
+    sub_category: str = "",
+    template_source: str = "",
+    template_id: str = "",
+    stage: int = 1,
+    dashboard_delay_seconds: Any = None,
+    runtime_delay_seconds: Any = None,
+    schedule_delay_seconds: Any = None,
+    message_body: str = "",
+    dashboard_template_body: str = "",
+) -> None:
+    import hashlib
+
+    def _h(s: str) -> str:
+        return hashlib.sha256((s or "").encode("utf-8")).hexdigest()[:16]
+
+    line = (
+        "[RECOVERY TEMPLATE TRUTH] "
+        f"store_slug={store_slug or '-'} "
+        f"store_id={store_id if store_id is not None else '-'} "
+        f"recovery_key={recovery_key or '-'} "
+        f"reason_tag={reason_tag or '-'} "
+        f"sub_category={sub_category or '-'} "
+        f"template_source={template_source or '-'} "
+        f"template_id={template_id or '-'} "
+        f"stage={stage} "
+        f"dashboard_delay_seconds={dashboard_delay_seconds if dashboard_delay_seconds is not None else '-'} "
+        f"runtime_delay_seconds={runtime_delay_seconds if runtime_delay_seconds is not None else '-'} "
+        f"schedule_delay_seconds={schedule_delay_seconds if schedule_delay_seconds is not None else '-'} "
+        f"message_hash={_h(message_body)} "
+        f"dashboard_template_hash={_h(dashboard_template_body)} "
+        f"payload_hash={_h(message_body)}"
+    )
+    try:
+        print(line, flush=True)
+    except OSError:
+        pass
+
+
 def resolve_recovery_whatsapp_message_with_reason_templates(
     reason_tag: Optional[str],
     *,
@@ -162,7 +216,21 @@ def resolve_recovery_whatsapp_message_with_reason_templates(
         )
         entry = templates.get(canon)
         if entry is not None and bool(entry.get("enabled", True)):
-            msg = str(entry.get("message") or "").strip()
+            msg = _first_saved_reason_template_message(entry)
             if msg:
+                emit_recovery_template_truth_log(
+                    store_slug=(
+                        getattr(store, "zid_store_id", None)
+                        or getattr(store, "store_slug", None)
+                        or ""
+                    ),
+                    store_id=getattr(store, "id", None),
+                    reason_tag=str(reason_tag or ""),
+                    template_source="reason_templates_json",
+                    template_id=canon,
+                    stage=1,
+                    message_body=msg,
+                    dashboard_template_body=msg,
+                )
                 return msg
     return resolve_whatsapp_recovery_template_message(reason_tag, store=store)

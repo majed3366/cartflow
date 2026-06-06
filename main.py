@@ -2275,11 +2275,31 @@ def dev_recovery_operational_truth(recovery_key: str = Query("", max_length=512)
         )
         from services.recovery_restart_survival import load_context  # noqa: PLC0415
 
-        store_slug, session_id = parse_recovery_key(rk)
+        store_slug, session_part = parse_recovery_key(rk)
         store_slug = (store_slug or "").strip()[:255]
-        session_id = (session_id or "").strip()[:512]
-        if not store_slug or not session_id:
+        session_part = (session_part or "").strip()[:512]
+        if not store_slug or not session_part:
             return j({"ok": False, "error": "invalid_recovery_key"}, 400)
+
+        session_id = session_part
+        try:
+            from services.journey_identity_resolver_v1 import has_stable_cart_id
+
+            if has_stable_cart_id(session_part):
+                ac_by_cart = (
+                    db.session.query(AbandonedCart)
+                    .filter(AbandonedCart.zid_cart_id == session_part)
+                    .order_by(AbandonedCart.id.desc())
+                    .first()
+                )
+                if ac_by_cart is not None:
+                    sid_from_ac = (
+                        getattr(ac_by_cart, "recovery_session_id", None) or ""
+                    ).strip()[:512]
+                    if sid_from_ac:
+                        session_id = sid_from_ac
+        except Exception:  # noqa: BLE001
+            db.session.rollback()
 
         store_row = _fresh_store_row_for_recovery_templates(store_slug) or _load_store_row_for_recovery(
             store_slug
@@ -3196,11 +3216,67 @@ def _normal_recovery_pending_reason_tags_clear_for_tests() -> None:
         _recovery_pending_phone_arm_ctx.clear()
 
 
+def _pending_arm_ctx_alias_keys(
+    recovery_key: str,
+    *,
+    store_slug: Optional[str] = None,
+    session_id: Optional[str] = None,
+) -> list[str]:
+    """Session alias so reason POST without cart_id can consume cart-scoped pending marks."""
+    keys: list[str] = []
+    rk = (recovery_key or "").strip()
+    if rk:
+        keys.append(rk)
+    ss = (store_slug or "").strip()[:255]
+    sid = (session_id or "").strip()[:512]
+    if ss and sid:
+        sess_rk = _recovery_key_from_store_and_session(ss, sid)
+        if sess_rk and sess_rk not in keys:
+            keys.append(sess_rk)
+    return keys
+
+
+def _store_pending_arm_ctx(
+    bucket: dict[str, dict[str, Any]],
+    recovery_key: str,
+    ctx: dict[str, Any],
+    *,
+    store_slug: Optional[str] = None,
+    session_id: Optional[str] = None,
+) -> None:
+    with _recovery_session_lock:
+        for rk in _pending_arm_ctx_alias_keys(
+            recovery_key,
+            store_slug=store_slug,
+            session_id=session_id,
+        ):
+            bucket[rk] = ctx
+
+
+def _pop_pending_arm_ctx(
+    bucket: dict[str, dict[str, Any]],
+    recovery_key: str,
+) -> Optional[dict[str, Any]]:
+    rk = (recovery_key or "").strip()
+    if not rk:
+        return None
+    with _recovery_session_lock:
+        ctx = bucket.pop(rk, None)
+        if ctx is None:
+            return None
+        for alias_rk in list(bucket.keys()):
+            if bucket.get(alias_rk) is ctx:
+                bucket.pop(alias_rk, None)
+        return ctx
+
+
 def _mark_normal_recovery_pending_reason_tag(
     recovery_key: str,
     *,
     cart_id: Optional[str] = None,
     cart_total: Optional[float] = None,
+    store_slug: Optional[str] = None,
+    session_id: Optional[str] = None,
 ) -> None:
     rk = (recovery_key or "").strip()
     if not rk:
@@ -3214,18 +3290,19 @@ def _mark_normal_recovery_pending_reason_tag(
             ctx["cart_total"] = float(cart_total)
         except (TypeError, ValueError):
             pass
-    with _recovery_session_lock:
-        _recovery_pending_reason_arm_ctx[rk] = ctx
+    _store_pending_arm_ctx(
+        _recovery_pending_reason_arm_ctx,
+        rk,
+        ctx,
+        store_slug=store_slug,
+        session_id=session_id,
+    )
 
 
 def _consume_normal_recovery_pending_reason_tag(
     recovery_key: str,
 ) -> Optional[dict[str, Any]]:
-    rk = (recovery_key or "").strip()
-    if not rk:
-        return None
-    with _recovery_session_lock:
-        return _recovery_pending_reason_arm_ctx.pop(rk, None)
+    return _pop_pending_arm_ctx(_recovery_pending_reason_arm_ctx, recovery_key)
 
 
 def _mark_normal_recovery_pending_phone(
@@ -3233,6 +3310,8 @@ def _mark_normal_recovery_pending_phone(
     *,
     cart_id: Optional[str] = None,
     cart_total: Optional[float] = None,
+    store_slug: Optional[str] = None,
+    session_id: Optional[str] = None,
 ) -> None:
     rk = (recovery_key or "").strip()
     if not rk:
@@ -3246,18 +3325,19 @@ def _mark_normal_recovery_pending_phone(
             ctx["cart_total"] = float(cart_total)
         except (TypeError, ValueError):
             pass
-    with _recovery_session_lock:
-        _recovery_pending_phone_arm_ctx[rk] = ctx
+    _store_pending_arm_ctx(
+        _recovery_pending_phone_arm_ctx,
+        rk,
+        ctx,
+        store_slug=store_slug,
+        session_id=session_id,
+    )
 
 
 def _consume_normal_recovery_pending_phone(
     recovery_key: str,
 ) -> Optional[dict[str, Any]]:
-    rk = (recovery_key or "").strip()
-    if not rk:
-        return None
-    with _recovery_session_lock:
-        return _recovery_pending_phone_arm_ctx.pop(rk, None)
+    return _pop_pending_arm_ctx(_recovery_pending_phone_arm_ctx, recovery_key)
 
 
 def _normal_recovery_phone_ready_for_schedule(
@@ -8789,6 +8869,10 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
             return None
         text = (multi_message_text or "").strip()
         if not text:
+            text = resolve_recovery_whatsapp_message_with_reason_templates(
+                reason_tag, store=store_obj
+            ).strip()
+        if not text:
             text = get_recovery_message(reason_tag, int(step_num), store_obj)
     elif seq_follow:
         if not rt_raw:
@@ -8830,6 +8914,10 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
             _consume_seq_slot_if_needed()
             return None
         text = (multi_message_text or "").strip()
+        if not text:
+            text = resolve_recovery_whatsapp_message_with_reason_templates(
+                reason_tag, store=store_obj
+            ).strip()
         if not text:
             text = get_recovery_message(reason_tag, int(step_num), store_obj)
     elif rt_raw:
@@ -10472,6 +10560,8 @@ def _execute_cart_abandon_recovery_schedule_continue(
             recovery_key,
             cart_id=cart_id_log,
             cart_total=cart_total_chk,
+            store_slug=store_slug,
+            session_id=session_id_log,
         )
         _persist_cart_recovery_log(
             store_slug=store_slug,
@@ -10508,6 +10598,8 @@ def _execute_cart_abandon_recovery_schedule_continue(
             recovery_key,
             cart_id=cart_id_log,
             cart_total=cart_total_chk,
+            store_slug=store_slug,
+            session_id=session_id_log,
         )
         _persist_cart_recovery_log(
             store_slug=store_slug,
@@ -10814,6 +10906,8 @@ async def handle_cart_abandoned(
             recovery_key,
             cart_id=cart_id_log,
             cart_total=ct_pending,
+            store_slug=store_slug,
+            session_id=session_id_log,
         )
         _persist_cart_recovery_log(
             store_slug=store_slug,
@@ -10859,9 +10953,43 @@ async def _schedule_normal_recovery_after_cart_recovery_reason_saved(
     ss = (store_slug or "").strip()[:255]
     if not sid or not ss:
         return
-    rk = _recovery_key_from_store_and_session(ss, sid)
-    arm_ctx = _consume_normal_recovery_pending_reason_tag(rk)
-    phone_ctx = _consume_normal_recovery_pending_phone(rk)
+
+    cart_id_raw = body.get("cart_id") or body.get("zid_cart_id")
+    cart_id_join: Optional[str] = (
+        str(cart_id_raw).strip()[:255]
+        if cart_id_raw is not None and str(cart_id_raw).strip()
+        else None
+    )
+    if not cart_id_join:
+        try:
+            ac_hint = (
+                db.session.query(AbandonedCart)
+                .filter(AbandonedCart.recovery_session_id == sid)
+                .order_by(AbandonedCart.id.desc())
+                .first()
+            )
+            if ac_hint is not None:
+                cid_hint = (getattr(ac_hint, "zid_cart_id", None) or "").strip()[:255]
+                if cid_hint:
+                    cart_id_join = cid_hint
+        except SQLAlchemyError:
+            db.session.rollback()
+
+    rk_candidates: list[str] = []
+    for cid_opt in (cart_id_join, None):
+        rk_cand = _recovery_key_from_store_and_session(ss, sid, cid_opt)
+        if rk_cand and rk_cand not in rk_candidates:
+            rk_candidates.append(rk_cand)
+
+    arm_ctx: Optional[dict[str, Any]] = None
+    phone_ctx: Optional[dict[str, Any]] = None
+    rk = rk_candidates[0] if rk_candidates else _recovery_key_from_store_and_session(ss, sid)
+    for rk_try in rk_candidates:
+        arm_ctx = _consume_normal_recovery_pending_reason_tag(rk_try)
+        phone_ctx = _consume_normal_recovery_pending_phone(rk_try)
+        if arm_ctx is not None or phone_ctx is not None:
+            rk = rk_try
+            break
     if arm_ctx is None and phone_ctx is None:
         return
     if _is_user_converted(rk):
@@ -10882,13 +11010,6 @@ async def _schedule_normal_recovery_after_cart_recovery_reason_saved(
             pending_total = float(pending_total_raw)
         except (TypeError, ValueError):
             pending_total = None
-
-    cart_id_raw = body.get("cart_id") or body.get("zid_cart_id")
-    cart_id_join: Optional[str] = (
-        str(cart_id_raw).strip()[:255]
-        if cart_id_raw is not None and str(cart_id_raw).strip()
-        else None
-    )
 
     armed_cid = pending_cid or cart_id_join
     synth_pl: dict[str, Any] = {
