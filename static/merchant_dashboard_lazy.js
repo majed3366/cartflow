@@ -42,6 +42,13 @@
   var normalCartsHasRenderedRows = false;
   var lastNormalCartsFilterCounts = {};
   var NORMAL_CARTS_CACHE_KEY = "ma_normal_carts_cache_v1";
+  var VIP_CARTS_CACHE_KEY = "ma_vip_carts_cache_v1";
+  var vipCartsFetchGen = 0;
+  var vipCartsAppliedGen = 0;
+  var vipCartsHasRenderedRows = false;
+  var lastVipPageRows = [];
+  var lastVipHomeRows = [];
+  var lastVipBanner = null;
 
   function isUnifiedSetup(mse) {
     if (!mse || typeof mse !== "object") return false;
@@ -2810,59 +2817,265 @@
     );
   }
 
-  function vipPageErrorHtml() {
+  function vipPageLoadingRowHtml(message) {
     return (
-      '<tr><td colspan="4" style="text-align:center;padding:24px;color:#991b1b;">' +
-      "تعذر تحميل سلال VIP" +
+      '<tr class="ma-dash-loading-row" data-ma-vip-loading="1">' +
+      '<td colspan="4" style="text-align:center;padding:24px;color:var(--muted);">' +
+      esc(message || "جاري تحميل سلال VIP…") +
       "</td></tr>"
     );
   }
 
-  function applyVipCartsFailed() {
-    var tb = byId("ma-tbody-vip-page");
-    if (tb) tb.innerHTML = vipPageErrorHtml();
-    var list = byId("ma-vip-home-list");
-    if (list) {
-      list.innerHTML =
-        '<div class="empty-state" style="color:#991b1b;"><div class="empty-text">تعذر تحميل سلال VIP</div></div>';
+  function vipPageErrorHtml(message) {
+    return (
+      '<tr><td colspan="4" style="text-align:center;padding:24px;color:#991b1b;">' +
+      esc(message || "تعذر تحميل سلال VIP") +
+      "</td></tr>"
+    );
+  }
+
+  function vipCartsPayloadPageRows(d) {
+    return (d && d.merchant_vip_page_rows) || [];
+  }
+
+  function vipCartsIsDegraded(d) {
+    if (!d) return true;
+    return !!(d.dashboard_partial || d.dashboard_timeout);
+  }
+
+  function persistVipCartsCache(d) {
+    try {
+      if (!d || !d.ok) return;
+      var pageRows = vipCartsPayloadPageRows(d);
+      if (!pageRows.length) {
+        sessionStorage.removeItem(VIP_CARTS_CACHE_KEY);
+        return;
+      }
+      sessionStorage.setItem(
+        VIP_CARTS_CACHE_KEY,
+        JSON.stringify({
+          page_rows: pageRows,
+          home_rows: (d && d.merchant_vip_rows) || pageRows.slice(0, 3),
+          banner: (d && d.merchant_vip_banner) || null,
+          nav_badge: d.merchant_nav_badge_vip,
+          alert_state_ar: d.merchant_vip_alert_state_ar || "",
+          automation_mode: d.merchant_automation_mode || "",
+          saved_at: Date.now(),
+        })
+      );
+    } catch (_vipCacheErr) {
+      /* ignore */
     }
   }
 
-  function applyVipCarts(d) {
+  function hydrateVipCartsCache() {
+    try {
+      var raw = sessionStorage.getItem(VIP_CARTS_CACHE_KEY);
+      if (!raw) return false;
+      var c = JSON.parse(raw);
+      if (!c || !c.page_rows || !c.page_rows.length) return false;
+      renderVipCartsTables({
+        ok: true,
+        merchant_vip_page_rows: c.page_rows,
+        merchant_vip_rows: c.home_rows || c.page_rows.slice(0, 3),
+        merchant_vip_banner: c.banner || null,
+        merchant_nav_badge_vip: c.nav_badge,
+        merchant_vip_alert_state_ar: c.alert_state_ar || "",
+        merchant_automation_mode: c.automation_mode || "",
+      });
+      vipCartsHasRenderedRows = true;
+      logClientRefresh("vip_carts_cache_hydrate", { rows: c.page_rows.length });
+      return true;
+    } catch (_vipHydrateErr) {
+      return false;
+    }
+  }
+
+  function renderVipCartsTables(d) {
+    var pageRows = vipCartsPayloadPageRows(d);
+    lastVipPageRows = pageRows;
+    lastVipHomeRows = (d && d.merchant_vip_rows) || pageRows.slice(0, 3);
+    lastVipBanner = (d && d.merchant_vip_banner) || null;
+    if (pageRows.length) {
+      vipCartsHasRenderedRows = true;
+    }
+    applyVipHomeBanner(lastVipBanner);
+    var list = byId("ma-vip-home-list");
+    if (list) {
+      var alertLine = String((d && d.merchant_vip_alert_state_ar) || "").trim();
+      if (!lastVipHomeRows.length) {
+        list.innerHTML =
+          '<div class="empty-state"><div class="empty-icon">👑</div><div class="empty-text">' +
+          esc(alertLine || "لا سلال VIP تحتاج تدخلك حالياً") +
+          '</div><p class="ma-vip-load-diag">آخر تحقق: تم تحميل البيانات بنجاح</p></div>';
+      } else {
+        list.innerHTML = lastVipHomeRows.map(vipItemHtml).join("");
+      }
+    }
+    var tb = byId("ma-tbody-vip-page");
+    if (tb) {
+      if (!pageRows.length) {
+        tb.innerHTML = vipPageEmptyHtml();
+      } else {
+        tb.innerHTML = pageRows.map(vipRowTable).join("");
+      }
+    }
+    if (d && d.merchant_nav_badge_vip != null) {
+      setNavBadge("ma-nav-badge-vip", d.merchant_nav_badge_vip);
+    } else if (pageRows.length) {
+      setNavBadge("ma-nav-badge-vip", pageRows.length);
+    }
+  }
+
+  function rerenderVipFromMemory(reason) {
+    if (!lastVipPageRows.length) {
+      if (hydrateVipCartsCache()) {
+        logClientRefresh("vip_rerender_cache", { reason: reason || "" });
+      }
+      return;
+    }
+    renderVipCartsTables({
+      ok: true,
+      merchant_vip_page_rows: lastVipPageRows,
+      merchant_vip_rows: lastVipHomeRows,
+      merchant_vip_banner: lastVipBanner,
+      merchant_nav_badge_vip: lastVipPageRows.length,
+    });
+    logClientRefresh("vip_rerender_memory", {
+      reason: reason || "",
+      rows: lastVipPageRows.length,
+    });
+  }
+
+  function showVipCartsLoadingState(message) {
+    if (vipCartsHasRenderedRows && lastVipPageRows.length) return;
+    var tb = byId("ma-tbody-vip-page");
+    if (tb && !lastVipPageRows.length) {
+      tb.innerHTML = vipPageLoadingRowHtml(message);
+    }
+  }
+
+  function scheduleVipCartsRetry(label) {
+    if (window.__maVipCartsPartialRetryPending) return;
+    window.__maVipCartsPartialRetryPending = true;
+    logClientRefresh("vip_carts_retry_scheduled", { label: label || "partial" });
+    window.setTimeout(function () {
+      window.__maVipCartsPartialRetryPending = false;
+      fetchVipCarts("vip_carts_retry_" + (label || "partial"));
+    }, 1200);
+  }
+
+  function applyVipCartsFailed(message) {
+    if (lastVipPageRows.length || vipCartsHasRenderedRows) {
+      rerenderVipFromMemory("fetch_error_keep");
+      scheduleVipCartsRetry("fetch_error");
+      return;
+    }
+    var tb = byId("ma-tbody-vip-page");
+    if (tb) tb.innerHTML = vipPageErrorHtml(message);
+    var list = byId("ma-vip-home-list");
+    if (list) {
+      list.innerHTML =
+        '<div class="empty-state" style="color:#991b1b;"><div class="empty-text">' +
+        esc(message || "تعذر تحميل سلال VIP") +
+        "</div></div>";
+    }
+  }
+
+  function applyVipCarts(d, fetchGen) {
+    if (fetchGen != null && fetchGen < vipCartsAppliedGen) {
+      logClientRefresh("vip_carts_stale_skip", {
+        fetchGen: fetchGen,
+        appliedGen: vipCartsAppliedGen,
+        inflightGen: vipCartsFetchGen,
+      });
+      return;
+    }
     if (!d || !d.ok) {
+      if (lastVipPageRows.length || vipCartsHasRenderedRows) {
+        rerenderVipFromMemory("ok_false_keep");
+        scheduleVipCartsRetry("ok_false");
+        return;
+      }
       applyVipCartsFailed();
       return;
     }
+    var pageRows = vipCartsPayloadPageRows(d);
+    var degraded = vipCartsIsDegraded(d);
+    var partialEmpty = degraded && !pageRows.length;
+
+    if (partialEmpty) {
+      logClientRefresh("vip_carts_partial_empty", {
+        stage: d.dashboard_timeout_stage || null,
+        hadRows: lastVipPageRows.length,
+      });
+      if (lastVipPageRows.length || vipCartsHasRenderedRows) {
+        rerenderVipFromMemory("partial_keep");
+        scheduleVipCartsRetry(d.dashboard_timeout_stage || "partial");
+        return;
+      }
+      showVipCartsLoadingState("جاري تحميل سلال VIP…");
+      scheduleVipCartsRetry(d.dashboard_timeout_stage || "partial");
+      return;
+    }
+
+    if (!pageRows.length && !degraded && (lastVipPageRows.length || vipCartsHasRenderedRows)) {
+      var navBadge = parseInt(d.merchant_nav_badge_vip, 10);
+      if (isFinite(navBadge) && navBadge > 0) {
+        logClientRefresh("vip_carts_empty_mismatch_retry", { navBadge: navBadge });
+        rerenderVipFromMemory("empty_mismatch_keep");
+        scheduleVipCartsRetry("empty_mismatch");
+        return;
+      }
+    }
+
     if (window.maVipAutomation) {
       if (d.merchant_automation_mode) {
         window.maVipAutomation.setMode(d.merchant_automation_mode);
       }
       window.maVipAutomation.storePayload(d);
     }
-    applyVipHomeBanner(d.merchant_vip_banner || null);
-    var list = byId("ma-vip-home-list");
-    if (list) {
-      var rows = d.merchant_vip_rows || [];
-      var alertLine = String(d.merchant_vip_alert_state_ar || "").trim();
-      if (!rows.length) {
-        list.innerHTML =
-          '<div class="empty-state"><div class="empty-icon">👑</div><div class="empty-text">' +
-          esc(alertLine || "لا سلال VIP تحتاج تدخلك حالياً") +
-          '</div><p class="ma-vip-load-diag">آخر تحقق: تم تحميل البيانات بنجاح</p></div>';
-      } else {
-        list.innerHTML = rows.map(vipItemHtml).join("");
-      }
+    renderVipCartsTables(d);
+    persistVipCartsCache(d);
+    if (fetchGen != null) {
+      vipCartsAppliedGen = Math.max(vipCartsAppliedGen, fetchGen);
     }
-    var tb = byId("ma-tbody-vip-page");
-    if (tb) {
-      var pr = d.merchant_vip_page_rows || [];
-      if (!pr.length) {
-        tb.innerHTML = vipPageEmptyHtml();
-      } else {
-        tb.innerHTML = pr.map(vipRowTable).join("");
-      }
+    logClientRefresh("vip_carts_applied", {
+      rows: pageRows.length,
+      degraded: degraded,
+      partial: !!d.dashboard_partial,
+      appliedGen: vipCartsAppliedGen,
+    });
+  }
+
+  function fetchVipCarts(label) {
+    var gen = ++vipCartsFetchGen;
+    showVipCartsLoadingState();
+    var u = "/api/dashboard/vip-carts?_ts=" + Date.now();
+    if (label) {
+      u += "&_label=" + encodeURIComponent(String(label));
     }
-    setNavBadge("ma-nav-badge-vip", d.merchant_nav_badge_vip);
+    return fetch(u, { credentials: "same-origin", cache: "no-store" })
+      .then(function (r) {
+        return r.json();
+      })
+      .then(function (d) {
+        applyVipCarts(d, gen);
+        return d;
+      })
+      .catch(function (err) {
+        logClientRefresh("vip_carts_fetch_failed", {
+          label: label || "",
+          err: String(err),
+        });
+        if (lastVipPageRows.length || vipCartsHasRenderedRows) {
+          rerenderVipFromMemory("fetch_error_keep");
+          scheduleVipCartsRetry("fetch_error");
+        } else {
+          applyVipCartsFailed();
+          scheduleVipCartsRetry("fetch_error");
+        }
+      });
   }
 
   function followRowHtml(fr) {
@@ -3266,7 +3479,7 @@
     Promise.allSettled([
       fetchSection("/api/dashboard/summary", applySummary, "summary"),
       fetchSection("/api/dashboard/messages", applyMessages, "messages"),
-      fetchSection("/api/dashboard/vip-carts", applyVipCarts, "vip_carts"),
+      fetchVipCarts("refresh_core"),
     ]).finally(function () {
       merchantRefreshInFlight = false;
       logClientRefresh("refresh_end", {
@@ -3342,6 +3555,9 @@
 
     /* Stale-while-revalidate: paint cached rows immediately, then refresh. */
     hydrateNormalCartsCache();
+    hydrateVipCartsCache();
+    var bootHash = (location.hash || "").split("?")[0].toLowerCase();
+    fetchVipCarts(bootHash === "#vip" ? "boot_vip_hash" : "boot_parallel");
     normalCartsBootInFlight = true;
     fetchNormalCarts("boot_priority").finally(function () {
       normalCartsBootInFlight = false;
@@ -3353,12 +3569,6 @@
       startPendingNewCartWatcher();
       var jobs = [
         fetchSection("/api/dashboard/summary", applySummary, "summary"),
-        fetch("/api/dashboard/vip-carts", { credentials: "same-origin" })
-          .then(function (r) {
-            return r.json();
-          })
-          .then(applyVipCarts)
-          .catch(applyVipCartsFailed),
         fetchSection("/api/dashboard/followups", applyFollowups, "followups"),
         fetchSection("/api/dashboard/widget-panel", applyWidgetPanel, "widget_panel"),
         fetchSection("/api/dashboard/messages", applyMessages, "messages"),
@@ -3373,6 +3583,9 @@
   window.MERCHANT_SETUP_RENDER_BUILD = MERCHANT_SETUP_RENDER_BUILD;
   window.maFetchNormalCartsNow = function (label) {
     return fetchNormalCarts(label || "manual_now");
+  };
+  window.maFetchVipCartsNow = function (label) {
+    return fetchVipCarts(label || "manual_now");
   };
 
   window.__maNormalCartsTestHooks = {
@@ -3391,11 +3604,33 @@
     },
   };
 
+  window.__maVipCartsTestHooks = {
+    applyVipCarts: applyVipCarts,
+    fetchVipCarts: fetchVipCarts,
+    renderVipCartsTables: renderVipCartsTables,
+    hydrateVipCartsCache: hydrateVipCartsCache,
+    getLastRows: function () {
+      return lastVipPageRows.slice();
+    },
+    getFetchGen: function () {
+      return vipCartsFetchGen;
+    },
+    getAppliedGen: function () {
+      return vipCartsAppliedGen;
+    },
+  };
+
   window.addEventListener("hashchange", function () {
     syncHomeActivationFromCache();
     try {
       syncCartsPageOnHashChange();
       var hashRaw = (location.hash || "").split("?")[0].toLowerCase();
+      if (hashRaw === "#vip") {
+        if (!lastVipPageRows.length) {
+          hydrateVipCartsCache();
+        }
+        fetchVipCarts("hash_vip");
+      }
       if (
         hashRaw === "#completed" &&
         typeof window.maRefreshCompletedCartsTable === "function"
