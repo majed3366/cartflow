@@ -1,0 +1,1236 @@
+{
+  "audit_at_utc": "2026-06-06T15:35:19.859736+00:00",
+  "section_a_version_truth": {
+    "local_git_head": "5541e5ce52a38ad6422563f4097f5d3ed307a4c2",
+    "local_git_short": "5541e5c",
+    "origin_main_sha": "246000d9c8e048b01e92c65419004dbd9a7f069e",
+    "origin_main_short": "246000d",
+    "commits_ahead_of_origin_main": "2",
+    "unpushed_commits": [
+      "5541e5c fix complete demo widget phone dashboard flow\na77bdcf fix v2 price reason phone persistence"
+    ],
+    "github_api_main": {
+      "sha": "246000d9c8e048b01e92c65419004dbd9a7f069e",
+      "short": "246000d",
+      "message": "fix real runtime identity phone visibility and schema drift",
+      "date": "2026-06-06T12:33:38Z",
+      "html_url": "https://github.com/majed3366/cartflow/commit/246000d9c8e048b01e92c65419004dbd9a7f069e"
+    },
+    "production_static_markers": {
+      "cartflow_widget_fetch.js": {
+        "url": "https://smartreplyai.net/static/cartflow_widget_runtime/cartflow_widget_fetch.js",
+        "status": 200,
+        "bytes": 15376,
+        "price_fallback_fn": false,
+        "recovery_flow_close": false,
+        "partial_retry": false
+      },
+      "cartflow_widget_flows.js": {
+        "url": "https://smartreplyai.net/static/cartflow_widget_runtime/cartflow_widget_flows.js",
+        "status": 200,
+        "bytes": 27303,
+        "price_fallback_fn": false,
+        "recovery_flow_close": false,
+        "partial_retry": false
+      },
+      "merchant_dashboard_lazy.js": {
+        "url": "https://smartreplyai.net/static/merchant_dashboard_lazy.js",
+        "status": 200,
+        "bytes": 103473,
+        "price_fallback_fn": false,
+        "recovery_flow_close": false,
+        "partial_retry": false
+      }
+    },
+    "local_static_markers": {
+      "cartflow_widget_fetch.js": {
+        "url": "http://127.0.0.1:8011/static/cartflow_widget_runtime/cartflow_widget_fetch.js",
+        "status": 200,
+        "bytes": 16291,
+        "price_fallback_fn": true,
+        "recovery_flow_close": false,
+        "partial_retry": false
+      },
+      "cartflow_widget_flows.js": {
+        "url": "http://127.0.0.1:8011/static/cartflow_widget_runtime/cartflow_widget_flows.js",
+        "status": 200,
+        "bytes": 28074,
+        "price_fallback_fn": false,
+        "recovery_flow_close": true,
+        "partial_retry": false
+      },
+      "merchant_dashboard_lazy.js": {
+        "url": "http://127.0.0.1:8011/static/merchant_dashboard_lazy.js",
+        "status": 200,
+        "bytes": 107171,
+        "price_fallback_fn": false,
+        "recovery_flow_close": false,
+        "partial_retry": true
+      }
+    },
+    "mismatch_summary": {
+      "github_main_is": "246000d",
+      "local_has_unpushed": true,
+      "production_missing_a77bdcf_marker": true,
+      "production_missing_5541e5c_markers": {
+        "recovery_flow_close": true,
+        "partial_retry": true
+      }
+    }
+  },
+  "section_b_vip": {
+    "local": {
+      "cart_id": "cf_cart_cf4e0f71-3ff1-4945-a756-2a326cda5b73",
+      "session_id": "s_9eb4a22b-0d11-4bfe-8277-e38ca9517e0e",
+      "recovery_key": "demo:cf_cart_cf4e0f71-3ff1-4945-a756-2a326cda5b73",
+      "db_customer_phone": "966598877660",
+      "abandoned_cart_id": 24,
+      "phone_post_status": 200,
+      "vip_row": null
+    },
+    "production": {
+      "cart_id": "cf_cart_1725ef76-ff17-46ed-baec-91f225b2de2c",
+      "session_id": "s_464f5929-f22a-43a0-b3dc-8bcd35eb520e",
+      "recovery_key": "demo:cf_cart_1725ef76-ff17-46ed-baec-91f225b2de2c",
+      "phone_post_status": 400,
+      "phone_post_request": {
+        "store_slug": "demo",
+        "session_id": "s_464f5929-f22a-43a0-b3dc-8bcd35eb520e",
+        "reason": "price",
+        "merchant_activation": false,
+        "customer_phone": "966598877660"
+      },
+      "phone_post_response": {
+        "ok": false,
+        "error": "sub_category_required_or_invalid"
+      },
+      "vip_row": null,
+      "dashboard_requires_login": true
+    }
+  },
+  "section_c_normal_carts": {
+    "local": {
+      "dashboard_partial": true,
+      "dashboard_timeout": true,
+      "dashboard_timeout_stage": "candidates_loaded",
+      "dashboard_wall_budget_s": 12.0,
+      "row_count": 16,
+      "filter_all": 16,
+      "table_rows_dom": 16
+    },
+    "local_network_timings": [
+      {
+        "url": "http://127.0.0.1:8011/api/dashboard/normal-carts",
+        "status": 200,
+        "partial": true,
+        "timeout_stage": "payload_row",
+        "rows": 9
+      },
+      {
+        "url": "http://127.0.0.1:8011/api/dashboard/normal-carts",
+        "status": 200,
+        "partial": true,
+        "timeout_stage": "candidates_loaded",
+        "rows": 16
+      }
+    ],
+    "production": {
+      "dashboard_partial": null,
+      "dashboard_timeout": null,
+      "dashboard_timeout_stage": null,
+      "dashboard_wall_budget_s": null,
+      "row_count": 0,
+      "filter_all": null,
+      "table_rows_dom": 0
+    },
+    "production_network_timings": []
+  },
+  "section_d_widget": {
+    "local_reopened": false,
+    "production_reopened": false,
+    "local_console_tail": [
+      {
+        "type": "log",
+        "text": "[CF WIDGET TITLE TRUTH] {tag: merchantShellTitle, rendered: مساعد المتجر, config_brand_name: مساعد المتجر, header_fallback: مساعدة}"
+      },
+      {
+        "type": "log",
+        "text": "[CF SHELL TITLE WRITE] {seq: 2, render_source: ensureShell_tail, runtime_version: v2-zid-cart-sync-v1, title_value: مساعد المتجر, previous_value: مساعد المتجر}"
+      },
+      {
+        "type": "log",
+        "text": "[CF WIDGET TITLE TRUTH] {tag: merchantShellTitle, rendered: مساعد المتجر, config_brand_name: مساعد المتجر, header_fallback: مساعدة}"
+      },
+      {
+        "type": "log",
+        "text": "[CF SHELL TITLE WRITE] {seq: 3, render_source: refreshShellVisuals, runtime_version: v2-zid-cart-sync-v1, title_value: مساعد المتجر, previous_value: مساعد المتجر}"
+      },
+      {
+        "type": "log",
+        "text": "[CF SHELL OPEN] {created: true}"
+      },
+      {
+        "type": "log",
+        "text": "[CF SHELL CONTENT SET] {mountedView: yes_no, mode: fragment}"
+      },
+      {
+        "type": "log",
+        "text": "[CF V2 SHOW YESNO]"
+      },
+      {
+        "type": "log",
+        "text": "[CF WIDGET SHOW] {tag: manual_debug, layer: v2}"
+      },
+      {
+        "type": "log",
+        "text": "[CF WIDGET SHOW V2] {tag: manual_debug}"
+      },
+      {
+        "type": "log",
+        "text": "[CF SHELL TITLE WRITE] {seq: 4, render_source: mutation_observer_external, runtime_version: v2-zid-cart-sync-v1, title_value: مساعد المتجر, previous_value: مساعد المتجر}"
+      },
+      {
+        "type": "log",
+        "text": "[CF SHELL TITLE WRITE] {seq: 5, render_source: mutation_observer_external, runtime_version: v2-zid-cart-sync-v1, title_value: مساعد المتجر, previous_value: مساعد المتجر}"
+      },
+      {
+        "type": "log",
+        "text": "[CF SHELL LISTENER DUPLICATE BLOCKED] {which: close}"
+      },
+      {
+        "type": "log",
+        "text": "[CF WIDGET TITLE TRUTH] {tag: merchantShellTitle, rendered: مساعد المتجر, config_brand_name: مساعد المتجر, header_fallback: مساعدة}"
+      },
+      {
+        "type": "log",
+        "text": "[CF SHELL TITLE WRITE] {seq: 6, render_source: ensureShell_tail, runtime_version: v2-zid-cart-sync-v1, title_value: مساعد المتجر, previous_value: مساعد المتجر}"
+      },
+      {
+        "type": "log",
+        "text": "[CF WIDGET TITLE TRUTH] {tag: merchantShellTitle, rendered: مساعد المتجر, config_brand_name: مساعد المتجر, header_fallback: مساعدة}"
+      },
+      {
+        "type": "log",
+        "text": "[CF SHELL TITLE WRITE] {seq: 7, render_source: refreshShellVisuals, runtime_version: v2-zid-cart-sync-v1, title_value: مساعد المتجر, previous_value: مساعد المتجر}"
+      },
+      {
+        "type": "log",
+        "text": "[CF SHELL REUSED] {reused: true}"
+      },
+      {
+        "type": "log",
+        "text": "[CF SHELL CONTENT SET] {mountedView: reason_grid, mode: fragment}"
+      },
+      {
+        "type": "log",
+        "text": "[CF V2 SHOW REASONS]"
+      },
+      {
+        "type": "log",
+        "text": "[CF SHELL TITLE WRITE] {seq: 8, render_source: mutation_observer_external, runtime_version: v2-zid-cart-sync-v1, title_value: مساعد المتجر, previous_value: مساعد المتجر}"
+      },
+      {
+        "type": "log",
+        "text": "[CF SHELL TITLE WRITE] {seq: 9, render_source: mutation_observer_external, runtime_version: v2-zid-cart-sync-v1, title_value: مساعد المتجر, previous_value: مساعد المتجر}"
+      },
+      {
+        "type": "log",
+        "text": "[CF REASON SELECTED V2] {reason_key: price}"
+      },
+      {
+        "type": "log",
+        "text": "[CF SHELL LISTENER DUPLICATE BLOCKED] {which: close}"
+      },
+      {
+        "type": "log",
+        "text": "[CF WIDGET TITLE TRUTH] {tag: merchantShellTitle, rendered: مساعد المتجر, config_brand_name: مساعد المتجر, header_fallback: مساعدة}"
+      },
+      {
+        "type": "log",
+        "text": "[CF SHELL TITLE WRITE] {seq: 10, render_source: ensureShell_tail, runtime_version: v2-zid-cart-sync-v1, title_value: مساعد المتجر, previous_value: مساعد المتجر}"
+      },
+      {
+        "type": "log",
+        "text": "[CF WIDGET TITLE TRUTH] {tag: merchantShellTitle, rendered: مساعد المتجر, config_brand_name: مساعد المتجر, header_fallback: مساعدة}"
+      },
+      {
+        "type": "log",
+        "text": "[CF SHELL TITLE WRITE] {seq: 11, render_source: refreshShellVisuals, runtime_version: v2-zid-cart-sync-v1, title_value: مساعد المتجر, previous_value: مساعد المتجر}"
+      },
+      {
+        "type": "log",
+        "text": "[CF SHELL REUSED] {reused: true}"
+      },
+      {
+        "type": "log",
+        "text": "[CF SHELL CONTENT SET] {mountedView: continuation, mode: fragment}"
+      },
+      {
+        "type": "log",
+        "text": "[CF V2 SHOW CONTINUATION]"
+      },
+      {
+        "type": "log",
+        "text": "[CF SHELL TITLE WRITE] {seq: 12, render_source: mutation_observer_external, runtime_version: v2-zid-cart-sync-v1, title_value: مساعد المتجر, previous_value: مساعد المتجر}"
+      },
+      {
+        "type": "log",
+        "text": "[CF SHELL TITLE WRITE] {seq: 13, render_source: mutation_observer_external, runtime_version: v2-zid-cart-sync-v1, title_value: مساعد المتجر, previous_value: مساعد المتجر}"
+      },
+      {
+        "type": "log",
+        "text": "[CF SHELL LISTENER DUPLICATE BLOCKED] {which: close}"
+      },
+      {
+        "type": "log",
+        "text": "[CF WIDGET TITLE TRUTH] {tag: merchantShellTitle, rendered: مساعد المتجر, config_brand_name: مساعد المتجر, header_fallback: مساعدة}"
+      },
+      {
+        "type": "log",
+        "text": "[CF SHELL TITLE WRITE] {seq: 14, render_source: ensureShell_tail, runtime_version: v2-zid-cart-sync-v1, title_value: مساعد المتجر, previous_value: مساعد المتجر}"
+      },
+      {
+        "type": "log",
+        "text": "[CF WIDGET TITLE TRUTH] {tag: merchantShellTitle, rendered: مساعد المتجر, config_brand_name: مساعد المتجر, header_fallback: مساعدة}"
+      },
+      {
+        "type": "log",
+        "text": "[CF SHELL TITLE WRITE] {seq: 15, render_source: refreshShellVisuals, runtime_version: v2-zid-cart-sync-v1, title_value: مساعد المتجر, previous_value: مساعد المتجر}"
+      },
+      {
+        "type": "log",
+        "text": "[CF SHELL REUSED] {reused: true}"
+      },
+      {
+        "type": "log",
+        "text": "[CF SHELL CONTENT SET] {mountedView: phone_optional, mode: fragment}"
+      },
+      {
+        "type": "log",
+        "text": "[CF V2 SHOW PHONE OPTIONAL]"
+      },
+      {
+        "type": "log",
+        "text": "[CF SHELL TITLE WRITE] {seq: 16, render_source: mutation_observer_external, runtime_version: v2-zid-cart-sync-v1, title_value: مساعد المتجر, previous_value: مساعد المتجر}"
+      },
+      {
+        "type": "log",
+        "text": "[CF SHELL TITLE WRITE] {seq: 17, render_source: mutation_observer_external, runtime_version: v2-zid-cart-sync-v1, title_value: مساعد المتجر, previous_value: مساعد المتجر}"
+      },
+      {
+        "type": "log",
+        "text": "[CF REASON_PHONE_SAVE_START V2] {reason_key: price}"
+      },
+      {
+        "type": "log",
+        "text": "[CF RECOVERY FLOW COMPLETE CLOSE]"
+      },
+      {
+        "type": "log",
+        "text": "[CF SHELL MINIMIZE] {mode: launcher}"
+      },
+      {
+        "type": "log",
+        "text": "[CF REASON_PHONE_SAVE_SUCCESS V2]"
+      },
+      {
+        "type": "log",
+        "text": "[CF TRIGGER RECEIVED] {source: exit_intent, phase: raw}"
+      },
+      {
+        "type": "log",
+        "text": "[CF TRIGGER BLOCKED] {reason: recently_dismissed, path: exit_intent_schedule}"
+      },
+      {
+        "type": "log",
+        "text": "[CF TRIGGER BLOCKED REASON] {widget_disabled_effective: false, widget_globally_allowed: true, exit_intent_enabled: true, hesitation_enabled: true, frequency_blocked: false}"
+      },
+      {
+        "type": "log",
+        "text": "[CF TRIGGER DECISION] {trigger_tag: exit_intent, allowed: false, block_reason: recently_dismissed}"
+      }
+    ],
+    "production_console_tail": [
+      {
+        "type": "log",
+        "text": "[CF V2 SHOW CONTINUATION]"
+      },
+      {
+        "type": "log",
+        "text": "[CF SHELL TITLE WRITE] {seq: 12, render_source: mutation_observer_external, runtime_version: v2-zid-cart-sync-v1, title_value: مساعد المتجر, previous_value: مساعد المتجر}"
+      },
+      {
+        "type": "log",
+        "text": "[CF SHELL TITLE WRITE] {seq: 13, render_source: mutation_observer_external, runtime_version: v2-zid-cart-sync-v1, title_value: مساعد المتجر, previous_value: مساعد المتجر}"
+      },
+      {
+        "type": "log",
+        "text": "[CF SHELL LISTENER DUPLICATE BLOCKED] {which: close}"
+      },
+      {
+        "type": "log",
+        "text": "[CF WIDGET TITLE TRUTH] {tag: merchantShellTitle, rendered: مساعد المتجر, config_brand_name: مساعد المتجر, header_fallback: مساعدة}"
+      },
+      {
+        "type": "log",
+        "text": "[CF SHELL TITLE WRITE] {seq: 14, render_source: ensureShell_tail, runtime_version: v2-zid-cart-sync-v1, title_value: مساعد المتجر, previous_value: مساعد المتجر}"
+      },
+      {
+        "type": "log",
+        "text": "[CF WIDGET TITLE TRUTH] {tag: merchantShellTitle, rendered: مساعد المتجر, config_brand_name: مساعد المتجر, header_fallback: مساعدة}"
+      },
+      {
+        "type": "log",
+        "text": "[CF SHELL TITLE WRITE] {seq: 15, render_source: refreshShellVisuals, runtime_version: v2-zid-cart-sync-v1, title_value: مساعد المتجر, previous_value: مساعد المتجر}"
+      },
+      {
+        "type": "log",
+        "text": "[CF SHELL REUSED] {reused: true}"
+      },
+      {
+        "type": "log",
+        "text": "[CF SHELL CONTENT SET] {mountedView: continuation, mode: fragment}"
+      },
+      {
+        "type": "log",
+        "text": "[CF V2 SHOW CONTINUATION]"
+      },
+      {
+        "type": "log",
+        "text": "[CF SHELL TITLE WRITE] {seq: 16, render_source: mutation_observer_external, runtime_version: v2-zid-cart-sync-v1, title_value: مساعد المتجر, previous_value: مساعد المتجر}"
+      },
+      {
+        "type": "log",
+        "text": "[CF SHELL TITLE WRITE] {seq: 17, render_source: mutation_observer_external, runtime_version: v2-zid-cart-sync-v1, title_value: مساعد المتجر, previous_value: مساعد المتجر}"
+      },
+      {
+        "type": "log",
+        "text": "[CF SHELL LISTENER DUPLICATE BLOCKED] {which: close}"
+      },
+      {
+        "type": "log",
+        "text": "[CF WIDGET TITLE TRUTH] {tag: merchantShellTitle, rendered: مساعد المتجر, config_brand_name: مساعد المتجر, header_fallback: مساعدة}"
+      },
+      {
+        "type": "log",
+        "text": "[CF SHELL TITLE WRITE] {seq: 18, render_source: ensureShell_tail, runtime_version: v2-zid-cart-sync-v1, title_value: مساعد المتجر, previous_value: مساعد المتجر}"
+      },
+      {
+        "type": "log",
+        "text": "[CF WIDGET TITLE TRUTH] {tag: merchantShellTitle, rendered: مساعد المتجر, config_brand_name: مساعد المتجر, header_fallback: مساعدة}"
+      },
+      {
+        "type": "log",
+        "text": "[CF SHELL TITLE WRITE] {seq: 19, render_source: refreshShellVisuals, runtime_version: v2-zid-cart-sync-v1, title_value: مساعد المتجر, previous_value: مساعد المتجر}"
+      },
+      {
+        "type": "log",
+        "text": "[CF SHELL REUSED] {reused: true}"
+      },
+      {
+        "type": "log",
+        "text": "[CF SHELL CONTENT SET] {mountedView: phone_optional, mode: fragment}"
+      },
+      {
+        "type": "log",
+        "text": "[CF V2 SHOW PHONE OPTIONAL]"
+      },
+      {
+        "type": "log",
+        "text": "[CF SHELL TITLE WRITE] {seq: 20, render_source: mutation_observer_external, runtime_version: v2-zid-cart-sync-v1, title_value: مساعد المتجر, previous_value: مساعد المتجر}"
+      },
+      {
+        "type": "log",
+        "text": "[CF SHELL TITLE WRITE] {seq: 21, render_source: mutation_observer_external, runtime_version: v2-zid-cart-sync-v1, title_value: مساعد المتجر, previous_value: مساعد المتجر}"
+      },
+      {
+        "type": "log",
+        "text": "[CF REASON_PHONE_SAVE_START V2] {reason_key: price}"
+      },
+      {
+        "type": "log",
+        "text": "[CF SHELL MINIMIZE] {mode: launcher}"
+      },
+      {
+        "type": "log",
+        "text": "[CF REASON_PHONE_SAVE_FAILED V2] {trace: server_reject}"
+      },
+      {
+        "type": "log",
+        "text": "[CF SHELL LISTENER DUPLICATE BLOCKED] {which: close}"
+      },
+      {
+        "type": "log",
+        "text": "[CF WIDGET TITLE TRUTH] {tag: merchantShellTitle, rendered: مساعد المتجر, config_brand_name: مساعد المتجر, header_fallback: مساعدة}"
+      },
+      {
+        "type": "log",
+        "text": "[CF SHELL TITLE WRITE] {seq: 22, render_source: ensureShell_tail, runtime_version: v2-zid-cart-sync-v1, title_value: مساعد المتجر, previous_value: مساعد المتجر}"
+      },
+      {
+        "type": "log",
+        "text": "[CF SHELL LISTENER DUPLICATE BLOCKED] {which: close}"
+      },
+      {
+        "type": "log",
+        "text": "[CF WIDGET TITLE TRUTH] {tag: merchantShellTitle, rendered: مساعد المتجر, config_brand_name: مساعد المتجر, header_fallback: مساعدة}"
+      },
+      {
+        "type": "log",
+        "text": "[CF SHELL TITLE WRITE] {seq: 23, render_source: ensureShell_tail, runtime_version: v2-zid-cart-sync-v1, title_value: مساعد المتجر, previous_value: مساعد المتجر}"
+      },
+      {
+        "type": "log",
+        "text": "[CF WIDGET TITLE TRUTH] {tag: merchantShellTitle, rendered: مساعد المتجر, config_brand_name: مساعد المتجر, header_fallback: مساعدة}"
+      },
+      {
+        "type": "log",
+        "text": "[CF SHELL TITLE WRITE] {seq: 24, render_source: refreshShellVisuals, runtime_version: v2-zid-cart-sync-v1, title_value: مساعد المتجر, previous_value: مساعد المتجر}"
+      },
+      {
+        "type": "log",
+        "text": "[CF SHELL EXPAND] {}"
+      },
+      {
+        "type": "log",
+        "text": "[CF WIDGET TITLE TRUTH] {tag: merchantShellTitle, rendered: مساعد المتجر, config_brand_name: مساعد المتجر, header_fallback: مساعدة}"
+      },
+      {
+        "type": "log",
+        "text": "[CF SHELL TITLE WRITE] {seq: 25, render_source: refreshShellVisuals, runtime_version: v2-zid-cart-sync-v1, title_value: مساعد المتجر, previous_value: مساعد المتجر}"
+      },
+      {
+        "type": "log",
+        "text": "[CF SHELL REUSED] {reused: true}"
+      },
+      {
+        "type": "log",
+        "text": "[CF SHELL CONTENT SET] {mountedView: continuation, mode: fragment}"
+      },
+      {
+        "type": "log",
+        "text": "[CF V2 SHOW CONTINUATION]"
+      },
+      {
+        "type": "log",
+        "text": "[CF SHELL TITLE WRITE] {seq: 26, render_source: mutation_observer_external, runtime_version: v2-zid-cart-sync-v1, title_value: مساعد المتجر, previous_value: مساعد المتجر}"
+      },
+      {
+        "type": "log",
+        "text": "[CF SHELL TITLE WRITE] {seq: 27, render_source: mutation_observer_external, runtime_version: v2-zid-cart-sync-v1, title_value: مساعد المتجر, previous_value: مساعد المتجر}"
+      },
+      {
+        "type": "log",
+        "text": "[CF SHELL TITLE WRITE] {seq: 28, render_source: mutation_observer_external, runtime_version: v2-zid-cart-sync-v1, title_value: مساعد المتجر, previous_value: مساعد المتجر}"
+      },
+      {
+        "type": "log",
+        "text": "[CF SHELL TITLE WRITE] {seq: 29, render_source: mutation_observer_external, runtime_version: v2-zid-cart-sync-v1, title_value: مساعد المتجر, previous_value: مساعد المتجر}"
+      },
+      {
+        "type": "log",
+        "text": "[CF HESITATION TIMER FIRED] {cart_detected: true, hesitation_enabled: true, hesitation_after_seconds: 20, delay_ms: 20000, hesitation_condition: after_cart_add}"
+      },
+      {
+        "type": "log",
+        "text": "[CF V2 SHOW NOW]"
+      },
+      {
+        "type": "log",
+        "text": "[CF TRIGGER FIRED] {source: add_to_cart, timer: hesitation_anchor}"
+      },
+      {
+        "type": "log",
+        "text": "[CF HESITATION DISPATCH] {cart_detected: true, hesitation_enabled: true, hesitation_after_seconds: 20, delay_ms: 20000, hesitation_condition: after_cart_add}"
+      },
+      {
+        "type": "log",
+        "text": "[CF TRIGGER RECEIVED] {source: exit_intent, phase: raw}"
+      },
+      {
+        "type": "log",
+        "text": "[CF TRIGGER SCHEDULED] {source: exit_intent, delay_ms: 10000, timer: exit_intent}"
+      }
+    ]
+  },
+  "raw_journeys": {
+    "local": {
+      "base": "http://127.0.0.1:8011",
+      "label": "local_8011",
+      "ids": {
+        "session_id": "s_9eb4a22b-0d11-4bfe-8277-e38ca9517e0e",
+        "cart_id": "cf_cart_cf4e0f71-3ff1-4945-a756-2a326cda5b73",
+        "phone_done": "1",
+        "suppress": "1",
+        "runtime_version": "v2-cart-identity-verify-1"
+      },
+      "recovery_key": "demo:cf_cart_cf4e0f71-3ff1-4945-a756-2a326cda5b73",
+      "db_row": {
+        "id": 24,
+        "zid_cart_id": "cf_cart_cf4e0f71-3ff1-4945-a756-2a326cda5b73",
+        "customer_phone": "966598877660",
+        "cart_value": 1299.0,
+        "vip_mode": 1,
+        "recovery_session_id": "s_9eb4a22b-0d11-4bfe-8277-e38ca9517e0e",
+        "store_slug": "demo"
+      },
+      "phone_post": {
+        "url": "http://127.0.0.1:8011/api/cartflow/reason",
+        "status": 200,
+        "method": "POST",
+        "t": 1780760026.2879174,
+        "request": {
+          "store_slug": "demo",
+          "session_id": "s_9eb4a22b-0d11-4bfe-8277-e38ca9517e0e",
+          "reason": "price",
+          "merchant_activation": false,
+          "customer_phone": "966598877660",
+          "sub_category": "price_discount_request",
+          "cart_id": "cf_cart_cf4e0f71-3ff1-4945-a756-2a326cda5b73"
+        },
+        "response": {
+          "ok": true
+        }
+      },
+      "vip_row": null,
+      "normal_row": {
+        "merchant_recovery_kind": "normal_case",
+        "merchant_case_row_id": 24,
+        "merchant_cart_value": 1299.0,
+        "merchant_business_state_ar": "بانتظار الإرسال",
+        "merchant_phone_line_ar": "رقم العميل متوفر",
+        "merchant_is_history_slice": false,
+        "merchant_history_note_ar": "",
+        "merchant_last_seen_display": "2026-06-06 15:33",
+        "merchant_reason_chip_class": "c-price",
+        "merchant_reason_chip_label_ar": "💰 السعر مرتفع",
+        "merchant_reason_canonical": "price",
+        "reason_tag": "price",
+        "merchant_time_relative_ar": "الآن",
+        "merchant_coarse_status": "pending",
+        "merchant_has_customer_phone": true,
+        "merchant_cart_primary_bucket": "needs_followup",
+        "merchant_cart_bucket": "attention",
+        "merchant_cart_visible_tabs": [
+          "all",
+          "attention"
+        ],
+        "merchant_status_label_ar": "تحتاج تدخل",
+        "merchant_status_row_class": "s-attention",
+        "merchant_next_action_ar": "تم إرسال الرسالة — ننتظر تفاعل العميل.",
+        "merchant_next_action_urgent": false,
+        "merchant_cart_is_active": true,
+        "merchant_cart_is_terminal": false,
+        "recovery_key": "demo:cf_cart_cf4e0f71-3ff1-4945-a756-2a326cda5b73",
+        "session_id": "s_9eb4a22b-0d11-4bfe-8277-e38ca9517e0e",
+        "cart_id": "cf_cart_cf4e0f71-3ff1-4945-a756-2a326cda5b73",
+        "store_slug": "demo",
+        "customer_phone_present": true,
+        "recovery_status": "pending",
+        "whatsapp_status": "not_sent",
+        "message_preview": null,
+        "last_sent_message_body": null,
+        "sent_at": null,
+        "sent_at_display_ar": null,
+        "returned_to_site": false,
+        "purchased": false,
+        "purchase_completed_at": null,
+        "lifecycle_status": "scheduled",
+        "lifecycle_label_ar": "مجدول / بانتظار",
+        "merchant_whatsapp_line_ar": "ننتظر تفاعل العميل — سيتابع النظام تلقائياً.",
+        "merchant_return_line_ar": null,
+        "merchant_purchase_line_ar": null,
+        "merchant_lifecycle_primary_key": "no_engagement_yet",
+        "merchant_lifecycle_customer_behavior_ar": "العميل لم يتفاعل بعد",
+        "merchant_lifecycle_system_outcome_ar": "ننتظر تفاعل العميل — سيتابع النظام تلقائياً.",
+        "merchant_lifecycle_next_action_ar": "لا حاجة لإجراء — سيتابع النظام تلقائياً.",
+        "recovery_message_context": {},
+        "recovery_context_status": "legacy_context_missing",
+        "messages_page_status": "other",
+        "carts_page_status": "not_sent",
+        "truth_mismatch_detected": false,
+        "truth_mismatch_reason": null,
+        "merchant_message_status_ar": "—",
+        "customer_lifecycle_state": "needs_intervention",
+        "customer_lifecycle_label_ar": "تحتاج تدخل",
+        "customer_lifecycle_what_happened_ar": "تحتاج السلة تدخلاً خاصاً (VIP أو قناة أو معالجة يدوية).",
+        "customer_lifecycle_system_did_ar": "أوقفنا الإرسال الآلي أو تعذّر إكماله.",
+        "customer_lifecycle_what_next_ar": "راجع السلة واتخذ إجراءً يدوياً عند الحاجة.",
+        "customer_lifecycle_merchant_needed_ar": "نعم",
+        "customer_lifecycle_dashboard_action": "archive",
+        "customer_lifecycle_next_followup_line_ar": null,
+        "customer_lifecycle_status_row_class": "s-attention",
+        "customer_lifecycle_completed_variant": null,
+        "customer_lifecycle_is_archived_visual": false,
+        "merchant_followup_sent_count": 0,
+        "merchant_followup_configured_count": 2,
+        "merchant_followup_progress_ar": null,
+        "merchant_followup_sequence_line_ar": null,
+        "merchant_followup_next_line_ar": null
+      },
+      "widget_reopened_after_phone": false,
+      "widget_states": [
+        {
+          "wait_ms": 300,
+          "bubble_display": "block",
+          "shell_step": null,
+          "suppress": "1"
+        },
+        {
+          "wait_ms": 1000,
+          "bubble_display": "block",
+          "shell_step": null,
+          "suppress": "1"
+        },
+        {
+          "wait_ms": 5000,
+          "bubble_display": "block",
+          "shell_step": null,
+          "suppress": "1"
+        },
+        {
+          "wait_ms": 10000,
+          "bubble_display": "block",
+          "shell_step": null,
+          "suppress": "1"
+        },
+        {
+          "wait_ms": 22000,
+          "bubble_display": "block",
+          "shell_step": null,
+          "suppress": "1"
+        }
+      ],
+      "dashboard_normal_last": {
+        "dashboard_partial": true,
+        "dashboard_timeout": true,
+        "dashboard_timeout_stage": "candidates_loaded",
+        "dashboard_wall_budget_s": 12.0,
+        "row_count": 16,
+        "filter_all": 16,
+        "table_rows_dom": 16
+      },
+      "dashboard_vip_last": {
+        "vip_count": 0,
+        "matched_has_phone": null,
+        "matched_manual_contact": null,
+        "matched_unavailable_ar": null
+      },
+      "console_tail": [
+        {
+          "type": "log",
+          "text": "[CF WIDGET TITLE TRUTH] {tag: merchantShellTitle, rendered: مساعد المتجر, config_brand_name: مساعد المتجر, header_fallback: مساعدة}"
+        },
+        {
+          "type": "log",
+          "text": "[CF SHELL TITLE WRITE] {seq: 2, render_source: ensureShell_tail, runtime_version: v2-zid-cart-sync-v1, title_value: مساعد المتجر, previous_value: مساعد المتجر}"
+        },
+        {
+          "type": "log",
+          "text": "[CF WIDGET TITLE TRUTH] {tag: merchantShellTitle, rendered: مساعد المتجر, config_brand_name: مساعد المتجر, header_fallback: مساعدة}"
+        },
+        {
+          "type": "log",
+          "text": "[CF SHELL TITLE WRITE] {seq: 3, render_source: refreshShellVisuals, runtime_version: v2-zid-cart-sync-v1, title_value: مساعد المتجر, previous_value: مساعد المتجر}"
+        },
+        {
+          "type": "log",
+          "text": "[CF SHELL OPEN] {created: true}"
+        },
+        {
+          "type": "log",
+          "text": "[CF SHELL CONTENT SET] {mountedView: yes_no, mode: fragment}"
+        },
+        {
+          "type": "log",
+          "text": "[CF V2 SHOW YESNO]"
+        },
+        {
+          "type": "log",
+          "text": "[CF WIDGET SHOW] {tag: manual_debug, layer: v2}"
+        },
+        {
+          "type": "log",
+          "text": "[CF WIDGET SHOW V2] {tag: manual_debug}"
+        },
+        {
+          "type": "log",
+          "text": "[CF SHELL TITLE WRITE] {seq: 4, render_source: mutation_observer_external, runtime_version: v2-zid-cart-sync-v1, title_value: مساعد المتجر, previous_value: مساعد المتجر}"
+        },
+        {
+          "type": "log",
+          "text": "[CF SHELL TITLE WRITE] {seq: 5, render_source: mutation_observer_external, runtime_version: v2-zid-cart-sync-v1, title_value: مساعد المتجر, previous_value: مساعد المتجر}"
+        },
+        {
+          "type": "log",
+          "text": "[CF SHELL LISTENER DUPLICATE BLOCKED] {which: close}"
+        },
+        {
+          "type": "log",
+          "text": "[CF WIDGET TITLE TRUTH] {tag: merchantShellTitle, rendered: مساعد المتجر, config_brand_name: مساعد المتجر, header_fallback: مساعدة}"
+        },
+        {
+          "type": "log",
+          "text": "[CF SHELL TITLE WRITE] {seq: 6, render_source: ensureShell_tail, runtime_version: v2-zid-cart-sync-v1, title_value: مساعد المتجر, previous_value: مساعد المتجر}"
+        },
+        {
+          "type": "log",
+          "text": "[CF WIDGET TITLE TRUTH] {tag: merchantShellTitle, rendered: مساعد المتجر, config_brand_name: مساعد المتجر, header_fallback: مساعدة}"
+        },
+        {
+          "type": "log",
+          "text": "[CF SHELL TITLE WRITE] {seq: 7, render_source: refreshShellVisuals, runtime_version: v2-zid-cart-sync-v1, title_value: مساعد المتجر, previous_value: مساعد المتجر}"
+        },
+        {
+          "type": "log",
+          "text": "[CF SHELL REUSED] {reused: true}"
+        },
+        {
+          "type": "log",
+          "text": "[CF SHELL CONTENT SET] {mountedView: reason_grid, mode: fragment}"
+        },
+        {
+          "type": "log",
+          "text": "[CF V2 SHOW REASONS]"
+        },
+        {
+          "type": "log",
+          "text": "[CF SHELL TITLE WRITE] {seq: 8, render_source: mutation_observer_external, runtime_version: v2-zid-cart-sync-v1, title_value: مساعد المتجر, previous_value: مساعد المتجر}"
+        },
+        {
+          "type": "log",
+          "text": "[CF SHELL TITLE WRITE] {seq: 9, render_source: mutation_observer_external, runtime_version: v2-zid-cart-sync-v1, title_value: مساعد المتجر, previous_value: مساعد المتجر}"
+        },
+        {
+          "type": "log",
+          "text": "[CF REASON SELECTED V2] {reason_key: price}"
+        },
+        {
+          "type": "log",
+          "text": "[CF SHELL LISTENER DUPLICATE BLOCKED] {which: close}"
+        },
+        {
+          "type": "log",
+          "text": "[CF WIDGET TITLE TRUTH] {tag: merchantShellTitle, rendered: مساعد المتجر, config_brand_name: مساعد المتجر, header_fallback: مساعدة}"
+        },
+        {
+          "type": "log",
+          "text": "[CF SHELL TITLE WRITE] {seq: 10, render_source: ensureShell_tail, runtime_version: v2-zid-cart-sync-v1, title_value: مساعد المتجر, previous_value: مساعد المتجر}"
+        },
+        {
+          "type": "log",
+          "text": "[CF WIDGET TITLE TRUTH] {tag: merchantShellTitle, rendered: مساعد المتجر, config_brand_name: مساعد المتجر, header_fallback: مساعدة}"
+        },
+        {
+          "type": "log",
+          "text": "[CF SHELL TITLE WRITE] {seq: 11, render_source: refreshShellVisuals, runtime_version: v2-zid-cart-sync-v1, title_value: مساعد المتجر, previous_value: مساعد المتجر}"
+        },
+        {
+          "type": "log",
+          "text": "[CF SHELL REUSED] {reused: true}"
+        },
+        {
+          "type": "log",
+          "text": "[CF SHELL CONTENT SET] {mountedView: continuation, mode: fragment}"
+        },
+        {
+          "type": "log",
+          "text": "[CF V2 SHOW CONTINUATION]"
+        },
+        {
+          "type": "log",
+          "text": "[CF SHELL TITLE WRITE] {seq: 12, render_source: mutation_observer_external, runtime_version: v2-zid-cart-sync-v1, title_value: مساعد المتجر, previous_value: مساعد المتجر}"
+        },
+        {
+          "type": "log",
+          "text": "[CF SHELL TITLE WRITE] {seq: 13, render_source: mutation_observer_external, runtime_version: v2-zid-cart-sync-v1, title_value: مساعد المتجر, previous_value: مساعد المتجر}"
+        },
+        {
+          "type": "log",
+          "text": "[CF SHELL LISTENER DUPLICATE BLOCKED] {which: close}"
+        },
+        {
+          "type": "log",
+          "text": "[CF WIDGET TITLE TRUTH] {tag: merchantShellTitle, rendered: مساعد المتجر, config_brand_name: مساعد المتجر, header_fallback: مساعدة}"
+        },
+        {
+          "type": "log",
+          "text": "[CF SHELL TITLE WRITE] {seq: 14, render_source: ensureShell_tail, runtime_version: v2-zid-cart-sync-v1, title_value: مساعد المتجر, previous_value: مساعد المتجر}"
+        },
+        {
+          "type": "log",
+          "text": "[CF WIDGET TITLE TRUTH] {tag: merchantShellTitle, rendered: مساعد المتجر, config_brand_name: مساعد المتجر, header_fallback: مساعدة}"
+        },
+        {
+          "type": "log",
+          "text": "[CF SHELL TITLE WRITE] {seq: 15, render_source: refreshShellVisuals, runtime_version: v2-zid-cart-sync-v1, title_value: مساعد المتجر, previous_value: مساعد المتجر}"
+        },
+        {
+          "type": "log",
+          "text": "[CF SHELL REUSED] {reused: true}"
+        },
+        {
+          "type": "log",
+          "text": "[CF SHELL CONTENT SET] {mountedView: phone_optional, mode: fragment}"
+        },
+        {
+          "type": "log",
+          "text": "[CF V2 SHOW PHONE OPTIONAL]"
+        },
+        {
+          "type": "log",
+          "text": "[CF SHELL TITLE WRITE] {seq: 16, render_source: mutation_observer_external, runtime_version: v2-zid-cart-sync-v1, title_value: مساعد المتجر, previous_value: مساعد المتجر}"
+        },
+        {
+          "type": "log",
+          "text": "[CF SHELL TITLE WRITE] {seq: 17, render_source: mutation_observer_external, runtime_version: v2-zid-cart-sync-v1, title_value: مساعد المتجر, previous_value: مساعد المتجر}"
+        },
+        {
+          "type": "log",
+          "text": "[CF REASON_PHONE_SAVE_START V2] {reason_key: price}"
+        },
+        {
+          "type": "log",
+          "text": "[CF RECOVERY FLOW COMPLETE CLOSE]"
+        },
+        {
+          "type": "log",
+          "text": "[CF SHELL MINIMIZE] {mode: launcher}"
+        },
+        {
+          "type": "log",
+          "text": "[CF REASON_PHONE_SAVE_SUCCESS V2]"
+        },
+        {
+          "type": "log",
+          "text": "[CF TRIGGER RECEIVED] {source: exit_intent, phase: raw}"
+        },
+        {
+          "type": "log",
+          "text": "[CF TRIGGER BLOCKED] {reason: recently_dismissed, path: exit_intent_schedule}"
+        },
+        {
+          "type": "log",
+          "text": "[CF TRIGGER BLOCKED REASON] {widget_disabled_effective: false, widget_globally_allowed: true, exit_intent_enabled: true, hesitation_enabled: true, frequency_blocked: false}"
+        },
+        {
+          "type": "log",
+          "text": "[CF TRIGGER DECISION] {trigger_tag: exit_intent, allowed: false, block_reason: recently_dismissed}"
+        }
+      ],
+      "network_timings": [
+        {
+          "url": "http://127.0.0.1:8011/api/dashboard/normal-carts",
+          "status": 200,
+          "partial": true,
+          "timeout_stage": "payload_row",
+          "rows": 9
+        },
+        {
+          "url": "http://127.0.0.1:8011/api/dashboard/normal-carts",
+          "status": 200,
+          "partial": true,
+          "timeout_stage": "candidates_loaded",
+          "rows": 16
+        }
+      ],
+      "screenshots": [
+        "C:\\Users\\Toshiba\\Desktop\\cartflow\\scripts\\_production_truth_audit_out\\local_8011\\A_before_journey.png",
+        "C:\\Users\\Toshiba\\Desktop\\cartflow\\scripts\\_production_truth_audit_out\\local_8011\\B_after_phone_save.png",
+        "C:\\Users\\Toshiba\\Desktop\\cartflow\\scripts\\_production_truth_audit_out\\local_8011\\C_after_22s.png",
+        "C:\\Users\\Toshiba\\Desktop\\cartflow\\scripts\\_production_truth_audit_out\\local_8011\\D_dashboard_carts.png",
+        "C:\\Users\\Toshiba\\Desktop\\cartflow\\scripts\\_production_truth_audit_out\\local_8011\\E_dashboard_vip.png"
+      ]
+    },
+    "production": {
+      "base": "https://smartreplyai.net",
+      "label": "production",
+      "ids": {
+        "session_id": "s_464f5929-f22a-43a0-b3dc-8bcd35eb520e",
+        "cart_id": "cf_cart_1725ef76-ff17-46ed-baec-91f225b2de2c",
+        "phone_done": "1",
+        "suppress": null,
+        "runtime_version": "v2-cart-identity-verify-1"
+      },
+      "recovery_key": "demo:cf_cart_1725ef76-ff17-46ed-baec-91f225b2de2c",
+      "db_row": null,
+      "phone_post": {
+        "url": "https://smartreplyai.net/api/cartflow/reason",
+        "status": 400,
+        "method": "POST",
+        "t": 1780760086.1197336,
+        "request": {
+          "store_slug": "demo",
+          "session_id": "s_464f5929-f22a-43a0-b3dc-8bcd35eb520e",
+          "reason": "price",
+          "merchant_activation": false,
+          "customer_phone": "966598877660"
+        },
+        "response": {
+          "ok": false,
+          "error": "sub_category_required_or_invalid"
+        }
+      },
+      "vip_row": null,
+      "normal_row": null,
+      "widget_reopened_after_phone": false,
+      "widget_states": [
+        {
+          "wait_ms": 300,
+          "bubble_display": "block",
+          "shell_step": null,
+          "suppress": null
+        },
+        {
+          "wait_ms": 1000,
+          "bubble_display": "block",
+          "shell_step": null,
+          "suppress": null
+        },
+        {
+          "wait_ms": 5000,
+          "bubble_display": "block",
+          "shell_step": null,
+          "suppress": null
+        },
+        {
+          "wait_ms": 10000,
+          "bubble_display": "block",
+          "shell_step": null,
+          "suppress": null
+        },
+        {
+          "wait_ms": 22000,
+          "bubble_display": "block",
+          "shell_step": null,
+          "suppress": null
+        }
+      ],
+      "dashboard_normal_last": {
+        "dashboard_partial": null,
+        "dashboard_timeout": null,
+        "dashboard_timeout_stage": null,
+        "dashboard_wall_budget_s": null,
+        "row_count": 0,
+        "filter_all": null,
+        "table_rows_dom": 0
+      },
+      "dashboard_vip_last": {
+        "vip_count": 0,
+        "matched_has_phone": null,
+        "matched_manual_contact": null,
+        "matched_unavailable_ar": null
+      },
+      "console_tail": [
+        {
+          "type": "log",
+          "text": "[CF V2 SHOW CONTINUATION]"
+        },
+        {
+          "type": "log",
+          "text": "[CF SHELL TITLE WRITE] {seq: 12, render_source: mutation_observer_external, runtime_version: v2-zid-cart-sync-v1, title_value: مساعد المتجر, previous_value: مساعد المتجر}"
+        },
+        {
+          "type": "log",
+          "text": "[CF SHELL TITLE WRITE] {seq: 13, render_source: mutation_observer_external, runtime_version: v2-zid-cart-sync-v1, title_value: مساعد المتجر, previous_value: مساعد المتجر}"
+        },
+        {
+          "type": "log",
+          "text": "[CF SHELL LISTENER DUPLICATE BLOCKED] {which: close}"
+        },
+        {
+          "type": "log",
+          "text": "[CF WIDGET TITLE TRUTH] {tag: merchantShellTitle, rendered: مساعد المتجر, config_brand_name: مساعد المتجر, header_fallback: مساعدة}"
+        },
+        {
+          "type": "log",
+          "text": "[CF SHELL TITLE WRITE] {seq: 14, render_source: ensureShell_tail, runtime_version: v2-zid-cart-sync-v1, title_value: مساعد المتجر, previous_value: مساعد المتجر}"
+        },
+        {
+          "type": "log",
+          "text": "[CF WIDGET TITLE TRUTH] {tag: merchantShellTitle, rendered: مساعد المتجر, config_brand_name: مساعد المتجر, header_fallback: مساعدة}"
+        },
+        {
+          "type": "log",
+          "text": "[CF SHELL TITLE WRITE] {seq: 15, render_source: refreshShellVisuals, runtime_version: v2-zid-cart-sync-v1, title_value: مساعد المتجر, previous_value: مساعد المتجر}"
+        },
+        {
+          "type": "log",
+          "text": "[CF SHELL REUSED] {reused: true}"
+        },
+        {
+          "type": "log",
+          "text": "[CF SHELL CONTENT SET] {mountedView: continuation, mode: fragment}"
+        },
+        {
+          "type": "log",
+          "text": "[CF V2 SHOW CONTINUATION]"
+        },
+        {
+          "type": "log",
+          "text": "[CF SHELL TITLE WRITE] {seq: 16, render_source: mutation_observer_external, runtime_version: v2-zid-cart-sync-v1, title_value: مساعد المتجر, previous_value: مساعد المتجر}"
+        },
+        {
+          "type": "log",
+          "text": "[CF SHELL TITLE WRITE] {seq: 17, render_source: mutation_observer_external, runtime_version: v2-zid-cart-sync-v1, title_value: مساعد المتجر, previous_value: مساعد المتجر}"
+        },
+        {
+          "type": "log",
+          "text": "[CF SHELL LISTENER DUPLICATE BLOCKED] {which: close}"
+        },
+        {
+          "type": "log",
+          "text": "[CF WIDGET TITLE TRUTH] {tag: merchantShellTitle, rendered: مساعد المتجر, config_brand_name: مساعد المتجر, header_fallback: مساعدة}"
+        },
+        {
+          "type": "log",
+          "text": "[CF SHELL TITLE WRITE] {seq: 18, render_source: ensureShell_tail, runtime_version: v2-zid-cart-sync-v1, title_value: مساعد المتجر, previous_value: مساعد المتجر}"
+        },
+        {
+          "type": "log",
+          "text": "[CF WIDGET TITLE TRUTH] {tag: merchantShellTitle, rendered: مساعد المتجر, config_brand_name: مساعد المتجر, header_fallback: مساعدة}"
+        },
+        {
+          "type": "log",
+          "text": "[CF SHELL TITLE WRITE] {seq: 19, render_source: refreshShellVisuals, runtime_version: v2-zid-cart-sync-v1, title_value: مساعد المتجر, previous_value: مساعد المتجر}"
+        },
+        {
+          "type": "log",
+          "text": "[CF SHELL REUSED] {reused: true}"
+        },
+        {
+          "type": "log",
+          "text": "[CF SHELL CONTENT SET] {mountedView: phone_optional, mode: fragment}"
+        },
+        {
+          "type": "log",
+          "text": "[CF V2 SHOW PHONE OPTIONAL]"
+        },
+        {
+          "type": "log",
+          "text": "[CF SHELL TITLE WRITE] {seq: 20, render_source: mutation_observer_external, runtime_version: v2-zid-cart-sync-v1, title_value: مساعد المتجر, previous_value: مساعد المتجر}"
+        },
+        {
+          "type": "log",
+          "text": "[CF SHELL TITLE WRITE] {seq: 21, render_source: mutation_observer_external, runtime_version: v2-zid-cart-sync-v1, title_value: مساعد المتجر, previous_value: مساعد المتجر}"
+        },
+        {
+          "type": "log",
+          "text": "[CF REASON_PHONE_SAVE_START V2] {reason_key: price}"
+        },
+        {
+          "type": "log",
+          "text": "[CF SHELL MINIMIZE] {mode: launcher}"
+        },
+        {
+          "type": "log",
+          "text": "[CF REASON_PHONE_SAVE_FAILED V2] {trace: server_reject}"
+        },
+        {
+          "type": "log",
+          "text": "[CF SHELL LISTENER DUPLICATE BLOCKED] {which: close}"
+        },
+        {
+          "type": "log",
+          "text": "[CF WIDGET TITLE TRUTH] {tag: merchantShellTitle, rendered: مساعد المتجر, config_brand_name: مساعد المتجر, header_fallback: مساعدة}"
+        },
+        {
+          "type": "log",
+          "text": "[CF SHELL TITLE WRITE] {seq: 22, render_source: ensureShell_tail, runtime_version: v2-zid-cart-sync-v1, title_value: مساعد المتجر, previous_value: مساعد المتجر}"
+        },
+        {
+          "type": "log",
+          "text": "[CF SHELL LISTENER DUPLICATE BLOCKED] {which: close}"
+        },
+        {
+          "type": "log",
+          "text": "[CF WIDGET TITLE TRUTH] {tag: merchantShellTitle, rendered: مساعد المتجر, config_brand_name: مساعد المتجر, header_fallback: مساعدة}"
+        },
+        {
+          "type": "log",
+          "text": "[CF SHELL TITLE WRITE] {seq: 23, render_source: ensureShell_tail, runtime_version: v2-zid-cart-sync-v1, title_value: مساعد المتجر, previous_value: مساعد المتجر}"
+        },
+        {
+          "type": "log",
+          "text": "[CF WIDGET TITLE TRUTH] {tag: merchantShellTitle, rendered: مساعد المتجر, config_brand_name: مساعد المتجر, header_fallback: مساعدة}"
+        },
+        {
+          "type": "log",
+          "text": "[CF SHELL TITLE WRITE] {seq: 24, render_source: refreshShellVisuals, runtime_version: v2-zid-cart-sync-v1, title_value: مساعد المتجر, previous_value: مساعد المتجر}"
+        },
+        {
+          "type": "log",
+          "text": "[CF SHELL EXPAND] {}"
+        },
+        {
+          "type": "log",
+          "text": "[CF WIDGET TITLE TRUTH] {tag: merchantShellTitle, rendered: مساعد المتجر, config_brand_name: مساعد المتجر, header_fallback: مساعدة}"
+        },
+        {
+          "type": "log",
+          "text": "[CF SHELL TITLE WRITE] {seq: 25, render_source: refreshShellVisuals, runtime_version: v2-zid-cart-sync-v1, title_value: مساعد المتجر, previous_value: مساعد المتجر}"
+        },
+        {
+          "type": "log",
+          "text": "[CF SHELL REUSED] {reused: true}"
+        },
+        {
+          "type": "log",
+          "text": "[CF SHELL CONTENT SET] {mountedView: continuation, mode: fragment}"
+        },
+        {
+          "type": "log",
+          "text": "[CF V2 SHOW CONTINUATION]"
+        },
+        {
+          "type": "log",
+          "text": "[CF SHELL TITLE WRITE] {seq: 26, render_source: mutation_observer_external, runtime_version: v2-zid-cart-sync-v1, title_value: مساعد المتجر, previous_value: مساعد المتجر}"
+        },
+        {
+          "type": "log",
+          "text": "[CF SHELL TITLE WRITE] {seq: 27, render_source: mutation_observer_external, runtime_version: v2-zid-cart-sync-v1, title_value: مساعد المتجر, previous_value: مساعد المتجر}"
+        },
+        {
+          "type": "log",
+          "text": "[CF SHELL TITLE WRITE] {seq: 28, render_source: mutation_observer_external, runtime_version: v2-zid-cart-sync-v1, title_value: مساعد المتجر, previous_value: مساعد المتجر}"
+        },
+        {
+          "type": "log",
+          "text": "[CF SHELL TITLE WRITE] {seq: 29, render_source: mutation_observer_external, runtime_version: v2-zid-cart-sync-v1, title_value: مساعد المتجر, previous_value: مساعد المتجر}"
+        },
+        {
+          "type": "log",
+          "text": "[CF HESITATION TIMER FIRED] {cart_detected: true, hesitation_enabled: true, hesitation_after_seconds: 20, delay_ms: 20000, hesitation_condition: after_cart_add}"
+        },
+        {
+          "type": "log",
+          "text": "[CF V2 SHOW NOW]"
+        },
+        {
+          "type": "log",
+          "text": "[CF TRIGGER FIRED] {source: add_to_cart, timer: hesitation_anchor}"
+        },
+        {
+          "type": "log",
+          "text": "[CF HESITATION DISPATCH] {cart_detected: true, hesitation_enabled: true, hesitation_after_seconds: 20, delay_ms: 20000, hesitation_condition: after_cart_add}"
+        },
+        {
+          "type": "log",
+          "text": "[CF TRIGGER RECEIVED] {source: exit_intent, phase: raw}"
+        },
+        {
+          "type": "log",
+          "text": "[CF TRIGGER SCHEDULED] {source: exit_intent, delay_ms: 10000, timer: exit_intent}"
+        }
+      ],
+      "network_timings": [],
+      "screenshots": [
+        "C:\\Users\\Toshiba\\Desktop\\cartflow\\scripts\\_production_truth_audit_out\\production\\A_before_journey.png",
+        "C:\\Users\\Toshiba\\Desktop\\cartflow\\scripts\\_production_truth_audit_out\\production\\B_after_phone_save.png",
+        "C:\\Users\\Toshiba\\Desktop\\cartflow\\scripts\\_production_truth_audit_out\\production\\C_after_22s.png",
+        "C:\\Users\\Toshiba\\Desktop\\cartflow\\scripts\\_production_truth_audit_out\\production\\D_dashboard_carts.png",
+        "C:\\Users\\Toshiba\\Desktop\\cartflow\\scripts\\_production_truth_audit_out\\production\\E_dashboard_vip.png"
+      ]
+    }
+  }
+}
