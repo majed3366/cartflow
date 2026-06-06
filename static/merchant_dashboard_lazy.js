@@ -36,9 +36,12 @@
   var merchantRefreshInFlight = false;
   var merchantRefreshTimer = null;
   var normalCartsFetchGen = 0;
+  var normalCartsAppliedGen = 0;
   var normalCartsBootInFlight = false;
   var normalCartsBootComplete = false;
   var normalCartsHasRenderedRows = false;
+  var lastNormalCartsFilterCounts = {};
+  var NORMAL_CARTS_CACHE_KEY = "ma_normal_carts_cache_v1";
 
   function isUnifiedSetup(mse) {
     if (!mse || typeof mse !== "object") return false;
@@ -95,14 +98,134 @@
         source: source || "",
         token: merchantDashboardRefreshToken,
       });
-      if (
-        normalCartsBootComplete &&
-        !merchantRefreshInFlight &&
-        (source || "") !== "refresh-state"
-      ) {
-        fetchNormalCarts("token_" + (source || "payload"));
+      scheduleNormalCartsTokenRefetch("token_" + (source || "payload"));
+    }
+  }
+
+  function scheduleNormalCartsTokenRefetch(label) {
+    if (!label) label = "token_refetch";
+    if (normalCartsBootInFlight && !normalCartsBootComplete) {
+      window.__maNormalCartsTokenRefetchAfterBoot = label;
+      return;
+    }
+    fetchNormalCarts(label);
+  }
+
+  function persistNormalCartsCache(d) {
+    try {
+      if (!d || !d.ok) return;
+      var rows = normalCartsPayloadRows(d);
+      if (!rows.length) return;
+      sessionStorage.setItem(
+        NORMAL_CARTS_CACHE_KEY,
+        JSON.stringify({
+          rows: rows,
+          archived: (d && d.merchant_archived_carts_page_rows) || [],
+          table: (d && d.merchant_table_rows) || [],
+          fc: (d && d.merchant_cart_filter_counts) || {},
+          token: (d && d.merchant_dashboard_refresh_token) || "",
+          saved_at: Date.now(),
+        })
+      );
+    } catch (_cacheErr) {
+      /* ignore */
+    }
+  }
+
+  function hydrateNormalCartsCache() {
+    try {
+      var raw = sessionStorage.getItem(NORMAL_CARTS_CACHE_KEY);
+      if (!raw) return false;
+      var c = JSON.parse(raw);
+      if (!c || !c.rows || !c.rows.length) return false;
+      lastNormalCartsFilterCounts = c.fc || {};
+      renderNormalCartsTables({
+        ok: true,
+        merchant_carts_page_rows: c.rows,
+        merchant_archived_carts_page_rows: c.archived || [],
+        merchant_table_rows: c.table && c.table.length ? c.table : c.rows.slice(0, 8),
+        merchant_cart_filter_counts: c.fc || {},
+      });
+      if (c.token) {
+        merchantDashboardRefreshToken = String(c.token);
+      }
+      normalCartsHasRenderedRows = true;
+      logClientRefresh("normal_carts_cache_hydrate", { rows: c.rows.length });
+      return true;
+    } catch (_hydrateErr) {
+      return false;
+    }
+  }
+
+  function cartIdInNormalRows(cartId) {
+    var cid = String(cartId || "").trim();
+    if (!cid) return false;
+    var i;
+    for (i = 0; i < lastNormalCartsPageRows.length; i++) {
+      if (String(lastNormalCartsPageRows[i].cart_id || "").trim() === cid) {
+        return true;
       }
     }
+    return false;
+  }
+
+  function startPendingNewCartWatcher() {
+    var cid = "";
+    try {
+      cid = String(sessionStorage.getItem("cartflow_cart_event_id") || "").trim();
+    } catch (_ssErr) {
+      cid = "";
+    }
+    if (!cid || window.__maPendingCartWatchActive) return;
+    if (cartIdInNormalRows(cid)) return;
+    window.__maPendingCartWatchActive = true;
+    var tries = 0;
+    function tick() {
+      tries += 1;
+      if (cartIdInNormalRows(cid) || tries > 25) {
+        window.__maPendingCartWatchActive = false;
+        return;
+      }
+      fetchNormalCarts("pending_cart_poll");
+      window.setTimeout(tick, 1200);
+    }
+    window.setTimeout(tick, 400);
+  }
+
+  function rerenderCartsFromMemory(reason) {
+    if (!lastNormalCartsPageRows.length) {
+      if (hydrateNormalCartsCache()) {
+        logClientRefresh("carts_rerender_cache", { reason: reason || "" });
+      }
+      return;
+    }
+    renderNormalCartsTables({
+      ok: true,
+      merchant_carts_page_rows: lastNormalCartsPageRows,
+      merchant_archived_carts_page_rows: lastArchivedCartsPageRows,
+      merchant_table_rows: lastNormalCartsPageRows.slice(0, 8),
+      merchant_cart_filter_counts: lastNormalCartsFilterCounts,
+    });
+    logClientRefresh("carts_rerender_memory", {
+      reason: reason || "",
+      rows: lastNormalCartsPageRows.length,
+    });
+  }
+
+  function syncCartsPageOnHashChange() {
+    var hashRaw = (location.hash || "").split("?")[0].toLowerCase();
+    if (
+      hashRaw !== "#carts" &&
+      hashRaw !== "#followup" &&
+      hashRaw !== "#completed"
+    ) {
+      return;
+    }
+    rerenderCartsFromMemory("hashchange");
+    if (!lastNormalCartsPageRows.length) {
+      fetchNormalCarts("hash_carts_empty");
+    }
+    startPendingNewCartWatcher();
   }
 
   function probeSetupExperienceRoot() {
@@ -2461,6 +2584,7 @@
     }
     applyCompletedCartsTable(lastNormalCartsPageRows, lastArchivedCartsPageRows);
     var fc = (d && d.merchant_cart_filter_counts) || {};
+    lastNormalCartsFilterCounts = fc;
     function sf(k, id) {
       var el = byId(id);
       if (el) el.textContent = String(fc[k] != null ? fc[k] : 0);
@@ -2496,10 +2620,11 @@
 
   function applyNormalCarts(d, fetchGen) {
     if (!d || !d.ok) return;
-    if (fetchGen != null && fetchGen !== normalCartsFetchGen) {
+    if (fetchGen != null && fetchGen < normalCartsAppliedGen) {
       logClientRefresh("normal_carts_stale_skip", {
         fetchGen: fetchGen,
-        currentGen: normalCartsFetchGen,
+        appliedGen: normalCartsAppliedGen,
+        inflightGen: normalCartsFetchGen,
       });
       return;
     }
@@ -2513,6 +2638,7 @@
         hadRows: lastNormalCartsPageRows.length,
       });
       if (lastNormalCartsPageRows.length) {
+        rerenderCartsFromMemory("partial_keep");
         scheduleNormalCartsRetry(d.dashboard_timeout_stage || "partial");
         return;
       }
@@ -2526,6 +2652,7 @@
       var filterAll = parseInt(fcGuard.all, 10);
       if (isFinite(filterAll) && filterAll > 0) {
         logClientRefresh("normal_carts_empty_mismatch_retry", { filterAll: filterAll });
+        rerenderCartsFromMemory("empty_mismatch_keep");
         scheduleNormalCartsRetry("empty_mismatch");
         return;
       }
@@ -2533,12 +2660,18 @@
 
     ingestRefreshToken(d, "normal-carts");
     renderNormalCartsTables(d);
+    persistNormalCartsCache(d);
+    if (fetchGen != null) {
+      normalCartsAppliedGen = Math.max(normalCartsAppliedGen, fetchGen);
+    }
     normalCartsBootComplete = true;
     logClientRefresh("normal_carts_applied", {
       rows: pageRows.length,
       degraded: degraded,
       partial: !!d.dashboard_partial,
+      appliedGen: normalCartsAppliedGen,
     });
+    startPendingNewCartWatcher();
   }
 
   function fetchNormalCarts(label) {
@@ -3132,7 +3265,6 @@
     });
     Promise.allSettled([
       fetchSection("/api/dashboard/summary", applySummary, "summary"),
-      fetchNormalCarts("refresh_core"),
       fetchSection("/api/dashboard/messages", applyMessages, "messages"),
       fetchSection("/api/dashboard/vip-carts", applyVipCarts, "vip_carts"),
     ]).finally(function () {
@@ -3141,7 +3273,13 @@
         reason: reason || "unknown",
         token: merchantDashboardRefreshToken,
       });
+      if (window.__maNormalCartsTokenRefetchAfterBoot) {
+        var lbl = window.__maNormalCartsTokenRefetchAfterBoot;
+        window.__maNormalCartsTokenRefetchAfterBoot = "";
+        fetchNormalCarts(lbl);
+      }
     });
+    fetchNormalCarts("refresh_core");
   }
 
   function checkRefreshState() {
@@ -3163,14 +3301,10 @@
           return;
         }
         if (next !== merchantDashboardRefreshToken) {
-          if (merchantRefreshInFlight) {
-            logClientRefresh("token_changed_deferred", { to: next });
-            return;
-          }
           var prev = merchantDashboardRefreshToken;
           merchantDashboardRefreshToken = next;
           logClientRefresh("token_changed", { from: prev, to: next });
-          refreshCoreSections("refresh_token_changed");
+          scheduleNormalCartsTokenRefetch("token_refresh_state");
         }
       })
       .catch(function () {
@@ -3184,7 +3318,16 @@
     merchantRefreshTimer = window.setInterval(function () {
       if (document.hidden) return;
       checkRefreshState();
-    }, 5000);
+    }, 2500);
+    document.addEventListener("visibilitychange", function () {
+      if (!document.hidden) {
+        checkRefreshState();
+        if (!lastNormalCartsPageRows.length) {
+          fetchNormalCarts("visibility_resume");
+        }
+        startPendingNewCartWatcher();
+      }
+    });
   }
 
   function bootLazyDashboard() {
@@ -3197,10 +3340,17 @@
     }
     if (!byId("ma-kpi-abandoned")) return;
 
-    /* Priority: normal-carts first so merchant table paints before secondary sections. */
+    /* Stale-while-revalidate: paint cached rows immediately, then refresh. */
+    hydrateNormalCartsCache();
     normalCartsBootInFlight = true;
     fetchNormalCarts("boot_priority").finally(function () {
       normalCartsBootInFlight = false;
+      if (window.__maNormalCartsTokenRefetchAfterBoot) {
+        var bootLbl = window.__maNormalCartsTokenRefetchAfterBoot;
+        window.__maNormalCartsTokenRefetchAfterBoot = "";
+        fetchNormalCarts(bootLbl);
+      }
+      startPendingNewCartWatcher();
       var jobs = [
         fetchSection("/api/dashboard/summary", applySummary, "summary"),
         fetch("/api/dashboard/vip-carts", { credentials: "same-origin" })
@@ -3221,21 +3371,30 @@
   window.maApplyVipCartsPayload = applyVipCarts;
   window.maSyncHomeActivation = syncHomeActivationFromCache;
   window.MERCHANT_SETUP_RENDER_BUILD = MERCHANT_SETUP_RENDER_BUILD;
+  window.maFetchNormalCartsNow = function (label) {
+    return fetchNormalCarts(label || "manual_now");
+  };
+
   window.__maNormalCartsTestHooks = {
     applyNormalCarts: applyNormalCarts,
     fetchNormalCarts: fetchNormalCarts,
     renderNormalCartsTables: renderNormalCartsTables,
+    hydrateNormalCartsCache: hydrateNormalCartsCache,
     getLastRows: function () {
       return lastNormalCartsPageRows.slice();
     },
     getFetchGen: function () {
       return normalCartsFetchGen;
     },
+    getAppliedGen: function () {
+      return normalCartsAppliedGen;
+    },
   };
 
   window.addEventListener("hashchange", function () {
     syncHomeActivationFromCache();
     try {
+      syncCartsPageOnHashChange();
       var hashRaw = (location.hash || "").split("?")[0].toLowerCase();
       if (
         hashRaw === "#completed" &&

@@ -40,13 +40,25 @@ class DashboardCartsDomStabilityTests(unittest.TestCase):
     def test_lazy_js_does_not_clear_rows_on_partial_empty(self) -> None:
         js = self._lazy_js
         self.assertIn("normalCartsFetchGen", js)
+        self.assertIn("normalCartsAppliedGen", js)
         self.assertIn("normal_carts_stale_skip", js)
+        self.assertIn("appliedGen", js)
         self.assertIn("normal_carts_partial_empty", js)
         self.assertIn("lastNormalCartsPageRows.length", js)
         self.assertIn("جاري تحميل السلال", js)
         self.assertIn("normal_carts_empty_mismatch_retry", js)
         self.assertIn("boot_priority", js)
         self.assertIn("normalCartsBootInFlight", js)
+        self.assertIn("hydrateNormalCartsCache", js)
+        self.assertIn("pending_cart_poll", js)
+        self.assertIn("partial_keep", js)
+        self.assertIn("token_refresh_state", js)
+
+    def test_lazy_js_new_cart_refresh_triggers_refetch(self) -> None:
+        js = self._lazy_js
+        self.assertIn("startPendingNewCartWatcher", js)
+        self.assertIn("scheduleNormalCartsTokenRefetch", js)
+        self.assertIn("cartflow_cart_event_id", js)
 
     def test_lazy_js_hash_all_tab_filter_after_render(self) -> None:
         js = self._lazy_js

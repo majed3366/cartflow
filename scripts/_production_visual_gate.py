@@ -521,6 +521,108 @@ def _dashboard_stability_three_loads(page, out_sub: Path) -> dict[str, Any]:
     )}
 
 
+def _wait_cart_visible_in_dashboard(
+    page, *, cart_id: str, t0: float, out_path: Path
+) -> dict[str, Any]:
+    api_has = False
+    dom_has = False
+    false_empty = False
+    visible_ms = None
+    last_api_rows = 0
+    for _ in range(300):
+        snap = page.evaluate(
+            """(cid) => {
+              var tb = document.querySelector('#ma-tbody-all-carts');
+              var domHas = false;
+              if (tb && cid) domHas = (tb.innerHTML || '').indexOf(cid) >= 0;
+              var domRows = tb ? tb.querySelectorAll('tr[data-ma-filter]').length : 0;
+              var text = tb ? (tb.innerText || '') : '';
+              var falseEmpty = text.indexOf('لا توجد سلال متروكة') >= 0 && domRows === 0;
+              return { domHas: domHas, domRows: domRows, falseEmpty: falseEmpty };
+            }""",
+            cart_id,
+        )
+        if snap.get("falseEmpty"):
+            false_empty = True
+        if snap.get("domHas"):
+            dom_has = True
+            visible_ms = round((time.time() - t0) * 1000, 1)
+            break
+        page.wait_for_timeout(100)
+    iso = page.evaluate(
+        """async (cid) => {
+          const r = await fetch('/api/dashboard/normal-carts?_nc=' + Date.now(), {
+            credentials: 'same-origin', cache: 'no-store'
+          });
+          const j = await r.json();
+          const rows = j.merchant_carts_page_rows || [];
+          const has = rows.some(x => x.cart_id === cid);
+          return {
+            api_has: has,
+            row_count: rows.length,
+            filter_all: (j.merchant_cart_filter_counts || {}).all,
+            dashboard_partial: j.dashboard_partial,
+          };
+        }""",
+        cart_id,
+    )
+    api_has = bool(iso.get("api_has"))
+    last_api_rows = int(iso.get("row_count") or 0)
+    page.screenshot(path=str(out_path), full_page=True)
+    return {
+        "cart_id": cart_id,
+        "time_to_visible_ms": visible_ms,
+        "api_has_row": api_has,
+        "dom_has_row": dom_has,
+        "false_empty": false_empty,
+        "api_row_count": last_api_rows,
+        "filter_all": iso.get("filter_all"),
+        "dashboard_partial": iso.get("dashboard_partial"),
+        "pass": dom_has and api_has and not false_empty,
+    }
+
+
+def _three_new_carts_visibility(page, out_sub: Path) -> dict[str, Any]:
+    products = (
+        "#p-perfume_velvet .add-btn",
+        "#p-perfume .add-btn",
+        "#p-hoodie_essentials .add-btn",
+    )
+    runs: list[dict[str, Any]] = []
+    for i, sel in enumerate(products):
+        sub = out_sub / f"new_cart_{i + 1}"
+        sub.mkdir(parents=True, exist_ok=True)
+        page.evaluate(
+            """() => {
+              try { sessionStorage.removeItem('cartflow_cf_suppress_after_dismiss'); } catch(e) {}
+            }"""
+        )
+        j = _widget_journey(
+            page,
+            product_selector=sel,
+            flow_label=f"new_cart_{i + 1}",
+            out_sub=sub,
+        )
+        cart_id = (j.get("ids") or {}).get("cart_id") or ""
+        t0 = time.time()
+        page.goto(f"{BASE}/dashboard#carts?tab=all", timeout=120000)
+        probe = _wait_cart_visible_in_dashboard(
+            page,
+            cart_id=cart_id,
+            t0=t0,
+            out_path=sub / "dashboard_visible.png",
+        )
+        probe["run"] = i + 1
+        probe["product_selector"] = sel
+        runs.append(probe)
+        page.wait_for_timeout(500)
+    return {
+        "runs": runs,
+        "all_pass": all(r.get("pass") for r in runs),
+        "max_visible_ms": max((r.get("time_to_visible_ms") or 999999) for r in runs),
+    }
+
+
 def main() -> int:
     global GIT_HEAD
     GIT_HEAD = _git_short()
@@ -554,6 +656,9 @@ def main() -> int:
             markers["boot_priority"] = "boot_priority" in body
             markers["stale_skip"] = "normal_carts_stale_skip" in body
             markers["row_retention"] = "normal_carts_partial_empty" in body
+            markers["applied_gen"] = "normalCartsAppliedGen" in body
+            markers["cache_hydrate"] = "hydrateNormalCartsCache" in body
+            markers["pending_cart_poll"] = "pending_cart_poll" in body
         report["deploy_markers"][name] = markers
 
     failures: list[str] = []
@@ -609,12 +714,18 @@ def main() -> int:
         report["stability"] = _dashboard_stability_three_loads(page, stab_dir)
         report["stability"]["before_baseline_ms"] = 39038
 
+        new_dir = OUT / "new_carts"
+        new_dir.mkdir(parents=True, exist_ok=True)
+        report["new_carts_three"] = _three_new_carts_visibility(page, new_dir)
+
         browser.close()
 
     # Acceptance checks
     lazy_m = report["deploy_markers"].get("dashboard_lazy.js") or {}
     if not lazy_m.get("boot_priority"):
         failures.append("deploy_missing_dashboard_boot_priority")
+    if not lazy_m.get("applied_gen"):
+        failures.append("deploy_missing_applied_gen_guard")
     if not report["deploy_markers"].get("fetch.js", {}).get("price_fallback"):
         failures.append("deploy_missing_price_fallback")
     vip_phone = (report["vip"].get("phone_post") or {}).get("status") == 200
@@ -648,6 +759,15 @@ def main() -> int:
         max_vis = max((r.get("time_to_visible_ms") or 0) for r in stab_runs)
         if max_vis >= 39038:
             failures.append(f"stability_visibility_not_improved max_ms={max_vis}")
+
+    new3 = report.get("new_carts_three") or {}
+    if not new3.get("all_pass"):
+        failures.append("new_carts_three_visibility_failed")
+    norm_vis = (report["normal"].get("dashboard") or {}).get("time_to_visible_ms")
+    if norm_vis is not None and float(norm_vis) > 45000:
+        failures.append(f"normal_cart_visible_too_slow ms={norm_vis}")
+    if new3.get("max_visible_ms", 0) > 45000:
+        failures.append(f"new_cart_max_visible_too_slow ms={new3.get('max_visible_ms')}")
 
     vip_iso = (report["vip"].get("dashboard") or {}).get("isolated_fetch") or {}
     norm_boot = (report["normal"].get("dashboard") or {}).get("normal_carts_boot_events") or []
