@@ -282,6 +282,25 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     });
   }
 
+  /** Legacy widget default when user picks price without a sub-branch (V2 has no pre-suggestion price UI). */
+  function applyLegacyPriceSubCategoryDefault(body) {
+    if (!body || typeof body !== "object") {
+      return body;
+    }
+    var rk = String(body.reason || "").toLowerCase();
+    if (rk !== "price") {
+      return body;
+    }
+    var sub =
+      body.sub_category != null && String(body.sub_category).trim()
+        ? String(body.sub_category).trim()
+        : "";
+    if (!sub) {
+      body.sub_category = "price_discount_request";
+    }
+    return body;
+  }
+
   function postReason(payload) {
     var url = apiBase()
       ? apiBase() + "/api/cartflow/reason"
@@ -300,6 +319,17 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     }
     if (payload.sub_category != null && String(payload.sub_category) !== "") {
       body.sub_category = String(payload.sub_category);
+    }
+    applyLegacyPriceSubCategoryDefault(body);
+    try {
+      if (typeof window.cartflowGetStableCartEventIdForTracking === "function") {
+        var cid = String(window.cartflowGetStableCartEventIdForTracking() || "").trim();
+        if (cid) {
+          body.cart_id = cid;
+        }
+      }
+    } catch (eCid) {
+      /* ignore */
     }
     return fetch(url, {
       method: "POST",

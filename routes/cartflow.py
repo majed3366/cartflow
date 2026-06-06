@@ -330,6 +330,8 @@ async def post_generate_whatsapp_message(request: Request) -> Any:
             if not reason or reason not in REASON_CHOICES:
                 return j({"ok": False, "error": "invalid_reason"}, 400)
             if reason == "price":
+                if not sub_cat:
+                    sub_cat = "price_discount_request"
                 if not sub_cat or sub_cat not in PRICE_SUB_CATEGORIES:
                     return j(
                         {"ok": False, "error": "sub_category_required_or_invalid"},
@@ -522,6 +524,8 @@ async def post_abandonment_reason(request: Request) -> Any:
         if reason not in REASON_CHOICES:
             return j({"ok": False, "error": "invalid_reason"}, 400)
         if reason == "price":
+            if not sub_cat:
+                sub_cat = "price_discount_request"
             if not sub_cat or sub_cat not in PRICE_SUB_CATEGORIES:
                 return j(
                     {

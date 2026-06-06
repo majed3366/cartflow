@@ -36,6 +36,13 @@ class ApprovedRecoveryFlowV2Tests(unittest.TestCase):
         self.assertNotIn("renderPriceBranches", flows)
         self.assertNotIn("price_discount_request", flows)
 
+    def test_fetch_applies_legacy_price_sub_category_default(self) -> None:
+        fetch = (
+            _ROOT / "static" / "cartflow_widget_runtime" / "cartflow_widget_fetch.js"
+        ).read_text(encoding="utf-8")
+        self.assertIn("applyLegacyPriceSubCategoryDefault", fetch)
+        self.assertIn("price_discount_request", fetch)
+
     def test_phone_after_thanks_optional_once(self) -> None:
         flows = _FLOWS.read_text(encoding="utf-8")
         self.assertIn("handleThanksAfterReason", flows)

@@ -224,6 +224,79 @@ class DemoRuntimePhoneCartVisibilityE2ETests(unittest.TestCase):
         self.assertTrue(mc_body.get("ok"))
         self.assertTrue(mc_body.get("manual_contact_available"))
 
+    def test_vip_1299_price_reason_no_sub_category_phone_persists(self) -> None:
+        """V2 path: watch_pro 1299, reason=price, no sub_category, phone entered."""
+        sid = f"s-price-v2-{self._suffix}"
+        cid = f"cf_price_{self._suffix}"
+        phone = "0598877123"
+        sync = self._client.post(
+            "/api/cart-event",
+            json={
+                "event": "cart_state_sync",
+                "reason": "add",
+                "store": "demo",
+                "session_id": sid,
+                "cart_id": cid,
+                "cart_total": 1299.0,
+                "items_count": 1,
+            },
+        )
+        self.assertEqual(sync.status_code, 200, sync.text)
+        reason_only = self._client.post(
+            "/api/cartflow/reason",
+            json={
+                "store_slug": "demo",
+                "session_id": sid,
+                "cart_id": cid,
+                "reason": "price",
+            },
+        )
+        self.assertEqual(reason_only.status_code, 200, reason_only.text)
+        reason_phone = self._client.post(
+            "/api/cartflow/reason",
+            json={
+                "store_slug": "demo",
+                "session_id": sid,
+                "cart_id": cid,
+                "reason": "price",
+                "customer_phone": phone,
+            },
+        )
+        self.assertEqual(reason_phone.status_code, 200, reason_phone.text)
+
+        ac = (
+            db.session.query(AbandonedCart)
+            .filter(AbandonedCart.zid_cart_id == cid)
+            .first()
+        )
+        self.assertIsNotNone(ac)
+        assert ac is not None
+        self.assertEqual("966598877123", (ac.customer_phone or "").strip())
+
+        crr = (
+            db.session.query(CartRecoveryReason)
+            .filter(
+                CartRecoveryReason.session_id == sid,
+                CartRecoveryReason.store_slug == "demo",
+            )
+            .first()
+        )
+        self.assertIsNotNone(crr)
+        assert crr is not None
+        self.assertEqual("966598877123", (crr.customer_phone or "").strip())
+        self.assertEqual("price_discount_request", (crr.sub_category or "").strip())
+
+        st = db.session.query(Store).filter(Store.zid_store_id == "demo").first()
+        self.assertIsNotNone(st)
+        assert st is not None
+        vip_body = _api_json_dashboard_vip_carts(st)
+        page_rows = vip_body.get("merchant_vip_page_rows") or []
+        row = next((x for x in page_rows if int(x.get("id") or 0) == int(ac.id)), None)
+        self.assertIsNotNone(row, page_rows)
+        assert row is not None
+        self.assertTrue(row.get("has_phone"))
+        self.assertTrue(row.get("manual_contact_available"))
+
     def test_vip_phone_before_cart_sync_hydrates_on_next_sync(self) -> None:
         slug, cookies = self._signup_merchant()
         sid = f"s-early-{self._suffix}"
