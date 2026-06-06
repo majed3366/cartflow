@@ -731,7 +731,7 @@ async def post_abandonment_reason(request: Request) -> Any:
             )
         if phone_norm:
             record_recovery_customer_phone(
-                recovery_key_for_reason_session(ss, sid),
+                recovery_key_for_reason_session(ss, sid, cid_apply),
                 phone_norm,
                 source="real_customer_phone",
             )

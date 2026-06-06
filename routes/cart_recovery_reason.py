@@ -238,7 +238,7 @@ async def post_widget_cart_recovery_reason(request: Request) -> Any:
             )
 
         db.session.commit()
-        rk = recovery_key_for_reason_session(ss, sid)
+        rk = recovery_key_for_reason_session(ss, sid, cid_apply)
         if reason_phone_update is not _PHONE_OMIT:
             _rk_phone = (
                 reason_phone_update if isinstance(reason_phone_update, str) else None

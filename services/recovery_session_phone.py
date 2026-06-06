@@ -77,9 +77,19 @@ def _strip_phone(raw: Optional[str]) -> str:
     return s[:100] if s else ""
 
 
-def recovery_key_for_reason_session(store_slug: str, session_id: str) -> str:
-    """متوافق مع ‎main._recovery_key_from_payload‎ (‎store + session‎)."""
-    ss = (store_slug or "").strip()[:255]
-    sid = (session_id or "").strip()[:512]
-    store_key = ss if ss else "default"
-    return f"{store_key}:{sid}"
+def recovery_key_for_reason_session(
+    store_slug: str,
+    session_id: str,
+    cart_id: Optional[str] = None,
+) -> str:
+    """متوافق مع ‎main._recovery_key_from_payload‎ (stable ‎cart_id‎ أولاً)."""
+    from main import _recovery_key_from_payload
+
+    body: dict[str, str] = {
+        "store": (store_slug or "").strip()[:255] or "default",
+        "session_id": (session_id or "").strip()[:512],
+    }
+    cid = (cart_id or "").strip()[:255] if cart_id else ""
+    if cid:
+        body["cart_id"] = cid
+    return _recovery_key_from_payload(body)

@@ -61,16 +61,18 @@ class CartIdProducerBehaviorTests(unittest.TestCase):
             _synthetic_zid_cart_id_from_recovery_key(rk),
         )
 
-    def test_session_plus_browser_cart_mismatch_in_shadow(self) -> None:
+    def test_session_plus_browser_cart_uses_stable_cart_id_rk(self) -> None:
+        cid = f"cf_cart_{uuid.uuid4()}"
         payload = {
             "store": "demo",
             "session_id": "s_mismatch_1",
-            "cart_id": f"cf_cart_{uuid.uuid4()}",
+            "cart_id": cid,
         }
         r = resolve_journey_identity_shadow(payload)
-        self.assertNotEqual(r.current_rk, r.recommended_rk)
-        self.assertEqual(r.current_rk, r.bid_rk)
-        self.assertEqual(r.recommended_rk, r.jid_rk)
+        self.assertEqual(r.current_rk, r.recommended_rk)
+        self.assertEqual(r.current_rk, f"demo:{cid}")
+        self.assertEqual(r.jid_rk, f"demo:{cid}")
+        self.assertFalse(r.mismatch)
 
     def test_normalize_zid_cart_fields_nested_paths(self) -> None:
         from main import normalize_zid_cart_fields

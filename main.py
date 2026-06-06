@@ -3490,16 +3490,34 @@ def _session_part_from_payload(payload: dict[str, Any]) -> str:
 
 
 def _recovery_key_from_payload(payload: dict[str, Any]) -> str:
-    """مفتاح عزل الاسترجاع: ‎store_slug + session_id‎ (أو ‎cart_id / بصمة السلة‎ عند الغياب)."""
+    """
+    مفتاح عزل الاسترجاع الموحّد: عند وجود ‎cart_id‎ مستقر (مثل ‎cf_cart_*‎) → ‎store:cart_id‎؛
+    وإلا ‎store:session_id‎ (أو ‎cart_id / بصمة السلة‎ عند غياب الجلسة).
+    """
     store_slug = _normalize_store_slug(payload)
-    return f"{store_slug}:{_session_part_from_payload(payload)}"
+    cid = _cart_id_str_from_payload(payload)
+    if cid:
+        try:
+            from services.journey_identity_resolver_v1 import has_stable_cart_id
+
+            if has_stable_cart_id(cid):
+                return f"{store_slug}:{cid}"[:800]
+        except Exception:  # noqa: BLE001
+            pass
+    return f"{store_slug}:{_session_part_from_payload(payload)}"[:800]
 
 
-def _recovery_key_from_store_and_session(store_slug: str, session_id: str) -> str:
-    """نفس ‎recovery_key‎ المستخدم في أحداث السلة — لـ ‎POST /api/conversion‎."""
-    return _recovery_key_from_payload(
-        {"store": store_slug, "session_id": session_id}
-    )
+def _recovery_key_from_store_and_session(
+    store_slug: str,
+    session_id: str,
+    cart_id: Optional[str] = None,
+) -> str:
+    """نفس ‎recovery_key‎ المستخدم في أحداث السلة — stable ‎cart_id‎ أولاً."""
+    body: dict[str, Any] = {"store": store_slug, "session_id": session_id}
+    cid = (cart_id or "").strip()[:255] if cart_id else ""
+    if cid:
+        body["cart_id"] = cid
+    return _recovery_key_from_payload(body)
 
 
 def _cart_id_str_from_payload(payload: dict[str, Any]) -> Optional[str]:
@@ -7792,11 +7810,20 @@ def _vip_dashboard_customer_phone_raw(
         try:
             from services.recovery_session_phone import get_recovery_customer_phone
 
+            zid_ac = (getattr(ac, "zid_cart_id", None) or "").strip() or None
             for ss in slugs:
-                rk = _recovery_key_from_store_and_session(ss, sid)
+                rk = _recovery_key_from_store_and_session(ss, sid, zid_ac)
                 got_mem = _strip_recovery_phone(get_recovery_customer_phone(rk))
                 if got_mem:
                     return got_mem
+                if zid_ac:
+                    rk_legacy = _recovery_key_from_store_and_session(ss, sid)
+                    if rk_legacy != rk:
+                        got_legacy = _strip_recovery_phone(
+                            get_recovery_customer_phone(rk_legacy)
+                        )
+                        if got_legacy:
+                            return got_legacy
         except Exception:  # noqa: BLE001
             pass
 

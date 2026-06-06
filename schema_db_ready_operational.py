@@ -22,27 +22,25 @@ def reset_db_ready_operational_schema_guard_for_tests() -> None:
 
 
 def ensure_db_ready_operational_schema(db: Any) -> None:
+    """Create table once; column DDL is idempotent and re-checked every call."""
     global _schema_once
-    if _schema_once:
-        return
     with _schema_once_lock:
-        if _schema_once:
-            return
         try:
-            db.create_all()
+            if not _schema_once:
+                db.create_all()
+                _schema_once = True
             insp = inspect(db.engine)
             if not insp.has_table("db_ready_operational_snapshots"):
                 log.warning(
                     "db ready operational schema: db_ready_operational_snapshots "
                     "missing after create_all"
                 )
-            else:
-                _ensure_startup_warm_columns(db, insp)
-                _ensure_restart_survival_columns(db, insp)
+                return
+            _ensure_startup_warm_columns(db, insp)
+            _ensure_restart_survival_columns(db, insp)
+            _ensure_top_substage_columns(db, insp)
         except SQLAlchemyError as exc:
             log.warning("db ready operational schema ensure failed: %s", exc)
-        finally:
-            _schema_once = True
 
 
 def _ensure_startup_warm_columns(db: Any, insp: Any) -> None:
@@ -86,6 +84,54 @@ def _ensure_startup_warm_columns(db: Any, insp: Any) -> None:
         except SQLAlchemyError as exc:
             db.session.rollback()
             log.warning("db ready operational column migrate skipped: %s", exc)
+
+
+def _ensure_top_substage_columns(db: Any, insp: Any) -> None:
+    """Add top-substage / classification JSON columns when table predates ORM fields."""
+    try:
+        cols = {c["name"] for c in insp.get_columns("db_ready_operational_snapshots")}
+    except Exception:  # noqa: BLE001
+        return
+    dialect = db.engine.dialect.name
+    alters: list[str] = []
+    if "last_top_substage" not in cols:
+        alters.append(
+            "ALTER TABLE db_ready_operational_snapshots "
+            "ADD COLUMN last_top_substage VARCHAR(64)"
+        )
+    if "last_top_substage_queries" not in cols:
+        alters.append(
+            "ALTER TABLE db_ready_operational_snapshots "
+            "ADD COLUMN last_top_substage_queries INTEGER NOT NULL DEFAULT 0"
+        )
+    if "last_top_substage_sql_ms" not in cols:
+        alters.append(
+            "ALTER TABLE db_ready_operational_snapshots "
+            "ADD COLUMN last_top_substage_sql_ms FLOAT NOT NULL DEFAULT 0"
+        )
+    if "last_top_substage_elapsed_ms" not in cols:
+        alters.append(
+            "ALTER TABLE db_ready_operational_snapshots "
+            "ADD COLUMN last_top_substage_elapsed_ms FLOAT NOT NULL DEFAULT 0"
+        )
+    if "top_substages_json" not in cols:
+        default_json = "'[]'" if dialect == "sqlite" else "'[]'"
+        alters.append(
+            "ALTER TABLE db_ready_operational_snapshots "
+            f"ADD COLUMN top_substages_json TEXT NOT NULL DEFAULT {default_json}"
+        )
+    if "stage_classifications_json" not in cols:
+        alters.append(
+            "ALTER TABLE db_ready_operational_snapshots "
+            f"ADD COLUMN stage_classifications_json TEXT NOT NULL DEFAULT {default_json}"
+        )
+    for stmt in alters:
+        try:
+            db.session.execute(text(stmt))
+            db.session.commit()
+        except SQLAlchemyError as exc:
+            db.session.rollback()
+            log.warning("db ready top substage column migrate skipped: %s", exc)
 
 
 def _ensure_restart_survival_columns(db: Any, insp: Any) -> None:

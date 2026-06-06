@@ -38,7 +38,11 @@ class DemoRuntimePhoneCartVisibilityE2ETests(unittest.TestCase):
         try:
             for model, filt in (
                 (CartRecoveryReason, CartRecoveryReason.session_id.like(f"%{self._suffix}%")),
-                (AbandonedCart, AbandonedCart.recovery_session_id.like(f"%{self._suffix}%")),
+                (
+                    AbandonedCart,
+                    (AbandonedCart.recovery_session_id.like(f"%{self._suffix}%"))
+                    | (AbandonedCart.zid_cart_id.like(f"%{self._suffix}%")),
+                ),
                 (Store, Store.zid_store_id.like(f"mrt-{self._suffix}%")),
                 (MerchantUser, MerchantUser.email.like(f"%{self._suffix}%@example.com")),
             ):
@@ -361,6 +365,112 @@ class DemoRuntimePhoneCartVisibilityE2ETests(unittest.TestCase):
         db.session.expire_all()
         self.assertEqual(_active_count(), 1)
         self.assertEqual(_archived_count(), 0)
+
+    def test_canonical_recovery_key_converges_phone_after_cart_sync(self) -> None:
+        """Phone capture + cart_state_sync share one recovery_key when stable cart_id exists."""
+        from main import _recovery_key_from_payload
+        from services.recovery_session_phone import (
+            get_recovery_customer_phone,
+            recovery_key_for_reason_session,
+        )
+
+        slug, cookies = self._signup_merchant()
+        sid = f"s-conv-{self._suffix}"
+        cid = f"cf_cart_{self._suffix}"
+        tok = set_merchant_auth_store_slug(slug)
+        try:
+            phone_first = self._client.post(
+                "/api/cartflow/reason",
+                json={
+                    "store_slug": "demo",
+                    "session_id": sid,
+                    "cart_id": cid,
+                    "reason": "quality",
+                    "customer_phone": "0598877002",
+                },
+                cookies=cookies,
+            )
+            self.assertEqual(phone_first.status_code, 200, phone_first.text)
+            sync = self._client.post(
+                "/api/cart-event",
+                json={
+                    "event": "cart_state_sync",
+                    "reason": "add",
+                    "store": "demo",
+                    "session_id": sid,
+                    "cart_id": cid,
+                    "cart_total": 2500.0,
+                    "items_count": 1,
+                },
+                cookies=cookies,
+            )
+            self.assertEqual(sync.status_code, 200, sync.text)
+        finally:
+            reset_merchant_auth_store_slug(tok)
+
+        rk_cart = _recovery_key_from_payload(
+            {"store": slug, "session_id": sid, "cart_id": cid}
+        )
+        rk_reason = recovery_key_for_reason_session(slug, sid, cid)
+        self.assertEqual(rk_cart, rk_reason)
+        self.assertTrue(rk_cart.endswith(cid))
+        self.assertEqual(get_recovery_customer_phone(rk_cart), "966598877002")
+
+        ac = (
+            db.session.query(AbandonedCart)
+            .filter(AbandonedCart.zid_cart_id == cid)
+            .first()
+        )
+        self.assertIsNotNone(ac)
+        assert ac is not None
+        self.assertEqual("966598877002", (ac.customer_phone or "").strip())
+
+        st = db.session.query(Store).filter(Store.zid_store_id == slug).first()
+        self.assertIsNotNone(st)
+        assert st is not None
+        vip_body = _api_json_dashboard_vip_carts(st)
+        row = next(
+            (
+                x
+                for x in (vip_body.get("merchant_vip_page_rows") or [])
+                if int(x.get("id") or 0) == int(ac.id)
+            ),
+            None,
+        )
+        self.assertIsNotNone(row, vip_body.get("merchant_vip_page_rows"))
+        assert row is not None
+        self.assertTrue(row.get("has_phone"))
+        self.assertTrue(row.get("manual_contact_available"))
+
+    def test_db_ready_operational_schema_has_top_substage_columns(self) -> None:
+        from sqlalchemy import inspect
+
+        from schema_db_ready_operational import ensure_db_ready_operational_schema
+
+        ensure_db_ready_operational_schema(db)
+        insp = inspect(db.engine)
+        cols = {c["name"] for c in insp.get_columns("db_ready_operational_snapshots")}
+        for name in (
+            "last_top_substage",
+            "last_top_substage_queries",
+            "last_top_substage_sql_ms",
+            "last_top_substage_elapsed_ms",
+            "top_substages_json",
+            "stage_classifications_json",
+        ):
+            self.assertIn(name, cols, msg=f"missing column {name}")
+
+        from models import DbReadyOperationalSnapshot
+
+        row = db.session.get(DbReadyOperationalSnapshot, 1)
+        if row is None:
+            row = DbReadyOperationalSnapshot(id=1)
+            db.session.add(row)
+        row.last_top_substage = "widget_schema"
+        row.last_top_substage_queries = 3
+        db.session.commit()
+        db.session.refresh(row)
+        self.assertEqual(row.last_top_substage, "widget_schema")
 
     @patch("services.merchant_auth_v1.development_dashboard_bypass_active", return_value=True)
     def test_dev_bypass_dashboard_resolves_demo_store(self, _mock_bypass) -> None:

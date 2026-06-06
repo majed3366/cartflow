@@ -102,7 +102,7 @@ def apply_normal_recovery_phone_to_session(
     except (SQLAlchemyError, OSError, TypeError, ValueError) as exc:
         log.warning("normal_recovery_phone_persist apply failed: %s", exc, exc_info=True)
         return False
-    rk = recovery_key_for_reason_session(ss, sid)
+    rk = recovery_key_for_reason_session(ss, sid, cart_id=cid)
     record_recovery_customer_phone(rk, ph, source=phone_record_source)
     return True
 
