@@ -551,18 +551,27 @@ def _wait_cart_visible_in_dashboard(
         page.wait_for_timeout(100)
     iso = page.evaluate(
         """async (cid) => {
-          const r = await fetch('/api/dashboard/normal-carts?_nc=' + Date.now(), {
-            credentials: 'same-origin', cache: 'no-store'
-          });
-          const j = await r.json();
-          const rows = j.merchant_carts_page_rows || [];
-          const has = rows.some(x => x.cart_id === cid);
-          return {
-            api_has: has,
-            row_count: rows.length,
-            filter_all: (j.merchant_cart_filter_counts || {}).all,
-            dashboard_partial: j.dashboard_partial,
-          };
+          try {
+            const r = await fetch('/api/dashboard/normal-carts?_nc=' + Date.now(), {
+              credentials: 'same-origin', cache: 'no-store'
+            });
+            const text = await r.text();
+            var j = {};
+            try { j = JSON.parse(text); } catch (pe) {
+              return { api_has: false, row_count: 0, filter_all: null, dashboard_partial: null, api_error: 'json_parse' };
+            }
+            const rows = j.merchant_carts_page_rows || [];
+            const has = rows.some(x => x.cart_id === cid);
+            return {
+              api_has: has,
+              row_count: rows.length,
+              filter_all: (j.merchant_cart_filter_counts || {}).all,
+              dashboard_partial: j.dashboard_partial,
+              api_error: null,
+            };
+          } catch (e) {
+            return { api_has: false, row_count: 0, filter_all: null, dashboard_partial: null, api_error: String(e) };
+          }
         }""",
         cart_id,
     )
@@ -604,8 +613,13 @@ def _three_new_carts_visibility(page, out_sub: Path) -> dict[str, Any]:
             out_sub=sub,
         )
         cart_id = (j.get("ids") or {}).get("cart_id") or ""
+        phone_post = j.get("phone_post") or {}
+        req = phone_post.get("request") or {}
+        if not cart_id and req.get("cart_id"):
+            cart_id = str(req.get("cart_id"))
         t0 = time.time()
         page.goto(f"{BASE}/dashboard#carts?tab=all", timeout=120000)
+        page.wait_for_timeout(1500)
         probe = _wait_cart_visible_in_dashboard(
             page,
             cart_id=cart_id,
@@ -670,52 +684,59 @@ def main() -> int:
 
         _ensure_auth(page, report)
 
-        vip_dir = OUT / "vip_flow"
-        vip_dir.mkdir(parents=True, exist_ok=True)
-        vip_settings = _ensure_vip_threshold_saved(page, vip_dir)
-        report["vip_settings_saved"] = vip_settings
-        if not vip_settings.get("save_ok") or not vip_settings.get("vip_cart_threshold"):
-            failures.append("vip_threshold_not_saved")
-
-        vip_j = _widget_journey(
-            page,
-            product_selector="#p-watch_pro .add-btn",
-            flow_label="vip",
-            out_sub=vip_dir,
+        reliability_only = (os.environ.get("CARTFLOW_RELIABILITY_ONLY") or "").strip() in (
+            "1",
+            "true",
+            "yes",
         )
-        cart_id_vip = (vip_j.get("ids") or {}).get("cart_id")
-        vip_dash = _dashboard_probe(page, cart_id=cart_id_vip or "", flow="vip", out_sub=vip_dir)
-        report["vip"] = {**vip_j, "dashboard": vip_dash}
-
-        normal_dir = OUT / "normal_flow"
-        normal_dir.mkdir(parents=True, exist_ok=True)
-        page.evaluate("sessionStorage.clear()")
-        normal_j = _widget_journey(
-            page,
-            product_selector="#p-perfume_velvet .add-btn",
-            flow_label="normal",
-            out_sub=normal_dir,
-        )
-        if page.locator("#p-perfume_velvet .add-btn").count() == 0:
-            normal_j = _widget_journey(
-                page,
-                product_selector=".add-btn",
-                flow_label="normal_fallback_cheapest",
-                out_sub=normal_dir,
-            )
-        cart_id_norm = (normal_j.get("ids") or {}).get("cart_id")
-        normal_dash = _dashboard_probe(
-            page, cart_id=cart_id_norm or "", flow="normal", out_sub=normal_dir
-        )
-        report["normal"] = {**normal_j, "dashboard": normal_dash}
 
         stab_dir = OUT / "stability"
         stab_dir.mkdir(parents=True, exist_ok=True)
-        report["stability"] = _dashboard_stability_three_loads(page, stab_dir)
-        report["stability"]["before_baseline_ms"] = 39038
-
         new_dir = OUT / "new_carts"
         new_dir.mkdir(parents=True, exist_ok=True)
+
+        if not reliability_only:
+            vip_dir = OUT / "vip_flow"
+            vip_dir.mkdir(parents=True, exist_ok=True)
+            vip_settings = _ensure_vip_threshold_saved(page, vip_dir)
+            report["vip_settings_saved"] = vip_settings
+            if not vip_settings.get("save_ok") or not vip_settings.get("vip_cart_threshold"):
+                failures.append("vip_threshold_not_saved")
+
+            vip_j = _widget_journey(
+                page,
+                product_selector="#p-watch_pro .add-btn",
+                flow_label="vip",
+                out_sub=vip_dir,
+            )
+            cart_id_vip = (vip_j.get("ids") or {}).get("cart_id")
+            vip_dash = _dashboard_probe(page, cart_id=cart_id_vip or "", flow="vip", out_sub=vip_dir)
+            report["vip"] = {**vip_j, "dashboard": vip_dash}
+
+            normal_dir = OUT / "normal_flow"
+            normal_dir.mkdir(parents=True, exist_ok=True)
+            page.evaluate("sessionStorage.clear()")
+            normal_j = _widget_journey(
+                page,
+                product_selector="#p-perfume_velvet .add-btn",
+                flow_label="normal",
+                out_sub=normal_dir,
+            )
+            if page.locator("#p-perfume_velvet .add-btn").count() == 0:
+                normal_j = _widget_journey(
+                    page,
+                    product_selector=".add-btn",
+                    flow_label="normal_fallback_cheapest",
+                    out_sub=normal_dir,
+                )
+            cart_id_norm = (normal_j.get("ids") or {}).get("cart_id")
+            normal_dash = _dashboard_probe(
+                page, cart_id=cart_id_norm or "", flow="normal", out_sub=normal_dir
+            )
+            report["normal"] = {**normal_j, "dashboard": normal_dash}
+
+        report["stability"] = _dashboard_stability_three_loads(page, stab_dir)
+        report["stability"]["before_baseline_ms"] = 39038
         report["new_carts_three"] = _three_new_carts_visibility(page, new_dir)
 
         browser.close()

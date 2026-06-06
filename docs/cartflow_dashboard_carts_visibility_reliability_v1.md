@@ -37,3 +37,14 @@
 `python scripts/_production_visual_gate.py`
 
 Evidence: `scripts/_production_visual_gate_out/stability/`, `new_carts/`
+
+### Production partial verification (deploy `a27ba21`)
+
+| Check | Result |
+|-------|--------|
+| Deploy markers `normalCartsAppliedGen`, `pending_cart_poll` | Live (113,762 bytes JS) |
+| 3× reload stability (prior full gate) | **17–26 ms**, 3=3 counts, no false empty |
+| New cart #1 DOM after widget → dashboard | **PASS** — 4 rows, new 149 ر «الآن», count الكل (4) |
+| Screenshot | `new_carts/new_cart_1/dashboard_visible.png` |
+
+Re-run when production stable: `CARTFLOW_RELIABILITY_ONLY=1 python scripts/_production_visual_gate.py`
