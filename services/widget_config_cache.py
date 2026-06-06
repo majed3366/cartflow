@@ -265,11 +265,28 @@ def ready_http_payload(norm_slug: str, session_id: str, snap: Optional[Dict[str,
     """جسم ‎GET /ready‎ — ‎snap‎ فارغ ⇒ قوالب الافتراضي الآمن."""
 
     aft = ready_after_step1_memory(norm_slug, session_id)
+    identity_fields = storefront_identity_fields_for_slug(norm_slug)
     if snap is None:
         tpl = build_snapshot_from_store_row(None)["template_bundle"]
-        return {"ok": True, "after_step1": aft, **tpl}
+        return {"ok": True, "after_step1": aft, **identity_fields, **tpl}
     tpl = snap.get("template_bundle") or {}
-    return {"ok": True, "after_step1": aft, **dict(tpl)}
+    return {"ok": True, "after_step1": aft, **identity_fields, **dict(tpl)}
+
+
+def storefront_identity_fields_for_slug(norm_slug: str) -> Dict[str, Optional[str]]:
+    """Additive storefront fields: permalink/alias in → canonical ``stores.zid_store_id`` out."""
+    ss = (norm_slug or "").strip()[:255]
+    if not ss:
+        return {"request_store_slug": None, "canonical_store_slug": None}
+    try:
+        from services.cartflow_widget_public_store import store_row_for_widget_public_api
+        from services.store_identity_v1 import canonical_store_slug_on_row
+
+        row = store_row_for_widget_public_api(ss)
+        canon = canonical_store_slug_on_row(row) if row is not None else None
+        return {"request_store_slug": ss, "canonical_store_slug": canon}
+    except Exception:  # noqa: BLE001
+        return {"request_store_slug": ss, "canonical_store_slug": None}
 
 
 def public_http_payload(
@@ -284,6 +301,7 @@ def public_http_payload(
             ct_out = float(cart_total)
         except (TypeError, ValueError):
             ct_out = None
+    identity_fields = storefront_identity_fields_for_slug(norm_slug)
     if snap is None:
         tpl = build_snapshot_from_store_row(None)["template_bundle"]
         return {
@@ -292,6 +310,7 @@ def public_http_payload(
             "cart_total": ct_out,
             "is_vip": False,
             "vip_from_cart_total": vip_eval,
+            **identity_fields,
             **tpl,
         }
     tpl = snap.get("template_bundle") or {}
@@ -315,6 +334,7 @@ def public_http_payload(
         "cart_total": ct_out,
         "is_vip": is_vip_pub,
         "vip_from_cart_total": vip_eval,
+        **identity_fields,
         **dict(tpl),
     }
 

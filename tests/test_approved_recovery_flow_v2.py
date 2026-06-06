@@ -77,7 +77,7 @@ class ApprovedRecoveryFlowV2Tests(unittest.TestCase):
         self.assertNotIn("إعادة إرسال", ui.split("renderOtherDraftForm")[0])
 
     def test_runtime_version_bumped(self) -> None:
-        self.assertIn("v2-widget-health-v1", _LOADER.read_text(encoding="utf-8"))
+        self.assertIn("v2-zid-cart-sync-v1", _LOADER.read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":

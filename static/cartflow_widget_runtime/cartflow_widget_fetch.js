@@ -120,7 +120,39 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     }
   }
 
+  function applyCanonicalStoreSlugFromPayload(j) {
+    if (!j || typeof j !== "object") {
+      return;
+    }
+    var canon =
+      j.canonical_store_slug != null ? String(j.canonical_store_slug).trim() : "";
+    if (!canon || isPublicSandboxStoreSlug(canon)) {
+      return;
+    }
+    try {
+      window.CARTFLOW_CANONICAL_STORE_SLUG = canon;
+      window.CARTFLOW_STORE_SLUG = canon;
+      console.log("[CF STORE SLUG CANONICAL]", {
+        request_store_slug:
+          j.request_store_slug != null ? String(j.request_store_slug) : null,
+        canonical_store_slug: canon,
+      });
+    } catch (eCanon) {}
+  }
+
   function storeSlug() {
+    try {
+      if (
+        typeof window.CARTFLOW_CANONICAL_STORE_SLUG !== "undefined" &&
+        window.CARTFLOW_CANONICAL_STORE_SLUG !== null &&
+        String(window.CARTFLOW_CANONICAL_STORE_SLUG).trim()
+      ) {
+        var canonSlug = String(window.CARTFLOW_CANONICAL_STORE_SLUG).trim();
+        if (!isPublicSandboxStoreSlug(canonSlug)) {
+          return canonSlug;
+        }
+      }
+    } catch (eCanonSl) {}
     if (typeof window.cartflowResolveStorefrontStoreSlug === "function") {
       var resolved = window.cartflowResolveStorefrontStoreSlug();
       if (resolved && resolved.slug) {
@@ -404,6 +436,9 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
         return r.json().then(function (j) {
           _readyLastNetworkDoneAt = Date.now();
           if (j != null && typeof j === "object") {
+            if (j.ok !== false) {
+              applyCanonicalStoreSlugFromPayload(j);
+            }
             if (j.after_step1) {
               _sessionReadyCached = j;
             } else if (j.ok !== false) {
@@ -458,6 +493,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       .then(function (r) {
         return r.json().then(function (j) {
           if (j != null && typeof j === "object" && j.ok !== false) {
+            applyCanonicalStoreSlugFromPayload(j);
             _sessionPublicConfigCached = j;
           }
           return j;
@@ -478,6 +514,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     fetchReady: fetchReady,
     fetchPublicConfig: fetchPublicConfig,
     reasonPostOk: cfCartflowReasonPostOk,
+    applyCanonicalStoreSlugFromPayload: applyCanonicalStoreSlugFromPayload,
   };
   window.CartflowWidgetRuntime.Api = Api;
 })();

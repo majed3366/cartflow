@@ -6042,16 +6042,15 @@ def _load_store_row_for_recovery(
             return out
         row = db.session.query(Store).filter_by(zid_store_id=ss_full).first()
         if row is None:
-            if not allow_latest_fallback:
-                from services.recovery_store_lookup import (
-                    resolve_recovery_store_row_canonical,
-                )
+            from services.recovery_store_lookup import (
+                resolve_recovery_store_row_canonical,
+            )
 
-                out = resolve_recovery_store_row_canonical(
-                    ss_full, allow_schema_warm=allow_schema_warm
-                )
-            else:
-                out = latest
+            row = resolve_recovery_store_row_canonical(
+                ss_full, allow_schema_warm=allow_schema_warm
+            )
+        if row is None and allow_latest_fallback:
+            out = latest
         else:
             out = row
         if cart_event_scope_active() and out is not None:
@@ -11131,6 +11130,12 @@ def _handle_cart_state_sync(
     store_row = _load_store_row_for_recovery(
         store_slug, allow_schema_warm=not is_lite_cart_sync_add
     )
+    if store_row is not None:
+        from services.store_identity_v1 import canonical_store_slug_on_row
+
+        canon_slug = canonical_store_slug_on_row(store_row)
+        if canon_slug:
+            store_slug = canon_slug
     vip_th_api: Optional[int] = None
     if store_row is not None:
         _th_raw_v = getattr(store_row, "vip_cart_threshold", None)
@@ -11145,6 +11150,17 @@ def _handle_cart_state_sync(
     sto_id: Optional[int] = None
     if store_row is not None and getattr(store_row, "id", None) is not None:
         sto_id = int(store_row.id)
+
+    if is_lite_cart_sync_add:
+        try:
+            print(
+                "[CART STATE SYNC STORE] "
+                f"canonical_store_slug={(store_slug or '-')[:96]} "
+                f"store_id={sto_id if sto_id is not None else '-'}",
+                flush=True,
+            )
+        except OSError:
+            pass
 
     if is_empty:
         vip_mode_eff = False

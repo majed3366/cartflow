@@ -304,7 +304,7 @@ class WidgetHealthJsWiringTests(unittest.TestCase):
         self.assertIn("__cartflowWidgetHealth", text)
 
     def test_widget_loader_runtime_version_bumped(self):
-        self.assertIn("v2-widget-health-v1", _WIDGET_LOADER.read_text(encoding="utf-8"))
+        self.assertIn("v2-zid-cart-sync-v1", _WIDGET_LOADER.read_text(encoding="utf-8"))
 
     def test_admin_template_defaults_to_real_and_groups(self):
         overview = (_ROOT / "templates" / "admin_operations_center_v1.html").read_text(encoding="utf-8")

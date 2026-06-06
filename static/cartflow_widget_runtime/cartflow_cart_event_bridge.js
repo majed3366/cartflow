@@ -47,6 +47,9 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
   var started = false;
   var lastDispatchKey = "";
   var lastDispatchAt = 0;
+  var lastBackendSyncKey = "";
+  var lastBackendSyncAt = 0;
+  var BACKEND_SYNC_DEBOUNCE_MS = 2000;
 
   function blog(tag, meta) {
     try {
@@ -167,6 +170,43 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     } catch (eR) {}
   }
 
+  function syncBackendCartState(evt) {
+    if (!evt || evt.event_type !== "add_to_cart") {
+      return;
+    }
+    var key =
+      "backend_sync|" +
+      evt.event_type +
+      "|" +
+      (evt.session_id || "") +
+      "|" +
+      (evt.cart_id || "") +
+      "|" +
+      (evt.items_count != null ? evt.items_count : "") +
+      "|" +
+      (evt.cart_total != null ? evt.cart_total : "");
+    var now = Date.now();
+    if (
+      key === lastBackendSyncKey &&
+      now - lastBackendSyncAt < BACKEND_SYNC_DEBOUNCE_MS
+    ) {
+      return;
+    }
+    lastBackendSyncKey = key;
+    lastBackendSyncAt = now;
+    try {
+      if (typeof window.cartflowSyncCartState === "function") {
+        blog("[CF CART EVENT BRIDGE BACKEND SYNC]", {
+          event_type: evt.event_type,
+          store_slug: evt.store_slug,
+          session_id: evt.session_id,
+          reason: "add",
+        });
+        window.cartflowSyncCartState("add");
+      }
+    } catch (eSync) {}
+  }
+
   /** Bridge entry: adapters call this with a (possibly partial) event. */
   function emit(raw) {
     var evt = normalizeEvent(raw);
@@ -204,6 +244,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     });
 
     routeToOrchestrator(evt);
+    syncBackendCartState(evt);
     return evt;
   }
 

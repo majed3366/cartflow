@@ -129,11 +129,14 @@ class CartBridgeJsWiringTests(unittest.TestCase):
             "[CF CART EVENT SOURCE]",
             "[CF CART EVENT NORMALIZED]",
             "[CF CART EVENT BRIDGE DISPATCH]",
+            "[CF CART EVENT BRIDGE BACKEND SYNC]",
         ):
             self.assertIn(tag, text)
         self.assertIn("Cf.Triggers.onNormalizedCartEvent", text)
         self.assertIn("Cf.CartBridge", text)
         self.assertIn("routed_to", text)
+        self.assertIn("cartflowSyncCartState", text)
+        self.assertIn("syncBackendCartState", text)
 
     def test_sources_module_has_zid_and_stubs(self) -> None:
         text = _SOURCES.read_text(encoding="utf-8")
@@ -182,7 +185,7 @@ class CartBridgeJsWiringTests(unittest.TestCase):
 
     def test_widget_loader_runtime_version_bumped(self) -> None:
         text = _WIDGET_LOADER.read_text(encoding="utf-8")
-        self.assertIn("v2-widget-health-v1", text)
+        self.assertIn("v2-zid-cart-sync-v1", text)
 
 
 if __name__ == "__main__":
