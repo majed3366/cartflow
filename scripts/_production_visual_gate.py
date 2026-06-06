@@ -371,32 +371,48 @@ def _dashboard_probe(page, *, cart_id: str, flow: str, out_sub: Path) -> dict[st
     )
 
     time_to_visible_ms = None
-    for wait in range(30):
-        n = page.evaluate(
-            """(cid) => {
+    false_empty_seen = False
+    for wait in range(200):
+        snap = page.evaluate(
+            """() => {
               var tb = document.querySelector('#ma-tbody-all-carts');
-              if (!tb) return 0;
-              var html = tb.innerHTML || '';
-              return html.indexOf(cid) >= 0 ? 1 : 0;
-            }""",
-            cart_id,
+              if (!tb) return { rows: 0, falseEmpty: false, loading: false };
+              var dataRows = tb.querySelectorAll('tr[data-ma-filter]').length;
+              var text = tb.innerText || '';
+              var falseEmpty = text.indexOf('لا توجد سلال متروكة') >= 0 && dataRows === 0;
+              var loading = !!tb.querySelector('[data-ma-carts-loading]');
+              return { rows: dataRows, falseEmpty: falseEmpty, loading: loading };
+            }"""
         )
-        if n and flow != "vip":
-            time_to_visible_ms = round((time.time() - t_nav) * 1000, 1)
-            break
+        if snap.get("falseEmpty"):
+            false_empty_seen = True
+        if flow != "vip" and cart_id:
+            has_cid = page.evaluate(
+                """(cid) => {
+                  var tb = document.querySelector('#ma-tbody-all-carts');
+                  if (!tb) return 0;
+                  return (tb.innerHTML || '').indexOf(cid) >= 0 ? 1 : 0;
+                }""",
+                cart_id,
+            )
+            if has_cid:
+                time_to_visible_ms = round((time.time() - t_nav) * 1000, 1)
+                break
         if flow == "vip":
             n2 = page.evaluate(
-                """(cid) => {
+                """() => {
                   var tb = document.querySelector('#ma-vip-tbody, #ma-tbody-vip-carts');
                   if (!tb) return document.body.innerText.indexOf('966') >= 0 ? 1 : 0;
                   return (tb.innerText || '').length > 20 ? 1 : 0;
-                }""",
-                cart_id,
+                }"""
             )
             if n2:
                 time_to_visible_ms = round((time.time() - t_nav) * 1000, 1)
                 break
-        page.wait_for_timeout(1000)
+        if flow != "vip" and not cart_id and int(snap.get("rows") or 0) > 0:
+            time_to_visible_ms = round((time.time() - t_nav) * 1000, 1)
+            break
+        page.wait_for_timeout(100)
 
     page.screenshot(path=str(out_sub / "10_dashboard_final.png"), full_page=True)
 
@@ -423,7 +439,86 @@ def _dashboard_probe(page, *, cart_id: str, flow: str, out_sub: Path) -> dict[st
             "merchant_nav_badge_vip": summary_payload.get("merchant_nav_badge_vip"),
             "vip_alert_state_ar": vip_payload.get("merchant_vip_alert_state_ar"),
         },
+        "false_empty_state_seen": false_empty_seen,
     }
+
+
+def _dashboard_stability_three_loads(page, out_sub: Path) -> dict[str, Any]:
+    """Load #carts?tab=all three times; require rows + count parity each time."""
+    runs: list[dict[str, Any]] = []
+    for i in range(3):
+        t0 = time.time()
+        page.goto(f"{BASE}/dashboard#carts?tab=all", timeout=120000)
+        visible_ms = None
+        false_empty = False
+        partial_empty_overwrite = False
+        row_count = 0
+        filter_all = None
+        for _ in range(200):
+            snap = page.evaluate(
+                """async () => {
+                  var tb = document.querySelector('#ma-tbody-all-carts');
+                  var domRows = tb ? tb.querySelectorAll('tr[data-ma-filter]').length : 0;
+                  var text = tb ? (tb.innerText || '') : '';
+                  var falseEmpty = text.indexOf('لا توجد سلال متروكة') >= 0 && domRows === 0;
+                  var filt = document.getElementById('ma-filt-all');
+                  var filterAll = filt ? parseInt(filt.textContent || '0', 10) : null;
+                  return { domRows: domRows, falseEmpty: falseEmpty, filterAll: filterAll };
+                }"""
+            )
+            if snap.get("falseEmpty"):
+                false_empty = True
+            row_count = int(snap.get("domRows") or 0)
+            filter_all = snap.get("filterAll")
+            if row_count > 0:
+                visible_ms = round((time.time() - t0) * 1000, 1)
+                break
+            page.wait_for_timeout(100)
+        page.screenshot(path=str(out_sub / f"stability_load_{i + 1}.png"), full_page=True)
+        iso = page.evaluate(
+            """async () => {
+              const t0 = performance.now();
+              const r = await fetch('/api/dashboard/normal-carts?_stab=' + Date.now(), {
+                credentials: 'same-origin', cache: 'no-store'
+              });
+              const t1 = performance.now();
+              const j = await r.json();
+              return {
+                client_duration_ms: Math.round(t1 - t0),
+                dashboard_partial: j.dashboard_partial,
+                row_count: (j.merchant_carts_page_rows || []).length,
+                filter_all: (j.merchant_cart_filter_counts || {}).all,
+              };
+            }"""
+        )
+        if iso.get("dashboard_partial") and not iso.get("row_count"):
+            partial_empty_overwrite = True
+        count_match = (
+            filter_all is not None
+            and row_count > 0
+            and int(filter_all) == int(row_count)
+        )
+        runs.append(
+            {
+                "run": i + 1,
+                "time_to_visible_ms": visible_ms,
+                "dom_rows": row_count,
+                "filter_all": filter_all,
+                "count_match": count_match,
+                "false_empty": false_empty,
+                "partial_empty_overwrite": partial_empty_overwrite,
+                "isolated_fetch": iso,
+            }
+        )
+        page.wait_for_timeout(800)
+    return {"runs": runs, "all_pass": all(
+        r.get("time_to_visible_ms") is not None
+        and r.get("dom_rows", 0) > 0
+        and r.get("count_match")
+        and not r.get("false_empty")
+        and not r.get("partial_empty_overwrite")
+        for r in runs
+    )}
 
 
 def main() -> int:
@@ -449,12 +544,17 @@ def main() -> int:
         ("dashboard_lazy.js", "/static/merchant_dashboard_lazy.js"),
     ):
         body = urllib.request.urlopen(BASE + path, timeout=30).read().decode("utf-8", errors="replace")
-        report["deploy_markers"][name] = {
+        markers = {
             "bytes": len(body),
             "price_fallback": "applyLegacyPriceSubCategoryDefault" in body,
             "recovery_close": "CF RECOVERY FLOW COMPLETE CLOSE" in body,
             "partial_retry": "normal_carts_partial_retry" in body,
         }
+        if name == "dashboard_lazy.js":
+            markers["boot_priority"] = "boot_priority" in body
+            markers["stale_skip"] = "normal_carts_stale_skip" in body
+            markers["row_retention"] = "normal_carts_partial_empty" in body
+        report["deploy_markers"][name] = markers
 
     failures: list[str] = []
 
@@ -504,9 +604,17 @@ def main() -> int:
         )
         report["normal"] = {**normal_j, "dashboard": normal_dash}
 
+        stab_dir = OUT / "stability"
+        stab_dir.mkdir(parents=True, exist_ok=True)
+        report["stability"] = _dashboard_stability_three_loads(page, stab_dir)
+        report["stability"]["before_baseline_ms"] = 39038
+
         browser.close()
 
     # Acceptance checks
+    lazy_m = report["deploy_markers"].get("dashboard_lazy.js") or {}
+    if not lazy_m.get("boot_priority"):
+        failures.append("deploy_missing_dashboard_boot_priority")
     if not report["deploy_markers"].get("fetch.js", {}).get("price_fallback"):
         failures.append("deploy_missing_price_fallback")
     vip_phone = (report["vip"].get("phone_post") or {}).get("status") == 200
@@ -529,6 +637,17 @@ def main() -> int:
     dom = (report["normal"].get("dashboard") or {}).get("table_rows_dom")
     if filt is not None and dom is not None and int(filt) != int(dom):
         failures.append(f"normal_count_mismatch filter={filt} dom={dom}")
+    norm_dash = (report["normal"].get("dashboard") or {})
+    if norm_dash.get("false_empty_state_seen"):
+        failures.append("normal_false_empty_state_during_load")
+    stab = report.get("stability") or {}
+    if not stab.get("all_pass"):
+        failures.append("stability_three_loads_failed")
+    stab_runs = stab.get("runs") or []
+    if stab_runs:
+        max_vis = max((r.get("time_to_visible_ms") or 0) for r in stab_runs)
+        if max_vis >= 39038:
+            failures.append(f"stability_visibility_not_improved max_ms={max_vis}")
 
     vip_iso = (report["vip"].get("dashboard") or {}).get("isolated_fetch") or {}
     norm_boot = (report["normal"].get("dashboard") or {}).get("normal_carts_boot_events") or []

@@ -35,6 +35,10 @@
   var merchantDashboardRefreshToken = "";
   var merchantRefreshInFlight = false;
   var merchantRefreshTimer = null;
+  var normalCartsFetchGen = 0;
+  var normalCartsBootInFlight = false;
+  var normalCartsBootComplete = false;
+  var normalCartsHasRenderedRows = false;
 
   function isUnifiedSetup(mse) {
     if (!mse || typeof mse !== "object") return false;
@@ -1951,14 +1955,9 @@
       typeof fetchSection === "function"
     ) {
       window.__maCompletedTabFetchPending = true;
-      fetchSection(
-        "/api/dashboard/normal-carts",
-        function (d) {
-          window.__maCompletedTabFetchPending = false;
-          applyNormalCarts(d);
-        },
-        "normal_carts_completed_retry"
-      );
+      fetchNormalCarts("completed_tab_retry").finally(function () {
+        window.__maCompletedTabFetchPending = false;
+      });
     }
   };
 
@@ -2213,16 +2212,11 @@
               patchCartRowArchivedVisual(rk, true);
               rerenderAllCartsTable();
               rerenderHomeCartsTable();
-              fetchSection(
-                "/api/dashboard/normal-carts",
-                function (payload) {
-                  applyNormalCarts(payload);
-                  if (typeof window.goToCartTab === "function") {
-                    window.goToCartTab("completed");
-                  }
-                },
-                "normal-carts"
-              );
+              fetchNormalCarts("lifecycle_archive").then(function (payload) {
+                if (payload && typeof window.goToCartTab === "function") {
+                  window.goToCartTab("completed");
+                }
+              });
             } else {
               console.error("[LC ARCHIVE FAILED]", d);
             }
@@ -2257,11 +2251,7 @@
               patchCartRowArchivedVisual(rk, false, d.lifecycle || null);
               rerenderAllCartsTable();
               rerenderHomeCartsTable();
-              fetchSection(
-                "/api/dashboard/normal-carts",
-                applyNormalCarts,
-                "normal-carts"
-              );
+              fetchNormalCarts("lifecycle_reopen");
             } else {
               console.error("[LC REOPEN FAILED]", d);
             }
@@ -2380,37 +2370,73 @@
     );
   }
 
-  function applyNormalCarts(d) {
-    if (!d || !d.ok) return;
-    var pageRows = d.merchant_carts_page_rows || [];
-    if (d.dashboard_partial && !pageRows.length) {
-      if (!window.__maNormalCartsPartialRetryPending) {
-        window.__maNormalCartsPartialRetryPending = true;
-        window.setTimeout(function () {
-          fetchSection(
-            "/api/dashboard/normal-carts",
-            function (retryD) {
-              window.__maNormalCartsPartialRetryPending = false;
-              applyNormalCarts(retryD);
-            },
-            "normal_carts_partial_retry"
-          );
-        }, 1500);
-      }
-      return;
+  function normalCartsLoadingRowHtml(message) {
+    return (
+      '<tr class="ma-dash-loading-row" data-ma-carts-loading="1">' +
+      '<td colspan="6" style="text-align:center;padding:24px;color:var(--muted);">' +
+      esc(message || "جاري تحميل السلال…") +
+      "</td></tr>"
+    );
+  }
+
+  function normalCartsHomeLoadingRowHtml(message) {
+    return (
+      '<tr class="ma-dash-loading-row" data-ma-carts-loading="1">' +
+      '<td colspan="5" style="text-align:center;padding:24px;color:var(--muted);">' +
+      esc(message || "جاري تحميل السلال…") +
+      "</td></tr>"
+    );
+  }
+
+  function normalCartsIsDegraded(d) {
+    if (!d) return true;
+    return !!(d.dashboard_partial || d.dashboard_timeout);
+  }
+
+  function normalCartsPayloadRows(d) {
+    return (d && d.merchant_carts_page_rows) || [];
+  }
+
+  function showNormalCartsLoadingState(message) {
+    if (normalCartsHasRenderedRows && lastNormalCartsPageRows.length) return;
+    var allb = byId("ma-tbody-all-carts");
+    if (allb && !allb.querySelector("tr[data-ma-filter]")) {
+      allb.innerHTML = normalCartsLoadingRowHtml(message);
     }
-    ingestRefreshToken(d, "normal-carts");
-    lastNormalCartsPageRows = d.merchant_carts_page_rows || [];
-    lastArchivedCartsPageRows = d.merchant_archived_carts_page_rows || [];
+    var home = byId("ma-tbody-home-carts");
+    if (home && !home.querySelector("tr[data-ma-filter]")) {
+      home.innerHTML = normalCartsHomeLoadingRowHtml(message);
+    }
+  }
+
+  function scheduleNormalCartsRetry(label) {
+    if (window.__maNormalCartsPartialRetryPending) return;
+    window.__maNormalCartsPartialRetryPending = true;
+    logClientRefresh("normal_carts_retry_scheduled", { label: label || "partial" });
+    window.setTimeout(function () {
+      window.__maNormalCartsPartialRetryPending = false;
+      fetchNormalCarts("normal_carts_retry_" + (label || "partial"));
+    }, 1200);
+  }
+
+  function renderNormalCartsTables(d) {
+    var pageRows = normalCartsPayloadRows(d);
+    lastNormalCartsPageRows = pageRows;
+    lastArchivedCartsPageRows = (d && d.merchant_archived_carts_page_rows) || [];
     window.__maNormalCartsPageRows = lastNormalCartsPageRows;
+    if (pageRows.length) {
+      normalCartsHasRenderedRows = true;
+    }
     var home = byId("ma-tbody-home-carts");
     if (home) {
-      var tr = d.merchant_table_rows || [];
-      if (!tr.length) {
+      var tr = (d && d.merchant_table_rows) || [];
+      if (!tr.length && !pageRows.length) {
         home.innerHTML =
           '<tr><td colspan="5" class="empty-text" style="text-align:center;padding:24px;color:var(--muted);">لا توجد سلال ضمن النشاط الحالي</td></tr>';
-      } else {
+      } else if (tr.length) {
         home.innerHTML = tr.map(cartRowHome).join("");
+      } else {
+        home.innerHTML = pageRows.slice(0, 8).map(cartRowHome).join("");
       }
       bindCustomerLifecycleActions(home);
     }
@@ -2426,7 +2452,7 @@
       bindCustomerLifecycleActions(allb);
     }
     applyCompletedCartsTable(lastNormalCartsPageRows, lastArchivedCartsPageRows);
-    var fc = d.merchant_cart_filter_counts || {};
+    var fc = (d && d.merchant_cart_filter_counts) || {};
     function sf(k, id) {
       var el = byId(id);
       if (el) el.textContent = String(fc[k] != null ? fc[k] : 0);
@@ -2436,7 +2462,7 @@
     sf("sent", "ma-filt-sent");
     sf("attention", "ma-filt-attention");
     sf("nophone", "ma-filt-nophone");
-    if (d.merchant_nav_badge_abandoned != null) {
+    if (d && d.merchant_nav_badge_abandoned != null) {
       setNavBadge("ma-nav-badge-abandoned", d.merchant_nav_badge_abandoned);
     } else if (fc.waiting != null) {
       setNavBadge("ma-nav-badge-abandoned", fc.waiting);
@@ -2452,10 +2478,85 @@
         window.maRefreshCompletedCartsTable();
       } else if (tab && typeof window.applyCartTabFilters === "function") {
         window.applyCartTabFilters(tab);
+      } else if (typeof window.applyCartTabFilters === "function") {
+        window.applyCartTabFilters("all");
       }
     } catch (eHash) {
       /* ignore */
     }
+  }
+
+  function applyNormalCarts(d, fetchGen) {
+    if (!d || !d.ok) return;
+    if (fetchGen != null && fetchGen !== normalCartsFetchGen) {
+      logClientRefresh("normal_carts_stale_skip", {
+        fetchGen: fetchGen,
+        currentGen: normalCartsFetchGen,
+      });
+      return;
+    }
+    var pageRows = normalCartsPayloadRows(d);
+    var degraded = normalCartsIsDegraded(d);
+    var partialEmpty = degraded && !pageRows.length;
+
+    if (partialEmpty) {
+      logClientRefresh("normal_carts_partial_empty", {
+        stage: d.dashboard_timeout_stage || null,
+        hadRows: lastNormalCartsPageRows.length,
+      });
+      if (lastNormalCartsPageRows.length) {
+        scheduleNormalCartsRetry(d.dashboard_timeout_stage || "partial");
+        return;
+      }
+      showNormalCartsLoadingState("جاري تحميل السلال…");
+      scheduleNormalCartsRetry(d.dashboard_timeout_stage || "partial");
+      return;
+    }
+
+    if (!pageRows.length && !degraded && lastNormalCartsPageRows.length) {
+      var fcGuard = d.merchant_cart_filter_counts || {};
+      var filterAll = parseInt(fcGuard.all, 10);
+      if (isFinite(filterAll) && filterAll > 0) {
+        logClientRefresh("normal_carts_empty_mismatch_retry", { filterAll: filterAll });
+        scheduleNormalCartsRetry("empty_mismatch");
+        return;
+      }
+    }
+
+    ingestRefreshToken(d, "normal-carts");
+    renderNormalCartsTables(d);
+    normalCartsBootComplete = true;
+    logClientRefresh("normal_carts_applied", {
+      rows: pageRows.length,
+      degraded: degraded,
+      partial: !!d.dashboard_partial,
+    });
+  }
+
+  function fetchNormalCarts(label) {
+    var gen = ++normalCartsFetchGen;
+    showNormalCartsLoadingState();
+    var u = "/api/dashboard/normal-carts?_ts=" + Date.now();
+    if (label) {
+      u += "&_label=" + encodeURIComponent(String(label));
+    }
+    return fetch(u, { credentials: "same-origin", cache: "no-store" })
+      .then(function (r) {
+        return r.json();
+      })
+      .then(function (d) {
+        applyNormalCarts(d, gen);
+        return d;
+      })
+      .catch(function (err) {
+        logClientRefresh("normal_carts_fetch_failed", { label: label || "", err: String(err) });
+        if (lastNormalCartsPageRows.length) {
+          scheduleNormalCartsRetry("fetch_error");
+        } else {
+          showNormalCartsLoadingState("تعذّر تحميل السلال — إعادة المحاولة…");
+          scheduleNormalCartsRetry("fetch_error");
+        }
+      });
   }
 
   function applyVipHomeBanner(ban) {
@@ -3023,7 +3124,7 @@
     });
     Promise.allSettled([
       fetchSection("/api/dashboard/summary", applySummary, "summary"),
-      fetchSection("/api/dashboard/normal-carts", applyNormalCarts, "normal_carts"),
+      fetchNormalCarts("refresh_core"),
       fetchSection("/api/dashboard/messages", applyMessages, "messages"),
       fetchSection("/api/dashboard/vip-carts", applyVipCarts, "vip_carts"),
     ]).finally(function () {
@@ -3036,6 +3137,9 @@
   }
 
   function checkRefreshState() {
+    if (normalCartsBootInFlight && !normalCartsBootComplete) {
+      return Promise.resolve();
+    }
     var u = "/api/dashboard/refresh-state?_ts=" + Date.now();
     return fetch(u, { credentials: "same-origin", cache: "no-store" })
       .then(function (r) {
@@ -3051,6 +3155,10 @@
           return;
         }
         if (next !== merchantDashboardRefreshToken) {
+          if (merchantRefreshInFlight) {
+            logClientRefresh("token_changed_deferred", { to: next });
+            return;
+          }
           var prev = merchantDashboardRefreshToken;
           merchantDashboardRefreshToken = next;
           logClientRefresh("token_changed", { from: prev, to: next });
@@ -3081,22 +3189,41 @@
     }
     if (!byId("ma-kpi-abandoned")) return;
 
-    /* لا ‎recovery-trend‎ هنا — كان يستهلك اتصال DB دون تحديث الواجهة (الرسم في ‎dashboard_v1‎). */
-    var jobs = [
-      fetchSection("/api/dashboard/summary", applySummary, "summary"),
-      fetchSection("/api/dashboard/normal-carts", applyNormalCarts, "normal_carts"),
-      fetch("/api/dashboard/vip-carts", { credentials: "same-origin" }).then(function (r) { return r.json(); }).then(applyVipCarts).catch(applyVipCartsFailed),
-      fetchSection("/api/dashboard/followups", applyFollowups, "followups"),
-      fetchSection("/api/dashboard/widget-panel", applyWidgetPanel, "widget_panel"),
-      fetchSection("/api/dashboard/messages", applyMessages, "messages"),
-    ];
-    Promise.allSettled(jobs);
-    startRefreshWatcher();
+    /* Priority: normal-carts first so merchant table paints before secondary sections. */
+    normalCartsBootInFlight = true;
+    fetchNormalCarts("boot_priority").finally(function () {
+      normalCartsBootInFlight = false;
+      var jobs = [
+        fetchSection("/api/dashboard/summary", applySummary, "summary"),
+        fetch("/api/dashboard/vip-carts", { credentials: "same-origin" })
+          .then(function (r) {
+            return r.json();
+          })
+          .then(applyVipCarts)
+          .catch(applyVipCartsFailed),
+        fetchSection("/api/dashboard/followups", applyFollowups, "followups"),
+        fetchSection("/api/dashboard/widget-panel", applyWidgetPanel, "widget_panel"),
+        fetchSection("/api/dashboard/messages", applyMessages, "messages"),
+      ];
+      Promise.allSettled(jobs);
+      startRefreshWatcher();
+    });
   }
 
   window.maApplyVipCartsPayload = applyVipCarts;
   window.maSyncHomeActivation = syncHomeActivationFromCache;
   window.MERCHANT_SETUP_RENDER_BUILD = MERCHANT_SETUP_RENDER_BUILD;
+  window.__maNormalCartsTestHooks = {
+    applyNormalCarts: applyNormalCarts,
+    fetchNormalCarts: fetchNormalCarts,
+    renderNormalCartsTables: renderNormalCartsTables,
+    getLastRows: function () {
+      return lastNormalCartsPageRows.slice();
+    },
+    getFetchGen: function () {
+      return normalCartsFetchGen;
+    },
+  };
 
   window.addEventListener("hashchange", function () {
     syncHomeActivationFromCache();
