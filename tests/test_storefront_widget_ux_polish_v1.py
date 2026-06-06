@@ -37,6 +37,10 @@ class StorefrontWidgetUxPolishTests(unittest.TestCase):
         flows = _FLOWS.read_text(encoding="utf-8")
         self.assertIn("minimizeWidgetPolite", flows)
         self.assertIn("gracefulCloseWidget", flows)
+        close_fn = flows.split("function gracefulCloseWidget()")[1].split("function ")[0]
+        self.assertIn("clearHesitationTimers", close_fn)
+        self.assertIn("markWidgetDismissed", close_fn)
+        self.assertIn("clearV2HesitationDeadlinePersisted", close_fn)
 
 
 if __name__ == "__main__":

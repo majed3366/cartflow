@@ -2382,6 +2382,23 @@
 
   function applyNormalCarts(d) {
     if (!d || !d.ok) return;
+    var pageRows = d.merchant_carts_page_rows || [];
+    if (d.dashboard_partial && !pageRows.length) {
+      if (!window.__maNormalCartsPartialRetryPending) {
+        window.__maNormalCartsPartialRetryPending = true;
+        window.setTimeout(function () {
+          fetchSection(
+            "/api/dashboard/normal-carts",
+            function (retryD) {
+              window.__maNormalCartsPartialRetryPending = false;
+              applyNormalCarts(retryD);
+            },
+            "normal_carts_partial_retry"
+          );
+        }, 1500);
+      }
+      return;
+    }
     ingestRefreshToken(d, "normal-carts");
     lastNormalCartsPageRows = d.merchant_carts_page_rows || [];
     lastArchivedCartsPageRows = d.merchant_archived_carts_page_rows || [];

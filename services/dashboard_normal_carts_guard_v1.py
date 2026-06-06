@@ -15,7 +15,7 @@ from typing import Any, Optional
 
 log = logging.getLogger("cartflow")
 
-_DEFAULT_WALL_BUDGET_S = 4.5
+_DEFAULT_WALL_BUDGET_S = 12.0
 _WALL_BUDGET_S = max(
     1.0,
     min(

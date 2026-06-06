@@ -226,6 +226,32 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
   }
 
   function gracefulCloseWidget() {
+    try {
+      console.log("[CF RECOVERY FLOW COMPLETE CLOSE]");
+    } catch (eLog) {}
+    try {
+      if (Cf.State && typeof Cf.State.clearHesitationTimers === "function") {
+        Cf.State.clearHesitationTimers();
+      }
+    } catch (eClr) {}
+    var inner = st();
+    if (inner.exitInactivityTimer != null) {
+      try {
+        clearTimeout(inner.exitInactivityTimer);
+      } catch (eEx) {}
+      inner.exitInactivityTimer = null;
+    }
+    inner.cfV2HesitationDeadlineAt = null;
+    inner.cfV2HesitationDeferredBaseAt = null;
+    try {
+      if (
+        Cf.State &&
+        typeof Cf.State.clearV2HesitationDeadlinePersisted === "function"
+      ) {
+        Cf.State.clearV2HesitationDeadlinePersisted();
+      }
+    } catch (eDl) {}
+    markWidgetDismissed();
     minimizeWidgetPolite();
   }
 

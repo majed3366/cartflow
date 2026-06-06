@@ -49,7 +49,7 @@ class DashboardNormalCartsGuardTests(unittest.TestCase):
         self.assertEqual(res.status_code, 200)
         body = res.json()
         self.assertTrue(body.get("ok"))
-        self.assertLess(elapsed, 8.0)
+        self.assertLess(elapsed, 15.0)
         self.assertIn("merchant_carts_page_rows", body)
         if body.get("dashboard_partial"):
             self.assertTrue(body.get("dashboard_timeout_stage"))

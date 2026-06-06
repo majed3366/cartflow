@@ -433,6 +433,13 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     if (!haveCartApprox()) {
       return { ok: false, reason: "no_cart" };
     }
+    if (
+      Cf.State.readDismissSuppress() &&
+      tr &&
+      tr.suppress_after_widget_dismiss !== false
+    ) {
+      return { ok: false, reason: "recently_dismissed" };
+    }
     return { ok: true, reason: null };
   }
 
