@@ -40,6 +40,40 @@ def resolve_store_row_for_cartflow_slug(store_slug: str) -> Optional[Store]:
         return None
 
 
+def hydrate_abandoned_cart_customer_phone_from_recovery(
+    ac: AbandonedCart,
+    *,
+    store_slug: str = "",
+) -> bool:
+    """
+    Backfill ‎AbandonedCart.customer_phone‎ from ‎CartRecoveryReason‎ / session memory
+    when the column is empty — closes phone-before-cart and store_slug drift gaps.
+    """
+    if ac is None:
+        return False
+    existing = (getattr(ac, "customer_phone", None) or "").strip()
+    if existing:
+        return False
+    store_row = resolve_store_row_for_cartflow_slug(store_slug) if store_slug else None
+    if store_row is None:
+        sid_raw = getattr(ac, "store_id", None)
+        if sid_raw is not None:
+            try:
+                store_row = db.session.get(Store, int(sid_raw))
+            except (SQLAlchemyError, TypeError, ValueError):
+                db.session.rollback()
+                store_row = None
+    try:
+        from main import _vip_dashboard_customer_phone_raw  # noqa: PLC0415
+    except Exception:  # noqa: BLE001
+        return False
+    resolved = (_vip_dashboard_customer_phone_raw(ac, store_row) or "").strip()
+    if not resolved:
+        return False
+    ac.customer_phone = resolved[:100]
+    return True
+
+
 def apply_vip_phone_capture_to_abandoned_carts(
     *,
     store_slug: str,

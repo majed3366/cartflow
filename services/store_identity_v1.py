@@ -969,12 +969,40 @@ def backfill_store_identity_aliases_from_stores(
     return n
 
 
-def sync_connected_platform_identities(*, session: Any = None) -> int:
+def warm_live_platform_sync_enabled() -> bool:
+    """
+    Live platform (Zid) identity refresh during the synchronous DB-warm hot path is
+    OFF by default: it makes blocking HTTPS calls per connected store while the warm
+    lock is held, which hangs phone-capture / cart-list endpoints in real runtime.
+    Identity aliases are still backfilled offline from Store columns and refreshed at
+    OAuth callback time. Opt back in (e.g. for an offline/cron context) with
+    CARTFLOW_WARM_LIVE_PLATFORM_SYNC=1.
+    """
+    import os  # noqa: PLC0415
+
+    return (os.getenv("CARTFLOW_WARM_LIVE_PLATFORM_SYNC") or "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+    )
+
+
+def sync_connected_platform_identities(
+    *, session: Any = None, allow_network: Optional[bool] = None
+) -> int:
     """
     For platform-connected stores, refresh Zid/Salla alias rows from live profile/API.
-    Called once per process warm — not a request-time fallback.
+
+    Called once per process warm. By default this performs NO live network calls so the
+    request hot path can never block on the Zid API (see warm_live_platform_sync_enabled).
+    Pass allow_network=True (or set CARTFLOW_WARM_LIVE_PLATFORM_SYNC=1) to opt in.
     """
     from services.db_ready_diag_v1 import db_ready_substage  # noqa: PLC0415
+
+    do_network = allow_network if allow_network is not None else warm_live_platform_sync_enabled()
+    if not do_network:
+        with db_ready_substage("platform_sync_skipped_offline"):
+            return 0
 
     sess = session or db.session
     n = 0
@@ -1039,6 +1067,7 @@ __all__ = [
     "resolve_store_row_by_identifier",
     "resolve_store_row_for_storefront_api",
     "sync_connected_platform_identities",
+    "warm_live_platform_sync_enabled",
     "sync_zid_identities_for_dashboard_store",
     "sync_zid_store_identities_after_oauth",
     "verify_zid_storefront_permalink_reachable",

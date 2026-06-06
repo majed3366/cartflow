@@ -1502,15 +1502,18 @@ def _normal_carts_query_prof_wrap(span_name: str):
 
 @_normal_carts_query_prof_wrap("_dashboard_recovery_store_row")
 def _dashboard_recovery_store_row() -> Optional[Store]:
-    """Authenticated merchant Store only — no latest-store fallback."""
+    """Authenticated merchant Store; dev bypass falls back to demo sandbox row."""
     from services.dashboard_store_context import dashboard_canonical_store_row
     from services.merchant_auth_context import get_merchant_auth_store_slug
+    from services.merchant_auth_v1 import development_dashboard_bypass_active
 
     slug = get_merchant_auth_store_slug()
     if slug:
         row = dashboard_canonical_store_row(slug, allow_schema_warm=False)
         if row is not None:
             return row
+    if development_dashboard_bypass_active():
+        return dashboard_canonical_store_row("demo", allow_schema_warm=False)
     return None
 
 
@@ -11338,6 +11341,22 @@ def _handle_cart_state_sync(
         if isinstance(payload.get("cart"), list):
             prev["cart"] = payload.get("cart")
         AbandonedCart.set_raw(row, prev)
+        try:
+            from services.vip_abandoned_cart_phone import (  # noqa: PLC0415
+                hydrate_abandoned_cart_customer_phone_from_recovery,
+            )
+
+            if hydrate_abandoned_cart_customer_phone_from_recovery(
+                row, store_slug=store_slug
+            ):
+                log.info(
+                    "[CF PHONE HYDRATE] session_id=%s cart_id=%s store_slug=%s",
+                    (sid_log or "")[:64],
+                    (zid or "")[:64],
+                    (store_slug or "")[:64],
+                )
+        except Exception as hydr_exc:  # noqa: BLE001
+            log.warning("cart_state_sync phone hydrate skipped: %s", hydr_exc)
 
         db.session.commit()
     except IntegrityError:
@@ -14101,6 +14120,26 @@ def _vip_priority_alert_rows_for_lc_clause(
         pass
 
     for grp_sorted in _vip_pick_priority_cart_groups(full_rows):
+        try:
+            from services.vip_abandoned_cart_phone import (  # noqa: PLC0415
+                hydrate_abandoned_cart_customer_phone_from_recovery,
+            )
+
+            slug_hint = (
+                (getattr(dash_store, "zid_store_id", None) or "").strip()
+                if dash_store is not None
+                else ""
+            )
+            for ac_h in grp_sorted:
+                if hydrate_abandoned_cart_customer_phone_from_recovery(
+                    ac_h, store_slug=slug_hint
+                ):
+                    try:
+                        db.session.flush()
+                    except SQLAlchemyError:
+                        db.session.rollback()
+        except Exception:  # noqa: BLE001
+            pass
         out.append(_vip_dashboard_cart_alert_dict_from_group(grp_sorted, dash_store))
     return out
 

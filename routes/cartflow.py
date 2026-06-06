@@ -99,6 +99,36 @@ def _log_reason_save_profile(
         pass
 
 
+def _coerce_cartflow_widget_store_slug(
+    raw_slug: str,
+    *,
+    merchant_activation: bool,
+    cookies: Optional[dict[str, str]] = None,
+) -> str:
+    """Align widget reason/phone writes with cart-event store scoping (demo → merchant when logged in)."""
+    ss = (raw_slug or "").strip()[:255]
+    if merchant_activation:
+        try:
+            from services.merchant_test_widget_store_v1 import (  # noqa: PLC0415
+                merchant_authenticated_store_slug,
+            )
+
+            owner = merchant_authenticated_store_slug(cookies=cookies or {})
+            if owner:
+                ss = str(owner).strip()[:255]
+        except Exception:  # noqa: BLE001
+            pass
+    try:
+        from services.merchant_test_widget_store_v1 import (  # noqa: PLC0415
+            coerce_cart_event_store_slug,
+        )
+
+        ss = coerce_cart_event_store_slug(ss)
+    except Exception:  # noqa: BLE001
+        pass
+    return ss
+
+
 router = APIRouter(prefix="/api/cartflow", tags=["cartflow"])
 
 
@@ -408,24 +438,17 @@ async def post_assist_handoff(request: Request) -> Any:
             body = None
         if not isinstance(body, dict):
             return j({"ok": False, "error": "json_object_required"}, 400)
-        ss = (str(body.get("store_slug", "")) or "").strip()[:255]
         sid = (str(body.get("session_id", "")) or "").strip()[:512]
         ma = str(body.get("merchant_activation") or "").strip().lower() in (
             "1",
             "true",
             "yes",
         )
-        if ma:
-            try:
-                from services.merchant_test_widget_store_v1 import (  # noqa: PLC0415
-                    merchant_authenticated_store_slug,
-                )
-
-                owner = merchant_authenticated_store_slug(cookies=dict(request.cookies))
-                if owner:
-                    ss = str(owner).strip()[:255]
-            except Exception:  # noqa: BLE001
-                pass
+        ss = _coerce_cartflow_widget_store_slug(
+            (str(body.get("store_slug", "")) or "").strip()[:255],
+            merchant_activation=ma,
+            cookies=dict(request.cookies),
+        )
         if not ss or not sid:
             return j({"ok": False, "error": "store_slug_session_required"}, 400)
         row = AbandonmentReasonLog(
@@ -477,24 +500,17 @@ async def post_abandonment_reason(request: Request) -> Any:
             body = None
         if not isinstance(body, dict):
             return j({"ok": False, "error": "json_object_required"}, 400)
-        ss = (str(body.get("store_slug", "")) or "").strip()[:255]
         sid = (str(body.get("session_id", "")) or "").strip()[:512]
         ma = str(body.get("merchant_activation") or "").strip().lower() in (
             "1",
             "true",
             "yes",
         )
-        if ma:
-            try:
-                from services.merchant_test_widget_store_v1 import (  # noqa: PLC0415
-                    merchant_authenticated_store_slug,
-                )
-
-                owner = merchant_authenticated_store_slug(cookies=dict(request.cookies))
-                if owner:
-                    ss = str(owner).strip()[:255]
-            except Exception:  # noqa: BLE001
-                pass
+        ss = _coerce_cartflow_widget_store_slug(
+            (str(body.get("store_slug", "")) or "").strip()[:255],
+            merchant_activation=ma,
+            cookies=dict(request.cookies),
+        )
         reason = (str(body.get("reason", "")) or "").strip().lower()[:32]
         sub_raw = body.get("sub_category")
         sub_cat: Optional[str] = None

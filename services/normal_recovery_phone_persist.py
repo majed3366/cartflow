@@ -94,7 +94,7 @@ def apply_normal_recovery_phone_to_session(
             db_session.execute(
                 update(AbandonedCart)
                 .where(
-                    AbandonedCart.vip_mode.is_(False),
+                    AbandonedCart.status == "abandoned",
                     or_(*conds),
                 )
                 .values(customer_phone=ph[:100])
