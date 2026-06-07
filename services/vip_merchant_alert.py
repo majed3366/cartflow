@@ -111,44 +111,83 @@ def emit_vip_merchant_alert_truth_log(
     log.info("%s", line)
 
 
+def normalize_vip_alert_phone(raw: str) -> Tuple[Optional[str], str]:
+    """Normalize merchant destination to digits-only E.164-ish for Twilio."""
+    d = _digits_only(raw or "")
+    if len(d) < 8:
+        return None, ""
+    return d[:64], d
+
+
+def resolve_vip_alert_destination(store: Any) -> Tuple[Optional[str], str, str]:
+    """
+    Resolve VIP merchant alert destination (priority order):
+    1. ``store_whatsapp_number`` (merchant WhatsApp)
+    2. ``whatsapp_support_url`` (merchant support WhatsApp)
+    3. ``CARTFLOW_VIP_ALERT_DESTINATION`` env (ops override / fallback)
+    Returns ``(phone_for_twilio, source, normalized_digits)``.
+    """
+    if store is None:
+        env_only = (os.getenv("CARTFLOW_VIP_ALERT_DESTINATION") or "").strip()
+        if env_only:
+            norm, digits = normalize_vip_alert_phone(env_only)
+            if norm:
+                return norm, "cartflow_vip_alert_destination_env", digits
+        return None, "no_store", ""
+
+    raw_num = getattr(store, "store_whatsapp_number", None)
+    if isinstance(raw_num, str) and raw_num.strip():
+        norm, digits = normalize_vip_alert_phone(raw_num.strip())
+        if norm:
+            return norm[:64], "store_whatsapp_number", digits
+
+    url = getattr(store, "whatsapp_support_url", None)
+    if isinstance(url, str) and url.strip():
+        u = url.strip()
+        low = u.lower()
+        try:
+            p = urlparse(u)
+            host = (p.netloc or "").lower()
+            path = p.path or ""
+            if "wa.me" in host or host == "wa.me":
+                seg = path.strip("/").split("/")[0] if path else ""
+                norm, digits = normalize_vip_alert_phone(seg)
+                if norm:
+                    return norm, "whatsapp_support_url_wa_me", digits
+            if "api.whatsapp.com" in host:
+                qs = parse_qs(p.query or "")
+                ph = (qs.get("phone") or [""])[0]
+                norm, digits = normalize_vip_alert_phone(str(ph))
+                if norm:
+                    return norm, "whatsapp_support_url_api", digits
+            m = re.search(r"(?:wa\.me/|phone=)(\d{8,15})", low)
+            if m:
+                norm, digits = normalize_vip_alert_phone(m.group(1))
+                if norm:
+                    return norm, "whatsapp_support_url_regex", digits
+        except Exception:  # noqa: BLE001
+            pass
+
+    env_dest = (os.getenv("CARTFLOW_VIP_ALERT_DESTINATION") or "").strip()
+    if env_dest:
+        norm, digits = normalize_vip_alert_phone(env_dest)
+        if norm:
+            return norm[:64], "cartflow_vip_alert_destination_env", digits
+
+    return None, "no_merchant_contact", ""
+
+
 def resolve_merchant_whatsapp_phone(store: Any) -> Tuple[Optional[str], str]:
     """
     يُرجع ‎(رقم لـ Twilio ‎whatsapp:+…‎, مصدر)‎ أو ‎(None, reason)‎.
-    يُفضّل ‎store_whatsapp_number‎ ثم استخراج من ‎whatsapp_support_url‎ (‎wa.me‎ / ‎api.whatsapp.com‎).
+    يُفضّل ‎store_whatsapp_number‎ ثم استخراج من ‎whatsapp_support_url‎ ثم ‎CARTFLOW_VIP_ALERT_DESTINATION‎.
     """
+    phone, src, _digits = resolve_vip_alert_destination(store)
+    if phone:
+        return phone, src
     if store is None:
         return None, "no_store"
-    raw_num = getattr(store, "store_whatsapp_number", None)
-    if isinstance(raw_num, str) and raw_num.strip():
-        d = _digits_only(raw_num)
-        if len(d) >= 8:
-            return raw_num.strip()[:64], "store_whatsapp_number"
-    url = getattr(store, "whatsapp_support_url", None)
-    if not isinstance(url, str) or not url.strip():
-        return None, "no_merchant_contact"
-    u = url.strip()
-    low = u.lower()
-    try:
-        p = urlparse(u)
-        host = (p.netloc or "").lower()
-        path = p.path or ""
-        if "wa.me" in host or host == "wa.me":
-            seg = path.strip("/").split("/")[0] if path else ""
-            d = _digits_only(seg)
-            if len(d) >= 8:
-                return d, "whatsapp_support_url_wa_me"
-        if "api.whatsapp.com" in host:
-            qs = parse_qs(p.query or "")
-            ph = (qs.get("phone") or [""])[0]
-            d = _digits_only(str(ph))
-            if len(d) >= 8:
-                return d, "whatsapp_support_url_api"
-        m = re.search(r"(?:wa\.me/|phone=)(\d{8,15})", low)
-        if m:
-            return m.group(1), "whatsapp_support_url_regex"
-    except Exception:  # noqa: BLE001
-        pass
-    return None, "url_unparsed"
+    return None, src or "no_merchant_contact"
 
 
 def build_vip_merchant_alert_body(
@@ -278,16 +317,29 @@ def try_send_vip_merchant_whatsapp_alert(
     store: Any,
     *,
     message: str,
+    session_id: str = "",
+    cart_id: str = "",
 ) -> Dict[str, Any]:
     """
     إرسال نص للتاجر عبر ‎send_whatsapp‎ (Twilio) إن وُجد رقم صالح.
     لا يستخدم ‎wa_trace_session_id‎ حتى لا يُحجب بسبب ‎user_rejected_help‎ للعميل.
+    يُ polling حالة Twilio بعد القبول — القبول وحده ليس نجاحاً تشغيلياً.
     """
+    from services.vip_operational_truth_v1 import (
+        poll_twilio_vip_alert_delivery_truth,
+        vip_alert_delivery_summary,
+    )
     from services.whatsapp_send import send_whatsapp
 
-    phone, src = resolve_merchant_whatsapp_phone(store)
+    phone, src, normalized = resolve_vip_alert_destination(store)
     ss = _store_slug_from_row(store)
-    log.info("[VIP MERCHANT ALERT ATTEMPT] to=%s source=%s store=%s", phone or "none", src, ss or "-")
+    log.info(
+        "[VIP MERCHANT ALERT ATTEMPT] to=%s normalized=%s source=%s store=%s",
+        phone or "none",
+        normalized or "-",
+        src,
+        ss or "-",
+    )
     if not phone:
         log.warning("[VIP MERCHANT ALERT FAILED] reason=no_merchant_phone source=%s", src)
         return {"ok": False, "error": "no_merchant_phone", "source": src}
@@ -309,13 +361,39 @@ def try_send_vip_merchant_whatsapp_alert(
             str(e),
             exc_info=True,
         )
-        return {"ok": False, "error": str(e)}
+        return {"ok": False, "error": str(e), "phone_source": src, "normalized_phone": normalized}
     ok = isinstance(out, dict) and out.get("ok") is True
     if ok:
-        log.info("[VIP MERCHANT ALERT SENT]")
+        sid = str(out.get("sid") or "").strip()
+        out["phone_source"] = src
+        out["normalized_phone"] = normalized
+        out["destination_type"] = src
+        if sid:
+            truth = poll_twilio_vip_alert_delivery_truth(
+                sid,
+                customer_phone=normalized or phone,
+                store_slug=ss,
+                session_id=(session_id or "")[:512],
+                cart_id=(cart_id or "")[:255],
+            )
+            summary = vip_alert_delivery_summary(truth)
+            out["delivery_truth"] = summary
+            out["delivery_truth_level"] = summary.get("truth_level")
+            out["delivered_to_device"] = summary.get("delivered_to_device")
+            log.info(
+                "[VIP MERCHANT ALERT SENT] sid=%s truth=%s delivered=%s",
+                sid,
+                summary.get("truth_level"),
+                summary.get("delivered_to_device"),
+            )
+        else:
+            log.info("[VIP MERCHANT ALERT SENT] mock path")
     else:
         detail = ""
         if isinstance(out, dict):
             detail = str(out.get("error") or "")[:256]
         log.warning("[VIP MERCHANT ALERT FAILED] reason=send_failed detail=%s", detail or "unknown")
+    if isinstance(out, dict):
+        out.setdefault("phone_source", src)
+        out.setdefault("normalized_phone", normalized)
     return out if isinstance(out, dict) else {"ok": False, "error": "invalid_result"}

@@ -102,12 +102,17 @@ def sent_logs_for_store(
     lim = max(1, min(int(limit), 500))
     by_id: dict[int, CartRecoveryLog] = {}
     try:
+        from services.vip_operational_truth_v1 import (  # noqa: PLC0415
+            vip_merchant_alert_reason_tag_sql_exclusion,
+        )
+
         rows = (
             db.session.query(CartRecoveryLog)
             .filter(
                 CartRecoveryLog.store_slug == slug,
                 CartRecoveryLog.status.in_(tuple(SENT_LOG_STATUSES)),
             )
+            .filter(vip_merchant_alert_reason_tag_sql_exclusion())
             .order_by(
                 CartRecoveryLog.sent_at.desc().nullslast(),
                 CartRecoveryLog.id.desc(),

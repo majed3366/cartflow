@@ -498,6 +498,15 @@ def _last_provider_sent_at_utc(
         return parsed
     best: Optional[datetime] = None
     for lg in matched_logs or ():
+        try:
+            from services.vip_operational_truth_v1 import (  # noqa: PLC0415
+                is_vip_merchant_only_recovery_log,
+            )
+
+            if is_vip_merchant_only_recovery_log(lg):
+                continue
+        except Exception:  # noqa: BLE001
+            pass
         st = _norm(getattr(lg, "status", None))
         if st not in SENT_LOG:
             continue
@@ -514,6 +523,9 @@ def _last_provider_sent_at_utc(
         return None
     try:
         from models import CartRecoveryLog  # noqa: PLC0415
+        from services.vip_operational_truth_v1 import (  # noqa: PLC0415
+            vip_merchant_alert_reason_tag_sql_exclusion,
+        )
 
         rows = (
             db.session.query(CartRecoveryLog.sent_at, CartRecoveryLog.created_at)
@@ -521,6 +533,7 @@ def _last_provider_sent_at_utc(
                 CartRecoveryLog.recovery_key == rk,
                 CartRecoveryLog.status.in_(tuple(SENT_LOG)),
             )
+            .filter(vip_merchant_alert_reason_tag_sql_exclusion())
             .order_by(CartRecoveryLog.id.desc())
             .limit(24)
             .all()

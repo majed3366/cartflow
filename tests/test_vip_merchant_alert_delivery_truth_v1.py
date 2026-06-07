@@ -78,7 +78,7 @@ class VipMerchantAlertDeliveryTruthTests(unittest.TestCase):
             .first()
         )
         self.assertIsNotNone(lg)
-        self.assertEqual("+966501112233", (lg.phone or "").strip())
+        self.assertIn("966501112233", (lg.phone or "").replace("+", ""))
 
     @patch("main.try_send_vip_merchant_whatsapp_alert")
     def test_notify_disabled_skips_send_and_persists_skip_log(self, mock_send) -> None:

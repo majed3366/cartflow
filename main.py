@@ -697,8 +697,15 @@ from services.vip_merchant_alert import (
     emit_vip_merchant_alert_truth_log,
     resolve_merchant_whatsapp_phone,
     resolve_merchant_whatsapp_phone_with_default_env,
+    resolve_vip_alert_destination,
     try_send_vip_merchant_whatsapp_alert,
     vip_dashboard_review_link,
+)
+from services.vip_operational_truth_v1 import (
+    is_vip_merchant_only_recovery_log,
+    resolve_vip_merchant_alert_log_status,
+    vip_alert_delivery_summary,
+    vip_merchant_alert_reason_tag_sql_exclusion,
 )
 from services.merchant_vip_settings import merchant_vip_notify_enabled
 from services.whatsapp_positive_reply import (
@@ -2480,7 +2487,7 @@ def dev_vip_merchant_alert_operational_truth(
             else ""
         )
         sid = (getattr(ac, "recovery_session_id", None) or "").strip()[:512]
-        phone, phone_src = resolve_merchant_whatsapp_phone(store_alert)
+        phone, phone_src, normalized_phone = resolve_vip_alert_destination(store_alert)
         notify_on = merchant_vip_notify_enabled(store_alert)
         in_lane = abandoned_cart_in_vip_operational_lane(ac, store_alert)
         alert_logs = (
@@ -2506,6 +2513,17 @@ def dev_vip_merchant_alert_operational_truth(
             }
             for lg in alert_logs
         ]
+        latest_sid = (
+            str(logs_out[0].get("provider_message_sid") or "").strip()
+            if logs_out
+            else ""
+        )
+        delivery_truth_row = None
+        if latest_sid:
+            from services.whatsapp_delivery_truth_v1 import get_delivery_truth  # noqa: PLC0415
+
+            delivery_truth_row = get_delivery_truth(latest_sid)
+        delivery_summary = vip_alert_delivery_summary(delivery_truth_row)
         return j(
             {
                 "ok": True,
@@ -2520,9 +2538,14 @@ def dev_vip_merchant_alert_operational_truth(
                 "vip_notify_enabled": notify_on,
                 "merchant_phone": phone,
                 "merchant_phone_source": phone_src,
+                "destination_type": phone_src,
+                "normalized_destination_phone": normalized_phone,
                 "store_id": getattr(store_alert, "id", None),
                 "merchant_alert_log_rows": logs_out,
                 "latest_alert_status": logs_out[0]["status"] if logs_out else None,
+                "latest_provider_message_sid": latest_sid or None,
+                "delivery_truth": delivery_summary,
+                "delivered_to_device": delivery_summary.get("delivered_to_device"),
             }
         )
     except Exception as exc:  # noqa: BLE001
@@ -5501,6 +5524,7 @@ def _cart_recovery_sent_real_count_for_abandoned(ac: AbandonedCart) -> int:
         n = (
             db.session.query(func.count(CartRecoveryLog.id))
             .filter(CartRecoveryLog.status.in_(_NORMAL_RECOVERY_SENT_LOG_STATUSES))
+            .filter(vip_merchant_alert_reason_tag_sql_exclusion())
             .filter(or_(*conds))
             .scalar()
         )
@@ -6741,7 +6765,7 @@ def _send_vip_merchant_auto_alert(
                 )
             return
 
-        phone, src = resolve_merchant_whatsapp_phone(store_obj)
+        phone, src, normalized = resolve_vip_alert_destination(store_obj)
         if not phone:
             emit_vip_merchant_alert_truth_log(
                 store_slug=ss,
@@ -6781,16 +6805,24 @@ def _send_vip_merchant_auto_alert(
             reason_tag=reason_tag,
             dashboard_link=vip_dashboard_review_link(),
         )
-        out = try_send_vip_merchant_whatsapp_alert(store_obj, message=mbody)
-        from services.whatsapp_send import (  # noqa: PLC0415
-            log_wa_send_truth,
-            resolve_whatsapp_recovery_log_status,
+        out = try_send_vip_merchant_whatsapp_alert(
+            store_obj,
+            message=mbody,
+            session_id=sid,
+            cart_id=cid_log if cid_log != "-" else "",
         )
+        from services.whatsapp_delivery_truth_v1 import get_delivery_truth  # noqa: PLC0415
 
         ok_flag = isinstance(out, dict) and out.get("ok") is True
-        st_out = resolve_whatsapp_recovery_log_status(out) if ok_flag else "vip_merchant_alert_failed"
-        if ok_flag:
-            st_out = log_wa_send_truth(wa_result=out, recovery_key=None)
+        delivery_truth = None
+        sid_out = str(out.get("sid") or "").strip() if isinstance(out, dict) else ""
+        if sid_out:
+            delivery_truth = get_delivery_truth(sid_out)
+        st_out = (
+            resolve_vip_merchant_alert_log_status(out, delivery_truth=delivery_truth)
+            if ok_flag
+            else "vip_merchant_alert_failed"
+        )
         emit_vip_merchant_alert_truth_log(
             store_slug=ss,
             store_id=sto_log,
@@ -6806,6 +6838,17 @@ def _send_vip_merchant_auto_alert(
             final_status=st_out,
             message_body=mbody,
         )
+        delivery_summary = (
+            vip_alert_delivery_summary(delivery_truth)
+            if delivery_truth is not None
+            else (out.get("delivery_truth") if isinstance(out, dict) else None)
+        )
+        if delivery_summary:
+            log.info(
+                "[VIP MERCHANT AUTO ALERT TRUTH] delivery=%s cart_id=%s",
+                delivery_summary,
+                cid_log,
+            )
         if ss and sid:
             _persist_cart_recovery_log(
                 store_slug=ss,
@@ -16339,6 +16382,8 @@ def _merchant_normal_dashboard_batch_reads(
             status_union_by_ac[aid_ac] = stset
             sc = 0
             for x in matched_logs:
+                if is_vip_merchant_only_recovery_log(x):
+                    continue
                 stlz = str((getattr(x, "status", None) or "")).strip().lower()
                 if stlz in _NORMAL_RECOVERY_SENT_LOG_STATUSES:
                     sc += 1
@@ -17155,14 +17200,15 @@ def _merchant_normal_recovery_light_payload_merchant_batch(
             )
 
             _fc_perf0 = time.perf_counter()
-            attach_merchant_followup_clarity(
-                out,
-                sent_count=sent_ct_lc,
-                configured_count=cap_lc,
-                next_attempt_due_at=next_due_iso,
-                schedule_rows=batch.schedule_rows_by_ac.get(aid0),
-                purchased=purchased_flag,
-            )
+            if not vip_lane:
+                attach_merchant_followup_clarity(
+                    out,
+                    sent_count=sent_ct_lc,
+                    configured_count=cap_lc,
+                    next_attempt_due_at=next_due_iso,
+                    schedule_rows=batch.schedule_rows_by_ac.get(aid0),
+                    purchased=purchased_flag,
+                )
             try:
                 from services.dashboard_normal_carts_perf_v1 import (  # noqa: PLC0415
                     dashboard_normal_carts_perf_add_clarity_ms,
@@ -17641,6 +17687,8 @@ def _ensure_abandoned_cart_for_active_recovery_signal(
     row = _pick_canonical_abandoned_cart_row(cands)
     now_utc = datetime.now(timezone.utc)
     if row is not None:
+        if abandoned_cart_in_vip_operational_lane(row, store_row):
+            return None
         st = (getattr(row, "status", None) or "").strip().lower()
         if st == "recovered":
             return None
@@ -17807,6 +17855,10 @@ def _augment_abandoned_candidates_with_active_recovery_signals(
             db.session.rollback()
             ensured = None
         if ensured is None:
+            continue
+        if dash_store is not None and abandoned_cart_in_vip_operational_lane(
+            ensured, dash_store
+        ):
             continue
         aid = int(getattr(ensured, "id", 0) or 0)
         if aid and aid not in seen:
@@ -18099,6 +18151,12 @@ def _normal_recovery_merchant_lightweight_alert_list_for_api(
                     batch_reads,
                 )
                 ac0 = grp_sorted[0]
+                try:
+                    _vip_skip_store = batch_reads.store_row_for_cart(ac0)
+                except Exception:  # noqa: BLE001
+                    _vip_skip_store = dash_store
+                if abandoned_cart_in_vip_operational_lane(ac0, _vip_skip_store):
+                    continue
                 pk = _normal_recovery_dashboard_phase_key_merchant_batch(
                     ac0,
                     behavioral_override=bh,
