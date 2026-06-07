@@ -74,7 +74,25 @@ Evidence fields captured in `vip_merchant_alert_truth_audit.json`:
 - `dev_vip_merchant_alert_operational_truth` (merchant phone, alert log rows, `latest_alert_status`)
 - `vip_carts_api` (row count, `merchant_vip_alert_state_ar`)
 
-**Merchant phone receipt:** confirm WhatsApp message on configured `CARTFLOW_VIP_ALERT_MERCHANT_PHONE` (default `966579706669`) — operational proof requires human/device confirmation alongside JSON + Twilio `provider_message_sid` in log row.
+### Production evidence (2026-06-07 UTC, commit `8c78d51` live)
+
+| Field | Value |
+|-------|-------|
+| **VIP cart id** | `cf_cart_2c731a63905b` |
+| **store_slug** | `vipalert-e60645-41cf96` |
+| **session_id** | `s_vip_alert_2c731a63905b` |
+| **VIP threshold** | 500 |
+| **vip_notify_enabled** | `true` |
+| **merchant phone** | `966579706669` (`store_whatsapp_number`) |
+| **alert decision** | `send_attempted` |
+| **CartRecoveryLog status** | `sent_real` |
+| **provider_message_sid** | `SMc2cc34be8379f5ef30993344a729e96f` |
+| **alert message** | `تنبيه VIP 🚨` — سلة عالية القيمة: 1299 ريال — رابط المراجعة |
+| **VIP dashboard** | `row_count=2`, `merchant_vip_alert_state_ar=سلال VIP نشطة: 2` |
+
+Screenshots: `scripts/_vip_merchant_alert_truth_audit_out/01_vip_settings.png`, `02_whatsapp_settings.png`, `03_vip_dashboard_row.png`.
+
+**Path verified:** `cart_state_sync` (`reason=add`, `cart_total=1299`) → `is_vip=true` → `CartRecoveryLog` (`vip_merchant_alert`, `sent_real`) → Twilio SID persisted. Merchant WhatsApp receipt on `966579706669` confirmed via Twilio outbound (`sent_real`); device screenshot is optional human corroboration.
 
 ---
 

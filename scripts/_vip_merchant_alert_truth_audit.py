@@ -15,6 +15,25 @@ OUT = Path(__file__).resolve().parent / "_vip_merchant_alert_truth_audit_out"
 MERCHANT_WA = (os.environ.get("CARTFLOW_VIP_ALERT_MERCHANT_PHONE") or "966579706669").strip()
 
 
+def _api_json(page, path: str, *, method: str = "GET", body: dict | None = None) -> dict:
+    return page.evaluate(
+        """async (args) => {
+          const opts = { method: args.method, credentials: 'same-origin', cache: 'no-store' };
+          if (args.body) {
+            opts.headers = { 'Content-Type': 'application/json' };
+            opts.body = JSON.stringify(args.body);
+          }
+          const r = await fetch(args.path, opts);
+          const t = await r.text();
+          let j = null;
+          try { j = JSON.parse(t); } catch (e) { j = { raw: t.slice(0, 800) }; }
+          j._http_status = r.status;
+          return j;
+        }""",
+        {"path": path, "method": method, "body": body},
+    )
+
+
 def _auth(page, report: dict) -> None:
     email = (os.environ.get("CARTFLOW_PROD_EMAIL") or "").strip()
     password = (os.environ.get("CARTFLOW_PROD_PASSWORD") or "").strip()
@@ -53,41 +72,40 @@ def main() -> int:
         _auth(page, report)
 
         page.goto(f"{BASE}/dashboard#vip", timeout=120000)
-        page.wait_for_timeout(2500)
-        page.evaluate(
-            """() => {
-              if (typeof window.maInitVipSettingsPage === 'function') window.maInitVipSettingsPage();
-              var th = document.getElementById('ma-vip-threshold');
-              if (th) th.value = '500';
-              var en = document.getElementById('ma-vip-enabled');
-              if (en) en.checked = true;
-              var nt = document.getElementById('ma-vip-notify-enabled');
-              if (nt) nt.checked = true;
-            }"""
-        )
-        page.locator("#ma-vip-settings-save").click(timeout=20000)
         page.wait_for_timeout(2000)
+        vip_save = _api_json(
+            page,
+            "/api/recovery-settings",
+            method="POST",
+            body={
+                "merchant_settings_scope": "vip",
+                "vip_enabled": True,
+                "vip_cart_threshold": 500,
+                "vip_notify_enabled": True,
+            },
+        )
+        wa_save = _api_json(
+            page,
+            "/api/recovery-settings",
+            method="POST",
+            body={
+                "store_whatsapp_number": MERCHANT_WA,
+                "whatsapp_recovery_enabled": True,
+                "whatsapp_provider_mode": "production",
+            },
+        )
+        page.wait_for_timeout(1500)
         page.screenshot(path=str(OUT / "01_vip_settings.png"), full_page=False)
-
         page.goto(f"{BASE}/dashboard#whatsapp", timeout=120000)
-        page.wait_for_timeout(2000)
-        page.evaluate(
-            f"""() => {{
-              var n = document.getElementById('ma-wa-store-number');
-              if (n) n.value = '{MERCHANT_WA}';
-            }}"""
-        )
-        page.locator("#ma-wa-settings-save").click(timeout=20000)
-        page.wait_for_timeout(2000)
+        page.wait_for_timeout(1500)
         page.screenshot(path=str(OUT / "02_whatsapp_settings.png"), full_page=False)
 
-        settings = page.evaluate(
-            """async () => {
-              const vip = await fetch('/api/recovery-settings?scope=vip', {credentials:'same-origin'});
-              const wa = await fetch('/api/recovery-settings', {credentials:'same-origin'});
-              return { vip: await vip.json(), wa: await wa.json() };
-            }"""
-        )
+        settings = {
+            "vip_save": vip_save,
+            "wa_save": wa_save,
+            "vip": _api_json(page, "/api/recovery-settings?scope=vip"),
+            "wa": _api_json(page, "/api/recovery-settings"),
+        }
         report["settings"] = settings
         store_slug = str((settings.get("wa") or {}).get("store_slug") or (settings.get("vip") or {}).get("store_slug") or "").strip()
         if not store_slug:
