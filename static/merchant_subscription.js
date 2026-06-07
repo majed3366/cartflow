@@ -22,13 +22,12 @@
       .replace(/"/g, "&quot;");
   }
 
-  function applyBadge(el, label, className) {
+  function applyBadge(el, label, classes) {
     if (!el) return;
     el.hidden = !label;
     el.textContent = label || "—";
-    el.className = el.className.replace(/\bis-(starter|growth|pro|active|trial|expired|cancelled|neutral|manual|marketplace|cartflow)\b/g, "").trim();
-    if (className) {
-      el.classList.add(className);
+    if (classes) {
+      el.className = String(classes).trim();
     }
   }
 
