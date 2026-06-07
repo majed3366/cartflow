@@ -4833,12 +4833,14 @@ button.ma-vip-suggest-btn.va-btn {
   justify-content: center;
   margin-top: 12px;
   padding: 10px 20px;
+  border: none;
   border-radius: 10px;
   background: var(--green, #16a34a);
   color: #fff;
   font-size: 13px;
   font-weight: 700;
   text-decoration: none;
+  cursor: pointer;
   transition: filter 0.15s ease, background 0.15s ease;
 }
 
@@ -4860,6 +4862,34 @@ button.ma-vip-suggest-btn.va-btn {
 
 .ma-wa-readiness-meta-muted .ma-wa-readiness-k {
   color: #94a3b8;
+}
+
+.ma-wa-cta-guidance {
+  margin-bottom: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #fde68a;
+  background: #fffbeb;
+  color: #92400e;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.ma-wa-cta-highlight {
+  outline: 2px solid var(--green, #16a34a);
+  outline-offset: 2px;
+  border-radius: 8px;
+  animation: ma-wa-cta-pulse 1.1s ease-in-out 2;
+}
+
+@keyframes ma-wa-cta-pulse {
+  0%,
+  100% {
+    outline-color: var(--green, #16a34a);
+  }
+  50% {
+    outline-color: #86efac;
+  }
 }
 
 .ma-wa-primary-cta {

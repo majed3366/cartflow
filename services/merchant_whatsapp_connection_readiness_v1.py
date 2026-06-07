@@ -208,6 +208,121 @@ def connection_journey_for_mode(mode: str) -> dict[str, Any]:
     }
 
 
+# Readiness UX V2 — primary CTA click behavior (presentation only)
+CTA_ACTION_SCROLL_SETTINGS = "scroll_settings"
+CTA_ACTION_OPEN_ADVANCED_MERCHANT = "open_advanced_merchant"
+CTA_ACTION_FOCUS_RESUME = "focus_resume"
+CTA_ACTION_SHOW_PROVIDER_STATUS = "show_provider_status"
+
+_CTA_MISSING_FIELDS_GUIDANCE_AR = (
+    "أدخل رقم واتساب المتجر ثم فعّل استرجاع واتساب."
+)
+_CTA_MERCHANT_PLACEHOLDER_AR = (
+    "ربط واتساب المتجر قيد التجهيز. حالياً يمكنك استخدام CartFlow Managed للتشغيل التجريبي."
+)
+_CTA_PAUSED_PLACEHOLDER_AR = (
+    "يمكن استئناف واتساب من إعدادات التشغيل عند توفره."
+)
+_CTA_FALLBACK_GUIDANCE_AR = "راجع إعدادات واتساب أدناه لإكمال الخطوة التالية."
+
+
+def resolve_readiness_primary_cta_behavior(
+    connection_state: str,
+    whatsapp_mode: Optional[str],
+    *,
+    store_whatsapp_number: str = "",
+    recovery_enabled: bool = True,
+    production_truth: Optional[Mapping[str, str]] = None,
+) -> dict[str, Any]:
+    """
+    Action-aware primary CTA behavior for merchant #whatsapp — never silent.
+    Pure presentation; does not change readiness engine or connection states.
+    """
+    mode = normalize_whatsapp_mode(whatsapp_mode)
+    state = (
+        connection_state
+        if connection_state in CANONICAL_CONNECTION_STATES
+        else CONNECTION_STATE_SETUP_REQUIRED
+    )
+    pt = dict(production_truth or {})
+    has_number = bool((store_whatsapp_number or "").strip())
+
+    behavior: dict[str, Any] = {
+        "cta_action": CTA_ACTION_SCROLL_SETTINGS,
+        "highlight_fields": [],
+        "inline_guidance_ar": "",
+        "placeholder_ar": "",
+        "status_explanation_ar": "",
+        "never_silent": True,
+    }
+
+    if mode == WHATSAPP_MODE_MERCHANT_WHATSAPP:
+        behavior["cta_action"] = CTA_ACTION_OPEN_ADVANCED_MERCHANT
+        behavior["placeholder_ar"] = _CTA_MERCHANT_PLACEHOLDER_AR
+        return behavior
+
+    if state == CONNECTION_STATE_CONNECTED:
+        return behavior
+
+    if state == CONNECTION_STATE_PAUSED:
+        behavior["cta_action"] = CTA_ACTION_FOCUS_RESUME
+        behavior["highlight_fields"] = ["recovery_enabled"]
+        if not recovery_enabled:
+            behavior["inline_guidance_ar"] = (
+                (pt.get("action_required_ar") or "").strip()
+                or "فعّل استرجاع واتساب من الإعدادات أدناه."
+            )
+        else:
+            behavior["placeholder_ar"] = _CTA_PAUSED_PLACEHOLDER_AR
+        return behavior
+
+    if state == CONNECTION_STATE_PROVIDER_ISSUE:
+        behavior["cta_action"] = CTA_ACTION_SHOW_PROVIDER_STATUS
+        behavior["status_explanation_ar"] = (
+            (pt.get("why_not_connected_ar") or "").strip()
+            or (pt.get("action_required_ar") or "").strip()
+            or "قناة واتساب تحتاج متابعة قبل الإنتاج الكامل."
+        )
+        return behavior
+
+    if state == CONNECTION_STATE_ACTION_REQUIRED:
+        behavior["highlight_fields"] = ["store_number", "recovery_enabled"]
+        behavior["inline_guidance_ar"] = (
+            (pt.get("action_required_ar") or "").strip()
+            or "راجع المتطلبات الظاهرة أدناه."
+        )
+        return behavior
+
+    # cartflow_managed setup paths: scroll, highlight, calm guidance when incomplete
+    behavior["highlight_fields"] = ["store_number", "recovery_enabled"]
+    if not has_number or not recovery_enabled:
+        behavior["inline_guidance_ar"] = _CTA_MISSING_FIELDS_GUIDANCE_AR
+    return behavior
+
+
+def attach_cta_behavior_to_action_first(
+    action_first: dict[str, Any],
+    store: Optional[Any],
+    conn: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Merge action-first CTA behavior into merchant card/API payload."""
+    out = dict(action_first)
+    recovery_on = True
+    if store is not None:
+        enabled_raw = getattr(store, "whatsapp_recovery_enabled", None)
+        recovery_on = True if enabled_raw is None else bool(enabled_raw)
+    out["cta_behavior"] = resolve_readiness_primary_cta_behavior(
+        str(conn.get("connection_state") or out.get("connection_state") or ""),
+        conn.get("whatsapp_mode"),
+        store_whatsapp_number=(
+            (getattr(store, "store_whatsapp_number", None) or "") if store else ""
+        ),
+        recovery_enabled=recovery_on,
+        production_truth=conn.get("production_truth"),
+    )
+    return out
+
+
 def build_action_first_card(
     connection_state: str,
     *,
@@ -565,11 +680,12 @@ def connection_readiness_for_merchant_api(
     store: Optional[Any],
 ) -> dict[str, Any]:
     ev = dict(evaluate_whatsapp_connection_readiness(store))
-    ev["action_first"] = build_action_first_card(
+    af = build_action_first_card(
         ev.get("connection_state") or CONNECTION_STATE_NOT_CONNECTED,
         expected_outcome_ar=ev.get("expected_outcome_ar") or "",
         setup_checklist=ev.get("setup_checklist") or {},
     )
+    ev["action_first"] = attach_cta_behavior_to_action_first(af, store, ev)
     return ev
 
 

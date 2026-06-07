@@ -3,7 +3,9 @@
   "use strict";
 
   var bound = false;
+  var readinessCtaBound = false;
   var loading = false;
+  var lastSettingsData = null;
 
   function byId(id) {
     return document.getElementById(id);
@@ -85,6 +87,138 @@
       .replace(/"/g, "&quot;");
   }
 
+  function showCtaGuidance(msg) {
+    var el = byId("ma-wa-cta-guidance");
+    if (!el) return;
+    var text = (msg || "").trim();
+    if (!text) {
+      el.hidden = true;
+      el.textContent = "";
+      return;
+    }
+    el.textContent = text;
+    el.hidden = false;
+  }
+
+  function clearCtaHighlights() {
+    document.querySelectorAll(".ma-wa-cta-highlight").forEach(function (node) {
+      node.classList.remove("ma-wa-cta-highlight");
+    });
+  }
+
+  function highlightField(fieldId) {
+    var el = byId(fieldId);
+    if (!el) return;
+    var row = el.closest(".setting-row") || el.closest("label") || el.parentElement;
+    if (row) row.classList.add("ma-wa-cta-highlight");
+    try {
+      el.focus({ preventScroll: true });
+    } catch (_e) {
+      el.focus();
+    }
+  }
+
+  function openAdvancedOptions() {
+    var details = document.querySelector(".ma-wa-advanced");
+    if (details) details.open = true;
+  }
+
+  function scrollToWaSettings() {
+    var target =
+      byId("ma-wa-settings-form") ||
+      document.querySelector(".ma-wa-customers-card") ||
+      byId("page-whatsapp");
+    if (target && target.scrollIntoView) {
+      target.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }
+
+  function handlePrimaryCtaClick(behavior) {
+    clearCtaHighlights();
+    var action = behavior && behavior.cta_action;
+    if (!action) {
+      scrollToWaSettings();
+      showCtaGuidance("راجع إعدادات واتساب أدناه لإكمال الخطوة التالية.");
+      return;
+    }
+
+    if (action === "open_advanced_merchant") {
+      openAdvancedOptions();
+      scrollToWaSettings();
+      showCtaGuidance(
+        (behavior.placeholder_ar || "").trim() ||
+          "ربط واتساب المتجر قيد التجهيز. حالياً يمكنك استخدام CartFlow Managed للتشغيل التجريبي."
+      );
+      return;
+    }
+
+    if (action === "show_provider_status") {
+      scrollToWaSettings();
+      var statusCard = document.querySelector(".ma-wa-customers-card");
+      if (statusCard) statusCard.classList.add("ma-wa-cta-highlight");
+      showCtaGuidance(
+        (behavior.status_explanation_ar || "").trim() ||
+          (behavior.inline_guidance_ar || "").trim() ||
+          "قناة واتساب تحتاج متابعة قبل الإنتاج الكامل."
+      );
+      return;
+    }
+
+    if (action === "focus_resume") {
+      openAdvancedOptions();
+      scrollToWaSettings();
+      var recovery = byId("ma-wa-recovery-enabled");
+      if (recovery && !recovery.checked) {
+        highlightField("ma-wa-recovery-enabled");
+        showCtaGuidance(
+          (behavior.inline_guidance_ar || "").trim() ||
+            "فعّل استرجاع واتساب من الإعدادات أدناه."
+        );
+        return;
+      }
+      showCtaGuidance(
+        (behavior.placeholder_ar || "").trim() ||
+          "يمكن استئناف واتساب من إعدادات التشغيل عند توفره."
+      );
+      return;
+    }
+
+    // scroll_settings (default for cartflow_managed + connected)
+    openAdvancedOptions();
+    scrollToWaSettings();
+    var fields = Array.isArray(behavior.highlight_fields)
+      ? behavior.highlight_fields
+      : [];
+    fields.forEach(function (field) {
+      if (field === "store_number") highlightField("ma-wa-store-number");
+      if (field === "recovery_enabled") highlightField("ma-wa-recovery-enabled");
+    });
+    if ((behavior.inline_guidance_ar || "").trim()) {
+      showCtaGuidance(behavior.inline_guidance_ar);
+    } else {
+      showCtaGuidance("");
+    }
+  }
+
+  function bindReadinessCtaOnce() {
+    if (readinessCtaBound) return;
+    var page = byId("page-whatsapp");
+    if (!page) return;
+    readinessCtaBound = true;
+    page.addEventListener("click", function (e) {
+      var btn = e.target.closest("[data-cf-wa-primary-cta]");
+      if (!btn) return;
+      e.preventDefault();
+      var cr =
+        lastSettingsData && lastSettingsData.whatsapp_connection_readiness;
+      var behavior =
+        cr && cr.action_first && cr.action_first.cta_behavior
+          ? cr.action_first.cta_behavior
+          : null;
+      handlePrimaryCtaClick(behavior);
+    });
+  }
+
   function renderReadinessCard(d) {
     var root = byId("ma-wa-readiness-root");
     if (!root || !d) return;
@@ -112,7 +246,6 @@
       })
       .join("");
     var ctaLabel = af.primary_cta_label_ar || "فتح الإعدادات";
-    var ctaHref = af.primary_cta_href || "/dashboard#whatsapp";
     var nextAction = af.next_action_ar || "";
     var outcome = af.expected_outcome_ar || cr.expected_outcome_ar || "—";
     root.hidden = false;
@@ -136,11 +269,9 @@
           escHtml(nextAction) +
           "</p>"
         : "") +
-      '<a class="ma-wa-readiness-cta" data-cf-wa-primary-cta href="' +
-      escHtml(ctaHref) +
-      '">' +
+      '<button type="button" class="ma-wa-readiness-cta" data-cf-wa-primary-cta>' +
       escHtml(ctaLabel) +
-      "</a>" +
+      "</button>" +
       "</div>" +
       // 2) Remaining steps
       (checklistHtml
@@ -186,6 +317,7 @@
 
   function fillForm(d) {
     if (!d) return;
+    lastSettingsData = d;
     var num = byId("ma-wa-store-number");
     if (num) num.value = d.store_whatsapp_number || "";
     var en = byId("ma-wa-recovery-enabled");
@@ -300,6 +432,7 @@
     var form = byId("ma-wa-settings-form");
     if (!form) return;
     bound = true;
+    bindReadinessCtaOnce();
     form.addEventListener("submit", onSubmit);
     var enableBtn = byId("ma-wa-enable-recovery-btn");
     if (enableBtn) enableBtn.addEventListener("click", onEnableRecovery);
@@ -335,5 +468,15 @@
   window.maInitWhatsappSettingsPage = function () {
     bindOnce();
     loadSettings();
+  };
+
+  window.maHandleWhatsappReadinessCta = function () {
+    var cr =
+      lastSettingsData && lastSettingsData.whatsapp_connection_readiness;
+    var behavior =
+      cr && cr.action_first && cr.action_first.cta_behavior
+        ? cr.action_first.cta_behavior
+        : null;
+    handlePrimaryCtaClick(behavior);
   };
 })();

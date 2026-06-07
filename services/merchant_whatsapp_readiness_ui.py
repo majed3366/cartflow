@@ -27,6 +27,7 @@ def build_merchant_whatsapp_readiness_card(store: Optional[Any]) -> dict[str, An
         CONNECTION_STATE_PROVIDER_ISSUE,
         CONNECTION_STATE_SETUP_REQUIRED,
         READINESS_OVERALL_READY,
+        attach_cta_behavior_to_action_first,
         build_action_first_card,
         evaluate_whatsapp_connection_readiness,
     )
@@ -75,11 +76,15 @@ def build_merchant_whatsapp_readiness_card(store: Optional[Any]) -> dict[str, An
         base["production_truth"] = production_truth
         base["setup_checklist"] = setup_checklist
         base["readiness_dimensions"] = conn.get("readiness_dimensions") or []
-        action_first = build_action_first_card(
-            state_key,
-            expected_outcome_ar=expected_outcome,
-            setup_checklist=setup_checklist,
-            action_href=base.get("action_href") or _HREF_SETTINGS,
+        action_first = attach_cta_behavior_to_action_first(
+            build_action_first_card(
+                state_key,
+                expected_outcome_ar=expected_outcome,
+                setup_checklist=setup_checklist,
+                action_href=base.get("action_href") or _HREF_SETTINGS,
+            ),
+            store,
+            conn,
         )
         base["action_first"] = action_first
         base["primary_cta_label_ar"] = action_first["primary_cta_label_ar"]
