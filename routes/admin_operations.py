@@ -1014,6 +1014,49 @@ def api_admin_whatsapp_template_library(
     return j(admin_template_library_api_payload(logical_key=lk))
 
 
+@router.get("/api/admin/whatsapp/connection-readiness")
+def api_admin_whatsapp_connection_readiness(
+    request: Request,
+    store_id: int = 0,
+) -> Any:
+    denied = _admin_json_auth(request)
+    if denied is not None:
+        return denied
+    from extensions import db  # noqa: PLC0415
+    from models import Store  # noqa: PLC0415
+    from services.admin_whatsapp_visibility_v1 import build_admin_whatsapp_store_row  # noqa: PLC0415
+    from services.merchant_whatsapp_connection_readiness_v1 import (  # noqa: PLC0415
+        connection_readiness_for_admin_row,
+        meta_future_placeholders_for_api,
+    )
+
+    if store_id > 0:
+        row = db.session.get(Store, int(store_id))
+        if row is None:
+            return j({"ok": False, "error": "store_not_found"}, status_code=404)
+        admin_row = build_admin_whatsapp_store_row(row)
+        detail = connection_readiness_for_admin_row(row)
+        return j(
+            {
+                "ok": True,
+                "store": admin_row.to_api_dict(),
+                "connection_readiness": detail,
+                "meta_future_placeholders": meta_future_placeholders_for_api(
+                    visible=False
+                ),
+            }
+        )
+    return j(
+        {
+            "ok": True,
+            "architecture_only": True,
+            "meta_future_placeholders": meta_future_placeholders_for_api(
+                visible=False
+            ),
+        }
+    )
+
+
 def _register_admin_placeholder_routes() -> None:
     for path, nav_key, title_ar, description_ar in _ADMIN_PLACEHOLDER_PAGES:
 

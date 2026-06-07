@@ -45,23 +45,113 @@
   function applyConnectionPill(d) {
     var pill = byId("ma-wa-connection-pill");
     if (!pill || !d) return;
-    var label = d.whatsapp_customer_connection_status_ar || "غير متصل";
-    var key = d.whatsapp_customer_connection_status || "not_connected";
+    var label =
+      d.whatsapp_connection_state_ar ||
+      d.whatsapp_customer_connection_status_ar ||
+      "غير متصل";
+    var key =
+      (d.whatsapp_connection_readiness &&
+        d.whatsapp_connection_readiness.connection_state_legacy_pill_key) ||
+      d.whatsapp_customer_connection_status ||
+      "not_connected";
     pill.textContent = label;
     pill.className = "ma-wa-connection-pill is-" + key;
     var summary = byId("ma-wa-connection-summary");
     if (summary) {
-      summary.textContent = d.whatsapp_connection_summary_ar || d.whatsapp_status_display || "—";
+      var cr = d.whatsapp_connection_readiness || {};
+      var pt = cr.production_truth || {};
+      summary.textContent =
+        pt.action_required_ar ||
+        pt.why_not_connected_ar ||
+        pt.why_paused_ar ||
+        d.whatsapp_connection_summary_ar ||
+        d.whatsapp_status_display ||
+        "—";
     }
     var cta = byId("ma-wa-enable-recovery-btn");
     if (cta) {
-      cta.hidden = d.whatsapp_recovery_enabled !== false && key !== "not_connected";
+      var paused =
+        d.whatsapp_connection_state === "paused" ||
+        d.whatsapp_customer_connection_status === "not_connected";
+      cta.hidden = d.whatsapp_recovery_enabled !== false && !paused;
     }
+  }
+
+  function escHtml(s) {
+    return String(s == null ? "" : s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  function renderReadinessCard(d) {
+    var root = byId("ma-wa-readiness-root");
+    if (!root || !d) return;
+    var cr = d.whatsapp_connection_readiness;
+    if (!cr) {
+      root.hidden = true;
+      root.innerHTML = "";
+      return;
+    }
+    var checklist = cr.setup_checklist || {};
+    var items = Array.isArray(checklist.checklist_ar) ? checklist.checklist_ar : [];
+    var actions = Array.isArray(cr.required_actions_ar) ? cr.required_actions_ar : [];
+    var checklistHtml = items
+      .map(function (item) {
+        return (
+          "<li>" +
+          escHtml(item.mark_ar || "") +
+          " " +
+          escHtml(item.label_ar || "") +
+          "</li>"
+        );
+      })
+      .join("");
+    var actionsHtml = actions
+      .map(function (a) {
+        return "<li>• " + escHtml(a) + "</li>";
+      })
+      .join("");
+    root.hidden = false;
+    root.innerHTML =
+      '<section class="ma-wa-readiness-card" dir="rtl" aria-label="جاهزية واتساب">' +
+      '<div class="ma-wa-readiness-head">' +
+      '<div><h2 class="ma-wa-readiness-title">جاهزية واتساب</h2>' +
+      '<p class="ma-wa-readiness-sub">' +
+      escHtml(checklist.headline_ar || "كيف تصبح جاهزاً للإنتاج") +
+      "</p></div>" +
+      '<span class="ma-wa-readiness-badge">' +
+      escHtml(cr.readiness_overall_ar || "—") +
+      "</span></div>" +
+      '<div class="ma-wa-readiness-meta">' +
+      '<div><span class="ma-wa-readiness-k">حالة الاتصال</span> ' +
+      escHtml(cr.connection_state_ar || "—") +
+      "</div>" +
+      '<div><span class="ma-wa-readiness-k">الوضع</span> ' +
+      escHtml(cr.whatsapp_mode_label_ar || "—") +
+      "</div></div>" +
+      (actionsHtml
+        ? '<div class="ma-wa-readiness-actions"><p class="ma-wa-readiness-k">الإجراءات المطلوبة</p><ul>' +
+          actionsHtml +
+          "</ul></div>"
+        : "") +
+      (checklistHtml
+        ? '<div class="ma-wa-readiness-checklist"><p class="ma-wa-readiness-k">' +
+          escHtml(checklist.remaining_title_ar || "المتبقي:") +
+          '</p><ul class="ma-wa-readiness-checklist-list">' +
+          checklistHtml +
+          "</ul></div>"
+        : "") +
+      '<p class="ma-wa-readiness-outcome"><strong>النتيجة المتوقعة:</strong> ' +
+      escHtml(cr.expected_outcome_ar || "—") +
+      "</p></section>";
   }
 
   function setReadOnly(d) {
     if (!d) return;
     applyConnectionPill(d);
+    renderReadinessCard(d);
     var st = byId("ma-wa-status-display");
     if (st) st.textContent = d.whatsapp_status_display || "—";
     var ls = byId("ma-wa-last-send-status");

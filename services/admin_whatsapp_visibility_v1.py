@@ -29,10 +29,16 @@ class AdminWhatsappStoreRow:
     whatsapp_mode_label: str
     connection_status_ar: str
     connection_status_key: str
+    connection_state: str
+    connection_state_ar: str
+    readiness_state: str
+    readiness_state_ar: str
     vip_destination_ar: str
     last_validation_ar: str
     last_validation_status_ar: str
     provider_mode: str
+    missing_requirements_ar: list[str]
+    operational_notes_ar: list[str]
 
     def to_api_dict(self) -> dict[str, Any]:
         return {
@@ -44,10 +50,16 @@ class AdminWhatsappStoreRow:
             "whatsapp_mode_label": self.whatsapp_mode_label,
             "connection_status_ar": self.connection_status_ar,
             "connection_status_key": self.connection_status_key,
+            "connection_state": self.connection_state,
+            "connection_state_ar": self.connection_state_ar,
+            "readiness_state": self.readiness_state,
+            "readiness_state_ar": self.readiness_state_ar,
             "vip_destination_ar": self.vip_destination_ar,
             "last_validation_ar": self.last_validation_ar,
             "last_validation_status_ar": self.last_validation_status_ar,
             "provider_mode": self.provider_mode,
+            "missing_requirements_ar": self.missing_requirements_ar,
+            "operational_notes_ar": self.operational_notes_ar,
         }
 
 
@@ -63,8 +75,13 @@ def _merchant_for_store(store: Store) -> Optional[MerchantUser]:
 def build_admin_whatsapp_store_row(store: Store) -> AdminWhatsappStoreRow:
     ensure_store_whatsapp_merchant_settings_schema()
     ensure_whatsapp_mode_schema(db)
+    from services.merchant_whatsapp_connection_readiness_v1 import (  # noqa: PLC0415
+        connection_readiness_for_admin_row,
+    )
+
     merchant = _merchant_for_store(store)
     mode_fields = merchant_whatsapp_mode_fields_for_api(store)
+    admin_conn = connection_readiness_for_admin_row(store)
     mode = mode_fields["whatsapp_mode"]
     return AdminWhatsappStoreRow(
         store_id=int(store.id),
@@ -75,10 +92,16 @@ def build_admin_whatsapp_store_row(store: Store) -> AdminWhatsappStoreRow:
         whatsapp_mode_label=whatsapp_mode_label_ar(mode),
         connection_status_ar=mode_fields["whatsapp_customer_connection_status_ar"],
         connection_status_key=mode_fields["whatsapp_customer_connection_status"],
+        connection_state=str(admin_conn.get("connection_state") or ""),
+        connection_state_ar=str(admin_conn.get("connection_state_ar") or ""),
+        readiness_state=str(admin_conn.get("readiness_state") or ""),
+        readiness_state_ar=str(admin_conn.get("readiness_state_ar") or ""),
         vip_destination_ar=mode_fields["vip_destination_ar"],
         last_validation_ar=mode_fields["whatsapp_last_validation_ar"],
         last_validation_status_ar=mode_fields["whatsapp_last_validation_status_ar"],
         provider_mode=inferred_whatsapp_provider_mode(store),
+        missing_requirements_ar=list(admin_conn.get("missing_requirements_ar") or []),
+        operational_notes_ar=list(admin_conn.get("operational_notes_ar") or []),
     )
 
 

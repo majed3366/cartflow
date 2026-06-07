@@ -127,8 +127,8 @@ def provider_mode_hint_ar(store: Optional[Any], mode: Optional[str] = None) -> s
 
 def whatsapp_status_display_ar(store: Optional[Any]) -> str:
     card = build_merchant_whatsapp_readiness_card(store)
-    badge = (card.get("badge") or "").strip()
-    title = (card.get("title") or "").strip()
+    badge = (card.get("badge_ar") or card.get("badge") or "").strip()
+    title = (card.get("title_ar") or card.get("title") or "").strip()
     if badge and title:
         return f"{badge} — {title}"
     return badge or title or "—"

@@ -148,10 +148,13 @@
           (row.whatsapp_mode_label || row.whatsapp_mode || "—") +
           "</td>" +
           "<td class='py-2 pe-3'>" +
-          (row.connection_status_ar || "—") +
+          (row.connection_state_ar || row.connection_status_ar || "—") +
           "</td>" +
-          "<td class='py-2 pe-3' dir='ltr'>" +
-          (row.vip_destination_ar || "—") +
+          "<td class='py-2 pe-3'>" +
+          (row.readiness_state_ar || row.readiness_state || "—") +
+          "</td>" +
+          "<td class='py-2 pe-3 text-xs'>" +
+          ((row.missing_requirements_ar || []).slice(0, 2).join(" · ") || "—") +
           "</td>" +
           "<td class='py-2 pe-3'>" +
           (row.last_validation_status_ar || "—") +

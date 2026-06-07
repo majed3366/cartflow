@@ -66,28 +66,19 @@ def whatsapp_mode_description_ar(mode: str) -> str:
 def whatsapp_customer_connection_status(
     store: Optional[Any],
 ) -> tuple[str, str]:
-    """Return (status_key, status_label_ar) for merchant-facing customers card."""
-    if store is None:
-        return CONNECTION_STATUS_NOT_CONNECTED, "غير متصل"
-    enabled_raw = getattr(store, "whatsapp_recovery_enabled", None)
-    recovery_on = True if enabled_raw is None else bool(enabled_raw)
-    if not recovery_on:
-        return CONNECTION_STATUS_NOT_CONNECTED, "غير متصل"
-
-    from services.merchant_whatsapp_readiness_ui import (  # noqa: PLC0415
-        build_merchant_whatsapp_readiness_card,
+    """Return (legacy_pill_key, status_label_ar) for merchant-facing customers card."""
+    from services.merchant_whatsapp_connection_readiness_v1 import (  # noqa: PLC0415
+        CONNECTION_STATE_LABEL_AR,
+        CONNECTION_STATE_NOT_CONNECTED,
+        evaluate_whatsapp_connection_readiness,
     )
 
-    card = build_merchant_whatsapp_readiness_card(store)
-    card_key = (card.get("key") or "").strip().lower()
-    if card_key == "ready":
-        return CONNECTION_STATUS_CONNECTED, "متصل"
-
-    number = (getattr(store, "store_whatsapp_number", None) or "").strip()
-    if card_key in ("sandbox", "setup", "test") or number:
-        return CONNECTION_STATUS_SETUP, "قيد الإعداد"
-
-    return CONNECTION_STATUS_NOT_CONNECTED, "غير متصل"
+    ev = evaluate_whatsapp_connection_readiness(store)
+    legacy = ev.get("connection_state_legacy_pill_key") or CONNECTION_STATUS_NOT_CONNECTED
+    label = ev.get("connection_state_ar") or CONNECTION_STATE_LABEL_AR.get(
+        ev.get("connection_state") or CONNECTION_STATE_NOT_CONNECTED, "غير متصل"
+    )
+    return legacy, label
 
 
 def vip_destination_display_for_store(store: Optional[Any]) -> dict[str, str]:
@@ -128,6 +119,11 @@ def merchant_whatsapp_mode_fields_for_api(store: Optional[Any]) -> dict[str, Any
     status_key, status_label = whatsapp_customer_connection_status(store)
     vip = vip_destination_display_for_store(store)
     validation = last_validation_display_for_store(store)
+    from services.merchant_whatsapp_connection_readiness_v1 import (  # noqa: PLC0415
+        connection_readiness_for_merchant_api,
+    )
+
+    readiness = connection_readiness_for_merchant_api(store)
     return {
         "whatsapp_mode": mode,
         "whatsapp_mode_label_ar": whatsapp_mode_label_ar(mode),
@@ -135,6 +131,11 @@ def merchant_whatsapp_mode_fields_for_api(store: Optional[Any]) -> dict[str, Any
         "whatsapp_mode_recommended": WHATSAPP_MODE_CARTFLOW_MANAGED,
         "whatsapp_customer_connection_status": status_key,
         "whatsapp_customer_connection_status_ar": status_label,
+        "whatsapp_connection_state": readiness.get("connection_state"),
+        "whatsapp_connection_state_ar": readiness.get("connection_state_ar"),
+        "whatsapp_readiness_overall": readiness.get("readiness_overall"),
+        "whatsapp_readiness_overall_ar": readiness.get("readiness_overall_ar"),
+        "whatsapp_connection_readiness": readiness,
         "whatsapp_customers_title_ar": "رسائل العملاء عبر واتساب",
         "whatsapp_enable_recovery_cta_ar": "تفعيل استرجاع واتساب",
         "vip_destination_ar": vip["vip_destination_ar"],
