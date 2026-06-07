@@ -5,9 +5,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Mapping, Optional
 
-from services.merchant_whatsapp_meta_policy_awareness_v1 import (
-    TIMING_AUTO_ADJUST_MESSAGE_AR,
-)
 from services.store_reason_templates import normalize_delay_unit
 
 EXECUTION_STAGE_1 = 1
@@ -217,9 +214,13 @@ def apply_timing_guardrails_to_reason_templates_incoming(
             if result.was_adjusted:
                 slot_out["delay"] = result.clamped_delay
                 slot_out["unit"] = result.clamped_unit
+                from services.merchant_whatsapp_timing_guardrails_ux_v1 import (  # noqa: PLC0415
+                    enrich_timing_adjustment_for_merchant,
+                )
+
                 adjustments.append(
                     {
-                        **result.to_dict(),
+                        **enrich_timing_adjustment_for_merchant(result),
                         "reason_tag": str(tag),
                         "event": GUARDRAIL_EVENT_TIMING_CLAMP,
                     }
@@ -229,12 +230,13 @@ def apply_timing_guardrails_to_reason_templates_incoming(
         out[str(tag)] = ent
 
     adjusted = bool(adjustments)
+    from services.merchant_whatsapp_timing_guardrails_ux_v1 import (  # noqa: PLC0415
+        build_timing_guardrail_save_feedback,
+    )
+
+    feedback = build_timing_guardrail_save_feedback(adjustments)
     return out, {
-        "adjusted": adjusted,
-        "adjustments": adjustments,
-        "timing_guardrail_message_ar": (
-            TIMING_AUTO_ADJUST_MESSAGE_AR if adjusted else ""
-        ),
+        **feedback,
         "recommended_timing_by_stage": [
             recommended_timing_for_stage(s)
             for s in (EXECUTION_STAGE_1, EXECUTION_STAGE_2, EXECUTION_STAGE_3)
@@ -243,6 +245,10 @@ def apply_timing_guardrails_to_reason_templates_incoming(
 
 
 def timing_guardrails_for_api() -> dict[str, Any]:
+    from services.merchant_whatsapp_timing_guardrails_ux_v1 import (  # noqa: PLC0415
+        timing_guardrails_ux_for_api,
+    )
+
     return {
         "architecture_only": True,
         "runtime_send_unchanged": True,
@@ -250,5 +256,5 @@ def timing_guardrails_for_api() -> dict[str, Any]:
             recommended_timing_for_stage(s)
             for s in (EXECUTION_STAGE_1, EXECUTION_STAGE_2, EXECUTION_STAGE_3)
         ],
-        "auto_adjust_message_ar": TIMING_AUTO_ADJUST_MESSAGE_AR,
+        **timing_guardrails_ux_for_api(),
     }

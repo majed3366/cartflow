@@ -5,14 +5,12 @@ from __future__ import annotations
 from typing import Any
 
 META_POLICY_GUIDANCE_AR: tuple[str, ...] = (
-    "التواصل المتوازن يحقق نتائق أفضل.",
-    "إرسال عدد كبير من الرسائل خلال فترة قصيرة قد يؤثر على جودة التواصل مع العملاء.",
-    "يوصى باستخدام التوقيت المقترح من CartFlow.",
+    "للحفاظ على جودة التواصل مع العملاء، تفرض CartFlow حدوداً دنيا بين مراحل المتابعة.",
 )
 
-TIMING_AUTO_ADJUST_MESSAGE_AR = (
-    "تم تعديل التوقيت تلقائياً للحفاظ على جودة التواصل مع العملاء."
-)
+TIMING_POLICY_EXPLANATION_AR = META_POLICY_GUIDANCE_AR[0]
+
+TIMING_AUTO_ADJUST_MESSAGE_AR = TIMING_POLICY_EXPLANATION_AR
 
 
 def meta_policy_guidance_for_merchant_api() -> dict[str, Any]:

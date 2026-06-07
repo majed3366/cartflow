@@ -577,7 +577,7 @@
     }
     el.hidden = false;
     el.innerHTML =
-      '<p class="ma-tpl-meta-policy-title">إرشادات التواصل</p>' +
+      '<p class="ma-tpl-meta-policy-title">سياسة التوقيت</p>' +
       lines
         .map(function (line) {
           return '<p class="ma-tpl-meta-policy-line">' + esc(line) + "</p>";
@@ -728,6 +728,7 @@
     }
 
     syncCardStageWorkflow(cardShell);
+    refreshTimingPolicyPanel(cardShell, reasonKey, ix);
   }
 
   function byId(id) {
@@ -774,6 +775,139 @@
       }
     }
     return { value: dv, unit: u };
+  }
+
+  function formatDelayDisplayAr(value, unit) {
+    var v = parseFloat(value);
+    if (!(v > 0)) v = 1;
+    var u = unit === "day" ? "day" : unit === "hour" ? "hour" : "minute";
+    var n = Math.abs(v - Math.round(v)) < 0.01 ? Math.round(v) : v;
+    function unitLabel(val, uu) {
+      if (uu === "day") {
+        return Math.abs(val - 1) < 0.01 ? "يوم" : "أيام";
+      }
+      if (uu === "hour") {
+        if (Math.abs(val - 1) < 0.01) return "ساعة";
+        if (Math.abs(val - 2) < 0.01) return "ساعتين";
+        if (val >= 3 && val <= 10) return "ساعات";
+        return "ساعة";
+      }
+      if (Math.abs(val - 1) < 0.01) return "دقيقة";
+      if (Math.abs(val - 2) < 0.01) return "دقيقتين";
+      if (val >= 3 && val <= 10) return "دقائق";
+      return "دقيقة";
+    }
+    return String(n) + " " + unitLabel(v, u);
+  }
+
+  function formatPolicyHoursDisplayAr(hours) {
+    var h = parseFloat(hours);
+    if (!(h > 0)) return "—";
+    if (Math.abs(h - 6) < 0.01) return "6 ساعات";
+    if (Math.abs(h - 24) < 0.01) return "24 ساعة";
+    if (Math.abs(h - 72) < 0.01) return "72 ساعة";
+    var n = Math.abs(h - Math.round(h)) < 0.01 ? Math.round(h) : h;
+    if (Math.abs(h - 1) < 0.01) return "1 ساعة";
+    if (Math.abs(h - 2) < 0.01) return "2 ساعتين";
+    if (h >= 3 && h <= 10) return String(n) + " ساعات";
+    return String(n) + " ساعة";
+  }
+
+  function delayToHours(value, unit) {
+    var v = parseFloat(value);
+    if (!(v > 0)) v = 1;
+    if (unit === "day") return v * 24;
+    if (unit === "hour") return v;
+    return v / 60;
+  }
+
+  function formatCurrentSavedTimingAr(stageIndex, disp) {
+    var stageNum = parseInt(stageIndex, 10) + 1;
+    if (stageNum >= 2) {
+      var hrs = delayToHours(disp.value, disp.unit);
+      if (
+        Math.abs(hrs - 6) < 0.01 ||
+        Math.abs(hrs - 24) < 0.01 ||
+        Math.abs(hrs - 72) < 0.01
+      ) {
+        return formatPolicyHoursDisplayAr(hrs);
+      }
+    }
+    return formatDelayDisplayAr(disp.value, disp.unit);
+  }
+
+  function timingGuardrailsFromPayload(payload) {
+    var p = payload || lastPayload;
+    return p && p.timing_guardrails ? p.timing_guardrails : null;
+  }
+
+  function timingPanelFieldsForStage(reasonKey, stageIndex) {
+    var ix = parseInt(stageIndex, 10);
+    if (!(ix >= 0)) ix = 0;
+    var stageNum = ix + 1;
+    var tg = timingGuardrailsFromPayload();
+    var panels =
+      tg && tg.stage_panels && typeof tg.stage_panels === "object"
+        ? tg.stage_panels
+        : null;
+    var apiPanel = panels ? panels[String(stageNum)] || panels[stageNum] : null;
+    var recommendedAr = "—";
+    var minimumAr = "بدون حد أدنى";
+    if (stageNum === 1) {
+      var rec1 = recommendedDelayForStage(reasonKey, ix);
+      recommendedAr = formatDelayDisplayAr(rec1.value, rec1.unit);
+    } else if (apiPanel) {
+      recommendedAr = apiPanel.recommended_timing_ar || recommendedAr;
+      minimumAr = apiPanel.minimum_allowed_timing_ar || minimumAr;
+    } else if (stageNum === 2) {
+      recommendedAr = "24 ساعة";
+      minimumAr = "6 ساعات";
+    } else if (stageNum === 3) {
+      recommendedAr = "72 ساعة";
+      minimumAr = "24 ساعة";
+    }
+    var disp = displayDelayForStage(reasonKey, ix);
+    var currentAr = formatCurrentSavedTimingAr(ix, disp);
+    return {
+      recommended_timing_ar: recommendedAr,
+      minimum_allowed_timing_ar: minimumAr,
+      current_saved_timing_ar: currentAr,
+    };
+  }
+
+  function buildTimingPolicyPanelHtml(reasonKey, stageIndex) {
+    var f = timingPanelFieldsForStage(reasonKey, stageIndex);
+    return (
+      '<div class="ma-tpl-timing-policy" data-ma-tpl-timing-policy dir="rtl" aria-label="سياسة التوقيت للمرحلة">' +
+      '<div class="ma-tpl-timing-row ma-tpl-timing-rec">' +
+      '<span class="ma-tpl-timing-k">التوقيت المقترح:</span> ' +
+      '<span class="ma-tpl-timing-v" data-ma-tpl-timing-rec>' +
+      esc(f.recommended_timing_ar) +
+      "</span></div>" +
+      '<div class="ma-tpl-timing-row ma-tpl-timing-min">' +
+      '<span class="ma-tpl-timing-k">الحد الأدنى:</span> ' +
+      '<span class="ma-tpl-timing-v" data-ma-tpl-timing-min>' +
+      esc(f.minimum_allowed_timing_ar) +
+      "</span></div>" +
+      '<div class="ma-tpl-timing-row ma-tpl-timing-current">' +
+      '<span class="ma-tpl-timing-k">التوقيت الحالي:</span> ' +
+      '<span class="ma-tpl-timing-v" data-ma-tpl-timing-current>' +
+      esc(f.current_saved_timing_ar) +
+      "</span></div></div>"
+    );
+  }
+
+  function refreshTimingPolicyPanel(cardEl, reasonKey, stageIndex) {
+    if (!cardEl || !reasonKey) return;
+    var panel = cardEl.querySelector("[data-ma-tpl-timing-policy]");
+    if (!panel) return;
+    var f = timingPanelFieldsForStage(reasonKey, stageIndex);
+    var recEl = panel.querySelector("[data-ma-tpl-timing-rec]");
+    var minEl = panel.querySelector("[data-ma-tpl-timing-min]");
+    var curEl = panel.querySelector("[data-ma-tpl-timing-current]");
+    if (recEl) recEl.textContent = f.recommended_timing_ar;
+    if (minEl) minEl.textContent = f.minimum_allowed_timing_ar;
+    if (curEl) curEl.textContent = f.current_saved_timing_ar;
   }
 
   function persistFirstSlotDelay(dv, uiUnit) {
@@ -929,6 +1063,10 @@
       section_subtitle_ar: data.section_subtitle_ar || base.section_subtitle_ar,
       guided_defaults: data.guided_defaults || base.guided_defaults,
       reason_rows: rows,
+      timing_guardrails:
+        data.timing_guardrails || base.timing_guardrails || null,
+      meta_policy_guidance:
+        data.meta_policy_guidance || base.meta_policy_guidance || null,
     };
   }
 
@@ -1307,7 +1445,7 @@
       '<p class="ma-tpl-delay-restore-wrap" dir="rtl">' +
       '<button type="button" class="ma-tpl-restore-timing" data-ma-tpl-restore-timing title="استعادة التوقيت المقترح لهذه المرحلة فقط (بدون حفظ تلقائي)">↺ استعادة المقترح</button>' +
       "</p>" +
-      '<p class="ma-tpl-timing-note" dir="rtl">💡 التوقيت المقترح مبني على ممارسات شائعة لاستعادة السلال ويمكن تعديله.</p>' +
+      buildTimingPolicyPanelHtml(k, 0) +
       '<p class="ma-tpl-hint">المراحل تُرسل بالترتيب فقط عند عدم عودة العميل أو إتمام الشراء.</p>' +
       '<div class="ma-tpl-actions">' +
       '<button type="button" class="ma-fw-save" data-ma-tpl-save>حفظ</button>' +
@@ -1693,6 +1831,7 @@
       );
       if (!(ix >= 0)) ix = 0;
       syncCardDelayFieldsFromRow(savedCard, nk, ix);
+      refreshTimingPolicyPanel(savedCard, nk, ix);
     }
     restoreTplScrollAnchor(scrollAnchor);
   }
@@ -1872,22 +2011,34 @@
             apply_gen: window.__trigger_templates_apply_gen,
           });
           if (st) {
-            var guardMsg =
+            var feedbackLines =
               pack.payload &&
-              (pack.payload.timing_guardrail_message_ar ||
-                (pack.payload.adjusted &&
-                  pack.payload.timing_guardrail_message_ar));
-            if (pack.payload && pack.payload.adjusted && guardMsg) {
-              st.textContent = guardMsg;
+              Array.isArray(pack.payload.feedback_lines_ar)
+                ? pack.payload.feedback_lines_ar
+                : [];
+            st.classList.remove("ma-tpl-status--guardrail");
+            if (pack.payload && pack.payload.adjusted && feedbackLines.length) {
+              st.classList.add("ma-tpl-status--guardrail");
+              st.innerHTML = feedbackLines
+                .map(function (line) {
+                  return esc(line);
+                })
+                .join("<br>");
             } else {
               st.textContent = "تم الحفظ";
             }
           }
           window.setTimeout(function () {
-            if (st && (st.textContent === "تم الحفظ" || st.textContent.indexOf("تم تعديل") === 0)) {
+            if (!st) return;
+            if (
+              st.textContent === "تم الحفظ" ||
+              st.classList.contains("ma-tpl-status--guardrail")
+            ) {
               st.textContent = "";
+              st.innerHTML = "";
+              st.classList.remove("ma-tpl-status--guardrail");
             }
-          }, 4500);
+          }, 6500);
           return;
         }
         tplDbg("[SAVE TEMPLATE FAIL]", {

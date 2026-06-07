@@ -4007,6 +4007,69 @@ button.ma-vip-suggest-btn.va-btn {
   font-weight: 500;
 }
 
+.ma-tpl-timing-policy {
+  margin: 10px 0 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgb(226 232 240 / 0.95);
+  background: rgb(248 250 252 / 0.85);
+}
+
+.ma-tpl-timing-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 6px;
+  margin: 0 0 6px;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.ma-tpl-timing-row:last-child {
+  margin-bottom: 0;
+}
+
+.ma-tpl-timing-k {
+  font-weight: 600;
+}
+
+.ma-tpl-timing-rec {
+  color: var(--muted, #64748b);
+}
+
+.ma-tpl-timing-rec .ma-tpl-timing-v {
+  font-weight: 500;
+}
+
+.ma-tpl-timing-min {
+  color: #92400e;
+  padding: 4px 8px;
+  margin-inline: -4px;
+  border-radius: 8px;
+  background: rgb(255 251 235 / 0.95);
+  border: 1px solid rgb(253 230 138 / 0.85);
+}
+
+.ma-tpl-timing-min .ma-tpl-timing-v {
+  font-weight: 700;
+}
+
+.ma-tpl-timing-current {
+  color: var(--green-dark, #166534);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.ma-tpl-timing-current .ma-tpl-timing-v {
+  font-weight: 800;
+}
+
+.ma-tpl-status--guardrail {
+  color: #92400e;
+  line-height: 1.55;
+  max-width: min(100%, 420px);
+}
+
 .ma-tpl-hint {
   font-size: 11px;
   color: var(--muted);

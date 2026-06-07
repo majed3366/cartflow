@@ -5,7 +5,8 @@ from __future__ import annotations
 import unittest
 
 from services.merchant_whatsapp_meta_policy_awareness_v1 import (
-    TIMING_AUTO_ADJUST_MESSAGE_AR,
+    META_POLICY_GUIDANCE_AR,
+    TIMING_POLICY_EXPLANATION_AR,
     meta_policy_guidance_for_merchant_api,
 )
 from services.merchant_whatsapp_template_library_v1 import (
@@ -129,16 +130,20 @@ class MerchantWhatsappTemplateLibraryPhase4Tests(unittest.TestCase):
         }
         guarded, ack = apply_timing_guardrails_to_reason_templates_incoming(incoming)
         self.assertTrue(ack["adjusted"])
-        self.assertEqual(
-            ack["timing_guardrail_message_ar"], TIMING_AUTO_ADJUST_MESSAGE_AR
+        self.assertIn(
+            "لا يمكن ضبط المرحلة الثانية بأقل من 6 ساعات.",
+            ack["feedback_lines_ar"],
         )
+        self.assertIn("تم حفظ التوقيت على 6 ساعات.", ack["feedback_lines_ar"])
         msgs = guarded["price"]["messages"]
         self.assertEqual(msgs[1]["delay"], 6.0)
         self.assertGreaterEqual(delay_to_hours(msgs[2]["delay"], msgs[2]["unit"]), 24.0)
 
     def test_meta_policy_guidance_present(self) -> None:
         g = meta_policy_guidance_for_merchant_api()
-        self.assertGreaterEqual(len(g["guidance_lines_ar"]), 3)
+        self.assertEqual(len(g["guidance_lines_ar"]), 1)
+        self.assertEqual(g["guidance_lines_ar"][0], TIMING_POLICY_EXPLANATION_AR)
+        self.assertEqual(g["guidance_lines_ar"][0], META_POLICY_GUIDANCE_AR[0])
 
     def test_trigger_templates_payload_includes_phase4_fields(self) -> None:
         payload = enrich_trigger_templates_payload({"ok": True, "reason_rows": []})
