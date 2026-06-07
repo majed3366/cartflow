@@ -10,6 +10,16 @@ CartFlow is a FastAPI application that:
 - Serves **merchant dashboards** as Jinja2 HTML under `/dashboard/*`, loading/saving settings through **`GET`/`POST /api/recovery-settings`** and related APIs.
 - **`GET /`** — public marketing landing (`templates/cartflow_landing.html`): Arabic RTL **product-story landing** — behavior + objection + recovery + explanation (hero flow, real dashboard screenshots for objection reasons / recovery templates / carts / widget / WhatsApp); no fake ROI; CTAs **`/signup`** and **`/login`**.
 
+### 1.1 Commercial packaging (approved foundation — audit only, no billing)
+
+| Package | Monthly (SAR) | Annual (SAR) | Target merchant |
+|---------|---------------|--------------|-----------------|
+| **Starter** | 99 | 990 | Entry — widget, reason capture, single-path WhatsApp recovery, dashboard, basic analytics, default templates |
+| **Growth** (Most Popular) | 199 | 1,990 | Active stores — adds VIP detection/alerts, multi-message, per-reason templates/timing, advanced analytics, merchant controls |
+| **Pro** | 399 | 3,990 | High maturity — advanced recovery/message logic, operational insights, early access, future intelligence modules |
+
+**Pricing model:** feature-based; monthly + annual; **no message/recovery quotas** in marketing (internal fair usage may apply later). **No billing, payment gateway, or subscription enforcement implemented.** Definitive audit: **`docs/cartflow_packages_pricing_foundation_audit_v1.md`**.
+
 ---
 
 ## 2) Frontend Layer
@@ -354,6 +364,7 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 
 | Date (UTC) | Summary |
 |------------|---------|
+| 2026-06-07 | **Packages & Pricing Foundation audit v1:** Decision-only — approved three-tier packaging (Starter / Growth / Pro) and working SAR prices (99/990, 199/1990, 399/3990); feature-based model with no marketed quotas; validated differentiation, upgrade incentives, Growth anchor tier, Zid/Salla SMB fit, under/overpricing risks, and long-term sustainability. Maps tiers to existing product capabilities (VIP, multi-message, per-reason templates in Growth). No billing, gateways, or code changes. Doc: `docs/cartflow_packages_pricing_foundation_audit_v1.md`. Commit: **`cartflow packages pricing foundation audit`**. |
 | 2026-06-07 | **WhatsApp Template Library Foundation audit:** Decision-only — frozen 8-key production template library (`VIP_ALERT_TEMPLATE`, `PRICE_TEMPLATE`, `SHIPPING_TEMPLATE`, `QUALITY_TEMPLATE`, `DELIVERY_TEMPLATE`, `WARRANTY_TEMPLATE`, `CONTINUATION_TEMPLATE`, `RECOVERY_REMINDER_TEMPLATE`); message classes `customer_message` / `merchant_alert` / `operational_alert`; delivery truth lifecycle `queued → sent → delivered → read → failed`; CartFlow owns Meta approval, merchants edit variables only, no freeform production templates. Reason-tag mapping aligned with `canonical_reason_template_key()`. No Meta integration or code changes. Doc: `docs/cartflow_whatsapp_template_library_foundation_audit_v1.md`. Commit: **`docs whatsapp template library foundation`**. |
 | 2026-06-07 | **WhatsApp Production Reality Phase 2.0 (Meta production readiness audit):** Decision-only gap analysis — 12 Meta assets inventoried (READY/PARTIAL/MISSING/UNVERIFIED); dedicated CartFlow number + Business App but no WABA/Cloud API; phone migration strategy; Cloud API/template/delivery-truth readiness; execution order Phase 2.1 (BM+WABA ops) → 2.2 (app+webhooks) → 2.3 (templates) → 2.4 (code). No Meta setup or code changes. Doc: `docs/cartflow_whatsapp_production_reality_phase2_0_meta_production_readiness_audit_v1.md`. Commit: **`whatsapp production reality phase 2.0 meta production readiness audit`**. |
 | 2026-06-07 | **WhatsApp Production Reality Phase 1.5 (production sender strategy audit):** Decision-only — current Twilio/Meta/webhook/template/delivery-truth state classified (dev-only vs prod-capable vs migration risk); provider options compared (Twilio Production, Meta Cloud API, BSP); **recommendation: Meta Cloud API primary production on CartFlow-owned WABA; Twilio Sandbox dev/staging only; Twilio Production not long-term target**; Model C launch without merchant WABA knowledge; migration path to Phase 2 adapter + cutover. No code changes. Doc: `docs/cartflow_whatsapp_production_reality_phase1_5_production_sender_strategy_audit_v1.md`. Commit: **`whatsapp production reality phase 1.5 production sender strategy audit`**. |
