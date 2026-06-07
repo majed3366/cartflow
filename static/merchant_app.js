@@ -20,10 +20,10 @@
     messages: "سجل رسائل استرداد واتساب المسجّلة لمتجرك",
     reasons: "توزيع أسباب ترك السلة خلال آخر 30 يوماً",
     "trigger-templates":
-      "سلسلة مراحل الاسترجاع لكل سبب — طمأنة ثم عرض ثم بديل (وليس تكرار نفس الرسالة).",
+      "حدد محتوى رسائل الاسترجاع لكل سبب — وقم بإدارة مراحل المتابعة.",
     widget: "مظهر الودجيت ومتى يظهر للعميل — بدون إعدادات تقنية معقدة",
     whatsapp:
-      "رقم المتجر وتفعيل استرجاع الواتساب — تُحفظ لمتجرك دون إرسال تجريبي من هذه الصفحة",
+      "قناة الإرسال — وضع واتساب، الاتصال، وتفعيل الاسترجاع. محتوى الرسائل من قوالب الاسترجاع.",
     plans:
       "قارن Starter و Growth و Pro — عرض للمقارنة فقط بدون ترقية أو دفع",
     settings:
@@ -283,9 +283,6 @@
     }
     if (typeof window.maInitWhatsappSettingsPage === "function" && page === "whatsapp") {
       window.maInitWhatsappSettingsPage();
-    }
-    if (typeof window.maInitWhatsappTemplateRegistryPage === "function" && page === "whatsapp") {
-      window.maInitWhatsappTemplateRegistryPage();
     }
     if (typeof window.maInitVipSettingsPage === "function" && page === "vip") {
       window.maInitVipSettingsPage();

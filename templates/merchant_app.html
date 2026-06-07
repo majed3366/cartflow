@@ -727,7 +727,7 @@
         <div class="ma-wa-customers-head">
           <div>
             <div class="setting-title" id="ma-wa-customers-title">رسائل العملاء عبر واتساب</div>
-            <div class="setting-desc" id="ma-wa-mode-desc">CartFlow يتولى رسائل العملاء — أنت تضبط سلوك الاسترجاع فقط.</div>
+            <div class="setting-desc" id="ma-wa-mode-desc">CartFlow يتولى الإرسال والمتابعة — وأنت تحدد متى وكيف يتم الاسترجاع.</div>
           </div>
           <span class="ma-wa-connection-pill" id="ma-wa-connection-pill">غير متصل</span>
         </div>
@@ -786,21 +786,10 @@
         <div class="setting-row"><span class="setting-label">آخر حالة إرسال</span><span class="setting-value" id="ma-wa-last-send-status">—</span></div>
         <div class="setting-row"><span class="setting-label">وقت آخر إرسال</span><span class="setting-value" id="ma-wa-last-send">{{ merchant_wa_last_send_ar | default("—") }}</span></div>
       </div>
-      <div class="setting-card">
-        <div class="setting-title">قواعد الإرسال</div>
-        <div class="setting-desc">تأخير أول رسالة وحد أقصى للمحاولات من بطاقة المتجر</div>
-        <div class="setting-row"><span class="setting-label">تأخير الرسالة الأولى</span><span class="setting-value">{{ merchant_wa_first_delay_ar | default("—") }}</span></div>
-        <div class="setting-row"><span class="setting-label">المحاولة الثانية</span><span class="setting-value">{{ merchant_wa_second_delay_ar | default("—") }}</span></div>
-        <div class="setting-row"><span class="setting-label">الحد الأقصى للرسائل</span><span class="setting-value">{{ merchant_wa_max_messages_ar | default("—") }}</span></div>
-      </div>
-      <div class="setting-card ma-wa-templates-card" style="grid-column:1/-1;">
-        <div class="setting-title">قوالب رسائل الاسترجاع</div>
-        <div class="setting-desc">عدّل صياغة كل سبب — التفعيل والتعطيل واستعادة الافتراضي. لا يمكن إنشاء أنواع جديدة أو تغيير الربط الداخلي.</div>
-        <p id="ma-wa-templates-status" class="ma-wa-templates-status">جاري التحميل…</p>
-        <div id="ma-wa-templates-list" class="ma-wa-templates-list"></div>
-        <div class="ma-fw-actions">
-          <button type="button" class="ma-fw-save ma-sc-btn-secondary" id="ma-wa-templates-save">حفظ القوالب</button>
-        </div>
+      <div class="setting-card ma-wa-transport-note" style="grid-column:1/-1;">
+        <div class="setting-title">محتوى رسائل الاسترجاع</div>
+        <div class="setting-desc">صياغة الرسائل ومراحل المتابعة لكل سبب — من قسم واحد فقط.</div>
+        <button type="button" class="ma-fw-save ma-sc-btn-secondary" onclick="goTo('trigger-templates')">فتح قوالب الاسترجاع</button>
       </div>
     </div>
   </div>
@@ -1015,7 +1004,6 @@
 <script defer src="/static/merchant_vip_automation_ui.js"></script>
 <script defer src="/static/merchant_dashboard_lazy.js?v={{ merchant_setup_render_build | default('unknown') }}"></script>
 <script defer src="/static/merchant_whatsapp_settings.js"></script>
-<script defer src="/static/merchant_whatsapp_template_registry.js"></script>
 <script defer src="/static/merchant_vip_settings.js"></script>
 <script defer src="/static/merchant_store_connection.js"></script>
 <script defer src="/static/merchant_subscription.js"></script>

@@ -549,6 +549,11 @@
 
   function sectionIntroHtml() {
     return (
+      '<div class="ma-tpl-ownership-banner" dir="rtl">' +
+      '<p class="ma-tpl-ownership-title">محتوى الاسترجاع</p>' +
+      '<p class="ma-tpl-ownership-body">حدد محتوى رسائل الاسترجاع لكل سبب — وقم بإدارة مراحل المتابعة.</p>' +
+      '<p class="ma-tpl-ownership-note">واتساب = قناة الإرسال · هذه الصفحة = محتوى الرسائل</p>' +
+      "</div>" +
       '<div class="ma-tpl-seq-intro" dir="rtl">' +
       '<p class="ma-tpl-seq-intro-title">مسار الاسترجاع = سلسلة مراحل</p>' +
       '<p class="ma-tpl-seq-intro-body">كل رقم يفعّل مرحلة جديدة في التسلسل — <strong>وليس</strong> إرسال نفس الرسالة أكثر من مرة.</p>' +

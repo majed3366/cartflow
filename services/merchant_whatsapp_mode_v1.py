@@ -33,7 +33,7 @@ WHATSAPP_MODE_LABEL_AR: Mapping[str, str] = {
 
 WHATSAPP_MODE_DESC_AR: Mapping[str, str] = {
     WHATSAPP_MODE_CARTFLOW_MANAGED: (
-        "CartFlow يتولى رسائل العملاء — أنت تضبط سلوك الاسترجاع فقط."
+        "CartFlow يتولى الإرسال والمتابعة — وأنت تحدد متى وكيف يتم الاسترجاع."
     ),
     WHATSAPP_MODE_MERCHANT_WHATSAPP: (
         "رسائل العملاء من بنية واتساب تخص متجرك — للمتاجر المتقدمة."

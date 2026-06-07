@@ -177,12 +177,21 @@ class MerchantWhatsappTemplateRegistryV1Tests(unittest.TestCase):
         shipping = next(r for r in rows if r.template_key == "SHIPPING_TEMPLATE")
         self.assertEqual(shipping.default_or_customized_ar, "مخصص")
 
-    def test_dashboard_whatsapp_page_template_ux(self) -> None:
+    def test_dashboard_whatsapp_page_transport_only(self) -> None:
         r = self.client.get("/dashboard")
         self.assertEqual(r.status_code, 200)
         html = r.text or ""
-        self.assertIn("ma-wa-templates-list", html)
-        self.assertIn("قوالب رسائل الاسترجاع", html)
+        self.assertIn("ma-wa-enable-recovery-btn", html)
+        self.assertIn("فتح قوالب الاسترجاع", html)
+        self.assertNotIn("ma-wa-templates-list", html)
+        self.assertNotIn("ma-wa-templates-save", html)
+
+    def test_dashboard_trigger_templates_page_owns_content(self) -> None:
+        r = self.client.get("/dashboard")
+        self.assertEqual(r.status_code, 200)
+        html = r.text or ""
+        self.assertIn("page-trigger-templates", html)
+        self.assertIn("ma-tpl-root", html)
 
 
 if __name__ == "__main__":
