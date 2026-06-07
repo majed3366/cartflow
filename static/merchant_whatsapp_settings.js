@@ -7,6 +7,10 @@
   var loading = false;
   var lastSettingsData = null;
 
+  var READINESS_LOADING_AR = "جاري التحقق من جاهزية واتساب...";
+  var READINESS_ERROR_AR =
+    "تعذر التحقق من جاهزية واتساب حالياً. حاول تحديث الصفحة.";
+
   function byId(id) {
     return document.getElementById(id);
   }
@@ -44,6 +48,37 @@
     return "merchant_whatsapp";
   }
 
+  function setLegacyEnableCtaVisible(visible) {
+    var cta = byId("ma-wa-enable-recovery-btn");
+    if (cta) cta.hidden = !visible;
+  }
+
+  function showReadinessLoading() {
+    var root = byId("ma-wa-readiness-root");
+    setLegacyEnableCtaVisible(false);
+    if (!root) return;
+    root.hidden = false;
+    root.setAttribute("aria-busy", "true");
+    root.innerHTML =
+      '<section class="ma-wa-readiness-card ma-wa-readiness-loading" dir="rtl" aria-busy="true">' +
+      '<p class="ma-wa-readiness-loading-text">' +
+      escHtml(READINESS_LOADING_AR) +
+      "</p></section>";
+  }
+
+  function showReadinessError(msg) {
+    var root = byId("ma-wa-readiness-root");
+    setLegacyEnableCtaVisible(false);
+    if (!root) return;
+    root.hidden = false;
+    root.setAttribute("aria-busy", "false");
+    root.innerHTML =
+      '<section class="ma-wa-readiness-card ma-wa-readiness-error" dir="rtl">' +
+      '<p class="ma-wa-readiness-error-text">' +
+      escHtml(msg || READINESS_ERROR_AR) +
+      "</p></section>";
+  }
+
   function applyConnectionPill(d) {
     var pill = byId("ma-wa-connection-pill");
     if (!pill || !d) return;
@@ -70,12 +105,18 @@
         d.whatsapp_status_display ||
         "—";
     }
-    var cta = byId("ma-wa-enable-recovery-btn");
-    if (cta) {
+    var hasActionFirst =
+      d.whatsapp_connection_readiness &&
+      d.whatsapp_connection_readiness.action_first;
+    if (hasActionFirst) {
+      setLegacyEnableCtaVisible(false);
+    } else {
       var paused =
         d.whatsapp_connection_state === "paused" ||
         d.whatsapp_customer_connection_status === "not_connected";
-      cta.hidden = d.whatsapp_recovery_enabled !== false && !paused;
+      setLegacyEnableCtaVisible(
+        d.whatsapp_recovery_enabled === false || paused
+      );
     }
   }
 
@@ -224,8 +265,7 @@
     if (!root || !d) return;
     var cr = d.whatsapp_connection_readiness;
     if (!cr) {
-      root.hidden = true;
-      root.innerHTML = "";
+      showReadinessError(READINESS_ERROR_AR);
       return;
     }
     var checklist = cr.setup_checklist || {};
@@ -249,6 +289,7 @@
     var nextAction = af.next_action_ar || "";
     var outcome = af.expected_outcome_ar || cr.expected_outcome_ar || "—";
     root.hidden = false;
+    root.setAttribute("aria-busy", "false");
     root.innerHTML =
       '<section class="ma-wa-readiness-card" dir="rtl" aria-label="جاهزية واتساب">' +
       '<div class="ma-wa-readiness-head">' +
@@ -365,6 +406,7 @@
   function loadSettings() {
     if (loading) return Promise.resolve();
     loading = true;
+    showReadinessLoading();
     hideMsgs();
     return fetch("/api/recovery-settings")
       .then(function (r) {
@@ -373,10 +415,15 @@
         });
       })
       .then(function (x) {
-        if (x.data && x.data.ok) fillForm(x.data);
-        else showErr((x.data && x.data.error) || "تعذّر تحميل الإعدادات");
+        if (x.data && x.data.ok) {
+          fillForm(x.data);
+        } else {
+          showReadinessError(READINESS_ERROR_AR);
+          showErr((x.data && x.data.error) || "تعذّر تحميل الإعدادات");
+        }
       })
       .catch(function () {
+        showReadinessError(READINESS_ERROR_AR);
         showErr("خطأ في الشبكة أثناء التحميل");
       })
       .finally(function () {

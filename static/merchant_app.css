@@ -4717,6 +4717,30 @@ button.ma-vip-suggest-btn.va-btn {
   margin-bottom: 14px;
 }
 
+.ma-wa-readiness-loading,
+.ma-wa-readiness-error {
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid #e9d5ff;
+  background: linear-gradient(180deg, #faf5ff 0%, #fff 100%);
+}
+
+.ma-wa-readiness-loading-text {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: #64748b;
+  line-height: 1.5;
+}
+
+.ma-wa-readiness-error-text {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #92400e;
+  line-height: 1.5;
+}
+
 .ma-wa-readiness-card {
   padding: 14px 16px;
   border-radius: 12px;

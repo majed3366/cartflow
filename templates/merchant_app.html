@@ -720,7 +720,11 @@
   </div>
 
   <div class="page ma-page-compact" id="page-whatsapp">
-    <div id="ma-wa-readiness-root" class="ma-wa-readiness-root" hidden aria-live="polite"></div>
+    <div id="ma-wa-readiness-root" class="ma-wa-readiness-root" aria-live="polite" aria-busy="true">
+      <section class="ma-wa-readiness-card ma-wa-readiness-loading" dir="rtl">
+        <p class="ma-wa-readiness-loading-text">جاري التحقق من جاهزية واتساب...</p>
+      </section>
+    </div>
     <div id="ma-wa-cta-guidance" class="ma-wa-cta-guidance" hidden aria-live="polite"></div>
     <div id="ma-wa-settings-err" style="display:none;margin-bottom:10px;padding:10px 12px;border-radius:10px;border:1px solid #fecaca;background:#fef2f2;color:#991b1b;font-size:13px;"></div>
     <div id="ma-wa-settings-ok" style="display:none;margin-bottom:10px;padding:10px 12px;border-radius:10px;border:1px solid #bbf7d0;background:#f0fdf4;color:#166534;font-size:13px;">تم حفظ إعدادات واتساب</div>
@@ -734,7 +738,7 @@
           <span class="ma-wa-connection-pill" id="ma-wa-connection-pill">غير متصل</span>
         </div>
         <p class="ma-wa-connection-summary" id="ma-wa-connection-summary">—</p>
-        <button type="button" class="ma-fw-save ma-wa-primary-cta" id="ma-wa-enable-recovery-btn">تفعيل استرجاع واتساب</button>
+        <button type="button" class="ma-fw-save ma-wa-primary-cta" id="ma-wa-enable-recovery-btn" hidden>تفعيل استرجاع واتساب</button>
         <form id="ma-wa-settings-form" class="ma-fw-form" autocomplete="off">
           <details class="ma-advanced-block ma-wa-advanced">
             <summary>خيارات متقدمة</summary>
