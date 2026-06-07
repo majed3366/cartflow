@@ -67,9 +67,13 @@ def _ensure_store_whatsapp_merchant_settings_columns() -> None:
 def ensure_store_whatsapp_merchant_settings_schema() -> None:
     """Idempotent columns for merchant WhatsApp settings."""
     from services.merchant_whatsapp_mode_v1 import ensure_whatsapp_mode_schema  # noqa: PLC0415
+    from services.merchant_whatsapp_template_layer_v1 import (  # noqa: PLC0415
+        ensure_whatsapp_template_overrides_schema,
+    )
 
     _ensure_store_whatsapp_merchant_settings_columns()
     ensure_whatsapp_mode_schema(db)
+    ensure_whatsapp_template_overrides_schema(db)
 
 
 def inferred_whatsapp_provider_mode(store: Optional[Any]) -> str:
@@ -190,6 +194,11 @@ def merchant_whatsapp_settings_fields_for_api(store: Optional[Any]) -> Dict[str,
         "last_send_at_ar": last.get("last_send_at_ar") or "—",
     }
     payload.update(merchant_whatsapp_mode_fields_for_api(store))
+    from services.merchant_whatsapp_template_layer_v1 import (  # noqa: PLC0415
+        whatsapp_template_fields_for_api,
+    )
+
+    payload.update(whatsapp_template_fields_for_api(store))
     return payload
 
 
@@ -213,5 +222,9 @@ def apply_merchant_whatsapp_settings_from_body(
             body.get("whatsapp_provider_mode")
         )
     from services.merchant_whatsapp_mode_v1 import apply_whatsapp_mode_from_body  # noqa: PLC0415
+    from services.merchant_whatsapp_template_layer_v1 import (  # noqa: PLC0415
+        apply_whatsapp_template_layer_from_body,
+    )
 
     apply_whatsapp_mode_from_body(row, body)
+    apply_whatsapp_template_layer_from_body(row, body)

@@ -793,6 +793,15 @@
         <div class="setting-row"><span class="setting-label">المحاولة الثانية</span><span class="setting-value">{{ merchant_wa_second_delay_ar | default("—") }}</span></div>
         <div class="setting-row"><span class="setting-label">الحد الأقصى للرسائل</span><span class="setting-value">{{ merchant_wa_max_messages_ar | default("—") }}</span></div>
       </div>
+      <div class="setting-card ma-wa-templates-card" style="grid-column:1/-1;">
+        <div class="setting-title">قوالب رسائل الاسترجاع</div>
+        <div class="setting-desc">عدّل صياغة كل سبب — التفعيل والتعطيل واستعادة الافتراضي. لا يمكن إنشاء أنواع جديدة أو تغيير الربط الداخلي.</div>
+        <p id="ma-wa-templates-status" class="ma-wa-templates-status">جاري التحميل…</p>
+        <div id="ma-wa-templates-list" class="ma-wa-templates-list"></div>
+        <div class="ma-fw-actions">
+          <button type="button" class="ma-fw-save ma-sc-btn-secondary" id="ma-wa-templates-save">حفظ القوالب</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -1006,6 +1015,7 @@
 <script defer src="/static/merchant_vip_automation_ui.js"></script>
 <script defer src="/static/merchant_dashboard_lazy.js?v={{ merchant_setup_render_build | default('unknown') }}"></script>
 <script defer src="/static/merchant_whatsapp_settings.js"></script>
+<script defer src="/static/merchant_whatsapp_template_registry.js"></script>
 <script defer src="/static/merchant_vip_settings.js"></script>
 <script defer src="/static/merchant_store_connection.js"></script>
 <script defer src="/static/merchant_subscription.js"></script>

@@ -284,6 +284,9 @@
     if (typeof window.maInitWhatsappSettingsPage === "function" && page === "whatsapp") {
       window.maInitWhatsappSettingsPage();
     }
+    if (typeof window.maInitWhatsappTemplateRegistryPage === "function" && page === "whatsapp") {
+      window.maInitWhatsappTemplateRegistryPage();
+    }
     if (typeof window.maInitVipSettingsPage === "function" && page === "vip") {
       window.maInitVipSettingsPage();
     }

@@ -4608,6 +4608,57 @@ button.ma-vip-suggest-btn.va-btn {
   font-size: 12px;
 }
 
+.ma-wa-templates-card {
+  margin-top: 4px;
+}
+
+.ma-wa-templates-status {
+  font-size: 12px;
+  color: #64748b;
+  margin: 8px 0 12px;
+}
+
+.ma-wa-templates-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.ma-wa-template-row {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 12px 14px;
+  background: #fafafa;
+}
+
+.ma-wa-template-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.ma-wa-template-meta {
+  font-size: 11px;
+  color: #94a3b8;
+  direction: ltr;
+}
+
+.ma-wa-template-enabled {
+  margin-inline-start: auto;
+}
+
+.ma-wa-template-text {
+  width: 100%;
+  min-height: 72px;
+  resize: vertical;
+}
+
+.ma-wa-template-restore {
+  margin-top: 8px;
+}
+
 .ma-plans-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

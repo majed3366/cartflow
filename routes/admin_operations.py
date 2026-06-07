@@ -954,6 +954,38 @@ def api_admin_whatsapp_stores_list(
     return j({"ok": True, "rows": [r.to_api_dict() for r in rows]})
 
 
+@router.get("/api/admin/whatsapp/templates")
+def api_admin_whatsapp_templates_registry(request: Request) -> Any:
+    denied = _admin_json_auth(request)
+    if denied is not None:
+        return denied
+    from services.admin_whatsapp_template_visibility_v1 import (  # noqa: PLC0415
+        list_admin_template_registry_rows,
+    )
+
+    rows = list_admin_template_registry_rows()
+    return j({"ok": True, "rows": [r.to_api_dict() for r in rows]})
+
+
+@router.get("/api/admin/whatsapp/store-templates")
+def api_admin_whatsapp_store_templates(
+    request: Request,
+    q: str = "",
+    store_id: int = 0,
+    limit: int = 50,
+) -> Any:
+    denied = _admin_json_auth(request)
+    if denied is not None:
+        return denied
+    from services.admin_whatsapp_template_visibility_v1 import (  # noqa: PLC0415
+        list_admin_store_template_rows,
+    )
+
+    sid = int(store_id) if store_id else None
+    rows = list_admin_store_template_rows(query=q, store_id=sid, limit=limit)
+    return j({"ok": True, "rows": [r.to_api_dict() for r in rows]})
+
+
 def _register_admin_placeholder_routes() -> None:
     for path, nav_key, title_ar, description_ar in _ADMIN_PLACEHOLDER_PAGES:
 
