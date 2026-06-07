@@ -95,12 +95,15 @@
       return;
     }
     var checklist = cr.setup_checklist || {};
+    var af = cr.action_first || {};
     var items = Array.isArray(checklist.checklist_ar) ? checklist.checklist_ar : [];
-    var actions = Array.isArray(cr.required_actions_ar) ? cr.required_actions_ar : [];
     var checklistHtml = items
       .map(function (item) {
+        var cls = item.complete ? " is-complete" : "";
         return (
-          "<li>" +
+          '<li class="ma-wa-readiness-step' +
+          cls +
+          '">' +
           escHtml(item.mark_ar || "") +
           " " +
           escHtml(item.label_ar || "") +
@@ -108,11 +111,10 @@
         );
       })
       .join("");
-    var actionsHtml = actions
-      .map(function (a) {
-        return "<li>• " + escHtml(a) + "</li>";
-      })
-      .join("");
+    var ctaLabel = af.primary_cta_label_ar || "فتح الإعدادات";
+    var ctaHref = af.primary_cta_href || "/dashboard#whatsapp";
+    var nextAction = af.next_action_ar || "";
+    var outcome = af.expected_outcome_ar || cr.expected_outcome_ar || "—";
     root.hidden = false;
     root.innerHTML =
       '<section class="ma-wa-readiness-card" dir="rtl" aria-label="جاهزية واتساب">' +
@@ -124,18 +126,23 @@
       '<span class="ma-wa-readiness-badge">' +
       escHtml(cr.readiness_overall_ar || "—") +
       "</span></div>" +
-      '<div class="ma-wa-readiness-meta">' +
-      '<div><span class="ma-wa-readiness-k">حالة الاتصال</span> ' +
-      escHtml(cr.connection_state_ar || "—") +
-      "</div>" +
-      '<div><span class="ma-wa-readiness-k">الوضع</span> ' +
-      escHtml(cr.whatsapp_mode_label_ar || "—") +
-      "</div></div>" +
-      (actionsHtml
-        ? '<div class="ma-wa-readiness-actions"><p class="ma-wa-readiness-k">الإجراءات المطلوبة</p><ul>' +
-          actionsHtml +
-          "</ul></div>"
+      // 1) Next Action — lead with action + single primary CTA
+      '<div class="ma-wa-readiness-action">' +
+      '<p class="ma-wa-readiness-action-title">' +
+      escHtml(af.title_ar || "") +
+      "</p>" +
+      (nextAction
+        ? '<p class="ma-wa-readiness-action-next">الخطوة التالية: ' +
+          escHtml(nextAction) +
+          "</p>"
         : "") +
+      '<a class="ma-wa-readiness-cta" data-cf-wa-primary-cta href="' +
+      escHtml(ctaHref) +
+      '">' +
+      escHtml(ctaLabel) +
+      "</a>" +
+      "</div>" +
+      // 2) Remaining steps
       (checklistHtml
         ? '<div class="ma-wa-readiness-checklist"><p class="ma-wa-readiness-k">' +
           escHtml(checklist.remaining_title_ar || "المتبقي:") +
@@ -143,9 +150,19 @@
           checklistHtml +
           "</ul></div>"
         : "") +
+      // 3) Outcome
       '<p class="ma-wa-readiness-outcome"><strong>النتيجة المتوقعة:</strong> ' +
-      escHtml(cr.expected_outcome_ar || "—") +
-      "</p></section>";
+      escHtml(outcome) +
+      "</p>" +
+      // 4) Technical status — demoted
+      '<div class="ma-wa-readiness-meta ma-wa-readiness-meta-muted">' +
+      '<div><span class="ma-wa-readiness-k">حالة الاتصال</span> ' +
+      escHtml(cr.connection_state_ar || "—") +
+      "</div>" +
+      '<div><span class="ma-wa-readiness-k">الوضع</span> ' +
+      escHtml(cr.whatsapp_mode_label_ar || "—") +
+      "</div></div>" +
+      "</section>";
   }
 
   function setReadOnly(d) {

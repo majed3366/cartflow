@@ -60,6 +60,56 @@ READINESS_OVERALL_LABEL_AR: Mapping[str, str] = {
     READINESS_OVERALL_NOT_READY: "غير جاهز",
 }
 
+# ── Action-first presentation (Readiness UX V2) ──────────────────────────────
+# Pure merchant-facing copy per connection state: title + next action + single
+# primary CTA + expected outcome. Presentation only — does not change the
+# Readiness Engine, connection-state resolution, or production truth.
+
+CONNECTION_STATE_ACTION_FIRST: Mapping[str, dict[str, str]] = {
+    CONNECTION_STATE_NOT_CONNECTED: {
+        "title_ar": "واتساب غير مرتبط",
+        "next_action_ar": "ابدأ ربط واتساب",
+        "primary_cta_label_ar": "تفعيل واتساب",
+        "outcome_ar": "سيتمكن CartFlow من إرسال رسائل الاسترجاع.",
+    },
+    CONNECTION_STATE_SETUP_REQUIRED: {
+        "title_ar": "يلزم إكمال الإعداد",
+        "next_action_ar": "أكمل خطوات الإعداد المطلوبة",
+        "primary_cta_label_ar": "استكمال الإعداد",
+        "outcome_ar": "سيصبح واتساب جاهزاً للإرسال.",
+    },
+    CONNECTION_STATE_PENDING_CONFIGURATION: {
+        "title_ar": "جاري إعداد الاتصال",
+        "next_action_ar": "أكمل خطوة التفعيل الحالية",
+        "primary_cta_label_ar": "إكمال التفعيل",
+        "outcome_ar": "سيتم تفعيل واتساب للإنتاج.",
+    },
+    CONNECTION_STATE_CONNECTED: {
+        "title_ar": "واتساب جاهز",
+        "next_action_ar": "لا يوجد إجراء مطلوب",
+        "primary_cta_label_ar": "فتح الإعدادات",
+        "outcome_ar": "CartFlow جاهز لإرسال رسائل الاسترجاع.",
+    },
+    CONNECTION_STATE_ACTION_REQUIRED: {
+        "title_ar": "يوجد إجراء مطلوب",
+        "next_action_ar": "راجع المتطلبات الظاهرة أدناه",
+        "primary_cta_label_ar": "مراجعة المتطلبات",
+        "outcome_ar": "سيعود الاتصال للعمل بشكل طبيعي.",
+    },
+    CONNECTION_STATE_PAUSED: {
+        "title_ar": "واتساب متوقف مؤقتاً",
+        "next_action_ar": "استئناف التشغيل",
+        "primary_cta_label_ar": "استئناف التشغيل",
+        "outcome_ar": "سيعود الإرسال والمتابعة للعمل.",
+    },
+    CONNECTION_STATE_PROVIDER_ISSUE: {
+        "title_ar": "توجد مشكلة لدى مزود الخدمة",
+        "next_action_ar": "انتظر أو راجع حالة المزود",
+        "primary_cta_label_ar": "مراجعة الحالة",
+        "outcome_ar": "سيستأنف CartFlow الإرسال عند عودة الخدمة.",
+    },
+}
+
 # Maps canonical state → legacy pill CSS key (Phase 1 UI)
 CONNECTION_STATE_LEGACY_PILL_KEY: Mapping[str, str] = {
     CONNECTION_STATE_NOT_CONNECTED: CONNECTION_STATUS_NOT_CONNECTED,
@@ -155,6 +205,58 @@ def connection_journey_for_mode(mode: str) -> dict[str, Any]:
             "Webhooks",
             "Meta",
         ],
+    }
+
+
+def build_action_first_card(
+    connection_state: str,
+    *,
+    expected_outcome_ar: str = "",
+    setup_checklist: Optional[dict[str, Any]] = None,
+    action_href: str = "/dashboard#whatsapp",
+) -> dict[str, Any]:
+    """
+    Readiness UX V2 — action-first presentation block.
+
+    Visual priority (consumed by partial + SPA): next action → remaining step →
+    outcome → technical status. Always a single primary CTA. Pure presentation;
+    no engine/state/truth changes.
+    """
+    state = connection_state if connection_state in CANONICAL_CONNECTION_STATES else (
+        CONNECTION_STATE_SETUP_REQUIRED
+    )
+    spec = CONNECTION_STATE_ACTION_FIRST.get(
+        state, CONNECTION_STATE_ACTION_FIRST[CONNECTION_STATE_SETUP_REQUIRED]
+    )
+
+    checklist = dict(setup_checklist or {})
+    raw_steps = checklist.get("checklist_ar") or []
+    remaining_steps: list[dict[str, Any]] = []
+    for item in raw_steps:
+        remaining_steps.append(
+            {
+                "label_ar": item.get("label_ar"),
+                "mark_ar": item.get("mark_ar")
+                or ("✓" if item.get("complete") else "✗"),
+                "complete": bool(item.get("complete")),
+            }
+        )
+
+    outcome = (expected_outcome_ar or "").strip() or spec["outcome_ar"]
+    action_needed = state != CONNECTION_STATE_CONNECTED
+
+    return {
+        "connection_state": state,
+        "connection_state_ar": CONNECTION_STATE_LABEL_AR.get(state, state),
+        "title_ar": spec["title_ar"],
+        "next_action_ar": spec["next_action_ar"],
+        "primary_cta_label_ar": spec["primary_cta_label_ar"],
+        "primary_cta_href": action_href or "/dashboard#whatsapp",
+        "expected_outcome_ar": outcome,
+        "remaining_steps_ar": remaining_steps,
+        "status_headline_ar": checklist.get("headline_ar") or spec["title_ar"],
+        "action_needed": action_needed,
+        "single_cta": True,
     }
 
 
@@ -462,7 +564,13 @@ def evaluate_whatsapp_connection_readiness(
 def connection_readiness_for_merchant_api(
     store: Optional[Any],
 ) -> dict[str, Any]:
-    return evaluate_whatsapp_connection_readiness(store)
+    ev = dict(evaluate_whatsapp_connection_readiness(store))
+    ev["action_first"] = build_action_first_card(
+        ev.get("connection_state") or CONNECTION_STATE_NOT_CONNECTED,
+        expected_outcome_ar=ev.get("expected_outcome_ar") or "",
+        setup_checklist=ev.get("setup_checklist") or {},
+    )
+    return ev
 
 
 def connection_readiness_for_admin_row(

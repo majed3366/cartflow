@@ -4698,6 +4698,170 @@ button.ma-vip-suggest-btn.va-btn {
   line-height: 1.5;
 }
 
+.ma-wa-connection-pill.is-action_required,
+.ma-wa-connection-pill.is-provider_issue,
+.ma-wa-connection-pill.is-pending_configuration,
+.ma-wa-connection-pill.is-setup_required {
+  background: #fffbeb;
+  color: #b45309;
+  border-color: #fde68a;
+}
+
+.ma-wa-connection-pill.is-paused {
+  background: #f8fafc;
+  color: #64748b;
+  border-color: #e2e8f0;
+}
+
+.ma-wa-readiness-root {
+  margin-bottom: 14px;
+}
+
+.ma-wa-readiness-card {
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid #e9d5ff;
+  background: linear-gradient(180deg, #faf5ff 0%, #fff 100%);
+}
+
+.ma-wa-readiness-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #ede9fe;
+}
+
+.ma-wa-readiness-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 800;
+  color: #1e293b;
+}
+
+.ma-wa-readiness-sub {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: #64748b;
+  line-height: 1.45;
+}
+
+.ma-wa-readiness-badge {
+  display: inline-flex;
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  background: #ecfdf5;
+  color: #047857;
+  border: 1px solid #a7f3d0;
+  white-space: nowrap;
+}
+
+.ma-wa-readiness-meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 10px;
+  font-size: 12px;
+  color: #334155;
+}
+
+.ma-wa-readiness-k {
+  font-weight: 700;
+  color: #64748b;
+}
+
+.ma-wa-readiness-actions,
+.ma-wa-readiness-checklist {
+  margin-bottom: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgb(255 255 255 / 0.85);
+  border: 1px solid #e2e8f0;
+  font-size: 12px;
+  color: #334155;
+}
+
+.ma-wa-readiness-actions ul,
+.ma-wa-readiness-checklist-list {
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ma-wa-readiness-outcome {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #ecfdf5;
+  border: 1px solid #bbf7d0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #166534;
+}
+
+/* Readiness UX V2 — action-first block */
+.ma-wa-readiness-action {
+  margin-bottom: 10px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #fff;
+  border: 1px solid #ddd6fe;
+}
+
+.ma-wa-readiness-action-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 800;
+  color: #1e293b;
+  line-height: 1.4;
+}
+
+.ma-wa-readiness-action-next {
+  margin: 6px 0 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: #6d28d9;
+}
+
+.ma-wa-readiness-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 12px;
+  padding: 10px 20px;
+  border-radius: 10px;
+  background: var(--green, #16a34a);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: filter 0.15s ease, background 0.15s ease;
+}
+
+.ma-wa-readiness-cta:hover {
+  background: var(--green-dark, #14532d);
+}
+
+.ma-wa-readiness-step.is-complete {
+  color: #166534;
+}
+
+.ma-wa-readiness-meta-muted {
+  margin: 10px 0 0;
+  padding-top: 10px;
+  border-top: 1px solid #ede9fe;
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+.ma-wa-readiness-meta-muted .ma-wa-readiness-k {
+  color: #94a3b8;
+}
+
 .ma-wa-primary-cta {
   margin-bottom: 14px;
 }

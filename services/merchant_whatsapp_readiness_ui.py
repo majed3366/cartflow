@@ -27,6 +27,7 @@ def build_merchant_whatsapp_readiness_card(store: Optional[Any]) -> dict[str, An
         CONNECTION_STATE_PROVIDER_ISSUE,
         CONNECTION_STATE_SETUP_REQUIRED,
         READINESS_OVERALL_READY,
+        build_action_first_card,
         evaluate_whatsapp_connection_readiness,
     )
     from services.wa_readiness_step_profiler import (
@@ -74,6 +75,15 @@ def build_merchant_whatsapp_readiness_card(store: Optional[Any]) -> dict[str, An
         base["production_truth"] = production_truth
         base["setup_checklist"] = setup_checklist
         base["readiness_dimensions"] = conn.get("readiness_dimensions") or []
+        action_first = build_action_first_card(
+            state_key,
+            expected_outcome_ar=expected_outcome,
+            setup_checklist=setup_checklist,
+            action_href=base.get("action_href") or _HREF_SETTINGS,
+        )
+        base["action_first"] = action_first
+        base["primary_cta_label_ar"] = action_first["primary_cta_label_ar"]
+        base["next_action_ar"] = action_first["next_action_ar"]
         return base
 
     if store is None or "dashboard_not_initialized" in blocking:

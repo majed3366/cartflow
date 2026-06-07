@@ -138,3 +138,30 @@ Existing Phase 1–4 WhatsApp tests must continue passing.
 ## Regression safety
 
 No changes to: recovery engine, WhatsApp runtime send, template system, execution policy, widget, lifecycle, purchase truth, dashboard cart logic, subscription enforcement.
+
+---
+
+## Addendum — Readiness UX V2 (action-first)
+
+**Commit:** `whatsapp readiness ux v2 action first setup experience`
+
+Turns the readiness card from a status display into an **action-oriented setup experience** — *truth + next action*. Engine, connection states, dimensions, production truth, and admin APIs are **unchanged**; this is presentation only.
+
+- **Per-state mapping** `CONNECTION_STATE_ACTION_FIRST` (7 states → title / next action / single primary CTA / outcome) and pure builder `build_action_first_card(...)`.
+- Surfaced as `action_first` on the merchant API (`connection_readiness_for_merchant_api`) and on the merchant card (`build_merchant_whatsapp_readiness_card`).
+- **Visual priority** in partial + SPA: next action → remaining step → outcome → technical status (demoted, muted). **Single primary CTA** (`data-cf-wa-primary-cta`).
+- Merchant-facing copy only (no Provider/API/WABA/Cloud API/Token/Webhook jargon).
+
+State → title / primary CTA:
+
+| State | Title | Primary CTA |
+|-------|-------|-------------|
+| `not_connected` | واتساب غير مرتبط | تفعيل واتساب |
+| `setup_required` | يلزم إكمال الإعداد | استكمال الإعداد |
+| `pending_configuration` | جاري إعداد الاتصال | إكمال التفعيل |
+| `connected` | واتساب جاهز | فتح الإعدادات |
+| `action_required` | يوجد إجراء مطلوب | مراجعة المتطلبات |
+| `paused` | واتساب متوقف مؤقتاً | استئناف التشغيل |
+| `provider_issue` | توجد مشكلة لدى مزود الخدمة | مراجعة الحالة |
+
+Tests: `tests/test_merchant_whatsapp_readiness_ux_v2.py` (7-state rendering, single CTA, no-jargon copy, checklist mapping).

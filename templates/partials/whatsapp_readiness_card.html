@@ -1,6 +1,7 @@
-{# Merchant-safe WhatsApp readiness — Phase 5 connection architecture #}
+{# Merchant-safe WhatsApp readiness — Readiness UX V2 (action-first) #}
 {% set wa = whatsapp_readiness_card %}
 {% if wa %}
+{% set af = wa.action_first or {} %}
 <section
   class="mb-4 rounded-2xl border border-violet-100/90 bg-gradient-to-br from-violet-50/80 via-white to-slate-50/50 px-4 py-4 shadow-sm md:px-5"
   aria-labelledby="cf-wa-readiness-title"
@@ -10,7 +11,7 @@
   <div class="flex flex-wrap items-start justify-between gap-2 border-b border-violet-100/70 pb-3">
     <div class="min-w-0 flex-1">
       <h2 id="cf-wa-readiness-title" class="m-0 text-base font-bold text-slate-900">جاهزية واتساب</h2>
-      <p class="mt-1 mb-0 text-xs leading-relaxed text-slate-600">كيف تصبح جاهزاً لإرسال رسائل الاسترجاع للعملاء.</p>
+      <p class="mt-1 mb-0 text-xs leading-relaxed text-slate-600" lang="ar">{{ wa.setup_checklist.headline_ar | default('كيف تصبح جاهزاً لإرسال رسائل الاسترجاع للعملاء.', true) }}</p>
     </div>
     <span
       class="inline-flex shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-bold {{ wa.badge_class }}"
@@ -18,52 +19,47 @@
     >{{ wa.badge_ar }}</span>
   </div>
 
-  <div class="mt-3 grid gap-2 text-xs text-slate-600 sm:grid-cols-2" lang="ar">
-    <div class="rounded-lg border border-slate-100 bg-white/80 px-2.5 py-2">
-      <span class="font-semibold text-slate-500">حالة الاتصال:</span>
-      <span class="ms-1 font-bold text-slate-900">{{ wa.connection_state_ar | default('—', true) }}</span>
-    </div>
-    <div class="rounded-lg border border-slate-100 bg-white/80 px-2.5 py-2">
-      <span class="font-semibold text-slate-500">الوضع الحالي:</span>
-      <span class="ms-1 font-bold text-slate-900">{{ wa.whatsapp_mode_label_ar | default('—', true) }}</span>
+  {# 1) Next Action — lead with action, single primary CTA #}
+  <div class="mt-3 rounded-xl border border-zid-100 bg-white/85 px-3 py-3" lang="ar">
+    <p class="m-0 text-sm font-bold leading-snug text-slate-900">{{ af.title_ar | default(wa.title_ar, true) }}</p>
+    <p class="mt-1 mb-0 text-xs font-semibold text-zid-700">الخطوة التالية: {{ af.next_action_ar | default(wa.next_action_ar, true) }}</p>
+    <div class="mt-3">
+      <a
+        href="{{ af.primary_cta_href | default(wa.action_href, true) }}"
+        class="inline-flex w-full items-center justify-center rounded-xl border border-zid-500/25 bg-zid-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-zid-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-zid-400 sm:w-auto"
+        data-cf-wa-primary-cta
+        lang="ar"
+      >{{ af.primary_cta_label_ar | default(wa.action_label_ar, true) }}</a>
     </div>
   </div>
 
-  <p class="mt-3 mb-0 text-sm font-semibold leading-snug text-slate-900" lang="ar">{{ wa.title_ar }}</p>
-  <p class="mt-1.5 mb-0 text-sm leading-relaxed text-slate-700" lang="ar">{{ wa.description_ar }}</p>
-
-  {% if wa.required_actions_ar %}
-  <div class="mt-3 rounded-lg border border-amber-100 bg-amber-50/60 px-2.5 py-2" lang="ar">
-    <p class="m-0 text-xs font-bold text-amber-950">الإجراءات المطلوبة</p>
-    <ul class="mt-1.5 mb-0 list-none space-y-1 ps-0 text-xs text-amber-900">
-      {% for action in wa.required_actions_ar %}
-      <li>• {{ action }}</li>
-      {% endfor %}
-    </ul>
-  </div>
-  {% endif %}
-
+  {# 2) Remaining steps #}
   {% if wa.setup_checklist and wa.setup_checklist.checklist_ar %}
   <div class="mt-3 rounded-lg border border-slate-100 bg-white/70 px-2.5 py-2" lang="ar">
-    <p class="m-0 text-xs font-bold text-slate-800">{{ wa.setup_checklist.headline_ar | default('المتبقي:', true) }}</p>
+    <p class="m-0 text-xs font-bold text-slate-800">{{ wa.setup_checklist.remaining_title_ar | default('المتبقي:', true) }}</p>
     <ul class="mt-1.5 mb-0 list-none space-y-1 ps-0 text-xs text-slate-700">
       {% for item in wa.setup_checklist.checklist_ar %}
-      <li>{{ item.mark_ar }} {{ item.label_ar }}</li>
+      <li class="{{ 'text-emerald-800' if item.complete else 'text-slate-700' }}">{{ item.mark_ar }} {{ item.label_ar }}</li>
       {% endfor %}
     </ul>
   </div>
   {% endif %}
 
-  <p class="mt-2 mb-0 rounded-lg border border-emerald-100/90 bg-emerald-50/50 px-2.5 py-2 text-xs leading-relaxed text-emerald-900" lang="ar">
-    <span class="font-bold">النتيجة المتوقعة:</span> {{ wa.expected_outcome_ar | default(wa.impact_ar, true) }}
+  {# 3) Expected outcome #}
+  <p class="mt-3 mb-0 rounded-lg border border-emerald-100/90 bg-emerald-50/50 px-2.5 py-2 text-xs leading-relaxed text-emerald-900" lang="ar">
+    <span class="font-bold">النتيجة المتوقعة:</span> {{ af.expected_outcome_ar | default(wa.expected_outcome_ar, true) | default(wa.impact_ar, true) }}
   </p>
 
-  <div class="mt-4 flex flex-wrap items-center gap-2">
-    <a
-      href="{{ wa.action_href }}"
-      class="inline-flex items-center justify-center rounded-xl border border-zid-500/25 bg-zid-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-zid-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-zid-400"
-      lang="ar"
-    >{{ wa.action_label_ar }}</a>
+  {# 4) Technical status — demoted, muted #}
+  <div class="mt-3 grid gap-2 border-t border-slate-100 pt-2.5 text-[11px] text-slate-500 sm:grid-cols-2" lang="ar">
+    <div>
+      <span class="font-semibold">حالة الاتصال:</span>
+      <span class="ms-1 font-bold text-slate-700">{{ wa.connection_state_ar | default('—', true) }}</span>
+    </div>
+    <div>
+      <span class="font-semibold">الوضع الحالي:</span>
+      <span class="ms-1 font-bold text-slate-700">{{ wa.whatsapp_mode_label_ar | default('—', true) }}</span>
+    </div>
   </div>
 </section>
 {% endif %}
