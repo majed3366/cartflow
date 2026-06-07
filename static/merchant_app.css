@@ -4363,6 +4363,149 @@ button.ma-vip-suggest-btn.va-btn {
   justify-content: flex-start;
 }
 
+.ma-subscription-v2-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.ma-sub-status-pill,
+.ma-sub-source-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  color: #475569;
+  white-space: nowrap;
+}
+
+.ma-sub-status-pill.is-active {
+  background: #ecfdf5;
+  color: #047857;
+  border-color: #a7f3d0;
+}
+
+.ma-sub-status-pill.is-trial {
+  background: #fffbeb;
+  color: #b45309;
+  border-color: #fde68a;
+}
+
+.ma-sub-status-pill.is-expired,
+.ma-sub-status-pill.is-cancelled {
+  background: #fef2f2;
+  color: #b91c1c;
+  border-color: #fecaca;
+}
+
+.ma-sub-source-pill.is-marketplace {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border-color: #bfdbfe;
+}
+
+.ma-sub-health {
+  margin: 0 0 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.ma-sub-health.is-warning {
+  color: #b45309;
+}
+
+.ma-sub-health.is-danger {
+  color: #b91c1c;
+}
+
+.ma-sub-health.is-neutral {
+  color: #64748b;
+  font-weight: 500;
+}
+
+.ma-sub-days {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: #475569;
+}
+
+.ma-sub-benefits {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.ma-sub-benefits-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 8px;
+}
+
+.ma-sub-benefits-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 12px;
+}
+
+.ma-sub-benefits-list li {
+  font-size: 12px;
+  color: #334155;
+  line-height: 1.4;
+}
+
+.ma-sub-benefits-list li::before {
+  content: "✓ ";
+  color: #059669;
+  font-weight: 700;
+}
+
+.ma-sub-discovery {
+  margin-top: 14px;
+  display: grid;
+  gap: 10px;
+}
+
+.ma-sub-discovery-block {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+}
+
+.ma-sub-discovery-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #4338ca;
+  margin-bottom: 6px;
+}
+
+.ma-sub-discovery-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ma-sub-discovery-list li {
+  font-size: 12px;
+  color: #475569;
+  line-height: 1.45;
+}
+
+.ma-sub-discovery-list li::before {
+  content: "• ";
+  color: #6366f1;
+}
+
 .ma-plans-current-card {
   margin-bottom: 12px;
 }
@@ -4487,6 +4630,10 @@ button.ma-vip-suggest-btn.va-btn {
   }
 
   .ma-subscription-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ma-sub-benefits-list {
     grid-template-columns: 1fr;
   }
 }

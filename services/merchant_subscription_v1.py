@@ -241,7 +241,11 @@ class MerchantSubscriptionStatus:
     entitlements: dict[str, bool]
 
     def to_api_dict(self) -> dict[str, Any]:
-        return {
+        from services.merchant_subscription_experience_v1 import (  # noqa: PLC0415
+            build_subscription_experience_payload,
+        )
+
+        base = {
             "current_plan": self.current_plan,
             "current_plan_label_ar": self.current_plan_label_ar,
             "plan_status": self.plan_status,
@@ -285,6 +289,18 @@ class MerchantSubscriptionStatus:
             "read_only": True,
             "billing_actions_available": False,
         }
+        base.update(
+            build_subscription_experience_payload(
+                current_plan=self.current_plan,
+                plan_status=self.plan_status,
+                plan_source=self.plan_source,
+                billing_interval=self.billing_interval,
+                plan_expires_at=self.plan_expires_at,
+                trial_expires_at=self.trial_expires_at,
+                is_trialing=self.is_trialing,
+            )
+        )
+        return base
 
 
 def build_merchant_subscription_status(

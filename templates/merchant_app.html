@@ -774,14 +774,20 @@
   </div>
 
   <div class="page ma-page-compact" id="page-plans">
-    <div class="setting-card ma-fw-card ma-plans-current-card" id="ma-plans-current-root">
+    <div class="setting-card ma-fw-card ma-plans-current-card ma-subscription-v2" id="ma-plans-current-root">
       <div class="ma-plans-current-head">
         <div>
           <div class="setting-title">باقتك الحالية</div>
           <div class="setting-desc" id="ma-plans-current-summary">جاري التحميل…</div>
         </div>
-        <span class="ma-sub-plan-pill" id="ma-plans-current-pill">—</span>
+        <div class="ma-subscription-v2-badges">
+          <span class="ma-sub-plan-pill" id="ma-plans-current-pill">—</span>
+          <span class="ma-sub-status-pill" id="ma-plans-status-pill" hidden>—</span>
+          <span class="ma-sub-source-pill" id="ma-plans-source-pill" hidden>—</span>
+        </div>
       </div>
+      <p class="ma-sub-health" id="ma-plans-health" hidden></p>
+      <p class="ma-sub-days" id="ma-plans-days" hidden></p>
       <div class="ma-plans-current-meta" id="ma-plans-current-meta">
         <span id="ma-plans-current-source">—</span>
         <span class="ma-plans-dot" aria-hidden="true">·</span>
@@ -793,6 +799,11 @@
         <span class="ma-plans-dot" id="ma-plans-expires-dot" hidden aria-hidden="true">·</span>
         <span id="ma-plans-current-expires" hidden></span>
       </div>
+      <div class="ma-sub-benefits" id="ma-plans-benefits" hidden>
+        <div class="ma-sub-benefits-title">تشمل باقتك الحالية</div>
+        <ul class="ma-sub-benefits-list" id="ma-plans-benefits-list"></ul>
+      </div>
+      <div class="ma-sub-discovery" id="ma-plans-discovery" hidden></div>
     </div>
     <p class="ma-plans-footnote" id="ma-plans-footnote">—</p>
     <div class="ma-plans-grid" id="ma-plans-grid" aria-live="polite"></div>
@@ -834,24 +845,35 @@
       </div>
       <p class="ma-sc-footnote">Shopify قريباً</p>
     </div>
-    <div class="setting-card ma-fw-card ma-subscription-card" id="ma-subscription-root" style="grid-column:1/-1;margin-bottom:14px;">
+    <div class="setting-card ma-fw-card ma-subscription-card ma-subscription-v2" id="ma-subscription-root" style="grid-column:1/-1;margin-bottom:14px;">
       <div class="ma-subscription-head">
         <div>
           <div class="setting-title">الباقة الحالية</div>
           <div class="setting-desc">قراءة فقط — لا ترقية ولا دفع من هنا</div>
         </div>
-        <span class="ma-sub-plan-pill" id="ma-sub-plan-pill">—</span>
+        <div class="ma-subscription-v2-badges">
+          <span class="ma-sub-plan-pill" id="ma-sub-plan-pill">—</span>
+          <span class="ma-sub-status-pill" id="ma-sub-status-pill" hidden>—</span>
+          <span class="ma-sub-source-pill" id="ma-sub-source-pill" hidden>—</span>
+        </div>
       </div>
+      <p class="ma-sub-health" id="ma-sub-health" hidden></p>
+      <p class="ma-sub-days" id="ma-sub-days" hidden></p>
       <div class="ma-subscription-grid">
         <div class="setting-row"><span class="setting-label">الخطة</span><span class="setting-value" id="ma-sub-plan-display">—</span></div>
-        <div class="setting-row"><span class="setting-label">المصدر</span><span class="setting-value" id="ma-sub-source-display">—</span></div>
         <div class="setting-row"><span class="setting-label">الحالة</span><span class="setting-value" id="ma-sub-status-display">—</span></div>
         <div class="setting-row"><span class="setting-label">فترة الفوترة</span><span class="setting-value" id="ma-sub-interval-display">—</span></div>
-        <div class="setting-row"><span class="setting-label">تاريخ البدء</span><span class="setting-value" id="ma-sub-started-display">—</span></div>
         <div class="setting-row" id="ma-sub-plan-expires-row"><span class="setting-label">انتهاء الباقة</span><span class="setting-value" id="ma-sub-expires-display">—</span></div>
         <div class="setting-row" id="ma-sub-trial-row" hidden><span class="setting-label">انتهاء التجربة</span><span class="setting-value" id="ma-sub-trial-expires-display">—</span></div>
+        <div class="setting-row"><span class="setting-label">المصدر</span><span class="setting-value" id="ma-sub-source-display">—</span></div>
+        <div class="setting-row"><span class="setting-label">تاريخ البدء</span><span class="setting-value" id="ma-sub-started-display">—</span></div>
         <div class="setting-row"><span class="setting-label">آخر تحديث</span><span class="setting-value" id="ma-sub-updated-display">—</span></div>
       </div>
+      <div class="ma-sub-benefits" id="ma-sub-benefits">
+        <div class="ma-sub-benefits-title">تشمل باقتك الحالية</div>
+        <ul class="ma-sub-benefits-list" id="ma-sub-benefits-list"></ul>
+      </div>
+      <div class="ma-sub-discovery" id="ma-sub-discovery"></div>
       <div class="ma-subscription-foot">
         <button type="button" class="ma-fw-save ma-sc-btn ma-sc-btn-secondary" id="ma-sub-compare-btn" onclick="if(window.goTo){goTo('plans');}">قارن الباقات</button>
       </div>

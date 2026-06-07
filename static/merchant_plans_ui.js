@@ -26,7 +26,6 @@
   function applyCurrentPlan(sub) {
     if (!sub) return;
     var label = sub.current_plan_label_ar || sub.current_plan || "—";
-    setText("ma-plans-current-pill", label);
     setText(
       "ma-plans-current-summary",
       "أنت على باقة " +
@@ -35,11 +34,19 @@
         (sub.plan_source_label_ar || sub.plan_source || "—")
     );
     setText("ma-plans-current-source", "المصدر: " + (sub.plan_source_label_ar || "—"));
-    setText("ma-plans-current-status", "الحالة: " + (sub.plan_status_label_ar || "—"));
+    setText("ma-plans-current-status", "الحالة: " + (sub.status_badge_label_ar || sub.plan_status_label_ar || "—"));
     setText(
       "ma-plans-current-interval",
       "الفترة: " + (sub.billing_interval_label_ar || sub.billing_interval || "—")
     );
+
+    if (window.maApplySubscriptionExperience) {
+      window.maApplySubscriptionExperience(sub, {
+        prefix: "ma-plans",
+        planPillId: "ma-plans-current-pill",
+      });
+    }
+
     var trialEl = byId("ma-plans-current-trial");
     var planExpEl = byId("ma-plans-current-expires");
     var trialDot = byId("ma-plans-trial-dot");
@@ -63,6 +70,9 @@
       }
     }
     if (trialDot) trialDot.hidden = !trialing;
+
+    var benefits = byId("ma-plans-benefits");
+    if (benefits) benefits.hidden = !(sub.current_benefits_ar && sub.current_benefits_ar.length);
   }
 
   function renderPlansGrid(catalog, subscription) {

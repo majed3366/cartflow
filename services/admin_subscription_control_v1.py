@@ -167,6 +167,10 @@ class AdminSubscriptionRow:
     trial_started_at_ar: str
     trial_expires_at_ar: str
     updated_at_ar: str
+    days_remaining: Optional[int]
+    days_remaining_label_ar: str
+    subscription_health_ar: str
+    subscription_health_tone: str
 
     def to_api_dict(self) -> dict[str, Any]:
         return {
@@ -188,6 +192,10 @@ class AdminSubscriptionRow:
             "trial_started_at_ar": self.trial_started_at_ar,
             "trial_expires_at_ar": self.trial_expires_at_ar,
             "updated_at_ar": self.updated_at_ar,
+            "days_remaining": self.days_remaining,
+            "days_remaining_label_ar": self.days_remaining_label_ar,
+            "subscription_health_ar": self.subscription_health_ar,
+            "subscription_health_tone": self.subscription_health_tone,
         }
 
 
@@ -203,6 +211,17 @@ def build_admin_subscription_row(user: MerchantUser) -> AdminSubscriptionRow:
 
     updated = _aware(getattr(user, "updated_at", None))
     interval = normalize_billing_interval(getattr(user, "billing_interval", None))
+    from services.merchant_subscription_experience_v1 import (  # noqa: PLC0415
+        build_admin_subscription_visibility,
+    )
+
+    visibility = build_admin_subscription_visibility(
+        plan_status=status,
+        billing_interval=interval,
+        plan_expires_at=_aware(getattr(user, "plan_expires_at", None)),
+        trial_expires_at=_aware(getattr(user, "trial_expires_at", None)),
+        is_trialing=status == PLAN_STATUS_TRIALING,
+    )
     return AdminSubscriptionRow(
         merchant_user_id=int(user.id),
         merchant_email=(getattr(user, "email", None) or "").strip(),
@@ -222,6 +241,10 @@ def build_admin_subscription_row(user: MerchantUser) -> AdminSubscriptionRow:
         trial_started_at_ar=_format_dt_ar(_aware(getattr(user, "trial_started_at", None))),
         trial_expires_at_ar=_format_dt_ar(_aware(getattr(user, "trial_expires_at", None))),
         updated_at_ar=_format_dt_ar(updated),
+        days_remaining=visibility.get("days_remaining"),
+        days_remaining_label_ar=str(visibility.get("days_remaining_label_ar") or "—"),
+        subscription_health_ar=str(visibility.get("subscription_health_ar") or "—"),
+        subscription_health_tone=str(visibility.get("subscription_health_tone") or "neutral"),
     )
 
 

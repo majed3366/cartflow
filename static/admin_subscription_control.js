@@ -72,6 +72,16 @@
           (row.billing_interval_label || row.billing_interval || "—") +
           "</td>" +
           "<td class='py-2 pe-3'>" +
+          (row.days_remaining_label_ar || "—") +
+          "</td>" +
+          "<td class='py-2 pe-3 asc-health asc-health-" +
+          (row.subscription_health_tone || "neutral") +
+          "' title='" +
+          (row.subscription_health_ar || "") +
+          "'>" +
+          (row.subscription_health_ar || row.plan_status_label || row.plan_status) +
+          "</td>" +
+          "<td class='py-2 pe-3'>" +
           (row.trial_expires_at_ar || "—") +
           "</td>" +
           "<td class='py-2 pe-3'>" +

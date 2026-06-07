@@ -30,6 +30,8 @@ CartFlow is a FastAPI application that:
 
 **Marketplace Subscription Sync v1 (architecture audit only):** Six event types (`zid_plan_*`, `salla_plan_*` including `*_cancelled`); normalized adapter contract → `MerchantUser` field mapping; store linkage; idempotent receipts + audit log; admin fallback; failure taxonomy. No webhooks implemented. Doc: **`docs/cartflow_marketplace_subscription_sync_v1_audit.md`**.
 
+**SaaS foundation Phase 4 (subscription experience):** Subscription Status Card V2 (plan/status/source badges, days remaining, health messages); current plan benefits + read-only upgrade discovery; admin list shows days remaining + health. No billing/checkout/enforcement. Doc: **`docs/cartflow_saas_foundation_phase4_subscription_experience_audit_v1.md`**.
+
 ## 2) Frontend Layer
 
 ### 2.1 Widget Layer (VERY IMPORTANT)
