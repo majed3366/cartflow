@@ -20704,6 +20704,29 @@ def api_merchant_store_connection_status(request: Request):
         )
 
 
+@app.get("/api/merchant/subscription")
+def api_merchant_subscription_status(request: Request):
+    """الباقة الحالية — قراءة فقط للتاجر المصادق (لا ترقية ولا دفع)."""
+    from services.merchant_subscription_v1 import (  # noqa: PLC0415
+        build_merchant_subscription_status,
+    )
+
+    wall0 = time.perf_counter()
+    _merchant_dashboard_db_ready()
+    try:
+        status = build_merchant_subscription_status(cookies=dict(request.cookies))
+        return j({"ok": True, "subscription": status.to_api_dict()})
+    except (OSError, TypeError, ValueError) as e:
+        log.warning("api merchant/subscription: %s", e)
+        return j({"ok": False, "error": "failed"}, 500)
+    finally:
+        _log_dashboard_profile(
+            endpoint="GET /api/merchant/subscription",
+            section="merchant_subscription",
+            wall_perf_start=wall0,
+        )
+
+
 @app.get("/auth/zid")
 def auth_zid_oauth_start(request: Request):
     """

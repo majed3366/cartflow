@@ -185,6 +185,12 @@ def ensure_merchant_auth_schema(db: Any) -> bool:
 
             with db_ready_substage("merchant_auth_verify"):
                 status = verify_merchant_auth_schema(db)
+            with db_ready_substage("merchant_subscription_schema"):
+                from schema_merchant_subscription import (  # noqa: PLC0415
+                    ensure_merchant_subscription_schema,
+                )
+
+                ensure_merchant_subscription_schema(db)
             _merchant_auth_schema_once = bool(status.get("ok"))
             return _merchant_auth_schema_once
         except SQLAlchemyError as exc:

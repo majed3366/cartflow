@@ -171,6 +171,12 @@ class MerchantUser(Base):
     password_hash = Column(String(255), nullable=False)
     merchant_name = Column(String(255), nullable=False)
     primary_store_id = Column(Integer, ForeignKey("stores.id"), nullable=True, index=True)
+    # SaaS plan (marketplace-first — no billing engine in Phase 1)
+    current_plan = Column(String(32), default="starter", nullable=False)
+    plan_status = Column(String(32), default="active", nullable=False)
+    plan_source = Column(String(32), default="manual", nullable=False)
+    plan_started_at = Column(DateTime, nullable=True)
+    plan_expires_at = Column(DateTime, nullable=True)
     created_at = Column(
         DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
     )
