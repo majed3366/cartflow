@@ -986,6 +986,18 @@ def api_admin_whatsapp_store_templates(
     return j({"ok": True, "rows": [r.to_api_dict() for r in rows]})
 
 
+@router.get("/api/admin/whatsapp/execution-policy")
+def api_admin_whatsapp_execution_policy(request: Request) -> Any:
+    denied = _admin_json_auth(request)
+    if denied is not None:
+        return denied
+    from services.merchant_whatsapp_template_execution_policy_v1 import (  # noqa: PLC0415
+        execution_policy_summary_for_api,
+    )
+
+    return j({"ok": True, **execution_policy_summary_for_api()})
+
+
 def _register_admin_placeholder_routes() -> None:
     for path, nav_key, title_ar, description_ar in _ADMIN_PLACEHOLDER_PAGES:
 
