@@ -151,6 +151,13 @@ class WhatsappReadinessCtaBehaviorV1Tests(unittest.TestCase):
         self.assertIn("ma-wa-cta-guidance", js)
         self.assertIn("data-cf-wa-primary-cta", js)
 
+    def test_readiness_cta_inherits_font_family(self) -> None:
+        css = Path("static/merchant_app.css").read_text(encoding="utf-8")
+        start = css.index(".ma-wa-readiness-cta {")
+        end = css.index(".ma-wa-readiness-cta:hover", start)
+        block = css[start:end]
+        self.assertIn("font-family: inherit", block)
+
 
 if __name__ == "__main__":
     unittest.main()

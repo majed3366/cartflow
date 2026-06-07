@@ -1,0 +1,15 @@
+{
+  "experiment": "WhatsApp Readiness CTA font-family: inherit verification",
+  "change": "Added font-family: inherit to .ma-wa-readiness-cta only",
+  "before_computed_font_cta": "Arial",
+  "after_computed_font_cta": "\"IBM Plex Sans Arabic\", sans-serif",
+  "surrounding_font": "\"IBM Plex Sans Arabic\", sans-serif",
+  "screenshots": {
+    "before_cta": "scripts/_typography_verify_out/before_cta.png",
+    "after_cta": "scripts/_typography_verify_out/after_cta.png",
+    "before_card": "scripts/_typography_verify_out/before_card.png",
+    "after_card": "scripts/_typography_verify_out/after_card.png"
+  },
+  "conclusion": "Difference came from styling",
+  "rationale": "Before the test, the CTA rendered in the browser default button font (Arial) while card copy used IBM Plex Sans Arabic. After font-family: inherit, the CTA uses IBM Plex like surrounding text. Visual comparison shows the CTA remains equally prominent and polished; hierarchy is driven by font-weight 700, white-on-green contrast, and button padding—not a separate UI font."
+}

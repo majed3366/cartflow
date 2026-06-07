@@ -4861,6 +4861,7 @@ button.ma-vip-suggest-btn.va-btn {
   border-radius: 10px;
   background: var(--green, #16a34a);
   color: #fff;
+  font-family: inherit;
   font-size: 13px;
   font-weight: 700;
   text-decoration: none;
