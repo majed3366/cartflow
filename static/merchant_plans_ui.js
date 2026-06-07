@@ -36,6 +36,17 @@
     );
     setText("ma-plans-current-source", "المصدر: " + (sub.plan_source_label_ar || "—"));
     setText("ma-plans-current-status", "الحالة: " + (sub.plan_status_label_ar || "—"));
+    var trialEl = byId("ma-plans-current-trial");
+    var trialDot = byId("ma-plans-trial-dot");
+    var trialing = !!(sub.is_trialing || sub.plan_status === "trialing");
+    if (trialEl) {
+      trialEl.hidden = !trialing;
+      if (trialing) {
+        trialEl.textContent =
+          "تنتهي التجربة: " + (sub.trial_expires_at_ar || "—");
+      }
+    }
+    if (trialDot) trialDot.hidden = !trialing;
   }
 
   function renderPlansGrid(catalog, subscription) {

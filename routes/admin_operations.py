@@ -84,12 +84,6 @@ _ADMIN_PLACEHOLDER_PAGES: tuple[tuple[str, str, str, str], ...] = (
         "إدارة باقات الاشتراك — قريباً.",
     ),
     (
-        "/admin/subscriptions/trial",
-        "subs-trial",
-        "التجريبي",
-        "حالة الفترة التجريبية للمتاجر — قريباً.",
-    ),
-    (
         "/admin/subscriptions/renewals",
         "subs-renewals",
         "التجديدات",
@@ -849,6 +843,89 @@ def admin_recovery_resume_scan(
         limit=int(limit or 100),
     )
     return j({"ok": True, **payload})
+
+
+@router.get("/admin/subscriptions/control", response_class=HTMLResponse)
+def admin_subscription_control_page(request: Request) -> Any:
+    denied = _admin_session_or_redirect(
+        request, next_path="/admin/subscriptions/control"
+    )
+    if denied is not None:
+        return denied
+    return templates.TemplateResponse(
+        request,
+        "admin_subscription_control.html",
+        {
+            "admin_active_nav": "subs-control",
+            "admin_page_title_ar": "التحكم باشتراك المتاجر",
+            "admin_page_subtitle_ar": "تعيين الباقات والتجربة يدوياً — بدون دفع أو فواتير",
+        },
+    )
+
+
+@router.get("/api/admin/subscriptions")
+def api_admin_subscriptions_list(
+    request: Request,
+    q: str = "",
+    limit: int = 50,
+) -> Any:
+    denied = _admin_json_auth(request)
+    if denied is not None:
+        return denied
+    from services.admin_subscription_control_v1 import list_admin_subscription_rows  # noqa: PLC0415
+
+    rows = list_admin_subscription_rows(query=q, limit=limit)
+    return j({"ok": True, "rows": [r.to_api_dict() for r in rows]})
+
+
+@router.get("/api/admin/subscriptions/{merchant_user_id}/audit")
+def api_admin_subscription_audit(
+    request: Request,
+    merchant_user_id: int,
+    limit: int = 20,
+) -> Any:
+    denied = _admin_json_auth(request)
+    if denied is not None:
+        return denied
+    from services.admin_subscription_control_v1 import (  # noqa: PLC0415
+        list_subscription_audit_logs,
+    )
+
+    logs = list_subscription_audit_logs(merchant_user_id, limit=limit)
+    return j({"ok": True, "audit_logs": logs})
+
+
+@router.post("/api/admin/subscriptions/{merchant_user_id}/action")
+async def api_admin_subscription_action(
+    request: Request,
+    merchant_user_id: int,
+) -> Any:
+    denied = _admin_json_auth(request)
+    if denied is not None:
+        return denied
+    from services.admin_subscription_control_v1 import (  # noqa: PLC0415
+        apply_admin_subscription_action,
+    )
+
+    try:
+        body = await request.json()
+    except (TypeError, ValueError):
+        body = {}
+    if not isinstance(body, dict):
+        body = {}
+    result = apply_admin_subscription_action(
+        int(merchant_user_id),
+        action=str(body.get("action") or ""),
+        admin_source="admin_session",
+        reason=str(body.get("reason") or ""),
+        plan=body.get("plan"),
+        trial_days=body.get("trial_days"),
+        extend_days=body.get("extend_days"),
+        plan_expires_at=body.get("plan_expires_at"),
+        trial_expires_at=body.get("trial_expires_at"),
+    )
+    code = 200 if result.ok else 400
+    return JSONResponse(result.to_api_dict(), status_code=code)
 
 
 def _register_admin_placeholder_routes() -> None:

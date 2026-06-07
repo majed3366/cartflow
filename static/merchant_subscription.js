@@ -22,6 +22,13 @@
     setText("ma-sub-status-display", d.plan_status_label_ar || d.plan_status);
     setText("ma-sub-started-display", d.plan_started_at_ar);
     setText("ma-sub-expires-display", d.plan_expires_at_ar);
+    setText("ma-sub-updated-display", d.subscription_updated_at_ar);
+    var trialRow = byId("ma-sub-trial-row");
+    var trialing = !!(d.is_trialing || d.plan_status === "trialing");
+    if (trialRow) trialRow.hidden = !trialing;
+    if (trialing) {
+      setText("ma-sub-trial-expires-display", d.trial_expires_at_ar);
+    }
     var pill = byId("ma-sub-plan-pill");
     if (pill) {
       pill.textContent = label || "—";
@@ -57,7 +64,7 @@
     loadSubscription();
     window.addEventListener("hashchange", function () {
       var h = (window.location.hash || "").toLowerCase();
-      if (h.indexOf("#settings") === 0) {
+      if (h.indexOf("#settings") === 0 || h.indexOf("#plans") === 0) {
         loadSubscription();
       }
     });

@@ -21,6 +21,8 @@ _MERCHANT_SUBSCRIPTION_COLUMNS = (
     ("plan_source", "VARCHAR(32) DEFAULT 'manual' NOT NULL", "VARCHAR(32) DEFAULT 'manual' NOT NULL"),
     ("plan_started_at", "DATETIME", "TIMESTAMP WITH TIME ZONE"),
     ("plan_expires_at", "DATETIME", "TIMESTAMP WITH TIME ZONE"),
+    ("trial_started_at", "DATETIME", "TIMESTAMP WITH TIME ZONE"),
+    ("trial_expires_at", "DATETIME", "TIMESTAMP WITH TIME ZONE"),
 )
 
 
@@ -85,6 +87,8 @@ def ensure_merchant_subscription_schema(db: Any) -> bool:
                         name,
                         exc,
                     )
+            if not insp.has_table("merchant_subscription_audit_logs"):
+                db.create_all()
             _subscription_schema_once = True
             return True
         except SQLAlchemyError as exc:

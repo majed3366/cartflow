@@ -1,0 +1,96 @@
+{% extends "layouts/admin_dashboard.html" %}
+{% block admin_title %}CartFlow Admin — التحكم باشتراك المتاجر{% endblock %}
+{% block admin_main_class %}w-full max-w-[88rem] space-y-6 px-6 py-8 pb-24 lg:px-10{% endblock %}
+
+{% block admin_content %}
+<section class="admin-card px-6 py-6">
+  <p class="text-xs font-semibold uppercase tracking-wide text-indigo-600">SaaS Foundation — Phase 3</p>
+  <h2 class="mt-2 text-2xl font-bold text-slate-900">Merchant Subscription Control</h2>
+  <p class="mt-2 max-w-3xl text-sm text-slate-600">
+    تعيين Starter / Growth / Pro، بدء أو تمديد التجربة، وتغيير الحالة — <strong>بدون دفع أو فواتير</strong>.
+    كل تغيير يُسجَّل في سجل التدقيق.
+  </p>
+</section>
+
+<section class="admin-card px-6 py-5">
+  <div class="flex flex-wrap items-end gap-3">
+    <label class="flex flex-col gap-1 text-sm">
+      <span class="text-slate-600">بحث (بريد / اسم)</span>
+      <input id="asc-search" type="search" class="rounded-lg border border-slate-200 px-3 py-2 text-sm min-w-[220px]" placeholder="merchant@example.com" />
+    </label>
+    <button type="button" id="asc-refresh" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700">تحديث القائمة</button>
+  </div>
+  <p id="asc-status" class="mt-3 text-xs text-slate-500">جاري التحميل…</p>
+  <div class="mt-4 overflow-x-auto">
+    <table class="min-w-full text-sm">
+      <thead>
+        <tr class="border-b border-slate-200 text-right text-slate-500">
+          <th class="py-2 pe-3">المتجر</th>
+          <th class="py-2 pe-3">البريد</th>
+          <th class="py-2 pe-3">الخطة</th>
+          <th class="py-2 pe-3">الحالة</th>
+          <th class="py-2 pe-3">المصدر</th>
+          <th class="py-2 pe-3">انتهاء التجربة</th>
+          <th class="py-2 pe-3">انتهاء الباقة</th>
+          <th class="py-2 pe-3">آخر تحديث</th>
+          <th class="py-2">إجراء</th>
+        </tr>
+      </thead>
+      <tbody id="asc-rows"></tbody>
+    </table>
+  </div>
+</section>
+
+<section class="admin-card px-6 py-5" id="asc-action-panel" hidden>
+  <h3 class="text-base font-semibold text-slate-900">تعديل اشتراك — <span id="asc-action-merchant">—</span></h3>
+  <form id="asc-action-form" class="mt-4 grid gap-3 lg:grid-cols-2">
+    <input type="hidden" id="asc-merchant-id" name="merchant_user_id" />
+    <label class="flex flex-col gap-1 text-sm">
+      <span>الإجراء</span>
+      <select id="asc-action" name="action" class="rounded-lg border border-slate-200 px-3 py-2">
+        <option value="change_plan">تغيير الخطة</option>
+        <option value="start_trial">بدء تجربة</option>
+        <option value="extend_trial">تمديد تجربة</option>
+        <option value="mark_active">تفعيل (active)</option>
+        <option value="mark_expired">منتهية (expired)</option>
+        <option value="cancel">إلغاء (cancelled)</option>
+        <option value="reactivate">إعادة تفعيل</option>
+        <option value="set_plan_expiration">تعيين تاريخ انتهاء الباقة</option>
+        <option value="clear_expiration">مسح تواريخ الانتهاء</option>
+      </select>
+    </label>
+    <label class="flex flex-col gap-1 text-sm">
+      <span>الخطة (للتغيير / التجربة)</span>
+      <select id="asc-plan" name="plan" class="rounded-lg border border-slate-200 px-3 py-2">
+        <option value="starter">Starter</option>
+        <option value="growth">Growth</option>
+        <option value="pro">Pro</option>
+      </select>
+    </label>
+    <label class="flex flex-col gap-1 text-sm">
+      <span>أيام التجربة (بدء)</span>
+      <input id="asc-trial-days" type="number" min="1" max="365" value="14" class="rounded-lg border border-slate-200 px-3 py-2" />
+    </label>
+    <label class="flex flex-col gap-1 text-sm">
+      <span>أيام التمديد</span>
+      <input id="asc-extend-days" type="number" min="1" max="365" value="7" class="rounded-lg border border-slate-200 px-3 py-2" />
+    </label>
+    <label class="flex flex-col gap-1 text-sm">
+      <span>تاريخ انتهاء الباقة (YYYY-MM-DD)</span>
+      <input id="asc-plan-expires" type="date" class="rounded-lg border border-slate-200 px-3 py-2" />
+    </label>
+    <label class="flex flex-col gap-1 text-sm lg:col-span-2">
+      <span>سبب التغيير (إلزامي)</span>
+      <input id="asc-reason" type="text" required class="rounded-lg border border-slate-200 px-3 py-2" placeholder="pilot merchant / ops adjustment" />
+    </label>
+    <div class="lg:col-span-2 flex flex-wrap gap-2">
+      <button type="submit" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700">تطبيق</button>
+      <button type="button" id="asc-audit-btn" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm">عرض سجل التدقيق</button>
+    </div>
+  </form>
+  <pre id="asc-audit-out" class="mt-4 hidden max-h-64 overflow-auto rounded-lg bg-slate-900 p-3 text-xs text-slate-100"></pre>
+  <p id="asc-action-msg" class="mt-3 text-sm"></p>
+</section>
+
+<script src="/static/admin_subscription_control.js"></script>
+{% endblock %}

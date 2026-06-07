@@ -177,6 +177,8 @@ class MerchantUser(Base):
     plan_source = Column(String(32), default="manual", nullable=False)
     plan_started_at = Column(DateTime, nullable=True)
     plan_expires_at = Column(DateTime, nullable=True)
+    trial_started_at = Column(DateTime, nullable=True)
+    trial_expires_at = Column(DateTime, nullable=True)
     created_at = Column(
         DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
     )
@@ -185,6 +187,32 @@ class MerchantUser(Base):
         default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc),
         nullable=False,
+    )
+
+
+class MerchantSubscriptionAuditLog(Base):
+    """Append-only audit trail for admin subscription changes."""
+
+    __tablename__ = "merchant_subscription_audit_logs"
+
+    id = Column(Integer, primary_key=True)
+    merchant_user_id = Column(
+        Integer, ForeignKey("merchant_users.id"), nullable=False, index=True
+    )
+    store_id = Column(Integer, ForeignKey("stores.id"), nullable=True, index=True)
+    admin_source = Column(String(128), nullable=False, default="admin_session")
+    action = Column(String(64), nullable=False)
+    old_plan = Column(String(32), nullable=True)
+    new_plan = Column(String(32), nullable=True)
+    old_status = Column(String(32), nullable=True)
+    new_status = Column(String(32), nullable=True)
+    old_plan_expires_at = Column(DateTime, nullable=True)
+    new_plan_expires_at = Column(DateTime, nullable=True)
+    old_trial_expires_at = Column(DateTime, nullable=True)
+    new_trial_expires_at = Column(DateTime, nullable=True)
+    reason = Column(Text, nullable=True)
+    created_at = Column(
+        DateTime, default=lambda: datetime.now(timezone.utc), nullable=False, index=True
     )
 
 

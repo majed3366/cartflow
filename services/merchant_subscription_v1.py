@@ -25,10 +25,21 @@ from services.cartflow_entitlements_v1 import (
 log = logging.getLogger("cartflow.merchant_subscription")
 
 PLAN_STATUS_ACTIVE = "active"
+PLAN_STATUS_TRIALING = "trialing"
 PLAN_STATUS_EXPIRED = "expired"
 PLAN_STATUS_SUSPENDED = "suspended"
-PLAN_STATUS_TRIAL = "trial"
 PLAN_STATUS_CANCELLED = "cancelled"
+# Legacy alias
+PLAN_STATUS_TRIAL = PLAN_STATUS_TRIALING
+
+CANONICAL_PLAN_STATUSES: frozenset[str] = frozenset(
+    {
+        PLAN_STATUS_ACTIVE,
+        PLAN_STATUS_TRIALING,
+        PLAN_STATUS_EXPIRED,
+        PLAN_STATUS_CANCELLED,
+    }
+)
 
 PLAN_SOURCE_MANUAL = "manual"
 PLAN_SOURCE_ZID_MARKETPLACE = "zid_marketplace"
@@ -51,9 +62,9 @@ PLAN_SOURCE_LABEL_AR: Mapping[str, str] = {
 
 PLAN_STATUS_LABEL_AR: Mapping[str, str] = {
     PLAN_STATUS_ACTIVE: "نشطة",
+    PLAN_STATUS_TRIALING: "Trial",
     PLAN_STATUS_EXPIRED: "منتهية",
     PLAN_STATUS_SUSPENDED: "موقوفة",
-    PLAN_STATUS_TRIAL: "تجريبية",
     PLAN_STATUS_CANCELLED: "ملغاة",
 }
 
@@ -77,9 +88,37 @@ def normalize_plan_source(raw: str | None) -> str:
 
 def normalize_plan_status(raw: str | None) -> str:
     key = (raw or "").strip().lower()
-    if key in PLAN_STATUS_LABEL_AR:
+    if key == "trial":
+        key = PLAN_STATUS_TRIALING
+    if key in CANONICAL_PLAN_STATUSES:
         return key
+    if key == PLAN_STATUS_SUSPENDED:
+        return PLAN_STATUS_EXPIRED
     return PLAN_STATUS_ACTIVE
+
+
+def subscription_entitlements_blocked(merchant_user: Any | None) -> bool:
+    """True when enforcement should deny features (expired/cancelled/past trial end)."""
+    from services.cartflow_entitlements_v1 import plan_entitlements_enforcement_enabled  # noqa: PLC0415
+
+    if not plan_entitlements_enforcement_enabled() or merchant_user is None:
+        return False
+    status = normalize_plan_status(getattr(merchant_user, "plan_status", None))
+    if status in (PLAN_STATUS_EXPIRED, PLAN_STATUS_CANCELLED):
+        return True
+    if status == PLAN_STATUS_TRIALING:
+        exp = _coerce_dt(getattr(merchant_user, "trial_expires_at", None))
+        if exp is not None:
+            d = exp if exp.tzinfo else exp.replace(tzinfo=timezone.utc)
+            if datetime.now(timezone.utc) > d.astimezone(timezone.utc):
+                return True
+    if status == PLAN_STATUS_ACTIVE:
+        exp = _coerce_dt(getattr(merchant_user, "plan_expires_at", None))
+        if exp is not None:
+            d = exp if exp.tzinfo else exp.replace(tzinfo=timezone.utc)
+            if datetime.now(timezone.utc) > d.astimezone(timezone.utc):
+                return True
+    return False
 
 
 def _format_dt_ar(dt: Optional[datetime]) -> str:
@@ -107,6 +146,8 @@ def read_subscription_fields(merchant_user: Any | None) -> dict[str, Any]:
             "plan_source": PLAN_SOURCE_MANUAL,
             "plan_started_at": None,
             "plan_expires_at": None,
+            "trial_started_at": None,
+            "trial_expires_at": None,
         }
     return {
         "current_plan": normalize_plan_id(getattr(merchant_user, "current_plan", None)),
@@ -114,6 +155,8 @@ def read_subscription_fields(merchant_user: Any | None) -> dict[str, Any]:
         "plan_source": normalize_plan_source(getattr(merchant_user, "plan_source", None)),
         "plan_started_at": _coerce_dt(getattr(merchant_user, "plan_started_at", None)),
         "plan_expires_at": _coerce_dt(getattr(merchant_user, "plan_expires_at", None)),
+        "trial_started_at": _coerce_dt(getattr(merchant_user, "trial_started_at", None)),
+        "trial_expires_at": _coerce_dt(getattr(merchant_user, "trial_expires_at", None)),
     }
 
 
@@ -150,7 +193,15 @@ class MerchantSubscriptionStatus:
     plan_started_at_ar: str
     plan_expires_at: Optional[datetime]
     plan_expires_at_ar: str
+    trial_started_at: Optional[datetime]
+    trial_started_at_ar: str
+    trial_expires_at: Optional[datetime]
+    trial_expires_at_ar: str
+    is_trialing: bool
+    subscription_updated_at: Optional[datetime]
+    subscription_updated_at_ar: str
     entitlements_enforcement_enabled: bool
+    entitlements_blocked: bool
     entitlements: dict[str, bool]
 
     def to_api_dict(self) -> dict[str, Any]:
@@ -169,7 +220,23 @@ class MerchantSubscriptionStatus:
                 self.plan_expires_at.isoformat() if self.plan_expires_at else None
             ),
             "plan_expires_at_ar": self.plan_expires_at_ar,
+            "trial_started_at": (
+                self.trial_started_at.isoformat() if self.trial_started_at else None
+            ),
+            "trial_started_at_ar": self.trial_started_at_ar,
+            "trial_expires_at": (
+                self.trial_expires_at.isoformat() if self.trial_expires_at else None
+            ),
+            "trial_expires_at_ar": self.trial_expires_at_ar,
+            "is_trialing": self.is_trialing,
+            "subscription_updated_at": (
+                self.subscription_updated_at.isoformat()
+                if self.subscription_updated_at
+                else None
+            ),
+            "subscription_updated_at_ar": self.subscription_updated_at_ar,
             "entitlements_enforcement_enabled": self.entitlements_enforcement_enabled,
+            "entitlements_blocked": self.entitlements_blocked,
             "entitlements": dict(self.entitlements),
             "read_only": True,
             "billing_actions_available": False,
@@ -198,6 +265,11 @@ def build_merchant_subscription_status(
     status = fields["plan_status"]
     started = fields["plan_started_at"]
     expires = fields["plan_expires_at"]
+    trial_started = fields["trial_started_at"]
+    trial_expires = fields["trial_expires_at"]
+    updated = _coerce_dt(getattr(user, "updated_at", None)) if user is not None else None
+    is_trialing = status == PLAN_STATUS_TRIALING
+    blocked = subscription_entitlements_blocked(user)
     return MerchantSubscriptionStatus(
         current_plan=plan_id,
         current_plan_label_ar=PLAN_LABEL_AR.get(plan_id, plan_id),
@@ -209,7 +281,15 @@ def build_merchant_subscription_status(
         plan_started_at_ar=_format_dt_ar(started),
         plan_expires_at=expires,
         plan_expires_at_ar=_format_dt_ar(expires),
+        trial_started_at=trial_started,
+        trial_started_at_ar=_format_dt_ar(trial_started),
+        trial_expires_at=trial_expires,
+        trial_expires_at_ar=_format_dt_ar(trial_expires),
+        is_trialing=is_trialing,
+        subscription_updated_at=updated,
+        subscription_updated_at_ar=_format_dt_ar(updated),
         entitlements_enforcement_enabled=plan_entitlements_enforcement_enabled(),
+        entitlements_blocked=blocked,
         entitlements=entitlements_snapshot(user),
     )
 

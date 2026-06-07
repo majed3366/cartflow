@@ -75,6 +75,18 @@ def has_feature(subject: Any | None, feature: str) -> bool:
         return True
     if not _subject_has_merchant_link(subject):
         return True
+    merchant_user = subject
+    if getattr(subject, "email", None) is None and getattr(subject, "current_plan", None) is None:
+        from extensions import db  # noqa: PLC0415
+        from models import MerchantUser  # noqa: PLC0415
+
+        merchant_user_id = getattr(subject, "merchant_user_id", None)
+        if merchant_user_id is not None:
+            merchant_user = db.session.get(MerchantUser, int(merchant_user_id))
+    from services.merchant_subscription_v1 import subscription_entitlements_blocked  # noqa: PLC0415
+
+    if subscription_entitlements_blocked(merchant_user):
+        return False
     plan_id = (
         resolve_plan_id_from_merchant(subject)
         if getattr(subject, "email", None) is not None
