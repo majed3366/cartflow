@@ -23,6 +23,16 @@ _MERCHANT_SUBSCRIPTION_COLUMNS = (
     ("plan_expires_at", "DATETIME", "TIMESTAMP WITH TIME ZONE"),
     ("trial_started_at", "DATETIME", "TIMESTAMP WITH TIME ZONE"),
     ("trial_expires_at", "DATETIME", "TIMESTAMP WITH TIME ZONE"),
+    ("billing_interval", "VARCHAR(32)", "VARCHAR(32)"),
+)
+
+_AUDIT_LOG_COLUMNS = (
+    ("old_billing_interval", "VARCHAR(32)", "VARCHAR(32)"),
+    ("new_billing_interval", "VARCHAR(32)", "VARCHAR(32)"),
+    ("old_plan_started_at", "DATETIME", "TIMESTAMP WITH TIME ZONE"),
+    ("new_plan_started_at", "DATETIME", "TIMESTAMP WITH TIME ZONE"),
+    ("old_trial_started_at", "DATETIME", "TIMESTAMP WITH TIME ZONE"),
+    ("new_trial_started_at", "DATETIME", "TIMESTAMP WITH TIME ZONE"),
 )
 
 
@@ -87,7 +97,29 @@ def ensure_merchant_subscription_schema(db: Any) -> bool:
                         name,
                         exc,
                     )
-            if not insp.has_table("merchant_subscription_audit_logs"):
+            if insp.has_table("merchant_subscription_audit_logs"):
+                audit_cols = {
+                    c["name"] for c in insp.get_columns("merchant_subscription_audit_logs")
+                }
+                for name, sqlite_sql, pg_sql in _AUDIT_LOG_COLUMNS:
+                    try:
+                        _add_column_if_missing(
+                            db,
+                            table="merchant_subscription_audit_logs",
+                            name=name,
+                            sqlite_sql=sqlite_sql,
+                            pg_sql=pg_sql,
+                            existing=audit_cols,
+                            dialect=dialect,
+                        )
+                    except SQLAlchemyError as exc:
+                        db.session.rollback()
+                        log.warning(
+                            "merchant subscription schema: add audit.%s failed: %s",
+                            name,
+                            exc,
+                        )
+            else:
                 db.create_all()
             _subscription_schema_once = True
             return True

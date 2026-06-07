@@ -17,18 +17,31 @@
   function applySubscription(d) {
     if (!d) return;
     var label = d.current_plan_label_ar || d.current_plan;
+    var interval = d.billing_interval || "";
     setText("ma-sub-plan-display", label);
     setText("ma-sub-source-display", d.plan_source_label_ar || d.plan_source);
     setText("ma-sub-status-display", d.plan_status_label_ar || d.plan_status);
+    setText("ma-sub-interval-display", d.billing_interval_label_ar || interval || "—");
     setText("ma-sub-started-display", d.plan_started_at_ar);
-    setText("ma-sub-expires-display", d.plan_expires_at_ar);
     setText("ma-sub-updated-display", d.subscription_updated_at_ar);
+
+    var trialing = interval === "trial" || !!(d.is_trialing || d.plan_status === "trialing");
+    var monthlyOrAnnual = interval === "monthly" || interval === "annual";
+
     var trialRow = byId("ma-sub-trial-row");
-    var trialing = !!(d.is_trialing || d.plan_status === "trialing");
+    var planExpiresRow = byId("ma-sub-plan-expires-row");
     if (trialRow) trialRow.hidden = !trialing;
+    if (planExpiresRow) planExpiresRow.hidden = trialing && !monthlyOrAnnual;
+
     if (trialing) {
-      setText("ma-sub-trial-expires-display", d.trial_expires_at_ar);
+      setText("ma-sub-trial-expires-display", d.trial_expires_at_ar || d.subscription_expires_at_ar);
     }
+    if (monthlyOrAnnual || interval === "manual_custom" || (!trialing && d.plan_expires_at_ar)) {
+      setText("ma-sub-expires-display", d.plan_expires_at_ar || d.subscription_expires_at_ar);
+    } else if (!trialing) {
+      setText("ma-sub-expires-display", d.subscription_expires_at_ar || d.plan_expires_at_ar);
+    }
+
     var pill = byId("ma-sub-plan-pill");
     if (pill) {
       pill.textContent = label || "—";

@@ -21,6 +21,14 @@ from services.cartflow_entitlements_v1 import (
     entitlements_snapshot,
     plan_entitlements_enforcement_enabled,
 )
+from services.merchant_billing_interval_v1 import (
+    BILLING_INTERVAL_ANNUAL,
+    BILLING_INTERVAL_MANUAL_CUSTOM,
+    BILLING_INTERVAL_MONTHLY,
+    BILLING_INTERVAL_TRIAL,
+    billing_interval_label_ar,
+    normalize_billing_interval,
+)
 
 log = logging.getLogger("cartflow.merchant_subscription")
 
@@ -144,6 +152,7 @@ def read_subscription_fields(merchant_user: Any | None) -> dict[str, Any]:
             "current_plan": DEFAULT_PLAN_ID,
             "plan_status": PLAN_STATUS_ACTIVE,
             "plan_source": PLAN_SOURCE_MANUAL,
+            "billing_interval": "",
             "plan_started_at": None,
             "plan_expires_at": None,
             "trial_started_at": None,
@@ -153,11 +162,34 @@ def read_subscription_fields(merchant_user: Any | None) -> dict[str, Any]:
         "current_plan": normalize_plan_id(getattr(merchant_user, "current_plan", None)),
         "plan_status": normalize_plan_status(getattr(merchant_user, "plan_status", None)),
         "plan_source": normalize_plan_source(getattr(merchant_user, "plan_source", None)),
+        "billing_interval": normalize_billing_interval(
+            getattr(merchant_user, "billing_interval", None)
+        ),
         "plan_started_at": _coerce_dt(getattr(merchant_user, "plan_started_at", None)),
         "plan_expires_at": _coerce_dt(getattr(merchant_user, "plan_expires_at", None)),
         "trial_started_at": _coerce_dt(getattr(merchant_user, "trial_started_at", None)),
         "trial_expires_at": _coerce_dt(getattr(merchant_user, "trial_expires_at", None)),
     }
+
+
+def subscription_expires_at_for_display(
+    *,
+    billing_interval: str,
+    plan_status: str,
+    plan_expires_at: Optional[datetime],
+    trial_expires_at: Optional[datetime],
+) -> Optional[datetime]:
+    interval = normalize_billing_interval(billing_interval)
+    status = normalize_plan_status(plan_status)
+    if interval == BILLING_INTERVAL_TRIAL or status == PLAN_STATUS_TRIALING:
+        return trial_expires_at
+    if interval in (BILLING_INTERVAL_MONTHLY, BILLING_INTERVAL_ANNUAL):
+        return plan_expires_at
+    if interval == BILLING_INTERVAL_MANUAL_CUSTOM:
+        return plan_expires_at or trial_expires_at
+    if status == PLAN_STATUS_TRIALING:
+        return trial_expires_at
+    return plan_expires_at
 
 
 def apply_subscription_fields_to_merchant(
@@ -189,6 +221,8 @@ class MerchantSubscriptionStatus:
     plan_status_label_ar: str
     plan_source: str
     plan_source_label_ar: str
+    billing_interval: str
+    billing_interval_label_ar: str
     plan_started_at: Optional[datetime]
     plan_started_at_ar: str
     plan_expires_at: Optional[datetime]
@@ -197,6 +231,8 @@ class MerchantSubscriptionStatus:
     trial_started_at_ar: str
     trial_expires_at: Optional[datetime]
     trial_expires_at_ar: str
+    subscription_expires_at: Optional[datetime]
+    subscription_expires_at_ar: str
     is_trialing: bool
     subscription_updated_at: Optional[datetime]
     subscription_updated_at_ar: str
@@ -212,6 +248,8 @@ class MerchantSubscriptionStatus:
             "plan_status_label_ar": self.plan_status_label_ar,
             "plan_source": self.plan_source,
             "plan_source_label_ar": self.plan_source_label_ar,
+            "billing_interval": self.billing_interval or None,
+            "billing_interval_label_ar": self.billing_interval_label_ar,
             "plan_started_at": (
                 self.plan_started_at.isoformat() if self.plan_started_at else None
             ),
@@ -228,6 +266,12 @@ class MerchantSubscriptionStatus:
                 self.trial_expires_at.isoformat() if self.trial_expires_at else None
             ),
             "trial_expires_at_ar": self.trial_expires_at_ar,
+            "subscription_expires_at": (
+                self.subscription_expires_at.isoformat()
+                if self.subscription_expires_at
+                else None
+            ),
+            "subscription_expires_at_ar": self.subscription_expires_at_ar,
             "is_trialing": self.is_trialing,
             "subscription_updated_at": (
                 self.subscription_updated_at.isoformat()
@@ -263,10 +307,17 @@ def build_merchant_subscription_status(
     plan_id = fields["current_plan"]
     source = fields["plan_source"]
     status = fields["plan_status"]
+    interval = fields["billing_interval"]
     started = fields["plan_started_at"]
     expires = fields["plan_expires_at"]
     trial_started = fields["trial_started_at"]
     trial_expires = fields["trial_expires_at"]
+    display_expires = subscription_expires_at_for_display(
+        billing_interval=interval,
+        plan_status=status,
+        plan_expires_at=expires,
+        trial_expires_at=trial_expires,
+    )
     updated = _coerce_dt(getattr(user, "updated_at", None)) if user is not None else None
     is_trialing = status == PLAN_STATUS_TRIALING
     blocked = subscription_entitlements_blocked(user)
@@ -277,6 +328,8 @@ def build_merchant_subscription_status(
         plan_status_label_ar=PLAN_STATUS_LABEL_AR.get(status, status),
         plan_source=source,
         plan_source_label_ar=PLAN_SOURCE_LABEL_AR.get(source, source),
+        billing_interval=interval,
+        billing_interval_label_ar=billing_interval_label_ar(interval),
         plan_started_at=started,
         plan_started_at_ar=_format_dt_ar(started),
         plan_expires_at=expires,
@@ -285,6 +338,8 @@ def build_merchant_subscription_status(
         trial_started_at_ar=_format_dt_ar(trial_started),
         trial_expires_at=trial_expires,
         trial_expires_at_ar=_format_dt_ar(trial_expires),
+        subscription_expires_at=display_expires,
+        subscription_expires_at_ar=_format_dt_ar(display_expires),
         is_trialing=is_trialing,
         subscription_updated_at=updated,
         subscription_updated_at_ar=_format_dt_ar(updated),

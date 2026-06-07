@@ -923,6 +923,7 @@ async def api_admin_subscription_action(
         extend_days=body.get("extend_days"),
         plan_expires_at=body.get("plan_expires_at"),
         trial_expires_at=body.get("trial_expires_at"),
+        plan_started_at=body.get("plan_started_at"),
     )
     code = 200 if result.ok else 400
     return JSONResponse(result.to_api_dict(), status_code=code)

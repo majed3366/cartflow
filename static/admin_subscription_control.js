@@ -12,6 +12,21 @@
     if (el) el.textContent = msg || "";
   }
 
+  function currentAction() {
+    var sel = byId("asc-action");
+    return sel ? sel.value : "";
+  }
+
+  function syncActionFields() {
+    var action = currentAction();
+    document.querySelectorAll(".asc-field-custom").forEach(function (el) {
+      el.hidden = action !== "activate_custom" && action !== "set_plan_expiration";
+    });
+    document.querySelectorAll(".asc-field-extend").forEach(function (el) {
+      el.hidden = action !== "extend_trial";
+    });
+  }
+
   function loadRows() {
     var q = (byId("asc-search") && byId("asc-search").value) || "";
     setStatus("جاري التحميل…");
@@ -54,7 +69,7 @@
           (row.plan_status_label || row.plan_status) +
           "</td>" +
           "<td class='py-2 pe-3'>" +
-          (row.plan_source || "—") +
+          (row.billing_interval_label || row.billing_interval || "—") +
           "</td>" +
           "<td class='py-2 pe-3'>" +
           (row.trial_expires_at_ar || "—") +
@@ -93,25 +108,27 @@
     if (msg) msg.textContent = "";
     var audit = byId("asc-audit-out");
     if (audit) audit.classList.add("hidden");
-  }
-
-  function setInputValue(id, t) {
-    var el = byId(id);
-    if (el) el.value = t != null ? String(t) : "";
+    syncActionFields();
   }
 
   function submitAction(ev) {
     ev.preventDefault();
     if (!selectedId) return;
+    var action = currentAction();
     var payload = {
-      action: byId("asc-action").value,
+      action: action,
       plan: byId("asc-plan").value,
       reason: byId("asc-reason").value,
-      trial_days: parseInt(byId("asc-trial-days").value, 10) || 14,
-      extend_days: parseInt(byId("asc-extend-days").value, 10) || 7,
     };
-    var exp = byId("asc-plan-expires").value;
-    if (exp) payload.plan_expires_at = exp;
+    if (action === "extend_trial") {
+      payload.extend_days = parseInt(byId("asc-extend-days").value, 10) || 7;
+    }
+    if (action === "activate_custom" || action === "set_plan_expiration") {
+      var exp = byId("asc-plan-expires").value;
+      if (exp) payload.plan_expires_at = exp;
+      var started = byId("asc-plan-started").value;
+      if (started) payload.plan_started_at = started;
+    }
     fetch("/api/admin/subscriptions/" + encodeURIComponent(selectedId) + "/action", {
       method: "POST",
       credentials: "same-origin",
@@ -156,6 +173,9 @@
     if (form) form.addEventListener("submit", submitAction);
     var auditBtn = byId("asc-audit-btn");
     if (auditBtn) auditBtn.addEventListener("click", loadAudit);
+    var actionSel = byId("asc-action");
+    if (actionSel) actionSel.addEventListener("change", syncActionFields);
+    syncActionFields();
     loadRows();
   }
 

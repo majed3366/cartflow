@@ -179,6 +179,7 @@ class MerchantUser(Base):
     plan_expires_at = Column(DateTime, nullable=True)
     trial_started_at = Column(DateTime, nullable=True)
     trial_expires_at = Column(DateTime, nullable=True)
+    billing_interval = Column(String(32), nullable=True)
     created_at = Column(
         DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
     )
@@ -210,6 +211,12 @@ class MerchantSubscriptionAuditLog(Base):
     new_plan_expires_at = Column(DateTime, nullable=True)
     old_trial_expires_at = Column(DateTime, nullable=True)
     new_trial_expires_at = Column(DateTime, nullable=True)
+    old_billing_interval = Column(String(32), nullable=True)
+    new_billing_interval = Column(String(32), nullable=True)
+    old_plan_started_at = Column(DateTime, nullable=True)
+    new_plan_started_at = Column(DateTime, nullable=True)
+    old_trial_started_at = Column(DateTime, nullable=True)
+    new_trial_started_at = Column(DateTime, nullable=True)
     reason = Column(Text, nullable=True)
     created_at = Column(
         DateTime, default=lambda: datetime.now(timezone.utc), nullable=False, index=True

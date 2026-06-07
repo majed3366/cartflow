@@ -36,14 +36,30 @@
     );
     setText("ma-plans-current-source", "المصدر: " + (sub.plan_source_label_ar || "—"));
     setText("ma-plans-current-status", "الحالة: " + (sub.plan_status_label_ar || "—"));
+    setText(
+      "ma-plans-current-interval",
+      "الفترة: " + (sub.billing_interval_label_ar || sub.billing_interval || "—")
+    );
     var trialEl = byId("ma-plans-current-trial");
+    var planExpEl = byId("ma-plans-current-expires");
     var trialDot = byId("ma-plans-trial-dot");
-    var trialing = !!(sub.is_trialing || sub.plan_status === "trialing");
+    var interval = sub.billing_interval || "";
+    var trialing = interval === "trial" || !!(sub.is_trialing || sub.plan_status === "trialing");
     if (trialEl) {
       trialEl.hidden = !trialing;
       if (trialing) {
         trialEl.textContent =
-          "تنتهي التجربة: " + (sub.trial_expires_at_ar || "—");
+          "تنتهي التجربة: " + (sub.trial_expires_at_ar || sub.subscription_expires_at_ar || "—");
+      }
+    }
+    if (planExpEl) {
+      var showPlanExp = interval === "monthly" || interval === "annual" || interval === "manual_custom";
+      planExpEl.hidden = !showPlanExp;
+      var expDot = byId("ma-plans-expires-dot");
+      if (expDot) expDot.hidden = !showPlanExp;
+      if (showPlanExp) {
+        planExpEl.textContent =
+          "انتهاء الباقة: " + (sub.plan_expires_at_ar || sub.subscription_expires_at_ar || "—");
       }
     }
     if (trialDot) trialDot.hidden = !trialing;

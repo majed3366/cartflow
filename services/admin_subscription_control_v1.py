@@ -12,6 +12,17 @@ from models import MerchantSubscriptionAuditLog, MerchantUser, Store
 from sqlalchemy import or_
 from schema_merchant_subscription import ensure_merchant_subscription_schema
 from services.cartflow_plans_v1 import CANONICAL_PLAN_IDS, PLAN_LABEL_AR, PlanId, normalize_plan_id
+from services.merchant_billing_interval_v1 import (
+    BILLING_INTERVAL_ANNUAL,
+    BILLING_INTERVAL_MANUAL_CUSTOM,
+    BILLING_INTERVAL_MONTHLY,
+    BILLING_INTERVAL_TRIAL,
+    TRIAL_DURATION_DAYS,
+    apply_active_plan_dates,
+    apply_trial_dates,
+    billing_interval_label_ar,
+    normalize_billing_interval,
+)
 from services.merchant_onboarding_store import merchant_store_display_name
 from services.merchant_subscription_v1 import (
     PLAN_SOURCE_MANUAL,
@@ -34,6 +45,9 @@ ADMIN_ACTIONS = frozenset(
         "change_plan",
         "start_trial",
         "extend_trial",
+        "activate_monthly",
+        "activate_annual",
+        "activate_custom",
         "mark_active",
         "mark_expired",
         "cancel",
@@ -74,8 +88,13 @@ def _parse_date_only(raw: Any) -> Optional[datetime]:
 
 def _snapshot_user(user: MerchantUser) -> dict[str, Any]:
     fields = read_subscription_fields(user)
+    fields["billing_interval"] = normalize_billing_interval(
+        getattr(user, "billing_interval", None)
+    )
     fields["trial_started_at"] = _aware(getattr(user, "trial_started_at", None))
     fields["trial_expires_at"] = _aware(getattr(user, "trial_expires_at", None))
+    fields["plan_started_at"] = _aware(getattr(user, "plan_started_at", None))
+    fields["plan_expires_at"] = _aware(getattr(user, "plan_expires_at", None))
     return fields
 
 
@@ -116,6 +135,12 @@ def append_subscription_audit_log(
         new_plan_expires_at=after.get("plan_expires_at"),
         old_trial_expires_at=before.get("trial_expires_at"),
         new_trial_expires_at=after.get("trial_expires_at"),
+        old_billing_interval=before.get("billing_interval") or None,
+        new_billing_interval=after.get("billing_interval") or None,
+        old_plan_started_at=before.get("plan_started_at"),
+        new_plan_started_at=after.get("plan_started_at"),
+        old_trial_started_at=before.get("trial_started_at"),
+        new_trial_started_at=after.get("trial_started_at"),
         reason=(reason or "").strip() or None,
     )
     db.session.add(row)
@@ -135,6 +160,8 @@ class AdminSubscriptionRow:
     plan_status: str
     plan_status_label: str
     plan_source: str
+    billing_interval: str
+    billing_interval_label: str
     plan_started_at_ar: str
     plan_expires_at_ar: str
     trial_started_at_ar: str
@@ -154,6 +181,8 @@ class AdminSubscriptionRow:
             "plan_status": self.plan_status,
             "plan_status_label": self.plan_status_label,
             "plan_source": self.plan_source,
+            "billing_interval": self.billing_interval,
+            "billing_interval_label": self.billing_interval_label,
             "plan_started_at_ar": self.plan_started_at_ar,
             "plan_expires_at_ar": self.plan_expires_at_ar,
             "trial_started_at_ar": self.trial_started_at_ar,
@@ -173,6 +202,7 @@ def build_admin_subscription_row(user: MerchantUser) -> AdminSubscriptionRow:
     )
 
     updated = _aware(getattr(user, "updated_at", None))
+    interval = normalize_billing_interval(getattr(user, "billing_interval", None))
     return AdminSubscriptionRow(
         merchant_user_id=int(user.id),
         merchant_email=(getattr(user, "email", None) or "").strip(),
@@ -185,6 +215,8 @@ def build_admin_subscription_row(user: MerchantUser) -> AdminSubscriptionRow:
         plan_status=status,
         plan_status_label=PLAN_STATUS_LABEL_AR.get(status, status),
         plan_source=normalize_plan_source(getattr(user, "plan_source", None)),
+        billing_interval=interval,
+        billing_interval_label=billing_interval_label_ar(interval),
         plan_started_at_ar=_format_dt_ar(_aware(getattr(user, "plan_started_at", None))),
         plan_expires_at_ar=_format_dt_ar(_aware(getattr(user, "plan_expires_at", None))),
         trial_started_at_ar=_format_dt_ar(_aware(getattr(user, "trial_started_at", None))),
@@ -242,6 +274,7 @@ def apply_admin_subscription_action(
     extend_days: Optional[int] = None,
     plan_expires_at: Any = None,
     trial_expires_at: Any = None,
+    plan_started_at: Any = None,
 ) -> AdminSubscriptionActionResult:
     ensure_merchant_subscription_schema(db)
     act = (action or "").strip().lower()
@@ -289,13 +322,14 @@ def apply_admin_subscription_action(
                 message="invalid_plan",
                 merchant_user_id=merchant_user_id,
             )
-        days = int(trial_days if trial_days is not None else DEFAULT_TRIAL_DAYS)
-        days = max(1, min(days, 365))
+        trial_dates = apply_trial_dates(started_at=now)
         user.current_plan = plan_id
         user.plan_status = PLAN_STATUS_TRIALING
         user.plan_source = PLAN_SOURCE_MANUAL
-        user.trial_started_at = now
-        user.trial_expires_at = now + timedelta(days=days)
+        user.billing_interval = BILLING_INTERVAL_TRIAL
+        user.trial_started_at = trial_dates["trial_started_at"]
+        user.trial_expires_at = trial_dates["trial_expires_at"]
+        user.plan_expires_at = None
         if not user.plan_started_at:
             user.plan_started_at = now
 
@@ -308,6 +342,75 @@ def apply_admin_subscription_action(
         user.trial_expires_at = base + timedelta(days=days)
         if normalize_plan_status(user.plan_status) != PLAN_STATUS_TRIALING:
             user.plan_status = PLAN_STATUS_TRIALING
+        if not normalize_billing_interval(getattr(user, "billing_interval", None)):
+            user.billing_interval = BILLING_INTERVAL_TRIAL
+
+    elif act == "activate_monthly":
+        plan_id = normalize_plan_id(plan or user.current_plan)
+        if plan_id not in CANONICAL_PLAN_IDS:
+            return AdminSubscriptionActionResult(
+                ok=False,
+                message="invalid_plan",
+                merchant_user_id=merchant_user_id,
+            )
+        plan_dates = apply_active_plan_dates(
+            billing_interval=BILLING_INTERVAL_MONTHLY,
+            started_at=now,
+        )
+        user.current_plan = plan_id
+        user.plan_status = PLAN_STATUS_ACTIVE
+        user.plan_source = PLAN_SOURCE_MANUAL
+        user.billing_interval = BILLING_INTERVAL_MONTHLY
+        user.plan_started_at = plan_dates["plan_started_at"]
+        user.plan_expires_at = plan_dates["plan_expires_at"]
+        user.trial_started_at = None
+        user.trial_expires_at = None
+
+    elif act == "activate_annual":
+        plan_id = normalize_plan_id(plan or user.current_plan)
+        if plan_id not in CANONICAL_PLAN_IDS:
+            return AdminSubscriptionActionResult(
+                ok=False,
+                message="invalid_plan",
+                merchant_user_id=merchant_user_id,
+            )
+        plan_dates = apply_active_plan_dates(
+            billing_interval=BILLING_INTERVAL_ANNUAL,
+            started_at=now,
+        )
+        user.current_plan = plan_id
+        user.plan_status = PLAN_STATUS_ACTIVE
+        user.plan_source = PLAN_SOURCE_MANUAL
+        user.billing_interval = BILLING_INTERVAL_ANNUAL
+        user.plan_started_at = plan_dates["plan_started_at"]
+        user.plan_expires_at = plan_dates["plan_expires_at"]
+        user.trial_started_at = None
+        user.trial_expires_at = None
+
+    elif act == "activate_custom":
+        plan_id = normalize_plan_id(plan or user.current_plan)
+        if plan_id not in CANONICAL_PLAN_IDS:
+            return AdminSubscriptionActionResult(
+                ok=False,
+                message="invalid_plan",
+                merchant_user_id=merchant_user_id,
+            )
+        started = _parse_date_only(plan_started_at) or now
+        exp = _parse_date_only(plan_expires_at)
+        if exp is None:
+            return AdminSubscriptionActionResult(
+                ok=False,
+                message="invalid_plan_expires_at",
+                merchant_user_id=merchant_user_id,
+            )
+        user.current_plan = plan_id
+        user.plan_status = PLAN_STATUS_ACTIVE
+        user.plan_source = PLAN_SOURCE_MANUAL
+        user.billing_interval = BILLING_INTERVAL_MANUAL_CUSTOM
+        user.plan_started_at = started
+        user.plan_expires_at = exp
+        user.trial_started_at = None
+        user.trial_expires_at = None
 
     elif act == "mark_active":
         user.plan_status = PLAN_STATUS_ACTIVE
@@ -330,10 +433,12 @@ def apply_admin_subscription_action(
                 merchant_user_id=merchant_user_id,
             )
         user.plan_expires_at = exp
+        user.billing_interval = BILLING_INTERVAL_MANUAL_CUSTOM
 
     elif act == "clear_expiration":
         user.plan_expires_at = None
         user.trial_expires_at = None
+        user.billing_interval = None
 
     user.updated_at = now
     after = _snapshot_user(user)
@@ -411,6 +516,28 @@ def list_subscription_audit_logs(
                 "new_trial_expires_at": (
                     row.new_trial_expires_at.isoformat()
                     if row.new_trial_expires_at
+                    else None
+                ),
+                "old_billing_interval": row.old_billing_interval,
+                "new_billing_interval": row.new_billing_interval,
+                "old_plan_started_at": (
+                    row.old_plan_started_at.isoformat()
+                    if row.old_plan_started_at
+                    else None
+                ),
+                "new_plan_started_at": (
+                    row.new_plan_started_at.isoformat()
+                    if row.new_plan_started_at
+                    else None
+                ),
+                "old_trial_started_at": (
+                    row.old_trial_started_at.isoformat()
+                    if row.old_trial_started_at
+                    else None
+                ),
+                "new_trial_started_at": (
+                    row.new_trial_started_at.isoformat()
+                    if row.new_trial_started_at
                     else None
                 ),
                 "reason": row.reason,

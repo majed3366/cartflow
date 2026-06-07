@@ -4,11 +4,11 @@
 
 {% block admin_content %}
 <section class="admin-card px-6 py-6">
-  <p class="text-xs font-semibold uppercase tracking-wide text-indigo-600">SaaS Foundation — Phase 3</p>
+  <p class="text-xs font-semibold uppercase tracking-wide text-indigo-600">SaaS Foundation — Phase 3.1</p>
   <h2 class="mt-2 text-2xl font-bold text-slate-900">Merchant Subscription Control</h2>
   <p class="mt-2 max-w-3xl text-sm text-slate-600">
-    تعيين Starter / Growth / Pro، بدء أو تمديد التجربة، وتغيير الحالة — <strong>بدون دفع أو فواتير</strong>.
-    كل تغيير يُسجَّل في سجل التدقيق.
+    تعيين Starter / Growth / Pro مع حساب تواريخ تلقائي (تجربة 14 يوم، شهري 30 يوم، سنوي 365 يوم) — أو تواريخ مخصصة عند الحاجة.
+    <strong>بدون دفع أو فواتير.</strong> كل تغيير يُسجَّل في سجل التدقيق.
   </p>
 </section>
 
@@ -29,7 +29,7 @@
           <th class="py-2 pe-3">البريد</th>
           <th class="py-2 pe-3">الخطة</th>
           <th class="py-2 pe-3">الحالة</th>
-          <th class="py-2 pe-3">المصدر</th>
+          <th class="py-2 pe-3">الفترة</th>
           <th class="py-2 pe-3">انتهاء التجربة</th>
           <th class="py-2 pe-3">انتهاء الباقة</th>
           <th class="py-2 pe-3">آخر تحديث</th>
@@ -45,38 +45,41 @@
   <h3 class="text-base font-semibold text-slate-900">تعديل اشتراك — <span id="asc-action-merchant">—</span></h3>
   <form id="asc-action-form" class="mt-4 grid gap-3 lg:grid-cols-2">
     <input type="hidden" id="asc-merchant-id" name="merchant_user_id" />
-    <label class="flex flex-col gap-1 text-sm">
-      <span>الإجراء</span>
+    <label class="flex flex-col gap-1 text-sm lg:col-span-2">
+      <span>الإجراء الرئيسي</span>
       <select id="asc-action" name="action" class="rounded-lg border border-slate-200 px-3 py-2">
-        <option value="change_plan">تغيير الخطة</option>
-        <option value="start_trial">بدء تجربة</option>
+        <option value="start_trial">Start 14-day trial</option>
+        <option value="activate_monthly">Activate monthly (30 days)</option>
+        <option value="activate_annual">Activate annual (365 days)</option>
+        <option value="activate_custom">Custom date</option>
+        <option value="change_plan">تغيير الخطة فقط</option>
         <option value="extend_trial">تمديد تجربة</option>
         <option value="mark_active">تفعيل (active)</option>
         <option value="mark_expired">منتهية (expired)</option>
         <option value="cancel">إلغاء (cancelled)</option>
         <option value="reactivate">إعادة تفعيل</option>
-        <option value="set_plan_expiration">تعيين تاريخ انتهاء الباقة</option>
+        <option value="set_plan_expiration">تعيين تاريخ انتهاء (legacy)</option>
         <option value="clear_expiration">مسح تواريخ الانتهاء</option>
       </select>
     </label>
     <label class="flex flex-col gap-1 text-sm">
-      <span>الخطة (للتغيير / التجربة)</span>
+      <span>الخطة</span>
       <select id="asc-plan" name="plan" class="rounded-lg border border-slate-200 px-3 py-2">
         <option value="starter">Starter</option>
         <option value="growth">Growth</option>
         <option value="pro">Pro</option>
       </select>
     </label>
-    <label class="flex flex-col gap-1 text-sm">
-      <span>أيام التجربة (بدء)</span>
-      <input id="asc-trial-days" type="number" min="1" max="365" value="14" class="rounded-lg border border-slate-200 px-3 py-2" />
-    </label>
-    <label class="flex flex-col gap-1 text-sm">
+    <label class="flex flex-col gap-1 text-sm asc-field-extend" hidden>
       <span>أيام التمديد</span>
       <input id="asc-extend-days" type="number" min="1" max="365" value="7" class="rounded-lg border border-slate-200 px-3 py-2" />
     </label>
-    <label class="flex flex-col gap-1 text-sm">
-      <span>تاريخ انتهاء الباقة (YYYY-MM-DD)</span>
+    <label class="flex flex-col gap-1 text-sm asc-field-custom" hidden>
+      <span>تاريخ البدء (Custom — اختياري)</span>
+      <input id="asc-plan-started" type="date" class="rounded-lg border border-slate-200 px-3 py-2" />
+    </label>
+    <label class="flex flex-col gap-1 text-sm asc-field-custom" hidden>
+      <span>تاريخ الانتهاء (Custom — مطلوب)</span>
       <input id="asc-plan-expires" type="date" class="rounded-lg border border-slate-200 px-3 py-2" />
     </label>
     <label class="flex flex-col gap-1 text-sm lg:col-span-2">
