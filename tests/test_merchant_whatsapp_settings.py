@@ -47,6 +47,8 @@ class MerchantWhatsappSettingsTests(unittest.TestCase):
         self.assertIn("whatsapp_recovery_enabled", data)
         self.assertIn("whatsapp_provider_mode", data)
         self.assertIn("whatsapp_status_display", data)
+        self.assertIn("whatsapp_mode", data)
+        self.assertIn("whatsapp_customer_connection_status_ar", data)
         self.assertIn("last_send_status_ar", data)
 
     def test_post_persists_number_toggle_and_mode(self) -> None:
@@ -97,8 +99,8 @@ class MerchantWhatsappSettingsTests(unittest.TestCase):
         html = r.text or ""
         self.assertIn('id="ma-wa-settings-form"', html)
         self.assertIn("merchant_whatsapp_settings.js", html)
-        self.assertIn("رقم واتساب المتجر", html)
-        self.assertIn("تفعيل إرسال رسائل الاسترجاع", html)
+        self.assertIn("تفعيل استرجاع واتساب", html)
+        self.assertIn("CartFlow Managed", html)
 
 
 if __name__ == "__main__":

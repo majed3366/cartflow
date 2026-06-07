@@ -74,6 +74,7 @@ class Store(Base):
     # إعدادات واتساب من لوحة التاجر (قراءة/حفظ فقط في v1)
     whatsapp_recovery_enabled = Column(Boolean, default=True, nullable=False)
     whatsapp_provider_mode = Column(String(32), nullable=True)
+    whatsapp_mode = Column(String(32), default="cartflow_managed", nullable=True)
     # قوالب واتساب استرجاع قابلة للتهيئة من لوحة التحكم — فارغ = القالب الافتراضي المدمج
     template_price = Column(Text, nullable=True)
     template_shipping = Column(Text, nullable=True)

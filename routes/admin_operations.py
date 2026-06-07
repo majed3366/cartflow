@@ -47,12 +47,6 @@ _ADMIN_PLACEHOLDER_PAGES: tuple[tuple[str, str, str, str], ...] = (
         "إدارة ومتابعة المتاجر — قريباً.",
     ),
     (
-        "/admin/whatsapp",
-        ADMIN_NAV_WHATSAPP,
-        "واتساب",
-        "حالة واتساب وإعدادات الإرسال — قريباً.",
-    ),
-    (
         "/admin/integrations",
         ADMIN_NAV_INTEGRATIONS,
         "التكاملات",
@@ -927,6 +921,37 @@ async def api_admin_subscription_action(
     )
     code = 200 if result.ok else 400
     return JSONResponse(result.to_api_dict(), status_code=code)
+
+
+@router.get("/admin/whatsapp", response_class=HTMLResponse)
+def admin_whatsapp_visibility_page(request: Request) -> Any:
+    denied = _admin_session_or_redirect(request, next_path="/admin/whatsapp")
+    if denied is not None:
+        return denied
+    return templates.TemplateResponse(
+        request,
+        "admin_whatsapp_visibility.html",
+        {
+            "admin_active_nav": ADMIN_NAV_WHATSAPP,
+            "admin_page_title_ar": "واتساب — رؤية تشغيلية",
+            "admin_page_subtitle_ar": "وضع واتساب وحالة الاتصال — بدون إرسال أو Meta",
+        },
+    )
+
+
+@router.get("/api/admin/whatsapp/stores")
+def api_admin_whatsapp_stores_list(
+    request: Request,
+    q: str = "",
+    limit: int = 50,
+) -> Any:
+    denied = _admin_json_auth(request)
+    if denied is not None:
+        return denied
+    from services.admin_whatsapp_visibility_v1 import list_admin_whatsapp_store_rows  # noqa: PLC0415
+
+    rows = list_admin_whatsapp_store_rows(query=q, limit=limit)
+    return j({"ok": True, "rows": [r.to_api_dict() for r in rows]})
 
 
 def _register_admin_placeholder_routes() -> None:

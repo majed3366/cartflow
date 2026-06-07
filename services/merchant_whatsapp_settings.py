@@ -66,7 +66,10 @@ def _ensure_store_whatsapp_merchant_settings_columns() -> None:
 
 def ensure_store_whatsapp_merchant_settings_schema() -> None:
     """Idempotent columns for merchant WhatsApp settings."""
+    from services.merchant_whatsapp_mode_v1 import ensure_whatsapp_mode_schema  # noqa: PLC0415
+
     _ensure_store_whatsapp_merchant_settings_columns()
+    ensure_whatsapp_mode_schema(db)
 
 
 def inferred_whatsapp_provider_mode(store: Optional[Any]) -> str:
@@ -175,7 +178,9 @@ def merchant_whatsapp_settings_fields_for_api(store: Optional[Any]) -> Dict[str,
         recovery_on = bool(enabled_raw)
     mode = inferred_whatsapp_provider_mode(store)
     last = last_send_status_for_store(store)
-    return {
+    from services.merchant_whatsapp_mode_v1 import merchant_whatsapp_mode_fields_for_api  # noqa: PLC0415
+
+    payload = {
         "whatsapp_recovery_enabled": recovery_on,
         "whatsapp_provider_mode": mode,
         "whatsapp_provider_mode_label_ar": provider_mode_label_ar(mode),
@@ -184,6 +189,8 @@ def merchant_whatsapp_settings_fields_for_api(store: Optional[Any]) -> Dict[str,
         "last_send_status_ar": last.get("last_send_status_ar") or "—",
         "last_send_at_ar": last.get("last_send_at_ar") or "—",
     }
+    payload.update(merchant_whatsapp_mode_fields_for_api(store))
+    return payload
 
 
 def apply_merchant_whatsapp_settings_from_body(
@@ -205,3 +212,6 @@ def apply_merchant_whatsapp_settings_from_body(
         row.whatsapp_provider_mode = normalize_whatsapp_provider_mode(
             body.get("whatsapp_provider_mode")
         )
+    from services.merchant_whatsapp_mode_v1 import apply_whatsapp_mode_from_body  # noqa: PLC0415
+
+    apply_whatsapp_mode_from_body(row, body)

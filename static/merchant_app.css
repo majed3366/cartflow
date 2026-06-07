@@ -4533,6 +4533,81 @@ button.ma-vip-suggest-btn.va-btn {
   color: #b45309;
 }
 
+/* ——— WhatsApp mode UX (Phase 1 strategy) ——— */
+.ma-wa-customers-card {
+  margin-bottom: 0;
+}
+
+.ma-wa-customers-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.ma-wa-connection-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+  white-space: nowrap;
+}
+
+.ma-wa-connection-pill.is-connected {
+  background: #ecfdf5;
+  color: #047857;
+  border-color: #a7f3d0;
+}
+
+.ma-wa-connection-pill.is-setup_in_progress {
+  background: #fffbeb;
+  color: #b45309;
+  border-color: #fde68a;
+}
+
+.ma-wa-connection-pill.is-not_connected {
+  background: #f8fafc;
+  color: #64748b;
+  border-color: #e2e8f0;
+}
+
+.ma-wa-connection-summary {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: #64748b;
+  line-height: 1.5;
+}
+
+.ma-wa-primary-cta {
+  margin-bottom: 14px;
+}
+
+.ma-wa-mode-picker {
+  display: grid;
+  gap: 8px;
+}
+
+.ma-wa-mode-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13px;
+  color: #334155;
+  cursor: pointer;
+}
+
+.ma-wa-mode-option em {
+  font-style: normal;
+  color: #059669;
+  font-size: 12px;
+}
+
 .ma-plans-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
