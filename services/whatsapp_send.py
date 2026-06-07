@@ -23,6 +23,14 @@ logger = logging.getLogger(__name__)
 # Temporary dev-only tracing for recovery sends (set ENV=development or WA_RECOVERY_SEND_TRACE=1).
 WA_TRACE_DELAY_UNSPECIFIED = object()
 
+# Merchant-only outbound (VIP dashboard alerts) — not customer recovery; skip 24h template gate.
+_MERCHANT_ONLY_WA_REASON_TAGS = frozenset(
+    {
+        "vip_merchant_alert",
+        "vip_phone_capture_merchant",
+    }
+)
+
 
 def _cart_recovery_user_rejected_help_db(
     store_slug: str, session_id: str
@@ -443,6 +451,8 @@ def send_whatsapp(
         delay_passed=wa_trace_delay_passed,
     )
 
+    rt_norm = (reason_tag or "").strip().lower()
+    merchant_only_send = rt_norm in _MERCHANT_ONLY_WA_REASON_TAGS
     try:
         from services.whatsapp_production_reality_v2 import (
             enforce_whatsapp_template_window_before_send,
@@ -453,19 +463,20 @@ def send_whatsapp(
         store_for_gate = resolve_store_for_template_enforcement(
             (wa_trace_store_slug or "")[:255]
         )
-        gate_block = enforce_whatsapp_template_window_before_send(
-            customer_phone=phone,
-            store_slug=(wa_trace_store_slug or "")[:255],
-            store=store_for_gate,
-            context="send_whatsapp",
-        )
-        if gate_block is not None:
-            return gate_block
+        if not merchant_only_send:
+            gate_block = enforce_whatsapp_template_window_before_send(
+                customer_phone=phone,
+                store_slug=(wa_trace_store_slug or "")[:255],
+                store=store_for_gate,
+                context="send_whatsapp",
+            )
+            if gate_block is not None:
+                return gate_block
         observe_outbound_whatsapp_context(
             customer_phone=phone,
             store_slug=(wa_trace_store_slug or "")[:255],
             store=store_for_gate,
-            context="send_whatsapp",
+            context="send_whatsapp_merchant" if merchant_only_send else "send_whatsapp",
         )
     except Exception:  # noqa: BLE001
         pass

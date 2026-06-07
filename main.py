@@ -692,12 +692,15 @@ from services.cf_test_phone_override import (
 )
 from services.smart_actions import get_cart_smart_action, smart_action_cta_target  # noqa: E402
 from services.vip_merchant_alert import (
+    VIP_MERCHANT_ALERT_REASON_TAG,
     build_vip_merchant_alert_body,
+    emit_vip_merchant_alert_truth_log,
     resolve_merchant_whatsapp_phone,
     resolve_merchant_whatsapp_phone_with_default_env,
     try_send_vip_merchant_whatsapp_alert,
     vip_dashboard_review_link,
 )
+from services.merchant_vip_settings import merchant_vip_notify_enabled
 from services.whatsapp_positive_reply import (
     REASON_CUSTOMER_REPLIED_YES,
     STATUS_MERCHANT_FOLLOWUP_COMPLETED,
@@ -1030,6 +1033,7 @@ _DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT = frozenset(
         "/dev/widget-runtime-truth",
         "/dev/attempt-2-trace",
         "/dev/recovery-operational-truth",
+        "/dev/vip-merchant-alert-operational-truth",
         "/dev/cartflow-simulation-report",
         "/dev/purchase-truth-trace",
     }
@@ -2444,6 +2448,83 @@ def dev_recovery_operational_truth(recovery_key: str = Query("", max_length=512)
             "template_diagnosis": td,
         }
         return j(out)
+    except Exception as exc:  # noqa: BLE001
+        db.session.rollback()
+        return j({"ok": False, "error": str(exc)}, 500)
+
+
+@app.get("/dev/vip-merchant-alert-operational-truth")
+def dev_vip_merchant_alert_operational_truth(
+    cart_id: str = Query("", max_length=255),
+    store_slug: str = Query("", max_length=255),
+) -> Any:
+    """Read-only VIP merchant alert delivery chain for one abandoned cart."""
+    cid = (cart_id or "").strip()[:255]
+    ss = (store_slug or "").strip()[:255]
+    if not cid:
+        return j({"ok": False, "error": "cart_id_required"}, 400)
+    try:
+        _ensure_cartflow_api_db_warmed()
+        ac = (
+            db.session.query(AbandonedCart)
+            .filter(AbandonedCart.zid_cart_id == cid)
+            .order_by(AbandonedCart.id.desc())
+            .first()
+        )
+        if ac is None:
+            return j({"ok": False, "error": "abandoned_cart_not_found", "cart_id": cid}, 404)
+        store_alert = _resolve_store_for_vip_merchant_alert(ac)
+        ss_eff = ss or (
+            str(getattr(store_alert, "zid_store_id", None) or "").strip()[:255]
+            if store_alert is not None
+            else ""
+        )
+        sid = (getattr(ac, "recovery_session_id", None) or "").strip()[:512]
+        phone, phone_src = resolve_merchant_whatsapp_phone(store_alert)
+        notify_on = merchant_vip_notify_enabled(store_alert)
+        in_lane = abandoned_cart_in_vip_operational_lane(ac, store_alert)
+        alert_logs = (
+            db.session.query(CartRecoveryLog)
+            .filter(
+                CartRecoveryLog.cart_id == cid,
+                CartRecoveryLog.reason_tag == VIP_MERCHANT_ALERT_REASON_TAG,
+            )
+            .order_by(CartRecoveryLog.id.desc())
+            .limit(5)
+            .all()
+        )
+        logs_out = [
+            {
+                "id": int(getattr(lg, "id", 0) or 0),
+                "status": str(getattr(lg, "status", "") or ""),
+                "phone": str(getattr(lg, "phone", "") or ""),
+                "message_preview": (str(getattr(lg, "message", "") or ""))[:200],
+                "sent_at": (
+                    lg.sent_at.isoformat() if getattr(lg, "sent_at", None) else None
+                ),
+                "provider_message_sid": str(getattr(lg, "provider_message_sid", "") or ""),
+            }
+            for lg in alert_logs
+        ]
+        return j(
+            {
+                "ok": True,
+                "cart_id": cid,
+                "store_slug": ss_eff,
+                "session_id": sid,
+                "abandoned_cart_id": int(getattr(ac, "id", 0) or 0),
+                "cart_value": float(getattr(ac, "cart_value", 0) or 0),
+                "vip_mode": bool(getattr(ac, "vip_mode", False)),
+                "vip_operational_lane": in_lane,
+                "vip_threshold": getattr(store_alert, "vip_cart_threshold", None),
+                "vip_notify_enabled": notify_on,
+                "merchant_phone": phone,
+                "merchant_phone_source": phone_src,
+                "store_id": getattr(store_alert, "id", None),
+                "merchant_alert_log_rows": logs_out,
+                "latest_alert_status": logs_out[0]["status"] if logs_out else None,
+            }
+        )
     except Exception as exc:  # noqa: BLE001
         db.session.rollback()
         return j({"ok": False, "error": str(exc)}, 500)
@@ -6615,40 +6696,150 @@ def _send_vip_merchant_auto_alert(
     cart_total: float,
     cart_id: str,
     reason_tag: Optional[str] = None,
+    store_slug: str = "",
+    session_id: str = "",
 ) -> None:
     """تنبيه واتساب للتاجر عند أول دخول السلة VIP — لا ينتظر الزر في لوحة الإعدادات."""
     try:
+        ss = (store_slug or "").strip()[:255]
+        if not ss and store_obj is not None:
+            ss = (
+                str(getattr(store_obj, "zid_store_id", None) or getattr(store_obj, "store_slug", None) or "")
+                .strip()[:255]
+            )
+        sid = (session_id or "").strip()[:512]
+        cid_log = (cart_id or "").strip()[:255] or "-"
+        sto_log: Any = getattr(store_obj, "id", None) if store_obj is not None else None
+        vip_th = getattr(store_obj, "vip_cart_threshold", None) if store_obj is not None else None
+        notify_on = merchant_vip_notify_enabled(store_obj)
+
+        if not notify_on:
+            emit_vip_merchant_alert_truth_log(
+                store_slug=ss,
+                store_id=sto_log,
+                cart_id=cid_log,
+                session_id=sid,
+                vip_threshold=vip_th,
+                vip_notify_enabled=False,
+                alert_decision="skipped_notify_disabled",
+                send_attempted=False,
+                final_status="vip_merchant_alert_skipped",
+            )
+            log.info("[VIP MERCHANT AUTO ALERT SKIPPED] reason=vip_notify_disabled cart_id=%s", cid_log)
+            if ss and sid:
+                _persist_cart_recovery_log(
+                    store_slug=ss,
+                    session_id=sid,
+                    cart_id=cid_log if cid_log != "-" else None,
+                    phone=None,
+                    message="VIP merchant alert skipped (notify disabled)",
+                    status="vip_merchant_alert_skipped",
+                    step=0,
+                    reason_tag=VIP_MERCHANT_ALERT_REASON_TAG,
+                    message_type="vip_merchant_alert",
+                    source="auto_vip_cart",
+                )
+            return
+
         phone, src = resolve_merchant_whatsapp_phone(store_obj)
         if not phone:
+            emit_vip_merchant_alert_truth_log(
+                store_slug=ss,
+                store_id=sto_log,
+                cart_id=cid_log,
+                session_id=sid,
+                phone_source=src,
+                vip_threshold=vip_th,
+                vip_notify_enabled=True,
+                alert_decision="skipped_no_merchant_phone",
+                send_attempted=False,
+                final_status="vip_merchant_alert_skipped",
+            )
             log.info(
-                "[VIP MERCHANT AUTO ALERT SKIPPED] reason=no_merchant_phone source=%s",
+                "[VIP MERCHANT AUTO ALERT SKIPPED] reason=no_merchant_phone source=%s cart_id=%s",
                 src,
+                cid_log,
             )
             print("[VIP MERCHANT AUTO ALERT SKIPPED] reason=no_merchant_phone")
+            if ss and sid:
+                _persist_cart_recovery_log(
+                    store_slug=ss,
+                    session_id=sid,
+                    cart_id=cid_log if cid_log != "-" else None,
+                    phone=None,
+                    message=f"VIP merchant alert skipped (no phone source={src})",
+                    status="vip_merchant_alert_skipped",
+                    step=0,
+                    reason_tag=VIP_MERCHANT_ALERT_REASON_TAG,
+                    message_type="vip_merchant_alert",
+                    source="auto_vip_cart",
+                )
             return
+
         mbody = build_vip_merchant_alert_body(
             float(cart_total),
             reason_tag=reason_tag,
             dashboard_link=vip_dashboard_review_link(),
         )
         out = try_send_vip_merchant_whatsapp_alert(store_obj, message=mbody)
-        sto_log = "none"
-        if store_obj is not None and getattr(store_obj, "id", None) is not None:
-            try:
-                sto_log = str(int(store_obj.id))
-            except (TypeError, ValueError):
-                sto_log = "none"
-        cid_log = (cart_id or "").strip()[:255] or "-"
+        from services.whatsapp_send import (  # noqa: PLC0415
+            log_wa_send_truth,
+            resolve_whatsapp_recovery_log_status,
+        )
+
+        ok_flag = isinstance(out, dict) and out.get("ok") is True
+        st_out = resolve_whatsapp_recovery_log_status(out) if ok_flag else "vip_merchant_alert_failed"
+        if ok_flag:
+            st_out = log_wa_send_truth(wa_result=out, recovery_key=None)
+        emit_vip_merchant_alert_truth_log(
+            store_slug=ss,
+            store_id=sto_log,
+            cart_id=cid_log,
+            session_id=sid,
+            merchant_phone=phone,
+            phone_source=src,
+            vip_threshold=vip_th,
+            vip_notify_enabled=True,
+            alert_decision="send_attempted",
+            send_attempted=True,
+            provider_result=out,
+            final_status=st_out,
+            message_body=mbody,
+        )
+        if ss and sid:
+            _persist_cart_recovery_log(
+                store_slug=ss,
+                session_id=sid,
+                cart_id=cid_log if cid_log != "-" else None,
+                phone=phone,
+                message=mbody,
+                status=st_out[:50],
+                step=0,
+                reason_tag=VIP_MERCHANT_ALERT_REASON_TAG,
+                message_type="vip_merchant_alert",
+                source="auto_vip_cart",
+                provider="twilio" if out.get("sid") else "mock",
+                provider_message_sid=str(out.get("sid") or "")[:64] or None,
+            )
         cv_log = str(cart_total)
-        if isinstance(out, dict) and out.get("ok") is True:
+        if ok_flag:
             log.info(
-                "[VIP MERCHANT AUTO ALERT SENT] cart_id=%s store_id=%s cart_total=%s",
+                "[VIP MERCHANT AUTO ALERT SENT] cart_id=%s store_id=%s cart_total=%s status=%s",
                 cid_log,
-                sto_log,
+                sto_log if sto_log is not None else "none",
                 cv_log,
+                st_out,
             )
             print(
                 f"[VIP MERCHANT AUTO ALERT SENT] cart_id={cid_log} store_id={sto_log} cart_total={cv_log}"
+            )
+        else:
+            err = str((out or {}).get("error") or "unknown")[:120]
+            log.warning(
+                "[VIP MERCHANT AUTO ALERT FAILED] cart_id=%s store_id=%s error=%s",
+                cid_log,
+                sto_log if sto_log is not None else "none",
+                err,
             )
     except Exception as e:  # noqa: BLE001
         log.warning("VIP merchant auto alert failed (non-fatal): %s", e, exc_info=True)
@@ -6676,6 +6867,8 @@ def _vip_merchant_auto_alert_if_newly_entering(
         cart_total=float(ac.cart_value or 0.0),
         cart_id=str(getattr(ac, "zid_cart_id", "") or ""),
         reason_tag=rtag,
+        store_slug=store_slug,
+        session_id=session_id,
     )
 
 
@@ -6950,6 +7143,8 @@ def _activate_vip_manual_cart_handling(
                 cart_total=float(cart_total),
                 cart_id=cid or "-",
                 reason_tag=rta,
+                store_slug=store_slug,
+                session_id=session_id,
             )
     except Exception as e:  # noqa: BLE001
         log.warning("VIP merchant alert failed (non-fatal): %s", e, exc_info=True)
@@ -11518,30 +11713,16 @@ def _handle_cart_state_sync(
     ups_cid = (str(getattr(row, "zid_cart_id", "") or zid or "")).strip()[:255]
     ups_sid = (str(getattr(row, "recovery_session_id", "") or sid_log or "")).strip()[:512]
     try:
-        if lite_add and background_tasks is not None:
-            background_tasks.add_task(
-                _defer_vip_merchant_auto_alert_after_cart_state_sync,
-                {
-                    "_vip_alert_zid": zid,
-                    "_vip_alert_was_vip_before": was_vip_before,
-                    "_vip_alert_recovery_session": ups_sid,
-                    "_vip_alert_store_pk": sto_id,
-                    "_vip_alert_store_slug": store_slug,
-                    "store": store_slug,
-                    "store_slug": store_slug,
-                },
-            )
-        else:
-            store_for_alert = _resolve_store_for_vip_merchant_alert(
-                row, context_store_fallback=store_row
-            )
-            _vip_merchant_auto_alert_if_newly_entering(
-                row,
-                store_for_alert,
-                store_slug,
-                ups_sid,
-                was_vip_before=was_vip_before,
-            )
+        store_for_alert = _resolve_store_for_vip_merchant_alert(
+            row, context_store_fallback=store_row
+        )
+        _vip_merchant_auto_alert_if_newly_entering(
+            row,
+            store_for_alert,
+            store_slug,
+            ups_sid,
+            was_vip_before=was_vip_before,
+        )
     except Exception as e:  # noqa: BLE001
         log.warning("VIP merchant auto alert hook failed (non-fatal): %s", e, exc_info=True)
     log.info(

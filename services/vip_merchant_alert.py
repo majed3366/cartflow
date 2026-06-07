@@ -10,6 +10,9 @@ from urllib.parse import parse_qs, urlparse
 
 log = logging.getLogger("cartflow")
 
+VIP_MERCHANT_ALERT_REASON_TAG = "vip_merchant_alert"
+VIP_PHONE_CAPTURE_MERCHANT_REASON_TAG = "vip_phone_capture_merchant"
+
 _VIP_REASON_AR = {
     "price": "السعر",
     "warranty": "الضمان",
@@ -51,6 +54,61 @@ def resolve_merchant_whatsapp_phone_with_default_env(store: Any) -> Tuple[Option
         if len(d) >= 8:
             return env_phone[:64], "default_merchant_phone_env"
     return None, src
+
+
+def _store_slug_from_row(store: Any) -> str:
+    if store is None:
+        return ""
+    return (
+        str(getattr(store, "zid_store_id", None) or getattr(store, "store_slug", None) or "")
+        .strip()[:255]
+    )
+
+
+def emit_vip_merchant_alert_truth_log(
+    *,
+    store_slug: str = "",
+    store_id: Any = None,
+    cart_id: str = "",
+    session_id: str = "",
+    merchant_phone: str = "",
+    phone_source: str = "",
+    vip_threshold: Any = None,
+    vip_notify_enabled: Any = None,
+    alert_decision: str = "",
+    send_attempted: Any = None,
+    provider_result: Any = None,
+    final_status: str = "",
+    message_body: str = "",
+    message_hash: str = "",
+) -> None:
+    import hashlib
+
+    def _h(s: str) -> str:
+        return hashlib.sha256((s or "").encode("utf-8")).hexdigest()[:16]
+
+    mh = message_hash or _h(message_body) or _h(str(provider_result or ""))
+    line = (
+        "[VIP MERCHANT ALERT TRUTH] "
+        f"store_slug={store_slug or '-'} "
+        f"store_id={store_id if store_id is not None else '-'} "
+        f"cart_id={cart_id or '-'} "
+        f"session_id={session_id or '-'} "
+        f"merchant_phone={merchant_phone or '-'} "
+        f"phone_source={phone_source or '-'} "
+        f"vip_threshold={vip_threshold if vip_threshold is not None else '-'} "
+        f"vip_notify_enabled={vip_notify_enabled if vip_notify_enabled is not None else '-'} "
+        f"alert_decision={alert_decision or '-'} "
+        f"send_attempted={send_attempted if send_attempted is not None else '-'} "
+        f"provider_result={str(provider_result or '-')[:120]} "
+        f"final_status={final_status or '-'} "
+        f"message_hash={mh}"
+    )
+    try:
+        print(line, flush=True)
+    except OSError:
+        pass
+    log.info("%s", line)
 
 
 def resolve_merchant_whatsapp_phone(store: Any) -> Tuple[Optional[str], str]:
@@ -181,14 +239,15 @@ def try_send_vip_phone_capture_merchant_alert(
         )
         return {"ok": False, "error": "no_merchant_phone", "source": src}
     msg = build_vip_phone_capture_merchant_message(cart_total, customer_phone)
+    ss = _store_slug_from_row(store)
     try:
         out = send_whatsapp(
             phone,
             msg,
-            reason_tag="vip_phone_capture_merchant",
+            reason_tag=VIP_PHONE_CAPTURE_MERCHANT_REASON_TAG,
             wa_trace_path=__file__,
             wa_trace_session_id=None,
-            wa_trace_store_slug=None,
+            wa_trace_store_slug=ss or None,
             wa_trace_last_activity=None,
             wa_trace_recovery_delay_minutes=None,
             wa_trace_delay_passed=None,
@@ -227,7 +286,8 @@ def try_send_vip_merchant_whatsapp_alert(
     from services.whatsapp_send import send_whatsapp
 
     phone, src = resolve_merchant_whatsapp_phone(store)
-    log.info("[VIP MERCHANT ALERT ATTEMPT] to=%s source=%s", phone or "none", src)
+    ss = _store_slug_from_row(store)
+    log.info("[VIP MERCHANT ALERT ATTEMPT] to=%s source=%s store=%s", phone or "none", src, ss or "-")
     if not phone:
         log.warning("[VIP MERCHANT ALERT FAILED] reason=no_merchant_phone source=%s", src)
         return {"ok": False, "error": "no_merchant_phone", "source": src}
@@ -235,10 +295,10 @@ def try_send_vip_merchant_whatsapp_alert(
         out = send_whatsapp(
             phone,
             message,
-            reason_tag="vip_merchant_alert",
+            reason_tag=VIP_MERCHANT_ALERT_REASON_TAG,
             wa_trace_path=__file__,
             wa_trace_session_id=None,
-            wa_trace_store_slug=None,
+            wa_trace_store_slug=ss or None,
             wa_trace_last_activity=None,
             wa_trace_recovery_delay_minutes=None,
             wa_trace_delay_passed=None,
