@@ -74,27 +74,49 @@ def main() -> int:
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
-        page = browser.new_page()
+        page = browser.new_context(viewport={"width": 1440, "height": 900}).new_page()
         _auth(page, report)
-        me = _api(page, "/api/me")
-        report["me"] = me
-        store_slug = str(me.get("store_slug") or me.get("zid_store_id") or "").strip()
-        if not store_slug:
-            report["error"] = "no_store_slug"
-            OUT.joinpath("report.json").write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
-            browser.close()
-            return 1
 
-        _api(
+        vip_save = _api(
             page,
-            "/api/merchant/vip-settings",
+            "/api/recovery-settings",
             method="POST",
             body={
+                "merchant_settings_scope": "vip",
+                "vip_enabled": True,
                 "vip_cart_threshold": 500,
                 "vip_notify_enabled": True,
-                "store_whatsapp_number": f"+{MERCHANT_WA}",
             },
         )
+        wa_save = _api(
+            page,
+            "/api/recovery-settings",
+            method="POST",
+            body={
+                "store_whatsapp_number": MERCHANT_WA,
+                "whatsapp_recovery_enabled": True,
+                "whatsapp_provider_mode": "production",
+            },
+        )
+        settings = {
+            "vip_save": vip_save,
+            "wa_save": wa_save,
+            "vip": _api(page, "/api/recovery-settings?scope=vip"),
+            "wa": _api(page, "/api/recovery-settings"),
+        }
+        report["settings"] = settings
+        store_slug = str(
+            (settings.get("wa") or {}).get("zid_store_id")
+            or (settings.get("wa") or {}).get("store_slug")
+            or ""
+        ).strip()
+        if not store_slug:
+            report["error"] = "no_store_slug"
+            OUT.joinpath("report.json").write_text(
+                json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8"
+            )
+            browser.close()
+            return 1
 
         ev = _api(
             page,
@@ -120,7 +142,13 @@ def main() -> int:
         )
         report["operational_truth"] = truth
 
-        vip_rows = _api(page, f"/api/dashboard/vip-carts?store={store_slug}")
+        vip_rows = _api(page, f"/api/dashboard/vip-carts?_ts={int(datetime.now().timestamp())}")
+        normal = _api(page, f"/api/dashboard/normal-carts?_ts={int(datetime.now().timestamp())}")
+        normal_rows = normal.get("carts") or normal.get("rows") or []
+        leaked = next(
+            (r for r in normal_rows if isinstance(r, dict) and str(r.get("cart_id") or "") == cart_id),
+            None,
+        )
         report["vip_carts"] = {
             "count": len(vip_rows.get("carts") or vip_rows.get("rows") or []),
             "found": any(
@@ -129,13 +157,6 @@ def main() -> int:
                 if isinstance(r, dict)
             ),
         }
-
-        normal = _api(page, f"/api/dashboard/normal-carts?store={store_slug}")
-        normal_rows = normal.get("carts") or normal.get("rows") or []
-        leaked = next(
-            (r for r in normal_rows if isinstance(r, dict) and str(r.get("cart_id") or "") == cart_id),
-            None,
-        )
         report["normal_carts_leak"] = leaked is not None
         if leaked:
             report["leaked_row_lifecycle"] = {
@@ -173,8 +194,12 @@ def main() -> int:
             "alert_log_exists",
             "latest_status_not_sent_real",
             "no_normal_carts_leak",
+            "delivered_to_device",
         )
     )
+    import sys
+
+    sys.stdout.reconfigure(encoding="utf-8")
     print(json.dumps(report, ensure_ascii=False, indent=2))
     if not checks.get("delivered_to_device"):
         print(

@@ -80,21 +80,21 @@ def resolve_vip_merchant_alert_log_status(
             TRUTH_DELIVERED,
             TRUTH_FAILED,
             TRUTH_READ,
-            truth_level_rank,
         )
 
         if delivery_truth is not None:
             level = str(getattr(delivery_truth, "truth_level", "") or "").strip()
-            if truth_level_rank(level) >= truth_level_rank(TRUTH_DELIVERED):
-                return "vip_merchant_alert_delivered"
             if level == TRUTH_FAILED:
                 return "vip_merchant_alert_failed"
-        dt_level = str(wa_result.get("delivery_truth_level") or "").strip()
-        if dt_level:
-            if truth_level_rank(dt_level) >= truth_level_rank(TRUTH_DELIVERED):
+            if level in (TRUTH_DELIVERED, TRUTH_READ):
                 return "vip_merchant_alert_delivered"
-            if dt_level == TRUTH_FAILED:
-                return "vip_merchant_alert_failed"
+        dt_level = str(wa_result.get("delivery_truth_level") or "").strip()
+        if dt_level == TRUTH_FAILED:
+            return "vip_merchant_alert_failed"
+        if dt_level in (TRUTH_DELIVERED, TRUTH_READ):
+            return "vip_merchant_alert_delivered"
+        if wa_result.get("delivered_to_device") is True:
+            return "vip_merchant_alert_delivered"
     except Exception:  # noqa: BLE001
         pass
     sid = str(wa_result.get("sid") or "").strip()
@@ -208,14 +208,20 @@ def vip_alert_delivery_summary(truth: Any) -> dict[str, Any]:
         }
     level = str(getattr(truth, "truth_level", "") or "unknown")
     try:
-        from services.whatsapp_delivery_truth_v1 import TRUTH_DELIVERED, truth_level_rank
+        from services.whatsapp_delivery_truth_v1 import (
+            TRUTH_DELIVERED,
+            TRUTH_FAILED,
+            TRUTH_READ,
+        )
 
-        delivered = truth_level_rank(level) >= truth_level_rank(TRUTH_DELIVERED)
+        delivered = level in (TRUTH_DELIVERED, TRUTH_READ)
+        failed = level == TRUTH_FAILED
     except Exception:  # noqa: BLE001
         delivered = level in ("delivered_to_customer", "read_by_customer")
+        failed = level == "failed_delivery"
     return {
         "truth_level": level,
-        "delivered_to_device": delivered,
+        "delivered_to_device": bool(delivered and not failed),
         "delivery_status": str(getattr(truth, "delivery_status", "") or ""),
         "send_status": str(getattr(truth, "send_status", "") or ""),
         "message_sid": str(getattr(truth, "message_sid", "") or ""),
