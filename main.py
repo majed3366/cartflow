@@ -19569,6 +19569,12 @@ async def api_dashboard_trigger_templates_save(
         )
 
         patch = {"reason_templates": rt}
+        from services.merchant_whatsapp_timing_guardrails_v1 import (  # noqa: PLC0415
+            apply_timing_guardrails_to_reason_templates_incoming,
+        )
+
+        rt_guarded, guardrail_ack = apply_timing_guardrails_to_reason_templates_incoming(rt)
+        patch = {"reason_templates": rt_guarded}
         log.info("[TEMPLATE SAVE DB START] store_slug=%s", resolved_store_slug)
         apply_reason_templates_from_body(dash_store, patch)
         try:
@@ -19623,6 +19629,7 @@ async def api_dashboard_trigger_templates_save(
             saved_reason_keys=reason_keys,
             store_row=dash_store,
         )
+        ack.update(guardrail_ack)
         log_pool_checkpoint(
             "[DB POOL AFTER TEMPLATE SAVE]",
             store_slug=resolved_store_slug,

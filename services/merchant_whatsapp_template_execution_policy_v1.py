@@ -396,6 +396,11 @@ def managed_sender_policy_controls() -> dict[str, Any]:
                 "description_ar": "تخطي القالب المعطّل مع سبب واضح",
                 "skip_reason": SKIP_TEMPLATE_DISABLED,
             },
+            "template_unavailable_suppression": {
+                "enabled": True,
+                "description_ar": "تخطي عند تعطيل القالب أو رفضه — سلسلة احتياط",
+                "skip_reason": "template_unavailable",
+            },
         },
     }
 

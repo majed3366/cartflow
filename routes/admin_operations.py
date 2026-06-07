@@ -998,6 +998,22 @@ def api_admin_whatsapp_execution_policy(request: Request) -> Any:
     return j({"ok": True, **execution_policy_summary_for_api()})
 
 
+@router.get("/api/admin/whatsapp/template-library")
+def api_admin_whatsapp_template_library(
+    request: Request,
+    logical_key: str = "",
+) -> Any:
+    denied = _admin_json_auth(request)
+    if denied is not None:
+        return denied
+    from services.admin_whatsapp_template_library_visibility_v1 import (  # noqa: PLC0415
+        admin_template_library_api_payload,
+    )
+
+    lk = (logical_key or "").strip() or None
+    return j(admin_template_library_api_payload(logical_key=lk))
+
+
 def _register_admin_placeholder_routes() -> None:
     for path, nav_key, title_ar, description_ar in _ADMIN_PLACEHOLDER_PAGES:
 

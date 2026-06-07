@@ -87,13 +87,15 @@ def _default_row_for_reason(key: str, message_count: int = 3) -> Dict[str, Any]:
 
 def build_fallback_trigger_templates_payload() -> Dict[str, Any]:
     """حمولة آمنة عند غياب ‎Store‎ أو تعذّر القراءة — لا تُرجع 500 للواجهة."""
-    return {
-        "section_title_ar": "قوالب حسب سبب التردد",
-        "section_subtitle_ar": "تحكم في رسالة الاسترجاع لكل سبب من أسباب التردد.",
-        "reason_rows": [_default_row_for_reason(k) for k in TRIGGER_TEMPLATE_PAGE_KEYS],
-        "guided_defaults": _guided_defaults_slice(),
-        "display_fallback": True,
-    }
+    return enrich_trigger_templates_payload(
+        {
+            "section_title_ar": "قوالب حسب سبب التردد",
+            "section_subtitle_ar": "تحكم في رسالة الاسترجاع لكل سبب من أسباب التردد.",
+            "reason_rows": [_default_row_for_reason(k) for k in TRIGGER_TEMPLATE_PAGE_KEYS],
+            "guided_defaults": _guided_defaults_slice(),
+            "display_fallback": True,
+        }
+    )
 
 
 def _reason_row_from_enriched(key: str, ent: Dict[str, Any]) -> Dict[str, Any]:
@@ -224,9 +226,35 @@ def build_trigger_templates_get_payload(store_row: Optional[Any]) -> Dict[str, A
     if not reason_rows:
         return build_fallback_trigger_templates_payload()
 
+    return enrich_trigger_templates_payload(
+        {
+            "section_title_ar": "قوالب حسب سبب التردد",
+            "section_subtitle_ar": "تحكم في رسالة الاسترجاع لكل سبب من أسباب التردد.",
+            "reason_rows": reason_rows,
+            "guided_defaults": _guided_defaults_slice(),
+        }
+    )
+
+
+def _phase4_policy_fields_for_trigger_templates_api() -> dict[str, Any]:
+    from services.merchant_whatsapp_meta_policy_awareness_v1 import (  # noqa: PLC0415
+        meta_policy_guidance_for_merchant_api,
+    )
+    from services.merchant_whatsapp_timing_guardrails_v1 import (  # noqa: PLC0415
+        timing_guardrails_for_api,
+    )
+    from services.merchant_whatsapp_template_library_v1 import (  # noqa: PLC0415
+        template_library_summary_for_api,
+    )
+
     return {
-        "section_title_ar": "قوالب حسب سبب التردد",
-        "section_subtitle_ar": "تحكم في رسالة الاسترجاع لكل سبب من أسباب التردد.",
-        "reason_rows": reason_rows,
-        "guided_defaults": _guided_defaults_slice(),
+        "template_library_architecture": template_library_summary_for_api(),
+        "meta_policy_guidance": meta_policy_guidance_for_merchant_api(),
+        "timing_guardrails": timing_guardrails_for_api(),
     }
+
+
+def enrich_trigger_templates_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    out = dict(payload)
+    out.update(_phase4_policy_fields_for_trigger_templates_api())
+    return out

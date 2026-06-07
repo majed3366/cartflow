@@ -554,6 +554,7 @@
       '<p class="ma-tpl-ownership-body">حدد محتوى رسائل الاسترجاع لكل سبب — وقم بإدارة مراحل المتابعة.</p>' +
       '<p class="ma-tpl-ownership-note">واتساب = قناة الإرسال · هذه الصفحة = محتوى الرسائل</p>' +
       "</div>" +
+      '<div id="ma-tpl-meta-policy-banner" class="ma-tpl-meta-policy" hidden dir="rtl"></div>' +
       '<div class="ma-tpl-seq-intro" dir="rtl">' +
       '<p class="ma-tpl-seq-intro-title">مسار الاسترجاع = سلسلة مراحل</p>' +
       '<p class="ma-tpl-seq-intro-body">كل رقم يفعّل مرحلة جديدة في التسلسل — <strong>وليس</strong> إرسال نفس الرسالة أكثر من مرة.</p>' +
@@ -561,6 +562,27 @@
       '<div class="ma-tpl-seq-chip-row" aria-hidden="true"><span class="ma-tpl-seq-chip">1</span><span class="ma-tpl-seq-chip-arrow">→</span><span class="ma-tpl-seq-chip">2</span><span class="ma-tpl-seq-chip-arrow">→</span><span class="ma-tpl-seq-chip">3</span></div>' +
       "</div>"
     );
+  }
+
+  function applyMetaPolicyBanner(payload) {
+    var el = byId("ma-tpl-meta-policy-banner");
+    if (!el) return;
+    var mp = payload && payload.meta_policy_guidance;
+    var lines =
+      mp && Array.isArray(mp.guidance_lines_ar) ? mp.guidance_lines_ar : [];
+    if (!lines.length) {
+      el.hidden = true;
+      el.innerHTML = "";
+      return;
+    }
+    el.hidden = false;
+    el.innerHTML =
+      '<p class="ma-tpl-meta-policy-title">إرشادات التواصل</p>' +
+      lines
+        .map(function (line) {
+          return '<p class="ma-tpl-meta-policy-line">' + esc(line) + "</p>";
+        })
+        .join("");
   }
 
   function syncCardStageWorkflow(cardEl) {
@@ -1358,6 +1380,7 @@
     }
 
     lastPayload = payload;
+    applyMetaPolicyBanner(payload);
     tplMetrics.render_applied++;
     window.__trigger_templates_dom_ready = true;
 
@@ -1848,10 +1871,23 @@
             persisted_delay: savedDelay,
             apply_gen: window.__trigger_templates_apply_gen,
           });
-          if (st) st.textContent = "تم الحفظ";
+          if (st) {
+            var guardMsg =
+              pack.payload &&
+              (pack.payload.timing_guardrail_message_ar ||
+                (pack.payload.adjusted &&
+                  pack.payload.timing_guardrail_message_ar));
+            if (pack.payload && pack.payload.adjusted && guardMsg) {
+              st.textContent = guardMsg;
+            } else {
+              st.textContent = "تم الحفظ";
+            }
+          }
           window.setTimeout(function () {
-            if (st && st.textContent === "تم الحفظ") st.textContent = "";
-          }, 3500);
+            if (st && (st.textContent === "تم الحفظ" || st.textContent.indexOf("تم تعديل") === 0)) {
+              st.textContent = "";
+            }
+          }, 4500);
           return;
         }
         tplDbg("[SAVE TEMPLATE FAIL]", {
