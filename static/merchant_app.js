@@ -12,6 +12,7 @@
     "trigger-templates": "قوالب الاسترجاع",
     widget: "الودجيت",
     whatsapp: "واتساب",
+    plans: "الباقات",
     settings: "الحساب والمتجر",
   };
 
@@ -23,6 +24,8 @@
     widget: "مظهر الودجيت ومتى يظهر للعميل — بدون إعدادات تقنية معقدة",
     whatsapp:
       "رقم المتجر وتفعيل استرجاع الواتساب — تُحفظ لمتجرك دون إرسال تجريبي من هذه الصفحة",
+    plans:
+      "قارن Starter و Growth و Pro — عرض للمقارنة فقط بدون ترقية أو دفع",
     settings:
       "ربط المتجر مع زد أو سلة، ثم تفضيلات الحساب — لا تغيّر الاسترجاع تلقائياً",
   };
@@ -53,6 +56,7 @@
     "trigger-templates": "comms",
     widget: "settings",
     whatsapp: "settings",
+    plans: "settings",
     settings: "settings",
   };
 
@@ -77,6 +81,7 @@
     "#templates": "trigger-templates",
     "#widget": "widget",
     "#whatsapp": "whatsapp",
+    "#plans": "plans",
     "#settings": "settings",
   };
 
@@ -287,6 +292,9 @@
     }
     if (typeof window.maInitGeneralSettingsPage === "function" && page === "settings") {
       window.maInitGeneralSettingsPage();
+    }
+    if (typeof window.maInitPlansPage === "function" && page === "plans") {
+      window.maInitPlansPage();
     }
   }
 

@@ -1,0 +1,8 @@
+{
+  "base": "http://127.0.0.1:8011",
+  "screenshots": [
+    "01_current_plan_settings_desktop.png",
+    "02_plans_comparison_desktop.png",
+    "03_plans_comparison_mobile.png"
+  ]
+}

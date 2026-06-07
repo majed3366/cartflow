@@ -35,7 +35,7 @@
         <span class="ma-gtb-util-ico" aria-hidden="true">👤</span>
         <span class="ma-gtb-util-label">{{ merchant_store_display_name | default("متجرك") }}</span>
       </button>
-      <button type="button" class="ma-gtb-util ma-gtb-util--text ma-gtb-util--muted" disabled title="قريباً — إدارة الباقة">الباقة</button>
+      <button type="button" class="ma-gtb-util ma-gtb-util--text" id="ma-gtb-plans-btn" onclick="if(window.goTo){goTo('plans');return false;}" title="الباقات والأسعار">الباقة</button>
       <a class="ma-gtb-util ma-gtb-util--text" href="/logout" title="تسجيل الخروج">خروج</a>
     </div>
   </div>
@@ -66,6 +66,7 @@
     <p class="ma-ctx-label">الإعدادات</p>
     <button type="button" class="nav-item" data-nav="whatsapp" onclick="goTo('whatsapp')">واتساب</button>
     <button type="button" class="nav-item" data-nav="widget" onclick="goTo('widget')">الودجيت</button>
+    <button type="button" class="nav-item" data-nav="plans" onclick="goTo('plans')">الباقات</button>
     <button type="button" class="nav-item" data-nav="settings" onclick="goTo('settings')">الحساب والمتجر</button>
   </nav>
   <div class="ma-ctx-future-reserve" aria-hidden="true" hidden></div>
@@ -772,6 +773,25 @@
     </div>
   </div>
 
+  <div class="page ma-page-compact" id="page-plans">
+    <div class="setting-card ma-fw-card ma-plans-current-card" id="ma-plans-current-root">
+      <div class="ma-plans-current-head">
+        <div>
+          <div class="setting-title">باقتك الحالية</div>
+          <div class="setting-desc" id="ma-plans-current-summary">جاري التحميل…</div>
+        </div>
+        <span class="ma-sub-plan-pill" id="ma-plans-current-pill">—</span>
+      </div>
+      <div class="ma-plans-current-meta" id="ma-plans-current-meta">
+        <span id="ma-plans-current-source">—</span>
+        <span class="ma-plans-dot" aria-hidden="true">·</span>
+        <span id="ma-plans-current-status">—</span>
+      </div>
+    </div>
+    <p class="ma-plans-footnote" id="ma-plans-footnote">—</p>
+    <div class="ma-plans-grid" id="ma-plans-grid" aria-live="polite"></div>
+  </div>
+
   <div class="page ma-page-compact" id="page-settings">
     <div id="ma-store-connection-err" style="display:none;margin-bottom:10px;padding:10px 12px;border-radius:10px;border:1px solid #fecaca;background:#fef2f2;color:#991b1b;font-size:13px;"></div>
     <div id="ma-store-connection-ok" style="display:none;margin-bottom:10px;padding:10px 12px;border-radius:10px;border:1px solid #bbf7d0;background:#f0fdf4;color:#166534;font-size:13px;"></div>
@@ -809,13 +829,23 @@
       <p class="ma-sc-footnote">Shopify قريباً</p>
     </div>
     <div class="setting-card ma-fw-card ma-subscription-card" id="ma-subscription-root" style="grid-column:1/-1;margin-bottom:14px;">
-      <div class="setting-title">الباقة الحالية</div>
-      <div class="setting-desc">قراءة فقط — لا ترقية ولا دفع من هنا</div>
-      <div class="setting-row"><span class="setting-label">الخطة</span><span class="setting-value" id="ma-sub-plan-display">—</span></div>
-      <div class="setting-row"><span class="setting-label">المصدر</span><span class="setting-value" id="ma-sub-source-display">—</span></div>
-      <div class="setting-row"><span class="setting-label">الحالة</span><span class="setting-value" id="ma-sub-status-display">—</span></div>
-      <div class="setting-row"><span class="setting-label">تاريخ البدء</span><span class="setting-value" id="ma-sub-started-display">—</span></div>
-      <div class="setting-row"><span class="setting-label">تاريخ الانتهاء</span><span class="setting-value" id="ma-sub-expires-display">—</span></div>
+      <div class="ma-subscription-head">
+        <div>
+          <div class="setting-title">الباقة الحالية</div>
+          <div class="setting-desc">قراءة فقط — لا ترقية ولا دفع من هنا</div>
+        </div>
+        <span class="ma-sub-plan-pill" id="ma-sub-plan-pill">—</span>
+      </div>
+      <div class="ma-subscription-grid">
+        <div class="setting-row"><span class="setting-label">الخطة</span><span class="setting-value" id="ma-sub-plan-display">—</span></div>
+        <div class="setting-row"><span class="setting-label">المصدر</span><span class="setting-value" id="ma-sub-source-display">—</span></div>
+        <div class="setting-row"><span class="setting-label">الحالة</span><span class="setting-value" id="ma-sub-status-display">—</span></div>
+        <div class="setting-row"><span class="setting-label">تاريخ البدء</span><span class="setting-value" id="ma-sub-started-display">—</span></div>
+        <div class="setting-row"><span class="setting-label">تاريخ الانتهاء</span><span class="setting-value" id="ma-sub-expires-display">—</span></div>
+      </div>
+      <div class="ma-subscription-foot">
+        <button type="button" class="ma-fw-save ma-sc-btn ma-sc-btn-secondary" id="ma-sub-compare-btn" onclick="if(window.goTo){goTo('plans');}">قارن الباقات</button>
+      </div>
     </div>
     <div id="ma-general-settings-err" style="display:none;margin-bottom:10px;padding:10px 12px;border-radius:10px;border:1px solid #fecaca;background:#fef2f2;color:#991b1b;font-size:13px;"></div>
     <div id="ma-general-settings-ok" style="display:none;margin-bottom:10px;padding:10px 12px;border-radius:10px;border:1px solid #bbf7d0;background:#f0fdf4;color:#166534;font-size:13px;">تم حفظ الإعدادات</div>
@@ -925,6 +955,7 @@
 <script defer src="/static/merchant_vip_settings.js"></script>
 <script defer src="/static/merchant_store_connection.js"></script>
 <script defer src="/static/merchant_subscription.js"></script>
+<script defer src="/static/merchant_plans_ui.js"></script>
 <script defer src="/static/merchant_general_settings.js"></script>
 <script defer src="/static/merchant_trigger_templates.js"></script>
 <script defer src="/static/merchant_widget_panel.js"></script>

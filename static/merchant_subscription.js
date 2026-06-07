@@ -16,11 +16,19 @@
 
   function applySubscription(d) {
     if (!d) return;
-    setText("ma-sub-plan-display", d.current_plan_label_ar || d.current_plan);
+    var label = d.current_plan_label_ar || d.current_plan;
+    setText("ma-sub-plan-display", label);
     setText("ma-sub-source-display", d.plan_source_label_ar || d.plan_source);
     setText("ma-sub-status-display", d.plan_status_label_ar || d.plan_status);
     setText("ma-sub-started-display", d.plan_started_at_ar);
     setText("ma-sub-expires-display", d.plan_expires_at_ar);
+    var pill = byId("ma-sub-plan-pill");
+    if (pill) {
+      pill.textContent = label || "—";
+      pill.classList.toggle("is-starter", d.current_plan === "starter");
+      pill.classList.toggle("is-growth", d.current_plan === "growth");
+      pill.classList.toggle("is-pro", d.current_plan === "pro");
+    }
   }
 
   function loadSubscription() {
@@ -48,7 +56,8 @@
     bound = true;
     loadSubscription();
     window.addEventListener("hashchange", function () {
-      if ((window.location.hash || "").indexOf("settings") >= 0) {
+      var h = (window.location.hash || "").toLowerCase();
+      if (h.indexOf("#settings") === 0) {
         loadSubscription();
       }
     });

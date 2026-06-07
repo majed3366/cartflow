@@ -20727,6 +20727,35 @@ def api_merchant_subscription_status(request: Request):
         )
 
 
+@app.get("/api/merchant/plans-catalog")
+def api_merchant_plans_catalog(request: Request):
+    """كتalog الباقات — قراءة فقط للمقارنة (لا ترقية ولا دفع)."""
+    from services.merchant_plans_catalog_v1 import build_merchant_plans_catalog  # noqa: PLC0415
+    from services.merchant_subscription_v1 import build_merchant_subscription_status  # noqa: PLC0415
+
+    wall0 = time.perf_counter()
+    _merchant_dashboard_db_ready()
+    try:
+        subscription = build_merchant_subscription_status(cookies=dict(request.cookies))
+        catalog = build_merchant_plans_catalog()
+        return j(
+            {
+                "ok": True,
+                "subscription": subscription.to_api_dict(),
+                "catalog": catalog,
+            }
+        )
+    except (OSError, TypeError, ValueError) as e:
+        log.warning("api merchant/plans-catalog: %s", e)
+        return j({"ok": False, "error": "failed"}, 500)
+    finally:
+        _log_dashboard_profile(
+            endpoint="GET /api/merchant/plans-catalog",
+            section="merchant_plans_catalog",
+            wall_perf_start=wall0,
+        )
+
+
 @app.get("/auth/zid")
 def auth_zid_oauth_start(request: Request):
     """
