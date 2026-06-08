@@ -426,7 +426,7 @@
     var statusBadgeClass = (guidance.status_badge_class || "").trim();
     var progressPct = Number(guidance.progress_pct);
     if (!isFinite(progressPct)) progressPct = 0;
-    var reviewCta = (completion.review_settings_cta_ar || "مراجعة الإعدادات").trim();
+    var reviewCta = (completion.review_settings_cta_ar || "تعديل إعدادات واتساب").trim();
     return (
       '<div class="ma-wa-journey-selected' +
       (isCompleted ? " is-journey-completed" : "") +
@@ -496,21 +496,30 @@
     );
   }
 
-  function renderMerchantSetupCompletion(block) {
-    if (!block || !block.headline_ar) return "";
-    var items = Array.isArray(block.items_ar) ? block.items_ar : [];
-    var itemsHtml = items
-      .map(function (line) {
-        return "<li>" + escHtml(line) + "</li>";
+  function renderMerchantCompletedUx(block) {
+    if (!block || !block.active) return "";
+    var checklist = Array.isArray(block.checklist_ar) ? block.checklist_ar : [];
+    var itemsHtml = checklist
+      .map(function (item) {
+        return (
+          "<li>" +
+          escHtml(item.mark_ar || "✓") +
+          " " +
+          escHtml(item.label_ar || "") +
+          "</li>"
+        );
       })
       .join("");
     return (
-      '<div class="ma-wa-merchant-setup-completion">' +
-      '<p class="ma-wa-merchant-setup-completion-headline">' +
-      escHtml(block.headline_ar) +
-      "</p>" +
+      '<div class="ma-wa-merchant-completed-ux">' +
+      '<h3 class="ma-wa-merchant-completed-title">' +
+      escHtml(block.headline_ar || "تم إكمال إعداد واتساب") +
+      "</h3>" +
+      (block.subtext_ar
+        ? '<p class="ma-wa-merchant-completed-subtext">' + escHtml(block.subtext_ar) + "</p>"
+        : "") +
       (itemsHtml
-        ? '<ul class="ma-wa-merchant-setup-completion-list">' + itemsHtml + "</ul>"
+        ? '<ul class="ma-wa-merchant-completed-checklist">' + itemsHtml + "</ul>"
         : "") +
       "</div>"
     );
@@ -521,11 +530,9 @@
     return (
       '<div class="ma-wa-production-sending">' +
       '<p class="ma-wa-readiness-k">' +
-      escHtml(block.title_ar || "حالة الإرسال الحالية") +
+      escHtml(block.title_ar || "حالة الإرسال") +
       "</p>" +
       '<p class="ma-wa-production-sending-status">' +
-      escHtml(block.label_ar || "جاهزية الإرسال") +
-      ": " +
       escHtml(block.status_ar || "—") +
       "</p>" +
       (block.explanation_ar
@@ -537,65 +544,8 @@
     );
   }
 
-  function renderReadinessDiagnosticTemp(cr) {
-    var diag = cr && cr.readiness_diagnostic_temp;
-    if (!diag || !diag.temporary) return "";
-    var failing = Array.isArray(diag.failing_conditions) ? diag.failing_conditions : [];
-    var failHtml = failing
-      .map(function (row) {
-        return (
-          "<li><code>" +
-          escHtml(String(row.field || "")) +
-          "</code> = " +
-          escHtml(String(row.value)) +
-          " · passed=" +
-          escHtml(String(row.passed)) +
-          "<br><span class='ma-wa-diag-path'>" +
-          escHtml(row.code_path || "") +
-          "</span></li>"
-        );
-      })
-      .join("");
-    var primary = diag.primary_failing_condition || {};
-    return (
-      '<details class="ma-wa-readiness-diagnostic-temp">' +
-      '<summary>تشخيص مؤقت — لماذا «واتساب جاهز» ✗؟</summary>' +
-      '<div class="ma-wa-diag-body">' +
-      "<p><strong>حالة الجاهزية:</strong> " +
-      escHtml(diag.readiness_state_ar || diag.readiness_state || "—") +
-      " (" +
-      escHtml(diag.readiness_overall_ar || diag.readiness_overall || "—") +
-      ")</p>" +
-      "<p><strong>عنوان الجاهزية:</strong> " +
-      escHtml(diag.readiness_title_ar || "—") +
-      "</p>" +
-      "<p><strong>مصدر القائمة:</strong> " +
-      escHtml(diag.checklist_source || "—") +
-      "</p>" +
-      "<p><strong>بند القائمة:</strong> " +
-      escHtml((diag.checklist_item && diag.checklist_item.mark_ar) || "—") +
-      " " +
-      escHtml((diag.checklist_item && diag.checklist_item.label_ar) || "واتساب جاهز") +
-      " · ready=" +
-      escHtml(String((diag.checklist_item && diag.checklist_item.ready_value) || false)) +
-      "</p>" +
-      (primary.field
-        ? "<p><strong>الشرط الأساسي الفاشل:</strong> <code>" +
-          escHtml(String(primary.field)) +
-          "</code> = " +
-          escHtml(String(primary.value)) +
-          "</p>"
-        : "") +
-      (failHtml
-        ? "<p><strong>كل الشروط:</strong></p><ul class='ma-wa-diag-list'>" +
-          failHtml +
-          "</ul>"
-        : "<p>لا توجد شروط فاشلة مسجّلة.</p>") +
-      "<p class='ma-wa-diag-note'>" +
-      escHtml(diag.journey_vs_readiness_note_ar || "") +
-      "</p>" +
-      "</div></details>"
-    );
+  function renderReadinessDiagnosticTemp() {
+    return "";
   }
 
   function renderReadinessCard(d) {
@@ -627,12 +577,48 @@
         );
       })
       .join("");
-    var merchantCompletion = cr.merchant_setup_completion || {};
+    var completedUx = cr.merchant_completed_ux || {};
     var productionSending = cr.production_sending_readiness || {};
-    var journeyCompleted = !!(af.journey_completed || (af.cta_behavior && af.cta_behavior.journey_completed));
+    var journeyCompleted = !!(
+      completedUx.active ||
+      af.journey_completed ||
+      (af.cta_behavior && af.cta_behavior.journey_completed)
+    );
     var ctaLabel = af.primary_cta_label_ar || "فتح الإعدادات";
     var nextAction = af.next_action_ar || "";
     var outcome = af.expected_outcome_ar || cr.expected_outcome_ar || "—";
+    var badgeAr = cr.merchant_readiness_badge_ar || cr.readiness_overall_ar || "—";
+    var monitorCard = byId("ma-wa-status-monitor-card");
+    if (monitorCard) monitorCard.hidden = !!journeyCompleted;
+
+    if (journeyCompleted) {
+      root.hidden = false;
+      root.setAttribute("aria-busy", "false");
+      root.innerHTML =
+        '<section class="ma-wa-readiness-card ma-wa-readiness-card-completed" dir="rtl" aria-label="جاهزية واتساب">' +
+        renderMerchantCompletedUx(completedUx) +
+        renderProductionSendingReadiness(productionSending) +
+        '<div class="ma-wa-readiness-action ma-wa-readiness-action-calm">' +
+        '<p class="ma-wa-readiness-action-calm-text">' +
+        escHtml(completedUx.no_action_ar || nextAction || "لا يوجد إجراء مطلوب منك حالياً.") +
+        "</p>" +
+        '<button type="button" class="ma-wa-readiness-cta" data-cf-wa-primary-cta>' +
+        escHtml(ctaLabel) +
+        "</button>" +
+        "</div>" +
+        '<details class="ma-wa-readiness-details-muted">' +
+        '<summary>تفاصيل الحالة</summary>' +
+        '<div class="ma-wa-readiness-meta ma-wa-readiness-meta-muted">' +
+        '<div><span class="ma-wa-readiness-k">حالة الاتصال</span> ' +
+        escHtml(cr.connection_state_ar || "—") +
+        "</div>" +
+        '<div><span class="ma-wa-readiness-k">الوضع</span> ' +
+        escHtml(cr.whatsapp_mode_label_ar || "—") +
+        "</div></div></details>" +
+        "</section>";
+      return;
+    }
+
     root.hidden = false;
     root.setAttribute("aria-busy", "false");
     root.innerHTML =
@@ -640,7 +626,6 @@
       '<div class="ma-wa-journey-panel">' +
       '<p class="ma-wa-readiness-section-k">مسار واتساب</p>' +
       renderJourneyBlock(journeys) +
-      renderMerchantSetupCompletion(merchantCompletion) +
       "</div>" +
       renderProductionSendingReadiness(productionSending) +
       '<div class="ma-wa-readiness-production">' +
@@ -651,15 +636,14 @@
       escHtml(checklist.headline_ar || "كيف تصبح جاهزاً للإنتاج") +
       "</p></div>" +
       '<span class="ma-wa-readiness-badge">' +
-      escHtml(cr.readiness_overall_ar || "—") +
+      escHtml(badgeAr) +
       "</span></div>" +
       '<div class="ma-wa-readiness-action">' +
       '<p class="ma-wa-readiness-action-title">' +
       escHtml(af.title_ar || "") +
       "</p>" +
       (nextAction
-        ? '<p class="ma-wa-readiness-action-next">' +
-          (journeyCompleted ? "حالة الجاهزية: " : "الخطوة التالية: ") +
+        ? '<p class="ma-wa-readiness-action-next">الخطوة التالية: ' +
           escHtml(nextAction) +
           "</p>"
         : "") +
@@ -667,7 +651,6 @@
       escHtml(ctaLabel) +
       "</button>" +
       "</div>" +
-      // 2) Remaining steps
       (checklistHtml
         ? '<div class="ma-wa-readiness-checklist"><p class="ma-wa-readiness-k">' +
           escHtml(checklist.remaining_title_ar || "المتبقي:") +
@@ -675,19 +658,18 @@
           checklistHtml +
           "</ul></div>"
         : "") +
-      // 3) Outcome
       '<p class="ma-wa-readiness-outcome"><strong>النتيجة المتوقعة:</strong> ' +
       escHtml(outcome) +
       "</p>" +
-      // 4) Technical status — demoted
+      '<details class="ma-wa-readiness-details-muted">' +
+      '<summary>تفاصيل الحالة</summary>' +
       '<div class="ma-wa-readiness-meta ma-wa-readiness-meta-muted">' +
       '<div><span class="ma-wa-readiness-k">حالة الاتصال</span> ' +
       escHtml(cr.connection_state_ar || "—") +
       "</div>" +
       '<div><span class="ma-wa-readiness-k">الوضع</span> ' +
       escHtml(cr.whatsapp_mode_label_ar || "—") +
-      "</div></div>" +
-      renderReadinessDiagnosticTemp(cr) +
+      "</div></div></details>" +
       "</div>" +
       "</section>";
   }

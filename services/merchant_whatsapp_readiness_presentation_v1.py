@@ -9,6 +9,7 @@ from __future__ import annotations
 from typing import Any, Mapping, Optional
 
 from services.merchant_whatsapp_journey_execution_v1 import (
+    CTA_ACTION_SCROLL_SETTINGS,
     JOURNEY_STATUS_COMPLETED,
     compute_journey_status,
 )
@@ -16,23 +17,32 @@ from services.merchant_whatsapp_onboarding_journeys_v1 import (
     normalize_whatsapp_onboarding_journey,
 )
 
-MERCHANT_SENDING_READINESS_LABEL_AR = "جاهزية الإرسال"
-MERCHANT_SENDING_STATUS_PENDING_AR = "قيد الإعداد"
-MERCHANT_SENDING_STATUS_CARTFLOW_SETUP_AR = "جاري إعداد الاتصال بواسطة CartFlow"
+MERCHANT_SENDING_TITLE_AR = "حالة الإرسال"
+MERCHANT_SENDING_STATUS_PREPARING_AR = "قيد التجهيز بواسطة CartFlow"
 MERCHANT_SENDING_STATUS_READY_AR = "جاهزة للإرسال"
 
-MERCHANT_SETUP_COMPLETION_HEADLINE_AR = "✓ تم إكمال مسار واتساب"
+MERCHANT_COMPLETED_HEADLINE_AR = "تم إكمال إعداد واتساب"
+MERCHANT_COMPLETED_SUBTEXT_AR = "تم حفظ رقم واتساب وتفعيل استرجاع الرسائل."
+MERCHANT_NO_ACTION_AR = "لا يوجد إجراء مطلوب منك حالياً."
+MERCHANT_CTA_EDIT_SETTINGS_AR = "تعديل إعدادات واتساب"
+MERCHANT_PRODUCTION_TITLE_AR = "الإرسال قيد التجهيز"
+MERCHANT_READINESS_BADGE_PREPARING_AR = "قيد التجهيز"
 
-_EXPLANATION_JOURNEY_DONE_SANDBOX_AR = (
-    "أكملت إعداداتك المطلوبة. الإرسال الإنتاجي غير مفعل حالياً. "
-    "سيتم تفعيل الإرسال عند اكتمال إعداد مزود واتساب."
+MERCHANT_SENDING_EXPLANATION_COMPLETED_AR = (
+    "أكملت إعداداتك المطلوبة. سيبدأ الإرسال الفعلي عند اكتمال تجهيز مزود واتساب."
 )
-_EXPLANATION_JOURNEY_DONE_PRODUCTION_AR = (
-    "أكملت إعداداتك المطلوبة. يعمل CartFlow على تجهيز الاتصال للإرسال الفعلي."
+MERCHANT_SENDING_EXPLANATION_READY_AR = (
+    "CartFlow جاهز لإرسال رسائل الاسترجاع عبر واتساب."
 )
 _EXPLANATION_MERCHANT_IN_PROGRESS_AR = (
     "أكمل خطوات مسار واتساب أولاً. بعدها يعمل CartFlow على تجهيز الإرسال."
 )
+
+_DIM_LABEL_AR: Mapping[str, str] = {
+    "store_connected": "المتجر مربوط",
+    "widget_ready": "الودجت جاهز",
+    "plan_eligible": "الباقة مؤهلة",
+}
 
 
 def _store_has_number(store: Optional[Any]) -> bool:
@@ -55,50 +65,58 @@ def _sending_ready_from_dimensions(readiness: Mapping[str, Any]) -> bool:
     return False
 
 
-def _merchant_setup_completion_items(store: Optional[Any]) -> list[str]:
-    items: list[str] = []
-    if _store_has_number(store):
-        items.append("✓ رقم واتساب محفوظ")
-    if _merchant_recovery_enabled(store):
-        items.append("✓ استرجاع واتساب مفعل")
-    return items
+def _dim_ready_map(readiness: Mapping[str, Any]) -> dict[str, bool]:
+    out: dict[str, bool] = {}
+    for dim in readiness.get("readiness_dimensions") or []:
+        key = str(dim.get("key") or "")
+        if key:
+            out[key] = bool(dim.get("ready"))
+    return out
+
+
+def _merchant_completed_checklist(
+    store: Optional[Any],
+    readiness: Mapping[str, Any],
+) -> list[dict[str, str]]:
+    dims = _dim_ready_map(readiness)
+    rows: list[tuple[str, bool]] = [
+        ("رقم واتساب محفوظ", _store_has_number(store)),
+        ("استرجاع واتساب مفعل", _merchant_recovery_enabled(store)),
+        (_DIM_LABEL_AR["store_connected"], dims.get("store_connected", False)),
+        (_DIM_LABEL_AR["widget_ready"], dims.get("widget_ready", False)),
+        (_DIM_LABEL_AR["plan_eligible"], dims.get("plan_eligible", False)),
+    ]
+    return [
+        {"mark_ar": "✓" if ok else "◐", "label_ar": label}
+        for label, ok in rows
+    ]
 
 
 def _production_sending_block(
     *,
     sending_ready: bool,
     journey_completed: bool,
-    sandbox: bool,
 ) -> dict[str, Any]:
     if sending_ready:
         return {
-            "title_ar": "حالة الإرسال الحالية",
+            "title_ar": MERCHANT_SENDING_TITLE_AR,
             "status_ar": MERCHANT_SENDING_STATUS_READY_AR,
-            "label_ar": MERCHANT_SENDING_READINESS_LABEL_AR,
-            "explanation_ar": "CartFlow جاهز لإرسال رسائل الاسترجاع عبر واتساب.",
+            "explanation_ar": MERCHANT_SENDING_EXPLANATION_READY_AR,
             "engine_ready": True,
         }
 
     if journey_completed:
-        status_ar = (
-            MERCHANT_SENDING_STATUS_CARTFLOW_SETUP_AR
-            if sandbox
-            else MERCHANT_SENDING_STATUS_PENDING_AR
-        )
-        explanation = (
-            _EXPLANATION_JOURNEY_DONE_SANDBOX_AR
-            if sandbox
-            else _EXPLANATION_JOURNEY_DONE_PRODUCTION_AR
-        )
-    else:
-        status_ar = MERCHANT_SENDING_STATUS_PENDING_AR
-        explanation = _EXPLANATION_MERCHANT_IN_PROGRESS_AR
+        return {
+            "title_ar": MERCHANT_SENDING_TITLE_AR,
+            "status_ar": MERCHANT_SENDING_STATUS_PREPARING_AR,
+            "explanation_ar": MERCHANT_SENDING_EXPLANATION_COMPLETED_AR,
+            "engine_ready": False,
+        }
 
     return {
-        "title_ar": "حالة الإرسال الحالية",
-        "status_ar": status_ar,
-        "label_ar": MERCHANT_SENDING_READINESS_LABEL_AR,
-        "explanation_ar": explanation,
+        "title_ar": MERCHANT_SENDING_TITLE_AR,
+        "status_ar": "قيد الإعداد",
+        "explanation_ar": _EXPLANATION_MERCHANT_IN_PROGRESS_AR,
         "engine_ready": False,
     }
 
@@ -109,17 +127,17 @@ def _merchant_checklist_items(
     sending_ready: bool,
     journey_completed: bool,
 ) -> list[dict[str, Any]]:
+    if journey_completed:
+        return []
     out: list[dict[str, Any]] = []
     for item in checklist:
         key = item.get("key")
         if key == "whatsapp_ready":
-            if journey_completed and not sending_ready:
-                continue
             if sending_ready:
                 out.append(
                     {
                         **item,
-                        "label_ar": MERCHANT_SENDING_READINESS_LABEL_AR,
+                        "label_ar": "جاهزية الإرسال",
                         "status_ar": MERCHANT_SENDING_STATUS_READY_AR,
                         "mark_ar": "✓",
                         "complete": True,
@@ -131,8 +149,8 @@ def _merchant_checklist_items(
                 out.append(
                     {
                         **item,
-                        "label_ar": MERCHANT_SENDING_READINESS_LABEL_AR,
-                        "status_ar": MERCHANT_SENDING_STATUS_PENDING_AR,
+                        "label_ar": "جاهزية الإرسال",
+                        "status_ar": "قيد الإعداد",
                         "mark_ar": "◐",
                         "complete": False,
                         "merchant_presentation": True,
@@ -145,16 +163,63 @@ def _merchant_checklist_items(
     return out
 
 
+def _apply_completed_journey_merchant_ux(
+    out: dict[str, Any],
+    store: Optional[Any],
+    *,
+    sending_ready: bool,
+) -> dict[str, Any]:
+    checklist = _merchant_completed_checklist(store, out)
+    out["merchant_completed_ux"] = {
+        "active": True,
+        "headline_ar": MERCHANT_COMPLETED_HEADLINE_AR,
+        "subtext_ar": MERCHANT_COMPLETED_SUBTEXT_AR,
+        "checklist_ar": checklist,
+        "no_action_ar": MERCHANT_NO_ACTION_AR,
+    }
+    out["merchant_setup_completion"] = {
+        "headline_ar": MERCHANT_COMPLETED_HEADLINE_AR,
+        "subtext_ar": MERCHANT_COMPLETED_SUBTEXT_AR,
+        "items_ar": [f"{i['mark_ar']} {i['label_ar']}" for i in checklist],
+        "journey_status": JOURNEY_STATUS_COMPLETED,
+    }
+    if not sending_ready:
+        out["merchant_readiness_badge_ar"] = MERCHANT_READINESS_BADGE_PREPARING_AR
+
+    af = dict(out.get("action_first") or {})
+    af["title_ar"] = MERCHANT_PRODUCTION_TITLE_AR
+    af["next_action_ar"] = MERCHANT_NO_ACTION_AR
+    af["primary_cta_label_ar"] = MERCHANT_CTA_EDIT_SETTINGS_AR
+    af["expected_outcome_ar"] = MERCHANT_SENDING_EXPLANATION_COMPLETED_AR
+    af["journey_completed"] = True
+    cb = dict(af.get("cta_behavior") or {})
+    cb["cta_action"] = CTA_ACTION_SCROLL_SETTINGS
+    cb["highlight_fields"] = []
+    cb["inline_guidance_ar"] = ""
+    cb["placeholder_ar"] = ""
+    cb["journey_completed"] = True
+    cb["never_silent"] = True
+    af["cta_behavior"] = cb
+    out["action_first"] = af
+
+    setup = dict(out.get("setup_checklist") or {})
+    setup["headline_ar"] = MERCHANT_COMPLETED_HEADLINE_AR
+    setup["checklist_ar"] = []
+    setup["remaining_title_ar"] = ""
+    setup["outcome_ar"] = MERCHANT_SENDING_EXPLANATION_COMPLETED_AR
+    setup["merchant_presentation"] = True
+    out["setup_checklist"] = setup
+    return out
+
+
 def apply_merchant_readiness_presentation(
     readiness: dict[str, Any],
     store: Optional[Any],
     *,
     onboarding_flags: Optional[Mapping[str, bool]] = None,
 ) -> dict[str, Any]:
-    """Merchant API presentation layer — engine truth unchanged in dimensions/diagnostic."""
+    """Merchant API presentation layer — engine truth unchanged in dimensions."""
     out = dict(readiness)
-    flags = dict(onboarding_flags or {})
-    sandbox = bool(flags.get("sandbox_mode_active"))
     journey_key = normalize_whatsapp_onboarding_journey(
         getattr(store, "whatsapp_onboarding_journey", None) if store else None
     )
@@ -162,29 +227,24 @@ def apply_merchant_readiness_presentation(
     journey_completed = journey_status == JOURNEY_STATUS_COMPLETED
     sending_ready = _sending_ready_from_dimensions(out)
 
-    setup = dict(out.get("setup_checklist") or {})
-    raw_checklist = list(setup.get("checklist_ar") or [])
-    merchant_checklist = _merchant_checklist_items(
-        raw_checklist,
-        sending_ready=sending_ready,
-        journey_completed=journey_completed,
-    )
-    setup["checklist_ar"] = merchant_checklist
-    setup["merchant_presentation"] = True
-    if journey_completed:
-        setup["remaining_title_ar"] = "متطلبات التشغيل الإضافية:"
-    out["setup_checklist"] = setup
+    out.pop("readiness_diagnostic_temp", None)
 
     if journey_completed:
-        out["merchant_setup_completion"] = {
-            "headline_ar": MERCHANT_SETUP_COMPLETION_HEADLINE_AR,
-            "items_ar": _merchant_setup_completion_items(store),
-            "journey_status": journey_status,
-        }
+        out = _apply_completed_journey_merchant_ux(out, store, sending_ready=sending_ready)
+    else:
+        setup = dict(out.get("setup_checklist") or {})
+        raw_checklist = list(setup.get("checklist_ar") or [])
+        setup["checklist_ar"] = _merchant_checklist_items(
+            raw_checklist,
+            sending_ready=sending_ready,
+            journey_completed=False,
+        )
+        setup["merchant_presentation"] = True
+        out["setup_checklist"] = setup
 
     out["production_sending_readiness"] = _production_sending_block(
         sending_ready=sending_ready,
         journey_completed=journey_completed,
-        sandbox=sandbox,
     )
+    out["merchant_presentation_v2"] = True
     return out

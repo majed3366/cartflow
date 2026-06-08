@@ -1034,8 +1034,23 @@ def api_admin_whatsapp_connection_readiness(
         row = db.session.get(Store, int(store_id))
         if row is None:
             return j({"ok": False, "error": "store_not_found"}, status_code=404)
+        from services.cartflow_onboarding_readiness import (  # noqa: PLC0415
+            evaluate_onboarding_readiness,
+        )
+        from services.merchant_whatsapp_readiness_diagnostic_v1 import (  # noqa: PLC0415
+            build_whatsapp_readiness_diagnostic_temp,
+        )
+
         admin_row = build_admin_whatsapp_store_row(row)
         detail = connection_readiness_for_admin_row(row)
+        ob = evaluate_onboarding_readiness(row)
+        detail["readiness_diagnostic_temp"] = build_whatsapp_readiness_diagnostic_temp(
+            detail,
+            row,
+            action_first={},
+            onboarding_flags=dict(ob.get("flags") or {}),
+            blocking_steps=list(ob.get("blocking_steps") or []),
+        )
         return j(
             {
                 "ok": True,

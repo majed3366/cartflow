@@ -163,10 +163,10 @@ class MerchantWhatsappJourneyCompletionV1Tests(unittest.TestCase):
         from pathlib import Path
 
         js = Path("static/merchant_whatsapp_settings.js").read_text(encoding="utf-8")
-        self.assertIn("is-journey-completed", js)
-        self.assertIn("ma-wa-journey-completion-summary", js)
-        self.assertIn("جاهزية الإنتاج", js)
-        self.assertIn("مسار واتساب", js)
+        self.assertIn("ma-wa-readiness-card-completed", js)
+        self.assertIn("renderMerchantCompletedUx", js)
+        self.assertIn("تم إكمال إعداد واتساب", js)
+        self.assertIn("scroll_settings", js)
 
 
 if __name__ == "__main__":

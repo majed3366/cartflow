@@ -38,7 +38,7 @@ CTA_CONTINUE_ACTIVATION_AR = "متابعة التفعيل"
 CTA_CREATE_WA_BUSINESS_AR = "إنشاء واتساب أعمال"
 CTA_PREPARE_NEW_NUMBER_AR = "تجهيز رقم جديد"
 CTA_META_ADVANCED_AR = "الربط المتقدم"
-CTA_REVIEW_SETTINGS_AR = "مراجعة الإعدادات"
+CTA_REVIEW_SETTINGS_AR = "تعديل إعدادات واتساب"
 
 JOURNEY_COMPLETED_BADGE_AR = "✓ تم إكمال هذا المسار"
 JOURNEY_COMPLETED_HEADLINE_AR = "✓ تم إكمال مسار واتساب"
