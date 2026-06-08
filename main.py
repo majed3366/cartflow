@@ -20408,102 +20408,6 @@ def _api_json_dashboard_messages(dash_store: Optional[Any]) -> Dict[str, Any]:
     return out
 
 
-@app.get("/dashboard")
-def dashboard(request: Request):
-    """لوحة التاجر — هيكل فوري؛ الأقسام الثقيلة تُحمّل لاحقاً عبر ‎JavaScript‎."""
-    from services.db_request_audit import stall_trace_checkpoint
-
-    stall_trace_checkpoint("dashboard_entry")
-    wall0 = time.perf_counter()
-    _merchant_dashboard_db_ready()
-    stall_trace_checkpoint("dashboard_after_merchant_db_ready")
-    dash_store = _dashboard_recovery_store_row()
-    now_utc = datetime.now(timezone.utc)
-    shell_store = _merchant_dashboard_shell_store_fields(
-        dash_store, cookies=dict(request.cookies)
-    )
-    stall_trace_checkpoint("dashboard_before_template_render")
-    from services.merchant_setup_render_build import (  # noqa: PLC0415
-        MERCHANT_SETUP_RENDER_BUILD,
-    )
-
-    resp = templates.TemplateResponse(
-        request,
-        "merchant_app.html",
-        {
-            "request": request,
-            "merchant_html_title": "CartFlow — لوحة التاجر",
-            "merchant_setup_render_build": MERCHANT_SETUP_RENDER_BUILD,
-            "merchant_dashboard_lazy_shell": True,
-            "merchant_ar_date_header": merchant_ar_weekday_date_header(now_utc),
-            "merchant_nav_badge_abandoned": 0,
-            "merchant_nav_badge_followup": 0,
-            "merchant_nav_badge_vip": 0,
-            "wa_badge_ar": "…",
-            "wa_state_key": "",
-            "merchant_kpi_abandoned_fmt": "…",
-            "merchant_kpi_recovered_fmt": "…",
-            "merchant_kpi_wa_sent_fmt": "…",
-            "merchant_kpi_revenue_fmt": "…",
-            "merchant_kpi_recovered_pct_vs_abandoned": 0.0,
-            "merchant_kpi_wa_sub_ar": "سجلات إرسال اليوم",
-            "merchant_reason_rows_week": [],
-            "merchant_reason_insight_ar": "",
-            "merchant_reason_rows_month": [],
-            "merchant_reason_recommendations_ar": [],
-            "merchant_table_rows": [],
-            "merchant_carts_page_rows": [],
-            "merchant_cart_filter_counts": {
-                "all": 0,
-                "recovered": 0,
-                "sent": 0,
-                "attention": 0,
-                "nophone": 0,
-            },
-            "merchant_followup_rows": [],
-            "merchant_vip_rows": [],
-            "merchant_vip_page_rows": [],
-            "merchant_vip_banner": None,
-            "merchant_message_history_rows": [],
-            "merchant_wa_last_send_ar": "—",
-            "merchant_widget_title_ar": "مساعد المتجر",
-            "merchant_widget_question_ar": "ما الذي منعك من إكمال الطلب؟",
-            "merchant_widget_reason_rows": [],
-            "merchant_widget_panel": {},
-            "merchant_widget_installed": True,
-            "merchant_month_abandoned_fmt": "…",
-            "merchant_month_recovered_fmt": "…",
-            "merchant_month_recovery_pct_fmt": "…",
-            "merchant_month_revenue_fmt": "…",
-            **shell_store,
-        },
-    )
-    stall_trace_checkpoint("dashboard_after_template_before_shell_profile")
-    _log_dashboard_shell_profile(wall_perf_start=wall0)
-    stall_trace_checkpoint("dashboard_response_ready")
-    return resp
-
-
-@app.get("/dashboard/analytics")
-def dashboard_analytics(request: Request):
-    """عرض الرسوم والتفاصيل الإضافية — يحتفظ ببث ‎live_feed‎ الكامل للفريق."""
-    wall0 = time.perf_counter()
-    _merchant_dashboard_db_ready()
-    dash_store = _dashboard_recovery_store_row()
-    ctx = _dashboard_v1_financial_context(dash_store)
-    resp = templates.TemplateResponse(
-        request,
-        "dashboard_v1.html",
-        {"request": request, **ctx},
-    )
-    _log_dashboard_profile(
-        endpoint="GET /dashboard/analytics",
-        section="analytics_page",
-        wall_perf_start=wall0,
-    )
-    return resp
-
-
 def _normal_carts_dashboard_page_response(request: Request, *, audience: str) -> Any:
     """عرض ‎HTML‎ للوحة العمليات فقط (‎audience=ops‎)؛ أي طلب تاجر يُعاد توجيهه إلى ‎/dashboard#carts‎."""
     from urllib.parse import urlencode
@@ -20919,29 +20823,6 @@ def api_merchant_followup_action_complete(action_id: int):
         db.session.rollback()
         log.warning("api merchant-followup complete: %s", e)
         return j({"ok": False, "error": "failed"}, 500)
-
-
-@app.get("/dashboard/exit-intent-settings")
-def dashboard_exit_intent_settings(request: Request):
-    """رسالة قبل الخروج فقط — نفس ‎GET/POST /api/recovery-settings‎ (تحديث جزئي)."""
-    return templates.TemplateResponse(
-        request,
-        "exit_intent_settings.html",
-        {"request": request},
-    )
-
-
-@app.get("/dashboard/general-settings")
-def dashboard_general_settings(request: Request):
-    """إعدادات عامة — واتساب المتجر، ظهور الودجيت، ومظهر الودجيت."""
-    base = str(request.base_url)
-    if base.endswith("/"):
-        base = base[:-1]
-    return templates.TemplateResponse(
-        request,
-        "general_settings.html",
-        {"request": request, "cartflow_public_origin": base},
-    )
 
 
 def _vip_reason_tag_from_abandoned_cart(ac: Optional[AbandonedCart]) -> Optional[str]:
@@ -21705,21 +21586,6 @@ def dev_recovery_logs(store_slug: str) -> Any:
     except Exception as e:  # noqa: BLE001
         db.session.rollback()
         return j({"ok": False, "error": str(e)}, 500)
-
-
-@app.get("/dashboard/test-widget")
-def dashboard_test_widget(request: Request):
-    """مسار تجربة موجّه — متجر تجريبي بمعرّف التاجر (جلسة مطلوبة)."""
-    from services.merchant_activation_v1 import merchant_activation_test_store_url  # noqa: PLC0415
-    from services.merchant_onboarding_store import resolve_merchant_onboarding_store  # noqa: PLC0415
-
-    store, _meta = resolve_merchant_onboarding_store(cookies=dict(request.cookies))
-    if store is None:
-        return RedirectResponse(url="/login?next=/dashboard/test-widget", status_code=302)
-    slug = (getattr(store, "zid_store_id", None) or "").strip()
-    if not slug:
-        return RedirectResponse(url="/dashboard#settings", status_code=302)
-    return RedirectResponse(url=merchant_activation_test_store_url(slug), status_code=302)
 
 
 @app.post("/api/test-widget/new-lifecycle")
