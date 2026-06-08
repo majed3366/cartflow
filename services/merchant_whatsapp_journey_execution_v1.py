@@ -38,6 +38,13 @@ CTA_CONTINUE_ACTIVATION_AR = "متابعة التفعيل"
 CTA_CREATE_WA_BUSINESS_AR = "إنشاء واتساب أعمال"
 CTA_PREPARE_NEW_NUMBER_AR = "تجهيز رقم جديد"
 CTA_META_ADVANCED_AR = "الربط المتقدم"
+CTA_REVIEW_SETTINGS_AR = "مراجعة الإعدادات"
+
+JOURNEY_COMPLETED_BADGE_AR = "✓ تم إكمال هذا المسار"
+JOURNEY_COMPLETED_HEADLINE_AR = "✓ تم إكمال مسار واتساب"
+JOURNEY_READINESS_SEPARATION_NOTE_AR = (
+    "جاهزية الإنتاج تُعرض أدناه بشكل منفصل عن مسار واتساب."
+)
 
 CTA_ACTION_SCROLL_SETTINGS = "scroll_settings"
 CTA_ACTION_OPEN_WA_BUSINESS_GUIDE = "open_whatsapp_business_guide"
@@ -55,6 +62,12 @@ _STATUS_LABEL_AR: Mapping[str, str] = {
     JOURNEY_STATUS_NOT_STARTED: "لم يبدأ",
     JOURNEY_STATUS_IN_PROGRESS: "قيد التنفيذ",
     JOURNEY_STATUS_COMPLETED: "مكتمل",
+}
+
+_STATUS_BADGE_CLASS: Mapping[str, str] = {
+    JOURNEY_STATUS_NOT_STARTED: "is-not-started",
+    JOURNEY_STATUS_IN_PROGRESS: "is-in-progress",
+    JOURNEY_STATUS_COMPLETED: "is-completed",
 }
 
 # Part H — reserved for future Meta phases (not implemented)
@@ -187,20 +200,24 @@ def compute_journey_status(
     )
 
     if journey_key == JOURNEY_META_READY:
+        return JOURNEY_STATUS_COMPLETED
+
+    if journey_key == JOURNEY_NO_WHATSAPP_BUSINESS:
+        if has_number and recovery_on:
+            return JOURNEY_STATUS_COMPLETED
         if stored == JOURNEY_STATUS_IN_PROGRESS:
             return JOURNEY_STATUS_IN_PROGRESS
         return JOURNEY_STATUS_NOT_STARTED
 
-    if has_number and recovery_on:
-        return JOURNEY_STATUS_COMPLETED
+    if journey_key in (
+        JOURNEY_EXISTING_WHATSAPP_BUSINESS,
+        JOURNEY_NEW_NUMBER,
+    ):
+        if has_number and recovery_on:
+            return JOURNEY_STATUS_COMPLETED
 
     if journey_key == JOURNEY_EXISTING_WHATSAPP_BUSINESS:
         if has_number or recovery_on or stored == JOURNEY_STATUS_IN_PROGRESS:
-            return JOURNEY_STATUS_IN_PROGRESS
-        return JOURNEY_STATUS_NOT_STARTED
-
-    if journey_key == JOURNEY_NO_WHATSAPP_BUSINESS:
-        if stored == JOURNEY_STATUS_IN_PROGRESS:
             return JOURNEY_STATUS_IN_PROGRESS
         return JOURNEY_STATUS_NOT_STARTED
 
@@ -221,6 +238,43 @@ def sync_journey_status_on_store(store: Any) -> None:
         store.whatsapp_onboarding_journey_status = None
         return
     store.whatsapp_onboarding_journey_status = compute_journey_status(store, journey_key)
+
+
+def _journey_completion_summary_ar(
+    store: Optional[Any],
+    journey_key: str,
+) -> list[str]:
+    items: list[str] = []
+    if journey_key == JOURNEY_META_READY:
+        items.append("تم اختيار مسار الربط المتقدم")
+        return items
+    if _store_has_number(store):
+        items.append("رقم واتساب محفوظ")
+    if _store_recovery_enabled(store):
+        items.append("استرجاع واتساب مفعل")
+    return items
+
+
+def build_journey_completion_ui(
+    store: Optional[Any],
+    journey_key: Optional[str],
+    status: Optional[str],
+) -> dict[str, Any]:
+    completed = status == JOURNEY_STATUS_COMPLETED
+    return {
+        "is_completed": completed,
+        "badge_ar": JOURNEY_COMPLETED_BADGE_AR if completed else "",
+        "headline_ar": JOURNEY_COMPLETED_HEADLINE_AR if completed else "",
+        "summary_items_ar": (
+            _journey_completion_summary_ar(store, journey_key)
+            if completed and journey_key
+            else []
+        ),
+        "readiness_separation_note_ar": (
+            JOURNEY_READINESS_SEPARATION_NOTE_AR if completed else ""
+        ),
+        "review_settings_cta_ar": CTA_REVIEW_SETTINGS_AR if completed else "",
+    }
 
 
 def journey_execution_config(journey_key: Optional[str]) -> dict[str, Any]:
@@ -248,14 +302,17 @@ def journey_execution_block(store: Optional[Any]) -> dict[str, Any]:
     status = compute_journey_status(store, journey_key)
     cfg = journey_execution_config(journey_key)
     remaining = cfg.get("remaining_step_ar") or ""
+    completion_ui = build_journey_completion_ui(store, journey_key, status)
     if status == JOURNEY_STATUS_COMPLETED:
-        remaining = "اكتمل المسار"
+        remaining = ""
 
     return {
         "journey_key": journey_key,
         "journey_label_ar": journey_label_ar(journey_key),
         "status": status,
         "status_ar": journey_status_label_ar(status),
+        "status_badge_class": _STATUS_BADGE_CLASS.get(status or "", ""),
+        "completion": completion_ui,
         "execution": {
             **cfg,
             "remaining_step_ar": remaining,
@@ -295,10 +352,12 @@ def apply_journey_execution_to_readiness(
     exec_block = journey_execution_block(store)
     out["whatsapp_journey_execution"] = exec_block
 
-    af = dict(out.get("action_first") or {})
+    readiness_af = dict(out.get("action_first") or {})
     execution = exec_block.get("execution") or {}
+    completion = exec_block.get("completion") or {}
 
     if not journey_key:
+        af = dict(readiness_af)
         af["primary_cta_label_ar"] = CTA_CHOOSE_JOURNEY_AR
         af["next_action_ar"] = "اختر المسار الأنسب لمتجرك"
         af["expected_outcome_ar"] = (
@@ -313,43 +372,59 @@ def apply_journey_execution_to_readiness(
         return out
 
     if not execution:
-        out["action_first"] = af
+        out["action_first"] = readiness_af
         return out
 
     status = exec_block.get("status")
-    af["primary_cta_label_ar"] = execution.get("primary_cta_ar") or CTA_CONTINUE_ACTIVATION_AR
 
     if status == JOURNEY_STATUS_COMPLETED:
-        af["next_action_ar"] = "اكتمل مسار واتساب — راجع الإعدادات عند الحاجة."
+        af = dict(readiness_af)
+        af["primary_cta_label_ar"] = CTA_REVIEW_SETTINGS_AR
+        af["journey_completed"] = True
+        cb = dict(af.get("cta_behavior") or {})
+        cb["cta_action"] = CTA_ACTION_SCROLL_SETTINGS
+        cb["highlight_fields"] = []
+        cb["inline_guidance_ar"] = ""
+        cb["journey_completed"] = True
+        cb["never_silent"] = True
+        af["cta_behavior"] = cb
+        out["action_first"] = af
     else:
+        af = dict(readiness_af)
+        af["primary_cta_label_ar"] = (
+            execution.get("primary_cta_ar") or CTA_CONTINUE_ACTIVATION_AR
+        )
         af["next_action_ar"] = execution.get("remaining_step_ar") or execution.get(
             "inline_guidance_ar", ""
         )
-
-    if execution.get("expected_outcome_ar"):
-        af["expected_outcome_ar"] = execution["expected_outcome_ar"]
-
-    cb = dict(af.get("cta_behavior") or {})
-    cb["cta_action"] = execution.get("cta_action") or CTA_ACTION_SCROLL_SETTINGS
-    cb["highlight_fields"] = list(execution.get("highlight_fields") or [])
-    cb["inline_guidance_ar"] = (execution.get("inline_guidance_ar") or "").strip()
-    cb["placeholder_ar"] = (execution.get("placeholder_ar") or "").strip()
-    cb["secondary_note_ar"] = (execution.get("secondary_note_ar") or "").strip()
-    cb["external_url"] = (execution.get("external_url") or "").strip()
-    cb["explanation_ar"] = (execution.get("explanation_ar") or "").strip()
-    cb["never_silent"] = True
-    af["cta_behavior"] = cb
-    out["action_first"] = af
+        if execution.get("expected_outcome_ar"):
+            af["expected_outcome_ar"] = execution["expected_outcome_ar"]
+        cb = dict(af.get("cta_behavior") or {})
+        cb["cta_action"] = execution.get("cta_action") or CTA_ACTION_SCROLL_SETTINGS
+        cb["highlight_fields"] = list(execution.get("highlight_fields") or [])
+        cb["inline_guidance_ar"] = (execution.get("inline_guidance_ar") or "").strip()
+        cb["placeholder_ar"] = (execution.get("placeholder_ar") or "").strip()
+        cb["secondary_note_ar"] = (execution.get("secondary_note_ar") or "").strip()
+        cb["external_url"] = (execution.get("external_url") or "").strip()
+        cb["explanation_ar"] = (execution.get("explanation_ar") or "").strip()
+        cb["never_silent"] = True
+        af["cta_behavior"] = cb
+        out["action_first"] = af
 
     journeys["guidance"] = {
-        "steps_ar": list(execution.get("steps_ar") or []),
+        "steps_ar": (
+            [] if status == JOURNEY_STATUS_COMPLETED else list(execution.get("steps_ar") or [])
+        ),
         "next_action_ar": execution.get("remaining_step_ar") or "",
         "expected_outcome_ar": execution.get("expected_outcome_ar") or "",
         "placeholder_ar": execution.get("placeholder_ar") or "",
         "secondary_note_ar": execution.get("secondary_note_ar") or "",
         "explanation_ar": execution.get("explanation_ar") or "",
         "status_ar": exec_block.get("status_ar") or "",
+        "status_key": status or "",
+        "status_badge_class": exec_block.get("status_badge_class") or "",
         "progress_pct": execution.get("progress_pct", 0),
+        "completion": completion,
     }
     out["whatsapp_onboarding_journeys"] = journeys
     return out

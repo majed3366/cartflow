@@ -84,7 +84,7 @@ class MerchantWhatsappOnboardingJourneysChangeV1Tests(unittest.TestCase):
             "flags": {
                 "dashboard_ready": True,
                 "store_connected": True,
-                "whatsapp_configured": True,
+                "whatsapp_configured": False,
                 "provider_ready": True,
                 "recovery_enabled": True,
                 "widget_installed": True,
@@ -94,6 +94,9 @@ class MerchantWhatsappOnboardingJourneysChangeV1Tests(unittest.TestCase):
         },
     )
     def test_readiness_updates_cta_after_journey_change(self, _m: object) -> None:
+        from services.merchant_whatsapp_journey_execution_v1 import CTA_CREATE_WA_BUSINESS_AR
+
+        self.row.store_whatsapp_number = None
         self.row.whatsapp_onboarding_journey = JOURNEY_EXISTING_WHATSAPP_BUSINESS
         db.session.commit()
         before = connection_readiness_for_merchant_api(self.row)
@@ -105,6 +108,10 @@ class MerchantWhatsappOnboardingJourneysChangeV1Tests(unittest.TestCase):
         self.assertNotEqual(
             (before.get("action_first") or {}).get("primary_cta_label_ar"),
             (after.get("action_first") or {}).get("primary_cta_label_ar"),
+        )
+        self.assertEqual(
+            (after.get("action_first") or {}).get("primary_cta_label_ar"),
+            CTA_CREATE_WA_BUSINESS_AR,
         )
         self.assertEqual(
             (after.get("whatsapp_onboarding_journeys") or {}).get("selected_key"),

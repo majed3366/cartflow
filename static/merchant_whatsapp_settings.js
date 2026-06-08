@@ -403,48 +403,91 @@
     var currentLabel = journeys.current_path_label_ar || "مسار واتساب الحالي:";
     var changeCta = journeys.change_journey_cta_ar || "تغيير مسار واتساب";
     var guidance = journeys.guidance || {};
+    var completion = guidance.completion || {};
+    var isCompleted = !!completion.is_completed;
     var steps = Array.isArray(guidance.steps_ar) ? guidance.steps_ar : [];
     var stepsHtml = steps
       .map(function (step) {
         return "<li>" + escHtml(step) + "</li>";
       })
       .join("");
+    var summaryItems = Array.isArray(completion.summary_items_ar)
+      ? completion.summary_items_ar
+      : [];
+    var summaryHtml = summaryItems
+      .map(function (item) {
+        return "<li>" + escHtml(item) + "</li>";
+      })
+      .join("");
     var placeholder = (guidance.placeholder_ar || "").trim();
     var secondary = (guidance.secondary_note_ar || "").trim();
     var explanation = (guidance.explanation_ar || "").trim();
     var statusAr = (guidance.status_ar || "").trim();
+    var statusBadgeClass = (guidance.status_badge_class || "").trim();
     var progressPct = Number(guidance.progress_pct);
     if (!isFinite(progressPct)) progressPct = 0;
+    var reviewCta = (completion.review_settings_cta_ar || "مراجعة الإعدادات").trim();
     return (
-      '<div class="ma-wa-journey-selected">' +
+      '<div class="ma-wa-journey-selected' +
+      (isCompleted ? " is-journey-completed" : "") +
+      '">' +
       '<p class="ma-wa-readiness-k">' + escHtml(currentLabel) + "</p>" +
       '<p class="ma-wa-journey-selected-label">' +
       escHtml(journeys.selected_label_ar || "") +
       "</p>" +
+      (statusAr
+        ? '<span class="ma-wa-journey-status-badge ' +
+          escHtml(statusBadgeClass) +
+          '">' +
+          escHtml(statusAr) +
+          "</span>"
+        : "") +
+      (isCompleted && (completion.badge_ar || "").trim()
+        ? '<p class="ma-wa-journey-completed-badge">' +
+          escHtml(completion.badge_ar) +
+          "</p>"
+        : "") +
+      (isCompleted && (completion.headline_ar || "").trim()
+        ? '<p class="ma-wa-journey-completed-headline">' +
+          escHtml(completion.headline_ar) +
+          "</p>"
+        : "") +
+      (summaryHtml
+        ? '<ul class="ma-wa-journey-completion-summary">' + summaryHtml + "</ul>"
+        : "") +
+      '<div class="ma-wa-journey-actions">' +
       '<button type="button" class="ma-wa-journey-change-btn" data-ma-wa-change-journey>' +
       escHtml(changeCta) +
       "</button>" +
-      (statusAr
-        ? '<p class="ma-wa-journey-status"><span class="ma-wa-readiness-k">حالة المسار:</span> ' +
-          escHtml(statusAr) +
-          "</p>" +
-          '<div class="ma-wa-journey-progress" role="progressbar" aria-valuenow="' +
+      (isCompleted
+        ? '<button type="button" class="ma-wa-journey-review-btn" data-cf-wa-primary-cta>' +
+          escHtml(reviewCta) +
+          "</button>"
+        : "") +
+      "</div>" +
+      (isCompleted && (completion.readiness_separation_note_ar || "").trim()
+        ? '<p class="ma-wa-journey-readiness-note">' +
+          escHtml(completion.readiness_separation_note_ar) +
+          "</p>"
+        : "") +
+      (!isCompleted && statusAr
+        ? '<div class="ma-wa-journey-progress" role="progressbar" aria-valuenow="' +
           progressPct +
           '" aria-valuemin="0" aria-valuemax="100">' +
           '<div class="ma-wa-journey-progress-bar" style="width:' +
           progressPct +
           '%"></div></div>'
         : "") +
-      (explanation
+      (!isCompleted && explanation
         ? '<p class="ma-wa-journey-explanation">' + escHtml(explanation) + "</p>"
         : "") +
-      (placeholder
+      (!isCompleted && placeholder
         ? '<p class="ma-wa-journey-placeholder">' + escHtml(placeholder) + "</p>"
         : "") +
-      (secondary
+      (!isCompleted && secondary
         ? '<p class="ma-wa-journey-secondary">' + escHtml(secondary) + "</p>"
         : "") +
-      (stepsHtml
+      (!isCompleted && stepsHtml
         ? '<div class="ma-wa-journey-steps"><p class="ma-wa-readiness-k">خطوات التفعيل:</p><ol class="ma-wa-journey-steps-list">' +
           stepsHtml +
           "</ol></div>"
@@ -479,6 +522,7 @@
         );
       })
       .join("");
+    var journeyCompleted = !!(af.journey_completed || (af.cta_behavior && af.cta_behavior.journey_completed));
     var ctaLabel = af.primary_cta_label_ar || "فتح الإعدادات";
     var nextAction = af.next_action_ar || "";
     var outcome = af.expected_outcome_ar || cr.expected_outcome_ar || "—";
@@ -486,22 +530,27 @@
     root.setAttribute("aria-busy", "false");
     root.innerHTML =
       '<section class="ma-wa-readiness-card" dir="rtl" aria-label="جاهزية واتساب">' +
+      '<div class="ma-wa-journey-panel">' +
+      '<p class="ma-wa-readiness-section-k">مسار واتساب</p>' +
+      renderJourneyBlock(journeys) +
+      "</div>" +
+      '<div class="ma-wa-readiness-production">' +
       '<div class="ma-wa-readiness-head">' +
-      '<div><h2 class="ma-wa-readiness-title">جاهزية واتساب</h2>' +
+      '<div><p class="ma-wa-readiness-section-k">جاهزية الإنتاج</p>' +
+      '<h2 class="ma-wa-readiness-title">جاهزية واتساب</h2>' +
       '<p class="ma-wa-readiness-sub">' +
       escHtml(checklist.headline_ar || "كيف تصبح جاهزاً للإنتاج") +
       "</p></div>" +
       '<span class="ma-wa-readiness-badge">' +
       escHtml(cr.readiness_overall_ar || "—") +
       "</span></div>" +
-      renderJourneyBlock(journeys) +
-      // 1) Next Action — lead with action + single primary CTA
       '<div class="ma-wa-readiness-action">' +
       '<p class="ma-wa-readiness-action-title">' +
       escHtml(af.title_ar || "") +
       "</p>" +
       (nextAction
-        ? '<p class="ma-wa-readiness-action-next">الخطوة التالية: ' +
+        ? '<p class="ma-wa-readiness-action-next">' +
+          (journeyCompleted ? "حالة الجاهزية: " : "الخطوة التالية: ") +
           escHtml(nextAction) +
           "</p>"
         : "") +
@@ -529,6 +578,7 @@
       '<div><span class="ma-wa-readiness-k">الوضع</span> ' +
       escHtml(cr.whatsapp_mode_label_ar || "—") +
       "</div></div>" +
+      "</div>" +
       "</section>";
   }
 

@@ -4978,6 +4978,102 @@ button.ma-vip-suggest-btn.va-btn {
   line-height: 1.5;
 }
 
+.ma-wa-readiness-section-k {
+  margin: 0 0 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.ma-wa-journey-panel {
+  margin-bottom: 14px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.ma-wa-readiness-production {
+  margin-top: 4px;
+}
+
+.ma-wa-journey-selected.is-journey-completed {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+}
+
+.ma-wa-journey-status-badge {
+  display: inline-block;
+  margin-top: 8px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.ma-wa-journey-status-badge.is-not-started {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.ma-wa-journey-status-badge.is-in-progress {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.ma-wa-journey-status-badge.is-completed {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.ma-wa-journey-completed-badge,
+.ma-wa-journey-completed-headline {
+  margin: 8px 0 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: #166534;
+}
+
+.ma-wa-journey-completion-summary {
+  margin: 8px 0 0;
+  padding: 0 18px 0 0;
+  font-size: 12px;
+  color: #166534;
+  line-height: 1.55;
+}
+
+.ma-wa-journey-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  align-items: center;
+  margin-top: 10px;
+}
+
+.ma-wa-journey-review-btn {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #15803d;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.ma-wa-journey-review-btn:hover {
+  color: #166534;
+}
+
+.ma-wa-journey-readiness-note {
+  margin-top: 10px;
+  font-size: 12px;
+  color: #64748b;
+  line-height: 1.5;
+}
+
 .ma-wa-journey-option-title {
   font-size: 13px;
   font-weight: 700;
