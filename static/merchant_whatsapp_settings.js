@@ -391,7 +391,8 @@
     });
   }
 
-  function renderJourneyBlock(journeys) {
+  function renderJourneyBlock(journeys, opts) {
+    opts = opts || {};
     if (!journeys) return "";
     var selected = journeys.selected_key;
     if (!selected) {
@@ -427,14 +428,29 @@
     var progressPct = Number(guidance.progress_pct);
     if (!isFinite(progressPct)) progressPct = 0;
     var reviewCta = (completion.review_settings_cta_ar || "تعديل إعدادات واتساب").trim();
+    var selectedDesc = (journeys.selected_description_ar || "").trim();
+    if (!selectedDesc && selected) {
+      var journeyOptions = Array.isArray(journeys.options) ? journeys.options : [];
+      for (var oi = 0; oi < journeyOptions.length; oi++) {
+        if (journeyOptions[oi].key === selected) {
+          selectedDesc = (journeyOptions[oi].description_ar || "").trim();
+          break;
+        }
+      }
+    }
     return (
       '<div class="ma-wa-journey-selected' +
       (isCompleted ? " is-journey-completed" : "") +
       '">' +
-      '<p class="ma-wa-readiness-k">' + escHtml(currentLabel) + "</p>" +
+      (opts.hideCurrentPathLabel
+        ? ""
+        : '<p class="ma-wa-readiness-k">' + escHtml(currentLabel) + "</p>") +
       '<p class="ma-wa-journey-selected-label">' +
       escHtml(journeys.selected_label_ar || "") +
       "</p>" +
+      (isCompleted && selectedDesc
+        ? '<p class="ma-wa-journey-path-desc">' + escHtml(selectedDesc) + "</p>"
+        : "") +
       (statusAr
         ? '<span class="ma-wa-journey-status-badge ' +
           escHtml(statusBadgeClass) +
@@ -459,7 +475,7 @@
       '<button type="button" class="ma-wa-journey-change-btn" data-ma-wa-change-journey>' +
       escHtml(changeCta) +
       "</button>" +
-      (isCompleted
+      (isCompleted && !opts.hideReviewCta
         ? '<button type="button" class="ma-wa-journey-review-btn" data-cf-wa-primary-cta>' +
           escHtml(reviewCta) +
           "</button>"
@@ -496,32 +512,70 @@
     );
   }
 
-  function renderMerchantCompletedUx(block) {
-    if (!block || !block.active) return "";
-    var checklist = Array.isArray(block.checklist_ar) ? block.checklist_ar : [];
-    var itemsHtml = checklist
-      .map(function (item) {
-        return (
-          "<li>" +
-          escHtml(item.mark_ar || "✓") +
-          " " +
-          escHtml(item.label_ar || "") +
-          "</li>"
-        );
-      })
-      .join("");
+  function renderCompletedJourneyVisibility(visibility, productionSending, ctaLabel) {
+    if (!visibility || !visibility.active) return "";
+    var current = visibility.current_journey || {};
+    var status = visibility.journey_status || {};
+    var mgmt = visibility.path_management || {};
+    var sending = productionSending || {};
     return (
-      '<div class="ma-wa-merchant-completed-ux">' +
-      '<h3 class="ma-wa-merchant-completed-title">' +
-      escHtml(block.headline_ar || "تم إكمال إعداد واتساب") +
+      '<div class="ma-wa-completed-sections">' +
+      '<section class="ma-wa-completed-section ma-wa-completed-section-journey">' +
+      '<h3 class="ma-wa-completed-section-title">' +
+      escHtml(current.title_ar || "مسار واتساب الحالي") +
       "</h3>" +
-      (block.subtext_ar
-        ? '<p class="ma-wa-merchant-completed-subtext">' + escHtml(block.subtext_ar) + "</p>"
+      (current.mode_line_ar
+        ? '<p class="ma-wa-completed-section-value">' + escHtml(current.mode_line_ar) + "</p>"
         : "") +
-      (itemsHtml
-        ? '<ul class="ma-wa-merchant-completed-checklist">' + itemsHtml + "</ul>"
+      '<p class="ma-wa-completed-section-path">' +
+      escHtml(current.path_label_ar || "") +
+      "</p>" +
+      (current.path_description_ar
+        ? '<p class="ma-wa-completed-section-desc">' +
+          escHtml(current.path_description_ar) +
+          "</p>"
         : "") +
-      "</div>"
+      (current.context_ar
+        ? '<p class="ma-wa-completed-section-context">' + escHtml(current.context_ar) + "</p>"
+        : "") +
+      "</section>" +
+      '<section class="ma-wa-completed-section ma-wa-completed-section-status">' +
+      '<h3 class="ma-wa-completed-section-title">' +
+      escHtml(status.title_ar || "حالة المسار") +
+      "</h3>" +
+      '<p class="ma-wa-completed-section-badge">' +
+      escHtml(status.badge_ar || "✓ مكتمل") +
+      "</p>" +
+      (status.description_ar
+        ? '<p class="ma-wa-completed-section-desc">' + escHtml(status.description_ar) + "</p>"
+        : "") +
+      "</section>" +
+      '<section class="ma-wa-completed-section ma-wa-completed-section-sending">' +
+      '<h3 class="ma-wa-completed-section-title">' +
+      escHtml(sending.title_ar || "حالة الإرسال") +
+      "</h3>" +
+      '<p class="ma-wa-completed-section-value">' +
+      escHtml(sending.status_ar || "—") +
+      "</p>" +
+      (sending.explanation_ar
+        ? '<p class="ma-wa-completed-section-desc">' + escHtml(sending.explanation_ar) + "</p>"
+        : "") +
+      (mgmt.no_action_ar
+        ? '<p class="ma-wa-completed-section-no-action">' + escHtml(mgmt.no_action_ar) + "</p>"
+        : "") +
+      "</section>" +
+      '<section class="ma-wa-completed-section ma-wa-completed-section-management">' +
+      '<h3 class="ma-wa-completed-section-title">' +
+      escHtml(mgmt.title_ar || "إدارة المسار") +
+      "</h3>" +
+      '<div class="ma-wa-completed-section-actions">' +
+      '<button type="button" class="ma-wa-journey-change-btn" data-ma-wa-change-journey>' +
+      escHtml(mgmt.change_journey_cta_ar || "تغيير مسار واتساب") +
+      "</button>" +
+      '<button type="button" class="ma-wa-readiness-cta" data-cf-wa-primary-cta>' +
+      escHtml(ctaLabel || mgmt.edit_settings_cta_ar || "تعديل إعدادات واتساب") +
+      "</button>" +
+      "</div></section></div>"
     );
   }
 
@@ -592,29 +646,25 @@
     if (monitorCard) monitorCard.hidden = !!journeyCompleted;
 
     if (journeyCompleted) {
+      if (journeyChangeOpen && journeys && journeys.selected_key) {
+        root.hidden = false;
+        root.setAttribute("aria-busy", "false");
+        root.innerHTML =
+          '<section class="ma-wa-readiness-card ma-wa-readiness-card-completed" dir="rtl" aria-label="جاهزية واتساب">' +
+          '<div class="ma-wa-journey-panel ma-wa-journey-panel-completed">' +
+          '<p class="ma-wa-readiness-section-k">مسار واتساب</p>' +
+          renderJourneyBlock(journeys) +
+          "</div></section>";
+        return;
+      }
+      var journeyVisibility =
+        cr.merchant_journey_visibility ||
+        { active: true, path_management: { no_action_ar: completedUx.no_action_ar } };
       root.hidden = false;
       root.setAttribute("aria-busy", "false");
       root.innerHTML =
         '<section class="ma-wa-readiness-card ma-wa-readiness-card-completed" dir="rtl" aria-label="جاهزية واتساب">' +
-        renderMerchantCompletedUx(completedUx) +
-        renderProductionSendingReadiness(productionSending) +
-        '<div class="ma-wa-readiness-action ma-wa-readiness-action-calm">' +
-        '<p class="ma-wa-readiness-action-calm-text">' +
-        escHtml(completedUx.no_action_ar || nextAction || "لا يوجد إجراء مطلوب منك حالياً.") +
-        "</p>" +
-        '<button type="button" class="ma-wa-readiness-cta" data-cf-wa-primary-cta>' +
-        escHtml(ctaLabel) +
-        "</button>" +
-        "</div>" +
-        '<details class="ma-wa-readiness-details-muted">' +
-        '<summary>تفاصيل الحالة</summary>' +
-        '<div class="ma-wa-readiness-meta ma-wa-readiness-meta-muted">' +
-        '<div><span class="ma-wa-readiness-k">حالة الاتصال</span> ' +
-        escHtml(cr.connection_state_ar || "—") +
-        "</div>" +
-        '<div><span class="ma-wa-readiness-k">الوضع</span> ' +
-        escHtml(cr.whatsapp_mode_label_ar || "—") +
-        "</div></div></details>" +
+        renderCompletedJourneyVisibility(journeyVisibility, productionSending, ctaLabel) +
         "</section>";
       return;
     }

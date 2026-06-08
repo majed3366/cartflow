@@ -146,15 +146,26 @@ class MerchantWhatsappReadinessPresentationV1Tests(unittest.TestCase):
         admin = build_admin_whatsapp_store_row(self.row).to_api_dict()
         self.assertTrue(admin.get("readiness_state_ar"))
 
+    @patch(
+        "services.merchant_whatsapp_connection_readiness_v1.evaluate_onboarding_readiness"
+    )
+    def test_completed_journey_exposes_visibility_block(self, mock_ob: object) -> None:
+        mock_ob.return_value = self._sandbox_flags()
+        ev = connection_readiness_for_merchant_api(self.row)
+        vis = ev.get("merchant_journey_visibility") or {}
+        self.assertTrue(vis.get("active"))
+        self.assertEqual(
+            (vis.get("journey_status") or {}).get("badge_ar"), "✓ مكتمل"
+        )
+
     def test_js_renders_completed_merchant_ux(self) -> None:
         from pathlib import Path
 
         js = Path("static/merchant_whatsapp_settings.js").read_text(encoding="utf-8")
-        self.assertIn("renderMerchantCompletedUx", js)
-        self.assertIn("merchant_completed_ux", js)
-        self.assertIn("ma-wa-merchant-completed-ux", js)
+        self.assertIn("renderCompletedJourneyVisibility", js)
+        self.assertIn("cr.merchant_journey_visibility", js)
+        self.assertIn("ma-wa-completed-section-journey", js)
         self.assertNotIn("تشخيص مؤقت", js)
-        self.assertIn("renderProductionSendingReadiness", js)
 
 
 if __name__ == "__main__":

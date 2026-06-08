@@ -164,8 +164,11 @@ class MerchantWhatsappJourneyCompletionV1Tests(unittest.TestCase):
 
         js = Path("static/merchant_whatsapp_settings.js").read_text(encoding="utf-8")
         self.assertIn("ma-wa-readiness-card-completed", js)
-        self.assertIn("renderMerchantCompletedUx", js)
-        self.assertIn("تم إكمال إعداد واتساب", js)
+        self.assertIn("renderCompletedJourneyVisibility", js)
+        self.assertIn("مسار واتساب الحالي", js)
+        self.assertIn("حالة المسار", js)
+        self.assertIn("إدارة المسار", js)
+        self.assertIn("data-ma-wa-change-journey", js)
         self.assertIn("scroll_settings", js)
 
 

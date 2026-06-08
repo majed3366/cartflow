@@ -133,6 +133,15 @@ def journey_label_ar(key: Optional[str]) -> str:
     return key
 
 
+def journey_description_ar(key: Optional[str]) -> str:
+    if not key:
+        return ""
+    for opt in _JOURNEY_OPTIONS:
+        if opt["key"] == key:
+            return (opt.get("description_ar") or "").strip()
+    return ""
+
+
 def journey_guidance_for_key(key: Optional[str]) -> dict[str, Any]:
     if not key or key not in _JOURNEY_GUIDANCE:
         return {
@@ -160,6 +169,7 @@ def onboarding_journeys_ui_block(store: Optional[Any]) -> dict[str, Any]:
         "title_ar": JOURNEY_SELECTOR_TITLE_AR,
         "selected_key": selected,
         "selected_label_ar": journey_label_ar(selected) if selected else "",
+        "selected_description_ar": journey_description_ar(selected) if selected else "",
         "options": onboarding_journey_options_for_api(),
         "guidance": guidance,
         "journey_required": selected is None,

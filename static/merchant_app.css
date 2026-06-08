@@ -5175,6 +5175,99 @@ button.ma-vip-suggest-btn.va-btn {
   border-color: #bbf7d0;
 }
 
+.ma-wa-journey-panel-completed {
+  margin-bottom: 14px;
+}
+
+.ma-wa-journey-path-desc {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: #475569;
+  line-height: 1.5;
+}
+
+.ma-wa-completed-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.ma-wa-completed-section {
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+}
+
+.ma-wa-completed-section-journey {
+  border-color: #ddd6fe;
+  background: #faf5ff;
+}
+
+.ma-wa-completed-section-status {
+  border-color: #bbf7d0;
+  background: #ecfdf5;
+}
+
+.ma-wa-completed-section-sending {
+  border-color: #bfdbfe;
+  background: #eff6ff;
+}
+
+.ma-wa-completed-section-management {
+  border-color: #e2e8f0;
+  background: #f8fafc;
+}
+
+.ma-wa-completed-section-title {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: #64748b;
+  letter-spacing: 0.02em;
+}
+
+.ma-wa-completed-section-value,
+.ma-wa-completed-section-path {
+  margin: 8px 0 0;
+  font-size: 15px;
+  font-weight: 800;
+  color: #1e293b;
+  line-height: 1.4;
+}
+
+.ma-wa-completed-section-path {
+  color: #5b21b6;
+}
+
+.ma-wa-completed-section-badge {
+  margin: 8px 0 0;
+  font-size: 15px;
+  font-weight: 800;
+  color: #166534;
+}
+
+.ma-wa-completed-section-desc,
+.ma-wa-completed-section-context,
+.ma-wa-completed-section-no-action {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: #475569;
+  line-height: 1.5;
+}
+
+.ma-wa-completed-section-no-action {
+  color: #64748b;
+  font-weight: 600;
+}
+
+.ma-wa-completed-section-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 12px;
+}
+
 .ma-wa-merchant-completed-ux {
   padding: 14px 16px;
   border-radius: 12px;

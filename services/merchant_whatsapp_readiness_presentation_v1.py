@@ -13,7 +13,15 @@ from services.merchant_whatsapp_journey_execution_v1 import (
     JOURNEY_STATUS_COMPLETED,
     compute_journey_status,
 )
+from services.merchant_whatsapp_mode_v1 import (
+    WHATSAPP_MODE_CARTFLOW_MANAGED,
+    WHATSAPP_MODE_MERCHANT_WHATSAPP,
+    normalize_whatsapp_mode,
+)
 from services.merchant_whatsapp_onboarding_journeys_v1 import (
+    JOURNEY_CHANGE_CTA_AR,
+    journey_description_ar,
+    journey_label_ar,
     normalize_whatsapp_onboarding_journey,
 )
 
@@ -34,6 +42,22 @@ MERCHANT_SENDING_EXPLANATION_COMPLETED_AR = (
 MERCHANT_SENDING_EXPLANATION_READY_AR = (
     "CartFlow جاهز لإرسال رسائل الاسترجاع عبر واتساب."
 )
+
+MERCHANT_JOURNEY_CURRENT_SECTION_TITLE_AR = "مسار واتساب الحالي"
+MERCHANT_JOURNEY_CURRENT_CONTEXT_AR = (
+    "هذا هو المسار الحالي المستخدم لمتابعة العملاء المترددين."
+)
+MERCHANT_JOURNEY_STATUS_SECTION_TITLE_AR = "حالة المسار"
+MERCHANT_JOURNEY_STATUS_BADGE_COMPLETED_AR = "✓ مكتمل"
+MERCHANT_JOURNEY_STATUS_DESC_COMPLETED_AR = (
+    "تم إكمال إعداد هذا المسار ويمكنك تعديله في أي وقت."
+)
+MERCHANT_PATH_MANAGEMENT_SECTION_TITLE_AR = "إدارة المسار"
+MERCHANT_MODE_LINE_AR: Mapping[str, str] = {
+    WHATSAPP_MODE_CARTFLOW_MANAGED: "متابعة العملاء عبر واتساب CartFlow",
+    WHATSAPP_MODE_MERCHANT_WHATSAPP: "متابعة العملاء عبر واتساب المتجر",
+}
+MERCHANT_SANDBOX_MODE_LINE_AR = "وضع التجربة (Sandbox)"
 _EXPLANATION_MERCHANT_IN_PROGRESS_AR = (
     "أكمل خطوات مسار واتساب أولاً. بعدها يعمل CartFlow على تجهيز الإرسال."
 )
@@ -163,11 +187,57 @@ def _merchant_checklist_items(
     return out
 
 
+def _mode_line_ar(readiness: Mapping[str, Any], store: Optional[Any]) -> str:
+    provider = (
+        (getattr(store, "whatsapp_provider_mode", None) or "").strip().lower()
+        if store
+        else ""
+    )
+    if provider in ("sandbox", "test"):
+        return MERCHANT_SANDBOX_MODE_LINE_AR
+    mode = normalize_whatsapp_mode(readiness.get("whatsapp_mode"))
+    return MERCHANT_MODE_LINE_AR.get(
+        mode, str(readiness.get("whatsapp_mode_label_ar") or "")
+    )
+
+
+def _merchant_journey_visibility_block(
+    *,
+    journey_key: Optional[str],
+    readiness: Mapping[str, Any],
+    store: Optional[Any],
+) -> dict[str, Any]:
+    return {
+        "active": True,
+        "current_journey": {
+            "title_ar": MERCHANT_JOURNEY_CURRENT_SECTION_TITLE_AR,
+            "path_label_ar": journey_label_ar(journey_key) if journey_key else "",
+            "path_description_ar": journey_description_ar(journey_key)
+            if journey_key
+            else "",
+            "context_ar": MERCHANT_JOURNEY_CURRENT_CONTEXT_AR,
+            "mode_line_ar": _mode_line_ar(readiness, store),
+        },
+        "journey_status": {
+            "title_ar": MERCHANT_JOURNEY_STATUS_SECTION_TITLE_AR,
+            "badge_ar": MERCHANT_JOURNEY_STATUS_BADGE_COMPLETED_AR,
+            "description_ar": MERCHANT_JOURNEY_STATUS_DESC_COMPLETED_AR,
+        },
+        "path_management": {
+            "title_ar": MERCHANT_PATH_MANAGEMENT_SECTION_TITLE_AR,
+            "change_journey_cta_ar": JOURNEY_CHANGE_CTA_AR,
+            "edit_settings_cta_ar": MERCHANT_CTA_EDIT_SETTINGS_AR,
+            "no_action_ar": MERCHANT_NO_ACTION_AR,
+        },
+    }
+
+
 def _apply_completed_journey_merchant_ux(
     out: dict[str, Any],
     store: Optional[Any],
     *,
     sending_ready: bool,
+    journey_key: Optional[str],
 ) -> dict[str, Any]:
     checklist = _merchant_completed_checklist(store, out)
     out["merchant_completed_ux"] = {
@@ -183,6 +253,11 @@ def _apply_completed_journey_merchant_ux(
         "items_ar": [f"{i['mark_ar']} {i['label_ar']}" for i in checklist],
         "journey_status": JOURNEY_STATUS_COMPLETED,
     }
+    out["merchant_journey_visibility"] = _merchant_journey_visibility_block(
+        journey_key=journey_key,
+        readiness=out,
+        store=store,
+    )
     if not sending_ready:
         out["merchant_readiness_badge_ar"] = MERCHANT_READINESS_BADGE_PREPARING_AR
 
@@ -230,7 +305,12 @@ def apply_merchant_readiness_presentation(
     out.pop("readiness_diagnostic_temp", None)
 
     if journey_completed:
-        out = _apply_completed_journey_merchant_ux(out, store, sending_ready=sending_ready)
+        out = _apply_completed_journey_merchant_ux(
+            out,
+            store,
+            sending_ready=sending_ready,
+            journey_key=journey_key,
+        )
     else:
         setup = dict(out.get("setup_checklist") or {})
         raw_checklist = list(setup.get("checklist_ar") or [])
