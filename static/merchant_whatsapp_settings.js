@@ -183,6 +183,20 @@
       return;
     }
 
+    if (action === "open_journey_selector") {
+      var selector = document.querySelector(".ma-wa-journey-selector");
+      if (selector) {
+        selector.classList.add("ma-wa-cta-highlight");
+        selector.scrollIntoView({ behavior: "smooth", block: "center" });
+      } else {
+        scrollToWaSettings();
+      }
+      showCtaGuidance(
+        (behavior.inline_guidance_ar || "").trim() || "كيف تريد استخدام واتساب؟"
+      );
+      return;
+    }
+
     if (action === "open_advanced_merchant") {
       openAdvancedOptions();
       scrollToWaSettings();
@@ -241,12 +255,34 @@
     }
   }
 
+  function saveOnboardingJourney(key) {
+    hideMsgs();
+    return postSettings({ whatsapp_onboarding_journey: key }).then(function (x) {
+      if (x.data && x.data.ok) {
+        fillForm(x.data);
+        showOk();
+      } else {
+        showErr((x.data && x.data.error) || "تعذّر حفظ المسار");
+      }
+      return x;
+    });
+  }
+
   function bindReadinessCtaOnce() {
     if (readinessCtaBound) return;
     var page = byId("page-whatsapp");
     if (!page) return;
     readinessCtaBound = true;
     page.addEventListener("click", function (e) {
+      var journeyBtn = e.target.closest("[data-ma-wa-journey-key]");
+      if (journeyBtn) {
+        e.preventDefault();
+        var key = journeyBtn.getAttribute("data-ma-wa-journey-key");
+        if (key) saveOnboardingJourney(key).catch(function () {
+          showErr("خطأ في الشبكة أثناء حفظ المسار");
+        });
+        return;
+      }
       var btn = e.target.closest("[data-cf-wa-primary-cta]");
       if (!btn) return;
       e.preventDefault();
@@ -260,6 +296,62 @@
     });
   }
 
+  function renderJourneyBlock(journeys) {
+    if (!journeys) return "";
+    var selected = journeys.selected_key;
+    var options = Array.isArray(journeys.options) ? journeys.options : [];
+    if (!selected) {
+      var optsHtml = options
+        .map(function (opt) {
+          return (
+            '<button type="button" class="ma-wa-journey-option" data-ma-wa-journey-key="' +
+            escHtml(opt.key || "") +
+            '">' +
+            '<span class="ma-wa-journey-option-title">' +
+            escHtml(opt.label_ar || "") +
+            "</span>" +
+            '<span class="ma-wa-journey-option-desc">' +
+            escHtml(opt.description_ar || "") +
+            "</span></button>"
+          );
+        })
+        .join("");
+      return (
+        '<div class="ma-wa-journey-selector" id="ma-wa-journey-selector">' +
+        '<p class="ma-wa-journey-title">' +
+        escHtml(journeys.title_ar || "كيف تريد استخدام واتساب؟") +
+        "</p>" +
+        '<div class="ma-wa-journey-options">' +
+        optsHtml +
+        "</div></div>"
+      );
+    }
+    var guidance = journeys.guidance || {};
+    var steps = Array.isArray(guidance.steps_ar) ? guidance.steps_ar : [];
+    var stepsHtml = steps
+      .map(function (step, idx) {
+        return "<li>" + escHtml(step) + "</li>";
+      })
+      .join("");
+    var placeholder = (guidance.placeholder_ar || "").trim();
+    return (
+      '<div class="ma-wa-journey-selected">' +
+      '<p class="ma-wa-readiness-k">المسار المختار:</p>' +
+      '<p class="ma-wa-journey-selected-label">' +
+      escHtml(journeys.selected_label_ar || "") +
+      "</p>" +
+      (placeholder
+        ? '<p class="ma-wa-journey-placeholder">' + escHtml(placeholder) + "</p>"
+        : "") +
+      (stepsHtml
+        ? '<div class="ma-wa-journey-steps"><p class="ma-wa-readiness-k">خطوات التفعيل:</p><ol class="ma-wa-journey-steps-list">' +
+          stepsHtml +
+          "</ol></div>"
+        : "") +
+      "</div>"
+    );
+  }
+
   function renderReadinessCard(d) {
     var root = byId("ma-wa-readiness-root");
     if (!root || !d) return;
@@ -268,6 +360,7 @@
       showReadinessError(READINESS_ERROR_AR);
       return;
     }
+    var journeys = d.whatsapp_onboarding_journeys || cr.whatsapp_onboarding_journeys;
     var checklist = cr.setup_checklist || {};
     var af = cr.action_first || {};
     var items = Array.isArray(checklist.checklist_ar) ? checklist.checklist_ar : [];
@@ -300,6 +393,7 @@
       '<span class="ma-wa-readiness-badge">' +
       escHtml(cr.readiness_overall_ar || "—") +
       "</span></div>" +
+      renderJourneyBlock(journeys) +
       // 1) Next Action — lead with action + single primary CTA
       '<div class="ma-wa-readiness-action">' +
       '<p class="ma-wa-readiness-action-title">' +

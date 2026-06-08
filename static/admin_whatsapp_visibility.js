@@ -148,6 +148,9 @@
           (row.whatsapp_mode_label || row.whatsapp_mode || "—") +
           "</td>" +
           "<td class='py-2 pe-3'>" +
+          (row.whatsapp_onboarding_journey_ar || row.whatsapp_onboarding_journey || "—") +
+          "</td>" +
+          "<td class='py-2 pe-3'>" +
           (row.connection_state_ar || row.connection_status_ar || "—") +
           "</td>" +
           "<td class='py-2 pe-3'>" +

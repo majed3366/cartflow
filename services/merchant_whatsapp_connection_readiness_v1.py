@@ -686,7 +686,11 @@ def connection_readiness_for_merchant_api(
         setup_checklist=ev.get("setup_checklist") or {},
     )
     ev["action_first"] = attach_cta_behavior_to_action_first(af, store, ev)
-    return ev
+    from services.merchant_whatsapp_onboarding_journeys_v1 import (  # noqa: PLC0415
+        enrich_readiness_with_onboarding_journey,
+    )
+
+    return enrich_readiness_with_onboarding_journey(ev, store)
 
 
 def connection_readiness_for_admin_row(

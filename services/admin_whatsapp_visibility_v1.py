@@ -33,6 +33,8 @@ class AdminWhatsappStoreRow:
     connection_state_ar: str
     readiness_state: str
     readiness_state_ar: str
+    whatsapp_onboarding_journey: str
+    whatsapp_onboarding_journey_ar: str
     vip_destination_ar: str
     last_validation_ar: str
     last_validation_status_ar: str
@@ -54,6 +56,8 @@ class AdminWhatsappStoreRow:
             "connection_state_ar": self.connection_state_ar,
             "readiness_state": self.readiness_state,
             "readiness_state_ar": self.readiness_state_ar,
+            "whatsapp_onboarding_journey": self.whatsapp_onboarding_journey,
+            "whatsapp_onboarding_journey_ar": self.whatsapp_onboarding_journey_ar,
             "vip_destination_ar": self.vip_destination_ar,
             "last_validation_ar": self.last_validation_ar,
             "last_validation_status_ar": self.last_validation_status_ar,
@@ -78,11 +82,18 @@ def build_admin_whatsapp_store_row(store: Store) -> AdminWhatsappStoreRow:
     from services.merchant_whatsapp_connection_readiness_v1 import (  # noqa: PLC0415
         connection_readiness_for_admin_row,
     )
+    from services.merchant_whatsapp_onboarding_journeys_v1 import (  # noqa: PLC0415
+        journey_label_ar,
+        normalize_whatsapp_onboarding_journey,
+    )
 
     merchant = _merchant_for_store(store)
     mode_fields = merchant_whatsapp_mode_fields_for_api(store)
     admin_conn = connection_readiness_for_admin_row(store)
     mode = mode_fields["whatsapp_mode"]
+    journey_key = normalize_whatsapp_onboarding_journey(
+        getattr(store, "whatsapp_onboarding_journey", None)
+    )
     return AdminWhatsappStoreRow(
         store_id=int(store.id),
         store_name=merchant_store_display_name(store, merchant_user=merchant),
@@ -96,6 +107,8 @@ def build_admin_whatsapp_store_row(store: Store) -> AdminWhatsappStoreRow:
         connection_state_ar=str(admin_conn.get("connection_state_ar") or ""),
         readiness_state=str(admin_conn.get("readiness_state") or ""),
         readiness_state_ar=str(admin_conn.get("readiness_state_ar") or ""),
+        whatsapp_onboarding_journey=str(journey_key or ""),
+        whatsapp_onboarding_journey_ar=journey_label_ar(journey_key) if journey_key else "—",
         vip_destination_ar=mode_fields["vip_destination_ar"],
         last_validation_ar=mode_fields["whatsapp_last_validation_ar"],
         last_validation_status_ar=mode_fields["whatsapp_last_validation_status_ar"],
