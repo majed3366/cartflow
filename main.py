@@ -77,24 +77,6 @@ except Exception:  # noqa: BLE001 — لا نمنع الإقلاع عند غيا
     pass
 
 
-@app.get("/ping")
-def ping():
-    return {"ok": True}
-
-
-@app.get("/config-check")
-def config_check():
-    from config_system import get_cartflow_config
-
-    config = get_cartflow_config(store_slug="demo")
-
-    return {
-        "ok": True,
-        "store_slug": "demo",
-        "recovery_delay_minutes": config["recovery_delay_minutes"],
-    }
-
-
 @app.get("/dev/routes")
 def list_routes():
     return [route.path for route in app.routes]
@@ -147,17 +129,6 @@ def dev_production_readiness():
     )
 
     return j(build_cartflow_production_readiness_report())
-
-
-@app.get("/decision-check")
-def decision_check(reason_tag: str = "price_high"):
-    result = decide_recovery_action(reason_tag)
-    return {
-        "ok": True,
-        "reason_tag": reason_tag,
-        "action": result["action"],
-        "message": result["message"],
-    }
 
 
 @app.get("/webhook/whatsapp")
@@ -320,11 +291,13 @@ import routes.operational_control_admin  # noqa: F401,E402 — /admin/control ta
 from routes.demo_panel import router as demo_panel_router  # noqa: E402
 from routes.merchant_auth import router as merchant_auth_router  # noqa: E402
 from routes.ops import router as ops_router  # noqa: E402
+from routes.public import router as public_router  # noqa: E402
 from routes.whatsapp_delivery_webhook import (  # noqa: E402
     router as whatsapp_delivery_webhook_router,
 )
 
 app.include_router(ops_router)
+app.include_router(public_router)
 app.include_router(whatsapp_delivery_webhook_router)
 app.include_router(admin_operations_router)
 app.include_router(cartflow_router)
@@ -21787,22 +21760,6 @@ def dev_recovery_logs(store_slug: str) -> Any:
     except Exception as e:  # noqa: BLE001
         db.session.rollback()
         return j({"ok": False, "error": str(e)}, 500)
-
-
-@app.get("/")
-def home(request: Request):
-    """الصفحة العامة — واجهة تسويق CartFlow (عربي، RTL مع تخطيط مطابق للمرجع)."""
-    return templates.TemplateResponse(
-        request,
-        "cartflow_landing.html",
-        {"request": request},
-    )
-
-
-@app.get("/register")
-def register_placeholder(request: Request):
-    """إعادة توجيه — التسجيل الفعلي عند ‎/signup‎."""
-    return RedirectResponse(url="/signup", status_code=302)
 
 
 @app.get("/dashboard/test-widget")

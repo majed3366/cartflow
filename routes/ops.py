@@ -9,6 +9,7 @@ from fastapi import APIRouter, Query, Request
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
+from decision_engine import decide_recovery_action
 from extensions import db, get_database_url
 from integrations.zid_client import fetch_abandoned_carts
 from json_response import j
@@ -17,6 +18,35 @@ from models import Store
 log = logging.getLogger("cartflow")
 
 router = APIRouter()
+
+
+@router.get("/ping")
+def ping():
+    return {"ok": True}
+
+
+@router.get("/config-check")
+def config_check():
+    from config_system import get_cartflow_config
+
+    config = get_cartflow_config(store_slug="demo")
+
+    return {
+        "ok": True,
+        "store_slug": "demo",
+        "recovery_delay_minutes": config["recovery_delay_minutes"],
+    }
+
+
+@router.get("/decision-check")
+def decision_check(reason_tag: str = "price_high"):
+    result = decide_recovery_action(reason_tag)
+    return {
+        "ok": True,
+        "reason_tag": reason_tag,
+        "action": result["action"],
+        "message": result["message"],
+    }
 
 
 def get_mock_abandoned_cart() -> dict:
