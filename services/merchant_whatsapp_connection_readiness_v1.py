@@ -679,7 +679,8 @@ def evaluate_whatsapp_connection_readiness(
 def connection_readiness_for_merchant_api(
     store: Optional[Any],
 ) -> dict[str, Any]:
-    ev = dict(evaluate_whatsapp_connection_readiness(store))
+    ob = evaluate_onboarding_readiness(store)
+    ev = dict(evaluate_whatsapp_connection_readiness(store, onboarding=ob))
     af = build_action_first_card(
         ev.get("connection_state") or CONNECTION_STATE_NOT_CONNECTED,
         expected_outcome_ar=ev.get("expected_outcome_ar") or "",
@@ -690,7 +691,27 @@ def connection_readiness_for_merchant_api(
         enrich_readiness_with_onboarding_journey,
     )
 
-    return enrich_readiness_with_onboarding_journey(ev, store)
+    out = enrich_readiness_with_onboarding_journey(ev, store)
+    from services.merchant_whatsapp_readiness_diagnostic_v1 import (  # noqa: PLC0415
+        build_whatsapp_readiness_diagnostic_temp,
+    )
+
+    out["readiness_diagnostic_temp"] = build_whatsapp_readiness_diagnostic_temp(
+        out,
+        store,
+        action_first=out.get("action_first") or af,
+        onboarding_flags=dict(ob.get("flags") or {}),
+        blocking_steps=list(ob.get("blocking_steps") or []),
+    )
+    from services.merchant_whatsapp_readiness_presentation_v1 import (  # noqa: PLC0415
+        apply_merchant_readiness_presentation,
+    )
+
+    return apply_merchant_readiness_presentation(
+        out,
+        store,
+        onboarding_flags=dict(ob.get("flags") or {}),
+    )
 
 
 def connection_readiness_for_admin_row(

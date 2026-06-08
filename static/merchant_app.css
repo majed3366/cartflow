@@ -5074,6 +5074,103 @@ button.ma-vip-suggest-btn.va-btn {
   line-height: 1.5;
 }
 
+/* Temporary readiness diagnostic (audit only) */
+.ma-wa-readiness-diagnostic-temp {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px dashed #cbd5e1;
+  background: #f8fafc;
+  font-size: 11px;
+  color: #334155;
+}
+
+.ma-wa-readiness-diagnostic-temp summary {
+  cursor: pointer;
+  font-weight: 700;
+  color: #475569;
+}
+
+.ma-wa-diag-body {
+  margin-top: 8px;
+  line-height: 1.5;
+}
+
+.ma-wa-diag-body code {
+  font-size: 10px;
+  background: #e2e8f0;
+  padding: 1px 4px;
+  border-radius: 4px;
+}
+
+.ma-wa-diag-path {
+  display: block;
+  margin-top: 2px;
+  font-size: 10px;
+  color: #64748b;
+}
+
+.ma-wa-diag-list {
+  margin: 6px 0 0;
+  padding: 0 18px 0 0;
+}
+
+.ma-wa-diag-note {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #e2e8f0;
+  color: #64748b;
+}
+
+.ma-wa-merchant-setup-completion {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #ecfdf5;
+  border: 1px solid #bbf7d0;
+}
+
+.ma-wa-merchant-setup-completion-headline {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: #166534;
+}
+
+.ma-wa-merchant-setup-completion-list {
+  margin: 8px 0 0;
+  padding: 0 18px 0 0;
+  font-size: 12px;
+  color: #166534;
+  line-height: 1.55;
+}
+
+.ma-wa-production-sending {
+  margin: 12px 0 14px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.ma-wa-production-sending-status {
+  margin: 6px 0 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: #334155;
+}
+
+.ma-wa-production-sending-explanation {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: #64748b;
+  line-height: 1.55;
+}
+
+.ma-wa-readiness-step.is-merchant-presentation {
+  color: #475569;
+}
+
 .ma-wa-journey-option-title {
   font-size: 13px;
   font-weight: 700;
