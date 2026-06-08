@@ -197,6 +197,45 @@
       return;
     }
 
+    if (action === "open_whatsapp_business_guide") {
+      postSettings({ whatsapp_onboarding_journey_status: "in_progress" }).catch(
+        function () {}
+      );
+      var guideUrl = (behavior.external_url || "").trim() || "https://business.whatsapp.com/";
+      window.open(guideUrl, "_blank", "noopener,noreferrer");
+      showCtaGuidance(
+        (behavior.explanation_ar || behavior.inline_guidance_ar || "").trim() ||
+          "يلزم وجود واتساب أعمال لاستخدام استرجاع واتساب."
+      );
+      return;
+    }
+
+    if (action === "prepare_new_number") {
+      openAdvancedOptions();
+      scrollToWaSettings();
+      highlightField("ma-wa-store-number");
+      showCtaGuidance(
+        (behavior.inline_guidance_ar || "").trim() ||
+          "جهّز رقماً مخصصاً للاسترجاع، فعّل عليه واتساب أعمال، ثم أدخله هنا."
+      );
+      return;
+    }
+
+    if (action === "open_meta_advanced_placeholder") {
+      scrollToWaSettings();
+      var metaNote =
+        (behavior.placeholder_ar || "").trim() ||
+        "الربط المتقدم قيد التجهيز حالياً.";
+      var metaSecondary = (behavior.secondary_note_ar || "").trim();
+      showCtaGuidance(
+        metaSecondary ? metaNote + " " + metaSecondary : metaNote
+      );
+      postSettings({ whatsapp_onboarding_journey_status: "in_progress" }).catch(
+        function () {}
+      );
+      return;
+    }
+
     if (action === "open_advanced_merchant") {
       openAdvancedOptions();
       scrollToWaSettings();
@@ -329,19 +368,41 @@
     var guidance = journeys.guidance || {};
     var steps = Array.isArray(guidance.steps_ar) ? guidance.steps_ar : [];
     var stepsHtml = steps
-      .map(function (step, idx) {
+      .map(function (step) {
         return "<li>" + escHtml(step) + "</li>";
       })
       .join("");
     var placeholder = (guidance.placeholder_ar || "").trim();
+    var secondary = (guidance.secondary_note_ar || "").trim();
+    var explanation = (guidance.explanation_ar || "").trim();
+    var statusAr = (guidance.status_ar || "").trim();
+    var progressPct = Number(guidance.progress_pct);
+    if (!isFinite(progressPct)) progressPct = 0;
     return (
       '<div class="ma-wa-journey-selected">' +
       '<p class="ma-wa-readiness-k">المسار المختار:</p>' +
       '<p class="ma-wa-journey-selected-label">' +
       escHtml(journeys.selected_label_ar || "") +
       "</p>" +
+      (statusAr
+        ? '<p class="ma-wa-journey-status"><span class="ma-wa-readiness-k">حالة المسار:</span> ' +
+          escHtml(statusAr) +
+          "</p>" +
+          '<div class="ma-wa-journey-progress" role="progressbar" aria-valuenow="' +
+          progressPct +
+          '" aria-valuemin="0" aria-valuemax="100">' +
+          '<div class="ma-wa-journey-progress-bar" style="width:' +
+          progressPct +
+          '%"></div></div>'
+        : "") +
+      (explanation
+        ? '<p class="ma-wa-journey-explanation">' + escHtml(explanation) + "</p>"
+        : "") +
       (placeholder
         ? '<p class="ma-wa-journey-placeholder">' + escHtml(placeholder) + "</p>"
+        : "") +
+      (secondary
+        ? '<p class="ma-wa-journey-secondary">' + escHtml(secondary) + "</p>"
         : "") +
       (stepsHtml
         ? '<div class="ma-wa-journey-steps"><p class="ma-wa-readiness-k">خطوات التفعيل:</p><ol class="ma-wa-journey-steps-list">' +

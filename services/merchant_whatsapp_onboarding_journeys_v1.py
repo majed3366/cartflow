@@ -161,12 +161,18 @@ def onboarding_journeys_ui_block(store: Optional[Any]) -> dict[str, Any]:
 
 
 def onboarding_journey_fields_for_api(store: Optional[Any]) -> dict[str, Any]:
+    from services.merchant_whatsapp_journey_execution_v1 import (  # noqa: PLC0415
+        journey_execution_fields_for_api,
+    )
+
     block = onboarding_journeys_ui_block(store)
-    return {
+    payload = {
         "whatsapp_onboarding_journey": block["selected_key"],
         "whatsapp_onboarding_journey_ar": block["selected_label_ar"] or None,
         "whatsapp_onboarding_journeys": block,
     }
+    payload.update(journey_execution_fields_for_api(store))
+    return payload
 
 
 def enrich_readiness_with_onboarding_journey(
@@ -175,37 +181,14 @@ def enrich_readiness_with_onboarding_journey(
 ) -> dict[str, Any]:
     """Enrich connection readiness payload — does not change engine state logic."""
     out = dict(readiness)
-    journeys = onboarding_journeys_ui_block(store)
-    out["whatsapp_onboarding_journeys"] = journeys
+    out["whatsapp_onboarding_journeys"] = onboarding_journeys_ui_block(store)
+    from services.merchant_whatsapp_journey_execution_v1 import (  # noqa: PLC0415
+        journey_execution_fields_for_api,
+        apply_journey_execution_to_readiness,
+    )
 
-    af = dict(out.get("action_first") or {})
-    selected = journeys.get("selected_key")
-    guidance = journeys.get("guidance") or {}
-
-    if not selected:
-        af["primary_cta_label_ar"] = CTA_CHOOSE_JOURNEY_AR
-        af["next_action_ar"] = "اختر المسار الأنسب لمتجرك"
-        af["expected_outcome_ar"] = (
-            "سيبدأ CartFlow بإرسال رسائل الاسترجاع بعد اختيار المسار وإكمال الخطوات."
-        )
-        cb = dict(af.get("cta_behavior") or {})
-        cb["cta_action"] = CTA_ACTION_OPEN_JOURNEY_SELECTOR
-        cb["inline_guidance_ar"] = JOURNEY_SELECTOR_TITLE_AR
-        cb["never_silent"] = True
-        af["cta_behavior"] = cb
-    else:
-        af["primary_cta_label_ar"] = CTA_CONTINUE_ACTIVATION_AR
-        if guidance.get("next_action_ar"):
-            af["next_action_ar"] = guidance["next_action_ar"]
-        if guidance.get("expected_outcome_ar"):
-            af["expected_outcome_ar"] = guidance["expected_outcome_ar"]
-        if selected == JOURNEY_META_READY and guidance.get("placeholder_ar"):
-            cb = dict(af.get("cta_behavior") or {})
-            cb["placeholder_ar"] = guidance["placeholder_ar"]
-            af["cta_behavior"] = cb
-
-    out["action_first"] = af
-    return out
+    out.update(journey_execution_fields_for_api(store))
+    return apply_journey_execution_to_readiness(out, store)
 
 
 def apply_whatsapp_onboarding_journey_from_body(
@@ -216,10 +199,24 @@ def apply_whatsapp_onboarding_journey_from_body(
         return
     raw = body.get("whatsapp_onboarding_journey")
     if raw is None or (isinstance(raw, str) and not raw.strip()):
+        from services.merchant_whatsapp_journey_execution_v1 import (  # noqa: PLC0415
+            on_journey_selection_changed,
+        )
+
+        on_journey_selection_changed(row, None)
         row.whatsapp_onboarding_journey = None
+        row.whatsapp_onboarding_journey_status = None
         return
     normalized = normalize_whatsapp_onboarding_journey(raw)
+    from services.merchant_whatsapp_journey_execution_v1 import (  # noqa: PLC0415
+        JOURNEY_STATUS_NOT_STARTED,
+        on_journey_selection_changed,
+    )
+
+    on_journey_selection_changed(row, normalized)
     row.whatsapp_onboarding_journey = normalized
+    if getattr(row, "whatsapp_onboarding_journey_status", None) is None:
+        row.whatsapp_onboarding_journey_status = JOURNEY_STATUS_NOT_STARTED
 
 
 def ensure_whatsapp_onboarding_journey_column(db: Any) -> None:

@@ -182,7 +182,7 @@ class MerchantWhatsappOnboardingJourneysV1Tests(unittest.TestCase):
         self.assertEqual(
             journeys.get("selected_key"), JOURNEY_EXISTING_WHATSAPP_BUSINESS
         )
-        self.assertIn("رقم واتساب أعمال", af.get("next_action_ar") or "")
+        self.assertIn("إدخال الرقم وتفعيل الاسترجاع", af.get("next_action_ar") or "")
 
     def test_admin_row_includes_onboarding_journey(self) -> None:
         self.row.whatsapp_onboarding_journey = JOURNEY_NEW_NUMBER

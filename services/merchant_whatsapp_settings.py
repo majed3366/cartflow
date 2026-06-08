@@ -67,6 +67,9 @@ def _ensure_store_whatsapp_merchant_settings_columns() -> None:
 def ensure_store_whatsapp_merchant_settings_schema() -> None:
     """Idempotent columns for merchant WhatsApp settings."""
     from services.merchant_whatsapp_mode_v1 import ensure_whatsapp_mode_schema  # noqa: PLC0415
+    from services.merchant_whatsapp_journey_execution_v1 import (  # noqa: PLC0415
+        ensure_journey_execution_schema,
+    )
     from services.merchant_whatsapp_onboarding_journeys_v1 import (  # noqa: PLC0415
         ensure_whatsapp_onboarding_journey_schema,
     )
@@ -77,6 +80,7 @@ def ensure_store_whatsapp_merchant_settings_schema() -> None:
     _ensure_store_whatsapp_merchant_settings_columns()
     ensure_whatsapp_mode_schema(db)
     ensure_whatsapp_onboarding_journey_schema(db)
+    ensure_journey_execution_schema(db)
     ensure_whatsapp_template_overrides_schema(db)
 
 
@@ -241,4 +245,11 @@ def apply_merchant_whatsapp_settings_from_body(
     )
 
     apply_whatsapp_onboarding_journey_from_body(row, body)
+    from services.merchant_whatsapp_journey_execution_v1 import (  # noqa: PLC0415
+        apply_whatsapp_onboarding_journey_status_from_body,
+        sync_journey_status_on_store,
+    )
+
+    apply_whatsapp_onboarding_journey_status_from_body(row, body)
+    sync_journey_status_on_store(row)
     apply_whatsapp_template_layer_from_body(row, body)

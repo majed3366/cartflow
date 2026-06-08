@@ -4975,6 +4975,39 @@ button.ma-vip-suggest-btn.va-btn {
   line-height: 1.55;
 }
 
+.ma-wa-journey-status {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: #475569;
+}
+
+.ma-wa-journey-progress {
+  margin-top: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: #e2e8f0;
+  overflow: hidden;
+}
+
+.ma-wa-journey-progress-bar {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #16a34a, #22c55e);
+  transition: width 0.25s ease;
+}
+
+.ma-wa-journey-explanation,
+.ma-wa-journey-secondary {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #475569;
+  line-height: 1.5;
+}
+
+.ma-wa-journey-secondary {
+  color: #64748b;
+}
+
 .ma-wa-cta-guidance {
   margin-bottom: 10px;
   padding: 10px 12px;
