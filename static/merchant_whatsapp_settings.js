@@ -6,6 +6,7 @@
   var readinessCtaBound = false;
   var loading = false;
   var lastSettingsData = null;
+  var journeyChangeOpen = false;
 
   var READINESS_LOADING_AR = "جاري التحقق من جاهزية واتساب...";
   var READINESS_ERROR_AR =
@@ -298,6 +299,7 @@
     hideMsgs();
     return postSettings({ whatsapp_onboarding_journey: key }).then(function (x) {
       if (x.data && x.data.ok) {
+        journeyChangeOpen = false;
         fillForm(x.data);
         showOk();
       } else {
@@ -307,12 +309,66 @@
     });
   }
 
+  function renderJourneyOptionsHtml(options, selectedKey) {
+    var badgeLabel = "المسار الحالي";
+    return options
+      .map(function (opt) {
+        var isCurrent = !!(selectedKey && opt.key === selectedKey);
+        return (
+          '<button type="button" class="ma-wa-journey-option' +
+          (isCurrent ? " is-current" : "") +
+          '" data-ma-wa-journey-key="' +
+          escHtml(opt.key || "") +
+          '">' +
+          (isCurrent
+            ? '<span class="ma-wa-journey-option-badge">' + escHtml(badgeLabel) + "</span>"
+            : "") +
+          '<span class="ma-wa-journey-option-title">' +
+          escHtml(opt.label_ar || "") +
+          "</span>" +
+          '<span class="ma-wa-journey-option-desc">' +
+          escHtml(opt.description_ar || "") +
+          "</span></button>"
+        );
+      })
+      .join("");
+  }
+
+  function renderJourneySelectorPanel(journeys, selectedKey, showSafety) {
+    var options = Array.isArray(journeys.options) ? journeys.options : [];
+    var safety = (journeys.change_journey_safety_ar || "").trim();
+    return (
+      '<div class="ma-wa-journey-selector" id="ma-wa-journey-selector">' +
+      '<p class="ma-wa-journey-title">' +
+      escHtml(journeys.title_ar || "كيف تريد استخدام واتساب؟") +
+      "</p>" +
+      (showSafety && safety
+        ? '<p class="ma-wa-journey-change-safety">' + escHtml(safety) + "</p>"
+        : "") +
+      '<div class="ma-wa-journey-options">' +
+      renderJourneyOptionsHtml(options, selectedKey) +
+      "</div></div>"
+    );
+  }
+
   function bindReadinessCtaOnce() {
     if (readinessCtaBound) return;
     var page = byId("page-whatsapp");
     if (!page) return;
     readinessCtaBound = true;
     page.addEventListener("click", function (e) {
+      var changeJourneyBtn = e.target.closest("[data-ma-wa-change-journey]");
+      if (changeJourneyBtn) {
+        e.preventDefault();
+        journeyChangeOpen = true;
+        if (lastSettingsData) renderReadinessCard(lastSettingsData);
+        var selector = document.querySelector(".ma-wa-journey-selector");
+        if (selector) {
+          selector.classList.add("ma-wa-cta-highlight");
+          selector.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+        return;
+      }
       var journeyBtn = e.target.closest("[data-ma-wa-journey-key]");
       if (journeyBtn) {
         e.preventDefault();
@@ -338,33 +394,14 @@
   function renderJourneyBlock(journeys) {
     if (!journeys) return "";
     var selected = journeys.selected_key;
-    var options = Array.isArray(journeys.options) ? journeys.options : [];
     if (!selected) {
-      var optsHtml = options
-        .map(function (opt) {
-          return (
-            '<button type="button" class="ma-wa-journey-option" data-ma-wa-journey-key="' +
-            escHtml(opt.key || "") +
-            '">' +
-            '<span class="ma-wa-journey-option-title">' +
-            escHtml(opt.label_ar || "") +
-            "</span>" +
-            '<span class="ma-wa-journey-option-desc">' +
-            escHtml(opt.description_ar || "") +
-            "</span></button>"
-          );
-        })
-        .join("");
-      return (
-        '<div class="ma-wa-journey-selector" id="ma-wa-journey-selector">' +
-        '<p class="ma-wa-journey-title">' +
-        escHtml(journeys.title_ar || "كيف تريد استخدام واتساب؟") +
-        "</p>" +
-        '<div class="ma-wa-journey-options">' +
-        optsHtml +
-        "</div></div>"
-      );
+      return renderJourneySelectorPanel(journeys, null, false);
     }
+    if (journeyChangeOpen) {
+      return renderJourneySelectorPanel(journeys, selected, true);
+    }
+    var currentLabel = journeys.current_path_label_ar || "مسار واتساب الحالي:";
+    var changeCta = journeys.change_journey_cta_ar || "تغيير مسار واتساب";
     var guidance = journeys.guidance || {};
     var steps = Array.isArray(guidance.steps_ar) ? guidance.steps_ar : [];
     var stepsHtml = steps
@@ -380,10 +417,13 @@
     if (!isFinite(progressPct)) progressPct = 0;
     return (
       '<div class="ma-wa-journey-selected">' +
-      '<p class="ma-wa-readiness-k">المسار المختار:</p>' +
+      '<p class="ma-wa-readiness-k">' + escHtml(currentLabel) + "</p>" +
       '<p class="ma-wa-journey-selected-label">' +
       escHtml(journeys.selected_label_ar || "") +
       "</p>" +
+      '<button type="button" class="ma-wa-journey-change-btn" data-ma-wa-change-journey>' +
+      escHtml(changeCta) +
+      "</button>" +
       (statusAr
         ? '<p class="ma-wa-journey-status"><span class="ma-wa-readiness-k">حالة المسار:</span> ' +
           escHtml(statusAr) +

@@ -23,6 +23,12 @@ CANONICAL_ONBOARDING_JOURNEYS: frozenset[str] = frozenset(
 )
 
 JOURNEY_SELECTOR_TITLE_AR = "كيف تريد استخدام واتساب؟"
+JOURNEY_CURRENT_PATH_LABEL_AR = "مسار واتساب الحالي:"
+JOURNEY_CHANGE_CTA_AR = "تغيير مسار واتساب"
+JOURNEY_CHANGE_SAFETY_AR = (
+    "تغيير المسار لا يحذف إعداداتك الحالية. قد تحتاج فقط إلى إكمال خطوات مختلفة حسب المسار الجديد."
+)
+JOURNEY_OPTION_CURRENT_BADGE_AR = "المسار الحالي"
 
 CTA_CHOOSE_JOURNEY_AR = "اختيار مسار واتساب"
 CTA_CONTINUE_ACTIVATION_AR = "متابعة التفعيل"
@@ -157,6 +163,10 @@ def onboarding_journeys_ui_block(store: Optional[Any]) -> dict[str, Any]:
         "options": onboarding_journey_options_for_api(),
         "guidance": guidance,
         "journey_required": selected is None,
+        "current_path_label_ar": JOURNEY_CURRENT_PATH_LABEL_AR,
+        "change_journey_cta_ar": JOURNEY_CHANGE_CTA_AR,
+        "change_journey_safety_ar": JOURNEY_CHANGE_SAFETY_AR,
+        "option_current_badge_ar": JOURNEY_OPTION_CURRENT_BADGE_AR,
     }
 
 
