@@ -67,6 +67,7 @@ class MerchantStandaloneAppDashboardTests(unittest.TestCase):
         self.assertNotIn("/api/admin/db-due-scanner-health", t)
         self.assertIn("merchant_widget_panel.js", t)
         self.assertIn("merchant_dashboard_lazy.js", t)
+        self.assertIn("merchant_knowledge_layer.js", t)
 
     def test_dashboard_contains_all_section_page_ids(self) -> None:
         r = self.client.get("/dashboard")

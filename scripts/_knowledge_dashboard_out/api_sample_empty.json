@@ -1,0 +1,28 @@
+{
+  "ok": true,
+  "store_slug": "demo",
+  "window_days": 7,
+  "generated_at": "2026-06-07T12:00:00+00:00",
+  "insights": [
+    {
+      "insight_key": "traffic_visitor_unavailable",
+      "category": "traffic",
+      "severity": "notice",
+      "title_ar": "بيانات الزوار غير متوفرة",
+      "message_ar": "CartFlow لا يرى عدد زوار المتجر حالياً.",
+      "evidence": {
+        "visitor_data_available": false
+      },
+      "confidence": "insufficient",
+      "data_window": {
+        "days": 7
+      },
+      "sample_size": 0,
+      "source_tables": [
+        "abandoned_carts"
+      ],
+      "recommended_action_ar": "قد تحتاج إلى مراجعة إعدادات التتبع."
+    }
+  ],
+  "metrics_snapshot": {}
+}

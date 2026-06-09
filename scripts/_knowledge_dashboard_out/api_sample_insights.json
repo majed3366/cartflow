@@ -1,0 +1,77 @@
+{
+  "ok": true,
+  "store_slug": "demo",
+  "window_days": 7,
+  "generated_at": "2026-06-07T12:00:00+00:00",
+  "insights": [
+    {
+      "insight_key": "hesitation_top_reason",
+      "category": "hesitation",
+      "severity": "info",
+      "title_ar": "أغلب حالات التردد مرتبطة بالسعر",
+      "message_ar": "خلال الفترة الأخيرة كان السعر هو السبب الأكثر تكراراً بين أسباب التردد المسجلة.",
+      "evidence": {
+        "top_reason": "price",
+        "top_count": 42,
+        "hesitation_total": 75
+      },
+      "confidence": "medium",
+      "data_window": {
+        "days": 7
+      },
+      "sample_size": 75,
+      "source_tables": [
+        "cart_recovery_reasons"
+      ],
+      "recommended_action_ar": "راقب هذا المؤشر خلال الأيام القادمة."
+    },
+    {
+      "insight_key": "recovery_activity_summary",
+      "category": "recovery",
+      "severity": "info",
+      "title_ar": "ملخص نشاط الاسترجاع",
+      "message_ar": "رسائل مُرسَلة: 10؛ ردود: 3؛ مشتريات: 2.",
+      "evidence": {
+        "messages_sent": 10,
+        "replies": 3,
+        "purchases": 2,
+        "returns": 1
+      },
+      "confidence": "medium",
+      "data_window": {
+        "days": 7
+      },
+      "sample_size": 10,
+      "source_tables": [
+        "cart_recovery_logs"
+      ],
+      "recommended_action_ar": "راقب هذا المؤشر خلال الأيام القادمة."
+    },
+    {
+      "insight_key": "recovery_bottleneck",
+      "category": "recovery",
+      "severity": "notice",
+      "title_ar": "عنق زجاجة في الاسترجاع",
+      "message_ar": "أبرز نقطة ضغط مسجّلة: no_reply (4 حدث).",
+      "evidence": {
+        "bottlenecks": [
+          {
+            "key": "no_reply",
+            "label": "no_reply",
+            "count": 4
+          }
+        ]
+      },
+      "confidence": "low",
+      "data_window": {
+        "days": 7
+      },
+      "sample_size": 10,
+      "source_tables": [
+        "cart_recovery_logs"
+      ],
+      "recommended_action_ar": "تأكد أن بيانات المتجر تصل بشكل صحيح."
+    }
+  ],
+  "metrics_snapshot": {}
+}

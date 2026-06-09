@@ -96,6 +96,22 @@
 
     <div id="ma-home-alerts-root" class="ma-home-alerts-band ma-home-section" hidden aria-live="polite"></div>
     <div id="ma-activation-root" class="ma-home-activation-band ma-home-section" hidden aria-live="polite"></div>
+
+    <section
+      id="ma-knowledge-root"
+      class="ma-home-section ma-home-section-knowledge ma-knowledge-card"
+      aria-labelledby="ma-knowledge-title"
+      aria-live="polite"
+    >
+      <div class="ma-knowledge-head">
+        <h2 class="ma-knowledge-title" id="ma-knowledge-title">🧠 ماذا يحدث في متجرك؟</h2>
+        <p class="ma-knowledge-lead">ما يراه CartFlow من نشاط متجرك — بأسلوب واضح وبسيط.</p>
+      </div>
+      <div id="ma-knowledge-body" class="ma-knowledge-body">
+        <p class="ma-knowledge-loading">جاري قراءة ما يراه CartFlow…</p>
+      </div>
+    </section>
+
     <div class="ma-home-top ma-home-section ma-home-section-setup-month">
       <div id="ma-setup-experience-root" class="ma-setup-card ma-home-top-card" hidden aria-live="polite"></div>
       <div class="card ma-home-top-card" id="ma-home-month-summary">
@@ -1008,6 +1024,7 @@
 </div><!-- /.ma-dashboard-frame -->
 
 <script defer src="/static/merchant_vip_automation_ui.js"></script>
+<script defer src="/static/merchant_knowledge_layer.js?v={{ merchant_setup_render_build | default('unknown') }}"></script>
 <script defer src="/static/merchant_dashboard_lazy.js?v={{ merchant_setup_render_build | default('unknown') }}"></script>
 <script defer src="/static/merchant_whatsapp_settings.js"></script>
 <script defer src="/static/merchant_vip_settings.js"></script>
