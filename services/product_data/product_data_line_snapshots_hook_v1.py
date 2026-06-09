@@ -27,6 +27,11 @@ def product_data_try_line_snapshots(
             try_persist_cart_line_snapshots_from_payload(
                 payload, capture_source=CAPTURE_SOURCE_CART_ABANDONED
             )
+        from services.product_data.product_catalog_hook_v1 import (  # noqa: PLC0415
+            product_data_try_catalog_normalize,
+        )
+
+        product_data_try_catalog_normalize(payload, event_hint=ev)
     except Exception:  # noqa: BLE001
         pass
 

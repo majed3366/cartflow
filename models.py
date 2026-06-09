@@ -720,3 +720,35 @@ class CartLineSnapshot(Base):
     capture_source = Column(String(64), nullable=False, index=True)
     capture_confidence = Column(String(16), nullable=False)
     content_hash = Column(String(64), nullable=False)
+
+
+class ProductCatalogEntry(Base):
+    """
+    Canonical mutable product catalog entry (current truth).
+    Historical cart lines remain in ``cart_line_snapshots`` (immutable).
+    """
+
+    __tablename__ = "product_catalog_entries"
+    __table_args__ = (
+        UniqueConstraint(
+            "store_slug",
+            "stable_identity_key",
+            name="uq_product_catalog_identity",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True)
+    store_slug = Column(String(255), nullable=False, index=True)
+    stable_identity_key = Column(String(256), nullable=False, index=True)
+    identity_tier = Column(String(8), nullable=False, index=True)
+    product_id = Column(String(128), nullable=True, index=True)
+    variant_id = Column(String(128), nullable=True)
+    sku = Column(String(128), nullable=True, index=True)
+    name = Column(String(200), nullable=True)
+    category = Column(String(128), nullable=True)
+    price = Column(Float, nullable=True)
+    currency = Column(String(8), nullable=False, default="SAR")
+    capture_confidence = Column(String(16), nullable=False)
+    catalog_source = Column(String(64), nullable=False, index=True)
+    first_seen_at = Column(DateTime, nullable=False)
+    last_synced_at = Column(DateTime, nullable=False)
