@@ -15807,12 +15807,52 @@ def _merchant_normal_recovery_light_payload_merchant_batch(
                 )
         except Exception:  # noqa: BLE001
             rk_pre = ""
-    purchased_flag = bool(batch.purchase_truth_by_rk.get(rk_pre)) if rk_pre else False
+    from services.merchant_dashboard_recovery_resolve_v1 import (  # noqa: PLC0415
+        any_merchant_archived_for_alias_keys,
+        any_purchase_truth_for_alias_keys,
+        canonical_recovery_keys_for_cart,
+        durable_closure_for_alias_keys,
+        merged_timeline_statuses_for_alias_keys,
+    )
+
+    _slug_pre = (
+        str(getattr(batch.store_row_for_cart(ac0), "zid_store_id", None) or "").strip()
+        if batch.store_row_for_cart(ac0) is not None
+        else str(getattr(batch, "slug", None) or "").strip()
+    )
+    _alias_keys_lc = canonical_recovery_keys_for_cart(
+        store_slug=_slug_pre,
+        session_id=(getattr(ac0, "recovery_session_id", None) or "").strip(),
+        cart_id=(getattr(ac0, "zid_cart_id", None) or "").strip(),
+        recovery_key=rk_pre,
+    )
+    purchased_flag = (
+        any_purchase_truth_for_alias_keys(
+            batch.purchase_truth_by_rk, _alias_keys_lc
+        )
+        if _alias_keys_lc
+        else bool(batch.purchase_truth_by_rk.get(rk_pre))
+        if rk_pre
+        else False
+    )
     cap_lc = max(1, int(batch.configured_cap_by_ac.get(aid0, 0) or 1))
     tl_pre = (
-        batch.timeline_statuses_by_rk.get(rk_pre, frozenset())
+        merged_timeline_statuses_for_alias_keys(
+            batch.timeline_statuses_by_rk, _alias_keys_lc
+        )
+        if _alias_keys_lc
+        else batch.timeline_statuses_by_rk.get(rk_pre, frozenset())
         if rk_pre
         else frozenset()
+    )
+    _durable_closure_lc = (
+        durable_closure_for_alias_keys(
+            batch.durable_closure_by_rk, _alias_keys_lc
+        )
+        if _alias_keys_lc
+        else batch.durable_closure_by_rk.get(rk_pre or "")
+        if rk_pre
+        else None
     )
     from services.merchant_cart_row_classifier import (  # noqa: PLC0415
         apply_merchant_cart_classification_to_payload,
@@ -15893,17 +15933,12 @@ def _merchant_normal_recovery_light_payload_merchant_batch(
         cart_row_identity_fields,
     )
 
-    _slug_id = (
+    _slug_id = _slug_pre or (
         str(getattr(batch.store_row_for_cart(ac0), "zid_store_id", None) or "").strip()
         if batch.store_row_for_cart(ac0) is not None
         else str(getattr(batch, "slug", None) or "").strip()
     )
     out.update(cart_row_identity_fields(ac0, store_slug=_slug_id))
-    lrk_log = batch.latest_log_by_ac.get(aid0)
-    if lrk_log is not None:
-        _lrk = (getattr(lrk_log, "recovery_key", None) or "").strip()
-        if _lrk:
-            out["recovery_key"] = _lrk
     out["merchant_next_action_urgent"] = bool(
         row_class.merchant_next_action_urgent and not in_history_slice
     )
@@ -15940,9 +15975,7 @@ def _merchant_normal_recovery_light_payload_merchant_batch(
             attempt_cap=cap_lc,
             store_slug=_lc_store_slug,
             purchase_truth=purchased_flag,
-            durable_closure=(
-                batch.durable_closure_by_rk.get(rk_pre or "") if rk_pre else None
-            ),
+            durable_closure=_durable_closure_lc,
             timeline_statuses=tl_pre,
             durable_closure_prefetched=True,
         )
@@ -15954,7 +15987,7 @@ def _merchant_normal_recovery_light_payload_merchant_batch(
             attach_customer_lifecycle_state_v1,
         )
 
-        rk_lc = (out.get("recovery_key") or rk_pre or "").strip()
+        rk_lc = (rk_pre or "").strip()
         next_due_iso = batch.next_due_by_ac.get(aid0)
         if next_due_iso is None:
             try:
@@ -16014,8 +16047,14 @@ def _merchant_normal_recovery_light_payload_merchant_batch(
             behavioral=bh_lc,
             purchase_truth=purchased_flag,
             cart_status=str(getattr(ac0, "status", None) or ""),
-            merchant_archived=bool(
-                batch.merchant_archived_by_rk.get(rk_lc) if rk_lc else False
+            merchant_archived=(
+                any_merchant_archived_for_alias_keys(
+                    batch.merchant_archived_by_rk, _alias_keys_lc
+                )
+                if _alias_keys_lc
+                else bool(batch.merchant_archived_by_rk.get(rk_lc))
+                if rk_lc
+                else False
             ),
             terminal_history_archived=in_history_slice,
             is_vip_lane=vip_lane,

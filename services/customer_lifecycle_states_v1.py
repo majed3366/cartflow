@@ -439,8 +439,9 @@ def _return_to_site_detected(
     coarse: str,
     log_ss: frozenset[str],
     behavioral: Mapping[str, Any],
+    timeline_statuses: Optional[frozenset[str]] = None,
 ) -> bool:
-    if _customer_replied(recovery_key):
+    if _customer_replied(recovery_key, timeline_statuses=timeline_statuses):
         return False
     pk = (phase_key or "").strip()
     cnorm = _norm(coarse)
@@ -838,6 +839,7 @@ def classify_customer_lifecycle_state_v1(
         coarse=cnorm,
         log_ss=log_ss,
         behavioral=bh,
+        timeline_statuses=timeline_statuses,
     ):
         has_next_template = sent_n < cap
         delay_pending = due_at is not None and due_at > now

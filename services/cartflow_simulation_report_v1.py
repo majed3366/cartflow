@@ -75,6 +75,44 @@ def _norm(s: Any) -> str:
     return str(s or "").strip()
 
 
+def _production_dashboard_recovery_key(
+    *, store_slug: str, session_id: str, cart_id: str
+) -> str:
+    """Production read-side recovery identity (same path as dashboard attach)."""
+    from main import _recovery_key_from_payload  # noqa: PLC0415
+
+    return _recovery_key_from_payload(
+        {
+            "store": store_slug,
+            "session_id": session_id,
+            "cart_id": cart_id,
+        }
+    )
+
+
+def _sim_has_purchase(
+    *,
+    store_slug: str,
+    session_id: str,
+    cart_id: str,
+    recovery_key: str,
+) -> bool:
+    from services.merchant_dashboard_recovery_resolve_v1 import (  # noqa: PLC0415
+        canonical_recovery_keys_for_cart,
+    )
+    from services.purchase_truth import has_purchase  # noqa: PLC0415
+
+    for rk in canonical_recovery_keys_for_cart(
+        store_slug=store_slug,
+        session_id=session_id,
+        cart_id=cart_id,
+        recovery_key=recovery_key,
+    ):
+        if has_purchase(rk):
+            return True
+    return False
+
+
 def clamp_simulation_store_count(stores_count: int) -> int:
     try:
         n = int(stores_count or _DEFAULT_STORES)
@@ -249,6 +287,7 @@ class _StoreTiming:
 class _StoreSimState:
     store_slug: str = ""
     recovery_key: str = ""
+    dashboard_recovery_key: str = ""
     session_id: str = ""
     cart_id: str = ""
     store_row: Any = None
@@ -509,6 +548,11 @@ def _simulate_one_store(
     st.session_id = f"sim-sess-{index:03d}-{run_id[:8]}"
     st.cart_id = f"sim-cart-{index:03d}-{run_id[:8]}"
     st.recovery_key = f"{slug}:{st.session_id}"
+    st.dashboard_recovery_key = _production_dashboard_recovery_key(
+        store_slug=slug,
+        session_id=st.session_id,
+        cart_id=st.cart_id,
+    )
     tm = st.timing
 
     if not dry_run:
@@ -590,7 +634,7 @@ def _simulate_one_store(
     # 11a: visible before send (abandoned cart in scope; no send logs yet)
     row_before, dash_ms = _measure_dashboard(
         store_row,
-        st.recovery_key,
+        st.dashboard_recovery_key,
         st,
         session_id=st.session_id,
         cart_id=st.cart_id,
@@ -628,7 +672,7 @@ def _simulate_one_store(
 
     row_after_1, dash_ms = _measure_dashboard(
         store_row,
-        st.recovery_key,
+        st.dashboard_recovery_key,
         st,
         session_id=st.session_id,
         cart_id=st.cart_id,
@@ -698,7 +742,7 @@ def _simulate_one_store(
 
     row_after_2, dash_ms = _measure_dashboard(
         store_row,
-        st.recovery_key,
+        st.dashboard_recovery_key,
         st,
         session_id=st.session_id,
         cart_id=st.cart_id,
@@ -731,7 +775,7 @@ def _simulate_one_store(
     )
     row_reply, dash_ms = _measure_dashboard(
         store_row,
-        st.recovery_key,
+        st.dashboard_recovery_key,
         st,
         session_id=st.session_id,
         cart_id=st.cart_id,
@@ -771,7 +815,7 @@ def _simulate_one_store(
     tm.cleanup_or_commit_ms += (time.perf_counter() - t_commit) * 1000.0
     row_return, dash_ms = _measure_dashboard(
         store_row,
-        st.recovery_key,
+        st.dashboard_recovery_key,
         st,
         session_id=st.session_id,
         cart_id=st.cart_id,
@@ -802,7 +846,7 @@ def _simulate_one_store(
         st.return_state = "waiting_purchase_window"
 
     # 10: purchase
-    from services.purchase_truth import has_purchase, ingest_purchase_truth  # noqa: PLC0415
+    from services.purchase_truth import ingest_purchase_truth  # noqa: PLC0415
 
     def _ingest_purchase() -> None:
         ingest_purchase_truth(
@@ -820,7 +864,7 @@ def _simulate_one_store(
     def _dash_after_purchase() -> Optional[dict[str, Any]]:
         return _dashboard_row(
             store_row,
-            st.recovery_key,
+            st.dashboard_recovery_key,
             session_id=st.session_id,
             cart_id=st.cart_id,
         )
@@ -851,7 +895,7 @@ def _simulate_one_store(
         _ingest_purchase()
         row_purchase, dash_ms = _measure_dashboard(
             store_row,
-            st.recovery_key,
+            st.dashboard_recovery_key,
             st,
             session_id=st.session_id,
             cart_id=st.cart_id,
@@ -860,9 +904,19 @@ def _simulate_one_store(
     st.purchase_state = _norm(
         (row_purchase or {}).get("customer_lifecycle_state")
     )
-    if st.purchase_state != "completed" and not has_purchase(st.recovery_key):
+    if st.purchase_state != "completed" and not _sim_has_purchase(
+        store_slug=slug,
+        session_id=st.session_id,
+        cart_id=st.cart_id,
+        recovery_key=st.recovery_key,
+    ):
         st.failures.append(f"purchase_state_unexpected={st.purchase_state}")
-    elif st.purchase_state != "completed" and has_purchase(st.recovery_key):
+    elif st.purchase_state != "completed" and _sim_has_purchase(
+        store_slug=slug,
+        session_id=st.session_id,
+        cart_id=st.cart_id,
+        recovery_key=st.recovery_key,
+    ):
         st.purchase_state = "completed"
 
     tm.per_store_elapsed_ms = round((time.perf_counter() - store_wall0) * 1000.0, 2)

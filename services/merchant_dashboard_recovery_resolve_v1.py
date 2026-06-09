@@ -7,7 +7,7 @@ Read-only helpers for merchant messages/carts APIs and debug trace.
 from __future__ import annotations
 
 import logging
-from typing import Any, Optional
+from typing import Any, Mapping, Optional, Sequence
 
 from sqlalchemy import or_
 
@@ -341,6 +341,45 @@ def log_matches_cart_identity(
     return log_row_matches_abandoned_cart(lg, ac, recovery_key=ac_rk)
 
 
+def merged_timeline_statuses_for_alias_keys(
+    timeline_statuses_by_rk: Mapping[str, frozenset[str]],
+    alias_keys: Sequence[str],
+) -> frozenset[str]:
+    """Union timeline status sets across all recovery_key aliases for one cart."""
+    merged: set[str] = set()
+    for k in alias_keys:
+        kk = _norm(k)
+        if not kk:
+            continue
+        merged |= set(timeline_statuses_by_rk.get(kk, frozenset()))
+    return frozenset(merged)
+
+
+def any_purchase_truth_for_alias_keys(
+    purchase_truth_by_rk: Mapping[str, bool],
+    alias_keys: Sequence[str],
+) -> bool:
+    return any(bool(purchase_truth_by_rk.get(_norm(k))) for k in alias_keys if _norm(k))
+
+
+def durable_closure_for_alias_keys(
+    durable_closure_by_rk: Mapping[str, Any],
+    alias_keys: Sequence[str],
+) -> Any:
+    for k in alias_keys:
+        kk = _norm(k)
+        if kk and durable_closure_by_rk.get(kk):
+            return durable_closure_by_rk[kk]
+    return None
+
+
+def any_merchant_archived_for_alias_keys(
+    merchant_archived_by_rk: Mapping[str, bool],
+    alias_keys: Sequence[str],
+) -> bool:
+    return any(bool(merchant_archived_by_rk.get(_norm(k))) for k in alias_keys if _norm(k))
+
+
 __all__ = [
     "SENT_LOG_STATUSES",
     "canonical_recovery_keys_for_abandoned_cart",
@@ -350,6 +389,10 @@ __all__ = [
     "find_dashboard_message_row",
     "find_sent_log_by_recovery_identity",
     "log_matches_cart_identity",
+    "merged_timeline_statuses_for_alias_keys",
+    "any_purchase_truth_for_alias_keys",
+    "durable_closure_for_alias_keys",
+    "any_merchant_archived_for_alias_keys",
     "sent_logs_for_store",
     "store_slug_from_dash",
 ]
