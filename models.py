@@ -5,6 +5,7 @@ import json
 from datetime import datetime, timezone
 from typing import Any
 
+from sqlalchemy import UniqueConstraint
 from sqlalchemy.orm import relationship
 
 from extensions import (
@@ -684,3 +685,38 @@ class DbReadyOperationalSnapshot(Base):
         onupdate=lambda: datetime.now(timezone.utc),
         nullable=False,
     )
+
+
+class CartLineSnapshot(Base):
+    """
+    Immutable cart line capture from widget Product Identity ``lines[]``.
+    Insert-only historical rows — never update name/price on existing snapshots.
+    """
+
+    __tablename__ = "cart_line_snapshots"
+    __table_args__ = (
+        UniqueConstraint(
+            "store_slug",
+            "session_id",
+            "cart_id",
+            "capture_source",
+            "content_hash",
+            name="uq_cart_line_snapshot_dedup",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True)
+    store_slug = Column(String(255), nullable=False, index=True)
+    session_id = Column(String(512), nullable=False, index=True)
+    cart_id = Column(String(255), nullable=False, default="", index=True)
+    recovery_key = Column(String(512), nullable=True, index=True)
+    product_id = Column(String(128), nullable=True, index=True)
+    variant_id = Column(String(128), nullable=True)
+    sku = Column(String(128), nullable=True)
+    name = Column(String(200), nullable=True)
+    unit_price = Column(Float, nullable=True)
+    quantity = Column(Integer, nullable=True)
+    captured_at = Column(DateTime, nullable=False, index=True)
+    capture_source = Column(String(64), nullable=False, index=True)
+    capture_confidence = Column(String(16), nullable=False)
+    content_hash = Column(String(64), nullable=False)

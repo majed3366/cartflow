@@ -253,6 +253,9 @@ from models import (  # noqa: E402
 from routes.cartflow import router as cartflow_router  # noqa: E402
 from routes.knowledge import router as knowledge_router  # noqa: E402
 from routes.product_data import router as product_data_router  # noqa: E402
+from services.product_data.product_data_line_snapshots_hook_v1 import (  # noqa: E402
+    product_data_try_line_snapshots,
+)
 from routes.cart_recovery_reason import router as cart_recovery_reason_router  # noqa: E402
 from routes.admin_operations import router as admin_operations_router  # noqa: E402
 import routes.admin_ops  # noqa: F401,E402 — registers /admin/ops/* on admin router
@@ -11232,6 +11235,7 @@ async def api_cart_event(request: Request, background_tasks: BackgroundTasks):
                 "cart_event_before_response_cart_state_sync",
                 bg_tasks_queued=_bg_tasks_queued(),
             )
+            product_data_try_line_snapshots(payload, event_hint="cart_state_sync")
             return j(out_sync, 200)
         if event_norm == "cart_abandoned":
             print("[ROUTING TO VIP HANDLER]")
@@ -11262,6 +11266,7 @@ async def api_cart_event(request: Request, background_tasks: BackgroundTasks):
                 "cart_event_before_response_cart_abandoned",
                 bg_tasks_queued=_bg_tasks_queued(),
             )
+            product_data_try_line_snapshots(payload)
             return j(out_abandon, 200)
         out: dict[str, Any] = {
             "ok": True,
