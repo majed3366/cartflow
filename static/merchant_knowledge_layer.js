@@ -140,18 +140,22 @@
             '" data-severity="' +
             esc(ins.severity || "info") +
             '">' +
+            '<div class="ma-knowledge-insight-body">' +
             '<h3 class="ma-knowledge-insight-title">' +
             esc(ins.title_ar || "") +
             "</h3>" +
             '<p class="ma-knowledge-insight-msg">' +
             esc(ins.message_ar || "") +
             "</p>" +
+            "</div>" +
+            '<div class="ma-knowledge-insight-foot">' +
             (evidence
               ? '<p class="ma-knowledge-insight-evidence">' + esc(evidence) + "</p>"
               : "") +
             (action
               ? '<p class="ma-knowledge-insight-action">' + esc(action) + "</p>"
               : "") +
+            "</div>" +
             "</article>"
           );
         })

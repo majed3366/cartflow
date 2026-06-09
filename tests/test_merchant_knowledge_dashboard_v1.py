@@ -114,6 +114,12 @@ class MerchantKnowledgeDashboardV1Tests(unittest.TestCase):
         ]
         self.assertGreaterEqual(len(actionable), 2)
 
+    def test_knowledge_css_uses_card_grid(self) -> None:
+        css = (_ROOT / "static" / "merchant_app.css").read_text(encoding="utf-8")
+        self.assertIn(".ma-knowledge-cards", css)
+        self.assertIn("grid-template-columns: repeat(2", css)
+        self.assertIn("ma-knowledge-insight-body", _JS)
+
     def test_main_py_unchanged_for_knowledge_logic(self) -> None:
         main_src = (_ROOT / "main.py").read_text(encoding="utf-8")
         self.assertNotIn("build_knowledge_report", main_src)
