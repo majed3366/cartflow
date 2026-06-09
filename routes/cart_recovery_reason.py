@@ -239,6 +239,18 @@ async def post_widget_cart_recovery_reason(request: Request) -> Any:
 
         db.session.commit()
         rk = recovery_key_for_reason_session(ss, sid, cid_apply)
+        from services.product_data.product_hesitation_hook_v1 import (
+            product_data_try_hesitation_mapping,
+        )
+
+        product_data_try_hesitation_mapping(
+            ss,
+            sid,
+            cart_id=cid_apply,
+            recovery_key=rk,
+            reason=(getattr(row, "reason", None) or reason_tag),
+            sub_reason=getattr(row, "sub_category", None),
+        )
         if reason_phone_update is not _PHONE_OMIT:
             _rk_phone = (
                 reason_phone_update if isinstance(reason_phone_update, str) else None

@@ -752,3 +752,38 @@ class ProductCatalogEntry(Base):
     catalog_source = Column(String(64), nullable=False, index=True)
     first_seen_at = Column(DateTime, nullable=False)
     last_synced_at = Column(DateTime, nullable=False)
+
+
+class ProductHesitationMapping(Base):
+    """
+    Immutable Product ↔ Hesitation Reason link (Hesitation Mapping v1).
+
+    Records the historical fact that a canonical product (``stable_identity_key``)
+    was present in a cart/session when a hesitation ``reason`` was captured.
+    Insert-only history — never overwritten, never reclassified. No intelligence,
+    scoring, or blame attribution lives here.
+    """
+
+    __tablename__ = "product_hesitation_mappings"
+    __table_args__ = (
+        UniqueConstraint(
+            "dedup_hash",
+            name="uq_product_hesitation_dedup",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True)
+    store_slug = Column(String(255), nullable=False, index=True)
+    session_id = Column(String(512), nullable=False, index=True)
+    cart_id = Column(String(255), nullable=False, default="", index=True)
+    recovery_key = Column(String(512), nullable=True, index=True)
+    stable_identity_key = Column(String(256), nullable=False, index=True)
+    identity_tier = Column(String(8), nullable=False)
+    product_id = Column(String(128), nullable=True, index=True)
+    name = Column(String(200), nullable=True)
+    reason = Column(String(64), nullable=False, index=True)
+    sub_reason = Column(String(64), nullable=True, index=True)
+    mapping_confidence = Column(String(16), nullable=False)
+    mapping_source = Column(String(32), nullable=False, default="reason_capture")
+    captured_at = Column(DateTime, nullable=False, index=True)
+    dedup_hash = Column(String(64), nullable=False)
