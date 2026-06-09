@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Read-only dev diagnostic routes (Phase 1D extraction)."""
+"""Read-only dev diagnostic routes (Phase 1D/1E-A extraction)."""
 from __future__ import annotations
 
 import logging
@@ -15,6 +15,8 @@ from sqlalchemy.exc import SQLAlchemyError
 from extensions import db
 from json_response import j
 from models import AbandonedCart, CartRecoveryLog, CartRecoveryReason, RecoverySchedule, Store
+from services.ai_message_builder import build_abandoned_cart_message
+from services.whatsapp_recovery import build_whatsapp_recovery_message
 from services.whatsapp_send import should_send_whatsapp
 from services.merchant_vip_settings import merchant_vip_notify_enabled
 from services.vip_cart import abandoned_cart_in_vip_operational_lane
@@ -1205,6 +1207,97 @@ def dev_test_widget_identity_trace(
             "lifecycle_truth_flags": flags,
             "identity_reusable": reusable,
             "identity_reuse_reason": reason,
+        }
+    )
+
+
+@router.get("/dev/run-flow")
+def dev_run_flow():
+    from routes.ops import get_mock_abandoned_cart
+
+    cart = get_mock_abandoned_cart()
+    message = build_abandoned_cart_message(cart)
+    return j(
+        {
+            "cart": cart,
+            "message": message,
+        }
+    )
+
+
+@router.get("/dev/whatsapp-message-test")
+def dev_whatsapp_message_test():
+    import main as _main  # noqa: PLC0415
+
+    c = _main._WHATSAPP_TEST_CART
+    return j(
+        {
+            "new_price": build_whatsapp_recovery_message("new", "price", c),
+            "new_quality": build_whatsapp_recovery_message("new", "quality", c),
+            "returning_price": build_whatsapp_recovery_message("returning", "price", c),
+            "returning_quality": build_whatsapp_recovery_message("returning", "quality", c),
+        }
+    )
+
+
+@router.get("/dev/should-send-test")
+def dev_should_send_test():
+    # محاكاة: نشاط حديث (< دقيقتين) مقابل سكون ≥ دقيقتين
+    now = datetime.now(timezone.utc)
+    recent = should_send_whatsapp(now - timedelta(minutes=1), now=now)
+    idle = should_send_whatsapp(now - timedelta(minutes=3), now=now)
+    return j({"recent": recent, "idle": idle})
+
+
+@router.get("/dev/recovery-timing-test")
+def dev_recovery_timing_test():
+    """
+    أزمنة ‎should_send_whatsapp‎ فقط (بدون واتساب) — للتجارب.
+    """
+    now = datetime.now(timezone.utc)
+    last_recent = now - timedelta(minutes=1)
+    last_idle = now - timedelta(minutes=3)
+    return j(
+        {
+            "ok": True,
+            "cases": {
+                "recent_activity": {
+                    "should_send": should_send_whatsapp(
+                        last_recent, user_returned_to_site=False, now=now
+                    ),
+                },
+                "idle_activity": {
+                    "should_send": should_send_whatsapp(
+                        last_idle, user_returned_to_site=False, now=now
+                    ),
+                },
+            },
+        }
+    )
+
+
+@router.get("/dev/recovery-duplicate-test")
+def dev_recovery_duplicate_test():
+    """
+    تكرار لنفس «السلة»: المحاولة الأولى — سكون ≥ دقيقتين يُسمح بالإرسال.
+    بعدها نُمثّل تسجيل لمسة/إرسال (آخر نشاط = ‎now‎) فينخفض الإرسال لاحقاً بمنطق ‎should_send_whatsapp‎ فقط.
+    """
+    now = datetime.now(timezone.utc)
+    first_last = now - timedelta(minutes=3)
+    first = should_send_whatsapp(
+        first_last, user_returned_to_site=False, now=now
+    )
+    # محاكاة: نفس السلة لكن بعد تسجيل الاسترجاع «آخر نشاط» = الآن (ضمن ‎2‎ د) → لا إرسال ثانٍ
+    second = should_send_whatsapp(now, user_returned_to_site=False, now=now)
+    return j(
+        {
+            "ok": True,
+            "first_attempt": {
+                "should_send": first,
+            },
+            "second_attempt": {
+                "should_send": second,
+            },
         }
     )
 
