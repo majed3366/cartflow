@@ -87,7 +87,8 @@ class MerchantKnowledgeDashboardV1Tests(unittest.TestCase):
         self.assertEqual(r.status_code, 200)
         html = r.text or ""
         self.assertIn('id="ma-knowledge-root"', html)
-        self.assertIn("🧠 ماذا يحدث في متجرك؟", html)
+        self.assertIn("ماذا يحدث في متجرك؟", html)
+        self.assertNotIn("🧠", html[html.find("ma-knowledge-root") : html.find("ma-knowledge-body")])
         self.assertIn("merchant_knowledge_layer.js", html)
 
     def test_knowledge_js_consumes_api_only(self) -> None:
@@ -98,6 +99,14 @@ class MerchantKnowledgeDashboardV1Tests(unittest.TestCase):
     def test_knowledge_js_has_empty_state_copy(self) -> None:
         self.assertIn("لا توجد بيانات كافية حالياً", _JS)
         self.assertIn("استمر في جمع النشاط", _JS)
+
+    def test_knowledge_js_arabic_display_mappings(self) -> None:
+        self.assertIn("أكبر فرصة لتحسين الاسترجاع", _JS)
+        self.assertIn('price: "السعر"', _JS)
+        self.assertIn('no_reply: "لم يرد العميل"', _JS)
+        self.assertIn("displayTitle", _JS)
+        self.assertIn("localizeReason", _JS)
+        self.assertNotIn("عنق زجاجة", _JS)
 
     def test_knowledge_js_forbidden_marketing_phrases_absent(self) -> None:
         for phrase in ("زد الإعلانات", "غيّر أسعارك", "ROI"):

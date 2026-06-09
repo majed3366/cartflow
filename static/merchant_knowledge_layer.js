@@ -8,6 +8,29 @@
   var MAX_CARDS = 5;
   var MIN_CARDS = 3;
 
+  var REASON_AR = {
+    price: "السعر",
+    quality: "الجودة",
+    shipping: "الشحن",
+    delivery: "التوصيل",
+    warranty: "الضمان",
+    other: "سبب آخر",
+    thinking: "يفكّر",
+  };
+
+  var BOTTLENECK_AR = {
+    failed: "فشل الإرسال",
+    ignored: "رفض العميل المساعدة",
+    stopped: "توقّف المسار",
+    no_reply: "لم يرد العميل",
+  };
+
+  var TREND_AR = {
+    up: "ارتفاع",
+    down: "انخفاض",
+    stable: "ثبات",
+  };
+
   var INSIGHT_PRIORITY = {
     hesitation_top_reason: 100,
     recovery_activity_summary: 90,
@@ -34,6 +57,94 @@
     var d = document.createElement("div");
     d.textContent = s == null ? "" : String(s);
     return d.innerHTML;
+  }
+
+  function localizeReason(raw) {
+    var k = (raw || "").trim().toLowerCase();
+    return REASON_AR[k] || "سبب آخر";
+  }
+
+  function localizeBottleneck(raw) {
+    var k = (raw || "").trim().toLowerCase();
+    return BOTTLENECK_AR[k] || "يحتاج متابعة";
+  }
+
+  function localizeTrend(raw) {
+    var k = (raw || "").trim().toLowerCase();
+    return TREND_AR[k] || TREND_AR.stable;
+  }
+
+  function replaceKnownTokens(text) {
+    var s = String(text || "");
+    Object.keys(REASON_AR).forEach(function (k) {
+      var ar = REASON_AR[k];
+      s = s.split("«" + k + "»").join("«" + ar + "»");
+      s = s.split("«" + k.toUpperCase() + "»").join("«" + ar + "»");
+    });
+    Object.keys(BOTTLENECK_AR).forEach(function (k) {
+      s = s.split(k).join(BOTTLENECK_AR[k]);
+    });
+    Object.keys(TREND_AR).forEach(function (k) {
+      s = s.replace(new RegExp("\\(" + k + "\\)", "gi"), "(" + TREND_AR[k] + ")");
+      s = s.replace(new RegExp("اتجاه:\\s*" + k, "gi"), "اتجاه: " + TREND_AR[k]);
+    });
+    return s;
+  }
+
+  function displayTitle(ins) {
+    if (!ins) return "";
+    if (ins.insight_key === "recovery_bottleneck") {
+      return "أكبر فرصة لتحسين الاسترجاع";
+    }
+    return replaceKnownTokens(ins.title_ar || "");
+  }
+
+  function displayMessage(ins) {
+    if (!ins) return "";
+    var ev = ins.evidence || {};
+    var key = ins.insight_key || "";
+
+    if (key === "hesitation_top_reason" && ev.top_count != null && ev.hesitation_total != null) {
+      var pct = ev.hesitation_total
+        ? Math.round((1000 * ev.top_count) / ev.hesitation_total) / 10
+        : 0;
+      return (
+        "السبب الأكثر تسجيلاً هو «" +
+        localizeReason(ev.top_reason) +
+        "» (" +
+        String(ev.top_count) +
+        " من " +
+        String(ev.hesitation_total) +
+        " — " +
+        String(pct) +
+        "%)."
+      );
+    }
+
+    if (key === "recovery_bottleneck" && ev.bottlenecks && ev.bottlenecks.length) {
+      var b0 = ev.bottlenecks[0];
+      return (
+        "أبرز ما يحتاج متابعة: " +
+        localizeBottleneck(b0.label || b0.key) +
+        " (" +
+        String(b0.count || 0) +
+        " حدث)."
+      );
+    }
+
+    if (key === "traffic_cart_demand_trend") {
+      return (
+        "سلات الفترة الحالية: " +
+        String(ev.cart_count != null ? ev.cart_count : 0) +
+        "؛ الفترة السابقة: " +
+        String(ev.prev_cart_count != null ? ev.prev_cart_count : 0) +
+        " (اتجاه: " +
+        localizeTrend(ev.trend) +
+        "). هذا مؤشر طلب من CartFlow وليس عدد زوار."
+      );
+    }
+
+    return replaceKnownTokens(ins.message_ar || "");
   }
 
   function insightScore(ins) {
@@ -74,7 +185,7 @@
     if (key === "hesitation_distribution" && ev.distribution) {
       var parts = [];
       Object.keys(ev.distribution).forEach(function (k) {
-        parts.push(k + ": " + ev.distribution[k]);
+        parts.push(localizeReason(k) + ": " + String(ev.distribution[k]));
       });
       if (parts.length) return parts.join(" · ");
     }
@@ -90,7 +201,7 @@
     }
     if (key === "recovery_bottleneck" && ev.bottlenecks && ev.bottlenecks.length) {
       var b0 = ev.bottlenecks[0];
-      return String(b0.count || 0) + " حدث — " + String(b0.label || b0.key || "");
+      return String(b0.count || 0) + " حدث — " + localizeBottleneck(b0.label || b0.key);
     }
     if (key === "conversion_cart_to_purchase" && ev.cart_to_purchase_rate != null) {
       return (
@@ -105,7 +216,9 @@
         "الفترة الحالية: " +
         String(ev.cart_count != null ? ev.cart_count : 0) +
         " · السابقة: " +
-        String(ev.prev_cart_count != null ? ev.prev_cart_count : 0)
+        String(ev.prev_cart_count != null ? ev.prev_cart_count : 0) +
+        " · الاتجاه: " +
+        localizeTrend(ev.trend)
       );
     }
     if (ins.sample_size > 0) {
@@ -142,10 +255,10 @@
             '">' +
             '<div class="ma-knowledge-insight-body">' +
             '<h3 class="ma-knowledge-insight-title">' +
-            esc(ins.title_ar || "") +
+            esc(displayTitle(ins)) +
             "</h3>" +
             '<p class="ma-knowledge-insight-msg">' +
-            esc(ins.message_ar || "") +
+            esc(displayMessage(ins)) +
             "</p>" +
             "</div>" +
             '<div class="ma-knowledge-insight-foot">' +
@@ -218,6 +331,10 @@
   window.__maKnowledgeTestHooks = {
     pickTopInsights: pickTopInsights,
     formatEvidence: formatEvidence,
+    displayTitle: displayTitle,
+    displayMessage: displayMessage,
+    localizeReason: localizeReason,
+    localizeBottleneck: localizeBottleneck,
     applyKnowledgePayload: applyKnowledgePayload,
     renderEmptyState: renderEmptyState,
   };
