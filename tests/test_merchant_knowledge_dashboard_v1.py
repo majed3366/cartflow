@@ -104,9 +104,25 @@ class MerchantKnowledgeDashboardV1Tests(unittest.TestCase):
         self.assertIn("أكبر فرصة لتحسين الاسترجاع", _JS)
         self.assertIn('price: "السعر"', _JS)
         self.assertIn('no_reply: "لم يرد العميل"', _JS)
-        self.assertIn("displayTitle", _JS)
+        self.assertIn("buildKnowledgeCardOIA", _JS)
         self.assertIn("localizeReason", _JS)
         self.assertNotIn("عنق زجاجة", _JS)
+
+    def test_knowledge_oia_framework(self) -> None:
+        self.assertIn("OIA_LABEL_OBSERVATION", _JS)
+        self.assertIn("OIA_LABEL_IMPACT", _JS)
+        self.assertIn("OIA_LABEL_ACTION", _JS)
+        self.assertIn("buildHesitationTopReasonOIA", _JS)
+        self.assertIn("comparisonPeriodLabel", _JS)
+        self.assertIn("مقارنة بالأسبوع السابق", _JS)
+        self.assertIn("راجع التسعير أو وضّح قيمة المنتج", _JS)
+        self.assertNotIn('action: "راقب هذا المؤشر خلال الأيام القادمة"', _JS)
+        self.assertIn("VIP cards belong to Action/Attention surfaces", _JS)
+
+    def test_knowledge_css_oia_blocks(self) -> None:
+        css = (_ROOT / "static" / "merchant_app.css").read_text(encoding="utf-8")
+        self.assertIn(".ma-knowledge-oia-stack", css)
+        self.assertIn(".ma-knowledge-oia-label", css)
 
     def test_knowledge_js_forbidden_marketing_phrases_absent(self) -> None:
         for phrase in ("زد الإعلانات", "غيّر أسعارك", "ROI"):
@@ -127,7 +143,7 @@ class MerchantKnowledgeDashboardV1Tests(unittest.TestCase):
         css = (_ROOT / "static" / "merchant_app.css").read_text(encoding="utf-8")
         self.assertIn(".ma-knowledge-cards", css)
         self.assertIn("grid-template-columns: repeat(2", css)
-        self.assertIn("ma-knowledge-insight-body", _JS)
+        self.assertIn("ma-knowledge-oia-stack", _JS)
 
     def test_main_py_unchanged_for_knowledge_logic(self) -> None:
         main_src = (_ROOT / "main.py").read_text(encoding="utf-8")

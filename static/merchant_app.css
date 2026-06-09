@@ -876,13 +876,40 @@ nav.ma-sidebar-nav {
   min-height: 0;
 }
 
+.ma-knowledge-oia-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1 1 auto;
+}
+
+.ma-knowledge-oia-block {
+  margin: 0;
+}
+
+.ma-knowledge-oia-label {
+  margin: 0 0 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #64748b;
+  line-height: 1.4;
+}
+
+.ma-knowledge-oia-text {
+  margin: 0;
+  font-size: 13px;
+  color: #334155;
+  line-height: 1.65;
+}
+
 .ma-knowledge-insight-foot {
   margin-top: auto;
   padding-top: 10px;
 }
 
 .ma-knowledge-insight-title {
-  margin: 0 0 8px;
+  margin: 0 0 12px;
   font-size: 14px;
   font-weight: 800;
   color: #0f172a;
@@ -890,25 +917,15 @@ nav.ma-sidebar-nav {
 }
 
 .ma-knowledge-insight-msg {
-  margin: 0;
-  font-size: 13px;
-  color: #334155;
-  line-height: 1.65;
+  display: none;
 }
 
 .ma-knowledge-insight-evidence {
-  margin: 0 0 6px;
-  font-size: 12px;
-  font-weight: 600;
-  color: #475569;
-  line-height: 1.5;
+  display: none;
 }
 
 .ma-knowledge-insight-action {
-  margin: 0;
-  font-size: 12px;
-  color: #0369a1;
-  line-height: 1.55;
+  display: none;
 }
 
 @media (min-width: 1200px) {
