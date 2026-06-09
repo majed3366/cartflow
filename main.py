@@ -251,6 +251,7 @@ from models import (  # noqa: E402
     Store,
 )
 from routes.cartflow import router as cartflow_router  # noqa: E402
+from routes.knowledge import router as knowledge_router  # noqa: E402
 from routes.cart_recovery_reason import router as cart_recovery_reason_router  # noqa: E402
 from routes.admin_operations import router as admin_operations_router  # noqa: E402
 import routes.admin_ops  # noqa: F401,E402 — registers /admin/ops/* on admin router
@@ -272,6 +273,7 @@ app.include_router(dev_diagnostics_router)
 app.include_router(whatsapp_delivery_webhook_router)
 app.include_router(admin_operations_router)
 app.include_router(cartflow_router)
+app.include_router(knowledge_router)
 app.include_router(cart_recovery_reason_router)
 app.include_router(demo_panel_router, prefix="/demo")
 app.include_router(merchant_auth_router)
