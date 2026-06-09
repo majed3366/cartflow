@@ -2707,15 +2707,20 @@
       });
   }
 
-  function applyVipHomeBanner(ban) {
-    var host = byId("ma-home-vip-banner");
+  function applyVipCartAlert(ban) {
+    var root = byId("ma-cart-alerts-root");
+    var host = byId("ma-cart-alerts-vip");
     if (!host) return;
-    if (!ban || !ban.amount_line) {
-      host.style.display = "none";
+    var hasVipCarts =
+      lastVipPageRows.length > 0 ||
+      lastVipHomeRows.length > 0 ||
+      !!(ban && ban.amount_line);
+    if (!hasVipCarts || !ban || !ban.amount_line) {
       host.innerHTML = "";
+      if (root) root.hidden = true;
       return;
     }
-    host.style.display = "";
+    if (root) root.hidden = false;
     var btn =
       window.maVipAutomation && typeof window.maVipAutomation.renderBannerBtn === "function"
         ? window.maVipAutomation.renderBannerBtn(ban)
@@ -2899,7 +2904,7 @@
     if (pageRows.length) {
       vipCartsHasRenderedRows = true;
     }
-    applyVipHomeBanner(lastVipBanner);
+    applyVipCartAlert(lastVipBanner);
     var list = byId("ma-vip-home-list");
     if (list) {
       var alertLine = String((d && d.merchant_vip_alert_state_ar) || "").trim();

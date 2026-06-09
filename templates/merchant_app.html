@@ -80,20 +80,6 @@
     </div>
 
   <div class="page active ma-page-home" id="page-home">
-    {% if merchant_dashboard_lazy_shell %}
-    <div id="ma-home-vip-banner" style="display:none;"></div>
-    {% elif merchant_vip_banner %}
-    <div class="vip-alert">
-      <div class="va-icon">👑</div>
-      <div class="va-body">
-        <div class="va-title">عميل VIP يحتاج تدخلك — لن يُرسَل له واتساب تلقائياً</div>
-        <div class="va-sub">{{ merchant_vip_banner.amount_line | default("") }}</div>
-      </div>
-      {% if merchant_vip_banner.contact_href %}<a class="va-btn" href="{{ merchant_vip_banner.contact_href }}">تواصل يدوي (VIP) ←</a>
-      {% else %}<span class="va-btn is-disabled" role="button" aria-disabled="true">تواصل يدوي (VIP) ←</span>{% endif %}
-    </div>
-    {% endif %}
-
     <div id="ma-home-alerts-root" class="ma-home-alerts-band ma-home-section" hidden aria-live="polite"></div>
     <div id="ma-activation-root" class="ma-home-activation-band ma-home-section" hidden aria-live="polite"></div>
 
@@ -259,6 +245,23 @@
       <div class="page-h1">بانتظار الإرسال</div>
       <div class="page-sub">سلال تنتظر رسالة الاسترجاع أو تفاعل العميل</div>
     </div>
+
+    <div id="ma-cart-alerts-root" class="ma-cart-alerts"{% if not merchant_dashboard_lazy_shell and merchant_vip_banner and merchant_vip_rows %}{% else %} hidden{% endif %} aria-live="polite">
+      <div id="ma-cart-alerts-vip" class="ma-cart-alerts-slot" data-alert-type="vip">
+        {% if not merchant_dashboard_lazy_shell and merchant_vip_banner and merchant_vip_rows %}
+        <div class="vip-alert">
+          <div class="va-icon">👑</div>
+          <div class="va-body">
+            <div class="va-title">عميل VIP يحتاج تدخلك — لن يُرسَل له واتساب تلقائياً</div>
+            <div class="va-sub">{{ merchant_vip_banner.amount_line | default("") }}</div>
+          </div>
+          {% if merchant_vip_banner.contact_href %}<a class="va-btn" href="{{ merchant_vip_banner.contact_href }}">تواصل يدوي (VIP) ←</a>
+          {% else %}<span class="va-btn is-disabled" role="button" aria-disabled="true">تواصل يدوي (VIP) ←</span>{% endif %}
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
     <div class="filter-bar" id="ma-cart-filters">
       {% if merchant_dashboard_lazy_shell %}
       <button type="button" class="filter-btn active" data-filter="all">الكل (<span id="ma-filt-all">0</span>)</button>
