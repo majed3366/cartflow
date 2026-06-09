@@ -3518,6 +3518,15 @@ try {
       cart: cart,
     };
     try {
+      if (typeof window.cartflowAttachProductLines === "function") {
+        window.cartflowAttachProductLines(body);
+      } else {
+        body.lines = [];
+      }
+    } catch (eLinesSync) {
+      body.lines = [];
+    }
+    try {
       var sig2;
       try {
         sig2 = String(cart.length) + ":" + total.toFixed(4) + ":" + JSON.stringify(cart);

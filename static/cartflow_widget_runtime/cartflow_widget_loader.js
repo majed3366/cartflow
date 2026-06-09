@@ -41,6 +41,7 @@
   /** Must match filesystem; order preserves dependencies between modules. */
   var MODULES = [
     "cartflow_widget_config.js",
+    "cartflow_product_identity_capture.js",
     "cartflow_widget_fetch.js",
     "cartflow_widget_state.js",
     "cartflow_widget_theme.js",

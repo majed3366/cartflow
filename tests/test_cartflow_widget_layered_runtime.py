@@ -41,6 +41,7 @@ class CartflowWidgetLayeredRuntimeTests(unittest.TestCase):
         expected = (
             "cartflow_widget_loader.js",
             "cartflow_widget_config.js",
+            "cartflow_product_identity_capture.js",
             "cartflow_widget_state.js",
             "cartflow_widget_theme.js",
             "cartflow_widget_triggers.js",

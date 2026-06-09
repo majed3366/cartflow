@@ -10625,6 +10625,8 @@ def _handle_cart_state_sync(
         prev["cart_state_sync_reason"] = reason_raw
         if isinstance(payload.get("cart"), list):
             prev["cart"] = payload.get("cart")
+        if isinstance(payload.get("lines"), list):
+            prev["lines"] = payload.get("lines")
         AbandonedCart.set_raw(row, prev)
         try:
             from services.vip_abandoned_cart_phone import (  # noqa: PLC0415

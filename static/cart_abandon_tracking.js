@@ -331,6 +331,15 @@
       items_count: items_count,
       cart: cartArr,
     };
+    try {
+      if (typeof window.cartflowAttachProductLines === "function") {
+        window.cartflowAttachProductLines(syncPayload);
+      } else {
+        syncPayload.lines = [];
+      }
+    } catch (eLines) {
+      syncPayload.lines = [];
+    }
     if (cfTestPh) {
       syncPayload.cf_test_phone = cfTestPh;
       try {
@@ -968,6 +977,15 @@
       cart_total: cartTotal,
       cart: cartArr,
     };
+    try {
+      if (typeof window.cartflowAttachProductLines === "function") {
+        window.cartflowAttachProductLines(bodyObj);
+      } else {
+        bodyObj.lines = [];
+      }
+    } catch (eLinesAb) {
+      bodyObj.lines = [];
+    }
     if (isMerchantActivationTestWidgetMode()) {
       bodyObj.merchant_activation = true;
       bodyObj.test_widget_identity = "merchant_activation";
@@ -1103,4 +1121,5 @@
 
   /* للوحة ‎/demo*‎: معرفة الجلسة نفسه بدون تكرار المنطق */
   window.cartflowGetSessionId = getRecoverySessionId;
+  window.cartflowGetStableCartEventIdForTracking = getStableCartEventIdForTracking;
 })();
