@@ -237,7 +237,7 @@
 
   function probeSetupExperienceRoot() {
     var root = byId("ma-setup-experience-root");
-    var home = byId("page-home");
+    var setupPage = byId("page-home-setup");
     if (!root) {
       return { found: false };
     }
@@ -249,24 +249,39 @@
       innerHTMLLength: (root.innerHTML || "").length,
       display: cs ? cs.display : null,
       visibility: cs ? cs.visibility : null,
-      parentPageHomeActive: !!(home && home.classList.contains("active")),
+      parentPageSetupActive: !!(setupPage && setupPage.classList.contains("active")),
       dataUnified: root.getAttribute("data-ma-setup-unified"),
     };
   }
 
   window.maProbeSetupExperienceRoot = probeSetupExperienceRoot;
 
+  function isHomeSectionActive() {
+    var pages = ["page-home", "page-home-setup", "page-home-month", "page-home-test-tools"];
+    var i;
+    for (i = 0; i < pages.length; i++) {
+      var el = byId(pages[i]);
+      if (el && el.classList.contains("active")) return true;
+    }
+    return false;
+  }
+
   function isDashboardHomeActive() {
     var home = byId("page-home");
     return !!(home && home.classList.contains("active"));
   }
 
-  function hideActivationOffHome() {
-    var root = byId("ma-activation-root");
+  function clearTestToolsRoot(root) {
     if (!root) return;
+    root.innerHTML = "";
     root.hidden = true;
     root.setAttribute("hidden", "");
-    root.classList.remove("ma-activation-on-home");
+  }
+
+  function showTestToolsRoot(root) {
+    if (!root) return;
+    root.hidden = false;
+    root.removeAttribute("hidden");
   }
 
   function showActivationRoot(root) {
@@ -288,14 +303,12 @@
     var act = cachedMerchantActivation;
     var mse = cachedMerchantSetupExperience;
     var home = byId("page-home");
+    var setupRoot = byId("ma-setup-experience-root");
+    var testToolsRoot = byId("ma-test-tools-root");
     if (act && home) {
       applyHomeAdaptiveStage(act);
     }
-    if (!isDashboardHomeActive()) {
-      hideActivationOffHome();
-      return;
-    }
-    if (!act) {
+    if (!act && !mse) {
       return;
     }
     if (!isUnifiedSetup(mse)) {
@@ -307,11 +320,21 @@
       shouldHideUnifiedSetupCard(act, mse) ||
       (isUnifiedSetup(mse) && mse && mse.setup_mode === false)
     ) {
-      var setupRoot = byId("ma-setup-experience-root");
-      if (setupRoot && isDashboardHomeActive()) {
-        renderUnifiedSetupDemoToolsOnly(mse, setupRoot);
+      if (setupRoot) {
+        setupRoot.hidden = true;
+        setupRoot.setAttribute("hidden", "");
+        setupRoot.innerHTML = "";
       }
-    } else if (shouldRenderUnifiedSetup(mse) && isDashboardHomeActive()) {
+      if (mse && testToolsRoot) {
+        renderUnifiedSetupDemoToolsOnly(mse, testToolsRoot);
+      } else {
+        clearTestToolsRoot(testToolsRoot);
+      }
+    } else if (shouldRenderUnifiedSetup(mse)) {
+      clearTestToolsRoot(testToolsRoot);
+      applyMerchantSetupExperience(mse);
+    } else if (mse && setupRoot && mse.show_card !== false) {
+      clearTestToolsRoot(testToolsRoot);
       applyMerchantSetupExperience(mse);
     }
   }
@@ -372,12 +395,11 @@
   }
 
   function applyOnboardingHomeFocus(mse) {
-    var home = byId("page-home");
-    if (!home) return;
+    var setupPage = byId("page-home-setup");
+    if (!setupPage) return;
     var setupMode = shouldRenderUnifiedSetup(mse);
-    home.classList.toggle("ma-setup-mode", setupMode);
-    home.classList.toggle("ma-setup-daily-peek", setupMode);
-    home.classList.remove("ma-onboarding-focus");
+    setupPage.classList.toggle("ma-setup-mode", setupMode);
+    setupPage.classList.remove("ma-onboarding-focus");
   }
 
   function hideActivationForUnifiedSetup(mse) {
@@ -659,10 +681,6 @@
   function applyMerchantActivation(act) {
     var root = byId("ma-activation-root");
     if (!root) return;
-    if (!isDashboardHomeActive()) {
-      hideActivationOffHome();
-      return;
-    }
     if (!act || typeof act !== "object") {
       hideActivationRootClear(root);
       return;
@@ -801,7 +819,7 @@
         unifiedSetupStepActionsHtml(demoSteps[i]) +
         "</li>";
     }
-    showSetupExperienceRoot(root);
+    showTestToolsRoot(root);
     root.setAttribute("data-ma-setup-unified", "1");
     root.setAttribute("data-ma-setup-demo-tools", "1");
     root.innerHTML =
@@ -1331,8 +1349,7 @@
           '<div id="ma-setup-steps-panel" class="ma-setup-steps ma-setup-steps-full hidden"' +
           ' role="region" aria-label="جميع خطوات الإعداد">' +
           unifiedSetupStepsHtml(steps) +
-          "</div></div>" +
-          '<p class="ma-setup-daily-peek-note">معاينة يومية (نظرة عامة · ملخص الشهر · آخر السلال) بالأسفل — باهتة حتى تنهي الإعداد.</p>') +
+          "</div></div>") +
       "</div>";
 
     var btn = byId("ma-setup-toggle-btn");
@@ -1378,7 +1395,13 @@
       return;
     }
     if (isUnifiedSetup(mse) && mse.setup_mode === false) {
-      renderUnifiedSetupDemoToolsOnly(mse, root);
+      root.hidden = true;
+      root.setAttribute("hidden", "");
+      root.innerHTML = "";
+      var testToolsRoot = byId("ma-test-tools-root");
+      if (testToolsRoot) {
+        renderUnifiedSetupDemoToolsOnly(mse, testToolsRoot);
+      }
       logSetupRenderDebug("setup_render_demo_tools", probeSetupExperienceRoot());
       return;
     }
@@ -1890,18 +1913,12 @@
 
   function cartLifecycleStatusClass(mc) {
     if (isArchivedVisual(mc)) return "s-archived";
-    return (
-      mc.customer_lifecycle_status_row_class ||
-      mc.merchant_status_row_class ||
-      "s-waiting"
-    );
+    return mc.customer_lifecycle_status_row_class || "s-waiting";
   }
 
   function cartLifecycleStatusLabel(mc) {
     if (isArchivedVisual(mc)) return "✓ مؤرشفة";
-    return (
-      mc.customer_lifecycle_label_ar || mc.merchant_status_label_ar || "—"
-    );
+    return mc.customer_lifecycle_label_ar || "— حالة المسار غير متاحة —";
   }
 
   function sortCartsArchivedLast(rows) {
@@ -1970,9 +1987,7 @@
         if (tk === "recovered" || tk === "completed") return true;
       }
     }
-    var lbl = String(
-      mc.customer_lifecycle_label_ar || mc.merchant_status_label_ar || ""
-    );
+    var lbl = String(mc.customer_lifecycle_label_ar || "");
     if (lbl.indexOf("تم الشراء") >= 0) return true;
     if (lbl.indexOf("تمت الاستعادة") >= 0) return true;
     if (lbl.indexOf("تم الاسترجاع") >= 0) return true;

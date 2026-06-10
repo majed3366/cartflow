@@ -34,7 +34,7 @@ html {
 }
 
 body {
-  font-family: "IBM Plex Sans Arabic", sans-serif;
+  font-family: Arial, sans-serif;
   background: var(--bg);
   color: var(--text);
   font-size: 13px;
@@ -360,6 +360,9 @@ body {
 }
 
 #page-home,
+#page-home-setup,
+#page-home-month,
+#page-home-test-tools,
 .ma-page-compact {
   max-width: var(--ma-content-max);
   margin-inline: auto;
@@ -720,16 +723,17 @@ nav.ma-sidebar-nav {
 .page { display: none; animation: fadeIn 0.2s ease; }
 .page.active { display: block; }
 
-/* Home overview only on الرئيسية — hide entire home page when another tab is active */
-#page-home:not(.active) {
+/* Home sub-pages — only one visible at a time via .page.active */
+#page-home:not(.active),
+#page-home-setup:not(.active),
+#page-home-month:not(.active),
+#page-home-test-tools:not(.active) {
   display: none !important;
 }
 
-/* Belt-and-suspenders: home-only nodes never paint outside active #page-home */
-#page-home:not(.active) #ma-activation-root,
+/* Belt-and-suspenders: overview nodes never paint outside active #page-home */
 #page-home:not(.active) #ma-home-alerts-root,
 #page-home:not(.active) .ma-home-section-kpi,
-#page-home:not(.active) .ma-home-section-setup-month,
 #page-home:not(.active) .ma-home-section-knowledge,
 #page-home:not(.active) .ma-home-section-reasons,
 #page-home:not(.active) .ma-home-section-carts,
@@ -737,10 +741,20 @@ nav.ma-sidebar-nav {
   display: none !important;
 }
 
-/* Explicitly restore activation + alerts on home (guards must not suppress these) */
-#page-home.page.active #ma-activation-root:not([hidden]),
-#page-home.page.active #ma-home-alerts-root:not([hidden]),
-#page-home.page.active #ma-setup-experience-root:not([hidden]) {
+/* Setup page nodes */
+#page-home-setup:not(.active) #ma-activation-root,
+#page-home-setup:not(.active) #ma-setup-experience-root {
+  display: none !important;
+}
+
+#page-home-setup.page.active #ma-activation-root:not([hidden]),
+#page-home-setup.page.active #ma-setup-experience-root:not([hidden]) {
+  display: block !important;
+  width: 100%;
+  flex: 0 0 auto;
+}
+
+#page-home.page.active #ma-home-alerts-root:not([hidden]) {
   display: block !important;
   width: 100%;
   flex: 0 0 auto;
@@ -1223,8 +1237,11 @@ nav.ma-sidebar-nav {
   align-items: stretch;
 }
 
-/* Adaptive home — control center only when الرئيسية is active */
-#page-home.page.active {
+/* Adaptive home overview — control center only when نظرة عامة is active */
+#page-home.page.active,
+#page-home-setup.page.active,
+#page-home-month.page.active,
+#page-home-test-tools.page.active {
   display: flex;
   flex-direction: column;
   gap: 0;
@@ -1238,29 +1255,25 @@ nav.ma-sidebar-nav {
   margin-bottom: 0;
 }
 
-/* State A — activation / setup first */
-#page-home.ma-home-stage-activation #ma-activation-root { order: 10; }
-#page-home.ma-home-stage-activation .ma-home-section-setup-month { order: 20; }
-#page-home.ma-home-stage-activation .ma-home-section-kpi { order: 30; }
-#page-home.ma-home-stage-activation .ma-home-section-reasons { order: 35; }
-#page-home.ma-home-stage-activation #ma-home-alerts-root { order: 40; }
-#page-home.ma-home-stage-activation .ma-home-section-carts { order: 50; }
-#page-home.ma-home-stage-activation .ma-home-section-vip { order: 60; }
+/* Overview stage ordering (setup/month/test tools live on separate pages) */
+#page-home.ma-home-stage-activation .ma-home-section-knowledge { order: 5; }
+#page-home.ma-home-stage-activation .ma-home-section-kpi { order: 10; }
+#page-home.ma-home-stage-activation .ma-home-section-reasons { order: 20; }
+#page-home.ma-home-stage-activation #ma-home-alerts-root { order: 30; }
+#page-home.ma-home-stage-activation .ma-home-section-carts { order: 40; }
+#page-home.ma-home-stage-activation .ma-home-section-vip { order: 50; }
 
-/* State B — KPI / ops first, activation compact at bottom */
+#page-home.ma-home-stage-activated .ma-home-section-knowledge { order: 5; }
 #page-home.ma-home-stage-activated .ma-home-section-kpi { order: 10; }
-#page-home.ma-home-stage-activated .ma-home-section-setup-month { order: 20; }
-#page-home.ma-home-stage-activated #ma-home-alerts-root { order: 30; }
-#page-home.ma-home-stage-activated .ma-home-section-reasons { order: 35; }
+#page-home.ma-home-stage-activated #ma-home-alerts-root { order: 20; }
+#page-home.ma-home-stage-activated .ma-home-section-reasons { order: 30; }
 #page-home.ma-home-stage-activated .ma-home-section-carts { order: 40; }
 #page-home.ma-home-stage-activated .ma-home-section-vip { order: 50; }
-#page-home.ma-home-stage-activated #ma-activation-root { order: 90; }
 
-/* State C — operations; activation hidden via [hidden] */
+#page-home.ma-home-stage-production .ma-home-section-knowledge { order: 5; }
 #page-home.ma-home-stage-production .ma-home-section-kpi { order: 10; }
-#page-home.ma-home-stage-production .ma-home-section-setup-month { order: 20; }
-#page-home.ma-home-stage-production #ma-home-alerts-root { order: 30; }
-#page-home.ma-home-stage-production .ma-home-section-reasons { order: 35; }
+#page-home.ma-home-stage-production #ma-home-alerts-root { order: 20; }
+#page-home.ma-home-stage-production .ma-home-section-reasons { order: 30; }
 #page-home.ma-home-stage-production .ma-home-section-carts { order: 40; }
 #page-home.ma-home-stage-production .ma-home-section-vip { order: 50; }
 
@@ -1272,7 +1285,7 @@ nav.ma-sidebar-nav {
   display: none !important;
 }
 
-#page-home.page.active .ma-home-activation-band.ma-activation-on-home:not([hidden]) {
+#page-home-setup.page.active .ma-home-activation-band.ma-activation-on-home:not([hidden]) {
   display: block !important;
 }
 
@@ -1482,83 +1495,32 @@ nav.ma-sidebar-nav {
   color: #57534e;
 }
 
-.ma-home-top-card {
-  margin: 0;
-  min-height: 0;
+.ma-home-setup-card {
+  margin-bottom: 16px;
 }
 
-.ma-home-top .ma-setup-card {
+.ma-home-month-card {
   margin-bottom: 0;
-  height: 100%;
 }
 
-.ma-home-top:has(#ma-setup-experience-root[hidden]) {
-  grid-template-columns: 1fr;
+.ma-home-month-lead {
+  margin: 0 0 12px;
+  padding: 0 16px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--muted);
 }
 
-/* Onboarding focus — keep overview visible; setup card may use full width in top row */
-#page-home.ma-onboarding-focus .ma-home-top {
-  grid-template-columns: 1fr 1fr;
-}
-
-/* Unified setup mode — setup hero first; daily surfaces dimmed peek (not hidden) */
-#page-home.ma-setup-mode .ma-home-top {
-  grid-template-columns: 1fr;
-}
-
-#page-home.ma-setup-mode #ma-activation-root {
+.ma-test-tools-root[hidden] {
   display: none !important;
 }
 
-#page-home.ma-setup-mode .ma-home-section-reasons,
-#page-home.ma-setup-mode .ma-home-section-vip {
-  display: none;
+#page-home-setup.ma-setup-mode #ma-activation-root {
+  display: none !important;
 }
 
-#page-home.ma-setup-daily-peek .ma-home-section-kpi,
-#page-home.ma-setup-daily-peek #ma-home-month-summary,
-#page-home.ma-setup-daily-peek .ma-home-section-carts {
-  display: block !important;
-  opacity: 0.58;
-  filter: saturate(0.9);
-  pointer-events: none;
-  user-select: none;
-  margin-bottom: 10px;
-  border: 1px dashed rgba(148, 163, 184, 0.55);
-  border-radius: 12px;
-  overflow: hidden;
-  background: rgba(248, 250, 252, 0.75);
-  transition: opacity 0.2s ease;
-}
-
-#page-home.ma-setup-daily-peek .ma-home-section-kpi {
-  max-height: 5.25rem;
-  padding: 8px 10px 4px;
-  position: relative;
-}
-
-#page-home.ma-setup-daily-peek .ma-home-section-kpi::before {
-  content: "نظرة عامة — معاينة";
+#page-home-setup .ma-setup-card:not([hidden]) {
   display: block;
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--muted);
-  margin-bottom: 6px;
-}
-
-#page-home.ma-setup-daily-peek #ma-home-month-summary {
-  max-height: 5.5rem;
-  padding: 4px 8px;
-}
-
-#page-home.ma-setup-daily-peek .ma-home-section-carts {
-  max-height: 9.5rem;
-  padding: 4px 8px;
-}
-
-#page-home.ma-setup-daily-peek .ma-home-section-carts .table-scroll {
-  max-height: 5rem;
-  overflow: hidden;
 }
 
 /* Setup hierarchy v2 */
@@ -1922,19 +1884,8 @@ nav.ma-sidebar-nav {
   margin-top: 8px;
 }
 
-.ma-setup-daily-peek-note {
-  margin: 10px 0 0;
-  font-size: 11px;
-  line-height: 1.45;
-  color: var(--muted);
-}
-
 .ma-setup-steps-toolbar {
   margin-bottom: 8px;
-}
-
-#page-home.ma-setup-mode .ma-home-top .ma-setup-card {
-  grid-column: 1 / -1;
 }
 
 /* Setup onboarding v3 — calmer visual hierarchy (logic unchanged) */

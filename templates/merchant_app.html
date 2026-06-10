@@ -47,6 +47,7 @@
     <button type="button" class="nav-item active" data-home-nav="overview" onclick="maHomeNav('overview')">نظرة عامة</button>
     <button type="button" class="nav-item" data-home-nav="setup" onclick="maHomeNav('setup')">إعداد المتجر</button>
     <button type="button" class="nav-item" data-home-nav="month" onclick="maHomeNav('month')">ملخص الشهر</button>
+    <button type="button" class="nav-item" data-home-nav="test-tools" onclick="maHomeNav('test-tools')">أدوات التجربة</button>
   </nav>
   <nav class="ma-ctx-panel ma-sidebar-nav" data-ma-ctx="carts" hidden aria-label="السلال">
     <p class="ma-ctx-label">السلال</p>
@@ -81,7 +82,6 @@
 
   <div class="page active ma-page-home" id="page-home">
     <div id="ma-home-alerts-root" class="ma-home-alerts-band ma-home-section" hidden aria-live="polite"></div>
-    <div id="ma-activation-root" class="ma-home-activation-band ma-home-section" hidden aria-live="polite"></div>
 
     <section
       id="ma-knowledge-root"
@@ -97,26 +97,6 @@
         <p class="ma-knowledge-loading">جاري قراءة ما يراه CartFlow…</p>
       </div>
     </section>
-
-    <div class="ma-home-top ma-home-section ma-home-section-setup-month">
-      <div id="ma-setup-experience-root" class="ma-setup-card ma-home-top-card" hidden aria-live="polite"></div>
-      <div class="card ma-home-top-card" id="ma-home-month-summary">
-        <div class="card-head"><div class="card-title">ملخص الشهر</div></div>
-        <div class="mini-grid">
-          {% if merchant_dashboard_lazy_shell %}
-          <div class="mc"><div class="mc-l">إجمالي السلال</div><div class="mc-v ma-dash-skel" id="ma-month-abandoned">{{ merchant_month_abandoned_fmt | default("…") }}</div></div>
-          <div class="mc"><div class="mc-l">تم استردادها</div><div class="mc-v ma-dash-skel" style="color:var(--green-mid);" id="ma-month-recovered">{{ merchant_month_recovered_fmt | default("…") }}</div></div>
-          <div class="mc"><div class="mc-l">نسبة الاسترداد</div><div class="mc-v ma-dash-skel" style="color:var(--green-mid);" id="ma-month-pct">{{ merchant_month_recovery_pct_fmt | default("…") }}٪</div></div>
-          <div class="mc"><div class="mc-l">إيرادات مستردة</div><div class="mc-v ma-dash-skel" id="ma-month-revenue">{{ merchant_month_revenue_fmt | default("…") }} ر</div></div>
-          {% else %}
-          <div class="mc"><div class="mc-l">إجمالي السلال</div><div class="mc-v">{{ merchant_month_abandoned_fmt | default("0") }}</div></div>
-          <div class="mc"><div class="mc-l">تم استردادها</div><div class="mc-v" style="color:var(--green-mid);">{{ merchant_month_recovered_fmt | default("0") }}</div></div>
-          <div class="mc"><div class="mc-l">نسبة الاسترداد</div><div class="mc-v" style="color:var(--green-mid);">{{ merchant_month_recovery_pct_fmt | default("0") }}٪</div></div>
-          <div class="mc"><div class="mc-l">إيرادات مستردة</div><div class="mc-v">{{ merchant_month_revenue_fmt | default("0") }} ر</div></div>
-          {% endif %}
-        </div>
-      </div>
-    </div>
 
     <div class="kpi-grid ma-home-section ma-home-section-kpi">
       <div class="kpi">
@@ -238,6 +218,35 @@
         <div class="ma-vip-footnote">⚠️ VIP لا يتلقى رسائل تلقائية — تدخلك الشخصي يصنع الفرق</div>
       </div>
     </div>
+  </div>
+
+  <div class="page ma-page-home-sub" id="page-home-setup">
+    <div id="ma-activation-root" class="ma-home-activation-band ma-home-section" hidden aria-live="polite"></div>
+    <div id="ma-setup-experience-root" class="ma-setup-card ma-home-setup-card" hidden aria-live="polite"></div>
+  </div>
+
+  <div class="page ma-page-home-sub" id="page-home-month">
+    <div class="card ma-home-month-card" id="ma-home-month-summary">
+      <div class="card-head"><div class="card-title">ملخص الشهر</div></div>
+      <p class="ma-home-month-lead">أرقام الاسترداد والأداء لهذا الشهر.</p>
+      <div class="mini-grid">
+        {% if merchant_dashboard_lazy_shell %}
+        <div class="mc"><div class="mc-l">إجمالي السلال</div><div class="mc-v ma-dash-skel" id="ma-month-abandoned">{{ merchant_month_abandoned_fmt | default("…") }}</div></div>
+        <div class="mc"><div class="mc-l">تم استردادها</div><div class="mc-v ma-dash-skel" style="color:var(--green-mid);" id="ma-month-recovered">{{ merchant_month_recovered_fmt | default("…") }}</div></div>
+        <div class="mc"><div class="mc-l">نسبة الاسترداد</div><div class="mc-v ma-dash-skel" style="color:var(--green-mid);" id="ma-month-pct">{{ merchant_month_recovery_pct_fmt | default("…") }}٪</div></div>
+        <div class="mc"><div class="mc-l">إيرادات مستردة</div><div class="mc-v ma-dash-skel" id="ma-month-revenue">{{ merchant_month_revenue_fmt | default("…") }} ر</div></div>
+        {% else %}
+        <div class="mc"><div class="mc-l">إجمالي السلال</div><div class="mc-v">{{ merchant_month_abandoned_fmt | default("0") }}</div></div>
+        <div class="mc"><div class="mc-l">تم استردادها</div><div class="mc-v" style="color:var(--green-mid);">{{ merchant_month_recovered_fmt | default("0") }}</div></div>
+        <div class="mc"><div class="mc-l">نسبة الاسترداد</div><div class="mc-v" style="color:var(--green-mid);">{{ merchant_month_recovery_pct_fmt | default("0") }}٪</div></div>
+        <div class="mc"><div class="mc-l">إيرادات مستردة</div><div class="mc-v">{{ merchant_month_revenue_fmt | default("0") }} ر</div></div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="page ma-page-home-sub" id="page-home-test-tools">
+    <div id="ma-test-tools-root" class="ma-test-tools-root" aria-live="polite"></div>
   </div>
 
   <div class="page" id="page-carts" data-ma-cart-section="waiting">

@@ -2,7 +2,10 @@
   "use strict";
 
   var TITLES = {
-    home: "الرئيسية",
+    home: "نظرة عامة",
+    "home-setup": "إعداد المتجر",
+    "home-month": "ملخص الشهر",
+    "home-test-tools": "أدوات التجربة",
     carts: "السلال",
     followup: "السلال",
     completed: "السلال",
@@ -47,6 +50,9 @@
 
   var PAGE_TO_SECTION = {
     home: "home",
+    "home-setup": "home",
+    "home-month": "home",
+    "home-test-tools": "home",
     carts: "carts",
     followup: "carts",
     completed: "carts",
@@ -67,10 +73,34 @@
     settings: "الإعدادات",
   };
 
+  var HOME_SUB_PAGES = {
+    home: true,
+    "home-setup": true,
+    "home-month": true,
+    "home-test-tools": true,
+  };
+
+  var HOME_NAV_FOR_PAGE = {
+    home: "overview",
+    "home-setup": "setup",
+    "home-month": "month",
+    "home-test-tools": "test-tools",
+  };
+
+  var HOME_PAGE_FOR_NAV = {
+    overview: "home",
+    setup: "home-setup",
+    month: "home-month",
+    "test-tools": "home-test-tools",
+  };
+
   var PAGE_FOR_HASH = {
     "": "home",
     "#": "home",
     "#home": "home",
+    "#home-setup": "home-setup",
+    "#home-month": "home-month",
+    "#home-test-tools": "home-test-tools",
     "#carts": "carts",
     "#followup": "followup",
     "#completed": "completed",
@@ -223,12 +253,19 @@
     }
   }
 
+  function isHomeSubPage(page) {
+    return !!HOME_SUB_PAGES[page];
+  }
+
   function openSetupSteps() {
-    var root = byId("ma-setup-experience-root");
     var panel = byId("ma-setup-steps-panel");
     var btn = byId("ma-setup-toggle-btn");
-    if (panel) panel.hidden = false;
+    if (panel) {
+      panel.hidden = false;
+      panel.classList.remove("hidden");
+    }
     if (btn) btn.setAttribute("aria-expanded", "true");
+    var root = byId("ma-setup-experience-root");
     if (root) {
       requestAnimationFrame(function () {
         root.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -238,23 +275,12 @@
 
   window.maHomeNav = function (target) {
     var t = (target || "overview").trim();
-    goTo("home");
+    var page = HOME_PAGE_FOR_NAV[t] || "home";
+    goTo(page);
     setHomeNavActive(t);
     if (t === "setup") {
       setTimeout(openSetupSteps, 0);
-      return;
     }
-    if (t === "month") {
-      var monthEl = byId("ma-home-month-summary");
-      if (monthEl) {
-        requestAnimationFrame(function () {
-          monthEl.scrollIntoView({ behavior: "smooth", block: "start" });
-        });
-      }
-      return;
-    }
-    var scrollRoot = document.querySelector(".ma-content-root");
-    if (scrollRoot) scrollRoot.scrollTop = 0;
   };
 
   window.maOpenSetupDetail = openSetupSteps;
@@ -351,7 +377,9 @@
       if (pageEl) pageEl.classList.add("active");
       setPageTitle(TITLES[page] || SECTION_LABELS[section] || "", page);
       updateNavActive(page, null);
-      if (page === "home") setHomeNavActive("overview");
+      if (isHomeSubPage(page)) {
+        setHomeNavActive(HOME_NAV_FOR_PAGE[page] || "overview");
+      }
       runPageHooks(page);
       if (typeof window.maApplyJourneyPageGate === "function") {
         window.maApplyJourneyPageGate(page);
