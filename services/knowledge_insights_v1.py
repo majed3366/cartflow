@@ -248,7 +248,9 @@ def build_recovery_insights(metrics: KnowledgeMetricsBundle) -> list[KnowledgeIn
                     "messages_sent": metrics.recovery_messages_sent,
                     "replies": metrics.recovery_replies,
                     "returns": metrics.recovery_returns,
-                    "purchases": metrics.recovery_purchases,
+                    "purchase_count": metrics.purchase_count,
+                    "attributed_recovery_purchase_count": metrics.attributed_recovery_purchase_count,
+                    "purchase_attribution_unknown_count": metrics.purchase_attribution_unknown_count,
                     "ignored": metrics.recovery_ignored,
                     "stopped": metrics.recovery_stopped,
                     "failed": metrics.recovery_failed,
@@ -261,9 +263,13 @@ def build_recovery_insights(metrics: KnowledgeMetricsBundle) -> list[KnowledgeIn
 
     conf = confidence_from_sample(activity_total, minimum=MIN_RECOVERY_SAMPLE)
     effectiveness: Optional[float] = None
-    if metrics.recovery_messages_sent > 0 and metrics.recovery_purchases > 0:
+    if (
+        metrics.recovery_messages_sent > 0
+        and metrics.attributed_recovery_purchase_count > 0
+    ):
         effectiveness = round(
-            metrics.recovery_purchases / metrics.recovery_messages_sent, 4
+            metrics.attributed_recovery_purchase_count / metrics.recovery_messages_sent,
+            4,
         )
 
     bottlenecks: list[dict[str, Any]] = []
@@ -287,17 +293,20 @@ def build_recovery_insights(metrics: KnowledgeMetricsBundle) -> list[KnowledgeIn
                 f"رسائل مُرسَلة: {metrics.recovery_messages_sent}؛ "
                 f"ردود: {metrics.recovery_replies}؛ "
                 f"عائدون للموقع: {metrics.recovery_returns}؛ "
-                f"مشتريات مؤكدة: {metrics.recovery_purchases}."
+                f"مشتريات مؤكدة (Purchase Truth): {metrics.purchase_count}؛ "
+                f"مشتريات مُنسَبة للاسترجاع: {metrics.attributed_recovery_purchase_count}."
             ),
             evidence={
                 "messages_sent": metrics.recovery_messages_sent,
                 "replies": metrics.recovery_replies,
                 "returns": metrics.recovery_returns,
-                "purchases": metrics.recovery_purchases,
+                "purchase_count": metrics.purchase_count,
+                "attributed_recovery_purchase_count": metrics.attributed_recovery_purchase_count,
+                "purchase_attribution_unknown_count": metrics.purchase_attribution_unknown_count,
                 "ignored": metrics.recovery_ignored,
                 "stopped": metrics.recovery_stopped,
                 "failed": metrics.recovery_failed,
-                "effectiveness_purchase_per_message": effectiveness,
+                "effectiveness_attributed_purchase_per_message": effectiveness,
             },
             confidence=conf if effectiveness else CONFIDENCE_LOW,
             data_window=dw,

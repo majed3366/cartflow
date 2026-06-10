@@ -202,7 +202,8 @@
   function buildRecoveryActivitySummaryOIA(ins, ev) {
     var sent = ev.messages_sent != null ? ev.messages_sent : 0;
     var replies = ev.replies != null ? ev.replies : 0;
-    var purchases = ev.purchases != null ? ev.purchases : 0;
+    var purchaseCount = ev.purchase_count != null ? ev.purchase_count : 0;
+    var attributed = ev.attributed_recovery_purchase_count != null ? ev.attributed_recovery_purchase_count : 0;
     var returns = ev.returns != null ? ev.returns : 0;
     return {
       title: cardTitle(ins),
@@ -213,8 +214,10 @@
         String(replies) +
         " · عائدون للموقع: " +
         String(returns) +
-        " · مشتريات: " +
-        String(purchases) +
+        " · مشتريات مؤكدة: " +
+        String(purchaseCount) +
+        " · مُنسَبة للاسترجاع: " +
+        String(attributed) +
         ".",
       impact: "يوضح مدى تقدم جهود الاسترجاع الحالية.",
       action: "استمر بجمع البيانات حتى تظهر أنماط أوضح.",

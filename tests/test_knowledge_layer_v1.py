@@ -152,7 +152,8 @@ def test_recovery_activity_counts_and_sample_gate() -> None:
     )
     assert recovery.evidence["messages_sent"] == 3
     assert recovery.evidence["replies"] == 1
-    assert recovery.evidence["purchases"] == 1
+    assert recovery.evidence["purchase_count"] == 1
+    assert "attributed_recovery_purchase_count" in recovery.evidence
     assert recovery.confidence != CONFIDENCE_INSUFFICIENT
 
 
@@ -227,4 +228,5 @@ def test_startup_import_and_route_registered() -> None:
 
     paths = {getattr(r, "path", "") for r in app.routes}
     assert "/api/knowledge/report" in paths
+    assert "/api/knowledge/health" in paths
     assert len(app.routes) >= 1
