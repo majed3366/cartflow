@@ -30,8 +30,9 @@ def _clear_env() -> None:
         os.environ[ENV_RECOVERY_RESUME_ON_STARTUP] = old
 
 
-def test_default_unset_enables_resume_scan() -> None:
+def test_default_unset_enables_resume_scan_in_development() -> None:
     os.environ.pop(ENV_RECOVERY_RESUME_ON_STARTUP, None)
+    os.environ["ENV"] = "development"
     cfg = resolve_recovery_resume_on_startup_config()
     assert cfg["enabled"] is True
     assert cfg["reason"] == "default"
@@ -40,6 +41,7 @@ def test_default_unset_enables_resume_scan() -> None:
 
 
 def test_env_false_disables_resume_scan() -> None:
+    os.environ["ENV"] = "development"
     os.environ[ENV_RECOVERY_RESUME_ON_STARTUP] = "0"
     cfg = resolve_recovery_resume_on_startup_config()
     assert cfg["enabled"] is False
@@ -48,11 +50,13 @@ def test_env_false_disables_resume_scan() -> None:
 
 
 def test_env_true_enables_resume_scan() -> None:
+    os.environ["ENV"] = "development"
     os.environ[ENV_RECOVERY_RESUME_ON_STARTUP] = "1"
     assert is_recovery_resume_on_startup_enabled() is True
 
 
 def test_run_resume_scan_skipped_when_env_false(_clear_env: None) -> None:
+    os.environ["ENV"] = "development"
     os.environ[ENV_RECOVERY_RESUME_ON_STARTUP] = "false"
 
     out = asyncio.run(run_recovery_resume_scan_async(max_dispatch=5, dry_run=True))

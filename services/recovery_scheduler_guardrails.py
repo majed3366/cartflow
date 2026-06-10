@@ -134,16 +134,16 @@ def should_emit_scheduler_multi_worker_risk(*, enabled: bool) -> tuple[bool, str
 
 def is_recovery_resume_on_startup_enabled(*, force: bool = False) -> bool:
     """Whether this process may run startup recovery resume scan."""
-    if force:
-        return True
     try:
         from services.recovery_process_role_v1 import (  # noqa: PLC0415
-            process_role_effective_resume_enabled,
+            evaluate_scheduler_ownership_policy,
         )
 
-        return process_role_effective_resume_enabled(force=False)
+        return bool(
+            evaluate_scheduler_ownership_policy(force=force).get("may_resume", False)
+        )
     except Exception:  # noqa: BLE001
-        return bool(resolve_recovery_resume_on_startup_config()["enabled"])
+        return False
 
 
 def build_scheduler_owner_health_fields() -> dict[str, Any]:

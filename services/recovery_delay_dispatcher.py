@@ -78,17 +78,19 @@ def spawn_recovery_schedule_dispatch(
     source: str,
 ) -> None:
     """Fire-and-forget in-process delay dispatch (asyncio task)."""
-    try:
-        from services.recovery_process_role_v1 import (  # noqa: PLC0415
-            log_delay_dispatch_skipped,
-            process_role_may_spawn_delay_dispatch,
-        )
+    from services.recovery_process_role_v1 import (  # noqa: PLC0415
+        evaluate_scheduler_ownership_policy,
+        log_delay_dispatch_blocked,
+    )
 
-        if not process_role_may_spawn_delay_dispatch():
-            log_delay_dispatch_skipped(source=source, schedule_id=int(schedule_id))
-            return
-    except Exception:  # noqa: BLE001
-        pass
+    policy = evaluate_scheduler_ownership_policy(force=False)
+    if not policy.get("may_delay_dispatch"):
+        log_delay_dispatch_blocked(
+            source=source,
+            schedule_id=int(schedule_id),
+            block_reason=str(policy.get("block_reason") or "ownership_blocked"),
+        )
+        return
     asyncio.create_task(
         dispatch_recovery_schedule(int(schedule_id), run_at, source),
         name=f"recovery_dispatch_{int(schedule_id)}",

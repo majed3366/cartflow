@@ -1743,15 +1743,15 @@ async def run_recovery_resume_scan_async(
     dry_run: bool = False,
     force: bool = False,
 ) -> Dict[str, Any]:
-    from services.recovery_scheduler_guardrails import (
-        is_recovery_resume_on_startup_enabled,
-    )
+    from services.recovery_process_role_v1 import evaluate_scheduler_ownership_policy
 
-    if not is_recovery_resume_on_startup_enabled(force=force):
+    policy = evaluate_scheduler_ownership_policy(force=force)
+    if not policy.get("may_resume"):
+        block_reason = str(policy.get("block_reason") or "ownership_blocked")
         disabled_out = {
             "enabled": False,
             "dispatched": 0,
-            "reason": "resume_on_startup_disabled",
+            "reason": block_reason,
         }
         try:
             from services.recovery_health_v1 import record_resume_scan_completed

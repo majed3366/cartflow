@@ -146,16 +146,15 @@ def start_db_due_recovery_scanner_loop() -> None:
     """Start background loop on the running event loop (call from FastAPI startup)."""
     global _loop_task
 
-    try:
-        from services.recovery_process_role_v1 import (  # noqa: PLC0415
-            process_role_effective_due_scanner_enabled,
-        )
+    from services.recovery_process_role_v1 import evaluate_scheduler_ownership_policy
 
-        if not process_role_effective_due_scanner_enabled():
-            return
-    except Exception:  # noqa: BLE001
-        if not is_db_due_scanner_loop_enabled():
-            return
+    policy = evaluate_scheduler_ownership_policy(force=False)
+    if not policy.get("may_due_scan"):
+        _log_loop(
+            "SKIPPED",
+            reason=str(policy.get("block_reason") or "ownership_blocked"),
+        )
+        return
 
     try:
         loop = asyncio.get_running_loop()

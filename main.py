@@ -524,20 +524,19 @@ def _spawn_recovery_live_delay_dispatch(
         except Exception as exc:  # noqa: BLE001
             log.warning("attempt2 trace spawn skip failed: %s", exc)
         return
-    try:
-        from services.recovery_process_role_v1 import (  # noqa: PLC0415
-            log_delay_dispatch_skipped,
-            process_role_may_spawn_delay_dispatch,
-        )
+    from services.recovery_process_role_v1 import (  # noqa: PLC0415
+        evaluate_scheduler_ownership_policy,
+        log_delay_dispatch_blocked,
+    )
 
-        if not process_role_may_spawn_delay_dispatch():
-            log_delay_dispatch_skipped(
-                source=dispatch_source,
-                schedule_id=int(getattr(schedule_row, "id", 0) or 0) or None,
-            )
-            return
-    except Exception:  # noqa: BLE001
-        pass
+    policy = evaluate_scheduler_ownership_policy(force=False)
+    if not policy.get("may_delay_dispatch"):
+        log_delay_dispatch_blocked(
+            source=dispatch_source,
+            schedule_id=int(getattr(schedule_row, "id", 0) or 0) or None,
+            block_reason=str(policy.get("block_reason") or "ownership_blocked"),
+        )
+        return
     asyncio.create_task(
         _recovery_live_delay_dispatch_task(
             int(schedule_row.id),
