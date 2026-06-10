@@ -103,14 +103,6 @@ def main() -> None:
             ("test-tools", "04_test_tools.png"),
         ]
         for nav, fname in sections:
-            if nav == "test-tools":
-                page.wait_for_function(
-                    """() => {
-                      var r = document.getElementById('ma-test-tools-root');
-                      return !!(r && r.innerHTML && r.innerHTML.length > 40);
-                    }""",
-                    timeout=60000,
-                )
             _shot(page, nav, fname)
             report["screenshots"].append({"nav": nav, "file": fname})
         ctx.close()

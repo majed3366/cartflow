@@ -529,7 +529,15 @@
     var root = byId("ma-setup-readiness-root");
     if (!root || !d) return;
     var sc = d.store_connection || {};
-    var wa = d.whatsapp_readiness_card || {};
+    var wa =
+      d.whatsapp_readiness_card ||
+      {
+        state_key: d.wa_state_key || "setup",
+        badge_ar: d.wa_badge_ar || "—",
+        title_ar: "",
+        description_ar: "",
+        impact_ar: "",
+      };
     var mse = d.merchant_setup_experience || {};
     var pct = parseInt(mse.readiness_percent, 10);
     if (isNaN(pct)) pct = 0;
@@ -605,6 +613,30 @@
           "</p>"
         : "") +
       "</div>";
+  }
+
+  function applySetupReadinessPanelWithFallback(d) {
+    if (!d) return;
+    if (d.store_connection) {
+      applySetupReadinessPanel(d);
+      return;
+    }
+    fetch("/api/merchant/store-connection", { credentials: "same-origin", cache: "no-store" })
+      .then(function (r) {
+        return r.json();
+      })
+      .then(function (body) {
+        var merged = {};
+        var k;
+        for (k in d) {
+          if (Object.prototype.hasOwnProperty.call(d, k)) merged[k] = d[k];
+        }
+        merged.store_connection = (body && body.store_connection) || {};
+        applySetupReadinessPanel(merged);
+      })
+      .catch(function () {
+        applySetupReadinessPanel(d);
+      });
   }
 
   function activationSetupActionsHtml(act) {
@@ -1697,7 +1729,7 @@
     setText("ma-topbar-date", d.merchant_ar_date_header || "");
     ingestRefreshToken(d, "summary");
     applyTopbarReadiness(d);
-    applySetupReadinessPanel(d);
+    applySetupReadinessPanelWithFallback(d);
     applyMerchantSetupExperience(d.merchant_setup_experience);
     if (
       d.merchant_setup_experience &&

@@ -19032,10 +19032,32 @@ def _api_json_dashboard_summary(
         build_merchant_store_connection_status,
     )
 
-    with dashboard_summary_profile_span("build_merchant_store_connection_status"):
-        store_connection = build_merchant_store_connection_status(
-            cookies=cookies
-        ).to_api_dict()
+    try:
+        with dashboard_summary_profile_span("build_merchant_store_connection_status"):
+            store_connection = build_merchant_store_connection_status(
+                cookies=cookies
+            ).to_api_dict()
+    except Exception as exc:  # noqa: BLE001
+        log.warning("summary store_connection: %s", exc)
+        store_connection = {
+            "connected": False,
+            "status_label_ar": "غير مربوط",
+            "status_description_ar": "اربط متجرك من إعدادات الحساب",
+            "widget_status_label_ar": "—",
+            "widget_status_description_ar": "",
+            "store_connected_ok": False,
+            "widget_installed_ok": False,
+        }
+    whatsapp_readiness_slim = {
+        "state_key": str(wa_card.get("state_key") or ""),
+        "badge_ar": str(wa_card.get("badge_ar") or "—"),
+        "title_ar": str(wa_card.get("title_ar") or ""),
+        "description_ar": str(wa_card.get("description_ar") or ""),
+        "impact_ar": str(wa_card.get("impact_ar") or ""),
+        "next_action_ar": str(wa_card.get("next_action_ar") or ""),
+        "action_href": str(wa_card.get("action_href") or "/dashboard#whatsapp"),
+        "readiness_overall_ar": str(wa_card.get("readiness_overall_ar") or ""),
+    }
     refresh_state = _merchant_dashboard_refresh_state_payload(dash_store)
     out = {
         "merchant_ar_date_header": merchant_ar_weekday_date_header(now_utc),
@@ -19079,7 +19101,7 @@ def _api_json_dashboard_summary(
             if isinstance(merchant_activation, dict)
             else None
         ),
-        "whatsapp_readiness_card": wa_card,
+        "whatsapp_readiness_card": whatsapp_readiness_slim,
         "store_connection": store_connection,
     }
     out.update(refresh_state)
