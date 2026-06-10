@@ -15865,7 +15865,7 @@ def _merchant_normal_recovery_light_payload_merchant_batch(
         else None
     )
     from services.merchant_cart_row_classifier import (  # noqa: PLC0415
-        apply_merchant_cart_classification_to_payload,
+        apply_merchant_cart_classification_evidence_only,
         classify_merchant_cart_row,
     )
 
@@ -15938,7 +15938,7 @@ def _merchant_normal_recovery_light_payload_merchant_batch(
         "merchant_coarse_status": cnorm,
         "merchant_has_customer_phone": bool(has_phone),
     }
-    apply_merchant_cart_classification_to_payload(out, row_class)
+    apply_merchant_cart_classification_evidence_only(out, row_class)
     from services.merchant_dashboard_recovery_resolve_v1 import (  # noqa: PLC0415
         cart_row_identity_fields,
     )
@@ -16122,6 +16122,19 @@ def _merchant_normal_recovery_light_payload_merchant_batch(
                 pass
         except Exception:  # noqa: BLE001
             pass
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        from services.customer_lifecycle_states_v1 import (  # noqa: PLC0415
+            finalize_merchant_lifecycle_row_truth,
+        )
+
+        finalize_merchant_lifecycle_row_truth(
+            out,
+            recovery_key=str(out.get("recovery_key") or rk_pre or ""),
+            phase_key_evidence=pk_pre,
+            coarse_evidence=cnorm,
+        )
     except Exception:  # noqa: BLE001
         pass
     try:
@@ -19015,6 +19028,14 @@ def _api_json_dashboard_summary(
     merchant_setup_experience = build_merchant_setup_experience_api_payload(
         cookies=cookies
     )
+    from services.merchant_store_connection_v1 import (  # noqa: PLC0415
+        build_merchant_store_connection_status,
+    )
+
+    with dashboard_summary_profile_span("build_merchant_store_connection_status"):
+        store_connection = build_merchant_store_connection_status(
+            cookies=cookies
+        ).to_api_dict()
     refresh_state = _merchant_dashboard_refresh_state_payload(dash_store)
     out = {
         "merchant_ar_date_header": merchant_ar_weekday_date_header(now_utc),
@@ -19058,6 +19079,8 @@ def _api_json_dashboard_summary(
             if isinstance(merchant_activation, dict)
             else None
         ),
+        "whatsapp_readiness_card": wa_card,
+        "store_connection": store_connection,
     }
     out.update(refresh_state)
     try:

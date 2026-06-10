@@ -427,6 +427,176 @@
     root.removeAttribute("hidden");
   }
 
+  function recoveryStatusFromWaCard(wa) {
+    if (!wa || typeof wa !== "object") {
+      return { ok: false, label: "—", hint: "" };
+    }
+    var key = String(wa.state_key || "").trim();
+    if (key === "ready") {
+      return {
+        ok: true,
+        label: wa.badge_ar || "جاهز",
+        hint: wa.description_ar || wa.impact_ar || "",
+      };
+    }
+    if (key === "disabled") {
+      return {
+        ok: false,
+        label: wa.badge_ar || "غير مفعل",
+        hint: wa.description_ar || wa.impact_ar || "",
+      };
+    }
+    if (key === "sandbox") {
+      return {
+        ok: false,
+        label: wa.badge_ar || "تجريبي",
+        hint: wa.description_ar || wa.impact_ar || "",
+      };
+    }
+    return {
+      ok: false,
+      label: wa.badge_ar || wa.title_ar || "يحتاج متابعة",
+      hint: wa.description_ar || wa.impact_ar || "",
+    };
+  }
+
+  function readinessRowHtml(icon, title, statusLabel, ok, hint, href, goPage) {
+    var cls = ok ? "is-ready" : "is-pending";
+    var mark = ok ? "✓" : "○";
+    var goAttr = goPage
+      ? ' onclick="if(window.goTo){goTo(\'' + goPage + "');}return false;\""
+      : "";
+    return (
+      '<div class="ma-readiness-row ' +
+      cls +
+      '">' +
+      '<span class="ma-readiness-icon" aria-hidden="true">' +
+      icon +
+      "</span>" +
+      '<div class="ma-readiness-body">' +
+      '<p class="ma-readiness-row-title">' +
+      esc(title) +
+      "</p>" +
+      '<p class="ma-readiness-row-status">' +
+      mark +
+      " " +
+      esc(statusLabel) +
+      "</p>" +
+      (hint
+        ? '<p class="ma-readiness-row-hint">' + esc(hint) + "</p>"
+        : "") +
+      "</div>" +
+      (href
+        ? '<a class="ma-readiness-row-link" href="' +
+          esc(href) +
+          '"' +
+          goAttr +
+          ">انتقل</a>"
+        : "") +
+      "</div>"
+    );
+  }
+
+  function applySetupReadinessPanel(d) {
+    var root = byId("ma-setup-readiness-root");
+    if (!root || !d) return;
+    var sc = d.store_connection || {};
+    var wa = d.whatsapp_readiness_card || {};
+    var mse = d.merchant_setup_experience || {};
+    var pct = parseInt(mse.readiness_percent, 10);
+    if (isNaN(pct)) pct = 0;
+    pct = Math.max(0, Math.min(100, pct));
+    var stateLabel = mse.setup_state_label_ar || "—";
+    var nextStep = mse.next_step_ar || wa.next_action_ar || "";
+    var storeOk = !!(sc.store_connected_ok || sc.connected);
+    var widgetOk = !!sc.widget_installed_ok;
+    var waOk = String(wa.state_key || "") === "ready";
+    var recovery = recoveryStatusFromWaCard(wa);
+    var rows =
+      readinessRowHtml(
+        "🏪",
+        "ربط المتجر",
+        sc.status_label_ar || "—",
+        storeOk,
+        sc.status_description_ar || sc.pending_setup_message_ar || "",
+        "/dashboard#settings",
+        "settings"
+      ) +
+      readinessRowHtml(
+        "💬",
+        "واتساب",
+        wa.badge_ar || wa.title_ar || "—",
+        waOk,
+        wa.description_ar || "",
+        "/dashboard#whatsapp",
+        "whatsapp"
+      ) +
+      readinessRowHtml(
+        "🧩",
+        "الودجيت",
+        sc.widget_status_label_ar || "—",
+        widgetOk,
+        sc.widget_status_description_ar || "",
+        "/dashboard#widget",
+        "widget"
+      ) +
+      readinessRowHtml(
+        "🔄",
+        "الاسترجاع",
+        recovery.label,
+        recovery.ok,
+        recovery.hint,
+        "/dashboard#whatsapp",
+        "whatsapp"
+      );
+    root.innerHTML =
+      '<div class="ma-readiness-panel card">' +
+      '<div class="ma-readiness-head">' +
+      '<h2 class="ma-readiness-title" id="ma-setup-readiness-title">هل متجرك جاهز؟</h2>' +
+      '<p class="ma-readiness-lead">حالة الربط والتفعيل — بدون أدوات تجربة.</p>' +
+      "</div>" +
+      '<div class="ma-readiness-progress">' +
+      '<div class="ma-readiness-progress-meta">' +
+      '<span class="ma-readiness-pct">' +
+      pct +
+      "٪</span>" +
+      '<span class="ma-readiness-state">' +
+      esc(stateLabel) +
+      "</span>" +
+      "</div>" +
+      '<div class="ma-readiness-track"><div class="ma-readiness-fill" style="width:' +
+      pct +
+      '%"></div></div>' +
+      "</div>" +
+      '<div class="ma-readiness-rows">' +
+      rows +
+      "</div>" +
+      (nextStep
+        ? '<p class="ma-readiness-next"><span class="ma-readiness-next-k">الخطوة التالية</span> ' +
+          esc(nextStep) +
+          "</p>"
+        : "") +
+      "</div>";
+  }
+
+  function activationSetupActionsHtml(act) {
+    var href = (act && act.action_href) || "/dashboard#settings";
+    var sec = sectionFromHref(href);
+    var goAttr = sec
+      ? ' onclick="if(window.goTo){goTo(\'' + sec + "');}return false;\""
+      : "";
+    return (
+      '<div class="ma-activation-actions">' +
+      '<a class="ma-activation-btn ma-activation-btn-primary" href="' +
+      esc(href) +
+      '"' +
+      goAttr +
+      ">متابعة الإعداد</a>" +
+      '<a class="ma-activation-btn ma-activation-btn-secondary" href="/dashboard#home-test-tools" onclick="if(window.maHomeNav){maHomeNav(\'test-tools\');}return false;">أدوات التجربة</a>' +
+      "</div>"
+    );
+  }
+
   function applyHomeOperationalAlerts(alerts) {
     var root = byId("ma-home-alerts-root");
     if (!root) return;
@@ -582,13 +752,12 @@
     var working = !!act.activation_working;
     var title = working
       ? "CartFlow يعمل على متجرك"
-      : "تفعيل سريع — أول نجاح";
+      : "جاهزية التفعيل";
     var lead =
       act.next_step_ar ||
-      "جرّب متجر الاختبار ثم راقب السلال هنا.";
+      "أكمل خطوات الإعداد لتفعيل الاسترجاع على متجرك.";
     var msHtml = buildActivationMilestonesHtml(milestones);
     var stHtml = buildActivationTimelineHtml(states);
-    var testUrl = act.test_store_url || "/dashboard/test-widget";
     var delay = act.delay_hint_ar
       ? '<p class="ma-activation-delay">' + esc(act.delay_hint_ar) + "</p>"
       : "";
@@ -609,12 +778,7 @@
       '<ul class="ma-activation-milestones">' +
       msHtml +
       "</ul>" +
-      '<div class="ma-activation-actions">' +
-      '<a class="ma-activation-btn ma-activation-btn-primary" href="' +
-      esc(testUrl) +
-      '" target="_blank" rel="noopener">فتح متجر الاختبار</a>' +
-      '<a class="ma-activation-btn ma-activation-btn-secondary" href="/dashboard#carts" onclick="if(window.goTo){goTo(\'carts\');}return false;">عرض السلال</a>' +
-      "</div>" +
+      activationSetupActionsHtml(act) +
       delay +
       "</div>";
   }
@@ -624,10 +788,9 @@
     var states = act.summary_states || [];
     var lead =
       act.next_step_ar ||
-      "جرّب متجر الاختبار ثم راقب السلال هنا.";
+      "أكمل خطوات الإعداد لتفعيل الاسترجاع على متجرك.";
     var msHtml = buildActivationMilestonesHtml(milestones);
     var stHtml = buildActivationTimelineHtml(states);
-    var testUrl = act.test_store_url || "/dashboard/test-widget";
     var delay = act.delay_hint_ar
       ? '<p class="ma-activation-delay">' + esc(act.delay_hint_ar) + "</p>"
       : "";
@@ -664,12 +827,7 @@
       '<ul class="ma-activation-milestones">' +
       msHtml +
       "</ul>" +
-      '<div class="ma-activation-actions">' +
-      '<a class="ma-activation-btn ma-activation-btn-primary" href="' +
-      esc(testUrl) +
-      '" target="_blank" rel="noopener">فتح متجر الاختبار</a>' +
-      '<a class="ma-activation-btn ma-activation-btn-secondary" href="/dashboard#carts" onclick="if(window.goTo){goTo(\'carts\');}return false;">عرض السلال</a>' +
-      "</div>" +
+      activationSetupActionsHtml(act) +
       delay +
       '<p class="ma-activation-lead">' +
       esc(lead) +
@@ -736,47 +894,8 @@
       : "";
     var extTarget = isDemoStoreHref(href) ? ' target="_blank" rel="noopener"' : "";
     if (st.repeatable_demo) {
-      var done = !!st.is_complete;
-      var cur = !!st.is_current;
-      var badge = esc(st.completed_badge_ar || "تمت التجربة ✅");
-      var startLbl = esc(st.start_action_label_ar || "ابدأ التجربة");
-      var retryLbl = esc(st.retry_action_label_ar || "إعادة التجربة");
-      if (done) {
-        return (
-          '<p class="ma-setup-demo-done-badge" role="status">' +
-          badge +
-          "</p>" +
-          '<a class="ma-setup-step-action ma-setup-demo-retry" href="' +
-          esc(demoRetryHref(st, href)) +
-          '"' +
-          goAttr +
-          extTarget +
-          ">" +
-          retryLbl +
-          "</a>"
-        );
-      }
-      if (cur) {
-        return (
-          '<a class="ma-setup-step-action ma-setup-demo-start" href="' +
-          esc(href) +
-          '"' +
-          goAttr +
-          extTarget +
-          ">" +
-          startLbl +
-          "</a>"
-        );
-      }
       return (
-        '<a class="ma-setup-step-action" href="' +
-        esc(href) +
-        '"' +
-        goAttr +
-        extTarget +
-        ">" +
-        esc(st.action_label_ar || startLbl) +
-        "</a>"
+        '<a class="ma-setup-step-action" href="/dashboard#home-test-tools" onclick="if(window.maHomeNav){maHomeNav(\'test-tools\');}return false;">أدوات التجربة</a>'
       );
     }
     if (!st.is_complete && !st.is_current) {
@@ -945,18 +1064,19 @@
         break;
       }
     }
-    if (curStep && curStep.repeatable_demo && curStep.is_complete) {
-      rawHref = demoRetryHref(curStep, rawHref);
+    var primaryLabel = esc(mse.action_label_ar || "ابدأ هذه الخطوة");
+    if (curStep && curStep.repeatable_demo) {
+      rawHref = "/dashboard#home-test-tools";
+      primaryLabel = "انتقل إلى أدوات التجربة";
     }
     var primaryHref = esc(rawHref);
-    var primaryLabel = esc(mse.action_label_ar || "ابدأ هذه الخطوة");
-    if (curStep && curStep.repeatable_demo && !curStep.is_complete) {
-      primaryLabel = esc(
-        curStep.start_action_label_ar || mse.action_label_ar || "ابدأ التجربة"
-      );
-    }
-    var isExternalTest = isDemoStoreHref(rawHref);
+    var isExternalTest =
+      !(curStep && curStep.repeatable_demo) && isDemoStoreHref(rawHref);
     var primaryTarget = isExternalTest ? ' target="_blank" rel="noopener"' : "";
+    var primaryGo =
+      curStep && curStep.repeatable_demo
+        ? ' onclick="if(window.maHomeNav){maHomeNav(\'test-tools\');}return false;"'
+        : "";
     return (
       '<section class="ma-setup-hero ma-setup-hero-v3" aria-label="الخطوة الحالية">' +
       '<p class="ma-setup-hero-eyebrow">الخطوة الحالية</p>' +
@@ -971,6 +1091,7 @@
       primaryHref +
       '"' +
       primaryTarget +
+      primaryGo +
       ">" +
       primaryLabel +
       "</a>" +
@@ -1548,6 +1669,7 @@
     setText("ma-topbar-date", d.merchant_ar_date_header || "");
     ingestRefreshToken(d, "summary");
     applyTopbarReadiness(d);
+    applySetupReadinessPanel(d);
     applyMerchantSetupExperience(d.merchant_setup_experience);
     if (
       d.merchant_setup_experience &&
