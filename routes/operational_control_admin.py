@@ -87,6 +87,21 @@ def api_operational_control_verification(request: Request) -> Any:
     return j(build_operational_control_verification())
 
 
+@router.get("/api/admin/operational-health")
+def api_admin_operational_health(request: Request, store_slug: str = "") -> Any:
+    """Operational Truth Center — read-only JSON health composition."""
+    denied = _admin_json_auth(request)
+    if denied is not None:
+        return denied
+    from services.admin_operational_health_json_v1 import build_admin_operational_health_json
+
+    payload = build_admin_operational_health_json(
+        store_slug=(store_slug or "").strip() or None,
+    )
+    status = 200 if payload.get("ok") else 503
+    return JSONResponse(payload, status_code=status)
+
+
 @router.post("/admin/control/apply")
 def admin_operational_control_apply(
     request: Request,

@@ -66,6 +66,13 @@ class GateEvaluation:
 _state = OperationalControlState()
 _events: Deque[dict[str, Any]] = deque(maxlen=_MAX_EVENTS)
 _db_cache_updated_at: Optional[datetime] = None
+_oc_availability: dict[str, Any] = {
+    "available": True,
+    "reason": None,
+    "since_utc": None,
+}
+
+BLOCK_REASON_OC_UNAVAILABLE = "operational_control_unavailable"
 
 
 def _utc_now_iso() -> str:
@@ -97,6 +104,54 @@ def _hydrate_state_from_dict(data: dict[str, Any]) -> OperationalControlState:
     )
 
 
+def _mark_operational_control_available() -> None:
+    with _CONTROL_LOCK:
+        _oc_availability["available"] = True
+        _oc_availability["reason"] = None
+        _oc_availability["since_utc"] = None
+
+
+def _mark_operational_control_unavailable(reason: str) -> None:
+    with _CONTROL_LOCK:
+        _oc_availability["available"] = False
+        _oc_availability["reason"] = (reason or "unknown")[:200]
+        _oc_availability["since_utc"] = _utc_now_iso()
+
+
+def get_operational_control_availability() -> dict[str, Any]:
+    """Whether durable operational-control state was loaded successfully."""
+    with _CONTROL_LOCK:
+        return {
+            "available": bool(_oc_availability.get("available", True)),
+            "reason": _oc_availability.get("reason"),
+            "since_utc": _oc_availability.get("since_utc"),
+        }
+
+
+def _gate_blocked_if_unavailable(flag_name: str) -> Optional[GateEvaluation]:
+    if not get_operational_control_availability().get("available", True):
+        return GateEvaluation(
+            allowed=False,
+            flag_name=flag_name,
+            block_reason=BLOCK_REASON_OC_UNAVAILABLE,
+            scope="platform",
+        )
+    return None
+
+
+def _unavailable_whatsapp_block_dict() -> dict[str, Any]:
+    avail = get_operational_control_availability()
+    return {
+        "ok": False,
+        "error": BLOCK_REASON_OC_UNAVAILABLE,
+        "operational_control": True,
+        "wa_send_allowed": False,
+        "scope": "platform",
+        "operational_control_unavailable": True,
+        "unavailable_reason": avail.get("reason"),
+    }
+
+
 def _ensure_state_fresh_from_db() -> None:
     """Reload in-process cache when durable snapshot is newer (shared across workers)."""
     global _state, _db_cache_updated_at
@@ -105,15 +160,20 @@ def _ensure_state_fresh_from_db() -> None:
 
         data, db_updated = load_durable_operational_control()
         if data is None:
+            _mark_operational_control_available()
             return
         if db_updated is not None and _db_cache_updated_at == db_updated:
+            _mark_operational_control_available()
             return
         with _CONTROL_LOCK:
             if db_updated is not None and _db_cache_updated_at == db_updated:
+                _mark_operational_control_available()
                 return
             _state = _hydrate_state_from_dict(data)
             _db_cache_updated_at = db_updated
+        _mark_operational_control_available()
     except Exception as exc:  # noqa: BLE001
+        _mark_operational_control_unavailable(str(exc))
         log.warning("operational control db refresh failed: %s", exc)
 
 
@@ -132,11 +192,14 @@ def _persist_state_to_db() -> None:
 
 def get_operational_control_state() -> dict[str, Any]:
     _ensure_state_fresh_from_db()
+    availability = get_operational_control_availability()
     with _CONTROL_LOCK:
         st = _state
         return {
             "version": "operational_control_v1",
             "generated_at_utc": _utc_now_iso(),
+            "availability": availability,
+            "healthy": bool(availability.get("available", True)),
             "platform_wa_paused": st.platform_wa_paused,
             "platform_schedule_paused": st.platform_schedule_paused,
             "platform_continuation_paused": st.platform_continuation_paused,
@@ -161,6 +224,7 @@ def clear_operational_control_state_for_tests() -> None:
         _state = OperationalControlState()
         _events.clear()
         _db_cache_updated_at = None
+        _mark_operational_control_available()
     try:
         from schema_operational_control import reset_operational_control_schema_guard_for_tests
         from services.operational_control_store_v1 import (
@@ -180,6 +244,7 @@ def simulate_operational_control_process_restart_for_tests() -> None:
         _state = OperationalControlState()
         _events.clear()
         _db_cache_updated_at = None
+        _mark_operational_control_available()
 
 
 def _emit_control_event(
@@ -251,7 +316,13 @@ def evaluate_wa_send_allowed(
     store_slug: Optional[str] = None,
     reason_tag: Optional[str] = None,
 ) -> GateEvaluation:
+    blocked = _gate_blocked_if_unavailable("wa_send_allowed")
+    if blocked is not None:
+        return blocked
     _ensure_state_fresh_from_db()
+    blocked = _gate_blocked_if_unavailable("wa_send_allowed")
+    if blocked is not None:
+        return blocked
     with _CONTROL_LOCK:
         if _state.platform_wa_paused:
             return GateEvaluation(
@@ -294,7 +365,13 @@ def evaluate_schedule_creation_allowed(
 ) -> GateEvaluation:
     if not is_new_row:
         return GateEvaluation(allowed=True, flag_name="schedule_creation_allowed")
+    blocked = _gate_blocked_if_unavailable("schedule_creation_allowed")
+    if blocked is not None:
+        return blocked
     _ensure_state_fresh_from_db()
+    blocked = _gate_blocked_if_unavailable("schedule_creation_allowed")
+    if blocked is not None:
+        return blocked
     with _CONTROL_LOCK:
         if _state.platform_schedule_paused:
             return GateEvaluation(
@@ -321,7 +398,13 @@ def evaluate_schedule_creation_allowed(
 
 
 def evaluate_continuation_allowed(*, store_slug: Optional[str] = None) -> GateEvaluation:
+    blocked = _gate_blocked_if_unavailable("continuation_allowed")
+    if blocked is not None:
+        return blocked
     _ensure_state_fresh_from_db()
+    blocked = _gate_blocked_if_unavailable("continuation_allowed")
+    if blocked is not None:
+        return blocked
     with _CONTROL_LOCK:
         if _state.platform_continuation_paused:
             return GateEvaluation(
@@ -346,7 +429,13 @@ def evaluate_provider_send(
 ) -> GateEvaluation:
     """Provider pause blocks real provider path; mock/fallback remains visible in response."""
     prov = _norm_provider(provider)
+    blocked = _gate_blocked_if_unavailable("provider_send_allowed")
+    if blocked is not None:
+        return blocked
     _ensure_state_fresh_from_db()
+    blocked = _gate_blocked_if_unavailable("provider_send_allowed")
+    if blocked is not None:
+        return blocked
     with _CONTROL_LOCK:
         if not _state.provider_paused:
             return GateEvaluation(allowed=True, flag_name="provider_send_allowed")
@@ -684,7 +773,11 @@ def operational_control_blocks_whatsapp_send(
     reason_tag: Optional[str] = None,
 ) -> Optional[dict[str, Any]]:
     """Return error dict if blocked; None if allowed."""
+    if not get_operational_control_availability().get("available", True):
+        return _unavailable_whatsapp_block_dict()
     wa = evaluate_wa_send_allowed(store_slug=store_slug, reason_tag=reason_tag)
+    if not wa.allowed and wa.block_reason == BLOCK_REASON_OC_UNAVAILABLE:
+        return _unavailable_whatsapp_block_dict()
     if not wa.allowed:
         prov = evaluate_provider_send(provider="twilio")
         fallback = "mock_or_degraded_path_available" if not prov.allowed else None
@@ -716,21 +809,80 @@ def operational_control_blocks_schedule_creation(
     reason_tag: Optional[str] = None,
     is_new_row: bool,
 ) -> bool:
-    ev = evaluate_schedule_creation_allowed(
+    return operational_control_blocks_schedule_creation_safe(
         store_slug=store_slug,
         reason_tag=reason_tag,
         is_new_row=is_new_row,
     )
-    if not ev.allowed:
-        log.info(
-            "[OPERATIONAL CONTROL] schedule_creation_blocked reason=%s scope=%s",
-            ev.block_reason,
-            ev.scope,
+
+
+def operational_control_blocks_whatsapp_send_safe(
+    *,
+    store_slug: Optional[str] = None,
+    reason_tag: Optional[str] = None,
+) -> Optional[dict[str, Any]]:
+    """Fail-closed wrapper — never raises; blocks when OC state is unavailable."""
+    try:
+        return operational_control_blocks_whatsapp_send(
+            store_slug=store_slug,
+            reason_tag=reason_tag,
         )
-        print(
-            f"[OPERATIONAL CONTROL] schedule_creation_allowed=false "
-            f"reason={ev.block_reason} scope={ev.scope}",
-            flush=True,
+    except Exception as exc:  # noqa: BLE001
+        _mark_operational_control_unavailable(str(exc))
+        log.warning("operational control wa gate failed closed: %s", exc)
+        return _unavailable_whatsapp_block_dict()
+
+
+def operational_control_blocks_schedule_creation_safe(
+    *,
+    store_slug: Optional[str] = None,
+    reason_tag: Optional[str] = None,
+    is_new_row: bool,
+) -> bool:
+    """Fail-closed wrapper — returns True (blocked) when OC state is unavailable."""
+    try:
+        if not get_operational_control_availability().get("available", True):
+            _log_schedule_block(BLOCK_REASON_OC_UNAVAILABLE, "platform")
+            return True
+        ev = evaluate_schedule_creation_allowed(
+            store_slug=store_slug,
+            reason_tag=reason_tag,
+            is_new_row=is_new_row,
         )
+        if not ev.allowed:
+            _log_schedule_block(ev.block_reason or "operational_control_blocked", ev.scope)
+            return True
+        return False
+    except Exception as exc:  # noqa: BLE001
+        _mark_operational_control_unavailable(str(exc))
+        log.warning("operational control schedule gate failed closed: %s", exc)
+        _log_schedule_block(BLOCK_REASON_OC_UNAVAILABLE, "platform")
         return True
-    return False
+
+
+def evaluate_continuation_allowed_safe(*, store_slug: Optional[str] = None) -> GateEvaluation:
+    """Fail-closed wrapper — never raises."""
+    try:
+        return evaluate_continuation_allowed(store_slug=store_slug)
+    except Exception as exc:  # noqa: BLE001
+        _mark_operational_control_unavailable(str(exc))
+        log.warning("operational control continuation gate failed closed: %s", exc)
+        return GateEvaluation(
+            allowed=False,
+            flag_name="continuation_allowed",
+            block_reason=BLOCK_REASON_OC_UNAVAILABLE,
+            scope="platform",
+        )
+
+
+def _log_schedule_block(reason: Optional[str], scope: Optional[str]) -> None:
+    log.info(
+        "[OPERATIONAL CONTROL] schedule_creation_blocked reason=%s scope=%s",
+        reason,
+        scope,
+    )
+    print(
+        f"[OPERATIONAL CONTROL] schedule_creation_allowed=false "
+        f"reason={reason} scope={scope}",
+        flush=True,
+    )

@@ -916,10 +916,10 @@ def process_continuation_after_customer_reply(
         return
 
     try:
-        from services.operational_control_v1 import evaluate_continuation_allowed
+        from services.operational_control_v1 import evaluate_continuation_allowed_safe
 
         trace_slug_oc = _continuation_wa_trace_store_slug(ac)
-        cont_ev = evaluate_continuation_allowed(store_slug=trace_slug_oc or None)
+        cont_ev = evaluate_continuation_allowed_safe(store_slug=trace_slug_oc or None)
         if not cont_ev.allowed:
             log.info(
                 "[CONTINUATION] operational_control_blocked reason=%s scope=%s",
@@ -932,8 +932,17 @@ def process_continuation_after_customer_reply(
                 flush=True,
             )
             return
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001
+        log.warning(
+            "[CONTINUATION] operational_control_unavailable — blocked: %s",
+            exc,
+        )
+        print(
+            "[OPERATIONAL CONTROL] continuation_allowed=false "
+            "reason=operational_control_unavailable scope=platform",
+            flush=True,
+        )
+        return
 
     bh = behavioral_dict_for_abandoned_cart(ac)
     if bh.get("continuation_escalated_human") is True:

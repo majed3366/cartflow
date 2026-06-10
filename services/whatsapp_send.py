@@ -408,16 +408,22 @@ def send_whatsapp(
         return blocked
 
     try:
-        from services.operational_control_v1 import operational_control_blocks_whatsapp_send
+        from services.operational_control_v1 import operational_control_blocks_whatsapp_send_safe
 
-        oc_blocked = operational_control_blocks_whatsapp_send(
+        oc_blocked = operational_control_blocks_whatsapp_send_safe(
             store_slug=wa_trace_store_slug,
             reason_tag=reason_tag,
         )
         if oc_blocked is not None:
             return oc_blocked
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001
+        return {
+            "ok": False,
+            "error": "operational_control_unavailable",
+            "operational_control": True,
+            "wa_send_allowed": False,
+            "unavailable_reason": str(exc)[:200],
+        }
 
     sid = (os.getenv("TWILIO_ACCOUNT_SID") or "").strip()
     token = (os.getenv("TWILIO_AUTH_TOKEN") or "").strip()
@@ -593,16 +599,22 @@ def send_whatsapp_mock(
         return blocked
 
     try:
-        from services.operational_control_v1 import operational_control_blocks_whatsapp_send
+        from services.operational_control_v1 import operational_control_blocks_whatsapp_send_safe
 
-        oc_blocked = operational_control_blocks_whatsapp_send(
+        oc_blocked = operational_control_blocks_whatsapp_send_safe(
             store_slug=wa_trace_store_slug,
             reason_tag=None,
         )
         if oc_blocked is not None:
             return oc_blocked
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001
+        return {
+            "ok": False,
+            "error": "operational_control_unavailable",
+            "operational_control": True,
+            "wa_send_allowed": False,
+            "unavailable_reason": str(exc)[:200],
+        }
 
     emit_recovery_wa_send_trace(
         path_file=wa_trace_path or __file__,
