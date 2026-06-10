@@ -90,10 +90,12 @@ class OperationalControlFailClosedV1Tests(unittest.TestCase):
             "scheduler_store_visibility",
             "product_foundation_health_summary",
             "governance_health_summary",
+            "integrations",
             "diagnosis",
         ):
             self.assertIn(key, payload)
         self.assertIn("codes", payload["diagnosis"])
+        self.assertIn("platform", payload["integrations"])
 
     def test_unified_health_api_route(self) -> None:
         os.environ["CARTFLOW_ADMIN_PASSWORD"] = "test-admin-secret"

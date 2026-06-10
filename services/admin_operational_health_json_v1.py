@@ -166,6 +166,17 @@ def build_admin_operational_health_json(
         and not purchase_truth_gaps.get("gaps_detected")
     )
 
+    try:
+        from services.integration_health_v1 import build_integration_health
+
+        integrations = build_integration_health(store_slug=slug or None)
+    except Exception as exc:  # noqa: BLE001
+        integrations = {
+            "ok": False,
+            "version": "integration_health_v1",
+            "error": str(exc)[:200],
+        }
+
     return {
         "ok": ok,
         "version": "admin_operational_health_v1",
@@ -189,6 +200,7 @@ def build_admin_operational_health_json(
         "scheduler_store_visibility": scheduler_store_visibility,
         "product_foundation_health_summary": _product_foundation_health_summary(slug),
         "governance_health_summary": _governance_health_summary(slug),
+        "integrations": integrations,
         "summary": {
             "scheduler_ok": scheduler_ok,
             "recovery_health": recovery_health_label,
