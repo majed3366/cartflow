@@ -447,6 +447,20 @@ def build_recovery_health_snapshot(*, emit_warn_log: bool = True) -> dict[str, A
         if latest_action in ("yes", "review"):
             health = "warning"
 
+    scheduler_health: dict[str, Any] = {}
+    ownership_diagnosis: dict[str, Any] = {}
+    try:
+        from services.recovery_process_role_v1 import build_scheduler_health_snapshot
+
+        scheduler_health = build_scheduler_health_snapshot()
+        ownership_diagnosis = dict(scheduler_health.get("ownership_diagnosis") or {})
+    except Exception as exc:  # noqa: BLE001
+        ownership_diagnosis = {
+            "codes": ["policy_error"],
+            "severity": "critical",
+            "summary": str(exc)[:200],
+        }
+
     return {
         "ok": True,
         "health": health,
@@ -478,6 +492,14 @@ def build_recovery_health_snapshot(*, emit_warn_log: bool = True) -> dict[str, A
         "last_claim": hb.get("last_claim") or None,
         "last_execution": hb.get("last_execution") or None,
         "protections": protections,
+        "scheduler_ownership": scheduler_health.get("scheduler_ownership"),
+        "ownership_diagnosis": ownership_diagnosis,
+        "overdue_scheduled_count": int(
+            scheduler_health.get("overdue_scheduled_count")
+            or counts.get("pending_due")
+            or 0
+        ),
+        "running_stale_count": int(scheduler_health.get("running_stale_count") or 0),
         "generated_at": _iso(_utc_now()),
     }
 

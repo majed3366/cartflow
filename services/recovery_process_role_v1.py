@@ -402,6 +402,17 @@ def build_scheduler_health_snapshot() -> dict[str, Any]:
         "policy_error": policy.get("policy_error"),
     }
 
+    from services.scheduler_ownership_diagnosis_v1 import build_ownership_diagnosis
+
+    ownership_diagnosis = build_ownership_diagnosis(
+        scheduler_ownership=scheduler_ownership,
+        overdue_scheduled_count=overdue_scheduled_count,
+        running_stale_count=running_stale_count,
+        resume_enabled=resume_on,
+        due_scanner_enabled=scanner_on,
+        delay_dispatch_enabled=bool(policy.get("may_delay_dispatch")),
+    )
+
     ok = db_error is None and policy.get("compliance") != COMPLIANCE_MISCONFIGURED
     if policy.get("policy_error"):
         ok = False
@@ -416,6 +427,7 @@ def build_scheduler_health_snapshot() -> dict[str, Any]:
         "overdue_scheduled_count": overdue_scheduled_count,
         "running_stale_count": running_stale_count,
         "scheduler_ownership": scheduler_ownership,
+        "ownership_diagnosis": ownership_diagnosis,
     }
     if db_error:
         out["database_error"] = db_error

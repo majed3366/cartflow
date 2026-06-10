@@ -58,9 +58,59 @@ Startup log:
 [SCHEDULER OWNER] role=scheduler resume_enabled=true due_scanner=true
 ```
 
-### Legacy (unset `CARTFLOW_PROCESS_ROLE`)
+### Legacy (development only — unset `CARTFLOW_PROCESS_ROLE`)
 
-Current single-process behavior unchanged: resume on by default, scanner off unless env set, delay dispatch on abandon.
+In **`ENV=development`**, unset role keeps legacy single-process behavior: resume on by default, scanner off unless env set, delay dispatch on abandon.
+
+In **production-like** runtime, unset role is **misconfigured** (Phase 1 fail-closed) — set explicit `scheduler` or `api`.
+
+---
+
+## Pre-production deploy checklist (Phase 2)
+
+Before promoting to production:
+
+| Step | Check |
+|------|--------|
+| 1 | **Exactly one** scheduler deployment with `CARTFLOW_PROCESS_ROLE=scheduler` |
+| 2 | All API replicas: `CARTFLOW_PROCESS_ROLE=api` and `CARTFLOW_RECOVERY_RESUME_ON_STARTUP=0` |
+| 3 | Scheduler `/health/scheduler` → `ok=true`, `compliance=ok`, `ownership_diagnosis.codes` includes `ownership_ok` |
+| 4 | Each API `/health/scheduler` → `compliance=ok`, drivers blocked, diagnosis includes `scheduler_role_api_blocked` |
+| 5 | No `scheduler_role_misconfigured` or `scheduler_ownership_absent` on scheduler pod (unless known backlog) |
+| 6 | Run deploy verification script (see below) → exit code **0** |
+
+### Scheduler deployment
+
+```env
+CARTFLOW_PROCESS_ROLE=scheduler
+CARTFLOW_RECOVERY_RESUME_ON_STARTUP=1
+CARTFLOW_DB_DUE_SCANNER_ENABLED=true
+```
+
+### API replicas
+
+```env
+CARTFLOW_PROCESS_ROLE=api
+CARTFLOW_RECOVERY_RESUME_ON_STARTUP=0
+```
+
+---
+
+## Deploy verification script
+
+```bash
+python scripts/scheduler_ownership_verify.py \
+  --scheduler https://scheduler.example.com \
+  --api https://api1.example.com \
+  --api https://api2.example.com
+
+python scripts/scheduler_ownership_verify.py \
+  --check scheduler:https://scheduler.example.com \
+  --check api:https://api1.example.com \
+  --json
+```
+
+Exit **0** = pass, **1** = fail. Read-only — calls `GET /health/scheduler` only.
 
 ---
 
@@ -161,6 +211,8 @@ Example (conceptual):
 | `due_scanner_limit` | Rows per scanner tick |
 | `overdue_scheduled_count` | `scheduled` with `due_at <= now` (global DB) |
 | `running_stale_count` | `running` older than stale threshold |
+| `scheduler_ownership` | Phase 1 role/compliance block (`compliance`, `block_reason`, `may_*`) |
+| `ownership_diagnosis` | Phase 2 codes (`ownership_ok`, `scheduler_role_api_blocked`, `execution_backlog`, …), `severity`, `summary` |
 
 `GET /dev/recovery-health` — allowed in production (`main._DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT`).
 
@@ -174,6 +226,9 @@ Top-level fields for ops:
 | `pending_due` | Count of `scheduled` rows with `due_at <= now` |
 | `stuck_running` | `running` rows older than threshold |
 | `scheduler_detail` | Full owner config + `process_id` / `instance` / risk hints |
+| `scheduler_ownership` | Same block as `/health/scheduler` |
+| `ownership_diagnosis` | Compact diagnosis codes + severity + summary |
+| `overdue_scheduled_count` / `running_stale_count` | Global DB backlog / stale running |
 
 ---
 
@@ -196,9 +251,10 @@ Extra workers increase HTTP throughput but can **duplicate** recovery scheduling
 ## Verification
 
 ```bash
-python -m pytest tests/test_recovery_process_role_v1.py tests/test_recovery_scheduler_guardrails_v1.py -q
+python -m pytest tests/test_recovery_process_role_v1.py tests/test_recovery_scheduler_guardrails_v1.py tests/test_scheduler_ownership_diagnosis_v1.py -q
 curl -sS https://<host>/health/scheduler
 curl -sS https://<host>/dev/recovery-health
+python scripts/scheduler_ownership_verify.py --scheduler https://<scheduler-host> --api https://<api-host>
 ```
 
 After deploy:

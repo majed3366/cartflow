@@ -156,7 +156,9 @@ class RecoveryProcessRoleTests(unittest.TestCase):
         os.environ["CARTFLOW_RECOVERY_RESUME_ON_STARTUP"] = "1"
         snap = build_scheduler_health_snapshot()
         self.assertIn("scheduler_ownership", snap)
+        self.assertIn("ownership_diagnosis", snap)
         own = snap["scheduler_ownership"]
+        diag = snap["ownership_diagnosis"]
         for key in (
             "role",
             "compliance",
@@ -168,6 +170,8 @@ class RecoveryProcessRoleTests(unittest.TestCase):
             "fail_closed",
         ):
             self.assertIn(key, own)
+        for key in ("codes", "severity", "summary"):
+            self.assertIn(key, diag)
         self.assertTrue(snap["ok"])
 
     def test_health_scheduler_misconfigured_ok_false(self) -> None:
@@ -243,6 +247,7 @@ class HealthSchedulerRouteTests(unittest.TestCase):
         body = r.json()
         self.assertIn("role", body)
         self.assertIn("scheduler_ownership", body)
+        self.assertIn("ownership_diagnosis", body)
         self.assertIn("overdue_scheduled_count", body)
 
     def test_get_health_scheduler_misconfigured_503(self) -> None:
