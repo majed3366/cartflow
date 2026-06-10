@@ -3726,6 +3726,7 @@
     /* Stale-while-revalidate: paint cached rows immediately, then refresh. */
     hydrateNormalCartsCache();
     hydrateVipCartsCache();
+    fetchSection("/api/dashboard/summary", applySummary, "summary");
     var bootHash = (location.hash || "").split("?")[0].toLowerCase();
     fetchVipCarts(bootHash === "#vip" ? "boot_vip_hash" : "boot_parallel");
     normalCartsBootInFlight = true;
@@ -3738,7 +3739,6 @@
       }
       startPendingNewCartWatcher();
       var jobs = [
-        fetchSection("/api/dashboard/summary", applySummary, "summary"),
         fetchSection("/api/dashboard/followups", applyFollowups, "followups"),
         fetchSection("/api/dashboard/widget-panel", applyWidgetPanel, "widget_panel"),
         fetchSection("/api/dashboard/messages", applyMessages, "messages"),
