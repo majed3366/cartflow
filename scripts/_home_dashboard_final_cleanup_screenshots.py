@@ -49,7 +49,7 @@ def _auth(page) -> dict:
     return {"mode": "signup", "email": email}
 
 
-def _wait_summary(page) -> None:
+def _ensure_readiness_panel(page) -> None:
     page.wait_for_function(
         """async () => {
           try {
@@ -57,12 +57,16 @@ def _wait_summary(page) -> None:
               credentials: 'same-origin', cache: 'no-store'
             });
             const d = await r.json();
-            return !!(d && d.ok && d.store_connection && d.whatsapp_readiness_card);
+            if (!d || !d.ok || !d.store_connection) return false;
+            if (typeof window.maApplyDashboardSummary === 'function') {
+              window.maApplyDashboardSummary(d);
+            }
+            return !!document.querySelector('#ma-setup-readiness-root .ma-readiness-panel');
           } catch (e) { return false; }
         }""",
-        timeout=90000,
+        timeout=120000,
     )
-    page.wait_for_timeout(1200)
+    page.wait_for_timeout(800)
 
 
 def _shot(page, nav_target: str, filename: str) -> None:
@@ -91,9 +95,7 @@ def main() -> None:
         report["auth"] = _auth(page)
         page.goto(f"{BASE}/dashboard#home", timeout=120000)
         page.wait_for_timeout(3000)
-        _wait_summary(page)
-        page.wait_for_selector("#ma-setup-readiness-root .ma-readiness-panel", timeout=60000)
-        page.wait_for_timeout(800)
+        _ensure_readiness_panel(page)
         sections = [
             ("overview", "01_overview.png"),
             ("setup", "02_store_setup.png"),

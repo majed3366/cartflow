@@ -3750,6 +3750,7 @@
 
   window.maApplyVipCartsPayload = applyVipCarts;
   window.maSyncHomeActivation = syncHomeActivationFromCache;
+  window.maApplyDashboardSummary = applySummary;
   window.MERCHANT_SETUP_RENDER_BUILD = MERCHANT_SETUP_RENDER_BUILD;
   window.maFetchNormalCartsNow = function (label) {
     return fetchNormalCarts(label || "manual_now");
