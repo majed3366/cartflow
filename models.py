@@ -787,3 +787,38 @@ class ProductHesitationMapping(Base):
     mapping_source = Column(String(32), nullable=False, default="reason_capture")
     captured_at = Column(DateTime, nullable=False, index=True)
     dedup_hash = Column(String(64), nullable=False)
+
+
+class ProductPurchaseMapping(Base):
+    """
+    Immutable Product ↔ Purchase link (Purchase Mapping v1).
+
+    Records the historical fact that a canonical product was present in a
+    cart/session when Purchase Truth confirmed a purchase. Insert-only history —
+    never overwritten or reclassified. No intelligence, attribution scoring,
+    or ranking lives here.
+    """
+
+    __tablename__ = "product_purchase_mappings"
+    __table_args__ = (
+        UniqueConstraint(
+            "dedup_hash",
+            name="uq_product_purchase_dedup",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True)
+    store_slug = Column(String(255), nullable=False, index=True)
+    session_id = Column(String(512), nullable=False, index=True)
+    cart_id = Column(String(255), nullable=False, default="", index=True)
+    recovery_key = Column(String(512), nullable=True, index=True)
+    order_id = Column(String(255), nullable=True, index=True)
+    stable_identity_key = Column(String(256), nullable=False, index=True)
+    product_id = Column(String(128), nullable=True, index=True)
+    name = Column(String(200), nullable=True)
+    quantity = Column(Integer, nullable=True)
+    unit_price = Column(Float, nullable=True)
+    purchase_confidence = Column(String(16), nullable=False)
+    purchase_source = Column(String(128), nullable=False, index=True)
+    purchased_at = Column(DateTime, nullable=False, index=True)
+    dedup_hash = Column(String(64), nullable=False)

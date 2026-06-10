@@ -389,6 +389,20 @@ def record_purchase(
     _memory_put(evidence)
     _persist_durable_record(evidence)
 
+    from services.product_data.product_purchase_hook_v1 import (
+        product_data_try_purchase_mapping,
+    )
+
+    product_data_try_purchase_mapping(
+        evidence.store_slug,
+        evidence.session_id,
+        cart_id=evidence.cart_id,
+        recovery_key=rk,
+        order_id=evidence.order_id,
+        purchase_source=source,
+        purchased_at=pt,
+    )
+
     if apply_lifecycle:
         try:
             from services.purchase_lifecycle_closure import is_purchase_lifecycle_closed
