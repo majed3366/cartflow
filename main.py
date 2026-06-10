@@ -18982,14 +18982,22 @@ def _api_json_dashboard_summary(
             "recovery_pct": 0.0,
             "recovered_revenue": 0.0,
         }
-    with dashboard_summary_profile_span("_merchant_reason_counts_store_window_days7"):
-        reason_counts_w = _merchant_reason_counts_store_window(dash_store, days=7)
-    reason_rows, reason_insight = merchant_reason_panel_rows_from_counts(reason_counts_w)
-    with dashboard_summary_profile_span("_merchant_reason_counts_store_window_days30"):
-        reason_counts_m = _merchant_reason_counts_store_window(dash_store, days=30)
-    reason_rows_month, reason_insight_month = merchant_reason_panel_rows_from_counts(
-        reason_counts_m
-    )
+    try:
+        with dashboard_summary_profile_span("_merchant_reason_counts_store_window_days7"):
+            reason_counts_w = _merchant_reason_counts_store_window(dash_store, days=7)
+        reason_rows, reason_insight = merchant_reason_panel_rows_from_counts(
+            reason_counts_w
+        )
+        with dashboard_summary_profile_span("_merchant_reason_counts_store_window_days30"):
+            reason_counts_m = _merchant_reason_counts_store_window(dash_store, days=30)
+        reason_rows_month, reason_insight_month = merchant_reason_panel_rows_from_counts(
+            reason_counts_m
+        )
+    except Exception as exc:  # noqa: BLE001
+        log.warning("summary reason_counts: %s", exc)
+        db.session.rollback()
+        reason_rows, reason_insight = [], ""
+        reason_rows_month, reason_insight_month = [], ""
     try:
         with dashboard_summary_profile_span("_normal_carts_dashboard_stats"):
             mstats = dict(_normal_carts_dashboard_stats(dash_store))
@@ -19000,8 +19008,22 @@ def _api_json_dashboard_summary(
             "normal_recovered_count": 0,
             "stopped_flow_count": 0,
         }
-    with dashboard_summary_profile_span("build_merchant_whatsapp_readiness_card"):
-        wa_card = build_merchant_whatsapp_readiness_card(dash_store)
+    try:
+        with dashboard_summary_profile_span("build_merchant_whatsapp_readiness_card"):
+            wa_card = build_merchant_whatsapp_readiness_card(dash_store)
+    except Exception as exc:  # noqa: BLE001
+        log.warning("summary whatsapp_readiness: %s", exc)
+        db.session.rollback()
+        wa_card = {
+            "state_key": "setup",
+            "badge_ar": "—",
+            "title_ar": "",
+            "description_ar": "",
+            "impact_ar": "",
+            "next_action_ar": "",
+            "action_href": "/dashboard#whatsapp",
+            "readiness_overall_ar": "",
+        }
     if (reason_insight_month or "").strip():
         merchant_reason_recommendations_ar = [str(reason_insight_month).strip()]
     else:
@@ -19018,16 +19040,32 @@ def _api_json_dashboard_summary(
     rev_today = float(kpis.get("recovered_revenue_today") or 0.0)
     rev_month = float(month_win.get("recovered_revenue") or 0.0)
     rec_pct_m = float(month_win.get("recovery_pct") or 0.0)
-    merchant_activation = _merchant_activation_api_payload(
-        dash_store,
-        cookies=cookies,
-        month_abandoned=int(month_win.get("abandoned_total") or 0),
-        month_recovered=int(month_win.get("recovered_total") or 0),
-        month_revenue=float(month_win.get("recovered_revenue") or 0.0),
-    )
-    merchant_setup_experience = build_merchant_setup_experience_api_payload(
-        cookies=cookies
-    )
+    try:
+        merchant_activation = _merchant_activation_api_payload(
+            dash_store,
+            cookies=cookies,
+            month_abandoned=int(month_win.get("abandoned_total") or 0),
+            month_recovered=int(month_win.get("recovered_total") or 0),
+            month_revenue=float(month_win.get("recovered_revenue") or 0.0),
+        )
+    except Exception as exc:  # noqa: BLE001
+        log.warning("summary merchant_activation: %s", exc)
+        db.session.rollback()
+        merchant_activation = {}
+    try:
+        with dashboard_summary_profile_span("build_merchant_setup_experience_api_payload"):
+            merchant_setup_experience = build_merchant_setup_experience_api_payload(
+                cookies=cookies
+            )
+    except Exception as exc:  # noqa: BLE001
+        log.warning("summary setup_experience: %s", exc)
+        db.session.rollback()
+        merchant_setup_experience = {
+            "readiness_percent": 0,
+            "setup_state_label_ar": "—",
+            "next_step_ar": "",
+            "show_card": False,
+        }
     from services.merchant_store_connection_v1 import (  # noqa: PLC0415
         build_merchant_store_connection_status,
     )

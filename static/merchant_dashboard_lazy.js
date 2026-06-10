@@ -639,6 +639,51 @@
       });
   }
 
+  function hydrateSetupReadinessFromCache(extra) {
+    extra = extra || {};
+    var d = {
+      merchant_setup_experience: cachedMerchantSetupExperience,
+      merchant_activation: cachedMerchantActivation,
+      wa_state_key: extra.wa_state_key || "",
+      wa_badge_ar: extra.wa_badge_ar || "",
+      whatsapp_readiness_card: extra.whatsapp_readiness_card || null,
+      store_connection: extra.store_connection || null,
+    };
+    applySetupReadinessPanelWithFallback(d);
+  }
+
+  function bootSetupReadinessHydration() {
+    hydrateSetupReadinessFromCache();
+    fetch("/api/merchant/store-connection", {
+      credentials: "same-origin",
+      cache: "no-store",
+    })
+      .then(function (r) {
+        return r.json();
+      })
+      .then(function (body) {
+        hydrateSetupReadinessFromCache({
+          store_connection: (body && body.store_connection) || {},
+        });
+      })
+      .catch(function () {});
+    fetch("/api/merchant/setup-experience", {
+      credentials: "same-origin",
+      cache: "no-store",
+    })
+      .then(function (r) {
+        return r.json();
+      })
+      .then(function (body) {
+        if (body && body.ok && body.merchant_setup_experience) {
+          cachedMerchantSetupExperience = body.merchant_setup_experience;
+          syncHomeActivationFromCache();
+          hydrateSetupReadinessFromCache();
+        }
+      })
+      .catch(function () {});
+  }
+
   function activationSetupActionsHtml(act) {
     var href = (act && act.action_href) || "/dashboard#settings";
     var sec = sectionFromHref(href);
@@ -3759,6 +3804,7 @@
     hydrateNormalCartsCache();
     hydrateVipCartsCache();
     fetchSection("/api/dashboard/summary", applySummary, "summary");
+    bootSetupReadinessHydration();
     var bootHash = (location.hash || "").split("?")[0].toLowerCase();
     fetchVipCarts(bootHash === "#vip" ? "boot_vip_hash" : "boot_parallel");
     normalCartsBootInFlight = true;
@@ -3783,6 +3829,7 @@
   window.maApplyVipCartsPayload = applyVipCarts;
   window.maSyncHomeActivation = syncHomeActivationFromCache;
   window.maApplyDashboardSummary = applySummary;
+  window.maBootSetupReadinessHydration = bootSetupReadinessHydration;
   window.MERCHANT_SETUP_RENDER_BUILD = MERCHANT_SETUP_RENDER_BUILD;
   window.maFetchNormalCartsNow = function (label) {
     return fetchNormalCarts(label || "manual_now");

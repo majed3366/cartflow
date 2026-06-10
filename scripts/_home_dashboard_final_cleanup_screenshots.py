@@ -53,12 +53,14 @@ def _ensure_readiness_panel(page) -> None:
     page.wait_for_function(
         """async () => {
           try {
+            if (typeof window.maBootSetupReadinessHydration === 'function') {
+              window.maBootSetupReadinessHydration();
+            }
             const r = await fetch('/api/dashboard/summary?_=' + Date.now(), {
               credentials: 'same-origin', cache: 'no-store'
             });
             const d = await r.json();
-            if (!d || !d.ok || !d.store_connection) return false;
-            if (typeof window.maApplyDashboardSummary === 'function') {
+            if (d && d.ok && typeof window.maApplyDashboardSummary === 'function') {
               window.maApplyDashboardSummary(d);
             }
             return !!document.querySelector('#ma-setup-readiness-root .ma-readiness-panel');
