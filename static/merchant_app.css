@@ -1677,6 +1677,23 @@ nav.ma-sidebar-nav {
   margin-bottom: 4px;
 }
 
+.ma-test-tools-empty {
+  padding: 20px 18px;
+}
+
+.ma-test-tools-empty-title {
+  margin: 0 0 8px;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.ma-test-tools-empty-body {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
 /* Setup hierarchy v2 */
 #ma-setup-experience-root[data-ma-setup-unified="1"] .ma-setup-v2 {
   border: none;

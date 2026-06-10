@@ -299,6 +299,37 @@
     root.innerHTML = "";
   }
 
+  function hasUnifiedDemoSteps(mse) {
+    if (!mse) return false;
+    if (mse.test_store_url) return true;
+    var steps = mse.steps || [];
+    var i;
+    for (i = 0; i < steps.length; i++) {
+      if (steps[i] && steps[i].repeatable_demo && !steps[i].locked) return true;
+    }
+    return false;
+  }
+
+  function showTestToolsEmptyState(root) {
+    if (!root) return;
+    showTestToolsRoot(root);
+    root.innerHTML =
+      '<div class="card ma-test-tools-empty">' +
+      '<p class="ma-test-tools-empty-title">لا توجد أدوات تجربة الآن</p>' +
+      '<p class="ma-test-tools-empty-body">تظهر هنا روابط متجر الاختبار وإعادة التجربة عندما يكون مسار الإعداد الموحّد نشطاً.</p>' +
+      "</div>";
+  }
+
+  function applyTestToolsPage(mse) {
+    var testToolsRoot = byId("ma-test-tools-root");
+    if (!testToolsRoot) return;
+    if (hasUnifiedDemoSteps(mse)) {
+      renderUnifiedSetupDemoToolsOnly(mse, testToolsRoot);
+    } else {
+      showTestToolsEmptyState(testToolsRoot);
+    }
+  }
+
   function syncHomeActivationFromCache() {
     var act = cachedMerchantActivation;
     var mse = cachedMerchantSetupExperience;
@@ -313,8 +344,12 @@
     }
     if (!isUnifiedSetup(mse)) {
       applyMerchantActivation(act);
+      if (testToolsRoot) {
+        showTestToolsEmptyState(testToolsRoot);
+      }
     } else {
       hideActivationForUnifiedSetup(mse);
+      applyTestToolsPage(mse);
     }
     if (
       shouldHideUnifiedSetupCard(act, mse) ||
@@ -325,16 +360,9 @@
         setupRoot.setAttribute("hidden", "");
         setupRoot.innerHTML = "";
       }
-      if (mse && testToolsRoot) {
-        renderUnifiedSetupDemoToolsOnly(mse, testToolsRoot);
-      } else {
-        clearTestToolsRoot(testToolsRoot);
-      }
     } else if (shouldRenderUnifiedSetup(mse)) {
-      clearTestToolsRoot(testToolsRoot);
       applyMerchantSetupExperience(mse);
     } else if (mse && setupRoot && mse.show_card !== false) {
-      clearTestToolsRoot(testToolsRoot);
       applyMerchantSetupExperience(mse);
     }
   }

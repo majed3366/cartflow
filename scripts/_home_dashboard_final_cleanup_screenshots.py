@@ -92,6 +92,8 @@ def main() -> None:
         page.goto(f"{BASE}/dashboard#home", timeout=120000)
         page.wait_for_timeout(3000)
         _wait_summary(page)
+        page.wait_for_selector("#ma-setup-readiness-root .ma-readiness-panel", timeout=60000)
+        page.wait_for_timeout(800)
         sections = [
             ("overview", "01_overview.png"),
             ("setup", "02_store_setup.png"),
@@ -99,6 +101,14 @@ def main() -> None:
             ("test-tools", "04_test_tools.png"),
         ]
         for nav, fname in sections:
+            if nav == "test-tools":
+                page.wait_for_function(
+                    """() => {
+                      var r = document.getElementById('ma-test-tools-root');
+                      return !!(r && r.innerHTML && r.innerHTML.length > 40);
+                    }""",
+                    timeout=60000,
+                )
             _shot(page, nav, fname)
             report["screenshots"].append({"nav": nav, "file": fname})
         ctx.close()
