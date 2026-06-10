@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Optional
 
 # Readiness classification (store-level product coverage)
 READINESS_READY = "ready"
@@ -57,8 +57,52 @@ class ProductDataHealthReport:
     confidence: str = CONFIDENCE_LOW
     cart_sample_size: int = 0
     store_resolved: bool = False
+    foundation: Any = None
+    identity_coverage: Any = None
 
     def to_dict(self) -> dict[str, Any]:
+        payload_health = {
+            "readiness": self.readiness,
+            "coverage": round(self.coverage, 4),
+            "product_name_coverage": round(self.product_name_coverage, 4),
+            "product_id_coverage": round(self.product_id_coverage, 4),
+            "variant_coverage": round(self.variant_coverage, 4),
+            "catalog_available": self.catalog_available,
+            "confidence": self.confidence,
+            "cart_sample_size": self.cart_sample_size,
+        }
+        if self.foundation is not None and hasattr(self.foundation, "to_dict"):
+            foundation_health = self.foundation.to_dict()
+        else:
+            foundation_health = {
+                "readiness": READINESS_LIMITED,
+                "snapshot_coverage": 0.0,
+                "catalog_coverage": 0.0,
+                "hesitation_mapping_coverage": 0.0,
+                "purchase_mapping_coverage": 0.0,
+                "snapshot_rows": 0,
+                "catalog_rows": 0,
+                "hesitation_mapping_rows": 0,
+                "purchase_mapping_rows": 0,
+                "reason_events": 0,
+                "purchase_events": 0,
+                "session_sample_size": 0,
+                "sessions_with_snapshots": 0,
+            }
+        if self.identity_coverage is not None and hasattr(self.identity_coverage, "to_dict"):
+            identity = self.identity_coverage.to_dict()
+        else:
+            identity = {
+                "cart_sample_size": self.cart_sample_size,
+                "carts_with_lines": 0,
+                "carts_without_lines": 0,
+                "lines_capture_rate": 0.0,
+                "payload_lines_capture_rate": 0.0,
+                "foundation_snapshot_capture_rate": 0.0,
+                "identity_capture_status": "no_activity",
+                "carts_with_payload_lines": 0,
+                "carts_with_foundation_snapshots": 0,
+            }
         return {
             "ok": self.ok,
             "store_slug": self.store_slug,
@@ -72,6 +116,9 @@ class ProductDataHealthReport:
             "confidence": self.confidence,
             "cart_sample_size": self.cart_sample_size,
             "store_resolved": self.store_resolved,
+            "payload_health": payload_health,
+            "foundation_health": foundation_health,
+            "identity_coverage": identity,
         }
 
 

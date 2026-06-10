@@ -15,6 +15,8 @@ from typing import Any, Optional
 from sqlalchemy.exc import SQLAlchemyError
 
 from models import AbandonedCart, Store
+from services.product_data.product_foundation_health_v1 import assess_foundation_health
+from services.product_data.product_identity_coverage_v1 import assess_identity_coverage
 from services.product_data.product_data_types_v1 import (
     DEFAULT_HEALTH_THRESHOLDS,
     ProductDataHealthReport,
@@ -176,6 +178,22 @@ def assess_product_data_health(
     report.catalog_available = _catalog_available(store_row)
 
     if not store_id:
+        report.foundation = assess_foundation_health(
+            db_session,
+            ss,
+            session_ids=set(),
+            window_days=window_days,
+            now=now,
+            thresholds=thresholds,
+        )
+        report.identity_coverage = assess_identity_coverage(
+            db_session,
+            ss,
+            [],
+            window_days=window_days,
+            now=now,
+            thresholds=thresholds,
+        )
         return report
 
     start = _window_start(window_days=window_days, now=now)
@@ -196,6 +214,27 @@ def assess_product_data_health(
 
     total = len(carts)
     report.cart_sample_size = total
+    session_ids = {
+        (getattr(ac, "recovery_session_id", None) or "").strip()
+        for ac in carts
+        if (getattr(ac, "recovery_session_id", None) or "").strip()
+    }
+    report.foundation = assess_foundation_health(
+        db_session,
+        ss,
+        session_ids=session_ids,
+        window_days=window_days,
+        now=now,
+        thresholds=thresholds,
+    )
+    report.identity_coverage = assess_identity_coverage(
+        db_session,
+        ss,
+        carts,
+        window_days=window_days,
+        now=now,
+        thresholds=thresholds,
+    )
     if total == 0:
         report.readiness = classify_readiness(0.0, thresholds=thresholds)
         report.confidence = classify_confidence(0.0, 0.0, thresholds=thresholds)

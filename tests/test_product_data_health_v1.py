@@ -12,7 +12,16 @@ from fastapi.testclient import TestClient
 
 import main
 from extensions import db
-from models import AbandonedCart, Store
+from models import (
+    AbandonedCart,
+    CartLineSnapshot,
+    CartRecoveryReason,
+    ProductCatalogEntry,
+    ProductHesitationMapping,
+    ProductPurchaseMapping,
+    PurchaseTruthRecord,
+    Store,
+)
 from services.product_data.product_data_health_v1 import build_product_data_health_report
 from services.product_data.product_data_types_v1 import (
     CONFIDENCE_HIGH,
@@ -25,6 +34,7 @@ from services.product_data.product_data_types_v1 import (
     classify_confidence,
     classify_readiness,
 )
+from services.product_data.product_identity_coverage_v1 import IDENTITY_STATUS_FAILING
 
 _ROOT = Path(__file__).resolve().parent.parent
 _STORE_SLUG = "pd-health-test"
@@ -32,7 +42,16 @@ _NOW = datetime(2026, 6, 7, 12, 0, 0, tzinfo=timezone.utc)
 
 
 def _reset_db() -> None:
-    for model in (AbandonedCart, Store):
+    for model in (
+        CartLineSnapshot,
+        ProductHesitationMapping,
+        ProductPurchaseMapping,
+        ProductCatalogEntry,
+        CartRecoveryReason,
+        PurchaseTruthRecord,
+        AbandonedCart,
+        Store,
+    ):
         try:
             db.session.query(model).delete()
             db.session.commit()
@@ -76,6 +95,7 @@ def _cart(
     zid_id: str,
     payload: dict,
     days_ago: int = 1,
+    recovery_session_id: str | None = None,
 ) -> AbandonedCart:
     seen = _NOW - timedelta(days=days_ago)
     ac = AbandonedCart(
@@ -85,11 +105,39 @@ def _cart(
         status="abandoned",
         first_seen_at=seen.replace(tzinfo=None),
         last_seen_at=seen.replace(tzinfo=None),
+        recovery_session_id=recovery_session_id,
     )
     AbandonedCart.set_raw(ac, payload)
     db.session.add(ac)
     db.session.commit()
     return ac
+
+
+def _snapshot(
+    *,
+    slug: str,
+    session_id: str,
+    cart_id: str,
+    days_ago: int = 1,
+) -> CartLineSnapshot:
+    captured = (_NOW - timedelta(days=days_ago)).replace(tzinfo=None)
+    row = CartLineSnapshot(
+        store_slug=slug,
+        session_id=session_id,
+        cart_id=cart_id,
+        product_id="p1",
+        variant_id="v1",
+        name="Snap Product",
+        unit_price=10.0,
+        quantity=1,
+        captured_at=captured,
+        capture_source="cart_state_sync",
+        capture_confidence=CONFIDENCE_HIGH,
+        content_hash=f"hash-{session_id}-{cart_id}",
+    )
+    db.session.add(row)
+    db.session.commit()
+    return row
 
 
 def test_classify_readiness_and_confidence_thresholds() -> None:
@@ -247,3 +295,131 @@ def test_api_authenticated_sample_response_shape() -> None:
         "confidence",
     ):
         assert key in body
+
+
+def test_payload_ready_foundation_limited_divergence() -> None:
+    store = _ensure_store(catalog=True)
+    sid = "sess-payload-ready"
+    _cart(
+        store,
+        zid_id="foundation-gap-1",
+        recovery_session_id=sid,
+        payload={
+            "line_items": [
+                {"product_id": "p1", "variant_id": "v1", "name": "Test", "unit_price": 10}
+            ]
+        },
+    )
+
+    report = build_product_data_health_report(
+        db.session, _STORE_SLUG, window_days=7, now=_NOW
+    )
+    assert report.readiness == READINESS_READY
+    assert report.coverage == 1.0
+    assert report.foundation is not None
+    assert report.foundation.readiness == READINESS_LIMITED
+    assert report.foundation.snapshot_coverage == 0.0
+    assert report.foundation.snapshot_rows == 0
+
+
+def test_identity_failing_when_payload_has_lines_without_snapshots() -> None:
+    store = _ensure_store()
+    _cart(
+        store,
+        zid_id="identity-fail-1",
+        recovery_session_id="sess-fail-1",
+        payload={
+            "data": {
+                "lines": [{"product_id": "p1", "name": "Widget Line", "unit_price": 5}]
+            }
+        },
+    )
+
+    report = build_product_data_health_report(
+        db.session, _STORE_SLUG, window_days=7, now=_NOW
+    )
+    assert report.identity_coverage is not None
+    assert report.identity_coverage.carts_with_payload_lines == 1
+    assert report.identity_coverage.carts_with_foundation_snapshots == 0
+    assert report.identity_coverage.identity_capture_status == IDENTITY_STATUS_FAILING
+
+
+def test_identity_ok_when_snapshots_present() -> None:
+    store = _ensure_store()
+    sid = "sess-identity-ok"
+    cid = "cart-identity-ok"
+    _cart(
+        store,
+        zid_id=cid,
+        recovery_session_id=sid,
+        payload={
+            "line_items": [{"product_id": "p1", "name": "Test", "unit_price": 10}]
+        },
+    )
+    _snapshot(slug=_STORE_SLUG, session_id=sid, cart_id=cid)
+
+    report = build_product_data_health_report(
+        db.session, _STORE_SLUG, window_days=7, now=_NOW
+    )
+    assert report.identity_coverage is not None
+    assert report.identity_coverage.carts_with_lines == 1
+    assert report.identity_coverage.carts_without_lines == 0
+    assert report.identity_coverage.lines_capture_rate == 1.0
+    assert report.identity_coverage.identity_capture_status == "ok"
+
+
+def test_no_activity_identity_status_when_no_carts() -> None:
+    _ensure_store()
+    report = build_product_data_health_report(
+        db.session, _STORE_SLUG, window_days=7, now=_NOW
+    )
+    body = report.to_dict()
+    assert body["identity_coverage"]["identity_capture_status"] == "no_activity"
+    assert body["identity_coverage"]["cart_sample_size"] == 0
+
+
+def test_to_dict_additive_blocks_preserve_legacy_fields() -> None:
+    store = _ensure_store()
+    _cart(
+        store,
+        zid_id="dict-1",
+        payload={"cart": [{"name": "x", "price": 1}]},
+    )
+    report = build_product_data_health_report(
+        db.session, _STORE_SLUG, window_days=7, now=_NOW
+    )
+    body = report.to_dict()
+
+    assert body["readiness"] == body["payload_health"]["readiness"]
+    assert body["coverage"] == body["payload_health"]["coverage"]
+    assert "foundation_health" in body
+    assert "snapshot_coverage" in body["foundation_health"]
+    assert "hesitation_mapping_coverage" in body["foundation_health"]
+    assert "purchase_mapping_coverage" in body["foundation_health"]
+    assert "identity_coverage" in body
+    assert "carts_with_lines" in body["identity_coverage"]
+    assert "lines_capture_rate" in body["identity_coverage"]
+
+
+def test_api_includes_foundation_and_identity_blocks() -> None:
+    store = _ensure_store(catalog=True)
+    _cart(
+        store,
+        zid_id="api-ext-1",
+        payload={"line_items": [{"product_id": "p1", "name": "Test", "unit_price": 10}]},
+    )
+
+    client = TestClient(main.app)
+    with mock.patch(
+        "services.merchant_test_widget_store_v1.merchant_authenticated_store_slug",
+        return_value=_STORE_SLUG,
+    ):
+        r = client.get("/api/product-data/health")
+
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert "payload_health" in body
+    assert "foundation_health" in body
+    assert "identity_coverage" in body
+    assert body["foundation_health"]["readiness"] == READINESS_LIMITED
+    assert body["identity_coverage"]["identity_capture_status"] == IDENTITY_STATUS_FAILING
