@@ -733,10 +733,14 @@ nav.ma-sidebar-nav {
 
 /* Belt-and-suspenders: overview nodes never paint outside active #page-home */
 #page-home:not(.active) #ma-home-alerts-root,
-#page-home:not(.active) .ma-home-section-kpi,
 #page-home:not(.active) .ma-home-section-knowledge,
 #page-home:not(.active) .ma-home-section-reasons,
 #page-home:not(.active) .ma-home-section-vip {
+  display: none !important;
+}
+
+#page-home-month:not(.active) .ma-home-section-kpi,
+#page-home-month:not(.active) #ma-home-month-summary {
   display: none !important;
 }
 
@@ -1285,22 +1289,23 @@ nav.ma-sidebar-nav {
 
 /* Overview stage ordering (setup/month/test tools live on separate pages) */
 #page-home.ma-home-stage-activation .ma-home-section-knowledge { order: 5; }
-#page-home.ma-home-stage-activation .ma-home-section-kpi { order: 10; }
 #page-home.ma-home-stage-activation .ma-home-section-reasons { order: 20; }
 #page-home.ma-home-stage-activation #ma-home-alerts-root { order: 30; }
 #page-home.ma-home-stage-activation .ma-home-section-vip { order: 40; }
 
 #page-home.ma-home-stage-activated .ma-home-section-knowledge { order: 5; }
-#page-home.ma-home-stage-activated .ma-home-section-kpi { order: 10; }
 #page-home.ma-home-stage-activated #ma-home-alerts-root { order: 20; }
 #page-home.ma-home-stage-activated .ma-home-section-reasons { order: 30; }
 #page-home.ma-home-stage-activated .ma-home-section-vip { order: 40; }
 
 #page-home.ma-home-stage-production .ma-home-section-knowledge { order: 5; }
-#page-home.ma-home-stage-production .ma-home-section-kpi { order: 10; }
 #page-home.ma-home-stage-production #ma-home-alerts-root { order: 20; }
 #page-home.ma-home-stage-production .ma-home-section-reasons { order: 30; }
 #page-home.ma-home-stage-production .ma-home-section-vip { order: 40; }
+
+.ma-home-section-kpi--month {
+  margin-top: 16px;
+}
 
 .ma-home-activation-band {
   margin-bottom: 0;

@@ -4,7 +4,7 @@
   var TITLES = {
     home: "نظرة عامة",
     "home-setup": "إعداد المتجر",
-    "home-month": "ملخص الشهر",
+    "home-month": "الملخص العام",
     "home-test-tools": "أدوات التجربة",
     carts: "السلال",
     followup: "السلال",

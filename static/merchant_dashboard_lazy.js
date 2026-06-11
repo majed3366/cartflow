@@ -977,6 +977,14 @@
     return String(href || "").indexOf("/demo/store") >= 0;
   }
 
+  function merchantDemoStoreHref(mse) {
+    var raw = (mse && mse.test_store_url) || "";
+    if (isDemoStoreHref(raw)) {
+      return raw;
+    }
+    return "/dashboard/test-widget";
+  }
+
   function demoRetryHref(st, href) {
     var h = href || (st && st.action_href) || "";
     if (!isDemoStoreHref(h)) {
@@ -1029,10 +1037,9 @@
         demoSteps.push(steps[i]);
       }
     }
-    var testUrl = esc(mse.test_store_url || "/dashboard/test-widget");
-    var testExt = isDemoStoreHref(mse.test_store_url || mse.action_href)
-      ? ' target="_blank" rel="noopener"'
-      : "";
+    var testHref = merchantDemoStoreHref(mse);
+    var testUrl = esc(testHref);
+    var testExt = ' target="_blank" rel="noopener"';
     var rows = "";
     for (i = 0; i < demoSteps.length; i++) {
       rows +=

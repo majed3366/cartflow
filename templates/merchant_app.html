@@ -46,7 +46,7 @@
     <p class="ma-ctx-label">الرئيسية</p>
     <button type="button" class="nav-item active" data-home-nav="overview" onclick="maHomeNav('overview')">نظرة عامة</button>
     <button type="button" class="nav-item" data-home-nav="setup" onclick="maHomeNav('setup')">إعداد المتجر</button>
-    <button type="button" class="nav-item" data-home-nav="month" onclick="maHomeNav('month')">ملخص الشهر</button>
+    <button type="button" class="nav-item" data-home-nav="month" onclick="maHomeNav('month')">الملخص العام</button>
     <button type="button" class="nav-item" data-home-nav="test-tools" onclick="maHomeNav('test-tools')">أدوات التجربة</button>
   </nav>
   <nav class="ma-ctx-panel ma-sidebar-nav" data-ma-ctx="carts" hidden aria-label="السلال">
@@ -90,67 +90,13 @@
       aria-live="polite"
     >
       <div class="ma-knowledge-head">
-        <h2 class="ma-knowledge-title" id="ma-knowledge-title">ماذا يحدث في متجرك؟</h2>
+        <h2 class="ma-knowledge-title" id="ma-knowledge-title">ماذا يحدث في متجري الآن؟</h2>
         <p class="ma-knowledge-lead">ما يراه CartFlow من نشاط متجرك — بأسلوب واضح وبسيط.</p>
       </div>
       <div id="ma-knowledge-body" class="ma-knowledge-body">
         <p class="ma-knowledge-loading">جاري قراءة ما يراه CartFlow…</p>
       </div>
     </section>
-
-    <div class="kpi-grid ma-home-section ma-home-section-kpi">
-      <div class="ma-home-kpi-head">
-        <h2 class="ma-home-kpi-title">أبرز الاسترداد — اليوم</h2>
-        <p class="ma-home-kpi-lead">أرقام اليوم فقط — ملخص الشهر الكامل في تبويب «ملخص الشهر».</p>
-      </div>
-      <div class="kpi-grid-inner">
-      <div class="kpi">
-        <div class="kpi-stripe" style="background:#dc2626"></div>
-        <span class="kpi-ico">🛒</span>
-        <div class="kpi-label">سلال متروكة اليوم</div>
-        {% if merchant_dashboard_lazy_shell %}
-        <div class="kpi-value ma-dash-skel" id="ma-kpi-abandoned">{{ merchant_kpi_abandoned_fmt | default("…") }}</div>
-        {% else %}
-        <div class="kpi-value">{{ merchant_kpi_abandoned_fmt | default("0") }}</div>
-        {% endif %}
-        <div class="kpi-note neutral">منذ فتح المتجر</div>
-      </div>
-      <div class="kpi">
-        <div class="kpi-stripe" style="background:var(--green-mid)"></div>
-        <span class="kpi-ico">✅</span>
-        <div class="kpi-label">تم استردادها اليوم</div>
-        {% if merchant_dashboard_lazy_shell %}
-        <div class="kpi-value ma-dash-skel" id="ma-kpi-recovered">{{ merchant_kpi_recovered_fmt | default("…") }}</div>
-        <div class="kpi-note neutral" id="ma-kpi-recovered-note">—</div>
-        {% else %}
-        <div class="kpi-value">{{ merchant_kpi_recovered_fmt | default("0") }}</div>
-        <div class="kpi-note {% if merchant_kpi_recovered_pct_vs_abandoned > 0 %}up{% else %}neutral{% endif %}">{% if merchant_kpi_recovered_pct_vs_abandoned > 0 %}↑ نسبة {{ "%.0f"|format(merchant_kpi_recovered_pct_vs_abandoned) }}٪{% else %}—{% endif %}</div>
-        {% endif %}
-      </div>
-      <div class="kpi">
-        <div class="kpi-stripe" style="background:var(--amber)"></div>
-        <span class="kpi-ico">💬</span>
-        <div class="kpi-label">رسائل واتساب اليوم</div>
-        {% if merchant_dashboard_lazy_shell %}
-        <div class="kpi-value ma-dash-skel" id="ma-kpi-wa">{{ merchant_kpi_wa_sent_fmt | default("…") }}</div>
-        {% else %}
-        <div class="kpi-value">{{ merchant_kpi_wa_sent_fmt | default("0") }}</div>
-        {% endif %}
-        <div class="kpi-note neutral">{{ merchant_kpi_wa_sub_ar | default("سجلات اليوم") }}</div>
-      </div>
-      <div class="kpi">
-        <div class="kpi-stripe" style="background:#7c3aed"></div>
-        <span class="kpi-ico">💰</span>
-        <div class="kpi-label">إيرادات مستردة اليوم</div>
-        {% if merchant_dashboard_lazy_shell %}
-        <div class="kpi-value ma-dash-skel" id="ma-kpi-revenue">{{ merchant_kpi_revenue_fmt | default("…") }}</div>
-        {% else %}
-        <div class="kpi-value">{{ merchant_kpi_revenue_fmt | default("0") }}</div>
-        {% endif %}
-        <div class="kpi-note up">↑ ريال — اليوم</div>
-      </div>
-      </div>
-    </div>
 
     <div class="card ma-home-reasons ma-home-section ma-home-section-reasons">
       <div class="card-head"><div class="card-title">أسباب التردد — الأسبوع</div><button type="button" class="card-link" onclick="goTo('reasons')">تقرير كامل</button></div>
@@ -224,6 +170,60 @@
         <div class="mc"><div class="mc-l">نسبة الاسترداد</div><div class="mc-v" style="color:var(--green-mid);">{{ merchant_month_recovery_pct_fmt | default("0") }}٪</div></div>
         <div class="mc"><div class="mc-l">إيرادات مستردة</div><div class="mc-v">{{ merchant_month_revenue_fmt | default("0") }} ر</div></div>
         {% endif %}
+      </div>
+    </div>
+
+    <div class="kpi-grid ma-home-section ma-home-section-kpi ma-home-section-kpi--month">
+      <div class="ma-home-kpi-head">
+        <h2 class="ma-home-kpi-title">أبرز الاسترداد — اليوم</h2>
+        <p class="ma-home-kpi-lead">أرقام اليوم فقط — لا تشمل بقية الشهر.</p>
+      </div>
+      <div class="kpi-grid-inner">
+      <div class="kpi">
+        <div class="kpi-stripe" style="background:#dc2626"></div>
+        <span class="kpi-ico">🛒</span>
+        <div class="kpi-label">سلال متروكة اليوم</div>
+        {% if merchant_dashboard_lazy_shell %}
+        <div class="kpi-value ma-dash-skel" id="ma-kpi-abandoned">{{ merchant_kpi_abandoned_fmt | default("…") }}</div>
+        {% else %}
+        <div class="kpi-value">{{ merchant_kpi_abandoned_fmt | default("0") }}</div>
+        {% endif %}
+        <div class="kpi-note neutral">منذ فتح المتجر</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-stripe" style="background:var(--green-mid)"></div>
+        <span class="kpi-ico">✅</span>
+        <div class="kpi-label">تم استردادها اليوم</div>
+        {% if merchant_dashboard_lazy_shell %}
+        <div class="kpi-value ma-dash-skel" id="ma-kpi-recovered">{{ merchant_kpi_recovered_fmt | default("…") }}</div>
+        <div class="kpi-note neutral" id="ma-kpi-recovered-note">—</div>
+        {% else %}
+        <div class="kpi-value">{{ merchant_kpi_recovered_fmt | default("0") }}</div>
+        <div class="kpi-note {% if merchant_kpi_recovered_pct_vs_abandoned > 0 %}up{% else %}neutral{% endif %}">{% if merchant_kpi_recovered_pct_vs_abandoned > 0 %}↑ نسبة {{ "%.0f"|format(merchant_kpi_recovered_pct_vs_abandoned) }}٪{% else %}—{% endif %}</div>
+        {% endif %}
+      </div>
+      <div class="kpi">
+        <div class="kpi-stripe" style="background:var(--amber)"></div>
+        <span class="kpi-ico">💬</span>
+        <div class="kpi-label">رسائل واتساب اليوم</div>
+        {% if merchant_dashboard_lazy_shell %}
+        <div class="kpi-value ma-dash-skel" id="ma-kpi-wa">{{ merchant_kpi_wa_sent_fmt | default("…") }}</div>
+        {% else %}
+        <div class="kpi-value">{{ merchant_kpi_wa_sent_fmt | default("0") }}</div>
+        {% endif %}
+        <div class="kpi-note neutral">{{ merchant_kpi_wa_sub_ar | default("سجلات اليوم") }}</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-stripe" style="background:#7c3aed"></div>
+        <span class="kpi-ico">💰</span>
+        <div class="kpi-label">إيرادات مستردة اليوم</div>
+        {% if merchant_dashboard_lazy_shell %}
+        <div class="kpi-value ma-dash-skel" id="ma-kpi-revenue">{{ merchant_kpi_revenue_fmt | default("…") }}</div>
+        {% else %}
+        <div class="kpi-value">{{ merchant_kpi_revenue_fmt | default("0") }}</div>
+        {% endif %}
+        <div class="kpi-note up">↑ ريال — اليوم</div>
+      </div>
       </div>
     </div>
   </div>
