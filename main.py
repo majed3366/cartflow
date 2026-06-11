@@ -993,6 +993,7 @@ _DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT = frozenset(
         "/dev/vip-merchant-alert-operational-truth",
         "/dev/cartflow-simulation-report",
         "/dev/purchase-truth-trace",
+        "/dev/storefront-cart-bridge-truth",
     }
 )
 
@@ -10629,6 +10630,8 @@ def _handle_cart_state_sync(
             prev["cart"] = payload.get("cart")
         if isinstance(payload.get("lines"), list):
             prev["lines"] = payload.get("lines")
+        if isinstance(payload.get("cf_storefront_cart_bridge"), dict):
+            prev["cf_storefront_cart_bridge"] = payload.get("cf_storefront_cart_bridge")
         AbandonedCart.set_raw(row, prev)
         try:
             from services.vip_abandoned_cart_phone import (  # noqa: PLC0415
@@ -11543,6 +11546,69 @@ def dev_purchase_truth_trace(
             "matched_active_carts": matched,
         }
     )
+
+
+@app.get("/dev/storefront-cart-bridge-truth")
+def dev_storefront_cart_bridge_truth(
+    store_slug: Optional[str] = None,
+    session_id: Optional[str] = None,
+    cart_id: Optional[str] = None,
+) -> Any:
+    """
+    Diagnostic (allowed in production): read-only Storefront Cart Bridge truth for
+    operators — adapter used, normalization/post status from beacon, AbandonedCart row.
+    """
+    from services.storefront_cart_bridge_diagnostics_v1 import (  # noqa: PLC0415
+        build_storefront_cart_bridge_truth_report,
+    )
+
+    slug = (store_slug or "").strip()
+    sid = (session_id or "").strip()
+    cid = (cart_id or "").strip()
+    if not slug:
+        return j({"ok": False, "error": "store_slug_required"}, 400)
+
+    store_row = None
+    beacon: dict[str, Any] = {}
+    try:
+        store_row = _load_store_row_for_recovery(slug, allow_latest_fallback=False)
+        if store_row is not None:
+            raw_beacon = getattr(store_row, "widget_last_beacon_json", None)
+            if raw_beacon:
+                try:
+                    parsed = json.loads(raw_beacon)
+                    if isinstance(parsed, dict):
+                        beacon = parsed
+                except (json.JSONDecodeError, TypeError, ValueError):
+                    beacon = {}
+    except Exception as exc:  # noqa: BLE001
+        db.session.rollback()
+        return j({"ok": False, "error": str(exc)[:200]}, 500)
+
+    ac_row = None
+    try:
+        q = db.session.query(AbandonedCart)
+        if cid:
+            ac_row = q.filter_by(zid_cart_id=cid).first()
+        elif sid:
+            ac_row = (
+                q.filter_by(recovery_session_id=sid)
+                .order_by(AbandonedCart.last_seen_at.desc())
+                .first()
+            )
+    except (SQLAlchemyError, OSError):
+        db.session.rollback()
+        ac_row = None
+
+    report = build_storefront_cart_bridge_truth_report(
+        store_slug=slug,
+        session_id=sid or None,
+        cart_id=cid or None,
+        store_row=store_row,
+        abandoned_cart_row=ac_row,
+        beacon=beacon,
+    )
+    return j(report)
 
 
 @app.post("/dev/purchase-truth-test")

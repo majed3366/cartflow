@@ -337,8 +337,16 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
                 "explicit_add_to_cart_click"
               );
               self._signal("dom_observer", "add_to_cart", {});
-              // Re-read globals shortly after the click resolves (baseline sync).
+              // Storefront Cart Bridge: read Zid API (not only window.cart).
               setTimeout(function () {
+                try {
+                  if (
+                    Cf.StorefrontCartBridge &&
+                    typeof Cf.StorefrontCartBridge.readAndPersist === "function"
+                  ) {
+                    Cf.StorefrontCartBridge.readAndPersist({ reason: "add" });
+                  }
+                } catch (eBr) {}
                 var g = self._readGlobalCart();
                 if (g && g.count != null) {
                   self._maybeEmitFromCount(
@@ -424,6 +432,14 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
             return;
           }
           setTimeout(function () {
+            try {
+              if (
+                Cf.StorefrontCartBridge &&
+                typeof Cf.StorefrontCartBridge.readAndPersist === "function"
+              ) {
+                Cf.StorefrontCartBridge.readAndPersist({ reason: "add" });
+              }
+            } catch (eBrNet) {}
             var g = self._readGlobalCart();
             if (g && g.count != null) {
               self._maybeEmitFromCount(

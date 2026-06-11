@@ -182,10 +182,13 @@ class CartBridgeJsWiringTests(unittest.TestCase):
         text = _RUNTIME_LOADER.read_text(encoding="utf-8")
         self.assertIn("cartflow_cart_sources.js", text)
         self.assertIn("cartflow_cart_event_bridge.js", text)
+        self.assertIn("cartflow_storefront_cart_bridge_contract.js", text)
+        self.assertIn("cartflow_storefront_cart_adapters.js", text)
+        self.assertIn("cartflow_storefront_cart_bridge_core.js", text)
 
     def test_widget_loader_runtime_version_bumped(self) -> None:
         text = _WIDGET_LOADER.read_text(encoding="utf-8")
-        self.assertIn("v2-zid-cart-sync-v1", text)
+        self.assertIn("v2-storefront-cart-bridge-v1", text)
 
 
 if __name__ == "__main__":

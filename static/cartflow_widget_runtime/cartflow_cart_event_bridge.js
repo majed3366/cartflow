@@ -171,7 +171,11 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
   }
 
   function syncBackendCartState(evt) {
-    if (!evt || evt.event_type !== "add_to_cart") {
+    if (!evt) {
+      return;
+    }
+    var persistTypes = { add_to_cart: 1, cart_updated: 1, cart_detected: 1 };
+    if (!persistTypes[evt.event_type]) {
       return;
     }
     var key =
@@ -195,12 +199,28 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     lastBackendSyncKey = key;
     lastBackendSyncAt = now;
     try {
+      if (
+        Cf.StorefrontCartBridge &&
+        typeof Cf.StorefrontCartBridge.persistFromTrigger === "function"
+      ) {
+        blog("[CF CART EVENT BRIDGE BACKEND SYNC]", {
+          event_type: evt.event_type,
+          store_slug: evt.store_slug,
+          session_id: evt.session_id,
+          path: "storefront_cart_bridge_core",
+        });
+        Cf.StorefrontCartBridge.persistFromTrigger(evt);
+        return;
+      }
+    } catch (eBridge) {}
+    try {
       if (typeof window.cartflowSyncCartState === "function") {
         blog("[CF CART EVENT BRIDGE BACKEND SYNC]", {
           event_type: evt.event_type,
           store_slug: evt.store_slug,
           session_id: evt.session_id,
           reason: "add",
+          path: "legacy_window_cart",
         });
         window.cartflowSyncCartState("add");
       }

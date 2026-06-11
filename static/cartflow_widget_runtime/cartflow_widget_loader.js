@@ -29,7 +29,7 @@
   }
 
   var BASE = resolveRuntimeModuleBase();
-    var RUNTIME_TAG = window.CARTFLOW_RUNTIME_VERSION || "layered-runtime-v18";
+    var RUNTIME_TAG = window.CARTFLOW_RUNTIME_VERSION || "layered-runtime-v19";
   try {
     if (/^\/demo\/store(?:\/|$)/i.test(String(window.location.pathname || ""))) {
       console.log("[CF V2 PRIMARY RUNTIME]", {
@@ -46,6 +46,9 @@
     "cartflow_widget_state.js",
     "cartflow_widget_theme.js",
     "cartflow_widget_triggers.js",
+    "cartflow_storefront_cart_bridge_contract.js",
+    "cartflow_storefront_cart_adapters.js",
+    "cartflow_storefront_cart_bridge_core.js",
     "cartflow_cart_sources.js",
     "cartflow_cart_event_bridge.js",
     "cartflow_widget_phone.js",

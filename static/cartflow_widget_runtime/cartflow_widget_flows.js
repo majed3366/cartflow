@@ -580,12 +580,48 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       });
     } catch (eUx) {}
 
-    showContinuation(rk, subCat);
-    runBackgroundReasonOnly(
-      Object.assign({}, payload || {}),
-      rk,
-      subCat
-    );
+    function proceedReasonSave(cartBridgeResult) {
+      var payloadCopy = Object.assign({}, payload || {});
+      if (
+        cartBridgeResult &&
+        cartBridgeResult.reason_orphan_risk &&
+        !cartBridgeResult.persisted
+      ) {
+        payloadCopy.cf_reason_orphan_risk = true;
+        try {
+          if (
+            Cf.StorefrontCartBridge &&
+            typeof Cf.StorefrontCartBridge.getDiagnostics === "function"
+          ) {
+            payloadCopy.cf_cart_bridge_diagnostic =
+              Cf.StorefrontCartBridge.getDiagnostics();
+          }
+        } catch (eDiag) {}
+        try {
+          console.log("[CF REASON ORPHAN RISK]", {
+            reason_key: rk,
+            cart_bridge: payloadCopy.cf_cart_bridge_diagnostic,
+          });
+        } catch (eOr) {}
+      }
+      showContinuation(rk, subCat);
+      runBackgroundReasonOnly(payloadCopy, rk, subCat);
+    }
+
+    if (
+      Cf.StorefrontCartBridge &&
+      typeof Cf.StorefrontCartBridge.ensureCartTruthBeforeReason === "function"
+    ) {
+      Cf.StorefrontCartBridge.ensureCartTruthBeforeReason()
+        .then(function (res) {
+          proceedReasonSave(res);
+        })
+        .catch(function () {
+          proceedReasonSave({ reason_orphan_risk: true, persisted: false });
+        });
+      return;
+    }
+    proceedReasonSave(null);
   }
 
   function showContinuation(reasonKey, subCategory) {
