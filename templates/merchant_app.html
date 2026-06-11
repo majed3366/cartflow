@@ -99,6 +99,11 @@
     </section>
 
     <div class="kpi-grid ma-home-section ma-home-section-kpi">
+      <div class="ma-home-kpi-head">
+        <h2 class="ma-home-kpi-title">أبرز الاسترداد — اليوم</h2>
+        <p class="ma-home-kpi-lead">أرقام اليوم فقط — ملخص الشهر الكامل في تبويب «ملخص الشهر».</p>
+      </div>
+      <div class="kpi-grid-inner">
       <div class="kpi">
         <div class="kpi-stripe" style="background:#dc2626"></div>
         <span class="kpi-ico">🛒</span>
@@ -113,7 +118,7 @@
       <div class="kpi">
         <div class="kpi-stripe" style="background:var(--green-mid)"></div>
         <span class="kpi-ico">✅</span>
-        <div class="kpi-label">تم استردادها</div>
+        <div class="kpi-label">تم استردادها اليوم</div>
         {% if merchant_dashboard_lazy_shell %}
         <div class="kpi-value ma-dash-skel" id="ma-kpi-recovered">{{ merchant_kpi_recovered_fmt | default("…") }}</div>
         <div class="kpi-note neutral" id="ma-kpi-recovered-note">—</div>
@@ -125,7 +130,7 @@
       <div class="kpi">
         <div class="kpi-stripe" style="background:var(--amber)"></div>
         <span class="kpi-ico">💬</span>
-        <div class="kpi-label">رسائل واتساب</div>
+        <div class="kpi-label">رسائل واتساب اليوم</div>
         {% if merchant_dashboard_lazy_shell %}
         <div class="kpi-value ma-dash-skel" id="ma-kpi-wa">{{ merchant_kpi_wa_sent_fmt | default("…") }}</div>
         {% else %}
@@ -136,13 +141,14 @@
       <div class="kpi">
         <div class="kpi-stripe" style="background:#7c3aed"></div>
         <span class="kpi-ico">💰</span>
-        <div class="kpi-label">إيرادات مستردة</div>
+        <div class="kpi-label">إيرادات مستردة اليوم</div>
         {% if merchant_dashboard_lazy_shell %}
         <div class="kpi-value ma-dash-skel" id="ma-kpi-revenue">{{ merchant_kpi_revenue_fmt | default("…") }}</div>
         {% else %}
         <div class="kpi-value">{{ merchant_kpi_revenue_fmt | default("0") }}</div>
         {% endif %}
-        <div class="kpi-note up">↑ ريال اليوم</div>
+        <div class="kpi-note up">↑ ريال — اليوم</div>
+      </div>
       </div>
     </div>
 

@@ -17422,9 +17422,15 @@ def api_dashboard_summary(request: Request):
                 inspect_body = _api_json_activation_inspect_only(
                     dash_store, cookies=cookies
                 )
-                return j(
-                    {"ok": True, **activation_inspect_response(inspect_body)}
+                payload = {"ok": True, **activation_inspect_response(inspect_body)}
+                from services.dashboard_summary_json_safe_v1 import (  # noqa: PLC0415
+                    preflight_utf8_json_payload,
+                    sanitize_dashboard_summary_payload,
                 )
+
+                payload = sanitize_dashboard_summary_payload(payload)
+                preflight_utf8_json_payload(payload)
+                return j(payload)
             except Exception as exc:  # noqa: BLE001
                 db.session.rollback()
                 mid, slug = resolve_activation_inspect_context(
@@ -17441,7 +17447,15 @@ def api_dashboard_summary(request: Request):
                 )
 
         body = _api_json_dashboard_summary(dash_store, cookies=cookies)
-        return j({"ok": True, **body})
+        payload = {"ok": True, **body}
+        from services.dashboard_summary_json_safe_v1 import (  # noqa: PLC0415
+            preflight_utf8_json_payload,
+            sanitize_dashboard_summary_payload,
+        )
+
+        payload = sanitize_dashboard_summary_payload(payload)
+        preflight_utf8_json_payload(payload)
+        return j(payload)
     except Exception as e:  # noqa: BLE001
         db.session.rollback()
         if inspect_mode:
@@ -18957,6 +18971,9 @@ def _api_json_dashboard_summary(
         build_merchant_setup_experience_api_payload,
         merchant_setup_render_debug_payload,
     )
+    from services.dashboard_summary_json_safe_v1 import (  # noqa: PLC0415
+        finite_dashboard_float,
+    )
     from services.merchant_whatsapp_readiness_ui import (  # noqa: PLC0415
         build_merchant_whatsapp_readiness_card,
     )
@@ -18965,7 +18982,9 @@ def _api_json_dashboard_summary(
     try:
         with dashboard_summary_profile_span("_merchant_kpi_today_projection"):
             kpis = _merchant_kpi_today_projection(dash_store)
-    except (SQLAlchemyError, OSError, TypeError, ValueError):
+    except Exception as exc:  # noqa: BLE001
+        log.warning("summary kpi_today: %s", exc)
+        db.session.rollback()
         kpis = {
             "abandoned_today": 0,
             "recovered_today": 0,
@@ -18975,7 +18994,9 @@ def _api_json_dashboard_summary(
     try:
         with dashboard_summary_profile_span("_merchant_month_window_projection_days30"):
             month_win = _merchant_month_window_projection(dash_store, days=30)
-    except (SQLAlchemyError, OSError, TypeError, ValueError):
+    except Exception as exc:  # noqa: BLE001
+        log.warning("summary month_window: %s", exc)
+        db.session.rollback()
         month_win = {
             "abandoned_total": 0,
             "recovered_total": 0,
@@ -19001,7 +19022,9 @@ def _api_json_dashboard_summary(
     try:
         with dashboard_summary_profile_span("_normal_carts_dashboard_stats"):
             mstats = dict(_normal_carts_dashboard_stats(dash_store))
-    except (SQLAlchemyError, OSError, TypeError, ValueError):
+    except Exception as exc:  # noqa: BLE001
+        log.warning("summary normal_carts_stats: %s", exc)
+        db.session.rollback()
         mstats = {
             "normal_cart_count": 0,
             "messages_sent_count": 0,
@@ -19034,12 +19057,12 @@ def _api_json_dashboard_summary(
     rec_today = int(kpis.get("recovered_today") or 0)
     pct_recovered_vs_abandoned = 0.0
     if ab_today > 0:
-        pct_recovered_vs_abandoned = round(
-            100.0 * float(rec_today) / float(ab_today), 1
+        pct_recovered_vs_abandoned = finite_dashboard_float(
+            round(100.0 * float(rec_today) / float(ab_today), 1)
         )
-    rev_today = float(kpis.get("recovered_revenue_today") or 0.0)
-    rev_month = float(month_win.get("recovered_revenue") or 0.0)
-    rec_pct_m = float(month_win.get("recovery_pct") or 0.0)
+    rev_today = finite_dashboard_float(kpis.get("recovered_revenue_today"))
+    rev_month = finite_dashboard_float(month_win.get("recovered_revenue"))
+    rec_pct_m = finite_dashboard_float(month_win.get("recovery_pct"))
     try:
         merchant_activation = _merchant_activation_api_payload(
             dash_store,
@@ -19096,7 +19119,27 @@ def _api_json_dashboard_summary(
         "action_href": str(wa_card.get("action_href") or "/dashboard#whatsapp"),
         "readiness_overall_ar": str(wa_card.get("readiness_overall_ar") or ""),
     }
-    refresh_state = _merchant_dashboard_refresh_state_payload(dash_store)
+    try:
+        refresh_state = _merchant_dashboard_refresh_state_payload(dash_store)
+    except Exception as exc:  # noqa: BLE001
+        log.warning("summary refresh_state: %s", exc)
+        db.session.rollback()
+        slug = (getattr(dash_store, "zid_store_id", None) or "").strip()
+        refresh_state = {
+            "merchant_dashboard_refresh_token": f"{slug}:partial:0:0:0:0",
+            "merchant_dashboard_refresh_last_log_id": 0,
+            "merchant_dashboard_refresh_last_sent_log_id": 0,
+            "merchant_dashboard_refresh_sent_total": 0,
+            "merchant_dashboard_refresh_archive_rev": 0,
+        }
+    try:
+        setup_render_debug = merchant_setup_render_debug_payload(
+            merchant_setup_experience,
+            activation=merchant_activation,
+        )
+    except Exception as exc:  # noqa: BLE001
+        log.warning("summary setup_render_debug: %s", exc)
+        setup_render_debug = None
     out = {
         "merchant_ar_date_header": merchant_ar_weekday_date_header(now_utc),
         "wa_badge_ar": str(wa_card.get("badge_ar") or "—"),
@@ -19129,10 +19172,7 @@ def _api_json_dashboard_summary(
         "merchant_nav_badge_followup": 0,
         "merchant_nav_badge_vip": 0,
         "merchant_setup_experience": merchant_setup_experience,
-        "merchant_setup_render_debug": merchant_setup_render_debug_payload(
-            merchant_setup_experience,
-            activation=merchant_activation,
-        ),
+        "merchant_setup_render_debug": setup_render_debug,
         "merchant_activation": merchant_activation,
         "merchant_activation_visibility_debug": (
             merchant_activation.get("activation_visibility_debug")
