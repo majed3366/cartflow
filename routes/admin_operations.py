@@ -791,6 +791,26 @@ def admin_operations_snapshot_export(
     return j({"ok": True, "snapshot": snapshot})
 
 
+@router.get("/api/admin/operations/pilot-foundation")
+def admin_pilot_operational_foundation(
+    request: Request,
+    include_demo: int = Query(0),
+) -> Any:
+    """Read-only pilot operational visibility foundation JSON."""
+    denied = _admin_json_auth(request)
+    if denied is not None:
+        return denied
+    from services.pilot_operational_foundation_v1 import (  # noqa: PLC0415
+        build_pilot_operational_foundation_readonly,
+    )
+
+    payload = build_pilot_operational_foundation_readonly(
+        include_demo=bool(int(include_demo or 0)),
+    )
+    status_code = 200 if payload.get("ok") else 503
+    return j(payload, status_code=status_code)
+
+
 @router.get("/admin/operations/recovery-resume-inspect")
 def admin_recovery_resume_inspect(
     request: Request,
