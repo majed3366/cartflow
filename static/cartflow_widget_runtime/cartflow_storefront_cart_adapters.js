@@ -83,6 +83,55 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     return null;
   }
 
+  function logRawZid(body, sourceTag, phase) {
+    body = body || {};
+    var products = Array.isArray(body.products) ? body.products : [];
+    try {
+      console.log("[CF CART BRIDGE RAW ZID]", {
+        timestamp: Date.now(),
+        phase: phase || "unknown",
+        source_tag: sourceTag || null,
+        total_value: body.total_value,
+        products_subtotal: body.products_subtotal,
+        products_count: body.products_count,
+        products_len: products.length,
+        cart_id: body.id != null ? body.id : null,
+        session_id: body.session_id != null ? body.session_id : null,
+      });
+    } catch (eLog) {}
+  }
+
+  function zidBodyMetrics(body) {
+    body = body || {};
+    var products = Array.isArray(body.products) ? body.products : [];
+    var itemCount = num(body.products_count);
+    if (itemCount == null) {
+      itemCount = products.length;
+    }
+    var cartValue = num(body.total_value);
+    if (cartValue == null) {
+      cartValue = num(body.products_subtotal);
+    }
+    if (cartValue == null && body.total && typeof body.total === "object") {
+      cartValue = num(body.total.value);
+    }
+    return {
+      itemCount: itemCount != null ? itemCount : 0,
+      cartValue: cartValue != null ? cartValue : 0,
+      productsLen: products.length,
+    };
+  }
+
+  function zidBodyIsPopulated(body) {
+    var m = zidBodyMetrics(body);
+    return m.cartValue > 0 && m.itemCount > 0;
+  }
+
+  function zidBodyIsEmpty(body) {
+    var m = zidBodyMetrics(body);
+    return m.cartValue <= 0 && m.itemCount <= 0;
+  }
+
   function mapZidProducts(products) {
     var items = [];
     var i;
@@ -129,6 +178,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
 
   function normalizeZidCartApiBody(body, source) {
     body = body || {};
+    logRawZid(body, source || "zid_api_v1_cart", "normalizeZidCartApiBody");
     var products = Array.isArray(body.products) ? body.products : [];
     var items = mapZidProducts(products);
     var itemCount =
@@ -194,16 +244,41 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     },
 
     cacheCartBody: function (body) {
-      if (body && typeof body === "object") {
-        zidCachedCartBody = body;
-        zidCachedAt = Date.now();
+      if (!body || typeof body !== "object") {
+        return;
       }
+      logRawZid(body, "cacheCartBody", "cacheCartBody");
+      if (
+        zidCachedCartBody &&
+        zidBodyIsPopulated(zidCachedCartBody) &&
+        zidBodyIsEmpty(body)
+      ) {
+        try {
+          console.log("[CF CART BRIDGE CACHE KEEP]", {
+            reason: "ignore_empty_overwrite",
+            kept_products_count: zidBodyMetrics(zidCachedCartBody).itemCount,
+            kept_total_value: zidBodyMetrics(zidCachedCartBody).cartValue,
+          });
+        } catch (eKeep) {}
+        return;
+      }
+      var m = zidBodyMetrics(body);
+      try {
+        console.log("[CF CART BRIDGE CACHE UPDATE]", {
+          products_count: m.itemCount,
+          total_value: m.cartValue,
+          products_len: m.productsLen,
+        });
+      } catch (eUp) {}
+      zidCachedCartBody = body;
+      zidCachedAt = Date.now();
     },
 
     cacheCartItemResponse: function (body) {
       if (!body || typeof body !== "object") {
         return;
       }
+      logRawZid(body, "post_cart_items_raw", "cacheCartItemResponse_in");
       var item = body.item;
       if (!item) {
         return;
@@ -214,6 +289,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
         total_value: num(item.price) != null ? num(item.price) : num(item.total),
         products_subtotal: num(item.price),
       };
+      logRawZid(partial, "cacheCartItemResponse_partial", "cacheCartItemResponse_out");
       this.cacheCartBody(partial);
     },
 
@@ -280,6 +356,15 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
         .then(function (body) {
           if (body && typeof body === "object") {
             self.cacheCartBody(body);
+            if (zidBodyIsPopulated(body)) {
+              return normalizeZidCartApiBody(body, "zid_api_v1_cart");
+            }
+            if (zidCachedCartBody && zidBodyIsPopulated(zidCachedCartBody)) {
+              return normalizeZidCartApiBody(
+                zidCachedCartBody,
+                "zid_api_v1_cart_cached"
+              );
+            }
             return normalizeZidCartApiBody(body, "zid_api_v1_cart");
           }
           return null;
@@ -291,15 +376,56 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
 
     readCart: function () {
       var self = this;
+      try {
+        console.log("[CF CART BRIDGE TIMING]", {
+          step: "readCart_start",
+          timestamp: Date.now(),
+          cache_age_ms:
+            zidCachedAt > 0 ? Date.now() - zidCachedAt : null,
+          has_cache: !!zidCachedCartBody,
+        });
+      } catch (eRc) {}
       if (zidCachedCartBody && Date.now() - zidCachedAt < 15000) {
         var cached = normalizeZidCartApiBody(zidCachedCartBody, "zid_api_v1_cart_cached");
         if (cached.item_count > 0 && cached.cart_value > 0) {
+          try {
+            console.log("[CF CART BRIDGE TIMING]", {
+              step: "readCart_cache_hit",
+              timestamp: Date.now(),
+              source: "zid_api_v1_cart_cached",
+              cart_value: cached.cart_value,
+              item_count: cached.item_count,
+            });
+          } catch (eHit) {}
           return Promise.resolve(cached);
         }
+        try {
+          console.log("[CF CART BRIDGE TIMING]", {
+            step: "readCart_cache_miss_low_value",
+            timestamp: Date.now(),
+            cart_value: cached.cart_value,
+            item_count: cached.item_count,
+          });
+        } catch (eMiss) {}
       }
+      try {
+        console.log("[CF CART BRIDGE TIMING]", {
+          step: "fetchZidCartApi_start",
+          timestamp: Date.now(),
+        });
+      } catch (eFs) {}
       return self.fetchZidCartApi().then(function (fromApi) {
         if (fromApi && fromApi.item_count > 0 && fromApi.cart_value > 0) {
           return fromApi;
+        }
+        if (zidCachedCartBody && Date.now() - zidCachedAt < 15000) {
+          var recheck = normalizeZidCartApiBody(
+            zidCachedCartBody,
+            "zid_api_v1_cart_cached"
+          );
+          if (recheck.item_count > 0 && recheck.cart_value > 0) {
+            return recheck;
+          }
         }
         var fb = self.readGlobalFallback();
         if (fb && fb.item_count > 0 && fb.cart_value > 0) {

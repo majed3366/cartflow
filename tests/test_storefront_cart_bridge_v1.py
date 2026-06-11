@@ -109,7 +109,7 @@ class StorefrontCartBridgeJsWiringTests(unittest.TestCase):
 
     def test_widget_loader_runtime_version(self) -> None:
         text = _WIDGET_LOADER.read_text(encoding="utf-8")
-        self.assertIn("v2-storefront-cart-bridge-v1", text)
+        self.assertIn("v2-storefront-cart-bridge-timing-v1", text)
 
 
 class StorefrontCartBridgeDiagnosticsTests(unittest.TestCase):

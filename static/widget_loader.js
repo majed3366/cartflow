@@ -12,7 +12,7 @@
 (function () {
   "use strict";
 
-  var RUNTIME_VERSION = "v2-storefront-cart-bridge-v1";
+  var RUNTIME_VERSION = "v2-storefront-cart-bridge-timing-v1";
 
   function cartflowExtractHostnameSlugInline(host) {
     if (typeof window.cartflowExtractStoreSlugFromHostname === "function") {

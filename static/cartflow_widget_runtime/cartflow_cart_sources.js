@@ -329,6 +329,12 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
                 return;
               }
               // Explicit user action — always a real signal, even on first load.
+              try {
+                console.log("[CF CART BRIDGE TIMING]", {
+                  step: "add_to_cart_click",
+                  timestamp: Date.now(),
+                });
+              } catch (eClk) {}
               self._diag(
                 "add_to_cart_click",
                 "add_to_cart",
@@ -344,7 +350,11 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
                     Cf.StorefrontCartBridge &&
                     typeof Cf.StorefrontCartBridge.readAndPersist === "function"
                   ) {
-                    Cf.StorefrontCartBridge.readAndPersist({ reason: "add" });
+                    Cf.StorefrontCartBridge.readAndPersist({
+                      reason: "add",
+                      source_hint: "cart_sources_click_1200ms",
+                      allowFreshAfterInFlight: true,
+                    });
                   }
                 } catch (eBr) {}
                 var g = self._readGlobalCart();
@@ -437,7 +447,11 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
                 Cf.StorefrontCartBridge &&
                 typeof Cf.StorefrontCartBridge.readAndPersist === "function"
               ) {
-                Cf.StorefrontCartBridge.readAndPersist({ reason: "add" });
+                Cf.StorefrontCartBridge.readAndPersist({
+                  reason: "add",
+                  source_hint: "cart_sources_network_800ms",
+                  allowFreshAfterInFlight: true,
+                });
               }
             } catch (eBrNet) {}
             var g = self._readGlobalCart();

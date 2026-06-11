@@ -30,6 +30,81 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
   var lastDedupeAt = 0;
   var DEDUPE_MS = 2500;
   var inFlightPromise = null;
+  var RETRY_DELAYS_MS = [500, 1200, 2500];
+  var emptyRetryGeneration = 0;
+
+  function isEmptyValidationResult(v) {
+    if (!v || v.ok) {
+      return false;
+    }
+    var errs = v.errors || [];
+    return (
+      errs.indexOf("empty_cart_value") >= 0 ||
+      errs.indexOf("empty_item_count") >= 0
+    );
+  }
+
+  function isAddFlowReason(opts) {
+    return String(opts.reason || "add").toLowerCase() === "add";
+  }
+
+  function isPriorityAddTrigger(opts) {
+    if (opts && opts.allowFreshAfterInFlight) {
+      return true;
+    }
+    var h = String((opts && (opts.source_hint || opts.trigger)) || "");
+    return /post_items|cart_sources|zid_network_hook|ensure_before_reason|empty_retry/i.test(
+      h
+    );
+  }
+
+  function logRetryStop(reason, meta) {
+    blog("[CF CART BRIDGE RETRY STOP]", Object.assign({ reason: reason }, meta || {}));
+  }
+
+  function scheduleEmptyRetries(opts, attempt) {
+    attempt = attempt || 0;
+    if (bridgeState.cart_persisted) {
+      logRetryStop("already_persisted");
+      return;
+    }
+    if (attempt >= RETRY_DELAYS_MS.length) {
+      logRetryStop("max_attempts", { attempts: attempt });
+      return;
+    }
+    var gen = emptyRetryGeneration;
+    var delay = RETRY_DELAYS_MS[attempt];
+    blog("[CF CART BRIDGE RETRY SCHEDULED]", {
+      attempt: attempt + 1,
+      delay_ms: delay,
+      trigger: opts.source_hint || null,
+    });
+    setTimeout(function () {
+      if (gen !== emptyRetryGeneration) {
+        return;
+      }
+      if (bridgeState.cart_persisted) {
+        logRetryStop("already_persisted");
+        return;
+      }
+      blog("[CF CART BRIDGE RETRY FIRED]", {
+        attempt: attempt + 1,
+        delay_ms: delay,
+      });
+      readAndPersist({
+        reason: "add",
+        force: true,
+        source_hint: opts.source_hint || "empty_retry",
+        retryAttempt: attempt + 1,
+        allowFreshAfterInFlight: true,
+        _freshRun: true,
+      });
+    }, delay);
+  }
+
+  function cancelEmptyRetries() {
+    emptyRetryGeneration += 1;
+  }
 
   function blog(tag, meta) {
     try {
@@ -128,6 +203,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
             if (ok) {
               bridgeState.cart_persisted = true;
               bridgeState.reason_orphan_risk = false;
+              cancelEmptyRetries();
             }
             return { ok: ok, status: r.status, body: body };
           });
@@ -142,13 +218,10 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
 
   /**
    * Read cart via platform adapter, validate, dedupe, POST.
-   * @param {Object} opts reason, force, source_hint
+   * @param {Object} opts reason, force, source_hint, retryAttempt
    */
-  function readAndPersist(opts) {
+  function readAndPersistOnce(opts) {
     opts = opts || {};
-    if (inFlightPromise) {
-      return inFlightPromise;
-    }
     var adapter = selectAdapter();
     if (!adapter || typeof adapter.readCart !== "function") {
       bridgeState.last_skip_reason = "no_adapter";
@@ -161,7 +234,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       sourceName: adapter.sourceName,
     });
 
-    inFlightPromise = adapter
+    return adapter
       .readCart()
       .then(function (raw) {
         bridgeState.last_read_source = raw && raw.source ? raw.source : null;
@@ -173,6 +246,9 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
         if (!raw) {
           bridgeState.last_skip_reason = "cart_read_empty";
           blog("[CF CART BRIDGE SKIP]", { reason: bridgeState.last_skip_reason });
+          if (isAddFlowReason(opts)) {
+            scheduleEmptyRetries(opts, opts.retryAttempt || 0);
+          }
           return { ok: false, skipped: true, reason: "cart_read_empty" };
         }
         var normalized =
@@ -180,6 +256,17 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
             ? adapter.normalize(raw) || raw
             : raw;
         var v = validateAndNormalize(normalized);
+        try {
+          console.log("[CF CART BRIDGE TIMING]", {
+            step: "validateNormalizedCart",
+            timestamp: Date.now(),
+            ok: v.ok,
+            errors: v.errors || [],
+            cart_value: v.cart ? v.cart.cart_value : null,
+            item_count: v.cart ? v.cart.item_count : null,
+            source: v.cart ? v.cart.source : null,
+          });
+        } catch (eVal) {}
         if (!v.ok) {
           bridgeState.last_skip_reason = v.errors.join(",");
           bridgeState.last_normalized = v.cart;
@@ -187,6 +274,9 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
             reason: bridgeState.last_skip_reason,
             errors: v.errors,
           });
+          if (isEmptyValidationResult(v) && isAddFlowReason(opts)) {
+            scheduleEmptyRetries(opts, opts.retryAttempt || 0);
+          }
           return { ok: false, skipped: true, reason: bridgeState.last_skip_reason };
         }
         bridgeState.last_normalized = v.cart;
@@ -215,10 +305,55 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
           : null;
         bridgeState.last_post_at = Date.now();
         return postCartEvent(v.cart, opts.reason || "add");
-      })
-      .finally(function () {
-        inFlightPromise = null;
       });
+  }
+
+  function readAndPersist(opts) {
+    opts = opts || {};
+    try {
+      console.log("[CF CART BRIDGE TIMING]", {
+        step: "readAndPersist_start",
+        timestamp: Date.now(),
+        reason: opts.reason || "add",
+        trigger: opts.source_hint || opts.trigger || null,
+        in_flight: !!inFlightPromise,
+        retry_attempt: opts.retryAttempt || 0,
+      });
+    } catch (eRp) {}
+    if (inFlightPromise) {
+      if (isPriorityAddTrigger(opts) && !opts._freshRun) {
+        try {
+          console.log("[CF CART BRIDGE TIMING]", {
+            step: "readAndPersist_defer_after_inflight",
+            timestamp: Date.now(),
+            trigger: opts.source_hint || null,
+          });
+        } catch (eDef) {}
+        return inFlightPromise.finally(function () {
+          if (bridgeState.cart_persisted) {
+            return { ok: true, persisted: true, already: true };
+          }
+          return readAndPersist(
+            Object.assign({}, opts, {
+              _freshRun: true,
+              force: opts.force !== false,
+            })
+          );
+        });
+      }
+      try {
+        console.log("[CF CART BRIDGE TIMING]", {
+          step: "readAndPersist_coalesced",
+          timestamp: Date.now(),
+          reason: opts.reason || "add",
+          trigger: opts.source_hint || opts.trigger || null,
+        });
+      } catch (eCo) {}
+      return inFlightPromise;
+    }
+    inFlightPromise = readAndPersistOnce(opts).finally(function () {
+      inFlightPromise = null;
+    });
     return inFlightPromise;
   }
 
@@ -229,7 +364,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     if (evt.event_type === "cart_empty" || evt.event_type === "cart_removed") {
       reason = "clear";
     }
-    return readAndPersist({ reason: reason, source_hint: evt.detected_by });
+    return readAndPersist({ reason: reason, source_hint: evt.detected_by, allowFreshAfterInFlight: true });
   }
 
   /**
@@ -241,7 +376,12 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     if (bridgeState.cart_persisted && !opts.force) {
       return Promise.resolve({ ok: true, persisted: true, already: true });
     }
-    return readAndPersist({ reason: "add", force: opts.force === true }).then(
+    return readAndPersist({
+      reason: "add",
+      force: opts.force === true,
+      source_hint: "ensure_before_reason",
+      allowFreshAfterInFlight: true,
+    }).then(
       function (res) {
         if (!res || (!res.ok && !res.skipped)) {
           bridgeState.reason_orphan_risk = true;
@@ -305,8 +445,19 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
                 r.clone()
                   .json()
                   .then(function (body) {
+                    try {
+                      console.log("[CF CART BRIDGE TIMING]", {
+                        step: "post_cart_items_hook",
+                        timestamp: Date.now(),
+                      });
+                    } catch (ePi) {}
                     zid.cacheCartItemResponse(body);
-                    readAndPersist({ reason: "add" });
+                    readAndPersist({
+                      reason: "add",
+                      source_hint: "zid_network_hook_post_items",
+                      allowFreshAfterInFlight: true,
+                      force: true,
+                    });
                   })
                   .catch(function () {});
               }).catch(function () {});
