@@ -188,7 +188,7 @@ class CartBridgeJsWiringTests(unittest.TestCase):
 
     def test_widget_loader_runtime_version_bumped(self) -> None:
         text = _WIDGET_LOADER.read_text(encoding="utf-8")
-        self.assertIn("v2-storefront-cart-bridge-timing-v1", text)
+        self.assertIn("v2-widget-trigger-arbitration-shadow-v1", text)
 
 
 if __name__ == "__main__":

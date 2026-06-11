@@ -549,6 +549,15 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       configured_delay_ms: msConfigured,
     });
 
+    try {
+      if (Cf.Arbitration && typeof Cf.Arbitration.observeTriggerSignal === "function") {
+        Cf.Arbitration.observeTriggerSignal({
+          trigger_source: "cart_hesitation_timer",
+          phase: "hesitation_scheduled",
+        });
+      }
+    } catch (eArbHes) {}
+
     trigLog(
       "[CF HESITATION TIMER START]",
       hesitationStateSnapshot({
@@ -718,6 +727,15 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
 
     var delayMs = exitBaselineMs();
     logScheduled("exit_intent", { delay_ms: delayMs, timer: "exit_intent" });
+
+    try {
+      if (Cf.Arbitration && typeof Cf.Arbitration.observeTriggerSignal === "function") {
+        Cf.Arbitration.observeTriggerSignal({
+          trigger_source: "exit_intent",
+          phase: "exit_intent_scheduled",
+        });
+      }
+    } catch (eArbEx) {}
 
     st.exitInactivityTimer = setTimeout(function () {
       st.exitInactivityTimer = null;

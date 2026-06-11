@@ -128,6 +128,29 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     return Cf.State.internals;
   }
 
+  function cfArbitrationShadowObserveOpen(entrypoint, tagNote) {
+    try {
+      if (Cf.Arbitration && typeof Cf.Arbitration.observeWidgetOpenAttempt === "function") {
+        Cf.Arbitration.observeWidgetOpenAttempt({
+          entrypoint: entrypoint,
+          trigger_source: String(tagNote || "cart_recovery"),
+          tag_note: String(tagNote || ""),
+        });
+      }
+    } catch (eArbSh) {}
+  }
+
+  function cfArbitrationShadowObserveTrigger(triggerSource, phase) {
+    try {
+      if (Cf.Arbitration && typeof Cf.Arbitration.observeTriggerSignal === "function") {
+        Cf.Arbitration.observeTriggerSignal({
+          trigger_source: String(triggerSource || "unknown"),
+          phase: phase || "trigger_fired",
+        });
+      }
+    } catch (eArbTr) {}
+  }
+
   /** Exit-intent vs cart recovery: do not replace UI if bubble or shell chrome is already visible (incl. minimized launcher). */
   function v2ShellOccupiedPreventExitIntentDuplicates() {
     try {
@@ -694,6 +717,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
   }
 
   function showBubbleCartRecovery(tagNote) {
+    cfArbitrationShadowObserveOpen("showBubbleCartRecovery", tagNote);
     if (storefrontUiBlocked()) {
       try {
         console.log("[CF WIDGET BLOCKED V2]", {
@@ -784,6 +808,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
   /** Exit intent branches */
 
   function showExitNoCart() {
+    cfArbitrationShadowObserveOpen("showExitNoCart", "exit_intent");
     if (storefrontUiBlocked()) {
       return;
     }
@@ -949,12 +974,14 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
         Cf.Triggers.init({
           flowsRef: {},
           fireCartRecovery: function (tag) {
+            cfArbitrationShadowObserveTrigger(String(tag || "cart_timer"), "fire_cart_recovery");
             if (st().bubbleShown) {
               return;
             }
             showBubbleCartRecovery(String(tag || "cart_timer"));
           },
           fireExitNoCart: function () {
+            cfArbitrationShadowObserveTrigger("exit_intent", "fire_exit_no_cart");
             if (isStorefrontRecoveryMode()) {
               showBubbleCartRecovery("exit_intent_storefront_recovery");
               return;
@@ -964,6 +991,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
             }
           },
           fireExitWithCart: function () {
+            cfArbitrationShadowObserveTrigger("exit_intent_with_cart", "fire_exit_with_cart");
             if (Cf.Triggers.haveCartApprox()) {
               if (shouldBlockCartTriggers()) {
                 return;

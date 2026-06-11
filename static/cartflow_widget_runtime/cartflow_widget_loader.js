@@ -44,6 +44,7 @@
     "cartflow_product_identity_capture.js",
     "cartflow_widget_fetch.js",
     "cartflow_widget_state.js",
+    "cartflow_widget_arbitration.js",
     "cartflow_widget_theme.js",
     "cartflow_widget_triggers.js",
     "cartflow_storefront_cart_bridge_contract.js",
