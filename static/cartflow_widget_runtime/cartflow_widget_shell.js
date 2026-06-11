@@ -273,8 +273,37 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     }
   }
 
+  function merchantChromeStyle() {
+    try {
+      if (Cf.Config && typeof Cf.Config.merchant === "function") {
+        var M = Cf.Config.merchant();
+        var st =
+          M && M.widget_chrome_style != null
+            ? String(M.widget_chrome_style).toLowerCase()
+            : "modern";
+        if (st === "minimal" || st === "modern" || st === "bold") {
+          return st;
+        }
+      }
+    } catch (eSt) {}
+    return "modern";
+  }
+
+  function applyChromeStyleClasses(w) {
+    if (!w || !w.classList) {
+      return;
+    }
+    w.classList.remove(
+      "cf-widget-style-minimal",
+      "cf-widget-style-modern",
+      "cf-widget-style-bold"
+    );
+    w.classList.add("cf-widget-style-" + merchantChromeStyle());
+  }
+
   function refreshShellVisuals() {
     var w = rootFromDom();
+    applyChromeStyleClasses(w);
     var th = theme();
     if (th) {
       th.refresh(merchantPrimaryHex());
@@ -606,6 +635,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
         w.setAttribute("data-cf-shell", "1");
       }
     }
+    applyChromeStyleClasses(w);
 
     var fill = resolvedPrimary(primaryHex);
     w.style.cssText =

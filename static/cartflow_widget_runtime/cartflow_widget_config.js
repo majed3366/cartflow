@@ -40,6 +40,9 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       widget_brand_name: "مساعد المتجر",
       widget_primary_color: "#6C5CE7",
       widget_chrome_style: "modern",
+      exit_intent_template_mode: "preset",
+      exit_intent_template_tone: "friendly",
+      exit_intent_custom_text: "",
     },
     gate_scheduled_once: false,
   };
@@ -537,6 +540,25 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       if (st === "minimal" || st === "modern" || st === "bold") {
         CRT.merchant.widget_chrome_style = st;
       }
+    }
+    if ("exit_intent_template_mode" in j) {
+      var em = String(j.exit_intent_template_mode || "preset")
+        .trim()
+        .toLowerCase();
+      if (em === "preset" || em === "custom") {
+        CRT.merchant.exit_intent_template_mode = em;
+      }
+    }
+    if ("exit_intent_template_tone" in j) {
+      var et = String(j.exit_intent_template_tone || "friendly")
+        .trim()
+        .toLowerCase();
+      if (et === "friendly" || et === "formal" || et === "sales") {
+        CRT.merchant.exit_intent_template_tone = et;
+      }
+    }
+    if (typeof j.exit_intent_custom_text === "string") {
+      CRT.merchant.exit_intent_custom_text = j.exit_intent_custom_text;
     }
     logTitleTruth("applyVisual", {
       payload_widget_name: j.widget_name,

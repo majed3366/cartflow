@@ -195,7 +195,50 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     } catch (eLog) {}
   }
 
-  function getCartRecoveryQuestion() {
+  var EXIT_INTENT_PRESET_BY_TONE = {
+    friendly:
+      "هلا 👋\nفيه خيارات ممكن تعجبك 👍\nتحب أشوفها لك بسرعة؟",
+    formal:
+      "مرحباً 👋\nيمكنني مساعدتك في استعراض خيارات مناسبة لك\nهل ترغب بالاطلاع عليها؟",
+    sales:
+      "قبل ما تطلع 👋\nعندي خيارات ممكن تناسبك أكثر 👌\nخلني أوريك الأفضل الآن",
+  };
+
+  function strTrim(s) {
+    return String(s == null ? "" : s).trim();
+  }
+
+  function getExitIntentOpeningText() {
+    try {
+      var M = Cf.Config && Cf.Config.merchant ? Cf.Config.merchant() : null;
+      var mode =
+        M && M.exit_intent_template_mode != null
+          ? String(M.exit_intent_template_mode).trim().toLowerCase()
+          : "preset";
+      var custom =
+        M && M.exit_intent_custom_text != null
+          ? strTrim(M.exit_intent_custom_text)
+          : "";
+      if (mode === "custom" && custom !== "") {
+        return String(M.exit_intent_custom_text).replace(/\r\n/g, "\n");
+      }
+      var tone =
+        M &&
+        M.exit_intent_template_tone != null &&
+        EXIT_INTENT_PRESET_BY_TONE[M.exit_intent_template_tone]
+          ? M.exit_intent_template_tone
+          : "friendly";
+      return EXIT_INTENT_PRESET_BY_TONE[tone];
+    } catch (eEi) {
+      return EXIT_INTENT_PRESET_BY_TONE.friendly;
+    }
+  }
+
+  function getCartRecoveryQuestion(tagNote) {
+    var tag = String(tagNote || "");
+    if (tag.indexOf("exit_intent") >= 0) {
+      return getExitIntentOpeningText();
+    }
     return "تبي أساعدك تكمل طلبك؟";
   }
 
@@ -669,7 +712,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
 
     Cf.Ui.renderYesNo({
       primaryColor: primaryHex(),
-      question: getCartRecoveryQuestion(),
+      question: getCartRecoveryQuestion(tagNote),
       yes: "نعم",
       no: "لا",
       onYes: function () {

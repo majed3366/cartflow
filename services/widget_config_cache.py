@@ -13,8 +13,12 @@ from services.db_session_lifecycle import isolated_db_session
 
 from extensions import db
 from models import CartRecoveryLog
+from services.store_identity_v1 import is_widget_sandbox_slug
 
 log = logging.getLogger("cartflow")
+
+_IDENTITY_UNRESOLVED_KEY = "_identity_unresolved"
+_SANDBOX_DEFAULTS_KEY = "_sandbox_defaults"
 
 _SENT_STATUSES_FOR_READY = frozenset({"sent_real", "mock_sent"})
 _REFRESH_THROTTLE_SEC = 8.0
@@ -107,6 +111,20 @@ def note_after_step1_from_recovery_log_attrs(
             _ready_after_step1[ck] = True
         else:
             _ready_after_step1.pop(ck, None)
+
+
+def snapshot_identity_unresolved(snap: Optional[Dict[str, Any]]) -> bool:
+    return isinstance(snap, dict) and bool(snap.get(_IDENTITY_UNRESOLVED_KEY))
+
+
+def build_unresolved_identity_snapshot() -> Dict[str, Any]:
+    """Fail-closed marker — must not be cached or served as merchant config."""
+    return {
+        _IDENTITY_UNRESOLVED_KEY: True,
+        "template_bundle": {},
+        "whatsapp_url": None,
+        "vip_threshold": None,
+    }
 
 
 def build_snapshot_from_store_row(store_row: Optional[Any]) -> Dict[str, Any]:
@@ -226,6 +244,12 @@ def ensure_snapshot_for_hot_path(
             return snap
     try:
         snap_new = _load_snapshot_from_db(slug)
+        if snapshot_identity_unresolved(snap_new):
+            log.warning(
+                "[WIDGET CONFIG IDENTITY UNRESOLVED] store_slug=%s",
+                slug[:80],
+            )
+            return snap_new
         with _lock:
             _store_snapshots[slug] = snap_new
             _refresh_fail_until_mono.pop(slug, None)
@@ -238,7 +262,11 @@ def ensure_snapshot_for_hot_path(
             exc,
         )
         maybe_schedule_background_refresh(slug, background_tasks)
-        return build_snapshot_from_store_row(None)
+        if is_widget_sandbox_slug(slug):
+            snap_sb = build_snapshot_from_store_row(None)
+            snap_sb[_SANDBOX_DEFAULTS_KEY] = True
+            return snap_sb
+        return build_unresolved_identity_snapshot()
 
 
 def ready_after_step1_memory(store_slug: str, session_id: str) -> bool:
@@ -262,13 +290,27 @@ def _is_vip_from_threshold(cart_total: Optional[float], threshold: Optional[int]
 
 
 def ready_http_payload(norm_slug: str, session_id: str, snap: Optional[Dict[str, Any]]):
-    """جسم ‎GET /ready‎ — ‎snap‎ فارغ ⇒ قوالب الافتراضي الآمن."""
+    """جسم ‎GET /ready‎ — unresolved identity ⇒ fail closed (no silent defaults)."""
 
     aft = ready_after_step1_memory(norm_slug, session_id)
     identity_fields = storefront_identity_fields_for_slug(norm_slug)
+    if snap is not None and snapshot_identity_unresolved(snap):
+        return {
+            "ok": False,
+            "error": "store_identity_unresolved",
+            "after_step1": aft,
+            **identity_fields,
+        }
     if snap is None:
-        tpl = build_snapshot_from_store_row(None)["template_bundle"]
-        return {"ok": True, "after_step1": aft, **identity_fields, **tpl}
+        if is_widget_sandbox_slug(norm_slug):
+            tpl = build_snapshot_from_store_row(None)["template_bundle"]
+            return {"ok": True, "after_step1": aft, **identity_fields, **tpl}
+        return {
+            "ok": False,
+            "error": "store_identity_unresolved",
+            "after_step1": aft,
+            **identity_fields,
+        }
     tpl = snap.get("template_bundle") or {}
     return {"ok": True, "after_step1": aft, **identity_fields, **dict(tpl)}
 
@@ -302,16 +344,36 @@ def public_http_payload(
         except (TypeError, ValueError):
             ct_out = None
     identity_fields = storefront_identity_fields_for_slug(norm_slug)
-    if snap is None:
-        tpl = build_snapshot_from_store_row(None)["template_bundle"]
+    if snap is not None and snapshot_identity_unresolved(snap):
         return {
-            "ok": True,
+            "ok": False,
+            "error": "store_identity_unresolved",
             "whatsapp_url": None,
             "cart_total": ct_out,
             "is_vip": False,
             "vip_from_cart_total": vip_eval,
             **identity_fields,
-            **tpl,
+        }
+    if snap is None:
+        if is_widget_sandbox_slug(norm_slug):
+            tpl = build_snapshot_from_store_row(None)["template_bundle"]
+            return {
+                "ok": True,
+                "whatsapp_url": None,
+                "cart_total": ct_out,
+                "is_vip": False,
+                "vip_from_cart_total": vip_eval,
+                **identity_fields,
+                **tpl,
+            }
+        return {
+            "ok": False,
+            "error": "store_identity_unresolved",
+            "whatsapp_url": None,
+            "cart_total": ct_out,
+            "is_vip": False,
+            "vip_from_cart_total": vip_eval,
+            **identity_fields,
         }
     tpl = snap.get("template_bundle") or {}
     vip_th = snap.get("vip_threshold")
@@ -369,28 +431,37 @@ def _load_snapshot_from_db(norm_slug: str) -> Dict[str, Any]:
     from services.cartflow_widget_public_store import store_row_for_widget_public_api
 
     row = store_row_for_widget_public_api(norm_slug)
-    if row is not None:
-        try:
-            from services.store_widget_customization import (
-                canonical_widget_name_on_row,
-                is_default_widget_name,
-                reconcile_widget_name_columns,
-            )
+    if row is None:
+        if is_widget_sandbox_slug(norm_slug):
+            snap_sb = build_snapshot_from_store_row(None)
+            snap_sb[_SANDBOX_DEFAULTS_KEY] = True
+            return snap_sb
+        log.warning(
+            "[WIDGET CONFIG STORE ROW MISSING] store_slug=%s",
+            norm_slug[:80],
+        )
+        return build_unresolved_identity_snapshot()
+    try:
+        from services.store_widget_customization import (
+            canonical_widget_name_on_row,
+            is_default_widget_name,
+            reconcile_widget_name_columns,
+        )
 
-            reconcile_widget_name_columns(row)
-            name_col = getattr(row, "widget_name", None)
-            if isinstance(name_col, str) and is_default_widget_name(name_col):
-                canon = canonical_widget_name_on_row(row)
-                if canon and not is_default_widget_name(canon):
-                    row.widget_name = canon
-                    db.session.commit()
-                    log.info(
-                        "[WIDGET NAME RECONCILE] store_slug=%s widget_name=%s",
-                        norm_slug[:80],
-                        canon[:80],
-                    )
-        except Exception:  # noqa: BLE001
-            db.session.rollback()
+        reconcile_widget_name_columns(row)
+        name_col = getattr(row, "widget_name", None)
+        if isinstance(name_col, str) and is_default_widget_name(name_col):
+            canon = canonical_widget_name_on_row(row)
+            if canon and not is_default_widget_name(canon):
+                row.widget_name = canon
+                db.session.commit()
+                log.info(
+                    "[WIDGET NAME RECONCILE] store_slug=%s widget_name=%s",
+                    norm_slug[:80],
+                    canon[:80],
+                )
+    except Exception:  # noqa: BLE001
+        db.session.rollback()
     snap = build_snapshot_from_store_row(row)
     try:
         log_widget_settings_truth_from_snapshot(norm_slug, snap, row=row)
@@ -417,6 +488,15 @@ def _run_refresh_impl(norm_slug: str) -> bool:
             "[WIDGET CONFIG REFRESH FAILURE_SUPPRESSED] store_slug=%s err=%s",
             norm_slug[:80],
             exc,
+        )
+        return False
+    if snapshot_identity_unresolved(snap_new):
+        with _lock:
+            _store_snapshots.pop(norm_slug, None)
+            _refresh_fail_until_mono.pop(norm_slug, None)
+        log.warning(
+            "[WIDGET CONFIG REFRESH IDENTITY UNRESOLVED] store_slug=%s",
+            norm_slug[:80],
         )
         return False
     with _lock:

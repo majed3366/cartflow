@@ -94,3 +94,27 @@ def resolve_dashboard_trigger_templates_store(
                 canon = auth
 
     return canon, row
+
+
+def dashboard_recovery_store_row(*, allow_schema_warm: bool = False) -> Optional[Store]:
+    """
+    Authenticated merchant Store for dashboard saves/reads.
+    Matches ``main._dashboard_recovery_store_row`` (dev bypass → demo sandbox).
+    """
+    try:
+        from services.merchant_auth_context import get_merchant_auth_store_slug
+        from services.merchant_auth_v1 import development_dashboard_bypass_active
+
+        slug = normalize_merchant_store_slug(get_merchant_auth_store_slug())
+        if slug:
+            row = dashboard_canonical_store_row(slug, allow_schema_warm=allow_schema_warm)
+            if row is not None:
+                return row
+        if development_dashboard_bypass_active():
+            return dashboard_canonical_store_row(
+                DEFAULT_MERCHANT_DASHBOARD_STORE_SLUG,
+                allow_schema_warm=allow_schema_warm,
+            )
+    except Exception:  # noqa: BLE001
+        pass
+    return None

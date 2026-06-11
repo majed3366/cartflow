@@ -91,12 +91,12 @@ class WidgetSettingsRuntimeTruthAuditTests(unittest.TestCase):
         self.assertIn("function primaryHex()", flows)
         self.assertIn("widget_primary_color", flows)
 
-    def test_widget_style_not_applied_in_v2_shell(self) -> None:
+    def test_widget_style_applied_in_v2_shell(self) -> None:
         shell = _SHELL.read_text(encoding="utf-8")
         config = _CONFIG.read_text(encoding="utf-8")
         self.assertIn("widget_chrome_style", config)
-        self.assertNotIn("widget_chrome_style", shell)
-        self.assertNotIn("widget_style", shell)
+        self.assertIn("applyChromeStyleClasses", shell)
+        self.assertIn("cf-widget-style-", shell)
 
     def test_widget_name_applied_to_shell_header(self) -> None:
         shell = _SHELL.read_text(encoding="utf-8")
@@ -105,12 +105,12 @@ class WidgetSettingsRuntimeTruthAuditTests(unittest.TestCase):
         self.assertIn("merchantShellTitle", shell)
         self.assertIn("widget_brand_name", shell)
 
-    def test_recovery_question_hardcoded_not_exit_intent_template(self) -> None:
+    def test_exit_intent_template_wired_in_v2_flows(self) -> None:
         flows = _FLOWS.read_text(encoding="utf-8")
-        self.assertIn("function getCartRecoveryQuestion()", flows)
-        self.assertIn("تبي أساعدك تكمل طلبك؟", flows)
-        self.assertNotIn("exit_intent_custom_text", flows)
-        self.assertNotIn("exit_intent_template_mode", flows)
+        self.assertIn("function getCartRecoveryQuestion(", flows)
+        self.assertIn("getExitIntentOpeningText", flows)
+        self.assertIn("exit_intent_custom_text", flows)
+        self.assertIn("exit_intent_template_mode", flows)
 
     def test_merchant_widget_panel_does_not_clear_brand_line_on_save(self) -> None:
         panel = _PANEL_JS.read_text(encoding="utf-8")

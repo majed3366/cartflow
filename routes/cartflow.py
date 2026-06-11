@@ -389,7 +389,10 @@ def cartflow_ready(
         log.info("[WIDGET CONFIG CACHE HIT] store_slug=%s", norm[:80])
     else:
         log.info("[WIDGET CONFIG CACHE LOADED] store_slug=%s", norm[:80])
-    return j(ready_http_payload(norm, session_id, snap))
+    payload = ready_http_payload(norm, session_id, snap)
+    if payload.get("ok") is False:
+        return j(payload, 422)
+    return j(payload)
 
 
 @router.get("/public-config")
@@ -419,7 +422,10 @@ def cartflow_public_config(
         log_widget_settings_truth_from_snapshot(norm, snap, row=_truth_row)
     except Exception:  # noqa: BLE001
         pass
-    return j(public_http_payload(norm, cart_total, snap))
+    payload = public_http_payload(norm, cart_total, snap)
+    if payload.get("ok") is False:
+        return j(payload, 422)
+    return j(payload)
 
 
 @router.post("/assist-handoff")

@@ -287,6 +287,24 @@
     }
   }
 
+  function isProductionStorefrontContext() {
+    if (platformHost) {
+      return true;
+    }
+    try {
+      if (window.CARTFLOW_RECOVERY_WIDGET_MODE === true) {
+        return true;
+      }
+      var apiBase = window.CARTFLOW_API_BASE;
+      var pageOrigin = String(window.location.origin || "").replace(/\/+$/, "");
+      var loaderOrigin = String(apiBase || "").replace(/\/+$/, "");
+      if (loaderOrigin && pageOrigin && loaderOrigin !== pageOrigin) {
+        return true;
+      }
+    } catch (eProd) {}
+    return false;
+  }
+
   function resolveStorefrontStoreSlug(opts) {
     opts = opts || {};
     var allowSandbox = opts.allowSandbox === true;
@@ -350,13 +368,13 @@
       }
     }
 
-    if (platformHost) {
+    if (platformHost || isProductionStorefrontContext()) {
       try {
         console.warn("[CF STORE SLUG UNRESOLVED PLATFORM HOST]", diagCtx);
       } catch (ePlat) {}
-      var unresolved = { slug: "", source: "platform_host_unresolved" };
-      logCfStoreSlugResolve(diagCtx, unresolved);
-      return unresolved;
+      var unresolvedProd = { slug: "", source: "production_storefront_unresolved" };
+      logCfStoreSlugResolve(diagCtx, unresolvedProd);
+      return unresolvedProd;
     }
 
     logDemoFallback();

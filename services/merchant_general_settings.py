@@ -265,7 +265,11 @@ def post_merchant_general_settings_only(body: Dict[str, Any]) -> Tuple[Dict[str,
     log_on = _general_settings_logging_enabled()
 
     ensure_store_merchant_general_settings_schema()
-    row = db.session.query(Store).order_by(Store.id.desc()).first()
+    from services.dashboard_store_context import dashboard_recovery_store_row
+
+    row = dashboard_recovery_store_row(allow_schema_warm=False)
+    if row is None:
+        row = db.session.query(Store).order_by(Store.id.desc()).first()
     if row is None:
         return {"ok": False, "error": "no_store"}, 404
 

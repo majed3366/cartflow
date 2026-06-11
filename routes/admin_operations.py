@@ -791,6 +791,41 @@ def admin_operations_snapshot_export(
     return j({"ok": True, "snapshot": snapshot})
 
 
+@router.get("/api/admin/operations/widget-configuration-trust")
+def admin_widget_configuration_trust(
+    request: Request,
+    storefront_slug: str = Query("", max_length=255),
+    store_slug: str = Query("", max_length=255),
+) -> Any:
+    """Read-only widget configuration trust recovery JSON (foundation — no UI)."""
+    denied = _admin_json_auth(request)
+    if denied is not None:
+        return denied
+    from services.widget_configuration_trust_v1 import (  # noqa: PLC0415
+        build_widget_configuration_trust_report,
+    )
+
+    sf = (storefront_slug or store_slug or "").strip()
+    try:
+        from main import _ensure_cartflow_api_db_warmed, _dashboard_recovery_store_row  # noqa: PLC0415
+
+        _ensure_cartflow_api_db_warmed()
+        dash_row = _dashboard_recovery_store_row()
+        if not sf and dash_row is not None:
+            sf = str(getattr(dash_row, "zid_store_id", "") or "").strip()
+        report = build_widget_configuration_trust_report(
+            dash_row,
+            storefront_slug=sf or None,
+        )
+        status_code = 200 if report.get("ok") else 503
+        return j(report, status_code=status_code)
+    except Exception as exc:  # noqa: BLE001
+        from extensions import db  # noqa: PLC0415
+
+        db.session.rollback()
+        return j({"ok": False, "error": str(exc)}, 500)
+
+
 @router.get("/api/admin/operations/pilot-foundation")
 def admin_pilot_operational_foundation(
     request: Request,

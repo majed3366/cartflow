@@ -120,6 +120,24 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     }
   }
 
+  function isProductionStorefrontContext() {
+    if (isPlatformStorefrontHost()) {
+      return true;
+    }
+    try {
+      if (window.CARTFLOW_RECOVERY_WIDGET_MODE === true) {
+        return true;
+      }
+      var apiBase = window.CARTFLOW_API_BASE;
+      var pageOrigin = String(window.location.origin || "").replace(/\/+$/, "");
+      var loaderOrigin = String(apiBase || "").replace(/\/+$/, "");
+      if (loaderOrigin && pageOrigin && loaderOrigin !== pageOrigin) {
+        return true;
+      }
+    } catch (eProd) {}
+    return false;
+  }
+
   function applyCanonicalStoreSlugFromPayload(j) {
     if (!j || typeof j !== "object") {
       return;
@@ -129,13 +147,28 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     if (!canon || isPublicSandboxStoreSlug(canon)) {
       return;
     }
+    var requestSlug =
+      j.request_store_slug != null ? String(j.request_store_slug).trim() : "";
+    var prevCanon = "";
+    try {
+      prevCanon = String(window.CARTFLOW_CANONICAL_STORE_SLUG || "").trim();
+    } catch (ePrev) {}
+    if (
+      (prevCanon && prevCanon !== canon) ||
+      (requestSlug && requestSlug !== canon)
+    ) {
+      _sessionPublicConfigCached = null;
+      _sessionReadyCached = null;
+    }
     try {
       window.CARTFLOW_CANONICAL_STORE_SLUG = canon;
       window.CARTFLOW_STORE_SLUG = canon;
       console.log("[CF STORE SLUG CANONICAL]", {
-        request_store_slug:
-          j.request_store_slug != null ? String(j.request_store_slug) : null,
+        request_store_slug: requestSlug || null,
         canonical_store_slug: canon,
+        cache_invalidated:
+          !!(prevCanon && prevCanon !== canon) ||
+          !!(requestSlug && requestSlug !== canon),
       });
     } catch (eCanon) {}
   }
@@ -203,6 +236,12 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       try {
         console.warn("[CF STORE SLUG UNRESOLVED PLATFORM HOST]");
       } catch (ePlatApi) {}
+      return "";
+    }
+    if (isProductionStorefrontContext()) {
+      try {
+        console.warn("[CF STORE SLUG UNRESOLVED PRODUCTION STOREFRONT]");
+      } catch (eProdApi) {}
       return "";
     }
     try {
@@ -502,6 +541,15 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
           : { ok: false, ready_blocked: true }
       );
     }
+    var slug = storeSlug();
+    if (!slug && isProductionStorefrontContext()) {
+      return Promise.resolve({
+        ok: false,
+        error: "store_identity_unresolved",
+        request_store_slug: "",
+        canonical_store_slug: null,
+      });
+    }
     var bb = apiBase();
     var rt = "";
     try {
@@ -522,7 +570,16 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     return fetch(u, { method: "GET" })
       .then(function (r) {
         return r.json().then(function (j) {
-          if (j != null && typeof j === "object" && j.ok !== false) {
+          if (j != null && typeof j === "object") {
+            if (j.ok === false) {
+              if (
+                j.error === "store_identity_unresolved" ||
+                r.status === 422
+              ) {
+                markReadyBlocked("store_identity_unresolved");
+              }
+              return j;
+            }
             applyCanonicalStoreSlugFromPayload(j);
             _sessionPublicConfigCached = j;
           }
