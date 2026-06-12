@@ -1,0 +1,47 @@
+{
+  "after": [
+    {
+      "rows": 5,
+      "business_queries": 4,
+      "ms": 113.12,
+      "page_rows": 5,
+      "nav_badge": 5,
+      "debug": {
+        "query_count": 3,
+        "endpoint_ms": 107.16,
+        "projection_ms": 1.01,
+        "rows_returned": 5,
+        "degraded": false,
+        "batch_rows_fetched": 5,
+        "batch_reasons_fetched": 0,
+        "batch_logs_fetched": 0,
+        "load_ms": 106.16
+      }
+    },
+    {
+      "rows": 50,
+      "business_queries": 4,
+      "ms": 25.59,
+      "page_rows": 20,
+      "nav_badge": 50,
+      "debug": {
+        "query_count": 3,
+        "endpoint_ms": 25.21,
+        "projection_ms": 2.87,
+        "rows_returned": 20,
+        "degraded": false,
+        "batch_rows_fetched": 50,
+        "batch_reasons_fetched": 0,
+        "batch_logs_fetched": 0,
+        "load_ms": 22.34
+      }
+    }
+  ],
+  "before_audit_baseline": {
+    "5_rows": {
+      "business_queries": 239,
+      "ms": 5535
+    },
+    "notes": "from performance audit v1"
+  }
+}

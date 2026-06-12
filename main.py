@@ -17699,12 +17699,13 @@ def api_dashboard_normal_carts(request: Request):
 
 
 @app.get("/api/dashboard/vip-carts")
-def api_dashboard_vip_carts():
+def api_dashboard_vip_carts(request: Request):
     wall0 = time.perf_counter()
+    debug_perf = (request.query_params.get("debug_perf") or "").strip() == "1"
     try:
         _merchant_dashboard_db_ready()
         dash_store = _dashboard_recovery_store_row()
-        body = _api_json_dashboard_vip_carts(dash_store)
+        body = _api_json_dashboard_vip_carts(dash_store, debug_perf=debug_perf)
         return j({"ok": True, **body})
     except Exception as e:  # noqa: BLE001
         db.session.rollback()
@@ -19402,68 +19403,15 @@ def _api_json_dashboard_normal_carts(
     return body, prof_nc
 
 
-def _api_json_dashboard_vip_carts(dash_store: Optional[Any]) -> Dict[str, Any]:
-    from services.merchant_general_settings import merchant_automation_mode  # noqa: PLC0415
+def _api_json_dashboard_vip_carts(
+    dash_store: Optional[Any],
+    *,
+    debug_perf: bool = False,
+) -> Dict[str, Any]:
+    from services.vip_dashboard_batch_v1 import build_vip_dashboard_api_payload  # noqa: PLC0415
 
-    try:
-        vip_raw = _vip_priority_cart_alert_list(dash_store=dash_store)
-    except (SQLAlchemyError, OSError, TypeError, ValueError):
-        vip_raw = []
-    vip_rows: list[dict[str, Any]] = []
-    for i, vc in enumerate(vip_raw[:3]):
-        if isinstance(vc, dict):
-            vip_rows.append(
-                _merchant_vip_row_safe_projection(
-                    vc,
-                    avatar_letter=merchant_vip_avatar_letter(i),
-                    dash_store=dash_store,
-                )
-            )
-    vip_page_rows: list[dict[str, Any]] = []
-    for i, vc in enumerate(vip_raw[:20]):
-        if isinstance(vc, dict):
-            vip_page_rows.append(
-                _merchant_vip_row_safe_projection(
-                    vc,
-                    avatar_letter=merchant_vip_avatar_letter(i),
-                    dash_store=dash_store,
-                )
-            )
-    vip_banner: Optional[dict[str, Any]] = None
-    if vip_raw and isinstance(vip_raw[0], dict):
-        v0 = vip_raw[0]
-        proj0 = _merchant_vip_row_safe_projection(
-            v0,
-            avatar_letter=merchant_vip_avatar_letter(0),
-            dash_store=dash_store,
-        )
-        try:
-            amt_int = int(float(v0.get("cart_value") or 0))
-        except (TypeError, ValueError):
-            amt_int = 0
-        vip_banner = {
-            "amount_line": f"سلة بقيمة {amt_int:,} ريال — {proj0.get('subtitle_ar', '')}",
-            "contact_href": proj0.get("contact_href") or "",
-        }
-    vip_th = merchant_vip_threshold_int(dash_store)
-    vip_threshold_configured = vip_th is not None
-    return {
-        "merchant_vip_banner": vip_banner,
-        "merchant_vip_rows": vip_rows,
-        "merchant_vip_page_rows": vip_page_rows,
-        "merchant_nav_badge_vip": len(vip_raw) if vip_raw else 0,
-        "merchant_automation_mode": merchant_automation_mode(dash_store),
-        "merchant_vip_threshold_configured": vip_threshold_configured,
-        "merchant_vip_alert_state_ar": (
-            f"سلال VIP نشطة: {len(vip_raw)}"
-            if vip_raw
-            else (
-                "لم يُضبط حد VIP للمتجر — فعّل الحد من الإعدادات"
-                if not vip_threshold_configured
-                else "لا سلال VIP نشطة تحتاج تدخلك الآن"
-            )
-        ),
-    }
+    body, _perf = build_vip_dashboard_api_payload(dash_store, debug_perf=debug_perf)
+    return body
 
 
 def _api_json_dashboard_followups(dash_store: Optional[Any]) -> Dict[str, Any]:
