@@ -1,13 +1,14 @@
 /**
- * Widget Trigger Arbitration — SHADOW MODE v1
- * Observes open intents, evaluates decisions, logs conflicts.
- * Does NOT enforce — runtime behavior unchanged.
+ * Widget Trigger Arbitration — shadow observe + exit no-cart enforcement v1.
+ * Exit intent without cart: enforced deny (no widget UI).
+ * Other journeys: observe-only unless gated by exit policy.
  */
 window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
 (function (Cf) {
   "use strict";
 
   var SHADOW_MODE = true;
+  var EXIT_NO_CART_POLICY_ENFORCED = true;
   var RECENT_INTENT_WINDOW_MS = 1000;
   var CART_RECOVERY_COPY = "تبي أساعدك تكمل طلبك؟";
   var EXIT_FIRST_BEAT_COPY = "تحتاج مساعدة قبل ما تطلع؟";
@@ -360,6 +361,10 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     return copySource;
   }
 
+  function isExitIntentSource(triggerSource) {
+    return str(triggerSource).toLowerCase().indexOf("exit") >= 0;
+  }
+
   function evaluateShadowDecision(intent) {
     var action = "allow";
     var reason = null;
@@ -426,7 +431,29 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
         journey_type: "vip_recovery",
         priority: JOURNEY_PRIORITY.vip_recovery,
         shadow_mode: SHADOW_MODE,
+        enforce: EXIT_NO_CART_POLICY_ENFORCED,
       };
+    }
+
+    if (
+      EXIT_NO_CART_POLICY_ENFORCED &&
+      isExitIntentSource(intent.trigger_source) &&
+      !intent.cart_present
+    ) {
+      var pendingNoCart =
+        intent.customer_context &&
+        (intent.customer_context.cart_detected === "pending" ||
+          intent.customer_context.cart_pending === true);
+      if (!pendingNoCart) {
+        return {
+          action: "deny",
+          reason: "exit_without_cart_blocked",
+          journey_type: intent.journey_type,
+          priority: intent.priority,
+          shadow_mode: SHADOW_MODE,
+          enforce: true,
+        };
+      }
     }
 
     return {
@@ -435,6 +462,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       journey_type: intent.journey_type,
       priority: intent.priority,
       shadow_mode: SHADOW_MODE,
+      enforce: false,
     };
   }
 
@@ -539,10 +567,61 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       action: decision.action,
       reason: decision.reason,
       upgraded_to: decision.upgraded_to || null,
-      shadow_mode: true,
-      enforce: false,
+      shadow_mode: SHADOW_MODE,
+      enforce: decision.enforce === true,
+      policy: decision.reason === "exit_without_cart_blocked" ? "exit_no_cart_v1" : null,
     });
+    if (decision.reason === "exit_without_cart_blocked") {
+      arbLog("[CF ARBITRATION CONFLICT]", {
+        kind: "exit_without_cart_blocked",
+        trigger_source: intent.trigger_source,
+        journey_type: intent.journey_type,
+        decision: decision.action,
+        cart_present: intent.cart_present,
+        is_vip: intent.is_vip,
+      });
+    }
     return decision;
+  }
+
+  function gateExitIntentOpen(opts) {
+    opts = opts || {};
+    var intent = buildIntent({
+      trigger_source: opts.trigger_source,
+      tag_note: opts.trigger_source,
+      entrypoint: opts.entrypoint,
+      phase: opts.phase || "exit_intent_gate",
+      requested_at: Date.now(),
+    });
+    var decision = requestWidgetOpen(intent);
+    trackRecentIntent(intent);
+
+    if (decision.action === "deny" && decision.reason === "exit_without_cart_blocked") {
+      updateShadowStateAfterDecision(intent, decision);
+      return { allowed: false, decision: decision, intent: intent };
+    }
+    if (decision.action === "defer") {
+      return { allowed: false, decision: decision, intent: intent, deferred: true };
+    }
+    if (decision.action === "ignore" || decision.action === "deny") {
+      return { allowed: false, decision: decision, intent: intent };
+    }
+    if (
+      decision.action === "upgrade" ||
+      (decision.action === "allow" &&
+        intent.cart_present &&
+        isExitIntentSource(intent.trigger_source))
+    ) {
+      updateShadowStateAfterDecision(intent, decision);
+      return {
+        allowed: true,
+        decision: decision,
+        intent: intent,
+        openTag: "cart_hesitation_timer",
+        journey_type: decision.upgraded_to || decision.journey_type || "cart_recovery",
+      };
+    }
+    return { allowed: false, decision: decision, intent: intent };
   }
 
   function observeWidgetOpenAttempt(opts) {
@@ -615,10 +694,12 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
 
   Cf.Arbitration = {
     SHADOW_MODE: SHADOW_MODE,
+    EXIT_NO_CART_POLICY_ENFORCED: EXIT_NO_CART_POLICY_ENFORCED,
     JOURNEY_TYPES: JOURNEY_TYPES,
     JOURNEY_PRIORITY: JOURNEY_PRIORITY,
     buildIntent: buildIntent,
     requestWidgetOpen: requestWidgetOpen,
+    gateExitIntentOpen: gateExitIntentOpen,
     observeWidgetOpenAttempt: observeWidgetOpenAttempt,
     observeTriggerSignal: observeTriggerSignal,
     getShadowState: getShadowState,

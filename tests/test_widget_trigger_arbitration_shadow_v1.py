@@ -35,6 +35,8 @@ class WidgetArbitrationShadowWiringTests(unittest.TestCase):
         self.assertIn("[CF ARBITRATION COPY]", src)
         self.assertIn("[CF ARBITRATION STATE]", src)
         self.assertIn("enforce: false", src)
+        self.assertIn("EXIT_NO_CART_POLICY_ENFORCED = true", src)
+        self.assertIn("exit_without_cart_blocked", src)
 
     def test_widget_open_intent_fields(self) -> None:
         src = _ARBITRATION.read_text(encoding="utf-8")
@@ -78,8 +80,8 @@ class WidgetArbitrationShadowWiringTests(unittest.TestCase):
     def test_flows_hooks_still_call_show_functions(self) -> None:
         flows = _FLOWS.read_text(encoding="utf-8")
         self.assertIn("showBubbleCartRecovery(String(tag || \"cart_timer\"))", flows)
-        self.assertIn("showExitNoCart();", flows)
-        self.assertIn('showBubbleCartRecovery("exit_intent_with_cart")', flows)
+        self.assertIn("gateExitIntentOpen", flows)
+        self.assertIn("showBubbleCartRecovery(openTag)", flows)
 
     def test_triggers_schedule_observes(self) -> None:
         tri = _TRIGGERS.read_text(encoding="utf-8")
@@ -88,12 +90,12 @@ class WidgetArbitrationShadowWiringTests(unittest.TestCase):
 
     def test_runtime_version_bumped(self) -> None:
         wl = _WIDGET_LOADER.read_text(encoding="utf-8")
-        self.assertIn("v2-widget-trigger-arbitration-shadow-v1", wl)
+        self.assertIn("v2-exit-intent-no-cart-enforcement-v1", wl)
 
-    def test_no_enforcement_gate_in_flows(self) -> None:
+    def test_exit_gate_through_arbitration_not_direct_request(self) -> None:
         flows = _FLOWS.read_text(encoding="utf-8")
-        self.assertNotIn("requestWidgetOpen", flows.replace("observeWidgetOpenAttempt", ""))
-        self.assertNotIn("decision.action", flows)
+        self.assertIn("gateExitIntentOpen", flows)
+        self.assertNotIn("requestWidgetOpen(", flows)
 
 
 class WidgetArbitrationShadowDecisionTests(unittest.TestCase):

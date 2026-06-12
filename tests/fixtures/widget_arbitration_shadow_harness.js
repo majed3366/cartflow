@@ -17,11 +17,11 @@ const ARB_PATH = path.join(
 );
 
 function makeSandbox() {
-  return loadArbitration();
+  return loadArbitration().Arb;
 }
 
 function loadArbitrationLegacyAlias() {
-  return loadArbitration();
+  return loadArbitration().Arb;
 }
 
 function loadArbitration() {
@@ -54,7 +54,7 @@ function loadArbitration() {
       return false;
     },
   };
-  return Cf.Arbitration;
+  return { Arb: Cf.Arbitration, Cf: Cf };
 }
 
 function assert(cond, msg) {
@@ -64,7 +64,9 @@ function assert(cond, msg) {
 }
 
 function run() {
-  const Arb = loadArbitration();
+  const loaded = loadArbitration();
+  const Arb = loaded.Arb;
+  const Cf = loaded.Cf;
   const pure = Arb._shadowPure;
   const results = [];
 
@@ -173,7 +175,7 @@ function run() {
     assert(d.action === "defer", "expected defer got " + d.action);
   });
 
-  case_("no_cart_exit_allow", () => {
+  case_("no_cart_exit_blocked", () => {
     const intent = pure.buildMockIntent({
       trigger_source: "exit_intent",
       cart_present: false,
@@ -181,7 +183,50 @@ function run() {
       customer_context: { cart_detected: "no", cart_pending: false },
     });
     const d = Arb.evaluateShadowDecision(intent);
-    assert(d.action === "allow", "expected allow");
+    assert(d.action === "deny", "expected deny got " + d.action);
+    assert(d.reason === "exit_without_cart_blocked", "expected exit_without_cart_blocked");
+    assert(d.enforce === true, "expected enforce true");
+  });
+
+  case_("storefront_recovery_no_cart_blocked", () => {
+    const intent = pure.buildMockIntent({
+      trigger_source: "exit_intent_storefront_recovery",
+      cart_present: false,
+      journey_type: "exit_without_cart",
+      customer_context: { cart_detected: "no", cart_pending: false },
+    });
+    const d = Arb.evaluateShadowDecision(intent);
+    assert(d.action === "deny", "expected deny");
+    assert(d.reason === "exit_without_cart_blocked", "expected blocked reason");
+  });
+
+  case_("gate_exit_no_cart_blocks", () => {
+    Cf.Triggers.haveCartApprox = function () {
+      return false;
+    };
+    const gate = Arb.gateExitIntentOpen({
+      trigger_source: "exit_intent",
+      entrypoint: "test_fireExitNoCart",
+    });
+    assert(gate.allowed === false, "expected not allowed");
+    assert(gate.decision.action === "deny", "expected deny");
+    assert(gate.decision.reason === "exit_without_cart_blocked", "expected blocked reason");
+  });
+
+  case_("gate_exit_with_cart_cart_tag", () => {
+    Cf.Triggers.haveCartApprox = function () {
+      return true;
+    };
+    const gate = Arb.gateExitIntentOpen({
+      trigger_source: "exit_intent_with_cart",
+      entrypoint: "test_fireExitWithCart",
+    });
+    assert(gate.allowed === true, "expected allowed");
+    assert(gate.openTag === "cart_hesitation_timer", "expected cart tag");
+    assert(
+      gate.journey_type === "cart_recovery" || gate.journey_type === "vip_recovery",
+      "expected cart journey"
+    );
   });
 
   case_("copy_mismatch_detection", () => {

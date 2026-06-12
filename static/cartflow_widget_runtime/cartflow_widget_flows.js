@@ -717,7 +717,26 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
   }
 
   function showBubbleCartRecovery(tagNote) {
-    cfArbitrationShadowObserveOpen("showBubbleCartRecovery", tagNote);
+    var _tagS = String(tagNote || "");
+    if (_tagS.indexOf("exit_intent") >= 0) {
+      if (Cf.Arbitration && typeof Cf.Arbitration.gateExitIntentOpen === "function") {
+        var gate = Cf.Arbitration.gateExitIntentOpen({
+          trigger_source: _tagS,
+          entrypoint: "showBubbleCartRecovery",
+        });
+        if (!gate || !gate.allowed) {
+          return;
+        }
+        if (gate.openTag) {
+          tagNote = gate.openTag;
+        }
+      } else {
+        cfArbitrationShadowObserveOpen("showBubbleCartRecovery", tagNote);
+      }
+    } else {
+      cfArbitrationShadowObserveOpen("showBubbleCartRecovery", tagNote);
+    }
+    _tagS = String(tagNote || "");
     if (storefrontUiBlocked()) {
       try {
         console.log("[CF WIDGET BLOCKED V2]", {
@@ -733,7 +752,6 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       } catch (eB) {}
       return;
     }
-    var _tagS = String(tagNote || "");
     if (
       _tagS !== "manual_debug" &&
       Cf.State.hesitationDelayWallActive &&
@@ -808,7 +826,17 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
   /** Exit intent branches */
 
   function showExitNoCart() {
-    cfArbitrationShadowObserveOpen("showExitNoCart", "exit_intent");
+    if (Cf.Arbitration && typeof Cf.Arbitration.gateExitIntentOpen === "function") {
+      var gate = Cf.Arbitration.gateExitIntentOpen({
+        trigger_source: "exit_intent",
+        entrypoint: "showExitNoCart",
+      });
+      if (!gate || !gate.allowed) {
+        return;
+      }
+    } else {
+      cfArbitrationShadowObserveOpen("showExitNoCart", "exit_intent");
+    }
     if (storefrontUiBlocked()) {
       return;
     }
@@ -981,6 +1009,20 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
             showBubbleCartRecovery(String(tag || "cart_timer"));
           },
           fireExitNoCart: function () {
+            var src = isStorefrontRecoveryMode()
+              ? "exit_intent_storefront_recovery"
+              : "exit_intent";
+            if (Cf.Arbitration && typeof Cf.Arbitration.gateExitIntentOpen === "function") {
+              var gate = Cf.Arbitration.gateExitIntentOpen({
+                trigger_source: src,
+                entrypoint: "fireExitNoCart",
+                phase: "fire_exit_no_cart",
+              });
+              if (!gate || !gate.allowed) {
+                return;
+              }
+              return;
+            }
             cfArbitrationShadowObserveTrigger("exit_intent", "fire_exit_no_cart");
             if (isStorefrontRecoveryMode()) {
               showBubbleCartRecovery("exit_intent_storefront_recovery");
@@ -991,19 +1033,35 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
             }
           },
           fireExitWithCart: function () {
-            cfArbitrationShadowObserveTrigger("exit_intent_with_cart", "fire_exit_with_cart");
-            if (Cf.Triggers.haveCartApprox()) {
-              if (shouldBlockCartTriggers()) {
-                return;
-              }
-              if (v2ShellOccupiedPreventExitIntentDuplicates()) {
-                try {
-                  console.log("[CF TRIGGER BLOCKED] reason=already_open");
-                } catch (eBl) {}
-                return;
-              }
-              showBubbleCartRecovery("exit_intent_with_cart");
+            if (!Cf.Triggers.haveCartApprox()) {
+              return;
             }
+            if (shouldBlockCartTriggers()) {
+              return;
+            }
+            if (v2ShellOccupiedPreventExitIntentDuplicates()) {
+              try {
+                console.log("[CF TRIGGER BLOCKED] reason=already_open");
+              } catch (eBl) {}
+              return;
+            }
+            var openTag = "exit_intent_with_cart";
+            if (Cf.Arbitration && typeof Cf.Arbitration.gateExitIntentOpen === "function") {
+              var gate = Cf.Arbitration.gateExitIntentOpen({
+                trigger_source: "exit_intent_with_cart",
+                entrypoint: "fireExitWithCart",
+                phase: "fire_exit_with_cart",
+              });
+              if (!gate || !gate.allowed) {
+                return;
+              }
+              if (gate.openTag) {
+                openTag = gate.openTag;
+              }
+            } else {
+              cfArbitrationShadowObserveTrigger("exit_intent_with_cart", "fire_exit_with_cart");
+            }
+            showBubbleCartRecovery(openTag);
           },
         });
 
