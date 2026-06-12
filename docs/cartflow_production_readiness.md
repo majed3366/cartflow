@@ -22,6 +22,9 @@ This document describes how to validate configuration and runtime safety before 
 | `TWILIO_WHATSAPP_FROM` | Approved WhatsApp sender (e.g. `whatsapp:+...`). |
 | `ENV` | If set to `development`, full `/dev/*` tooling is enabled; otherwise most `/dev` routes return 404 at the edge. |
 | `PRODUCTION_MODE` | When truthy, recovery may use real WhatsApp when Twilio is fully configured (see `recovery_uses_real_whatsapp()`). |
+| `CARTFLOW_PROCESS_ROLE` | **`scheduler`** on the process that owns recovery drivers, or **`api`** on HTTP-only replicas. Unset in production-like runtime → **misconfigured** (`role_unset_production`) — resume scan, DB due scanner, and delay dispatch are blocked. |
+| `CARTFLOW_RECOVERY_RESUME_ON_STARTUP` | `1` on scheduler (startup resume + stale repair); `0` on API replicas. |
+| `CARTFLOW_DB_DUE_SCANNER_ENABLED` | `true` on scheduler to run the polling due scanner loop (default **false**). |
 
 ### Optional URLs / OAuth (presence-only in reports)
 
@@ -47,6 +50,7 @@ There is no separate CORS “allowed origins” env in this repo; embed and dash
 - Set **`PORT`** if your platform injects it; the sample command uses `8000` explicitly in Railway’s `startCommand`.
 - Provide **`DATABASE_URL`** from Railway Postgres (or external). Railway may supply `postgres://`; the app normalizes to `postgresql://`.
 - Set **`SECRET_KEY`**, **`PRODUCTION_MODE`**, and Twilio variables in the service environment. Do not commit `.env`.
+- Set scheduler ownership on the owning service (see `railway.toml` `[env]` or `docs/cartflow_queue_worker_runtime_rules.md`): **`CARTFLOW_PROCESS_ROLE=scheduler`**, **`CARTFLOW_DB_DUE_SCANNER_ENABLED=true`**, **`CARTFLOW_RECOVERY_RESUME_ON_STARTUP=1`**. After deploy, **`GET /health/scheduler`** must show `ok=true`, `role=scheduler`, `due_scanner_enabled=true`.
 
 ## Dev route policy
 

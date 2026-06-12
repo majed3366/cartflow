@@ -7,3 +7,12 @@ dockerfilePath = "Dockerfile"
 
 [deploy]
 startCommand = "python -m uvicorn main:app --host 0.0.0.0 --port 8000"
+
+# Scheduler ownership (Phase 1 fail-closed): production-like runtimes require an explicit
+# process role. Single Railway service = one scheduler owner. If you scale to multiple
+# replicas, split services: one scheduler (below) + API replicas with role=api and
+# CARTFLOW_RECOVERY_RESUME_ON_STARTUP=0.
+[env]
+CARTFLOW_PROCESS_ROLE = "scheduler"
+CARTFLOW_RECOVERY_RESUME_ON_STARTUP = "1"
+CARTFLOW_DB_DUE_SCANNER_ENABLED = "true"
