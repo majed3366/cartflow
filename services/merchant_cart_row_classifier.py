@@ -1,6 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-Single source of truth for merchant normal-carts tab buckets, labels, and counts.
+Merchant cart row classifier — **evidence / urgency support only** (LT-C2).
+
+Does **not** own merchant lifecycle state. Authoritative lifecycle display is
+``customer_lifecycle_state`` from ``services/customer_lifecycle_states_v1``.
+
+Use ``apply_merchant_cart_classification_evidence_only`` in dashboard row builds;
+do not write tab buckets, status chips, or lifecycle labels from this module.
 """
 from __future__ import annotations
 
@@ -547,7 +553,17 @@ def apply_merchant_cart_classification_to_payload(
     payload: dict[str, Any],
     classification: MerchantCartRowClassification,
 ) -> None:
+    """Legacy full apply — prefer ``apply_merchant_cart_classification_evidence_only``."""
     payload.update(classification.to_payload_fields())
+
+
+def apply_merchant_cart_classification_evidence_only(
+    payload: dict[str, Any],
+    classification: MerchantCartRowClassification,
+) -> None:
+    """LT-C2: next-action urgency only — no lifecycle tab/chip/bucket authority."""
+    payload["merchant_next_action_ar"] = classification.next_action_label_ar
+    payload["merchant_next_action_urgent"] = classification.merchant_next_action_urgent
 
 
 def merchant_cart_filter_counts_from_rows(
