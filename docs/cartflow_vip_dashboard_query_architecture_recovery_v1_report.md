@@ -168,16 +168,49 @@ Not included in default merchant responses (only when query param set).
 
 ---
 
-## Phase 7 — Fresh load verification
+## Phase 7 — Fresh load verification (production)
 
-Production Playwright re-run pending deploy. Expected improvement path:
+**Deploy:** Pushed `170758b` to `origin/main` (2026-06-12). Batch path live on first poll — `?debug_perf=1` returns metadata on production.
 
-| Metric | Audit baseline | Expected post-deploy |
-|--------|----------------|---------------------|
-| Isolated VIP fetch | 3176–3819 ms | Material reduction (server-bound) |
-| Fresh laptop first row | 8127 ms | Lower API wait + unchanged client boot |
-| Fresh mobile first row | 9388 ms | Same |
-| Cache instant reload | 9–40 ms | Unchanged (cache not removed) |
+**Evidence:** `scripts/_vip_query_recovery_deploy_verify_v1_out/deploy_verify_report.json`
+
+### Deploy confirmation (poll 0)
+
+| Signal | Result |
+|--------|--------|
+| `debug_perf` in response | **Present** (batch module deployed) |
+| Server `endpoint_ms` (empty store) | **0.04–0.06 ms** |
+| Server `query_count` (empty store, 0 VIP rows) | **0** (no cart/reason/log rows to batch) |
+
+### Isolated fetch (empty merchant, post-deploy)
+
+| Metric | Audit baseline (2 VIP rows) | Post-deploy (0 rows) |
+|--------|------------------------------|----------------------|
+| Client round-trip median | 3176–3819 ms | **1237 ms** |
+| Server `endpoint_ms` | ~3000+ ms (N+1) | **~0.05 ms** |
+
+Empty-store client RTT still includes auth/TLS/network; server-side N+1 removal is confirmed via `debug_perf`.
+
+### Fresh load laptop + mobile (empty merchant)
+
+| Metric | Audit baseline | Post-deploy (partial) |
+|--------|----------------|----------------------|
+| Laptop first visible VIP row | **8127 ms** | N/A (empty store — no amount row) |
+| Mobile first visible VIP row | **9388 ms** | N/A (empty store) |
+| VIP API from `#vip` nav (laptop) | — | 3932–4952 ms (0 rows) |
+| VIP API from `#vip` nav (mobile) | — | 4564–11786 ms (0 rows) |
+
+### Seeded VIP re-measure (blocked)
+
+Full apples-to-apples comparison (threshold + VIP cart, 1–2 rows) requires a merchant with VIP data — same setup as the cross-device audit (threshold 500 + test-widget cart). A follow-up run with API seeding was **blocked**: production `/ping` and `/signup` timed out (>90 s) after deploy (~17:08–17:11 UTC), likely deploy restart or transient outage.
+
+**Re-run when production is healthy:**
+
+```bash
+python scripts/_vip_query_recovery_deploy_verify_v1.py
+```
+
+Script seeds threshold + `POST /api/cart-event` VIP cart, then measures laptop/mobile fresh `#vip` load with `sessionStorage` cleared.
 
 Client boot weight (~451 KB JS) and `sessionStorage` cache behavior are **unchanged** — this recovery targets **server truth latency**, not cache dependency.
 
@@ -207,6 +240,7 @@ Client boot weight (~451 KB JS) and `sessionStorage` cache behavior are **unchan
 | `main.py` | `_api_json_dashboard_vip_carts` delegates to batch; `debug_perf` query param |
 | `tests/test_vip_dashboard_query_architecture_v1.py` | **New** — N+1 guardrail tests |
 | `scripts/_vip_perf_audit_out/recovery_v1_benchmark.json` | Benchmark evidence |
+| `scripts/_vip_query_recovery_deploy_verify_v1.py` | Post-deploy Playwright verification |
 | `docs/cartflow_vip_dashboard_query_architecture_recovery_v1_report.md` | This report |
 
 ---

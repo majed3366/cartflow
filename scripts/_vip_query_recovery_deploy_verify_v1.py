@@ -38,12 +38,66 @@ BASELINE = {
 }
 
 
+def _seed_merchant_vip_carts(page: Page) -> dict[str, Any]:
+    """Seed VIP threshold + high-value abandoned cart via authenticated API (no widget UI)."""
+    return page.evaluate(
+        """async () => {
+          const uid = Date.now().toString(36);
+          await fetch('/api/recovery-settings', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              vip_enabled: true,
+              vip_cart_threshold: 500,
+              vip_notify_enabled: true,
+              merchant_settings_scope: 'vip',
+            }),
+          });
+          const sum = await (await fetch('/api/dashboard/summary?_seed=' + uid, {
+            credentials: 'same-origin', cache: 'no-store'
+          })).json();
+          const slug = sum.store_slug || sum.merchant_store_slug || sum.zid_store_id;
+          const sessionId = 'vip_recov_seed_' + uid;
+          const cartId = 'cf_cart_vip_recov_' + uid;
+          const cartEvent = await fetch('/api/cart-event', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              event: 'cart_abandoned',
+              store: slug,
+              session_id: sessionId,
+              cart_id: cartId,
+              phone: '966598877660',
+              reason: 'price',
+              cart_total: 1200,
+              cart: [{ name: 'VIP recovery verify', price: 1200, quantity: 1 }],
+              merchant_activation: 1,
+            }),
+          });
+          const ce = await cartEvent.json().catch(() => ({}));
+          const vip = await (await fetch('/api/dashboard/vip-carts?debug_perf=1&_seed=' + uid, {
+            credentials: 'same-origin', cache: 'no-store'
+          })).json();
+          return {
+            store_slug: slug,
+            cart_event_ok: ce.ok !== false,
+            cart_event_status: cartEvent.status,
+            rows: (vip.merchant_vip_page_rows || []).length,
+            nav_badge: vip.merchant_nav_badge_vip,
+            debug_perf: vip.debug_perf,
+          };
+        }"""
+    )
+
+
 def _auth(page: Page, report: dict[str, Any]) -> None:
     email = (os.environ.get("CARTFLOW_PROD_EMAIL") or "").strip()
     password = (os.environ.get("CARTFLOW_PROD_PASSWORD") or "").strip()
     if email and password:
-        page.goto(f"{BASE}/login", timeout=120000)
-        page.locator('input[name="email"]').fill(email)
+        page.goto(f"{BASE}/login", timeout=120000, wait_until="domcontentloaded")
+        page.locator('input[name="email"]').fill(email, timeout=60000)
         page.locator('input[name="password"]').first.fill(password)
         page.get_by_role("button", name="دخول").click()
         page.wait_for_timeout(4000)
@@ -52,8 +106,8 @@ def _auth(page: Page, report: dict[str, Any]) -> None:
     uid = uuid.uuid4().hex[:10]
     email = f"cf.vip.recovery.{uid}@smartreplyai.net"
     password = f"CfRecov!{uid[:8]}"
-    page.goto(f"{BASE}/signup", timeout=120000)
-    page.locator('input[name="store_name"]').fill(f"VipRecov {uid[:6]}")
+    page.goto(f"{BASE}/signup", timeout=120000, wait_until="domcontentloaded")
+    page.locator('input[name="store_name"]').fill(f"VipRecov {uid[:6]}", timeout=60000)
     page.locator('input[name="email"]').fill(email)
     page.locator('input[name="password"]').first.fill(password)
     page.locator('input[name="confirm_password"]').fill(password)
@@ -207,6 +261,9 @@ def main() -> int:
         auth_page = auth_ctx.new_page()
         _auth(auth_page, report)
         cookies = auth_ctx.cookies()
+        seed = _seed_merchant_vip_carts(auth_page)
+        report["vip_seed"] = seed
+        auth_page.close()
         auth_ctx.close()
 
         report["deploy_ready"] = _poll_deploy(cookies, report)
@@ -244,13 +301,44 @@ def main() -> int:
         for s in isolated_samples
         if isinstance(s.get("debug_perf"), dict)
     ]
+    endpoint_ms = [
+        (s.get("debug_perf") or {}).get("endpoint_ms")
+        for s in isolated_samples
+        if isinstance(s.get("debug_perf"), dict)
+    ]
+    vip_api_ms = [
+        (n.get("response_ms_from_nav"))
+        for r in fresh_runs
+        for n in (r.get("vip_network") or [])
+        if n.get("response_ms_from_nav") is not None
+    ]
+    vip_api_ms_laptop = [
+        n["response_ms_from_nav"]
+        for r in fresh_runs
+        if r["label"].startswith("laptop")
+        for n in (r.get("vip_network") or [])
+    ]
+    vip_api_ms_mobile = [
+        n["response_ms_from_nav"]
+        for r in fresh_runs
+        if r["label"].startswith("mobile")
+        for n in (r.get("vip_network") or [])
+    ]
 
     report["summary"] = {
         "deploy_ready": report.get("deploy_ready"),
+        "seeded_vip_rows": (report.get("vip_seed") or {}).get("rows"),
         "laptop_first_row_ms_median": statistics.median(laptop_rows) if laptop_rows else None,
         "mobile_first_row_ms_median": statistics.median(mobile_rows) if mobile_rows else None,
         "isolated_fetch_ms_median": statistics.median(fetch_ms) if fetch_ms else None,
+        "isolated_endpoint_ms_median": statistics.median(endpoint_ms) if endpoint_ms else None,
         "query_count_median": statistics.median(query_counts) if query_counts else None,
+        "vip_api_ms_from_nav_laptop_median": (
+            statistics.median(vip_api_ms_laptop) if vip_api_ms_laptop else None
+        ),
+        "vip_api_ms_from_nav_mobile_median": (
+            statistics.median(vip_api_ms_mobile) if vip_api_ms_mobile else None
+        ),
         "vs_baseline": {
             "laptop_delta_ms": (
                 (statistics.median(laptop_rows) - BASELINE["laptop_first_row_ms"])
