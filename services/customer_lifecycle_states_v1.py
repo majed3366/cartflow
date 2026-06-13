@@ -36,6 +36,9 @@ STATE_COMPLETED = "completed"
 STATE_ARCHIVED = "archived"
 STATE_RECOVERY_FOLLOWUP_COMPLETE = "recovery_followup_complete"
 
+LABEL_WAITING_CONTACT_COMPLETION_AR = "بانتظار اكتمال بيانات التواصل"
+LABEL_SCHEDULE_NOT_MATERIALIZED_AR = "لم يتم تجهيز الإرسال بعد"
+
 LABEL_AR: dict[str, str] = {
     STATE_ACTIVE: "السلة نشطة",
     STATE_WAITING_FIRST_SEND: "بانتظار الإرسال",
@@ -1025,6 +1028,53 @@ def classify_customer_lifecycle_state_v1(
             auto_archive=True,
         )
 
+    schedule_materialized = (
+        due_at is not None or effective_delay_seconds_prefetched is not None
+    )
+    pre_send_without_send = (
+        not sent_proven
+        and (
+            cnorm == "pending"
+            or pk in ("pending_send", "pending_second_attempt")
+            or tl["scheduled"]
+            or tl["delay_started"]
+            or "schedule_blocked_missing_phone" in log_ss
+        )
+    )
+    if pre_send_without_send and not schedule_materialized:
+        phone_blocked = (
+            not has_phone
+            or "schedule_blocked_missing_phone" in log_ss
+            or "skipped_missing_phone" in log_ss
+        )
+        if phone_blocked:
+            return _finish(
+                _pack(
+                    STATE_NEEDS_INTERVENTION,
+                    what_happened="السبب محفوظ — بانتظار رقم العميل لإكمال الإرسال.",
+                    system_did="لم يُنشأ موعد إرسال بعد — لا يوجد رقم موثوق.",
+                    what_next="اطلب من العميل إكمال بيانات التواصل في الودجيت.",
+                    merchant_needed="نعم",
+                    dashboard_action="archive",
+                    label_override=LABEL_WAITING_CONTACT_COMPLETION_AR,
+                    next_followup_line="",
+                ),
+                archive_reason="schedule_blocked_missing_phone",
+            )
+        return _finish(
+            _pack(
+                STATE_NEEDS_INTERVENTION,
+                what_happened="السبب محفوظ — لم يُجهّز موعد الإرسال بعد.",
+                system_did="لا يوجد جدول استرجاع فعّال في النظام لهذه السلة.",
+                what_next="راجع إعدادات الاسترجاع أو انتظر اكتمال بيانات السلة.",
+                merchant_needed="لا",
+                dashboard_action="archive",
+                label_override=LABEL_SCHEDULE_NOT_MATERIALIZED_AR,
+                next_followup_line="",
+            ),
+            archive_reason="schedule_not_materialized",
+        )
+
     if (
         tl["scheduled"]
         or tl["delay_started"]
@@ -1055,7 +1105,7 @@ def classify_customer_lifecycle_state_v1(
         )
         if eta_sec is None and due_at is not None and due_at > now:
             eta_sec = (due_at - now).total_seconds()
-        if eta_sec is not None and eta_sec > 0:
+        if eta_sec is not None and eta_sec > 0 and schedule_materialized:
             next_line_fs = (
                 f"الإرسال الأول بعد: "
                 f"{_format_eta_ar(eta_sec)}"

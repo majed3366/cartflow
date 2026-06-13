@@ -9726,11 +9726,17 @@ def _execute_cart_abandon_recovery_schedule_continue(
         abandon_evt_phone=abandon_evt_phone,
         recovery_key=recovery_key,
     ):
+        phone_log_status = (
+            "schedule_blocked_missing_phone"
+            if skip_abandon_upsert
+            else "skipped_missing_phone"
+        )
         np_line = (
             "[NORMAL RECOVERY NOT SCHEDULED] reason=missing_customer_phone "
             f"store_slug={(store_slug or '-')[:96]} "
             f"session_id={(session_id_log or '-')[:96]} "
-            f"cart_id={(str(cart_id_log) if cart_id_log else '-')[:80]}"
+            f"cart_id={(str(cart_id_log) if cart_id_log else '-')[:80]} "
+            f"log_status={phone_log_status}"
         )
         log.info(np_line)
         print(np_line, flush=True)
@@ -9747,7 +9753,7 @@ def _execute_cart_abandon_recovery_schedule_continue(
             cart_id=cart_id_log,
             phone=None,
             message=msg_log,
-            status="skipped_missing_phone",
+            status=phone_log_status,
         )
         cart_event_profile_set_meta(path="waiting_for_phone")
         return {
@@ -9776,6 +9782,31 @@ def _execute_cart_abandon_recovery_schedule_continue(
             "recovery_scheduled": False,
             "recovery_skipped": True,
             "recovery_state": "sent",
+        }
+    from services.recovery_schedule_materialization_v1 import (  # noqa: PLC0415
+        active_recovery_schedule_exists,
+        recovery_key_candidates_for_reason_arm,
+    )
+
+    _rk_dup_cands = recovery_key_candidates_for_reason_arm(
+        store_slug, session_id_log, cart_id_log
+    )
+    if active_recovery_schedule_exists(
+        _rk_dup_cands or [recovery_key],
+        session_id=session_id_log,
+        cart_id=(cart_id_log or ""),
+    ):
+        log.info(
+            "[NORMAL RECOVERY NOT SCHEDULED] reason=schedule_already_exists "
+            "recovery_key=%s session_id=%s",
+            (recovery_key or "-")[:120],
+            (session_id_log or "-")[:96],
+        )
+        return {
+            "recovery_scheduled": True,
+            "recovery_skipped": True,
+            "recovery_state": "scheduled",
+            "skipped_duplicate_schedule": True,
         }
     if not _try_claim_recovery_session(recovery_key):
         print("recovery already scheduled, skipping")
@@ -10131,6 +10162,25 @@ async def _schedule_normal_recovery_after_cart_recovery_reason_saved(
             rk = rk_try
             break
     if arm_ctx is None and phone_ctx is None:
+        from services.recovery_schedule_materialization_v1 import (  # noqa: PLC0415
+            try_durable_normal_recovery_materialization_after_reason,
+        )
+
+        try_durable_normal_recovery_materialization_after_reason(
+            store_slug=ss,
+            session_id=sid,
+            body=body,
+            cart_id_hint=cart_id_join,
+            rk_candidates=rk_candidates,
+            arm_from_saved_reason_payload=_arm_recovery_schedule_from_saved_reason_payload,
+            is_user_converted=_is_user_converted,
+            is_vip_cart_fn=is_vip_cart,
+            load_store_row=lambda slug: _load_store_row_for_recovery(
+                slug, allow_latest_fallback=False
+            ),
+            persist_cart_recovery_log=_persist_cart_recovery_log,
+            default_recovery_message=_default_recovery_message,
+        )
         return
     if _is_user_converted(rk):
         return
