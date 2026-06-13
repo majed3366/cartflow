@@ -269,12 +269,16 @@ from routes.dev_diagnostics import router as dev_diagnostics_router  # noqa: E40
 from routes.whatsapp_delivery_webhook import (  # noqa: E402
     router as whatsapp_delivery_webhook_router,
 )
+from routes.meta_whatsapp_webhook import (  # noqa: E402
+    router as meta_whatsapp_webhook_router,
+)
 
 app.include_router(ops_router)
 app.include_router(public_router)
 app.include_router(merchant_pages_router)
 app.include_router(dev_diagnostics_router)
 app.include_router(whatsapp_delivery_webhook_router)
+app.include_router(meta_whatsapp_webhook_router)
 app.include_router(admin_operations_router)
 app.include_router(cartflow_router)
 app.include_router(knowledge_router)

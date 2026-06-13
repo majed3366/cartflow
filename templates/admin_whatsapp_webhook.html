@@ -1,0 +1,110 @@
+{% extends "layouts/admin_dashboard.html" %}
+{% block admin_title %}CartFlow Admin — WhatsApp Webhook{% endblock %}
+{% block admin_main_class %}w-full max-w-[88rem] space-y-6 px-6 py-8 pb-24 lg:px-10{% endblock %}
+
+{% block admin_content %}
+<section class="admin-card px-6 py-6">
+  <p class="text-xs font-semibold uppercase tracking-wide text-indigo-600">Meta Cloud API — Two-Way Verification</p>
+  <h2 class="mt-2 text-2xl font-bold text-slate-900">WhatsApp Webhook Diagnostics</h2>
+  <p class="mt-2 max-w-3xl text-sm text-slate-600">
+  آخر payload واردة من Meta على <code dir="ltr">POST /webhooks/meta/whatsapp</code> — delivered، read، ورسائل العملاء.
+  لا يُشغّل مسار الاسترجاع.
+  </p>
+  <div class="mt-4 flex flex-wrap items-center gap-3">
+    <button
+      type="button"
+      id="aww-refresh"
+      class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+    >
+      تحديث
+    </button>
+    <p id="aww-status" class="text-xs text-slate-500">جاري التحميل…</p>
+  </div>
+</section>
+
+<section class="admin-card px-6 py-5">
+  <h3 class="text-lg font-semibold text-slate-900">Last webhook received</h3>
+  <p id="aww-last-received" class="mt-2 text-sm text-slate-700" dir="ltr">—</p>
+</section>
+
+<section class="admin-card px-6 py-5">
+  <h3 class="text-lg font-semibold text-slate-900">Last delivered status</h3>
+  <dl class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 text-sm">
+    <div>
+      <dt class="text-slate-500">wamid</dt>
+      <dd id="aww-delivered-wamid" class="mt-1 font-medium text-slate-900" dir="ltr">—</dd>
+    </div>
+    <div>
+      <dt class="text-slate-500">status</dt>
+      <dd id="aww-delivered-status" class="mt-1 font-medium text-slate-900">—</dd>
+    </div>
+    <div>
+      <dt class="text-slate-500">recipient</dt>
+      <dd id="aww-delivered-recipient" class="mt-1 font-medium text-slate-900" dir="ltr">—</dd>
+    </div>
+    <div>
+      <dt class="text-slate-500">received_at</dt>
+      <dd id="aww-delivered-received" class="mt-1 font-medium text-slate-900" dir="ltr">—</dd>
+    </div>
+  </dl>
+</section>
+
+<section class="admin-card px-6 py-5">
+  <h3 class="text-lg font-semibold text-slate-900">Last read status</h3>
+  <dl class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 text-sm">
+    <div>
+      <dt class="text-slate-500">wamid</dt>
+      <dd id="aww-read-wamid" class="mt-1 font-medium text-slate-900" dir="ltr">—</dd>
+    </div>
+    <div>
+      <dt class="text-slate-500">status</dt>
+      <dd id="aww-read-status" class="mt-1 font-medium text-slate-900">—</dd>
+    </div>
+    <div>
+      <dt class="text-slate-500">recipient</dt>
+      <dd id="aww-read-recipient" class="mt-1 font-medium text-slate-900" dir="ltr">—</dd>
+    </div>
+    <div>
+      <dt class="text-slate-500">received_at</dt>
+      <dd id="aww-read-received" class="mt-1 font-medium text-slate-900" dir="ltr">—</dd>
+    </div>
+  </dl>
+</section>
+
+<section class="admin-card px-6 py-5">
+  <h3 class="text-lg font-semibold text-slate-900">Last inbound customer message</h3>
+  <dl class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 text-sm">
+    <div>
+      <dt class="text-slate-500">from</dt>
+      <dd id="aww-inbound-from" class="mt-1 font-medium text-slate-900" dir="ltr">—</dd>
+    </div>
+    <div>
+      <dt class="text-slate-500">message_id</dt>
+      <dd id="aww-inbound-id" class="mt-1 font-medium text-slate-900" dir="ltr">—</dd>
+    </div>
+    <div>
+      <dt class="text-slate-500">type</dt>
+      <dd id="aww-inbound-type" class="mt-1 font-medium text-slate-900">—</dd>
+    </div>
+    <div class="sm:col-span-2">
+      <dt class="text-slate-500">text</dt>
+      <dd id="aww-inbound-text" class="mt-1 font-medium text-slate-900">—</dd>
+    </div>
+    <div>
+      <dt class="text-slate-500">received_at</dt>
+      <dd id="aww-inbound-received" class="mt-1 font-medium text-slate-900" dir="ltr">—</dd>
+    </div>
+  </dl>
+</section>
+
+<section class="admin-card px-6 py-5">
+  <h3 class="text-lg font-semibold text-slate-900">Raw payload (last webhook)</h3>
+  <pre
+    id="aww-raw-payload"
+    class="mt-4 max-h-[28rem] overflow-auto rounded-lg bg-slate-900 p-4 text-xs text-slate-100"
+    dir="ltr"
+  >—</pre>
+</section>
+
+<script src="/static/admin_whatsapp_webhook.js"></script>
+{% endblock %}

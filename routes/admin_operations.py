@@ -33,6 +33,7 @@ ADMIN_NAV_OVERVIEW = "overview"
 ADMIN_NAV_CURRENT_ISSUES = "current-issues"
 ADMIN_NAV_STORES = "stores"
 ADMIN_NAV_WHATSAPP = "whatsapp"
+ADMIN_NAV_WHATSAPP_WEBHOOK = "whatsapp-webhook"
 ADMIN_NAV_INTEGRATIONS = "integrations"
 ADMIN_NAV_SUPPORT_DIAG = "support-diagnostics"
 # Retained for deep diagnostics surfaces reached from Support Diagnostics.
@@ -1021,6 +1022,32 @@ async def api_admin_whatsapp_meta_send_test(request: Request) -> Any:
 
     result = send_meta_whatsapp_test_message(to)
     return j(result)
+
+
+@router.get("/admin/whatsapp-webhook", response_class=HTMLResponse)
+def admin_whatsapp_webhook_page(request: Request) -> Any:
+    denied = _admin_session_or_redirect(request, next_path="/admin/whatsapp-webhook")
+    if denied is not None:
+        return denied
+    return templates.TemplateResponse(
+        request,
+        "admin_whatsapp_webhook.html",
+        {
+            "admin_active_nav": ADMIN_NAV_WHATSAPP_WEBHOOK,
+            "admin_page_title_ar": "واتساب — Webhook تشخيص",
+            "admin_page_subtitle_ar": "آخر أحداث Meta Cloud API الواردة (بدون ربط الاسترجاع)",
+        },
+    )
+
+
+@router.get("/admin/api/whatsapp-webhook/diagnostics")
+def api_admin_whatsapp_webhook_diagnostics(request: Request) -> Any:
+    denied = _admin_json_auth(request)
+    if denied is not None:
+        return denied
+    from services.meta_whatsapp_webhook_v1 import get_webhook_diagnostics  # noqa: PLC0415
+
+    return j({"ok": True, **get_webhook_diagnostics()})
 
 
 @router.get("/api/admin/whatsapp/stores")
