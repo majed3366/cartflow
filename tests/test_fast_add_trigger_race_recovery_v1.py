@@ -14,7 +14,7 @@ _LOADER = _ROOT / "static" / "widget_loader.js"
 class FastAddTriggerRaceRecoveryV1Tests(unittest.TestCase):
     def test_runtime_version_bumped(self) -> None:
         wl = _LOADER.read_text(encoding="utf-8")
-        self.assertIn("v2-fast-add-trigger-race-recovery-v1", wl)
+        self.assertIn("v2-early-cart-bridge-listener-bootstrap-v1", wl)
 
     def test_triggers_durable_replay_wiring(self) -> None:
         s = _TRIGGERS.read_text(encoding="utf-8")

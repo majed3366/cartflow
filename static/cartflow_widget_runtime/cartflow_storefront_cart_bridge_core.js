@@ -53,7 +53,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       return true;
     }
     var h = String((opts && (opts.source_hint || opts.trigger)) || "");
-    return /post_items|cart_sources|zid_network_hook|ensure_before_reason|empty_retry/i.test(
+    return /post_items|cart_sources|zid_network_hook|ensure_before_reason|empty_retry|early_click/i.test(
       h
     );
   }

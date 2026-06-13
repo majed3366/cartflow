@@ -12,7 +12,7 @@
 (function () {
   "use strict";
 
-  var RUNTIME_VERSION = "v2-fast-add-trigger-race-recovery-v1";
+  var RUNTIME_VERSION = "v2-early-cart-bridge-listener-bootstrap-v1";
 
   function cartflowExtractHostnameSlugInline(host) {
     if (typeof window.cartflowExtractStoreSlugFromHostname === "function") {
@@ -483,6 +483,142 @@
   } catch (eL2) {
     /* ignore */
   }
+
+  /**
+   * Early cart click capture — binds at DCL (or immediately if interactive/complete).
+   * Queues potential add-to-cart clicks before V2 cart bridge modules load.
+   * Full bridge replays via zidCartEventSource._replayEarlyCapturedClicks().
+   * Does not POST, open widget, or bypass normalization/arbitration.
+   */
+  (function cartflowEarlyCartClickBootstrap() {
+    var EARLY_ADD_SELECTOR = [
+      "[data-add-to-cart]",
+      "[data-action='add-to-cart']",
+      ".add-to-cart",
+      ".btn-add-to-cart",
+      ".product-add-to-cart",
+      "button[name='add']",
+      "a[href*='cart/add' i]",
+      "[onclick*='addToCart' i]",
+      "[onclick*='add_to_cart' i]",
+      "[class*='add-to-cart' i]",
+      "[class*='add_to_cart' i]",
+    ].join(",");
+
+    var EARLY_ADD_TEXT =
+      /(add to cart|add to bag|أضف(?:ها)?\s*(?:إلى|الى|ل)?\s*(?:السلة|العربة|سلة)|اضف\s*للسلة|أضف\s*للسلة|加入购物车)/i;
+
+    var queue = [];
+    var bound = false;
+    var bridgeReady = false;
+    var boundAt = null;
+
+    function closestMatch(el, selector) {
+      try {
+        if (el && typeof el.closest === "function") {
+          return el.closest(selector);
+        }
+      } catch (eC) {}
+      return null;
+    }
+
+    function isPotentialAddClick(ev) {
+      try {
+        var t = ev && ev.target;
+        if (!t) {
+          return false;
+        }
+        var hit = closestMatch(t, EARLY_ADD_SELECTOR);
+        if (!hit) {
+          var label = "";
+          try {
+            label = String(
+              (t.textContent || t.value || t.getAttribute("aria-label") || "")
+            ).trim();
+          } catch (eLbl) {}
+          if (label && EARLY_ADD_TEXT.test(label) && label.length <= 40) {
+            hit = t;
+          }
+        }
+        return !!hit;
+      } catch (ePot) {
+        return false;
+      }
+    }
+
+    function onCaptureClick(ev) {
+      if (bridgeReady) {
+        return;
+      }
+      if (!isPotentialAddClick(ev)) {
+        return;
+      }
+      var entry = {
+        captured_at: Date.now(),
+        page_url: String(window.location.href || "").slice(0, 512),
+      };
+      queue.push(entry);
+      try {
+        console.log("[CF EARLY CART CLICK CAPTURED]", entry);
+      } catch (eCap) {}
+    }
+
+    function bindEarly() {
+      if (bound) {
+        return;
+      }
+      bound = true;
+      boundAt = Date.now();
+      try {
+        document.addEventListener("click", onCaptureClick, true);
+        console.log("[CF EARLY CART LISTENER BOUND]", {
+          at: boundAt,
+          ready_state: document.readyState,
+        });
+      } catch (eBind) {
+        bound = false;
+        boundAt = null;
+        try {
+          console.warn("[CF EARLY CART LISTENER WARN]", "bind_failed", eBind);
+        } catch (eW) {}
+      }
+    }
+
+    function scheduleEarlyBind() {
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", bindEarly, false);
+      } else {
+        bindEarly();
+      }
+    }
+
+    window.__CARTFLOW_EARLY_CART_BOOTSTRAP__ = {
+      version: RUNTIME_VERSION,
+      queue: queue,
+      boundAt: function () {
+        return boundAt;
+      },
+      isBound: function () {
+        return bound;
+      },
+      markBridgeReady: function () {
+        bridgeReady = true;
+        try {
+          document.removeEventListener("click", onCaptureClick, true);
+        } catch (eUn) {}
+        bound = false;
+      },
+      consumeQueue: function () {
+        if (!queue.length) {
+          return [];
+        }
+        return queue.splice(0, queue.length);
+      },
+      bindEarly: bindEarly,
+    };
+
+    scheduleEarlyBind();
+  })();
 
   function cartflowBlockWidgetAfterConversion() {
     try {

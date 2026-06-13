@@ -121,12 +121,110 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       } catch (eW) {
         this._loadWindowActive = false;
       }
+      // Full listener before replay/unbind — no gap where clicks are unobserved.
+      this._installClickListener();
+      this._replayEarlyCapturedClicks();
       this._pollGlobals();
       this._scanCartDom();
       this._urlHeuristic();
-      this._installClickListener();
       this._installBadgeObserver();
       this._installNetworkObserver();
+    },
+
+    _replayEarlyCapturedClicks: function () {
+      var boot = window.__CARTFLOW_EARLY_CART_BOOTSTRAP__;
+      if (!boot || typeof boot.consumeQueue !== "function") {
+        return;
+      }
+      var clicks = boot.consumeQueue();
+      try {
+        if (typeof boot.markBridgeReady === "function") {
+          boot.markBridgeReady();
+        }
+      } catch (eMr) {}
+      if (!clicks || !clicks.length) {
+        return;
+      }
+      var latest = clicks[clicks.length - 1];
+      try {
+        console.log("[CF EARLY CART CLICK REPLAY]", {
+          queued: clicks.length,
+          replay_at: Date.now(),
+          captured_at: latest.captured_at,
+          coalesced: clicks.length > 1,
+        });
+      } catch (eRep) {}
+      if (clicks.length > 1) {
+        this._diag(
+          "early_click_replay",
+          null,
+          this._lastCount,
+          this._lastTotal,
+          "coalesced_" + clicks.length + "_early_clicks"
+        );
+      }
+      try {
+        console.log("[CF CART BRIDGE TIMING]", {
+          step: "add_to_cart_click",
+          timestamp: latest.captured_at,
+          source: "early_capture_replay",
+        });
+      } catch (eClk) {}
+      this._diag(
+        "early_click_replay",
+        "add_to_cart",
+        this._lastCount,
+        this._lastTotal,
+        "early_capture_replay"
+      );
+      this._signal("dom_observer", "add_to_cart", {
+        raw_source: {
+          early_capture: true,
+          captured_at: latest.captured_at,
+          replay_at: Date.now(),
+        },
+      });
+      var self = this;
+      setTimeout(function () {
+        try {
+          if (
+            Cf.StorefrontCartBridge &&
+            typeof Cf.StorefrontCartBridge.readAndPersist === "function"
+          ) {
+            Cf.StorefrontCartBridge.readAndPersist({
+              reason: "add",
+              source_hint: "early_click_replay_1200ms",
+              allowFreshAfterInFlight: true,
+            });
+          }
+        } catch (eBr) {}
+        var g = self._readGlobalCart();
+        if (g && g.count != null) {
+          self._maybeEmitFromCount(
+            "global_cart_object",
+            "platform_api",
+            g.count,
+            g.total
+          );
+        }
+      }, 1200);
+      setTimeout(function () {
+        try {
+          var bridgeSt =
+            Cf.StorefrontCartBridge &&
+            typeof Cf.StorefrontCartBridge.getDiagnostics === "function"
+              ? Cf.StorefrontCartBridge.getDiagnostics()
+              : null;
+          if (bridgeSt && bridgeSt.cart_persisted !== true) {
+            console.warn("[CF EARLY CART CLICK REPLAY DIAGNOSTIC]", {
+              reason: "normalization_failed_after_replay",
+              captured_at: latest.captured_at,
+              skip_reason: bridgeSt.last_skip_reason || null,
+              last_error: bridgeSt.last_error || null,
+            });
+          }
+        } catch (eDiag) {}
+      }, 8000);
     },
 
     _signal: function (detectedBy, eventType, extra) {
