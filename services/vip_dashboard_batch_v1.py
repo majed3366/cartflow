@@ -163,9 +163,13 @@ def vip_dashboard_row_contract(
     from datetime import datetime, timezone
 
     from main import (  # noqa: PLC0415
-        _VIP_LIFECYCLE_LABELS_AR,
         _vip_customer_contact_whatsapp_message,
         _vip_lifecycle_effective,
+    )
+    from services.lifecycle_authority_recovery_v1 import (  # noqa: PLC0415
+        attach_merchant_row_lifecycle_authority,
+        log_statuses_from_logs,
+        normalize_vip_lifecycle_evidence,
     )
     from services.merchant_dashboard_reference_ui import (
         merchant_reason_chip_class_and_label,
@@ -185,8 +189,13 @@ def vip_dashboard_row_contract(
     now_utc = datetime.now(timezone.utc)
     rel = merchant_relative_time_arabic(getattr(ac, "last_seen_at", None), now_utc=now_utc)
     val = float(getattr(ac, "cart_value", None) or 0.0)
-    lc = _vip_lifecycle_effective(ac)
-    lc_label = _VIP_LIFECYCLE_LABELS_AR.get(lc, _VIP_LIFECYCLE_LABELS_AR["abandoned"])
+    vip_evidence = normalize_vip_lifecycle_evidence(_vip_lifecycle_effective(ac))
+    rk_keys = _recovery_keys_for_ac(ac, slug)
+    log_ss, sent_n, matched_logs = log_statuses_from_logs(
+        getattr(ctx, "logs", None) or [],
+        session_id=sid,
+        recovery_keys=rk_keys,
+    )
 
     if ctx.override_contact_message and phone_digits:
         contact_msg = ctx.override_contact_message
@@ -207,7 +216,7 @@ def vip_dashboard_row_contract(
     created_at = getattr(ac, "first_seen_at", None) or getattr(ac, "last_seen_at", None)
     last_activity_at = getattr(ac, "last_seen_at", None)
 
-    return {
+    row_out: dict[str, Any] = {
         "cart_id": zid or None,
         "recovery_key": recovery_key or None,
         "store_slug": slug or None,
@@ -223,11 +232,11 @@ def vip_dashboard_row_contract(
             last_activity_at.isoformat() if last_activity_at is not None else None
         ),
         "created_at": created_at.isoformat() if created_at is not None else None,
-        "alert_status": lc,
+        "alert_status": None,
         "alert_phone": phone_digits or None,
         "manual_contact_available": bool(phone_digits and href),
         "operational_lane": lane.get("vip_operational_lane"),
-        "display_status_ar": lc_label,
+        "display_status_ar": None,
         "recommended_action_ar": (
             "تواصل يدوي (VIP)" if phone_digits else manual_unavailable_ar
         ),
@@ -241,8 +250,24 @@ def vip_dashboard_row_contract(
             None if phone_digits and href else manual_unavailable_ar
         ),
         "vip_alert_actionable": True,
-        "vip_lifecycle_label_ar": lc_label,
+        "vip_lifecycle_label_ar": None,
     }
+
+    attach_merchant_row_lifecycle_authority(
+        row_out,
+        recovery_key=recovery_key,
+        sent_count=sent_n,
+        attempt_cap=max(2, sent_n or 1),
+        log_statuses=log_ss,
+        coarse="sent" if sent_n else "pending",
+        cart_status=str(getattr(ac, "status", None) or ""),
+        is_vip_lane=True,
+        has_phone=bool(phone_digits),
+        abandoned_cart_id=int(getattr(ac, "id", 0) or 0) or None,
+        matched_logs=matched_logs,
+        vip_lifecycle_status_evidence=vip_evidence,
+    )
+    return row_out
 
 
 def _build_sent_phone_indexes(

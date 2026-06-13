@@ -103,10 +103,21 @@ def get_cart_smart_action(cart: Mapping[str, Any]) -> CartSmartActionPayload:
         s_rt = str(raw_rt).strip()
         resolved_tag = normalize_smart_action_reason_tag(s_rt if s_rt else None)
 
+    lc_state = str(cart.get("customer_lifecycle_state") or "").strip().lower()
+    vip_evidence = str(
+        cart.get("vip_lifecycle_status_evidence")
+        or cart.get("vip_lifecycle_effective")
+        or "abandoned"
+    ).strip().lower()
+    if lc_state == "needs_intervention" and "تم التواصل" in str(
+        cart.get("customer_lifecycle_label_ar") or ""
+    ):
+        vip_evidence = "contacted"
+
     return _resolve_cart_smart_action(
         is_vip=bool(cart.get("is_vip")),
         reason_tag=resolved_tag,
-        vip_lifecycle_effective=str(cart.get("vip_lifecycle_effective") or "abandoned"),
+        vip_lifecycle_effective=vip_evidence,
         has_customer_phone=bool(cart.get("has_customer_phone")),
     )
 

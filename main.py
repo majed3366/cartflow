@@ -13327,6 +13327,48 @@ def _vip_dashboard_cart_alert_dict_from_group(
         "recovery_hide_vip_lifecycle_buttons": not is_vip_card,
     }
     out_payload.update(vip_operational_lane_diagnostics(ac.cart_value, dash_store))
+    if is_vip_card:
+        try:
+            from services.lifecycle_authority_recovery_v1 import (  # noqa: PLC0415
+                attach_merchant_row_lifecycle_authority,
+                normalize_vip_lifecycle_evidence,
+            )
+
+            slug_vip = (getattr(dash_store, "zid_store_id", None) or "").strip()
+            sid_vip = (getattr(ac, "recovery_session_id", None) or "").strip()
+            rk_vip = f"{slug_vip}:{sid_vip}" if slug_vip and sid_vip else ""
+            vip_ev = normalize_vip_lifecycle_evidence(lc)
+            if rk_vip:
+                out_payload["recovery_key"] = rk_vip
+            attach_merchant_row_lifecycle_authority(
+                out_payload,
+                recovery_key=rk_vip,
+                cart_status=st,
+                is_vip_lane=True,
+                has_phone=bool(wa_digits),
+                abandoned_cart_id=int(ac.id or 0) or None,
+                vip_lifecycle_status_evidence=vip_ev,
+            )
+            smart_action = get_cart_smart_action(
+                {
+                    "is_vip": True,
+                    "reason_tag": reason_tag_resolved,
+                    "customer_lifecycle_state": out_payload.get(
+                        "customer_lifecycle_state"
+                    ),
+                    "customer_lifecycle_label_ar": out_payload.get(
+                        "customer_lifecycle_label_ar"
+                    ),
+                    "vip_lifecycle_status_evidence": vip_ev,
+                    "has_customer_phone": bool(wa_digits),
+                }
+            )
+            out_payload["smart_action"] = smart_action
+            out_payload["smart_cta_target"] = smart_action_cta_target(
+                smart_action["action_key"]
+            )
+        except Exception:  # noqa: BLE001
+            pass
     if not is_vip_card:
         out_payload.update(
             _normal_recovery_phase_steps_payload(
@@ -13509,15 +13551,15 @@ def _normal_carts_dashboard_stats(dash_store: Optional[Any] = None) -> dict[str,
                 lifecycle="active",
                 dash_store=dash_store,
             )
-            from services.merchant_cart_row_classifier import (  # noqa: PLC0415
-                merchant_nav_badge_active_cart_count,
-                merchant_nav_badge_waiting_count,
+            from services.lifecycle_authority_recovery_v1 import (  # noqa: PLC0415
+                lifecycle_authority_active_count,
+                lifecycle_authority_waiting_count,
             )
 
-            out["normal_cart_count"] = merchant_nav_badge_active_cart_count(
+            out["normal_cart_count"] = lifecycle_authority_active_count(
                 visible_rows
             )
-            out["merchant_nav_badge_waiting"] = merchant_nav_badge_waiting_count(
+            out["merchant_nav_badge_waiting"] = lifecycle_authority_waiting_count(
                 visible_rows
             )
         except (SQLAlchemyError, OSError, TypeError, ValueError):
@@ -14251,6 +14293,14 @@ def _merchant_recovery_message_history_rows(
     _enrich_message_rows_with_communication_truth(
         list(zip(kept, logs_seq[: len(kept)])), now_utc=now_utc
     )
+    try:
+        from services.lifecycle_authority_recovery_v1 import (  # noqa: PLC0415
+            enrich_message_history_rows_with_lifecycle,
+        )
+
+        enrich_message_history_rows_with_lifecycle(kept, dash_store=dash_store)
+    except Exception:  # noqa: BLE001
+        pass
     return kept
 
 
@@ -16217,19 +16267,16 @@ def _merchant_normal_recovery_light_payload_merchant_batch(
         except Exception:  # noqa: BLE001
             pass
         try:
-            from services.merchant_followup_clarity_v1 import (  # noqa: PLC0415
-                attach_merchant_followup_clarity,
+            from services.lifecycle_authority_recovery_v1 import (  # noqa: PLC0415
+                sync_merchant_followup_clarity_from_lifecycle,
             )
 
             _fc_perf0 = time.perf_counter()
             if not vip_lane:
-                attach_merchant_followup_clarity(
+                sync_merchant_followup_clarity_from_lifecycle(
                     out,
                     sent_count=sent_ct_lc,
                     configured_count=cap_lc,
-                    next_attempt_due_at=next_due_iso,
-                    schedule_rows=batch.schedule_rows_by_ac.get(aid0),
-                    purchased=purchased_flag,
                 )
             try:
                 from services.dashboard_normal_carts_perf_v1 import (  # noqa: PLC0415

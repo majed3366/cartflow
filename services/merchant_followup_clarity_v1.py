@@ -1,5 +1,10 @@
 # -*- coding: utf-8 -*-
-"""Merchant-facing follow-up progress lines (display only — no bucket/lifecycle changes)."""
+"""Merchant-facing follow-up progress lines — display derivatives only (LT-C1).
+
+Lifecycle scheduling decisions live in ``customer_lifecycle_state``.
+Use ``sync_merchant_followup_clarity_from_lifecycle`` in
+``lifecycle_authority_recovery_v1`` for dashboard rows.
+"""
 from __future__ import annotations
 
 from datetime import datetime, timezone

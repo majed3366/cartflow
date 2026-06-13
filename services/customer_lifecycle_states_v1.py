@@ -626,7 +626,7 @@ def _needs_intervention(
     is_vip_lane: bool,
 ) -> bool:
     if is_vip_lane:
-        return True
+        return False
     if log_ss & INTERVENTION_LOG:
         return True
     if _norm(phase_key) in ("blocked_missing_customer_phone",):
@@ -705,6 +705,7 @@ def classify_customer_lifecycle_state_v1(
     matched_logs: Optional[Sequence[Any]] = None,
     schedule_prefetched: bool = False,
     effective_delay_seconds_prefetched: Optional[float] = None,
+    vip_lifecycle_status_evidence: str = "",
 ) -> CustomerLifecycleStateV1:
     """Classify one cart row for dashboard lifecycle display."""
     rk = (recovery_key or "").strip()
@@ -786,6 +787,54 @@ def classify_customer_lifecycle_state_v1(
                 completed_variant=variant,
             ),
             archive_reason="purchased",
+        )
+
+    vip_ev = (vip_lifecycle_status_evidence or "").strip().lower()
+    if is_vip_lane:
+        if vip_ev == "converted" or cst == "recovered":
+            return _finish(
+                _pack(
+                    STATE_COMPLETED,
+                    what_happened="تم البيع أو استُعيدت سلة VIP.",
+                    system_did="أنهينا مهمة الاسترجاع لهذه السلة.",
+                    what_next="لا مزيد من رسائل الاسترجاع الآلية.",
+                    merchant_needed="لا",
+                    dashboard_action="none",
+                    completed_variant="purchased",
+                ),
+                archive_reason="vip_converted",
+            )
+        if vip_ev == "closed":
+            return _finish(
+                _pack(
+                    STATE_ARCHIVED,
+                    what_happened="أُغلقت سلة VIP من لوحة التاجر.",
+                    system_did="أوقفنا المتابعة الآلية لهذه السلة.",
+                    what_next="يمكنك إعادة فتحها للمراجعة فقط.",
+                    merchant_needed="لا",
+                    dashboard_action="reopen",
+                ),
+                archive_reason="vip_closed",
+            )
+        label_vip = "تحتاج تدخل (VIP)"
+        what_happened_vip = "سلة VIP تحتاج تواصلاً يدوياً من التاجر."
+        if vip_ev == "contacted":
+            label_vip = "تم التواصل (VIP)"
+            what_happened_vip = "تم التواصل مع عميل VIP يدوياً."
+        elif vip_ev == "abandoned":
+            label_vip = "سلة VIP — بانتظار تواصل"
+            what_happened_vip = "سلة VIP بانتظار تواصل يدوي من التاجر."
+        return _finish(
+            _pack(
+                STATE_NEEDS_INTERVENTION,
+                what_happened=what_happened_vip,
+                system_did="أوقفنا الإرسال الآلي — مسار VIP يدوي.",
+                what_next="تواصل مع العميل يدوياً عند الحاجة.",
+                merchant_needed="نعم",
+                dashboard_action="archive",
+                label_override=label_vip,
+            ),
+            archive_reason="vip_lane",
         )
 
     if _needs_intervention(
@@ -1060,8 +1109,8 @@ def attach_customer_lifecycle_state_v1(
     matched_logs: Optional[Sequence[Any]] = None,
     schedule_prefetched: bool = False,
     effective_delay_seconds_prefetched: Optional[float] = None,
+    vip_lifecycle_status_evidence: str = "",
 ) -> CustomerLifecycleStateV1:
-    """Attach lifecycle v1 fields; sync primary dashboard status label."""
     lc = classify_customer_lifecycle_state_v1(
         recovery_key=recovery_key,
         phase_key=phase_key,
@@ -1082,6 +1131,7 @@ def attach_customer_lifecycle_state_v1(
         matched_logs=matched_logs,
         schedule_prefetched=schedule_prefetched,
         effective_delay_seconds_prefetched=effective_delay_seconds_prefetched,
+        vip_lifecycle_status_evidence=vip_lifecycle_status_evidence,
     )
     target.update(lc.to_payload_fields())
     target["merchant_status_label_ar"] = lc.label_ar

@@ -2133,7 +2133,10 @@
   }
 
   function merchantNextLineShort(mc) {
-    return merchantLifecycleCompact(mc).status;
+    if (mc && mc.customer_lifecycle_label_ar) {
+      return String(mc.customer_lifecycle_label_ar).trim();
+    }
+    return "— حالة المسار غير متاحة —";
   }
 
   var lastNormalCartsPageRows = [];
@@ -2425,9 +2428,18 @@
     );
   }
 
+  function customerLifecycleUnavailableHtml(mc) {
+    return (
+      '<div class="recovery-truth recovery-truth-compact customer-lifecycle-v1" aria-label="حالة دورة العميل">' +
+      '<div class="recovery-truth-line"><strong>الحالة:</strong> ' +
+      esc("— حالة المسار غير متاحة —") +
+      "</div></div>"
+    );
+  }
+
   function customerLifecycleExplanationHtml(mc) {
     if (!mc || !mc.customer_lifecycle_state) {
-      return merchantLifecycleCompactHtml(mc);
+      return customerLifecycleUnavailableHtml(mc);
     }
     if (isArchivedVisual(mc)) {
       return customerLifecycleArchivedCompactHtml(mc);
@@ -2462,7 +2474,13 @@
         esc(mc.customer_lifecycle_next_followup_line_ar) +
         "</div>";
     }
-    h += merchantFollowupClarityHtml(mc);
+    var prog = String(mc.merchant_followup_progress_ar || "").trim();
+    if (prog) {
+      h +=
+        '<div class="recovery-truth-line recovery-truth-muted merchant-followup-progress">' +
+        esc(prog) +
+        "</div>";
+    }
     h +=
       '<div class="recovery-truth-line"><strong>تدخل التاجر:</strong> ' +
       esc(mc.customer_lifecycle_merchant_needed_ar || "لا") +
