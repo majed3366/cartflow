@@ -58,7 +58,7 @@ class ExitIntentNoCartEnforcementWiringTests(unittest.TestCase):
 
     def test_runtime_version_bumped(self) -> None:
         wl = _LOADER.read_text(encoding="utf-8")
-        self.assertIn("v2-exit-intent-no-cart-enforcement-v1", wl)
+        self.assertIn("v2-fast-add-trigger-race-recovery-v1", wl)
 
     def test_arbitration_logs_include_policy(self) -> None:
         src = _ARBITRATION.read_text(encoding="utf-8")

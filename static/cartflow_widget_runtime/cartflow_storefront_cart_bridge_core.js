@@ -204,6 +204,14 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
               bridgeState.cart_persisted = true;
               bridgeState.reason_orphan_risk = false;
               cancelEmptyRetries();
+              try {
+                if (
+                  Cf.Triggers &&
+                  typeof Cf.Triggers.onStorefrontCartPersisted === "function"
+                ) {
+                  Cf.Triggers.onStorefrontCartPersisted(cart);
+                }
+              } catch (eTrigPersist) {}
             }
             return { ok: ok, status: r.status, body: body };
           });

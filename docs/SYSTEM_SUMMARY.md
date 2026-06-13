@@ -82,7 +82,7 @@ CartFlow is a FastAPI application that:
 
 ### 2.3 Exit Intent UI
 
-- **V2:** **`cartflow_widget_triggers.js`** / **`cartflow_widget_flows.js`** (orchestration) with shell UI modules; duplicate open guards (e.g. **`[CF TRIGGER BLOCKED]`** paths) live in layered code.
+- **V2:** **`cartflow_widget_triggers.js`** / **`cartflow_widget_flows.js`** (orchestration) with shell UI modules; duplicate open guards (e.g. **`[CF TRIGGER BLOCKED]`** paths) live in layered code. **Fast-add race recovery v1:** storefront bridge POST → **`onStorefrontCartPersisted`**; deferred flush uses **`[CF TRIGGER DEFERRED REPLAY]`** (never silent drop when cart-event succeeds).
 - **Legacy:** Implemented inside **`static/cartflow_widget.js`** when that file is the only widget bootstrap.
 
 Server-side template control (**`exit_intent_*`** on **`Store`**): `services/store_template_control.py` merge through **`/api/recovery-settings`**.
@@ -399,6 +399,7 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 
 | Date (UTC) | Summary |
 |------------|---------|
+| 2026-06-13 | **Fast Add Trigger Race Recovery v1:** Eliminates silent hesitation loss when add-to-cart precedes `Triggers.init()` — `onStorefrontCartPersisted` hook after storefront bridge POST ok, `storefrontBridgeHasCart()` in `haveCartApprox()`, `scheduleDeferredReplay()` (12s poll) replaces silent `flushDeferredScheduling` return; logs `[CF TRIGGER DEFERRED REPLAY]`. Runtime `v2-fast-add-trigger-race-recovery-v1`. Tests: `tests/test_fast_add_trigger_race_recovery_v1.py`. Reports: `docs/cartflow_fast_add_trigger_race_recovery_v1_report.md`, deploy verification doc. **Awaiting deploy.** |
 | 2026-06-13 | **Recovery Schedule Materialization Fix v1:** Durable post-reason arm when `cart_state_sync` created the cart but in-memory pending markers are absent — `services/recovery_schedule_materialization_v1.py` + hook in `_schedule_normal_recovery_after_cart_recovery_reason_saved`; DB duplicate guard; reason-arm phone block logs `schedule_blocked_missing_phone`; lifecycle labels **بانتظار اكتمال بيانات التواصل** / **لم يتم تجهيز الإرسال بعد** when no schedule row; tests `tests/test_recovery_schedule_materialization_v1.py`. Report: `docs/cartflow_recovery_schedule_materialization_fix_v1_report.md`. |
 | 2026-06-13 | **Recovery Schedule Materialization Audit v1 (read-only):** Cart **4188** (`recovery_key` `cartflow-42b491:cf-mqcdjidd-167so9ml`) — reason `price` persisted but **0** `RecoverySchedule` rows; post-reason hook `_schedule_normal_recovery_after_cart_recovery_reason_saved` returned early (`arm_ctx`/`phone_ctx` both `None`) because Zid storefront `cart_state_sync` bridge never set in-memory pending arm markers (`handle_cart_abandoned` not invoked). Report: `docs/cartflow_recovery_schedule_materialization_audit_v1_report.md`. No code changes. |
 | 2026-06-13 | **Lifecycle Authority Recovery v1:** Single merchant lifecycle SoT — `customer_lifecycle_state` from `classify_customer_lifecycle_state_v1`. VIP batch, summary counters, messages, follow-up clarity, and JS fallback converted; `vip_lifecycle_status` is evidence-only. Module: `services/lifecycle_authority_recovery_v1.py`. Reports: `docs/cartflow_lifecycle_authority_recovery_v1_report.md`, production verification doc. Local verify PASS. |

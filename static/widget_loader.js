@@ -12,7 +12,7 @@
 (function () {
   "use strict";
 
-  var RUNTIME_VERSION = "v2-exit-intent-no-cart-enforcement-v1";
+  var RUNTIME_VERSION = "v2-fast-add-trigger-race-recovery-v1";
 
   function cartflowExtractHostnameSlugInline(host) {
     if (typeof window.cartflowExtractStoreSlugFromHostname === "function") {

@@ -90,7 +90,7 @@ class WidgetArbitrationShadowWiringTests(unittest.TestCase):
 
     def test_runtime_version_bumped(self) -> None:
         wl = _WIDGET_LOADER.read_text(encoding="utf-8")
-        self.assertIn("v2-exit-intent-no-cart-enforcement-v1", wl)
+        self.assertIn("v2-fast-add-trigger-race-recovery-v1", wl)
 
     def test_exit_gate_through_arbitration_not_direct_request(self) -> None:
         flows = _FLOWS.read_text(encoding="utf-8")

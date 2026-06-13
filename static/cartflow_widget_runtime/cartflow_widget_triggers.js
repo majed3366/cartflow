@@ -28,6 +28,9 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
 
   var v2TriggerInitDone = false;
   var v2DeferredScheduleReasons = [];
+  var v2DeferredReplayTimer = null;
+  var V2_DEFERRED_REPLAY_INTERVAL_MS = 250;
+  var V2_DEFERRED_REPLAY_MAX_MS = 12000;
 
   /** One pending resume coalesce (same tick merges pageshow + visibilitychange). */
   var resumeFlushTimer = null;
@@ -260,6 +263,31 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     }
   }
 
+  function storefrontBridgeHasCart() {
+    try {
+      var br = Cf.StorefrontCartBridge;
+      if (!br || typeof br.getDiagnostics !== "function") {
+        return false;
+      }
+      var d = br.getDiagnostics() || {};
+      if (d.cart_persisted !== true) {
+        return false;
+      }
+      var n = d.normalized;
+      if (n && typeof n === "object") {
+        if (typeof n.item_count === "number" && n.item_count > 0) {
+          return true;
+        }
+        if (typeof n.cart_value === "number" && n.cart_value > 0) {
+          return true;
+        }
+      }
+      return true;
+    } catch (eSf) {
+      return false;
+    }
+  }
+
   function haveCartApprox() {
     try {
       if (
@@ -276,7 +304,101 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     if (cartBridgeHasCart()) {
       return true;
     }
+    if (storefrontBridgeHasCart()) {
+      return true;
+    }
     return haveCartApproxFromStorefrontPath();
+  }
+
+  function clearDeferredReplayTimer() {
+    if (v2DeferredReplayTimer != null) {
+      try {
+        clearTimeout(v2DeferredReplayTimer);
+      } catch (eCr) {}
+      v2DeferredReplayTimer = null;
+    }
+  }
+
+  function recordDeferredArmIntent(sourceTag) {
+    var tag = String(sourceTag || "unknown");
+    try {
+      var stRef = st();
+      if (stRef.cfV2HesitationDeferredBaseAt == null) {
+        stRef.cfV2HesitationDeferredBaseAt = Date.now();
+      }
+    } catch (eB) {}
+    try {
+      v2DeferredScheduleReasons.push(tag);
+    } catch (ePu) {}
+  }
+
+  function hesitationAlreadyArmed(stRef) {
+    try {
+      return !!(
+        stRef &&
+        (stRef.hesitationAnchorTimer != null ||
+          (stRef.cfV2HesitationDeadlineAt != null &&
+            isFinite(stRef.cfV2HesitationDeadlineAt)))
+      );
+    } catch (eHa) {
+      return false;
+    }
+  }
+
+  function finalizeDeferredHesitation(stRef, flowsRef, timingOpts, via) {
+    clearDeferredReplayTimer();
+    timingOpts = timingOpts || {};
+    try {
+      stRef.cfV2HesitationDeferredBaseAt = null;
+    } catch (eC) {}
+    logReceived("add_to_cart", {
+      via: via || "deferred_replay",
+      replay: true,
+    });
+    scheduleCartHesitation(stRef, flowsRef || {}, timingOpts);
+  }
+
+  function scheduleDeferredReplay(stRef, flowsRef, baseAt, via) {
+    clearDeferredReplayTimer();
+    var startedAt = Date.now();
+    trigLog("[CF TRIGGER DEFERRED REPLAY]", {
+      via: String(via || "init_flush"),
+      base_at_ms: baseAt != null && isFinite(baseAt) ? baseAt : null,
+      started_at_ms: startedAt,
+      phase: "start",
+    });
+
+    function attempt() {
+      v2DeferredReplayTimer = null;
+      if (!stRef || stRef.bubbleShown || hesitationAlreadyArmed(stRef)) {
+        return;
+      }
+      var timingOpts = {};
+      if (baseAt != null && isFinite(baseAt)) {
+        timingOpts.armBaseAtMs = baseAt;
+      }
+      if (haveCartApprox()) {
+        trigLog("[CF TRIGGER DEFERRED REPLAY]", {
+          via: String(via || "init_flush"),
+          outcome: "cart_detected",
+          elapsed_ms: Date.now() - startedAt,
+        });
+        finalizeDeferredHesitation(stRef, flowsRef, timingOpts, via);
+        return;
+      }
+      if (Date.now() - startedAt >= V2_DEFERRED_REPLAY_MAX_MS) {
+        trigLog("[CF TRIGGER DEFERRED REPLAY]", {
+          via: String(via || "init_flush"),
+          outcome: "exhausted_explicit_schedule",
+          elapsed_ms: Date.now() - startedAt,
+        });
+        finalizeDeferredHesitation(stRef, flowsRef, timingOpts, via);
+        return;
+      }
+      v2DeferredReplayTimer = setTimeout(attempt, V2_DEFERRED_REPLAY_INTERVAL_MS);
+    }
+
+    v2DeferredReplayTimer = setTimeout(attempt, V2_DEFERRED_REPLAY_INTERVAL_MS);
   }
 
   function hesitationMs() {
@@ -651,12 +773,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     } catch (eLf) {}
 
     if (!v2TriggerInitDone) {
-      try {
-        st().cfV2HesitationDeferredBaseAt = Date.now();
-      } catch (eB) {}
-      try {
-        v2DeferredScheduleReasons.push(sourceTag);
-      } catch (ePu) {}
+      recordDeferredArmIntent(sourceTag);
       trigLog(
         "[CF HESITATION SKIPPED]",
         hesitationStateSnapshot({
@@ -669,6 +786,49 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     }
 
     scheduleCartHesitation(st(), {});
+  }
+
+  /**
+   * Storefront cart bridge persisted a cart (POST /api/cart-event ok).
+   * Ensures fast-add-before-init never silently drops hesitation arming.
+   */
+  function onStorefrontCartPersisted(cart) {
+    cart = cart || {};
+    var stRef = st();
+    logReceived("add_to_cart", { via: "storefront_bridge_persist" });
+
+    if (!v2TriggerInitDone) {
+      recordDeferredArmIntent("storefront_bridge_persist");
+      trigLog(
+        "[CF HESITATION SKIPPED]",
+        hesitationStateSnapshot({
+          stage: "storefront_persist",
+          via: "storefront_bridge_persist",
+          reason: "trigger_init_not_done_deferred",
+        })
+      );
+      return;
+    }
+
+    if (!stRef || stRef.bubbleShown || hesitationAlreadyArmed(stRef)) {
+      return;
+    }
+
+    if (haveCartApprox()) {
+      scheduleCartHesitation(stRef, {});
+      return;
+    }
+
+    var baseAt = null;
+    try {
+      baseAt = stRef.cfV2HesitationDeferredBaseAt;
+    } catch (eBa) {}
+    scheduleDeferredReplay(
+      stRef,
+      {},
+      baseAt != null && isFinite(baseAt) ? baseAt : Date.now(),
+      "storefront_bridge_persist"
+    );
   }
 
   /**
@@ -856,21 +1016,50 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
 
   function flushDeferredScheduling(stRef, flowsRef) {
     var had = false;
+    var via = "deferred";
     try {
       had = v2DeferredScheduleReasons.length > 0;
+      if (v2DeferredScheduleReasons.length > 0) {
+        via = String(v2DeferredScheduleReasons[v2DeferredScheduleReasons.length - 1]);
+      }
       v2DeferredScheduleReasons.length = 0;
     } catch (eE) {}
-    if (!had || !stRef || stRef.bubbleShown || !haveCartApprox()) {
+    var baseAt = null;
+    try {
+      baseAt = stRef.cfV2HesitationDeferredBaseAt;
+    } catch (eBa) {}
+    var storefrontPending = storefrontBridgeHasCart();
+    var pending =
+      had ||
+      (baseAt != null && isFinite(baseAt)) ||
+      storefrontPending;
+    if (storefrontPending && via === "deferred") {
+      via = "storefront_bridge_persist";
+    }
+
+    if (!pending || !stRef || stRef.bubbleShown || hesitationAlreadyArmed(stRef)) {
       return;
     }
-    var baseAt =
-      stRef.cfV2HesitationDeferredBaseAt != null
-        ? stRef.cfV2HesitationDeferredBaseAt
-        : Date.now();
-    try {
-      stRef.cfV2HesitationDeferredBaseAt = null;
-    } catch (eC) {}
-    scheduleCartHesitation(stRef, flowsRef || {}, { armBaseAtMs: baseAt });
+
+    if (haveCartApprox()) {
+      finalizeDeferredHesitation(
+        stRef,
+        flowsRef,
+        {
+          armBaseAtMs:
+            baseAt != null && isFinite(baseAt) ? baseAt : undefined,
+        },
+        via
+      );
+      return;
+    }
+
+    scheduleDeferredReplay(
+      stRef,
+      flowsRef,
+      baseAt != null && isFinite(baseAt) ? baseAt : Date.now(),
+      via
+    );
   }
 
   /**
@@ -1138,6 +1327,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     haveCartApprox: haveCartApprox,
     receiveTrigger: receiveTrigger,
     onNormalizedCartEvent: onNormalizedCartEvent,
+    onStorefrontCartPersisted: onStorefrontCartPersisted,
   };
   window.CartflowWidgetRuntime.Triggers = Triggers;
   try {
