@@ -10,6 +10,65 @@
     if (el) el.textContent = msg || "";
   }
 
+  function setMetaField(id, value) {
+    var el = byId(id);
+    if (el) el.textContent = value != null && value !== "" ? String(value) : "—";
+  }
+
+  function loadMetaStatus() {
+    setStatus("awm-meta-status", "جاري التحقق من Meta…");
+    fetch("/admin/api/whatsapp/meta-status", { credentials: "same-origin" })
+      .then(function (r) {
+        return r.json();
+      })
+      .then(function (data) {
+        if (!data || data.ok !== true) {
+          setStatus("awm-meta-status", "تعذّر التحقق من Meta");
+          return;
+        }
+        setMetaField(
+          "awm-meta-connected",
+          data.connected ? "متصل — نجح الاتصال" : "غير متصل"
+        );
+        setMetaField("awm-meta-phone", data.display_phone_number);
+        setMetaField("awm-meta-verified-name", data.verified_name);
+        setMetaField("awm-meta-waba", data.waba_id);
+        setMetaField("awm-meta-phone-id", data.phone_number_id);
+        var resultParts = [];
+        if (data.meta_response_ok) {
+          resultParts.push("Meta Graph OK");
+        } else {
+          resultParts.push("Meta Graph فشل");
+        }
+        if (data.error) {
+          resultParts.push(String(data.error));
+        }
+        if (data.verified_at) {
+          resultParts.push(data.verified_at);
+        }
+        setMetaField("awm-meta-last-result", resultParts.join(" · "));
+        if (data.error) {
+          setStatus(
+            "awm-meta-status",
+            "فشل التحقق من Meta: " + String(data.error)
+          );
+        } else if (data.connected) {
+          setStatus(
+            "awm-meta-status",
+            "تم التحقق — CartFlow يتواصل مع Meta بنجاح."
+          );
+        } else {
+          setStatus(
+            "awm-meta-status",
+            "التحقق لم يؤكد اتصالاً ناجحاً."
+          );
+        }
+      })
+      .catch(function () {
+        setStatus("awm-meta-status", "خطأ في الشبكة أثناء التحقق من Meta");
+      });
+  }
+
   function loadRegistry() {
     setStatus("awt-registry-status", "جاري التحميل…");
     fetch("/api/admin/whatsapp/templates", { credentials: "same-origin" })
@@ -180,6 +239,9 @@
     if (refresh) refresh.addEventListener("click", loadRows);
     var storeRefresh = byId("awt-store-refresh");
     if (storeRefresh) storeRefresh.addEventListener("click", loadStoreTemplates);
+    var metaRefresh = byId("awm-meta-refresh");
+    if (metaRefresh) metaRefresh.addEventListener("click", loadMetaStatus);
+    loadMetaStatus();
     loadRegistry();
     loadStoreTemplates();
     loadRows();

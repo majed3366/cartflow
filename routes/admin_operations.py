@@ -989,9 +989,20 @@ def admin_whatsapp_visibility_page(request: Request) -> Any:
         {
             "admin_active_nav": ADMIN_NAV_WHATSAPP,
             "admin_page_title_ar": "واتساب — رؤية تشغيلية",
-            "admin_page_subtitle_ar": "وضع واتساب وحالة الاتصال — بدون إرسال أو Meta",
+            "admin_page_subtitle_ar": "وضع واتساب، حالة الاتصال، والتحقق المباشر من Meta",
         },
     )
+
+
+@router.get("/admin/api/whatsapp/meta-status")
+def api_admin_whatsapp_meta_status(request: Request) -> Any:
+    denied = _admin_json_auth(request)
+    if denied is not None:
+        return denied
+    from services.admin_whatsapp_meta_status_v1 import fetch_whatsapp_meta_status  # noqa: PLC0415
+
+    status = fetch_whatsapp_meta_status()
+    return j({"ok": True, **status})
 
 
 @router.get("/api/admin/whatsapp/stores")

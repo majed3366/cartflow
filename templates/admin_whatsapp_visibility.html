@@ -7,8 +7,44 @@
   <p class="text-xs font-semibold uppercase tracking-wide text-indigo-600">WhatsApp Production Strategy — Phase 1–5</p>
   <h2 class="mt-2 text-2xl font-bold text-slate-900">WhatsApp Connection & Readiness</h2>
   <p class="mt-2 max-w-3xl text-sm text-slate-600">
-    رؤية تشغيلية — وضع واتساب، حالة الاتصال، الجاهزية، سجل القوالب. <strong>بدون Meta أو إرسال.</strong>
+    رؤية تشغيلية — وضع واتساب، حالة الاتصال، الجاهزية، سجل القوالب، والتحقق المباشر من اتصال Meta.
   </p>
+</section>
+
+<section class="admin-card px-6 py-5" id="awm-meta-section">
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <h3 class="text-lg font-semibold text-slate-900">Meta Connection Status</h3>
+    <button type="button" id="awm-meta-refresh" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700">
+      تحقق الآن
+    </button>
+  </div>
+  <p id="awm-meta-status" class="mt-2 text-xs text-slate-500">جاري التحميل…</p>
+  <dl class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 text-sm">
+    <div>
+      <dt class="text-slate-500">Connected</dt>
+      <dd id="awm-meta-connected" class="mt-1 font-medium text-slate-900">—</dd>
+    </div>
+    <div>
+      <dt class="text-slate-500">Phone Number</dt>
+      <dd id="awm-meta-phone" class="mt-1 font-medium text-slate-900" dir="ltr">—</dd>
+    </div>
+    <div>
+      <dt class="text-slate-500">Verified Name</dt>
+      <dd id="awm-meta-verified-name" class="mt-1 font-medium text-slate-900">—</dd>
+    </div>
+    <div>
+      <dt class="text-slate-500">WABA ID</dt>
+      <dd id="awm-meta-waba" class="mt-1 font-medium text-slate-900" dir="ltr">—</dd>
+    </div>
+    <div>
+      <dt class="text-slate-500">Phone Number ID</dt>
+      <dd id="awm-meta-phone-id" class="mt-1 font-medium text-slate-900" dir="ltr">—</dd>
+    </div>
+    <div>
+      <dt class="text-slate-500">Last Verification Result</dt>
+      <dd id="awm-meta-last-result" class="mt-1 font-medium text-slate-900">—</dd>
+    </div>
+  </dl>
 </section>
 
 <section class="admin-card px-6 py-5">
