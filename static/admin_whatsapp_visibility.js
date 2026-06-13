@@ -69,6 +69,51 @@
       });
   }
 
+  function sendMetaTestMessage() {
+    var toInput = byId("awm-meta-send-to");
+    var to = (toInput && toInput.value) ? String(toInput.value).trim() : "";
+    if (!to) {
+      setStatus("awm-meta-send-status", "أدخل رقم الهاتف.");
+      return;
+    }
+    setStatus("awm-meta-send-status", "جاري الإرسال عبر Meta…");
+    setMetaField("awm-meta-send-result", "—");
+    setMetaField("awm-meta-send-message-id", "—");
+    fetch("/admin/api/whatsapp/meta-send-test", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ to: to }),
+    })
+      .then(function (r) {
+        return r.json();
+      })
+      .then(function (data) {
+        if (!data) {
+          setStatus("awm-meta-send-status", "تعذّر إرسال الرسالة التجريبية");
+          return;
+        }
+        if (data.ok) {
+          setMetaField("awm-meta-send-result", "نجح الإرسال");
+          setMetaField("awm-meta-send-message-id", data.message_id);
+          setStatus(
+            "awm-meta-send-status",
+            "تم إرسال hello_world بنجاح عبر Meta."
+          );
+        } else {
+          setMetaField("awm-meta-send-result", "فشل الإرسال");
+          setMetaField("awm-meta-send-message-id", data.message_id || "—");
+          setStatus(
+            "awm-meta-send-status",
+            data.error ? "فشل الإرسال: " + String(data.error) : "فشل الإرسال"
+          );
+        }
+      })
+      .catch(function () {
+        setStatus("awm-meta-send-status", "خطأ في الشبكة أثناء الإرسال");
+      });
+  }
+
   function loadRegistry() {
     setStatus("awt-registry-status", "جاري التحميل…");
     fetch("/api/admin/whatsapp/templates", { credentials: "same-origin" })
@@ -241,6 +286,8 @@
     if (storeRefresh) storeRefresh.addEventListener("click", loadStoreTemplates);
     var metaRefresh = byId("awm-meta-refresh");
     if (metaRefresh) metaRefresh.addEventListener("click", loadMetaStatus);
+    var metaSendBtn = byId("awm-meta-send-btn");
+    if (metaSendBtn) metaSendBtn.addEventListener("click", sendMetaTestMessage);
     loadMetaStatus();
     loadRegistry();
     loadStoreTemplates();

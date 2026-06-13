@@ -47,6 +47,43 @@
   </dl>
 </section>
 
+<section class="admin-card px-6 py-5" id="awm-meta-send-section">
+  <h3 class="text-lg font-semibold text-slate-900">Meta Test Send</h3>
+  <p class="mt-2 text-sm text-slate-600">
+    إرسال تجريبي واحد عبر Meta Cloud API — قالب <code dir="ltr">hello_world</code> (en_US). للأرقام المسجّلة في Meta test recipients فقط.
+  </p>
+  <div class="mt-4 flex flex-wrap items-end gap-3">
+    <label class="flex flex-col gap-1 text-sm">
+      <span class="text-slate-600">To phone number</span>
+      <input
+        id="awm-meta-send-to"
+        type="text"
+        dir="ltr"
+        class="rounded-lg border border-slate-200 px-3 py-2 text-sm min-w-[220px]"
+        placeholder="+966XXXXXXXXX"
+      />
+    </label>
+    <button
+      type="button"
+      id="awm-meta-send-btn"
+      class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+    >
+      Send test message
+    </button>
+  </div>
+  <p id="awm-meta-send-status" class="mt-3 text-xs text-slate-500">—</p>
+  <dl class="mt-3 grid gap-3 sm:grid-cols-2 text-sm">
+    <div>
+      <dt class="text-slate-500">Result</dt>
+      <dd id="awm-meta-send-result" class="mt-1 font-medium text-slate-900">—</dd>
+    </div>
+    <div>
+      <dt class="text-slate-500">Message ID</dt>
+      <dd id="awm-meta-send-message-id" class="mt-1 font-medium text-slate-900" dir="ltr">—</dd>
+    </div>
+  </dl>
+</section>
+
 <section class="admin-card px-6 py-5">
   <h3 class="text-lg font-semibold text-slate-900">Template Registry (canonical)</h3>
   <p id="awt-registry-status" class="mt-2 text-xs text-slate-500">جاري التحميل…</p>

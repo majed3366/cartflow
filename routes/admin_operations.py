@@ -1005,6 +1005,24 @@ def api_admin_whatsapp_meta_status(request: Request) -> Any:
     return j({"ok": True, **status})
 
 
+@router.post("/admin/api/whatsapp/meta-send-test")
+async def api_admin_whatsapp_meta_send_test(request: Request) -> Any:
+    denied = _admin_json_auth(request)
+    if denied is not None:
+        return denied
+    try:
+        body = await request.json()
+    except (TypeError, ValueError):
+        body = {}
+    if not isinstance(body, dict):
+        body = {}
+    to = str(body.get("to") or "").strip()
+    from services.admin_whatsapp_meta_send_test_v1 import send_meta_whatsapp_test_message  # noqa: PLC0415
+
+    result = send_meta_whatsapp_test_message(to)
+    return j(result)
+
+
 @router.get("/api/admin/whatsapp/stores")
 def api_admin_whatsapp_stores_list(
     request: Request,
