@@ -66,6 +66,8 @@ class AdminWhatsappMetaSendTestServiceTests(unittest.TestCase):
         self.assertEqual(out["message_id"], "wamid.TEST123")
         self.assertIsNone(out["error"])
         self.assertEqual(out["provider"], "meta")
+        self.assertIsInstance(out.get("meta_response"), dict)
+        self.assertEqual(out["meta_response"]["messages"][0]["id"], "wamid.TEST123")
         call_kwargs = mock_post.call_args
         self.assertIn("graph.facebook.com/v23.0/pn123/messages", call_kwargs[0][0])
         payload = call_kwargs[1]["json"]
@@ -99,6 +101,7 @@ class AdminWhatsappMetaSendTestServiceTests(unittest.TestCase):
             out["error"], "Recipient phone number not in allowed list"
         )
         self.assertIsNone(out["message_id"])
+        self.assertIsInstance(out.get("meta_response"), dict)
 
 
 class AdminWhatsappMetaSendTestRouteTests(unittest.TestCase):

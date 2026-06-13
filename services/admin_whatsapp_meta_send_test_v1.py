@@ -59,6 +59,7 @@ def send_meta_whatsapp_test_message(
             "provider": "meta",
             "message_id": None,
             "error": "invalid_to",
+            "meta_response": None,
         }
 
     env = read_whatsapp_meta_env()
@@ -71,6 +72,7 @@ def send_meta_whatsapp_test_message(
             "provider": "meta",
             "message_id": None,
             "error": "access_token_missing",
+            "meta_response": None,
         }
     if not phone_id or phone_id.lower() in PLACEHOLDER_TOKENS:
         return {
@@ -78,6 +80,7 @@ def send_meta_whatsapp_test_message(
             "provider": "meta",
             "message_id": None,
             "error": "phone_number_id_missing",
+            "meta_response": None,
         }
 
     url = f"{META_GRAPH_BASE}/{phone_id}/messages"
@@ -101,6 +104,7 @@ def send_meta_whatsapp_test_message(
             "provider": "meta",
             "message_id": None,
             "error": f"http_error: {exc}",
+            "meta_response": None,
         }
 
     try:
@@ -111,6 +115,7 @@ def send_meta_whatsapp_test_message(
             "provider": "meta",
             "message_id": None,
             "error": "invalid_json_response",
+            "meta_response": None,
         }
 
     if resp.status_code != 200:
@@ -119,6 +124,7 @@ def send_meta_whatsapp_test_message(
             "provider": "meta",
             "message_id": None,
             "error": _safe_meta_error(body, resp.status_code),
+            "meta_response": body if isinstance(body, dict) else None,
         }
 
     if isinstance(body, dict) and body.get("error"):
@@ -127,6 +133,7 @@ def send_meta_whatsapp_test_message(
             "provider": "meta",
             "message_id": None,
             "error": _safe_meta_error(body, resp.status_code),
+            "meta_response": body,
         }
 
     message_id = None
@@ -143,6 +150,7 @@ def send_meta_whatsapp_test_message(
             "provider": "meta",
             "message_id": None,
             "error": "message_id_missing_in_response",
+            "meta_response": body if isinstance(body, dict) else None,
         }
 
     return {
@@ -150,4 +158,5 @@ def send_meta_whatsapp_test_message(
         "provider": "meta",
         "message_id": message_id,
         "error": None,
+        "meta_response": body if isinstance(body, dict) else None,
     }

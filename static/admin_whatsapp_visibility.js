@@ -94,7 +94,14 @@
           return;
         }
         if (data.ok) {
-          setMetaField("awm-meta-send-result", "نجح الإرسال");
+          if (data.meta_response) {
+            setMetaField(
+              "awm-meta-send-result",
+              "نجح الإرسال · " + JSON.stringify(data.meta_response)
+            );
+          } else {
+            setMetaField("awm-meta-send-result", "نجح الإرسال");
+          }
           setMetaField("awm-meta-send-message-id", data.message_id);
           setStatus(
             "awm-meta-send-status",
