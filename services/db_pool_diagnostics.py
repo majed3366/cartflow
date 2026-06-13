@@ -35,6 +35,73 @@ def pool_status_snapshot() -> Dict[str, Any]:
         return {"pool_impl": "unknown", "error": str(exc)[:200]}
 
 
+def build_db_pool_health_snapshot() -> Dict[str, Any]:
+    """
+    Canonical pool pressure snapshot for admin ops and deployment gates.
+
+    Fields: size, checked_out, overflow, max_connections, available_slots,
+    timeout_count, exhausted, pool_class.
+    """
+    try:
+        from services.admin_operational_health import (
+            get_db_pool_snapshot_readonly,
+            get_operational_counter_snapshots,
+        )
+
+        snap = get_db_pool_snapshot_readonly()
+        counters = get_operational_counter_snapshots()
+    except Exception as exc:  # noqa: BLE001
+        return {
+            "available": False,
+            "error": str(exc)[:200],
+            "timeout_count": 0,
+            "exhausted": False,
+        }
+
+    metrics = dict(snap.get("metrics") or {})
+    size = metrics.get("size")
+    checked_out = metrics.get("checked_out")
+    overflow = metrics.get("overflow")
+    pool_class = metrics.get("pool_class") or snap.get("pool_class")
+
+    max_connections: Optional[int] = None
+    available_slots: Optional[int] = None
+    if size is not None:
+        try:
+            max_connections = int(size) + int(overflow or 0)
+        except (TypeError, ValueError):
+            max_connections = int(size)
+    if max_connections is not None and checked_out is not None:
+        try:
+            available_slots = max(0, int(max_connections) - int(checked_out))
+        except (TypeError, ValueError):
+            available_slots = None
+
+    timeout_count = int(counters.get("pool_timeout_count") or 0)
+    exhausted = False
+    if timeout_count > 0:
+        exhausted = True
+    elif (
+        max_connections is not None
+        and checked_out is not None
+        and int(checked_out) >= int(max_connections)
+    ):
+        exhausted = True
+
+    return {
+        "available": bool(snap.get("available")),
+        "pool_class": pool_class,
+        "size": size,
+        "checked_out": checked_out,
+        "overflow": overflow,
+        "max_connections": max_connections,
+        "available_slots": available_slots,
+        "timeout_count": timeout_count,
+        "exhausted": exhausted,
+        "summary_ar": snap.get("summary_ar"),
+    }
+
+
 def log_pool_checkpoint(tag: str, **extra: Any) -> Dict[str, Any]:
     snap = pool_status_snapshot()
     if extra:
@@ -58,3 +125,11 @@ def cached_top_store_id(sess: Any) -> Optional[int]:
         _top_store_id_cache = None
     _top_store_id_cached = True
     return _top_store_id_cache
+
+
+__all__ = [
+    "build_db_pool_health_snapshot",
+    "cached_top_store_id",
+    "log_pool_checkpoint",
+    "pool_status_snapshot",
+]

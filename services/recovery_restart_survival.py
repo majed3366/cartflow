@@ -1747,114 +1747,119 @@ async def run_recovery_resume_scan_async(
     dry_run: bool = False,
     force: bool = False,
 ) -> Dict[str, Any]:
+    from services.db_session_lifecycle import release_scoped_db_session, scoped_db_session_begin
     from services.recovery_process_role_v1 import evaluate_scheduler_ownership_policy
 
-    policy = evaluate_scheduler_ownership_policy(force=force)
-    if not policy.get("may_resume"):
-        block_reason = str(policy.get("block_reason") or "ownership_blocked")
-        disabled_out = {
-            "enabled": False,
-            "dispatched": 0,
-            "reason": block_reason,
-        }
-        try:
-            from services.recovery_health_v1 import record_resume_scan_completed
-
-            record_resume_scan_completed(disabled_out)
-        except Exception:  # noqa: BLE001
-            pass
-        return disabled_out
-
+    scoped_db_session_begin()
     try:
-        db.create_all()
-        stale_repair = repair_stale_running_recovery_schedules()
-        demo_filter = ignore_sandbox_schedules_for_production_startup(
-            dry_run=dry_run,
-            force=force,
-        )
-        now = _utc_now()
-        pending = (
-            db.session.query(RecoverySchedule)
-            .filter(RecoverySchedule.status == STATUS_SCHEDULED)
-            .count()
-        )
-        lim = max(1, int(max_dispatch))
-        due_rows: List[RecoverySchedule] = (
-            db.session.query(RecoverySchedule)
-            .filter(
-                RecoverySchedule.status == STATUS_SCHEDULED,
-                RecoverySchedule.due_at <= now,
-            )
-            .order_by(RecoverySchedule.due_at.asc())
-            .limit(lim)
-            .all()
-        )
-        future_rows: List[RecoverySchedule] = (
-            db.session.query(RecoverySchedule)
-            .filter(
-                RecoverySchedule.status == STATUS_SCHEDULED,
-                RecoverySchedule.due_at > now,
-            )
-            .order_by(RecoverySchedule.due_at.asc())
-            .limit(lim)
-            .all()
-        )
-        _log_resume_scan(
-            count=pending,
-            due_count=len(due_rows),
-            future_count=len(future_rows),
-        )
-        outcomes: List[Dict[str, Any]] = []
-        dispatched = 0
-        for row in due_rows:
-            out = await resume_one_schedule(
-                row, dispatch=not dry_run, force=force
-            )
-            outcomes.append(out)
-            if out.get("dispatched"):
-                dispatched += 1
-        future_outcomes: List[Dict[str, Any]] = []
-        future_rearmed = 0
-        for row in future_rows:
-            out = rearm_one_future_scheduled_recovery(
-                row, dispatch=not dry_run, force=force
-            )
-            future_outcomes.append(out)
-            if out.get("rearmed"):
-                future_rearmed += 1
-        scan_out = {
-            "enabled": True,
-            "dry_run": dry_run,
-            "demo_startup_filter": demo_filter,
-            "stale_running_repair": stale_repair,
-            "stale_running_reconciled": int(stale_repair.get("finalized", 0))
-            + int(stale_repair.get("repaired", 0)),
-            "pending_scheduled": pending,
-            "due_processed": len(due_rows),
-            "dispatched": dispatched,
-            "outcomes": outcomes,
-            "future_processed": len(future_rows),
-            "future_rearmed": future_rearmed,
-            "future_outcomes": future_outcomes,
-        }
-        try:
-            from services.recovery_health_v1 import record_resume_scan_completed
+        policy = evaluate_scheduler_ownership_policy(force=force)
+        if not policy.get("may_resume"):
+            block_reason = str(policy.get("block_reason") or "ownership_blocked")
+            disabled_out = {
+                "enabled": False,
+                "dispatched": 0,
+                "reason": block_reason,
+            }
+            try:
+                from services.recovery_health_v1 import record_resume_scan_completed
 
-            record_resume_scan_completed(scan_out)
-        except Exception:  # noqa: BLE001
-            pass
-        return scan_out
-    except SQLAlchemyError as exc:
-        db.session.rollback()
-        _log.warning("recovery resume scan failed: %s", exc)
-        err_out = {"enabled": True, "error": str(exc), "dispatched": 0}
-        try:
-            from services.recovery_health_v1 import record_resume_scan_completed
+                record_resume_scan_completed(disabled_out)
+            except Exception:  # noqa: BLE001
+                pass
+            return disabled_out
 
-            record_resume_scan_completed(err_out)
-        except Exception:  # noqa: BLE001
-            pass
-        return err_out
+        try:
+            db.create_all()
+            stale_repair = repair_stale_running_recovery_schedules()
+            demo_filter = ignore_sandbox_schedules_for_production_startup(
+                dry_run=dry_run,
+                force=force,
+            )
+            now = _utc_now()
+            pending = (
+                db.session.query(RecoverySchedule)
+                .filter(RecoverySchedule.status == STATUS_SCHEDULED)
+                .count()
+            )
+            lim = max(1, int(max_dispatch))
+            due_rows: List[RecoverySchedule] = (
+                db.session.query(RecoverySchedule)
+                .filter(
+                    RecoverySchedule.status == STATUS_SCHEDULED,
+                    RecoverySchedule.due_at <= now,
+                )
+                .order_by(RecoverySchedule.due_at.asc())
+                .limit(lim)
+                .all()
+            )
+            future_rows: List[RecoverySchedule] = (
+                db.session.query(RecoverySchedule)
+                .filter(
+                    RecoverySchedule.status == STATUS_SCHEDULED,
+                    RecoverySchedule.due_at > now,
+                )
+                .order_by(RecoverySchedule.due_at.asc())
+                .limit(lim)
+                .all()
+            )
+            _log_resume_scan(
+                count=pending,
+                due_count=len(due_rows),
+                future_count=len(future_rows),
+            )
+            outcomes: List[Dict[str, Any]] = []
+            dispatched = 0
+            for row in due_rows:
+                out = await resume_one_schedule(
+                    row, dispatch=not dry_run, force=force
+                )
+                outcomes.append(out)
+                if out.get("dispatched"):
+                    dispatched += 1
+            future_outcomes: List[Dict[str, Any]] = []
+            future_rearmed = 0
+            for row in future_rows:
+                out = rearm_one_future_scheduled_recovery(
+                    row, dispatch=not dry_run, force=force
+                )
+                future_outcomes.append(out)
+                if out.get("rearmed"):
+                    future_rearmed += 1
+            scan_out = {
+                "enabled": True,
+                "dry_run": dry_run,
+                "demo_startup_filter": demo_filter,
+                "stale_running_repair": stale_repair,
+                "stale_running_reconciled": int(stale_repair.get("finalized", 0))
+                + int(stale_repair.get("repaired", 0)),
+                "pending_scheduled": pending,
+                "due_processed": len(due_rows),
+                "dispatched": dispatched,
+                "outcomes": outcomes,
+                "future_processed": len(future_rows),
+                "future_rearmed": future_rearmed,
+                "future_outcomes": future_outcomes,
+            }
+            try:
+                from services.recovery_health_v1 import record_resume_scan_completed
+
+                record_resume_scan_completed(scan_out)
+            except Exception:  # noqa: BLE001
+                pass
+            return scan_out
+        except SQLAlchemyError as exc:
+            db.session.rollback()
+            _log.warning("recovery resume scan failed: %s", exc)
+            err_out = {"enabled": True, "error": str(exc), "dispatched": 0}
+            try:
+                from services.recovery_health_v1 import record_resume_scan_completed
+
+                record_resume_scan_completed(err_out)
+            except Exception:  # noqa: BLE001
+                pass
+            return err_out
+    finally:
+        release_scoped_db_session()
 
 
 def run_recovery_resume_scan_sync(

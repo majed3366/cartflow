@@ -431,6 +431,12 @@ def build_scheduler_health_snapshot() -> dict[str, Any]:
     }
     if db_error:
         out["database_error"] = db_error
+    try:
+        from services.db_pool_diagnostics import build_db_pool_health_snapshot  # noqa: PLC0415
+
+        out["db_pool"] = build_db_pool_health_snapshot()
+    except Exception as exc:  # noqa: BLE001
+        out["db_pool"] = {"available": False, "error": str(exc)[:200], "exhausted": False}
     return out
 
 

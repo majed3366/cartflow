@@ -94,10 +94,11 @@ def test_scan_skips_non_due_scheduled():
     row = _persist_due_row("future")
     row.due_at = datetime.now(timezone.utc) + timedelta(hours=1)
     db.session.commit()
+    sid = int(row.id)
 
     out = asyncio.run(scan_due_recovery_schedules(limit=10))
     db.session.expire_all()
-    row_f = db.session.get(RecoverySchedule, int(row.id))
+    row_f = db.session.get(RecoverySchedule, sid)
     assert out.get("found", 0) == 0
     assert row_f is not None
     assert row_f.status == STATUS_SCHEDULED

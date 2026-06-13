@@ -177,6 +177,13 @@ def build_admin_operational_health_json(
             "error": str(exc)[:200],
         }
 
+    try:
+        from services.db_pool_diagnostics import build_db_pool_health_snapshot
+
+        db_pool = build_db_pool_health_snapshot()
+    except Exception as exc:  # noqa: BLE001
+        db_pool = {"available": False, "error": str(exc)[:200], "exhausted": False}
+
     return {
         "ok": ok,
         "version": "admin_operational_health_v1",
@@ -201,6 +208,7 @@ def build_admin_operational_health_json(
         "product_foundation_health_summary": _product_foundation_health_summary(slug),
         "governance_health_summary": _governance_health_summary(slug),
         "integrations": integrations,
+        "db_pool": db_pool,
         "summary": {
             "scheduler_ok": scheduler_ok,
             "recovery_health": recovery_health_label,
@@ -210,6 +218,9 @@ def build_admin_operational_health_json(
             "lifecycle_disagreements": int(lifecycle_reconciliation.get("disagreement_count") or 0),
             "purchase_truth_gaps": int(purchase_truth_gaps.get("non_durable_stop_total") or 0),
             "stores_with_due": int(scheduler_store_visibility.get("stores_with_due") or 0),
+            "db_pool_exhausted": bool(db_pool.get("exhausted")),
+            "db_pool_checked_out": db_pool.get("checked_out"),
+            "db_pool_timeout_count": int(db_pool.get("timeout_count") or 0),
         },
     }
 

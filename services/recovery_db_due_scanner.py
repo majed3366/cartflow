@@ -47,6 +47,9 @@ async def scan_due_recovery_schedules(
 
     Does not replace asyncio delay dispatch or startup resume scan.
     """
+    from services.db_session_lifecycle import release_scoped_db_session, scoped_db_session_begin
+
+    scoped_db_session_begin()
     src = (source or DEFAULT_SOURCE).strip()[:64]
     lim = max(1, int(limit))
     _log_scanner("START", source=src, limit=lim, dry_run=dry_run)
@@ -62,139 +65,155 @@ async def scan_due_recovery_schedules(
     }
 
     try:
-        db.create_all()
-        stale_repair = repair_stale_running_recovery_schedules()
-        out["stale_running_repair"] = stale_repair
+        try:
+            db.create_all()
+            stale_repair = repair_stale_running_recovery_schedules()
+            out["stale_running_repair"] = stale_repair
 
-        now = _utc_now()
-        due_rows: List[RecoverySchedule] = (
-            db.session.query(RecoverySchedule)
-            .filter(
-                RecoverySchedule.status == STATUS_SCHEDULED,
-                RecoverySchedule.due_at <= now,
+            now = _utc_now()
+            due_rows: List[RecoverySchedule] = (
+                db.session.query(RecoverySchedule)
+                .filter(
+                    RecoverySchedule.status == STATUS_SCHEDULED,
+                    RecoverySchedule.due_at <= now,
+                )
+                .order_by(RecoverySchedule.due_at.asc())
+                .limit(lim)
+                .all()
             )
-            .order_by(RecoverySchedule.due_at.asc())
-            .limit(lim)
-            .all()
-        )
-        out["found"] = len(due_rows)
-        _log_scanner("FOUND", count=len(due_rows), source=src)
+            due_row_ids = [int(r.id) for r in due_rows]
+            out["found"] = len(due_row_ids)
+            _log_scanner("FOUND", count=len(due_row_ids), source=src)
 
-        from services.recovery_execution_boundary import execute_recovery_schedule
+            from services.recovery_execution_boundary import execute_recovery_schedule
 
-        for row in due_rows:
-            rk = row.recovery_key
-            sid = int(row.id)
-            try:
-                from services.recovery_attempt2_trace_v1 import (  # noqa: PLC0415
-                    _row_is_attempt2,
-                    trace_attempt2_for_recovery_key,
-                )
-
-                if _row_is_attempt2(row):
-                    trace_attempt2_for_recovery_key(
-                        rk,
-                        path="db_due_scanner_candidate",
-                        extra={
+            for sid in due_row_ids:
+                row = db.session.get(RecoverySchedule, sid)
+                if row is None:
+                    out["skipped"] += 1
+                    out["outcomes"].append(
+                        {
                             "schedule_id": sid,
-                            "picked_by_scanner": not dry_run,
-                        },
+                            "recovery_key": None,
+                            "dispatched": False,
+                            "reason": "schedule_row_missing",
+                        }
                     )
-            except Exception:  # noqa: BLE001
-                pass
-            ok, reason = evaluate_resume_safety(row)
-            if not ok:
-                out["skipped"] += 1
-                _log_scanner(
-                    "SKIPPED",
-                    schedule_id=sid,
-                    recovery_key=rk,
-                    reason=reason,
-                    source=src,
-                )
-                if not dry_run:
-                    finalize_recovery_schedule_durable(
-                        rk,
-                        status=STATUS_SKIPPED_RESUME,
-                        multi_slot_index=row.multi_slot_index
-                        if row.multi_slot_index >= 0
-                        else None,
-                        sequential_attempt_index=row.sequential_attempt_index,
-                        detail=f"db_due_scanner:{reason}",
+                    continue
+                rk = row.recovery_key
+                sid = int(row.id)
+                try:
+                    from services.recovery_attempt2_trace_v1 import (  # noqa: PLC0415
+                        _row_is_attempt2,
+                        trace_attempt2_for_recovery_key,
                     )
-                out["outcomes"].append(
-                    {
-                        "schedule_id": sid,
-                        "recovery_key": rk,
-                        "dispatched": False,
-                        "reason": reason,
-                    }
-                )
-                continue
 
-            if dry_run:
-                out["skipped"] += 1
+                    if _row_is_attempt2(row):
+                        trace_attempt2_for_recovery_key(
+                            rk,
+                            path="db_due_scanner_candidate",
+                            extra={
+                                "schedule_id": sid,
+                                "picked_by_scanner": not dry_run,
+                            },
+                        )
+                except Exception:  # noqa: BLE001
+                    pass
+                ok, reason = evaluate_resume_safety(row)
+                if not ok:
+                    out["skipped"] += 1
+                    _log_scanner(
+                        "SKIPPED",
+                        schedule_id=sid,
+                        recovery_key=rk,
+                        reason=reason,
+                        source=src,
+                    )
+                    if not dry_run:
+                        finalize_recovery_schedule_durable(
+                            rk,
+                            status=STATUS_SKIPPED_RESUME,
+                            multi_slot_index=row.multi_slot_index
+                            if row.multi_slot_index >= 0
+                            else None,
+                            sequential_attempt_index=row.sequential_attempt_index,
+                            detail=f"db_due_scanner:{reason}",
+                        )
+                    out["outcomes"].append(
+                        {
+                            "schedule_id": sid,
+                            "recovery_key": rk,
+                            "dispatched": False,
+                            "reason": reason,
+                        }
+                    )
+                    continue
+
+                if dry_run:
+                    out["skipped"] += 1
+                    _log_scanner(
+                        "SKIPPED",
+                        schedule_id=sid,
+                        recovery_key=rk,
+                        reason="dry_run",
+                        source=src,
+                    )
+                    out["outcomes"].append(
+                        {
+                            "schedule_id": sid,
+                            "recovery_key": rk,
+                            "dispatched": False,
+                            "reason": "dry_run",
+                        }
+                    )
+                    continue
+
                 _log_scanner(
-                    "SKIPPED",
+                    "DISPATCH",
                     schedule_id=sid,
                     recovery_key=rk,
-                    reason="dry_run",
+                    due_at=row.due_at.isoformat() if row.due_at else None,
                     source=src,
                 )
+                exec_out = await execute_recovery_schedule(schedule_id=sid, source=src)
+                dispatched = bool(exec_out.get("ok"))
+                if dispatched:
+                    out["dispatched"] += 1
+                else:
+                    out["skipped"] += 1
+                    _log_scanner(
+                        "SKIPPED",
+                        schedule_id=sid,
+                        recovery_key=rk,
+                        reason=exec_out.get("reason") or "not_dispatched",
+                        source=src,
+                    )
                 out["outcomes"].append(
                     {
                         "schedule_id": sid,
                         "recovery_key": rk,
-                        "dispatched": False,
-                        "reason": "dry_run",
+                        "dispatched": dispatched,
+                        "reason": exec_out.get("reason"),
+                        "execute_out": exec_out,
                     }
                 )
-                continue
 
             _log_scanner(
-                "DISPATCH",
-                schedule_id=sid,
-                recovery_key=rk,
-                due_at=row.due_at.isoformat() if row.due_at else None,
+                "DONE",
                 source=src,
+                found=out["found"],
+                dispatched=out["dispatched"],
+                skipped=out["skipped"],
             )
-            exec_out = await execute_recovery_schedule(schedule_id=sid, source=src)
-            dispatched = bool(exec_out.get("ok"))
-            if dispatched:
-                out["dispatched"] += 1
-            else:
-                out["skipped"] += 1
-                _log_scanner(
-                    "SKIPPED",
-                    schedule_id=sid,
-                    recovery_key=rk,
-                    reason=exec_out.get("reason") or "not_dispatched",
-                    source=src,
-                )
-            out["outcomes"].append(
-                {
-                    "schedule_id": sid,
-                    "recovery_key": rk,
-                    "dispatched": dispatched,
-                    "reason": exec_out.get("reason"),
-                    "execute_out": exec_out,
-                }
-            )
-
-        _log_scanner(
-            "DONE",
-            source=src,
-            found=out["found"],
-            dispatched=out["dispatched"],
-            skipped=out["skipped"],
-        )
-        return out
-    except SQLAlchemyError as exc:
-        db.session.rollback()
-        _log.warning("db due scanner failed: %s", exc)
-        out["error"] = str(exc)
-        _log_scanner("DONE", source=src, error=str(exc)[:200])
-        return out
+            return out
+        except SQLAlchemyError as exc:
+            db.session.rollback()
+            _log.warning("db due scanner failed: %s", exc)
+            out["error"] = str(exc)
+            _log_scanner("DONE", source=src, error=str(exc)[:200])
+            return out
+    finally:
+        release_scoped_db_session()
 
 
 def scan_due_recovery_schedules_sync(

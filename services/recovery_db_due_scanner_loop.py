@@ -121,6 +121,10 @@ async def run_db_due_scanner_loop_tick() -> Dict[str, Any]:
             except Exception:  # noqa: BLE001
                 pass
             return err_out
+        finally:
+            from services.db_session_lifecycle import release_scoped_db_session
+
+            release_scoped_db_session()
 
 
 async def _db_due_scanner_loop_forever() -> None:
