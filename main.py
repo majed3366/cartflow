@@ -14601,6 +14601,8 @@ class MerchantNormalCartsBatchReads:
     merchant_archived_by_rk: dict[str, bool] = field(default_factory=dict)
     timeline_statuses_by_rk: dict[str, frozenset[str]] = field(default_factory=dict)
     durable_closure_by_rk: dict[str, dict[str, Any]] = field(default_factory=dict)
+    alias_keys_by_ac: dict[int, list[str]] = field(default_factory=dict)
+    effective_delay_seconds_by_ac: dict[int, Optional[float]] = field(default_factory=dict)
     queued_followup_prefetch: Any = None
 
     def store_row_for_cart(self, ac: AbandonedCart) -> Optional[Store]:
@@ -14818,6 +14820,7 @@ def _normal_recovery_group_is_archived_merchant_batch(
     grp_sorted: list[AbandonedCart],
     batch: MerchantNormalCartsBatchReads,
 ) -> bool:
+    """Terminal archive classification using batch maps only — no per-row DB."""
     if not grp_sorted:
         return False
     bh = _normal_recovery_behavioral_merge_from_cart_group(grp_sorted)
@@ -14825,18 +14828,29 @@ def _normal_recovery_group_is_archived_merchant_batch(
         grp_sorted, batch
     )
     ac0 = grp_sorted[0]
+    aid0 = int(getattr(ac0, "id", 0) or 0)
+    if (getattr(ac0, "status", None) or "").strip().lower() == "recovered":
+        return True
     pk = _normal_recovery_dashboard_phase_key_merchant_batch(
         ac0,
         behavioral_override=bh,
         recovery_log_statuses=log_u,
         batch=batch,
     )
-    return _normal_recovery_group_is_terminal_archived(
-        grp_sorted,
-        behavioral_override=bh,
-        recovery_log_statuses=log_u,
-        phase_key=pk,
-    )
+    if pk in _NORMAL_RECOVERY_TERMINAL_PHASE_KEYS:
+        return True
+    sent_n = int(batch.sent_real_count.get(aid0, 0) or 0)
+    log_u_eff = log_u
+    if "skipped_attempt_limit" in log_u:
+        log_u_eff = frozenset(x for x in log_u if x != "skipped_attempt_limit")
+    if log_u_eff & _NORMAL_RECOVERY_TERMINAL_LOG_STATUSES:
+        return True
+    coarse = _normal_recovery_coarse_status(pk)
+    if coarse in _NORMAL_RECOVERY_ARCHIVED_COARSE_STATUSES:
+        if coarse == "ignored" and sent_n >= 1:
+            return False
+        return True
+    return False
 
 
 def _reason_tag_merchant_normal_batch(
@@ -15259,6 +15273,7 @@ def _merchant_normal_dashboard_batch_reads(
     schedule_rows_by_ac: dict[int, list[RecoverySchedule]] = {}
     schedule_status_union_by_ac: dict[int, frozenset[str]] = {}
     next_due_by_ac: dict[int, Optional[str]] = {}
+    effective_delay_seconds_by_ac: dict[int, Optional[float]] = {}
 
     _mbr_seg_t = time.perf_counter()
     _mbr_seg_q = merchant_dashboard_batch_reads_trace_peek_for_seg(_mbr_tr)
@@ -15387,6 +15402,7 @@ def _merchant_normal_dashboard_batch_reads(
         schedule_rows_by_ac[aid_ac] = matched_sched
         st_set: set[str] = set()
         next_due_dt: Optional[datetime] = None
+        eff_delay_sec: Optional[float] = None
         for sr in matched_sched:
             st = (getattr(sr, "status", None) or "").strip().lower()
             step_n = int(getattr(sr, "step", 1) or 1)
@@ -15403,10 +15419,18 @@ def _merchant_normal_dashboard_batch_reads(
                         due = due.astimezone(timezone.utc)
                     if next_due_dt is None or due < next_due_dt:
                         next_due_dt = due
+                if eff_delay_sec is None:
+                    raw_eff = getattr(sr, "effective_delay_seconds", None)
+                    if raw_eff is not None:
+                        try:
+                            eff_delay_sec = float(raw_eff)
+                        except (TypeError, ValueError):
+                            eff_delay_sec = None
             if st:
                 st_set.add(st)
         schedule_status_union_by_ac[aid_ac] = frozenset(st_set)
         next_due_by_ac[aid_ac] = next_due_dt.isoformat() if next_due_dt else None
+        effective_delay_seconds_by_ac[aid_ac] = eff_delay_sec
 
     reason_store_by_session: dict[str, CartRecoveryReason] = {}
     reason_any_by_session: dict[str, CartRecoveryReason] = {}
@@ -15650,6 +15674,7 @@ def _merchant_normal_dashboard_batch_reads(
         reasons_rows_fetched=reasons_rows_fetched,
         peers_loaded=peers_loaded,
         message_logs_loaded=message_logs_loaded,
+        effective_delay_seconds_by_ac=effective_delay_seconds_by_ac,
         queued_followup_prefetch=queued_followup_prefetch,
     )
     cust_map: dict[int, str] = {}
@@ -15778,6 +15803,26 @@ def _merchant_normal_dashboard_batch_reads(
             batch.durable_closure_by_rk = bulk_durable_closures(rk_keys)
         except Exception:  # noqa: BLE001
             pass
+        if slug:
+            from services.merchant_dashboard_recovery_resolve_v1 import (  # noqa: PLC0415
+                canonical_recovery_keys_for_cart,
+            )
+
+            alias_map: dict[int, list[str]] = {}
+            for ac_cap in full_rows:
+                aid_arch = int(getattr(ac_cap, "id", 0) or 0)
+                if not aid_arch:
+                    continue
+                rk_parts = (batch.recovery_key_by_ac.get(aid_arch) or "").strip()
+                alias_map[aid_arch] = canonical_recovery_keys_for_cart(
+                    store_slug=slug,
+                    session_id=(
+                        getattr(ac_cap, "recovery_session_id", None) or ""
+                    ).strip(),
+                    cart_id=(getattr(ac_cap, "zid_cart_id", None) or "").strip(),
+                    recovery_key=rk_parts,
+                )
+            batch.alias_keys_by_ac = alias_map
     merchant_dashboard_batch_reads_trace_finish(_mbr_tr)
     try:
         from services.dashboard_normal_carts_perf_v1 import (  # noqa: PLC0415
@@ -15806,6 +15851,7 @@ def _merchant_normal_recovery_light_payload_merchant_batch(
     now_utc: Optional[datetime] = None,
     phase_key_pre: Optional[str] = None,
     coarse_pre: Optional[str] = None,
+    skip_legacy_lifecycle_truth: bool = False,
 ) -> dict[str, Any]:
     row_wall0 = time.perf_counter()
     row_q0: Optional[int] = None
@@ -15896,12 +15942,14 @@ def _merchant_normal_recovery_light_payload_merchant_batch(
         if batch.store_row_for_cart(ac0) is not None
         else str(getattr(batch, "slug", None) or "").strip()
     )
-    _alias_keys_lc = canonical_recovery_keys_for_cart(
-        store_slug=_slug_pre,
-        session_id=(getattr(ac0, "recovery_session_id", None) or "").strip(),
-        cart_id=(getattr(ac0, "zid_cart_id", None) or "").strip(),
-        recovery_key=rk_pre,
-    )
+    _alias_keys_lc = list(batch.alias_keys_by_ac.get(aid0) or ())
+    if not _alias_keys_lc:
+        _alias_keys_lc = canonical_recovery_keys_for_cart(
+            store_slug=_slug_pre,
+            session_id=(getattr(ac0, "recovery_session_id", None) or "").strip(),
+            cart_id=(getattr(ac0, "zid_cart_id", None) or "").strip(),
+            recovery_key=rk_pre,
+        )
     purchased_flag = (
         any_purchase_truth_for_alias_keys(
             batch.purchase_truth_by_rk, _alias_keys_lc
@@ -16025,37 +16073,39 @@ def _merchant_normal_recovery_light_payload_merchant_batch(
     pk_lc = pk_pre
     sent_ct_lc = sent_ct_pre
     try:
-        from services.merchant_recovery_lifecycle_truth import (
-            attach_merchant_recovery_lifecycle_truth,
-        )
+        if not skip_legacy_lifecycle_truth:
+            from services.merchant_recovery_lifecycle_truth import (
+                attach_merchant_recovery_lifecycle_truth,
+            )
 
-        store_lc = batch.store_row_for_cart(ac0)
-        _lc_store_slug = (
-            str(getattr(store_lc, "zid_store_id", None) or "").strip()
-            if store_lc is not None
-            else str(getattr(batch, "slug", None) or "").strip()
-        )
-        _lt_t0 = time.perf_counter()
-        attach_merchant_recovery_lifecycle_truth(
-            out,
-            ac=ac0,
-            phase_key=pk_lc,
-            coarse=cnorm,
-            sent_ct=sent_ct_lc,
-            log_statuses=log_u_lc,
-            behavioral=bh_lc,
-            reason_tag=rtag,
-            has_phone=has_phone,
-            latest_log=batch.latest_log_by_ac.get(aid0),
-            matched_logs=batch.matched_logs_by_ac.get(aid0, []),
-            attempt_cap=cap_lc,
-            store_slug=_lc_store_slug,
-            purchase_truth=purchased_flag,
-            durable_closure=_durable_closure_lc,
-            timeline_statuses=tl_pre,
-            durable_closure_prefetched=True,
-        )
-        lifecycle_truth_ms = (time.perf_counter() - _lt_t0) * 1000.0
+            store_lc = batch.store_row_for_cart(ac0)
+            _lc_store_slug = (
+                str(getattr(store_lc, "zid_store_id", None) or "").strip()
+                if store_lc is not None
+                else str(getattr(batch, "slug", None) or "").strip()
+            )
+            _lt_t0 = time.perf_counter()
+            attach_merchant_recovery_lifecycle_truth(
+                out,
+                ac=ac0,
+                phase_key=pk_lc,
+                coarse=cnorm,
+                sent_ct=sent_ct_lc,
+                log_statuses=log_u_lc,
+                behavioral=bh_lc,
+                reason_tag=rtag,
+                has_phone=has_phone,
+                latest_log=batch.latest_log_by_ac.get(aid0),
+                matched_logs=batch.matched_logs_by_ac.get(aid0, []),
+                attempt_cap=cap_lc,
+                store_slug=_lc_store_slug,
+                purchase_truth=purchased_flag,
+                durable_closure=_durable_closure_lc,
+                timeline_statuses=tl_pre,
+                durable_closure_prefetched=True,
+                purchase_truth_prefetched=True,
+            )
+            lifecycle_truth_ms = (time.perf_counter() - _lt_t0) * 1000.0
     except Exception:  # noqa: BLE001
         pass
     try:
@@ -16140,6 +16190,10 @@ def _merchant_normal_recovery_light_payload_merchant_batch(
             timeline_statuses=tl_pre,
             last_provider_sent_at=_last_sent_iso,
             matched_logs=batch.matched_logs_by_ac.get(aid0, []),
+            schedule_prefetched=True,
+            effective_delay_seconds_prefetched=batch.effective_delay_seconds_by_ac.get(
+                aid0
+            ),
         )
         if next_due_iso:
             out["next_attempt_due_at"] = next_due_iso
@@ -17635,6 +17689,7 @@ def api_dashboard_normal_carts(request: Request):
         "phones_loaded": 0,
     }
     try:
+        _merchant_dashboard_db_ready()
         dash_store = _dashboard_recovery_store_row()
         dashboard_nc_log_stage(
             "store_resolved",
@@ -19299,6 +19354,7 @@ def _api_json_dashboard_normal_carts(
 ) -> tuple[Dict[str, Any], Dict[str, Any]]:
     page_limit = 50
     page_offset = 0
+    debug_perf = False
     if request is not None:
         try:
             raw_l = request.query_params.get("limit")
@@ -19312,6 +19368,7 @@ def _api_json_dashboard_normal_carts(
                 page_offset = int(raw_o)
         except (TypeError, ValueError):
             page_offset = 0
+        debug_perf = (request.query_params.get("debug_perf") or "").strip() == "1"
     page_limit = min(250, max(1, page_limit))
     page_offset = max(0, page_offset)
     prof_nc: dict[str, Any] = {
@@ -19321,86 +19378,55 @@ def _api_json_dashboard_normal_carts(
         "phones_loaded": 0,
     }
     try:
-        merchant_carts_page_rows, prof_nc = (
-            _normal_recovery_merchant_lightweight_alert_list_for_api(
-                page_limit,
-                page_offset,
-                lifecycle="active",
-                dash_store=dash_store,
-            )
-        )
-        archived_carts_page_rows, _arch_prof = (
-            _normal_recovery_merchant_lightweight_alert_list_for_api(
-                page_limit,
-                page_offset,
-                lifecycle="archived",
-                dash_store=dash_store,
-            )
-        )
-    except (SQLAlchemyError, OSError, TypeError, ValueError):
-        merchant_carts_page_rows = []
-        archived_carts_page_rows = []
-        prof_nc = {
-            "carts_count": 0,
-            "logs_loaded": 0,
-            "reasons_loaded": 0,
-            "phones_loaded": 0,
-        }
-    from services.dashboard_normal_carts_perf_v1 import (  # noqa: PLC0415
-        dashboard_normal_carts_perf_add_render_payload_ms,
-        dashboard_normal_carts_perf_stage,
-    )
-
-    _render0 = time.perf_counter()
-    with dashboard_normal_carts_perf_stage("render_payload"):
-        table_rows = list(merchant_carts_page_rows[:8])
-        from services.customer_lifecycle_states_v1 import (  # noqa: PLC0415
-            lifecycle_filter_counts_from_rows,
-            lifecycle_nav_badge_waiting_count,
+        from services.normal_carts_dashboard_batch_v1 import (  # noqa: PLC0415
+            build_normal_carts_dashboard_api_payload,
         )
 
-        cart_filter_counts = lifecycle_filter_counts_from_rows(
-            merchant_carts_page_rows
+        body, prof_nc, _perf = build_normal_carts_dashboard_api_payload(
+            dash_store,
+            page_limit=page_limit,
+            page_offset=page_offset,
+            debug_perf=debug_perf,
         )
-        refresh_state = _merchant_dashboard_refresh_state_payload(dash_store)
-        bucket_counts: dict[str, int] = {}
-        for row in merchant_carts_page_rows:
-            b = str(row.get("customer_lifecycle_state") or "").strip().lower()
-            if not b:
-                continue
-            bucket_counts[b] = int(bucket_counts.get(b) or 0) + 1
-        body: Dict[str, Any] = {
-            "merchant_table_rows": table_rows,
-            "merchant_carts_page_rows": merchant_carts_page_rows,
-            "merchant_archived_carts_page_rows": archived_carts_page_rows,
-            "merchant_archived_cart_count": len(archived_carts_page_rows),
-            "merchant_cart_filter_counts": cart_filter_counts,
-            "merchant_nav_badge_abandoned": lifecycle_nav_badge_waiting_count(
-                merchant_carts_page_rows
-            ),
-        }
-        body.update(refresh_state)
+        merchant_carts_page_rows = list(body.get("merchant_carts_page_rows") or [])
         try:
+            bucket_counts: dict[str, int] = {}
+            for row in merchant_carts_page_rows:
+                b = str(row.get("customer_lifecycle_state") or "").strip().lower()
+                if not b:
+                    continue
+                bucket_counts[b] = int(bucket_counts.get(b) or 0) + 1
             log.info(
                 "[CART CLASSIFIER] rows=%s buckets=%s",
                 len(merchant_carts_page_rows),
                 bucket_counts,
             )
             log.info(
-                "[DASHBOARD COUNTS] section=normal-carts counts=%s waiting_badge=%s refresh_token=%s",
-                cart_filter_counts,
+                "[DASHBOARD COUNTS] section=normal-carts counts=%s waiting_badge=%s refresh_token=%s perf=%s",
+                body.get("merchant_cart_filter_counts"),
                 int(body.get("merchant_nav_badge_abandoned") or 0),
-                str(refresh_state.get("merchant_dashboard_refresh_token") or ""),
+                str(body.get("merchant_dashboard_refresh_token") or ""),
+                body.get("_perf"),
             )
         except Exception:
             pass
-    try:
-        dashboard_normal_carts_perf_add_render_payload_ms(
-            (time.perf_counter() - _render0) * 1000.0
-        )
-    except Exception:  # noqa: BLE001
-        pass
-    return body, prof_nc
+        return body, prof_nc
+    except (SQLAlchemyError, OSError, TypeError, ValueError):
+        merchant_carts_page_rows = []
+        prof_nc = {
+            "carts_count": 0,
+            "logs_loaded": 0,
+            "reasons_loaded": 0,
+            "phones_loaded": 0,
+        }
+        return {
+            "merchant_table_rows": [],
+            "merchant_carts_page_rows": [],
+            "merchant_archived_carts_page_rows": [],
+            "merchant_archived_cart_count": 0,
+            "merchant_cart_filter_counts": {},
+            "merchant_nav_badge_abandoned": 0,
+        }, prof_nc
 
 
 def _api_json_dashboard_vip_carts(

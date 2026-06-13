@@ -36,6 +36,9 @@ def build_normal_recovery_merchant_lifecycle(
     dashboard_customer_returned_track: bool = False,
     dashboard_return_intel_panel: bool = False,
     recovery_key: str = "",
+    timeline_statuses: Optional[frozenset[str]] = None,
+    purchase_truth: bool = False,
+    purchase_truth_prefetched: bool = False,
 ) -> dict[str, Any]:
     pk = _norm(phase_key) or "pending_send"
     cr = _norm(coarse)
@@ -50,10 +53,23 @@ def build_normal_recovery_merchant_lifecycle(
 
     log_ss = recovery_log_statuses_lower(recovery_log_statuses)
     purchased = lifecycle_purchased_evidence(
-        ls=ls, bk=bk, pk=pk, cr=cr, log_ss=log_ss, recovery_key=recovery_key
+        ls=ls,
+        bk=bk,
+        pk=pk,
+        cr=cr,
+        log_ss=log_ss,
+        recovery_key=recovery_key,
+        purchase_truth=bool(purchase_truth),
+        purchase_truth_prefetched=bool(purchase_truth_prefetched),
     )
     replied = lifecycle_replied_evidence(
-        bh=bh, ls=ls, bk=bk, pk=pk, log_ss=log_ss, recovery_key=recovery_key
+        bh=bh,
+        ls=ls,
+        bk=bk,
+        pk=pk,
+        log_ss=log_ss,
+        recovery_key=recovery_key,
+        timeline_statuses=timeline_statuses,
     )
     returned = lifecycle_returned_evidence(
         bh=bh,
@@ -102,11 +118,19 @@ def build_normal_recovery_merchant_lifecycle(
         )
 
     if replied:
-        from services.recovery_truth_timeline_v1 import continuation_started_proven
+        from services.recovery_truth_timeline_v1 import (
+            continuation_started_proven,
+            STATUS_CONTINUATION_STARTED,
+        )
 
         outcome = "تفاعل العميل — نتابع المسار تلقائياً."
         next_ar = "سيتابع النظام المسار المناسب تلقائياً."
-        if rk and continuation_started_proven(rk):
+        cont = False
+        if timeline_statuses is not None:
+            cont = STATUS_CONTINUATION_STARTED in timeline_statuses
+        elif rk:
+            cont = continuation_started_proven(rk)
+        if cont:
             outcome = "تفاعل العميل — بدأ النظام متابعة الاعتراض."
         return pack(
             "customer_replied",
@@ -183,6 +207,7 @@ def build_normal_recovery_merchant_lifecycle(
             recovery_key,
             log_statuses=log_ss,
             sent_count=sent_n,
+            timeline_statuses=timeline_statuses,
         ):
             return pack(
                 "awaiting_customer_after_send",

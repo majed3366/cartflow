@@ -32,7 +32,21 @@ def lifecycle_purchased_evidence(
     cr: str,
     log_ss: frozenset[str],
     recovery_key: str = "",
+    purchase_truth: bool = False,
+    purchase_truth_prefetched: bool = False,
 ) -> bool:
+    if purchase_truth:
+        return True
+    if purchase_truth_prefetched:
+        return False
+    if bool(
+        ls == "stopped_converted"
+        or bk == "purchase_completed"
+        or pk in ("stopped_purchase", "recovery_complete")
+        or cr == "converted"
+        or "stopped_converted" in log_ss
+    ):
+        return True
     rk = (recovery_key or "").strip()
     if rk:
         try:
@@ -42,13 +56,7 @@ def lifecycle_purchased_evidence(
                 return True
         except Exception:  # noqa: BLE001
             pass
-    return bool(
-        ls == "stopped_converted"
-        or bk == "purchase_completed"
-        or pk in ("stopped_purchase", "recovery_complete")
-        or cr == "converted"
-        or "stopped_converted" in log_ss
-    )
+    return False
 
 
 def lifecycle_replied_evidence(
@@ -59,7 +67,26 @@ def lifecycle_replied_evidence(
     pk: str,
     log_ss: frozenset[str],
     recovery_key: str = "",
+    timeline_statuses: Optional[frozenset[str]] = None,
 ) -> bool:
+    if bool(
+        bh.get("customer_replied") is True
+        or pk == "behavioral_replied"
+        or bk == "customer_replied"
+        or ls in ("skipped_followup_customer_replied", "skipped_user_rejected_help")
+        or "skipped_followup_customer_replied" in log_ss
+        or "skipped_user_rejected_help" in log_ss
+    ):
+        return True
+    if timeline_statuses is not None:
+        try:
+            from services.recovery_truth_timeline_v1 import STATUS_CUSTOMER_REPLY
+
+            if STATUS_CUSTOMER_REPLY in timeline_statuses:
+                return True
+        except Exception:  # noqa: BLE001
+            pass
+        return False
     rk = (recovery_key or "").strip()
     if rk:
         try:
@@ -70,14 +97,7 @@ def lifecycle_replied_evidence(
             return customer_reply_proven_for_dashboard(rk, behavioral=bh)
         except Exception:  # noqa: BLE001
             pass
-    return bool(
-        bh.get("customer_replied") is True
-        or pk == "behavioral_replied"
-        or bk == "customer_replied"
-        or ls in ("skipped_followup_customer_replied", "skipped_user_rejected_help")
-        or "skipped_followup_customer_replied" in log_ss
-        or "skipped_user_rejected_help" in log_ss
-    )
+    return False
 
 
 def lifecycle_returned_evidence(

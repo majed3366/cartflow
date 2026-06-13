@@ -195,6 +195,55 @@ _LIFECYCLE_STATUS_LABEL_AR: dict[str, str] = {
 }
 
 
+def sync_merchant_lifecycle_truth_from_customer_state(target: dict[str, Any]) -> None:
+    """LT-C5: derive legacy ``lifecycle_status`` from authoritative ``customer_lifecycle_state``."""
+    from services.customer_lifecycle_states_v1 import (  # noqa: PLC0415
+        LIFECYCLE_TRUTH_UNAVAILABLE_STATE,
+        STATE_ARCHIVED,
+        STATE_COMPLETED,
+        STATE_CUSTOMER_ENGAGED,
+        STATE_CUSTOMER_REPLY,
+        STATE_NEEDS_INTERVENTION,
+        STATE_RECOVERY_FOLLOWUP_COMPLETE,
+        STATE_RETURN_TO_SITE,
+        STATE_WAITING_CUSTOMER_REPLY,
+        STATE_WAITING_FIRST_SEND,
+        STATE_WAITING_NEXT_SCHEDULED,
+        STATE_WAITING_PURCHASE_WINDOW,
+        STATE_ACTIVE,
+    )
+
+    sk = str(target.get("customer_lifecycle_state") or "").strip().lower()
+    if not sk or sk == LIFECYCLE_TRUTH_UNAVAILABLE_STATE:
+        return
+
+    status_map = {
+        STATE_ACTIVE: "scheduled",
+        STATE_WAITING_FIRST_SEND: "scheduled",
+        STATE_WAITING_CUSTOMER_REPLY: "message_sent",
+        STATE_CUSTOMER_REPLY: "engaged",
+        STATE_CUSTOMER_ENGAGED: "engaged",
+        STATE_RETURN_TO_SITE: "returned_to_site",
+        STATE_WAITING_PURCHASE_WINDOW: "returned_to_site",
+        STATE_WAITING_NEXT_SCHEDULED: "message_sent",
+        STATE_NEEDS_INTERVENTION: "failed",
+        STATE_RECOVERY_FOLLOWUP_COMPLETE: "message_sent",
+        STATE_ARCHIVED: "archived",
+    }
+    if sk == STATE_COMPLETED:
+        variant = str(target.get("customer_lifecycle_completed_variant") or "").strip()
+        legacy = "purchased" if variant == "purchased" else "completed"
+    else:
+        legacy = status_map.get(sk, "scheduled")
+
+    target["lifecycle_status"] = legacy
+    target["lifecycle_status_authority"] = "customer_lifecycle_state"
+    label = str(target.get("customer_lifecycle_label_ar") or "").strip()
+    if label:
+        target["lifecycle_label_ar"] = label
+    target["lifecycle_label_ar_authority"] = "customer_lifecycle_state"
+
+
 def _log_truth_gap(
     *,
     cart_id: str,
@@ -234,6 +283,7 @@ def build_merchant_recovery_lifecycle_truth(
     durable_closure: Optional[dict[str, Any]] = None,
     timeline_statuses: Optional[frozenset[str]] = None,
     durable_closure_prefetched: bool = False,
+    purchase_truth_prefetched: bool = False,
 ) -> dict[str, Any]:
     """حقول موحّدة للوحة التاجر — قراءة فقط من سجلات ومؤشرات موجودة."""
     bh = behavioral if isinstance(behavioral, dict) else {}
@@ -259,13 +309,15 @@ def build_merchant_recovery_lifecycle_truth(
         log_ss=log_ss,
         recovery_key=recovery_key,
         purchase_truth=bool(purchase_truth),
+        purchase_truth_prefetched=bool(purchase_truth_prefetched),
     )
     if durable_closure and durable_closure.get("closure_status") == "purchase_completed":
         purchased = True
     if not purchased and _norm(getattr(ac, "status", None)) == "recovered":
         purchased = True
     replied = lifecycle_replied_evidence(
-        bh=bh, ls=ls, bk="", pk=pk, log_ss=log_ss, recovery_key=recovery_key
+        bh=bh, ls=ls, bk="", pk=pk, log_ss=log_ss, recovery_key=recovery_key,
+        timeline_statuses=timeline_statuses,
     )
     if durable_closure and durable_closure.get("closure_status") == "customer_replied":
         from services.recovery_truth_timeline_v1 import (
@@ -436,6 +488,9 @@ def build_merchant_recovery_lifecycle_truth(
         dashboard_customer_returned_track=returned,
         dashboard_return_intel_panel=False,
         recovery_key=recovery_key,
+        timeline_statuses=timeline_statuses,
+        purchase_truth=bool(purchase_truth),
+        purchase_truth_prefetched=bool(purchase_truth_prefetched),
     )
 
     cart_id = str(getattr(ac, "zid_cart_id", None) or "").strip()[:255]
@@ -447,6 +502,8 @@ def build_merchant_recovery_lifecycle_truth(
         "reason_tag": (reason_tag or "").strip()[:64] or None,
         "customer_phone_present": bool(has_phone),
         "recovery_status": cr or "pending",
+        "lifecycle_evidence_phase_key": pk or None,
+        "lifecycle_evidence_coarse": cr or None,
         "whatsapp_status": whatsapp_status,
         "message_preview": preview or None,
         "last_sent_message_body": preview or None,
@@ -457,6 +514,8 @@ def build_merchant_recovery_lifecycle_truth(
         "purchase_completed_at": purchase_completed_at,
         "lifecycle_status": lifecycle_status,
         "lifecycle_label_ar": lifecycle_label_ar,
+        "lifecycle_status_authority": "lifecycle_evidence_pending",
+        "lifecycle_label_ar_authority": "lifecycle_evidence_pending",
         "merchant_whatsapp_line_ar": whatsapp_line_ar,
         "merchant_return_line_ar": return_line_ar or None,
         "merchant_purchase_line_ar": purchase_line_ar or None,
@@ -523,6 +582,7 @@ def attach_merchant_recovery_lifecycle_truth(
     durable_closure: Optional[dict[str, Any]] = None,
     timeline_statuses: Optional[frozenset[str]] = None,
     durable_closure_prefetched: bool = False,
+    purchase_truth_prefetched: bool = False,
 ) -> None:
     truth = build_merchant_recovery_lifecycle_truth(
         ac=ac,
@@ -541,5 +601,6 @@ def attach_merchant_recovery_lifecycle_truth(
         durable_closure=durable_closure,
         timeline_statuses=timeline_statuses,
         durable_closure_prefetched=durable_closure_prefetched,
+        purchase_truth_prefetched=purchase_truth_prefetched,
     )
     target.update(truth)

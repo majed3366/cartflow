@@ -1,8 +1,14 @@
 # -*- coding: utf-8 -*-
 """
-Customer Lifecycle States v1 — dashboard truth layer (read-only on recovery execution).
+Customer Lifecycle States v1 — **sole merchant-facing lifecycle source of truth** (LT-C1).
 
-Maps timeline + schedule + archive flags to merchant-facing lifecycle states.
+Authoritative answer to: «What is the current lifecycle state of this cart?»
+→ ``customer_lifecycle_state`` produced by ``classify_customer_lifecycle_state_v1``.
+
+Evidence inputs (not authorities): ``phase_key``, ``coarse``, logs, timeline,
+purchase truth, schedules, behavioral JSON, archive flags.
+
+Read-only on recovery execution — does not gate sends or schedules.
 """
 from __future__ import annotations
 
@@ -91,6 +97,10 @@ PRIMARY_RETURN_TO_SITE = "return_to_site"
 PRIMARY_RECOVERED = "recovered"
 PRIMARY_NO_PHONE = "no_phone"
 PRIMARY_ARCHIVED = "archived"
+
+# Shown when lifecycle attach failed — never fall back to classifier chip (LT-C4).
+LIFECYCLE_TRUTH_UNAVAILABLE_LABEL_AR = "— حالة المسار غير متاحة —"
+LIFECYCLE_TRUTH_UNAVAILABLE_STATE = "lifecycle_unavailable"
 
 
 @dataclass(frozen=True)
@@ -519,6 +529,8 @@ def _last_provider_sent_at_utc(
             best = ts
     if best is not None:
         return best
+    if matched_logs is not None:
+        return best
     rk = (recovery_key or "").strip()[:512]
     if not rk:
         return None
@@ -691,6 +703,8 @@ def classify_customer_lifecycle_state_v1(
     timeline_statuses: Optional[frozenset[str]] = None,
     last_provider_sent_at: Optional[str] = None,
     matched_logs: Optional[Sequence[Any]] = None,
+    schedule_prefetched: bool = False,
+    effective_delay_seconds_prefetched: Optional[float] = None,
 ) -> CustomerLifecycleStateV1:
     """Classify one cart row for dashboard lifecycle display."""
     rk = (recovery_key or "").strip()
@@ -830,7 +844,7 @@ def classify_customer_lifecycle_state_v1(
                 due_at = due_at.replace(tzinfo=timezone.utc)
         except (TypeError, ValueError):
             due_at = None
-    if due_at is None:
+    if due_at is None and not schedule_prefetched:
         due_at = _next_schedule_due_at(rk)
 
     if _return_to_site_detected(
@@ -981,7 +995,15 @@ def classify_customer_lifecycle_state_v1(
                 archive_reason="missing_phone",
             )
         next_line_fs = ""
-        eta_sec = _scheduled_effective_delay_seconds(rk)
+        eta_sec = (
+            float(effective_delay_seconds_prefetched)
+            if effective_delay_seconds_prefetched is not None
+            else (
+                None
+                if schedule_prefetched
+                else _scheduled_effective_delay_seconds(rk)
+            )
+        )
         if eta_sec is None and due_at is not None and due_at > now:
             eta_sec = (due_at - now).total_seconds()
         if eta_sec is not None and eta_sec > 0:
@@ -1036,6 +1058,8 @@ def attach_customer_lifecycle_state_v1(
     timeline_statuses: Optional[frozenset[str]] = None,
     last_provider_sent_at: Optional[str] = None,
     matched_logs: Optional[Sequence[Any]] = None,
+    schedule_prefetched: bool = False,
+    effective_delay_seconds_prefetched: Optional[float] = None,
 ) -> CustomerLifecycleStateV1:
     """Attach lifecycle v1 fields; sync primary dashboard status label."""
     lc = classify_customer_lifecycle_state_v1(
@@ -1056,6 +1080,8 @@ def attach_customer_lifecycle_state_v1(
         timeline_statuses=timeline_statuses,
         last_provider_sent_at=last_provider_sent_at,
         matched_logs=matched_logs,
+        schedule_prefetched=schedule_prefetched,
+        effective_delay_seconds_prefetched=effective_delay_seconds_prefetched,
     )
     target.update(lc.to_payload_fields())
     target["merchant_status_label_ar"] = lc.label_ar
@@ -1117,6 +1143,76 @@ def lifecycle_payload_for_reopen(recovery_key: str) -> dict[str, Any]:
     return fields
 
 
+def enforce_lifecycle_truth_consistency_on_row(
+    row: Mapping[str, Any],
+    *,
+    recovery_key: str = "",
+) -> tuple[bool, str]:
+    """LT-C3: measure lifecycle/dashboard alignment; log disagreements."""
+    ok, reason = lifecycle_truth_consistency_for_row(row)
+    rk = (recovery_key or str(row.get("recovery_key") or "")).strip()[:120]
+    if ok:
+        if isinstance(row, dict):
+            row["customer_lifecycle_truth_consistent"] = True
+            row.pop("customer_lifecycle_truth_inconsistency_reason", None)
+        return True, "ok"
+    log.warning(
+        "[LIFECYCLE TRUTH INCONSISTENT] recovery_key=%s reason=%s state=%s bucket=%s",
+        rk or "-",
+        reason,
+        str(row.get("customer_lifecycle_state") or "-")[:64],
+        str(row.get("merchant_cart_bucket") or "-")[:32],
+    )
+    if isinstance(row, dict):
+        row["customer_lifecycle_truth_consistent"] = False
+        row["customer_lifecycle_truth_inconsistency_reason"] = str(reason)[:120]
+    return False, reason
+
+
+def apply_lifecycle_unavailable_fallback(row: dict[str, Any]) -> None:
+    """LT-C4 safe fallback when lifecycle state missing — not classifier chip."""
+    sk = str(row.get("customer_lifecycle_state") or "").strip()
+    if sk:
+        return
+    row["customer_lifecycle_state"] = LIFECYCLE_TRUTH_UNAVAILABLE_STATE
+    row["customer_lifecycle_label_ar"] = LIFECYCLE_TRUTH_UNAVAILABLE_LABEL_AR
+    row["merchant_status_label_ar"] = LIFECYCLE_TRUTH_UNAVAILABLE_LABEL_AR
+    row["customer_lifecycle_status_row_class"] = "s-waiting"
+    row["merchant_status_row_class"] = "s-waiting"
+    row["merchant_cart_bucket"] = UI_FILTER_WAITING
+    row["merchant_cart_primary_bucket"] = PRIMARY_WAITING
+    row["merchant_cart_visible_tabs"] = [UI_FILTER_ALL, UI_FILTER_WAITING]
+    row["customer_lifecycle_truth_consistent"] = False
+    row["customer_lifecycle_truth_inconsistency_reason"] = "missing_customer_lifecycle_state"
+
+
+def finalize_merchant_lifecycle_row_truth(
+    row: dict[str, Any],
+    *,
+    recovery_key: str = "",
+    phase_key_evidence: str = "",
+    coarse_evidence: str = "",
+) -> tuple[bool, str]:
+    """LT-C3/C5: attach evidence fields, enforce consistency, sync parallel fields."""
+    if phase_key_evidence:
+        row["lifecycle_evidence_phase_key"] = str(phase_key_evidence).strip()[:64]
+    if coarse_evidence:
+        row["lifecycle_evidence_coarse"] = str(coarse_evidence).strip().lower()[:32]
+    apply_lifecycle_unavailable_fallback(row)
+    ok, reason = enforce_lifecycle_truth_consistency_on_row(
+        row, recovery_key=recovery_key or str(row.get("recovery_key") or "")
+    )
+    try:
+        from services.merchant_recovery_lifecycle_truth import (  # noqa: PLC0415
+            sync_merchant_lifecycle_truth_from_customer_state,
+        )
+
+        sync_merchant_lifecycle_truth_from_customer_state(row)
+    except Exception:  # noqa: BLE001
+        pass
+    return ok, reason
+
+
 __all__ = [
     "LABEL_AR",
     "STATE_ACTIVE",
@@ -1142,4 +1238,9 @@ __all__ = [
     "lifecycle_state_to_primary_bucket",
     "lifecycle_state_visible_tabs",
     "lifecycle_truth_consistency_for_row",
+    "enforce_lifecycle_truth_consistency_on_row",
+    "apply_lifecycle_unavailable_fallback",
+    "finalize_merchant_lifecycle_row_truth",
+    "LIFECYCLE_TRUTH_UNAVAILABLE_LABEL_AR",
+    "LIFECYCLE_TRUTH_UNAVAILABLE_STATE",
 ]
