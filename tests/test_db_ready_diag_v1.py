@@ -198,6 +198,23 @@ class DbReadyMainIntegrationTests(unittest.TestCase):
         self.assertIn("stage=production_schema_start", text)
         self.assertIn("stage=production_schema_done", text)
 
+    def test_merchant_dashboard_db_ready_skips_schema_logs_when_verified(self) -> None:
+        import main
+        import schema_production_store_bootstrap as boot
+
+        boot._bootstrap_verified_ok = True
+        main._cartflow_api_db_warmed = True
+        buf = io.StringIO()
+        with patch(
+            "schema_production_store_bootstrap.ensure_production_store_schema",
+        ) as mock_schema:
+            with redirect_stdout(buf):
+                main._merchant_dashboard_db_ready()
+            mock_schema.assert_not_called()
+        text = buf.getvalue()
+        self.assertIn("stage=production_schema_skip_cached", text)
+        self.assertNotIn("stage=schema_verify_cached_start", text)
+
 
 if __name__ == "__main__":
     unittest.main()

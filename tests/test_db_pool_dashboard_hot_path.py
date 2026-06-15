@@ -29,9 +29,31 @@ class DbPoolDashboardHotPathTests(unittest.TestCase):
             mock_ca.assert_not_called()
 
     def test_merchant_dashboard_db_ready_noop_when_warmed(self) -> None:
+        from schema_production_store_bootstrap import (
+            reset_production_store_schema_bootstrap_for_tests,
+        )
+
+        reset_production_store_schema_bootstrap_for_tests()
         with patch.object(main, "_ensure_cartflow_api_db_warmed") as mock_warm:
-            main._merchant_dashboard_db_ready()
-            mock_warm.assert_not_called()
+            with patch(
+                "schema_production_store_bootstrap.ensure_production_store_schema",
+            ) as mock_schema:
+                main._merchant_dashboard_db_ready()
+                mock_warm.assert_not_called()
+                mock_schema.assert_called_once()
+
+    def test_merchant_dashboard_db_ready_skips_schema_when_bootstrap_verified(self) -> None:
+        import schema_production_store_bootstrap as boot
+
+        boot._bootstrap_verified_ok = True
+        main._cartflow_api_db_warmed = True
+        with patch.object(main, "_ensure_cartflow_api_db_warmed") as mock_warm:
+            with patch(
+                "schema_production_store_bootstrap.ensure_production_store_schema",
+            ) as mock_schema:
+                main._merchant_dashboard_db_ready()
+                mock_warm.assert_not_called()
+                mock_schema.assert_not_called()
 
     def test_five_consecutive_template_saves_succeed(self) -> None:
         stage1 = DASHBOARD_STAGE_TEXTS["price"][0]

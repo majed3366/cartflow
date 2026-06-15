@@ -1380,6 +1380,11 @@ _cartflow_api_db_warm_lock = threading.Lock()
 _cartflow_api_db_warmed = False
 
 
+def _dashboard_hot_path_ddl_allowed() -> bool:
+    """Dashboard hot path must not run create_all / DDL after startup warm."""
+    return not bool(_cartflow_api_db_warmed)
+
+
 def _ensure_cartflow_api_db_warmed(*, trace_source: str = "warm") -> None:
     """
     مرة واحدة لكل عملية: ‎create_all‎ + مخطط الودجت/المتجر + أعمدة أسباب الاسترجاع + ‎Store‎ الافتراضي.
@@ -1481,6 +1486,7 @@ def _merchant_dashboard_db_ready(*, allow_defer: bool = False) -> bool:
     """لوحة التاجر: لا ‎create_all‎ في المسار الساخن — التدفئة عند الإقلاع فقط."""
     from schema_production_store_bootstrap import ensure_production_store_schema
     from services.db_ready_diag_v1 import (  # noqa: PLC0415
+        db_ready_log_stage,
         db_ready_run,
         db_ready_stage,
     )
@@ -1501,15 +1507,21 @@ def _merchant_dashboard_db_ready(*, allow_defer: bool = False) -> bool:
         wait_for_startup_warm(timeout_s=dashboard_warm_wait_budget_s())
     needed_request_warm = not _cartflow_api_db_warmed
 
+    from schema_production_store_bootstrap import production_store_bootstrap_verified
+
     with db_ready_run(source="dashboard"):
         if needed_request_warm:
             _ensure_cartflow_api_db_warmed(trace_source="dashboard")
-        with db_ready_stage(
-            "production_schema",
-            reason=probe_production_schema_reason(context="dashboard"),
-        ):
-            ensure_production_store_schema(db, context="dashboard")
-        record_request_cached_verification(was_warmed_at_entry)
+        if production_store_bootstrap_verified():
+            db_ready_log_stage("production_schema_skip_cached")
+            record_request_cached_verification(True)
+        else:
+            with db_ready_stage(
+                "production_schema",
+                reason=probe_production_schema_reason(context="dashboard"),
+            ):
+                ensure_production_store_schema(db, context="dashboard")
+            record_request_cached_verification(was_warmed_at_entry)
         duration_ms = (time.perf_counter() - wall_t0) * 1000.0
         try:
             from services.db_ready_restart_survival_v1 import (  # noqa: PLC0415
@@ -16675,7 +16687,8 @@ def _augment_abandoned_candidates_with_sent_recovery_logs(
             sent_logs_for_store,
         )
 
-        db.create_all()
+        if _dashboard_hot_path_ddl_allowed():
+            db.create_all()
         logs = sent_logs_for_store(slug, limit=max(1, int(augment_limit)))
     except (SQLAlchemyError, OSError, TypeError, ValueError):
         db.session.rollback()
@@ -16760,7 +16773,8 @@ def _recent_active_recovery_signal_id_pairs(
         pairs.append(key)
 
     try:
-        db.create_all()
+        if _dashboard_hot_path_ddl_allowed():
+            db.create_all()
         for rr in (
             db.session.query(CartRecoveryReason)
             .filter(CartRecoveryReason.store_slug == slug)
