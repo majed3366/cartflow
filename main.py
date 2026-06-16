@@ -12221,9 +12221,12 @@ def _fetch_zid_store_id_from_profile(access_token: str) -> Optional[str]:
 
 def save_or_update_store_from_token_response(data: dict[str, Any]) -> None:
     """يحفظ ‎access_token / refresh_token / انتهاء الصلاحية‎ دون تسجيل أسرار."""
+    from integrations.zid_client import parse_zid_authorization_from_token_response
+
     access = (data.get("access_token") or "").strip()
     if not access:
         return
+    auth = parse_zid_authorization_from_token_response(data)
     zid = _parse_zid_store_id_from_token(data) or _fetch_zid_store_id_from_profile(
         access
     )
@@ -12248,6 +12251,7 @@ def save_or_update_store_from_token_response(data: dict[str, Any]) -> None:
         row = Store(
             zid_store_id=zid,
             access_token=access,
+            zid_authorization_token=auth,
             refresh_token=refresh,
             token_expires_at=exp,
             is_active=True,
@@ -12256,6 +12260,8 @@ def save_or_update_store_from_token_response(data: dict[str, Any]) -> None:
     else:
         row.zid_store_id = zid or row.zid_store_id
         row.access_token = access
+        if auth:
+            row.zid_authorization_token = auth
         if refresh is not None:
             row.refresh_token = refresh
         row.token_expires_at = exp

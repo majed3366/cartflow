@@ -176,6 +176,14 @@ def ensure_production_store_schema(db: Any, *, context: str = "startup") -> bool
 
             widget_ok = ensure_store_zid_widget_install_schema(db)
             log_store_zid_widget_install_schema_status(db, context=context)
+        with db_ready_stage("bootstrap_zid_oauth_authorization"):
+            from schema_zid_oauth_authorization import (
+                ensure_store_zid_oauth_authorization_schema,
+                log_store_zid_oauth_authorization_schema_status,
+            )
+
+            oauth_auth_ok = ensure_store_zid_oauth_authorization_schema(db)
+            log_store_zid_oauth_authorization_schema_status(db, context=context)
         with db_ready_stage("bootstrap_storefront_truth"):
             from schema_storefront_runtime_truth import (
                 ensure_storefront_runtime_truth_schema,
@@ -187,7 +195,7 @@ def ensure_production_store_schema(db: Any, *, context: str = "startup") -> bool
         with db_ready_stage("schema_verify"):
             status = verify_production_store_schema(db)
             identity_ok = bool(verify_store_identity_schema(db).get("ok"))
-            ok = bool(status.get("ok")) and zid_ok and widget_ok and identity_ok and truth_ok
+            ok = bool(status.get("ok")) and zid_ok and widget_ok and oauth_auth_ok and identity_ok and truth_ok
         tag = "[PRODUCTION DB SCHEMA]"
         if ok:
             _bootstrap_verified_ok = True

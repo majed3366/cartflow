@@ -201,6 +201,9 @@ def apply_oauth_token_to_merchant_store(
     """
     from integrations.zid_client import persist_oauth_tokens_on_store_row
 
+    from schema_zid_oauth_authorization import ensure_store_zid_oauth_authorization_schema
+
+    ensure_store_zid_oauth_authorization_schema(db)
     row = db.session.get(Store, int(store_id))
     if row is None:
         return False
@@ -265,6 +268,7 @@ def disconnect_merchant_store(
         return True, "المتجر غير مربوط بالفعل."
 
     store.access_token = ""
+    store.zid_authorization_token = None
     store.refresh_token = None
     store.token_expires_at = None
     db.session.commit()

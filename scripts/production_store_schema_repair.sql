@@ -9,6 +9,9 @@ ALTER TABLE stores
 ADD COLUMN IF NOT EXISTS connected_at TIMESTAMP NULL;
 
 ALTER TABLE stores
+ADD COLUMN IF NOT EXISTS zid_authorization_token TEXT;
+
+ALTER TABLE stores
 ADD COLUMN IF NOT EXISTS merchant_user_id INTEGER NULL;
 
 ALTER TABLE merchant_users

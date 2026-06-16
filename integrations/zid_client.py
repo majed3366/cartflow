@@ -153,13 +153,21 @@ def zid_oauth_callback_trace(
     )
 
 
-def zid_oauth_token_exchange_trace(*, success: bool, status_code: int, detail: str = "") -> None:
-    emit_zid_oauth_trace(
-        "ZID OAUTH TOKEN EXCHANGE",
-        success=str(bool(success)).lower(),
-        status_code=str(int(status_code)),
-        detail=(detail or "-")[:128],
-    )
+def zid_oauth_token_exchange_trace(
+    *,
+    success: bool,
+    status_code: int,
+    detail: str = "",
+    authorization_present: Optional[bool] = None,
+) -> None:
+    fields: dict[str, str] = {
+        "success": str(bool(success)).lower(),
+        "status_code": str(int(status_code)),
+        "detail": (detail or "-")[:128],
+    }
+    if authorization_present is not None:
+        fields["authorization_present"] = str(bool(authorization_present)).lower()
+    emit_zid_oauth_trace("ZID OAUTH TOKEN EXCHANGE", **fields)
 
 
 def zid_oauth_store_linked_trace(
@@ -174,6 +182,23 @@ def zid_oauth_store_linked_trace(
         merchant_user_id=str(int(merchant_user_id)) if merchant_user_id is not None else "-",
         store_id=str(int(store_id)) if store_id is not None else "-",
     )
+
+
+def parse_zid_authorization_from_token_response(
+    token_response: dict[str, Any],
+) -> Optional[str]:
+    """OAuth ``Authorization`` field (Bearer value without prefix)."""
+    raw = token_response.get("Authorization")
+    if raw is None:
+        raw = token_response.get("authorization")
+    if raw is None:
+        return None
+    s = str(raw).strip()
+    if not s:
+        return None
+    if s.lower().startswith("bearer "):
+        s = s[7:].strip()
+    return s or None
 
 
 def parse_zid_store_id_from_token(data: dict[str, Any]) -> Optional[str]:
@@ -278,6 +303,9 @@ def persist_oauth_tokens_on_store_row(
     if zid:
         row.zid_store_id = zid
     row.access_token = access
+    auth = parse_zid_authorization_from_token_response(token_response)
+    if auth:
+        row.zid_authorization_token = auth
     if refresh is not None:
         row.refresh_token = refresh
     row.token_expires_at = exp
@@ -394,12 +422,16 @@ def exchange_code_for_token(code: str) -> Tuple[dict, int]:
         (body.get("access_token") or "").strip()
     )
     err_hint = ""
+    auth_present: Optional[bool] = None
+    if isinstance(body, dict):
+        auth_present = bool(parse_zid_authorization_from_token_response(body))
     if isinstance(body, dict) and not ok:
         err_hint = str(body.get("error") or body.get("message") or "")[:128]
     zid_oauth_token_exchange_trace(
         success=ok,
         status_code=tr.status_code,
         detail=err_hint or ("ok" if ok else "no_access_token"),
+        authorization_present=auth_present,
     )
     if isinstance(body, dict):
         return (body, tr.status_code)

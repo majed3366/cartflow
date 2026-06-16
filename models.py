@@ -28,6 +28,8 @@ class Store(Base):
     # يُعاد ملؤه بعد ‎OAuth‎ عند التأكد من ‎zid_store_id‎ من الاستجابة
     zid_store_id = Column(String(128), unique=True, nullable=True, index=True)
     access_token = Column(Text, default="")
+    # Zid OAuth Authorization header value (distinct from access_token / X-Manager-Token)
+    zid_authorization_token = Column(Text, nullable=True)
     refresh_token = Column(Text, nullable=True)
     token_expires_at = Column(DateTime, nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
