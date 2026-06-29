@@ -560,6 +560,13 @@
       (sending.explanation_ar
         ? '<p class="ma-wa-completed-section-desc">' + escHtml(sending.explanation_ar) + "</p>"
         : "") +
+      (sending.meta_pairing_instruction_ar
+        ? '<div class="ma-wa-meta-pairing-instruction" role="note">' +
+          '<p class="ma-wa-readiness-k">الخطوة التالية</p>' +
+          '<p class="ma-wa-meta-pairing-steps">' +
+          escHtml(sending.meta_pairing_instruction_ar) +
+          "</p></div>"
+        : "") +
       (mgmt.no_action_ar
         ? '<p class="ma-wa-completed-section-no-action">' + escHtml(mgmt.no_action_ar) + "</p>"
         : "") +
@@ -593,6 +600,13 @@
         ? '<p class="ma-wa-production-sending-explanation">' +
           escHtml(block.explanation_ar) +
           "</p>"
+        : "") +
+      (block.meta_pairing_instruction_ar
+        ? '<div class="ma-wa-meta-pairing-instruction" role="note">' +
+          '<p class="ma-wa-readiness-k">الخطوة التالية</p>' +
+          '<p class="ma-wa-meta-pairing-steps">' +
+          escHtml(block.meta_pairing_instruction_ar) +
+          "</p></div>"
         : "") +
       "</div>"
     );

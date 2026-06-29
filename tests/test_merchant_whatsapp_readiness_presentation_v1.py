@@ -18,11 +18,17 @@ from services.merchant_whatsapp_onboarding_journeys_v1 import (
 )
 from services.merchant_whatsapp_readiness_presentation_v1 import (
     MERCHANT_COMPLETED_HEADLINE_AR,
+    MERCHANT_CARTFLOW_PROVISIONING_NEXT_AR,
     MERCHANT_CTA_EDIT_SETTINGS_AR,
+    MERCHANT_META_PAIRING_INSTRUCTION_AR,
     MERCHANT_NO_ACTION_AR,
     MERCHANT_PRODUCTION_TITLE_AR,
+    MERCHANT_SENDING_EXPLANATION_META_PAIRING_AR,
+    MERCHANT_SENDING_STATUS_META_NOT_LINKED_AR,
     MERCHANT_SENDING_STATUS_PREPARING_AR,
     MERCHANT_SENDING_TITLE_AR,
+    PENDING_REASON_CARTFLOW_PROVISIONING,
+    PENDING_REASON_MERCHANT_META_PAIRING,
 )
 
 
@@ -92,6 +98,20 @@ class MerchantWhatsappReadinessPresentationV1Tests(unittest.TestCase):
         self.assertNotEqual(af.get("primary_cta_label_ar"), CTA_CONTINUE_ACTIVATION_AR)
         self.assertEqual(af.get("primary_cta_label_ar"), MERCHANT_CTA_EDIT_SETTINGS_AR)
 
+    def _production_flags(self) -> dict:
+        return {
+            "flags": {
+                "dashboard_ready": True,
+                "store_connected": True,
+                "whatsapp_configured": True,
+                "provider_ready": False,
+                "recovery_enabled": True,
+                "widget_installed": True,
+                "sandbox_mode_active": False,
+            },
+            "blocking_steps": ["provider_not_ready"],
+        }
+
     @patch(
         "services.merchant_whatsapp_connection_readiness_v1.evaluate_onboarding_readiness"
     )
@@ -99,7 +119,8 @@ class MerchantWhatsappReadinessPresentationV1Tests(unittest.TestCase):
         mock_ob.return_value = self._sandbox_flags()
         ev = connection_readiness_for_merchant_api(self.row)
         af = ev.get("action_first") or {}
-        self.assertEqual(af.get("next_action_ar"), MERCHANT_NO_ACTION_AR)
+        self.assertNotEqual(af.get("next_action_ar"), MERCHANT_NO_ACTION_AR)
+        self.assertEqual(af.get("next_action_ar"), MERCHANT_CARTFLOW_PROVISIONING_NEXT_AR)
         self.assertNotIn("أكمل خطوة التفعيل الحالية", af.get("next_action_ar") or "")
         self.assertEqual(af.get("title_ar"), MERCHANT_PRODUCTION_TITLE_AR)
         self.assertNotIn("جاري إعداد الاتصال", af.get("title_ar") or "")
@@ -127,8 +148,47 @@ class MerchantWhatsappReadinessPresentationV1Tests(unittest.TestCase):
         prod = ev.get("production_sending_readiness") or {}
         self.assertEqual(prod.get("title_ar"), MERCHANT_SENDING_TITLE_AR)
         self.assertEqual(prod.get("status_ar"), MERCHANT_SENDING_STATUS_PREPARING_AR)
+        self.assertEqual(prod.get("pending_reason"), PENDING_REASON_CARTFLOW_PROVISIONING)
         self.assertFalse(prod.get("engine_ready"))
         self.assertIn("أكملت إعداداتك", prod.get("explanation_ar") or "")
+
+    @patch(
+        "services.merchant_whatsapp_connection_readiness_v1.evaluate_onboarding_readiness"
+    )
+    def test_journey_completed_whatsapp_not_ready_no_no_action_message(
+        self, mock_ob: object
+    ) -> None:
+        mock_ob.return_value = self._production_flags()
+        ev = connection_readiness_for_merchant_api(self.row)
+        af = ev.get("action_first") or {}
+        ux = ev.get("merchant_completed_ux") or {}
+        vis = ev.get("merchant_journey_visibility") or {}
+        mgmt = vis.get("path_management") or {}
+        self.assertNotIn(MERCHANT_NO_ACTION_AR, af.get("next_action_ar") or "")
+        self.assertNotEqual(ux.get("no_action_ar"), MERCHANT_NO_ACTION_AR)
+        self.assertNotEqual(mgmt.get("no_action_ar"), MERCHANT_NO_ACTION_AR)
+        self.assertTrue(af.get("merchant_action_required"))
+
+    @patch(
+        "services.merchant_whatsapp_connection_readiness_v1.evaluate_onboarding_readiness"
+    )
+    def test_production_meta_pairing_copy_when_sending_not_ready(
+        self, mock_ob: object
+    ) -> None:
+        mock_ob.return_value = self._production_flags()
+        ev = connection_readiness_for_merchant_api(self.row)
+        prod = ev.get("production_sending_readiness") or {}
+        self.assertEqual(prod.get("status_ar"), MERCHANT_SENDING_STATUS_META_NOT_LINKED_AR)
+        self.assertEqual(
+            prod.get("explanation_ar"), MERCHANT_SENDING_EXPLANATION_META_PAIRING_AR
+        )
+        self.assertEqual(
+            prod.get("meta_pairing_instruction_ar"), MERCHANT_META_PAIRING_INSTRUCTION_AR
+        )
+        self.assertEqual(prod.get("pending_reason"), PENDING_REASON_MERCHANT_META_PAIRING)
+        self.assertTrue(prod.get("merchant_action_required"))
+        af = ev.get("action_first") or {}
+        self.assertEqual(af.get("next_action_ar"), MERCHANT_META_PAIRING_INSTRUCTION_AR)
 
     @patch(
         "services.merchant_whatsapp_connection_readiness_v1.evaluate_onboarding_readiness"
@@ -165,6 +225,8 @@ class MerchantWhatsappReadinessPresentationV1Tests(unittest.TestCase):
         self.assertIn("renderCompletedJourneyVisibility", js)
         self.assertIn("cr.merchant_journey_visibility", js)
         self.assertIn("ma-wa-completed-section-journey", js)
+        self.assertIn("ma-wa-meta-pairing-instruction", js)
+        self.assertIn("meta_pairing_instruction_ar", js)
         self.assertNotIn("تشخيص مؤقت", js)
 
 

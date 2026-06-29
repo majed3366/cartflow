@@ -20,9 +20,9 @@ from services.merchant_whatsapp_onboarding_journeys_v1 import (
     JOURNEY_EXISTING_WHATSAPP_BUSINESS,
 )
 from services.merchant_whatsapp_readiness_presentation_v1 import (
+    MERCHANT_CARTFLOW_PROVISIONING_NEXT_AR,
     MERCHANT_COMPLETED_HEADLINE_AR,
     MERCHANT_CTA_EDIT_SETTINGS_AR,
-    MERCHANT_NO_ACTION_AR,
     MERCHANT_SENDING_STATUS_PREPARING_AR,
 )
 
@@ -112,7 +112,7 @@ class MerchantWhatsappReadinessFinalMerchantUxV1Tests(unittest.TestCase):
         cb = af.get("cta_behavior") or {}
         self.assertEqual(cb.get("cta_action"), CTA_ACTION_SCROLL_SETTINGS)
         self.assertEqual(cb.get("inline_guidance_ar"), "")
-        self.assertEqual(af.get("next_action_ar"), MERCHANT_NO_ACTION_AR)
+        self.assertEqual(af.get("next_action_ar"), MERCHANT_CARTFLOW_PROVISIONING_NEXT_AR)
 
     def test_admin_diagnostics_remain_available(self) -> None:
         from services.merchant_whatsapp_readiness_diagnostic_v1 import (

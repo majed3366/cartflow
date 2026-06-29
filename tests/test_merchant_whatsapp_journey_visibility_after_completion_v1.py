@@ -22,6 +22,7 @@ from services.merchant_whatsapp_onboarding_journeys_v1 import (
     journey_label_ar,
 )
 from services.merchant_whatsapp_readiness_presentation_v1 import (
+    MERCHANT_CARTFLOW_PROVISIONING_NEXT_AR,
     MERCHANT_JOURNEY_CURRENT_CONTEXT_AR,
     MERCHANT_JOURNEY_CURRENT_SECTION_TITLE_AR,
     MERCHANT_JOURNEY_STATUS_BADGE_COMPLETED_AR,
@@ -136,7 +137,11 @@ class MerchantWhatsappJourneyVisibilityAfterCompletionV1Tests(unittest.TestCase)
     def test_no_readiness_failure_language_when_setup_complete(self) -> None:
         ev = self._completed_ev()
         af = ev.get("action_first") or {}
-        self.assertEqual(af.get("next_action_ar"), MERCHANT_NO_ACTION_AR)
+        vis = ev.get("merchant_journey_visibility") or {}
+        mgmt = vis.get("path_management") or {}
+        self.assertNotEqual(af.get("next_action_ar"), MERCHANT_NO_ACTION_AR)
+        self.assertEqual(af.get("next_action_ar"), MERCHANT_CARTFLOW_PROVISIONING_NEXT_AR)
+        self.assertNotEqual(mgmt.get("no_action_ar"), MERCHANT_NO_ACTION_AR)
         self.assertNotIn("أكمل خطوة التفعيل الحالية", af.get("next_action_ar") or "")
         self.assertNotIn("جاري إعداد الاتصال", af.get("title_ar") or "")
         checklist = (ev.get("setup_checklist") or {}).get("checklist_ar") or []

@@ -13,6 +13,10 @@ from services.merchant_whatsapp_journey_execution_v1 import (
     JOURNEY_STATUS_COMPLETED,
     compute_journey_status,
 )
+from services.merchant_whatsapp_connection_readiness_v1 import (
+    CONNECTION_STATE_CONNECTED,
+    READINESS_OVERALL_READY,
+)
 from services.merchant_whatsapp_mode_v1 import (
     WHATSAPP_MODE_CARTFLOW_MANAGED,
     WHATSAPP_MODE_MERCHANT_WHATSAPP,
@@ -28,16 +32,31 @@ from services.merchant_whatsapp_onboarding_journeys_v1 import (
 MERCHANT_SENDING_TITLE_AR = "حالة الإرسال"
 MERCHANT_SENDING_STATUS_PREPARING_AR = "قيد التجهيز بواسطة CartFlow"
 MERCHANT_SENDING_STATUS_READY_AR = "جاهزة للإرسال"
+MERCHANT_SENDING_STATUS_META_NOT_LINKED_AR = "واتساب لم يُربط بمنصة الأعمال بعد"
 
 MERCHANT_COMPLETED_HEADLINE_AR = "تم إكمال إعداد واتساب"
 MERCHANT_COMPLETED_SUBTEXT_AR = "تم حفظ رقم واتساب وتفعيل استرجاع الرسائل."
 MERCHANT_NO_ACTION_AR = "لا يوجد إجراء مطلوب منك حالياً."
+MERCHANT_META_PAIRING_ACTION_TITLE_AR = "إجراء مطلوب: ربط منصة الأعمال"
+MERCHANT_META_PAIRING_INSTRUCTION_AR = (
+    "افتح تطبيق WhatsApp Business → Settings → Account → Business Platform → "
+    "Connect to the Business Platform"
+)
+MERCHANT_CARTFLOW_PROVISIONING_NEXT_AR = (
+    "جاري تجهيز قناة الإرسال للإنتاج بواسطة CartFlow."
+)
+
+PENDING_REASON_MERCHANT_META_PAIRING = "merchant_meta_pairing"
+PENDING_REASON_CARTFLOW_PROVISIONING = "cartflow_provisioning"
 MERCHANT_CTA_EDIT_SETTINGS_AR = "تعديل إعدادات واتساب"
 MERCHANT_PRODUCTION_TITLE_AR = "الإرسال قيد التجهيز"
 MERCHANT_READINESS_BADGE_PREPARING_AR = "قيد التجهيز"
 
 MERCHANT_SENDING_EXPLANATION_COMPLETED_AR = (
     "أكملت إعداداتك المطلوبة. سيبدأ الإرسال الفعلي عند اكتمال تجهيز مزود واتساب."
+)
+MERCHANT_SENDING_EXPLANATION_META_PAIRING_AR = (
+    "يلزم إكمال ربط WhatsApp Business Platform قبل الإرسال الفعلي."
 )
 MERCHANT_SENDING_EXPLANATION_READY_AR = (
     "CartFlow جاهز لإرسال رسائل الاسترجاع عبر واتساب."
@@ -89,6 +108,20 @@ def _sending_ready_from_dimensions(readiness: Mapping[str, Any]) -> bool:
     return False
 
 
+def _merchant_production_sending_ready(
+    readiness: Mapping[str, Any],
+    *,
+    dims_ready: bool,
+) -> bool:
+    """Presentation-only: dims may pass while connection/readiness overall still block send."""
+    if not dims_ready:
+        return False
+    return (
+        readiness.get("connection_state") == CONNECTION_STATE_CONNECTED
+        and readiness.get("readiness_overall") == READINESS_OVERALL_READY
+    )
+
+
 def _dim_ready_map(readiness: Mapping[str, Any]) -> dict[str, bool]:
     out: dict[str, bool] = {}
     for dim in readiness.get("readiness_dimensions") or []:
@@ -116,24 +149,66 @@ def _merchant_completed_checklist(
     ]
 
 
+def _cartflow_operator_provisioning_pending(
+    onboarding_flags: Optional[Mapping[str, bool]],
+) -> bool:
+    """True when missing work is on CartFlow/operator side (not merchant Meta pairing)."""
+    flags = dict(onboarding_flags or {})
+    if flags.get("sandbox_mode_active"):
+        return True
+    if not flags.get("whatsapp_configured"):
+        return True
+    return False
+
+
+def _resolve_sending_pending_reason(
+    *,
+    sending_ready: bool,
+    journey_completed: bool,
+    onboarding_flags: Optional[Mapping[str, bool]],
+) -> Optional[str]:
+    if sending_ready or not journey_completed:
+        return None
+    if _cartflow_operator_provisioning_pending(onboarding_flags):
+        return PENDING_REASON_CARTFLOW_PROVISIONING
+    return PENDING_REASON_MERCHANT_META_PAIRING
+
+
 def _production_sending_block(
     *,
     sending_ready: bool,
     journey_completed: bool,
+    pending_reason: Optional[str] = None,
 ) -> dict[str, Any]:
     if sending_ready:
         return {
             "title_ar": MERCHANT_SENDING_TITLE_AR,
             "status_ar": MERCHANT_SENDING_STATUS_READY_AR,
             "explanation_ar": MERCHANT_SENDING_EXPLANATION_READY_AR,
+            "meta_pairing_instruction_ar": "",
+            "pending_reason": None,
+            "merchant_action_required": False,
             "engine_ready": True,
         }
 
     if journey_completed:
+        if pending_reason == PENDING_REASON_MERCHANT_META_PAIRING:
+            return {
+                "title_ar": MERCHANT_SENDING_TITLE_AR,
+                "status_ar": MERCHANT_SENDING_STATUS_META_NOT_LINKED_AR,
+                "explanation_ar": MERCHANT_SENDING_EXPLANATION_META_PAIRING_AR,
+                "meta_pairing_instruction_ar": MERCHANT_META_PAIRING_INSTRUCTION_AR,
+                "pending_reason": pending_reason,
+                "merchant_action_required": True,
+                "engine_ready": False,
+            }
         return {
             "title_ar": MERCHANT_SENDING_TITLE_AR,
             "status_ar": MERCHANT_SENDING_STATUS_PREPARING_AR,
             "explanation_ar": MERCHANT_SENDING_EXPLANATION_COMPLETED_AR,
+            "meta_pairing_instruction_ar": "",
+            "pending_reason": PENDING_REASON_CARTFLOW_PROVISIONING,
+            "merchant_action_required": False,
             "engine_ready": False,
         }
 
@@ -141,6 +216,9 @@ def _production_sending_block(
         "title_ar": MERCHANT_SENDING_TITLE_AR,
         "status_ar": "قيد الإعداد",
         "explanation_ar": _EXPLANATION_MERCHANT_IN_PROGRESS_AR,
+        "meta_pairing_instruction_ar": "",
+        "pending_reason": None,
+        "merchant_action_required": False,
         "engine_ready": False,
     }
 
@@ -206,6 +284,7 @@ def _merchant_journey_visibility_block(
     journey_key: Optional[str],
     readiness: Mapping[str, Any],
     store: Optional[Any],
+    no_action_ar: str = "",
 ) -> dict[str, Any]:
     return {
         "active": True,
@@ -227,9 +306,34 @@ def _merchant_journey_visibility_block(
             "title_ar": MERCHANT_PATH_MANAGEMENT_SECTION_TITLE_AR,
             "change_journey_cta_ar": JOURNEY_CHANGE_CTA_AR,
             "edit_settings_cta_ar": MERCHANT_CTA_EDIT_SETTINGS_AR,
-            "no_action_ar": MERCHANT_NO_ACTION_AR,
+            "no_action_ar": no_action_ar,
         },
     }
+
+
+def _completed_journey_action_first_copy(
+    *,
+    sending_ready: bool,
+    pending_reason: Optional[str],
+) -> tuple[str, str, str]:
+    """Return (title_ar, next_action_ar, expected_outcome_ar) for completed journey."""
+    if sending_ready:
+        return (
+            MERCHANT_PRODUCTION_TITLE_AR,
+            MERCHANT_NO_ACTION_AR,
+            MERCHANT_SENDING_EXPLANATION_READY_AR,
+        )
+    if pending_reason == PENDING_REASON_MERCHANT_META_PAIRING:
+        return (
+            MERCHANT_META_PAIRING_ACTION_TITLE_AR,
+            MERCHANT_META_PAIRING_INSTRUCTION_AR,
+            MERCHANT_SENDING_EXPLANATION_META_PAIRING_AR,
+        )
+    return (
+        MERCHANT_PRODUCTION_TITLE_AR,
+        MERCHANT_CARTFLOW_PROVISIONING_NEXT_AR,
+        MERCHANT_SENDING_EXPLANATION_COMPLETED_AR,
+    )
 
 
 def _apply_completed_journey_merchant_ux(
@@ -238,14 +342,16 @@ def _apply_completed_journey_merchant_ux(
     *,
     sending_ready: bool,
     journey_key: Optional[str],
+    pending_reason: Optional[str],
 ) -> dict[str, Any]:
+    no_action_ar = MERCHANT_NO_ACTION_AR if sending_ready else ""
     checklist = _merchant_completed_checklist(store, out)
     out["merchant_completed_ux"] = {
         "active": True,
         "headline_ar": MERCHANT_COMPLETED_HEADLINE_AR,
         "subtext_ar": MERCHANT_COMPLETED_SUBTEXT_AR,
         "checklist_ar": checklist,
-        "no_action_ar": MERCHANT_NO_ACTION_AR,
+        "no_action_ar": no_action_ar,
     }
     out["merchant_setup_completion"] = {
         "headline_ar": MERCHANT_COMPLETED_HEADLINE_AR,
@@ -257,23 +363,36 @@ def _apply_completed_journey_merchant_ux(
         journey_key=journey_key,
         readiness=out,
         store=store,
+        no_action_ar=no_action_ar,
     )
     if not sending_ready:
         out["merchant_readiness_badge_ar"] = MERCHANT_READINESS_BADGE_PREPARING_AR
 
+    title_ar, next_action_ar, expected_outcome_ar = _completed_journey_action_first_copy(
+        sending_ready=sending_ready,
+        pending_reason=pending_reason,
+    )
     af = dict(out.get("action_first") or {})
-    af["title_ar"] = MERCHANT_PRODUCTION_TITLE_AR
-    af["next_action_ar"] = MERCHANT_NO_ACTION_AR
+    af["title_ar"] = title_ar
+    af["next_action_ar"] = next_action_ar
     af["primary_cta_label_ar"] = MERCHANT_CTA_EDIT_SETTINGS_AR
-    af["expected_outcome_ar"] = MERCHANT_SENDING_EXPLANATION_COMPLETED_AR
+    af["expected_outcome_ar"] = expected_outcome_ar
     af["journey_completed"] = True
+    af["merchant_action_required"] = (
+        pending_reason == PENDING_REASON_MERCHANT_META_PAIRING
+    )
     cb = dict(af.get("cta_behavior") or {})
     cb["cta_action"] = CTA_ACTION_SCROLL_SETTINGS
     cb["highlight_fields"] = []
-    cb["inline_guidance_ar"] = ""
+    cb["inline_guidance_ar"] = (
+        MERCHANT_META_PAIRING_INSTRUCTION_AR
+        if pending_reason == PENDING_REASON_MERCHANT_META_PAIRING
+        else ""
+    )
     cb["placeholder_ar"] = ""
     cb["journey_completed"] = True
     cb["never_silent"] = True
+    cb["merchant_action_required"] = af["merchant_action_required"]
     af["cta_behavior"] = cb
     out["action_first"] = af
 
@@ -281,7 +400,7 @@ def _apply_completed_journey_merchant_ux(
     setup["headline_ar"] = MERCHANT_COMPLETED_HEADLINE_AR
     setup["checklist_ar"] = []
     setup["remaining_title_ar"] = ""
-    setup["outcome_ar"] = MERCHANT_SENDING_EXPLANATION_COMPLETED_AR
+    setup["outcome_ar"] = expected_outcome_ar
     setup["merchant_presentation"] = True
     out["setup_checklist"] = setup
     return out
@@ -300,7 +419,13 @@ def apply_merchant_readiness_presentation(
     )
     journey_status = compute_journey_status(store, journey_key) if journey_key else None
     journey_completed = journey_status == JOURNEY_STATUS_COMPLETED
-    sending_ready = _sending_ready_from_dimensions(out)
+    dims_ready = _sending_ready_from_dimensions(out)
+    sending_ready = _merchant_production_sending_ready(out, dims_ready=dims_ready)
+    pending_reason = _resolve_sending_pending_reason(
+        sending_ready=sending_ready,
+        journey_completed=journey_completed,
+        onboarding_flags=onboarding_flags,
+    )
 
     out.pop("readiness_diagnostic_temp", None)
 
@@ -310,6 +435,7 @@ def apply_merchant_readiness_presentation(
             store,
             sending_ready=sending_ready,
             journey_key=journey_key,
+            pending_reason=pending_reason,
         )
     else:
         setup = dict(out.get("setup_checklist") or {})
@@ -325,6 +451,7 @@ def apply_merchant_readiness_presentation(
     out["production_sending_readiness"] = _production_sending_block(
         sending_ready=sending_ready,
         journey_completed=journey_completed,
+        pending_reason=pending_reason,
     )
     out["merchant_presentation_v2"] = True
     return out
