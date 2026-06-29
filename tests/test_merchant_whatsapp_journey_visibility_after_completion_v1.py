@@ -22,15 +22,16 @@ from services.merchant_whatsapp_onboarding_journeys_v1 import (
     journey_label_ar,
 )
 from services.merchant_whatsapp_readiness_presentation_v1 import (
-    MERCHANT_CARTFLOW_PROVISIONING_NEXT_AR,
     MERCHANT_JOURNEY_CURRENT_CONTEXT_AR,
     MERCHANT_JOURNEY_CURRENT_SECTION_TITLE_AR,
     MERCHANT_JOURNEY_STATUS_BADGE_COMPLETED_AR,
     MERCHANT_JOURNEY_STATUS_DESC_COMPLETED_AR,
     MERCHANT_JOURNEY_STATUS_SECTION_TITLE_AR,
+    MERCHANT_META_PAIRING_INSTRUCTION_AR,
     MERCHANT_NO_ACTION_AR,
     MERCHANT_PATH_MANAGEMENT_SECTION_TITLE_AR,
-    MERCHANT_SENDING_STATUS_PREPARING_AR,
+    MERCHANT_SENDING_EXPLANATION_META_PAIRING_AR,
+    MERCHANT_SENDING_STATUS_META_NOT_LINKED_AR,
     MERCHANT_SENDING_TITLE_AR,
 )
 
@@ -109,8 +110,10 @@ class MerchantWhatsappJourneyVisibilityAfterCompletionV1Tests(unittest.TestCase)
         ev = self._completed_ev()
         prod = ev.get("production_sending_readiness") or {}
         self.assertEqual(prod.get("title_ar"), MERCHANT_SENDING_TITLE_AR)
-        self.assertEqual(prod.get("status_ar"), MERCHANT_SENDING_STATUS_PREPARING_AR)
-        self.assertIn("أكملت إعداداتك", prod.get("explanation_ar") or "")
+        self.assertEqual(prod.get("status_ar"), MERCHANT_SENDING_STATUS_META_NOT_LINKED_AR)
+        self.assertEqual(
+            prod.get("explanation_ar"), MERCHANT_SENDING_EXPLANATION_META_PAIRING_AR
+        )
 
     def test_merchant_can_still_access_settings(self) -> None:
         ev = self._completed_ev()
@@ -140,7 +143,7 @@ class MerchantWhatsappJourneyVisibilityAfterCompletionV1Tests(unittest.TestCase)
         vis = ev.get("merchant_journey_visibility") or {}
         mgmt = vis.get("path_management") or {}
         self.assertNotEqual(af.get("next_action_ar"), MERCHANT_NO_ACTION_AR)
-        self.assertEqual(af.get("next_action_ar"), MERCHANT_CARTFLOW_PROVISIONING_NEXT_AR)
+        self.assertEqual(af.get("next_action_ar"), MERCHANT_META_PAIRING_INSTRUCTION_AR)
         self.assertNotEqual(mgmt.get("no_action_ar"), MERCHANT_NO_ACTION_AR)
         self.assertNotIn("أكمل خطوة التفعيل الحالية", af.get("next_action_ar") or "")
         self.assertNotIn("جاري إعداد الاتصال", af.get("title_ar") or "")

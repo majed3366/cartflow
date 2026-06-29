@@ -24,6 +24,7 @@ from services.merchant_whatsapp_mode_v1 import (
 )
 from services.merchant_whatsapp_onboarding_journeys_v1 import (
     JOURNEY_CHANGE_CTA_AR,
+    JOURNEY_EXISTING_WHATSAPP_BUSINESS,
     journey_description_ar,
     journey_label_ar,
     normalize_whatsapp_onboarding_journey,
@@ -46,7 +47,7 @@ MERCHANT_CARTFLOW_PROVISIONING_NEXT_AR = (
     "جاري تجهيز قناة الإرسال للإنتاج بواسطة CartFlow."
 )
 
-PENDING_REASON_MERCHANT_META_PAIRING = "merchant_meta_pairing"
+PENDING_REASON_META_PAIRING_REQUIRED = "meta_pairing_required"
 PENDING_REASON_CARTFLOW_PROVISIONING = "cartflow_provisioning"
 MERCHANT_CTA_EDIT_SETTINGS_AR = "تعديل إعدادات واتساب"
 MERCHANT_PRODUCTION_TITLE_AR = "الإرسال قيد التجهيز"
@@ -149,16 +150,22 @@ def _merchant_completed_checklist(
     ]
 
 
+def _existing_whatsapp_business_needs_meta_pairing(
+    store: Optional[Any],
+    journey_key: Optional[str],
+) -> bool:
+    """Merchant-owned WhatsApp path: pairing is on the merchant, not platform sandbox."""
+    if journey_key != JOURNEY_EXISTING_WHATSAPP_BUSINESS:
+        return False
+    return _store_has_number(store) and _merchant_recovery_enabled(store)
+
+
 def _cartflow_operator_provisioning_pending(
     onboarding_flags: Optional[Mapping[str, bool]],
 ) -> bool:
-    """True when missing work is on CartFlow/operator side (not merchant Meta pairing)."""
+    """True when CartFlow/operator must provision platform credentials (not merchant Meta)."""
     flags = dict(onboarding_flags or {})
-    if flags.get("sandbox_mode_active"):
-        return True
-    if not flags.get("whatsapp_configured"):
-        return True
-    return False
+    return not flags.get("whatsapp_configured")
 
 
 def _resolve_sending_pending_reason(
@@ -166,12 +173,20 @@ def _resolve_sending_pending_reason(
     sending_ready: bool,
     journey_completed: bool,
     onboarding_flags: Optional[Mapping[str, bool]],
+    journey_key: Optional[str] = None,
+    store: Optional[Any] = None,
 ) -> Optional[str]:
     if sending_ready or not journey_completed:
         return None
+    if _existing_whatsapp_business_needs_meta_pairing(store, journey_key):
+        return PENDING_REASON_META_PAIRING_REQUIRED
     if _cartflow_operator_provisioning_pending(onboarding_flags):
         return PENDING_REASON_CARTFLOW_PROVISIONING
-    return PENDING_REASON_MERCHANT_META_PAIRING
+    return PENDING_REASON_META_PAIRING_REQUIRED
+
+
+def _is_meta_pairing_pending_reason(pending_reason: Optional[str]) -> bool:
+    return pending_reason == PENDING_REASON_META_PAIRING_REQUIRED
 
 
 def _production_sending_block(
@@ -192,7 +207,7 @@ def _production_sending_block(
         }
 
     if journey_completed:
-        if pending_reason == PENDING_REASON_MERCHANT_META_PAIRING:
+        if _is_meta_pairing_pending_reason(pending_reason):
             return {
                 "title_ar": MERCHANT_SENDING_TITLE_AR,
                 "status_ar": MERCHANT_SENDING_STATUS_META_NOT_LINKED_AR,
@@ -323,7 +338,7 @@ def _completed_journey_action_first_copy(
             MERCHANT_NO_ACTION_AR,
             MERCHANT_SENDING_EXPLANATION_READY_AR,
         )
-    if pending_reason == PENDING_REASON_MERCHANT_META_PAIRING:
+    if pending_reason == PENDING_REASON_META_PAIRING_REQUIRED:
         return (
             MERCHANT_META_PAIRING_ACTION_TITLE_AR,
             MERCHANT_META_PAIRING_INSTRUCTION_AR,
@@ -378,15 +393,13 @@ def _apply_completed_journey_merchant_ux(
     af["primary_cta_label_ar"] = MERCHANT_CTA_EDIT_SETTINGS_AR
     af["expected_outcome_ar"] = expected_outcome_ar
     af["journey_completed"] = True
-    af["merchant_action_required"] = (
-        pending_reason == PENDING_REASON_MERCHANT_META_PAIRING
-    )
+    af["merchant_action_required"] = _is_meta_pairing_pending_reason(pending_reason)
     cb = dict(af.get("cta_behavior") or {})
     cb["cta_action"] = CTA_ACTION_SCROLL_SETTINGS
     cb["highlight_fields"] = []
     cb["inline_guidance_ar"] = (
         MERCHANT_META_PAIRING_INSTRUCTION_AR
-        if pending_reason == PENDING_REASON_MERCHANT_META_PAIRING
+        if _is_meta_pairing_pending_reason(pending_reason)
         else ""
     )
     cb["placeholder_ar"] = ""
@@ -425,6 +438,8 @@ def apply_merchant_readiness_presentation(
         sending_ready=sending_ready,
         journey_completed=journey_completed,
         onboarding_flags=onboarding_flags,
+        journey_key=journey_key,
+        store=store,
     )
 
     out.pop("readiness_diagnostic_temp", None)

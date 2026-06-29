@@ -23,6 +23,9 @@ from services.merchant_whatsapp_readiness_presentation_v1 import (
     MERCHANT_CARTFLOW_PROVISIONING_NEXT_AR,
     MERCHANT_COMPLETED_HEADLINE_AR,
     MERCHANT_CTA_EDIT_SETTINGS_AR,
+    MERCHANT_META_PAIRING_INSTRUCTION_AR,
+    MERCHANT_SENDING_EXPLANATION_META_PAIRING_AR,
+    MERCHANT_SENDING_STATUS_META_NOT_LINKED_AR,
     MERCHANT_SENDING_STATUS_PREPARING_AR,
 )
 
@@ -102,8 +105,10 @@ class MerchantWhatsappReadinessFinalMerchantUxV1Tests(unittest.TestCase):
         ev = self._completed_ev()
         prod = ev.get("production_sending_readiness") or {}
         self.assertEqual(prod.get("title_ar"), "حالة الإرسال")
-        self.assertEqual(prod.get("status_ar"), MERCHANT_SENDING_STATUS_PREPARING_AR)
-        self.assertIn("أكملت إعداداتك", prod.get("explanation_ar") or "")
+        self.assertEqual(prod.get("status_ar"), MERCHANT_SENDING_STATUS_META_NOT_LINKED_AR)
+        self.assertEqual(
+            prod.get("explanation_ar"), MERCHANT_SENDING_EXPLANATION_META_PAIRING_AR
+        )
 
     def test_cta_scrolls_to_settings_without_unfinished_copy(self) -> None:
         ev = self._completed_ev()
@@ -111,8 +116,8 @@ class MerchantWhatsappReadinessFinalMerchantUxV1Tests(unittest.TestCase):
         self.assertEqual(af.get("primary_cta_label_ar"), MERCHANT_CTA_EDIT_SETTINGS_AR)
         cb = af.get("cta_behavior") or {}
         self.assertEqual(cb.get("cta_action"), CTA_ACTION_SCROLL_SETTINGS)
-        self.assertEqual(cb.get("inline_guidance_ar"), "")
-        self.assertEqual(af.get("next_action_ar"), MERCHANT_CARTFLOW_PROVISIONING_NEXT_AR)
+        self.assertEqual(cb.get("inline_guidance_ar"), MERCHANT_META_PAIRING_INSTRUCTION_AR)
+        self.assertEqual(af.get("next_action_ar"), MERCHANT_META_PAIRING_INSTRUCTION_AR)
 
     def test_admin_diagnostics_remain_available(self) -> None:
         from services.merchant_whatsapp_readiness_diagnostic_v1 import (
