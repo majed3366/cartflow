@@ -20,10 +20,11 @@ from services.dashboard_snapshot_v1 import (
     SNAPSHOT_TYPE_SUMMARY,
     SNAPSHOT_TYPE_WIDGET_PANEL,
     STATUS_FAILED,
+    any_store_needs_failsafe_snapshot_build,
     list_store_slugs_for_snapshot_build,
     upsert_dashboard_snapshot,
 )
-from services.db_pool_pressure_v1 import evaluate_db_pool_pressure, LEVEL_HIGH, LEVEL_CRITICAL
+from services.db_pool_pressure_v1 import evaluate_db_pool_pressure, LEVEL_CRITICAL
 from services.db_session_lifecycle import scoped_db_session_begin, release_scoped_db_session
 
 log = logging.getLogger("cartflow")
@@ -51,14 +52,48 @@ def dashboard_snapshot_builder_enabled() -> bool:
         return False
 
 
-def builder_should_skip_due_to_pool_pressure() -> tuple[bool, str]:
+def _builder_skip_util_pct_threshold() -> float:
+    raw = (os.environ.get("CARTFLOW_DASHBOARD_SNAPSHOT_BUILDER_SKIP_UTIL_PCT") or "90").strip()
+    try:
+        return float(raw)
+    except (TypeError, ValueError):
+        return 90.0
+
+
+def _emit_builder_pool_skip(*, reason: str, pressure: dict[str, Any]) -> None:
+    print(
+        f"[DASHBOARD SNAPSHOT SKIP] reason={reason} "
+        f"pressure={pressure.get('pressure_level')} "
+        f"checked_out={pressure.get('checked_out')} "
+        f"pool_size={pressure.get('pool_size')} "
+        f"overflow={pressure.get('overflow')} "
+        f"available={pressure.get('available_slots')}",
+        flush=True,
+    )
+
+
+def builder_should_skip_due_to_pool_pressure() -> tuple[bool, str, dict[str, Any]]:
+    """
+    Builder-only pool guard — less aggressive than scanner circuit breaker.
+
+    Skip only on CRITICAL pressure with utilization >= 90%. Never skip on HIGH.
+    """
     pressure = evaluate_db_pool_pressure()
     level = str(pressure.get("pressure_level") or "")
-    if level in (LEVEL_HIGH, LEVEL_CRITICAL):
-        return True, f"pool_pressure_{level}"
-    if pressure.get("circuit_breaker_open"):
-        return True, "pool_circuit_breaker"
-    return False, ""
+    if level != LEVEL_CRITICAL:
+        return False, "", pressure
+
+    util_pct = pressure.get("utilization_pct")
+    threshold = _builder_skip_util_pct_threshold()
+    if util_pct is not None and float(util_pct) >= threshold:
+        return True, f"pool_pressure_{level}", pressure
+    return False, "", pressure
+
+
+def builder_failsafe_forced_run_needed() -> tuple[bool, str]:
+    """True when active stores lack a fresh summary snapshot (5m failsafe)."""
+    stores = list_store_slugs_for_snapshot_build(limit=snapshot_build_store_limit())
+    return any_store_needs_failsafe_snapshot_build(store_pairs=stores)
 
 
 def snapshot_build_store_limit() -> int:
@@ -230,13 +265,35 @@ def build_store_dashboard_snapshots(
 
 def run_dashboard_snapshot_builder_tick() -> dict[str, Any]:
     """One bounded builder pass across active stores."""
-    skip, reason = builder_should_skip_due_to_pool_pressure()
+    skip, reason, pressure = builder_should_skip_due_to_pool_pressure()
+    forced = False
+    force_reason = ""
+
     if skip:
+        scoped_db_session_begin()
+        try:
+            forced, force_reason = builder_failsafe_forced_run_needed()
+        finally:
+            release_scoped_db_session()
+        if not forced:
+            _emit_builder_pool_skip(reason=reason, pressure=pressure)
+            return {
+                "skipped": True,
+                "reason": reason,
+                "stores_built": 0,
+                "pressure": pressure,
+            }
+
+    if forced:
         print(
-            f"[DASHBOARD SNAPSHOT BUILDER SKIP] reason={reason}",
+            f"[DASHBOARD SNAPSHOT BUILDER FORCED] reason={force_reason} "
+            f"pressure={pressure.get('pressure_level')} "
+            f"checked_out={pressure.get('checked_out')} "
+            f"pool_size={pressure.get('pool_size')} "
+            f"overflow={pressure.get('overflow')} "
+            f"available={pressure.get('available_slots')}",
             flush=True,
         )
-        return {"skipped": True, "reason": reason, "stores_built": 0}
 
     scoped_db_session_begin()
     try:
@@ -269,6 +326,7 @@ def run_dashboard_snapshot_builder_tick() -> dict[str, Any]:
 
 __all__ = [
     "build_store_dashboard_snapshots",
+    "builder_failsafe_forced_run_needed",
     "builder_should_skip_due_to_pool_pressure",
     "dashboard_snapshot_builder_enabled",
     "run_dashboard_snapshot_builder_tick",

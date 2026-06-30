@@ -13,12 +13,14 @@ from fastapi.testclient import TestClient
 
 from extensions import db
 from main import app
-from models import DashboardSnapshot
+from models import DashboardSnapshot, Store
 from services.dashboard_snapshot_v1 import (
     ENV_SNAPSHOT_MODE,
     SNAPSHOT_TYPE_REFRESH_STATE,
     SNAPSHOT_TYPE_STORE_CONNECTION,
+    SNAPSHOT_TYPE_SUMMARY,
     SNAPSHOT_TYPE_WIDGET_PANEL,
+    any_store_needs_failsafe_snapshot_build,
 )
 
 
@@ -198,9 +200,106 @@ class DashboardSnapshotPhase1BTests(unittest.TestCase):
             str(pressure.get("pressure_level") or "ok"),
             ("ok", "elevated", "high", "critical"),
         )
-        skip, _reason = builder_should_skip_due_to_pool_pressure()
+        skip, _reason, _pressure = builder_should_skip_due_to_pool_pressure()
         self.assertIsInstance(skip, bool)
         self.assertTrue(callable(run_dashboard_snapshot_builder_tick))
+
+    def test_builder_does_not_skip_on_high_pressure(self) -> None:
+        from services.dashboard_snapshot_builder_v1 import (
+            builder_should_skip_due_to_pool_pressure,
+        )
+
+        pressure = {
+            "pressure_level": "high",
+            "circuit_breaker_open": True,
+            "utilization_pct": 76.0,
+            "checked_out": 23,
+            "pool_size": 30,
+            "overflow": 0,
+            "available_slots": 7,
+        }
+        with patch(
+            "services.dashboard_snapshot_builder_v1.evaluate_db_pool_pressure",
+            return_value=pressure,
+        ):
+            skip, reason, out = builder_should_skip_due_to_pool_pressure()
+        self.assertFalse(skip)
+        self.assertEqual(reason, "")
+        self.assertEqual(out["pressure_level"], "high")
+
+    def test_builder_skips_on_critical_high_utilization(self) -> None:
+        from services.dashboard_snapshot_builder_v1 import (
+            builder_should_skip_due_to_pool_pressure,
+        )
+
+        pressure = {
+            "pressure_level": "critical",
+            "utilization_pct": 92.0,
+            "checked_out": 28,
+            "pool_size": 30,
+            "overflow": 0,
+            "available_slots": 2,
+        }
+        with patch(
+            "services.dashboard_snapshot_builder_v1.evaluate_db_pool_pressure",
+            return_value=pressure,
+        ):
+            skip, reason, _out = builder_should_skip_due_to_pool_pressure()
+        self.assertTrue(skip)
+        self.assertEqual(reason, "pool_pressure_critical")
+
+    def test_builder_does_not_skip_critical_low_utilization(self) -> None:
+        from services.dashboard_snapshot_builder_v1 import (
+            builder_should_skip_due_to_pool_pressure,
+        )
+
+        pressure = {
+            "pressure_level": "critical",
+            "utilization_pct": 10.0,
+            "checked_out": 3,
+            "pool_size": 30,
+            "overflow": 0,
+            "available_slots": 1,
+        }
+        with patch(
+            "services.dashboard_snapshot_builder_v1.evaluate_db_pool_pressure",
+            return_value=pressure,
+        ):
+            skip, reason, _out = builder_should_skip_due_to_pool_pressure()
+        self.assertFalse(skip)
+        self.assertEqual(reason, "")
+
+    def test_failsafe_when_no_summary_snapshot(self) -> None:
+        st = Store(zid_store_id="failsafe-demo", recovery_attempts=1)
+        db.session.add(st)
+        db.session.commit()
+        needs, reason = any_store_needs_failsafe_snapshot_build(
+            store_pairs=[(int(st.id), "failsafe-demo")],
+        )
+        self.assertTrue(needs)
+        self.assertIn("no_snapshot", reason)
+
+    def test_failsafe_when_snapshot_older_than_5m(self) -> None:
+        st = Store(zid_store_id="failsafe-stale", recovery_attempts=1)
+        db.session.add(st)
+        db.session.commit()
+        old = datetime.now(timezone.utc) - timedelta(minutes=6)
+        row = DashboardSnapshot(
+            store_slug="failsafe-stale",
+            snapshot_type=SNAPSHOT_TYPE_SUMMARY,
+            payload_json='{"ok": true}',
+            generated_at=old,
+            expires_at=old + timedelta(seconds=60),
+            version=1,
+            status="active",
+        )
+        db.session.add(row)
+        db.session.commit()
+        needs, reason = any_store_needs_failsafe_snapshot_build(
+            store_pairs=[(int(st.id), "failsafe-stale")],
+        )
+        self.assertTrue(needs)
+        self.assertIn("stale_snapshot", reason)
 
 
 if __name__ == "__main__":

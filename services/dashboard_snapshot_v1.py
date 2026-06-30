@@ -74,6 +74,36 @@ def snapshot_ttl_seconds(snapshot_type: str) -> int:
     return int(defaults.get(snapshot_type or "", 60))
 
 
+def snapshot_builder_failsafe_seconds() -> int:
+    raw = (os.environ.get("CARTFLOW_DASHBOARD_SNAPSHOT_FAILSAFE_SECONDS") or "").strip()
+    try:
+        return max(60, min(3600, int(raw or "300")))
+    except (TypeError, ValueError):
+        return 300
+
+
+def any_store_needs_failsafe_snapshot_build(
+    *,
+    store_pairs: list[tuple[int, str]],
+) -> tuple[bool, str]:
+    """True when any store lacks a summary snapshot or last build exceeds failsafe age."""
+    if not store_pairs:
+        return False, ""
+    cutoff = _utcnow() - timedelta(seconds=snapshot_builder_failsafe_seconds())
+    for _store_id, slug in store_pairs:
+        s = (slug or "").strip()
+        if not s:
+            continue
+        row = fetch_latest_snapshot_row(store_slug=s, snapshot_type=SNAPSHOT_TYPE_SUMMARY)
+        if row is None:
+            return True, f"no_snapshot store_slug={s}"
+        gen = _as_utc(row.generated_at)
+        if gen is None or gen < cutoff:
+            age_s = int((_utcnow() - gen).total_seconds()) if gen else -1
+            return True, f"stale_snapshot store_slug={s} age_s={age_s}"
+    return False, ""
+
+
 def _emit(line: str) -> None:
     try:
         print(line, flush=True)
@@ -248,6 +278,7 @@ __all__ = [
     "STATUS_BUILDING",
     "STATUS_FAILED",
     "STATUS_STALE",
+    "any_store_needs_failsafe_snapshot_build",
     "decode_snapshot_payload",
     "dashboard_snapshot_mode_enabled",
     "emit_dashboard_degraded",
@@ -256,6 +287,7 @@ __all__ = [
     "emit_snapshot_read",
     "fetch_latest_snapshot_row",
     "list_store_slugs_for_snapshot_build",
+    "snapshot_builder_failsafe_seconds",
     "snapshot_row_is_stale",
     "snapshot_ttl_seconds",
     "upsert_dashboard_snapshot",
