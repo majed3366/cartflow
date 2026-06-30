@@ -2533,39 +2533,89 @@
     return false;
   }
 
-  function patchCartRowArchivedVisual(rk, archived, lifecycle) {
+  function applyLifecyclePayloadToRow(mc, lifecycle) {
+    if (!mc || !lifecycle || typeof lifecycle !== "object") return;
+    Object.keys(lifecycle).forEach(function (k) {
+      if (lifecycle[k] !== undefined && lifecycle[k] !== null) {
+        mc[k] = lifecycle[k];
+      }
+    });
+    if (lifecycle.merchant_status_label_ar) {
+      mc.merchant_status_label_ar = lifecycle.merchant_status_label_ar;
+    }
+    if (lifecycle.merchant_status_row_class) {
+      mc.merchant_status_row_class = lifecycle.merchant_status_row_class;
+    }
+    mc.merchant_next_action_urgent = false;
+  }
+
+  function syncReopenedCartRowMemory(rk, lifecycle) {
     var key = String(rk || "").trim();
     if (!key) return;
     var ctx = findCartRowContext(key);
     var rowId = ctx && (ctx.merchant_case_row_id || ctx.id);
+    lastArchivedCartsPageRows = lastArchivedCartsPageRows.filter(function (mc) {
+      return !rowMatchesLifecycleKey(mc, key, rowId);
+    });
+    var activeRow = null;
     lastNormalCartsPageRows.forEach(function (mc) {
-      if (!rowMatchesLifecycleKey(mc, key, rowId)) return;
-      if (archived) {
-        mc.customer_lifecycle_is_archived_visual = true;
-        mc.customer_lifecycle_state = "archived";
-        mc.customer_lifecycle_label_ar = "مؤرشفة";
-        mc.customer_lifecycle_dashboard_action = "reopen";
-        mc.customer_lifecycle_status_row_class = "s-archived";
-        mc.merchant_status_row_class = "s-archived";
-        mc.merchant_status_label_ar = "مؤرشفة";
-        mc.merchant_next_action_urgent = false;
-      } else if (lifecycle && typeof lifecycle === "object") {
-        Object.keys(lifecycle).forEach(function (k) {
-          if (lifecycle[k] !== undefined && lifecycle[k] !== null) {
-            mc[k] = lifecycle[k];
-          }
+      if (rowMatchesLifecycleKey(mc, key, rowId)) activeRow = mc;
+    });
+    if (!activeRow) {
+      activeRow = {};
+      if (ctx && typeof ctx === "object") {
+        Object.keys(ctx).forEach(function (k) {
+          activeRow[k] = ctx[k];
         });
-        if (lifecycle.merchant_status_label_ar) {
-          mc.merchant_status_label_ar = lifecycle.merchant_status_label_ar;
-        }
-        if (lifecycle.merchant_status_row_class) {
-          mc.merchant_status_row_class = lifecycle.merchant_status_row_class;
-        }
-        mc.merchant_next_action_urgent = false;
+      } else {
+        activeRow.recovery_key = key;
+      }
+      lastNormalCartsPageRows.push(activeRow);
+    }
+    if (lifecycle && typeof lifecycle === "object") {
+      applyLifecyclePayloadToRow(activeRow, lifecycle);
+    } else {
+      activeRow.customer_lifecycle_is_archived_visual = false;
+    }
+    lastNormalCartsPageRows.forEach(function (mc) {
+      if (mc === activeRow) return;
+      if (!rowMatchesLifecycleKey(mc, key, rowId)) return;
+      if (lifecycle && typeof lifecycle === "object") {
+        applyLifecyclePayloadToRow(mc, lifecycle);
       } else {
         mc.customer_lifecycle_is_archived_visual = false;
       }
     });
+  }
+
+  function patchCartRowArchivedVisual(rk, archived, lifecycle) {
+    var key = String(rk || "").trim();
+    if (!key) return;
+    if (!archived) {
+      syncReopenedCartRowMemory(key, lifecycle);
+      return;
+    }
+    var ctx = findCartRowContext(key);
+    var rowId = ctx && (ctx.merchant_case_row_id || ctx.id);
+    lastNormalCartsPageRows.forEach(function (mc) {
+      if (!rowMatchesLifecycleKey(mc, key, rowId)) return;
+      mc.customer_lifecycle_is_archived_visual = true;
+      mc.customer_lifecycle_state = "archived";
+      mc.customer_lifecycle_label_ar = "مؤرشفة";
+      mc.customer_lifecycle_dashboard_action = "reopen";
+      mc.customer_lifecycle_status_row_class = "s-archived";
+      mc.merchant_status_row_class = "s-archived";
+      mc.merchant_status_label_ar = "مؤرشفة";
+      mc.merchant_next_action_urgent = false;
+    });
+  }
+
+  function refreshCompletedCartsTableAfterLifecycleChange() {
+    if (typeof window.maRefreshCompletedCartsTable === "function") {
+      window.maRefreshCompletedCartsTable();
+      return;
+    }
+    applyCompletedCartsTable(lastNormalCartsPageRows, lastArchivedCartsPageRows);
   }
 
   function rerenderAllCartsTable() {
@@ -2649,10 +2699,15 @@
           .then(function (d) {
             btn.disabled = false;
             if (d && d.ok) {
-              patchCartRowArchivedVisual(rk, false, d.lifecycle || null);
+              syncReopenedCartRowMemory(rk, d.lifecycle || null);
               rerenderAllCartsTable();
               rerenderHomeCartsTable();
-              fetchNormalCarts("lifecycle_reopen");
+              refreshCompletedCartsTableAfterLifecycleChange();
+              fetchNormalCarts("lifecycle_reopen").then(function (payload) {
+                if (payload && typeof window.goToCartTab === "function") {
+                  window.goToCartTab("all");
+                }
+              });
             } else {
               console.error("[LC REOPEN FAILED]", d);
             }
@@ -3886,6 +3941,12 @@
     getLastRows: function () {
       return lastNormalCartsPageRows.slice();
     },
+    getLastArchivedRows: function () {
+      return lastArchivedCartsPageRows.slice();
+    },
+    syncReopenedCartRowMemory: syncReopenedCartRowMemory,
+    completedCartsFromRows: completedCartsFromRows,
+    isCompletedDashboardRow: isCompletedDashboardRow,
     getFetchGen: function () {
       return normalCartsFetchGen;
     },
