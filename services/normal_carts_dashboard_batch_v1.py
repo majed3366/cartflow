@@ -98,6 +98,9 @@ def build_normal_carts_unified_rows(
     """
   Single candidate load + single batch_reads → active and archived row lists.
   """
+    from services.dashboard_snapshot_hot_path_guard_v1 import guard_dashboard_hot_path
+
+    guard_dashboard_hot_path("normal_carts_unified_rows", endpoint="normal-carts")
     from main import (  # noqa: PLC0415
         _augment_abandoned_candidates_for_recovery_dashboard,
         _ensure_recovery_visibility_groups_in_pick,

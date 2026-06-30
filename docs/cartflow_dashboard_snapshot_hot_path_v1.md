@@ -36,14 +36,17 @@ Do **not** enable builder on API.
 | `summary` | `GET /api/dashboard/summary` |
 | `normal_carts` | `GET /api/dashboard/normal-carts` |
 | `refresh_state` | `GET /api/dashboard/refresh-state` |
+| `widget_panel` | `GET /api/dashboard/widget-panel` |
+| `store_connection` | `GET /api/merchant/store-connection` |
 | `dashboard_cards` | (embedded in summary builder) |
 
 ## Observability logs
 
-- `[DASHBOARD SNAPSHOT READ]` — successful snapshot read
+- `[DASHBOARD SNAPSHOT READ]` — successful snapshot read (`endpoint=widget-panel|store-connection|...`)
 - `[DASHBOARD SNAPSHOT MISS]` — no row found
 - `[DASHBOARD DEGRADED]` — empty/stale/budget fallback
-- `[DASHBOARD HOT PATH VIOLATION]` — live builder invoked during API request
+- `[DASHBOARD HOT PATH VIOLATION]` — live builder invoked during API request (`endpoint=...`)
+- `[DASHBOARD FIRST REQUEST WARM BLOCKED]` — DB READY / heavy warm skipped on dashboard path
 - `[DASHBOARD SNAPSHOT BUILDER TICK]` — background build pass
 - `[DASHBOARD SNAPSHOT LOOP STARTED]` — scheduler loop boot
 

@@ -16,7 +16,9 @@ from services.dashboard_snapshot_v1 import (
     SNAPSHOT_TYPE_DASHBOARD_CARDS,
     SNAPSHOT_TYPE_NORMAL_CARTS,
     SNAPSHOT_TYPE_REFRESH_STATE,
+    SNAPSHOT_TYPE_STORE_CONNECTION,
     SNAPSHOT_TYPE_SUMMARY,
+    SNAPSHOT_TYPE_WIDGET_PANEL,
     STATUS_FAILED,
     list_store_slugs_for_snapshot_build,
     upsert_dashboard_snapshot,
@@ -174,6 +176,30 @@ def build_store_dashboard_snapshots(
             payload=refresh_body,
         )
         results["types"][SNAPSHOT_TYPE_REFRESH_STATE] = "ok"
+
+        from main import _api_json_dashboard_widget_panel  # noqa: PLC0415
+
+        widget_body = dict(_api_json_dashboard_widget_panel(dash_store))
+        upsert_dashboard_snapshot(
+            store_id=sid,
+            store_slug=slug,
+            snapshot_type=SNAPSHOT_TYPE_WIDGET_PANEL,
+            payload=widget_body,
+        )
+        results["types"][SNAPSHOT_TYPE_WIDGET_PANEL] = "ok"
+
+        from services.merchant_store_connection_v1 import (  # noqa: PLC0415
+            build_merchant_store_connection_status_for_store,
+        )
+
+        conn_status = build_merchant_store_connection_status_for_store(dash_store)
+        upsert_dashboard_snapshot(
+            store_id=sid,
+            store_slug=slug,
+            snapshot_type=SNAPSHOT_TYPE_STORE_CONNECTION,
+            payload={"store_connection": conn_status.to_api_dict()},
+        )
+        results["types"][SNAPSHOT_TYPE_STORE_CONNECTION] = "ok"
 
         results["ok"] = True
     except Exception as exc:  # noqa: BLE001

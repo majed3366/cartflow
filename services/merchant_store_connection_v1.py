@@ -103,11 +103,26 @@ def build_merchant_store_connection_status(
     *,
     cookies: Optional[dict[str, str]] = None,
 ) -> MerchantStoreConnectionStatus:
+    from services.dashboard_snapshot_hot_path_guard_v1 import guard_dashboard_hot_path
+
+    guard_dashboard_hot_path("store_connection_live", endpoint="store-connection")
+    store, meta = resolve_merchant_onboarding_store(cookies=cookies)
+    store_name = meta.store_name or merchant_store_display_name(store)
+    return build_merchant_store_connection_status_for_store(
+        store,
+        store_name=store_name,
+    )
+
+
+def build_merchant_store_connection_status_for_store(
+    store: Optional[Any],
+    *,
+    store_name: Optional[str] = None,
+) -> MerchantStoreConnectionStatus:
     from integrations.zid_client import zid_oauth_configured
     from services.zid_storefront_widget_install_v1 import build_widget_install_api_fields
 
-    store, meta = resolve_merchant_onboarding_store(cookies=cookies)
-    store_name = meta.store_name or merchant_store_display_name(store)
+    name = (store_name or merchant_store_display_name(store) or "").strip()
     connected = is_merchant_store_platform_connected(store)
     zid_ready = zid_oauth_configured()
     pending_msg = "ميزة الربط قيد الإعداد"
@@ -123,7 +138,7 @@ def build_merchant_store_connection_status(
             connected=True,
             status_label_ar="تم الربط",
             status_description_ar="",
-            store_name=store_name,
+            store_name=name,
             platform_ar=_infer_platform_ar(store, connected=True),
             connected_at_ar=_format_dt_ar(at),
             zid_connect_available=zid_ready,
@@ -148,7 +163,7 @@ def build_merchant_store_connection_status(
         connected=False,
         status_label_ar="غير مربوط",
         status_description_ar="ابدأ بربط متجرك لتفعيل استرجاع السلال.",
-        store_name=store_name,
+        store_name=name,
         platform_ar="—",
         connected_at_ar="—",
         zid_connect_available=zid_ready,

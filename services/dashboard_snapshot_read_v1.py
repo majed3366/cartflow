@@ -15,7 +15,9 @@ from services.dashboard_snapshot_hot_path_guard_v1 import (
 )
 from services.dashboard_snapshot_v1 import (
     SNAPSHOT_TYPE_NORMAL_CARTS,
+    SNAPSHOT_TYPE_STORE_CONNECTION,
     SNAPSHOT_TYPE_SUMMARY,
+    SNAPSHOT_TYPE_WIDGET_PANEL,
     decode_snapshot_payload,
     emit_dashboard_degraded,
     emit_snapshot_miss,
@@ -132,6 +134,7 @@ def read_dashboard_snapshot_payload(
     snapshot_type: str,
     degraded_builder: Any,
     t0: Optional[float] = None,
+    endpoint: str = "",
 ) -> dict[str, Any]:
     """
     Single indexed read from ``dashboard_snapshots``.
@@ -186,6 +189,7 @@ def read_dashboard_snapshot_payload(
         stale=stale,
         version=int(row.version or 0),
         read_ms=read_ms,
+        endpoint=endpoint or stype,
     )
     if stale:
         payload["snapshot_degraded"] = True
@@ -211,6 +215,42 @@ def enforce_route_budget(payload: dict[str, Any], *, wall0: float) -> dict[str, 
     return payload
 
 
+def _degraded_widget_panel_payload(*, reason: str) -> dict[str, Any]:
+    return {
+        "snapshot_mode": True,
+        "snapshot_degraded": True,
+        "snapshot_reason": reason,
+        "merchant_widget_panel": {},
+        "merchant_widget_title_ar": "مساعد المتجر",
+        "merchant_widget_question_ar": "ما الذي منعك من إكمال الطلب؟",
+        "merchant_widget_reason_rows": [],
+        "merchant_widget_installed": False,
+    }
+
+
+def _degraded_store_connection_payload(*, reason: str) -> dict[str, Any]:
+    return {
+        "snapshot_mode": True,
+        "snapshot_degraded": True,
+        "snapshot_reason": reason,
+        "store_connection": {
+            "connected": False,
+            "status_label_ar": "—",
+            "status_description_ar": "",
+            "store_name": "",
+            "platform_ar": "—",
+            "connected_at_ar": "—",
+            "zid_connect_available": False,
+            "zid_connect_url": "/api/merchant/store-connection/zid/connect",
+            "salla_connect_available": False,
+            "shopify_note_ar": "Shopify قريباً",
+            "pending_setup_message_ar": "",
+            "store_connected_ok": False,
+            "widget_installed_ok": False,
+        },
+    }
+
+
 def build_summary_from_snapshot(
     *,
     store_slug: str,
@@ -223,6 +263,7 @@ def build_summary_from_snapshot(
             snapshot_type=SNAPSHOT_TYPE_SUMMARY,
             degraded_builder=_degraded_summary_payload,
             t0=wall0,
+            endpoint="summary",
         )
         return enforce_route_budget(body, wall0=wall0)
 
@@ -239,6 +280,7 @@ def build_normal_carts_from_snapshot(
             snapshot_type=SNAPSHOT_TYPE_NORMAL_CARTS,
             degraded_builder=_degraded_normal_carts_payload,
             t0=wall0,
+            endpoint="normal-carts",
         )
         return enforce_route_budget(body, wall0=wall0)
 
@@ -282,6 +324,41 @@ def build_refresh_state_from_snapshot(
             snapshot_type=SNAPSHOT_TYPE_REFRESH_STATE,
             degraded_builder=_degraded_refresh_state_payload,
             t0=wall0,
+            endpoint="refresh-state",
+        )
+        return enforce_route_budget(body, wall0=wall0)
+
+
+def build_widget_panel_from_snapshot(
+    *,
+    store_slug: str,
+    path: str = "/api/dashboard/widget-panel",
+) -> dict[str, Any]:
+    wall0 = time.perf_counter()
+    with dashboard_api_snapshot_request_scope(path=path):
+        body = read_dashboard_snapshot_payload(
+            store_slug=store_slug,
+            snapshot_type=SNAPSHOT_TYPE_WIDGET_PANEL,
+            degraded_builder=_degraded_widget_panel_payload,
+            t0=wall0,
+            endpoint="widget-panel",
+        )
+        return enforce_route_budget(body, wall0=wall0)
+
+
+def build_store_connection_from_snapshot(
+    *,
+    store_slug: str,
+    path: str = "/api/merchant/store-connection",
+) -> dict[str, Any]:
+    wall0 = time.perf_counter()
+    with dashboard_api_snapshot_request_scope(path=path):
+        body = read_dashboard_snapshot_payload(
+            store_slug=store_slug,
+            snapshot_type=SNAPSHOT_TYPE_STORE_CONNECTION,
+            degraded_builder=_degraded_store_connection_payload,
+            t0=wall0,
+            endpoint="store-connection",
         )
         return enforce_route_budget(body, wall0=wall0)
 
@@ -289,9 +366,12 @@ def build_refresh_state_from_snapshot(
 __all__ = [
     "DASHBOARD_ROUTE_MAX_MS",
     "DASHBOARD_ROUTE_TARGET_MS",
+    "_degraded_refresh_state_payload",
     "build_normal_carts_from_snapshot",
     "build_refresh_state_from_snapshot",
+    "build_store_connection_from_snapshot",
     "build_summary_from_snapshot",
+    "build_widget_panel_from_snapshot",
     "enforce_route_budget",
     "read_dashboard_snapshot_payload",
     "resolve_merchant_store_slug_for_snapshot",

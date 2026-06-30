@@ -29,6 +29,8 @@ SNAPSHOT_TYPE_WHATSAPP_READINESS = "whatsapp_readiness"
 SNAPSHOT_TYPE_MONTHLY_SUMMARY = "monthly_summary"
 SNAPSHOT_TYPE_DASHBOARD_CARDS = "dashboard_cards"
 SNAPSHOT_TYPE_REFRESH_STATE = "refresh_state"
+SNAPSHOT_TYPE_WIDGET_PANEL = "widget_panel"
+SNAPSHOT_TYPE_STORE_CONNECTION = "store_connection"
 
 STATUS_ACTIVE = "active"
 STATUS_STALE = "stale"
@@ -62,6 +64,8 @@ def snapshot_ttl_seconds(snapshot_type: str) -> int:
         SNAPSHOT_TYPE_SUMMARY: 60,
         SNAPSHOT_TYPE_NORMAL_CARTS: 45,
         SNAPSHOT_TYPE_REFRESH_STATE: 30,
+        SNAPSHOT_TYPE_WIDGET_PANEL: 60,
+        SNAPSHOT_TYPE_STORE_CONNECTION: 120,
         SNAPSHOT_TYPE_DASHBOARD_CARDS: 60,
         SNAPSHOT_TYPE_WHATSAPP_READINESS: 60,
         SNAPSHOT_TYPE_MONTHLY_SUMMARY: 120,
@@ -88,9 +92,11 @@ def emit_snapshot_read(
     stale: bool,
     version: int,
     read_ms: float,
+    endpoint: str = "",
 ) -> None:
+    ep_part = f" endpoint={(endpoint or snapshot_type)[:64]}" if (endpoint or snapshot_type) else ""
     _emit(
-        f"{_PREFIX_READ} store_slug={store_slug} type={snapshot_type} "
+        f"{_PREFIX_READ} store_slug={store_slug} type={snapshot_type}{ep_part} "
         f"stale={str(stale).lower()} version={version} read_ms={round(read_ms, 1)}"
     )
 
@@ -111,8 +117,17 @@ def emit_dashboard_degraded(
     )
 
 
-def emit_hot_path_violation(*, operation: str, path: str = "-") -> None:
-    _emit(f"{_PREFIX_VIOLATION} operation={operation} path={path}")
+def emit_hot_path_violation(
+    *,
+    operation: str,
+    path: str = "-",
+    endpoint: str = "",
+) -> None:
+    ep = (endpoint or path or "-")[:64]
+    _emit(
+        f"{_PREFIX_VIOLATION} operation={(operation or 'unknown')[:128]} "
+        f"endpoint={ep} path={(path or '-')[:256]}"
+    )
 
 
 def _utcnow() -> datetime:
@@ -225,6 +240,8 @@ __all__ = [
     "SNAPSHOT_TYPE_MONTHLY_SUMMARY",
     "SNAPSHOT_TYPE_NORMAL_CARTS",
     "SNAPSHOT_TYPE_REFRESH_STATE",
+    "SNAPSHOT_TYPE_STORE_CONNECTION",
+    "SNAPSHOT_TYPE_WIDGET_PANEL",
     "SNAPSHOT_TYPE_SUMMARY",
     "SNAPSHOT_TYPE_WHATSAPP_READINESS",
     "STATUS_ACTIVE",

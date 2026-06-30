@@ -32,7 +32,7 @@ def is_dashboard_api_snapshot_request() -> bool:
     return bool(_in_dashboard_api_request.get())
 
 
-def guard_dashboard_hot_path(operation: str) -> None:
+def guard_dashboard_hot_path(operation: str, *, endpoint: str = "") -> None:
     """
     Log when live dashboard builders run during a merchant HTTP request
     while snapshot mode is enabled.
@@ -44,6 +44,7 @@ def guard_dashboard_hot_path(operation: str) -> None:
     emit_hot_path_violation(
         operation=(operation or "unknown")[:128],
         path=_dashboard_api_path.get() or "-",
+        endpoint=endpoint or _dashboard_api_path.get() or "-",
     )
 
 

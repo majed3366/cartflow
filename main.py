@@ -1523,6 +1523,19 @@ def _ensure_cartflow_api_db_warmed(*, trace_source: str = "warm") -> None:
 @_normal_carts_query_prof_wrap("_merchant_dashboard_db_ready")
 def _merchant_dashboard_db_ready(*, allow_defer: bool = False) -> bool:
     """لوحة التاجر: لا ‎create_all‎ في المسار الساخن — التدفئة عند الإقلاع فقط."""
+    from services.dashboard_snapshot_hot_path_guard_v1 import _dashboard_api_path
+    from services.dashboard_snapshot_warm_guard_v1 import (
+        dashboard_db_ready_should_skip,
+        emit_dashboard_first_request_warm_blocked,
+    )
+
+    if dashboard_db_ready_should_skip(source="dashboard"):
+        emit_dashboard_first_request_warm_blocked(
+            source="dashboard",
+            endpoint=_dashboard_api_path.get() or "-",
+        )
+        return True
+
     from schema_production_store_bootstrap import ensure_production_store_schema
     from services.db_ready_diag_v1 import (  # noqa: PLC0415
         db_ready_log_stage,
@@ -17073,7 +17086,7 @@ def _augment_abandoned_candidates_for_recovery_dashboard(
 ) -> list[AbandonedCart]:
     from services.dashboard_snapshot_hot_path_guard_v1 import guard_dashboard_hot_path
 
-    guard_dashboard_hot_path("abandoned_candidates")
+    guard_dashboard_hot_path("abandoned_candidates", endpoint="abandoned-candidates")
     from services.merchant_purchased_cart_dashboard_v1 import (  # noqa: PLC0415
         augment_abandoned_candidates_with_purchased_recovery_carts,
     )
@@ -18179,6 +18192,19 @@ def api_dashboard_followups():
 def api_dashboard_widget_panel():
     wall0 = time.perf_counter()
     try:
+        from services.dashboard_snapshot_v1 import dashboard_snapshot_mode_enabled
+        from services.dashboard_snapshot_read_v1 import (
+            build_widget_panel_from_snapshot,
+            resolve_merchant_store_slug_for_snapshot,
+        )
+
+        if dashboard_snapshot_mode_enabled():
+            slug = resolve_merchant_store_slug_for_snapshot()
+            body = build_widget_panel_from_snapshot(
+                store_slug=slug,
+                path="/api/dashboard/widget-panel",
+            )
+            return j({"ok": True, **body})
         _merchant_dashboard_db_ready()
         dash_store = _dashboard_recovery_store_row()
         body = _api_json_dashboard_widget_panel(dash_store)
@@ -18544,28 +18570,30 @@ def api_dashboard_refresh_state(request: Request):
         "request_entered",
         store_slug=store_slug_hint or None,
     )
-    try:
-        from services.dashboard_snapshot_v1 import dashboard_snapshot_mode_enabled
-        from services.dashboard_snapshot_read_v1 import (
-            build_refresh_state_from_snapshot,
-            resolve_merchant_store_slug_for_snapshot,
-        )
+    from services.dashboard_snapshot_v1 import dashboard_snapshot_mode_enabled
+    from services.dashboard_snapshot_read_v1 import (
+        build_refresh_state_from_snapshot,
+        resolve_merchant_store_slug_for_snapshot,
+        _degraded_refresh_state_payload,
+    )
 
-        if dashboard_snapshot_mode_enabled():
+    if dashboard_snapshot_mode_enabled():
+        try:
             slug = (store_slug_hint or resolve_merchant_store_slug_for_snapshot()).strip()
             body = build_refresh_state_from_snapshot(
                 store_slug=slug,
                 path="/api/dashboard/refresh-state",
             )
-            refresh_state_log_stage(
-                "response_ready",
-                store_slug=slug or None,
-                snapshot="1",
-            )
-            return j({"ok": True, **body})
-    except Exception as snap_exc:  # noqa: BLE001
-        log.warning("api_dashboard_refresh_state snapshot read: %s", snap_exc)
-        db.session.rollback()
+        except Exception as snap_exc:  # noqa: BLE001
+            log.warning("api_dashboard_refresh_state snapshot read: %s", snap_exc)
+            db.session.rollback()
+            body = _degraded_refresh_state_payload(reason="snapshot_read_error")
+        refresh_state_log_stage(
+            "response_ready",
+            store_slug=store_slug_hint or None,
+            snapshot="1",
+        )
+        return j({"ok": True, **body})
     try:
         if refresh_state_deadline_exceeded():
             refresh_state_log_deadline_exceeded(
@@ -19315,6 +19343,9 @@ def _api_json_dashboard_summary(
     cookies: Optional[dict[str, str]] = None,
 ) -> Dict[str, Any]:
     """‎KPI‎ + شهر + أسباب + شارة الواجهة + عداد السلال في القائمة (بدون استعلام قائمة VIP/متابعة)."""
+    from services.dashboard_snapshot_hot_path_guard_v1 import guard_dashboard_hot_path
+
+    guard_dashboard_hot_path("summary_live", endpoint="summary")
     from services.dashboard_summary_query_profiler import (  # noqa: PLC0415
         dashboard_summary_profile_span,
     )
@@ -19683,6 +19714,9 @@ def _api_json_dashboard_followups(dash_store: Optional[Any]) -> Dict[str, Any]:
 
 
 def _api_json_dashboard_widget_panel(dash_store: Optional[Any]) -> Dict[str, Any]:
+    from services.dashboard_snapshot_hot_path_guard_v1 import guard_dashboard_hot_path
+
+    guard_dashboard_hot_path("widget_panel_live", endpoint="widget-panel")
     from services.merchant_widget_panel import merchant_widget_panel_bundle  # noqa: PLC0415
 
     merchant_widget_panel = merchant_widget_panel_bundle(dash_store)
@@ -19853,8 +19887,21 @@ def api_merchant_store_connection_status(request: Request):
     )
 
     wall0 = time.perf_counter()
-    _merchant_dashboard_db_ready()
     try:
+        from services.dashboard_snapshot_v1 import dashboard_snapshot_mode_enabled
+        from services.dashboard_snapshot_read_v1 import (
+            build_store_connection_from_snapshot,
+            resolve_merchant_store_slug_for_snapshot,
+        )
+
+        if dashboard_snapshot_mode_enabled():
+            slug = resolve_merchant_store_slug_for_snapshot()
+            body = build_store_connection_from_snapshot(
+                store_slug=slug,
+                path="/api/merchant/store-connection",
+            )
+            return j({"ok": True, **body})
+        _merchant_dashboard_db_ready()
         status = build_merchant_store_connection_status(
             cookies=dict(request.cookies)
         )
