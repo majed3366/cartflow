@@ -46,6 +46,14 @@ def guard_dashboard_hot_path(operation: str, *, endpoint: str = "") -> None:
         path=_dashboard_api_path.get() or "-",
         endpoint=endpoint or _dashboard_api_path.get() or "-",
     )
+    from services.dashboard_snapshot_enforcement_guard_v1 import (
+        maybe_raise_hot_path_violation,
+    )
+
+    maybe_raise_hot_path_violation(
+        operation=(operation or "unknown")[:128],
+        endpoint=endpoint or _dashboard_api_path.get() or "-",
+    )
 
 
 __all__ = [

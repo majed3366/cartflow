@@ -48,9 +48,8 @@ Do **not** enable builder on API.
 - `[DASHBOARD SNAPSHOT READ]` — successful snapshot read (`store_slug`, `snapshot_type`, `db_fp`)
 - `[DASHBOARD SNAPSHOT MISS]` — no row found (`store_slug`, `snapshot_type`, `db_fp`)
 - `[DASHBOARD DEGRADED]` — empty/stale/budget fallback
-- `[DASHBOARD HOT PATH VIOLATION]` — live builder invoked during API request (`endpoint=...`)
-- `[DASHBOARD FIRST REQUEST WARM BLOCKED]` — DB READY / heavy warm skipped on dashboard path
-- `[DASHBOARD SNAPSHOT BUILDER TICK]` — background build pass
+- `[DASHBOARD HOT PATH VIOLATION]` — live builder invoked during API request (`endpoint=...`); raises in tests when `CARTFLOW_DASHBOARD_SNAPSHOT_ENFORCE=1`
+- `[DASHBOARD SNAPSHOT BUILDER TICK]` — background build pass (scheduler only)
 - `[DASHBOARD SNAPSHOT LOOP STARTED]` — scheduler loop boot
 
 ## Production verification plan
@@ -58,7 +57,11 @@ Do **not** enable builder on API.
 ### Pre-deploy
 
 1. Run migration: `alembic upgrade head`
-2. Local tests: `python -m pytest tests/test_dashboard_snapshot_hot_path_v1.py -q`
+2. Local tests:
+   ```bash
+   python -m pytest tests/test_dashboard_snapshot_hot_path_v1.py tests/test_dashboard_snapshot_phase1b_v1.py tests/test_dashboard_snapshot_enforcement_v1.py -q
+   ```
+   With `CARTFLOW_DASHBOARD_SNAPSHOT_ENFORCE=1` (default under pytest), any live builder invoked during a snapshot-mode HTTP request raises `DashboardSnapshotHotPathViolation` and fails CI.
 
 ### Phase A — shadow (flag off)
 
@@ -113,6 +116,24 @@ Do **not** enable builder on API.
 
 - [ ] Dashboard API P95 < 200ms with snapshot mode on
 - [ ] Zero `[DASHBOARD HOT PATH VIOLATION]` on production API logs
+- [ ] Production verify script PASS (see below)
+
+### Phase D — enforcement guard (post-deploy)
+
+```bash
+# Requires CARTFLOW_PROD_EMAIL / CARTFLOW_PROD_PASSWORD
+python scripts/verify_dashboard_snapshot_enforcement_prod_v1.py --base https://smartreplyai.net
+
+# Optional Railway log scan (RAILWAY_TOKEN)
+python scripts/verify_dashboard_snapshot_enforcement_prod_v1.py --railway-service smart-reply-ai
+```
+
+Confirms for **summary**, **normal_carts**, **widget_panel**, **refresh_state**, **store_connection**:
+
+- HTTP 200 + `snapshot_mode=true`
+- No `snapshot_reason=no_snapshot` (MISS-like)
+- Railway logs: `[DASHBOARD SNAPSHOT READ]` present, zero `[DASHBOARD SNAPSHOT MISS]` / `[DASHBOARD HOT PATH VIOLATION]`
+
 - [ ] No `abandoned_carts` / `cart_recovery_logs` queries on dashboard GET paths
 - [ ] Stale snapshots served when builder delayed (no hang)
 - [ ] Degraded empty JSON when no snapshot (no 500)
@@ -128,4 +149,7 @@ Do **not** enable builder on API.
 | `services/dashboard_snapshot_builder_v1.py` | Background builder |
 | `services/dashboard_snapshot_loop_v1.py` | Async loop |
 | `services/dashboard_snapshot_hot_path_guard_v1.py` | Violation guard |
+| `services/dashboard_snapshot_enforcement_guard_v1.py` | Snapshot-only HTTP wrapper + test raise |
+| `scripts/verify_dashboard_snapshot_enforcement_prod_v1.py` | Production verification |
 | `tests/test_dashboard_snapshot_hot_path_v1.py` | Tests |
+| `tests/test_dashboard_snapshot_enforcement_v1.py` | Enforcement guard tests |
