@@ -185,6 +185,23 @@ class DashboardSnapshotPhase1BTests(unittest.TestCase):
             self.assertEqual(resp.status_code, 200, msg=path)
             self.assertLess(elapsed_ms, 200.0, msg=f"{path} elapsed_ms={elapsed_ms}")
 
+    def test_snapshot_builder_imports_pool_pressure_module(self) -> None:
+        """Regression: missing db_pool_pressure_v1 prevents builder loop startup in prod."""
+        from services.db_pool_pressure_v1 import evaluate_db_pool_pressure
+        from services.dashboard_snapshot_builder_v1 import (
+            builder_should_skip_due_to_pool_pressure,
+            run_dashboard_snapshot_builder_tick,
+        )
+
+        pressure = evaluate_db_pool_pressure()
+        self.assertIn(
+            str(pressure.get("pressure_level") or "ok"),
+            ("ok", "elevated", "high", "critical"),
+        )
+        skip, _reason = builder_should_skip_due_to_pool_pressure()
+        self.assertIsInstance(skip, bool)
+        self.assertTrue(callable(run_dashboard_snapshot_builder_tick))
+
 
 if __name__ == "__main__":
     unittest.main()
