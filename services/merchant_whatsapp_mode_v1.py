@@ -25,20 +25,42 @@ SELECTABLE_WHATSAPP_MODES: frozenset[str] = frozenset(
 
 DEFAULT_WHATSAPP_MODE = WHATSAPP_MODE_CARTFLOW_MANAGED
 
+MODE_SELECTION_TITLE_AR = "اختر طريقة واتساب لمتجرك"
+
+WHATSAPP_MODE_TITLE_AR: Mapping[str, str] = {
+    WHATSAPP_MODE_CARTFLOW_MANAGED: "🟢 واتساب CartFlow",
+    WHATSAPP_MODE_MERCHANT_WHATSAPP: "🔵 واتساب أعمال الخاص بي",
+    WHATSAPP_MODE_FUTURE_PROVIDER: "Future provider",
+}
+
 WHATSAPP_MODE_LABEL_AR: Mapping[str, str] = {
-    WHATSAPP_MODE_CARTFLOW_MANAGED: "CartFlow Managed",
-    WHATSAPP_MODE_MERCHANT_WHATSAPP: "Merchant WhatsApp",
+    WHATSAPP_MODE_CARTFLOW_MANAGED: "واتساب CartFlow",
+    WHATSAPP_MODE_MERCHANT_WHATSAPP: "واتساب أعمال الخاص بي",
     WHATSAPP_MODE_FUTURE_PROVIDER: "Future provider",
 }
 
 WHATSAPP_MODE_DESC_AR: Mapping[str, str] = {
     WHATSAPP_MODE_CARTFLOW_MANAGED: (
-        "CartFlow يتولى الإرسال والمتابعة — وأنت تحدد متى وكيف يتم الاسترجاع."
+        "CartFlow يتولى الإرسال — الأسرع للبدء ولا يتطلب إعداد Meta."
     ),
     WHATSAPP_MODE_MERCHANT_WHATSAPP: (
-        "رسائل العملاء من بنية واتساب تخص متجرك — للمتاجر المتقدمة."
+        "استخدم رقمك التجاري — يتطلب ربط منصة الأعمال."
     ),
     WHATSAPP_MODE_FUTURE_PROVIDER: "نماذج مزودين إضافية — محجوز للمستقبل.",
+}
+
+WHATSAPP_MODE_BULLETS_AR: Mapping[str, tuple[str, ...]] = {
+    WHATSAPP_MODE_CARTFLOW_MANAGED: (
+        "الأسرع للبدء.",
+        "لا يتطلب إعداد Meta.",
+        "CartFlow يتولى الإرسال.",
+        "مناسب لمعظم المتاجر.",
+    ),
+    WHATSAPP_MODE_MERCHANT_WHATSAPP: (
+        "استخدم رقمك التجاري.",
+        "يتطلب ربط منصة الأعمال.",
+        "الربط المباشر عبر Meta سيصبح متاحاً لاحقاً.",
+    ),
 }
 
 CONNECTION_STATUS_NOT_CONNECTED = "not_connected"
@@ -61,6 +83,75 @@ def whatsapp_mode_label_ar(mode: str) -> str:
 
 def whatsapp_mode_description_ar(mode: str) -> str:
     return WHATSAPP_MODE_DESC_AR.get(normalize_whatsapp_mode(mode), "")
+
+
+def whatsapp_mode_title_ar(mode: str) -> str:
+    return WHATSAPP_MODE_TITLE_AR.get(normalize_whatsapp_mode(mode), mode)
+
+
+def whatsapp_mode_bullets_ar(mode: str) -> list[str]:
+    return list(WHATSAPP_MODE_BULLETS_AR.get(normalize_whatsapp_mode(mode), ()))
+
+
+def _merchant_owned_panel_for_api(store: Optional[Any]) -> dict[str, Any]:
+    """Path B status: Meta pairing + Embedded Signup + connect page (read-only)."""
+    from services.merchant_whatsapp_connection_readiness_v1 import (  # noqa: PLC0415
+        connection_readiness_for_merchant_api,
+    )
+    from services.merchant_whatsapp_embedded_signup_readiness_v1 import (  # noqa: PLC0415
+        embedded_signup_fields_for_api,
+    )
+
+    cr = connection_readiness_for_merchant_api(store)
+    prod = cr.get("production_sending_readiness") or {}
+    embedded = embedded_signup_fields_for_api(store).get("whatsapp_embedded_signup") or {}
+    meta_status_ar = prod.get("status_ar") or "—"
+    meta_instruction = prod.get("meta_pairing_instruction_ar") or ""
+    pending = prod.get("pending_reason") or ""
+    return {
+        "visible": True,
+        "meta_pairing_status_ar": meta_status_ar,
+        "meta_pairing_instruction_ar": meta_instruction,
+        "meta_pairing_pending_reason": pending,
+        "embedded_signup_status_ar": embedded.get("status_ar") or "—",
+        "embedded_signup_next_action_ar": embedded.get("next_action_ar") or "",
+        "embedded_signup_launch_ready": bool(embedded.get("launch_ready")),
+        "connect_page_href": embedded.get("connect_href") or "/dashboard#whatsapp-connect",
+        "connect_page_label_ar": "صفحة ربط واتساب (Embedded Signup)",
+        "connect_page_note_ar": "الربط المباشر عبر Meta سيصبح متاحاً لاحقاً.",
+    }
+
+
+def whatsapp_mode_selection_for_api(store: Optional[Any]) -> dict[str, Any]:
+    mode = normalize_whatsapp_mode(
+        getattr(store, "whatsapp_mode", None) if store is not None else None
+    )
+    options: list[dict[str, Any]] = []
+    for key in (WHATSAPP_MODE_CARTFLOW_MANAGED, WHATSAPP_MODE_MERCHANT_WHATSAPP):
+        options.append(
+            {
+                "key": key,
+                "title_ar": whatsapp_mode_title_ar(key),
+                "label_ar": whatsapp_mode_label_ar(key),
+                "description_ar": whatsapp_mode_description_ar(key),
+                "bullets_ar": whatsapp_mode_bullets_ar(key),
+                "recommended": key == WHATSAPP_MODE_CARTFLOW_MANAGED,
+                "selected": key == mode,
+            }
+        )
+    payload: dict[str, Any] = {
+        "whatsapp_mode_selection": {
+            "title_ar": MODE_SELECTION_TITLE_AR,
+            "selected": mode,
+            "default_mode": DEFAULT_WHATSAPP_MODE,
+            "options": options,
+        }
+    }
+    if mode == WHATSAPP_MODE_MERCHANT_WHATSAPP:
+        payload["whatsapp_mode_merchant_panel"] = _merchant_owned_panel_for_api(store)
+    else:
+        payload["whatsapp_mode_merchant_panel"] = {"visible": False}
+    return payload
 
 
 def whatsapp_customer_connection_status(
@@ -124,10 +215,12 @@ def merchant_whatsapp_mode_fields_for_api(store: Optional[Any]) -> dict[str, Any
     )
 
     readiness = connection_readiness_for_merchant_api(store)
-    return {
+    payload = {
         "whatsapp_mode": mode,
         "whatsapp_mode_label_ar": whatsapp_mode_label_ar(mode),
+        "whatsapp_mode_title_ar": whatsapp_mode_title_ar(mode),
         "whatsapp_mode_description_ar": whatsapp_mode_description_ar(mode),
+        "whatsapp_mode_bullets_ar": whatsapp_mode_bullets_ar(mode),
         "whatsapp_mode_recommended": WHATSAPP_MODE_CARTFLOW_MANAGED,
         "whatsapp_customer_connection_status": status_key,
         "whatsapp_customer_connection_status_ar": status_label,
@@ -145,6 +238,8 @@ def merchant_whatsapp_mode_fields_for_api(store: Optional[Any]) -> dict[str, Any
         "whatsapp_connection_summary_ar": validation["connection_status_summary_ar"],
         "whatsapp_mode_architecture_only_future": WHATSAPP_MODE_FUTURE_PROVIDER,
     }
+    payload.update(whatsapp_mode_selection_for_api(store))
+    return payload
 
 
 def apply_whatsapp_mode_from_body(row: Any, body: Mapping[str, Any]) -> None:

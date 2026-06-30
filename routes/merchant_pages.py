@@ -130,6 +130,12 @@ def dashboard_recovery_settings(request: Request):
     return RedirectResponse(url="/dashboard#whatsapp", status_code=302)
 
 
+@router.get("/dashboard/whatsapp-connect")
+def dashboard_whatsapp_connect(request: Request):
+    """Embedded Signup connect shell — merchant-owned WhatsApp onboarding (foundation V1)."""
+    return RedirectResponse(url="/dashboard#whatsapp-connect", status_code=302)
+
+
 @router.get("/dashboard/normal-carts")
 def dashboard_normal_carts(request: Request):
     """السلال العادية — واجهة التاجر؛ معاملات ‎session/cart/test_run‎ تُوجَّه للوحة العمليات."""

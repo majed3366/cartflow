@@ -15,6 +15,7 @@
     "trigger-templates": "قوالب الاسترجاع",
     widget: "الودجيت",
     whatsapp: "واتساب",
+    "whatsapp-connect": "ربط واتساب",
     plans: "الباقات",
     settings: "الحساب والمتجر",
   };
@@ -27,6 +28,8 @@
     widget: "مظهر الودجيت ومتى يظهر للعميل — بدون إعدادات تقنية معقدة",
     whatsapp:
       "قناة الإرسال — وضع واتساب، الاتصال، وتفعيل الاسترجاع. محتوى الرسائل من قوالب الاسترجاع.",
+    "whatsapp-connect":
+      "ربط واتساب المتجر عبر Embedded Signup — تأسيس V1 (بدون إرسال بعد).",
     plans:
       "قارن Starter و Growth و Pro — عرض للمقارنة فقط بدون ترقية أو دفع",
     settings:
@@ -62,6 +65,7 @@
     "trigger-templates": "comms",
     widget: "settings",
     whatsapp: "settings",
+    "whatsapp-connect": "settings",
     plans: "settings",
     settings: "settings",
   };
@@ -111,6 +115,7 @@
     "#templates": "trigger-templates",
     "#widget": "widget",
     "#whatsapp": "whatsapp",
+    "#whatsapp-connect": "whatsapp-connect",
     "#plans": "plans",
     "#settings": "settings",
   };
@@ -309,6 +314,9 @@
     }
     if (typeof window.maInitWhatsappSettingsPage === "function" && page === "whatsapp") {
       window.maInitWhatsappSettingsPage();
+    }
+    if (typeof window.maInitWhatsappConnectPage === "function" && page === "whatsapp-connect") {
+      window.maInitWhatsappConnectPage();
     }
     if (typeof window.maInitVipSettingsPage === "function" && page === "vip") {
       window.maInitVipSettingsPage();

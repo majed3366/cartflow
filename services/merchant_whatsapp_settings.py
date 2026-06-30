@@ -212,6 +212,13 @@ def merchant_whatsapp_settings_fields_for_api(store: Optional[Any]) -> Dict[str,
     )
 
     payload.update(onboarding_journey_fields_for_api(store))
+    from services.merchant_whatsapp_embedded_signup_readiness_v1 import (  # noqa: PLC0415
+        embedded_signup_fields_for_api,
+        ensure_whatsapp_embedded_signup_schema,
+    )
+
+    ensure_whatsapp_embedded_signup_schema(db)
+    payload.update(embedded_signup_fields_for_api(store))
     return payload
 
 

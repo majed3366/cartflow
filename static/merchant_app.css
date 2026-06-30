@@ -5797,6 +5797,131 @@ button.ma-vip-suggest-btn.va-btn {
   gap: 8px;
 }
 
+.ma-wa-mode-selection-wrap {
+  margin: 14px 0 10px;
+}
+
+.ma-wa-mode-selection-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 10px;
+}
+
+.ma-wa-mode-cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+@media (max-width: 760px) {
+  .ma-wa-mode-cards {
+    grid-template-columns: 1fr;
+  }
+}
+
+.ma-wa-mode-card {
+  position: relative;
+  text-align: right;
+  border: 2px solid var(--border, #e2e8f0);
+  border-radius: 14px;
+  padding: 14px 14px 12px;
+  background: #fff;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.ma-wa-mode-card:hover {
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
+}
+
+.ma-wa-mode-card.is-selected {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.15);
+}
+
+.ma-wa-mode-card.is-cartflow.is-selected {
+  border-color: #059669;
+  box-shadow: 0 0 0 1px rgba(5, 150, 105, 0.15);
+}
+
+.ma-wa-mode-card.is-merchant.is-selected {
+  border-color: #2563eb;
+}
+
+.ma-wa-mode-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.ma-wa-mode-card-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
+  line-height: 1.35;
+}
+
+.ma-wa-mode-card-badge {
+  font-size: 11px;
+  font-weight: 600;
+  color: #059669;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  border-radius: 999px;
+  padding: 2px 8px;
+  white-space: nowrap;
+}
+
+.ma-wa-mode-card-bullets {
+  margin: 0;
+  padding: 0 18px 0 0;
+  font-size: 13px;
+  color: #475569;
+  line-height: 1.55;
+}
+
+.ma-wa-mode-card-bullets li {
+  margin: 0 0 4px;
+}
+
+.ma-wa-merchant-owned-panel {
+  margin: 0 0 12px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+}
+
+.ma-wa-merchant-owned-panel-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1e3a8a;
+  margin: 0 0 10px;
+}
+
+.ma-wa-merchant-owned-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  align-items: baseline;
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: #1e293b;
+}
+
+.ma-wa-merchant-owned-k {
+  font-weight: 600;
+  color: #334155;
+}
+
+.ma-wa-merchant-owned-connect {
+  margin-top: 10px;
+}
+
 .ma-wa-mode-option {
   display: flex;
   align-items: flex-start;

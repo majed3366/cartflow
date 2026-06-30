@@ -85,6 +85,7 @@ class MerchantStandaloneAppDashboardTests(unittest.TestCase):
             'id="page-trigger-templates"',
             'id="page-widget"',
             'id="page-whatsapp"',
+            'id="page-whatsapp-connect"',
             'id="page-settings"',
         ):
             self.assertIn(pid, html, msg=f"missing: {pid}")
@@ -190,6 +191,12 @@ class MerchantStandaloneAppDashboardTests(unittest.TestCase):
         self.assertEqual(r.status_code, 302)
         loc = r.headers.get("location") or ""
         self.assertIn("#whatsapp", loc)
+
+    def test_whatsapp_connect_redirects_to_hash_route(self) -> None:
+        r = self.client.get("/dashboard/whatsapp-connect", follow_redirects=False)
+        self.assertEqual(r.status_code, 302)
+        loc = r.headers.get("location") or ""
+        self.assertIn("#whatsapp-connect", loc)
 
     def test_widget_customization_redirects_to_widget_section(self) -> None:
         r = self.client.get("/dashboard/widget-customization", follow_redirects=False)

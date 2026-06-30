@@ -44,9 +44,151 @@
   }
 
   function selectedWhatsappMode() {
-    var managed = byId("ma-wa-mode-managed");
-    if (managed && managed.checked) return "cartflow_managed";
-    return "merchant_whatsapp";
+    var hidden = byId("ma-wa-mode-hidden");
+    if (hidden && hidden.value) return hidden.value;
+    return "cartflow_managed";
+  }
+
+  function setSelectedWhatsappMode(mode) {
+    var key = (mode || "cartflow_managed").toString().toLowerCase();
+    if (key !== "merchant_whatsapp") key = "cartflow_managed";
+    var hidden = byId("ma-wa-mode-hidden");
+    if (hidden) hidden.value = key;
+  }
+
+  function renderModeSelection(d) {
+    var root = byId("ma-wa-mode-selection-root");
+    if (!root) return;
+    var sel = d.whatsapp_mode_selection || {};
+    var options = Array.isArray(sel.options) ? sel.options : [];
+    if (!options.length) {
+      root.innerHTML = "";
+      return;
+    }
+    var title = sel.title_ar || "اختر طريقة واتساب لمتجرك";
+    var cards = options
+      .map(function (opt) {
+        var key = opt.key || "";
+        var isSelected = !!opt.selected;
+        var isCartflow = key === "cartflow_managed";
+        var bullets = Array.isArray(opt.bullets_ar) ? opt.bullets_ar : [];
+        var bulletsHtml = bullets
+          .map(function (b) {
+            return "<li>" + escHtml(b) + "</li>";
+          })
+          .join("");
+        return (
+          '<button type="button" class="ma-wa-mode-card' +
+          (isCartflow ? " is-cartflow" : " is-merchant") +
+          (isSelected ? " is-selected" : "") +
+          '" data-ma-wa-mode="' +
+          escHtml(key) +
+          '" aria-pressed="' +
+          (isSelected ? "true" : "false") +
+          '">' +
+          '<div class="ma-wa-mode-card-head">' +
+          '<p class="ma-wa-mode-card-title">' +
+          escHtml(opt.title_ar || opt.label_ar || key) +
+          "</p>" +
+          (opt.recommended
+            ? '<span class="ma-wa-mode-card-badge">موصى به</span>'
+            : "") +
+          "</div>" +
+          (bulletsHtml
+            ? '<ul class="ma-wa-mode-card-bullets">' + bulletsHtml + "</ul>"
+            : "") +
+          "</button>"
+        );
+      })
+      .join("");
+    root.innerHTML =
+      '<div class="ma-wa-mode-selection">' +
+      '<p class="ma-wa-mode-selection-title">' +
+      escHtml(title) +
+      "</p>" +
+      '<div class="ma-wa-mode-cards">' +
+      cards +
+      "</div></div>";
+    root.querySelectorAll("[data-ma-wa-mode]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var nextMode = btn.getAttribute("data-ma-wa-mode");
+        if (!nextMode || nextMode === selectedWhatsappMode()) return;
+        setSelectedWhatsappMode(nextMode);
+        hideMsgs();
+        postSettings(buildSaveBody({ whatsapp_mode: nextMode }))
+          .then(function (x) {
+            if (x.data && x.data.ok) {
+              fillForm(x.data);
+              showOk();
+            } else {
+              showErr((x.data && x.data.error) || "تعذّر حفظ اختيار واتساب");
+              if (lastSettingsData) fillForm(lastSettingsData);
+            }
+          })
+          .catch(function () {
+            showErr("خطأ في الشبكة أثناء حفظ اختيار واتساب");
+            if (lastSettingsData) fillForm(lastSettingsData);
+          });
+      });
+    });
+  }
+
+  function renderMerchantOwnedPanel(d) {
+    var panel = byId("ma-wa-merchant-owned-panel");
+    if (!panel) return;
+    var block = d.whatsapp_mode_merchant_panel || {};
+    if (!block.visible) {
+      panel.hidden = true;
+      panel.innerHTML = "";
+      return;
+    }
+    panel.hidden = false;
+    var connectHref = block.connect_page_href || "/dashboard#whatsapp-connect";
+    panel.innerHTML =
+      '<p class="ma-wa-merchant-owned-panel-title">حالة واتساب أعمال الخاص بي</p>' +
+      '<div class="ma-wa-merchant-owned-row">' +
+      '<span class="ma-wa-merchant-owned-k">ربط منصة الأعمال:</span>' +
+      "<span>" +
+      escHtml(block.meta_pairing_status_ar || "—") +
+      "</span></div>" +
+      (block.meta_pairing_instruction_ar
+        ? '<div class="ma-wa-merchant-owned-row">' +
+          '<span class="ma-wa-merchant-owned-k">الخطوة التالية:</span>' +
+          "<span>" +
+          escHtml(block.meta_pairing_instruction_ar) +
+          "</span></div>"
+        : "") +
+      '<div class="ma-wa-merchant-owned-row">' +
+      '<span class="ma-wa-merchant-owned-k">Embedded Signup:</span>' +
+      "<span>" +
+      escHtml(block.embedded_signup_status_ar || "—") +
+      "</span></div>" +
+      (block.embedded_signup_next_action_ar
+        ? '<div class="ma-wa-merchant-owned-row">' +
+          '<span class="ma-wa-merchant-owned-k">إجراء الربط:</span>' +
+          "<span>" +
+          escHtml(block.embedded_signup_next_action_ar) +
+          "</span></div>"
+        : "") +
+      (block.connect_page_note_ar
+        ? '<p class="ma-fw-field-hint" style="margin:8px 0 0;">' +
+          escHtml(block.connect_page_note_ar) +
+          "</p>"
+        : "") +
+      '<div class="ma-wa-merchant-owned-connect">' +
+      '<button type="button" class="ma-fw-save ma-sc-btn-secondary" data-ma-wa-open-connect>' +
+      escHtml(block.connect_page_label_ar || "صفحة ربط واتساب") +
+      "</button></div>";
+    var connectBtn = panel.querySelector("[data-ma-wa-open-connect]");
+    if (connectBtn) {
+      connectBtn.addEventListener("click", function () {
+        if (window.goTo) {
+          window.goTo("whatsapp-connect");
+        } else {
+          window.location.href = connectHref;
+        }
+      });
+    }
   }
 
   function setLegacyEnableCtaVisible(visible) {
@@ -741,6 +883,8 @@
   function setReadOnly(d) {
     if (!d) return;
     applyConnectionPill(d);
+    renderModeSelection(d);
+    renderMerchantOwnedPanel(d);
     renderReadinessCard(d);
     var st = byId("ma-wa-status-display");
     if (st) st.textContent = d.whatsapp_status_display || "—";
@@ -765,10 +909,7 @@
     var en = byId("ma-wa-recovery-enabled");
     if (en) en.checked = d.whatsapp_recovery_enabled !== false;
     var mode = (d.whatsapp_mode || "cartflow_managed").toString().toLowerCase();
-    var managed = byId("ma-wa-mode-managed");
-    var merchant = byId("ma-wa-mode-merchant");
-    if (managed) managed.checked = mode !== "merchant_whatsapp";
-    if (merchant) merchant.checked = mode === "merchant_whatsapp";
+    setSelectedWhatsappMode(mode);
     var provider = byId("ma-wa-provider-mode");
     if (provider) {
       var m = (d.whatsapp_provider_mode || "sandbox").toString().toLowerCase();
@@ -884,18 +1025,6 @@
     form.addEventListener("submit", onSubmit);
     var enableBtn = byId("ma-wa-enable-recovery-btn");
     if (enableBtn) enableBtn.addEventListener("click", onEnableRecovery);
-    var modeRadios = form.querySelectorAll('input[name="whatsapp_mode"]');
-    modeRadios.forEach(function (radio) {
-      radio.addEventListener("change", function () {
-        var managed = selectedWhatsappMode() === "cartflow_managed";
-        var desc = byId("ma-wa-mode-desc");
-        if (desc) {
-          desc.textContent = managed
-            ? "CartFlow يتولى الإرسال والمتابعة — وأنت تحدد متى وكيف يتم الاسترجاع."
-            : "رسائل العملاء من بنية واتساب تخص متجرك — للمتاجر المتقدمة.";
-        }
-      });
-    });
     var provider = byId("ma-wa-provider-mode");
     if (provider) {
       provider.addEventListener("change", function () {

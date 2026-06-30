@@ -74,8 +74,8 @@ MERCHANT_JOURNEY_STATUS_DESC_COMPLETED_AR = (
 )
 MERCHANT_PATH_MANAGEMENT_SECTION_TITLE_AR = "إدارة المسار"
 MERCHANT_MODE_LINE_AR: Mapping[str, str] = {
-    WHATSAPP_MODE_CARTFLOW_MANAGED: "متابعة العملاء عبر واتساب CartFlow",
-    WHATSAPP_MODE_MERCHANT_WHATSAPP: "متابعة العملاء عبر واتساب المتجر",
+    WHATSAPP_MODE_CARTFLOW_MANAGED: "🟢 واتساب CartFlow — CartFlow يتولى الإرسال",
+    WHATSAPP_MODE_MERCHANT_WHATSAPP: "🔵 واتساب أعمال الخاص بي — رقمك التجاري",
 }
 MERCHANT_SANDBOX_MODE_LINE_AR = "وضع التجربة (Sandbox)"
 _EXPLANATION_MERCHANT_IN_PROGRESS_AR = (

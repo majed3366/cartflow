@@ -16,6 +16,7 @@ from services.merchant_whatsapp_mode_v1 import (
     WHATSAPP_MODE_MERCHANT_WHATSAPP,
     merchant_whatsapp_mode_fields_for_api,
     normalize_whatsapp_mode,
+    whatsapp_mode_selection_for_api,
 )
 from services.admin_whatsapp_visibility_v1 import build_admin_whatsapp_store_row
 
@@ -61,12 +62,37 @@ class MerchantWhatsappModeV1Tests(unittest.TestCase):
         for key in (
             "whatsapp_mode",
             "whatsapp_mode_label_ar",
+            "whatsapp_mode_selection",
+            "whatsapp_mode_merchant_panel",
             "whatsapp_customer_connection_status_ar",
             "whatsapp_enable_recovery_cta_ar",
             "vip_destination_ar",
             "whatsapp_last_validation_ar",
         ):
             self.assertIn(key, data, msg=f"missing {key}")
+
+    def test_mode_selection_api_shape(self) -> None:
+        sel = whatsapp_mode_selection_for_api(self.row)
+        block = sel["whatsapp_mode_selection"]
+        self.assertEqual(block["selected"], WHATSAPP_MODE_CARTFLOW_MANAGED)
+        self.assertEqual(len(block["options"]), 2)
+        cartflow = block["options"][0]
+        self.assertEqual(cartflow["key"], WHATSAPP_MODE_CARTFLOW_MANAGED)
+        self.assertTrue(cartflow["bullets_ar"])
+        self.assertTrue(cartflow["bullets_ar"][0].startswith("الأسرع للبدء"))
+        self.assertTrue(cartflow["recommended"])
+
+    def test_merchant_mode_shows_merchant_panel(self) -> None:
+        self.row.whatsapp_mode = WHATSAPP_MODE_MERCHANT_WHATSAPP
+        self.row.store_whatsapp_number = "+966501112233"
+        self.row.whatsapp_recovery_enabled = True
+        self.row.whatsapp_onboarding_journey = "existing_whatsapp_business"
+        db.session.commit()
+        sel = whatsapp_mode_selection_for_api(self.row)
+        panel = sel["whatsapp_mode_merchant_panel"]
+        self.assertTrue(panel["visible"])
+        self.assertIn("connect_page_href", panel)
+        self.assertIn("meta_pairing_status_ar", panel)
 
     def test_post_returns_merchant_whatsapp_mode_in_api(self) -> None:
         post = self.client.post(
@@ -105,9 +131,10 @@ class MerchantWhatsappModeV1Tests(unittest.TestCase):
         self.assertEqual(r.status_code, 200)
         html = r.text or ""
         self.assertIn("ma-wa-enable-recovery-btn", html)
-        self.assertIn("CartFlow Managed", html)
-        self.assertIn("Merchant WhatsApp", html)
-        self.assertIn("رسائل العملاء عبر واتساب", html)
+        self.assertIn("ma-wa-mode-selection-root", html)
+        self.assertIn("ma-wa-merchant-owned-panel", html)
+        self.assertIn("ma-wa-mode-hidden", html)
+        self.assertIn("merchant_whatsapp_settings.js", html)
 
 
 if __name__ == "__main__":
