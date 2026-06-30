@@ -42,8 +42,9 @@ Do **not** enable builder on API.
 
 ## Observability logs
 
-- `[DASHBOARD SNAPSHOT READ]` — successful snapshot read (`endpoint=widget-panel|store-connection|...`)
-- `[DASHBOARD SNAPSHOT MISS]` — no row found
+- `[DASHBOARD SNAPSHOT WRITE]` — every upsert (`store_slug`, `snapshot_type`, `generated_at`, `db_fp`)
+- `[DASHBOARD SNAPSHOT READ]` — successful snapshot read (`store_slug`, `snapshot_type`, `db_fp`)
+- `[DASHBOARD SNAPSHOT MISS]` — no row found (`store_slug`, `snapshot_type`, `db_fp`)
 - `[DASHBOARD DEGRADED]` — empty/stale/budget fallback
 - `[DASHBOARD HOT PATH VIOLATION]` — live builder invoked during API request (`endpoint=...`)
 - `[DASHBOARD FIRST REQUEST WARM BLOCKED]` — DB READY / heavy warm skipped on dashboard path

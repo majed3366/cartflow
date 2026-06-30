@@ -169,7 +169,9 @@ def build_store_dashboard_snapshots(
         return {"ok": False, "reason": "store_not_found", "store_slug": store_slug}
 
     sid = int(getattr(dash_store, "id", store_id) or store_id)
-    slug = (getattr(dash_store, "zid_store_id", None) or store_slug or "").strip()
+    from services.dashboard_snapshot_v1 import canonical_snapshot_store_slug
+
+    slug = canonical_snapshot_store_slug(dash_store, store_slug=store_slug)
 
     results: dict[str, Any] = {"store_slug": slug, "types": {}, "duration_ms": 0.0}
 

@@ -39,6 +39,7 @@ STATUS_FAILED = "failed"
 
 _PREFIX_READ = "[DASHBOARD SNAPSHOT READ]"
 _PREFIX_MISS = "[DASHBOARD SNAPSHOT MISS]"
+_PREFIX_WRITE = "[DASHBOARD SNAPSHOT WRITE]"
 _PREFIX_DEGRADED = "[DASHBOARD DEGRADED]"
 _PREFIX_VIOLATION = "[DASHBOARD HOT PATH VIOLATION]"
 
@@ -50,6 +51,58 @@ def _env_truthy(name: str) -> bool:
 
 def dashboard_snapshot_mode_enabled() -> bool:
     return _env_truthy(ENV_SNAPSHOT_MODE)
+
+
+def canonical_snapshot_store_slug(
+    store: Any = None,
+    *,
+    store_slug: Optional[str] = None,
+) -> str:
+    """Single canonical key for dashboard_snapshots.store_slug (write + read)."""
+    from services.dashboard_store_context import normalize_merchant_store_slug
+
+    if store is not None:
+        zid = normalize_merchant_store_slug(getattr(store, "zid_store_id", None))
+        if zid:
+            return zid
+    if store_slug:
+        normalized = normalize_merchant_store_slug(store_slug)
+        if normalized:
+            return normalized
+    return ""
+
+
+def resolve_merchant_store_slug_for_snapshot() -> str:
+    """Authenticated merchant slug for snapshot reads — matches builder write key."""
+    from services.dashboard_store_context import DEFAULT_MERCHANT_DASHBOARD_STORE_SLUG
+    from services.merchant_auth_context import get_merchant_auth_store_slug
+    from services.merchant_auth_v1 import development_dashboard_bypass_active
+
+    slug = canonical_snapshot_store_slug(store_slug=get_merchant_auth_store_slug())
+    if slug:
+        return slug
+    if development_dashboard_bypass_active():
+        return DEFAULT_MERCHANT_DASHBOARD_STORE_SLUG
+    return ""
+
+
+def snapshot_db_identity_fingerprint() -> str:
+    """Safe fingerprint of DATABASE_URL host/db for write/read audit (no secrets)."""
+    import hashlib
+
+    url = (os.environ.get("DATABASE_URL") or "").strip()
+    if not url:
+        return "no_database_url"
+    try:
+        from sqlalchemy.engine.url import make_url
+
+        parsed = make_url(url)
+        host = (parsed.host or "local").strip()
+        database = (parsed.database or "?").strip()
+        digest = hashlib.sha256(f"{host}/{database}".encode()).hexdigest()
+        return digest[:12]
+    except Exception:  # noqa: BLE001
+        return hashlib.sha256(url.encode()).hexdigest()[:12]
 
 
 def snapshot_ttl_seconds(snapshot_type: str) -> int:
@@ -126,13 +179,31 @@ def emit_snapshot_read(
 ) -> None:
     ep_part = f" endpoint={(endpoint or snapshot_type)[:64]}" if (endpoint or snapshot_type) else ""
     _emit(
-        f"{_PREFIX_READ} store_slug={store_slug} type={snapshot_type}{ep_part} "
-        f"stale={str(stale).lower()} version={version} read_ms={round(read_ms, 1)}"
+        f"{_PREFIX_READ} store_slug={store_slug} snapshot_type={snapshot_type}{ep_part} "
+        f"stale={str(stale).lower()} version={version} read_ms={round(read_ms, 1)} "
+        f"db_fp={snapshot_db_identity_fingerprint()}"
     )
 
 
 def emit_snapshot_miss(*, store_slug: str, snapshot_type: str) -> None:
-    _emit(f"{_PREFIX_MISS} store_slug={store_slug} type={snapshot_type}")
+    _emit(
+        f"{_PREFIX_MISS} store_slug={store_slug} snapshot_type={snapshot_type} "
+        f"db_fp={snapshot_db_identity_fingerprint()}"
+    )
+
+
+def emit_snapshot_write(
+    *,
+    store_slug: str,
+    snapshot_type: str,
+    generated_at: datetime,
+    version: int,
+) -> None:
+    gen_s = generated_at.isoformat() if isinstance(generated_at, datetime) else str(generated_at)
+    _emit(
+        f"{_PREFIX_WRITE} store_slug={store_slug} snapshot_type={snapshot_type} "
+        f"generated_at={gen_s} version={version} db_fp={snapshot_db_identity_fingerprint()}"
+    )
 
 
 def emit_dashboard_degraded(
@@ -177,7 +248,7 @@ def fetch_latest_snapshot_row(
     store_slug: str,
     snapshot_type: str,
 ) -> Optional[DashboardSnapshot]:
-    slug = (store_slug or "").strip()
+    slug = canonical_snapshot_store_slug(store_slug=store_slug)
     stype = (snapshot_type or "").strip()
     if not slug or not stype:
         return None
@@ -219,7 +290,7 @@ def upsert_dashboard_snapshot(
     ttl_seconds: Optional[int] = None,
     status: str = STATUS_ACTIVE,
 ) -> DashboardSnapshot:
-    slug = (store_slug or "").strip()
+    slug = canonical_snapshot_store_slug(store_slug=store_slug)
     stype = (snapshot_type or "").strip()
     now = _utcnow()
     ttl = int(ttl_seconds if ttl_seconds is not None else snapshot_ttl_seconds(stype))
@@ -242,24 +313,63 @@ def upsert_dashboard_snapshot(
     )
     db.session.add(row)
     db.session.commit()
+    emit_snapshot_write(
+        store_slug=slug,
+        snapshot_type=stype,
+        generated_at=now,
+        version=version,
+    )
     return row
 
 
 def list_store_slugs_for_snapshot_build(*, limit: int = 10) -> list[tuple[int, str]]:
     from models import Store
 
+    cap = max(1, int(limit))
+    scan_limit = max(cap * 4, cap)
     rows = (
-        db.session.query(Store.id, Store.zid_store_id)
+        db.session.query(Store.id, Store.zid_store_id, Store.updated_at)
         .filter(Store.zid_store_id.isnot(None))
         .order_by(Store.updated_at.desc())
-        .limit(max(1, int(limit)))
+        .limit(scan_limit)
         .all()
     )
+    priority: list[tuple[int, str]] = []
+    rest: list[tuple[int, str]] = []
+    failsafe_cutoff = _utcnow() - timedelta(seconds=snapshot_builder_failsafe_seconds())
+    seen: set[tuple[int, str]] = set()
+
+    for sid, zid, _upd in rows:
+        slug = canonical_snapshot_store_slug(store_slug=zid)
+        if not slug:
+            continue
+        pair = (int(sid), slug)
+        if pair in seen:
+            continue
+        seen.add(pair)
+        summary_row = fetch_latest_snapshot_row(
+            store_slug=slug,
+            snapshot_type=SNAPSHOT_TYPE_SUMMARY,
+        )
+        needs_build = summary_row is None
+        if not needs_build:
+            gen = _as_utc(summary_row.generated_at)
+            needs_build = gen is None or gen < failsafe_cutoff
+        if needs_build:
+            priority.append(pair)
+        else:
+            rest.append(pair)
+
     out: list[tuple[int, str]] = []
-    for sid, slug in rows:
-        s = (slug or "").strip()
-        if s:
-            out.append((int(sid), s))
+    for pair in priority:
+        if len(out) >= cap:
+            break
+        out.append(pair)
+    for pair in rest:
+        if len(out) >= cap:
+            break
+        if pair not in out:
+            out.append(pair)
     return out
 
 
@@ -279,15 +389,19 @@ __all__ = [
     "STATUS_FAILED",
     "STATUS_STALE",
     "any_store_needs_failsafe_snapshot_build",
+    "canonical_snapshot_store_slug",
     "decode_snapshot_payload",
     "dashboard_snapshot_mode_enabled",
     "emit_dashboard_degraded",
     "emit_hot_path_violation",
     "emit_snapshot_miss",
     "emit_snapshot_read",
+    "emit_snapshot_write",
     "fetch_latest_snapshot_row",
     "list_store_slugs_for_snapshot_build",
+    "resolve_merchant_store_slug_for_snapshot",
     "snapshot_builder_failsafe_seconds",
+    "snapshot_db_identity_fingerprint",
     "snapshot_row_is_stale",
     "snapshot_ttl_seconds",
     "upsert_dashboard_snapshot",

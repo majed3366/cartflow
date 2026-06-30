@@ -62,7 +62,46 @@ class DashboardSnapshotPhase1BTests(unittest.TestCase):
     def tearDown(self) -> None:
         _clear_snapshot_env()
         db.session.query(DashboardSnapshot).delete()
+        db.session.query(Store).filter(
+            Store.zid_store_id.in_(("failsafe-demo", "failsafe-stale", "cartflow-42b491"))
+        ).delete(synchronize_session=False)
         db.session.commit()
+
+    def test_snapshot_write_and_read_use_canonical_store_slug(self) -> None:
+        from services.dashboard_snapshot_v1 import (
+            SNAPSHOT_TYPE_WIDGET_PANEL,
+            canonical_snapshot_store_slug,
+            fetch_latest_snapshot_row,
+            upsert_dashboard_snapshot,
+        )
+
+        st = Store(zid_store_id="cartflow-42b491", recovery_attempts=1)
+        db.session.add(st)
+        db.session.commit()
+        slug = canonical_snapshot_store_slug(st)
+        self.assertEqual(slug, "cartflow-42b491")
+        upsert_dashboard_snapshot(
+            store_id=int(st.id),
+            store_slug=slug,
+            snapshot_type=SNAPSHOT_TYPE_WIDGET_PANEL,
+            payload={"merchant_widget_panel": {}},
+        )
+        row = fetch_latest_snapshot_row(
+            store_slug="cartflow-42b491",
+            snapshot_type=SNAPSHOT_TYPE_WIDGET_PANEL,
+        )
+        self.assertIsNotNone(row)
+        self.assertEqual(row.store_slug, "cartflow-42b491")
+        self.assertEqual(row.snapshot_type, SNAPSHOT_TYPE_WIDGET_PANEL)
+
+    def test_list_store_slugs_prioritizes_missing_snapshots(self) -> None:
+        from services.dashboard_snapshot_v1 import list_store_slugs_for_snapshot_build
+
+        st = Store(zid_store_id="cartflow-42b491", recovery_attempts=1)
+        db.session.add(st)
+        db.session.commit()
+        slugs = [s for _i, s in list_store_slugs_for_snapshot_build(limit=5)]
+        self.assertIn("cartflow-42b491", slugs)
 
     @patch("services.merchant_auth_v1.development_dashboard_bypass_active", return_value=True)
     @patch("main._merchant_dashboard_db_ready")

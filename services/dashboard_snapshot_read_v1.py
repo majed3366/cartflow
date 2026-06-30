@@ -18,6 +18,7 @@ from services.dashboard_snapshot_v1 import (
     SNAPSHOT_TYPE_STORE_CONNECTION,
     SNAPSHOT_TYPE_SUMMARY,
     SNAPSHOT_TYPE_WIDGET_PANEL,
+    canonical_snapshot_store_slug,
     decode_snapshot_payload,
     emit_dashboard_degraded,
     emit_snapshot_miss,
@@ -142,7 +143,7 @@ def read_dashboard_snapshot_payload(
     Returns payload dict with ``_snapshot`` metadata. Never scans cart/history tables.
     """
     wall0 = t0 if t0 is not None else time.perf_counter()
-    slug = (store_slug or "").strip()
+    slug = canonical_snapshot_store_slug(store_slug=store_slug)
     stype = (snapshot_type or "").strip()
 
     if not slug:
@@ -286,15 +287,11 @@ def build_normal_carts_from_snapshot(
 
 
 def resolve_merchant_store_slug_for_snapshot() -> str:
-    from services.merchant_auth_context import get_merchant_auth_store_slug
-    from services.merchant_auth_v1 import development_dashboard_bypass_active
+    from services.dashboard_snapshot_v1 import (
+        resolve_merchant_store_slug_for_snapshot as _resolve,
+    )
 
-    slug = (get_merchant_auth_store_slug() or "").strip()
-    if slug:
-        return slug
-    if development_dashboard_bypass_active():
-        return "demo"
-    return ""
+    return _resolve()
 
 
 def _degraded_refresh_state_payload(*, reason: str) -> dict[str, Any]:
