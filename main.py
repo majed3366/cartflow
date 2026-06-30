@@ -875,6 +875,9 @@ def api_recover_redirect(t: str = Query(..., min_length=6, max_length=2048)):
 
 @app.on_event("startup")
 async def _startup_whatsapp_queue() -> None:
+    from services.runtime_role_verification_v1 import verify_runtime_role_at_startup
+
+    verify_runtime_role_at_startup()
     try:
         from services.db_ready_restart_survival_v1 import record_restart_cycle_begin
 
@@ -1011,15 +1014,24 @@ def _app_test_client() -> Any:
 
 @app.middleware("http")
 async def production_store_schema_middleware(request: Request, call_next: Any) -> Any:
-    """Run production store DDL before any handler may query Store ORM columns."""
-    try:
-        from schema_production_store_bootstrap import (
-            ensure_production_store_schema_before_request,
-        )
+    """Legacy dev-only schema bootstrap — disabled on production-like / API paths (Phase 0)."""
+    from services.schema_runtime_guard_v1 import request_schema_middleware_enabled
 
-        ensure_production_store_schema_before_request(db)
-    except Exception as exc:  # noqa: BLE001
-        log.warning("production store schema middleware skipped: %s", exc)
+    if request_schema_middleware_enabled():
+        try:
+            from schema_production_store_bootstrap import (
+                ensure_production_store_schema_before_request,
+            )
+
+            ensure_production_store_schema_before_request(db)
+        except Exception as exc:  # noqa: BLE001
+            log.warning("production store schema middleware skipped: %s", exc)
+    try:
+        from services.request_timing_audit_v1 import request_timing_route_start
+
+        request_timing_route_start()
+    except Exception:  # noqa: BLE001
+        pass
     return await call_next(request)
 
 
@@ -1095,6 +1107,22 @@ async def db_scoped_session_cleanup(request: Request, call_next: Any) -> Any:
 
     maybe_install_engine_listener()
     audit_request_begin(request)
+    _request_timing_route_end = None
+    try:
+        from services.request_timing_audit_v1 import (  # noqa: PLC0415
+            maybe_install_pool_checkout_timing_listener,
+            request_timing_begin,
+            request_timing_route_end as _request_timing_route_end_fn,
+        )
+
+        request_timing_begin(
+            path=getattr(getattr(request, "url", None), "path", "") or "/",
+            method=getattr(request, "method", "") or "",
+        )
+        maybe_install_pool_checkout_timing_listener()
+        _request_timing_route_end = _request_timing_route_end_fn
+    except Exception:  # noqa: BLE001
+        pass
     _tl_prof_path = getattr(getattr(request, "url", None), "path", "") or ""
     try:
         from services.recovery_truth_timeline_v1 import (  # noqa: PLC0415
@@ -1109,6 +1137,11 @@ async def db_scoped_session_cleanup(request: Request, call_next: Any) -> Any:
     try:
         response = await call_next(request)
         stall_trace_checkpoint("response_ready_mw")
+        if _request_timing_route_end is not None:
+            try:
+                _request_timing_route_end()
+            except Exception:  # noqa: BLE001
+                pass
         return response
     finally:
         audit_leak_suspected_check(request)

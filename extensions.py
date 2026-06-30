@@ -40,6 +40,9 @@ __all__ = [
     "Float",
     "ForeignKey",
     "Integer",
+    "POSTGRES_POOL_MAX_OVERFLOW",
+    "POSTGRES_POOL_SIZE",
+    "POSTGRES_POOL_TIMEOUT",
     "String",
     "Text",
     "db",
@@ -50,6 +53,11 @@ __all__ = [
     "remove_scoped_session",
     "text",
 ]
+
+POSTGRES_POOL_SIZE = 30
+POSTGRES_POOL_MAX_OVERFLOW = 30
+POSTGRES_POOL_TIMEOUT = 5
+POSTGRES_POOL_RECYCLE = 300
 
 
 def get_database_url() -> str:
@@ -93,11 +101,11 @@ def init_database(url: Optional[str] = None) -> None:
         # ‎QueuePool‎ الافتراضي يُنفّد الاتصالات في ‎pytest‎ الطويل على ‎SQLite‎؛ ‎NullPool‎ يغلق الاتصال عند الإرجاع.
         engine_kw["poolclass"] = NullPool
     else:
-        # Postgres/MySQL: tuned after removing runtime create_all / VIP cleanup hot-path DDL
-        engine_kw["pool_size"] = 10
-        engine_kw["max_overflow"] = 20
-        engine_kw["pool_timeout"] = 30
-        engine_kw["pool_recycle"] = 300
+        # Postgres/MySQL — Reliability Foundation V1 Phase 0: fail fast (5s max wait)
+        engine_kw["pool_size"] = POSTGRES_POOL_SIZE
+        engine_kw["max_overflow"] = POSTGRES_POOL_MAX_OVERFLOW
+        engine_kw["pool_timeout"] = POSTGRES_POOL_TIMEOUT
+        engine_kw["pool_recycle"] = POSTGRES_POOL_RECYCLE
         engine_kw["pool_reset_on_return"] = "rollback"
     _engine = create_engine(
         u,

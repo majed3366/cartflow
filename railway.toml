@@ -1,5 +1,16 @@
 # Railway config-as-code: root repo, Dockerfile build, FastAPI entry main:app
 # Deploy root directory must be the repository root (not a subdirectory).
+#
+# PRODUCTION: use TWO Railway services — see docs/railway_api_scheduler_deployment_v1.md
+#
+# Service A (API):     CARTFLOW_PROCESS_ROLE=api
+#                      CARTFLOW_DB_DUE_SCANNER_ENABLED=false
+#                      CARTFLOW_RECOVERY_RESUME_ON_STARTUP=0
+#
+# Service B (Scheduler): CARTFLOW_PROCESS_ROLE=scheduler
+#                        CARTFLOW_DB_DUE_SCANNER_ENABLED=true
+#                        CARTFLOW_RECOVERY_RESUME_ON_STARTUP=1
+#                        (single replica only)
 
 [build]
 builder = "DOCKERFILE"
@@ -8,11 +19,10 @@ dockerfilePath = "Dockerfile"
 [deploy]
 startCommand = "python -m uvicorn main:app --host 0.0.0.0 --port 8000"
 
-# Scheduler ownership (Phase 1 fail-closed): production-like runtimes require an explicit
-# process role. Single Railway service = one scheduler owner. If you scale to multiple
-# replicas, split services: one scheduler (below) + API replicas with role=api and
-# CARTFLOW_RECOVERY_RESUME_ON_STARTUP=0.
+# smart-reply-ai (public API) — scheduler drivers MUST stay off on this service.
+# Scheduler service: set role=scheduler + scanner/resume in Railway dashboard only.
 [env]
-CARTFLOW_PROCESS_ROLE = "scheduler"
-CARTFLOW_RECOVERY_RESUME_ON_STARTUP = "1"
-CARTFLOW_DB_DUE_SCANNER_ENABLED = "true"
+CARTFLOW_PROCESS_ROLE = "api"
+CARTFLOW_RECOVERY_RESUME_ON_STARTUP = "0"
+CARTFLOW_DB_DUE_SCANNER_ENABLED = "false"
+CARTFLOW_ENFORCE_API_ONLY = "1"
