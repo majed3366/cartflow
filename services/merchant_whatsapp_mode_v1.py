@@ -25,7 +25,7 @@ SELECTABLE_WHATSAPP_MODES: frozenset[str] = frozenset(
 
 DEFAULT_WHATSAPP_MODE = WHATSAPP_MODE_CARTFLOW_MANAGED
 
-MODE_SELECTION_TITLE_AR = "اختر طريقة واتساب لمتجرك"
+MODE_SELECTION_TITLE_AR = "كيف تريد التواصل مع عملائك؟"
 
 WHATSAPP_MODE_TITLE_AR: Mapping[str, str] = {
     WHATSAPP_MODE_CARTFLOW_MANAGED: "🟢 واتساب CartFlow",

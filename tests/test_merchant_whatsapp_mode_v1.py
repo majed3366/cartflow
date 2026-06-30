@@ -2,16 +2,27 @@
 """WhatsApp Production Strategy Phase 1 — mode architecture & UX."""
 from __future__ import annotations
 
+import os
 import unittest
 import uuid
+from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
 import main
 from extensions import db
 from models import Store
+from services.dashboard_snapshot_enforcement_guard_v1 import (
+    DashboardSnapshotHotPathViolation,
+)
+from services.dashboard_snapshot_hot_path_guard_v1 import (
+    dashboard_api_snapshot_request_scope,
+    guard_dashboard_hot_path,
+)
+from services.dashboard_snapshot_v1 import ENV_SNAPSHOT_MODE
 from services.merchant_whatsapp_mode_v1 import (
     DEFAULT_WHATSAPP_MODE,
+    MODE_SELECTION_TITLE_AR,
     WHATSAPP_MODE_CARTFLOW_MANAGED,
     WHATSAPP_MODE_MERCHANT_WHATSAPP,
     merchant_whatsapp_mode_fields_for_api,
@@ -19,6 +30,18 @@ from services.merchant_whatsapp_mode_v1 import (
     whatsapp_mode_selection_for_api,
 )
 from services.admin_whatsapp_visibility_v1 import build_admin_whatsapp_store_row
+
+
+def _enable_snapshot_enforcement() -> None:
+    os.environ["ENV"] = "development"
+    os.environ[ENV_SNAPSHOT_MODE] = "1"
+    os.environ["CARTFLOW_DASHBOARD_SNAPSHOT_ENFORCE"] = "1"
+    os.environ.setdefault("SECRET_KEY", "unit-test-wa-mode-snapshot")
+
+
+def _clear_snapshot_env() -> None:
+    os.environ.pop(ENV_SNAPSHOT_MODE, None)
+    os.environ.pop("CARTFLOW_DASHBOARD_SNAPSHOT_ENFORCE", None)
 
 
 class MerchantWhatsappModeV1Tests(unittest.TestCase):
@@ -74,6 +97,7 @@ class MerchantWhatsappModeV1Tests(unittest.TestCase):
     def test_mode_selection_api_shape(self) -> None:
         sel = whatsapp_mode_selection_for_api(self.row)
         block = sel["whatsapp_mode_selection"]
+        self.assertEqual(block["title_ar"], MODE_SELECTION_TITLE_AR)
         self.assertEqual(block["selected"], WHATSAPP_MODE_CARTFLOW_MANAGED)
         self.assertEqual(len(block["options"]), 2)
         cartflow = block["options"][0]
@@ -81,6 +105,30 @@ class MerchantWhatsappModeV1Tests(unittest.TestCase):
         self.assertTrue(cartflow["bullets_ar"])
         self.assertTrue(cartflow["bullets_ar"][0].startswith("الأسرع للبدء"))
         self.assertTrue(cartflow["recommended"])
+        merchant = block["options"][1]
+        self.assertEqual(merchant["key"], WHATSAPP_MODE_MERCHANT_WHATSAPP)
+        self.assertIn("Meta", merchant["bullets_ar"][-1])
+
+    def test_existing_store_without_whatsapp_mode_defaults(self) -> None:
+        self.row.whatsapp_mode = None
+        db.session.commit()
+        fields = merchant_whatsapp_mode_fields_for_api(self.row)
+        self.assertEqual(fields["whatsapp_mode"], WHATSAPP_MODE_CARTFLOW_MANAGED)
+        sel = whatsapp_mode_selection_for_api(self.row)
+        keys = [o["key"] for o in sel["whatsapp_mode_selection"]["options"]]
+        self.assertEqual(
+            keys,
+            [WHATSAPP_MODE_CARTFLOW_MANAGED, WHATSAPP_MODE_MERCHANT_WHATSAPP],
+        )
+
+    def test_merchant_can_see_both_modes(self) -> None:
+        r = self.client.get("/api/recovery-settings")
+        data = r.json()
+        options = (data.get("whatsapp_mode_selection") or {}).get("options") or []
+        self.assertEqual(len(options), 2)
+        titles = {o.get("key"): o.get("title_ar") for o in options}
+        self.assertIn("🟢", titles[WHATSAPP_MODE_CARTFLOW_MANAGED])
+        self.assertIn("🔵", titles[WHATSAPP_MODE_MERCHANT_WHATSAPP])
 
     def test_merchant_mode_shows_merchant_panel(self) -> None:
         self.row.whatsapp_mode = WHATSAPP_MODE_MERCHANT_WHATSAPP
@@ -93,6 +141,8 @@ class MerchantWhatsappModeV1Tests(unittest.TestCase):
         self.assertTrue(panel["visible"])
         self.assertIn("connect_page_href", panel)
         self.assertIn("meta_pairing_status_ar", panel)
+        self.assertIn("embedded_signup_status_ar", panel)
+        self.assertIn("/dashboard#whatsapp-connect", panel["connect_page_href"])
 
     def test_post_returns_merchant_whatsapp_mode_in_api(self) -> None:
         post = self.client.post(
@@ -135,6 +185,58 @@ class MerchantWhatsappModeV1Tests(unittest.TestCase):
         self.assertIn("ma-wa-merchant-owned-panel", html)
         self.assertIn("ma-wa-mode-hidden", html)
         self.assertIn("merchant_whatsapp_settings.js", html)
+
+
+class WhatsappModeSnapshotArchitectureTests(unittest.TestCase):
+    """WhatsApp mode UX must not weaken dashboard snapshot enforcement."""
+
+    def setUp(self) -> None:
+        _enable_snapshot_enforcement()
+        self.client = TestClient(main.app)
+        db.create_all()
+
+    def tearDown(self) -> None:
+        _clear_snapshot_env()
+
+    def test_hot_path_guard_raises_during_snapshot_request(self) -> None:
+        with dashboard_api_snapshot_request_scope(path="/api/dashboard/summary"):
+            with self.assertRaises(DashboardSnapshotHotPathViolation):
+                guard_dashboard_hot_path("summary_live", endpoint="summary")
+
+    @patch("services.merchant_auth_v1.development_dashboard_bypass_active", return_value=True)
+    @patch("main._api_json_dashboard_summary")
+    @patch("main._api_json_dashboard_normal_carts")
+    def test_dashboard_endpoints_never_use_live_builders(
+        self,
+        mock_nc: unittest.mock.MagicMock,
+        mock_summary: unittest.mock.MagicMock,
+        _bypass: unittest.mock.MagicMock,
+    ) -> None:
+        for path in (
+            "/api/dashboard/summary",
+            "/api/dashboard/normal-carts",
+            "/api/dashboard/widget-panel",
+            "/api/dashboard/refresh-state",
+        ):
+            resp = self.client.get(path)
+            self.assertEqual(resp.status_code, 200, msg=path)
+            body = resp.json()
+            self.assertTrue(body.get("snapshot_mode"), msg=path)
+        mock_summary.assert_not_called()
+        mock_nc.assert_not_called()
+
+    @patch("services.merchant_auth_v1.development_dashboard_bypass_active", return_value=True)
+    def test_recovery_settings_serves_whatsapp_mode_without_snapshot_flag(
+        self,
+        _bypass: unittest.mock.MagicMock,
+    ) -> None:
+        """#whatsapp loads via /api/recovery-settings — separate from snapshot dashboard."""
+        resp = self.client.get("/api/recovery-settings")
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertTrue(data.get("ok"))
+        self.assertIn("whatsapp_mode_selection", data)
+        self.assertFalse(data.get("snapshot_mode"))
 
 
 if __name__ == "__main__":

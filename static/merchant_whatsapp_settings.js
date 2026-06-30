@@ -65,7 +65,7 @@
       root.innerHTML = "";
       return;
     }
-    var title = sel.title_ar || "اختر طريقة واتساب لمتجرك";
+    var title = sel.title_ar || "كيف تريد التواصل مع عملائك؟";
     var cards = options
       .map(function (opt) {
         var key = opt.key || "";
