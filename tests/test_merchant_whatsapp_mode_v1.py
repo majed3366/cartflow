@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import unittest
 import uuid
+from pathlib import Path
 from unittest.mock import patch
 
 from fastapi.testclient import TestClient
@@ -23,10 +24,13 @@ from services.dashboard_snapshot_v1 import ENV_SNAPSHOT_MODE
 from services.merchant_whatsapp_mode_v1 import (
     DEFAULT_WHATSAPP_MODE,
     MODE_SELECTION_TITLE_AR,
+    SAVE_SUCCESS_MESSAGE_AR,
     WHATSAPP_MODE_CARTFLOW_MANAGED,
+    WHATSAPP_MODE_CTA_AR,
     WHATSAPP_MODE_MERCHANT_WHATSAPP,
     merchant_whatsapp_mode_fields_for_api,
     normalize_whatsapp_mode,
+    whatsapp_current_path_for_api,
     whatsapp_mode_selection_for_api,
 )
 from services.admin_whatsapp_visibility_v1 import build_admin_whatsapp_store_row
@@ -103,11 +107,34 @@ class MerchantWhatsappModeV1Tests(unittest.TestCase):
         cartflow = block["options"][0]
         self.assertEqual(cartflow["key"], WHATSAPP_MODE_CARTFLOW_MANAGED)
         self.assertTrue(cartflow["bullets_ar"])
-        self.assertTrue(cartflow["bullets_ar"][0].startswith("الأسرع للبدء"))
+        self.assertEqual(cartflow["bullets_ar"][0], "لا يحتاج إعداد.")
+        self.assertEqual(cartflow["subtitle_ar"], "الأسرع للبدء")
+        self.assertEqual(
+            cartflow["button_ar"], WHATSAPP_MODE_CTA_AR[WHATSAPP_MODE_CARTFLOW_MANAGED]
+        )
         self.assertTrue(cartflow["recommended"])
         merchant = block["options"][1]
         self.assertEqual(merchant["key"], WHATSAPP_MODE_MERCHANT_WHATSAPP)
-        self.assertIn("Meta", merchant["bullets_ar"][-1])
+        self.assertNotIn("Meta", " ".join(merchant["bullets_ar"]))
+        self.assertEqual(merchant["title_ar"], "🔵 واتساب أعمالي")
+
+    def test_current_path_status_cartflow(self) -> None:
+        path = whatsapp_current_path_for_api(self.row)
+        self.assertIn("CartFlow", path["message_ar"])
+        self.assertTrue(path["footnote_ar"])
+
+    def test_current_path_status_merchant(self) -> None:
+        self.row.whatsapp_mode = WHATSAPP_MODE_MERCHANT_WHATSAPP
+        db.session.commit()
+        path = whatsapp_current_path_for_api(self.row)
+        self.assertIn("رقم الواتساب الخاص بك", path["message_ar"])
+        self.assertNotIn("Meta", path["message_ar"])
+
+    def test_api_includes_v2_experience_fields(self) -> None:
+        fields = merchant_whatsapp_mode_fields_for_api(self.row)
+        self.assertTrue(fields.get("whatsapp_mode_experience_v2"))
+        self.assertEqual(fields.get("whatsapp_save_success_message_ar"), SAVE_SUCCESS_MESSAGE_AR)
+        self.assertIn("message_ar", fields.get("whatsapp_current_path") or {})
 
     def test_existing_store_without_whatsapp_mode_defaults(self) -> None:
         self.row.whatsapp_mode = None
@@ -180,11 +207,16 @@ class MerchantWhatsappModeV1Tests(unittest.TestCase):
         r = self.client.get("/dashboard")
         self.assertEqual(r.status_code, 200)
         html = r.text or ""
-        self.assertIn("ma-wa-enable-recovery-btn", html)
         self.assertIn("ma-wa-mode-selection-root", html)
-        self.assertIn("ma-wa-merchant-owned-panel", html)
+        self.assertIn("ma-wa-current-path-root", html)
+        self.assertIn("ma-wa-advanced-settings-wrap", html)
         self.assertIn("ma-wa-mode-hidden", html)
         self.assertIn("merchant_whatsapp_settings.js", html)
+        js = Path("static/merchant_whatsapp_settings.js").read_text(encoding="utf-8")
+        self.assertIn(MODE_SELECTION_TITLE_AR, js)
+        self.assertIn("renderCurrentPath", js)
+        self.assertIn("renderAdvancedSettings", js)
+        self.assertNotIn("renderReadinessCard(d)", js[js.index("function setReadOnly"): js.index("function fillForm")])
 
 
 class WhatsappModeSnapshotArchitectureTests(unittest.TestCase):

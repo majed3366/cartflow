@@ -11,6 +11,8 @@
   var READINESS_LOADING_AR = "جاري التحقق من جاهزية واتساب...";
   var READINESS_ERROR_AR =
     "تعذر التحقق من جاهزية واتساب حالياً. حاول تحديث الصفحة.";
+  var PAGE_LOADING_AR = "جاري تحميل إعدادات واتساب…";
+  var SAVE_OK_AR = "تم حفظ إعدادات الواتساب.";
 
   function byId(id) {
     return document.getElementById(id);
@@ -35,7 +37,12 @@
     var el = byId("ma-wa-settings-err");
     var ok = byId("ma-wa-settings-ok");
     setBoxVisible(el, false);
-    setBoxVisible(ok, true);
+    if (ok) {
+      ok.textContent =
+        (lastSettingsData && lastSettingsData.whatsapp_save_success_message_ar) ||
+        SAVE_OK_AR;
+      setBoxVisible(ok, true);
+    }
   }
 
   function hideMsgs() {
@@ -54,6 +61,18 @@
     if (key !== "merchant_whatsapp") key = "cartflow_managed";
     var hidden = byId("ma-wa-mode-hidden");
     if (hidden) hidden.value = key;
+  }
+
+  function showPageLoading() {
+    var root = byId("ma-wa-mode-selection-root");
+    if (root) {
+      root.innerHTML =
+        '<p class="ma-wa-v2-loading">' + escHtml(PAGE_LOADING_AR) + "</p>";
+    }
+    var pathRoot = byId("ma-wa-current-path-root");
+    if (pathRoot) pathRoot.hidden = true;
+    var adv = byId("ma-wa-advanced-settings-wrap");
+    if (adv) adv.hidden = true;
   }
 
   function renderModeSelection(d) {
@@ -77,27 +96,31 @@
             return "<li>" + escHtml(b) + "</li>";
           })
           .join("");
+        var btnLabel = opt.button_ar || (isCartflow ? "استخدام واتساب CartFlow" : "استخدام واتساب أعمالي");
         return (
-          '<button type="button" class="ma-wa-mode-card' +
+          '<div class="ma-wa-mode-card' +
           (isCartflow ? " is-cartflow" : " is-merchant") +
           (isSelected ? " is-selected" : "") +
-          '" data-ma-wa-mode="' +
-          escHtml(key) +
-          '" aria-pressed="' +
-          (isSelected ? "true" : "false") +
           '">' +
           '<div class="ma-wa-mode-card-head">' +
           '<p class="ma-wa-mode-card-title">' +
           escHtml(opt.title_ar || opt.label_ar || key) +
-          "</p>" +
-          (opt.recommended
-            ? '<span class="ma-wa-mode-card-badge">موصى به</span>'
+          "</p></div>" +
+          (opt.subtitle_ar
+            ? '<p class="ma-wa-mode-card-subtitle">' + escHtml(opt.subtitle_ar) + "</p>"
             : "") +
-          "</div>" +
           (bulletsHtml
             ? '<ul class="ma-wa-mode-card-bullets">' + bulletsHtml + "</ul>"
             : "") +
-          "</button>"
+          '<button type="button" class="ma-fw-save ma-wa-mode-select-btn' +
+          (isSelected ? " is-current" : "") +
+          '" data-ma-wa-mode="' +
+          escHtml(key) +
+          '"' +
+          (isSelected ? ' disabled aria-current="true"' : "") +
+          ">" +
+          escHtml(isSelected ? "المسار الحالي" : btnLabel) +
+          "</button></div>"
         );
       })
       .join("");
@@ -112,9 +135,11 @@
     root.querySelectorAll("[data-ma-wa-mode]").forEach(function (btn) {
       btn.addEventListener("click", function () {
         var nextMode = btn.getAttribute("data-ma-wa-mode");
-        if (!nextMode || nextMode === selectedWhatsappMode()) return;
+        if (!nextMode || nextMode === selectedWhatsappMode() || btn.disabled) return;
         setSelectedWhatsappMode(nextMode);
         hideMsgs();
+        clearCtaHighlights();
+        showCtaGuidance("");
         postSettings(buildSaveBody({ whatsapp_mode: nextMode }))
           .then(function (x) {
             if (x.data && x.data.ok) {
@@ -133,53 +158,98 @@
     });
   }
 
-  function renderMerchantOwnedPanel(d) {
-    var panel = byId("ma-wa-merchant-owned-panel");
-    if (!panel) return;
-    var block = d.whatsapp_mode_merchant_panel || {};
-    if (!block.visible) {
-      panel.hidden = true;
-      panel.innerHTML = "";
+  function renderCurrentPath(d) {
+    var root = byId("ma-wa-current-path-root");
+    if (!root) return;
+    var block = d.whatsapp_current_path || {};
+    if (!block.message_ar) {
+      root.hidden = true;
+      root.innerHTML = "";
       return;
     }
-    panel.hidden = false;
+    root.hidden = false;
+    root.innerHTML =
+      '<section class="ma-wa-current-path-card" dir="rtl">' +
+      '<p class="ma-wa-current-path-title">' +
+      escHtml(block.section_title_ar || "المسار الحالي") +
+      "</p>" +
+      '<p class="ma-wa-current-path-message">' +
+      escHtml(block.message_ar) +
+      "</p>" +
+      (block.footnote_ar
+        ? '<p class="ma-wa-current-path-footnote">' + escHtml(block.footnote_ar) + "</p>"
+        : "") +
+      "</section>";
+  }
+
+  function renderAdvancedSettings(d) {
+    var wrap = byId("ma-wa-advanced-settings-wrap");
+    var root = byId("ma-wa-advanced-settings-root");
+    var summary = byId("ma-wa-advanced-settings-summary");
+    if (!wrap || !root) return;
+    var mode = (d.whatsapp_mode || "cartflow_managed").toString().toLowerCase();
+    if (mode !== "merchant_whatsapp") {
+      wrap.hidden = true;
+      root.innerHTML = "";
+      return;
+    }
+    wrap.hidden = false;
+    if (summary) {
+      summary.textContent =
+        d.whatsapp_advanced_settings_title_ar || "إعدادات متقدمة";
+    }
+    var block = d.whatsapp_mode_merchant_panel || {};
     var connectHref = block.connect_page_href || "/dashboard#whatsapp-connect";
-    panel.innerHTML =
-      '<p class="ma-wa-merchant-owned-panel-title">حالة واتساب أعمال الخاص بي</p>' +
+    root.innerHTML =
+      '<div class="ma-wa-advanced-panel">' +
+      '<p class="ma-wa-advanced-section-k">حالة الربط</p>' +
       '<div class="ma-wa-merchant-owned-row">' +
-      '<span class="ma-wa-merchant-owned-k">ربط منصة الأعمال:</span>' +
+      '<span class="ma-wa-merchant-owned-k">Meta Business</span>' +
       "<span>" +
       escHtml(block.meta_pairing_status_ar || "—") +
       "</span></div>" +
       (block.meta_pairing_instruction_ar
         ? '<div class="ma-wa-merchant-owned-row">' +
-          '<span class="ma-wa-merchant-owned-k">الخطوة التالية:</span>' +
+          '<span class="ma-wa-merchant-owned-k">الخطوة التالية</span>' +
           "<span>" +
           escHtml(block.meta_pairing_instruction_ar) +
           "</span></div>"
         : "") +
       '<div class="ma-wa-merchant-owned-row">' +
-      '<span class="ma-wa-merchant-owned-k">Embedded Signup:</span>' +
+      '<span class="ma-wa-merchant-owned-k">Embedded Signup</span>' +
       "<span>" +
       escHtml(block.embedded_signup_status_ar || "—") +
       "</span></div>" +
       (block.embedded_signup_next_action_ar
         ? '<div class="ma-wa-merchant-owned-row">' +
-          '<span class="ma-wa-merchant-owned-k">إجراء الربط:</span>' +
+          '<span class="ma-wa-merchant-owned-k">إجراء الربط</span>' +
           "<span>" +
           escHtml(block.embedded_signup_next_action_ar) +
           "</span></div>"
         : "") +
-      (block.connect_page_note_ar
-        ? '<p class="ma-fw-field-hint" style="margin:8px 0 0;">' +
-          escHtml(block.connect_page_note_ar) +
-          "</p>"
-        : "") +
       '<div class="ma-wa-merchant-owned-connect">' +
       '<button type="button" class="ma-fw-save ma-sc-btn-secondary" data-ma-wa-open-connect>' +
-      escHtml(block.connect_page_label_ar || "صفحة ربط واتساب") +
-      "</button></div>";
-    var connectBtn = panel.querySelector("[data-ma-wa-open-connect]");
+      escHtml(block.connect_page_label_ar || "صفحة الربط") +
+      "</button></div>" +
+      '<p class="ma-wa-advanced-section-k">معلومات تشخيصية</p>' +
+      '<div class="ma-wa-advanced-diagnostics">' +
+      '<div class="ma-wa-merchant-owned-row">' +
+      '<span class="ma-wa-merchant-owned-k">حالة واتساب</span>' +
+      "<span>" +
+      escHtml(d.whatsapp_status_display || "—") +
+      "</span></div>" +
+      '<div class="ma-wa-merchant-owned-row">' +
+      '<span class="ma-wa-merchant-owned-k">آخر حالة إرسال</span>' +
+      "<span>" +
+      escHtml(d.last_send_status_ar || "—") +
+      "</span></div>" +
+      '<div class="ma-wa-merchant-owned-row">' +
+      '<span class="ma-wa-merchant-owned-k">وقت آخر إرسال</span>' +
+      "<span>" +
+      escHtml(d.last_send_at_ar || "—") +
+      "</span></div>" +
+      "</div></div>";
+    var connectBtn = root.querySelector("[data-ma-wa-open-connect]");
     if (connectBtn) {
       connectBtn.addEventListener("click", function () {
         if (window.goTo) {
@@ -189,6 +259,10 @@
         }
       });
     }
+  }
+
+  function renderMerchantOwnedPanel(_d) {
+    /* V2: merchant-owned technical panel lives in advanced settings only. */
   }
 
   function setLegacyEnableCtaVisible(visible) {
@@ -303,7 +377,9 @@
   }
 
   function openAdvancedOptions() {
-    var details = document.querySelector(".ma-wa-advanced");
+    var details =
+      document.querySelector(".ma-wa-advanced-v2") ||
+      document.querySelector(".ma-wa-advanced");
     if (details) details.open = true;
   }
 
@@ -882,10 +958,9 @@
 
   function setReadOnly(d) {
     if (!d) return;
-    applyConnectionPill(d);
     renderModeSelection(d);
-    renderMerchantOwnedPanel(d);
-    renderReadinessCard(d);
+    renderCurrentPath(d);
+    renderAdvancedSettings(d);
     var st = byId("ma-wa-status-display");
     if (st) st.textContent = d.whatsapp_status_display || "—";
     var ls = byId("ma-wa-last-send-status");
@@ -897,8 +972,9 @@
     }
     var hint = byId("ma-wa-provider-hint");
     if (hint) hint.textContent = d.whatsapp_provider_mode_hint_ar || "";
-    var desc = byId("ma-wa-mode-desc");
-    if (desc) desc.textContent = d.whatsapp_mode_description_ar || desc.textContent;
+    var readinessRoot = byId("ma-wa-readiness-root");
+    if (readinessRoot) readinessRoot.hidden = true;
+    setLegacyEnableCtaVisible(false);
   }
 
   function fillForm(d) {
@@ -948,7 +1024,7 @@
   function loadSettings() {
     if (loading) return Promise.resolve();
     loading = true;
-    showReadinessLoading();
+    showPageLoading();
     hideMsgs();
     return fetch("/api/recovery-settings")
       .then(function (r) {
@@ -960,12 +1036,21 @@
         if (x.data && x.data.ok) {
           fillForm(x.data);
         } else {
-          showReadinessError(READINESS_ERROR_AR);
+          showPageLoading();
+          var root = byId("ma-wa-mode-selection-root");
+          if (root) {
+            root.innerHTML =
+              '<p class="ma-wa-v2-error">' + escHtml(READINESS_ERROR_AR) + "</p>";
+          }
           showErr((x.data && x.data.error) || "تعذّر تحميل الإعدادات");
         }
       })
       .catch(function () {
-        showReadinessError(READINESS_ERROR_AR);
+        var root = byId("ma-wa-mode-selection-root");
+        if (root) {
+          root.innerHTML =
+            '<p class="ma-wa-v2-error">' + escHtml(READINESS_ERROR_AR) + "</p>";
+        }
         showErr("خطأ في الشبكة أثناء التحميل");
       })
       .finally(function () {

@@ -5888,6 +5888,98 @@ button.ma-vip-suggest-btn.va-btn {
   margin: 0 0 4px;
 }
 
+.ma-wa-v2-layout {
+  margin-top: 4px;
+}
+
+.ma-wa-v2-card {
+  padding-top: 8px;
+}
+
+.ma-wa-v2-loading,
+.ma-wa-v2-error {
+  margin: 12px 0;
+  font-size: 14px;
+  color: #64748b;
+}
+
+.ma-wa-v2-error {
+  color: #991b1b;
+}
+
+.ma-wa-mode-card-subtitle {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #334155;
+}
+
+.ma-wa-mode-select-btn {
+  width: 100%;
+  margin-top: 12px;
+}
+
+.ma-wa-mode-select-btn.is-current {
+  opacity: 0.72;
+  cursor: default;
+}
+
+.ma-wa-current-path-wrap {
+  margin: 18px 0 8px;
+}
+
+.ma-wa-current-path-card {
+  padding: 16px 18px;
+  border-radius: 14px;
+  border: 1px solid #d1fae5;
+  background: #f0fdf4;
+}
+
+.ma-wa-current-path-title {
+  margin: 0 0 8px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.ma-wa-current-path-message {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #14532d;
+}
+
+.ma-wa-current-path-footnote {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: #475569;
+}
+
+.ma-wa-advanced-v2 {
+  margin-top: 18px;
+}
+
+.ma-wa-advanced-section-k {
+  margin: 14px 0 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.ma-wa-advanced-panel {
+  margin-bottom: 12px;
+}
+
+.ma-wa-advanced-diagnostics {
+  margin-bottom: 8px;
+}
+
+.ma-wa-advanced-form {
+  margin-top: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border, #e2e8f0);
+}
+
 .ma-wa-merchant-owned-panel {
   margin: 0 0 12px;
   padding: 14px 16px;

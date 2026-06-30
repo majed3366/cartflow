@@ -731,75 +731,65 @@
   </div>
 
   <div class="page ma-page-compact" id="page-whatsapp">
-    <div id="ma-wa-readiness-root" class="ma-wa-readiness-root" aria-live="polite" aria-busy="true">
+    <div id="ma-wa-settings-err" style="display:none;margin-bottom:10px;padding:10px 12px;border-radius:10px;border:1px solid #fecaca;background:#fef2f2;color:#991b1b;font-size:13px;"></div>
+    <div id="ma-wa-settings-ok" style="display:none;margin-bottom:10px;padding:10px 12px;border-radius:10px;border:1px solid #bbf7d0;background:#f0fdf4;color:#166534;font-size:13px;">تم حفظ إعدادات الواتساب.</div>
+    <div class="ma-wa-v2-layout settings-grid">
+      <div class="setting-card ma-fw-card ma-wa-v2-card" style="grid-column:1/-1;">
+        <div class="ma-wa-mode-selection-wrap" id="ma-wa-mode-selection-root" aria-live="polite">
+          <p class="ma-wa-v2-loading">جاري تحميل إعدادات واتساب…</p>
+        </div>
+        <div class="ma-wa-current-path-wrap" id="ma-wa-current-path-root" aria-live="polite" hidden></div>
+        <details class="ma-advanced-block ma-wa-advanced-v2" id="ma-wa-advanced-settings-wrap" hidden>
+          <summary id="ma-wa-advanced-settings-summary">إعدادات متقدمة</summary>
+          <div class="ma-advanced-inner" id="ma-wa-advanced-settings-root"></div>
+          <form id="ma-wa-settings-form" class="ma-fw-form ma-wa-advanced-form" autocomplete="off">
+            <input type="hidden" name="whatsapp_mode" id="ma-wa-mode-hidden" value="cartflow_managed" />
+            <div class="setting-row" style="flex-direction:column;align-items:stretch;gap:6px;margin-top:4px;">
+              <label class="ma-fw-label" for="ma-wa-store-number">رقم واتساب المتجر</label>
+              <input class="ma-fw-input" id="ma-wa-store-number" name="store_whatsapp_number" type="text" inputmode="tel" dir="ltr" value="" title="+9665XXXXXXXX">
+            </div>
+            <div class="setting-row" style="align-items:center;justify-content:space-between;margin-top:8px;">
+              <label class="ma-fw-label" for="ma-wa-recovery-enabled" style="margin:0;">تفعيل رسائل الاسترجاع</label>
+              <label class="ma-fw-check"><input type="checkbox" id="ma-wa-recovery-enabled" name="whatsapp_recovery_enabled" value="1"></label>
+            </div>
+            <details class="ma-advanced-block" style="margin-top:10px;">
+              <summary>إعدادات تقنية (للاختبار فقط)</summary>
+              <div class="ma-advanced-inner">
+                <div class="setting-row" style="flex-direction:column;align-items:stretch;gap:6px;">
+                  <label class="ma-fw-label" for="ma-wa-provider-mode">وضع الإرسال</label>
+                  <select class="ma-fw-input" id="ma-wa-provider-mode" name="whatsapp_provider_mode">
+                    <option value="sandbox">تجريبي</option>
+                    <option value="test">اختبار</option>
+                    <option value="production">إنتاج</option>
+                  </select>
+                  <p id="ma-wa-provider-hint" class="ma-fw-field-hint" style="margin:4px 0 0;font-size:12px;opacity:0.85;"></p>
+                </div>
+              </div>
+            </details>
+            <div class="ma-fw-actions">
+              <button type="submit" class="ma-fw-save ma-sc-btn-secondary" id="ma-wa-settings-save">حفظ الإعدادات</button>
+            </div>
+          </form>
+        </details>
+      </div>
+    </div>
+    <div id="ma-wa-readiness-root" class="ma-wa-readiness-root" hidden aria-live="polite" aria-busy="true">
       <section class="ma-wa-readiness-card ma-wa-readiness-loading" dir="rtl">
         <p class="ma-wa-readiness-loading-text">جاري التحقق من جاهزية واتساب...</p>
       </section>
     </div>
     <div id="ma-wa-cta-guidance" class="ma-wa-cta-guidance" hidden aria-live="polite"></div>
-    <div id="ma-wa-settings-err" style="display:none;margin-bottom:10px;padding:10px 12px;border-radius:10px;border:1px solid #fecaca;background:#fef2f2;color:#991b1b;font-size:13px;"></div>
-    <div id="ma-wa-settings-ok" style="display:none;margin-bottom:10px;padding:10px 12px;border-radius:10px;border:1px solid #bbf7d0;background:#f0fdf4;color:#166534;font-size:13px;">تم حفظ إعدادات واتساب</div>
-    <div class="settings-grid">
-      <div class="setting-card ma-fw-card ma-wa-customers-card" style="grid-column:1/-1;">
-        <div class="ma-wa-customers-head">
-          <div>
-            <div class="setting-title" id="ma-wa-customers-title">رسائل العملاء عبر واتساب</div>
-            <div class="setting-desc" id="ma-wa-mode-desc">CartFlow يتولى الإرسال والمتابعة — وأنت تحدد متى وكيف يتم الاسترجاع.</div>
-          </div>
-          <span class="ma-wa-connection-pill" id="ma-wa-connection-pill">غير متصل</span>
-        </div>
-        <p class="ma-wa-connection-summary" id="ma-wa-connection-summary">—</p>
-        <button type="button" class="ma-fw-save ma-wa-primary-cta" id="ma-wa-enable-recovery-btn" hidden>تفعيل استرجاع واتساب</button>
-        <div class="ma-wa-mode-selection-wrap" id="ma-wa-mode-selection-root" aria-live="polite"></div>
-        <div class="ma-wa-merchant-owned-panel" id="ma-wa-merchant-owned-panel" hidden aria-live="polite"></div>
-        <form id="ma-wa-settings-form" class="ma-fw-form" autocomplete="off">
-          <details class="ma-advanced-block ma-wa-advanced">
-            <summary>إعدادات واتساب</summary>
-            <div class="ma-advanced-inner">
-              <input type="hidden" name="whatsapp_mode" id="ma-wa-mode-hidden" value="cartflow_managed" />
-              <div class="setting-row" style="flex-direction:column;align-items:stretch;gap:6px;margin-top:4px;">
-                <label class="ma-fw-label" for="ma-wa-store-number">رقم واتساب المتجر (للتنبيهات والإعداد المتقدم)</label>
-                <input class="ma-fw-input" id="ma-wa-store-number" name="store_whatsapp_number" type="text" inputmode="tel" dir="ltr" value="" title="+9665XXXXXXXX">
-                <p class="ma-fw-field-hint" style="margin:4px 0 0;font-size:12px;opacity:0.85;">مثال: +9665XXXXXXXX — اختياري في الوضع المدار</p>
-              </div>
-              <div class="setting-row" style="align-items:center;justify-content:space-between;margin-top:8px;">
-                <label class="ma-fw-label" for="ma-wa-recovery-enabled" style="margin:0;">تفعيل رسائل الاسترجاع</label>
-                <label class="ma-fw-check"><input type="checkbox" id="ma-wa-recovery-enabled" name="whatsapp_recovery_enabled" value="1"></label>
-              </div>
-              <details class="ma-advanced-block" style="margin-top:10px;">
-                <summary>إعدادات تقنية (للاختبار فقط)</summary>
-                <div class="ma-advanced-inner">
-                  <div class="setting-row" style="flex-direction:column;align-items:stretch;gap:6px;">
-                    <label class="ma-fw-label" for="ma-wa-provider-mode">وضع الإرسال</label>
-                    <select class="ma-fw-input" id="ma-wa-provider-mode" name="whatsapp_provider_mode">
-                      <option value="sandbox">تجريبي</option>
-                      <option value="test">اختبار</option>
-                      <option value="production">إنتاج</option>
-                    </select>
-                    <p id="ma-wa-provider-hint" class="ma-fw-field-hint" style="margin:4px 0 0;font-size:12px;opacity:0.85;"></p>
-                  </div>
-                </div>
-              </details>
-            </div>
-          </details>
-          <div class="ma-fw-actions">
-            <button type="submit" class="ma-fw-save ma-sc-btn-secondary" id="ma-wa-settings-save">حفظ الإعدادات</button>
-          </div>
-        </form>
-      </div>
-      <div class="setting-card" id="ma-wa-status-monitor-card">
-        <div class="setting-title">تفاصيل الحالة</div>
-        <div class="setting-desc">معلومات عن آخر إرسال وحالة التشغيل</div>
-        <div class="setting-row"><span class="setting-label">حالة واتساب</span><span class="setting-value" id="ma-wa-status-display">—</span></div>
-        <div class="setting-row"><span class="setting-label">حالة الجاهزية</span><div id="ma-page-whatsapp-ready-pill" class="wa-pill {% if wa_state_key != 'ready' %}wa-muted{% endif %}" style="font-size:10px;padding:3px 9px;"><div class="wa-dot"></div><span id="ma-page-whatsapp-ready-text">{{ wa_badge_ar | default("—") }}</span></div></div>
-        <div class="setting-row"><span class="setting-label">آخر حالة إرسال</span><span class="setting-value" id="ma-wa-last-send-status">—</span></div>
-        <div class="setting-row"><span class="setting-label">وقت آخر إرسال</span><span class="setting-value" id="ma-wa-last-send">{{ merchant_wa_last_send_ar | default("—") }}</span></div>
-      </div>
-      <div class="setting-card ma-wa-transport-note" style="grid-column:1/-1;">
-        <div class="setting-title">محتوى رسائل الاسترجاع</div>
-        <div class="setting-desc">صياغة الرسائل ومراحل المتابعة لكل سبب — من قسم واحد فقط.</div>
-        <button type="button" class="ma-fw-save ma-sc-btn-secondary" onclick="goTo('trigger-templates')">فتح قوالب الاسترجاع</button>
-      </div>
+    <button type="button" class="ma-fw-save ma-wa-primary-cta" id="ma-wa-enable-recovery-btn" hidden>تفعيل استرجاع واتساب</button>
+    <span class="ma-wa-connection-pill" id="ma-wa-connection-pill" hidden>غير متصل</span>
+    <p class="ma-wa-connection-summary" id="ma-wa-connection-summary" hidden>—</p>
+    <div class="ma-wa-merchant-owned-panel" id="ma-wa-merchant-owned-panel" hidden aria-live="polite"></div>
+    <div class="setting-card" id="ma-wa-status-monitor-card" hidden>
+      <div class="setting-title">تفاصيل الحالة</div>
+      <div class="setting-desc">معلومات عن آخر إرسال وحالة التشغيل</div>
+      <div class="setting-row"><span class="setting-label">حالة واتساب</span><span class="setting-value" id="ma-wa-status-display">—</span></div>
+      <div class="setting-row"><span class="setting-label">حالة الجاهزية</span><div id="ma-page-whatsapp-ready-pill" class="wa-pill {% if wa_state_key != 'ready' %}wa-muted{% endif %}" style="font-size:10px;padding:3px 9px;"><div class="wa-dot"></div><span id="ma-page-whatsapp-ready-text">{{ wa_badge_ar | default("—") }}</span></div></div>
+      <div class="setting-row"><span class="setting-label">آخر حالة إرسال</span><span class="setting-value" id="ma-wa-last-send-status">—</span></div>
+      <div class="setting-row"><span class="setting-label">وقت آخر إرسال</span><span class="setting-value" id="ma-wa-last-send">{{ merchant_wa_last_send_ar | default("—") }}</span></div>
     </div>
   </div>
 

@@ -26,40 +26,50 @@ SELECTABLE_WHATSAPP_MODES: frozenset[str] = frozenset(
 DEFAULT_WHATSAPP_MODE = WHATSAPP_MODE_CARTFLOW_MANAGED
 
 MODE_SELECTION_TITLE_AR = "كيف تريد التواصل مع عملائك؟"
+CURRENT_PATH_SECTION_TITLE_AR = "المسار الحالي"
+SAVE_SUCCESS_MESSAGE_AR = "تم حفظ إعدادات الواتساب."
+ADVANCED_SETTINGS_TITLE_AR = "إعدادات متقدمة"
 
 WHATSAPP_MODE_TITLE_AR: Mapping[str, str] = {
     WHATSAPP_MODE_CARTFLOW_MANAGED: "🟢 واتساب CartFlow",
-    WHATSAPP_MODE_MERCHANT_WHATSAPP: "🔵 واتساب أعمال الخاص بي",
+    WHATSAPP_MODE_MERCHANT_WHATSAPP: "🔵 واتساب أعمالي",
     WHATSAPP_MODE_FUTURE_PROVIDER: "Future provider",
 }
 
 WHATSAPP_MODE_LABEL_AR: Mapping[str, str] = {
     WHATSAPP_MODE_CARTFLOW_MANAGED: "واتساب CartFlow",
-    WHATSAPP_MODE_MERCHANT_WHATSAPP: "واتساب أعمال الخاص بي",
+    WHATSAPP_MODE_MERCHANT_WHATSAPP: "واتساب أعمالي",
     WHATSAPP_MODE_FUTURE_PROVIDER: "Future provider",
 }
 
+WHATSAPP_MODE_SUBTITLE_AR: Mapping[str, str] = {
+    WHATSAPP_MODE_CARTFLOW_MANAGED: "الأسرع للبدء",
+    WHATSAPP_MODE_MERCHANT_WHATSAPP: "استخدم رقمك التجاري",
+    WHATSAPP_MODE_FUTURE_PROVIDER: "",
+}
+
+WHATSAPP_MODE_CTA_AR: Mapping[str, str] = {
+    WHATSAPP_MODE_CARTFLOW_MANAGED: "استخدام واتساب CartFlow",
+    WHATSAPP_MODE_MERCHANT_WHATSAPP: "استخدام واتساب أعمالي",
+    WHATSAPP_MODE_FUTURE_PROVIDER: "",
+}
+
 WHATSAPP_MODE_DESC_AR: Mapping[str, str] = {
-    WHATSAPP_MODE_CARTFLOW_MANAGED: (
-        "CartFlow يتولى الإرسال — الأسرع للبدء ولا يتطلب إعداد Meta."
-    ),
-    WHATSAPP_MODE_MERCHANT_WHATSAPP: (
-        "استخدم رقمك التجاري — يتطلب ربط منصة الأعمال."
-    ),
+    WHATSAPP_MODE_CARTFLOW_MANAGED: "CartFlow يتولى الإرسال — يمكنك البدء مباشرة.",
+    WHATSAPP_MODE_MERCHANT_WHATSAPP: "استخدم رقم الواتساب الخاص بك لإرسال الرسائل.",
     WHATSAPP_MODE_FUTURE_PROVIDER: "نماذج مزودين إضافية — محجوز للمستقبل.",
 }
 
 WHATSAPP_MODE_BULLETS_AR: Mapping[str, tuple[str, ...]] = {
     WHATSAPP_MODE_CARTFLOW_MANAGED: (
-        "الأسرع للبدء.",
-        "لا يتطلب إعداد Meta.",
+        "لا يحتاج إعداد.",
         "CartFlow يتولى الإرسال.",
-        "مناسب لمعظم المتاجر.",
+        "يمكنك البدء مباشرة.",
     ),
     WHATSAPP_MODE_MERCHANT_WHATSAPP: (
-        "استخدم رقمك التجاري.",
-        "يتطلب ربط منصة الأعمال.",
-        "الربط المباشر عبر Meta سيصبح متاحاً لاحقاً.",
+        "استخدم رقم الواتساب الخاص بك.",
+        "يظهر اسم متجرك للعملاء.",
+        "يتطلب ربط واتساب أعمال.",
     ),
 }
 
@@ -91,6 +101,34 @@ def whatsapp_mode_title_ar(mode: str) -> str:
 
 def whatsapp_mode_bullets_ar(mode: str) -> list[str]:
     return list(WHATSAPP_MODE_BULLETS_AR.get(normalize_whatsapp_mode(mode), ()))
+
+
+def whatsapp_mode_subtitle_ar(mode: str) -> str:
+    return WHATSAPP_MODE_SUBTITLE_AR.get(normalize_whatsapp_mode(mode), "")
+
+
+def whatsapp_mode_cta_ar(mode: str) -> str:
+    return WHATSAPP_MODE_CTA_AR.get(normalize_whatsapp_mode(mode), "")
+
+
+def whatsapp_current_path_for_api(store: Optional[Any]) -> dict[str, Any]:
+    """Section 2 — calm business status (no Meta/technical copy)."""
+    mode = normalize_whatsapp_mode(
+        getattr(store, "whatsapp_mode", None) if store is not None else None
+    )
+    if mode == WHATSAPP_MODE_MERCHANT_WHATSAPP:
+        return {
+            "section_title_ar": CURRENT_PATH_SECTION_TITLE_AR,
+            "message_ar": "✅ يستخدم متجرك رقم الواتساب الخاص بك لإرسال الرسائل.",
+            "footnote_ar": "",
+            "mode": mode,
+        }
+    return {
+        "section_title_ar": CURRENT_PATH_SECTION_TITLE_AR,
+        "message_ar": "✅ يستخدم متجرك حالياً واتساب CartFlow لإرسال الرسائل.",
+        "footnote_ar": "يمكنك تغيير المسار في أي وقت.",
+        "mode": mode,
+    }
 
 
 def _merchant_owned_panel_for_api(store: Optional[Any]) -> dict[str, Any]:
@@ -132,14 +170,20 @@ def whatsapp_mode_selection_for_api(store: Optional[Any]) -> dict[str, Any]:
             {
                 "key": key,
                 "title_ar": whatsapp_mode_title_ar(key),
+                "subtitle_ar": whatsapp_mode_subtitle_ar(key),
                 "label_ar": whatsapp_mode_label_ar(key),
                 "description_ar": whatsapp_mode_description_ar(key),
                 "bullets_ar": whatsapp_mode_bullets_ar(key),
+                "button_ar": whatsapp_mode_cta_ar(key),
                 "recommended": key == WHATSAPP_MODE_CARTFLOW_MANAGED,
                 "selected": key == mode,
             }
         )
     payload: dict[str, Any] = {
+        "whatsapp_mode_experience_v2": True,
+        "whatsapp_save_success_message_ar": SAVE_SUCCESS_MESSAGE_AR,
+        "whatsapp_current_path": whatsapp_current_path_for_api(store),
+        "whatsapp_advanced_settings_title_ar": ADVANCED_SETTINGS_TITLE_AR,
         "whatsapp_mode_selection": {
             "title_ar": MODE_SELECTION_TITLE_AR,
             "selected": mode,
