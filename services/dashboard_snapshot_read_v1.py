@@ -1,0 +1,298 @@
+# -*- coding: utf-8 -*-
+"""
+Read-only dashboard API responses from ``dashboard_snapshots`` (P0 hot path elimination).
+
+Target: 200ms typical, 500ms hard max — return degraded/stale, never hang.
+"""
+from __future__ import annotations
+
+import time
+from datetime import datetime, timezone
+from typing import Any, Optional
+
+from services.dashboard_snapshot_hot_path_guard_v1 import (
+    dashboard_api_snapshot_request_scope,
+)
+from services.dashboard_snapshot_v1 import (
+    SNAPSHOT_TYPE_NORMAL_CARTS,
+    SNAPSHOT_TYPE_SUMMARY,
+    decode_snapshot_payload,
+    emit_dashboard_degraded,
+    emit_snapshot_miss,
+    emit_snapshot_read,
+    fetch_latest_snapshot_row,
+    snapshot_row_is_stale,
+)
+
+DASHBOARD_ROUTE_TARGET_MS = 200.0
+DASHBOARD_ROUTE_MAX_MS = 500.0
+
+
+def _route_budget_ms() -> float:
+    import os
+
+    raw = (os.environ.get("CARTFLOW_DASHBOARD_ROUTE_MAX_MS") or "").strip()
+    if raw:
+        try:
+            return max(50.0, min(2000.0, float(raw)))
+        except (TypeError, ValueError):
+            pass
+    return DASHBOARD_ROUTE_MAX_MS
+
+
+def _snapshot_meta(
+    *,
+    row: Any,
+    stale: bool,
+    read_ms: float,
+    degraded: bool = False,
+    reason: str = "",
+) -> dict[str, Any]:
+    gen = getattr(row, "generated_at", None)
+    exp = getattr(row, "expires_at", None)
+    return {
+        "_snapshot": {
+            "generated_at": gen.isoformat() if isinstance(gen, datetime) else None,
+            "expires_at": exp.isoformat() if isinstance(exp, datetime) else None,
+            "version": int(getattr(row, "version", 0) or 0),
+            "status": str(getattr(row, "status", "") or ""),
+            "stale": bool(stale),
+            "degraded": bool(degraded),
+            "read_ms": round(float(read_ms), 1),
+            "reason": (reason or "")[:128] or None,
+        }
+    }
+
+
+def _degraded_summary_payload(*, reason: str) -> dict[str, Any]:
+    return {
+        "snapshot_mode": True,
+        "snapshot_degraded": True,
+        "snapshot_reason": reason,
+        "kpis": {
+            "abandoned_today": 0,
+            "recovered_today": 0,
+            "whatsapp_sent_today": 0,
+            "recovered_revenue_today": 0.0,
+        },
+        "month_window": {
+            "abandoned_total": 0,
+            "recovered_total": 0,
+            "recovery_pct": 0.0,
+            "recovered_revenue": 0.0,
+        },
+        "normal_carts_stats": {
+            "normal_cart_count": 0,
+            "messages_sent_count": 0,
+            "normal_recovered_count": 0,
+            "stopped_flow_count": 0,
+        },
+        "merchant_nav_badge_abandoned": 0,
+        "merchant_table_rows": [],
+        "merchant_reason_rows": [],
+        "merchant_reason_rows_month": [],
+        "whatsapp_readiness_card": {},
+        "merchant_setup_experience": {},
+        "merchant_activation": {},
+        "store_connection_status": {},
+    }
+
+
+def _degraded_normal_carts_payload(*, reason: str) -> dict[str, Any]:
+    return {
+        "snapshot_mode": True,
+        "snapshot_degraded": True,
+        "snapshot_reason": reason,
+        "merchant_table_rows": [],
+        "merchant_carts_page_rows": [],
+        "merchant_archived_carts_page_rows": [],
+        "merchant_archived_cart_count": 0,
+        "merchant_cart_filter_counts": {},
+        "merchant_nav_badge_abandoned": 0,
+        "merchant_dashboard_refresh_token": "",
+        "merchant_dashboard_refresh_last_log_id": 0,
+        "merchant_dashboard_refresh_last_sent_log_id": 0,
+        "merchant_dashboard_refresh_sent_total": 0,
+        "merchant_dashboard_refresh_archive_rev": 0,
+        "_perf": {
+            "query_count": 1,
+            "duration_ms": 0,
+            "candidate_rows": 0,
+            "visible_rows": 0,
+            "partial": True,
+            "degraded": True,
+            "timeout_stage": "snapshot_miss",
+        },
+    }
+
+
+def read_dashboard_snapshot_payload(
+    *,
+    store_slug: str,
+    snapshot_type: str,
+    degraded_builder: Any,
+    t0: Optional[float] = None,
+) -> dict[str, Any]:
+    """
+    Single indexed read from ``dashboard_snapshots``.
+
+    Returns payload dict with ``_snapshot`` metadata. Never scans cart/history tables.
+    """
+    wall0 = t0 if t0 is not None else time.perf_counter()
+    slug = (store_slug or "").strip()
+    stype = (snapshot_type or "").strip()
+
+    if not slug:
+        emit_dashboard_degraded(
+            store_slug="-", snapshot_type=stype, reason="missing_store_slug"
+        )
+        body = degraded_builder(reason="missing_store_slug")
+        body["_snapshot"] = {
+            "degraded": True,
+            "stale": False,
+            "reason": "missing_store_slug",
+            "read_ms": round((time.perf_counter() - wall0) * 1000.0, 1),
+        }
+        return body
+
+    row = fetch_latest_snapshot_row(store_slug=slug, snapshot_type=stype)
+    read_ms = (time.perf_counter() - wall0) * 1000.0
+
+    if row is None:
+        emit_snapshot_miss(store_slug=slug, snapshot_type=stype)
+        emit_dashboard_degraded(
+            store_slug=slug, snapshot_type=stype, reason="no_snapshot"
+        )
+        body = degraded_builder(reason="no_snapshot")
+        body.update(
+            _snapshot_meta(
+                row=type("R", (), {"version": 0, "status": "miss"})(),
+                stale=False,
+                read_ms=read_ms,
+                degraded=True,
+                reason="no_snapshot",
+            )
+        )
+        return body
+
+    stale = snapshot_row_is_stale(row)
+    payload = decode_snapshot_payload(row)
+    payload.setdefault("snapshot_mode", True)
+    payload["snapshot_stale"] = stale
+    payload.update(_snapshot_meta(row=row, stale=stale, read_ms=read_ms))
+    emit_snapshot_read(
+        store_slug=slug,
+        snapshot_type=stype,
+        stale=stale,
+        version=int(row.version or 0),
+        read_ms=read_ms,
+    )
+    if stale:
+        payload["snapshot_degraded"] = True
+        payload.setdefault("snapshot_reason", "stale_snapshot")
+    return payload
+
+
+def enforce_route_budget(payload: dict[str, Any], *, wall0: float) -> dict[str, Any]:
+    elapsed_ms = (time.perf_counter() - wall0) * 1000.0
+    max_ms = _route_budget_ms()
+    snap = dict(payload.get("_snapshot") or {})
+    snap["route_ms"] = round(elapsed_ms, 1)
+    if elapsed_ms > max_ms:
+        snap["budget_exceeded"] = True
+        payload["snapshot_degraded"] = True
+        payload["snapshot_reason"] = "route_budget_exceeded"
+        emit_dashboard_degraded(
+            store_slug=str(payload.get("store_slug") or "-"),
+            snapshot_type=str(snap.get("type") or "-"),
+            reason=f"route_budget_exceeded_{round(elapsed_ms)}ms",
+        )
+    payload["_snapshot"] = snap
+    return payload
+
+
+def build_summary_from_snapshot(
+    *,
+    store_slug: str,
+    path: str = "/api/dashboard/summary",
+) -> dict[str, Any]:
+    wall0 = time.perf_counter()
+    with dashboard_api_snapshot_request_scope(path=path):
+        body = read_dashboard_snapshot_payload(
+            store_slug=store_slug,
+            snapshot_type=SNAPSHOT_TYPE_SUMMARY,
+            degraded_builder=_degraded_summary_payload,
+            t0=wall0,
+        )
+        return enforce_route_budget(body, wall0=wall0)
+
+
+def build_normal_carts_from_snapshot(
+    *,
+    store_slug: str,
+    path: str = "/api/dashboard/normal-carts",
+) -> dict[str, Any]:
+    wall0 = time.perf_counter()
+    with dashboard_api_snapshot_request_scope(path=path):
+        body = read_dashboard_snapshot_payload(
+            store_slug=store_slug,
+            snapshot_type=SNAPSHOT_TYPE_NORMAL_CARTS,
+            degraded_builder=_degraded_normal_carts_payload,
+            t0=wall0,
+        )
+        return enforce_route_budget(body, wall0=wall0)
+
+
+def resolve_merchant_store_slug_for_snapshot() -> str:
+    from services.merchant_auth_context import get_merchant_auth_store_slug
+    from services.merchant_auth_v1 import development_dashboard_bypass_active
+
+    slug = (get_merchant_auth_store_slug() or "").strip()
+    if slug:
+        return slug
+    if development_dashboard_bypass_active():
+        return "demo"
+    return ""
+
+
+def _degraded_refresh_state_payload(*, reason: str) -> dict[str, Any]:
+    return {
+        "snapshot_mode": True,
+        "snapshot_degraded": True,
+        "snapshot_reason": reason,
+        "merchant_dashboard_refresh_token": "",
+        "merchant_dashboard_refresh_last_log_id": 0,
+        "merchant_dashboard_refresh_last_sent_log_id": 0,
+        "merchant_dashboard_refresh_sent_total": 0,
+        "merchant_dashboard_refresh_archive_rev": 0,
+    }
+
+
+def build_refresh_state_from_snapshot(
+    *,
+    store_slug: str,
+    path: str = "/api/dashboard/refresh-state",
+) -> dict[str, Any]:
+    from services.dashboard_snapshot_v1 import SNAPSHOT_TYPE_REFRESH_STATE
+
+    wall0 = time.perf_counter()
+    with dashboard_api_snapshot_request_scope(path=path):
+        body = read_dashboard_snapshot_payload(
+            store_slug=store_slug,
+            snapshot_type=SNAPSHOT_TYPE_REFRESH_STATE,
+            degraded_builder=_degraded_refresh_state_payload,
+            t0=wall0,
+        )
+        return enforce_route_budget(body, wall0=wall0)
+
+
+__all__ = [
+    "DASHBOARD_ROUTE_MAX_MS",
+    "DASHBOARD_ROUTE_TARGET_MS",
+    "build_normal_carts_from_snapshot",
+    "build_refresh_state_from_snapshot",
+    "build_summary_from_snapshot",
+    "enforce_route_budget",
+    "read_dashboard_snapshot_payload",
+    "resolve_merchant_store_slug_for_snapshot",
+]

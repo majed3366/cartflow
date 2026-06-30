@@ -824,3 +824,38 @@ class ProductPurchaseMapping(Base):
     purchase_source = Column(String(128), nullable=False, index=True)
     purchased_at = Column(DateTime, nullable=False, index=True)
     dedup_hash = Column(String(64), nullable=False)
+
+
+class DashboardSnapshot(Base):
+    """
+    Precomputed merchant dashboard payload — read-only on API hot path
+    (Reliability Foundation: dashboard snapshot layer).
+    """
+
+    __tablename__ = "dashboard_snapshots"
+
+    id = Column(Integer, primary_key=True)
+    store_id = Column(Integer, ForeignKey("stores.id"), nullable=True, index=True)
+    store_slug = Column(String(255), nullable=False, index=True)
+    snapshot_type = Column(String(64), nullable=False, index=True)
+    payload_json = Column(Text, nullable=False, default="{}")
+    generated_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+        index=True,
+    )
+    expires_at = Column(DateTime, nullable=False, index=True)
+    version = Column(Integer, nullable=False, default=1)
+    status = Column(String(32), nullable=False, default="active", index=True)
+    created_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+    updated_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )

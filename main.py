@@ -935,6 +935,12 @@ async def _startup_whatsapp_queue() -> None:
     except Exception as exc:  # noqa: BLE001
         log.warning("startup db due scanner loop skipped: %s", exc)
     try:
+        from services.dashboard_snapshot_loop_v1 import start_dashboard_snapshot_builder_loop
+
+        start_dashboard_snapshot_builder_loop()
+    except Exception as exc:  # noqa: BLE001
+        log.warning("startup dashboard snapshot builder loop skipped: %s", exc)
+    try:
         from services.merchant_password_reset_email import (
             log_resend_password_reset_startup,
         )
@@ -17065,6 +17071,9 @@ def _augment_abandoned_candidates_for_recovery_dashboard(
     nr_session: Optional[str] = None,
     nr_cart: Optional[str] = None,
 ) -> list[AbandonedCart]:
+    from services.dashboard_snapshot_hot_path_guard_v1 import guard_dashboard_hot_path
+
+    guard_dashboard_hot_path("abandoned_candidates")
     from services.merchant_purchased_cart_dashboard_v1 import (  # noqa: PLC0415
         augment_abandoned_candidates_with_purchased_recovery_carts,
     )
@@ -17681,6 +17690,32 @@ def api_dashboard_summary(request: Request):
     )
 
     inspect_mode = wants_activation_inspect(request)
+    if not inspect_mode:
+        try:
+            from services.dashboard_snapshot_v1 import dashboard_snapshot_mode_enabled
+            from services.dashboard_snapshot_read_v1 import (
+                build_summary_from_snapshot,
+                resolve_merchant_store_slug_for_snapshot,
+            )
+
+            if dashboard_snapshot_mode_enabled():
+                slug = resolve_merchant_store_slug_for_snapshot()
+                body = build_summary_from_snapshot(
+                    store_slug=slug,
+                    path="/api/dashboard/summary",
+                )
+                payload = {"ok": True, **body}
+                from services.dashboard_summary_json_safe_v1 import (  # noqa: PLC0415
+                    preflight_utf8_json_payload,
+                    sanitize_dashboard_summary_payload,
+                )
+
+                payload = sanitize_dashboard_summary_payload(payload)
+                preflight_utf8_json_payload(payload)
+                return j(payload)
+        except Exception as snap_exc:  # noqa: BLE001
+            log.warning("api_dashboard_summary snapshot read: %s", snap_exc)
+            db.session.rollback()
     cookies = dict(request.cookies)
     wall0 = time.perf_counter()
     dashboard_summary_profile_begin()
@@ -17816,6 +17851,24 @@ def api_dashboard_cart_visibility_debug(request: Request):
 
 @app.get("/api/dashboard/normal-carts")
 def api_dashboard_normal_carts(request: Request):
+    try:
+        from services.dashboard_snapshot_v1 import dashboard_snapshot_mode_enabled
+        from services.dashboard_snapshot_read_v1 import (
+            build_normal_carts_from_snapshot,
+            resolve_merchant_store_slug_for_snapshot,
+        )
+
+        if dashboard_snapshot_mode_enabled():
+            slug = resolve_merchant_store_slug_for_snapshot()
+            body = build_normal_carts_from_snapshot(
+                store_slug=slug,
+                path="/api/dashboard/normal-carts",
+            )
+            return j({"ok": True, **body})
+    except Exception as snap_exc:  # noqa: BLE001
+        log.warning("api_dashboard_normal_carts snapshot read: %s", snap_exc)
+        db.session.rollback()
+
     from services.dashboard_normal_carts_guard_v1 import (  # noqa: PLC0415
         dashboard_nc_guard_begin,
         dashboard_nc_guard_payload,
@@ -18491,6 +18544,28 @@ def api_dashboard_refresh_state(request: Request):
         "request_entered",
         store_slug=store_slug_hint or None,
     )
+    try:
+        from services.dashboard_snapshot_v1 import dashboard_snapshot_mode_enabled
+        from services.dashboard_snapshot_read_v1 import (
+            build_refresh_state_from_snapshot,
+            resolve_merchant_store_slug_for_snapshot,
+        )
+
+        if dashboard_snapshot_mode_enabled():
+            slug = (store_slug_hint or resolve_merchant_store_slug_for_snapshot()).strip()
+            body = build_refresh_state_from_snapshot(
+                store_slug=slug,
+                path="/api/dashboard/refresh-state",
+            )
+            refresh_state_log_stage(
+                "response_ready",
+                store_slug=slug or None,
+                snapshot="1",
+            )
+            return j({"ok": True, **body})
+    except Exception as snap_exc:  # noqa: BLE001
+        log.warning("api_dashboard_refresh_state snapshot read: %s", snap_exc)
+        db.session.rollback()
     try:
         if refresh_state_deadline_exceeded():
             refresh_state_log_deadline_exceeded(
