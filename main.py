@@ -16103,8 +16103,10 @@ def _merchant_normal_recovery_light_payload_merchant_batch(
                 )
         except Exception:  # noqa: BLE001
             rk_pre = ""
+    from services.cart_action_identity_v1 import (  # noqa: PLC0415
+        any_merchant_archived_for_mutation_keys,
+    )
     from services.merchant_dashboard_recovery_resolve_v1 import (  # noqa: PLC0415
-        any_merchant_archived_for_alias_keys,
         any_purchase_truth_for_alias_keys,
         canonical_recovery_keys_for_cart,
         durable_closure_for_alias_keys,
@@ -16348,8 +16350,12 @@ def _merchant_normal_recovery_light_payload_merchant_batch(
             purchase_truth=purchased_flag,
             cart_status=str(getattr(ac0, "status", None) or ""),
             merchant_archived=(
-                any_merchant_archived_for_alias_keys(
-                    batch.merchant_archived_by_rk, _alias_keys_lc
+                any_merchant_archived_for_mutation_keys(
+                    batch.merchant_archived_by_rk,
+                    _alias_keys_lc,
+                    store_slug=_slug_id,
+                    session_id=(getattr(ac0, "recovery_session_id", None) or "").strip(),
+                    cart_id=(getattr(ac0, "zid_cart_id", None) or "").strip(),
                 )
                 if _alias_keys_lc
                 else bool(batch.merchant_archived_by_rk.get(rk_lc))
@@ -18000,99 +18006,14 @@ async def api_dashboard_cart_lifecycle_archive(request: Request) -> Any:
         body = {}
     if not isinstance(body, dict):
         body = {}
-    rk = (body.get("recovery_key") or "").strip()[:512]
-    if not rk:
-        return j({"ok": False, "error": "recovery_key_required"}, 400)
-    store_slug = (body.get("store_slug") or "").strip()[:255]
-    if not store_slug and ":" in rk:
-        store_slug = rk.split(":", 1)[0].strip()[:255]
-    ac_id = body.get("abandoned_cart_id")
-    try:
-        ac_id_i = int(ac_id) if ac_id is not None else None
-    except (TypeError, ValueError):
-        ac_id_i = None
-    body_session = (body.get("session_id") or "").strip()[:512]
-    body_cart_id = (body.get("cart_id") or "").strip()[:255]
-    from services.merchant_cart_lifecycle_archive_v1 import archive_recovery_keys
-
-    alias_keys: list[str] = [rk]
-    ac_row: Optional[AbandonedCart] = None
-    if ac_id_i is not None:
-        try:
-            ac_row = db.session.get(AbandonedCart, ac_id_i)
-        except (SQLAlchemyError, OSError, TypeError, ValueError):
-            db.session.rollback()
-            ac_row = None
-    if ac_row is None and body_session:
-        try:
-            ac_row = (
-                db.session.query(AbandonedCart)
-                .filter(AbandonedCart.recovery_session_id == body_session)
-                .order_by(AbandonedCart.id.desc())
-                .first()
-            )
-        except (SQLAlchemyError, OSError):
-            db.session.rollback()
-            ac_row = None
-    if ac_row is None and store_slug:
-        try:
-            sid_guess = rk.split(":", 1)[1].strip() if ":" in rk else ""
-            if sid_guess:
-                ac_row = (
-                    db.session.query(AbandonedCart)
-                    .filter(AbandonedCart.recovery_session_id == sid_guess)
-                    .order_by(AbandonedCart.id.desc())
-                    .first()
-                )
-        except (SQLAlchemyError, OSError):
-            db.session.rollback()
-            ac_row = None
-    if ac_row is None and body_cart_id and store_slug:
-        try:
-            ac_row = (
-                db.session.query(AbandonedCart)
-                .filter(AbandonedCart.zid_cart_id == body_cart_id)
-                .order_by(AbandonedCart.id.desc())
-                .first()
-            )
-        except (SQLAlchemyError, OSError):
-            db.session.rollback()
-            ac_row = None
-    if ac_row is not None:
-        from services.merchant_dashboard_recovery_resolve_v1 import (  # noqa: PLC0415
-            canonical_recovery_keys_for_abandoned_cart,
-        )
-
-        slug_eff = store_slug
-        if not slug_eff and getattr(ac_row, "store_id", None):
-            try:
-                st_row = db.session.get(Store, int(ac_row.store_id))
-                if st_row is not None:
-                    slug_eff = (
-                        str(getattr(st_row, "zid_store_id", None) or "").strip()
-                    )
-            except (SQLAlchemyError, OSError, TypeError, ValueError):
-                db.session.rollback()
-        for k in canonical_recovery_keys_for_abandoned_cart(
-            ac_row,
-            store_slug=slug_eff or store_slug,
-            recovery_key=rk,
-        ):
-            if k and k not in alias_keys:
-                alias_keys.append(k)
-        if ac_id_i is None:
-            try:
-                ac_id_i = int(getattr(ac_row, "id", 0) or 0) or None
-            except (TypeError, ValueError):
-                ac_id_i = None
-
-    return j(
-        archive_recovery_keys(
-            recovery_keys=alias_keys,
-            store_slug=store_slug,
-            abandoned_cart_id=ac_id_i,
-        )
+    from services.merchant_cart_lifecycle_archive_v1 import (  # noqa: PLC0415
+        dashboard_cart_lifecycle_archive_from_body,
     )
+
+    result = dashboard_cart_lifecycle_archive_from_body(body)
+    if not result.get("ok") and result.get("error") == "recovery_key_required":
+        return j(result, 400)
+    return j(result)
 
 
 @app.post("/api/dashboard/cart-lifecycle/reopen")
@@ -18104,72 +18025,23 @@ async def api_dashboard_cart_lifecycle_reopen(request: Request) -> Any:
         body = {}
     if not isinstance(body, dict):
         body = {}
-    rk = (body.get("recovery_key") or "").strip()[:512]
-    if not rk:
-        return j({"ok": False, "error": "recovery_key_required"}, 400)
     from services.customer_lifecycle_states_v1 import (  # noqa: PLC0415
         lifecycle_payload_for_reopen,
     )
-    from services.merchant_cart_lifecycle_archive_v1 import reopen_recovery_keys
+    from services.merchant_cart_lifecycle_archive_v1 import (  # noqa: PLC0415
+        dashboard_cart_lifecycle_reopen_from_body,
+    )
 
-    alias_keys: list[str] = [rk]
-    store_slug = (body.get("store_slug") or "").strip()[:255]
-    if not store_slug and ":" in rk:
-        store_slug = rk.split(":", 1)[0].strip()[:255]
-    ac_id = body.get("abandoned_cart_id")
-    try:
-        ac_id_i = int(ac_id) if ac_id is not None else None
-    except (TypeError, ValueError):
-        ac_id_i = None
-    body_session = (body.get("session_id") or "").strip()[:512]
-    body_cart_id = (body.get("cart_id") or "").strip()[:255]
-    ac_row: Optional[AbandonedCart] = None
-    if ac_id_i is not None:
-        try:
-            ac_row = db.session.get(AbandonedCart, ac_id_i)
-        except (SQLAlchemyError, OSError, TypeError, ValueError):
-            db.session.rollback()
-            ac_row = None
-    if ac_row is None and body_session:
-        try:
-            ac_row = (
-                db.session.query(AbandonedCart)
-                .filter(AbandonedCart.recovery_session_id == body_session)
-                .order_by(AbandonedCart.id.desc())
-                .first()
-            )
-        except (SQLAlchemyError, OSError):
-            db.session.rollback()
-            ac_row = None
-    if ac_row is None and body_cart_id:
-        try:
-            ac_row = (
-                db.session.query(AbandonedCart)
-                .filter(AbandonedCart.zid_cart_id == body_cart_id)
-                .order_by(AbandonedCart.id.desc())
-                .first()
-            )
-        except (SQLAlchemyError, OSError):
-            db.session.rollback()
-            ac_row = None
-    if ac_row is not None:
-        from services.merchant_dashboard_recovery_resolve_v1 import (  # noqa: PLC0415
-            canonical_recovery_keys_for_abandoned_cart,
-        )
-
-        for k in canonical_recovery_keys_for_abandoned_cart(
-            ac_row,
-            store_slug=store_slug,
-            recovery_key=rk,
-        ):
-            if k and k not in alias_keys:
-                alias_keys.append(k)
-
-    result = reopen_recovery_keys(alias_keys)
+    rk = (body.get("recovery_key") or "").strip()[:512]
+    if not rk:
+        return j({"ok": False, "error": "recovery_key_required"}, 400)
+    result = dashboard_cart_lifecycle_reopen_from_body(body)
     if result.get("ok"):
         life = lifecycle_payload_for_reopen(rk)
         if life:
             result["lifecycle"] = life
+    if not result.get("ok") and result.get("error") == "recovery_key_required":
+        return j(result, 400)
     return j(result)
 
 

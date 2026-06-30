@@ -2530,10 +2530,6 @@
     if (rowId != null && String(mc.merchant_case_row_id || mc.id) === String(rowId)) {
       return true;
     }
-    if (key && key.indexOf(":") >= 0) {
-      var tail = key.split(":").slice(1).join(":");
-      if (tail && String(mc.session_id || "").trim() === tail) return true;
-    }
     return false;
   }
 

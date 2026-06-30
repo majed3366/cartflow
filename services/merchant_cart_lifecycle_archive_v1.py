@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any, Mapping, Optional
 
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -92,9 +92,18 @@ def archive_recovery_keys(
     store_slug: str,
     abandoned_cart_id: Optional[int] = None,
     source: str = SOURCE_MANUAL,
+    session_id: str = "",
+    cart_id: str = "",
 ) -> dict[str, Any]:
-    """Persist archive for every alias recovery_key (parts vs log drift safe)."""
-    keys = _dedupe_recovery_keys(recovery_keys)
+    """Persist archive for cart-specific recovery keys (session-only aliases excluded)."""
+    from services.cart_action_identity_v1 import filter_mutation_recovery_keys  # noqa: PLC0415
+
+    keys = filter_mutation_recovery_keys(
+        _dedupe_recovery_keys(recovery_keys),
+        store_slug=store_slug,
+        session_id=session_id,
+        cart_id=cart_id,
+    )
     if not keys:
         return {"ok": False, "error": "recovery_key_required"}
     last: dict[str, Any] = {"ok": False, "error": "archive_failed"}
@@ -118,8 +127,21 @@ def archive_recovery_keys(
     return last
 
 
-def reopen_recovery_keys(recovery_keys: Any) -> dict[str, Any]:
-    keys = _dedupe_recovery_keys(recovery_keys)
+def reopen_recovery_keys(
+    recovery_keys: Any,
+    *,
+    store_slug: str = "",
+    session_id: str = "",
+    cart_id: str = "",
+) -> dict[str, Any]:
+    from services.cart_action_identity_v1 import filter_mutation_recovery_keys  # noqa: PLC0415
+
+    keys = filter_mutation_recovery_keys(
+        _dedupe_recovery_keys(recovery_keys),
+        store_slug=store_slug,
+        session_id=session_id,
+        cart_id=cart_id,
+    )
     if not keys:
         return {"ok": False, "error": "recovery_key_required"}
     cleared_any = False
@@ -139,6 +161,71 @@ def reopen_recovery_keys(recovery_keys: Any) -> dict[str, Any]:
             "cleared_persisted": True,
         }
     return last
+
+
+def dashboard_cart_lifecycle_archive_from_body(body: Mapping[str, Any]) -> dict[str, Any]:
+    """Archive one cart from dashboard POST body — cart-specific keys only."""
+    from services.cart_action_identity_v1 import (  # noqa: PLC0415
+        mutation_recovery_keys_for_dashboard_body,
+        resolve_abandoned_cart_for_dashboard_action,
+    )
+
+    rk = (str(body.get("recovery_key") or "")).strip()[:512]
+    if not rk:
+        return {"ok": False, "error": "recovery_key_required"}
+    ac_row, store_slug, ac_id_i = resolve_abandoned_cart_for_dashboard_action(body)
+    keys = mutation_recovery_keys_for_dashboard_body(body)
+    if not keys:
+        return {"ok": False, "error": "recovery_key_required"}
+    session_id = (
+        (getattr(ac_row, "recovery_session_id", None) or "") if ac_row is not None else ""
+    ).strip()
+    cart_id = (
+        (getattr(ac_row, "zid_cart_id", None) or "") if ac_row is not None else ""
+    ).strip()[:255]
+    if not session_id:
+        session_id = (str(body.get("session_id") or "")).strip()[:512]
+    if not cart_id:
+        cart_id = (str(body.get("cart_id") or "")).strip()[:255]
+    return archive_recovery_keys(
+        recovery_keys=keys,
+        store_slug=store_slug,
+        abandoned_cart_id=ac_id_i,
+        session_id=session_id,
+        cart_id=cart_id,
+    )
+
+
+def dashboard_cart_lifecycle_reopen_from_body(body: Mapping[str, Any]) -> dict[str, Any]:
+    """Reopen one cart from dashboard POST body — cart-specific keys only."""
+    from services.cart_action_identity_v1 import (  # noqa: PLC0415
+        mutation_recovery_keys_for_dashboard_body,
+        resolve_abandoned_cart_for_dashboard_action,
+    )
+
+    rk = (str(body.get("recovery_key") or "")).strip()[:512]
+    if not rk:
+        return {"ok": False, "error": "recovery_key_required"}
+    ac_row, store_slug, _ac_id_i = resolve_abandoned_cart_for_dashboard_action(body)
+    keys = mutation_recovery_keys_for_dashboard_body(body)
+    if not keys:
+        return {"ok": False, "error": "recovery_key_required"}
+    session_id = (
+        (getattr(ac_row, "recovery_session_id", None) or "") if ac_row is not None else ""
+    ).strip()
+    cart_id = (
+        (getattr(ac_row, "zid_cart_id", None) or "") if ac_row is not None else ""
+    ).strip()[:255]
+    if not session_id:
+        session_id = (str(body.get("session_id") or "")).strip()[:512]
+    if not cart_id:
+        cart_id = (str(body.get("cart_id") or "")).strip()[:255]
+    return reopen_recovery_keys(
+        keys,
+        store_slug=store_slug,
+        session_id=session_id,
+        cart_id=cart_id,
+    )
 
 
 def archive_recovery_key(
@@ -232,6 +319,8 @@ __all__ = [
     "SOURCE_MANUAL",
     "archive_recovery_key",
     "archive_recovery_keys",
+    "dashboard_cart_lifecycle_archive_from_body",
+    "dashboard_cart_lifecycle_reopen_from_body",
     "is_merchant_archived",
     "reopen_recovery_key",
     "reopen_recovery_keys",
