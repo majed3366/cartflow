@@ -85,12 +85,31 @@ class MerchantWhatsappExperienceV2Tests(unittest.TestCase):
             WHATSAPP_MODE_CTA_AR[WHATSAPP_MODE_MERCHANT_WHATSAPP],
         )
 
-    def test_current_path_merchant_has_no_footnote(self) -> None:
+    def test_current_path_merchant_has_subtext(self) -> None:
         self.row.whatsapp_mode = WHATSAPP_MODE_MERCHANT_WHATSAPP
         db.session.commit()
         path = whatsapp_current_path_for_api(self.row)
-        self.assertIn("رقم الواتساب الخاص بك", path["message_ar"])
-        self.assertEqual(path["footnote_ar"], "")
+        self.assertIn("رقم الواتساب الخاص بمتجرك", path["body_ar"])
+        self.assertEqual(path["subtext_ar"], "يمكنك تغيير المسار في أي وقت.")
+
+    def test_cartflow_scrubs_disconnected_labels(self) -> None:
+        fields = merchant_whatsapp_mode_fields_for_api(self.row)
+        self.assertFalse(fields.get("whatsapp_show_advanced_settings"))
+        joined = " ".join(
+            [
+                fields.get("whatsapp_customer_connection_status_ar") or "",
+                fields.get("whatsapp_connection_summary_ar") or "",
+                fields.get("whatsapp_status_display") or "",
+            ]
+        )
+        self.assertNotIn("غير متصل", joined)
+        self.assertNotIn("لم يتم الربط", joined)
+
+    def test_js_renders_current_path_card(self) -> None:
+        js = Path("static/merchant_whatsapp_settings.js").read_text(encoding="utf-8")
+        self.assertIn("ma-wa-current-path-card", js)
+        self.assertIn("ma-wa-current-path-body", js)
+        self.assertIn("wrap.open = false", js)
 
     def test_js_hides_readiness_from_main_set_readonly(self) -> None:
         js = Path("static/merchant_whatsapp_settings.js").read_text(encoding="utf-8")

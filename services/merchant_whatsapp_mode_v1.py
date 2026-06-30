@@ -27,12 +27,13 @@ DEFAULT_WHATSAPP_MODE = WHATSAPP_MODE_CARTFLOW_MANAGED
 
 MODE_SELECTION_TITLE_AR = "كيف تريد التواصل مع عملائك؟"
 CURRENT_PATH_SECTION_TITLE_AR = "المسار الحالي"
+CURRENT_PATH_CHANGE_ANYTIME_AR = "يمكنك تغيير المسار في أي وقت."
 SAVE_SUCCESS_MESSAGE_AR = "تم حفظ إعدادات الواتساب."
 ADVANCED_SETTINGS_TITLE_AR = "إعدادات متقدمة"
 
 WHATSAPP_MODE_TITLE_AR: Mapping[str, str] = {
     WHATSAPP_MODE_CARTFLOW_MANAGED: "🟢 واتساب CartFlow",
-    WHATSAPP_MODE_MERCHANT_WHATSAPP: "🔵 واتساب أعمالي",
+    WHATSAPP_MODE_MERCHANT_WHATSAPP: "💼 واتساب أعمالي",
     WHATSAPP_MODE_FUTURE_PROVIDER: "Future provider",
 }
 
@@ -112,23 +113,48 @@ def whatsapp_mode_cta_ar(mode: str) -> str:
 
 
 def whatsapp_current_path_for_api(store: Optional[Any]) -> dict[str, Any]:
-    """Section 2 — calm business status (no Meta/technical copy)."""
+    """Section 2 — standalone current-path card (calm business copy only)."""
     mode = normalize_whatsapp_mode(
         getattr(store, "whatsapp_mode", None) if store is not None else None
     )
     if mode == WHATSAPP_MODE_MERCHANT_WHATSAPP:
         return {
-            "section_title_ar": CURRENT_PATH_SECTION_TITLE_AR,
-            "message_ar": "✅ يستخدم متجرك رقم الواتساب الخاص بك لإرسال الرسائل.",
-            "footnote_ar": "",
+            "title_ar": "🔵 المسار الحالي: واتساب أعمالي",
+            "body_ar": "يستخدم النظام رقم الواتساب الخاص بمتجرك.",
+            "subtext_ar": CURRENT_PATH_CHANGE_ANYTIME_AR,
+            "card_tone": "merchant",
             "mode": mode,
+            "section_title_ar": CURRENT_PATH_SECTION_TITLE_AR,
+            "message_ar": "يستخدم النظام رقم الواتساب الخاص بمتجرك.",
+            "footnote_ar": CURRENT_PATH_CHANGE_ANYTIME_AR,
         }
     return {
-        "section_title_ar": CURRENT_PATH_SECTION_TITLE_AR,
-        "message_ar": "✅ يستخدم متجرك حالياً واتساب CartFlow لإرسال الرسائل.",
-        "footnote_ar": "يمكنك تغيير المسار في أي وقت.",
+        "title_ar": "🟢 المسار الحالي: واتساب CartFlow",
+        "body_ar": "يتولى CartFlow إرسال الرسائل لعملائك.",
+        "subtext_ar": CURRENT_PATH_CHANGE_ANYTIME_AR,
+        "card_tone": "cartflow",
         "mode": mode,
+        "section_title_ar": CURRENT_PATH_SECTION_TITLE_AR,
+        "message_ar": "يتولى CartFlow إرسال الرسائل لعملائك.",
+        "footnote_ar": CURRENT_PATH_CHANGE_ANYTIME_AR,
     }
+
+
+def _apply_experience_v2_presentation(payload: dict[str, Any], mode: str) -> None:
+    """Hide technical/disconnected states on CartFlow path — merchant-only in advanced."""
+    show_technical = mode == WHATSAPP_MODE_MERCHANT_WHATSAPP
+    payload["whatsapp_show_advanced_settings"] = show_technical
+    payload["whatsapp_show_connection_status"] = show_technical
+    if show_technical:
+        return
+    payload["whatsapp_status_display"] = ""
+    payload["whatsapp_customer_connection_status"] = ""
+    payload["whatsapp_customer_connection_status_ar"] = ""
+    payload["whatsapp_connection_state"] = ""
+    payload["whatsapp_connection_state_ar"] = ""
+    payload["whatsapp_connection_summary_ar"] = ""
+    payload["whatsapp_readiness_overall_ar"] = ""
+    payload["whatsapp_mode_merchant_panel"] = {"visible": False}
 
 
 def _merchant_owned_panel_for_api(store: Optional[Any]) -> dict[str, Any]:
@@ -283,6 +309,7 @@ def merchant_whatsapp_mode_fields_for_api(store: Optional[Any]) -> dict[str, Any
         "whatsapp_mode_architecture_only_future": WHATSAPP_MODE_FUTURE_PROVIDER,
     }
     payload.update(whatsapp_mode_selection_for_api(store))
+    _apply_experience_v2_presentation(payload, mode)
     return payload
 
 

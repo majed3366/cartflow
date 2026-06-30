@@ -116,19 +116,38 @@ class MerchantWhatsappModeV1Tests(unittest.TestCase):
         merchant = block["options"][1]
         self.assertEqual(merchant["key"], WHATSAPP_MODE_MERCHANT_WHATSAPP)
         self.assertNotIn("Meta", " ".join(merchant["bullets_ar"]))
-        self.assertEqual(merchant["title_ar"], "🔵 واتساب أعمالي")
+        self.assertEqual(merchant["title_ar"], "💼 واتساب أعمالي")
 
     def test_current_path_status_cartflow(self) -> None:
         path = whatsapp_current_path_for_api(self.row)
-        self.assertIn("CartFlow", path["message_ar"])
-        self.assertTrue(path["footnote_ar"])
+        self.assertIn("CartFlow", path["title_ar"])
+        self.assertIn("CartFlow", path["body_ar"])
+        self.assertEqual(path["subtext_ar"], "يمكنك تغيير المسار في أي وقت.")
+        self.assertEqual(path["card_tone"], "cartflow")
 
     def test_current_path_status_merchant(self) -> None:
         self.row.whatsapp_mode = WHATSAPP_MODE_MERCHANT_WHATSAPP
         db.session.commit()
         path = whatsapp_current_path_for_api(self.row)
-        self.assertIn("رقم الواتساب الخاص بك", path["message_ar"])
-        self.assertNotIn("Meta", path["message_ar"])
+        self.assertIn("واتساب أعمالي", path["title_ar"])
+        self.assertIn("رقم الواتساب الخاص بمتجرك", path["body_ar"])
+        self.assertEqual(path["subtext_ar"], "يمكنك تغيير المسار في أي وقت.")
+        self.assertEqual(path["card_tone"], "merchant")
+
+    def test_cartflow_hides_disconnected_technical_states(self) -> None:
+        fields = merchant_whatsapp_mode_fields_for_api(self.row)
+        self.assertFalse(fields.get("whatsapp_show_advanced_settings"))
+        self.assertFalse(fields.get("whatsapp_show_connection_status"))
+        self.assertEqual(fields.get("whatsapp_customer_connection_status_ar"), "")
+        self.assertEqual(fields.get("whatsapp_connection_state_ar"), "")
+        self.assertFalse((fields.get("whatsapp_mode_merchant_panel") or {}).get("visible"))
+
+    def test_merchant_mode_shows_advanced_flag(self) -> None:
+        self.row.whatsapp_mode = WHATSAPP_MODE_MERCHANT_WHATSAPP
+        db.session.commit()
+        fields = merchant_whatsapp_mode_fields_for_api(self.row)
+        self.assertTrue(fields.get("whatsapp_show_advanced_settings"))
+        self.assertTrue((fields.get("whatsapp_mode_merchant_panel") or {}).get("visible"))
 
     def test_api_includes_v2_experience_fields(self) -> None:
         fields = merchant_whatsapp_mode_fields_for_api(self.row)
@@ -155,7 +174,7 @@ class MerchantWhatsappModeV1Tests(unittest.TestCase):
         self.assertEqual(len(options), 2)
         titles = {o.get("key"): o.get("title_ar") for o in options}
         self.assertIn("🟢", titles[WHATSAPP_MODE_CARTFLOW_MANAGED])
-        self.assertIn("🔵", titles[WHATSAPP_MODE_MERCHANT_WHATSAPP])
+        self.assertIn("💼", titles[WHATSAPP_MODE_MERCHANT_WHATSAPP])
 
     def test_merchant_mode_shows_merchant_panel(self) -> None:
         self.row.whatsapp_mode = WHATSAPP_MODE_MERCHANT_WHATSAPP

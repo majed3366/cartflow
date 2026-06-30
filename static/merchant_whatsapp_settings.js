@@ -162,22 +162,30 @@
     var root = byId("ma-wa-current-path-root");
     if (!root) return;
     var block = d.whatsapp_current_path || {};
-    if (!block.message_ar) {
+    var body = block.body_ar || block.message_ar || "";
+    if (!body) {
       root.hidden = true;
       root.innerHTML = "";
       return;
     }
+    var mode = (d.whatsapp_mode || "cartflow_managed").toString().toLowerCase();
+    var tone =
+      block.card_tone ||
+      (mode === "merchant_whatsapp" ? "merchant" : "cartflow");
+    var subtext = block.subtext_ar || block.footnote_ar || "";
     root.hidden = false;
     root.innerHTML =
-      '<section class="ma-wa-current-path-card" dir="rtl">' +
+      '<section class="ma-wa-current-path-card is-' +
+      escHtml(tone) +
+      '" dir="rtl" aria-label="المسار الحالي">' +
       '<p class="ma-wa-current-path-title">' +
-      escHtml(block.section_title_ar || "المسار الحالي") +
+      escHtml(block.title_ar || "المسار الحالي") +
       "</p>" +
-      '<p class="ma-wa-current-path-message">' +
-      escHtml(block.message_ar) +
+      '<p class="ma-wa-current-path-body">' +
+      escHtml(body) +
       "</p>" +
-      (block.footnote_ar
-        ? '<p class="ma-wa-current-path-footnote">' + escHtml(block.footnote_ar) + "</p>"
+      (subtext
+        ? '<p class="ma-wa-current-path-subtext">' + escHtml(subtext) + "</p>"
         : "") +
       "</section>";
   }
@@ -188,12 +196,16 @@
     var summary = byId("ma-wa-advanced-settings-summary");
     if (!wrap || !root) return;
     var mode = (d.whatsapp_mode || "cartflow_managed").toString().toLowerCase();
-    if (mode !== "merchant_whatsapp") {
+    var showAdvanced =
+      d.whatsapp_show_advanced_settings === true || mode === "merchant_whatsapp";
+    if (!showAdvanced) {
       wrap.hidden = true;
+      wrap.open = false;
       root.innerHTML = "";
       return;
     }
     wrap.hidden = false;
+    wrap.open = false;
     if (summary) {
       summary.textContent =
         d.whatsapp_advanced_settings_title_ar || "إعدادات متقدمة";
