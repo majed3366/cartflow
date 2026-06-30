@@ -13,7 +13,7 @@ from fastapi.testclient import TestClient
 
 from extensions import db
 from main import app
-from models import DashboardSnapshot, Store
+from models import DashboardSnapshot, MerchantUser, Store
 from services.dashboard_snapshot_v1 import (
     ENV_SNAPSHOT_MODE,
     SNAPSHOT_TYPE_REFRESH_STATE,
@@ -63,7 +63,14 @@ class DashboardSnapshotPhase1BTests(unittest.TestCase):
         _clear_snapshot_env()
         db.session.query(DashboardSnapshot).delete()
         db.session.query(Store).filter(
-            Store.zid_store_id.in_(("failsafe-demo", "failsafe-stale", "cartflow-42b491"))
+            Store.zid_store_id.in_(
+                ("failsafe-demo", "failsafe-stale", "cartflow-42b491", "stuckaudit-0dbd54d8")
+            )
+        ).delete(synchronize_session=False)
+        db.session.query(MerchantUser).filter(
+            MerchantUser.email.in_(
+                ("coverage-test@example.com", "audit-exclude@example.com", "canonical-test@example.com")
+            )
         ).delete(synchronize_session=False)
         db.session.commit()
 
@@ -75,7 +82,19 @@ class DashboardSnapshotPhase1BTests(unittest.TestCase):
             upsert_dashboard_snapshot,
         )
 
-        st = Store(zid_store_id="cartflow-42b491", recovery_attempts=1)
+        user = MerchantUser(
+            email="canonical-test@example.com",
+            password_hash="x",
+            merchant_name="Canonical",
+        )
+        db.session.add(user)
+        db.session.flush()
+        st = Store(
+            zid_store_id="cartflow-42b491",
+            merchant_user_id=int(user.id),
+            is_active=True,
+            recovery_attempts=1,
+        )
         db.session.add(st)
         db.session.commit()
         slug = canonical_snapshot_store_slug(st)
@@ -97,11 +116,61 @@ class DashboardSnapshotPhase1BTests(unittest.TestCase):
     def test_list_store_slugs_prioritizes_missing_snapshots(self) -> None:
         from services.dashboard_snapshot_v1 import list_store_slugs_for_snapshot_build
 
-        st = Store(zid_store_id="cartflow-42b491", recovery_attempts=1)
+        user = MerchantUser(
+            email="coverage-test@example.com",
+            password_hash="x",
+            merchant_name="Coverage Test",
+        )
+        db.session.add(user)
+        db.session.flush()
+        st = Store(
+            zid_store_id="cartflow-42b491",
+            merchant_user_id=int(user.id),
+            is_active=True,
+            recovery_attempts=1,
+        )
         db.session.add(st)
         db.session.commit()
         slugs = [s for _i, s in list_store_slugs_for_snapshot_build(limit=5)]
         self.assertIn("cartflow-42b491", slugs)
+
+    def test_audit_stores_excluded_from_snapshot_coverage(self) -> None:
+        from services.dashboard_snapshot_v1 import (
+            is_snapshot_build_eligible_store,
+            list_store_slugs_for_snapshot_build,
+        )
+
+        user = MerchantUser(
+            email="audit-exclude@example.com",
+            password_hash="x",
+            merchant_name="Audit Exclude",
+        )
+        db.session.add(user)
+        db.session.flush()
+        audit = Store(
+            zid_store_id="stuckaudit-0dbd54d8",
+            merchant_user_id=int(user.id),
+            is_active=True,
+            recovery_attempts=1,
+        )
+        merchant = Store(
+            zid_store_id="cartflow-42b491",
+            merchant_user_id=int(user.id),
+            is_active=True,
+            recovery_attempts=1,
+        )
+        db.session.add_all([audit, merchant])
+        db.session.commit()
+        eligible, reason = is_snapshot_build_eligible_store(
+            zid_store_id="stuckaudit-0dbd54d8",
+            merchant_user_id=int(user.id),
+            is_active=True,
+        )
+        self.assertFalse(eligible)
+        self.assertEqual(reason, "test_audit_prefix")
+        slugs = [s for _i, s in list_store_slugs_for_snapshot_build(limit=5)]
+        self.assertIn("cartflow-42b491", slugs)
+        self.assertNotIn("stuckaudit-0dbd54d8", slugs)
 
     @patch("services.merchant_auth_v1.development_dashboard_bypass_active", return_value=True)
     @patch("main._merchant_dashboard_db_ready")

@@ -21,6 +21,7 @@ from services.dashboard_snapshot_v1 import (
     SNAPSHOT_TYPE_WIDGET_PANEL,
     STATUS_FAILED,
     any_store_needs_failsafe_snapshot_build,
+    list_all_eligible_merchant_store_pairs,
     list_store_slugs_for_snapshot_build,
     upsert_dashboard_snapshot,
 )
@@ -91,8 +92,8 @@ def builder_should_skip_due_to_pool_pressure() -> tuple[bool, str, dict[str, Any
 
 
 def builder_failsafe_forced_run_needed() -> tuple[bool, str]:
-    """True when active stores lack a fresh summary snapshot (5m failsafe)."""
-    stores = list_store_slugs_for_snapshot_build(limit=snapshot_build_store_limit())
+    """True when any eligible merchant store lacks a fresh summary snapshot."""
+    stores = list_all_eligible_merchant_store_pairs()
     return any_store_needs_failsafe_snapshot_build(store_pairs=stores)
 
 

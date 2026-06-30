@@ -41,7 +41,14 @@ _PREFIX_READ = "[DASHBOARD SNAPSHOT READ]"
 _PREFIX_MISS = "[DASHBOARD SNAPSHOT MISS]"
 _PREFIX_WRITE = "[DASHBOARD SNAPSHOT WRITE]"
 _PREFIX_DEGRADED = "[DASHBOARD DEGRADED]"
-_PREFIX_VIOLATION = "[DASHBOARD HOT PATH VIOLATION]"
+_PREFIX_STORE = "[DASHBOARD SNAPSHOT STORE]"
+_PREFIX_COVERAGE = "[DASHBOARD SNAPSHOT COVERAGE]"
+
+# Audit/diagnostic slugs — never snapshot (compete with real merchants on updated_at).
+_SNAPSHOT_BUILD_EXCLUDED_PREFIXES = (
+    "stuckj-",
+    "stuckaudit-",
+)
 
 
 def _env_truthy(name: str) -> bool:
@@ -322,55 +329,176 @@ def upsert_dashboard_snapshot(
     return row
 
 
+def emit_snapshot_store_selection(*, store_slug: str, reason: str) -> None:
+    _emit(f"{_PREFIX_STORE} store_slug={store_slug} reason={reason}")
+
+
+def emit_snapshot_coverage_summary(
+    *,
+    eligible: int,
+    selected: int,
+    limit: int,
+    excluded_inactive: int = 0,
+    excluded_no_merchant: int = 0,
+    excluded_test_prefix: int = 0,
+    excluded_placeholder: int = 0,
+) -> None:
+    _emit(
+        f"{_PREFIX_COVERAGE} eligible={eligible} selected={selected} limit={limit} "
+        f"excluded_inactive={excluded_inactive} excluded_no_merchant={excluded_no_merchant} "
+        f"excluded_test_prefix={excluded_test_prefix} excluded_placeholder={excluded_placeholder}"
+    )
+
+
+def is_snapshot_build_eligible_store(
+    *,
+    zid_store_id: Optional[str],
+    merchant_user_id: Optional[int],
+    is_active: bool,
+) -> tuple[bool, str]:
+    """Active merchant-owned store eligible for dashboard snapshot builder."""
+    from services.recovery_store_lookup import is_widget_recovery_zid
+
+    slug = canonical_snapshot_store_slug(store_slug=zid_store_id)
+    if not slug:
+        return False, "missing_slug"
+    if not is_active:
+        return False, "inactive"
+    if merchant_user_id is None:
+        return False, "no_merchant_user"
+    if is_widget_recovery_zid(slug):
+        return False, "widget_placeholder_slug"
+    lower = slug.casefold()
+    for prefix in _SNAPSHOT_BUILD_EXCLUDED_PREFIXES:
+        if lower.startswith(prefix):
+            return False, "test_audit_prefix"
+    return True, "active_merchant"
+
+
+def _snapshot_build_priority(
+    *,
+    store_slug: str,
+    failsafe_cutoff: datetime,
+) -> tuple[int, datetime, str]:
+    """Lower tier sorts first; oldest summary within tier rotates coverage."""
+    summary_row = fetch_latest_snapshot_row(
+        store_slug=store_slug,
+        snapshot_type=SNAPSHOT_TYPE_SUMMARY,
+    )
+    if summary_row is None:
+        return 0, datetime.min.replace(tzinfo=timezone.utc), "missing_summary"
+    gen = _as_utc(summary_row.generated_at)
+    if gen is None or gen < failsafe_cutoff:
+        return 1, gen or datetime.min.replace(tzinfo=timezone.utc), "stale_summary"
+    return 2, gen, "rotate_oldest_summary"
+
+
+def list_all_eligible_merchant_store_pairs() -> list[tuple[int, str]]:
+    """All active merchant-linked stores eligible for snapshot builds."""
+    from models import Store
+
+    rows = (
+        db.session.query(
+            Store.id,
+            Store.zid_store_id,
+            Store.merchant_user_id,
+            Store.is_active,
+        )
+        .filter(
+            Store.zid_store_id.isnot(None),
+            Store.merchant_user_id.isnot(None),
+            Store.is_active.is_(True),
+        )
+        .all()
+    )
+    out: list[tuple[int, str]] = []
+    seen: set[str] = set()
+    for sid, zid, mid, is_active in rows:
+        eligible, _reason = is_snapshot_build_eligible_store(
+            zid_store_id=zid,
+            merchant_user_id=mid,
+            is_active=bool(is_active),
+        )
+        if not eligible:
+            continue
+        slug = canonical_snapshot_store_slug(store_slug=zid)
+        if not slug or slug in seen:
+            continue
+        seen.add(slug)
+        out.append((int(sid), slug))
+    return out
+
+
 def list_store_slugs_for_snapshot_build(*, limit: int = 10) -> list[tuple[int, str]]:
+    """
+    Select merchant stores for one builder tick.
+
+    Coverage rules (not ``updated_at`` on Store — audit scripts bump test rows):
+    - ``merchant_user_id`` present, ``is_active``, canonical ``zid_store_id``
+    - Exclude widget placeholders (demo/demo2/default) and audit prefixes
+    - Priority: missing summary → stale summary → oldest summary (rotation)
+  """
     from models import Store
 
     cap = max(1, int(limit))
-    scan_limit = max(cap * 4, cap)
     rows = (
-        db.session.query(Store.id, Store.zid_store_id, Store.updated_at)
-        .filter(Store.zid_store_id.isnot(None))
-        .order_by(Store.updated_at.desc())
-        .limit(scan_limit)
+        db.session.query(
+            Store.id,
+            Store.zid_store_id,
+            Store.merchant_user_id,
+            Store.is_active,
+        )
+        .filter(
+            Store.zid_store_id.isnot(None),
+            Store.merchant_user_id.isnot(None),
+            Store.is_active.is_(True),
+        )
         .all()
     )
-    priority: list[tuple[int, str]] = []
-    rest: list[tuple[int, str]] = []
     failsafe_cutoff = _utcnow() - timedelta(seconds=snapshot_builder_failsafe_seconds())
-    seen: set[tuple[int, str]] = set()
+    excluded_inactive = 0
+    excluded_no_merchant = 0
+    excluded_test_prefix = 0
+    excluded_placeholder = 0
+    candidates: list[tuple[int, str, int, datetime, str]] = []
 
-    for sid, zid, _upd in rows:
-        slug = canonical_snapshot_store_slug(store_slug=zid)
-        if not slug:
-            continue
-        pair = (int(sid), slug)
-        if pair in seen:
-            continue
-        seen.add(pair)
-        summary_row = fetch_latest_snapshot_row(
-            store_slug=slug,
-            snapshot_type=SNAPSHOT_TYPE_SUMMARY,
+    for sid, zid, mid, is_active in rows:
+        eligible, exclude_reason = is_snapshot_build_eligible_store(
+            zid_store_id=zid,
+            merchant_user_id=mid,
+            is_active=bool(is_active),
         )
-        needs_build = summary_row is None
-        if not needs_build:
-            gen = _as_utc(summary_row.generated_at)
-            needs_build = gen is None or gen < failsafe_cutoff
-        if needs_build:
-            priority.append(pair)
-        else:
-            rest.append(pair)
+        slug = canonical_snapshot_store_slug(store_slug=zid) or (zid or "").strip()
+        if not eligible:
+            if exclude_reason == "inactive":
+                excluded_inactive += 1
+            elif exclude_reason == "no_merchant_user":
+                excluded_no_merchant += 1
+            elif exclude_reason == "test_audit_prefix":
+                excluded_test_prefix += 1
+            elif exclude_reason == "widget_placeholder_slug":
+                excluded_placeholder += 1
+            continue
+        tier, sort_gen, pick_reason = _snapshot_build_priority(
+            store_slug=slug,
+            failsafe_cutoff=failsafe_cutoff,
+        )
+        candidates.append((int(sid), slug, tier, sort_gen, pick_reason))
 
-    out: list[tuple[int, str]] = []
-    for pair in priority:
-        if len(out) >= cap:
-            break
-        out.append(pair)
-    for pair in rest:
-        if len(out) >= cap:
-            break
-        if pair not in out:
-            out.append(pair)
-    return out
+    candidates.sort(key=lambda item: (item[2], item[3], item[0]))
+    selected = candidates[:cap]
+    for _sid, slug, _tier, _gen, pick_reason in selected:
+        emit_snapshot_store_selection(store_slug=slug, reason=pick_reason)
+    emit_snapshot_coverage_summary(
+        eligible=len(candidates),
+        selected=len(selected),
+        limit=cap,
+        excluded_inactive=excluded_inactive,
+        excluded_no_merchant=excluded_no_merchant,
+        excluded_test_prefix=excluded_test_prefix,
+        excluded_placeholder=excluded_placeholder,
+    )
+    return [(sid, slug) for sid, slug, _t, _g, _r in selected]
 
 
 __all__ = [
@@ -396,8 +524,11 @@ __all__ = [
     "emit_hot_path_violation",
     "emit_snapshot_miss",
     "emit_snapshot_read",
+    "emit_snapshot_store_selection",
     "emit_snapshot_write",
     "fetch_latest_snapshot_row",
+    "is_snapshot_build_eligible_store",
+    "list_all_eligible_merchant_store_pairs",
     "list_store_slugs_for_snapshot_build",
     "resolve_merchant_store_slug_for_snapshot",
     "snapshot_builder_failsafe_seconds",

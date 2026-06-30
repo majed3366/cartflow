@@ -42,6 +42,8 @@ Do **not** enable builder on API.
 
 ## Observability logs
 
+- `[DASHBOARD SNAPSHOT STORE]` — store selected for builder tick (`store_slug`, `reason=missing_summary|stale_summary|rotate_oldest_summary`)
+- `[DASHBOARD SNAPSHOT COVERAGE]` — eligible vs selected counts + exclusion tallies
 - `[DASHBOARD SNAPSHOT WRITE]` — every upsert (`store_slug`, `snapshot_type`, `generated_at`, `db_fp`)
 - `[DASHBOARD SNAPSHOT READ]` — successful snapshot read (`store_slug`, `snapshot_type`, `db_fp`)
 - `[DASHBOARD SNAPSHOT MISS]` — no row found (`store_slug`, `snapshot_type`, `db_fp`)
