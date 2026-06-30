@@ -405,6 +405,7 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 
 | Date (UTC) | Summary |
 |------------|---------|
+| 2026-06-30 | **Cart Visibility Fix V1:** Degraded/snapshot empty `normal-carts` responses no longer wipe client row memory; `normalCartsIsDegraded` detects snapshot flags; snapshot degraded payloads expose `dashboard_partial`. Tests: `tests/test_cart_visibility_fix_v1.py`. |
 | 2026-06-30 | **Cart Archive Identity Fix V1:** Session-only recovery keys (`store:session`) excluded from archive/reopen mutations; `cart_action_identity_v1.py`; thin dashboard routes; frontend `rowMatchesLifecycleKey` fix. Tests: `tests/test_cart_action_identity_v1.py`. |
 | 2026-06-30 | **WhatsApp Production Reality V1 (decision doc):** Definitive launch model — Day 1 CartFlow Managed (`cartflow_managed`) on CartFlow-owned Meta Cloud API + 8-key template library; Phase 2 Merchant WABA via Embedded Signup; provider-layer boundary; migration/reply/24h/risk rules. No code changes. Doc: `docs/cartflow_whatsapp_production_reality_v1.md`. |
 | 2026-06-30 | **WhatsApp Merchant Experience V3:** Hide «غير متصل» and nested disconnected states for `cartflow_managed`; commercial `#whatsapp-connect` page (`whatsapp_connect_page` API + `merchant_whatsapp_connect.js`); compact «المسار الحالي» card CSS. Tests: `tests/test_merchant_whatsapp_experience_v3.py`. |

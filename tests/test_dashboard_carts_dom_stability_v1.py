@@ -53,6 +53,8 @@ class DashboardCartsDomStabilityTests(unittest.TestCase):
         self.assertIn("pending_cart_poll", js)
         self.assertIn("partial_keep", js)
         self.assertIn("token_refresh_state", js)
+        self.assertIn("snapshot_degraded", js)
+        self.assertIn("normalCartsDegradedRetryStage", js)
 
     def test_lazy_js_new_cart_refresh_triggers_refetch(self) -> None:
         js = self._lazy_js

@@ -102,10 +102,14 @@ def _degraded_summary_payload(*, reason: str) -> dict[str, Any]:
 
 
 def _degraded_normal_carts_payload(*, reason: str) -> dict[str, Any]:
+    stage = (reason or "snapshot_degraded")[:64]
     return {
         "snapshot_mode": True,
         "snapshot_degraded": True,
         "snapshot_reason": reason,
+        "dashboard_partial": True,
+        "dashboard_timeout": True,
+        "dashboard_timeout_stage": stage,
         "merchant_table_rows": [],
         "merchant_carts_page_rows": [],
         "merchant_archived_carts_page_rows": [],
@@ -124,9 +128,40 @@ def _degraded_normal_carts_payload(*, reason: str) -> dict[str, Any]:
             "visible_rows": 0,
             "partial": True,
             "degraded": True,
-            "timeout_stage": "snapshot_miss",
+            "timeout_stage": stage,
         },
     }
+
+
+def apply_normal_carts_snapshot_client_guards(payload: dict[str, Any]) -> dict[str, Any]:
+    """
+    Empty snapshot/degraded normal-carts payloads must expose live-style partial flags
+    so merchant_dashboard_lazy.js retains prior rows.
+    """
+    if payload.get("merchant_carts_page_rows"):
+        return payload
+    snap = payload.get("_snapshot") if isinstance(payload.get("_snapshot"), dict) else {}
+    perf = payload.get("_perf") if isinstance(payload.get("_perf"), dict) else {}
+    degraded = bool(
+        payload.get("snapshot_degraded")
+        or payload.get("snapshot_stale")
+        or snap.get("degraded")
+        or snap.get("stale")
+        or perf.get("degraded")
+        or perf.get("partial")
+    )
+    if not degraded:
+        return payload
+    stage = str(
+        payload.get("dashboard_timeout_stage")
+        or payload.get("snapshot_reason")
+        or perf.get("timeout_stage")
+        or "snapshot_degraded"
+    )[:64]
+    payload.setdefault("dashboard_partial", True)
+    payload.setdefault("dashboard_timeout", True)
+    payload["dashboard_timeout_stage"] = stage
+    return payload
 
 
 def read_dashboard_snapshot_payload(
@@ -283,6 +318,7 @@ def build_normal_carts_from_snapshot(
             t0=wall0,
             endpoint="normal-carts",
         )
+        body = apply_normal_carts_snapshot_client_guards(body)
         return enforce_route_budget(body, wall0=wall0)
 
 
@@ -364,6 +400,7 @@ __all__ = [
     "DASHBOARD_ROUTE_MAX_MS",
     "DASHBOARD_ROUTE_TARGET_MS",
     "_degraded_refresh_state_payload",
+    "apply_normal_carts_snapshot_client_guards",
     "build_normal_carts_from_snapshot",
     "build_refresh_state_from_snapshot",
     "build_store_connection_from_snapshot",

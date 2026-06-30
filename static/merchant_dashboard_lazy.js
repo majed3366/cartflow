@@ -2791,7 +2791,25 @@
 
   function normalCartsIsDegraded(d) {
     if (!d) return true;
-    return !!(d.dashboard_partial || d.dashboard_timeout);
+    if (d.dashboard_partial || d.dashboard_timeout) return true;
+    if (d.snapshot_degraded || d.snapshot_stale) return true;
+    var snap = d._snapshot;
+    if (snap && (snap.degraded || snap.stale)) return true;
+    var perf = d._perf;
+    if (perf && (perf.partial || perf.degraded)) return true;
+    return false;
+  }
+
+  function normalCartsDegradedRetryStage(d) {
+    if (!d) return "partial";
+    return (
+      String(
+        d.dashboard_timeout_stage ||
+          d.snapshot_reason ||
+          (d._perf && d._perf.timeout_stage) ||
+          "partial"
+      ).trim() || "partial"
+    );
   }
 
   function normalCartsPayloadRows(d) {
@@ -2904,16 +2922,17 @@
 
     if (partialEmpty) {
       logClientRefresh("normal_carts_partial_empty", {
-        stage: d.dashboard_timeout_stage || null,
+        stage: normalCartsDegradedRetryStage(d),
         hadRows: lastNormalCartsPageRows.length,
+        snapshot_degraded: !!d.snapshot_degraded,
       });
       if (lastNormalCartsPageRows.length) {
         rerenderCartsFromMemory("partial_keep");
-        scheduleNormalCartsRetry(d.dashboard_timeout_stage || "partial");
+        scheduleNormalCartsRetry(normalCartsDegradedRetryStage(d));
         return;
       }
       showNormalCartsLoadingState("جاري تحميل السلال…");
-      scheduleNormalCartsRetry(d.dashboard_timeout_stage || "partial");
+      scheduleNormalCartsRetry(normalCartsDegradedRetryStage(d));
       return;
     }
 
@@ -3873,6 +3892,7 @@
     getAppliedGen: function () {
       return normalCartsAppliedGen;
     },
+    normalCartsIsDegraded: normalCartsIsDegraded,
   };
 
   window.__maVipCartsTestHooks = {
