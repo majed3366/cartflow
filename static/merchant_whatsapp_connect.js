@@ -11,40 +11,81 @@
     return d.innerHTML;
   }
 
-  function renderPlaceholder(block) {
+  function goBackWhatsapp() {
+    if (window.goTo) {
+      window.goTo("whatsapp");
+    } else {
+      window.location.href = "/dashboard#whatsapp";
+    }
+  }
+
+  function renderConnectPage(block) {
     var root = byId("ma-wa-connect-root");
     if (!root) return;
     var b = block || {};
-    var statusAr = b.status_ar || "—";
-    var nextAr = b.next_action_ar || "";
-    var applicable = !!b.applicable;
-    var foundation = b.foundation_only !== false;
+    var steps = b.steps_ar || [];
+    var stepsHtml = "";
+    if (b.show_steps && steps.length) {
+      stepsHtml =
+        '<ol class="ma-wa-connect-steps">' +
+        steps
+          .map(function (step) {
+            return "<li>" + escHtml(step) + "</li>";
+          })
+          .join("") +
+        "</ol>";
+    }
+    var statusHtml = "";
+    if (b.show_status && b.status_ar) {
+      statusHtml =
+        '<div class="ma-wa-connect-status">' +
+        '<span class="ma-wa-connect-status-k">' +
+        escHtml(b.status_label_ar || "حالة الربط") +
+        "</span>" +
+        '<span class="ma-wa-connect-status-v">' +
+        escHtml(b.status_ar) +
+        "</span></div>";
+    }
+    var guidance = b.guidance_ar || b.body_ar || "";
+    var primaryHtml = "";
+    if (b.cta_primary_ar) {
+      primaryHtml =
+        '<button type="button" class="ma-fw-save ma-sc-btn-secondary ma-wa-connect-primary"' +
+        ' id="ma-wa-connect-launch"' +
+        (b.cta_primary_disabled ? " disabled" : "") +
+        ">" +
+        escHtml(b.cta_primary_ar) +
+        "</button>";
+      if (b.cta_primary_hint_ar) {
+        primaryHtml +=
+          '<p class="ma-fw-field-hint ma-wa-connect-primary-hint">' +
+          escHtml(b.cta_primary_hint_ar) +
+          "</p>";
+      }
+    }
 
     root.innerHTML =
-      '<section class="ma-wa-connect-card setting-card ma-fw-card" dir="rtl">' +
-      '<div class="setting-title">ربط واتساب المتجر</div>' +
-      '<div class="setting-desc">Embedded Signup — تأسيس V1 (بدون إرسال بعد)</div>' +
-      '<div class="setting-row"><span class="setting-label">الحالة</span>' +
-      '<span class="setting-value">' +
-      escHtml(statusAr) +
-      "</span></div>" +
-      (nextAr
-        ? '<p class="ma-wa-connect-next">' + escHtml(nextAr) + "</p>"
+      '<section class="ma-wa-connect-card setting-card ma-fw-card ma-wa-connect-commercial" dir="rtl">' +
+      '<div class="setting-title">' +
+      escHtml(b.headline_ar || "ربط واتساب أعمالك") +
+      "</div>" +
+      (b.intro_ar
+        ? '<div class="setting-desc ma-wa-connect-intro">' + escHtml(b.intro_ar) + "</div>"
         : "") +
-      '<p class="ma-fw-field-hint ma-wa-connect-foundation">' +
-      (foundation
-        ? "هذه الصفحة placeholder — زر «Login with Facebook» واستبدال الرمز سيُفعّل في مرحلة لاحقة."
-        : "") +
-      "</p>" +
-      '<button type="button" class="ma-fw-save ma-sc-btn-secondary" id="ma-wa-connect-launch" disabled' +
-      ' title="قريباً — Embedded Signup V2">' +
-      "ربط واتساب (قريباً)" +
-      "</button>" +
-      (!applicable
-        ? '<p class="ma-fw-field-hint">مسار CartFlow Shared لا يستخدم Embedded Signup. ' +
-          '<button type="button" class="ma-link-btn" onclick="if(window.goTo){goTo(\'whatsapp\');}">العودة إلى واتساب</button></p>'
-        : '<p class="ma-fw-field-hint"><button type="button" class="ma-link-btn" onclick="if(window.goTo){goTo(\'whatsapp\');}">العودة إلى إعدادات واتساب</button></p>') +
+      statusHtml +
+      (guidance ? '<p class="ma-wa-connect-guidance">' + escHtml(guidance) + "</p>" : "") +
+      stepsHtml +
+      primaryHtml +
+      '<p class="ma-wa-connect-back">' +
+      '<button type="button" class="ma-link-btn" id="ma-wa-connect-back">' +
+      escHtml(b.cta_back_ar || "العودة إلى إعدادات واتساب") +
+      "</button></p>" +
       "</section>";
+
+    var backBtn = byId("ma-wa-connect-back");
+    if (backBtn) {
+      backBtn.addEventListener("click", goBackWhatsapp);
+    }
   }
 
   function loadConnectState() {
@@ -56,19 +97,16 @@
         return r.json();
       })
       .then(function (data) {
-        var block =
-          (data && data.whatsapp_embedded_signup) ||
-          (data && data.whatsapp_connection_readiness &&
-            data.whatsapp_connection_readiness.whatsapp_embedded_signup) ||
-          {};
-        renderPlaceholder(block);
+        renderConnectPage((data && data.whatsapp_connect_page) || {});
       })
       .catch(function () {
-        renderPlaceholder({
-          status_ar: "تعذّر تحميل الحالة",
-          next_action_ar: "حدّث الصفحة أو عد لاحقاً.",
-          applicable: true,
-          foundation_only: true,
+        renderConnectPage({
+          headline_ar: "ربط واتساب أعمالك",
+          intro_ar: "تعذّر تحميل الصفحة.",
+          guidance_ar: "حدّث الصفحة أو عد لاحقاً.",
+          cta_back_ar: "العودة إلى إعدادات واتساب",
+          show_status: false,
+          show_steps: false,
         });
       })
       .finally(function () {

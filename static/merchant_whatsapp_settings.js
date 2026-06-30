@@ -973,6 +973,17 @@
     renderModeSelection(d);
     renderCurrentPath(d);
     renderAdvancedSettings(d);
+    var showConn = d.whatsapp_show_connection_status === true;
+    var pill = byId("ma-wa-connection-pill");
+    if (pill) {
+      pill.hidden = !showConn;
+      if (!showConn) pill.textContent = "";
+    }
+    var connSummary = byId("ma-wa-connection-summary");
+    if (connSummary) {
+      connSummary.hidden = !showConn;
+      if (!showConn) connSummary.textContent = "";
+    }
     var st = byId("ma-wa-status-display");
     if (st) st.textContent = d.whatsapp_status_display || "—";
     var ls = byId("ma-wa-last-send-status");

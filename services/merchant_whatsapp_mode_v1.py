@@ -140,6 +140,32 @@ def whatsapp_current_path_for_api(store: Optional[Any]) -> dict[str, Any]:
     }
 
 
+def _sanitize_cartflow_embedded_signup(block: dict[str, Any]) -> None:
+    block["applicable"] = False
+    block["status"] = ""
+    block["status_ar"] = ""
+    block["next_action_ar"] = ""
+
+
+def _sanitize_cartflow_connection_readiness(readiness: dict[str, Any]) -> None:
+    for key in (
+        "connection_state",
+        "connection_state_ar",
+        "readiness_overall",
+        "readiness_overall_ar",
+        "connection_state_legacy_pill_key",
+    ):
+        readiness[key] = ""
+    nested = readiness.get("whatsapp_embedded_signup")
+    if isinstance(nested, dict):
+        _sanitize_cartflow_embedded_signup(nested)
+    prod = readiness.get("production_sending_readiness")
+    if isinstance(prod, dict):
+        for k, val in list(prod.items()):
+            if isinstance(val, str) and "غير متصل" in val:
+                prod[k] = ""
+
+
 def _apply_experience_v2_presentation(payload: dict[str, Any], mode: str) -> None:
     """Hide technical/disconnected states on CartFlow path — merchant-only in advanced."""
     show_technical = mode == WHATSAPP_MODE_MERCHANT_WHATSAPP
@@ -155,6 +181,104 @@ def _apply_experience_v2_presentation(payload: dict[str, Any], mode: str) -> Non
     payload["whatsapp_connection_summary_ar"] = ""
     payload["whatsapp_readiness_overall_ar"] = ""
     payload["whatsapp_mode_merchant_panel"] = {"visible": False}
+    readiness = payload.get("whatsapp_connection_readiness")
+    if isinstance(readiness, dict):
+        _sanitize_cartflow_connection_readiness(readiness)
+    embedded = payload.get("whatsapp_embedded_signup")
+    if isinstance(embedded, dict):
+        _sanitize_cartflow_embedded_signup(embedded)
+
+
+def apply_merchant_whatsapp_experience_presentation(payload: dict[str, Any]) -> None:
+    """Final merchant-facing scrub after all recovery-settings blocks are merged."""
+    mode = normalize_whatsapp_mode(payload.get("whatsapp_mode"))
+    _apply_experience_v2_presentation(payload, mode)
+
+
+CONNECT_PAGE_STEPS_AR: tuple[str, ...] = (
+    "تأكد من رقم واتساب أعمال فعّال.",
+    "أكمل خطوات الربط.",
+    "ابدأ إرسال رسائل الاسترجاع باسم متجرك.",
+)
+
+CONNECT_PAGE_CARTFLOW_BODY_AR = (
+    "أنت تستخدم واتساب CartFlow — لا حاجة لربط رقم منفصل."
+)
+CONNECT_PAGE_CARTFLOW_INTRO_AR = (
+    "هذه الصفحة لمتاجر تختار «واتساب أعمالي»."
+)
+CONNECT_PAGE_MERCHANT_INTRO_AR = (
+    "اربط رقم واتساب أعمالك ليظهر اسم متجرك للعملاء عند إرسال رسائل الاسترجاع."
+)
+CONNECT_PAGE_BACK_AR = "العودة إلى إعدادات واتساب"
+CONNECT_PAGE_PRIMARY_AR = "متابعة الربط"
+CONNECT_PAGE_PRIMARY_HINT_AR = "سيتوفر قريباً"
+
+
+def whatsapp_connect_page_for_api(store: Optional[Any]) -> dict[str, Any]:
+    """Commercial connect page copy — no Meta / Embedded Signup jargon on main surface."""
+    from services.merchant_whatsapp_embedded_signup_readiness_v1 import (  # noqa: PLC0415
+        EMBEDDED_SIGNUP_CONNECTED,
+        EMBEDDED_SIGNUP_FAILED,
+        EMBEDDED_SIGNUP_NOT_STARTED,
+        EMBEDDED_SIGNUP_PAIRING_REQUIRED,
+        evaluate_embedded_signup_readiness,
+    )
+
+    mode = normalize_whatsapp_mode(
+        getattr(store, "whatsapp_mode", None) if store is not None else None
+    )
+    if mode != WHATSAPP_MODE_MERCHANT_WHATSAPP:
+        return {
+            "applicable": False,
+            "headline_ar": "ربط واتساب أعمالك",
+            "intro_ar": CONNECT_PAGE_CARTFLOW_INTRO_AR,
+            "body_ar": CONNECT_PAGE_CARTFLOW_BODY_AR,
+            "status_label_ar": "",
+            "status_ar": "",
+            "guidance_ar": "",
+            "steps_ar": [],
+            "cta_primary_ar": "",
+            "cta_primary_disabled": True,
+            "cta_primary_hint_ar": "",
+            "cta_back_ar": CONNECT_PAGE_BACK_AR,
+            "show_status": False,
+            "show_steps": False,
+        }
+
+    commercial_status: Mapping[str, str] = {
+        EMBEDDED_SIGNUP_NOT_STARTED: "لم يُفعّل الربط بعد",
+        EMBEDDED_SIGNUP_PAIRING_REQUIRED: "بانتظار إكمال الربط",
+        EMBEDDED_SIGNUP_CONNECTED: "تم ربط رقم متجرك",
+        EMBEDDED_SIGNUP_FAILED: "تعذّر إكمال الربط",
+    }
+    commercial_guidance: Mapping[str, str] = {
+        EMBEDDED_SIGNUP_NOT_STARTED: (
+            "عندما تكون جاهزاً، أكمل خطوات الربط ليظهر اسم متجرك للعملاء."
+        ),
+        EMBEDDED_SIGNUP_PAIRING_REQUIRED: "أكمل خطوات الربط لتفعيل إرسال الرسائل.",
+        EMBEDDED_SIGNUP_CONNECTED: "تم الربط — يمكنك متابعة الإعداد من صفحة واتساب.",
+        EMBEDDED_SIGNUP_FAILED: "يرجى المحاولة مرة أخرى أو التواصل مع الدعم.",
+    }
+
+    ev = evaluate_embedded_signup_readiness(store)
+    status = ev.status or EMBEDDED_SIGNUP_NOT_STARTED
+    return {
+        "applicable": True,
+        "headline_ar": "💼 ربط رقم واتساب متجرك",
+        "intro_ar": CONNECT_PAGE_MERCHANT_INTRO_AR,
+        "body_ar": "",
+        "status_label_ar": "حالة الربط",
+        "status_ar": commercial_status.get(status, "—"),
+        "guidance_ar": commercial_guidance.get(status, ""),
+        "steps_ar": list(CONNECT_PAGE_STEPS_AR),
+        "cta_primary_ar": CONNECT_PAGE_PRIMARY_AR,
+        "cta_primary_disabled": True,
+        "cta_primary_hint_ar": CONNECT_PAGE_PRIMARY_HINT_AR,
+        "cta_back_ar": CONNECT_PAGE_BACK_AR,
+        "show_status": True,
+        "show_steps": True,
+    }
 
 
 def _merchant_owned_panel_for_api(store: Optional[Any]) -> dict[str, Any]:
@@ -181,8 +305,8 @@ def _merchant_owned_panel_for_api(store: Optional[Any]) -> dict[str, Any]:
         "embedded_signup_next_action_ar": embedded.get("next_action_ar") or "",
         "embedded_signup_launch_ready": bool(embedded.get("launch_ready")),
         "connect_page_href": embedded.get("connect_href") or "/dashboard#whatsapp-connect",
-        "connect_page_label_ar": "صفحة ربط واتساب (Embedded Signup)",
-        "connect_page_note_ar": "الربط المباشر عبر Meta سيصبح متاحاً لاحقاً.",
+        "connect_page_label_ar": "صفحة ربط واتساب",
+        "connect_page_note_ar": "أكمل ربط رقم متجرك من صفحة الربط.",
     }
 
 
