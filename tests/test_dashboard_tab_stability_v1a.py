@@ -33,9 +33,10 @@ class _TabFilterClientSim:
     def set_current(self, mode_or_tab: str) -> None:
         self.current = self.cart_tab_to_filter_mode(mode_or_tab)
 
-    def apply_cart_tab_filters(self, cart_tab: str) -> None:
+    def apply_cart_tab_filters(self, cart_tab: str, *, persist: bool = True) -> None:
         mode = self.cart_tab_to_filter_mode(cart_tab)
-        self.set_current(mode)
+        if persist:
+            self.set_current(mode)
         self.applied.append(mode)
 
     def filter_btn_click(self, data_filter: str) -> None:
@@ -47,12 +48,12 @@ class _TabFilterClientSim:
             self.applied.append("__completed_refresh__")
             return
         if self.hash_tab:
-            self.apply_cart_tab_filters(self.hash_tab)
+            self.apply_cart_tab_filters(self.hash_tab, persist=True)
             return
         if self.current:
-            self.apply_cart_tab_filters(self.current)
+            self.apply_cart_tab_filters(self.current, persist=False)
         else:
-            self.apply_cart_tab_filters("all")
+            self.apply_cart_tab_filters("all", persist=True)
 
     def fetch_applied(self) -> None:
         self.reapply_after_render()
@@ -73,6 +74,7 @@ class DashboardTabStabilityV1aJsTests(unittest.TestCase):
         click_block = js[js.index("initCartFiltersOnce") : js.index("function setContextSection")]
         self.assertIn("setCurrentNormalCartFilter(mode)", click_block)
         apply_block = js[js.index("function applyCartTabFilters") : js.index("function activatePage")]
+        self.assertIn("options.persist !== false", apply_block)
         self.assertIn("setCurrentNormalCartFilter(mode)", apply_block)
 
     def test_lazy_js_reapplies_persisted_filter_not_unconditional_all(self) -> None:
@@ -83,7 +85,8 @@ class DashboardTabStabilityV1aJsTests(unittest.TestCase):
             : js.index("function applyNormalCarts")
         ]
         self.assertIn("getCurrentNormalCartFilter", fn)
-        self.assertIn("if (persisted)", fn)
+        self.assertIn("persist: false", fn)
+        self.assertIn('source: "persisted_reapply"', fn)
         self.assertNotIn('else if (typeof window.applyCartTabFilters === "function") {\n        window.applyCartTabFilters("all");', fn)
         render_block = js[
             js.index("function renderNormalCartsTables")

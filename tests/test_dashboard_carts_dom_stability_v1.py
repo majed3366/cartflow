@@ -65,8 +65,8 @@ class DashboardCartsDomStabilityTests(unittest.TestCase):
     def test_lazy_js_reapplies_persisted_filter_after_render(self) -> None:
         js = self._lazy_js
         self.assertIn("reapplyNormalCartFilterAfterRender", js)
-        self.assertIn("getCurrentNormalCartFilter", js)
-        self.assertIn("applyCartTabFilters(tab)", js)
+        self.assertIn("getUrlCartTabFromHash", js)
+        self.assertIn("persist: false", js)
 
     def test_lazy_js_exposes_test_hooks(self) -> None:
         self.assertIn("__maNormalCartsTestHooks", self._lazy_js)

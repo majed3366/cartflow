@@ -41,7 +41,17 @@
   var normalCartsBootComplete = false;
   var normalCartsHasRenderedRows = false;
   var lastNormalCartsFilterCounts = {};
-  var NORMAL_CARTS_CACHE_KEY = "ma_normal_carts_cache_v1";
+  var NORMAL_CARTS_CACHE_KEY = "ma_normal_carts_cache_v2";
+  var DEPRECATED_LIFECYCLE_WHAT_NEXT_AR = {
+    "اطلب من العميل إكمال بيانات التواصل في الودجيت.":
+      "لا توجد وسيلة تواصل متاحة حالياً — سيبدأ التواصل تلقائياً عند توفر بيانات التواصل.",
+    "أضف رقم العميل ليكمل النظام المسار.":
+      "لا توجد وسيلة تواصل متاحة حالياً — سيبدأ التواصل تلقائياً عند توفر بيانات التواصل.",
+    "راجع السلة واتخذ إجراءً يدوياً عند الحاجة.":
+      "أوقف CartFlow المسار الآلي مؤقتاً بانتظار إزالة العائق أو اكتمال البيانات.",
+    "راجع إعدادات الاسترجاع أو انتظر اكتمال بيانات السلة.":
+      "بانتظار اكتمال بيانات السلة — سيتابع CartFlow تلقائياً عند الجاهزية.",
+  };
   var VIP_CARTS_CACHE_KEY = "ma_vip_carts_cache_v1";
   var vipCartsFetchGen = 0;
   var vipCartsAppliedGen = 0;
@@ -118,19 +128,91 @@
     fetchNormalCarts(label);
   }
 
+  function sanitizeNormalCartRowLifecycleCopy(row) {
+    if (!row || typeof row !== "object") return row;
+    var wn = String(row.customer_lifecycle_what_next_ar || "");
+    var replacement = DEPRECATED_LIFECYCLE_WHAT_NEXT_AR[wn];
+    if (!replacement) return row;
+    var out = Object.assign({}, row);
+    out.customer_lifecycle_what_next_ar = replacement;
+    return out;
+  }
+
+  function sanitizeNormalCartRows(rows) {
+    if (!rows || !rows.length) return rows || [];
+    var out = [];
+    var i;
+    for (i = 0; i < rows.length; i++) {
+      out.push(sanitizeNormalCartRowLifecycleCopy(rows[i]));
+    }
+    return out;
+  }
+
+  function normalCartsPayloadSource(d) {
+    if (!d) return "unknown";
+    if (d.__ma_payload_source) return String(d.__ma_payload_source);
+    if (d.snapshot_mode || d._snapshot) return "snapshot";
+    if (normalCartsIsDegraded(d)) return "degraded";
+    return "fetch";
+  }
+
+  function effectiveFilterCounts(incoming, pageRows) {
+    var fc = incoming || {};
+    var rowsN = pageRows ? pageRows.length : 0;
+    if (!rowsN) return fc;
+    var incomingAll = parseInt(fc.all, 10);
+    var prevAll = parseInt(
+      (lastNormalCartsFilterCounts && lastNormalCartsFilterCounts.all) || 0,
+      10
+    );
+    if (
+      (!isFinite(incomingAll) || incomingAll <= 0) &&
+      isFinite(prevAll) &&
+      prevAll > 0
+    ) {
+      logClientRefresh("normal_carts_counts_preserved", {
+        rows_count: rowsN,
+        incoming_all: incomingAll,
+        preserved_all: prevAll,
+      });
+      return lastNormalCartsFilterCounts;
+    }
+    return fc;
+  }
+
+  function prepareNormalCartsPayload(d, source) {
+    if (!d) return d;
+    var rows = sanitizeNormalCartRows(normalCartsPayloadRows(d));
+    var archived = sanitizeNormalCartRows(
+      (d && d.merchant_archived_carts_page_rows) || []
+    );
+    var table = sanitizeNormalCartRows((d && d.merchant_table_rows) || []);
+    var out = Object.assign({}, d);
+    out.merchant_carts_page_rows = rows;
+    out.merchant_archived_carts_page_rows = archived;
+    if (table.length) {
+      out.merchant_table_rows = table;
+    } else if (rows.length) {
+      out.merchant_table_rows = rows.slice(0, 8);
+    }
+    if (source) out.__ma_payload_source = source;
+    return out;
+  }
+
   function persistNormalCartsCache(d) {
     try {
       if (!d || !d.ok) return;
-      var rows = normalCartsPayloadRows(d);
+      var prepared = prepareNormalCartsPayload(d, normalCartsPayloadSource(d));
+      var rows = normalCartsPayloadRows(prepared);
       if (!rows.length) return;
       sessionStorage.setItem(
         NORMAL_CARTS_CACHE_KEY,
         JSON.stringify({
           rows: rows,
-          archived: (d && d.merchant_archived_carts_page_rows) || [],
-          table: (d && d.merchant_table_rows) || [],
-          fc: (d && d.merchant_cart_filter_counts) || {},
-          token: (d && d.merchant_dashboard_refresh_token) || "",
+          archived: (prepared && prepared.merchant_archived_carts_page_rows) || [],
+          table: (prepared && prepared.merchant_table_rows) || [],
+          fc: (prepared && prepared.merchant_cart_filter_counts) || {},
+          token: (prepared && prepared.merchant_dashboard_refresh_token) || "",
           saved_at: Date.now(),
         })
       );
@@ -146,13 +228,18 @@
       var c = JSON.parse(raw);
       if (!c || !c.rows || !c.rows.length) return false;
       lastNormalCartsFilterCounts = c.fc || {};
-      renderNormalCartsTables({
-        ok: true,
-        merchant_carts_page_rows: c.rows,
-        merchant_archived_carts_page_rows: c.archived || [],
-        merchant_table_rows: c.table && c.table.length ? c.table : c.rows.slice(0, 8),
-        merchant_cart_filter_counts: c.fc || {},
-      });
+      renderNormalCartsTables(
+        prepareNormalCartsPayload(
+          {
+            ok: true,
+            merchant_carts_page_rows: c.rows,
+            merchant_archived_carts_page_rows: c.archived || [],
+            merchant_table_rows: c.table && c.table.length ? c.table : c.rows.slice(0, 8),
+            merchant_cart_filter_counts: c.fc || {},
+          },
+          "cache"
+        )
+      );
       if (c.token) {
         merchantDashboardRefreshToken = String(c.token);
       }
@@ -206,13 +293,18 @@
       }
       return;
     }
-    renderNormalCartsTables({
-      ok: true,
-      merchant_carts_page_rows: lastNormalCartsPageRows,
-      merchant_archived_carts_page_rows: lastArchivedCartsPageRows,
-      merchant_table_rows: lastNormalCartsPageRows.slice(0, 8),
-      merchant_cart_filter_counts: lastNormalCartsFilterCounts,
-    });
+    renderNormalCartsTables(
+      prepareNormalCartsPayload(
+        {
+          ok: true,
+          merchant_carts_page_rows: lastNormalCartsPageRows,
+          merchant_archived_carts_page_rows: lastArchivedCartsPageRows,
+          merchant_table_rows: lastNormalCartsPageRows.slice(0, 8),
+          merchant_cart_filter_counts: lastNormalCartsFilterCounts,
+        },
+        "memory"
+      )
+    );
     logClientRefresh("carts_rerender_memory", {
       reason: reason || "",
       rows: lastNormalCartsPageRows.length,
@@ -2946,7 +3038,10 @@
       bindCustomerLifecycleActions(allb);
     }
     applyCompletedCartsTable(lastNormalCartsPageRows, lastArchivedCartsPageRows);
-    var fc = (d && d.merchant_cart_filter_counts) || {};
+    var fc = effectiveFilterCounts(
+      (d && d.merchant_cart_filter_counts) || {},
+      pageRows
+    );
     lastNormalCartsFilterCounts = fc;
     function sf(k, id) {
       var el = byId(id);
@@ -2957,6 +3052,16 @@
     sf("sent", "ma-filt-sent");
     sf("attention", "ma-filt-attention");
     sf("nophone", "ma-filt-nophone");
+    try {
+      logClientRefresh("normal_carts_render", {
+        rows_count: pageRows.length,
+        degraded: normalCartsIsDegraded(d),
+        source: normalCartsPayloadSource(d),
+        filter_all: fc.all != null ? fc.all : 0,
+      });
+    } catch (_renderLogErr) {
+      /* ignore */
+    }
     if (d && d.merchant_nav_badge_abandoned != null) {
       setNavBadge("ma-nav-badge-abandoned", d.merchant_nav_badge_abandoned);
     } else if (fc.waiting != null) {
@@ -2981,21 +3086,33 @@
       if (typeof window.applyCartTabFilters !== "function") {
         return;
       }
-      var hashQs = (location.hash || "").split("?")[1] || "";
-      var tab = new URLSearchParams(hashQs).get("tab");
-      if (tab) {
-        window.applyCartTabFilters(tab);
-        return;
-      }
-      var persisted =
+      var before =
         typeof window.getCurrentNormalCartFilter === "function"
           ? window.getCurrentNormalCartFilter()
           : null;
-      if (persisted) {
-        window.applyCartTabFilters(persisted);
+      var urlTab =
+        typeof window.getUrlCartTabFromHash === "function"
+          ? window.getUrlCartTabFromHash()
+          : (function () {
+              var hashQs = (location.hash || "").split("?")[1] || "";
+              return (new URLSearchParams(hashQs).get("tab") || "").trim();
+            })();
+      if (urlTab) {
+        window.applyCartTabFilters(urlTab, { persist: true, source: "url_reapply" });
+      } else if (before) {
+        window.applyCartTabFilters(before, { persist: false, source: "persisted_reapply" });
       } else {
-        window.applyCartTabFilters("all");
+        window.applyCartTabFilters("all", { persist: true, source: "default_reapply" });
       }
+      var after =
+        typeof window.getCurrentNormalCartFilter === "function"
+          ? window.getCurrentNormalCartFilter()
+          : null;
+      logClientRefresh("cart_filter_reapply", {
+        selected_filter_before: before,
+        selected_filter_after: after,
+        url_tab: urlTab || null,
+      });
     } catch (eHash) {
       /* ignore */
     }
@@ -3043,17 +3160,24 @@
     }
 
     ingestRefreshToken(d, "normal-carts");
-    renderNormalCartsTables(d);
-    persistNormalCartsCache(d);
+    var prepared = prepareNormalCartsPayload(d, normalCartsPayloadSource(d));
+    renderNormalCartsTables(prepared);
+    persistNormalCartsCache(prepared);
     if (fetchGen != null) {
       normalCartsAppliedGen = Math.max(normalCartsAppliedGen, fetchGen);
     }
     normalCartsBootComplete = true;
     logClientRefresh("normal_carts_applied", {
-      rows: pageRows.length,
+      fetch_label: d._label || "",
+      rows_count: normalCartsPayloadRows(prepared).length,
       degraded: degraded,
       partial: !!d.dashboard_partial,
+      source: normalCartsPayloadSource(prepared),
       appliedGen: normalCartsAppliedGen,
+      selected_filter:
+        typeof window.getCurrentNormalCartFilter === "function"
+          ? window.getCurrentNormalCartFilter()
+          : null,
     });
     startPendingNewCartWatcher();
   }
@@ -3995,6 +4119,12 @@
     },
     normalCartsIsDegraded: normalCartsIsDegraded,
     reapplyNormalCartFilterAfterRender: reapplyNormalCartFilterAfterRender,
+    sanitizeNormalCartRowLifecycleCopy: sanitizeNormalCartRowLifecycleCopy,
+    sanitizeNormalCartRows: sanitizeNormalCartRows,
+    effectiveFilterCounts: effectiveFilterCounts,
+    prepareNormalCartsPayload: prepareNormalCartsPayload,
+    DEPRECATED_LIFECYCLE_WHAT_NEXT_AR: DEPRECATED_LIFECYCLE_WHAT_NEXT_AR,
+    NORMAL_CARTS_CACHE_KEY: NORMAL_CARTS_CACHE_KEY,
   };
 
   window.__maVipCartsTestHooks = {

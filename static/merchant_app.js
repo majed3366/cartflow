@@ -238,6 +238,14 @@
         btn.classList.add("active");
         setCurrentNormalCartFilter(mode);
         applyCartFilterMode(mode);
+        try {
+          console.info("[CLIENT REFRESH] cart_filter_selected", {
+            mode: mode,
+            source: "click",
+          });
+        } catch (_clickLogErr) {
+          /* ignore */
+        }
       });
     });
     var active = bar.querySelector(".filter-btn.active");
@@ -362,9 +370,29 @@
     return "carts";
   }
 
-  function applyCartTabFilters(cartTab) {
+  function getUrlCartTabFromHash() {
+    try {
+      var hashQs = (location.hash || "").split("?")[1] || "";
+      return (new URLSearchParams(hashQs).get("tab") || "").trim();
+    } catch (_urlTabErr) {
+      return "";
+    }
+  }
+
+  function hasExplicitUrlCartTab() {
+    return !!getUrlCartTabFromHash();
+  }
+
+  window.getUrlCartTabFromHash = getUrlCartTabFromHash;
+  window.hasExplicitUrlCartTab = hasExplicitUrlCartTab;
+
+  function applyCartTabFilters(cartTab, options) {
+    options = options || {};
+    var before = getCurrentNormalCartFilter();
     var mode = cartTabToFilterMode(cartTab);
-    setCurrentNormalCartFilter(mode);
+    if (options.persist !== false) {
+      setCurrentNormalCartFilter(mode);
+    }
     applyCartFilterMode(mode);
     var bar = document.querySelector("#page-carts .filter-bar");
     if (bar) {
@@ -372,6 +400,16 @@
         var f = (b.getAttribute("data-filter") || "").trim().toLowerCase();
         b.classList.toggle("active", f === mode);
       });
+    }
+    try {
+      console.info("[CLIENT REFRESH] cart_filter_apply", {
+        selected_filter_before: before,
+        selected_filter_after: mode,
+        persist: options.persist !== false,
+        source: options.source || "apply",
+      });
+    } catch (_logErr) {
+      /* ignore */
     }
   }
 
@@ -394,7 +432,17 @@
       setPageTitle(CART_TAB_TITLES[cartTab] || TITLES.carts, null);
       if (visiblePage === "carts") {
         initCartFiltersOnce();
-        applyCartTabFilters(cartTab);
+        var urlTab = getUrlCartTabFromHash();
+        if (urlTab) {
+          applyCartTabFilters(urlTab, { persist: true, source: "url" });
+        } else if (getCurrentNormalCartFilter()) {
+          applyCartTabFilters(getCurrentNormalCartFilter(), {
+            persist: false,
+            source: "persisted",
+          });
+        } else {
+          applyCartTabFilters(cartTab || "all", { persist: true, source: "default" });
+        }
       }
       if (visiblePage === "completed" && typeof window.maRefreshCompletedCartsTable === "function") {
         window.maRefreshCompletedCartsTable();
