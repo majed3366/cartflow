@@ -405,6 +405,8 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 
 | Date (UTC) | Summary |
 |------------|---------|
+| 2026-06-30 | **Operational Next-Step Copy V1-A:** Replaced misleading normal-carts lifecycle «التالي» strings in `services/customer_lifecycle_states_v1.py` — no merchant-only actions (phone/widget/settings/manual review); informational wait/auto-resume copy only. Optional wording alignment (بانتظار… / تمت جدولة الرسالة). Text-only; lifecycle logic unchanged. |
+| 2026-06-30 | **Operational Next-Step Copy Audit V1 (read-only):** Inventory of normal-carts lifecycle «التالي» strings — 4 misleading (phone/contact/manual/settings); proposed informational replacements only. Doc: `docs/cartflow_operational_next_step_copy_audit_v1.md`. No code. |
 | 2026-06-30 | **Merchant Decision Layer V1-A UI adjustment:** Normal-carts lifecycle block drops «تدخل التاجر» line; «الإجراء المقترح» gated to executable keys only (none on normal carts yet). VIP/manual surfaces unchanged. Tests: `tests/test_merchant_decision_layer_v1a_normal_carts_ui.py`. |
 | 2026-06-30 | **Merchant Decision Layer V1-A:** `services/merchant_decision_layer_v1.py` emits `merchant_decision_key` (obtain_contact/fix_channel/contact_customer/monitor) on normal-carts batch rows; lazy dashboard line **الإجراء المقترح**. Tests: `tests/test_merchant_decision_layer_v1.py`. Lifecycle/recovery/purchase truth unchanged. |
 | 2026-06-30 | **Merchant Decision Layer V1-A (implementation design):** Smallest decision layer — `merchant_decision_key` for intervention (obtain_contact/fix_channel/contact_customer) and return (monitor); attach in light payload; one frontend «الإجراء المقترح» line. Doc: `docs/merchant_decision_layer_v1a_implementation_design.md`. No code yet. |
