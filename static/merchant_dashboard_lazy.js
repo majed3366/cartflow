@@ -42,6 +42,7 @@
   var normalCartsHasRenderedRows = false;
   var lastNormalCartsFilterCounts = {};
   var NORMAL_CARTS_CACHE_KEY = "ma_normal_carts_cache_v2";
+  var NORMAL_CARTS_CACHE_KEY_V1 = "ma_normal_carts_cache_v1";
   var DEPRECATED_LIFECYCLE_WHAT_NEXT_AR = {
     "اطلب من العميل إكمال بيانات التواصل في الودجيت.":
       "لا توجد وسيلة تواصل متاحة حالياً — سيبدأ التواصل تلقائياً عند توفر بيانات التواصل.",
@@ -156,26 +157,134 @@
     return "fetch";
   }
 
+  function normalCartsCountAll(fc) {
+    if (!fc) return 0;
+    var n = parseInt(fc.all, 10);
+    return isFinite(n) ? n : 0;
+  }
+
+  function normalCartsPayloadIsPartialOrThin(d) {
+    if (!d) return true;
+    if (normalCartsIsDegraded(d)) return true;
+    if (d.snapshot_stale || d.snapshot_degraded) return true;
+    if (d.dashboard_partial || d.dashboard_timeout) return true;
+    var snap = d._snapshot;
+    if (snap && (snap.degraded || snap.stale)) return true;
+    return false;
+  }
+
+  function deriveFilterCountsFromRows(rows) {
+    var counts = {
+      all: 0,
+      sent: 0,
+      attention: 0,
+      recovered: 0,
+      nophone: 0,
+      waiting: 0,
+    };
+    if (!rows || !rows.length) return counts;
+    counts.all = rows.length;
+    var i;
+    for (i = 0; i < rows.length; i++) {
+      var row = rows[i] || {};
+      var tabs = row.merchant_cart_visible_tabs;
+      if (!Array.isArray(tabs)) tabs = [];
+      if (!tabs.length) {
+        var b = String(
+          row.merchant_cart_bucket || row.merchant_cart_primary_bucket || ""
+        )
+          .trim()
+          .toLowerCase();
+        if (b) tabs = [b];
+      }
+      var j;
+      for (j = 0; j < tabs.length; j++) {
+        var t = String(tabs[j] || "").trim().toLowerCase();
+        if (t === "sent") counts.sent += 1;
+        else if (t === "attention") counts.attention += 1;
+        else if (t === "recovered") counts.recovered += 1;
+        else if (t === "nophone") counts.nophone += 1;
+        else if (t === "waiting") counts.waiting += 1;
+      }
+    }
+    return counts;
+  }
+
+  function normalCartsShouldRejectThinPayload(d, pageRows) {
+    var prevN = lastNormalCartsPageRows.length;
+    if (prevN < 1) return false;
+    var incomingN = pageRows ? pageRows.length : 0;
+    var incomingAll = normalCartsCountAll(
+      (d && d.merchant_cart_filter_counts) || {}
+    );
+    if (
+      incomingN === 0 &&
+      !normalCartsPayloadIsPartialOrThin(d) &&
+      incomingAll === 0
+    ) {
+      return false;
+    }
+    if (incomingN >= prevN) return false;
+    var prevAll = normalCartsCountAll(lastNormalCartsFilterCounts);
+    if (prevAll <= 0) prevAll = prevN;
+    var partialFlags = normalCartsPayloadIsPartialOrThin(d);
+    var countSuspect =
+      incomingAll <= 0 || incomingAll < prevAll || incomingAll < incomingN;
+    if (incomingN < prevN && (partialFlags || countSuspect)) {
+      return true;
+    }
+    return false;
+  }
+
+  function migrateNormalCartsCacheV1ToV2() {
+    try {
+      if (sessionStorage.getItem(NORMAL_CARTS_CACHE_KEY)) return false;
+      var raw = sessionStorage.getItem(NORMAL_CARTS_CACHE_KEY_V1);
+      if (!raw) return false;
+      var c = JSON.parse(raw);
+      if (!c || !c.rows || !c.rows.length) return false;
+      sessionStorage.setItem(NORMAL_CARTS_CACHE_KEY, raw);
+      logClientRefresh("normal_carts_cache_v1_migrated", { rows: c.rows.length });
+      return true;
+    } catch (_migrateErr) {
+      return false;
+    }
+  }
+
   function effectiveFilterCounts(incoming, pageRows) {
     var fc = incoming || {};
     var rowsN = pageRows ? pageRows.length : 0;
     if (!rowsN) return fc;
-    var incomingAll = parseInt(fc.all, 10);
-    var prevAll = parseInt(
-      (lastNormalCartsFilterCounts && lastNormalCartsFilterCounts.all) || 0,
-      10
-    );
-    if (
-      (!isFinite(incomingAll) || incomingAll <= 0) &&
-      isFinite(prevAll) &&
-      prevAll > 0
-    ) {
-      logClientRefresh("normal_carts_counts_preserved", {
-        rows_count: rowsN,
-        incoming_all: incomingAll,
-        preserved_all: prevAll,
-      });
-      return lastNormalCartsFilterCounts;
+    var incomingAll = normalCartsCountAll(fc);
+    var prevAll = normalCartsCountAll(lastNormalCartsFilterCounts);
+    if (incomingAll <= 0) {
+      if (prevAll > 0) {
+        logClientRefresh("normal_carts_counts_preserved", {
+          rows_count: rowsN,
+          incoming_all: incomingAll,
+          preserved_all: prevAll,
+        });
+        return lastNormalCartsFilterCounts;
+      }
+      var derived = deriveFilterCountsFromRows(pageRows);
+      if (derived.all > 0) {
+        logClientRefresh("normal_carts_counts_derived", {
+          rows_count: rowsN,
+          derived_all: derived.all,
+        });
+        return derived;
+      }
+    }
+    if (incomingAll > 0 && incomingAll < rowsN) {
+      var derivedMismatch = deriveFilterCountsFromRows(pageRows);
+      if (derivedMismatch.all === rowsN) {
+        logClientRefresh("normal_carts_counts_derived_mismatch", {
+          rows_count: rowsN,
+          incoming_all: incomingAll,
+          derived_all: derivedMismatch.all,
+        });
+        return derivedMismatch;
+      }
     }
     return fc;
   }
@@ -223,6 +332,7 @@
 
   function hydrateNormalCartsCache() {
     try {
+      migrateNormalCartsCacheV1ToV2();
       var raw = sessionStorage.getItem(NORMAL_CARTS_CACHE_KEY);
       if (!raw) return false;
       var c = JSON.parse(raw);
@@ -3159,6 +3269,20 @@
       }
     }
 
+    if (normalCartsShouldRejectThinPayload(d, pageRows)) {
+      logClientRefresh("normal_carts_thin_reject", {
+        incoming_rows: pageRows.length,
+        memory_rows: lastNormalCartsPageRows.length,
+        incoming_all: normalCartsCountAll(d.merchant_cart_filter_counts),
+        memory_all: normalCartsCountAll(lastNormalCartsFilterCounts),
+        partial: normalCartsPayloadIsPartialOrThin(d),
+        degraded: degraded,
+      });
+      rerenderCartsFromMemory("thin_keep");
+      scheduleNormalCartsRetry(normalCartsDegradedRetryStage(d) || "thin");
+      return;
+    }
+
     ingestRefreshToken(d, "normal-carts");
     var prepared = prepareNormalCartsPayload(d, normalCartsPayloadSource(d));
     renderNormalCartsTables(prepared);
@@ -4123,8 +4247,13 @@
     sanitizeNormalCartRows: sanitizeNormalCartRows,
     effectiveFilterCounts: effectiveFilterCounts,
     prepareNormalCartsPayload: prepareNormalCartsPayload,
+    deriveFilterCountsFromRows: deriveFilterCountsFromRows,
+    normalCartsShouldRejectThinPayload: normalCartsShouldRejectThinPayload,
+    normalCartsPayloadIsPartialOrThin: normalCartsPayloadIsPartialOrThin,
+    migrateNormalCartsCacheV1ToV2: migrateNormalCartsCacheV1ToV2,
     DEPRECATED_LIFECYCLE_WHAT_NEXT_AR: DEPRECATED_LIFECYCLE_WHAT_NEXT_AR,
     NORMAL_CARTS_CACHE_KEY: NORMAL_CARTS_CACHE_KEY,
+    NORMAL_CARTS_CACHE_KEY_V1: NORMAL_CARTS_CACHE_KEY_V1,
   };
 
   window.__maVipCartsTestHooks = {
