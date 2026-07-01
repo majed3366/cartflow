@@ -16443,6 +16443,23 @@ def _merchant_normal_recovery_light_payload_merchant_batch(
     except Exception:  # noqa: BLE001
         pass
     try:
+        from services.merchant_cart_fact_v1 import (  # noqa: PLC0415
+            attach_merchant_cart_fact_v1,
+        )
+
+        attach_merchant_cart_fact_v1(
+            out,
+            purchase_truth=bool(purchased_flag),
+            customer_lifecycle_state=str(out.get("customer_lifecycle_state") or ""),
+            customer_lifecycle_completed_variant=str(
+                out.get("customer_lifecycle_completed_variant") or ""
+            ),
+            behavioral=bh_lc,
+            is_vip_lane=bool(locals().get("vip_lane", False)),
+        )
+    except Exception:  # noqa: BLE001
+        pass
+    try:
         from services.customer_lifecycle_states_v1 import (  # noqa: PLC0415
             finalize_merchant_lifecycle_row_truth,
         )

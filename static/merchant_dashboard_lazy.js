@@ -2693,6 +2693,17 @@
   /** Normal carts: show الإجراء المقترح only when merchant can act in-product. */
   var NORMAL_CART_MERCHANT_EXECUTABLE_DECISION_KEYS = {};
 
+  function merchantCartFactHtml(mc) {
+    var f = mc && mc.merchant_cart_fact_v1;
+    if (!f || !f.kind || !f.label_ar) return "";
+    return (
+      '<div class="recovery-truth-line ma-cart-fact-v1">' +
+      '<span class="ma-cart-fact-v1-label">✓ ' +
+      esc(f.label_ar) +
+      "</span></div>"
+    );
+  }
+
   function merchantDecisionSuggestedActionHtml(mc) {
     if (!mc) return "";
     var key = String(mc.merchant_decision_key || "").trim();
@@ -3081,6 +3092,7 @@
       (archived
         ? ""
         : '<div class="next' + urg + '">' + esc(nextLbl) + "</div>") +
+      merchantCartFactHtml(mc) +
       lifecycleTruthHtml(mc) +
       "</td>" +
       '<td><div class="ctime">' +
