@@ -2444,10 +2444,13 @@
     monitor: "مراقبة العميل",
   };
 
+  /** Normal carts: show الإجراء المقترح only when merchant can act in-product. */
+  var NORMAL_CART_MERCHANT_EXECUTABLE_DECISION_KEYS = {};
+
   function merchantDecisionSuggestedActionHtml(mc) {
     if (!mc) return "";
     var key = String(mc.merchant_decision_key || "").trim();
-    if (!key) return "";
+    if (!key || !NORMAL_CART_MERCHANT_EXECUTABLE_DECISION_KEYS[key]) return "";
     var lbl = MERCHANT_DECISION_LABEL_AR[key];
     if (!lbl) return "";
     return (
@@ -2501,10 +2504,6 @@
         esc(prog) +
         "</div>";
     }
-    h +=
-      '<div class="recovery-truth-line"><strong>تدخل التاجر:</strong> ' +
-      esc(mc.customer_lifecycle_merchant_needed_ar || "لا") +
-      "</div>";
     h += merchantDecisionSuggestedActionHtml(mc);
     h += continuationDecisionExplanationHtml(mc);
     h += cartLifecycleActionBtnHtml(mc);

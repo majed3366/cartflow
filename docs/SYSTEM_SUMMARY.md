@@ -405,6 +405,7 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 
 | Date (UTC) | Summary |
 |------------|---------|
+| 2026-06-30 | **Merchant Decision Layer V1-A UI adjustment:** Normal-carts lifecycle block drops «تدخل التاجر» line; «الإجراء المقترح» gated to executable keys only (none on normal carts yet). VIP/manual surfaces unchanged. Tests: `tests/test_merchant_decision_layer_v1a_normal_carts_ui.py`. |
 | 2026-06-30 | **Merchant Decision Layer V1-A:** `services/merchant_decision_layer_v1.py` emits `merchant_decision_key` (obtain_contact/fix_channel/contact_customer/monitor) on normal-carts batch rows; lazy dashboard line **الإجراء المقترح**. Tests: `tests/test_merchant_decision_layer_v1.py`. Lifecycle/recovery/purchase truth unchanged. |
 | 2026-06-30 | **Merchant Decision Layer V1-A (implementation design):** Smallest decision layer — `merchant_decision_key` for intervention (obtain_contact/fix_channel/contact_customer) and return (monitor); attach in light payload; one frontend «الإجراء المقترح» line. Doc: `docs/merchant_decision_layer_v1a_implementation_design.md`. No code yet. |
 | 2026-06-30 | **Merchant Decision Layer V1 (design doc):** Normative merchant decisions per cart state — action vocabulary (wait/monitor/obtain_contact/contact/archive/etc.), intervention semantics, return tiers, purchase closure, three completion types (customer/system/merchant). Pre-implementation spec. Doc: `docs/merchant_decision_layer_v1.md`. No code. |
