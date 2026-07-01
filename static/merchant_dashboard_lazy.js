@@ -2437,6 +2437,26 @@
     );
   }
 
+  var MERCHANT_DECISION_LABEL_AR = {
+    obtain_contact: "الحصول على رقم العميل",
+    fix_channel: "إصلاح قناة التواصل",
+    contact_customer: "التواصل مع العميل",
+    monitor: "مراقبة العميل",
+  };
+
+  function merchantDecisionSuggestedActionHtml(mc) {
+    if (!mc) return "";
+    var key = String(mc.merchant_decision_key || "").trim();
+    if (!key) return "";
+    var lbl = MERCHANT_DECISION_LABEL_AR[key];
+    if (!lbl) return "";
+    return (
+      '<div class="recovery-truth-line"><strong>الإجراء المقترح:</strong> ' +
+      esc(lbl) +
+      "</div>"
+    );
+  }
+
   function customerLifecycleExplanationHtml(mc) {
     if (!mc || !mc.customer_lifecycle_state) {
       return customerLifecycleUnavailableHtml(mc);
@@ -2485,6 +2505,7 @@
       '<div class="recovery-truth-line"><strong>تدخل التاجر:</strong> ' +
       esc(mc.customer_lifecycle_merchant_needed_ar || "لا") +
       "</div>";
+    h += merchantDecisionSuggestedActionHtml(mc);
     h += continuationDecisionExplanationHtml(mc);
     h += cartLifecycleActionBtnHtml(mc);
     return h + "</div>";

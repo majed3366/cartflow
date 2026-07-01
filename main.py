@@ -16422,6 +16422,27 @@ def _merchant_normal_recovery_light_payload_merchant_batch(
     except Exception:  # noqa: BLE001
         pass
     try:
+        from services.merchant_decision_layer_v1 import (  # noqa: PLC0415
+            attach_merchant_decision_layer_v1,
+        )
+
+        attach_merchant_decision_layer_v1(
+            out,
+            customer_lifecycle_state=str(out.get("customer_lifecycle_state") or ""),
+            customer_lifecycle_merchant_needed_ar=str(
+                out.get("customer_lifecycle_merchant_needed_ar") or ""
+            ),
+            customer_lifecycle_label_ar=str(
+                out.get("customer_lifecycle_label_ar") or ""
+            ),
+            has_phone=bool(has_phone),
+            phase_key=pk_lc,
+            log_statuses=log_u_lc,
+            purchase_truth=bool(purchased_flag),
+        )
+    except Exception:  # noqa: BLE001
+        pass
+    try:
         from services.customer_lifecycle_states_v1 import (  # noqa: PLC0415
             finalize_merchant_lifecycle_row_truth,
         )
