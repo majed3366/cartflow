@@ -1003,6 +1003,7 @@ _DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT = frozenset(
         "/dev/widget-runtime-truth",
         "/dev/attempt-2-trace",
         "/dev/recovery-operational-truth",
+        "/dev/snapshot-truth-diagnostics",
         "/dev/vip-merchant-alert-operational-truth",
         "/dev/cartflow-simulation-report",
         "/dev/purchase-truth-trace",
