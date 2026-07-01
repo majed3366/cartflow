@@ -47,7 +47,7 @@ class _TabFilterClientSim:
         if self.hash_page == "#completed":
             self.applied.append("__completed_refresh__")
             return
-        if self.hash_tab:
+        if self.hash_tab and self.hash_tab.strip().lower() != "all":
             self.apply_cart_tab_filters(self.hash_tab, persist=True)
             return
         if self.current:

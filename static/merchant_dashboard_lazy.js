@@ -173,6 +173,24 @@
     return false;
   }
 
+  function normalCartsFilterCountsExplicitZero(fc) {
+    if (!fc || typeof fc !== "object") return false;
+    var n = parseInt(fc.all, 10);
+    return isFinite(n) && n === 0;
+  }
+
+  function normalCartsIsConfirmedFullEmpty(d, pageRows) {
+    if (pageRows && pageRows.length) return false;
+    if (normalCartsPayloadIsPartialOrThin(d)) return false;
+    if (!normalCartsFilterCountsExplicitZero((d && d.merchant_cart_filter_counts) || {})) {
+      return false;
+    }
+    var src = normalCartsPayloadSource(d);
+    if (src === "snapshot" || (d && d.snapshot_mode)) return false;
+    if (d && d._snapshot) return false;
+    return true;
+  }
+
   function deriveFilterCountsFromRows(rows) {
     var counts = {
       all: 0,
@@ -400,7 +418,9 @@
     if (!lastNormalCartsPageRows.length) {
       if (hydrateNormalCartsCache()) {
         logClientRefresh("carts_rerender_cache", { reason: reason || "" });
+        return;
       }
+      showNormalCartsLoadingState("جاري تحميل السلال…");
       return;
     }
     renderNormalCartsTables(
@@ -435,6 +455,30 @@
       fetchNormalCarts("hash_carts_empty");
     }
     startPendingNewCartWatcher();
+  }
+
+  function ensureNormalCartsPageReady(source) {
+    var hashRaw = (location.hash || "").split("?")[0].toLowerCase();
+    if (
+      hashRaw !== "#carts" &&
+      hashRaw !== "#followup" &&
+      hashRaw !== "#completed" &&
+      hashRaw !== "#home"
+    ) {
+      return;
+    }
+    if (lastNormalCartsPageRows.length) {
+      rerenderCartsFromMemory("ensure_" + (source || ""));
+      return;
+    }
+    if (hydrateNormalCartsCache()) {
+      return;
+    }
+    if (normalCartsBootInFlight) {
+      showNormalCartsLoadingState("جاري تحميل السلال…");
+      return;
+    }
+    fetchNormalCarts(source || "carts_ensure");
   }
 
   function probeSetupExperienceRoot() {
@@ -3117,6 +3161,11 @@
 
   function renderNormalCartsTables(d) {
     var pageRows = normalCartsPayloadRows(d);
+    var confirmedEmpty = !!(d && d.__ma_confirmed_empty);
+    if (!pageRows.length && !confirmedEmpty) {
+      showNormalCartsLoadingState("جاري تحميل السلال…");
+      return;
+    }
     lastNormalCartsPageRows = pageRows;
     lastArchivedCartsPageRows = (d && d.merchant_archived_carts_page_rows) || [];
     window.__maNormalCartsPageRows = lastNormalCartsPageRows;
@@ -3197,9 +3246,11 @@
         return;
       }
       var before =
-        typeof window.getCurrentNormalCartFilter === "function"
-          ? window.getCurrentNormalCartFilter()
-          : null;
+        typeof window.getEffectiveNormalCartFilter === "function"
+          ? window.getEffectiveNormalCartFilter()
+          : typeof window.getCurrentNormalCartFilter === "function"
+            ? window.getCurrentNormalCartFilter()
+            : null;
       var urlTab =
         typeof window.getUrlCartTabFromHash === "function"
           ? window.getUrlCartTabFromHash()
@@ -3207,7 +3258,11 @@
               var hashQs = (location.hash || "").split("?")[1] || "";
               return (new URLSearchParams(hashQs).get("tab") || "").trim();
             })();
-      if (urlTab) {
+      var urlApplies =
+        typeof window.urlCartTabShouldApplyToFilterBar === "function"
+          ? window.urlCartTabShouldApplyToFilterBar(urlTab)
+          : !!(urlTab && urlTab.toLowerCase() !== "all");
+      if (urlApplies) {
         window.applyCartTabFilters(urlTab, { persist: true, source: "url_reapply" });
       } else if (before) {
         window.applyCartTabFilters(before, { persist: false, source: "persisted_reapply" });
@@ -3258,12 +3313,16 @@
       return;
     }
 
-    if (!pageRows.length && !degraded && lastNormalCartsPageRows.length) {
+    if (!pageRows.length && !degraded) {
       var fcGuard = d.merchant_cart_filter_counts || {};
-      var filterAll = parseInt(fcGuard.all, 10);
-      if (isFinite(filterAll) && filterAll > 0) {
+      var filterAll = normalCartsCountAll(fcGuard);
+      if (filterAll > 0) {
         logClientRefresh("normal_carts_empty_mismatch_retry", { filterAll: filterAll });
-        rerenderCartsFromMemory("empty_mismatch_keep");
+        if (lastNormalCartsPageRows.length) {
+          rerenderCartsFromMemory("empty_mismatch_keep");
+        } else {
+          showNormalCartsLoadingState("جاري تحميل السلال…");
+        }
         scheduleNormalCartsRetry("empty_mismatch");
         return;
       }
@@ -3278,13 +3337,36 @@
         partial: normalCartsPayloadIsPartialOrThin(d),
         degraded: degraded,
       });
-      rerenderCartsFromMemory("thin_keep");
+      if (lastNormalCartsPageRows.length) {
+        rerenderCartsFromMemory("thin_keep");
+      } else {
+        showNormalCartsLoadingState("جاري تحميل السلال…");
+      }
       scheduleNormalCartsRetry(normalCartsDegradedRetryStage(d) || "thin");
+      return;
+    }
+
+    if (!pageRows.length && !normalCartsIsConfirmedFullEmpty(d, pageRows)) {
+      logClientRefresh("normal_carts_unconfirmed_empty", {
+        source: normalCartsPayloadSource(d),
+        snapshot_mode: !!(d && d.snapshot_mode),
+        filter_all: normalCartsCountAll((d && d.merchant_cart_filter_counts) || {}),
+        hadRows: lastNormalCartsPageRows.length,
+      });
+      if (lastNormalCartsPageRows.length) {
+        rerenderCartsFromMemory("unconfirmed_empty_keep");
+      } else {
+        showNormalCartsLoadingState("جاري تحميل السلال…");
+      }
+      scheduleNormalCartsRetry("unconfirmed_empty");
       return;
     }
 
     ingestRefreshToken(d, "normal-carts");
     var prepared = prepareNormalCartsPayload(d, normalCartsPayloadSource(d));
+    if (!pageRows.length && normalCartsIsConfirmedFullEmpty(d, pageRows)) {
+      prepared.__ma_confirmed_empty = true;
+    }
     renderNormalCartsTables(prepared);
     persistNormalCartsCache(prepared);
     if (fetchGen != null) {
@@ -4198,6 +4280,7 @@
         window.__maNormalCartsTokenRefetchAfterBoot = "";
         fetchNormalCarts(bootLbl);
       }
+      ensureNormalCartsPageReady("boot_done");
       startPendingNewCartWatcher();
       var jobs = [
         fetchSection("/api/dashboard/followups", applyFollowups, "followups"),
@@ -4217,6 +4300,7 @@
   window.maFetchNormalCartsNow = function (label) {
     return fetchNormalCarts(label || "manual_now");
   };
+  window.maEnsureNormalCartsPageReady = ensureNormalCartsPageReady;
   window.maFetchVipCartsNow = function (label) {
     return fetchVipCarts(label || "manual_now");
   };
@@ -4250,6 +4334,9 @@
     deriveFilterCountsFromRows: deriveFilterCountsFromRows,
     normalCartsShouldRejectThinPayload: normalCartsShouldRejectThinPayload,
     normalCartsPayloadIsPartialOrThin: normalCartsPayloadIsPartialOrThin,
+    normalCartsIsConfirmedFullEmpty: normalCartsIsConfirmedFullEmpty,
+    normalCartsFilterCountsExplicitZero: normalCartsFilterCountsExplicitZero,
+    ensureNormalCartsPageReady: ensureNormalCartsPageReady,
     migrateNormalCartsCacheV1ToV2: migrateNormalCartsCacheV1ToV2,
     DEPRECATED_LIFECYCLE_WHAT_NEXT_AR: DEPRECATED_LIFECYCLE_WHAT_NEXT_AR,
     NORMAL_CARTS_CACHE_KEY: NORMAL_CARTS_CACHE_KEY,

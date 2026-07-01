@@ -203,6 +203,43 @@
 
   /** Persisted #page-carts filter-bar mode (all|recovered|sent|attention|nophone). */
   var currentNormalCartFilter = null;
+  var NORMAL_CART_FILTER_STORAGE_KEY = "ma_normal_cart_filter_v1";
+
+  function readPersistedNormalCartFilterFromStorage() {
+    try {
+      var raw = sessionStorage.getItem(NORMAL_CART_FILTER_STORAGE_KEY);
+      if (!raw) return null;
+      var m = cartTabToFilterMode(raw);
+      if (!m || m === "all") return null;
+      return m;
+    } catch (_storageReadErr) {
+      return null;
+    }
+  }
+
+  function persistNormalCartFilterToStorage(mode) {
+    try {
+      if (mode && mode !== "all") {
+        sessionStorage.setItem(NORMAL_CART_FILTER_STORAGE_KEY, mode);
+      } else {
+        sessionStorage.removeItem(NORMAL_CART_FILTER_STORAGE_KEY);
+      }
+    } catch (_storageWriteErr) {
+      /* ignore */
+    }
+  }
+
+  function getEffectiveNormalCartFilter() {
+    if (currentNormalCartFilter) return currentNormalCartFilter;
+    return readPersistedNormalCartFilterFromStorage();
+  }
+
+  /** Sidebar hash ?tab= — only non-default tabs override filter-bar selection. */
+  function urlCartTabShouldApplyToFilterBar(urlTab) {
+    if (!urlTab) return false;
+    var t = urlTab.trim().toLowerCase();
+    return t !== "all";
+  }
 
   function getCurrentNormalCartFilter() {
     return currentNormalCartFilter;
@@ -210,10 +247,14 @@
 
   function setCurrentNormalCartFilter(modeOrTab) {
     currentNormalCartFilter = cartTabToFilterMode(modeOrTab || "all");
+    persistNormalCartFilterToStorage(currentNormalCartFilter);
   }
 
   window.getCurrentNormalCartFilter = getCurrentNormalCartFilter;
   window.setCurrentNormalCartFilter = setCurrentNormalCartFilter;
+  window.getEffectiveNormalCartFilter = getEffectiveNormalCartFilter;
+  window.urlCartTabShouldApplyToFilterBar = urlCartTabShouldApplyToFilterBar;
+  window.NORMAL_CART_FILTER_STORAGE_KEY = NORMAL_CART_FILTER_STORAGE_KEY;
 
   function applyCartFilterMode(mode) {
     var tbody = document.querySelector("#page-carts tbody");
@@ -250,8 +291,9 @@
     });
     var active = bar.querySelector(".filter-btn.active");
     var initialMode = active ? active.getAttribute("data-filter") || "all" : "all";
-    if (currentNormalCartFilter) {
-      initialMode = currentNormalCartFilter;
+    var effective = getEffectiveNormalCartFilter();
+    if (effective) {
+      initialMode = effective;
       bar.querySelectorAll(".filter-btn").forEach(function (b) {
         var f = (b.getAttribute("data-filter") || "").trim().toLowerCase();
         b.classList.toggle("active", f === initialMode);
@@ -433,15 +475,15 @@
       if (visiblePage === "carts") {
         initCartFiltersOnce();
         var urlTab = getUrlCartTabFromHash();
-        if (urlTab) {
+        if (urlCartTabShouldApplyToFilterBar(urlTab)) {
           applyCartTabFilters(urlTab, { persist: true, source: "url" });
-        } else if (getCurrentNormalCartFilter()) {
-          applyCartTabFilters(getCurrentNormalCartFilter(), {
+        } else if (getEffectiveNormalCartFilter()) {
+          applyCartTabFilters(getEffectiveNormalCartFilter(), {
             persist: false,
             source: "persisted",
           });
         } else {
-          applyCartTabFilters(cartTab || "all", { persist: true, source: "default" });
+          applyCartTabFilters("all", { persist: true, source: "default" });
         }
       }
       if (visiblePage === "completed" && typeof window.maRefreshCompletedCartsTable === "function") {
@@ -482,7 +524,9 @@
     var hash = "#" + page;
     if (cartTab && HASH_FOR_CART_TAB[cartTab]) {
       hash = HASH_FOR_CART_TAB[cartTab];
-      if (cartTab === "all" || cartTab === "waiting") {
+      if (cartTab === "all") {
+        hash = "#carts";
+      } else if (cartTab === "waiting") {
         hash = "#carts?tab=" + encodeURIComponent(cartTab);
       }
     }
@@ -494,6 +538,11 @@
   };
 
   window.goToCartTab = function (cartTab) {
+    var tab = (cartTab || "all").trim().toLowerCase();
+    if (tab === "all") {
+      setCurrentNormalCartFilter("all");
+      applyCartTabFilters("all", { persist: true, source: "nav_all" });
+    }
     var page = resolveCartPage(cartTab);
     goTo(page, cartTab);
   };
@@ -505,7 +554,7 @@
       return;
     }
     if (sec === "carts") {
-      goToCartTab("all");
+      goTo("carts");
       return;
     }
     if (sec === "comms") {
@@ -536,6 +585,10 @@
   }
 
   document.addEventListener("DOMContentLoaded", function () {
+    var stored = readPersistedNormalCartFilterFromStorage();
+    if (stored) {
+      currentNormalCartFilter = stored;
+    }
     initGlobalTopbar();
     syncFromHash();
   });

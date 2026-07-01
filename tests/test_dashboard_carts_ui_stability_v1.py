@@ -92,8 +92,13 @@ class _FilterClientSim:
         self.set_current(data_filter)
         self.applied.append((self.current or "all", True))
 
+    def url_cart_tab_should_apply_to_filter_bar(self, url_tab: str | None) -> bool:
+        if not url_tab:
+            return False
+        return url_tab.strip().lower() != "all"
+
     def activate_carts_page(self, parsed_cart_tab: str, url_tab: str | None = None) -> None:
-        if url_tab:
+        if url_tab and self.url_cart_tab_should_apply_to_filter_bar(url_tab):
             self.apply_cart_tab_filters(url_tab, persist=True)
         elif self.current:
             self.apply_cart_tab_filters(self.current, persist=False)
@@ -104,7 +109,7 @@ class _FilterClientSim:
         if self.hash_page == "#completed":
             self.applied.append(("__completed_refresh__", False))
             return
-        if self.hash_tab:
+        if self.hash_tab and self.url_cart_tab_should_apply_to_filter_bar(self.hash_tab):
             self.apply_cart_tab_filters(self.hash_tab, persist=True)
             return
         if self.current:
@@ -155,6 +160,23 @@ class DashboardCartsUiStabilityV1FilterTests(unittest.TestCase):
         sim.activate_carts_page(parsed_cart_tab="all", url_tab=None)
         self.assertEqual(sim.current, "sent")
         self.assertEqual(sim.applied, [("sent", False)])
+
+    def test_activate_page_url_tab_all_does_not_wipe_persisted_sent(self) -> None:
+        sim = _FilterClientSim()
+        sim.filter_btn_click("sent")
+        sim.applied.clear()
+        sim.activate_carts_page(parsed_cart_tab="all", url_tab="all")
+        self.assertEqual(sim.current, "sent")
+        self.assertEqual(sim.applied, [("sent", False)])
+
+    def test_reapply_with_hash_tab_all_keeps_sent(self) -> None:
+        sim = _FilterClientSim()
+        sim.filter_btn_click("sent")
+        sim.hash_tab = "all"
+        sim.applied.clear()
+        sim.reapply_after_render()
+        self.assertEqual(sim.current, "sent")
+        self.assertEqual([m for m, _ in sim.applied], ["sent"])
 
     def test_go_to_cart_tab_all_still_intentionally_sets_all(self) -> None:
         sim = _FilterClientSim()
