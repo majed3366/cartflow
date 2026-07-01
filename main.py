@@ -879,6 +879,12 @@ async def _startup_whatsapp_queue() -> None:
 
     verify_runtime_role_at_startup()
     try:
+        from services.dashboard_snapshot_loop_v1 import start_dashboard_snapshot_builder_loop
+
+        start_dashboard_snapshot_builder_loop()
+    except Exception as exc:  # noqa: BLE001
+        log.warning("early dashboard snapshot builder loop skipped: %s", exc)
+    try:
         from services.db_ready_restart_survival_v1 import record_restart_cycle_begin
 
         record_restart_cycle_begin()
@@ -934,12 +940,6 @@ async def _startup_whatsapp_queue() -> None:
         refresh_db_due_scanner_health_observability()
     except Exception as exc:  # noqa: BLE001
         log.warning("startup db due scanner loop skipped: %s", exc)
-    try:
-        from services.dashboard_snapshot_loop_v1 import start_dashboard_snapshot_builder_loop
-
-        start_dashboard_snapshot_builder_loop()
-    except Exception as exc:  # noqa: BLE001
-        log.warning("startup dashboard snapshot builder loop skipped: %s", exc)
     try:
         from services.merchant_password_reset_email import (
             log_resend_password_reset_startup,
@@ -1004,6 +1004,7 @@ _DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT = frozenset(
         "/dev/attempt-2-trace",
         "/dev/recovery-operational-truth",
         "/dev/snapshot-truth-diagnostics",
+        "/dev/scheduler-snapshot-loop-status",
         "/dev/vip-merchant-alert-operational-truth",
         "/dev/cartflow-simulation-report",
         "/dev/purchase-truth-trace",
