@@ -2965,15 +2965,35 @@
     if (window.merchantAppReinitCartFilters) {
       window.merchantAppReinitCartFilters();
     }
+    reapplyNormalCartFilterAfterRender();
+  }
+
+  function reapplyNormalCartFilterAfterRender() {
     try {
       var hashRaw = (location.hash || "").split("?")[0].toLowerCase();
+      if (
+        hashRaw === "#completed" &&
+        typeof window.maRefreshCompletedCartsTable === "function"
+      ) {
+        window.maRefreshCompletedCartsTable();
+        return;
+      }
+      if (typeof window.applyCartTabFilters !== "function") {
+        return;
+      }
       var hashQs = (location.hash || "").split("?")[1] || "";
       var tab = new URLSearchParams(hashQs).get("tab");
-      if (hashRaw === "#completed" && typeof window.maRefreshCompletedCartsTable === "function") {
-        window.maRefreshCompletedCartsTable();
-      } else if (tab && typeof window.applyCartTabFilters === "function") {
+      if (tab) {
         window.applyCartTabFilters(tab);
-      } else if (typeof window.applyCartTabFilters === "function") {
+        return;
+      }
+      var persisted =
+        typeof window.getCurrentNormalCartFilter === "function"
+          ? window.getCurrentNormalCartFilter()
+          : null;
+      if (persisted) {
+        window.applyCartTabFilters(persisted);
+      } else {
         window.applyCartTabFilters("all");
       }
     } catch (eHash) {
@@ -3974,6 +3994,7 @@
       return normalCartsAppliedGen;
     },
     normalCartsIsDegraded: normalCartsIsDegraded,
+    reapplyNormalCartFilterAfterRender: reapplyNormalCartFilterAfterRender,
   };
 
   window.__maVipCartsTestHooks = {

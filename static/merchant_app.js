@@ -201,6 +201,20 @@
 
   window.rowMatchesCartFilterMode = rowMatchesCartFilterMode;
 
+  /** Persisted #page-carts filter-bar mode (all|recovered|sent|attention|nophone). */
+  var currentNormalCartFilter = null;
+
+  function getCurrentNormalCartFilter() {
+    return currentNormalCartFilter;
+  }
+
+  function setCurrentNormalCartFilter(modeOrTab) {
+    currentNormalCartFilter = cartTabToFilterMode(modeOrTab || "all");
+  }
+
+  window.getCurrentNormalCartFilter = getCurrentNormalCartFilter;
+  window.setCurrentNormalCartFilter = setCurrentNormalCartFilter;
+
   function applyCartFilterMode(mode) {
     var tbody = document.querySelector("#page-carts tbody");
     if (!tbody) return;
@@ -222,11 +236,20 @@
           b.classList.remove("active");
         });
         btn.classList.add("active");
+        setCurrentNormalCartFilter(mode);
         applyCartFilterMode(mode);
       });
     });
     var active = bar.querySelector(".filter-btn.active");
-    applyCartFilterMode(active ? active.getAttribute("data-filter") || "all" : "all");
+    var initialMode = active ? active.getAttribute("data-filter") || "all" : "all";
+    if (currentNormalCartFilter) {
+      initialMode = currentNormalCartFilter;
+      bar.querySelectorAll(".filter-btn").forEach(function (b) {
+        var f = (b.getAttribute("data-filter") || "").trim().toLowerCase();
+        b.classList.toggle("active", f === initialMode);
+      });
+    }
+    applyCartFilterMode(initialMode);
   }
 
   function setContextSection(section) {
@@ -341,6 +364,7 @@
 
   function applyCartTabFilters(cartTab) {
     var mode = cartTabToFilterMode(cartTab);
+    setCurrentNormalCartFilter(mode);
     applyCartFilterMode(mode);
     var bar = document.querySelector("#page-carts .filter-bar");
     if (bar) {

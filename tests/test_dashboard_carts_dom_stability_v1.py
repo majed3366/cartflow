@@ -62,9 +62,10 @@ class DashboardCartsDomStabilityTests(unittest.TestCase):
         self.assertIn("scheduleNormalCartsTokenRefetch", js)
         self.assertIn("cartflow_cart_event_id", js)
 
-    def test_lazy_js_hash_all_tab_filter_after_render(self) -> None:
+    def test_lazy_js_reapplies_persisted_filter_after_render(self) -> None:
         js = self._lazy_js
-        self.assertIn('applyCartTabFilters("all")', js)
+        self.assertIn("reapplyNormalCartFilterAfterRender", js)
+        self.assertIn("getCurrentNormalCartFilter", js)
         self.assertIn("applyCartTabFilters(tab)", js)
 
     def test_lazy_js_exposes_test_hooks(self) -> None:
