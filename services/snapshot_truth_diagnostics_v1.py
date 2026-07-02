@@ -255,15 +255,25 @@ def _row_matches_target(
     *,
     recovery_keys: set[str],
     cart_id: str,
+    abandoned_cart_id: Optional[int] = None,
 ) -> bool:
     rk = _norm(row.get("recovery_key"))
     if rk and rk in recovery_keys:
         return True
     if not cart_id:
-        return False
-    for field in ("zid_cart_id", "cart_id", "merchant_cart_id"):
-        if _norm(row.get(field)) == cart_id:
-            return True
+        pass
+    else:
+        for field in ("zid_cart_id", "cart_id", "merchant_cart_id"):
+            if _norm(row.get(field)) == cart_id:
+                return True
+    if abandoned_cart_id:
+        aid = int(abandoned_cart_id)
+        for field in ("merchant_case_row_id", "abandoned_cart_id", "id"):
+            try:
+                if int(row.get(field) or 0) == aid:
+                    return True
+            except (TypeError, ValueError):
+                continue
     return False
 
 
@@ -272,11 +282,15 @@ def _find_snapshot_row(
     *,
     recovery_keys: set[str],
     cart_id: str,
+    abandoned_cart_id: Optional[int] = None,
 ) -> tuple[Optional[dict[str, Any]], str]:
     for collection, rows in _snapshot_row_collections(payload):
         for row in rows:
             if isinstance(row, dict) and _row_matches_target(
-                row, recovery_keys=recovery_keys, cart_id=cart_id
+                row,
+                recovery_keys=recovery_keys,
+                cart_id=cart_id,
+                abandoned_cart_id=abandoned_cart_id,
             ):
                 return row, collection
     return None, ""
@@ -518,6 +532,7 @@ def build_snapshot_truth_diagnostics(
         snapshot_payload,
         recovery_keys=recovery_keys,
         cart_id=cid,
+        abandoned_cart_id=int(getattr(ac_row, "id", 0) or 0) or None,
     )
     snapshot_row_present = matched_row is not None
     snapshot_row_recovery_key = _norm(matched_row.get("recovery_key")) if matched_row else ""

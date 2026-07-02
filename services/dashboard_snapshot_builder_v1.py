@@ -126,16 +126,11 @@ def _build_summary_payload(dash_store: Any) -> dict[str, Any]:
 
 
 def _build_normal_carts_payload(dash_store: Any) -> dict[str, Any]:
-    from services.normal_carts_dashboard_batch_v1 import (  # noqa: PLC0415
-        build_normal_carts_dashboard_api_payload,
+    from services.dashboard_snapshot_normal_carts_parity_v1 import (  # noqa: PLC0415
+        build_canonical_normal_carts_payload,
     )
 
-    body, _prof, _perf = build_normal_carts_dashboard_api_payload(
-        dash_store,
-        page_limit=50,
-        page_offset=0,
-        debug_perf=False,
-    )
+    body, _prof, _perf = build_canonical_normal_carts_payload(dash_store)
     return dict(body)
 
 
@@ -195,14 +190,38 @@ def build_store_dashboard_snapshots(
         )
         results["types"][SNAPSHOT_TYPE_DASHBOARD_CARDS] = "ok"
 
-        nc_body = _build_normal_carts_payload(dash_store)
-        upsert_dashboard_snapshot(
-            store_id=sid,
-            store_slug=slug,
-            snapshot_type=SNAPSHOT_TYPE_NORMAL_CARTS,
-            payload=nc_body,
+        from services.dashboard_snapshot_normal_carts_parity_v1 import (  # noqa: PLC0415
+            build_and_guard_normal_carts_snapshot_write,
         )
-        results["types"][SNAPSHOT_TYPE_NORMAL_CARTS] = "ok"
+
+        nc_write = build_and_guard_normal_carts_snapshot_write(
+            store_slug=slug,
+            dash_store=dash_store,
+        )
+        if nc_write.allow_write:
+            upsert_dashboard_snapshot(
+                store_id=sid,
+                store_slug=slug,
+                snapshot_type=SNAPSHOT_TYPE_NORMAL_CARTS,
+                payload=nc_write.payload_for_storage,
+                payload_json=nc_write.storage_json or None,
+                status=nc_write.status,
+            )
+            results["types"][SNAPSHOT_TYPE_NORMAL_CARTS] = "ok"
+        else:
+            print(
+                f"[DASHBOARD SNAPSHOT PARITY BLOCK] store_slug={slug} "
+                f"drop_stage={nc_write.drop_stage} reason={nc_write.reason} "
+                f"keep_previous={str(nc_write.keep_previous).lower()}",
+                flush=True,
+            )
+            results["types"][SNAPSHOT_TYPE_NORMAL_CARTS] = f"blocked:{nc_write.drop_stage}"
+            results["normal_carts_parity"] = {
+                "drop_stage": nc_write.drop_stage,
+                "reason": nc_write.reason,
+                "keep_previous": nc_write.keep_previous,
+                "parity": nc_write.parity,
+            }
 
         from main import _merchant_dashboard_refresh_state_payload  # noqa: PLC0415
 

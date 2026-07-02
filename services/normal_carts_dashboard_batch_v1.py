@@ -101,6 +101,7 @@ def build_normal_carts_unified_rows(
     from services.dashboard_snapshot_hot_path_guard_v1 import guard_dashboard_hot_path
 
     guard_dashboard_hot_path("normal_carts_unified_rows", endpoint="normal-carts")
+    from services.merchant_dashboard_recovery_resolve_v1 import SENT_LOG_STATUSES
     from main import (  # noqa: PLC0415
         _augment_abandoned_candidates_for_recovery_dashboard,
         _ensure_recovery_visibility_groups_in_pick,
@@ -330,7 +331,10 @@ def build_normal_carts_unified_rows(
                     purchased_terminal=purchased_terminal,
                 )
                 if not active_ok and not archived_ok:
-                    continue
+                    if bool(log_u & SENT_LOG_STATUSES) and not manual_arch:
+                        active_ok = True
+                    else:
+                        continue
 
                 with dashboard_normal_carts_perf_stage("payload_row"):
                     row = _merchant_normal_recovery_light_payload_merchant_batch(

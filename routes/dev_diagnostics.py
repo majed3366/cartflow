@@ -551,6 +551,45 @@ def dev_snapshot_truth_diagnostics(
         return j({"ok": False, "error": str(exc)}, 500)
 
 
+@router.get("/dev/dashboard-builder-parity")
+def dev_dashboard_builder_parity(
+    store_slug: str = Query("", max_length=255),
+    cart_id: str = Query("", max_length=255),
+    recovery_key: str = Query("", max_length=512),
+    abandoned_cart_id: int = Query(0),
+    lifecycle: str = Query("active", max_length=32),
+    repair: bool = Query(False),
+) -> Any:
+    """Live vs snapshot builder parity chain for one cart (governance diagnostic)."""
+    import main as _main  # noqa: PLC0415
+
+    ss = (store_slug or "").strip()[:255]
+    cid = (cart_id or "").strip()[:255]
+    rk = (recovery_key or "").strip()[:512]
+    if not ss and not cid and not rk:
+        return j(
+            {"ok": False, "error": "store_slug_or_cart_id_or_recovery_key_required"},
+            400,
+        )
+    try:
+        _main._ensure_cartflow_api_db_warmed()
+        from services.dashboard_builder_parity_v1 import build_dashboard_builder_parity  # noqa: PLC0415
+
+        return j(
+            build_dashboard_builder_parity(
+                store_slug=ss,
+                cart_id=cid,
+                recovery_key=rk,
+                abandoned_cart_id=int(abandoned_cart_id or 0) or None,
+                lifecycle=(lifecycle or "active").strip()[:32],
+                repair=bool(repair),
+            )
+        )
+    except Exception as exc:  # noqa: BLE001
+        db.session.rollback()
+        return j({"ok": False, "error": str(exc)}, 500)
+
+
 @router.get("/dev/vip-merchant-alert-operational-truth")
 def dev_vip_merchant_alert_operational_truth(
     cart_id: str = Query("", max_length=255),

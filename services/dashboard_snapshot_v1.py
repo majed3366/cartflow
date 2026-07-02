@@ -147,7 +147,7 @@ def any_store_needs_failsafe_snapshot_build(
     *,
     store_pairs: list[tuple[int, str]],
 ) -> tuple[bool, str]:
-    """True when any store lacks a summary snapshot or last build exceeds failsafe age."""
+    """True when any store lacks or has stale normal_carts/summary snapshots."""
     if not store_pairs:
         return False, ""
     cutoff = _utcnow() - timedelta(seconds=snapshot_builder_failsafe_seconds())
@@ -155,13 +155,23 @@ def any_store_needs_failsafe_snapshot_build(
         s = (slug or "").strip()
         if not s:
             continue
+        nc_row = fetch_latest_snapshot_row(
+            store_slug=s,
+            snapshot_type=SNAPSHOT_TYPE_NORMAL_CARTS,
+        )
+        if nc_row is None:
+            return True, f"no_normal_carts_snapshot store_slug={s}"
+        if snapshot_row_is_stale(nc_row):
+            gen = _as_utc(nc_row.generated_at)
+            age_s = int((_utcnow() - gen).total_seconds()) if gen else -1
+            return True, f"stale_normal_carts_snapshot store_slug={s} age_s={age_s}"
         row = fetch_latest_snapshot_row(store_slug=s, snapshot_type=SNAPSHOT_TYPE_SUMMARY)
         if row is None:
-            return True, f"no_snapshot store_slug={s}"
+            return True, f"no_summary_snapshot store_slug={s}"
         gen = _as_utc(row.generated_at)
         if gen is None or gen < cutoff:
             age_s = int((_utcnow() - gen).total_seconds()) if gen else -1
-            return True, f"stale_snapshot store_slug={s} age_s={age_s}"
+            return True, f"stale_summary_snapshot store_slug={s} age_s={age_s}"
     return False, ""
 
 
@@ -297,6 +307,7 @@ def upsert_dashboard_snapshot(
     payload: dict[str, Any],
     ttl_seconds: Optional[int] = None,
     status: str = STATUS_ACTIVE,
+    payload_json: Optional[str] = None,
 ) -> DashboardSnapshot:
     slug = canonical_snapshot_store_slug(store_slug=store_slug)
     stype = (snapshot_type or "").strip()
@@ -307,11 +318,16 @@ def upsert_dashboard_snapshot(
     prev = fetch_latest_snapshot_row(store_slug=slug, snapshot_type=stype)
     version = int(getattr(prev, "version", 0) or 0) + 1
 
+    if payload_json is not None:
+        pj = payload_json[:65000]
+    else:
+        pj = json.dumps(payload, ensure_ascii=False, default=str)[:65000]
+
     row = DashboardSnapshot(
         store_id=store_id,
         store_slug=slug,
         snapshot_type=stype,
-        payload_json=json.dumps(payload, ensure_ascii=False, default=str)[:65000],
+        payload_json=pj,
         generated_at=now,
         expires_at=expires,
         version=version,
@@ -376,22 +392,42 @@ def is_snapshot_build_eligible_store(
     return True, "active_merchant"
 
 
+def _normal_carts_snapshot_build_tier(
+    *,
+    store_slug: str,
+) -> Optional[tuple[int, datetime, str]]:
+    """Tier 0 when normal_carts snapshot missing or expired — dashboard carts depend on it."""
+    nc_row = fetch_latest_snapshot_row(
+        store_slug=store_slug,
+        snapshot_type=SNAPSHOT_TYPE_NORMAL_CARTS,
+    )
+    if nc_row is None:
+        return 0, datetime.min.replace(tzinfo=timezone.utc), "missing_normal_carts"
+    gen = _as_utc(nc_row.generated_at) or datetime.min.replace(tzinfo=timezone.utc)
+    if snapshot_row_is_stale(nc_row):
+        return 0, gen, "stale_normal_carts"
+    return None
+
+
 def _snapshot_build_priority(
     *,
     store_slug: str,
     failsafe_cutoff: datetime,
 ) -> tuple[int, datetime, str]:
-    """Lower tier sorts first; oldest summary within tier rotates coverage."""
+    """Lower tier sorts first; oldest generated_at within tier rotates coverage."""
+    nc_tier = _normal_carts_snapshot_build_tier(store_slug=store_slug)
+    if nc_tier is not None:
+        return nc_tier
     summary_row = fetch_latest_snapshot_row(
         store_slug=store_slug,
         snapshot_type=SNAPSHOT_TYPE_SUMMARY,
     )
     if summary_row is None:
-        return 0, datetime.min.replace(tzinfo=timezone.utc), "missing_summary"
+        return 1, datetime.min.replace(tzinfo=timezone.utc), "missing_summary"
     gen = _as_utc(summary_row.generated_at)
     if gen is None or gen < failsafe_cutoff:
-        return 1, gen or datetime.min.replace(tzinfo=timezone.utc), "stale_summary"
-    return 2, gen, "rotate_oldest_summary"
+        return 2, gen or datetime.min.replace(tzinfo=timezone.utc), "stale_summary"
+    return 3, gen or datetime.min.replace(tzinfo=timezone.utc), "rotate_oldest_summary"
 
 
 def list_all_eligible_merchant_store_pairs() -> list[tuple[int, str]]:
@@ -437,7 +473,7 @@ def list_store_slugs_for_snapshot_build(*, limit: int = 10) -> list[tuple[int, s
     Coverage rules (not ``updated_at`` on Store — audit scripts bump test rows):
     - ``merchant_user_id`` present, ``is_active``, canonical ``zid_store_id``
     - Exclude widget placeholders (demo/demo2/default) and audit prefixes
-    - Priority: missing summary → stale summary → oldest summary (rotation)
+    - Priority: missing/stale normal_carts → missing summary → stale summary → rotation
   """
     from models import Store
 
