@@ -6,6 +6,7 @@ Target: 200ms typical, 500ms hard max — return degraded/stale, never hang.
 """
 from __future__ import annotations
 
+import logging
 import time
 from datetime import datetime, timezone
 from typing import Any, Optional
@@ -26,6 +27,8 @@ from services.dashboard_snapshot_v1 import (
     fetch_latest_snapshot_row,
     snapshot_row_is_stale,
 )
+
+log = logging.getLogger("cartflow")
 
 DASHBOARD_ROUTE_TARGET_MS = 200.0
 DASHBOARD_ROUTE_MAX_MS = 500.0
@@ -319,6 +322,19 @@ def build_normal_carts_from_snapshot(
             endpoint="normal-carts",
         )
         body = apply_normal_carts_snapshot_client_guards(body)
+        slug = canonical_snapshot_store_slug(store_slug=store_slug)
+        try:
+            from services.dashboard_hot_slice_v1 import (  # noqa: PLC0415
+                apply_hot_slice_to_normal_carts_payload,
+            )
+
+            body = apply_hot_slice_to_normal_carts_payload(body, store_slug=slug)
+        except Exception as exc:  # noqa: BLE001
+            import logging
+
+            logging.getLogger("cartflow").warning(
+                "dashboard hot slice merge skipped: %s", exc
+            )
         try:
             from services.dashboard_counter_totals_v1 import (  # noqa: PLC0415
                 apply_counter_health_from_snapshot_meta,

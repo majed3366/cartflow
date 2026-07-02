@@ -97,6 +97,10 @@ def build_normal_carts_unified_rows(
     *,
     page_limit: int = 50,
     page_offset: int = 0,
+    hot_slice_last_seen_cutoff: Optional[datetime] = None,
+    hot_slice_row_cap: Optional[int] = None,
+    hot_slice_max_pick: Optional[int] = None,
+    hot_slice_skip_augment: bool = False,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str, Any], NormalCartsDashboardPerfMeta]:
     """
   Single candidate load + single batch_reads → active and archived row lists.
@@ -170,9 +174,17 @@ def build_normal_carts_unified_rows(
         vip_th = merchant_vip_threshold_int(dash_store)
         if vip_th is not None:
             q = q.filter(func.coalesce(AbandonedCart.cart_value, 0) < float(vip_th))
+        if hot_slice_last_seen_cutoff is not None:
+            q = q.filter(AbandonedCart.last_seen_at >= hot_slice_last_seen_cutoff)
 
-        row_cap = max(220, min(500, desired_end * 8))
-        max_pick = max(96, min(160, desired_end * 3))
+        if hot_slice_row_cap is not None:
+            row_cap = max(1, int(hot_slice_row_cap))
+        else:
+            row_cap = max(220, min(500, desired_end * 8))
+        if hot_slice_max_pick is not None:
+            max_pick = max(1, int(hot_slice_max_pick))
+        else:
+            max_pick = max(96, min(160, desired_end * 3))
 
         with dashboard_normal_carts_perf_stage("abandoned_candidates"):
             with normal_carts_profile_span("sql:abandoned_cart_candidates_unified"):
@@ -180,11 +192,12 @@ def build_normal_carts_unified_rows(
                 full_rows = list(
                     q.order_by(AbandonedCart.last_seen_at.desc()).limit(row_cap).all()
                 )
-            full_rows = _augment_abandoned_candidates_for_recovery_dashboard(
-                full_rows,
-                dash_store=dash_store,
-                scope_filter=_nr_scope,
-            )
+            if not hot_slice_skip_augment:
+                full_rows = _augment_abandoned_candidates_for_recovery_dashboard(
+                    full_rows,
+                    dash_store=dash_store,
+                    scope_filter=_nr_scope,
+                )
         perf.candidate_rows = len(full_rows)
         dashboard_normal_carts_perf_record_loads(abandoned_carts=len(full_rows))
         dashboard_nc_log_stage(

@@ -407,6 +407,7 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 
 | Date (UTC) | Summary |
 |------------|---------|
+| 2026-07-02 | **Dashboard Hot Slice Phase 1:** `services/dashboard_hot_slice_v1.py` merges bounded live rows (`last_seen_at` ≤36h, max 25, ≤15 queries) into snapshot `normal_carts` on read; hot wins on `recovery_key`; whitelisted via `dashboard_hot_slice_build_scope` in hot-path guard; store counters unchanged from snapshot. Tests: `tests/test_dashboard_hot_slice_v1.py`. |
 | 2026-07-02 | **Customer Movement Foundation v1 (architecture design):** Movement questions, existing event model, `movement_snapshot` / `movement_summary` schema, hot/cold strategy, growth analysis, governance contracts in `docs/customer_movement_foundation_v1_design.md`. Design only — no UI, widgets, or runtime. |
 | 2026-07-02 | **Customer Movement Architecture Audit v1 (read-only):** Inventoried existing post-recovery signals (timeline, logs, `cf_behavioral`, purchase truth, lifecycle); movement event map, SoT map, storage/performance risks, missing signals (`widget_opened`, `checkout_seen`, passive revisit); future snapshot/summary recommendation in `docs/customer_movement_architecture_audit_v1.md`. No new tables/events/UI. |
 | 2026-07-02 | **Engagement optional manual contact copy:** follow-up compact rows with `contact_wa_href` now say «المتابعة الآلية فعّالة، والتواصل اليدوي متاح عند الحاجة.» instead of automation-only text; `FOLLOWUP_OPTIONAL_MANUAL_CONTACT_LINE_AR` in `dashboard_attention_merchant_semantics_v1.py`. Presentation only. |

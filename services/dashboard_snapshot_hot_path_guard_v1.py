@@ -15,6 +15,9 @@ _in_dashboard_api_request: ContextVar[bool] = ContextVar(
     "_in_dashboard_api_request", default=False
 )
 _dashboard_api_path: ContextVar[str] = ContextVar("_dashboard_api_path", default="-")
+_in_dashboard_hot_slice_build: ContextVar[bool] = ContextVar(
+    "_in_dashboard_hot_slice_build", default=False
+)
 
 
 @contextmanager
@@ -32,6 +35,20 @@ def is_dashboard_api_snapshot_request() -> bool:
     return bool(_in_dashboard_api_request.get())
 
 
+@contextmanager
+def dashboard_hot_slice_build_scope() -> Iterator[None]:
+    """Whitelist bounded hot-slice builder during snapshot-mode HTTP requests."""
+    token = _in_dashboard_hot_slice_build.set(True)
+    try:
+        yield
+    finally:
+        _in_dashboard_hot_slice_build.reset(token)
+
+
+def is_dashboard_hot_slice_build() -> bool:
+    return bool(_in_dashboard_hot_slice_build.get())
+
+
 def guard_dashboard_hot_path(operation: str, *, endpoint: str = "") -> None:
     """
     Log when live dashboard builders run during a merchant HTTP request
@@ -40,6 +57,8 @@ def guard_dashboard_hot_path(operation: str, *, endpoint: str = "") -> None:
     if not dashboard_snapshot_mode_enabled():
         return
     if not _in_dashboard_api_request.get():
+        return
+    if _in_dashboard_hot_slice_build.get():
         return
     emit_hot_path_violation(
         operation=(operation or "unknown")[:128],
@@ -58,6 +77,8 @@ def guard_dashboard_hot_path(operation: str, *, endpoint: str = "") -> None:
 
 __all__ = [
     "dashboard_api_snapshot_request_scope",
+    "dashboard_hot_slice_build_scope",
     "guard_dashboard_hot_path",
     "is_dashboard_api_snapshot_request",
+    "is_dashboard_hot_slice_build",
 ]
