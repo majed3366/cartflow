@@ -6,7 +6,7 @@
   {% if _reply %}
   <div class="recovery-truth-line"><strong>رد العميل:</strong> {{ _reply }}</div>
   {% endif %}
-  <div class="recovery-truth-line"><strong>المتابعة:</strong> النظام يتابع تلقائياً</div>
+  <div class="recovery-truth-line"><strong>المتابعة:</strong> {% if fr.contact_wa_href %}المتابعة الآلية فعّالة، والتواصل اليدوي متاح عند الحاجة.{% else %}النظام يتابع تلقائياً{% endif %}</div>
   {% if _goal %}
   <div class="recovery-truth-line"><strong>الهدف:</strong> {{ _goal }}</div>
   {% elif _rtag %}

@@ -32,6 +32,9 @@ LABEL_WAITING_READY_AR = "بانتظار الجاهزية"
 LABEL_CANNOT_FOLLOW_AR = "لا يمكن المتابعة حالياً"
 LABEL_NEEDS_SETUP_AR = "يحتاج إعداد"
 LABEL_SYSTEM_FOLLOWS_AR = "النظام يتابع تلقائياً"
+FOLLOWUP_OPTIONAL_MANUAL_CONTACT_LINE_AR = (
+    "المتابعة الآلية فعّالة، والتواصل اليدوي متاح عند الحاجة."
+)
 LABEL_WAITING_PHONE_AR = "بانتظار رقم العميل"
 LABEL_CANNOT_FOLLOW_NO_PHONE_AR = "لا يمكن المتابعة — لا يوجد رقم عميل"
 
@@ -214,4 +217,5 @@ __all__ = [
     "apply_attention_merchant_semantics_v1",
     "normalize_customer_phone_for_wa_me",
     "resolve_needs_intervention_display_label",
+    "FOLLOWUP_OPTIONAL_MANUAL_CONTACT_LINE_AR",
 ]

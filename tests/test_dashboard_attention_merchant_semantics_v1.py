@@ -15,6 +15,7 @@ from services.customer_lifecycle_states_v1 import (
     STATE_RETURN_TO_SITE,
 )
 from services.dashboard_attention_merchant_semantics_v1 import (
+    FOLLOWUP_OPTIONAL_MANUAL_CONTACT_LINE_AR,
     LABEL_CANNOT_FOLLOW_NO_PHONE_AR,
     LABEL_INTERVENTION_AR,
     LABEL_NEEDS_SETUP_AR,
@@ -186,6 +187,32 @@ class AttentionMerchantDashboardHtmlTests(unittest.TestCase):
         self.assertEqual(r.status_code, 200)
         html = r.text or ""
         self.assertNotIn("<strong>تدخل:</strong> لا", html)
+
+    def test_followup_optional_manual_contact_copy_in_lazy_js(self) -> None:
+        from pathlib import Path
+
+        js = (
+            Path(__file__).resolve().parents[1]
+            / "static"
+            / "merchant_dashboard_lazy.js"
+        ).read_text(encoding="utf-8")
+        self.assertIn(FOLLOWUP_OPTIONAL_MANUAL_CONTACT_LINE_AR, js)
+        self.assertIn("فتح واتساب", js)
+        self.assertNotIn("تدخل مطلوب", js)
+        self.assertNotIn("متابعة يدوية مطلوبة", js)
+
+    def test_followup_template_optional_manual_contact_copy(self) -> None:
+        from pathlib import Path
+
+        tpl = (
+            Path(__file__).resolve().parents[1]
+            / "templates"
+            / "partials"
+            / "merchant_followup_compact_block.html"
+        ).read_text(encoding="utf-8")
+        self.assertIn(FOLLOWUP_OPTIONAL_MANUAL_CONTACT_LINE_AR, tpl)
+        self.assertIn("fr.contact_wa_href", tpl)
+        self.assertIn("فتح واتساب", tpl)
 
 
 if __name__ == "__main__":

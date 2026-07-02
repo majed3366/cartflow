@@ -2403,6 +2403,9 @@
     return h + "</div>";
   }
 
+  var FOLLOWUP_OPTIONAL_MANUAL_CONTACT_LINE_AR =
+    "المتابعة الآلية فعّالة، والتواصل اليدوي متاح عند الحاجة.";
+
   function followupCompactHtml(fr) {
     fr = fr || {};
     var goal = merchantReasonGoalAr(fr.reason_tag_raw || fr.reason_tag_ar);
@@ -2419,7 +2422,13 @@
         "</div>";
     }
     h +=
-      '<div class="recovery-truth-line"><strong>المتابعة:</strong> النظام يتابع تلقائياً</div>';
+      '<div class="recovery-truth-line"><strong>المتابعة:</strong> ' +
+      esc(
+        href
+          ? FOLLOWUP_OPTIONAL_MANUAL_CONTACT_LINE_AR
+          : "النظام يتابع تلقائياً"
+      ) +
+      "</div>";
     if (goal) {
       h +=
         '<div class="recovery-truth-line"><strong>الهدف:</strong> ' +
