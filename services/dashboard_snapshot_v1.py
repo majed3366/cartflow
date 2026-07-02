@@ -135,6 +135,39 @@ def snapshot_ttl_seconds(snapshot_type: str) -> int:
     return int(defaults.get(snapshot_type or "", 60))
 
 
+_DEFAULT_SNAPSHOT_JSON_CAP = 65_000
+_NORMAL_CARTS_SNAPSHOT_JSON_CAP = 512_000
+
+
+def snapshot_payload_json_cap(snapshot_type: str) -> int:
+    """Max JSON bytes for persisted snapshot payloads (Text column; type-specific caps)."""
+    stype = (snapshot_type or "").strip()
+    if stype == SNAPSHOT_TYPE_NORMAL_CARTS:
+        raw = (os.environ.get("CARTFLOW_NORMAL_CARTS_SNAPSHOT_JSON_CAP") or "").strip()
+        if raw:
+            try:
+                return max(_DEFAULT_SNAPSHOT_JSON_CAP, min(2_000_000, int(raw)))
+            except (TypeError, ValueError):
+                pass
+        return _NORMAL_CARTS_SNAPSHOT_JSON_CAP
+    raw = (os.environ.get("CARTFLOW_DASHBOARD_SNAPSHOT_JSON_CAP") or "").strip()
+    if raw:
+        try:
+            return max(10_000, min(2_000_000, int(raw)))
+        except (TypeError, ValueError):
+            pass
+    return _DEFAULT_SNAPSHOT_JSON_CAP
+
+
+def encode_snapshot_payload_json(
+    payload: dict[str, Any],
+    *,
+    snapshot_type: str,
+) -> str:
+    cap = snapshot_payload_json_cap(snapshot_type)
+    return json.dumps(payload, ensure_ascii=False, default=str)[:cap]
+
+
 def snapshot_builder_failsafe_seconds() -> int:
     raw = (os.environ.get("CARTFLOW_DASHBOARD_SNAPSHOT_FAILSAFE_SECONDS") or "").strip()
     try:
@@ -319,9 +352,9 @@ def upsert_dashboard_snapshot(
     version = int(getattr(prev, "version", 0) or 0) + 1
 
     if payload_json is not None:
-        pj = payload_json[:65000]
+        pj = payload_json[: snapshot_payload_json_cap(stype)]
     else:
-        pj = json.dumps(payload, ensure_ascii=False, default=str)[:65000]
+        pj = encode_snapshot_payload_json(payload, snapshot_type=stype)
 
     row = DashboardSnapshot(
         store_id=store_id,

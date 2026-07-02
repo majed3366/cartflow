@@ -108,10 +108,27 @@ class DashboardSnapshotNormalCartsParityTests(unittest.TestCase):
         self.assertTrue(decision.keep_previous)
         self.assertIn(decision.drop_stage, ("row_build", "snapshot_write"))
 
-    def test_blocks_truncated_payload(self) -> None:
-        big = _row(rk=f"{self.store_slug}:cf_cart_big", cart_id="cf_cart_big", aid=2)
-        big["blob"] = "x" * 80000
-        payload = _payload(big)
+    @patch(
+        "services.dashboard_snapshot_normal_carts_parity_v1.snapshot_payload_json_cap",
+        return_value=800,
+    )
+    def test_blocks_truncated_payload(self, _mock_cap: unittest.mock.Mock) -> None:
+        rows = [
+            _row(
+                rk=f"{self.store_slug}:cf_cart_big_{i}",
+                cart_id=f"cf_cart_big_{i}",
+                aid=20 + i,
+            )
+            for i in range(25)
+        ]
+        for r in rows:
+            r["customer_lifecycle_what_happened_ar"] = "ا" * 120
+            r["customer_lifecycle_what_next_ar"] = "ب" * 120
+        payload = {
+            "merchant_carts_page_rows": rows,
+            "merchant_archived_carts_page_rows": rows,
+            "merchant_cart_filter_counts": {"sent": len(rows)},
+        }
         decision = evaluate_normal_carts_snapshot_write(
             store_slug=self.store_slug,
             live_payload=payload,

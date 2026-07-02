@@ -559,6 +559,7 @@ def dev_dashboard_builder_parity(
     abandoned_cart_id: int = Query(0),
     lifecycle: str = Query("active", max_length=32),
     repair: bool = Query(False),
+    measure_sizes: bool = Query(False),
 ) -> Any:
     """Live vs snapshot builder parity chain for one cart (governance diagnostic)."""
     import main as _main  # noqa: PLC0415
@@ -583,8 +584,49 @@ def dev_dashboard_builder_parity(
                 abandoned_cart_id=int(abandoned_cart_id or 0) or None,
                 lifecycle=(lifecycle or "active").strip()[:32],
                 repair=bool(repair),
+                measure_sizes=bool(measure_sizes),
             )
         )
+    except Exception as exc:  # noqa: BLE001
+        db.session.rollback()
+        return j({"ok": False, "error": str(exc)}, 500)
+
+
+@router.get("/dev/normal-carts-payload-sizes")
+def dev_normal_carts_payload_sizes(
+    store_slug: str = Query("", max_length=255),
+) -> Any:
+    """Read-only live vs slim normal-carts payload byte sizes for one store."""
+    import main as _main  # noqa: PLC0415
+
+    ss = (store_slug or "").strip()[:255]
+    if not ss:
+        return j({"ok": False, "error": "store_slug_required"}, 400)
+    try:
+        _main._ensure_cartflow_api_db_warmed()
+        from models import Store  # noqa: PLC0415
+        from services.dashboard_snapshot_normal_carts_parity_v1 import (  # noqa: PLC0415
+            build_canonical_normal_carts_payload,
+        )
+        from services.dashboard_snapshot_normal_carts_size_measure_v1 import (  # noqa: PLC0415
+            measure_normal_carts_payload_sizes,
+        )
+        from services.dashboard_snapshot_v1 import canonical_snapshot_store_slug  # noqa: PLC0415
+
+        slug = canonical_snapshot_store_slug(store_slug=ss)
+        store = (
+            db.session.query(Store)
+            .filter(Store.zid_store_id == slug)
+            .order_by(Store.id.desc())
+            .first()
+        )
+        if store is None:
+            return j({"ok": False, "error": "store_not_found", "store_slug": slug}, 404)
+        body, _prof, perf = build_canonical_normal_carts_payload(store)
+        report = measure_normal_carts_payload_sizes(body, store_slug=slug)
+        report["ok"] = True
+        report["visible_rows_built"] = int(getattr(perf, "visible_rows", 0) or 0)
+        return j(report)
     except Exception as exc:  # noqa: BLE001
         db.session.rollback()
         return j({"ok": False, "error": str(exc)}, 500)

@@ -71,7 +71,24 @@ def _payload_truncation_drops_row(
 ) -> bool:
     if not _find_snapshot_row(payload, recovery_keys=recovery_keys, cart_id=cart_id)[0]:
         return False
-    serialized = json.dumps(payload, ensure_ascii=False, default=str)[:65000]
+    from services.dashboard_snapshot_normal_carts_slim_v1 import (  # noqa: PLC0415
+        slim_normal_carts_payload_for_snapshot,
+    )
+    from services.dashboard_snapshot_v1 import (  # noqa: PLC0415
+        SNAPSHOT_TYPE_NORMAL_CARTS,
+        encode_snapshot_payload_json,
+        snapshot_payload_json_cap,
+    )
+
+    slim = slim_normal_carts_payload_for_snapshot(payload)
+    serialized = encode_snapshot_payload_json(
+        slim,
+        snapshot_type=SNAPSHOT_TYPE_NORMAL_CARTS,
+    )
+    cap = snapshot_payload_json_cap(SNAPSHOT_TYPE_NORMAL_CARTS)
+    full_json = json.dumps(slim, ensure_ascii=False, default=str)
+    if len(full_json.encode("utf-8")) <= cap:
+        return False
     try:
         decoded = json.loads(serialized)
     except (TypeError, ValueError, json.JSONDecodeError):
@@ -261,6 +278,7 @@ def build_dashboard_builder_parity(
     abandoned_cart_id: Optional[int] = None,
     lifecycle: str = "active",
     repair: bool = False,
+    measure_sizes: bool = False,
 ) -> dict[str, Any]:
     """
     Run live and snapshot builders for the same store; compare persisted snapshot payload.
@@ -418,6 +436,17 @@ def build_dashboard_builder_parity(
         and not snapshot_stale
     )
 
+    payload_size_truth: Optional[dict[str, Any]] = None
+    if measure_sizes:
+        from services.dashboard_snapshot_normal_carts_size_measure_v1 import (  # noqa: PLC0415
+            measure_normal_carts_payload_sizes,
+        )
+
+        payload_size_truth = measure_normal_carts_payload_sizes(
+            live_payload,
+            store_slug=slug,
+        )
+
     return {
         "ok": True,
         "store_slug": slug or None,
@@ -487,6 +516,7 @@ def build_dashboard_builder_parity(
         "drop_stage": drop_stage,
         "reason": reason,
         "repair": repair_out,
+        "payload_size_truth": payload_size_truth,
     }
 
 

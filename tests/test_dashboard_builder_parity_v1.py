@@ -248,12 +248,23 @@ class DashboardBuilderParityTests(unittest.TestCase):
         self.assertEqual(matched_key, self.cart_key)
         self.assertNotEqual(live_exclusion, "no_sent_log")
 
-    def test_payload_truncation_detection(self) -> None:
-        big_row = dict(self._row_payload())
-        big_row["debug_blob"] = "x" * 70000
+    @patch(
+        "services.dashboard_snapshot_v1.snapshot_payload_json_cap",
+        return_value=600,
+    )
+    def test_payload_truncation_detection(self, _mock_cap: unittest.mock.Mock) -> None:
+        rows = [dict(self._row_payload())]
+        for i in range(29):
+            row = dict(self._row_payload())
+            row["recovery_key"] = f"{self.store_slug}:cf_trunc_{i}"
+            row["zid_cart_id"] = f"cf_trunc_{i}"
+            row["merchant_case_row_id"] = 900 + i
+            row["customer_lifecycle_what_happened_ar"] = "ا" * 120
+            row["customer_lifecycle_what_next_ar"] = "ب" * 120
+            rows.append(row)
         payload = {
-            "merchant_carts_page_rows": [big_row],
-            "merchant_archived_carts_page_rows": [],
+            "merchant_carts_page_rows": rows,
+            "merchant_archived_carts_page_rows": rows,
         }
         dropped = _payload_truncation_drops_row(
             payload,

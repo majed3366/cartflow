@@ -18,7 +18,9 @@ from services.dashboard_snapshot_v1 import (
     STATUS_ACTIVE,
     STATUS_FAILED,
     decode_snapshot_payload,
+    encode_snapshot_payload_json,
     fetch_latest_snapshot_row,
+    snapshot_payload_json_cap,
     snapshot_row_is_stale,
 )
 from services.merchant_dashboard_recovery_resolve_v1 import SENT_LOG_STATUSES
@@ -26,7 +28,9 @@ from services.normal_carts_dashboard_batch_v1 import NormalCartsDashboardPerfMet
 
 _log = logging.getLogger(__name__)
 
-_PAYLOAD_JSON_CAP = 65000
+
+def _payload_json_cap() -> int:
+    return snapshot_payload_json_cap(SNAPSHOT_TYPE_NORMAL_CARTS)
 
 
 def _norm(value: Any) -> str:
@@ -108,20 +112,22 @@ def compare_normal_carts_payload_parity(
 
 
 def _payload_for_storage(payload: dict[str, Any]) -> dict[str, Any]:
-    out = dict(payload)
-    out.pop("_perf", None)
-    out.pop("debug_perf", None)
-    return out
+    from services.dashboard_snapshot_normal_carts_slim_v1 import (  # noqa: PLC0415
+        slim_normal_carts_payload_for_snapshot,
+    )
+
+    return slim_normal_carts_payload_for_snapshot(payload)
 
 
 def _serialization_check(payload: dict[str, Any]) -> dict[str, Any]:
     clean = _payload_for_storage(payload)
+    cap = _payload_json_cap()
     full_json = json.dumps(clean, ensure_ascii=False, default=str)
-    truncated = full_json[:_PAYLOAD_JSON_CAP]
+    storage_json = encode_snapshot_payload_json(clean, snapshot_type=SNAPSHOT_TYPE_NORMAL_CARTS)
     parse_ok = True
     decoded: dict[str, Any] = {}
     try:
-        parsed = json.loads(truncated)
+        parsed = json.loads(storage_json)
         decoded = parsed if isinstance(parsed, dict) else {}
     except (TypeError, ValueError, json.JSONDecodeError):
         parse_ok = False
@@ -130,12 +136,14 @@ def _serialization_check(payload: dict[str, Any]) -> dict[str, Any]:
     full_sigs = {r["signature"] for r in extract_row_parity_records(clean)}
     trunc_sigs = {r["signature"] for r in extract_row_parity_records(decoded)} if parse_ok else set()
     dropped = sorted(full_sigs - trunc_sigs)
+    truncated = len(full_json.encode("utf-8")) > cap or len(storage_json) < len(full_json)
     return {
         "json_bytes": len(full_json.encode("utf-8")),
-        "truncated": len(full_json) > _PAYLOAD_JSON_CAP,
+        "json_cap": cap,
+        "truncated": truncated,
         "parse_ok": parse_ok,
         "dropped_identities": dropped,
-        "storage_json": truncated,
+        "storage_json": storage_json,
     }
 
 
@@ -205,9 +213,13 @@ def evaluate_normal_carts_snapshot_write(
     """Decide whether to persist a normal_carts snapshot."""
     slug = _norm(store_slug)
     parity = compare_normal_carts_payload_parity(live_payload, candidate_payload)
+    storage_payload = _payload_for_storage(candidate_payload)
+    storage_parity = compare_normal_carts_payload_parity(live_payload, storage_payload)
+    parity["storage_identity_equivalent"] = storage_parity["equivalent"]
+    parity["storage_missing_identities"] = storage_parity["missing_from_candidate"]
     parity["sent_log_missing"] = _missing_sent_log_identities(
         store_slug=slug,
-        payload=candidate_payload,
+        payload=storage_payload,
     )
 
     ser = _serialization_check(candidate_payload)
@@ -225,7 +237,7 @@ def evaluate_normal_carts_snapshot_write(
         prev_payload = decode_snapshot_payload(prev_row)
         prev_valid = bool(extract_row_parity_records(prev_payload))
 
-    cand_records = extract_row_parity_records(candidate_payload)
+    cand_records = extract_row_parity_records(storage_payload)
     prev_records = extract_row_parity_records(prev_payload)
     cand_sigs = {r["signature"] for r in cand_records}
     prev_sigs = {r["signature"] for r in prev_records}
@@ -245,7 +257,17 @@ def evaluate_normal_carts_snapshot_write(
             status=STATUS_FAILED,
         )
 
-    if ser["dropped_identities"] or not ser["parse_ok"]:
+    if not storage_parity["equivalent"]:
+        return NormalCartsSnapshotWriteDecision(
+            allow_write=False,
+            drop_stage="snapshot_write",
+            reason="snapshot_slim_identity_loss",
+            parity=parity,
+            keep_previous=prev_valid,
+            status=STATUS_FAILED,
+        )
+
+    if ser["dropped_identities"] or not ser["parse_ok"] or ser["truncated"]:
         return NormalCartsSnapshotWriteDecision(
             allow_write=False,
             drop_stage="snapshot_write",
@@ -286,7 +308,7 @@ def evaluate_normal_carts_snapshot_write(
             status=STATUS_FAILED,
         )
 
-    clean = _payload_for_storage(candidate_payload)
+    clean = storage_payload
     return NormalCartsSnapshotWriteDecision(
         allow_write=True,
         drop_stage="included",
