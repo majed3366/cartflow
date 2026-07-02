@@ -2785,6 +2785,18 @@
     return !!NORMAL_CART_MERCHANT_EXECUTABLE_DECISION_KEYS[key];
   }
 
+  function customerMovementHtml(mc) {
+    if (!mc || !mc.customer_movement_line_ar) return "";
+    return (
+      '<div class="recovery-truth-line ma-customer-movement-v1">' +
+      "<strong>" +
+      esc(mc.customer_movement_heading_ar || "حركة العميل:") +
+      "</strong> " +
+      esc(mc.customer_movement_line_ar) +
+      "</div>"
+    );
+  }
+
   function merchantCartFactHtml(mc) {
     var f = mc && mc.merchant_cart_fact_v1;
     if (!f || !f.kind || !f.label_ar) return "";
@@ -3122,6 +3134,7 @@
           '">' +
           esc(merchantNextLineShort(mc) || mc.merchant_next_action_ar || "—") +
           "</div>") +
+      customerMovementHtml(mc) +
       lifecycleTruthHtml(mc) +
       "</td>" +
       "<td>" +
@@ -3185,6 +3198,7 @@
         ? ""
         : '<div class="next' + urg + '">' + esc(nextLbl) + "</div>") +
       merchantCartFactHtml(mc) +
+      customerMovementHtml(mc) +
       lifecycleTruthHtml(mc) +
       "</td>" +
       '<td><div class="ctime">' +

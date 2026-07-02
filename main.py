@@ -14775,6 +14775,7 @@ class MerchantNormalCartsBatchReads:
     durable_closure_by_rk: dict[str, dict[str, Any]] = field(default_factory=dict)
     alias_keys_by_ac: dict[int, list[str]] = field(default_factory=dict)
     effective_delay_seconds_by_ac: dict[int, Optional[float]] = field(default_factory=dict)
+    movement_snapshot_by_rk: dict[str, dict[str, Any]] = field(default_factory=dict)
     queued_followup_prefetch: Any = None
 
     def store_row_for_cart(self, ac: AbandonedCart) -> Optional[Store]:
@@ -15968,6 +15969,16 @@ def _merchant_normal_dashboard_batch_reads(
         except Exception:  # noqa: BLE001
             pass
         try:
+            from services.customer_movement_visibility_v1 import (  # noqa: PLC0415
+                bulk_movement_snapshot_fields_by_recovery_keys,
+            )
+
+            batch.movement_snapshot_by_rk = bulk_movement_snapshot_fields_by_recovery_keys(
+                rk_keys
+            )
+        except Exception:  # noqa: BLE001
+            batch.movement_snapshot_by_rk = {}
+        try:
             from services.lifecycle_closure_records_v1 import (  # noqa: PLC0415
                 bulk_durable_closures,
             )
@@ -16376,6 +16387,25 @@ def _merchant_normal_recovery_light_payload_merchant_batch(
         if next_due_iso:
             out["next_attempt_due_at"] = next_due_iso
         lifecycle_ms = (time.perf_counter() - _lc_perf0) * 1000.0
+        try:
+            from services.customer_movement_visibility_v1 import (  # noqa: PLC0415
+                attach_customer_movement_visibility_v1,
+            )
+
+            _snap_mv = batch.movement_snapshot_by_rk.get(rk_lc) if rk_lc else None
+            attach_customer_movement_visibility_v1(
+                out,
+                recovery_key=rk_lc,
+                movement_snapshot=_snap_mv,
+                purchase_truth=purchased_flag,
+                timeline_statuses=tl_pre,
+                log_statuses=log_u_lc,
+                behavioral=bh_lc,
+                sent_count=sent_ct_lc,
+                lifecycle_state=out.get("customer_lifecycle_state"),
+            )
+        except Exception:  # noqa: BLE001
+            pass
         try:
             from services.continuation_decision_trace_v1 import (  # noqa: PLC0415
                 continuation_explanation_for_dashboard,

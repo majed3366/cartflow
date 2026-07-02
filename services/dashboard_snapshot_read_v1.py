@@ -336,6 +336,14 @@ def build_normal_carts_from_snapshot(
                 "dashboard hot slice merge skipped: %s", exc
             )
         try:
+            from services.customer_movement_visibility_v1 import (  # noqa: PLC0415
+                enrich_normal_carts_payload_customer_movement_v1,
+            )
+
+            body = enrich_normal_carts_payload_customer_movement_v1(body)
+        except Exception as exc:  # noqa: BLE001
+            log.warning("customer movement visibility enrich skipped: %s", exc)
+        try:
             from services.dashboard_counter_totals_v1 import (  # noqa: PLC0415
                 apply_counter_health_from_snapshot_meta,
                 emit_counter_page_audit_logs,
