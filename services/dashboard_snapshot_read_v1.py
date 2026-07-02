@@ -319,6 +319,43 @@ def build_normal_carts_from_snapshot(
             endpoint="normal-carts",
         )
         body = apply_normal_carts_snapshot_client_guards(body)
+        try:
+            from services.dashboard_counter_totals_v1 import (  # noqa: PLC0415
+                apply_counter_health_from_snapshot_meta,
+                emit_counter_page_audit_logs,
+                visible_page_counts_from_rows,
+            )
+            from services.normal_carts_dashboard_batch_v1 import (  # noqa: PLC0415
+                emit_counter_row_audit_logs,
+            )
+
+            snap_meta = body.get("_snapshot") if isinstance(body.get("_snapshot"), dict) else {}
+            body = apply_counter_health_from_snapshot_meta(body, snapshot_meta=snap_meta)
+            active_rows = list(body.get("merchant_carts_page_rows") or [])
+            archived_rows = list(body.get("merchant_archived_carts_page_rows") or [])
+            page_counts = visible_page_counts_from_rows(
+                active_rows,
+                archived_rows=archived_rows,
+            )
+            if "merchant_visible_page_counts" not in body:
+                body["merchant_visible_page_counts"] = page_counts
+            store_counts = dict(body.get("merchant_store_cart_counts") or {})
+            merchant = str(store_slug or "")[:64] or "-"
+            emit_counter_page_audit_logs(
+                merchant=merchant,
+                visible_page_counts=page_counts,
+                visible_page_rows=len(active_rows),
+            )
+            emit_counter_row_audit_logs(
+                active_rows=active_rows,
+                archived_rows=archived_rows,
+                store_counts=store_counts,
+                page_counts=page_counts,
+                source="snapshot",
+                page_limit=50,
+            )
+        except Exception:  # noqa: BLE001
+            pass
         return enforce_route_budget(body, wall0=wall0)
 
 

@@ -182,6 +182,11 @@
   function normalCartsIsConfirmedFullEmpty(d, pageRows) {
     if (pageRows && pageRows.length) return false;
     if (normalCartsPayloadIsPartialOrThin(d)) return false;
+    if (hasCanonicalStoreCartCounts(d)) {
+      var storeFc = resolveMerchantStoreCartCounts(d);
+      var storeAll = parseInt(storeFc.all, 10);
+      return isFinite(storeAll) && storeAll === 0;
+    }
     if (!normalCartsFilterCountsExplicitZero((d && d.merchant_cart_filter_counts) || {})) {
       return false;
     }
@@ -189,6 +194,39 @@
     if (src === "snapshot" || (d && d.snapshot_mode)) return false;
     if (d && d._snapshot) return false;
     return true;
+  }
+
+  function hasCanonicalStoreCartCounts(d) {
+    var store = (d && d.merchant_store_cart_counts) || {};
+    return store.active_total != null || store.waiting_total != null;
+  }
+
+  function resolveMerchantStoreCartCounts(d) {
+    var store = (d && d.merchant_store_cart_counts) || {};
+    if (hasCanonicalStoreCartCounts(d)) {
+      return {
+        all: store.active_total != null ? store.active_total : 0,
+        waiting: store.waiting_total != null ? store.waiting_total : 0,
+        sent: store.sent_total != null ? store.sent_total : 0,
+        attention: store.engaged_total != null ? store.engaged_total : 0,
+        recovered: store.completed_total != null ? store.completed_total : 0,
+        nophone: store.no_phone_total != null ? store.no_phone_total : 0,
+      };
+    }
+    return (d && d.merchant_cart_filter_counts) || {};
+  }
+
+  function deriveVisiblePageCounts(rows, archivedRows) {
+    var pageFc = deriveFilterCountsFromRows(rows || []);
+    pageFc.archived = archivedRows ? archivedRows.length : 0;
+    return pageFc;
+  }
+
+  function applyNoPhoneFilterVisibility(storeFc) {
+    var btn = document.querySelector('#ma-cart-filters [data-filter="nophone"]');
+    if (!btn) return;
+    var n = parseInt(storeFc && storeFc.nophone, 10);
+    btn.style.display = isFinite(n) && n > 0 ? "" : "none";
   }
 
   function deriveFilterCountsFromRows(rows) {
@@ -232,6 +270,17 @@
     var prevN = lastNormalCartsPageRows.length;
     if (prevN < 1) return false;
     var incomingN = pageRows ? pageRows.length : 0;
+    if (hasCanonicalStoreCartCounts(d)) {
+      if (
+        incomingN === 0 &&
+        !normalCartsPayloadIsPartialOrThin(d) &&
+        incomingN === 0
+      ) {
+        return false;
+      }
+      if (incomingN >= prevN) return false;
+      return incomingN < prevN && normalCartsPayloadIsPartialOrThin(d);
+    }
     var incomingAll = normalCartsCountAll(
       (d && d.merchant_cart_filter_counts) || {}
     );
@@ -269,7 +318,10 @@
     }
   }
 
-  function effectiveFilterCounts(incoming, pageRows) {
+  function effectiveFilterCounts(incoming, pageRows, payload) {
+    if (payload && hasCanonicalStoreCartCounts(payload)) {
+      return resolveMerchantStoreCartCounts(payload);
+    }
     var fc = incoming || {};
     var rowsN = pageRows ? pageRows.length : 0;
     if (!rowsN) return fc;
@@ -2108,7 +2160,14 @@
       ins.innerHTML = '<div class="ib-title">💡 توصيات</div>' + body;
     }
 
-    setNavBadge("ma-nav-badge-abandoned", d.merchant_nav_badge_abandoned);
+    setNavBadge(
+      "ma-nav-badge-abandoned",
+      d.merchant_nav_badge_abandoned != null
+        ? d.merchant_nav_badge_abandoned
+        : hasCanonicalStoreCartCounts(d)
+          ? resolveMerchantStoreCartCounts(d).waiting
+          : 0
+    );
     setNavBadge("ma-nav-badge-followup", d.merchant_nav_badge_followup);
     setNavBadge("ma-nav-badge-vip", d.merchant_nav_badge_vip);
 
@@ -3209,11 +3268,17 @@
       bindCustomerLifecycleActions(allb);
     }
     applyCompletedCartsTable(lastNormalCartsPageRows, lastArchivedCartsPageRows);
+    var storeFc = resolveMerchantStoreCartCounts(d);
+    var pageFc =
+      (d && d.merchant_visible_page_counts) ||
+      deriveVisiblePageCounts(pageRows, lastArchivedCartsPageRows);
     var fc = effectiveFilterCounts(
       (d && d.merchant_cart_filter_counts) || {},
-      pageRows
+      pageRows,
+      d
     );
     lastNormalCartsFilterCounts = fc;
+    applyNoPhoneFilterVisibility(fc);
     function sf(k, id) {
       var el = byId(id);
       if (el) el.textContent = String(fc[k] != null ? fc[k] : 0);
@@ -3223,6 +3288,77 @@
     sf("sent", "ma-filt-sent");
     sf("attention", "ma-filt-attention");
     sf("nophone", "ma-filt-nophone");
+    try {
+      var derivedFc = deriveFilterCountsFromRows(pageRows);
+      var completedN = completedCartsFromRows(
+        pageRows,
+        lastArchivedCartsPageRows || []
+      ).length;
+      console.log(
+        "[COUNTER TOTALS AUDIT] source=" +
+          normalCartsPayloadSource(d) +
+          " scope=store_total active_total=" +
+          String(fc.all != null ? fc.all : 0) +
+          " waiting_total=" +
+          String(
+            d.merchant_nav_badge_abandoned != null
+              ? d.merchant_nav_badge_abandoned
+              : fc.waiting != null
+                ? fc.waiting
+                : 0
+          ) +
+          " sent_total=" +
+          String(fc.sent != null ? fc.sent : 0) +
+          " engaged_total=" +
+          String(fc.attention != null ? fc.attention : 0) +
+          " completed_total=" +
+          String(fc.recovered != null ? fc.recovered : 0) +
+          " archived_total=" +
+          String(
+            (d.merchant_store_cart_counts &&
+              d.merchant_store_cart_counts.archived_total) ||
+              (d.merchant_archived_cart_count != null
+                ? d.merchant_archived_cart_count
+                : 0)
+          ) +
+          " snapshot_stale=" +
+          String(
+            !!(d.merchant_counter_health &&
+              d.merchant_counter_health.counter_snapshot_stale) ||
+              !!(d._snapshot && d._snapshot.stale)
+          )
+      );
+      console.log(
+        "[COUNTER PAGE AUDIT] visible_page_rows=" +
+          String(pageRows.length) +
+          " page_waiting=" +
+          String(pageFc.waiting != null ? pageFc.waiting : 0) +
+          " page_sent=" +
+          String(pageFc.sent != null ? pageFc.sent : 0) +
+          " page_engaged=" +
+          String(pageFc.attention != null ? pageFc.attention : 0) +
+          " page_completed=" +
+          String(completedN) +
+          " page_all=" +
+          String(pageFc.all != null ? pageFc.all : 0)
+      );
+      console.log(
+        "[ROW AUDIT] active_rows=" +
+          String(pageRows.length) +
+          " archived_rows=" +
+          String((lastArchivedCartsPageRows || []).length) +
+          " source=" +
+          normalCartsPayloadSource(d) +
+          " store_fc=" +
+          JSON.stringify(fc) +
+          " page_fc=" +
+          JSON.stringify(pageFc) +
+          " derived_fc=" +
+          JSON.stringify(derivedFc)
+      );
+    } catch (_auditLogErr) {
+      /* ignore */
+    }
     try {
       logClientRefresh("normal_carts_render", {
         rows_count: pageRows.length,

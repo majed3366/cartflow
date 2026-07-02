@@ -77,6 +77,11 @@ NORMAL_CARTS_SNAPSHOT_TOP_LEVEL_KEYS = (
     "merchant_archived_cart_count",
     "merchant_cart_filter_counts",
     "merchant_nav_badge_abandoned",
+    "merchant_store_cart_counts",
+    "merchant_visible_page_counts",
+    "merchant_counter_health",
+    "merchant_counter_generated_at",
+    "merchant_counter_source",
     "merchant_dashboard_refresh_token",
     "merchant_dashboard_refresh_last_log_id",
     "merchant_dashboard_refresh_last_sent_log_id",
@@ -179,6 +184,11 @@ def slim_normal_carts_payload_for_snapshot(payload: dict[str, Any]) -> dict[str,
             payload.get("merchant_nav_badge_abandoned") or 0
         ),
     }
+    for key in NORMAL_CARTS_SNAPSHOT_TOP_LEVEL_KEYS:
+        if key in out:
+            continue
+        if key in payload:
+            out[key] = payload[key]
     for key in (
         "merchant_dashboard_refresh_token",
         "merchant_dashboard_refresh_last_log_id",

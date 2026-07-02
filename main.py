@@ -13672,22 +13672,17 @@ def _normal_carts_dashboard_stats(dash_store: Optional[Any] = None) -> dict[str,
             base_q = base_q.filter(func.coalesce(AbandonedCart.cart_value, 0) < float(vip_th))
         q_abandoned = base_q.filter(AbandonedCart.status == "abandoned")
         try:
-            visible_rows, _nc_prof = _normal_recovery_merchant_lightweight_alert_list_for_api(
-                250,
-                0,
-                lifecycle="active",
-                dash_store=dash_store,
-            )
-            from services.lifecycle_authority_recovery_v1 import (  # noqa: PLC0415
-                lifecycle_authority_active_count,
-                lifecycle_authority_waiting_count,
+            from services.dashboard_counter_totals_v1 import (  # noqa: PLC0415
+                build_merchant_cart_counter_totals,
             )
 
-            out["normal_cart_count"] = lifecycle_authority_active_count(
-                visible_rows
-            )
-            out["merchant_nav_badge_waiting"] = lifecycle_authority_waiting_count(
-                visible_rows
+            counter_payload = build_merchant_cart_counter_totals(dash_store)
+            counts = counter_payload.counts.to_counts_dict()
+            out["normal_cart_count"] = int(counts.get("active_total") or 0)
+            out["merchant_nav_badge_waiting"] = int(counts.get("waiting_total") or 0)
+            out["merchant_store_cart_counts"] = counts
+            out["merchant_counter_health"] = dict(
+                counter_payload.to_api_payload().get("merchant_counter_health") or {}
             )
         except (SQLAlchemyError, OSError, TypeError, ValueError):
             db.session.rollback()
@@ -19469,6 +19464,8 @@ def _api_json_dashboard_summary(
         "merchant_month_recovery_pct_fmt": f"{rec_pct_m:.1f}",
         "merchant_month_revenue_fmt": _merchant_dashboard_fmt_int(rev_month),
         "merchant_nav_badge_abandoned": int(mstats.get("merchant_nav_badge_waiting") or 0),
+        "merchant_store_cart_counts": dict(mstats.get("merchant_store_cart_counts") or {}),
+        "merchant_counter_health": dict(mstats.get("merchant_counter_health") or {}),
         "merchant_nav_badge_followup": 0,
         "merchant_nav_badge_vip": 0,
         "merchant_setup_experience": merchant_setup_experience,

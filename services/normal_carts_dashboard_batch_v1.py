@@ -8,6 +8,7 @@ Architecture: Batch Query → Batch Related Data → Pure Projection → JSON
 from __future__ import annotations
 
 import contextvars
+import logging
 import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -18,6 +19,8 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from extensions import db
 from models import AbandonedCart
+
+log = logging.getLogger(__name__)
 
 # Guardrail targets (aligned with operational contracts v1).
 NORMAL_CARTS_MAX_BUSINESS_QUERIES_50_ROWS = 40
@@ -389,6 +392,43 @@ def build_normal_carts_unified_rows(
         return [], [], dict(prof_empty), perf
 
 
+def emit_counter_row_audit_logs(
+    *,
+    active_rows: list[dict[str, Any]],
+    archived_rows: list[dict[str, Any]],
+    store_counts: dict[str, Any],
+    page_counts: dict[str, Any],
+    source: str,
+    page_limit: int = 50,
+) -> None:
+    """Temporary parity instrumentation — store totals vs page-window counts."""
+    try:
+        log.info(
+            "[COUNTER AUDIT] scope=store_totals source=%s active_total=%s "
+            "waiting_total=%s sent_total=%s engaged_total=%s completed_total=%s "
+            "archived_total=%s page_limit=%s",
+            source,
+            int(store_counts.get("active_total") or 0),
+            int(store_counts.get("waiting_total") or 0),
+            int(store_counts.get("sent_total") or 0),
+            int(store_counts.get("engaged_total") or 0),
+            int(store_counts.get("completed_total") or 0),
+            int(store_counts.get("archived_total") or 0),
+            int(page_limit),
+        )
+        log.info(
+            "[ROW AUDIT] active_rows=%s archived_rows=%s source=%s "
+            "visible_page_counts=%s store_counts=%s",
+            len(active_rows),
+            len(archived_rows),
+            source,
+            dict(page_counts),
+            dict(store_counts),
+        )
+    except Exception:  # noqa: BLE001
+        pass
+
+
 def build_normal_carts_dashboard_api_payload(
     dash_store: Optional[Any],
     *,
@@ -398,10 +438,6 @@ def build_normal_carts_dashboard_api_payload(
 ) -> tuple[dict[str, Any], NormalCartsDashboardPerfMeta]:
     """Full JSON body for GET /api/dashboard/normal-carts (batch architecture)."""
     from main import _merchant_dashboard_refresh_state_payload  # noqa: PLC0415
-    from services.customer_lifecycle_states_v1 import (  # noqa: PLC0415
-        lifecycle_filter_counts_from_rows,
-        lifecycle_nav_badge_waiting_count,
-    )
     from services.dashboard_normal_carts_perf_v1 import (  # noqa: PLC0415
         dashboard_normal_carts_perf_add_render_payload_ms,
         dashboard_normal_carts_perf_stage,
@@ -425,25 +461,44 @@ def build_normal_carts_dashboard_api_payload(
 
     _render0 = time.perf_counter()
     with dashboard_normal_carts_perf_stage("render_payload"):
+        from services.dashboard_counter_totals_v1 import (  # noqa: PLC0415
+            build_merchant_cart_counter_totals,
+            emit_counter_page_audit_logs,
+            visible_page_counts_from_rows,
+        )
+
         table_rows = list(active_rows[:8])
-        cart_filter_counts = lifecycle_filter_counts_from_rows(active_rows)
+        page_counts = visible_page_counts_from_rows(
+            active_rows,
+            archived_rows=archived_rows,
+        )
+        counter_payload = build_merchant_cart_counter_totals(dash_store)
+        canonical_fields = counter_payload.to_api_payload()
         refresh_state = _merchant_dashboard_refresh_state_payload(dash_store)
-        bucket_counts: dict[str, int] = {}
-        for row in active_rows:
-            b = str(row.get("customer_lifecycle_state") or "").strip().lower()
-            if not b:
-                continue
-            bucket_counts[b] = int(bucket_counts.get(b) or 0) + 1
 
         body: dict[str, Any] = {
             "merchant_table_rows": table_rows,
             "merchant_carts_page_rows": active_rows,
             "merchant_archived_carts_page_rows": archived_rows,
-            "merchant_archived_cart_count": len(archived_rows),
-            "merchant_cart_filter_counts": cart_filter_counts,
-            "merchant_nav_badge_abandoned": lifecycle_nav_badge_waiting_count(active_rows),
+            "merchant_visible_page_counts": page_counts,
         }
+        body.update(canonical_fields)
         body.update(refresh_state)
+
+        store_slug = counter_payload.store_slug or "-"
+        emit_counter_page_audit_logs(
+            merchant=store_slug,
+            visible_page_counts=page_counts,
+            visible_page_rows=len(active_rows),
+        )
+        emit_counter_row_audit_logs(
+            active_rows=active_rows,
+            archived_rows=archived_rows,
+            store_counts=counter_payload.counts.to_counts_dict(),
+            page_counts=page_counts,
+            source="live_builder",
+            page_limit=page_limit,
+        )
     try:
         dashboard_normal_carts_perf_add_render_payload_ms(
             (time.perf_counter() - _render0) * 1000.0
