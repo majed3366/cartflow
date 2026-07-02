@@ -2396,12 +2396,10 @@
         esc(c.action) +
         "</div>";
     }
-    h +=
-      '<div class="recovery-truth-line' +
-      (c.needsIntervention ? "" : " recovery-truth-muted") +
-      '"><strong>تدخل:</strong> ' +
-      (c.needsIntervention ? "نعم" : "لا") +
-      "</div>";
+    if (mc && mc.merchant_intervention_executable) {
+      h +=
+        '<div class="recovery-truth-line"><strong>تدخل:</strong> نعم</div>';
+    }
     return h + "</div>";
   }
 
@@ -2409,6 +2407,7 @@
     fr = fr || {};
     var goal = merchantReasonGoalAr(fr.reason_tag_raw || fr.reason_tag_ar);
     var reply = merchantReplyPreview(fr);
+    var href = String(fr.contact_wa_href || "").trim();
     var h =
       '<div class="recovery-truth recovery-truth-compact" aria-label="ملخص التفاعل">';
     h +=
@@ -2420,7 +2419,7 @@
         "</div>";
     }
     h +=
-      '<div class="recovery-truth-line"><strong>الإجراء:</strong> بدأ النظام متابعة الاعتراض</div>';
+      '<div class="recovery-truth-line"><strong>المتابعة:</strong> النظام يتابع تلقائياً</div>';
     if (goal) {
       h +=
         '<div class="recovery-truth-line"><strong>الهدف:</strong> ' +
@@ -2430,10 +2429,12 @@
       h +=
         '<div class="recovery-truth-line"><strong>الهدف:</strong> اختار النظام رسالة مناسبة بناءً على سبب التردد.</div>';
     }
-    h +=
-      '<div class="recovery-truth-line"><strong>الانتظار:</strong> النظام يتابع تلقائياً</div>';
-    h +=
-      '<div class="recovery-truth-line recovery-truth-muted"><strong>تدخل:</strong> لا</div>';
+    if (href) {
+      h +=
+        '<div class="recovery-truth-actions"><a class="cf-lc-btn cf-lc-btn-contact" href="' +
+        esc(href) +
+        '" target="_blank" rel="noopener noreferrer"><span class="cf-lc-btn-icon" aria-hidden="true">💬</span> فتح واتساب</a></div>';
+    }
     return h + "</div>";
   }
 
@@ -2656,25 +2657,38 @@
     }
   };
 
+  function merchantInterventionContactBtnHtml(mc) {
+    if (!mc || !mc.merchant_intervention_executable) return "";
+    var href = String(mc.merchant_intervention_contact_href || "").trim();
+    if (!href) return "";
+    var lbl = String(mc.merchant_intervention_action_ar || "فتح واتساب").trim();
+    return (
+      '<div class="recovery-truth-actions"><a class="cf-lc-btn cf-lc-btn-contact" href="' +
+      esc(href) +
+      '" target="_blank" rel="noopener noreferrer"><span class="cf-lc-btn-icon" aria-hidden="true">💬</span> ' +
+      esc(lbl) +
+      "</a></div>"
+    );
+  }
+
   function cartLifecycleActionBtnHtml(mc) {
     var rk = String(mc.recovery_key || "").trim();
     var act = String(mc.customer_lifecycle_dashboard_action || "").trim();
     if (!rk) return "";
+    var h = merchantInterventionContactBtnHtml(mc);
     if (act === "archive") {
-      return (
+      h +=
         '<div class="recovery-truth-actions"><button type="button" class="cf-lc-btn cf-lc-btn-archive" data-lc-archive data-recovery-key="' +
         esc(rk) +
-        '"><span class="cf-lc-btn-icon" aria-hidden="true">🗂</span> نقل للأرشيف</button></div>'
-      );
+        '"><span class="cf-lc-btn-icon" aria-hidden="true">🗂</span> نقل للأرشيف</button></div>';
     }
     if (act === "reopen") {
-      return (
+      h +=
         '<div class="recovery-truth-actions"><button type="button" class="cf-lc-btn cf-lc-btn-reopen" data-lc-reopen data-recovery-key="' +
         esc(rk) +
-        '"><span class="cf-lc-btn-icon" aria-hidden="true">↩</span> إعادة فتح</button></div>'
-      );
+        '"><span class="cf-lc-btn-icon" aria-hidden="true">↩</span> إعادة فتح</button></div>';
     }
-    return "";
+    return h;
   }
 
   function customerLifecycleArchivedCompactHtml(mc) {
@@ -2750,7 +2764,17 @@
   };
 
   /** Normal carts: show الإجراء المقترح only when merchant can act in-product. */
-  var NORMAL_CART_MERCHANT_EXECUTABLE_DECISION_KEYS = {};
+  var NORMAL_CART_MERCHANT_EXECUTABLE_DECISION_KEYS = {
+    contact_customer: 1,
+  };
+
+  function merchantDecisionExecutable(mc, key) {
+    if (!key) return false;
+    if (key === "contact_customer") {
+      return !!(mc && mc.merchant_intervention_executable);
+    }
+    return !!NORMAL_CART_MERCHANT_EXECUTABLE_DECISION_KEYS[key];
+  }
 
   function merchantCartFactHtml(mc) {
     var f = mc && mc.merchant_cart_fact_v1;
@@ -2766,7 +2790,7 @@
   function merchantDecisionSuggestedActionHtml(mc) {
     if (!mc) return "";
     var key = String(mc.merchant_decision_key || "").trim();
-    if (!key || !NORMAL_CART_MERCHANT_EXECUTABLE_DECISION_KEYS[key]) return "";
+    if (!key || !merchantDecisionExecutable(mc, key)) return "";
     var lbl = MERCHANT_DECISION_LABEL_AR[key];
     if (!lbl) return "";
     return (

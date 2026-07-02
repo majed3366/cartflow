@@ -31,7 +31,7 @@ class MerchantStandaloneAppDashboardTests(unittest.TestCase):
         for needle in (
             "الرئيسية",
             "بانتظار الإرسال",
-            "تحتاج تدخل",
+            "تفاعل العملاء",
             "مكتملة",
             "VIP",
             "الرسائل",

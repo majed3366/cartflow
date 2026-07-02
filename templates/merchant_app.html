@@ -52,7 +52,7 @@
   <nav class="ma-ctx-panel ma-sidebar-nav" data-ma-ctx="carts" hidden aria-label="السلال">
     <p class="ma-ctx-label">السلال</p>
     <button type="button" class="nav-item" data-nav="carts" data-cart-tab="all" onclick="goToCartTab('all')">الكل</button>
-    <button type="button" class="nav-item" data-nav="followup" data-cart-tab="intervention" onclick="goToCartTab('intervention')">تحتاج تدخل<span class="nb nb-a" id="ma-nav-badge-followup" style="display:none;"></span></button>
+    <button type="button" class="nav-item" data-nav="followup" data-cart-tab="intervention" onclick="goToCartTab('intervention')">تفاعل العملاء<span class="nb nb-a" id="ma-nav-badge-followup" style="display:none;"></span></button>
     <button type="button" class="nav-item" data-nav="carts" data-cart-tab="waiting" onclick="goToCartTab('waiting')">بانتظار الإرسال<span class="nb nb-r" id="ma-nav-badge-abandoned" style="display:none;"></span></button>
     <button type="button" class="nav-item" data-nav="completed" data-cart-tab="completed" onclick="goToCartTab('completed')">مكتملة</button>
     <button type="button" class="nav-item" data-nav="vip" data-cart-tab="vip" onclick="goToCartTab('vip')">VIP<span class="nb nb-a" id="ma-nav-badge-vip" style="display:none;"></span></button>
@@ -259,13 +259,13 @@
       <button type="button" class="filter-btn active" data-filter="all">الكل (<span id="ma-filt-all">0</span>)</button>
       <button type="button" class="filter-btn" data-filter="recovered">تم الاسترداد (<span id="ma-filt-recovered">0</span>)</button>
       <button type="button" class="filter-btn" data-filter="sent">رسالة أُرسلت (<span id="ma-filt-sent">0</span>)</button>
-      <button type="button" class="filter-btn" data-filter="attention">يحتاج متابعة (<span id="ma-filt-attention">0</span>)</button>
+      <button type="button" class="filter-btn" data-filter="attention">تفاعل العملاء (<span id="ma-filt-attention">0</span>)</button>
       <button type="button" class="filter-btn" data-filter="nophone">لا جوال (<span id="ma-filt-nophone">0</span>)</button>
       {% else %}
       <button type="button" class="filter-btn active" data-filter="all">الكل ({{ merchant_cart_filter_counts.all | default(0) }})</button>
       <button type="button" class="filter-btn" data-filter="recovered">تم الاسترداد ({{ merchant_cart_filter_counts.recovered | default(0) }})</button>
       <button type="button" class="filter-btn" data-filter="sent">رسالة أُرسلت ({{ merchant_cart_filter_counts.sent | default(0) }})</button>
-      <button type="button" class="filter-btn" data-filter="attention">يحتاج متابعة ({{ merchant_cart_filter_counts.attention | default(0) }})</button>
+      <button type="button" class="filter-btn" data-filter="attention">تفاعل العملاء ({{ merchant_cart_filter_counts.attention | default(0) }})</button>
       <button type="button" class="filter-btn" data-filter="nophone">لا جوال ({{ merchant_cart_filter_counts.nophone | default(0) }})</button>
       {% endif %}
     </div>
@@ -302,8 +302,8 @@
 
   <div class="page" id="page-followup" data-ma-cart-section="intervention">
     <div class="page-header ma-cart-page-header">
-      <div class="page-h1">تحتاج تدخل</div>
-      <div class="page-sub">سلال تفاعل العميل وتحتاج متابعتك</div>
+      <div class="page-h1">تفاعل العملاء</div>
+      <div class="page-sub">ردود العملاء والمتابعة التلقائية من النظام</div>
     </div>
     <div class="card">
       <div class="table-scroll">

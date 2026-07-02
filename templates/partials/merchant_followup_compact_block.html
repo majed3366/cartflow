@@ -6,12 +6,15 @@
   {% if _reply %}
   <div class="recovery-truth-line"><strong>رد العميل:</strong> {{ _reply }}</div>
   {% endif %}
-  <div class="recovery-truth-line"><strong>الإجراء:</strong> بدأ النظام متابعة الاعتراض</div>
+  <div class="recovery-truth-line"><strong>المتابعة:</strong> النظام يتابع تلقائياً</div>
   {% if _goal %}
   <div class="recovery-truth-line"><strong>الهدف:</strong> {{ _goal }}</div>
   {% elif _rtag %}
   <div class="recovery-truth-line"><strong>الهدف:</strong> اختار النظام رسالة مناسبة بناءً على سبب التردد.</div>
   {% endif %}
-  <div class="recovery-truth-line"><strong>الانتظار:</strong> النظام يتابع تلقائياً</div>
-  <div class="recovery-truth-line recovery-truth-muted"><strong>تدخل:</strong> لا</div>
+  {% if fr.contact_wa_href %}
+  <div class="recovery-truth-actions">
+    <a class="cf-lc-btn cf-lc-btn-contact" href="{{ fr.contact_wa_href | e }}" target="_blank" rel="noopener noreferrer"><span class="cf-lc-btn-icon" aria-hidden="true">💬</span> فتح واتساب</a>
+  </div>
+  {% endif %}
 </div>

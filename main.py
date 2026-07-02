@@ -16479,6 +16479,25 @@ def _merchant_normal_recovery_light_payload_merchant_batch(
     except Exception:  # noqa: BLE001
         pass
     try:
+        from services.dashboard_attention_merchant_semantics_v1 import (  # noqa: PLC0415
+            apply_attention_merchant_semantics_v1,
+        )
+
+        _cart_link_sem = ""
+        try:
+            _cart_link_sem = (_vip_dashboard_cart_link(ac0) or "").strip()
+        except Exception:  # noqa: BLE001
+            _cart_link_sem = ""
+        apply_attention_merchant_semantics_v1(
+            out,
+            customer_phone_raw=str(cust_raw or ""),
+            is_vip_lane=bool(locals().get("vip_lane", False)),
+            log_statuses=log_u_lc,
+            cart_link=_cart_link_sem,
+        )
+    except Exception:  # noqa: BLE001
+        pass
+    try:
         from services.dashboard_normal_carts_perf_v1 import (  # noqa: PLC0415
             dashboard_normal_carts_perf_active,
             dashboard_normal_carts_perf_peek_queries,

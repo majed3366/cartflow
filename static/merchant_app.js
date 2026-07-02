@@ -38,7 +38,7 @@
 
   var CART_TAB_TITLES = {
     all: "السلال — الكل",
-    intervention: "السلال — تحتاج تدخل",
+    intervention: "السلال — تفاعل العملاء",
     waiting: "السلال — بانتظار الإرسال",
     completed: "السلال — مكتملة",
     vip: "السلال — VIP",
