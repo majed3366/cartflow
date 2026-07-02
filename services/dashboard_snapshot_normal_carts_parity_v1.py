@@ -151,6 +151,7 @@ def _missing_sent_log_identities(
     *,
     store_slug: str,
     payload: dict[str, Any],
+    live_payload: Optional[dict[str, Any]] = None,
 ) -> list[str]:
     slug = _norm(store_slug)
     if not slug:
@@ -164,6 +165,13 @@ def _missing_sent_log_identities(
     rk_set = {_norm(r.get("recovery_key")) for r in records if r.get("recovery_key")}
     cart_set = {_norm(r.get("cart_id")) for r in records if r.get("cart_id")}
     ac_set = {int(r.get("abandoned_cart_id") or 0) for r in records if r.get("abandoned_cart_id")}
+
+    live_records = extract_row_parity_records(live_payload or payload)
+    live_rk_set = {_norm(r.get("recovery_key")) for r in live_records if r.get("recovery_key")}
+    live_cart_set = {_norm(r.get("cart_id")) for r in live_records if r.get("cart_id")}
+    live_ac_set = {
+        int(r.get("abandoned_cart_id") or 0) for r in live_records if r.get("abandoned_cart_id")
+    }
 
     missing: list[str] = []
     try:
@@ -179,6 +187,13 @@ def _missing_sent_log_identities(
         cid = _norm(getattr(lg, "cart_id", None))
         sid = _norm(getattr(lg, "session_id", None))
         aid = int(getattr(lg, "abandoned_cart_id", 0) or 0)
+        on_live_dashboard = (
+            (rk and rk in live_rk_set)
+            or (cid and cid in live_cart_set)
+            or (aid and aid in live_ac_set)
+        )
+        if not on_live_dashboard:
+            continue
         found = False
         if rk and rk in rk_set:
             found = True
@@ -220,6 +235,7 @@ def evaluate_normal_carts_snapshot_write(
     parity["sent_log_missing"] = _missing_sent_log_identities(
         store_slug=slug,
         payload=storage_payload,
+        live_payload=live_payload,
     )
 
     ser = _serialization_check(candidate_payload)
