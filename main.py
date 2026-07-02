@@ -16471,6 +16471,14 @@ def _merchant_normal_recovery_light_payload_merchant_batch(
     except Exception:  # noqa: BLE001
         pass
     try:
+        from services.dashboard_no_phone_facet_v1 import (  # noqa: PLC0415
+            apply_no_phone_visible_tab_facet,
+        )
+
+        apply_no_phone_visible_tab_facet(out, log_statuses=log_u_lc)
+    except Exception:  # noqa: BLE001
+        pass
+    try:
         from services.dashboard_normal_carts_perf_v1 import (  # noqa: PLC0415
             dashboard_normal_carts_perf_active,
             dashboard_normal_carts_perf_peek_queries,

@@ -54,9 +54,11 @@ COUNTER_SOURCE_OF_TRUTH_MAP = {
         "scope": "store_total",
     },
     "no_phone_total": {
-        "merchant_meaning_ar": "سلال بدون جوال قبل الإرسال الأول",
+        "merchant_meaning_ar": "سلال بدون جوال قبل الإرسال الأول — تبويب عرض فقط (ليس حالة مسار)",
         "api_field": "merchant_store_cart_counts.no_phone_total",
         "filter_bar_key": "nophone",
+        "row_facet": "merchant_cart_visible_tabs includes nophone",
+        "facet_module": "dashboard_no_phone_facet_v1",
         "producer": "build_merchant_cart_counter_totals",
         "scope": "store_total",
         "ui_hidden_when_zero": True,

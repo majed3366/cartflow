@@ -38,6 +38,7 @@ from services.customer_lifecycle_states_v1 import (
     lifecycle_state_to_filter_bucket,
 )
 from services.dashboard_completed_row_semantics_v1 import is_completed_dashboard_row
+from services.dashboard_no_phone_facet_v1 import is_no_phone_pre_send_dashboard_row
 from services.merchant_dashboard_recovery_resolve_v1 import SENT_LOG_STATUSES
 
 log = logging.getLogger(__name__)
@@ -150,15 +151,6 @@ class MerchantCartCounterPayload:
             "merchant_counter_source": self.source,
         }
 
-
-def _is_no_phone_pre_send_row(row: Mapping[str, Any], *, log_has_sent: bool) -> bool:
-    if log_has_sent:
-        return False
-    if row.get("merchant_has_customer_phone") is True:
-        return False
-    if row.get("merchant_has_customer_phone") is False:
-        return True
-    return False
 
 
 def _row_identity_key(row: Mapping[str, Any]) -> str:
@@ -393,7 +385,7 @@ def build_merchant_cart_counter_totals(
                             totals.sent_total += 1
                         elif bucket == UI_FILTER_ATTENTION:
                             totals.engaged_total += 1
-                if _is_no_phone_pre_send_row(row, log_has_sent=log_has_sent):
+                if is_no_phone_pre_send_dashboard_row(row, log_has_sent=log_has_sent):
                     totals.no_phone_total += 1
 
             ident = _row_identity_key(row)
@@ -464,6 +456,7 @@ def visible_page_counts_from_rows(
     fc = lifecycle_filter_counts_from_rows(active_rows)
     completed_seen: set[str] = set()
     completed_n = 0
+    nophone_n = 0
     for pool in (archived_rows or [], active_rows):
         for row in pool or []:
             if not is_completed_dashboard_row(row):
@@ -474,13 +467,19 @@ def visible_page_counts_from_rows(
             if ident:
                 completed_seen.add(ident)
             completed_n += 1
+    from services.customer_lifecycle_states_v1 import UI_FILTER_NOPHONE  # noqa: PLC0415
+
+    for row in active_rows:
+        tabs = row.get("merchant_cart_visible_tabs") or []
+        if isinstance(tabs, list) and UI_FILTER_NOPHONE in tabs:
+            nophone_n += 1
     return {
         "all": int(fc.get("all") or 0),
         "waiting": int(lifecycle_nav_badge_waiting_count(active_rows)),
         "sent": int(fc.get("sent") or 0),
         "attention": int(fc.get("attention") or 0),
         "recovered": completed_n,
-        "nophone": int(fc.get("nophone") or 0),
+        "nophone": nophone_n,
         "archived": len(archived_rows or []),
     }
 

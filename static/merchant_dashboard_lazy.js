@@ -4529,6 +4529,64 @@
     }
   });
 
+  function countNoPhoneRowsInPage() {
+    var n = 0;
+    (lastNormalCartsPageRows || []).forEach(function (mc) {
+      if (cartRowMatchesFilterMode(mc, "nophone")) n += 1;
+    });
+    return n;
+  }
+
+  function updateNoPhoneFilterEmptyHint(mode) {
+    var m = String(mode || "all").trim().toLowerCase();
+    var tbody = byId("ma-tbody-all-carts");
+    if (!tbody) return;
+    var hint = byId("ma-nophone-page-hint");
+    if (!hint) {
+      hint = document.createElement("tr");
+      hint.id = "ma-nophone-page-hint";
+      hint.style.display = "none";
+      hint.innerHTML =
+        '<td colspan="6" class="empty-state" style="border:none;"><div class="empty-icon">📵</div><div class="empty-text ma-nophone-page-hint-text"></div></td>';
+      tbody.appendChild(hint);
+    }
+    if (m !== "nophone") {
+      hint.style.display = "none";
+      return;
+    }
+    var visible = 0;
+    tbody.querySelectorAll("tr[data-ma-filter]").forEach(function (tr) {
+      if (tr.id === "ma-nophone-page-hint") return;
+      if (tr.style.display !== "none") visible += 1;
+    });
+    var storeN = parseInt(
+      (lastNormalCartsFilterCounts && lastNormalCartsFilterCounts.nophone) || 0,
+      10
+    );
+    var pageMatch = countNoPhoneRowsInPage();
+    if (visible === 0 && storeN > 0 && pageMatch === 0) {
+      var el = hint.querySelector(".ma-nophone-page-hint-text");
+      if (el) {
+        el.textContent =
+          "يوجد " +
+          String(storeN) +
+          " سلة بدون جوال في المتجر، لكنها ليست ضمن الصفحة المحمّلة حالياً.";
+      }
+      hint.style.display = "";
+      return;
+    }
+    hint.style.display = "none";
+  }
+
+  (function patchApplyCartFilterModeForNoPhone() {
+    var orig = window.applyCartFilterMode;
+    if (typeof orig !== "function") return;
+    window.applyCartFilterMode = function (mode) {
+      orig(mode);
+      updateNoPhoneFilterEmptyHint(mode);
+    };
+  })();
+
   function earlyHydrateDashboardCaches() {
     if (!document.body || document.body.getAttribute("data-cf-merchant-app") !== "1") {
       return;
