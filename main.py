@@ -879,6 +879,12 @@ async def _startup_whatsapp_queue() -> None:
 
     verify_runtime_role_at_startup()
     try:
+        from services.runtime_startup_v1 import log_runtime_startup_banner  # noqa: PLC0415
+
+        log_runtime_startup_banner()
+    except Exception as exc:  # noqa: BLE001
+        log.warning("startup runtime banner skipped: %s", exc)
+    try:
         from services.dashboard_snapshot_loop_v1 import start_dashboard_snapshot_builder_loop
 
         start_dashboard_snapshot_builder_loop()

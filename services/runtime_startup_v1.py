@@ -19,6 +19,26 @@ def _print_line(line: str) -> None:
         pass
 
 
+def _log_scheduler_build_info(role: str) -> None:
+    """Emit deploy git SHA on scheduler startup (logging only)."""
+    if role != "scheduler":
+        return
+    try:
+        from services.deploy_build_info_v1 import resolve_deploy_git_sha  # noqa: PLC0415
+    except Exception:  # noqa: BLE001
+        return
+
+    git_sha = resolve_deploy_git_sha()
+    lines = (
+        "[SCHEDULER BUILD INFO]",
+        f"git_sha={git_sha}",
+        f"process_role={role}",
+    )
+    for line in lines:
+        _print_line(line)
+        log.info("%s", line)
+
+
 def _log_dashboard_snapshot_archive_config(role: str) -> None:
     """Emit resolved archive env on scheduler startup (logging only)."""
     if role != "scheduler":
@@ -114,6 +134,7 @@ def log_runtime_startup_banner() -> dict[str, Any]:
         )
     except Exception:  # noqa: BLE001
         pass
+    _log_scheduler_build_info(role)
     _log_dashboard_snapshot_archive_config(role)
     if policy.get("block_reason"):
         _print_line(f"ownership_block_reason={policy.get('block_reason')}")
