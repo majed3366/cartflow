@@ -19,6 +19,34 @@ def _print_line(line: str) -> None:
         pass
 
 
+def _log_dashboard_snapshot_archive_config(role: str) -> None:
+    """Emit resolved archive env on scheduler startup (logging only)."""
+    if role != "scheduler":
+        return
+    try:
+        from services.dashboard_snapshot_archive_v1 import (  # noqa: PLC0415
+            dashboard_snapshot_archive_batch_size,
+            dashboard_snapshot_archive_enabled,
+            dashboard_snapshot_archive_retention_days,
+            dashboard_snapshot_archive_tick_max_seconds,
+        )
+    except Exception:  # noqa: BLE001
+        return
+
+    archive_on = dashboard_snapshot_archive_enabled()
+    lines = (
+        "[DASHBOARD SNAPSHOT ARCHIVE CONFIG]",
+        f"process_role={role}",
+        f"archive_enabled={'true' if archive_on else 'false'}",
+        f"retention_days={dashboard_snapshot_archive_retention_days()}",
+        f"batch_size={dashboard_snapshot_archive_batch_size()}",
+        f"tick_max_seconds={dashboard_snapshot_archive_tick_max_seconds()}",
+    )
+    for line in lines:
+        _print_line(line)
+        log.info("%s", line)
+
+
 def log_runtime_startup_banner() -> dict[str, Any]:
     """
     Emit ``[RUNTIME STARTUP]`` lines showing role and which background loops run.
@@ -86,21 +114,7 @@ def log_runtime_startup_banner() -> dict[str, Any]:
         )
     except Exception:  # noqa: BLE001
         pass
-    try:
-        from services.dashboard_snapshot_archive_v1 import (  # noqa: PLC0415
-            dashboard_snapshot_archive_enabled,
-        )
-        from services.dashboard_snapshot_archive_loop_v1 import (  # noqa: PLC0415
-            dashboard_snapshot_archive_loop_interval_seconds,
-        )
-
-        archive_on = dashboard_snapshot_archive_enabled()
-        _print_line(
-            f"dashboard_snapshot_archive_loop={'enabled' if archive_on else 'disabled'} "
-            f"interval_s={dashboard_snapshot_archive_loop_interval_seconds()}"
-        )
-    except Exception:  # noqa: BLE001
-        pass
+    _log_dashboard_snapshot_archive_config(role)
     if policy.get("block_reason"):
         _print_line(f"ownership_block_reason={policy.get('block_reason')}")
     if policy.get("compliance") == "misconfigured":
