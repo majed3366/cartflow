@@ -86,6 +86,21 @@ def log_runtime_startup_banner() -> dict[str, Any]:
         )
     except Exception:  # noqa: BLE001
         pass
+    try:
+        from services.dashboard_snapshot_archive_v1 import (  # noqa: PLC0415
+            dashboard_snapshot_archive_enabled,
+        )
+        from services.dashboard_snapshot_archive_loop_v1 import (  # noqa: PLC0415
+            dashboard_snapshot_archive_loop_interval_seconds,
+        )
+
+        archive_on = dashboard_snapshot_archive_enabled()
+        _print_line(
+            f"dashboard_snapshot_archive_loop={'enabled' if archive_on else 'disabled'} "
+            f"interval_s={dashboard_snapshot_archive_loop_interval_seconds()}"
+        )
+    except Exception:  # noqa: BLE001
+        pass
     if policy.get("block_reason"):
         _print_line(f"ownership_block_reason={policy.get('block_reason')}")
     if policy.get("compliance") == "misconfigured":
@@ -112,6 +127,7 @@ async def run_scheduler_drivers_at_startup() -> dict[str, Any]:
         "resume_scan_result": None,
         "scanner_loop_started": False,
         "snapshot_loop_started": False,
+        "archive_loop_started": False,
     }
 
     if process_role_effective_resume_enabled():
@@ -175,6 +191,25 @@ async def run_scheduler_drivers_at_startup() -> dict[str, Any]:
         _print_line(f"[RUNTIME STARTUP] dashboard_snapshot_loop_error={str(exc)[:120]}")
         log.warning("startup dashboard snapshot loop skipped: %s", exc)
         out["snapshot_loop_error"] = str(exc)[:200]
+
+    try:
+        from services.dashboard_snapshot_archive_v1 import (  # noqa: PLC0415
+            dashboard_snapshot_archive_enabled,
+        )
+        from services.dashboard_snapshot_archive_loop_v1 import (  # noqa: PLC0415
+            start_dashboard_snapshot_archive_loop,
+        )
+
+        if dashboard_snapshot_archive_enabled():
+            start_dashboard_snapshot_archive_loop()
+            out["archive_loop_started"] = True
+            _print_line("[RUNTIME STARTUP] dashboard_snapshot_archive_loop_started=true")
+        else:
+            _print_line("[RUNTIME STARTUP] dashboard_snapshot_archive_loop_skipped reason=archive_disabled")
+    except Exception as exc:  # noqa: BLE001
+        _print_line(f"[RUNTIME STARTUP] dashboard_snapshot_archive_loop_error={str(exc)[:120]}")
+        log.warning("startup dashboard snapshot archive loop skipped: %s", exc)
+        out["archive_loop_error"] = str(exc)[:200]
 
     return out
 

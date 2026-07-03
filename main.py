@@ -1011,6 +1011,7 @@ _DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT = frozenset(
         "/dev/purchase-truth-trace",
         "/dev/storefront-cart-bridge-truth",
         "/dev/data-growth-measurement",
+        "/dev/dashboard-snapshot-archive",
     }
 )
 

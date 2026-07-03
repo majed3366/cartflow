@@ -5,7 +5,7 @@ import json
 from datetime import datetime, timezone
 from typing import Any
 
-from sqlalchemy import UniqueConstraint
+from sqlalchemy import Index, UniqueConstraint
 from sqlalchemy.orm import relationship
 
 from extensions import (
@@ -858,4 +858,98 @@ class DashboardSnapshot(Base):
         default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc),
         nullable=False,
+    )
+
+
+class DashboardSnapshotArchive(Base):
+    """
+    Cold storage for historical dashboard snapshot versions moved off the hot table.
+    Latest per (store_slug, snapshot_type) always remains in dashboard_snapshots.
+    """
+
+    __tablename__ = "dashboard_snapshots_archive"
+
+    id = Column(Integer, primary_key=True)
+    source_snapshot_id = Column(Integer, nullable=False, index=True)
+    store_id = Column(Integer, ForeignKey("stores.id"), nullable=True, index=True)
+    store_slug = Column(String(255), nullable=False, index=True)
+    snapshot_type = Column(String(64), nullable=False, index=True)
+    payload_json = Column(Text, nullable=False, default="{}")
+    generated_at = Column(DateTime, nullable=False, index=True)
+    expires_at = Column(DateTime, nullable=False)
+    version = Column(Integer, nullable=False, default=1)
+    status = Column(String(32), nullable=False, default="active")
+    created_at = Column(DateTime, nullable=False)
+    updated_at = Column(DateTime, nullable=False)
+    archived_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+        index=True,
+    )
+
+
+class MovementSnapshot(Base):
+    """
+    Hot read model for customer movement — one row per recovery_key (shadow Phase 1).
+    Materialized from durable signals; not yet consumed on dashboard hot paths.
+    """
+
+    __tablename__ = "movement_snapshots"
+
+    id = Column(Integer, primary_key=True)
+    merchant_id = Column(Integer, nullable=True, index=True)
+    store_slug = Column(String(255), nullable=False)
+    recovery_key = Column(String(512), nullable=False, unique=True)
+    cart_id = Column(String(255), nullable=True)
+    session_id = Column(String(512), nullable=True)
+
+    provider_sent = Column(Boolean, default=False, nullable=False)
+    provider_sent_at = Column(DateTime, nullable=True)
+
+    reply_received = Column(Boolean, default=False, nullable=False)
+    reply_at = Column(DateTime, nullable=True)
+
+    continuation_started = Column(Boolean, default=False, nullable=False)
+    continuation_at = Column(DateTime, nullable=True)
+
+    returned_to_site = Column(Boolean, default=False, nullable=False)
+    returned_at = Column(DateTime, nullable=True)
+
+    passive_return_visit_count = Column(Integer, default=0, nullable=False)
+    passive_return_last_at = Column(DateTime, nullable=True)
+
+    purchase_detected = Column(Boolean, default=False, nullable=False, index=True)
+    purchase_at = Column(DateTime, nullable=True)
+    purchase_truth_id = Column(Integer, nullable=True)
+
+    last_movement_type = Column(String(64), nullable=True)
+    last_movement_at = Column(DateTime, nullable=True, index=True)
+
+    movement_active = Column(Boolean, default=True, nullable=False, index=True)
+    movement_version = Column(Integer, default=0, nullable=False)
+
+    created_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+    updated_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+
+    __table_args__ = (
+        Index(
+            "ix_movement_snapshots_merchant_recovery_key",
+            "merchant_id",
+            "recovery_key",
+        ),
+        Index(
+            "ix_movement_snapshots_store_slug_updated_at",
+            "store_slug",
+            "updated_at",
+        ),
     )

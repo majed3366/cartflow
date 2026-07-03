@@ -333,6 +333,41 @@ def dev_data_growth_measurement() -> Any:
         return j({"ok": False, "error": str(exc)}, 500)
 
 
+@router.get("/dev/dashboard-snapshot-archive")
+def dev_dashboard_snapshot_archive(
+    run_tick: int = Query(0, ge=0, le=1),
+) -> Any:
+    import main as _main  # noqa: PLC0415
+
+    """
+    Dashboard snapshot archive diagnostics (Data Growth Governance Phase 3).
+
+    ``run_tick=1`` executes one bounded archive tick when archive env is enabled.
+    """
+    try:
+        _main._ensure_cartflow_api_db_warmed()
+        from services.dashboard_snapshot_archive_v1 import (  # noqa: PLC0415
+            assess_dashboard_snapshot_archive_status,
+            run_dashboard_snapshot_archive_tick,
+        )
+
+        tick_result = None
+        if run_tick == 1:
+            tick_result = run_dashboard_snapshot_archive_tick()
+        status = assess_dashboard_snapshot_archive_status(db.session)
+        return j(
+            {
+                "endpoint": "/dev/dashboard-snapshot-archive",
+                "read_only": run_tick != 1,
+                **status,
+                "tick_result": tick_result,
+            }
+        )
+    except Exception as exc:  # noqa: BLE001
+        db.session.rollback()
+        return j({"ok": False, "error": str(exc)}, 500)
+
+
 @router.get("/dev/customer-movement-snapshot")
 def dev_customer_movement_snapshot(
     recovery_key: str = Query("", max_length=512),
