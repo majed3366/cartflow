@@ -303,6 +303,57 @@ def dev_recovery_truth(recovery_key: str = Query("", max_length=512)) -> Any:
         return j({"ok": False, "error": str(exc)}, 500)
 
 
+@router.get("/dev/data-growth-measurement")
+def dev_data_growth_measurement() -> Any:
+    import main as _main  # noqa: PLC0415
+
+    """
+    Read-only platform data growth measurement (dev/admin diagnostic).
+
+    Count metadata only — no snapshot payloads, no PII.
+    """
+    try:
+        _main._ensure_cartflow_api_db_warmed()
+        from services.data_growth_measurement_v1 import (  # noqa: PLC0415
+            MEASUREMENT_WALL_BUDGET_MS,
+            build_data_growth_measurement_report,
+        )
+
+        report = build_data_growth_measurement_report(db.session)
+        return j(
+            {
+                "endpoint": "/dev/data-growth-measurement",
+                "read_only": True,
+                "wall_budget_ms": MEASUREMENT_WALL_BUDGET_MS,
+                **report,
+            }
+        )
+    except Exception as exc:  # noqa: BLE001
+        db.session.rollback()
+        return j({"ok": False, "error": str(exc)}, 500)
+
+
+@router.get("/dev/customer-movement-snapshot")
+def dev_customer_movement_snapshot(
+    recovery_key: str = Query("", max_length=512),
+) -> Any:
+    import main as _main  # noqa: PLC0415
+
+    """Read-only movement snapshot for one recovery_key (shadow Phase 1)."""
+    rk = (recovery_key or "").strip()
+    if not rk:
+        return j({"ok": False, "error": "recovery_key_required"}, 400)
+    try:
+        _main._ensure_cartflow_api_db_warmed()
+        from services.customer_movement_snapshot_v1 import diagnose_movement_snapshot
+
+        diag = diagnose_movement_snapshot(rk)
+        return j({"ok": True, **diag})
+    except Exception as exc:  # noqa: BLE001
+        db.session.rollback()
+        return j({"ok": False, "error": str(exc)}, 500)
+
+
 @router.get("/dev/attempt-2-trace")
 def dev_attempt2_trace(recovery_key: str = Query("", max_length=512)) -> Any:
     import main as _main  # noqa: PLC0415
