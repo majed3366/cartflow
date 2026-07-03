@@ -16,7 +16,6 @@ from models import (
     AbandonedCart,
     CartRecoveryLog,
     DashboardSnapshot,
-    MovementSnapshot,
     PurchaseTruthRecord,
     RecoverySchedule,
     RecoveryTruthTimelineEvent,
@@ -654,13 +653,26 @@ def archive_readiness_ranking(
     return candidates
 
 
-def build_data_growth_measurement_report(db_session: Any) -> dict[str, Any]:
-    """Full read-only measurement report."""
-    import time
+def _movement_snapshot_model() -> Any | None:
+    try:
+        import models as models_module
 
-    t0 = time.perf_counter()
-    now = _utc_now()
-    table_specs = [
+        return getattr(models_module, "MovementSnapshot", None)
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _table_exists(db_session: Any, table_name: str) -> bool:
+    try:
+        from sqlalchemy import inspect as sa_inspect
+
+        return table_name in sa_inspect(db_session.bind).get_table_names()
+    except Exception:  # noqa: BLE001
+        return True
+
+
+def _table_specs_for_measurement(db_session: Any) -> list[tuple[str, Any, Any]]:
+    specs: list[tuple[str, Any, Any]] = [
         ("abandoned_carts", AbandonedCart, AbandonedCart.first_seen_at),
         ("cart_recovery_logs", CartRecoveryLog, CartRecoveryLog.created_at),
         (
@@ -670,10 +682,25 @@ def build_data_growth_measurement_report(db_session: Any) -> dict[str, Any]:
         ),
         ("recovery_schedules", RecoverySchedule, RecoverySchedule.created_at),
         ("dashboard_snapshots", DashboardSnapshot, DashboardSnapshot.created_at),
-        ("movement_snapshots", MovementSnapshot, MovementSnapshot.created_at),
         ("purchase_truth_records", PurchaseTruthRecord, PurchaseTruthRecord.created_at),
         ("stores", Store, Store.created_at),
     ]
+    ms_model = _movement_snapshot_model()
+    if ms_model is not None and _table_exists(db_session, "movement_snapshots"):
+        specs.insert(6, ("movement_snapshots", ms_model, ms_model.created_at))
+    return specs
+
+
+def build_data_growth_measurement_report(db_session: Any) -> dict[str, Any]:
+    """Full read-only measurement report."""
+    import time
+
+    t0 = time.perf_counter()
+    now = _utc_now()
+    table_specs = _table_specs_for_measurement(db_session)
+    skipped_tables: list[str] = []
+    if _movement_snapshot_model() is None or not _table_exists(db_session, "movement_snapshots"):
+        skipped_tables.append("movement_snapshots")
 
     tables = [
         assess_table_size(
@@ -718,6 +745,7 @@ def build_data_growth_measurement_report(db_session: Any) -> dict[str, Any]:
         "measurement_partial": partial,
         "database_dialect": dialect,
         "growth_risk_score": growth_risk_score,
+        "tables_skipped": skipped_tables,
         "tables": [t.to_dict() for t in tables],
         "cf_behavioral": cf_behavioral,
         "dashboard_snapshot_accumulation": snapshot_acc,
