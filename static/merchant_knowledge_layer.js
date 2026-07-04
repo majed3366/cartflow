@@ -75,6 +75,8 @@
     insufficient: "غير كافٍ",
   };
 
+  var lastEvidenceRegistry = null;
+
   function renderKnowledgeProofMeta(ins) {
     var conf = (ins && ins.confidence) || "insufficient";
     var confAr = PROOF_CONFIDENCE_AR[String(conf).toLowerCase()] || conf;
@@ -88,13 +90,14 @@
     );
   }
 
-  var KNOWLEDGE_PROOF_SOURCE_AR =
-    "مصدر الدليل: بيانات نشاط متجرك في CartFlow";
-
   function renderKnowledgeProofSourceNote() {
+    var reg = lastEvidenceRegistry;
+    var text =
+      (reg && (reg.section_source_ar || reg.section_label_ar)) || "";
+    if (!text) return "";
     return (
       '<p class="ma-knowledge-proof-source" aria-label="مصدر الدليل">' +
-      esc(KNOWLEDGE_PROOF_SOURCE_AR) +
+      esc(text) +
       "</p>"
     );
   }
@@ -461,6 +464,9 @@
     var root = byId("ma-knowledge-root");
     var host = byId("ma-knowledge-body");
     if (!root || !host) return;
+
+    lastEvidenceRegistry =
+      (payload && payload.merchant_evidence_registry_v1) || null;
 
     if (!payload || !payload.ok || !payload.insights) {
       renderEmptyState(host);

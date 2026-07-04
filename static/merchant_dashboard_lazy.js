@@ -2817,23 +2817,6 @@
     failed: "تعذّر",
   };
 
-  function merchantProofSourceDisplay(raw) {
-    var s = String(raw || "").trim();
-    if (!s) return "—";
-    s = s.replace(/\s*\([^)]*\)\s*/g, " ").replace(/\s+/g, " ").trim();
-    return s || "—";
-  }
-
-  function merchantProofWhyDisplay(raw) {
-    var s = String(raw || "").trim();
-    if (!s) return "—";
-    return s
-      .replace(/\bPurchase Truth\b/g, "تأكيد الشراء")
-      .replace(/\bRecovery Truth\b/g, "سجل الاسترجاع")
-      .replace(/\bLifecycle Truth\b/g, "مسار العميل")
-      .replace(/\bProvider Truth\b/g, "حالة الرسائل");
-  }
-
   function merchantProofSurfaceHtml(mc) {
     var ps = mc && mc.merchant_proof_surface_v1;
     if (!ps || ps.version !== "v1") return "";
@@ -2842,13 +2825,13 @@
       '<div class="recovery-truth ma-proof-surface-v1" aria-label="دليل CartFlow">' +
       '<div class="recovery-truth-line ma-proof-headline">' +
       "<strong>لماذا نعرف؟</strong> " +
-      esc(merchantProofWhyDisplay(ps.why_we_know_ar)) +
+      esc(ps.why_we_know_ar || "—") +
       "</div>" +
       '<div class="recovery-truth-line ma-proof-meta">' +
       "<strong>الثقة:</strong> " +
       esc(ps.confidence_ar || ps.confidence || "غير معروف") +
       " · <strong>المصدر:</strong> " +
-      esc(merchantProofSourceDisplay(ps.evidence_source_ar)) +
+      esc(ps.evidence_label_ar || ps.evidence_source_ar || "—") +
       "</div>";
     if (steps.length) {
       h += '<div class="ma-proof-steps" role="list" aria-label="مسار الاسترجاع">';

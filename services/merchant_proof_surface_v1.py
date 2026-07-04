@@ -41,13 +41,7 @@ EVIDENCE_PURCHASE = "purchase_truth"
 EVIDENCE_PROVIDER = "provider_truth"
 EVIDENCE_REASON = "reason_capture"
 
-EVIDENCE_SOURCE_AR = {
-    EVIDENCE_LIFECYCLE: "حالة دورة العميل (Lifecycle Truth)",
-    EVIDENCE_RECOVERY: "سجل الاسترجاع (Recovery Truth)",
-    EVIDENCE_PURCHASE: "تأكيد الشراء (Purchase Truth)",
-    EVIDENCE_PROVIDER: "حالة التسليم (Provider Truth)",
-    EVIDENCE_REASON: "سبب التردد المُسجَّل",
-}
+# Tier-0 keys — merchant labels resolved via merchant_evidence_registry_v1
 
 _ACCEPTANCE_LOGS = frozenset({"sent_real", "mock_sent"})
 _STOP_LOGS = frozenset(
@@ -103,7 +97,9 @@ def _step(
     evidence_type: str,
     note_ar: str = "",
 ) -> dict[str, Any]:
-    return {
+    from services.merchant_evidence_registry_v1 import enrich_step_evidence_fields  # noqa: PLC0415
+
+    step = {
         "key": key,
         "label_ar": STEP_LABEL_AR.get(key, key),
         "state": state,
@@ -112,6 +108,8 @@ def _step(
         "evidence_type": evidence_type,
         "note_ar": (note_ar or "").strip() or None,
     }
+    enrich_step_evidence_fields(step)
+    return step
 
 
 def _delivery_step_from_truth(
@@ -382,6 +380,13 @@ def build_merchant_proof_surface_v1(
     latest_log: Any = None,
 ) -> dict[str, Any]:
     """Compose merchant-visible proof metadata from existing row inputs."""
+    from services.merchant_evidence_registry_v1 import (  # noqa: PLC0415
+        EVIDENCE_CUSTOMER_RESPONSE,
+        EVIDENCE_PURCHASE_RECORD,
+        enrich_proof_evidence_fields,
+        merchant_evidence_label_ar,
+    )
+
     steps = build_recovery_proof_steps(
         purchase_truth=purchase_truth,
         log_statuses=log_statuses,
@@ -409,9 +414,9 @@ def build_merchant_proof_surface_v1(
     if lc_label := (customer_lifecycle_state or "").strip():
         why_parts.append(f"حالة المسار: {lc_label}")
     if (reason_tag or "").strip():
-        why_parts.append("سبب التردد مسجّل")
+        why_parts.append(merchant_evidence_label_ar(EVIDENCE_CUSTOMER_RESPONSE))
     if purchase_truth:
-        why_parts.append("Purchase Truth")
+        why_parts.append(merchant_evidence_label_ar(EVIDENCE_PURCHASE_RECORD))
     if any(s.get("state") == _STATE_DONE for s in steps if s.get("key") == _STEP_MESSAGE_ACCEPTED):
         why_parts.append("سجل إرسال مقبول")
     why_we_know = " — ".join(why_parts) if why_parts else "بيانات محدودة — الثقة منخفضة"
@@ -420,20 +425,19 @@ def build_merchant_proof_surface_v1(
     if domain == DOMAIN_RECOVERY:
         evidence_type = EVIDENCE_RECOVERY if not purchase_truth else EVIDENCE_PURCHASE
 
-    return {
+    bundle: dict[str, Any] = {
         "version": PROOF_SURFACE_VERSION,
         "primary_domain": domain,
         "confidence": confidence,
         "confidence_ar": _confidence_ar(confidence),
         "evidence_type": evidence_type,
-        "evidence_source_ar": EVIDENCE_SOURCE_AR.get(
-            evidence_type, EVIDENCE_SOURCE_AR[EVIDENCE_LIFECYCLE]
-        ),
         "proof_source": rk[:512] if rk else None,
         "what_happened_ar": what_happened or None,
         "why_we_know_ar": why_we_know,
         "recovery_steps": steps,
     }
+    enrich_proof_evidence_fields(bundle, tier0_key=evidence_type)
+    return bundle
 
 
 def attach_merchant_proof_surface_v1(
