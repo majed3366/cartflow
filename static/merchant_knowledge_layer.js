@@ -79,11 +79,23 @@
     var conf = (ins && ins.confidence) || "insufficient";
     var confAr = PROOF_CONFIDENCE_AR[String(conf).toLowerCase()] || conf;
     return (
-      '<div class="ma-knowledge-proof-meta" aria-label="مستوى دليل الاستنتاج">' +
-      "<strong>مستوى الثقة:</strong> " +
+      '<div class="ma-knowledge-proof-meta" aria-label="مستوى الثقة">' +
+      '<span class="ma-knowledge-proof-conf-label">الثقة</span> ' +
+      '<span class="ma-knowledge-proof-conf-value">' +
       esc(confAr) +
-      " · <strong>نوع الدليل:</strong> Knowledge Layer" +
+      "</span>" +
       "</div>"
+    );
+  }
+
+  var KNOWLEDGE_PROOF_SOURCE_AR =
+    "مصدر الدليل: بيانات نشاط متجرك في CartFlow";
+
+  function renderKnowledgeProofSourceNote() {
+    return (
+      '<p class="ma-knowledge-proof-source" aria-label="مصدر الدليل">' +
+      esc(KNOWLEDGE_PROOF_SOURCE_AR) +
+      "</p>"
     );
   }
 
@@ -441,7 +453,8 @@
       cards.map(function (ins) {
         return renderOIACard(ins, ctx);
       }).join("") +
-      "</div>";
+      "</div>" +
+      renderKnowledgeProofSourceNote();
   }
 
   function applyKnowledgePayload(payload) {
