@@ -19578,6 +19578,22 @@ def _api_json_dashboard_summary(
     }
     out.update(refresh_state)
     try:
+        slug = (getattr(dash_store, "zid_store_id", None) or "").strip()
+        if slug:
+            from services.merchant_daily_brief_v1 import (  # noqa: PLC0415
+                build_merchant_daily_brief_api_payload,
+            )
+
+            with dashboard_summary_profile_span("build_merchant_daily_brief_api_payload"):
+                out["merchant_daily_brief_v1"] = build_merchant_daily_brief_api_payload(
+                    db.session,
+                    slug,
+                    dash_store,
+                )
+    except Exception as exc:  # noqa: BLE001
+        log.warning("summary merchant_daily_brief_v1: %s", exc)
+        db.session.rollback()
+    try:
         log.info(
             "[DASHBOARD COUNTS] section=summary waiting_badge=%s active=%s sent_total=%s refresh_token=%s",
             int(out.get("merchant_nav_badge_abandoned") or 0),

@@ -2092,6 +2092,14 @@
     applyHomeLayoutAfterSetup(d.merchant_activation, d.merchant_setup_experience);
     logSetupRenderDebug("summary_dom", probeSetupExperienceRoot());
 
+    if (window.maApplyDailyBriefPayload) {
+      if (d.merchant_daily_brief_v1 && d.merchant_daily_brief_v1.ok) {
+        window.maApplyDailyBriefPayload(d.merchant_daily_brief_v1);
+      } else if (window.maFetchDailyBrief) {
+        window.maFetchDailyBrief({ silent: true });
+      }
+    }
+
     setText("ma-kpi-abandoned", d.merchant_kpi_abandoned_fmt || "0");
     setText("ma-kpi-recovered", d.merchant_kpi_recovered_fmt || "0");
     setText("ma-kpi-wa", d.merchant_kpi_wa_sent_fmt || "0");

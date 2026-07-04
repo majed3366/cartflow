@@ -90,7 +90,11 @@
       aria-live="polite"
     >
       <div id="ma-daily-brief-body" class="ma-daily-brief-body">
-        <p class="ma-brief-loading">جاري تجهيز ملخص يومك…</p>
+        <header class="ma-brief-header ma-brief-header--shell">
+          <p class="ma-brief-greeting" id="ma-brief-greeting-shell">مرحباً</p>
+          <p class="ma-brief-today" id="ma-brief-today-shell">{{ merchant_ar_date_header | default('') }}</p>
+          <p class="ma-brief-attention-count ma-brief-attention-count--pending">CartFlow يتابع متجرك</p>
+        </header>
       </div>
     </section>
 

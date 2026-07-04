@@ -16,7 +16,7 @@
 
   function truncate(text, max) {
     var t = String(text || "").trim();
-    if (!t) return "—";
+    if (!t) return "";
     if (t.length <= max) return t;
     return t.slice(0, Math.max(0, max - 1)).trim() + "…";
   }
@@ -40,7 +40,8 @@
     }
   }
 
-  function itemCountLabel(count) {
+  function attentionCountLabel(count) {
+    if (count === 0) return "لا أمور تتطلب انتباهك الآن";
     if (count === 1) return "أمر واحد يستحق انتباهك";
     if (count === 2) return "أمران يستحقان انتباهك";
     if (count >= 3 && count <= 10) return count + " أمور تستحق انتباهك";
@@ -55,16 +56,27 @@
     return "observation";
   }
 
-  function headlineForItem(item) {
-    if (item.action_present && item.action_ar) return item.action_ar;
-    return item.what_ar || "—";
+  /** Action/problem first — never decision class as hero title. */
+  function primaryHeadline(item) {
+    if (item.action_present && item.action_ar) return String(item.action_ar).trim();
+    return String(item.what_ar || "").trim() || "—";
   }
 
-  function priorityLabelAr(severity) {
-    if (severity === "critical") return "عاجل";
-    if (severity === "suggested") return "مقترح";
-    if (severity === "attention") return "انتباه";
-    return "متابعة";
+  function secondaryMetaLine(item) {
+    var parts = [];
+    var cls = String(item.decision_class_label_ar || "").trim();
+    if (cls) parts.push(cls);
+    var conf = String(item.confidence_label_ar || item.confidence || "").trim();
+    if (conf) parts.push("ثقة " + conf);
+    var src = String(item.evidence_source_ar || "").trim();
+    if (src && src !== "—") parts.push(src);
+    return parts.join(" · ");
+  }
+
+  function queueCardMeta(item) {
+    var cls = String(item.decision_class_label_ar || "").trim() || "—";
+    var conf = String(item.confidence_label_ar || "").trim();
+    return conf ? cls + " · " + conf : cls;
   }
 
   function emptyStateHtml(payload) {
@@ -73,28 +85,43 @@
       '<div class="ma-brief-calm">' +
       '<div class="ma-brief-calm-icon" aria-hidden="true">✓</div>' +
       '<p class="ma-brief-calm-title">' +
-      esc(st.title_ar || "يوم هادئ") +
+      esc(st.title_ar || "CartFlow يتابع متجرك") +
       "</p>" +
       '<p class="ma-brief-calm-msg">' +
       esc(
         st.message_ar ||
-          "CartFlow يتابع الحالات الروتينية — لا يلزم تدخلك الآن"
+          "لا يلزم تدخلك الآن — نتابع الحالات الروتينية تلقائياً"
       ) +
       "</p>" +
       "</div>"
     );
   }
 
-  function renderEmptyState(host, payload) {
-    host.innerHTML = emptyStateHtml(payload);
+  function renderBriefingHeader(payload, count) {
+    var today = formatTodayAr(payload && payload.brief_date);
+    var shellToday = byId("ma-brief-today-shell");
+    if (!today && shellToday) today = String(shellToday.textContent || "").trim();
+    return (
+      '<header class="ma-brief-header">' +
+      '<p class="ma-brief-greeting">' +
+      esc(greetingAr()) +
+      "</p>" +
+      '<p class="ma-brief-today">' +
+      esc(today || "") +
+      "</p>" +
+      '<p class="ma-brief-attention-count">' +
+      esc(attentionCountLabel(count)) +
+      "</p>" +
+      "</header>"
+    );
   }
 
   function renderHeroItem(item) {
     var severity = severityOf(item);
-    var headline = truncate(headlineForItem(item), 72);
-    var context = truncate(item.what_ar, 64);
-    var why = truncate(item.why_ar, 56);
-    var showContext = context && context !== headline;
+    var headline = truncate(primaryHeadline(item), 84);
+    var why = truncate(item.why_ar, 52);
+    var meta = secondaryMetaLine(item);
+    var showWhy = why && why !== headline;
 
     var h =
       '<article class="ma-brief-hero" data-severity="' +
@@ -102,76 +129,30 @@
       '" aria-label="الأولوية الأولى">';
     h += '<div class="ma-brief-hero-rail" aria-hidden="true"></div>';
     h += '<div class="ma-brief-hero-body">';
-    h +=
-      '<div class="ma-brief-hero-top">' +
-      '<span class="ma-brief-hero-kicker">الأولوية الآن</span>' +
-      '<span class="ma-brief-priority-tag">' +
-      esc(priorityLabelAr(severity)) +
-      "</span>" +
-      "</div>";
     h += '<p class="ma-brief-hero-headline">' + esc(headline) + "</p>";
-    if (showContext) {
-      h += '<p class="ma-brief-hero-context">' + esc(context) + "</p>";
+    if (showWhy) {
+      h += '<p class="ma-brief-hero-why">' + esc(why) + "</p>";
     }
-    h +=
-      '<p class="ma-brief-hero-why">' +
-      esc(why) +
-      " · ثقة " +
-      esc(item.confidence_label_ar || item.confidence || "—") +
-      "</p>";
-    if (item.action_present && item.action_ar) {
-      h +=
-        '<div class="ma-brief-hero-action">' +
-        '<span class="ma-brief-action-arrow" aria-hidden="true">←</span>' +
-        esc(item.action_ar) +
-        "</div>";
+    if (meta) {
+      h += '<p class="ma-brief-hero-meta">' + esc(meta) + "</p>";
     }
     h += "</div></article>";
     return h;
   }
 
-  function renderCompactRow(item, index) {
+  function renderQueueCard(item) {
     var severity = severityOf(item);
-    var headline = truncate(headlineForItem(item), 48);
-    var why = truncate(item.why_ar, 40);
-
     return (
-      '<li class="ma-brief-row" data-severity="' +
+      '<li class="ma-brief-card" data-severity="' +
       esc(severity) +
       '">' +
-      '<span class="ma-brief-row-num" aria-hidden="true">' +
-      esc(String(index)) +
-      "</span>" +
-      '<div class="ma-brief-row-main">' +
-      '<p class="ma-brief-row-headline">' +
-      esc(headline) +
+      '<p class="ma-brief-card-headline">' +
+      esc(truncate(primaryHeadline(item), 44)) +
       "</p>" +
-      '<p class="ma-brief-row-sub">' +
-      esc(why) +
+      '<p class="ma-brief-card-meta">' +
+      esc(queueCardMeta(item)) +
       "</p>" +
-      "</div>" +
-      '<span class="ma-brief-row-priority" aria-label="' +
-      esc(priorityLabelAr(severity)) +
-      '"></span>' +
       "</li>"
-    );
-  }
-
-  function renderBriefingHeader(payload, count) {
-    var today = formatTodayAr(payload.brief_date);
-    var greet = greetingAr();
-    return (
-      '<header class="ma-brief-header">' +
-      '<p class="ma-brief-greeting">' +
-      esc(greet) +
-      "</p>" +
-      '<p class="ma-brief-today">' +
-      (today ? esc(today) : "") +
-      (count > 0
-        ? ' · <span class="ma-brief-count">' + esc(itemCountLabel(count)) + "</span>"
-        : "") +
-      "</p>" +
-      "</header>"
     );
   }
 
@@ -180,19 +161,18 @@
     var host = byId("ma-daily-brief-body");
     if (!root || !host) return;
 
-    root.classList.remove("ma-brief-has-items", "ma-brief-is-empty");
+    root.classList.remove("ma-brief-has-items", "ma-brief-is-empty", "ma-brief-is-loading");
 
     if (!payload || !payload.ok) {
       root.classList.add("ma-brief-is-empty");
-      renderEmptyState(host, null);
+      host.innerHTML = renderBriefingHeader(null, 0) + emptyStateHtml(null);
       return;
     }
 
     var items = payload.items || [];
     if (payload.empty || !items.length) {
       root.classList.add("ma-brief-is-empty");
-      host.innerHTML =
-        renderBriefingHeader(payload, 0) + emptyStateHtml(payload);
+      host.innerHTML = renderBriefingHeader(payload, 0) + emptyStateHtml(payload);
       return;
     }
 
@@ -203,60 +183,92 @@
     html += '<div class="ma-brief-focus">' + renderHeroItem(hero) + "</div>";
     if (rest.length) {
       html +=
-        '<ol class="ma-brief-queue" aria-label="باقي الأمور">' +
-        rest.map(function (item, i) {
-          return renderCompactRow(item, i + 2);
-        }).join("") +
-        "</ol>";
+        '<div class="ma-brief-queue-wrap">' +
+        '<p class="ma-brief-queue-label">باقي الأمور</p>' +
+        '<ul class="ma-brief-grid" aria-label="باقي الأمور">' +
+        rest.map(renderQueueCard).join("") +
+        "</ul></div>";
     }
     host.innerHTML = html;
   }
 
-  function fetchDailyBrief() {
+  function renderInstantShell() {
+    var root = byId("ma-daily-brief-root");
+    var host = byId("ma-daily-brief-body");
+    if (!root || !host || root.classList.contains("ma-brief-has-items")) return;
+    if (root.classList.contains("ma-brief-is-empty") && host.querySelector(".ma-brief-calm")) {
+      return;
+    }
+    root.classList.add("ma-brief-is-loading");
+    var todayEl = byId("ma-brief-today-shell");
+    var today = todayEl ? String(todayEl.textContent || "").trim() : "";
+    host.innerHTML =
+      '<header class="ma-brief-header">' +
+      '<p class="ma-brief-greeting">' +
+      esc(greetingAr()) +
+      "</p>" +
+      '<p class="ma-brief-today">' +
+      esc(today) +
+      "</p>" +
+      '<p class="ma-brief-attention-count ma-brief-attention-count--pending">' +
+      esc("جاري تجميع ما يستحق انتباهك…") +
+      "</p>" +
+      "</header>";
+  }
+
+  function fetchDailyBrief(options) {
+    var opts = options || {};
     var host = byId("ma-daily-brief-body");
     if (!host) return Promise.resolve();
 
-    host.innerHTML = '<p class="ma-brief-loading">جاري تجهيز ملخص يومك…</p>';
+    if (!opts.silent) {
+      renderInstantShell();
+    }
 
     var url = "/api/dashboard/daily-brief?_ts=" + Date.now();
     return fetch(url, { credentials: "same-origin", cache: "no-store" })
       .then(function (r) {
         if (!r.ok) {
-          renderEmptyState(host, null);
+          applyDailyBriefPayload(null);
           return null;
         }
         return r.json();
       })
       .then(function (d) {
         if (d) applyDailyBriefPayload(d);
+        return d;
       })
       .catch(function () {
-        renderEmptyState(host, null);
+        applyDailyBriefPayload(null);
       });
   }
 
-  function bootDailyBrief() {
+  function bootDailyBriefShell() {
     if (!document.body || document.body.getAttribute("data-cf-merchant-app") !== "1") {
       return;
     }
     if (!byId("ma-daily-brief-root")) return;
-    fetchDailyBrief();
+    var greet = byId("ma-brief-greeting-shell");
+    if (greet) greet.textContent = greetingAr();
   }
 
   window.maApplyDailyBriefPayload = applyDailyBriefPayload;
   window.maFetchDailyBrief = fetchDailyBrief;
+  window.maRenderDailyBriefShell = renderInstantShell;
 
   window.__maDailyBriefTestHooks = {
     greetingAr: greetingAr,
-    itemCountLabel: itemCountLabel,
-    headlineForItem: headlineForItem,
+    attentionCountLabel: attentionCountLabel,
+    primaryHeadline: primaryHeadline,
+    secondaryMetaLine: secondaryMetaLine,
     truncate: truncate,
     applyDailyBriefPayload: applyDailyBriefPayload,
+    renderInstantShell: renderInstantShell,
   };
 
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", bootDailyBrief);
+    document.addEventListener("DOMContentLoaded", bootDailyBriefShell);
   } else {
-    bootDailyBrief();
+    bootDailyBriefShell();
   }
 })();

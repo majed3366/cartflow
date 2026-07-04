@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Daily Brief IA Redesign V1 — Fixture</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/merchant_app.css">
+<style>
+  body { margin: 0; padding: 16px; font-family: "IBM Plex Sans Arabic", sans-serif; background: #f1f5f9; max-width: 900px; }
+  .fixture-label { font-size: 11px; color: #64748b; margin: 24px 0 8px; }
+  .fixture-row { display: grid; grid-template-columns: 1fr 390px; gap: 16px; align-items: start; }
+  @media (max-width: 800px) { .fixture-row { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body data-cf-merchant-app="1">
+
+<div class="fixture-row">
+  <div>
+    <p class="fixture-label">Desktop — hero + 2-col queue</p>
+    <section id="ma-daily-brief-root-a" class="ma-home-section ma-daily-brief-briefing">
+      <div id="ma-daily-brief-body-a" class="ma-daily-brief-body"></div>
+    </section>
+  </div>
+  <div>
+    <p class="fixture-label">Mobile viewport</p>
+    <section id="ma-daily-brief-root-b" class="ma-home-section ma-daily-brief-briefing">
+      <div id="ma-daily-brief-body-b" class="ma-daily-brief-body"></div>
+    </section>
+  </div>
+</div>
+
+<p class="fixture-label">Empty state</p>
+<section id="ma-daily-brief-root-c" class="ma-home-section ma-daily-brief-briefing">
+  <div id="ma-daily-brief-body-c" class="ma-daily-brief-body"></div>
+</section>
+
+<script src="/static/merchant_daily_brief.js"></script>
+<script>
+(function () {
+  var samplePayload = {
+    ok: true,
+    brief_date: "2026-07-04",
+    empty: false,
+    items: [
+      {
+        decision_id: "decision_contact_customer",
+        decision_class: "suggested_action",
+        decision_class_label_ar: "إجراء مقترح",
+        priority: 300,
+        what_ar: "سلة VIP بقيمة ٤٥٠ ريال تحتاج تدخلاً",
+        why_ar: "بيانات التواصل متوفرة — فرصة استرجاع يدوية",
+        action_ar: "تواصل مع العميل",
+        action_present: true,
+        confidence_label_ar: "عالية",
+        evidence_source_ar: "مسار العميل"
+      },
+      {
+        decision_id: "decision_fix_channel",
+        decision_class: "critical_action",
+        decision_class_label_ar: "إجراء عاجل",
+        priority: 400,
+        what_ar: "فشل إرسال رسالة الاسترجاع",
+        why_ar: "يلزم إصلاح قناة واتساب",
+        action_ar: "إصلاح قناة التواصل",
+        action_present: true,
+        confidence_label_ar: "عالية"
+      },
+      {
+        decision_id: "decision_obtain_contact",
+        decision_class: "needs_attention",
+        decision_class_label_ar: "يحتاج انتباه",
+        priority: 200,
+        what_ar: "سلة بانتظار رقم العميل",
+        why_ar: "لا يمكن متابعة الاسترجاع بدون رقم",
+        action_ar: "",
+        action_present: false,
+        confidence_label_ar: "متوسطة"
+      },
+      {
+        decision_id: "decision_monitor",
+        decision_class: "observation",
+        decision_class_label_ar: "ملاحظة",
+        priority: 100,
+        what_ar: "عاد العميل للموقع",
+        why_ar: "راقب فرصة الشراء",
+        action_ar: "مراقبة العميل",
+        action_present: true,
+        confidence_label_ar: "متوسطة"
+      }
+    ],
+    empty_state_ar: {
+      title_ar: "CartFlow يتابع متجرك",
+      message_ar: "لا يلزم تدخلك الآن"
+    }
+  };
+
+  var emptyPayload = { ok: true, brief_date: "2026-07-04", empty: true, items: [], empty_state_ar: samplePayload.empty_state_ar };
+  var hooks = window.__maDailyBriefTestHooks;
+  if (!hooks) return;
+
+  function paint(idRoot, idBody, payload) {
+    document.getElementById(idRoot).id = "ma-daily-brief-root";
+    document.getElementById(idBody).id = "ma-daily-brief-body";
+    hooks.applyDailyBriefPayload(payload);
+    document.getElementById("ma-daily-brief-root").id = idRoot;
+    document.getElementById("ma-daily-brief-body").id = idBody;
+  }
+
+  paint("ma-daily-brief-root-a", "ma-daily-brief-body-a", samplePayload);
+  paint("ma-daily-brief-root-b", "ma-daily-brief-body-b", samplePayload);
+  paint("ma-daily-brief-root-c", "ma-daily-brief-body-c", emptyPayload);
+})();
+</script>
+</body>
+</html>
