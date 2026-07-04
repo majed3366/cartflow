@@ -84,6 +84,21 @@
     <div id="ma-home-alerts-root" class="ma-home-alerts-band ma-home-section" hidden aria-live="polite"></div>
 
     <section
+      id="ma-daily-brief-root"
+      class="ma-home-section ma-daily-brief-section"
+      aria-labelledby="ma-daily-brief-title"
+      aria-live="polite"
+    >
+      <div class="ma-daily-brief-head">
+        <h2 class="ma-daily-brief-title" id="ma-daily-brief-title">ملخص يومك</h2>
+        <p class="ma-daily-brief-lead">أهم ما يستحق انتباهك اليوم — دقيقة واحدة تكفي.</p>
+      </div>
+      <div id="ma-daily-brief-body" class="ma-daily-brief-body">
+        <p class="ma-daily-brief-loading">جاري تجهيز ملخص يومك…</p>
+      </div>
+    </section>
+
+    <section
       id="ma-knowledge-root"
       class="ma-home-section ma-home-section-knowledge ma-knowledge-section"
       aria-labelledby="ma-knowledge-title"
@@ -1009,6 +1024,7 @@
 </div><!-- /.ma-dashboard-frame -->
 
 <script defer src="/static/merchant_vip_automation_ui.js"></script>
+<script defer src="/static/merchant_daily_brief.js?v={{ merchant_setup_render_build | default('unknown') }}"></script>
 <script defer src="/static/merchant_knowledge_layer.js?v={{ merchant_setup_render_build | default('unknown') }}"></script>
 <script defer src="/static/merchant_dashboard_lazy.js?v={{ merchant_setup_render_build | default('unknown') }}"></script>
 <script defer src="/static/merchant_whatsapp_settings.js"></script>

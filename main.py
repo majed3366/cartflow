@@ -252,6 +252,7 @@ from models import (  # noqa: E402
 )
 from routes.cartflow import router as cartflow_router  # noqa: E402
 from routes.knowledge import router as knowledge_router  # noqa: E402
+from routes.daily_brief import router as daily_brief_router  # noqa: E402
 from routes.product_data import router as product_data_router  # noqa: E402
 from services.product_data.product_data_line_snapshots_hook_v1 import (  # noqa: E402
     product_data_try_line_snapshots,
@@ -282,6 +283,7 @@ app.include_router(meta_whatsapp_webhook_router)
 app.include_router(admin_operations_router)
 app.include_router(cartflow_router)
 app.include_router(knowledge_router)
+app.include_router(daily_brief_router)
 app.include_router(product_data_router)
 app.include_router(cart_recovery_reason_router)
 app.include_router(demo_panel_router, prefix="/demo")
