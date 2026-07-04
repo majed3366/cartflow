@@ -68,6 +68,25 @@
   var SEVERITY_RANK = { critical: 4, warning: 3, notice: 2, info: 1 };
   var CONF_RANK = { high: 4, medium: 3, low: 2, insufficient: 1 };
 
+  var PROOF_CONFIDENCE_AR = {
+    high: "مرتفع",
+    medium: "متوسط",
+    low: "منخفض",
+    insufficient: "غير كافٍ",
+  };
+
+  function renderKnowledgeProofMeta(ins) {
+    var conf = (ins && ins.confidence) || "insufficient";
+    var confAr = PROOF_CONFIDENCE_AR[String(conf).toLowerCase()] || conf;
+    return (
+      '<div class="ma-knowledge-proof-meta" aria-label="مستوى دليل الاستنتاج">' +
+      "<strong>مستوى الثقة:</strong> " +
+      esc(confAr) +
+      " · <strong>نوع الدليل:</strong> Knowledge Layer" +
+      "</div>"
+    );
+  }
+
   var OIA_LABEL_OBSERVATION = "الملاحظة";
   var OIA_LABEL_IMPACT = "التأثير";
   var OIA_LABEL_ACTION = "الإجراء المقترح";
@@ -372,6 +391,7 @@
       renderOIABlock(OIA_LABEL_IMPACT, oia.impact) +
       renderOIABlock(OIA_LABEL_ACTION, oia.action) +
       "</div>" +
+      renderKnowledgeProofMeta(ins) +
       "</article>"
     );
   }

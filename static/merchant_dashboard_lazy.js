@@ -2808,6 +2808,53 @@
     );
   }
 
+  var PROOF_STEP_STATE_AR = {
+    done: "تم",
+    active: "جاري",
+    pending: "بانتظار",
+    skipped: "—",
+    unknown: "غير معروف",
+    failed: "تعذّر",
+  };
+
+  function merchantProofSurfaceHtml(mc) {
+    var ps = mc && mc.merchant_proof_surface_v1;
+    if (!ps || ps.version !== "v1") return "";
+    var steps = ps.recovery_steps || [];
+    var h =
+      '<div class="recovery-truth ma-proof-surface-v1" aria-label="دليل CartFlow">' +
+      '<div class="recovery-truth-line ma-proof-headline">' +
+      "<strong>لماذا نعرف؟</strong> " +
+      esc(ps.why_we_know_ar || "—") +
+      "</div>" +
+      '<div class="recovery-truth-line ma-proof-meta">' +
+      "<strong>الثقة:</strong> " +
+      esc(ps.confidence_ar || ps.confidence || "غير معروف") +
+      " · <strong>المصدر:</strong> " +
+      esc(ps.evidence_source_ar || "—") +
+      "</div>";
+    if (steps.length) {
+      h += '<div class="ma-proof-steps" role="list" aria-label="مسار الاسترجاع">';
+      for (var i = 0; i < steps.length; i++) {
+        var st = steps[i];
+        if (!st || !st.label_ar) continue;
+        var stLabel = PROOF_STEP_STATE_AR[String(st.state || "").trim()] || st.state || "";
+        h +=
+          '<div class="ma-proof-step recovery-truth-line" role="listitem">' +
+          "<strong>" +
+          esc(st.label_ar) +
+          ":</strong> " +
+          esc(stLabel);
+        if (st.note_ar) {
+          h += ' <span class="recovery-truth-muted">(' + esc(st.note_ar) + ")</span>";
+        }
+        h += "</div>";
+      }
+      h += "</div>";
+    }
+    return h + "</div>";
+  }
+
   function merchantDecisionSuggestedActionHtml(mc) {
     if (!mc) return "";
     var key = String(mc.merchant_decision_key || "").trim();
@@ -2867,6 +2914,7 @@
     }
     h += merchantDecisionSuggestedActionHtml(mc);
     h += continuationDecisionExplanationHtml(mc);
+    h += merchantProofSurfaceHtml(mc);
     h += cartLifecycleActionBtnHtml(mc);
     return h + "</div>";
   }

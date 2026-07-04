@@ -16536,6 +16536,28 @@ def _merchant_normal_recovery_light_payload_merchant_batch(
     except Exception:  # noqa: BLE001
         pass
     try:
+        from services.merchant_proof_surface_v1 import (  # noqa: PLC0415
+            attach_merchant_proof_surface_v1,
+        )
+
+        attach_merchant_proof_surface_v1(
+            out,
+            recovery_key=str(out.get("recovery_key") or rk_pre or ""),
+            purchase_truth=bool(purchased_flag),
+            customer_lifecycle_state=str(out.get("customer_lifecycle_state") or ""),
+            customer_lifecycle_what_happened_ar=str(
+                out.get("customer_lifecycle_what_happened_ar") or ""
+            ),
+            log_statuses=log_u_lc,
+            next_attempt_due_at=out.get("next_attempt_due_at"),
+            sent_count=sent_ct_lc,
+            reason_tag=str(rtag or ""),
+            merchant_decision_key=str(out.get("merchant_decision_key") or ""),
+            latest_log=batch.latest_log_by_ac.get(aid0),
+        )
+    except Exception:  # noqa: BLE001
+        pass
+    try:
         from services.dashboard_normal_carts_perf_v1 import (  # noqa: PLC0415
             dashboard_normal_carts_perf_active,
             dashboard_normal_carts_perf_peek_queries,
