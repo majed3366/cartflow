@@ -1011,6 +1011,67 @@ nav.ma-sidebar-nav {
   color: #15803d;
 }
 
+.ma-brief-achievements {
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+}
+
+.ma-brief-achievements-label {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #166534;
+}
+
+.ma-brief-achievements-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ma-brief-achievement-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.ma-brief-achievement-check {
+  flex: 0 0 auto;
+  color: #16a34a;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.ma-brief-achievement-text {
+  font-size: 13px;
+  line-height: 1.45;
+  color: #14532d;
+}
+
+.ma-brief-attention-label {
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #9a3412;
+}
+
+.ma-brief-calm--inline {
+  margin-top: 8px;
+  padding: 10px 12px;
+  background: #f8fafc;
+  border-color: #e2e8f0;
+}
+
+.ma-brief-calm--inline .ma-brief-calm-msg {
+  color: #475569;
+}
+
 @media (max-width: 640px) {
   .ma-brief-greeting {
     font-size: 20px;

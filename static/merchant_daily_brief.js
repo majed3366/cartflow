@@ -56,8 +56,10 @@
     return "observation";
   }
 
-  /** Action/problem first — never decision class as hero title. */
+  /** Action/problem first — aggregated headline when present. */
   function primaryHeadline(item) {
+    var headline = String((item && item.headline_ar) || "").trim();
+    if (headline) return headline;
     if (item.action_present && item.action_ar) return String(item.action_ar).trim();
     return String(item.what_ar || "").trim() || "—";
   }
@@ -116,6 +118,33 @@
     );
   }
 
+  function renderAchievementsSection(achievements) {
+    if (!achievements || !achievements.length) return "";
+    var rows = achievements
+      .map(function (item) {
+        return (
+          '<li class="ma-brief-achievement-row">' +
+          '<span class="ma-brief-achievement-check" aria-hidden="true">✓</span>' +
+          '<span class="ma-brief-achievement-text">' +
+          esc(truncate(primaryHeadline(item), 96)) +
+          "</span>" +
+          "</li>"
+        );
+      })
+      .join("");
+    return (
+      '<section class="ma-brief-achievements" aria-label="ما أنجزه CartFlow">' +
+      '<p class="ma-brief-achievements-label">بينما كنت بعيداً…</p>' +
+      '<ul class="ma-brief-achievements-list">' +
+      rows +
+      "</ul></section>"
+    );
+  }
+
+  function renderAttentionSectionLabel() {
+    return '<p class="ma-brief-attention-label">اليوم يحتاج انتباهك</p>';
+  }
+
   function renderHeroItem(item) {
     var severity = severityOf(item);
     var headline = truncate(primaryHeadline(item), 84);
@@ -169,25 +198,39 @@
       return;
     }
 
-    var items = payload.items || [];
-    if (payload.empty || !items.length) {
+    var achievements = payload.achievements || [];
+    var items = payload.attention_items || payload.items || [];
+    var attentionCount = items.length;
+
+    if (payload.empty || (!achievements.length && !items.length)) {
       root.classList.add("ma-brief-is-empty");
       host.innerHTML = renderBriefingHeader(payload, 0) + emptyStateHtml(payload);
       return;
     }
 
     root.classList.add("ma-brief-has-items");
-    var hero = items[0];
-    var rest = items.slice(1);
-    var html = renderBriefingHeader(payload, items.length);
-    html += '<div class="ma-brief-focus">' + renderHeroItem(hero) + "</div>";
-    if (rest.length) {
+    var html = renderBriefingHeader(payload, attentionCount);
+    html += renderAchievementsSection(achievements);
+
+    if (items.length) {
+      html += renderAttentionSectionLabel();
+      var hero = items[0];
+      var rest = items.slice(1);
+      html += '<div class="ma-brief-focus">' + renderHeroItem(hero) + "</div>";
+      if (rest.length) {
+        html +=
+          '<div class="ma-brief-queue-wrap">' +
+          '<p class="ma-brief-queue-label">باقي الأمور</p>' +
+          '<ul class="ma-brief-grid" aria-label="باقي الأمور">' +
+          rest.map(renderQueueCard).join("") +
+          "</ul></div>";
+      }
+    } else if (achievements.length) {
       html +=
-        '<div class="ma-brief-queue-wrap">' +
-        '<p class="ma-brief-queue-label">باقي الأمور</p>' +
-        '<ul class="ma-brief-grid" aria-label="باقي الأمور">' +
-        rest.map(renderQueueCard).join("") +
-        "</ul></div>";
+        '<div class="ma-brief-calm ma-brief-calm--inline">' +
+        '<p class="ma-brief-calm-msg">' +
+        esc("لا أمور تتطلب انتباهك الآن") +
+        "</p></div>";
     }
     host.innerHTML = html;
   }
@@ -262,6 +305,7 @@
     primaryHeadline: primaryHeadline,
     secondaryMetaLine: secondaryMetaLine,
     truncate: truncate,
+    renderAchievementsSection: renderAchievementsSection,
     applyDailyBriefPayload: applyDailyBriefPayload,
     renderInstantShell: renderInstantShell,
   };

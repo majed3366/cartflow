@@ -315,7 +315,15 @@ def build_merchant_daily_brief_api_payload(
     except (OSError, TypeError, ValueError, ImportError):
         pass
 
-    brief = compose_merchant_daily_brief_v1(decision_bundles=bundles)
+    try:
+        from services.merchant_daily_brief_composer_v2 import (  # noqa: PLC0415
+            compose_merchant_daily_brief_v2,
+        )
+    except ImportError:
+        compose_merchant_daily_brief_v2 = None  # type: ignore[misc, assignment]
+
+    brief_fn = compose_merchant_daily_brief_v2 or compose_merchant_daily_brief_v1
+    brief = brief_fn(decision_bundles=bundles)
     brief["ok"] = True
     brief["generated_at"] = (
         datetime.now(timezone.utc).replace(microsecond=0).isoformat()
