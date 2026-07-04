@@ -236,7 +236,9 @@ def read_dashboard_snapshot_payload(
     return payload
 
 
-def enforce_route_budget(payload: dict[str, Any], *, wall0: float) -> dict[str, Any]:
+def enforce_route_budget(
+    payload: dict[str, Any], *, wall0: float, endpoint: str = ""
+) -> dict[str, Any]:
     elapsed_ms = (time.perf_counter() - wall0) * 1000.0
     max_ms = _route_budget_ms()
     snap = dict(payload.get("_snapshot") or {})
@@ -251,7 +253,43 @@ def enforce_route_budget(payload: dict[str, Any], *, wall0: float) -> dict[str, 
             reason=f"route_budget_exceeded_{round(elapsed_ms)}ms",
         )
     payload["_snapshot"] = snap
+    _record_read_observability(payload, endpoint=endpoint, route_ms=elapsed_ms, snap=snap)
     return payload
+
+
+def _record_read_observability(
+    payload: dict[str, Any],
+    *,
+    endpoint: str,
+    route_ms: float,
+    snap: dict[str, Any],
+) -> None:
+    """
+    Feed one production read-path observation into the read-model observability
+    layer (Dashboard Read Model Observability V1 — I1/I2/I5). Fully defensive:
+    observability must never change or break a dashboard response.
+    """
+    try:
+        from services.dashboard_read_observability_v1 import (  # noqa: PLC0415
+            classify_read_branch,
+            classify_read_path,
+            record_dashboard_read_sample,
+        )
+
+        record_dashboard_read_sample(
+            endpoint=endpoint or "",
+            route_ms=route_ms,
+            snapshot_read_ms=snap.get("read_ms"),
+            read_path=classify_read_path(endpoint or ""),
+            branch=classify_read_branch(snap),
+            hot_slice_ms=payload.get("hot_slice_ms"),
+            hot_slice_queries=payload.get("hot_slice_queries"),
+            hot_slice_degraded=bool(payload.get("hot_slice_degraded")),
+            hot_slice_reason=str(payload.get("hot_slice_reason") or ""),
+            data_freshness=payload.get("data_freshness"),
+        )
+    except Exception:  # noqa: BLE001
+        pass
 
 
 def _degraded_widget_panel_payload(*, reason: str) -> dict[str, Any]:
@@ -304,7 +342,7 @@ def build_summary_from_snapshot(
             t0=wall0,
             endpoint="summary",
         )
-        return enforce_route_budget(body, wall0=wall0)
+        return enforce_route_budget(body, wall0=wall0, endpoint="summary")
 
 
 def build_normal_carts_from_snapshot(
@@ -380,7 +418,7 @@ def build_normal_carts_from_snapshot(
             )
         except Exception:  # noqa: BLE001
             pass
-        return enforce_route_budget(body, wall0=wall0)
+        return enforce_route_budget(body, wall0=wall0, endpoint="normal-carts")
 
 
 def resolve_merchant_store_slug_for_snapshot() -> str:
@@ -420,7 +458,7 @@ def build_refresh_state_from_snapshot(
             t0=wall0,
             endpoint="refresh-state",
         )
-        return enforce_route_budget(body, wall0=wall0)
+        return enforce_route_budget(body, wall0=wall0, endpoint="refresh-state")
 
 
 def build_widget_panel_from_snapshot(
@@ -437,7 +475,7 @@ def build_widget_panel_from_snapshot(
             t0=wall0,
             endpoint="widget-panel",
         )
-        return enforce_route_budget(body, wall0=wall0)
+        return enforce_route_budget(body, wall0=wall0, endpoint="widget-panel")
 
 
 def build_store_connection_from_snapshot(
@@ -454,7 +492,7 @@ def build_store_connection_from_snapshot(
             t0=wall0,
             endpoint="store-connection",
         )
-        return enforce_route_budget(body, wall0=wall0)
+        return enforce_route_budget(body, wall0=wall0, endpoint="store-connection")
 
 
 __all__ = [

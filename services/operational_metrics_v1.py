@@ -75,6 +75,7 @@ def _timing_sample_summary(samples: deque[float]) -> dict[str, Any]:
             "last_ms": None,
             "p50_ms": None,
             "p90_ms": None,
+            "p99_ms": None,
         }
     return {
         "sample_count": len(vals),
@@ -82,6 +83,7 @@ def _timing_sample_summary(samples: deque[float]) -> dict[str, Any]:
         "last_ms": round(vals[-1], 1),
         "p50_ms": _percentile(vals, 50),
         "p90_ms": _percentile(vals, 90),
+        "p99_ms": _percentile(vals, 99),
     }
 
 
@@ -517,6 +519,18 @@ def collect_provider_reliability_metrics() -> dict[str, Any]:
         return {"status": STATUS_UNKNOWN, "error": type(exc).__name__}
 
 
+def collect_dashboard_read_observability_metrics() -> dict[str, Any]:
+    """Dashboard Read Model Observability V1 — I1/I2/I5 read-model (per-request)."""
+    try:
+        from services.dashboard_read_observability_v1 import (
+            build_dashboard_read_observability_report,
+        )
+
+        return build_dashboard_read_observability_report()
+    except Exception as exc:  # noqa: BLE001
+        return {"error": type(exc).__name__}
+
+
 def collect_dashboard_timing_metrics() -> dict[str, Any]:
     with _sample_lock:
         route = _timing_sample_summary(_route_ms_samples)
@@ -524,6 +538,22 @@ def collect_dashboard_timing_metrics() -> dict[str, Any]:
         hot = _timing_sample_summary(_hot_slice_ms_samples)
 
     from services.dashboard_hot_slice_v1 import HOT_SLICE_MAX_QUERIES, HOT_SLICE_MAX_ROWS
+
+    # Prefer real production per-request latency/branch data (I1/I2/I5) when available;
+    # fall back to the legacy in-process buffer summary otherwise. Both are fed by the
+    # same production hook, so route_ms below is authoritative for status classification.
+    read_observability = collect_dashboard_read_observability_metrics()
+    prod_latency = read_observability.get("latency") if isinstance(read_observability, dict) else None
+    if isinstance(prod_latency, dict):
+        prod_route = prod_latency.get("route_ms")
+        if isinstance(prod_route, dict) and int(prod_route.get("sample_count") or 0) > 0:
+            route = prod_route
+        prod_snap = prod_latency.get("snapshot_read_ms")
+        if isinstance(prod_snap, dict) and int(prod_snap.get("sample_count") or 0) > 0:
+            snap = prod_snap
+        prod_hot = prod_latency.get("hot_slice_ms")
+        if isinstance(prod_hot, dict) and int(prod_hot.get("sample_count") or 0) > 0:
+            hot = prod_hot
 
     return {
         "route_ms": route,
@@ -533,7 +563,147 @@ def collect_dashboard_timing_metrics() -> dict[str, Any]:
         "hot_slice_queries_cap": HOT_SLICE_MAX_QUERIES,
         "route_ms_warning_threshold": 200.0,
         "route_ms_critical_threshold": 500.0,
+        "read_observability": read_observability,
     }
+
+
+def _builder_eligible_store_count(db_session: Any) -> Optional[int]:
+    """Bounded count of active merchant-linked stores (matches builder base filter).
+
+    Uses the same primary predicate the builder uses to enumerate stores. This is an
+    upper-bound approximation of true eligibility (placeholder/test-prefix stores are
+    excluded by the builder in Python), which is negligible in production.
+    """
+    try:
+        from models import Store
+
+        return int(
+            db_session.query(func.count(Store.id))
+            .filter(
+                Store.zid_store_id.isnot(None),
+                Store.merchant_user_id.isnot(None),
+                Store.is_active.is_(True),
+            )
+            .scalar()
+            or 0
+        )
+    except SQLAlchemyError:
+        db_session.rollback()
+        return None
+
+
+def assess_builder_coverage(
+    db_session: Any,
+    *,
+    deadline_started: Optional[float] = None,
+    deadline_ms: float = METRICS_WALL_BUDGET_MS,
+) -> dict[str, Any]:
+    """
+    Dashboard Read Model Observability V1 — I3 builder coverage / lag (visibility only).
+
+    Bounded, DB-side aggregate queries only (no O(stores) app-side materialization),
+    plus in-process loop state. Read-only; never mutates state or changes the builder.
+    """
+    from services.dashboard_snapshot_v1 import (
+        SNAPSHOT_TYPE_NORMAL_CARTS,
+        snapshot_builder_failsafe_seconds,
+    )
+
+    out: dict[str, Any] = {}
+    try:
+        loop = build_scheduler_snapshot_loop_status_safe()
+        interval_s = float(loop.get("snapshot_loop_interval_seconds") or 45.0)
+        stores_built_per_tick = loop.get("last_tick_stores_built")
+
+        from services.dashboard_snapshot_builder_v1 import snapshot_build_store_limit
+
+        per_tick_limit = int(snapshot_build_store_limit())
+
+        eligible = _builder_eligible_store_count(db_session)
+        if _deadline_expired(deadline_started or time.perf_counter(), deadline_ms):
+            return {
+                "partial": True,
+                "eligible_store_count": eligible,
+                "stores_per_tick_limit": per_tick_limit,
+                "builder_loop_interval_seconds": interval_s,
+                "stores_built_per_tick": stores_built_per_tick,
+            }
+
+        now = _utc_now()
+        failsafe_cutoff = now - timedelta(seconds=snapshot_builder_failsafe_seconds())
+
+        # Per-store freshest normal_carts snapshot, aggregated DB-side (bounded scalars).
+        subq = (
+            db_session.query(
+                DashboardSnapshot.store_slug.label("slug"),
+                func.max(DashboardSnapshot.generated_at).label("mg"),
+            )
+            .filter(DashboardSnapshot.snapshot_type == SNAPSHOT_TYPE_NORMAL_CARTS)
+            .group_by(DashboardSnapshot.store_slug)
+            .subquery()
+        )
+        built_store_count = int(
+            db_session.query(func.count()).select_from(subq).scalar() or 0
+        )
+        oldest_fresh = db_session.query(func.min(subq.c.mg)).scalar()
+        stale_built = int(
+            db_session.query(func.count())
+            .select_from(subq)
+            .filter(subq.c.mg < failsafe_cutoff)
+            .scalar()
+            or 0
+        )
+
+        builder_lag_seconds = None
+        if oldest_fresh is not None:
+            of = oldest_fresh
+            if of.tzinfo is None:
+                of = of.replace(tzinfo=timezone.utc)
+            builder_lag_seconds = int((now - of.astimezone(timezone.utc)).total_seconds())
+
+        stores_never_built = None
+        stores_waiting = None
+        builder_cycle_seconds = None
+        if eligible is not None:
+            stores_never_built = max(0, eligible - built_store_count)
+            stores_waiting = stale_built + stores_never_built
+            if per_tick_limit > 0:
+                ticks_for_full_coverage = -(-max(eligible, 1) // per_tick_limit)  # ceil div
+                builder_cycle_seconds = int(ticks_for_full_coverage * interval_s)
+
+        out = {
+            "eligible_store_count": eligible,
+            "built_store_count": built_store_count,
+            "stores_never_built": stores_never_built,
+            "stores_waiting_for_refresh": stores_waiting,
+            "stale_built_store_count": stale_built,
+            "stores_per_tick_limit": per_tick_limit,
+            "stores_built_per_tick": stores_built_per_tick,
+            "builder_loop_interval_seconds": interval_s,
+            "builder_cycle_seconds": builder_cycle_seconds,
+            "builder_lag_seconds": builder_lag_seconds,
+            "oldest_built_snapshot_at": _iso(oldest_fresh),
+            "failsafe_seconds": snapshot_builder_failsafe_seconds(),
+            "last_tick_at": loop.get("last_tick_at"),
+            "last_tick_stores_seen": loop.get("last_tick_stores_seen"),
+        }
+        return out
+    except SQLAlchemyError as exc:
+        db_session.rollback()
+        return {"error": "query_failed", "detail": type(exc).__name__}
+    except Exception as exc:  # noqa: BLE001
+        return {"error": type(exc).__name__}
+
+
+def build_scheduler_snapshot_loop_status_safe() -> dict[str, Any]:
+    try:
+        from services.scheduler_snapshot_loop_health_v1 import (
+            build_scheduler_snapshot_loop_status,
+        )
+
+        return build_scheduler_snapshot_loop_status()
+    except Exception:  # noqa: BLE001
+        return {}
 
 
 def collect_failure_markers(
@@ -596,6 +766,7 @@ def build_operational_metrics_report(db_session: Any) -> dict[str, Any]:
     scheduler = collect_scheduler_health()
     timing = collect_dashboard_timing_metrics()
     snapshot = assess_snapshot_health(db_session, deadline_started=t0)
+    builder_coverage = assess_builder_coverage(db_session, deadline_started=t0)
     snapshot_generation = collect_snapshot_generation_metrics()
     provider_reliability = collect_provider_reliability_metrics()
     archive = collect_archive_health(db_session)
@@ -623,7 +794,9 @@ def build_operational_metrics_report(db_session: Any) -> dict[str, Any]:
 
     elapsed_ms = round((time.perf_counter() - t0) * 1000.0, 2)
     partial = elapsed_ms >= METRICS_WALL_BUDGET_MS or bool(
-        snapshot.get("partial") or data_growth.get("partial")
+        snapshot.get("partial")
+        or data_growth.get("partial")
+        or builder_coverage.get("partial")
     )
 
     summary = {
@@ -653,6 +826,7 @@ def build_operational_metrics_report(db_session: Any) -> dict[str, Any]:
                 "data_freshness_seconds": snapshot.get("data_freshness_seconds"),
                 "snapshot_stale_flag": snapshot.get("snapshot_stale_flag"),
                 "normal_carts_stale_pct": snapshot.get("normal_carts_stale_pct"),
+                "builder_coverage": builder_coverage,
             },
             "scheduler": scheduler,
             "snapshot": snapshot,
@@ -889,6 +1063,106 @@ def list_metric_contracts() -> list[dict[str, Any]]:
             "warning_threshold": None,
             "critical_threshold": None,
         },
+        {
+            "name": "dashboard.read.route_p99_ms",
+            "owner": "dashboard_read_observability_v1",
+            "source": "production_read_path",
+            "unit": "ms",
+            "frequency": "per_request",
+            "acceptable_range": "0-200",
+            "warning_threshold": 200,
+            "critical_threshold": 500,
+        },
+        {
+            "name": "dashboard.read.read_path_distribution",
+            "owner": "dashboard_read_observability_v1",
+            "source": "production_read_path",
+            "unit": "percent",
+            "frequency": "per_request",
+            "acceptable_range": "snapshot/bounded_live dominate",
+            "warning_threshold": None,
+            "critical_threshold": None,
+        },
+        {
+            "name": "dashboard.read.branch_hit_rate",
+            "owner": "dashboard_read_observability_v1",
+            "source": "production_read_path",
+            "unit": "percent",
+            "frequency": "per_request",
+            "acceptable_range": "higher is better",
+            "warning_threshold": None,
+            "critical_threshold": None,
+        },
+        {
+            "name": "dashboard.hot_slice.degraded_rate",
+            "owner": "dashboard_read_observability_v1",
+            "source": "production_read_path",
+            "unit": "percent",
+            "frequency": "per_request",
+            "acceptable_range": "lower is better",
+            "warning_threshold": 5,
+            "critical_threshold": 20,
+        },
+        {
+            "name": "dashboard.hot_slice.timeout_rate",
+            "owner": "dashboard_read_observability_v1",
+            "source": "production_read_path",
+            "unit": "percent",
+            "frequency": "per_request",
+            "acceptable_range": "lower is better",
+            "warning_threshold": 5,
+            "critical_threshold": 20,
+        },
+        {
+            "name": "dashboard.hot_slice.limit_hit_rate",
+            "owner": "dashboard_read_observability_v1",
+            "source": "production_read_path",
+            "unit": "percent",
+            "frequency": "per_request",
+            "acceptable_range": "lower is better",
+            "warning_threshold": 5,
+            "critical_threshold": 20,
+        },
+        {
+            "name": "dashboard.builder.cycle_seconds",
+            "owner": "dashboard_snapshot_builder_v1",
+            "source": "derived_bounded_query",
+            "unit": "seconds",
+            "frequency": "on_demand",
+            "acceptable_range": "bounded by fleet size / per-tick rate",
+            "warning_threshold": None,
+            "critical_threshold": None,
+        },
+        {
+            "name": "dashboard.builder.lag_seconds",
+            "owner": "dashboard_snapshot_builder_v1",
+            "source": "derived_bounded_query",
+            "unit": "seconds",
+            "frequency": "on_demand",
+            "acceptable_range": "<= failsafe window",
+            "warning_threshold": None,
+            "critical_threshold": None,
+        },
+        {
+            "name": "dashboard.builder.stores_waiting_for_refresh",
+            "owner": "dashboard_snapshot_builder_v1",
+            "source": "derived_bounded_query",
+            "unit": "count",
+            "frequency": "on_demand",
+            "acceptable_range": "lower is better",
+            "warning_threshold": None,
+            "critical_threshold": None,
+        },
+        {
+            "name": "dashboard.builder.stores_built_per_tick",
+            "owner": "dashboard_snapshot_builder_v1",
+            "source": "scheduler_loop_tick",
+            "unit": "count",
+            "frequency": "per_tick",
+            "acceptable_range": ">=1 when due",
+            "warning_threshold": None,
+            "critical_threshold": None,
+        },
     ]
 
 
@@ -899,6 +1173,7 @@ __all__ = [
     "STATUS_HEALTHY",
     "STATUS_UNKNOWN",
     "STATUS_WARNING",
+    "assess_builder_coverage",
     "assess_snapshot_health",
     "build_operational_metrics_report",
     "classify_archive_status",
@@ -909,6 +1184,8 @@ __all__ = [
     "classify_snapshot_status",
     "clear_dashboard_timing_samples_for_tests",
     "collect_archive_health",
+    "collect_dashboard_read_observability_metrics",
+    "collect_dashboard_timing_metrics",
     "collect_data_growth_baseline",
     "collect_db_pressure",
     "collect_failure_markers",

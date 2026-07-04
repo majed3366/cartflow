@@ -84,8 +84,29 @@ def serve_enforced_snapshot_response(
     except Exception as exc:  # noqa: BLE001
         db.session.rollback()
         log.warning("enforced snapshot read failed path=%s slug=%s err=%s", path, slug, exc)
+        _record_snapshot_read_error_observability(path)
         degraded = degraded_builder(reason="snapshot_read_error")
         return {"ok": True, **degraded}
+
+
+def _record_snapshot_read_error_observability(path: str) -> None:
+    """Count the snapshot_read_error branch in the read-model observability layer.
+
+    Defensive: observability must never mask or replace the degraded response.
+    """
+    try:
+        from services.dashboard_read_observability_v1 import (  # noqa: PLC0415
+            BRANCH_SNAPSHOT_READ_ERROR,
+            record_dashboard_read_sample,
+        )
+
+        endpoint = (str(path or "").rstrip("/").rsplit("/", 1)[-1] or "unknown")[:64]
+        record_dashboard_read_sample(
+            endpoint=endpoint,
+            branch=BRANCH_SNAPSHOT_READ_ERROR,
+        )
+    except Exception:  # noqa: BLE001
+        pass
 
 
 __all__ = [
