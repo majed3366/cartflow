@@ -25,6 +25,7 @@ from services.dashboard_snapshot_v1 import (
     list_store_slugs_for_snapshot_build,
     upsert_dashboard_snapshot,
 )
+from services.dashboard_snapshot_change_v1 import write_dashboard_snapshot_guarded
 from services.db_pool_pressure_v1 import evaluate_db_pool_pressure, LEVEL_CRITICAL
 from services.db_session_lifecycle import scoped_db_session_begin, release_scoped_db_session
 
@@ -170,25 +171,38 @@ def build_store_dashboard_snapshots(
     slug = canonical_snapshot_store_slug(dash_store, store_slug=store_slug)
 
     results: dict[str, Any] = {"store_slug": slug, "types": {}, "duration_ms": 0.0}
+    mode_counts: dict[str, int] = {"write": 0, "touch": 0, "skip": 0}
+
+    def _record_mode(mode: str) -> None:
+        if mode in mode_counts:
+            mode_counts[mode] += 1
 
     try:
         summary_body = _build_summary_payload(dash_store)
-        upsert_dashboard_snapshot(
+        summary_outcome = write_dashboard_snapshot_guarded(
             store_id=sid,
             store_slug=slug,
             snapshot_type=SNAPSHOT_TYPE_SUMMARY,
             payload=summary_body,
         )
-        results["types"][SNAPSHOT_TYPE_SUMMARY] = "ok"
+        _record_mode(summary_outcome.mode)
+        results["types"][SNAPSHOT_TYPE_SUMMARY] = summary_outcome.mode
 
-        cards = _extract_dashboard_cards(summary_body)
-        upsert_dashboard_snapshot(
-            store_id=sid,
-            store_slug=slug,
-            snapshot_type=SNAPSHOT_TYPE_DASHBOARD_CARDS,
-            payload=cards,
-        )
-        results["types"][SNAPSHOT_TYPE_DASHBOARD_CARDS] = "ok"
+        # SG-9: dashboard_cards is a pure projection of summary. Only regenerate
+        # it when summary was not fully skipped (i.e. content changed or its
+        # freshness was refreshed) — never on its own clock.
+        if summary_outcome.mode == "skip":
+            results["types"][SNAPSHOT_TYPE_DASHBOARD_CARDS] = "skip_derived"
+        else:
+            cards = _extract_dashboard_cards(summary_body)
+            cards_outcome = write_dashboard_snapshot_guarded(
+                store_id=sid,
+                store_slug=slug,
+                snapshot_type=SNAPSHOT_TYPE_DASHBOARD_CARDS,
+                payload=cards,
+            )
+            _record_mode(cards_outcome.mode)
+            results["types"][SNAPSHOT_TYPE_DASHBOARD_CARDS] = cards_outcome.mode
 
         from services.dashboard_snapshot_normal_carts_parity_v1 import (  # noqa: PLC0415
             build_and_guard_normal_carts_snapshot_write,
@@ -199,7 +213,7 @@ def build_store_dashboard_snapshots(
             dash_store=dash_store,
         )
         if nc_write.allow_write:
-            upsert_dashboard_snapshot(
+            nc_outcome = write_dashboard_snapshot_guarded(
                 store_id=sid,
                 store_slug=slug,
                 snapshot_type=SNAPSHOT_TYPE_NORMAL_CARTS,
@@ -207,7 +221,8 @@ def build_store_dashboard_snapshots(
                 payload_json=nc_write.storage_json or None,
                 status=nc_write.status,
             )
-            results["types"][SNAPSHOT_TYPE_NORMAL_CARTS] = "ok"
+            _record_mode(nc_outcome.mode)
+            results["types"][SNAPSHOT_TYPE_NORMAL_CARTS] = nc_outcome.mode
         else:
             print(
                 f"[DASHBOARD SNAPSHOT PARITY BLOCK] store_slug={slug} "
@@ -226,38 +241,42 @@ def build_store_dashboard_snapshots(
         from main import _merchant_dashboard_refresh_state_payload  # noqa: PLC0415
 
         refresh_body = dict(_merchant_dashboard_refresh_state_payload(dash_store))
-        upsert_dashboard_snapshot(
+        refresh_outcome = write_dashboard_snapshot_guarded(
             store_id=sid,
             store_slug=slug,
             snapshot_type=SNAPSHOT_TYPE_REFRESH_STATE,
             payload=refresh_body,
         )
-        results["types"][SNAPSHOT_TYPE_REFRESH_STATE] = "ok"
+        _record_mode(refresh_outcome.mode)
+        results["types"][SNAPSHOT_TYPE_REFRESH_STATE] = refresh_outcome.mode
 
         from main import _api_json_dashboard_widget_panel  # noqa: PLC0415
 
         widget_body = dict(_api_json_dashboard_widget_panel(dash_store))
-        upsert_dashboard_snapshot(
+        widget_outcome = write_dashboard_snapshot_guarded(
             store_id=sid,
             store_slug=slug,
             snapshot_type=SNAPSHOT_TYPE_WIDGET_PANEL,
             payload=widget_body,
         )
-        results["types"][SNAPSHOT_TYPE_WIDGET_PANEL] = "ok"
+        _record_mode(widget_outcome.mode)
+        results["types"][SNAPSHOT_TYPE_WIDGET_PANEL] = widget_outcome.mode
 
         from services.merchant_store_connection_v1 import (  # noqa: PLC0415
             build_merchant_store_connection_status_for_store,
         )
 
         conn_status = build_merchant_store_connection_status_for_store(dash_store)
-        upsert_dashboard_snapshot(
+        conn_outcome = write_dashboard_snapshot_guarded(
             store_id=sid,
             store_slug=slug,
             snapshot_type=SNAPSHOT_TYPE_STORE_CONNECTION,
             payload={"store_connection": conn_status.to_api_dict()},
         )
-        results["types"][SNAPSHOT_TYPE_STORE_CONNECTION] = "ok"
+        _record_mode(conn_outcome.mode)
+        results["types"][SNAPSHOT_TYPE_STORE_CONNECTION] = conn_outcome.mode
 
+        results["generation"] = dict(mode_counts)
         results["ok"] = True
     except Exception as exc:  # noqa: BLE001
         db.session.rollback()
@@ -322,6 +341,9 @@ def run_dashboard_snapshot_builder_tick() -> dict[str, Any]:
         stores = list_store_slugs_for_snapshot_build(limit=snapshot_build_store_limit())
         built = 0
         errors = 0
+        rows_written = 0
+        rows_touched = 0
+        rows_skipped = 0
         for store_id, store_slug in stores:
             out = build_store_dashboard_snapshots(
                 store_id=store_id,
@@ -331,9 +353,18 @@ def run_dashboard_snapshot_builder_tick() -> dict[str, Any]:
                 built += 1
             else:
                 errors += 1
+            gen = out.get("generation") or {}
+            rows_written += int(gen.get("write") or 0)
+            rows_touched += int(gen.get("touch") or 0)
+            rows_skipped += int(gen.get("skip") or 0)
+        rows_avoided = rows_touched + rows_skipped
+        decisions = rows_written + rows_avoided
+        reduction_pct = round(100.0 * rows_avoided / decisions, 1) if decisions else 0.0
         print(
             f"[DASHBOARD SNAPSHOT BUILDER TICK] stores={len(stores)} "
-            f"built={built} errors={errors}",
+            f"built={built} errors={errors} rows_written={rows_written} "
+            f"rows_avoided={rows_avoided} touched={rows_touched} skipped={rows_skipped} "
+            f"write_reduction_pct={reduction_pct}",
             flush=True,
         )
         return {
@@ -341,6 +372,11 @@ def run_dashboard_snapshot_builder_tick() -> dict[str, Any]:
             "stores_seen": len(stores),
             "stores_built": built,
             "errors": errors,
+            "rows_written": rows_written,
+            "rows_touched": rows_touched,
+            "rows_skipped": rows_skipped,
+            "rows_avoided": rows_avoided,
+            "write_reduction_pct": reduction_pct,
         }
     finally:
         release_scoped_db_session()

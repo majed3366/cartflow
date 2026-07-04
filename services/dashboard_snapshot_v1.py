@@ -249,11 +249,14 @@ def emit_snapshot_write(
     snapshot_type: str,
     generated_at: datetime,
     version: int,
+    generation_reason: str = "",
 ) -> None:
     gen_s = generated_at.isoformat() if isinstance(generated_at, datetime) else str(generated_at)
+    reason_part = f" reason={generation_reason}" if generation_reason else ""
     _emit(
         f"{_PREFIX_WRITE} store_slug={store_slug} snapshot_type={snapshot_type} "
-        f"generated_at={gen_s} version={version} db_fp={snapshot_db_identity_fingerprint()}"
+        f"generated_at={gen_s} version={version}{reason_part} "
+        f"db_fp={snapshot_db_identity_fingerprint()}"
     )
 
 
@@ -341,7 +344,17 @@ def upsert_dashboard_snapshot(
     ttl_seconds: Optional[int] = None,
     status: str = STATUS_ACTIVE,
     payload_json: Optional[str] = None,
+    generation_reason: str = "",
 ) -> DashboardSnapshot:
+    """
+    Append a new snapshot version (raw, unconditional write primitive).
+
+    This is the low-level append. Production generation goes through
+    ``services.dashboard_snapshot_change_v1.write_dashboard_snapshot_guarded``,
+    which applies the SG-2 identical-rewrite gate before delegating the actual
+    insert here. Direct callers (tests / migrations / backfill) bypass the gate
+    intentionally.
+    """
     slug = canonical_snapshot_store_slug(store_slug=store_slug)
     stype = (snapshot_type or "").strip()
     now = _utcnow()
@@ -375,7 +388,34 @@ def upsert_dashboard_snapshot(
         snapshot_type=stype,
         generated_at=now,
         version=version,
+        generation_reason=generation_reason,
     )
+    return row
+
+
+def touch_dashboard_snapshot_freshness(
+    row: DashboardSnapshot,
+    *,
+    ttl_seconds: Optional[int] = None,
+    status: str = STATUS_ACTIVE,
+) -> DashboardSnapshot:
+    """
+    Refresh an existing latest row's freshness in place (no new version).
+
+    Snapshot Generation Governance SG-2 / §5.5: when a rebuild produces content
+    that is semantically identical to the current latest row, freshness is a
+    bookkeeping concern — extend ``expires_at``/``generated_at`` on the existing
+    row instead of appending an identical version. Read-equivalent: reads always
+    fetch the latest row and see the same content, now marked fresh.
+    """
+    stype = str(getattr(row, "snapshot_type", "") or "").strip()
+    now = _utcnow()
+    ttl = int(ttl_seconds if ttl_seconds is not None else snapshot_ttl_seconds(stype))
+    row.generated_at = now
+    row.expires_at = now + timedelta(seconds=ttl)
+    row.updated_at = now
+    row.status = (status or STATUS_ACTIVE)[:32]
+    db.session.commit()
     return row
 
 
@@ -605,5 +645,6 @@ __all__ = [
     "snapshot_db_identity_fingerprint",
     "snapshot_row_is_stale",
     "snapshot_ttl_seconds",
+    "touch_dashboard_snapshot_freshness",
     "upsert_dashboard_snapshot",
 ]
