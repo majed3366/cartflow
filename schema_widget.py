@@ -885,6 +885,15 @@ def ensure_whatsapp_delivery_truth_schema(db: Any) -> None:
         log.debug("schema_widget whatsapp_delivery_truth: %s", e)
 
 
+def ensure_provider_retry_ledger_schema(db: Any) -> None:
+    """جدول ‎provider_retry_ledger‎ — سجل إعادة المحاولة الدائم (Provider Reliability V1)."""
+    try:
+        db.create_all()
+    except (OSError, SQLAlchemyError) as e:
+        db.session.rollback()
+        log.debug("schema_widget provider_retry_ledger: %s", e)
+
+
 def ensure_store_widget_schema(db: Any) -> None:
     """يُنادى من مسارات ‎API‎ (لا يعتمد على ‎main‎)."""
     global _store_widget_schema_full_once

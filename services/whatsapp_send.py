@@ -554,6 +554,7 @@ def send_whatsapp(
                 customer_phone=phone or "",
                 store_slug=(wa_trace_store_slug or "")[:255],
                 session_id=(wa_trace_session_id or "")[:512],
+                recovery_key=(rk or ""),
             )
         except Exception:  # noqa: BLE001
             pass

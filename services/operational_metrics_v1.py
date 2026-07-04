@@ -505,6 +505,18 @@ def collect_snapshot_generation_metrics() -> dict[str, Any]:
     return report
 
 
+def collect_provider_reliability_metrics() -> dict[str, Any]:
+    """Provider Reliability Governance V1 §6+§7 — denominator-based reliability read-model."""
+    try:
+        from services.provider_reliability_metrics_v1 import (
+            build_provider_reliability_report,
+        )
+
+        return build_provider_reliability_report()
+    except Exception as exc:  # noqa: BLE001
+        return {"status": STATUS_UNKNOWN, "error": type(exc).__name__}
+
+
 def collect_dashboard_timing_metrics() -> dict[str, Any]:
     with _sample_lock:
         route = _timing_sample_summary(_route_ms_samples)
@@ -585,6 +597,7 @@ def build_operational_metrics_report(db_session: Any) -> dict[str, Any]:
     timing = collect_dashboard_timing_metrics()
     snapshot = assess_snapshot_health(db_session, deadline_started=t0)
     snapshot_generation = collect_snapshot_generation_metrics()
+    provider_reliability = collect_provider_reliability_metrics()
     archive = collect_archive_health(db_session)
     data_growth = collect_data_growth_baseline(db_session, deadline_started=t0)
 
@@ -644,6 +657,7 @@ def build_operational_metrics_report(db_session: Any) -> dict[str, Any]:
             "scheduler": scheduler,
             "snapshot": snapshot,
             "snapshot_generation": snapshot_generation,
+            "provider_reliability": provider_reliability,
             "archive": archive,
             "data_growth": data_growth,
             "db": db_pressure,
@@ -835,6 +849,46 @@ def list_metric_contracts() -> list[dict[str, Any]]:
             "warning_threshold": None,
             "critical_threshold": None,
         },
+        {
+            "name": "provider_reliability.acceptance_rate",
+            "owner": "provider_reliability_metrics_v1",
+            "source": "db_ratio",
+            "unit": "percent",
+            "frequency": "on_demand",
+            "acceptable_range": "0-100 (null when no sends)",
+            "warning_threshold": 95,
+            "critical_threshold": 80,
+        },
+        {
+            "name": "provider_reliability.delivery_rate",
+            "owner": "provider_reliability_metrics_v1",
+            "source": "db_ratio",
+            "unit": "percent",
+            "frequency": "on_demand",
+            "acceptable_range": "0-100 (requires delivery webhooks)",
+            "warning_threshold": None,
+            "critical_threshold": None,
+        },
+        {
+            "name": "provider_reliability.retry_exhaustion_rate",
+            "owner": "provider_retry_ledger_v1",
+            "source": "db_ratio",
+            "unit": "percent",
+            "frequency": "on_demand",
+            "acceptable_range": "lower is better",
+            "warning_threshold": None,
+            "critical_threshold": None,
+        },
+        {
+            "name": "provider_reliability.unknown_state_rate",
+            "owner": "provider_reliability_metrics_v1",
+            "source": "db_ratio",
+            "unit": "percent",
+            "frequency": "on_demand",
+            "acceptable_range": "lower is better",
+            "warning_threshold": None,
+            "critical_threshold": None,
+        },
     ]
 
 
@@ -858,6 +912,7 @@ __all__ = [
     "collect_data_growth_baseline",
     "collect_db_pressure",
     "collect_failure_markers",
+    "collect_provider_reliability_metrics",
     "collect_scheduler_health",
     "collect_snapshot_generation_metrics",
     "compute_overall_status",

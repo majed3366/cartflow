@@ -490,6 +490,53 @@ class WhatsAppDeliveryTruth(Base):
     )
 
 
+class ProviderRetryLedger(Base):
+    """
+    Durable, restart-safe retry ledger for outbound provider sends.
+
+    Provider Reliability Governance V1 — PR-4 (retries are durable), PR-7 (temporary
+    failure must not become silent failure), PR-RT-5 (retry state never lives only in
+    process memory). One row per (correlation_key, provider, step). This is the
+    system of record for retry intent; live re-dispatch activation is gated by
+    ``PROVIDER_RETRY_ACTIVE`` (foundation default: record-only, no behavior change).
+    """
+
+    __tablename__ = "provider_retry_ledger"
+
+    id = Column(Integer, primary_key=True)
+    correlation_key = Column(String(512), nullable=False, index=True)
+    provider = Column(String(32), nullable=False, default="twilio", index=True)
+    store_slug = Column(String(255), nullable=True, index=True)
+    session_id = Column(String(512), nullable=True)
+    cart_id = Column(String(255), nullable=True)
+    customer_phone = Column(String(100), nullable=True)
+    step = Column(Integer, nullable=False, default=0, index=True)
+    attempt = Column(Integer, nullable=False, default=0)
+    max_attempts = Column(Integer, nullable=False, default=1)
+    status = Column(String(32), nullable=False, default="pending", index=True)
+    last_failure_class = Column(String(64), nullable=True)
+    last_disposition = Column(String(32), nullable=True)
+    last_error = Column(String(512), nullable=True)
+    next_attempt_at = Column(DateTime, nullable=True, index=True)
+    retry_after_until = Column(DateTime, nullable=True)
+    claimed_at = Column(DateTime, nullable=True)
+    created_at = Column(
+        DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
+    )
+    updated_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "correlation_key", "provider", "step", name="uq_provider_retry_ledger_key"
+        ),
+    )
+
+
 class RecoveryTruthTimelineEvent(Base):
     """
     Append-only proven transitions for one recovery_key (dashboard truth / debug).
