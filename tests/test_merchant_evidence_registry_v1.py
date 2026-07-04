@@ -5,11 +5,24 @@ from __future__ import annotations
 import unittest
 
 from services.merchant_evidence_registry_v1 import (
+    EVIDENCE_ATTRIBUTION_RECORD,
+    EVIDENCE_BEHAVIOR_TRUTH,
+    EVIDENCE_CAMPAIGN_DATA,
+    EVIDENCE_CARTFLOW_ANALYTICS,
+    EVIDENCE_CUSTOMER_JOURNEY,
+    EVIDENCE_CUSTOMER_REPLY,
+    EVIDENCE_HESITATION_REASON,
+    EVIDENCE_MESSAGE_DELIVERY,
+    EVIDENCE_PRICING_HISTORY,
+    EVIDENCE_PRODUCT_HISTORY,
     EVIDENCE_PURCHASE_RECORD,
     EVIDENCE_RECOVERY_RECORD,
     EVIDENCE_STORE_ACTIVITY,
+    EVIDENCE_SUPPORT_HISTORY,
+    EVIDENCE_VISITOR_BEHAVIOR,
     REGISTRY_VERSION,
     attach_merchant_evidence_registry_v1,
+    get_merchant_evidence_entry,
     merchant_evidence_for_tier0_key,
     merchant_evidence_label_ar,
     merchant_evidence_section_source_ar,
@@ -22,6 +35,36 @@ from services.merchant_proof_surface_v1 import (
 
 
 class MerchantEvidenceRegistryV1Tests(unittest.TestCase):
+    _ALL_EVIDENCE_IDS = (
+        EVIDENCE_CUSTOMER_JOURNEY,
+        EVIDENCE_PURCHASE_RECORD,
+        EVIDENCE_RECOVERY_RECORD,
+        EVIDENCE_MESSAGE_DELIVERY,
+        EVIDENCE_HESITATION_REASON,
+        EVIDENCE_CUSTOMER_REPLY,
+        EVIDENCE_STORE_ACTIVITY,
+        EVIDENCE_CARTFLOW_ANALYTICS,
+        EVIDENCE_BEHAVIOR_TRUTH,
+        EVIDENCE_PRODUCT_HISTORY,
+        EVIDENCE_CAMPAIGN_DATA,
+        EVIDENCE_VISITOR_BEHAVIOR,
+        EVIDENCE_PRICING_HISTORY,
+        EVIDENCE_SUPPORT_HISTORY,
+        EVIDENCE_ATTRIBUTION_RECORD,
+    )
+
+    def test_registry_labels_are_semantically_atomic(self) -> None:
+        for eid in self._ALL_EVIDENCE_IDS:
+            entry = get_merchant_evidence_entry(eid)
+            assert entry is not None
+            self.assertNotIn("أو", entry.label_ar, msg=eid)
+            self.assertNotIn(" or ", entry.label_ar.lower(), msg=eid)
+
+    def test_reason_capture_maps_to_hesitation_reason(self) -> None:
+        meta = merchant_evidence_for_tier0_key("reason_capture")
+        self.assertEqual(meta["evidence_id"], EVIDENCE_HESITATION_REASON)
+        self.assertEqual(meta["label_ar"], "سبب التردد")
+
     def test_tier0_maps_to_stable_evidence_id(self) -> None:
         meta = merchant_evidence_for_tier0_key("purchase_truth")
         self.assertEqual(meta["evidence_id"], EVIDENCE_PURCHASE_RECORD)

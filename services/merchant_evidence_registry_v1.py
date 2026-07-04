@@ -26,7 +26,8 @@ EVIDENCE_CUSTOMER_JOURNEY = "customer_journey"
 EVIDENCE_PURCHASE_RECORD = "purchase_record"
 EVIDENCE_RECOVERY_RECORD = "recovery_record"
 EVIDENCE_MESSAGE_DELIVERY = "message_delivery"
-EVIDENCE_CUSTOMER_RESPONSE = "customer_response"
+EVIDENCE_HESITATION_REASON = "hesitation_reason"
+EVIDENCE_CUSTOMER_REPLY = "customer_reply"
 EVIDENCE_STORE_ACTIVITY = "store_activity"
 EVIDENCE_CARTFLOW_ANALYTICS = "cartflow_analytics"
 EVIDENCE_BEHAVIOR_TRUTH = "behavior_truth"
@@ -54,7 +55,7 @@ TIER0_EVIDENCE_KEY_TO_ID: dict[str, str] = {
     "purchase_truth": EVIDENCE_PURCHASE_RECORD,
     "recovery_truth": EVIDENCE_RECOVERY_RECORD,
     "provider_truth": EVIDENCE_MESSAGE_DELIVERY,
-    "reason_capture": EVIDENCE_CUSTOMER_RESPONSE,
+    "reason_capture": EVIDENCE_HESITATION_REASON,
 }
 
 # Surface context → default section evidence ID
@@ -128,19 +129,27 @@ _MERCHANT_EVIDENCE_REGISTRY: dict[str, MerchantEvidenceEntry] = {
         tier0_keys=frozenset({"provider_truth"}),
         evidence_origin="store",
     ),
-    EVIDENCE_CUSTOMER_RESPONSE: MerchantEvidenceEntry(
-        evidence_id=EVIDENCE_CUSTOMER_RESPONSE,
-        label_ar="سبب التردد أو رد العميل",
-        description_ar="سبب التردد المُسجَّل من واجهة المتجر أو رد العميل",
+    EVIDENCE_HESITATION_REASON: MerchantEvidenceEntry(
+        evidence_id=EVIDENCE_HESITATION_REASON,
+        label_ar="سبب التردد",
+        description_ar="سبب التردد المُسجَّل من واجهة المتجر",
         eligible_domains=frozenset({DOMAIN_UNDERSTANDING, DOMAIN_DECISION}),
         confidence_compat=_CONF_PROOF,
         tier0_keys=frozenset({"reason_capture"}),
         evidence_origin="store",
     ),
+    EVIDENCE_CUSTOMER_REPLY: MerchantEvidenceEntry(
+        evidence_id=EVIDENCE_CUSTOMER_REPLY,
+        label_ar="رد العميل",
+        description_ar="رد العميل على متابعة الاسترجاع",
+        eligible_domains=frozenset({DOMAIN_UNDERSTANDING, DOMAIN_DECISION, DOMAIN_RECOVERY}),
+        confidence_compat=_CONF_PROOF,
+        evidence_origin="store",
+    ),
     EVIDENCE_STORE_ACTIVITY: MerchantEvidenceEntry(
         evidence_id=EVIDENCE_STORE_ACTIVITY,
         label_ar="بيانات المتجر",
-        description_ar="سلات مهجورة وأسباب التردد وسجل الاسترجاع من متجرك — بيانات تشغيلية مباشرة",
+        description_ar="بيانات تشغيلية مباشرة من متجرك",
         eligible_domains=frozenset({DOMAIN_UNDERSTANDING}),
         confidence_compat=_CONF_KL,
         evidence_origin="store",
@@ -338,7 +347,8 @@ __all__ = [
     "EVIDENCE_BEHAVIOR_TRUTH",
     "EVIDENCE_CARTFLOW_ANALYTICS",
     "EVIDENCE_CUSTOMER_JOURNEY",
-    "EVIDENCE_CUSTOMER_RESPONSE",
+    "EVIDENCE_CUSTOMER_REPLY",
+    "EVIDENCE_HESITATION_REASON",
     "EVIDENCE_MESSAGE_DELIVERY",
     "EVIDENCE_PURCHASE_RECORD",
     "EVIDENCE_RECOVERY_RECORD",

@@ -34,7 +34,7 @@ Cards remain truthful if moved to another page (Daily Brief, Understanding, etc.
 | insight_key | evidence_id | Label |
 |-------------|-------------|-------|
 | `conversion_cart_to_purchase` | `purchase_record` | سجل الشراء |
-| `hesitation_top_reason` | `customer_response` | سبب التردد أو رد العميل |
+| `hesitation_top_reason` | `hesitation_reason` | سبب التردد |
 | `recovery_bottleneck` | `recovery_record` | سجل الاسترجاع |
 | `traffic_visitor_unavailable` | `visitor_behavior` | حركة الزيارات |
 | `store_health_overview` | `store_activity` | بيانات المتجر |

@@ -10,7 +10,7 @@ from services.merchant_claim_evidence_v1 import (
     resolve_claim_evidence_id,
 )
 from services.merchant_evidence_registry_v1 import (
-    EVIDENCE_CUSTOMER_RESPONSE,
+    EVIDENCE_HESITATION_REASON,
     EVIDENCE_PURCHASE_RECORD,
     EVIDENCE_RECOVERY_RECORD,
     EVIDENCE_STORE_ACTIVITY,
@@ -23,9 +23,9 @@ class MerchantClaimEvidenceV1Tests(unittest.TestCase):
         eid = resolve_claim_evidence_id(insight_key="conversion_cart_to_purchase")
         self.assertEqual(eid, EVIDENCE_PURCHASE_RECORD)
 
-    def test_hesitation_uses_customer_response(self) -> None:
+    def test_hesitation_uses_hesitation_reason(self) -> None:
         eid = resolve_claim_evidence_id(insight_key="hesitation_top_reason")
-        self.assertEqual(eid, EVIDENCE_CUSTOMER_RESPONSE)
+        self.assertEqual(eid, EVIDENCE_HESITATION_REASON)
 
     def test_recovery_uses_recovery_record(self) -> None:
         eid = resolve_claim_evidence_id(insight_key="recovery_bottleneck")

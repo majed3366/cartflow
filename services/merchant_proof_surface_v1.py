@@ -381,7 +381,7 @@ def build_merchant_proof_surface_v1(
 ) -> dict[str, Any]:
     """Compose merchant-visible proof metadata from existing row inputs."""
     from services.merchant_evidence_registry_v1 import (  # noqa: PLC0415
-        EVIDENCE_CUSTOMER_RESPONSE,
+        EVIDENCE_HESITATION_REASON,
         EVIDENCE_PURCHASE_RECORD,
         enrich_proof_evidence_fields,
         merchant_evidence_label_ar,
@@ -414,7 +414,7 @@ def build_merchant_proof_surface_v1(
     if lc_label := (customer_lifecycle_state or "").strip():
         why_parts.append(f"حالة المسار: {lc_label}")
     if (reason_tag or "").strip():
-        why_parts.append(merchant_evidence_label_ar(EVIDENCE_CUSTOMER_RESPONSE))
+        why_parts.append(merchant_evidence_label_ar(EVIDENCE_HESITATION_REASON))
     if purchase_truth:
         why_parts.append(merchant_evidence_label_ar(EVIDENCE_PURCHASE_RECORD))
     if any(s.get("state") == _STATE_DONE for s in steps if s.get("key") == _STEP_MESSAGE_ACCEPTED):

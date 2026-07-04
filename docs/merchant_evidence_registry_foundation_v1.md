@@ -37,7 +37,8 @@ Each entry defines:
 | `purchase_record` | سجل الشراء | store | Proof Surface (purchase) |
 | `recovery_record` | سجل الاسترجاع | store | Proof Surface (recovery steps) |
 | `message_delivery` | حالة رسائل WhatsApp | store | Proof Surface (provider step) |
-| `customer_response` | سبب التردد أو رد العميل | store | Proof Surface (reason) |
+| `hesitation_reason` | سبب التردد | store | Proof Surface (reason), KL hesitation claims |
+| `customer_reply` | رد العميل | store | Future customer-reply proof surfaces |
 | `store_activity` | بيانات المتجر | store | Knowledge Layer claims (e.g. store health, traffic trends) |
 
 ### Future entries (registry-only — no UI until activated)

@@ -12,7 +12,7 @@ from __future__ import annotations
 from typing import Any, Mapping, Optional
 
 from services.merchant_evidence_registry_v1 import (
-    EVIDENCE_CUSTOMER_RESPONSE,
+    EVIDENCE_HESITATION_REASON,
     EVIDENCE_PURCHASE_RECORD,
     EVIDENCE_RECOVERY_RECORD,
     EVIDENCE_STORE_ACTIVITY,
@@ -31,9 +31,9 @@ INSIGHT_CLAIM_EVIDENCE_ID: dict[str, str] = {
     "conversion_funnel_gaps": EVIDENCE_STORE_ACTIVITY,
     "conversion_cart_to_purchase": EVIDENCE_PURCHASE_RECORD,
     "conversion_no_carts": EVIDENCE_STORE_ACTIVITY,
-    "hesitation_insufficient_sample": EVIDENCE_CUSTOMER_RESPONSE,
-    "hesitation_top_reason": EVIDENCE_CUSTOMER_RESPONSE,
-    "hesitation_distribution": EVIDENCE_CUSTOMER_RESPONSE,
+    "hesitation_insufficient_sample": EVIDENCE_HESITATION_REASON,
+    "hesitation_top_reason": EVIDENCE_HESITATION_REASON,
+    "hesitation_distribution": EVIDENCE_HESITATION_REASON,
     "recovery_insufficient_sample": EVIDENCE_RECOVERY_RECORD,
     "recovery_activity_summary": EVIDENCE_RECOVERY_RECORD,
     "recovery_bottleneck": EVIDENCE_RECOVERY_RECORD,
@@ -44,7 +44,7 @@ INSIGHT_CLAIM_EVIDENCE_ID: dict[str, str] = {
 CATEGORY_CLAIM_EVIDENCE_ID: dict[str, str] = {
     "traffic": EVIDENCE_VISITOR_BEHAVIOR,
     "conversion": EVIDENCE_STORE_ACTIVITY,
-    "hesitation": EVIDENCE_CUSTOMER_RESPONSE,
+    "hesitation": EVIDENCE_HESITATION_REASON,
     "recovery": EVIDENCE_RECOVERY_RECORD,
     "store_health": EVIDENCE_STORE_ACTIVITY,
 }
