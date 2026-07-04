@@ -266,13 +266,19 @@ def build_merchant_evidence_registry_payload(
     *,
     surface_context: str = "",
     section_evidence_id: str = "",
+    claim_catalog_only: bool = False,
 ) -> dict[str, Any]:
     """Serializable registry slice for merchant UI consumption."""
     ctx = (surface_context or "").strip().lower()
     sec_id = (section_evidence_id or "").strip()
-    if not sec_id and ctx:
-        sec_id = SURFACE_CONTEXT_EVIDENCE_ID.get(ctx, EVIDENCE_STORE_ACTIVITY)
-    section_entry = get_merchant_evidence_entry(sec_id) if sec_id else None
+    if not claim_catalog_only:
+        if not sec_id and ctx:
+            sec_id = SURFACE_CONTEXT_EVIDENCE_ID.get(ctx, EVIDENCE_STORE_ACTIVITY)
+    section_entry = (
+        None
+        if claim_catalog_only
+        else (get_merchant_evidence_entry(sec_id) if sec_id else None)
+    )
     active_entries = [
         e.to_merchant_dict()
         for e in _MERCHANT_EVIDENCE_REGISTRY.values()

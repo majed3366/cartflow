@@ -42,14 +42,11 @@ def api_knowledge_report(
         db.create_all()
         report = build_knowledge_report(db.session, slug, window_days=window_days)
         payload = report.to_dict()
-        from services.merchant_evidence_registry_v1 import (  # noqa: PLC0415
-            attach_merchant_evidence_registry_v1,
+        from services.merchant_claim_evidence_v1 import (  # noqa: PLC0415
+            enrich_knowledge_report_claim_evidence_v1,
         )
 
-        attach_merchant_evidence_registry_v1(
-            payload,
-            surface_context="knowledge_layer",
-        )
+        enrich_knowledge_report_claim_evidence_v1(payload)
         return j(payload)
     except (OSError, TypeError, ValueError) as exc:
         log.warning("api knowledge/report: %s", exc)

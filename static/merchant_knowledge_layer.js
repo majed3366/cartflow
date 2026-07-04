@@ -77,28 +77,37 @@
 
   var lastEvidenceRegistry = null;
 
+  function evidenceLabelForInsight(ins) {
+    if (ins && ins.evidence_label_ar) {
+      return String(ins.evidence_label_ar).trim();
+    }
+    var eid = ins && ins.evidence_id ? String(ins.evidence_id).trim() : "";
+    if (eid && lastEvidenceRegistry && lastEvidenceRegistry.entries) {
+      var entries = lastEvidenceRegistry.entries;
+      for (var i = 0; i < entries.length; i++) {
+        if (entries[i] && entries[i].evidence_id === eid) {
+          return String(entries[i].label_ar || "").trim();
+        }
+      }
+    }
+    return "—";
+  }
+
   function renderKnowledgeProofMeta(ins) {
     var conf = (ins && ins.confidence) || "insufficient";
     var confAr = PROOF_CONFIDENCE_AR[String(conf).toLowerCase()] || conf;
+    var sourceLabel = evidenceLabelForInsight(ins);
     return (
-      '<div class="ma-knowledge-proof-meta" aria-label="مستوى الثقة">' +
+      '<div class="ma-knowledge-proof-meta" aria-label="دليل الاستنتاج">' +
       '<span class="ma-knowledge-proof-conf-label">الثقة</span> ' +
       '<span class="ma-knowledge-proof-conf-value">' +
       esc(confAr) +
       "</span>" +
+      ' · <span class="ma-knowledge-proof-evidence-label">المصدر:</span> ' +
+      '<span class="ma-knowledge-proof-evidence-value">' +
+      esc(sourceLabel) +
+      "</span>" +
       "</div>"
-    );
-  }
-
-  function renderKnowledgeProofSourceNote() {
-    var reg = lastEvidenceRegistry;
-    var text =
-      (reg && (reg.section_source_ar || reg.section_label_ar)) || "";
-    if (!text) return "";
-    return (
-      '<p class="ma-knowledge-proof-source" aria-label="مصدر الدليل">' +
-      esc(text) +
-      "</p>"
     );
   }
 
@@ -456,8 +465,7 @@
       cards.map(function (ins) {
         return renderOIACard(ins, ctx);
       }).join("") +
-      "</div>" +
-      renderKnowledgeProofSourceNote();
+      "</div>";
   }
 
   function applyKnowledgePayload(payload) {

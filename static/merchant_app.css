@@ -2599,6 +2599,14 @@ tr:hover td { background: #f8fafc; }
   font-weight: 700;
   color: #0f766e;
 }
+.ma-knowledge-proof-evidence-label {
+  font-weight: 600;
+  color: var(--text);
+}
+.ma-knowledge-proof-evidence-value {
+  font-weight: 500;
+  color: var(--muted);
+}
 .ma-knowledge-proof-source {
   margin: 14px 0 0;
   padding-top: 12px;

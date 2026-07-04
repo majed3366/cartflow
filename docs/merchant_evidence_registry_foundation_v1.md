@@ -38,7 +38,7 @@ Each entry defines:
 | `recovery_record` | سجل الاسترجاع | store | Proof Surface (recovery steps) |
 | `message_delivery` | حالة رسائل WhatsApp | store | Proof Surface (provider step) |
 | `customer_response` | سبب التردد أو رد العميل | store | Proof Surface (reason) |
-| `store_activity` | بيانات المتجر | store | Knowledge Layer section |
+| `store_activity` | بيانات المتجر | store | Knowledge Layer claims (e.g. store health, traffic trends) |
 
 ### Future entries (registry-only — no UI until activated)
 
@@ -71,7 +71,7 @@ from services.merchant_evidence_registry_v1 import (
 ```
 
 - **Proof Surface:** `enrich_proof_evidence_fields()` / `enrich_step_evidence_fields()` on bundle compose
-- **Knowledge Layer API:** `attach_merchant_evidence_registry_v1(payload, surface_context="knowledge_layer")`
+- **Knowledge Layer API:** `enrich_knowledge_report_claim_evidence_v1(payload)` — each insight owns `evidence_id`; registry catalog attached without section-level proof (see **`docs/claim_level_evidence_ownership_v1.md`**)
 
 ### Merchant UI
 
@@ -90,6 +90,7 @@ Proof rows: `merchant_proof_surface_v1.evidence_id`, `evidence_label_ar`, `evide
 | PV-7 proof source traceability | **Pass** — `evidence_id` + `proof_source` |
 | No internal terminology | **Pass** — Tier-0 keys internal only |
 | One label per evidence source | **Pass** — single registry module |
+| Claim-level evidence ownership | **Pass** — each KL insight resolves its own `evidence_id`; no section-owned proof |
 
 ---
 
@@ -98,9 +99,10 @@ Proof rows: `merchant_proof_surface_v1.evidence_id`, `evidence_label_ar`, `evide
 | File | Role |
 |------|------|
 | `services/merchant_evidence_registry_v1.py` | Canonical registry |
+| `services/merchant_claim_evidence_v1.py` | Maps KL `insight_key` → `evidence_id`; enriches per claim |
 | `services/merchant_proof_surface_v1.py` | Consumes registry on compose |
-| `routes/knowledge.py` | Attaches registry to KL report |
-| `static/merchant_knowledge_layer.js` | Reads `merchant_evidence_registry_v1` |
+| `routes/knowledge.py` | Enriches KL report with claim-level evidence |
+| `static/merchant_knowledge_layer.js` | Per-card الثقة · المصدر from claim + registry |
 | `static/merchant_dashboard_lazy.js` | Reads `evidence_label_ar` from row bundle |
 | `tests/test_merchant_evidence_registry_v1.py` | Registry + integration tests |
 
