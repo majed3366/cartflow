@@ -62,8 +62,8 @@ _STEP_RECOVERY_STOPPED = "recovery_stopped"
 
 STEP_LABEL_AR = {
     _STEP_SCHEDULED: "جدولة الإرسال",
-    _STEP_MESSAGE_ACCEPTED: "قبول المزود للرسالة",
-    _STEP_PROVIDER_DELIVERED: "تسليم الرسالة للعميل",
+    _STEP_MESSAGE_ACCEPTED: "إرسال الرسالة",
+    _STEP_PROVIDER_DELIVERED: "وصول الرسالة للعميل",
     _STEP_CUSTOMER_PURCHASED: "إتمام الشراء",
     _STEP_RECOVERY_STOPPED: "إيقاف مسار الاسترجاع",
 }
@@ -164,7 +164,7 @@ def _delivery_step_from_truth(
             state=_STATE_UNKNOWN,
             confidence=CONF_UNKNOWN,
             evidence_type=EVIDENCE_PROVIDER,
-            note_ar="قُبلت من المزود — بانتظار تأكيد التسليم",
+            note_ar="لم يصل تأكيد وصول الرسالة للعميل بعد",
         )
     return _step(
         key=_STEP_PROVIDER_DELIVERED,
@@ -231,7 +231,7 @@ def build_recovery_proof_steps(
     if acceptance:
         msg_state = _STATE_DONE
         msg_conf = CONF_CONFIRMED
-        msg_note = "قبل المزود الرسالة — هذا لا يعني بالضرورة وصولها للعميل"
+        msg_note = "تم قبول الرسالة للإرسال عبر WhatsApp"
     elif scheduled_hint:
         msg_state = _STATE_PENDING
         msg_conf = CONF_MEDIUM
@@ -366,11 +366,84 @@ def resolve_primary_proof_domain(
     return DOMAIN_UNDERSTANDING
 
 
+def _lifecycle_label_ar_for_merchant(
+    *,
+    state_key: str,
+    label_ar: str = "",
+) -> str:
+    """Resolve merchant-readable lifecycle label — never expose raw state keys."""
+    explicit = (label_ar or "").strip()
+    if explicit:
+        return explicit
+    sk = (state_key or "").strip().lower()
+    if not sk:
+        return ""
+    try:
+        from services.customer_lifecycle_states_v1 import LABEL_AR  # noqa: PLC0415
+
+        return (LABEL_AR.get(sk) or "").strip()
+    except Exception:  # noqa: BLE001
+        return ""
+
+
+def _build_why_we_know_merchant_ar(
+    *,
+    what_happened_ar: str,
+    lifecycle_label_ar: str,
+    reason_tag: str,
+    purchase_truth: bool,
+    message_accepted: bool,
+) -> str:
+    from services.merchant_evidence_registry_v1 import (  # noqa: PLC0415
+        EVIDENCE_HESITATION_REASON,
+        EVIDENCE_PURCHASE_RECORD,
+        merchant_evidence_label_ar,
+    )
+
+    parts: list[str] = []
+    if what_happened_ar:
+        parts.append(what_happened_ar)
+    elif lifecycle_label_ar:
+        parts.append(lifecycle_label_ar)
+    if (reason_tag or "").strip():
+        parts.append(f"سجّلنا {merchant_evidence_label_ar(EVIDENCE_HESITATION_REASON)}")
+    if purchase_truth:
+        parts.append(merchant_evidence_label_ar(EVIDENCE_PURCHASE_RECORD))
+    if message_accepted:
+        parts.append("تم قبول الرسالة للإرسال عبر WhatsApp")
+    return " — ".join(parts) if parts else "بيانات محدودة — لا يزال التحقق جارياً"
+
+
+def _build_why_we_know_diagnostic_ar(
+    *,
+    state_key: str,
+    lifecycle_label_ar: str,
+    reason_tag: str,
+    purchase_truth: bool,
+    message_accepted: bool,
+) -> str:
+    """Internal operational wording — not for merchant dashboard UI."""
+    parts: list[str] = []
+    sk = (state_key or "").strip()
+    if sk:
+        parts.append(f"حالة المسار: {sk}")
+    if lifecycle_label_ar and lifecycle_label_ar not in parts:
+        parts.append(f"تسمية العرض: {lifecycle_label_ar}")
+    if (reason_tag or "").strip():
+        parts.append(f"reason_tag={reason_tag.strip()}")
+    if purchase_truth:
+        parts.append("purchase_truth=confirmed")
+    if message_accepted:
+        parts.append("سجل إرسال مقبول")
+    return " — ".join(parts) if parts else "diagnostic_unavailable"
+
+
 def build_merchant_proof_surface_v1(
     *,
     recovery_key: str = "",
     purchase_truth: bool = False,
     customer_lifecycle_state: str = "",
+    customer_lifecycle_label_ar: str = "",
     customer_lifecycle_what_happened_ar: str = "",
     log_statuses: Optional[Iterable[str]] = None,
     next_attempt_due_at: Optional[str] = None,
@@ -410,16 +483,28 @@ def build_merchant_proof_surface_v1(
     what_happened = (customer_lifecycle_what_happened_ar or "").strip()
     if not what_happened and purchase_truth:
         what_happened = "تم تأكيد شراء العميل"
-    why_parts: list[str] = []
-    if lc_label := (customer_lifecycle_state or "").strip():
-        why_parts.append(f"حالة المسار: {lc_label}")
-    if (reason_tag or "").strip():
-        why_parts.append(merchant_evidence_label_ar(EVIDENCE_HESITATION_REASON))
-    if purchase_truth:
-        why_parts.append(merchant_evidence_label_ar(EVIDENCE_PURCHASE_RECORD))
-    if any(s.get("state") == _STATE_DONE for s in steps if s.get("key") == _STEP_MESSAGE_ACCEPTED):
-        why_parts.append("سجل إرسال مقبول")
-    why_we_know = " — ".join(why_parts) if why_parts else "بيانات محدودة — الثقة منخفضة"
+    lc_state = (customer_lifecycle_state or "").strip()
+    lc_label_ar = _lifecycle_label_ar_for_merchant(
+        state_key=lc_state,
+        label_ar=customer_lifecycle_label_ar,
+    )
+    message_accepted = any(
+        s.get("state") == _STATE_DONE for s in steps if s.get("key") == _STEP_MESSAGE_ACCEPTED
+    )
+    why_we_know = _build_why_we_know_merchant_ar(
+        what_happened_ar=what_happened,
+        lifecycle_label_ar=lc_label_ar,
+        reason_tag=reason_tag,
+        purchase_truth=purchase_truth,
+        message_accepted=message_accepted,
+    )
+    why_diagnostic = _build_why_we_know_diagnostic_ar(
+        state_key=lc_state,
+        lifecycle_label_ar=lc_label_ar,
+        reason_tag=reason_tag,
+        purchase_truth=purchase_truth,
+        message_accepted=message_accepted,
+    )
 
     evidence_type = EVIDENCE_PURCHASE if purchase_truth else EVIDENCE_LIFECYCLE
     if domain == DOMAIN_RECOVERY:
@@ -434,6 +519,7 @@ def build_merchant_proof_surface_v1(
         "proof_source": rk[:512] if rk else None,
         "what_happened_ar": what_happened or None,
         "why_we_know_ar": why_we_know,
+        "why_we_know_diagnostic_ar": why_diagnostic,
         "recovery_steps": steps,
     }
     enrich_proof_evidence_fields(bundle, tier0_key=evidence_type)
@@ -446,6 +532,7 @@ def attach_merchant_proof_surface_v1(
     recovery_key: str = "",
     purchase_truth: bool = False,
     customer_lifecycle_state: str = "",
+    customer_lifecycle_label_ar: str = "",
     customer_lifecycle_what_happened_ar: str = "",
     log_statuses: Optional[Iterable[str]] = None,
     next_attempt_due_at: Optional[str] = None,
@@ -465,6 +552,11 @@ def attach_merchant_proof_surface_v1(
         ),
         customer_lifecycle_state=str(
             customer_lifecycle_state or target.get("customer_lifecycle_state") or ""
+        ),
+        customer_lifecycle_label_ar=str(
+            customer_lifecycle_label_ar
+            or target.get("customer_lifecycle_label_ar")
+            or ""
         ),
         customer_lifecycle_what_happened_ar=str(
             customer_lifecycle_what_happened_ar

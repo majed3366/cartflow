@@ -514,10 +514,10 @@ class NormalRecoveryDashboardStatusTests(unittest.TestCase):
         )
         self.assertEqual(
             card.get("merchant_lifecycle_primary_key"),
-            "customer_returned",
+            "customer_returned_after_message",
             card.get("merchant_lifecycle_internal"),
         )
-        self.assertIn("عاد", card.get("merchant_lifecycle_customer_behavior_ar") or "")
+        self.assertIn("بعد الرسالة", card.get("merchant_lifecycle_customer_behavior_ar") or "")
         diag = card.get("normal_recovery_diagnostics")
         self.assertIsInstance(diag, dict)
         self.assertEqual(diag.get("grouped_abandoned_cart_row_ids_count"), 2)

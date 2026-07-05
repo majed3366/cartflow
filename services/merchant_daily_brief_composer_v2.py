@@ -107,6 +107,12 @@ def _representative_decision(group: list[dict[str, Any]]) -> dict[str, Any]:
 
 
 def _singular_headline(decision: Mapping[str, Any]) -> str:
+    cls = _norm(decision.get("decision_class"))
+    explanation = decision.get("decision_explanation")
+    if cls == CLASS_OBSERVATION and isinstance(explanation, Mapping):
+        rationale = _norm(explanation.get("rationale_ar"))
+        if rationale:
+            return rationale
     action = _brief_action_ar(decision)
     if action:
         return action
@@ -128,7 +134,9 @@ def _topic_headline_ar(family: str, count: int, representative: Mapping[str, Any
         ),
         DECISION_ID_CONTACT_CUSTOMER: "{n} سلات تحتاج تواصلك مع العملاء",
         DECISION_ID_FIX_CHANNEL: "{n} سلات — فشل إرسال رسالة الاسترجاع",
-        DECISION_ID_MONITOR_RETURN: "CartFlow يراقب {n} عودة للموقع",
+        DECISION_ID_MONITOR_RETURN: (
+            "CartFlow رصد {n} عودة للمتجر بعد رسالة الاسترجاع"
+        ),
         DECISION_ID_KL_OBSERVATION: "CartFlow رصد {n} ملاحظات في نشاط متجرك",
     }
     template = templates.get(family)

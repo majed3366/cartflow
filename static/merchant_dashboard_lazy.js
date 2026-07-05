@@ -2459,7 +2459,7 @@
     if (mc && mc.customer_lifecycle_label_ar) {
       return String(mc.customer_lifecycle_label_ar).trim();
     }
-    return "— حالة المسار غير متاحة —";
+    return "— لا تتوفر حالة واضحة بعد —";
   }
 
   var lastNormalCartsPageRows = [];
@@ -2478,7 +2478,7 @@
 
   function cartLifecycleStatusLabel(mc) {
     if (isArchivedVisual(mc)) return "✓ مؤرشفة";
-    return mc.customer_lifecycle_label_ar || "— حالة المسار غير متاحة —";
+    return mc.customer_lifecycle_label_ar || "— لا تتوفر حالة واضحة بعد —";
   }
 
   function sortCartsArchivedLast(rows) {
@@ -2768,7 +2768,7 @@
     return (
       '<div class="recovery-truth recovery-truth-compact customer-lifecycle-v1" aria-label="حالة دورة العميل">' +
       '<div class="recovery-truth-line"><strong>الحالة:</strong> ' +
-      esc("— حالة المسار غير متاحة —") +
+      esc("— لا تتوفر حالة واضحة بعد —") +
       "</div></div>"
     );
   }
@@ -2832,7 +2832,7 @@
     var h =
       '<div class="recovery-truth ma-proof-surface-v1" aria-label="دليل CartFlow">' +
       '<div class="recovery-truth-line ma-proof-headline">' +
-      "<strong>لماذا نعرف؟</strong> " +
+      "<strong>ملخص CartFlow:</strong> " +
       esc(ps.why_we_know_ar || "—") +
       "</div>" +
       '<div class="recovery-truth-line ma-proof-meta">' +

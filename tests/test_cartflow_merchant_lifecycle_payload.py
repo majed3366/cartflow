@@ -100,7 +100,7 @@ class MerchantLifecyclePayloadTests(unittest.TestCase):
         p = _normal_recovery_phase_steps_payload(ac)
         self.assertEqual(p.get("merchant_lifecycle_primary_key"), "customer_returned")
         self.assertIn("عاد", p.get("merchant_lifecycle_customer_behavior_ar") or "")
-        self.assertIn("تلقائي", p.get("merchant_lifecycle_system_outcome_ar") or "")
+        self.assertIn("CartFlow", p.get("merchant_lifecycle_system_outcome_ar") or "")
 
     def test_queued_after_skipped_anti_spam_tail_still_customer_returned(self) -> None:
         """Regression: newest log queued must not hide skipped_anti_spam return signal."""
@@ -162,8 +162,8 @@ class MerchantLifecyclePayloadTests(unittest.TestCase):
         )
         db.session.commit()
         p = _normal_recovery_phase_steps_payload(ac)
-        self.assertEqual(p.get("merchant_lifecycle_primary_key"), "customer_returned")
-        self.assertIn("عاد", p.get("merchant_lifecycle_customer_behavior_ar") or "")
+        self.assertEqual(p.get("merchant_lifecycle_primary_key"), "customer_returned_after_message")
+        self.assertIn("بعد الرسالة", p.get("merchant_lifecycle_customer_behavior_ar") or "")
 
     def test_durable_returned_to_site_log_survives_skipped_duplicate_for_lifecycle(self) -> None:
         """Durable return row must win over later skipped_duplicate (narrow send path)."""
@@ -224,12 +224,12 @@ class MerchantLifecyclePayloadTests(unittest.TestCase):
         )
         db.session.commit()
         p = _normal_recovery_phase_steps_payload(ac)
-        self.assertEqual(p.get("merchant_lifecycle_primary_key"), "customer_returned")
-        self.assertIn("عاد", p.get("merchant_lifecycle_customer_behavior_ar") or "")
-        self.assertIn("تلقائي", p.get("merchant_lifecycle_system_outcome_ar") or "")
+        self.assertEqual(p.get("merchant_lifecycle_primary_key"), "customer_returned_after_message")
+        self.assertIn("بعد الرسالة", p.get("merchant_lifecycle_customer_behavior_ar") or "")
+        self.assertIn("CartFlow", p.get("merchant_lifecycle_system_outcome_ar") or "")
         diag = p.get("normal_recovery_diagnostics") or {}
         self.assertTrue(diag.get("returned_to_site_evidence"), msg=diag)
-        self.assertEqual(diag.get("merchant_lifecycle_primary_key"), "customer_returned")
+        self.assertEqual(diag.get("merchant_lifecycle_primary_key"), "customer_returned_after_message")
         self.assertIn("returned_to_site", diag.get("recovery_log_statuses_seen") or [])
 
     def test_skipped_anti_spam_log_session_holds_cart_id_correlates_to_abandoned_row(self) -> None:

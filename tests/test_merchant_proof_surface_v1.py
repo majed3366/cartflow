@@ -14,6 +14,7 @@ from services.merchant_proof_surface_v1 import (
     _STEP_MESSAGE_ACCEPTED,
     _STEP_PROVIDER_DELIVERED,
     attach_merchant_proof_surface_v1,
+    build_merchant_proof_surface_v1,
     build_recovery_proof_steps,
     resolve_row_proof_confidence,
 )
@@ -72,6 +73,20 @@ class MerchantProofSurfaceV1Tests(unittest.TestCase):
         self.assertEqual(ps["primary_domain"], DOMAIN_DECISION)
         self.assertTrue(ps["recovery_steps"])
         self.assertEqual(row["customer_lifecycle_state"], before["customer_lifecycle_state"])
+
+    def test_waiting_purchase_window_no_raw_state_in_merchant_why(self) -> None:
+        bundle = build_merchant_proof_surface_v1(
+            customer_lifecycle_state="waiting_purchase_window",
+            customer_lifecycle_label_ar="عاد العميل للموقع — أوقفنا المتابعة مؤقتًا",
+            customer_lifecycle_what_happened_ar="عاد العميل إلى المتجر بعد الرسالة.",
+            log_statuses=["sent_real"],
+            sent_count=1,
+        )
+        why = bundle.get("why_we_know_ar") or ""
+        self.assertNotIn("waiting_purchase_window", why)
+        self.assertNotIn("حالة المسار", why)
+        diag = bundle.get("why_we_know_diagnostic_ar") or ""
+        self.assertIn("waiting_purchase_window", diag)
 
     def test_purchase_domain_recovery(self) -> None:
         row: dict = {"recovery_key": "s:1"}

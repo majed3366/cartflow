@@ -102,7 +102,7 @@ PRIMARY_NO_PHONE = "no_phone"
 PRIMARY_ARCHIVED = "archived"
 
 # Shown when lifecycle attach failed — never fall back to classifier chip (LT-C4).
-LIFECYCLE_TRUTH_UNAVAILABLE_LABEL_AR = "— حالة المسار غير متاحة —"
+LIFECYCLE_TRUTH_UNAVAILABLE_LABEL_AR = "— لا تتوفر حالة واضحة بعد —"
 LIFECYCLE_TRUTH_UNAVAILABLE_STATE = "lifecycle_unavailable"
 
 
@@ -919,10 +919,14 @@ def classify_customer_lifecycle_state_v1(
             return _finish(
                 _pack(
                     STATE_WAITING_PURCHASE_WINDOW,
-                    what_happened="عاد العميل للموقع بعد رسالة الاسترجاع.",
-                    system_did="أوقفنا المتابعة مؤقتًا — لا ضغط فوري على العميل.",
+                    what_happened="عاد العميل إلى المتجر بعد رسالة الاسترجاع.",
+                    system_did=(
+                        "CartFlow أوقف المتابعة مؤقتًا حتى لا يزعج العميل "
+                        "أثناء احتمالية الشراء."
+                    ),
                     what_next=(
-                        "نراقب إن أكمل الشراء؛ وإن لم يشترِ قد تُرسل متابعة لاحقة وفق الإعداد."
+                        "إذا لم يكتمل الشراء خلال فترة الانتظار، "
+                        "سيواصل CartFlow المتابعة حسب الإعدادات."
                     ),
                     merchant_needed="لا",
                     dashboard_action="none",

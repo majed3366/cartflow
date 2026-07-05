@@ -140,11 +140,30 @@ def build_normal_recovery_merchant_lifecycle(
         )
 
     if returned:
+        sent_after_message = sent_n >= 1 or bool(
+            log_ss & frozenset({"sent_real", "mock_sent"})
+        )
+        if not sent_after_message and recovery_key:
+            from services.recovery_truth_timeline_v1 import provider_send_proven
+
+            sent_after_message = provider_send_proven(
+                recovery_key,
+                log_statuses=log_ss,
+                sent_count=sent_n,
+                timeline_statuses=timeline_statuses,
+            )
+        if sent_after_message:
+            return pack(
+                "customer_returned_after_message",
+                "عاد العميل إلى المتجر بعد الرسالة.",
+                "CartFlow أوقف المتابعة مؤقتًا حتى لا يزعج العميل أثناء احتمالية الشراء.",
+                "إذا لم يكتمل الشراء خلال فترة الانتظار، سيواصل CartFlow المتابعة حسب الإعدادات.",
+            )
         return pack(
             "customer_returned",
-            "العميل عاد للموقع",
-            "العميل عاد للموقع — أوقفنا الرسائل تلقائياً.",
-            "لا حاجة لإجراء إضافي — النظام أوقف الرسائل تلقائياً.",
+            "عاد العميل إلى المتجر.",
+            "CartFlow أوقف المتابعة مؤقتًا حتى لا يزعج العميل.",
+            "لا حاجة لإجراء منك — CartFlow يراقب ما إذا أكمل الشراء.",
         )
 
     if bh.get("recovery_link_clicked") is True or pk == "behavioral_link_clicked":
@@ -304,6 +323,7 @@ def merchant_group_label_for_primary(primary_key: str) -> str:
         "purchase_complete": "اكتمال الشراء",
         "customer_replied": "تفاعل العميل",
         "customer_returned": "عودة للموقع",
+        "customer_returned_after_message": "عودة بعد الرسالة",
         "link_clicked": "اهتمام بالشراء",
         "channel_failed": "يحتاج إجراء",
         "needs_phone": "يحتاج إجراء",

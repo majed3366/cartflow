@@ -359,9 +359,26 @@ def _build_explanation(
             "if_omitted_ar": omitted,
         }
     if key == DECISION_MONITOR or state in _RETURN_STATES:
+        if state == "waiting_purchase_window":
+            return {
+                "rationale_ar": rationale
+                or "عاد عميل إلى المتجر بعد رسالة CartFlow",
+                "why_now_ar": (
+                    "تم إيقاف المتابعة مؤقتًا بانتظار إكمال الشراء — لا يلزم إجراء منك"
+                ),
+                "if_omitted_ar": (
+                    "إذا لم يكتمل الشراء، سيواصل CartFlow المتابعة تلقائياً حسب الإعدادات"
+                ),
+            }
+        if state == "return_to_site":
+            return {
+                "rationale_ar": rationale or "عاد عميل إلى المتجر",
+                "why_now_ar": "CartFlow يراقب ما إذا أكمل العميل الشراء",
+                "if_omitted_ar": "قد يكمل العميل الشراء دون تدخلك",
+            }
         return {
             "rationale_ar": rationale or "عاد العميل للموقع",
-            "why_now_ar": "إشارة عودة نشطة — نراقب فرصة الشراء",
+            "why_now_ar": "إشارة عودة نشطة — CartFlow يراقب فرصة الشراء",
             "if_omitted_ar": "قد يكمل العميل الشراء دون تدخلك",
         }
     return {
