@@ -47,11 +47,21 @@ def api_knowledge_report(
         )
 
         enrich_knowledge_report_claim_evidence_v1(payload)
+        from services.knowledge_producer_metadata_v1 import (  # noqa: PLC0415
+            enrich_knowledge_report_producer_metadata_v1,
+        )
+
+        enrich_knowledge_report_producer_metadata_v1(payload)
         from services.merchant_decision_layer_v1 import (  # noqa: PLC0415
             enrich_knowledge_report_merchant_decisions_v1,
         )
 
         enrich_knowledge_report_merchant_decisions_v1(payload)
+        from services.knowledge_layer_projection_v1 import (  # noqa: PLC0415
+            enrich_knowledge_report_kl_routing_and_projection_v1,
+        )
+
+        enrich_knowledge_report_kl_routing_and_projection_v1(payload)
         return j(payload)
     except (OSError, TypeError, ValueError) as exc:
         log.warning("api knowledge/report: %s", exc)

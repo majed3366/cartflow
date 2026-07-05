@@ -1,15 +1,18 @@
 # -*- coding: utf-8 -*-
 """
-Merchant Daily Brief Composer v2 — groups published decisions into briefing topics.
+Merchant Daily Brief Composer v2 — projection-only consumer of routed knowledge.
 
-Deterministic aggregation only. Never mints decisions or changes truth/confidence.
+Groups are assigned by Knowledge Routing v1. Composer projects routed items only.
 """
 from __future__ import annotations
 
-from collections import defaultdict
 from datetime import date
 from typing import Any, Iterable, Mapping, Optional
 
+from services.knowledge_routing_v1 import (
+    ROUTING_VERSION,
+    route_daily_brief_knowledge_v1,
+)
 from services.merchant_daily_brief_v1 import (
     MAX_BRIEF_ITEMS,
     _EMPTY_MESSAGE_AR,
@@ -19,18 +22,7 @@ from services.merchant_daily_brief_v1 import (
     _confidence_label_ar,
     _decision_class_label_ar,
     _evidence_source_ar,
-    collect_published_decisions_from_bundles_v1,
     project_brief_item_v1,
-)
-from services.merchant_decision_layer_v1 import (
-    CLASS_OBSERVATION,
-)
-from services.merchant_decision_registry_v1 import (
-    DECISION_ID_CONTACT_CUSTOMER,
-    DECISION_ID_FIX_CHANNEL,
-    DECISION_ID_KL_OBSERVATION,
-    DECISION_ID_MONITOR_RETURN,
-    DECISION_ID_OBTAIN_CONTACT,
 )
 
 COMPOSER_VERSION = "v2"
@@ -38,7 +30,7 @@ BRIEF_VERSION = "v2"
 SECTION_ACHIEVEMENT = "achievement"
 SECTION_ATTENTION = "attention"
 
-_AGGREGATION_REASON = "decision_id_family+action_key+commercial_goal+evidence_id"
+_AGGREGATION_REASON = "routing:aggregation_key+narrative_role+surface"
 
 
 def _norm(value: Any) -> str:
@@ -49,132 +41,82 @@ def _brief_date_iso() -> str:
     return date.today().isoformat()
 
 
-def decision_id_family(decision_id: str) -> str:
-    did = _norm(decision_id)
-    if ":" in did:
-        return did.split(":", 1)[0]
-    return did
-
-
-def aggregation_key_for_decision(decision: Mapping[str, Any]) -> str:
-    """Deterministic grouping key — related decisions only."""
-    family = decision_id_family(_norm(decision.get("decision_id")))
-    action_key = _norm(decision.get("action_key")).lower()
-    goal = _norm(decision.get("commercial_goal")).lower()
-    evidence_ids = decision.get("evidence_ids")
-    evidence = _norm(evidence_ids[0]) if isinstance(evidence_ids, list) and evidence_ids else ""
-    insight_key = ""
-    for src in decision.get("proof_sources") or []:
-        s = _norm(src)
-        if s.startswith("insight_key:"):
-            insight_key = s
-            break
-    if family == DECISION_ID_KL_OBSERVATION:
-        return f"{family}:{evidence}:{insight_key or goal}"
-    return f"{family}:{action_key}:{goal}:{evidence}"
-
-
-def is_achievement_decision(decision: Mapping[str, Any]) -> bool:
-    """Achievements = completed/platform work (observation/monitor), not merchant problems."""
-    cls = _norm(decision.get("decision_class"))
-    action = _norm(decision.get("merchant_action")).lower()
-    if cls == CLASS_OBSERVATION:
-        return True
-    if action == "monitor":
-        return True
-    family = decision_id_family(_norm(decision.get("decision_id")))
-    if family == DECISION_ID_KL_OBSERVATION:
-        return True
-    return False
-
-
 def _decision_trace_id(decision: Mapping[str, Any]) -> str:
-    """Unique published-decision instance key for traceability (merge_key when present)."""
     mk = _norm(decision.get("merge_key"))
     if mk:
         return mk
     return _norm(decision.get("decision_id"))
 
 
-def _representative_decision(group: list[dict[str, Any]]) -> dict[str, Any]:
-    return max(
-        group,
-        key=lambda d: (
-            int(d.get("priority") or 0),
-            _norm(d.get("decision_timestamp")),
-        ),
-    )
-
-
-def _singular_headline(decision: Mapping[str, Any]) -> str:
-    cls = _norm(decision.get("decision_class"))
-    explanation = decision.get("decision_explanation")
-    if cls == CLASS_OBSERVATION and isinstance(explanation, Mapping):
-        rationale = _norm(explanation.get("rationale_ar"))
-        if rationale:
-            return rationale
-    action = _brief_action_ar(decision)
-    if action:
-        return action
-    explanation = decision.get("decision_explanation")
+def _headline_from_routed_v2(routed: Mapping[str, Any]) -> str:
+    """Project headline from routed knowledge_payload only — no domain branching."""
+    payload = routed.get("knowledge_payload")
+    if not isinstance(payload, Mapping):
+        return "—"
+    explanation = payload.get("decision_explanation")
+    rationale = ""
     if isinstance(explanation, Mapping):
         rationale = _norm(explanation.get("rationale_ar"))
-        if rationale:
-            return rationale
-    return "—"
+    if not rationale:
+        rationale = _norm(payload.get("title_ar"))
+    count = int(routed.get("member_count") or 1)
+    if count > 1:
+        return f"{count} حالات — {rationale}" if rationale else f"{count} حالات"
+    return rationale or "—"
 
 
-def _topic_headline_ar(family: str, count: int, representative: Mapping[str, Any]) -> str:
-    if count <= 1:
-        return _singular_headline(representative)
-
-    templates: dict[str, str] = {
-        DECISION_ID_OBTAIN_CONTACT: (
-            "{n} عملاء لا يمكن التواصل معهم — أرقام التواصل غير متوفرة"
-        ),
-        DECISION_ID_CONTACT_CUSTOMER: "{n} سلات تحتاج تواصلك مع العملاء",
-        DECISION_ID_FIX_CHANNEL: "{n} سلات — فشل إرسال رسالة الاسترجاع",
-        DECISION_ID_MONITOR_RETURN: (
-            "CartFlow رصد {n} عودة للمتجر بعد رسالة الاسترجاع"
-        ),
-        DECISION_ID_KL_OBSERVATION: "CartFlow رصد {n} ملاحظات في نشاط متجرك",
-    }
-    template = templates.get(family)
-    if template:
-        return template.format(n=count)
-    singular = _singular_headline(representative)
-    return f"{count} حالات — {singular}" if count > 1 else singular
-
-
-def _topic_why_ar(representative: Mapping[str, Any], count: int) -> str:
-    explanation = representative.get("decision_explanation")
+def _why_from_routed_v2(routed: Mapping[str, Any]) -> str:
+    payload = routed.get("knowledge_payload")
+    if not isinstance(payload, Mapping):
+        return "—"
+    explanation = payload.get("decision_explanation")
     if isinstance(explanation, Mapping):
         why = _norm(explanation.get("why_now_ar"))
         if why:
+            count = int(routed.get("member_count") or 1)
             if count > 1:
                 return f"{why} ({count} حالات)"
             return why
     return "—"
 
 
-def _build_topic_item(
+def _source_trace_ids_from_routed_v2(routed: Mapping[str, Any]) -> list[str]:
+    ids: set[str] = set()
+    members = routed.get("member_payloads")
+    if isinstance(members, list) and members:
+        for member in members:
+            if isinstance(member, Mapping):
+                tid = _decision_trace_id(member)
+                if tid:
+                    ids.add(tid)
+    else:
+        payload = routed.get("knowledge_payload")
+        if isinstance(payload, Mapping):
+            tid = _decision_trace_id(payload)
+            if tid:
+                ids.add(tid)
+    return sorted(ids)
+
+
+def project_routed_topic_v2(
+    routed: Mapping[str, Any],
     *,
-    section: str,
-    group: list[dict[str, Any]],
-    aggregation_key: str,
-    brief_date: str,
+    brief_date: Optional[str] = None,
 ) -> dict[str, Any]:
-    rep = _representative_decision(group)
-    family = decision_id_family(_norm(rep.get("decision_id")))
-    count = len(group)
-    source_ids = sorted({_decision_trace_id(d) for d in group if _decision_trace_id(d)})
-    headline = _topic_headline_ar(family, count, rep)
-    why = _topic_why_ar(rep, count)
+    """Project one routed knowledge item into a Daily Brief topic (presentation only)."""
+    day = brief_date or _brief_date_iso()
+    payload = routed.get("knowledge_payload")
+    rep = payload if isinstance(payload, Mapping) else {}
+    section = _norm(routed.get("section")) or SECTION_ATTENTION
+    aggregation_key = _norm(routed.get("aggregation_key"))
+    headline = _headline_from_routed_v2(routed)
+    why = _why_from_routed_v2(routed)
+    count = int(routed.get("member_count") or 1)
     action = _brief_action_ar(rep) if count == 1 else ""
-    projected = project_brief_item_v1(rep, brief_date=brief_date)
+    projected = project_brief_item_v1(rep, brief_date=day) if rep else {}
 
     return {
-        "brief_item_id": f"daily_brief:{brief_date}:{section}:{aggregation_key}",
+        "brief_item_id": f"daily_brief:{day}:{section}:{aggregation_key}",
         "section": section,
         "headline_ar": headline,
         "what_ar": headline,
@@ -182,80 +124,59 @@ def _build_topic_item(
         "action_ar": action,
         "action_present": bool(action),
         "decision_count": count,
-        "source_decision_ids": source_ids,
+        "source_decision_ids": _source_trace_ids_from_routed_v2(routed),
         "aggregation_key": aggregation_key,
         "aggregation_reason": _AGGREGATION_REASON,
+        "routing_priority": int(routed.get("routing_priority") or 0),
+        "routing_version": _norm(routed.get("routing_version")) or ROUTING_VERSION,
+        "routed_knowledge_id": _norm(routed.get("knowledge_id")),
+        "representative_knowledge_id": _norm(
+            (routed.get("producer_reference") or {}).get("representative_knowledge_id")
+            if isinstance(routed.get("producer_reference"), Mapping)
+            else ""
+        ),
         "representative_decision_id": _norm(rep.get("decision_id")),
         "decision_id": _norm(rep.get("decision_id")),
         "decision_class": _norm(rep.get("decision_class")),
         "decision_class_label_ar": _decision_class_label_ar(_norm(rep.get("decision_class"))),
-        "priority": max(int(d.get("priority") or 0) for d in group),
-        "confidence": _norm(rep.get("confidence")),
-        "confidence_label_ar": _confidence_label_ar(_norm(rep.get("confidence"))),
-        "evidence_source_ar": _evidence_source_ar(rep),
+        "priority": int(routed.get("routing_priority") or 0),
+        "confidence": _norm(routed.get("confidence")) or _norm(rep.get("confidence")),
+        "confidence_label_ar": _confidence_label_ar(
+            _norm(routed.get("confidence")) or _norm(rep.get("confidence"))
+        ),
+        "evidence_source_ar": _evidence_source_ar(rep) if rep else "—",
         "evidence_ids": list(rep.get("evidence_ids") or []),
         "commercial_goal": _norm(rep.get("commercial_goal")),
-        "commercial_goal_label_ar": _commercial_goal_label_ar(
-            _norm(rep.get("commercial_goal"))
-        ),
+        "commercial_goal_label_ar": _commercial_goal_label_ar(_norm(rep.get("commercial_goal"))),
         "merge_key": aggregation_key,
         "proof_sources": list(rep.get("proof_sources") or []),
         "action_key": projected.get("action_key"),
     }
 
 
-def group_decisions_into_topics(
-    decisions: list[dict[str, Any]],
-    *,
-    brief_date: Optional[str] = None,
-) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    """Return (achievements, attention_topics) from published decisions."""
-    day = brief_date or _brief_date_iso()
-    achievement_groups: dict[str, list[dict[str, Any]]] = defaultdict(list)
-    attention_groups: dict[str, list[dict[str, Any]]] = defaultdict(list)
-
-    for decision in decisions:
-        key = aggregation_key_for_decision(decision)
-        if is_achievement_decision(decision):
-            achievement_groups[key].append(decision)
-        else:
-            attention_groups[key].append(decision)
-
-    achievements = [
-        _build_topic_item(
-            section=SECTION_ACHIEVEMENT,
-            group=grp,
-            aggregation_key=key,
-            brief_date=day,
-        )
-        for key, grp in achievement_groups.items()
-    ]
-    achievements.sort(key=lambda t: (-int(t.get("decision_count") or 0), -int(t.get("priority") or 0)))
-
-    attention_topics = [
-        _build_topic_item(
-            section=SECTION_ATTENTION,
-            group=grp,
-            aggregation_key=key,
-            brief_date=day,
-        )
-        for key, grp in attention_groups.items()
-    ]
-    attention_topics.sort(
-        key=lambda t: (-int(t.get("priority") or 0), -int(t.get("decision_count") or 0))
-    )
-    return achievements, attention_topics[:MAX_BRIEF_ITEMS]
-
-
 def compose_merchant_daily_brief_v2(
     *,
-    decision_bundles: Iterable[Mapping[str, Any] | None],
+    decision_bundles: Iterable[Mapping[str, Any] | None] = (),
+    kl_insights: Iterable[Mapping[str, Any] | None] = (),
+    routed_feed: Optional[Mapping[str, Any]] = None,
     brief_date: Optional[str] = None,
 ) -> dict[str, Any]:
-    """Compose executive daily brief with achievements first, then attention topics."""
+    """Compose executive daily brief from routed knowledge (projection only)."""
     day = brief_date or _brief_date_iso()
-    collected = collect_published_decisions_from_bundles_v1(decision_bundles)
-    achievements, attention_items = group_decisions_into_topics(collected, brief_date=day)
+    feed = routed_feed or route_daily_brief_knowledge_v1(
+        decision_bundles=decision_bundles,
+        kl_insights=kl_insights,
+    )
+    achievements = [
+        project_routed_topic_v2(r, brief_date=day)
+        for r in feed.get("achievements") or []
+        if isinstance(r, Mapping)
+    ]
+    attention_items = [
+        project_routed_topic_v2(r, brief_date=day)
+        for r in feed.get("attention_items") or []
+        if isinstance(r, Mapping)
+    ]
 
     all_source_ids: set[str] = set()
     for topic in achievements + attention_items:
@@ -263,6 +184,7 @@ def compose_merchant_daily_brief_v2(
             all_source_ids.add(_norm(sid))
 
     empty = not achievements and not attention_items
+    obs = feed.get("observability") if isinstance(feed.get("observability"), Mapping) else {}
     return {
         "version": BRIEF_VERSION,
         "composer_version": COMPOSER_VERSION,
@@ -279,8 +201,13 @@ def compose_merchant_daily_brief_v2(
             "title_ar": _EMPTY_TITLE_AR,
             "message_ar": _EMPTY_MESSAGE_AR,
         },
+        "knowledge_routing_v1": {
+            "routing_version": _norm(feed.get("routing_version")) or ROUTING_VERSION,
+            "surface": _norm(feed.get("surface")) or "daily_brief",
+            "observability": dict(obs),
+        },
         "observability": {
-            "decisions_collected": len(collected),
+            "decisions_collected": int(obs.get("input_items") or 0),
             "decisions_composed": len(all_source_ids),
             "achievement_topics": len(achievements),
             "attention_topics": len(attention_items),
@@ -289,6 +216,7 @@ def compose_merchant_daily_brief_v2(
                 for b in decision_bundles
                 if isinstance(b, Mapping) and isinstance(b.get("decisions"), list)
             ),
+            "routing_eligible_items": int(obs.get("eligible_items") or 0),
         },
     }
 
@@ -332,6 +260,43 @@ def validate_merchant_daily_brief_v2(brief: Mapping[str, Any]) -> list[str]:
     return errors
 
 
+# Legacy helpers retained for unit tests of routing migration — not used by compose path.
+def decision_id_family(decision_id: str) -> str:
+    did = _norm(decision_id)
+    if ":" in did:
+        return did.split(":", 1)[0]
+    return did
+
+
+def aggregation_key_for_decision(decision: Mapping[str, Any]) -> str:
+    return _norm(decision.get("aggregation_key")) or _norm(decision.get("merge_key"))
+
+
+def is_achievement_decision(decision: Mapping[str, Any]) -> bool:
+    from services.knowledge_routing_v1 import assign_routing_section_v1
+
+    return assign_routing_section_v1(decision) == SECTION_ACHIEVEMENT
+
+
+def group_decisions_into_topics(
+    decisions: list[dict[str, Any]],
+    *,
+    brief_date: Optional[str] = None,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Deprecated — routing assigns groups; retained for migration tests."""
+    from services.knowledge_routing_v1 import route_daily_brief_knowledge_v1
+
+    day = brief_date or _brief_date_iso()
+    feed = route_daily_brief_knowledge_v1(decision_bundles=[{"decisions": decisions}])
+    achievements = [
+        project_routed_topic_v2(r, brief_date=day) for r in feed.get("achievements") or []
+    ]
+    attention = [
+        project_routed_topic_v2(r, brief_date=day) for r in feed.get("attention_items") or []
+    ]
+    return achievements, attention
+
+
 __all__ = [
     "BRIEF_VERSION",
     "COMPOSER_VERSION",
@@ -342,5 +307,6 @@ __all__ = [
     "decision_id_family",
     "group_decisions_into_topics",
     "is_achievement_decision",
+    "project_routed_topic_v2",
     "validate_merchant_daily_brief_v2",
 ]

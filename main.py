@@ -17,7 +17,7 @@ from collections import defaultdict
 from types import SimpleNamespace
 from datetime import datetime, timedelta, timezone
 from dataclasses import dataclass, field
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Mapping, Optional, Tuple
 
 import anthropic
 import requests
@@ -16574,6 +16574,12 @@ def _merchant_normal_recovery_light_payload_merchant_batch(
     except Exception:  # noqa: BLE001
         pass
     try:
+        from services.cart_detail_projection_v1 import attach_cart_detail_projection_v1  # noqa: PLC0415
+
+        attach_cart_detail_projection_v1(out)
+    except Exception:  # noqa: BLE001
+        pass
+    try:
         from services.dashboard_normal_carts_perf_v1 import (  # noqa: PLC0415
             dashboard_normal_carts_perf_active,
             dashboard_normal_carts_perf_peek_queries,
@@ -19586,18 +19592,27 @@ def _api_json_dashboard_summary(
     try:
         slug = (getattr(dash_store, "zid_store_id", None) or "").strip()
         if slug:
-            from services.merchant_daily_brief_v1 import (  # noqa: PLC0415
-                build_merchant_daily_brief_api_payload,
+            from services.merchant_home_composition_v1 import (  # noqa: PLC0415
+                build_merchant_home_experience_api_payload,
             )
 
-            with dashboard_summary_profile_span("build_merchant_daily_brief_api_payload"):
-                out["merchant_daily_brief_v1"] = build_merchant_daily_brief_api_payload(
+            with dashboard_summary_profile_span("build_merchant_home_experience_api_payload"):
+                home_payload = build_merchant_home_experience_api_payload(
                     db.session,
                     slug,
                     dash_store,
+                    date_ar=str(out.get("merchant_ar_date_header") or ""),
+                    nav_metadata={
+                        "active_carts": int(mstats.get("normal_cart_count") or 0),
+                        "waiting_send": int(out.get("merchant_nav_badge_abandoned") or 0),
+                    },
                 )
+                out["merchant_home_experience_v1"] = home_payload
+                brief_embed = home_payload.get("daily_brief_v1")
+                if isinstance(brief_embed, Mapping):
+                    out["merchant_daily_brief_v1"] = brief_embed
     except Exception as exc:  # noqa: BLE001
-        log.warning("summary merchant_daily_brief_v1: %s", exc)
+        log.warning("summary merchant_home_experience_v1: %s", exc)
         db.session.rollback()
     try:
         log.info(

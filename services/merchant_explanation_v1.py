@@ -397,6 +397,18 @@ def attach_merchant_explanation_v1(
         diagnostic_proof_summary_ar=proof_diag,
     )
     target["merchant_explanation_v1"] = expl
+    from services.knowledge_producer_metadata_v1 import (  # noqa: PLC0415
+        enrich_explanation_knowledge_metadata_v1,
+    )
+
+    enrich_explanation_knowledge_metadata_v1(
+        expl,
+        store_slug=str(target.get("store_slug") or target.get("store") or ""),
+        recovery_key=str(target.get("recovery_key") or ""),
+        abandoned_cart_id=target.get("abandoned_cart_id") or target.get("id"),
+        proof=target.get("merchant_proof_surface_v1"),
+        lifecycle_state=str(target.get("customer_lifecycle_state") or ""),
+    )
     sync_merchant_explanation_to_lifecycle_fields(target)
 
     # Keep legacy merchant lifecycle narrative aligned when present.

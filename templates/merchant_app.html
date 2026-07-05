@@ -84,76 +84,20 @@
     <div id="ma-home-alerts-root" class="ma-home-alerts-band ma-home-section" hidden aria-live="polite"></div>
 
     <section
-      id="ma-daily-brief-root"
-      class="ma-home-section ma-daily-brief-briefing"
-      aria-label="ملخص يومك"
+      id="ma-home-experience-root"
+      class="ma-home-experience ma-home-section"
+      aria-label="مركز تشغيل متجرك"
       aria-live="polite"
     >
-      <div id="ma-daily-brief-body" class="ma-daily-brief-body">
-        <header class="ma-brief-header ma-brief-header--shell">
-          <p class="ma-brief-greeting" id="ma-brief-greeting-shell">مرحباً</p>
-          <p class="ma-brief-today" id="ma-brief-today-shell">{{ merchant_ar_date_header | default('') }}</p>
-          <p class="ma-brief-attention-count ma-brief-attention-count--pending">CartFlow يتابع متجرك</p>
+      <div class="ma-home-experience-loading" id="ma-home-experience-loading">
+        <header class="ma-home-greeting ma-home-greeting--shell">
+          <p class="ma-home-greeting-text" id="ma-home-greeting-shell">مرحباً</p>
+          <p class="ma-home-greeting-name">{{ merchant_store_display_name | default('متجرك') }}</p>
+          <p class="ma-home-greeting-date" id="ma-home-date-shell">{{ merchant_ar_date_header | default('') }}</p>
         </header>
+        <p class="ma-home-experience-pending">CartFlow يجهّز ملخص يومك…</p>
       </div>
     </section>
-
-    <section
-      id="ma-knowledge-root"
-      class="ma-home-section ma-home-section-knowledge ma-knowledge-section"
-      aria-labelledby="ma-knowledge-title"
-      aria-live="polite"
-    >
-      <div class="ma-knowledge-head">
-        <h2 class="ma-knowledge-title" id="ma-knowledge-title">ماذا يحدث في متجري الآن؟</h2>
-        <p class="ma-knowledge-lead">ما يراه CartFlow من نشاط متجرك — بأسلوب واضح وبسيط.</p>
-      </div>
-      <div id="ma-knowledge-body" class="ma-knowledge-body">
-        <p class="ma-knowledge-loading">جاري قراءة ما يراه CartFlow…</p>
-      </div>
-    </section>
-
-    <div class="card ma-home-reasons ma-home-section ma-home-section-reasons">
-      <div class="card-head"><div class="card-title">أسباب التردد — الأسبوع</div><button type="button" class="card-link" onclick="goTo('reasons')">تقرير كامل</button></div>
-      <div class="reasons-body" id="ma-reasons-week-body">
-        {% if merchant_dashboard_lazy_shell %}
-        <div class="ma-dash-skel" style="padding:12px;color:var(--muted);">…</div>
-        {% else %}
-        {% for rr in merchant_reason_rows_week %}
-        <div class="r-row">
-          <div class="r-head"><span class="r-name">{{ rr.label_ar }}</span><span class="r-pct">{{ "%.0f"|format(rr.count_pct | float) }}٪</span></div>
-          <div class="track"><div class="fill" style="width: {{ rr.count_pct | float }}%; background: {{ rr.fill_color }};"></div></div>
-        </div>
-        {% else %}
-        <div class="empty-text" style="padding:12px;color:var(--muted);">لا توجد بيانات أسباب التردد لهذا الأسبوع</div>
-        {% endfor %}
-        {% if merchant_reason_insight_ar %}<div class="r-insight">{{ merchant_reason_insight_ar }}</div>{% endif %}
-        {% endif %}
-      </div>
-    </div>
-
-    <div class="bottom-grid ma-home-bottom ma-home-section ma-home-section-vip">
-      <div class="card">
-        <div class="card-head"><div class="card-title">👑 سلال VIP — تحتاج تدخلك</div><button type="button" class="card-link" onclick="goToCartTab('vip')">عرض الكل</button></div>
-        <div id="ma-vip-home-list">
-        {% if merchant_dashboard_lazy_shell %}
-        <div class="ma-dash-skel" style="padding:16px;color:var(--muted);text-align:center;">…</div>
-        {% else %}
-        {% for vr in merchant_vip_rows %}
-        <div class="vip-item">
-          <div class="vav">{{ vr.avatar_letter }}</div>
-          <div class="vi"><div class="vamt">{{ vr.amount_display }} ريال</div><div class="vtm">{{ vr.subtitle_ar }}</div></div>
-          <span class="vtag">VIP</span>
-          {% if vr.contact_href %}<a class="vbtn" href="{{ vr.contact_href }}">تواصل يدوي (VIP)</a>{% else %}<span class="vbtn is-disabled">تواصل يدوي (VIP)</span>{% endif %}
-        </div>
-        {% else %}
-        <div class="empty-state"><div class="empty-icon">👑</div><div class="empty-text">لا سلال VIP تحتاج تدخلك حالياً</div></div>
-        {% endfor %}
-        {% endif %}
-        </div>
-        <div class="ma-vip-footnote">⚠️ VIP لا يتلقى رسائل تلقائية — تدخلك الشخصي يصنع الفرق</div>
-      </div>
-    </div>
   </div>
 
   <div class="page ma-page-home-sub" id="page-home-setup">
@@ -1024,8 +968,7 @@
 </div><!-- /.ma-dashboard-frame -->
 
 <script defer src="/static/merchant_vip_automation_ui.js"></script>
-<script defer src="/static/merchant_daily_brief.js?v={{ merchant_setup_render_build | default('unknown') }}"></script>
-<script defer src="/static/merchant_knowledge_layer.js?v={{ merchant_setup_render_build | default('unknown') }}"></script>
+<script defer src="/static/merchant_home_experience.js?v={{ merchant_setup_render_build | default('unknown') }}"></script>
 <script defer src="/static/merchant_dashboard_lazy.js?v={{ merchant_setup_render_build | default('unknown') }}"></script>
 <script defer src="/static/merchant_whatsapp_settings.js"></script>
 <script defer src="/static/merchant_whatsapp_connect.js"></script>

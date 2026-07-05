@@ -275,11 +275,15 @@ def build_merchant_daily_brief_api_payload(
     """
     slug = _norm(store_slug)
     bundles: list[Mapping[str, Any]] = []
+    kl_insights: list[Mapping[str, Any]] = []
 
     try:
         from services.knowledge_layer_v1 import build_knowledge_report  # noqa: PLC0415
         from services.merchant_claim_evidence_v1 import (  # noqa: PLC0415
             enrich_knowledge_report_claim_evidence_v1,
+        )
+        from services.knowledge_producer_metadata_v1 import (  # noqa: PLC0415
+            enrich_knowledge_report_producer_metadata_v1,
         )
         from services.merchant_decision_layer_v1 import (  # noqa: PLC0415
             enrich_knowledge_report_merchant_decisions_v1,
@@ -288,10 +292,14 @@ def build_merchant_daily_brief_api_payload(
         report = build_knowledge_report(db_session, slug, window_days=7)
         kl_payload = report.to_dict()
         enrich_knowledge_report_claim_evidence_v1(kl_payload)
+        enrich_knowledge_report_producer_metadata_v1(kl_payload)
         enrich_knowledge_report_merchant_decisions_v1(kl_payload)
         kl_bundle = kl_payload.get("merchant_decisions_v1")
         if isinstance(kl_bundle, Mapping):
             bundles.append(kl_bundle)
+        for raw in kl_payload.get("insights") or []:
+            if isinstance(raw, Mapping):
+                kl_insights.append(raw)
     except (OSError, TypeError, ValueError, ImportError):
         pass
 
@@ -323,7 +331,13 @@ def build_merchant_daily_brief_api_payload(
         compose_merchant_daily_brief_v2 = None  # type: ignore[misc, assignment]
 
     brief_fn = compose_merchant_daily_brief_v2 or compose_merchant_daily_brief_v1
-    brief = brief_fn(decision_bundles=bundles)
+    if compose_merchant_daily_brief_v2 is not None:
+        brief = compose_merchant_daily_brief_v2(
+            decision_bundles=bundles,
+            kl_insights=kl_insights,
+        )
+    else:
+        brief = brief_fn(decision_bundles=bundles)
     brief["ok"] = True
     brief["generated_at"] = (
         datetime.now(timezone.utc).replace(microsecond=0).isoformat()

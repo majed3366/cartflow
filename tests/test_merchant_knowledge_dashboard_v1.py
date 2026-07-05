@@ -82,42 +82,35 @@ class MerchantKnowledgeDashboardV1Tests(unittest.TestCase):
         os.environ.setdefault("SECRET_KEY", "unit-test-secret-key-for-knowledge-dashboard")
         self.client = TestClient(app)
 
-    def test_dashboard_contains_knowledge_section(self) -> None:
+    def test_dashboard_contains_home_experience_composition(self) -> None:
         r = self.client.get("/dashboard")
         self.assertEqual(r.status_code, 200)
         html = r.text or ""
-        self.assertIn('id="ma-knowledge-root"', html)
-        self.assertIn("ماذا يحدث في متجرك؟", html)
-        self.assertNotIn("🧠", html[html.find("ma-knowledge-root") : html.find("ma-knowledge-body")])
-        self.assertIn("merchant_knowledge_layer.js", html)
+        self.assertIn('id="ma-home-experience-root"', html)
+        self.assertIn("ma-home-experience", html)
+        self.assertIn("merchant_home_experience.js", html)
+        self.assertNotIn('id="ma-knowledge-root"', html)
+        self.assertNotIn('id="ma-daily-brief-root"', html)
 
     def test_knowledge_js_consumes_api_only(self) -> None:
         self.assertIn("/api/knowledge/report", _JS)
+        self.assertIn("knowledge_layer_projection_v1", _JS)
         self.assertNotIn("build_knowledge_report", _JS)
         self.assertNotIn("knowledge_insights_v1", _JS)
+        self.assertNotIn("INSIGHT_PRIORITY", _JS)
+        self.assertNotIn("pickTopInsights", _JS)
 
     def test_knowledge_js_has_empty_state_copy(self) -> None:
         self.assertIn("لا توجد بيانات كافية حالياً", _JS)
         self.assertIn("استمر في جمع النشاط", _JS)
 
-    def test_knowledge_js_arabic_display_mappings(self) -> None:
-        self.assertIn("أكبر فرصة لتحسين الاسترجاع", _JS)
-        self.assertIn('price: "السعر"', _JS)
-        self.assertIn('no_reply: "لم يرد العميل"', _JS)
-        self.assertIn("buildKnowledgeCardOIA", _JS)
-        self.assertIn("localizeReason", _JS)
-        self.assertNotIn("عنق زجاجة", _JS)
-
-    def test_knowledge_oia_framework(self) -> None:
+    def test_knowledge_js_projection_render_only(self) -> None:
+        self.assertIn("display_cards", _JS)
+        self.assertIn("renderDisplayCard", _JS)
         self.assertIn("OIA_LABEL_OBSERVATION", _JS)
-        self.assertIn("OIA_LABEL_IMPACT", _JS)
-        self.assertIn("OIA_LABEL_ACTION", _JS)
-        self.assertIn("buildHesitationTopReasonOIA", _JS)
-        self.assertIn("comparisonPeriodLabel", _JS)
-        self.assertIn("مقارنة بالأسبوع السابق", _JS)
-        self.assertIn("راجع التسعير أو وضّح قيمة المنتج", _JS)
-        self.assertNotIn('action: "راقب هذا المؤشر خلال الأيام القادمة"', _JS)
-        self.assertIn("VIP cards belong to Action/Attention surfaces", _JS)
+        self.assertNotIn("buildHesitationTopReasonOIA", _JS)
+        self.assertNotIn("buildKnowledgeCardOIA", _JS)
+        self.assertNotIn("localizeReason", _JS)
 
     def test_knowledge_css_oia_blocks(self) -> None:
         css = (_ROOT / "static" / "merchant_app.css").read_text(encoding="utf-8")

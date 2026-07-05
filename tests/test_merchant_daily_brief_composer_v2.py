@@ -24,6 +24,11 @@ from services.merchant_decision_layer_v1 import (
     VERIFY_PASSED,
 )
 from services.merchant_decision_registry_v1 import DECISION_ID_OBTAIN_CONTACT
+from services.knowledge_producer_metadata_v1 import enrich_decision_knowledge_metadata_v1
+
+
+def _norm(value: object) -> str:
+    return str(value or "").strip()
 
 
 def _published_decision(**overrides: object) -> dict:
@@ -52,6 +57,12 @@ def _published_decision(**overrides: object) -> dict:
         "action_key": "obtain_contact",
     }
     base.update(overrides)
+    proof_source = _norm(base.get("proof_sources")[0] if base.get("proof_sources") else "")
+    enrich_decision_knowledge_metadata_v1(
+        base,
+        store_slug="demo-store",
+        recovery_key=proof_source,
+    )
     return base
 
 
@@ -74,7 +85,7 @@ class MerchantDailyBriefComposerV2Tests(unittest.TestCase):
         topic = brief["attention_items"][0]
         self.assertEqual(topic["decision_count"], 5)
         self.assertEqual(len(topic["source_decision_ids"]), 5)
-        self.assertIn("5 عملاء", topic["headline_ar"])
+        self.assertIn("5 حالات", topic["headline_ar"])
         self.assertEqual(validate_merchant_daily_brief_v2(brief), [])
 
     def test_achievements_before_attention_in_payload(self) -> None:
@@ -186,16 +197,17 @@ class MerchantDailyBriefComposerV2Tests(unittest.TestCase):
             )
         )
 
-    def test_aggregation_key_includes_family_action_goal(self) -> None:
+    def test_aggregation_key_from_metadata(self) -> None:
         d = _published_decision()
         key = aggregation_key_for_decision(d)
-        self.assertIn(DECISION_ID_OBTAIN_CONTACT, key)
-        self.assertIn("obtain_contact", key)
+        self.assertTrue(key)
+        self.assertEqual(key, _norm(d.get("aggregation_key")))
 
-    def test_confidence_unchanged_on_representative(self) -> None:
+    def test_routing_selects_highest_priority_representative(self) -> None:
         decisions = [
             _published_decision(
                 merge_key=f"cart:{i}",
+                proof_sources=[f"p:{i}"],
                 confidence="high" if i == 0 else "low",
                 priority=200 + i,
             )
@@ -206,7 +218,7 @@ class MerchantDailyBriefComposerV2Tests(unittest.TestCase):
             brief_date="2026-07-04",
         )
         topic = brief["attention_items"][0]
-        self.assertEqual(topic["confidence"], "low")
+        self.assertEqual(topic["confidence"], "high")
         self.assertEqual(topic["representative_decision_id"], DECISION_ID_OBTAIN_CONTACT)
 
     def test_empty_brief_when_no_decisions(self) -> None:

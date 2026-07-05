@@ -524,6 +524,7 @@ def build_cart_row_merchant_decisions_v1(
     *,
     proof: Mapping[str, Any],
     recovery_key: str = "",
+    store_slug: str = "",
     customer_lifecycle_state: str = "",
     customer_lifecycle_merchant_needed_ar: str = "",
     customer_lifecycle_what_happened_ar: str = "",
@@ -591,6 +592,17 @@ def build_cart_row_merchant_decisions_v1(
         dec["suppression_state"] = "none"
         _record_observability(dec, published=True, suppressed=False)
 
+    from services.knowledge_producer_metadata_v1 import (  # noqa: PLC0415
+        enrich_decision_knowledge_metadata_v1,
+    )
+
+    for dec in published:
+        enrich_decision_knowledge_metadata_v1(
+            dec,
+            store_slug=store_slug,
+            recovery_key=proof_source,
+        )
+
     elapsed_ms = (time.perf_counter() - t0) * 1000.0
     _OBS.latency_ms_total += elapsed_ms
     _OBS.latency_samples += 1
@@ -602,7 +614,11 @@ def build_cart_row_merchant_decisions_v1(
     }
 
 
-def build_kl_observation_decision_v1(insight: Mapping[str, Any]) -> Optional[dict[str, Any]]:
+def build_kl_observation_decision_v1(
+    insight: Mapping[str, Any],
+    *,
+    store_slug: str = "",
+) -> Optional[dict[str, Any]]:
     """Mint Observation-class decision from one KL insight (claim-level evidence)."""
     key = _norm(insight.get("insight_key"))
     if not key:
@@ -638,6 +654,20 @@ def build_kl_observation_decision_v1(insight: Mapping[str, Any]) -> Optional[dic
         "merge_key": _merge_key(prefix=entry.merge_key_prefix, subject=key),
     }
     _record_observability(decision, published=True, suppressed=False)
+    from services.knowledge_producer_metadata_v1 import (  # noqa: PLC0415
+        enrich_decision_knowledge_metadata_v1,
+    )
+
+    store = _norm(store_slug)
+    enrich_decision_knowledge_metadata_v1(
+        decision,
+        store_slug=store,
+        recovery_key=f"insight_key:{key}",
+    )
+    decision["eligible_surfaces"] = ["knowledge_layer", "daily_brief"]
+    insight_kid = _norm(insight.get("knowledge_id"))
+    if insight_kid and isinstance(decision.get("traceability"), dict):
+        decision["traceability"]["linked_insight_knowledge_id"] = insight_kid
     return decision
 
 
@@ -650,13 +680,14 @@ def enrich_knowledge_report_merchant_decisions_v1(
     insights = target.get("insights")
     if not isinstance(insights, list):
         return
+    store_slug = _norm(target.get("store_slug"))
     decisions: list[dict[str, Any]] = []
     suppressed: list[dict[str, Any]] = []
     seen: set[str] = set()
     for raw in insights:
         if not isinstance(raw, dict):
             continue
-        dec = build_kl_observation_decision_v1(raw)
+        dec = build_kl_observation_decision_v1(raw, store_slug=store_slug)
         if dec is None:
             continue
         mk = _norm(dec.get("merge_key"))
@@ -765,6 +796,7 @@ def attach_merchant_decisions_v1(
     bundle = build_cart_row_merchant_decisions_v1(
         proof=proof,
         recovery_key=_norm(target.get("recovery_key")),
+        store_slug=_norm(target.get("store_slug") or target.get("store")),
         customer_lifecycle_state=_norm(target.get("customer_lifecycle_state")),
         customer_lifecycle_merchant_needed_ar=_norm(
             target.get("customer_lifecycle_merchant_needed_ar")

@@ -2092,7 +2092,9 @@
     applyHomeLayoutAfterSetup(d.merchant_activation, d.merchant_setup_experience);
     logSetupRenderDebug("summary_dom", probeSetupExperienceRoot());
 
-    if (window.maApplyDailyBriefPayload) {
+    if (window.maApplyHomeExperience && d.merchant_home_experience_v1) {
+      window.maApplyHomeExperience(d.merchant_home_experience_v1);
+    } else if (window.maApplyDailyBriefPayload) {
       if (d.merchant_daily_brief_v1 && d.merchant_daily_brief_v1.ok) {
         window.maApplyDailyBriefPayload(d.merchant_daily_brief_v1);
       } else if (window.maFetchDailyBrief) {
@@ -2674,25 +2676,60 @@
     }
   };
 
+  function cartDetailProjection(mc) {
+    var proj = mc && mc.cart_detail_projection_v1;
+    return proj && proj.version === "v1" ? proj : null;
+  }
+
   function merchantInterventionContactBtnHtml(mc) {
-    if (!mc || !mc.merchant_intervention_executable) return "";
-    var href = String(mc.merchant_intervention_contact_href || "").trim();
-    if (!href) return "";
-    var lbl = String(mc.merchant_intervention_action_ar || "فتح واتساب").trim();
-    return (
-      '<div class="recovery-truth-actions"><a class="cf-lc-btn cf-lc-btn-contact" href="' +
-      esc(href) +
-      '" target="_blank" rel="noopener noreferrer"><span class="cf-lc-btn-icon" aria-hidden="true">💬</span> ' +
-      esc(lbl) +
-      "</a></div>"
-    );
+    var proj = cartDetailProjection(mc);
+    var contact = proj && proj.contact_action;
+    if (contact && contact.visible && contact.href) {
+      return (
+        '<div class="recovery-truth-actions"><a class="cf-lc-btn cf-lc-btn-contact" href="' +
+        esc(contact.href) +
+        '" target="_blank" rel="noopener noreferrer"><span class="cf-lc-btn-icon" aria-hidden="true">💬</span> ' +
+        esc(contact.label_ar || "فتح واتساب") +
+        "</a></div>"
+      );
+    }
+    if (!proj && mc && mc.merchant_intervention_executable) {
+      var href = String(mc.merchant_intervention_contact_href || "").trim();
+      if (!href) return "";
+      var lbl = String(mc.merchant_intervention_action_ar || "فتح واتساب").trim();
+      return (
+        '<div class="recovery-truth-actions"><a class="cf-lc-btn cf-lc-btn-contact" href="' +
+        esc(href) +
+        '" target="_blank" rel="noopener noreferrer"><span class="cf-lc-btn-icon" aria-hidden="true">💬</span> ' +
+        esc(lbl) +
+        "</a></div>"
+      );
+    }
+    return "";
   }
 
   function cartLifecycleActionBtnHtml(mc) {
-    var rk = String(mc.recovery_key || "").trim();
-    var act = String(mc.customer_lifecycle_dashboard_action || "").trim();
+    var proj = cartDetailProjection(mc);
+    var lc = proj && proj.lifecycle_ui;
+    var rk = lc && lc.recovery_key ? lc.recovery_key : String(mc.recovery_key || "").trim();
     if (!rk) return "";
     var h = merchantInterventionContactBtnHtml(mc);
+    if (lc) {
+      if (lc.archive_visible) {
+        h +=
+          '<div class="recovery-truth-actions"><button type="button" class="cf-lc-btn cf-lc-btn-archive" data-lc-archive data-recovery-key="' +
+          esc(rk) +
+          '"><span class="cf-lc-btn-icon" aria-hidden="true">🗂</span> نقل للأرشيف</button></div>';
+      }
+      if (lc.reopen_visible) {
+        h +=
+          '<div class="recovery-truth-actions"><button type="button" class="cf-lc-btn cf-lc-btn-reopen" data-lc-reopen data-recovery-key="' +
+          esc(rk) +
+          '"><span class="cf-lc-btn-icon" aria-hidden="true">↩</span> إعادة فتح</button></div>';
+      }
+      return h;
+    }
+    var act = String(mc.customer_lifecycle_dashboard_action || "").trim();
     if (act === "archive") {
       h +=
         '<div class="recovery-truth-actions"><button type="button" class="cf-lc-btn cf-lc-btn-archive" data-lc-archive data-recovery-key="' +
@@ -2751,11 +2788,16 @@
   }
 
   function continuationDecisionExplanationHtml(mc) {
-    var expl =
-      mc.customer_lifecycle_continuation_explanation_ar ||
-      mc.normal_recovery_continuation_explanation_ar ||
-      "";
-    expl = String(expl || "").trim();
+    var proj = cartDetailProjection(mc);
+    var expl = proj ? String(proj.continuation_line_ar || "").trim() : "";
+    if (!expl) {
+      expl = String(
+        (mc &&
+          (mc.customer_lifecycle_continuation_explanation_ar ||
+            mc.normal_recovery_continuation_explanation_ar)) ||
+          ""
+      ).trim();
+    }
     if (!expl) return "";
     return (
       '<div class="recovery-truth-line recovery-truth-highlight customer-lifecycle-cont-expl">' +
@@ -2773,24 +2815,101 @@
     );
   }
 
-  var MERCHANT_DECISION_LABEL_AR = {
-    obtain_contact: "الحصول على رقم العميل",
-    fix_channel: "إصلاح قناة التواصل",
-    contact_customer: "التواصل مع العميل",
-    monitor: "مراقبة العميل",
-  };
-
-  /** Normal carts: show الإجراء المقترح only when merchant can act in-product. */
-  var NORMAL_CART_MERCHANT_EXECUTABLE_DECISION_KEYS = {
-    contact_customer: 1,
-  };
-
-  function merchantDecisionExecutable(mc, key) {
-    if (!key) return false;
-    if (key === "contact_customer") {
-      return !!(mc && mc.merchant_intervention_executable);
+  function merchantDecisionSuggestedActionHtml(mc) {
+    if (!mc) return "";
+    var proj = cartDetailProjection(mc);
+    if (proj && proj.suggested_action) {
+      var sa = proj.suggested_action;
+      if (!sa.visible || !sa.label_ar) return "";
+      return (
+        '<div class="recovery-truth-line"><strong>الإجراء المقترح:</strong> ' +
+        esc(sa.label_ar) +
+        "</div>"
+      );
     }
-    return !!NORMAL_CART_MERCHANT_EXECUTABLE_DECISION_KEYS[key];
+    return "";
+  }
+
+  function merchantExplanationProjectionHtml(mc, expl) {
+    var h =
+      '<div class="recovery-truth recovery-truth-compact merchant-explanation-v1" aria-label="شرح CartFlow">';
+    h +=
+      '<div class="recovery-truth-line me-status"><strong>الحالة:</strong> ' +
+      esc(expl.status_label_ar || "—") +
+      "</div>";
+    if (expl.what_happened_ar) {
+      h +=
+        '<div class="recovery-truth-line me-what"><strong>ماذا حدث؟</strong> ' +
+        esc(expl.what_happened_ar) +
+        "</div>";
+    }
+    if (expl.system_did_ar) {
+      h +=
+        '<div class="recovery-truth-line me-system"><strong>ماذا فعل CartFlow؟</strong> ' +
+        esc(expl.system_did_ar) +
+        "</div>";
+    }
+    if (expl.what_next_ar) {
+      h +=
+        '<div class="recovery-truth-line me-next"><strong>ماذا سيحدث الآن؟</strong> ' +
+        esc(expl.what_next_ar) +
+        "</div>";
+    }
+    if (expl.followup_line_ar) {
+      h +=
+        '<div class="recovery-truth-line me-followup"><strong>المتابعة:</strong> ' +
+        esc(expl.followup_line_ar) +
+        "</div>";
+    }
+    if (expl.merchant_action_needed_ar) {
+      h +=
+        '<div class="recovery-truth-line me-action' +
+        (expl.action_required ? " me-action-required" : "") +
+        '"><strong>هل تحتاج إجراء؟</strong> ' +
+        esc(expl.merchant_action_needed_ar) +
+        "</div>";
+    }
+    var prog = String(
+      (cartDetailProjection(mc) && cartDetailProjection(mc).followup_progress_ar) ||
+        mc.merchant_followup_progress_ar ||
+        ""
+    ).trim();
+    if (prog) {
+      h +=
+        '<div class="recovery-truth-line recovery-truth-muted merchant-followup-progress">' +
+        esc(prog) +
+        "</div>";
+    }
+    h += merchantDecisionSuggestedActionHtml(mc);
+    h += continuationDecisionExplanationHtml(mc);
+    h += cartLifecycleActionBtnHtml(mc);
+    return h + "</div>";
+  }
+
+  function merchantExplanationHtml(mc) {
+    if (!mc) {
+      return customerLifecycleUnavailableHtml(mc);
+    }
+    if (isArchivedVisual(mc)) {
+      return customerLifecycleArchivedCompactHtml(mc);
+    }
+    var proj = cartDetailProjection(mc);
+    if (proj && proj.explanation) {
+      return merchantExplanationProjectionHtml(mc, proj.explanation);
+    }
+    var ex = mc.merchant_explanation_v1;
+    if (!ex || ex.version !== "v1") {
+      return customerLifecycleExplanationLegacyHtml(mc);
+    }
+    return merchantExplanationProjectionHtml(mc, {
+      status_label_ar: ex.status_label_ar,
+      what_happened_ar: ex.what_happened_ar,
+      system_did_ar: ex.system_did_ar,
+      what_next_ar: ex.what_next_ar,
+      followup_line_ar: ex.followup_line_ar,
+      merchant_action_needed_ar: ex.merchant_action_needed_ar,
+      action_required: ex.action_required,
+    });
   }
 
   function customerMovementHtml(mc) {
@@ -2860,81 +2979,6 @@
       }
       h += "</div>";
     }
-    return h + "</div>";
-  }
-
-  function merchantDecisionSuggestedActionHtml(mc) {
-    if (!mc) return "";
-    var key = String(mc.merchant_decision_key || "").trim();
-    if (!key || !merchantDecisionExecutable(mc, key)) return "";
-    var lbl = MERCHANT_DECISION_LABEL_AR[key];
-    if (!lbl) return "";
-    return (
-      '<div class="recovery-truth-line"><strong>الإجراء المقترح:</strong> ' +
-      esc(lbl) +
-      "</div>"
-    );
-  }
-
-  function merchantExplanationHtml(mc) {
-    if (!mc) {
-      return customerLifecycleUnavailableHtml(mc);
-    }
-    if (isArchivedVisual(mc)) {
-      return customerLifecycleArchivedCompactHtml(mc);
-    }
-    var ex = mc.merchant_explanation_v1;
-    if (!ex || ex.version !== "v1") {
-      return customerLifecycleExplanationLegacyHtml(mc);
-    }
-    var h =
-      '<div class="recovery-truth recovery-truth-compact merchant-explanation-v1" aria-label="شرح CartFlow">';
-    h +=
-      '<div class="recovery-truth-line me-status"><strong>الحالة:</strong> ' +
-      esc(ex.status_label_ar || "—") +
-      "</div>";
-    if (ex.what_happened_ar) {
-      h +=
-        '<div class="recovery-truth-line me-what"><strong>ماذا حدث؟</strong> ' +
-        esc(ex.what_happened_ar) +
-        "</div>";
-    }
-    if (ex.system_did_ar) {
-      h +=
-        '<div class="recovery-truth-line me-system"><strong>ماذا فعل CartFlow؟</strong> ' +
-        esc(ex.system_did_ar) +
-        "</div>";
-    }
-    if (ex.what_next_ar) {
-      h +=
-        '<div class="recovery-truth-line me-next"><strong>ماذا سيحدث الآن؟</strong> ' +
-        esc(ex.what_next_ar) +
-        "</div>";
-    }
-    if (ex.followup_line_ar) {
-      h +=
-        '<div class="recovery-truth-line me-followup"><strong>المتابعة:</strong> ' +
-        esc(ex.followup_line_ar) +
-        "</div>";
-    }
-    if (ex.merchant_action_needed_ar) {
-      h +=
-        '<div class="recovery-truth-line me-action' +
-        (ex.action_required ? " me-action-required" : "") +
-        '"><strong>هل تحتاج إجراء؟</strong> ' +
-        esc(ex.merchant_action_needed_ar) +
-        "</div>";
-    }
-    var prog = String(mc.merchant_followup_progress_ar || "").trim();
-    if (prog) {
-      h +=
-        '<div class="recovery-truth-line recovery-truth-muted merchant-followup-progress">' +
-        esc(prog) +
-        "</div>";
-    }
-    h += merchantDecisionSuggestedActionHtml(mc);
-    h += continuationDecisionExplanationHtml(mc);
-    h += cartLifecycleActionBtnHtml(mc);
     return h + "</div>";
   }
 
