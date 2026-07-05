@@ -333,6 +333,12 @@ def build_summary_from_snapshot(
     store_slug: str,
     path: str = "/api/dashboard/summary",
 ) -> dict[str, Any]:
+    from services.merchant_home_experience_activation_v1 import (  # noqa: PLC0415
+        TRANSPORT_DEGRADED,
+        TRANSPORT_SNAPSHOT,
+        finalize_dashboard_summary_payload,
+    )
+
     wall0 = time.perf_counter()
     with dashboard_api_snapshot_request_scope(path=path):
         body = read_dashboard_snapshot_payload(
@@ -341,6 +347,12 @@ def build_summary_from_snapshot(
             degraded_builder=_degraded_summary_payload,
             t0=wall0,
             endpoint="summary",
+        )
+        source = TRANSPORT_DEGRADED if body.get("snapshot_degraded") else TRANSPORT_SNAPSHOT
+        body = finalize_dashboard_summary_payload(
+            body,
+            summary_source=source,
+            store_slug=store_slug,
         )
         return enforce_route_budget(body, wall0=wall0, endpoint="summary")
 

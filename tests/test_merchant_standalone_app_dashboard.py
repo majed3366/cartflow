@@ -97,6 +97,11 @@ class MerchantStandaloneAppDashboardTests(unittest.TestCase):
         payload = r.json()
         self.assertTrue(payload.get("ok"))
         self.assertIn("merchant_kpi_abandoned_fmt", payload)
+        home = payload.get("merchant_home_experience_v1")
+        self.assertIsInstance(home, dict, msg="merchant_home_experience_v1 missing")
+        self.assertTrue(home.get("ok"), msg="merchant_home_experience_v1 not ok")
+        transport = payload.get("_merchant_home_transport") or {}
+        self.assertTrue(transport.get("merchant_home_experience_attached"))
 
     def test_dashboard_normal_carts_api_ok_default_limit(self) -> None:
         r = self.client.get("/api/dashboard/normal-carts")

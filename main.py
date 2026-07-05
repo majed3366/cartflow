@@ -17866,17 +17866,27 @@ def api_dashboard_summary(request: Request):
         )
 
         if dashboard_snapshot_mode_enabled():
+            slug = resolve_merchant_store_slug_for_snapshot()
             payload = serve_enforced_snapshot_response(
                 path="/api/dashboard/summary",
                 build_from_snapshot=build_summary_from_snapshot,
                 degraded_builder=_degraded_summary_payload,
-                store_slug=resolve_merchant_store_slug_for_snapshot(),
+                store_slug=slug,
+            )
+            from services.merchant_home_experience_activation_v1 import (  # noqa: PLC0415
+                TRANSPORT_SNAPSHOT,
+                finalize_dashboard_summary_payload,
             )
             from services.dashboard_summary_json_safe_v1 import (  # noqa: PLC0415
                 preflight_utf8_json_payload,
                 sanitize_dashboard_summary_payload,
             )
 
+            payload = finalize_dashboard_summary_payload(
+                payload,
+                summary_source=TRANSPORT_SNAPSHOT,
+                store_slug=slug,
+            )
             payload = sanitize_dashboard_summary_payload(payload)
             preflight_utf8_json_payload(payload)
             return j(payload)
@@ -17921,11 +17931,21 @@ def api_dashboard_summary(request: Request):
 
         body = _api_json_dashboard_summary(dash_store, cookies=cookies)
         payload = {"ok": True, **body}
+        from services.merchant_home_experience_activation_v1 import (  # noqa: PLC0415
+            TRANSPORT_LIVE,
+            finalize_dashboard_summary_payload,
+        )
         from services.dashboard_summary_json_safe_v1 import (  # noqa: PLC0415
             preflight_utf8_json_payload,
             sanitize_dashboard_summary_payload,
         )
 
+        slug = (getattr(dash_store, "zid_store_id", None) or "").strip()
+        payload = finalize_dashboard_summary_payload(
+            payload,
+            summary_source=TRANSPORT_LIVE,
+            store_slug=slug,
+        )
         payload = sanitize_dashboard_summary_payload(payload)
         preflight_utf8_json_payload(payload)
         return j(payload)
@@ -19590,6 +19610,10 @@ def _api_json_dashboard_summary(
     }
     out.update(refresh_state)
     try:
+        from services.merchant_home_experience_activation_v1 import (  # noqa: PLC0415
+            stamp_summary_contract_fields,
+        )
+
         slug = (getattr(dash_store, "zid_store_id", None) or "").strip()
         if slug:
             from services.merchant_home_composition_v1 import (  # noqa: PLC0415
@@ -19611,6 +19635,7 @@ def _api_json_dashboard_summary(
                 brief_embed = home_payload.get("daily_brief_v1")
                 if isinstance(brief_embed, Mapping):
                     out["merchant_daily_brief_v1"] = brief_embed
+            stamp_summary_contract_fields(out)
     except Exception as exc:  # noqa: BLE001
         log.warning("summary merchant_home_experience_v1: %s", exc)
         db.session.rollback()

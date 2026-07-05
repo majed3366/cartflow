@@ -354,6 +354,31 @@ def write_dashboard_snapshot_guarded(
             row=row,
         )
 
+    if stype == SNAPSHOT_TYPE_SUMMARY and prev is not None:
+        from services.merchant_home_experience_activation_v1 import (  # noqa: PLC0415
+            summary_snapshot_contract_stale,
+        )
+
+        prev_payload = decode_snapshot_payload(prev)
+        if summary_snapshot_contract_stale(prev_payload):
+            row = upsert_dashboard_snapshot(
+                store_id=store_id,
+                store_slug=store_slug,
+                snapshot_type=stype,
+                payload=payload,
+                payload_json=payload_json,
+                status=status,
+                ttl_seconds=ttl_seconds,
+                generation_reason="summary_contract_upgrade",
+            )
+            return _finish(
+                MODE_WRITE,
+                "summary_contract_upgrade",
+                changed=True,
+                checked=True,
+                row=row,
+            )
+
     if not gate_on:
         row = upsert_dashboard_snapshot(
             store_id=store_id,

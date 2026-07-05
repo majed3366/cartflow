@@ -2092,14 +2092,10 @@
     applyHomeLayoutAfterSetup(d.merchant_activation, d.merchant_setup_experience);
     logSetupRenderDebug("summary_dom", probeSetupExperienceRoot());
 
-    if (window.maApplyHomeExperience && d.merchant_home_experience_v1) {
-      window.maApplyHomeExperience(d.merchant_home_experience_v1);
-    } else if (window.maApplyDailyBriefPayload) {
-      if (d.merchant_daily_brief_v1 && d.merchant_daily_brief_v1.ok) {
-        window.maApplyDailyBriefPayload(d.merchant_daily_brief_v1);
-      } else if (window.maFetchDailyBrief) {
-        window.maFetchDailyBrief({ silent: true });
-      }
+    if (window.maApplyHomeExperience) {
+      window.maApplyHomeExperience(
+        d.merchant_home_experience_v1 || { ok: false }
+      );
     }
 
     setText("ma-kpi-abandoned", d.merchant_kpi_abandoned_fmt || "0");
