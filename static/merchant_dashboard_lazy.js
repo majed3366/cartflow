@@ -2876,7 +2876,69 @@
     );
   }
 
-  function customerLifecycleExplanationHtml(mc) {
+  function merchantExplanationHtml(mc) {
+    if (!mc) {
+      return customerLifecycleUnavailableHtml(mc);
+    }
+    if (isArchivedVisual(mc)) {
+      return customerLifecycleArchivedCompactHtml(mc);
+    }
+    var ex = mc.merchant_explanation_v1;
+    if (!ex || ex.version !== "v1") {
+      return customerLifecycleExplanationLegacyHtml(mc);
+    }
+    var h =
+      '<div class="recovery-truth recovery-truth-compact merchant-explanation-v1" aria-label="شرح CartFlow">';
+    h +=
+      '<div class="recovery-truth-line me-status"><strong>الحالة:</strong> ' +
+      esc(ex.status_label_ar || "—") +
+      "</div>";
+    if (ex.what_happened_ar) {
+      h +=
+        '<div class="recovery-truth-line me-what"><strong>ماذا حدث؟</strong> ' +
+        esc(ex.what_happened_ar) +
+        "</div>";
+    }
+    if (ex.system_did_ar) {
+      h +=
+        '<div class="recovery-truth-line me-system"><strong>ماذا فعل CartFlow؟</strong> ' +
+        esc(ex.system_did_ar) +
+        "</div>";
+    }
+    if (ex.what_next_ar) {
+      h +=
+        '<div class="recovery-truth-line me-next"><strong>ماذا سيحدث الآن؟</strong> ' +
+        esc(ex.what_next_ar) +
+        "</div>";
+    }
+    if (ex.followup_line_ar) {
+      h +=
+        '<div class="recovery-truth-line me-followup"><strong>المتابعة:</strong> ' +
+        esc(ex.followup_line_ar) +
+        "</div>";
+    }
+    if (ex.merchant_action_needed_ar) {
+      h +=
+        '<div class="recovery-truth-line me-action' +
+        (ex.action_required ? " me-action-required" : "") +
+        '"><strong>هل تحتاج إجراء؟</strong> ' +
+        esc(ex.merchant_action_needed_ar) +
+        "</div>";
+    }
+    var prog = String(mc.merchant_followup_progress_ar || "").trim();
+    if (prog) {
+      h +=
+        '<div class="recovery-truth-line recovery-truth-muted merchant-followup-progress">' +
+        esc(prog) +
+        "</div>";
+    }
+    h += merchantDecisionSuggestedActionHtml(mc);
+    h += continuationDecisionExplanationHtml(mc);
+    h += cartLifecycleActionBtnHtml(mc);
+    return h + "</div>";
+  }
+
+  function customerLifecycleExplanationLegacyHtml(mc) {
     if (!mc || !mc.customer_lifecycle_state) {
       return customerLifecycleUnavailableHtml(mc);
     }
@@ -2922,9 +2984,12 @@
     }
     h += merchantDecisionSuggestedActionHtml(mc);
     h += continuationDecisionExplanationHtml(mc);
-    h += merchantProofSurfaceHtml(mc);
     h += cartLifecycleActionBtnHtml(mc);
     return h + "</div>";
+  }
+
+  function customerLifecycleExplanationHtml(mc) {
+    return merchantExplanationHtml(mc);
   }
 
   function findCartRowContext(rk) {

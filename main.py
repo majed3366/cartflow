@@ -16560,6 +16560,12 @@ def _merchant_normal_recovery_light_payload_merchant_batch(
     except Exception:  # noqa: BLE001
         pass
     try:
+        from services.merchant_explanation_v1 import attach_merchant_explanation_v1  # noqa: PLC0415
+
+        attach_merchant_explanation_v1(out, purchase_truth=bool(purchased_flag))
+    except Exception:  # noqa: BLE001
+        pass
+    try:
         from services.merchant_decision_layer_v1 import (  # noqa: PLC0415
             attach_merchant_decisions_v1,
         )

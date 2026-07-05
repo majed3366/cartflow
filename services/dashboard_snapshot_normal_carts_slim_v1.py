@@ -70,6 +70,7 @@ NORMAL_CARTS_SNAPSHOT_ROW_ALLOWLIST = frozenset(
         "merchant_attention_display_group",
         "merchant_identity_trust_ar",
         "merchant_proof_surface_v1",
+        "merchant_explanation_v1",
         "merchant_decisions_v1",
         "normal_recovery_continuation_explanation_ar",
         "next_attempt_due_at",
@@ -150,6 +151,27 @@ def slim_normal_carts_row_for_snapshot(row: dict[str, Any]) -> dict[str, Any]:
             capped = _cap_preview(val)
             if capped:
                 out[key] = capped
+            continue
+        if key == "merchant_explanation_v1" and isinstance(val, dict):
+            out[key] = {
+                k: val[k]
+                for k in (
+                    "version",
+                    "explanation_id",
+                    "knowledge_event_type",
+                    "merchant_visibility",
+                    "eligible_surfaces",
+                    "status_label_ar",
+                    "what_happened_ar",
+                    "system_did_ar",
+                    "what_next_ar",
+                    "followup_line_ar",
+                    "merchant_action_needed_ar",
+                    "action_required",
+                    "attention_level",
+                )
+                if k in val and val[k] is not None
+            }
             continue
         if key == "merchant_cart_fact_v1" and isinstance(val, dict):
             out[key] = {

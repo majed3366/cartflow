@@ -65,9 +65,25 @@
       {% set nrb = vc.normal_recovery_blocker | default(none) %}
       {% set nr_op = vc.normal_recovery_operational_hint_ar | default('', true) | trim %}
       {% set nr_fu = vc.normal_recovery_followup_hint_ar | default('', true) | trim %}
-      {% set ml_beh = vc.merchant_lifecycle_customer_behavior_ar | default('', true) | trim %}
-      {% set ml_out = vc.merchant_lifecycle_system_outcome_ar | default('', true) | trim %}
-      {% set ml_next = vc.merchant_lifecycle_next_action_ar | default('', true) | trim %}
+      {% set mex = vc.merchant_explanation_v1 | default(none) %}
+      {% set ml_beh = (
+        (mex.get('what_happened_ar') if mex is mapping else '')
+        or vc.merchant_lifecycle_customer_behavior_ar
+        or vc.customer_lifecycle_what_happened_ar
+        or ''
+      ) | trim %}
+      {% set ml_out = (
+        (mex.get('system_did_ar') if mex is mapping else '')
+        or vc.merchant_lifecycle_system_outcome_ar
+        or vc.customer_lifecycle_system_did_ar
+        or ''
+      ) | trim %}
+      {% set ml_next = (
+        (mex.get('merchant_action_needed_ar') if mex is mapping else '')
+        or vc.merchant_lifecycle_next_action_ar
+        or vc.customer_lifecycle_what_next_ar
+        or ''
+      ) | trim %}
       {% set ml_primary = vc.merchant_lifecycle_primary_key | default('', true) | trim %}
       {% set nr_skip = vc.normal_recovery_last_skip_reason | default('', true) | trim %}
       {% set nr_diag = vc.normal_recovery_diagnostics | default(none) %}

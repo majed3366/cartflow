@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Merchant Explanation V1 — visual fixture</title>
+  <link rel="stylesheet" href="../static/merchant_app.css" />
+  <style>
+    body { font-family: system-ui, sans-serif; padding: 16px; max-width: 420px; margin: 0 auto; background: #f8fafc; }
+    h1 { font-size: 14px; color: #64748b; margin-bottom: 16px; }
+    .card { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px; margin-bottom: 16px; }
+    .card h2 { font-size: 12px; color: #0f766e; margin: 0 0 8px; }
+  </style>
+</head>
+<body>
+  <h1>Merchant Explanation V1 — readability fixture</h1>
+  <div class="card">
+    <h2>return_without_purchase</h2>
+    <div class="recovery-truth recovery-truth-compact merchant-explanation-v1">
+      <div class="recovery-truth-line me-status"><strong>الحالة:</strong> عاد العميل — نراقب إكمال الشراء</div>
+      <div class="recovery-truth-line me-what"><strong>ماذا حدث؟</strong> عاد العميل إلى المتجر بعد رسالة الاسترجاع.</div>
+      <div class="recovery-truth-line me-system"><strong>ماذا فعل CartFlow؟</strong> CartFlow أوقف المتابعة مؤقتًا حتى لا يزعج العميل أثناء احتمالية الشراء.</div>
+      <div class="recovery-truth-line me-next"><strong>ماذا سيحدث الآن؟</strong> إذا لم يكتمل الشراء خلال فترة الانتظار، سيواصل CartFlow المتابعة حسب الإعدادات.</div>
+      <div class="recovery-truth-line me-action"><strong>هل تحتاج إجراء؟</strong> لا حاجة لإجراء — CartFlow يتابع تلقائياً.</div>
+    </div>
+  </div>
+  <div class="card">
+    <h2>needs_merchant_attention</h2>
+    <div class="recovery-truth recovery-truth-compact merchant-explanation-v1">
+      <div class="recovery-truth-line me-status"><strong>الحالة:</strong> تحتاج مراجعة</div>
+      <div class="recovery-truth-line me-what"><strong>ماذا حدث؟</strong> تعذّر على CartFlow إكمال مسار الاسترجاع آلياً.</div>
+      <div class="recovery-truth-line me-system"><strong>ماذا فعل CartFlow؟</strong> CartFlow أوقف الإرسال الآلي أو تعذّر إكماله.</div>
+      <div class="recovery-truth-line me-next"><strong>ماذا سيحدث الآن؟</strong> راجع بيانات التواصل أو قناة واتساب ثم حدّث الصفحة.</div>
+      <div class="recovery-truth-line me-action me-action-required"><strong>هل تحتاج إجراء؟</strong> راجع بيانات التواصل أو قناة واتساب ثم حدّث الصفحة.</div>
+    </div>
+  </div>
+</body>
+</html>

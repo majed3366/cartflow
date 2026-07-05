@@ -2853,13 +2853,23 @@ tr:hover td { background: #f8fafc; }
 
 .camt { font-size: 14px; font-weight: 700; }
 .ctime { font-size: 10px; color: var(--muted); margin-top: 2px; }
-.recovery-truth { font-size: 11px; color: var(--muted); margin-top: 8px; line-height: 1.45; max-width: 28rem; }
-.recovery-truth-line { margin-top: 3px; }
-.recovery-truth-line strong { color: var(--text); font-weight: 600; }
-.recovery-truth-highlight { color: #0f766e; font-weight: 500; }
-.recovery-truth-muted { color: var(--muted); font-weight: 400; }
+.recovery-truth { font-size: 12px; color: var(--text); margin-top: 8px; line-height: 1.55; max-width: 28rem; opacity: 0.92; }
+.recovery-truth-line { margin-top: 4px; }
+.recovery-truth-line strong { color: var(--text); font-weight: 700; }
+.recovery-truth-highlight { color: #0f766e; font-weight: 600; }
+.recovery-truth-muted { color: #64748b; font-weight: 400; font-size: 11px; }
 .recovery-truth-compact { margin-top: 6px; }
-.recovery-truth-compact .recovery-truth-line { margin-top: 2px; }
+.recovery-truth-compact .recovery-truth-line { margin-top: 3px; }
+.merchant-explanation-v1 { font-size: 13px; line-height: 1.6; color: #1e293b; }
+.merchant-explanation-v1 .me-what,
+.merchant-explanation-v1 .me-system,
+.merchant-explanation-v1 .me-next { color: #334155; }
+.merchant-explanation-v1 .me-action-required { color: #b45309; font-weight: 500; }
+.merchant-explanation-v1 .me-status strong { color: #0f766e; }
+@media (max-width: 640px) {
+  .merchant-explanation-v1 { font-size: 14px; line-height: 1.65; }
+  .recovery-truth-compact .recovery-truth-line { margin-top: 5px; }
+}
 .ma-proof-surface-v1 { margin-top: 10px; padding-top: 8px; border-top: 1px dashed rgba(15, 118, 110, 0.25); }
 .ma-proof-surface-v1 .ma-proof-headline { color: var(--text); font-size: 12px; line-height: 1.65; font-weight: 400; }
 .ma-proof-surface-v1 .ma-proof-headline strong { font-weight: 700; }
