@@ -2635,7 +2635,7 @@
     }
     var completed = completedCartsFromRows(rows, archivedRows);
     if (completed.length) {
-      tbody.innerHTML = completed.map(cartRowFull).join("");
+      tbody.innerHTML = completed.map(cartRowTableDisplay).join("");
       bindCustomerLifecycleActions(tbody);
       logCompletedTab(total, completed.length, "payload");
       return;
@@ -2741,16 +2741,553 @@
     return h;
   }
 
+  var peV2SelectedRecoveryKey = null;
+
+  function cartRecoveryKey(mc) {
+    return String((mc && (mc.recovery_key || mc.recovery_session_id)) || "").trim();
+  }
+
+  function resolveMerchantExplanation(mc) {
+    var proj = cartDetailProjection(mc);
+    if (proj && proj.explanation) return proj.explanation;
+    var ex = mc && mc.merchant_explanation_v1;
+    if (ex && ex.version === "v1") {
+      return {
+        status_label_ar: ex.status_label_ar,
+        what_happened_ar: ex.what_happened_ar,
+        system_did_ar: ex.system_did_ar,
+        what_next_ar: ex.what_next_ar,
+        followup_line_ar: ex.followup_line_ar,
+        merchant_action_needed_ar: ex.merchant_action_needed_ar,
+        action_required: ex.action_required,
+      };
+    }
+    return null;
+  }
+
+  function findCartByRecoveryKey(rk) {
+    rk = String(rk || "").trim();
+    if (!rk) return null;
+    for (var i = 0; i < lastNormalCartsPageRows.length; i++) {
+      if (cartRecoveryKey(lastNormalCartsPageRows[i]) === rk) {
+        return lastNormalCartsPageRows[i];
+      }
+    }
+    return null;
+  }
+
+  function merchantPeV2QueueAccentClass(mc) {
+    if (isArchivedVisual(mc)) return "v2-queue-accent--calm";
+    if (mc.merchant_next_action_urgent) return "v2-queue-accent--attention";
+    var b = String(
+      mc.merchant_cart_primary_bucket || mc.merchant_cart_bucket || ""
+    )
+      .trim()
+      .toLowerCase();
+    if (b === "attention") return "v2-queue-accent--attention";
+    if (b === "sent" || b === "waiting") return "v2-queue-accent--waiting";
+    return "v2-queue-accent--calm";
+  }
+
+  function merchantPeV2QueueScanLine(mc) {
+    var expl = resolveMerchantExplanation(mc);
+    if (expl && expl.status_label_ar) return String(expl.status_label_ar).trim();
+    return merchantNextLineShort(mc);
+  }
+
+  function merchantPeV2ConvHeadline(expl, mc) {
+    if (expl && expl.status_label_ar) return String(expl.status_label_ar).trim();
+    return cartLifecycleStatusLabel(mc);
+  }
+
+  function merchantPeV2ConvStatus(mc) {
+    var v = Math.round(parseFloat(mc.merchant_cart_value) || 0);
+    var reason = String(mc.merchant_reason_chip_label_ar || "").trim();
+    var bits = [v.toLocaleString("en-US") + " ر"];
+    if (reason) bits.push(reason);
+    return bits.join(" · ");
+  }
+
+  function merchantPeV2FlowStep(label, text, iconClass, iconContent) {
+    return (
+      '<div class="v2-flow-step">' +
+      '<span class="v2-flow-icon ' +
+      iconClass +
+      '">' +
+      iconContent +
+      "</span>" +
+      '<div class="v2-flow-content">' +
+      '<p class="v2-flow-label">' +
+      esc(label) +
+      "</p>" +
+      '<p class="v2-flow-text">' +
+      esc(text) +
+      "</p></div></div>"
+    );
+  }
+
+  function merchantPeV2FlowConnector() {
+    return '<div class="v2-flow-connector" aria-hidden="true"></div>';
+  }
+
+  function merchantPeV2FlowHtml(mc, expl) {
+    if (!expl) return "";
+    var parts = [];
+    if (expl.what_happened_ar) {
+      parts.push(
+        merchantPeV2FlowStep(
+          "ما حدث",
+          expl.what_happened_ar,
+          "v2-flow-icon--happened",
+          "١"
+        )
+      );
+    }
+    if (expl.system_did_ar) {
+      if (parts.length) parts.push(merchantPeV2FlowConnector());
+      parts.push(
+        merchantPeV2FlowStep(
+          "CartFlow",
+          expl.system_did_ar,
+          "v2-flow-icon--did",
+          "✓"
+        )
+      );
+    }
+    if (expl.what_next_ar) {
+      if (parts.length) parts.push(merchantPeV2FlowConnector());
+      parts.push(
+        merchantPeV2FlowStep(
+          !expl.action_required ? "الانتظار" : "التالي",
+          expl.what_next_ar,
+          "v2-flow-icon--next",
+          "⏳"
+        )
+      );
+    }
+    if (expl.merchant_action_needed_ar) {
+      if (parts.length) parts.push(merchantPeV2FlowConnector());
+      parts.push(
+        merchantPeV2FlowStep(
+          "إجراءك",
+          expl.merchant_action_needed_ar,
+          "v2-flow-icon--you",
+          "→"
+        )
+      );
+    }
+    if (!parts.length) return "";
+    return (
+      '<div class="v2-flow" aria-label="محادثة الاسترداد">' +
+      parts.join("") +
+      "</div>"
+    );
+  }
+
+  function merchantPeV2PrimaryActionHtml(mc) {
+    if (!mc) return "";
+    var proj = cartDetailProjection(mc);
+    var contact = proj && proj.contact_action;
+    if (contact && contact.visible && contact.href) {
+      return (
+        '<a class="v2-btn" href="' +
+        esc(contact.href) +
+        '" target="_blank" rel="noopener noreferrer">' +
+        esc(contact.label_ar || "تواصل مع العميل") +
+        "</a>"
+      );
+    }
+    var sa = proj && proj.suggested_action;
+    if (sa && sa.visible && sa.label_ar) {
+      if (contact && contact.visible && contact.href) {
+        return (
+          '<a class="v2-btn" href="' +
+          esc(contact.href) +
+          '" target="_blank" rel="noopener noreferrer">' +
+          esc(contact.label_ar || sa.label_ar) +
+          "</a>"
+        );
+      }
+      return (
+        '<span class="v2-btn v2-btn--label">' + esc(sa.label_ar) + "</span>"
+      );
+    }
+    if (!proj && mc.merchant_intervention_executable) {
+      var href = String(mc.merchant_intervention_contact_href || "").trim();
+      if (href) {
+        var lbl = String(mc.merchant_intervention_action_ar || "تواصل مع العميل").trim();
+        return (
+          '<a class="v2-btn" href="' +
+          esc(href) +
+          '" target="_blank" rel="noopener noreferrer">' +
+          esc(lbl) +
+          "</a>"
+        );
+      }
+    }
+    return "";
+  }
+
+  function merchantPeV2SecondaryActionsHtml(mc) {
+    var proj = cartDetailProjection(mc);
+    var lc = proj && proj.lifecycle_ui;
+    var rk = lc && lc.recovery_key ? lc.recovery_key : String(mc.recovery_key || "").trim();
+    if (!rk) return "";
+    var h = "";
+    if (lc) {
+      if (lc.archive_visible) {
+        h +=
+          '<button type="button" class="v2-btn v2-btn--ghost" data-lc-archive data-recovery-key="' +
+          esc(rk) +
+          '">نقل للأرشيف</button>';
+      }
+      if (lc.reopen_visible) {
+        h +=
+          '<button type="button" class="v2-btn v2-btn--ghost" data-lc-reopen data-recovery-key="' +
+          esc(rk) +
+          '">إعادة فتح</button>';
+      }
+    } else {
+      var act = String(mc.customer_lifecycle_dashboard_action || "").trim();
+      if (act === "archive") {
+        h +=
+          '<button type="button" class="v2-btn v2-btn--ghost" data-lc-archive data-recovery-key="' +
+          esc(rk) +
+          '">نقل للأرشيف</button>';
+      }
+      if (act === "reopen") {
+        h +=
+          '<button type="button" class="v2-btn v2-btn--ghost" data-lc-reopen data-recovery-key="' +
+          esc(rk) +
+          '">إعادة فتح</button>';
+      }
+    }
+    return h;
+  }
+
+  function merchantPeV2TimelineHtml(mc, expl) {
+    var inner = "";
+    inner += merchantProofSurfaceTimelineHtml(mc);
+    inner += merchantFollowupClarityHtml(mc);
+    if (expl && expl.followup_line_ar) {
+      inner +=
+        '<div class="ma-cart-timeline-event ma-cart-timeline-event--followup">' +
+        '<span class="ma-cart-timeline-event-kicker">المتابعة</span>' +
+        '<span class="ma-cart-timeline-event-label">' +
+        esc(expl.followup_line_ar) +
+        "</span></div>";
+    }
+    var prog = String(
+      (cartDetailProjection(mc) && cartDetailProjection(mc).followup_progress_ar) ||
+        mc.merchant_followup_progress_ar ||
+        ""
+    ).trim();
+    if (prog) {
+      inner +=
+        '<div class="ma-cart-timeline-event ma-cart-timeline-event--followup ma-cart-timeline-event--muted">' +
+        '<span class="ma-cart-timeline-event-label">' +
+        esc(prog) +
+        "</span></div>";
+    }
+    inner += merchantCustomerMovementTimelineHtml(mc);
+    inner += merchantContinuationTimelineHtml(mc);
+    if (!inner) return "";
+    return (
+      '<details class="ma-pe-v2-timeline-v2">' +
+      '<summary class="ma-cart-timeline-summary">التفاصيل والسجل</summary>' +
+      '<div class="ma-cart-timeline-body" role="list">' +
+      inner +
+      "</div></details>"
+    );
+  }
+
+  function merchantPeV2ConversationHtml(mc, expl) {
+    if (!mc) return "";
+    if (isArchivedVisual(mc)) {
+      return customerLifecycleArchivedCompactHtml(mc);
+    }
+    return (
+      '<div class="ma-pe-v2-conversation v2-conversation" data-mxp="carts-pe-v2" aria-label="محادثة السلة">' +
+      merchantCartAchievementHtml(mc) +
+      '<p class="v2-conv-status">' +
+      esc(merchantPeV2ConvStatus(mc)) +
+      "</p>" +
+      '<h2 class="v2-conv-headline">' +
+      esc(merchantPeV2ConvHeadline(expl, mc)) +
+      "</h2>" +
+      merchantPeV2FlowHtml(mc, expl) +
+      '<div class="v2-conv-footer">' +
+      merchantPeV2TimelineHtml(mc, expl) +
+      merchantPeV2PrimaryActionHtml(mc) +
+      merchantPeV2SecondaryActionsHtml(mc) +
+      "</div></div>"
+    );
+  }
+
+  function merchantPeV2MobilePanelHtml(mc, expl) {
+    if (!mc) return "";
+    var v = Math.round(parseFloat(mc.merchant_cart_value) || 0);
+    return (
+      '<p class="v2-action-eyebrow">المحددة · ' +
+      v.toLocaleString("en-US") +
+      " ر</p>" +
+      '<h2 class="v2-action-headline" style="font-size:1.15rem;">' +
+      esc(merchantPeV2ConvHeadline(expl, mc)) +
+      "</h2>" +
+      merchantPeV2PrimaryActionHtml(mc)
+    );
+  }
+
+  function cartRowDataAttrs(mc) {
+    var b = esc(mc.merchant_cart_bucket || "other");
+    var primary = esc(mc.merchant_cart_primary_bucket || b);
+    var tabsJson = "[]";
+    try {
+      tabsJson = esc(JSON.stringify(mc.merchant_cart_visible_tabs || []));
+    } catch (eTabs) {
+      tabsJson = "[]";
+    }
+    return {
+      filter: b,
+      primary: primary,
+      tabsJson: tabsJson,
+      completed: isCompletedDashboardRow(mc),
+      archived: isArchivedVisual(mc),
+      rk: esc(cartRecoveryKey(mc)),
+    };
+  }
+
+  function cartQueueItemHtml(mc, selected) {
+    var d = cartRowDataAttrs(mc);
+    var v = Math.round(parseFloat(mc.merchant_cart_value) || 0);
+    var accent = merchantPeV2QueueAccentClass(mc);
+    var scan = merchantPeV2QueueScanLine(mc);
+    var time = esc(mc.merchant_time_relative_ar || "—");
+    return (
+      '<button type="button" class="v2-queue-item' +
+      (selected ? " is-selected" : "") +
+      '" data-ma-filter="' +
+      d.filter +
+      '" data-ma-primary-bucket="' +
+      d.primary +
+      '" data-ma-visible-tabs="' +
+      d.tabsJson +
+      '" data-recovery-key="' +
+      d.rk +
+      '">' +
+      '<span class="v2-queue-accent ' +
+      accent +
+      '"></span>' +
+      '<div class="v2-queue-body">' +
+      '<div class="v2-queue-amount">' +
+      v.toLocaleString("en-US") +
+      " ر</div>" +
+      '<p class="v2-queue-scan">' +
+      esc(scan) +
+      "</p></div>" +
+      '<span class="v2-queue-time">' +
+      time +
+      "</span></button>"
+    );
+  }
+
+  function cartRowSyncTr(mc) {
+    var d = cartRowDataAttrs(mc);
+    return (
+      '<tr data-ma-filter="' +
+      d.filter +
+      '" data-ma-primary-bucket="' +
+      d.primary +
+      '" data-ma-visible-tabs="' +
+      d.tabsJson +
+      '" data-recovery-key="' +
+      d.rk +
+      '"' +
+      (d.completed ? ' data-ma-completed="1"' : "") +
+      (d.archived ? ' class="ma-row-archived" data-ma-archived-visual="1"' : "") +
+      ' style="display:none"><td colspan="6"></td></tr>'
+    );
+  }
+
+  function cartRowTableDisplay(mc) {
+    var v = Math.round(parseFloat(mc.merchant_cart_value) || 0);
+    var hasPh = !!mc.merchant_has_customer_phone;
+    var ph = hasPh
+      ? '<span class="ph-ok">✓</span>'
+      : '<span class="ph-no">✗</span>';
+    var d = cartRowDataAttrs(mc);
+    var archived = d.archived;
+    var statusLbl = cartLifecycleStatusLabel(mc);
+    var nextLbl =
+      mc.customer_lifecycle_label_ar ||
+      merchantNextLineShort(mc) ||
+      mc.merchant_next_action_ar ||
+      "—";
+    var urg =
+      mc.merchant_next_action_urgent && !archived ? " urgent" : "";
+    return (
+      '<tr data-ma-filter="' +
+      d.filter +
+      '" data-ma-primary-bucket="' +
+      d.primary +
+      '" data-ma-visible-tabs="' +
+      d.tabsJson +
+      '" data-recovery-key="' +
+      d.rk +
+      '"' +
+      (d.completed ? ' data-ma-completed="1"' : "") +
+      (archived ? ' class="ma-row-archived" data-ma-archived-visual="1"' : "") +
+      ">" +
+      "<td><div class=\"camt\">" +
+      v.toLocaleString("en-US") +
+      ' ر</div><div class="ctime">' +
+      esc(mc.merchant_time_relative_ar || "—") +
+      "</div></td>" +
+      '<td><span class="chip ' +
+      esc(mc.merchant_reason_chip_class || "c-other") +
+      '">' +
+      esc(mc.merchant_reason_chip_label_ar || "—") +
+      "</span></td>" +
+      '<td><span class="st ' +
+      esc(cartLifecycleStatusClass(mc)) +
+      '\"><span class="sd"></span>' +
+      esc(statusLbl) +
+      "</span></td>" +
+      "<td>" +
+      (archived ? "" : '<div class="next' + urg + '">' + esc(nextLbl) + "</div>") +
+      "</td>" +
+      '<td><div class="ctime">' +
+      esc(mc.merchant_last_seen_display || "—") +
+      "</div></td>" +
+      "<td>" +
+      ph +
+      "</td></tr>"
+    );
+  }
+
+  function renderPeV2CartPanel(mc) {
+    var panel = byId("ma-carts-panel-v2");
+    var mobile = byId("ma-carts-mobile-panel-v2");
+    if (!mc) {
+      if (panel) {
+        panel.innerHTML =
+          '<p class="v2-whisper-text">اختر سلة من الطابور لعرض قصتها.</p>';
+      }
+      if (mobile) mobile.hidden = true;
+      return;
+    }
+    var expl = resolveMerchantExplanation(mc);
+    if (panel) {
+      panel.innerHTML = merchantPeV2ConversationHtml(mc, expl);
+      bindCustomerLifecycleActions(panel);
+    }
+    if (mobile) {
+      mobile.hidden = false;
+      mobile.innerHTML = merchantPeV2MobilePanelHtml(mc, expl);
+      bindCustomerLifecycleActions(mobile);
+    }
+  }
+
+  function selectPeV2Cart(rk) {
+    peV2SelectedRecoveryKey = String(rk || "").trim();
+    var queue = byId("ma-carts-queue-v2");
+    if (queue) {
+      queue.querySelectorAll(".v2-queue-item").forEach(function (btn) {
+        btn.classList.toggle(
+          "is-selected",
+          btn.getAttribute("data-recovery-key") === peV2SelectedRecoveryKey
+        );
+      });
+    }
+    renderPeV2CartPanel(findCartByRecoveryKey(peV2SelectedRecoveryKey));
+  }
+
+  function bindPeV2CartsQueue(root) {
+    if (!root || !root.querySelectorAll) return;
+    root.querySelectorAll(".v2-queue-item").forEach(function (btn) {
+      if (btn._peV2Bound) return;
+      btn._peV2Bound = true;
+      btn.addEventListener("click", function () {
+        selectPeV2Cart(btn.getAttribute("data-recovery-key") || "");
+      });
+    });
+  }
+
+  function updatePeV2QueueSubtitle(rows) {
+    var sub = byId("ma-carts-queue-sub");
+    if (!sub) return;
+    if (!rows.length) {
+      sub.textContent = "لا توجد سلال نشطة حالياً";
+      return;
+    }
+    var urgent = 0;
+    rows.forEach(function (mc) {
+      if (mc.merchant_next_action_urgent && !isArchivedVisual(mc)) urgent += 1;
+    });
+    sub.textContent =
+      rows.length +
+      " سلة" +
+      (urgent ? " · " + urgent + " تحتاجك" : " · CartFlow يتابعها");
+  }
+
+  function renderPeV2CartsQueue(rows) {
+    var queue = byId("ma-carts-queue-v2");
+    if (!queue) return;
+    var empty = byId("ma-carts-queue-empty");
+    updatePeV2QueueSubtitle(rows);
+    if (!rows.length) {
+      queue.innerHTML = "";
+      if (empty) empty.hidden = false;
+      selectPeV2Cart("");
+      return;
+    }
+    if (empty) empty.hidden = true;
+    var sel = peV2SelectedRecoveryKey;
+    var firstRk = "";
+    queue.innerHTML = rows
+      .map(function (mc) {
+        var rk = cartRecoveryKey(mc);
+        if (!firstRk) firstRk = rk;
+        return cartQueueItemHtml(mc, sel && rk === sel);
+      })
+      .join("");
+    bindPeV2CartsQueue(queue);
+    if (!sel || !findCartByRecoveryKey(sel)) {
+      selectPeV2Cart(firstRk);
+    } else {
+      selectPeV2Cart(sel);
+    }
+  }
+
+  window.maPeV2OnFilterApplied = function () {
+    var queue = byId("ma-carts-queue-v2");
+    if (!queue) return;
+    var firstRk = "";
+    queue.querySelectorAll(".v2-queue-item").forEach(function (btn) {
+      if (btn.style.display === "none" || btn.hidden) return;
+      if (!firstRk) firstRk = btn.getAttribute("data-recovery-key") || "";
+    });
+    if (firstRk) {
+      selectPeV2Cart(firstRk);
+    } else {
+      selectPeV2Cart("");
+    }
+  };
+
   function customerLifecycleArchivedCompactHtml(mc) {
     return (
-      '<div class="ma-cart-workspace-v1 ma-cart-workspace-v1--archived" aria-label="سلة مؤرشفة">' +
-      '<div class="ma-cart-recovery-story-v1">' +
-      '<p class="ma-cart-story-headline"><span class="lc-archived-badge">مؤرشفة</span></p>' +
-      '<p class="ma-cart-story-beat-text lc-archived-line">تم إغلاق هذه الحالة من العرض النشط.</p>' +
-      '<p class="ma-cart-story-beat-text lc-archived-muted">لن يرسل النظام متابعات لهذه الحالة أثناء الأرشفة.</p>' +
-      "</div>" +
-      merchantCartSecondaryLifecycleHtml(mc) +
-      "</div>"
+      '<div class="ma-pe-v2-conversation v2-conversation ma-pe-v2-conversation--archived" data-mxp="carts-pe-v2" aria-label="سلة مؤرشفة">' +
+      '<p class="v2-conv-status">مؤرشفة</p>' +
+      '<h2 class="v2-conv-headline">تم إغلاق هذه الحالة</h2>' +
+      '<div class="v2-flow">' +
+      '<div class="v2-flow-step">' +
+      '<span class="v2-flow-icon v2-flow-icon--happened">—</span>' +
+      '<div class="v2-flow-content">' +
+      '<p class="v2-flow-text">تم إغلاق هذه الحالة من العرض النشط. لن يرسل النظام متابعات أثناء الأرشفة.</p>' +
+      "</div></div></div>" +
+      '<div class="v2-conv-footer">' +
+      merchantPeV2SecondaryActionsHtml(mc) +
+      "</div></div>"
     );
   }
 
@@ -3079,15 +3616,7 @@
   }
 
   function merchantCartWorkspaceFromParts(mc, expl) {
-    return (
-      '<div class="ma-cart-workspace-v1" data-mxp="carts-v1" aria-label="مساحة السلة">' +
-      merchantCartAchievementHtml(mc) +
-      merchantRecoveryStoryBeatsHtml(mc, expl) +
-      merchantSuggestedActionPrimaryHtml(mc) +
-      merchantCartTimelineHtml(mc, expl) +
-      merchantCartSecondaryLifecycleHtml(mc) +
-      "</div>"
-    );
+    return merchantPeV2ConversationHtml(mc, expl);
   }
 
   function merchantCartWorkspaceHtml(mc) {
@@ -3343,6 +3872,7 @@
     var sorted = sortCartsArchivedLast(lastNormalCartsPageRows);
     allb.innerHTML = sorted.map(cartRowFull).join("");
     bindCustomerLifecycleActions(allb);
+    renderPeV2CartsQueue(sorted);
   }
 
   function rerenderHomeCartsTable() {
@@ -3481,6 +4011,9 @@
   }
 
   function cartRowFull(mc) {
+    if (byId("ma-carts-queue-v2")) {
+      return cartRowSyncTr(mc);
+    }
     var v = Math.round(parseFloat(mc.merchant_cart_value) || 0);
     var hasPh = !!mc.merchant_has_customer_phone;
     var ph = hasPh
@@ -3649,6 +4182,7 @@
       }
       bindCustomerLifecycleActions(allb);
     }
+    renderPeV2CartsQueue(sortCartsArchivedLast(lastNormalCartsPageRows));
     applyCompletedCartsTable(lastNormalCartsPageRows, lastArchivedCartsPageRows);
     var storeFc = resolveMerchantStoreCartCounts(d);
     var pageFc =

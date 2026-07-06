@@ -103,6 +103,8 @@ class MerchantHomeExperienceV1Tests(unittest.TestCase):
     def test_js_consumes_home_composition(self) -> None:
         self.assertIn("merchant_home_experience_v1", _JS)
         self.assertIn("maApplyHomeExperience", _JS)
+        self.assertIn("v2-hero", _JS)
+        self.assertIn("v2-action-card", _JS)
 
     def test_composition_has_five_sections(self) -> None:
         decision = _published_decision()

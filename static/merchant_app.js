@@ -257,13 +257,25 @@
   window.NORMAL_CART_FILTER_STORAGE_KEY = NORMAL_CART_FILTER_STORAGE_KEY;
 
   function applyCartFilterMode(mode) {
-    var tbody = document.querySelector("#page-carts tbody");
-    if (!tbody) return;
     var m = cartTabToFilterMode(mode);
-    tbody.querySelectorAll("tr[data-ma-filter]").forEach(function (tr) {
-      var show = rowMatchesCartFilterMode(tr, m);
-      tr.style.display = show ? "" : "none";
-    });
+    var tbody = document.querySelector("#page-carts tbody");
+    if (tbody) {
+      tbody.querySelectorAll("tr[data-ma-filter]").forEach(function (tr) {
+        var show = rowMatchesCartFilterMode(tr, m);
+        tr.style.display = show ? "" : "none";
+      });
+    }
+    var queue = document.getElementById("ma-carts-queue-v2");
+    if (queue) {
+      queue.querySelectorAll(".v2-queue-item[data-ma-filter]").forEach(function (item) {
+        var show = rowMatchesCartFilterMode(item, m);
+        item.style.display = show ? "" : "none";
+        item.hidden = !show;
+      });
+      if (typeof window.maPeV2OnFilterApplied === "function") {
+        window.maPeV2OnFilterApplied(m);
+      }
+    }
   }
 
   function initCartFiltersOnce() {
