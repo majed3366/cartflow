@@ -121,24 +121,22 @@ class MerchantCartFactV1JsTests(unittest.TestCase):
         ).read_text(encoding="utf-8")
 
     def test_lazy_js_has_fact_renderer(self) -> None:
+        self.assertIn("function merchantCartAchievementHtml", self._lazy_js)
         self.assertIn("function merchantCartFactHtml", self._lazy_js)
         self.assertIn("merchant_cart_fact_v1", self._lazy_js)
-        self.assertIn("ma-cart-fact-v1", self._lazy_js)
+        self.assertIn("ma-cart-achievement-v1", self._lazy_js)
 
-    def test_cart_row_full_renders_fact_before_lifecycle(self) -> None:
+    def test_cart_row_full_renders_workspace(self) -> None:
         fn = self._lazy_js[
             self._lazy_js.index("function cartRowFull")
             : self._lazy_js.index("function normalCartsLoadingRowHtml")
         ]
-        self.assertIn("merchantCartFactHtml(mc)", fn)
-        idx_fact = fn.index("merchantCartFactHtml(mc)")
-        idx_lifecycle = fn.index("lifecycleTruthHtml(mc)")
-        self.assertLess(idx_fact, idx_lifecycle)
+        self.assertIn("merchantCartWorkspaceHtml(mc)", fn)
 
     def test_fact_renderer_no_hadath_muhim_heading(self) -> None:
         block = self._lazy_js[
-            self._lazy_js.index("function merchantCartFactHtml")
-            : self._lazy_js.index("function customerLifecycleExplanationHtml")
+            self._lazy_js.index("function merchantCartAchievementHtml")
+            : self._lazy_js.index("function merchantRecoveryStoryBeatsHtml")
         ]
         self.assertNotIn("حدث مهم", block)
 

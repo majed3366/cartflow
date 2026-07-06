@@ -2742,16 +2742,16 @@
   }
 
   function customerLifecycleArchivedCompactHtml(mc) {
-    var h =
-      '<div class="recovery-truth recovery-truth-compact customer-lifecycle-v1 customer-lifecycle-archived" aria-label="سلة مؤرشفة">';
-    h +=
-      '<div class="lc-archived-head"><span class="lc-archived-badge">مؤرشفة ✓</span></div>';
-    h +=
-      '<p class="lc-archived-line">تم إغلاق هذه الحالة من العرض النشط.</p>';
-    h +=
-      '<p class="lc-archived-line lc-archived-muted">لن يرسل النظام متابعات لهذه الحالة أثناء الأرشفة.</p>';
-    h += cartLifecycleActionBtnHtml(mc);
-    return h + "</div>";
+    return (
+      '<div class="ma-cart-workspace-v1 ma-cart-workspace-v1--archived" aria-label="سلة مؤرشفة">' +
+      '<div class="ma-cart-recovery-story-v1">' +
+      '<p class="ma-cart-story-headline"><span class="lc-archived-badge">مؤرشفة</span></p>' +
+      '<p class="ma-cart-story-beat-text lc-archived-line">تم إغلاق هذه الحالة من العرض النشط.</p>' +
+      '<p class="ma-cart-story-beat-text lc-archived-muted">لن يرسل النظام متابعات لهذه الحالة أثناء الأرشفة.</p>' +
+      "</div>" +
+      merchantCartSecondaryLifecycleHtml(mc) +
+      "</div>"
+    );
   }
 
   function merchantFollowupClarityHtml(mc) {
@@ -2760,27 +2760,30 @@
     var seq = String(mc.merchant_followup_sequence_line_ar || "").trim();
     var nxt = String(mc.merchant_followup_next_line_ar || "").trim();
     if (!prog && !seq && !nxt) return "";
-    var h =
-      '<div class="recovery-truth-followup-clarity" aria-label="تقدم المتابعة">';
+    var h = "";
     if (prog) {
       h +=
-        '<div class="recovery-truth-line merchant-followup-progress"><strong>المتابعة:</strong> ' +
+        '<div class="ma-cart-timeline-event ma-cart-timeline-event--followup">' +
+        '<span class="ma-cart-timeline-event-kicker">المتابعة</span>' +
+        '<span class="ma-cart-timeline-event-label">' +
         esc(prog) +
-        "</div>";
+        "</span></div>";
     }
     if (seq) {
       h +=
-        '<div class="recovery-truth-line recovery-truth-muted merchant-followup-sequence">' +
+        '<div class="ma-cart-timeline-event ma-cart-timeline-event--followup ma-cart-timeline-event--muted">' +
+        '<span class="ma-cart-timeline-event-label">' +
         esc(seq) +
-        "</div>";
+        "</span></div>";
     }
     if (nxt) {
       h +=
-        '<div class="recovery-truth-line merchant-followup-next">' +
+        '<div class="ma-cart-timeline-event ma-cart-timeline-event--followup">' +
+        '<span class="ma-cart-timeline-event-label">' +
         esc(nxt) +
-        "</div>";
+        "</span></div>";
     }
-    return h + "</div>";
+    return h;
   }
 
   function continuationDecisionExplanationHtml(mc) {
@@ -2811,59 +2814,245 @@
     );
   }
 
-  function merchantDecisionSuggestedActionHtml(mc) {
+  function merchantCartAchievementHtml(mc) {
+    var f = mc && mc.merchant_cart_fact_v1;
+    if (!f || !f.kind || !f.label_ar) return "";
+    return (
+      '<div class="ma-cart-achievement-v1" aria-label="إنجاز">' +
+      '<span class="ma-cart-achievement-icon" aria-hidden="true">✓</span>' +
+      '<span class="ma-cart-achievement-label">' +
+      esc(f.label_ar) +
+      "</span></div>"
+    );
+  }
+
+  function merchantRecoveryStoryBeatsHtml(mc, expl) {
+    if (!expl) return "";
+    var h =
+      '<div class="ma-cart-recovery-story-v1" aria-label="قصة الاسترداد">';
+    if (expl.status_label_ar) {
+      h +=
+        '<p class="ma-cart-story-headline">' +
+        esc(expl.status_label_ar) +
+        "</p>";
+    }
+    if (expl.what_happened_ar) {
+      h +=
+        '<div class="ma-cart-story-beat ma-cart-story-beat--what">' +
+        '<span class="ma-cart-story-beat-label">ما حدث</span>' +
+        '<p class="ma-cart-story-beat-text">' +
+        esc(expl.what_happened_ar) +
+        "</p></div>";
+    }
+    if (expl.system_did_ar) {
+      h +=
+        '<div class="ma-cart-story-beat ma-cart-story-beat--did">' +
+        '<span class="ma-cart-story-beat-label">CartFlow</span>' +
+        '<p class="ma-cart-story-beat-text">' +
+        esc(expl.system_did_ar) +
+        "</p></div>";
+    }
+    if (expl.what_next_ar) {
+      var waitingBand = !expl.action_required;
+      h +=
+        '<div class="ma-cart-story-beat ma-cart-story-beat--next' +
+        (waitingBand ? " ma-cart-waiting-band" : "") +
+        '">' +
+        '<span class="ma-cart-story-beat-label">' +
+        (waitingBand ? "الانتظار" : "التالي") +
+        "</span>" +
+        '<p class="ma-cart-story-beat-text">' +
+        esc(expl.what_next_ar) +
+        "</p></div>";
+    }
+    if (expl.merchant_action_needed_ar) {
+      h +=
+        '<div class="ma-cart-story-beat ma-cart-story-beat--action' +
+        (expl.action_required ? " ma-cart-story-beat--action-required" : "") +
+        '">' +
+        '<span class="ma-cart-story-beat-label">إجراءك</span>' +
+        '<p class="ma-cart-story-beat-text">' +
+        esc(expl.merchant_action_needed_ar) +
+        "</p></div>";
+    }
+    return h + "</div>";
+  }
+
+  function merchantSuggestedActionPrimaryHtml(mc) {
     if (!mc) return "";
     var proj = cartDetailProjection(mc);
-    if (proj && proj.suggested_action) {
-      var sa = proj.suggested_action;
-      if (!sa.visible || !sa.label_ar) return "";
+    var sa = proj && proj.suggested_action;
+    if (sa && sa.visible && sa.label_ar) {
+      var label = sa.label_ar;
+      var contact = proj && proj.contact_action;
+      if (contact && contact.visible && contact.href) {
+        var useLabel = contact.label_ar || label;
+        return (
+          '<div class="ma-cart-suggested-action-v1">' +
+          '<a class="ma-cart-action-primary" href="' +
+          esc(contact.href) +
+          '" target="_blank" rel="noopener noreferrer">' +
+          esc(useLabel) +
+          "</a></div>"
+        );
+      }
       return (
-        '<div class="recovery-truth-line"><strong>الإجراء المقترح:</strong> ' +
-        esc(sa.label_ar) +
-        "</div>"
+        '<div class="ma-cart-suggested-action-v1">' +
+        '<span class="ma-cart-action-primary ma-cart-action-primary--label">' +
+        esc(label) +
+        "</span></div>"
       );
+    }
+    if (!proj && mc.merchant_intervention_executable) {
+      var href = String(mc.merchant_intervention_contact_href || "").trim();
+      if (href) {
+        var lbl = String(mc.merchant_intervention_action_ar || "فتح واتساب").trim();
+        return (
+          '<div class="ma-cart-suggested-action-v1">' +
+          '<a class="ma-cart-action-primary" href="' +
+          esc(href) +
+          '" target="_blank" rel="noopener noreferrer">' +
+          esc(lbl) +
+          "</a></div>"
+        );
+      }
     }
     return "";
   }
 
-  function merchantExplanationProjectionHtml(mc, expl) {
-    var h =
-      '<div class="recovery-truth recovery-truth-compact merchant-explanation-v1" aria-label="شرح CartFlow">';
-    h +=
-      '<div class="recovery-truth-line me-status"><strong>الحالة:</strong> ' +
-      esc(expl.status_label_ar || "—") +
-      "</div>";
-    if (expl.what_happened_ar) {
-      h +=
-        '<div class="recovery-truth-line me-what"><strong>ماذا حدث؟</strong> ' +
-        esc(expl.what_happened_ar) +
-        "</div>";
+  function merchantCartSecondaryLifecycleHtml(mc) {
+    var proj = cartDetailProjection(mc);
+    var lc = proj && proj.lifecycle_ui;
+    var rk = lc && lc.recovery_key ? lc.recovery_key : String(mc.recovery_key || "").trim();
+    if (!rk) return "";
+    var h = "";
+    if (lc) {
+      if (lc.archive_visible) {
+        h +=
+          '<button type="button" class="ma-cart-action-secondary" data-lc-archive data-recovery-key="' +
+          esc(rk) +
+          '">نقل للأرشيف</button>';
+      }
+      if (lc.reopen_visible) {
+        h +=
+          '<button type="button" class="ma-cart-action-secondary" data-lc-reopen data-recovery-key="' +
+          esc(rk) +
+          '">إعادة فتح</button>';
+      }
+    } else {
+      var act = String(mc.customer_lifecycle_dashboard_action || "").trim();
+      if (act === "archive") {
+        h +=
+          '<button type="button" class="ma-cart-action-secondary" data-lc-archive data-recovery-key="' +
+          esc(rk) +
+          '">نقل للأرشيف</button>';
+      }
+      if (act === "reopen") {
+        h +=
+          '<button type="button" class="ma-cart-action-secondary" data-lc-reopen data-recovery-key="' +
+          esc(rk) +
+          '">إعادة فتح</button>';
+      }
     }
-    if (expl.system_did_ar) {
+    if (!h) return "";
+    return '<div class="ma-cart-secondary-actions">' + h + "</div>";
+  }
+
+  function merchantProofSurfaceTimelineHtml(mc) {
+    var ps = mc && mc.merchant_proof_surface_v1;
+    if (!ps || ps.version !== "v1") return "";
+    var steps = ps.recovery_steps || [];
+    var h = "";
+    if (ps.why_we_know_ar) {
       h +=
-        '<div class="recovery-truth-line me-system"><strong>ماذا فعل CartFlow؟</strong> ' +
-        esc(expl.system_did_ar) +
-        "</div>";
+        '<div class="ma-cart-timeline-event ma-cart-timeline-event--proof">' +
+        '<span class="ma-cart-timeline-event-kicker">لماذا نعرف</span>' +
+        '<span class="ma-cart-timeline-event-label">' +
+        esc(ps.why_we_know_ar) +
+        "</span></div>";
     }
-    if (expl.what_next_ar) {
+    for (var i = steps.length - 1; i >= 0; i--) {
+      var st = steps[i];
+      if (!st || !st.label_ar) continue;
+      var stLabel =
+        PROOF_STEP_STATE_AR[String(st.state || "").trim()] || st.state || "";
       h +=
-        '<div class="recovery-truth-line me-next"><strong>ماذا سيحدث الآن؟</strong> ' +
-        esc(expl.what_next_ar) +
-        "</div>";
+        '<div class="ma-cart-timeline-event ma-cart-timeline-event--step" role="listitem">' +
+        '<span class="ma-cart-timeline-event-label">' +
+        esc(st.label_ar) +
+        "</span>" +
+        '<span class="ma-cart-timeline-event-meta">' +
+        esc(stLabel);
+      if (st.note_ar) {
+        h += " · " + esc(st.note_ar);
+      }
+      h += "</span></div>";
     }
-    if (expl.followup_line_ar) {
+    var conf = ps.confidence_ar || ps.confidence || "";
+    var ev = ps.evidence_label_ar || ps.evidence_source_ar || "";
+    if (conf || ev) {
       h +=
-        '<div class="recovery-truth-line me-followup"><strong>المتابعة:</strong> ' +
+        '<div class="ma-cart-timeline-event ma-cart-timeline-event--meta ma-cart-timeline-event--muted">';
+      if (conf) {
+        h +=
+          '<span class="ma-cart-timeline-event-meta">الثقة: ' + esc(conf) + "</span>";
+      }
+      if (ev) {
+        h +=
+          (conf ? " · " : "") +
+          '<span class="ma-cart-timeline-event-meta">المصدر: ' +
+          esc(ev) +
+          "</span>";
+      }
+      h += "</div>";
+    }
+    return h;
+  }
+
+  function merchantCustomerMovementTimelineHtml(mc) {
+    if (!mc || !mc.customer_movement_line_ar) return "";
+    return (
+      '<div class="ma-cart-timeline-event ma-cart-timeline-event--movement">' +
+      '<span class="ma-cart-timeline-event-kicker">' +
+      esc(mc.customer_movement_heading_ar || "حركة العميل") +
+      "</span>" +
+      '<span class="ma-cart-timeline-event-label">' +
+      esc(mc.customer_movement_line_ar) +
+      "</span></div>"
+    );
+  }
+
+  function merchantContinuationTimelineHtml(mc) {
+    var proj = cartDetailProjection(mc);
+    var expl = proj ? String(proj.continuation_line_ar || "").trim() : "";
+    if (!expl) {
+      expl = String(
+        (mc &&
+          (mc.customer_lifecycle_continuation_explanation_ar ||
+            mc.normal_recovery_continuation_explanation_ar)) ||
+          ""
+      ).trim();
+    }
+    if (!expl) return "";
+    return (
+      '<div class="ma-cart-timeline-event ma-cart-timeline-event--continuation">' +
+      '<span class="ma-cart-timeline-event-label">' +
+      esc(expl) +
+      "</span></div>"
+    );
+  }
+
+  function merchantCartTimelineHtml(mc, expl) {
+    var inner = "";
+    inner += merchantProofSurfaceTimelineHtml(mc);
+    inner += merchantFollowupClarityHtml(mc);
+    if (expl && expl.followup_line_ar) {
+      inner +=
+        '<div class="ma-cart-timeline-event ma-cart-timeline-event--followup">' +
+        '<span class="ma-cart-timeline-event-kicker">المتابعة</span>' +
+        '<span class="ma-cart-timeline-event-label">' +
         esc(expl.followup_line_ar) +
-        "</div>";
-    }
-    if (expl.merchant_action_needed_ar) {
-      h +=
-        '<div class="recovery-truth-line me-action' +
-        (expl.action_required ? " me-action-required" : "") +
-        '"><strong>هل تحتاج إجراء؟</strong> ' +
-        esc(expl.merchant_action_needed_ar) +
-        "</div>";
+        "</span></div>";
     }
     var prog = String(
       (cartDetailProjection(mc) && cartDetailProjection(mc).followup_progress_ar) ||
@@ -2871,15 +3060,42 @@
         ""
     ).trim();
     if (prog) {
-      h +=
-        '<div class="recovery-truth-line recovery-truth-muted merchant-followup-progress">' +
+      inner +=
+        '<div class="ma-cart-timeline-event ma-cart-timeline-event--followup ma-cart-timeline-event--muted">' +
+        '<span class="ma-cart-timeline-event-label">' +
         esc(prog) +
-        "</div>";
+        "</span></div>";
     }
-    h += merchantDecisionSuggestedActionHtml(mc);
-    h += continuationDecisionExplanationHtml(mc);
-    h += cartLifecycleActionBtnHtml(mc);
-    return h + "</div>";
+    inner += merchantCustomerMovementTimelineHtml(mc);
+    inner += merchantContinuationTimelineHtml(mc);
+    if (!inner) return "";
+    return (
+      '<details class="ma-cart-timeline-v1">' +
+      '<summary class="ma-cart-timeline-summary">التفاصيل</summary>' +
+      '<div class="ma-cart-timeline-body" role="list">' +
+      inner +
+      "</div></details>"
+    );
+  }
+
+  function merchantCartWorkspaceFromParts(mc, expl) {
+    return (
+      '<div class="ma-cart-workspace-v1" data-mxp="carts-v1" aria-label="مساحة السلة">' +
+      merchantCartAchievementHtml(mc) +
+      merchantRecoveryStoryBeatsHtml(mc, expl) +
+      merchantSuggestedActionPrimaryHtml(mc) +
+      merchantCartTimelineHtml(mc, expl) +
+      merchantCartSecondaryLifecycleHtml(mc) +
+      "</div>"
+    );
+  }
+
+  function merchantCartWorkspaceHtml(mc) {
+    return merchantExplanationHtml(mc);
+  }
+
+  function merchantExplanationProjectionHtml(mc, expl) {
+    return merchantCartWorkspaceFromParts(mc, expl);
   }
 
   function merchantExplanationHtml(mc) {
@@ -2921,14 +3137,7 @@
   }
 
   function merchantCartFactHtml(mc) {
-    var f = mc && mc.merchant_cart_fact_v1;
-    if (!f || !f.kind || !f.label_ar) return "";
-    return (
-      '<div class="recovery-truth-line ma-cart-fact-v1">' +
-      '<span class="ma-cart-fact-v1-label">✓ ' +
-      esc(f.label_ar) +
-      "</span></div>"
-    );
+    return merchantCartAchievementHtml(mc);
   }
 
   var PROOF_STEP_STATE_AR = {
@@ -2985,47 +3194,15 @@
     if (isArchivedVisual(mc)) {
       return customerLifecycleArchivedCompactHtml(mc);
     }
-    var h =
-      '<div class="recovery-truth recovery-truth-compact customer-lifecycle-v1" aria-label="حالة دورة العميل">';
-    h +=
-      '<div class="recovery-truth-line"><strong>الحالة:</strong> ' +
-      esc(mc.customer_lifecycle_label_ar || "—") +
-      "</div>";
-    if (mc.customer_lifecycle_what_happened_ar) {
-      h +=
-        '<div class="recovery-truth-line"><strong>ماذا حدث؟</strong> ' +
-        esc(mc.customer_lifecycle_what_happened_ar) +
-        "</div>";
-    }
-    if (mc.customer_lifecycle_system_did_ar) {
-      h +=
-        '<div class="recovery-truth-line"><strong>ماذا فعل النظام؟</strong> ' +
-        esc(mc.customer_lifecycle_system_did_ar) +
-        "</div>";
-    }
-    if (mc.customer_lifecycle_what_next_ar) {
-      h +=
-        '<div class="recovery-truth-line"><strong>التالي:</strong> ' +
-        esc(mc.customer_lifecycle_what_next_ar) +
-        "</div>";
-    }
-    if (mc.customer_lifecycle_next_followup_line_ar) {
-      h +=
-        '<div class="recovery-truth-line"><strong>المتابعة:</strong> ' +
-        esc(mc.customer_lifecycle_next_followup_line_ar) +
-        "</div>";
-    }
-    var prog = String(mc.merchant_followup_progress_ar || "").trim();
-    if (prog) {
-      h +=
-        '<div class="recovery-truth-line recovery-truth-muted merchant-followup-progress">' +
-        esc(prog) +
-        "</div>";
-    }
-    h += merchantDecisionSuggestedActionHtml(mc);
-    h += continuationDecisionExplanationHtml(mc);
-    h += cartLifecycleActionBtnHtml(mc);
-    return h + "</div>";
+    return merchantCartWorkspaceFromParts(mc, {
+      status_label_ar: mc.customer_lifecycle_label_ar || "—",
+      what_happened_ar: mc.customer_lifecycle_what_happened_ar,
+      system_did_ar: mc.customer_lifecycle_system_did_ar,
+      what_next_ar: mc.customer_lifecycle_what_next_ar,
+      followup_line_ar: mc.customer_lifecycle_next_followup_line_ar,
+      merchant_action_needed_ar: mc.customer_lifecycle_merchant_needed_ar,
+      action_required: false,
+    });
   }
 
   function customerLifecycleExplanationHtml(mc) {
@@ -3295,8 +3472,7 @@
           '">' +
           esc(merchantNextLineShort(mc) || mc.merchant_next_action_ar || "—") +
           "</div>") +
-      customerMovementHtml(mc) +
-      lifecycleTruthHtml(mc) +
+      merchantCartWorkspaceHtml(mc) +
       "</td>" +
       "<td>" +
       ph +
@@ -3358,9 +3534,7 @@
       (archived
         ? ""
         : '<div class="next' + urg + '">' + esc(nextLbl) + "</div>") +
-      merchantCartFactHtml(mc) +
-      customerMovementHtml(mc) +
-      lifecycleTruthHtml(mc) +
+      merchantCartWorkspaceHtml(mc) +
       "</td>" +
       '<td><div class="ctime">' +
       esc(mc.merchant_last_seen_display || "—") +

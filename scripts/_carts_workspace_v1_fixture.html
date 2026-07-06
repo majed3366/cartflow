@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Carts Workspace V1 — Before / After</title>
+  <link rel="stylesheet" href="../static/merchant_app.css" />
+  <style>
+    body {
+      margin: 0;
+      padding: 24px 16px 48px;
+      font-family: "Segoe UI", Tahoma, sans-serif;
+      background: #f8fafc;
+      color: #0f172a;
+    }
+    .fixture-head {
+      max-width: 920px;
+      margin: 0 auto 24px;
+    }
+    .fixture-head h1 {
+      margin: 0 0 8px;
+      font-size: 20px;
+    }
+    .fixture-head p {
+      margin: 0;
+      color: #64748b;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    .fixture-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      max-width: 920px;
+      margin: 0 auto;
+    }
+    .fixture-panel {
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+    }
+    .fixture-panel h2 {
+      margin: 0 0 12px;
+      font-size: 14px;
+      color: #475569;
+    }
+    .fixture-row-meta {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+      font-size: 11px;
+      color: #64748b;
+    }
+    .fixture-row-meta .chip {
+      font-size: 10px;
+    }
+    .before-block .recovery-truth-line strong {
+      display: inline;
+    }
+    @media (max-width: 760px) {
+      .fixture-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header class="fixture-head">
+    <h1>Carts Workspace Experience V1</h1>
+    <p>Before: paragraph-wall labels. After: MXP-4 story → MXP-9 action → MXP-5 timeline (collapsed).</p>
+  </header>
+
+  <div class="fixture-grid">
+    <section class="fixture-panel" id="fixture-before">
+      <h2>Before — operational labels</h2>
+      <div class="fixture-row-meta">
+        <span class="camt">1,240 ر</span>
+        <span class="chip c-price">السعر</span>
+        <span class="st"><span class="sd"></span>بانتظار الرد</span>
+      </div>
+      <div class="next">ننتظر رد العميل</div>
+      <div class="recovery-truth recovery-truth-compact merchant-explanation-v1">
+        <div class="recovery-truth-line me-status"><strong>الحالة:</strong> بانتظار الرد</div>
+        <div class="recovery-truth-line me-what"><strong>ماذا حدث؟</strong> أضاف العميل منتجات ثم غادر دون إتمام الشراء.</div>
+        <div class="recovery-truth-line me-system"><strong>ماذا فعل CartFlow؟</strong> أرسلنا رسالة واتساب للاسترداد.</div>
+        <div class="recovery-truth-line me-next"><strong>ماذا سيحدث الآن؟</strong> نراقب الرد خلال ٢٤ ساعة.</div>
+        <div class="recovery-truth-line me-action"><strong>هل تحتاج إجراء؟</strong> لا — CartFlow يتابع</div>
+        <div class="recovery-truth-line"><strong>الإجراء المقترح:</strong> تواصل مع العميل</div>
+        <div class="recovery-truth ma-proof-surface-v1">
+          <div class="recovery-truth-line ma-proof-headline"><strong>ملخص CartFlow:</strong> تم إرسال رسالة الاسترداد</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="fixture-panel" id="fixture-after">
+      <h2>After — conversation flow</h2>
+      <div class="fixture-row-meta">
+        <span class="camt">1,240 ر</span>
+        <span class="chip c-price">السعر</span>
+        <span class="st"><span class="sd"></span>بانتظار الرد</span>
+      </div>
+      <div class="next">ننتظر رد العميل</div>
+      <div class="ma-cart-workspace-v1" data-mxp="carts-v1">
+        <div class="ma-cart-achievement-v1">
+          <span class="ma-cart-achievement-icon" aria-hidden="true">✓</span>
+          <span class="ma-cart-achievement-label">تم إرسال رسالة الاسترداد</span>
+        </div>
+        <div class="ma-cart-recovery-story-v1">
+          <p class="ma-cart-story-headline">بانتظار الرد</p>
+          <div class="ma-cart-story-beat ma-cart-story-beat--what">
+            <span class="ma-cart-story-beat-label">ما حدث</span>
+            <p class="ma-cart-story-beat-text">أضاف العميل منتجات ثم غادر دون إتمام الشراء.</p>
+          </div>
+          <div class="ma-cart-story-beat ma-cart-story-beat--did">
+            <span class="ma-cart-story-beat-label">CartFlow</span>
+            <p class="ma-cart-story-beat-text">أرسلنا رسالة واتساب للاسترداد.</p>
+          </div>
+          <div class="ma-cart-story-beat ma-cart-story-beat--next ma-cart-waiting-band">
+            <span class="ma-cart-story-beat-label">الانتظار</span>
+            <p class="ma-cart-story-beat-text">نراقب الرد خلال ٢٤ ساعة.</p>
+          </div>
+          <div class="ma-cart-story-beat ma-cart-story-beat--action">
+            <span class="ma-cart-story-beat-label">إجراءك</span>
+            <p class="ma-cart-story-beat-text">لا — CartFlow يتابع</p>
+          </div>
+        </div>
+        <div class="ma-cart-suggested-action-v1">
+          <a class="ma-cart-action-primary" href="#">تواصل مع العميل</a>
+        </div>
+        <details class="ma-cart-timeline-v1">
+          <summary class="ma-cart-timeline-summary">التفاصيل</summary>
+          <div class="ma-cart-timeline-body">
+            <div class="ma-cart-timeline-event ma-cart-timeline-event--proof">
+              <span class="ma-cart-timeline-event-kicker">لماذا نعرف</span>
+              <span class="ma-cart-timeline-event-label">تم إرسال رسالة الاسترداد</span>
+            </div>
+            <div class="ma-cart-timeline-event ma-cart-timeline-event--step">
+              <span class="ma-cart-timeline-event-label">رسالة واتساب</span>
+              <span class="ma-cart-timeline-event-meta">تم</span>
+            </div>
+          </div>
+        </details>
+        <div class="ma-cart-secondary-actions">
+          <button type="button" class="ma-cart-action-secondary">نقل للأرشيف</button>
+        </div>
+      </div>
+    </section>
+  </div>
+</body>
+</html>

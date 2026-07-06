@@ -23,33 +23,18 @@ def _extract_js_function(source: str, name: str) -> str:
 
 
 class MerchantDecisionLayerV1ANormalCartsUiTests(unittest.TestCase):
-    def test_normal_cart_lifecycle_block_omits_merchant_intervention_label(self) -> None:
-        block = _extract_js_function(_LAZY_JS, "customerLifecycleExplanationHtml")
+    def test_normal_cart_workspace_omits_merchant_intervention_label(self) -> None:
+        block = _extract_js_function(_LAZY_JS, "merchantCartWorkspaceFromParts")
         self.assertNotIn("تدخل التاجر", block)
 
-    def test_normal_cart_lifecycle_block_keeps_operational_explanation(self) -> None:
-        block = _extract_js_function(_LAZY_JS, "customerLifecycleExplanationHtml")
-        self.assertIn("الحالة:", block)
-        self.assertIn("ماذا حدث؟", block)
-        self.assertIn("ماذا فعل النظام؟", block)
-        self.assertIn("التالي:", block)
+    def test_suggested_action_from_projection_not_js_gate(self) -> None:
+        suggested = _extract_js_function(_LAZY_JS, "merchantSuggestedActionPrimaryHtml")
+        self.assertIn("proj.suggested_action", suggested)
+        self.assertNotIn("NORMAL_CART_MERCHANT_EXECUTABLE_DECISION_KEYS", _LAZY_JS)
 
-    def test_suggested_action_gated_by_executable_keys(self) -> None:
-        self.assertIn("NORMAL_CART_MERCHANT_EXECUTABLE_DECISION_KEYS", _LAZY_JS)
-        suggested = _extract_js_function(_LAZY_JS, "merchantDecisionSuggestedActionHtml")
-        self.assertIn("NORMAL_CART_MERCHANT_EXECUTABLE_DECISION_KEYS[key]", suggested)
-        self.assertNotRegex(
-            _LAZY_JS,
-            r"NORMAL_CART_MERCHANT_EXECUTABLE_DECISION_KEYS\s*=\s*\{[^}]+obtain_contact",
-        )
-
-    def test_missing_phone_decision_key_not_shown_as_fake_action(self) -> None:
-        suggested = _extract_js_function(_LAZY_JS, "merchantDecisionSuggestedActionHtml")
-        self.assertIn("NORMAL_CART_MERCHANT_EXECUTABLE_DECISION_KEYS[key]", suggested)
-        lifecycle = _extract_js_function(_LAZY_JS, "customerLifecycleExplanationHtml")
-        self.assertNotIn("الإجراء المقترح", lifecycle.replace(
-            "merchantDecisionSuggestedActionHtml(mc)", ""
-        ))
+    def test_workspace_no_inline_suggested_action_label(self) -> None:
+        suggested = _extract_js_function(_LAZY_JS, "merchantSuggestedActionPrimaryHtml")
+        self.assertNotIn("الإجراء المقترح:", suggested)
 
     def test_vip_manual_follow_up_surfaces_unchanged(self) -> None:
         self.assertIn("__maVipCartsTestHooks", _LAZY_JS)
