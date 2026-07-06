@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>V2 — Carts Work Queue · CartFlow</title>
+  <link rel="stylesheet" href="/preview/product-excellence-v2/assets/pe-v2-system.css" />
+  <meta name="robots" content="noindex" />
+  <style>
+    .v2-mobile-cta { margin-top: var(--v2-space-md); }
+    .v2-desktop-panel { display: none; }
+    @media (min-width: 900px) {
+      .v2-mobile-cta { display: none; }
+      .v2-desktop-panel {
+        display: flex;
+        flex-direction: column;
+        padding: var(--v2-space-xl);
+        border-radius: var(--v2-radius-hero);
+        background: var(--v2-surface);
+        box-shadow: var(--v2-shadow-card);
+        min-height: 480px;
+      }
+    }
+  </style>
+</head>
+<body class="v2 has-ribbon">
+  <div class="v2-review-ribbon">معاينة V2 — طبقة بصرية فقط · ليست الإنتاج</div>
+
+  <div class="v2-app v2-app--wide">
+    <header class="v2-chrome">
+      <span class="v2-mark">CF</span>
+      <a href="/preview/product-excellence-v2/home" style="font-size:14px;font-weight:600;color:var(--v2-ink-whisper);text-decoration:none;">← اليوم</a>
+    </header>
+
+    <div class="v2-workspace">
+      <div>
+        <header class="v2-queue-header">
+          <h1 class="v2-queue-title">طابور اليوم</h1>
+          <p class="v2-queue-sub">٧ سلال · واحدة تحتاجك · الباقي CartFlow يتابعه</p>
+        </header>
+
+        <div class="v2-segments">
+          <button type="button" class="v2-segment is-active">الكل</button>
+          <button type="button" class="v2-segment">يحتاجك · ١</button>
+          <button type="button" class="v2-segment">يتابع · ٥</button>
+        </div>
+
+        <div class="v2-queue-list">
+          <a class="v2-queue-item is-selected" href="/preview/product-excellence-v2/cart-detail">
+            <span class="v2-queue-accent v2-queue-accent--attention"></span>
+            <div class="v2-queue-body">
+              <div class="v2-queue-amount">١٬٢٤٠ ر</div>
+              <p class="v2-queue-scan">لا رد · رسالة أُرسلت</p>
+            </div>
+            <span class="v2-queue-time">٣ س</span>
+          </a>
+          <a class="v2-queue-item" href="/preview/product-excellence-v2/cart-detail">
+            <span class="v2-queue-accent v2-queue-accent--waiting"></span>
+            <div class="v2-queue-body">
+              <div class="v2-queue-amount">٨٩٠ ر</div>
+              <p class="v2-queue-scan">CartFlow يراقب الشراء</p>
+            </div>
+            <span class="v2-queue-time">٥ س</span>
+          </a>
+          <a class="v2-queue-item" href="/preview/product-excellence-v2/cart-detail">
+            <span class="v2-queue-accent v2-queue-accent--calm"></span>
+            <div class="v2-queue-body">
+              <div class="v2-queue-amount">٤٥٠ ر</div>
+              <p class="v2-queue-scan">إرسال بعد ساعتين</p>
+            </div>
+            <span class="v2-queue-time">١ س</span>
+          </a>
+        </div>
+      </div>
+
+      <aside class="v2-desktop-panel v2-conversation" aria-label="المحادثة">
+        <p class="v2-conv-status">١٬٢٤٠ ر · السعر</p>
+        <h2 class="v2-conv-headline" style="font-size:1.75rem;margin-bottom:1.5rem;">بانتظار رد العميل</h2>
+        <div class="v2-flow">
+          <div class="v2-flow-step">
+            <span class="v2-flow-icon v2-flow-icon--happened">١</span>
+            <div class="v2-flow-content">
+              <p class="v2-flow-label">ما حدث</p>
+              <p class="v2-flow-text">غادر بعد إضافة المنتجات</p>
+            </div>
+          </div>
+          <div class="v2-flow-step">
+            <span class="v2-flow-icon v2-flow-icon--did">✓</span>
+            <div class="v2-flow-content">
+              <p class="v2-flow-label">CartFlow</p>
+              <p class="v2-flow-text">أرسلنا واتساب</p>
+            </div>
+          </div>
+          <div class="v2-flow-step">
+            <span class="v2-flow-icon v2-flow-icon--next">⏳</span>
+            <div class="v2-flow-content">
+              <p class="v2-flow-label">التالي</p>
+              <p class="v2-flow-text">ننتظر ٢٤ ساعة</p>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:auto;padding-top:1.5rem;">
+          <a class="v2-btn" href="/preview/product-excellence-v2/cart-detail">تواصل مع العميل</a>
+        </div>
+      </aside>
+    </div>
+
+    <article class="v2-action-card is-attention v2-mobile-cta">
+      <p class="v2-action-eyebrow">المحددة · ١٬٢٤٠ ر</p>
+      <h2 class="v2-action-headline" style="font-size:1.15rem;">لا رد بعد ٢٤ ساعة</h2>
+      <a class="v2-btn" href="/preview/product-excellence-v2/cart-detail">افتح المحادثة</a>
+    </article>
+  </div>
+</body>
+</html>

@@ -269,6 +269,9 @@ from routes.merchant_pages import router as merchant_pages_router  # noqa: E402
 from routes.product_excellence_preview_v1 import (  # noqa: E402
     router as product_excellence_preview_router,
 )
+from routes.product_excellence_preview_v2 import (  # noqa: E402
+    router as product_excellence_preview_v2_router,
+)
 from routes.dev_diagnostics import router as dev_diagnostics_router  # noqa: E402
 from routes.whatsapp_delivery_webhook import (  # noqa: E402
     router as whatsapp_delivery_webhook_router,
@@ -281,6 +284,7 @@ app.include_router(ops_router)
 app.include_router(public_router)
 app.include_router(merchant_pages_router)
 app.include_router(product_excellence_preview_router)
+app.include_router(product_excellence_preview_v2_router)
 app.include_router(dev_diagnostics_router)
 app.include_router(whatsapp_delivery_webhook_router)
 app.include_router(meta_whatsapp_webhook_router)

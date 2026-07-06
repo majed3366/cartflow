@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>V2 — Cart Conversation · CartFlow</title>
+  <link rel="stylesheet" href="/preview/product-excellence-v2/assets/pe-v2-system.css" />
+  <meta name="robots" content="noindex" />
+</head>
+<body class="v2 has-ribbon">
+  <div class="v2-review-ribbon">معاينة V2 — طبقة بصرية فقط · ليست الإنتاج</div>
+
+  <div class="v2-app">
+    <header class="v2-chrome">
+      <a href="/preview/product-excellence-v2/carts" style="font-size:14px;font-weight:700;color:var(--v2-ink-soft);text-decoration:none;">← الطابور</a>
+      <span class="v2-queue-amount">١٬٢٤٠ ر</span>
+    </header>
+
+    <main class="v2-conversation">
+      <p class="v2-conv-status">CartFlow يتابع هذه السلة</p>
+      <h1 class="v2-conv-headline">بانتظار رد العميل</h1>
+
+      <div class="v2-flow" aria-label="محادثة الاسترداد">
+        <div class="v2-flow-step">
+          <span class="v2-flow-icon v2-flow-icon--happened">١</span>
+          <div class="v2-flow-content">
+            <p class="v2-flow-label">ما حدث</p>
+            <p class="v2-flow-text">ترك سلة بمنتجين دون شراء</p>
+          </div>
+        </div>
+        <div class="v2-flow-connector" aria-hidden="true"></div>
+        <div class="v2-flow-step">
+          <span class="v2-flow-icon v2-flow-icon--did">✓</span>
+          <div class="v2-flow-content">
+            <p class="v2-flow-label">CartFlow</p>
+            <p class="v2-flow-text">أرسلنا رسالة واتساب · منذ ٢٤ س</p>
+          </div>
+        </div>
+        <div class="v2-flow-connector" aria-hidden="true"></div>
+        <div class="v2-flow-step">
+          <span class="v2-flow-icon v2-flow-icon--next">⏳</span>
+          <div class="v2-flow-content">
+            <p class="v2-flow-label">التالي</p>
+            <p class="v2-flow-text">ننتظر الرد — محاولة تلقائية بعد ٤ س</p>
+          </div>
+        </div>
+        <div class="v2-flow-connector" aria-hidden="true"></div>
+        <div class="v2-flow-step">
+          <span class="v2-flow-icon v2-flow-icon--you">→</span>
+          <div class="v2-flow-content">
+            <p class="v2-flow-label">إجراءك</p>
+            <p class="v2-flow-text">اختياري — تواصل لتسريع الإغلاق</p>
+          </div>
+        </div>
+      </div>
+
+      <footer class="v2-conv-footer">
+        <button type="button" class="v2-detail-link" id="v2-detail-toggle">التفاصيل والسجل</button>
+        <div id="v2-detail-panel" hidden style="margin-bottom:12px;padding:14px;border-radius:14px;background:#fff;font-size:13px;color:var(--v2-ink-soft);">
+          <div>رسالة واتساب · تم · ٢٤ س</div>
+          <div>جدولة · تم · ٢٥ س</div>
+          <div style="margin-top:8px;color:var(--v2-ink-whisper);">ثقة عالية · مسار الاسترداد</div>
+        </div>
+        <a class="v2-btn" href="#">تواصل مع العميل</a>
+        <button type="button" class="v2-btn v2-btn--ghost">نقل للأرشيف</button>
+      </footer>
+    </main>
+  </div>
+  <script>
+    document.getElementById("v2-detail-toggle").addEventListener("click", function () {
+      var p = document.getElementById("v2-detail-panel");
+      p.hidden = !p.hidden;
+    });
+  </script>
+</body>
+</html>
