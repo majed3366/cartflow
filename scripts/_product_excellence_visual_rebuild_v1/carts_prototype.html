@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PE Visual Rebuild V1 — Carts Workspace (After)</title>
+  <link rel="stylesheet" href="/preview/product-excellence/assets/pe-visual-system.css" />
+  <meta name="robots" content="noindex, nofollow" />
+</head>
+<body class="pe-app">
+  <div class="pe-shell">
+    <span class="pe-badge-prototype">Prototype — Carts Workspace Rebuild</span>
+
+    <header class="pe-topbar">
+      <div class="pe-brand">
+        <span class="pe-brand-mark" aria-hidden="true">CF</span>
+        CartFlow
+      </div>
+      <nav class="pe-nav-pills">
+        <a class="pe-nav-pill" href="/preview/product-excellence/home">اليوم</a>
+        <a class="pe-nav-pill is-active" href="/preview/product-excellence/carts">السلال</a>
+        <a class="pe-nav-pill" href="#">الفهم</a>
+      </nav>
+    </header>
+
+    <section class="pe-hero" style="padding: var(--pe-space-5) var(--pe-space-6); margin-bottom: var(--pe-space-5);">
+      <p class="pe-hero-kicker">مساحة السلال</p>
+      <h1 class="pe-hero-title" style="font-size: var(--pe-l2); max-width: none;">٧ سلال نشطة — واحدة تحتاجك</h1>
+    </section>
+
+    <div class="pe-workspace-layout">
+      <!-- Queue — cards not rows -->
+      <aside class="pe-queue" aria-label="قائمة السلال">
+        <div class="pe-queue-filters">
+          <button type="button" class="pe-filter-chip is-active">الكل · ٧</button>
+          <button type="button" class="pe-filter-chip">يحتاجك · ١</button>
+          <button type="button" class="pe-filter-chip">CartFlow يتابع · ٥</button>
+        </div>
+
+        <article class="pe-cart-card is-selected">
+          <div class="pe-cart-card-top">
+            <span class="pe-cart-amount">١٬٢٤٠ ر</span>
+            <span class="pe-cart-status is-attention">يحتاجك</span>
+          </div>
+          <p class="pe-cart-one-liner">أُرسلت رسالة — لا رد بعد ٢٤ ساعة</p>
+          <p class="pe-cart-meta">السعر · منذ ٣ س</p>
+        </article>
+
+        <article class="pe-cart-card">
+          <div class="pe-cart-card-top">
+            <span class="pe-cart-amount">٨٩٠ ر</span>
+            <span class="pe-cart-status">بانتظار الرد</span>
+          </div>
+          <p class="pe-cart-one-liner">CartFlow يراقب إتمام الشراء</p>
+          <p class="pe-cart-meta">الشحن · منذ ٥ س</p>
+        </article>
+
+        <article class="pe-cart-card">
+          <div class="pe-cart-card-top">
+            <span class="pe-cart-amount">٤٥٠ ر</span>
+            <span class="pe-cart-status">بانتظار الإرسال</span>
+          </div>
+          <p class="pe-cart-one-liner">الرسالة التالية بعد ساعتين</p>
+          <p class="pe-cart-meta">التردد · منذ ١ س</p>
+        </article>
+      </aside>
+
+      <!-- Selected cart = conversation panel (MXP-4/5/9) -->
+      <main class="pe-conversation" aria-label="محادثة السلة">
+        <p class="pe-hero-kicker" style="margin:0;">١٬٢٤٠ ر · السعر</p>
+        <h2 class="pe-conversation-headline">بانتظار رد العميل</h2>
+
+        <div class="pe-story-flow">
+          <div class="pe-story-step">
+            <span class="pe-story-dot" aria-hidden="true">١</span>
+            <div>
+              <p class="pe-story-label">ما حدث</p>
+              <p class="pe-story-copy">أضاف العميل منتجات ثم غادر دون إتمام الشراء.</p>
+            </div>
+          </div>
+          <div class="pe-story-step">
+            <span class="pe-story-dot" aria-hidden="true">٢</span>
+            <div>
+              <p class="pe-story-label">CartFlow</p>
+              <p class="pe-story-copy">أرسلنا رسالة واتساب للاسترداد.</p>
+            </div>
+          </div>
+          <div class="pe-story-step is-waiting">
+            <span class="pe-story-dot" aria-hidden="true">⏳</span>
+            <div>
+              <p class="pe-story-label">الانتظار</p>
+              <p class="pe-story-copy">نراقب الرد خلال ٢٤ ساعة — لا تحتاج إجراء الآن.</p>
+            </div>
+          </div>
+          <div class="pe-story-step is-action">
+            <span class="pe-story-dot" aria-hidden="true">!</span>
+            <div>
+              <p class="pe-story-label">إجراءك</p>
+              <p class="pe-story-copy">يمكنك التواصل لتسريع الإغلاق — اختياري.</p>
+            </div>
+          </div>
+        </div>
+
+        <footer class="pe-conversation-footer">
+          <button type="button" class="pe-timeline-toggle">عرض التفاصيل والسجل</button>
+          <a class="pe-btn-primary" href="/preview/product-excellence/cart-detail">تواصل مع العميل</a>
+          <button type="button" class="pe-btn-ghost">نقل للأرشيف</button>
+        </footer>
+      </main>
+    </div>
+  </div>
+</body>
+</html>

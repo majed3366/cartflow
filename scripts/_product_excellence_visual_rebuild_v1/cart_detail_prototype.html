@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PE Visual Rebuild V1 — Cart Detail (After)</title>
+  <link rel="stylesheet" href="/preview/product-excellence/assets/pe-visual-system.css" />
+  <meta name="robots" content="noindex, nofollow" />
+  <style>
+    .pe-detail-page {
+      max-width: 520px;
+      margin: 0 auto;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      padding: var(--pe-space-5) var(--pe-space-4) var(--pe-space-6);
+    }
+    .pe-detail-back {
+      align-self: flex-start;
+      margin-bottom: var(--pe-space-5);
+      font: inherit;
+      font-size: var(--pe-l5);
+      font-weight: 600;
+      color: var(--pe-ink-muted);
+      background: none;
+      border: none;
+      cursor: pointer;
+      text-decoration: none;
+    }
+    .pe-detail-achievement {
+      margin-bottom: var(--pe-space-5);
+    }
+    .pe-timeline-drawer {
+      margin-top: var(--pe-space-4);
+      padding: var(--pe-space-4);
+      border-radius: var(--pe-radius-lg);
+      background: var(--pe-waiting-soft);
+      display: none;
+    }
+    .pe-timeline-drawer.is-open { display: block; }
+    .pe-timeline-row {
+      padding: var(--pe-space-2) 0;
+      font-size: var(--pe-l5);
+      color: var(--pe-ink-secondary);
+      border-bottom: 1px solid var(--pe-line);
+    }
+    .pe-sticky-action {
+      position: sticky;
+      bottom: 0;
+      margin-top: auto;
+      padding-top: var(--pe-space-5);
+      background: linear-gradient(180deg, transparent, var(--pe-bg) 24%);
+    }
+    .pe-sticky-action .pe-btn-primary {
+      width: 100%;
+    }
+  </style>
+</head>
+<body class="pe-app">
+  <div class="pe-detail-page">
+    <span class="pe-badge-prototype">Prototype — Cart Detail Rebuild</span>
+    <a class="pe-detail-back" href="/preview/product-excellence/carts">← العودة للسلال</a>
+
+    <article class="pe-detail-achievement pe-achievement-card">
+      <span class="pe-achievement-icon" aria-hidden="true">✓</span>
+      <p class="pe-achievement-text">تم إرسال رسالة الاسترداد · منذ ٢٤ ساعة</p>
+    </article>
+
+    <!-- L1 dominant message -->
+    <h1 class="pe-conversation-headline" style="margin-bottom: var(--pe-space-6);">بانتظار رد العميل</h1>
+
+    <!-- MXP-4 guided conversation -->
+    <div class="pe-story-flow" style="flex: 1;">
+      <div class="pe-story-step">
+        <span class="pe-story-dot">١</span>
+        <div>
+          <p class="pe-story-label">ما حدث</p>
+          <p class="pe-story-copy">ترك العميل سلة بقيمة ١٬٢٤٠ ر بعد إضافة منتجين.</p>
+        </div>
+      </div>
+      <div class="pe-story-step">
+        <span class="pe-story-dot">٢</span>
+        <div>
+          <p class="pe-story-label">CartFlow</p>
+          <p class="pe-story-copy">أرسلنا رسالة واتساب مع رابط العودة للسلة.</p>
+        </div>
+      </div>
+      <div class="pe-story-step is-waiting">
+        <span class="pe-story-dot">⏳</span>
+        <div>
+          <p class="pe-story-label">الانتظار</p>
+          <p class="pe-story-copy">ننتظر رد العميل — المحاولة التالية بعد ٤ ساعات إن لم يرد.</p>
+        </div>
+      </div>
+      <div class="pe-story-step is-action">
+        <span class="pe-story-dot">→</span>
+        <div>
+          <p class="pe-story-label">إجراءك</p>
+          <p class="pe-story-copy">تواصل مع العميل إذا أردت تسريع الإغلاق.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- MXP-5 progressive disclosure -->
+    <button type="button" class="pe-timeline-toggle" id="pe-timeline-btn" style="margin: var(--pe-space-4) 0 0;">
+      التفاصيل والسجل
+    </button>
+    <div class="pe-timeline-drawer" id="pe-timeline-panel" aria-hidden="true">
+      <div class="pe-timeline-row"><strong>رسالة واتساب</strong> · تم · منذ ٢٤ س</div>
+      <div class="pe-timeline-row"><strong>جدولة الإرسال</strong> · تم · منذ ٢٥ س</div>
+      <div class="pe-timeline-row">الثقة: عالية · المصدر: مسار الاسترداد</div>
+    </div>
+
+    <!-- MXP-9 one primary action -->
+    <div class="pe-sticky-action">
+      <a class="pe-btn-primary" href="#">تواصل مع العميل</a>
+      <button type="button" class="pe-btn-ghost" style="width:100%;margin-top:8px;">نقل للأرشيف</button>
+    </div>
+  </div>
+  <script>
+    document.getElementById("pe-timeline-btn").addEventListener("click", function () {
+      var p = document.getElementById("pe-timeline-panel");
+      p.classList.toggle("is-open");
+      p.setAttribute("aria-hidden", p.classList.contains("is-open") ? "false" : "true");
+    });
+  </script>
+</body>
+</html>

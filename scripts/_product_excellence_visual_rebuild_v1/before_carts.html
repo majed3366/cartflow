@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Before — Carts Table (Current)</title>
+  <link rel="stylesheet" href="/static/merchant_app.css" />
+  <meta name="robots" content="noindex, nofollow" />
+  <style>
+    body { margin: 0; padding: 12px; background: var(--bg, #f1f5f9); font-size: 13px; }
+    .fixture-tag { font: 600 11px system-ui; color: #64748b; margin-bottom: 12px; }
+    .page-header { margin-bottom: 12px; }
+    .page-h1 { font-size: 18px; font-weight: 700; }
+    .page-sub { font-size: 12px; color: var(--muted); }
+    .filter-bar { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+    .filter-btn { padding: 6px 10px; border-radius: 8px; border: 1px solid #e2e8f0; background: #fff; font-size: 11px; }
+    .filter-btn.active { background: #0f766e; color: #fff; border-color: #0f766e; }
+    .card { background: #fff; border-radius: 12px; overflow: hidden; }
+    table { width: 100%; border-collapse: collapse; font-size: 11px; }
+    th { text-align: right; padding: 8px; background: #f8fafc; color: #64748b; font-weight: 600; }
+    td { padding: 10px 8px; border-top: 1px solid #f1f5f9; vertical-align: top; }
+  </style>
+</head>
+<body>
+  <p class="fixture-tag">Before — database table + inline explanation walls</p>
+
+  <div class="page-header ma-cart-page-header">
+    <div class="page-h1">بانتظار الإرسال</div>
+    <div class="page-sub">سلال تنتظر رسالة الاسترجاع أو تفاعل العميل</div>
+  </div>
+
+  <div class="filter-bar">
+    <button type="button" class="filter-btn active">الكل (7)</button>
+    <button type="button" class="filter-btn">تم الاسترداد (2)</button>
+    <button type="button" class="filter-btn">رسالة أُرسلت (3)</button>
+    <button type="button" class="filter-btn">تفاعل العملاء (1)</button>
+    <button type="button" class="filter-btn">لا جوال (1)</button>
+  </div>
+
+  <div class="card">
+    <table>
+      <thead>
+        <tr>
+          <th>قيمة</th><th>سبب</th><th>الحالة</th><th>التالي + الشرح</th><th>نشاط</th><th>جوال</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><div class="camt">1,240 ر</div><div class="ctime">منذ 3 س</div></td>
+          <td><span class="chip c-price">السعر</span></td>
+          <td><span class="st"><span class="sd"></span>بانتظار الرد</span></td>
+          <td>
+            <div class="next urgent">تواصل مع العميل</div>
+            <div class="ma-cart-workspace-v1" style="margin-top:8px;font-size:11px;">
+              <div class="ma-cart-recovery-story-v1">
+                <p class="ma-cart-story-headline">بانتظار الرد</p>
+                <div class="ma-cart-story-beat"><span class="ma-cart-story-beat-label">ما حدث</span><p class="ma-cart-story-beat-text">أضاف منتجات وغادر.</p></div>
+                <div class="ma-cart-story-beat"><span class="ma-cart-story-beat-label">CartFlow</span><p class="ma-cart-story-beat-text">أرسلنا واتساب.</p></div>
+              </div>
+            </div>
+          </td>
+          <td><div class="ctime">منذ 3 س</div></td>
+          <td><span class="ph-ok">✓</span></td>
+        </tr>
+        <tr>
+          <td><div class="camt">890 ر</div></td>
+          <td><span class="chip c-ship">الشحن</span></td>
+          <td><span class="st">مرسلة</span></td>
+          <td><div class="next">نراقب الشراء</div></td>
+          <td>منذ 5 س</td>
+          <td><span class="ph-ok">✓</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</body>
+</html>

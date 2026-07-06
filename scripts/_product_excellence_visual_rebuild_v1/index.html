@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Product Excellence Visual Rebuild V1 — Before / After</title>
+  <link rel="stylesheet" href="/preview/product-excellence/assets/pe-visual-system.css" />
+  <meta name="robots" content="noindex, nofollow" />
+  <style>
+    .pe-index-hero { margin-bottom: var(--pe-space-7); }
+    .pe-index-hero h1 { font-size: clamp(1.5rem, 3vw, 2rem); margin: 0 0 var(--pe-space-3); }
+    .pe-index-hero p { margin: 0; color: var(--pe-ink-secondary); max-width: 50ch; }
+    .pe-surface-links { display: flex; flex-wrap: wrap; gap: var(--pe-space-3); margin: var(--pe-space-6) 0; }
+    .pe-surface-links a {
+      padding: var(--pe-space-3) var(--pe-space-5);
+      border-radius: var(--pe-radius-md);
+      background: var(--pe-surface);
+      border: 1px solid var(--pe-line);
+      color: var(--pe-accent-deep);
+      font-weight: 700;
+      text-decoration: none;
+      box-shadow: var(--pe-shadow-soft);
+    }
+    .pe-mxp-table { width: 100%; border-collapse: collapse; font-size: var(--pe-l5); margin-top: var(--pe-space-5); }
+    .pe-mxp-table th, .pe-mxp-table td { padding: var(--pe-space-3); border-bottom: 1px solid var(--pe-line); text-align: right; }
+    .pe-mxp-table th { color: var(--pe-ink-muted); font-weight: 600; }
+  </style>
+</head>
+<body class="pe-app">
+  <div class="pe-shell">
+    <span class="pe-badge-prototype">Approval gate — prototypes only · not production</span>
+
+    <header class="pe-index-hero">
+      <h1>Product Excellence Visual Rebuild V1</h1>
+      <p>Rebuild proposals for Merchant Home, Carts Workspace, and Cart Detail. Architecture unchanged — visual layer only.</p>
+    </header>
+
+    <nav class="pe-surface-links" aria-label="النماذج">
+      <a href="/preview/product-excellence/home">Home — After</a>
+      <a href="/preview/product-excellence/carts">Carts — After</a>
+      <a href="/preview/product-excellence/cart-detail">Cart Detail — After</a>
+    </nav>
+
+    <h2 class="pe-achievement-rail-title">Merchant Home</h2>
+    <div class="pe-compare-grid">
+      <div class="pe-compare-panel">
+        <div class="pe-compare-label">Before — stacked dashboard sections</div>
+        <iframe class="pe-compare-frame" src="/preview/product-excellence/compare/home-before" title="Home before"></iframe>
+      </div>
+      <div class="pe-compare-panel">
+        <div class="pe-compare-label is-after">After — one focal story + whisper sections</div>
+        <iframe class="pe-compare-frame" src="/preview/product-excellence/home" title="Home after"></iframe>
+      </div>
+    </div>
+
+    <h2 class="pe-achievement-rail-title" style="margin-top: var(--pe-space-7);">Carts Workspace</h2>
+    <div class="pe-compare-grid">
+      <div class="pe-compare-panel">
+        <div class="pe-compare-label">Before — table + inline walls</div>
+        <iframe class="pe-compare-frame" src="/preview/product-excellence/compare/carts-before" title="Carts before"></iframe>
+      </div>
+      <div class="pe-compare-panel">
+        <div class="pe-compare-label is-after">After — card queue + conversation panel</div>
+        <iframe class="pe-compare-frame" src="/preview/product-excellence/carts" title="Carts after"></iframe>
+      </div>
+    </div>
+
+    <h2 class="pe-achievement-rail-title" style="margin-top: var(--pe-space-7);">MXP visual expression (summary)</h2>
+    <table class="pe-mxp-table">
+      <thead>
+        <tr><th>Pattern</th><th>Visual behavior in rebuild</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>MXP-1 Achievement</td><td>Soft success cards in rail — check icon, no KPI grid</td></tr>
+        <tr><td>MXP-2 Attention</td><td>One dominant card; headline L2 scale; single CTA</td></tr>
+        <tr><td>MXP-3 Waiting</td><td>Neutral band / step with ⏳ — never error red</td></tr>
+        <tr><td>MXP-4 Recovery Story</td><td>Numbered vertical flow — no question labels</td></tr>
+        <tr><td>MXP-5 Timeline</td><td>Hidden until «التفاصيل» — never above fold</td></tr>
+        <tr><td>MXP-9 Suggested Action</td><td>One primary button; secondary ghost only</td></tr>
+      </tbody>
+    </table>
+  </div>
+</body>
+</html>
