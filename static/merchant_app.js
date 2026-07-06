@@ -36,6 +36,26 @@
       "ربط المتجر مع زد أو سلة، ثم تفضيلات الحساب — لا تغيّر الاسترجاع تلقائياً",
   };
 
+  /** One-sentence page purpose — hero rhythm (Product Polish V1). */
+  var PAGE_PURPOSE = {
+    home: "ملخص يوم متجرك وما يحتاج انتباهك.",
+    "home-setup": "تحقق من جاهزية متجرك قبل التشغيل الكامل.",
+    "home-month": "أرقام الاسترداد والأداء لهذا الشهر.",
+    "home-test-tools": "اختبر الودجيت والاسترجاع بدون إرسال حقيقي.",
+    carts: "تابع سلال متجرك وقرّر ما يحتاج تدخلك.",
+    followup: "ردود العملاء والمتابعة التي يحتاج المتجر مراجعتها.",
+    completed: "سلال أنهت مسار الاسترجاع — شراء أو استرداد ناجح.",
+    vip: "سلال عالية القيمة تحتاج متابعة خاصة منك.",
+    messages: "سجل رسائل استرداد واتساب المسجّلة لمتجرك.",
+    reasons: "ما يمنع عملاءك من إتمام الشراء — خلال آخر 30 يوماً.",
+    "trigger-templates": "محتوى رسائل الاسترجاع لكل سبب تردد.",
+    widget: "مظهر الودجيت ومتى يظهر للعميل في المتجر.",
+    whatsapp: "اختر كيف يتواصل CartFlow مع عملائك عبر واتساب.",
+    "whatsapp-connect": "اربط رقم واتساب أعمال متجرك لإرسال الاسترجاع.",
+    plans: "قارن الباقات وافهم ما تشمله خطة متجرك.",
+    settings: "اربط متجرك واضبط تفضيلات الحساب والإشعارات.",
+  };
+
   var CART_TAB_TITLES = {
     all: "السلال — الكل",
     intervention: "السلال — تفاعل العملاء",
@@ -334,8 +354,17 @@
 
   function setPageTitle(text, pageKey) {
     var pt = byId("pageTitle");
+    var pp = byId("pagePurpose");
     var ps = byId("pageSub");
+    if (document.body && pageKey) {
+      document.body.setAttribute("data-ma-page", pageKey);
+    }
     if (pt) pt.textContent = text || "";
+    var purpose = pageKey && PAGE_PURPOSE[pageKey] ? PAGE_PURPOSE[pageKey] : "";
+    if (pp) {
+      pp.textContent = purpose;
+      pp.hidden = !purpose;
+    }
     var sub = pageKey && PAGE_SUBTITLES[pageKey] ? PAGE_SUBTITLES[pageKey] : "";
     if (ps) {
       ps.textContent = sub;
@@ -483,7 +512,7 @@
       var visiblePage = resolveCartPage(cartTab);
       var el = byId("page-" + visiblePage);
       if (el) el.classList.add("active");
-      setPageTitle(CART_TAB_TITLES[cartTab] || TITLES.carts, null);
+      setPageTitle(CART_TAB_TITLES[cartTab] || TITLES.carts, visiblePage);
       if (visiblePage === "carts") {
         initCartFiltersOnce();
         var urlTab = getUrlCartTabFromHash();

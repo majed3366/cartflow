@@ -3228,6 +3228,8 @@
       rows.length +
       " سلة" +
       (urgent ? " · " + urgent + " تحتاجك" : " · CartFlow يتابعها");
+    var countEl = byId("ma-carts-group-count");
+    if (countEl) countEl.textContent = String(rows.length);
   }
 
   function renderPeV2CartsQueue(rows) {

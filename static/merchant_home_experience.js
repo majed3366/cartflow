@@ -95,18 +95,19 @@
     }
 
     return (
-      '<section class="v2-hero" aria-label="قصة اليوم">' +
+      '<section class="v2-hero ma-page-hero" aria-label="قصة اليوم">' +
       '<div class="v2-hero-glow" aria-hidden="true"></div>' +
+      '<p class="v2-hero-purpose ma-page-hero__purpose">ملخص يوم متجرك وما يحتاج انتباهك.</p>' +
       '<p class="v2-hero-kicker">' +
       esc(greet) +
       "، " +
       esc(name) +
       (date ? " · " + esc(date) : "") +
       "</p>" +
-      '<h1 class="v2-hero-title">' +
+      '<h1 class="v2-hero-title ma-page-hero__title">' +
       esc(buildHeroTitle(attention, whileAway)) +
       "</h1>" +
-      '<p class="v2-hero-story">' +
+      '<p class="v2-hero-story ma-page-summary">' +
       esc(buildHeroStory(whileAway, attention)) +
       "</p>" +
       statsHtml +
@@ -148,29 +149,33 @@
   function renderPeV2Understanding(section) {
     section = section || {};
     var items = section.items || [];
+    var head =
+      '<section class="ma-page-section ma-page-section--knowledge">' +
+      '<header class="ma-section-head">' +
+      '<h2 class="ma-section-head__title">' +
+      esc(section.title_ar || "فهم المتجر") +
+      "</h2>" +
+      '<p class="ma-section-head__purpose">ما تعلّمه CartFlow عن متجرك وسلوك عملائك.</p>' +
+      "</header>";
     if (!items.length) {
       return (
+        head +
         '<aside class="v2-whisper" id="ma-home-understanding">' +
-        '<p class="v2-whisper-label">' +
-        esc(section.title_ar || "فهم المتجر") +
-        "</p>" +
         '<p class="v2-whisper-text">' +
         esc(section.empty_message_ar || "لا توجد استنتاجات كافية بعد.") +
-        "</p></aside>"
+        "</p></aside></section>"
       );
     }
     var item = items[0];
-    var text =
+    var insightText =
       String(item.observation_ar || item.impact_ar || item.title_ar || "").trim() ||
       "—";
     return (
+      head +
       '<aside class="v2-whisper" id="ma-home-understanding">' +
-      '<p class="v2-whisper-label">' +
-      esc(section.title_ar || "فهم المتجر") +
-      "</p>" +
       '<p class="v2-whisper-text">' +
-      esc(text) +
-      "</p></aside>"
+      esc(insightText) +
+      "</p></aside></section>"
     );
   }
 

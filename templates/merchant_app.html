@@ -9,6 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/static/merchant_app.css">
 <link rel="stylesheet" href="/static/merchant_pe_v2.css?v={{ merchant_setup_render_build | default('unknown') }}">
+<link rel="stylesheet" href="/static/merchant_product_polish_v1.css?v={{ merchant_setup_render_build | default('unknown') }}">
 </head>
 <body data-cf-merchant-app="1">
 
@@ -76,10 +77,11 @@
 
 <div class="ma-dashboard-frame ma-app-shell" id="ma-dashboard-frame">
   <main class="main ma-content-root" id="ma-content-root">
-    <div class="ma-content-head">
-      <h1 class="ma-content-title" id="pageTitle">الرئيسية</h1>
-      <p class="ma-content-sub" id="pageSub" hidden></p>
-    </div>
+    <header class="ma-content-head ma-page-hero" id="ma-page-hero-global">
+      <h1 class="ma-page-hero__title ma-content-title" id="pageTitle">الرئيسية</h1>
+      <p class="ma-page-hero__purpose" id="pagePurpose">ملخص يوم متجرك وما يحتاج انتباهك.</p>
+      <p class="ma-page-summary ma-content-sub" id="pageSub" hidden></p>
+    </header>
 
   <div class="page active ma-page-home ma-pe-v2" id="page-home">
     <div id="ma-home-alerts-root" class="ma-home-alerts-band ma-home-section" hidden aria-live="polite"></div>
@@ -217,10 +219,11 @@
     <div class="ma-pe-v2-carts-shell v2-app v2-app--wide">
       <div class="v2-workspace">
         <div class="ma-pe-v2-carts-queue-col">
-          <header class="v2-queue-header">
-            <h1 class="v2-queue-title">طابور اليوم</h1>
-            <p class="v2-queue-sub" id="ma-carts-queue-sub">CartFlow يجهّز السلال…</p>
+          <header class="ma-page-hero ma-page-hero--inline ma-page-hero--carts" id="ma-carts-hero">
+            <h1 class="ma-page-hero__title">السلال</h1>
+            <p class="ma-page-hero__purpose">تابع سلال متجرك وقرّر ما يحتاج تدخلك.</p>
           </header>
+          <p class="ma-page-summary" id="ma-carts-queue-sub">CartFlow يجهّز السلال…</p>
 
           <div class="filter-bar" id="ma-cart-filters">
             {% if merchant_dashboard_lazy_shell %}
@@ -238,7 +241,15 @@
             {% endif %}
           </div>
 
-          <div id="ma-carts-queue-v2" class="v2-queue-list" aria-live="polite"></div>
+          <div class="ma-cart-groups" id="ma-carts-groups-v2" aria-live="polite">
+            <section class="ma-cart-group ma-cart-group--all" data-ma-group="all" id="ma-carts-group-all">
+              <header class="ma-cart-group__head">
+                <h2 class="ma-cart-group__title">كل السلال</h2>
+                <span class="ma-cart-group__count" id="ma-carts-group-count">0</span>
+              </header>
+              <div class="ma-cart-group__items v2-queue-list" id="ma-carts-queue-v2"></div>
+            </section>
+          </div>
           <aside id="ma-carts-queue-empty" class="v2-whisper" hidden>
             <p class="v2-whisper-text">CartFlow يتابع — الطابور فارغ حالياً</p>
           </aside>
@@ -266,10 +277,10 @@
   </div>
 
   <div class="page" id="page-followup" data-ma-cart-section="intervention">
-    <div class="page-header ma-cart-page-header">
-      <div class="page-h1">تفاعل العملاء</div>
-      <div class="page-sub">ردود العملاء والمتابعة التلقائية من النظام</div>
-    </div>
+    <header class="ma-page-hero ma-page-hero--inline">
+      <h1 class="ma-page-hero__title">تفاعل العملاء</h1>
+      <p class="ma-page-hero__purpose">ردود العملاء والمتابعة التي يحتاج المتجر مراجعتها.</p>
+    </header>
     <div class="card">
       <div class="table-scroll">
         <table>
@@ -302,10 +313,10 @@
   </div>
 
   <div class="page" id="page-completed" data-ma-cart-section="completed">
-    <div class="page-header ma-cart-page-header">
-      <div class="page-h1">مكتملة</div>
-      <div class="page-sub">سلال أنهت مسار الاسترجاع بنجاح — شراء أو استرداد</div>
-    </div>
+    <header class="ma-page-hero ma-page-hero--inline">
+      <h1 class="ma-page-hero__title">مكتملة</h1>
+      <p class="ma-page-hero__purpose">سلال أنهت مسار الاسترجاع — شراء أو استرداد ناجح.</p>
+    </header>
     <div class="card">
       <div class="table-scroll">
         <table>
@@ -338,10 +349,10 @@
   </div>
 
   <div class="page" id="page-vip" data-ma-cart-section="vip">
-    <div class="page-header ma-cart-page-header">
-      <div class="page-h1">VIP — السلال المهمة</div>
-      <div class="page-sub">سلال عالية القيمة تحتاج متابعة خاصة منك</div>
-    </div>
+    <header class="ma-page-hero ma-page-hero--inline">
+      <h1 class="ma-page-hero__title">VIP — السلال المهمة</h1>
+      <p class="ma-page-hero__purpose">سلال عالية القيمة تحتاج متابعة خاصة منك.</p>
+    </header>
 
     <div id="ma-vip-settings-err" style="display:none;margin-bottom:10px;padding:10px 12px;border-radius:10px;border:1px solid #fecaca;background:#fef2f2;color:#991b1b;font-size:13px;"></div>
     <div id="ma-vip-settings-ok" style="display:none;margin-bottom:10px;padding:10px 12px;border-radius:10px;border:1px solid #bbf7d0;background:#f0fdf4;color:#166534;font-size:13px;">تم حفظ إعدادات السلال المهمة</div>

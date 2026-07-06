@@ -1,0 +1,380 @@
+/**
+ * Product Polish V1 — one merchant product language.
+ * Presentation only: hero rhythm, card family, typography scale, cart grouping shell.
+ */
+
+:root {
+  /* Typography scale */
+  --ma-type-xs: 11px;
+  --ma-type-sm: 13px;
+  --ma-type-md: 14px;
+  --ma-type-lg: 16px;
+  --ma-type-xl: 20px;
+  --ma-type-2xl: 24px;
+
+  /* Card family */
+  --ma-card-radius: 16px;
+  --ma-card-padding: 18px 20px;
+  --ma-card-gap: 12px;
+  --ma-card-shadow: 0 4px 20px rgba(15, 23, 42, 0.06);
+  --ma-card-border: 1px solid rgba(226, 232, 240, 0.95);
+  --ma-card-title-size: var(--ma-type-sm);
+  --ma-card-title-weight: 700;
+  --ma-card-badge-size: var(--ma-type-xs);
+
+  /* Hero rhythm */
+  --ma-hero-gap: 6px;
+  --ma-hero-padding-block: 4px 14px;
+  --ma-hero-padding-inline: 24px;
+  --ma-summary-gap: 16px;
+}
+
+/* ——— Page hero rhythm: Title → Purpose → Summary → Body ——— */
+.ma-page-hero {
+  padding: var(--ma-hero-padding-block) var(--ma-hero-padding-inline);
+  max-width: var(--ma-content-max, 1120px);
+  margin-inline: auto;
+  width: 100%;
+}
+
+.ma-page-hero__title {
+  margin: 0;
+  font-size: var(--ma-type-xl);
+  font-weight: 800;
+  line-height: 1.3;
+  letter-spacing: -0.02em;
+  color: var(--text, #0f172a);
+}
+
+.ma-page-hero__purpose {
+  margin: var(--ma-hero-gap) 0 0;
+  font-size: var(--ma-type-md);
+  font-weight: 500;
+  line-height: 1.55;
+  color: var(--muted, #64748b);
+  max-width: 52ch;
+}
+
+.ma-page-summary {
+  margin: 0;
+  padding: 0 var(--ma-hero-padding-inline) var(--ma-summary-gap);
+  max-width: var(--ma-content-max, 1120px);
+  margin-inline: auto;
+  width: 100%;
+  font-size: var(--ma-type-md);
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--text, #0f172a);
+}
+
+.ma-page-summary[hidden],
+.ma-page-hero__purpose[hidden] {
+  display: none !important;
+}
+
+.ma-page-body {
+  padding-top: 0;
+}
+
+/* Global hero hidden when page owns its hero */
+body[data-ma-page="home"] #ma-page-hero-global,
+body[data-ma-page="carts"] #ma-page-hero-global,
+body[data-ma-page="followup"] #ma-page-hero-global,
+body[data-ma-page="completed"] #ma-page-hero-global,
+body[data-ma-page="vip"] #ma-page-hero-global {
+  display: none;
+}
+
+.ma-content-head.ma-page-hero {
+  padding-bottom: 8px;
+}
+
+.ma-content-sub.ma-page-summary {
+  font-weight: 600;
+  color: var(--text, #0f172a);
+}
+
+/* Inline page heroes */
+.ma-page-hero--inline {
+  padding-inline: var(--v2-space-md, 20px);
+  padding-top: var(--v2-space-md, 20px);
+  padding-bottom: 8px;
+}
+
+#page-carts .ma-page-hero--inline {
+  max-width: var(--v2-max-wide, 1080px);
+}
+
+.ma-page-hero--carts .ma-page-hero__title {
+  font-size: var(--ma-type-xl);
+}
+
+/* PE v2 home hero — align typography, keep gradient story */
+.v2-hero-purpose {
+  position: relative;
+  z-index: 1;
+  margin: 0 0 var(--v2-space-sm, 12px);
+  font-size: var(--ma-type-md);
+  font-weight: 500;
+  opacity: 0.88;
+  max-width: 36ch;
+}
+
+.v2-hero .v2-hero-title {
+  font-size: clamp(1.25rem, 3.5vw, 1.5rem);
+  max-width: 22ch;
+}
+
+.v2-hero .v2-hero-story {
+  font-size: var(--ma-type-md);
+  max-width: 36ch;
+}
+
+.v2-hero-kicker {
+  font-size: var(--ma-type-sm);
+}
+
+.v2-hero.ma-page-hero .ma-page-hero__title,
+.v2-hero.ma-page-hero .ma-page-hero__purpose,
+.v2-hero .v2-hero-purpose {
+  color: #fff;
+}
+
+.v2-hero .ma-page-summary {
+  color: #fff;
+  opacity: 0.92;
+  padding: 0;
+  max-width: 36ch;
+}
+
+/* Carts queue summary sits in decision slot */
+#ma-carts-queue-sub.ma-page-summary {
+  padding-inline: var(--v2-space-md, 20px);
+  max-width: var(--v2-max-wide, 1080px);
+  color: var(--v2-ink-soft, #3d4a63);
+  font-weight: 600;
+}
+
+/* ——— Section heads (Knowledge, month KPI, etc.) ——— */
+.ma-section-head {
+  margin-bottom: var(--ma-card-gap);
+}
+
+.ma-section-head__title {
+  margin: 0;
+  font-size: var(--ma-type-lg);
+  font-weight: 800;
+  line-height: 1.35;
+  letter-spacing: -0.02em;
+  color: var(--text, #0f172a);
+}
+
+.ma-section-head__purpose {
+  margin: 4px 0 0;
+  font-size: var(--ma-type-md);
+  font-weight: 500;
+  color: var(--muted, #64748b);
+  line-height: 1.5;
+}
+
+.ma-page-section {
+  margin-bottom: var(--v2-space-lg, 28px);
+}
+
+.ma-page-section--knowledge .v2-whisper {
+  margin-top: 0;
+}
+
+/* ——— Card family ——— */
+.card,
+.setting-card,
+.ma-fw-card,
+.ma-plan-card,
+.v2-action-card,
+.v2-whisper,
+.v2-queue-item,
+.ma-wa-readiness-card,
+.ma-wa-connect-card {
+  border-radius: var(--ma-card-radius);
+  box-shadow: var(--ma-card-shadow);
+}
+
+.card,
+.setting-card,
+.ma-fw-card,
+.ma-plan-card {
+  border: var(--ma-card-border);
+}
+
+.setting-card,
+.ma-fw-card:not(.ma-plans-current-card) {
+  padding: var(--ma-card-padding);
+}
+
+.card-title,
+.setting-title,
+.ma-fw-h,
+.ma-plan-card .ma-plan-name {
+  font-size: var(--ma-card-title-size);
+  font-weight: var(--ma-card-title-weight);
+  line-height: 1.35;
+}
+
+.setting-desc,
+.ma-fw-field-hint,
+.ma-plan-card .ma-plan-tagline {
+  font-size: var(--ma-type-sm);
+  line-height: 1.5;
+}
+
+.card-head {
+  padding: 14px 18px;
+}
+
+.card .card-head + * {
+  padding-inline: 18px;
+}
+
+.ma-fw-actions,
+.ma-plan-card .ma-plan-foot,
+.ma-subscription-foot {
+  margin-top: var(--ma-card-gap);
+  padding-top: var(--ma-card-gap);
+}
+
+/* Badges — one pill language */
+.nb,
+.ma-sub-plan-pill,
+.ma-sub-status-pill,
+.ma-sub-source-pill,
+.ma-sc-status-pill,
+.ma-plan-badge,
+.wa-pill {
+  font-size: var(--ma-card-badge-size);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  border-radius: 999px;
+}
+
+/* Queue cards — typography */
+.v2-queue-title {
+  font-size: var(--ma-type-xl);
+  font-weight: 800;
+}
+
+.v2-queue-sub {
+  font-size: var(--ma-type-md);
+}
+
+.v2-queue-amount {
+  font-size: var(--ma-type-lg);
+  font-weight: 800;
+}
+
+.v2-action-headline {
+  font-size: var(--ma-type-lg);
+  font-weight: 800;
+}
+
+.v2-conv-headline {
+  font-size: clamp(1.125rem, 3vw, 1.375rem);
+  font-weight: 800;
+}
+
+/* Home loading shell — match hero rhythm */
+.ma-home-greeting--shell {
+  padding: var(--v2-space-md, 20px);
+  margin-bottom: var(--v2-space-sm, 12px);
+}
+
+.ma-home-greeting--shell .ma-home-greeting-text {
+  font-size: var(--ma-type-sm);
+  font-weight: 600;
+  color: var(--muted, #64748b);
+}
+
+.ma-home-greeting--shell .ma-home-greeting-name {
+  font-size: var(--ma-type-xl);
+  font-weight: 800;
+}
+
+.ma-home-greeting--shell .ma-home-greeting-date {
+  font-size: var(--ma-type-sm);
+}
+
+.ma-home-greeting--shell::before {
+  content: "ملخص يوم متجرك وما يحتاج انتباهك.";
+  display: block;
+  font-size: var(--ma-type-md);
+  font-weight: 500;
+  color: var(--muted, #64748b);
+  margin-bottom: 8px;
+  line-height: 1.5;
+}
+
+/* ——— Cart semantic grouping foundation (logic later) ——— */
+.ma-cart-groups {
+  display: flex;
+  flex-direction: column;
+  gap: var(--v2-space-lg, 28px);
+}
+
+.ma-cart-group__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: var(--v2-space-sm, 12px);
+  padding-inline: 2px;
+}
+
+.ma-cart-group__title {
+  margin: 0;
+  font-size: var(--ma-type-sm);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--v2-ink-whisper, #8b95a8);
+}
+
+.ma-cart-group__count {
+  font-size: var(--ma-type-xs);
+  font-weight: 700;
+  color: var(--v2-ink-whisper, #8b95a8);
+  background: rgba(11, 18, 32, 0.05);
+  padding: 3px 8px;
+  border-radius: 999px;
+}
+
+.ma-cart-group__items {
+  display: flex;
+  flex-direction: column;
+  gap: var(--v2-space-sm, 12px);
+}
+
+/* Future group variants — ready for intelligence layer */
+.ma-cart-group[data-ma-group="waiting_phone"] .ma-cart-group__title { color: #6366f1; }
+.ma-cart-group[data-ma-group="waiting_reply"] .ma-cart-group__title { color: #0d9488; }
+.ma-cart-group[data-ma-group="returned"] .ma-cart-group__title { color: #10b981; }
+.ma-cart-group[data-ma-group="needs_merchant"] .ma-cart-group__title { color: #ea580c; }
+.ma-cart-group[data-ma-group="completed"] .ma-cart-group__title { color: #64748b; }
+
+/* Legacy cart sub-pages — inline hero spacing */
+#page-followup .ma-page-hero--inline,
+#page-completed .ma-page-hero--inline,
+#page-vip .ma-page-hero--inline {
+  padding-top: 16px;
+  padding-inline: 24px;
+}
+
+@media (max-width: 640px) {
+  .ma-page-hero,
+  .ma-page-summary,
+  .ma-page-hero--inline {
+    padding-inline: 16px;
+  }
+
+  .ma-page-hero__title {
+    font-size: var(--ma-type-lg);
+  }
+}

@@ -29,8 +29,8 @@
   --v2-space-md: 20px;
   --v2-space-lg: 28px;
   --v2-space-xl: 40px;
-  --v2-hero-title: clamp(1.65rem, 6vw, 2.35rem);
-  --v2-hero-lead: clamp(1rem, 3.5vw, 1.15rem);
+  --v2-hero-title: clamp(1.25rem, 3.5vw, 1.5rem);
+  --v2-hero-lead: var(--ma-type-md, 14px);
   --v2-max: 480px;
   --v2-max-wide: 1080px;
 }
@@ -221,7 +221,7 @@ body.v2.has-ribbon { padding-top: 32px; }
 
 .v2-action-headline {
   margin: 0 0 var(--v2-space-sm);
-  font-size: 1.25rem;
+  font-size: var(--ma-type-lg, 16px);
   font-weight: 800;
   line-height: 1.35;
   letter-spacing: -0.02em;
@@ -305,9 +305,9 @@ body.v2.has-ribbon { padding-top: 32px; }
 
 .v2-queue-title {
   margin: 0 0 4px;
-  font-size: 1.5rem;
+  font-size: var(--ma-type-xl, 20px);
   font-weight: 800;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.02em;
 }
 
 .v2-queue-sub {
@@ -386,7 +386,7 @@ body.v2.has-ribbon { padding-top: 32px; }
 .v2-queue-body { min-width: 0; }
 
 .v2-queue-amount {
-  font-size: 1.35rem;
+  font-size: var(--ma-type-lg, 16px);
   font-weight: 800;
   letter-spacing: -0.02em;
   line-height: 1.2;
@@ -439,10 +439,10 @@ body.v2.has-ribbon { padding-top: 32px; }
 
 .v2-conv-headline {
   margin: 0 0 var(--v2-space-xl);
-  font-size: clamp(1.75rem, 7vw, 2.5rem);
+  font-size: clamp(1.125rem, 3vw, 1.375rem);
   font-weight: 800;
-  line-height: 1.15;
-  letter-spacing: -0.04em;
+  line-height: 1.2;
+  letter-spacing: -0.03em;
 }
 
 .v2-flow {
