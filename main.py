@@ -16588,6 +16588,12 @@ def _merchant_normal_recovery_light_payload_merchant_batch(
     except Exception:  # noqa: BLE001
         pass
     try:
+        from services.merchant_intelligence_v1 import attach_merchant_intelligence_v1  # noqa: PLC0415
+
+        attach_merchant_intelligence_v1(out)
+    except Exception:  # noqa: BLE001
+        pass
+    try:
         from services.dashboard_normal_carts_perf_v1 import (  # noqa: PLC0415
             dashboard_normal_carts_perf_active,
             dashboard_normal_carts_perf_peek_queries,
@@ -19731,6 +19737,14 @@ def _api_json_dashboard_normal_carts(
             debug_perf=debug_perf,
         )
         merchant_carts_page_rows = list(body.get("merchant_carts_page_rows") or [])
+        try:
+            from services.merchant_intelligence_v1 import (  # noqa: PLC0415
+                attach_store_merchant_intelligence_v1,
+            )
+
+            attach_store_merchant_intelligence_v1(body, merchant_carts_page_rows)
+        except Exception:  # noqa: BLE001
+            pass
         try:
             bucket_counts: dict[str, int] = {}
             for row in merchant_carts_page_rows:
