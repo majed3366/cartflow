@@ -5,10 +5,22 @@
 (function () {
   "use strict";
 
+  var SAR_SUFFIX = "\u00a0ر.س";
+
   function formatMerchantSar(amount) {
     var n = Math.round(parseFloat(amount) || 0);
     if (isNaN(n)) return "";
-    return n.toLocaleString("en-US") + " ر.س";
+    return n.toLocaleString("en-US") + SAR_SUFFIX;
+  }
+
+  function formatMerchantSarHtml(amount) {
+    var text = formatMerchantSar(amount);
+    if (!text) return "";
+    return (
+      '<span class="cf-currency-atom cftyp-currency" data-cf-currency="1">' +
+      text +
+      "</span>"
+    );
   }
 
   /** Client-side guard for rejected Merchant Language strings (display layer). */
@@ -20,5 +32,6 @@
   }
 
   window.formatMerchantSar = formatMerchantSar;
+  window.formatMerchantSarHtml = formatMerchantSarHtml;
   window.sanitizeMerchantLanguage = sanitizeMerchantLanguage;
 })();

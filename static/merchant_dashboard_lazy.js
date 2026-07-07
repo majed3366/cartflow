@@ -18,7 +18,20 @@
       return window.formatMerchantSar(amount);
     }
     var n = Math.round(parseFloat(amount) || 0);
-    return n.toLocaleString("en-US") + " ر.س";
+    return n.toLocaleString("en-US") + "\u00a0ر.س";
+  }
+
+  function formatMerchantSarHtml(amount) {
+    if (typeof window.formatMerchantSarHtml === "function") {
+      return window.formatMerchantSarHtml(amount);
+    }
+    var text = formatMerchantSar(amount);
+    if (!text) return "";
+    return (
+      '<span class="cf-currency-atom cftyp-currency" data-cf-currency="1">' +
+      esc(text) +
+      "</span>"
+    );
   }
 
   function byId(id) {
@@ -3052,8 +3065,8 @@
     var v = Math.round(parseFloat(mc.merchant_cart_value) || 0);
     return (
       '<p class="v2-action-eyebrow">المحددة · ' +
-      v.toLocaleString("en-US") +
-      " ر.س</p>" +
+      formatMerchantSarHtml(v) +
+      "</p>" +
       '<h2 class="v2-action-headline">' +
       esc(merchantPeV2ConvHeadline(expl, mc)) +
       "</h2>" +
@@ -4680,9 +4693,9 @@
       '<div class="vav">' +
       esc(vr.avatar_letter || "") +
       "</div>" +
-      '<div class="vi"><div class="vamt">' +
+      '<div class="vi"><div class="vamt cf-currency-atom" data-cf-currency="1">' +
       esc(vr.amount_display) +
-      ' ر.س</div><div class="vtm">' +
+      "\u00a0ر.س</div><div class=\"vtm\">" +
       esc(vr.subtitle_ar) +
       '</div></div><span class="vtag">VIP</span>' +
       btn +
@@ -4719,9 +4732,9 @@
         ) +
         '">✗ غير متوفر</span>';
     return (
-      "<tr><td><div class=\"camt\">" +
+      "<tr><td><div class=\"camt cf-currency-atom\" data-cf-currency=\"1\">" +
       esc(vr.amount_display) +
-      ' ر.س</div></td><td><div class="ctime">' +
+      "\u00a0ر.س</div></td><td><div class=\"ctime\">" +
       esc(vr.subtitle_ar) +
       "</div></td><td>" +
       hp +

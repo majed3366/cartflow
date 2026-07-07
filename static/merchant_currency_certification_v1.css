@@ -1,0 +1,40 @@
+/**
+ * Currency Rendering Certification V1 — atomic SAR display.
+ * Currency never wraps across lines. RTL-safe. Presentation only.
+ */
+
+:root {
+  --cfcurrency-nobreak: "\00a0";
+}
+
+/* Atomic currency token — single non-breaking unit */
+body[data-cf-merchant-app="1"] .cf-currency-atom,
+body[data-cf-merchant-app="1"] [data-cf-currency="1"],
+body[data-cf-merchant-app="1"] .cftyp-currency.cf-currency-atom {
+  display: inline-block;
+  max-width: 100%;
+  white-space: nowrap;
+  unicode-bidi: isolate;
+  word-break: keep-all;
+  overflow-wrap: normal;
+}
+
+/* Certified amount surfaces inherit atomic nowrap */
+body[data-cf-merchant-app="1"] .camt,
+body[data-cf-merchant-app="1"] .v2-queue-amount,
+body[data-cf-merchant-app="1"] .kpi-value,
+body[data-cf-merchant-app="1"] .mc-v,
+body[data-cf-merchant-app="1"] .ma-plan-price-main,
+body[data-cf-merchant-app="1"] .ma-mi-group-card__metric,
+body[data-cf-merchant-app="1"] #ma-month-revenue,
+body[data-cf-merchant-app="1"] #ma-kpi-revenue {
+  white-space: nowrap;
+  unicode-bidi: isolate;
+  word-break: keep-all;
+}
+
+/* Inline currency suffix must stay attached to the number */
+body[data-cf-merchant-app="1"] .cf-currency-suffix {
+  white-space: nowrap;
+  unicode-bidi: isolate;
+}

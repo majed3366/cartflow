@@ -1,0 +1,108 @@
+/**
+ * Responsive Layout Certification V1 — desktop layout families.
+ * One visual identity; content width varies by page family. Presentation only.
+ * Desktop only (min-width: 1024px). Mobile and tablet unchanged.
+ */
+
+:root {
+  --cfrl-family-a-max: 840px;
+  --cfrl-family-c-max: 680px;
+}
+
+@media (min-width: 1024px) {
+  /* ——— Family A: Dashboard / Overview (medium content width) ——— */
+  body[data-cf-merchant-app="1"].cf-pds-closure[data-ma-page="home"] .ma-content-head,
+  body[data-cf-merchant-app="1"].cf-pds-closure[data-ma-page="home-setup"] .ma-content-head,
+  body[data-cf-merchant-app="1"].cf-pds-closure[data-ma-page="home-month"] .ma-content-head,
+  body[data-cf-merchant-app="1"].cf-pds-closure[data-ma-page="home-test-tools"] .ma-content-head,
+  body[data-cf-merchant-app="1"].cf-pds-closure[data-ma-page="home"] #page-home,
+  body[data-cf-merchant-app="1"].cf-pds-closure[data-ma-page="home-setup"] #page-home-setup,
+  body[data-cf-merchant-app="1"].cf-pds-closure[data-ma-page="home-month"] #page-home-month,
+  body[data-cf-merchant-app="1"].cf-pds-closure[data-ma-page="home-test-tools"] #page-home-test-tools {
+    max-width: var(--cfrl-family-a-max);
+    margin-inline: auto;
+    width: 100%;
+  }
+
+  body[data-cf-merchant-app="1"].cf-pds-closure[data-ma-page="home"] #page-home.ma-pe-v2 .ma-home-experience,
+  body[data-cf-merchant-app="1"].cf-pds-closure[data-ma-page="home"] #page-home.ma-pe-v2 .ma-home-section,
+  body[data-cf-merchant-app="1"].cf-pds-closure[data-ma-page="home-setup"] .ma-setup-readiness,
+  body[data-cf-merchant-app="1"].cf-pds-closure[data-ma-page="home-setup"] .ma-setup-card,
+  body[data-cf-merchant-app="1"].cf-pds-closure[data-ma-page="home-month"] .ma-home-month-card,
+  body[data-cf-merchant-app="1"].cf-pds-closure[data-ma-page="home-month"] .ma-home-section-kpi {
+    max-width: 100%;
+    width: 100%;
+  }
+
+  /* ——— Family B: Data pages (full workspace width) ——— */
+  body[data-cf-merchant-app="1"].cf-pds-closure[data-ma-page="carts"] .ma-content-head,
+  body[data-cf-merchant-app="1"].cf-pds-closure[data-ma-page="followup"] .ma-content-head,
+  body[data-cf-merchant-app="1"].cf-pds-closure[data-ma-page="completed"] .ma-content-head,
+  body[data-cf-merchant-app="1"].cf-pds-closure[data-ma-page="vip"] .ma-content-head,
+  body[data-cf-merchant-app="1"].cf-pds-closure[data-ma-page="messages"] .ma-content-head,
+  body[data-cf-merchant-app="1"].cf-pds-closure[data-ma-page="reasons"] .ma-content-head,
+  body[data-cf-merchant-app="1"].cf-pds-closure[data-ma-page="carts"] #page-carts,
+  body[data-cf-merchant-app="1"].cf-pds-closure[data-ma-page="followup"] #page-followup,
+  body[data-cf-merchant-app="1"].cf-pds-closure[data-ma-page="completed"] #page-completed,
+  body[data-cf-merchant-app="1"].cf-pds-closure[data-ma-page="vip"] #page-vip,
+  body[data-cf-merchant-app="1"].cf-pds-closure[data-ma-page="messages"] #page-messages,
+  body[data-cf-merchant-app="1"].cf-pds-closure[data-ma-page="reasons"] #page-reasons {
+    max-width: none;
+    width: 100%;
+    margin-inline: 0;
+  }
+
+  body[data-cf-merchant-app="1"].cf-pds-closure[data-ma-page="carts"] #page-carts.ma-pe-v2 .ma-pe-v2-carts-shell,
+  body[data-cf-merchant-app="1"].cf-pds-closure[data-ma-page="carts"] #page-carts.ma-pe-v2 .v2-app--wide {
+    max-width: none;
+    width: 100%;
+  }
+
+  body[data-cf-merchant-app="1"].cf-pds-closure[data-ma-page="carts"] #page-carts .v2-workspace,
+  body[data-cf-merchant-app="1"].cf-pds-closure[data-ma-page="carts"] #page-carts .ma-pe-v2-carts-queue-col,
+  body[data-cf-merchant-app="1"].cf-pds-closure[data-ma-page="carts"] #page-carts #ma-carts-panel-v2 {
+    max-width: none;
+  }
+
+  body[data-cf-merchant-app="1"].cf-pds-closure[data-ma-page="messages"] #page-messages .card,
+  body[data-cf-merchant-app="1"].cf-pds-closure[data-ma-page="reasons"] .reasons-full-grid,
+  body[data-cf-merchant-app="1"].cf-pds-closure[data-ma-page="reasons"] .reasons-full,
+  body[data-cf-merchant-app="1"].cf-pds-closure[data-ma-page="reasons"] .insights-box,
+  body[data-cf-merchant-app="1"].cf-pds-closure[data-ma-page="followup"] #page-followup .card,
+  body[data-cf-merchant-app="1"].cf-pds-closure[data-ma-page="completed"] #page-completed .card,
+  body[data-cf-merchant-app="1"].cf-pds-closure[data-ma-page="vip"] #page-vip .card,
+  body[data-cf-merchant-app="1"].cf-pds-closure[data-ma-page="vip"] #page-vip .setting-card {
+    width: 100%;
+    max-width: none;
+  }
+
+  body[data-cf-merchant-app="1"].cf-pds-closure[data-ma-page="followup"] #page-followup .table-scroll,
+  body[data-cf-merchant-app="1"].cf-pds-closure[data-ma-page="completed"] #page-completed .table-scroll,
+  body[data-cf-merchant-app="1"].cf-pds-closure[data-ma-page="vip"] #page-vip .table-scroll,
+  body[data-cf-merchant-app="1"].cf-pds-closure[data-ma-page="messages"] #page-messages .card {
+    min-width: 0;
+  }
+
+  /* ——— Family C: Settings (comfort reading width) ——— */
+  body[data-cf-merchant-app="1"].cf-pds-closure[data-ma-page="whatsapp"] .ma-content-head,
+  body[data-cf-merchant-app="1"].cf-pds-closure[data-ma-page="whatsapp-connect"] .ma-content-head,
+  body[data-cf-merchant-app="1"].cf-pds-closure[data-ma-page="widget"] .ma-content-head,
+  body[data-cf-merchant-app="1"].cf-pds-closure[data-ma-page="plans"] .ma-content-head,
+  body[data-cf-merchant-app="1"].cf-pds-closure[data-ma-page="settings"] .ma-content-head,
+  body[data-cf-merchant-app="1"].cf-pds-closure[data-ma-page="whatsapp"] #page-whatsapp,
+  body[data-cf-merchant-app="1"].cf-pds-closure[data-ma-page="whatsapp-connect"] #page-whatsapp-connect,
+  body[data-cf-merchant-app="1"].cf-pds-closure[data-ma-page="widget"] #page-widget,
+  body[data-cf-merchant-app="1"].cf-pds-closure[data-ma-page="plans"] #page-plans,
+  body[data-cf-merchant-app="1"].cf-pds-closure[data-ma-page="settings"] #page-settings {
+    max-width: var(--cfrl-family-c-max);
+    margin-inline: auto;
+    width: 100%;
+  }
+
+  body[data-cf-merchant-app="1"].cf-pds-closure[data-ma-page="whatsapp"] #page-whatsapp.ma-page-compact,
+  body[data-cf-merchant-app="1"].cf-pds-closure[data-ma-page="widget"] #page-widget.ma-page-compact,
+  body[data-cf-merchant-app="1"].cf-pds-closure[data-ma-page="plans"] #page-plans.ma-page-compact,
+  body[data-cf-merchant-app="1"].cf-pds-closure[data-ma-page="settings"] #page-settings.ma-page-compact {
+    max-width: var(--cfrl-family-c-max);
+  }
+}

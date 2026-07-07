@@ -106,6 +106,10 @@ CartFlow is a FastAPI application that:
 
 **PDS Final Closure V1 (merchant presentation — implemented):** Final Product Design System layer — `merchant_shell_identity_v1.css`, `merchant_card_system_v1.css`, `merchant_icon_language_v1.css`, `merchant_spacing_certification_v1.css` on typography stack. One shell, one card family (Carts reference), one icon language, one spacing rhythm. Body class `cf-pds-closure`. Review: `scripts/_visual_identity_final_review.py`. Tests: `tests/test_visual_identity_final_closure_v1.py`. Closes PDS V1; future work → Merchant Product Language only. PO approval required.
 
+**Responsive Layout Certification V1 (merchant presentation — implemented):** `static/merchant_responsive_layout_v1.css` — desktop layout families on `data-ma-page`: Family A medium width (Home, Store Setup, Monthly Summary); Family B full workspace (Carts, Messages, Activity/followup, Reasons); Family C comfort reading (WhatsApp, Widget, Plans, Settings). Identity/typography/spacing/hero unchanged; content container width only. Desktop `@media (min-width: 1024px)` only. Tests: `tests/test_responsive_layout_certification_v1.py`.
+
+**Currency Rendering Certification V1 (merchant presentation — implemented):** `static/merchant_currency_certification_v1.css` + `formatMerchantSar` / `formatMerchantSarHtml` in `merchant_pds_format_v1.js`. Atomic non-breaking `449 ر.س` token (NBSP + `white-space: nowrap`); RTL-safe. Desktop + mobile. Tests: `tests/test_currency_certification_v1.py`.
+
 ## 2) Frontend Layer
 
 ### 2.1 Widget Layer (VERY IMPORTANT)
@@ -481,6 +485,7 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 
 | Date (UTC) | Summary |
 |------------|---------|
+| 2026-07-07 | **Responsive Layout Certification V1 + Currency Rendering Certification V1 (merchant presentation):** Desktop layout families (`merchant_responsive_layout_v1.css`) — A medium (Home/Setup/Month), B full workspace (Carts/Messages/Activity/Reasons), C comfort (WhatsApp/Widget/Plans/Settings). Atomic currency nowrap (`merchant_currency_certification_v1.css`, `formatMerchantSarHtml`, NBSP `ر.س`). Template + lazy JS currency atoms. Tests: `tests/test_responsive_layout_certification_v1.py`, `tests/test_currency_certification_v1.py`. §1.2 updated. |
 | 2026-07-07 | **PDS Final Closure V1 (merchant presentation):** Final Product Design System layer — shell identity, unified card family, icon language, spatial rhythm (`merchant_shell_identity_v1.css`, `merchant_card_system_v1.css`, `merchant_icon_language_v1.css`, `merchant_spacing_certification_v1.css`). Body `cf-pds-closure`. Review: `scripts/_visual_identity_final_review.py`. Tests: `tests/test_visual_identity_final_closure_v1.py`. Closes PDS V1. §1.2 updated. |
 | 2026-07-07 | **Typography Lock V1 (merchant presentation):** `static/merchant_typography_certification_v1.css` — Arial-only lock, 14 certified `--cftyp-*` tokens, hero subtitle unification, button/badge/sidebar/numeric scales, legacy inline font cleanup, IBM Plex Google Fonts removed from dashboard shell. Report: `docs/cartflow_typography_certification_v1_report.md`. Review: `scripts/_typography_certification_v1_review.py`. Tests: `tests/test_merchant_typography_certification_v1.py`. §1.2 updated. |
 | 2026-07-07 | **Visual Identity Unification V1 — hardening pass (merchant presentation):** App bar + sidebar hero-grade chrome; unified card family on WhatsApp/Plans/Settings (no dashed legacy cards); Plans teal accent replaces blue; WhatsApp mode cards restyled; typography token enforcement; Carts filter pills aligned (PE v2 override). Commits: `7ad06ff`, `16683d4`. Review: `scripts/_visual_identity_v1_prod_gate.py`. §1.2 updated. |
