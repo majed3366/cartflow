@@ -35,6 +35,16 @@ class MerchantVisualIdentityV1Tests(unittest.TestCase):
         self.assertIn("ma-vi-hero", _TEMPLATE)
         self.assertIn("CartFlow يتابع سلال متجرك اليوم", _TEMPLATE)
 
+    def test_hardening_chrome_and_cards(self) -> None:
+        for token in (
+            "--cfvi-chrome-bg",
+            ".ma-global-topbar",
+            ".ma-wa-mode-card.is-selected",
+            ".ma-plan-card.is-current",
+            ".ma-journey-gate-card",
+        ):
+            self.assertIn(token, _VI_CSS, msg=f"missing {token}")
+
     def test_page_purpose_hero_copy(self) -> None:
         self.assertIn("صحة تواصل متجرك", _APP_JS)
         self.assertIn("اشتراكك الحالي", _APP_JS)

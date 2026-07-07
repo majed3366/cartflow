@@ -64,9 +64,14 @@
   --cfvi-card-shadow: 0 4px 24px rgba(11, 18, 32, 0.07);
   --cfvi-card-border: 1px solid var(--cfvi-border);
 
+  /* Chrome — same language as hero */
+  --cfvi-chrome-bg: linear-gradient(165deg, #0f766e 0%, #134e4a 46%, #0f4229 100%);
+  --cfvi-chrome-shadow: 0 4px 24px rgba(11, 18, 32, 0.18);
+  --cfvi-chrome-active: rgba(255, 255, 255, 0.22);
+
   /* Sidebar */
-  --cfvi-sidebar-bg: linear-gradient(180deg, #1a7a4a 0%, #145a38 55%, #0f4229 100%);
-  --cfvi-sidebar-shadow: -4px 0 24px rgba(15, 66, 41, 0.18);
+  --cfvi-sidebar-bg: var(--cfvi-chrome-bg);
+  --cfvi-sidebar-shadow: var(--cfvi-chrome-shadow);
 
   /* Motion */
   --cfvi-motion-fast: 0.15s ease;
@@ -152,7 +157,9 @@ body[data-cf-merchant-app="1"] .v2-hero-title {
 body[data-cf-merchant-app="1"] .ma-vi-hero .ma-page-hero__purpose,
 body[data-cf-merchant-app="1"] #ma-page-hero-global.ma-vi-hero .ma-page-hero__purpose,
 body[data-cf-merchant-app="1"] .ma-page-hero--inline.ma-vi-hero .ma-page-hero__purpose,
-body[data-cf-merchant-app="1"] .v2-hero-purpose {
+body[data-cf-merchant-app="1"] .v2-hero-purpose,
+body[data-cf-merchant-app="1"] .ma-vi-hero #pageSub,
+body[data-cf-merchant-app="1"] #ma-page-hero-global.ma-vi-hero #pageSub {
   position: relative;
   z-index: 1;
   margin: 0;
@@ -162,6 +169,12 @@ body[data-cf-merchant-app="1"] .v2-hero-purpose {
   line-height: 1.55;
   color: rgba(255, 255, 255, 0.9);
   max-width: 42ch;
+}
+
+body[data-cf-merchant-app="1"] #ma-page-hero-global.ma-vi-hero #pageSub {
+  margin-top: var(--cfvi-space-xs);
+  font-size: var(--cfvi-type-caption);
+  color: rgba(255, 255, 255, 0.78);
 }
 
 body[data-cf-merchant-app="1"] .ma-page-summary.ma-vi-hero__summary {
@@ -383,4 +396,270 @@ body[data-cf-merchant-app="1"] .kpi-value {
     margin: var(--cfvi-space-sm);
     padding: var(--cfvi-space-lg) var(--cfvi-space-md);
   }
+}
+
+/* ============================================================
+   Visual Identity V1 — Final Hardening Pass
+   ============================================================ */
+
+/* ——— 1. App bar + sidebar: hero-grade chrome ——— */
+body[data-cf-merchant-app="1"] .ma-global-topbar {
+  background: var(--cfvi-chrome-bg);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: var(--cfvi-chrome-shadow);
+  font-family: var(--cfvi-font);
+}
+
+body[data-cf-merchant-app="1"] .ma-gtb-logo {
+  font-family: var(--cfvi-font);
+  font-size: var(--cfvi-type-section);
+  font-weight: 800;
+}
+
+body[data-cf-merchant-app="1"] .ma-gtb-section {
+  font-size: var(--cfvi-type-caption);
+  font-weight: 600;
+  padding: 8px 14px;
+  border-radius: 10px;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+body[data-cf-merchant-app="1"] .ma-gtb-section:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+body[data-cf-merchant-app="1"] .ma-gtb-section.active {
+  background: var(--cfvi-chrome-active);
+  color: #fff;
+  font-weight: 700;
+  box-shadow:
+    0 4px 14px rgba(0, 0, 0, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(6px);
+}
+
+body[data-cf-merchant-app="1"] .ma-gtb-date {
+  font-size: var(--cfvi-type-whisper);
+  color: rgba(255, 255, 255, 0.72);
+}
+
+body[data-cf-merchant-app="1"] .ma-gtb-util,
+body[data-cf-merchant-app="1"] .ma-gtb-util--text {
+  font-family: var(--cfvi-font);
+  font-size: var(--cfvi-type-caption);
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+body[data-cf-merchant-app="1"] .ma-gtb-menu {
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+body[data-cf-merchant-app="1"] .ma-context-sidebar,
+body[data-cf-merchant-app="1"] .sidebar {
+  background: var(--cfvi-chrome-bg);
+  box-shadow: var(--cfvi-sidebar-shadow);
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+body[data-cf-merchant-app="1"] .nav-item.active {
+  background: var(--cfvi-chrome-active);
+  font-weight: 700;
+  box-shadow:
+    0 4px 14px rgba(0, 0, 0, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(6px);
+}
+
+/* ——— 2. Certified typography enforcement ——— */
+body[data-cf-merchant-app="1"] .setting-title,
+body[data-cf-merchant-app="1"] .ma-plan-name,
+body[data-cf-merchant-app="1"] .ma-wa-mode-card-title,
+body[data-cf-merchant-app="1"] .ma-wa-mode-selection-title,
+body[data-cf-merchant-app="1"] .ma-journey-gate-title {
+  font-family: var(--cfvi-font) !important;
+  font-size: var(--cfvi-type-card) !important;
+  font-weight: 800 !important;
+}
+
+body[data-cf-merchant-app="1"] .setting-desc,
+body[data-cf-merchant-app="1"] .setting-label,
+body[data-cf-merchant-app="1"] .setting-value,
+body[data-cf-merchant-app="1"] .ma-plan-note,
+body[data-cf-merchant-app="1"] .ma-wa-mode-card-bullets,
+body[data-cf-merchant-app="1"] .ma-plans-footnote,
+body[data-cf-merchant-app="1"] .ma-journey-gate-body {
+  font-family: var(--cfvi-font) !important;
+  font-size: var(--cfvi-type-caption) !important;
+}
+
+body[data-cf-merchant-app="1"] .ma-plan-price-main,
+body[data-cf-merchant-app="1"] .ma-plan-price-sub {
+  font-family: var(--cfvi-font) !important;
+}
+
+body[data-cf-merchant-app="1"] .page-h1,
+body[data-cf-merchant-app="1"] .page-sub,
+body[data-cf-merchant-app="1"] .filter-btn,
+body[data-cf-merchant-app="1"] .empty-text {
+  font-family: var(--cfvi-font);
+}
+
+/* ——— 3–5. Unified card family (WhatsApp, Plans, Settings, gates) ——— */
+body[data-cf-merchant-app="1"] .ma-vi-surface-card,
+body[data-cf-merchant-app="1"] .setting-card,
+body[data-cf-merchant-app="1"] .ma-fw-card,
+body[data-cf-merchant-app="1"] .ma-wa-v2-card,
+body[data-cf-merchant-app="1"] .ma-wa-mode-card,
+body[data-cf-merchant-app="1"] .ma-wa-current-path-card,
+body[data-cf-merchant-app="1"] .ma-wa-readiness-card,
+body[data-cf-merchant-app="1"] .ma-wa-connect-card,
+body[data-cf-merchant-app="1"] .ma-journey-gate-card,
+body[data-cf-merchant-app="1"] .ma-plans-current-card,
+body[data-cf-merchant-app="1"] .ma-plan-card,
+body[data-cf-merchant-app="1"] .ma-store-connection-card,
+body[data-cf-merchant-app="1"] .ma-sub-discovery-block,
+body[data-cf-merchant-app="1"] .kpi,
+body[data-cf-merchant-app="1"] .ma-knowledge-insight,
+body[data-cf-merchant-app="1"] .v2-whisper:not(.ma-pe-v2-calm) {
+  border: var(--cfvi-card-border) !important;
+  border-style: solid !important;
+  border-radius: var(--cfvi-card-radius) !important;
+  background: var(--cfvi-surface) !important;
+  box-shadow: var(--cfvi-card-shadow) !important;
+}
+
+body[data-cf-merchant-app="1"] .ma-journey-gate-card {
+  padding: var(--cfvi-card-padding);
+  text-align: center;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%) !important;
+}
+
+body[data-cf-merchant-app="1"] .ma-journey-gate-kicker {
+  font-size: var(--cfvi-type-whisper);
+  font-weight: 700;
+  color: var(--cfvi-primary);
+}
+
+body[data-cf-merchant-app="1"] .ma-sub-discovery-block {
+  padding: var(--cfvi-space-sm);
+  background: var(--cfvi-primary-soft) !important;
+  border-color: rgba(13, 148, 136, 0.15) !important;
+}
+
+body[data-cf-merchant-app="1"] .ma-sub-discovery-title {
+  font-size: var(--cfvi-type-caption);
+  font-weight: 700;
+  color: var(--cfvi-primary-deep);
+}
+
+/* WhatsApp mode cards */
+body[data-cf-merchant-app="1"] .ma-wa-mode-card {
+  padding: var(--cfvi-card-padding);
+  cursor: default;
+  transition: box-shadow var(--cfvi-motion-fast), border-color var(--cfvi-motion-fast);
+}
+
+body[data-cf-merchant-app="1"] .ma-wa-mode-card:hover {
+  box-shadow: 0 8px 28px rgba(11, 18, 32, 0.1);
+}
+
+body[data-cf-merchant-app="1"] .ma-wa-mode-card.is-selected,
+body[data-cf-merchant-app="1"] .ma-wa-mode-card.is-cartflow.is-selected,
+body[data-cf-merchant-app="1"] .ma-wa-mode-card.is-merchant.is-selected {
+  border-color: var(--cfvi-primary) !important;
+  box-shadow:
+    var(--cfvi-card-shadow),
+    0 0 0 1px rgba(13, 148, 136, 0.2) !important;
+  outline: none;
+}
+
+body[data-cf-merchant-app="1"] .ma-wa-mode-select-btn.is-current {
+  background: var(--cfvi-primary-soft);
+  color: var(--cfvi-primary-deep);
+  border: 1px solid rgba(13, 148, 136, 0.2);
+}
+
+/* Plans cards */
+body[data-cf-merchant-app="1"] .ma-plan-card {
+  padding: var(--cfvi-card-padding);
+  gap: var(--cfvi-space-sm);
+}
+
+body[data-cf-merchant-app="1"] .ma-plan-card.is-popular {
+  border-color: rgba(13, 148, 136, 0.35) !important;
+  box-shadow: 0 8px 28px rgba(13, 148, 136, 0.12) !important;
+}
+
+body[data-cf-merchant-app="1"] .ma-plan-card.is-current {
+  outline: none !important;
+  border-color: var(--cfvi-primary) !important;
+  box-shadow:
+    var(--cfvi-card-shadow),
+    0 0 0 2px rgba(13, 148, 136, 0.22) !important;
+}
+
+body[data-cf-merchant-app="1"] .ma-plan-current-badge {
+  background: var(--cfvi-primary-soft);
+  color: var(--cfvi-primary-deep);
+  border: 1px solid rgba(13, 148, 136, 0.2);
+  font-size: var(--cfvi-type-whisper);
+}
+
+body[data-cf-merchant-app="1"] .ma-plan-badge {
+  background: var(--cfvi-primary);
+  font-size: var(--cfvi-type-whisper);
+}
+
+body[data-cf-merchant-app="1"] .ma-plan-name {
+  font-size: var(--cfvi-type-section) !important;
+}
+
+body[data-cf-merchant-app="1"] .ma-plan-price-main {
+  font-size: var(--cfvi-type-metric) !important;
+  font-weight: 800 !important;
+  color: var(--cfvi-ink);
+}
+
+/* Carts filter bar — same product language */
+body[data-cf-merchant-app="1"] #page-carts .filter-btn,
+body[data-cf-merchant-app="1"] #ma-cart-filters .filter-btn {
+  font-family: var(--cfvi-font);
+  font-size: var(--cfvi-type-caption);
+  font-weight: 600;
+  border-radius: 999px;
+  padding: 7px 14px;
+  border: 1px solid var(--cfvi-border);
+  background: var(--cfvi-surface);
+  color: var(--cfvi-ink-soft);
+}
+
+body[data-cf-merchant-app="1"] #page-carts .filter-btn.active,
+body[data-cf-merchant-app="1"] #ma-cart-filters .filter-btn.active {
+  background: var(--cfvi-primary);
+  border-color: var(--cfvi-primary-deep);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(13, 148, 136, 0.25);
+}
+
+body[data-cf-merchant-app="1"] .ma-plans-footnote {
+  color: var(--cfvi-ink-soft);
+  margin-bottom: var(--cfvi-space-sm);
+}
+
+body[data-cf-merchant-app="1"] .ma-wa-v2-layout .setting-card {
+  margin-bottom: var(--cfvi-space-sm);
+}
+
+body[data-cf-merchant-app="1"] .page.ma-journey-gated > :not(.ma-journey-gate) {
+  opacity: 0.45;
+}
+
+body[data-cf-merchant-app="1"] .wa-pill--compact {
+  font-size: var(--cfvi-type-whisper);
+  padding: 3px 9px;
 }

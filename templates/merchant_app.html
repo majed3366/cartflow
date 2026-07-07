@@ -758,7 +758,7 @@
       <div class="setting-title">تفاصيل الحالة</div>
       <div class="setting-desc">معلومات عن آخر إرسال وحالة التشغيل</div>
       <div class="setting-row"><span class="setting-label">حالة واتساب</span><span class="setting-value" id="ma-wa-status-display">—</span></div>
-      <div class="setting-row"><span class="setting-label">حالة الجاهزية</span><div id="ma-page-whatsapp-ready-pill" class="wa-pill {% if wa_state_key != 'ready' %}wa-muted{% endif %}" style="font-size:10px;padding:3px 9px;"><div class="wa-dot"></div><span id="ma-page-whatsapp-ready-text">{{ wa_badge_ar | default("—") }}</span></div></div>
+        <div class="setting-row"><span class="setting-label">حالة الجاهزية</span><div id="ma-page-whatsapp-ready-pill" class="wa-pill wa-pill--compact {% if wa_state_key != 'ready' %}wa-muted{% endif %}"><div class="wa-dot"></div><span id="ma-page-whatsapp-ready-text">{{ wa_badge_ar | default("—") }}</span></div></div>
       <div class="setting-row"><span class="setting-label">آخر حالة إرسال</span><span class="setting-value" id="ma-wa-last-send-status">—</span></div>
       <div class="setting-row"><span class="setting-label">وقت آخر إرسال</span><span class="setting-value" id="ma-wa-last-send">{{ merchant_wa_last_send_ar | default("—") }}</span></div>
     </div>

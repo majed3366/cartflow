@@ -118,6 +118,8 @@ def main() -> None:
             page.set_viewport_size(size)
             if viewport_name == "desktop":
                 _auth(page)
+            elif viewport_name == "mobile":
+                _auth(page)
 
             for page_key, path in PAGES:
                 page.goto(f"{BASE}{path}", timeout=120000, wait_until="networkidle")
