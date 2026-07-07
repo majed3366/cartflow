@@ -221,11 +221,11 @@
         <div class="ma-pe-v2-carts-queue-col">
           <header class="ma-page-hero ma-page-hero--inline ma-page-hero--carts" id="ma-carts-hero">
             <h1 class="ma-page-hero__title">السلال</h1>
-            <p class="ma-page-hero__purpose">تابع سلال متجرك وقرّر ما يحتاج تدخلك.</p>
+            <p class="ma-page-hero__purpose">افهم متجرك — مجموعات ذكية قبل تفاصيل السلال.</p>
           </header>
-          <p class="ma-page-summary" id="ma-carts-queue-sub">CartFlow يجهّز السلال…</p>
+          <p class="ma-page-summary" id="ma-carts-queue-sub">CartFlow يجهّز فهم المتجر…</p>
 
-          <div class="filter-bar" id="ma-cart-filters">
+          <div class="filter-bar" id="ma-cart-filters" hidden>
             {% if merchant_dashboard_lazy_shell %}
             <button type="button" class="filter-btn active" data-filter="all">الكل (<span id="ma-filt-all">0</span>)</button>
             <button type="button" class="filter-btn" data-filter="recovered">تم الاسترداد (<span id="ma-filt-recovered">0</span>)</button>
@@ -241,17 +241,9 @@
             {% endif %}
           </div>
 
-          <div class="ma-cart-groups" id="ma-carts-groups-v2" aria-live="polite">
-            <section class="ma-cart-group ma-cart-group--all" data-ma-group="all" id="ma-carts-group-all">
-              <header class="ma-cart-group__head">
-                <h2 class="ma-cart-group__title">كل السلال</h2>
-                <span class="ma-cart-group__count" id="ma-carts-group-count">0</span>
-              </header>
-              <div class="ma-cart-group__items v2-queue-list" id="ma-carts-queue-v2"></div>
-            </section>
-          </div>
+          <div class="ma-cart-groups ma-mi-carts-root" id="ma-carts-groups-v2" aria-live="polite"></div>
           <aside id="ma-carts-queue-empty" class="v2-whisper" hidden>
-            <p class="v2-whisper-text">CartFlow يتابع — الطابور فارغ حالياً</p>
+            <p class="v2-whisper-text">لا توجد سلات تحتاج انتباهك — CartFlow يتابع المتجر.</p>
           </aside>
         </div>
 
@@ -986,6 +978,7 @@
 
 <script defer src="/static/merchant_vip_automation_ui.js"></script>
 <script defer src="/static/merchant_home_experience.js?v={{ merchant_setup_render_build | default('unknown') }}"></script>
+<script defer src="/static/merchant_intelligence_carts_v1.js?v={{ merchant_setup_render_build | default('unknown') }}"></script>
 <script defer src="/static/merchant_dashboard_lazy.js?v={{ merchant_setup_render_build | default('unknown') }}"></script>
 <script defer src="/static/merchant_whatsapp_settings.js"></script>
 <script defer src="/static/merchant_whatsapp_connect.js"></script>

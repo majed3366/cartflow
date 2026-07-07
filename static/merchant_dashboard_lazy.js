@@ -2462,6 +2462,7 @@
 
   var lastNormalCartsPageRows = [];
   var lastArchivedCartsPageRows = [];
+  var lastMerchantIntelligencePayload = null;
 
   function isArchivedVisual(mc) {
     if (!mc) return false;
@@ -3190,9 +3191,9 @@
 
   function selectPeV2Cart(rk) {
     peV2SelectedRecoveryKey = String(rk || "").trim();
-    var queue = byId("ma-carts-queue-v2");
-    if (queue) {
-      queue.querySelectorAll(".v2-queue-item").forEach(function (btn) {
+    var scope = byId("ma-carts-groups-v2") || byId("ma-carts-queue-v2");
+    if (scope) {
+      scope.querySelectorAll(".v2-queue-item").forEach(function (btn) {
         btn.classList.toggle(
           "is-selected",
           btn.getAttribute("data-recovery-key") === peV2SelectedRecoveryKey
@@ -3232,6 +3233,59 @@
     if (countEl) countEl.textContent = String(rows.length);
   }
 
+  function renderMiCartsV1Pending(message) {
+    var root = byId("ma-carts-groups-v2");
+    if (!root) return;
+    root.innerHTML =
+      '<p class="ma-mi-carts-pending v2-whisper-text">' +
+      esc(message || "CartFlow يجهّز فهم المتجر…") +
+      "</p>";
+  }
+
+  function renderMiCartsV1Workspace(d, rows) {
+    var mi = window.maIntelligenceCartsV1;
+    var root = byId("ma-carts-groups-v2");
+    if (!mi || !root) return false;
+    var page = byId("page-carts");
+    var filters = byId("ma-cart-filters");
+    if (page) page.classList.add("ma-carts--mi-v1");
+    if (filters) filters.hidden = true;
+    if (!mi.hasStorePayload(d)) {
+      renderMiCartsV1Pending("CartFlow يجهّز فهم المتجر…");
+      return true;
+    }
+    var empty = byId("ma-carts-queue-empty");
+    var firstRk = "";
+    mi.renderGroups(root, d.merchant_intelligence_store_v1, rows, {
+      esc: esc,
+      cartRecoveryKey: cartRecoveryKey,
+      cartQueueItemHtml: cartQueueItemHtml,
+      primaryActionHtml: merchantPeV2PrimaryActionHtml,
+      selectedKey: peV2SelectedRecoveryKey,
+      emptyEl: empty,
+      bindQueue: bindPeV2CartsQueue,
+      onSelectCart: selectPeV2Cart,
+      updateSubtitle: function (text) {
+        var sub = byId("ma-carts-queue-sub");
+        if (sub) sub.textContent = text;
+      },
+    });
+    root.querySelectorAll(".v2-queue-item").forEach(function (btn) {
+      if (!firstRk && btn.style.display !== "none" && !btn.hidden) {
+        firstRk = btn.getAttribute("data-recovery-key") || "";
+      }
+    });
+    if (
+      !peV2SelectedRecoveryKey ||
+      !findCartByRecoveryKey(peV2SelectedRecoveryKey)
+    ) {
+      selectPeV2Cart(firstRk);
+    } else {
+      selectPeV2Cart(peV2SelectedRecoveryKey);
+    }
+    return true;
+  }
+
   function renderPeV2CartsQueue(rows) {
     var queue = byId("ma-carts-queue-v2");
     if (!queue) return;
@@ -3262,7 +3316,10 @@
   }
 
   window.maPeV2OnFilterApplied = function () {
-    var queue = byId("ma-carts-queue-v2");
+    if (byId("page-carts") && byId("page-carts").classList.contains("ma-carts--mi-v1")) {
+      return;
+    }
+    var queue = byId("ma-carts-queue-v2") || byId("ma-carts-groups-v2");
     if (!queue) return;
     var firstRk = "";
     queue.querySelectorAll(".v2-queue-item").forEach(function (btn) {
@@ -3874,7 +3931,11 @@
     var sorted = sortCartsArchivedLast(lastNormalCartsPageRows);
     allb.innerHTML = sorted.map(cartRowFull).join("");
     bindCustomerLifecycleActions(allb);
-    renderPeV2CartsQueue(sorted);
+    if (
+      !renderMiCartsV1Workspace(lastMerchantIntelligencePayload, sorted)
+    ) {
+      renderPeV2CartsQueue(sorted);
+    }
   }
 
   function rerenderHomeCartsTable() {
@@ -4013,7 +4074,7 @@
   }
 
   function cartRowFull(mc) {
-    if (byId("ma-carts-queue-v2")) {
+    if (byId("ma-carts-groups-v2") || byId("ma-carts-queue-v2")) {
       return cartRowSyncTr(mc);
     }
     var v = Math.round(parseFloat(mc.merchant_cart_value) || 0);
@@ -4156,6 +4217,7 @@
     }
     lastNormalCartsPageRows = pageRows;
     lastArchivedCartsPageRows = (d && d.merchant_archived_carts_page_rows) || [];
+    lastMerchantIntelligencePayload = d;
     window.__maNormalCartsPageRows = lastNormalCartsPageRows;
     if (pageRows.length) {
       normalCartsHasRenderedRows = true;
@@ -4184,7 +4246,10 @@
       }
       bindCustomerLifecycleActions(allb);
     }
-    renderPeV2CartsQueue(sortCartsArchivedLast(lastNormalCartsPageRows));
+    var sortedRows = sortCartsArchivedLast(lastNormalCartsPageRows);
+    if (!renderMiCartsV1Workspace(d, sortedRows)) {
+      renderPeV2CartsQueue(sortedRows);
+    }
     applyCompletedCartsTable(lastNormalCartsPageRows, lastArchivedCartsPageRows);
     var storeFc = resolveMerchantStoreCartCounts(d);
     var pageFc =

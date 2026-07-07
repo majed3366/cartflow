@@ -71,7 +71,7 @@ class MerchantCartsWorkspaceExperienceV1Tests(unittest.TestCase):
             : _LAZY_JS.index("function normalCartsLoadingRowHtml")
         ]
         self.assertIn("cartRowSyncTr", fn)
-        self.assertIn("ma-carts-queue-v2", fn)
+        self.assertIn("ma-carts-groups-v2", fn)
 
     def test_legacy_explanation_uses_workspace(self) -> None:
         block = _extract_js_function(_LAZY_JS, "customerLifecycleExplanationLegacyHtml")

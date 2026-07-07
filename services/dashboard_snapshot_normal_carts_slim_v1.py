@@ -72,6 +72,9 @@ NORMAL_CARTS_SNAPSHOT_ROW_ALLOWLIST = frozenset(
         "merchant_proof_surface_v1",
         "merchant_explanation_v1",
         "merchant_decisions_v1",
+        "cart_detail_projection_v1",
+        "merchant_intelligence_v1",
+        "intelligence_group_key",
         "normal_recovery_continuation_explanation_ar",
         "next_attempt_due_at",
     }
@@ -94,6 +97,7 @@ NORMAL_CARTS_SNAPSHOT_TOP_LEVEL_KEYS = (
     "merchant_dashboard_refresh_last_sent_log_id",
     "merchant_dashboard_refresh_sent_total",
     "merchant_dashboard_refresh_archive_rev",
+    "merchant_intelligence_store_v1",
 )
 
 # Heavy / debug fields stripped from snapshots (diagnostic reference).
@@ -159,8 +163,18 @@ def slim_normal_carts_row_for_snapshot(row: dict[str, Any]) -> dict[str, Any]:
                     "version",
                     "explanation_id",
                     "knowledge_event_type",
+                    "knowledge_version",
+                    "knowledge_id",
+                    "knowledge_type",
+                    "source_domain",
                     "merchant_visibility",
+                    "admin_visibility",
                     "eligible_surfaces",
+                    "confidence",
+                    "aggregation_key",
+                    "narrative_role",
+                    "action_required",
+                    "attention_level",
                     "status_label_ar",
                     "what_happened_ar",
                     "system_did_ar",

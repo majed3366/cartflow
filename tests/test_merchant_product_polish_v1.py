@@ -25,7 +25,7 @@ class MerchantProductPolishV1Tests(unittest.TestCase):
         self.assertIn('id="pagePurpose"', _TEMPLATE)
         self.assertIn("ma-page-hero__purpose", _TEMPLATE)
         self.assertIn('id="ma-carts-groups-v2"', _TEMPLATE)
-        self.assertIn('data-ma-group="all"', _TEMPLATE)
+        self.assertIn("ma-mi-carts-root", _TEMPLATE)
         self.assertIn('id="ma-carts-hero"', _TEMPLATE)
 
     def test_page_purpose_map_in_router(self) -> None:

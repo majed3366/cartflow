@@ -359,6 +359,146 @@ body[data-ma-page="vip"] #ma-page-hero-global {
 .ma-cart-group[data-ma-group="needs_merchant"] .ma-cart-group__title { color: #ea580c; }
 .ma-cart-group[data-ma-group="completed"] .ma-cart-group__title { color: #64748b; }
 
+/* ——— Merchant Intelligence Carts V1 ——— */
+.ma-carts--mi-v1 .ma-mi-carts-root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--v2-space-md, 16px);
+}
+
+.ma-mi-carts-pending {
+  margin: 0;
+  padding: 20px 4px;
+  font-size: var(--ma-type-md);
+  color: var(--v2-ink-whisper, #8b95a8);
+}
+
+.ma-mi-group {
+  border: 1px solid rgba(11, 18, 32, 0.08);
+  border-radius: var(--ma-card-radius, 16px);
+  background: var(--v2-surface, #fff);
+  overflow: hidden;
+}
+
+.ma-mi-group-card {
+  list-style: none;
+  cursor: pointer;
+  padding: 16px 18px;
+}
+
+.ma-mi-group-card::-webkit-details-marker {
+  display: none;
+}
+
+.ma-mi-group-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.ma-mi-group-card__title {
+  margin: 0;
+  font-size: var(--ma-type-md);
+  font-weight: 800;
+  color: var(--v2-ink, #0b1220);
+}
+
+.ma-mi-group-card__badge {
+  font-size: var(--ma-type-xs);
+  font-weight: 700;
+  background: rgba(11, 18, 32, 0.06);
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+
+.ma-mi-group-card__meaning {
+  margin: 0 0 6px;
+  font-size: var(--ma-type-sm);
+  color: var(--muted, #64748b);
+  line-height: 1.5;
+}
+
+.ma-mi-group-card__summary {
+  margin: 0 0 10px;
+  font-size: var(--ma-type-sm);
+  font-weight: 600;
+  color: var(--v2-ink, #0b1220);
+}
+
+.ma-mi-group-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+  font-size: var(--ma-type-xs);
+  color: var(--v2-ink-whisper, #8b95a8);
+}
+
+.ma-mi-group-card__rec {
+  margin: 0 0 12px;
+  font-size: var(--ma-type-sm);
+  line-height: 1.5;
+  color: var(--v2-ink, #0b1220);
+}
+
+.ma-mi-group-card__cta {
+  display: inline-flex;
+  pointer-events: none;
+  font-size: var(--ma-type-sm);
+}
+
+.ma-mi-group-body {
+  padding: 0 18px 16px;
+  border-top: 1px solid rgba(11, 18, 32, 0.06);
+}
+
+.ma-mi-group-section {
+  padding: 14px 0;
+  border-bottom: 1px solid rgba(11, 18, 32, 0.05);
+}
+
+.ma-mi-group-section:last-child {
+  border-bottom: none;
+}
+
+.ma-mi-group-section__label {
+  margin: 0 0 6px;
+  font-size: var(--ma-type-xs);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--v2-ink-whisper, #8b95a8);
+}
+
+.ma-mi-group-section__text {
+  margin: 0;
+  font-size: var(--ma-type-sm);
+  line-height: 1.55;
+  color: var(--v2-ink, #0b1220);
+}
+
+.ma-mi-group-section__cta {
+  margin-top: 10px;
+}
+
+.ma-mi-group-more {
+  margin-top: 8px;
+}
+
+.ma-mi-group-more__summary {
+  cursor: pointer;
+  font-size: var(--ma-type-sm);
+  font-weight: 600;
+  color: var(--muted, #64748b);
+  padding: 8px 0;
+}
+
+.ma-mi-group[data-ma-group="needs_merchant"] .ma-mi-group-card__title { color: #ea580c; }
+.ma-mi-group[data-ma-group="waiting_reply"] .ma-mi-group-card__title { color: #0d9488; }
+.ma-mi-group[data-ma-group="vip"] .ma-mi-group-card__title { color: #7c3aed; }
+
 /* Legacy cart sub-pages — inline hero spacing */
 #page-followup .ma-page-hero--inline,
 #page-completed .ma-page-hero--inline,
