@@ -159,7 +159,14 @@
     var href = (vr && vr.contact_href) || "";
     panel.setAttribute("data-contact-href", href);
     var amt = (vr && vr.amount_display) || "";
-    setText("ma-vip-suggest-amount", amt ? amt + " ريال" : "—");
+    setText(
+      "ma-vip-suggest-amount",
+      amt
+        ? typeof window.formatMerchantSar === "function"
+          ? window.formatMerchantSar(amt)
+          : String(amt) + " ر.س"
+        : "—"
+    );
     setText("ma-vip-suggest-state", stateFromSubtitle(vr && vr.subtitle_ar));
     setText("ma-vip-suggest-action", "تواصل خلال 15 دقيقة");
     panel.style.display = "";

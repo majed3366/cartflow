@@ -89,6 +89,9 @@
   function merchantFacingText(text) {
     var s = norm(text);
     if (!s) return "";
+    if (typeof window.sanitizeMerchantLanguage === "function") {
+      s = window.sanitizeMerchantLanguage(s);
+    }
     var lower = s.toLowerCase();
     if (INTERNAL_TOKEN_AR[lower]) return INTERNAL_TOKEN_AR[lower];
     if (REASON_TAG_AR[lower]) return REASON_TAG_AR[lower];
@@ -461,7 +464,11 @@
     }
     var value = parseFloat(group.total_cart_value || 0);
     var valueStr =
-      value > 0 ? Math.round(value).toLocaleString("en-US") + " ر.س" : "";
+      value > 0 && typeof window.formatMerchantSar === "function"
+        ? window.formatMerchantSar(value)
+        : value > 0
+          ? Math.round(value).toLocaleString("en-US") + " ر.س"
+          : "";
     var recType = rec ? norm(rec.recommendation_type) : norm(group.recommended_action_type);
     var recTypeLbl = esc(recTypeLabelAr(recType));
     var recMsg = rec ? esc(merchantFacingText(rec.merchant_message_ar || "")) : "";

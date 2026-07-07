@@ -1,0 +1,292 @@
+/**
+ * Product Design System Compliance V1 — certified implementation tokens + surface rules.
+ * Constitution: docs/cartflow_product_design_system_v1.md (PDS-1.1)
+ * Presentation only — one typography, spacing, color, and hierarchy language.
+ */
+
+:root {
+  /* Certified typography */
+  --pds-font: "IBM Plex Sans Arabic", system-ui, sans-serif;
+  --pds-type-hero: clamp(1.25rem, 3.5vw, 1.5rem);
+  --pds-type-section: var(--ma-type-xl, 20px);
+  --pds-type-story: var(--ma-type-lg, 16px);
+  --pds-type-body: var(--ma-type-md, 14px);
+  --pds-type-caption: var(--ma-type-sm, 13px);
+  --pds-type-whisper: var(--ma-type-xs, 11px);
+  --pds-type-numeric: var(--ma-type-md, 14px);
+  --pds-type-button: var(--ma-type-sm, 13px);
+
+  /* Certified spacing (PDS §8) */
+  --pds-space-xs: 6px;
+  --pds-space-sm: 12px;
+  --pds-space-md: 20px;
+  --pds-space-lg: 28px;
+  --pds-space-xl: 40px;
+
+  /* Semantic colors — map legacy shell vars to PDS roles */
+  --pds-bg: var(--v2-bg, #f4f6fa);
+  --pds-surface: var(--v2-surface, #ffffff);
+  --pds-ink: var(--v2-ink, #0b1220);
+  --pds-ink-soft: var(--v2-ink-soft, #3d4a63);
+  --pds-ink-whisper: var(--v2-ink-whisper, #8b95a8);
+  --pds-accent: var(--v2-accent-deep, #0d9488);
+  --pds-accent-soft: rgba(13, 148, 136, 0.08);
+  --pds-attention: var(--v2-attention, #ea580c);
+  --pds-success: var(--v2-success, #10b981);
+  --pds-waiting: var(--v2-waiting, #6366f1);
+  --pds-sidebar-bg: var(--green, #1a7a4a);
+  --pds-sidebar-active: rgba(255, 255, 255, 0.16);
+  --pds-sidebar-hover: rgba(255, 255, 255, 0.08);
+}
+
+/* ——— Global typography (one certified system) ——— */
+body[data-cf-merchant-app="1"] {
+  font-family: var(--pds-font);
+  font-size: var(--pds-type-body);
+  line-height: 1.5;
+  color: var(--pds-ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+body[data-cf-merchant-app="1"] .main,
+body[data-cf-merchant-app="1"] .ma-content-root {
+  background: var(--pds-bg);
+}
+
+body[data-cf-merchant-app="1"] .page.active {
+  font-family: var(--pds-font);
+}
+
+/* Hero / page titles */
+body[data-cf-merchant-app="1"] .ma-page-hero__title,
+body[data-cf-merchant-app="1"] .page-h1,
+body[data-cf-merchant-app="1"] .v2-hero-title {
+  font-family: var(--pds-font);
+  font-size: var(--pds-type-section);
+  font-weight: 800;
+  line-height: 1.3;
+}
+
+body[data-cf-merchant-app="1"] .ma-page-hero__purpose,
+body[data-cf-merchant-app="1"] .page-sub,
+body[data-cf-merchant-app="1"] .v2-hero-purpose {
+  font-family: var(--pds-font);
+  font-size: var(--pds-type-body);
+}
+
+/* Story hierarchy — title dominates (PDS §6) */
+body[data-cf-merchant-app="1"] .ma-mi-group-card__title {
+  font-size: var(--pds-type-story);
+  font-weight: 800;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+}
+
+body[data-cf-merchant-app="1"] .ma-mi-decision-row__v {
+  font-size: var(--pds-type-caption);
+  font-weight: 600;
+}
+
+body[data-cf-merchant-app="1"] .ma-mi-decision-row__k {
+  font-size: var(--pds-type-whisper);
+  font-weight: 700;
+}
+
+body[data-cf-merchant-app="1"] .ma-mi-group-card__badge,
+body[data-cf-merchant-app="1"] .ma-mi-group-card__meta {
+  font-size: var(--pds-type-whisper);
+}
+
+body[data-cf-merchant-app="1"] .ma-mi-group-card__cta,
+body[data-cf-merchant-app="1"] .v2-btn {
+  font-size: var(--pds-type-button);
+  font-weight: 600;
+}
+
+/* Buttons secondary to story (PDS §7) */
+body[data-cf-merchant-app="1"] .ma-mi-group-card__cta.v2-btn {
+  padding: 6px 12px;
+  min-height: auto;
+  background: var(--pds-accent-soft);
+  color: var(--pds-accent);
+  border: 1px solid rgba(13, 148, 136, 0.15);
+  box-shadow: none;
+}
+
+body[data-cf-merchant-app="1"] .v2-btn:not(.ma-mi-group-card__cta) {
+  font-family: var(--pds-font);
+}
+
+/* Numeric / currency */
+body[data-cf-merchant-app="1"] .camt,
+body[data-cf-merchant-app="1"] .v2-queue-amount,
+body[data-cf-merchant-app="1"] .kpi-value,
+body[data-cf-merchant-app="1"] .ma-type-numeric {
+  font-family: var(--pds-font);
+  font-size: var(--pds-type-numeric);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Tables */
+body[data-cf-merchant-app="1"] table,
+body[data-cf-merchant-app="1"] .ma-pe-v2-sync-table {
+  font-family: var(--pds-font);
+  font-size: var(--pds-type-caption);
+}
+
+body[data-cf-merchant-app="1"] th {
+  font-size: var(--pds-type-whisper);
+  font-weight: 700;
+}
+
+/* Dialogs / modals */
+body[data-cf-merchant-app="1"] .ma-vip-suggest-card,
+body[data-cf-merchant-app="1"] .ma-msg-modal-body,
+body[data-cf-merchant-app="1"] [role="dialog"] {
+  font-family: var(--pds-font);
+}
+
+/* ——— Spacing rhythm ——— */
+body[data-cf-merchant-app="1"] .ma-page-hero {
+  padding-block: var(--pds-space-sm) var(--pds-space-md);
+}
+
+body[data-cf-merchant-app="1"] .ma-mi-group {
+  margin-bottom: var(--pds-space-sm);
+}
+
+body[data-cf-merchant-app="1"] .ma-mi-group-card {
+  padding: var(--pds-space-sm) var(--pds-space-md);
+}
+
+body[data-cf-merchant-app="1"] .ma-mi-decision-row {
+  margin-bottom: var(--pds-space-xs);
+  padding: var(--pds-space-xs) var(--pds-space-sm);
+}
+
+body[data-cf-merchant-app="1"] .ma-page-compact .setting-card,
+body[data-cf-merchant-app="1"] .ma-page-compact .ma-settings-card {
+  margin-bottom: var(--pds-space-sm);
+  padding: var(--pds-space-md);
+  border-radius: var(--ma-card-radius, 16px);
+  background: var(--pds-surface);
+  box-shadow: var(--ma-card-shadow, 0 4px 20px rgba(15, 23, 42, 0.06));
+}
+
+/* ——— Visual family: compact pages (WhatsApp, Plans, Settings) ——— */
+body[data-cf-merchant-app="1"] .page.ma-page-compact {
+  background: var(--pds-bg);
+  font-family: var(--pds-font);
+  padding: var(--pds-space-md) var(--pds-space-md) var(--pds-space-xl);
+  max-width: var(--ma-content-max, 1120px);
+  margin-inline: auto;
+}
+
+body[data-cf-merchant-app="1"] .page.ma-page-compact .page-header,
+body[data-cf-merchant-app="1"] .page.ma-page-compact .ma-page-hero {
+  margin-bottom: var(--pds-space-md);
+}
+
+/* ——— Sidebar compliance (PDS §6 workstream) ——— */
+body[data-cf-merchant-app="1"] .ma-context-sidebar,
+body[data-cf-merchant-app="1"] .sidebar {
+  font-family: var(--pds-font);
+  background: var(--pds-sidebar-bg);
+}
+
+body[data-cf-merchant-app="1"] .ma-ctx-label {
+  font-size: var(--pds-type-whisper);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  margin: var(--pds-space-sm) var(--pds-space-sm) var(--pds-space-xs);
+  color: rgba(255, 255, 255, 0.45);
+}
+
+body[data-cf-merchant-app="1"] .nav-item {
+  font-family: var(--pds-font);
+  font-size: var(--pds-type-caption);
+  font-weight: 500;
+  padding: 10px var(--pds-space-sm);
+  margin: 2px 8px;
+  border-radius: 8px;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+body[data-cf-merchant-app="1"] .nav-item:hover {
+  background: var(--pds-sidebar-hover);
+}
+
+body[data-cf-merchant-app="1"] .nav-item.active {
+  background: var(--pds-sidebar-active);
+  font-weight: 700;
+}
+
+body[data-cf-merchant-app="1"] .ma-gtb-section {
+  font-family: var(--pds-font);
+  font-size: var(--pds-type-caption);
+}
+
+/* ——— Semantic colors — no page-specific palettes ——— */
+body[data-cf-merchant-app="1"] .kpi-stripe[style*="#7c3aed"] {
+  background: var(--pds-accent) !important;
+}
+
+body[data-cf-merchant-app="1"] .chip.c-other,
+body[data-cf-merchant-app="1"] .st {
+  font-family: var(--pds-font);
+}
+
+/* ——— Interaction compliance ——— */
+body[data-cf-merchant-app="1"] .ma-mi-group > summary {
+  transition: background 0.15s ease;
+}
+
+body[data-cf-merchant-app="1"] .ma-mi-group[open] > summary {
+  background: var(--pds-surface);
+}
+
+body[data-cf-merchant-app="1"] .nav-item:focus-visible,
+body[data-cf-merchant-app="1"] .v2-btn:focus-visible,
+body[data-cf-merchant-app="1"] .filter-btn:focus-visible {
+  outline: 2px solid var(--pds-accent);
+  outline-offset: 2px;
+}
+
+body[data-cf-merchant-app="1"] .ma-mi-group .ma-mi-group-body {
+  animation: pds-expand-in 0.18s ease-out;
+}
+
+@keyframes pds-expand-in {
+  from { opacity: 0.92; }
+  to { opacity: 1; }
+}
+
+/* Loading skeletons — no layout jump */
+body[data-cf-merchant-app="1"] .ma-dash-skel {
+  min-height: 1.2em;
+}
+
+/* Carts reference surface */
+body[data-cf-merchant-app="1"] #page-carts.ma-pe-v2 {
+  background: var(--pds-bg);
+}
+
+body[data-cf-merchant-app="1"] #page-home.ma-pe-v2 {
+  background: var(--pds-bg);
+}
+
+@media (max-width: 960px) {
+  body[data-cf-merchant-app="1"] .ma-page-hero__title,
+  body[data-cf-merchant-app="1"] .page-h1 {
+    font-size: var(--pds-type-story);
+  }
+
+  body[data-cf-merchant-app="1"] .ma-mi-group-card__title {
+    font-size: var(--pds-type-story);
+  }
+
+  body[data-cf-merchant-app="1"] .page.ma-page-compact {
+    padding: var(--pds-space-sm);
+  }
+}

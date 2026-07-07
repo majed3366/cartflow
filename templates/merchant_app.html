@@ -10,6 +10,7 @@
 <link rel="stylesheet" href="/static/merchant_app.css">
 <link rel="stylesheet" href="/static/merchant_pe_v2.css?v={{ merchant_setup_render_build | default('unknown') }}">
 <link rel="stylesheet" href="/static/merchant_product_polish_v1.css?v={{ merchant_setup_render_build | default('unknown') }}">
+<link rel="stylesheet" href="/static/merchant_pds_compliance_v1.css?v={{ merchant_setup_render_build | default('unknown') }}">
 </head>
 <body data-cf-merchant-app="1">
 
@@ -184,7 +185,7 @@
         {% else %}
         <div class="kpi-value">{{ merchant_kpi_revenue_fmt | default("0") }}</div>
         {% endif %}
-        <div class="kpi-note up">↑ ريال — اليوم</div>
+        <div class="kpi-note up">↑ ر.س — اليوم</div>
       </div>
       </div>
     </div>
@@ -402,7 +403,7 @@
             {% else %}
             {% for vr in merchant_vip_page_rows %}
             <tr>
-              <td><div class="camt">{{ vr.amount_display }} ريال</div></td>
+              <td><div class="camt">{{ vr.amount_display }} ر.س</div></td>
               <td><div class="ctime">{{ vr.subtitle_ar }}</div></td>
               <td>{% if vr.has_phone %}<span class="ph-ok">✓ متوفر</span>{% else %}<span class="ph-no">✗ غير متوفر</span>{% endif %}</td>
               <td>{% if vr.contact_href %}<a class="va-btn" href="{{ vr.contact_href }}" rel="noopener noreferrer">تواصل يدوي (VIP) ←</a>{% else %}<span class="va-btn is-disabled">تواصل يدوي (VIP) ←</span>{% endif %}</td>
@@ -976,6 +977,7 @@
   </main><!-- /.ma-content-root -->
 </div><!-- /.ma-dashboard-frame -->
 
+<script defer src="/static/merchant_pds_format_v1.js?v={{ merchant_setup_render_build | default('unknown') }}"></script>
 <script defer src="/static/merchant_vip_automation_ui.js"></script>
 <script defer src="/static/merchant_home_experience.js?v={{ merchant_setup_render_build | default('unknown') }}"></script>
 <script defer src="/static/merchant_intelligence_carts_v1.js?v={{ merchant_setup_render_build | default('unknown') }}"></script>

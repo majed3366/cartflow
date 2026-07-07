@@ -13,6 +13,14 @@
       .replace(/"/g, "&quot;");
   }
 
+  function formatMerchantSar(amount) {
+    if (typeof window.formatMerchantSar === "function") {
+      return window.formatMerchantSar(amount);
+    }
+    var n = Math.round(parseFloat(amount) || 0);
+    return n.toLocaleString("en-US") + " ر.س";
+  }
+
   function byId(id) {
     return document.getElementById(id);
   }
@@ -2119,7 +2127,7 @@
     setText("ma-month-abandoned", d.merchant_month_abandoned_fmt || "0");
     setText("ma-month-recovered", d.merchant_month_recovered_fmt || "0");
     setText("ma-month-pct", (d.merchant_month_recovery_pct_fmt || "0") + "٪");
-    setText("ma-month-revenue", (d.merchant_month_revenue_fmt || "0") + " ر");
+    setText("ma-month-revenue", formatMerchantSar(String(d.merchant_month_revenue_fmt || "0").replace(/,/g, "")));
 
     var wk = byId("ma-reasons-week-body");
     if (wk) {
@@ -2818,7 +2826,7 @@
   function merchantPeV2ConvStatus(mc) {
     var v = Math.round(parseFloat(mc.merchant_cart_value) || 0);
     var reason = String(mc.merchant_reason_chip_label_ar || "").trim();
-    var bits = [v.toLocaleString("en-US") + " ر"];
+    var bits = [formatMerchantSar(v)];
     if (reason) bits.push(reason);
     return bits.join(" · ");
   }
@@ -3045,7 +3053,7 @@
     return (
       '<p class="v2-action-eyebrow">المحددة · ' +
       v.toLocaleString("en-US") +
-      " ر</p>" +
+      " ر.س</p>" +
       '<h2 class="v2-action-headline" style="font-size:1.15rem;">' +
       esc(merchantPeV2ConvHeadline(expl, mc)) +
       "</h2>" +
@@ -3095,8 +3103,8 @@
       '"></span>' +
       '<div class="v2-queue-body">' +
       '<div class="v2-queue-amount">' +
-      v.toLocaleString("en-US") +
-      " ر</div>" +
+      formatMerchantSar(v) +
+      "</div>" +
       '<p class="v2-queue-scan">' +
       esc(scan) +
       "</p></div>" +
@@ -3154,8 +3162,8 @@
       (archived ? ' class="ma-row-archived" data-ma-archived-visual="1"' : "") +
       ">" +
       "<td><div class=\"camt\">" +
-      v.toLocaleString("en-US") +
-      ' ر</div><div class="ctime">' +
+      formatMerchantSar(v) +
+      '</div><div class="ctime">' +
       esc(mc.merchant_time_relative_ar || "—") +
       "</div></td>" +
       '<td><span class="chip ' +
@@ -4116,8 +4124,8 @@
     return (
       "<tr>" +
       "<td><div class=\"camt\">" +
-      v.toLocaleString("en-US") +
-      ' ر</div><div class="ctime">' +
+      formatMerchantSar(v) +
+      '</div><div class="ctime">' +
       esc(mc.merchant_time_relative_ar || "—") +
       "</div></td>" +
       '<td><span class="chip ' +
@@ -4185,8 +4193,8 @@
       (archived ? ' class="ma-row-archived" data-ma-archived-visual="1"' : "") +
       ">" +
       "<td><div class=\"camt\">" +
-      v.toLocaleString("en-US") +
-      ' ر</div><div class="ctime">' +
+      formatMerchantSar(v) +
+      '</div><div class="ctime">' +
       esc(mc.merchant_time_relative_ar || "—") +
       "</div></td>" +
       '<td><span class="chip ' +
@@ -4674,7 +4682,7 @@
       "</div>" +
       '<div class="vi"><div class="vamt">' +
       esc(vr.amount_display) +
-      ' ريال</div><div class="vtm">' +
+      ' ر.س</div><div class="vtm">' +
       esc(vr.subtitle_ar) +
       '</div></div><span class="vtag">VIP</span>' +
       btn +
@@ -4713,7 +4721,7 @@
     return (
       "<tr><td><div class=\"camt\">" +
       esc(vr.amount_display) +
-      ' ريال</div></td><td><div class="ctime">' +
+      ' ر.س</div></td><td><div class="ctime">' +
       esc(vr.subtitle_ar) +
       "</div></td><td>" +
       hp +
@@ -4999,8 +5007,8 @@
     var camt =
       cv != null && cv !== ""
         ? '<div class="camt">' +
-          Math.round(parseFloat(cv)) +
-          " ر</div>"
+          formatMerchantSar(cv) +
+          "</div>"
         : '<div class="camt">—</div>';
     var digits = !!fr.customer_wa_digits;
     var ph = digits

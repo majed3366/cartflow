@@ -402,7 +402,7 @@ body[data-ma-page="vip"] #ma-page-hero-global {
 
 .ma-mi-group-card__title {
   margin: 0;
-  font-size: var(--ma-type-md);
+  font-size: var(--pds-type-story, var(--ma-type-lg, 16px));
   font-weight: 800;
   color: var(--v2-ink, #0b1220);
 }
