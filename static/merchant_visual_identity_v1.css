@@ -638,11 +638,12 @@ body[data-cf-merchant-app="1"] #ma-cart-filters .filter-btn {
   color: var(--cfvi-ink-soft);
 }
 
+body[data-cf-merchant-app="1"] #page-carts.ma-pe-v2 #ma-cart-filters .filter-btn.active,
 body[data-cf-merchant-app="1"] #page-carts .filter-btn.active,
 body[data-cf-merchant-app="1"] #ma-cart-filters .filter-btn.active {
-  background: var(--cfvi-primary);
-  border-color: var(--cfvi-primary-deep);
-  color: #fff;
+  background: var(--cfvi-primary) !important;
+  border-color: var(--cfvi-primary-deep) !important;
+  color: #fff !important;
   box-shadow: 0 4px 12px rgba(13, 148, 136, 0.25);
 }
 
