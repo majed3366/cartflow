@@ -3054,7 +3054,7 @@
       '<p class="v2-action-eyebrow">المحددة · ' +
       v.toLocaleString("en-US") +
       " ر.س</p>" +
-      '<h2 class="v2-action-headline" style="font-size:1.15rem;">' +
+      '<h2 class="v2-action-headline">' +
       esc(merchantPeV2ConvHeadline(expl, mc)) +
       "</h2>" +
       merchantPeV2PrimaryActionHtml(mc)
@@ -5027,7 +5027,7 @@
       "</span></td>" +
       '<td><div class="msg-text" style="margin:0;">' +
       esc(fr.last_message_line_ar || "—") +
-      '</div></td><td><div class="ctime" style="font-size:12px;font-weight:600;">' +
+      '</div></td><td><div class="ctime">' +
       esc(merchantAttemptsDisplayAr(fr)) +
       "</div></td><td>" +
       ph +
@@ -5300,7 +5300,7 @@
       '<input type="hidden" class="mw-reason-key" value="' +
       k +
       '">' +
-      '<p class="ma-fw-field-hint" style="margin:0 0 4px 0;font-size:12px;opacity:0.85;">هذا النص هو ما يظهر للعميل داخل الودجيت.</p>' +
+      '<p class="ma-fw-field-hint" style="margin:0 0 4px 0;opacity:0.85;">هذا النص هو ما يظهر للعميل داخل الودجيت.</p>' +
       '<input class="ma-fw-input mw-reason-label" type="text" maxlength="80" value="' +
       lab +
       '" dir="rtl" autocomplete="off">' +

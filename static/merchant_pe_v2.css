@@ -5,7 +5,7 @@
 @import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700;800&display=swap");
 
 :root {
-  --v2-font: var(--cfvi-font-certified, Arial, "IBM Plex Sans Arabic", system-ui, sans-serif);
+  --v2-font: var(--cfvi-font-certified, Arial, sans-serif);
   --v2-bg: #f4f6fa;
   --v2-bg-hero: linear-gradient(165deg, #0f766e 0%, #134e4a 48%, #0b1220 100%);
   --v2-surface: #ffffff;

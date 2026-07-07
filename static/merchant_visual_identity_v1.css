@@ -6,7 +6,7 @@
 
 :root {
   /* Typography certification token — do not hardcode in architecture elsewhere */
-  --cfvi-font-certified: Arial, "IBM Plex Sans Arabic", system-ui, sans-serif;
+  --cfvi-font-certified: Arial, sans-serif;
   --pds-font: var(--cfvi-font-certified);
   --cfvi-font: var(--cfvi-font-certified);
 

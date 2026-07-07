@@ -1,0 +1,320 @@
+/**
+ * Typography Lock V1 — final merchant typography certification.
+ * Presentation only: font-family, font-size, font-weight, line-height.
+ * Loaded last — overrides legacy merchant_app.css / PE v2 drift.
+ * Constitution: docs/cartflow_product_design_system_v1.md
+ */
+
+:root {
+  /* Rule 1 — single certified typeface */
+  --cftyp-font: Arial, sans-serif;
+
+  /* Alias all legacy font tokens to the lock */
+  --cfvi-font-certified: var(--cftyp-font);
+  --cfvi-font: var(--cftyp-font);
+  --pds-font: var(--cftyp-font);
+  --v2-font: var(--cftyp-font);
+
+  /* Rule 2 — certified typography token system */
+  --cftyp-hero-title-size: clamp(1.35rem, 3.5vw, 1.65rem);
+  --cftyp-hero-title-weight: 800;
+  --cftyp-hero-title-lh: 1.25;
+
+  --cftyp-hero-subtitle-size: 14px;
+  --cftyp-hero-subtitle-weight: 500;
+  --cftyp-hero-subtitle-lh: 1.55;
+
+  --cftyp-page-title-size: 20px;
+  --cftyp-page-title-weight: 800;
+  --cftyp-page-title-lh: 1.3;
+
+  --cftyp-section-title-size: 16px;
+  --cftyp-section-title-weight: 700;
+  --cftyp-section-title-lh: 1.35;
+
+  --cftyp-card-title-size: 14px;
+  --cftyp-card-title-weight: 700;
+  --cftyp-card-title-lh: 1.35;
+
+  --cftyp-card-subtitle-size: 13px;
+  --cftyp-card-subtitle-weight: 500;
+  --cftyp-card-subtitle-lh: 1.5;
+
+  --cftyp-body-size: 14px;
+  --cftyp-body-weight: 400;
+  --cftyp-body-lh: 1.5;
+
+  --cftyp-body-secondary-size: 13px;
+  --cftyp-body-secondary-weight: 400;
+  --cftyp-body-secondary-lh: 1.5;
+
+  --cftyp-caption-size: 13px;
+  --cftyp-caption-weight: 500;
+  --cftyp-caption-lh: 1.45;
+
+  --cftyp-button-size: 13px;
+  --cftyp-button-weight: 700;
+  --cftyp-button-lh: 1.2;
+
+  --cftyp-badge-size: 11px;
+  --cftyp-badge-weight: 700;
+  --cftyp-badge-lh: 1.2;
+
+  --cftyp-table-size: 13px;
+  --cftyp-table-weight: 600;
+  --cftyp-table-lh: 1.45;
+
+  --cftyp-numeric-size: 15px;
+  --cftyp-numeric-weight: 800;
+  --cftyp-numeric-lh: 1.2;
+
+  --cftyp-currency-size: 15px;
+  --cftyp-currency-weight: 800;
+  --cftyp-currency-lh: 1.2;
+
+  /* Legacy scale aliases — one rhythm */
+  --ma-type-xs: var(--cftyp-badge-size);
+  --ma-type-sm: var(--cftyp-caption-size);
+  --ma-type-md: var(--cftyp-body-size);
+  --ma-type-lg: var(--cftyp-section-title-size);
+  --ma-type-xl: var(--cftyp-page-title-size);
+  --ma-type-2xl: 24px;
+
+  --cfvi-type-hero: var(--cftyp-hero-title-size);
+  --cfvi-type-section: var(--cftyp-page-title-size);
+  --cfvi-type-story: var(--cftyp-section-title-size);
+  --cfvi-type-card: var(--cftyp-card-title-size);
+  --cfvi-type-body: var(--cftyp-body-size);
+  --cfvi-type-caption: var(--cftyp-caption-size);
+  --cfvi-type-metric: var(--cftyp-numeric-size);
+  --cfvi-type-whisper: var(--cftyp-badge-size);
+  --cfvi-type-button: var(--cftyp-button-size);
+  --cfvi-type-link: var(--cftyp-caption-size);
+
+  --pds-type-hero: var(--cftyp-hero-title-size);
+  --pds-type-section: var(--cftyp-page-title-size);
+  --pds-type-story: var(--cftyp-section-title-size);
+  --pds-type-body: var(--cftyp-body-size);
+  --pds-type-caption: var(--cftyp-caption-size);
+  --pds-type-whisper: var(--cftyp-badge-size);
+  --pds-type-numeric: var(--cftyp-numeric-size);
+  --pds-type-button: var(--cftyp-button-size);
+}
+
+/* Rule 1 — universal Arial lock (monospace diagnostic text exempt) */
+body[data-cf-merchant-app="1"],
+body[data-cf-merchant-app="1"] *:not(.ma-msg-mono):not(code):not(pre):not(kbd):not(samp) {
+  font-family: var(--cftyp-font) !important;
+}
+
+body[data-cf-merchant-app="1"] {
+  font-size: var(--cftyp-body-size) !important;
+  font-weight: var(--cftyp-body-weight) !important;
+  line-height: var(--cftyp-body-lh) !important;
+}
+
+/* Rule 4 — Hero title */
+body[data-cf-merchant-app="1"] .ma-vi-hero .ma-page-hero__title,
+body[data-cf-merchant-app="1"] #ma-page-hero-global.ma-vi-hero .ma-page-hero__title,
+body[data-cf-merchant-app="1"] .ma-page-hero--inline.ma-vi-hero .ma-page-hero__title,
+body[data-cf-merchant-app="1"] .v2-hero-title,
+body[data-cf-merchant-app="1"] .ma-page-hero__title,
+body[data-cf-merchant-app="1"] .page-h1 {
+  font-size: var(--cftyp-hero-title-size) !important;
+  font-weight: var(--cftyp-hero-title-weight) !important;
+  line-height: var(--cftyp-hero-title-lh) !important;
+}
+
+/* Rule 10 — hero subtitles: one token everywhere */
+body[data-cf-merchant-app="1"] .ma-vi-hero .ma-page-hero__purpose,
+body[data-cf-merchant-app="1"] #ma-page-hero-global.ma-vi-hero .ma-page-hero__purpose,
+body[data-cf-merchant-app="1"] .ma-page-hero--inline.ma-vi-hero .ma-page-hero__purpose,
+body[data-cf-merchant-app="1"] .v2-hero-purpose,
+body[data-cf-merchant-app="1"] .ma-vi-hero #pageSub,
+body[data-cf-merchant-app="1"] #ma-page-hero-global.ma-vi-hero #pageSub,
+body[data-cf-merchant-app="1"] .ma-page-hero--inline.ma-vi-hero #pageSub,
+body[data-cf-merchant-app="1"] .ma-page-summary.ma-vi-hero__summary {
+  font-size: var(--cftyp-hero-subtitle-size) !important;
+  font-weight: var(--cftyp-hero-subtitle-weight) !important;
+  line-height: var(--cftyp-hero-subtitle-lh) !important;
+}
+
+/* Rule 4 — Page title (non-hero) */
+body[data-cf-merchant-app="1"] .ma-content-head,
+body[data-cf-merchant-app="1"] .topbar-title {
+  font-size: var(--cftyp-page-title-size) !important;
+  font-weight: var(--cftyp-page-title-weight) !important;
+  line-height: var(--cftyp-page-title-lh) !important;
+}
+
+/* Rule 4 — Section title */
+body[data-cf-merchant-app="1"] .ma-mi-group-card__title,
+body[data-cf-merchant-app="1"] .ma-home-section__title,
+body[data-cf-merchant-app="1"] .v2-action-headline,
+body[data-cf-merchant-app="1"] .ma-plan-name,
+body[data-cf-merchant-app="1"] .ma-wa-mode-card-title,
+body[data-cf-merchant-app="1"] .card-head h3,
+body[data-cf-merchant-app="1"] .v2-queue-title {
+  font-size: var(--cftyp-section-title-size) !important;
+  font-weight: var(--cftyp-section-title-weight) !important;
+  line-height: var(--cftyp-section-title-lh) !important;
+}
+
+/* Rule 4 + 11 — Card title (automatic inheritance) */
+body[data-cf-merchant-app="1"] .setting-title,
+body[data-cf-merchant-app="1"] .ma-vi-card__title,
+body[data-cf-merchant-app="1"] .ma-fw-label,
+body[data-cf-merchant-app="1"] .kpi-label,
+body[data-cf-merchant-app="1"] .mc-l,
+body[data-cf-merchant-app="1"] .va-title {
+  font-size: var(--cftyp-card-title-size) !important;
+  font-weight: var(--cftyp-card-title-weight) !important;
+  line-height: var(--cftyp-card-title-lh) !important;
+}
+
+/* Card subtitle */
+body[data-cf-merchant-app="1"] .setting-desc,
+body[data-cf-merchant-app="1"] .ma-vi-card__desc,
+body[data-cf-merchant-app="1"] .ma-plan-tagline,
+body[data-cf-merchant-app="1"] .ma-wa-mode-card-desc {
+  font-size: var(--cftyp-card-subtitle-size) !important;
+  font-weight: var(--cftyp-card-subtitle-weight) !important;
+  line-height: var(--cftyp-card-subtitle-lh) !important;
+}
+
+/* Body + secondary */
+body[data-cf-merchant-app="1"] .page,
+body[data-cf-merchant-app="1"] .main,
+body[data-cf-merchant-app="1"] .setting-card,
+body[data-cf-merchant-app="1"] .ma-vi-card,
+body[data-cf-merchant-app="1"] .msg-text,
+body[data-cf-merchant-app="1"] .empty-text,
+body[data-cf-merchant-app="1"] .v2-action-why,
+body[data-cf-merchant-app="1"] .v2-queue-sub {
+  font-size: var(--cftyp-body-size) !important;
+  font-weight: var(--cftyp-body-weight) !important;
+  line-height: var(--cftyp-body-lh) !important;
+}
+
+body[data-cf-merchant-app="1"] .ma-fw-field-hint,
+body[data-cf-merchant-app="1"] .page-sub:not(.ma-vi-hero *),
+body[data-cf-merchant-app="1"] .ma-page-hero__purpose:not(.ma-vi-hero *) {
+  font-size: var(--cftyp-body-secondary-size) !important;
+  font-weight: var(--cftyp-body-secondary-weight) !important;
+  line-height: var(--cftyp-body-secondary-lh) !important;
+}
+
+/* Caption */
+body[data-cf-merchant-app="1"] .ma-page-summary:not(.ma-vi-hero__summary),
+body[data-cf-merchant-app="1"] .topbar-date,
+body[data-cf-merchant-app="1"] .ma-plans-footnote,
+body[data-cf-merchant-app="1"] .ma-sub-footnote {
+  font-size: var(--cftyp-caption-size) !important;
+  font-weight: var(--cftyp-caption-weight) !important;
+  line-height: var(--cftyp-caption-lh) !important;
+}
+
+/* Rule 7 — Buttons: identical typography */
+body[data-cf-merchant-app="1"] button,
+body[data-cf-merchant-app="1"] .btn,
+body[data-cf-merchant-app="1"] .v2-btn,
+body[data-cf-merchant-app="1"] .ma-fw-btn,
+body[data-cf-merchant-app="1"] .setting-btn,
+body[data-cf-merchant-app="1"] .ma-gtb-btn,
+body[data-cf-merchant-app="1"] .ma-plan-cta,
+body[data-cf-merchant-app="1"] .ma-wa-mode-card-btn,
+body[data-cf-merchant-app="1"] input[type="submit"],
+body[data-cf-merchant-app="1"] .filter-btn {
+  font-size: var(--cftyp-button-size) !important;
+  font-weight: var(--cftyp-button-weight) !important;
+  line-height: var(--cftyp-button-lh) !important;
+}
+
+/* Rule 8 — Badges, chips, counters, filters */
+body[data-cf-merchant-app="1"] .nb,
+body[data-cf-merchant-app="1"] .ma-sub-plan-pill,
+body[data-cf-merchant-app="1"] .ma-sub-status-pill,
+body[data-cf-merchant-app="1"] .ma-sub-source-pill,
+body[data-cf-merchant-app="1"] .ma-sc-status-pill,
+body[data-cf-merchant-app="1"] .ma-plan-badge,
+body[data-cf-merchant-app="1"] .wa-pill,
+body[data-cf-merchant-app="1"] .ma-gtb-badge,
+body[data-cf-merchant-app="1"] .ma-vi-badge {
+  font-size: var(--cftyp-badge-size) !important;
+  font-weight: var(--cftyp-badge-weight) !important;
+  line-height: var(--cftyp-badge-lh) !important;
+}
+
+/* Rule 9 — Sidebar = page typography */
+body[data-cf-merchant-app="1"] #ma-context-sidebar,
+body[data-cf-merchant-app="1"] #ma-context-sidebar .nav-item,
+body[data-cf-merchant-app="1"] #ma-context-sidebar .ma-csb-title,
+body[data-cf-merchant-app="1"] .ma-gtb-section,
+body[data-cf-merchant-app="1"] .ma-gtb-logo {
+  font-size: var(--cftyp-caption-size) !important;
+  font-weight: var(--cftyp-caption-weight) !important;
+  line-height: var(--cftyp-caption-lh) !important;
+}
+
+body[data-cf-merchant-app="1"] #ma-context-sidebar .nav-item.active,
+body[data-cf-merchant-app="1"] .ma-gtb-section.active {
+  font-weight: var(--cftyp-button-weight) !important;
+}
+
+/* Rule 5 + 6 — Numeric + currency */
+body[data-cf-merchant-app="1"] .kpi-value,
+body[data-cf-merchant-app="1"] .mc-v,
+body[data-cf-merchant-app="1"] .camt,
+body[data-cf-merchant-app="1"] .v2-queue-amount,
+body[data-cf-merchant-app="1"] .ma-plan-price-main,
+body[data-cf-merchant-app="1"] .ma-mi-group-card__metric,
+body[data-cf-merchant-app="1"] [data-cf-currency],
+body[data-cf-merchant-app="1"] .cftyp-currency,
+body[data-cf-merchant-app="1"] .cftyp-numeric {
+  font-size: var(--cftyp-numeric-size) !important;
+  font-weight: var(--cftyp-numeric-weight) !important;
+  line-height: var(--cftyp-numeric-lh) !important;
+  font-variant-numeric: tabular-nums;
+}
+
+body[data-cf-merchant-app="1"] .cftyp-currency,
+body[data-cf-merchant-app="1"] [data-cf-currency="1"] {
+  font-size: var(--cftyp-currency-size) !important;
+  font-weight: var(--cftyp-currency-weight) !important;
+}
+
+/* Rule — Table cells */
+body[data-cf-merchant-app="1"] table,
+body[data-cf-merchant-app="1"] th,
+body[data-cf-merchant-app="1"] td,
+body[data-cf-merchant-app="1"] .ctime,
+body[data-cf-merchant-app="1"] .ma-dash-table {
+  font-size: var(--cftyp-table-size) !important;
+  font-weight: var(--cftyp-table-weight) !important;
+  line-height: var(--cftyp-table-lh) !important;
+}
+
+/* Settings / alert banners — caption scale, not arbitrary px */
+body[data-cf-merchant-app="1"] .ma-settings-banner,
+body[data-cf-merchant-app="1"] #ma-vip-settings-err,
+body[data-cf-merchant-app="1"] #ma-vip-settings-ok,
+body[data-cf-merchant-app="1"] #ma-wa-settings-err,
+body[data-cf-merchant-app="1"] #ma-wa-settings-ok,
+body[data-cf-merchant-app="1"] #ma-store-connection-err,
+body[data-cf-merchant-app="1"] #ma-store-connection-ok,
+body[data-cf-merchant-app="1"] #ma-general-settings-err,
+body[data-cf-merchant-app="1"] #ma-general-settings-ok {
+  font-size: var(--cftyp-caption-size) !important;
+  font-weight: var(--cftyp-caption-weight) !important;
+  line-height: var(--cftyp-caption-lh) !important;
+}
+
+/* Inputs inherit body rhythm */
+body[data-cf-merchant-app="1"] input,
+body[data-cf-merchant-app="1"] textarea,
+body[data-cf-merchant-app="1"] select,
+body[data-cf-merchant-app="1"] .ma-fw-input {
+  font-size: var(--cftyp-body-size) !important;
+  font-weight: var(--cftyp-body-weight) !important;
+  line-height: var(--cftyp-body-lh) !important;
+}

@@ -6,12 +6,12 @@
 <meta name="cartflow-merchant-setup-build" content="{{ merchant_setup_render_build | default('unknown') }}">
 <title>{{ merchant_html_title | default("CartFlow — لوحة التاجر") }}</title>
 <script>window.CARTFLOW_STORE_SLUG = "{{ merchant_store_slug | default('demo') }}";</script>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/static/merchant_app.css">
 <link rel="stylesheet" href="/static/merchant_pe_v2.css?v={{ merchant_setup_render_build | default('unknown') }}">
 <link rel="stylesheet" href="/static/merchant_product_polish_v1.css?v={{ merchant_setup_render_build | default('unknown') }}">
 <link rel="stylesheet" href="/static/merchant_pds_compliance_v1.css?v={{ merchant_setup_render_build | default('unknown') }}">
 <link rel="stylesheet" href="/static/merchant_visual_identity_v1.css?v={{ merchant_setup_render_build | default('unknown') }}">
+<link rel="stylesheet" href="/static/merchant_typography_certification_v1.css?v={{ merchant_setup_render_build | default('unknown') }}">
 </head>
 <body data-cf-merchant-app="1">
 
@@ -293,7 +293,7 @@
               <td>{% if fr.cart_value is not none %}<div class="camt">{{ "{:,.0f}".format(fr.cart_value|float) }} ر</div>{% else %}<div class="camt">—</div>{% endif %}<div class="ctime">{{ fr.replied_at | default("—") }}</div></td>
               <td><span class="chip c-other">{{ fr.reason_tag_ar | default(fr.reason_ar) | default("—") }}</span></td>
               <td><div class="msg-text" style="margin:0;">{{ fr.last_message_line_ar | default("—") }}</div></td>
-              <td><div class="ctime" style="font-size:12px;font-weight:600;">{{ fr.attempts_ar | default("—") }}</div></td>
+              <td><div class="ctime">{{ fr.attempts_ar | default("—") }}</div></td>
               <td>{% if fr.customer_wa_digits %}<span class="ph-ok">✓ متوفر</span>{% else %}<span class="ph-no">✗ غير متوفر</span>{% endif %}</td>
               <td>{% include "partials/merchant_followup_compact_block.html" %}</td>
             </tr>
@@ -349,8 +349,8 @@
       <p class="ma-page-hero__purpose">سلال عالية القيمة تحتاج متابعة خاصة منك.</p>
     </header>
 
-    <div id="ma-vip-settings-err" style="display:none;margin-bottom:10px;padding:10px 12px;border-radius:10px;border:1px solid #fecaca;background:#fef2f2;color:#991b1b;font-size:13px;"></div>
-    <div id="ma-vip-settings-ok" style="display:none;margin-bottom:10px;padding:10px 12px;border-radius:10px;border:1px solid #bbf7d0;background:#f0fdf4;color:#166534;font-size:13px;">تم حفظ إعدادات السلال المهمة</div>
+    <div id="ma-vip-settings-err" class="ma-settings-banner" style="display:none;margin-bottom:10px;padding:10px 12px;border-radius:10px;border:1px solid #fecaca;background:#fef2f2;color:#991b1b;"></div>
+    <div id="ma-vip-settings-ok" class="ma-settings-banner" style="display:none;margin-bottom:10px;padding:10px 12px;border-radius:10px;border:1px solid #bbf7d0;background:#f0fdf4;color:#166534;">تم حفظ إعدادات السلال المهمة</div>
     <div class="setting-card ma-fw-card ma-vip-simple-card" style="margin-bottom:16px;">
       <div class="setting-title">VIP — السلال المهمة</div>
       <form id="ma-vip-settings-form" class="ma-fw-form" autocomplete="off">
@@ -702,8 +702,8 @@
   </div>
 
   <div class="page ma-page-compact" id="page-whatsapp">
-    <div id="ma-wa-settings-err" style="display:none;margin-bottom:10px;padding:10px 12px;border-radius:10px;border:1px solid #fecaca;background:#fef2f2;color:#991b1b;font-size:13px;"></div>
-    <div id="ma-wa-settings-ok" style="display:none;margin-bottom:10px;padding:10px 12px;border-radius:10px;border:1px solid #bbf7d0;background:#f0fdf4;color:#166534;font-size:13px;">تم حفظ إعدادات الواتساب.</div>
+    <div id="ma-wa-settings-err" class="ma-settings-banner" style="display:none;margin-bottom:10px;padding:10px 12px;border-radius:10px;border:1px solid #fecaca;background:#fef2f2;color:#991b1b;"></div>
+    <div id="ma-wa-settings-ok" class="ma-settings-banner" style="display:none;margin-bottom:10px;padding:10px 12px;border-radius:10px;border:1px solid #bbf7d0;background:#f0fdf4;color:#166534;">تم حفظ إعدادات الواتساب.</div>
     <div class="ma-wa-v2-layout settings-grid">
       <div class="setting-card ma-fw-card ma-wa-v2-card" style="grid-column:1/-1;">
         <div class="ma-wa-mode-selection-wrap" id="ma-wa-mode-selection-root" aria-live="polite">
@@ -733,7 +733,7 @@
                     <option value="test">اختبار</option>
                     <option value="production">إنتاج</option>
                   </select>
-                  <p id="ma-wa-provider-hint" class="ma-fw-field-hint" style="margin:4px 0 0;font-size:12px;opacity:0.85;"></p>
+                  <p id="ma-wa-provider-hint" class="ma-fw-field-hint" style="margin:4px 0 0;opacity:0.85;"></p>
                 </div>
               </div>
             </details>
@@ -809,8 +809,8 @@
   </div>
 
   <div class="page ma-page-compact" id="page-settings">
-    <div id="ma-store-connection-err" style="display:none;margin-bottom:10px;padding:10px 12px;border-radius:10px;border:1px solid #fecaca;background:#fef2f2;color:#991b1b;font-size:13px;"></div>
-    <div id="ma-store-connection-ok" style="display:none;margin-bottom:10px;padding:10px 12px;border-radius:10px;border:1px solid #bbf7d0;background:#f0fdf4;color:#166534;font-size:13px;"></div>
+    <div id="ma-store-connection-err" class="ma-settings-banner" style="display:none;margin-bottom:10px;padding:10px 12px;border-radius:10px;border:1px solid #fecaca;background:#fef2f2;color:#991b1b;"></div>
+    <div id="ma-store-connection-ok" class="ma-settings-banner" style="display:none;margin-bottom:10px;padding:10px 12px;border-radius:10px;border:1px solid #bbf7d0;background:#f0fdf4;color:#166534;"></div>
     <div class="setting-card ma-fw-card ma-store-connection-card" id="ma-store-connection-root" style="grid-column:1/-1;margin-bottom:14px;">
       <div class="ma-store-connection-head">
         <div>
@@ -877,8 +877,8 @@
         <button type="button" class="ma-fw-save ma-sc-btn ma-sc-btn-secondary" id="ma-sub-compare-btn" onclick="if(window.goTo){goTo('plans');}">قارن الباقات</button>
       </div>
     </div>
-    <div id="ma-general-settings-err" style="display:none;margin-bottom:10px;padding:10px 12px;border-radius:10px;border:1px solid #fecaca;background:#fef2f2;color:#991b1b;font-size:13px;"></div>
-    <div id="ma-general-settings-ok" style="display:none;margin-bottom:10px;padding:10px 12px;border-radius:10px;border:1px solid #bbf7d0;background:#f0fdf4;color:#166534;font-size:13px;">تم حفظ الإعدادات</div>
+    <div id="ma-general-settings-err" class="ma-settings-banner" style="display:none;margin-bottom:10px;padding:10px 12px;border-radius:10px;border:1px solid #fecaca;background:#fef2f2;color:#991b1b;"></div>
+    <div id="ma-general-settings-ok" class="ma-settings-banner" style="display:none;margin-bottom:10px;padding:10px 12px;border-radius:10px;border:1px solid #bbf7d0;background:#f0fdf4;color:#166534;">تم حفظ الإعدادات</div>
     <form id="ma-general-settings-form" class="ma-fw-form" autocomplete="off">
       <div class="settings-grid">
         <div class="setting-card ma-fw-card">
@@ -887,21 +887,21 @@
           <div class="setting-row" style="align-items:flex-start;justify-content:space-between;gap:12px;">
             <div>
               <label class="ma-fw-label" for="ma-general-notify-vip" style="margin:0;">تنبيه سلة VIP</label>
-              <p class="ma-fw-field-hint" style="margin:4px 0 0;font-size:12px;opacity:0.85;">إشعار عند ظهور سلة مهمة.</p>
+              <p class="ma-fw-field-hint" style="margin:4px 0 0;opacity:0.85;">إشعار عند ظهور سلة مهمة.</p>
             </div>
             <label class="ma-fw-check"><input type="checkbox" id="ma-general-notify-vip" name="settings_notify_vip" value="1"></label>
           </div>
           <div class="setting-row" style="align-items:flex-start;justify-content:space-between;gap:12px;">
             <div>
               <label class="ma-fw-label" for="ma-general-notify-recovery" style="margin:0;">تنبيه إيراد مسترجع</label>
-              <p class="ma-fw-field-hint" style="margin:4px 0 0;font-size:12px;opacity:0.85;">إشعار عند استعادة عملية شراء.</p>
+              <p class="ma-fw-field-hint" style="margin:4px 0 0;opacity:0.85;">إشعار عند استعادة عملية شراء.</p>
             </div>
             <label class="ma-fw-check"><input type="checkbox" id="ma-general-notify-recovery" name="settings_notify_recovery_success" value="1"></label>
           </div>
           <div class="setting-row" style="align-items:flex-start;justify-content:space-between;gap:12px;">
             <div>
               <label class="ma-fw-label" for="ma-general-notify-wa-fail" style="margin:0;">تنبيه انقطاع واتساب</label>
-              <p class="ma-fw-field-hint" style="margin:4px 0 0;font-size:12px;opacity:0.85;">إشعار عند وجود مشكلة إرسال.</p>
+              <p class="ma-fw-field-hint" style="margin:4px 0 0;opacity:0.85;">إشعار عند وجود مشكلة إرسال.</p>
             </div>
             <label class="ma-fw-check"><input type="checkbox" id="ma-general-notify-wa-fail" name="settings_notify_whatsapp_failure" value="1"></label>
           </div>
