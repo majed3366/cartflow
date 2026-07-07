@@ -351,7 +351,13 @@ def build_canonical_normal_carts_payload(
         page_offset=0,
         debug_perf=False,
     )
-    return dict(body), dict(prof), perf
+    out = dict(body)
+    from services.merchant_intelligence_v1 import (  # noqa: PLC0415
+        ensure_normal_carts_merchant_intelligence_store_v1,
+    )
+
+    ensure_normal_carts_merchant_intelligence_store_v1(out)
+    return out, dict(prof), perf
 
 
 def build_and_guard_normal_carts_snapshot_write(

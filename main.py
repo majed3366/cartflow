@@ -19739,10 +19739,10 @@ def _api_json_dashboard_normal_carts(
         merchant_carts_page_rows = list(body.get("merchant_carts_page_rows") or [])
         try:
             from services.merchant_intelligence_v1 import (  # noqa: PLC0415
-                attach_store_merchant_intelligence_v1,
+                ensure_normal_carts_merchant_intelligence_store_v1,
             )
 
-            attach_store_merchant_intelligence_v1(body, merchant_carts_page_rows)
+            ensure_normal_carts_merchant_intelligence_store_v1(body)
         except Exception:  # noqa: BLE001
             pass
         try:

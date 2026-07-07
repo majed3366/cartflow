@@ -122,6 +122,9 @@ Raw cart rows appear **last**, never first.
 | `static/merchant_product_polish_v1.css` | Group card styles |
 | `templates/merchant_app.html` | Carts shell + script load |
 | `services/dashboard_snapshot_normal_carts_slim_v1.py` | Snapshot allowlist for MI fields |
+| `services/dashboard_snapshot_read_v1.py` | Snapshot read — MI store attach |
+| `services/dashboard_snapshot_normal_carts_parity_v1.py` | Snapshot write — MI store attach |
+| `services/merchant_intelligence_v1.py` | `ensure_normal_carts_merchant_intelligence_store_v1()` |
 
 ---
 
@@ -138,12 +141,13 @@ Raw cart rows appear **last**, never first.
 | Representative + collapsed remainder | `splitRepresentative` + `ma-mi-group-more` |
 | Story order in expand | why → CartFlow → recommendation → representatives |
 | Snapshot MI fields | allowlist includes MI keys |
+| Snapshot transport | `merchant_intelligence_store_v1` on read + write paths |
 | Regression | Carts conversation panel still wired |
 
 Run:
 
 ```bash
-python -m unittest tests.test_merchant_intelligence_consumption_carts_v1 tests.test_merchant_carts_workspace_experience_v1 tests.test_merchant_product_polish_v1 -v
+python -m pytest tests/test_merchant_intelligence_consumption_carts_v1.py tests/test_merchant_intelligence_snapshot_transport_v1.py tests/test_merchant_carts_workspace_experience_v1.py tests/test_merchant_product_polish_v1.py -q
 ```
 
 ---

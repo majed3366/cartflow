@@ -1008,6 +1008,16 @@ def attach_store_merchant_intelligence_v1(
     )
 
 
+def ensure_normal_carts_merchant_intelligence_store_v1(
+    payload: Mapping[str, Any] | dict[str, Any],
+) -> None:
+    """Normal-carts transport contract — store MI bundle on every API/snapshot payload."""
+    if not isinstance(payload, dict):
+        return
+    rows = list(payload.get("merchant_carts_page_rows") or [])
+    attach_store_merchant_intelligence_v1(payload, rows)
+
+
 def get_merchant_intelligence_observability_v1() -> dict[str, Any]:
     return {
         "version": INTELLIGENCE_VERSION,
@@ -1062,6 +1072,7 @@ __all__ = [
     "assign_cart_intelligence_group",
     "attach_merchant_intelligence_v1",
     "attach_store_merchant_intelligence_v1",
+    "ensure_normal_carts_merchant_intelligence_store_v1",
     "build_cart_merchant_intelligence_v1",
     "build_memory_beats_v1",
     "build_merchant_priorities_v1",

@@ -430,6 +430,11 @@ def build_normal_carts_from_snapshot(
             )
         except Exception:  # noqa: BLE001
             pass
+        from services.merchant_intelligence_v1 import (  # noqa: PLC0415
+            ensure_normal_carts_merchant_intelligence_store_v1,
+        )
+
+        ensure_normal_carts_merchant_intelligence_store_v1(body)
         return enforce_route_budget(body, wall0=wall0, endpoint="normal-carts")
 
 
