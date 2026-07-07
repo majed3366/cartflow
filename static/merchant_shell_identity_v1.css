@@ -1,0 +1,167 @@
+/**
+ * PDS Final Closure V1 — Workstream A: CartFlow Shell Identity
+ * Top bar, sidebar, mobile drawer, chrome rhythm. Presentation only.
+ */
+
+:root {
+  --cfpds-shell-bg: var(--cfvi-chrome-bg, linear-gradient(165deg, #0f766e 0%, #134e4a 46%, #0f4229 100%));
+  --cfpds-shell-shadow: var(--cfvi-chrome-shadow, 0 4px 24px rgba(11, 18, 32, 0.18));
+  --cfpds-shell-active: var(--cfvi-chrome-active, rgba(255, 255, 255, 0.22));
+  --cfpds-shell-hover: rgba(255, 255, 255, 0.12);
+  --cfpds-shell-border: rgba(255, 255, 255, 0.1);
+  --cfpds-shell-radius: 12px;
+  --cfpds-shell-pill-radius: 10px;
+  --cfpds-shell-motion: var(--cfvi-motion-medium, 0.22s ease-out);
+  --cfpds-shell-height: 56px;
+  --cfpds-sidebar-width: var(--sidebar-width, 240px);
+}
+
+/* ——— App shell frame ——— */
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-app-shell,
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-dashboard-frame {
+  background: var(--cfvi-bg);
+}
+
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-content-root {
+  background: var(--cfvi-bg);
+}
+
+/* ——— Top navigation ——— */
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-global-topbar {
+  min-height: var(--cfpds-shell-height);
+  background: var(--cfpds-shell-bg);
+  border-bottom: 1px solid var(--cfpds-shell-border);
+  box-shadow: var(--cfpds-shell-shadow);
+  padding-inline: var(--cfvi-space-md);
+  gap: var(--cfvi-space-sm);
+}
+
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-gtb-logo {
+  letter-spacing: -0.02em;
+  color: #fff;
+  transition: opacity var(--cfpds-shell-motion);
+}
+
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-gtb-logo:hover {
+  opacity: 0.92;
+}
+
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-gtb-section {
+  border: 1px solid transparent;
+  border-radius: var(--cfpds-shell-pill-radius);
+  transition:
+    background var(--cfpds-shell-motion),
+    color var(--cfpds-shell-motion),
+    box-shadow var(--cfpds-shell-motion),
+    border-color var(--cfpds-shell-motion);
+}
+
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-gtb-section:hover {
+  background: var(--cfpds-shell-hover);
+  border-color: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-gtb-section.active {
+  background: var(--cfpds-shell-active);
+  border-color: rgba(255, 255, 255, 0.14);
+  box-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(8px);
+}
+
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-gtb-util,
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-gtb-util--text,
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-gtb-menu {
+  border-radius: var(--cfpds-shell-pill-radius);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.92);
+  transition:
+    background var(--cfpds-shell-motion),
+    border-color var(--cfpds-shell-motion),
+    transform var(--cfvi-motion-fast);
+}
+
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-gtb-util:hover,
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-gtb-menu:hover {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.28);
+}
+
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-gtb-date {
+  color: rgba(255, 255, 255, 0.72);
+}
+
+/* ——— Context sidebar ——— */
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-context-sidebar,
+body[data-cf-merchant-app="1"].cf-pds-closure .sidebar {
+  background: var(--cfpds-shell-bg);
+  box-shadow: var(--cfpds-shell-shadow);
+  border-left: 1px solid var(--cfpds-shell-border);
+  padding: var(--cfvi-space-sm) var(--cfvi-space-xs);
+}
+
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-ctx-label {
+  color: rgba(255, 255, 255, 0.55);
+  padding: var(--cfvi-space-xs) var(--cfvi-space-sm);
+  margin: 0 0 var(--cfvi-space-xs);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+body[data-cf-merchant-app="1"].cf-pds-closure .nav-item {
+  width: 100%;
+  text-align: right;
+  border: 1px solid transparent;
+  border-radius: var(--cfpds-shell-pill-radius);
+  color: rgba(255, 255, 255, 0.86);
+  padding: 10px var(--cfvi-space-sm);
+  margin-bottom: 4px;
+  transition:
+    background var(--cfpds-shell-motion),
+    color var(--cfpds-shell-motion),
+    box-shadow var(--cfpds-shell-motion),
+    border-color var(--cfpds-shell-motion);
+}
+
+body[data-cf-merchant-app="1"].cf-pds-closure .nav-item:hover {
+  background: var(--cfpds-shell-hover);
+  border-color: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+body[data-cf-merchant-app="1"].cf-pds-closure .nav-item.active {
+  background: var(--cfpds-shell-active);
+  border-color: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  box-shadow:
+    0 4px 14px rgba(0, 0, 0, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(8px);
+}
+
+/* ——— Mobile drawer + scrim ——— */
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-scrim {
+  background: rgba(11, 18, 32, 0.45);
+  backdrop-filter: blur(4px);
+  transition: opacity var(--cfpds-shell-motion);
+}
+
+@media (max-width: 1023px) {
+  body[data-cf-merchant-app="1"].cf-pds-closure .ma-context-sidebar,
+  body[data-cf-merchant-app="1"].cf-pds-closure .sidebar {
+    background: var(--cfpds-shell-bg);
+    box-shadow:
+      -8px 0 32px rgba(11, 18, 32, 0.24),
+      var(--cfpds-shell-shadow);
+    transition: transform var(--cfpds-shell-motion);
+  }
+}
+
+@media (min-width: 1024px) {
+  body[data-cf-merchant-app="1"].cf-pds-closure .ma-dashboard-frame {
+    margin-right: var(--cfpds-sidebar-width);
+  }
+}

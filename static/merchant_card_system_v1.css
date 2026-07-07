@@ -1,0 +1,160 @@
+/**
+ * PDS Final Closure V1 — Workstream B: Unified Product Card Family
+ * Carts page is visual reference. Presentation only.
+ */
+
+:root {
+  --cfpds-card-radius: var(--cfvi-card-radius, 16px);
+  --cfpds-card-padding: var(--cfvi-card-padding, 18px 20px);
+  --cfpds-card-shadow: var(--cfvi-card-shadow, 0 4px 24px rgba(11, 18, 32, 0.07));
+  --cfpds-card-border: var(--cfvi-card-border, 1px solid rgba(11, 18, 32, 0.08));
+  --cfpds-card-header-gap: var(--cfvi-space-sm, 12px);
+  --cfpds-card-body-gap: var(--cfvi-space-sm, 12px);
+  --cfpds-card-stack-gap: var(--cfvi-space-sm, 12px);
+  --cfpds-card-surface: var(--cfvi-surface, #ffffff);
+  --cfpds-card-raised-shadow: 0 8px 32px rgba(11, 18, 32, 0.09);
+}
+
+/* ——— Product card family (all surfaces) ——— */
+body[data-cf-merchant-app="1"].cf-pds-closure .cf-product-card,
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-vi-card,
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-vi-surface-card,
+body[data-cf-merchant-app="1"].cf-pds-closure .setting-card,
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-fw-card,
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-wa-v2-card,
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-wa-mode-card,
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-wa-current-path-card,
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-wa-readiness-card,
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-wa-connect-card,
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-journey-gate-card,
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-plans-current-card,
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-plan-card,
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-store-connection-card,
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-sub-discovery-block,
+body[data-cf-merchant-app="1"].cf-pds-closure .kpi,
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-knowledge-insight,
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-mi-group,
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-mi-group-card,
+body[data-cf-merchant-app="1"].cf-pds-closure .v2-queue-item,
+body[data-cf-merchant-app="1"].cf-pds-closure .v2-whisper:not(.ma-pe-v2-calm),
+body[data-cf-merchant-app="1"].cf-pds-closure .card,
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-home-section,
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-vip-simple-card,
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-tpl-card,
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-msg-card {
+  border: var(--cfpds-card-border) !important;
+  border-style: solid !important;
+  border-radius: var(--cfpds-card-radius) !important;
+  background: var(--cfpds-card-surface) !important;
+  box-shadow: var(--cfpds-card-shadow) !important;
+}
+
+/* Padding + internal rhythm */
+body[data-cf-merchant-app="1"].cf-pds-closure .setting-card,
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-fw-card,
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-plans-current-card,
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-wa-mode-card,
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-plan-card,
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-store-connection-card,
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-journey-gate-card,
+body[data-cf-merchant-app="1"].cf-pds-closure .card,
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-tpl-card {
+  padding: var(--cfpds-card-padding) !important;
+  margin-bottom: var(--cfpds-card-stack-gap) !important;
+}
+
+/* Card headers — same language as Carts MI groups */
+body[data-cf-merchant-app="1"].cf-pds-closure .card-head,
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-fw-h,
+body[data-cf-merchant-app="1"].cf-pds-closure .setting-title,
+body[data-cf-merchant-app="1"].cf-pds-closure .card-title {
+  margin: 0 0 var(--cfpds-card-header-gap);
+  padding-bottom: 0;
+}
+
+body[data-cf-merchant-app="1"].cf-pds-closure .card-head {
+  padding: var(--cfpds-card-padding);
+  padding-bottom: var(--cfvi-space-xs);
+  border-bottom: 1px solid rgba(11, 18, 32, 0.06);
+}
+
+/* Form rows → product card interior (not legacy form blocks) */
+body[data-cf-merchant-app="1"].cf-pds-closure .setting-row,
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-fw-form .setting-row {
+  gap: var(--cfpds-card-body-gap);
+  padding: var(--cfvi-space-xs) 0;
+  border-bottom: 1px solid rgba(11, 18, 32, 0.05);
+}
+
+body[data-cf-merchant-app="1"].cf-pds-closure .setting-row:last-child,
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-fw-form .setting-row:last-child {
+  border-bottom: none;
+}
+
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-fw-actions {
+  margin-top: var(--cfpds-card-header-gap);
+  padding-top: var(--cfpds-card-header-gap);
+  border-top: 1px solid rgba(11, 18, 32, 0.06);
+}
+
+/* Inputs — unified surface inside cards */
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-fw-input,
+body[data-cf-merchant-app="1"].cf-pds-closure .setting-card input[type="text"],
+body[data-cf-merchant-app="1"].cf-pds-closure .setting-card input[type="number"],
+body[data-cf-merchant-app="1"].cf-pds-closure .setting-card input[type="email"],
+body[data-cf-merchant-app="1"].cf-pds-closure .setting-card textarea,
+body[data-cf-merchant-app="1"].cf-pds-closure .setting-card select {
+  border: 1px solid rgba(11, 18, 32, 0.1) !important;
+  border-radius: 10px !important;
+  background: #fff !important;
+  box-shadow: inset 0 1px 2px rgba(11, 18, 32, 0.04);
+}
+
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-fw-input:focus,
+body[data-cf-merchant-app="1"].cf-pds-closure .setting-card input:focus,
+body[data-cf-merchant-app="1"].cf-pds-closure .setting-card textarea:focus,
+body[data-cf-merchant-app="1"].cf-pds-closure .setting-card select:focus {
+  border-color: var(--cfvi-primary) !important;
+  outline: 2px solid rgba(13, 148, 136, 0.15);
+  outline-offset: 0;
+}
+
+/* Buttons inside cards — visual only */
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-fw-save,
+body[data-cf-merchant-app="1"].cf-pds-closure .setting-btn,
+body[data-cf-merchant-app="1"].cf-pds-closure .btn-primary,
+body[data-cf-merchant-app="1"].cf-pds-closure .btn-secondary,
+body[data-cf-merchant-app="1"].cf-pds-closure .btn-outline {
+  border-radius: 10px !important;
+  transition:
+    background var(--cfvi-motion-fast),
+    border-color var(--cfvi-motion-fast),
+    box-shadow var(--cfvi-motion-fast);
+}
+
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-journey-gate-card {
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%) !important;
+}
+
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-sub-discovery-block {
+  background: var(--cfvi-primary-soft) !important;
+  border-color: rgba(13, 148, 136, 0.15) !important;
+}
+
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-plan-card.is-current,
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-wa-mode-card.is-selected {
+  box-shadow:
+    var(--cfpds-card-shadow),
+    0 0 0 1px rgba(13, 148, 136, 0.2) !important;
+}
+
+/* Workstream E — legacy outlier cleanup */
+body[data-cf-merchant-app="1"].cf-pds-closure .setting-card,
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-fw-card,
+body[data-cf-merchant-app="1"].cf-pds-closure .card {
+  border-style: solid !important;
+}
+
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-settings-banner {
+  border-radius: var(--cfpds-card-radius) !important;
+}

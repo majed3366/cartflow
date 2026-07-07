@@ -1,0 +1,127 @@
+/**
+ * PDS Final Closure V1 — Workstream C: Icon Language Certification
+ * One sizing scale, stroke/spacing rules, badge + status language. Presentation only.
+ */
+
+:root {
+  --cfpds-icon-xs: 14px;
+  --cfpds-icon-sm: 16px;
+  --cfpds-icon-md: 20px;
+  --cfpds-icon-lg: 24px;
+  --cfpds-icon-xl: 28px;
+  --cfpds-icon-gap: 8px;
+  --cfpds-icon-stroke: 1.5px;
+  --cfpds-status-success: var(--cfvi-success, #059669);
+  --cfpds-status-warning: var(--cfvi-warning, #ea580c);
+  --cfpds-status-critical: var(--cfvi-critical, #dc2626);
+  --cfpds-status-info: var(--cfvi-info, #6366f1);
+  --cfpds-status-neutral: var(--cfvi-ink-whisper, #8b95a8);
+}
+
+/* ——— Base icon treatment (emoji + glyph) ——— */
+body[data-cf-merchant-app="1"].cf-pds-closure .cf-icon,
+body[data-cf-merchant-app="1"].cf-pds-closure .empty-icon,
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-gtb-util-ico,
+body[data-cf-merchant-app="1"].cf-pds-closure .nav-ico,
+body[data-cf-merchant-app="1"].cf-pds-closure .kpi-ico,
+body[data-cf-merchant-app="1"].cf-pds-closure .va-icon,
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-wa-mode-card-icon,
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-journey-gate-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--cfpds-icon-md);
+  height: var(--cfpds-icon-md);
+  font-size: var(--cfpds-icon-md);
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+body[data-cf-merchant-app="1"].cf-pds-closure .empty-icon {
+  width: var(--cfpds-icon-xl);
+  height: var(--cfpds-icon-xl);
+  font-size: var(--cfpds-icon-xl);
+  margin-bottom: var(--cfvi-space-xs);
+  opacity: 0.88;
+}
+
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-gtb-util {
+  gap: var(--cfpds-icon-gap);
+}
+
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-gtb-util-ico {
+  width: var(--cfpds-icon-sm);
+  height: var(--cfpds-icon-sm);
+  font-size: var(--cfpds-icon-sm);
+}
+
+/* ——— Status dots / semantic mapping ——— */
+body[data-cf-merchant-app="1"].cf-pds-closure .cf-status-dot,
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-sc-status-dot,
+body[data-cf-merchant-app="1"].cf-pds-closure .wa-pill-dot,
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-wa-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.9);
+}
+
+body[data-cf-merchant-app="1"].cf-pds-closure .cf-status-dot--success,
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-sc-status-dot.is-ok,
+body[data-cf-merchant-app="1"].cf-pds-closure .wa-pill-dot.is-ready {
+  background: var(--cfpds-status-success);
+}
+
+body[data-cf-merchant-app="1"].cf-pds-closure .cf-status-dot--warning,
+body[data-cf-merchant-app="1"].cf-pds-closure .wa-pill-dot.is-pending {
+  background: var(--cfpds-status-warning);
+}
+
+body[data-cf-merchant-app="1"].cf-pds-closure .cf-status-dot--critical {
+  background: var(--cfpds-status-critical);
+}
+
+body[data-cf-merchant-app="1"].cf-pds-closure .cf-status-dot--info {
+  background: var(--cfpds-status-info);
+}
+
+body[data-cf-merchant-app="1"].cf-pds-closure .cf-status-dot--neutral {
+  background: var(--cfpds-status-neutral);
+}
+
+/* ——— Badges / chips — one language ——— */
+body[data-cf-merchant-app="1"].cf-pds-closure .nb,
+body[data-cf-merchant-app="1"].cf-pds-closure .wa-pill,
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-plan-badge,
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-sub-plan-pill,
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-sub-status-pill,
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-sub-source-pill,
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-sc-status-pill,
+body[data-cf-merchant-app="1"].cf-pds-closure .filter-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 24px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  line-height: 1.2;
+}
+
+body[data-cf-merchant-app="1"].cf-pds-closure .nb {
+  margin-inline-start: var(--cfpds-icon-gap);
+}
+
+/* KPI stripe icons — semantic color only, unified size */
+body[data-cf-merchant-app="1"].cf-pds-closure .kpi-stripe {
+  width: 4px;
+  border-radius: 4px 0 0 4px;
+}
+
+/* Lock icons in sidebar/nav — consistent opacity */
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-journey-lock,
+body[data-cf-merchant-app="1"].cf-pds-closure .nav-item .ma-nav-lock {
+  font-size: var(--cfpds-icon-xs);
+  opacity: 0.75;
+  margin-inline-start: 4px;
+}

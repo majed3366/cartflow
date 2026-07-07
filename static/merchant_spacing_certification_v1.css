@@ -1,0 +1,140 @@
+/**
+ * PDS Final Closure V1 — Workstream D + E: Spatial Rhythm + Visual Consistency
+ * Normalized whitespace across all merchant pages. Presentation only.
+ */
+
+:root {
+  --cfpds-page-gutter: var(--cfvi-space-md, 20px);
+  --cfpds-page-gutter-mobile: var(--cfvi-space-sm, 12px);
+  --cfpds-section-gap: var(--cfvi-space-lg, 28px);
+  --cfpds-block-gap: var(--cfvi-space-md, 20px);
+  --cfpds-card-gap: var(--cfvi-space-sm, 12px);
+  --cfpds-hero-margin-block: var(--cfvi-space-md, 20px);
+  --cfpds-hero-margin-inline: var(--cfvi-space-md, 20px);
+  --cfpds-list-gap: var(--cfvi-space-xs, 6px);
+  --cfpds-table-cell-y: 12px;
+  --cfpds-table-cell-x: 14px;
+  --cfpds-empty-padding: var(--cfvi-space-xl, 40px) var(--cfpds-page-gutter);
+}
+
+/* ——— Page rhythm ——— */
+body[data-cf-merchant-app="1"].cf-pds-closure .page {
+  padding-inline: var(--cfpds-page-gutter);
+  padding-bottom: var(--cfpds-block-gap);
+}
+
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-content-head,
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-page-hero {
+  padding-inline: var(--cfpds-page-gutter);
+}
+
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-vi-hero,
+body[data-cf-merchant-app="1"].cf-pds-closure #ma-page-hero-global.ma-vi-hero,
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-page-hero--inline.ma-vi-hero,
+body[data-cf-merchant-app="1"].cf-pds-closure .v2-hero {
+  margin: var(--cfpds-hero-margin-block) var(--cfpds-hero-margin-inline) var(--cfpds-section-gap);
+}
+
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-home-section,
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-home-experience,
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-page-body {
+  margin-bottom: var(--cfpds-section-gap);
+}
+
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-home-section + .ma-home-section {
+  margin-top: var(--cfpds-block-gap);
+}
+
+/* Card stacks */
+body[data-cf-merchant-app="1"].cf-pds-closure .setting-card + .setting-card,
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-fw-card + .ma-fw-card,
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-plan-card + .ma-plan-card,
+body[data-cf-merchant-app="1"].cf-pds-closure .kpi + .kpi {
+  margin-top: var(--cfpds-card-gap);
+}
+
+body[data-cf-merchant-app="1"].cf-pds-closure .kpi-grid-inner,
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-plans-grid,
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-wa-mode-grid {
+  gap: var(--cfpds-card-gap);
+}
+
+/* ——— Lists + tables ——— */
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-dash-table th,
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-dash-table td,
+body[data-cf-merchant-app="1"].cf-pds-closure table th,
+body[data-cf-merchant-app="1"].cf-pds-closure table td {
+  padding: var(--cfpds-table-cell-y) var(--cfpds-table-cell-x);
+}
+
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-mi-group-card__list,
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-wa-mode-card-bullets,
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-plan-features {
+  gap: var(--cfpds-list-gap);
+}
+
+/* ——— Empty states ——— */
+body[data-cf-merchant-app="1"].cf-pds-closure .empty-state {
+  padding: var(--cfpds-empty-padding) !important;
+  text-align: center;
+}
+
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-vi-empty,
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-vi-loading,
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-vi-error {
+  padding: var(--cfpds-empty-padding);
+  margin: var(--cfpds-block-gap) var(--cfpds-page-gutter);
+}
+
+/* ——— Carts reference spacing ——— */
+body[data-cf-merchant-app="1"].cf-pds-closure #page-carts .ma-carts-layout,
+body[data-cf-merchant-app="1"].cf-pds-closure #page-carts #ma-cart-filters {
+  margin-bottom: var(--cfpds-block-gap);
+  gap: var(--cfpds-card-gap);
+}
+
+body[data-cf-merchant-app="1"].cf-pds-closure #ma-cart-filters {
+  padding-inline: var(--cfpds-page-gutter);
+}
+
+/* ——— Footer / footnotes ——— */
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-plans-footnote,
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-sub-footnote,
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-fw-field-hint {
+  margin-top: var(--cfvi-space-xs);
+}
+
+/* ——— Workstream E: remaining visual outliers ——— */
+body[data-cf-merchant-app="1"].cf-pds-closure .btn,
+body[data-cf-merchant-app="1"].cf-pds-closure .v2-btn,
+body[data-cf-merchant-app="1"].cf-pds-closure .filter-btn {
+  box-shadow: none;
+}
+
+body[data-cf-merchant-app="1"].cf-pds-closure .filter-btn.active {
+  box-shadow: 0 4px 12px rgba(13, 148, 136, 0.25) !important;
+}
+
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-gtb-section,
+body[data-cf-merchant-app="1"].cf-pds-closure .nav-item,
+body[data-cf-merchant-app="1"].cf-pds-closure .setting-card,
+body[data-cf-merchant-app="1"].cf-pds-closure .ma-fw-card {
+  outline: none;
+}
+
+@media (max-width: 768px) {
+  body[data-cf-merchant-app="1"].cf-pds-closure .page {
+    padding-inline: var(--cfpds-page-gutter-mobile);
+  }
+
+  body[data-cf-merchant-app="1"].cf-pds-closure .ma-vi-hero,
+  body[data-cf-merchant-app="1"].cf-pds-closure #ma-page-hero-global.ma-vi-hero,
+  body[data-cf-merchant-app="1"].cf-pds-closure .ma-page-hero--inline.ma-vi-hero {
+    margin-inline: var(--cfpds-page-gutter-mobile);
+    margin-block: var(--cfpds-page-gutter-mobile) var(--cfpds-block-gap);
+  }
+
+  body[data-cf-merchant-app="1"].cf-pds-closure .empty-state {
+    padding: var(--cfvi-space-lg) var(--cfpds-page-gutter-mobile) !important;
+  }
+}
