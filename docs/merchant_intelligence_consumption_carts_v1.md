@@ -70,7 +70,39 @@ Within same rank: higher `group.priority` first.
 
 ---
 
-## Group card (collapsed)
+## Group card (collapsed) — merchant decision card
+
+Each card answers four questions (from MI group + recommendation only):
+
+| Question | Source |
+|----------|--------|
+| ماذا يحدث؟ | `merchant_summary_ar` / observed preview |
+| لماذا يهم؟ | `meaning_ar` |
+| ماذا فعل CartFlow؟ | `merchant_explanation_v1.system_did_ar` (representative cart) |
+| هل يلزم إجراء؟ | `recommendation.recommendation_type` + `merchant_message_ar` |
+
+Collapsed face also shows: localized title, count badge, value, confidence, **عرض التفاصيل** CTA.
+
+**Internal keys never render** — `merchantFacingText()` maps `price`, `other`, `waiting_first_send`, etc. to Arabic.
+
+---
+
+## Expanded group
+
+Order inside group body:
+
+1. **لماذا هذه المجموعة؟** — `meaning_ar`
+2. **ماذا لاحظ CartFlow؟** — summary / `what_happened_ar`
+3. **ماذا فعل CartFlow؟** — `system_did_ar`
+4. **التوصية** — `recommendation.merchant_message_ar` + primary CTA
+5. **أمثلة من السلال** — representative queue items
+6. **باقي السلال** — collapsed remainder
+
+Expand stability: `openGroupState` + content-based workspace key (no re-render on refresh-token poll).
+
+---
+
+## Group card (legacy reference)
 
 Each card shows from MI group object:
 
@@ -130,10 +162,13 @@ Raw cart rows appear **last**, never first.
 
 ## Certification
 
-**Test module:** `tests/test_merchant_intelligence_consumption_carts_v1.py`
+**Test modules:** `tests/test_merchant_intelligence_consumption_carts_v1.py`, `tests/test_merchant_intelligence_carts_ux_v1.py`
 
 | Check | Method |
 |-------|--------|
+| Expand stays open | `openGroupState`, mousedown + wsKey stability |
+| Arabic labels only | `REASON_TAG_AR`, `INTERNAL_TOKEN_AR`, `merchantFacingText` |
+| Decision card questions | ماذا يحدث / لماذا يهم / ماذا فعل / هل يلزم إجراء |
 | No local grouping | Grep — no `merchant_cart_primary_bucket` in MI JS |
 | No local recommendations | No derived Arabic copy in MI JS |
 | Store payload consumed | `merchant_intelligence_store_v1` in render path |
@@ -147,7 +182,7 @@ Raw cart rows appear **last**, never first.
 Run:
 
 ```bash
-python -m pytest tests/test_merchant_intelligence_consumption_carts_v1.py tests/test_merchant_intelligence_snapshot_transport_v1.py tests/test_merchant_carts_workspace_experience_v1.py tests/test_merchant_product_polish_v1.py -q
+python -m pytest tests/test_merchant_intelligence_consumption_carts_v1.py tests/test_merchant_intelligence_carts_ux_v1.py tests/test_merchant_intelligence_snapshot_transport_v1.py tests/test_merchant_carts_workspace_experience_v1.py tests/test_merchant_product_polish_v1.py -q
 ```
 
 ---

@@ -2463,6 +2463,8 @@
   var lastNormalCartsPageRows = [];
   var lastArchivedCartsPageRows = [];
   var lastMerchantIntelligencePayload = null;
+  var lastMiCartsWorkspaceKey = "";
+  var miCartsDidInitialSelect = false;
 
   function isArchivedVisual(mc) {
     if (!mc) return false;
@@ -2792,8 +2794,20 @@
 
   function merchantPeV2QueueScanLine(mc) {
     var expl = resolveMerchantExplanation(mc);
-    if (expl && expl.status_label_ar) return String(expl.status_label_ar).trim();
-    return merchantNextLineShort(mc);
+    var raw =
+      (expl && expl.status_label_ar) ||
+      (mc && mc.customer_lifecycle_label_ar) ||
+      merchantNextLineShort(mc);
+    var page = byId("page-carts");
+    if (
+      page &&
+      page.classList.contains("ma-carts--mi-v1") &&
+      window.maIntelligenceCartsV1 &&
+      typeof window.maIntelligenceCartsV1.merchantFacingText === "function"
+    ) {
+      return window.maIntelligenceCartsV1.merchantFacingText(raw);
+    }
+    return String(raw || "").trim();
   }
 
   function merchantPeV2ConvHeadline(expl, mc) {
@@ -3242,6 +3256,38 @@
       "</p>";
   }
 
+  function miCartsWorkspaceKey(d, rows) {
+    var store = d && d.merchant_intelligence_store_v1;
+    var sig = ((store && store.groups) || [])
+      .map(function (g) {
+        return [
+          String(g.group_id || ""),
+          String(g.affected_carts != null ? g.affected_carts : ""),
+          String(g.total_cart_value != null ? g.total_cart_value : ""),
+          String(g.priority != null ? g.priority : ""),
+        ].join(":");
+      })
+      .join("|");
+    return sig + "::" + String(rows.length);
+  }
+
+  function updateMiCartsV1QueueSelection() {
+    var root = byId("ma-carts-groups-v2");
+    if (!root || !root.querySelector(".ma-mi-group")) return false;
+    var mi = window.maIntelligenceCartsV1;
+    if (mi && typeof mi.updateGroupSelection === "function") {
+      mi.updateGroupSelection(root, peV2SelectedRecoveryKey);
+      return true;
+    }
+    root.querySelectorAll(".v2-queue-item").forEach(function (btn) {
+      btn.classList.toggle(
+        "is-selected",
+        btn.getAttribute("data-recovery-key") === peV2SelectedRecoveryKey
+      );
+    });
+    return true;
+  }
+
   function renderMiCartsV1Workspace(d, rows) {
     var mi = window.maIntelligenceCartsV1;
     var root = byId("ma-carts-groups-v2");
@@ -3251,37 +3297,55 @@
     if (page) page.classList.add("ma-carts--mi-v1");
     if (filters) filters.hidden = true;
     if (!mi.hasStorePayload(d)) {
+      lastMiCartsWorkspaceKey = "";
       renderMiCartsV1Pending("CartFlow يجهّز فهم المتجر…");
       return true;
     }
+    var wsKey = miCartsWorkspaceKey(d, rows);
+    if (wsKey === lastMiCartsWorkspaceKey && root.querySelector(".ma-mi-group")) {
+      var sub = byId("ma-carts-queue-sub");
+      if (sub && mi.workspaceSubtitle) {
+        sub.textContent = mi.workspaceSubtitle(d.merchant_intelligence_store_v1, rows);
+      }
+      updateMiCartsV1QueueSelection();
+      return true;
+    }
+    lastMiCartsWorkspaceKey = wsKey;
     var empty = byId("ma-carts-queue-empty");
-    var firstRk = "";
     mi.renderGroups(root, d.merchant_intelligence_store_v1, rows, {
       esc: esc,
       cartRecoveryKey: cartRecoveryKey,
-      cartQueueItemHtml: cartQueueItemHtml,
       primaryActionHtml: merchantPeV2PrimaryActionHtml,
       selectedKey: peV2SelectedRecoveryKey,
       emptyEl: empty,
       bindQueue: bindPeV2CartsQueue,
       onSelectCart: selectPeV2Cart,
       updateSubtitle: function (text) {
-        var sub = byId("ma-carts-queue-sub");
-        if (sub) sub.textContent = text;
+        var subEl = byId("ma-carts-queue-sub");
+        if (subEl) subEl.textContent = text;
       },
     });
-    root.querySelectorAll(".v2-queue-item").forEach(function (btn) {
-      if (!firstRk && btn.style.display !== "none" && !btn.hidden) {
-        firstRk = btn.getAttribute("data-recovery-key") || "";
+    if (!miCartsDidInitialSelect) {
+      miCartsDidInitialSelect = true;
+      var firstRk = "";
+      root.querySelectorAll("details.ma-mi-group .v2-queue-item").forEach(function (btn) {
+        if (!firstRk && btn.style.display !== "none" && !btn.hidden) {
+          firstRk = btn.getAttribute("data-recovery-key") || "";
+        }
+      });
+      if (
+        !peV2SelectedRecoveryKey ||
+        !findCartByRecoveryKey(peV2SelectedRecoveryKey)
+      ) {
+        selectPeV2Cart(firstRk);
+      } else {
+        selectPeV2Cart(peV2SelectedRecoveryKey);
       }
-    });
-    if (
-      !peV2SelectedRecoveryKey ||
-      !findCartByRecoveryKey(peV2SelectedRecoveryKey)
-    ) {
-      selectPeV2Cart(firstRk);
     } else {
-      selectPeV2Cart(peV2SelectedRecoveryKey);
+      updateMiCartsV1QueueSelection();
+      if (peV2SelectedRecoveryKey) {
+        renderPeV2CartPanel(findCartByRecoveryKey(peV2SelectedRecoveryKey));
+      }
     }
     return true;
   }

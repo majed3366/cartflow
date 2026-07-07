@@ -68,14 +68,21 @@ class MerchantIntelligenceConsumptionCartsV1Tests(unittest.TestCase):
     def test_representative_carts_collapsed_pattern(self) -> None:
         self.assertIn("ma-mi-group-more", _MI_CARTS_JS)
         self.assertIn("splitRepresentative", _MI_CARTS_JS)
-        self.assertIn("أمثلة ممثّلة", _MI_CARTS_JS)
+        self.assertIn("أمثلة من السلال", _MI_CARTS_JS)
+        self.assertIn("باقي السلال", _MI_CARTS_JS)
 
     def test_expanded_group_story_order(self) -> None:
-        idx_why = _MI_CARTS_JS.index("لماذا هذه المجموعة")
-        idx_did = _MI_CARTS_JS.index("ما أنجزه CartFlow")
-        idx_rec = _MI_CARTS_JS.index("التوصية")
-        idx_rep = _MI_CARTS_JS.index("أمثلة ممثّلة")
-        self.assertLess(idx_why, idx_did)
+        block = _MI_CARTS_JS[
+            _MI_CARTS_JS.index("function groupExpandedHtml")
+            : _MI_CARTS_JS.index("function miCartQueueItemHtml")
+        ]
+        idx_why = block.index("لماذا هذه المجموعة؟")
+        idx_obs = block.index("ماذا لاحظ CartFlow؟")
+        idx_did = block.index("ماذا فعل CartFlow؟")
+        idx_rec = block.index("التوصية")
+        idx_rep = block.index("أمثلة من السلال")
+        self.assertLess(idx_why, idx_obs)
+        self.assertLess(idx_obs, idx_did)
         self.assertLess(idx_did, idx_rec)
         self.assertLess(idx_rec, idx_rep)
 
