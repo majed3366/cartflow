@@ -103,6 +103,17 @@ class MerchantIntelligenceConsumptionCartsV1Tests(unittest.TestCase):
         self.assertIn('"merchant_intelligence_v1"', _SNAPSHOT)
         self.assertIn('"intelligence_group_key"', _SNAPSHOT)
         self.assertIn('"merchant_intelligence_store_v1"', _SNAPSHOT)
+        self.assertIn('"merchant_value_stories_v1"', _SNAPSHOT)
+
+    def test_carts_prefers_value_stories_payload(self) -> None:
+        self.assertIn("merchant_value_stories_v1", _MI_CARTS_JS)
+        self.assertIn("renderStories", _MI_CARTS_JS)
+        block = _LAZY_JS[
+            _LAZY_JS.index("function renderMiCartsV1Workspace")
+            : _LAZY_JS.index("function renderPeV2CartsQueue")
+        ]
+        self.assertIn("hasValueStories", block)
+        self.assertIn("renderStories", block)
 
     def test_lazy_delegates_to_mi_module(self) -> None:
         self.assertIn("renderMiCartsV1Workspace", _LAZY_JS)

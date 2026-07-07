@@ -435,6 +435,11 @@ def build_normal_carts_from_snapshot(
         )
 
         ensure_normal_carts_merchant_intelligence_store_v1(body)
+        from services.merchant_value_composition_v1 import (  # noqa: PLC0415
+            ensure_normal_carts_merchant_value_stories_v1,
+        )
+
+        ensure_normal_carts_merchant_value_stories_v1(body)
         return enforce_route_budget(body, wall0=wall0, endpoint="normal-carts")
 
 

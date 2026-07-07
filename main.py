@@ -19746,6 +19746,14 @@ def _api_json_dashboard_normal_carts(
         except Exception:  # noqa: BLE001
             pass
         try:
+            from services.merchant_value_composition_v1 import (  # noqa: PLC0415
+                ensure_normal_carts_merchant_value_stories_v1,
+            )
+
+            ensure_normal_carts_merchant_value_stories_v1(body)
+        except Exception:  # noqa: BLE001
+            pass
+        try:
             bucket_counts: dict[str, int] = {}
             for row in merchant_carts_page_rows:
                 b = str(row.get("customer_lifecycle_state") or "").strip().lower()

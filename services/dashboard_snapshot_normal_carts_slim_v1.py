@@ -98,6 +98,7 @@ NORMAL_CARTS_SNAPSHOT_TOP_LEVEL_KEYS = (
     "merchant_dashboard_refresh_sent_total",
     "merchant_dashboard_refresh_archive_rev",
     "merchant_intelligence_store_v1",
+    "merchant_value_stories_v1",
 )
 
 # Heavy / debug fields stripped from snapshots (diagnostic reference).

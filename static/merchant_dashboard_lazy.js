@@ -3257,6 +3257,10 @@
   }
 
   function miCartsWorkspaceKey(d, rows) {
+    var mi = window.maIntelligenceCartsV1;
+    if (mi && typeof mi.workspaceKey === "function") {
+      return mi.workspaceKey(d, rows);
+    }
     var store = d && d.merchant_intelligence_store_v1;
     var sig = ((store && store.groups) || [])
       .map(function (g) {
@@ -3296,7 +3300,7 @@
     var filters = byId("ma-cart-filters");
     if (page) page.classList.add("ma-carts--mi-v1");
     if (filters) filters.hidden = true;
-    if (!mi.hasStorePayload(d)) {
+    if (!mi.hasRenderablePayload(d)) {
       lastMiCartsWorkspaceKey = "";
       renderMiCartsV1Pending("CartFlow يجهّز فهم المتجر…");
       return true;
@@ -3304,15 +3308,15 @@
     var wsKey = miCartsWorkspaceKey(d, rows);
     if (wsKey === lastMiCartsWorkspaceKey && root.querySelector(".ma-mi-group")) {
       var sub = byId("ma-carts-queue-sub");
-      if (sub && mi.workspaceSubtitle) {
-        sub.textContent = mi.workspaceSubtitle(d.merchant_intelligence_store_v1, rows);
+      if (sub && mi.workspaceSubtitleFromPayload) {
+        sub.textContent = mi.workspaceSubtitleFromPayload(d, rows);
       }
       updateMiCartsV1QueueSelection();
       return true;
     }
     lastMiCartsWorkspaceKey = wsKey;
     var empty = byId("ma-carts-queue-empty");
-    mi.renderGroups(root, d.merchant_intelligence_store_v1, rows, {
+    var deps = {
       esc: esc,
       cartRecoveryKey: cartRecoveryKey,
       primaryActionHtml: merchantPeV2PrimaryActionHtml,
@@ -3324,7 +3328,12 @@
         var subEl = byId("ma-carts-queue-sub");
         if (subEl) subEl.textContent = text;
       },
-    });
+    };
+    if (mi.hasValueStories(d)) {
+      mi.renderStories(root, d.merchant_value_stories_v1, rows, deps);
+    } else {
+      mi.renderGroups(root, d.merchant_intelligence_store_v1, rows, deps);
+    }
     if (!miCartsDidInitialSelect) {
       miCartsDidInitialSelect = true;
       var firstRk = "";

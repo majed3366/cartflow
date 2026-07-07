@@ -192,6 +192,148 @@
     });
   }
 
+  function rowsForStory(story, rows, cartRecoveryKeyFn) {
+    var keys = story.affected_cart_keys;
+    if (Array.isArray(keys) && keys.length) {
+      var set = {};
+      keys.forEach(function (k) {
+        set[norm(k)] = true;
+      });
+      return (rows || []).filter(function (r) {
+        return set[recoveryKey(r, cartRecoveryKeyFn)];
+      });
+    }
+    return [];
+  }
+
+  function storyCardHtml(story, rowsInStory, deps) {
+    var esc = deps.esc;
+    var sid = norm(story.story_id);
+    var title = esc(merchantFacingText(story.title_ar || ""));
+    var what = esc(merchantFacingText(story.headline_ar || ""));
+    var meaning = esc(merchantFacingText(story.merchant_meaning_ar || ""));
+    var did = esc(merchantFacingText(story.cartflow_action_ar || ""));
+    var count = parseInt(story.affected_carts || rowsInStory.length || 0, 10);
+    var actionLine = esc(
+      merchantFacingText(
+        story.merchant_action_line_ar ||
+          story.recommendation_ar ||
+          (story.action_required ? "نعم — يلزم تدخلك" : "لا — CartFlow يتابع تلقائياً")
+      )
+    );
+    var actionClass = story.action_required ? "ma-mi-decision-row--action" : "";
+
+    return (
+      '<summary class="ma-mi-group-card" data-mi-story-id="' +
+      esc(sid) +
+      '">' +
+      '<div class="ma-mi-group-card__head">' +
+      '<h2 class="ma-mi-group-card__title">' +
+      title +
+      "</h2>" +
+      '<span class="ma-mi-group-card__badge" aria-label="عدد السلال">' +
+      String(count) +
+      " سلة</span>" +
+      "</div>" +
+      decisionRowHtml("ماذا حدث؟", what, esc) +
+      decisionRowHtml("لماذا يهم؟", meaning, esc) +
+      decisionRowHtml("ماذا فعل CartFlow؟", did, esc) +
+      decisionRowHtml("هل تحتاج أن تتدخل؟", actionLine, esc, actionClass) +
+      '<div class="ma-mi-group-card__meta">' +
+      '<span class="ma-mi-group-card__conf">' +
+      esc(confidenceLabelAr(story.confidence)) +
+      "</span>" +
+      "</div>" +
+      '<span class="ma-mi-group-card__cta v2-btn" aria-hidden="true">عرض التفاصيل</span>' +
+      "</summary>"
+    );
+  }
+
+  function storyExpandedHtml(story, rowsInStory, deps) {
+    var esc = deps.esc;
+    var parts = [];
+    var meaning = merchantFacingText(story.merchant_meaning_ar || "");
+    if (meaning) {
+      parts.push(
+        '<section class="ma-mi-group-section">' +
+          '<h3 class="ma-mi-group-section__label">لماذا يهم؟</h3>' +
+          '<p class="ma-mi-group-section__text">' +
+          esc(meaning) +
+          "</p></section>"
+      );
+    }
+    var observed = merchantFacingText(story.observed_result_ar || "");
+    if (observed) {
+      parts.push(
+        '<section class="ma-mi-group-section">' +
+          '<h3 class="ma-mi-group-section__label">ماذا تغيّر؟</h3>' +
+          '<p class="ma-mi-group-section__text">' +
+          esc(observed) +
+          "</p></section>"
+      );
+    }
+    var did = merchantFacingText(story.cartflow_action_ar || "");
+    if (did) {
+      parts.push(
+        '<section class="ma-mi-group-section">' +
+          '<h3 class="ma-mi-group-section__label">ماذا فعل CartFlow؟</h3>' +
+          '<p class="ma-mi-group-section__text">' +
+          esc(did) +
+          "</p></section>"
+      );
+    }
+    var rec = merchantFacingText(story.recommendation_ar || "");
+    if (rec) {
+      parts.push(
+        '<section class="ma-mi-group-section ma-mi-group-section--rec">' +
+          '<h3 class="ma-mi-group-section__label">ما الذي يستحق النظر؟</h3>' +
+          '<p class="ma-mi-group-section__text">' +
+          esc(rec) +
+          "</p></section>"
+      );
+    }
+    var repSplit = splitRepresentative(
+      { representative_item: { recovery_key: (rowsInStory[0] && recoveryKey(rowsInStory[0], deps.cartRecoveryKey)) || "" } },
+      rowsInStory,
+      deps.cartRecoveryKey
+    );
+    if (repSplit.representative.length) {
+      parts.push(
+        '<section class="ma-mi-group-section">' +
+          '<h3 class="ma-mi-group-section__label">أمثلة من السلال</h3>' +
+          '<div class="ma-mi-group-section__queue v2-queue-list">'
+      );
+      repSplit.representative.forEach(function (row) {
+        var rk = recoveryKey(row, deps.cartRecoveryKey);
+        var selected = deps.selectedKey && norm(deps.selectedKey) === rk;
+        parts.push(miCartQueueItemHtml(row, selected, deps));
+      });
+      parts.push("</div></section>");
+    }
+    if (repSplit.remaining.length) {
+      parts.push(
+        '<details class="ma-mi-group-more">' +
+          '<summary class="ma-mi-group-more__summary">باقي السلال (' +
+          String(repSplit.remaining.length) +
+          ")</summary>" +
+          '<div class="ma-mi-group-section__queue v2-queue-list">'
+      );
+      repSplit.remaining.forEach(function (row) {
+        var rk = recoveryKey(row, deps.cartRecoveryKey);
+        var selected = deps.selectedKey && norm(deps.selectedKey) === rk;
+        parts.push(miCartQueueItemHtml(row, selected, deps));
+      });
+      parts.push("</div></details>");
+    }
+    return (
+      '<div class="ma-mi-group-body" data-mi-story-id="' +
+      esc(norm(story.story_id)) +
+      '">' +
+      parts.join("") +
+      "</div>"
+    );
+  }
+
   function recommendationForGroup(group, rowsInGroup, storeRecommendations) {
     var gid = norm(group.group_id);
     var best = null;
@@ -501,7 +643,7 @@
   function bindMiGroupDetails(root) {
     if (!root || !root.querySelectorAll) return;
     root.querySelectorAll("details.ma-mi-group").forEach(function (el) {
-      var gid = norm(el.getAttribute("data-ma-group"));
+      var gid = norm(el.getAttribute("data-ma-story") || el.getAttribute("data-ma-group"));
       if (!gid) return;
       if (openGroupState[gid]) el.open = true;
       var summary = el.querySelector("summary.ma-mi-group-card");
@@ -542,11 +684,113 @@
   function captureOpenGroups(root) {
     if (!root) return;
     root.querySelectorAll("details.ma-mi-group").forEach(function (el) {
-      var gid = norm(el.getAttribute("data-ma-group"));
+      var gid = norm(el.getAttribute("data-ma-story") || el.getAttribute("data-ma-group"));
       if (!gid) return;
       if (el.open) openGroupState[gid] = true;
       else delete openGroupState[gid];
     });
+  }
+
+  function workspaceSubtitleFromStories(bundle, rows) {
+    var stories = (bundle && bundle.stories) || [];
+    if (!stories.length && !(rows && rows.length)) {
+      return "لا توجد سلات تحتاج انتباهك — CartFlow يتابع المتجر.";
+    }
+    if (!stories.length) {
+      return "CartFlow يتابع سلات متجرك — لا يلزم تدخلك الآن.";
+    }
+    var needs = 0;
+    var total = 0;
+    stories.forEach(function (s) {
+      var c = parseInt(s.affected_carts || 0, 10);
+      total += c;
+      if (norm(s.story_type) === "needs_merchant_story") needs = c;
+    });
+    if (needs) {
+      return needs + " سلة تحتاج تدخلك · " + stories.length + " قصص";
+    }
+    return stories.length + " قصص · CartFlow يتابع " + total + " سلة";
+  }
+
+  function workspaceSubtitleFromPayload(d, rows) {
+    if (hasValueStories(d)) {
+      return workspaceSubtitleFromStories(d.merchant_value_stories_v1, rows);
+    }
+    return workspaceSubtitle(d && d.merchant_intelligence_store_v1, rows);
+  }
+
+  function workspaceKey(d, rows) {
+    var stories = (d && d.merchant_value_stories_v1 && d.merchant_value_stories_v1.stories) || [];
+    if (stories.length) {
+      var sig = stories
+        .map(function (s) {
+          return [
+            String(s.story_id || ""),
+            String(s.affected_carts != null ? s.affected_carts : ""),
+            String(s.display_priority != null ? s.display_priority : ""),
+          ].join(":");
+        })
+        .join("|");
+      return "stories:" + sig + "::" + String(rows.length);
+    }
+    var store = d && d.merchant_intelligence_store_v1;
+    var sig = ((store && store.groups) || [])
+      .map(function (g) {
+        return [
+          String(g.group_id || ""),
+          String(g.affected_carts != null ? g.affected_carts : ""),
+          String(g.total_cart_value != null ? g.total_cart_value : ""),
+          String(g.priority != null ? g.priority : ""),
+        ].join(":");
+      })
+      .join("|");
+    return "groups:" + sig + "::" + String(rows.length);
+  }
+
+  function renderStories(root, bundle, rows, deps) {
+    if (!root) return false;
+    captureOpenGroups(root);
+    var stories = (bundle && bundle.stories) || [];
+    if (!stories.length) {
+      root.innerHTML = "";
+      if (deps.emptyEl) {
+        deps.emptyEl.hidden = false;
+        var p = deps.emptyEl.querySelector(".v2-whisper-text");
+        if (p) {
+          p.textContent =
+            rows && rows.length
+              ? "CartFlow يتابع سلات متجرك — لا يلزم تدخلك الآن."
+              : "لا توجد سلات نشطة — CartFlow يراقب المتجر.";
+        }
+      }
+      if (deps.onSelectCart) deps.onSelectCart("");
+      return true;
+    }
+    if (deps.emptyEl) deps.emptyEl.hidden = true;
+    var html = stories
+      .map(function (story) {
+        var rowsInStory = rowsForStory(story, rows, deps.cartRecoveryKey);
+        var sid = norm(story.story_id);
+        var openAttr = openGroupState[sid] ? " open" : "";
+        return (
+          '<details class="ma-mi-group ma-cart-group ma-mi-story"' +
+          openAttr +
+          ' data-ma-story="' +
+          deps.esc(sid) +
+          '">' +
+          storyCardHtml(story, rowsInStory, deps) +
+          storyExpandedHtml(story, rowsInStory, deps) +
+          "</details>"
+        );
+      })
+      .join("");
+    root.innerHTML = html;
+    bindMiGroupDetails(root);
+    if (deps.bindQueue) deps.bindQueue(root);
+    if (deps.updateSubtitle) {
+      deps.updateSubtitle(workspaceSubtitleFromStories(bundle, rows));
+    }
+    return true;
   }
 
   function renderGroups(root, store, rows, deps) {
@@ -596,6 +840,20 @@
     return true;
   }
 
+  function hasValueStories(d) {
+    return !!(
+      d &&
+      d.merchant_value_stories_v1 &&
+      Array.isArray(d.merchant_value_stories_v1.stories) &&
+      d.merchant_value_stories_v1.stories.length
+    );
+  }
+
+  function hasRenderablePayload(d) {
+    if (hasValueStories(d)) return true;
+    return hasStorePayload(d);
+  }
+
   function hasStorePayload(d) {
     return !!(
       d &&
@@ -613,14 +871,21 @@
     REASON_TAG_AR: REASON_TAG_AR,
     sortGroups: sortGroups,
     rowsForGroup: rowsForGroup,
+    rowsForStory: rowsForStory,
     recommendationForGroup: recommendationForGroup,
     workspaceSubtitle: workspaceSubtitle,
+    workspaceSubtitleFromStories: workspaceSubtitleFromStories,
+    workspaceSubtitleFromPayload: workspaceSubtitleFromPayload,
+    workspaceKey: workspaceKey,
     merchantFacingText: merchantFacingText,
     localizedGroupTitle: localizedGroupTitle,
     bindMiGroupDetails: bindMiGroupDetails,
     updateGroupSelection: updateGroupSelection,
     resetOpenGroupState: resetOpenGroupState,
     renderGroups: renderGroups,
+    renderStories: renderStories,
     hasStorePayload: hasStorePayload,
+    hasValueStories: hasValueStories,
+    hasRenderablePayload: hasRenderablePayload,
   };
 })(typeof window !== "undefined" ? window : this);

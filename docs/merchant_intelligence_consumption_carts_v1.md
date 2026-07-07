@@ -10,15 +10,33 @@
 
 Transform the Carts page from a raw cart list into a **workspace of merchant understanding**.
 
-The merchant sees **Merchant Intelligence Groups first** — ordered by platform priority — not individual cart rows.
+The merchant sees **Merchant Value Stories first** — composed from intelligence groups — not raw group internals or individual cart rows.
 
 ---
 
-## Architectural rule
+## Value Composition (V1)
+
+```
+merchant_intelligence_store_v1 + rows
+        ↓ compose (server)
+merchant_value_stories_v1
+        ↓ read-only
+merchant_intelligence_carts_v1.js
+        ↓ projection
+Carts workspace UI
+```
+
+When `merchant_value_stories_v1.stories` is present, Carts renders **stories** (title, meaning, CartFlow action, recommendation, representative carts). MI groups remain internal structure.
+
+Doc: **`docs/merchant_value_composition_layer_v1.md`**
+
+---
+
+## Architectural rule (legacy groups fallback)
 
 ```
 merchant_intelligence_store_v1 (API)
-        ↓ read-only
+        ↓ read-only (fallback when no stories)
 merchant_intelligence_carts_v1.js
         ↓ projection
 Carts workspace UI
@@ -30,7 +48,8 @@ Carts workspace UI
 
 | Field | Scope |
 |-------|--------|
-| `merchant_intelligence_store_v1` | Store bundle — groups, recommendations, priorities |
+| `merchant_value_stories_v1` | **Preferred** — composed value stories for Carts |
+| `merchant_intelligence_store_v1` | Store bundle — groups (internal), recommendations, priorities |
 | `merchant_intelligence_v1` | Per-row bundle — group assignment, recommendation |
 | `intelligence_group_key` | Row group membership |
 
@@ -42,8 +61,8 @@ Presentation may read `merchant_explanation_v1` for **display copy** inside expa
 
 On `/dashboard#carts`, the merchant sees:
 
-1. Hero + workspace subtitle (from MI groups summary)
-2. **Intelligence group cards** (collapsed `<details>`)
+1. Hero + workspace subtitle (from value stories or MI groups summary)
+2. **Value story cards** (collapsed `<details>`) — or group cards when stories absent
 3. Conversation panel (existing PE v2 — unchanged intelligence)
 
 Legacy bucket filter bar is **hidden** in MI mode (`ma-carts--mi-v1`).
@@ -149,20 +168,21 @@ Raw cart rows appear **last**, never first.
 
 | File | Role |
 |------|------|
-| `static/merchant_intelligence_carts_v1.js` | MI consumption + group render |
+| `services/merchant_value_composition_v1.py` | Value story composition + transport |
+| `static/merchant_intelligence_carts_v1.js` | Value story + group render |
 | `static/merchant_dashboard_lazy.js` | `renderMiCartsV1Workspace()` wiring |
-| `static/merchant_product_polish_v1.css` | Group card styles |
+| `static/merchant_product_polish_v1.css` | Group/story card styles |
 | `templates/merchant_app.html` | Carts shell + script load |
-| `services/dashboard_snapshot_normal_carts_slim_v1.py` | Snapshot allowlist for MI fields |
-| `services/dashboard_snapshot_read_v1.py` | Snapshot read — MI store attach |
-| `services/dashboard_snapshot_normal_carts_parity_v1.py` | Snapshot write — MI store attach |
+| `services/dashboard_snapshot_normal_carts_slim_v1.py` | Snapshot allowlist for MI + value stories |
+| `services/dashboard_snapshot_read_v1.py` | Snapshot read — MI + value stories attach |
+| `services/dashboard_snapshot_normal_carts_parity_v1.py` | Snapshot write — MI + value stories attach |
 | `services/merchant_intelligence_v1.py` | `ensure_normal_carts_merchant_intelligence_store_v1()` |
 
 ---
 
 ## Certification
 
-**Test modules:** `tests/test_merchant_intelligence_consumption_carts_v1.py`, `tests/test_merchant_intelligence_carts_ux_v1.py`
+**Test modules:** `tests/test_merchant_intelligence_consumption_carts_v1.py`, `tests/test_merchant_intelligence_carts_ux_v1.py`, `tests/test_merchant_value_composition_v1.py`
 
 | Check | Method |
 |-------|--------|
@@ -171,7 +191,7 @@ Raw cart rows appear **last**, never first.
 | Decision card questions | ماذا يحدث / لماذا يهم / ماذا فعل / هل يلزم إجراء |
 | No local grouping | Grep — no `merchant_cart_primary_bucket` in MI JS |
 | No local recommendations | No derived Arabic copy in MI JS |
-| Store payload consumed | `merchant_intelligence_store_v1` in render path |
+| Store payload consumed | `merchant_value_stories_v1` preferred; `merchant_intelligence_store_v1` fallback |
 | Priority order | `needs_merchant` before `completed` in `GROUP_ORDER` |
 | Representative + collapsed remainder | `splitRepresentative` + `ma-mi-group-more` |
 | Story order in expand | why → CartFlow → recommendation → representatives |
@@ -182,7 +202,7 @@ Raw cart rows appear **last**, never first.
 Run:
 
 ```bash
-python -m pytest tests/test_merchant_intelligence_consumption_carts_v1.py tests/test_merchant_intelligence_carts_ux_v1.py tests/test_merchant_intelligence_snapshot_transport_v1.py tests/test_merchant_carts_workspace_experience_v1.py tests/test_merchant_product_polish_v1.py -q
+python -m pytest tests/test_merchant_intelligence_consumption_carts_v1.py tests/test_merchant_intelligence_carts_ux_v1.py tests/test_merchant_intelligence_snapshot_transport_v1.py tests/test_merchant_value_composition_v1.py tests/test_merchant_carts_workspace_experience_v1.py tests/test_merchant_product_polish_v1.py -q
 ```
 
 ---
@@ -191,7 +211,7 @@ python -m pytest tests/test_merchant_intelligence_consumption_carts_v1.py tests/
 
 > If a merchant sees this page for five seconds, can they describe the state of their store without opening a single cart?
 
-Groups expose **title, meaning, summary, count, value, recommendation** — sufficient for store-state comprehension before drill-down.
+Value stories expose **what happened, why it matters, what CartFlow did, and whether intervention is needed** — sufficient for store-state comprehension before drill-down.
 
 ---
 

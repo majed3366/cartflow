@@ -357,6 +357,11 @@ def build_canonical_normal_carts_payload(
     )
 
     ensure_normal_carts_merchant_intelligence_store_v1(out)
+    from services.merchant_value_composition_v1 import (  # noqa: PLC0415
+        ensure_normal_carts_merchant_value_stories_v1,
+    )
+
+    ensure_normal_carts_merchant_value_stories_v1(out)
     return out, dict(prof), perf
 
 
