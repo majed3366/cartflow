@@ -1,0 +1,386 @@
+/**
+ * CartFlow Visual Identity Unification V1
+ * One product feel — typography, cards, heroes, palette, sidebar, rhythm, motion.
+ * Certified font is tokenized (PO: Arial preferred); swap via --cfvi-font-certified only.
+ */
+
+:root {
+  /* Typography certification token — do not hardcode in architecture elsewhere */
+  --cfvi-font-certified: Arial, "IBM Plex Sans Arabic", system-ui, sans-serif;
+  --pds-font: var(--cfvi-font-certified);
+  --cfvi-font: var(--cfvi-font-certified);
+
+  /* Unified hierarchy */
+  --cfvi-type-hero: clamp(1.35rem, 3.5vw, 1.65rem);
+  --cfvi-type-section: 20px;
+  --cfvi-type-story: 16px;
+  --cfvi-type-card: 14px;
+  --cfvi-type-body: 14px;
+  --cfvi-type-caption: 13px;
+  --cfvi-type-metric: 15px;
+  --cfvi-type-whisper: 11px;
+  --cfvi-type-button: 13px;
+  --cfvi-type-link: 13px;
+
+  /* Semantic palette — one product */
+  --cfvi-primary: #0d9488;
+  --cfvi-primary-deep: #0f766e;
+  --cfvi-primary-soft: rgba(13, 148, 136, 0.1);
+  --cfvi-secondary: #1a7a4a;
+  --cfvi-secondary-deep: #145a38;
+  --cfvi-bg: #f4f6fa;
+  --cfvi-surface: #ffffff;
+  --cfvi-surface-raised: #ffffff;
+  --cfvi-ink: #0b1220;
+  --cfvi-ink-soft: #3d4a63;
+  --cfvi-ink-whisper: #8b95a8;
+  --cfvi-border: rgba(11, 18, 32, 0.08);
+  --cfvi-success: #059669;
+  --cfvi-success-soft: #ecfdf5;
+  --cfvi-warning: #ea580c;
+  --cfvi-warning-soft: #fff7ed;
+  --cfvi-critical: #dc2626;
+  --cfvi-critical-soft: #fef2f2;
+  --cfvi-info: #6366f1;
+  --cfvi-info-soft: #eef2ff;
+  --cfvi-vip: #b45309;
+  --cfvi-vip-soft: #fffbeb;
+
+  /* Hero gradient — shared identity */
+  --cfvi-hero-bg: linear-gradient(165deg, #0f766e 0%, #134e4a 48%, #0b1220 100%);
+  --cfvi-hero-shadow: 0 24px 64px rgba(11, 18, 32, 0.2);
+  --cfvi-hero-radius: 24px;
+
+  /* Rhythm */
+  --cfvi-space-xs: 6px;
+  --cfvi-space-sm: 12px;
+  --cfvi-space-md: 20px;
+  --cfvi-space-lg: 28px;
+  --cfvi-space-xl: 40px;
+
+  /* Card family */
+  --cfvi-card-radius: 16px;
+  --cfvi-card-padding: 18px 20px;
+  --cfvi-card-shadow: 0 4px 24px rgba(11, 18, 32, 0.07);
+  --cfvi-card-border: 1px solid var(--cfvi-border);
+
+  /* Sidebar */
+  --cfvi-sidebar-bg: linear-gradient(180deg, #1a7a4a 0%, #145a38 55%, #0f4229 100%);
+  --cfvi-sidebar-shadow: -4px 0 24px rgba(15, 66, 41, 0.18);
+
+  /* Motion */
+  --cfvi-motion-fast: 0.15s ease;
+  --cfvi-motion-medium: 0.22s ease-out;
+}
+
+/* ——— Phase 1: Typography ——— */
+body[data-cf-merchant-app="1"] {
+  font-family: var(--cfvi-font);
+  font-size: var(--cfvi-type-body);
+  color: var(--cfvi-ink);
+}
+
+body[data-cf-merchant-app="1"] .ma-content-root,
+body[data-cf-merchant-app="1"] .main {
+  background: var(--cfvi-bg);
+}
+
+body[data-cf-merchant-app="1"] a:not(.ma-gtb-logo):not(.nav-item) {
+  font-size: var(--cfvi-type-link);
+  color: var(--cfvi-primary);
+}
+
+/* ——— Phase 3: Hero language ——— */
+body[data-cf-merchant-app="1"] .ma-vi-hero,
+body[data-cf-merchant-app="1"] #ma-page-hero-global.ma-vi-hero,
+body[data-cf-merchant-app="1"] .ma-page-hero--inline.ma-vi-hero,
+body[data-cf-merchant-app="1"] .v2-hero {
+  position: relative;
+  margin: var(--cfvi-space-md) var(--cfvi-space-md) var(--cfvi-space-lg);
+  padding: var(--cfvi-space-xl) var(--cfvi-space-lg);
+  max-width: var(--ma-content-max, 1120px);
+  margin-inline: auto;
+  border-radius: var(--cfvi-hero-radius);
+  background: var(--cfvi-hero-bg);
+  color: #fff;
+  box-shadow: var(--cfvi-hero-shadow);
+  overflow: hidden;
+}
+
+body[data-cf-merchant-app="1"] .ma-vi-hero::after,
+body[data-cf-merchant-app="1"] #ma-page-hero-global.ma-vi-hero::after,
+body[data-cf-merchant-app="1"] .ma-page-hero--inline.ma-vi-hero::after {
+  content: "";
+  position: absolute;
+  width: 180px;
+  height: 180px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  top: -50px;
+  left: -30px;
+  pointer-events: none;
+}
+
+body[data-cf-merchant-app="1"] .ma-vi-hero__glow,
+body[data-cf-merchant-app="1"] .v2-hero-glow {
+  position: absolute;
+  bottom: -40px;
+  right: -20px;
+  width: 130px;
+  height: 130px;
+  border-radius: 50%;
+  background: rgba(20, 184, 166, 0.32);
+  filter: blur(36px);
+  pointer-events: none;
+}
+
+body[data-cf-merchant-app="1"] .ma-vi-hero .ma-page-hero__title,
+body[data-cf-merchant-app="1"] #ma-page-hero-global.ma-vi-hero .ma-page-hero__title,
+body[data-cf-merchant-app="1"] .ma-page-hero--inline.ma-vi-hero .ma-page-hero__title,
+body[data-cf-merchant-app="1"] .v2-hero-title {
+  position: relative;
+  z-index: 1;
+  margin: 0 0 var(--cfvi-space-sm);
+  font-family: var(--cfvi-font);
+  font-size: var(--cfvi-type-hero);
+  font-weight: 800;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+  color: #fff;
+}
+
+body[data-cf-merchant-app="1"] .ma-vi-hero .ma-page-hero__purpose,
+body[data-cf-merchant-app="1"] #ma-page-hero-global.ma-vi-hero .ma-page-hero__purpose,
+body[data-cf-merchant-app="1"] .ma-page-hero--inline.ma-vi-hero .ma-page-hero__purpose,
+body[data-cf-merchant-app="1"] .v2-hero-purpose {
+  position: relative;
+  z-index: 1;
+  margin: 0;
+  font-family: var(--cfvi-font);
+  font-size: var(--cfvi-type-body);
+  font-weight: 500;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.9);
+  max-width: 42ch;
+}
+
+body[data-cf-merchant-app="1"] .ma-page-summary.ma-vi-hero__summary {
+  position: relative;
+  z-index: 1;
+  margin: var(--cfvi-space-sm) 0 0;
+  font-size: var(--cfvi-type-caption);
+  color: rgba(255, 255, 255, 0.78);
+}
+
+/* Global hero compact pages */
+body[data-cf-merchant-app="1"] #ma-page-hero-global.ma-vi-hero {
+  width: calc(100% - var(--cfvi-space-md) * 2);
+}
+
+/* ——— Phase 2: Card family ——— */
+body[data-cf-merchant-app="1"] .ma-vi-card,
+body[data-cf-merchant-app="1"] .setting-card,
+body[data-cf-merchant-app="1"] .ma-fw-card,
+body[data-cf-merchant-app="1"] .ma-mi-group,
+body[data-cf-merchant-app="1"] .ma-plans-current-card,
+body[data-cf-merchant-app="1"] .ma-plans-grid .ma-plan-card,
+body[data-cf-merchant-app="1"] .ma-wa-v2-card,
+body[data-cf-merchant-app="1"] .ma-store-connection-card,
+body[data-cf-merchant-app="1"] .ma-knowledge-insight,
+body[data-cf-merchant-app="1"] .kpi,
+body[data-cf-merchant-app="1"] .ma-vi-empty,
+body[data-cf-merchant-app="1"] .ma-vi-loading,
+body[data-cf-merchant-app="1"] .ma-vi-error {
+  border-radius: var(--cfvi-card-radius);
+  border: var(--cfvi-card-border);
+  background: var(--cfvi-surface);
+  box-shadow: var(--cfvi-card-shadow);
+}
+
+body[data-cf-merchant-app="1"] .setting-card,
+body[data-cf-merchant-app="1"] .ma-fw-card,
+body[data-cf-merchant-app="1"] .ma-plans-current-card {
+  padding: var(--cfvi-card-padding);
+  margin-bottom: var(--cfvi-space-sm);
+}
+
+body[data-cf-merchant-app="1"] .setting-title,
+body[data-cf-merchant-app="1"] .ma-vi-card__title {
+  font-family: var(--cfvi-font);
+  font-size: var(--cfvi-type-card);
+  font-weight: 800;
+  color: var(--cfvi-ink);
+  margin: 0 0 4px;
+}
+
+body[data-cf-merchant-app="1"] .setting-desc,
+body[data-cf-merchant-app="1"] .ma-vi-card__desc {
+  font-size: var(--cfvi-type-caption);
+  color: var(--cfvi-ink-soft);
+  line-height: 1.5;
+}
+
+body[data-cf-merchant-app="1"] .ma-mi-group-card__title {
+  font-family: var(--cfvi-font);
+  font-size: var(--cfvi-type-story);
+  font-weight: 800;
+}
+
+/* ——— Phase 4: Semantic colors on chips/status ——— */
+body[data-cf-merchant-app="1"] .chip.c-price { background: var(--cfvi-warning-soft); color: var(--cfvi-warning); }
+body[data-cf-merchant-app="1"] .chip.c-shipping { background: var(--cfvi-info-soft); color: var(--cfvi-info); }
+body[data-cf-merchant-app="1"] .st.st-success { color: var(--cfvi-success); }
+body[data-cf-merchant-app="1"] .st.st-waiting { color: var(--cfvi-info); }
+body[data-cf-merchant-app="1"] .vtag,
+body[data-cf-merchant-app="1"] .vip-alert { background: var(--cfvi-vip-soft); border-color: rgba(180, 83, 9, 0.2); }
+
+/* ——— Phase 5: Sidebar identity ——— */
+body[data-cf-merchant-app="1"] .ma-context-sidebar,
+body[data-cf-merchant-app="1"] .sidebar {
+  font-family: var(--cfvi-font);
+  background: var(--cfvi-sidebar-bg);
+  box-shadow: var(--cfvi-sidebar-shadow);
+  border-left: 1px solid rgba(0, 0, 0, 0.12);
+}
+
+body[data-cf-merchant-app="1"] .ma-ctx-label {
+  font-size: var(--cfvi-type-whisper);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: rgba(255, 255, 255, 0.45);
+  margin: var(--cfvi-space-md) var(--cfvi-space-sm) var(--cfvi-space-xs);
+}
+
+body[data-cf-merchant-app="1"] .nav-item {
+  font-family: var(--cfvi-font);
+  font-size: var(--cfvi-type-caption);
+  font-weight: 500;
+  margin: 3px 10px;
+  padding: 10px var(--cfvi-space-sm);
+  border-radius: 10px;
+  transition: background var(--cfvi-motion-fast), transform var(--cfvi-motion-fast);
+}
+
+body[data-cf-merchant-app="1"] .nav-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+body[data-cf-merchant-app="1"] .nav-item.active {
+  background: rgba(255, 255, 255, 0.18);
+  font-weight: 700;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+body[data-cf-merchant-app="1"] .ma-gtb-section {
+  font-family: var(--cfvi-font);
+  font-size: var(--cfvi-type-caption);
+  transition: color var(--cfvi-motion-fast), background var(--cfvi-motion-fast);
+}
+
+/* ——— Phase 6: Surface rhythm ——— */
+body[data-cf-merchant-app="1"] .page.ma-page-compact {
+  padding: 0 var(--cfvi-space-md) var(--cfvi-space-xl);
+  max-width: var(--ma-content-max, 1120px);
+  margin-inline: auto;
+}
+
+body[data-cf-merchant-app="1"] .ma-mi-group {
+  margin-bottom: var(--cfvi-space-sm);
+}
+
+body[data-cf-merchant-app="1"] .ma-mi-group-card {
+  padding: var(--cfvi-space-sm) var(--cfvi-space-md);
+}
+
+body[data-cf-merchant-app="1"] .ma-mi-decision-row {
+  margin-bottom: var(--cfvi-space-xs);
+  padding: var(--cfvi-space-xs) var(--cfvi-space-sm);
+}
+
+body[data-cf-merchant-app="1"] .ma-plans-grid {
+  gap: var(--cfvi-space-sm);
+}
+
+/* ——— Phase 7: CTA hierarchy ——— */
+body[data-cf-merchant-app="1"] .ma-mi-group-card__cta.v2-btn,
+body[data-cf-merchant-app="1"] .ma-mi-group-card__cta {
+  font-size: var(--cfvi-type-button);
+  font-weight: 600;
+  padding: 5px 11px;
+  min-height: auto;
+  background: var(--cfvi-primary-soft);
+  color: var(--cfvi-primary);
+  border: 1px solid rgba(13, 148, 136, 0.18);
+  box-shadow: none;
+}
+
+body[data-cf-merchant-app="1"] .ma-fw-save,
+body[data-cf-merchant-app="1"] .v2-btn--primary {
+  font-family: var(--cfvi-font);
+  font-size: var(--cfvi-type-button);
+  background: var(--cfvi-primary);
+  border-color: var(--cfvi-primary-deep);
+}
+
+body[data-cf-merchant-app="1"] .ma-sc-btn-secondary,
+body[data-cf-merchant-app="1"] .v2-btn--ghost {
+  font-size: var(--cfvi-type-button);
+  background: var(--cfvi-surface);
+  color: var(--cfvi-ink-soft);
+  border: 1px solid var(--cfvi-border);
+}
+
+/* ——— Phase 8: Motion ——— */
+body[data-cf-merchant-app="1"] .ma-mi-group > summary,
+body[data-cf-merchant-app="1"] .nav-item,
+body[data-cf-merchant-app="1"] .filter-btn,
+body[data-cf-merchant-app="1"] .v2-btn {
+  transition: background var(--cfvi-motion-fast), color var(--cfvi-motion-fast),
+    border-color var(--cfvi-motion-fast), transform var(--cfvi-motion-fast);
+}
+
+body[data-cf-merchant-app="1"] .ma-mi-group[open] .ma-mi-group-body {
+  animation: cfvi-expand var(--cfvi-motion-medium);
+}
+
+body[data-cf-merchant-app="1"] .ma-dash-skel {
+  animation: cfvi-skeleton 1.2s ease-in-out infinite;
+  min-height: 1.2em;
+  border-radius: 6px;
+}
+
+@keyframes cfvi-expand {
+  from { opacity: 0.94; transform: translateY(-2px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes cfvi-skeleton {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 0.85; }
+}
+
+body[data-cf-merchant-app="1"] .nav-item:focus-visible,
+body[data-cf-merchant-app="1"] .v2-btn:focus-visible,
+body[data-cf-merchant-app="1"] .filter-btn:focus-visible {
+  outline: 2px solid var(--cfvi-primary);
+  outline-offset: 2px;
+}
+
+/* Metrics / currency */
+body[data-cf-merchant-app="1"] .camt,
+body[data-cf-merchant-app="1"] .v2-queue-amount,
+body[data-cf-merchant-app="1"] .kpi-value {
+  font-family: var(--cfvi-font);
+  font-size: var(--cfvi-type-metric);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 960px) {
+  body[data-cf-merchant-app="1"] .ma-vi-hero,
+  body[data-cf-merchant-app="1"] #ma-page-hero-global.ma-vi-hero,
+  body[data-cf-merchant-app="1"] .v2-hero {
+    margin: var(--cfvi-space-sm);
+    padding: var(--cfvi-space-lg) var(--cfvi-space-md);
+  }
+}

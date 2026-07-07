@@ -11,6 +11,7 @@
 <link rel="stylesheet" href="/static/merchant_pe_v2.css?v={{ merchant_setup_render_build | default('unknown') }}">
 <link rel="stylesheet" href="/static/merchant_product_polish_v1.css?v={{ merchant_setup_render_build | default('unknown') }}">
 <link rel="stylesheet" href="/static/merchant_pds_compliance_v1.css?v={{ merchant_setup_render_build | default('unknown') }}">
+<link rel="stylesheet" href="/static/merchant_visual_identity_v1.css?v={{ merchant_setup_render_build | default('unknown') }}">
 </head>
 <body data-cf-merchant-app="1">
 
@@ -220,9 +221,10 @@
     <div class="ma-pe-v2-carts-shell v2-app v2-app--wide">
       <div class="v2-workspace">
         <div class="ma-pe-v2-carts-queue-col">
-          <header class="ma-page-hero ma-page-hero--inline ma-page-hero--carts" id="ma-carts-hero">
+          <header class="ma-page-hero ma-page-hero--inline ma-page-hero--carts ma-vi-hero" id="ma-carts-hero">
+            <div class="ma-vi-hero__glow" aria-hidden="true"></div>
             <h1 class="ma-page-hero__title">السلال</h1>
-            <p class="ma-page-hero__purpose">افهم متجرك — مجموعات ذكية قبل تفاصيل السلال.</p>
+            <p class="ma-page-hero__purpose">CartFlow يتابع سلال متجرك اليوم — مجموعات ذكية قبل التفاصيل.</p>
           </header>
           <p class="ma-page-summary" id="ma-carts-queue-sub">CartFlow يجهّز فهم المتجر…</p>
 

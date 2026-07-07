@@ -42,7 +42,7 @@
     "home-setup": "تحقق من جاهزية متجرك قبل التشغيل الكامل.",
     "home-month": "أرقام الاسترداد والأداء لهذا الشهر.",
     "home-test-tools": "اختبر الودجيت والاسترجاع بدون إرسال حقيقي.",
-    carts: "تابع سلال متجرك وقرّر ما يحتاج تدخلك.",
+    carts: "CartFlow يتابع سلال متجرك اليوم — افهم ما يحدث قبل التفاصيل.",
     followup: "ردود العملاء والمتابعة التي يحتاج المتجر مراجعتها.",
     completed: "سلال أنهت مسار الاسترجاع — شراء أو استرداد ناجح.",
     vip: "سلال عالية القيمة تحتاج متابعة خاصة منك.",
@@ -50,10 +50,10 @@
     reasons: "ما يمنع عملاءك من إتمام الشراء — خلال آخر 30 يوماً.",
     "trigger-templates": "محتوى رسائل الاسترجاع لكل سبب تردد.",
     widget: "مظهر الودجيت ومتى يظهر للعميل في المتجر.",
-    whatsapp: "اختر كيف يتواصل CartFlow مع عملائك عبر واتساب.",
+    whatsapp: "صحة تواصل متجرك عبر واتساب — حالة الربط والإرسال.",
     "whatsapp-connect": "اربط رقم واتساب أعمال متجرك لإرسال الاسترجاع.",
-    plans: "قارن الباقات وافهم ما تشمله خطة متجرك.",
-    settings: "اربط متجرك واضبط تفضيلات الحساب والإشعارات.",
+    plans: "اشتراكك الحالي — ما تشمله باقتك وكيف تقارن.",
+    settings: "إعداد متجرك — الربط والحساب والتفضيلات.",
   };
 
   var CART_TAB_TITLES = {
@@ -352,6 +352,37 @@
     });
   }
 
+  var PAGES_WITH_INLINE_HERO = {
+    home: true,
+    carts: true,
+    followup: true,
+    completed: true,
+    vip: true,
+  };
+
+  function syncVisualHero(pageKey) {
+    var globalHero = byId("ma-page-hero-global");
+    if (globalHero) {
+      var usePremium = pageKey && !PAGES_WITH_INLINE_HERO[pageKey];
+      globalHero.classList.toggle("ma-vi-hero", !!usePremium);
+      if (usePremium && !globalHero.querySelector(".ma-vi-hero__glow")) {
+        var g = document.createElement("div");
+        g.className = "ma-vi-hero__glow";
+        g.setAttribute("aria-hidden", "true");
+        globalHero.insertBefore(g, globalHero.firstChild);
+      }
+    }
+    document.querySelectorAll(".ma-page-hero--inline").forEach(function (el) {
+      el.classList.add("ma-vi-hero");
+      if (!el.querySelector(".ma-vi-hero__glow")) {
+        var glow = document.createElement("div");
+        glow.className = "ma-vi-hero__glow";
+        glow.setAttribute("aria-hidden", "true");
+        el.insertBefore(glow, el.firstChild);
+      }
+    });
+  }
+
   function setPageTitle(text, pageKey) {
     var pt = byId("pageTitle");
     var pp = byId("pagePurpose");
@@ -370,6 +401,7 @@
       ps.textContent = sub;
       ps.hidden = !sub;
     }
+    syncVisualHero(pageKey);
   }
 
   function isHomeSubPage(page) {

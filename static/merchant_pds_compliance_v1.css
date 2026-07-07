@@ -5,8 +5,8 @@
  */
 
 :root {
-  /* Certified typography */
-  --pds-font: "IBM Plex Sans Arabic", system-ui, sans-serif;
+  /* Certified typography — override via merchant_visual_identity_v1.css */
+  --pds-font: var(--cfvi-font-certified, Arial, "IBM Plex Sans Arabic", system-ui, sans-serif);
   --pds-type-hero: clamp(1.25rem, 3.5vw, 1.5rem);
   --pds-type-section: var(--ma-type-xl, 20px);
   --pds-type-story: var(--ma-type-lg, 16px);
