@@ -164,7 +164,7 @@
       amt
         ? typeof window.formatMerchantSar === "function"
           ? window.formatMerchantSar(amt)
-          : String(amt) + " ر.س"
+          : String(amt) + " SR"
         : "—"
     );
     setText("ma-vip-suggest-state", stateFromSubtitle(vr && vr.subtitle_ar));

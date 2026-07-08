@@ -5,7 +5,7 @@
 (function () {
   "use strict";
 
-  var SAR_SUFFIX = "\u00a0ر.س";
+  var SAR_SUFFIX = "\u00a0SR";
 
   function formatMerchantSar(amount) {
     var n = Math.round(parseFloat(amount) || 0);

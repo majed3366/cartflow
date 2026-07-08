@@ -134,12 +134,12 @@
         <div class="mc"><div class="mc-l">إجمالي السلال</div><div class="mc-v ma-dash-skel" id="ma-month-abandoned">{{ merchant_month_abandoned_fmt | default("…") }}</div></div>
         <div class="mc"><div class="mc-l">تم استردادها</div><div class="mc-v ma-dash-skel" style="color:var(--green-mid);" id="ma-month-recovered">{{ merchant_month_recovered_fmt | default("…") }}</div></div>
         <div class="mc"><div class="mc-l">نسبة الاسترداد</div><div class="mc-v ma-dash-skel" style="color:var(--green-mid);" id="ma-month-pct">{{ merchant_month_recovery_pct_fmt | default("…") }}٪</div></div>
-        <div class="mc"><div class="mc-l">إيرادات مستردة</div><div class="mc-v ma-dash-skel cf-currency-atom" id="ma-month-revenue" data-cf-currency="1">{{ merchant_month_revenue_fmt | default("…") }}&#160;ر.س</div></div>
+        <div class="mc"><div class="mc-l">إيرادات مستردة</div><div class="mc-v ma-dash-skel cf-currency-atom" id="ma-month-revenue" data-cf-currency="1">{{ merchant_month_revenue_fmt | default("…") }}&#160;SR</div></div>
         {% else %}
         <div class="mc"><div class="mc-l">إجمالي السلال</div><div class="mc-v">{{ merchant_month_abandoned_fmt | default("0") }}</div></div>
         <div class="mc"><div class="mc-l">تم استردادها</div><div class="mc-v" style="color:var(--green-mid);">{{ merchant_month_recovered_fmt | default("0") }}</div></div>
         <div class="mc"><div class="mc-l">نسبة الاسترداد</div><div class="mc-v" style="color:var(--green-mid);">{{ merchant_month_recovery_pct_fmt | default("0") }}٪</div></div>
-        <div class="mc"><div class="mc-l">إيرادات مستردة</div><div class="mc-v cf-currency-atom" data-cf-currency="1">{{ merchant_month_revenue_fmt | default("0") }}&#160;ر.س</div></div>
+        <div class="mc"><div class="mc-l">إيرادات مستردة</div><div class="mc-v cf-currency-atom" data-cf-currency="1">{{ merchant_month_revenue_fmt | default("0") }}&#160;SR</div></div>
         {% endif %}
       </div>
     </div>
@@ -193,7 +193,7 @@
         {% else %}
         <div class="kpi-value">{{ merchant_kpi_revenue_fmt | default("0") }}</div>
         {% endif %}
-        <div class="kpi-note up">↑ <span class="cf-currency-atom" data-cf-currency="1">ر.س</span> — اليوم</div>
+        <div class="kpi-note up">↑ <span class="cf-currency-atom" data-cf-currency="1">SR</span> — اليوم</div>
       </div>
       </div>
     </div>
@@ -297,7 +297,7 @@
             {% else %}
             {% for fr in merchant_followup_rows %}
             <tr>
-              <td>{% if fr.cart_value is not none %}<div class="camt cf-currency-atom" data-cf-currency="1">{{ "{:,.0f}".format(fr.cart_value|float) }}&#160;ر.س</div>{% else %}<div class="camt">—</div>{% endif %}<div class="ctime">{{ fr.replied_at | default("—") }}</div></td>
+              <td>{% if fr.cart_value is not none %}<div class="camt cf-currency-atom" data-cf-currency="1">{{ "{:,.0f}".format(fr.cart_value|float) }}&#160;SR</div>{% else %}<div class="camt">—</div>{% endif %}<div class="ctime">{{ fr.replied_at | default("—") }}</div></td>
               <td><span class="chip c-other">{{ fr.reason_tag_ar | default(fr.reason_ar) | default("—") }}</span></td>
               <td><div class="msg-text" style="margin:0;">{{ fr.last_message_line_ar | default("—") }}</div></td>
               <td><div class="ctime">{{ fr.attempts_ar | default("—") }}</div></td>
@@ -333,7 +333,7 @@
             {% else %}
             {% for mc in merchant_carts_page_rows if (mc.merchant_cart_bucket | default('')) == 'recovered' or (mc.customer_lifecycle_state | default('')) == 'completed' %}
             <tr>
-              <td><div class="camt cf-currency-atom" data-cf-currency="1">{{ "{:,.0f}".format((mc.merchant_cart_value or 0)|float) }}&#160;ر.س</div><div class="ctime">{{ mc.merchant_time_relative_ar | default("—") }}</div></td>
+              <td><div class="camt cf-currency-atom" data-cf-currency="1">{{ "{:,.0f}".format((mc.merchant_cart_value or 0)|float) }}&#160;SR</div><div class="ctime">{{ mc.merchant_time_relative_ar | default("—") }}</div></td>
               <td><span class="chip {{ mc.merchant_reason_chip_class | default('c-other') }}">{{ mc.merchant_reason_chip_label_ar | default("—") }}</span></td>
               <td><span class="st {{ mc.merchant_status_row_class | default('s-recovered') }}"><span class="sd"></span>{{ mc.customer_lifecycle_label_ar | default(mc.merchant_status_label_ar) | default("—") }}</span></td>
               <td><div class="next">{{ mc.merchant_next_action_ar | default("—") }}</div>{% include "partials/merchant_recovery_lifecycle_interpretation_block.html" %}</td>
@@ -368,7 +368,7 @@
           <label class="ma-fw-check"><input type="checkbox" id="ma-vip-enabled" name="vip_enabled" value="1"></label>
         </div>
         <div class="setting-row" style="flex-direction:column;align-items:stretch;gap:6px;">
-          <label class="ma-fw-label" for="ma-vip-threshold">الحد الأدنى (ريال)</label>
+          <label class="ma-fw-label" for="ma-vip-threshold">الحد الأدنى (SR)</label>
           <input class="ma-fw-input" id="ma-vip-threshold" name="vip_cart_threshold" type="number" min="1" step="1" dir="ltr" placeholder="500">
         </div>
         <div class="ma-vip-outcome-box">
@@ -412,7 +412,7 @@
             {% else %}
             {% for vr in merchant_vip_page_rows %}
             <tr>
-              <td><div class="camt cf-currency-atom" data-cf-currency="1">{{ vr.amount_display }}&#160;ر.س</div></td>
+              <td><div class="camt cf-currency-atom" data-cf-currency="1">{{ vr.amount_display }}&#160;SR</div></td>
               <td><div class="ctime">{{ vr.subtitle_ar }}</div></td>
               <td>{% if vr.has_phone %}<span class="ph-ok">✓ متوفر</span>{% else %}<span class="ph-no">✗ غير متوفر</span>{% endif %}</td>
               <td>{% if vr.contact_href %}<a class="va-btn" href="{{ vr.contact_href }}" rel="noopener noreferrer">تواصل يدوي (VIP) ←</a>{% else %}<span class="va-btn is-disabled">تواصل يدوي (VIP) ←</span>{% endif %}</td>

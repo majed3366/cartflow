@@ -467,7 +467,7 @@
       value > 0 && typeof window.formatMerchantSar === "function"
         ? window.formatMerchantSar(value)
         : value > 0
-          ? Math.round(value).toLocaleString("en-US") + "\u00a0ر.س"
+          ? Math.round(value).toLocaleString("en-US") + "\u00a0SR"
           : "";
     var recType = rec ? norm(rec.recommendation_type) : norm(group.recommended_action_type);
     var recTypeLbl = esc(recTypeLabelAr(recType));

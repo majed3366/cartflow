@@ -18,7 +18,7 @@
       return window.formatMerchantSar(amount);
     }
     var n = Math.round(parseFloat(amount) || 0);
-    return n.toLocaleString("en-US") + "\u00a0ر.س";
+    return n.toLocaleString("en-US") + "\u00a0SR";
   }
 
   function formatMerchantSarHtml(amount) {
@@ -4693,9 +4693,9 @@
       '<div class="vav">' +
       esc(vr.avatar_letter || "") +
       "</div>" +
-      '<div class="vi"><div class="vamt cf-currency-atom" data-cf-currency="1">' +
-      esc(vr.amount_display) +
-      "\u00a0ر.س</div><div class=\"vtm\">" +
+      '<div class="vi"><div class="vamt">' +
+      formatMerchantSarHtml(String(vr.amount_display || "0").replace(/,/g, "")) +
+      '</div><div class="vtm">' +
       esc(vr.subtitle_ar) +
       '</div></div><span class="vtag">VIP</span>' +
       btn +
@@ -4732,9 +4732,9 @@
         ) +
         '">✗ غير متوفر</span>';
     return (
-      "<tr><td><div class=\"camt cf-currency-atom\" data-cf-currency=\"1\">" +
-      esc(vr.amount_display) +
-      "\u00a0ر.س</div></td><td><div class=\"ctime\">" +
+      "<tr><td><div class=\"camt\">" +
+      formatMerchantSarHtml(String(vr.amount_display || "0").replace(/,/g, "")) +
+      '</div></td><td><div class="ctime">' +
       esc(vr.subtitle_ar) +
       "</div></td><td>" +
       hp +
