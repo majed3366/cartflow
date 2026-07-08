@@ -373,6 +373,38 @@ body[data-ma-page="vip"] #ma-page-hero-global {
   color: var(--v2-ink-whisper, #8b95a8);
 }
 
+.ma-mpl-narrative-host:not([hidden]) {
+  margin: 0 0 14px;
+}
+
+.ma-mpl-narrative__question {
+  margin: 0 0 6px;
+  font-size: var(--ma-type-sm, 13px);
+  color: var(--v2-ink-whisper, #8b95a8);
+}
+
+.ma-mpl-narrative__headline {
+  margin: 0 0 8px;
+  font-size: var(--ma-type-lg, 18px);
+  font-weight: 700;
+  color: var(--v2-ink, #0b1220);
+  line-height: 1.35;
+}
+
+.ma-mpl-narrative__reason,
+.ma-mpl-narrative__evidence,
+.ma-mpl-narrative__action,
+.ma-mpl-narrative__fallback {
+  margin: 0 0 6px;
+  font-size: var(--ma-type-md, 15px);
+  color: var(--v2-ink-muted, #4b5563);
+  line-height: 1.5;
+}
+
+.ma-mpl-narrative__action {
+  margin-bottom: 0;
+}
+
 .ma-mi-group {
   border: 1px solid rgba(11, 18, 32, 0.08);
   border-radius: var(--ma-card-radius, 16px);

@@ -251,6 +251,8 @@
             {% endif %}
           </div>
 
+          <div id="ma-carts-product-language-v1" class="ma-mpl-narrative-host" aria-live="polite" hidden></div>
+
           <div class="ma-cart-groups ma-mi-carts-root" id="ma-carts-groups-v2" aria-live="polite"></div>
           <aside id="ma-carts-queue-empty" class="v2-whisper" hidden>
             <p class="v2-whisper-text">لا توجد سلات تحتاج انتباهك — CartFlow يتابع المتجر.</p>
@@ -987,6 +989,8 @@
 </div><!-- /.ma-dashboard-frame -->
 
 <script defer src="/static/merchant_pds_format_v1.js?v={{ merchant_setup_render_build | default('unknown') }}"></script>
+<script defer src="/static/merchant_insight_layer_v1.js?v={{ merchant_setup_render_build | default('unknown') }}"></script>
+<script defer src="/static/merchant_product_language_v1.js?v={{ merchant_setup_render_build | default('unknown') }}"></script>
 <script defer src="/static/merchant_vip_automation_ui.js"></script>
 <script defer src="/static/merchant_home_experience.js?v={{ merchant_setup_render_build | default('unknown') }}"></script>
 <script defer src="/static/merchant_intelligence_carts_v1.js?v={{ merchant_setup_render_build | default('unknown') }}"></script>

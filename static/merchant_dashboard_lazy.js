@@ -3274,10 +3274,41 @@
   function renderMiCartsV1Pending(message) {
     var root = byId("ma-carts-groups-v2");
     if (!root) return;
+    renderMiCartsProductLanguageNarrative(null, []);
     root.innerHTML =
       '<p class="ma-mi-carts-pending v2-whisper-text">' +
       esc(message || "CartFlow يجهّز فهم المتجر…") +
       "</p>";
+  }
+
+  function renderMiCartsProductLanguageNarrative(d, rows) {
+    var host = byId("ma-carts-product-language-v1");
+    var subEl = byId("ma-carts-queue-sub");
+    var mpl = window.maProductLanguageV1;
+    var mil = window.maInsightLayerV1;
+    if (!host) return;
+    if (!mpl) {
+      host.hidden = true;
+      if (subEl) subEl.hidden = false;
+      return;
+    }
+    if (!d || !mpl.hasCartsSufficientEvidence(d, rows)) {
+      host.hidden = false;
+      host.innerHTML = mpl.renderCartsNarrativeFallbackHtml();
+      if (subEl) subEl.hidden = true;
+      return;
+    }
+    var evidence = mpl.buildCartsEvidenceFromPayload(d, rows);
+    var narrative = null;
+    if (mil && typeof mil.composePageInsightV1 === "function") {
+      var insight = mil.composePageInsightV1("carts", evidence);
+      if (insight && typeof mpl.renderProductLanguageFromInsightV1 === "function") {
+        narrative = mpl.renderProductLanguageFromInsightV1("carts", insight);
+      }
+    }
+    host.hidden = false;
+    host.innerHTML = narrative ? mpl.renderPageNarrativeHtml(narrative) : mpl.renderCartsNarrativeFallbackHtml();
+    if (subEl) subEl.hidden = true;
   }
 
   function miCartsWorkspaceKey(d, rows) {
@@ -3331,14 +3362,12 @@
     }
     var wsKey = miCartsWorkspaceKey(d, rows);
     if (wsKey === lastMiCartsWorkspaceKey && root.querySelector(".ma-mi-group")) {
-      var sub = byId("ma-carts-queue-sub");
-      if (sub && mi.workspaceSubtitleFromPayload) {
-        sub.textContent = mi.workspaceSubtitleFromPayload(d, rows);
-      }
+      renderMiCartsProductLanguageNarrative(d, rows);
       updateMiCartsV1QueueSelection();
       return true;
     }
     lastMiCartsWorkspaceKey = wsKey;
+    renderMiCartsProductLanguageNarrative(d, rows);
     var empty = byId("ma-carts-queue-empty");
     var deps = {
       esc: esc,
@@ -3348,10 +3377,7 @@
       emptyEl: empty,
       bindQueue: bindPeV2CartsQueue,
       onSelectCart: selectPeV2Cart,
-      updateSubtitle: function (text) {
-        var subEl = byId("ma-carts-queue-sub");
-        if (subEl) subEl.textContent = text;
-      },
+      updateSubtitle: function () {},
     };
     if (mi.hasValueStories(d)) {
       mi.renderStories(root, d.merchant_value_stories_v1, rows, deps);
