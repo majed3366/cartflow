@@ -39,3 +39,29 @@ body[data-cf-merchant-app="1"] .cf-currency-suffix {
   white-space: nowrap;
   unicode-bidi: isolate;
 }
+
+/* Cart example / remaining queue — fit SR atom inside card (grid + overflow) */
+body[data-cf-merchant-app="1"] #page-carts .ma-mi-group-section__queue .v2-queue-item,
+body[data-cf-merchant-app="1"] #page-carts .ma-mi-group-more .v2-queue-item {
+  width: 100%;
+  min-width: 0;
+  overflow: visible;
+}
+
+body[data-cf-merchant-app="1"] #page-carts .ma-mi-group-section__queue .v2-queue-body,
+body[data-cf-merchant-app="1"] #page-carts .ma-mi-group-more .v2-queue-body {
+  min-width: 0;
+}
+
+body[data-cf-merchant-app="1"] .v2-queue-amount.cf-currency-atom,
+body[data-cf-merchant-app="1"] .ma-mi-group-card__value.cf-currency-atom {
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+body[data-cf-merchant-app="1"] #page-carts .v2-queue-amount .cf-currency-atom {
+  display: none !important;
+}

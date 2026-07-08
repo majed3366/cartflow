@@ -45,13 +45,23 @@
     return "";
   }
 
-  function merchantCurrencyHtml(value) {
-    var v = Math.round(parseFloat(value) || 0);
-    if (!v || isNaN(v)) return "";
-    if (typeof global.formatMerchantSarHtml === "function") {
-      return global.formatMerchantSarHtml(v);
+  function queueAmountHtml(value, esc) {
+    var text = merchantCurrencyText(value);
+    if (!text) {
+      return '<div class="v2-queue-amount">—</div>';
     }
-    return "";
+    return (
+      '<div class="v2-queue-amount cf-currency-atom cftyp-currency" data-cf-currency="1" dir="ltr">' +
+      esc(text) +
+      "</div>"
+    );
+  }
+
+  function queueAccentClass(row) {
+    var bucket = norm(row && row.merchant_cart_primary_bucket);
+    if (bucket === "intervention" || bucket === "attention") return "v2-queue-accent--attention";
+    if (bucket === "waiting" || bucket === "abandoned") return "v2-queue-accent--waiting";
+    return "v2-queue-accent--calm";
   }
 
   var REASON_TAG_AR = {
@@ -481,7 +491,6 @@
       did = esc("CartFlow يتابع هذه السلال ويسجّل ما يحدث");
     }
     var value = parseFloat(group.total_cart_value || 0);
-    var valueStr = value > 0 ? merchantCurrencyText(value) : "";
     var recType = rec ? norm(rec.recommendation_type) : norm(group.recommended_action_type);
     var recTypeLbl = esc(recTypeLabelAr(recType));
     var recMsg = rec ? esc(merchantFacingText(rec.merchant_message_ar || "")) : "";
@@ -512,8 +521,10 @@
         recType === "required_action" ? "ma-mi-decision-row--action" : ""
       ) +
       '<div class="ma-mi-group-card__meta">' +
-      (valueStr
-        ? '<span class="ma-mi-group-card__value">' + esc(valueStr) + "</span>"
+      (value > 0
+        ? '<span class="ma-mi-group-card__value cf-currency-atom cftyp-currency" data-cf-currency="1" dir="ltr">' +
+          esc(merchantCurrencyText(value)) +
+          "</span>"
         : "") +
       '<span class="ma-mi-group-card__conf">' +
       esc(confidenceLabelAr(group.confidence)) +
@@ -623,19 +634,24 @@
           ""
       ) || "—";
     var rk = recoveryKey(row, deps.cartRecoveryKey);
+    var time = esc(row.merchant_time_relative_ar || "—");
     return (
       '<button type="button" class="v2-queue-item' +
       (selected ? " is-selected" : "") +
       '" data-recovery-key="' +
       esc(rk) +
       '">' +
+      '<span class="v2-queue-accent ' +
+      queueAccentClass(row) +
+      '" aria-hidden="true"></span>' +
       '<div class="v2-queue-body">' +
-      '<div class="v2-queue-amount">' +
-      merchantCurrencyHtml(v) +
-      "</div>" +
+      queueAmountHtml(v, esc) +
       '<p class="v2-queue-scan">' +
       esc(scan) +
-      "</p></div></button>"
+      "</p></div>" +
+      '<span class="v2-queue-time">' +
+      time +
+      "</span></button>"
     );
   }
 

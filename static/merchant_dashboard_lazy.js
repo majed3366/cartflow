@@ -3086,6 +3086,18 @@
     };
   }
 
+  function queueAmountHtml(v) {
+    var text = formatMerchantSar(v);
+    if (!text) {
+      return '<div class="v2-queue-amount">—</div>';
+    }
+    return (
+      '<div class="v2-queue-amount cf-currency-atom cftyp-currency" data-cf-currency="1" dir="ltr">' +
+      esc(text) +
+      "</div>"
+    );
+  }
+
   function cartQueueItemHtml(mc, selected) {
     var d = cartRowDataAttrs(mc);
     var v = Math.round(parseFloat(mc.merchant_cart_value) || 0);
@@ -3108,9 +3120,7 @@
       accent +
       '"></span>' +
       '<div class="v2-queue-body">' +
-      '<div class="v2-queue-amount">' +
-      formatMerchantSarHtml(v) +
-      "</div>" +
+      queueAmountHtml(v) +
       '<p class="v2-queue-scan">' +
       esc(scan) +
       "</p></div>" +

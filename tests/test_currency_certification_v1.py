@@ -75,7 +75,7 @@ class CurrencyCertificationV2Tests(unittest.TestCase):
             self.assertNotIn("\\u00a0SR", src)
             self.assertNotIn('" ر</div>"', src)
             self.assertNotIn('+ " SR"', src)
-        self.assertIn("merchantCurrencyHtml", _MI_CARTS_JS)
+        self.assertIn("queueAmountHtml", _MI_CARTS_JS)
         self.assertIn("window.formatMerchantSar", _LAZY_JS)
         self.assertNotIn('toLocaleString("en-US") +\n      " ر"', _MI_CARTS_JS)
 
