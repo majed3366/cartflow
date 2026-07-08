@@ -653,7 +653,7 @@ def aggregate_intelligence_groups(
                 "total_cart_value": round(total_value, 2),
                 "representative_item": rep,
                 "merchant_summary_ar": (
-                    f"{len(members)} سلات · {round(total_value, 0):,.0f} SR"
+                    f"{len(members)} سلات · SR {round(total_value, 0):,.0f}"
                     if total_value
                     else f"{len(members)} سلات"
                 ),

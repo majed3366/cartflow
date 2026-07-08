@@ -37,11 +37,15 @@ class MerchantPdsComplianceV1Tests(unittest.TestCase):
         self.assertIn("window.formatMerchantSar", _FORMAT_JS)
         self.assertIn("window.formatMerchantSarHtml", _FORMAT_JS)
         self.assertIn("window.sanitizeMerchantLanguage", _FORMAT_JS)
-        self.assertIn("\\u00a0SR", _FORMAT_JS)
+        self.assertIn("window.formatMerchantSarHtml", _FORMAT_JS)
+        self.assertIn("SAR_PREFIX", _FORMAT_JS)
+        self.assertIn('"SR\\u00a0"', _FORMAT_JS)
 
     def test_currency_compliance_in_lazy_dashboard(self) -> None:
         self.assertIn("formatMerchantSar", _LAZY_JS)
-        self.assertIn("\\u00a0SR", _LAZY_JS)
+        self.assertIn("formatMerchantSarHtml", _LAZY_JS)
+        self.assertNotIn('\\u00a0SR', _LAZY_JS)
+        self.assertNotIn('+ " SR"', _LAZY_JS)
         self.assertNotIn('+ " ر"', _LAZY_JS)
         self.assertNotIn('+ " ريال"', _LAZY_JS)
         self.assertNotIn(" ر</div>", _LAZY_JS)
@@ -52,7 +56,8 @@ class MerchantPdsComplianceV1Tests(unittest.TestCase):
 
     def test_template_currency_suffix(self) -> None:
         self.assertIn('class="cf-currency-atom"', _TEMPLATE)
-        self.assertIn("&#160;SR", _TEMPLATE)
+        self.assertIn("format_merchant_sar", _TEMPLATE)
+        self.assertNotIn("&#160;SR", _TEMPLATE)
         self.assertNotIn("&#160;ر.س", _TEMPLATE)
         self.assertNotIn("↑ ريال — اليوم", _TEMPLATE)
         self.assertNotIn("ر.س", _TEMPLATE)

@@ -36,6 +36,24 @@
     blocked: "محظور",
   };
 
+  function merchantCurrencyText(value) {
+    var v = Math.round(parseFloat(value) || 0);
+    if (!v || isNaN(v)) return "";
+    if (typeof global.formatMerchantSar === "function") {
+      return global.formatMerchantSar(v);
+    }
+    return "";
+  }
+
+  function merchantCurrencyHtml(value) {
+    var v = Math.round(parseFloat(value) || 0);
+    if (!v || isNaN(v)) return "";
+    if (typeof global.formatMerchantSarHtml === "function") {
+      return global.formatMerchantSarHtml(v);
+    }
+    return "";
+  }
+
   var REASON_TAG_AR = {
     price: "تردد بسبب السعر",
     shipping: "تردد بسبب الشحن",
@@ -463,12 +481,7 @@
       did = esc("CartFlow يتابع هذه السلال ويسجّل ما يحدث");
     }
     var value = parseFloat(group.total_cart_value || 0);
-    var valueStr =
-      value > 0 && typeof window.formatMerchantSar === "function"
-        ? window.formatMerchantSar(value)
-        : value > 0
-          ? Math.round(value).toLocaleString("en-US") + "\u00a0SR"
-          : "";
+    var valueStr = value > 0 ? merchantCurrencyText(value) : "";
     var recType = rec ? norm(rec.recommendation_type) : norm(group.recommended_action_type);
     var recTypeLbl = esc(recTypeLabelAr(recType));
     var recMsg = rec ? esc(merchantFacingText(rec.merchant_message_ar || "")) : "";
@@ -618,8 +631,8 @@
       '">' +
       '<div class="v2-queue-body">' +
       '<div class="v2-queue-amount">' +
-      v.toLocaleString("en-US") +
-      " ر</div>" +
+      merchantCurrencyHtml(v) +
+      "</div>" +
       '<p class="v2-queue-scan">' +
       esc(scan) +
       "</p></div></button>"

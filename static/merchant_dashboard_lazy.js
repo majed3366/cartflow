@@ -17,21 +17,14 @@
     if (typeof window.formatMerchantSar === "function") {
       return window.formatMerchantSar(amount);
     }
-    var n = Math.round(parseFloat(amount) || 0);
-    return n.toLocaleString("en-US") + "\u00a0SR";
+    return "";
   }
 
   function formatMerchantSarHtml(amount) {
     if (typeof window.formatMerchantSarHtml === "function") {
       return window.formatMerchantSarHtml(amount);
     }
-    var text = formatMerchantSar(amount);
-    if (!text) return "";
-    return (
-      '<span class="cf-currency-atom cftyp-currency" data-cf-currency="1">' +
-      esc(text) +
-      "</span>"
-    );
+    return "";
   }
 
   function byId(id) {
@@ -3116,7 +3109,7 @@
       '"></span>' +
       '<div class="v2-queue-body">' +
       '<div class="v2-queue-amount">' +
-      formatMerchantSar(v) +
+      formatMerchantSarHtml(v) +
       "</div>" +
       '<p class="v2-queue-scan">' +
       esc(scan) +

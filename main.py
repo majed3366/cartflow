@@ -235,6 +235,13 @@ templates.env.globals["merchant_reply_preview_display"] = merchant_reply_preview
 templates.env.globals["merchant_recovery_attempts_display_ar"] = (
     merchant_recovery_attempts_display_ar
 )
+from services.merchant_pds_format_v1 import (  # noqa: E402
+    format_merchant_sar,
+    format_merchant_sar_html,
+)
+
+templates.env.filters["format_merchant_sar"] = format_merchant_sar
+templates.env.filters["format_merchant_sar_html"] = format_merchant_sar_html
 _static = os.path.join(_ROOT, "static")
 if os.path.isdir(_static):
     app.mount("/static", StaticFiles(directory=_static), name="static")

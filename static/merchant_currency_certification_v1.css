@@ -13,6 +13,7 @@ body[data-cf-merchant-app="1"] [data-cf-currency="1"],
 body[data-cf-merchant-app="1"] .cftyp-currency.cf-currency-atom {
   display: inline-block;
   max-width: 100%;
+  direction: ltr;
   white-space: nowrap;
   unicode-bidi: isolate;
   word-break: keep-all;

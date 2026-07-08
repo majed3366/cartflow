@@ -5,19 +5,19 @@
 (function () {
   "use strict";
 
-  var SAR_SUFFIX = "\u00a0SR";
+  var SAR_PREFIX = "SR\u00a0";
 
   function formatMerchantSar(amount) {
-    var n = Math.round(parseFloat(amount) || 0);
+    var n = Math.round(parseFloat(String(amount == null ? "" : amount).replace(/,/g, "")) || 0);
     if (isNaN(n)) return "";
-    return n.toLocaleString("en-US") + SAR_SUFFIX;
+    return SAR_PREFIX + n.toLocaleString("en-US");
   }
 
   function formatMerchantSarHtml(amount) {
     var text = formatMerchantSar(amount);
     if (!text) return "";
     return (
-      '<span class="cf-currency-atom cftyp-currency" data-cf-currency="1">' +
+      '<span class="cf-currency-atom cftyp-currency" data-cf-currency="1" dir="ltr">' +
       text +
       "</span>"
     );

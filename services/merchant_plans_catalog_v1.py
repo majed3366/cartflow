@@ -98,8 +98,8 @@ class MerchantPlanCatalogEntry:
 
 def _price_label(amount: int, *, cycle: str) -> str:
     if cycle == "annual":
-        return f"{amount:,} SR / سنة"
-    return f"{amount} SR / شهر"
+        return f"SR {amount:,} / سنة"
+    return f"SR {amount} / شهر"
 
 
 def build_plan_catalog_entry(plan_id: PlanId) -> MerchantPlanCatalogEntry:

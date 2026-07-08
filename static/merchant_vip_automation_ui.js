@@ -162,9 +162,9 @@
     setText(
       "ma-vip-suggest-amount",
       amt
-        ? typeof window.formatMerchantSar === "function"
-          ? window.formatMerchantSar(amt)
-          : String(amt) + " SR"
+        ? (typeof window.formatMerchantSar === "function"
+            ? window.formatMerchantSar(amt)
+            : "—")
         : "—"
     );
     setText("ma-vip-suggest-state", stateFromSubtitle(vr && vr.subtitle_ar));
