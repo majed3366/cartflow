@@ -110,8 +110,33 @@ class MerchantIntelligenceConsumptionCartsV1Tests(unittest.TestCase):
         """Expanded cards must unmount collapsed preview — not CSS-hide duplicate copy."""
         self.assertIn("data-mi-summary-preview", _MI_CARTS_JS)
         self.assertIn("syncMiGroupSummaryPreview", _MI_CARTS_JS)
+        self.assertIn("syncOpenMiGroupSummaryPreviews", _MI_CARTS_JS)
         self.assertIn("summaryPreviewBlock", _MI_CARTS_JS)
         self.assertIn("isolation: isolate", _POLISH_CSS)
+
+    def test_bind_mi_group_details_always_syncs_open_cards(self) -> None:
+        block = _MI_CARTS_JS[
+            _MI_CARTS_JS.index("function bindMiGroupDetails")
+            : _MI_CARTS_JS.index("function updateGroupSelection")
+        ]
+        self.assertNotIn("if (el._miToggleBound) return", block)
+        self.assertIn("syncMiGroupSummaryPreview(el)", block)
+        self.assertIn("requestAnimationFrame", block)
+
+    def test_poll_skip_resyncs_open_story_summary_previews(self) -> None:
+        block = _LAZY_JS[
+            _LAZY_JS.index("function renderMiCartsV1Workspace")
+            : _LAZY_JS.index("function renderPeV2CartsQueue")
+        ]
+        self.assertIn("syncOpenMiGroupSummaryPreviews", block)
+
+    def test_expanded_open_path_strips_loose_summary_rows(self) -> None:
+        block = _MI_CARTS_JS[
+            _MI_CARTS_JS.index("function syncMiGroupSummaryPreview")
+            : _MI_CARTS_JS.index("function syncOpenMiGroupSummaryPreviews")
+        ]
+        self.assertIn(".ma-mi-decision-row", block)
+        self.assertIn("node.parentNode === summary", block)
 
     def test_expand_animations_do_not_use_opacity(self) -> None:
         pds = (_ROOT / "static" / "merchant_pds_compliance_v1.css").read_text(encoding="utf-8")

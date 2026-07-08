@@ -516,6 +516,11 @@
         el._miSummaryPreviewHtml = preview.outerHTML;
         preview.parentNode.removeChild(preview);
       }
+      summary.querySelectorAll(".ma-mi-decision-row, .ma-mi-group-card__meta").forEach(
+        function (node) {
+          if (node.parentNode === summary) node.parentNode.removeChild(node);
+        }
+      );
       return;
     }
     if (el._miSummaryPreviewHtml && !summary.querySelector("[data-mi-summary-preview]")) {
@@ -528,6 +533,13 @@
         else summary.appendChild(node);
       }
     }
+  }
+
+  function syncOpenMiGroupSummaryPreviews(root) {
+    if (!root || !root.querySelectorAll) return;
+    root.querySelectorAll("details.ma-mi-group[open]").forEach(function (el) {
+      syncMiGroupSummaryPreview(el);
+    });
   }
 
   function groupCardHtml(group, rec, rowsInGroup, deps) {
@@ -756,14 +768,20 @@
           if (ev.button !== 0) return;
           openGroupState[gid] = !el.open;
         });
+        summary.addEventListener("click", function () {
+          requestAnimationFrame(function () {
+            syncMiGroupSummaryPreview(el);
+          });
+        });
       }
-      if (el._miToggleBound) return;
-      el._miToggleBound = true;
-      el.addEventListener("toggle", function () {
-        if (el.open) openGroupState[gid] = true;
-        else delete openGroupState[gid];
-        syncMiGroupSummaryPreview(el);
-      });
+      if (!el._miToggleBound) {
+        el._miToggleBound = true;
+        el.addEventListener("toggle", function () {
+          if (el.open) openGroupState[gid] = true;
+          else delete openGroupState[gid];
+          syncMiGroupSummaryPreview(el);
+        });
+      }
       syncMiGroupSummaryPreview(el);
     });
     root.querySelectorAll(".v2-queue-item").forEach(function (btn) {
@@ -986,6 +1004,7 @@
     localizedGroupTitle: localizedGroupTitle,
     bindMiGroupDetails: bindMiGroupDetails,
     syncMiGroupSummaryPreview: syncMiGroupSummaryPreview,
+    syncOpenMiGroupSummaryPreviews: syncOpenMiGroupSummaryPreviews,
     updateGroupSelection: updateGroupSelection,
     resetOpenGroupState: resetOpenGroupState,
     renderGroups: renderGroups,

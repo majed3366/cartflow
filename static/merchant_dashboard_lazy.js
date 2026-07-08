@@ -3364,6 +3364,9 @@
     if (wsKey === lastMiCartsWorkspaceKey && root.querySelector(".ma-mi-group")) {
       renderMiCartsProductLanguageNarrative(d, rows);
       updateMiCartsV1QueueSelection();
+      if (typeof mi.syncOpenMiGroupSummaryPreviews === "function") {
+        mi.syncOpenMiGroupSummaryPreviews(root);
+      }
       return true;
     }
     lastMiCartsWorkspaceKey = wsKey;
