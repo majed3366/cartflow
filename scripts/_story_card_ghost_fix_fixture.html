@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Story Card Ghost Content — Fixture</title>
+  <link rel="stylesheet" href="/static/merchant_app.css" />
+  <link rel="stylesheet" href="/static/merchant_pe_v2.css" />
+  <link rel="stylesheet" href="/static/merchant_product_polish_v1.css" />
+  <link rel="stylesheet" href="/static/merchant_pds_compliance_v1.css" />
+  <link rel="stylesheet" href="/static/merchant_visual_identity_v1.css" />
+  <link rel="stylesheet" href="/static/merchant_card_system_v1.css" />
+  <style>
+    body {
+      margin: 0;
+      padding: 24px 16px 48px;
+      background: #f1f5f9;
+      font-family: "Segoe UI", Tahoma, sans-serif;
+    }
+    body[data-cf-merchant-app="1"] { background: #f1f5f9; }
+    .fixture-wrap {
+      max-width: 400px;
+      margin: 0 auto;
+    }
+    .fixture-label {
+      margin: 0 0 12px;
+      font-size: 13px;
+      color: #64748b;
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body data-cf-merchant-app="1" class="cf-pds-closure" data-ma-page="carts">
+  <div class="fixture-wrap">
+    <p class="fixture-label" id="fixture-state">Story card expanded — ghost content check</p>
+    <div class="ma-cart-groups ma-mi-carts-root ma-carts--mi-v1" id="ma-carts-groups-v2">
+      <details class="ma-mi-group ma-cart-group ma-mi-story" data-ma-story="waiting_reply" open>
+        <summary class="ma-mi-group-card" data-mi-story-id="waiting_reply">
+          <div class="ma-mi-group-card__head">
+            <h2 class="ma-mi-group-card__title">بانتظار رد العميل</h2>
+            <span class="ma-mi-group-card__badge" aria-label="عدد السلال">3 سلة</span>
+          </div>
+          <div class="ma-mi-decision-row">
+            <p class="ma-mi-decision-row__k">ماذا حدث؟</p>
+            <p class="ma-mi-decision-row__v">أضاف العميل منتجات ثم غادر دون إتمام الشراء.</p>
+          </div>
+          <div class="ma-mi-decision-row">
+            <p class="ma-mi-decision-row__k">لماذا يهم؟</p>
+            <p class="ma-mi-decision-row__v">العملاء بانتظار الرد قد يفقدون الاهتمام خلال ٢٤ ساعة.</p>
+          </div>
+          <div class="ma-mi-decision-row">
+            <p class="ma-mi-decision-row__k">ماذا فعل CartFlow؟</p>
+            <p class="ma-mi-decision-row__v">أُرسلت رسالة استرجاع عبر WhatsApp.</p>
+          </div>
+          <div class="ma-mi-decision-row">
+            <p class="ma-mi-decision-row__k">هل تحتاج أن تتدخل؟</p>
+            <p class="ma-mi-decision-row__v">لا — CartFlow يتابع تلقائياً</p>
+          </div>
+          <div class="ma-mi-group-card__meta">
+            <span class="ma-mi-group-card__conf">ثقة عالية</span>
+          </div>
+          <span class="ma-mi-group-card__cta v2-btn" aria-hidden="true">عرض التفاصيل</span>
+        </summary>
+        <div class="ma-mi-group-body" data-mi-story-id="waiting_reply">
+          <section class="ma-mi-group-section">
+            <h3 class="ma-mi-group-section__label">لماذا يهم؟</h3>
+            <p class="ma-mi-group-section__text">العملاء بانتظار الرد قد يفقدون الاهتمام خلال ٢٤ ساعة.</p>
+          </section>
+          <section class="ma-mi-group-section">
+            <h3 class="ma-mi-group-section__label">ماذا فعل CartFlow؟</h3>
+            <p class="ma-mi-group-section__text">أُرسلت رسالة استرجاع عبر WhatsApp.</p>
+          </section>
+          <section class="ma-mi-group-section">
+            <h3 class="ma-mi-group-section__label">أمثلة من السلال</h3>
+            <div class="ma-mi-group-section__queue v2-queue-list">
+              <button type="button" class="v2-queue-item">
+                <span class="v2-queue-accent v2-queue-accent--waiting" aria-hidden="true"></span>
+                <div class="v2-queue-body">
+                  <span class="v2-queue-amount">١٬٢٤٠ ر.س</span>
+                  <p class="v2-queue-scan">وصول الرسالة للعميل</p>
+                </div>
+                <span class="v2-queue-time">منذ ساعتين</span>
+              </button>
+              <button type="button" class="v2-queue-item">
+                <span class="v2-queue-accent v2-queue-accent--calm" aria-hidden="true"></span>
+                <div class="v2-queue-body">
+                  <span class="v2-queue-amount">٨٥٠ ر.س</span>
+                  <p class="v2-queue-scan">إتمام الشراء</p>
+                </div>
+                <span class="v2-queue-time">أمس</span>
+              </button>
+            </div>
+          </section>
+        </div>
+      </details>
+
+      <details class="ma-mi-group ma-cart-group ma-mi-story" data-ma-story="needs_merchant">
+        <summary class="ma-mi-group-card" data-mi-story-id="needs_merchant">
+          <div class="ma-mi-group-card__head">
+            <h2 class="ma-mi-group-card__title">يحتاج تدخلك</h2>
+            <span class="ma-mi-group-card__badge" aria-label="عدد السلال">1 سلة</span>
+          </div>
+          <div class="ma-mi-decision-row ma-mi-decision-row--action">
+            <p class="ma-mi-decision-row__k">ماذا حدث؟</p>
+            <p class="ma-mi-decision-row__v">العميل تفاعل مع رسالة الاسترداد.</p>
+          </div>
+          <div class="ma-mi-decision-row">
+            <p class="ma-mi-decision-row__k">لماذا يهم؟</p>
+            <p class="ma-mi-decision-row__v">رد العميل يحتاج قراراً من المتجر.</p>
+          </div>
+          <div class="ma-mi-decision-row">
+            <p class="ma-mi-decision-row__k">ماذا فعل CartFlow؟</p>
+            <p class="ma-mi-decision-row__v">أُرسلت رسالة استرجاع للعميل.</p>
+          </div>
+          <div class="ma-mi-decision-row ma-mi-decision-row--action">
+            <p class="ma-mi-decision-row__k">هل تحتاج أن تتدخل؟</p>
+            <p class="ma-mi-decision-row__v">نعم — يلزم تدخلك</p>
+          </div>
+          <div class="ma-mi-group-card__meta">
+            <span class="ma-mi-group-card__conf">ثقة عالية</span>
+          </div>
+          <span class="ma-mi-group-card__cta v2-btn" aria-hidden="true">عرض التفاصيل</span>
+        </summary>
+        <div class="ma-mi-group-body" data-mi-story-id="needs_merchant">
+          <section class="ma-mi-group-section">
+            <h3 class="ma-mi-group-section__label">لماذا يهم؟</h3>
+            <p class="ma-mi-group-section__text">رد العميل يحتاج قراراً من المتجر.</p>
+          </section>
+        </div>
+      </details>
+    </div>
+  </div>
+  <script>
+    document.querySelectorAll("details.ma-mi-group").forEach(function (el) {
+      el.querySelector("summary").addEventListener("click", function (ev) {
+        setTimeout(function () {
+          document.getElementById("fixture-state").textContent =
+            el.open ? "Expanded: " + el.getAttribute("data-ma-story") : "Collapsed";
+        }, 300);
+      });
+    });
+  </script>
+</body>
+</html>

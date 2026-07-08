@@ -516,8 +516,21 @@ body[data-ma-page="vip"] #ma-page-hero-global {
   font-weight: 800;
 }
 
+.ma-mi-group[open] {
+  position: relative;
+  z-index: 2;
+  isolation: isolate;
+}
+
 .ma-mi-group[open] > .ma-mi-group-card {
   border-bottom: 1px solid rgba(11, 18, 32, 0.06);
+  background: var(--v2-surface, #fff);
+}
+
+/* Hide collapsed-face decision rows once expanded — same copy lives in .ma-mi-group-body */
+.ma-mi-group[open] > .ma-mi-group-card .ma-mi-decision-row,
+.ma-mi-group[open] > .ma-mi-group-card .ma-mi-group-card__meta {
+  display: none;
 }
 
 .ma-mi-group[open] .ma-mi-group-card__cta {
@@ -527,6 +540,9 @@ body[data-ma-page="vip"] #ma-page-hero-global {
 .ma-mi-group-body {
   padding: 0 18px 16px;
   border-top: 1px solid rgba(11, 18, 32, 0.06);
+  background: var(--v2-surface, #fff);
+  position: relative;
+  z-index: 1;
 }
 
 .ma-mi-group-section {

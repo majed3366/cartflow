@@ -41,8 +41,15 @@ class MerchantIntelligenceConsumptionCartsV1Tests(unittest.TestCase):
         self.assertIn("merchant_intelligence_store_v1", _MI_CARTS_JS)
         self.assertIn("merchant_intelligence_v1", _MI_CARTS_JS)
         self.assertIn("intelligence_group_key", _MI_CARTS_JS)
-        self.assertNotIn("merchant_cart_primary_bucket", _MI_CARTS_JS)
         self.assertNotIn("merchant_next_action_urgent", _MI_CARTS_JS)
+
+    def test_queue_accent_reads_row_bucket_for_presentation_only(self) -> None:
+        block = _MI_CARTS_JS[
+            _MI_CARTS_JS.index("function queueAccentClass")
+            : _MI_CARTS_JS.index("var REASON_TAG_AR")
+        ]
+        self.assertIn("merchant_cart_primary_bucket", block)
+        self.assertNotIn("sortGroups", block)
 
     def test_no_local_recommendation_derivation_in_mi_carts_js(self) -> None:
         self.assertIn("recommendationForGroup", _MI_CARTS_JS)
@@ -98,6 +105,21 @@ class MerchantIntelligenceConsumptionCartsV1Tests(unittest.TestCase):
             ".ma-carts--mi-v1",
         ):
             self.assertIn(cls, _POLISH_CSS, msg=f"missing {cls}")
+
+    def test_expanded_story_card_hides_duplicate_summary_rows(self) -> None:
+        """Expanded cards must not show collapsed-face decision rows (ghost content)."""
+        self.assertIn(".ma-mi-group[open]", _POLISH_CSS)
+        self.assertIn("display: none", _POLISH_CSS)
+        self.assertIn(".ma-mi-group[open] > .ma-mi-group-card .ma-mi-decision-row", _POLISH_CSS)
+        self.assertIn("isolation: isolate", _POLISH_CSS)
+
+    def test_expand_animations_do_not_use_opacity(self) -> None:
+        pds = (_ROOT / "static" / "merchant_pds_compliance_v1.css").read_text(encoding="utf-8")
+        cfvi = (_ROOT / "static" / "merchant_visual_identity_v1.css").read_text(encoding="utf-8")
+        pds_block = pds[pds.index("@keyframes pds-expand-in") : pds.index("@keyframes pds-expand-in") + 120]
+        cfvi_block = cfvi[cfvi.index("@keyframes cfvi-expand") : cfvi.index("@keyframes cfvi-expand") + 120]
+        self.assertNotIn("opacity", pds_block)
+        self.assertNotIn("opacity", cfvi_block)
 
     def test_snapshot_allowlist_includes_mi_fields(self) -> None:
         self.assertIn('"merchant_intelligence_v1"', _SNAPSHOT)

@@ -363,8 +363,8 @@ body[data-cf-merchant-app="1"] .ma-dash-skel {
 }
 
 @keyframes cfvi-expand {
-  from { opacity: 0.94; transform: translateY(-2px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { transform: translateY(-4px); }
+  to { transform: translateY(0); }
 }
 
 @keyframes cfvi-skeleton {
