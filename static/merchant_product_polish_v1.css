@@ -527,12 +527,6 @@ body[data-ma-page="vip"] #ma-page-hero-global {
   background: var(--v2-surface, #fff);
 }
 
-/* Hide collapsed-face decision rows once expanded — same copy lives in .ma-mi-group-body */
-.ma-mi-group[open] > .ma-mi-group-card .ma-mi-decision-row,
-.ma-mi-group[open] > .ma-mi-group-card .ma-mi-group-card__meta {
-  display: none;
-}
-
 .ma-mi-group[open] .ma-mi-group-card__cta {
   opacity: 0.65;
 }

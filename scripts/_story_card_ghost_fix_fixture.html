@@ -130,13 +130,20 @@
       </details>
     </div>
   </div>
+  <script src="/static/merchant_intelligence_carts_v1.js"></script>
   <script>
-    document.querySelectorAll("details.ma-mi-group").forEach(function (el) {
-      el.querySelector("summary").addEventListener("click", function (ev) {
-        setTimeout(function () {
-          document.getElementById("fixture-state").textContent =
-            el.open ? "Expanded: " + el.getAttribute("data-ma-story") : "Collapsed";
-        }, 300);
+    document.addEventListener("DOMContentLoaded", function () {
+      var root = document.getElementById("ma-carts-groups-v2");
+      if (window.maIntelligenceCartsV1 && root) {
+        window.maIntelligenceCartsV1.bindMiGroupDetails(root);
+      }
+      document.querySelectorAll("details.ma-mi-group").forEach(function (el) {
+        el.querySelector("summary").addEventListener("click", function () {
+          setTimeout(function () {
+            document.getElementById("fixture-state").textContent =
+              el.open ? "Expanded: " + el.getAttribute("data-ma-story") : "Collapsed";
+          }, 50);
+        });
       });
     });
   </script>

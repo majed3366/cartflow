@@ -1,0 +1,944 @@
+{
+  "captured_at_utc": "2026-07-08T20:59:12+00:00",
+  "mode": "local_fixture",
+  "root_cause": "Collapsed summary preview (.ma-mi-group-card__preview) and expanded body sections render duplicate copy; CSS display:none is insufficient — preview must be removed from DOM on expand via syncMiGroupSummaryPreview().",
+  "before": {
+    "fixture_url": "http://127.0.0.1:8767/scripts/_story_card_ghost_fix_fixture.html",
+    "tree": {
+      "found": true,
+      "tree": {
+        "tag": "DETAILS",
+        "className": "ma-mi-group ma-cart-group ma-mi-story",
+        "id": "",
+        "text": "",
+        "display": "block",
+        "visibility": "visible",
+        "opacity": "1",
+        "position": "static",
+        "zIndex": "auto",
+        "children": [
+          {
+            "tag": "SUMMARY",
+            "className": "ma-mi-group-card",
+            "id": "",
+            "text": "",
+            "display": "list-item",
+            "visibility": "visible",
+            "opacity": "1",
+            "position": "static",
+            "zIndex": "auto",
+            "children": [
+              {
+                "tag": "DIV",
+                "className": "ma-mi-group-card__head",
+                "id": "",
+                "text": "",
+                "display": "flex",
+                "visibility": "visible",
+                "opacity": "1",
+                "position": "static",
+                "zIndex": "auto",
+                "children": [
+                  {
+                    "tag": "H2",
+                    "className": "ma-mi-group-card__title",
+                    "id": "",
+                    "text": "بانتظار رد العميل",
+                    "display": "block",
+                    "visibility": "visible",
+                    "opacity": "1",
+                    "position": "static",
+                    "zIndex": "auto"
+                  },
+                  {
+                    "tag": "SPAN",
+                    "className": "ma-mi-group-card__badge",
+                    "id": "",
+                    "text": "3 سلة",
+                    "display": "block",
+                    "visibility": "visible",
+                    "opacity": "1",
+                    "position": "static",
+                    "zIndex": "auto"
+                  }
+                ]
+              },
+              {
+                "tag": "DIV",
+                "className": "ma-mi-group-card__preview",
+                "id": "",
+                "text": "",
+                "display": "block",
+                "visibility": "visible",
+                "opacity": "1",
+                "position": "static",
+                "zIndex": "auto",
+                "children": [
+                  {
+                    "tag": "DIV",
+                    "className": "ma-mi-decision-row",
+                    "id": "",
+                    "text": "",
+                    "display": "block",
+                    "visibility": "visible",
+                    "opacity": "1",
+                    "position": "static",
+                    "zIndex": "auto",
+                    "children": [
+                      {
+                        "tag": "P",
+                        "className": "ma-mi-decision-row__k",
+                        "id": "",
+                        "text": "ماذا حدث؟",
+                        "display": "block",
+                        "visibility": "visible",
+                        "opacity": "1",
+                        "position": "static",
+                        "zIndex": "auto"
+                      },
+                      {
+                        "tag": "P",
+                        "className": "ma-mi-decision-row__v",
+                        "id": "",
+                        "text": "أضاف العميل منتجات ثم غادر دون إتمام الشراء.",
+                        "display": "block",
+                        "visibility": "visible",
+                        "opacity": "1",
+                        "position": "static",
+                        "zIndex": "auto"
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "DIV",
+                    "className": "ma-mi-decision-row",
+                    "id": "",
+                    "text": "",
+                    "display": "block",
+                    "visibility": "visible",
+                    "opacity": "1",
+                    "position": "static",
+                    "zIndex": "auto",
+                    "children": [
+                      {
+                        "tag": "P",
+                        "className": "ma-mi-decision-row__k",
+                        "id": "",
+                        "text": "لماذا يهم؟",
+                        "display": "block",
+                        "visibility": "visible",
+                        "opacity": "1",
+                        "position": "static",
+                        "zIndex": "auto"
+                      },
+                      {
+                        "tag": "P",
+                        "className": "ma-mi-decision-row__v",
+                        "id": "",
+                        "text": "العملاء بانتظار الرد قد يفقدون الاهتمام خلال ٢٤ ساعة.",
+                        "display": "block",
+                        "visibility": "visible",
+                        "opacity": "1",
+                        "position": "static",
+                        "zIndex": "auto"
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "DIV",
+                    "className": "ma-mi-decision-row",
+                    "id": "",
+                    "text": "",
+                    "display": "block",
+                    "visibility": "visible",
+                    "opacity": "1",
+                    "position": "static",
+                    "zIndex": "auto",
+                    "children": [
+                      {
+                        "tag": "P",
+                        "className": "ma-mi-decision-row__k",
+                        "id": "",
+                        "text": "ماذا فعل CartFlow؟",
+                        "display": "block",
+                        "visibility": "visible",
+                        "opacity": "1",
+                        "position": "static",
+                        "zIndex": "auto"
+                      },
+                      {
+                        "tag": "P",
+                        "className": "ma-mi-decision-row__v",
+                        "id": "",
+                        "text": "أُرسلت رسالة استرجاع عبر WhatsApp.",
+                        "display": "block",
+                        "visibility": "visible",
+                        "opacity": "1",
+                        "position": "static",
+                        "zIndex": "auto"
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "DIV",
+                    "className": "ma-mi-decision-row",
+                    "id": "",
+                    "text": "",
+                    "display": "block",
+                    "visibility": "visible",
+                    "opacity": "1",
+                    "position": "static",
+                    "zIndex": "auto",
+                    "children": [
+                      {
+                        "tag": "P",
+                        "className": "ma-mi-decision-row__k",
+                        "id": "",
+                        "text": "هل تحتاج أن تتدخل؟",
+                        "display": "block",
+                        "visibility": "visible",
+                        "opacity": "1",
+                        "position": "static",
+                        "zIndex": "auto"
+                      },
+                      {
+                        "tag": "P",
+                        "className": "ma-mi-decision-row__v",
+                        "id": "",
+                        "text": "لا — CartFlow يتابع تلقائياً",
+                        "display": "block",
+                        "visibility": "visible",
+                        "opacity": "1",
+                        "position": "static",
+                        "zIndex": "auto"
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "DIV",
+                    "className": "ma-mi-group-card__meta",
+                    "id": "",
+                    "text": "",
+                    "display": "flex",
+                    "visibility": "visible",
+                    "opacity": "1",
+                    "position": "static",
+                    "zIndex": "auto",
+                    "children": [
+                      {
+                        "tag": "SPAN",
+                        "className": "ma-mi-group-card__conf",
+                        "id": "",
+                        "text": "ثقة عالية",
+                        "display": "block",
+                        "visibility": "visible",
+                        "opacity": "1",
+                        "position": "static",
+                        "zIndex": "auto"
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "tag": "SPAN",
+                "className": "ma-mi-group-card__cta v2-btn",
+                "id": "",
+                "text": "عرض التفاصيل",
+                "display": "inline-flex",
+                "visibility": "visible",
+                "opacity": "1",
+                "position": "static",
+                "zIndex": "auto"
+              }
+            ]
+          },
+          {
+            "tag": "DIV",
+            "className": "ma-mi-group-body",
+            "id": "",
+            "text": "",
+            "display": "block",
+            "visibility": "visible",
+            "opacity": "1",
+            "position": "relative",
+            "zIndex": "1",
+            "children": [
+              {
+                "tag": "SECTION",
+                "className": "ma-mi-group-section",
+                "id": "",
+                "text": "",
+                "display": "block",
+                "visibility": "visible",
+                "opacity": "1",
+                "position": "static",
+                "zIndex": "auto",
+                "children": [
+                  {
+                    "tag": "H3",
+                    "className": "ma-mi-group-section__label",
+                    "id": "",
+                    "text": "لماذا يهم؟",
+                    "display": "block",
+                    "visibility": "visible",
+                    "opacity": "1",
+                    "position": "static",
+                    "zIndex": "auto"
+                  },
+                  {
+                    "tag": "P",
+                    "className": "ma-mi-group-section__text",
+                    "id": "",
+                    "text": "العملاء بانتظار الرد قد يفقدون الاهتمام خلال ٢٤ ساعة.",
+                    "display": "block",
+                    "visibility": "visible",
+                    "opacity": "1",
+                    "position": "static",
+                    "zIndex": "auto"
+                  }
+                ]
+              },
+              {
+                "tag": "SECTION",
+                "className": "ma-mi-group-section",
+                "id": "",
+                "text": "",
+                "display": "block",
+                "visibility": "visible",
+                "opacity": "1",
+                "position": "static",
+                "zIndex": "auto",
+                "children": [
+                  {
+                    "tag": "H3",
+                    "className": "ma-mi-group-section__label",
+                    "id": "",
+                    "text": "ماذا فعل CartFlow؟",
+                    "display": "block",
+                    "visibility": "visible",
+                    "opacity": "1",
+                    "position": "static",
+                    "zIndex": "auto"
+                  },
+                  {
+                    "tag": "P",
+                    "className": "ma-mi-group-section__text",
+                    "id": "",
+                    "text": "أُرسلت رسالة استرجاع عبر WhatsApp.",
+                    "display": "block",
+                    "visibility": "visible",
+                    "opacity": "1",
+                    "position": "static",
+                    "zIndex": "auto"
+                  }
+                ]
+              },
+              {
+                "tag": "SECTION",
+                "className": "ma-mi-group-section",
+                "id": "",
+                "text": "",
+                "display": "block",
+                "visibility": "visible",
+                "opacity": "1",
+                "position": "static",
+                "zIndex": "auto",
+                "children": [
+                  {
+                    "tag": "H3",
+                    "className": "ma-mi-group-section__label",
+                    "id": "",
+                    "text": "أمثلة من السلال",
+                    "display": "block",
+                    "visibility": "visible",
+                    "opacity": "1",
+                    "position": "static",
+                    "zIndex": "auto"
+                  },
+                  {
+                    "tag": "DIV",
+                    "className": "ma-mi-group-section__queue v2-queue-list",
+                    "id": "",
+                    "text": "",
+                    "display": "flex",
+                    "visibility": "visible",
+                    "opacity": "1",
+                    "position": "static",
+                    "zIndex": "auto",
+                    "children": [
+                      {
+                        "tag": "BUTTON",
+                        "className": "v2-queue-item",
+                        "id": "",
+                        "text": "",
+                        "display": "grid",
+                        "visibility": "visible",
+                        "opacity": "1",
+                        "position": "static",
+                        "zIndex": "auto",
+                        "children": [
+                          {
+                            "tag": "SPAN",
+                            "className": "v2-queue-accent v2-queue-accent--waiting",
+                            "id": "",
+                            "text": "",
+                            "display": "block",
+                            "visibility": "visible",
+                            "opacity": "1",
+                            "position": "static",
+                            "zIndex": "auto"
+                          },
+                          {
+                            "tag": "DIV",
+                            "className": "v2-queue-body",
+                            "id": "",
+                            "text": "",
+                            "display": "block",
+                            "visibility": "visible",
+                            "opacity": "1",
+                            "position": "static",
+                            "zIndex": "auto",
+                            "children": [
+                              {
+                                "tag": "SPAN",
+                                "className": "v2-queue-amount",
+                                "id": "",
+                                "text": "١٬٢٤٠ ر.س",
+                                "display": "inline",
+                                "visibility": "visible",
+                                "opacity": "1",
+                                "position": "static",
+                                "zIndex": "auto"
+                              },
+                              {
+                                "tag": "P",
+                                "className": "v2-queue-scan",
+                                "id": "",
+                                "text": "وصول الرسالة للعميل",
+                                "display": "block",
+                                "visibility": "visible",
+                                "opacity": "1",
+                                "position": "static",
+                                "zIndex": "auto"
+                              }
+                            ]
+                          },
+                          {
+                            "tag": "SPAN",
+                            "className": "v2-queue-time",
+                            "id": "",
+                            "text": "منذ ساعتين",
+                            "display": "block",
+                            "visibility": "visible",
+                            "opacity": "1",
+                            "position": "static",
+                            "zIndex": "auto"
+                          }
+                        ]
+                      },
+                      {
+                        "tag": "BUTTON",
+                        "className": "v2-queue-item",
+                        "id": "",
+                        "text": "",
+                        "display": "grid",
+                        "visibility": "visible",
+                        "opacity": "1",
+                        "position": "static",
+                        "zIndex": "auto",
+                        "children": [
+                          {
+                            "tag": "SPAN",
+                            "className": "v2-queue-accent v2-queue-accent--calm",
+                            "id": "",
+                            "text": "",
+                            "display": "block",
+                            "visibility": "visible",
+                            "opacity": "1",
+                            "position": "static",
+                            "zIndex": "auto"
+                          },
+                          {
+                            "tag": "DIV",
+                            "className": "v2-queue-body",
+                            "id": "",
+                            "text": "",
+                            "display": "block",
+                            "visibility": "visible",
+                            "opacity": "1",
+                            "position": "static",
+                            "zIndex": "auto",
+                            "children": [
+                              {
+                                "tag": "SPAN",
+                                "className": "v2-queue-amount",
+                                "id": "",
+                                "text": "٨٥٠ ر.س",
+                                "display": "inline",
+                                "visibility": "visible",
+                                "opacity": "1",
+                                "position": "static",
+                                "zIndex": "auto"
+                              },
+                              {
+                                "tag": "P",
+                                "className": "v2-queue-scan",
+                                "id": "",
+                                "text": "إتمام الشراء",
+                                "display": "block",
+                                "visibility": "visible",
+                                "opacity": "1",
+                                "position": "static",
+                                "zIndex": "auto"
+                              }
+                            ]
+                          },
+                          {
+                            "tag": "SPAN",
+                            "className": "v2-queue-time",
+                            "id": "",
+                            "text": "أمس",
+                            "display": "block",
+                            "visibility": "visible",
+                            "opacity": "1",
+                            "position": "static",
+                            "zIndex": "auto"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "summary_preview": {
+      "found": true,
+      "selector": "details.ma-mi-story[data-ma-story=\"waiting_reply\"] summary .ma-mi-group-card__preview",
+      "tag": "DIV",
+      "className": "ma-mi-group-card__preview",
+      "text": "ماذا حدث؟\n            أضاف العميل منتجات ثم غادر دون إتمام الشراء.\n          \n            لماذا يهم؟\n            العملاء بانتظار الرد قد يفقدون الاهتمام خلال ٢٤ ساعة.\n          \n            ماذا فعل C",
+      "childCount": 5,
+      "display": "block",
+      "visibility": "visible",
+      "opacity": "1",
+      "position": "static",
+      "zIndex": "auto",
+      "rect": {
+        "x": 38,
+        "y": 102,
+        "width": 314,
+        "height": 244.5,
+        "top": 102,
+        "right": 352,
+        "bottom": 346.5,
+        "left": 38
+      }
+    },
+    "summary_decision_rows": [
+      {
+        "text": "ماذا حدث؟\n            أضاف العميل منتجات ثم غادر دون إتمام الشراء.",
+        "display": "block",
+        "parent": "ma-mi-group-card__preview"
+      },
+      {
+        "text": "لماذا يهم؟\n            العملاء بانتظار الرد قد يفقدون الاهتمام خلال ٢٤ ساعة.",
+        "display": "block",
+        "parent": "ma-mi-group-card__preview"
+      },
+      {
+        "text": "ماذا فعل CartFlow؟\n            أُرسلت رسالة استرجاع عبر WhatsApp.",
+        "display": "block",
+        "parent": "ma-mi-group-card__preview"
+      },
+      {
+        "text": "هل تحتاج أن تتدخل؟\n            لا — CartFlow يتابع تلقائياً",
+        "display": "block",
+        "parent": "ma-mi-group-card__preview"
+      }
+    ],
+    "body_sections": [
+      {
+        "label": "لماذا يهم؟",
+        "text": "العملاء بانتظار الرد قد يفقدون الاهتمام خلال ٢٤ ساعة."
+      },
+      {
+        "label": "ماذا فعل CartFlow؟",
+        "text": "أُرسلت رسالة استرجاع عبر WhatsApp."
+      },
+      {
+        "label": "أمثلة من السلال",
+        "text": ""
+      }
+    ]
+  },
+  "after": {
+    "tree": {
+      "found": true,
+      "tree": {
+        "tag": "DETAILS",
+        "className": "ma-mi-group ma-cart-group ma-mi-story",
+        "id": "",
+        "text": "",
+        "display": "block",
+        "visibility": "visible",
+        "opacity": "1",
+        "position": "relative",
+        "zIndex": "2",
+        "children": [
+          {
+            "tag": "SUMMARY",
+            "className": "ma-mi-group-card",
+            "id": "",
+            "text": "",
+            "display": "list-item",
+            "visibility": "visible",
+            "opacity": "1",
+            "position": "static",
+            "zIndex": "auto",
+            "children": [
+              {
+                "tag": "DIV",
+                "className": "ma-mi-group-card__head",
+                "id": "",
+                "text": "",
+                "display": "flex",
+                "visibility": "visible",
+                "opacity": "1",
+                "position": "static",
+                "zIndex": "auto",
+                "children": [
+                  {
+                    "tag": "H2",
+                    "className": "ma-mi-group-card__title",
+                    "id": "",
+                    "text": "بانتظار رد العميل",
+                    "display": "block",
+                    "visibility": "visible",
+                    "opacity": "1",
+                    "position": "static",
+                    "zIndex": "auto"
+                  },
+                  {
+                    "tag": "SPAN",
+                    "className": "ma-mi-group-card__badge",
+                    "id": "",
+                    "text": "3 سلة",
+                    "display": "block",
+                    "visibility": "visible",
+                    "opacity": "1",
+                    "position": "static",
+                    "zIndex": "auto"
+                  }
+                ]
+              },
+              {
+                "tag": "SPAN",
+                "className": "ma-mi-group-card__cta v2-btn",
+                "id": "",
+                "text": "عرض التفاصيل",
+                "display": "inline-flex",
+                "visibility": "visible",
+                "opacity": "0.65",
+                "position": "static",
+                "zIndex": "auto"
+              }
+            ]
+          },
+          {
+            "tag": "DIV",
+            "className": "ma-mi-group-body",
+            "id": "",
+            "text": "",
+            "display": "block",
+            "visibility": "visible",
+            "opacity": "1",
+            "position": "relative",
+            "zIndex": "1",
+            "children": [
+              {
+                "tag": "SECTION",
+                "className": "ma-mi-group-section",
+                "id": "",
+                "text": "",
+                "display": "block",
+                "visibility": "visible",
+                "opacity": "1",
+                "position": "static",
+                "zIndex": "auto",
+                "children": [
+                  {
+                    "tag": "H3",
+                    "className": "ma-mi-group-section__label",
+                    "id": "",
+                    "text": "لماذا يهم؟",
+                    "display": "block",
+                    "visibility": "visible",
+                    "opacity": "1",
+                    "position": "static",
+                    "zIndex": "auto"
+                  },
+                  {
+                    "tag": "P",
+                    "className": "ma-mi-group-section__text",
+                    "id": "",
+                    "text": "العملاء بانتظار الرد قد يفقدون الاهتمام خلال ٢٤ ساعة.",
+                    "display": "block",
+                    "visibility": "visible",
+                    "opacity": "1",
+                    "position": "static",
+                    "zIndex": "auto"
+                  }
+                ]
+              },
+              {
+                "tag": "SECTION",
+                "className": "ma-mi-group-section",
+                "id": "",
+                "text": "",
+                "display": "block",
+                "visibility": "visible",
+                "opacity": "1",
+                "position": "static",
+                "zIndex": "auto",
+                "children": [
+                  {
+                    "tag": "H3",
+                    "className": "ma-mi-group-section__label",
+                    "id": "",
+                    "text": "ماذا فعل CartFlow؟",
+                    "display": "block",
+                    "visibility": "visible",
+                    "opacity": "1",
+                    "position": "static",
+                    "zIndex": "auto"
+                  },
+                  {
+                    "tag": "P",
+                    "className": "ma-mi-group-section__text",
+                    "id": "",
+                    "text": "أُرسلت رسالة استرجاع عبر WhatsApp.",
+                    "display": "block",
+                    "visibility": "visible",
+                    "opacity": "1",
+                    "position": "static",
+                    "zIndex": "auto"
+                  }
+                ]
+              },
+              {
+                "tag": "SECTION",
+                "className": "ma-mi-group-section",
+                "id": "",
+                "text": "",
+                "display": "block",
+                "visibility": "visible",
+                "opacity": "1",
+                "position": "static",
+                "zIndex": "auto",
+                "children": [
+                  {
+                    "tag": "H3",
+                    "className": "ma-mi-group-section__label",
+                    "id": "",
+                    "text": "أمثلة من السلال",
+                    "display": "block",
+                    "visibility": "visible",
+                    "opacity": "1",
+                    "position": "static",
+                    "zIndex": "auto"
+                  },
+                  {
+                    "tag": "DIV",
+                    "className": "ma-mi-group-section__queue v2-queue-list",
+                    "id": "",
+                    "text": "",
+                    "display": "flex",
+                    "visibility": "visible",
+                    "opacity": "1",
+                    "position": "static",
+                    "zIndex": "auto",
+                    "children": [
+                      {
+                        "tag": "BUTTON",
+                        "className": "v2-queue-item",
+                        "id": "",
+                        "text": "",
+                        "display": "grid",
+                        "visibility": "visible",
+                        "opacity": "1",
+                        "position": "static",
+                        "zIndex": "auto",
+                        "children": [
+                          {
+                            "tag": "SPAN",
+                            "className": "v2-queue-accent v2-queue-accent--waiting",
+                            "id": "",
+                            "text": "",
+                            "display": "block",
+                            "visibility": "visible",
+                            "opacity": "1",
+                            "position": "static",
+                            "zIndex": "auto"
+                          },
+                          {
+                            "tag": "DIV",
+                            "className": "v2-queue-body",
+                            "id": "",
+                            "text": "",
+                            "display": "block",
+                            "visibility": "visible",
+                            "opacity": "1",
+                            "position": "static",
+                            "zIndex": "auto",
+                            "children": [
+                              {
+                                "tag": "SPAN",
+                                "className": "v2-queue-amount",
+                                "id": "",
+                                "text": "١٬٢٤٠ ر.س",
+                                "display": "inline",
+                                "visibility": "visible",
+                                "opacity": "1",
+                                "position": "static",
+                                "zIndex": "auto"
+                              },
+                              {
+                                "tag": "P",
+                                "className": "v2-queue-scan",
+                                "id": "",
+                                "text": "وصول الرسالة للعميل",
+                                "display": "block",
+                                "visibility": "visible",
+                                "opacity": "1",
+                                "position": "static",
+                                "zIndex": "auto"
+                              }
+                            ]
+                          },
+                          {
+                            "tag": "SPAN",
+                            "className": "v2-queue-time",
+                            "id": "",
+                            "text": "منذ ساعتين",
+                            "display": "block",
+                            "visibility": "visible",
+                            "opacity": "1",
+                            "position": "static",
+                            "zIndex": "auto"
+                          }
+                        ]
+                      },
+                      {
+                        "tag": "BUTTON",
+                        "className": "v2-queue-item",
+                        "id": "",
+                        "text": "",
+                        "display": "grid",
+                        "visibility": "visible",
+                        "opacity": "1",
+                        "position": "static",
+                        "zIndex": "auto",
+                        "children": [
+                          {
+                            "tag": "SPAN",
+                            "className": "v2-queue-accent v2-queue-accent--calm",
+                            "id": "",
+                            "text": "",
+                            "display": "block",
+                            "visibility": "visible",
+                            "opacity": "1",
+                            "position": "static",
+                            "zIndex": "auto"
+                          },
+                          {
+                            "tag": "DIV",
+                            "className": "v2-queue-body",
+                            "id": "",
+                            "text": "",
+                            "display": "block",
+                            "visibility": "visible",
+                            "opacity": "1",
+                            "position": "static",
+                            "zIndex": "auto",
+                            "children": [
+                              {
+                                "tag": "SPAN",
+                                "className": "v2-queue-amount",
+                                "id": "",
+                                "text": "٨٥٠ ر.س",
+                                "display": "inline",
+                                "visibility": "visible",
+                                "opacity": "1",
+                                "position": "static",
+                                "zIndex": "auto"
+                              },
+                              {
+                                "tag": "P",
+                                "className": "v2-queue-scan",
+                                "id": "",
+                                "text": "إتمام الشراء",
+                                "display": "block",
+                                "visibility": "visible",
+                                "opacity": "1",
+                                "position": "static",
+                                "zIndex": "auto"
+                              }
+                            ]
+                          },
+                          {
+                            "tag": "SPAN",
+                            "className": "v2-queue-time",
+                            "id": "",
+                            "text": "أمس",
+                            "display": "block",
+                            "visibility": "visible",
+                            "opacity": "1",
+                            "position": "static",
+                            "zIndex": "auto"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "summary_preview": {
+      "found": false,
+      "selector": "details.ma-mi-story[data-ma-story=\"waiting_reply\"][open] summary .ma-mi-group-card__preview"
+    },
+    "summary_decision_rows": [],
+    "body_sections": [
+      {
+        "label": "لماذا يهم؟",
+        "text": "العملاء بانتظار الرد قد يفقدون الاهتمام خلال ٢٤ ساعة."
+      },
+      {
+        "label": "ماذا فعل CartFlow؟",
+        "text": "أُرسلت رسالة استرجاع عبر WhatsApp."
+      },
+      {
+        "label": "أمثلة من السلال",
+        "text": ""
+      }
+    ],
+    "acceptance": {
+      "summary_preview_removed": true,
+      "summary_decision_row_count": 0,
+      "single_text_layer": true
+    }
+  },
+  "collapsed_again": {
+    "summary_preview_restored": true,
+    "decision_row_count": 4
+  }
+}

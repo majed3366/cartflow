@@ -107,10 +107,10 @@ class MerchantIntelligenceConsumptionCartsV1Tests(unittest.TestCase):
             self.assertIn(cls, _POLISH_CSS, msg=f"missing {cls}")
 
     def test_expanded_story_card_hides_duplicate_summary_rows(self) -> None:
-        """Expanded cards must not show collapsed-face decision rows (ghost content)."""
-        self.assertIn(".ma-mi-group[open]", _POLISH_CSS)
-        self.assertIn("display: none", _POLISH_CSS)
-        self.assertIn(".ma-mi-group[open] > .ma-mi-group-card .ma-mi-decision-row", _POLISH_CSS)
+        """Expanded cards must unmount collapsed preview — not CSS-hide duplicate copy."""
+        self.assertIn("data-mi-summary-preview", _MI_CARTS_JS)
+        self.assertIn("syncMiGroupSummaryPreview", _MI_CARTS_JS)
+        self.assertIn("summaryPreviewBlock", _MI_CARTS_JS)
         self.assertIn("isolation: isolate", _POLISH_CSS)
 
     def test_expand_animations_do_not_use_opacity(self) -> None:

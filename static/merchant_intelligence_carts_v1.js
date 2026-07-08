@@ -266,15 +266,17 @@
       String(count) +
       " سلة</span>" +
       "</div>" +
-      decisionRowHtml("ماذا حدث؟", what, esc) +
-      decisionRowHtml("لماذا يهم؟", meaning, esc) +
-      decisionRowHtml("ماذا فعل CartFlow؟", did, esc) +
-      decisionRowHtml("هل تحتاج أن تتدخل؟", actionLine, esc, actionClass) +
-      '<div class="ma-mi-group-card__meta">' +
-      '<span class="ma-mi-group-card__conf">' +
-      esc(confidenceLabelAr(story.confidence)) +
-      "</span>" +
-      "</div>" +
+      summaryPreviewBlock(
+        decisionRowHtml("ماذا حدث؟", what, esc) +
+          decisionRowHtml("لماذا يهم؟", meaning, esc) +
+          decisionRowHtml("ماذا فعل CartFlow؟", did, esc) +
+          decisionRowHtml("هل تحتاج أن تتدخل؟", actionLine, esc, actionClass) +
+          '<div class="ma-mi-group-card__meta">' +
+          '<span class="ma-mi-group-card__conf">' +
+          esc(confidenceLabelAr(story.confidence)) +
+          "</span>" +
+          "</div>"
+      ) +
       '<span class="ma-mi-group-card__cta v2-btn" aria-hidden="true">عرض التفاصيل</span>' +
       "</summary>"
     );
@@ -465,6 +467,69 @@
     );
   }
 
+  function summaryPreviewBlock(innerHtml) {
+    if (!innerHtml) return "";
+    return (
+      '<div class="ma-mi-group-card__preview" data-mi-summary-preview="1">' +
+      innerHtml +
+      "</div>"
+    );
+  }
+
+  function ensureSummaryPreview(summary) {
+    var preview = summary.querySelector("[data-mi-summary-preview]");
+    if (preview) return preview;
+    var cta = summary.querySelector(".ma-mi-group-card__cta");
+    var head = summary.querySelector(".ma-mi-group-card__head");
+    var node = head ? head.nextSibling : summary.firstChild;
+    var movable = [];
+    while (node && node !== cta) {
+      var next = node.nextSibling;
+      if (
+        node.nodeType === 1 &&
+        (node.classList.contains("ma-mi-decision-row") ||
+          node.classList.contains("ma-mi-group-card__meta"))
+      ) {
+        movable.push(node);
+      }
+      node = next;
+    }
+    if (!movable.length) return null;
+    preview = document.createElement("div");
+    preview.className = "ma-mi-group-card__preview";
+    preview.setAttribute("data-mi-summary-preview", "1");
+    summary.insertBefore(preview, movable[0]);
+    movable.forEach(function (n) {
+      preview.appendChild(n);
+    });
+    return preview;
+  }
+
+  function syncMiGroupSummaryPreview(el) {
+    if (!el) return;
+    var summary = el.querySelector("summary.ma-mi-group-card");
+    if (!summary) return;
+    var preview = summary.querySelector("[data-mi-summary-preview]");
+    if (!preview) preview = ensureSummaryPreview(summary);
+    if (el.open) {
+      if (preview) {
+        el._miSummaryPreviewHtml = preview.outerHTML;
+        preview.parentNode.removeChild(preview);
+      }
+      return;
+    }
+    if (el._miSummaryPreviewHtml && !summary.querySelector("[data-mi-summary-preview]")) {
+      var wrap = document.createElement("div");
+      wrap.innerHTML = el._miSummaryPreviewHtml;
+      var node = wrap.firstElementChild;
+      if (node) {
+        var anchor = summary.querySelector(".ma-mi-group-card__cta");
+        if (anchor) summary.insertBefore(node, anchor);
+        else summary.appendChild(node);
+      }
+    }
+  }
+
   function groupCardHtml(group, rec, rowsInGroup, deps) {
     var esc = deps.esc;
     var gid = norm(group.group_id);
@@ -511,25 +576,27 @@
       String(count) +
       " سلة</span>" +
       "</div>" +
-      decisionRowHtml("ماذا يحدث؟", what, esc) +
-      decisionRowHtml("لماذا يهم؟", meaning, esc) +
-      decisionRowHtml("ماذا فعل CartFlow؟", did, esc) +
-      decisionRowHtml(
-        "هل يلزم إجراء؟",
-        actionLine,
-        esc,
-        recType === "required_action" ? "ma-mi-decision-row--action" : ""
+      summaryPreviewBlock(
+        decisionRowHtml("ماذا يحدث؟", what, esc) +
+          decisionRowHtml("لماذا يهم؟", meaning, esc) +
+          decisionRowHtml("ماذا فعل CartFlow؟", did, esc) +
+          decisionRowHtml(
+            "هل يلزم إجراء؟",
+            actionLine,
+            esc,
+            recType === "required_action" ? "ma-mi-decision-row--action" : ""
+          ) +
+          '<div class="ma-mi-group-card__meta">' +
+          (value > 0
+            ? '<span class="ma-mi-group-card__value cf-currency-atom cftyp-currency" data-cf-currency="1" dir="ltr">' +
+              esc(merchantCurrencyText(value)) +
+              "</span>"
+            : "") +
+          '<span class="ma-mi-group-card__conf">' +
+          esc(confidenceLabelAr(group.confidence)) +
+          "</span>" +
+          "</div>"
       ) +
-      '<div class="ma-mi-group-card__meta">' +
-      (value > 0
-        ? '<span class="ma-mi-group-card__value cf-currency-atom cftyp-currency" data-cf-currency="1" dir="ltr">' +
-          esc(merchantCurrencyText(value)) +
-          "</span>"
-        : "") +
-      '<span class="ma-mi-group-card__conf">' +
-      esc(confidenceLabelAr(group.confidence)) +
-      "</span>" +
-      "</div>" +
       '<span class="ma-mi-group-card__cta v2-btn" aria-hidden="true">عرض التفاصيل</span>' +
       "</summary>"
     );
@@ -695,7 +762,9 @@
       el.addEventListener("toggle", function () {
         if (el.open) openGroupState[gid] = true;
         else delete openGroupState[gid];
+        syncMiGroupSummaryPreview(el);
       });
+      syncMiGroupSummaryPreview(el);
     });
     root.querySelectorAll(".v2-queue-item").forEach(function (btn) {
       if (btn._miStopBound) return;
@@ -916,6 +985,7 @@
     merchantFacingText: merchantFacingText,
     localizedGroupTitle: localizedGroupTitle,
     bindMiGroupDetails: bindMiGroupDetails,
+    syncMiGroupSummaryPreview: syncMiGroupSummaryPreview,
     updateGroupSelection: updateGroupSelection,
     resetOpenGroupState: resetOpenGroupState,
     renderGroups: renderGroups,
