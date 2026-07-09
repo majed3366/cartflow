@@ -1,9 +1,9 @@
 /* Lazy-load merchant dashboard JSON sections (shell-first). Not storefront widget V2. */
-/* MERCHANT_SETUP_RENDER_BUILD=ui-setup-v5-demo-reusable */
+/* MERCHANT_SETUP_RENDER_BUILD=ui-setup-v8e-verdict-freshness-v1 */
 (function () {
   "use strict";
 
-  var MERCHANT_SETUP_RENDER_BUILD = "ui-setup-v5-demo-reusable";
+  var MERCHANT_SETUP_RENDER_BUILD = "ui-setup-v8e-verdict-freshness-v1";
 
   function esc(s) {
     return String(s == null ? "" : s)
@@ -422,6 +422,9 @@
       var c = JSON.parse(raw);
       if (!c || !c.rows || !c.rows.length) return false;
       lastNormalCartsFilterCounts = c.fc || {};
+      // Cache is temporary paint only — Attention Verdict stays pending until live apply.
+      cartsAttentionVerdictFresh = false;
+      cartsAttentionVerdictPending = true;
       renderNormalCartsTables(
         prepareNormalCartsPayload(
           {
@@ -438,7 +441,10 @@
         merchantDashboardRefreshToken = String(c.token);
       }
       normalCartsHasRenderedRows = true;
-      logClientRefresh("normal_carts_cache_hydrate", { rows: c.rows.length });
+      logClientRefresh("normal_carts_cache_hydrate", {
+        rows: c.rows.length,
+        verdict_freshness: "pending",
+      });
       return true;
     } catch (_hydrateErr) {
       return false;
@@ -481,12 +487,25 @@
   }
 
   function rerenderCartsFromMemory(reason) {
+    var reasonKey = String(reason || "");
+    // Keep-old-rows paths must not present stale counts as final Attention Verdict.
+    var keepStale =
+      reasonKey.indexOf("_keep") !== -1 ||
+      reasonKey === "partial_keep" ||
+      reasonKey === "thin_keep" ||
+      reasonKey === "unconfirmed_empty_keep" ||
+      reasonKey === "empty_mismatch_keep";
+    if (keepStale) {
+      cartsAttentionVerdictFresh = false;
+      cartsAttentionVerdictPending = true;
+    }
     if (!lastNormalCartsPageRows.length) {
       if (hydrateNormalCartsCache()) {
-        logClientRefresh("carts_rerender_cache", { reason: reason || "" });
+        logClientRefresh("carts_rerender_cache", { reason: reasonKey });
         return;
       }
       showNormalCartsLoadingState("جاري تحميل السلال…");
+      markAttentionVerdictRefreshing(reasonKey || "memory_empty");
       return;
     }
     renderNormalCartsTables(
@@ -502,8 +521,9 @@
       )
     );
     logClientRefresh("carts_rerender_memory", {
-      reason: reason || "",
+      reason: reasonKey,
       rows: lastNormalCartsPageRows.length,
+      verdict_freshness: cartsAttentionVerdictPending ? "pending" : "final",
     });
   }
 
@@ -2479,6 +2499,10 @@
   var lastMerchantIntelligencePayload = null;
   var lastMiCartsWorkspaceKey = "";
   var miCartsDidInitialSelect = false;
+  /* Attention Verdict freshness: cache/memory may paint body, but counts are
+   * not final until a successful live/snapshot apply sets this true. */
+  var cartsAttentionVerdictFresh = false;
+  var cartsAttentionVerdictPending = false;
 
   function isArchivedVisual(mc) {
     if (!mc) return false;
@@ -3448,17 +3472,31 @@
     return counts;
   }
 
+  function resolveAttentionVerdictPending(opts) {
+    opts = opts || {};
+    if (opts.freshness === "final") return false;
+    if (opts.freshness === "pending") return true;
+    if (opts.pending != null) return !!opts.pending;
+    if (opts.loading) return true;
+    return !!cartsAttentionVerdictPending;
+  }
+
   function buildCartsAttentionVerdictV1(rows, opts) {
     opts = opts || {};
     var loading = !!opts.loading;
+    var pending = resolveAttentionVerdictPending(opts);
     var counts = countCartPagePrimaryActions(rows);
-    if (loading && !counts.total_active) {
+    // Cache/memory/degraded: never present row-derived counts as final truth.
+    if (pending || (loading && !counts.total_active)) {
       return {
-        mode: "loading",
-        headline: "CartFlow يجهّز صورة الانتباه…",
-        detail: "",
+        mode: "refreshing",
+        headline: "جارٍ تحديث الصورة...",
+        detail: counts.total_active
+          ? "نؤكّد حالة السلال الآن — الأرقام النهائية تظهر بعد التحديث."
+          : "CartFlow يجهّز صورة الانتباه…",
         continue_hint: "",
         counts: counts,
+        freshness: "pending",
       };
     }
     if (!counts.total_active) {
@@ -3468,6 +3506,7 @@
         detail: "لا توجد سلال نشطة في المتجر حالياً.",
         continue_hint: "",
         counts: counts,
+        freshness: "final",
       };
     }
     if (counts.needs_you > 0) {
@@ -3491,6 +3530,7 @@
         detail: typeLine,
         continue_hint: "تابع من البطاقات أدناه",
         counts: counts,
+        freshness: "final",
       };
     }
     if (counts.wait > 0) {
@@ -3503,6 +3543,7 @@
           (counts.wait === 1 ? " سلة تلقائياً." : " سلال تلقائياً."),
         continue_hint: "",
         counts: counts,
+        freshness: "final",
       };
     }
     return {
@@ -3511,6 +3552,7 @@
       detail: "الحالات النشطة لا تتطلب تدخلاً في هذه اللحظة.",
       continue_hint: "",
       counts: counts,
+      freshness: "final",
     };
   }
 
@@ -3523,6 +3565,7 @@
       if (host) {
         host.hidden = true;
         host.innerHTML = "";
+        host.removeAttribute("data-verdict-freshness");
       }
       return false;
     }
@@ -3538,10 +3581,14 @@
     // Pending/empty body owns the cart-list whisper host so the page never
     // looks blank under the verdict — do not suppress that host from here.
     if (!host) return true;
+    var pending = resolveAttentionVerdictPending(opts);
     var verdict = buildCartsAttentionVerdictV1(rows, opts);
+    var freshness = verdict.freshness || (pending ? "pending" : "final");
     var html =
       '<div class="ma-carts-attention-verdict__inner" data-verdict-mode="' +
       esc(verdict.mode) +
+      '" data-verdict-freshness="' +
+      esc(freshness) +
       '">' +
       '<p class="ma-carts-attention-verdict__kicker">ما يحتاج انتباهك الآن</p>' +
       '<p class="ma-carts-attention-verdict__headline">' +
@@ -3561,9 +3608,25 @@
     }
     html += "</div>";
     host.innerHTML = html;
+    host.setAttribute("data-verdict-freshness", freshness);
     host.hidden = false;
     host.removeAttribute("hidden");
     return true;
+  }
+
+  function markAttentionVerdictRefreshing(reason) {
+    cartsAttentionVerdictFresh = false;
+    cartsAttentionVerdictPending = true;
+    if (!cartsV2UiEnabled()) return;
+    var rows = activeNormalCartRows(lastNormalCartsPageRows || []);
+    renderCartsAttentionVerdictV1(rows, {
+      pending: true,
+      freshness: "pending",
+    });
+    logClientRefresh("attention_verdict_refreshing", {
+      reason: reason || "",
+      rows: rows.length,
+    });
   }
 
   function renderMiCartsV1Pending(rows, message) {
@@ -3574,10 +3637,11 @@
     });
     var hasRows = activeRows.length > 0;
     // Keep verdict aligned with real rows when available (never force rows=[]).
+    // Freshness flag (cache/pending) still suppresses final counts until live apply.
     if (hasRows) {
       renderCartsAttentionVerdictV1(activeRows);
     } else {
-      renderCartsAttentionVerdictV1([], { loading: true });
+      renderCartsAttentionVerdictV1([], { loading: true, freshness: "pending" });
     }
     if (!cartsV2UiEnabled()) {
       renderMiCartsProductLanguageNarrative(null, []);
@@ -4847,6 +4911,7 @@
     var confirmedEmpty = !!(d && d.__ma_confirmed_empty);
     if (!pageRows.length && !confirmedEmpty) {
       showNormalCartsLoadingState("جاري تحميل السلال…");
+      markAttentionVerdictRefreshing("render_empty_loading");
       return;
     }
     lastNormalCartsPageRows = pageRows;
@@ -5076,6 +5141,7 @@
         return;
       }
       showNormalCartsLoadingState("جاري تحميل السلال…");
+      markAttentionVerdictRefreshing("partial_empty");
       scheduleNormalCartsRetry(normalCartsDegradedRetryStage(d));
       return;
     }
@@ -5089,6 +5155,7 @@
           rerenderCartsFromMemory("empty_mismatch_keep");
         } else {
           showNormalCartsLoadingState("جاري تحميل السلال…");
+          markAttentionVerdictRefreshing("empty_mismatch");
         }
         scheduleNormalCartsRetry("empty_mismatch");
         return;
@@ -5108,6 +5175,7 @@
         rerenderCartsFromMemory("thin_keep");
       } else {
         showNormalCartsLoadingState("جاري تحميل السلال…");
+        markAttentionVerdictRefreshing("thin");
       }
       scheduleNormalCartsRetry(normalCartsDegradedRetryStage(d) || "thin");
       return;
@@ -5124,6 +5192,7 @@
         rerenderCartsFromMemory("unconfirmed_empty_keep");
       } else {
         showNormalCartsLoadingState("جاري تحميل السلال…");
+        markAttentionVerdictRefreshing("unconfirmed_empty");
       }
       scheduleNormalCartsRetry("unconfirmed_empty");
       return;
@@ -5134,6 +5203,9 @@
     if (!pageRows.length && normalCartsIsConfirmedFullEmpty(d, pageRows)) {
       prepared.__ma_confirmed_empty = true;
     }
+    // Fresh live/snapshot apply: Attention Verdict may show final counts.
+    cartsAttentionVerdictPending = false;
+    cartsAttentionVerdictFresh = true;
     renderNormalCartsTables(prepared);
     persistNormalCartsCache(prepared);
     if (fetchGen != null) {
@@ -5147,6 +5219,7 @@
       partial: !!d.dashboard_partial,
       source: normalCartsPayloadSource(prepared),
       appliedGen: normalCartsAppliedGen,
+      verdict_freshness: "final",
       selected_filter:
         typeof window.getCurrentNormalCartFilter === "function"
           ? window.getCurrentNormalCartFilter()
@@ -5158,6 +5231,10 @@
   function fetchNormalCarts(label) {
     var gen = ++normalCartsFetchGen;
     showNormalCartsLoadingState();
+    // Boot / first paint: keep verdict in refreshing until this fetch applies.
+    if (!cartsAttentionVerdictFresh) {
+      markAttentionVerdictRefreshing(label || "fetch");
+    }
     var u = "/api/dashboard/normal-carts?_ts=" + Date.now();
     if (label) {
       u += "&_label=" + encodeURIComponent(String(label));
@@ -5172,6 +5249,7 @@
       })
       .catch(function (err) {
         logClientRefresh("normal_carts_fetch_failed", { label: label || "", err: String(err) });
+        markAttentionVerdictRefreshing("fetch_error");
         if (lastNormalCartsPageRows.length) {
           scheduleNormalCartsRetry("fetch_error");
         } else {
@@ -6077,6 +6155,15 @@
     fetchNormalCarts: fetchNormalCarts,
     renderNormalCartsTables: renderNormalCartsTables,
     hydrateNormalCartsCache: hydrateNormalCartsCache,
+    markAttentionVerdictRefreshing: markAttentionVerdictRefreshing,
+    buildCartsAttentionVerdictV1: buildCartsAttentionVerdictV1,
+    renderCartsAttentionVerdictV1: renderCartsAttentionVerdictV1,
+    getAttentionVerdictFreshness: function () {
+      return {
+        fresh: !!cartsAttentionVerdictFresh,
+        pending: !!cartsAttentionVerdictPending,
+      };
+    },
     getLastRows: function () {
       return lastNormalCartsPageRows.slice();
     },

@@ -54,6 +54,11 @@ class CartPageAttentionVerdictV1Tests(unittest.TestCase):
         self.assertIn("تحتاج انتباهك", block)
         self.assertIn("تابع من البطاقات أدناه", block)
         self.assertIn("countCartPagePrimaryActions", block)
+        # Freshness: pending/cache must not emit final count headlines.
+        self.assertIn("refreshing", block)
+        self.assertIn("جارٍ تحديث الصورة", block)
+        self.assertIn('freshness: "pending"', block)
+        self.assertIn('freshness: "final"', block)
 
     def test_counts_use_primary_action_resolver(self) -> None:
         block = _extract_js_function(_LAZY_JS, "countCartPagePrimaryActions")
@@ -89,7 +94,10 @@ class CartPageAttentionVerdictV1Tests(unittest.TestCase):
     def test_pending_without_rows_uses_calm_loading_verdict(self) -> None:
         block = _extract_js_function(_LAZY_JS, "renderMiCartsV1Pending")
         self.assertIn("يجهّز فهم المتجر", block)
-        self.assertIn('renderCartsAttentionVerdictV1([], { loading: true })', block)
+        self.assertIn(
+            'renderCartsAttentionVerdictV1([], { loading: true, freshness: "pending" })',
+            block,
+        )
 
     def test_workspace_pending_passes_rows(self) -> None:
         block = _extract_js_function(_LAZY_JS, "renderMiCartsV1Workspace")
@@ -146,6 +154,49 @@ class CartPageAttentionVerdictV1Tests(unittest.TestCase):
         pages = (_ROOT / "routes" / "merchant_pages.py").read_text(encoding="utf-8")
         self.assertIn("merchant_carts_v2_ui", pages)
         self.assertIn("carts_v2_ui_enabled", pages)
+
+    def test_cache_hydrate_marks_verdict_pending(self) -> None:
+        block = _extract_js_function(_LAZY_JS, "hydrateNormalCartsCache")
+        self.assertIn("cartsAttentionVerdictPending = true", block)
+        self.assertIn("cartsAttentionVerdictFresh = false", block)
+        self.assertIn('verdict_freshness: "pending"', block)
+        # Cache still paints tables (body not blank) but verdict stays non-final.
+        self.assertIn('prepareNormalCartsPayload(', block)
+        self.assertIn('"cache"', block)
+
+    def test_fresh_apply_marks_verdict_final(self) -> None:
+        block = _extract_js_function(_LAZY_JS, "applyNormalCarts")
+        # Successful apply clears pending before render.
+        idx_clear = block.index("cartsAttentionVerdictPending = false")
+        idx_fresh = block.index("cartsAttentionVerdictFresh = true")
+        idx_render = block.index("renderNormalCartsTables(prepared)")
+        self.assertLess(idx_clear, idx_render)
+        self.assertLess(idx_fresh, idx_render)
+        self.assertIn('verdict_freshness: "final"', block)
+        # Keep-old-rows paths must not leave a final stale verdict.
+        self.assertIn('rerenderCartsFromMemory("partial_keep")', block)
+        self.assertIn('rerenderCartsFromMemory("thin_keep")', block)
+        self.assertIn('rerenderCartsFromMemory("unconfirmed_empty_keep")', block)
+        self.assertIn('markAttentionVerdictRefreshing("partial_empty")', block)
+
+    def test_memory_keep_paths_force_pending_verdict(self) -> None:
+        block = _extract_js_function(_LAZY_JS, "rerenderCartsFromMemory")
+        self.assertIn("_keep", block)
+        self.assertIn("cartsAttentionVerdictPending = true", block)
+        self.assertIn("cartsAttentionVerdictFresh = false", block)
+
+    def test_render_exposes_freshness_attr(self) -> None:
+        block = _extract_js_function(_LAZY_JS, "renderCartsAttentionVerdictV1")
+        self.assertIn("data-verdict-freshness", block)
+        self.assertIn("resolveAttentionVerdictPending", block)
+
+    def test_setup_render_build_bumped_for_verdict_freshness(self) -> None:
+        from services.merchant_setup_render_build import MERCHANT_SETUP_RENDER_BUILD
+
+        self.assertIn("verdict-freshness", MERCHANT_SETUP_RENDER_BUILD)
+        self.assertNotEqual(
+            MERCHANT_SETUP_RENDER_BUILD, "ui-setup-v8d-home-closure-v3"
+        )
 
 
 if __name__ == "__main__":

@@ -219,6 +219,22 @@ body[data-ma-page="vip"] #ma-page-hero-global {
   /* keep default ink; urgency comes from copy, not chrome */
 }
 
+/* Phase 2 hotfix — verdict freshness: cache/pending must not look like final truth */
+.ma-carts-attention-verdict[data-verdict-freshness="pending"],
+.ma-carts-attention-verdict__inner[data-verdict-freshness="pending"],
+.ma-carts-attention-verdict__inner[data-verdict-mode="refreshing"] {
+  opacity: 0.92;
+}
+
+.ma-carts-attention-verdict__inner[data-verdict-mode="refreshing"] .ma-carts-attention-verdict__headline {
+  color: #475569;
+  font-weight: 700;
+}
+
+.ma-carts-attention-verdict__inner[data-verdict-mode="refreshing"] .ma-carts-attention-verdict__detail {
+  color: #64748b;
+}
+
 /* Phase 2 hotfix — MI pending body must stay visible under the verdict */
 #page-carts .ma-mi-carts-pending {
   display: block;
