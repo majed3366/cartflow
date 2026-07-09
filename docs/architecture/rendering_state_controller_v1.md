@@ -1,10 +1,11 @@
 # Rendering State Controller V1 — Design
 
-**Status:** Implemented (Cart Page V2 Phase 2.6) — runtime owner of merchant-visible Cart composition  
+**Status:** Implemented (Cart Page V2 Phase 2.6 + V1.1 refresh policy) — runtime owner of merchant-visible Cart composition  
 **Date (UTC):** 2026-07-09  
 **Surface:** Cart Page V2 (`#page-carts` / `/dashboard#carts`)  
-**Evidence:** [`docs/product/cart_page_rendering_lifecycle_audit.md`](../product/cart_page_rendering_lifecycle_audit.md)  
+**Evidence:** [`docs/product/cart_page_rendering_lifecycle_audit.md`](../product/cart_page_rendering_lifecycle_audit.md), [`docs/product/rsc_stability_investigation_v1.md`](../product/rsc_stability_investigation_v1.md)  
 **Module:** `static/cart_page_rendering_state_controller_v1.js` (wired from `merchant_dashboard_lazy.js`; loaded before lazy in `merchant_app.html`)  
+**V1.1:** `SOFT_REVALIDATE` — internal fetches must not flash merchant Refreshing when trusted FINAL/last-good exists.  
 **Related:** Lifecycle Governance Engine V1 (`docs/lifecycle_governance_engine_v1.md`) — LGE governs interactive component lifecycles; **this controller governs merchant-visible page composition** for Carts. They are complementary, not duplicates.
 
 > **Law:** There is exactly **ONE owner** of merchant-visible rendering on the Cart page. Attention Verdict, MI Workspace, Pending UI, Empty UI, and Story Cards **consume** the controller. They must **never** independently decide what the merchant sees.

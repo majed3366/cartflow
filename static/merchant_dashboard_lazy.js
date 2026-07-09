@@ -1,9 +1,9 @@
 /* Lazy-load merchant dashboard JSON sections (shell-first). Not storefront widget V2. */
-/* MERCHANT_SETUP_RENDER_BUILD=ui-setup-v8f-rsc-v1 */
+/* MERCHANT_SETUP_RENDER_BUILD=ui-setup-v8g-rsc-v1_1 */
 (function () {
   "use strict";
 
-  var MERCHANT_SETUP_RENDER_BUILD = "ui-setup-v8f-rsc-v1";
+  var MERCHANT_SETUP_RENDER_BUILD = "ui-setup-v8g-rsc-v1_1";
 
   function esc(s) {
     return String(s == null ? "" : s)
@@ -3632,18 +3632,52 @@
     return true;
   }
 
+  function rscShouldMerchantVisibleRefresh(reason) {
+    var api = window.CartPageRenderingStateController;
+    var rsc = ensureCartPageRsc();
+    var reasonKey = String(reason || "");
+    var silentReason =
+      (api && typeof api.isSilentFetchReason === "function"
+        ? api.isSilentFetchReason(reasonKey)
+        : false) || false;
+    var trusted =
+      (rsc && typeof rsc.hasTrustedMerchantState === "function"
+        ? rsc.hasTrustedMerchantState()
+        : !!(cartsAttentionVerdictFresh && lastNormalCartsPageRows.length)) ||
+      false;
+    // Merchant-visible Refreshing only when no trusted state, or explicit/boot.
+    if (trusted && silentReason) return false;
+    if (trusted && /^(token_|pending_cart_poll|normal_carts_retry_|refresh_core)/i.test(reasonKey)) {
+      return false;
+    }
+    return true;
+  }
+
   function markAttentionVerdictRefreshing(reason) {
-    cartsAttentionVerdictFresh = false;
-    cartsAttentionVerdictPending = true;
     var rows = activeNormalCartRows(lastNormalCartsPageRows || []);
-    // RSC owns merchant-visible refreshing; presenters must not decide independently.
+    var visible = rscShouldMerchantVisibleRefresh(reason);
+    // RSC owns merchant-visible refreshing; silent reasons must not flash pending.
     if (ensureCartPageRsc()) {
-      rscDispatch("FETCH_STARTED", {
-        rows: rows,
-        miPayload: lastMerchantIntelligencePayload,
-        reason: reason || "refresh",
-      });
-    } else if (cartsV2UiEnabled()) {
+      if (visible) {
+        cartsAttentionVerdictFresh = false;
+        cartsAttentionVerdictPending = true;
+        rscDispatch("FETCH_STARTED", {
+          rows: rows,
+          miPayload: lastMerchantIntelligencePayload,
+          reason: reason || "refresh",
+          silent: false,
+        });
+      } else {
+        rscDispatch("SOFT_REVALIDATE", {
+          rows: rows,
+          miPayload: lastMerchantIntelligencePayload,
+          reason: reason || "refresh",
+          silent: true,
+        });
+      }
+    } else if (visible && cartsV2UiEnabled()) {
+      cartsAttentionVerdictFresh = false;
+      cartsAttentionVerdictPending = true;
       renderCartsAttentionVerdictV1(rows, {
         pending: true,
         freshness: "pending",
@@ -3652,6 +3686,7 @@
     logClientRefresh("attention_verdict_refreshing", {
       reason: reason || "",
       rows: rows.length,
+      merchant_visible: visible,
     });
   }
 
@@ -3897,6 +3932,28 @@
     // Sync legacy freshness flags for any residual callers / tests.
     cartsAttentionVerdictPending = plan.freshness !== "final";
     cartsAttentionVerdictFresh = plan.freshness === "final";
+    // Silent soft revalidate: do not re-paint identical merchant-visible composition.
+    var planKey =
+      String(plan.phase || "") +
+      "|" +
+      String(plan.freshness || "") +
+      "|" +
+      String(plan.bodyMode || "") +
+      "|" +
+      String(plan.verdictMode || "") +
+      "|" +
+      String((plan.rows || []).length) +
+      "|" +
+      String(plan.miSource || "");
+    if (plan.silentRevalidate && planKey === cartPageRscLastPlanKey) {
+      logClientRefresh("rsc_commit_silent_skip", {
+        phase: plan.phase,
+        freshness: plan.freshness,
+        reason: plan.reason || "",
+      });
+      return;
+    }
+    cartPageRscLastPlanKey = planKey;
     paintAttentionVerdictFromPlan(plan);
     if (plan.bodyMode === "stories") {
       paintCartBodyStoriesFromPlan(plan);
@@ -3913,6 +3970,7 @@
       miSource: plan.miSource,
       rows: (plan.rows || []).length,
       reason: plan.reason || "",
+      silent: !!plan.silentRevalidate,
     });
   }
 
@@ -5563,16 +5621,29 @@
 
   function fetchNormalCarts(label) {
     var gen = ++normalCartsFetchGen;
+    var reasonKey = String(label || "fetch");
+    var visible = rscShouldMerchantVisibleRefresh(reasonKey);
     showNormalCartsLoadingState();
-    // Soft refresh: RSC enters refreshing; keep last-good body when present.
-    rscDispatch("FETCH_STARTED", {
-      rows: activeNormalCartRows(lastNormalCartsPageRows || []),
-      miPayload: lastMerchantIntelligencePayload,
-      reason: label || "fetch",
-      fetchGen: gen,
-    });
-    cartsAttentionVerdictFresh = false;
-    cartsAttentionVerdictPending = true;
+    // V1.1: silent soft revalidate keeps FINAL; merchant Refreshing only when allowed.
+    if (visible) {
+      cartsAttentionVerdictFresh = false;
+      cartsAttentionVerdictPending = true;
+      rscDispatch("FETCH_STARTED", {
+        rows: activeNormalCartRows(lastNormalCartsPageRows || []),
+        miPayload: lastMerchantIntelligencePayload,
+        reason: reasonKey,
+        fetchGen: gen,
+        silent: false,
+      });
+    } else {
+      rscDispatch("SOFT_REVALIDATE", {
+        rows: activeNormalCartRows(lastNormalCartsPageRows || []),
+        miPayload: lastMerchantIntelligencePayload,
+        reason: reasonKey,
+        fetchGen: gen,
+        silent: true,
+      });
+    }
     var u = "/api/dashboard/normal-carts?_ts=" + Date.now();
     if (label) {
       u += "&_label=" + encodeURIComponent(String(label));
@@ -5593,8 +5664,11 @@
           reason: "fetch_error",
           fetchGen: gen,
         });
-        cartsAttentionVerdictFresh = false;
-        cartsAttentionVerdictPending = true;
+        // Only flash pending when there is no trusted merchant state to keep.
+        if (rscShouldMerchantVisibleRefresh("fetch_error")) {
+          cartsAttentionVerdictFresh = false;
+          cartsAttentionVerdictPending = true;
+        }
         if (lastNormalCartsPageRows.length) {
           scheduleNormalCartsRetry("fetch_error");
         } else {

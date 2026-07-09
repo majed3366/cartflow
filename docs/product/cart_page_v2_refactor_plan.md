@@ -99,10 +99,20 @@
 
 **Status (2026-07-09):** **Implemented + Production Verified** — RSC owns composition via `CACHE_HYDRATED` / `FETCH_*` / `APPLY_*` / `ROWS_PATCHED`; last-good MI preserved on keep/cache; presenters paint from plan. Build `ui-setup-v8f-rsc-v1`. Commit: `bbf1163`. Tests: `tests/test_cart_page_rendering_state_controller_v1.py`. Design: `docs/architecture/rendering_state_controller_v1.md`. Prod verify: `scripts/_cart_page_v2_rsc_v1_prod_verify.py` → PASS (desktop+mobile converge `automatic`; one rendering state; no conflicting pending messages on refresh; last-good stories kept; cache→final; stories/filters OK; archive/reopen OK; build `ui-setup-v8f-rsc-v1`; no console fatals). Screenshots: `scripts/_cart_page_v2_rsc_v1_prod_verify_out/01_desktop_final.png`, `02_mobile_final.png`.
 
+### Phase 2.6.1 — RSC V1.1 Merchant-visible Refresh Policy
+
+| Field | Content |
+|-------|---------|
+| **Goal** | Separate internal operational fetches from merchant-visible Refreshing |
+| **Rule** | Never `FINAL → REFRESHING` for token/pending/keep/background sync; only boot / explicit refresh / no trusted state / hard failure without last-good |
+| **Files** | `static/cart_page_rendering_state_controller_v1.js`, `static/merchant_dashboard_lazy.js`, build bump |
+| **Out of scope** | Phase 3 |
+
+**Status (2026-07-09):** **Implemented** — `SOFT_REVALIDATE` + silent reason policy; build `ui-setup-v8g-rsc-v1_1`. Investigation: `docs/product/rsc_stability_investigation_v1.md`.
+
 ---
 
-## Phase 3 — CartFlow automatic band
-| Field | Content |
+## Phase 3 — CartFlow automatic band| Field | Content |
 |-------|---------|
 | **Goal** | Add Blueprint **Section 2**: calm aggregate of Wait-primary carts (“CartFlow is following N carts”). Reduces urge to open every row. |
 | **Files affected** | Presentation JS/CSS; counts derived from Phase 0 primary_action on existing rows (client-side OK); no truth service changes |

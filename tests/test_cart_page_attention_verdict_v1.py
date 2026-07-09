@@ -204,7 +204,7 @@ class CartPageAttentionVerdictV1Tests(unittest.TestCase):
     def test_setup_render_build_bumped_for_verdict_freshness(self) -> None:
         from services.merchant_setup_render_build import MERCHANT_SETUP_RENDER_BUILD
 
-        # Phase 2.6 supersedes freshness-only build id; RSC includes freshness ownership.
+        # Phase 2.6+ supersedes freshness-only build id; RSC includes freshness ownership.
         self.assertIn("rsc-v1", MERCHANT_SETUP_RENDER_BUILD)
         self.assertNotEqual(
             MERCHANT_SETUP_RENDER_BUILD, "ui-setup-v8d-home-closure-v3"

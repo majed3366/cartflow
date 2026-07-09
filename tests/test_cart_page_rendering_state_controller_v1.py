@@ -46,6 +46,8 @@ class CartPageRenderingStateControllerV1Tests(unittest.TestCase):
         self.assertIn("function paintCartPageFromRsc", _LAZY_JS)
         self.assertIn('rscDispatch("CACHE_HYDRATED"', _LAZY_JS)
         self.assertIn('rscDispatch("FETCH_STARTED"', _LAZY_JS)
+        self.assertIn('rscDispatch("SOFT_REVALIDATE"', _LAZY_JS)
+        self.assertIn("rscShouldMerchantVisibleRefresh", _LAZY_JS)
         self.assertIn('rscDispatch("APPLY_SUCCESS"', _LAZY_JS)
         self.assertIn('rscDispatch("APPLY_KEEP"', _LAZY_JS)
         self.assertIn('rscDispatch("APPLY_CONFIRMED_EMPTY"', _LAZY_JS)
@@ -67,7 +69,8 @@ class CartPageRenderingStateControllerV1Tests(unittest.TestCase):
         from services.merchant_setup_render_build import MERCHANT_SETUP_RENDER_BUILD
 
         self.assertIn("rsc-v1", MERCHANT_SETUP_RENDER_BUILD)
-        self.assertIn("ui-setup-v8f-rsc-v1", _LAZY_JS)
+        self.assertIn("ui-setup-v8g-rsc-v1_1", MERCHANT_SETUP_RENDER_BUILD)
+        self.assertIn("ui-setup-v8g-rsc-v1_1", _LAZY_JS)
 
     def test_boot_cache_then_fetch_pending(self) -> None:
         out = _run_rsc_harness(
@@ -141,7 +144,7 @@ c.dispatch("APPLY_SUCCESS", {
   reason: "apply",
   appliedGen: 1,
 });
-c.dispatch("FETCH_STARTED", { reason: "refresh" });
+c.dispatch("SOFT_REVALIDATE", { reason: "token_refresh_state" });
 const keep = c.dispatch("APPLY_KEEP", {
   rows: [{ id: 1 }, { id: 2 }],
   miPayload: { ok: true, merchant_carts_page_rows: [{ id: 1 }] },
@@ -154,14 +157,16 @@ console.log(JSON.stringify({
   storiesLen: (keep.miPayload && keep.miPayload.merchant_value_stories_v1
     && keep.miPayload.merchant_value_stories_v1.stories || []).length,
   verdictMode: keep.verdictMode,
+  silent: !!keep.silentRevalidate,
 }));
 """
         )
-        self.assertEqual(out["phase"], "refreshing")
-        self.assertEqual(out["freshness"], "pending")
+        # V1.1: keep with trusted last-good stays FINAL (no merchant Refreshing).
+        self.assertEqual(out["phase"], "final")
+        self.assertEqual(out["freshness"], "final")
         self.assertEqual(out["bodyMode"], "stories")
         self.assertEqual(out["storiesLen"], 1)
-        self.assertEqual(out["verdictMode"], "refreshing")
+        self.assertNotEqual(out["verdictMode"], "refreshing")
         self.assertIn(out["miSource"], ("last_good", "live"))
 
     def test_confirmed_empty_is_final_empty(self) -> None:
@@ -191,18 +196,21 @@ const c = api.createController({
 });
 const mi = { merchant_intelligence_store_v1: { groups: [{ key: "g1" }] } };
 c.dispatch("APPLY_SUCCESS", { rows: [{ id: 1 }], miPayload: mi, appliedGen: 1 });
-c.dispatch("FETCH_STARTED", { reason: "poll" });
-const fail = c.dispatch("FETCH_FAILED", { reason: "network" });
+c.dispatch("SOFT_REVALIDATE", { reason: "token_refresh_state" });
+const fail = c.dispatch("FETCH_FAILED", { reason: "fetch_error" });
 console.log(JSON.stringify({
   phase: fail.phase, freshness: fail.freshness, bodyMode: fail.bodyMode,
   hasMi: !!(fail.miPayload && fail.miPayload.merchant_intelligence_store_v1),
+  verdictMode: fail.verdictMode,
 }));
 """
         )
-        self.assertEqual(out["phase"], "failed")
-        self.assertEqual(out["freshness"], "pending")
+        # V1.1: failure with trusted last-good keeps FINAL visible.
+        self.assertEqual(out["phase"], "final")
+        self.assertEqual(out["freshness"], "final")
         self.assertEqual(out["bodyMode"], "stories")
         self.assertTrue(out["hasMi"])
+        self.assertNotEqual(out["verdictMode"], "refreshing")
 
     def test_no_final_without_apply_success(self) -> None:
         out = _run_rsc_harness(
@@ -217,6 +225,70 @@ console.log(JSON.stringify({ phase: snap.phase, freshness: snap.freshness }));
         )
         self.assertNotEqual(out["phase"], "final")
         self.assertEqual(out["freshness"], "pending")
+
+    def test_token_refresh_does_not_leave_final(self) -> None:
+        out = _run_rsc_harness(
+            """
+const commits = [];
+const c = api.createController({
+  countPrimaryActions: (rows) => ({
+    contact_customer: 0, follow_up_manually: 0, review_cart: 0,
+    wait: rows.length, no_action_required: 0, reopen: 0, archive: 0, other: 0,
+    total_active: rows.length, needs_you: 0,
+  }),
+  onCommit: (s) => commits.push({ phase: s.phase, freshness: s.freshness, verdictMode: s.verdictMode, silent: !!s.silentRevalidate }),
+});
+const mi = { merchant_value_stories_v1: { stories: [{ id: "s1" }] } };
+c.dispatch("APPLY_SUCCESS", { rows: [{ id: 1 }], miPayload: mi, appliedGen: 1 });
+c.dispatch("FETCH_STARTED", { reason: "token_refresh_state", silent: true });
+c.dispatch("SOFT_REVALIDATE", { reason: "pending_cart_poll" });
+c.dispatch("FETCH_STARTED", { reason: "normal_carts_retry_thin" });
+const snap = c.getSnapshot();
+console.log(JSON.stringify({
+  phase: snap.phase, freshness: snap.freshness, verdictMode: snap.verdictMode,
+  commits: commits.slice(1),
+}));
+"""
+        )
+        self.assertEqual(out["phase"], "final")
+        self.assertEqual(out["freshness"], "final")
+        self.assertNotEqual(out["verdictMode"], "refreshing")
+        for c in out["commits"]:
+            self.assertEqual(c["phase"], "final")
+            self.assertEqual(c["freshness"], "final")
+            self.assertNotEqual(c["verdictMode"], "refreshing")
+
+    def test_boot_without_trust_still_shows_refreshing(self) -> None:
+        out = _run_rsc_harness(
+            """
+const c = api.createController({});
+const snap = c.dispatch("FETCH_STARTED", { reason: "boot_priority" });
+console.log(JSON.stringify({
+  phase: snap.phase, freshness: snap.freshness, verdictMode: snap.verdictMode,
+}));
+"""
+        )
+        self.assertEqual(out["phase"], "refreshing")
+        self.assertEqual(out["freshness"], "pending")
+        self.assertEqual(out["verdictMode"], "refreshing")
+
+    def test_silent_reason_helper(self) -> None:
+        out = _run_rsc_harness(
+            """
+console.log(JSON.stringify({
+  token: api.isSilentFetchReason("token_refresh_state"),
+  pending: api.isSilentFetchReason("pending_cart_poll"),
+  retry: api.isSilentFetchReason("normal_carts_retry_thin"),
+  boot: api.isSilentFetchReason("boot_priority"),
+  manual: api.isSilentFetchReason("manual_now"),
+}));
+"""
+        )
+        self.assertTrue(out["token"])
+        self.assertTrue(out["pending"])
+        self.assertTrue(out["retry"])
+        self.assertFalse(out["boot"])
+        self.assertFalse(out["manual"])
 
 
 if __name__ == "__main__":

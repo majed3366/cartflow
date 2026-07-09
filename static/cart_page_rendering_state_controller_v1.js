@@ -1,10 +1,12 @@
 /**
- * Cart Page Rendering State Controller V1
+ * Cart Page Rendering State Controller V1.1
  *
  * Sole owner of merchant-visible Cart page composition.
  * Presenters (Verdict / MI / Pending / Empty / Stories) paint only.
  *
+ * V1.1: merchant-visible Refreshing is separated from silent soft revalidate.
  * Design: docs/architecture/rendering_state_controller_v1.md
+ * Policy: docs/product/rsc_stability_investigation_v1.md
  */
 (function (global) {
   "use strict";
@@ -20,12 +22,20 @@
   var EVENTS = {
     CACHE_HYDRATED: "CACHE_HYDRATED",
     FETCH_STARTED: "FETCH_STARTED",
+    SOFT_REVALIDATE: "SOFT_REVALIDATE",
     APPLY_SUCCESS: "APPLY_SUCCESS",
     APPLY_KEEP: "APPLY_KEEP",
     APPLY_CONFIRMED_EMPTY: "APPLY_CONFIRMED_EMPTY",
     FETCH_FAILED: "FETCH_FAILED",
     ROWS_PATCHED: "ROWS_PATCHED",
   };
+
+  /**
+   * Reasons that must never flash merchant-visible Refreshing when trusted
+   * merchant state already exists (FINAL / last-good stories|empty).
+   */
+  var SILENT_FETCH_REASON_RE =
+    /^(token_|pending_cart_poll|normal_carts_retry_|refresh_core|visibility_resume|hash_|ensure_|lifecycle_|after_|partial_keep|thin_keep|unconfirmed_empty_keep|empty_mismatch_keep|partial_empty|thin$|unconfirmed_empty|empty_mismatch|render_empty_loading|memory_empty|fetch_error)/i;
 
   function cloneRows(rows) {
     return Array.isArray(rows) ? rows.slice() : [];
@@ -44,6 +54,31 @@
       mi.merchant_intelligence_store_v1 &&
       Array.isArray(mi.merchant_intelligence_store_v1.groups)
     );
+  }
+
+  function isSilentFetchReason(reason) {
+    var r = String(reason || "").trim();
+    if (!r) return false;
+    if (/^(boot|boot_priority|manual_now|user_refresh|hard_refresh)/i.test(r)) {
+      return false;
+    }
+    return SILENT_FETCH_REASON_RE.test(r) || r.indexOf("token_") === 0;
+  }
+
+  function hasTrustedMerchantState(s) {
+    if (!s) return false;
+    if (s.phase === PHASE.FINAL && s.freshness === "final") return true;
+    if (
+      s.lastGood &&
+      s.lastGood.bodyMode === "stories" &&
+      hasMiPayload(s.lastGood.miPayload)
+    ) {
+      return true;
+    }
+    if (s.lastGood && s.lastGood.bodyMode === "empty") return true;
+    if (s.bodyMode === "stories" && hasMiPayload(s.miPayload)) return true;
+    if (s.bodyMode === "empty" && s.freshness === "final") return true;
+    return false;
   }
 
   function extractMi(payload) {
@@ -84,6 +119,7 @@
       reason: "boot",
       fetchGen: 0,
       appliedGen: 0,
+      silentRevalidate: false,
       counts: emptyCounts(),
       verdict: {
         mode: "loading",
@@ -260,6 +296,7 @@
         appliedGen: snap.appliedGen,
         counts: snap.counts || emptyCounts(),
         verdict: snap.verdict,
+        silentRevalidate: !!snap.silentRevalidate,
       };
     }
 
@@ -274,6 +311,22 @@
       };
     }
 
+    function applySilentRevalidate(next, reason, fetchGen) {
+      // Track in-flight gen only — never leave FINAL for merchant-visible Refreshing.
+      next.reason = reason;
+      next.fetchGen = fetchGen;
+      next.silentRevalidate = true;
+      if (!next.rows.length && snap.rows.length) next.rows = cloneRows(snap.rows);
+      if (!hasMiPayload(next.miPayload)) {
+        if (hasMiPayload(snap.miPayload)) next.miPayload = snap.miPayload;
+        else if (snap.lastGood && hasMiPayload(snap.lastGood.miPayload)) {
+          next.miPayload = snap.lastGood.miPayload;
+        }
+      }
+      // Preserve phase / freshness / verdict / bodyMode exactly.
+      return commit(next);
+    }
+
     function dispatch(eventType, payload) {
       payload = payload || {};
       var rows = cloneRows(payload.rows);
@@ -286,6 +339,7 @@
       var next = getSnapshot();
       next.reason = reason;
       next.fetchGen = fetchGen;
+      next.silentRevalidate = false;
 
       if (eventType === EVENTS.CACHE_HYDRATED) {
         next.phase = PHASE.CACHED;
@@ -314,19 +368,28 @@
         return commit(next);
       }
 
-      if (eventType === EVENTS.FETCH_STARTED) {
-        if (snap.phase === PHASE.BOOT) {
-          next.phase = PHASE.REFRESHING;
-        } else if (
-          snap.phase === PHASE.CACHED ||
-          snap.phase === PHASE.FINAL ||
-          snap.phase === PHASE.FAILED ||
-          snap.phase === PHASE.REFRESHING
-        ) {
-          next.phase = PHASE.REFRESHING;
-        } else {
-          next.phase = PHASE.REFRESHING;
+      if (
+        eventType === EVENTS.SOFT_REVALIDATE ||
+        (eventType === EVENTS.FETCH_STARTED &&
+          payload.silent === true &&
+          hasTrustedMerchantState(snap))
+      ) {
+        if (hasTrustedMerchantState(snap)) {
+          return applySilentRevalidate(next, reason, fetchGen);
         }
+        // No trusted state: fall through to merchant-visible FETCH_STARTED.
+        eventType = EVENTS.FETCH_STARTED;
+      }
+
+      if (eventType === EVENTS.FETCH_STARTED) {
+        // V1.1: never FINAL → Refreshing for silent/background reasons.
+        if (
+          hasTrustedMerchantState(snap) &&
+          (payload.silent === true || isSilentFetchReason(reason))
+        ) {
+          return applySilentRevalidate(next, reason, fetchGen);
+        }
+        next.phase = PHASE.REFRESHING;
         next.freshness = "pending";
         // Keep rows/MI from last snapshot / last-good — never wipe.
         if (!next.rows.length && snap.rows.length) next.rows = cloneRows(snap.rows);
@@ -351,8 +414,7 @@
       }
 
       if (eventType === EVENTS.APPLY_KEEP) {
-        next.phase = PHASE.REFRESHING;
-        next.freshness = "pending";
+        // Keep/retry is operational — if FINAL/last-good exists, stay merchant-final.
         if (rows.length) {
           next.rows = rows;
           next.rowsSource = payload.rowsSource || "memory";
@@ -360,12 +422,30 @@
           next.rows = cloneRows(snap.rows);
           next.rowsSource = "memory";
         }
-        // Critical: never clear last-good MI on keep.
         if (hasMiPayload(mi)) next.miPayload = mi;
         else if (hasMiPayload(snap.miPayload)) next.miPayload = snap.miPayload;
         else if (snap.lastGood && hasMiPayload(snap.lastGood.miPayload)) {
           next.miPayload = snap.lastGood.miPayload;
         }
+        if (hasTrustedMerchantState(snap)) {
+          next.phase = PHASE.FINAL;
+          next.freshness = "final";
+          next.silentRevalidate = true;
+          next.bodyMode = resolveBodyMode(
+            next.phase,
+            next.freshness,
+            next.rows,
+            next.miPayload,
+            snap.lastGood
+          );
+          next.miSource = resolveMiSource(next.miPayload, snap.lastGood, false);
+          next.counts = countPrimaryActions(next.rows);
+          next.verdict = deriveFinalVerdict(next.rows);
+          next.verdictMode = next.verdict.mode;
+          return commit(next);
+        }
+        next.phase = PHASE.REFRESHING;
+        next.freshness = "pending";
         next.bodyMode = resolveBodyMode(
           next.phase,
           next.freshness,
@@ -438,8 +518,6 @@
       }
 
       if (eventType === EVENTS.FETCH_FAILED) {
-        next.phase = PHASE.FAILED;
-        next.freshness = "pending";
         if (!next.rows.length && snap.rows.length) next.rows = cloneRows(snap.rows);
         if (!hasMiPayload(next.miPayload)) {
           if (hasMiPayload(snap.miPayload)) next.miPayload = snap.miPayload;
@@ -447,6 +525,26 @@
             next.miPayload = snap.lastGood.miPayload;
           }
         }
+        // Hard failure with trusted last-good: keep FINAL visible (silent failure).
+        if (hasTrustedMerchantState(snap)) {
+          next.phase = PHASE.FINAL;
+          next.freshness = "final";
+          next.silentRevalidate = true;
+          next.bodyMode = resolveBodyMode(
+            next.phase,
+            next.freshness,
+            next.rows,
+            next.miPayload,
+            snap.lastGood
+          );
+          next.miSource = resolveMiSource(next.miPayload, snap.lastGood, false);
+          next.counts = countPrimaryActions(next.rows);
+          next.verdict = deriveFinalVerdict(next.rows);
+          next.verdictMode = next.verdict.mode;
+          return commit(next);
+        }
+        next.phase = PHASE.FAILED;
+        next.freshness = "pending";
         next.bodyMode = resolveBodyMode(
           next.phase,
           next.freshness,
@@ -490,6 +588,10 @@
       getSnapshot: getSnapshot,
       hasMiPayload: hasMiPayload,
       extractMi: extractMi,
+      hasTrustedMerchantState: function () {
+        return hasTrustedMerchantState(snap);
+      },
+      isSilentFetchReason: isSilentFetchReason,
       reset: function () {
         snap = defaultSnapshot();
         return getSnapshot();
@@ -503,6 +605,8 @@
     createController: createController,
     hasMiPayload: hasMiPayload,
     extractMi: extractMi,
+    isSilentFetchReason: isSilentFetchReason,
+    hasTrustedMerchantState: hasTrustedMerchantState,
   };
 
   global.CartPageRenderingStateController = api;
