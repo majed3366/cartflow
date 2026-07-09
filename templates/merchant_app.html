@@ -203,7 +203,7 @@
     <div id="ma-test-tools-root" class="ma-test-tools-root" aria-live="polite"></div>
   </div>
 
-  <div class="page ma-pe-v2" id="page-carts" data-ma-cart-section="waiting">
+  <div class="page ma-pe-v2{% if merchant_carts_v2_ui %} ma-carts--v2-ui{% endif %}" id="page-carts" data-ma-cart-section="waiting"{% if merchant_carts_v2_ui %} data-carts-v2-ui="1"{% endif %}>
     <div class="page-header ma-cart-page-header">
       <div class="page-h1">بانتظار الإرسال</div>
       <div class="page-sub">سلال تنتظر رسالة الاسترجاع أو تفاعل العميل</div>
@@ -228,6 +228,7 @@
     <div class="ma-pe-v2-carts-shell v2-app v2-app--wide">
       <div class="v2-workspace">
         <div class="ma-pe-v2-carts-queue-col">
+          <div id="ma-carts-attention-verdict-v1" class="ma-carts-attention-verdict" aria-live="polite" hidden></div>
           <header class="ma-page-hero ma-page-hero--inline ma-page-hero--carts ma-vi-hero" id="ma-carts-hero">
             <div class="ma-vi-hero__glow" aria-hidden="true"></div>
             <h1 class="ma-page-hero__title">السلال</h1>

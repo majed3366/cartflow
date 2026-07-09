@@ -155,6 +155,68 @@ body[data-ma-page="vip"] #ma-page-hero-global {
   font-weight: 600;
 }
 
+/* Phase 2 — Attention Verdict (replaces hero + MPL + queue-sub when V2 UI on) */
+#page-carts.ma-carts--v2-ui #ma-carts-hero,
+#page-carts.ma-carts--v2-ui #ma-carts-queue-sub,
+#page-carts.ma-carts--v2-ui #ma-carts-product-language-v1 {
+  display: none !important;
+}
+
+.ma-carts-attention-verdict {
+  margin: 0 0 var(--v2-space-md, 20px);
+  padding: var(--v2-space-md, 20px) var(--v2-space-lg, 28px);
+  max-width: var(--v2-max-wide, 1080px);
+  border-radius: 16px;
+  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+  border: 1px solid #e2e8f0;
+}
+
+.ma-carts-attention-verdict[hidden] {
+  display: none !important;
+}
+
+.ma-carts-attention-verdict__kicker {
+  margin: 0 0 6px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: #64748b;
+}
+
+.ma-carts-attention-verdict__headline {
+  margin: 0;
+  font-size: clamp(1.15rem, 2.4vw, 1.45rem);
+  font-weight: 800;
+  line-height: 1.35;
+  letter-spacing: -0.02em;
+  color: #0f172a;
+}
+
+.ma-carts-attention-verdict__detail {
+  margin: 8px 0 0;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.5;
+  color: #334155;
+}
+
+.ma-carts-attention-verdict__continue {
+  margin: 10px 0 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #0f766e;
+}
+
+.ma-carts-attention-verdict__inner[data-verdict-mode="automatic"] .ma-carts-attention-verdict__headline,
+.ma-carts-attention-verdict__inner[data-verdict-mode="calm"] .ma-carts-attention-verdict__headline,
+.ma-carts-attention-verdict__inner[data-verdict-mode="empty"] .ma-carts-attention-verdict__headline {
+  color: #0f766e;
+}
+
+.ma-carts-attention-verdict__inner[data-verdict-mode="needs_you"] {
+  /* keep default ink; urgency comes from copy, not chrome */
+}
+
 /* ——— Section heads (Knowledge, month KPI, etc.) ——— */
 .ma-section-head {
   margin-bottom: var(--ma-card-gap);

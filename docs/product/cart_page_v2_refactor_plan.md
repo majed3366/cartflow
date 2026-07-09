@@ -40,7 +40,7 @@
 
 **Deploy note:** Ship first. Do not enable UI consumption yet.
 
-**Status (2026-07-09):** Implemented — `services/cart_page_primary_action_v1.py`; field `cart_page_primary_action_v1` on rows; flag `CARTFLOW_CARTS_V2_PRIMARY_ACTION` (default `1`). UI still ignores the field.
+**Status (2026-07-09):** Implemented — `services/cart_page_primary_action_v1.py`; field `cart_page_primary_action_v1` on rows; flag `CARTFLOW_CARTS_V2_PRIMARY_ACTION` (default `1`). Consumed by Phase 1 CTAs and Phase 2 Attention Verdict.
 
 ---
 
@@ -75,6 +75,8 @@
 | **Rollback strategy** | Flag off; leave host node empty/hidden |
 
 **Does not change:** Filter logic, MI groups, panel, archive APIs.
+
+**Status (2026-07-09):** Implemented — `#ma-carts-attention-verdict-v1` after VIP alerts; counts from `cart_page_primary_action_v1` via `resolveCartPagePrimaryAction` (needs you = Contact + Follow up + Review; calm = Wait / empty). Hides `#ma-carts-hero`, `#ma-carts-queue-sub`, `#ma-carts-product-language-v1` when `CARTFLOW_CARTS_V2_UI` on (default `1`). Flag: `services/cart_page_v2_ui_flag_v1.py` → `data-carts-v2-ui` on `#page-carts`. Story cards, filters, counters, archive/reopen unchanged. Tests: `tests/test_cart_page_attention_verdict_v1.py`.
 
 ---
 

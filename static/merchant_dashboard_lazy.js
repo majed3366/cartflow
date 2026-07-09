@@ -3391,6 +3391,10 @@
   function updatePeV2QueueSubtitle(rows) {
     var sub = byId("ma-carts-queue-sub");
     if (!sub) return;
+    if (cartsV2UiEnabled()) {
+      sub.hidden = true;
+      return;
+    }
     if (!rows.length) {
       sub.textContent = "لا توجد سلال نشطة حالياً";
       return;
@@ -3407,10 +3411,168 @@
     if (countEl) countEl.textContent = String(rows.length);
   }
 
+  function cartsV2UiEnabled() {
+    var page = byId("page-carts");
+    if (!page) return false;
+    return (
+      page.getAttribute("data-carts-v2-ui") === "1" ||
+      page.classList.contains("ma-carts--v2-ui")
+    );
+  }
+
+  function countCartPagePrimaryActions(rows) {
+    var counts = {
+      contact_customer: 0,
+      follow_up_manually: 0,
+      review_cart: 0,
+      wait: 0,
+      no_action_required: 0,
+      reopen: 0,
+      archive: 0,
+      other: 0,
+      total_active: 0,
+    };
+    (rows || []).forEach(function (mc) {
+      if (!mc || isArchivedVisual(mc)) return;
+      counts.total_active += 1;
+      var pa = resolveCartPagePrimaryAction(mc);
+      var key = String((pa && pa.key) || "").trim().toLowerCase();
+      if (Object.prototype.hasOwnProperty.call(counts, key)) {
+        counts[key] += 1;
+      } else {
+        counts.other += 1;
+      }
+    });
+    counts.needs_you =
+      counts.contact_customer + counts.follow_up_manually + counts.review_cart;
+    return counts;
+  }
+
+  function buildCartsAttentionVerdictV1(rows, opts) {
+    opts = opts || {};
+    var loading = !!opts.loading;
+    var counts = countCartPagePrimaryActions(rows);
+    if (loading && !counts.total_active) {
+      return {
+        mode: "loading",
+        headline: "CartFlow يجهّز صورة الانتباه…",
+        detail: "",
+        continue_hint: "",
+        counts: counts,
+      };
+    }
+    if (!counts.total_active) {
+      return {
+        mode: "empty",
+        headline: "لا يوجد ما يحتاج انتباهك الآن",
+        detail: "لا توجد سلال نشطة في المتجر حالياً.",
+        continue_hint: "",
+        counts: counts,
+      };
+    }
+    if (counts.needs_you > 0) {
+      var parts = [];
+      if (counts.contact_customer) {
+        parts.push(counts.contact_customer + " للتواصل");
+      }
+      if (counts.follow_up_manually) {
+        parts.push(counts.follow_up_manually + " لمتابعة يدوية");
+      }
+      if (counts.review_cart) {
+        parts.push(counts.review_cart + " للمراجعة");
+      }
+      var typeLine = parts.length ? parts.join(" · ") : "تحتاج قراراً منك";
+      return {
+        mode: "needs_you",
+        headline:
+          counts.needs_you === 1
+            ? "لديك سلة واحدة تحتاج انتباهك"
+            : "لديك " + counts.needs_you + " سلال تحتاج انتباهك",
+        detail: typeLine,
+        continue_hint: "تابع من البطاقات أدناه",
+        counts: counts,
+      };
+    }
+    if (counts.wait > 0) {
+      return {
+        mode: "automatic",
+        headline: "لا يلزم إجراء منك الآن",
+        detail:
+          "CartFlow يتابع " +
+          counts.wait +
+          (counts.wait === 1 ? " سلة تلقائياً." : " سلال تلقائياً."),
+        continue_hint: "",
+        counts: counts,
+      };
+    }
+    return {
+      mode: "calm",
+      headline: "لا يلزم إجراء منك الآن",
+      detail: "الحالات النشطة لا تتطلب تدخلاً في هذه اللحظة.",
+      continue_hint: "",
+      counts: counts,
+    };
+  }
+
+  function renderCartsAttentionVerdictV1(rows, opts) {
+    var host = byId("ma-carts-attention-verdict-v1");
+    var hero = byId("ma-carts-hero");
+    var subEl = byId("ma-carts-queue-sub");
+    var mplHost = byId("ma-carts-product-language-v1");
+    if (!cartsV2UiEnabled()) {
+      if (host) {
+        host.hidden = true;
+        host.innerHTML = "";
+      }
+      return false;
+    }
+    if (hero) hero.hidden = true;
+    if (subEl) {
+      subEl.hidden = true;
+      subEl.setAttribute("hidden", "");
+    }
+    if (mplHost) {
+      mplHost.hidden = true;
+      mplHost.innerHTML = "";
+    }
+    var emptyWhisper = byId("ma-carts-queue-empty");
+    if (emptyWhisper) emptyWhisper.hidden = true;
+    if (!host) return true;
+    var verdict = buildCartsAttentionVerdictV1(rows, opts);
+    var html =
+      '<div class="ma-carts-attention-verdict__inner" data-verdict-mode="' +
+      esc(verdict.mode) +
+      '">' +
+      '<p class="ma-carts-attention-verdict__kicker">ما يحتاج انتباهك الآن</p>' +
+      '<p class="ma-carts-attention-verdict__headline">' +
+      esc(verdict.headline) +
+      "</p>";
+    if (verdict.detail) {
+      html +=
+        '<p class="ma-carts-attention-verdict__detail">' +
+        esc(verdict.detail) +
+        "</p>";
+    }
+    if (verdict.continue_hint) {
+      html +=
+        '<p class="ma-carts-attention-verdict__continue">' +
+        esc(verdict.continue_hint) +
+        "</p>";
+    }
+    html += "</div>";
+    host.innerHTML = html;
+    host.hidden = false;
+    host.removeAttribute("hidden");
+    return true;
+  }
+
   function renderMiCartsV1Pending(message) {
     var root = byId("ma-carts-groups-v2");
     if (!root) return;
-    renderMiCartsProductLanguageNarrative(null, []);
+    renderCartsAttentionVerdictV1([], { loading: true });
+    if (!cartsV2UiEnabled()) {
+      renderMiCartsProductLanguageNarrative(null, []);
+    }
     root.innerHTML =
       '<p class="ma-mi-carts-pending v2-whisper-text">' +
       esc(message || "CartFlow يجهّز فهم المتجر…") +
@@ -3423,6 +3585,15 @@
     var mpl = window.maProductLanguageV1;
     var mil = window.maInsightLayerV1;
     if (!host) return;
+    if (cartsV2UiEnabled()) {
+      host.hidden = true;
+      host.innerHTML = "";
+      if (subEl) {
+        subEl.hidden = true;
+        subEl.setAttribute("hidden", "");
+      }
+      return;
+    }
     if (!mpl) {
       host.hidden = true;
       if (subEl) subEl.hidden = false;
@@ -3501,6 +3672,7 @@
     }
     var wsKey = miCartsWorkspaceKey(d, rows);
     if (wsKey === lastMiCartsWorkspaceKey && root.querySelector(".ma-mi-group")) {
+      renderCartsAttentionVerdictV1(rows);
       renderMiCartsProductLanguageNarrative(d, rows);
       updateMiCartsV1QueueSelection();
       if (typeof mi.syncOpenMiGroupSummaryPreviews === "function") {
@@ -3514,6 +3686,7 @@
       return true;
     }
     lastMiCartsWorkspaceKey = wsKey;
+    renderCartsAttentionVerdictV1(rows);
     renderMiCartsProductLanguageNarrative(d, rows);
     var empty = byId("ma-carts-queue-empty");
     var deps = {
@@ -3563,6 +3736,7 @@
 
   function renderPeV2CartsQueue(rows) {
     var queue = byId("ma-carts-queue-v2");
+    renderCartsAttentionVerdictV1(rows);
     if (!queue) return;
     var empty = byId("ma-carts-queue-empty");
     updatePeV2QueueSubtitle(rows);
