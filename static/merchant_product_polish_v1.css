@@ -165,7 +165,9 @@ body[data-ma-page="vip"] #ma-page-hero-global {
 .ma-carts-attention-verdict {
   margin: 0 0 var(--v2-space-md, 20px);
   padding: var(--v2-space-md, 20px) var(--v2-space-lg, 28px);
-  max-width: var(--v2-max-wide, 1080px);
+  max-width: none;
+  width: 100%;
+  box-sizing: border-box;
   border-radius: 16px;
   background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
   border: 1px solid #e2e8f0;
@@ -222,7 +224,9 @@ body[data-ma-page="vip"] #ma-page-hero-global {
   display: block;
   margin: 0 0 var(--v2-space-md, 20px);
   padding: var(--v2-space-md, 20px);
-  max-width: var(--v2-max-wide, 1080px);
+  max-width: none;
+  width: 100%;
+  box-sizing: border-box;
   border-radius: 14px;
   background: #f8fafc;
   border: 1px solid #e2e8f0;
@@ -243,6 +247,42 @@ body[data-ma-page="vip"] #ma-page-hero-global {
   color: #64748b;
   line-height: 1.45;
 }
+
+/*
+ * Phase 2 hotfix - desktop layout regression.
+ * Base PE v2 uses grid-template-columns: 360px 1fr, which after workspace
+ * expansion leaves verdict + story cards in a narrow side column while the
+ * conversation panel dominates. Give the queue/MI column usable width.
+ * Mobile (<900px) stays single-column - do not change.
+ */
+@media (min-width: 900px) {
+  #page-carts.ma-pe-v2 .v2-workspace {
+    grid-template-columns: minmax(480px, 1.2fr) minmax(360px, 0.8fr);
+    align-items: start;
+  }
+
+  #page-carts.ma-pe-v2 .ma-pe-v2-carts-queue-col {
+    min-width: 0;
+    width: auto;
+    max-width: none;
+  }
+
+  #page-carts.ma-pe-v2 .ma-pe-v2-carts-queue-col > #ma-carts-attention-verdict-v1,
+  #page-carts.ma-pe-v2 .ma-pe-v2-carts-queue-col > #ma-cart-filters,
+  #page-carts.ma-pe-v2 .ma-pe-v2-carts-queue-col > #ma-carts-groups-v2,
+  #page-carts.ma-pe-v2 .ma-pe-v2-carts-queue-col > #ma-carts-queue-empty {
+    width: 100%;
+    max-width: none;
+    box-sizing: border-box;
+  }
+
+  #page-carts.ma-pe-v2 #ma-carts-panel-v2 {
+    min-width: 0;
+    width: auto;
+    max-width: none;
+  }
+}
+
 
 /* ——— Section heads (Knowledge, month KPI, etc.) ——— */
 .ma-section-head {

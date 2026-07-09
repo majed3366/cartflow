@@ -11,6 +11,10 @@ from unittest import mock
 _ROOT = Path(__file__).resolve().parent.parent
 _LAZY_JS = (_ROOT / "static" / "merchant_dashboard_lazy.js").read_text(encoding="utf-8")
 _CSS = (_ROOT / "static" / "merchant_product_polish_v1.css").read_text(encoding="utf-8")
+_WORKSPACE_CSS = (_ROOT / "static" / "merchant_workspace_expansion_v1.css").read_text(
+    encoding="utf-8"
+)
+_PE_CSS = (_ROOT / "static" / "merchant_pe_v2.css").read_text(encoding="utf-8")
 _TMPL = (_ROOT / "templates" / "merchant_app.html").read_text(encoding="utf-8")
 
 
@@ -109,6 +113,34 @@ class CartPageAttentionVerdictV1Tests(unittest.TestCase):
     def test_css_hides_legacy_when_v2(self) -> None:
         self.assertIn("#page-carts.ma-carts--v2-ui #ma-carts-hero", _CSS)
         self.assertIn(".ma-carts-attention-verdict__headline", _CSS)
+
+    def test_desktop_queue_column_not_stuck_at_360px(self) -> None:
+        """Desktop regression: verdict + MI body must not sit in a fixed 360px track."""
+        # Base PE still documents the legacy split (other surfaces / fallback).
+        self.assertIn("grid-template-columns: 360px 1fr", _PE_CSS)
+        # Carts desktop override must widen the queue/MI column past 360px.
+        self.assertIn(
+            "grid-template-columns: minmax(480px, 1.2fr) minmax(360px, 0.8fr)",
+            _CSS,
+        )
+        self.assertIn(
+            "grid-template-columns: minmax(480px, 1.2fr) minmax(360px, 0.8fr)",
+            _WORKSPACE_CSS,
+        )
+        # Verdict + groups fill the queue column (no leftover 1080px cap).
+        verdict_block = _CSS[
+            _CSS.index(".ma-carts-attention-verdict {") : _CSS.index(
+                ".ma-carts-attention-verdict[hidden]"
+            )
+        ]
+        self.assertIn("max-width: none", verdict_block)
+        self.assertIn("width: 100%", verdict_block)
+        # DOM contract: body host remains under verdict in the queue column.
+        idx_verdict = _TMPL.index("ma-carts-attention-verdict-v1")
+        idx_groups = _TMPL.index('id="ma-carts-groups-v2"')
+        idx_panel = _TMPL.index('id="ma-carts-panel-v2"')
+        self.assertLess(idx_verdict, idx_groups)
+        self.assertLess(idx_groups, idx_panel)
 
     def test_dashboard_route_passes_flag(self) -> None:
         pages = (_ROOT / "routes" / "merchant_pages.py").read_text(encoding="utf-8")

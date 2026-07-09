@@ -128,4 +128,26 @@
     margin-inline: auto;
     width: 100%;
   }
+
+  /* Cart Page V2 Phase 2 hotfix — desktop queue column must use horizontal space */
+  body[data-cf-merchant-app="1"].cf-pds-closure[data-ma-page="carts"] #page-carts.ma-pe-v2 .v2-workspace {
+    grid-template-columns: minmax(480px, 1.2fr) minmax(360px, 0.8fr);
+    align-items: start;
+  }
+
+  body[data-cf-merchant-app="1"].cf-pds-closure[data-ma-page="carts"] #page-carts.ma-pe-v2 .ma-pe-v2-carts-queue-col,
+  body[data-cf-merchant-app="1"].cf-pds-closure[data-ma-page="carts"] #page-carts.ma-pe-v2 #ma-carts-panel-v2 {
+    min-width: 0;
+    width: auto;
+    max-width: none;
+  }
+
+  body[data-cf-merchant-app="1"].cf-pds-closure[data-ma-page="carts"] #page-carts .ma-carts-attention-verdict,
+  body[data-cf-merchant-app="1"].cf-pds-closure[data-ma-page="carts"] #page-carts #ma-carts-groups-v2,
+  body[data-cf-merchant-app="1"].cf-pds-closure[data-ma-page="carts"] #page-carts .ma-mi-carts-pending {
+    width: 100%;
+    max-width: none;
+    box-sizing: border-box;
+  }
+
 }
