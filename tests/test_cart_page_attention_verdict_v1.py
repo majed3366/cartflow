@@ -85,7 +85,8 @@ class CartPageAttentionVerdictV1Tests(unittest.TestCase):
         self.assertIn("لن تحتاج لاتخاذ إجراء حتى تكتمل القراءة", block)
         self.assertIn("data-mi-pending", block)
         self.assertIn("hasRows", block)
-        # Must pass real rows into verdict when available
+        # Paint-only under RSC; legacy fallback still aligns verdict with rows.
+        self.assertIn("Paint-only", block)
         self.assertIn("renderCartsAttentionVerdictV1(activeRows)", block)
         self.assertNotIn("renderCartsAttentionVerdictV1([], { loading: true })\n    if (!cartsV2UiEnabled())", block)
         # Empty whisper only hidden when groups host owns pending body
@@ -98,11 +99,16 @@ class CartPageAttentionVerdictV1Tests(unittest.TestCase):
             'renderCartsAttentionVerdictV1([], { loading: true, freshness: "pending" })',
             block,
         )
+        # RSC owns composition; pending presenter only paints when asked.
+        self.assertIn("ensureCartPageRsc", block)
 
     def test_workspace_pending_passes_rows(self) -> None:
+        # Phase 2.6: workspace is paint-only — missing MI returns false; RSC owns pending.
         block = _extract_js_function(_LAZY_JS, "renderMiCartsV1Workspace")
-        self.assertIn("renderMiCartsV1Pending(rows)", block)
-        self.assertNotIn('renderMiCartsV1Pending("CartFlow', block)
+        self.assertIn("Paint-only", block)
+        self.assertNotIn("renderMiCartsV1Pending(rows)", block)
+        self.assertIn("return false", block)
+        self.assertIn("paintCartBodyPendingFromPlan", _LAZY_JS)
 
     def test_mpl_skipped_when_v2_ui(self) -> None:
         block = _extract_js_function(_LAZY_JS, "renderMiCartsProductLanguageNarrative")
@@ -112,8 +118,11 @@ class CartPageAttentionVerdictV1Tests(unittest.TestCase):
         self.assertLess(idx_flag, idx_compose)
 
     def test_workspace_calls_verdict(self) -> None:
+        # Under RSC, workspace does not independently decide verdict; paint path still
+        # retains a legacy fallback call ordered before MPL.
         block = _extract_js_function(_LAZY_JS, "renderMiCartsV1Workspace")
         self.assertIn("renderCartsAttentionVerdictV1", block)
+        self.assertIn("ensureCartPageRsc", block)
         idx_verdict = block.index("renderCartsAttentionVerdictV1")
         idx_mpl = block.index("renderMiCartsProductLanguageNarrative")
         self.assertLess(idx_verdict, idx_mpl)
@@ -166,12 +175,14 @@ class CartPageAttentionVerdictV1Tests(unittest.TestCase):
 
     def test_fresh_apply_marks_verdict_final(self) -> None:
         block = _extract_js_function(_LAZY_JS, "applyNormalCarts")
-        # Successful apply clears pending before render.
+        # Successful apply clears pending before render, then RSC APPLY_SUCCESS.
         idx_clear = block.index("cartsAttentionVerdictPending = false")
         idx_fresh = block.index("cartsAttentionVerdictFresh = true")
-        idx_render = block.index("renderNormalCartsTables(prepared)")
+        idx_render = block.index("renderNormalCartsTables(prepared")
+        idx_rsc = block.index('rscDispatch("APPLY_SUCCESS"')
         self.assertLess(idx_clear, idx_render)
         self.assertLess(idx_fresh, idx_render)
+        self.assertLess(idx_render, idx_rsc)
         self.assertIn('verdict_freshness: "final"', block)
         # Keep-old-rows paths must not leave a final stale verdict.
         self.assertIn('rerenderCartsFromMemory("partial_keep")', block)
@@ -193,10 +204,12 @@ class CartPageAttentionVerdictV1Tests(unittest.TestCase):
     def test_setup_render_build_bumped_for_verdict_freshness(self) -> None:
         from services.merchant_setup_render_build import MERCHANT_SETUP_RENDER_BUILD
 
-        self.assertIn("verdict-freshness", MERCHANT_SETUP_RENDER_BUILD)
+        # Phase 2.6 supersedes freshness-only build id; RSC includes freshness ownership.
+        self.assertIn("rsc-v1", MERCHANT_SETUP_RENDER_BUILD)
         self.assertNotEqual(
             MERCHANT_SETUP_RENDER_BUILD, "ui-setup-v8d-home-closure-v3"
         )
+        self.assertIn("CartPageRenderingStateController", _LAZY_JS)
 
 
 if __name__ == "__main__":

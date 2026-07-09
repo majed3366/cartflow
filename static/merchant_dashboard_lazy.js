@@ -1,9 +1,9 @@
 /* Lazy-load merchant dashboard JSON sections (shell-first). Not storefront widget V2. */
-/* MERCHANT_SETUP_RENDER_BUILD=ui-setup-v8e-verdict-freshness-v1 */
+/* MERCHANT_SETUP_RENDER_BUILD=ui-setup-v8f-rsc-v1 */
 (function () {
   "use strict";
 
-  var MERCHANT_SETUP_RENDER_BUILD = "ui-setup-v8e-verdict-freshness-v1";
+  var MERCHANT_SETUP_RENDER_BUILD = "ui-setup-v8f-rsc-v1";
 
   function esc(s) {
     return String(s == null ? "" : s)
@@ -425,18 +425,23 @@
       // Cache is temporary paint only — Attention Verdict stays pending until live apply.
       cartsAttentionVerdictFresh = false;
       cartsAttentionVerdictPending = true;
-      renderNormalCartsTables(
-        prepareNormalCartsPayload(
-          {
-            ok: true,
-            merchant_carts_page_rows: c.rows,
-            merchant_archived_carts_page_rows: c.archived || [],
-            merchant_table_rows: c.table && c.table.length ? c.table : c.rows.slice(0, 8),
-            merchant_cart_filter_counts: c.fc || {},
-          },
-          "cache"
-        )
+      var prepared = prepareNormalCartsPayload(
+        {
+          ok: true,
+          merchant_carts_page_rows: c.rows,
+          merchant_archived_carts_page_rows: c.archived || [],
+          merchant_table_rows: c.table && c.table.length ? c.table : c.rows.slice(0, 8),
+          merchant_cart_filter_counts: c.fc || {},
+        },
+        "cache"
       );
+      renderNormalCartsTables(prepared, { skipComposition: true, preserveMi: true });
+      rscDispatch("CACHE_HYDRATED", {
+        rows: activeNormalCartRows(normalCartsPayloadRows(prepared)),
+        miPayload: lastMerchantIntelligencePayload,
+        reason: "cache",
+        rowsSource: "cache",
+      });
       if (c.token) {
         merchantDashboardRefreshToken = String(c.token);
       }
@@ -508,18 +513,31 @@
       markAttentionVerdictRefreshing(reasonKey || "memory_empty");
       return;
     }
-    renderNormalCartsTables(
-      prepareNormalCartsPayload(
-        {
-          ok: true,
-          merchant_carts_page_rows: lastNormalCartsPageRows,
-          merchant_archived_carts_page_rows: lastArchivedCartsPageRows,
-          merchant_table_rows: lastNormalCartsPageRows.slice(0, 8),
-          merchant_cart_filter_counts: lastNormalCartsFilterCounts,
-        },
-        "memory"
-      )
+    var prepared = prepareNormalCartsPayload(
+      {
+        ok: true,
+        merchant_carts_page_rows: lastNormalCartsPageRows,
+        merchant_archived_carts_page_rows: lastArchivedCartsPageRows,
+        merchant_table_rows: lastNormalCartsPageRows.slice(0, 8),
+        merchant_cart_filter_counts: lastNormalCartsFilterCounts,
+      },
+      "memory"
     );
+    renderNormalCartsTables(prepared, { skipComposition: true, preserveMi: true });
+    var activeRows = activeNormalCartRows(lastNormalCartsPageRows);
+    if (keepStale) {
+      rscDispatch("APPLY_KEEP", {
+        rows: activeRows,
+        miPayload: lastMerchantIntelligencePayload,
+        reason: reasonKey,
+        rowsSource: "memory",
+      });
+    } else {
+      rscDispatch("ROWS_PATCHED", {
+        rows: activeRows,
+        reason: reasonKey || "memory",
+      });
+    }
     logClientRefresh("carts_rerender_memory", {
       reason: reasonKey,
       rows: lastNormalCartsPageRows.length,
@@ -3617,31 +3635,302 @@
   function markAttentionVerdictRefreshing(reason) {
     cartsAttentionVerdictFresh = false;
     cartsAttentionVerdictPending = true;
-    if (!cartsV2UiEnabled()) return;
     var rows = activeNormalCartRows(lastNormalCartsPageRows || []);
-    renderCartsAttentionVerdictV1(rows, {
-      pending: true,
-      freshness: "pending",
-    });
+    // RSC owns merchant-visible refreshing; presenters must not decide independently.
+    if (ensureCartPageRsc()) {
+      rscDispatch("FETCH_STARTED", {
+        rows: rows,
+        miPayload: lastMerchantIntelligencePayload,
+        reason: reason || "refresh",
+      });
+    } else if (cartsV2UiEnabled()) {
+      renderCartsAttentionVerdictV1(rows, {
+        pending: true,
+        freshness: "pending",
+      });
+    }
     logClientRefresh("attention_verdict_refreshing", {
       reason: reason || "",
       rows: rows.length,
     });
   }
 
+
+  /* ——— Rendering State Controller V1 (sole merchant-visible owner) ——— */
+  var cartPageRsc = null;
+  var cartPageRscLastPlanKey = "";
+
+  function ensureCartPageRsc() {
+    if (cartPageRsc) return cartPageRsc;
+    var api = window.CartPageRenderingStateController;
+    if (!api || typeof api.createController !== "function") {
+      return null;
+    }
+    cartPageRsc = api.createController({
+      countPrimaryActions: countCartPagePrimaryActions,
+      buildFinalVerdict: function (rows, opts) {
+        return buildCartsAttentionVerdictV1(rows, opts || { freshness: "final" });
+      },
+      onCommit: function (plan) {
+        paintCartPageFromRsc(plan);
+      },
+    });
+    return cartPageRsc;
+  }
+
+  function rscDispatch(eventType, payload) {
+    var rsc = ensureCartPageRsc();
+    if (!rsc) return null;
+    return rsc.dispatch(eventType, payload || {});
+  }
+
+  function rscExtractMiFromPayload(d) {
+    var api = window.CartPageRenderingStateController;
+    if (api && typeof api.extractMi === "function") {
+      return api.extractMi(d);
+    }
+    if (!d) return null;
+    return {
+      merchant_value_stories_v1: d.merchant_value_stories_v1 || null,
+      merchant_intelligence_store_v1: d.merchant_intelligence_store_v1 || null,
+    };
+  }
+
+  function paintAttentionVerdictFromPlan(plan) {
+    var host = byId("ma-carts-attention-verdict-v1");
+    var hero = byId("ma-carts-hero");
+    var subEl = byId("ma-carts-queue-sub");
+    var mplHost = byId("ma-carts-product-language-v1");
+    if (!cartsV2UiEnabled()) {
+      if (host) {
+        host.hidden = true;
+        host.innerHTML = "";
+        host.removeAttribute("data-verdict-freshness");
+      }
+      return;
+    }
+    if (hero) hero.hidden = true;
+    if (subEl) {
+      subEl.hidden = true;
+      subEl.setAttribute("hidden", "");
+    }
+    if (mplHost) {
+      mplHost.hidden = true;
+      mplHost.innerHTML = "";
+    }
+    if (!host || !plan || !plan.verdict) return;
+    var verdict = plan.verdict;
+    var freshness = plan.freshness || verdict.freshness || "pending";
+    var html =
+      '<div class="ma-carts-attention-verdict__inner" data-verdict-mode="' +
+      esc(verdict.mode || plan.verdictMode || "") +
+      '" data-verdict-freshness="' +
+      esc(freshness) +
+      '" data-rsc-phase="' +
+      esc(plan.phase || "") +
+      '">' +
+      '<p class="ma-carts-attention-verdict__kicker">ما يحتاج انتباهك الآن</p>' +
+      '<p class="ma-carts-attention-verdict__headline">' +
+      esc(verdict.headline || "") +
+      "</p>";
+    if (verdict.detail) {
+      html +=
+        '<p class="ma-carts-attention-verdict__detail">' +
+        esc(verdict.detail) +
+        "</p>";
+    }
+    if (verdict.continue_hint) {
+      html +=
+        '<p class="ma-carts-attention-verdict__continue">' +
+        esc(verdict.continue_hint) +
+        "</p>";
+    }
+    html += "</div>";
+    host.innerHTML = html;
+    host.setAttribute("data-verdict-freshness", freshness);
+    host.setAttribute("data-rsc-phase", plan.phase || "");
+    host.hidden = false;
+    host.removeAttribute("hidden");
+  }
+
+  function paintCartBodyPendingFromPlan(plan) {
+    var root = byId("ma-carts-groups-v2");
+    var empty = byId("ma-carts-queue-empty");
+    var rows = (plan && plan.rows) || [];
+    var hasRows = rows.length > 0;
+    var bodyMsg = hasRows
+      ? "CartFlow يجهّز فهم هذه السلال…"
+      : "CartFlow يجهّز فهم المتجر…";
+    if (plan && plan.bodyMode === "loading") {
+      bodyMsg = "جاري تحميل السلال…";
+    }
+    var hint = hasRows ? "لن تحتاج لاتخاذ إجراء حتى تكتمل القراءة." : "";
+    var pendingHtml =
+      '<div class="ma-mi-carts-pending v2-whisper" data-mi-pending="1" data-mi-pending-has-rows="' +
+      (hasRows ? "1" : "0") +
+      '" data-rsc-body="' +
+      esc((plan && plan.bodyMode) || "pending") +
+      '">' +
+      '<p class="ma-mi-carts-pending-text v2-whisper-text">' +
+      esc(bodyMsg) +
+      "</p>";
+    if (hint) {
+      pendingHtml +=
+        '<p class="ma-mi-carts-pending-hint v2-whisper-text">' + esc(hint) + "</p>";
+    }
+    pendingHtml += "</div>";
+    if (root) {
+      root.innerHTML = pendingHtml;
+      if (empty) {
+        empty.hidden = true;
+        empty.setAttribute("hidden", "");
+      }
+      return;
+    }
+    if (empty) {
+      empty.hidden = false;
+      empty.removeAttribute("hidden");
+      var p = empty.querySelector(".v2-whisper-text");
+      if (p) p.textContent = bodyMsg;
+    }
+  }
+
+  function paintCartBodyEmptyFromPlan() {
+    var root = byId("ma-carts-groups-v2");
+    var empty = byId("ma-carts-queue-empty");
+    if (root) root.innerHTML = "";
+    if (empty) {
+      empty.hidden = false;
+      empty.removeAttribute("hidden");
+      var p = empty.querySelector(".v2-whisper-text");
+      if (p) {
+        p.textContent = "لا توجد سلات تحتاج انتباهك — CartFlow يتابع المتجر.";
+      }
+    }
+  }
+
+  function paintCartBodyStoriesFromPlan(plan) {
+    var mi = window.maIntelligenceCartsV1;
+    var root = byId("ma-carts-groups-v2");
+    var empty = byId("ma-carts-queue-empty");
+    if (!mi || !root) {
+      paintCartBodyPendingFromPlan(plan);
+      return;
+    }
+    var page = byId("page-carts");
+    var filters = byId("ma-cart-filters");
+    if (page) page.classList.add("ma-carts--mi-v1");
+    if (filters) {
+      filters.hidden = false;
+      filters.removeAttribute("hidden");
+    }
+    var d = plan.miPayload || {};
+    var rows = plan.rows || [];
+    // Attach rows onto a payload-shaped object for MI renderers.
+    var payload = {
+      merchant_value_stories_v1: d.merchant_value_stories_v1,
+      merchant_intelligence_store_v1: d.merchant_intelligence_store_v1,
+    };
+    var wsKey = miCartsWorkspaceKey(payload, rows);
+    if (wsKey === lastMiCartsWorkspaceKey && root.querySelector(".ma-mi-group")) {
+      updateMiCartsV1QueueSelection();
+      if (typeof mi.syncOpenMiGroupSummaryPreviews === "function") {
+        mi.syncOpenMiGroupSummaryPreviews(root);
+      }
+      applyMiCartsFilterMode(
+        typeof window.getEffectiveNormalCartFilter === "function"
+          ? window.getEffectiveNormalCartFilter() || "all"
+          : "all"
+      );
+      return;
+    }
+    lastMiCartsWorkspaceKey = wsKey;
+    if (!cartsV2UiEnabled()) {
+      renderMiCartsProductLanguageNarrative(payload, rows);
+    }
+    var deps = {
+      esc: esc,
+      cartRecoveryKey: cartRecoveryKey,
+      primaryActionHtml: merchantPeV2PrimaryActionHtml,
+      selectedKey: peV2SelectedRecoveryKey,
+      emptyEl: empty,
+      bindQueue: bindPeV2CartsQueue,
+      onSelectCart: selectPeV2Cart,
+      updateSubtitle: function () {},
+    };
+    if (mi.hasValueStories && mi.hasValueStories(payload)) {
+      mi.renderStories(root, payload.merchant_value_stories_v1, rows, deps);
+    } else {
+      mi.renderGroups(root, payload.merchant_intelligence_store_v1, rows, deps);
+    }
+    applyMiCartsFilterMode(
+      typeof window.getEffectiveNormalCartFilter === "function"
+        ? window.getEffectiveNormalCartFilter() || "all"
+        : "all"
+    );
+    if (!miCartsDidInitialSelect) {
+      miCartsDidInitialSelect = true;
+      var firstRk = "";
+      root.querySelectorAll("details.ma-mi-group .v2-queue-item").forEach(function (btn) {
+        if (!firstRk && btn.style.display !== "none" && !btn.hidden) {
+          firstRk = btn.getAttribute("data-recovery-key") || "";
+        }
+      });
+      if (
+        !peV2SelectedRecoveryKey ||
+        !findCartByRecoveryKey(peV2SelectedRecoveryKey)
+      ) {
+        selectPeV2Cart(firstRk);
+      } else {
+        selectPeV2Cart(peV2SelectedRecoveryKey);
+      }
+    } else {
+      updateMiCartsV1QueueSelection();
+      if (peV2SelectedRecoveryKey) {
+        renderPeV2CartPanel(findCartByRecoveryKey(peV2SelectedRecoveryKey));
+      }
+    }
+  }
+
+  function paintCartPageFromRsc(plan) {
+    if (!plan) return;
+    // Sync legacy freshness flags for any residual callers / tests.
+    cartsAttentionVerdictPending = plan.freshness !== "final";
+    cartsAttentionVerdictFresh = plan.freshness === "final";
+    paintAttentionVerdictFromPlan(plan);
+    if (plan.bodyMode === "stories") {
+      paintCartBodyStoriesFromPlan(plan);
+    } else if (plan.bodyMode === "empty") {
+      paintCartBodyEmptyFromPlan();
+    } else {
+      paintCartBodyPendingFromPlan(plan);
+    }
+    logClientRefresh("rsc_commit", {
+      phase: plan.phase,
+      freshness: plan.freshness,
+      bodyMode: plan.bodyMode,
+      verdictMode: plan.verdictMode,
+      miSource: plan.miSource,
+      rows: (plan.rows || []).length,
+      reason: plan.reason || "",
+    });
+  }
+
   function renderMiCartsV1Pending(rows, message) {
+    // Paint-only presenter. RSC owns pending vs stories vs empty; this only paints body.
     var root = byId("ma-carts-groups-v2");
     var empty = byId("ma-carts-queue-empty");
     var activeRows = (rows || []).filter(function (mc) {
       return mc && !isArchivedVisual(mc);
     });
     var hasRows = activeRows.length > 0;
-    // Keep verdict aligned with real rows when available (never force rows=[]).
-    // Freshness flag (cache/pending) still suppresses final counts until live apply.
-    if (hasRows) {
-      renderCartsAttentionVerdictV1(activeRows);
-    } else {
-      renderCartsAttentionVerdictV1([], { loading: true, freshness: "pending" });
+    // Legacy fallback when RSC is unavailable: keep verdict aligned with rows.
+    if (!ensureCartPageRsc()) {
+      if (hasRows) {
+        renderCartsAttentionVerdictV1(activeRows);
+      } else {
+        renderCartsAttentionVerdictV1([], { loading: true, freshness: "pending" });
+      }
     }
     if (!cartsV2UiEnabled()) {
       renderMiCartsProductLanguageNarrative(null, []);
@@ -3766,14 +4055,17 @@
       filters.hidden = false;
       filters.removeAttribute("hidden");
     }
+    // Paint-only: missing MI is not a pending decision — RSC owns bodyMode.
     if (!mi.hasRenderablePayload(d)) {
       lastMiCartsWorkspaceKey = "";
-      renderMiCartsV1Pending(rows);
-      return true;
+      return false;
     }
     var wsKey = miCartsWorkspaceKey(d, rows);
     if (wsKey === lastMiCartsWorkspaceKey && root.querySelector(".ma-mi-group")) {
-      renderCartsAttentionVerdictV1(rows);
+      // Verdict is RSC-owned; only paint MPL when v2 UI is off.
+      if (!ensureCartPageRsc()) {
+        renderCartsAttentionVerdictV1(rows);
+      }
       renderMiCartsProductLanguageNarrative(d, rows);
       updateMiCartsV1QueueSelection();
       if (typeof mi.syncOpenMiGroupSummaryPreviews === "function") {
@@ -3787,7 +4079,9 @@
       return true;
     }
     lastMiCartsWorkspaceKey = wsKey;
-    renderCartsAttentionVerdictV1(rows);
+    if (!ensureCartPageRsc()) {
+      renderCartsAttentionVerdictV1(rows);
+    }
     renderMiCartsProductLanguageNarrative(d, rows);
     var empty = byId("ma-carts-queue-empty");
     var deps = {
@@ -3837,7 +4131,9 @@
 
   function renderPeV2CartsQueue(rows) {
     var queue = byId("ma-carts-queue-v2");
-    renderCartsAttentionVerdictV1(rows);
+    if (!ensureCartPageRsc()) {
+      renderCartsAttentionVerdictV1(rows);
+    }
     if (!queue) return;
     var empty = byId("ma-carts-queue-empty");
     updatePeV2QueueSubtitle(rows);
@@ -4628,7 +4924,12 @@
     allb.innerHTML = sorted.map(cartRowFull).join("");
     bindCustomerLifecycleActions(allb);
     var workspaceRows = activeNormalCartRows(sorted);
-    if (
+    if (ensureCartPageRsc()) {
+      rscDispatch("ROWS_PATCHED", {
+        rows: workspaceRows,
+        reason: "lifecycle_patch",
+      });
+    } else if (
       !renderMiCartsV1Workspace(lastMerchantIntelligencePayload, workspaceRows)
     ) {
       renderPeV2CartsQueue(workspaceRows);
@@ -4906,7 +5207,8 @@
     }, 1200);
   }
 
-  function renderNormalCartsTables(d) {
+  function renderNormalCartsTables(d, opts) {
+    opts = opts || {};
     var pageRows = normalCartsPayloadRows(d);
     var confirmedEmpty = !!(d && d.__ma_confirmed_empty);
     if (!pageRows.length && !confirmedEmpty) {
@@ -4916,7 +5218,18 @@
     }
     lastNormalCartsPageRows = pageRows;
     lastArchivedCartsPageRows = (d && d.merchant_archived_carts_page_rows) || [];
-    lastMerchantIntelligencePayload = d;
+    // Never wipe last-good MI with a rows-only payload (cache/memory/keep).
+    var incomingMi = rscExtractMiFromPayload(d);
+    if (opts.acceptMi || incomingMi) {
+      lastMerchantIntelligencePayload = d;
+    } else if (opts.preserveMi) {
+      /* keep lastMerchantIntelligencePayload */
+    } else if (
+      !lastMerchantIntelligencePayload ||
+      !rscExtractMiFromPayload(lastMerchantIntelligencePayload)
+    ) {
+      lastMerchantIntelligencePayload = d;
+    }
     window.__maNormalCartsPageRows = lastNormalCartsPageRows;
     if (pageRows.length) {
       normalCartsHasRenderedRows = true;
@@ -4948,8 +5261,12 @@
     var sortedRows = activeNormalCartRows(
       sortCartsArchivedLast(lastNormalCartsPageRows)
     );
-    if (!renderMiCartsV1Workspace(d, sortedRows)) {
-      renderPeV2CartsQueue(sortedRows);
+    // Composition: RSC owns when skipComposition + controller available; else legacy.
+    var rscOwnsComposition = !!(opts.skipComposition && ensureCartPageRsc());
+    if (!rscOwnsComposition) {
+      if (!renderMiCartsV1Workspace(d, sortedRows)) {
+        renderPeV2CartsQueue(sortedRows);
+      }
     }
     applyCompletedCartsTable(lastNormalCartsPageRows, lastArchivedCartsPageRows);
     var storeFc = resolveMerchantStoreCartCounts(d);
@@ -5206,11 +5523,27 @@
     // Fresh live/snapshot apply: Attention Verdict may show final counts.
     cartsAttentionVerdictPending = false;
     cartsAttentionVerdictFresh = true;
-    renderNormalCartsTables(prepared);
-    persistNormalCartsCache(prepared);
+    renderNormalCartsTables(prepared, { skipComposition: true, acceptMi: true });
     if (fetchGen != null) {
       normalCartsAppliedGen = Math.max(normalCartsAppliedGen, fetchGen);
     }
+    var activeRows = activeNormalCartRows(normalCartsPayloadRows(prepared));
+    if (prepared.__ma_confirmed_empty) {
+      rscDispatch("APPLY_CONFIRMED_EMPTY", {
+        reason: "confirmed_empty",
+        appliedGen: normalCartsAppliedGen,
+        rowsSource: normalCartsPayloadSource(prepared) || "live",
+      });
+    } else {
+      rscDispatch("APPLY_SUCCESS", {
+        rows: activeRows,
+        miPayload: prepared,
+        reason: "apply",
+        appliedGen: normalCartsAppliedGen,
+        rowsSource: normalCartsPayloadSource(prepared) || "live",
+      });
+    }
+    persistNormalCartsCache(prepared);
     normalCartsBootComplete = true;
     logClientRefresh("normal_carts_applied", {
       fetch_label: d._label || "",
@@ -5231,10 +5564,15 @@
   function fetchNormalCarts(label) {
     var gen = ++normalCartsFetchGen;
     showNormalCartsLoadingState();
-    // Boot / first paint: keep verdict in refreshing until this fetch applies.
-    if (!cartsAttentionVerdictFresh) {
-      markAttentionVerdictRefreshing(label || "fetch");
-    }
+    // Soft refresh: RSC enters refreshing; keep last-good body when present.
+    rscDispatch("FETCH_STARTED", {
+      rows: activeNormalCartRows(lastNormalCartsPageRows || []),
+      miPayload: lastMerchantIntelligencePayload,
+      reason: label || "fetch",
+      fetchGen: gen,
+    });
+    cartsAttentionVerdictFresh = false;
+    cartsAttentionVerdictPending = true;
     var u = "/api/dashboard/normal-carts?_ts=" + Date.now();
     if (label) {
       u += "&_label=" + encodeURIComponent(String(label));
@@ -5249,7 +5587,14 @@
       })
       .catch(function (err) {
         logClientRefresh("normal_carts_fetch_failed", { label: label || "", err: String(err) });
-        markAttentionVerdictRefreshing("fetch_error");
+        rscDispatch("FETCH_FAILED", {
+          rows: activeNormalCartRows(lastNormalCartsPageRows || []),
+          miPayload: lastMerchantIntelligencePayload,
+          reason: "fetch_error",
+          fetchGen: gen,
+        });
+        cartsAttentionVerdictFresh = false;
+        cartsAttentionVerdictPending = true;
         if (lastNormalCartsPageRows.length) {
           scheduleNormalCartsRetry("fetch_error");
         } else {

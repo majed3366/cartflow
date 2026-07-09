@@ -176,11 +176,17 @@ class MerchantIntelligenceConsumptionCartsV1Tests(unittest.TestCase):
 
     def test_lazy_delegates_to_mi_module(self) -> None:
         self.assertIn("renderMiCartsV1Workspace", _LAZY_JS)
+        # Phase 2.6: RSC paints stories via paintCartBodyStoriesFromPlan; workspace
+        # remains as paint helper / legacy fallback.
+        self.assertIn("paintCartBodyStoriesFromPlan", _LAZY_JS)
         self.assertIn("renderMiCartsV1Workspace(d, sortedRows)", _LAZY_JS)
+        self.assertIn("CartPageRenderingStateController", _LAZY_JS)
 
-    def test_filter_bar_disabled_in_mi_mode(self) -> None:
+    def test_filter_bar_visible_in_mi_mode(self) -> None:
+        # Archive/reopen truth: MI mode keeps filter chips visible (applyMiCartsFilterMode).
         self.assertIn("ma-carts--mi-v1", _LAZY_JS)
-        self.assertIn('filters.hidden = true', _LAZY_JS)
+        self.assertIn("filters.hidden = false", _LAZY_JS)
+        self.assertIn("applyMiCartsFilterMode", _LAZY_JS)
 
     def test_regression_carts_workspace_still_wired(self) -> None:
         self.assertIn("merchantPeV2ConversationHtml", _LAZY_JS)

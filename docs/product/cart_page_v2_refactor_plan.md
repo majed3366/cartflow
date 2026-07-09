@@ -84,13 +84,24 @@
 
 **Hotfix (2026-07-09) — desktop layout:** **Desktop layout regression fixed + Production Verified.** After workspace expansion, PE v2 `grid-template-columns: 360px 1fr` left verdict + story cards in a narrow side column. Carts desktop override uses `minmax(480px, 1.2fr) minmax(360px, 0.8fr)` (`merchant_product_polish_v1.css` + `merchant_workspace_expansion_v1.css`); verdict/pending drop `max-width: 1080px` so they fill the queue column. Mobile single-column unchanged. CSS/layout only. Commit: `ef8adb7`. Prod verify: `scripts/_cart_page_v2_desktop_layout_prod_verify.py` → PASS (queue ~658px vs prior 360px track; verdict/stories/filters/archive/reopen OK; mobile no overflow).
 
-**Hotfix (2026-07-09) — Attention Verdict freshness:** **Attention Verdict Freshness Consistency — Production Verified.** Cache/sessionStorage and thin/partial/unconfirmed-empty keep paths no longer present row-derived counts as final. Verdict shows calm «جارٍ تحديث الصورة...» (data-verdict-freshness=pending) until a successful live/snapshot apply; then recomputes final. Build bump ui-setup-v8e-verdict-freshness-v1. UI-only; no truth/API changes. Commit: 263924. Prod verify: scripts/_cart_page_v2_verdict_freshness_prod_verify.py → PASS (desktop+mobile converge utomatic; pending visible; partial not stale-final; archive/reopen OK).
+**Hotfix (2026-07-09) — Attention Verdict freshness:** **Attention Verdict Freshness Consistency — Production Verified.** Cache/sessionStorage and thin/partial/unconfirmed-empty keep paths no longer present row-derived counts as final. Verdict shows calm «جارٍ تحديث الصورة...» (data-verdict-freshness=pending) until a successful live/snapshot apply; then recomputes final. Build bump ui-setup-v8e-verdict-freshness-v1. UI-only; no truth/API changes. Commit: b263924. Prod verify: scripts/_cart_page_v2_verdict_freshness_prod_verify.py → PASS (desktop+mobile converge automatic; pending visible; partial not stale-final; archive/reopen OK).
 
+### Phase 2.6 — Rendering State Controller V1
+
+| Field | Content |
+|-------|---------|
+| **Goal** | One merchant-visible rendering owner (`CartPageRenderingStateController`); Verdict / MI / Pending / Empty / Stories become paint-only |
+| **Files affected** | `static/cart_page_rendering_state_controller_v1.js`, `static/merchant_dashboard_lazy.js`, `templates/merchant_app.html`, `services/merchant_setup_render_build.py` |
+| **UI impact** | Same merchant outcomes; unified ownership of pending/final/cached/refreshing/failed |
+| **Risk level** | Medium (architecture) |
+| **Does not change** | Snapshot Truth, Lifecycle Truth, Primary Action Projection, Archive/Reopen, Recovery |
+| **Out of scope** | Phase 3 automatic band |
+
+**Status (2026-07-09):** **Implemented** — RSC owns composition via `CACHE_HYDRATED` / `FETCH_*` / `APPLY_*` / `ROWS_PATCHED`; last-good MI preserved on keep/cache; presenters paint from plan. Build `ui-setup-v8f-rsc-v1`. Tests: `tests/test_cart_page_rendering_state_controller_v1.py`. Design: `docs/architecture/rendering_state_controller_v1.md`.
 
 ---
 
 ## Phase 3 — CartFlow automatic band
-
 | Field | Content |
 |-------|---------|
 | **Goal** | Add Blueprint **Section 2**: calm aggregate of Wait-primary carts (“CartFlow is following N carts”). Reduces urge to open every row. |
