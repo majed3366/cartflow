@@ -33,24 +33,27 @@ class CartsArchiveReopenRegressionV1Tests(unittest.TestCase):
     def test_shared_footer_includes_archive_and_reopen_markers(self) -> None:
         block = _extract_js_function(self._js, "merchantPeV2ConversationFooterHtml")
         self.assertIn("merchantPeV2SecondaryActionsHtml", block)
+        self.assertIn("merchantPeV2PrimaryActionHtml", block)
         secondary = _extract_js_function(self._js, "merchantPeV2SecondaryActionsHtml")
+        primary = _extract_js_function(self._js, "merchantPeV2PrimaryActionHtml")
+        # Phase 1: Archive demoted secondary; Reopen is primary on archived carts.
         self.assertIn("data-lc-archive", secondary)
-        self.assertIn("data-lc-reopen", secondary)
         self.assertIn("data-recovery-key", secondary)
+        self.assertIn("data-lc-reopen", primary)
+        self.assertIn('data-cf-primary-action="reopen"', primary)
 
     def test_mobile_panel_uses_shared_footer_for_lifecycle_actions(self) -> None:
         block = _extract_js_function(self._js, "merchantPeV2MobilePanelHtml")
         self.assertIn("merchantPeV2ConversationFooterHtml", block)
         self.assertIn("v2-conversation--mobile", block)
 
-    def test_secondary_actions_prefer_row_dashboard_action_over_stale_projection(self) -> None:
+    def test_secondary_actions_demote_archive_from_primary_projection(self) -> None:
         block = _extract_js_function(self._js, "merchantPeV2SecondaryActionsHtml")
-        idx_act = block.index("customer_lifecycle_dashboard_action")
-        idx_lc = block.index("lc.archive_visible")
-        self.assertLess(idx_act, idx_lc)
-        self.assertIn('act === "archive"', block)
-        self.assertIn('act === "reopen"', block)
-        self.assertIn("isArchivedVisual(mc)", block)
+        self.assertIn("resolveCartPagePrimaryAction", block)
+        self.assertIn("secondary_demoted", block)
+        self.assertIn('secondary_key === "archive"', block)
+        self.assertIn("data-lc-archive", block)
+        self.assertNotIn("data-lc-reopen", block)
 
     def test_archive_handler_moves_row_and_refreshes_completed(self) -> None:
         block = self._js[

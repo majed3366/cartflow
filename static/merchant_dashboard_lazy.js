@@ -2728,38 +2728,16 @@
   }
 
   function cartLifecycleActionBtnHtml(mc) {
-    var proj = cartDetailProjection(mc);
-    var lc = proj && proj.lifecycle_ui;
-    var rk = lc && lc.recovery_key ? lc.recovery_key : String(mc.recovery_key || "").trim();
-    if (!rk) return "";
-    var h = merchantInterventionContactBtnHtml(mc);
-    if (lc) {
-      if (lc.archive_visible) {
-        h +=
-          '<div class="recovery-truth-actions"><button type="button" class="cf-lc-btn cf-lc-btn-archive" data-lc-archive data-recovery-key="' +
-          esc(rk) +
-          '"><span class="cf-lc-btn-icon" aria-hidden="true">🗂</span> نقل للأرشيف</button></div>';
-      }
-      if (lc.reopen_visible) {
-        h +=
-          '<div class="recovery-truth-actions"><button type="button" class="cf-lc-btn cf-lc-btn-reopen" data-lc-reopen data-recovery-key="' +
-          esc(rk) +
-          '"><span class="cf-lc-btn-icon" aria-hidden="true">↩</span> إعادة فتح</button></div>';
-      }
-      return h;
+    var rk = cartPagePrimaryRecoveryKey(mc);
+    if (!rk && !mc) return "";
+    var primary = merchantPeV2PrimaryActionHtml(mc);
+    var secondary = merchantPeV2SecondaryActionsHtml(mc);
+    var h = "";
+    if (primary) {
+      h += '<div class="recovery-truth-actions">' + primary + "</div>";
     }
-    var act = String(mc.customer_lifecycle_dashboard_action || "").trim();
-    if (act === "archive") {
-      h +=
-        '<div class="recovery-truth-actions"><button type="button" class="cf-lc-btn cf-lc-btn-archive" data-lc-archive data-recovery-key="' +
-        esc(rk) +
-        '"><span class="cf-lc-btn-icon" aria-hidden="true">🗂</span> نقل للأرشيف</button></div>';
-    }
-    if (act === "reopen") {
-      h +=
-        '<div class="recovery-truth-actions"><button type="button" class="cf-lc-btn cf-lc-btn-reopen" data-lc-reopen data-recovery-key="' +
-        esc(rk) +
-        '"><span class="cf-lc-btn-icon" aria-hidden="true">↩</span> إعادة فتح</button></div>';
+    if (secondary) {
+      h += '<div class="recovery-truth-actions recovery-truth-actions--lifecycle">' + secondary + "</div>";
     }
     return h;
   }
@@ -2922,76 +2900,183 @@
     );
   }
 
-  function merchantPeV2PrimaryActionHtml(mc) {
+  var CART_PAGE_PRIMARY_ACTION_KEYS = {
+    no_action_required: true,
+    wait: true,
+    contact_customer: true,
+    review_cart: true,
+    follow_up_manually: true,
+    archive: true,
+    reopen: true,
+  };
+
+  var CART_PAGE_PRIMARY_LABEL_AR = {
+    no_action_required: "لا يلزم إجراء",
+    wait: "انتظر — CartFlow يتابع",
+    contact_customer: "تواصل مع العميل",
+    review_cart: "راجع السلة",
+    follow_up_manually: "متابعة يدوية",
+    archive: "نقل للأرشيف",
+    reopen: "إعادة فتح",
+  };
+
+  function resolveCartPagePrimaryAction(mc) {
+    if (!mc || typeof mc !== "object") {
+      return {
+        key: "review_cart",
+        label: CART_PAGE_PRIMARY_LABEL_AR.review_cart,
+        secondary_key: "",
+        secondary_demoted: false,
+      };
+    }
+    var pa = mc.cart_page_primary_action_v1;
+    var key = "";
+    var label = "";
+    var secondaryKey = "";
+    var demoted = false;
+    if (pa && typeof pa === "object") {
+      key = String(pa.key || "").trim().toLowerCase();
+      label = String(pa.label || "").trim();
+      secondaryKey = String(pa.secondary_key || "").trim().toLowerCase();
+      demoted = pa.secondary_demoted === true;
+    }
+    if (!key || !CART_PAGE_PRIMARY_ACTION_KEYS[key]) {
+      // Fail-safe: never Archive as primary when projection missing.
+      if (isArchivedVisual(mc)) {
+        key = "reopen";
+      } else if (
+        String(mc.customer_lifecycle_state || "").trim().toLowerCase() === "completed" ||
+        String(mc.customer_lifecycle_completed_variant || "").trim()
+      ) {
+        key = "no_action_required";
+      } else {
+        key = "review_cart";
+      }
+      label = CART_PAGE_PRIMARY_LABEL_AR[key] || key;
+      secondaryKey = "";
+      demoted = false;
+      var dash = String(mc.customer_lifecycle_dashboard_action || "").trim();
+      if (dash === "archive" && key !== "reopen" && key !== "archive") {
+        secondaryKey = "archive";
+        demoted = true;
+      }
+    }
+    if (!label) label = CART_PAGE_PRIMARY_LABEL_AR[key] || key;
+    return {
+      key: key,
+      label: label,
+      secondary_key: secondaryKey,
+      secondary_demoted: demoted,
+    };
+  }
+
+  function cartPagePrimaryContactHref(mc) {
     if (!mc) return "";
     var proj = cartDetailProjection(mc);
     var contact = proj && proj.contact_action;
     if (contact && contact.visible && contact.href) {
-      return (
-        '<a class="v2-btn" href="' +
-        esc(contact.href) +
-        '" target="_blank" rel="noopener noreferrer">' +
-        esc(contact.label_ar || "تواصل مع العميل") +
-        "</a>"
-      );
+      return String(contact.href || "").trim();
     }
-    var sa = proj && proj.suggested_action;
-    if (sa && sa.visible && sa.label_ar) {
-      if (contact && contact.visible && contact.href) {
-        return (
-          '<a class="v2-btn" href="' +
-          esc(contact.href) +
-          '" target="_blank" rel="noopener noreferrer">' +
-          esc(contact.label_ar || sa.label_ar) +
-          "</a>"
-        );
-      }
-      return (
-        '<span class="v2-btn v2-btn--label">' + esc(sa.label_ar) + "</span>"
-      );
-    }
-    if (!proj && mc.merchant_intervention_executable) {
-      var href = String(mc.merchant_intervention_contact_href || "").trim();
-      if (href) {
-        var lbl = String(mc.merchant_intervention_action_ar || "تواصل مع العميل").trim();
-        return (
-          '<a class="v2-btn" href="' +
-          esc(href) +
-          '" target="_blank" rel="noopener noreferrer">' +
-          esc(lbl) +
-          "</a>"
-        );
-      }
+    if (mc.merchant_intervention_executable) {
+      return String(mc.merchant_intervention_contact_href || "").trim();
     }
     return "";
   }
 
-  function merchantPeV2SecondaryActionsHtml(mc) {
+  function cartPagePrimaryRecoveryKey(mc) {
     var proj = cartDetailProjection(mc);
     var lc = proj && proj.lifecycle_ui;
     var rk = lc && lc.recovery_key ? lc.recovery_key : String(mc.recovery_key || "").trim();
-    rk = String(rk || "").trim();
+    return String(rk || "").trim();
+  }
+
+  function merchantPeV2PrimaryActionHtml(mc) {
+    if (!mc) return "";
+    var pa = resolveCartPagePrimaryAction(mc);
+    var key = pa.key;
+    var label = pa.label;
+    var rk = cartPagePrimaryRecoveryKey(mc);
+    var href = cartPagePrimaryContactHref(mc);
+
+    if (key === "contact_customer") {
+      if (href) {
+        return (
+          '<a class="v2-btn" href="' +
+          esc(href) +
+          '" target="_blank" rel="noopener noreferrer" data-cf-primary-action="contact_customer">' +
+          esc(label || "تواصل مع العميل") +
+          "</a>"
+        );
+      }
+      return (
+        '<span class="v2-btn v2-btn--label" data-cf-primary-action="contact_customer">' +
+        esc(label || "تواصل مع العميل") +
+        "</span>"
+      );
+    }
+    if (key === "follow_up_manually") {
+      if (href) {
+        return (
+          '<a class="v2-btn" href="' +
+          esc(href) +
+          '" target="_blank" rel="noopener noreferrer" data-cf-primary-action="follow_up_manually">' +
+          esc(label) +
+          "</a>"
+        );
+      }
+      return (
+        '<span class="v2-btn v2-btn--label" data-cf-primary-action="follow_up_manually">' +
+        esc(label) +
+        "</span>"
+      );
+    }
+    if (key === "reopen") {
+      if (!rk) return "";
+      return (
+        '<button type="button" class="v2-btn" data-lc-reopen data-recovery-key="' +
+        esc(rk) +
+        '" data-cf-primary-action="reopen">' +
+        esc(label || "إعادة فتح") +
+        "</button>"
+      );
+    }
+    if (key === "archive") {
+      if (!rk) return "";
+      return (
+        '<button type="button" class="v2-btn" data-lc-archive data-recovery-key="' +
+        esc(rk) +
+        '" data-cf-primary-action="archive">' +
+        esc(label || "نقل للأرشيف") +
+        "</button>"
+      );
+    }
+    // wait | no_action_required | review_cart — single primary label, never Archive twin
+    return (
+      '<span class="v2-btn v2-btn--label" data-cf-primary-action="' +
+      esc(key) +
+      '">' +
+      esc(label) +
+      "</span>"
+    );
+  }
+
+  function merchantPeV2SecondaryActionsHtml(mc) {
+    if (!mc) return "";
+    var pa = resolveCartPagePrimaryAction(mc);
+    var rk = cartPagePrimaryRecoveryKey(mc);
     if (!rk) return "";
-    var act = String(mc.customer_lifecycle_dashboard_action || "").trim();
-    if (!act && isArchivedVisual(mc)) act = "reopen";
-    var archiveVisible = act === "archive";
-    var reopenVisible = act === "reopen";
-    if (!act && lc) {
-      archiveVisible = !!lc.archive_visible;
-      reopenVisible = !!lc.reopen_visible;
-    }
     var h = "";
-    if (archiveVisible) {
+    // Archive only as demoted secondary — never co-primary with Wait/Contact/etc.
+    if (
+      pa.key !== "archive" &&
+      pa.key !== "reopen" &&
+      pa.secondary_demoted &&
+      pa.secondary_key === "archive"
+    ) {
       h +=
-        '<button type="button" class="v2-btn v2-btn--ghost" data-lc-archive data-recovery-key="' +
+        '<button type="button" class="v2-btn v2-btn--ghost v2-btn--lifecycle" data-lc-archive data-recovery-key="' +
         esc(rk) +
-        '">نقل للأرشيف</button>';
-    }
-    if (reopenVisible) {
-      h +=
-        '<button type="button" class="v2-btn v2-btn--ghost" data-lc-reopen data-recovery-key="' +
-        esc(rk) +
-        '">إعادة فتح</button>';
+        '" data-cf-lifecycle-secondary="archive">إغلاق الحالة</button>';
     }
     return h;
   }
@@ -3559,6 +3644,7 @@
   };
 
   function customerLifecycleArchivedCompactHtml(mc) {
+    // Archived: Reopen is the sole primary CTA (cart_page_primary_action_v1).
     return (
       '<div class="ma-pe-v2-conversation v2-conversation ma-pe-v2-conversation--archived" data-mxp="carts-pe-v2" aria-label="سلة مؤرشفة">' +
       '<p class="v2-conv-status">مؤرشفة</p>' +
@@ -3570,6 +3656,7 @@
       '<p class="v2-flow-text">تم إغلاق هذه الحالة من العرض النشط. لن يرسل النظام متابعات أثناء الأرشفة.</p>' +
       "</div></div></div>" +
       '<div class="v2-conv-footer">' +
+      merchantPeV2PrimaryActionHtml(mc) +
       merchantPeV2SecondaryActionsHtml(mc) +
       "</div></div>"
     );
@@ -3742,31 +3829,56 @@
   }
 
   function merchantCartSecondaryLifecycleHtml(mc) {
-    var proj = cartDetailProjection(mc);
-    var lc = proj && proj.lifecycle_ui;
-    var rk = lc && lc.recovery_key ? lc.recovery_key : String(mc.recovery_key || "").trim();
-    rk = String(rk || "").trim();
-    if (!rk) return "";
-    var act = String(mc.customer_lifecycle_dashboard_action || "").trim();
-    if (!act && isArchivedVisual(mc)) act = "reopen";
-    var archiveVisible = act === "archive";
-    var reopenVisible = act === "reopen";
-    if (!act && lc) {
-      archiveVisible = !!lc.archive_visible;
-      reopenVisible = !!lc.reopen_visible;
-    }
+    if (!mc) return "";
+    var pa = resolveCartPagePrimaryAction(mc);
+    var rk = cartPagePrimaryRecoveryKey(mc);
     var h = "";
-    if (archiveVisible) {
+    // Completed/archived table: primary decision first, Archive only demoted.
+    if (pa.key === "reopen" && rk) {
       h +=
-        '<button type="button" class="ma-cart-action-secondary" data-lc-archive data-recovery-key="' +
+        '<button type="button" class="ma-cart-action-primary" data-lc-reopen data-recovery-key="' +
         esc(rk) +
-        '">نقل للأرشيف</button>';
-    }
-    if (reopenVisible) {
+        '" data-cf-primary-action="reopen">' +
+        esc(pa.label || "إعادة فتح") +
+        "</button>";
+    } else if (pa.key === "archive" && rk) {
       h +=
-        '<button type="button" class="ma-cart-action-secondary" data-lc-reopen data-recovery-key="' +
+        '<button type="button" class="ma-cart-action-primary" data-lc-archive data-recovery-key="' +
         esc(rk) +
-        '">إعادة فتح</button>';
+        '" data-cf-primary-action="archive">' +
+        esc(pa.label || "نقل للأرشيف") +
+        "</button>";
+    } else if (
+      pa.key === "contact_customer" ||
+      pa.key === "follow_up_manually" ||
+      pa.key === "review_cart" ||
+      pa.key === "wait" ||
+      pa.key === "no_action_required"
+    ) {
+      var href = cartPagePrimaryContactHref(mc);
+      if ((pa.key === "contact_customer" || pa.key === "follow_up_manually") && href) {
+        h +=
+          '<a class="ma-cart-action-primary" href="' +
+          esc(href) +
+          '" target="_blank" rel="noopener noreferrer" data-cf-primary-action="' +
+          esc(pa.key) +
+          '">' +
+          esc(pa.label) +
+          "</a>";
+      } else {
+        h +=
+          '<span class="ma-cart-action-primary ma-cart-action-primary--label" data-cf-primary-action="' +
+          esc(pa.key) +
+          '">' +
+          esc(pa.label) +
+          "</span>";
+      }
+      if (pa.secondary_demoted && pa.secondary_key === "archive" && rk) {
+        h +=
+          '<button type="button" class="ma-cart-action-secondary" data-lc-archive data-recovery-key="' +
+          esc(rk) +
+          '" data-cf-lifecycle-secondary="archive">إغلاق الحالة</button>';
+      }
     }
     if (!h) return "";
     return '<div class="ma-cart-secondary-actions">' + h + "</div>";

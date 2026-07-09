@@ -261,6 +261,14 @@ body.v2.has-ribbon { padding-top: 32px; }
   margin-top: var(--v2-space-sm);
 }
 
+/* Phase 1: demoted Archive lifecycle control — never visually equal to primary CTA */
+.v2-btn--lifecycle,
+.ma-pe-v2-conversation .v2-btn--lifecycle {
+  opacity: 0.72;
+  font-weight: 500;
+  box-shadow: none;
+}
+
 .v2-btn--label {
   display: inline-flex;
   align-items: center;

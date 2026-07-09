@@ -64,6 +64,8 @@ class MerchantCartsWorkspaceExperienceV1Tests(unittest.TestCase):
     def test_suggested_action_primary_not_inline_label(self) -> None:
         block = _extract_js_function(_LAZY_JS, "merchantPeV2PrimaryActionHtml")
         self.assertIn("v2-btn", block)
+        self.assertIn("resolveCartPagePrimaryAction", block)
+        self.assertIn("data-cf-primary-action", block)
         self.assertNotIn("الإجراء المقترح:", block)
 
     def test_timeline_collapsed_by_default(self) -> None:

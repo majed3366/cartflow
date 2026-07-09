@@ -448,6 +448,14 @@ def build_normal_carts_from_snapshot(
         )
 
         ensure_normal_carts_merchant_value_stories_v1(body)
+        try:
+            from services.cart_page_primary_action_v1 import (  # noqa: PLC0415
+                ensure_normal_carts_primary_action_v1,
+            )
+
+            ensure_normal_carts_primary_action_v1(body)
+        except Exception:  # noqa: BLE001
+            pass
         return enforce_route_budget(body, wall0=wall0, endpoint="normal-carts")
 
 

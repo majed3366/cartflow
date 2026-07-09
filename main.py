@@ -16601,6 +16601,14 @@ def _merchant_normal_recovery_light_payload_merchant_batch(
     except Exception:  # noqa: BLE001
         pass
     try:
+        from services.cart_page_primary_action_v1 import (  # noqa: PLC0415
+            attach_cart_page_primary_action_v1,
+        )
+
+        attach_cart_page_primary_action_v1(out)
+    except Exception:  # noqa: BLE001
+        pass
+    try:
         from services.dashboard_normal_carts_perf_v1 import (  # noqa: PLC0415
             dashboard_normal_carts_perf_active,
             dashboard_normal_carts_perf_peek_queries,
@@ -19758,6 +19766,14 @@ def _api_json_dashboard_normal_carts(
             )
 
             ensure_normal_carts_merchant_value_stories_v1(body)
+        except Exception:  # noqa: BLE001
+            pass
+        try:
+            from services.cart_page_primary_action_v1 import (  # noqa: PLC0415
+                ensure_normal_carts_primary_action_v1,
+            )
+
+            ensure_normal_carts_primary_action_v1(body)
         except Exception:  # noqa: BLE001
             pass
         try:

@@ -68,6 +68,7 @@ NORMAL_CARTS_SNAPSHOT_ROW_ALLOWLIST = frozenset(
         "merchant_intervention_contact_href",
         "merchant_intervention_action_ar",
         "merchant_attention_display_group",
+        "is_vip_lane",
         "merchant_identity_trust_ar",
         "merchant_proof_surface_v1",
         "merchant_explanation_v1",
@@ -75,6 +76,7 @@ NORMAL_CARTS_SNAPSHOT_ROW_ALLOWLIST = frozenset(
         "cart_detail_projection_v1",
         "merchant_intelligence_v1",
         "intelligence_group_key",
+        "cart_page_primary_action_v1",
         "normal_recovery_continuation_explanation_ar",
         "next_attempt_due_at",
     }
