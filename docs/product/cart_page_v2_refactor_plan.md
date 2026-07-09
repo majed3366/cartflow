@@ -58,7 +58,7 @@
 
 **Depends on:** Phase 0 recommended (can hardcode mapping in JS temporarily — prefer Phase 0).
 
-**Status (2026-07-09):** Implemented — UI consumes `cart_page_primary_action_v1` via `resolveCartPagePrimaryAction` in `static/merchant_dashboard_lazy.js`. Exactly one primary CTA (`data-cf-primary-action`); Archive demoted (`data-cf-lifecycle-secondary="archive"`, label «إغلاق الحالة»); Reopen primary on archived compact + completed table. No lifecycle/archive API or truth changes. Tests: `tests/test_cart_page_one_primary_cta_v1.py`.
+**Status (2026-07-09):** **Implemented + Production Verified** — UI consumes `cart_page_primary_action_v1` via `resolveCartPagePrimaryAction` in `static/merchant_dashboard_lazy.js`. Exactly one primary CTA (`data-cf-primary-action`); Archive demoted (`data-cf-lifecycle-secondary="archive"`, label «إغلاق الحالة»); Reopen primary on archived compact + completed table; archived visual wins over stale projection after optimistic archive. No lifecycle/archive API or truth changes. Commits: `4ba3700`, `2451a26`. Prod verify: `scripts/_cart_page_v2_phase1_prod_verify.py` → PASS (Wait primary, Archive secondary, Reopen primary, archive/reopen APIs, no console fatals).
 
 ---
 
