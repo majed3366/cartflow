@@ -97,7 +97,7 @@
 | **Does not change** | Snapshot Truth, Lifecycle Truth, Primary Action Projection, Archive/Reopen, Recovery |
 | **Out of scope** | Phase 3 automatic band |
 
-**Status (2026-07-09):** **Implemented** — RSC owns composition via `CACHE_HYDRATED` / `FETCH_*` / `APPLY_*` / `ROWS_PATCHED`; last-good MI preserved on keep/cache; presenters paint from plan. Build `ui-setup-v8f-rsc-v1`. Tests: `tests/test_cart_page_rendering_state_controller_v1.py`. Design: `docs/architecture/rendering_state_controller_v1.md`.
+**Status (2026-07-09):** **Implemented + Production Verified** — RSC owns composition via `CACHE_HYDRATED` / `FETCH_*` / `APPLY_*` / `ROWS_PATCHED`; last-good MI preserved on keep/cache; presenters paint from plan. Build `ui-setup-v8f-rsc-v1`. Commit: `bbf1163`. Tests: `tests/test_cart_page_rendering_state_controller_v1.py`. Design: `docs/architecture/rendering_state_controller_v1.md`. Prod verify: `scripts/_cart_page_v2_rsc_v1_prod_verify.py` → PASS (desktop+mobile converge `automatic`; one rendering state; no conflicting pending messages on refresh; last-good stories kept; cache→final; stories/filters OK; archive/reopen OK; build `ui-setup-v8f-rsc-v1`; no console fatals). Screenshots: `scripts/_cart_page_v2_rsc_v1_prod_verify_out/01_desktop_final.png`, `02_mobile_final.png`.
 
 ---
 
