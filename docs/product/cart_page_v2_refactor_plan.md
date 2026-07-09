@@ -80,7 +80,7 @@
 
 **Deploy note:** Deploy polling hit unauthenticated `/dashboard` redirect, but static assets were live and manual production verification passed.
 
-**Hotfix (2026-07-09):** MI pending no longer blanks the cart body under Attention Verdict — `renderMiCartsV1Pending(rows)` keeps a visible pending message in `#ma-carts-groups-v2`, passes real rows into the verdict when available, and does not hide `#ma-carts-queue-empty` from the verdict renderer.
+**Hotfix (2026-07-09):** MI pending no longer blanks the cart body under Attention Verdict — `renderMiCartsV1Pending(rows)` keeps a visible pending message in `#ma-carts-groups-v2`, passes real rows into the verdict when available, and does not hide `#ma-carts-queue-empty` from the verdict renderer. Commit: `00f54f5`. Prod verify: `scripts/_cart_page_v2_phase2_hotfix_prod_verify.py` → PASS.
 
 ---
 
