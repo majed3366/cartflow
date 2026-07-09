@@ -41,10 +41,25 @@ class MerchantCartsWorkspaceExperienceV1Tests(unittest.TestCase):
     def test_composition_order_flow_footer(self) -> None:
         block = _extract_js_function(_LAZY_JS, "merchantPeV2ConversationHtml")
         idx_flow = block.index("merchantPeV2FlowHtml")
+        idx_footer = block.index("merchantPeV2ConversationFooterHtml")
+        self.assertLess(idx_flow, idx_footer)
+
+    def test_mobile_panel_shares_desktop_footer(self) -> None:
+        block = _extract_js_function(_LAZY_JS, "merchantPeV2MobilePanelHtml")
+        self.assertIn("merchantPeV2ConversationFooterHtml", block)
+        self.assertIn("v2-conversation--mobile", block)
+        idx_headline = block.index("v2-action-headline")
+        idx_footer = block.index("merchantPeV2ConversationFooterHtml")
+        self.assertLess(idx_headline, idx_footer)
+
+    def test_conversation_footer_includes_timeline_and_actions(self) -> None:
+        block = _extract_js_function(_LAZY_JS, "merchantPeV2ConversationFooterHtml")
         idx_timeline = block.index("merchantPeV2TimelineHtml")
         idx_action = block.index("merchantPeV2PrimaryActionHtml")
-        self.assertLess(idx_flow, idx_timeline)
+        idx_secondary = block.index("merchantPeV2SecondaryActionsHtml")
+        self.assertIn("v2-conv-footer", block)
         self.assertLess(idx_timeline, idx_action)
+        self.assertLess(idx_action, idx_secondary)
 
     def test_suggested_action_primary_not_inline_label(self) -> None:
         block = _extract_js_function(_LAZY_JS, "merchantPeV2PrimaryActionHtml")

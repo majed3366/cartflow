@@ -3030,6 +3030,16 @@
     );
   }
 
+  function merchantPeV2ConversationFooterHtml(mc, expl) {
+    return (
+      '<div class="v2-conv-footer">' +
+      merchantPeV2TimelineHtml(mc, expl) +
+      merchantPeV2PrimaryActionHtml(mc) +
+      merchantPeV2SecondaryActionsHtml(mc) +
+      "</div>"
+    );
+  }
+
   function merchantPeV2ConversationHtml(mc, expl) {
     if (!mc) return "";
     if (isArchivedVisual(mc)) {
@@ -3045,25 +3055,27 @@
       esc(merchantPeV2ConvHeadline(expl, mc)) +
       "</h2>" +
       merchantPeV2FlowHtml(mc, expl) +
-      '<div class="v2-conv-footer">' +
-      merchantPeV2TimelineHtml(mc, expl) +
-      merchantPeV2PrimaryActionHtml(mc) +
-      merchantPeV2SecondaryActionsHtml(mc) +
-      "</div></div>"
+      merchantPeV2ConversationFooterHtml(mc, expl) +
+      "</div>"
     );
   }
 
   function merchantPeV2MobilePanelHtml(mc, expl) {
     if (!mc) return "";
+    if (isArchivedVisual(mc)) {
+      return customerLifecycleArchivedCompactHtml(mc);
+    }
     var v = Math.round(parseFloat(mc.merchant_cart_value) || 0);
     return (
+      '<div class="ma-pe-v2-mobile-panel v2-conversation v2-conversation--mobile" data-mxp="carts-pe-v2" aria-label="محادثة السلة">' +
       '<p class="v2-action-eyebrow">المحددة · ' +
       formatMerchantSarHtml(v) +
       "</p>" +
       '<h2 class="v2-action-headline">' +
       esc(merchantPeV2ConvHeadline(expl, mc)) +
       "</h2>" +
-      merchantPeV2PrimaryActionHtml(mc)
+      merchantPeV2ConversationFooterHtml(mc, expl) +
+      "</div>"
     );
   }
 
