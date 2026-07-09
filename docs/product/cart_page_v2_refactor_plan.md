@@ -108,7 +108,7 @@
 | **Files** | `static/cart_page_rendering_state_controller_v1.js`, `static/merchant_dashboard_lazy.js`, build bump |
 | **Out of scope** | Phase 3 |
 
-**Status (2026-07-09):** **Implemented** — `SOFT_REVALIDATE` + silent reason policy; build `ui-setup-v8g-rsc-v1_1`. Investigation: `docs/product/rsc_stability_investigation_v1.md`.
+**Status (2026-07-09):** **Implemented + Production Verified** — `SOFT_REVALIDATE` + silent reason policy; build `ui-setup-v8g-rsc-v1_1`. Commit: `03a2546`. Investigation: `docs/product/rsc_stability_investigation_v1.md`. Prod verify: `scripts/_cart_page_v2_rsc_v1_1_prod_verify.py` → PASS (soft token/pending poll no pending flash; stories kept; no repeated refreshing over ~12s hold; desktop+mobile converge final; archive/reopen OK; no console fatals). Screenshots: `scripts/_cart_page_v2_rsc_v1_1_prod_verify_out/01_desktop_stable_final.png`, `02_mobile_stable_final.png`.
 
 ---
 
