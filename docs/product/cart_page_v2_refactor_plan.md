@@ -82,7 +82,7 @@
 
 **Hotfix (2026-07-09):** MI pending no longer blanks the cart body under Attention Verdict — `renderMiCartsV1Pending(rows)` keeps a visible pending message in `#ma-carts-groups-v2`, passes real rows into the verdict when available, and does not hide `#ma-carts-queue-empty` from the verdict renderer. Commit: `00f54f5`. Prod verify: `scripts/_cart_page_v2_phase2_hotfix_prod_verify.py` → PASS.
 
-**Hotfix (2026-07-09) — desktop layout:** After workspace expansion, PE v2 `grid-template-columns: 360px 1fr` left verdict + story cards in a narrow side column. Carts desktop override uses `minmax(480px, 1.2fr) minmax(360px, 0.8fr)` (`merchant_product_polish_v1.css` + `merchant_workspace_expansion_v1.css`); verdict/pending drop `max-width: 1080px` so they fill the queue column. Mobile single-column unchanged. CSS/layout only.
+**Hotfix (2026-07-09) — desktop layout:** **Desktop layout regression fixed + Production Verified.** After workspace expansion, PE v2 `grid-template-columns: 360px 1fr` left verdict + story cards in a narrow side column. Carts desktop override uses `minmax(480px, 1.2fr) minmax(360px, 0.8fr)` (`merchant_product_polish_v1.css` + `merchant_workspace_expansion_v1.css`); verdict/pending drop `max-width: 1080px` so they fill the queue column. Mobile single-column unchanged. CSS/layout only. Commit: `ef8adb7`. Prod verify: `scripts/_cart_page_v2_desktop_layout_prod_verify.py` → PASS (queue ~658px vs prior 360px track; verdict/stories/filters/archive/reopen OK; mobile no overflow).
 
 ---
 
