@@ -53,6 +53,42 @@ def bulk_merchant_archived(recovery_keys: Any) -> dict[str, bool]:
         return {}
 
 
+def bulk_merchant_reopened_keys(recovery_keys: Any) -> set[str]:
+    """Keys with a durable archive row cleared (is_archived=False) — reopen truth."""
+    keys: list[str] = []
+    seen: set[str] = set()
+    for raw in recovery_keys or ():
+        rk = (str(raw) or "").strip()[:512]
+        if rk and rk not in seen:
+            seen.add(rk)
+            keys.append(rk)
+    if not keys:
+        return set()
+    try:
+        from schema_merchant_cart_lifecycle_archive import (  # noqa: PLC0415
+            ensure_merchant_cart_lifecycle_archive_schema,
+        )
+
+        ensure_merchant_cart_lifecycle_archive_schema(db)
+        rows = (
+            db.session.query(MerchantCartLifecycleArchive.recovery_key)
+            .filter(
+                MerchantCartLifecycleArchive.recovery_key.in_(keys),
+                MerchantCartLifecycleArchive.is_archived.is_(False),
+            )
+            .all()
+        )
+        out: set[str] = set()
+        for row in rows:
+            rk = str((row[0] if row else "") or "").strip()[:512]
+            if rk:
+                out.add(rk)
+        return out
+    except SQLAlchemyError:
+        db.session.rollback()
+        return set()
+
+
 def is_merchant_archived(recovery_key: str) -> bool:
     rk = (recovery_key or "").strip()[:512]
     if not rk:
@@ -314,11 +350,162 @@ def reopen_recovery_key(recovery_key: str) -> dict[str, Any]:
         return {"ok": False, "error": str(exc)[:240]}
 
 
+def _row_recovery_key(row: Mapping[str, Any]) -> str:
+    if not isinstance(row, Mapping):
+        return ""
+    rk = (str(row.get("recovery_key") or "")).strip()[:512]
+    if rk:
+        return rk
+    store = (
+        str(row.get("store_slug") or row.get("merchant_store_slug") or "")
+    ).strip()[:255]
+    cid = (str(row.get("zid_cart_id") or row.get("cart_id") or "")).strip()[:255]
+    sid = (
+        str(row.get("recovery_session_id") or row.get("session_id") or "")
+    ).strip()[:512]
+    if store and cid:
+        return f"{store}:{cid}"[:512]
+    if store and sid:
+        return f"{store}:{sid}"[:512]
+    return ""
+
+
+def _mark_row_merchant_archived_visual(row: dict[str, Any]) -> None:
+    row["customer_lifecycle_is_archived_visual"] = True
+    row["customer_lifecycle_state"] = "archived"
+    row["customer_lifecycle_label_ar"] = "مؤرشفة"
+    row["customer_lifecycle_dashboard_action"] = "reopen"
+    row["customer_lifecycle_status_row_class"] = "s-archived"
+    row["merchant_status_row_class"] = "s-archived"
+    row["merchant_status_label_ar"] = "مؤرشفة"
+    row["merchant_next_action_urgent"] = False
+    row["merchant_cart_bucket"] = "archived"
+    row["merchant_cart_primary_bucket"] = "archived"
+    row["merchant_cart_visible_tabs"] = ["all"]
+    proj = row.get("cart_detail_projection_v1")
+    if isinstance(proj, dict) and str(proj.get("version") or "") == "v1":
+        proj["lifecycle_ui"] = {
+            "recovery_key": _row_recovery_key(row),
+            "archive_visible": False,
+            "reopen_visible": True,
+        }
+
+
+def _clear_row_merchant_archived_visual(row: dict[str, Any]) -> None:
+    row["customer_lifecycle_is_archived_visual"] = False
+    if str(row.get("customer_lifecycle_dashboard_action") or "").strip() == "reopen":
+        row["customer_lifecycle_dashboard_action"] = "archive"
+    proj = row.get("cart_detail_projection_v1")
+    if isinstance(proj, dict) and str(proj.get("version") or "") == "v1":
+        act = str(row.get("customer_lifecycle_dashboard_action") or "").strip()
+        proj["lifecycle_ui"] = {
+            "recovery_key": _row_recovery_key(row),
+            "archive_visible": act == "archive",
+            "reopen_visible": act == "reopen",
+        }
+
+
+def apply_merchant_archive_truth_to_normal_carts_payload(
+    payload: dict[str, Any],
+) -> dict[str, Any]:
+    """
+    Overlay durable merchant archive flags onto snapshot/hot-merged normal-carts.
+
+    Snapshot rows can lag archive/reopen writes by a builder tick. Hot-slice merge
+    also re-appends stale active snapshot rows when hot correctly excludes them.
+    This pass enforces DB ``merchant_cart_lifecycle_archives`` truth on every read.
+    """
+    if not isinstance(payload, dict):
+        return payload
+
+    active = [
+        r for r in list(payload.get("merchant_carts_page_rows") or []) if isinstance(r, dict)
+    ]
+    archived = [
+        r
+        for r in list(payload.get("merchant_archived_carts_page_rows") or [])
+        if isinstance(r, dict)
+    ]
+    keys: list[str] = []
+    seen: set[str] = set()
+    for row in active + archived:
+        rk = _row_recovery_key(row)
+        if rk and rk not in seen:
+            seen.add(rk)
+            keys.append(rk)
+    if not keys:
+        return payload
+
+    archived_map = bulk_merchant_archived(keys)
+    reopened_keys = bulk_merchant_reopened_keys(keys)
+
+    keep_active: list[dict[str, Any]] = []
+    moved_to_archived: list[dict[str, Any]] = []
+    for row in active:
+        rk = _row_recovery_key(row)
+        if rk and archived_map.get(rk):
+            _mark_row_merchant_archived_visual(row)
+            moved_to_archived.append(row)
+        else:
+            keep_active.append(row)
+
+    keep_archived: list[dict[str, Any]] = []
+    restored_active: list[dict[str, Any]] = []
+    archived_seen: set[str] = set()
+    active_keys = {_row_recovery_key(r) for r in keep_active if _row_recovery_key(r)}
+    for row in archived + moved_to_archived:
+        rk = _row_recovery_key(row)
+        if rk and rk in archived_seen:
+            continue
+        if rk:
+            archived_seen.add(rk)
+        if rk and archived_map.get(rk):
+            _mark_row_merchant_archived_visual(row)
+            keep_archived.append(row)
+            continue
+        # Durable reopen: archive row exists with is_archived=False.
+        if rk and rk in reopened_keys:
+            from services.customer_lifecycle_states_v1 import (  # noqa: PLC0415
+                lifecycle_payload_for_reopen,
+            )
+
+            life = lifecycle_payload_for_reopen(rk)
+            if isinstance(life, dict) and life:
+                row.update(life)
+            else:
+                _clear_row_merchant_archived_visual(row)
+            restored_active.append(row)
+            continue
+        # Hot/active already has this key — drop stale archived duplicate.
+        if rk and rk in active_keys:
+            continue
+        keep_archived.append(row)
+
+    # Prefer restored rows over any stale active duplicate of the same key.
+    restored_keys = {_row_recovery_key(r) for r in restored_active if _row_recovery_key(r)}
+    if restored_keys:
+        keep_active = [
+            r for r in keep_active if _row_recovery_key(r) not in restored_keys
+        ]
+        keep_active = restored_active + keep_active
+
+    payload["merchant_carts_page_rows"] = keep_active
+    payload["merchant_archived_carts_page_rows"] = keep_archived
+    payload["merchant_archived_cart_count"] = len(keep_archived)
+    payload["merchant_archive_truth_overlay"] = True
+    if keep_active:
+        payload["merchant_table_rows"] = list(keep_active[:8])
+    return payload
+
+
 __all__ = [
     "SOURCE_AUTO_EXHAUSTED",
     "SOURCE_MANUAL",
+    "apply_merchant_archive_truth_to_normal_carts_payload",
     "archive_recovery_key",
     "archive_recovery_keys",
+    "bulk_merchant_archived",
+    "bulk_merchant_reopened_keys",
     "dashboard_cart_lifecycle_archive_from_body",
     "dashboard_cart_lifecycle_reopen_from_body",
     "is_merchant_archived",

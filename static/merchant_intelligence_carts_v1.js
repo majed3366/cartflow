@@ -715,9 +715,23 @@
       ) || "—";
     var rk = recoveryKey(row, deps.cartRecoveryKey);
     var time = esc(row.merchant_time_relative_ar || "—");
+    var filter = esc(row.merchant_cart_bucket || "other");
+    var primary = esc(row.merchant_cart_primary_bucket || filter);
+    var tabsJson = "[]";
+    try {
+      tabsJson = esc(JSON.stringify(row.merchant_cart_visible_tabs || []));
+    } catch (_tabsErr) {
+      tabsJson = "[]";
+    }
     return (
       '<button type="button" class="v2-queue-item' +
       (selected ? " is-selected" : "") +
+      '" data-ma-filter="' +
+      filter +
+      '" data-ma-primary-bucket="' +
+      primary +
+      '" data-ma-visible-tabs="' +
+      tabsJson +
       '" data-recovery-key="' +
       esc(rk) +
       '">' +

@@ -101,6 +101,24 @@ class CartsArchiveReopenRegressionV1Tests(unittest.TestCase):
         ):
             self.assertIn(name, hooks, msg=f"missing hook {name}")
 
+    def test_completed_table_exposes_reopen_for_archived_rows(self) -> None:
+        fn = _extract_js_function(self._js, "cartRowTableDisplay")
+        self.assertIn("merchantCartSecondaryLifecycleHtml", fn)
+        self.assertIn("actionCell", fn)
+
+    def test_mi_filter_mode_applies_to_story_queue_items(self) -> None:
+        self.assertIn("function applyMiCartsFilterMode", self._js)
+        block = _extract_js_function(self._js, "applyMiCartsFilterMode")
+        self.assertIn("rowMatchesCartFilterMode", block)
+        self.assertIn("data-ma-filter", block)
+        marker = "window.maPeV2OnFilterApplied"
+        self.assertIn(marker, self._js)
+        chunk = self._js[self._js.index(marker) : self._js.index(marker) + 900]
+        self.assertIn("applyMiCartsFilterMode", chunk)
+        render = _extract_js_function(self._js, "renderMiCartsV1Workspace")
+        self.assertIn("filters.hidden = false", render)
+        self.assertIn("applyMiCartsFilterMode", render)
+
 
 if __name__ == "__main__":
     unittest.main()

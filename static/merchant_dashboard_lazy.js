@@ -3178,6 +3178,9 @@
       "—";
     var urg =
       mc.merchant_next_action_urgent && !archived ? " urgent" : "";
+    var actionCell = archived
+      ? merchantCartSecondaryLifecycleHtml(mc)
+      : '<div class="next' + urg + '">' + esc(nextLbl) + "</div>";
     return (
       '<tr data-ma-filter="' +
       d.filter +
@@ -3207,7 +3210,7 @@
       esc(statusLbl) +
       "</span></td>" +
       "<td>" +
-      (archived ? "" : '<div class="next' + urg + '">' + esc(nextLbl) + "</div>") +
+      actionCell +
       "</td>" +
       '<td><div class="ctime">' +
       esc(mc.merchant_last_seen_display || "—") +
@@ -3368,7 +3371,10 @@
     var page = byId("page-carts");
     var filters = byId("ma-cart-filters");
     if (page) page.classList.add("ma-carts--mi-v1");
-    if (filters) filters.hidden = true;
+    if (filters) {
+      filters.hidden = false;
+      filters.removeAttribute("hidden");
+    }
     if (!mi.hasRenderablePayload(d)) {
       lastMiCartsWorkspaceKey = "";
       renderMiCartsV1Pending("CartFlow يجهّز فهم المتجر…");
@@ -3381,6 +3387,11 @@
       if (typeof mi.syncOpenMiGroupSummaryPreviews === "function") {
         mi.syncOpenMiGroupSummaryPreviews(root);
       }
+      applyMiCartsFilterMode(
+        typeof window.getEffectiveNormalCartFilter === "function"
+          ? window.getEffectiveNormalCartFilter() || "all"
+          : "all"
+      );
       return true;
     }
     lastMiCartsWorkspaceKey = wsKey;
@@ -3401,6 +3412,11 @@
     } else {
       mi.renderGroups(root, d.merchant_intelligence_store_v1, rows, deps);
     }
+    applyMiCartsFilterMode(
+      typeof window.getEffectiveNormalCartFilter === "function"
+        ? window.getEffectiveNormalCartFilter() || "all"
+        : "all"
+    );
     if (!miCartsDidInitialSelect) {
       miCartsDidInitialSelect = true;
       var firstRk = "";
@@ -3455,8 +3471,77 @@
     }
   }
 
-  window.maPeV2OnFilterApplied = function () {
-    if (byId("page-carts") && byId("page-carts").classList.contains("ma-carts--mi-v1")) {
+  function applyMiCartsFilterMode(mode) {
+    var root = byId("ma-carts-groups-v2");
+    if (!root) return;
+    var m =
+      typeof window.cartTabToFilterMode === "function"
+        ? window.cartTabToFilterMode(mode || "all")
+        : String(mode || "all").trim().toLowerCase();
+    var matchFn =
+      typeof window.rowMatchesCartFilterMode === "function"
+        ? window.rowMatchesCartFilterMode
+        : null;
+    var anyVisible = false;
+    root.querySelectorAll("details.ma-mi-group").forEach(function (group) {
+      var visibleInGroup = 0;
+      group.querySelectorAll(".v2-queue-item[data-ma-filter]").forEach(function (item) {
+        var show = true;
+        if (matchFn) {
+          show = matchFn(item, m);
+        } else if (m !== "all") {
+          var primary = (item.getAttribute("data-ma-primary-bucket") || "")
+            .trim()
+            .toLowerCase();
+          var ui = (item.getAttribute("data-ma-filter") || "").trim().toLowerCase();
+          show = primary === m || ui === m;
+          if (!show) {
+            try {
+              var tabs = JSON.parse(item.getAttribute("data-ma-visible-tabs") || "[]");
+              if (Array.isArray(tabs)) {
+                for (var i = 0; i < tabs.length; i++) {
+                  if (String(tabs[i] || "").trim().toLowerCase() === m) {
+                    show = true;
+                    break;
+                  }
+                }
+              }
+            } catch (_tabsErr) {
+              /* ignore */
+            }
+          }
+        }
+        item.style.display = show ? "" : "none";
+        item.hidden = !show;
+        if (show) visibleInGroup += 1;
+      });
+      var showGroup = m === "all" || visibleInGroup > 0;
+      group.style.display = showGroup ? "" : "none";
+      group.hidden = !showGroup;
+      if (visibleInGroup) anyVisible = true;
+    });
+    var empty = byId("ma-carts-queue-empty");
+    if (empty && m !== "all") {
+      empty.hidden = anyVisible;
+    }
+  }
+
+  window.maPeV2OnFilterApplied = function (mode) {
+    var page = byId("page-carts");
+    if (page && page.classList.contains("ma-carts--mi-v1")) {
+      applyMiCartsFilterMode(mode || "all");
+      var miRoot = byId("ma-carts-groups-v2");
+      if (!miRoot) return;
+      var miFirstRk = "";
+      miRoot.querySelectorAll(".v2-queue-item").forEach(function (btn) {
+        if (btn.style.display === "none" || btn.hidden) return;
+        if (!miFirstRk) miFirstRk = btn.getAttribute("data-recovery-key") || "";
+      });
+      if (miFirstRk) {
+        selectPeV2Cart(miFirstRk);
+      } else {
+        selectPeV2Cart("");
+      }
       return;
     }
     var queue = byId("ma-carts-queue-v2") || byId("ma-carts-groups-v2");

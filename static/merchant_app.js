@@ -220,6 +220,7 @@
   }
 
   window.rowMatchesCartFilterMode = rowMatchesCartFilterMode;
+  window.cartTabToFilterMode = cartTabToFilterMode;
 
   /** Persisted #page-carts filter-bar mode (all|recovered|sent|attention|nophone). */
   var currentNormalCartFilter = null;

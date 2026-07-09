@@ -386,6 +386,14 @@ def build_normal_carts_from_snapshot(
                 "dashboard hot slice merge skipped: %s", exc
             )
         try:
+            from services.merchant_cart_lifecycle_archive_v1 import (  # noqa: PLC0415
+                apply_merchant_archive_truth_to_normal_carts_payload,
+            )
+
+            body = apply_merchant_archive_truth_to_normal_carts_payload(body)
+        except Exception as exc:  # noqa: BLE001
+            log.warning("merchant archive truth overlay skipped: %s", exc)
+        try:
             from services.customer_movement_visibility_v1 import (  # noqa: PLC0415
                 enrich_normal_carts_payload_customer_movement_v1,
             )

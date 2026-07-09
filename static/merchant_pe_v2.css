@@ -669,6 +669,10 @@ body.v2.has-ribbon { padding-top: 32px; }
   box-shadow: none;
 }
 
+#page-carts.ma-pe-v2 #ma-cart-filters[hidden] {
+  display: none !important;
+}
+
 #page-carts.ma-pe-v2 #ma-cart-filters .filter-btn {
   flex-shrink: 0;
   padding: 10px 16px;
