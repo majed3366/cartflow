@@ -39,6 +39,12 @@ class CartReopenSemanticsV1aJsTests(unittest.TestCase):
         self.assertIn("lastNormalCartsPageRows.push", fn)
         self.assertIn("applyLifecyclePayloadToRow", fn)
 
+    def test_patch_cart_row_archived_visual_delegates_to_sync_archived(self) -> None:
+        js = self._lazy_js
+        fn = js[js.index("function patchCartRowArchivedVisual") : js.index("function refreshCompletedCartsTableAfterLifecycleChange")]
+        self.assertIn("syncArchivedCartRowMemory", fn)
+        self.assertNotIn("customer_lifecycle_is_archived_visual = true", fn)
+
     def test_reopen_refreshes_completed_before_refetch(self) -> None:
         js = self._lazy_js
         block = js[js.index('[data-lc-reopen]') : js.index("function cartRowHome")]

@@ -2505,6 +2505,12 @@
     });
   }
 
+  function activeNormalCartRows(rows) {
+    return (rows || []).filter(function (mc) {
+      return !isArchivedVisual(mc);
+    });
+  }
+
   function cartRowMatchesFilterMode(mc, mode) {
     var m = (mode || "all").trim().toLowerCase();
     if (m === "completed") m = "recovered";
@@ -2785,9 +2791,12 @@
   function findCartByRecoveryKey(rk) {
     rk = String(rk || "").trim();
     if (!rk) return null;
-    for (var i = 0; i < lastNormalCartsPageRows.length; i++) {
-      if (cartRecoveryKey(lastNormalCartsPageRows[i]) === rk) {
-        return lastNormalCartsPageRows[i];
+    var pools = [lastNormalCartsPageRows, lastArchivedCartsPageRows];
+    for (var p = 0; p < pools.length; p++) {
+      for (var i = 0; i < pools[p].length; i++) {
+        if (cartRecoveryKey(pools[p][i]) === rk) {
+          return pools[p][i];
+        }
       }
     }
     return null;
@@ -2961,35 +2970,28 @@
     var proj = cartDetailProjection(mc);
     var lc = proj && proj.lifecycle_ui;
     var rk = lc && lc.recovery_key ? lc.recovery_key : String(mc.recovery_key || "").trim();
+    rk = String(rk || "").trim();
     if (!rk) return "";
+    var act = String(mc.customer_lifecycle_dashboard_action || "").trim();
+    if (!act && isArchivedVisual(mc)) act = "reopen";
+    var archiveVisible = act === "archive";
+    var reopenVisible = act === "reopen";
+    if (!act && lc) {
+      archiveVisible = !!lc.archive_visible;
+      reopenVisible = !!lc.reopen_visible;
+    }
     var h = "";
-    if (lc) {
-      if (lc.archive_visible) {
-        h +=
-          '<button type="button" class="v2-btn v2-btn--ghost" data-lc-archive data-recovery-key="' +
-          esc(rk) +
-          '">نقل للأرشيف</button>';
-      }
-      if (lc.reopen_visible) {
-        h +=
-          '<button type="button" class="v2-btn v2-btn--ghost" data-lc-reopen data-recovery-key="' +
-          esc(rk) +
-          '">إعادة فتح</button>';
-      }
-    } else {
-      var act = String(mc.customer_lifecycle_dashboard_action || "").trim();
-      if (act === "archive") {
-        h +=
-          '<button type="button" class="v2-btn v2-btn--ghost" data-lc-archive data-recovery-key="' +
-          esc(rk) +
-          '">نقل للأرشيف</button>';
-      }
-      if (act === "reopen") {
-        h +=
-          '<button type="button" class="v2-btn v2-btn--ghost" data-lc-reopen data-recovery-key="' +
-          esc(rk) +
-          '">إعادة فتح</button>';
-      }
+    if (archiveVisible) {
+      h +=
+        '<button type="button" class="v2-btn v2-btn--ghost" data-lc-archive data-recovery-key="' +
+        esc(rk) +
+        '">نقل للأرشيف</button>';
+    }
+    if (reopenVisible) {
+      h +=
+        '<button type="button" class="v2-btn v2-btn--ghost" data-lc-reopen data-recovery-key="' +
+        esc(rk) +
+        '">إعادة فتح</button>';
     }
     return h;
   }
@@ -3658,35 +3660,28 @@
     var proj = cartDetailProjection(mc);
     var lc = proj && proj.lifecycle_ui;
     var rk = lc && lc.recovery_key ? lc.recovery_key : String(mc.recovery_key || "").trim();
+    rk = String(rk || "").trim();
     if (!rk) return "";
+    var act = String(mc.customer_lifecycle_dashboard_action || "").trim();
+    if (!act && isArchivedVisual(mc)) act = "reopen";
+    var archiveVisible = act === "archive";
+    var reopenVisible = act === "reopen";
+    if (!act && lc) {
+      archiveVisible = !!lc.archive_visible;
+      reopenVisible = !!lc.reopen_visible;
+    }
     var h = "";
-    if (lc) {
-      if (lc.archive_visible) {
-        h +=
-          '<button type="button" class="ma-cart-action-secondary" data-lc-archive data-recovery-key="' +
-          esc(rk) +
-          '">نقل للأرشيف</button>';
-      }
-      if (lc.reopen_visible) {
-        h +=
-          '<button type="button" class="ma-cart-action-secondary" data-lc-reopen data-recovery-key="' +
-          esc(rk) +
-          '">إعادة فتح</button>';
-      }
-    } else {
-      var act = String(mc.customer_lifecycle_dashboard_action || "").trim();
-      if (act === "archive") {
-        h +=
-          '<button type="button" class="ma-cart-action-secondary" data-lc-archive data-recovery-key="' +
-          esc(rk) +
-          '">نقل للأرشيف</button>';
-      }
-      if (act === "reopen") {
-        h +=
-          '<button type="button" class="ma-cart-action-secondary" data-lc-reopen data-recovery-key="' +
-          esc(rk) +
-          '">إعادة فتح</button>';
-      }
+    if (archiveVisible) {
+      h +=
+        '<button type="button" class="ma-cart-action-secondary" data-lc-archive data-recovery-key="' +
+        esc(rk) +
+        '">نقل للأرشيف</button>';
+    }
+    if (reopenVisible) {
+      h +=
+        '<button type="button" class="ma-cart-action-secondary" data-lc-reopen data-recovery-key="' +
+        esc(rk) +
+        '">إعادة فتح</button>';
     }
     if (!h) return "";
     return '<div class="ma-cart-secondary-actions">' + h + "</div>";
@@ -3992,6 +3987,65 @@
       mc.merchant_status_row_class = lifecycle.merchant_status_row_class;
     }
     mc.merchant_next_action_urgent = false;
+    patchCartRowLifecycleUi(mc);
+  }
+
+  function patchCartRowLifecycleUi(mc) {
+    if (!mc || typeof mc !== "object") return;
+    var rk = String(mc.recovery_key || "").trim();
+    var act = String(mc.customer_lifecycle_dashboard_action || "").trim();
+    if (!act && isArchivedVisual(mc)) act = "reopen";
+    if (!act) return;
+    var proj = mc.cart_detail_projection_v1;
+    if (!proj || typeof proj !== "object") {
+      mc.cart_detail_projection_v1 = { version: "v1" };
+      proj = mc.cart_detail_projection_v1;
+    }
+    if (proj.version !== "v1") return;
+    proj.lifecycle_ui = {
+      recovery_key: rk,
+      archive_visible: act === "archive",
+      reopen_visible: act === "reopen",
+    };
+  }
+
+  function syncArchivedCartRowMemory(rk, lifecycle) {
+    var key = String(rk || "").trim();
+    if (!key) return;
+    var ctx = findCartRowContext(key);
+    var rowId = ctx && (ctx.merchant_case_row_id || ctx.id);
+    var archivedRow = null;
+    lastNormalCartsPageRows = lastNormalCartsPageRows.filter(function (mc) {
+      if (rowMatchesLifecycleKey(mc, key, rowId)) {
+        archivedRow = mc;
+        return false;
+      }
+      return true;
+    });
+    if (!archivedRow && ctx && typeof ctx === "object") {
+      archivedRow = {};
+      Object.keys(ctx).forEach(function (k) {
+        archivedRow[k] = ctx[k];
+      });
+    }
+    if (!archivedRow) return;
+    if (lifecycle && typeof lifecycle === "object") {
+      applyLifecyclePayloadToRow(archivedRow, lifecycle);
+    } else {
+      archivedRow.customer_lifecycle_is_archived_visual = true;
+      archivedRow.customer_lifecycle_state = "archived";
+      archivedRow.customer_lifecycle_label_ar = "مؤرشفة";
+      archivedRow.customer_lifecycle_dashboard_action = "reopen";
+      archivedRow.customer_lifecycle_status_row_class = "s-archived";
+      archivedRow.merchant_status_row_class = "s-archived";
+      archivedRow.merchant_status_label_ar = "مؤرشفة";
+      archivedRow.merchant_next_action_urgent = false;
+      patchCartRowLifecycleUi(archivedRow);
+    }
+    lastArchivedCartsPageRows = lastArchivedCartsPageRows.filter(function (mc) {
+      return !rowMatchesLifecycleKey(mc, key, rowId);
+    });
+    lastArchivedCartsPageRows.push(archivedRow);
   }
 
   function syncReopenedCartRowMemory(rk, lifecycle) {
@@ -4021,6 +4075,7 @@
       applyLifecyclePayloadToRow(activeRow, lifecycle);
     } else {
       activeRow.customer_lifecycle_is_archived_visual = false;
+      patchCartRowLifecycleUi(activeRow);
     }
     lastNormalCartsPageRows.forEach(function (mc) {
       if (mc === activeRow) return;
@@ -4040,19 +4095,7 @@
       syncReopenedCartRowMemory(key, lifecycle);
       return;
     }
-    var ctx = findCartRowContext(key);
-    var rowId = ctx && (ctx.merchant_case_row_id || ctx.id);
-    lastNormalCartsPageRows.forEach(function (mc) {
-      if (!rowMatchesLifecycleKey(mc, key, rowId)) return;
-      mc.customer_lifecycle_is_archived_visual = true;
-      mc.customer_lifecycle_state = "archived";
-      mc.customer_lifecycle_label_ar = "مؤرشفة";
-      mc.customer_lifecycle_dashboard_action = "reopen";
-      mc.customer_lifecycle_status_row_class = "s-archived";
-      mc.merchant_status_row_class = "s-archived";
-      mc.merchant_status_label_ar = "مؤرشفة";
-      mc.merchant_next_action_urgent = false;
-    });
+    syncArchivedCartRowMemory(key, lifecycle);
   }
 
   function refreshCompletedCartsTableAfterLifecycleChange() {
@@ -4069,10 +4112,11 @@
     var sorted = sortCartsArchivedLast(lastNormalCartsPageRows);
     allb.innerHTML = sorted.map(cartRowFull).join("");
     bindCustomerLifecycleActions(allb);
+    var workspaceRows = activeNormalCartRows(sorted);
     if (
-      !renderMiCartsV1Workspace(lastMerchantIntelligencePayload, sorted)
+      !renderMiCartsV1Workspace(lastMerchantIntelligencePayload, workspaceRows)
     ) {
-      renderPeV2CartsQueue(sorted);
+      renderPeV2CartsQueue(workspaceRows);
     }
   }
 
@@ -4110,7 +4154,8 @@
           .then(function (d) {
             btn.disabled = false;
             if (d && d.ok) {
-              patchCartRowArchivedVisual(rk, true);
+              patchCartRowArchivedVisual(rk, true, d.lifecycle || null);
+              refreshCompletedCartsTableAfterLifecycleChange();
               rerenderAllCartsTable();
               rerenderHomeCartsTable();
               fetchNormalCarts("lifecycle_archive").then(function (payload) {
@@ -4384,7 +4429,9 @@
       }
       bindCustomerLifecycleActions(allb);
     }
-    var sortedRows = sortCartsArchivedLast(lastNormalCartsPageRows);
+    var sortedRows = activeNormalCartRows(
+      sortCartsArchivedLast(lastNormalCartsPageRows)
+    );
     if (!renderMiCartsV1Workspace(d, sortedRows)) {
       renderPeV2CartsQueue(sortedRows);
     }
@@ -5586,6 +5633,9 @@
       return lastArchivedCartsPageRows.slice();
     },
     syncReopenedCartRowMemory: syncReopenedCartRowMemory,
+    syncArchivedCartRowMemory: syncArchivedCartRowMemory,
+    activeNormalCartRows: activeNormalCartRows,
+    patchCartRowLifecycleUi: patchCartRowLifecycleUi,
     completedCartsFromRows: completedCartsFromRows,
     isCompletedDashboardRow: isCompletedDashboardRow,
     getFetchGen: function () {
