@@ -26,7 +26,11 @@ class CartPageOnePrimaryCtaV1Tests(unittest.TestCase):
         self.assertIn('key = "review_cart"', block)
         self.assertNotIn('key = "archive"', block)
         self.assertIn("isArchivedVisual(mc)", block)
-        self.assertIn('key = "reopen"', block)
+        self.assertIn('key: "reopen"', block)
+        # Archived visual must win before reading a stale wait projection.
+        idx_arch = block.index("isArchivedVisual(mc)")
+        idx_pa = block.index("cart_page_primary_action_v1")
+        self.assertLess(idx_arch, idx_pa)
 
     def test_primary_html_uses_projection_key_markers(self) -> None:
         block = _extract_js_function(_LAZY_JS, "merchantPeV2PrimaryActionHtml")

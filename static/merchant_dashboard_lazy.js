@@ -2929,6 +2929,27 @@
         secondary_demoted: false,
       };
     }
+    // Archived visual always wins over a stale projection (optimistic archive/reopen).
+    if (isArchivedVisual(mc)) {
+      var completedVariant = String(mc.customer_lifecycle_completed_variant || "")
+        .trim()
+        .toLowerCase();
+      var lifeState = String(mc.customer_lifecycle_state || "").trim().toLowerCase();
+      if (completedVariant === "purchased" || lifeState === "completed") {
+        return {
+          key: "no_action_required",
+          label: CART_PAGE_PRIMARY_LABEL_AR.no_action_required,
+          secondary_key: "",
+          secondary_demoted: false,
+        };
+      }
+      return {
+        key: "reopen",
+        label: CART_PAGE_PRIMARY_LABEL_AR.reopen,
+        secondary_key: "",
+        secondary_demoted: false,
+      };
+    }
     var pa = mc.cart_page_primary_action_v1;
     var key = "";
     var label = "";
@@ -2940,11 +2961,21 @@
       secondaryKey = String(pa.secondary_key || "").trim().toLowerCase();
       demoted = pa.secondary_demoted === true;
     }
+    // Never trust Archive/Reopen keys from projection when row is not archived-visual.
+    if (key === "reopen") {
+      key = "";
+      label = "";
+    }
+    if (key === "archive") {
+      // Active carts: Archive is never primary — demote.
+      secondaryKey = "archive";
+      demoted = true;
+      key = "";
+      label = "";
+    }
     if (!key || !CART_PAGE_PRIMARY_ACTION_KEYS[key]) {
       // Fail-safe: never Archive as primary when projection missing.
-      if (isArchivedVisual(mc)) {
-        key = "reopen";
-      } else if (
+      if (
         String(mc.customer_lifecycle_state || "").trim().toLowerCase() === "completed" ||
         String(mc.customer_lifecycle_completed_variant || "").trim()
       ) {
@@ -2953,12 +2984,15 @@
         key = "review_cart";
       }
       label = CART_PAGE_PRIMARY_LABEL_AR[key] || key;
-      secondaryKey = "";
-      demoted = false;
-      var dash = String(mc.customer_lifecycle_dashboard_action || "").trim();
-      if (dash === "archive" && key !== "reopen" && key !== "archive") {
-        secondaryKey = "archive";
-        demoted = true;
+      if (!secondaryKey) {
+        var dash = String(mc.customer_lifecycle_dashboard_action || "").trim();
+        if (dash === "archive") {
+          secondaryKey = "archive";
+          demoted = true;
+        } else {
+          secondaryKey = "";
+          demoted = false;
+        }
       }
     }
     if (!label) label = CART_PAGE_PRIMARY_LABEL_AR[key] || key;
@@ -4239,6 +4273,15 @@
       archivedRow.merchant_next_action_urgent = false;
       patchCartRowLifecycleUi(archivedRow);
     }
+    // Keep Phase 1 primary-action projection aligned with optimistic archive.
+    archivedRow.cart_page_primary_action_v1 = {
+      version: "v1",
+      key: "reopen",
+      label: CART_PAGE_PRIMARY_LABEL_AR.reopen,
+      reason: "optimistic_archive",
+      priority: 30,
+      source_state: "archived",
+    };
     lastArchivedCartsPageRows = lastArchivedCartsPageRows.filter(function (mc) {
       return !rowMatchesLifecycleKey(mc, key, rowId);
     });
