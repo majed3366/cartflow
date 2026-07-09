@@ -418,7 +418,7 @@ body.v2.has-ribbon { padding-top: 32px; }
 @media (min-width: 900px) {
   .v2-workspace {
     grid-template-columns: 360px 1fr;
-    align-items: start;
+    align-items: stretch;
   }
   .v2-app { max-width: var(--v2-max-wide); padding: var(--v2-space-lg); }
 }
@@ -725,6 +725,24 @@ body.v2.has-ribbon { padding-top: 32px; }
     background: var(--v2-surface);
     box-shadow: var(--v2-shadow-card);
     min-height: 480px;
+    height: 100%;
+  }
+
+  #page-carts.ma-pe-v2 .v2-desktop-panel > .ma-pe-v2-conversation {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    width: 100%;
+  }
+
+  #page-carts.ma-pe-v2 .ma-pe-v2-conversation .v2-conv-footer {
+    position: static;
+    margin-top: auto;
+    flex-shrink: 0;
+    background: var(--v2-surface, #fff);
+    border-top: 1px solid rgba(11, 18, 32, 0.06);
+    padding-top: var(--v2-space-md);
   }
 }
 

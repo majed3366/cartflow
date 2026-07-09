@@ -88,10 +88,22 @@ class MerchantIntelligenceConsumptionCartsV1Tests(unittest.TestCase):
         idx_did = block.index("ماذا فعل CartFlow؟")
         idx_rec = block.index("التوصية")
         idx_rep = block.index("أمثلة من السلال")
+        idx_footer = block.index("ma-mi-group-footer")
         self.assertLess(idx_why, idx_obs)
         self.assertLess(idx_obs, idx_did)
         self.assertLess(idx_did, idx_rec)
         self.assertLess(idx_rec, idx_rep)
+        self.assertLess(idx_rep, idx_footer)
+
+    def test_expanded_story_card_footer_layout_css(self) -> None:
+        self.assertIn(".ma-mi-group-footer", _POLISH_CSS)
+        self.assertIn(".ma-mi-group[open] .ma-mi-group-card__cta", _POLISH_CSS)
+        self.assertIn("display: none", _POLISH_CSS.split(".ma-mi-group[open] .ma-mi-group-card__cta")[1][:80])
+        pe_css = (_ROOT / "static" / "merchant_pe_v2.css").read_text(encoding="utf-8")
+        self.assertIn("#page-carts.ma-pe-v2 .ma-pe-v2-conversation .v2-conv-footer", pe_css)
+        block = pe_css.split("#page-carts.ma-pe-v2 .ma-pe-v2-conversation .v2-conv-footer")[1][:220]
+        self.assertIn("margin-top: auto", block)
+        self.assertIn("position: static", block)
 
     def test_meaning_first_empty_states(self) -> None:
         self.assertIn("لا توجد سلات تحتاج انتباهك", _MI_CARTS_JS)

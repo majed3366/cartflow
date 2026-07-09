@@ -655,13 +655,7 @@
           '<h3 class="ma-mi-group-section__label">التوصية</h3>' +
           '<p class="ma-mi-group-section__text">' +
           esc(merchantFacingText(rec.merchant_message_ar)) +
-          "</p>" +
-          (deps.primaryActionHtml && repRow
-            ? '<div class="ma-mi-group-section__cta">' +
-              deps.primaryActionHtml(repRow) +
-              "</div>"
-            : "") +
-          "</section>"
+          "</p></section>"
       );
     }
     if (repSplit.representative.length) {
@@ -691,6 +685,13 @@
         parts.push(miCartQueueItemHtml(row, selected, deps));
       });
       parts.push("</div></details>");
+    }
+    if (deps.primaryActionHtml && repRow) {
+      parts.push(
+        '<footer class="ma-mi-group-footer">' +
+          deps.primaryActionHtml(repRow) +
+          "</footer>"
+      );
     }
     return (
       '<div class="ma-mi-group-body" data-mi-group-id="' +
