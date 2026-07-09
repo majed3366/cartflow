@@ -66,6 +66,31 @@ class CartPageAttentionVerdictV1Tests(unittest.TestCase):
         self.assertIn("ma-carts-queue-sub", block)
         self.assertIn("ma-carts-product-language-v1", block)
         self.assertIn("cartsV2UiEnabled", block)
+        # Hotfix: verdict must not suppress the cart body empty/pending host.
+        self.assertNotIn('byId("ma-carts-queue-empty")', block)
+        self.assertNotIn("emptyWhisper", block)
+
+    def test_pending_with_rows_shows_visible_body(self) -> None:
+        block = _extract_js_function(_LAZY_JS, "renderMiCartsV1Pending")
+        self.assertIn("يجهّز فهم هذه السلال", block)
+        self.assertIn("لن تحتاج لاتخاذ إجراء حتى تكتمل القراءة", block)
+        self.assertIn("data-mi-pending", block)
+        self.assertIn("hasRows", block)
+        # Must pass real rows into verdict when available
+        self.assertIn("renderCartsAttentionVerdictV1(activeRows)", block)
+        self.assertNotIn("renderCartsAttentionVerdictV1([], { loading: true })\n    if (!cartsV2UiEnabled())", block)
+        # Empty whisper only hidden when groups host owns pending body
+        self.assertIn("ma-carts-queue-empty", block)
+
+    def test_pending_without_rows_uses_calm_loading_verdict(self) -> None:
+        block = _extract_js_function(_LAZY_JS, "renderMiCartsV1Pending")
+        self.assertIn("يجهّز فهم المتجر", block)
+        self.assertIn('renderCartsAttentionVerdictV1([], { loading: true })', block)
+
+    def test_workspace_pending_passes_rows(self) -> None:
+        block = _extract_js_function(_LAZY_JS, "renderMiCartsV1Workspace")
+        self.assertIn("renderMiCartsV1Pending(rows)", block)
+        self.assertNotIn('renderMiCartsV1Pending("CartFlow', block)
 
     def test_mpl_skipped_when_v2_ui(self) -> None:
         block = _extract_js_function(_LAZY_JS, "renderMiCartsProductLanguageNarrative")

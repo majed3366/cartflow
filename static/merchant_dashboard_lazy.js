@@ -3535,8 +3535,8 @@
       mplHost.hidden = true;
       mplHost.innerHTML = "";
     }
-    var emptyWhisper = byId("ma-carts-queue-empty");
-    if (emptyWhisper) emptyWhisper.hidden = true;
+    // Pending/empty body owns the cart-list whisper host so the page never
+    // looks blank under the verdict — do not suppress that host from here.
     if (!host) return true;
     var verdict = buildCartsAttentionVerdictV1(rows, opts);
     var html =
@@ -3566,17 +3566,54 @@
     return true;
   }
 
-  function renderMiCartsV1Pending(message) {
+  function renderMiCartsV1Pending(rows, message) {
     var root = byId("ma-carts-groups-v2");
-    if (!root) return;
-    renderCartsAttentionVerdictV1([], { loading: true });
+    var empty = byId("ma-carts-queue-empty");
+    var activeRows = (rows || []).filter(function (mc) {
+      return mc && !isArchivedVisual(mc);
+    });
+    var hasRows = activeRows.length > 0;
+    // Keep verdict aligned with real rows when available (never force rows=[]).
+    if (hasRows) {
+      renderCartsAttentionVerdictV1(activeRows);
+    } else {
+      renderCartsAttentionVerdictV1([], { loading: true });
+    }
     if (!cartsV2UiEnabled()) {
       renderMiCartsProductLanguageNarrative(null, []);
     }
-    root.innerHTML =
-      '<p class="ma-mi-carts-pending v2-whisper-text">' +
-      esc(message || "CartFlow يجهّز فهم المتجر…") +
+    var bodyMsg = hasRows
+      ? String(message || "").trim() || "CartFlow يجهّز فهم هذه السلال…"
+      : String(message || "").trim() || "CartFlow يجهّز فهم المتجر…";
+    var hint = hasRows ? "لن تحتاج لاتخاذ إجراء حتى تكتمل القراءة." : "";
+    var pendingHtml =
+      '<div class="ma-mi-carts-pending v2-whisper" data-mi-pending="1" data-mi-pending-has-rows="' +
+      (hasRows ? "1" : "0") +
+      '">' +
+      '<p class="ma-mi-carts-pending-text v2-whisper-text">' +
+      esc(bodyMsg) +
       "</p>";
+    if (hint) {
+      pendingHtml +=
+        '<p class="ma-mi-carts-pending-hint v2-whisper-text">' + esc(hint) + "</p>";
+    }
+    pendingHtml += "</div>";
+    if (root) {
+      root.innerHTML = pendingHtml;
+      // Groups host now owns the visible body — hide duplicate empty whisper.
+      if (empty) {
+        empty.hidden = true;
+        empty.setAttribute("hidden", "");
+      }
+      return;
+    }
+    // No groups host: surface calm pending/empty on the whisper host.
+    if (empty) {
+      empty.hidden = false;
+      empty.removeAttribute("hidden");
+      var p = empty.querySelector(".v2-whisper-text");
+      if (p) p.textContent = bodyMsg;
+    }
   }
 
   function renderMiCartsProductLanguageNarrative(d, rows) {
@@ -3667,7 +3704,7 @@
     }
     if (!mi.hasRenderablePayload(d)) {
       lastMiCartsWorkspaceKey = "";
-      renderMiCartsV1Pending("CartFlow يجهّز فهم المتجر…");
+      renderMiCartsV1Pending(rows);
       return true;
     }
     var wsKey = miCartsWorkspaceKey(d, rows);

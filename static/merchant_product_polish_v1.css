@@ -217,6 +217,33 @@ body[data-ma-page="vip"] #ma-page-hero-global {
   /* keep default ink; urgency comes from copy, not chrome */
 }
 
+/* Phase 2 hotfix — MI pending body must stay visible under the verdict */
+#page-carts .ma-mi-carts-pending {
+  display: block;
+  margin: 0 0 var(--v2-space-md, 20px);
+  padding: var(--v2-space-md, 20px);
+  max-width: var(--v2-max-wide, 1080px);
+  border-radius: 14px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+#page-carts .ma-mi-carts-pending-text {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #334155;
+  line-height: 1.5;
+}
+
+#page-carts .ma-mi-carts-pending-hint {
+  margin: 8px 0 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: #64748b;
+  line-height: 1.45;
+}
+
 /* ——— Section heads (Knowledge, month KPI, etc.) ——— */
 .ma-section-head {
   margin-bottom: var(--ma-card-gap);
