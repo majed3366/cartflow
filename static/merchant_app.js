@@ -390,6 +390,16 @@
     if (document.body && pageKey) {
       document.body.setAttribute("data-ma-page", pageKey);
     }
+    // Home Pulse owns the shared global Hero — do not clobber title/purpose/story.
+    if (pageKey === "home") {
+      var homeRoot = byId("ma-home-experience-root");
+      var pulseOwned =
+        homeRoot && homeRoot.querySelector('[data-shared-hero="1"]');
+      if (pulseOwned) {
+        syncVisualHero(pageKey);
+        return;
+      }
+    }
     if (pt) pt.textContent = text || "";
     var purpose = pageKey && PAGE_PURPOSE[pageKey] ? PAGE_PURPOSE[pageKey] : "";
     if (pp) {
