@@ -3,7 +3,7 @@
 Commerce Signals V1 — feature flag.
 
 Default off. Set CARTFLOW_COMMERCE_SIGNALS_V1=1 to enable
-read-only signal projection (debug/test only).
+read-only signal projection on dashboard summary (and /dev).
 """
 from __future__ import annotations
 

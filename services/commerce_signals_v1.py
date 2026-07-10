@@ -8,8 +8,9 @@ Never writes truth. Never decides, explains, or recommends.
 """
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any, Mapping, Optional
 
 from services.commerce_signals_v1_flag import commerce_signals_v1_enabled
 from services.recovery_truth_timeline_v1 import (
@@ -22,6 +23,11 @@ from services.recovery_truth_timeline_v1 import (
     STATUS_SCHEDULED,
     STATUS_WEBHOOK_DELIVERED,
 )
+
+log = logging.getLogger("cartflow")
+
+# Bound store-level summary attach — avoid unbounded per-key Truth reads.
+_STORE_SIGNAL_KEY_LIMIT = 25
 
 PROJECTION = "CommerceSignalsV1"
 
@@ -370,6 +376,162 @@ def load_commerce_signals_for_recovery_key(
     }
 
 
+def _recent_store_recovery_keys(
+    store_slug: str,
+    *,
+    limit: int = _STORE_SIGNAL_KEY_LIMIT,
+) -> list[str]:
+    """Bounded, store-isolated recovery_key set from existing Truth tables."""
+    ss = _norm(store_slug)
+    if not ss or limit <= 0:
+        return []
+    out: list[str] = []
+    seen: set[str] = set()
+
+    def _add(raw: Any) -> None:
+        rk = _norm(raw)
+        if not rk or rk in seen:
+            return
+        if not _recovery_key_belongs_to_store(rk, ss):
+            return
+        seen.add(rk)
+        out.append(rk)
+
+    try:
+        from extensions import db  # noqa: PLC0415
+        from models import (  # noqa: PLC0415
+            PurchaseTruthRecord,
+            RecoverySchedule,
+            RecoveryTruthTimelineEvent,
+        )
+        from sqlalchemy import desc  # noqa: PLC0415
+
+        for model, order_col in (
+            (RecoveryTruthTimelineEvent, RecoveryTruthTimelineEvent.id),
+            (PurchaseTruthRecord, PurchaseTruthRecord.id),
+            (RecoverySchedule, RecoverySchedule.id),
+        ):
+            if len(out) >= limit:
+                break
+            rows = (
+                db.session.query(model.recovery_key)
+                .filter(model.store_slug == ss)
+                .order_by(desc(order_col))
+                .limit(limit)
+                .all()
+            )
+            for row in rows:
+                _add(row[0] if row is not None else None)
+                if len(out) >= limit:
+                    break
+    except Exception:  # noqa: BLE001
+        return out[:limit]
+    return out[:limit]
+
+
+def load_store_commerce_signals_v1(
+    *,
+    store_slug: str,
+    force: bool = False,
+    recovery_keys: Optional[list[str]] = None,
+) -> dict[str, Any]:
+    """
+    Store-scoped read-only Signals for summary attach.
+
+    Reuses per-key Truth→Signal projection; dedupes by type+evidence.
+    """
+    if not force and not commerce_signals_v1_enabled():
+        return {
+            "ok": True,
+            "projection": PROJECTION,
+            "enabled": False,
+            "signals": [],
+        }
+
+    ss = _norm(store_slug)
+    if not ss:
+        return {
+            "ok": True,
+            "projection": PROJECTION,
+            "enabled": True,
+            "store_slug": "",
+            "signals": [],
+            "signal_count": 0,
+            "read_only": True,
+        }
+
+    keys = list(recovery_keys) if recovery_keys is not None else _recent_store_recovery_keys(ss)
+    signals: list[dict[str, Any]] = []
+    seen: set[tuple[str, tuple[str, ...]]] = set()
+    for raw_rk in keys:
+        rk = _norm(raw_rk)
+        if not rk or not _recovery_key_belongs_to_store(rk, ss):
+            continue
+        loaded = load_commerce_signals_for_recovery_key(
+            store_slug=ss,
+            recovery_key=rk,
+            force=force,
+        )
+        for sig in loaded.get("signals") or []:
+            if not isinstance(sig, dict):
+                continue
+            key = (str(sig.get("signal_type") or ""), _evidence_key(sig.get("evidence_refs") or []))
+            if key in seen:
+                continue
+            seen.add(key)
+            signals.append(sig)
+
+    return {
+        "ok": True,
+        "projection": PROJECTION,
+        "enabled": True,
+        "store_slug": ss,
+        "signals": signals,
+        "signal_count": len(signals),
+        "read_only": True,
+    }
+
+
+def attach_commerce_signals_v1_to_summary(
+    body: dict[str, Any],
+    *,
+    store_slug: str = "",
+    force: bool = False,
+) -> dict[str, Any]:
+    """Attach store-scoped CommerceSignalsV1 when flag enabled (before Pulse)."""
+    if not isinstance(body, dict):
+        body = dict(body or {})
+    if not force and not commerce_signals_v1_enabled():
+        body.pop("commerce_signals_v1", None)
+        return body
+
+    slug = _norm(store_slug)
+    if not slug:
+        snap = body.get("_snapshot")
+        if isinstance(snap, Mapping):
+            slug = _norm(snap.get("store_slug"))
+    if not slug:
+        slug = _norm(body.get("store_slug"))
+
+    try:
+        payload = load_store_commerce_signals_v1(store_slug=slug, force=force)
+        body["commerce_signals_v1"] = {
+            "projection": PROJECTION,
+            "store_slug": slug,
+            "signals": list(payload.get("signals") or []),
+            "read_only": True,
+        }
+    except Exception as exc:  # noqa: BLE001
+        log.warning("commerce_signals_v1 attach: %s", exc)
+        body["commerce_signals_v1"] = {
+            "projection": PROJECTION,
+            "store_slug": slug,
+            "signals": [],
+            "read_only": True,
+        }
+    return body
+
+
 __all__ = [
     "PROJECTION",
     "SIGNAL_PURCHASE_CONFIRMED",
@@ -377,6 +539,8 @@ __all__ = [
     "SIGNAL_RECOVERY_COMPLETED",
     "SIGNAL_RECOVERY_PROGRESSED",
     "SIGNAL_RECOVERY_STARTED",
+    "attach_commerce_signals_v1_to_summary",
     "build_commerce_signals_v1",
     "load_commerce_signals_for_recovery_key",
+    "load_store_commerce_signals_v1",
 ]

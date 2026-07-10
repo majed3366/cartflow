@@ -201,6 +201,30 @@ def ensure_merchant_home_experience_on_summary(
     return body
 
 
+def _attach_commerce_signals_then_pulse(
+    body: dict[str, Any],
+    *,
+    store_slug: str = "",
+) -> None:
+    """Signals must land on the body before Pulse reads them."""
+    try:
+        from services.commerce_signals_v1 import (  # noqa: PLC0415
+            attach_commerce_signals_v1_to_summary,
+        )
+
+        attach_commerce_signals_v1_to_summary(body, store_slug=store_slug)
+    except Exception as exc:  # noqa: BLE001
+        log.warning("commerce_signals_v1 attach: %s", exc)
+    try:
+        from services.merchant_pulse_v1 import (  # noqa: PLC0415
+            attach_merchant_pulse_v1_to_summary,
+        )
+
+        attach_merchant_pulse_v1_to_summary(body, store_slug=store_slug)
+    except Exception as exc:  # noqa: BLE001
+        log.warning("merchant_pulse_v1 attach: %s", exc)
+
+
 def finalize_dashboard_summary_payload(
     payload: dict[str, Any],
     *,
@@ -219,14 +243,7 @@ def finalize_dashboard_summary_payload(
             home_attach_mode="summary_not_ok",
             cache_hit=cache_hit,
         )
-        try:
-            from services.merchant_pulse_v1 import (  # noqa: PLC0415
-                attach_merchant_pulse_v1_to_summary,
-            )
-
-            attach_merchant_pulse_v1_to_summary(body, store_slug=store_slug)
-        except Exception as exc:  # noqa: BLE001
-            log.warning("merchant_pulse_v1 attach (not_ok): %s", exc)
+        _attach_commerce_signals_then_pulse(body, store_slug=store_slug)
         return body
     body = ensure_merchant_home_experience_on_summary(
         body,
@@ -234,14 +251,7 @@ def finalize_dashboard_summary_payload(
         store_slug=store_slug,
         cache_hit=cache_hit,
     )
-    try:
-        from services.merchant_pulse_v1 import (  # noqa: PLC0415
-            attach_merchant_pulse_v1_to_summary,
-        )
-
-        attach_merchant_pulse_v1_to_summary(body, store_slug=store_slug)
-    except Exception as exc:  # noqa: BLE001
-        log.warning("merchant_pulse_v1 attach: %s", exc)
+    _attach_commerce_signals_then_pulse(body, store_slug=store_slug)
     return body
 
 
