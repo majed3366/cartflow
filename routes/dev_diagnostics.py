@@ -303,6 +303,56 @@ def dev_recovery_truth(recovery_key: str = Query("", max_length=512)) -> Any:
         return j({"ok": False, "error": str(exc)}, 500)
 
 
+@router.get("/dev/commerce-signals")
+def dev_commerce_signals(
+    recovery_key: str = Query("", max_length=512),
+    store_slug: str = Query("", max_length=256),
+) -> Any:
+    """
+    Commerce Signals V1 — read-only debug/test projection.
+    Behind CARTFLOW_COMMERCE_SIGNALS_V1 (default off). No merchant UI.
+    """
+    import main as _main  # noqa: PLC0415
+
+    rk = (recovery_key or "").strip()
+    ss = (store_slug or "").strip()
+    if not rk:
+        return j({"ok": False, "error": "recovery_key_required"}, 400)
+    if not ss and ":" in rk:
+        ss = rk.split(":", 1)[0].strip()
+    if not ss:
+        return j({"ok": False, "error": "store_slug_required"}, 400)
+    try:
+        _main._ensure_cartflow_api_db_warmed()
+        from services.commerce_signals_v1 import (  # noqa: PLC0415
+            load_commerce_signals_for_recovery_key,
+        )
+        from services.commerce_signals_v1_flag import (  # noqa: PLC0415
+            commerce_signals_v1_enabled,
+        )
+
+        if not commerce_signals_v1_enabled():
+            return j(
+                {
+                    "ok": True,
+                    "projection": "CommerceSignalsV1",
+                    "enabled": False,
+                    "signals": [],
+                    "read_only": True,
+                    "note": "CARTFLOW_COMMERCE_SIGNALS_V1 is off",
+                }
+            )
+        payload = load_commerce_signals_for_recovery_key(
+            store_slug=ss,
+            recovery_key=rk,
+            force=False,
+        )
+        return j(payload)
+    except Exception as exc:  # noqa: BLE001
+        db.session.rollback()
+        return j({"ok": False, "error": str(exc)}, 500)
+
+
 @router.get("/dev/data-growth-measurement")
 def dev_data_growth_measurement() -> Any:
     import main as _main  # noqa: PLC0415
@@ -325,6 +375,57 @@ def dev_data_growth_measurement() -> Any:
                 "endpoint": "/dev/data-growth-measurement",
                 "read_only": True,
                 "wall_budget_ms": MEASUREMENT_WALL_BUDGET_MS,
+                **report,
+            }
+        )
+    except Exception as exc:  # noqa: BLE001
+        db.session.rollback()
+        return j({"ok": False, "error": str(exc)}, 500)
+
+
+@router.get("/dev/timeline-log-growth-audit")
+def dev_timeline_log_growth_audit() -> Any:
+    import main as _main  # noqa: PLC0415
+
+    """Read-only timeline + recovery log growth audit (Data Growth Governance)."""
+    try:
+        _main._ensure_cartflow_api_db_warmed()
+        from services.timeline_log_growth_audit_v1 import (  # noqa: PLC0415
+            AUDIT_WALL_BUDGET_MS,
+            build_timeline_log_growth_audit_report,
+        )
+
+        report = build_timeline_log_growth_audit_report(db.session)
+        return j(
+            {
+                "endpoint": "/dev/timeline-log-growth-audit",
+                "read_only": True,
+                "wall_budget_ms": AUDIT_WALL_BUDGET_MS,
+                **report,
+            }
+        )
+    except Exception as exc:  # noqa: BLE001
+        db.session.rollback()
+        return j({"ok": False, "error": str(exc)}, 500)
+
+
+@router.get("/dev/operational-metrics")
+def dev_operational_metrics() -> Any:
+    import main as _main  # noqa: PLC0415
+
+    """Read-only operational platform health metrics (Operational Metrics v1)."""
+    try:
+        _main._ensure_cartflow_api_db_warmed()
+        from services.operational_metrics_v1 import (  # noqa: PLC0415
+            METRICS_WALL_BUDGET_MS,
+            build_operational_metrics_report,
+        )
+
+        report = build_operational_metrics_report(db.session)
+        return j(
+            {
+                "endpoint": "/dev/operational-metrics",
+                "wall_budget_ms": METRICS_WALL_BUDGET_MS,
                 **report,
             }
         )

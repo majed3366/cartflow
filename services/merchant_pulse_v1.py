@@ -9,14 +9,26 @@ Answers only:
   4. What is the single next?    → merchant_decision
 
 Projection only: consumes existing summary / Brief / Home / Decision /
-WhatsApp readiness / store connection fields. Does not mint Truth,
-Decisions, or Guidance. No AI. No persistence.
+WhatsApp readiness / store connection fields. When
+CARTFLOW_COMMERCE_SIGNALS_V1 is on and store-scoped Signals are
+attached, Recovery/Purchase Signals feed “what happened” facts for
+executive_brief + cartflow_progress only. Decision slots stay on
+governed Decision inputs. Does not mint Truth, Decisions, or Guidance.
+No AI. No persistence.
 """
 from __future__ import annotations
 
 from datetime import datetime, timezone
 from typing import Any, Mapping, Optional
 
+from services.commerce_signals_v1 import (
+    SIGNAL_PURCHASE_CONFIRMED,
+    SIGNAL_RECOVERY_BLOCKED,
+    SIGNAL_RECOVERY_COMPLETED,
+    SIGNAL_RECOVERY_PROGRESSED,
+    SIGNAL_RECOVERY_STARTED,
+)
+from services.commerce_signals_v1_flag import commerce_signals_v1_enabled
 from services.merchant_decision_layer_v1 import (
     CLASS_CRITICAL_ACTION,
     CLASS_NEEDS_ATTENTION,
@@ -24,6 +36,23 @@ from services.merchant_decision_layer_v1 import (
     CLASS_SUGGESTED_ACTION,
 )
 from services.merchant_pulse_v1_flag import merchant_pulse_v1_enabled
+
+# Pulse-owned fact lines for Signal types (not generated inside Signals).
+_SIGNAL_FACT_AR: dict[str, str] = {
+    SIGNAL_PURCHASE_CONFIRMED: "تم تأكيد شراء مرتبط بسلة قيد المتابعة.",
+    SIGNAL_RECOVERY_COMPLETED: "اكتمل مسار استرجاع بعد تأكيد الشراء.",
+    SIGNAL_RECOVERY_PROGRESSED: "تحرّك مسار الاسترجاع على سلة واحدة على الأقل.",
+    SIGNAL_RECOVERY_STARTED: "بدأ مسار استرجاع لسلة.",
+    SIGNAL_RECOVERY_BLOCKED: "توقف مسار استرجاع — حقيقة مسجّلة دون طلب تدخل من الإشارة.",
+}
+
+_WHAT_HAPPENED_PRIORITY: tuple[str, ...] = (
+    SIGNAL_RECOVERY_COMPLETED,
+    SIGNAL_PURCHASE_CONFIRMED,
+    SIGNAL_RECOVERY_PROGRESSED,
+    SIGNAL_RECOVERY_STARTED,
+    SIGNAL_RECOVERY_BLOCKED,
+)
 
 PULSE_VERSION = "v1"
 PULSE_PROJECTION = "MerchantPulseV1"
@@ -200,6 +229,152 @@ def _mi_needs_merchant(mi: Mapping[str, Any]) -> Optional[bool]:
     return False
 
 
+def _commerce_signals_from_body(
+    src: Mapping[str, Any],
+    *,
+    store_slug: str,
+) -> list[dict[str, Any]]:
+    """Read store-scoped Signals from summary. Empty when flag off or unavailable."""
+    if not commerce_signals_v1_enabled():
+        return []
+    raw = src.get("commerce_signals_v1")
+    if isinstance(raw, Mapping):
+        items = raw.get("signals")
+    elif isinstance(raw, list):
+        items = raw
+    else:
+        return []
+    if not isinstance(items, list) or not items:
+        return []
+    ss = _norm(store_slug)
+    out: list[dict[str, Any]] = []
+    seen: set[tuple[str, str]] = set()
+    for item in items:
+        if not isinstance(item, Mapping):
+            continue
+        st = _norm(item.get("signal_type"))
+        if st not in _SIGNAL_FACT_AR:
+            continue
+        subject = _as_map(item.get("subject"))
+        sub_store = _norm(subject.get("store_slug"))
+        if ss and sub_store and sub_store != ss:
+            continue
+        rk = _norm(subject.get("recovery_key"))
+        dedupe = (st, rk)
+        if dedupe in seen:
+            continue
+        seen.add(dedupe)
+        out.append(dict(item))
+    return out
+
+
+def _pick_what_happened_signal(
+    signals: list[Mapping[str, Any]],
+) -> Optional[dict[str, Any]]:
+    if not signals:
+        return None
+    by_type: dict[str, dict[str, Any]] = {}
+    for sig in signals:
+        st = _norm(sig.get("signal_type"))
+        if st and st not in by_type:
+            by_type[st] = dict(sig)
+    for st in _WHAT_HAPPENED_PRIORITY:
+        if st in by_type:
+            return by_type[st]
+    return None
+
+
+def _what_happened_slots_from_signals(
+    signals: list[Mapping[str, Any]],
+    *,
+    last_updated: str,
+) -> Optional[tuple[dict[str, Any], dict[str, Any], list[str]]]:
+    """
+    Build executive_brief + cartflow_progress from Signals only.
+
+    Returns None when no usable Recovery/Purchase signals.
+    recovery_blocked never implies Require / Enter Work.
+    """
+    picked = _pick_what_happened_signal(signals)
+    if not picked:
+        return None
+    st = _norm(picked.get("signal_type"))
+    fact = _SIGNAL_FACT_AR.get(st)
+    if not fact:
+        return None
+    observed = _norm(picked.get("observed_at")) or last_updated
+    types_used = sorted(
+        {
+            _norm(s.get("signal_type"))
+            for s in signals
+            if _norm(s.get("signal_type")) in _SIGNAL_FACT_AR
+        }
+    )
+
+    if st in (SIGNAL_RECOVERY_COMPLETED, SIGNAL_PURCHASE_CONFIRMED):
+        brief = _slot(
+            status=STATUS_HEALTHY,
+            message=fact,
+            confidence=_CONF_HIGH,
+            last_updated=observed,
+            signal_type=st,
+        )
+        progress = _slot(
+            status=STATUS_HEALTHY,
+            message=fact,
+            confidence=_CONF_HIGH,
+            last_updated=observed,
+            signal_type=st,
+        )
+    elif st == SIGNAL_RECOVERY_PROGRESSED:
+        brief = _slot(
+            status=STATUS_HEALTHY,
+            message=fact,
+            confidence=_CONF_MEDIUM,
+            last_updated=observed,
+            signal_type=st,
+        )
+        progress = _slot(
+            status=STATUS_HEALTHY,
+            message=fact,
+            confidence=_CONF_MEDIUM,
+            last_updated=observed,
+            signal_type=st,
+        )
+    elif st == SIGNAL_RECOVERY_STARTED:
+        brief = _slot(
+            status=STATUS_HEALTHY,
+            message=fact,
+            confidence=_CONF_MEDIUM,
+            last_updated=observed,
+            signal_type=st,
+        )
+        progress = _slot(
+            status=STATUS_NO_ACTION,
+            message=fact,
+            confidence=_CONF_MEDIUM,
+            last_updated=observed,
+            signal_type=st,
+        )
+    else:
+        # recovery_blocked — fact only; never Require
+        brief = _slot(
+            status=STATUS_NO_ACTION,
+            message=fact,
+            confidence=_CONF_MEDIUM,
+            last_updated=observed,
+            signal_type=st,
+        )
+        progress = _slot(
+            status=STATUS_NO_ACTION,
+            message=fact,
+            confidence=_CONF_MEDIUM,
+            last_updated=observed,
+            signal_type=st,
+        )
+    return brief, progress, types_used
+
+
 def build_merchant_pulse_v1_from_summary(
     body: Optional[Mapping[str, Any]] = None,
     *,
@@ -255,8 +430,11 @@ def build_merchant_pulse_v1_from_summary(
     require_item = _top_require_item(attention)
     first_attention = _first_item(attention)
     first_away = _first_item(while_away)
+    signals = _commerce_signals_from_body(src, store_slug=slug)
+    signal_what = _what_happened_slots_from_signals(signals, last_updated=last_updated)
 
     # --- decision_summary (Should I act?) ---
+    # Governed Decision / Home / MI inputs only — Signals never set stance.
     mi_needed = _mi_needs_merchant(mi)
     has_require = bool(require_item)
     has_recommend_only = bool(first_attention) and not has_require and (
@@ -314,7 +492,12 @@ def build_merchant_pulse_v1_from_summary(
         )
 
     # --- executive_brief (What is happening?) ---
-    if has_require:
+    # Prefer Signals for Recovery/Purchase facts when available and Decision
+    # is not Require (Require brief stays Decision-owned). Avoid duplicating
+    # the same fact from while_away when Signals already supplied it.
+    if signal_what is not None and not has_require:
+        executive_brief = dict(signal_what[0])
+    elif has_require:
         why = _norm(require_item.get("why_ar"))
         msg = _norm(require_item.get("headline_ar")) or _norm(require_item.get("what_ar"))
         if why and why not in msg:
@@ -358,7 +541,9 @@ def build_merchant_pulse_v1_from_summary(
         )
 
     # --- cartflow_progress (What did CartFlow accomplish?) ---
-    if first_away:
+    if signal_what is not None:
+        cartflow_progress = dict(signal_what[1])
+    elif first_away:
         detail = _norm(first_away.get("detail_ar"))
         headline = _norm(first_away.get("headline_ar"))
         msg = headline
@@ -395,6 +580,7 @@ def build_merchant_pulse_v1_from_summary(
         )
 
     # --- merchant_decision (single next) ---
+    # Signals never set fork / merchant_decision.
     if has_require:
         action = _norm(require_item.get("action_ar"))
         headline = _norm(require_item.get("headline_ar"))
@@ -491,6 +677,8 @@ def build_merchant_pulse_v1_from_summary(
             "mi_attached": bool(mi),
             "whatsapp_readiness_attached": bool(wa),
             "store_connection_attached": bool(conn),
+            "commerce_signals_used": bool(signal_what is not None),
+            "commerce_signal_types": list(signal_what[2]) if signal_what is not None else [],
         },
     }
 
