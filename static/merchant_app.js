@@ -38,7 +38,7 @@
 
   /** One-sentence page purpose — hero rhythm (Product Polish V1). */
   var PAGE_PURPOSE = {
-    home: "ملخص يوم متجرك وما يحتاج انتباهك.",
+    home: "ماذا حدث أثناء غيابك؟",
     "home-setup": "تحقق من جاهزية متجرك قبل التشغيل الكامل.",
     "home-month": "أرقام الاسترداد والأداء لهذا الشهر.",
     "home-test-tools": "اختبر الودجيت والاسترجاع بدون إرسال حقيقي.",

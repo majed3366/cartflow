@@ -1,6 +1,6 @@
 /**
- * Merchant Pulse V1 — minimal calm layout (mobile-first).
- * Presentation only; no dashboard widgets.
+ * Merchant Pulse V1 — Home Experience Sprint 1 (mobile-first).
+ * Hero owns the story; cards own decisions. Presentation only.
  */
 
 .ma-pulse-v1-root {
@@ -13,6 +13,43 @@
   display: flex;
   flex-direction: column;
   gap: 1rem;
+}
+
+.ma-pulse-v1--home-ref {
+  gap: 1.15rem;
+}
+
+/* Hero — narrative owner (not a card) */
+.ma-pulse-hero {
+  padding: 1.15rem 1.15rem 1.25rem;
+  border-radius: 14px;
+  border: 1px solid rgba(13, 148, 136, 0.2);
+  background: rgba(13, 148, 136, 0.06);
+}
+
+.ma-pulse-hero__story {
+  margin: 0;
+  font-size: 1.28rem;
+  line-height: 1.55;
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.ma-pulse-hero.ma-pulse-slot--require_action {
+  border-color: rgba(13, 148, 136, 0.45);
+  background: rgba(13, 148, 136, 0.1);
+}
+
+.ma-pulse-hero.ma-pulse-slot--unknown,
+.ma-pulse-hero.ma-pulse-slot--loading {
+  border-color: rgba(148, 163, 184, 0.45);
+  background: rgba(248, 250, 252, 0.95);
+}
+
+.ma-pulse-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
 }
 
 .ma-pulse-slot {
@@ -31,7 +68,7 @@
 
 .ma-pulse-slot__message {
   margin: 0;
-  font-size: 1.05rem;
+  font-size: 1.02rem;
   line-height: 1.55;
   color: #0f172a;
   font-weight: 600;
@@ -59,7 +96,7 @@
 }
 
 .ma-pulse-cta {
-  margin-top: 0.25rem;
+  margin-top: 0.15rem;
 }
 
 .ma-pulse-cta__btn {
@@ -89,12 +126,16 @@
     padding-inline-end: 1rem;
   }
 
-  .ma-pulse-v1 {
-    gap: 1.15rem;
+  .ma-pulse-v1--home-ref {
+    gap: 1.35rem;
+  }
+
+  .ma-pulse-hero__story {
+    font-size: 1.45rem;
   }
 
   .ma-pulse-slot__message {
-    font-size: 1.12rem;
+    font-size: 1.08rem;
   }
 
   .ma-pulse-cta__btn {

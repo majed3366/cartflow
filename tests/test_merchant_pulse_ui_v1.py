@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Merchant Pulse V1 frontend rendering — flag, fallback, leave/enter_work CTA."""
+"""Merchant Pulse V1 — Home Experience Sprint 1 UI contracts."""
 from __future__ import annotations
 
 import os
@@ -13,6 +13,7 @@ _JS = (_ROOT / "static" / "merchant_pulse_v1.js").read_text(encoding="utf-8")
 _LAZY = (_ROOT / "static" / "merchant_dashboard_lazy.js").read_text(encoding="utf-8")
 _TMPL = (_ROOT / "templates" / "merchant_app.html").read_text(encoding="utf-8")
 _CSS = (_ROOT / "static" / "merchant_pulse_v1.css").read_text(encoding="utf-8")
+_APP_JS = (_ROOT / "static" / "merchant_app.js").read_text(encoding="utf-8")
 
 
 def _slot(status: str, message: str, confidence: str = "medium") -> dict:
@@ -55,24 +56,44 @@ class MerchantPulseUiFlagTests(unittest.TestCase):
             self.assertTrue(merchant_pulse_ui_v1_enabled())
 
 
-class MerchantPulseJsContractTests(unittest.TestCase):
+class MerchantPulseHomeSprint1ContractTests(unittest.TestCase):
     def test_js_has_no_fetch(self) -> None:
         self.assertNotIn("fetch(", _JS)
 
-    def test_js_binds_only_projection_fields(self) -> None:
-        for key in (
-            "executive_brief",
-            "decision_summary",
-            "cartflow_progress",
-            "merchant_decision",
-            "fork",
-        ):
-            self.assertIn(key, _JS)
+    def test_home_hero_owns_executive_brief(self) -> None:
+        self.assertIn("data-pulse-hero", _JS)
+        self.assertIn("ma-pulse-hero__story", _JS)
+        self.assertIn("executive_brief", _JS)
+        # Hero story — not a fourth card label for executive_brief
+        self.assertNotIn('"ماذا يحدث"', _JS)
 
-    def test_leave_has_no_cta_markup_path(self) -> None:
+    def test_max_three_decision_cards(self) -> None:
+        self.assertIn("هل تحتاجني؟", _JS)
+        self.assertIn("ماذا تعلمنا؟", _JS)
+        self.assertIn("قرارك التالي", _JS)
+        self.assertIn("count >= 3", _JS)
+        self.assertIn("HOME_CARD_SPECS", _JS)
+
+    def test_never_duplicate_hero(self) -> None:
+        self.assertIn("cardIsUseful", _JS)
+        self.assertIn("heroMsg", _JS)
+        self.assertIn("seenMsgs", _JS)
+
+    def test_placeholder_and_technical_filtered(self) -> None:
+        self.assertIn("isPlaceholderMessage", _JS)
+        self.assertIn("isTechnicalWording", _JS)
+        self.assertIn("اكتمل مسار", _JS)
+
+    def test_enter_work_cta_short_label(self) -> None:
+        self.assertIn("افتح السلال", _JS)
         self.assertIn('pulse.fork !== "enter_work"', _JS)
         self.assertIn("ma-pulse-enter-work-btn", _JS)
         self.assertIn('goTo("carts")', _JS)
+
+    def test_home_page_purpose(self) -> None:
+        self.assertIn("ماذا حدث أثناء غيابك؟", _APP_JS)
+        self.assertIn("ماذا حدث أثناء غيابك؟", _TMPL)
+        self.assertIn("HOME_PAGE_PURPOSE", _JS)
 
     def test_lazy_failsafe_to_home(self) -> None:
         self.assertIn("maApplyMerchantPulseV1", _LAZY)
@@ -87,9 +108,11 @@ class MerchantPulseJsContractTests(unittest.TestCase):
         self.assertIn("data-merchant-pulse-ui-v1", _TMPL)
         self.assertIn("merchant_pulse_v1.js", _TMPL)
         self.assertIn("merchant_pulse_v1.css", _TMPL)
-        self.assertIn("merchant_pulse_ui_v1", _TMPL)
 
-    def test_css_status_classes(self) -> None:
+    def test_css_hero_and_cards(self) -> None:
+        self.assertIn(".ma-pulse-hero", _CSS)
+        self.assertIn(".ma-pulse-hero__story", _CSS)
+        self.assertIn(".ma-pulse-cards", _CSS)
         for cls in (
             "ma-pulse-slot--loading",
             "ma-pulse-slot--healthy",
@@ -103,6 +126,16 @@ class MerchantPulseJsContractTests(unittest.TestCase):
         self.assertNotIn("ma-pulse-slot__confidence", _JS)
         self.assertNotIn("slot.confidence", _JS)
         self.assertNotIn("ma-pulse-slot__confidence", _CSS)
+
+    def test_payload_keys_still_bound(self) -> None:
+        for key in (
+            "executive_brief",
+            "decision_summary",
+            "cartflow_progress",
+            "merchant_decision",
+            "fork",
+        ):
+            self.assertIn(key, _JS)
 
 
 class MerchantPulsePayloadShapeTests(unittest.TestCase):
@@ -149,8 +182,7 @@ class MerchantPulsePayloadShapeTests(unittest.TestCase):
         self.assertTrue(self._valid(p))
 
     def test_duplicate_cta_not_in_markup_contract(self) -> None:
-        # Only one CTA id exists in the renderer source.
-        self.assertEqual(_JS.count("ma-pulse-enter-work-btn"), 2)  # id + getElementById
+        self.assertEqual(_JS.count("ma-pulse-enter-work-btn"), 2)
 
 
 if __name__ == "__main__":
