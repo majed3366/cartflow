@@ -98,7 +98,11 @@ body[data-ma-page="carts"][data-carts-ready="0"] #page-carts .ma-pe-v2-carts-she
 }
 
 body[data-ma-page="carts"][data-carts-ready="0"] #ma-carts-unified-loading {
-  display: block;
+  display: block !important;
+}
+
+body[data-ma-page="carts"][data-carts-ready="1"] #ma-carts-unified-loading {
+  display: none !important;
 }
 
 #ma-carts-unified-loading[hidden] {

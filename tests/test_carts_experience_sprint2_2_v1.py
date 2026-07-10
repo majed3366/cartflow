@@ -48,9 +48,14 @@ class CartsExperienceSprint22V1Tests(unittest.TestCase):
         self.assertIn("تصنيفات لنفس السلال", _TMPL)
         self.assertIn("أكثر من تصنيف", _TMPL)
 
-    def test_unified_loading_copy_is_calm(self) -> None:
-        self.assertIn("يرجى الانتظار قليلاً.", _TMPL)
-        self.assertNotIn("تجهيز صورة", _TMPL)
+    def test_live_calm_empty_reveal(self) -> None:
+        self.assertIn("live_calm_empty", _LAZY)
+        self.assertIn("normal_carts_live_calm_empty_reveal", _LAZY)
+
+    def test_unified_loading_outside_shell(self) -> None:
+        idx_loading = _TMPL.index('id="ma-carts-unified-loading"')
+        idx_shell = _TMPL.index('class="ma-pe-v2-carts-shell')
+        self.assertLess(idx_loading, idx_shell)
 
 
 if __name__ == "__main__":

@@ -2545,7 +2545,10 @@
     if (!plan) return false;
     if (plan.freshness !== "final") return false;
     var mode = String(plan.bodyMode || "");
-    return mode === "stories" || mode === "empty";
+    if (mode === "stories" || mode === "empty") return true;
+    // Final rows without MI yet — still reveal Hero from the same snapshot (no infinite hold).
+    if (mode === "pending" && (plan.rows || []).length) return true;
+    return false;
   }
 
   window.maCartsExperienceHasCanonical = function () {
@@ -3937,6 +3940,36 @@
     }
   }
 
+  function paintCartBodyCalmFollowFromPlan(plan) {
+    var root = byId("ma-carts-groups-v2");
+    var empty = byId("ma-carts-queue-empty");
+    var filters = byId("ma-cart-filters");
+    var filtersHint = byId("ma-cart-filters-hint");
+    var rows = (plan && plan.rows) || [];
+    if (filters) {
+      filters.hidden = false;
+      filters.removeAttribute("hidden");
+    }
+    if (filtersHint) {
+      filtersHint.hidden = false;
+      filtersHint.removeAttribute("hidden");
+    }
+    var msg = rows.length
+      ? "CartFlow يتابع هذه السلال."
+      : "لا توجد سلال تحتاج تدخلك اليوم.";
+    if (root) {
+      root.innerHTML =
+        '<div class="ma-mi-carts-pending v2-whisper" data-mi-calm="1">' +
+        '<p class="ma-mi-carts-pending-text v2-whisper-text">' +
+        esc(msg) +
+        "</p></div>";
+    }
+    if (empty) {
+      empty.hidden = true;
+      empty.setAttribute("hidden", "");
+    }
+  }
+
   function paintCartBodyStoriesFromPlan(plan) {
     var mi = window.maIntelligenceCartsV1;
     var root = byId("ma-carts-groups-v2");
@@ -4081,8 +4114,11 @@
     paintAttentionVerdictFromPlan(plan);
     if (plan.bodyMode === "stories") {
       paintCartBodyStoriesFromPlan(plan);
-    } else {
+    } else if (plan.bodyMode === "empty") {
       paintCartBodyEmptyFromPlan();
+    } else {
+      // Final snapshot, MI not ready — calm body, never technical pending copy.
+      paintCartBodyCalmFollowFromPlan(plan);
     }
     cartsExperienceRevealed = true;
     setCartsExperienceReadyFlag(true);
@@ -5672,10 +5708,46 @@
     }
 
     if (!pageRows.length && !normalCartsIsConfirmedFullEmpty(d, pageRows)) {
+      var filterAllUnc = normalCartsCountAll((d && d.merchant_cart_filter_counts) || {});
+      var srcUnc = normalCartsPayloadSource(d);
+      // Sprint 2.2: first live empty with no memory and no positive filters —
+      // reveal calm empty instead of infinite unified loading.
+      var liveCalmEmpty =
+        srcUnc === "live" &&
+        !degraded &&
+        !lastNormalCartsPageRows.length &&
+        filterAllUnc <= 0 &&
+        !normalCartsPayloadIsPartialOrThin(d);
+      if (liveCalmEmpty) {
+        logClientRefresh("normal_carts_live_calm_empty_reveal", {
+          source: srcUnc,
+          filter_all: filterAllUnc,
+        });
+        ingestRefreshToken(d, "normal-carts");
+        var preparedEmpty = prepareNormalCartsPayload(d, srcUnc || "live");
+        preparedEmpty.__ma_confirmed_empty = true;
+        cartsAttentionVerdictPending = false;
+        cartsAttentionVerdictFresh = true;
+        renderNormalCartsTables(preparedEmpty, {
+          skipComposition: true,
+          acceptMi: true,
+        });
+        if (fetchGen != null) {
+          normalCartsAppliedGen = Math.max(normalCartsAppliedGen, fetchGen);
+        }
+        rscDispatch("APPLY_CONFIRMED_EMPTY", {
+          reason: "live_calm_empty",
+          appliedGen: normalCartsAppliedGen,
+          rowsSource: srcUnc || "live",
+        });
+        persistNormalCartsCache(preparedEmpty);
+        normalCartsBootComplete = true;
+        return;
+      }
       logClientRefresh("normal_carts_unconfirmed_empty", {
-        source: normalCartsPayloadSource(d),
+        source: srcUnc,
         snapshot_mode: !!(d && d.snapshot_mode),
-        filter_all: normalCartsCountAll((d && d.merchant_cart_filter_counts) || {}),
+        filter_all: filterAllUnc,
         hadRows: lastNormalCartsPageRows.length,
       });
       if (lastNormalCartsPageRows.length) {
