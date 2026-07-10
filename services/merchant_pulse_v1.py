@@ -12,15 +12,25 @@ Projection only: consumes existing summary / Brief / Home / Decision /
 WhatsApp readiness / store connection fields. When
 CARTFLOW_COMMERCE_SIGNALS_V1 is on and store-scoped Signals are
 attached, Recovery/Purchase Signals feed “what happened” facts for
-executive_brief + cartflow_progress only. Decision slots stay on
-governed Decision inputs. Does not mint Truth, Decisions, or Guidance.
-No AI. No persistence.
+executive_brief + cartflow_progress only. Recovered-purchase wording is
+owned by Commerce Language V1 (amounts from existing recovered cart
+truth). Decision slots stay on governed Decision inputs except calm
+Leave copy when a recovered purchase outcome applies. Does not mint
+Truth, Decisions, or Guidance. No AI. No persistence.
 """
 from __future__ import annotations
 
 from datetime import datetime, timezone
 from typing import Any, Mapping, Optional
 
+from services.commerce_language_v1 import (
+    DECISION_SUMMARY_NO_INTERVENTION_AR,
+    MERCHANT_DECISION_NO_DECISION_AR,
+    collect_recovered_purchase_keys,
+    is_recovered_purchase_signal_type,
+    recovered_purchase_outcome_ar,
+    resolve_recovered_purchase_total,
+)
 from services.commerce_signals_v1 import (
     SIGNAL_PURCHASE_CONFIRMED,
     SIGNAL_RECOVERY_BLOCKED,
@@ -37,7 +47,8 @@ from services.merchant_decision_layer_v1 import (
 )
 from services.merchant_pulse_v1_flag import merchant_pulse_v1_enabled
 
-# Pulse-owned fact lines for Signal types (not generated inside Signals).
+# Fallback Pulse fact lines for non-recovered Signal types (not Commerce Language).
+# Recovered purchase / recovery_completed copy is owned by commerce_language_v1.
 _SIGNAL_FACT_AR: dict[str, str] = {
     SIGNAL_PURCHASE_CONFIRMED: "تم تأكيد شراء مرتبط بسلة قيد المتابعة.",
     SIGNAL_RECOVERY_COMPLETED: "اكتمل مسار استرجاع بعد تأكيد الشراء.",
@@ -284,24 +295,55 @@ def _pick_what_happened_signal(
     return None
 
 
+def _hidden_progress_slot(*, last_updated: str, signal_type: str = "") -> dict[str, Any]:
+    """cartflow_progress must not repeat executive_brief — hide the slot."""
+    return _slot(
+        status=STATUS_NO_ACTION,
+        message="—",
+        confidence=_CONF_UNKNOWN,
+        last_updated=last_updated,
+        signal_type=signal_type or None,
+        hidden=True,
+    )
+
+
+def _recovered_purchase_message(
+    signals: list[Mapping[str, Any]],
+    *,
+    store_slug: str,
+    amounts_by_key: Optional[Mapping[str, Optional[float]]] = None,
+) -> str:
+    keys = collect_recovered_purchase_keys(signals)
+    count, total = resolve_recovered_purchase_total(
+        count=len(keys),
+        amounts_by_key=amounts_by_key,
+        recovery_keys=keys,
+        store_slug=store_slug,
+    )
+    if count <= 0:
+        count = 1
+    return recovered_purchase_outcome_ar(count=count, total_value=total)
+
+
 def _what_happened_slots_from_signals(
     signals: list[Mapping[str, Any]],
     *,
     last_updated: str,
-) -> Optional[tuple[dict[str, Any], dict[str, Any], list[str]]]:
+    store_slug: str = "",
+    amounts_by_key: Optional[Mapping[str, Optional[float]]] = None,
+) -> Optional[tuple[dict[str, Any], dict[str, Any], list[str], bool, dict[str, Any]]]:
     """
-    Build executive_brief + cartflow_progress from Signals only.
+    Build executive_brief + cartflow_progress candidates from Signals only.
 
-    Returns None when no usable Recovery/Purchase signals.
+    Returns (brief, progress_hidden, types_used, recovered_outcome, progress_visible).
+    progress_hidden avoids duplicating brief on Leave; progress_visible is for
+    Require when Decision owns the brief.
     recovery_blocked never implies Require / Enter Work.
     """
     picked = _pick_what_happened_signal(signals)
     if not picked:
         return None
     st = _norm(picked.get("signal_type"))
-    fact = _SIGNAL_FACT_AR.get(st)
-    if not fact:
-        return None
     observed = _norm(picked.get("observed_at")) or last_updated
     types_used = sorted(
         {
@@ -311,68 +353,42 @@ def _what_happened_slots_from_signals(
         }
     )
 
-    if st in (SIGNAL_RECOVERY_COMPLETED, SIGNAL_PURCHASE_CONFIRMED):
-        brief = _slot(
-            status=STATUS_HEALTHY,
-            message=fact,
-            confidence=_CONF_HIGH,
-            last_updated=observed,
-            signal_type=st,
+    recovered_outcome = is_recovered_purchase_signal_type(st)
+    if recovered_outcome:
+        fact = _recovered_purchase_message(
+            signals,
+            store_slug=store_slug,
+            amounts_by_key=amounts_by_key,
         )
-        progress = _slot(
-            status=STATUS_HEALTHY,
-            message=fact,
-            confidence=_CONF_HIGH,
-            last_updated=observed,
-            signal_type=st,
-        )
-    elif st == SIGNAL_RECOVERY_PROGRESSED:
-        brief = _slot(
-            status=STATUS_HEALTHY,
-            message=fact,
-            confidence=_CONF_MEDIUM,
-            last_updated=observed,
-            signal_type=st,
-        )
-        progress = _slot(
-            status=STATUS_HEALTHY,
-            message=fact,
-            confidence=_CONF_MEDIUM,
-            last_updated=observed,
-            signal_type=st,
-        )
-    elif st == SIGNAL_RECOVERY_STARTED:
-        brief = _slot(
-            status=STATUS_HEALTHY,
-            message=fact,
-            confidence=_CONF_MEDIUM,
-            last_updated=observed,
-            signal_type=st,
-        )
-        progress = _slot(
-            status=STATUS_NO_ACTION,
-            message=fact,
-            confidence=_CONF_MEDIUM,
-            last_updated=observed,
-            signal_type=st,
-        )
+        conf = _CONF_HIGH
+        brief_status = STATUS_HEALTHY
     else:
-        # recovery_blocked — fact only; never Require
-        brief = _slot(
-            status=STATUS_NO_ACTION,
-            message=fact,
-            confidence=_CONF_MEDIUM,
-            last_updated=observed,
-            signal_type=st,
+        fact = _SIGNAL_FACT_AR.get(st)
+        if not fact:
+            return None
+        conf = _CONF_MEDIUM
+        brief_status = (
+            STATUS_NO_ACTION if st == SIGNAL_RECOVERY_BLOCKED else STATUS_HEALTHY
         )
-        progress = _slot(
-            status=STATUS_NO_ACTION,
-            message=fact,
-            confidence=_CONF_MEDIUM,
-            last_updated=observed,
-            signal_type=st,
-        )
-    return brief, progress, types_used
+
+    brief = _slot(
+        status=brief_status,
+        message=fact,
+        confidence=conf,
+        last_updated=observed,
+        signal_type=st,
+    )
+    # Visible progress copy for Require path (brief owned by Decision).
+    progress_visible = _slot(
+        status=STATUS_HEALTHY if recovered_outcome else brief_status,
+        message=fact,
+        confidence=conf,
+        last_updated=observed,
+        signal_type=st,
+    )
+    progress_hidden = _hidden_progress_slot(last_updated=observed, signal_type=st)
+    # Default Leave assignment: never duplicate brief in progress.
+    return brief, progress_hidden, types_used, recovered_outcome, progress_visible
 
 
 def build_merchant_pulse_v1_from_summary(
@@ -381,11 +397,14 @@ def build_merchant_pulse_v1_from_summary(
     loading: bool = False,
     store_slug: str = "",
     now_iso: Optional[str] = None,
+    recovered_amounts_by_key: Optional[Mapping[str, Optional[float]]] = None,
 ) -> dict[str, Any]:
     """
     Build immutable MerchantPulseV1 from a dashboard summary body.
 
-    Snapshot-safe: reads only already-attached summary fields.
+    Snapshot-safe for Decision/Home fields. Recovered purchase amounts are
+    read from existing AbandonedCart cart_value (or recovered_amounts_by_key
+    in tests) — never invented.
     """
     ts = _norm(now_iso) or _utc_now_iso()
     src = body if isinstance(body, Mapping) else {}
@@ -431,7 +450,30 @@ def build_merchant_pulse_v1_from_summary(
     first_attention = _first_item(attention)
     first_away = _first_item(while_away)
     signals = _commerce_signals_from_body(src, store_slug=slug)
-    signal_what = _what_happened_slots_from_signals(signals, last_updated=last_updated)
+    # Optional test/summary override: body.commerce_language_v1.amounts_by_key
+    amounts_override = recovered_amounts_by_key
+    if amounts_override is None:
+        cl = _as_map(src.get("commerce_language_v1"))
+        raw_amounts = cl.get("amounts_by_key")
+        if isinstance(raw_amounts, Mapping):
+            amounts_override = {}
+            for k, v in raw_amounts.items():
+                key = _norm(k)
+                if not key:
+                    continue
+                if v is None:
+                    amounts_override[key] = None
+                    continue
+                try:
+                    amounts_override[key] = float(v)
+                except (TypeError, ValueError):
+                    amounts_override[key] = None
+    signal_what = _what_happened_slots_from_signals(
+        signals,
+        last_updated=last_updated,
+        store_slug=slug,
+        amounts_by_key=amounts_override,
+    )
 
     # --- decision_summary (Should I act?) ---
     # Governed Decision / Home / MI inputs only — Signals never set stance.
@@ -541,7 +583,12 @@ def build_merchant_pulse_v1_from_summary(
         )
 
     # --- cartflow_progress (What did CartFlow accomplish?) ---
-    if signal_what is not None:
+    # Never duplicate executive_brief. Recovered Leave → hide progress.
+    # Require + Signals → show Signal/Commerce Language outcome in progress only.
+    recovered_outcome = bool(signal_what is not None and signal_what[3])
+    if signal_what is not None and has_require:
+        cartflow_progress = dict(signal_what[4])
+    elif signal_what is not None:
         cartflow_progress = dict(signal_what[1])
     elif first_away:
         detail = _norm(first_away.get("detail_ar"))
@@ -639,6 +686,44 @@ def build_merchant_pulse_v1_from_summary(
                 work_entry=None,
             )
             fork = FORK_LEAVE
+
+    # Commerce Language: recovered purchase Leave — calm decision copy (no invent).
+    # Applies even when Home/Brief is empty (would otherwise be UNKNOWN).
+    if recovered_outcome and not has_require and fork == FORK_LEAVE:
+        wa_bad = _wa_blocks_health(wa)
+        conn_ok = _store_connection_ok(conn)
+        counter_degraded = bool(
+            counter_health.get("degraded") or counter_health.get("unhealthy")
+        )
+        if not (wa_bad or conn_ok is False or counter_degraded):
+            decision_summary = _slot(
+                status=STATUS_NO_ACTION,
+                message=DECISION_SUMMARY_NO_INTERVENTION_AR,
+                confidence=_CONF_HIGH,
+                last_updated=last_updated,
+                stance="no_action",
+            )
+            merchant_decision = _slot(
+                status=STATUS_NO_ACTION,
+                message=MERCHANT_DECISION_NO_DECISION_AR,
+                confidence=_CONF_HIGH,
+                last_updated=last_updated,
+                work_entry=None,
+            )
+
+    # Guard: never allow the same merchant sentence in two slots.
+    brief_msg = _norm(executive_brief.get("message"))
+    progress_msg = _norm(cartflow_progress.get("message"))
+    if (
+        brief_msg
+        and progress_msg
+        and brief_msg == progress_msg
+        and not cartflow_progress.get("hidden")
+    ):
+        cartflow_progress = _hidden_progress_slot(
+            last_updated=_norm(cartflow_progress.get("last_updated")) or last_updated,
+            signal_type=_norm(cartflow_progress.get("signal_type")),
+        )
 
     # --- overall status ---
     if fork == FORK_ENTER_WORK:

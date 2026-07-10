@@ -100,28 +100,39 @@ class PulseSignalConsumptionTests(unittest.TestCase):
     def test_purchase_confirmed_in_what_happened(self) -> None:
         os.environ[ENV_COMMERCE_SIGNALS_V1] = "1"
         body = _base_body(
-            commerce_signals_v1={"signals": [_sig(SIGNAL_PURCHASE_CONFIRMED)]}
+            commerce_signals_v1={"signals": [_sig(SIGNAL_PURCHASE_CONFIRMED)]},
+            commerce_language_v1={"amounts_by_key": {RK: 449.0}},
         )
         pulse = build_merchant_pulse_v1_from_summary(body, store_slug=STORE)
         self.assertTrue(pulse["sources"]["commerce_signals_used"])
         self.assertEqual(pulse["fork"], FORK_LEAVE)
         self.assertEqual(pulse["decision_summary"]["status"], STATUS_NO_ACTION)
-        self.assertIn("شراء", pulse["executive_brief"]["message"])
-        self.assertIn("شراء", pulse["cartflow_progress"]["message"])
+        self.assertIn("استرداد", pulse["executive_brief"]["message"])
+        self.assertIn("449", pulse["executive_brief"]["message"])
+        self.assertTrue(pulse["cartflow_progress"].get("hidden"))
         # No duplicate legacy achievement text when Signals used for progress
         self.assertNotIn("أُرسلت", pulse["cartflow_progress"]["message"])
 
     def test_recovery_completed_changes_brief_and_progress_only(self) -> None:
         os.environ[ENV_COMMERCE_SIGNALS_V1] = "1"
         body = _base_body(
-            commerce_signals_v1={"signals": [_sig(SIGNAL_RECOVERY_COMPLETED)]}
+            commerce_signals_v1={"signals": [_sig(SIGNAL_RECOVERY_COMPLETED)]},
+            commerce_language_v1={"amounts_by_key": {RK: 100.0}},
         )
         pulse = build_merchant_pulse_v1_from_summary(body, store_slug=STORE)
         self.assertEqual(pulse["executive_brief"]["status"], STATUS_HEALTHY)
-        self.assertEqual(pulse["cartflow_progress"]["status"], STATUS_HEALTHY)
-        self.assertIn("استرجاع", pulse["executive_brief"]["message"])
+        self.assertTrue(pulse["cartflow_progress"].get("hidden"))
+        self.assertIn("خلال غيابك تم استرداد", pulse["executive_brief"]["message"])
         self.assertEqual(pulse["decision_summary"]["status"], STATUS_NO_ACTION)
         self.assertEqual(pulse["merchant_decision"]["status"], STATUS_NO_ACTION)
+        self.assertEqual(
+            pulse["decision_summary"]["message"],
+            "لا توجد حالة تحتاج تدخلك الآن.",
+        )
+        self.assertEqual(
+            pulse["merchant_decision"]["message"],
+            "لا قرار مطلوب حاليًا.",
+        )
         self.assertEqual(pulse["fork"], FORK_LEAVE)
 
     def test_recovery_blocked_does_not_create_merchant_action(self) -> None:
@@ -134,12 +145,13 @@ class PulseSignalConsumptionTests(unittest.TestCase):
         self.assertNotEqual(pulse["decision_summary"]["status"], STATUS_REQUIRE_ACTION)
         self.assertNotEqual(pulse["merchant_decision"]["status"], STATUS_REQUIRE_ACTION)
         self.assertIn("توقف", pulse["executive_brief"]["message"])
-        self.assertEqual(pulse["cartflow_progress"]["status"], STATUS_NO_ACTION)
+        self.assertTrue(pulse["cartflow_progress"].get("hidden"))
 
     def test_decision_require_unchanged_when_signals_present(self) -> None:
         os.environ[ENV_COMMERCE_SIGNALS_V1] = "1"
         body = _base_body(
             commerce_signals_v1={"signals": [_sig(SIGNAL_PURCHASE_CONFIRMED)]},
+            commerce_language_v1={"amounts_by_key": {RK: 449.0}},
             merchant_home_experience_v1={
                 "ok": True,
                 "generated_at": "2026-07-10T00:00:00+00:00",
@@ -162,9 +174,15 @@ class PulseSignalConsumptionTests(unittest.TestCase):
         self.assertEqual(pulse["fork"], FORK_ENTER_WORK)
         self.assertEqual(pulse["decision_summary"]["status"], STATUS_REQUIRE_ACTION)
         self.assertEqual(pulse["merchant_decision"]["status"], STATUS_REQUIRE_ACTION)
-        # Require owns brief; Signals still own progress facts
+        # Require owns brief; Commerce Language owns progress (no duplicate)
         self.assertIn("رقم العميل", pulse["executive_brief"]["message"])
-        self.assertIn("شراء", pulse["cartflow_progress"]["message"])
+        self.assertIn("استرداد", pulse["cartflow_progress"]["message"])
+        self.assertIn("449", pulse["cartflow_progress"]["message"])
+        self.assertFalse(pulse["cartflow_progress"].get("hidden"))
+        self.assertNotEqual(
+            pulse["executive_brief"]["message"],
+            pulse["cartflow_progress"]["message"],
+        )
 
     def test_cross_store_signals_ignored(self) -> None:
         os.environ[ENV_COMMERCE_SIGNALS_V1] = "1"
@@ -213,11 +231,16 @@ class PulseSignalConsumptionTests(unittest.TestCase):
             force=True,
         )
         # Duplicate the list intentionally
-        body = _base_body(commerce_signals_v1={"signals": built + built})
+        body = _base_body(
+            commerce_signals_v1={"signals": built + built},
+            commerce_language_v1={"amounts_by_key": {RK: 449.0}},
+        )
         pulse = build_merchant_pulse_v1_from_summary(body, store_slug=STORE)
         self.assertTrue(pulse["sources"]["commerce_signals_used"])
-        # One fact line — recovery_completed wins priority
-        self.assertEqual(
+        # Commerce Language owns brief; progress hidden (no duplicate sentence)
+        self.assertIn("خلال غيابك تم استرداد", pulse["executive_brief"]["message"])
+        self.assertTrue(pulse["cartflow_progress"].get("hidden"))
+        self.assertNotEqual(
             pulse["executive_brief"]["message"],
             pulse["cartflow_progress"]["message"],
         )

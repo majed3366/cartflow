@@ -73,6 +73,7 @@
   }
 
   function renderSlot(key, slot) {
+    if (slot && slot.hidden === true) return "";
     var label = SECTION_LABELS[key] || key;
     // confidence (high/medium/low/unknown) is internal metadata — never render.
     return (
