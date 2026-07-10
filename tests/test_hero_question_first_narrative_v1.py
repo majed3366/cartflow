@@ -25,6 +25,15 @@ class HeroQuestionFirstNarrativeV1Tests(unittest.TestCase):
         self.assertIn("pp.textContent = support", fn)
         self.assertIn('data-hero-narrative", "question-first"', fn)
 
+    def test_home_pulse_does_not_clobber_other_pages(self) -> None:
+        fn = _PULSE[
+            _PULSE.index("function fillSharedHero") : _PULSE.index(
+                "function refillHomeSharedHero"
+            )
+        ]
+        self.assertIn("homeActive", fn)
+        self.assertIn('pageKey === "home"', fn)
+
     def test_home_question_first(self) -> None:
         self.assertIn("HOME_HERO_QUESTION", _PULSE)
         self.assertIn("ماذا حدث أثناء غيابك؟", _PULSE)

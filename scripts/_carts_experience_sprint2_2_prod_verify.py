@@ -105,6 +105,10 @@ def main() -> int:
         report["email"] = f"cf.carts.s22.{uid}@smartreplyai.net"
 
         page.goto(f"{BASE}/dashboard#carts", timeout=120000, wait_until="domcontentloaded")
+        page.wait_for_function(
+            """() => document.body.getAttribute('data-ma-page') === 'carts'""",
+            timeout=30000,
+        )
         page.wait_for_timeout(1500)
         report["carts_early"] = _probe(page)
         page.screenshot(path=str(OUT / "01_carts_loading_or_early.png"), full_page=False)

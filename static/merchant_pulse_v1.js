@@ -146,6 +146,14 @@
 
   function fillSharedHero(storyMsg) {
     lastHomeHeroStory = normMsg(storyMsg) || HOME_STORY_FALLBACK;
+    var pageKey =
+      (document.body && document.body.getAttribute("data-ma-page")) || "";
+    var homePage = byId("page-home");
+    var homeActive =
+      pageKey === "home" ||
+      (homePage && homePage.classList.contains("active"));
+    // Never clobber Carts/Messages while Home Pulse arrives late.
+    if (!homeActive) return;
     var hero = byId("ma-page-hero-global");
     if (hero) {
       hero.removeAttribute("data-shared-hero-carts");
@@ -290,6 +298,7 @@
     if (!isValidPulse(pulse)) return false;
 
     var heroMsg = resolveHeroStory(pulse.executive_brief);
+    // Cards always render on Home root; Hero only when Home is the active page.
     fillSharedHero(heroMsg);
 
     root.classList.remove(
